@@ -1,0 +1,23 @@
+{
+  "name": "aws-ops-plugin",
+  "version": "1.0.0",
+  "description": "AWS/EKS infrastructure operations and troubleshooting plugin — EKS cluster management, networking, IAM, observability, storage, database, and cost optimization",
+  "author": { "name": "atomoh" },
+  "agents": [
+    "./agents/eks-agent.md",
+    "./agents/network-agent.md",
+    "./agents/iam-agent.md",
+    "./agents/cloudwatch-agent.md",
+    "./agents/storage-agent.md",
+    "./agents/database-agent.md",
+    "./agents/cost-agent.md",
+    "./agents/ops-coordinator-agent.md"
+  ],
+  "skills": [
+    "./skills/ops-troubleshoot",
+    "./skills/ops-health-check",
+    "./skills/ops-network-diagnosis",
+    "./skills/ops-observability",
+    "./skills/ops-security-audit"
+  ]
+}

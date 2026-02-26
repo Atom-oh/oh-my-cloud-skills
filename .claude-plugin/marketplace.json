@@ -1,0 +1,21 @@
+{
+  "name": "oh-my-cloud-skills",
+  "owner": {
+    "name": "atomoh"
+  },
+  "metadata": {
+    "description": "AWS cloud plugins for Claude Code — content creation and infrastructure operations"
+  },
+  "plugins": [
+    {
+      "name": "aws-content-plugin",
+      "source": "./plugins/aws-content-plugin",
+      "description": "AWS cloud content creation — presentations, architecture diagrams, animated diagrams, documents, GitBook sites, and workshops"
+    },
+    {
+      "name": "aws-ops-plugin",
+      "source": "./plugins/aws-ops-plugin",
+      "description": "AWS/EKS infrastructure operations — troubleshooting, networking, IAM, observability, storage, database, and cost optimization"
+    }
+  ]
+}
