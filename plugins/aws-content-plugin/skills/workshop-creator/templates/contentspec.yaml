@@ -1,0 +1,24 @@
+version: 2.0
+defaultLocaleCode: ko-KR
+localeCodes:
+  - ko-KR
+  - en-US
+
+awsAccountConfig:
+  accountSources:
+    - workshop_studio
+  participantRole:
+    iamPolicies:
+      - static/iam/workshop-policy.json
+  regionConfiguration:
+    minAccessibleRegions: 1
+    maxAccessibleRegions: 1
+    deployableRegions:
+      recommended:
+        - ap-northeast-2
+        - us-east-1
+      all:
+        - ap-northeast-2
+        - us-east-1
+        - us-west-2
+        - eu-west-1

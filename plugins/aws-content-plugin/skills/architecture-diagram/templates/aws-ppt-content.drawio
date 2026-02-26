@@ -1,0 +1,56 @@
+<mxfile host="app.diagrams.net" agent="Claude" version="21.0.0" type="device">
+  <diagram name="AWS Architecture (PPT Content)" id="aws-ppt-content">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0" defaultFontFamily="Amazon Ember">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- AWS Cloud Container -->
+        <mxCell id="aws-cloud" value="AWS Cloud" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud_alt;strokeColor=#232F3E;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#232F3E;fontFamily=Amazon Ember;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="1520" height="820" as="geometry" />
+        </mxCell>
+
+        <!-- Region Container -->
+        <mxCell id="region" value="ap-northeast-2" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;strokeColor=#00A4A6;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#147EBA;fontFamily=Amazon Ember;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="80" width="1480" height="760" as="geometry" />
+        </mxCell>
+
+        <!-- VPC Container -->
+        <mxCell id="vpc" value="VPC (10.0.0.0/16)" style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_vpc;strokeColor=#879196;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#879196;fontFamily=Amazon Ember;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="80" y="120" width="1440" height="700" as="geometry" />
+        </mxCell>
+
+        <!-- Availability Zone A -->
+        <mxCell id="az-a" value="Availability Zone A" style="fillColor=none;strokeColor=#147EBA;dashed=1;verticalAlign=top;fontStyle=0;fontColor=#147EBA;whiteSpace=wrap;html=1;fontFamily=Amazon Ember;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="160" width="680" height="640" as="geometry" />
+        </mxCell>
+
+        <!-- Availability Zone C -->
+        <mxCell id="az-c" value="Availability Zone C" style="fillColor=none;strokeColor=#147EBA;dashed=1;verticalAlign=top;fontStyle=0;fontColor=#147EBA;whiteSpace=wrap;html=1;fontFamily=Amazon Ember;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="820" y="160" width="680" height="640" as="geometry" />
+        </mxCell>
+
+        <!-- Public Subnet A -->
+        <mxCell id="public-a" value="Public Subnet" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=11;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_security_group;grStroke=0;strokeColor=#7AA116;fillColor=#F2F6E8;verticalAlign=top;align=left;spacingLeft=30;fontColor=#248814;fontFamily=Amazon Ember;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="120" y="200" width="640" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- Private Subnet A -->
+        <mxCell id="private-a" value="Private Subnet" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=11;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_security_group;grStroke=0;strokeColor=#00A4A6;fillColor=#E6F6F7;verticalAlign=top;align=left;spacingLeft=30;fontColor=#147EBA;fontFamily=Amazon Ember;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="120" y="440" width="640" height="340" as="geometry" />
+        </mxCell>
+
+        <!-- Public Subnet C -->
+        <mxCell id="public-c" value="Public Subnet" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=11;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_security_group;grStroke=0;strokeColor=#7AA116;fillColor=#F2F6E8;verticalAlign=top;align=left;spacingLeft=30;fontColor=#248814;fontFamily=Amazon Ember;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="840" y="200" width="640" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- Private Subnet C -->
+        <mxCell id="private-c" value="Private Subnet" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=11;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_security_group;grStroke=0;strokeColor=#00A4A6;fillColor=#E6F6F7;verticalAlign=top;align=left;spacingLeft=30;fontColor=#147EBA;fontFamily=Amazon Ember;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="840" y="440" width="640" height="340" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
