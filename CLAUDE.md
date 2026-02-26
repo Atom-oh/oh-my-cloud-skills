@@ -81,6 +81,24 @@ Only `aws-ops-plugin` has `.mcp.json` with 5 AWS MCP servers:
 
 Each plugin's `CLAUDE.md` defines keyword→agent routing tables. Keywords include both English and Korean terms. When a user prompt matches keywords, the corresponding agent activates automatically.
 
+## Versioning
+
+Both plugins share a single version tracked in their `plugin.json` → `"version"` field. Git tags **must** match this version.
+
+- **Single source of truth**: `plugin.json` `"version"` in both plugins (keep them in sync)
+- **Git tag format**: `v{version}` (e.g., `v1.0.0`) — created on the release commit
+- **Release process**: bump `"version"` in both `plugin.json` files → commit → `git tag v{version}` → push with `--tags`
+- **Validation**: `git describe --tags` should match both `plugin.json` versions
+
+```bash
+# Verify version consistency
+V=$(python3 -c "import json; print(json.load(open('plugins/aws-content-plugin/.claude-plugin/plugin.json'))['version'])")
+V2=$(python3 -c "import json; print(json.load(open('plugins/aws-ops-plugin/.claude-plugin/plugin.json'))['version'])")
+TAG=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+echo "content=$V ops=$V2 tag=$TAG"
+[ "$V" = "$V2" ] && [ "$V" = "$TAG" ] && echo "OK: all match" || echo "MISMATCH"
+```
+
 ## Key Conventions
 
 - Agent model is always `sonnet` except `ops-coordinator-agent` which uses `opus`
