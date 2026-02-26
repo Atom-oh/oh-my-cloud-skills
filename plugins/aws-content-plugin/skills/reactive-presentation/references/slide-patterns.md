@@ -394,7 +394,13 @@ function drawNodes(ctx) {
 
 ### 13. Thank You / Closing Slide (Required)
 
-Every block HTML file **must** end with a Thank You slide as the last slide. This signals the end of the block clearly and provides navigation back to the parent (TOC) page.
+Every block HTML file **must** end with a Thank You slide as the last slide. This signals the end of the block clearly and provides navigation to the TOC page and the next block.
+
+There are two variants depending on whether the block is a middle block or the final block.
+
+#### 13a. Middle Block (has next block)
+
+The "다음" button is `btn-primary` (highlighted CTA), and the TOC button is `btn` (secondary).
 
 ```html
 <!-- Slide N: Thank You -->
@@ -410,11 +416,31 @@ Every block HTML file **must** end with a Thank You slide as the last slide. Thi
 </div>
 ```
 
+#### 13b. Final Block (last block of the presentation)
+
+No next block link. The TOC button becomes `btn-primary` (promoted to primary CTA). Add a congratulations line.
+
+```html
+<!-- Slide N: Thank You -->
+<div class="slide">
+  <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:24px; text-align:center;">
+    <h1 style="font-size:3rem; background:linear-gradient(135deg, var(--accent-light), var(--cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">Thank You</h1>
+    <p style="color:var(--text-secondary); font-size:1.1rem;">Block N — 블록 제목 완료</p>
+    <p style="color:var(--text-muted); font-size:1rem; margin-top:8px;">수고하셨습니다!</p>
+    <div style="display:flex; gap:16px; margin-top:20px;">
+      <a href="index.html" class="btn btn-primary btn-sm" style="text-decoration:none;">← 목차로 돌아가기</a>
+    </div>
+  </div>
+</div>
+```
+
 Key elements:
 - Gradient text "Thank You" heading (accent-light → cyan)
 - Block completion description (e.g., "Block 2 — 노드 라이프사이클 & 모니터링 완료")
-- **← 목차로 돌아가기** button: always links to `index.html` (TOC page)
-- **다음: Block N+1 →** button: links to the next block HTML file (omit for the final block of the presentation)
+- **← 목차로 돌아가기** button: always present, links to `index.html` (TOC page)
+- **다음: Block N+1 →** button: present for middle blocks only, links to the next block HTML file
+- Button style rule: the primary action (`btn-primary`) is "다음" for middle blocks, "목차로 돌아가기" for the final block
+- Final block adds a congratulations message (e.g., "수고하셨습니다!")
 
 ### 14. Speaker Notes (presenterNotes)
 

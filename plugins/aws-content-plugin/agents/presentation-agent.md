@@ -117,6 +117,7 @@ For each block HTML file, check:
 - Quiz components use correct `data-quiz` / `data-correct` attributes
 - Framework file references use correct relative paths (`../common/`)
 - Presenter view (P key) shows notes correctly
+- Last slide is Thank You with `← 목차로 돌아가기` link to `index.html` and `다음: Block N+1 →` link to next block (omit next link for final block)
 
 ### Phase 9: Deploy
 
@@ -144,7 +145,7 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 | YAML/code example | Code Block | `.code-block` with syntax spans |
 | Customer problem | Pain Quote | `.pain-quote` + challenge list |
 | Block summary | Quiz | `data-quiz` + 3-4 questions |
-| Block closing | Thank You | Gradient heading + TOC link |
+| Block closing | Thank You | Gradient heading + TOC link + next block link |
 
 ---
 
@@ -166,7 +167,7 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 - Content language matches user request
 - All interactive elements are functional
 - Presenter view notes are populated
-- Last slide has Thank You + TOC link
+- Last slide has Thank You + TOC link (`← 목차로 돌아가기` → `index.html`) + next block link (`다음: Block N+1 →`; omit for final block)
 
 ---
 

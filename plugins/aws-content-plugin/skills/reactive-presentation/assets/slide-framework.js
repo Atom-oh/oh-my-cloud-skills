@@ -38,6 +38,16 @@ class SlideFramework {
     return document.querySelector('.slide-deck');
   }
 
+  updateFooterVisibility(slide) {
+    const deck = this.getDeck() || document.body;
+    const logo = deck.querySelector('.slide-logo');
+    const footer = deck.querySelector('.slide-footer');
+    // Hide framework logo/footer when the current slide already contains an <img>
+    const hide = slide.querySelector('img') !== null;
+    if (logo) logo.style.display = hide ? 'none' : '';
+    if (footer) footer.style.display = hide ? 'none' : '';
+  }
+
   createFooter() {
     const footer = document.createElement('div');
     footer.className = 'slide-footer';
@@ -181,6 +191,7 @@ class SlideFramework {
 
     this.currentSlide = index;
     this.updateProgress();
+    this.updateFooterVisibility(next);
     window.location.hash = index + 1;
 
     if (this.onSlideChange) {
