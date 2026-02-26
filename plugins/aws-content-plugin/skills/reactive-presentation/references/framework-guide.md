@@ -129,7 +129,10 @@ Methods: `quizManager.reset(id)`, `.resetAll()`, `.getScore()` → `{total, corr
 
 **ZIP Download**: Bundles all presentation files into a ZIP archive for offline viewing.
 - Loads JSZip (~100KB) from CDN on demand
-- Includes: block HTMLs, TOC index.html, common/ framework files, pptx-theme/ assets
+- Includes: block HTMLs, TOC index.html, common/ framework files, and all referenced images
+- Automatically discovers images by scanning HTML/CSS for `<img src>`, CSS `url()`, and JS `.src` patterns
+- Captures AWS icons, pptx-theme backgrounds, logos, and any other referenced images
+- Deduplicates URLs via Set before fetching; skips failures silently
 - Maintains directory structure: `{slug}/` + `common/`
 
 **API**:

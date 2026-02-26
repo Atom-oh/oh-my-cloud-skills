@@ -11,6 +11,38 @@ const ExportUtils = {
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   },
 
+  /** Image file extensions to include in ZIP */
+  _IMAGE_EXTS: /\.(svg|png|jpg|jpeg|gif|webp|ico)$/i,
+
+  /**
+   * Extract referenced image URLs from an HTML string.
+   * Scans for <img src>, CSS url(), and JS .src assignments.
+   * Returns deduplicated array of relative image paths.
+   */
+  _extractImageURLs: function(html) {
+    var urls = new Set();
+    var match;
+
+    // Pattern 1: <img ... src="PATH" ...>
+    var imgSrc = /<img[^>]+src\s*=\s*["']([^"']+)["']/gi;
+    while ((match = imgSrc.exec(html)) !== null) urls.add(match[1]);
+
+    // Pattern 2: url('PATH') or url(PATH) — CSS backgrounds
+    var cssUrl = /url\(\s*['"]?([^'")]+)['"]?\s*\)/gi;
+    while ((match = cssUrl.exec(html)) !== null) urls.add(match[1]);
+
+    // Pattern 3: .src = 'PATH' or .src = "PATH" — JS image loading
+    var jsSrc = /\.src\s*=\s*['"]([^'"]+)['"]/gi;
+    while ((match = jsSrc.exec(html)) !== null) urls.add(match[1]);
+
+    // Filter: keep only relative paths to image files, exclude data URIs and absolute URLs
+    var imageExts = this._IMAGE_EXTS;
+    return Array.from(urls).filter(function(u) {
+      if (u.indexOf('data:') === 0 || u.indexOf('http://') === 0 || u.indexOf('https://') === 0 || u.indexOf('//') === 0) return false;
+      return imageExts.test(u);
+    });
+  },
+
   COMMON_FILES: [
     'theme.css', 'theme-override.css', 'slide-framework.js',
     'presenter-view.js', 'animation-utils.js', 'quiz-component.js',
@@ -129,7 +161,8 @@ const ExportUtils = {
 
   /**
    * Download all presentation files as a ZIP archive.
-   * Includes block HTMLs, TOC page, common framework files, and pptx-theme assets.
+   * Includes block HTMLs, TOC page, common framework files, and all referenced images.
+   * Images are discovered by scanning HTML content for <img src>, CSS url(), and JS .src patterns.
    * @param {Object} options - { slug: string }
    */
   downloadZIP: async function(options) {
@@ -147,52 +180,84 @@ const ExportUtils = {
       var zip = new JSZip();
       var slugFolder = zip.folder(slug);
       var commonFolder = zip.folder('common');
+      var imageURLs = new Set();
       var fetched = 0;
       var totalFiles = blocks.length + this.COMMON_FILES.length + 1;
 
-      // Fetch block HTML files
+      // Fetch block HTML files and scan for referenced images
+      var blockHTMLs = [];
       for (var i = 0; i < blocks.length; i++) {
         var file = blocks[i];
-        this.updateProgress('Fetching ' + file + '...', 10 + (fetched / totalFiles) * 65);
+        this.updateProgress('Fetching ' + file + '...', 10 + (fetched / totalFiles) * 40);
         var resp = await fetch(file);
-        if (resp.ok) slugFolder.file(file, await resp.text());
+        if (resp.ok) {
+          var html = await resp.text();
+          slugFolder.file(file, html);
+          blockHTMLs.push(html);
+        }
         fetched++;
       }
 
-      // Fetch TOC index.html (current page)
-      this.updateProgress('Fetching index.html...', 10 + (fetched / totalFiles) * 65);
+      // Fetch TOC index.html (current page) and scan for images
+      this.updateProgress('Fetching index.html...', 10 + (fetched / totalFiles) * 40);
       var tocResp = await fetch('index.html');
-      if (tocResp.ok) slugFolder.file('index.html', await tocResp.text());
+      var tocHTML = '';
+      if (tocResp.ok) {
+        tocHTML = await tocResp.text();
+        slugFolder.file('index.html', tocHTML);
+      }
       fetched++;
 
-      // Fetch common framework files
+      // Fetch common framework files and scan theme-override.css for images
+      var themeOverrideCSS = '';
       for (var j = 0; j < this.COMMON_FILES.length; j++) {
         var cFile = this.COMMON_FILES[j];
-        this.updateProgress('Fetching common/' + cFile + '...', 10 + (fetched / totalFiles) * 65);
+        this.updateProgress('Fetching common/' + cFile + '...', 10 + (fetched / totalFiles) * 40);
         try {
           var cResp = await fetch('../common/' + cFile);
-          if (cResp.ok) commonFolder.file(cFile, await cResp.text());
+          if (cResp.ok) {
+            var cText = await cResp.text();
+            commonFolder.file(cFile, cText);
+            if (cFile === 'theme-override.css') themeOverrideCSS = cText;
+          }
         } catch (e) { /* skip missing optional files */ }
         fetched++;
       }
 
-      // Try to fetch pptx-theme assets
-      try {
-        var manifestResp = await fetch('../common/pptx-theme/theme-manifest.json');
-        if (manifestResp.ok) {
-          var manifest = await manifestResp.json();
-          var themeFolder = commonFolder.folder('pptx-theme');
-          themeFolder.file('theme-manifest.json', JSON.stringify(manifest, null, 2));
-          if (manifest.images && Array.isArray(manifest.images)) {
-            for (var k = 0; k < manifest.images.length; k++) {
-              try {
-                var imgResp = await fetch('../common/pptx-theme/images/' + manifest.images[k]);
-                if (imgResp.ok) themeFolder.folder('images').file(manifest.images[k], await imgResp.blob());
-              } catch (e) { /* skip missing images */ }
-            }
-          }
+      // Scan all fetched HTML/CSS content for referenced image URLs
+      this.updateProgress('Scanning for referenced images...', 55);
+      var self = this;
+      blockHTMLs.forEach(function(html) {
+        // Block HTML paths are relative to the slug dir (e.g., ../common/aws-icons/...)
+        self._extractImageURLs(html).forEach(function(u) { imageURLs.add(u); });
+      });
+      this._extractImageURLs(tocHTML).forEach(function(u) { imageURLs.add(u); });
+      // theme-override.css lives in common/, so paths are relative to common/ (e.g., pptx-theme/images/...)
+      this._extractImageURLs(themeOverrideCSS).forEach(function(u) {
+        // Normalize to ../common/ relative form to match block HTML paths
+        if (u.indexOf('../') !== 0 && u.indexOf('./') !== 0) {
+          imageURLs.add('../common/' + u);
+        } else {
+          imageURLs.add(u);
         }
-      } catch (e) { /* no pptx-theme directory, skip */ }
+      });
+
+      // Fetch discovered images and add to ZIP
+      var imageList = Array.from(imageURLs);
+      var imgFetched = 0;
+      for (var k = 0; k < imageList.length; k++) {
+        var imgURL = imageList[k];
+        this.updateProgress('Fetching image ' + (k + 1) + '/' + imageList.length + '...', 58 + (imgFetched / Math.max(imageList.length, 1)) * 20);
+        try {
+          var imgResp = await fetch(imgURL);
+          if (imgResp.ok) {
+            // Resolve ../common/path/to/img → common/path/to/img in ZIP
+            var zipPath = imgURL.replace(/^\.\.\//g, '');
+            zip.file(zipPath, await imgResp.blob());
+          }
+        } catch (e) { /* skip unreachable images */ }
+        imgFetched++;
+      }
 
       this.updateProgress('Generating ZIP archive...', 80);
 

@@ -230,7 +230,7 @@ Framework files to copy into `common/`:
 - `presenter-view.js` — PresenterView class (draggable splitters, large notes area, Pretendard font, localStorage persistence, BroadcastChannel sync)
 - `animation-utils.js` — Canvas primitives, AnimationLoop, TimelineAnimation, Colors, Ease
 - `quiz-component.js` — QuizManager with auto-grading and feedback
-- `export-utils.js` — ExportUtils with PDF export (browser print) and ZIP download (JSZip CDN)
+- `export-utils.js` — ExportUtils with PDF export (browser print) and ZIP download (JSZip CDN, auto-discovers and bundles all referenced images)
 
 ### scripts/
 - `extract_pptx_theme.py` — Extract PPTX theme → CSS overrides + images (see [references/pptx-theme-guide.md](references/pptx-theme-guide.md))
