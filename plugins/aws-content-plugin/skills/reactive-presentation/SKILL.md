@@ -127,6 +127,15 @@ Copy framework assets from this skill into the repo's `common/` directory:
 
 Copy assets: `cp {skill-dir}/assets/* {repo}/common/`
 
+For TOC `index.html` pages, add export buttons and include the export script:
+```html
+<div class="export-toolbar">
+  <button class="export-btn" onclick="ExportUtils.exportPDF({ title: 'Title' })">Export PDF</button>
+  <button class="export-btn" onclick="ExportUtils.downloadZIP()">Download ZIP</button>
+</div>
+<script src="../common/export-utils.js"></script>
+```
+
 If `index.html` hub already exists, add a new card. If new repo, create the hub page.
 
 ### Phase 7: Verify
@@ -221,6 +230,7 @@ Framework files to copy into `common/`:
 - `presenter-view.js` — PresenterView class (draggable splitters, large notes area, Pretendard font, localStorage persistence, BroadcastChannel sync)
 - `animation-utils.js` — Canvas primitives, AnimationLoop, TimelineAnimation, Colors, Ease
 - `quiz-component.js` — QuizManager with auto-grading and feedback
+- `export-utils.js` — ExportUtils with PDF export (browser print) and ZIP download (JSZip CDN)
 
 ### scripts/
 - `extract_pptx_theme.py` — Extract PPTX theme → CSS overrides + images (see [references/pptx-theme-guide.md](references/pptx-theme-guide.md))

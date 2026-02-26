@@ -706,3 +706,79 @@ input[type="range"]::-webkit-slider-thumb {
   .slide { page-break-after: always; position: relative; display: flex !important; opacity: 1 !important; }
   .progress-bar, .slide-counter, .nav-hint, .slide-logo, .slide-footer { display: none; }
 }
+
+/* === Export Toolbar === */
+.export-toolbar {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 20px;
+}
+.export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  font-size: .9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.export-btn:hover {
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 2px 12px var(--accent-glow);
+}
+.export-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.export-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Export progress overlay */
+.export-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .85);
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.export-progress-content {
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+}
+.export-progress-text {
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  font-size: 1rem;
+  margin-bottom: 16px;
+}
+.export-progress-track {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.export-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-light));
+  border-radius: 2px;
+  transition: width 200ms ease;
+  width: 0%;
+}

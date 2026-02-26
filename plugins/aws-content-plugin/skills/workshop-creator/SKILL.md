@@ -659,7 +659,3 @@ cfn_nag_scan --input-path static/workshop.yaml
 | `reference/front-matter.md` | Front Matter 속성 |
 | `reference/contentspec-complete.md` | contentspec.yaml 전체 설정 |
 | `reference/cloudformation-reference.md` | CloudFormation 인프라 템플릿 가이드 |
-
-### 실제 워크샵 예제
-
-- `/Users/atomoh/github/workshop/eks-genai-accelerator-from-llms-to-scalable-agent-systems/` - GenAI on EKS 워크샵

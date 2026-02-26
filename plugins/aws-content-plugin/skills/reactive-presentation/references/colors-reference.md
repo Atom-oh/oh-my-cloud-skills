@@ -125,9 +125,9 @@ AWS 서비스 카테고리별 공식 색상.
 
 ---
 
-## Template Theme Colors (layout_sample.pptx)
+## Template Theme Colors
 
-AWS Dark Template에서 정의된 테마 색상입니다. layout_sample.pptx의 theme1.xml에서 추출한 실제 값입니다.
+AWS Dark Template에서 정의된 테마 색상입니다.
 
 ### Theme Color Scheme
 
@@ -146,7 +146,7 @@ AWS Dark Template에서 정의된 테마 색상입니다. layout_sample.pptx의 
 
 ### Table Formatting (Slide 89 Reference)
 
-layout_sample.pptx Slide 89에서 추출한 실제 테이블 포맷입니다.
+AWS Dark Template에서 추출한 실제 테이블 포맷입니다.
 
 **Table 8 (Comparison Table):**
 | 요소 | 값 | 설명 |
@@ -181,7 +181,7 @@ MCP 도구는 테마 색상을 직접 지원하지 않으므로 RGB로 변환하
 
 ### Table Color Recommendation (Dark Theme)
 
-**권장 조합 (layout_sample.pptx 기반):**
+**권장 조합 (AWS Dark Template 기반):**
 
 ```yaml
 # 어두운 테이블 (tx1 스타일)

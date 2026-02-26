@@ -117,6 +117,49 @@ HTML structure:
 
 Methods: `quizManager.reset(id)`, `.resetAll()`, `.getScore()` → `{total, correct, pct}`
 
+### export-utils.js
+`ExportUtils` object — provides PDF export and ZIP download for presentation TOC pages.
+
+**PDF Export**: Fetches all block HTML files, extracts slides, opens a print-optimized view for browser "Save as PDF".
+- Discovers blocks from `.block-card` anchor links on the TOC page
+- Extracts `<style>` and `.slide` elements from each block via DOMParser
+- Builds a 16:9 landscape print layout with all slides stacked
+- Canvas animations show `[Interactive Animation]` placeholder in print
+- Uses `<base>` tag for correct relative path resolution
+
+**ZIP Download**: Bundles all presentation files into a ZIP archive for offline viewing.
+- Loads JSZip (~100KB) from CDN on demand
+- Includes: block HTMLs, TOC index.html, common/ framework files, pptx-theme/ assets
+- Maintains directory structure: `{slug}/` + `common/`
+
+**API**:
+- `ExportUtils.exportPDF({ title })` — open print dialog with all slides
+- `ExportUtils.downloadZIP({ slug })` — download ZIP archive
+- `ExportUtils.getBlockFiles()` → `string[]` — list of block HTML filenames
+- `ExportUtils.getSlug()` → `string` — presentation directory name from URL
+
+**HTML pattern for TOC pages**:
+```html
+<div class="export-toolbar">
+  <button class="export-btn" onclick="ExportUtils.exportPDF({ title: 'Title' })">
+    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    Export PDF
+  </button>
+  <button class="export-btn" onclick="ExportUtils.downloadZIP()">
+    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Download ZIP
+  </button>
+</div>
+<script src="../common/export-utils.js"></script>
+```
+
+**CSS classes** (defined in theme.css):
+- `.export-toolbar` — flex container centered with gap
+- `.export-btn` — dark button with icon + label, accent hover
+- `.export-overlay` — fixed fullscreen progress overlay
+- `.export-progress-text` — status message
+- `.export-progress-track` / `.export-progress-bar` — animated progress bar
+
 ## HTML Template Structure
 
 ```html
