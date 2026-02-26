@@ -4,5 +4,8 @@
 # Claude Code
 .claude/
 
+# Playwright MCP
+.playwright-mcp/
+
 # macOS
 .DS_Store
