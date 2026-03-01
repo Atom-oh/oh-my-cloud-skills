@@ -52,7 +52,7 @@ All `rem`-based sizing scales automatically. Canvas elements need manual proport
 `SlideFramework` class — instantiate with `new SlideFramework({ onSlideChange: fn })`.
 
 Features:
-- Keyboard: ←→ (prev/next), Space/PageDown (next), PageUp (prev), Home/End, F (fullscreen), Esc
+- Keyboard: ←→ (prev/next), Space/PageDown (next), PageUp (prev), Home/End, ↑↓ (focus nav within slide), Enter (trigger focused element), F (fullscreen), N (speaker notes panel toggle), P (presenter view), Esc (exit fullscreen), 1-9 (jump to slide)
 - Touch: swipe left/right on mobile
 - URL hash: `#3` jumps to slide 3
 - Auto-creates: progress bar, slide counter, nav hint (scoped to `.slide-deck`)
@@ -197,7 +197,11 @@ Methods: `quizManager.reset(id)`, `.resetAll()`, `.getScore()` → `{total, corr
 <script src="../common/slide-framework.js"></script>
 <script src="../common/quiz-component.js"></script>
 <script>
+  // Read footer_text and logo path from theme-manifest.json (when PPTX theme extracted)
   const deck = new SlideFramework({
+    footer: '© 2025, Amazon Web Services, Inc.',  // from theme-manifest.json → footer_text
+    logoSrc: '../common/pptx-theme/images/logo_1.png',  // from theme-manifest.json → logos[0]
+    presenterNotes: { 1: 'Note for slide 1\nSecond line', 2: 'Note for slide 2' },
     onSlideChange: (index, slide) => {
       // trigger animations when entering specific slides
     }

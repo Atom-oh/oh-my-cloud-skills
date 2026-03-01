@@ -95,7 +95,67 @@ Or use the CSS class directly:
 - **Slide number format**: Extracted from placeholder idx=4 (e.g., `‹#›`)
 - **Date format**: Extracted from placeholder idx=2
 
-These are passed to `SlideFramework` via constructor options or added via CSS `content:` property.
+### Footer Integration with SlideFramework
+
+The footer text is **not set via CSS** — it's passed to `SlideFramework` in JavaScript. After extraction, read `theme-manifest.json` and use the `footer_text` field:
+
+```javascript
+// Read from theme-manifest.json → footer_text
+const deck = new SlideFramework({
+  footer: '© 2025, Amazon Web Services, Inc.',  // from manifest.footer_text
+  logoSrc: '../common/pptx-theme/images/logo_1.png',
+});
+```
+
+The `footer_text` field in the manifest is a deduplicated combination of the footer placeholder text and any text shapes found in the footer area (bottom 15%) of the slide master. If your PPTX has the same text in both a placeholder and a text box, it appears only once.
+
+### Master Text Elements
+
+Beyond placeholders, slide masters often contain text boxes with:
+- **Copyright notices** — e.g., `© 2025, Amazon Web Services, Inc.`
+- **Event names** — e.g., `AWS re:Invent 2025`
+- **Confidentiality notices** — e.g., `Amazon Confidential`
+
+These are extracted into `master_texts` in the manifest, with position info and an `is_footer_area` flag (true if the text is in the bottom 15% of the slide). Use these to match the original PPTX branding:
+
+```json
+"master_texts": [
+  {
+    "text": "© 2025, Amazon Web Services, Inc.",
+    "shape_name": "TextBox 3",
+    "position": { "left_percent": 4.88, "top_percent": 93.5 },
+    "size": { "width_percent": 30.0, "height_percent": 3.2 },
+    "is_footer_area": true
+  }
+]
+```
+
+### Layout Reference
+
+The `layout_details` array in the manifest provides the full structure of every slide master layout — backgrounds, placeholders, and text shapes. Use this to understand the original PPTX layout structure:
+
+```json
+"layout_details": [
+  {
+    "index": 0,
+    "name": "Title Slide",
+    "background": { "type": "picture" },
+    "placeholders": [
+      { "idx": 0, "type": "TITLE (15)", "name": "Title 1" },
+      { "idx": 1, "type": "SUBTITLE (16)", "name": "Subtitle 2" }
+    ],
+    "texts": [
+      { "text": "AWS re:Invent 2025", "shape_name": "TextBox 5" }
+    ]
+  }
+]
+```
+
+Key layouts to reference when building HTML slides:
+- **Title Slide** — maps to Session Cover (§0a)
+- **Section Header** — maps to Block Title (§1)
+- **Title and Content** — maps to standard content slides
+- **Blank** — maps to canvas/custom slides
 
 ## Background Types
 
@@ -185,9 +245,28 @@ The `theme-manifest.json` contains all extracted metadata:
       "position_pct": { "left": "4.88%", "top": "92.42%" }
     }
   ],
-  "footer": { "text": "", "idx": 3 },
+  "footer": { "text": "© 2025, Amazon Web Services, Inc.", "idx": 3 },
   "slide_number": { "format": "‹#›", "idx": 4 },
   "date": { "text": "1/7/26", "idx": 2 },
+  "master_texts": [
+    {
+      "text": "© 2025, Amazon Web Services, Inc.",
+      "shape_name": "TextBox 3",
+      "position": { "left_percent": 4.88, "top_percent": 93.5 },
+      "is_footer_area": true
+    },
+    {
+      "text": "AWS re:Invent 2025",
+      "shape_name": "TextBox 5",
+      "position": { "left_percent": 35.0, "top_percent": 94.0 },
+      "is_footer_area": true
+    }
+  ],
+  "footer_text": "© 2025, Amazon Web Services, Inc. | AWS re:Invent 2025",
+  "layout_details": [
+    { "index": 0, "name": "Title Slide", "background": { "type": "picture" }, "placeholders": [], "texts": [] },
+    { "index": 1, "name": "Title and Content", "background": { "type": "inherited" }, "placeholders": [], "texts": [] }
+  ],
   "backgrounds": {
     "master": { "type": "BACKGROUND" },
     "layouts": {}

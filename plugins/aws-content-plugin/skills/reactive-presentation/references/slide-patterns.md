@@ -2,9 +2,9 @@
 
 ## Common Slide Types
 
-### 0. Session Cover Slide (Required — first slide of every presentation)
+### 0a. Session Cover — With PPTX Theme (Required — first slide of every block HTML file)
 
-Every presentation MUST start with a session cover slide matching the AWS PPTX template layout. Uses the extracted background image (`Picture_13.png`), left-aligned text positioning, and AWS branding elements. Speaker info (name, affiliation) is stored in the project's auto-memory (`MEMORY.md`) and reused automatically. If not found, ask the user.
+Every block HTML file MUST start with a session cover slide matching the AWS PPTX template layout. Uses the extracted background image (`Picture_13.png`), left-aligned text positioning, and AWS branding elements. Speaker info (name, affiliation) is stored in the project's auto-memory (`MEMORY.md`) and reused automatically. If not found, ask the user.
 
 ```html
 <!-- Session Cover — PPTX layout -->
@@ -30,7 +30,44 @@ Key elements:
 - **AWS logo**: handled by SlideFramework's `logoSrc` option — do NOT add a manual `logo_1.png` to the cover slide (causes duplicate overlap)
 - Uses `padding:0` to allow background to fill edge-to-edge
 - Do NOT use `.title-slide` class (it adds centering that conflicts with left-aligned layout)
-- This is separate from block title slides (§1) — session cover appears once, block titles appear per-block
+- This is separate from block title slides (§1) — Session Cover appears as the **first slide of EVERY block HTML file**, block titles appear per-block
+
+### 0b. Session Cover — CSS-Only Fallback (No PPTX)
+
+When no PPTX template is provided, use this CSS-only cover with a dark gradient background. Speaker info is optional — omit the speaker `<div>` if the user chose "skip".
+
+```html
+<!-- Session Cover — CSS-only fallback -->
+<div class="slide" style="background:linear-gradient(135deg, #1a1f35 0%, #0d1117 50%, #161b2e 100%); padding:0; overflow:hidden; position:relative;">
+  <div style="position:absolute; top:-20%; right:-10%; width:60%; height:80%; background:radial-gradient(ellipse, rgba(108,92,231,0.15) 0%, transparent 70%); pointer-events:none;"></div>
+  <div style="position:absolute; left:5%; top:42%; width:80px; height:3px; background:linear-gradient(90deg, #6c5ce7, #a29bfe); border-radius:2px;"></div>
+  <h1 style="position:absolute; left:5%; top:45%; font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:60%; margin:0;">Session Title</h1>
+  <p style="position:absolute; left:5%; top:60%; font-size:1.3rem; color:rgba(255,255,255,0.7); width:60%; margin:0;">Subtitle</p>
+  <div style="position:absolute; left:5%; top:75%;">
+    <p style="font-size:1.05rem; color:#fff; font-weight:600; margin:0;">Speaker Name</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.6); margin:6px 0 0 0;">Speaker Title</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.6); margin:2px 0 0 0;">Company</p>
+  </div>
+</div>
+```
+
+Key elements:
+- **CSS gradient background**: dark gradient (`#1a1f35` → `#0d1117` → `#161b2e`) — no PPTX image dependency
+- **Decorative glow**: subtle radial gradient (`rgba(108,92,231,0.15)`) for visual depth
+- **Accent line**: purple gradient line (`#6c5ce7` → `#a29bfe`) above the title
+- **Left-aligned layout**: matches §0a positioning for visual consistency
+- **Speaker info at ~75%**: same structure as §0a (omit entire `<div>` if user chose "skip")
+- Uses `padding:0` and `position:relative` for edge-to-edge layout
+- Do NOT use `.title-slide` class (same rule as §0a)
+
+#### Session Cover Selection Matrix
+
+| PPTX | Speaker | Pattern | Notes |
+|------|---------|---------|-------|
+| Yes | Yes | §0a full | PPTX background + speaker + AWS badge |
+| Yes | Skip | §0a without speaker div | PPTX background + AWS badge |
+| Skip | Yes | §0b full | CSS gradient + accent line + speaker |
+| Skip | Skip | §0b without speaker div | CSS gradient + accent line only |
 
 ### 1. Title Slide (per-block)
 ```html

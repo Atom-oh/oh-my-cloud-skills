@@ -32,8 +32,13 @@ Ask the user:
 - **Blocks** — split into 20-35 min blocks with 5 min breaks
 - **Target repo** — GitHub repo for deployment
 - **Language** — Korean or English (technical terms always English)
-- **PPTX template** — corporate branding extraction (optional)
-- **Speaker info** — name & affiliation for cover slide
+- **PPTX/PDF template** (REQUIRED, skippable) — "디자인 참고용 PPTX/PDF 파일이 있으신가요? (파일 경로 또는 'skip' 입력 시 기본 다크 테마 적용)"
+  - Provided → extract theme with `extract_pptx_theme.py`, use §0a cover
+  - "skip" → use CSS-only fallback cover §0b
+- **Speaker info** (REQUIRED, skippable) — "발표자 이름, 직함/소속을 알려주세요. (또는 'skip' 입력 시 발표자 정보 생략)"
+  - Provided → store in `MEMORY.md`, use in cover
+  - "skip" → omit speaker section from cover
+  - Already in `MEMORY.md` → confirm with user or reuse
 
 ### Phase 2: Theme Setup (optional)
 
@@ -42,6 +47,12 @@ If user provides a `.pptx` template:
 ```bash
 python3 {plugin-dir}/skills/reactive-presentation/scripts/extract_pptx_theme.py <pptx_path> -o {repo}/common/pptx-theme/
 ```
+
+After extraction, read `{repo}/common/pptx-theme/theme-manifest.json` and apply:
+- **`footer_text`** → pass to `SlideFramework({ footer: manifest.footer_text })` in every block HTML
+- **`master_texts`** → review for additional branding (copyright, event name, confidentiality) not captured in footer
+- **`layout_details`** → reference original PPTX layout structure (Title Slide → §0a cover, Section Header → §1 block title)
+- **`logos`** → use `logos[0].filename` for `SlideFramework({ logoSrc: '../common/pptx-theme/images/...' })`
 
 ### Phase 3: Content Authoring (Marp Markdown)
 
@@ -111,6 +122,11 @@ Copy assets: `cp {plugin-dir}/skills/reactive-presentation/assets/* {repo}/commo
 ### Phase 8: Verify
 
 For each block HTML file, check:
+- First slide is Session Cover (NOT `.title-slide` class):
+  - With PPTX + speaker: §0a (PPTX background + speaker + AWS badge)
+  - With PPTX, no speaker: §0a without speaker section
+  - No PPTX + speaker: §0b (CSS gradient + speaker)
+  - No PPTX, no speaker: §0b without speaker section
 - Slide count matches plan
 - `SlideFramework` initialized with correct options
 - All Canvas IDs have `setupCanvas()` calls
@@ -135,6 +151,9 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 
 | Content Type | Slide Pattern | Interactive Element |
 |---|---|---|
+| Session opening (with PPTX) | Session Cover (§0a) | PPTX background + speaker info + AWS badge |
+| Session opening (no PPTX) | Session Cover (§0b) | CSS gradient + accent line + optional speaker |
+| Block opening | Title Slide (§1) | Gradient title + badges |
 | Architecture overview | Canvas Animation | Component flow with Play button |
 | A vs B comparison | Compare Toggle | `.compare-toggle` buttons |
 | Config variants | Tab Content | `.tab-bar` with YAML code blocks |
@@ -161,6 +180,20 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 
 ---
 
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| ← → | Previous / Next slide |
+| Space | Next slide |
+| ↑ ↓ | Focus navigation within slide (cards, panels, sections) |
+| Enter | Trigger/activate focused element (expand, show detail) |
+| F | Toggle fullscreen (auto-hide controls after 3s inactivity) |
+| N | Toggle speaker notes panel (bottom 20% overlay) |
+| P | Open presenter view (new window, BroadcastChannel sync) |
+| Esc | Exit fullscreen |
+| 1-9 | Jump to slide number |
+
 ## Quality Assurance
 
 - **Canvas proportional scaling**: All canvas animations MUST use `ResizeObserver` + `BASE_W/BASE_H` + `ctx.scale()` pattern for FHD/4K responsiveness
@@ -168,6 +201,7 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 - All interactive elements are functional
 - Presenter view notes are populated
 - Last slide has Thank You + TOC link (`← 목차로 돌아가기` → `index.html`) + next block link (`다음: Block N+1 →`; omit for final block)
+- **FHD/4K screenshot verification**: Capture screenshots at 1920×1080 and 3840×2160 via Playwright MCP to verify layout, scaling, text readability, and canvas rendering at both resolutions. This is mandatory before deployment.
 
 ---
 

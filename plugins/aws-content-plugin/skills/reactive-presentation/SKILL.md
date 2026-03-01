@@ -18,9 +18,15 @@ python3 {skill-dir}/scripts/extract_pptx_theme.py <pptx_path> -o {repo}/common/p
 ```
 
 This generates:
-- `theme-manifest.json` — extracted colors, fonts, logos, footer info
+- `theme-manifest.json` — extracted colors, fonts, logos, footer text, master texts, layout details
 - `theme-override.css` — CSS variable overrides for the dark theme
 - `images/` — extracted logos and background images
+
+After extraction, read `theme-manifest.json` and apply in every block HTML:
+- **`footer_text`** → `SlideFramework({ footer: manifest.footer_text })` — deduplicated footer from placeholder + master text shapes
+- **`master_texts`** → additional branding text from slide master (copyright, event name, confidentiality notices); `is_footer_area: true` marks text in bottom 15%
+- **`layout_details`** → reference original PPTX layout structure (Title Slide → §0a cover, Section Header → §1 title)
+- **`logos[0].filename`** → `SlideFramework({ logoSrc: '../common/pptx-theme/images/...' })`
 
 Copy `theme-override.css` into `common/` alongside `theme.css`. Review the manifest and adjust colors/logo positioning if needed.
 
@@ -33,8 +39,13 @@ Plan the presentation structure with the user. **Ask these questions during plan
 - **Target repo** — GitHub repo for deployment (default: `~/reactive_presentation/`)
 - **Language** — Korean or English (technical terms always English)
 - **Aspect ratio** — confirm 16:9 (default). The framework enforces 16:9 with letterboxing on non-16:9 displays
-- **PPTX template** — ask if the user has a sample theme `.pptx` file. If provided, run Phase 1 extraction first to apply corporate branding (colors, logo, fonts)
-- **Speaker info** — ask for speaker name & affiliation if not already in auto-memory. Store in the project's auto-memory (`MEMORY.md`) for reuse across sessions. Used in the session cover slide (see slide-patterns.md §0)
+- **PPTX/PDF template** (REQUIRED, skippable) — "디자인 참고용 PPTX/PDF 파일이 있으신가요? (파일 경로 또는 'skip')"
+  - Provided → run Phase 1 extraction first to apply corporate branding (colors, logo, fonts)
+  - "skip" → use CSS-only fallback cover §0b
+- **Speaker info** (REQUIRED, skippable) — "발표자 이름, 직함/소속? (또는 'skip')"
+  - Provided → store in `MEMORY.md` for reuse across sessions. Used in the session cover slide (see slide-patterns.md §0a)
+  - "skip" → omit speaker section from cover
+  - Already in `MEMORY.md` → confirm with user or reuse
 
 Write content as Marp markdown:
 - Frontmatter with title, blocks config
@@ -149,17 +160,20 @@ For each block HTML file, check:
 - Theme override CSS is linked (if PPTX theme was extracted)
 - Content is in the correct language
 - Presenter view (P key) shows notes correctly
+- First slide is Session Cover (§0a or §0b) — NOT `.title-slide` class
 - Last slide is a Thank You closing slide with `← 목차로 돌아가기` link to `index.html` and optional next block link
 
-**Screenshot Verification (필수):**
+**Screenshot Verification (필수 — FHD/4K 해상도 검증):**
+
+모든 프레젠테이션은 FHD(1920×1080)와 4K(3840×2160) 두 해상도에서 레이아웃을 캡쳐하여 검증해야 합니다. 이 단계를 건너뛰지 마세요.
 
 Use Playwright MCP to capture and visually review every interactive slide at two resolutions:
 
-1. **FHD (1920x1080)** — primary target resolution
+1. **FHD (1920×1080)** — primary target resolution
    ```
    browser_resize({ width: 1920, height: 1080 })
    ```
-2. **4K (3840x2160)** — high-DPI scaling verification
+2. **4K (3840×2160)** — high-DPI scaling verification
    ```
    browser_resize({ width: 3840, height: 2160 })
    ```
@@ -170,6 +184,11 @@ For each resolution:
 - Test interactive elements: tab switching, slider input, button clicks — screenshot after interaction
 - Verify responsive canvas fills container proportionally (no letterboxing, no cropping)
 - Check that DPR-aware rendering produces crisp text/lines at 4K (no blurry upscaling)
+- **↑↓/Enter focus navigation**: Verify focus highlight and triggered state render correctly at both resolutions
+- **Speaker notes panel (N key)**: Verify notes panel layout doesn't break presentation scaling
+- **Fullscreen (F key)**: Verify auto-hide controls and proper scaling in fullscreen mode
+
+**Scaling approach**: Presentations use a fixed 1920×1080 design canvas with `transform: scale()` to fit any viewport. All internal dimensions are in `px`. The scale factor is calculated as `Math.min(viewportWidth/1920, viewportHeight/1080)` and applied via CSS transform. This ensures pixel-perfect consistency across FHD, 4K, and arbitrary resolutions.
 
 ### Phase 8: Deploy
 
@@ -204,10 +223,26 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 |-----|--------|
 | ← → | Previous / Next slide |
 | Space | Next slide |
+| ↑ ↓ | Focus navigation within slide (cycle through interactive cards/elements) |
+| Enter | Trigger/activate focused element (expand card, show detail, animate) |
 | F | Toggle fullscreen |
-| P | Open presenter view (new window) |
-| Esc | Exit fullscreen |
+| N | Toggle speaker notes panel (bottom 20% overlay) |
+| P | Open presenter view (new window with notes, timer, slide sync) |
+| Esc | Exit fullscreen / dismiss notes panel |
 | Home/End | First/Last slide |
+| 1-9 | Jump to slide number |
+
+### Focus Navigation (↑↓ / Enter)
+
+Slides with interactive elements (cards, panels, sections) support keyboard-driven focus navigation:
+
+- **↓ key**: Move focus highlight to the next interactive element in the current slide
+- **↑ key**: Move focus to the previous element
+- **Enter key**: Toggle "triggered" state — expands the focused element (scale + glow), dims siblings, and optionally shows detail panels (e.g., scenario details with PII types, processing flow, and output)
+- Focus resets to none on slide change
+- Visual: focused element gets `outline: 3px solid accent + box-shadow glow`; triggered element scales up with enhanced glow while siblings dim
+
+Supported element types: `.card`, `.tech-card`, `.scenario-card`, `.security-card`, `.concept-point`, `.booth-section`, `.pii-box`, or any custom focusable class defined per slide.
 
 ## Quality Assurance
 

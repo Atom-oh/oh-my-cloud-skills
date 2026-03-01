@@ -404,6 +404,121 @@ class ThemeExtractor:
 
         return info
 
+    def extract_master_texts(self) -> list[dict[str, Any]]:
+        """Extract non-placeholder text shapes from slide master.
+
+        These often contain copyright notices, event names, confidentiality
+        statements, and other branding text placed directly on the master.
+        Deduplicates identical text across shapes.
+        """
+        texts = []
+        seen = set()
+
+        for shape in self.master.shapes:
+            if shape.is_placeholder:
+                continue
+            if not hasattr(shape, 'text_frame'):
+                continue
+            try:
+                text = shape.text_frame.text.strip()
+                if not text or text in seen:
+                    continue
+                seen.add(text)
+
+                info = {
+                    'text': text,
+                    'shape_name': shape.name,
+                    'position': {
+                        'left_percent': emu_to_percent(shape.left, SLIDE_WIDTH_EMU),
+                        'top_percent': emu_to_percent(shape.top, SLIDE_HEIGHT_EMU),
+                    },
+                    'size': {
+                        'width_percent': emu_to_percent(shape.width, SLIDE_WIDTH_EMU),
+                        'height_percent': emu_to_percent(shape.height, SLIDE_HEIGHT_EMU),
+                    },
+                    'is_footer_area': emu_to_percent(shape.top, SLIDE_HEIGHT_EMU) > 85,
+                }
+                texts.append(info)
+            except Exception:
+                pass
+
+        return texts
+
+    def extract_layout_details(self) -> list[dict[str, Any]]:
+        """Extract details from all slide master layouts.
+
+        Includes background type, placeholders, and non-placeholder text
+        shapes for each layout. Useful for referencing the original PPTX
+        structure when building HTML slides.
+        """
+        layouts = []
+        for i, layout in enumerate(self.master.slide_layouts):
+            layout_info = {
+                'index': i,
+                'name': layout.name,
+                'background': self._extract_background_from_element(layout),
+                'placeholders': [],
+                'texts': [],
+            }
+
+            for shape in layout.shapes:
+                if shape.is_placeholder:
+                    ph = shape.placeholder_format
+                    ph_info = {
+                        'idx': ph.idx,
+                        'type': str(ph.type) if ph.type else None,
+                        'name': shape.name,
+                    }
+                    try:
+                        if hasattr(shape, 'text_frame'):
+                            text = shape.text_frame.text.strip()
+                            if text:
+                                ph_info['text'] = text
+                    except Exception:
+                        pass
+                    layout_info['placeholders'].append(ph_info)
+                elif hasattr(shape, 'text_frame'):
+                    try:
+                        text = shape.text_frame.text.strip()
+                        if text:
+                            layout_info['texts'].append({
+                                'text': text,
+                                'shape_name': shape.name,
+                            })
+                    except Exception:
+                        pass
+
+            layouts.append(layout_info)
+
+        return layouts
+
+    def _resolve_footer_text(self, footer_info: Optional[dict],
+                              master_texts: list[dict]) -> Optional[str]:
+        """Resolve consolidated footer text from placeholders and master texts.
+
+        Combines footer placeholder text with footer-area master texts,
+        deduplicating identical messages. Returns a single string or None.
+        """
+        parts = []
+        seen = set()
+
+        # Footer placeholder text
+        if footer_info and footer_info.get('text'):
+            text = footer_info['text'].strip()
+            if text and text not in seen:
+                parts.append(text)
+                seen.add(text)
+
+        # Master texts in footer area (bottom 15% of slide)
+        for mt in master_texts:
+            if mt.get('is_footer_area'):
+                text = mt['text'].strip()
+                if text and text not in seen:
+                    parts.append(text)
+                    seen.add(text)
+
+        return ' | '.join(parts) if parts else None
+
     def list_masters(self) -> list[dict[str, Any]]:
         """List all slide masters with layout counts."""
         masters = []
@@ -453,7 +568,14 @@ class ThemeExtractor:
             'footer': self.extract_footer(),
             'slide_number': self.extract_slide_number(),
             'date': self.extract_date(),
+            'master_texts': self.extract_master_texts(),
+            'layout_details': self.extract_layout_details(),
         }
+
+        # Resolved footer text: deduplicated from placeholder + master text shapes
+        manifest['footer_text'] = self._resolve_footer_text(
+            manifest['footer'], manifest['master_texts']
+        )
 
         return manifest
 
@@ -483,6 +605,7 @@ class CSSGenerator:
         self.footer = manifest.get('footer')
         self.slide_number = manifest.get('slide_number')
         self.backgrounds = manifest.get('backgrounds', {})
+        self.master_texts = manifest.get('master_texts', [])
 
     def generate(self) -> str:
         """Generate complete CSS override file."""
@@ -621,7 +744,11 @@ class CSSGenerator:
         return '\n'.join(lines)
 
     def _generate_footer_styles(self) -> str:
-        """Generate CSS for footer."""
+        """Generate CSS for footer positioning.
+
+        Footer text is set via SlideFramework({ footer: '...' }) in JS,
+        not via CSS content property. CSS only handles positioning.
+        """
         if not self.footer:
             return ""
 
@@ -629,16 +756,26 @@ class CSSGenerator:
         pos = self.footer.get('position', {})
         text = self.footer.get('text', '')
 
+        if text:
+            escaped = text.replace("'", "\\'")
+            lines.append(f"/* Footer text from PPTX: \"{text}\" */")
+            lines.append(f"/* Use in SlideFramework: new SlideFramework({{ footer: '{escaped}' }}) */")
+
+        # Also check master_texts for additional footer-area text
+        master_texts = self.manifest.get('master_texts', [])
+        footer_area_texts = [mt['text'] for mt in master_texts if mt.get('is_footer_area')]
+        if footer_area_texts:
+            lines.append(f"/* Additional master footer text: {footer_area_texts} */")
+
+        footer_text = self.manifest.get('footer_text')
+        if footer_text:
+            escaped_ft = footer_text.replace("'", "\\'")
+            lines.append(f"/* Resolved footer_text: '{escaped_ft}' */")
+
         lines.append(".slide-footer {")
         lines.append("  position: absolute;")
         lines.append(f"  left: {pos.get('left_percent', 5)}%;")
         lines.append(f"  bottom: {100 - pos.get('top_percent', 95)}%;")
-
-        if text:
-            # Escape quotes in text for CSS content property
-            escaped_text = text.replace('"', '\\"').replace("'", "\\'")
-            lines.append(f"  content: '{escaped_text}';")
-
         lines.append("  font-size: 0.7rem;")
         lines.append("  color: var(--text-secondary);")
         lines.append("}")
