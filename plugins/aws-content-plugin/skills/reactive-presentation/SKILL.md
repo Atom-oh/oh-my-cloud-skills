@@ -184,7 +184,7 @@ For each resolution:
 - Test interactive elements: tab switching, slider input, button clicks — screenshot after interaction
 - Verify responsive canvas fills container proportionally (no letterboxing, no cropping)
 - Check that DPR-aware rendering produces crisp text/lines at 4K (no blurry upscaling)
-- **↑↓/Enter focus navigation**: Verify focus highlight and triggered state render correctly at both resolutions
+- **↑↓ tab/step navigation**: Verify tab cycling and animation step control work correctly at both resolutions
 - **Speaker notes panel (N key)**: Verify notes panel layout doesn't break presentation scaling
 - **Fullscreen (F key)**: Verify auto-hide controls and proper scaling in fullscreen mode
 
@@ -223,8 +223,7 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 |-----|--------|
 | ← → | Previous / Next slide |
 | Space | Next slide |
-| ↑ ↓ | Focus navigation within slide (cycle through interactive cards/elements) |
-| Enter | Trigger/activate focused element (expand card, show detail, animate) |
+| ↑ ↓ | Cycle tabs/compare options on current slide; step animation if registered |
 | F | Toggle fullscreen |
 | N | Toggle speaker notes panel (bottom 20% overlay) |
 | P | Open presenter view (new window with notes, timer, slide sync) |
@@ -232,17 +231,26 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 | Home/End | First/Last slide |
 | 1-9 | Jump to slide number |
 
-### Focus Navigation (↑↓ / Enter)
+### Tab/Step Navigation (↑↓)
 
-Slides with interactive elements (cards, panels, sections) support keyboard-driven focus navigation:
+The ↑↓ arrow keys control interactive elements on the current slide:
 
-- **↓ key**: Move focus highlight to the next interactive element in the current slide
-- **↑ key**: Move focus to the previous element
-- **Enter key**: Toggle "triggered" state — expands the focused element (scale + glow), dims siblings, and optionally shows detail panels (e.g., scenario details with PII types, processing flow, and output)
-- Focus resets to none on slide change
-- Visual: focused element gets `outline: 3px solid accent + box-shadow glow`; triggered element scales up with enhanced glow while siblings dim
+- **↓ key**: Next tab, next compare option, or next animation step
+- **↑ key**: Previous tab, previous compare option, or previous animation step
 
-Supported element types: `.card`, `.tech-card`, `.scenario-card`, `.security-card`, `.concept-point`, `.booth-section`, `.pii-box`, or any custom focusable class defined per slide.
+Detection priority:
+1. **Registered slide action** (`deck.registerSlideAction(index, { up, down })`) — takes priority. Used for animation step control where JS state can't be auto-detected from DOM.
+2. **Auto-detect `.tab-bar`** on current slide — cycles through `.tab-btn` elements
+3. **Auto-detect `.compare-toggle`** on current slide — cycles through `.compare-btn` elements
+4. **No interactive element** — does nothing
+
+Register animation step control:
+```javascript
+deck.registerSlideAction(SLIDE_INDEX, {
+  down: () => timeline.nextStep(),
+  up: () => timeline.prevStep(),
+});
+```
 
 ## Quality Assurance
 

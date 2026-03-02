@@ -196,6 +196,12 @@ All canvas animations MUST use proportional scaling with `ResizeObserver` so the
 
   draw();
   new ResizeObserver(() => { resizeCanvas(); draw(); }).observe(container);
+
+  // Register ↑↓ for manual step control
+  deck.registerSlideAction(SLIDE_INDEX, {
+    down: () => timeline.nextStep(),
+    up: () => timeline.prevStep(),
+  });
 })();
 ```
 

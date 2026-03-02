@@ -166,6 +166,7 @@ class TimelineAnimation {
     this.speed = 1;
     this.playing = false;
     this.executedSteps = new Set();
+    this.currentStep = -1;
   }
 
   play()  { this.playing = true; }
@@ -176,6 +177,26 @@ class TimelineAnimation {
     this.executedSteps.clear();
   }
   setSpeed(s) { this.speed = s; }
+
+  // Manual step control — for ↑↓ keyboard navigation
+  goToStep(stepIndex) {
+    if (stepIndex < 0 || stepIndex >= this.steps.length) return;
+    this.currentStep = stepIndex;
+    this.progress = this.steps[stepIndex].at;
+    this.executedSteps.clear();
+    for (let i = 0; i <= stepIndex; i++) this.executedSteps.add(i);
+    this.steps[stepIndex].action();
+  }
+
+  nextStep() {
+    const next = (this.currentStep ?? -1) + 1;
+    if (next < this.steps.length) this.goToStep(next);
+  }
+
+  prevStep() {
+    const prev = (this.currentStep ?? 0) - 1;
+    if (prev >= 0) this.goToStep(prev);
+  }
 
   update(dt) {
     if (!this.playing) return;

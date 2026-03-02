@@ -52,11 +52,12 @@ All `rem`-based sizing scales automatically. Canvas elements need manual proport
 `SlideFramework` class — instantiate with `new SlideFramework({ onSlideChange: fn })`.
 
 Features:
-- Keyboard: ←→ (prev/next), Space/PageDown (next), PageUp (prev), Home/End, ↑↓ (focus nav within slide), Enter (trigger focused element), F (fullscreen), N (speaker notes panel toggle), P (presenter view), Esc (exit fullscreen), 1-9 (jump to slide)
+- Keyboard: ←→ (prev/next), Space/PageDown (next), PageUp (prev), Home/End, ↑↓ (cycle tabs/compare on current slide, or step animation if registered), F (fullscreen), N (speaker notes panel toggle), P (presenter view), Esc (exit fullscreen), 1-9 (jump to slide)
 - Touch: swipe left/right on mobile
 - URL hash: `#3` jumps to slide 3
 - Auto-creates: progress bar, slide counter, nav hint (scoped to `.slide-deck`)
 - `deck.next()`, `deck.prev()`, `deck.goTo(index)`
+- `deck.registerSlideAction(slideIndex, { up, down })` — register custom ↑↓ handlers for a slide (e.g., animation step control). Takes priority over auto-detected tabs/compare.
 
 Auto-inits on DOMContentLoaded: `initTabs()`, `initChecklists()`, `initCompareToggles()`.
 
@@ -94,7 +95,7 @@ Canvas drawing primitives and animation helpers.
 
 **Classes**:
 - `AnimationLoop(drawFn)` — `.start()`, `.stop()`, `.restart()`, passes elapsed seconds to drawFn
-- `TimelineAnimation(steps, duration)` — `steps=[{at: 0.1, action: fn}]`, `.play()`, `.pause()`, `.reset()`, `.setSpeed(s)`, `.update(dt)`
+- `TimelineAnimation(steps, duration)` — `steps=[{at: 0.1, action: fn}]`, `.play()`, `.pause()`, `.reset()`, `.setSpeed(s)`, `.update(dt)`. **Step control**: `nextStep()`, `prevStep()`, `goToStep(n)` — for keyboard-driven step-through. Register with `deck.registerSlideAction(slideIndex, { down: () => tl.nextStep(), up: () => tl.prevStep() })`.
 - `ParticleSystem(count, bounds)` — decorative floating particles
 
 **Easing**: `Ease.linear`, `.inOut`, `.out`, `.in`, `.elastic`, `.bounce`

@@ -186,8 +186,7 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 |-----|--------|
 | ← → | Previous / Next slide |
 | Space | Next slide |
-| ↑ ↓ | Focus navigation within slide (cards, panels, sections) |
-| Enter | Trigger/activate focused element (expand, show detail) |
+| ↑ ↓ | Cycle tabs/compare options on current slide; step animation if registered |
 | F | Toggle fullscreen (auto-hide controls after 3s inactivity) |
 | N | Toggle speaker notes panel (bottom 20% overlay) |
 | P | Open presenter view (new window, BroadcastChannel sync) |

@@ -13,6 +13,7 @@ class SlideFramework {
     this.logoSrc = options.logoSrc || null;
     this.presenterNotes = options.presenterNotes || {};
     this.presenterView = null;
+    this.slideActions = {};  // { slideIndex: { up: fn, down: fn } }
     this.init();
   }
 
@@ -32,6 +33,10 @@ class SlideFramework {
       if (this.logoSrc) this.createLogo();
       this.showSlide(this.currentSlide, false);
     });
+  }
+
+  registerSlideAction(slideIndex, handlers) {
+    this.slideActions[slideIndex] = handlers;  // { up: fn, down: fn }
   }
 
   getDeck() {
@@ -110,6 +115,22 @@ class SlideFramework {
         case 'PageUp':
           e.preventDefault();
           this.prev();
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          if (this.slideActions[this.currentSlide]?.down) {
+            this.slideActions[this.currentSlide].down();
+          } else {
+            this.cycleInteractive(1);
+          }
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          if (this.slideActions[this.currentSlide]?.up) {
+            this.slideActions[this.currentSlide].up();
+          } else {
+            this.cycleInteractive(-1);
+          }
           break;
         case 'Home':
           e.preventDefault();
@@ -222,6 +243,31 @@ class SlideFramework {
       deck.requestFullscreen().catch(() => {});
     } else {
       document.exitFullscreen();
+    }
+  }
+
+  cycleInteractive(direction) {
+    const slide = this.slides[this.currentSlide];
+    if (!slide) return;
+
+    // Try tabs
+    const tabBar = slide.querySelector('.tab-bar');
+    if (tabBar) {
+      const tabs = Array.from(tabBar.querySelectorAll('.tab-btn'));
+      const activeIdx = tabs.findIndex(t => t.classList.contains('active'));
+      const nextIdx = Math.max(0, Math.min(activeIdx + direction, tabs.length - 1));
+      if (nextIdx !== activeIdx) tabs[nextIdx].click();
+      return;
+    }
+
+    // Try compare toggles
+    const toggle = slide.querySelector('.compare-toggle');
+    if (toggle) {
+      const btns = Array.from(toggle.querySelectorAll('.compare-btn'));
+      const activeIdx = btns.findIndex(b => b.classList.contains('active'));
+      const nextIdx = Math.max(0, Math.min(activeIdx + direction, btns.length - 1));
+      if (nextIdx !== activeIdx) btns[nextIdx].click();
+      return;
     }
   }
 }
