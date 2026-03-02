@@ -2,6 +2,7 @@
  * Presenter View - Dual window slide presentation with notes, timer, and sync
  * Press 'P' to open presenter view (handled by SlideFramework)
  * Draggable splitters between slides/notes and current/next slide
+ * Copies main document stylesheets for faithful slide preview rendering
  */
 class PresenterView {
   constructor(framework) {
@@ -48,36 +49,56 @@ class PresenterView {
       this.startTime = Date.now();
     }
 
+    // Expose scale update callback for presenter window's splitter script
+    window.__pvScaleUpdate = () => this._updateAllScales();
+
     this.setupPresenterControls();
-    this.updatePresenterView();
     this.startTimer();
+
+    // Defer first render to allow presenter window layout to calculate
+    setTimeout(() => this.updatePresenterView(), 300);
+  }
+
+  _collectStyleSheets() {
+    let sheets = '';
+    document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
+      sheets += `<link rel="stylesheet" href="${link.href}">\n`;
+    });
+    document.querySelectorAll('style').forEach(style => {
+      sheets += `<style>${style.textContent}</style>\n`;
+    });
+    return sheets;
   }
 
   createPresenterHTML() {
-    // Restore saved splitter ratios
-    const hRatio = 'localStorage.getItem("pv-h-ratio") || "0.38"';
-    const vRatio = 'localStorage.getItem("pv-v-ratio") || "0.55"';
+    const styleSheets = this._collectStyleSheets();
+    const baseHref = window.location.href.split('#')[0];
 
     return `<!DOCTYPE html>
 <html lang="ko"><head>
 <meta charset="UTF-8">
+<base href="${baseHref}">
 <title>Presenter View - ${document.title}</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap">
+${styleSheets}
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* === Override theme.css globals for presenter window === */
+  html { font-size: 16px !important; }
   body {
-    background: #1a1a2e;
-    color: #e8eaf0;
-    font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    user-select: none;
+    background: #1a1a2e !important;
+    color: #e8eaf0 !important;
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    height: 100vh !important;
+    width: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    user-select: none !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    margin: 0 !important;
   }
 
-  /* Top bar */
+  /* === Presenter UI === */
   .presenter-topbar {
     display: flex;
     justify-content: space-between;
@@ -106,7 +127,6 @@ class PresenterView {
     white-space: nowrap;
   }
 
-  /* Content wrapper (slides + splitter + notes) */
   .presenter-content {
     flex: 1;
     display: flex;
@@ -115,7 +135,6 @@ class PresenterView {
     min-height: 0;
   }
 
-  /* Slides row (current + vertical splitter + next) */
   .presenter-slides {
     display: flex;
     overflow: hidden;
@@ -148,10 +167,48 @@ class PresenterView {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    padding: 12px;
+    position: relative;
   }
 
-  /* Vertical splitter (between current & next) */
+  /* === Slide preview scaler === */
+  .slide-scaler {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1280px;
+    height: 720px;
+    transform-origin: top left;
+    overflow: hidden;
+    background: var(--bg-primary, #0f1117);
+    border-radius: 4px;
+  }
+  .slide-scaler .slide-deck {
+    width: 1280px !important;
+    height: 720px !important;
+    max-width: none !important;
+    max-height: none !important;
+    position: relative !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+  }
+  .slide-scaler .slide {
+    display: flex !important;
+    opacity: 1 !important;
+    position: absolute !important;
+    inset: 0 !important;
+    animation: none !important;
+    transition: none !important;
+  }
+  /* Hide framework chrome in previews */
+  .slide-scaler .progress-bar,
+  .slide-scaler .slide-counter,
+  .slide-scaler .slide-footer,
+  .slide-scaler .slide-logo,
+  .slide-scaler .nav-hint {
+    display: none !important;
+  }
+
+  /* === Splitters === */
   .splitter-v {
     width: 6px;
     background: #2d3250;
@@ -175,7 +232,6 @@ class PresenterView {
     border-right: 1px solid #6b7194;
   }
 
-  /* Horizontal splitter (between slides & notes) */
   .splitter-h {
     height: 6px;
     background: #2d3250;
@@ -199,7 +255,7 @@ class PresenterView {
     border-bottom: 1px solid #6b7194;
   }
 
-  /* Notes area */
+  /* === Notes === */
   .presenter-notes {
     overflow-y: auto;
     padding: 14px 24px;
@@ -221,7 +277,7 @@ class PresenterView {
     word-break: keep-all;
   }
 
-  /* Nav bar */
+  /* === Nav === */
   .presenter-nav {
     display: flex;
     justify-content: center;
@@ -254,7 +310,6 @@ class PresenterView {
     font-style: italic;
   }
 
-  /* Dragging overlay to prevent iframe/text selection interference */
   .drag-overlay {
     display: none;
     position: fixed;
@@ -307,12 +362,11 @@ class PresenterView {
   var slidesRow = document.getElementById('p-slides');
   var notesWrap = document.getElementById('p-notes-wrap');
 
-  // Restore saved ratio (slides portion as fraction of total)
-  var hRatio = parseFloat(localStorage.getItem('pv-h-ratio') || '0.38');
+  var hRatio = parseFloat(localStorage.getItem('pv-h-ratio') || '0.55');
   applyHRatio(hRatio);
 
   function applyHRatio(r) {
-    r = Math.max(0.15, Math.min(0.75, r));
+    r = Math.max(0.15, Math.min(0.85, r));
     slidesRow.style.flex = '0 0 ' + (r * 100) + '%';
     notesWrap.style.flex = '1 1 0%';
   }
@@ -369,7 +423,7 @@ class PresenterView {
     if (hDragging) {
       hDragging = false;
       hSplitter.classList.remove('dragging');
-      localStorage.setItem('pv-h-ratio', String(Math.max(0.15, Math.min(0.75, hRatio))));
+      localStorage.setItem('pv-h-ratio', String(Math.max(0.15, Math.min(0.85, hRatio))));
     }
     if (vDragging) {
       vDragging = false;
@@ -378,6 +432,8 @@ class PresenterView {
     }
     overlay.classList.remove('active');
     overlay.style.cursor = '';
+    // Notify opener to recalculate preview scales after splitter drag
+    try { window.opener && window.opener.__pvScaleUpdate && window.opener.__pvScaleUpdate(); } catch(e) {}
   });
 })();
 </script>
@@ -419,6 +475,9 @@ class PresenterView {
     });
 
     doc.getElementById('p-title').textContent = document.title;
+
+    // Recalculate scales on presenter window resize
+    win.addEventListener('resize', () => this._updateAllScales());
   }
 
   updatePresenterView() {
@@ -430,50 +489,68 @@ class PresenterView {
 
     doc.getElementById('p-counter').textContent = `${idx + 1} / ${this.framework.totalSlides}`;
 
+    // Current slide
     const currentEl = doc.getElementById('p-current');
-    const currentClone = slides[idx].cloneNode(true);
-    currentClone.style.cssText = `
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      padding: 16px 24px;
-      height: 100%;
-      opacity: 1;
-      font-size: 0.55em;
-      overflow: hidden;
-      background: #0f1117;
-      color: #e8eaf0;
-    `;
-    currentEl.innerHTML = '';
-    currentEl.appendChild(currentClone);
+    this._renderSlidePreview(doc, currentEl, slides[idx]);
 
+    // Next slide
     const nextEl = doc.getElementById('p-next');
-    nextEl.innerHTML = '';
     if (idx + 1 < slides.length) {
-      const nextClone = slides[idx + 1].cloneNode(true);
-      nextClone.style.cssText = `
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        padding: 12px 16px;
-        height: 100%;
-        opacity: 0.7;
-        font-size: 0.45em;
-        overflow: hidden;
-        background: #0a0a12;
-        color: #e8eaf0;
-      `;
-      nextEl.appendChild(nextClone);
+      this._renderSlidePreview(doc, nextEl, slides[idx + 1]);
     } else {
-      const endMsg = doc.createElement('div');
-      endMsg.className = 'end-message';
-      endMsg.textContent = 'End of presentation';
-      nextEl.appendChild(endMsg);
+      nextEl.innerHTML = '<div class="end-message">End of presentation</div>';
     }
 
+    // Notes
     const noteKey = idx + 1;
     const notes = (this.framework.presenterNotes || {})[noteKey] || 'No notes for this slide.';
     doc.getElementById('p-notes').textContent = notes;
+  }
+
+  _renderSlidePreview(doc, container, sourceSlide) {
+    container.innerHTML = '';
+
+    const scaler = doc.createElement('div');
+    scaler.className = 'slide-scaler';
+
+    const deck = doc.createElement('div');
+    deck.className = 'slide-deck';
+
+    const clone = sourceSlide.cloneNode(true);
+    clone.className = 'slide active';
+
+    deck.appendChild(clone);
+    scaler.appendChild(deck);
+    container.appendChild(scaler);
+
+    // Calculate centered scale to fit container
+    const rect = container.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      this._applyScale(scaler, rect.width, rect.height);
+    }
+  }
+
+  _applyScale(scaler, containerW, containerH) {
+    const scale = Math.min(containerW / 1280, containerH / 720);
+    const scaledW = 1280 * scale;
+    const scaledH = 720 * scale;
+    const offsetX = (containerW - scaledW) / 2;
+    const offsetY = (containerH - scaledH) / 2;
+    scaler.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+  }
+
+  _updateAllScales() {
+    if (!this.presenterWindow || this.presenterWindow.closed) return;
+    const doc = this.presenterWindow.document;
+
+    doc.querySelectorAll('.slide-preview').forEach(container => {
+      const scaler = container.querySelector('.slide-scaler');
+      if (!scaler) return;
+      const rect = container.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        this._applyScale(scaler, rect.width, rect.height);
+      }
+    });
   }
 
   startTimer() {
