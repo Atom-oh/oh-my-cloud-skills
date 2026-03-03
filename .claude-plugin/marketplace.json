@@ -16,6 +16,11 @@
       "name": "aws-ops-plugin",
       "source": "./plugins/aws-ops-plugin",
       "description": "AWS/EKS infrastructure operations — troubleshooting, networking, IAM, observability, storage, database, and cost optimization"
+    },
+    {
+      "name": "kiro-power-converter",
+      "source": "./plugins/kiro-power-converter",
+      "description": "Convert Claude Code plugins to Kiro Power format — supports GitHub URL, local path, marketplace name, and individual skill conversion"
     }
   ]
 }
