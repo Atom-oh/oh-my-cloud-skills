@@ -21,6 +21,11 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 - **Observability** — CloudWatch, Container Insights, Prometheus, X-Ray
 - **Cost optimization** — Pricing analysis, savings plans, right-sizing
 
+*Plugin Conversion (kiro-power-converter):*
+- **Claude Code → Kiro Power** — Automatically convert plugins for use in Kiro IDE
+- **Multiple input sources** — GitHub URL, local path, marketplace search, individual skill
+- **Zero dependencies** — Python 3.8+ standard library only
+
 ---
 
 ## Installation
@@ -32,6 +37,7 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 # Install plugins
 /plugin install aws-content-plugin@oh-my-cloud-skills
 /plugin install aws-ops-plugin@oh-my-cloud-skills
+/plugin install kiro-power-converter@oh-my-cloud-skills
 ```
 
 For local development:
@@ -39,6 +45,7 @@ For local development:
 # Load plugins from local directory
 claude --plugin-dir ./plugins/aws-content-plugin
 claude --plugin-dir ./plugins/aws-ops-plugin
+claude --plugin-dir ./plugins/kiro-power-converter
 ```
 
 Uninstall:
@@ -46,6 +53,7 @@ Uninstall:
 # Uninstall plugins
 /plugin uninstall aws-content-plugin@oh-my-cloud-skills
 /plugin uninstall aws-ops-plugin@oh-my-cloud-skills
+/plugin uninstall kiro-power-converter@oh-my-cloud-skills
 
 # Remove the marketplace
 /plugin marketplace remove oh-my-cloud-skills
@@ -342,6 +350,134 @@ All agents activate automatically when Claude detects matching keywords.
 
 ---
 
+## Kiro Power Converter
+
+Convert any Claude Code plugin into [Kiro IDE](https://kiro.dev) Power format — automatically. The converter handles structure translation, frontmatter transformation, MCP configuration migration, and keyword aggregation.
+
+### Why
+
+Claude Code plugins and Kiro Powers share a similar concept (agents + skills + MCP servers) but differ in folder structure, file format, and configuration. This plugin bridges the gap so you can reuse Claude Code plugins in Kiro without manual rewriting.
+
+### How It Works
+
+| Claude Code | Kiro Power | What Changes |
+|-------------|------------|--------------|
+| `.claude-plugin/plugin.json` | `POWER.md` | Manifest → YAML frontmatter with aggregated keywords |
+| `CLAUDE.md` | `steering/routing.md` | Wrapped with `inclusion: always` |
+| `agents/*.md` | `steering/<agent>.md` | `tools`/`model` removed, `inclusion: auto` added |
+| `skills/*/SKILL.md` | `steering/<skill>.md` | `triggers[]` merged into description, `inclusion: auto` |
+| `skills/*/references/*.md` | `steering/ref-*.md` | `inclusion: manual` frontmatter added |
+| `.mcp.json` | `mcp.json` | `type` removed, `autoApprove`/`disabled` added |
+
+### Usage
+
+#### Using the Agent (Interactive)
+
+Just describe what you want in natural language — the agent activates on keywords like "convert to kiro", "kiro power", "키로 변환":
+
+```
+"Convert aws-ops-plugin to Kiro Power format"
+```
+
+```
+"키로 파워로 변환해줘"
+```
+
+#### Using the Script (CLI)
+
+The conversion script supports 4 input sources and 3 output targets. No external dependencies — Python 3.8+ standard library only.
+
+**From a local plugin:**
+```bash
+python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_to_power.py \
+  --source ./plugins/aws-ops-plugin \
+  --output /tmp/aws-ops-power \
+  --target export
+```
+
+**From a GitHub repository:**
+```bash
+python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_to_power.py \
+  --git-url https://github.com/Atom-oh/oh-my-cloud-skills \
+  --plugin-path plugins/aws-ops-plugin \
+  --output /tmp/aws-ops-power \
+  --target global
+```
+
+**From marketplace (name search):**
+```bash
+python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_to_power.py \
+  --marketplace aws-ops-plugin \
+  --output /tmp/aws-ops-power \
+  --target global
+```
+
+**Search available plugins:**
+```bash
+python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_to_power.py \
+  --search "aws"
+```
+
+**Convert individual skills:**
+```bash
+# Single skill → standalone steering file
+python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_to_power.py \
+  --skill ./plugins/aws-ops-plugin/skills/ops-troubleshoot \
+  --output ~/.kiro/steering/ops-troubleshoot.md
+
+# Multiple skills at once
+python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_to_power.py \
+  --skill ./skills/ops-troubleshoot \
+  --skill ./skills/ops-health-check \
+  --output ~/.kiro/steering/
+```
+
+### Output Targets
+
+| Target | Flag | Install Path | Use Case |
+|--------|------|--------------|----------|
+| **export** | `--target export` (default) | `--output` path | Share, review, or manually install |
+| **global** | `--target global` | `~/.kiro/powers/<name>/` | Available in all Kiro projects |
+| **project** | `--target project` | `.kiro/powers/<name>/` | Current project only |
+
+### Example Output
+
+Converting `aws-ops-plugin` (8 agents, 5 skills, 5 MCP servers) produces:
+
+```
+aws-ops-power/
+├── POWER.md                      # Manifest with ~96 aggregated keywords
+├── mcp.json                      # 5 AWS MCP servers (type field removed)
+└── steering/
+    ├── routing.md                # Always-loaded routing context
+    ├── eks-agent.md              # Auto-activated agent steering files
+    ├── network-agent.md
+    ├── iam-agent.md
+    ├── cloudwatch-agent.md
+    ├── storage-agent.md
+    ├── database-agent.md
+    ├── cost-agent.md
+    ├── ops-coordinator-agent.md  # "(Advanced reasoning)" in description
+    ├── ops-troubleshoot.md       # Skill with triggers merged
+    ├── ops-health-check.md
+    ├── ops-network-diagnosis.md
+    ├── ops-observability.md
+    ├── ops-security-audit.md
+    └── ref-*.md                  # 15 reference files (manual inclusion)
+```
+
+### Edge Cases
+
+| Scenario | Handling |
+|----------|----------|
+| Large assets (icons/, 4,224 files) | Download script generated, directory skipped |
+| Opus model agents | `model` removed, "(Advanced reasoning)" added to description |
+| Korean + English keywords | Both languages included in POWER.md keywords |
+| Missing `.mcp.json` | `mcp.json` generation skipped |
+| Nested path references | Converted to power-relative paths |
+
+---
+
 ## Quick Start
 
 ### Content Agents
@@ -462,23 +598,37 @@ plugins/
 │       ├── gitbook/                   # GitBook structure & components
 │       └── workshop-creator/          # Workshop Studio directives & templates
 │
-└── aws-ops-plugin/                    # Infrastructure operations plugin
-    ├── .claude-plugin/plugin.json     # Plugin manifest (8 agents, 5 skills)
-    ├── .mcp.json                      # AWS MCP servers configuration
-    ├── CLAUDE.md                      # Auto-invocation rules & workflows
+├── aws-ops-plugin/                    # Infrastructure operations plugin
+│   ├── .claude-plugin/plugin.json     # Plugin manifest (8 agents, 5 skills)
+│   ├── .mcp.json                      # AWS MCP servers configuration
+│   ├── CLAUDE.md                      # Auto-invocation rules & workflows
+│   ├── agents/
+│   │   ├── eks-agent.md               # EKS cluster operations
+│   │   ├── network-agent.md           # VPC CNI, ALB/NLB, DNS
+│   │   ├── iam-agent.md               # IRSA, Pod Identity, RBAC
+│   │   ├── cloudwatch-agent.md        # Metrics, logs, alarms, X-Ray
+│   │   ├── storage-agent.md           # EBS/EFS/FSx CSI drivers
+│   │   ├── database-agent.md          # RDS, Aurora, DynamoDB, ElastiCache
+│   │   ├── cost-agent.md              # Cost analysis & optimization
+│   │   └── ops-coordinator-agent.md   # Multi-domain incident coordination
+│   └── skills/
+│       ├── ops-troubleshoot/          # Systematic troubleshooting
+│       ├── ops-health-check/          # Infrastructure health assessment
+│       ├── ops-network-diagnosis/     # VPC CNI, LB, DNS deep diagnosis
+│       ├── ops-observability/         # CloudWatch, Prometheus, log analysis
+│       └── ops-security-audit/        # IAM audit, network security, compliance
+│
+└── kiro-power-converter/              # Plugin conversion tool
+    ├── .claude-plugin/plugin.json     # Plugin manifest (1 agent, 1 skill)
+    ├── CLAUDE.md                      # Auto-invocation rules
     ├── agents/
-    │   ├── eks-agent.md               # EKS cluster operations
-    │   ├── network-agent.md           # VPC CNI, ALB/NLB, DNS
-    │   ├── iam-agent.md               # IRSA, Pod Identity, RBAC
-    │   ├── cloudwatch-agent.md        # Metrics, logs, alarms, X-Ray
-    │   ├── storage-agent.md           # EBS/EFS/FSx CSI drivers
-    │   ├── database-agent.md          # RDS, Aurora, DynamoDB, ElastiCache
-    │   ├── cost-agent.md              # Cost analysis & optimization
-    │   └── ops-coordinator-agent.md   # Multi-domain incident coordination
+    │   └── kiro-converter-agent.md    # Conversion agent (4 input sources)
     └── skills/
-        ├── ops-troubleshoot/          # Systematic troubleshooting
-        ├── ops-health-check/          # Infrastructure health assessment
-        ├── ops-network-diagnosis/     # VPC CNI, LB, DNS deep diagnosis
-        ├── ops-observability/         # CloudWatch, Prometheus, log analysis
-        └── ops-security-audit/        # IAM audit, network security, compliance
+        └── kiro-convert/              # Conversion skill
+            ├── SKILL.md               # Interactive conversion workflow
+            ├── scripts/
+            │   └── convert_plugin_to_power.py  # CLI converter (Python 3.8+, no deps)
+            └── references/
+                ├── kiro-power-format.md        # Kiro Power format specification
+                └── conversion-rules.md         # Field-by-field conversion rules
 ```
