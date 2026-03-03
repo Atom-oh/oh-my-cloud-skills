@@ -29,9 +29,7 @@
       "type": "stdio",
       "timeout": 120000,
       "env": {
-        "FASTMCP_LOG_LEVEL": "ERROR",
-        "AWS_PROFILE": "${AWS_PROFILE}",
-        "AWS_REGION": "${AWS_REGION}"
+        "FASTMCP_LOG_LEVEL": "ERROR"
       }
     }
   }
