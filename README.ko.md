@@ -21,6 +21,11 @@
 - **관측성** — CloudWatch, Container Insights, Prometheus, X-Ray
 - **비용 최적화** — 가격 분석, 절감 계획, 라이트사이징
 
+*플러그인 변환 (kiro-power-converter):*
+- **Claude Code → Kiro Power** — 플러그인을 Kiro IDE에서 사용할 수 있도록 자동 변환
+- **다양한 입력 소스** — GitHub URL, 로컬 경로, 마켓플레이스 검색, 개별 스킬
+- **제로 의존성** — Python 3.8+ 표준 라이브러리만 사용
+
 ---
 
 ## 설치
@@ -32,6 +37,7 @@
 # 플러그인 설치
 /plugin install aws-content-plugin@oh-my-cloud-skills
 /plugin install aws-ops-plugin@oh-my-cloud-skills
+/plugin install kiro-power-converter@oh-my-cloud-skills
 ```
 
 로컬 개발용:
@@ -39,6 +45,7 @@
 # 로컬 디렉토리에서 플러그인 로드
 claude --plugin-dir ./plugins/aws-content-plugin
 claude --plugin-dir ./plugins/aws-ops-plugin
+claude --plugin-dir ./plugins/kiro-power-converter
 ```
 
 제거:
@@ -46,6 +53,7 @@ claude --plugin-dir ./plugins/aws-ops-plugin
 # 플러그인 제거
 /plugin uninstall aws-content-plugin@oh-my-cloud-skills
 /plugin uninstall aws-ops-plugin@oh-my-cloud-skills
+/plugin uninstall kiro-power-converter@oh-my-cloud-skills
 
 # 마켓플레이스 제거
 /plugin marketplace remove oh-my-cloud-skills
@@ -342,6 +350,134 @@ AWS/EKS 인프라 운영 및 트러블슈팅. 문제를 설명하면 — 노드 
 
 ---
 
+## Kiro Power 변환기
+
+Claude Code 플러그인을 [Kiro IDE](https://kiro.dev) Power 형식으로 자동 변환합니다. 구조 변환, frontmatter 변환, MCP 설정 마이그레이션, 키워드 집계를 모두 처리합니다.
+
+### 왜 필요한가
+
+Claude Code 플러그인과 Kiro Power는 비슷한 개념(에이전트 + 스킬 + MCP 서버)을 공유하지만, 폴더 구조, 파일 형식, 설정 방식이 다릅니다. 이 플러그인은 수동 재작성 없이 Claude Code 플러그인을 Kiro에서 재사용할 수 있도록 합니다.
+
+### 변환 매핑
+
+| Claude Code | Kiro Power | 변환 내용 |
+|-------------|------------|-----------|
+| `.claude-plugin/plugin.json` | `POWER.md` | 매니페스트 → 집계된 키워드가 포함된 YAML frontmatter |
+| `CLAUDE.md` | `steering/routing.md` | `inclusion: always`로 래핑 |
+| `agents/*.md` | `steering/<agent>.md` | `tools`/`model` 제거, `inclusion: auto` 추가 |
+| `skills/*/SKILL.md` | `steering/<skill>.md` | `triggers[]`를 description에 병합, `inclusion: auto` |
+| `skills/*/references/*.md` | `steering/ref-*.md` | `inclusion: manual` frontmatter 추가 |
+| `.mcp.json` | `mcp.json` | `type` 제거, `autoApprove`/`disabled` 추가 |
+
+### 사용법
+
+#### 에이전트 사용 (대화형)
+
+자연어로 설명하면 됩니다. "키로 변환", "kiro power", "convert to kiro" 등의 키워드로 에이전트가 자동 활성화됩니다:
+
+```
+"aws-ops-plugin을 키로 파워로 변환해줘"
+```
+
+```
+"Convert aws-ops-plugin to Kiro Power format"
+```
+
+#### 스크립트 사용 (CLI)
+
+변환 스크립트는 4가지 입력 소스와 3가지 출력 대상을 지원합니다. 외부 의존성 없이 Python 3.8+ 표준 라이브러리만 사용합니다.
+
+**로컬 플러그인에서 변환:**
+```bash
+python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_to_power.py \
+  --source ./plugins/aws-ops-plugin \
+  --output /tmp/aws-ops-power \
+  --target export
+```
+
+**GitHub 저장소에서 변환:**
+```bash
+python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_to_power.py \
+  --git-url https://github.com/Atom-oh/oh-my-cloud-skills \
+  --plugin-path plugins/aws-ops-plugin \
+  --output /tmp/aws-ops-power \
+  --target global
+```
+
+**마켓플레이스 이름으로 변환:**
+```bash
+python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_to_power.py \
+  --marketplace aws-ops-plugin \
+  --output /tmp/aws-ops-power \
+  --target global
+```
+
+**플러그인 검색:**
+```bash
+python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_to_power.py \
+  --search "aws"
+```
+
+**개별 스킬 변환:**
+```bash
+# 단일 스킬 → 독립 steering 파일
+python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_to_power.py \
+  --skill ./plugins/aws-ops-plugin/skills/ops-troubleshoot \
+  --output ~/.kiro/steering/ops-troubleshoot.md
+
+# 여러 스킬 일괄 변환
+python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_to_power.py \
+  --skill ./skills/ops-troubleshoot \
+  --skill ./skills/ops-health-check \
+  --output ~/.kiro/steering/
+```
+
+### 출력 대상
+
+| 대상 | 플래그 | 설치 경로 | 용도 |
+|------|--------|----------|------|
+| **export** | `--target export` (기본) | `--output` 경로 | 공유, 검토, 수동 설치 |
+| **global** | `--target global` | `~/.kiro/powers/<name>/` | 모든 Kiro 프로젝트에서 사용 |
+| **project** | `--target project` | `.kiro/powers/<name>/` | 현재 프로젝트에서만 사용 |
+
+### 변환 결과 예시
+
+`aws-ops-plugin` (에이전트 8개, 스킬 5개, MCP 서버 5개) 변환 결과:
+
+```
+aws-ops-power/
+├── POWER.md                      # 약 96개 키워드가 집계된 매니페스트
+├── mcp.json                      # 5개 AWS MCP 서버 (type 필드 제거됨)
+└── steering/
+    ├── routing.md                # 항상 로드되는 라우팅 컨텍스트
+    ├── eks-agent.md              # 자동 활성화 에이전트 steering 파일
+    ├── network-agent.md
+    ├── iam-agent.md
+    ├── cloudwatch-agent.md
+    ├── storage-agent.md
+    ├── database-agent.md
+    ├── cost-agent.md
+    ├── ops-coordinator-agent.md  # description에 "(Advanced reasoning)" 추가
+    ├── ops-troubleshoot.md       # 트리거가 병합된 스킬
+    ├── ops-health-check.md
+    ├── ops-network-diagnosis.md
+    ├── ops-observability.md
+    ├── ops-security-audit.md
+    └── ref-*.md                  # 15개 레퍼런스 파일 (manual inclusion)
+```
+
+### 엣지 케이스
+
+| 상황 | 처리 방법 |
+|------|----------|
+| 대용량 에셋 (icons/, 4,224 파일) | 다운로드 스크립트 생성, 디렉토리 건너뜀 |
+| Opus 모델 에이전트 | `model` 제거, description에 "(Advanced reasoning)" 추가 |
+| 한/영 이중 키워드 | 양쪽 언어 모두 POWER.md keywords에 포함 |
+| `.mcp.json` 없음 | `mcp.json` 생성 건너뜀 |
+| 중첩 경로 참조 | Power 내 상대 경로로 변환 |
+
+---
+
 ## 빠른 시작
 
 ### 콘텐츠 에이전트
@@ -462,23 +598,37 @@ plugins/
 │       ├── gitbook/                   # GitBook 구조 및 컴포넌트
 │       └── workshop-creator/          # Workshop Studio 지시문 및 템플릿
 │
-└── aws-ops-plugin/                    # 인프라 운영 플러그인
-    ├── .claude-plugin/plugin.json     # 플러그인 매니페스트 (8 에이전트, 5 스킬)
-    ├── .mcp.json                      # AWS MCP 서버 설정
-    ├── CLAUDE.md                      # 자동 호출 규칙 및 워크플로우
+├── aws-ops-plugin/                    # 인프라 운영 플러그인
+│   ├── .claude-plugin/plugin.json     # 플러그인 매니페스트 (8 에이전트, 5 스킬)
+│   ├── .mcp.json                      # AWS MCP 서버 설정
+│   ├── CLAUDE.md                      # 자동 호출 규칙 및 워크플로우
+│   ├── agents/
+│   │   ├── eks-agent.md               # EKS 클러스터 운영
+│   │   ├── network-agent.md           # VPC CNI, ALB/NLB, DNS
+│   │   ├── iam-agent.md               # IRSA, Pod Identity, RBAC
+│   │   ├── cloudwatch-agent.md        # 메트릭, 로그, 알람, X-Ray
+│   │   ├── storage-agent.md           # EBS/EFS/FSx CSI 드라이버
+│   │   ├── database-agent.md          # RDS, Aurora, DynamoDB, ElastiCache
+│   │   ├── cost-agent.md              # 비용 분석 및 최적화
+│   │   └── ops-coordinator-agent.md   # 다중 도메인 장애 조율
+│   └── skills/
+│       ├── ops-troubleshoot/          # 체계적 트러블슈팅
+│       ├── ops-health-check/          # 인프라 상태 점검
+│       ├── ops-network-diagnosis/     # VPC CNI, LB, DNS 심층 진단
+│       ├── ops-observability/         # CloudWatch, Prometheus, 로그 분석
+│       └── ops-security-audit/        # IAM 감사, 네트워크 보안, 컴플라이언스
+│
+└── kiro-power-converter/              # 플러그인 변환 도구
+    ├── .claude-plugin/plugin.json     # 플러그인 매니페스트 (1 에이전트, 1 스킬)
+    ├── CLAUDE.md                      # 자동 호출 규칙
     ├── agents/
-    │   ├── eks-agent.md               # EKS 클러스터 운영
-    │   ├── network-agent.md           # VPC CNI, ALB/NLB, DNS
-    │   ├── iam-agent.md               # IRSA, Pod Identity, RBAC
-    │   ├── cloudwatch-agent.md        # 메트릭, 로그, 알람, X-Ray
-    │   ├── storage-agent.md           # EBS/EFS/FSx CSI 드라이버
-    │   ├── database-agent.md          # RDS, Aurora, DynamoDB, ElastiCache
-    │   ├── cost-agent.md              # 비용 분석 및 최적화
-    │   └── ops-coordinator-agent.md   # 다중 도메인 장애 조율
+    │   └── kiro-converter-agent.md    # 변환 에이전트 (4가지 입력 소스)
     └── skills/
-        ├── ops-troubleshoot/          # 체계적 트러블슈팅
-        ├── ops-health-check/          # 인프라 상태 점검
-        ├── ops-network-diagnosis/     # VPC CNI, LB, DNS 심층 진단
-        ├── ops-observability/         # CloudWatch, Prometheus, 로그 분석
-        └── ops-security-audit/        # IAM 감사, 네트워크 보안, 컴플라이언스
+        └── kiro-convert/              # 변환 스킬
+            ├── SKILL.md               # 대화형 변환 워크플로우
+            ├── scripts/
+            │   └── convert_plugin_to_power.py  # CLI 변환기 (Python 3.8+, 의존성 없음)
+            └── references/
+                ├── kiro-power-format.md        # Kiro Power 형식 사양
+                └── conversion-rules.md         # 필드별 변환 규칙
 ```
