@@ -1,0 +1,106 @@
+{
+  "name": "remarp-vscode",
+  "displayName": "Remarp Slides",
+  "description": "Author reactive presentations with the remarp markdown format",
+  "version": "0.1.0",
+  "publisher": "aws-cloud-skills",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aws-cloud-skills/oh-my-cloud-skills"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Visualization"
+  ],
+  "activationEvents": [
+    "onLanguage:remarp",
+    "onLanguage:markdown"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "remarp",
+        "aliases": [
+          "Remarp",
+          "remarp"
+        ],
+        "extensions": [
+          ".remarp.md"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "remarp",
+        "scopeName": "text.html.markdown.remarp",
+        "path": "./syntaxes/remarp.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "remarp.preview",
+        "title": "Open Preview",
+        "category": "Remarp",
+        "icon": "$(preview)"
+      },
+      {
+        "command": "remarp.nextSlide",
+        "title": "Next Slide",
+        "category": "Remarp"
+      },
+      {
+        "command": "remarp.prevSlide",
+        "title": "Previous Slide",
+        "category": "Remarp"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "remarp.nextSlide",
+        "key": "ctrl+shift+right",
+        "mac": "cmd+shift+right",
+        "when": "editorLangId == remarp"
+      },
+      {
+        "command": "remarp.prevSlide",
+        "key": "ctrl+shift+left",
+        "mac": "cmd+shift+left",
+        "when": "editorLangId == remarp"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "remarpOutline",
+          "name": "Remarp Slides",
+          "when": "editorLangId == remarp"
+        }
+      ]
+    },
+    "menus": {
+      "editor/title": [
+        {
+          "command": "remarp.preview",
+          "when": "editorLangId == remarp",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}
