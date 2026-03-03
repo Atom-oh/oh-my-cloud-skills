@@ -43,7 +43,7 @@ Plan the presentation structure with the user. **Ask these questions during plan
 - **Aspect ratio** — confirm 16:9 (default). The framework enforces 16:9 with letterboxing on non-16:9 displays
 - **Design & layout references** (REQUIRED, skippable) — "참고할 디자인 자료가 있으신가요? PPTX, PDF, 이미지, 또는 기존 프레젠테이션 경로를 알려주세요. (또는 'skip')"
   - Provided → 제공된 자료에서 **브랜딩 + 레이아웃** 모두 추출하여 반영:
-    - `.pptx` → Phase 1 테마 추출 (색상, 로고, 폰트) + 슬라이드 레이아웃/구성 패턴 참고
+    - `.pptx` → Phase 1 테마 추출 실행: 색상, 로고, 폰트 + **Slide Master 레이아웃** (플레이스홀더 배치, 폰트 계층 구조, 여백/간격, 타이틀/본문 위치) + `layout_details`로 PPTX 레이아웃→슬라이드 타입 매핑 참고
     - `.pdf` / 이미지 → 시각적 레이아웃, 색상 배치, 콘텐츠 밀도, 타이포그래피 참고
     - 기존 프레젠테이션 경로 (slides.json, HTML, animations/ JS) → 슬라이드 타입 배치, body HTML 구조, Canvas 애니메이션 패턴, CSS 클래스 활용 참고
   - "skip" → CSS-only fallback cover §0b + 기본 테마(theme.css) + slide-patterns.md 표준 패턴으로 진행
