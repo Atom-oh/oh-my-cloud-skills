@@ -30,7 +30,7 @@ After extraction, read `theme-manifest.json` and apply in every block HTML:
 
 Copy `theme-override.css` into `common/` alongside `theme.css`. Review the manifest and adjust colors/logo positioning if needed.
 
-### Phase 2: Content Authoring (Marp Markdown)
+### Phase 2: Content Authoring
 
 Plan the presentation structure with the user. **Ask these questions during planning:**
 - **Topic & audience** — technical depth, pain points, learning objectives
@@ -47,25 +47,52 @@ Plan the presentation structure with the user. **Ask these questions during plan
   - "skip" → omit speaker section from cover
   - Already in `MEMORY.md` → confirm with user or reuse
 
-Write content as Marp markdown:
+**Option A — slides.json 작성 (권장):**
+
+각 블록별 `slides.json` 파일을 작성합니다. 13개 표준 슬라이드 타입(cover, title, content, tabs, compare, canvas, quiz, checklist, timeline, cards, code, slider, thankyou)을 JSON 데이터로 정의하면, `slide-renderer.js`가 런타임에 HTML을 생성합니다.
+
+```
+{slug}/block-01/
+├── slides.json           ← 콘텐츠 데이터
+├── animations/           ← Canvas 애니메이션 JS 모듈 (해당 시)
+│   └── slide-05-flow.js
+└── index.html            ← 보일러플레이트 (템플릿 복사)
+```
+
+- JSON 스키마: [references/slide-patterns.md](references/slide-patterns.md) → "JSON Authoring Mode" 섹션
+- Canvas 모듈 규격: [references/framework-guide.md](references/framework-guide.md) → "Canvas 애니메이션 모듈 작성 가이드"
+
+**Option B — Marp Markdown 작성 (레거시):**
+
+특수한 커스터마이징이 필요한 경우 Marp markdown으로 콘텐츠를 작성합니다:
 - Frontmatter with title, blocks config
 - Slide separator: `---`
 - Block markers: `<!-- block: name -->`
 - Type directives: `<!-- type: compare|canvas|quiz|tabs|... -->`
 - Speaker notes: `<!-- notes: text -->`
-
-See [references/marp-format-guide.md](references/marp-format-guide.md) for full format specification.
+- See [references/marp-format-guide.md](references/marp-format-guide.md) for full format specification.
 
 ### Phase 3: HTML Generation
 
-**Option A — Script conversion:**
+**Option A (JSON 방식):**
+
+`index.html` 보일러플레이트를 생성합니다. `slide-renderer.js`가 런타임에 `slides.json`을 읽어 HTML을 동적 생성합니다.
+```html
+<div class="slide-deck"></div>
+<script src="../common/slide-renderer.js"></script>
+<script>
+  new SlideRenderer({ footer, logoSrc }).render('./slides.json');
+</script>
+```
+보일러플레이트 전체 템플릿: [references/framework-guide.md](references/framework-guide.md) → "index.html 보일러플레이트"
+
+**Option B (Marp → HTML 방식):**
+
+Script conversion 또는 수동 빌드:
 ```bash
 python3 {skill-dir}/scripts/marp_to_slides.py content.md -o {repo}/{slug}/ --theme-dir {repo}/common/pptx-theme/
 ```
-Generates HTML files per block with proper framework references.
-
-**Option B — Manual build (recommended for rich interactivity):**
-Claude builds HTML directly from the Marp content, adding Canvas animations and complex interactive elements inline. Use the Marp as a content outline.
+또는 Marp 콘텐츠에서 직접 HTML을 빌드 (rich interactivity 필요 시).
 
 ### Phase 4: Content Review & Iteration
 
@@ -118,6 +145,7 @@ Copy framework assets from this skill into the repo's `common/` directory:
 │   ├── theme.css                   # Dark theme, 16:9
 │   ├── theme-override.css          # PPTX theme overrides (optional)
 │   ├── slide-framework.js          # Keyboard/touch nav, progress, presenter
+│   ├── slide-renderer.js           # JSON → HTML renderer
 │   ├── presenter-view.js           # Presenter view (P key)
 │   ├── animation-utils.js          # Canvas primitives
 │   ├── quiz-component.js           # Quiz component
@@ -149,7 +177,16 @@ For TOC `index.html` pages, add export buttons and include the export script:
 
 If `index.html` hub already exists, add a new card. If new repo, create the hub page.
 
-### Phase 7: Verify
+### Phase 7: Quality Review (필수 — 생략 불가)
+
+콘텐츠 완성 후 배포/완료 선언 전에 반드시:
+1. content-review-agent 호출 → `review content at [파일경로]`
+2. FAIL/REVIEW 판정 시 수정 후 재리뷰 (최대 3회)
+3. PASS (≥85점) 획득 후에만 완료 선언
+
+> ⚠️ 이 단계를 건너뛰고 배포하는 것은 금지됩니다.
+
+### Phase 8: Verify
 
 For each block HTML file, check:
 - Slide count matches plan
@@ -190,7 +227,7 @@ For each resolution:
 
 **Scaling approach**: Presentations use a fixed 1920×1080 design canvas with `transform: scale()` to fit any viewport. All internal dimensions are in `px`. The scale factor is calculated as `Math.min(viewportWidth/1920, viewportHeight/1080)` and applied via CSS transform. This ensures pixel-perfect consistency across FHD, 4K, and arbitrary resolutions.
 
-### Phase 8: Deploy
+### Phase 9: Deploy
 
 ```bash
 git add common/ {slug}/ index.html
@@ -270,6 +307,7 @@ Framework files to copy into `common/`:
 - `theme.css` — dark theme, Pretendard font, 16:9 layout, all component styles
 - `theme-override-template.css` — template for PPTX-extracted CSS overrides
 - `slide-framework.js` — SlideFramework class (keyboard, touch, progress, hash nav, footer, logo, presenter view)
+- `slide-renderer.js` — SlideRenderer class: JSON → HTML 동적 렌더링 (13개 슬라이드 타입 지원)
 - `presenter-view.js` — PresenterView class (draggable splitters, large notes area, Pretendard font, localStorage persistence, BroadcastChannel sync)
 - `animation-utils.js` — Canvas primitives, AnimationLoop, TimelineAnimation, Colors, Ease
 - `quiz-component.js` — QuizManager with auto-grading and feedback

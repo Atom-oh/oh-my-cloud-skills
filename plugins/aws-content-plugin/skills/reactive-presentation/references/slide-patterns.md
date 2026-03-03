@@ -521,3 +521,241 @@ Notes formatting guide:
 | 60 min | 24-28 | ~2.3 min/slide |
 
 Interactive/animated slides take longer — budget 3-4 min each.
+
+---
+
+## JSON Authoring Mode (권장)
+
+> **권장**: 새 프레젠테이션은 `slides.json` + `slide-renderer.js` 방식으로 작성합니다.
+> 기존 Raw HTML 방식은 레거시로 유지되며, 특수한 커스터마이징이 필요한 경우에만 사용합니다.
+
+### slides.json 구조
+
+```jsonc
+{
+  "meta": {
+    "title": "프레젠테이션 제목",
+    "block": 1,
+    "blockTitle": "Block Title",
+    "duration": "30min",
+    "lang": "ko"
+  },
+  "slides": [ /* slide objects */ ]
+}
+```
+
+### 슬라이드 타입별 JSON 스키마
+
+#### §0 Cover (Session Cover)
+
+```jsonc
+// §0a — PPTX 배경 사용
+{
+  "type": "cover",
+  "title": "EKS Auto Mode Deep Dive",
+  "subtitle": "Block 1: Fundamentals (30min)",
+  "pptxBackground": "../common/pptx-theme/images/Picture_13.png",
+  "badgeSrc": "../common/pptx-theme/images/Picture_8.png",
+  "speaker": { "name": "홍길동", "title": "SA", "company": "AWS" },
+  "notes": "환영 인사. 이 세션에서 다룰 내용 소개."
+}
+
+// §0b — CSS-only (PPTX 없음, pptxBackground 생략)
+{
+  "type": "cover",
+  "title": "EKS Auto Mode Deep Dive",
+  "subtitle": "Block 1: Fundamentals (30min)",
+  "speaker": { "name": "홍길동", "title": "SA", "company": "AWS" }
+}
+```
+
+#### §1 Title
+
+```json
+{
+  "type": "title",
+  "title": "Block 1: Fundamentals",
+  "subtitle": "핵심 개념과 아키텍처",
+  "meta": "2026.03 / Speaker / Event"
+}
+```
+
+#### §2 Content
+
+```json
+{
+  "type": "content",
+  "title": "EKS Auto Mode란?",
+  "body": "<p>EKS Auto Mode는...</p><ul><li>자동 노드 관리</li><li>관리형 애드온</li></ul>",
+  "notes": "핵심 가치를 설명합니다."
+}
+```
+
+#### §3 Compare Toggle
+
+```json
+{
+  "type": "compare",
+  "title": "Managed vs Auto Mode",
+  "options": [
+    { "id": "managed", "label": "Managed Node Groups", "html": "<ul><li>수동 AMI 관리</li></ul>" },
+    { "id": "auto", "label": "Auto Mode", "html": "<ul><li>자동 AMI 업데이트</li></ul>" }
+  ]
+}
+```
+
+#### §4 Tabs
+
+```json
+{
+  "type": "tabs",
+  "title": "Configuration Options",
+  "tabs": [
+    { "label": "Basic", "html": "<div class='code-block'>...</div>" },
+    { "label": "Advanced", "html": "<div class='code-block'>...</div>" }
+  ]
+}
+```
+
+#### §5 Canvas Animation
+
+```json
+{
+  "type": "canvas",
+  "title": "Traffic Flow Animation",
+  "canvasId": "flow-canvas",
+  "animationModule": "./animations/slide-05-flow.js",
+  "controls": ["play", "reset", "step"],
+  "notes": "Play 버튼을 클릭하여 데모."
+}
+```
+
+Canvas 애니메이션은 별도 JS 모듈로 작성합니다. 모듈 규격:
+```javascript
+// animations/slide-05-flow.js
+export function init(canvasId, slideIndex, deck) {
+  const canvas = document.getElementById(canvasId);
+  const ctx = canvas.getContext('2d');
+  // proportional scaling 패턴 사용 (§5 참조)
+}
+```
+
+#### §6 Slider
+
+```json
+{
+  "type": "slider",
+  "title": "Parameter Explorer",
+  "label": "Replicas",
+  "min": 1,
+  "max": 20,
+  "value": 3,
+  "sliderId": "replica-slider",
+  "outputHtml": "<p>초기 출력</p>"
+}
+```
+
+#### §7 Checklist
+
+```jsonc
+{
+  "type": "checklist",
+  "title": "Migration Checklist",
+  "items": [
+    "VPC 설정 확인",              // 단순 문자열
+    "IAM 역할 생성",
+    {                              // §7b — YAML 피드백 포함
+      "label": "Bottlerocket AMI 사용",
+      "yaml": "<span class='comment'># NodeClass</span>\n<span class='key'>spec</span>:\n  <span class='key'>amiSelectorTerms</span>:\n    - <span class='key'>alias</span>: <span class='string'>bottlerocket@latest</span>"
+    }
+  ]
+}
+```
+
+#### §8 Code
+
+```json
+{
+  "type": "code",
+  "title": "NodePool Configuration",
+  "description": "Karpenter NodePool 기본 설정:",
+  "code": "<span class='key'>apiVersion</span>: <span class='string'>karpenter.sh/v1</span>\n<span class='key'>kind</span>: <span class='string'>NodePool</span>"
+}
+```
+
+#### §9 Timeline
+
+```json
+{
+  "type": "timeline",
+  "title": "Migration Steps",
+  "activeStep": 1,
+  "steps": [
+    { "label": "Plan", "desc": "현재 클러스터 분석" },
+    { "label": "Prepare", "desc": "IAM/네트워크 준비" },
+    { "label": "Migrate", "desc": "워크로드 이전" }
+  ]
+}
+```
+
+#### §10 Quiz
+
+```json
+{
+  "type": "quiz",
+  "title": "Knowledge Check",
+  "questions": [
+    {
+      "question": "EKS Auto Mode의 핵심 이점은?",
+      "options": [
+        { "text": "A) 자동 노드 관리", "correct": true },
+        { "text": "B) 무료 사용", "correct": false },
+        { "text": "C) GPU 전용", "correct": false }
+      ]
+    }
+  ]
+}
+```
+
+#### §11 Cards
+
+```json
+{
+  "type": "cards",
+  "title": "Key Metrics",
+  "columns": 3,
+  "cards": [
+    { "metric": "99.9%", "label": "Uptime" },
+    { "metric": "< 2s", "label": "Scaling Time" },
+    { "title": "Feature", "text": "Description text" }
+  ]
+}
+```
+
+#### §13 Thank You
+
+```jsonc
+// Middle block (다음 블록 있음)
+{
+  "type": "thankyou",
+  "message": "Block 1 — Fundamentals 완료",
+  "tocHref": "index.html",
+  "nextBlock": { "href": "../block-02/index.html", "label": "다음: Block 2" }
+}
+
+// Final block (마지막)
+{
+  "type": "thankyou",
+  "message": "Block 3 — Advanced 완료"
+}
+```
+
+### JSON vs Raw HTML 선택 가이드
+
+| 상황 | 방식 | 이유 |
+|------|------|------|
+| 새 프레젠테이션 | JSON (권장) | 일관성, 수정 용이성 |
+| 표준 슬라이드 타입 (13종) | JSON | 렌더러가 HTML 보장 |
+| Canvas 애니메이션 | JSON + 별도 JS 모듈 | 애니메이션만 커스텀 |
+| 기존 프레젠테이션 수정 | Raw HTML (기존 유지) | 마이그레이션 선택사항 |
+| 매우 특수한 레이아웃 | Raw HTML | JSON 스키마에 없는 경우 |

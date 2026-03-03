@@ -212,3 +212,176 @@ Methods: `quizManager.reset(id)`, `.resetAll()`, `.getScore()` → `{total, corr
 </body>
 </html>
 ```
+
+---
+
+## JSON + Renderer Mode (권장)
+
+> 새 프레젠테이션은 `slides.json` + `slide-renderer.js`로 작성하는 것을 권장합니다.
+> AI가 JSON 데이터만 작성하면 렌더러가 일관된 HTML을 생성합니다.
+
+### slide-renderer.js
+
+`common/slide-renderer.js`는 JSON을 읽어 HTML 슬라이드를 동적으로 생성하는 클래스입니다.
+
+**지원 슬라이드 타입 (13종):**
+
+| Type | JSON `type` | 대응 패턴 | 설명 |
+|------|-------------|----------|------|
+| Session Cover | `cover` | §0a/§0b | PPTX 또는 CSS-only 커버 |
+| Title | `title` | §1 | 블록 타이틀 |
+| Content | `content` | §2 | 일반 콘텐츠 |
+| Compare | `compare` | §3 | A vs B 토글 |
+| Tabs | `tabs` | §4 | 탭 콘텐츠 |
+| Canvas | `canvas` | §5 | 캔버스 애니메이션 |
+| Slider | `slider` | §6 | 파라미터 슬라이더 |
+| Checklist | `checklist` | §7/§7b | 체크리스트 (YAML 피드백 옵션) |
+| Code | `code` | §8 | 코드 블록 |
+| Timeline | `timeline` | §9 | 타임라인 |
+| Quiz | `quiz` | §10 | 퀴즈 |
+| Cards | `cards` | §11 | 카드/메트릭 |
+| Thank You | `thankyou` | §13 | 마지막 슬라이드 |
+
+### slides.json 전체 스키마
+
+```jsonc
+{
+  "meta": {
+    "title": "string — 프레젠테이션 제목 (footer에 사용)",
+    "block": "number — 블록 번호",
+    "blockTitle": "string — 블록 제목",
+    "duration": "string — 예상 소요시간 (예: '30min')",
+    "lang": "string — 언어 코드 ('ko' | 'en')"
+  },
+  "slides": [
+    {
+      "type": "cover | title | content | tabs | compare | canvas | quiz | checklist | timeline | cards | code | slider | thankyou",
+      "title": "string — 슬라이드 제목 (대부분 타입에서 사용)",
+      "notes": "string (optional) — 프레젠터 노트. \\n으로 줄바꿈",
+      // ... type-specific fields (see slide-patterns.md JSON section)
+    }
+  ]
+}
+```
+
+### Canvas 애니메이션 모듈 작성 가이드
+
+Canvas 슬라이드는 JSON에서 `animationModule` 경로를 지정하면, 렌더러가 `import()`로 동적 로드합니다.
+
+**모듈 규격:**
+
+```javascript
+// animations/slide-05-flow.js
+export function init(canvasId, slideIndex, deck) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  const ctx = canvas.getContext('2d');
+  const BASE_W = 960, BASE_H = 400;
+
+  // Proportional resize (필수 — FHD/4K 대응)
+  function resizeCanvas() {
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    if (cw <= 0 || ch <= 0) return;
+    const dpr = window.devicePixelRatio || 1;
+    const scale = cw / BASE_W;
+    const scaledH = Math.min(Math.round(BASE_H * scale), ch);
+    canvas.width = Math.round(cw * dpr);
+    canvas.height = Math.round(scaledH * dpr);
+    canvas.style.width = cw + 'px';
+    canvas.style.height = scaledH + 'px';
+    canvas.style.maxWidth = 'none';
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(scale * dpr, scale * dpr);
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, BASE_W, BASE_H);
+    // All coordinates in BASE_W x BASE_H space
+    drawBox(ctx, 50, 100, 150, 60, 'Component A', Colors.accent);
+  }
+
+  resizeCanvas();
+  draw();
+  new ResizeObserver(() => { resizeCanvas(); draw(); }).observe(container);
+
+  // Optional: register ↑↓ step control
+  // deck.registerSlideAction(slideIndex, {
+  //   down: () => timeline.nextStep(),
+  //   up: () => timeline.prevStep(),
+  // });
+}
+```
+
+**모듈 규칙:**
+- `export function init(canvasId, slideIndex, deck)` — 필수 export
+- `canvasId`: JSON에서 지정한 canvas element ID
+- `slideIndex`: 슬라이드 인덱스 (registerSlideAction용)
+- `deck`: .slide-deck DOM element (SlideFramework 접근용)
+- 반드시 proportional scaling 패턴 사용 (ResizeObserver + BASE_W/BASE_H)
+- `animation-utils.js`의 `drawBox`, `drawArrow`, `Colors`, `AnimationLoop`, `TimelineAnimation` 활용
+
+### 블록 디렉토리 구조 (JSON 방식)
+
+```
+{presentation-slug}/
+├── index.html                 # TOC 페이지
+├── block-01/
+│   ├── index.html             # 최소 보일러플레이트 (아래 참조)
+│   ├── slides.json            # AI가 작성하는 콘텐츠 데이터
+│   └── animations/            # Canvas 애니메이션 JS 모듈
+│       ├── slide-05-flow.js
+│       └── slide-08-arch.js
+├── block-02/
+│   ├── index.html
+│   ├── slides.json
+│   └── animations/
+└── common/                    # 프레임워크 (기존과 동일)
+    ├── theme.css
+    ├── slide-framework.js
+    ├── slide-renderer.js      # ← 새로 추가
+    ├── animation-utils.js
+    ├── quiz-component.js
+    └── presenter-view.js
+```
+
+### index.html 보일러플레이트 (JSON 방식)
+
+```html
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Block 1: Fundamentals</title>
+  <link rel="stylesheet" href="../common/theme.css">
+</head>
+<body>
+<div class="slide-deck"></div>
+<script src="../common/animation-utils.js"></script>
+<script src="../common/quiz-component.js"></script>
+<script src="../common/slide-framework.js"></script>
+<script src="../common/slide-renderer.js"></script>
+<script>
+  new SlideRenderer({
+    footer: '© 2026, Amazon Web Services',
+    logoSrc: '../common/pptx-theme/images/logo_1.png'
+  }).render('./slides.json');
+</script>
+</body>
+</html>
+```
+
+### JSON 방식 vs Raw HTML 비교
+
+| 관점 | JSON + Renderer | Raw HTML (레거시) |
+|------|----------------|-------------------|
+| AI 작성 일관성 | JSON 구조 → 항상 일관됨 | HTML 수작업 → 미세 차이 가능 |
+| 수정 용이성 | JSON 필드 하나 변경 | HTML 전체에서 수정점 탐색 |
+| 렌더링 품질 | Renderer가 HTML 보장 | AI 실수 가능 (닫는 태그 누락 등) |
+| 빌드 스텝 | 없음 (런타임 렌더링) | 없음 |
+| 디버깅 | JSON 검증 → 명확한 에러 | HTML 디버깅 어려움 |
+| 커스터마이징 | 13종 표준 타입 + Canvas 모듈 | 무제한 |
+| GitHub Pages | 그대로 배포 가능 | 그대로 배포 가능 |
+| 기존 호환성 | 기존 HTML 영향 없음 | 기존 그대로 동작 |
