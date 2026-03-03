@@ -54,26 +54,55 @@ After extraction, read `{repo}/common/pptx-theme/theme-manifest.json` and apply:
 - **`layout_details`** → reference original PPTX layout structure (Title Slide → §0a cover, Section Header → §1 block title)
 - **`logos`** → use `logos[0].filename` for `SlideFramework({ logoSrc: '../common/pptx-theme/images/...' })`
 
-### Phase 3: Content Authoring (Marp Markdown)
+### Phase 3: Content Authoring
 
-Write content as Marp markdown following the format guide:
+**Option A — slides.json (권장):**
+
+각 블록별 `slides.json` 작성. AI가 JSON 데이터만 작성하면 `slide-renderer.js`가 일관된 HTML을 생성합니다.
+
+```
+{slug}/block-01/
+├── slides.json           ← 콘텐츠 데이터 (AI 작성)
+├── animations/           ← Canvas 애니메이션 JS 모듈
+│   └── slide-05-flow.js
+└── index.html            ← 최소 보일러플레이트 (템플릿)
+```
+
+- 13개 표준 슬라이드 타입 지원: cover, title, content, tabs, compare, canvas, quiz, checklist, timeline, cards, code, slider, thankyou
+- Canvas 애니메이션은 별도 JS 모듈로 작성 (본질적으로 커스텀이므로 데이터화 불가)
+- JSON 스키마: `{plugin-dir}/skills/reactive-presentation/references/slide-patterns.md` → JSON Authoring Mode 참조
+- Canvas 모듈 규격: `{plugin-dir}/skills/reactive-presentation/references/framework-guide.md` → Canvas 애니메이션 모듈 작성 가이드 참조
+
+**Option B — Marp Markdown (레거시):**
+
+Marp markdown으로 콘텐츠 작성 후 HTML 변환. 특수한 커스터마이징이 필요한 경우에만 사용.
 - Frontmatter with title, blocks config
 - Slide separator: `---`
 - Block markers: `<!-- block: name -->`
 - Type directives: `<!-- type: compare|canvas|quiz|tabs|... -->`
 - Speaker notes: `<!-- notes: text -->`
-
-Reference: `{plugin-dir}/skills/reactive-presentation/references/marp-format-guide.md`
+- Reference: `{plugin-dir}/skills/reactive-presentation/references/marp-format-guide.md`
 
 ### Phase 4: HTML Generation
 
-**Option A — Script conversion:**
+**Option A (JSON 방식):**
+
+`index.html` 보일러플레이트 생성. `slide-renderer.js`가 런타임에 `slides.json`을 읽어 HTML을 동적 생성합니다.
+```html
+<div class="slide-deck"></div>
+<script src="../common/slide-renderer.js"></script>
+<script>
+  new SlideRenderer({ footer, logoSrc }).render('./slides.json');
+</script>
+```
+
+**Option B (Marp → HTML 방식):**
+
+Script conversion 또는 수동 빌드:
 ```bash
 python3 {plugin-dir}/skills/reactive-presentation/scripts/marp_to_slides.py content.md -o {repo}/{slug}/ --theme-dir {repo}/common/pptx-theme/
 ```
-
-**Option B — Manual build (recommended for rich interactivity):**
-Build HTML directly from Marp content, adding Canvas animations and interactive elements inline.
+또는 Marp 콘텐츠에서 직접 HTML을 빌드 (rich interactivity 필요 시).
 
 ### Phase 5: Content Review & Iteration
 
@@ -107,6 +136,7 @@ Key rules:
 │   ├── theme.css
 │   ├── theme-override.css          # PPTX theme overrides (optional)
 │   ├── slide-framework.js
+│   ├── slide-renderer.js           # JSON → HTML renderer
 │   ├── presenter-view.js
 │   ├── animation-utils.js
 │   ├── quiz-component.js
@@ -119,7 +149,16 @@ Key rules:
 
 Copy assets: `cp {plugin-dir}/skills/reactive-presentation/assets/* {repo}/common/`
 
-### Phase 8: Verify
+### Phase 8: Quality Review (필수 — 생략 불가)
+
+콘텐츠 완성 후 배포/완료 선언 전에 반드시:
+1. content-review-agent 호출 → `review content at [파일경로]`
+2. FAIL/REVIEW 판정 시 수정 후 재리뷰 (최대 3회)
+3. PASS (≥85점) 획득 후에만 완료 선언
+
+> ⚠️ 이 단계를 건너뛰고 배포하는 것은 금지됩니다.
+
+### Phase 9: Verify
 
 For each block HTML file, check:
 - First slide is Session Cover (NOT `.title-slide` class):
@@ -135,7 +174,7 @@ For each block HTML file, check:
 - Presenter view (P key) shows notes correctly
 - Last slide is Thank You with `← 목차로 돌아가기` link to `index.html` and `다음: Block N+1 →` link to next block (omit next link for final block)
 
-### Phase 9: Deploy
+### Phase 10: Deploy
 
 ```bash
 git add common/ {slug}/ index.html
