@@ -4,9 +4,11 @@
   "description": "Author reactive presentations with the remarp markdown format",
   "version": "0.1.0",
   "publisher": "aws-cloud-skills",
+  "license": "MIT",
+  "icon": "media/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/aws-cloud-skills/oh-my-cloud-skills"
+    "url": "https://github.com/Atom-oh/oh-my-cloud-skills"
   },
   "engines": {
     "vscode": "^1.85.0"
