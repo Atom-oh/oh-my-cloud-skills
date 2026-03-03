@@ -88,9 +88,32 @@ workshop-agent → content-review-agent → Workshop Studio content
 
 ---
 
-## Quality Gate
+## Quality Gate (필수 — Mandatory)
 
-All content types pass through content-review-agent before finalization.
+> **규칙: 모든 콘텐츠는 배포/완료 선언 전에 반드시 content-review-agent를 통과해야 합니다.**
+> 이 규칙은 생략할 수 없으며, 리뷰 없이 콘텐츠 완성을 선언하는 것은 금지됩니다.
+
+### Auto-Trigger Conditions
+
+다음 조건이 충족되면 content-review-agent를 자동으로 호출합니다:
+
+| Trigger | Condition | Action |
+|---------|-----------|--------|
+| HTML 프레젠테이션 완성 | `.html` 슬라이드 파일 작성 완료 | `review content at [파일경로]` |
+| 다이어그램 완성 | `.drawio` 또는 animated `.html` 작성 완료 | `review content at [파일경로]` |
+| 문서 완성 | `.md` 기술문서 작성 완료 | `review content at [파일경로]` |
+| GitBook 페이지 완성 | GitBook 프로젝트 구조 작성 완료 | `review content at [프로젝트경로]` |
+| Workshop 콘텐츠 완성 | Workshop 모듈 콘텐츠 작성 완료 | `review content at [프로젝트경로]` |
+
+### Review Loop
+
+1. 콘텐츠 에이전트가 콘텐츠 생성 완료
+2. content-review-agent 호출 → 리뷰 리포트 생성
+3. FAIL/REVIEW 판정 시 → 수정 후 재리뷰 (최대 3회)
+4. PASS (≥85점) 획득 후에만 완료/배포 선언
+5. 3회 리뷰 후에도 PASS 미달 → 사용자에게 판단 요청
+
+### Verdict
 
 | Verdict | Condition | Result |
 |---------|-----------|--------|

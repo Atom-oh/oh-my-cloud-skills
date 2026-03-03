@@ -155,6 +155,7 @@ HTML 빌드 후 Remarp 파일이 수정될 때마다 사용자가 수동으로 H
 │   ├── theme.css
 │   ├── theme-override.css          # PPTX theme overrides (optional)
 │   ├── slide-framework.js
+│   ├── slide-renderer.js           # JSON → HTML renderer
 │   ├── presenter-view.js
 │   ├── animation-utils.js
 │   ├── quiz-component.js
@@ -166,6 +167,15 @@ HTML 빌드 후 Remarp 파일이 수정될 때마다 사용자가 수동으로 H
 ```
 
 Copy assets: `cp {plugin-dir}/skills/reactive-presentation/assets/* {repo}/common/`
+
+### Phase 8: Quality Review (필수 — 생략 불가)
+
+콘텐츠 완성 후 배포/완료 선언 전에 반드시:
+1. content-review-agent 호출 → `review content at [파일경로]`
+2. FAIL/REVIEW 판정 시 수정 후 재리뷰 (최대 3회)
+3. PASS (≥85점) 획득 후에만 완료 선언
+
+> ⚠️ 이 단계를 건너뛰고 배포하는 것은 금지됩니다.
 
 ### Phase 9: Verify
 

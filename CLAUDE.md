@@ -83,20 +83,22 @@ Each plugin's `CLAUDE.md` defines keyword→agent routing tables. Keywords inclu
 
 ## Versioning
 
-Both plugins share a single version tracked in their `plugin.json` → `"version"` field. Git tags **must** match this version.
+All plugins share a single version tracked in their `plugin.json` → `"version"` field, mirrored in `marketplace.json`. Git tags **must** match this version.
 
-- **Single source of truth**: `plugin.json` `"version"` in both plugins (keep them in sync)
-- **Git tag format**: `v{version}` (e.g., `v1.0.0`) — created on the release commit
-- **Release process**: bump `"version"` in both `plugin.json` files → commit → `git tag v{version}` → push with `--tags`
-- **Validation**: `git describe --tags` should match both `plugin.json` versions
+- **Single source of truth**: `plugin.json` `"version"` in all plugins + `marketplace.json` (keep them in sync)
+- **Git tag format**: `v{version}` (e.g., `v1.1.0`) — created on the release commit
+- **Release process**: bump `"version"` in all `plugin.json` files + `marketplace.json` → commit → `git tag v{version}` → push with `--tags`
+- **Validation**: `git describe --tags` should match all `plugin.json` and `marketplace.json` versions
 
 ```bash
 # Verify version consistency
 V=$(python3 -c "import json; print(json.load(open('plugins/aws-content-plugin/.claude-plugin/plugin.json'))['version'])")
 V2=$(python3 -c "import json; print(json.load(open('plugins/aws-ops-plugin/.claude-plugin/plugin.json'))['version'])")
+V3=$(python3 -c "import json; print(json.load(open('plugins/kiro-power-converter/.claude-plugin/plugin.json'))['version'])")
+MV=$(python3 -c "import json; vs=set(p['version'] for p in json.load(open('.claude-plugin/marketplace.json'))['plugins']); print(vs.pop() if len(vs)==1 else 'MISMATCH')")
 TAG=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
-echo "content=$V ops=$V2 tag=$TAG"
-[ "$V" = "$V2" ] && [ "$V" = "$TAG" ] && echo "OK: all match" || echo "MISMATCH"
+echo "content=$V ops=$V2 converter=$V3 marketplace=$MV tag=$TAG"
+[ "$V" = "$V2" ] && [ "$V" = "$V3" ] && [ "$V" = "$MV" ] && [ "$V" = "$TAG" ] && echo "OK: all match" || echo "MISMATCH"
 ```
 
 ## Key Conventions

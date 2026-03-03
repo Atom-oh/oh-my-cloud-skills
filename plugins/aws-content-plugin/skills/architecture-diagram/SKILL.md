@@ -862,6 +862,15 @@ style="outlineConnect=0;fontColor=#232F3E;
 - **`reference/aws-icons.md`** - AWS 아이콘 shape 이름 및 스타일
 - **`reference/best-practices.md`** - 아키텍처 다이어그램 모범사례
 
+## Quality Review (필수 — 생략 불가)
+
+다이어그램 완성 후 배포/완료 선언 전에 반드시:
+1. content-review-agent 호출 → `review content at [파일경로]`
+2. FAIL/REVIEW 판정 시 수정 후 재리뷰 (최대 3회)
+3. PASS (≥85점) 획득 후에만 완료 선언
+
+> ⚠️ 이 단계를 건너뛰고 완료를 선언하는 것은 금지됩니다.
+
 ## 검증 체크리스트
 
 - [ ] Amazon Ember 폰트가 모든 텍스트에 설정되었는가
