@@ -269,12 +269,80 @@ ${styleSheets}
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
+  .presenter-notes .notes-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .presenter-notes .timing-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: rgba(108, 92, 231, 0.2);
+    border: 1px solid #6c5ce7;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    color: #a29bfe;
+    font-family: 'JetBrains Mono', monospace;
+  }
   .presenter-notes .notes-content {
     font-size: 1.3rem;
     line-height: 1.7;
     color: #dde0e8;
-    white-space: pre-wrap;
     word-break: keep-all;
+  }
+  .presenter-notes .notes-content p { margin: 0.5em 0; }
+  .presenter-notes .notes-content ul, .presenter-notes .notes-content ol {
+    margin: 0.5em 0;
+    padding-left: 1.5em;
+  }
+  .presenter-notes .notes-content li { margin: 0.3em 0; }
+  .presenter-notes .notes-content strong { color: #fff; font-weight: 600; }
+  .presenter-notes .notes-content code {
+    background: rgba(108, 92, 231, 0.2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9em;
+  }
+
+  /* === Cue Markers === */
+  .cue-markers {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .cue-marker {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+  .cue-marker.demo {
+    background: rgba(116, 185, 255, 0.15);
+    color: #74b9ff;
+    border: 1px solid rgba(116, 185, 255, 0.3);
+  }
+  .cue-marker.pause {
+    background: rgba(253, 203, 110, 0.15);
+    color: #fdcb6e;
+    border: 1px solid rgba(253, 203, 110, 0.3);
+  }
+  .cue-marker.question {
+    background: rgba(0, 184, 148, 0.15);
+    color: #00b894;
+    border: 1px solid rgba(0, 184, 148, 0.3);
+  }
+  .cue-marker.transition {
+    background: rgba(162, 155, 254, 0.15);
+    color: #a29bfe;
+    border: 1px solid rgba(162, 155, 254, 0.3);
   }
 
   /* === Nav === */
@@ -340,7 +408,14 @@ ${styleSheets}
   </div>
   <div class="splitter-h" id="splitter-h"></div>
   <div class="presenter-notes" id="p-notes-wrap">
-    <h3>Speaker Notes</h3>
+    <div class="notes-header">
+      <h3>Speaker Notes</h3>
+      <span class="timing-badge" id="p-timing" style="display:none;">
+        <span>Target:</span>
+        <span id="p-timing-value">0 min</span>
+      </span>
+    </div>
+    <div class="cue-markers" id="p-cues"></div>
     <div class="notes-content" id="p-notes">No notes for this slide.</div>
   </div>
 </div>
@@ -501,10 +576,109 @@ ${styleSheets}
       nextEl.innerHTML = '<div class="end-message">End of presentation</div>';
     }
 
-    // Notes
-    const noteKey = idx + 1;
-    const notes = (this.framework.presenterNotes || {})[noteKey] || 'No notes for this slide.';
-    doc.getElementById('p-notes').textContent = notes;
+    // Notes, cues, and timing
+    this.updateNotes(doc, idx);
+  }
+
+  updateNotes(doc, slideIndex) {
+    const noteKey = slideIndex + 1;
+    const notesData = (this.framework.presenterNotes || {})[noteKey];
+    const notesEl = doc.getElementById('p-notes');
+    const cuesEl = doc.getElementById('p-cues');
+    const timingEl = doc.getElementById('p-timing');
+    const timingValueEl = doc.getElementById('p-timing-value');
+
+    // Handle notes - can be string or object { text, cues, timing }
+    let notesText = 'No notes for this slide.';
+    let cues = [];
+    let timing = null;
+
+    if (typeof notesData === 'string') {
+      notesText = notesData;
+    } else if (notesData && typeof notesData === 'object') {
+      notesText = notesData.text || notesData.notes || 'No notes for this slide.';
+      cues = notesData.cues || [];
+      timing = notesData.timing || null;
+    }
+
+    // Also check slide element for data-cues and data-timing attributes
+    const slide = this.framework.slides[slideIndex];
+    if (slide) {
+      const dataCues = slide.dataset.cues;
+      const dataTiming = slide.dataset.timing;
+      if (dataCues) {
+        try {
+          cues = JSON.parse(dataCues);
+        } catch (e) { /* ignore parsing errors */ }
+      }
+      if (dataTiming) {
+        timing = dataTiming;
+      }
+    }
+
+    // Render rich notes as HTML
+    notesEl.innerHTML = this.renderRichNotes(notesText);
+
+    // Render cue markers
+    this.renderCueMarkers(cuesEl, cues);
+
+    // Render timing badge
+    if (timing) {
+      timingEl.style.display = 'inline-flex';
+      timingValueEl.textContent = timing;
+    } else {
+      timingEl.style.display = 'none';
+    }
+  }
+
+  renderRichNotes(text) {
+    if (!text) return 'No notes for this slide.';
+
+    // Convert markdown-like formatting to HTML
+    let html = text
+      // Escape HTML first
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      // Bold
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      // Inline code
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      // Line breaks
+      .replace(/\n/g, '<br>');
+
+    // Handle bullet lists (lines starting with - or *)
+    html = html.replace(/(<br>|^)([-*]\s)(.+?)(?=<br>[-*]\s|<br>[^-*]|$)/g, (match, br, bullet, content) => {
+      return `${br}<li>${content}</li>`;
+    });
+
+    // Wrap consecutive <li> items in <ul>
+    html = html.replace(/(<li>.*?<\/li>)+/g, '<ul>$&</ul>');
+
+    return html;
+  }
+
+  renderCueMarkers(container, cues) {
+    container.innerHTML = '';
+    if (!cues || !Array.isArray(cues) || cues.length === 0) return;
+
+    const cueIcons = {
+      demo: { icon: '🎬', label: 'Demo' },
+      pause: { icon: '⏸', label: 'Pause' },
+      question: { icon: '❓', label: 'Question' },
+      transition: { icon: '🔄', label: 'Transition' }
+    };
+
+    cues.forEach(cue => {
+      const type = cue.type || cue;
+      const label = cue.label || cueIcons[type]?.label || type;
+      const icon = cueIcons[type]?.icon || '📌';
+
+      const marker = document.createElement('div');
+      marker.className = `cue-marker ${type}`;
+      marker.innerHTML = `<span>${icon}</span><span>${label}</span>`;
+      container.appendChild(marker);
+    });
   }
 
   _renderSlidePreview(doc, container, sourceSlide) {

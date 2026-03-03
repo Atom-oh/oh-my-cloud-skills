@@ -48,6 +48,18 @@
   --transition-fast:   150ms ease;
   --transition-normal: 300ms ease;
   --transition-slow:   500ms ease;
+
+  /* PPTX Theme color overrides (set via JS from extracted theme) */
+  --pptx-accent1: var(--accent);
+  --pptx-accent2: var(--green);
+  --pptx-accent3: var(--blue);
+  --pptx-accent4: var(--yellow);
+  --pptx-accent5: var(--red);
+  --pptx-accent6: var(--cyan);
+  --pptx-dk1: #000000;
+  --pptx-lt1: #ffffff;
+  --pptx-dk2: #1a1d2e;
+  --pptx-lt2: #e8eaf0;
 }
 
 /* --- Font Loading --- */
@@ -288,6 +300,21 @@ body {
   max-width: 100%;
   height: auto;
 }
+
+/* Mermaid diagram integration */
+.canvas-container .mermaid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  padding: 1rem;
+}
+
+.canvas-container .mermaid svg {
+  max-width: 100%;
+  max-height: 100%;
+}
+
 .canvas-controls {
   position: absolute;
   bottom: .5rem;
@@ -315,6 +342,51 @@ body {
   color: var(--text-muted);
   z-index: 1000;
   font-family: var(--font-mono);
+}
+
+/* Slide number display (PPTX pagination) */
+.slide-number {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 1rem;
+  font-size: 0.7rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  z-index: 1000;
+  pointer-events: none;
+}
+
+/* Slide reference links */
+.slide-ref {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 1rem;
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  z-index: 999;
+  max-width: 50%;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.slide-ref a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.slide-ref a:hover {
+  color: var(--accent-light);
+  text-decoration: underline;
+}
+
+/* When both slide-number and slide-ref are present, shift refs up */
+.slide-number ~ .slide-ref,
+.slide-number + .slide-ref {
+  bottom: 1.5rem;
 }
 
 /* --- Navigation --- */
@@ -704,7 +776,7 @@ input[type="range"]::-webkit-slider-thumb {
 /* --- Print --- */
 @media print {
   .slide { page-break-after: always; position: relative; display: flex !important; opacity: 1 !important; }
-  .progress-bar, .slide-counter, .nav-hint, .slide-logo, .slide-footer { display: none; }
+  .progress-bar, .slide-counter, .nav-hint, .slide-logo, .slide-footer, .slide-number, .slide-ref { display: none; }
 }
 
 /* === Export Toolbar === */
@@ -781,4 +853,412 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 2px;
   transition: width 200ms ease;
   width: 0%;
+}
+
+/* ============================================================
+   Fragment Animations
+   ============================================================ */
+
+/* Base fragment state - hidden by default */
+.fragment {
+  opacity: 0;
+  transition: all 0.4s ease;
+  pointer-events: none;
+}
+.fragment.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* fade-in (default) */
+.fragment.fade-in {
+  opacity: 0;
+}
+.fragment.fade-in.visible {
+  opacity: 1;
+}
+
+/* fade-up */
+.fragment.fade-up {
+  opacity: 0;
+  transform: translateY(20px);
+}
+.fragment.fade-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* fade-down */
+.fragment.fade-down {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+.fragment.fade-down.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* fade-left */
+.fragment.fade-left {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+.fragment.fade-left.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* fade-right */
+.fragment.fade-right {
+  opacity: 0;
+  transform: translateX(20px);
+}
+.fragment.fade-right.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* grow */
+.fragment.grow {
+  opacity: 0;
+  transform: scale(0.8);
+}
+.fragment.grow.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* shrink */
+.fragment.shrink {
+  opacity: 0;
+  transform: scale(1.1);
+}
+.fragment.shrink.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* highlight (purple) */
+.fragment.highlight {
+  background-color: transparent;
+  transition: background-color 0.4s ease, opacity 0.4s ease;
+}
+.fragment.highlight.visible {
+  opacity: 1;
+  background-color: rgba(108, 92, 231, 0.3);
+}
+
+/* highlight-red */
+.fragment.highlight-red {
+  background-color: transparent;
+  transition: background-color 0.4s ease, opacity 0.4s ease;
+}
+.fragment.highlight-red.visible {
+  opacity: 1;
+  background-color: rgba(225, 112, 85, 0.3);
+}
+
+/* highlight-green */
+.fragment.highlight-green {
+  background-color: transparent;
+  transition: background-color 0.4s ease, opacity 0.4s ease;
+}
+.fragment.highlight-green.visible {
+  opacity: 1;
+  background-color: rgba(0, 184, 148, 0.3);
+}
+
+/* strike */
+.fragment.strike {
+  text-decoration: none;
+}
+.fragment.strike.visible {
+  opacity: 1;
+  text-decoration: line-through;
+}
+
+/* fade-out (reverse - visible initially, hidden when activated) */
+.fragment.fade-out {
+  opacity: 1;
+  pointer-events: auto;
+}
+.fragment.fade-out.visible {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ============================================================
+   Slide Transitions
+   ============================================================ */
+
+/* Fade transition (default) */
+.slide[data-transition="fade"].entering,
+.slide.transition-fade-in {
+  animation: transitionFadeIn 0.35s ease forwards;
+}
+.slide[data-transition="fade"].leaving,
+.slide.transition-fade-out {
+  animation: transitionFadeOut 0.35s ease forwards;
+}
+
+@keyframes transitionFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes transitionFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Slide transition */
+.slide[data-transition="slide"].entering,
+.slide.transition-slide-in {
+  animation: transitionSlideIn 0.35s ease forwards;
+}
+.slide[data-transition="slide"].leaving,
+.slide.transition-slide-out {
+  animation: transitionSlideOut 0.35s ease forwards;
+}
+
+@keyframes transitionSlideIn {
+  from { opacity: 0; transform: translateX(100px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes transitionSlideOut {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-100px); }
+}
+
+/* Slide-left transition */
+.slide[data-transition="slide-left"].entering,
+.slide.transition-slide-left-in {
+  animation: transitionSlideLeftIn 0.35s ease forwards;
+}
+.slide[data-transition="slide-left"].leaving,
+.slide.transition-slide-left-out {
+  animation: transitionSlideLeftOut 0.35s ease forwards;
+}
+
+@keyframes transitionSlideLeftIn {
+  from { opacity: 0; transform: translateX(-100px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes transitionSlideLeftOut {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(100px); }
+}
+
+/* Slide-right transition */
+.slide[data-transition="slide-right"].entering,
+.slide.transition-slide-right-in {
+  animation: transitionSlideRightIn 0.35s ease forwards;
+}
+.slide[data-transition="slide-right"].leaving,
+.slide.transition-slide-right-out {
+  animation: transitionSlideRightOut 0.35s ease forwards;
+}
+
+@keyframes transitionSlideRightIn {
+  from { opacity: 0; transform: translateX(100px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes transitionSlideRightOut {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-100px); }
+}
+
+/* Zoom transition */
+.slide[data-transition="zoom"].entering,
+.slide.transition-zoom-in {
+  animation: transitionZoomIn 0.35s ease forwards;
+}
+.slide[data-transition="zoom"].leaving,
+.slide.transition-zoom-out {
+  animation: transitionZoomOut 0.35s ease forwards;
+}
+
+@keyframes transitionZoomIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes transitionZoomOut {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.1); }
+}
+
+/* None transition (instant) */
+.slide[data-transition="none"].entering,
+.slide.transition-none-in {
+  animation: none;
+  opacity: 1;
+}
+.slide[data-transition="none"].leaving,
+.slide.transition-none-out {
+  animation: none;
+  opacity: 0;
+}
+
+/* ============================================================
+   Column Layouts (Extended)
+   ============================================================ */
+
+/* Two columns (already exists, but ensure consistency) */
+.columns {
+  display: flex;
+  gap: 2rem;
+  flex: 1;
+}
+.columns .col,
+.columns > * {
+  flex: 1;
+}
+
+/* Three columns */
+.columns-3 {
+  display: flex;
+  gap: 1.5rem;
+  flex: 1;
+}
+.columns-3 .col,
+.columns-3 > * {
+  flex: 1;
+}
+
+/* 2x2 Grid */
+.grid-2x2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  flex: 1;
+}
+
+/* 3x2 Grid */
+.grid-3x2 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, auto);
+  gap: 1rem;
+  flex: 1;
+}
+
+/* Asymmetric columns */
+.columns-2-1 {
+  display: flex;
+  gap: 2rem;
+}
+.columns-2-1 > *:first-child { flex: 2; }
+.columns-2-1 > *:last-child { flex: 1; }
+
+.columns-1-2 {
+  display: flex;
+  gap: 2rem;
+}
+.columns-1-2 > *:first-child { flex: 1; }
+.columns-1-2 > *:last-child { flex: 2; }
+
+/* ============================================================
+   Overview Mode
+   ============================================================ */
+
+.overview-mode {
+  overflow: auto !important;
+}
+
+.overview-mode .slide-deck {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  padding: 1rem;
+  max-width: none !important;
+  max-height: none !important;
+  width: 100vw !important;
+  height: auto !important;
+  min-height: 100vh;
+  overflow: auto !important;
+  background: #000;
+}
+
+.overview-mode .slide {
+  position: relative !important;
+  display: flex !important;
+  opacity: 1 !important;
+  cursor: pointer;
+  border: 3px solid transparent;
+  border-radius: 8px;
+  transform: scale(1) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  animation: none !important;
+}
+
+.overview-mode .slide:hover {
+  border-color: var(--accent-light);
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+
+.overview-mode .slide.current {
+  border-color: var(--accent);
+  box-shadow: 0 0 30px var(--accent-glow);
+}
+
+.overview-mode .slide.overview-visible {
+  display: flex !important;
+}
+
+/* Hide UI elements in overview mode */
+.overview-mode .progress-bar,
+.overview-mode .slide-counter,
+.overview-mode .nav-hint,
+.overview-mode .slide-footer,
+.overview-mode .slide-logo,
+.overview-mode .slide-number,
+.overview-mode .slide-ref {
+  display: none !important;
+}
+
+/* Scale down slide content in overview */
+.overview-mode .slide > * {
+  transform-origin: top left;
+  transform: scale(0.25);
+  width: 400%;
+  height: 400%;
+}
+
+/* ============================================================
+   Presenter View Cue Markers (fallback if not in presenter window)
+   ============================================================ */
+
+.cue-marker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.cue-marker.demo {
+  background: var(--blue-bg);
+  color: var(--blue);
+  border: 1px solid rgba(116, 185, 255, 0.3);
+}
+
+.cue-marker.pause {
+  background: var(--yellow-bg);
+  color: var(--yellow);
+  border: 1px solid rgba(253, 203, 110, 0.3);
+}
+
+.cue-marker.question {
+  background: var(--green-bg);
+  color: var(--green);
+  border: 1px solid rgba(0, 184, 148, 0.3);
+}
+
+.cue-marker.transition {
+  background: rgba(162, 155, 254, 0.15);
+  color: var(--accent-light);
+  border: 1px solid rgba(162, 155, 254, 0.3);
 }

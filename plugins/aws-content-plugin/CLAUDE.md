@@ -14,6 +14,7 @@ When the following keywords are detected, automatically invoke the corresponding
 |----------|-------|-------------|
 | "create presentation", "create slides", "make slideshow", "training slides", "interactive presentation", "reactive presentation" | `presentation-agent` | Interactive HTML slideshow creation |
 | "PPTX theme", "extract theme", "corporate branding" | `presentation-agent` | PPTX theme extraction for presentations |
+| "반영해주세요", "rebuild", "다시 빌드", "remarp 반영" | `presentation-agent` | Remarp → HTML 증분 빌드 |
 
 ### Architecture Diagrams (Static)
 

@@ -5,7 +5,9 @@ description: "Create interactive HTML presentation slideshows with Canvas animat
 
 # Reactive Presentation
 
-Build interactive HTML slideshow presentations deployed via GitHub Pages. No build tools required — pure HTML/CSS/JS with a shared framework for navigation, animations, and quizzes. Supports PPTX template theme extraction and Marp markdown for content authoring.
+Build interactive HTML slideshow presentations deployed via GitHub Pages. No build tools required — pure HTML/CSS/JS with a shared framework for navigation, animations, and quizzes. Supports PPTX template theme extraction, Marp markdown, and Remarp format for content authoring.
+
+> **New to Remarp?** See [REMARP.md](REMARP.md) for a quick introduction and 5-minute getting started guide.
 
 ## Workflow
 
@@ -39,44 +41,70 @@ Plan the presentation structure with the user. **Ask these questions during plan
 - **Target repo** — GitHub repo for deployment (default: `~/reactive_presentation/`)
 - **Language** — Korean or English (technical terms always English)
 - **Aspect ratio** — confirm 16:9 (default). The framework enforces 16:9 with letterboxing on non-16:9 displays
-- **PPTX/PDF template** (REQUIRED, skippable) — "디자인 참고용 PPTX/PDF 파일이 있으신가요? (파일 경로 또는 'skip')"
-  - Provided → run Phase 1 extraction first to apply corporate branding (colors, logo, fonts)
-  - "skip" → use CSS-only fallback cover §0b
+- **Design & layout references** (REQUIRED, skippable) — "참고할 디자인 자료가 있으신가요? PPTX, PDF, 이미지, 또는 기존 프레젠테이션 경로를 알려주세요. (또는 'skip')"
+  - Provided → 제공된 자료에서 **브랜딩 + 레이아웃** 모두 추출하여 반영:
+    - `.pptx` → Phase 1 테마 추출 (색상, 로고, 폰트) + 슬라이드 레이아웃/구성 패턴 참고
+    - `.pdf` / 이미지 → 시각적 레이아웃, 색상 배치, 콘텐츠 밀도, 타이포그래피 참고
+    - 기존 프레젠테이션 경로 (slides.json, HTML, animations/ JS) → 슬라이드 타입 배치, body HTML 구조, Canvas 애니메이션 패턴, CSS 클래스 활용 참고
+  - "skip" → CSS-only fallback cover §0b + 기본 테마(theme.css) + slide-patterns.md 표준 패턴으로 진행
+  - **자동 탐색**: `~/oh-my-skill-tester/` 내 기존 프레젠테이션이 있으면 목록을 보여주고 참고 여부를 확인
 - **Speaker info** (REQUIRED, skippable) — "발표자 이름, 직함/소속? (또는 'skip')"
   - Provided → store in `MEMORY.md` for reuse across sessions. Used in the session cover slide (see slide-patterns.md §0a)
   - "skip" → omit speaker section from cover
   - Already in `MEMORY.md` → confirm with user or reuse
 
-**Option A — slides.json 작성 (권장):**
+Remarp 마크다운으로 콘텐츠를 작성합니다 (기본). Remarp는 프래그먼트 애니메이션, Canvas DSL, 풍부한 스피커 노트, 슬라이드 전환 효과를 마크다운에서 직접 제어하는 차세대 포맷입니다.
 
-각 블록별 `slides.json` 파일을 작성합니다. 13개 표준 슬라이드 타입(cover, title, content, tabs, compare, canvas, quiz, checklist, timeline, cards, code, slider, thankyou)을 JSON 데이터로 정의하면, `slide-renderer.js`가 런타임에 HTML을 생성합니다.
-
+**멀티파일 프로젝트 구조:**
 ```
-{slug}/block-01/
-├── slides.json           ← 콘텐츠 데이터
-├── animations/           ← Canvas 애니메이션 JS 모듈 (해당 시)
-│   └── slide-05-flow.js
-└── index.html            ← 보일러플레이트 (템플릿 복사)
+{slug}/
+├── _presentation.remarp.md   ← 글로벌 설정 (theme, footer, logo)
+├── 01-fundamentals.remarp.md ← 블록 1
+├── 02-deep-dive.remarp.md    ← 블록 2
+└── animations/               ← Canvas 애니메이션 JS 모듈 (해당 시)
+    └── slide-05-flow.js
 ```
 
+**핵심 기능:**
+- `remarp: true` frontmatter로 시작
+- `@type`, `@layout`, `@transition` 슬라이드 디렉티브
+- `{.click}` 인라인 프래그먼트 + `:::click` 블록 애니메이션
+- `:::notes` 블록으로 스피커 노트 (타이밍, 큐 마커 지원)
+- `:::canvas` DSL로 선언적 Canvas 애니메이션
+- `::: left`/`::: right` 컬럼 레이아웃
+
+See [references/remarp-format-guide.md](references/remarp-format-guide.md) for full format specification.
+
+> ⚠️ 에이전트는 사용자가 명시하지 않는 한 항상 Remarp로 진행합니다.
+
+**Alternative Formats (명시적 요청 시에만):**
+
+**slides.json** — 사용자가 JSON 런타임 렌더링을 명시적으로 요청할 때만 사용합니다. 각 블록별 `slides.json` 파일을 작성하면 `slide-renderer.js`가 런타임에 HTML을 생성합니다.
 - JSON 스키마: [references/slide-patterns.md](references/slide-patterns.md) → "JSON Authoring Mode" 섹션
-- Canvas 모듈 규격: [references/framework-guide.md](references/framework-guide.md) → "Canvas 애니메이션 모듈 작성 가이드"
 
-**Option B — Marp Markdown 작성 (레거시):**
-
-특수한 커스터마이징이 필요한 경우 Marp markdown으로 콘텐츠를 작성합니다:
-- Frontmatter with title, blocks config
-- Slide separator: `---`
-- Block markers: `<!-- block: name -->`
-- Type directives: `<!-- type: compare|canvas|quiz|tabs|... -->`
-- Speaker notes: `<!-- notes: text -->`
+**Marp Markdown (레거시)** — 기존 Marp 파일 유지보수 또는 사용자가 Marp를 명시적으로 요청할 때만 사용합니다.
 - See [references/marp-format-guide.md](references/marp-format-guide.md) for full format specification.
 
 ### Phase 3: HTML Generation
 
-**Option A (JSON 방식):**
+Remarp 프로젝트 디렉토리를 빌드합니다:
+```bash
+# 전체 빌드
+python3 {skill-dir}/scripts/remarp_to_slides.py build {repo}/{slug}/
 
-`index.html` 보일러플레이트를 생성합니다. `slide-renderer.js`가 런타임에 `slides.json`을 읽어 HTML을 동적 생성합니다.
+# 특정 블록만 빌드
+python3 {skill-dir}/scripts/remarp_to_slides.py build {repo}/{slug}/ --block 01-fundamentals
+
+# 변경된 블록만 빌드 (증분 빌드)
+python3 {skill-dir}/scripts/remarp_to_slides.py sync {repo}/{slug}/
+
+# Marp에서 Remarp로 마이그레이션
+python3 {skill-dir}/scripts/remarp_to_slides.py migrate content.md -o {repo}/{slug}/
+```
+
+**Alternative Formats (명시적 요청 시에만):**
+
+**slides.json** — `index.html` 보일러플레이트를 생성합니다. `slide-renderer.js`가 런타임에 `slides.json`을 읽어 HTML을 동적 생성합니다.
 ```html
 <div class="slide-deck"></div>
 <script src="../common/slide-renderer.js"></script>
@@ -86,41 +114,38 @@ Plan the presentation structure with the user. **Ask these questions during plan
 ```
 보일러플레이트 전체 템플릿: [references/framework-guide.md](references/framework-guide.md) → "index.html 보일러플레이트"
 
-**Option B (Marp → HTML 방식):**
-
-Script conversion 또는 수동 빌드:
+**Marp (레거시)** — Script conversion 또는 수동 빌드:
 ```bash
 python3 {skill-dir}/scripts/marp_to_slides.py content.md -o {repo}/{slug}/ --theme-dir {repo}/common/pptx-theme/
 ```
-또는 Marp 콘텐츠에서 직접 HTML을 빌드 (rich interactivity 필요 시).
 
 ### Phase 4: Content Review & Iteration
 
-After generating Marp markdown and/or initial HTML, enter a feedback loop with the user. **Always ask:**
+After generating Remarp markdown and/or initial HTML, enter a feedback loop with the user. **Always ask:**
 
 > 콘텐츠를 검토해 주세요. 수정 방법을 선택해 주세요:
-> 1. **Marp 직접 수정** — Marp 파일을 직접 편집하신 후 알려주시면, 변경 사항을 읽어서 HTML에 반영합니다.
-> 2. **프롬프트로 수정 요청** — 변경하고 싶은 내용을 말씀해 주시면 Marp와 HTML을 함께 수정합니다.
+> 1. **Remarp 직접 수정** — `.remarp.md` 파일을 직접 편집하신 후 "반영해주세요"라고 알려주시면, 변경 사항을 읽어서 HTML에 반영합니다.
+> 2. **프롬프트로 수정 요청** — 변경하고 싶은 내용을 말씀해 주시면 Remarp와 HTML을 함께 수정합니다.
 > 3. **진행** — 현재 내용이 좋으면 다음 단계로 넘어갑니다.
 
-**Option 1 — User edits Marp directly:**
-1. User opens and edits the Marp `.md` file in their editor
-2. User signals completion (e.g., "수정 완료", "done editing")
-3. Claude reads the updated Marp file, diffs against the previous version
-4. Claude applies the content changes to the corresponding HTML block files
+**Option 1 — User edits Remarp directly:**
+1. User opens and edits the `.remarp.md` file(s) in their editor
+2. User signals completion (e.g., "반영해주세요", "done editing")
+3. Claude reads the updated Remarp file(s), diffs against the previous version
+4. Claude runs `remarp_to_slides.py sync` to rebuild changed blocks
 5. Return to feedback prompt (user may iterate multiple times)
 
 **Option 2 — User requests changes via prompt:**
 1. User describes what to change (e.g., "슬라이드 5에 비교 탭 추가해줘", "퀴즈 문제를 3개로 줄여줘")
-2. Claude updates both the Marp source file AND the HTML block files to stay in sync
+2. Claude updates both the Remarp source file AND rebuilds the HTML block files to stay in sync
 3. Return to feedback prompt
 
 **Option 3 — Proceed:**
 Continue to Enhancement phase.
 
 Key rules for iteration:
-- **Marp ↔ HTML sync**: When either is modified, keep both in sync. Marp is the content source of truth; HTML adds interactivity on top.
-- **Preserve interactivity**: When updating HTML from Marp changes, preserve existing Canvas animations, quiz components, and interactive elements unless the user explicitly removed them.
+- **Remarp ↔ HTML sync**: When either is modified, keep both in sync. Remarp is the content source of truth; HTML adds interactivity on top.
+- **Preserve interactivity**: When updating HTML from Remarp changes, preserve existing Canvas animations, quiz components, and interactive elements unless the user explicitly removed them.
 - **Incremental updates**: Only modify the slides that changed, not the entire file.
 - **Show what changed**: After applying updates, briefly summarize which slides were modified and what changed.
 
@@ -264,7 +289,9 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 | F | Toggle fullscreen |
 | N | Toggle speaker notes panel (bottom 20% overlay) |
 | P | Open presenter view (new window with notes, timer, slide sync) |
-| Esc | Exit fullscreen / dismiss notes panel |
+| O | Toggle overview mode (slide grid thumbnails) |
+| B | Blackout screen |
+| Esc | Exit fullscreen / dismiss notes panel / exit overview |
 | Home/End | First/Last slide |
 | 1-9 | Jump to slide number |
 
@@ -315,12 +342,14 @@ Framework files to copy into `common/`:
 
 ### scripts/
 - `extract_pptx_theme.py` — Extract PPTX theme → CSS overrides + images (see [references/pptx-theme-guide.md](references/pptx-theme-guide.md))
-- `marp_to_slides.py` — Convert Marp markdown → HTML slide files (see [references/marp-format-guide.md](references/marp-format-guide.md))
+- `remarp_to_slides.py` — Convert Remarp markdown → HTML slide files with fragments, transitions, canvas DSL, rich notes (see [references/remarp-format-guide.md](references/remarp-format-guide.md))
+- `marp_to_slides.py` — Convert Marp markdown → HTML slide files (legacy, see [references/marp-format-guide.md](references/marp-format-guide.md))
 - `extract_aws_icons.py` — Extract AWS Architecture Icons from bundled zip → SVG files organized by category (see [references/aws-icons-guide.md](references/aws-icons-guide.md))
 
 ### references/
 - [framework-guide.md](references/framework-guide.md) — Complete API reference for CSS classes, JS functions, HTML template
 - [slide-patterns.md](references/slide-patterns.md) — Copy-paste HTML patterns for each slide type, Canvas animation patterns
-- [marp-format-guide.md](references/marp-format-guide.md) — Marp markdown format specification with examples
+- [remarp-format-guide.md](references/remarp-format-guide.md) — Remarp markdown format specification (recommended) — fragments, canvas DSL, rich notes, transitions
+- [marp-format-guide.md](references/marp-format-guide.md) — Marp markdown format specification (legacy)
 - [pptx-theme-guide.md](references/pptx-theme-guide.md) — PPTX theme extraction usage, color mapping, troubleshooting
 - [aws-icons-guide.md](references/aws-icons-guide.md) — AWS Architecture Icons usage, naming conventions, commonly used icons by topic
