@@ -5,6 +5,7 @@
  */
 const ExportUtils = {
   JSZIP_CDN: 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
+  PPTXGEN_CDN: 'https://cdn.jsdelivr.net/gh/gitbrent/PptxGenJS@3.12.0/dist/pptxgen.bundle.js',
 
   /** Escape HTML special characters to prevent XSS in generated markup */
   _escapeHTML: function(str) {
@@ -294,6 +295,178 @@ const ExportUtils = {
       script.onerror = function() { reject(new Error('Failed to load JSZip from CDN')); };
       document.head.appendChild(script);
     });
+  },
+
+  /** Lazy-load PptxGenJS from CDN */
+  loadPptxGen: function() {
+    if (window.PptxGenJS) return Promise.resolve();
+    return new Promise(function(resolve, reject) {
+      var script = document.createElement('script');
+      script.src = ExportUtils.PPTXGEN_CDN;
+      script.onload = resolve;
+      script.onerror = function() { reject(new Error('Failed to load PptxGenJS from CDN')); };
+      document.head.appendChild(script);
+    });
+  },
+
+  /**
+   * Export presentation as PPTX file via PptxGenJS.
+   * Extracts text content from HTML slides and generates downloadable .pptx.
+   * @param {Object} options - { title: string }
+   */
+  exportPPTX: async function(options) {
+    options = options || {};
+    var title = options.title || document.title;
+    var slug = this.getSlug();
+    var blocks = this.getBlockFiles();
+    if (!blocks.length) { alert('No block files found on this page.'); return; }
+
+    this.showProgress('Preparing PPTX export...');
+
+    try {
+      this.updateProgress('Loading PptxGenJS library...', 5);
+      await this.loadPptxGen();
+
+      var pres = new PptxGenJS();
+      pres.layout = 'LAYOUT_WIDE';
+      pres.author = 'Reactive Presentation';
+      pres.title = title;
+
+      // Apply theme colors if available
+      var theme = window.__remarpTheme || {};
+      var bgColor = '1a1d2e';
+      var textColor = 'FFFFFF';
+      var accentColor = 'FF9900';
+      if (theme.colors) {
+        if (theme.colors.dk1) bgColor = theme.colors.dk1.replace('#', '');
+        if (theme.colors.lt1) textColor = theme.colors.lt1.replace('#', '');
+        if (theme.colors.accent1) accentColor = theme.colors.accent1.replace('#', '');
+      }
+
+      pres.defineSlideMaster({
+        title: 'REACTIVE_MASTER',
+        background: { color: bgColor },
+        objects: []
+      });
+
+      // Fetch all block HTML files
+      var totalSlides = 0;
+      for (var i = 0; i < blocks.length; i++) {
+        var file = blocks[i];
+        this.updateProgress('Processing ' + file + '...', 10 + (i / blocks.length) * 70);
+
+        var resp = await fetch(file);
+        if (!resp.ok) continue;
+        var html = await resp.text();
+
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var slides = doc.querySelectorAll('.slide');
+
+        for (var j = 0; j < slides.length; j++) {
+          var slideEl = slides[j];
+          var pptxSlide = pres.addSlide({ masterName: 'REACTIVE_MASTER' });
+          totalSlides++;
+
+          // Extract heading
+          var heading = slideEl.querySelector('h1, h2');
+          if (heading) {
+            var isH1 = heading.tagName === 'H1';
+            pptxSlide.addText(heading.textContent.trim(), {
+              x: 0.5, y: isH1 ? 1.5 : 0.3, w: '90%',
+              fontSize: isH1 ? 36 : 24,
+              color: isH1 ? accentColor : accentColor,
+              bold: true,
+              fontFace: 'Arial'
+            });
+          }
+
+          // Extract bullet points
+          var listItems = slideEl.querySelectorAll('li');
+          if (listItems.length > 0) {
+            var bullets = [];
+            listItems.forEach(function(li) {
+              bullets.push({
+                text: li.textContent.trim(),
+                options: { fontSize: 16, color: textColor, bullet: true, fontFace: 'Arial' }
+              });
+            });
+            pptxSlide.addText(bullets, {
+              x: 0.5, y: heading ? 1.2 : 0.5, w: '90%', h: '60%',
+              valign: 'top'
+            });
+          }
+
+          // Extract paragraphs (non-list text)
+          var paragraphs = slideEl.querySelectorAll('.slide-body > p, .slide-body .col > p');
+          if (paragraphs.length > 0 && listItems.length === 0) {
+            var pTexts = [];
+            paragraphs.forEach(function(p) {
+              if (p.textContent.trim()) {
+                pTexts.push({
+                  text: p.textContent.trim(),
+                  options: { fontSize: 16, color: textColor, fontFace: 'Arial', breakLine: true }
+                });
+              }
+            });
+            if (pTexts.length > 0) {
+              pptxSlide.addText(pTexts, {
+                x: 0.5, y: heading ? 1.2 : 0.5, w: '90%', h: '60%',
+                valign: 'top'
+              });
+            }
+          }
+
+          // Extract code blocks
+          var codeBlocks = slideEl.querySelectorAll('.code-block, pre, code');
+          codeBlocks.forEach(function(codeEl, ci) {
+            var codeText = codeEl.textContent.trim();
+            if (codeText.length > 500) codeText = codeText.substring(0, 500) + '\n...';
+            pptxSlide.addText(codeText, {
+              x: 0.5, y: 3.0 + ci * 1.5, w: '90%',
+              fontSize: 10, color: 'C0C0C0', fontFace: 'Courier New',
+              fill: { color: '2D2D2D' },
+              margin: [8, 12, 8, 12]
+            });
+          });
+
+          // Canvas/interactive placeholders
+          var canvases = slideEl.querySelectorAll('canvas, .canvas-container');
+          canvases.forEach(function(c) {
+            var canvasId = c.id || c.querySelector('canvas')?.id || 'interactive';
+            pptxSlide.addText('[Interactive: ' + canvasId + ']', {
+              x: 1, y: 2.5, w: '80%', h: 2,
+              fontSize: 18, color: '888888', fontFace: 'Arial',
+              align: 'center', valign: 'middle',
+              fill: { color: '2D2D2D' },
+              border: { type: 'dash', pt: 1, color: '666666' }
+            });
+          });
+
+          // Mermaid placeholders
+          var mermaids = slideEl.querySelectorAll('.mermaid');
+          mermaids.forEach(function() {
+            pptxSlide.addText('[Mermaid Diagram]', {
+              x: 1, y: 2.5, w: '80%', h: 2,
+              fontSize: 18, color: '888888', fontFace: 'Arial',
+              align: 'center', valign: 'middle',
+              fill: { color: '2D2D2D' },
+              border: { type: 'dash', pt: 1, color: '666666' }
+            });
+          });
+        }
+      }
+
+      this.updateProgress('Generating PPTX (' + totalSlides + ' slides)...', 85);
+
+      // Generate and trigger download
+      await pres.writeFile({ fileName: slug + '.pptx' });
+
+      this.hideProgress();
+    } catch (err) {
+      this.hideProgress();
+      alert('PPTX export failed: ' + err.message);
+      console.error('PPTX export error:', err);
+    }
   },
 
   /** Show progress overlay */

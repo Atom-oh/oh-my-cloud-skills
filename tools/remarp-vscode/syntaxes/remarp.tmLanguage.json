@@ -1,0 +1,417 @@
+{
+  "name": "Remarp",
+  "scopeName": "text.html.markdown.remarp",
+  "patterns": [
+    { "include": "#frontmatter" },
+    { "include": "#slide-separator" },
+    { "include": "#directives" },
+    { "include": "#fenced-blocks" },
+    { "include": "#click-attributes" },
+    { "include": "#canvas-dsl" },
+    { "include": "text.html.markdown" }
+  ],
+  "repository": {
+    "frontmatter": {
+      "name": "meta.embedded.block.frontmatter.remarp",
+      "begin": "\\A(---)$",
+      "end": "^(---)$",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.frontmatter.begin.remarp" }
+      },
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.frontmatter.end.remarp" }
+      },
+      "patterns": [
+        { "include": "#remarp-marker" },
+        { "include": "source.yaml" }
+      ]
+    },
+    "remarp-marker": {
+      "name": "meta.remarp-marker.remarp",
+      "match": "^(remarp)(:)\\s*(true)\\s*$",
+      "captures": {
+        "1": { "name": "keyword.control.remarp-marker.remarp" },
+        "2": { "name": "punctuation.separator.key-value.remarp" },
+        "3": { "name": "constant.language.boolean.true.remarp" }
+      }
+    },
+    "slide-separator": {
+      "name": "meta.separator.slide.remarp",
+      "match": "^(---)$",
+      "captures": {
+        "1": { "name": "punctuation.definition.separator.slide.remarp" }
+      }
+    },
+    "directives": {
+      "patterns": [
+        {
+          "name": "meta.directive.type.remarp",
+          "match": "^(@type)\\s+(content|compare|canvas|quiz|tabs|timeline|checklist|slider|code|title|section|image|video|embed|quote|list|table|columns|grid|split|diagram)\\b",
+          "captures": {
+            "1": { "name": "keyword.directive.type.remarp" },
+            "2": { "name": "constant.language.type.remarp" }
+          }
+        },
+        {
+          "name": "meta.directive.layout.remarp",
+          "match": "^(@layout)\\s+(default|two-column|three-column|grid-2x2|grid-3x3|split-40-60|split-60-40|split-30-70|split-70-30|centered|fullscreen)\\b",
+          "captures": {
+            "1": { "name": "keyword.directive.layout.remarp" },
+            "2": { "name": "constant.language.layout.remarp" }
+          }
+        },
+        {
+          "name": "meta.directive.transition.remarp",
+          "match": "^(@transition)\\s+(fade|slide|slide-left|slide-right|slide-up|slide-down|zoom|zoom-in|zoom-out|flip|flip-x|flip-y|rotate|cube|none)\\b",
+          "captures": {
+            "1": { "name": "keyword.directive.transition.remarp" },
+            "2": { "name": "constant.language.transition.remarp" }
+          }
+        },
+        {
+          "name": "meta.directive.background.remarp",
+          "match": "^(@background)\\s+(.+)$",
+          "captures": {
+            "1": { "name": "keyword.directive.background.remarp" },
+            "2": { "name": "string.unquoted.background.remarp" }
+          }
+        },
+        {
+          "name": "meta.directive.class.remarp",
+          "match": "^(@class)\\s+(.+)$",
+          "captures": {
+            "1": { "name": "keyword.directive.class.remarp" },
+            "2": { "name": "entity.name.class.remarp" }
+          }
+        },
+        {
+          "name": "meta.directive.timing.remarp",
+          "match": "^(@timing)\\s+(\\d+(?:ms|s)?)\\b",
+          "captures": {
+            "1": { "name": "keyword.directive.timing.remarp" },
+            "2": { "name": "constant.numeric.timing.remarp" }
+          }
+        },
+        {
+          "name": "meta.directive.canvas-id.remarp",
+          "match": "^(@canvas-id)\\s+(\\w+)\\b",
+          "captures": {
+            "1": { "name": "keyword.directive.canvas-id.remarp" },
+            "2": { "name": "variable.other.canvas-id.remarp" }
+          }
+        },
+        {
+          "name": "meta.directive.animation.remarp",
+          "match": "^(@animation)\\s+(fade-in|fade-up|fade-down|fade-left|fade-right|zoom-in|zoom-out|slide-up|slide-down|slide-left|slide-right|bounce|pulse|shake|flip|rotate|scale-up|scale-down|typewriter|draw|morph|blur-in|blur-out|none)\\b",
+          "captures": {
+            "1": { "name": "keyword.directive.animation.remarp" },
+            "2": { "name": "constant.language.animation.remarp" }
+          }
+        },
+        {
+          "name": "meta.directive.fragment.remarp",
+          "match": "^(@fragment)\\s+(true|false)\\b",
+          "captures": {
+            "1": { "name": "keyword.directive.fragment.remarp" },
+            "2": { "name": "constant.language.boolean.remarp" }
+          }
+        },
+        {
+          "name": "meta.directive.auto-animate.remarp",
+          "match": "^(@auto-animate)\\s+(true|false)\\b",
+          "captures": {
+            "1": { "name": "keyword.directive.auto-animate.remarp" },
+            "2": { "name": "constant.language.boolean.remarp" }
+          }
+        },
+        {
+          "name": "meta.directive.generic.remarp",
+          "match": "^(@[a-zA-Z][a-zA-Z0-9-]*)(?:\\s+(.*))?$",
+          "captures": {
+            "1": { "name": "keyword.directive.remarp" },
+            "2": { "name": "string.unquoted.directive-value.remarp" }
+          }
+        }
+      ]
+    },
+    "fenced-blocks": {
+      "patterns": [
+        {
+          "name": "meta.block.notes.remarp",
+          "begin": "^(:::)(notes)\\s*$",
+          "end": "^(:::)\\s*$",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.block.begin.remarp" },
+            "2": { "name": "entity.name.tag.notes.remarp" }
+          },
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.block.end.remarp" }
+          },
+          "contentName": "comment.block.notes.remarp"
+        },
+        {
+          "name": "meta.block.canvas.remarp",
+          "begin": "^(:::)(canvas)\\s*$",
+          "end": "^(:::)\\s*$",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.block.begin.remarp" },
+            "2": { "name": "entity.name.tag.canvas.remarp" }
+          },
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.block.end.remarp" }
+          },
+          "patterns": [
+            { "include": "#canvas-dsl" }
+          ],
+          "contentName": "meta.embedded.canvas.remarp"
+        },
+        {
+          "name": "meta.block.click.remarp",
+          "begin": "^(:::)(click)(?:\\s+(\\d+))?\\s*$",
+          "end": "^(:::)\\s*$",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.block.begin.remarp" },
+            "2": { "name": "entity.name.tag.click.remarp" },
+            "3": { "name": "constant.numeric.order.remarp" }
+          },
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.block.end.remarp" }
+          },
+          "patterns": [
+            { "include": "#click-attributes" },
+            { "include": "text.html.markdown" }
+          ]
+        },
+        {
+          "name": "meta.block.left.remarp",
+          "begin": "^(:::)\\s*(left)\\s*$",
+          "end": "^(:::)\\s*$",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.block.begin.remarp" },
+            "2": { "name": "entity.name.tag.column.remarp" }
+          },
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.block.end.remarp" }
+          },
+          "patterns": [
+            { "include": "text.html.markdown" }
+          ]
+        },
+        {
+          "name": "meta.block.right.remarp",
+          "begin": "^(:::)\\s*(right)\\s*$",
+          "end": "^(:::)\\s*$",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.block.begin.remarp" },
+            "2": { "name": "entity.name.tag.column.remarp" }
+          },
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.block.end.remarp" }
+          },
+          "patterns": [
+            { "include": "text.html.markdown" }
+          ]
+        },
+        {
+          "name": "meta.block.col.remarp",
+          "begin": "^(:::)\\s*(col)(?:\\s+(\\d+))?\\s*$",
+          "end": "^(:::)\\s*$",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.block.begin.remarp" },
+            "2": { "name": "entity.name.tag.column.remarp" },
+            "3": { "name": "constant.numeric.column-span.remarp" }
+          },
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.block.end.remarp" }
+          },
+          "patterns": [
+            { "include": "text.html.markdown" }
+          ]
+        },
+        {
+          "name": "meta.block.cell.remarp",
+          "begin": "^(:::)\\s*(cell)(?:\\s+(\\d+)\\s+(\\d+))?\\s*$",
+          "end": "^(:::)\\s*$",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.block.begin.remarp" },
+            "2": { "name": "entity.name.tag.cell.remarp" },
+            "3": { "name": "constant.numeric.row.remarp" },
+            "4": { "name": "constant.numeric.col.remarp" }
+          },
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.block.end.remarp" }
+          },
+          "patterns": [
+            { "include": "text.html.markdown" }
+          ]
+        },
+        {
+          "name": "meta.block.quiz-option.remarp",
+          "begin": "^(:::)\\s*(option)(?:\\s+(correct))?\\s*$",
+          "end": "^(:::)\\s*$",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.block.begin.remarp" },
+            "2": { "name": "entity.name.tag.option.remarp" },
+            "3": { "name": "keyword.other.correct.remarp" }
+          },
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.block.end.remarp" }
+          },
+          "patterns": [
+            { "include": "text.html.markdown" }
+          ]
+        },
+        {
+          "name": "meta.block.tab.remarp",
+          "begin": "^(:::)\\s*(tab)\\s+(.+)$",
+          "end": "^(:::)\\s*$",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.block.begin.remarp" },
+            "2": { "name": "entity.name.tag.tab.remarp" },
+            "3": { "name": "string.unquoted.tab-name.remarp" }
+          },
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.block.end.remarp" }
+          },
+          "patterns": [
+            { "include": "text.html.markdown" }
+          ]
+        },
+        {
+          "name": "meta.block.item.remarp",
+          "begin": "^(:::)\\s*(item)(?:\\s+(.+))?$",
+          "end": "^(:::)\\s*$",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.block.begin.remarp" },
+            "2": { "name": "entity.name.tag.item.remarp" },
+            "3": { "name": "string.unquoted.item-title.remarp" }
+          },
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.block.end.remarp" }
+          },
+          "patterns": [
+            { "include": "text.html.markdown" }
+          ]
+        },
+        {
+          "name": "meta.block.step.remarp",
+          "begin": "^(:::)\\s*(step)(?:\\s+(\\d{4}))?\\s*$",
+          "end": "^(:::)\\s*$",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.block.begin.remarp" },
+            "2": { "name": "entity.name.tag.step.remarp" },
+            "3": { "name": "constant.numeric.year.remarp" }
+          },
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.block.end.remarp" }
+          },
+          "patterns": [
+            { "include": "text.html.markdown" }
+          ]
+        },
+        {
+          "name": "meta.block.generic.remarp",
+          "begin": "^(:::)\\s*([a-zA-Z][a-zA-Z0-9-]*)(?:\\s+(.*))?$",
+          "end": "^(:::)\\s*$",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.block.begin.remarp" },
+            "2": { "name": "entity.name.tag.remarp" },
+            "3": { "name": "string.unquoted.block-params.remarp" }
+          },
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.block.end.remarp" }
+          },
+          "patterns": [
+            { "include": "text.html.markdown" }
+          ]
+        }
+      ]
+    },
+    "click-attributes": {
+      "patterns": [
+        {
+          "name": "meta.attribute.click.remarp",
+          "match": "(\\{)(\\.click)(?:\\s+(animation)=(fade-in|fade-up|fade-down|fade-left|fade-right|zoom-in|zoom-out|slide-up|slide-down|slide-left|slide-right|bounce|pulse|shake|flip|rotate|scale-up|scale-down|typewriter|draw|morph|blur-in|blur-out|none))?(?:\\s+(order)=(\\d+))?(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.attribute.begin.remarp" },
+            "2": { "name": "markup.inline.attribute.click.remarp" },
+            "3": { "name": "entity.other.attribute-name.animation.remarp" },
+            "4": { "name": "constant.language.animation.remarp" },
+            "5": { "name": "entity.other.attribute-name.order.remarp" },
+            "6": { "name": "constant.numeric.order.remarp" },
+            "7": { "name": "punctuation.definition.attribute.end.remarp" }
+          }
+        },
+        {
+          "name": "meta.attribute.inline.remarp",
+          "match": "(\\{)\\s*([^}]+)\\s*(\\})",
+          "captures": {
+            "1": { "name": "punctuation.definition.attribute.begin.remarp" },
+            "2": { "name": "markup.inline.attribute.remarp" },
+            "3": { "name": "punctuation.definition.attribute.end.remarp" }
+          }
+        }
+      ]
+    },
+    "canvas-dsl": {
+      "patterns": [
+        {
+          "name": "keyword.canvas.shape.remarp",
+          "match": "\\b(box|circle|ellipse|rect|diamond|hexagon|triangle|line|arrow|polyline|polygon|path|text|icon|image|group|container)\\b"
+        },
+        {
+          "name": "keyword.canvas.position.remarp",
+          "match": "\\b(at|to|from|x|y|x1|y1|x2|y2|cx|cy|rx|ry|points)\\b"
+        },
+        {
+          "name": "keyword.canvas.dimension.remarp",
+          "match": "\\b(size|width|height|w|h|r|radius)\\b"
+        },
+        {
+          "name": "keyword.canvas.style.remarp",
+          "match": "\\b(color|fill|stroke|stroke-width|opacity|font-size|font-weight|text-anchor)\\b"
+        },
+        {
+          "name": "keyword.canvas.animation.remarp",
+          "match": "\\b(animate|animation|delay|duration|easing|loop|direction)\\b"
+        },
+        {
+          "name": "keyword.canvas.transform.remarp",
+          "match": "\\b(rotate|scale|translate|skew|transform|origin)\\b"
+        },
+        {
+          "name": "keyword.canvas.reference.remarp",
+          "match": "\\b(id|class|ref|use|href|link)\\b"
+        },
+        {
+          "name": "constant.numeric.canvas.remarp",
+          "match": "\\b(\\d+(?:\\.\\d+)?)(px|%|em|rem|vh|vw|deg|rad|s|ms)?\\b"
+        },
+        {
+          "name": "string.quoted.double.canvas.remarp",
+          "match": "\"[^\"]*\""
+        },
+        {
+          "name": "string.quoted.single.canvas.remarp",
+          "match": "'[^']*'"
+        },
+        {
+          "name": "constant.other.color.canvas.remarp",
+          "match": "#[0-9a-fA-F]{3,8}\\b"
+        },
+        {
+          "name": "constant.language.color.canvas.remarp",
+          "match": "\\b(transparent|currentColor|inherit|initial|unset|black|white|red|green|blue|yellow|orange|purple|pink|gray|grey|cyan|magenta)\\b"
+        },
+        {
+          "name": "variable.canvas.remarp",
+          "match": "\\$[a-zA-Z_][a-zA-Z0-9_]*"
+        },
+        {
+          "name": "comment.line.canvas.remarp",
+          "match": "//.*$"
+        }
+      ]
+    }
+  }
+}

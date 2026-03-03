@@ -14,6 +14,13 @@ class SlideFramework {
     this.presenterNotes = options.presenterNotes || {};
     this.presenterView = null;
     this.slideActions = {};  // { slideIndex: { up: fn, down: fn } }
+    this.pagination = options.pagination || false;
+    // Fragment system
+    this.fragmentState = {};  // { slideIndex: { fragments: [], currentIndex: -1 } }
+    // Overview mode
+    this.overviewMode = false;
+    // Custom key mappings
+    this.keyMappings = {};
     this.init();
   }
 
@@ -23,16 +30,143 @@ class SlideFramework {
       this.totalSlides = this.slides.length;
       if (this.totalSlides === 0) return;
 
+      // Load custom key mappings from window.__remarpKeys
+      if (window.__remarpKeys && typeof window.__remarpKeys === 'object') {
+        this.keyMappings = window.__remarpKeys;
+      }
+
+      // Read theme config
+      if (window.__remarpTheme) {
+        if (!this.footer && window.__remarpTheme.footer) this.footer = window.__remarpTheme.footer;
+        if (window.__remarpTheme.pagination !== undefined) this.pagination = window.__remarpTheme.pagination;
+      }
+
       this.createProgressBar();
       this.createSlideCounter();
       this.createNavHint();
+      if (this.pagination) this.createSlideNumber();
+      this.createRefContainer();
       this.bindKeys();
       this.bindTouch();
       this.handleHash();
       if (this.footer) this.createFooter();
       if (this.logoSrc) this.createLogo();
+      this.initFragments(this.currentSlide);
       this.showSlide(this.currentSlide, false);
     });
+  }
+
+  // Fragment system methods
+  initFragments(slideIndex) {
+    const slide = this.slides[slideIndex];
+    if (!slide) return;
+
+    const fragments = Array.from(slide.querySelectorAll('.fragment'));
+    // Sort by data-fragment-index if present, otherwise use DOM order
+    fragments.sort((a, b) => {
+      const aIdx = parseInt(a.dataset.fragmentIndex, 10) || 0;
+      const bIdx = parseInt(b.dataset.fragmentIndex, 10) || 0;
+      return aIdx - bIdx;
+    });
+
+    this.fragmentState[slideIndex] = {
+      fragments: fragments,
+      currentIndex: -1
+    };
+  }
+
+  revealNextFragment() {
+    const state = this.fragmentState[this.currentSlide];
+    if (!state || state.fragments.length === 0) return false;
+
+    if (state.currentIndex < state.fragments.length - 1) {
+      state.currentIndex++;
+      const fragment = state.fragments[state.currentIndex];
+      fragment.classList.add('visible');
+      return true; // Fragment revealed, don't advance slide
+    }
+    return false; // All fragments revealed, can advance slide
+  }
+
+  revealPrevFragment() {
+    const state = this.fragmentState[this.currentSlide];
+    if (!state || state.fragments.length === 0) return false;
+
+    if (state.currentIndex >= 0) {
+      const fragment = state.fragments[state.currentIndex];
+      fragment.classList.remove('visible');
+      state.currentIndex--;
+      return true; // Fragment hidden, don't go back slide
+    }
+    return false; // No fragments to hide, can go back slide
+  }
+
+  resetFragments(slideIndex) {
+    const state = this.fragmentState[slideIndex];
+    if (!state) return;
+
+    state.fragments.forEach(f => f.classList.remove('visible'));
+    state.currentIndex = -1;
+  }
+
+  hasUnrevealedFragments() {
+    const state = this.fragmentState[this.currentSlide];
+    if (!state || state.fragments.length === 0) return false;
+    return state.currentIndex < state.fragments.length - 1;
+  }
+
+  // Overview mode methods
+  toggleOverview() {
+    this.overviewMode = !this.overviewMode;
+    const deck = this.getDeck();
+    if (!deck) return;
+
+    if (this.overviewMode) {
+      deck.classList.add('overview-mode');
+      this.slides.forEach((slide, idx) => {
+        slide.classList.add('overview-visible');
+        slide.classList.toggle('current', idx === this.currentSlide);
+        slide.onclick = () => {
+          this.goTo(idx);
+          this.toggleOverview();
+        };
+      });
+    } else {
+      deck.classList.remove('overview-mode');
+      this.slides.forEach(slide => {
+        slide.classList.remove('overview-visible', 'current');
+        slide.onclick = null;
+      });
+      this.showSlide(this.currentSlide, false);
+    }
+  }
+
+  // Get action for a key (supports custom mappings)
+  getKeyAction(key) {
+    // Check custom mappings first
+    if (this.keyMappings[key]) {
+      return this.keyMappings[key];
+    }
+    // Default mappings
+    const defaults = {
+      'ArrowRight': 'next',
+      ' ': 'next',
+      'PageDown': 'next',
+      'ArrowLeft': 'prev',
+      'PageUp': 'prev',
+      'ArrowDown': 'down',
+      'ArrowUp': 'up',
+      'Home': 'first',
+      'End': 'last',
+      'p': 'presenter',
+      'P': 'presenter',
+      'f': 'fullscreen',
+      'F': 'fullscreen',
+      'o': 'overview',
+      'O': 'overview',
+      'Escape': 'escape'
+    };
+    return defaults[key] || null;
   }
 
   registerSlideAction(slideIndex, handlers) {
@@ -51,6 +185,10 @@ class SlideFramework {
     const hide = slide.querySelector('img') !== null;
     if (logo) logo.style.display = hide ? 'none' : '';
     if (footer) footer.style.display = hide ? 'none' : '';
+    const slideNum = deck.querySelector('.slide-number');
+    if (slideNum) slideNum.style.display = hide ? 'none' : '';
+    const slideRef = deck.querySelector('.slide-ref');
+    if (slideRef) slideRef.style.display = hide ? 'none' : '';
   }
 
   createFooter() {
@@ -92,11 +230,25 @@ class SlideFramework {
   createNavHint() {
     const hint = document.createElement('div');
     hint.className = 'nav-hint';
-    hint.textContent = '← → Space  |  F: Fullscreen  |  P: Presenter';
+    hint.textContent = '← → Space  |  F: Fullscreen  |  P: Presenter  |  O: Overview';
     (this.getDeck() || document.body).appendChild(hint);
     this.navHint = hint;
     // Fade out after 5s
     setTimeout(() => { hint.style.opacity = '0'; }, 5000);
+  }
+
+  createSlideNumber() {
+    const el = document.createElement('div');
+    el.className = 'slide-number';
+    (this.getDeck() || document.body).appendChild(el);
+    this.slideNumber = el;
+  }
+
+  createRefContainer() {
+    const el = document.createElement('div');
+    el.className = 'slide-ref';
+    (this.getDeck() || document.body).appendChild(el);
+    this.refContainer = el;
   }
 
   bindKeys() {
@@ -104,54 +256,69 @@ class SlideFramework {
       // Don't navigate if user is typing in an input
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-      switch (e.key) {
-        case 'ArrowRight':
-        case ' ':
-        case 'PageDown':
+      const action = this.getKeyAction(e.key);
+      if (!action) return;
+
+      switch (action) {
+        case 'next':
           e.preventDefault();
-          this.next();
-          break;
-        case 'ArrowLeft':
-        case 'PageUp':
-          e.preventDefault();
-          this.prev();
-          break;
-        case 'ArrowDown':
-          e.preventDefault();
-          if (this.slideActions[this.currentSlide]?.down) {
-            this.slideActions[this.currentSlide].down();
-          } else {
-            this.cycleInteractive(1);
+          // If in overview mode, do nothing on next
+          if (this.overviewMode) return;
+          // Try to reveal next fragment first
+          if (!this.revealNextFragment()) {
+            this.next();
           }
           break;
-        case 'ArrowUp':
+        case 'prev':
           e.preventDefault();
-          if (this.slideActions[this.currentSlide]?.up) {
-            this.slideActions[this.currentSlide].up();
-          } else {
-            this.cycleInteractive(-1);
+          if (this.overviewMode) return;
+          // Try to hide previous fragment first
+          if (!this.revealPrevFragment()) {
+            this.prev();
           }
           break;
-        case 'Home':
+        case 'down':
+          e.preventDefault();
+          if (this.slideActions[this.currentSlide] && this.slideActions[this.currentSlide].down) {
+            const result = this.slideActions[this.currentSlide].down();
+            if (result === false) this.next();
+          } else if (!this.cycleInteractive(1)) {
+            this.next();
+          }
+          break;
+        case 'up':
+          e.preventDefault();
+          if (this.slideActions[this.currentSlide] && this.slideActions[this.currentSlide].up) {
+            const result = this.slideActions[this.currentSlide].up();
+            if (result === false) this.prev();
+          } else if (!this.cycleInteractive(-1)) {
+            this.prev();
+          }
+          break;
+        case 'first':
           e.preventDefault();
           this.goTo(0);
           break;
-        case 'End':
+        case 'last':
           e.preventDefault();
           this.goTo(this.totalSlides - 1);
           break;
-        case 'p':
-        case 'P':
+        case 'presenter':
           e.preventDefault();
           this.openPresenterView();
           break;
-        case 'f':
-        case 'F':
+        case 'fullscreen':
           e.preventDefault();
           this.toggleFullscreen();
           break;
-        case 'Escape':
-          if (document.fullscreenElement) {
+        case 'overview':
+          e.preventDefault();
+          this.toggleOverview();
+          break;
+        case 'escape':
+          if (this.overviewMode) {
+            this.toggleOverview();
+          } else if (document.fullscreenElement) {
             document.exitFullscreen();
           }
           break;
@@ -189,19 +356,38 @@ class SlideFramework {
   showSlide(index, animate = true) {
     if (index < 0 || index >= this.totalSlides) return;
     if (this.transitioning) return;
+    if (this.overviewMode) return; // Don't animate in overview mode
 
-    const prev = this.slides[this.currentSlide];
+    const prevIndex = this.currentSlide;
+    const prev = this.slides[prevIndex];
     const next = this.slides[index];
+
+    // Reset fragments on previous slide
+    if (prevIndex !== index) {
+      this.resetFragments(prevIndex);
+    }
+
+    // Initialize fragments for next slide
+    if (!this.fragmentState[index]) {
+      this.initFragments(index);
+    }
+
+    // Get transition type from slide's data-transition attribute
+    const transition = next.dataset.transition || 'fade';
 
     if (animate && prev !== next) {
       this.transitioning = true;
       prev.classList.remove('active');
       prev.classList.add('leaving');
+
+      // Add transition-specific classes
+      prev.classList.add(`transition-${transition}-out`);
       next.classList.add('entering');
+      next.classList.add(`transition-${transition}-in`);
 
       setTimeout(() => {
-        prev.classList.remove('leaving');
-        next.classList.remove('entering');
+        prev.classList.remove('leaving', `transition-${transition}-out`);
+        next.classList.remove('entering', `transition-${transition}-in`);
         next.classList.add('active');
         this.transitioning = false;
       }, 350);
@@ -213,6 +399,7 @@ class SlideFramework {
     this.currentSlide = index;
     this.updateProgress();
     this.updateFooterVisibility(next);
+    this.updateRefs(next);
     window.location.hash = index + 1;
 
     if (this.onSlideChange) {
@@ -234,6 +421,21 @@ class SlideFramework {
     const pct = ((this.currentSlide + 1) / this.totalSlides) * 100;
     if (this.progressBar) this.progressBar.style.width = pct + '%';
     if (this.counter) this.counter.textContent = `${this.currentSlide + 1} / ${this.totalSlides}`;
+    if (this.slideNumber) {
+      this.slideNumber.textContent = (this.currentSlide + 1) + ' / ' + this.totalSlides;
+    }
+  }
+
+  updateRefs(slide) {
+    if (!this.refContainer) return;
+    const refsData = slide.dataset.refs;
+    if (!refsData) { this.refContainer.innerHTML = ''; return; }
+    try {
+      const refs = JSON.parse(refsData);
+      this.refContainer.innerHTML = refs.map(r =>
+        '<a href="' + r.url + '" target="_blank" rel="noopener">' + r.label + '</a>'
+      ).join(' &middot; ');
+    } catch(e) { this.refContainer.innerHTML = ''; }
   }
 
   toggleFullscreen() {
@@ -248,7 +450,7 @@ class SlideFramework {
 
   cycleInteractive(direction) {
     const slide = this.slides[this.currentSlide];
-    if (!slide) return;
+    if (!slide) return false;
 
     // Try tabs
     const tabBar = slide.querySelector('.tab-bar');
@@ -256,8 +458,11 @@ class SlideFramework {
       const tabs = Array.from(tabBar.querySelectorAll('.tab-btn'));
       const activeIdx = tabs.findIndex(t => t.classList.contains('active'));
       const nextIdx = Math.max(0, Math.min(activeIdx + direction, tabs.length - 1));
-      if (nextIdx !== activeIdx) tabs[nextIdx].click();
-      return;
+      if (nextIdx !== activeIdx) {
+        tabs[nextIdx].click();
+        return true;
+      }
+      return false;
     }
 
     // Try compare toggles
@@ -266,9 +471,14 @@ class SlideFramework {
       const btns = Array.from(toggle.querySelectorAll('.compare-btn'));
       const activeIdx = btns.findIndex(b => b.classList.contains('active'));
       const nextIdx = Math.max(0, Math.min(activeIdx + direction, btns.length - 1));
-      if (nextIdx !== activeIdx) btns[nextIdx].click();
-      return;
+      if (nextIdx !== activeIdx) {
+        btns[nextIdx].click();
+        return true;
+      }
+      return false;
     }
+
+    return false;
   }
 }
 
