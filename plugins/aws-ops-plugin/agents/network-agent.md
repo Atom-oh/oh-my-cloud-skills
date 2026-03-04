@@ -151,6 +151,36 @@ flowchart TD
 
 ---
 
+## Team Collaboration
+
+인시던트 대응 팀의 일원으로 스폰될 때 (Agent tool의 team_name 파라미터가 설정된 경우):
+
+### 태스크 수신
+- 인시던트 컨텍스트, 심각도, 트리아지 결과를 파싱
+- 할당된 도메인 (VPC CNI, 로드밸런서, DNS, 보안그룹)에만 집중
+
+### 결과 보고 형식
+
+| Check | Status | Details |
+|-------|--------|---------|
+| VPC CNI | OK/WARN/CRIT | IP 할당, ENI 상태 |
+| Load Balancer | OK/WARN/CRIT | ALB/NLB 타겟 헬스 |
+| DNS Resolution | OK/WARN/CRIT | CoreDNS 상태, 해석 성공률 |
+| Security Groups | OK/WARN/CRIT | 인바운드/아웃바운드 룰 |
+
++ 근본원인 후보 + 권장 조치 + 검증 명령어
+
+### 완료 신호
+- TaskUpdate로 태스크를 completed 처리
+- "[Network] 조사 완료: [요약]" 보고
+
+### 제약
+- 수정 실행 금지 (코디네이터에게 보고만 수행)
+- 다른 도메인 (EKS 클러스터, IAM 등) 조사 금지
+- 교차 도메인 관찰 사항은 결과에 포함하여 코디네이터가 활용
+
+---
+
 ## Output Format
 
 ```

@@ -85,6 +85,7 @@ Reference: `{plugin-dir}/skills/reactive-presentation/references/remarp-format-g
 
 사용자가 명시적으로 요청할 때만 사용:
 
+- **slides.json (런타임 렌더링)**: 사용자가 JSON 기반 런타임 렌더링을 명시적으로 요청할 때만 사용. `slide-renderer.js`가 런타임에 HTML 생성. Reference: `{plugin-dir}/skills/reactive-presentation/references/slide-patterns.md` → "JSON Authoring Mode"
 - **Marp Markdown (레거시)**: Frontmatter + `---` 슬라이드 구분, `<!-- block: name -->`, `<!-- type: ... -->` 디렉티브. Reference: `{plugin-dir}/skills/reactive-presentation/references/marp-format-guide.md`
 - **Manual HTML**: Rich interactivity가 필요할 때 HTML을 직접 작성
 
@@ -121,6 +122,7 @@ python3 {plugin-dir}/skills/reactive-presentation/scripts/remarp_to_slides.py sy
 
 **Alternative Builds (명시적 요청 시에만)**
 
+- **slides.json**: `index.html` 보일러플레이트를 생성하고, `slide-renderer.js`가 런타임에 `slides.json`을 읽어 HTML을 동적 생성. Reference: `{plugin-dir}/skills/reactive-presentation/references/framework-guide.md` → "index.html 보일러플레이트"
 - **Marp**: `python3 {plugin-dir}/skills/reactive-presentation/scripts/marp_to_slides.py content.md -o {repo}/{slug}/ --theme-dir {repo}/common/pptx-theme/`
 - **Manual**: Build HTML directly with Canvas animations and interactive elements inline
 
@@ -139,7 +141,7 @@ HTML 빌드 후 Remarp 파일이 수정될 때마다 사용자가 수동으로 H
 
 ### Phase 7: Enhancement
 
-- Add Canvas animations to `<!-- type: canvas -->` slides using animation-utils.js
+- Add Canvas animations to `@type: canvas` slides using animation-utils.js
 - Add interactive elements (compare toggles, tab content, timelines, sliders)
 - Extract AWS Architecture Icons if needed:
   ```bash
@@ -168,7 +170,7 @@ HTML 빌드 후 Remarp 파일이 수정될 때마다 사용자가 수동으로 H
 
 Copy assets: `cp {plugin-dir}/skills/reactive-presentation/assets/* {repo}/common/`
 
-### Phase 8: Quality Review (필수 — 생략 불가)
+### Phase 9: Quality Review (필수 — 생략 불가)
 
 콘텐츠 완성 후 배포/완료 선언 전에 반드시:
 1. content-review-agent 호출 → `review content at [파일경로]`
@@ -177,7 +179,7 @@ Copy assets: `cp {plugin-dir}/skills/reactive-presentation/assets/* {repo}/commo
 
 > ⚠️ 이 단계를 건너뛰고 배포하는 것은 금지됩니다.
 
-### Phase 9: Verify
+### Phase 10: Verify
 
 For each block HTML file, check:
 - First slide is Session Cover (NOT `.title-slide` class):
@@ -193,7 +195,7 @@ For each block HTML file, check:
 - Presenter view (P key) shows notes correctly
 - Last slide is Thank You with `← 목차로 돌아가기` link to `index.html` and `다음: Block N+1 →` link to next block (omit next link for final block)
 
-### Phase 10: Deploy
+### Phase 11: Deploy
 
 ```bash
 git add common/ {slug}/ index.html
@@ -284,6 +286,30 @@ presentation-agent → content-review-agent → Deploy (GitHub Pages)
 ```
 
 After creating presentation content, invoke content-review-agent for quality review before deployment.
+
+---
+
+## Team Collaboration
+
+팀의 일원으로 스폰될 때 (Agent tool의 team_name 파라미터가 설정된 경우):
+
+### 태스크 수신
+- TaskGet으로 할당된 태스크를 읽고 블록 할당 정보를 파싱
+- 입력: 아웃라인 파일 경로, 담당 블록 번호, 공통 설정 (테마, 스피커 정보)
+
+### 산출물
+- 지정된 경로에 Remarp 소스 + HTML 아티팩트 작성
+- 일관된 네이밍: `{NN}-{slug}.remarp.md` / `{NN}-{slug}.html`
+- content-review-agent 호출 생략 (팀 리더가 배치 리뷰 수행)
+
+### 완료 신호
+- TaskUpdate로 태스크를 completed 처리
+- 아티팩트 경로 + 슬라이드 수 + 요약을 보고
+
+### 제약
+- 아웃라인/구조가 승인된 후에만 콘텐츠 작성 시작
+- 다른 에이전트가 담당하는 블록의 아티팩트 수정 금지
+- 공통 assets (common/) 디렉토리는 팀 리더만 관리
 
 ---
 

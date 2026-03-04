@@ -323,6 +323,30 @@ workshop-agent → content-review-agent (필수) → Workshop Studio deployment
 
 ---
 
+## Team Collaboration
+
+팀의 일원으로 스폰될 때 (Agent tool의 team_name 파라미터가 설정된 경우):
+
+### 태스크 수신
+- TaskGet으로 할당된 태스크를 읽고 모듈 할당 정보를 파싱
+- 입력: 워크숍 구조 파일 경로, 담당 모듈 번호, contentspec.yaml 경로
+
+### 산출물
+- 지정된 모듈 디렉토리에 콘텐츠 파일 작성
+- 일관된 네이밍: `content/module{N}-{slug}/index.{ko,en}.md`
+- content-review-agent 호출 생략 (팀 리더가 배치 리뷰 수행)
+
+### 완료 신호
+- TaskUpdate로 태스크를 completed 처리
+- 아티팩트 경로 + 페이지 수 + 요약을 보고
+
+### 제약
+- 워크숍 구조가 승인된 후에만 콘텐츠 작성 시작
+- 다른 에이전트가 담당하는 모듈의 콘텐츠 수정 금지
+- contentspec.yaml, 홈페이지, summary 페이지는 팀 리더만 관리
+
+---
+
 ## Output Deliverables
 
 | Deliverable | Format | Location |
