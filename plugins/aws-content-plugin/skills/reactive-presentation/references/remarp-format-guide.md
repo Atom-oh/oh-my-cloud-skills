@@ -5,10 +5,10 @@ Remarp is the next-generation content authoring format for reactive-presentation
 ## File Convention
 
 ### Single-File Format
-For simple presentations, use a single `.remarp.md` file:
+For simple presentations, use a single `.md` file (previously `.remarp.md`):
 
 ```
-my-presentation.remarp.md
+my-presentation.md
 ```
 
 ### Multi-File Project Format
@@ -16,14 +16,14 @@ For larger presentations, split content into multiple files:
 
 ```
 my-presentation/
-  _presentation.remarp.md    # Global frontmatter (required)
-  01-introduction.remarp.md  # Block 1
-  02-architecture.remarp.md  # Block 2
-  03-implementation.remarp.md # Block 3
+  _presentation.md           # Global frontmatter (required)
+  01-introduction.md         # Block 1
+  02-architecture.md         # Block 2
+  03-implementation.md       # Block 3
   assets/                    # Images, diagrams
 ```
 
-The `_presentation.remarp.md` file contains only frontmatter and imports blocks by filename pattern (`01-*.remarp.md`, `02-*.remarp.md`, etc.).
+The `_presentation.md` file contains only frontmatter and imports blocks by filename pattern (`01-*.md`, `02-*.md`, etc.). All files must have `remarp: true` in frontmatter to be recognized. The `.remarp.md` extension is also supported for backward compatibility.
 
 ---
 
@@ -936,7 +936,7 @@ Remember to explain both options
 
 ## Complete Example: Multi-Block Presentation
 
-### _presentation.remarp.md
+### _presentation.md
 
 ```yaml
 ---
@@ -969,7 +969,7 @@ transition:
 ---
 ```
 
-### 01-fundamentals.remarp.md
+### 01-fundamentals.md
 
 ```markdown
 ---
@@ -1058,7 +1058,7 @@ Show the Lambda console and execution flow.
 - [ ] Fixed monthly fee
 ```
 
-### 02-patterns.remarp.md
+### 02-patterns.md
 
 ````markdown
 ---
@@ -1177,7 +1177,7 @@ Advanced observability
 Native OpenTelemetry
 ````
 
-### 03-hands-on.remarp.md
+### 03-hands-on.md
 
 ````markdown
 ---
@@ -1305,7 +1305,7 @@ Share links to documentation.
 
 ```bash
 # Convert single file
-remarp build presentation.remarp.md -o ./output/
+remarp build presentation.md -o ./output/
 
 # Convert multi-file project
 remarp build ./my-presentation/ -o ./output/
@@ -1314,10 +1314,10 @@ remarp build ./my-presentation/ -o ./output/
 remarp watch ./my-presentation/ -o ./output/
 
 # Export to PDF
-remarp export presentation.remarp.md --format pdf
+remarp export presentation.md --format pdf
 
 # Validate without building
-remarp validate presentation.remarp.md
+remarp validate presentation.md
 ```
 
 ---

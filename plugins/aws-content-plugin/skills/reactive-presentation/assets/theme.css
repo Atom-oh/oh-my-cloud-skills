@@ -1157,6 +1157,92 @@ input[type="range"]::-webkit-slider-thumb {
 .columns-1-2 > *:last-child { flex: 2; }
 
 /* ============================================================
+   Slide Sidebar (PowerPoint-style thumbnail navigation)
+   ============================================================ */
+
+.slide-sidebar {
+  position: fixed;
+  left: 0; top: 0;
+  width: 220px;
+  height: 100vh;
+  background: #08090d;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 100;
+  padding: 10px;
+  display: none;
+  scrollbar-width: thin;
+}
+
+body.sidebar-visible .slide-sidebar {
+  display: block;
+}
+
+body.sidebar-visible {
+  justify-content: center;
+}
+
+body.sidebar-visible .slide-deck {
+  width: calc(100vw - 220px);
+  max-width: calc(100vh * 16 / 9);
+  max-height: calc((100vw - 220px) * 9 / 16);
+  margin-left: 220px;
+  margin-right: auto;
+}
+
+/* Sidebar thumbnails */
+.sidebar-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin-bottom: 8px;
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  overflow: hidden;
+  position: relative;
+  background: var(--bg-primary);
+  transition: border-color var(--transition-fast);
+}
+
+.sidebar-thumb:hover { border-color: var(--accent-light); }
+.sidebar-thumb.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.sidebar-thumb-number {
+  position: absolute;
+  bottom: 2px; left: 4px;
+  font-size: 9px;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, .6);
+  padding: 1px 4px;
+  border-radius: 2px;
+  z-index: 2;
+}
+
+.sidebar-thumb-content {
+  width: 1920px;
+  height: 1080px;
+  transform-origin: top left;
+  pointer-events: none;
+  /* scale is calculated in JS and applied as inline style */
+}
+
+/* Hide sidebar in fullscreen (sibling selector fallback) */
+.slide-deck:fullscreen ~ .slide-sidebar,
+.slide-deck:-webkit-full-screen ~ .slide-sidebar { display: none !important; }
+
+/* Hide sidebar in overview mode */
+.overview-mode ~ .slide-sidebar { display: none !important; }
+
+/* Hide sidebar in print */
+@media print {
+  .slide-sidebar { display: none !important; }
+}
+
+/* ============================================================
    Overview Mode
    ============================================================ */
 

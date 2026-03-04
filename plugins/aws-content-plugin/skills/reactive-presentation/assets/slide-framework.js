@@ -19,6 +19,11 @@ class SlideFramework {
     this.fragmentState = {};  // { slideIndex: { fragments: [], currentIndex: -1 } }
     // Overview mode
     this.overviewMode = false;
+    // Sidebar
+    this.sidebarEnabled = options.sidebar !== false;
+    this.sidebarVisible = false;
+    this.sidebarWasVisible = false; // track state across fullscreen
+    this.sidebar = null;
     // Custom key mappings
     this.keyMappings = {};
     this.init();
@@ -46,6 +51,13 @@ class SlideFramework {
       this.createNavHint();
       if (this.pagination) this.createSlideNumber();
       this.createRefContainer();
+      if (this.sidebarEnabled) {
+        this.createSidebar();
+        this.bindSidebarFullscreen();
+        if (!document.fullscreenElement) {
+          this.showSidebar();
+        }
+      }
       this.bindKeys();
       this.bindTouch();
       this.handleHash();
@@ -141,6 +153,86 @@ class SlideFramework {
     }
   }
 
+  // Sidebar methods
+  createSidebar() {
+    const sidebar = document.createElement('div');
+    sidebar.className = 'slide-sidebar';
+
+    this.slides.forEach((slide, idx) => {
+      const thumb = document.createElement('div');
+      thumb.className = 'sidebar-thumb';
+      thumb.dataset.index = idx;
+
+      const content = document.createElement('div');
+      content.className = 'sidebar-thumb-content';
+      content.innerHTML = slide.innerHTML;
+
+      // Calculate scale after layout: thumbWidth / 1920
+      // Use a fixed approximation; actual width is ~196px (220 - 2*10 padding - 2*2 border)
+      const thumbWidth = 196;
+      const scale = thumbWidth / 1920;
+      content.style.transform = `scale(${scale})`;
+
+      const number = document.createElement('span');
+      number.className = 'sidebar-thumb-number';
+      number.textContent = idx + 1;
+
+      thumb.appendChild(content);
+      thumb.appendChild(number);
+      thumb.addEventListener('click', () => this.goTo(idx));
+      sidebar.appendChild(thumb);
+    });
+
+    document.body.prepend(sidebar);
+    this.sidebar = sidebar;
+  }
+
+  toggleSidebar() {
+    if (this.sidebarVisible) {
+      this.hideSidebar();
+    } else {
+      this.showSidebar();
+    }
+  }
+
+  showSidebar() {
+    if (!this.sidebar) return;
+    document.body.classList.add('sidebar-visible');
+    this.sidebarVisible = true;
+    this.updateSidebarHighlight(this.currentSlide);
+  }
+
+  hideSidebar() {
+    if (!this.sidebar) return;
+    document.body.classList.remove('sidebar-visible');
+    this.sidebarVisible = false;
+  }
+
+  updateSidebarHighlight(index) {
+    if (!this.sidebar) return;
+    const thumbs = this.sidebar.querySelectorAll('.sidebar-thumb');
+    thumbs.forEach(t => t.classList.remove('active'));
+    if (thumbs[index]) {
+      thumbs[index].classList.add('active');
+      thumbs[index].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }
+
+  bindSidebarFullscreen() {
+    document.addEventListener('fullscreenchange', () => {
+      if (document.fullscreenElement) {
+        // Entering fullscreen — remember state and hide
+        this.sidebarWasVisible = this.sidebarVisible;
+        this.hideSidebar();
+      } else {
+        // Exiting fullscreen — restore previous state
+        if (this.sidebarWasVisible) {
+          this.showSidebar();
+        }
+      }
+    });
+  }
+
   // Get action for a key (supports custom mappings)
   getKeyAction(key) {
     // Check custom mappings first
@@ -164,6 +256,8 @@ class SlideFramework {
       'F': 'fullscreen',
       'o': 'overview',
       'O': 'overview',
+      's': 'sidebar',
+      'S': 'sidebar',
       'Escape': 'escape'
     };
     return defaults[key] || null;
@@ -315,6 +409,10 @@ class SlideFramework {
           e.preventDefault();
           this.toggleOverview();
           break;
+        case 'sidebar':
+          e.preventDefault();
+          if (!document.fullscreenElement) this.toggleSidebar();
+          break;
         case 'escape':
           if (this.overviewMode) {
             this.toggleOverview();
@@ -398,6 +496,7 @@ class SlideFramework {
 
     this.currentSlide = index;
     this.updateProgress();
+    if (this.sidebar) this.updateSidebarHighlight(index);
     this.updateFooterVisibility(next);
     this.updateRefs(next);
     window.location.hash = index + 1;

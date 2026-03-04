@@ -255,6 +255,7 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 | N | Toggle speaker notes panel (bottom 20% overlay) |
 | P | Open presenter view (new window, BroadcastChannel sync) |
 | O | Toggle overview mode (slide grid thumbnails) |
+| S | Toggle slide sidebar (non-fullscreen only) |
 | B | Blackout screen |
 | Esc | Exit fullscreen / exit overview |
 | 1-9 | Jump to slide number |
