@@ -1,0 +1,110 @@
+---
+sidebar_position: 4
+title: "비교/탭 슬라이드 데모"
+---
+
+import DemoEmbed from '@site/src/components/DemoEmbed';
+
+# 비교/탭 슬라이드 데모
+
+Compare Toggle과 Tab Content 인터랙티브 슬라이드 데모입니다. AIOps 마스터클래스에서 Traditional Ops vs AIOps 비교와 CloudWatch 서비스별 탭 전환을 보여줍니다.
+
+## 데모
+
+<DemoEmbed
+  src="/oh-my-cloud-skills/demos/compare-tabs/index.html"
+  title="비교/탭 슬라이드 — Traditional Ops vs AIOps, CloudWatch 핵심 개념"
+  height="600px"
+  command="python3 remarp_to_slides.py build aiops-masterclass/"
+  remarpSource="01-fundamentals.remarp.md (slide 3, 8)"
+/>
+
+## 스크린샷
+
+### Compare 슬라이드 — Traditional Ops vs AIOps
+
+![Compare 슬라이드](/img/demos/compare-slide-fhd.png)
+
+### Tabs 슬라이드 — CloudWatch 핵심 개념
+
+![Tabs 슬라이드](/img/demos/tabs-slide9-fhd.png)
+
+## 생성 프롬프트
+
+```
+"AIOps 마스터클래스 Block 1에서:
+1) Traditional Ops vs AIOps 비교 슬라이드 (좌우 토글)
+2) CloudWatch 핵심 개념을 Metrics/Logs/Alarms 탭으로 구분하는 슬라이드"
+```
+
+## Remarp 소스 — Compare 슬라이드
+
+```markdown
+@type: compare
+
+## Traditional Ops vs AIOps
+
+### Traditional Ops
+
+- **수동 모니터링** — 대시보드를 지속적으로 감시
+- **정적 임계값** — 고정된 threshold 기반 알림
+- **사후 대응** — 문제 발생 후 대응 시작
+- **사일로화된 도구** — 분리된 모니터링 시스템
+- **수동 상관관계 분석** — 담당자 경험에 의존
+
+### AIOps
+
+- **ML 기반 이상 탐지** — 자동화된 패턴 인식
+- **동적 기준선** — 학습 기반 적응형 threshold
+- **예방적 운영** — 문제 예측 및 선제 대응
+- **통합 Observability** — 메트릭/로그/트레이스 통합
+- **자동 근본 원인 분석** — AI가 상관관계 파악
+```
+
+## Remarp 소스 — Tabs 슬라이드
+
+```markdown
+@type: tabs
+
+## CloudWatch 핵심 개념
+
+### Metrics
+
+**Custom Metrics 발행**
+- Namespace 구조: `MyApp/ServiceName`
+- 해상도: Standard (60초) / High-Resolution (1초)
+
+### Logs
+
+**Log 구조**
+- **Log Groups** — 애플리케이션/서비스 단위 그룹
+- **Log Streams** — 인스턴스/컨테이너 단위 스트림
+
+### Alarms
+
+**알람 유형**
+- **Static Threshold** — 고정 임계값 기반
+- **Anomaly Detection** — ML 기반 동적 기준선
+```
+
+## 인터랙티브 슬라이드 타입
+
+| 타입 | 문법 | 동작 |
+|------|------|------|
+| `compare` | `@type: compare` + H3 x 2 | 좌/우 토글 버튼으로 비교 |
+| `tabs` | `@type: tabs` + H3 x N | 탭 바로 콘텐츠 전환 |
+
+## 키보드 인터랙션
+
+| 키 | 동작 |
+|----|------|
+| ↓ | 다음 탭/비교 옵션 |
+| ↑ | 이전 탭/비교 옵션 |
+| ← → | 슬라이드 이동 |
+
+## 동작 방식
+
+1. **Compare**: `### H3` 헤딩 2개가 좌/우 패널로 배치, 토글 버튼으로 전환
+2. **Tabs**: `### H3` 헤딩 N개가 탭 바 + 콘텐츠 패널로 변환
+3. 위/아래 화살표 키로 현재 슬라이드 내 탭/비교 옵션 순환
+4. 등록된 슬라이드 액션이 우선, 그 다음 탭/비교 자동 감지

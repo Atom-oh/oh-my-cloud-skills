@@ -348,6 +348,44 @@ Save as `[ProjectName]_Review_Report.md`
 
 ---
 
+## Batch Review Mode
+
+다수 아티팩트를 일괄 리뷰할 때 (팀 워크플로우 집계 또는 명시적 배치 요청):
+
+### 프로세스
+1. 아티팩트 목록 수집 (Glob으로 대상 파일 탐색)
+2. 각 아티팩트에 대해 16개 카테고리 검사 수행
+3. HTML 콘텐츠: 단일 HTTP 서버로 Visual Testing 효율화 (`python3 -m http.server` 1회 시작)
+4. 아티팩트별 점수 + 이슈 산출
+5. 통합 리포트 출력
+
+### 통합 리포트 형식
+
+```markdown
+# Batch Review Report
+
+## Summary
+| Artifact | Type | Score | Verdict |
+|----------|------|-------|---------|
+| block-01.html | Presentation | 88 | PASS |
+| block-02.html | Presentation | 76 | REVIEW |
+| block-03.html | Presentation | 91 | PASS |
+
+## Overall Verdict
+- Total: N artifacts
+- PASS: X | REVIEW: Y | FAIL: Z
+
+## Next Steps
+- 전체 PASS → 배포 진행
+- 일부 REVIEW → 해당 아티팩트만 수정 후 재리뷰
+- 일부 FAIL → Critical 이슈 수정 필수
+```
+
+### 개별 이슈 상세
+각 REVIEW/FAIL 아티팩트에 대해 기존 Review Report Format의 Critical/Warning Issues 섹션을 포함합니다.
+
+---
+
 ## Output Deliverables
 
 | Deliverable | Format | Location |

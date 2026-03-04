@@ -303,6 +303,30 @@ gitbook-agent → content-review-agent → git push → GitBook deployment
 
 ---
 
+## Team Collaboration
+
+팀의 일원으로 스폰될 때 (Agent tool의 team_name 파라미터가 설정된 경우):
+
+### 태스크 수신
+- TaskGet으로 할당된 태스크를 읽고 챕터 할당 정보를 파싱
+- 입력: SUMMARY.md 경로, 담당 챕터 범위, 프로젝트 루트 경로
+
+### 산출물
+- 지정된 챕터 디렉토리에 페이지 파일 작성
+- 일관된 네이밍: `{chapter-slug}/README.md`, `{chapter-slug}/{page-slug}.md`
+- content-review-agent 호출 생략 (팀 리더가 배치 리뷰 수행)
+
+### 완료 신호
+- TaskUpdate로 태스크를 completed 처리
+- 아티팩트 경로 + 페이지 수 + 요약을 보고
+
+### 제약
+- TOC(SUMMARY.md)가 승인된 후에만 콘텐츠 작성 시작
+- 다른 에이전트가 담당하는 챕터의 페이지 수정 금지
+- SUMMARY.md, README.md (루트), .gitbook.yaml은 팀 리더만 관리
+
+---
+
 ## Output Deliverables
 
 | Deliverable | Format | Location |

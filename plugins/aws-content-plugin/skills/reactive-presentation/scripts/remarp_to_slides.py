@@ -872,6 +872,31 @@ class RemarpHTMLGenerator:
             return f'<ul>{"".join(items)}</ul>', idx
         return '', start_idx
 
+    def _parse_table(self, lines: List[str], start_idx: int) -> Tuple[str, int]:
+        """Parse markdown table into HTML."""
+        idx = start_idx
+        rows = []
+        while idx < len(lines) and re.match(r'^\|.+\|$', lines[idx]):
+            row = lines[idx].strip('|').split('|')
+            rows.append([cell.strip() for cell in row])
+            idx += 1
+
+        if len(rows) < 2:
+            return '', start_idx
+
+        # First row = headers, second row = separator (skip), rest = data
+        headers = rows[0]
+        data_start = 2 if len(rows) > 1 and all(re.match(r'^[-:]+$', c) for c in rows[1]) else 1
+
+        thead = '<thead><tr>' + ''.join(f'<th>{self._convert_markdown(h)}</th>' for h in headers) + '</tr></thead>'
+        tbody_rows = []
+        for row in rows[data_start:]:
+            cells = ''.join(f'<td>{self._convert_markdown(c)}</td>' for c in row)
+            tbody_rows.append(f'<tr>{cells}</tr>')
+        tbody = f'<tbody>{"".join(tbody_rows)}</tbody>'
+
+        return f'<table>{thead}{tbody}</table>', idx
+
     def _parse_body_content(self, lines: List[str]) -> str:
         """Parse body content lines into HTML."""
         html_parts = []
@@ -894,6 +919,23 @@ class RemarpHTMLGenerator:
                 idx += 1
                 continue
 
+            # Check for table
+            if re.match(r'^\|.+\|$', line):
+                table_html, idx = self._parse_table(lines, idx)
+                if table_html:
+                    html_parts.append(table_html)
+                continue
+
+            # Check for blockquote
+            if line.startswith('> '):
+                quote_lines = []
+                while idx < len(lines) and lines[idx].startswith('> '):
+                    quote_lines.append(lines[idx][2:])
+                    idx += 1
+                quote_content = ' '.join(self._convert_markdown(l) for l in quote_lines)
+                html_parts.append(f'<blockquote><p>{quote_content}</p></blockquote>')
+                continue
+
             # Check for list
             if re.match(r'^[-*]\s', line) or re.match(r'^\d+\.\s', line):
                 list_html, idx = self._parse_list(lines, idx)
@@ -909,16 +951,23 @@ class RemarpHTMLGenerator:
 
     def gen_fragment_wrappers(self, content: str, fragments: List[Fragment]) -> str:
         """Wrap {.click} elements in fragment spans."""
-        # Process inline {.click} markers
-        def replace_click(match):
-            full_match = match.group(0)
-            # Find content before the marker (previous word or phrase)
-            return f'<span class="fragment fade-in">{full_match}</span>'
-
-        # Simple approach: wrap text following {.click} markers
         result = content
 
-        # Find patterns like "text{.click}" and wrap appropriately
+        # 1) <p>...</p> containing {.click} → <p class="fragment ...">
+        result = re.sub(
+            r'<p>(.*?)\s*\{\.click(?:\s+order=(\d+))?(?:\s+animation=([^\s}]+))?\}\s*</p>',
+            lambda m: f'<p class="fragment {m.group(3) or "fade-in"}" data-fragment-index="{m.group(2) or "0"}">{m.group(1)}</p>',
+            result
+        )
+
+        # 2) <li>...</li> containing {.click} → <li class="fragment ...">
+        result = re.sub(
+            r'<li>(.*?)\s*\{\.click(?:\s+order=(\d+))?(?:\s+animation=([^\s}]+))?\}\s*</li>',
+            lambda m: f'<li class="fragment {m.group(3) or "fade-in"}" data-fragment-index="{m.group(2) or "0"}">{m.group(1)}</li>',
+            result
+        )
+
+        # 3) Inline word{.click} (no space) → <span> wrap
         result = re.sub(
             r'(\S+)\{\.click(?:\s+order=(\d+))?(?:\s+animation=([^\s}]+))?\}',
             lambda m: f'<span class="fragment {m.group(3) or "fade-in"}" data-fragment-index="{m.group(2) or "0"}">{m.group(1)}</span>',
@@ -993,6 +1042,11 @@ class RemarpHTMLGenerator:
                 if 'from' in p and 'to' in p:
                     # Named arrow - will be resolved at runtime
                     draw_lines.append(f"// Arrow from '{p['from']}' to '{p['to']}'")
+                    draw_lines.append(f"drawArrow(ctx, 0, 0, 100, 100, {color}, {dashed}); // TODO: resolve positions")
+                elif 'from_id' in p and 'to_id' in p:
+                    # Remarp-format named arrow
+                    label = p.get('label', '')
+                    draw_lines.append(f"// Arrow from '{p['from_id']}' to '{p['to_id']}'" + (f" label='{label}'" if label else ''))
                     draw_lines.append(f"drawArrow(ctx, 0, 0, 100, 100, {color}, {dashed}); // TODO: resolve positions")
                 else:
                     draw_lines.append(

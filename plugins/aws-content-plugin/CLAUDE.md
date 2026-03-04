@@ -88,6 +88,41 @@ workshop-agent → content-review-agent → Workshop Studio content
 
 ---
 
+## Team Workflow Patterns
+
+기본값은 순차 워크플로우입니다. 팀 기반 병렬 실행은 아래 트리거 조건 충족 시에만 사용합니다.
+
+### 팀 생성 트리거
+
+| 트리거 조건 | 팀 이름 | 구성 |
+|-------------|---------|------|
+| 프레젠테이션 3+ 블록 | `content-parallel-blocks` | presentation-agent x N (블록별) |
+| 워크숍 3+ 모듈 | `content-parallel-modules` | workshop-agent x N (모듈별) |
+| GitBook 5+ 챕터 | `content-parallel-chapters` | gitbook-agent x N (챕터별) |
+| 프레젠테이션 + 다이어그램 + 문서 동시 요청 | `content-cross-type` | 서로 다른 콘텐츠 에이전트 병렬 |
+
+### 오케스트레이션 패턴
+
+```
+1. TeamCreate("{team-name}")
+2. 구조/아웃라인 작성 (메인 세션)
+3. 사용자 승인 대기
+4. TaskCreate x N (블록/모듈/챕터별 태스크)
+5. Agent 스폰 x N (team_name 파라미터로 병렬 실행)
+6. 결과 집계 (메인 세션)
+7. content-review-agent 배치 리뷰
+8. TeamDelete
+```
+
+### 순차 워크플로우 보존 규칙
+
+- **기본값은 항상 순차 실행**입니다
+- 팀은 위 트리거 테이블의 임계값을 충족하는 경우에만 사용
+- 사용자가 "병렬", "동시에", "in parallel"을 명시적으로 요청한 경우에도 사용 가능
+- 임계값 미달 시 기존 순차 워크플로우(`에이전트 → content-review-agent → 배포`)를 유지
+
+---
+
 ## Quality Gate (필수 — Mandatory)
 
 > **규칙: 모든 콘텐츠는 배포/완료 선언 전에 반드시 content-review-agent를 통과해야 합니다.**

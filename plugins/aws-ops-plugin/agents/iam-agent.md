@@ -132,6 +132,36 @@ flowchart TD
 
 ---
 
+## Team Collaboration
+
+인시던트 대응 팀의 일원으로 스폰될 때 (Agent tool의 team_name 파라미터가 설정된 경우):
+
+### 태스크 수신
+- 인시던트 컨텍스트, 심각도, 트리아지 결과를 파싱
+- 할당된 도메인 (IAM, RBAC, 인증)에만 집중
+
+### 결과 보고 형식
+
+| Check | Status | Details |
+|-------|--------|---------|
+| IRSA Config | OK/WARN/CRIT | OIDC, SA 어노테이션 상태 |
+| Pod Identity | OK/WARN/CRIT | Agent 상태, Association 검증 |
+| RBAC Bindings | OK/WARN/CRIT | Role/ClusterRole 바인딩 |
+| aws-auth | OK/WARN/CRIT | ConfigMap 매핑 상태 |
+
++ 근본원인 후보 + 권장 조치 + 검증 명령어
+
+### 완료 신호
+- TaskUpdate로 태스크를 completed 처리
+- "[IAM] 조사 완료: [요약]" 보고
+
+### 제약
+- 수정 실행 금지 (코디네이터에게 보고만 수행)
+- 다른 도메인 (네트워크, EKS 클러스터 등) 조사 금지
+- 교차 도메인 관찰 사항은 결과에 포함하여 코디네이터가 활용
+
+---
+
 ## Output Format
 
 ```

@@ -1,0 +1,82 @@
+---
+sidebar_position: 3
+title: "퀴즈 슬라이드 데모"
+---
+
+import DemoEmbed from '@site/src/components/DemoEmbed';
+
+# 퀴즈 슬라이드 데모
+
+교육 세션을 위한 자동 채점 퀴즈 컴포넌트 데모입니다. 각 Block 끝에 배치되어 핵심 개념을 복습합니다.
+
+## 데모
+
+<DemoEmbed
+  src="/oh-my-cloud-skills/demos/quiz-slides/index.html"
+  title="퀴즈 슬라이드 — Block 1 확인 퀴즈"
+  height="600px"
+  command="python3 remarp_to_slides.py build aiops-masterclass/"
+  remarpSource="01-fundamentals.remarp.md (slide 13)"
+/>
+
+## 스크린샷
+
+### 퀴즈 화면
+
+![퀴즈 슬라이드](/img/demos/quiz-block1-fhd.png)
+
+### 정답 선택 시 피드백
+
+![정답 피드백](/img/demos/quiz-correct-answer-fhd.png)
+
+## 생성 프롬프트
+
+```
+"AWS AIOps 마스터클래스에서 각 Block 마지막에 확인 퀴즈를 넣어줘.
+3~4개 질문으로 핵심 개념을 체크하고, 정답/오답 즉시 피드백 제공."
+```
+
+## Remarp 소스
+
+```markdown
+@type: quiz
+
+## Block 1 확인 퀴즈
+
+**AIOps의 4대 핵심 영역이 아닌 것은?**
+
+- [ ] Observe
+- [ ] Analyze
+- [x] Deploy
+- [ ] Act
+
+**CloudWatch Anomaly Detection의 주요 장점은?**
+
+- [ ] 고정 임계값 설정이 쉽다
+- [x] ML 기반으로 동적 기준선을 자동 생성한다
+- [ ] 알림을 완전히 제거한다
+- [ ] 로그 수집이 불필요하다
+
+**Alert Fatigue를 줄이는 AIOps 접근법은?**
+
+- [ ] 모든 알림을 비활성화
+- [ ] 임계값을 높게 설정
+- [x] ML 기반 상관관계 분석으로 노이즈 필터링
+- [ ] 알림을 이메일로만 전송
+```
+
+## 퀴즈 문법
+
+| 요소 | 문법 | 설명 |
+|------|------|------|
+| 슬라이드 타입 | `@type: quiz` | 퀴즈 슬라이드 선언 |
+| 질문 | `**질문 텍스트?**` | 볼드 텍스트로 질문 |
+| 오답 | `- [ ] 선택지` | 체크박스 비선택 |
+| 정답 | `- [x] 선택지` | 체크박스 선택 (정답 표시) |
+
+## 동작 방식
+
+1. 표준 마크다운 체크박스 문법을 사용하여 퀴즈 정의
+2. `[x]`로 표시된 선택지가 정답으로 처리
+3. 선택 시 즉시 시각적 피드백 (초록/빨강)
+4. 전체 점수가 퀴즈 완료 후 표시

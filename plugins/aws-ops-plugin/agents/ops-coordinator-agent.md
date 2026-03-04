@@ -110,17 +110,35 @@ flowchart TD
 
 ## Team Coordination Pattern
 
-```
-ops-coordinator-agent (triage + orchestration)
-├── network-agent   → Network connectivity, DNS, LB findings
-├── eks-agent       → Cluster, node, workload findings
-├── iam-agent       → Permission, authentication findings
-├── storage-agent   → Volume, mount findings
-├── database-agent  → DB connectivity, performance findings
-└── cloudwatch-agent → Metrics, logs, alarm findings
+### Sequential Mode (기본)
 
-← Aggregate all findings → Root cause → Resolution plan → Execute → Verify
+단일 도메인 이슈는 직접 전문 에이전트를 호출합니다 (팀 미사용):
+
 ```
+"Pod crashloop" → eks-agent → 조사 → 해결 → 검증
+"DNS failure"   → network-agent → 조사 → 해결 → 검증
+```
+
+### Parallel Team Mode (P1/P2 또는 멀티 도메인)
+
+팀 사용 조건: P1/P2 심각도, 2+ 도메인 증상, 사용자 병렬 요청
+
+팀 수명주기:
+```
+1. TeamCreate("incident-{timestamp}")
+2. 5분 트리아지 → 증상 분류
+3. 증상별 TaskCreate (network, eks, iam 등)
+4. 전문 에이전트 병렬 스폰 (team_name 파라미터)
+5. TaskList로 진행 모니터링
+6. 전체 완료 시 결과 집계 → 타임스탬프 상관분석 → 근본원인
+7. 수정 실행 → 검증 → TeamDelete + 포스트모템
+```
+
+### 집계 의사결정
+
+- 결과 간 상관관계 있음 → 단일 근본원인 도출 → 통합 수정
+- 상관관계 없음 → 다중 독립 이슈 → 심각도순 개별 수정
+- 교차 도메인 관찰 사항 → 근본원인 분석에 반영
 
 ---
 

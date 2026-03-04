@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AWS AIOps 마스터클래스</title>
+  <link rel="stylesheet" href="../common/theme.css">
+  <link rel="stylesheet" href="../common/theme-override.css">
+  
+  <script>window.__remarpTheme = {"colors": {}, "footer": "\u00a9 2025, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark. | \u2039#\u203a", "pagination": true, "fonts": {}};</script>
+</head>
+<body>
+<div class="slide-deck">
+<div class="slide title-slide">
+    <h1>AWS AIOps 마스터클래스</h1>
+  <p class="subtitle">클라우드 운영의 지능화 여정</p>
+</div>
+
+<div class="slide title-slide">
+    <h1>Block 1: AIOps 기초와 AWS Observability 스택</h1>
+  <p class="subtitle">전통적 운영에서 AI 기반 운영으로의 전환</p>
+</div>
+
+<div class="slide">
+  <div class="slide-header"><h2>Traditional Ops vs AIOps</h2></div>
+  <div class="slide-body">
+    <div class="compare-toggle">
+            <button class="compare-btn active" data-compare="traditional-ops">Traditional Ops</button>
+      <button class="compare-btn" data-compare="aiops">AIOps</button>
+    </div>
+    <div class="compare-content active" data-compare="traditional-ops">
+<ul><li><strong>수동 모니터링</strong> — 대시보드를 지속적으로 감시</li><li><strong>정적 임계값</strong> — 고정된 threshold 기반 알림</li><li><strong>사후 대응</strong> — 문제 발생 후 대응 시작</li><li><strong>사일로화된 도구</strong> — 분리된 모니터링 시스템</li><li><strong>수동 상관관계 분석</strong> — 담당자 경험에 의존</li></ul>
+</div>
+<div class="compare-content" data-compare="aiops">
+<ul><li><strong>ML 기반 이상 탐지</strong> — 자동화된 패턴 인식</li><li><strong>동적 기준선</strong> — 학습 기반 적응형 threshold</li><li><strong>예방적 운영</strong> — 문제 예측 및 선제 대응</li><li><strong>통합 Observability</strong> — 메트릭/로그/트레이스 통합</li><li><strong>자동 근본 원인 분석</strong> — AI가 상관관계 파악</li></ul>
+</div>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="slide-header"><h2>AIOps란 무엇인가?</h2></div>
+  <div class="slide-body">
+    <p><strong>Artificial Intelligence for IT Operations</strong></p>
+<p>AIOps는 머신러닝과 빅데이터 분석을 활용하여 IT 운영을 자동화하고 지능화하는 접근 방식입니다.</p>
+<p class="fragment fade-in" data-fragment-index="0"><strong>Gartner 정의</strong></p>
+<blockquote><p>"AIOps 플랫폼은 빅데이터, 현대적 머신러닝 및 기타 고급 분석 기술을 결합하여 가시성을 향상시키고, 노이즈를 줄이며, IT 운영 관리의 문제를 자동으로 해결합니다."</p></blockquote>
+<p class="fragment fade-in" data-fragment-index="0"><strong>핵심 목표</strong></p>
+<ul><li><strong>MTTR 감소</strong> — 평균 복구 시간 75% 이상 단축</li><li><strong>자동화</strong> — 반복적인 운영 작업 자동 처리</li><li><strong>예측적 운영</strong> — 장애 발생 전 선제적 대응</li></ul>
+<p class="fragment fade-in" data-fragment-index="0"><strong>주요 기술</strong></p>
+<ul><li>Machine Learning (지도/비지도 학습)</li><li>Natural Language Processing (로그 분석)</li><li>Big Data Analytics (대용량 데이터 처리)</li></ul>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="slide-header"><h2>AIOps 4대 핵심 영역</h2></div>
+  <div class="slide-body">
+    <div class="timeline">
+            <div class="timeline-step">
+      <div class="timeline-dot">1</div>
+      <div class="timeline-label"><strong>Observe</strong> — 메트릭, 로그, 트레이스를 다양한 소스에서 수집하고 중앙화</div>
+    </div>
+      <div class="timeline-connector"></div>
+      <div class="timeline-step">
+      <div class="timeline-dot">2</div>
+      <div class="timeline-label"><strong>Analyze</strong> — ML 기반 패턴 분석과 서비스 간 상관관계 파악</div>
+    </div>
+      <div class="timeline-connector"></div>
+      <div class="timeline-step">
+      <div class="timeline-dot">3</div>
+      <div class="timeline-label"><strong>Detect</strong> — 이상 탐지 알고리즘으로 문제 식별 및 근본 원인 분석 (RCA)</div>
+    </div>
+      <div class="timeline-connector"></div>
+      <div class="timeline-step">
+      <div class="timeline-dot">4</div>
+      <div class="timeline-label"><strong>Act</strong> — 자동 복구 워크플로우 실행 및 지능형 알림 전송</div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="slide-header"><h2>전통적 모니터링의 한계</h2></div>
+  <div class="slide-body">
+    <div class="col-2">
+            <div class="card">
+      <div class="card-title">알림 폭주 (Alert Fatigue)</div>
+      <p>하루 수천 개의 알림 발생으로 운영팀이 중요한 알림을 놓치게 됩니다. 평균적으로 70%의 알림이 무시됩니다.</p>
+    </div>
+      <div class="card">
+      <div class="card-title">수동 상관관계 분석</div>
+      <p>여러 대시보드를 수동으로 비교하며 문제의 근본 원인을 찾아야 합니다. 평균 분석 시간 2-4시간 소요.</p>
+    </div>
+      <div class="card">
+      <div class="card-title">정적 임계값</div>
+      <p>고정된 threshold로 인해 false positive가 다수 발생합니다. 계절성이나 트래픽 패턴을 반영하지 못합니다.</p>
+    </div>
+      <div class="card">
+      <div class="card-title">느린 대응</div>
+      <p>MTTR(평균 복구 시간)이 수 시간에서 수 일까지 소요됩니다. 비즈니스 손실과 고객 이탈로 이어집니다.</p>
+    </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="slide-header"><h2>Alert Fatigue 문제</h2></div>
+  <div class="slide-body">
+    <p>운영팀이 직면한 가장 심각한 문제 중 하나입니다.</p>
+<p class="fragment fade-in" data-fragment-index="0"><strong>충격적인 통계</strong></p>
+<table><thead><tr><th>지표</th><th>수치</th></tr></thead><tbody><tr><td>무시되는 알림 비율</td><td><strong>70%</strong></td></tr><tr><td>평균 MTTR</td><td><strong>4시간+</strong></td></tr><tr><td>주간 알림 수 (중견 기업)</td><td><strong>10,000+</strong></td></tr><tr><td>운영팀 번아웃 비율</td><td><strong>65%</strong></td></tr></tbody></table>
+<p class="fragment fade-in" data-fragment-index="0"><strong>결과</strong></p>
+<ul><li>중요한 알림 놓침 → 서비스 장애 확대</li><li>운영자 피로 → 이직률 증가</li><li>고객 신뢰 하락 → 매출 감소</li></ul>
+<blockquote><p>AIOps는 노이즈를 90% 이상 줄이고 실제 문제에 집중할 수 있게 합니다.</p></blockquote>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="slide-header"><h2>AWS Observability 서비스 맵</h2></div>
+  <div class="slide-body">
+    <div class="canvas-container" style="flex:1">
+      <canvas id="canvas-0"></canvas>
+    </div>
+  </div>
+</div>
+<script>
+(function() {
+  const canvas = document.getElementById('canvas-0');
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  const BASE_W = 960, BASE_H = 400;
+
+  function resizeCanvas() {
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    if (cw <= 0 || ch <= 0) {
+      setupCanvas('canvas-0', BASE_W, BASE_H);
+      return;
+    }
+    const dpr = window.devicePixelRatio || 1;
+    const scale = cw / BASE_W;
+    const scaledH = Math.min(Math.round(BASE_H * scale), ch);
+    canvas.width = Math.round(cw * dpr);
+    canvas.height = Math.round(scaledH * dpr);
+    canvas.style.width = cw + 'px';
+    canvas.style.height = scaledH + 'px';
+    canvas.style.maxWidth = 'none';
+    const c = canvas.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.scale(scale * dpr, scale * dpr);
+  }
+  resizeCanvas();
+
+  const ctx = canvas.getContext('2d');
+  const width = BASE_W, height = BASE_H;
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    drawIcon(ctx, '../common/aws-icons/services/Arch_Amazon-CloudWatch_48.svg', 80, 120, 48);
+    drawBox(ctx, 55, 180, 100, 35, 'Collect', '#41B3FF');
+    drawIcon(ctx, '../common/aws-icons/services/Arch_DevOpsGuru_48.svg', 272, 120, 48);
+    drawBox(ctx, 247, 180, 100, 35, 'Analyze', '#AD5CFF');
+    drawIcon(ctx, '../common/aws-icons/services/Arch_Amazon-CloudWatch_48.svg', 464, 120, 48);
+    drawBox(ctx, 439, 180, 100, 35, 'Detect', '#FF5C85');
+    drawIcon(ctx, '../common/aws-icons/services/Arch_X-Ray_48.svg', 656, 120, 48);
+    drawBox(ctx, 631, 180, 100, 35, 'Trace', '#00E500');
+    drawIcon(ctx, '../common/aws-icons/services/Arch_EventBridge_48.svg', 848, 120, 48);
+    drawBox(ctx, 823, 180, 100, 35, 'Act', '#FF693C');
+    // Arrow from 'collect' to 'analyze' label='metrics'
+    drawArrow(ctx, 0, 0, 100, 100, Colors.accent, false); // TODO: resolve positions
+    // Arrow from 'analyze' to 'detect' label='insights'
+    drawArrow(ctx, 0, 0, 100, 100, Colors.accent, false); // TODO: resolve positions
+    // Arrow from 'detect' to 'trace' label='traces'
+    drawArrow(ctx, 0, 0, 100, 100, Colors.accent, false); // TODO: resolve positions
+    // Arrow from 'trace' to 'act' label='events'
+    drawArrow(ctx, 0, 0, 100, 100, Colors.accent, false); // TODO: resolve positions
+  }
+
+  draw();
+  new ResizeObserver(() => { resizeCanvas(); draw(); }).observe(container);
+})();
+</script>
+
+<div class="slide">
+  <div class="slide-header"><h2>CloudWatch 핵심 개념</h2></div>
+  <div class="slide-body">
+    <div class="tab-bar">
+            <button class="tab-btn active" data-compare="metrics">Metrics</button>
+      <button class="tab-btn" data-compare="logs">Logs</button>
+      <button class="tab-btn" data-compare="alarms">Alarms</button>
+    </div>
+    <div class="tab-content active" data-compare="metrics">
+<p><strong>Custom Metrics 발행</strong></p>
+<ul><li>Namespace 구조: <code>MyApp/ServiceName</code></li><li>해상도: Standard (60초) / High-Resolution (1초)</li><li>차원(Dimensions): 메트릭 필터링 및 집계 기준</li></ul>
+<p><strong>주요 메트릭 유형</strong></p>
+<ul><li><strong>시스템 메트릭</strong> — CPU, Memory, Disk, Network</li><li><strong>애플리케이션 메트릭</strong> — Latency, Error Rate, Throughput</li><li><strong>비즈니스 메트릭</strong> — Orders, Revenue, Active Users</li></ul>
+</div>
+<div class="tab-content" data-compare="logs">
+<p><strong>Log 구조</strong></p>
+<ul><li><strong>Log Groups</strong> — 애플리케이션/서비스 단위 그룹</li><li><strong>Log Streams</strong> — 인스턴스/컨테이너 단위 스트림</li></ul>
+<p><strong>핵심 기능</strong></p>
+<ul><li><strong>Logs Insights</strong> — SQL 유사 쿼리 언어로 분석</li><li><strong>Metric Filters</strong> — 로그에서 메트릭 추출</li><li><strong>보존 정책</strong> — 1일 ~ 영구 보존 설정</li></ul>
+</div>
+<div class="tab-content" data-compare="alarms">
+<p><strong>알람 유형</strong></p>
+<ul><li><strong>Static Threshold</strong> — 고정 임계값 기반</li><li><strong>Anomaly Detection</strong> — ML 기반 동적 기준선</li></ul>
+<p><strong>고급 기능</strong></p>
+<ul><li><strong>Composite Alarms</strong> — 여러 알람 조합</li><li><strong>알림 액션</strong> — SNS, Auto Scaling, Lambda, EC2</li></ul>
+<p><strong>모범 사례</strong></p>
+<ul><li>3개 이상 평가 기간 사용</li><li>Anomaly Detection 우선 적용</li><li>Composite Alarm으로 노이즈 감소</li></ul>
+</div>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="slide-header"><h2>CloudWatch Metric 수집 예제</h2></div>
+  <div class="slide-body">
+    <div class="code-block"><span class="code-label">python</span><span class="keyword">import</span> boto3
+<span class="keyword">from</span> datetime <span class="keyword">import</span> datetime
+
+cloudwatch = boto3.client(<span class="string">'cloudwatch'</span>)
+
+<span class="comment"># 커스텀 메트릭 발행</span>
+cloudwatch.put_metric_data(
+    Namespace=<span class="string">'MyApp/Performance'</span>,
+    MetricData=[{
+        <span class="string">'MetricName'</span>: <span class="string">'RequestLatency'</span>,
+        <span class="string">'Value'</span>: 125.5,
+        <span class="string">'Unit'</span>: <span class="string">'Milliseconds'</span>,
+        <span class="string">'Timestamp'</span>: datetime.utcnow(),
+        <span class="string">'Dimensions'</span>: [
+            {<span class="string">'Name'</span>: <span class="string">'Service'</span>, <span class="string">'Value'</span>: <span class="string">'OrderAPI'</span>},
+            {<span class="string">'Name'</span>: <span class="string">'Environment'</span>, <span class="string">'Value'</span>: <span class="string">'Production'</span>}
+        ]
+    }]
+)
+
+<span class="comment"># 여러 메트릭 배치 발행</span>
+cloudwatch.put_metric_data(
+    Namespace=<span class="string">'MyApp/Performance'</span>,
+    MetricData=[
+        {<span class="string">'MetricName'</span>: <span class="string">'SuccessCount'</span>, <span class="string">'Value'</span>: 1, <span class="string">'Unit'</span>: <span class="string">'Count'</span>},
+        {<span class="string">'MetricName'</span>: <span class="string">'ErrorCount'</span>, <span class="string">'Value'</span>: 0, <span class="string">'Unit'</span>: <span class="string">'Count'</span>},
+        {<span class="string">'MetricName'</span>: <span class="string">'RequestSize'</span>, <span class="string">'Value'</span>: 2048, <span class="string">'Unit'</span>: <span class="string">'Bytes'</span>}
+    ]
+)</div>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="slide-header"><h2>CloudWatch Alarm 생성</h2></div>
+  <div class="slide-body">
+    <div class="code-block"><span class="code-label">yaml</span><span class="key">Resources</span>:
+  <span class="key">LatencyAnomalyAlarm</span>:
+    <span class="key">Type</span>: AWS::CloudWatch::Alarm
+    <span class="key">Properties</span>:
+      <span class="key">AlarmName</span>: OrderAPI-Latency-Anomaly
+      <span class="key">AlarmDescription</span>: OrderAPI 지연시간 이상 탐지
+      <span class="key">ComparisonOperator</span>: GreaterThanUpperThreshold
+      <span class="key">EvaluationPeriods</span>: 3
+      <span class="key">ThresholdMetricId</span>: ad1
+      <span class="key">TreatMissingData</span>: notBreaching
+      <span class="key">Metrics</span>:
+        - Id: m1
+          <span class="key">MetricStat</span>:
+            <span class="key">Metric</span>:
+              <span class="key">MetricName</span>: RequestLatency
+              <span class="key">Namespace</span>: MyApp/Performance
+              <span class="key">Dimensions</span>:
+                - Name: Service
+                  <span class="key">Value</span>: OrderAPI
+            <span class="key">Period</span>: 300
+            <span class="key">Stat</span>: Average
+          <span class="key">ReturnData</span>: <span class="keyword">false</span>
+        - Id: ad1
+          <span class="key">Expression</span>: ANOMALY_DETECTION_BAND(m1, 2)
+          <span class="key">Label</span>: AnomalyDetectionBand
+          <span class="key">ReturnData</span>: <span class="keyword">true</span>
+      <span class="key">AlarmActions</span>:
+        - !Ref AlertSNSTopic
+      <span class="key">OKActions</span>:
+        - !Ref AlertSNSTopic</div>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="slide-header"><h2>AIOps 도입 효과</h2></div>
+  <div class="slide-body">
+    <p>실제 기업들의 AIOps 도입 후 측정된 개선 효과입니다.</p>
+<p class="fragment fade-in" data-fragment-index="0"><strong>MTTR 75% 감소</strong></p>
+<ul><li>기존: 평균 4시간 → 도입 후: 1시간 이내</li><li>자동 근본 원인 분석으로 진단 시간 단축</li><li>자동 복구 워크플로우로 대응 시간 최소화</li></ul>
+<p class="fragment fade-in" data-fragment-index="0"><strong>알림 노이즈 90% 감소</strong></p>
+<ul><li>기존: 일 1,000개 → 도입 후: 일 100개 미만</li><li>ML 기반 상관관계 분석으로 중복 알림 제거</li><li>동적 기준선으로 false positive 최소화</li></ul>
+<p class="fragment fade-in" data-fragment-index="0"><strong>운영 비용 30% 절감</strong></p>
+<ul><li>자동화로 인한 인력 재배치</li><li>장애 예방으로 손실 비용 감소</li><li>효율적인 리소스 활용</li></ul>
+<p class="fragment fade-in" data-fragment-index="0"><strong>서비스 가용성 99.99%+</strong></p>
+<ul><li>예측적 운영으로 장애 사전 방지</li><li>빠른 복구로 다운타임 최소화</li><li>지속적인 성능 최적화</li></ul>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="slide-header"><h2>Block 1 확인 퀴즈</h2></div>
+  <div class="slide-body" style="overflow-y:auto">
+    <div class="quiz" data-quiz="q1">
+      <div class="quiz-question">AIOps의 4대 핵심 영역이 아닌 것은?</div>
+      <div class="quiz-options">
+        <button class="quiz-option" data-correct="false">Observe</button>
+<button class="quiz-option" data-correct="false">Analyze</button>
+<button class="quiz-option" data-correct="true">Deploy</button>
+<button class="quiz-option" data-correct="false">Act</button>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+<div class="quiz" data-quiz="q2">
+      <div class="quiz-question">CloudWatch Anomaly Detection의 주요 장점은?</div>
+      <div class="quiz-options">
+        <button class="quiz-option" data-correct="false">고정 임계값 설정이 쉽다</button>
+<button class="quiz-option" data-correct="true">ML 기반으로 동적 기준선을 자동 생성한다</button>
+<button class="quiz-option" data-correct="false">알림을 완전히 제거한다</button>
+<button class="quiz-option" data-correct="false">로그 수집이 불필요하다</button>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+<div class="quiz" data-quiz="q3">
+      <div class="quiz-question">Alert Fatigue를 줄이는 AIOps 접근법은?</div>
+      <div class="quiz-options">
+        <button class="quiz-option" data-correct="false">모든 알림을 비활성화</button>
+<button class="quiz-option" data-correct="false">임계값을 높게 설정</button>
+<button class="quiz-option" data-correct="true">ML 기반 상관관계 분석으로 노이즈 필터링</button>
+<button class="quiz-option" data-correct="false">알림을 이메일로만 전송</button>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </div>
+</div>
+
+<div class="slide">
+  <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:24px; text-align:center;">
+    <h1 style="font-size:3rem; background:linear-gradient(135deg, var(--accent-light), var(--cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">Thank You</h1>
+    <p style="color:var(--text-secondary); font-size:1.1rem;">Block 1: AIOps 기초와 AWS Observability 스택을 완료했습니다.</p>
+    
+    <div style="display:flex; gap:16px; margin-top:20px;">
+            <a href="index.html" class="btn btn-sm" style="text-decoration:none;">← 목차로 돌아가기</a>
+      <a href="02-detection.html" class="btn btn-primary btn-sm" style="text-decoration:none;">다음 →</a>
+    </div>
+  </div>
+</div>
+</div>
+<script src="../common/animation-utils.js"></script>
+<script src="../common/slide-framework.js"></script>
+<script src="../common/quiz-component.js"></script>
+<script src="../common/presenter-view.js"></script>
+<script>
+  
+  const presenterNotes = {
+    1: "[1min] 환영 인사와 과정 소개. AIOps가 왜 중요한지 간략히 언급하고 학습 목표를 설명합니다.",
+    2: "[1min] 이 블록에서 다룰 내용 개요: AIOps 개념, 전통적 운영의 한계, AWS Observability 서비스 소개.",
+    3: "[2min] 좌우 비교를 통해 패러다임 전환을 설명. 각 항목을 클릭하며 차이점 강조.",
+    4: "[3min] AIOps의 공식 정의와 핵심 가치를 설명. Gartner 정의를 인용하여 신뢰성 확보.",
+    5: "[2min] 네 단계를 순차적으로 설명하며 각 단계가 어떻게 연결되는지 강조.",
+    6: "[2min] 네 가지 한계점을 카드로 보여주며 각각의 비즈니스 영향을 설명합니다.",
+    7: "[2min] 실제 통계를 활용하여 문제의 심각성을 전달. AIOps 도입의 필요성 강조.",
+    8: "[3min] 캔버스를 단계별로 보여주며 각 서비스의 역할과 데이터 흐름을 설명합니다.",
+    9: "[3min] 세 탭을 전환하며 CloudWatch의 핵심 개념을 상세히 설명합니다.",
+    10: "[2min] 코드를 라인별로 설명하며 실제 구현 시 고려사항을 안내합니다.",
+    11: "[2min] YAML 구조를 설명하며 ANOMALY_DETECTION_BAND 함수의 파라미터 의미를 안내합니다.",
+    12: "[2min] 실제 수치를 강조하며 ROI 관점에서 AIOps 투자 가치를 설명합니다.",
+    13: "[3min] 각 퀴즈 문제를 풀어보며 핵심 개념을 복습합니다. 오답에 대한 설명도 제공합니다.",
+    14: "[1min] 학습 내용을 요약하고 다음 블록에서 다룰 내용을 예고합니다. Q&A 시간 안내."
+  };
+  const deck = new SlideFramework({
+    logoSrc: '../common/pptx-theme/images/logo_1.png',
+    footer: '© 2025, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark. | ‹#›',
+    pagination: true,
+    presenterNotes: presenterNotes,
+    onSlideChange: (index, slide) => {}
+  });
+</script>
+</body>
+</html>
