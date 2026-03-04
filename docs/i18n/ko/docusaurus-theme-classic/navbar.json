@@ -1,0 +1,34 @@
+{
+  "title": {
+    "message": "oh-my-cloud-skills",
+    "description": "The title in the navbar"
+  },
+  "logo.alt": {
+    "message": "oh-my-cloud-skills 로고",
+    "description": "The alt text of navbar logo"
+  },
+  "item.label.Home": {
+    "message": "홈",
+    "description": "Navbar item with label Home"
+  },
+  "item.label.aws-content-plugin": {
+    "message": "콘텐츠 플러그인",
+    "description": "Navbar item with label aws-content-plugin"
+  },
+  "item.label.aws-ops-plugin": {
+    "message": "운영 플러그인",
+    "description": "Navbar item with label aws-ops-plugin"
+  },
+  "item.label.kiro-power-converter": {
+    "message": "Kiro 변환기",
+    "description": "Navbar item with label kiro-power-converter"
+  },
+  "item.label.Remarp Guide": {
+    "message": "Remarp 가이드",
+    "description": "Navbar item with label Remarp Guide"
+  },
+  "item.label.GitHub": {
+    "message": "GitHub",
+    "description": "Navbar item with label GitHub"
+  }
+}

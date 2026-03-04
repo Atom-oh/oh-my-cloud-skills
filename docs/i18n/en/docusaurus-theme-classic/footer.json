@@ -1,0 +1,46 @@
+{
+  "link.title.Plugins": {
+    "message": "Plugins",
+    "description": "The title of the footer links column with title=Plugins in the footer"
+  },
+  "link.title.Guides": {
+    "message": "Guides",
+    "description": "The title of the footer links column with title=Guides in the footer"
+  },
+  "link.title.Links": {
+    "message": "Links",
+    "description": "The title of the footer links column with title=Links in the footer"
+  },
+  "link.item.label.aws-content-plugin": {
+    "message": "Content Plugin",
+    "description": "The label of footer link with label=aws-content-plugin linking to /docs/aws-content-plugin/overview"
+  },
+  "link.item.label.aws-ops-plugin": {
+    "message": "Ops Plugin",
+    "description": "The label of footer link with label=aws-ops-plugin linking to /docs/aws-ops-plugin/overview"
+  },
+  "link.item.label.kiro-power-converter": {
+    "message": "Kiro Converter",
+    "description": "The label of footer link with label=kiro-power-converter linking to /docs/kiro-power-converter/overview"
+  },
+  "link.item.label.Remarp Guide": {
+    "message": "Remarp Guide",
+    "description": "The label of footer link with label=Remarp Guide linking to /docs/remarp-guide/introduction"
+  },
+  "link.item.label.시작하기": {
+    "message": "Getting Started",
+    "description": "The label of footer link with label=시작하기 linking to /docs/intro"
+  },
+  "link.item.label.GitHub": {
+    "message": "GitHub",
+    "description": "The label of footer link with label=GitHub linking to https://github.com/Atom-oh/oh-my-cloud-skills"
+  },
+  "link.item.label.Claude Code": {
+    "message": "Claude Code",
+    "description": "The label of footer link with label=Claude Code linking to https://claude.ai/code"
+  },
+  "copyright": {
+    "message": "Copyright © 2026 Atom-oh. Built with Docusaurus.",
+    "description": "The footer copyright"
+  }
+}

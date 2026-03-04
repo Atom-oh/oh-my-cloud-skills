@@ -26,7 +26,17 @@ const config: Config = {
 
   i18n: {
     defaultLocale: 'ko',
-    locales: ['ko'],
+    locales: ['ko', 'en'],
+    localeConfigs: {
+      ko: {
+        label: '한국어',
+        htmlLang: 'ko',
+      },
+      en: {
+        label: 'English',
+        htmlLang: 'en',
+      },
+    },
   },
 
   presets: [
@@ -88,6 +98,10 @@ const config: Config = {
           sidebarId: 'remarpGuide',
           position: 'left',
           label: 'Remarp Guide',
+        },
+        {
+          type: 'localeDropdown',
+          position: 'right',
         },
         {
           href: 'https://github.com/Atom-oh/oh-my-cloud-skills',

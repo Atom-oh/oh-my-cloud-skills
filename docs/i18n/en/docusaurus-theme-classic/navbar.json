@@ -1,0 +1,34 @@
+{
+  "title": {
+    "message": "oh-my-cloud-skills",
+    "description": "The title in the navbar"
+  },
+  "logo.alt": {
+    "message": "oh-my-cloud-skills Logo",
+    "description": "The alt text of navbar logo"
+  },
+  "item.label.Home": {
+    "message": "Home",
+    "description": "Navbar item with label Home"
+  },
+  "item.label.aws-content-plugin": {
+    "message": "Content Plugin",
+    "description": "Navbar item with label aws-content-plugin"
+  },
+  "item.label.aws-ops-plugin": {
+    "message": "Ops Plugin",
+    "description": "Navbar item with label aws-ops-plugin"
+  },
+  "item.label.kiro-power-converter": {
+    "message": "Kiro Converter",
+    "description": "Navbar item with label kiro-power-converter"
+  },
+  "item.label.Remarp Guide": {
+    "message": "Remarp Guide",
+    "description": "Navbar item with label Remarp Guide"
+  },
+  "item.label.GitHub": {
+    "message": "GitHub",
+    "description": "Navbar item with label GitHub"
+  }
+}
