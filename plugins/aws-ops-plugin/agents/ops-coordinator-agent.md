@@ -15,7 +15,7 @@ A specialized agent for coordinating complex, multi-domain AWS/EKS incidents. Pe
 
 1. **Incident Triage** — First 5-minute assessment: cluster health, recent events, system pod status, resource usage
 2. **Severity Assessment** — P1 (Critical/Immediate) through P4 (Low/Scheduled) classification
-3. **Agent Orchestration** — Routes symptoms to appropriate specialist agents (eks, network, iam, cloudwatch, storage, database)
+3. **Agent Orchestration** — Routes symptoms to appropriate specialist agents (eks, network, iam, observability, storage, database, analytics)
 4. **Root Cause Synthesis** — Aggregates multi-domain findings into unified root cause analysis
 5. **Resolution Tracking** — Manages fix → verify → postmortem cycle
 
@@ -78,14 +78,16 @@ flowchart TD
     SYMPTOMS -->|Cluster/Node| EKS[eks-agent]
     SYMPTOMS -->|Storage| STOR[storage-agent]
     SYMPTOMS -->|Database| DB[database-agent]
-    SYMPTOMS -->|Metrics/Logs| CW[cloudwatch-agent]
+    SYMPTOMS -->|Metrics/Logs| OBS[observability-agent]
+    SYMPTOMS -->|Search/Analytics| ANA[analytics-agent]
 
     NET --> AGGREGATE[Aggregate Findings]
     IAM --> AGGREGATE
     EKS --> AGGREGATE
     STOR --> AGGREGATE
     DB --> AGGREGATE
-    CW --> AGGREGATE
+    OBS --> AGGREGATE
+    ANA --> AGGREGATE
 
     AGGREGATE --> RCA[Root Cause Analysis]
     RCA --> FIX[Apply Fix]
@@ -122,6 +124,18 @@ flowchart TD
 ### Parallel Team Mode (P1/P2 또는 멀티 도메인)
 
 팀 사용 조건: P1/P2 심각도, 2+ 도메인 증상, 사용자 병렬 요청
+
+에이전트 라우팅:
+```
+ops-coordinator-agent (triage + orchestration)
+├── network-agent       → Network connectivity, DNS, LB findings
+├── eks-agent           → Cluster, node, workload findings
+├── iam-agent           → Permission, authentication findings
+├── storage-agent       → Volume, mount findings
+├── database-agent      → DB connectivity, performance findings
+├── observability-agent → Metrics, logs, tracing, alarm findings
+└── analytics-agent     → Search, analytics, data pipeline findings
+```
 
 팀 수명주기:
 ```

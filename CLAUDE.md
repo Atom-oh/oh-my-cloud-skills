@@ -124,17 +124,18 @@ echo "content=$V ops=$V2 converter=$V3 marketplace=$MV tag=$TAG"
 | `workshop-agent` | AWS Workshop Studio content |
 | `content-review-agent` | Quality gate for all content types |
 
-### aws-ops-plugin (8 agents, 5 skills)
+### aws-ops-plugin (9 agents, 5 skills)
 
 | Agent | Domain |
 |-------|--------|
 | `eks-agent` | EKS cluster management, node groups, upgrades, add-ons |
 | `network-agent` | VPC CNI, ALB/NLB, DNS, Security Groups |
 | `iam-agent` | IRSA, Pod Identity, RBAC, aws-auth |
-| `cloudwatch-agent` | Container Insights, Logs Insights, alarms |
+| `observability-agent` | CloudWatch, AMP, AMG, ADOT, Prometheus/Grafana |
 | `storage-agent` | EBS/EFS/FSx CSI drivers, PVC binding |
 | `database-agent` | RDS/Aurora, DynamoDB, ElastiCache |
 | `cost-agent` | Cost analysis via awspricing MCP |
+| `analytics-agent` | OpenSearch, ClickHouse, Athena, QuickSight, Kinesis |
 | `ops-coordinator-agent` | Multi-domain incident coordination (opus) |
 
 Ops skills: `ops-troubleshoot`, `ops-health-check`, `ops-network-diagnosis`, `ops-observability`, `ops-security-audit` — each with `references/` subdirectory containing distilled runbooks.
@@ -150,5 +151,5 @@ Content:   presentation-agent → content-review-agent → GitHub Pages
            workshop-agent → content-review-agent → Workshop Studio
 
 Ops:       User issue → auto-routed agent → Diagnose → Resolve → Verify
-           Incident → ops-coordinator → specialist agents → aggregate → root cause → fix
+           Incident → ops-coordinator → specialist agents (7) → aggregate → root cause → fix
 ```
