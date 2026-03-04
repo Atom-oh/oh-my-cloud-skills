@@ -1,11 +1,11 @@
 ---
 name: reactive-presentation
-description: "Create interactive HTML presentation slideshows with Canvas animations, quizzes, dark theme, and keyboard navigation. Deploy to GitHub Pages. Use when user asks to: create slides, build a presentation, make a slideshow, training slides, interactive presentation, Canvas animation slides, or mentions 'reactive presentation'. Supports PPTX template theming and Marp markdown content authoring. Supports multi-block training sessions (30min-3hr), technical deep-dives, and workshop content."
+description: "Create interactive HTML presentation slideshows with Canvas animations, quizzes, dark theme, and keyboard navigation. Deploy to GitHub Pages. Use when user asks to: create slides, build a presentation, make a slideshow, training slides, interactive presentation, Canvas animation slides, or mentions 'reactive presentation'. Supports PPTX template theming and Remarp markdown content authoring. Supports multi-block training sessions (30min-3hr), technical deep-dives, and workshop content."
 ---
 
 # Reactive Presentation
 
-Build interactive HTML slideshow presentations deployed via GitHub Pages. No build tools required — pure HTML/CSS/JS with a shared framework for navigation, animations, and quizzes. Supports PPTX template theme extraction, Marp markdown, and Remarp format for content authoring.
+Build interactive HTML slideshow presentations deployed via GitHub Pages. No build tools required — pure HTML/CSS/JS with a shared framework for navigation, animations, and quizzes. Supports PPTX template theme extraction, Remarp format (recommended), and Marp markdown (legacy) for content authoring.
 
 > **New to Remarp?** See [REMARP.md](REMARP.md) for a quick introduction and 5-minute getting started guide.
 
@@ -52,6 +52,9 @@ Plan the presentation structure with the user. **Ask these questions during plan
   - Provided → store in `MEMORY.md` for reuse across sessions. Used in the session cover slide (see slide-patterns.md §0a)
   - "skip" → omit speaker section from cover
   - Already in `MEMORY.md` → confirm with user or reuse
+- **Quiz inclusion** (REQUIRED, skippable) — "각 블록 끝에 복습 퀴즈를 포함할까요? (yes/no 또는 'skip' 입력 시 퀴즈 미포함)"
+  - "yes" → 각 블록 끝에 Quiz 슬라이드 (3-4문항) 포함
+  - "no" / "skip" → 퀴즈 미포함. Block summary는 Key Takeaways 또는 Summary 슬라이드로 대체
 
 Remarp 마크다운으로 콘텐츠를 작성합니다 (기본). Remarp는 프래그먼트 애니메이션, Canvas DSL, 풍부한 스피커 노트, 슬라이드 전환 효과를 마크다운에서 직접 제어하는 차세대 포맷입니다.
 
@@ -151,8 +154,8 @@ Key rules for iteration:
 
 ### Phase 5: Enhancement
 
-- Add Canvas animations to `<!-- type: canvas -->` slides (implement JS using animation-utils.js)
-- Add complex interactive elements (the Marp converter creates placeholders)
+- Add Canvas animations to `@type: canvas` slides (implement JS using animation-utils.js)
+- Add complex interactive elements (the Remarp/Marp converter creates placeholders)
 - Extract AWS Architecture Icons for architecture/service diagrams (see [references/aws-icons-guide.md](references/aws-icons-guide.md)):
   ```bash
   python3 {skill-dir}/scripts/extract_aws_icons.py -o {repo}/common/aws-icons/
@@ -276,7 +279,8 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 | Best practices + config | Checklist with YAML | `.checklist` + `.check-yaml` expand on click (see slide-patterns.md §7b) |
 | YAML/code example | Code Block | `.code-block` with syntax spans |
 | Customer problem | Pain Quote | `.pain-quote` + challenge list |
-| Block summary | Quiz | `data-quiz` + 3-4 questions |
+| Block summary (퀴즈 포함 시) | Quiz | `data-quiz` + 3-4 questions |
+| Block summary (퀴즈 미포함 시) | Content | Key Takeaways 요약 리스트 |
 | Block closing | Thank You | Gradient heading + TOC link + next block link |
 
 ## Keyboard Shortcuts

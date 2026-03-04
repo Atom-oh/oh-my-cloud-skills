@@ -43,6 +43,9 @@ Ask the user:
   - Provided → store in `MEMORY.md`, use in cover
   - "skip" → omit speaker section from cover
   - Already in `MEMORY.md` → confirm with user or reuse
+- **Quiz inclusion** (REQUIRED, skippable) — "각 블록 끝에 복습 퀴즈를 포함할까요? (yes/no 또는 'skip' 입력 시 퀴즈 미포함)"
+  - "yes" → 각 블록 끝에 Quiz 슬라이드 (3-4문항) 포함
+  - "no" / "skip" → 퀴즈 미포함. Block summary는 Key Takeaways 슬라이드로 대체
 
 ### Phase 2: Theme Setup (optional)
 
@@ -223,7 +226,8 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 | Best practices | Checklist | `.checklist` with click-to-toggle |
 | YAML/code example | Code Block | `.code-block` with syntax spans |
 | Customer problem | Pain Quote | `.pain-quote` + challenge list |
-| Block summary | Quiz | `data-quiz` + 3-4 questions |
+| Block summary (퀴즈 포함 시) | Quiz | `data-quiz` + 3-4 questions |
+| Block summary (퀴즈 미포함 시) | Content | Key Takeaways 요약 리스트 |
 | Block closing | Thank You | Gradient heading + TOC link + next block link |
 
 ---
