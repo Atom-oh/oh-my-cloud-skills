@@ -1,0 +1,97 @@
+---
+sidebar_position: 1
+title: "기본 프레젠테이션 데모"
+---
+
+import DemoEmbed from '@site/src/components/DemoEmbed';
+
+# 기본 프레젠테이션 데모
+
+AWS AIOps 마스터클래스 — Block 1 프레젠테이션입니다. Remarp DSL로 작성된 마크다운에서 인터랙티브 HTML 슬라이드쇼로 자동 변환됩니다.
+
+## 데모
+
+<DemoEmbed
+  src="/oh-my-cloud-skills/demos/basic-presentation/index.html"
+  title="AIOps 마스터클래스 — Block 1: AIOps 기초와 AWS Observability 스택"
+  height="600px"
+  command="python3 remarp_to_slides.py build aiops-masterclass/"
+  remarpSource="01-fundamentals.remarp.md"
+/>
+
+## 스크린샷
+
+### 커버 슬라이드
+
+![커버 슬라이드](/img/demos/block1-cover-fhd.png)
+
+### 타이틀 슬라이드 — Fragment 순차 표시
+
+![타이틀 슬라이드](/img/demos/block1-title-fhd.png)
+
+### 개요 모드 (O 키)
+
+![개요 모드](/img/demos/overview-mode-fhd.png)
+
+## 생성 프롬프트
+
+```
+"AWS AIOps 마스터클래스 프레젠테이션 만들어줘.
+3블록 구성 (각 30분): Block 1은 AIOps 기초와 AWS Observability 스택,
+Block 2는 AI 기반 이상 탐지와 근본 원인 분석,
+Block 3는 AIOps 자동화와 운영 성숙도.
+PPTX 테마 적용하고 인터랙티브 슬라이드 포함."
+```
+
+## Remarp 소스 (발췌)
+
+```markdown
+---
+remarp: true
+block: fundamentals
+---
+
+# AWS AIOps 마스터클래스
+## 클라우드 운영의 지능화 여정
+
+---
+
+# Block 1: AIOps 기초와 AWS Observability 스택
+## 전통적 운영에서 AI 기반 운영으로의 전환
+
+---
+
+## AIOps란 무엇인가?
+
+**Artificial Intelligence for IT Operations**
+
+> "AIOps 플랫폼은 빅데이터, 현대적 머신러닝 및 기타 고급 분석 기술을
+> 결합하여 가시성을 향상시키고, 노이즈를 줄이며,
+> IT 운영 관리의 문제를 자동으로 해결합니다."
+
+**Gartner 정의** {.click}
+**핵심 목표** {.click}
+**주요 기술** {.click}
+```
+
+## 주요 기능
+
+| 기능 | 설명 |
+|----|------|
+| `{.click}` Fragment | 스페이스바로 요소를 순차적으로 표시 |
+| 다크 테마 | AWS Squid Ink (#232F3E) 배경 |
+| 16:9 비율 | FHD/4K 해상도 자동 스케일링 |
+| 진행 표시줄 | 하단에 현재 슬라이드 위치 표시 |
+| 프레젠터 뷰 | P 키로 노트/타이밍 확인 |
+| 개요 모드 | O 키로 전체 슬라이드 그리드 보기 |
+
+## 키보드 단축키
+
+| 키 | 동작 |
+|----|------|
+| ← → | 이전/다음 슬라이드 |
+| Space | 다음 Fragment 또는 다음 슬라이드 |
+| F | 전체 화면 |
+| P | 프레젠터 뷰 |
+| O | 개요 모드 |
+| Esc | 종료 |
