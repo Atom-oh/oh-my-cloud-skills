@@ -1,0 +1,27 @@
+import * as vscode from 'vscode';
+export declare class RemarpPreviewPanel {
+    static currentPanel: RemarpPreviewPanel | undefined;
+    private static readonly viewType;
+    private readonly _panel;
+    private readonly _extensionUri;
+    private _document;
+    private _currentSlideIndex;
+    private _disposables;
+    private _updateTimeout;
+    static createOrShow(extensionUri: vscode.Uri, document: vscode.TextDocument): void;
+    static update(document: vscode.TextDocument): void;
+    static syncCursor(editor: vscode.TextEditor): void;
+    private constructor();
+    private _debouncedUpdate;
+    private _parseSlides;
+    private _extractTitle;
+    private _extractType;
+    private _updateContent;
+    private _navigateToSlide;
+    private _nextSlide;
+    private _prevSlide;
+    private _getEmptyHtml;
+    private _getHtmlForSlide;
+    private _renderMarkdown;
+    dispose(): void;
+}

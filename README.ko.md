@@ -306,10 +306,11 @@ AWS/EKS 인프라 운영 및 트러블슈팅. 문제를 설명하면 — 노드 
 | `eks-agent` | EKS 클러스터 | "노드가 NotReady 상태, 트러블슈팅해줘" |
 | `network-agent` | 네트워크 | "Pod가 외부 서비스에 연결 안 됨" |
 | `iam-agent` | IAM/RBAC | "Pod에서 S3 접근 시 AccessDenied" |
-| `cloudwatch-agent` | 관측성 | "EKS Container Insights 설정해줘" |
+| `observability-agent` | 관측성 | "EKS Container Insights 설정해줘" |
 | `storage-agent` | 스토리지 | "PVC가 Pending 상태" |
 | `database-agent` | 데이터베이스 | "EKS에서 Aurora 연결 타임아웃" |
 | `cost-agent` | 비용 | "EKS 클러스터 비용 분석해줘" |
+| `analytics-agent` | 데이터 분석 | "OpenSearch 클러스터 상태 확인해줘" |
 | `ops-coordinator-agent` | 장애 조율 | "프로덕션 장애, 대응 조율해줘" |
 
 ### 스킬
@@ -342,7 +343,8 @@ AWS/EKS 인프라 운영 및 트러블슈팅. 문제를 설명하면 — 노드 
                ├── 클러스터 → eks-agent
                ├── 인증     → iam-agent
                ├── 스토리지 → storage-agent
-               └── 로그     → cloudwatch-agent
+               ├── 로그     → observability-agent
+               └── 검색/분석 → analytics-agent
              ← 종합 분석 → 근본 원인 → 해결 → 검증
 ```
 
@@ -453,7 +455,7 @@ aws-ops-power/
     ├── eks-agent.md              # 자동 활성화 에이전트 steering 파일
     ├── network-agent.md
     ├── iam-agent.md
-    ├── cloudwatch-agent.md
+    ├── observability-agent.md
     ├── storage-agent.md
     ├── database-agent.md
     ├── cost-agent.md
@@ -499,10 +501,11 @@ aws-ops-power/
 | `eks-agent` | EKS 클러스터 | "노드 NotReady 트러블슈팅" | 진단 + 수정 |
 | `network-agent` | 네트워크 | "VPC CNI IP 부족" | 진단 + 수정 |
 | `iam-agent` | IAM/RBAC | "Pod에서 S3 접근 불가" | 정책 수정 |
-| `cloudwatch-agent` | 관측성 | "Container Insights 설정" | 설정 + 쿼리 |
+| `observability-agent` | 관측성 | "Container Insights 설정" | 설정 + 쿼리 |
 | `storage-agent` | 스토리지 | "PVC Pending 상태" | 진단 + 수정 |
 | `database-agent` | 데이터베이스 | "Aurora 타임아웃" | 진단 + 수정 |
 | `cost-agent` | 비용 | "클러스터 비용 분석" | 비용 보고서 |
+| `analytics-agent` | 데이터 분석 | "OpenSearch 상태 확인" | 진단 + 수정 |
 | `ops-coordinator-agent` | 장애 조율 | "프로덕션 장애 대응" | 조율된 대응 |
 
 모든 에이전트는 Claude가 프롬프트에서 일치하는 키워드를 감지하면 자동으로 활성화됩니다.
@@ -599,17 +602,18 @@ plugins/
 │       └── workshop-creator/          # Workshop Studio 지시문 및 템플릿
 │
 ├── aws-ops-plugin/                    # 인프라 운영 플러그인
-│   ├── .claude-plugin/plugin.json     # 플러그인 매니페스트 (8 에이전트, 5 스킬)
+│   ├── .claude-plugin/plugin.json     # 플러그인 매니페스트 (9 에이전트, 5 스킬)
 │   ├── .mcp.json                      # AWS MCP 서버 설정
 │   ├── CLAUDE.md                      # 자동 호출 규칙 및 워크플로우
 │   ├── agents/
 │   │   ├── eks-agent.md               # EKS 클러스터 운영
 │   │   ├── network-agent.md           # VPC CNI, ALB/NLB, DNS
 │   │   ├── iam-agent.md               # IRSA, Pod Identity, RBAC
-│   │   ├── cloudwatch-agent.md        # 메트릭, 로그, 알람, X-Ray
+│   │   ├── observability-agent.md      # CloudWatch, AMP, AMG, ADOT, Prometheus/Grafana
 │   │   ├── storage-agent.md           # EBS/EFS/FSx CSI 드라이버
 │   │   ├── database-agent.md          # RDS, Aurora, DynamoDB, ElastiCache
 │   │   ├── cost-agent.md              # 비용 분석 및 최적화
+│   │   ├── analytics-agent.md         # OpenSearch, ClickHouse, Athena, QuickSight, Kinesis
 │   │   └── ops-coordinator-agent.md   # 다중 도메인 장애 조율
 │   └── skills/
 │       ├── ops-troubleshoot/          # 체계적 트러블슈팅

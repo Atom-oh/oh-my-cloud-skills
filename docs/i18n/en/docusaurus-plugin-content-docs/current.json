@@ -1,0 +1,50 @@
+{
+  "version.label": {
+    "message": "Next",
+    "description": "The label for version current"
+  },
+  "sidebar.awsContent.category.Agents": {
+    "message": "Agents",
+    "description": "The label for category 'Agents' in sidebar 'awsContent'"
+  },
+  "sidebar.awsContent.category.Skills": {
+    "message": "Skills",
+    "description": "The label for category 'Skills' in sidebar 'awsContent'"
+  },
+  "sidebar.awsContent.category.Demos": {
+    "message": "Demos",
+    "description": "The label for category 'Demos' in sidebar 'awsContent'"
+  },
+  "sidebar.awsOps.category.Agents": {
+    "message": "Agents",
+    "description": "The label for category 'Agents' in sidebar 'awsOps'"
+  },
+  "sidebar.awsOps.category.Skills": {
+    "message": "Skills",
+    "description": "The label for category 'Skills' in sidebar 'awsOps'"
+  },
+  "sidebar.awsOps.category.MCP Servers": {
+    "message": "MCP Servers",
+    "description": "The label for category 'MCP Servers' in sidebar 'awsOps'"
+  },
+  "sidebar.awsOps.category.Demos": {
+    "message": "Demos",
+    "description": "The label for category 'Demos' in sidebar 'awsOps'"
+  },
+  "sidebar.remarpGuide.category.Syntax Reference": {
+    "message": "Syntax Reference",
+    "description": "The label for category 'Syntax Reference' in sidebar 'remarpGuide'"
+  },
+  "sidebar.remarpGuide.category.Slide Types": {
+    "message": "Slide Types",
+    "description": "The label for category 'Slide Types' in sidebar 'remarpGuide'"
+  },
+  "sidebar.remarpGuide.category.Themes": {
+    "message": "Themes",
+    "description": "The label for category 'Themes' in sidebar 'remarpGuide'"
+  },
+  "sidebar.remarpGuide.category.Examples": {
+    "message": "Examples",
+    "description": "The label for category 'Examples' in sidebar 'remarpGuide'"
+  }
+}

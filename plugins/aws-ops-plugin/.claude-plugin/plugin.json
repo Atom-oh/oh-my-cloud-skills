@@ -7,10 +7,11 @@
     "./agents/eks-agent.md",
     "./agents/network-agent.md",
     "./agents/iam-agent.md",
-    "./agents/cloudwatch-agent.md",
+    "./agents/observability-agent.md",
     "./agents/storage-agent.md",
     "./agents/database-agent.md",
     "./agents/cost-agent.md",
+    "./agents/analytics-agent.md",
     "./agents/ops-coordinator-agent.md"
   ],
   "skills": [

@@ -32,7 +32,13 @@ When the following keywords are detected, automatically invoke the corresponding
 
 | Keywords | Agent | Description |
 |----------|-------|-------------|
-| "CloudWatch", "Container Insights", "Logs Insights", "metric", "alarm", "X-Ray", "모니터링", "로그 분석", "알람 설정", "메트릭" | `cloudwatch-agent` | Metrics, logs, alarms, tracing |
+| "CloudWatch", "Prometheus", "Grafana", "ADOT", "OpenTelemetry", "Container Insights", "Logs Insights", "metric", "alarm", "X-Ray", "모니터링", "로그 분석", "알람 설정", "메트릭", "프로메테우스", "그라파나" | `observability-agent` | Metrics, logs, alarms, tracing, AMP, AMG, ADOT |
+
+### Analytics
+
+| Keywords | Agent | Description |
+|----------|-------|-------------|
+| "OpenSearch", "Elasticsearch", "ClickHouse", "Athena", "QuickSight", "Kinesis", "데이터 분석", "로그 분석 파이프라인", "검색 엔진", "대시보드" | `analytics-agent` | OpenSearch, Athena, Kinesis, QuickSight, ClickHouse |
 
 ### Storage
 
@@ -66,7 +72,7 @@ When the following keywords are detected, automatically invoke the corresponding
 |------------|---------|---------|
 | `awsknowledge` | AWS architecture knowledge, recommendations, regional info | All agents |
 | `awsdocs` | AWS official documentation search/read | All agents |
-| `awsapi` | AWS API direct calls (describe, list, etc.) | eks, network, iam, storage, database, cloudwatch |
+| `awsapi` | AWS API direct calls (describe, list, etc.) | eks, network, iam, storage, database, observability, analytics |
 | `awspricing` | Cost analysis, pricing queries | cost-agent |
 | `awsiac` | CloudFormation/CDK validation, troubleshooting | eks-agent, ops-coordinator |
 
@@ -81,7 +87,8 @@ User incident report → ops-coordinator-agent (triage)
                         ├── Cluster symptoms → eks-agent
                         ├── Auth symptoms → iam-agent
                         ├── Storage symptoms → storage-agent
-                        └── Observability → cloudwatch-agent
+                        ├── Observability → observability-agent
+                        └── Analytics → analytics-agent
 
 ops-coordinator-agent ← Aggregate results → Root cause → Resolve → Verify
 ```
@@ -102,7 +109,7 @@ User query → Matched agent → Diagnose → Resolve → Verify
 | 트리거 조건 | 팀 이름 | 구성 |
 |-------------|---------|------|
 | P1/P2 인시던트, 2+ 도메인 증상 | `ops-incident-response` | ops-coordinator + 전문 에이전트 병렬 |
-| "health check" 전체 점검 요청 | `ops-health-check` | eks + network + iam + storage + cloudwatch 병렬 |
+| "health check" 전체 점검 요청 | `ops-health-check` | eks + network + iam + storage + observability + analytics 병렬 |
 | "security audit" 보안 감사 요청 | `ops-security-audit` | iam + network + storage 병렬 감사 |
 
 ### 인시던트 대응 오케스트레이션
@@ -134,10 +141,11 @@ User query → Matched agent → Diagnose → Resolve → Verify
 | `eks-agent` | sonnet | EKS cluster management, node groups, upgrades, add-ons, 5-min triage |
 | `network-agent` | sonnet | VPC CNI, ALB/NLB, DNS, Security Groups, IP exhaustion |
 | `iam-agent` | sonnet | IRSA, Pod Identity, RBAC, aws-auth, policy validation |
-| `cloudwatch-agent` | sonnet | Container Insights, Logs Insights queries, alarms, X-Ray |
+| `observability-agent` | sonnet | CloudWatch, AMP, AMG, ADOT, Prometheus/Grafana, X-Ray |
 | `storage-agent` | sonnet | EBS/EFS/FSx CSI, PVC binding, mount errors |
 | `database-agent` | sonnet | RDS/Aurora connectivity, DynamoDB throttling, ElastiCache |
 | `cost-agent` | sonnet | awspricing MCP cost analysis, savings strategies |
+| `analytics-agent` | sonnet | OpenSearch, ClickHouse, Athena, QuickSight, Kinesis |
 | `ops-coordinator-agent` | opus | Multi-domain incident coordination, severity assessment, team orchestration |
 
 ## Skills
@@ -145,7 +153,7 @@ User query → Matched agent → Diagnose → Resolve → Verify
 | Skill | Trigger | Purpose |
 |-------|---------|---------|
 | `ops-troubleshoot` | "troubleshoot", "debug", "장애", "문제 해결" | 5-min triage → investigate → resolve → postmortem |
-| `ops-health-check` | "health check", "상태 점검", "헬스체크" | Full infrastructure health assessment |
+| `ops-health-check` | "health check", "상태 점검", "헬스체크" | Full infrastructure health assessment (includes analytics) |
 | `ops-network-diagnosis` | "network issue", "네트워크 오류", "연결 문제" | VPC CNI, LB, DNS deep diagnosis |
 | `ops-observability` | "monitoring", "모니터링", "로그 분석", "알람" | CloudWatch setup, PromQL, log analysis |
 | `ops-security-audit` | "security audit", "보안 점검", "compliance" | IAM audit, network security, compliance |

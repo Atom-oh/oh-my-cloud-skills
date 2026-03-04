@@ -50,7 +50,11 @@ Smart completions for:
 
 ## Installation
 
-### From VSIX
+### From VS Code Marketplace
+
+Search for **"Remarp Slides"** in the Extensions view (`Ctrl+Shift+X`) and click Install.
+
+### From VSIX (local)
 
 ```bash
 code --install-extension remarp-vscode-0.1.0.vsix
@@ -65,6 +69,55 @@ npm run compile
 ```
 
 Then press F5 in VSCode to launch the Extension Development Host.
+
+## Publishing to VS Code Marketplace
+
+### Prerequisites
+
+```bash
+# Install vsce (Visual Studio Code Extension CLI)
+npm install -g @vscode/vsce
+```
+
+### 1. Create a Publisher
+
+1. Sign in to https://dev.azure.com and create an organization (if you don't have one)
+2. Go to **User Settings** (top-right) → **Personal Access Tokens** → **New Token**
+   - Scopes: select **Marketplace > Manage**
+   - Copy the generated token (shown only once)
+3. Go to https://marketplace.visualstudio.com/manage → **Create publisher**
+   - Publisher ID must match `"publisher"` in `package.json` (currently `aws-cloud-skills`)
+
+### 2. Package & Publish
+
+```bash
+cd tools/remarp-vscode
+
+# Login with your PAT
+vsce login aws-cloud-skills
+
+# Package into .vsix (optional, for testing)
+vsce package
+
+# Publish to Marketplace
+vsce publish
+```
+
+### 3. Version Bump
+
+```bash
+# Bump patch/minor/major and publish in one step
+vsce publish patch   # 0.1.0 → 0.1.1
+vsce publish minor   # 0.1.0 → 0.2.0
+vsce publish major   # 0.1.0 → 1.0.0
+```
+
+### Checklist before publishing
+
+- [ ] `media/icon.png` exists (128x128 PNG, Marketplace requirement)
+- [ ] `publisher` in `package.json` matches your Azure DevOps Publisher ID
+- [ ] `npm run compile` succeeds without errors
+- [ ] Extension tested locally via F5 (Extension Development Host)
 
 ## Usage
 
