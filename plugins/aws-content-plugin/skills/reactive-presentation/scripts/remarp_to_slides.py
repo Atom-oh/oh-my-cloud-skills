@@ -2,7 +2,7 @@
 """
 Remarp Markdown to reactive-presentation HTML converter.
 
-Converts Remarp-style markdown (.remarp.md) into reactive-presentation HTML files.
+Converts Remarp-style markdown (.md / .remarp.md) into reactive-presentation HTML files.
 Supports the new Remarp DSL with directives, fragments, columns, canvas DSL,
 and enhanced speaker notes with cues.
 
@@ -261,8 +261,20 @@ class RemarpParser:
         # Remove column blocks from content
         md_text = self.COLUMN_PATTERN.sub('', md_text)
 
-        # Remove fragment blocks from content (but keep inline)
-        md_text = self.FRAGMENT_BLOCK_PATTERN.sub('', md_text)
+        # Replace :::click blocks with fragment markers (content preserved for rendering)
+        frag_counter = [0]
+        def _mark_click_block(match):
+            content = match.group(3) if match.lastindex >= 3 else ''
+            attrs = {}
+            attr_text = match.group(0).split('\n')[0]
+            for attr_match in re.finditer(r'(\w+)=([^\s\n]+)', attr_text):
+                attrs[attr_match.group(1)] = attr_match.group(2)
+            animation = attrs.get('animation', 'fade-in')
+            order = attrs.get('order', str(frag_counter[0]))
+            frag_counter[0] = max(frag_counter[0], int(order) + 1)
+            return f'<!-- FRAG:{order}:{animation} -->\n{content.strip()}\n<!-- /FRAG -->'
+
+        md_text = self.FRAGMENT_BLOCK_PATTERN.sub(_mark_click_block, md_text)
 
         # Detect slide type
         slide_type = self.detect_slide_type(md_text, directives, canvas_elements)
@@ -909,6 +921,40 @@ class RemarpHTMLGenerator:
                 idx += 1
                 continue
 
+            # Check for fenced code blocks (```lang ... ```)
+            if line.startswith('```'):
+                lang_meta = line[3:].strip()  # e.g. "yaml {filename=...}" or "bash {highlight=...}"
+                lang = lang_meta.split()[0] if lang_meta else ''
+                code_lines = []
+                idx += 1
+                while idx < len(lines) and not lines[idx].startswith('```'):
+                    code_lines.append(lines[idx])
+                    idx += 1
+                if idx < len(lines):
+                    idx += 1  # skip closing ```
+                code_text = '\n'.join(code_lines)
+                highlighted = self._highlight_code(code_text, lang)
+                fname_match = re.search(r'filename="([^"]+)"', lang_meta)
+                label_html = f'<span class="code-label">{fname_match.group(1)}</span>' if fname_match else ''
+                html_parts.append(f'<div class="code-block">{label_html}{highlighted}</div>')
+                continue
+
+            # Check for fragment block markers (:::click → <!-- FRAG:order:animation -->)
+            frag_match = re.match(r'^\s*<!-- FRAG:(\d+):(\S+) -->\s*$', line)
+            if frag_match:
+                order = frag_match.group(1)
+                animation = frag_match.group(2)
+                frag_lines = []
+                idx += 1
+                while idx < len(lines) and not re.match(r'^\s*<!-- /FRAG -->\s*$', lines[idx]):
+                    frag_lines.append(lines[idx])
+                    idx += 1
+                if idx < len(lines):
+                    idx += 1  # skip <!-- /FRAG -->
+                inner_html = self._parse_body_content(frag_lines)
+                html_parts.append(f'<div class="fragment {animation}" data-fragment-index="{order}">\n{inner_html}\n</div>')
+                continue
+
             # Check for headers
             if line.startswith('#### '):
                 html_parts.append(f'<h4>{self._convert_markdown(line[5:].strip())}</h4>')
@@ -1402,7 +1448,11 @@ class RemarpHTMLGenerator:
         """Generate tabs slide HTML."""
         # Similar to compare but with tab classes
         html = self._gen_compare_slide(slide)
-        return html.replace('compare-toggle', 'tab-bar').replace('compare-btn', 'tab-btn').replace('compare-content', 'tab-content')
+        return (html
+            .replace('compare-toggle', 'tab-bar')
+            .replace('compare-btn', 'tab-btn')
+            .replace('compare-content', 'tab-content')
+            .replace('data-compare=', 'data-tab='))
 
     def _gen_canvas_slide(self, slide: Slide) -> str:
         """Generate canvas slide HTML."""
@@ -1468,15 +1518,21 @@ class RemarpHTMLGenerator:
             if line.startswith('## '):
                 heading = self._convert_markdown(line[3:].strip())
             elif line.startswith('**') and line.rstrip().endswith('**'):
-                # New question
+                # New question (bold format)
                 if current_question:
                     quizzes.append((current_question, current_options))
                 current_question = self._convert_markdown(line.strip('*').strip())
                 current_options = []
-            elif re.match(r'^-\s*\[[ x]\]', line):
-                # Option
+            elif line.startswith('### ') and not line.startswith('## '):
+                # New question (### heading format, e.g. "### Q1. Question text")
+                if current_question:
+                    quizzes.append((current_question, current_options))
+                current_question = self._convert_markdown(line[4:].strip())
+                current_options = []
+            elif re.match(r'^-?\s*\[[ x]\]', line):
+                # Option (with or without leading hyphen)
                 is_correct = '[x]' in line
-                option_text = re.sub(r'^-\s*\[[ x]\]\s*', '', line)
+                option_text = re.sub(r'^-?\s*\[[ x]\]\s*', '', line)
                 current_options.append((self._convert_markdown(option_text), is_correct))
 
         # Don't forget last question
@@ -1890,12 +1946,25 @@ class RemarpProjectBuilder:
         self.theme_dir: Optional[Path] = None
         self.theme_manifest: Dict[str, Any] = {}
 
+    @staticmethod
+    def _is_remarp_file(path: Path) -> bool:
+        """Check if a .md file has remarp: true in frontmatter."""
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                content = f.read(500)  # frontmatter only
+            return bool(re.match(r'^---\s*\n.*?remarp:\s*true', content, re.DOTALL))
+        except (OSError, UnicodeDecodeError):
+            return False
+
     def load_project(self) -> bool:
-        """Load _presentation.remarp.md + all block files.
+        """Load _presentation.md (or .remarp.md fallback) + all block files.
 
         Also handles theme extraction from PPTX/PDF sources.
         """
-        main_file = self.project_dir / '_presentation.remarp.md'
+        # Try .md first, fall back to .remarp.md
+        main_file = self.project_dir / '_presentation.md'
+        if not main_file.exists():
+            main_file = self.project_dir / '_presentation.remarp.md'  # fallback
 
         if main_file.exists():
             with open(main_file, 'r', encoding='utf-8') as f:
@@ -1906,12 +1975,22 @@ class RemarpProjectBuilder:
         # Process theme configuration
         self._process_theme_config()
 
-        # Find all block files
+        # Find block files: .md with remarp: true in frontmatter
+        for md_file in sorted(self.project_dir.glob('*.md')):
+            if md_file.name.startswith('_'):
+                continue
+            if not self._is_remarp_file(md_file):
+                continue  # skip regular .md files (README.md, etc.)
+            block_name = md_file.stem
+            self.blocks[block_name] = md_file
+
+        # Fallback: also check *.remarp.md (backward compat, no validation needed)
         for md_file in sorted(self.project_dir.glob('*.remarp.md')):
             if md_file.name.startswith('_'):
                 continue
             block_name = md_file.stem.replace('.remarp', '')
-            self.blocks[block_name] = md_file
+            if block_name not in self.blocks:
+                self.blocks[block_name] = md_file
 
         return bool(self.blocks)
 
@@ -2278,7 +2357,7 @@ def migrate_marp_to_remarp(marp_file: str, output_dir: str) -> List[str]:
 
     # Write migrated file
     input_name = Path(marp_file).stem
-    output_file = output_path / f'{input_name}.remarp.md'
+    output_file = output_path / f'{input_name}.md'
 
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(content)
@@ -2343,7 +2422,7 @@ def main():
             builder = RemarpProjectBuilder(str(input_path), args.output)
 
             if not builder.load_project():
-                print(f'Error: No .remarp.md files found in {input_path}')
+                print(f'Error: No .md or .remarp.md files found in {input_path}')
                 return
 
             if args.block:
@@ -2362,7 +2441,7 @@ def main():
         builder = RemarpProjectBuilder(args.path, args.output)
 
         if not builder.load_project():
-            print(f'Error: No .remarp.md files found in {args.path}')
+            print(f'Error: No .md or .remarp.md files found in {args.path}')
             return
 
         changed = builder.detect_changes()
