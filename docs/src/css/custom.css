@@ -1,0 +1,182 @@
+/* AWS-inspired dark theme for oh-my-cloud-skills */
+
+:root {
+  --ifm-color-primary: #ff9900;
+  --ifm-color-primary-dark: #e68a00;
+  --ifm-color-primary-darker: #d98200;
+  --ifm-color-primary-darkest: #b36b00;
+  --ifm-color-primary-light: #ffad33;
+  --ifm-color-primary-lighter: #ffb84d;
+  --ifm-color-primary-lightest: #ffcc80;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(255, 153, 0, 0.1);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #ff9900;
+  --ifm-color-primary-dark: #e68a00;
+  --ifm-color-primary-darker: #d98200;
+  --ifm-color-primary-darkest: #b36b00;
+  --ifm-color-primary-light: #ffad33;
+  --ifm-color-primary-lighter: #ffb84d;
+  --ifm-color-primary-lightest: #ffcc80;
+  --ifm-background-color: #1a1a2e;
+  --ifm-background-surface-color: #16213e;
+  --ifm-navbar-background-color: #232f3e;
+  --ifm-footer-background-color: #161e2d;
+  --docusaurus-highlighted-code-line-bg: rgba(255, 153, 0, 0.15);
+}
+
+/* Navbar */
+.navbar {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.navbar__title {
+  font-weight: 700;
+}
+
+/* Sidebar active link */
+.menu__link--active:not(.menu__link--sublist) {
+  background-color: rgba(255, 153, 0, 0.1);
+  border-left: 3px solid var(--ifm-color-primary);
+  padding-left: calc(var(--ifm-menu-link-padding-horizontal) - 3px);
+}
+
+/* Tables */
+table {
+  display: table;
+  width: 100%;
+}
+
+table th {
+  background-color: rgba(255, 153, 0, 0.08);
+  font-weight: 600;
+}
+
+[data-theme='dark'] table th {
+  background-color: rgba(255, 153, 0, 0.12);
+}
+
+/* Demo iframe */
+.demo-embed {
+  border: 1px solid var(--ifm-table-border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 1.5rem 0;
+}
+
+.demo-embed__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background-color: rgba(255, 153, 0, 0.08);
+  border-bottom: 1px solid var(--ifm-table-border-color);
+  font-size: 0.875rem;
+}
+
+.demo-embed__title {
+  font-weight: 600;
+}
+
+.demo-embed__actions a {
+  color: var(--ifm-color-primary);
+  text-decoration: none;
+  font-size: 0.8rem;
+}
+
+.demo-embed__iframe {
+  width: 100%;
+  height: 500px;
+  border: none;
+  background: #1a1a2e;
+}
+
+.demo-embed__footer {
+  padding: 0.75rem 1rem;
+  background-color: rgba(0, 0, 0, 0.03);
+  border-top: 1px solid var(--ifm-table-border-color);
+  font-size: 0.8rem;
+}
+
+[data-theme='dark'] .demo-embed__footer {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+/* Command block */
+.command-block {
+  border: 1px solid var(--ifm-table-border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 1rem 0;
+}
+
+.command-block__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: rgba(255, 153, 0, 0.08);
+  border-bottom: 1px solid var(--ifm-table-border-color);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ifm-color-primary);
+}
+
+.command-block__body {
+  padding: 0.75rem 1rem;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.875rem;
+  background-color: var(--ifm-background-surface-color);
+}
+
+/* Plugin cards (landing page) */
+.plugin-card {
+  border: 1px solid var(--ifm-table-border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+  height: 100%;
+}
+
+.plugin-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 153, 0, 0.15);
+  border-color: var(--ifm-color-primary);
+}
+
+.plugin-card__title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--ifm-color-primary);
+}
+
+.plugin-card__description {
+  color: var(--ifm-font-color-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.plugin-card__stats {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.8rem;
+  color: var(--ifm-font-color-secondary);
+}
+
+/* Hero */
+.hero--primary {
+  background: linear-gradient(135deg, #232f3e 0%, #1a1a2e 50%, #0f3460 100%);
+}
+
+.hero__subtitle {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Admonition */
+.alert--info {
+  --ifm-alert-background-color: rgba(255, 153, 0, 0.08);
+  --ifm-alert-border-color: var(--ifm-color-primary);
+}

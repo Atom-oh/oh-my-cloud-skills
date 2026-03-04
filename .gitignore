@@ -7,5 +7,16 @@
 # Playwright MCP
 .playwright-mcp/
 
+# Python
+__pycache__/
+
+# Node.js
+node_modules/
+
 # macOS
 .DS_Store
+
+# Docusaurus
+docs/node_modules/
+docs/build/
+docs/.docusaurus/

@@ -1,0 +1,8 @@
+{
+  "label": "데모",
+  "position": 5,
+  "link": {
+    "type": "generated-index",
+    "description": "Reactive Presentation 프레임워크 데모 - 프레젠테이션, 애니메이션, 퀴즈, 탭"
+  }
+}

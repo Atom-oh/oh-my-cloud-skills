@@ -1,0 +1,295 @@
+---
+sidebar_position: 1
+title: 기본 예제
+---
+
+# 기본 예제
+
+Remarp의 주요 기능을 보여주는 완전한 예제입니다.
+
+## 전체 예제 코드
+
+아래는 다양한 슬라이드 타입을 포함한 완전한 Remarp 프레젠테이션입니다.
+
+````markdown
+---
+remarp: true
+version: 1
+title: "AWS Serverless Architecture"
+author: "Cloud Team"
+date: 2025-03-01
+event: "AWS Tech Talk"
+lang: ko
+
+theme:
+  primary: "#232F3E"
+  accent: "#FF9900"
+
+transition:
+  default: slide
+  duration: 400
+---
+
+# AWS Serverless Architecture
+
+Cloud Team | AWS Tech Talk 2025
+
+:::notes
+{timing: 1min}
+환영합니다. 오늘은 AWS 서버리스 아키텍처에 대해 알아보겠습니다.
+:::
+
+---
+
+## 오늘 다룰 내용
+
+- 서버리스란 무엇인가? {.click}
+- AWS Lambda 소개 {.click}
+- 아키텍처 패턴 {.click}
+- 실습 데모 {.click}
+
+:::notes
+{timing: 2min}
+4가지 주제를 다룰 예정입니다. 각 주제를 클릭하며 설명합니다.
+:::
+
+---
+@type: compare
+
+## Serverless vs Traditional
+
+### Traditional
+- 서버 프로비저닝 필요
+- 용량 관리 필요
+- 유휴 시간에도 비용 발생
+- OS 패칭 필요
+
+### Serverless
+- 서버 관리 불필요
+- 자동 스케일링
+- 실행 시간만 비용 발생
+- 완전 관리형
+
+:::notes
+{timing: 3min}
+{cue: question}
+"현재 어떤 방식을 사용하고 계신가요?"
+:::
+
+---
+@type: canvas
+@canvas-id: lambda-flow
+
+## Lambda 실행 모델
+
+:::canvas
+icon trigger "API-Gateway" at 50,150 size 48 step 1
+icon lambda "Lambda" at 200,150 size 48 step 2
+icon dynamo "DynamoDB" at 350,150 size 48 step 3
+
+arrow trigger -> lambda "invoke" step 4
+arrow lambda -> dynamo "read/write" step 5
+
+group "AWS Cloud" containing trigger, lambda, dynamo color=#232F3E step 1
+:::
+
+:::notes
+{timing: 5min}
+{cue: demo}
+↑↓ 키로 각 단계를 보여주세요.
+- Step 1: API Gateway가 요청을 받음
+- Step 2: Lambda 함수 호출
+- Step 3: DynamoDB에서 데이터 처리
+:::
+
+---
+@type: tabs
+
+## 코드 예제
+
+### Python
+```python {filename="handler.py" highlight="4-6"}
+import json
+
+def handler(event, context):
+    user_id = event['pathParameters']['userId']
+    # 비즈니스 로직 처리
+    return {'statusCode': 200, 'body': json.dumps('OK')}
+```
+
+### Node.js
+```javascript {filename="handler.js" highlight="3-5"}
+exports.handler = async (event) => {
+    const userId = event.pathParameters.userId;
+    // 비즈니스 로직 처리
+    return { statusCode: 200, body: JSON.stringify('OK') };
+};
+```
+
+:::notes
+{timing: 3min}
+Python과 Node.js 예제를 탭으로 전환하며 보여줍니다.
+:::
+
+---
+@type: timeline
+
+## 서버리스 진화
+
+### 2014
+AWS Lambda 출시
+이벤트 기반 컴퓨팅
+
+### 2016
+API Gateway 통합
+서버리스 API
+
+### 2019
+Lambda Layers
+Provisioned Concurrency
+
+### 2022
+Lambda SnapStart
+Function URLs
+
+:::notes
+{timing: 2min}
+서버리스 기술의 발전 과정을 설명합니다.
+:::
+
+---
+@type: quiz
+
+## 퀴즈
+
+**Q1: Lambda의 최대 타임아웃은?**
+- [ ] 5분
+- [x] 15분
+- [ ] 30분
+- [ ] 60분
+
+**Q2: Lambda 가격은 무엇을 기준으로?**
+- [ ] 프로비저닝된 용량
+- [x] 요청 수 + 실행 시간
+- [ ] 월 고정 요금
+
+:::notes
+{timing: 2min}
+청중 참여를 유도하는 퀴즈입니다.
+:::
+
+---
+@type: checklist
+
+## 배포 체크리스트
+
+- [ ] IAM 역할 생성
+- [ ] Lambda 함수 작성
+- [ ] API Gateway 설정
+- [ ] 테스트 실행
+- [ ] 모니터링 설정
+
+:::notes
+{timing: 2min}
+실제 배포 전 확인해야 할 항목들입니다.
+:::
+
+---
+
+## 핵심 요약
+
+:::click
+### 서버리스의 장점
+- 인프라 관리 불필요
+- 자동 스케일링
+- 비용 효율적
+:::
+
+:::click
+### 다음 단계
+- AWS Lambda 콘솔 체험
+- SAM으로 첫 프로젝트 시작
+- 공식 문서 참고
+:::
+
+:::notes
+{timing: 2min}
+{cue: transition}
+마무리하며 다음 단계를 안내합니다.
+:::
+
+---
+
+## Thank You
+
+질문이 있으시면 말씀해 주세요.
+
+:::notes
+{timing: 3min}
+{cue: question}
+Q&A 시간입니다.
+:::
+````
+
+## 슬라이드 타입 요약
+
+이 예제에 포함된 슬라이드 타입:
+
+| 슬라이드 | 타입 | 설명 |
+|----------|------|------|
+| 1 | Title | 타이틀 슬라이드 |
+| 2 | Content | 프래그먼트가 있는 목차 |
+| 3 | Compare | 서버리스 vs 전통 비교 |
+| 4 | Canvas | 아키텍처 다이어그램 |
+| 5 | Tabs | 언어별 코드 예제 |
+| 6 | Timeline | 기술 진화 타임라인 |
+| 7 | Quiz | 인터랙티브 퀴즈 |
+| 8 | Checklist | 배포 체크리스트 |
+| 9 | Content | 블록 프래그먼트 요약 |
+| 10 | Content | 마무리 슬라이드 |
+
+## 데모
+
+:::info
+실제 렌더링된 프레젠테이션 데모는 향후 `/oh-my-cloud-skills/demos/basic-presentation/`에서 제공될 예정입니다.
+:::
+
+## 주요 기능 하이라이트
+
+### 프래그먼트
+
+```markdown
+- 첫 번째 {.click}
+- 두 번째 {.click}
+```
+
+### Canvas DSL
+
+```markdown
+:::canvas
+icon lambda "Lambda" at 200,150 size 48 step 2
+arrow trigger -> lambda "invoke" step 4
+:::
+```
+
+### 스피커 노트
+
+```markdown
+:::notes
+{timing: 3min}
+{cue: demo}
+설명 내용...
+:::
+```
+
+### 레이아웃
+
+```markdown
+::: left
+왼쪽 내용
+:::
+
+::: right
+오른쪽 내용
+:::
+```

@@ -306,10 +306,11 @@ Infrastructure operations and troubleshooting for AWS/EKS environments. Describe
 | `eks-agent` | EKS clusters | "My node is NotReady, troubleshoot" |
 | `network-agent` | Networking | "Pod can't reach external service" |
 | `iam-agent` | IAM/RBAC | "Getting AccessDenied on S3 from pod" |
-| `cloudwatch-agent` | Observability | "Set up Container Insights for EKS" |
+| `observability-agent` | Observability | "Set up Container Insights for EKS" |
 | `storage-agent` | Storage | "PVC stuck in Pending state" |
 | `database-agent` | Database | "Aurora connection timeout from EKS" |
 | `cost-agent` | Cost | "Analyze my EKS cluster costs" |
+| `analytics-agent` | Analytics | "OpenSearch cluster health is red" |
 | `ops-coordinator-agent` | Incidents | "Production outage, coordinate response" |
 
 ### Skills
@@ -342,7 +343,8 @@ User report → ops-coordinator (triage + severity)
                 ├── Cluster → eks-agent
                 ├── Auth    → iam-agent
                 ├── Storage → storage-agent
-                └── Logs    → cloudwatch-agent
+                ├── Logs    → observability-agent
+                └── Search  → analytics-agent
               ← Aggregate → Root cause → Resolve → Verify
 ```
 
@@ -453,7 +455,7 @@ aws-ops-power/
     ├── eks-agent.md              # Auto-activated agent steering files
     ├── network-agent.md
     ├── iam-agent.md
-    ├── cloudwatch-agent.md
+    ├── observability-agent.md
     ├── storage-agent.md
     ├── database-agent.md
     ├── cost-agent.md
@@ -499,10 +501,11 @@ aws-ops-power/
 | `eks-agent` | EKS clusters | "Node NotReady, troubleshoot" | Diagnosis + fix |
 | `network-agent` | Networking | "VPC CNI IP exhaustion" | Diagnosis + fix |
 | `iam-agent` | IAM/RBAC | "Pod can't access S3" | Policy fix |
-| `cloudwatch-agent` | Observability | "Set up Container Insights" | Config + queries |
+| `observability-agent` | Observability | "Set up Container Insights" | Config + queries |
 | `storage-agent` | Storage | "PVC stuck in Pending" | Diagnosis + fix |
 | `database-agent` | Database | "Aurora timeout from EKS" | Diagnosis + fix |
 | `cost-agent` | Cost | "Analyze cluster costs" | Cost report |
+| `analytics-agent` | Analytics | "OpenSearch cluster red" | Diagnosis + fix |
 | `ops-coordinator-agent` | Incidents | "Production outage" | Coordinated response |
 
 All agents activate automatically when Claude detects matching keywords in your prompt.
@@ -599,17 +602,18 @@ plugins/
 │       └── workshop-creator/          # Workshop Studio directives & templates
 │
 ├── aws-ops-plugin/                    # Infrastructure operations plugin
-│   ├── .claude-plugin/plugin.json     # Plugin manifest (8 agents, 5 skills)
+│   ├── .claude-plugin/plugin.json     # Plugin manifest (9 agents, 5 skills)
 │   ├── .mcp.json                      # AWS MCP servers configuration
 │   ├── CLAUDE.md                      # Auto-invocation rules & workflows
 │   ├── agents/
 │   │   ├── eks-agent.md               # EKS cluster operations
 │   │   ├── network-agent.md           # VPC CNI, ALB/NLB, DNS
 │   │   ├── iam-agent.md               # IRSA, Pod Identity, RBAC
-│   │   ├── cloudwatch-agent.md        # Metrics, logs, alarms, X-Ray
+│   │   ├── observability-agent.md      # CloudWatch, AMP, AMG, ADOT, Prometheus/Grafana
 │   │   ├── storage-agent.md           # EBS/EFS/FSx CSI drivers
 │   │   ├── database-agent.md          # RDS, Aurora, DynamoDB, ElastiCache
 │   │   ├── cost-agent.md              # Cost analysis & optimization
+│   │   ├── analytics-agent.md         # OpenSearch, ClickHouse, Athena, QuickSight, Kinesis
 │   │   └── ops-coordinator-agent.md   # Multi-domain incident coordination
 │   └── skills/
 │       ├── ops-troubleshoot/          # Systematic troubleshooting
