@@ -105,19 +105,25 @@ your-repo/
 
 | 키 | 동작 |
 |-----|--------|
-| `<-` `->` | 이전 / 다음 슬라이드 |
+| `←` `→` | 이전 / 다음 슬라이드 |
+| `↑` `↓` | 이전 / 다음 슬라이드 (대체) |
 | `Space` | 다음 슬라이드 |
 | `F` | 전체 화면 전환 |
 | `P` | 발표자 뷰 열기 (새 창) |
 | `Esc` | 전체 화면 종료 |
 | `Home` / `End` | 첫 / 마지막 슬라이드 |
+| `N` | 슬라이드 번호 표시 전환 |
+| `O` | 오버뷰 모드 (슬라이드 그리드) |
+| `S` | 발표자 노트 |
+| `B` | 검은 화면 (일시정지) |
+| `1`-`9` | 슬라이드 10%-90% 위치로 이동 |
 
 ### 작동 방식
 
-1. **기획** — Claude가 주제, 대상, 시간, 언어, 선택적 PPTX 템플릿에 대해 질문
-2. **작성** — Marp 마크다운으로 콘텐츠 원본 작성
-3. **생성** — Canvas 애니메이션과 인터랙티브 요소가 포함된 HTML 파일 빌드
-4. **검토** — 인터랙티브 피드백 루프: Marp 직접 편집, 프롬프트로 수정 요청, 또는 진행
+1. **기획** — Claude가 주제, 대상, 시간, 언어, 선택적 PPTX/PDF 소스에 대해 질문
+2. **작성** — Remarp 마크다운으로 콘텐츠 원본 작성
+3. **생성** — `remarp_to_slides.py`로 Canvas 애니메이션과 인터랙티브 요소가 포함된 HTML 빌드
+4. **검토** — 인터랙티브 피드백 루프: Remarp 직접 편집, 프롬프트로 수정 요청, 또는 진행
 5. **향상** — Canvas 애니메이션 추가, AWS 아이콘 추출, 발표자 뷰 테스트
 6. **배포** — GitHub Pages로 `git push`. 빌드 단계 불필요
 
@@ -147,7 +153,7 @@ your-repo/
 
 #### Claude가 묻는 질문
 
-콘텐츠를 생성하기 전에 Claude가 프레젠테이션을 맞춤 제작하기 위해 7가지 기획 질문을 합니다:
+콘텐츠를 생성하기 전에 Claude가 프레젠테이션을 맞춤 제작하기 위해 8가지 기획 질문을 합니다:
 
 | # | 질문 | 설명 | 기본값 |
 |---|------|------|--------|
@@ -156,22 +162,23 @@ your-repo/
 | 3 | 블록 | 블록당 20-35분, 블록 사이 5분 휴식 | 시간 기반 자동 분할 |
 | 4 | 대상 저장소 | 배포용 GitHub 저장소 | `~/reactive_presentation/` |
 | 5 | 언어 | 한국어 또는 영어 (기술 용어는 항상 영어) | 한국어 |
-| 6 | PPTX 템플릿 | 테마 추출용 기업 브랜딩 `.pptx` 파일 | 없음 (다크 테마) |
+| 6 | PPTX/PDF 소스 | 기업 `.pptx`/`.pdf` 테마 추출 또는 전체 변환 | 없음 (다크 테마) |
 | 7 | 발표자 정보 | 커버 슬라이드용 이름 및 소속 (재사용을 위해 저장) | — |
+| 8 | 퀴즈 포함 여부 | 학습 확인을 위한 퀴즈 슬라이드 포함 여부 | 예 |
 
-답변을 수집한 후 Claude가 Marp 마크다운 콘텐츠를 작성하고 인터랙티브 HTML 슬라이드를 생성합니다.
+답변을 수집한 후 Claude가 Remarp 마크다운 콘텐츠를 작성하고 인터랙티브 HTML 슬라이드를 생성합니다.
 
 #### 검토 및 수정
 
 Claude가 초기 콘텐츠를 생성한 후, 세 가지 옵션으로 검토 루프에 들어갑니다:
 
-1. **Marp 직접 수정** — 에디터에서 `.md` 파일을 열고 변경한 후 "완료"라고 말합니다. Claude가 편집 내용을 읽고 HTML을 업데이트합니다.
+1. **Remarp 직접 수정** — 에디터에서 `.remarp.md` 파일을 열고 변경한 후 "완료"라고 말합니다. Claude가 편집 내용을 읽고 HTML을 업데이트합니다.
 
-2. **프롬프트로 수정 요청** — 변경할 내용을 설명합니다 (예: "슬라이드 5 뒤에 퀴즈 추가해줘", "타임라인을 3단계로 줄여줘"). Claude가 Marp 소스와 HTML 파일을 모두 업데이트합니다.
+2. **프롬프트로 수정 요청** — 변경할 내용을 설명합니다 (예: "슬라이드 5 뒤에 퀴즈 추가해줘", "타임라인을 3단계로 줄여줘"). Claude가 Remarp 소스와 HTML 파일을 모두 업데이트합니다.
 
 3. **진행** — 콘텐츠가 좋으면 승인하고 Canvas 애니메이션과 인터랙티브 요소가 추가되는 향상 단계로 넘어갑니다.
 
-이 루프는 만족할 때까지 반복됩니다. Marp 마크다운은 항상 HTML과 동기화됩니다. Marp가 콘텐츠 원본이고, HTML이 그 위에 인터랙티비티를 추가합니다.
+이 루프는 만족할 때까지 반복됩니다. Remarp 마크다운은 항상 HTML과 동기화됩니다. Remarp가 콘텐츠 원본이고, HTML이 그 위에 인터랙티비티를 추가합니다.
 
 #### GitHub Pages 배포
 
@@ -444,7 +451,7 @@ python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_
 
 ### 변환 결과 예시
 
-`aws-ops-plugin` (에이전트 8개, 스킬 5개, MCP 서버 5개) 변환 결과:
+`aws-ops-plugin` (에이전트 9개, 스킬 5개, MCP 서버 5개) 변환 결과:
 
 ```
 aws-ops-power/
@@ -518,7 +525,7 @@ aws-ops-power/
 
 | 스킬 | 제공 내용 |
 |------|----------|
-| `reactive-presentation` | 프레젠테이션 프레임워크 (CSS/JS), Marp 변환 스크립트, AWS 아이콘 추출, 슬라이드 패턴 참조 |
+| `reactive-presentation` | 프레젠테이션 프레임워크 (CSS/JS), Remarp 변환, PPTX→Remarp 변환기, AWS 아이콘 추출, 슬라이드 패턴 참조 |
 | `architecture-diagram` | Draw.io XML 템플릿, AWS 아이콘 참조, 레이아웃 패턴 |
 | `animated-diagram` | SMIL 애니메이션 가이드, HTML 래퍼 템플릿, 트래픽 흐름 패턴 |
 | `gitbook` | GitBook 구조 가이드, 컴포넌트 패턴, 내비게이션 템플릿 |
@@ -593,7 +600,7 @@ plugins/
 │       ├── reactive-presentation/     # 프레젠테이션 프레임워크 + AWS 아이콘
 │       │   ├── SKILL.md               # 워크플로우 및 슬라이드 유형 참조
 │       │   ├── assets/                # theme.css, slide-framework.js, export-utils.js, ...
-│       │   ├── scripts/               # marp_to_slides.py, extract_pptx_theme.py
+│       │   ├── scripts/               # remarp_to_slides.py, convert_to_remarp.py, marp_to_slides.py, extract_pptx_theme.py
 │       │   ├── references/            # framework-guide.md, slide-patterns.md
 │       │   └── icons/                 # AWS Architecture Icons (4,224 파일)
 │       ├── architecture-diagram/      # Draw.io 템플릿 및 패턴

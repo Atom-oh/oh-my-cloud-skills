@@ -105,19 +105,25 @@ your-repo/
 
 | Key | Action |
 |-----|--------|
-| `<-` `->` | Previous / Next slide |
+| `←` `→` | Previous / Next slide |
+| `↑` `↓` | Previous / Next slide (alternative) |
 | `Space` | Next slide |
 | `F` | Toggle fullscreen |
 | `P` | Open presenter view (new window) |
 | `Esc` | Exit fullscreen |
 | `Home` / `End` | First / Last slide |
+| `N` | Toggle slide numbers |
+| `O` | Overview mode (slide grid) |
+| `S` | Speaker notes |
+| `B` | Black screen (pause) |
+| `1`-`9` | Jump to slide 10%-90% |
 
 ### How it works
 
-1. **Plan** — Claude asks about topic, audience, duration, language, and optional PPTX template for corporate branding
-2. **Author** — Writes Marp markdown as the content source of truth
-3. **Generate** — Builds HTML files with Canvas animations and interactive elements inline
-4. **Review** — Interactive feedback loop: edit Marp directly, request changes via prompt, or proceed
+1. **Plan** — Claude asks about topic, audience, duration, language, and optional PPTX/PDF source for corporate branding
+2. **Author** — Writes Remarp markdown as the content source of truth
+3. **Generate** — Builds HTML via `remarp_to_slides.py` with Canvas animations and interactive elements inline
+4. **Review** — Interactive feedback loop: edit Remarp directly, request changes via prompt, or proceed
 5. **Enhance** — Adds Canvas animations, extracts AWS icons, tests presenter view
 6. **Deploy** — `git push` to GitHub Pages. No build step required
 
@@ -147,7 +153,7 @@ The agent activates automatically when it detects presentation-related keywords 
 
 #### What Claude Asks
 
-Before generating content, Claude asks 7 planning questions to tailor the presentation:
+Before generating content, Claude asks 8 planning questions to tailor the presentation:
 
 | # | Question | Description | Default |
 |---|----------|-------------|---------|
@@ -156,22 +162,23 @@ Before generating content, Claude asks 7 planning questions to tailor the presen
 | 3 | Blocks | 20-35 min per block with 5 min breaks between blocks | Auto-split based on duration |
 | 4 | Target repo | GitHub repo for deployment | `~/reactive_presentation/` |
 | 5 | Language | Korean or English (technical terms always in English) | Korean |
-| 6 | PPTX template | Corporate branding `.pptx` file for theme extraction | None (dark theme) |
+| 6 | PPTX/PDF source | Corporate `.pptx`/`.pdf` for theme extraction or full conversion | None (dark theme) |
 | 7 | Speaker info | Name and affiliation for the cover slide (stored for reuse) | — |
+| 8 | Quiz inclusion | Whether to include quiz slides for knowledge checks | Yes |
 
-After gathering answers, Claude writes Marp markdown content and generates interactive HTML slides.
+After gathering answers, Claude writes Remarp markdown content and generates interactive HTML slides.
 
 #### Review and Iteration
 
 After Claude generates the initial content, you enter a review loop with three options:
 
-1. **Edit Marp directly** — Open the `.md` file in your editor, make changes, then say "done". Claude reads your edits and updates the HTML to match.
+1. **Edit Remarp directly** — Open the `.remarp.md` file in your editor, make changes, then say "done". Claude reads your edits and updates the HTML to match.
 
-2. **Request changes via prompt** — Describe what to change (e.g., "add a quiz after slide 5", "reduce the timeline to 3 steps"). Claude updates both the Marp source and HTML files.
+2. **Request changes via prompt** — Describe what to change (e.g., "add a quiz after slide 5", "reduce the timeline to 3 steps"). Claude updates both the Remarp source and HTML files.
 
 3. **Proceed** — If the content looks good, approve it and move to the enhancement phase where Canvas animations and interactive elements are added.
 
-This loop repeats until you are satisfied. Marp markdown stays in sync with the HTML at all times — Marp is the content source of truth, HTML adds interactivity on top.
+This loop repeats until you are satisfied. Remarp markdown stays in sync with the HTML at all times — Remarp is the content source of truth, HTML adds interactivity on top.
 
 #### Deploy to GitHub Pages
 
@@ -444,7 +451,7 @@ python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_
 
 ### Example Output
 
-Converting `aws-ops-plugin` (8 agents, 5 skills, 5 MCP servers) produces:
+Converting `aws-ops-plugin` (9 agents, 5 skills, 5 MCP servers) produces:
 
 ```
 aws-ops-power/
@@ -518,7 +525,7 @@ All agents activate automatically when Claude detects matching keywords in your 
 
 | Skill | Provides |
 |-------|----------|
-| `reactive-presentation` | Presentation framework (CSS/JS), Marp conversion scripts, AWS icon extraction, slide pattern reference |
+| `reactive-presentation` | Presentation framework (CSS/JS), Remarp conversion, PPTX→Remarp converter, AWS icon extraction, slide pattern reference |
 | `architecture-diagram` | Draw.io XML templates, AWS icon reference, layout patterns |
 | `animated-diagram` | SMIL animation guide, HTML wrapper templates, traffic flow patterns |
 | `gitbook` | GitBook structure guide, component patterns, navigation templates |
@@ -593,7 +600,7 @@ plugins/
 │       ├── reactive-presentation/     # Presentation framework + AWS icons
 │       │   ├── SKILL.md               # Workflow & slide type reference
 │       │   ├── assets/                # theme.css, slide-framework.js, export-utils.js, ...
-│       │   ├── scripts/               # marp_to_slides.py, extract_pptx_theme.py
+│       │   ├── scripts/               # remarp_to_slides.py, convert_to_remarp.py, marp_to_slides.py, extract_pptx_theme.py
 │       │   ├── references/            # framework-guide.md, slide-patterns.md
 │       │   └── icons/                 # AWS Architecture Icons (4,224 files)
 │       ├── architecture-diagram/      # Draw.io templates & patterns

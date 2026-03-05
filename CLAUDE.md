@@ -4,11 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A Claude Code plugin marketplace containing two plugins for AWS cloud work:
+A Claude Code plugin marketplace containing three plugins for AWS cloud work:
 - **aws-content-plugin** — Content creation (presentations, diagrams, docs, workshops)
 - **aws-ops-plugin** — Infrastructure operations & troubleshooting (EKS, networking, IAM, observability)
+- **kiro-power-converter** — Convert Claude Code plugins to Kiro IDE Power format
 
-Both plugins are installed via `/plugin marketplace add` or loaded locally with `--plugin-dir`.
+All plugins are installed via `/plugin marketplace add` or loaded locally with `--plugin-dir`.
 
 ## Development Commands
 
@@ -51,14 +52,13 @@ plugins/<plugin-name>/
 
 ### Agent File Format
 
-Every agent `.md` file has YAML frontmatter with exactly four fields:
+Every agent `.md` file has YAML frontmatter with exactly three fields:
 
 ```yaml
 ---
 name: eks-agent
 description: "Description with trigger keywords."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
-model: sonnet    # sonnet for all agents, opus for ops-coordinator only
 ---
 ```
 
@@ -103,7 +103,6 @@ echo "content=$V ops=$V2 converter=$V3 marketplace=$MV tag=$TAG"
 
 ## Key Conventions
 
-- Agent model is always `sonnet` except `ops-coordinator-agent` which uses `opus`
 - Content plugin agents produce artifacts (HTML, .drawio, .md); ops plugin agents produce diagnoses with commands
 - Content goes through `content-review-agent` quality gate (100-point scale: PASS ≥85, REVIEW 70-84, FAIL <70)
 - Ops plugin reference files are commands-first, with Mermaid decision trees and error→solution tables
@@ -136,9 +135,17 @@ echo "content=$V ops=$V2 converter=$V3 marketplace=$MV tag=$TAG"
 | `database-agent` | RDS/Aurora, DynamoDB, ElastiCache |
 | `cost-agent` | Cost analysis via awspricing MCP |
 | `analytics-agent` | OpenSearch, ClickHouse, Athena, QuickSight, Kinesis |
-| `ops-coordinator-agent` | Multi-domain incident coordination (opus) |
+| `ops-coordinator-agent` | Multi-domain incident coordination |
 
 Ops skills: `ops-troubleshoot`, `ops-health-check`, `ops-network-diagnosis`, `ops-observability`, `ops-security-audit` — each with `references/` subdirectory containing distilled runbooks.
+
+### kiro-power-converter (1 agent, 1 skill)
+
+| Agent | Purpose |
+|-------|---------|
+| `kiro-converter-agent` | Converts Claude Code plugins to Kiro Power format |
+
+Skill: `kiro-convert` — interactive workflow for plugin-to-power conversion with `references/` subdirectory containing format specs and conversion rules.
 
 ## Workflows
 
