@@ -870,6 +870,12 @@ class RemarpHTMLGenerator:
         self.canvas_counter = 0
         self.deferred_canvas_scripts: List[str] = []
 
+    @staticmethod
+    def _strip_block_prefix(title: str) -> str:
+        """Remove 'Block N:' prefix from title if present."""
+        import re
+        return re.sub(r'^Block\s+\d+\s*:\s*', '', title)
+
     def generate_block(self, block_name: str, slides: List[Slide],
                        config: Dict[str, Any]) -> str:
         """Generate complete HTML file for one block."""
@@ -881,6 +887,8 @@ class RemarpHTMLGenerator:
             if block.get('name') == block_name:
                 title = block.get('title', title)
                 break
+
+        title = self._strip_block_prefix(title)
 
         # Track mermaid usage and generate slides
         slides_html_list = []
@@ -1554,7 +1562,7 @@ class RemarpHTMLGenerator:
         for line in lines:
             stripped = line.strip()
             if stripped.startswith('# '):
-                title = self._convert_markdown(stripped[2:].strip())
+                title = self._convert_markdown(self._strip_block_prefix(stripped[2:].strip()))
             elif stripped.startswith('## '):
                 subtitle = self._convert_markdown(stripped[3:].strip())
             elif not title:
