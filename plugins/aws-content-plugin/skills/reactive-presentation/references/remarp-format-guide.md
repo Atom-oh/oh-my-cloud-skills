@@ -37,6 +37,7 @@ remarp: true
 version: 1
 title: "AWS Architecture Deep Dive"
 author: "Cloud Team"
+audience: "클라우드 엔지니어 (중급)"
 date: 2025-01-15
 event: "AWS Summit 2025"
 lang: ko
@@ -78,6 +79,7 @@ keys:
 | `version` | number | No | Format version (default: 1) |
 | `title` | string | Yes | Presentation title (used in HTML `<title>`) |
 | `author` | string | No | Presenter name |
+| `audience` | string | No | Target audience description (기술 수준/역할) |
 | `date` | date | No | Presentation date (YYYY-MM-DD) |
 | `event` | string | No | Event or conference name |
 | `lang` | string | No | Language code (`ko`, `en`, `ja`) |
@@ -582,15 +584,17 @@ animate();
 
 ### Canvas Prompt (LLM-Assisted)
 
-Use `:::canvas prompt` to describe an animation in natural language. The presentation-agent reads the prompt, consults the `canvas-animation-prompt.md` reference, generates Canvas JS code, and replaces the block with `:::canvas js` before building HTML.
+Use `:::canvas prompt` or the shorthand `:::prompt` to describe an animation in natural language. The presentation-agent reads the prompt, consults the `canvas-animation-prompt.md` reference, generates Canvas JS code, and replaces the block with `:::canvas js` before building HTML.
 
 ```markdown
-:::canvas prompt
+:::prompt
 ALB → Lambda → DynamoDB 트래픽 흐름
 Step 1: 서비스 아이콘 표시
 Step 2: 화살표 연결하며 데이터 흐름 표시
 :::
 ```
+
+> `:::prompt`는 `:::canvas prompt`의 축약형입니다. 둘 다 동일하게 동작합니다.
 
 #### Prompt Structure Guidelines
 
@@ -606,14 +610,15 @@ For best results, structure prompts with these elements:
 #### Workflow
 
 ```
-1. Author writes :::canvas prompt in .remarp.md
+1. Author writes :::prompt (or :::canvas prompt) in .md
 2. Converter outputs placeholder HTML (CANVAS_PROMPT_PENDING)
-3. Agent reads prompt + canvas-animation-prompt.md reference
-4. Agent generates Canvas JS and replaces :::canvas prompt → :::canvas js
-5. Re-run converter for final HTML with working animation
+3. 사용자가 prompt 텍스트를 리뷰/수정 (선택)
+4. "반영해주세요" / "rebuild" → Agent reads prompt + canvas-animation-prompt.md
+5. Agent generates Canvas JS and replaces :::prompt → :::canvas js
+6. Re-run converter for final HTML with working animation
 ```
 
-> **Note**: The converter treats `:::canvas prompt` as a passthrough — it outputs a placeholder. The actual code generation happens at the agent level, not in the converter.
+> **Note**: The converter treats `:::canvas prompt` and `:::prompt` as passthrough — it outputs a placeholder. The actual code generation happens at the agent level (Phase 6 rebuild or Phase 7 enhancement), not in the converter.
 
 ---
 
@@ -1578,28 +1583,136 @@ icon db "DynamoDB" at 400,150 size 48
 
 ### Supported Service Names
 
+**Compute**
+
 | Name | Icon File |
 |------|-----------|
 | `Lambda` | `Arch_AWS-Lambda_48.svg` |
-| `EKS` | `Arch_Amazon-Elastic-Kubernetes-Service_48.svg` |
-| `API-Gateway` | `Arch_Amazon-API-Gateway_48.svg` |
-| `DynamoDB` | `Arch_Amazon-DynamoDB_48.svg` |
-| `S3` | `Arch_Amazon-Simple-Storage-Service_48.svg` |
-| `CloudWatch` | `Arch_Amazon-CloudWatch_48.svg` |
 | `EC2` | `Arch_Amazon-EC2_48.svg` |
-| `VPC` | `Virtual-private-cloud-VPC_32.svg` |
+| `ECS` | `Arch_Amazon-Elastic-Container-Service_48.svg` |
+| `EKS` | `Arch_Amazon-Elastic-Kubernetes-Service_48.svg` |
+| `Fargate` | `Arch_AWS-Fargate_48.svg` |
+| `Lightsail` | `Arch_Amazon-Lightsail_48.svg` |
+| `Batch` | `Arch_AWS-Batch_48.svg` |
+| `App-Runner` | `Arch_AWS-App-Runner_48.svg` |
+
+**Containers**
+
+| Name | Icon File |
+|------|-----------|
+| `ECR` | `Arch_Amazon-Elastic-Container-Registry_48.svg` |
+| `App-Mesh` | `Arch_AWS-App-Mesh_48.svg` |
+
+**Storage**
+
+| Name | Icon File |
+|------|-----------|
+| `S3` | `Arch_Amazon-Simple-Storage-Service_48.svg` |
+| `EFS` | `Arch_Amazon-EFS_48.svg` |
+| `EBS` | `Arch_Amazon-Elastic-Block-Store_48.svg` |
+| `FSx` | `Arch_Amazon-FSx_48.svg` |
+
+**Database**
+
+| Name | Icon File |
+|------|-----------|
+| `DynamoDB` | `Arch_Amazon-DynamoDB_48.svg` |
 | `RDS` | `Arch_Amazon-RDS_48.svg` |
-| `SQS` | `Arch_Amazon-Simple-Queue-Service_48.svg` |
-| `SNS` | `Arch_Amazon-Simple-Notification-Service_48.svg` |
+| `Aurora` | `Arch_Amazon-Aurora_48.svg` |
+| `ElastiCache` | `Arch_Amazon-ElastiCache_48.svg` |
+| `Redshift` | `Arch_Amazon-Redshift_48.svg` |
+| `Neptune` | `Arch_Amazon-Neptune_48.svg` |
+
+**Networking**
+
+| Name | Icon File |
+|------|-----------|
+| `VPC` | `Virtual-private-cloud-VPC_32.svg` |
 | `CloudFront` | `Arch_Amazon-CloudFront_48.svg` |
 | `Route53` | `Arch_Amazon-Route-53_48.svg` |
-| `Cognito` | `Arch_Amazon-Cognito_48.svg` |
-| `StepFunctions` | `Arch_AWS-Step-Functions_48.svg` |
-| `Fargate` | `Arch_AWS-Fargate_48.svg` |
-| `ECS` | `Arch_Amazon-Elastic-Container-Service_48.svg` |
 | `ALB` | `Arch_Elastic-Load-Balancing_48.svg` |
+| `API-Gateway` | `Arch_Amazon-API-Gateway_48.svg` |
+| `Transit-Gateway` | `Arch_AWS-Transit-Gateway_48.svg` |
+| `Direct-Connect` | `Arch_AWS-Direct-Connect_48.svg` |
+| `PrivateLink` | `Arch_AWS-PrivateLink_48.svg` |
+| `Global-Accelerator` | `Arch_AWS-Global-Accelerator_48.svg` |
+
+**App Integration**
+
+| Name | Icon File |
+|------|-----------|
+| `SQS` | `Arch_Amazon-Simple-Queue-Service_48.svg` |
+| `SNS` | `Arch_Amazon-Simple-Notification-Service_48.svg` |
+| `EventBridge` | `Arch_Amazon-EventBridge_48.svg` |
+| `StepFunctions` | `Arch_AWS-Step-Functions_48.svg` |
+| `AppSync` | `Arch_AWS-AppSync_48.svg` |
+| `MQ` | `Arch_Amazon-MQ_48.svg` |
+
+**AI/ML**
+
+| Name | Icon File |
+|------|-----------|
+| `Bedrock` | `Arch_Amazon-Bedrock_48.svg` |
+| `SageMaker` | `Arch_Amazon-SageMaker_48.svg` |
+| `Comprehend` | `Arch_Amazon-Comprehend_48.svg` |
+| `Rekognition` | `Arch_Amazon-Rekognition_48.svg` |
+| `Lex` | `Arch_Amazon-Lex_48.svg` |
+
+**Security**
+
+| Name | Icon File |
+|------|-----------|
 | `IAM` | `Arch_AWS-Identity-and-Access-Management_48.svg` |
 | `KMS` | `Arch_AWS-Key-Management-Service_48.svg` |
+| `Cognito` | `Arch_Amazon-Cognito_48.svg` |
+| `WAF` | `Arch_AWS-WAF_48.svg` |
+| `Shield` | `Arch_AWS-Shield_48.svg` |
+| `Secrets-Manager` | `Arch_AWS-Secrets-Manager_48.svg` |
+| `GuardDuty` | `Arch_Amazon-GuardDuty_48.svg` |
+| `Inspector` | `Arch_Amazon-Inspector_48.svg` |
+| `Security-Hub` | `Arch_AWS-Security-Hub_48.svg` |
+| `Certificate-Manager` | `Arch_AWS-Certificate-Manager_48.svg` |
+
+**Management & Monitoring**
+
+| Name | Icon File |
+|------|-----------|
+| `CloudWatch` | `Arch_Amazon-CloudWatch_48.svg` |
+| `CloudTrail` | `Arch_AWS-CloudTrail_48.svg` |
+| `CloudFormation` | `Arch_AWS-CloudFormation_48.svg` |
+| `Config` | `Arch_AWS-Config_48.svg` |
+| `Systems-Manager` | `Arch_AWS-Systems-Manager_48.svg` |
+| `X-Ray` | `Arch_AWS-X-Ray_48.svg` |
+| `Organizations` | `Arch_AWS-Organizations_48.svg` |
+| `Control-Tower` | `Arch_AWS-Control-Tower_48.svg` |
+| `DevOps-Guru` | `Arch_Amazon-DevOps-Guru_48.svg` |
+
+**Analytics**
+
+| Name | Icon File |
+|------|-----------|
+| `Kinesis` | `Arch_Amazon-Kinesis_48.svg` |
+| `Athena` | `Arch_Amazon-Athena_48.svg` |
+| `OpenSearch` | `Arch_Amazon-OpenSearch-Service_48.svg` |
+| `Glue` | `Arch_AWS-Glue_48.svg` |
+| `QuickSight` | `Arch_Amazon-QuickSight_48.svg` |
+| `EMR` | `Arch_Amazon-EMR_48.svg` |
+
+**Developer Tools**
+
+| Name | Icon File |
+|------|-----------|
+| `CodePipeline` | `Arch_AWS-CodePipeline_48.svg` |
+| `CodeBuild` | `Arch_AWS-CodeBuild_48.svg` |
+| `CodeDeploy` | `Arch_AWS-CodeDeploy_48.svg` |
+| `CodeCommit` | `Arch_AWS-CodeCommit_48.svg` |
+
+**Other**
+
+| Name | Icon File |
+|------|-----------|
+| `Amplify` | `Arch_AWS-Amplify_48.svg` |
+| `AppConfig` | `Arch_AWS-AppConfig_48.svg` |
 
 ### Full Path Reference
 
