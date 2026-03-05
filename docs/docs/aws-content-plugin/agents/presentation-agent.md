@@ -11,7 +11,6 @@ Interactive HTML 슬라이드쇼를 생성하는 전문 에이전트입니다. r
 
 | 항목 | 값 |
 |------|-----|
-| **모델** | sonnet |
 | **도구** | Read, Write, Glob, Grep, Bash, AskUserQuestion |
 
 ## 트리거 키워드
@@ -41,13 +40,16 @@ Interactive HTML 슬라이드쇼를 생성하는 전문 에이전트입니다. r
 ### Phase 1: Planning
 
 사용자에게 다음을 질문합니다:
-- **Topic & audience** — 기술 깊이, 학습 목표
+- **Topic & audience** (필수) — 주제 + 대상 청중 (기술 수준/역할) → `audience` 필드
 - **Duration** — 블록 수와 슬라이드 수 결정
 - **Blocks** — 20-35분 블록으로 분할, 5분 휴식
 - **Target repo** — 배포용 GitHub 저장소
 - **Language** — 한국어 또는 영어 (기술 용어는 항상 영어)
 - **PPTX/PDF template** (필수, 스킵 가능) — 디자인 참고용 파일
-- **Speaker info** (필수, 스킵 가능) — 발표자 이름, 직함/소속
+- **Speaker info** (필수, 스킵 가능) → `author` 필드
+- **Footer text** (필수, 스킵 가능) → `theme.footer` 필드
+- **Logo** (필수, 스킵 가능) → `theme.logo` 필드
+- **Quiz inclusion** (필수 — 건너뛰기 금지)
 
 ### Phase 2: Theme Setup (선택사항)
 
