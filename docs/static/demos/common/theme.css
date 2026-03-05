@@ -67,8 +67,11 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 html {
-  /* Viewport-scaled root font: ~24px at 1080p, ~48px at 4K, scales proportionally */
-  font-size: clamp(14px, 2.2vh, 52px);
+  /* Viewport-scaled root font: ~24px at 1080p, ~48px at 4K, scales proportionally.
+     Uses min(2.2vh, 1.24vw) so it works in both full-browser and iframe/preview panels.
+     1.24vw at 1920px ≈ 23.8px, matching 2.2vh at 1080px ≈ 23.76px (16:9 equivalence). */
+  font-size: clamp(14px, min(2.2vh, 1.24vw), 52px);
+  height: 100%;
 }
 body {
   width: 100%; height: 100%;
@@ -411,12 +414,11 @@ body {
 /* Checklist */
 .checklist { list-style: none; padding-left: 0; }
 .checklist li {
-  display: flex; align-items: flex-start; gap: .42rem;
+  display: flex; align-items: center; gap: .42rem;
   padding: .33rem .5rem;
   border-radius: .33rem;
   cursor: pointer;
   transition: background var(--transition-fast);
-  flex-wrap: wrap;
 }
 .checklist li:hover { background: var(--bg-tertiary); }
 .checklist li .check {
@@ -426,7 +428,6 @@ body {
   display: flex; align-items: center; justify-content: center;
   transition: all var(--transition-fast);
   flex-shrink: 0;
-  margin-top: .15rem;
 }
 .checklist li.checked .check {
   background: var(--green);
@@ -436,28 +437,6 @@ body {
   content: '\2713';
   color: #fff;
   font-size: .75rem;
-}
-
-/* Checklist expandable detail */
-.checklist-detail {
-  display: none;
-  width: 100%;
-  margin-top: .33rem;
-  padding-left: 1.25rem;
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height var(--transition-normal);
-}
-.checklist li.checked .checklist-detail {
-  display: block;
-}
-.checklist li.has-detail .checklist-text::after {
-  content: ' ▸';
-  color: var(--text-muted);
-  font-size: .75rem;
-}
-.checklist li.has-detail.checked .checklist-text::after {
-  content: ' ▾';
 }
 
 /* --- Tables --- */
@@ -542,13 +521,6 @@ body {
   top: -16px;
 }
 .timeline-connector.done { background: var(--green); }
-.timeline-desc {
-  font-size: .7rem;
-  color: var(--text-muted);
-  margin-top: .17rem;
-  max-width: 5rem;
-  line-height: 1.3;
-}
 
 /* --- Slider --- */
 .slider-container {
@@ -649,7 +621,45 @@ input[type="range"]::-webkit-slider-thumb {
   margin: .5rem 0;
 }
 
-/* --- Comparison Toggle --- */
+/* --- Comparison Side-by-Side Layout --- */
+.compare-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  flex: 1;
+  align-items: start;
+}
+@media (max-width: 768px) {
+  .compare-grid { grid-template-columns: 1fr; }
+}
+.compare-column {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: .5rem;
+  padding: 1rem 1.25rem;
+  border-top: 3px solid var(--col-accent, var(--accent));
+}
+.compare-column-header {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--col-accent, var(--accent));
+  margin-bottom: .67rem;
+  padding-bottom: .42rem;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.compare-column-body {
+  font-size: .85rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.compare-column-body ul { list-style: none; padding: 0; }
+.compare-column-body li {
+  padding: .25rem 0;
+  padding-left: .5rem;
+  border-left: 2px solid rgba(255,255,255,0.06);
+  margin-bottom: .25rem;
+}
+/* Legacy compare toggle (backward compat) */
 .compare-toggle {
   display: flex; gap: 0;
   border-radius: .42rem;
@@ -672,6 +682,8 @@ input[type="range"]::-webkit-slider-thumb {
   background: var(--accent);
   color: #fff;
 }
+.compare-content { display: none; }
+.compare-content.active { display: block; }
 
 /* --- Node Grid (for dashboard sim) --- */
 .node-grid {
@@ -802,22 +814,6 @@ input[type="range"]::-webkit-slider-thumb {
   line-height: 1.6;
   color: var(--text-secondary);
   white-space: pre-wrap;
-}
-
-/* --- Images --- */
-.slide-img {
-  max-width: 90%;
-  max-height: 50vh;
-  object-fit: contain;
-  border-radius: 8px;
-  margin: 0 auto;
-  display: block;
-}
-
-/* --- Compare Highlight (side-by-side mode) --- */
-.compare-highlight {
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 12px var(--accent-glow) !important;
 }
 
 /* --- Print --- */
@@ -1202,93 +1198,6 @@ input[type="range"]::-webkit-slider-thumb {
 }
 .columns-1-2 > *:first-child { flex: 1; }
 .columns-1-2 > *:last-child { flex: 2; }
-
-/* ============================================================
-   Slide Sidebar (PowerPoint-style thumbnail navigation)
-   ============================================================ */
-
-.slide-sidebar {
-  position: fixed;
-  left: 0; top: 0;
-  width: 220px;
-  height: 100vh;
-  background: #08090d;
-  border-right: 1px solid var(--border);
-  overflow-y: auto;
-  overflow-x: hidden;
-  z-index: 100;
-  padding: 10px;
-  display: none;
-  scrollbar-width: thin;
-}
-
-body.sidebar-visible .slide-sidebar {
-  display: block;
-}
-
-body.sidebar-visible {
-  justify-content: center;
-}
-
-body.sidebar-visible .slide-deck {
-  width: calc(100vw - 220px);
-  max-width: calc(100vh * 16 / 9);
-  max-height: calc((100vw - 220px) * 9 / 16);
-  margin-left: 220px;
-  margin-right: auto;
-}
-
-/* Sidebar thumbnails */
-.sidebar-thumb {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  margin-bottom: 8px;
-  border: 2px solid var(--border);
-  border-radius: 4px;
-  cursor: pointer;
-  overflow: hidden;
-  position: relative;
-  background: var(--bg-primary);
-  transition: border-color var(--transition-fast);
-}
-
-.sidebar-thumb:hover { border-color: var(--accent-light); }
-.sidebar-thumb.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 10px var(--accent-glow);
-}
-
-.sidebar-thumb-number {
-  position: absolute;
-  bottom: 2px; left: 4px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary, #ccc);
-  background: rgba(0, 0, 0, .75);
-  padding: 2px 6px;
-  border-radius: 3px;
-  z-index: 2;
-}
-
-.sidebar-thumb-content {
-  width: 1920px;
-  height: 1080px;
-  transform-origin: top left;
-  pointer-events: none;
-  /* scale is calculated in JS and applied as inline style */
-}
-
-/* Hide sidebar in fullscreen (sibling selector fallback) */
-.slide-deck:fullscreen ~ .slide-sidebar,
-.slide-deck:-webkit-full-screen ~ .slide-sidebar { display: none !important; }
-
-/* Hide sidebar in overview mode */
-.overview-mode ~ .slide-sidebar { display: none !important; }
-
-/* Hide sidebar in print */
-@media print {
-  .slide-sidebar { display: none !important; }
-}
 
 /* ============================================================
    Overview Mode

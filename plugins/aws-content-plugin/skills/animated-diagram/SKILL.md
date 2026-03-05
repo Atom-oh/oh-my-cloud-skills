@@ -13,6 +13,7 @@ Create dynamic animated diagrams using SVG with SMIL animations. Produces self-c
 - Service interaction diagrams with animated connections
 - Deployment pipelines with step-by-step animation
 - Real-time monitoring dashboards with animated status indicators
+- **Interactive scenarios** — Scaling (EKS, ASG), Blue/Green deployment, failover simulations with button-driven state transitions
 
 ## Architecture
 
@@ -43,7 +44,8 @@ Each animated diagram is a self-contained HTML file with three layers:
 
 ## Templates
 
-- `templates/traffic-flow.html` — Complete traffic flow template with all patterns
+- `templates/traffic-flow.html` — SMIL traffic flow template with legend toggles
+- `templates/interactive-scaling.html` — Interactive EKS hybrid node bursting with Scale Out/In buttons (JavaScript + CSS transitions)
 
 ## Quality Review (필수 — 생략 불가)
 
@@ -53,6 +55,16 @@ Each animated diagram is a self-contained HTML file with three layers:
 3. PASS (≥85점) 획득 후에만 완료 선언
 
 > ⚠️ 이 단계를 건너뛰고 완료를 선언하는 것은 금지됩니다.
+
+## Diagram Types
+
+| Type | Technique | When to Use |
+|------|-----------|-------------|
+| **Traffic Flow** | SMIL `<animateMotion>` | Continuous request/data flow visualization |
+| **Pulsing Status** | SMIL `<animate>` | Monitoring dashboards, health indicators |
+| **Interactive Scenario** | JavaScript + CSS | Button-driven scaling, deployment, failover |
+
+For interactive scenarios, the agent uses JavaScript-based state machines with `requestAnimationFrame` and CSS transitions instead of SMIL. See the agent definition for the full Interactive Animation Pattern guide.
 
 ## References
 

@@ -210,8 +210,221 @@ Always use **L** (lineTo) commands, not curves, to match the structured look of 
 
 ---
 
+## Interactive Animation Pattern
+
+When the user needs **button-driven state changes** (scaling, deployment, failover), use JavaScript + CSS transitions instead of SMIL. This pattern supports dynamic element creation/deletion and multi-step state machines.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│              HTML Wrapper                    │
+│  ┌───────────────────────────────────────┐  │
+│  │         SVG Viewport (inline)         │  │
+│  │   Static: zones, labels, boundaries   │  │
+│  │   Dynamic: nodes, pods (JS-managed)   │  │
+│  ├───────────────────────────────────────┤  │
+│  │         Control Panel                 │  │
+│  │   Buttons: Scale Out / Scale In       │  │
+│  │   Status: pod count, node count       │  │
+│  ├───────────────────────────────────────┤  │
+│  │         State Machine (JS)            │  │
+│  │   state = { nodes: [], pods: [] }     │  │
+│  │   transition(action) → animate → render│ │
+│  └───────────────────────────────────────┘  │
+└─────────────────────────────────────────────┘
+```
+
+### State Machine Structure
+
+```javascript
+const state = {
+  onpremNodes: [ { id, pods: [...] } ],
+  cloudNodes: [ { id, pods: [...], provisioner: 'karpenter' } ],
+  phase: 'steady' // steady | scaling-out | scaling-in
+};
+
+function transition(action) {
+  // 1. Update state
+  // 2. Schedule animations (requestAnimationFrame or setTimeout chain)
+  // 3. Re-render SVG elements
+}
+```
+
+### Dynamic SVG Element Creation
+
+```javascript
+function createPod(parentGroup, x, y, label) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const rect = document.createElementNS(ns, 'rect');
+  rect.setAttribute('x', x);
+  rect.setAttribute('y', y);
+  rect.setAttribute('width', 28);
+  rect.setAttribute('height', 28);
+  rect.setAttribute('rx', 4);
+  rect.setAttribute('fill', '#326CE5');  // Kubernetes blue
+  rect.style.opacity = '0';
+  rect.style.transition = 'opacity 0.4s ease-in';
+  parentGroup.appendChild(rect);
+  // Trigger fade-in
+  requestAnimationFrame(() => rect.style.opacity = '1');
+  return rect;
+}
+
+function removePod(podElement) {
+  podElement.style.transition = 'opacity 0.3s ease-out';
+  podElement.style.opacity = '0';
+  setTimeout(() => podElement.remove(), 300);
+}
+```
+
+### Button-Based Controls
+
+```html
+<div class="controls">
+  <button onclick="scaleOut()" id="btn-scale-out">Scale Out</button>
+  <button onclick="scaleIn()" id="btn-scale-in">Scale In</button>
+  <div class="status">
+    Pods: <span id="pod-count">16</span> |
+    Nodes: <span id="node-count">4</span>
+  </div>
+</div>
+```
+
+### Animation Sequencing
+
+Use chained `setTimeout` or `async/await` for multi-step animations:
+
+```javascript
+async function scaleOutSequence() {
+  disableButtons();
+  setState('scaling-out');
+  // Step 1: Add pending pod (yellow, pulsing)
+  const pendingPod = addPendingPod();
+  await delay(800);
+  // Step 2: Karpenter provisions new node (animate node appearing)
+  const newNode = provisionCloudNode();
+  await delay(1000);
+  // Step 3: Pod scheduled on new node (move pod to node)
+  schedulePod(pendingPod, newNode);
+  await delay(600);
+  setState('steady');
+  enableButtons();
+  updateStatus();
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+```
+
+---
+
+## Scenario Templates
+
+Pre-defined patterns for common AWS animated scenarios. The agent should recognize these from user prompts and apply the matching template structure.
+
+### Scaling (EKS, EC2 ASG)
+
+**Trigger phrases:** "scaling", "autoscaling", "burst", "Karpenter", "scale out/in", "node provisioning"
+
+**Components:** Nodes (rectangles), Pods (small squares), Zones (on-prem / cloud)
+**States:** steady → scaling-out (pod pending → node provision → pod schedule) → steady → scaling-in (pod eviction → node consolidation → node termination)
+**Controls:** Scale Out / Scale In buttons
+**Template:** `templates/interactive-scaling.html`
+
+### Deployment (Blue/Green, Canary)
+
+**Trigger phrases:** "blue/green", "canary", "rolling update", "deployment strategy"
+
+**Components:** Service groups (blue/green), Load balancer, Traffic arrows
+**States:** v1-active → deploying-v2 → shifting-traffic → v2-active → v1-drain
+**Controls:** Deploy v2 / Rollback buttons
+**Key animation:** Traffic arrow color/width transitions, pod replacement sequence
+
+### Failover (Multi-AZ, DR)
+
+**Trigger phrases:** "failover", "disaster recovery", "multi-AZ", "cross-region"
+
+**Components:** Availability zones, Health check indicators, DNS routing
+**States:** healthy → az-failure (flash red) → failover (DNS switch animation) → recovered
+**Controls:** Simulate Failure / Recover buttons
+**Key animation:** Zone going red, health check X marks, Route 53 arrow redirection
+
+### Pipeline (CI/CD)
+
+**Trigger phrases:** "CI/CD", "pipeline", "build deploy", "CodePipeline"
+
+**Components:** Pipeline stages (Source → Build → Test → Deploy), Artifact icons
+**States:** idle → source-triggered → building → testing → deploying → complete
+**Controls:** Start Pipeline / Reset buttons
+**Key animation:** Stage-by-stage highlight progression, artifact dot moving between stages
+
+---
+
+## Prompt-to-Animation Workflow
+
+When converting a user's text description into an animated diagram, follow this systematic extraction process:
+
+### Step 1: Extract Components
+
+From the prompt, identify:
+- **Resources**: What AWS services, nodes, pods, instances appear?
+- **Zones**: On-prem vs cloud, AZs, regions, VPCs
+- **Quantities**: Initial count of each resource
+
+### Step 2: Identify States
+
+- **Initial state**: What does the system look like at rest?
+- **Triggered states**: What user actions change the system?
+- **Transition states**: What intermediate states exist during transitions?
+- **End states**: What does the system look like after each action completes?
+
+### Step 3: Map Triggers to Buttons
+
+Each user-triggerable action becomes a button:
+| Prompt phrase | Button |
+|--------------|--------|
+| "when load increases" | Scale Out |
+| "when load decreases" | Scale In |
+| "deploy new version" | Deploy |
+| "AZ goes down" | Simulate Failure |
+| "start pipeline" | Run Pipeline |
+
+### Step 4: Design Animation Sequences
+
+For each button, plan the step-by-step animation:
+1. What changes first? (e.g., pending pod appears)
+2. What changes second? (e.g., new node provisioned)
+3. What changes third? (e.g., pod scheduled to node)
+4. What's the final state? (e.g., updated counts)
+
+### Step 5: Plan SVG Layout
+
+- **Zones**: Large rounded rectangles (on-prem left, cloud right)
+- **Nodes**: Medium rectangles within zones
+- **Pods**: Small squares within nodes (grid layout)
+- **Controls**: Fixed-position panel at bottom
+- **Status**: Counter display near controls
+
+### Decision: SMIL vs Interactive
+
+Choose SMIL when:
+- All animations are continuous loops
+- No user interaction beyond legend toggles
+- Showing steady-state traffic flow
+
+Choose Interactive (JS) when:
+- User clicks trigger state changes
+- Elements are created or destroyed dynamically
+- The diagram tells a multi-step story
+- There are before/after states to compare
+
+---
+
 ## Verification Checklist
 
+### SMIL Animations
 - [ ] All `<animateMotion>` paths are valid and visible
 - [ ] Color coding matches the standard (Red/Blue/Orange)
 - [ ] Legend toggles work for each animation group
@@ -219,6 +432,15 @@ Always use **L** (lineTo) commands, not curves, to match the structured look of 
 - [ ] Background image or SVG aligns with animation overlay
 - [ ] No animation elements overflow the viewBox
 - [ ] `data-group` attributes match legend toggle functions
+
+### Interactive Animations
+- [ ] All buttons trigger correct state transitions
+- [ ] Dynamic elements appear/disappear with smooth transitions
+- [ ] State machine prevents invalid transitions (buttons disabled during animation)
+- [ ] Pod/node counts update correctly in status display
+- [ ] No orphaned SVG elements after repeated Scale Out/In cycles
+- [ ] Animation sequences complete fully before re-enabling controls
+- [ ] Works correctly in both standalone and iframe-embedded contexts
 
 ---
 

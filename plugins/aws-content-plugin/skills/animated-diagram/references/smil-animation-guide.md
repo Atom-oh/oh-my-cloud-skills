@@ -182,3 +182,28 @@ For maximum compatibility, use these SMIL elements:
 Avoid:
 - `<animateTransform>` — inconsistent across browsers
 - `<animateColor>` — deprecated
+
+---
+
+## See Also: Interactive Animations
+
+SMIL animations are ideal for continuous, declarative effects (traffic flow dots, pulsing glows, dash animations). However, when your diagram requires **user-driven state changes** — such as button-triggered scaling, deployment rollouts, or failover simulations — consider using the **Interactive Animation** pattern instead.
+
+Interactive animations use JavaScript + CSS transitions to provide:
+- **Button-triggered state machines** — Scale Out/In, Deploy, Failover buttons
+- **Dynamic element creation/deletion** — Pods, nodes, instances that appear/disappear
+- **Sequential animations** — Step-by-step transitions with `requestAnimationFrame`
+- **State display** — Real-time counters showing current resource counts
+
+**When to use which:**
+
+| Scenario | Use SMIL | Use Interactive |
+|----------|----------|----------------|
+| Continuous traffic flow | Yes | — |
+| Pulsing/glow effects | Yes | — |
+| Button-triggered state changes | — | Yes |
+| Dynamic element count changes | — | Yes |
+| Step-by-step deployment | — | Yes |
+| Monitoring dashboard | Yes | — |
+
+**Reference:** See `templates/interactive-scaling.html` for a complete EKS hybrid bursting example using the interactive pattern.
