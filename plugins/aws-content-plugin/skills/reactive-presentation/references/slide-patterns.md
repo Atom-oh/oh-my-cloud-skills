@@ -32,6 +32,16 @@ Key elements:
 - Do NOT use `.title-slide` class (it adds centering that conflicts with left-aligned layout)
 - This is separate from block title slides (§1) — Session Cover appears as the **first slide of EVERY block HTML file**, block titles appear per-block
 
+**Remarp `@badge` directive**: To include the AWS smile badge in a PPTX cover, add `@badge` to the slide directives:
+```markdown
+---
+@type: cover
+@background: ../common/pptx-theme/images/Picture_13.png
+@badge: ../common/pptx-theme/images/Picture_8.png
+---
+```
+The converter reads `@badge` and renders `<img>` at `position:absolute; right:5%; bottom:10%; width:8%`.
+
 ### 0b. Session Cover — CSS-Only Fallback (No PPTX)
 
 When no PPTX template is provided, use this CSS-only cover with a dark gradient background. Speaker info is optional — omit the speaker `<div>` if the user chose "skip".
@@ -73,7 +83,7 @@ Key elements:
 ```html
 <div class="slide title-slide">
   <h1>Presentation Title</h1>
-  <p class="subtitle">Block N: Topic (Xmin)</p>
+  <p class="subtitle">Topic Name</p>
   <p class="meta">Date / Author / Event</p>
 </div>
 ```
@@ -382,6 +392,29 @@ Key points:
 
 ## Canvas Animation Patterns
 
+### 화살표 선택: drawArrow vs drawElbowArrow
+
+Canvas 화살표는 연결 거리와 방향에 따라 함수를 선택합니다:
+
+```javascript
+// ✅ 순수 수평 (dy=0) → drawArrow
+drawArrow(ctx, 200, 215, 260, 215, Colors.accent);
+
+// ✅ 순수 수직 (dx=0) → drawArrow
+drawArrow(ctx, 530, 195, 530, 240, Colors.blue, true);
+
+// ✅ 근거리 연결 (dx < 80 AND dy < 80) → drawArrow
+drawArrow(ctx, 200, 160, 240, 152, Colors.accent);
+
+// ✅ 그룹 간 대각선 (dx ≥ 80) → drawElbowArrow
+drawElbowArrow(ctx, 400, 152, 450, 100, Colors.cyan);
+drawElbowArrow(ctx, 160, 120, 260, 170, Colors.blue, true);
+
+// ❌ 금지: drawArrow + drawText('→') 동시 사용 (arrowhead 중복)
+// drawArrow(ctx, 280, 190, 330, 190, Colors.accent);
+// drawText(ctx, '→', 305, 194, ...);  // ← 삭제해야 함
+```
+
 ### Animated Component Flow
 Draw boxes → animate arrows appearing → highlight active component:
 ```javascript
@@ -553,7 +586,7 @@ Interactive/animated slides take longer — budget 3-4 min each.
 {
   "type": "cover",
   "title": "EKS Auto Mode Deep Dive",
-  "subtitle": "Block 1: Fundamentals (30min)",
+  "subtitle": "Fundamentals (30min)",
   "pptxBackground": "../common/pptx-theme/images/Picture_13.png",
   "badgeSrc": "../common/pptx-theme/images/Picture_8.png",
   "speaker": { "name": "홍길동", "title": "SA", "company": "AWS" },
@@ -564,7 +597,7 @@ Interactive/animated slides take longer — budget 3-4 min each.
 {
   "type": "cover",
   "title": "EKS Auto Mode Deep Dive",
-  "subtitle": "Block 1: Fundamentals (30min)",
+  "subtitle": "Fundamentals (30min)",
   "speaker": { "name": "홍길동", "title": "SA", "company": "AWS" }
 }
 ```
@@ -574,7 +607,7 @@ Interactive/animated slides take longer — budget 3-4 min each.
 ```json
 {
   "type": "title",
-  "title": "Block 1: Fundamentals",
+  "title": "Fundamentals",
   "subtitle": "핵심 개념과 아키텍처",
   "meta": "2026.03 / Speaker / Event"
 }

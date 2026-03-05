@@ -95,6 +95,62 @@ Or use the CSS class directly:
 - **Slide number format**: Extracted from placeholder idx=4 (e.g., `‹#›`)
 - **Date format**: Extracted from placeholder idx=2
 
+## PPTX/PDF → Remarp Conversion Workflow
+
+The `convert_to_remarp.py` script converts existing PPTX or PDF files into editable Remarp projects. Theme extraction is automatic for PPTX sources.
+
+### Quick Start
+
+```bash
+# PPTX → Remarp (theme auto-extracted)
+python3 scripts/convert_to_remarp.py template.pptx -o ./converted/ --lang ko
+
+# PDF → Remarp (image backgrounds + text extraction)
+python3 scripts/convert_to_remarp.py slides.pdf -o ./converted/
+
+# Convert + build HTML in one step
+python3 scripts/convert_to_remarp.py template.pptx -o ./converted/ --build
+```
+
+### PPTX Layout → Remarp Type Mapping
+
+| PPTX Layout Name | Remarp @type | Notes |
+|-------------------|--------------|-------|
+| `Title Slide` | `cover` | First slide only; subsequent → `title` |
+| `Section Header` | `title` | Also used as block boundary |
+| `Title and Content` | `content` | Default content slide |
+| `Two Content` | `content` + `@layout: two-column` | Two-column layout |
+| `Comparison` | `compare` | Side-by-side comparison |
+| `Title Only` / `Blank` | `content` | Safe default |
+
+### Block Splitting Strategy
+
+1. **Section Header based** (preferred): If PPTX has `Section Header` layouts, they become block boundaries automatically
+2. **Uniform split** (fallback): If no section headers, slides are split into blocks of `--block-size` slides (default: 15)
+
+### Theme Integration
+
+When converting PPTX, the existing `extract_pptx_theme.py` is called automatically:
+- Theme output: `_theme/{pptx_stem}/` directory inside the project
+- `_presentation.md` references the theme via `theme.source`
+- Cache-aware: skips extraction if manifest is newer than source file
+
+### Post-Conversion Editing
+
+Converted Remarp files support all standard enhancements:
+- Add `@speaker`, `@speaker-title` directives to cover slides
+- Add `{.click}` fragment animations to bullet lists
+- Insert new `@type: quiz` or `:::canvas` slides between converted ones
+- Replace PDF image backgrounds (`@background`) with native Remarp content
+- Reorganize slides across block files (the builder auto-discovers `.md` files)
+
+### Re-conversion Safety
+
+Running `convert_to_remarp.py` on an existing output directory:
+- **Default**: Refuses to overwrite, shows error message
+- **`--force`**: Creates timestamped `.bak` backup, then overwrites `.md` files
+- Assets and theme directories are preserved unless `.md` files conflict
+
 ### Footer Integration with SlideFramework
 
 The footer text is **not set via CSS** — it's passed to `SlideFramework` in JavaScript. After extraction, read `theme-manifest.json` and use the `footer_text` field:

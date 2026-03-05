@@ -71,6 +71,7 @@ class SlideType(Enum):
     SLIDER = 'slider'
     CARDS = 'cards'
     THANKYOU = 'thankyou'
+    IFRAME = 'iframe'
 
 
 @dataclass
@@ -257,6 +258,7 @@ class RemarpParser:
         # Parse canvas DSL
         canvas_elements, canvas_id = self.parse_canvas_dsl(md_text)
         md_text = self.CANVAS_PATTERN.sub('', md_text)
+        md_text = re.sub(r':::\s*canvas\s+prompt\s*\n.*?\n:::', '', md_text, flags=re.DOTALL)
 
         # Remove column blocks from content
         md_text = self.COLUMN_PATTERN.sub('', md_text)
@@ -398,6 +400,16 @@ class RemarpParser:
         if mermaid_match:
             code = mermaid_match.group(1).strip()
             elements.append(CanvasElement('mermaid', {'code': code}))
+            return elements, canvas_id
+
+        # Check for prompt variant: :::canvas prompt
+        # Agent should replace these with :::canvas js before final build
+        prompt_match = re.search(
+            r':::\s*canvas\s+prompt\s*\n(.*?)\n:::', md_text, re.DOTALL
+        )
+        if prompt_match:
+            prompt_text = prompt_match.group(1).strip()
+            elements.append(CanvasElement('prompt', {'text': prompt_text}))
             return elements, canvas_id
 
         match = self.CANVAS_PATTERN.search(md_text)
@@ -754,6 +766,7 @@ class RemarpHTMLGenerator:
         self.lang = lang
         self.quiz_counter = 0
         self.canvas_counter = 0
+        self.deferred_canvas_scripts: List[str] = []
 
     def generate_block(self, block_name: str, slides: List[Slide],
                        config: Dict[str, Any]) -> str:
@@ -797,7 +810,8 @@ class RemarpHTMLGenerator:
             if slide.notes:
                 notes_dict[slide.index] = slide.notes
 
-        return self.wrap_html(title, slides_html, notes_dict, config)
+        return self.wrap_html(title, slides_html, notes_dict, config,
+                              canvas_scripts=self.deferred_canvas_scripts)
 
     def slide_to_html(self, slide: Slide) -> str:
         """Convert parsed slide to HTML based on type."""
@@ -825,6 +839,8 @@ class RemarpHTMLGenerator:
             return self._gen_cards_slide(slide)
         elif slide.slide_type == SlideType.THANKYOU:
             return self._gen_thankyou_slide(slide)
+        elif slide.slide_type == SlideType.IFRAME:
+            return self._gen_iframe_slide(slide)
         else:
             return self._gen_content_slide(slide)
 
@@ -836,10 +852,23 @@ class RemarpHTMLGenerator:
         text = re.sub(r'\*(.+?)\*', r'<em>\1</em>', text)
         # Inline code
         text = re.sub(r'`([^`]+)`', r'<code>\1</code>', text)
-        # Links
-        text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', text)
-        # Images
-        text = re.sub(r'!\[([^\]]*)\]\(([^)]+)\)', r'<img src="\2" alt="\1" />', text)
+        # Images — must come before links to avoid ![alt](url) being matched as link
+        text = re.sub(r'!\[([^\]]*)\]\(([^)]+)\)', r'<img src="\2" alt="\1" class="slide-img" />', text)
+        # Links — negative lookbehind ensures we don't match images
+        text = re.sub(r'(?<!!)\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', text)
+        # @img directive: @img: path [alignment] [size]
+        def _img_directive(m):
+            parts = m.group(1).strip().split()
+            src = parts[0] if parts else ''
+            align = 'center'
+            size = '90%'
+            for p in parts[1:]:
+                if p in ('left', 'center', 'right'):
+                    align = p
+                elif p.endswith('%') or p.endswith('px') or p.endswith('vh'):
+                    size = p
+            return f'<div style="text-align:{align}"><img src="{src}" class="slide-img" style="max-width:{size}" /></div>'
+        text = re.sub(r'^@img:\s*(.+)$', _img_directive, text, flags=re.MULTILINE)
         return text
 
     def _parse_list(self, lines: List[str], start_idx: int = 0) -> Tuple[str, int]:
@@ -1035,7 +1064,12 @@ class RemarpHTMLGenerator:
         return f'<div class="columns">\n{"".join(col_html)}\n</div>'
 
     def gen_canvas_from_dsl(self, canvas_id: str, elements: List[CanvasElement]) -> str:
-        """Compile canvas DSL to JavaScript code."""
+        """Compile canvas DSL to JavaScript code.
+
+        Two-pass approach:
+        1. Collect element positions for arrow coordinate resolution
+        2. Generate draw code with step-conditional rendering
+        """
         if not elements:
             return ''
 
@@ -1044,94 +1078,142 @@ class RemarpHTMLGenerator:
             if elem.element_type == 'preset':
                 return self.compile_preset_to_js(canvas_id, elem.params['type'], elem.params['config'])
 
-        # Generate drawing code
-        draw_lines = []
-        step_actions = []
-        element_positions = {}  # Track named elements for arrow connections
+        # --- Pass 1: Collect element positions and max step ---
+        element_positions = {}
+        max_step = 0
 
         for elem in elements:
+            step = elem.params.get('step')
+            if step is not None:
+                max_step = max(max_step, step)
+
+            p = elem.params
             if elem.element_type == 'box':
-                p = elem.params
-                color = f"Colors.{p['color']}" if p['color'] in ['accent', 'green', 'yellow', 'red', 'blue', 'cyan'] else f"'{p['color']}'"
-                draw_lines.append(
-                    f"drawBox(ctx, {p['x']}, {p['y']}, {p['width']}, {p['height']}, '{p['label']}', {color});"
-                )
-                # Store center position for arrow connections
-                element_positions[p['label']] = {
-                    'x': p['x'] + p['width'] // 2,
-                    'y': p['y'] + p['height'] // 2,
+                pos = {
+                    'cx': p['x'] + p['width'] // 2,
+                    'cy': p['y'] + p['height'] // 2,
                     'right': p['x'] + p['width'],
                     'left': p['x'],
                     'top': p['y'],
                     'bottom': p['y'] + p['height']
                 }
+                if 'id' in p:
+                    element_positions[p['id']] = pos
+                element_positions[p['label']] = pos
 
             elif elem.element_type == 'circle':
-                p = elem.params
-                color = f"Colors.{p['color']}" if p['color'] in ['accent', 'green', 'yellow', 'red', 'blue', 'cyan'] else f"'{p['color']}'"
-                draw_lines.append(
-                    f"drawCircle(ctx, {p['x']}, {p['y']}, {p['radius']}, {color});"
-                )
-                element_positions[p['label']] = {
-                    'x': p['x'], 'y': p['y'],
+                pos = {
+                    'cx': p['x'], 'cy': p['y'],
                     'right': p['x'] + p['radius'],
                     'left': p['x'] - p['radius'],
                     'top': p['y'] - p['radius'],
                     'bottom': p['y'] + p['radius']
                 }
-
-            elif elem.element_type == 'arrow':
-                p = elem.params
-                color = f"Colors.{p['color']}" if p['color'] in ['accent', 'green', 'yellow', 'red', 'blue', 'cyan'] else f"'{p['color']}'"
-                dashed = 'true' if p.get('dashed') else 'false'
-
-                if 'from' in p and 'to' in p:
-                    # Named arrow - will be resolved at runtime
-                    draw_lines.append(f"// Arrow from '{p['from']}' to '{p['to']}'")
-                    draw_lines.append(f"drawArrow(ctx, 0, 0, 100, 100, {color}, {dashed}); // TODO: resolve positions")
-                elif 'from_id' in p and 'to_id' in p:
-                    # Remarp-format named arrow
-                    label = p.get('label', '')
-                    draw_lines.append(f"// Arrow from '{p['from_id']}' to '{p['to_id']}'" + (f" label='{label}'" if label else ''))
-                    draw_lines.append(f"drawArrow(ctx, 0, 0, 100, 100, {color}, {dashed}); // TODO: resolve positions")
-                else:
-                    draw_lines.append(
-                        f"drawArrow(ctx, {p['x1']}, {p['y1']}, {p['x2']}, {p['y2']}, {color}, {dashed});"
-                    )
-
-            elif elem.element_type == 'text':
-                p = elem.params
-                color = f"Colors.{p['color']}" if p['color'] in ['textPri', 'textSec', 'textMuted', 'accent'] else f"'{p['color']}'"
-                draw_lines.append(
-                    f"drawText(ctx, '{p['text']}', {p['x']}, {p['y']}, {{color: {color}, size: {p['size']}}});"
-                )
+                if 'id' in p:
+                    element_positions[p['id']] = pos
+                element_positions[p.get('label', '')] = pos
 
             elif elem.element_type == 'icon':
-                p = elem.params
-                src = p.get('src', '')
                 x, y = p.get('x', 0), p.get('y', 0)
                 size = p.get('width', 48)
-                draw_lines.append(f"drawIcon(ctx, '{src}', {x}, {y}, {size});")
-                element_positions[p.get('id', p.get('src', ''))] = {
-                    'x': x, 'y': y,
+                pos = {
+                    'cx': x, 'cy': y,
                     'right': x + size // 2, 'left': x - size // 2,
                     'top': y - size // 2, 'bottom': y + size // 2
                 }
+                if 'id' in p:
+                    element_positions[p['id']] = pos
+
+        def _resolve_arrow(from_key: str, to_key: str):
+            """Resolve arrow endpoints from element positions (directional)."""
+            src = element_positions.get(from_key)
+            dst = element_positions.get(to_key)
+            if not src or not dst:
+                return None
+            dx = dst['cx'] - src['cx']
+            dy = dst['cy'] - src['cy']
+            if abs(dx) >= abs(dy):
+                if dx >= 0:
+                    return src['right'], src['cy'], dst['left'], dst['cy']
+                return src['left'], src['cy'], dst['right'], dst['cy']
+            if dy >= 0:
+                return src['cx'], src['bottom'], dst['cx'], dst['top']
+            return src['cx'], src['top'], dst['cx'], dst['bottom']
+
+        def _js_escape(s: str) -> str:
+            return s.replace('\\', '\\\\').replace("'", "\\'")
+
+        def _wrap_step(line: str, step) -> str:
+            if step is not None:
+                return f"if (step >= {step}) {{ {line} }}"
+            return line
+
+        # --- Pass 2: Generate draw code ---
+        draw_lines = []
+
+        for elem in elements:
+            step = elem.params.get('step')
+            p = elem.params
+
+            if elem.element_type == 'box':
+                color = f"Colors.{p['color']}" if p['color'] in ['accent', 'green', 'yellow', 'red', 'blue', 'cyan'] else f"'{p['color']}'"
+                line = f"drawBox(ctx, {p['x']}, {p['y']}, {p['width']}, {p['height']}, '{_js_escape(p['label'])}', {color});"
+                draw_lines.append(_wrap_step(line, step))
+
+            elif elem.element_type == 'circle':
+                color = f"Colors.{p['color']}" if p['color'] in ['accent', 'green', 'yellow', 'red', 'blue', 'cyan'] else f"'{p['color']}'"
+                line = f"drawCircle(ctx, {p['x']}, {p['y']}, {p['radius']}, {color});"
+                draw_lines.append(_wrap_step(line, step))
+
+            elif elem.element_type == 'arrow':
+                color = f"Colors.{p['color']}" if p['color'] in ['accent', 'green', 'yellow', 'red', 'blue', 'cyan'] else f"'{p['color']}'"
+                dashed = 'true' if p.get('dashed') else 'false'
+                coords = None
+                label = ''
+
+                if 'from_id' in p and 'to_id' in p:
+                    coords = _resolve_arrow(p['from_id'], p['to_id'])
+                    label = p.get('label', '')
+                elif 'from' in p and 'to' in p:
+                    coords = _resolve_arrow(p['from'], p['to'])
+
+                if coords:
+                    x1, y1, x2, y2 = coords
+                    arrow_line = f"drawArrow(ctx, {x1}, {y1}, {x2}, {y2}, {color}, {dashed});"
+                    draw_lines.append(_wrap_step(arrow_line, step))
+                    if label:
+                        mid_x = (x1 + x2) // 2
+                        mid_y = (y1 + y2) // 2 - 12
+                        label_line = f"drawText(ctx, '{_js_escape(label)}', {mid_x}, {mid_y}, {{size: 10, color: Colors.textSec, align: 'center'}});"
+                        draw_lines.append(_wrap_step(label_line, step))
+                elif 'x1' in p:
+                    line = f"drawArrow(ctx, {p['x1']}, {p['y1']}, {p['x2']}, {p['y2']}, {color}, {dashed});"
+                    draw_lines.append(_wrap_step(line, step))
+                else:
+                    fk = p.get('from_id', p.get('from', '?'))
+                    tk = p.get('to_id', p.get('to', '?'))
+                    draw_lines.append(f"// Arrow '{fk}' -> '{tk}': position not resolved")
+
+            elif elem.element_type == 'text':
+                color = f"Colors.{p['color']}" if p['color'] in ['textPri', 'textSec', 'textMuted', 'accent'] else f"'{p['color']}'"
+                line = f"drawText(ctx, '{_js_escape(p['text'])}', {p['x']}, {p['y']}, {{color: {color}, size: {p['size']}}});"
+                draw_lines.append(_wrap_step(line, step))
+
+            elif elem.element_type == 'icon':
+                src = p.get('src', '')
+                x, y = p.get('x', 0), p.get('y', 0)
+                size = p.get('width', 48)
+                line = f"drawIcon(ctx, '{_js_escape(src)}', {x}, {y}, {size});"
+                draw_lines.append(_wrap_step(line, step))
 
             elif elem.element_type == 'step':
-                p = elem.params
-                step_actions.append(f"// Step {p['step']}: {p['action']}")
+                pass  # Step metadata already captured in pass 1
 
-        # Build the JavaScript
+        # --- Build JavaScript ---
         draw_code = '\n    '.join(draw_lines)
+        has_steps = max_step > 0
 
-        js = f'''(function() {{
-  const canvas = document.getElementById('{canvas_id}');
-  if (!canvas) return;
-  const container = canvas.parentElement;
-  const BASE_W = 960, BASE_H = 400;
-
-  function resizeCanvas() {{
+        resize_fn = f'''function resizeCanvas() {{
     const cw = container.clientWidth;
     const ch = container.clientHeight;
     if (cw <= 0 || ch <= 0) {{
@@ -1149,7 +1231,51 @@ class RemarpHTMLGenerator:
     const c = canvas.getContext('2d');
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.scale(scale * dpr, scale * dpr);
+  }}'''
+
+        if has_steps:
+            js = f'''(function() {{
+  const canvas = document.getElementById('{canvas_id}');
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  const BASE_W = 960, BASE_H = 400;
+
+  {resize_fn}
+  resizeCanvas();
+
+  const ctx = canvas.getContext('2d');
+  const width = BASE_W, height = BASE_H;
+  let step = 0;
+  const MAX_STEP = {max_step};
+
+  function draw() {{
+    ctx.clearRect(0, 0, width, height);
+    {draw_code}
   }}
+
+  draw();
+  new ResizeObserver(() => {{ resizeCanvas(); draw(); }}).observe(container);
+
+  const slide = canvas.closest('.slide');
+  if (slide) {{
+    slide.dataset.slideAction = 'canvas-step';
+    slide.dataset.canvasMaxStep = String(MAX_STEP);
+    slide.__canvasStep = function(dir) {{
+      if (dir === 'next' && step < MAX_STEP) step++;
+      if (dir === 'prev' && step > 0) step--;
+      draw();
+      return step;
+    }};
+  }}
+}})();'''
+        else:
+            js = f'''(function() {{
+  const canvas = document.getElementById('{canvas_id}');
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  const BASE_W = 960, BASE_H = 400;
+
+  {resize_fn}
   resizeCanvas();
 
   const ctx = canvas.getContext('2d');
@@ -1269,7 +1395,7 @@ class RemarpHTMLGenerator:
         return transitions.get(transition, transitions['fade'])
 
     def _gen_cover_slide(self, slide: Slide) -> str:
-        """Generate session cover slide."""
+        """Generate session cover slide using absolute positioning (§0a/§0b)."""
         content = slide.content
         lines = [l for l in content.split('\n') if l.strip()]
 
@@ -1290,11 +1416,12 @@ class RemarpHTMLGenerator:
         speaker_title = slide.directives.get('speaker-title', '')
         speaker_company = slide.directives.get('company', '')
 
-        # Check for PPTX background in directives
+        # Check for PPTX background and badge in directives
         pptx_bg = slide.directives.get('background', '')
+        badge_src = slide.directives.get('badge', '')
 
         if pptx_bg:
-            # PPTX-style cover
+            # §0a — PPTX-style cover with absolute positioning
             speaker_html = ''
             if speaker_name:
                 speaker_html = f'''<div style="position:absolute; left:5%; top:76%;">
@@ -1303,13 +1430,18 @@ class RemarpHTMLGenerator:
     <p style="font-size:0.9rem; color:rgba(255,255,255,0.65); margin:2px 0 0 0;">{speaker_company}</p>
   </div>'''
 
+            subtitle_html = f'<p style="position:absolute; left:5%; top:62%; font-size:1.3rem; color:rgba(255,255,255,0.8); width:53%; margin:0;">{subtitle}</p>' if subtitle else ''
+
+            badge_html = f'<img src="{badge_src}" alt="" style="position:absolute; right:5%; bottom:10%; width:8%; pointer-events:none;" />' if badge_src else ''
+
             return f'''<div class="slide" style="background:url('{pptx_bg}') center/cover no-repeat; padding:0; overflow:hidden;">
   <h1 style="position:absolute; left:5%; top:48%; font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:53%; margin:0;">{title}</h1>
-  <p style="position:absolute; left:5%; top:62%; font-size:1.3rem; color:rgba(255,255,255,0.8); width:53%; margin:0;">{subtitle}</p>
+  {subtitle_html}
   {speaker_html}
+  {badge_html}
 </div>'''
         else:
-            # CSS-only cover
+            # §0b — CSS-only cover with absolute positioning
             speaker_html = ''
             if speaker_name:
                 speaker_html = f'''<div style="position:absolute; left:5%; top:75%;">
@@ -1318,11 +1450,13 @@ class RemarpHTMLGenerator:
     <p style="font-size:0.9rem; color:rgba(255,255,255,0.6); margin:2px 0 0 0;">{speaker_company}</p>
   </div>'''
 
+            subtitle_html = f'<p style="position:absolute; left:5%; top:60%; font-size:1.3rem; color:rgba(255,255,255,0.7); width:60%; margin:0;">{subtitle}</p>' if subtitle else ''
+
             return f'''<div class="slide" style="background:linear-gradient(135deg, #1a1f35 0%, #0d1117 50%, #161b2e 100%); padding:0; overflow:hidden; position:relative;">
   <div style="position:absolute; top:-20%; right:-10%; width:60%; height:80%; background:radial-gradient(ellipse, rgba(108,92,231,0.15) 0%, transparent 70%); pointer-events:none;"></div>
   <div style="position:absolute; left:5%; top:42%; width:80px; height:3px; background:linear-gradient(90deg, #6c5ce7, #a29bfe); border-radius:2px;"></div>
   <h1 style="position:absolute; left:5%; top:45%; font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:60%; margin:0;">{title}</h1>
-  <p style="position:absolute; left:5%; top:60%; font-size:1.3rem; color:rgba(255,255,255,0.7); width:60%; margin:0;">{subtitle}</p>
+  {subtitle_html}
   {speaker_html}
 </div>'''
 
@@ -1396,7 +1530,11 @@ class RemarpHTMLGenerator:
 </div>'''
 
     def _gen_compare_slide(self, slide: Slide) -> str:
-        """Generate compare slide HTML."""
+        """Generate compare slide HTML.
+
+        For 2 options: side-by-side col-2 layout with both visible, toggle highlights selected.
+        For 3+ options: toggle buttons with one section visible at a time.
+        """
         content = slide.content
         lines = content.split('\n')
 
@@ -1413,6 +1551,8 @@ class RemarpHTMLGenerator:
             elif current_section:
                 sections[current_section].append(line)
 
+        is_side_by_side = len(sections) == 2
+
         # Generate toggle buttons and content
         buttons = []
         contents = []
@@ -1427,14 +1567,34 @@ class RemarpHTMLGenerator:
             )
 
             section_html = self._parse_body_content(section_lines)
-            contents.append(
-                f'<div class="compare-content{active}" data-compare="{slug}">\n{section_html}\n</div>'
-            )
+            if is_side_by_side:
+                highlight = ' compare-highlight' if first else ''
+                contents.append(
+                    f'<div class="card compare-content active{highlight}" data-compare="{slug}">\n<h3 style="color:var(--text-accent);margin-bottom:.5rem">{section_name}</h3>\n{section_html}\n</div>'
+                )
+            else:
+                contents.append(
+                    f'<div class="compare-content{active}" data-compare="{slug}">\n{section_html}\n</div>'
+                )
             first = False
 
         header_html = f'<div class="slide-header"><h2>{heading}</h2></div>' if heading else ''
+        mode_attr = ' data-compare-mode="side-by-side"' if is_side_by_side else ''
 
-        return f'''<div class="slide">
+        if is_side_by_side:
+            return f'''<div class="slide">
+  {header_html}
+  <div class="slide-body"{mode_attr}>
+    <div class="compare-toggle">
+      {chr(10).join("      " + b for b in buttons)}
+    </div>
+    <div class="col-2" style="flex:1">
+      {chr(10).join("      " + c for c in contents)}
+    </div>
+  </div>
+</div>'''
+        else:
+            return f'''<div class="slide">
   {header_html}
   <div class="slide-body">
     <div class="compare-toggle">
@@ -1445,14 +1605,53 @@ class RemarpHTMLGenerator:
 </div>'''
 
     def _gen_tabs_slide(self, slide: Slide) -> str:
-        """Generate tabs slide HTML."""
-        # Similar to compare but with tab classes
-        html = self._gen_compare_slide(slide)
-        return (html
-            .replace('compare-toggle', 'tab-bar')
-            .replace('compare-btn', 'tab-btn')
-            .replace('compare-content', 'tab-content')
-            .replace('data-compare=', 'data-tab='))
+        """Generate tabs slide HTML with proper tab switching."""
+        content = slide.content
+        lines = content.split('\n')
+
+        heading = ''
+        sections: Dict[str, List[str]] = {}
+        current_section = None
+
+        for line in lines:
+            if line.startswith('## '):
+                heading = self._convert_markdown(line[3:].strip())
+            elif line.startswith('### '):
+                current_section = line[4:].strip()
+                sections[current_section] = []
+            elif current_section is not None:
+                sections[current_section].append(line)
+
+        # Generate tab buttons and content panels
+        buttons = []
+        panels = []
+        first = True
+
+        for section_name, section_lines in sections.items():
+            slug = re.sub(r'[^a-z0-9]+', '-', section_name.lower()).strip('-')
+            active = ' active' if first else ''
+
+            buttons.append(
+                f'<button class="tab-btn{active}" data-tab="{slug}">{section_name}</button>'
+            )
+
+            section_html = self._parse_body_content(section_lines)
+            panels.append(
+                f'<div class="tab-content{active}" data-tab="{slug}">\n{section_html}\n</div>'
+            )
+            first = False
+
+        header_html = f'<div class="slide-header"><h2>{heading}</h2></div>' if heading else ''
+
+        return f'''<div class="slide">
+  {header_html}
+  <div class="slide-body">
+    <div class="tab-bar">
+      {chr(10).join("      " + b for b in buttons)}
+    </div>
+    {chr(10).join("    " + p for p in panels)}
+  </div>
+</div>'''
 
     def _gen_canvas_slide(self, slide: Slide) -> str:
         """Generate canvas slide HTML."""
@@ -1490,6 +1689,25 @@ class RemarpHTMLGenerator:
   </div>
 </div>'''
 
+        # Check for prompt elements (agent should replace before final build)
+        for elem in slide.canvas_elements:
+            if elem.element_type == 'prompt':
+                prompt_text = elem.params.get('text', '').replace('<', '&lt;').replace('>', '&gt;')
+                prompt_html = prompt_text.replace('\n', '<br>')
+                return f'''<div class="slide">
+  {header_html}
+  <div class="slide-body">
+    <div class="canvas-container" style="flex:1; display:flex; align-items:center; justify-content:center;">
+      <!-- CANVAS_PROMPT_PENDING -->
+      <div style="text-align:center; color:#FF9900; padding:2rem; border:2px dashed #FF9900; border-radius:12px; max-width:600px;">
+        <p style="font-size:1.2rem; margin-bottom:1rem;">Canvas Prompt (Pending)</p>
+        <p style="font-size:0.9rem; opacity:0.8;">{prompt_html}</p>
+        <p style="font-size:0.8rem; opacity:0.5; margin-top:1rem;">Replace :::canvas prompt with :::canvas js before final build</p>
+      </div>
+    </div>
+  </div>
+</div>'''
+
         canvas_html = f'''<div class="slide">
   {header_html}
   <div class="slide-body">
@@ -1500,7 +1718,7 @@ class RemarpHTMLGenerator:
 </div>'''
 
         if canvas_js:
-            canvas_html += f'\n<script>\n{canvas_js}\n</script>'
+            self.deferred_canvas_scripts.append(canvas_js)
 
         return canvas_html
 
@@ -1656,19 +1874,68 @@ class RemarpHTMLGenerator:
         return code
 
     def _gen_checklist_slide(self, slide: Slide) -> str:
-        """Generate checklist slide HTML."""
+        """Generate checklist slide HTML with expandable code blocks."""
         content = slide.content
         lines = content.split('\n')
 
         heading = ''
-        items = []
+        items = []  # list of (text, detail_html_or_None)
+        current_item_text = None
+        current_detail_lines = []
+        in_code_block = False
+        code_lang = ''
+        code_lines = []
+
+        def _flush_item():
+            nonlocal current_item_text, current_detail_lines
+            if current_item_text is not None:
+                detail_html = None
+                if current_detail_lines:
+                    detail_html = self._parse_body_content(current_detail_lines)
+                items.append((current_item_text, detail_html))
+                current_item_text = None
+                current_detail_lines = []
 
         for line in lines:
             if line.startswith('## '):
                 heading = self._convert_markdown(line[3:].strip())
-            elif re.match(r'^[-*]\s', line):
+                continue
+
+            if in_code_block:
+                if line.strip().startswith('```'):
+                    in_code_block = False
+                    current_detail_lines.append('```' + code_lang)
+                    current_detail_lines.extend(code_lines)
+                    current_detail_lines.append('```')
+                    code_lines = []
+                    code_lang = ''
+                else:
+                    code_lines.append(line)
+                continue
+
+            if re.match(r'^[-*]\s', line):
+                _flush_item()
                 item_text = re.sub(r'^[-*]\s+', '', line)
-                items.append(f'<li><span class="check"></span> {self._convert_markdown(item_text)}</li>')
+                # Strip checkbox markers if present
+                item_text = re.sub(r'^\[[ x]\]\s*', '', item_text)
+                current_item_text = item_text
+            elif line.strip().startswith('```') and current_item_text is not None:
+                in_code_block = True
+                code_lang = line.strip()[3:].strip()
+                code_lines = []
+            elif current_item_text is not None and line.strip():
+                current_detail_lines.append(line)
+
+        _flush_item()
+
+        # Generate HTML
+        item_htmls = []
+        for text, detail in items:
+            has_detail = ' has-detail' if detail else ''
+            detail_div = f'\n      <div class="checklist-detail">{detail}</div>' if detail else ''
+            item_htmls.append(
+                f'<li class="{has_detail.strip()}"><span class="check"></span> <span class="checklist-text">{self._convert_markdown(text)}</span>{detail_div}</li>'
+            )
 
         header_html = f'<div class="slide-header"><h2>{heading}</h2></div>' if heading else ''
 
@@ -1676,48 +1943,121 @@ class RemarpHTMLGenerator:
   {header_html}
   <div class="slide-body">
     <ul class="checklist">
-      {chr(10).join("      " + item for item in items)}
+      {chr(10).join("      " + item for item in item_htmls)}
     </ul>
   </div>
 </div>'''
 
     def _gen_timeline_slide(self, slide: Slide) -> str:
-        """Generate timeline slide HTML."""
+        """Generate timeline slide HTML with dynamic sizing, descriptions, and keyboard nav.
+
+        Supports two input formats:
+        1. ### headings with description lines below
+        2. Numbered list items (1. Step text) as fallback
+        """
         content = slide.content
         lines = content.split('\n')
 
         heading = ''
         steps = []
-        active_step = int(slide.directives.get('active', '0'))
+        current_step_title = None
+        current_step_desc_lines = []
 
-        step_num = 1
+        def _flush_step():
+            nonlocal current_step_title, current_step_desc_lines
+            if current_step_title is not None:
+                desc = ' '.join(l.strip() for l in current_step_desc_lines if l.strip())
+                steps.append({'title': current_step_title, 'desc': desc})
+                current_step_title = None
+                current_step_desc_lines = []
+
         for line in lines:
             if line.startswith('## '):
                 heading = self._convert_markdown(line[3:].strip())
+            elif line.startswith('### '):
+                _flush_step()
+                current_step_title = line[4:].strip()
+            elif current_step_title is not None:
+                current_step_desc_lines.append(line)
             elif re.match(r'^\d+\.\s', line):
+                _flush_step()
                 step_text = re.sub(r'^\d+\.\s+', '', line)
-                state = 'done' if step_num < active_step else ('active' if step_num == active_step else '')
-                steps.append({
-                    'num': step_num,
-                    'text': self._convert_markdown(step_text),
-                    'state': state
-                })
-                step_num += 1
+                # Support "**Title** — description" format
+                bold_match = re.match(r'\*\*(.+?)\*\*\s*[-—]\s*(.*)', step_text)
+                if bold_match:
+                    current_step_title = bold_match.group(1)
+                    current_step_desc_lines = [bold_match.group(2)] if bold_match.group(2) else []
+                else:
+                    steps.append({'title': step_text, 'desc': ''})
+
+        _flush_step()
+
+        # Dynamic dot sizing based on step count
+        n = len(steps)
+        if n <= 3:
+            dot_size = '2rem'
+            font_size = '0.9rem'
+            label_width = '6rem'
+        elif n <= 5:
+            dot_size = '1.67rem'
+            font_size = '0.82rem'
+            label_width = '5rem'
+        elif n <= 7:
+            dot_size = '1.33rem'
+            font_size = '0.75rem'
+            label_width = '4.5rem'
+        else:
+            dot_size = '1rem'
+            font_size = '0.7rem'
+            label_width = '4rem'
 
         # Build timeline HTML
         timeline_parts = []
         for i, step in enumerate(steps):
-            state_class = f' {step["state"]}' if step['state'] else ''
-            timeline_parts.append(f'''<div class="timeline-step{state_class}">
-      <div class="timeline-dot">{step['num']}</div>
-      <div class="timeline-label">{step['text']}</div>
+            step_num = i + 1
+            desc_html = f'<div class="timeline-desc">{self._convert_markdown(step["desc"])}</div>' if step['desc'] else ''
+            timeline_parts.append(f'''<div class="timeline-step" data-step="{step_num}">
+      <div class="timeline-dot" style="width:{dot_size};height:{dot_size};font-size:{font_size}">{step_num}</div>
+      <div class="timeline-label" style="max-width:{label_width}">{self._convert_markdown(step["title"])}</div>
+      {desc_html}
     </div>''')
 
-            if i < len(steps) - 1:
-                connector_state = ' done' if steps[i]['state'] == 'done' else ''
-                timeline_parts.append(f'<div class="timeline-connector{connector_state}"></div>')
+            if i < n - 1:
+                timeline_parts.append('<div class="timeline-connector"></div>')
 
         header_html = f'<div class="slide-header"><h2>{heading}</h2></div>' if heading else ''
+
+        # Timeline step navigation JS (inline)
+        timeline_js = ''
+        if n > 0:
+            timeline_js = f'''
+<script>(function() {{
+  const slide = document.currentScript.closest('.slide');
+  if (!slide) return;
+  const steps = slide.querySelectorAll('.timeline-step');
+  const connectors = slide.querySelectorAll('.timeline-connector');
+  let current = 0;
+  function update() {{
+    steps.forEach((s, i) => {{
+      s.classList.remove('active', 'done');
+      if (i < current) s.classList.add('done');
+      else if (i === current) s.classList.add('active');
+    }});
+    connectors.forEach((c, i) => {{
+      c.classList.toggle('done', i < current);
+    }});
+  }}
+  update();
+  slide.__canvasStep = function(dir) {{
+    if (dir === 'next' && current < {n - 1}) current++;
+    else if (dir === 'prev' && current > 0) current--;
+    else return (dir === 'next') ? false : false;
+    update();
+    return current;
+  }};
+  slide.dataset.slideAction = 'canvas-step';
+  slide.dataset.canvasMaxStep = '{n - 1}';
+}})();</script>'''
 
         return f'''<div class="slide">
   {header_html}
@@ -1726,6 +2066,7 @@ class RemarpHTMLGenerator:
       {chr(10).join("      " + p for p in timeline_parts)}
     </div>
   </div>
+  {timeline_js}
 </div>'''
 
     def _gen_slider_slide(self, slide: Slide) -> str:
@@ -1844,8 +2185,52 @@ class RemarpHTMLGenerator:
   </div>
 </div>'''
 
+    def _gen_iframe_slide(self, slide: Slide) -> str:
+        """Generate iframe embed slide HTML.
+
+        Markdown format:
+            ---
+            @type: iframe
+
+            ## Optional Title
+
+            src: path/to/file.html
+
+            :::notes
+            Speaker notes here
+            :::
+        """
+        content = slide.content
+        title_html = ''
+        src = ''
+
+        # Extract title from heading
+        title_match = re.search(r'^##?\s+(.+)$', content, re.MULTILINE)
+        if title_match:
+            title_text = self._convert_markdown(title_match.group(1).strip())
+            title_html = f'<h2 style="position:absolute;top:12px;left:24px;right:24px;color:var(--text-primary);font-size:1.3rem;z-index:2;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,0.6);">{title_text}</h2>'
+
+        # Extract src from directive or body
+        src = slide.directives.get('src', '')
+        if not src:
+            src_match = re.search(r'^src:\s*(.+)$', content, re.MULTILINE)
+            if src_match:
+                src = src_match.group(1).strip()
+
+        if not src:
+            return f'''<div class="slide">
+  <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);">
+    <p>iframe slide: no <code>src</code> specified</p>
+  </div>
+</div>'''
+
+        return f'''<div class="slide" style="padding:0;position:relative;overflow:hidden;">
+  {title_html}
+  <iframe src="{src}" style="width:100%;height:100%;border:none;display:block;" loading="lazy" sandbox="allow-scripts allow-same-origin" title="Embedded content"></iframe>
+</div>'''
+
     def wrap_html(self, title: str, slides_html: str, notes: Dict[int, Note],
-                  config: Dict[str, Any]) -> str:
+                  config: Dict[str, Any], canvas_scripts: List[str] = None) -> str:
         """Wrap slides in full HTML template with key config injection."""
         # Build notes JavaScript
         def escape_js(s):
@@ -1879,6 +2264,13 @@ class RemarpHTMLGenerator:
         logo_js = f"logoSrc: '{logo_src}'," if logo_src else ''
         footer_js = f"footer: '{footer}'," if footer else ''
         pagination_js = f"pagination: {'true' if pagination else 'false'},"
+
+        # Canvas deferred scripts (must load after animation-utils.js)
+        canvas_scripts_html = ''
+        if canvas_scripts:
+            canvas_scripts_html = '\n'.join(
+                f'<script>\n{js}\n</script>' for js in canvas_scripts
+            )
 
         # Mermaid CDN injection
         mermaid_script = ''
@@ -1920,6 +2312,7 @@ class RemarpHTMLGenerator:
 <script src="../common/slide-framework.js"></script>
 <script src="../common/quiz-component.js"></script>
 <script src="../common/presenter-view.js"></script>
+{canvas_scripts_html}
 <script>
   {key_config_js}
   {notes_block}
@@ -2177,20 +2570,99 @@ class RemarpProjectBuilder:
             f.write('\n'.join(css_lines))
 
     def build_all(self) -> List[str]:
-        """Full rebuild of all blocks + index.html."""
+        """Full rebuild: merge all blocks into single index.html.
+
+        Individual block HTML files are also generated for debugging/editing.
+        """
         built_files = []
 
+        # 1. Build individual block files (for debugging/per-block editing)
         for block_name, block_path in self.blocks.items():
             output_path = self._build_block_file(block_name, block_path)
             if output_path:
                 built_files.append(str(output_path))
 
-        # Generate index
-        index_path = self.generate_index()
+        # 2. Merge all blocks into single index.html
+        index_path = self._build_merged_index()
         if index_path:
             built_files.append(str(index_path))
 
         return built_files
+
+    def _build_merged_index(self) -> Optional[Path]:
+        """Merge all blocks into a single index.html."""
+        all_slides_html = []
+        all_notes: Dict[int, 'Note'] = {}
+        all_canvas_scripts: List[str] = []
+        slide_offset = 0
+        has_mermaid = False
+
+        for block_name, block_path in self.blocks.items():
+            with open(block_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            parser = RemarpParser(content)
+            config, blocks = parser.parse()
+            merged_config = {**self.main_config, **config}
+            lang = merged_config.get('lang', 'ko')
+
+            html_gen = RemarpHTMLGenerator(lang=lang)
+            if self.theme_dir:
+                html_gen.theme_dir = str(self.theme_dir)
+
+            for internal_name, slides in blocks.items():
+                for slide in slides:
+                    slide_html = html_gen.slide_to_html(slide)
+
+                    # Check mermaid
+                    for elem in slide.canvas_elements:
+                        if elem.element_type == 'mermaid':
+                            has_mermaid = True
+
+                    # Inject refs
+                    refs = slide.directives.get('refs', '')
+                    if refs:
+                        slide_html = slide_html.replace(
+                            '<div class="slide"',
+                            f'<div class="slide" data-refs=\'{refs}\'', 1)
+
+                    all_slides_html.append(slide_html)
+
+                    if slide.notes:
+                        all_notes[slide_offset] = slide.notes
+                    slide_offset += 1
+
+            # Collect canvas scripts
+            if html_gen.deferred_canvas_scripts:
+                all_canvas_scripts.extend(html_gen.deferred_canvas_scripts)
+
+        if not all_slides_html:
+            return None
+
+        # Build merged HTML using wrap_html
+        title = self.main_config.get('title', 'Presentation')
+        merged_config = dict(self.main_config)
+        if has_mermaid:
+            merged_config['_has_mermaid'] = True
+        if self.theme_dir:
+            merged_config['_theme_dir'] = str(self.theme_dir)
+
+        lang = merged_config.get('lang', 'ko')
+        html_gen = RemarpHTMLGenerator(lang=lang)
+        if self.theme_dir:
+            html_gen.theme_dir = str(self.theme_dir)
+
+        slides_html = '\n\n'.join(all_slides_html)
+        index_html = html_gen.wrap_html(
+            title, slides_html, all_notes, merged_config,
+            canvas_scripts=all_canvas_scripts)
+
+        index_path = self.output_dir / 'index.html'
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        with open(index_path, 'w', encoding='utf-8') as f:
+            f.write(index_html)
+
+        return index_path
 
     def build_block(self, block_name: str) -> Optional[str]:
         """Build a single block."""
@@ -2256,7 +2728,7 @@ class RemarpProjectBuilder:
         return changed
 
     def generate_index(self) -> Optional[Path]:
-        """Generate TOC page linking all blocks."""
+        """Generate TOC page linking individual block files (toc.html)."""
         title = self.main_config.get('title', 'Presentation')
         lang = self.main_config.get('lang', 'ko')
         escaped_title = title.replace("'", "\\'")
@@ -2325,13 +2797,13 @@ class RemarpProjectBuilder:
 </body>
 </html>'''
 
-        index_path = self.output_dir / 'index.html'
+        toc_path = self.output_dir / 'toc.html'
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        with open(index_path, 'w', encoding='utf-8') as f:
+        with open(toc_path, 'w', encoding='utf-8') as f:
             f.write(html)
 
-        return index_path
+        return toc_path
 
 
 def migrate_marp_to_remarp(marp_file: str, output_dir: str) -> List[str]:

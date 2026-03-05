@@ -1,0 +1,198 @@
+---
+sidebar_position: 0
+title: "실전 프레젠테이션 데모"
+---
+
+import DemoEmbed from '@site/src/components/DemoEmbed';
+
+# 실전 프레젠테이션 데모
+
+실제 프롬프트 하나로 90분짜리 AIOps 마스터클래스 프레젠테이션을 생성한 실전 사례입니다.
+
+---
+
+## 데모 프롬프트
+
+아래 프롬프트를 그대로 입력하면 전체 프레젠테이션이 생성됩니다:
+
+```
+새로 프레젠테이션을 만들어줘 aiops에 관하여 90분간 세션을 진행할거야
+고객은 300레벨 수준이야.
+theme는 "example.pptx"를 가지고 사용하면 되고
+스피커는 Junseok Oh, Sr. Solutions Architect, AWS
+청중은 AnyCompany
+```
+
+---
+
+## 프롬프트 분석
+
+에이전트는 이 프롬프트에서 다음 정보를 자동으로 추출합니다:
+
+| 항목 | 추출값 | 활용 |
+|------|--------|------|
+| **주제** | AIOps | 콘텐츠 리서치 및 구성 |
+| **시간** | 90분 → 3블록 (각 30분) | 블록 수 자동 결정 |
+| **난이도** | 300 레벨 (심화) | 콘텐츠 깊이 조절 |
+| **테마** | `example.pptx` → PPTX 테마 추출 | 색상/폰트/로고 적용 |
+| **스피커** | Junseok Oh, Sr. Solutions Architect, AWS | 커버 슬라이드 표시 |
+| **청중** | AnyCompany | 커버 슬라이드 표시 |
+
+:::tip 프롬프트에 포함하지 않은 정보
+퀴즈 포함 여부, Canvas 애니메이션 사용 여부 등은 에이전트가 대화형으로 질문합니다.
+:::
+
+---
+
+## 에이전트 워크플로우
+
+프롬프트를 받은 후 에이전트가 수행하는 10단계 과정입니다:
+
+```mermaid
+flowchart TD
+    A["1. 프롬프트 파싱"] --> B["2. PPTX 테마 추출"]
+    B --> C["3. 주제 리서치"]
+    C --> D["4. 블록별 구성안 작성"]
+    D --> E["5. Remarp 소스 작성"]
+    E --> F["6. Canvas 애니메이션 작성"]
+    F --> G["7. 퀴즈 슬라이드 작성"]
+    G --> H["8. HTML 빌드"]
+    H --> I["9. content-review-agent 리뷰"]
+    I --> J{"10. 판정"}
+    J -->|"PASS ≥85점"| K["완료"]
+    J -->|"REVIEW/FAIL"| E
+```
+
+---
+
+## 결과물 구조
+
+90분 세션은 3개 블록으로 분할되며, 각 블록이 독립 HTML 파일로 빌드됩니다:
+
+```
+aiops-masterclass/
+├── _presentation.remarp.md          # 공통 메타데이터
+├── 01-fundamentals.remarp.md        # Block 1: AIOps 기초
+├── 02-anomaly-detection.remarp.md   # Block 2: 이상 탐지
+├── 03-automation.remarp.md          # Block 3: 자동화
+└── build/
+    ├── 01-fundamentals.html         # Block 1 HTML
+    ├── 02-anomaly-detection.html    # Block 2 HTML
+    └── 03-automation.html           # Block 3 HTML
+```
+
+각 블록은 약 15-20개 슬라이드로 구성되며 다음을 포함합니다:
+- 커버 슬라이드 (스피커/청중 정보)
+- 콘텐츠 슬라이드 (Fragment 순차 표시)
+- Canvas 애니메이션 슬라이드 (아키텍처 시각화)
+- 퀴즈 슬라이드 (인터랙티브 4지선다)
+
+---
+
+## 라이브 데모
+
+아래는 위 프롬프트로 생성된 **Block 1: AIOps 기초와 AWS Observability 스택** 프레젠테이션입니다.
+
+<DemoEmbed
+  src="/oh-my-cloud-skills/demos/basic-presentation/index.html"
+  title="AIOps 마스터클래스 — Block 1: AIOps 기초와 AWS Observability 스택"
+  height="600px"
+  command="python3 remarp_to_slides.py build aiops-masterclass/"
+  remarpSource="01-fundamentals.remarp.md"
+/>
+
+:::info 다른 블록 데모
+Block 2 (이상 탐지)와 Block 3 (자동화)도 동일한 방식으로 빌드됩니다. 위 데모는 Block 1 결과물입니다.
+:::
+
+---
+
+## Remarp 소스 예시
+
+### 커버 슬라이드
+
+```markdown
+---
+remarp: true
+block: fundamentals
+---
+
+# AWS AIOps 마스터클래스
+## 클라우드 운영의 지능화 여정
+
+**Junseok Oh** | Sr. Solutions Architect, AWS
+*Prepared for AnyCompany*
+```
+
+### Canvas 애니메이션 슬라이드
+
+```markdown
+## AWS Observability 스택
+
+:::canvas
+// 서비스 아이콘 배치
+draw('image', 100, 200, { src: 'icons/CloudWatch.svg', w: 64, h: 64 });
+draw('image', 300, 200, { src: 'icons/X-Ray.svg', w: 64, h: 64 });
+draw('image', 500, 200, { src: 'icons/CloudTrail.svg', w: 64, h: 64 });
+
+// 연결선 애니메이션
+step(1, () => {
+  animate('arrow', 164, 232, 300, 232, { duration: 800 });
+});
+step(2, () => {
+  animate('arrow', 364, 232, 500, 232, { duration: 800 });
+});
+:::
+```
+
+### 퀴즈 슬라이드
+
+```markdown
+## 📝 Block 1 퀴즈
+
+:::quiz
+Q: AIOps의 3가지 핵심 축이 아닌 것은?
+A: 관찰 (Observe)
+B: 분석 (Analyze)
+C: 컴파일 (Compile) [correct]
+D: 자동화 (Automate)
+:::
+```
+
+---
+
+## 커스터마이징 가이드
+
+위 프롬프트를 변형하여 다양한 프레젠테이션을 만들 수 있습니다:
+
+### 주제 변경
+```
+새로 프레젠테이션을 만들어줘 서버리스 아키텍처에 관하여 60분간 세션을 진행할거야
+```
+
+### 난이도 변경
+```
+고객은 200레벨 수준이야  → 기본 개념 중심, 데모 위주
+고객은 400레벨 수준이야  → 내부 구현, 성능 튜닝, 실전 트러블슈팅
+```
+
+### 테마 없이 기본 스타일
+```
+새로 프레젠테이션을 만들어줘 컨테이너 보안에 관하여
+```
+PPTX 테마를 지정하지 않으면 기본 AWS 다크 테마 (Squid Ink #232F3E)가 적용됩니다.
+
+### 영어 프레젠테이션
+```
+Create a presentation about AWS cost optimization for a 45-minute session.
+Level 300, speaker: Jane Smith, Solutions Architect, AWS
+```
+
+---
+
+## 관련 문서
+
+- [사용법 가이드](../usage-guide) — 전체 플러그인 사용법
+- [Presentation Agent](../agents/presentation-agent) — 에이전트 상세 문서
+- [Reactive Presentation](../skills/reactive-presentation) — 프레임워크 상세 문서
+- [기본 프레젠테이션 데모](./basic-presentation) — Block 1 상세 데모

@@ -43,13 +43,13 @@ lang: ko
 
 blocks:
   - name: fundamentals
-    title: "Block 1: Fundamentals"
+    title: "Fundamentals"
     duration: 30
   - name: advanced
-    title: "Block 2: Advanced Patterns"
+    title: "Advanced Patterns"
     duration: 25
   - name: hands-on
-    title: "Block 3: Hands-On Lab"
+    title: "Hands-On Lab"
     duration: 45
 
 theme:
@@ -128,7 +128,7 @@ block: fundamentals
 ---
 
 # Introduction to AWS
-Block 1: Fundamentals (30 min)
+Fundamentals (30 min)
 
 ---
 
@@ -183,6 +183,23 @@ Slide directives control individual slide behavior. Place them on the line immed
 | `@class` | CSS class names | Additional CSS classes |
 | `@timing` | `Xmin` or `Xs` | Target duration for this slide |
 | `@canvas-id` | identifier | Canvas element ID for `@type: canvas` |
+| `@img` | `path [align] [size]` | Insert styled image (see below) |
+
+### @img Directive
+
+Insert styled images with alignment and size control:
+
+```markdown
+@img: diagrams/architecture.png center 80%
+@img: screenshots/console.png left 60%
+@img: logo.svg right 200px
+```
+
+Parameters (space-separated after path):
+- **alignment**: `left`, `center` (default), `right`
+- **size**: CSS max-width value (`80%`, `400px`, `50vh`)
+
+Output: `<div>` with text-align + `<img class="slide-img">` with max-width constraint.
 
 ### Type Auto-Detection
 
@@ -363,6 +380,20 @@ Item shown first {.click order=1}
 
 Item shown second {.click order=2}
 ```
+
+### 동시 표시 (Same Fragment Index)
+
+같은 `order` 값을 가진 항목들은 한 번의 클릭으로 **동시에** reveal됩니다:
+
+```markdown
+- 기능 A {.click order=1}
+- 기능 B {.click order=1}
+- 기능 C {.click order=1}
+```
+
+→ ArrowDown 1번에 A, B, C 동시 표시
+
+같은 `order`를 공유하는 fragment는 내부적으로 같은 `data-fragment-index`를 받으며, 프레임워크가 동일 index 그룹을 한 번에 reveal/hide 합니다.
 
 ### Animation Types
 
@@ -549,6 +580,41 @@ animate();
 :::
 ```
 
+### Canvas Prompt (LLM-Assisted)
+
+Use `:::canvas prompt` to describe an animation in natural language. The presentation-agent reads the prompt, consults the `canvas-animation-prompt.md` reference, generates Canvas JS code, and replaces the block with `:::canvas js` before building HTML.
+
+```markdown
+:::canvas prompt
+ALB → Lambda → DynamoDB 트래픽 흐름
+Step 1: 서비스 아이콘 표시
+Step 2: 화살표 연결하며 데이터 흐름 표시
+:::
+```
+
+#### Prompt Structure Guidelines
+
+For best results, structure prompts with these elements:
+
+| Element | Description | Example |
+|---------|-------------|---------|
+| **Components** | AWS services or boxes to display | `ALB, Lambda, DynamoDB` |
+| **Flow** | Connections and data direction | `ALB → Lambda → DynamoDB` |
+| **Steps** | Reveal order for keyboard navigation | `Step 1: ..., Step 2: ...` |
+| **Style** | Animation style or visual effects | `파티클 효과`, `펄스 애니메이션` |
+
+#### Workflow
+
+```
+1. Author writes :::canvas prompt in .remarp.md
+2. Converter outputs placeholder HTML (CANVAS_PROMPT_PENDING)
+3. Agent reads prompt + canvas-animation-prompt.md reference
+4. Agent generates Canvas JS and replaces :::canvas prompt → :::canvas js
+5. Re-run converter for final HTML with working animation
+```
+
+> **Note**: The converter treats `:::canvas prompt` as a passthrough — it outputs a placeholder. The actual code generation happens at the agent level, not in the converter.
+
 ---
 
 ## Speaker Notes
@@ -707,8 +773,11 @@ url = "postgres://..."
 
 ### Timeline Slides
 
-Horizontal timeline for sequential events:
+Horizontal timeline for sequential events with step descriptions and ↑↓ keyboard navigation.
 
+Two input formats supported:
+
+**Format 1: ### headings with description lines**
 ```markdown
 ---
 @type: timeline
@@ -732,9 +801,28 @@ Production launch
 GA release
 ```
 
+**Format 2: Numbered list with bold title + description**
+```markdown
+---
+@type: timeline
+
+## Upgrade Steps
+
+1. **Pre-check** — Verify cluster health and backup
+2. **Control Plane** — Upgrade EKS control plane version
+3. **Add-ons** — Update CoreDNS, kube-proxy, VPC CNI
+4. **Node Groups** — Rolling update managed node groups
+5. **Validation** — Run smoke tests and verify workloads
+```
+
+Features:
+- **Dynamic dot sizing**: Dots scale based on step count (≤3: large, 4-5: medium, 6-7: small, ≥8: compact)
+- **Description text**: Lines below each `###` heading appear as description text
+- **Keyboard navigation**: ↑↓ keys step through timeline, highlighting active step with done/active states
+
 ### Checklist Slides
 
-Interactive click-to-toggle checklists:
+Interactive click-to-toggle checklists. Items can include expandable code blocks that reveal on check:
 
 ```markdown
 ---
@@ -744,13 +832,24 @@ Interactive click-to-toggle checklists:
 
 - [ ] Code review approved
 - [ ] Unit tests passing
-- [ ] Integration tests passing
-- [ ] Security scan complete
-- [ ] Documentation updated
-- [ ] Stakeholder sign-off
-- [ ] Rollback plan documented
+- [ ] Enable Network Policy
+  ```yaml
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: deny-all
+  ```
+- [ ] Configure Pod Identity
+  ```bash
+  aws eks create-pod-identity-association \
+    --cluster-name my-cluster \
+    --namespace default \
+    --service-account my-sa
+  ```
 - [ ] Monitoring alerts configured
 ```
+
+When a checklist item has a code block underneath, clicking the checkbox expands/collapses the code block.
 
 ---
 
@@ -950,13 +1049,13 @@ lang: en
 
 blocks:
   - name: fundamentals
-    title: "Block 1: Serverless Fundamentals"
+    title: "Serverless Fundamentals"
     duration: 25
   - name: patterns
-    title: "Block 2: Architecture Patterns"
+    title: "Architecture Patterns"
     duration: 30
   - name: hands-on
-    title: "Block 3: Hands-On Lab"
+    title: "Hands-On Lab"
     duration: 35
 
 theme:
@@ -978,7 +1077,7 @@ block: fundamentals
 ---
 
 # AWS Serverless Architecture
-Block 1: Serverless Fundamentals (25 min)
+Serverless Fundamentals (25 min)
 
 :::notes
 {timing: 2min}
@@ -1067,7 +1166,7 @@ block: patterns
 ---
 
 # Architecture Patterns
-Block 2 (30 min)
+Architecture Patterns (30 min)
 
 ---
 @layout: two-column
@@ -1186,7 +1285,7 @@ block: hands-on
 ---
 
 # Hands-On Lab
-Block 3 (35 min)
+Hands-On Lab (35 min)
 
 :::notes
 {timing: 2min}

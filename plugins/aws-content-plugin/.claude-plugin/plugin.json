@@ -1,6 +1,6 @@
 {
   "name": "aws-content-plugin",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "AWS cloud content creation plugin — presentations, architecture diagrams, animated diagrams, documents, GitBook sites, and workshops",
   "author": { "name": "atomoh" },
   "agents": [

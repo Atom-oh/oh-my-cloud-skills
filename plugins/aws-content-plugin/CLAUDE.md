@@ -94,32 +94,87 @@ workshop-agent → content-review-agent → Workshop Studio content
 
 ### 팀 생성 트리거
 
-| 트리거 조건 | 팀 이름 | 구성 |
-|-------------|---------|------|
-| 프레젠테이션 3+ 블록 | `content-parallel-blocks` | presentation-agent x N (블록별) |
-| 워크숍 3+ 모듈 | `content-parallel-modules` | workshop-agent x N (모듈별) |
-| GitBook 5+ 챕터 | `content-parallel-chapters` | gitbook-agent x N (챕터별) |
-| 프레젠테이션 + 다이어그램 + 문서 동시 요청 | `content-cross-type` | 서로 다른 콘텐츠 에이전트 병렬 |
+| 트리거 조건 | 팀 이름 | 파이프라인 |
+|-------------|---------|-----------|
+| 프레젠테이션 ≥ 60분 또는 3+ 블록 | `content-presentation` | Multi-Phase Pipeline |
+| 워크숍 3+ 모듈 | `content-workshop` | Multi-Phase Pipeline |
+| GitBook 5+ 챕터 | `content-gitbook` | Block-Parallel (Phase 3만) |
+| 프레젠테이션 + 다이어그램 + 문서 동시 요청 | `content-cross-type` | Cross-Type Parallel |
 
-### 오케스트레이션 패턴
+### Multi-Phase Pipeline (프레젠테이션/워크숍)
+
+4단계 파이프라인으로 전문 에이전트가 역할을 분담합니다:
+
+```
+Phase 1 — Research (병렬, 팀원 2-3명)
+  ├─ explore agent         : 코드베이스/기존 자료/레퍼런스 탐색
+  ├─ document-specialist   : 공식 AWS 문서/블로그/What's New 수집
+  └─ dependency-expert     : 서비스 최신 기능/버전/제약사항 확인
+  → 산출물: research-context.md (팀 공유 파일)
+
+Phase 2 — Planning (단일)
+  └─ planner (또는 architect) : 리서치 결과 → 블록 구조 설계
+     - 블록 수, 슬라이드 수, 타이밍 배분
+     - 슬라이드 타입 배치 (canvas, compare, quiz 등)
+     - 블록 간 의존성/흐름 정의
+  → 산출물: presentation-outline.md
+  → 사용자 승인 대기
+
+Phase 3 — Content Creation (병렬, 블록별)
+  ├─ presentation-agent #1 → Block 1 (+ research-context.md 참조)
+  ├─ presentation-agent #2 → Block 2 (+ research-context.md 참조)
+  └─ presentation-agent #3 → Block 3 (+ research-context.md 참조)
+  → 산출물: block-N.html 파일들
+
+Phase 4 — Quality Gate (단일)
+  └─ content-review-agent  : 전체 리뷰 + 블록 간 일관성 검증
+     - 용어/스타일 통일성
+     - 블록 간 흐름 연결성
+     - 개별 블록 품질 (≥85점)
+  → PASS 시 완료, FAIL 시 해당 블록만 재작업
+```
+
+### Phase간 데이터 전달 규약
+
+| Phase 전환 | 전달 파일 | 내용 |
+|-----------|----------|------|
+| 1→2 | `research-context.md` | 수집된 AWS 문서 요약, 핵심 개념, 코드 예제, 최신 기능 목록 |
+| 2→3 | `presentation-outline.md` | 블록별 슬라이드 목록, 타입, 타이밍, 핵심 포인트 |
+| 3→4 | 각 `block-N.html` | 렌더링된 슬라이드 파일 |
+
+각 presentation-agent는 반드시 `research-context.md`와 자신의 블록에 해당하는 `presentation-outline.md` 섹션을 context로 받아야 합니다. 이를 통해 추측 대신 검증된 자료 기반으로 콘텐츠를 생성합니다.
+
+### 오케스트레이션 실행 순서
 
 ```
 1. TeamCreate("{team-name}")
-2. 구조/아웃라인 작성 (메인 세션)
-3. 사용자 승인 대기
-4. TaskCreate x N (블록/모듈/챕터별 태스크)
-5. Agent 스폰 x N (team_name 파라미터로 병렬 실행)
-6. 결과 집계 (메인 세션)
-7. content-review-agent 배치 리뷰
-8. TeamDelete
+2. Phase 1: Research 에이전트 병렬 스폰 → research-context.md 생성
+3. Phase 2: Planner 에이전트 스폰 → presentation-outline.md 생성
+4. 사용자 승인 대기 (아웃라인 확인)
+5. Phase 3: TaskCreate x N (블록별) → presentation-agent 병렬 스폰
+6. Phase 4: content-review-agent → 전체 리뷰
+7. FAIL 블록 있으면 → 해당 presentation-agent만 재작업 (최대 2회)
+8. 결과 집계 + TeamDelete
+```
+
+### Block-Parallel (간소화 패턴)
+
+리서치가 불필요한 경우 (사용자가 충분한 컨텍스트를 제공했거나 단순 콘텐츠) Phase 1-2를 생략하고 Phase 3-4만 실행:
+
+```
+1. TeamCreate → 메인 세션에서 아웃라인 작성 → 사용자 승인
+2. TaskCreate x N → presentation-agent 병렬 스폰
+3. content-review-agent 리뷰
+4. TeamDelete
 ```
 
 ### 순차 워크플로우 보존 규칙
 
 - **기본값은 항상 순차 실행**입니다
 - 팀은 위 트리거 테이블의 임계값을 충족하는 경우에만 사용
-- 사용자가 "병렬", "동시에", "in parallel"을 명시적으로 요청한 경우에도 사용 가능
+- 사용자가 "병렬", "동시에", "in parallel", "팀으로"를 명시적으로 요청한 경우에도 사용 가능
 - 임계값 미달 시 기존 순차 워크플로우(`에이전트 → content-review-agent → 배포`)를 유지
+- 30분 미만 단일 블록 프레젠테이션은 항상 순차 실행
 
 ---
 
@@ -182,14 +237,17 @@ workshop-agent → content-review-agent → Workshop Studio content
 
 ---
 
-## AWS Icons
+## AWS Icons (필수 — Mandatory)
 
-AWS Architecture Icons are located in `skills/reactive-presentation/icons/`:
+AWS Architecture Icons are located in `skills/reactive-presentation/assets/aws-icons/`:
 - `Architecture-Service-Icons_07312025/` — Service-level icons (121 categories)
 - `Architecture-Group-Icons_07312025/` — Group icons (Cloud, VPC, Region, Subnet)
 - `Category-Icons_07312025/` — Category-level icons (4 sizes)
 - `Resource-Icons_07312025/` — Resource-level icons (22 categories)
 - `others/` — Third-party icons (LangChain, Grafana, etc.)
+
+> **규칙**: AWS 서비스를 설명하는 프레젠테이션 슬라이드에는 반드시 해당 서비스 아이콘을 포함합니다.
+> 아이콘 미사용 시 content-review-agent에서 감점됩니다.
 
 ---
 

@@ -7,6 +7,7 @@ const sidebars: SidebarsConfig = {
 
   awsContent: [
     'aws-content-plugin/overview',
+    'aws-content-plugin/usage-guide',
     'aws-content-plugin/installation',
     {
       type: 'category',
@@ -36,6 +37,7 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Demos',
       items: [
+        'aws-content-plugin/demos/full-presentation-demo',
         'aws-content-plugin/demos/basic-presentation',
         'aws-content-plugin/demos/canvas-animation',
         'aws-content-plugin/demos/quiz-slides',

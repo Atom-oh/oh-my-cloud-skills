@@ -92,6 +92,8 @@ Email:       [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
 - Icons contextually appropriate
 - Consistent icon usage for same concepts
 - AWS official icons used for AWS services
+- **AWS 서비스 언급 슬라이드에 아이콘 포함 여부 검사**: 서비스명이 텍스트에 등장하지만 해당 아이콘이 없는 경우 Warning
+- **아키텍처/흐름 설명 슬라이드에 Canvas icon 사용 여부**: 3개 이상 서비스가 등장하는 아키텍처 슬라이드에 icon 요소가 없으면 Warning
 
 ### 8. Readability Analysis
 - **1-7-7 Rule**: 1 key message, 7 lines max, 7 words max title
@@ -209,8 +211,8 @@ HTML 파일을 브라우저에서 열어 테스트하려면:
 | No Hallucination | 12 | -4 per finding |
 | Language Consistency | 8 | -2 per error |
 | No Sensitive Data | 12 | Critical: -12 |
-| Content-Type Quality | 4 | -2 per error |
-| Icon Appropriateness | 3 | Null: -3, inappropriate: -2 |
+| Content-Type Quality | 2 | -2 per error |
+| Icon Usage & Appropriateness | 5 | Missing on AWS slide: -1 each (max -3), null ref: -5, inappropriate: -2 |
 
 **Visual Testing (10 points — HTML 콘텐츠만 해당):**
 

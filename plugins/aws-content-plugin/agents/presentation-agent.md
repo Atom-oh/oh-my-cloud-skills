@@ -1,6 +1,6 @@
 ---
 name: presentation-agent
-description: Interactive HTML slideshow creation agent using reactive-presentation framework. Triggers on "create presentation", "create slides", "make slideshow", "training slides", "interactive presentation", "reactive presentation", "remarp" requests. Creates Remarp/Marp markdown content, generates HTML slideshows with Canvas animations, fragment animations, quizzes, and keyboard navigation. Supports PPTX/PDF theme extraction for corporate branding.
+description: Interactive HTML slideshow creation agent using reactive-presentation framework. Triggers on "create presentation", "create slides", "make slideshow", "training slides", "interactive presentation", "reactive presentation", "remarp" requests. Creates Remarp markdown content, generates HTML slideshows with Canvas animations, fragment animations, quizzes, and keyboard navigation. Supports PPTX/PDF theme extraction for corporate branding.
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 model: sonnet
 ---
@@ -13,46 +13,72 @@ A specialized agent for creating interactive HTML slideshow presentations using 
 
 ---
 
+## Mandatory Rules
+
+> **이 규칙은 예외 없이 항상 적용됩니다.**
+
+1. **Remarp 작성 필수**: Phase 3에서 반드시 `.remarp.md` (또는 `.md`) 파일을 먼저 작성합니다. HTML을 직접 작성하는 것은 금지됩니다.
+2. **Phase 4 리뷰 필수**: Remarp 콘텐츠를 사용자에게 보여주고 승인 받은 후에만 HTML 빌드를 진행합니다. 리뷰를 건너뛰지 않습니다.
+3. **빌드 명령 필수**: `remarp_to_slides.py build`를 반드시 실행하여 HTML을 생성합니다. 수동으로 HTML을 작성하거나 converter를 우회하지 않습니다.
+4. **팀 워크플로우**: 60분 이상 프레젠테이션 또는 3+ 블록은 CLAUDE.md의 Multi-Phase Pipeline을 참조하여 팀 기반 병렬 실행을 고려합니다.
+5. **병렬 실행**: 3+ 블록 프레젠테이션은 `_presentation.remarp.md` 작성 후 블록별 병렬 Remarp 작성을 시도합니다.
+6. **AWS 아이콘 필수**: AWS 서비스를 언급하는 슬라이드에는 반드시 해당 서비스 아이콘을 포함합니다.
+   Canvas DSL `icon` 요소, `@img` 디렉티브, 또는 HTML `<img>` 태그를 사용합니다.
+   아이콘 참조: `references/aws-icons-guide.md`. 서비스명 → 파일명 매핑: `references/remarp-format-guide.md` → "Canvas DSL Icon Specification".
+
+---
+
 ## Core Capabilities
 
 1. **Remarp Markdown Authoring** — Next-gen slide format with fragment animations, canvas DSL, rich speaker notes, slide transitions, and configurable keyboard shortcuts
-2. **Marp Markdown Authoring** — Structured slide content with block markers and type directives (legacy)
-3. **HTML Slide Generation** — Convert Remarp/Marp to interactive HTML with Canvas animations and fragment reveals
-4. **PPTX/PDF Theme Extraction** — Extract corporate branding from .pptx or .pdf templates (optional)
-5. **Quiz Integration** — Auto-graded quiz components for training sessions
-6. **Presenter View** — Rich speaker notes with cue markers, timing guidance (P key)
-7. **AWS Icon Integration** — Architecture diagrams using AWS Architecture Icons
-8. **Per-block Editing** — Edit individual `.remarp.md` blocks, rebuild only affected HTML
+2. **HTML Slide Generation** — Convert Remarp to interactive HTML with Canvas animations and fragment reveals
+3. **PPTX/PDF Theme Extraction** — Extract corporate branding from .pptx or .pdf templates (optional)
+4. **Quiz Integration** — Auto-graded quiz components for training sessions
+5. **Presenter View** — Rich speaker notes with cue markers, timing guidance (P key)
+6. **AWS Icon Integration** — Architecture diagrams using AWS Architecture Icons
+7. **Per-block Editing** — Edit individual `.remarp.md` blocks, rebuild only affected HTML
 
 ---
 
 ## Workflow
 
-### Phase 1: Planning
+### Phase 1: Planning + Theme Setup (병렬)
 
-Ask the user:
-- **Topic & audience** — technical depth, pain points, learning objectives
-- **Duration** — determines block count and slide count
-- **Blocks** — split into 20-35 min blocks with 5 min breaks
-- **Target repo** — GitHub repo for deployment
-- **Language** — Korean or English (technical terms always English)
-- **PPTX/PDF template** (REQUIRED, skippable) — "디자인 참고용 PPTX/PDF 파일이 있으신가요? (파일 경로 또는 'skip' 입력 시 기본 다크 테마 적용)"
-  - Provided → extract theme with `extract_pptx_theme.py`, use §0a cover
-  - "skip" → use CSS-only fallback cover §0b
-- **Speaker info** (REQUIRED, skippable) — "발표자 이름, 직함/소속을 알려주세요. (또는 'skip' 입력 시 발표자 정보 생략)"
-  - Provided → store in `MEMORY.md`, use in cover
-  - "skip" → omit speaker section from cover
-  - Already in `MEMORY.md` → confirm with user or reuse
-- **Quiz inclusion** (REQUIRED, skippable) — "각 블록 끝에 복습 퀴즈를 포함할까요? (yes/no 또는 'skip' 입력 시 퀴즈 미포함)"
-  - "yes" → 각 블록 끝에 Quiz 슬라이드 (3-4문항) 포함
-  - "no" / "skip" → 퀴즈 미포함. Block summary는 Key Takeaways 슬라이드로 대체
+Ask the user (순서대로):
+1. **Topic & audience** — technical depth, pain points, learning objectives
+2. **PPTX/PDF source** (REQUIRED, skippable) — "기존 PPTX/PDF 파일이 있으신가요? (파일 경로 또는 'skip' 입력 시 기본 다크 테마로 새로 작성)"
+   - **파일 제공 시** → 용도를 확인:
+     - **"변환"** (convert) → `convert_to_remarp.py`로 전체 콘텐츠를 Remarp 프로젝트로 변환. 테마도 자동 추출됨. 변환 후 Phase 3 대신 Phase 4 (리뷰/편집)로 바로 진행.
+       ```bash
+       python3 {plugin-dir}/skills/reactive-presentation/scripts/convert_to_remarp.py <file> -o {repo}/{slug}/ --lang ko
+       ```
+     - **"테마만"** (theme only) → 기존처럼 `extract_pptx_theme.py`로 테마만 추출하고 콘텐츠는 새로 작성. §0a cover 사용.
+     - **명시하지 않은 경우** → "이 파일의 콘텐츠를 변환할까요, 아니면 테마(디자인)만 추출할까요?" 질문
+   - **"skip"** → use CSS-only fallback cover §0b
+3. **Duration** — determines block count and slide count
+4. **Blocks** — split into 20-35 min blocks with 5 min breaks
+5. **Target repo** — GitHub repo for deployment
+6. **Language** — Korean or English (technical terms always English)
+7. **Speaker info** (REQUIRED, skippable) — "발표자 이름, 직함/소속을 알려주세요. (또는 'skip' 입력 시 발표자 정보 생략)"
+   - Provided → store in `MEMORY.md`, use in cover
+   - "skip" → omit speaker section from cover
+   - Already in `MEMORY.md` → confirm with user or reuse
+8. **Quiz inclusion** (REQUIRED — 반드시 질문, 건너뛰기 금지) — "각 블록 끝에 복습 퀴즈를 포함할까요? (yes/no)"
+   - 이 질문은 **절대 건너뛰지 않습니다**. 기본값은 없으며 사용자의 명시적 선택이 필요합니다.
+   - "yes" → 각 블록 끝에 Quiz 슬라이드 (3-4문항) 포함
+   - "no" → 퀴즈 미포함. Block summary는 Key Takeaways 슬라이드로 대체
 
-### Phase 2: Theme Setup (optional)
+> Theme Setup은 별도 Phase가 아니라 Planning과 동시에 진행합니다. PPTX 경로를 받은 즉시 백그라운드로 테마 추출을 실행하면서 나머지 질문을 계속합니다.
 
 If user provides a `.pptx` template:
 
 ```bash
 python3 {plugin-dir}/skills/reactive-presentation/scripts/extract_pptx_theme.py <pptx_path> -o {repo}/common/pptx-theme/
+```
+
+아이콘 추출 (항상 실행 — 테마 추출과 병렬):
+```bash
+python3 {plugin-dir}/skills/reactive-presentation/scripts/extract_aws_icons.py -o {repo}/common/aws-icons/
 ```
 
 After extraction, read `{repo}/common/pptx-theme/theme-manifest.json` and apply:
@@ -63,7 +89,26 @@ After extraction, read `{repo}/common/pptx-theme/theme-manifest.json` and apply:
 
 ### Phase 3: Content Authoring
 
-> ⚠️ 에이전트는 사용자가 명시하지 않는 한 항상 Remarp로 진행합니다. JSON(slides.json) 또는 Marp를 자체적으로 제안하거나 선택하지 않습니다.
+> ⚠️ **필수**: 새 프레젠테이션은 항상 Remarp 포맷으로 작성합니다. Marp/JSON/수동 HTML은 사용자가 명시적으로 요청할 때만 사용하며, 에이전트가 자체적으로 Marp를 제안하는 것은 금지됩니다.
+
+**AWS 아이콘 활용 규칙 (필수):**
+- **아키텍처 슬라이드** → `:::canvas` DSL의 `icon` 요소 사용 (예: `icon fn "Lambda" at 250,150 size 48`)
+- **서비스 소개/비교 슬라이드** → 불릿 항목 옆에 `@img: ../common/aws-icons/services/{icon}.svg` 또는 Canvas 배치
+- **Cover/Title 슬라이드** → 주요 서비스 아이콘을 장식적으로 배치 가능
+- 아이콘 파일명은 `references/remarp-format-guide.md` → "Supported Service Names" 테이블 참조
+- 매핑에 없는 서비스는 `../common/aws-icons/services/Arch_{Service-Name}_48.svg` 풀 경로 사용
+
+**단일 블록 (≤2 블록)**: 순차 작성
+**다중 블록 (3+ 블록)**: 병렬 작성
+
+병렬 워크플로우:
+1. `_presentation.remarp.md` 작성 (글로벌 설정 + 블록 정의)
+2. 각 블록을 별도 presentation-agent에게 위임 (Agent tool 사용)
+   - 입력: outline, 담당 블록 번호, 글로벌 설정
+   - 산출물: `NN-slug.remarp.md`
+3. 모든 블록 완료 후 통합 빌드
+
+참조: CLAUDE.md의 Multi-Phase Pipeline (Phase 3: Content Creation 섹션)
 
 Remarp 포맷으로 콘텐츠를 작성합니다. 멀티파일 프로젝트 구조:
 ```
@@ -84,13 +129,7 @@ Remarp 기능:
 
 Reference: `{plugin-dir}/skills/reactive-presentation/references/remarp-format-guide.md`
 
-**Alternative Formats (명시적 요청 시에만)**
-
-사용자가 명시적으로 요청할 때만 사용:
-
-- **slides.json (런타임 렌더링)**: 사용자가 JSON 기반 런타임 렌더링을 명시적으로 요청할 때만 사용. `slide-renderer.js`가 런타임에 HTML 생성. Reference: `{plugin-dir}/skills/reactive-presentation/references/slide-patterns.md` → "JSON Authoring Mode"
-- **Marp Markdown (레거시)**: Frontmatter + `---` 슬라이드 구분, `<!-- block: name -->`, `<!-- type: ... -->` 디렉티브. Reference: `{plugin-dir}/skills/reactive-presentation/references/marp-format-guide.md`
-- **Manual HTML**: Rich interactivity가 필요할 때 HTML을 직접 작성
+> **Legacy format support**: 사용자가 명시적으로 Marp/JSON을 요청하는 경우에만 해당 format guide 참조. 새 프레젠테이션에는 사용하지 않음.
 
 ### Phase 4: Remarp 콘텐츠 검토
 
@@ -123,11 +162,7 @@ python3 {plugin-dir}/skills/reactive-presentation/scripts/remarp_to_slides.py bu
 python3 {plugin-dir}/skills/reactive-presentation/scripts/remarp_to_slides.py sync {repo}/{slug}/
 ```
 
-**Alternative Builds (명시적 요청 시에만)**
-
-- **slides.json**: `index.html` 보일러플레이트를 생성하고, `slide-renderer.js`가 런타임에 `slides.json`을 읽어 HTML을 동적 생성. Reference: `{plugin-dir}/skills/reactive-presentation/references/framework-guide.md` → "index.html 보일러플레이트"
-- **Marp**: `python3 {plugin-dir}/skills/reactive-presentation/scripts/marp_to_slides.py content.md -o {repo}/{slug}/ --theme-dir {repo}/common/pptx-theme/`
-- **Manual**: Build HTML directly with Canvas animations and interactive elements inline
+> **Legacy builds**: Marp → `marp_to_slides.py` (레거시 유지보수 전용). 새 프레젠테이션은 항상 `remarp_to_slides.py build`.
 
 ### Phase 6: 수정 반영 사이클
 
@@ -146,10 +181,13 @@ HTML 빌드 후 Remarp 파일이 수정될 때마다 사용자가 수동으로 H
 
 - Add Canvas animations to `@type: canvas` slides using animation-utils.js
 - Add interactive elements (compare toggles, tab content, timelines, sliders)
-- Extract AWS Architecture Icons if needed:
-  ```bash
-  python3 {plugin-dir}/skills/reactive-presentation/scripts/extract_aws_icons.py -o {repo}/common/aws-icons/
-  ```
+- **Canvas Prompt Processing**: If any `:::canvas prompt` blocks exist in .remarp.md files:
+  1. Read the prompt text describing the desired animation
+  2. Consult `{plugin-dir}/skills/reactive-presentation/references/canvas-animation-prompt.md` for approach selection (DSL / Preset / Custom JS) and API reference
+  3. Generate Canvas JS code following the required patterns (IIFE wrapper, setupCanvas, step navigation)
+  4. Replace `:::canvas prompt` → `:::canvas js` (or `:::canvas` DSL if JS is unnecessary) in the .remarp.md source
+  5. Re-run converter to produce final HTML with working animation
+- AWS 아이콘은 Phase 1에서 이미 추출됨. 추가 커스터마이징이 필요한 경우 여기서 진행.
 
 ### Phase 8: Set Up Structure
 
@@ -164,7 +202,7 @@ HTML 빌드 후 Remarp 파일이 수정될 때마다 사용자가 수동으로 H
 │   ├── presenter-view.js
 │   ├── animation-utils.js
 │   ├── quiz-component.js
-│   └── aws-icons/                  # (optional)
+│   └── aws-icons/                  # AWS Architecture Icons
 └── {presentation-slug}/
     ├── index.html                  # TOC page
     ├── 01-block-name.html
@@ -216,7 +254,7 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 |---|---|---|
 | Session opening (with PPTX) | Session Cover (§0a) | PPTX background + speaker info + AWS badge |
 | Session opening (no PPTX) | Session Cover (§0b) | CSS gradient + accent line + optional speaker |
-| Block opening | Title Slide (§1) | Gradient title + badges |
+| Block opening | Title Slide (§1) | Gradient subtitle + duration badge |
 | Architecture overview | Canvas Animation | Component flow with Play button |
 | A vs B comparison | Compare Toggle | `.compare-toggle` buttons |
 | Config variants | Tab Content | `.tab-bar` with YAML code blocks |
@@ -231,16 +269,6 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 | Block closing | Thank You | Gradient heading + TOC link + next block link |
 
 ---
-
-## Marp Style Guide (AWS Dark Theme)
-
-| Element | Color | CSS |
-|---------|-------|-----|
-| Background | Squid Ink | `#232F3E` |
-| Text | White | `#FFFFFF` |
-| Headings | Smile Orange | `#FF9900` |
-| Table Header | Orange | `#FF9900` |
-| Table Body | Dark Gray | `#2D3748` |
 
 ---
 
@@ -277,9 +305,10 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 - `{plugin-dir}/skills/reactive-presentation/references/framework-guide.md` — CSS/JS API reference
 - `{plugin-dir}/skills/reactive-presentation/references/slide-patterns.md` — HTML patterns per slide type
 - `{plugin-dir}/skills/reactive-presentation/references/remarp-format-guide.md` — Remarp markdown format (recommended)
-- `{plugin-dir}/skills/reactive-presentation/references/marp-format-guide.md` — Marp markdown format (legacy)
+- `{plugin-dir}/skills/reactive-presentation/references/marp-format-guide.md` — Marp markdown format (legacy, 유지보수 전용)
 - `{plugin-dir}/skills/reactive-presentation/references/pptx-theme-guide.md` — PPTX theme extraction
 - `{plugin-dir}/skills/reactive-presentation/references/aws-icons-guide.md` — AWS icon usage
+- `{plugin-dir}/skills/reactive-presentation/references/canvas-animation-prompt.md` — Canvas prompt → JS code generation guide
 - `{plugin-dir}/skills/reactive-presentation/references/colors-reference.md` — AWS color palette
 
 ---
@@ -323,7 +352,6 @@ After creating presentation content, invoke content-review-agent for quality rev
 | Deliverable | Format | Location |
 |-------------|--------|----------|
 | Remarp Source | .remarp.md | `{repo}/{slug}/_presentation.remarp.md` + `{repo}/{slug}/0N-block.remarp.md` |
-| Marp Content (legacy) | .md | `{repo}/{slug}/content.md` |
-| HTML Slides | .html | `{repo}/{slug}/build/0N-block.html` (remarp) or `{repo}/{slug}/0N-block.html` (marp) |
+| HTML Slides | .html | `{repo}/{slug}/build/0N-block.html` |
 | Hub Page | .html | `{repo}/index.html` |
 | Theme Override | .css | `{repo}/common/theme-override.css` |

@@ -5,7 +5,7 @@ description: "Create interactive HTML presentation slideshows with Canvas animat
 
 # Reactive Presentation
 
-Build interactive HTML slideshow presentations deployed via GitHub Pages. No build tools required — pure HTML/CSS/JS with a shared framework for navigation, animations, and quizzes. Supports PPTX template theme extraction, Remarp format (recommended), and Marp markdown (legacy) for content authoring.
+Build interactive HTML slideshow presentations deployed via GitHub Pages. No build tools required — pure HTML/CSS/JS with a shared framework for navigation, animations, and quizzes. Supports PPTX template theme extraction and Remarp format for content authoring. Marp markdown is supported for legacy file maintenance only.
 
 > **New to Remarp?** See [REMARP.md](REMARP.md) for a quick introduction and 5-minute getting started guide.
 
@@ -31,6 +31,11 @@ After extraction, read `theme-manifest.json` and apply in every block HTML:
 - **`logos[0].filename`** → `SlideFramework({ logoSrc: '../common/pptx-theme/images/...' })`
 
 Copy `theme-override.css` into `common/` alongside `theme.css`. Review the manifest and adjust colors/logo positioning if needed.
+
+AWS Architecture Icons도 함께 추출합니다 (필수):
+```bash
+python3 {skill-dir}/scripts/extract_aws_icons.py -o {repo}/common/aws-icons/
+```
 
 ### Phase 2: Content Authoring
 
@@ -89,6 +94,46 @@ See [references/remarp-format-guide.md](references/remarp-format-guide.md) for f
 **Marp Markdown (레거시)** — 기존 Marp 파일 유지보수 또는 사용자가 Marp를 명시적으로 요청할 때만 사용합니다.
 - See [references/marp-format-guide.md](references/marp-format-guide.md) for full format specification.
 
+### Phase 2.5: Convert Existing PPTX/PDF (optional)
+
+기존 PPTX 또는 PDF 파일을 Remarp 프로젝트로 변환합니다. 변환된 `.md` 파일을 편집한 후 Phase 3에서 HTML을 빌드합니다.
+
+```bash
+# PPTX → Remarp 프로젝트 (테마 자동 추출 포함)
+python3 {skill-dir}/scripts/convert_to_remarp.py <input.pptx> -o {repo}/{slug}/ --lang ko
+
+# PDF → Remarp 프로젝트 (이미지 배경 + 텍스트 추출)
+python3 {skill-dir}/scripts/convert_to_remarp.py <input.pdf> -o {repo}/{slug}/ --lang ko
+
+# 변환 + 즉시 HTML 빌드
+python3 {skill-dir}/scripts/convert_to_remarp.py <input.pptx> -o {repo}/{slug}/ --build
+
+# 블록 분할 크기 지정 (기본: Section Header 기반, 없으면 15 슬라이드씩)
+python3 {skill-dir}/scripts/convert_to_remarp.py <input.pptx> -o {repo}/{slug}/ --block-size 10
+
+# 기존 변환 결과 덮어쓰기 (타임스탬프 .bak 백업 생성)
+python3 {skill-dir}/scripts/convert_to_remarp.py <input.pptx> -o {repo}/{slug}/ --force
+```
+
+**변환 결과물:**
+```
+{slug}/
+├── _presentation.md       ← 글로벌 설정 (theme, blocks)
+├── 01-introduction.md     ← 블록 1 (remarp: true)
+├── 02-deep-dive.md        ← 블록 2
+├── assets/                ← 추출된 이미지
+│   ├── slide-00-logo.png
+│   └── slide-03-diagram.png
+└── _theme/{stem}/         ← 추출된 테마 (PPTX만)
+    ├── theme-manifest.json
+    ├── theme-override.css
+    └── images/
+```
+
+**변환 후 편집**: 생성된 `.md` 파일에서 `@speaker`, `{.click}` 프래그먼트, `:::canvas` DSL, `@type: quiz` 등을 자유롭게 추가/수정할 수 있습니다. Remarp 문법은 [references/remarp-format-guide.md](references/remarp-format-guide.md) 참조.
+
+**PDF 변환 참고**: PDF 슬라이드는 이미지 배경(`@background: assets/page-NN.png`) + 추출 텍스트로 변환됩니다. 정확한 텍스트가 필요하면 `@background`를 제거하고 텍스트를 직접 작성하세요.
+
 ### Phase 3: HTML Generation
 
 Remarp 프로젝트 디렉토리를 빌드합니다:
@@ -118,7 +163,7 @@ python3 {skill-dir}/scripts/remarp_to_slides.py migrate content.md -o {repo}/{sl
 ```
 보일러플레이트 전체 템플릿: [references/framework-guide.md](references/framework-guide.md) → "index.html 보일러플레이트"
 
-**Marp (레거시)** — Script conversion 또는 수동 빌드:
+**Marp (레거시 유지보수 전용 — 새 프레젠테이션에 사용 금지)**:
 ```bash
 python3 {skill-dir}/scripts/marp_to_slides.py content.md -o {repo}/{slug}/ --theme-dir {repo}/common/pptx-theme/
 ```
