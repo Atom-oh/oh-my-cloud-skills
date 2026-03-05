@@ -12,16 +12,16 @@ When the following keywords are detected, automatically invoke the corresponding
 
 | Keywords | Agent | Description |
 |----------|-------|-------------|
-| "convert to kiro", "kiro power", "export to kiro", "키로 변환", "키로 파워", "claude to kiro" | `kiro-converter-agent` | Convert a Claude Code plugin to Kiro Power format |
+| "convert to kiro", "kiro power", "kiro convert", "export to kiro", "키로 변환", "키로 파워", "claude to kiro" | `kiro-converter-agent` | Convert a Claude Code plugin to Kiro Power format |
 | "install kiro power", "kiro install", "키로 설치", "키로 파워 설치" | `kiro-converter-agent` | Convert and install as a Kiro Power |
 
 ---
 
 ## Agents
 
-| Agent | Model | Purpose |
-|-------|-------|---------|
-| `kiro-converter-agent` | sonnet | Converts Claude Code plugin structure to Kiro Power format |
+| Agent | Purpose |
+|-------|---------|
+| `kiro-converter-agent` | Converts Claude Code plugin structure to Kiro Power format |
 
 ## Skills
 

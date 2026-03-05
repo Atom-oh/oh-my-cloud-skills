@@ -215,15 +215,15 @@ Phase 4 — Quality Gate (단일)
 
 ## Agents
 
-| Agent | Model | Purpose |
-|-------|-------|---------|
-| `presentation-agent` | sonnet | Interactive HTML slideshows (reactive-presentation framework) |
-| `architecture-diagram-agent` | sonnet | Static Draw.io XML diagrams → PNG/SVG export |
-| `animated-diagram-agent` | sonnet | Dynamic SVG diagrams with SMIL animations |
-| `document-agent` | sonnet | Markdown documents and reports |
-| `gitbook-agent` | sonnet | GitBook documentation sites |
-| `workshop-agent` | sonnet | AWS Workshop Studio content |
-| `content-review-agent` | sonnet | Cross-cutting quality review (all content types) |
+| Agent | Purpose |
+|-------|---------|
+| `presentation-agent` | Interactive HTML slideshows (reactive-presentation framework) |
+| `architecture-diagram-agent` | Static Draw.io XML diagrams → PNG/SVG export |
+| `animated-diagram-agent` | Dynamic SVG diagrams with SMIL animations |
+| `document-agent` | Markdown documents and reports |
+| `gitbook-agent` | GitBook documentation sites |
+| `workshop-agent` | AWS Workshop Studio content |
+| `content-review-agent` | Cross-cutting quality review (all content types) |
 
 ## Skills
 
