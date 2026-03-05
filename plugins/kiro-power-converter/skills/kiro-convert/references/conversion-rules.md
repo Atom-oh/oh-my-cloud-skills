@@ -13,7 +13,6 @@ Detailed field-by-field conversion rules for transforming Claude Code plugins in
 name: eks-agent
 description: "EKS cluster operations... Triggers on \"keyword1\", \"keyword2\" requests."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
-model: sonnet
 ---
 ```
 
@@ -32,9 +31,8 @@ inclusion: auto
 | Field | Action | Details |
 |-------|--------|---------|
 | `name` | Keep | Unchanged |
-| `description` | Keep/Modify | If `model: opus`, append `(Advanced reasoning)` |
+| `description` | Keep | Unchanged |
 | `tools` | Remove | Kiro determines tool access from context |
-| `model` | Remove | Kiro uses its own model routing |
 | — | Add `inclusion: auto` | Agent activates when description keywords match user input |
 
 ---

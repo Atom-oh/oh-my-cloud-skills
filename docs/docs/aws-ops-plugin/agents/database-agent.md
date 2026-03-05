@@ -11,7 +11,6 @@ AWS 데이터베이스 운영 전문 에이전트입니다. RDS, Aurora, DynamoD
 
 | 항목 | 값 |
 |------|-----|
-| Model | sonnet |
 | Tools | Read, Write, Glob, Grep, Bash, AskUserQuestion |
 
 ## 트리거 키워드

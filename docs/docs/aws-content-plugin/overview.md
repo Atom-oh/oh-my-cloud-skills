@@ -37,10 +37,11 @@ AWS Content Plugin은 AWS 클라우드 관련 콘텐츠 제작을 위한 전문 
 
 ```mermaid
 flowchart LR
-    A[presentation-agent] --> B[content-review-agent]
-    B --> C{판정}
-    C -->|PASS| D[GitHub Pages 배포]
-    C -->|REVIEW/FAIL| A
+    A[presentation-agent x N] -->|블록별 .remarp.md| B[통합 빌드]
+    B -->|index.html + block-N.html| C[content-review-agent]
+    C --> D{판정}
+    D -->|PASS| E[완료]
+    D -->|REVIEW/FAIL| A
 ```
 
 ### 다이어그램 워크플로우
@@ -127,7 +128,7 @@ flowchart LR
 
 ## AWS 아이콘
 
-AWS Architecture Icons는 `skills/reactive-presentation/icons/`에 위치합니다:
+AWS Architecture Icons는 `skills/reactive-presentation/assets/aws-icons/`에 위치합니다:
 
 - `Architecture-Service-Icons_07312025/` — 서비스 레벨 아이콘 (121개 카테고리)
 - `Architecture-Group-Icons_07312025/` — 그룹 아이콘 (Cloud, VPC, Region, Subnet)

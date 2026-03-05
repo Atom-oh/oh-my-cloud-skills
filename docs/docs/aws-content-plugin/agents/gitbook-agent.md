@@ -11,7 +11,6 @@ GitBook 문서화 사이트를 생성하는 전문 에이전트입니다. 적절
 
 | 항목 | 값 |
 |------|-----|
-| **모델** | sonnet |
 | **도구** | Read, Write, Glob, Grep, AskUserQuestion |
 
 ## 트리거 키워드

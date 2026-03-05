@@ -136,17 +136,17 @@ User query → Matched agent → Diagnose → Resolve → Verify
 
 ## Agents
 
-| Agent | Model | Purpose |
-|-------|-------|---------|
-| `eks-agent` | sonnet | EKS cluster management, node groups, upgrades, add-ons, 5-min triage |
-| `network-agent` | sonnet | VPC CNI, ALB/NLB, DNS, Security Groups, IP exhaustion |
-| `iam-agent` | sonnet | IRSA, Pod Identity, RBAC, aws-auth, policy validation |
-| `observability-agent` | sonnet | CloudWatch, AMP, AMG, ADOT, Prometheus/Grafana, X-Ray |
-| `storage-agent` | sonnet | EBS/EFS/FSx CSI, PVC binding, mount errors |
-| `database-agent` | sonnet | RDS/Aurora connectivity, DynamoDB throttling, ElastiCache |
-| `cost-agent` | sonnet | awspricing MCP cost analysis, savings strategies |
-| `analytics-agent` | sonnet | OpenSearch, ClickHouse, Athena, QuickSight, Kinesis |
-| `ops-coordinator-agent` | opus | Multi-domain incident coordination, severity assessment, team orchestration |
+| Agent | Purpose |
+|-------|---------|
+| `eks-agent` | EKS cluster management, node groups, upgrades, add-ons, 5-min triage |
+| `network-agent` | VPC CNI, ALB/NLB, DNS, Security Groups, IP exhaustion |
+| `iam-agent` | IRSA, Pod Identity, RBAC, aws-auth, policy validation |
+| `observability-agent` | CloudWatch, AMP, AMG, ADOT, Prometheus/Grafana, X-Ray |
+| `storage-agent` | EBS/EFS/FSx CSI, PVC binding, mount errors |
+| `database-agent` | RDS/Aurora connectivity, DynamoDB throttling, ElastiCache |
+| `cost-agent` | awspricing MCP cost analysis, savings strategies |
+| `analytics-agent` | OpenSearch, ClickHouse, Athena, QuickSight, Kinesis |
+| `ops-coordinator-agent` | Multi-domain incident coordination, severity assessment, team orchestration |
 
 ## Skills
 

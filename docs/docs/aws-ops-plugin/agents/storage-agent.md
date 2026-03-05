@@ -11,7 +11,6 @@ AWS/EKS 스토리지 트러블슈팅 전문 에이전트입니다. EBS, EFS, FSx
 
 | 항목 | 값 |
 |------|-----|
-| Model | sonnet |
 | Tools | Read, Write, Glob, Grep, Bash, AskUserQuestion |
 
 ## 트리거 키워드

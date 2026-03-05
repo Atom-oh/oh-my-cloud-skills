@@ -113,6 +113,8 @@ title: 디렉티브
 
 ### @background
 
+> **글로벌 기본 배경:** frontmatter에서 `backgroundColor:` 또는 `backgroundImage:`로 모든 슬라이드의 기본 배경을 설정할 수 있습니다. 개별 슬라이드의 `@background` 디렉티브가 글로벌 설정을 오버라이드합니다.
+
 슬라이드 배경을 지정합니다. CSS 색상, 그라데이션, 이미지 URL을 사용할 수 있습니다.
 
 ```markdown
@@ -166,7 +168,7 @@ This slide needs more explanation time.
 ## System Architecture
 
 :::canvas
-box "API" at 100,150 size 120x60 color=accent
+box api "API" at 100,150 size 120,60 color #FF9900
 :::
 ```
 

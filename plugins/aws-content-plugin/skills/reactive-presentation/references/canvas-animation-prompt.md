@@ -1,13 +1,13 @@
 # Canvas Animation Prompt Reference
 
-This document is the agent reference for converting `:::canvas prompt` natural language descriptions into Canvas JS code. When processing a `:::canvas prompt` block, read this document, analyze the prompt, generate Canvas JS, and replace `:::canvas prompt` with `:::canvas js`.
+This document is the agent reference for converting `:::canvas prompt` (or shorthand `:::prompt`) natural language descriptions into Canvas JS code. When processing a `:::canvas prompt` or `:::prompt` block, read this document, analyze the prompt, generate Canvas JS, and replace the block with `:::canvas js`.
 
 ---
 
 ## Workflow
 
 ```
-1. Read :::canvas prompt block text
+1. Read :::canvas prompt (or :::prompt) block text
 2. Analyze prompt → choose approach (DSL / Preset / Custom JS)
 3. Generate code following required patterns
 4. Replace :::canvas prompt → :::canvas js in the .remarp.md file
@@ -184,17 +184,35 @@ Icons are at `../common/aws-icons/` relative to the HTML file. Service name mapp
 | Service | Icon File |
 |---------|-----------|
 | `Lambda` | `Arch_AWS-Lambda_48.svg` |
+| `EC2` | `Arch_Amazon-EC2_48.svg` |
+| `ECS` | `Arch_Amazon-Elastic-Container-Service_48.svg` |
 | `EKS` | `Arch_Amazon-Elastic-Kubernetes-Service_48.svg` |
+| `Fargate` | `Arch_AWS-Fargate_48.svg` |
 | `API-Gateway` | `Arch_Amazon-API-Gateway_48.svg` |
+| `ALB` | `Arch_Elastic-Load-Balancing_48.svg` |
 | `DynamoDB` | `Arch_Amazon-DynamoDB_48.svg` |
 | `S3` | `Arch_Amazon-Simple-Storage-Service_48.svg` |
 | `RDS` | `Arch_Amazon-RDS_48.svg` |
+| `Aurora` | `Arch_Amazon-Aurora_48.svg` |
 | `CloudFront` | `Arch_Amazon-CloudFront_48.svg` |
-| `ALB` | `Arch_Elastic-Load-Balancing_48.svg` |
 | `SQS` | `Arch_Amazon-Simple-Queue-Service_48.svg` |
 | `SNS` | `Arch_Amazon-Simple-Notification-Service_48.svg` |
+| `EventBridge` | `Arch_Amazon-EventBridge_48.svg` |
+| `StepFunctions` | `Arch_AWS-Step-Functions_48.svg` |
+| `Bedrock` | `Arch_Amazon-Bedrock_48.svg` |
+| `SageMaker` | `Arch_Amazon-SageMaker_48.svg` |
+| `CloudWatch` | `Arch_Amazon-CloudWatch_48.svg` |
+| `CloudTrail` | `Arch_AWS-CloudTrail_48.svg` |
+| `X-Ray` | `Arch_AWS-X-Ray_48.svg` |
+| `IAM` | `Arch_AWS-Identity-and-Access-Management_48.svg` |
+| `Cognito` | `Arch_Amazon-Cognito_48.svg` |
+| `Kinesis` | `Arch_Amazon-Kinesis_48.svg` |
+| `Systems-Manager` | `Arch_AWS-Systems-Manager_48.svg` |
+| `DevOps-Guru` | `Arch_Amazon-DevOps-Guru_48.svg` |
+| `KMS` | `Arch_AWS-Key-Management-Service_48.svg` |
+| `VPC` | `Virtual-private-cloud-VPC_32.svg` |
 
-Full mapping in `remarp-format-guide.md` → "Supported Service Names".
+Full mapping (70 services) in `remarp-format-guide.md` → "Supported Service Names".
 
 ---
 

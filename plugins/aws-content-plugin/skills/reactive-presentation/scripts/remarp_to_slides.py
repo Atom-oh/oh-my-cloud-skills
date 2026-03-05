@@ -33,26 +33,89 @@ except ImportError:
 
 # AWS service name to icon filename mapping
 ICON_NAME_MAP = {
+    # --- Compute ---
     'Lambda': 'Arch_AWS-Lambda_48.svg',
-    'EKS': 'Arch_Amazon-Elastic-Kubernetes-Service_48.svg',
-    'API-Gateway': 'Arch_Amazon-API-Gateway_48.svg',
-    'DynamoDB': 'Arch_Amazon-DynamoDB_48.svg',
-    'S3': 'Arch_Amazon-Simple-Storage-Service_48.svg',
-    'CloudWatch': 'Arch_Amazon-CloudWatch_48.svg',
     'EC2': 'Arch_Amazon-EC2_48.svg',
-    'VPC': 'Virtual-private-cloud-VPC_32.svg',
+    'ECS': 'Arch_Amazon-Elastic-Container-Service_48.svg',
+    'EKS': 'Arch_Amazon-Elastic-Kubernetes-Service_48.svg',
+    'Fargate': 'Arch_AWS-Fargate_48.svg',
+    'Lightsail': 'Arch_Amazon-Lightsail_48.svg',
+    'Batch': 'Arch_AWS-Batch_48.svg',
+    'App-Runner': 'Arch_AWS-App-Runner_48.svg',
+    # --- Containers ---
+    'ECR': 'Arch_Amazon-Elastic-Container-Registry_48.svg',
+    'App-Mesh': 'Arch_AWS-App-Mesh_48.svg',
+    # --- Storage ---
+    'S3': 'Arch_Amazon-Simple-Storage-Service_48.svg',
+    'EFS': 'Arch_Amazon-EFS_48.svg',
+    'EBS': 'Arch_Amazon-Elastic-Block-Store_48.svg',
+    'FSx': 'Arch_Amazon-FSx_48.svg',
+    # --- Database ---
+    'DynamoDB': 'Arch_Amazon-DynamoDB_48.svg',
     'RDS': 'Arch_Amazon-RDS_48.svg',
-    'SQS': 'Arch_Amazon-Simple-Queue-Service_48.svg',
-    'SNS': 'Arch_Amazon-Simple-Notification-Service_48.svg',
+    'Aurora': 'Arch_Amazon-Aurora_48.svg',
+    'ElastiCache': 'Arch_Amazon-ElastiCache_48.svg',
+    'Redshift': 'Arch_Amazon-Redshift_48.svg',
+    'Neptune': 'Arch_Amazon-Neptune_48.svg',
+    # --- Networking ---
+    'VPC': 'Virtual-private-cloud-VPC_32.svg',
     'CloudFront': 'Arch_Amazon-CloudFront_48.svg',
     'Route53': 'Arch_Amazon-Route-53_48.svg',
-    'Cognito': 'Arch_Amazon-Cognito_48.svg',
-    'StepFunctions': 'Arch_AWS-Step-Functions_48.svg',
-    'Fargate': 'Arch_AWS-Fargate_48.svg',
-    'ECS': 'Arch_Amazon-Elastic-Container-Service_48.svg',
     'ALB': 'Arch_Elastic-Load-Balancing_48.svg',
+    'API-Gateway': 'Arch_Amazon-API-Gateway_48.svg',
+    'Transit-Gateway': 'Arch_AWS-Transit-Gateway_48.svg',
+    'Direct-Connect': 'Arch_AWS-Direct-Connect_48.svg',
+    'PrivateLink': 'Arch_AWS-PrivateLink_48.svg',
+    'Global-Accelerator': 'Arch_AWS-Global-Accelerator_48.svg',
+    # --- App Integration ---
+    'SQS': 'Arch_Amazon-Simple-Queue-Service_48.svg',
+    'SNS': 'Arch_Amazon-Simple-Notification-Service_48.svg',
+    'EventBridge': 'Arch_Amazon-EventBridge_48.svg',
+    'StepFunctions': 'Arch_AWS-Step-Functions_48.svg',
+    'AppSync': 'Arch_AWS-AppSync_48.svg',
+    'MQ': 'Arch_Amazon-MQ_48.svg',
+    # --- AI/ML ---
+    'Bedrock': 'Arch_Amazon-Bedrock_48.svg',
+    'SageMaker': 'Arch_Amazon-SageMaker_48.svg',
+    'Comprehend': 'Arch_Amazon-Comprehend_48.svg',
+    'Rekognition': 'Arch_Amazon-Rekognition_48.svg',
+    'Lex': 'Arch_Amazon-Lex_48.svg',
+    # --- Security ---
     'IAM': 'Arch_AWS-Identity-and-Access-Management_48.svg',
     'KMS': 'Arch_AWS-Key-Management-Service_48.svg',
+    'Cognito': 'Arch_Amazon-Cognito_48.svg',
+    'WAF': 'Arch_AWS-WAF_48.svg',
+    'Shield': 'Arch_AWS-Shield_48.svg',
+    'Secrets-Manager': 'Arch_AWS-Secrets-Manager_48.svg',
+    'GuardDuty': 'Arch_Amazon-GuardDuty_48.svg',
+    'Inspector': 'Arch_Amazon-Inspector_48.svg',
+    'Security-Hub': 'Arch_AWS-Security-Hub_48.svg',
+    'Certificate-Manager': 'Arch_AWS-Certificate-Manager_48.svg',
+    # --- Management & Monitoring ---
+    'CloudWatch': 'Arch_Amazon-CloudWatch_48.svg',
+    'CloudTrail': 'Arch_AWS-CloudTrail_48.svg',
+    'CloudFormation': 'Arch_AWS-CloudFormation_48.svg',
+    'Config': 'Arch_AWS-Config_48.svg',
+    'Systems-Manager': 'Arch_AWS-Systems-Manager_48.svg',
+    'X-Ray': 'Arch_AWS-X-Ray_48.svg',
+    'Organizations': 'Arch_AWS-Organizations_48.svg',
+    'Control-Tower': 'Arch_AWS-Control-Tower_48.svg',
+    'DevOps-Guru': 'Arch_Amazon-DevOps-Guru_48.svg',
+    # --- Analytics ---
+    'Kinesis': 'Arch_Amazon-Kinesis_48.svg',
+    'Athena': 'Arch_Amazon-Athena_48.svg',
+    'OpenSearch': 'Arch_Amazon-OpenSearch-Service_48.svg',
+    'Glue': 'Arch_AWS-Glue_48.svg',
+    'QuickSight': 'Arch_Amazon-QuickSight_48.svg',
+    'EMR': 'Arch_Amazon-EMR_48.svg',
+    # --- Developer Tools ---
+    'CodePipeline': 'Arch_AWS-CodePipeline_48.svg',
+    'CodeBuild': 'Arch_AWS-CodeBuild_48.svg',
+    'CodeDeploy': 'Arch_AWS-CodeDeploy_48.svg',
+    'CodeCommit': 'Arch_AWS-CodeCommit_48.svg',
+    # --- Other ---
+    'Amplify': 'Arch_AWS-Amplify_48.svg',
+    'AppConfig': 'Arch_AWS-AppConfig_48.svg',
 }
 
 
@@ -181,6 +244,7 @@ class RemarpParser:
     def parse(self) -> Tuple[Dict[str, Any], Dict[str, List[Slide]]]:
         """Parse the entire document."""
         self.frontmatter = self.parse_frontmatter()
+        self.frontmatter = self._normalize_marp_directives(self.frontmatter)
         content = self._strip_frontmatter()
         raw_slides = self._split_slides(content)
 
@@ -223,6 +287,44 @@ class RemarpParser:
                 return parse_yaml_simple(yaml_content)
         return {}
 
+    @staticmethod
+    def _normalize_marp_directives(fm: Dict[str, Any]) -> Dict[str, Any]:
+        """Lift top-level Marp directives into Remarp nested structure."""
+        theme = fm.get('theme', {})
+        if isinstance(theme, str):
+            theme = {'source': theme}
+
+        # footer: "text" → theme.footer
+        if 'footer' in fm and 'footer' not in theme:
+            theme['footer'] = fm.pop('footer')
+        elif 'footer' in fm:
+            fm.pop('footer')
+
+        # paginate: bool → theme.pagination
+        if 'paginate' in fm and 'pagination' not in theme:
+            theme['pagination'] = fm.pop('paginate')
+        elif 'paginate' in fm:
+            fm.pop('paginate')
+
+        # backgroundColor / backgroundImage → _global_background
+        if 'backgroundColor' in fm:
+            fm['_global_background'] = fm.pop('backgroundColor')
+        if 'backgroundImage' in fm:
+            bg = fm.pop('backgroundImage')
+            fm['_global_background'] = bg if bg.startswith('url(') else f'url({bg})'
+
+        # header → _header
+        if 'header' in fm:
+            fm['_header'] = fm.pop('header')
+
+        # color → _global_color
+        if 'color' in fm:
+            fm['_global_color'] = fm.pop('color')
+
+        if theme:
+            fm['theme'] = theme
+        return fm
+
     def _strip_frontmatter(self) -> str:
         """Remove frontmatter from content."""
         return re.sub(r'^---\s*\n.*?\n---\s*\n?', '', self.md_content, count=1, flags=re.DOTALL)
@@ -258,7 +360,7 @@ class RemarpParser:
         # Parse canvas DSL
         canvas_elements, canvas_id = self.parse_canvas_dsl(md_text)
         md_text = self.CANVAS_PATTERN.sub('', md_text)
-        md_text = re.sub(r':::\s*canvas\s+prompt\s*\n.*?\n:::', '', md_text, flags=re.DOTALL)
+        md_text = re.sub(r':::\s*(?:canvas\s+)?prompt\s*\n.*?\n:::', '', md_text, flags=re.DOTALL)
 
         # Remove column blocks from content
         md_text = self.COLUMN_PATTERN.sub('', md_text)
@@ -402,10 +504,10 @@ class RemarpParser:
             elements.append(CanvasElement('mermaid', {'code': code}))
             return elements, canvas_id
 
-        # Check for prompt variant: :::canvas prompt
+        # Check for prompt variant: :::canvas prompt or :::prompt (shorthand)
         # Agent should replace these with :::canvas js before final build
         prompt_match = re.search(
-            r':::\s*canvas\s+prompt\s*\n(.*?)\n:::', md_text, re.DOTALL
+            r':::\s*(?:canvas\s+)?prompt\s*\n(.*?)\n:::', md_text, re.DOTALL
         )
         if prompt_match:
             prompt_text = prompt_match.group(1).strip()
@@ -496,7 +598,7 @@ class RemarpParser:
             src = icon_remarp_match.group(2)
             if '/' not in src and '.' not in src:
                 filename = ICON_NAME_MAP.get(src, f'Arch_{src}_48.svg')
-                src = f'../common/aws-icons/services/{filename}'
+                src = f'./common/aws-icons/services/{filename}'
             size = int(icon_remarp_match.group(5))
             return CanvasElement('icon', {
                 'id': icon_id,
@@ -637,7 +739,7 @@ class RemarpParser:
             # Map short service names to icon filenames
             if '/' not in src and '.' not in src:
                 filename = ICON_NAME_MAP.get(src, f'Arch_{src}_48.svg')
-                src = f'../common/aws-icons/services/{filename}'
+                src = f'./common/aws-icons/services/{filename}'
             width = int(icon_match.group(4))
             height = int(icon_match.group(5)) if icon_match.group(5) else width
             return CanvasElement('icon', {
@@ -768,6 +870,12 @@ class RemarpHTMLGenerator:
         self.canvas_counter = 0
         self.deferred_canvas_scripts: List[str] = []
 
+    @staticmethod
+    def _strip_block_prefix(title: str) -> str:
+        """Remove 'Block N:' prefix from title if present."""
+        import re
+        return re.sub(r'^Block\s+\d+\s*:\s*', '', title)
+
     def generate_block(self, block_name: str, slides: List[Slide],
                        config: Dict[str, Any]) -> str:
         """Generate complete HTML file for one block."""
@@ -779,6 +887,8 @@ class RemarpHTMLGenerator:
             if block.get('name') == block_name:
                 title = block.get('title', title)
                 break
+
+        title = self._strip_block_prefix(title)
 
         # Track mermaid usage and generate slides
         slides_html_list = []
@@ -816,33 +926,37 @@ class RemarpHTMLGenerator:
     def slide_to_html(self, slide: Slide) -> str:
         """Convert parsed slide to HTML based on type."""
         if slide.slide_type == SlideType.COVER:
-            return self._gen_cover_slide(slide)
+            html = self._gen_cover_slide(slide)
         elif slide.slide_type == SlideType.TITLE:
-            return self._gen_title_slide(slide)
+            html = self._gen_title_slide(slide)
         elif slide.slide_type == SlideType.COMPARE:
-            return self._gen_compare_slide(slide)
+            html = self._gen_compare_slide(slide)
         elif slide.slide_type == SlideType.TABS:
-            return self._gen_tabs_slide(slide)
+            html = self._gen_tabs_slide(slide)
         elif slide.slide_type == SlideType.CANVAS:
-            return self._gen_canvas_slide(slide)
+            html = self._gen_canvas_slide(slide)
         elif slide.slide_type == SlideType.QUIZ:
-            return self._gen_quiz_slide(slide)
+            html = self._gen_quiz_slide(slide)
         elif slide.slide_type == SlideType.CODE:
-            return self._gen_code_slide(slide)
+            html = self._gen_code_slide(slide)
         elif slide.slide_type == SlideType.CHECKLIST:
-            return self._gen_checklist_slide(slide)
+            html = self._gen_checklist_slide(slide)
         elif slide.slide_type == SlideType.TIMELINE:
-            return self._gen_timeline_slide(slide)
+            html = self._gen_timeline_slide(slide)
         elif slide.slide_type == SlideType.SLIDER:
-            return self._gen_slider_slide(slide)
+            html = self._gen_slider_slide(slide)
         elif slide.slide_type == SlideType.CARDS:
-            return self._gen_cards_slide(slide)
+            html = self._gen_cards_slide(slide)
         elif slide.slide_type == SlideType.THANKYOU:
-            return self._gen_thankyou_slide(slide)
+            html = self._gen_thankyou_slide(slide)
         elif slide.slide_type == SlideType.IFRAME:
-            return self._gen_iframe_slide(slide)
+            html = self._gen_iframe_slide(slide)
         else:
-            return self._gen_content_slide(slide)
+            html = self._gen_content_slide(slide)
+
+        # Post-process: apply {.click} fragment wrappers to ALL slide types
+        html = self.gen_fragment_wrappers(html, slide.fragments)
+        return html
 
     def _convert_markdown(self, text: str) -> str:
         """Convert basic markdown to HTML."""
@@ -953,7 +1067,7 @@ class RemarpHTMLGenerator:
             # Check for fenced code blocks (```lang ... ```)
             if line.startswith('```'):
                 lang_meta = line[3:].strip()  # e.g. "yaml {filename=...}" or "bash {highlight=...}"
-                lang = lang_meta.split()[0] if lang_meta else ''
+                lang, filename, highlight = self._parse_code_meta(lang_meta)
                 code_lines = []
                 idx += 1
                 while idx < len(lines) and not lines[idx].startswith('```'):
@@ -962,9 +1076,8 @@ class RemarpHTMLGenerator:
                 if idx < len(lines):
                     idx += 1  # skip closing ```
                 code_text = '\n'.join(code_lines)
-                highlighted = self._highlight_code(code_text, lang)
-                fname_match = re.search(r'filename="([^"]+)"', lang_meta)
-                label_html = f'<span class="code-label">{fname_match.group(1)}</span>' if fname_match else ''
+                highlighted = self._highlight_code(code_text, lang, highlight)
+                label_html = f'<span class="code-label">{filename}</span>' if filename else ''
                 html_parts.append(f'<div class="code-block">{label_html}{highlighted}</div>')
                 continue
 
@@ -1024,30 +1137,70 @@ class RemarpHTMLGenerator:
 
         return '\n'.join(html_parts)
 
-    def gen_fragment_wrappers(self, content: str, fragments: List[Fragment]) -> str:
+    def _extract_click_attrs(self, attr_str: str) -> Tuple[str, str]:
+        """Extract order and animation from {.click ...} attribute string.
+        Supports: {.click order=2 animation=fade-up} and {.click .fade-up} and {.click order=2}"""
+        order = '0'
+        animation = 'fade-in'
+        if not attr_str:
+            return order, animation
+        # order=N
+        order_match = re.search(r'order=(\d+)', attr_str)
+        if order_match:
+            order = order_match.group(1)
+        # animation=name
+        anim_match = re.search(r'animation=([\w-]+)', attr_str)
+        if anim_match:
+            animation = anim_match.group(1)
+        # .classname shorthand (e.g., .fade-up) — only if no animation= found
+        elif re.search(r'\.([\w-]+)', attr_str):
+            # Find .classname that isn't .click itself
+            for dot_match in re.finditer(r'\.([\w-]+)', attr_str):
+                if dot_match.group(1) != 'click':
+                    animation = dot_match.group(1)
+                    break
+        return order, animation
+
+    # Regex pattern matching all {.click ...} variants
+    _CLICK_RE = r'\{\.click([^}]*)?\}'
+
+    def gen_fragment_wrappers(self, content: str, fragments: List[Fragment] = None) -> str:
         """Wrap {.click} elements in fragment spans."""
         result = content
 
-        # 1) <p>...</p> containing {.click} → <p class="fragment ...">
+        def _replace_tag(tag: str, pattern_tpl: str, result_tpl: str) -> str:
+            """Replace <tag>...{.click...}</tag> with fragment-attributed tag."""
+            nonlocal result
+            def replacer(m):
+                inner = m.group(1)
+                order, animation = self._extract_click_attrs(m.group(2) or '')
+                return f'<{tag} class="fragment {animation}" data-fragment-index="{order}">{inner}</{tag}>'
+            pattern = pattern_tpl.format(tag=tag, click=self._CLICK_RE)
+            result = re.sub(pattern, replacer, result)
+
+        # 1) <p>...</p> containing {.click}
         result = re.sub(
-            r'<p>(.*?)\s*\{\.click(?:\s+order=(\d+))?(?:\s+animation=([^\s}]+))?\}\s*</p>',
-            lambda m: f'<p class="fragment {m.group(3) or "fade-in"}" data-fragment-index="{m.group(2) or "0"}">{m.group(1)}</p>',
+            r'<p>(.*?)\s*' + self._CLICK_RE + r'\s*</p>',
+            lambda m: f'<p class="fragment {self._extract_click_attrs(m.group(2) or "")[1]}" data-fragment-index="{self._extract_click_attrs(m.group(2) or "")[0]}">{m.group(1)}</p>',
             result
         )
 
-        # 2) <li>...</li> containing {.click} → <li class="fragment ...">
+        # 2) <li>...</li> containing {.click}
         result = re.sub(
-            r'<li>(.*?)\s*\{\.click(?:\s+order=(\d+))?(?:\s+animation=([^\s}]+))?\}\s*</li>',
-            lambda m: f'<li class="fragment {m.group(3) or "fade-in"}" data-fragment-index="{m.group(2) or "0"}">{m.group(1)}</li>',
+            r'<li>(.*?)\s*' + self._CLICK_RE + r'\s*</li>',
+            lambda m: f'<li class="fragment {self._extract_click_attrs(m.group(2) or "")[1]}" data-fragment-index="{self._extract_click_attrs(m.group(2) or "")[0]}">{m.group(1)}</li>',
             result
         )
 
         # 3) Inline word{.click} (no space) → <span> wrap
         result = re.sub(
-            r'(\S+)\{\.click(?:\s+order=(\d+))?(?:\s+animation=([^\s}]+))?\}',
-            lambda m: f'<span class="fragment {m.group(3) or "fade-in"}" data-fragment-index="{m.group(2) or "0"}">{m.group(1)}</span>',
+            r'(\S+)' + self._CLICK_RE,
+            lambda m: f'<span class="fragment {self._extract_click_attrs(m.group(2) or "")[1]}" data-fragment-index="{self._extract_click_attrs(m.group(2) or "")[0]}">{m.group(1)}</span>',
             result
         )
+
+        # 4) Catch any remaining bare {.click...} that weren't inside tags — strip them
+        result = re.sub(r'\s*' + self._CLICK_RE, '', result)
 
         return result
 
@@ -1405,20 +1558,42 @@ class RemarpHTMLGenerator:
         speaker_title = ''
         speaker_company = ''
 
+        # Parse body content: headings first, then fallback text lines
         for line in lines:
-            if line.startswith('# '):
-                title = self._convert_markdown(line[2:].strip())
-            elif line.startswith('## '):
-                subtitle = self._convert_markdown(line[3:].strip())
+            stripped = line.strip()
+            if stripped.startswith('# '):
+                title = self._convert_markdown(self._strip_block_prefix(stripped[2:].strip()))
+            elif stripped.startswith('## '):
+                subtitle = self._convert_markdown(stripped[3:].strip())
+            elif not title:
+                continue  # skip lines before title
+            elif not subtitle:
+                subtitle = self._convert_markdown(stripped)
+            elif not speaker_name:
+                speaker_name = stripped
+            elif not speaker_title:
+                speaker_title = stripped
+            elif not speaker_company:
+                speaker_company = stripped
 
-        # Check directives for speaker info
-        speaker_name = slide.directives.get('speaker', '')
-        speaker_title = slide.directives.get('speaker-title', '')
-        speaker_company = slide.directives.get('company', '')
+        # Directives override body-parsed values (if present)
+        speaker_name = slide.directives.get('speaker', '') or speaker_name
+        speaker_title = slide.directives.get('speaker-title', '') or speaker_title
+        speaker_company = slide.directives.get('company', '') or speaker_company
 
         # Check for PPTX background and badge in directives
         pptx_bg = slide.directives.get('background', '')
         badge_src = slide.directives.get('badge', '')
+
+        # Determine background style: gradient vs image URL
+        is_gradient = pptx_bg.startswith('linear-gradient') or pptx_bg.startswith('radial-gradient')
+
+        if pptx_bg and not is_gradient:
+            bg_style = f"background:url('{pptx_bg}') center/cover no-repeat"
+        elif is_gradient:
+            bg_style = f"background:{pptx_bg}"
+        else:
+            bg_style = "background:linear-gradient(135deg, #1a1f35 0%, #0d1117 50%, #161b2e 100%)"
 
         if pptx_bg:
             # §0a — PPTX-style cover with absolute positioning
@@ -1434,7 +1609,7 @@ class RemarpHTMLGenerator:
 
             badge_html = f'<img src="{badge_src}" alt="" style="position:absolute; right:5%; bottom:10%; width:8%; pointer-events:none;" />' if badge_src else ''
 
-            return f'''<div class="slide" style="background:url('{pptx_bg}') center/cover no-repeat; padding:0; overflow:hidden;">
+            return f'''<div class="slide" style="{bg_style}; padding:0; overflow:hidden;">
   <h1 style="position:absolute; left:5%; top:48%; font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:53%; margin:0;">{title}</h1>
   {subtitle_html}
   {speaker_html}
@@ -1452,7 +1627,7 @@ class RemarpHTMLGenerator:
 
             subtitle_html = f'<p style="position:absolute; left:5%; top:60%; font-size:1.3rem; color:rgba(255,255,255,0.7); width:60%; margin:0;">{subtitle}</p>' if subtitle else ''
 
-            return f'''<div class="slide" style="background:linear-gradient(135deg, #1a1f35 0%, #0d1117 50%, #161b2e 100%); padding:0; overflow:hidden; position:relative;">
+            return f'''<div class="slide" style="{bg_style}; padding:0; overflow:hidden; position:relative;">
   <div style="position:absolute; top:-20%; right:-10%; width:60%; height:80%; background:radial-gradient(ellipse, rgba(108,92,231,0.15) 0%, transparent 70%); pointer-events:none;"></div>
   <div style="position:absolute; left:5%; top:42%; width:80px; height:3px; background:linear-gradient(90deg, #6c5ce7, #a29bfe); border-radius:2px;"></div>
   <h1 style="position:absolute; left:5%; top:45%; font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:60%; margin:0;">{title}</h1>
@@ -1510,9 +1685,6 @@ class RemarpHTMLGenerator:
             body_html = self.gen_column_layout(slide.columns)
         else:
             body_html = self._parse_body_content(body_lines)
-
-        # Apply fragment wrappers
-        body_html = self.gen_fragment_wrappers(body_html, slide.fragments)
 
         header_html = f'<div class="slide-header"><h2>{heading}</h2></div>' if heading else ''
 
@@ -1792,26 +1964,29 @@ class RemarpHTMLGenerator:
         in_code = False
         current_code = []
         current_lang = ''
+        current_fname = ''
+        current_highlight = ''
 
         for line in lines:
             if line.startswith('## '):
                 heading = self._convert_markdown(line[3:].strip())
             elif line.startswith('```'):
                 if in_code:
-                    code_blocks.append((current_lang, '\n'.join(current_code)))
+                    code_blocks.append((current_lang, current_fname, current_highlight, '\n'.join(current_code)))
                     current_code = []
                     in_code = False
                 else:
-                    current_lang = line[3:].strip()
+                    current_lang, current_fname, current_highlight = self._parse_code_meta(line[3:].strip())
                     in_code = True
             elif in_code:
                 current_code.append(line)
 
         # Generate highlighted code blocks
         code_html_parts = []
-        for lang, code in code_blocks:
-            highlighted = self._highlight_code(code, lang)
-            label = f'<span class="code-label">{lang}</span>' if lang else ''
+        for lang, filename, highlight, code in code_blocks:
+            highlighted = self._highlight_code(code, lang, highlight)
+            display_label = filename or lang
+            label = f'<span class="code-label">{display_label}</span>' if display_label else ''
             code_html_parts.append(f'<div class="code-block">{label}{highlighted}</div>')
 
         header_html = f'<div class="slide-header"><h2>{heading}</h2></div>' if heading else ''
@@ -1823,8 +1998,8 @@ class RemarpHTMLGenerator:
   </div>
 </div>'''
 
-    def _highlight_code(self, code: str, lang: str) -> str:
-        """Basic syntax highlighting."""
+    def _highlight_code(self, code: str, lang: str, highlight: str = '') -> str:
+        """Basic syntax highlighting with optional line highlighting."""
         # Escape HTML first
         code = code.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
 
@@ -1871,7 +2046,43 @@ class RemarpHTMLGenerator:
         for idx, replacement in enumerate(placeholders):
             code = code.replace(f'\x00{idx}\x00', replacement)
 
+        # Apply line highlighting if specified
+        if highlight:
+            hl_lines = self._parse_highlight_ranges(highlight)
+            lines = code.split('\n')
+            code = '\n'.join(
+                f'<span class="hl-line">{l}</span>' if (i + 1) in hl_lines else l
+                for i, l in enumerate(lines)
+            )
+
         return code
+
+    def _parse_code_meta(self, lang_meta: str) -> Tuple[str, str, str]:
+        """Parse code fence metadata: 'yaml {filename="x.yaml" highlight="3-5"}'
+        Returns (lang, filename, highlight_spec)."""
+        lang = lang_meta.split()[0] if lang_meta else ''
+        # Strip any {...} block from lang in case it's "yaml{filename=...}"
+        lang = re.sub(r'\{.*', '', lang).strip()
+        fname_match = re.search(r'filename="([^"]+)"', lang_meta)
+        hl_match = re.search(r'highlight="([^"]+)"', lang_meta)
+        filename = fname_match.group(1) if fname_match else ''
+        highlight = hl_match.group(1) if hl_match else ''
+        return lang, filename, highlight
+
+    def _parse_highlight_ranges(self, spec: str) -> set:
+        """Parse highlight spec like '1,3-5,8' into a set of line numbers {1,3,4,5,8}."""
+        lines_set = set()
+        for part in spec.split(','):
+            part = part.strip()
+            if '-' in part:
+                try:
+                    start, end = part.split('-', 1)
+                    lines_set.update(range(int(start), int(end) + 1))
+                except ValueError:
+                    pass
+            elif part.isdigit():
+                lines_set.add(int(part))
+        return lines_set
 
     def _gen_checklist_slide(self, slide: Slide) -> str:
         """Generate checklist slide HTML with expandable code blocks."""
@@ -2251,10 +2462,11 @@ class RemarpHTMLGenerator:
             key_config_js = f'window.__remarpKeys = {json.dumps(key_config)};'
 
         # Theme paths - check config for theme directory (set by RemarpProjectBuilder)
+        # Assets are copied to output_dir/common/pptx-theme/ by _copy_theme_assets_to_output()
         theme_override = ''
         theme_dir = config.get('_theme_dir', self.theme_dir)
         if theme_dir and os.path.exists(os.path.join(theme_dir, 'theme-override.css')):
-            theme_override = '<link rel="stylesheet" href="../common/theme-override.css">'
+            theme_override = '<link rel="stylesheet" href="./common/pptx-theme/theme-override.css">'
 
         # Logo config
         logo_src = config.get('logoSrc', '')
@@ -2293,14 +2505,31 @@ class RemarpHTMLGenerator:
             }
             theme_js = f'<script>window.__remarpTheme = {json.dumps(theme_data)};</script>'
 
+        # Global Marp-compat styles (backgroundColor, color, header)
+        global_styles = []
+        global_bg = config.get('_global_background', '')
+        global_color = config.get('_global_color', '')
+        if global_bg:
+            # CSS value: could be color (#hex, rgb) or url(...)
+            prop = 'background-image' if global_bg.startswith('url(') else 'background-color'
+            global_styles.append(f'.slide {{ {prop}: {global_bg}; }}')
+        if global_color:
+            global_styles.append(f'.slide {{ color: {global_color}; }}')
+        global_style_tag = f'<style>{" ".join(global_styles)}</style>' if global_styles else ''
+
+        # Header text (Marp-compat)
+        header_text = config.get('_header', '')
+        header_js = f"header: '{header_text}'," if header_text else ''
+
         return f'''<!DOCTYPE html>
 <html lang="{self.lang}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{title}</title>
-  <link rel="stylesheet" href="../common/theme.css">
+  <link rel="stylesheet" href="./common/theme.css">
   {theme_override}
+  {global_style_tag}
   {mermaid_script}
   {theme_js}
 </head>
@@ -2308,10 +2537,10 @@ class RemarpHTMLGenerator:
 <div class="slide-deck">
 {slides_html}
 </div>
-<script src="../common/animation-utils.js"></script>
-<script src="../common/slide-framework.js"></script>
-<script src="../common/quiz-component.js"></script>
-<script src="../common/presenter-view.js"></script>
+<script src="./common/animation-utils.js"></script>
+<script src="./common/slide-framework.js"></script>
+<script src="./common/quiz-component.js"></script>
+<script src="./common/presenter-view.js"></script>
 {canvas_scripts_html}
 <script>
   {key_config_js}
@@ -2319,6 +2548,7 @@ class RemarpHTMLGenerator:
   const deck = new SlideFramework({{
     {logo_js}
     {footer_js}
+    {header_js}
     {pagination_js}
     presenterNotes: presenterNotes,
     onSlideChange: (index, slide) => {{}}
@@ -2496,20 +2726,20 @@ class RemarpProjectBuilder:
 
     def _apply_theme_to_config(self, theme_config: Dict[str, Any]) -> None:
         """Apply theme settings to main_config for use in HTML generation."""
-        # Footer: explicit override or from manifest
-        footer = theme_config.get('footer')
-        if footer:
+        # Footer: explicit string overrides; 'auto' or absent → manifest fallback
+        footer = theme_config.get('footer', 'auto')
+        if footer and footer != 'auto':
             self.main_config['footer'] = footer
         elif self.theme_manifest.get('footer_text'):
             self.main_config['footer'] = self.theme_manifest['footer_text']
 
         # Logo: 'auto' uses first extracted logo, or explicit path
+        # Use relative HTML path (./common/pptx-theme/images/...) not absolute filesystem path
         logo = theme_config.get('logo', 'auto')
         if logo == 'auto' and self.theme_manifest.get('logos'):
             first_logo = self.theme_manifest['logos'][0]
             logo_filename = first_logo.get('filename', 'logo_1.png')
-            if self.theme_dir:
-                self.main_config['logoSrc'] = str(self.theme_dir / 'images' / logo_filename)
+            self.main_config['logoSrc'] = f'./common/pptx-theme/images/{logo_filename}'
         elif logo and logo != 'auto':
             self.main_config['logoSrc'] = logo
 
@@ -2526,8 +2756,8 @@ class RemarpProjectBuilder:
         if not self.theme_manifest:
             return
 
-        # Extract color scheme
-        color_scheme = self.theme_manifest.get('color_scheme', {})
+        # Extract color scheme (manifest key is 'colors', not 'color_scheme')
+        color_scheme = self.theme_manifest.get('colors', {})
         if color_scheme:
             self.main_config['_theme_colors'] = color_scheme
 
@@ -2543,31 +2773,138 @@ class RemarpProjectBuilder:
         # Store sanitized manifest
         self.main_config['_theme_manifest'] = {
             k: v for k, v in self.theme_manifest.items()
-            if k in ('footer_text', 'color_scheme', 'logos', 'layout_details', 'fonts')
+            if k in ('footer_text', 'colors', 'logos', 'layout_details', 'fonts')
         }
 
     def _generate_theme_css_vars(self) -> None:
-        """Write theme-override.css with PPTX color variables."""
+        """Write theme-override.css with PPTX color variables.
+
+        Maps PPTX accent colors to both --pptx-* reference variables and
+        the base theme variables (--accent, --accent-glow, etc.) so the
+        HTML slides actually pick up the corporate color scheme.
+        """
         colors = self.main_config.get('_theme_colors', {})
         if not colors or not self.theme_dir:
             return
 
         css_lines = [':root {']
-        color_map = {
+
+        # 1) Original PPTX color references
+        pptx_map = {
             'accent1': '--pptx-accent1', 'accent2': '--pptx-accent2',
             'accent3': '--pptx-accent3', 'accent4': '--pptx-accent4',
             'accent5': '--pptx-accent5', 'accent6': '--pptx-accent6',
             'dk1': '--pptx-dk1', 'lt1': '--pptx-lt1',
             'dk2': '--pptx-dk2', 'lt2': '--pptx-lt2',
+            'hlink': '--pptx-hlink', 'folHlink': '--pptx-folHlink',
         }
-        for key, var_name in color_map.items():
+        for key, var_name in pptx_map.items():
             if key in colors:
                 css_lines.append(f'  {var_name}: {colors[key]};')
+
+        css_lines.append('')
+        css_lines.append('  /* Base theme variable overrides */')
+
+        # 2) Map accent1 → base theme variables
+        accent1 = colors.get('accent1')
+        if accent1:
+            css_lines.append(f'  --accent: {accent1};')
+            # Compute glow color (accent with 30% opacity)
+            hex_val = accent1.lstrip('#')
+            if len(hex_val) == 6:
+                r, g, b = int(hex_val[0:2], 16), int(hex_val[2:4], 16), int(hex_val[4:6], 16)
+                css_lines.append(f'  --accent-glow: rgba({r}, {g}, {b}, 0.3);')
+
+        # 3) Map remaining accents to theme palette
+        base_map = {
+            'accent2': '--accent-light',
+            'accent3': '--green',
+            'accent4': '--red',
+            'accent5': '--orange',
+            'accent6': '--yellow',
+            'hlink': '--cyan',
+        }
+        for pptx_key, css_var in base_map.items():
+            if pptx_key in colors:
+                css_lines.append(f'  {css_var}: {colors[pptx_key]};')
+
         css_lines.append('}')
 
+        # Check if extract_pptx_theme.py already wrote a theme-override.css
+        # (from CSSGenerator). If so, append our overrides; otherwise create new.
         css_path = self.theme_dir / 'theme-override.css'
-        with open(css_path, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(css_lines))
+        existing = ''
+        if css_path.exists():
+            with open(css_path, 'r', encoding='utf-8') as f:
+                existing = f.read()
+
+        if existing:
+            # Append base-variable overrides after existing content
+            with open(css_path, 'a', encoding='utf-8') as f:
+                f.write('\n\n/* Base theme variable overrides (auto-generated) */\n')
+                f.write('\n'.join(css_lines))
+        else:
+            with open(css_path, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(css_lines))
+
+    def _copy_theme_assets_to_output(self) -> None:
+        """Copy _theme/{stem}/ → output_dir/common/pptx-theme/.
+
+        Ensures theme-override.css, images/, and other extracted assets
+        are available at the relative paths referenced by the HTML output.
+        """
+        if not self.theme_dir or not Path(self.theme_dir).exists():
+            return
+        dest = self.output_dir / 'common' / 'pptx-theme'
+        shutil.copytree(str(self.theme_dir), str(dest), dirs_exist_ok=True)
+
+    def _copy_framework_assets(self) -> None:
+        """Copy core framework CSS/JS and AWS icons to output common/ directory."""
+        scripts_dir = Path(__file__).parent
+        skill_dir = scripts_dir.parent  # reactive-presentation/
+        assets_dir = skill_dir / 'assets'
+        dest = self.output_dir / 'common'
+        dest.mkdir(parents=True, exist_ok=True)
+
+        # Copy core framework files
+        for fname in ['theme.css', 'slide-framework.js', 'animation-utils.js',
+                      'quiz-component.js', 'presenter-view.js']:
+            src = assets_dir / fname
+            if src.exists():
+                shutil.copy2(str(src), str(dest / fname))
+
+        # Flatten AWS service icons into common/aws-icons/services/
+        # The converter references ./common/aws-icons/services/{filename}
+        icons_dir = skill_dir / 'icons'
+        if not icons_dir.exists():
+            icons_dir = assets_dir / 'aws-icons'
+        if icons_dir.exists():
+            services_dest = dest / 'aws-icons' / 'services'
+            services_dest.mkdir(parents=True, exist_ok=True)
+            # Flatten all 48px service icons from nested category dirs
+            service_icons_dir = icons_dir / 'Architecture-Service-Icons_07312025'
+            if service_icons_dir.exists():
+                for svg_file in service_icons_dir.rglob('*_48.svg'):
+                    shutil.copy2(str(svg_file), str(services_dest / svg_file.name))
+            # Also copy other icon categories (group, category, resource)
+            for subdir_name, dest_name in [
+                ('Architecture-Group-Icons_07312025', 'groups'),
+                ('Category-Icons_07312025', 'categories'),
+                ('Resource-Icons_07312025', 'resources'),
+            ]:
+                src_sub = icons_dir / subdir_name
+                if src_sub.exists():
+                    sub_dest = dest / 'aws-icons' / dest_name
+                    sub_dest.mkdir(parents=True, exist_ok=True)
+                    for svg_file in src_sub.rglob('*.svg'):
+                        shutil.copy2(str(svg_file), str(sub_dest / svg_file.name))
+            # Copy others/ (third-party icons)
+            others_src = icons_dir / 'others'
+            if others_src.exists():
+                others_dest = dest / 'aws-icons' / 'others'
+                if others_dest.exists():
+                    shutil.rmtree(str(others_dest))
+                shutil.copytree(str(others_src), str(others_dest))
 
     def build_all(self) -> List[str]:
         """Full rebuild: merge all blocks into single index.html.
@@ -2575,6 +2912,12 @@ class RemarpProjectBuilder:
         Individual block HTML files are also generated for debugging/editing.
         """
         built_files = []
+
+        # 0. Copy PPTX theme assets to output/common/pptx-theme/
+        self._copy_theme_assets_to_output()
+
+        # 0b. Copy core framework assets (CSS/JS) and AWS icons
+        self._copy_framework_assets()
 
         # 1. Build individual block files (for debugging/per-block editing)
         for block_name, block_path in self.blocks.items():
@@ -2745,7 +3088,7 @@ class RemarpProjectBuilder:
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{title} - Table of Contents</title>
-  <link rel="stylesheet" href="../common/theme.css">
+  <link rel="stylesheet" href="./common/theme.css">
   <style>
     body {{ display: flex; flex-direction: column; min-height: 100vh; }}
     .toc-container {{
@@ -2793,7 +3136,7 @@ class RemarpProjectBuilder:
     <button class="btn" onclick="ExportUtils.exportPPTX({{title:'{escaped_title}'}})">Export PPTX</button>
   </div>
 </div>
-<script src="../common/export-utils.js"></script>
+<script src="./common/export-utils.js"></script>
 </body>
 </html>'''
 

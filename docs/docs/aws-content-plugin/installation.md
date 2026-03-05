@@ -12,7 +12,11 @@ AWS Content Plugin을 설치하고 사용하는 방법입니다.
 Claude Code의 플러그인 마켓플레이스에서 설치합니다:
 
 ```bash
-/plugin marketplace add aws-content-plugin
+# 마켓플레이스 추가
+/plugin marketplace add https://github.com/Atom-oh/oh-my-cloud-skills
+
+# 플러그인 설치
+/plugin install aws-content-plugin@oh-my-cloud-skills
 ```
 
 ## 로컬 로딩

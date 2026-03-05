@@ -1,6 +1,6 @@
 {
   "name": "aws-ops-plugin",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "AWS/EKS infrastructure operations and troubleshooting plugin — EKS cluster management, networking, IAM, observability, storage, database, and cost optimization",
   "author": { "name": "atomoh" },
   "agents": [

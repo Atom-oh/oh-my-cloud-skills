@@ -11,7 +11,6 @@ AWS 비용 분석 및 최적화 전문 에이전트입니다. awspricing MCP를 
 
 | 항목 | 값 |
 |------|-----|
-| Model | sonnet |
 | Tools | Read, Write, Glob, Grep, Bash, AskUserQuestion |
 
 ## 트리거 키워드

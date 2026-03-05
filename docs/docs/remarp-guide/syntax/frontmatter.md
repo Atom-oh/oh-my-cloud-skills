@@ -17,6 +17,7 @@ remarp: true
 version: 1
 title: "AWS Architecture Deep Dive"
 author: "Cloud Team"
+audience: "클라우드 엔지니어 (중급)"
 date: 2025-01-15
 event: "AWS Summit 2025"
 lang: ko
@@ -60,6 +61,7 @@ keys:
 | `version` | number | No | 포맷 버전 (기본값: 1) |
 | `title` | string | Yes | 프레젠테이션 제목 (HTML `<title>`에 사용) |
 | `author` | string | No | 발표자 이름 |
+| `audience` | string | No | 대상 청중 (기술 수준/역할) |
 | `date` | date | No | 프레젠테이션 날짜 (YYYY-MM-DD) |
 | `event` | string | No | 이벤트 또는 컨퍼런스 이름 |
 | `lang` | string | No | 언어 코드 (`ko`, `en`, `ja`) |
@@ -177,6 +179,7 @@ remarp: true
 version: 1
 title: "AWS Serverless Architecture"
 author: "Cloud Team"
+audience: "서버리스 개발자"
 date: 2025-03-01
 event: "AWS Tech Talk"
 lang: ko

@@ -16,6 +16,7 @@ title: 빠른 시작
 remarp: true
 title: "My First Remarp Presentation"
 author: "Your Name"
+audience: "Cloud Engineers"
 lang: ko
 
 theme:
@@ -75,14 +76,14 @@ Your Name | 2026
 ## 아키텍처
 
 :::canvas width=960 height=400
-box "API GW" at 50,170 size 130x60 color=accent
-box "Lambda" at 260,170 size 130x60 color=green
-box "DynamoDB" at 470,170 size 130x60 color=blue
+box apigw "API GW" at 50,170 size 130,60 color #FF9900
+box lambda "Lambda" at 260,170 size 130,60 color #4CAF50
+box dynamo "DynamoDB" at 470,170 size 130,60 color #3B48CC
 
-arrow from "API GW" to "Lambda" at step=1 animate=draw
-arrow from "Lambda" to "DynamoDB" at step=2 animate=draw
+arrow apigw -> lambda "request" step 1
+arrow lambda -> dynamo "query" step 2
 
-group "VPC" at 30,100 size 580x180 color=border
+group "VPC" containing apigw, lambda, dynamo color #232F3E
 :::
 
 :::notes

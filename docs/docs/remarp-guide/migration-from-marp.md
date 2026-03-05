@@ -20,6 +20,12 @@ python3 remarp_to_slides.py migrate ./old-content.md -o ./my-presentation/
 | Marp | Remarp | 비고 |
 |------|--------|------|
 | `marp: true` | `remarp: true` | frontmatter 헤더 |
+| `footer: "text"` | `footer: "text"` (또는 `theme.footer`) | 그대로 사용 가능 |
+| `paginate: true` | `paginate: true` (또는 `theme.pagination`) | 그대로 사용 가능 |
+| `backgroundColor: "#xxx"` | `backgroundColor: "#xxx"` | 글로벌 배경색 |
+| `backgroundImage: url(...)` | `backgroundImage: url(...)` | 글로벌 배경이미지 |
+| `header: "text"` | `header: "text"` | 글로벌 헤더 |
+| `color: "#fff"` | `color: "#fff"` | 글로벌 텍스트 색상 |
 | `<!-- type: canvas -->` | `@type canvas` | 디렉티브 문법 |
 | `<!-- block: name -->` | 별도 블록 파일 | 멀티파일 구조 |
 | `<!-- notes: text -->` | `:::notes ... :::` | 블록 문법 |
@@ -28,6 +34,8 @@ python3 remarp_to_slides.py migrate ./old-content.md -o ./my-presentation/
 ## 하위 호환성
 
 Remarp 파서는 `marp: true` 파일도 그대로 처리합니다. 기존 Marp 파일을 변환하지 않고도 사용할 수 있습니다.
+
+또한 Marp 표준 frontmatter 디렉티브(`footer`, `paginate`, `backgroundColor`, `backgroundImage`, `header`, `color`)를 top-level에서 그대로 사용할 수 있습니다. 이 디렉티브들은 자동으로 Remarp 내부 구조로 매핑되므로, 기존 Marp 파일의 frontmatter를 수정하지 않아도 동작합니다.
 
 ## 상세 변환 예제
 
@@ -156,8 +164,8 @@ Remember to explain both options
 ## Architecture
 
 :::canvas
-box api "API Gateway" at 100,150 size 120x60 color=accent
-box lambda "Lambda" at 300,150 size 120x60 color=green
+box api "API Gateway" at 100,150 size 120,60 color #FF9900
+box lambda "Lambda" at 300,150 size 120,60 color #4CAF50
 arrow api -> lambda "invoke"
 :::
 ```
