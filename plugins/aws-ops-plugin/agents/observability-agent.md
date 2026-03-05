@@ -2,7 +2,6 @@
 name: observability-agent
 description: "AWS observability agent. Manages CloudWatch (Container Insights, Logs Insights, alarms), Amazon Managed Prometheus (AMP), Amazon Managed Grafana (AMG), ADOT, and Prometheus/Grafana open-source stacks. Triggers on \"CloudWatch\", \"Prometheus\", \"Grafana\", \"ADOT\", \"OpenTelemetry\", \"Container Insights\", \"Logs Insights\", \"metric\", \"alarm\", \"X-Ray\", \"모니터링\", \"로그 분석\", \"알람 설정\", \"프로메테우스\", \"그라파나\" requests."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
-model: sonnet
 ---
 
 # Observability Agent

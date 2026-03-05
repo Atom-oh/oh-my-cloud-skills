@@ -2,7 +2,6 @@
 name: cost-agent
 description: "AWS cost analysis and optimization agent. Uses awspricing MCP for pricing data, analyzes spending patterns, and recommends savings strategies. Triggers on \"cost analysis\", \"cost optimization\", \"billing\", \"savings plan\", \"reserved instance\", \"비용 분석\", \"비용 절감\", \"요금\" requests."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
-model: sonnet
 ---
 
 # Cost Agent

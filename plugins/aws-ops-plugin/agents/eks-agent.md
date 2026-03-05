@@ -2,7 +2,6 @@
 name: eks-agent
 description: "EKS cluster operations and troubleshooting agent. Manages cluster lifecycle, node groups, upgrades, add-ons, and performs systematic 5-minute triage. Triggers on \"EKS troubleshoot\", \"cluster issue\", \"node NotReady\", \"pod crash\", \"EKS upgrade\", \"add-on\", \"노드 문제\", \"클러스터 장애\" requests."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
-model: sonnet
 ---
 
 # EKS Agent
