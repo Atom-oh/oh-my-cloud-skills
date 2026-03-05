@@ -3,6 +3,8 @@ sidebar_position: 1
 title: 기본 예제
 ---
 
+import DemoEmbed from '@site/src/components/DemoEmbed';
+
 # 기본 예제
 
 Remarp의 주요 기능을 보여주는 완전한 예제입니다.
@@ -15,219 +17,170 @@ Remarp의 주요 기능을 보여주는 완전한 예제입니다.
 ---
 remarp: true
 version: 1
-title: "AWS Serverless Architecture"
-author: "Cloud Team"
-date: 2025-03-01
-event: "AWS Tech Talk"
+title: "Remarp Feature Tour"
+author: "Cloud Skills Team"
+date: 2026-03-04
 lang: ko
 
+blocks:
+  - name: tour
+    title: "Remarp Feature Tour"
+    duration: 10
+
 theme:
-  primary: "#232F3E"
-  accent: "#FF9900"
+  accent: "#6c5ce7"
 
 transition:
   default: slide
   duration: 400
 ---
 
-# AWS Serverless Architecture
+---
+remarp: true
+block: tour
+---
 
-Cloud Team | AWS Tech Talk 2025
+# Remarp Feature Tour
+마크다운으로 만드는 인터랙티브 프레젠테이션
 
 :::notes
 {timing: 1min}
-환영합니다. 오늘은 AWS 서버리스 아키텍처에 대해 알아보겠습니다.
+Remarp의 핵심 기능을 직접 보여주는 메타 데모입니다.
 :::
 
 ---
 
-## 오늘 다룰 내용
+## Click Animations
 
-- 서버리스란 무엇인가? {.click}
-- AWS Lambda 소개 {.click}
-- 아키텍처 패턴 {.click}
-- 실습 데모 {.click}
+요소를 순서대로 나타나게 하는 `{.click}` 문법:
+
+- Remarp는 마크다운 기반입니다 {.click}
+- 슬라이드 구분은 `---` 로 합니다 {.click}
+- `@type` 디렉티브로 슬라이드 유형을 지정합니다 {.click}
+- `{.click}` 으로 클릭 애니메이션을 추가합니다 {.click}
 
 :::notes
 {timing: 2min}
-4가지 주제를 다룰 예정입니다. 각 주제를 클릭하며 설명합니다.
+각 항목을 클릭하며 순차 공개 기능을 설명합니다.
 :::
 
 ---
 @type: compare
 
-## Serverless vs Traditional
+## Compare Layout
 
-### Traditional
-- 서버 프로비저닝 필요
-- 용량 관리 필요
-- 유휴 시간에도 비용 발생
-- OS 패칭 필요
+::: left
+### Marp (기존)
+- 정적 슬라이드만 지원
+- 제한된 레이아웃
+- 애니메이션 없음
+- 텍스트 중심
+:::
 
-### Serverless
-- 서버 관리 불필요
-- 자동 스케일링
-- 실행 시간만 비용 발생
-- 완전 관리형
+::: right
+### Remarp (확장)
+- 인터랙티브 슬라이드
+- 다양한 레이아웃 프리셋
+- Click / Canvas 애니메이션
+- Quiz, Tabs, Timeline 지원
+:::
 
 :::notes
-{timing: 3min}
-{cue: question}
-"현재 어떤 방식을 사용하고 계신가요?"
+{timing: 2min}
+좌우 비교 레이아웃으로 Marp vs Remarp 차이를 보여줍니다.
 :::
 
 ---
 @type: canvas
-@canvas-id: lambda-flow
+@canvas-id: arch-demo
 
-## Lambda 실행 모델
+## Canvas DSL
 
 :::canvas
-icon trigger "API-Gateway" at 50,150 size 48 step 1
-icon lambda "Lambda" at 200,150 size 48 step 2
-icon dynamo "DynamoDB" at 350,150 size 48 step 3
+icon gw "API-Gateway" at 100,150 size 48 step 1
+box api "API Layer" at 75,210 size 100,30 color #FF9900 step 1
 
-arrow trigger -> lambda "invoke" step 4
-arrow lambda -> dynamo "read/write" step 5
+icon fn "Lambda" at 300,150 size 48 step 2
+box compute "Compute" at 275,210 size 100,30 color #FF9900 step 2
 
-group "AWS Cloud" containing trigger, lambda, dynamo color=#232F3E step 1
+icon db "DynamoDB" at 500,150 size 48 step 3
+box storage "Storage" at 475,210 size 100,30 color #3B48CC step 3
+
+arrow api -> compute "invoke" step 4
+arrow compute -> storage "read/write" step 4
 :::
 
 :::notes
-{timing: 5min}
+{timing: 2min}
 {cue: demo}
-↑↓ 키로 각 단계를 보여주세요.
-- Step 1: API Gateway가 요청을 받음
-- Step 2: Lambda 함수 호출
-- Step 3: DynamoDB에서 데이터 처리
+Canvas DSL로 아키텍처 다이어그램을 선언적으로 작성합니다.
+화살표 키로 step별 애니메이션을 확인하세요.
 :::
 
 ---
-@type: tabs
 
-## 코드 예제
+## Code Blocks
 
-### Python
-```python {filename="handler.py" highlight="4-6"}
+코드 블록에 파일명과 라인 하이라이트를 추가할 수 있습니다:
+
+```python {filename="handler.py" highlight="3-5"}
 import json
 
 def handler(event, context):
     user_id = event['pathParameters']['userId']
-    # 비즈니스 로직 처리
-    return {'statusCode': 200, 'body': json.dumps('OK')}
-```
+    action = event.get('action', 'read')
 
-### Node.js
-```javascript {filename="handler.js" highlight="3-5"}
-exports.handler = async (event) => {
-    const userId = event.pathParameters.userId;
-    // 비즈니스 로직 처리
-    return { statusCode: 200, body: JSON.stringify('OK') };
-};
+    return {
+        'statusCode': 200,
+        'body': json.dumps({'userId': user_id})
+    }
 ```
 
 :::notes
-{timing: 3min}
-Python과 Node.js 예제를 탭으로 전환하며 보여줍니다.
-:::
-
----
-@type: timeline
-
-## 서버리스 진화
-
-### 2014
-AWS Lambda 출시
-이벤트 기반 컴퓨팅
-
-### 2016
-API Gateway 통합
-서버리스 API
-
-### 2019
-Lambda Layers
-Provisioned Concurrency
-
-### 2022
-Lambda SnapStart
-Function URLs
-
-:::notes
-{timing: 2min}
-서버리스 기술의 발전 과정을 설명합니다.
+{timing: 1min}
+코드 블록의 하이라이트 기능을 시연합니다.
 :::
 
 ---
 @type: quiz
 
-## 퀴즈
+## Quick Quiz
 
-**Q1: Lambda의 최대 타임아웃은?**
-- [ ] 5분
-- [x] 15분
-- [ ] 30분
-- [ ] 60분
+**Q1: Remarp 슬라이드 구분 기호는?**
+- [ ] `===`
+- [x] `---`
+- [ ] `***`
+- [ ] `+++`
 
-**Q2: Lambda 가격은 무엇을 기준으로?**
-- [ ] 프로비저닝된 용량
-- [x] 요청 수 + 실행 시간
-- [ ] 월 고정 요금
-
-:::notes
-{timing: 2min}
-청중 참여를 유도하는 퀴즈입니다.
-:::
-
----
-@type: checklist
-
-## 배포 체크리스트
-
-- [ ] IAM 역할 생성
-- [ ] Lambda 함수 작성
-- [ ] API Gateway 설정
-- [ ] 테스트 실행
-- [ ] 모니터링 설정
+**Q2: 클릭 애니메이션 문법은?**
+- [ ] `[click]`
+- [ ] `(click)`
+- [x] `{.click}`
+- [ ] `@click`
 
 :::notes
 {timing: 2min}
-실제 배포 전 확인해야 할 항목들입니다.
-:::
-
----
-
-## 핵심 요약
-
-:::click
-### 서버리스의 장점
-- 인프라 관리 불필요
-- 자동 스케일링
-- 비용 효율적
-:::
-
-:::click
-### 다음 단계
-- AWS Lambda 콘솔 체험
-- SAM으로 첫 프로젝트 시작
-- 공식 문서 참고
-:::
-
-:::notes
-{timing: 2min}
-{cue: transition}
-마무리하며 다음 단계를 안내합니다.
-:::
-
----
-
-## Thank You
-
-질문이 있으시면 말씀해 주세요.
-
-:::notes
-{timing: 3min}
 {cue: question}
-Q&A 시간입니다.
+퀴즈로 핵심 문법을 복습합니다.
+:::
+
+---
+
+## Start Building!
+
+Remarp로 나만의 프레젠테이션을 만들어 보세요.
+
+:::click
+### 핵심 정리
+- `remarp: true` frontmatter로 시작
+- `---` 로 슬라이드 구분
+- `@type` 디렉티브로 레이아웃 지정
+- `{.click}`, `:::canvas`, `[x]/[ ]` 로 인터랙션 추가
+:::
+
+:::notes
+{timing: 1min}
+마무리 슬라이드. 다운로드 버튼으로 이 소스를 받아볼 수 있습니다.
 :::
 ````
 
@@ -238,58 +191,72 @@ Q&A 시간입니다.
 | 슬라이드 | 타입 | 설명 |
 |----------|------|------|
 | 1 | Title | 타이틀 슬라이드 |
-| 2 | Content | 프래그먼트가 있는 목차 |
-| 3 | Compare | 서버리스 vs 전통 비교 |
-| 4 | Canvas | 아키텍처 다이어그램 |
-| 5 | Tabs | 언어별 코드 예제 |
-| 6 | Timeline | 기술 진화 타임라인 |
-| 7 | Quiz | 인터랙티브 퀴즈 |
-| 8 | Checklist | 배포 체크리스트 |
-| 9 | Content | 블록 프래그먼트 요약 |
-| 10 | Content | 마무리 슬라이드 |
+| 2 | Content | Click 애니메이션 데모 |
+| 3 | Compare | Marp vs Remarp 좌우 비교 |
+| 4 | Canvas | 아키텍처 다이어그램 (step 애니메이션) |
+| 5 | Content | 코드 블록 하이라이트 |
+| 6 | Quiz | 인터랙티브 퀴즈 |
+| 7 | Content | 핵심 정리 (블록 프래그먼트) |
 
 ## 데모
 
-:::info
-실제 렌더링된 프레젠테이션 데모는 향후 `/oh-my-cloud-skills/demos/basic-presentation/`에서 제공될 예정입니다.
-:::
+<DemoEmbed
+  src="/oh-my-cloud-skills/demos/remarp-source/index.html"
+  title="Remarp Feature Tour — 7 슬라이드 인터랙티브 데모"
+  height="600px"
+  command="python3 remarp_to_slides.py build example.remarp.md"
+  remarpSource="example.remarp.md"
+/>
 
 ## 주요 기능 하이라이트
 
-### 프래그먼트
+### Click 애니메이션
 
 ```markdown
-- 첫 번째 {.click}
-- 두 번째 {.click}
+- Remarp는 마크다운 기반입니다 {.click}
+- 슬라이드 구분은 `---` 로 합니다 {.click}
+```
+
+### Compare 레이아웃
+
+```markdown
+@type: compare
+
+::: left
+### Marp (기존)
+:::
+
+::: right
+### Remarp (확장)
+:::
 ```
 
 ### Canvas DSL
 
 ```markdown
 :::canvas
-icon lambda "Lambda" at 200,150 size 48 step 2
-arrow trigger -> lambda "invoke" step 4
+icon gw "API-Gateway" at 100,150 size 48 step 1
+box api "API Layer" at 75,210 size 100,30 color #FF9900 step 1
+arrow api -> compute "invoke" step 4
 :::
+```
+
+### 퀴즈
+
+```markdown
+@type: quiz
+
+**Q1: Remarp 슬라이드 구분 기호는?**
+- [ ] `===`
+- [x] `---`
 ```
 
 ### 스피커 노트
 
 ```markdown
 :::notes
-{timing: 3min}
+{timing: 2min}
 {cue: demo}
 설명 내용...
-:::
-```
-
-### 레이아웃
-
-```markdown
-::: left
-왼쪽 내용
-:::
-
-::: right
-오른쪽 내용
 :::
 ```
