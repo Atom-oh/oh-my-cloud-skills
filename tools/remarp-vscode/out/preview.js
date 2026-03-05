@@ -101,6 +101,25 @@ class RemarpPreviewPanel {
             this._updateContent();
         }, 300);
     }
+    _parseFrontmatter() {
+        const text = this._document.getText();
+        const match = text.match(/^---\s*\n([\s\S]*?)\n---/);
+        if (!match) {
+            return {};
+        }
+        const result = {};
+        for (const line of match[1].split('\n')) {
+            const kv = line.match(/^\s*(\w+):\s*"?([^"#]*?)"?\s*(?:#.*)?$/);
+            if (kv) {
+                result[kv[1].trim()] = kv[2].trim();
+            }
+        }
+        // Normalize Marp aliases: paginate → pagination
+        if (result['paginate'] && !result['pagination']) {
+            result['pagination'] = result['paginate'];
+        }
+        return result;
+    }
     _parseSlides() {
         const text = this._document.getText();
         const lines = text.split('\n');
@@ -246,7 +265,35 @@ class RemarpPreviewPanel {
 </html>`;
     }
     _getHtmlForSlide(slide, totalSlides) {
-        const renderedContent = this._renderMarkdown(slide.content);
+        const { html: renderedContent, notes: rawNotes, notesArg } = this._renderMarkdown(slide.content);
+        const hasNotes = !!rawNotes;
+        const fm = this._parseFrontmatter();
+        // Extract @type and @layout for slide-level CSS classes
+        const slideType = slide.type || 'content';
+        const layoutMatch = slide.content.match(/^@layout\s+(\S+)/m);
+        const slideLayout = layoutMatch ? layoutMatch[1] : '';
+        const slideClasses = ['slide', `slide-type-${slideType}`, slideLayout ? `slide-layout-${slideLayout}` : ''].filter(Boolean).join(' ');
+        // Global styles from frontmatter directives
+        const bgColor = fm['backgroundColor'] || '';
+        const bgImage = fm['backgroundImage'] || '';
+        const textColor = fm['color'] || '';
+        const headerText = fm['header'] || '';
+        const footerText = fm['footer'] || fm['theme'] || ''; // top-level footer only
+        const showPagination = fm['pagination'] !== 'false';
+        const bodyBg = bgColor || '#1e1e1e';
+        const slideBg = bgColor || '#252526';
+        const slideBgImage = bgImage ? `background-image: ${bgImage.startsWith('url(') ? bgImage : `url(${bgImage})`};` : '';
+        const slideColor = textColor || '#e0e0e0';
+        const headingColor = textColor || '#fff';
+        const headerHtml = headerText
+            ? `<div class="slide-header">${this._escapeHtml(headerText)}</div>`
+            : '';
+        const footerHtml = footerText
+            ? `<div class="slide-footer">${this._escapeHtml(footerText)}</div>`
+            : '';
+        const paginationHtml = showPagination
+            ? `<div class="slide-pagination">${slide.index + 1} / ${totalSlides}</div>`
+            : '';
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -259,8 +306,8 @@ class RemarpPreviewPanel {
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #1e1e1e;
-            color: #e0e0e0;
+            background: ${bodyBg};
+            color: ${slideColor};
             margin: 0;
             padding: 0;
             height: 100vh;
@@ -313,21 +360,60 @@ class RemarpPreviewPanel {
         }
         .slide-container {
             flex: 1;
-            overflow: auto;
-            padding: 40px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
         }
-        .slide {
-            background: #252526;
+        .slide-wrapper {
+            width: 960px;
+            transform-origin: center center;
             border-radius: 8px;
-            padding: 40px;
-            max-width: 960px;
-            margin: 0 auto;
-            min-height: 400px;
+            overflow: hidden;
             box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
         }
-        h1 { font-size: 2.5em; margin-top: 0; color: #fff; }
-        h2 { font-size: 2em; color: #fff; }
-        h3 { font-size: 1.5em; color: #ddd; }
+        .slide {
+            background: ${slideBg};
+            ${slideBgImage}
+            background-size: cover;
+            padding: 40px;
+            width: 960px;
+            height: 540px;
+            position: relative;
+            overflow: auto;
+        }
+        .slide-header {
+            position: absolute;
+            top: 12px;
+            left: 40px;
+            right: 40px;
+            font-size: 0.75em;
+            color: ${headingColor};
+            opacity: 0.7;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 6px;
+        }
+        .slide-footer {
+            position: absolute;
+            bottom: 12px;
+            left: 40px;
+            right: 40px;
+            font-size: 0.7em;
+            color: ${slideColor};
+            opacity: 0.6;
+        }
+        .slide-pagination {
+            position: absolute;
+            bottom: 12px;
+            right: 40px;
+            font-size: 0.7em;
+            color: ${slideColor};
+            opacity: 0.5;
+        }
+        h1 { font-size: 2.5em; margin-top: 0; color: ${headingColor}; }
+        h2 { font-size: 2em; color: ${headingColor}; }
+        h3 { font-size: 1.5em; color: ${headingColor}; }
         p { line-height: 1.6; }
         code {
             background: #1e1e1e;
@@ -356,14 +442,52 @@ class RemarpPreviewPanel {
         .block-tag {
             color: #4ec9b0;
         }
-        .notes-block {
-            background: #2d2d2d;
-            border-left: 4px solid #888;
-            padding: 12px;
-            margin: 16px 0;
-            font-style: italic;
-            color: #999;
-        }
+        /* Column layouts */
+        .columns-2, .columns-3 { display: flex; gap: 24px; margin: 16px 0; align-items: flex-start; }
+        .columns-2 .col { flex: 1; min-width: 0; }
+        .columns-3 .col { flex: 1; min-width: 0; }
+
+        /* Grid cells */
+        .grid-cells { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 16px 0; }
+        .cell { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 16px; }
+
+        /* Click blocks */
+        .click-block { border-left: 3px solid var(--accent, #6c5ce7); padding: 12px 16px; margin: 12px 0; background: rgba(108,92,231,0.08); border-radius: 0 8px 8px 0; }
+
+        /* Canvas placeholder */
+        .canvas-placeholder { background: rgba(255,255,255,0.03); border: 2px dashed rgba(255,255,255,0.15); border-radius: 8px; padding: 24px; text-align: center; color: rgba(255,255,255,0.4); font-style: italic; margin: 16px 0; }
+
+        /* Tab blocks */
+        .tab-block { border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; margin: 8px 0; overflow: hidden; }
+        .tab-title { background: rgba(255,255,255,0.08); padding: 8px 16px; font-weight: 600; font-size: 0.85em; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .tab-content { padding: 12px 16px; }
+
+        /* Timeline steps */
+        .timeline-step { display: flex; gap: 16px; margin: 12px 0; align-items: flex-start; }
+        .step-label { background: var(--accent, #6c5ce7); color: white; padding: 4px 12px; border-radius: 16px; font-size: 0.8em; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+
+        /* List items */
+        .list-item { padding: 8px 16px; margin: 4px 0; border-left: 2px solid rgba(255,255,255,0.15); }
+
+        /* Quiz options */
+        .quiz-option { padding: 10px 16px; margin: 6px 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; cursor: default; }
+        .quiz-option:hover { border-color: var(--accent, #6c5ce7); }
+        .quiz-option.correct { border-color: #27ae60; background: rgba(39,174,96,0.08); }
+
+        /* Fragment blocks */
+        .fragment-block { padding: 8px 0; }
+
+        /* Inline click indicator */
+        .click-indicator { opacity: 0.5; font-size: 0.75em; color: var(--accent, #6c5ce7); margin-left: 4px; }
+
+        /* Notes panel (inside slide-wrapper, below slide) */
+        .notes-panel { background: #1a1a2e; border-top: 1px solid #3c3c3c; padding: 12px 20px; max-height: 150px; overflow-y: auto; }
+        /* notes-marker removed — no longer used */
+        .notes-keyword { color: #4ec9b0; }
+        .notes-arg { color: #ce9178; }
+        .notes-panel-content { font-size: 0.85em; color: #ccc; line-height: 1.5; padding: 2px 0; }
+        .notes-timing { color: #ce9178; font-weight: 600; margin: 0 2px; }
+        .notes-cue { color: #3498db; font-weight: 600; margin: 0 2px; }
         blockquote {
             border-left: 4px solid #0e639c;
             margin: 16px 0;
@@ -404,8 +528,16 @@ class RemarpPreviewPanel {
         </div>
     </div>
     <div class="slide-container">
-        <div class="slide">
-            ${renderedContent}
+        <div class="slide-wrapper">
+            <div class="${slideClasses}">
+                ${headerHtml}
+                ${renderedContent}
+                ${footerHtml}
+                ${paginationHtml}
+            </div>${hasNotes ? `
+            <div class="notes-panel">
+                <div class="notes-panel-content">${this._styleNotes(rawNotes)}</div>
+            </div>` : ''}
         </div>
     </div>
     <script>
@@ -426,24 +558,195 @@ class RemarpPreviewPanel {
                 prevSlide();
             }
         });
+
+        function scaleSlide() {
+            const container = document.querySelector('.slide-container');
+            const wrapper = document.querySelector('.slide-wrapper');
+            if (!container || !wrapper) return;
+            const cw = container.clientWidth - 32;
+            const ch = container.clientHeight - 32;
+            const wrapperHeight = wrapper.scrollHeight;
+            const scale = Math.min(cw / 960, ch / wrapperHeight, 1);
+            wrapper.style.transform = 'scale(' + scale + ')';
+        }
+        scaleSlide();
+        window.addEventListener('resize', scaleSlide);
+        new ResizeObserver(scaleSlide).observe(document.querySelector('.slide-container'));
     </script>
 </body>
 </html>`;
     }
-    _renderMarkdown(content) {
-        // Remove directives for display (but show them styled)
+    _escapeHtml(text) {
+        return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    _styleNotes(raw) {
+        let notes = raw;
+        notes = notes.replace(/\{timing:\s*([^}]+)\}/g, '<span class="notes-timing">&#128339; $1</span>');
+        notes = notes.replace(/\{cue:\s*([^}]+)\}/g, '<span class="notes-cue">&#10148; $1</span>');
+        return notes;
+    }
+    _parseBlocks(content) {
+        // Parse :::block ... ::: structures into HTML layout elements.
+        // Returns text with placeholders (\x00BLK0\x00), an array of rendered HTML,
+        // and collected notes content (extracted from :::notes blocks).
+        const lines = content.split('\n');
+        const result = [];
+        const rendered = [];
+        const notesCollector = [];
+        let notesArg = '';
+        let i = 0;
+        while (i < lines.length) {
+            const blockMatch = lines[i].match(/^:::\s*(\w+)(?:\s+(.*))?$/);
+            if (blockMatch) {
+                const blockType = blockMatch[1];
+                const blockArg = blockMatch[2]?.trim() || '';
+                // Collect inner content until closing :::
+                const innerLines = [];
+                i++;
+                while (i < lines.length && !/^:::\s*$/.test(lines[i])) {
+                    innerLines.push(lines[i]);
+                    i++;
+                }
+                i++; // skip closing :::
+                const inner = innerLines.join('\n');
+                const emit = (html) => {
+                    const idx = rendered.length;
+                    rendered.push(html);
+                    result.push(`\x00BLK${idx}\x00`);
+                };
+                switch (blockType) {
+                    case 'canvas':
+                        emit(`<div class="canvas-placeholder">&#9881; Canvas DSL (preview unavailable)</div>`);
+                        break;
+                    case 'left': {
+                        const leftHtml = this._renderInlineMarkdown(inner);
+                        let rightHtml = '';
+                        while (i < lines.length && lines[i].trim() === '') {
+                            i++;
+                        }
+                        const rightMatch = i < lines.length && lines[i].match(/^:::\s*right(?:\s+.*)?$/);
+                        if (rightMatch) {
+                            const rightInner = [];
+                            i++;
+                            while (i < lines.length && !/^:::\s*$/.test(lines[i])) {
+                                rightInner.push(lines[i]);
+                                i++;
+                            }
+                            i++;
+                            rightHtml = this._renderInlineMarkdown(rightInner.join('\n'));
+                        }
+                        emit(`<div class="columns-2"><div class="col">${leftHtml}</div><div class="col">${rightHtml}</div></div>`);
+                        break;
+                    }
+                    case 'right':
+                        emit(`<div class="columns-2"><div class="col"></div><div class="col">${this._renderInlineMarkdown(inner)}</div></div>`);
+                        break;
+                    case 'col': {
+                        const cols = [this._renderInlineMarkdown(inner)];
+                        while (i < lines.length) {
+                            let peek = i;
+                            while (peek < lines.length && lines[peek].trim() === '') {
+                                peek++;
+                            }
+                            const nextCol = peek < lines.length && lines[peek].match(/^:::\s*col(?:\s+.*)?$/);
+                            if (!nextCol) {
+                                break;
+                            }
+                            i = peek + 1;
+                            const colInner = [];
+                            while (i < lines.length && !/^:::\s*$/.test(lines[i])) {
+                                colInner.push(lines[i]);
+                                i++;
+                            }
+                            i++;
+                            cols.push(this._renderInlineMarkdown(colInner.join('\n')));
+                        }
+                        const colClass = cols.length <= 2 ? 'columns-2' : 'columns-3';
+                        emit(`<div class="${colClass}">${cols.map(c => `<div class="col">${c}</div>`).join('')}</div>`);
+                        break;
+                    }
+                    case 'cell': {
+                        const cells = [this._renderInlineMarkdown(inner)];
+                        while (i < lines.length) {
+                            let peek = i;
+                            while (peek < lines.length && lines[peek].trim() === '') {
+                                peek++;
+                            }
+                            const nextCell = peek < lines.length && lines[peek].match(/^:::\s*cell(?:\s+.*)?$/);
+                            if (!nextCell) {
+                                break;
+                            }
+                            i = peek + 1;
+                            const cellInner = [];
+                            while (i < lines.length && !/^:::\s*$/.test(lines[i])) {
+                                cellInner.push(lines[i]);
+                                i++;
+                            }
+                            i++;
+                            cells.push(this._renderInlineMarkdown(cellInner.join('\n')));
+                        }
+                        emit(`<div class="grid-cells">${cells.map(c => `<div class="cell">${c}</div>`).join('')}</div>`);
+                        break;
+                    }
+                    case 'click':
+                        emit(`<div class="click-block">${this._renderInlineMarkdown(inner)}</div>`);
+                        break;
+                    case 'tab':
+                        emit(`<div class="tab-block"><div class="tab-title">${this._escapeHtml(blockArg)}</div><div class="tab-content">${this._renderInlineMarkdown(inner)}</div></div>`);
+                        break;
+                    case 'item':
+                        emit(`<div class="list-item">${this._renderInlineMarkdown(inner)}</div>`);
+                        break;
+                    case 'step':
+                        emit(`<div class="timeline-step"><span class="step-label">${this._escapeHtml(blockArg)}</span><div>${this._renderInlineMarkdown(inner)}</div></div>`);
+                        break;
+                    case 'option':
+                        emit(`<div class="quiz-option">${this._renderInlineMarkdown(inner)}</div>`);
+                        break;
+                    case 'fragment':
+                        emit(`<div class="fragment-block">${this._renderInlineMarkdown(inner)}</div>`);
+                        break;
+                    case 'notes':
+                        // Collect notes for the panel below the slide
+                        notesArg = blockArg; // e.g. {timing: 3min}
+                        if (inner.trim()) {
+                            notesCollector.push(inner);
+                        }
+                        break;
+                    default:
+                        emit(`<div class="block-tag">::: ${blockType} ${blockArg}</div>${this._renderInlineMarkdown(inner)}`);
+                        break;
+                }
+            }
+            else {
+                result.push(lines[i]);
+                i++;
+            }
+        }
+        return { text: result.join('\n'), rendered, notes: notesCollector.join('\n'), notesArg };
+    }
+    _renderInlineMarkdown(content) {
         let html = content;
+        // Preserve code blocks with placeholders
+        const codeBlocks = [];
+        html = html.replace(/```(\w*)[^\n]*\n([\s\S]*?)```/g, (_match, lang, code) => {
+            const idx = codeBlocks.length;
+            codeBlocks.push(`<pre><code class="language-${lang}">${this._escapeHtml(code)}</code></pre>`);
+            return `\x00CODEBLOCK${idx}\x00`;
+        });
         // Convert directives to styled spans
         html = html.replace(/^(@\w+(?:-\w+)*)\s+(.*)$/gm, '<div class="directive">$1 <span style="color: #ce9178;">$2</span></div>');
-        // Convert ::: blocks
-        html = html.replace(/^:::\s*(\w+)(?:\s+(.*))?$/gm, '<div class="block-tag">::: $1 <span style="color: #ce9178;">$2</span></div>');
-        html = html.replace(/^:::$/gm, '<div class="block-tag">:::</div>');
-        // Handle notes blocks specially
-        html = html.replace(/:::notes([\s\S]*?):::/g, '<div class="notes-block">$1</div>');
+        // Quiz checkboxes: - [ ] and - [x]
+        html = html.replace(/^- \[x\]\s+(.*)$/gm, '<div class="quiz-option correct">&#9679; $1</div>');
+        html = html.replace(/^- \[ \]\s+(.*)$/gm, '<div class="quiz-option">&#9675; $1</div>');
         // Convert headers
         html = html.replace(/^### (.*)$/gm, '<h3>$1</h3>');
         html = html.replace(/^## (.*)$/gm, '<h2>$1</h2>');
         html = html.replace(/^# (.*)$/gm, '<h1>$1</h1>');
+        // Convert images (before links to avoid conflict)
+        html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+        // Convert links
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
         // Convert bold and italic
         html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
         html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
@@ -451,12 +754,10 @@ class RemarpPreviewPanel {
         html = html.replace(/_(.+?)_/g, '<em>$1</em>');
         // Convert inline code
         html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-        // Convert code blocks
-        html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>');
-        // Convert links
-        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
-        // Convert images
-        html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+        // {.click} inline syntax
+        html = html.replace(/\{\.click\s+animation=([^}\s]+)\}/g, '<span class="click-indicator">[click: $1]</span>');
+        html = html.replace(/\{\.click\s+order=(\d+)\}/g, '<span class="click-indicator">[click: #$1]</span>');
+        html = html.replace(/\{\.click\}/g, '<span class="click-indicator">[click]</span>');
         // Convert unordered lists
         html = html.replace(/^[-*] (.*)$/gm, '<li>$1</li>');
         html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
@@ -479,7 +780,18 @@ class RemarpPreviewPanel {
         html = html.replace(/(<\/pre>)<\/p>/g, '$1');
         html = html.replace(/<p>(<blockquote>)/g, '$1');
         html = html.replace(/(<\/blockquote>)<\/p>/g, '$1');
+        // Restore code blocks
+        html = html.replace(/\x00CODEBLOCK(\d+)\x00/g, (_match, idx) => codeBlocks[parseInt(idx)]);
         return html;
+    }
+    _renderMarkdown(content) {
+        // 1. Parse ::: blocks — extracts notes, returns placeholders for rendered blocks
+        const { text, rendered, notes, notesArg } = this._parseBlocks(content);
+        // 2. Apply inline markdown only to non-block text segments
+        let html = this._renderInlineMarkdown(text);
+        // 3. Restore rendered block HTML
+        html = html.replace(/\x00BLK(\d+)\x00/g, (_match, idx) => rendered[parseInt(idx)]);
+        return { html, notes, notesArg };
     }
     dispose() {
         RemarpPreviewPanel.currentPanel = undefined;

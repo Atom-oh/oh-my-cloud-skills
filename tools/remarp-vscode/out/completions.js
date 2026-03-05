@@ -78,6 +78,14 @@ class RemarpCompletionProvider {
             'blur-in', 'blur-out',
             'none'
         ];
+        this.frontmatterDirectives = [
+            { name: 'footer', description: 'Global footer text (Marp-compatible)', snippet: 'footer: "${1:© 2025 Company}"' },
+            { name: 'paginate', description: 'Show slide numbers (Marp-compatible)', snippet: 'paginate: ${1|true,false|}' },
+            { name: 'backgroundColor', description: 'Global slide background color', snippet: 'backgroundColor: "${1:#1a1d2e}"' },
+            { name: 'backgroundImage', description: 'Global slide background image', snippet: 'backgroundImage: "url(${1:path/to/image.png})"' },
+            { name: 'header', description: 'Global header text', snippet: 'header: "${1:Header Text}"' },
+            { name: 'color', description: 'Global text color', snippet: 'color: "${1:#ffffff}"' },
+        ];
         this.canvasKeywords = [
             'box', 'circle', 'ellipse', 'rect', 'diamond', 'hexagon', 'triangle',
             'line', 'arrow', 'polyline', 'polygon', 'path',
@@ -89,6 +97,10 @@ class RemarpCompletionProvider {
     }
     provideCompletionItems(document, position, _token, _context) {
         const linePrefix = document.lineAt(position).text.substring(0, position.character);
+        // Frontmatter directive completions (between --- markers)
+        if (this._isInFrontmatter(document, position)) {
+            return this._getFrontmatterCompletions(linePrefix);
+        }
         // Check if we're in a canvas block
         if (this._isInCanvasBlock(document, position)) {
             return this._getCanvasCompletions(linePrefix);
@@ -119,6 +131,34 @@ class RemarpCompletionProvider {
             return this._getClickAttributeCompletions();
         }
         return undefined;
+    }
+    _isInFrontmatter(document, position) {
+        // Frontmatter must start at line 0 with ---
+        if (document.lineAt(0).text.trim() !== '---') {
+            return false;
+        }
+        // Find closing --- (skip line 0)
+        for (let i = 1; i <= position.line; i++) {
+            if (document.lineAt(i).text.trim() === '---') {
+                // If closing --- is at or before cursor line, we're past frontmatter
+                return i > position.line;
+            }
+        }
+        // No closing --- found yet — still in frontmatter
+        return true;
+    }
+    _getFrontmatterCompletions(linePrefix) {
+        return this.frontmatterDirectives
+            .filter(d => !linePrefix.includes(':')) // Only suggest keys, not after colon
+            .map(directive => {
+            const item = new vscode.CompletionItem(directive.name, vscode.CompletionItemKind.Property);
+            item.detail = directive.description;
+            if (directive.snippet) {
+                item.insertText = new vscode.SnippetString(directive.snippet);
+            }
+            item.documentation = new vscode.MarkdownString(`Marp-compatible frontmatter directive.\n\nAlso available as nested Remarp syntax.`);
+            return item;
+        });
     }
     _isInCanvasBlock(document, position) {
         // Look backwards for :::canvas

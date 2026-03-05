@@ -13,6 +13,7 @@ export declare class RemarpPreviewPanel {
     static syncCursor(editor: vscode.TextEditor): void;
     private constructor();
     private _debouncedUpdate;
+    private _parseFrontmatter;
     private _parseSlides;
     private _extractTitle;
     private _extractType;
@@ -22,6 +23,10 @@ export declare class RemarpPreviewPanel {
     private _prevSlide;
     private _getEmptyHtml;
     private _getHtmlForSlide;
+    private _escapeHtml;
+    private _styleNotes;
+    private _parseBlocks;
+    private _renderInlineMarkdown;
     private _renderMarkdown;
     dispose(): void;
 }
