@@ -11,7 +11,6 @@ AWS/EKS 네트워킹 진단 전문 에이전트입니다. VPC CNI, 로드 밸런
 
 | 항목 | 값 |
 |------|-----|
-| Model | sonnet |
 | Tools | Read, Write, Glob, Grep, Bash, AskUserQuestion |
 
 ## 트리거 키워드

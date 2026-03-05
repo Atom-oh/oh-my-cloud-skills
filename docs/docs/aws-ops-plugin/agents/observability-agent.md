@@ -11,7 +11,6 @@ AWS 관측성 전문 에이전트입니다. CloudWatch, AMP, AMG, ADOT, Promethe
 
 | 항목 | 값 |
 |------|-----|
-| Model | sonnet |
 | Tools | Read, Write, Glob, Grep, Bash, AskUserQuestion |
 
 ## 트리거 키워드

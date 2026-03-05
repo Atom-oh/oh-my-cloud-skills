@@ -11,7 +11,6 @@ title: "Content Review Agent"
 
 | 항목 | 값 |
 |------|-----|
-| **모델** | sonnet |
 | **도구** | Read, Write, Glob, Grep, Bash, AskUserQuestion |
 
 ## 트리거 키워드
@@ -130,8 +129,8 @@ HTML 기반 콘텐츠에 대해 Playwright MCP 도구로 브라우저 검증:
 | No Hallucination | 12 | 발견당 -4 |
 | Language Consistency | 8 | 오류당 -2 |
 | No Sensitive Data | 12 | Critical: -12 |
-| Content-Type Quality | 4 | 오류당 -2 |
-| Icon Appropriateness | 3 | Null: -3 |
+| Content-Type Quality | 2 | 오류당 -2 |
+| Icon Usage & Appropriateness | 5 | AWS 슬라이드 누락: 각 -1 (최대 -3), null 참조: -5, 부적절: -2 |
 
 **Visual Testing (10점 — HTML 콘텐츠만):**
 

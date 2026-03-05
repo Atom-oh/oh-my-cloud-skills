@@ -11,12 +11,7 @@ title: Ops Coordinator Agent
 
 | 항목 | 값 |
 |------|-----|
-| Model | **opus** |
 | Tools | Read, Write, Glob, Grep, Bash, AskUserQuestion |
-
-:::info Opus 모델 사용
-Ops Coordinator Agent는 다른 에이전트들과 달리 **opus** 모델을 사용합니다. 복잡한 인시던트 분석과 멀티 에이전트 조율에 더 높은 추론 능력이 필요하기 때문입니다.
-:::
 
 ## 트리거 키워드
 

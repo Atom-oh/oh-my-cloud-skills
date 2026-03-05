@@ -17,17 +17,17 @@ AWS Ops Plugin은 AWS/EKS 인프라 운영 및 트러블슈팅을 위한 Claude 
 
 ## 에이전트 목록
 
-| Agent | Model | 용도 |
-|-------|-------|------|
-| `eks-agent` | sonnet | EKS 클러스터 관리, 노드 그룹, 업그레이드, 애드온, 5분 트리아지 |
-| `network-agent` | sonnet | VPC CNI, ALB/NLB, DNS, Security Groups, IP 고갈 |
-| `iam-agent` | sonnet | IRSA, Pod Identity, RBAC, aws-auth, 정책 검증 |
-| `observability-agent` | sonnet | CloudWatch, AMP, AMG, ADOT, Prometheus/Grafana, X-Ray |
-| `storage-agent` | sonnet | EBS/EFS/FSx CSI, PVC 바인딩, 마운트 오류 |
-| `database-agent` | sonnet | RDS/Aurora 연결, DynamoDB 스로틀링, ElastiCache |
-| `cost-agent` | sonnet | awspricing MCP 비용 분석, 절감 전략 |
-| `analytics-agent` | sonnet | OpenSearch, ClickHouse, Athena, QuickSight, Kinesis |
-| `ops-coordinator-agent` | opus | 멀티 도메인 인시던트 조율, 심각도 평가, 팀 오케스트레이션 |
+| Agent | 용도 |
+|-------|------|
+| `eks-agent` | EKS 클러스터 관리, 노드 그룹, 업그레이드, 애드온, 5분 트리아지 |
+| `network-agent` | VPC CNI, ALB/NLB, DNS, Security Groups, IP 고갈 |
+| `iam-agent` | IRSA, Pod Identity, RBAC, aws-auth, 정책 검증 |
+| `observability-agent` | CloudWatch, AMP, AMG, ADOT, Prometheus/Grafana, X-Ray |
+| `storage-agent` | EBS/EFS/FSx CSI, PVC 바인딩, 마운트 오류 |
+| `database-agent` | RDS/Aurora 연결, DynamoDB 스로틀링, ElastiCache |
+| `cost-agent` | awspricing MCP 비용 분석, 절감 전략 |
+| `analytics-agent` | OpenSearch, ClickHouse, Athena, QuickSight, Kinesis |
+| `ops-coordinator-agent` | 멀티 도메인 인시던트 조율, 심각도 평가, 팀 오케스트레이션 |
 
 ## 스킬 목록
 
@@ -108,10 +108,10 @@ flowchart LR
 
 | 도메인 | 영어 키워드 | 한국어 키워드 |
 |--------|-------------|---------------|
-| EKS | "EKS troubleshoot", "cluster issue", "node NotReady", "pod crash" | "노드 문제", "클러스터 장애", "EKS 업그레이드" |
+| EKS | "EKS troubleshoot", "cluster issue", "node NotReady", "pod crash", "EKS upgrade", "add-on" | "노드 문제", "클러스터 장애", "EKS 업그레이드" |
 | Network | "VPC CNI", "IP exhaustion", "load balancer", "ALB", "NLB" | "네트워크 오류", "IP 부족", "로드밸런서" |
-| IAM | "IRSA", "Pod Identity", "RBAC", "aws-auth", "AccessDenied" | "권한 오류", "인증 실패", "보안 설정" |
-| Observability | "CloudWatch", "Prometheus", "Grafana", "ADOT", "Container Insights", "alarm" | "모니터링", "로그 분석", "알람 설정", "프로메테우스", "그라파나" |
+| IAM | "IRSA", "Pod Identity", "RBAC", "aws-auth", "IAM role", "permission denied", "AccessDenied" | "권한 오류", "인증 실패", "보안 설정" |
+| Observability | "CloudWatch", "Prometheus", "Grafana", "ADOT", "Container Insights", "alarm", "X-Ray" | "모니터링", "로그 분석", "알람 설정", "메트릭", "프로메테우스", "그라파나" |
 | Analytics | "OpenSearch", "Elasticsearch", "ClickHouse", "Athena", "QuickSight", "Kinesis" | "데이터 분석", "로그 분석 파이프라인", "검색 엔진", "대시보드" |
 | Storage | "EBS CSI", "EFS CSI", "FSx", "PVC", "mount error" | "스토리지 오류", "볼륨 마운트", "PVC 바인딩" |
 | Database | "RDS", "Aurora", "DynamoDB", "ElastiCache", "throttling" | "DB 연결", "데이터베이스 오류", "스로틀링" |

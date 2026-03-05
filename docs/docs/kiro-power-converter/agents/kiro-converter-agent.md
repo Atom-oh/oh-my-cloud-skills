@@ -187,7 +187,7 @@ convert aws-ops-plugin to kiro power and install globally
   Output:       /tmp/aws-ops-power
   Target:       export
 ============================================================
-  Agents:       8
+  Agents:       9
   Skills:       5
   References:   15
   MCP config:   Yes

@@ -97,9 +97,9 @@ Canvas DSL에서 색상 키워드로 변수를 참조할 수 있습니다:
 
 ```markdown
 :::canvas
-box api "API Gateway" at 100,150 size 120x60 color=accent
-box lambda "Lambda" at 300,150 size 120x60 color=green
-box error "Error" at 500,150 size 120x60 color=red
+box api "API Gateway" at 100,150 size 120,60 color #FF9900
+box lambda "Lambda" at 300,150 size 120,60 color #4CAF50
+box error "Error" at 500,150 size 120,60 color #f44336
 :::
 ```
 
