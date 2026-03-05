@@ -7,16 +7,16 @@ import DemoEmbed from '@site/src/components/DemoEmbed';
 
 # 기본 프레젠테이션 데모
 
-AWS AIOps 마스터클래스 — Block 1 프레젠테이션입니다. Remarp DSL로 작성된 마크다운에서 인터랙티브 HTML 슬라이드쇼로 자동 변환됩니다.
+AIOps Deep Dive — Block 1: AIOps Foundations & Observability 프레젠테이션입니다. Remarp DSL로 작성된 마크다운에서 인터랙티브 HTML 슬라이드쇼로 자동 변환됩니다.
 
 ## 데모
 
 <DemoEmbed
-  src="/oh-my-cloud-skills/demos/basic-presentation/index.html"
-  title="AIOps 마스터클래스 — Block 1: AIOps 기초와 AWS Observability 스택"
+  src="/oh-my-cloud-skills/demos/full-presentation/01-foundations.html"
+  title="AIOps Deep Dive — Block 1: AIOps Foundations & Observability"
   height="600px"
-  command="python3 remarp_to_slides.py build aiops-masterclass/"
-  remarpSource="01-fundamentals.remarp.md"
+  command="python3 remarp_to_slides.py build aiops-deep-dive/"
+  remarpSource="01-foundations.md"
 />
 
 ## 스크린샷
@@ -36,10 +36,10 @@ AWS AIOps 마스터클래스 — Block 1 프레젠테이션입니다. Remarp DSL
 ## 생성 프롬프트
 
 ```
-"AWS AIOps 마스터클래스 프레젠테이션 만들어줘.
-3블록 구성 (각 30분): Block 1은 AIOps 기초와 AWS Observability 스택,
-Block 2는 AI 기반 이상 탐지와 근본 원인 분석,
-Block 3는 AIOps 자동화와 운영 성숙도.
+"AIOps Deep Dive 프레젠테이션 만들어줘.
+3블록 구성 (각 30분): Block 1은 AIOps Foundations & Observability,
+Block 2는 ML-Powered Operations,
+Block 3는 Automation & Maturity Model.
 PPTX 테마 적용하고 인터랙티브 슬라이드 포함."
 ```
 
@@ -48,30 +48,40 @@ PPTX 테마 적용하고 인터랙티브 슬라이드 포함."
 ```markdown
 ---
 remarp: true
-block: fundamentals
+block: foundations
 ---
 
-# AWS AIOps 마스터클래스
-## 클라우드 운영의 지능화 여정
+---
+@type: cover
+@background: linear-gradient(135deg, #232F3E 0%, #0a1628 50%, #1a1a2e 100%)
+
+# AIOps Deep Dive
+AI-Powered Cloud Operations — 90min L300
+
+Junseok Oh, Sr. Solutions Architect, AWS
 
 ---
+@type: title
 
-# Block 1: AIOps 기초와 AWS Observability 스택
-## 전통적 운영에서 AI 기반 운영으로의 전환
+# Block 1: AIOps Foundations & Observability
+클라우드 운영의 새로운 패러다임
 
 ---
+@type: compare
 
-## AIOps란 무엇인가?
+## Traditional Ops vs AIOps
 
-**Artificial Intelligence for IT Operations**
+### Traditional Ops
+- 수동 모니터링 & 대시보드 확인
+- 정적 임계값 기반 알림
+- 사후 대응 (Reactive)
+- MTTR: **4시간 이상**
 
-> "AIOps 플랫폼은 빅데이터, 현대적 머신러닝 및 기타 고급 분석 기술을
-> 결합하여 가시성을 향상시키고, 노이즈를 줄이며,
-> IT 운영 관리의 문제를 자동으로 해결합니다."
-
-**Gartner 정의** {.click}
-**핵심 목표** {.click}
-**주요 기술** {.click}
+### AIOps
+- 자동화된 이상 탐지
+- ML 기반 동적 기준선
+- 사전 예방 (Proactive)
+- MTTR: **30분 이하**
 ```
 
 ## 주요 기능

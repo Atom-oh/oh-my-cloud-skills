@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIOps Deep Dive — AI-Powered Cloud Operations</title>
+  <link rel="stylesheet" href="../common/theme.css">
+  
+  
+  
+  
+</head>
+<body>
+<div class="slide-deck">
+<div class="slide title-slide">
+    <h1>Block 3: Automation & Maturity Model</h1>
+  <p class="meta">자동화 전략과 AIOps 성숙도 로드맵</p>
+</div>
+
+<div class="slide">
+  <div class="slide-header"><h2>AIOps 성숙도 단계</h2></div>
+  <div class="slide-body">
+    <div class="timeline">
+            <div class="timeline-step" data-step="1">
+      <div class="timeline-dot" style="width:1.67rem;height:1.67rem;font-size:0.82rem">1</div>
+      <div class="timeline-label" style="max-width:5rem">L1: Reactive</div>
+      <div class="timeline-desc">수동 모니터링, 정적 임계값, 사후 대응, 개별 도구 사용</div>
+    </div>
+      <div class="timeline-connector"></div>
+      <div class="timeline-step" data-step="2">
+      <div class="timeline-dot" style="width:1.67rem;height:1.67rem;font-size:0.82rem">2</div>
+      <div class="timeline-label" style="max-width:5rem">L2: Proactive</div>
+      <div class="timeline-desc">로그 통합 분석, 동적 임계값, 패턴 기반 알림, 대시보드 자동화</div>
+    </div>
+      <div class="timeline-connector"></div>
+      <div class="timeline-step" data-step="3">
+      <div class="timeline-dot" style="width:1.67rem;height:1.67rem;font-size:0.82rem">3</div>
+      <div class="timeline-label" style="max-width:5rem">L3: Predictive</div>
+      <div class="timeline-desc">ML 기반 이상 탐지, 근본 원인 자동 분석, 예측적 스케일링</div>
+    </div>
+      <div class="timeline-connector"></div>
+      <div class="timeline-step" data-step="4">
+      <div class="timeline-dot" style="width:1.67rem;height:1.67rem;font-size:0.82rem">4</div>
+      <div class="timeline-label" style="max-width:5rem">L4: Autonomous</div>
+      <div class="timeline-desc">자가 치유 시스템, 완전 자동화된 대응, 지속적 학습 및 최적화</div>
+    </div>
+    </div>
+  </div>
+  
+<script>(function() {
+  const slide = document.currentScript.closest('.slide');
+  if (!slide) return;
+  const steps = slide.querySelectorAll('.timeline-step');
+  const connectors = slide.querySelectorAll('.timeline-connector');
+  let current = 0;
+  function update() {
+    steps.forEach((s, i) => {
+      s.classList.remove('active', 'done');
+      if (i < current) s.classList.add('done');
+      else if (i === current) s.classList.add('active');
+    });
+    connectors.forEach((c, i) => {
+      c.classList.toggle('done', i < current);
+    });
+  }
+  update();
+  slide.__canvasStep = function(dir) {
+    if (dir === 'next' && current < 3) current++;
+    else if (dir === 'prev' && current > 0) current--;
+    else return (dir === 'next') ? false : false;
+    update();
+    return current;
+  };
+  slide.dataset.slideAction = 'canvas-step';
+  slide.dataset.canvasMaxStep = '3';
+})();</script>
+</div>
+
+<div class="slide">
+  <div class="slide-header"><h2>자동 복구 아키텍처</h2></div>
+  <div class="slide-body">
+    <div class="canvas-container" style="flex:1">
+      <canvas id="canvas-0"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="slide-header"><h2>EventBridge Rule — 알람 이벤트 캡처</h2></div>
+  <div class="slide-body">
+    <div class="code-block"><span class="code-label">event-rule.json</span>{
+  <span class="string">"Source"</span>: [<span class="string">"aws.cloudwatch"</span>],
+<span class="hl-line">  <span class="string">"DetailType"</span>: [<span class="string">"CloudWatch Alarm State Change"</span>],</span>
+<span class="hl-line">  <span class="string">"Detail"</span>: {</span>
+<span class="hl-line">    <span class="string">"state"</span>: {</span>
+<span class="hl-line">      <span class="string">"value"</span>: [<span class="string">"ALARM"</span>]</span>
+<span class="hl-line">    },</span>
+<span class="hl-line">    <span class="string">"alarmName"</span>: [{</span>
+      <span class="string">"prefix"</span>: <span class="string">"AIOps-"</span>
+    }],
+    <span class="string">"configuration"</span>: {
+      <span class="string">"metrics"</span>: [{
+        <span class="string">"metricStat"</span>: {
+          <span class="string">"metric"</span>: {
+            <span class="string">"namespace"</span>: [<span class="string">"AWS/EC2"</span>, <span class="string">"AWS/ECS"</span>, <span class="string">"AWS/EKS"</span>]
+          }
+        }
+      }]
+    }
+  }
+}</div>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="slide-header"><h2>Step Functions 자동 복구 워크플로우</h2></div>
+  <div class="slide-body">
+    <div class="code-block"><span class="code-label">remediation.asl.json</span>{
+  <span class="string">"Comment"</span>: <span class="string">"AIOps Auto-Remediation Workflow"</span>,
+  <span class="string">"StartAt"</span>: <span class="string">"ClassifyAlarm"</span>,
+  <span class="string">"States"</span>: {
+<span class="hl-line">    <span class="string">"ClassifyAlarm"</span>: {</span>
+<span class="hl-line">      <span class="string">"Type"</span>: <span class="string">"Choice"</span>,</span>
+<span class="hl-line">      <span class="string">"Choices"</span>: [</span>
+<span class="hl-line">        {</span>
+<span class="hl-line">          <span class="string">"Variable"</span>: <span class="string">"$.detail.alarmName"</span>,</span>
+<span class="hl-line">          <span class="string">"StringMatches"</span>: <span class="string">"AIOps-CPU-*"</span>,</span>
+<span class="hl-line">          <span class="string">"Next"</span>: <span class="string">"ScaleOutASG"</span></span>
+<span class="hl-line">        },</span>
+<span class="hl-line">        {</span>
+<span class="hl-line">          <span class="string">"Variable"</span>: <span class="string">"$.detail.alarmName"</span>,</span>
+<span class="hl-line">          <span class="string">"StringMatches"</span>: <span class="string">"AIOps-Memory-*"</span>,</span>
+          <span class="string">"Next"</span>: <span class="string">"RestartService"</span>
+        }
+      ],
+      <span class="string">"Default"</span>: <span class="string">"NotifyOnCall"</span>
+    },
+    <span class="string">"ScaleOutASG"</span>: {
+      <span class="string">"Type"</span>: <span class="string">"Task"</span>,
+      <span class="string">"Resource"</span>: <span class="string">"arn:aws:lambda:ap-northeast-2:123456789:function:scale-out"</span>,
+      <span class="string">"Next"</span>: <span class="string">"VerifyRecovery"</span>
+    },
+    <span class="string">"RestartService"</span>: {
+      <span class="string">"Type"</span>: <span class="string">"Task"</span>,
+      <span class="string">"Resource"</span>: <span class="string">"arn:aws:lambda:ap-northeast-2:123456789:function:restart-svc"</span>,
+      <span class="string">"Next"</span>: <span class="string">"VerifyRecovery"</span>
+    },
+    <span class="string">"VerifyRecovery"</span>: {
+      <span class="string">"Type"</span>: <span class="string">"Task"</span>,
+      <span class="string">"Resource"</span>: <span class="string">"arn:aws:lambda:ap-northeast-2:123456789:function:verify"</span>,
+      <span class="string">"Retry"</span>: [{<span class="string">"ErrorEquals"</span>: [<span class="string">"States.ALL"</span>], <span class="string">"MaxAttempts"</span>: 3}],
+      <span class="string">"Next"</span>: <span class="string">"NotifyResolved"</span>
+    },
+    <span class="string">"NotifyOnCall"</span>: {
+      <span class="string">"Type"</span>: <span class="string">"Task"</span>,
+      <span class="string">"Resource"</span>: <span class="string">"arn:aws:states:::sns:publish"</span>,
+      <span class="string">"Parameters"</span>: {
+        <span class="string">"TopicArn"</span>: <span class="string">"arn:aws:sns:ap-northeast-2:123456789:oncall"</span>,
+        <span class="string">"Message.$"</span>: <span class="string">"States.Format('Unhandled alarm: {}', $.detail.alarmName)"</span>
+      },
+      <span class="string">"End"</span>: <span class="keyword">true</span>
+    },
+    <span class="string">"NotifyResolved"</span>: {
+      <span class="string">"Type"</span>: <span class="string">"Task"</span>,
+      <span class="string">"Resource"</span>: <span class="string">"arn:aws:states:::sns:publish"</span>,
+      <span class="string">"Parameters"</span>: {
+        <span class="string">"TopicArn"</span>: <span class="string">"arn:aws:sns:ap-northeast-2:123456789:ops-channel"</span>,
+        <span class="string">"Message"</span>: <span class="string">"Auto-remediation completed successfully"</span>
+      },
+      <span class="string">"End"</span>: <span class="keyword">true</span>
+    }
+  }
+}</div>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="slide-header"><h2>Self-managed vs AWS Managed Observability</h2></div>
+  <div class="slide-body" data-compare-mode="side-by-side">
+    <div class="compare-toggle">
+            <button class="compare-btn active" data-compare="self-managed-kube-prometheus-stack">Self-managed (kube-prometheus-stack)</button>
+      <button class="compare-btn" data-compare="aws-managed-amp-amg">AWS Managed (AMP/AMG)</button>
+    </div>
+    <div class="col-2" style="flex:1">
+            <div class="card compare-content active compare-highlight" data-compare="self-managed-kube-prometheus-stack">
+<h3 style="color:var(--text-accent);margin-bottom:.5rem">Self-managed (kube-prometheus-stack)</h3>
+<ul><li>Prometheus + Grafana + Alertmanager</li><li>완전한 커스터마이징 가능</li><li>운영 부담: 스토리지, HA, 업그레이드</li><li>비용: EC2 인프라 직접 관리</li><li>규모: 중소형 클러스터에 적합</li></ul>
+</div>
+      <div class="card compare-content active" data-compare="aws-managed-amp-amg">
+<h3 style="color:var(--text-accent);margin-bottom:.5rem">AWS Managed (AMP/AMG)</h3>
+<ul><li>Amazon Managed Prometheus + Grafana</li><li>HA/스케일링 자동 관리</li><li>운영 부담 최소: 서버리스</li><li>비용: 수집된 샘플 당 과금</li><li>규모: 대형 멀티 클러스터에 최적</li></ul>
+</div>
+    </div>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="slide-header"><h2>환경별 AIOps 구현 패턴</h2></div>
+  <div class="slide-body">
+    <div class="tab-bar">
+            <button class="tab-btn active" data-tab="eks">EKS</button>
+      <button class="tab-btn" data-tab="ec2">EC2</button>
+      <button class="tab-btn" data-tab="lambda">Lambda</button>
+    </div>
+        <div class="tab-content active" data-tab="eks">
+<div class="code-block"><span class="comment"># ADOT Collector + AMP 연동</span>
+<span class="key">apiVersion</span>: opentelemetry.io/v1beta1
+<span class="key">kind</span>: OpenTelemetryCollector
+<span class="key">metadata</span>:
+  <span class="key">name</span>: adot-collector
+  <span class="key">namespace</span>: observability
+<span class="key">spec</span>:
+  <span class="key">mode</span>: daemonset
+  <span class="key">config</span>:
+    <span class="key">receivers</span>:
+      <span class="key">prometheus</span>:
+        <span class="key">config</span>:
+          <span class="key">scrape_configs</span>:
+            - job_name: <span class="string">'kubernetes-pods'</span>
+              <span class="key">kubernetes_sd_configs</span>:
+                - role: pod
+    <span class="key">exporters</span>:
+      <span class="key">prometheusremotewrite</span>:
+        <span class="key">endpoint</span>: https:<span class="comment">//aps-workspaces.ap-northeast-2.amazonaws.com/workspaces/ws-xxx/api/v1/remote_write</span>
+        <span class="key">auth</span>:
+          <span class="key">authenticator</span>: sigv4auth</div>
+</div>
+    <div class="tab-content" data-tab="ec2">
+<div class="code-block"><span class="comment"># CloudWatch Agent 통합 설정</span>
+{
+  <span class="string">"agent"</span>: {
+    <span class="string">"metrics_collection_interval"</span>: 60
+  },
+  <span class="string">"metrics"</span>: {
+    <span class="string">"namespace"</span>: <span class="string">"AIOps/EC2"</span>,
+    <span class="string">"append_dimensions"</span>: {
+      <span class="string">"InstanceId"</span>: <span class="string">"${aws:InstanceId}"</span>,
+      <span class="string">"AutoScalingGroupName"</span>: <span class="string">"${aws:AutoScalingGroupName}"</span>
+    },
+    <span class="string">"aggregation_dimensions"</span>: [[<span class="string">"AutoScalingGroupName"</span>]],
+    <span class="string">"metrics_collected"</span>: {
+      <span class="string">"cpu"</span>: {<span class="string">"measurement"</span>: [<span class="string">"usage_active"</span>, <span class="string">"usage_iowait"</span>]},
+      <span class="string">"mem"</span>: {<span class="string">"measurement"</span>: [<span class="string">"used_percent"</span>, <span class="string">"available_percent"</span>]},
+      <span class="string">"disk"</span>: {<span class="string">"measurement"</span>: [<span class="string">"used_percent"</span>, <span class="string">"inodes_free"</span>]}
+    }
+  },
+  <span class="string">"logs"</span>: {
+    <span class="string">"logs_collected"</span>: {
+      <span class="string">"files"</span>: {
+        <span class="string">"collect_list"</span>: [
+          {<span class="string">"file_path"</span>: <span class="string">"/var/log/application/*.log"</span>,
+           <span class="string">"log_group_name"</span>: <span class="string">"/aiops/ec2/app"</span>}
+        ]
+      }
+    }
+  }
+}</div>
+</div>
+    <div class="tab-content" data-tab="lambda">
+<div class="code-block"><span class="comment"># Lambda Powertools + EMF 메트릭</span>
+<span class="keyword">from</span> aws_lambda_powertools <span class="keyword">import</span> Logger, Metrics, Tracer
+<span class="keyword">from</span> aws_lambda_powertools.metrics <span class="keyword">import</span> MetricUnit
+
+logger = Logger(service=<span class="string">"aiops-processor"</span>)
+metrics = Metrics(namespace=<span class="string">"AIOps/Lambda"</span>)
+tracer = Tracer()
+
+@logger.inject_lambda_context
+@metrics.log_metrics(capture_cold_start_metric=<span class="keyword">True</span>)
+@tracer.capture_lambda_handler
+<span class="keyword">def</span> handler(event, context):
+    metrics.add_metric(
+        name=<span class="string">"ProcessedEvents"</span>,
+        unit=MetricUnit.Count,
+        value=len(event[<span class="string">'Records'</span>])
+    )
+    metrics.add_metric(
+        name=<span class="string">"ProcessingLatency"</span>,
+        unit=MetricUnit.Milliseconds,
+        value=elapsed_ms
+    )
+    <span class="keyword">return</span> {<span class="string">"statusCode"</span>: 200}</div>
+</div>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="slide-header"><h2>Production Readiness 체크리스트</h2></div>
+  <div class="slide-body">
+    <ul class="checklist">
+            <li class="has-detail"><span class="check"></span> <span class="checklist-text">Observability 파이프라인 구성 완료</span>
+      <div class="checklist-detail"><div class="code-block"><span class="comment">  # 필수 텔레메트리 3축 확인</span>
+  <span class="key">metrics</span>: CloudWatch + AMP (Prometheus)
+  <span class="key">logs</span>: CloudWatch Logs + S3 장기 보관
+  <span class="key">traces</span>: X-Ray + ADOT Collector</div></div></li>
+      <li class=""><span class="check"></span> <span class="checklist-text">Anomaly Detection 모델 학습 완료 (최소 2주)</span></li>
+      <li class="has-detail"><span class="check"></span> <span class="checklist-text">EventBridge 자동 복구 룰 배포</span>
+      <div class="checklist-detail"><div class="code-block">  aws events put-rule \
+    --name <span class="string">"AIOps-AutoRemediation"</span> \
+    --event-pattern file:<span class="comment">//event-rule.json \</span>
+    --state ENABLED</div></div></li>
+      <li class="has-detail"><span class="check"></span> <span class="checklist-text">Step Functions 복구 워크플로우 테스트</span>
+      <div class="checklist-detail"><div class="code-block">  aws stepfunctions start-execution \
+    --state-machine-arn arn:aws:states:ap-northeast-2:123456789:stateMachine:aiops-remediation \
+    --input <span class="string">'{ 0 :{ 1 : 2 , 3 :{ 4 : 5 }}}'</span></div></div></li>
+      <li class=""><span class="check"></span> <span class="checklist-text">알림 에스컬레이션 경로 설정 (L1 → L2 → 온콜)</span></li>
+      <li class=""><span class="check"></span> <span class="checklist-text">월간 AIOps 성숙도 리뷰 프로세스 수립</span></li>
+    </ul>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="slide-header"><h2>전체 AIOps 파이프라인</h2></div>
+  <div class="slide-body">
+    <div class="canvas-container" style="flex:1">
+      <canvas id="canvas-1"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="slide">
+  <div class="slide-header"><h2>Thank You & Q&A</h2></div>
+  <div class="slide-body">
+    <p><strong>오늘 배운 핵심 3가지:</strong></p>
+<ol><li class="fragment fade-in" data-fragment-index="0"><strong>AIOps = Observe → Analyze → Detect → Act</strong> — 4단계 사이클로 운영 자동화</li><li class="fragment fade-in" data-fragment-index="0"><strong>AWS 네이티브 서비스 활용</strong> — CloudWatch + DevOps Guru + EventBridge + Step Functions</li><li class="fragment fade-in" data-fragment-index="0"><strong>성숙도 로드맵</strong> — L1 Reactive → L4 Autonomous까지 단계적 진화</li></ol>
+<p><strong>리소스:</strong></p>
+<ul><li><a href="https://aws-observability.github.io/observability-best-practices/">AWS Observability Best Practices</a></li><li><a href="https://docs.aws.amazon.com/devops-guru/">Amazon DevOps Guru Documentation</a></li><li><a href="https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Anomaly_Detection.html">CloudWatch Anomaly Detection</a></li></ul>
+  </div>
+</div>
+</div>
+<script src="../common/animation-utils.js"></script>
+<script src="../common/slide-framework.js"></script>
+<script src="../common/quiz-component.js"></script>
+<script src="../common/presenter-view.js"></script>
+<script>
+(function() {
+  const canvas = document.getElementById('canvas-0');
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  const BASE_W = 960, BASE_H = 400;
+
+  function resizeCanvas() {
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    if (cw <= 0 || ch <= 0) {
+      setupCanvas('canvas-0', BASE_W, BASE_H);
+      return;
+    }
+    const dpr = window.devicePixelRatio || 1;
+    const scale = cw / BASE_W;
+    const scaledH = Math.min(Math.round(BASE_H * scale), ch);
+    canvas.width = Math.round(cw * dpr);
+    canvas.height = Math.round(scaledH * dpr);
+    canvas.style.width = cw + 'px';
+    canvas.style.height = scaledH + 'px';
+    canvas.style.maxWidth = 'none';
+    const c = canvas.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.scale(scale * dpr, scale * dpr);
+  }
+  resizeCanvas();
+
+  const ctx = canvas.getContext('2d');
+  const width = BASE_W, height = BASE_H;
+  let step = 0;
+  const MAX_STEP = 4;
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    if (step >= 1) { drawIcon(ctx, '../common/aws-icons/services/Arch_Amazon-CloudWatch_48.svg', 50, 160, 48); }
+    if (step >= 1) { drawBox(ctx, 20, 220, 110, 30, '알람 발생', '#FF4F8B'); }
+    if (step >= 2) { drawIcon(ctx, '../common/aws-icons/services/Arch_Amazon-EventBridge_48.svg', 270, 160, 48); }
+    if (step >= 2) { drawBox(ctx, 235, 220, 120, 30, '이벤트 라우팅', '#FF4F8B'); }
+    if (step >= 3) { drawIcon(ctx, '../common/aws-icons/services/Arch_AWS-Step-Functions_48.svg', 490, 160, 48); }
+    if (step >= 3) { drawBox(ctx, 450, 220, 130, 30, '워크플로우 실행', '#FF4F8B'); }
+    if (step >= 4) { drawIcon(ctx, '../common/aws-icons/services/Arch_AWS-Lambda_48.svg', 710, 80, 48); }
+    if (step >= 4) { drawBox(ctx, 675, 140, 120, 30, '복구 함수', '#FF9900'); }
+    if (step >= 4) { drawIcon(ctx, '../common/aws-icons/services/Arch_AWS-Systems-Manager_48.svg', 710, 250, 48); }
+    if (step >= 4) { drawBox(ctx, 670, 310, 130, 30, 'SSM RunCommand', '#FF4F8B'); }
+    if (step >= 2) { drawArrow(ctx, 130, 235, 235, 235, Colors.accent, false); }
+    if (step >= 2) { drawText(ctx, 'alarm event', 182, 223, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 3) { drawArrow(ctx, 355, 235, 450, 235, Colors.accent, false); }
+    if (step >= 3) { drawText(ctx, 'trigger', 402, 223, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 4) { drawArrow(ctx, 580, 235, 675, 155, Colors.accent, false); }
+    if (step >= 4) { drawText(ctx, 'scale/restart', 627, 183, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 4) { drawArrow(ctx, 580, 235, 670, 325, Colors.accent, false); }
+    if (step >= 4) { drawText(ctx, 'patch/config', 625, 268, {size: 10, color: Colors.textSec, align: 'center'}); }
+  }
+
+  draw();
+  new ResizeObserver(() => { resizeCanvas(); draw(); }).observe(container);
+
+  const slide = canvas.closest('.slide');
+  if (slide) {
+    slide.dataset.slideAction = 'canvas-step';
+    slide.dataset.canvasMaxStep = String(MAX_STEP);
+    slide.__canvasStep = function(dir) {
+      if (dir === 'next' && step < MAX_STEP) step++;
+      if (dir === 'prev' && step > 0) step--;
+      draw();
+      return step;
+    };
+  }
+})();
+</script>
+<script>
+(function() {
+  const canvas = document.getElementById('canvas-1');
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  const BASE_W = 960, BASE_H = 400;
+
+  function resizeCanvas() {
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    if (cw <= 0 || ch <= 0) {
+      setupCanvas('canvas-1', BASE_W, BASE_H);
+      return;
+    }
+    const dpr = window.devicePixelRatio || 1;
+    const scale = cw / BASE_W;
+    const scaledH = Math.min(Math.round(BASE_H * scale), ch);
+    canvas.width = Math.round(cw * dpr);
+    canvas.height = Math.round(scaledH * dpr);
+    canvas.style.width = cw + 'px';
+    canvas.style.height = scaledH + 'px';
+    canvas.style.maxWidth = 'none';
+    const c = canvas.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.scale(scale * dpr, scale * dpr);
+  }
+  resizeCanvas();
+
+  const ctx = canvas.getContext('2d');
+  const width = BASE_W, height = BASE_H;
+  let step = 0;
+  const MAX_STEP = 6;
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    if (step >= 1) { drawIcon(ctx, '../common/aws-icons/services/Arch_Amazon-Elastic-Kubernetes-Service_48.svg', 50, 80, 48); }
+    if (step >= 1) { drawBox(ctx, 25, 140, 100, 25, 'Workloads', '#FF9900'); }
+    if (step >= 1) { drawIcon(ctx, '../common/aws-icons/services/Arch_Amazon-EC2_48.svg', 50, 220, 48); }
+    if (step >= 1) { drawBox(ctx, 25, 280, 100, 25, 'Instances', '#FF9900'); }
+    if (step >= 2) { drawIcon(ctx, '../common/aws-icons/services/Arch_Amazon-CloudWatch_48.svg', 220, 150, 48); }
+    if (step >= 2) { drawBox(ctx, 185, 210, 120, 25, 'Metrics & Logs', '#FF4F8B'); }
+    if (step >= 3) { drawIcon(ctx, '../common/aws-icons/services/Arch_AWS-X-Ray_48.svg', 390, 80, 48); }
+    if (step >= 3) { drawBox(ctx, 360, 140, 110, 25, 'Traces', '#FF4F8B'); }
+    if (step >= 3) { drawIcon(ctx, '../common/aws-icons/services/Arch_Amazon-DevOps-Guru_48.svg', 390, 220, 48); }
+    if (step >= 3) { drawBox(ctx, 355, 280, 120, 25, 'ML Insights', '#FF4F8B'); }
+    if (step >= 4) { drawIcon(ctx, '../common/aws-icons/services/Arch_Amazon-EventBridge_48.svg', 560, 150, 48); }
+    if (step >= 4) { drawBox(ctx, 525, 210, 120, 25, 'Event Router', '#FF4F8B'); }
+    if (step >= 5) { drawIcon(ctx, '../common/aws-icons/services/Arch_AWS-Step-Functions_48.svg', 730, 150, 48); }
+    if (step >= 5) { drawBox(ctx, 695, 210, 120, 25, 'Orchestrator', '#FF4F8B'); }
+    if (step >= 6) { drawIcon(ctx, '../common/aws-icons/services/Arch_AWS-Lambda_48.svg', 900, 150, 48); }
+    if (step >= 6) { drawBox(ctx, 865, 210, 120, 25, 'Remediation', '#FF9900'); }
+    if (step >= 2) { drawArrow(ctx, 125, 152, 185, 222, Colors.accent, false); }
+    if (step >= 2) { drawText(ctx, 'telemetry', 155, 175, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 2) { drawArrow(ctx, 125, 292, 185, 222, Colors.accent, false); }
+    if (step >= 2) { drawText(ctx, 'telemetry', 155, 245, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 3) { drawArrow(ctx, 305, 222, 360, 152, Colors.accent, false); }
+    if (step >= 3) { drawText(ctx, 'traces', 332, 175, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 3) { drawArrow(ctx, 305, 222, 355, 292, Colors.accent, false); }
+    if (step >= 3) { drawText(ctx, 'analyze', 330, 245, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 4) { drawArrow(ctx, 470, 152, 525, 222, Colors.accent, false); }
+    if (step >= 4) { drawText(ctx, 'alerts', 497, 175, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 4) { drawArrow(ctx, 475, 292, 525, 222, Colors.accent, false); }
+    if (step >= 4) { drawText(ctx, 'insights', 500, 245, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 5) { drawArrow(ctx, 645, 222, 695, 222, Colors.accent, false); }
+    if (step >= 5) { drawText(ctx, 'trigger', 670, 210, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 6) { drawArrow(ctx, 815, 222, 865, 222, Colors.accent, false); }
+    if (step >= 6) { drawText(ctx, 'execute', 840, 210, {size: 10, color: Colors.textSec, align: 'center'}); }
+  }
+
+  draw();
+  new ResizeObserver(() => { resizeCanvas(); draw(); }).observe(container);
+
+  const slide = canvas.closest('.slide');
+  if (slide) {
+    slide.dataset.slideAction = 'canvas-step';
+    slide.dataset.canvasMaxStep = String(MAX_STEP);
+    slide.__canvasStep = function(dir) {
+      if (dir === 'next' && step < MAX_STEP) step++;
+      if (dir === 'prev' && step > 0) step--;
+      draw();
+      return step;
+    };
+  }
+})();
+</script>
+<script>
+  
+  const presenterNotes = {
+    10: "❓ [5min] Q&A 시간: 청중의 현재 운영 수준과 AIOps 도입 계획에 대해 질문을 유도합니다."
+  };
+  const deck = new SlideFramework({
+    
+    
+    
+    pagination: true,
+    presenterNotes: presenterNotes,
+    onSlideChange: (index, slide) => {}
+  });
+</script>
+</body>
+</html>
