@@ -174,15 +174,18 @@ class ThemeExtractor:
 
         return fonts
 
-    def extract_backgrounds(self) -> dict[str, Any]:
+    def extract_backgrounds(self, output_dir: Optional[Path] = None) -> dict[str, Any]:
         """
         Extract background information from master and key layouts.
+
+        Args:
+            output_dir: Directory to save extracted background images.
 
         Returns:
             Dictionary with background type and properties.
         """
         backgrounds = {
-            'master': self._extract_background_from_element(self.master),
+            'master': self._extract_background_from_element(self.master, output_dir),
             'layouts': {}
         }
 
@@ -192,14 +195,18 @@ class ThemeExtractor:
 
         for layout in self.master.slide_layouts:
             if layout.name in key_layout_names:
-                bg_info = self._extract_background_from_element(layout)
+                bg_info = self._extract_background_from_element(layout, output_dir)
                 if bg_info['type'] != 'inherited':
                     backgrounds['layouts'][layout.name] = bg_info
 
         return backgrounds
 
-    def _extract_background_from_element(self, element) -> dict[str, Any]:
-        """Extract background info from a slide master or layout."""
+    def _extract_background_from_element(self, element, output_dir: Optional[Path] = None) -> dict[str, Any]:
+        """Extract background info from a slide master or layout.
+
+        When output_dir is provided and fill is a picture, the image blob
+        is saved to output_dir/images/background.{ext}.
+        """
         bg_info = {'type': 'inherited'}
 
         try:
@@ -224,7 +231,32 @@ class ThemeExtractor:
 
             elif 'PICTURE' in fill_type:
                 bg_info['type'] = 'picture'
-                # Picture extraction handled separately in extract method
+                # Extract actual image blob from the background fill
+                try:
+                    bg_elem = background._element
+                    blip = bg_elem.find('.//' + '{http://schemas.openxmlformats.org/drawingml/2006/main}blip')
+                    if blip is not None:
+                        r_embed = blip.get('{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed')
+                        if r_embed and hasattr(element, 'part'):
+                            image_part = element.part.related_parts.get(r_embed)
+                            if image_part is not None:
+                                blob = image_part.blob
+                                content_type = image_part.content_type
+                                ext = content_type.split('/')[-1]
+                                if ext == 'jpeg':
+                                    ext = 'jpg'
+                                bg_info['image_filename'] = f'background.{ext}'
+
+                                # Save blob if output directory provided
+                                if output_dir:
+                                    images_dir = output_dir / 'images'
+                                    images_dir.mkdir(parents=True, exist_ok=True)
+                                    img_path = images_dir / f'background.{ext}'
+                                    with open(img_path, 'wb') as f:
+                                        f.write(blob)
+                except Exception as e:
+                    print(f"Warning: Could not extract background image: {e}",
+                          file=sys.stderr)
 
             elif 'GRADIENT' in fill_type:
                 bg_info['type'] = 'gradient'
@@ -563,7 +595,7 @@ class ThemeExtractor:
             'layout_count': len(self.master.slide_layouts),
             'colors': self.extract_colors(),
             'fonts': self.extract_fonts(),
-            'backgrounds': self.extract_backgrounds(),
+            'backgrounds': self.extract_backgrounds(output_dir),
             'logos': self.extract_logos(output_dir),
             'footer': self.extract_footer(),
             'slide_number': self.extract_slide_number(),
