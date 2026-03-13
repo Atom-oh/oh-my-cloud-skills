@@ -4,56 +4,6 @@ A unified plugin for AWS cloud content creation: presentations, architecture dia
 
 ---
 
-## Auto-Invocation Rules
-
-When the following keywords are detected, automatically invoke the corresponding agent.
-
-### Presentations
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "create presentation", "create slides", "make slideshow", "training slides", "interactive presentation", "reactive presentation" | `presentation-agent` | Interactive HTML slideshow creation |
-| "PPTX theme", "extract theme", "corporate branding" | `presentation-agent` | PPTX theme extraction for presentations |
-| "반영해주세요", "rebuild", "다시 빌드", "remarp 반영" | `presentation-agent` | Remarp → HTML 증분 빌드 |
-
-### Architecture Diagrams (Static)
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "architecture diagram", "infrastructure diagram", "system architecture", "AWS architecture", "cloud diagram", "draw.io" | `architecture-diagram-agent` | Draw.io XML diagram generation |
-
-### Animated Diagrams (Dynamic)
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "animated diagram", "traffic flow", "animated architecture", "dynamic diagram", "SMIL animation", "animated SVG" | `animated-diagram-agent` | SVG + SMIL animation diagrams |
-
-### Documents
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "create document", "write report", "technical report", "comparison document", "guide document", "write guide" | `document-agent` | Markdown documents and reports |
-
-### GitBook
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "gitbook", "documentation site", "create docs site", "gitbook project", "knowledge base" | `gitbook-agent` | GitBook documentation sites |
-
-### Workshops
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "workshop", "lab content", "hands-on guide", "workshop create", "module content" | `workshop-agent` | AWS Workshop Studio content |
-
-### Content Review
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "review content", "quality check", "review document", "review presentation", "review workshop" | `content-review-agent` | Cross-cutting quality review |
-
----
-
 ## Workflow Patterns
 
 ### Presentation Workflow

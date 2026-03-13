@@ -8,6 +8,11 @@ triggers:
   - "알람"
   - "observability"
   - "logs insights"
+model: sonnet
+allowed-tools:
+  - Bash
+  - Read
+  - Grep
 ---
 
 # Ops Observability Skill

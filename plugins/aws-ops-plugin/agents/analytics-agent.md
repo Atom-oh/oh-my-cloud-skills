@@ -2,6 +2,12 @@
 name: analytics-agent
 description: "AWS data analytics agent. Manages OpenSearch Service/Serverless, ClickHouse, Athena, QuickSight, and Kinesis data pipelines. Triggers on \"OpenSearch\", \"Elasticsearch\", \"ClickHouse\", \"Athena\", \"QuickSight\", \"Kinesis\", \"데이터 분석\", \"로그 분석 파이프라인\", \"검색 엔진\", \"대시보드\" requests."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
+model: sonnet
+skills:
+  - ops-observability
+mcpServers:
+  - awsdocs
+  - awsapi
 ---
 
 # Analytics Agent

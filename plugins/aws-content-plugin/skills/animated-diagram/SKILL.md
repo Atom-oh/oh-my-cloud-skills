@@ -1,6 +1,10 @@
 ---
 name: animated-diagram
 description: "Create dynamic animated SVG diagrams with SMIL animations for AWS architecture traffic flow, service interactions, and deployment pipelines. Use when creating animated or dynamic diagrams."
+model: sonnet
+allowed-tools:
+  - Read
+  - Write
 ---
 
 # Animated Diagram Skill

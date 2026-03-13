@@ -8,6 +8,13 @@ triggers:
   - "키로 변환"
   - "키로 파워"
   - "claude to kiro"
+model: sonnet
+allowed-tools:
+  - Read
+  - Write
+  - Bash
+  - Glob
+  - Glob
 ---
 
 # Kiro Power Conversion Skill

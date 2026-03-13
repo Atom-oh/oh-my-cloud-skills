@@ -2,6 +2,8 @@
 name: content-review-agent
 description: Cross-cutting content quality review agent. Reviews presentations, diagrams, documents, GitBook pages, and workshop content. Inspects layout, terminology, hallucination, language, PII/sensitive data, readability, accessibility, and structural completeness. Triggers on "review content", "quality check", "review document", "review presentation", "review workshop" requests.
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
+model: opus
+maxTurns: 50
 ---
 
 # Content Review Agent
@@ -74,6 +76,15 @@ Email:       [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
 - Canvas animations have setupCanvas() calls
 - Quiz data-quiz/data-correct attributes valid
 - Framework file paths correct (../common/)
+
+**Canvas Layout Quality (캔버스 레이아웃 품질):**
+- 요소 간 겹침 없음: 박스/아이콘/텍스트가 서로 겹치지 않는지 확인
+- 화살표와 텍스트 겹침 없음: 화살표 경로가 라벨/박스 텍스트를 가리지 않는지 확인
+- 정렬 일관성: 같은 행/열의 요소들이 수평·수직 정렬이 맞는지 확인
+- 여백 균등: 요소 간 간격이 균등하고 충분한지 확인 (최소 20px 권장)
+- 텍스트 가독성: 캔버스 내 텍스트가 읽을 수 있는 크기인지 확인 (최소 12px)
+- ↑↓ Step 내비게이션: step이 있는 캔버스에서 ↑↓ 키로 단계가 정상 진행/후퇴하는지 확인
+- Step 순서 논리성: step 1→2→...→N 순서로 요소가 논리적으로 나타나는지 확인
 
 **GitBook:**
 - SUMMARY.md navigation matches actual pages
@@ -173,6 +184,9 @@ HTML 파일을 브라우저에서 열어 테스트하려면:
 | 비교 토글 | `browser_click` (`.compare-btn`) | 콘텐츠 전환 확인 |
 | 퀴즈 | `browser_click` (`.quiz-option`) | 피드백 표시 확인 |
 | 캔버스 애니메이션 | Play 버튼 `browser_click` | 애니메이션 실행 확인 |
+| 캔버스 레이아웃 | `browser_take_screenshot` | 요소 겹침 없음, 정렬·여백 균등, 텍스트 가독 |
+| 캔버스 Step 진행 | `browser_press_key` (ArrowDown) x N → `browser_take_screenshot` | 각 step마다 요소 추가, 마지막 step에서 멈춤 |
+| 캔버스 Step 후퇴 | `browser_press_key` (ArrowUp) x N → `browser_take_screenshot` | step 역순 후퇴, step 0에서 멈춤 |
 | 반응형 FHD | `browser_resize` (1920x1080) → `browser_take_screenshot` | 오버플로우 없음 |
 | 반응형 4K | `browser_resize` (3840x2160) → `browser_take_screenshot` | 오버플로우 없음 |
 | 프레젠터 뷰 | `browser_press_key` (P) | 별도 창 열림 확인 |

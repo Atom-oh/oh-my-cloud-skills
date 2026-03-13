@@ -1,6 +1,11 @@
 ---
 name: architecture-diagram
 description: AWS 아키텍처 다이어그램을 draw.io MCP로 생성. 사용자가 "아키텍처 다이어그램 그려줘", "AWS 구성도 만들어줘", "인프라 다이어그램", "시스템 아키텍처", "클라우드 아키텍처"를 요청할 때 활성화.
+model: sonnet
+allowed-tools:
+  - Read
+  - Write
+  - Bash
 ---
 
 # Architecture Diagram Skill

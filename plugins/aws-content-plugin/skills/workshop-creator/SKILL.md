@@ -2,6 +2,11 @@
 name: workshop-creator
 description: AWS Workshop Studio 프로젝트 구조 생성 및 콘텐츠 작성 스킬. "워크샵 만들어", "workshop init", "랩 작성" 요청 시 활성화
 invocation: /workshop-creator
+model: sonnet
+allowed-tools:
+  - Read
+  - Write
+  - Bash
 ---
 
 # Workshop Creator Skill

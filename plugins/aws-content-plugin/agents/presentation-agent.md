@@ -2,6 +2,9 @@
 name: presentation-agent
 description: Interactive HTML slideshow creation agent using reactive-presentation framework. Triggers on "create presentation", "create slides", "make slideshow", "training slides", "interactive presentation", "reactive presentation", "remarp" requests. Creates Remarp markdown content, generates HTML slideshows with Canvas animations, fragment animations, quizzes, and keyboard navigation. Supports PPTX/PDF theme extraction for corporate branding.
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
+model: opus
+skills:
+  - reactive-presentation
 ---
 
 # Presentation Agent
@@ -146,6 +149,13 @@ Remarp 기능:
 - `{.click}` 프래그먼트 애니메이션 + `:::click` 블록
 - `:::canvas` DSL로 선언적 Canvas 애니메이션
 - `:::notes` 풍부한 스피커 노트 (`{timing:}`, `{cue:}` 마커)
+
+**스피커 노트 작성 규칙 (MANDATORY)**:
+  - 모든 슬라이드에 `:::notes` 필수. 최소 150자, 권장 300~500자 (1~3분 발표 분량)
+  - 구조: `{timing: Nmin}` → 도입 → 핵심 설명 (보충 예시/비유) → 청중 큐 → 전환 멘트
+  - 슬라이드 텍스트를 그대로 반복하지 말 것. 왜 중요한지, 실무 적용법, 흔한 실수/팁을 보충
+  - 구어체로 작성: 발표자가 그대로 읽어도 자연스러운 톤
+  - 마지막에 `{cue: transition}` + 다음 슬라이드 브릿지 문장 포함
 - `::: left`/`::: right` 컬럼 레이아웃
 
 Reference: `{plugin-dir}/skills/reactive-presentation/references/remarp-format-guide.md`
@@ -256,6 +266,10 @@ For each block HTML file, check:
 - Slide count matches plan
 - `SlideFramework` initialized with correct options
 - All Canvas IDs have `setupCanvas()` calls
+- Canvas layout quality verified via Playwright screenshot:
+  - 요소 간 겹침 없음 (박스·아이콘·화살표·텍스트)
+  - 정렬·여백 균등하고 가독성 확보
+  - ↑↓ step 내비게이션 정상 동작 (각 step 스크린샷 촬영하여 확인)
 - Quiz components use correct `data-quiz` / `data-correct` attributes
 - Framework file references use correct relative paths (`../common/`)
 - Presenter view (P key) shows notes correctly

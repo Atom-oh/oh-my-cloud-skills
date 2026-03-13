@@ -7,6 +7,11 @@ triggers:
   - "연결 문제"
   - "connectivity"
   - "DNS failure"
+model: sonnet
+allowed-tools:
+  - Bash
+  - Read
+  - Grep
 ---
 
 # Ops Network Diagnosis Skill

@@ -7,6 +7,11 @@ triggers:
   - "장애"
   - "문제 해결"
   - "incident"
+model: sonnet
+allowed-tools:
+  - Bash
+  - Read
+  - Grep
 ---
 
 # Ops Troubleshoot Skill
