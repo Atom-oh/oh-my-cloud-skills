@@ -71,7 +71,7 @@ const ExportUtils = {
   exportPDF: async function(options) {
     options = options || {};
     var title = options.title || document.title;
-    var blocks = this.getBlockFiles();
+    var blocks = options.blocks || this.getBlockFiles();
     if (!blocks.length) { alert('No block files found on this page.'); return; }
 
     this.showProgress('Preparing PDF export...');
@@ -169,7 +169,7 @@ const ExportUtils = {
   downloadZIP: async function(options) {
     options = options || {};
     var slug = options.slug || this.getSlug();
-    var blocks = this.getBlockFiles();
+    var blocks = options.blocks || this.getBlockFiles();
     if (!blocks.length) { alert('No block files found on this page.'); return; }
 
     this.showProgress('Preparing ZIP download...');
@@ -318,7 +318,7 @@ const ExportUtils = {
     options = options || {};
     var title = options.title || document.title;
     var slug = this.getSlug();
-    var blocks = this.getBlockFiles();
+    var blocks = options.blocks || this.getBlockFiles();
     if (!blocks.length) { alert('No block files found on this page.'); return; }
 
     this.showProgress('Preparing PPTX export...');

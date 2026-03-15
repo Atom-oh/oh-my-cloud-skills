@@ -100,10 +100,8 @@ If user provides a `.pptx` template:
 python3 {plugin-dir}/skills/reactive-presentation/scripts/extract_pptx_theme.py <pptx_path> -o {repo}/common/pptx-theme/
 ```
 
-아이콘 추출 (항상 실행 — 테마 추출과 병렬):
-```bash
-python3 {plugin-dir}/skills/reactive-presentation/scripts/extract_aws_icons.py -o {repo}/common/aws-icons/
-```
+> **AWS Icons**: `remarp_to_slides.py build`가 HTML에서 참조된 아이콘만 `common/aws-icons/`에 자동 복사합니다.
+> 수동 `extract_aws_icons.py` 실행은 불필요하며, 실행 시 860+ 아이콘이 전체 복사되어 불필요한 파일이 포함됩니다.
 
 After extraction, read `{repo}/common/pptx-theme/theme-manifest.json` and apply:
 - **`footer_text`** → pass to `SlideFramework({ footer: manifest.footer_text })` in every block HTML
@@ -203,10 +201,18 @@ HTML 빌드 후 Remarp 파일이 수정될 때마다 사용자가 수동으로 H
 
 이 명령을 받으면:
 1. 변경된 `.md` 파일을 감지
-2. **Canvas Prompt 처리**: 변경된 파일에 `:::canvas prompt` 또는 `:::prompt` 블록이 있으면:
-   a. `canvas-animation-prompt.md` 레퍼런스 참조
-   b. prompt 텍스트를 분석하여 Canvas JS (또는 DSL) 코드 생성
-   c. `.md` 소스에서 `:::prompt` → `:::canvas js` (또는 `:::canvas`) 교체
+2. **Canvas Prompt 처리** (Gemini Canvas-style): 변경된 파일에 `:::canvas prompt` 또는 `:::prompt` 블록이 있으면:
+   a. prompt 텍스트를 분석하여 모호한 부분 식별
+   b. **반복 질문**: 다음 항목이 불명확하면 AskUserQuestion으로 확인:
+      - 사용할 AWS 서비스 목록 (정확한 서비스명)
+      - 레이아웃 방향 (가로/세로/3계층 등)
+      - 애니메이션 step 구성 (순차/그룹별)
+      - 색상 테마 (기본/커스텀)
+      - 화살표 연결 관계
+   c. 확정된 요구사항으로 Canvas DSL 코드 생성
+   d. 생성된 DSL을 사용자에게 보여주고 확인 요청
+   e. 승인 시 `.md` 소스에서 `:::prompt` → `:::canvas` 교체
+   f. `canvas-animation-prompt.md` 레퍼런스 참조하여 DSL/Preset/JS 방식 선택
 3. `remarp_to_slides.py sync`로 변경된 블록만 증분 빌드
 4. 결과를 사용자에게 보고
 
