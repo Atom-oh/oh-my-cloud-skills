@@ -1034,7 +1034,10 @@ class RemarpHTMLGenerator:
         # Find block-specific title from blocks config
         blocks_config = config.get('blocks', [])
         for block in blocks_config:
-            if block.get('name') == block_name:
+            if isinstance(block, str):
+                if block == block_name:
+                    break
+            elif isinstance(block, dict) and block.get('name') == block_name:
                 title = block.get('title', title)
                 break
 

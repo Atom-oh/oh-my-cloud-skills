@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIOps: 지능형 클라우드 운영</title>
+  <meta name="generator" content="remarp">
+  <meta name="remarp-version" content="1">
+  <meta name="remarp-source" content="01-aiops-foundations.md">
+  <meta name="remarp-block" content="default">
+  <link rel="stylesheet" href="./common/theme.css">
+  <link rel="stylesheet" href="./common/pptx-theme/theme-override.css">
+  
+  
+  <script>window.__remarpTheme = {"colors": {}, "footer": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved.", "pagination": true, "fonts": {}};</script>
+</head>
+<body>
+<div class="slide-deck">
+<div class="slide" data-remarp-id="s0" style="background:linear-gradient(135deg, #1a1f35 0%, #0d1117 50%, #161b2e 100%); padding:0; overflow:hidden;">
+  <div style="position:absolute; top:-20%; right:-10%; width:60%; height:80%; background:radial-gradient(ellipse, rgba(108,92,231,0.15) 0%, transparent 70%); pointer-events:none;"></div>
+  <div style="position:absolute; left:5%; top:42%; width:80px; height:3px; background:linear-gradient(90deg, #6c5ce7, #a29bfe); border-radius:2px;"></div>
+  <h1 style="position:absolute; left:5%; top:45%; font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:60%; margin:0;">AIOps: 지능형 클라우드 운영</h1>
+  <p style="position:absolute; left:5%; top:60%; font-size:1.3rem; color:rgba(255,255,255,0.7); width:60%; margin:0;">Block 1 — AIOps 기초와 관측성 전략 (30 min)</p>
+  <div style="position:absolute; left:5%; top:75%;">
+    <p style="font-size:1.05rem; color:#fff; font-weight:600; margin:0;">Junseok Oh</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.6); margin:6px 0 0 0;">Sr. Solutions Architect</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.6); margin:2px 0 0 0;">AWS</p>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s1">
+  <div class="slide-header" data-remarp-id="s1-header"><h2>오늘 다룰 내용</h2></div>
+  <div class="slide-body" data-remarp-id="s1-body">
+    <div class="steps-container steps--horizontal steps--circle">
+      
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s2">
+  <div class="slide-header" data-remarp-id="s2-header"><h2>수동 운영의 한계</h2></div>
+  <div class="slide-body" data-remarp-id="s2-body">
+    <blockquote><p>"장애가 발생하면 알람 폭풍 속에서 원인을 찾느라 몇 시간을 소비합니다..."</p></blockquote>
+<ul><li class="fragment fade-in" data-fragment-index="0"><strong>탐지 지연</strong>: 평균 MTTD(Mean Time To Detect) 30분 이상</li><li class="fragment fade-in" data-fragment-index="1"><strong>복구 시간</strong>: 평균 MTTR(Mean Time To Recover) 4시간+</li><li class="fragment fade-in" data-fragment-index="2"><strong>알람 피로</strong>: 하루 수백 개의 알람, 90%는 false positive</li><li class="fragment fade-in" data-fragment-index="3"><strong>사일로 문제</strong>: 팀 간 정보 단절로 근본 원인 파악 지연</li><li class="fragment fade-in" data-fragment-index="4"><strong>확장성 한계</strong>: 서비스 증가 → 운영 복잡도 기하급수적 증가</li></ul>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s3">
+  <div class="slide-header" data-remarp-id="s3-header"><h2>AIOps란?</h2></div>
+  <div class="slide-body" data-remarp-id="s3-body">
+    <div class="columns">
+<div class="col">
+<h3>정의와 핵심 원칙</h3>
+<p><strong>AIOps</strong> = AI + IT Operations</p>
+<ul><li><strong>Machine Learning</strong>: 패턴 학습 및 이상 탐지</li><li><strong>자동화(Automation)</strong>: 반복 작업의 자동 처리</li><li><strong>관측성(Observability)</strong>: 메트릭/로그/트레이스 통합</li></ul>
+<blockquote><p>Gartner 정의: "빅데이터, ML, 자동화를 결합하여 IT 운영을 향상시키는 접근법"</p></blockquote>
+</div><div class="col">
+<h3>전통적 운영 vs AIOps</h3>
+<table><thead><tr><th>구분</th><th>전통적 운영</th><th>AIOps</th></tr></thead><tbody><tr><td>탐지</td><td>임계값 기반</td><td>ML 이상 탐지</td></tr><tr><td>분석</td><td>수동 로그 검색</td><td>자동 상관 분석</td></tr><tr><td>대응</td><td>수동 조치</td><td>자동 복구</td></tr><tr><td>확장</td><td>인력 비례</td><td>자동 스케일</td></tr><tr><td>MTTD</td><td>30분+</td><td>수 분</td></tr><tr><td>MTTR</td><td>4시간+</td><td>30분 이하</td></tr></tbody></table>
+</div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s4">
+  <div class="slide-header" data-remarp-id="s4-header"><h2>AIOps 사이클</h2></div>
+  <div class="slide-body" data-remarp-id="s4-body">
+    <div class="canvas-container" data-remarp-id="s4-canvas" style="flex:1">
+      <canvas id="aiops-cycle"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s5">
+  <div class="slide-header" data-remarp-id="s5-header"><h2>AWS AIOps 서비스 맵</h2></div>
+  <div class="slide-body" data-remarp-id="s5-body">
+    <div class="canvas-container" data-remarp-id="s5-canvas" style="flex:1">
+      <canvas id="aws-aiops-map"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s6">
+  <div class="slide-header" data-remarp-id="s6-header"><h2>AIOps 파이프라인 (Prompt Demo)</h2></div>
+  <div class="slide-body" data-remarp-id="s6-body">
+    <div class="canvas-container" data-remarp-id="s6-canvas" style="flex:1; display:flex; align-items:center; justify-content:center;">
+      <!-- CANVAS_PROMPT: AWS AIOps 3계층 아키텍처를 그려주세요:
+1층 - 데이터 수집: CloudWatch, X-Ray, CloudTrail
+2층 - 지능형 분 -->
+      <div style="text-align:left; color:#FF9900; padding:2rem; border:2px dashed #FF9900; border-radius:12px; max-width:700px; background:rgba(255,153,0,0.05);">
+        <p style="font-size:1.1rem; font-weight:600; margin-bottom:0.8rem;">💬 Diagram Prompt</p>
+        <p style="font-size:0.95rem; line-height:1.6; opacity:0.85; white-space:pre-wrap;">AWS AIOps 3계층 아키텍처를 그려주세요:<br>1층 - 데이터 수집: CloudWatch, X-Ray, CloudTrail<br>2층 - 지능형 분석: DevOps Guru, Lookout for Metrics<br>3층 - 자동화: EventBridge, Lambda, Systems Manager<br>각 층 사이에 화살표, 층별 다른 색상 라벨, Step 애니메이션 적용.</p>
+        <p style="font-size:0.75rem; opacity:0.4; margin-top:1rem; font-style:italic;">Run presentation-agent to resolve this prompt into a diagram</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s7">
+  <div class="slide-header" data-remarp-id="s7-header"><h2>CloudWatch 에코시스템</h2></div>
+  <div class="slide-body" data-remarp-id="s7-body">
+    <div class="columns">
+<div class="col">
+<h3>핵심 서비스</h3>
+<ul><li class="fragment fade-in" data-fragment-index="0"><strong>CloudWatch Metrics</strong>
+<ul><li>70+ AWS 서비스 자동 수집</li><li>커스텀 메트릭 지원</li></ul></li></ul>
+<ul><li class="fragment fade-in" data-fragment-index="1"><strong>CloudWatch Logs</strong>
+<ul><li>로그 수집/저장/분석</li><li>Logs Insights 쿼리 엔진</li></ul></li></ul>
+<ul><li class="fragment fade-in" data-fragment-index="2"><strong>CloudWatch Alarms</strong>
+<ul><li>임계값 + 이상 탐지 알람</li><li>복합 알람(Composite Alarms)</li></ul></li></ul>
+</div><div class="col">
+<h3>확장 기능</h3>
+<ul><li class="fragment fade-in" data-fragment-index="3"><strong>Container Insights</strong>
+<ul><li>EKS/ECS 컨테이너 관측성</li><li>자동 대시보드 생성</li></ul></li></ul>
+<ul><li class="fragment fade-in" data-fragment-index="4"><strong>Application Insights</strong>
+<ul><li>.NET/Java/Node.js 앱 모니터링</li><li>이상 탐지 내장</li></ul></li></ul>
+<ul><li class="fragment fade-in" data-fragment-index="5"><strong>Contributor Insights</strong>
+<ul><li>상위 기여자 실시간 분석</li><li>VPC Flow Logs 트래픽 분석</li></ul></li></ul>
+</div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s8">
+  <div class="slide-header" data-remarp-id="s8-header"><h2>관측성 3대 축</h2></div>
+  <div class="slide-body" data-remarp-id="s8-body">
+    <div class="compare-toggle">
+            <button class="compare-btn active" data-compare="metrics">Metrics (지표)</button>
+      <button class="compare-btn" data-compare="logs">Logs (로그)</button>
+      <button class="compare-btn" data-compare="traces">Traces (트레이스)</button>
+    </div>
+    <div class="compare-content active" data-compare="metrics">
+<p><strong>정의</strong>: 시간에 따른 수치 데이터</p>
+<p><strong>특징</strong>:</p>
+<ul><li>집계 가능 (평균, 합계, 백분위)</li><li>저장 비용 효율적</li><li>대시보드/알람에 최적화</li></ul>
+<p><strong>AWS 서비스</strong>:</p>
+<ul><li>CloudWatch Metrics</li><li>Amazon Managed Prometheus (AMP)</li></ul>
+<p><strong>사용 사례</strong>:</p>
+<ul><li>CPU/메모리 사용률</li><li>요청 처리량 (RPS)</li><li>에러율, 지연 시간 (p99)</li></ul>
+<p>:::</p>
+<p>::: tab Logs</p>
+</div>
+<div class="compare-content" data-compare="logs">
+<p><strong>정의</strong>: 이벤트의 텍스트 기록</p>
+<p><strong>특징</strong>:</p>
+<ul><li>상세한 컨텍스트 제공</li><li>구조화/비구조화 모두 지원</li><li>검색/필터링으로 디버깅</li></ul>
+<p><strong>AWS 서비스</strong>:</p>
+<ul><li>CloudWatch Logs</li><li>OpenSearch Service</li></ul>
+<p><strong>사용 사례</strong>:</p>
+<ul><li>에러 스택 트레이스</li><li>감사 로그 (CloudTrail)</li><li>애플리케이션 디버깅</li></ul>
+<p>:::</p>
+<p>::: tab Traces</p>
+</div>
+<div class="compare-content" data-compare="traces">
+<p><strong>정의</strong>: 분산 시스템의 요청 경로 추적</p>
+<p><strong>특징</strong>:</p>
+<ul><li>서비스 간 흐름 시각화</li><li>지연 구간 식별</li><li>근본 원인 분석에 필수</li></ul>
+<p><strong>AWS 서비스</strong>:</p>
+<ul><li>AWS X-Ray</li><li>AWS Distro for OpenTelemetry (ADOT)</li></ul>
+<p><strong>사용 사례</strong>:</p>
+<ul><li>마이크로서비스 병목 분석</li><li>콜드 스타트 지연 추적</li><li>서비스 의존성 맵</li></ul>
+<p>:::</p>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s9">
+  <div class="slide-header" data-remarp-id="s9-header"><h2>Key Takeaways</h2></div>
+  <div class="slide-body" data-remarp-id="s9-body">
+    <h3>Block 1에서 배운 핵심 내용</h3>
+<ul><li><strong>수동 운영의 한계</strong>: MTTD 30분+, MTTR 4시간+의 비효율. 알람 피로와 사일로 문제로 확장 불가</li></ul>
+<ul><li><strong>AIOps = ML + 자동화 + 관측성</strong>: 단순 모니터링이 아닌, 지능형 탐지 → 자동 분석 → 자동 대응의 사이클</li></ul>
+<ul><li><strong>관측성 3대 축</strong>: Metrics(무엇이), Logs(왜), Traces(어디서) — 세 가지를 통합해야 AIOps의 기반 완성</li></ul>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s10">
+  
+  <div class="slide-body" data-remarp-id="s10-body">
+    <h3>다음 블록 예고</h3>
+<p><strong>Block 2: 지능형 분석과 인사이트</strong> — DevOps Guru 심층 분석, 이상 탐지 ML 모델, 실전 데모</p>
+<p><div style="display:flex; gap:16px; margin-top:24px; justify-content:center;"></p>
+<p>  <a href="index.html" class="btn btn-sm" style="text-decoration:none;">← 목차로 돌아가기</a></p>
+<p>  <a href="02-intelligent-analysis.html" class="btn btn-primary btn-sm" style="text-decoration:none;">다음: Block 2 →</a></p>
+<p></div></p>
+  </div>
+</div>
+</div>
+<script src="./common/animation-utils.js"></script>
+<script src="./common/slide-framework.js"></script>
+<script src="./common/quiz-component.js"></script>
+<script src="./common/presenter-view.js"></script>
+<script>
+(function() {
+  const canvas = document.getElementById('aiops-cycle');
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  const BASE_W = 960, BASE_H = 400;
+
+  function resizeCanvas() {
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    if (cw <= 0 || ch <= 0) {
+      setupCanvas('aiops-cycle', BASE_W, BASE_H);
+      return;
+    }
+    const dpr = window.devicePixelRatio || 1;
+    const scale = cw / BASE_W;
+    const scaledH = Math.min(Math.round(BASE_H * scale), ch);
+    canvas.width = Math.round(cw * dpr);
+    canvas.height = Math.round(scaledH * dpr);
+    canvas.style.width = cw + 'px';
+    canvas.style.height = scaledH + 'px';
+    canvas.style.maxWidth = 'none';
+    const c = canvas.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.scale(scale * dpr, scale * dpr);
+  }
+  resizeCanvas();
+
+  const ctx = canvas.getContext('2d');
+  const width = BASE_W, height = BASE_H;
+  let step = 0;
+  const MAX_STEP = 4;
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    if (step >= 1) { drawBox(ctx, 150, 80, 140, 50, '수집 (Collect)', '#FF9900'); }
+    if (step >= 1) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-CloudWatch_48.svg', 220, 160, 40); }
+    if (step >= 1) { drawText(ctx, 'CloudWatch', 220, 194, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 2) { drawBox(ctx, 380, 80, 140, 50, '분석 (Analyze)', '#3B48CC'); }
+    if (step >= 2) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-DevOps-Guru_48.svg', 450, 160, 40); }
+    if (step >= 2) { drawText(ctx, 'DevOps-Guru', 450, 194, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 3) { drawBox(ctx, 610, 80, 140, 50, '자동화 (Automate)', '#1B660F'); }
+    if (step >= 3) { drawIcon(ctx, './common/aws-icons/services/Arch_AWS-Lambda_48.svg', 680, 160, 40); }
+    if (step >= 3) { drawText(ctx, 'Lambda', 680, 194, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 4) { drawArrow(ctx, 290, 105, 380, 105, Colors.accent, false); }
+    if (step >= 4) { drawText(ctx, 'ML 분석', 335, 93, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 4) { drawArrow(ctx, 520, 105, 610, 105, Colors.accent, false); }
+    if (step >= 4) { drawText(ctx, '이벤트 트리거', 565, 93, {size: 10, color: Colors.textSec, align: 'center'}); }
+    drawArrow(ctx, 610, 105, 450, 50, Colors.accent, false, false);
+    drawArrow(ctx, 450, 50, 290, 105, Colors.accent, false);
+    drawText(ctx, '피드백 루프', 450, 38, {size: 10, color: Colors.textSec, align: 'center'});
+  }
+
+  draw();
+  new ResizeObserver(() => { resizeCanvas(); draw(); }).observe(container);
+
+  const slide = canvas.closest('.slide');
+  if (slide) {
+    slide.dataset.slideAction = 'canvas-step';
+    slide.dataset.canvasMaxStep = String(MAX_STEP);
+    slide.__canvasStep = function(dir) {
+      if (dir === 'next' && step < MAX_STEP) step++;
+      if (dir === 'prev' && step > 0) step--;
+      draw();
+      return step;
+    };
+  }
+})();
+</script>
+<script>
+(function() {
+  const canvas = document.getElementById('aws-aiops-map');
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  const BASE_W = 960, BASE_H = 400;
+
+  function resizeCanvas() {
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    if (cw <= 0 || ch <= 0) {
+      setupCanvas('aws-aiops-map', BASE_W, BASE_H);
+      return;
+    }
+    const dpr = window.devicePixelRatio || 1;
+    const scale = cw / BASE_W;
+    const scaledH = Math.min(Math.round(BASE_H * scale), ch);
+    canvas.width = Math.round(cw * dpr);
+    canvas.height = Math.round(scaledH * dpr);
+    canvas.style.width = cw + 'px';
+    canvas.style.height = scaledH + 'px';
+    canvas.style.maxWidth = 'none';
+    const c = canvas.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.scale(scale * dpr, scale * dpr);
+  }
+  resizeCanvas();
+
+  const ctx = canvas.getContext('2d');
+  const width = BASE_W, height = BASE_H;
+  let step = 0;
+  const MAX_STEP = 4;
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    if (step >= 1) { drawBox(ctx, 50, 40, 700, 80, 'Data Collection Layer', '#232F3E'); }
+    if (step >= 1) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-CloudWatch_48.svg', 150, 70, 36); }
+    if (step >= 1) { drawText(ctx, 'CloudWatch', 150, 102, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 1) { drawIcon(ctx, './common/aws-icons/services/Arch_AWS-X-Ray_48.svg', 350, 70, 36); }
+    if (step >= 1) { drawText(ctx, 'X-Ray', 350, 102, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 1) { drawIcon(ctx, './common/aws-icons/services/Arch_AWS-CloudTrail_48.svg', 550, 70, 36); }
+    if (step >= 1) { drawText(ctx, 'CloudTrail', 550, 102, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 2) { drawBox(ctx, 50, 150, 700, 80, 'Intelligent Analysis Layer', '#3B48CC'); }
+    if (step >= 2) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-DevOps-Guru_48.svg', 250, 180, 36); }
+    if (step >= 2) { drawText(ctx, 'DevOps-Guru', 250, 212, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 2) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-Lookout-for-Metrics_48.svg', 450, 180, 36); }
+    if (step >= 2) { drawText(ctx, 'Lookout-for-Metrics', 450, 212, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 3) { drawBox(ctx, 50, 260, 700, 80, 'Automation Layer', '#1B660F'); }
+    if (step >= 3) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-EventBridge_48.svg', 150, 290, 36); }
+    if (step >= 3) { drawText(ctx, 'EventBridge', 150, 322, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 3) { drawIcon(ctx, './common/aws-icons/services/Arch_AWS-Lambda_48.svg', 350, 290, 36); }
+    if (step >= 3) { drawText(ctx, 'Lambda', 350, 322, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 3) { drawIcon(ctx, './common/aws-icons/services/Arch_AWS-Systems-Manager_48.svg', 550, 290, 36); }
+    if (step >= 3) { drawText(ctx, 'Systems-Manager', 550, 322, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 4) { drawArrow(ctx, 400, 120, 400, 150, Colors.accent, false); }
+    if (step >= 4) { drawText(ctx, '분석 데이터', 400, 123, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 4) { drawArrow(ctx, 400, 230, 400, 260, Colors.accent, false); }
+    if (step >= 4) { drawText(ctx, '인사이트/이벤트', 400, 233, {size: 10, color: Colors.textSec, align: 'center'}); }
+  }
+
+  draw();
+  new ResizeObserver(() => { resizeCanvas(); draw(); }).observe(container);
+
+  const slide = canvas.closest('.slide');
+  if (slide) {
+    slide.dataset.slideAction = 'canvas-step';
+    slide.dataset.canvasMaxStep = String(MAX_STEP);
+    slide.__canvasStep = function(dir) {
+      if (dir === 'next' && step < MAX_STEP) step++;
+      if (dir === 'prev' && step > 0) step--;
+      draw();
+      return step;
+    };
+  }
+})();
+</script>
+<script>
+  
+  const presenterNotes = {
+    1: "[2min] 환영 인사와 함께 세션을 시작합니다. 오늘 다룰 AIOps의 핵심 가치를 간략히 소개하세요.\n\"클라우드 운영의 복잡성이 증가하면서, 수동 대응으로는 한계가 있습니다. 오늘은 AWS AIOps 서비스를 활용해 지능형 운영을 구현하는 방법을 알아보겠습니다.\"\n청중에게 현재 운영 환경에 대해 간단히 질문하며 참여를 유도하세요.",
+    2: "[2min] 세 가지 핵심 주제를 순서대로 소개합니다.\n첫 번째로 현재 수동 운영의 문제점을 짚고, 두 번째로 AIOps가 이를 어떻게 해결하는지 살펴봅니다.\n마지막으로 AIOps의 기반이 되는 관측성(Observability) 전략을 다룹니다.\n\"각 주제는 약 10분씩 진행되며, 중간에 아키텍처 다이어그램 데모가 포함됩니다.\"",
+    3: "[3min] 수동 운영의 고통을 청중이 공감할 수 있도록 설명합니다. 각 항목을 클릭하며 순차 공개하세요.\nMTTD 30분: \"장애 발생 후 30분이 지나서야 인지하는 경우가 많습니다. 그 30분 동안 사용자는 이미 불편을 겪고 있죠.\"\nMTTR 4시간: \"원인 파악, 담당자 호출, 수정, 배포까지 평균 4시간. 비즈니스 영향이 큽니다.\"\n알람 피로: \"너무 많은 알람은 오히려 중요한 알람을 놓치게 만듭니다.\"\n청중에게 질문: \"여러분도 비슷한 경험이 있으신가요?\"",
+    4: "[3min] AIOps의 정의와 전통적 운영과의 차이를 설명합니다.\n왼쪽: \"AIOps는 단순히 AI를 붙인 것이 아니라, ML, 자동화, 관측성이라는 세 가지 축이 결합된 접근법입니다.\"\n오른쪽: \"표를 보시면 각 영역에서 어떻게 개선되는지 한눈에 볼 수 있습니다. 특히 MTTD와 MTTR의 단축이 핵심입니다.\"\nGartner 정의를 인용하며 업계 표준 용어임을 강조하세요.",
+    5: "🎬 [4min] AIOps의 핵심 사이클을 단계별로 설명합니다. 화살표 키로 step 애니메이션을 진행하세요.\nStep 1 - 수집: \"CloudWatch가 메트릭, 로그, 트레이스를 수집합니다. 모든 AIOps의 시작점입니다.\"\nStep 2 - 분석: \"DevOps Guru가 ML로 이상 징후를 탐지하고 근본 원인을 분석합니다.\"\nStep 3 - 자동화: \"Lambda와 EventBridge가 자동 대응을 실행합니다.\"\nStep 4 - 화살표: \"이 사이클이 계속 순환하며 시스템을 학습하고 개선합니다. 피드백 루프가 핵심입니다.\"",
+    6: "[4min] AWS AIOps 서비스 스택을 3계층으로 설명합니다. step별로 각 계층을 공개하세요.\nStep 1 - 수집 계층: \"CloudWatch(메트릭/로그), X-Ray(트레이스), CloudTrail(API 감사 로그). 이 세 서비스가 관측성의 기반입니다.\"\nStep 2 - 분석 계층: \"DevOps Guru는 운영 이상 탐지, Lookout for Metrics는 비즈니스 메트릭 이상 탐지에 특화되어 있습니다.\"\nStep 3 - 자동화 계층: \"EventBridge가 이벤트를 라우팅하고, Lambda가 자동 대응을 실행합니다. Systems Manager로 인프라 자동화까지 연결됩니다.\"\nStep 4: \"계층 간 데이터 흐름을 보여주며 전체 파이프라인을 설명하세요.\"",
+    7: "[3min] 이 슬라이드는 Remarp의 새로운 Prompt 기능을 데모합니다.\n\":::prompt 블록 안에 자연어로 원하는 다이어그램을 설명하면, 에이전트가 Canvas 코드를 자동 생성합니다.\"\n\"앞서 본 서비스 맵과 동일한 구조를 프롬프트로 요청한 예시입니다.\"\n\"실제 프로젝트에서는 '반영해주세요'라고 말하면 에이전트가 이 프롬프트를 읽고 Canvas DSL 또는 JS로 변환합니다.\"\n\"복잡한 코드 없이도 아키텍처 다이어그램을 빠르게 만들 수 있는 것이 장점입니다.\"",
+    8: "[3min] CloudWatch의 핵심 서비스와 확장 기능을 나눠서 설명합니다. 각 항목을 클릭하며 순차 공개하세요.\n왼쪽 - 핵심: \"Metrics, Logs, Alarms는 CloudWatch의 기본 삼형제입니다. 대부분의 AWS 서비스가 자동으로 메트릭을 보냅니다.\"\n오른쪽 - 확장: \"Container Insights는 EKS 사용자에게 필수입니다. Application Insights는 애플리케이션 레벨 관측성을 제공합니다.\"\n\"Contributor Insights는 덜 알려져 있지만, 트래픽 분석에 매우 유용합니다.\"",
+    9: "[4min] 관측성의 세 기둥을 탭으로 전환하며 설명합니다. 각 탭을 클릭해 보여주세요.\nMetrics 탭: \"메트릭은 '무엇이 일어나고 있는가'를 알려줍니다. 시스템의 건강 상태를 한눈에 파악할 수 있죠.\"\nLogs 탭: \"로그는 '왜 일어났는가'를 알려줍니다. 디버깅의 핵심 자료입니다.\"\nTraces 탭: \"트레이스는 '어디서 일어났는가'를 알려줍니다. 분산 시스템에서 필수적입니다.\"\n\"이 세 가지를 결합해야 완전한 관측성을 확보할 수 있습니다. AIOps는 이 데이터를 ML로 분석합니다.\"",
+    11: "[2min] Block 1의 핵심 내용을 요약합니다. 세 가지 takeaway를 강조하세요.\n\"첫째, 수동 운영은 더 이상 클라우드 규모를 감당할 수 없습니다.\"\n\"둘째, AIOps는 세 가지 요소의 결합입니다. 하나라도 빠지면 효과가 반감됩니다.\"\n\"셋째, 관측성이 AIOps의 기반입니다. 데이터 없이는 ML도 자동화도 불가능합니다.\"\n\"다음 블록에서는 DevOps Guru를 중심으로 지능형 분석을 깊이 있게 다루겠습니다.\"\n질문을 받거나 잠시 휴식을 가질 수 있습니다."
+  };
+  const deck = new SlideFramework({
+    logoSrc: '../common/pptx-theme/images/logo_1.png',
+    footer: '© 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved.',
+    
+    pagination: true,
+    sidebar: false,
+    presenterNotes: presenterNotes,
+    onSlideChange: (index, slide) => {}
+  });
+</script>
+</body>
+</html>

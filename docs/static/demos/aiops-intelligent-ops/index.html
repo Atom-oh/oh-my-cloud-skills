@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIOps: 지능형 클라우드 운영</title>
+  <meta name="generator" content="remarp">
+  <meta name="remarp-version" content="1">
+  <meta name="remarp-source" content="index">
+  <meta name="remarp-block" content="merged">
+  <link rel="stylesheet" href="./common/theme.css">
+  <link rel="stylesheet" href="./common/pptx-theme/theme-override.css">
+  
+  
+  <script>window.__remarpTheme = {"colors": {}, "footer": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved.", "pagination": true, "fonts": {}};</script>
+</head>
+<body>
+<div class="slide-deck">
+<div class="slide" data-remarp-id="s0" style="background:linear-gradient(135deg, #1a1f35 0%, #0d1117 50%, #161b2e 100%); padding:0; overflow:hidden;">
+  <div style="position:absolute; top:-20%; right:-10%; width:60%; height:80%; background:radial-gradient(ellipse, rgba(108,92,231,0.15) 0%, transparent 70%); pointer-events:none;"></div>
+  <div style="position:absolute; left:5%; top:42%; width:80px; height:3px; background:linear-gradient(90deg, #6c5ce7, #a29bfe); border-radius:2px;"></div>
+  <h1 style="position:absolute; left:5%; top:45%; font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:60%; margin:0;">AIOps: 지능형 클라우드 운영</h1>
+  <p style="position:absolute; left:5%; top:60%; font-size:1.3rem; color:rgba(255,255,255,0.7); width:60%; margin:0;">Block 1 — AIOps 기초와 관측성 전략 (30 min)</p>
+  <div style="position:absolute; left:5%; top:75%;">
+    <p style="font-size:1.05rem; color:#fff; font-weight:600; margin:0;">Junseok Oh</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.6); margin:6px 0 0 0;">Sr. Solutions Architect</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.6); margin:2px 0 0 0;">AWS</p>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s1">
+  <div class="slide-header" data-remarp-id="s1-header"><h2>오늘 다룰 내용</h2></div>
+  <div class="slide-body" data-remarp-id="s1-body">
+    <div class="steps-container steps--horizontal steps--circle">
+      
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s2">
+  <div class="slide-header" data-remarp-id="s2-header"><h2>수동 운영의 한계</h2></div>
+  <div class="slide-body" data-remarp-id="s2-body">
+    <blockquote><p>"장애가 발생하면 알람 폭풍 속에서 원인을 찾느라 몇 시간을 소비합니다..."</p></blockquote>
+<ul><li class="fragment fade-in" data-fragment-index="0"><strong>탐지 지연</strong>: 평균 MTTD(Mean Time To Detect) 30분 이상</li><li class="fragment fade-in" data-fragment-index="1"><strong>복구 시간</strong>: 평균 MTTR(Mean Time To Recover) 4시간+</li><li class="fragment fade-in" data-fragment-index="2"><strong>알람 피로</strong>: 하루 수백 개의 알람, 90%는 false positive</li><li class="fragment fade-in" data-fragment-index="3"><strong>사일로 문제</strong>: 팀 간 정보 단절로 근본 원인 파악 지연</li><li class="fragment fade-in" data-fragment-index="4"><strong>확장성 한계</strong>: 서비스 증가 → 운영 복잡도 기하급수적 증가</li></ul>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s3">
+  <div class="slide-header" data-remarp-id="s3-header"><h2>AIOps란?</h2></div>
+  <div class="slide-body" data-remarp-id="s3-body">
+    <div class="columns">
+<div class="col">
+<h3>정의와 핵심 원칙</h3>
+<p><strong>AIOps</strong> = AI + IT Operations</p>
+<ul><li><strong>Machine Learning</strong>: 패턴 학습 및 이상 탐지</li><li><strong>자동화(Automation)</strong>: 반복 작업의 자동 처리</li><li><strong>관측성(Observability)</strong>: 메트릭/로그/트레이스 통합</li></ul>
+<blockquote><p>Gartner 정의: "빅데이터, ML, 자동화를 결합하여 IT 운영을 향상시키는 접근법"</p></blockquote>
+</div><div class="col">
+<h3>전통적 운영 vs AIOps</h3>
+<table><thead><tr><th>구분</th><th>전통적 운영</th><th>AIOps</th></tr></thead><tbody><tr><td>탐지</td><td>임계값 기반</td><td>ML 이상 탐지</td></tr><tr><td>분석</td><td>수동 로그 검색</td><td>자동 상관 분석</td></tr><tr><td>대응</td><td>수동 조치</td><td>자동 복구</td></tr><tr><td>확장</td><td>인력 비례</td><td>자동 스케일</td></tr><tr><td>MTTD</td><td>30분+</td><td>수 분</td></tr><tr><td>MTTR</td><td>4시간+</td><td>30분 이하</td></tr></tbody></table>
+</div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s4">
+  <div class="slide-header" data-remarp-id="s4-header"><h2>AIOps 사이클</h2></div>
+  <div class="slide-body" data-remarp-id="s4-body">
+    <div class="canvas-container" data-remarp-id="s4-canvas" style="flex:1">
+      <canvas id="aiops-cycle"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s5">
+  <div class="slide-header" data-remarp-id="s5-header"><h2>AWS AIOps 서비스 맵</h2></div>
+  <div class="slide-body" data-remarp-id="s5-body">
+    <div class="canvas-container" data-remarp-id="s5-canvas" style="flex:1">
+      <canvas id="aws-aiops-map"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s6">
+  <div class="slide-header" data-remarp-id="s6-header"><h2>AIOps 파이프라인 (Prompt Demo)</h2></div>
+  <div class="slide-body" data-remarp-id="s6-body">
+    <div class="canvas-container" data-remarp-id="s6-canvas" style="flex:1; display:flex; align-items:center; justify-content:center;">
+      <!-- CANVAS_PROMPT: AWS AIOps 3계층 아키텍처를 그려주세요:
+1층 - 데이터 수집: CloudWatch, X-Ray, CloudTrail
+2층 - 지능형 분 -->
+      <div style="text-align:left; color:#FF9900; padding:2rem; border:2px dashed #FF9900; border-radius:12px; max-width:700px; background:rgba(255,153,0,0.05);">
+        <p style="font-size:1.1rem; font-weight:600; margin-bottom:0.8rem;">💬 Diagram Prompt</p>
+        <p style="font-size:0.95rem; line-height:1.6; opacity:0.85; white-space:pre-wrap;">AWS AIOps 3계층 아키텍처를 그려주세요:<br>1층 - 데이터 수집: CloudWatch, X-Ray, CloudTrail<br>2층 - 지능형 분석: DevOps Guru, Lookout for Metrics<br>3층 - 자동화: EventBridge, Lambda, Systems Manager<br>각 층 사이에 화살표, 층별 다른 색상 라벨, Step 애니메이션 적용.</p>
+        <p style="font-size:0.75rem; opacity:0.4; margin-top:1rem; font-style:italic;">Run presentation-agent to resolve this prompt into a diagram</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s7">
+  <div class="slide-header" data-remarp-id="s7-header"><h2>CloudWatch 에코시스템</h2></div>
+  <div class="slide-body" data-remarp-id="s7-body">
+    <div class="columns">
+<div class="col">
+<h3>핵심 서비스</h3>
+<ul><li class="fragment fade-in" data-fragment-index="0"><strong>CloudWatch Metrics</strong>
+<ul><li>70+ AWS 서비스 자동 수집</li><li>커스텀 메트릭 지원</li></ul></li></ul>
+<ul><li class="fragment fade-in" data-fragment-index="1"><strong>CloudWatch Logs</strong>
+<ul><li>로그 수집/저장/분석</li><li>Logs Insights 쿼리 엔진</li></ul></li></ul>
+<ul><li class="fragment fade-in" data-fragment-index="2"><strong>CloudWatch Alarms</strong>
+<ul><li>임계값 + 이상 탐지 알람</li><li>복합 알람(Composite Alarms)</li></ul></li></ul>
+</div><div class="col">
+<h3>확장 기능</h3>
+<ul><li class="fragment fade-in" data-fragment-index="3"><strong>Container Insights</strong>
+<ul><li>EKS/ECS 컨테이너 관측성</li><li>자동 대시보드 생성</li></ul></li></ul>
+<ul><li class="fragment fade-in" data-fragment-index="4"><strong>Application Insights</strong>
+<ul><li>.NET/Java/Node.js 앱 모니터링</li><li>이상 탐지 내장</li></ul></li></ul>
+<ul><li class="fragment fade-in" data-fragment-index="5"><strong>Contributor Insights</strong>
+<ul><li>상위 기여자 실시간 분석</li><li>VPC Flow Logs 트래픽 분석</li></ul></li></ul>
+</div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s8">
+  <div class="slide-header" data-remarp-id="s8-header"><h2>관측성 3대 축</h2></div>
+  <div class="slide-body" data-remarp-id="s8-body">
+    <div class="compare-toggle">
+            <button class="compare-btn active" data-compare="metrics">Metrics (지표)</button>
+      <button class="compare-btn" data-compare="logs">Logs (로그)</button>
+      <button class="compare-btn" data-compare="traces">Traces (트레이스)</button>
+    </div>
+    <div class="compare-content active" data-compare="metrics">
+<p><strong>정의</strong>: 시간에 따른 수치 데이터</p>
+<p><strong>특징</strong>:</p>
+<ul><li>집계 가능 (평균, 합계, 백분위)</li><li>저장 비용 효율적</li><li>대시보드/알람에 최적화</li></ul>
+<p><strong>AWS 서비스</strong>:</p>
+<ul><li>CloudWatch Metrics</li><li>Amazon Managed Prometheus (AMP)</li></ul>
+<p><strong>사용 사례</strong>:</p>
+<ul><li>CPU/메모리 사용률</li><li>요청 처리량 (RPS)</li><li>에러율, 지연 시간 (p99)</li></ul>
+<p>:::</p>
+<p>::: tab Logs</p>
+</div>
+<div class="compare-content" data-compare="logs">
+<p><strong>정의</strong>: 이벤트의 텍스트 기록</p>
+<p><strong>특징</strong>:</p>
+<ul><li>상세한 컨텍스트 제공</li><li>구조화/비구조화 모두 지원</li><li>검색/필터링으로 디버깅</li></ul>
+<p><strong>AWS 서비스</strong>:</p>
+<ul><li>CloudWatch Logs</li><li>OpenSearch Service</li></ul>
+<p><strong>사용 사례</strong>:</p>
+<ul><li>에러 스택 트레이스</li><li>감사 로그 (CloudTrail)</li><li>애플리케이션 디버깅</li></ul>
+<p>:::</p>
+<p>::: tab Traces</p>
+</div>
+<div class="compare-content" data-compare="traces">
+<p><strong>정의</strong>: 분산 시스템의 요청 경로 추적</p>
+<p><strong>특징</strong>:</p>
+<ul><li>서비스 간 흐름 시각화</li><li>지연 구간 식별</li><li>근본 원인 분석에 필수</li></ul>
+<p><strong>AWS 서비스</strong>:</p>
+<ul><li>AWS X-Ray</li><li>AWS Distro for OpenTelemetry (ADOT)</li></ul>
+<p><strong>사용 사례</strong>:</p>
+<ul><li>마이크로서비스 병목 분석</li><li>콜드 스타트 지연 추적</li><li>서비스 의존성 맵</li></ul>
+<p>:::</p>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s9">
+  <div class="slide-header" data-remarp-id="s9-header"><h2>Key Takeaways</h2></div>
+  <div class="slide-body" data-remarp-id="s9-body">
+    <h3>Block 1에서 배운 핵심 내용</h3>
+<ul><li><strong>수동 운영의 한계</strong>: MTTD 30분+, MTTR 4시간+의 비효율. 알람 피로와 사일로 문제로 확장 불가</li></ul>
+<ul><li><strong>AIOps = ML + 자동화 + 관측성</strong>: 단순 모니터링이 아닌, 지능형 탐지 → 자동 분석 → 자동 대응의 사이클</li></ul>
+<ul><li><strong>관측성 3대 축</strong>: Metrics(무엇이), Logs(왜), Traces(어디서) — 세 가지를 통합해야 AIOps의 기반 완성</li></ul>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s10">
+  
+  <div class="slide-body" data-remarp-id="s10-body">
+    <h3>다음 블록 예고</h3>
+<p><strong>Block 2: 지능형 분석과 인사이트</strong> — DevOps Guru 심층 분석, 이상 탐지 ML 모델, 실전 데모</p>
+<p><div style="display:flex; gap:16px; margin-top:24px; justify-content:center;"></p>
+<p>  <a href="index.html" class="btn btn-sm" style="text-decoration:none;">← 목차로 돌아가기</a></p>
+<p>  <a href="02-intelligent-analysis.html" class="btn btn-primary btn-sm" style="text-decoration:none;">다음: Block 2 →</a></p>
+<p></div></p>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s0" style="background:linear-gradient(135deg, #1a1f35 0%, #0d1117 50%, #161b2e 100%); padding:0; overflow:hidden;">
+  <div style="position:absolute; top:-20%; right:-10%; width:60%; height:80%; background:radial-gradient(ellipse, rgba(108,92,231,0.15) 0%, transparent 70%); pointer-events:none;"></div>
+  <div style="position:absolute; left:5%; top:42%; width:80px; height:3px; background:linear-gradient(90deg, #6c5ce7, #a29bfe); border-radius:2px;"></div>
+  <h1 style="position:absolute; left:5%; top:45%; font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:60%; margin:0;">AIOps: 지능형 클라우드 운영</h1>
+  <p style="position:absolute; left:5%; top:60%; font-size:1.3rem; color:rgba(255,255,255,0.7); width:60%; margin:0;">Block 2 — 지능형 분석과 ML 기반 운영 (30 min)</p>
+  <div style="position:absolute; left:5%; top:75%;">
+    <p style="font-size:1.05rem; color:#fff; font-weight:600; margin:0;">Junseok Oh</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.6); margin:6px 0 0 0;">Sr. Solutions Architect</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.6); margin:2px 0 0 0;">AWS</p>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s1">
+  <div class="slide-header" data-remarp-id="s1-header"><h2>DevOps Guru 아키텍처</h2></div>
+  <div class="slide-body" data-remarp-id="s1-body">
+    <div class="canvas-container" data-remarp-id="s1-canvas" style="flex:1">
+      <canvas id="devops-guru-arch"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s2">
+  <div class="slide-header" data-remarp-id="s2-header"><h2>DevOps Guru 인사이트 유형</h2></div>
+  <div class="slide-body" data-remarp-id="s2-body">
+    <div class="tab-bar">
+            <button class="tab-btn active" data-tab="reactive-insight">Reactive Insight</button>
+    </div>
+        <div class="tab-content active" data-tab="reactive-insight">
+<p><strong>현재 발생 중인 이상 징후 탐지</strong></p>
+<ul><li class="fragment fade-in" data-fragment-index="0">애플리케이션 성능 저하 감지</li><li class="fragment fade-in" data-fragment-index="1">리소스 고갈 패턴 식별</li><li class="fragment fade-in" data-fragment-index="2">최근 배포와의 상관관계 분석</li></ul>
+<p><strong>실제 예시:</strong></p>
+<blockquote><p>"Lambda 함수 <code>order-processor</code>의 duration이 p99 기준 300% 증가했습니다. 2시간 전 DynamoDB 테이블 <code>orders</code>의 쓰기 용량 조절과 연관됩니다."</p></blockquote>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s3">
+  
+  <div class="slide-body" data-remarp-id="s3-body">
+    <h3>Proactive Insight</h3>
+<p><strong>미래에 발생할 문제 예측</strong></p>
+<ul><li class="fragment fade-in" data-fragment-index="0">리소스 한계 도달 시점 예측</li><li class="fragment fade-in" data-fragment-index="1">비용 이상 증가 패턴 탐지</li><li class="fragment fade-in" data-fragment-index="2">성능 저하 조기 경보</li></ul>
+<p><strong>실제 예시:</strong></p>
+<blockquote><p>"현재 RDS 인스턴스 <code>prod-db</code>의 스토리지 증가율을 분석한 결과, 14일 내에 프로비저닝된 IOPS 한계에 도달할 것으로 예측됩니다."</p></blockquote>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s4">
+  
+  <div class="slide-body" data-remarp-id="s4-body">
+    <h3>Anomaly Detection</h3>
+<p><strong>ML 기반 이상 패턴 식별</strong></p>
+<ul><li class="fragment fade-in" data-fragment-index="0">계절성(seasonality) 자동 학습</li><li class="fragment fade-in" data-fragment-index="1">트렌드 변화 감지</li><li class="fragment fade-in" data-fragment-index="2">Multi-metric 상관관계 분석</li></ul>
+<p><strong>실제 예시:</strong></p>
+<blockquote><p>"매주 월요일 09:00 트래픽 급증은 정상 패턴입니다. 그러나 오늘 화요일 14:00의 급증은 이전 패턴과 일치하지 않는 이상 징후입니다."</p></blockquote>
+<p>:::</p>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s5">
+  <div class="slide-header" data-remarp-id="s5-header"><h2>Lookout for Metrics</h2></div>
+  <div class="slide-body" data-remarp-id="s5-body">
+    <div class="columns">
+<div class="col">
+<h3>비즈니스 KPI 이상 탐지</h3>
+<ul><li class="fragment fade-in" data-fragment-index="0">매출, 주문량, 사용자 수 등 비즈니스 메트릭 모니터링</li><li class="fragment fade-in" data-fragment-index="1">최대 19개 차원(dimension)으로 세분화 분석</li><li class="fragment fade-in" data-fragment-index="2">이상 발생 시 근본 원인 자동 추론</li><li class="fragment fade-in" data-fragment-index="3">75+ 개 기여 요인(contributor) 자동 식별</li><li class="fragment fade-in" data-fragment-index="4">Severity Score로 우선순위 결정</li></ul>
+</div><div class="col">
+<h3>지원 데이터 소스</h3>
+<table><thead><tr><th>소스</th><th>연결 방식</th></tr></thead><tbody><tr><td><strong>Amazon S3</strong></td><td class="fragment fade-in" data-fragment-index="5">CSV/JSON 파일 직접 업로드</td></tr><tr><td><strong>CloudWatch</strong></td><td class="fragment fade-in" data-fragment-index="6">메트릭 네임스페이스 연결</td></tr><tr><td><strong>Amazon RDS</strong></td><td class="fragment fade-in" data-fragment-index="7">Aurora/MySQL/PostgreSQL 직접 쿼리</td></tr><tr><td><strong>Amazon Redshift</strong></td><td class="fragment fade-in" data-fragment-index="8">SQL 기반 데이터 추출</td></tr><tr><td><strong>AppFlow</strong></td><td class="fragment fade-in" data-fragment-index="9">SaaS 데이터 연동 (Salesforce, Zendesk 등)</td></tr></tbody></table>
+</div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s6">
+  <div class="slide-header" data-remarp-id="s6-header"><h2>CloudWatch Anomaly Detection</h2></div>
+  <div class="slide-body" data-remarp-id="s6-body">
+    <p>ML 기반으로 메트릭의 예상 범위(band)를 자동 계산하고, 이탈 시 알람을 발생시킵니다.</p>
+<h3>주요 특징</h3>
+<ul><li class="fragment fade-in" data-fragment-index="0">2주간의 학습 기간으로 계절성/트렌드 파악</li><li class="fragment fade-in" data-fragment-index="1">시간대별, 요일별 패턴 자동 학습</li><li class="fragment fade-in" data-fragment-index="2">임계값 수동 설정 불필요 - ML이 동적으로 결정</li><li class="fragment fade-in" data-fragment-index="3">기존 CloudWatch Alarm과 완전 통합</li></ul>
+<h3>Anomaly Detection Alarm 설정 예시</h3>
+<div class="code-block"><span class="key">AlarmName</span>: cpu-anomaly-detection
+<span class="key">MetricName</span>: CPUUtilization
+<span class="key">Namespace</span>: AWS/EC2
+<span class="key">Stat</span>: Average
+<span class="key">Period</span>: 300
+<span class="key">EvaluationPeriods</span>: 3
+<span class="key">ComparisonOperator</span>: LessThanLowerOrGreaterThanUpperThreshold
+<span class="key">ThresholdMetricId</span>: ad1
+<span class="key">Metrics</span>:
+  - Id: m1
+    <span class="key">MetricStat</span>:
+      <span class="key">Metric</span>:
+        <span class="key">MetricName</span>: CPUUtilization
+        <span class="key">Namespace</span>: AWS/EC2
+      <span class="key">Period</span>: 300
+      <span class="key">Stat</span>: Average
+  - Id: ad1
+    <span class="key">Expression</span>: ANOMALY_DETECTION_BAND(m1, 2)</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s7">
+  <div class="slide-header" data-remarp-id="s7-header"><h2>X-Ray 분산 트레이싱</h2></div>
+  <div class="slide-body" data-remarp-id="s7-body">
+    <div class="canvas-container" data-remarp-id="s7-canvas" style="flex:1">
+      <canvas id="xray-service-map"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s8">
+  <div class="slide-header" data-remarp-id="s8-header"><h2>실전 패턴: 장애 시나리오 분석</h2></div>
+  <div class="slide-body" data-remarp-id="s8-body">
+    <div class="steps-container steps--horizontal steps--circle">
+            <div class="step-item" data-remarp-id="s8-step-0">
+      <div class="step-marker">1</div>
+      <div class="step-label">Step 1: CloudWatch Alarm 발생</div>
+      <div class="step-desc">- <strong>트리거:</strong> API Gateway 5xx Error Rate > 5% - <strong>초기 정보:</strong> 에러 급증 시작 시간, 영향받는 엔드포인트 - <strong>조치:</strong> 인시던트 생성, 온콜 엔지니어 호출</div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s9">
+  
+  <div class="slide-body" data-remarp-id="s9-body">
+    <h3>Step 2: X-Ray 트레이스 분석</h3>
+<ul><li><strong>목표:</strong> 어느 서비스에서 에러가 시작되었는지 추적</li><li><strong>확인 사항:</strong> Service Map에서 빨간색 노드 식별</li><li><strong>발견:</strong> <code>payment-service</code> Lambda에서 timeout 다수 발생</li></ul>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s10">
+  
+  <div class="slide-body" data-remarp-id="s10-body">
+    <h3>Step 3: DevOps Guru 인사이트 확인</h3>
+<ul><li><strong>Reactive Insight:</strong> "payment-service 성능 저하 탐지"</li><li><strong>연관 이벤트:</strong> 30분 전 RDS 인스턴스 failover 발생</li><li><strong>추천 조치:</strong> RDS connection pool 설정 검토</li></ul>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s11">
+  
+  <div class="slide-body" data-remarp-id="s11-body">
+    <h3>Step 4: 근본 원인 식별</h3>
+<ul><li><strong>원인 체인:</strong> RDS failover → DNS 전파 지연 → Lambda cold start 증가 → Connection timeout</li><li><strong>증거:</strong> CloudWatch Logs에서 connection refused 에러 확인</li><li><strong>결론:</strong> RDS Proxy 미사용으로 인한 connection 관리 문제</li></ul>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s12">
+  
+  <div class="slide-body" data-remarp-id="s12-body">
+    <h3>Step 5: 자동 복구 실행</h3>
+<ul><li><strong>즉시 조치:</strong> Lambda concurrency 일시 증가 (수동)</li><li><strong>장기 해결:</strong> RDS Proxy 도입 (자동화된 connection pooling)</li><li><strong>검증:</strong> Error rate 정상화, DevOps Guru insight 해소 확인</li></ul>
+<p>:::</p>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s13">
+  <div class="slide-header" data-remarp-id="s13-header"><h2>ML 기반 vs Rule 기반 탐지 비교</h2></div>
+  <div class="slide-body" data-remarp-id="s13-body" data-compare-mode="side-by-side">
+    <div class="compare-toggle">
+            <button class="compare-btn active" data-compare="ml">ML 기반 탐지</button>
+      <button class="compare-btn" data-compare="rule">Rule 기반 탐지</button>
+    </div>
+    <div class="col-2" style="flex:1">
+            <div class="card compare-content active compare-highlight" data-compare="ml" data-remarp-id="s13-left">
+<h3 style="color:var(--text-accent);margin-bottom:.5rem">ML 기반 탐지</h3>
+<p><strong>장점</strong></p>
+<ul><li class="fragment fade-in" data-fragment-index="0">임계값 설정 불필요 — 자동 학습</li><li class="fragment fade-in" data-fragment-index="1">계절성, 트렌드 변화 자동 반영</li><li class="fragment fade-in" data-fragment-index="2">알 수 없는 이상 패턴(unknown unknowns) 탐지 가능</li><li class="fragment fade-in" data-fragment-index="3">False positive 감소 (컨텍스트 인식)</li></ul>
+<p><strong>단점</strong></p>
+<ul><li class="fragment fade-in" data-fragment-index="4">2주 이상의 학습 기간 필요</li><li class="fragment fade-in" data-fragment-index="5">블랙박스 — 왜 알람이 발생했는지 설명 어려움</li><li class="fragment fade-in" data-fragment-index="6">새로운 워크로드에 즉시 적용 불가</li></ul>
+<p><strong>적합한 상황</strong></p>
+<blockquote><p>패턴이 복잡하고 변동성이 큰 메트릭, 적절한 임계값을 모르는 경우</p></blockquote>
+</div>
+      <div class="card compare-content active" data-compare="rule" data-remarp-id="s13-right">
+<h3 style="color:var(--text-accent);margin-bottom:.5rem">Rule 기반 탐지</h3>
+<p><strong>장점</strong></p>
+<ul><li class="fragment fade-in" data-fragment-index="7">즉시 적용 가능 — 학습 기간 없음</li><li class="fragment fade-in" data-fragment-index="8">명확한 동작 — 왜 알람이 발생했는지 설명 가능</li><li class="fragment fade-in" data-fragment-index="9">규정 준수(Compliance) 요구사항 충족 용이</li><li class="fragment fade-in" data-fragment-index="10">비용 효율적</li></ul>
+<p><strong>단점</strong></p>
+<ul><li class="fragment fade-in" data-fragment-index="11">수동으로 임계값 튜닝 필요</li><li class="fragment fade-in" data-fragment-index="12">계절성 반영 어려움 (야간/주말 다른 임계값 필요)</li><li class="fragment fade-in" data-fragment-index="13">알려진 패턴(known knowns)만 탐지</li></ul>
+<p><strong>적합한 상황</strong></p>
+<blockquote><p>SLA 기반 명확한 임계값이 있는 경우, 즉시 모니터링이 필요한 신규 서비스</p></blockquote>
+</div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s14">
+  <div class="slide-header" data-remarp-id="s14-header"><h2>AIOps 분석 도구 선택 가이드</h2></div>
+  <div class="slide-body" data-remarp-id="s14-body">
+    <p>상황별로 최적의 AWS 서비스를 선택하세요:</p>
+<table><thead><tr><th>분석 요구사항</th><th>추천 서비스</th><th>핵심 기능</th></tr></thead><tbody><tr><td>메트릭 이상 탐지</td><td><strong>CloudWatch Anomaly Detection</strong></td><td class="fragment fade-in" data-fragment-index="0">ML 기반 동적 임계값</td></tr><tr><td>애플리케이션 운영 이상</td><td><strong>DevOps Guru</strong></td><td class="fragment fade-in" data-fragment-index="1">인사이트 + 추천 조치</td></tr><tr><td>비즈니스 KPI 이상</td><td><strong>Lookout for Metrics</strong></td><td class="fragment fade-in" data-fragment-index="2">다차원 기여 요인 분석</td></tr><tr><td>분산 시스템 병목</td><td><strong>X-Ray</strong></td><td class="fragment fade-in" data-fragment-index="3">Service Map + 트레이스</td></tr><tr><td>로그 기반 이상 탐지</td><td><strong>CloudWatch Logs Insights</strong></td><td class="fragment fade-in" data-fragment-index="4">패턴 분석 + 쿼리</td></tr><tr><td>컨테이너 워크로드</td><td><strong>Container Insights + DevOps Guru</strong></td><td class="fragment fade-in" data-fragment-index="5">EKS/ECS 통합 모니터링</td></tr></tbody></table>
+<h3>통합 권장 아키텍처</h3>
+<div class="code-block">CloudWatch Metrics ──┬── Anomaly Detection Alarm ──┐
+                     │                              │
+X-Ray Traces ────────┼── DevOps Guru ──────────────┼── SNS ── Lambda (자동 복구)
+                     │                              │
+CloudWatch Logs ─────┴── Logs Insights ────────────┘</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s15">
+  <div class="slide-header" data-remarp-id="s15-header"><h2>Key Takeaways</h2></div>
+  <div class="slide-body" data-remarp-id="s15-body">
+    <h3>Block 2에서 배운 핵심 내용</h3>
+<ol><li class="fragment fade-in" data-fragment-index="0"><strong>DevOps Guru는 Reactive + Proactive 인사이트를 제공합니다</strong>
+<ul><li>현재 문제뿐 아니라 미래 문제도 예측</li><li>근본 원인 분석과 추천 조치까지 자동화</li></ul></li><li class="fragment fade-in" data-fragment-index="1"><strong>ML 기반 탐지는 Rule 기반과 보완적으로 사용하세요</strong>
+<ul><li>Critical 알람은 Rule 기반 (명확한 SLA)</li><li>Warning 모니터링은 ML 기반 (동적 임계값)</li></ul></li><li class="fragment fade-in" data-fragment-index="2"><strong>X-Ray + DevOps Guru 조합이 장애 분석의 핵심입니다</strong>
+<ul><li>X-Ray로 '어디서' 문제가 발생했는지 추적</li><li>DevOps Guru로 '왜' 발생했는지, '어떻게' 해결할지 확인</li></ul></li></ol>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s16">
+  
+  <div class="slide-body" data-remarp-id="s16-body">
+    <h3>다음 블록 예고</h3>
+<p><strong>Block 3: 자동화 성숙도 모델</strong>에서는 수동 대응에서 완전 자동화까지의 성숙도 단계와 EventBridge, Systems Manager, Lambda를 활용한 자동 복구 구현을 다룹니다.</p>
+<p><a href="./index.html">← 목차로 돌아가기</a></p>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s0" style="background:url('./common/pptx-theme/images/Picture_13.png') center/cover no-repeat; padding:0; overflow:hidden;">
+  <h1 style="position:absolute; left:5%; top:48%; font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:53%; margin:0;">AIOps: 지능형 클라우드 운영</h1>
+  <p style="position:absolute; left:5%; top:62%; font-size:1.3rem; color:rgba(255,255,255,0.8); width:53%; margin:0;">Block 3 — 자동화와 운영 성숙도 (30 min)</p>
+  <div style="position:absolute; left:5%; top:76%;">
+    <p style="font-size:1.05rem; color:#fff; font-weight:600; margin:0;">Junseok Oh</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.65); margin:6px 0 0 0;">Sr. Solutions Architect</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.65); margin:2px 0 0 0;">AWS</p>
+  </div>
+  <img src="./common/pptx-theme/images/Picture_8.png" alt="" style="position:absolute; right:5%; bottom:10%; width:8%; pointer-events:none;" />
+</div>
+
+<div class="slide" data-remarp-id="s1">
+  <div class="slide-header" data-remarp-id="s1-header"><h2>EventBridge 이벤트 기반 자동화</h2></div>
+  <div class="slide-body" data-remarp-id="s1-body">
+    <div class="canvas-container" data-remarp-id="s1-canvas" style="flex:1">
+      <canvas id="eventbridge-automation"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s2">
+  <div class="slide-header" data-remarp-id="s2-header"><h2>Lambda 자동 복구 패턴</h2></div>
+  <div class="slide-body" data-remarp-id="s2-body">
+    <div class="tab-bar">
+            <button class="tab-btn active" data-tab="ec2">EC2 인스턴스 자동 복구</button>
+      <button class="tab-btn" data-tab="ecs">ECS 서비스 자동 재시작</button>
+      <button class="tab-btn" data-tab="rds-failover">RDS 자동 Failover 처리</button>
+    </div>
+        <div class="tab-content active" data-tab="ec2">
+<p><strong>트리거</strong>: CloudWatch Alarm (StatusCheckFailed)</p>
+<div class="code-block"><span class="keyword">import</span> boto3
+
+<span class="keyword">def</span> handler(event, context):
+    ec2 = boto3.client(<span class="string">'ec2'</span>)
+    instance_id = event[<span class="string">'detail'</span>][<span class="string">'instance-id'</span>]
+
+    <span class="comment"># 인스턴스 상태 확인</span>
+    response = ec2.describe_instance_status(
+        InstanceIds=[instance_id]
+    )
+
+    <span class="comment"># 복구 실행</span>
+    ec2.reboot_instances(InstanceIds=[instance_id])
+
+    <span class="keyword">return</span> {<span class="string">'status'</span>: <span class="string">'recovered'</span>, <span class="string">'instance'</span>: instance_id}</div>
+<p><strong>검증</strong>: 재부팅 후 상태 재확인</p>
+<p>:::</p>
+<p>::: tab ECS 재시작</p>
+</div>
+    <div class="tab-content" data-tab="ecs">
+<p><strong>트리거</strong>: 태스크 unhealthy 이벤트</p>
+<div class="code-block"><span class="keyword">import</span> boto3
+
+<span class="keyword">def</span> handler(event, context):
+    ecs = boto3.client(<span class="string">'ecs'</span>)
+    cluster = event[<span class="string">'detail'</span>][<span class="string">'clusterArn'</span>]
+    service = event[<span class="string">'detail'</span>][<span class="string">'serviceName'</span>]
+
+    <span class="comment"># 강제 새 배포로 태스크 교체</span>
+    ecs.update_service(
+        cluster=cluster,
+        service=service,
+        forceNewDeployment=<span class="keyword">True</span>
+    )
+
+    <span class="keyword">return</span> {<span class="string">'status'</span>: <span class="string">'restarted'</span>, <span class="string">'service'</span>: service}</div>
+<p><strong>검증</strong>: 새 태스크 Running 상태 확인</p>
+<p>:::</p>
+<p>::: tab RDS Failover</p>
+</div>
+    <div class="tab-content" data-tab="rds-failover">
+<p><strong>트리거</strong>: RDS 이벤트 (failover 시작)</p>
+<div class="code-block"><span class="keyword">import</span> boto3
+
+<span class="keyword">def</span> handler(event, context):
+    rds = boto3.client(<span class="string">'rds'</span>)
+    db_instance = event[<span class="string">'detail'</span>][<span class="string">'SourceIdentifier'</span>]
+
+    <span class="comment"># Failover 상태 모니터링</span>
+    response = rds.describe_db_instances(
+        DBInstanceIdentifier=db_instance
+    )
+
+    <span class="comment"># 애플리케이션 연결 풀 갱신 알림</span>
+    notify_app_teams(db_instance, <span class="string">'failover_complete'</span>)
+
+    <span class="keyword">return</span> {<span class="string">'status'</span>: <span class="string">'failover_handled'</span>, <span class="string">'db'</span>: db_instance}</div>
+<p><strong>검증</strong>: Reader/Writer 엔드포인트 정상 확인</p>
+<p>:::</p>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s3">
+  <div class="slide-header" data-remarp-id="s3-header"><h2>Systems Manager 자동화 문서</h2></div>
+  <div class="slide-body" data-remarp-id="s3-body">
+    <div class="columns">
+<div class="col">
+<h3>Automation 문서 구성요소</h3>
+<ul><li class="fragment fade-in" data-fragment-index="0"><strong>schemaVersion</strong>: 문서 버전 (0.3)</li><li class="fragment fade-in" data-fragment-index="1"><strong>description</strong>: 자동화 설명</li><li class="fragment fade-in" data-fragment-index="2"><strong>mainSteps</strong>: 실행할 단계들</li><li class="fragment fade-in" data-fragment-index="3"><strong>assumeRole</strong>: 실행 IAM 역할</li><li class="fragment fade-in" data-fragment-index="4"><strong>parameters</strong>: 입력 파라미터</li></ul>
+</div><div class="col">
+<h3>ECS 서비스 재시작 문서 예시</h3>
+<div class="code-block"><span class="key">schemaVersion</span>: <span class="string">'0.3'</span>
+<span class="key">description</span>: Restart unhealthy ECS service
+<span class="key">assumeRole</span>: <span class="string">'{{AutomationAssumeRole}}'</span>
+<span class="key">parameters</span>:
+  <span class="key">ClusterName</span>:
+    <span class="key">type</span>: String
+  <span class="key">ServiceName</span>:
+    <span class="key">type</span>: String
+<span class="key">mainSteps</span>:
+  - name: describeService
+    <span class="key">action</span>: aws:executeAwsApi
+    <span class="key">inputs</span>:
+      <span class="key">Service</span>: ecs
+      <span class="key">Api</span>: DescribeServices
+      <span class="key">cluster</span>: <span class="string">'{{ClusterName}}'</span>
+      <span class="key">services</span>:
+        - <span class="string">'{{ServiceName}}'</span>
+  - name: updateService
+    <span class="key">action</span>: aws:executeAwsApi
+    <span class="key">inputs</span>:
+      <span class="key">Service</span>: ecs
+      <span class="key">Api</span>: UpdateService
+      <span class="key">cluster</span>: <span class="string">'{{ClusterName}}'</span>
+      <span class="key">service</span>: <span class="string">'{{ServiceName}}'</span>
+      <span class="key">forceNewDeployment</span>: <span class="keyword">true</span></div>
+</div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s4">
+  <div class="slide-header" data-remarp-id="s4-header"><h2>Incident Manager 통합</h2></div>
+  <div class="slide-body" data-remarp-id="s4-body">
+    <div class="columns">
+<div class="col">
+<h3>Incident Manager 핵심 기능</h3>
+<ul><li class="fragment fade-in" data-fragment-index="0"><strong>대응 계획 (Response Plan)</strong>
+<ul><li>사전 정의된 복구 절차</li><li>자동 런북 실행</li></ul></li><li class="fragment fade-in" data-fragment-index="1"><strong>에스컬레이션 (Escalation)</strong>
+<ul><li>담당자 자동 호출</li><li>시간 기반 단계별 확대</li></ul></li><li class="fragment fade-in" data-fragment-index="2"><strong>타임라인 (Timeline)</strong>
+<ul><li>인시던트 전체 기록</li><li>사후 분석용 데이터</li></ul></li><li class="fragment fade-in" data-fragment-index="3"><strong>협업 채널</strong>
+<ul><li>Slack/Teams 연동</li><li>실시간 상태 공유</li></ul></li></ul>
+</div><div class="col">
+<h3>통합 포인트</h3>
+<ul><li class="fragment fade-in" data-fragment-index="4"><strong>CloudWatch Alarms</strong>
+<ul><li>알람 → 인시던트 자동 생성</li><li>심각도 기반 대응 계획 선택</li></ul></li><li class="fragment fade-in" data-fragment-index="5"><strong>DevOps Guru Insights</strong>
+<ul><li>이상 탐지 → 인시던트 연결</li><li>권장 조치 자동 포함</li></ul></li><li class="fragment fade-in" data-fragment-index="6"><strong>EventBridge Rules</strong>
+<ul><li>커스텀 이벤트 패턴 매칭</li><li>복합 조건 인시던트 트리거</li></ul></li><li class="fragment fade-in" data-fragment-index="7"><strong>SSM Automation</strong>
+<ul><li>인시던트 발생 시 런북 자동 실행</li><li>복구 결과 타임라인에 기록</li></ul></li></ul>
+</div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s5">
+  <div class="slide-header" data-remarp-id="s5-header"><h2>자동화 파이프라인 전체 흐름</h2></div>
+  <div class="slide-body" data-remarp-id="s5-body">
+    <div class="canvas-container" data-remarp-id="s5-canvas" style="flex:1">
+      <canvas id="automation-pipeline"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s6">
+  <div class="slide-header" data-remarp-id="s6-header"><h2>운영 성숙도 모델</h2></div>
+  <div class="slide-body" data-remarp-id="s6-body">
+    <div class="steps-container steps--horizontal steps--circle">
+      
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s7">
+  <div class="slide-header" data-remarp-id="s7-header"><h2>AIOps 도입 로드맵</h2></div>
+  <div class="slide-body" data-remarp-id="s7-body">
+    <div class="steps-container steps--horizontal steps--arrow">
+      
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s8">
+  <div class="slide-header" data-remarp-id="s8-header"><h2>AnyCompany 맞춤 권장사항</h2></div>
+  <div class="slide-body" data-remarp-id="s8-body">
+    <div class="columns">
+<div class="col">
+<h3>즉시 적용 가능 (Quick Wins)</h3>
+<ol><li class="fragment fade-in" data-fragment-index="0"><strong>DevOps Guru 연동</strong>
+<ul><li>현재 CloudWatch 알람 기반 → DevOps Guru 활성화</li><li>기존 리소스 자동 검색, 추가 설정 최소화</li><li>2주 내 이상 탐지 시작</li></ul></li><li class="fragment fade-in" data-fragment-index="1"><strong>X-Ray 트레이싱 활성화</strong>
+<ul><li>마이크로서비스 간 호출 가시성 확보</li><li>Lambda, API Gateway 자동 계측</li><li>병목 구간 즉시 식별 가능</li></ul></li></ol>
+</div><div class="col">
+<h3>중기 과제 (3-6개월)</h3>
+<ol><li class="fragment fade-in" data-fragment-index="2"><strong>EventBridge 자동 복구 파이프라인</strong>
+<ul><li>빈번한 장애 패턴 Top 3 자동화</li><li>EC2 재시작, ECS 재배포, RDS failover</li><li>SSM Automation 런북 라이브러리 구축</li></ul></li><li class="fragment fade-in" data-fragment-index="3"><strong>Incident Manager 도입</strong>
+<ul><li>대응 프로세스 표준화</li><li>에스컬레이션 정책 수립</li><li>사후 분석(Post-Mortem) 체계화</li></ul></li></ol>
+</div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s9">
+  <div class="slide-header" data-remarp-id="s9-header"><h2>감사합니다</h2></div>
+  <div class="slide-body" data-remarp-id="s9-body">
+    <div class="columns">
+<div class="col">
+<h3>Key Takeaways</h3>
+<ul><li class="fragment fade-in" data-fragment-index="0"><strong>EventBridge</strong>가 자동화의 중심 허브</li><li class="fragment fade-in" data-fragment-index="1"><strong>Lambda + SSM Automation</strong>으로 복구 자동화</li><li class="fragment fade-in" data-fragment-index="2"><strong>Incident Manager</strong>로 대응 프로세스 표준화</li><li class="fragment fade-in" data-fragment-index="3"><strong>운영 성숙도 Level 4</strong>를 목표로 단계별 도입</li></ul>
+</div><div class="col">
+<h3>다음 단계</h3>
+<ul><li><a href="https://docs.aws.amazon.com/devops-guru/">AWS DevOps Guru 시작하기</a></li><li><a href="https://serverlessland.com/patterns">EventBridge 패턴 라이브러리</a></li><li><a href="https://docs.aws.amazon.com/incident-manager/">Incident Manager 설정 가이드</a></li></ul>
+<p><strong>Contact</strong></p>
+<p>Junseok Oh | ohjs@amazon.com</p>
+</div>
+</div>
+  </div>
+</div>
+</div>
+<script src="./common/animation-utils.js"></script>
+<script src="./common/slide-framework.js"></script>
+<script src="./common/quiz-component.js"></script>
+<script src="./common/presenter-view.js"></script>
+<script>
+(function() {
+  const canvas = document.getElementById('aiops-cycle');
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  const BASE_W = 960, BASE_H = 400;
+
+  function resizeCanvas() {
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    if (cw <= 0 || ch <= 0) {
+      setupCanvas('aiops-cycle', BASE_W, BASE_H);
+      return;
+    }
+    const dpr = window.devicePixelRatio || 1;
+    const scale = cw / BASE_W;
+    const scaledH = Math.min(Math.round(BASE_H * scale), ch);
+    canvas.width = Math.round(cw * dpr);
+    canvas.height = Math.round(scaledH * dpr);
+    canvas.style.width = cw + 'px';
+    canvas.style.height = scaledH + 'px';
+    canvas.style.maxWidth = 'none';
+    const c = canvas.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.scale(scale * dpr, scale * dpr);
+  }
+  resizeCanvas();
+
+  const ctx = canvas.getContext('2d');
+  const width = BASE_W, height = BASE_H;
+  let step = 0;
+  const MAX_STEP = 4;
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    if (step >= 1) { drawBox(ctx, 150, 80, 140, 50, '수집 (Collect)', '#FF9900'); }
+    if (step >= 1) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-CloudWatch_48.svg', 220, 160, 40); }
+    if (step >= 1) { drawText(ctx, 'CloudWatch', 220, 194, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 2) { drawBox(ctx, 380, 80, 140, 50, '분석 (Analyze)', '#3B48CC'); }
+    if (step >= 2) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-DevOps-Guru_48.svg', 450, 160, 40); }
+    if (step >= 2) { drawText(ctx, 'DevOps-Guru', 450, 194, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 3) { drawBox(ctx, 610, 80, 140, 50, '자동화 (Automate)', '#1B660F'); }
+    if (step >= 3) { drawIcon(ctx, './common/aws-icons/services/Arch_AWS-Lambda_48.svg', 680, 160, 40); }
+    if (step >= 3) { drawText(ctx, 'Lambda', 680, 194, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 4) { drawArrow(ctx, 290, 105, 380, 105, Colors.accent, false); }
+    if (step >= 4) { drawText(ctx, 'ML 분석', 335, 93, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 4) { drawArrow(ctx, 520, 105, 610, 105, Colors.accent, false); }
+    if (step >= 4) { drawText(ctx, '이벤트 트리거', 565, 93, {size: 10, color: Colors.textSec, align: 'center'}); }
+    drawArrow(ctx, 610, 105, 450, 50, Colors.accent, false, false);
+    drawArrow(ctx, 450, 50, 290, 105, Colors.accent, false);
+    drawText(ctx, '피드백 루프', 450, 38, {size: 10, color: Colors.textSec, align: 'center'});
+  }
+
+  draw();
+  new ResizeObserver(() => { resizeCanvas(); draw(); }).observe(container);
+
+  const slide = canvas.closest('.slide');
+  if (slide) {
+    slide.dataset.slideAction = 'canvas-step';
+    slide.dataset.canvasMaxStep = String(MAX_STEP);
+    slide.__canvasStep = function(dir) {
+      if (dir === 'next' && step < MAX_STEP) step++;
+      if (dir === 'prev' && step > 0) step--;
+      draw();
+      return step;
+    };
+  }
+})();
+</script>
+<script>
+(function() {
+  const canvas = document.getElementById('aws-aiops-map');
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  const BASE_W = 960, BASE_H = 400;
+
+  function resizeCanvas() {
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    if (cw <= 0 || ch <= 0) {
+      setupCanvas('aws-aiops-map', BASE_W, BASE_H);
+      return;
+    }
+    const dpr = window.devicePixelRatio || 1;
+    const scale = cw / BASE_W;
+    const scaledH = Math.min(Math.round(BASE_H * scale), ch);
+    canvas.width = Math.round(cw * dpr);
+    canvas.height = Math.round(scaledH * dpr);
+    canvas.style.width = cw + 'px';
+    canvas.style.height = scaledH + 'px';
+    canvas.style.maxWidth = 'none';
+    const c = canvas.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.scale(scale * dpr, scale * dpr);
+  }
+  resizeCanvas();
+
+  const ctx = canvas.getContext('2d');
+  const width = BASE_W, height = BASE_H;
+  let step = 0;
+  const MAX_STEP = 4;
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    if (step >= 1) { drawBox(ctx, 50, 40, 700, 80, 'Data Collection Layer', '#232F3E'); }
+    if (step >= 1) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-CloudWatch_48.svg', 150, 70, 36); }
+    if (step >= 1) { drawText(ctx, 'CloudWatch', 150, 102, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 1) { drawIcon(ctx, './common/aws-icons/services/Arch_AWS-X-Ray_48.svg', 350, 70, 36); }
+    if (step >= 1) { drawText(ctx, 'X-Ray', 350, 102, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 1) { drawIcon(ctx, './common/aws-icons/services/Arch_AWS-CloudTrail_48.svg', 550, 70, 36); }
+    if (step >= 1) { drawText(ctx, 'CloudTrail', 550, 102, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 2) { drawBox(ctx, 50, 150, 700, 80, 'Intelligent Analysis Layer', '#3B48CC'); }
+    if (step >= 2) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-DevOps-Guru_48.svg', 250, 180, 36); }
+    if (step >= 2) { drawText(ctx, 'DevOps-Guru', 250, 212, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 2) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-Lookout-for-Metrics_48.svg', 450, 180, 36); }
+    if (step >= 2) { drawText(ctx, 'Lookout-for-Metrics', 450, 212, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 3) { drawBox(ctx, 50, 260, 700, 80, 'Automation Layer', '#1B660F'); }
+    if (step >= 3) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-EventBridge_48.svg', 150, 290, 36); }
+    if (step >= 3) { drawText(ctx, 'EventBridge', 150, 322, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 3) { drawIcon(ctx, './common/aws-icons/services/Arch_AWS-Lambda_48.svg', 350, 290, 36); }
+    if (step >= 3) { drawText(ctx, 'Lambda', 350, 322, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 3) { drawIcon(ctx, './common/aws-icons/services/Arch_AWS-Systems-Manager_48.svg', 550, 290, 36); }
+    if (step >= 3) { drawText(ctx, 'Systems-Manager', 550, 322, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 4) { drawArrow(ctx, 400, 120, 400, 150, Colors.accent, false); }
+    if (step >= 4) { drawText(ctx, '분석 데이터', 400, 123, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 4) { drawArrow(ctx, 400, 230, 400, 260, Colors.accent, false); }
+    if (step >= 4) { drawText(ctx, '인사이트/이벤트', 400, 233, {size: 10, color: Colors.textSec, align: 'center'}); }
+  }
+
+  draw();
+  new ResizeObserver(() => { resizeCanvas(); draw(); }).observe(container);
+
+  const slide = canvas.closest('.slide');
+  if (slide) {
+    slide.dataset.slideAction = 'canvas-step';
+    slide.dataset.canvasMaxStep = String(MAX_STEP);
+    slide.__canvasStep = function(dir) {
+      if (dir === 'next' && step < MAX_STEP) step++;
+      if (dir === 'prev' && step > 0) step--;
+      draw();
+      return step;
+    };
+  }
+})();
+</script>
+<script>
+(function() {
+  const canvas = document.getElementById('devops-guru-arch');
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  const BASE_W = 960, BASE_H = 400;
+
+  function resizeCanvas() {
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    if (cw <= 0 || ch <= 0) {
+      setupCanvas('devops-guru-arch', BASE_W, BASE_H);
+      return;
+    }
+    const dpr = window.devicePixelRatio || 1;
+    const scale = cw / BASE_W;
+    const scaledH = Math.min(Math.round(BASE_H * scale), ch);
+    canvas.width = Math.round(cw * dpr);
+    canvas.height = Math.round(scaledH * dpr);
+    canvas.style.width = cw + 'px';
+    canvas.style.height = scaledH + 'px';
+    canvas.style.maxWidth = 'none';
+    const c = canvas.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.scale(scale * dpr, scale * dpr);
+  }
+  resizeCanvas();
+
+  const ctx = canvas.getContext('2d');
+  const width = BASE_W, height = BASE_H;
+  let step = 0;
+  const MAX_STEP = 6;
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    if (step >= 1) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-CloudWatch_48.svg', 80, 120, 48); }
+    if (step >= 1) { drawText(ctx, 'CloudWatch', 80, 158, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 1) { drawIcon(ctx, './common/aws-icons/services/Arch_AWS-X-Ray_48.svg', 80, 220, 48); }
+    if (step >= 1) { drawText(ctx, 'X-Ray', 80, 258, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 1) { drawIcon(ctx, './common/aws-icons/services/Arch_AWS-Config_48.svg', 80, 320, 48); }
+    if (step >= 1) { drawText(ctx, 'Config', 80, 358, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 1) { drawBox(ctx, 55, 380, 100, 30, 'Data Sources', '#3B48CC'); }
+    if (step >= 2) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-DevOps-Guru_48.svg', 300, 220, 64); }
+    if (step >= 2) { drawText(ctx, 'DevOps-Guru', 300, 266, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 2) { drawBox(ctx, 260, 290, 140, 30, 'ML Analysis Engine', '#FF9900'); }
+    if (step >= 3) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-CloudWatch_48.svg', 520, 150, 48); }
+    if (step >= 3) { drawText(ctx, 'CloudWatch', 520, 188, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 3) { drawBox(ctx, 480, 210, 130, 30, 'Reactive Insight', '#D93025'); }
+    if (step >= 4) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-CloudWatch_48.svg', 520, 280, 48); }
+    if (step >= 4) { drawText(ctx, 'CloudWatch', 520, 318, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 5) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-Simple-Notification-Service_48.svg', 720, 220, 48); }
+    if (step >= 5) { drawText(ctx, 'SNS', 720, 258, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 5) { drawBox(ctx, 695, 280, 100, 30, 'Notification', '#FF9900'); }
+    if (step >= 6) { drawIcon(ctx, './common/aws-icons/services/Arch_AWS-Lambda_48.svg', 880, 220, 48); }
+    if (step >= 6) { drawText(ctx, 'Lambda', 880, 258, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 6) { drawBox(ctx, 840, 280, 130, 30, 'Auto Remediation', '#FF9900'); }
+    if (step >= 2) { drawArrow(ctx, 155, 395, 260, 305, Colors.accent, false); }
+    if (step >= 2) { drawText(ctx, '메트릭/트레이스', 207, 338, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 3) { drawArrow(ctx, 400, 305, 480, 225, Colors.accent, false); }
+    if (step >= 3) { drawText(ctx, '이상 탐지', 440, 253, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 5) { drawArrow(ctx, 610, 225, 695, 295, Colors.accent, false); }
+    if (step >= 5) { drawText(ctx, '알림', 652, 248, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 6) { drawArrow(ctx, 795, 295, 840, 295, Colors.accent, false); }
+    if (step >= 6) { drawText(ctx, '트리거', 817, 283, {size: 10, color: Colors.textSec, align: 'center'}); }
+  }
+
+  draw();
+  new ResizeObserver(() => { resizeCanvas(); draw(); }).observe(container);
+
+  const slide = canvas.closest('.slide');
+  if (slide) {
+    slide.dataset.slideAction = 'canvas-step';
+    slide.dataset.canvasMaxStep = String(MAX_STEP);
+    slide.__canvasStep = function(dir) {
+      if (dir === 'next' && step < MAX_STEP) step++;
+      if (dir === 'prev' && step > 0) step--;
+      draw();
+      return step;
+    };
+  }
+})();
+</script>
+<script>
+(function() {
+  const canvas = document.getElementById('xray-service-map');
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  const BASE_W = 960, BASE_H = 400;
+
+  function resizeCanvas() {
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    if (cw <= 0 || ch <= 0) {
+      setupCanvas('xray-service-map', BASE_W, BASE_H);
+      return;
+    }
+    const dpr = window.devicePixelRatio || 1;
+    const scale = cw / BASE_W;
+    const scaledH = Math.min(Math.round(BASE_H * scale), ch);
+    canvas.width = Math.round(cw * dpr);
+    canvas.height = Math.round(scaledH * dpr);
+    canvas.style.width = cw + 'px';
+    canvas.style.height = scaledH + 'px';
+    canvas.style.maxWidth = 'none';
+    const c = canvas.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.scale(scale * dpr, scale * dpr);
+  }
+  resizeCanvas();
+
+  const ctx = canvas.getContext('2d');
+  const width = BASE_W, height = BASE_H;
+  let step = 0;
+  const MAX_STEP = 5;
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    if (step >= 1) { drawIcon(ctx, './common/aws-icons/services/Arch_Mobile_48.svg', 60, 200, 48); }
+    if (step >= 1) { drawText(ctx, 'Mobile', 60, 238, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 2) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-API-Gateway_48.svg', 220, 200, 48); }
+    if (step >= 2) { drawText(ctx, 'API-Gateway', 220, 238, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 3) { drawIcon(ctx, './common/aws-icons/services/Arch_AWS-Lambda_48.svg', 400, 120, 48); }
+    if (step >= 3) { drawText(ctx, 'Lambda', 400, 158, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 3) { drawIcon(ctx, './common/aws-icons/services/Arch_AWS-Lambda_48.svg', 400, 280, 48); }
+    if (step >= 3) { drawText(ctx, 'Lambda', 400, 318, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 4) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-DynamoDB_48.svg', 600, 120, 48); }
+    if (step >= 4) { drawText(ctx, 'DynamoDB', 600, 158, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 5) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-Cognito_48.svg', 600, 280, 48); }
+    if (step >= 5) { drawText(ctx, 'Cognito', 600, 318, {size: 9, color: Colors.textSec, align: 'center'}); }
+  }
+
+  draw();
+  new ResizeObserver(() => { resizeCanvas(); draw(); }).observe(container);
+
+  const slide = canvas.closest('.slide');
+  if (slide) {
+    slide.dataset.slideAction = 'canvas-step';
+    slide.dataset.canvasMaxStep = String(MAX_STEP);
+    slide.__canvasStep = function(dir) {
+      if (dir === 'next' && step < MAX_STEP) step++;
+      if (dir === 'prev' && step > 0) step--;
+      draw();
+      return step;
+    };
+  }
+})();
+</script>
+<script>
+(function() {
+  const canvas = document.getElementById('eventbridge-automation');
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  const BASE_W = 960, BASE_H = 400;
+
+  function resizeCanvas() {
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    if (cw <= 0 || ch <= 0) {
+      setupCanvas('eventbridge-automation', BASE_W, BASE_H);
+      return;
+    }
+    const dpr = window.devicePixelRatio || 1;
+    const scale = cw / BASE_W;
+    const scaledH = Math.min(Math.round(BASE_H * scale), ch);
+    canvas.width = Math.round(cw * dpr);
+    canvas.height = Math.round(scaledH * dpr);
+    canvas.style.width = cw + 'px';
+    canvas.style.height = scaledH + 'px';
+    canvas.style.maxWidth = 'none';
+    const c = canvas.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.scale(scale * dpr, scale * dpr);
+  }
+  resizeCanvas();
+
+  const ctx = canvas.getContext('2d');
+  const width = BASE_W, height = BASE_H;
+  let step = 0;
+  const MAX_STEP = 4;
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    if (step >= 1) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-EventBridge_48.svg', 400, 80, 56); }
+    if (step >= 1) { drawText(ctx, 'Amazon-EventBridge', 400, 122, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 2) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-CloudWatch_48.svg', 100, 80, 48); }
+    if (step >= 2) { drawText(ctx, 'Amazon-CloudWatch', 100, 118, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 2) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-DevOps-Guru_48.svg', 100, 220, 48); }
+    if (step >= 2) { drawText(ctx, 'Amazon-DevOps-Guru', 100, 258, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 2) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-EC2_48.svg', 100, 360, 48); }
+    if (step >= 2) { drawText(ctx, 'Amazon-EC2', 100, 398, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 4) { drawIcon(ctx, './common/aws-icons/services/Arch_AWS-Lambda_48.svg', 650, 80, 48); }
+    if (step >= 4) { drawText(ctx, 'AWS-Lambda', 650, 118, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 4) { drawIcon(ctx, './common/aws-icons/services/Arch_AWS-Step-Functions_48.svg', 650, 220, 48); }
+    if (step >= 4) { drawText(ctx, 'AWS-Step-Functions', 650, 258, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 4) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-SNS_48.svg', 650, 360, 48); }
+    if (step >= 4) { drawText(ctx, 'Amazon-SNS', 650, 398, {size: 9, color: Colors.textSec, align: 'center'}); }
+  }
+
+  draw();
+  new ResizeObserver(() => { resizeCanvas(); draw(); }).observe(container);
+
+  const slide = canvas.closest('.slide');
+  if (slide) {
+    slide.dataset.slideAction = 'canvas-step';
+    slide.dataset.canvasMaxStep = String(MAX_STEP);
+    slide.__canvasStep = function(dir) {
+      if (dir === 'next' && step < MAX_STEP) step++;
+      if (dir === 'prev' && step > 0) step--;
+      draw();
+      return step;
+    };
+  }
+})();
+</script>
+<script>
+(function() {
+  const canvas = document.getElementById('automation-pipeline');
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  const BASE_W = 960, BASE_H = 400;
+
+  function resizeCanvas() {
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    if (cw <= 0 || ch <= 0) {
+      setupCanvas('automation-pipeline', BASE_W, BASE_H);
+      return;
+    }
+    const dpr = window.devicePixelRatio || 1;
+    const scale = cw / BASE_W;
+    const scaledH = Math.min(Math.round(BASE_H * scale), ch);
+    canvas.width = Math.round(cw * dpr);
+    canvas.height = Math.round(scaledH * dpr);
+    canvas.style.width = cw + 'px';
+    canvas.style.height = scaledH + 'px';
+    canvas.style.maxWidth = 'none';
+    const c = canvas.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.scale(scale * dpr, scale * dpr);
+  }
+  resizeCanvas();
+
+  const ctx = canvas.getContext('2d');
+  const width = BASE_W, height = BASE_H;
+  let step = 0;
+  const MAX_STEP = 5;
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    if (step >= 1) { drawBox(ctx, 50, 180, 120, 50, 'Detection', '#FF4F8B'); }
+    if (step >= 1) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-CloudWatch_48.svg', 75, 100, 36); }
+    if (step >= 1) { drawText(ctx, 'Amazon-CloudWatch', 75, 132, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 1) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-DevOps-Guru_48.svg', 125, 100, 36); }
+    if (step >= 1) { drawText(ctx, 'Amazon-DevOps-Guru', 125, 132, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 2) { drawBox(ctx, 220, 180, 120, 50, 'Routing', '#FF9900'); }
+    if (step >= 2) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-EventBridge_48.svg', 265, 100, 40); }
+    if (step >= 2) { drawText(ctx, 'Amazon-EventBridge', 265, 134, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 3) { drawBox(ctx, 390, 180, 120, 50, 'Execution', '#FF9900'); }
+    if (step >= 3) { drawIcon(ctx, './common/aws-icons/services/Arch_AWS-Lambda_48.svg', 405, 100, 32); }
+    if (step >= 3) { drawText(ctx, 'AWS-Lambda', 405, 130, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 3) { drawIcon(ctx, './common/aws-icons/services/Arch_AWS-Systems-Manager_48.svg', 455, 100, 32); }
+    if (step >= 3) { drawText(ctx, 'AWS-Systems-Manager', 455, 130, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 4) { drawBox(ctx, 560, 180, 130, 50, 'Notification', '#FF4F8B'); }
+    if (step >= 4) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-SNS_48.svg', 580, 100, 32); }
+    if (step >= 4) { drawText(ctx, 'Amazon-SNS', 580, 130, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 4) { drawIcon(ctx, './common/aws-icons/services/Arch_AWS-Systems-Manager_Incident-Manager_48.svg', 635, 100, 32); }
+    if (step >= 4) { drawText(ctx, 'AWS-Systems-Manager_Incident-Manager', 635, 130, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 5) { drawBox(ctx, 740, 180, 130, 50, 'Verification', '#3B48CC'); }
+    if (step >= 5) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-CloudWatch_48.svg', 790, 100, 36); }
+    if (step >= 5) { drawText(ctx, 'Amazon-CloudWatch', 790, 132, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 2) { drawArrow(ctx, 170, 205, 220, 205, Colors.accent, false); }
+    if (step >= 2) { drawText(ctx, 'event', 195, 193, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 3) { drawArrow(ctx, 340, 205, 390, 205, Colors.accent, false); }
+    if (step >= 3) { drawText(ctx, 'rule match', 365, 193, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 4) { drawArrow(ctx, 510, 205, 560, 205, Colors.accent, false); }
+    if (step >= 4) { drawText(ctx, 'result', 535, 193, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 5) { drawArrow(ctx, 690, 205, 740, 205, Colors.accent, false); }
+    if (step >= 5) { drawText(ctx, 'check', 715, 193, {size: 10, color: Colors.textSec, align: 'center'}); }
+  }
+
+  draw();
+  new ResizeObserver(() => { resizeCanvas(); draw(); }).observe(container);
+
+  const slide = canvas.closest('.slide');
+  if (slide) {
+    slide.dataset.slideAction = 'canvas-step';
+    slide.dataset.canvasMaxStep = String(MAX_STEP);
+    slide.__canvasStep = function(dir) {
+      if (dir === 'next' && step < MAX_STEP) step++;
+      if (dir === 'prev' && step > 0) step--;
+      draw();
+      return step;
+    };
+  }
+})();
+</script>
+<script>
+  
+  const presenterNotes = {
+    1: "[2min] 환영 인사와 함께 세션을 시작합니다. 오늘 다룰 AIOps의 핵심 가치를 간략히 소개하세요.\n\"클라우드 운영의 복잡성이 증가하면서, 수동 대응으로는 한계가 있습니다. 오늘은 AWS AIOps 서비스를 활용해 지능형 운영을 구현하는 방법을 알아보겠습니다.\"\n청중에게 현재 운영 환경에 대해 간단히 질문하며 참여를 유도하세요.",
+    2: "[2min] 세 가지 핵심 주제를 순서대로 소개합니다.\n첫 번째로 현재 수동 운영의 문제점을 짚고, 두 번째로 AIOps가 이를 어떻게 해결하는지 살펴봅니다.\n마지막으로 AIOps의 기반이 되는 관측성(Observability) 전략을 다룹니다.\n\"각 주제는 약 10분씩 진행되며, 중간에 아키텍처 다이어그램 데모가 포함됩니다.\"",
+    3: "[3min] 수동 운영의 고통을 청중이 공감할 수 있도록 설명합니다. 각 항목을 클릭하며 순차 공개하세요.\nMTTD 30분: \"장애 발생 후 30분이 지나서야 인지하는 경우가 많습니다. 그 30분 동안 사용자는 이미 불편을 겪고 있죠.\"\nMTTR 4시간: \"원인 파악, 담당자 호출, 수정, 배포까지 평균 4시간. 비즈니스 영향이 큽니다.\"\n알람 피로: \"너무 많은 알람은 오히려 중요한 알람을 놓치게 만듭니다.\"\n청중에게 질문: \"여러분도 비슷한 경험이 있으신가요?\"",
+    4: "[3min] AIOps의 정의와 전통적 운영과의 차이를 설명합니다.\n왼쪽: \"AIOps는 단순히 AI를 붙인 것이 아니라, ML, 자동화, 관측성이라는 세 가지 축이 결합된 접근법입니다.\"\n오른쪽: \"표를 보시면 각 영역에서 어떻게 개선되는지 한눈에 볼 수 있습니다. 특히 MTTD와 MTTR의 단축이 핵심입니다.\"\nGartner 정의를 인용하며 업계 표준 용어임을 강조하세요.",
+    5: "🎬 [4min] AIOps의 핵심 사이클을 단계별로 설명합니다. 화살표 키로 step 애니메이션을 진행하세요.\nStep 1 - 수집: \"CloudWatch가 메트릭, 로그, 트레이스를 수집합니다. 모든 AIOps의 시작점입니다.\"\nStep 2 - 분석: \"DevOps Guru가 ML로 이상 징후를 탐지하고 근본 원인을 분석합니다.\"\nStep 3 - 자동화: \"Lambda와 EventBridge가 자동 대응을 실행합니다.\"\nStep 4 - 화살표: \"이 사이클이 계속 순환하며 시스템을 학습하고 개선합니다. 피드백 루프가 핵심입니다.\"",
+    6: "[4min] AWS AIOps 서비스 스택을 3계층으로 설명합니다. step별로 각 계층을 공개하세요.\nStep 1 - 수집 계층: \"CloudWatch(메트릭/로그), X-Ray(트레이스), CloudTrail(API 감사 로그). 이 세 서비스가 관측성의 기반입니다.\"\nStep 2 - 분석 계층: \"DevOps Guru는 운영 이상 탐지, Lookout for Metrics는 비즈니스 메트릭 이상 탐지에 특화되어 있습니다.\"\nStep 3 - 자동화 계층: \"EventBridge가 이벤트를 라우팅하고, Lambda가 자동 대응을 실행합니다. Systems Manager로 인프라 자동화까지 연결됩니다.\"\nStep 4: \"계층 간 데이터 흐름을 보여주며 전체 파이프라인을 설명하세요.\"",
+    7: "[3min] 이 슬라이드는 Remarp의 새로운 Prompt 기능을 데모합니다.\n\":::prompt 블록 안에 자연어로 원하는 다이어그램을 설명하면, 에이전트가 Canvas 코드를 자동 생성합니다.\"\n\"앞서 본 서비스 맵과 동일한 구조를 프롬프트로 요청한 예시입니다.\"\n\"실제 프로젝트에서는 '반영해주세요'라고 말하면 에이전트가 이 프롬프트를 읽고 Canvas DSL 또는 JS로 변환합니다.\"\n\"복잡한 코드 없이도 아키텍처 다이어그램을 빠르게 만들 수 있는 것이 장점입니다.\"",
+    8: "[3min] CloudWatch의 핵심 서비스와 확장 기능을 나눠서 설명합니다. 각 항목을 클릭하며 순차 공개하세요.\n왼쪽 - 핵심: \"Metrics, Logs, Alarms는 CloudWatch의 기본 삼형제입니다. 대부분의 AWS 서비스가 자동으로 메트릭을 보냅니다.\"\n오른쪽 - 확장: \"Container Insights는 EKS 사용자에게 필수입니다. Application Insights는 애플리케이션 레벨 관측성을 제공합니다.\"\n\"Contributor Insights는 덜 알려져 있지만, 트래픽 분석에 매우 유용합니다.\"",
+    9: "[4min] 관측성의 세 기둥을 탭으로 전환하며 설명합니다. 각 탭을 클릭해 보여주세요.\nMetrics 탭: \"메트릭은 '무엇이 일어나고 있는가'를 알려줍니다. 시스템의 건강 상태를 한눈에 파악할 수 있죠.\"\nLogs 탭: \"로그는 '왜 일어났는가'를 알려줍니다. 디버깅의 핵심 자료입니다.\"\nTraces 탭: \"트레이스는 '어디서 일어났는가'를 알려줍니다. 분산 시스템에서 필수적입니다.\"\n\"이 세 가지를 결합해야 완전한 관측성을 확보할 수 있습니다. AIOps는 이 데이터를 ML로 분석합니다.\"",
+    11: "[2min] Block 1의 핵심 내용을 요약합니다. 세 가지 takeaway를 강조하세요.\n\"첫째, 수동 운영은 더 이상 클라우드 규모를 감당할 수 없습니다.\"\n\"둘째, AIOps는 세 가지 요소의 결합입니다. 하나라도 빠지면 효과가 반감됩니다.\"\n\"셋째, 관측성이 AIOps의 기반입니다. 데이터 없이는 ML도 자동화도 불가능합니다.\"\n\"다음 블록에서는 DevOps Guru를 중심으로 지능형 분석을 깊이 있게 다루겠습니다.\"\n질문을 받거나 잠시 휴식을 가질 수 있습니다.",
+    12: "[1min] Block 2에서는 AWS의 ML 기반 운영 도구들을 심층적으로 다룹니다. DevOps Guru, Lookout for Metrics, CloudWatch Anomaly Detection, X-Ray 등 지능형 분석 서비스의 아키텍처와 실제 활용 패턴을 살펴보겠습니다. 이 블록을 통해 Rule 기반 모니터링의 한계를 넘어 ML이 어떻게 운영 효율성을 높이는지 이해하게 될 것입니다.",
+    13: "[4min] DevOps Guru의 핵심 아키텍처를 단계별로 설명합니다. Step 1: CloudWatch 메트릭, X-Ray 트레이스, Config 변경 이력이 데이터 소스로 수집됩니다. Step 2: ML 엔진이 이 데이터를 분석하여 정상 패턴을 학습합니다. Step 3-4: Reactive Insight는 현재 발생 중인 이상을, Proactive Insight는 미래에 발생할 수 있는 문제를 예측합니다. Step 5-6: SNS를 통해 알림을 보내고, Lambda로 자동 복구를 트리거할 수 있습니다. 화살표 키로 각 단계를 순차적으로 보여주세요.",
+    16: "[4min] 세 가지 인사이트 유형의 차이를 명확히 설명합니다. Reactive Insight는 '지금 문제가 있다'를 알려주고, Proactive Insight는 '곧 문제가 생길 것이다'를 예측하며, Anomaly Detection은 정상/비정상을 ML로 구분합니다. 실제 예시를 통해 각 유형이 어떤 상황에서 발생하는지 구체적으로 보여주세요. 청중에게 각자의 환경에서 어떤 유형이 가장 유용할지 질문해보는 것도 좋습니다.",
+    17: "[3min] Lookout for Metrics는 DevOps Guru와 다르게 비즈니스 KPI에 특화되어 있습니다. 왼쪽에서는 어떤 종류의 메트릭을 분석할 수 있는지, 오른쪽에서는 어떤 데이터 소스를 지원하는지 설명합니다. 핵심 차별점은 '차원 분석'입니다 - 예를 들어 매출 하락 시 어떤 지역, 어떤 제품, 어떤 채널에서 문제가 발생했는지 자동으로 드릴다운합니다. AppFlow 연동으로 Salesforce 같은 SaaS 데이터도 분석할 수 있다는 점을 강조하세요.",
+    18: "[3min] CloudWatch Anomaly Detection의 가장 큰 장점은 '임계값을 몰라도 된다'는 것입니다. CPU 80%가 문제인지 90%가 문제인지 정하기 어려운 상황에서 ML이 알아서 판단합니다. YAML 예시에서 `ANOMALY_DETECTION_BAND(m1, 2)`는 예상 범위의 2 표준편차를 의미합니다. 숫자를 높이면 더 관대해지고, 낮추면 더 민감해집니다. 2주간 학습이 필요하므로 새 리소스에는 바로 적용하기 어렵다는 점도 언급하세요.",
+    19: "[4min] X-Ray Service Map을 통해 분산 시스템의 요청 흐름을 시각화합니다. Step별로 요청이 어떻게 전파되는지 보여주세요. Client → API Gateway → Lambda (병렬로 Order/Auth) → DynamoDB/Cognito. 빨간색 latency 텍스트로 표시된 120ms, 85ms가 병목입니다. Order Service Lambda의 DynamoDB 쿼리가 느린 것이 전체 응답 시간에 영향을 주고 있습니다. 실제 운영에서는 이런 병목을 찾아 DynamoDB DAX 캐시 적용이나 쿼리 최적화를 검토합니다.",
+    24: "[4min] 실제 장애 시나리오를 5단계로 분석하는 패턴입니다. 핵심 메시지는 '단일 도구로는 부족하고, 여러 도구를 조합해야 한다'는 것입니다. CloudWatch Alarm은 '문제가 있다'만 알려주고, X-Ray는 '어디서 발생했다'를 보여주고, DevOps Guru는 '왜 발생했는지'와 '어떻게 해결할지'를 추천합니다. 청중에게 비슷한 경험이 있는지 물어보고, 각자의 환경에서 이 패턴을 어떻게 적용할 수 있을지 생각해보게 하세요.",
+    25: "[3min] ML 기반과 Rule 기반은 경쟁 관계가 아니라 보완 관계입니다. 핵심 메시지는 '둘 다 사용하라'입니다. Rule 기반은 '확실히 문제인 상황' (예: 디스크 90% 이상)에 사용하고, ML 기반은 '정상이 뭔지 모르는 상황' (예: 사용자 행동 패턴)에 사용합니다. 실무에서는 Critical 알람은 Rule 기반으로, Warning 수준 모니터링은 ML 기반으로 구성하는 것을 권장합니다.",
+    26: "[2min] 도구 선택 가이드를 정리합니다. 핵심은 '하나의 도구로 모든 것을 해결하려 하지 마라'입니다. 각 도구는 특화된 영역이 있습니다. CloudWatch Anomaly Detection은 메트릭, DevOps Guru는 애플리케이션 전체, Lookout for Metrics는 비즈니스 KPI, X-Ray는 분산 추적입니다. 통합 아키텍처에서 보여주듯이 여러 소스를 DevOps Guru로 통합하고, 최종적으로 SNS + Lambda로 자동화하는 것이 권장 패턴입니다.",
+    28: "[2min] Block 2의 핵심을 3가지로 정리합니다. 청중에게 질문이 있는지 확인하고, 특히 DevOps Guru와 Lookout for Metrics의 차이, ML 기반 탐지의 학습 기간 등에 대한 질문이 나올 수 있습니다. 다음 Block 3에서는 이러한 탐지 결과를 어떻게 자동화된 복구로 연결하는지 다룰 것임을 예고합니다. 5분 휴식 후 Block 3를 시작합니다.",
+    29: "[1min] Block 3의 시작입니다. 이번 블록에서는 AIOps의 핵심인 자동화 파이프라인과 운영 성숙도 모델을 다룹니다.\nBlock 1에서 관측성 기반을, Block 2에서 ML 기반 분석을 배웠으니, 이제 이를 실제 자동 복구로 연결하는 방법을 설명합니다.\n30분 동안 EventBridge 기반 자동화부터 운영 성숙도 5단계까지 다루겠습니다.",
+    30: "[3min] EventBridge는 AWS의 서버리스 이벤트 버스로, 모든 자동화의 중심 허브입니다.\n\nStep 1: EventBridge가 중앙에 위치합니다.\nStep 2: 이벤트 소스들 - CloudWatch Alarm, DevOps Guru Insight, EC2 상태 변경 등이 이벤트를 발생시킵니다.\nStep 3: 각 소스에서 EventBridge로 이벤트가 흘러갑니다.\nStep 4: 타겟 서비스들 - Lambda로 즉시 처리, Step Functions로 복잡한 워크플로우, SNS로 알림.\nStep 5: 규칙 매칭을 통해 적절한 타겟으로 라우팅됩니다.\n\n핵심: \"이벤트 소스 → EventBridge 규칙 → 타겟 액션\"의 패턴을 기억하세요.",
+    31: "[4min] 세 가지 대표적인 자동 복구 패턴입니다. 탭을 클릭하여 각각 살펴보겠습니다.\n\nEC2 Auto-Recovery: StatusCheckFailed 알람 발생 시 인스턴스를 자동 재부팅합니다. 하드웨어 장애 시 다른 호스트로 마이그레이션됩니다.\n\nECS 재시작: 태스크가 unhealthy 상태가 되면 forceNewDeployment로 새 태스크를 시작합니다. 기존 태스크는 draining 후 종료됩니다.\n\nRDS Failover: Multi-AZ 구성에서 자동 failover 발생 시, 애플리케이션에 알림을 보내 연결 풀을 갱신하도록 합니다.\n\n공통 패턴: 트리거 → 상태 확인 → 복구 액션 → 검증의 4단계입니다.",
+    32: "[3min] Systems Manager Automation은 AWS API 호출을 YAML로 정의하여 복잡한 운영 작업을 자동화합니다.\n\n왼쪽의 구성요소를 하나씩 클릭하며 설명합니다:\n- schemaVersion은 문서 형식 버전입니다\n- mainSteps가 핵심으로, 순차적으로 실행할 AWS API 호출들을 정의합니다\n\n오른쪽 예시는 ECS 서비스 재시작 문서입니다:\n1. describeService: 현재 서비스 상태 조회\n2. updateService: forceNewDeployment로 새 태스크 강제 시작\n\nAutomation 문서는 EventBridge 타겟으로 직접 연결하거나, Lambda에서 호출할 수 있습니다.",
+    33: "[3min] Incident Manager는 AWS의 통합 인시던트 관리 서비스입니다.\n\n왼쪽 - 핵심 기능:\n대응 계획으로 사전에 복구 절차를 정의해두고, 인시던트 발생 시 자동으로 실행합니다.\n에스컬레이션은 담당자가 응답하지 않으면 자동으로 다음 단계 담당자에게 알립니다.\n타임라인은 모든 이벤트를 기록하여 사후 분석(Post-Mortem)에 활용합니다.\n\n오른쪽 - 통합 포인트:\nCloudWatch 알람이 발생하면 자동으로 인시던트가 생성됩니다.\nDevOps Guru의 이상 탐지 결과도 인시던트로 연결됩니다.\nSSM Automation 런북이 인시던트와 함께 자동 실행됩니다.\n\n핵심: 탐지 → 인시던트 생성 → 자동 대응 → 기록의 전체 사이클이 통합됩니다.",
+    34: "[4min] 전체 자동화 파이프라인을 5단계로 보여드립니다. 화살표 키로 각 단계를 진행하세요.\n\nStep 1 - Detection (탐지):\nCloudWatch Alarm 또는 DevOps Guru Insight가 이상을 감지합니다.\n\nStep 2 - Routing (라우팅):\nEventBridge가 이벤트를 수신하고, 규칙에 따라 적절한 타겟으로 라우팅합니다.\n\nStep 3 - Execution (실행):\nLambda 함수 또는 SSM Automation이 실제 복구 작업을 수행합니다.\n\nStep 4 - Notification (알림):\nSNS로 담당자에게 알리고, Incident Manager에 인시던트를 기록합니다.\n\nStep 5 - Verification (검증):\nCloudWatch로 복구 상태를 확인하고, 정상이면 자동으로 인시던트를 종료합니다.\n\n이 5단계가 AIOps 자동화의 핵심 루프입니다. 각 단계를 자동화할수록 MTTR이 단축됩니다.",
+    35: "[4min] 운영 성숙도 5단계 모델입니다. 대부분의 조직은 Level 2-3 사이에 있습니다.\n\nLevel 1 - 수동 운영:\n장애 발생 시 담당자가 수동으로 진단하고 복구합니다. 문서화된 절차가 없어 속인 의존적입니다.\n\nLevel 2 - 자동 알림:\nCloudWatch, Datadog 등으로 모니터링하고 알림을 받습니다. 하지만 대응은 여전히 수동입니다.\n\nLevel 3 - 자동 진단:\nDevOps Guru, X-Ray 등이 근본 원인을 분석하고 권장 조치를 제안합니다. AIOps의 시작점입니다.\n\nLevel 4 - 자동 복구:\nEventBridge + Lambda + SSM으로 자동 복구 파이프라인을 구축합니다. 오늘 배운 내용의 목표 수준입니다.\n\nLevel 5 - 예측 운영:\nML 기반으로 장애를 예측하고 선제적으로 조치합니다. Lookout for Metrics, Forecast 활용.\n\nAnyCompany는 현재 어느 레벨에 계신가요? 목표는 Level 4입니다.",
+    36: "[3min] AIOps 도입을 위한 현실적인 로드맵입니다.\n\nPhase 1 (1-3개월):\n먼저 관측성 기반을 구축합니다. Container Insights로 EKS 메트릭, X-Ray로 분산 트레이싱, CloudWatch Logs Insights로 로그 분석 환경을 갖춥니다.\n\nPhase 2 (3-6개월):\nDevOps Guru를 활성화하여 ML 기반 이상 탐지를 시작합니다. 기존 알람과 통합하여 노이즈를 줄입니다.\n\nPhase 3 (6-12개월):\n오늘 배운 자동 복구 파이프라인을 구축합니다. 가장 빈번한 장애 유형부터 자동화를 시작하세요.\n\nPhase 4 (12개월 이후):\n예측 모델을 구축하고, Chaos Engineering으로 복원력을 검증합니다. 지속적인 개선 사이클을 운영합니다.\n\n권장: 한 번에 모든 것을 하려 하지 말고, 각 Phase를 완료한 후 다음으로 진행하세요.",
+    37: "[4min] AnyCompany의 현재 상태를 기반으로 구체적인 권장사항입니다.\n\n즉시 적용 가능한 Quick Wins:\n\n1. DevOps Guru 활성화\n현재 CloudWatch 알람만 사용 중이시라면, DevOps Guru를 켜는 것만으로 ML 기반 이상 탐지가 가능합니다.\n기존 CloudFormation 스택을 선택하면 자동으로 리소스를 검색합니다.\n\n2. X-Ray 트레이싱\n마이크로서비스 환경에서 서비스 간 호출 흐름을 시각화합니다.\nLambda, API Gateway는 콘솔에서 체크박스만 켜면 됩니다.\n\n중기 과제:\n\n3. 자동 복구 파이프라인\n가장 빈번한 장애 유형 3가지를 먼저 자동화하세요.\n오늘 보여드린 Lambda 패턴을 참고하시면 됩니다.\n\n4. Incident Manager\n대응 프로세스를 표준화하고, 사후 분석 체계를 갖추세요.\nMTTR 측정과 개선의 기반이 됩니다.\n\n질문 있으시면 세션 후 개별 상담 가능합니다.",
+    38: "[1min] Block 3 자동화와 운영 성숙도를 마칩니다.\n\nKey Takeaways를 클릭하며 복습합니다:\n1. EventBridge는 모든 이벤트의 중앙 허브입니다\n2. Lambda와 SSM Automation으로 복구를 자동화합니다\n3. Incident Manager로 대응 프로세스를 표준화합니다\n4. Level 4 자동 복구를 목표로 단계별로 도입하세요\n\n90분 세션 전체를 완료하셨습니다. 수고하셨습니다!\n오른쪽 링크들은 추가 학습 자료입니다.\n질문이 있으시면 지금 받겠습니다. 또는 이메일로 연락 주세요."
+  };
+  const deck = new SlideFramework({
+    logoSrc: '../common/pptx-theme/images/logo_1.png',
+    footer: '© 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved.',
+    
+    pagination: true,
+    sidebar: false,
+    presenterNotes: presenterNotes,
+    onSlideChange: (index, slide) => {}
+  });
+</script>
+</body>
+</html>
