@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 export declare class RemarpCompletionProvider implements vscode.CompletionItemProvider {
     private readonly directives;
     private readonly blockTypes;
+    private readonly cssTargets;
+    private readonly cssProperties;
     private readonly animations;
     private readonly frontmatterDirectives;
     private readonly canvasKeywords;
@@ -9,6 +11,9 @@ export declare class RemarpCompletionProvider implements vscode.CompletionItemPr
     private _isInFrontmatter;
     private _getFrontmatterCompletions;
     private _isInCanvasBlock;
+    private _isInCssBlock;
+    private _isInCssTargetBlock;
+    private _getCssCompletions;
     private _getDirectiveCompletions;
     private _getDirectiveValueCompletions;
     private _getAnimationCompletions;
