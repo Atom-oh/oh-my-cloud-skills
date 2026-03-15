@@ -29,6 +29,13 @@
         }]
       },
       {
+        "matcher": "Edit",
+        "hooks": [{
+          "type": "command",
+          "command": "bash -c 'FILE=\"$TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" == *reactive-presentation/references/* ]] || [[ \"$FILE\" == *reactive-presentation/SKILL.md ]] || [[ \"$FILE\" == *reactive-presentation/scripts/* ]]; then echo \"[SKILL CHANGED] reactive-presentation skill file modified: $(basename $FILE). Run skill-dev-pipeline test to verify.\"; fi'"
+        }]
+      },
+      {
         "matcher": "Write",
         "hooks": [{
           "type": "command",

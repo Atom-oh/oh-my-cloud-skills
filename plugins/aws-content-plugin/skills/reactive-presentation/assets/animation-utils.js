@@ -111,7 +111,8 @@ function drawBox(ctx, x, y, w, h, label, color, textColor) {
   });
 }
 
-function drawArrow(ctx, x1, y1, x2, y2, color, dashed) {
+function drawArrow(ctx, x1, y1, x2, y2, color, dashed, showHead) {
+  if (showHead === undefined) showHead = true;
   ctx.beginPath();
   if (dashed) ctx.setLineDash([6, 4]);
   else ctx.setLineDash([]);
@@ -122,7 +123,8 @@ function drawArrow(ctx, x1, y1, x2, y2, color, dashed) {
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // Arrowhead
+  // Arrowhead (skip when showHead is false, e.g. first segment of a routed arrow)
+  if (!showHead) return;
   const angle = Math.atan2(y2 - y1, x2 - x1);
   const headLen = 10;
   ctx.beginPath();

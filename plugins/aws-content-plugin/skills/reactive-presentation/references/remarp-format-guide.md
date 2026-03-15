@@ -155,6 +155,74 @@ Content about regions and availability zones...
 | `block` | string | Yes | Block name (must match `blocks[].name` in global frontmatter) |
 | `title` | string | No | Block title (overrides global blocks[].title) |
 
+### Slide Separator Rules
+
+Slides are separated by `---` on its own line. Directives go **immediately after** the separator, with NO extra `---` block.
+
+#### Recommended: Slide Comment Pattern
+
+소스 가독성을 위해 각 슬라이드에 번호/제목 주석을 권장합니다:
+
+```markdown
+---
+<!-- Slide 1: Cover -->
+@type: cover
+
+# AIOps Deep Dive
+
+---
+<!-- Slide 2: Agenda -->
+
+## 오늘의 내용
+```
+
+주석은 converter가 무시하므로 출력에 영향 없습니다. `<!-- Slide N: Title -->` 형식을 일관되게 사용하면 소스 탐색이 용이합니다.
+
+#### WRONG — per-slide frontmatter (creates blank slides)
+
+```markdown
+---
+<!-- Slide 2: Block Title -->
+---
+@type: title
+@transition: fade
+---
+
+# AIOps Foundation
+```
+
+The converter splits on `---` and creates empty/comment-only slide fragments.
+
+#### CORRECT — directives immediately after separator
+
+```markdown
+---
+@type: title
+@transition: fade
+
+# AIOps Foundation
+```
+
+Directives use `@` prefix on lines immediately after `---`. No wrapping `---` block around them.
+
+### Supported `:::` Block Types
+
+Only these fenced div blocks are recognized by the converter:
+
+| Block | Purpose |
+|-------|---------|
+| `:::click` | Fragment animation — content appears on click |
+| `:::left` / `:::right` | Two-column layout halves |
+| `:::col` | Generic column in grid layouts |
+| `:::cell` | Grid cell |
+| `:::notes` | Speaker notes (hidden in presentation) |
+| `:::canvas` | Canvas DSL diagram block |
+| `:::css` | Per-slide CSS overrides |
+
+**NOT supported** (will render as literal text): `:::compare`, `:::option`, `:::buttons`, `:::tabs`, `:::timeline`
+
+For compare slides, use 2+ `### ` headings — the converter auto-detects them as compare/tab layout. For timeline, use ordered lists with `{.click}`.
+
 ---
 
 ## Slide Directives
@@ -202,6 +270,37 @@ Parameters (space-separated after path):
 - **size**: CSS max-width value (`80%`, `400px`, `50vh`)
 
 Output: `<div>` with text-align + `<img class="slide-img">` with max-width constraint.
+
+### Architecture Diagram 삽입 패턴
+
+전체 아키텍처 개요는 draw.io로 제작한 PNG/SVG를 `@img:`로 삽입합니다.
+Canvas DSL은 step animation이 유효한 경우에만 사용합니다.
+
+```markdown
+---
+@type: content
+---
+## AWS AIOps Service Map
+
+@img: diagrams/aiops-service-map.png center 90%
+
+:::notes
+{timing: 3min}
+이 슬라이드는 전체 AIOps 아키텍처를 보여줍니다...
+:::
+```
+
+Diagram 파일은 프레젠테이션 디렉토리의 `diagrams/` 폴더에 저장:
+```
+{slug}/
+├── diagrams/
+│   ├── aiops-service-map.png
+│   └── container-observability.png
+├── 01-aiops-foundation.md
+└── ...
+```
+
+**선택 기준**: 아키텍처를 한눈에 보여주는 정적 구조 → `@img:` + draw.io 이미지. 단계별 흐름을 애니메이션으로 설명 → `@type: canvas` + `:::canvas` DSL.
 
 ### Type Auto-Detection
 
@@ -435,11 +534,168 @@ Specify animation type with the animation name:
 | `.strike` | Strikethrough text |
 | `.fade-out` | Fade out (for removing elements) |
 
+### Fragment Best Practices
+
+#### Heading + Children: Use `:::click` Block
+
+`{.click}` on a heading only animates the heading itself — child content below it is pre-visible. To animate a heading together with its content, use `:::click` block:
+
+```markdown
+<!-- BAD: heading animates but list stays visible -->
+### ROI Analysis {.click}
+- Cost savings: $10,000/month
+- Time savings: 30hrs/week
+
+<!-- GOOD: heading + list animate as one unit -->
+:::click
+### ROI Analysis
+- Cost savings: $10,000/month
+- Time savings: 30hrs/week
+:::
+```
+
+#### Table Cells: Avoid `{.click}` Inside Tables
+
+`{.click}` in table cells (`<td>`) has limited support. For progressive table reveals, use one of these alternatives:
+
+```markdown
+<!-- Option 1: Fragment the entire table row description outside the table -->
+**MTTR**: 4hrs → 30min {.click}
+**Alert noise**: 1000/day → 50/day {.click}
+
+<!-- Option 2: Use two-column with left=labels, right=values with {.click} -->
+@layout: two-column
+
+::: left
+### Before
+- MTTR: 4 hours
+- Alert noise: 1,000+/day
+:::
+
+::: right
+### After
+- MTTR: 30 min {.click}
+- Alert noise: 50/day {.click}
+:::
+```
+
+### Reference Links
+
+슬라이드 하단에 참조 링크를 표시합니다. `{.reference}[텍스트](URL)` 형태로 사용:
+
+```markdown
+## AIOps 아키텍처
+
+주요 구성 요소를 살펴봅니다.
+
+{.reference}[EKS 모범 사례](https://docs.aws.amazon.com/eks/latest/best-practices/)
+{.reference}[CloudWatch 가이드](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/)
+```
+
+여러 개를 한 슬라이드에 사용하면 `|`로 구분되어 하단에 작은 폰트로 표시됩니다. 본문에서는 자동 제거되므로 슬라이드 내용에 영향을 주지 않습니다.
+
+#### Content Overflow Prevention (MANDATORY)
+
+**Per-slide content limits** — exceeding these causes vertical overflow:
+
+| Content type | Maximum per slide |
+|-------------|------------------|
+| Heading + bullet list | 1 heading + 6–8 bullets |
+| Heading + paragraphs | 1 heading + 3–4 paragraphs |
+| Numbered list + sub-bullets | 3 items with 2 sub-bullets each |
+| Bold sections + descriptions | 3 sections (use two-column for 4+) |
+
+**Rules**:
+1. When a slide has 4+ major sections (e.g., a 4-phase roadmap), **must** use `@layout: two-column` and split evenly across `:::left` / `:::right`
+2. Numbered list with 4+ items AND sub-bullets → split into two columns (items 1-2 left, 3-4+ right)
+3. Never place more than 8 visible elements (bullets, paragraphs, or bold headings) on a single-column slide
+4. If `{.click}` fragments reveal 4+ groups, ensure the fully-revealed state still fits within the slide area
+
+When a slide has 4+ major sections, use `@layout: two-column` to split content:
+
+```markdown
+<!-- BAD: 4 phases overflow vertically -->
+@type: content
+
+## Roadmap
+**Phase 1** ... **Phase 2** ... **Phase 3** ... **Phase 4** ...
+
+<!-- GOOD: split into two columns -->
+@layout: two-column
+
+## Roadmap
+
+::: left
+**Phase 1: Foundation (1-2wk)** {.click}
+- Item 1
+- Item 2
+
+**Phase 2: Detection (2-4wk)** {.click}
+- Item 1
+- Item 2
+:::
+
+::: right
+**Phase 3: Analysis (2-4wk)** {.click}
+- Item 1
+- Item 2
+
+**Phase 4: Self-Healing (4-8wk)** {.click}
+- Item 1
+- Item 2
+:::
+```
+
 ---
 
 ## Canvas DSL
 
 The Canvas DSL provides a declarative way to create animated diagrams with step-based reveals.
+
+### Canvas Layout Guidelines
+
+Canvas uses a 960×400 coordinate space. Follow these rules to avoid overlapping:
+
+| Rule | Constraint |
+|------|-----------|
+| **Box min spacing** | 40px gap between boxes (edge to edge) |
+| **Icon min spacing** | 60px gap between icons (center to center) |
+| **Arrow clearance** | Arrows must not pass through boxes/icons — route around them |
+| **Label clearance** | Labels must not overlap with other elements — offset by 10px minimum |
+| **X range** | Use 40–880 (leave 40px margins on both sides) |
+| **Y range** | Use 30–350 (leave 30px top margin, 50px bottom for labels) |
+| **Layer spacing** | Vertical layers should be 80–120px apart |
+| **Box width** | `width ≥ label_length × 9` (한글 label: `× 14`). E.g., "API Gateway" (11 chars) → width ≥ 99 → use 120 |
+| **Column formula** | `X_start = 40 + col_index × (880 / num_cols)`. E.g., 3 cols → X = 40, 333, 627 |
+| **Label-arrow gap** | 20px minimum between label text and any arrow path |
+
+**Workflow**: For complex diagrams, sketch in drawio or mermaid first to determine optimal layout, then convert coordinates to canvas DSL. This prevents alignment issues that are hard to fix after the fact.
+
+**Column layout quick-reference** (960×400 space):
+
+| Columns | X positions (box center) | Recommended box width |
+|---------|-------------------------|----------------------|
+| 2 | 240, 720 | 160–200 |
+| 3 | 160, 480, 800 | 120–160 |
+| 4 | 120, 340, 560, 780 | 100–130 |
+| 5 | 100, 270, 480, 650, 820 | 80–110 |
+
+```markdown
+<!-- GOOD: evenly spaced 3-column layout -->
+:::canvas
+box a "Service A" at 80,180 size 120,50 color #FF9900 step 1
+box b "Service B" at 380,180 size 120,50 color #FF9900 step 2
+box c "Service C" at 680,180 size 120,50 color #3B48CC step 3
+arrow a -> b "request" step 4
+arrow b -> c "query" step 4
+:::
+
+<!-- BAD: elements too close, labels overlap -->
+:::canvas
+box a "Service A" at 100,200 size 120,60 color #FF9900
+box b "Service B" at 180,200 size 120,60 color #FF9900
+:::
+```
 
 ### Basic Canvas Block
 
@@ -652,6 +908,27 @@ Key points:
 :::
 ```
 
+### Good Speaker Notes Example
+
+```markdown
+:::notes
+{timing: 2min}
+{cue: pause}
+이 슬라이드에서는 CloudWatch Container Insights의 핵심 메트릭 3가지를 살펴보겠습니다.
+
+먼저 CPU 사용률인데요, 단순히 높다 낮다가 아니라 request 대비 실제 사용량의 비율을 봐야 합니다.
+실무에서 흔한 실수가 limit만 설정하고 request를 너무 낮게 잡는 건데, 이러면 스케줄러가 노드를 과밀하게 채워서 throttling이 발생합니다.
+
+두 번째로 메모리 Working Set인데요, RSS가 아니라 Working Set을 봐야 하는 이유는 커널이 실제로 회수할 수 없는 메모리가 이것이기 때문입니다.
+
+{cue: question}
+혹시 여기서 OOMKilled를 경험해보신 분 계신가요? — 네, 대부분 이 메트릭을 모니터링하지 않아서 발생합니다.
+
+{cue: transition}
+그러면 이 메트릭들을 실시간으로 어떻게 대시보드에 구성하는지 다음 슬라이드에서 보겠습니다.
+:::
+```
+
 ### Cue Markers
 
 ```markdown
@@ -824,6 +1101,74 @@ Features:
 - **Dynamic dot sizing**: Dots scale based on step count (≤3: large, 4-5: medium, 6-7: small, ≥8: compact)
 - **Description text**: Lines below each `###` heading appear as description text
 - **Keyboard navigation**: ↑↓ keys step through timeline, highlighting active step with done/active states
+
+### Steps Slides
+
+Agenda or process visualization with numbered step indicators. Unlike timeline (which uses small dots for chronological events), steps use larger markers suited for agenda items and process flows.
+
+**Directives:**
+- `@steps-shape`: `circle` (default), `rect`, or `icon`
+- `@steps-layout`: `horizontal` (default) or `vertical`
+- `@steps-icon`: path to icon file (used when shape is `icon`)
+
+**Format 1: ### headings with descriptions**
+```markdown
+---
+@type: steps
+@steps-shape: circle
+@steps-layout: horizontal
+
+## 이번 세션에서 다룰 내용
+
+### 현황 분석
+운영 환경의 문제점과 과제
+
+### 자동화 설계
+이벤트 기반 자동 복구 아키텍처
+
+### 구현 및 검증
+Lambda + EventBridge 실전 구현
+```
+
+**Format 2: Numbered list with bold title + description**
+```markdown
+---
+@type: steps
+@steps-shape: rect
+
+## Agenda
+
+1. **Problem Statement** — Why manual remediation fails at scale
+2. **Architecture Design** — Event-driven auto-remediation patterns
+3. **Implementation** — Step-by-step Lambda + EventBridge walkthrough
+4. **Live Demo** — See it in action {.click}
+```
+
+**Format 3: Vertical layout with icons**
+```markdown
+---
+@type: steps
+@steps-shape: icon
+@steps-layout: vertical
+@steps-icon: icons/Architecture-Service-Icons_07312025/Arch_AWS-Lambda_48.svg
+
+## Process Flow
+
+### Detect
+CloudWatch alarm triggers EventBridge rule
+
+### Evaluate
+Lambda function assesses the incident severity
+
+### Remediate
+Automated runbook executes corrective action
+```
+
+Features:
+- **Shape options**: `circle` (numbered circles), `rect` (rounded rectangles), `icon` (custom SVG/PNG)
+- **Layout options**: `horizontal` (side-by-side) or `vertical` (stacked)
+- **Click reveal**: Add `{.click}` to step titles for fragment animation
+- **Connectors**: Automatic lines between steps
 
 ### Checklist Slides
 
