@@ -219,9 +219,11 @@ Only these fenced div blocks are recognized by the converter:
 | `:::canvas` | Canvas DSL diagram block |
 | `:::css` | Per-slide CSS overrides |
 
+| `::: tab "Title"` | Tab section in `@type: tabs` slides |
+
 **NOT supported** (will render as literal text): `:::compare`, `:::option`, `:::buttons`, `:::tabs`, `:::timeline`
 
-For compare slides, use 2+ `### ` headings — the converter auto-detects them as compare/tab layout. For timeline, use ordered lists with `{.click}`.
+For tabs slides, use either `::: tab "Title"` blocks or `### ` headings — both are supported. For compare slides, use 2+ `### ` headings. For timeline, use ordered lists with `{.click}`.
 
 ---
 
@@ -246,7 +248,7 @@ Slide directives control individual slide behavior. Place them on the line immed
 
 | Directive | Values | Description |
 |-----------|--------|-------------|
-| `@type` | `content`, `compare`, `canvas`, `quiz`, `tabs`, `timeline`, `checklist`, `code` | Slide type |
+| `@type` | `content`, `compare`, `canvas`, `quiz`, `tabs`, `timeline`, `checklist`, `code`, `agenda`, `steps`, `cards`, `slider`, `cover`, `thankyou`, `iframe` | Slide type |
 | `@layout` | `default`, `two-column`, `three-column`, `grid-2x2`, `split-left`, `split-right` | Layout preset |
 | `@transition` | `none`, `fade`, `slide`, `convex`, `concave`, `zoom` | Slide-specific transition |
 | `@background` | CSS color/gradient/image | Slide background |
@@ -759,10 +761,20 @@ icon table "DynamoDB" at 400,150 size 48 step 3
 :::
 ```
 
-#### Arrow Element
+#### Arrow Element (Orthogonal Routing)
+
+화살표는 자동으로 직교(orthogonal) 경로로 라우팅됩니다. 대각선 직선 대신 수평/수직 세그먼트만 사용하는 draw.io 스타일의 직각 꺾임 경로를 생성합니다.
+
 ```
 arrow <from-id> -> <to-id> "<label>" [color <color>] [style <dashed|dotted>] [step <n>]
 ```
+
+라우팅 패턴:
+- **직선**: 두 요소가 같은 축에 정렬된 경우
+- **L자형**: 측면↔상하 앵커 조합 (수평→수직 또는 수직→수평)
+- **Z자형**: 같은 유형 앵커이면서 축이 어긋난 경우 (수평→수직→수평 또는 수직→수평→수직)
+
+앵커 자동 선택: 주 이동 방향(dx vs dy)에 따라 최적 앵커 쌍(좌/우/상/하 중앙)이 선택됩니다. 중간에 다른 요소가 있으면 자동 충돌 회피 경로를 생성합니다.
 
 ```markdown
 :::canvas
@@ -1102,9 +1114,40 @@ Features:
 - **Description text**: Lines below each `###` heading appear as description text
 - **Keyboard navigation**: ↑↓ keys step through timeline, highlighting active step with done/active states
 
+### Agenda Slides
+
+Session agenda with numbered dots, time labels, connectors, and optional break markers.
+
+**Directives:**
+- `@timing` — total session duration (displayed as subtitle)
+
+**Syntax:**
+
+```markdown
+@type: agenda
+@timing: 40min
+
+## Agenda
+
+1. 개요 & 아키텍처 (10분)
+2. 네트워킹 & 트래픽 (10분)
+3. 노드 구성 & 운영 (10분)
+- Break (5분)
+4. 고급 패턴 & 전략적 가치 (10분)
+
+> 질문은 각 Block 종료 시에 받겠습니다.
+```
+
+**Rendering:**
+- Numbered items → horizontal dots with connectors
+- `- Break (duration)` or `- 휴식 (duration)` → yellow break marker with ☕
+- First numbered step gets `active` highlight
+- `> blockquote` text → callout box below the timeline
+- `@timing` value → subtitle "총 X 세션"
+
 ### Steps Slides
 
-Agenda or process visualization with numbered step indicators. Unlike timeline (which uses small dots for chronological events), steps use larger markers suited for agenda items and process flows.
+Process visualization with numbered step indicators. Unlike agenda (which shows session schedule with time labels), steps are for generic process/workflow diagrams.
 
 **Directives:**
 - `@steps-shape`: `circle` (default), `rect`, or `icon`

@@ -38,6 +38,10 @@ cd tools/remarp-vscode
 npm install && npm run compile    # Build TypeScript
 npx vsce package                  # Package .vsix
 code --install-extension remarp-vscode-0.1.0.vsix  # Install locally
+
+# Evaluate skills (quality, structure, token usage)
+python3 scripts/eval-skills.py
+python3 scripts/eval-skills.py --plugin aws-content-plugin --skill reactive-presentation
 ```
 
 ## Plugin Architecture
@@ -76,12 +80,21 @@ Each `SKILL.md` has frontmatter with `name`, `description`, and `triggers` (keyw
 
 ### MCP Configuration
 
-Only `aws-ops-plugin` has `.mcp.json` with 5 AWS MCP servers:
-- `awsknowledge` (HTTP) — Architecture recommendations
+`aws-ops-plugin` bundles 2 MCP servers in `.mcp.json`:
 - `awsdocs` (stdio/uvx) — Official AWS documentation search
 - `awsapi` (stdio/uvx) — Direct AWS API calls
+
+The remaining 3 servers are provided by the `deploy-on-aws` plugin (available when both plugins are loaded):
+- `awsknowledge` (HTTP) — Architecture recommendations
 - `awspricing` (stdio/uvx) — Pricing data
 - `awsiac` (stdio/uvx) — CloudFormation/CDK validation
+
+### Hooks
+
+Plugins use `hooks` in `plugin.json` for automated checks:
+- **PostToolUse (Bash)** — Detects build warnings in `remarp_to_slides.py` output (content), AWS error patterns (ops)
+- **PostToolUse (Edit/Write)** — Detects reactive-presentation skill file changes, validates Remarp frontmatter and slide notes
+- **SessionStart** — Plugin load announcements with domain context
 
 ### Auto-Invocation
 

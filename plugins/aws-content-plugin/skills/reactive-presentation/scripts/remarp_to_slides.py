@@ -139,6 +139,7 @@ class SlideType(Enum):
     SLIDER = 'slider'
     CARDS = 'cards'
     THANKYOU = 'thankyou'
+    AGENDA = 'agenda'
     IFRAME = 'iframe'
 
 
@@ -1105,6 +1106,8 @@ class RemarpHTMLGenerator:
             html = self._gen_cards_slide(slide)
         elif slide.slide_type == SlideType.THANKYOU:
             html = self._gen_thankyou_slide(slide)
+        elif slide.slide_type == SlideType.AGENDA:
+            html = self._gen_agenda_slide(slide)
         elif slide.slide_type == SlideType.IFRAME:
             html = self._gen_iframe_slide(slide)
         else:
@@ -1688,13 +1691,11 @@ class RemarpHTMLGenerator:
             return t0 <= t1
 
         def _resolve_arrow(from_key: str, to_key: str):
-            """Resolve arrow endpoints from element positions.
+            """Resolve arrow endpoints with orthogonal (right-angle) routing.
 
-            Picks the best edge pair (shortest clear path) and checks whether
-            the straight line would penetrate any intermediate element.  If a
-            collision is detected, the arrow is routed via a midpoint that
-            bypasses the obstacle.  Returns (x1, y1, x2, y2) for a straight
-            arrow or (x1, y1, mx, my, x2, y2) for a routed arrow.
+            Returns a list of (x, y) waypoints forming an orthogonal path.
+            Picks the best anchor pair, then generates straight, L-bend, or
+            Z-bend routes using only horizontal/vertical segments.
             """
             src = element_positions.get(from_key)
             dst = element_positions.get(to_key)
@@ -1704,49 +1705,114 @@ class RemarpHTMLGenerator:
             dx = dst['cx'] - src['cx']
             dy = dst['cy'] - src['cy']
 
-            # Choose edge anchors based on primary direction
+            # Determine anchor types based on primary direction
+            # side = left/right anchors, tb = top/bottom anchors
             if abs(dx) >= abs(dy):
+                # Primarily horizontal movement
                 if dx >= 0:
-                    x1, y1, x2, y2 = src['right'], src['cy'], dst['left'], dst['cy']
+                    x1, y1 = src['right'], src['cy']
+                    x2, y2 = dst['left'], dst['cy']
+                    src_anchor, dst_anchor = 'right', 'left'
                 else:
-                    x1, y1, x2, y2 = src['left'], src['cy'], dst['right'], dst['cy']
+                    x1, y1 = src['left'], src['cy']
+                    x2, y2 = dst['right'], dst['cy']
+                    src_anchor, dst_anchor = 'left', 'right'
             else:
+                # Primarily vertical movement
                 if dy >= 0:
-                    x1, y1, x2, y2 = src['cx'], src['bottom'], dst['cx'], dst['top']
+                    x1, y1 = src['cx'], src['bottom']
+                    x2, y2 = dst['cx'], dst['top']
+                    src_anchor, dst_anchor = 'bottom', 'top'
                 else:
-                    x1, y1, x2, y2 = src['cx'], src['top'], dst['cx'], dst['bottom']
+                    x1, y1 = src['cx'], src['top']
+                    x2, y2 = dst['cx'], dst['bottom']
+                    src_anchor, dst_anchor = 'top', 'bottom'
 
-            # Check for collisions with intermediate elements
-            colliders = []
+            # Build orthogonal path based on anchor types
+            src_is_side = src_anchor in ('left', 'right')
+            dst_is_side = dst_anchor in ('left', 'right')
+
+            if src_is_side and dst_is_side:
+                # Both side anchors: Z-bend (horizontal → vertical → horizontal)
+                if y1 == y2:
+                    points = [(x1, y1), (x2, y2)]
+                else:
+                    mid_x = (x1 + x2) // 2
+                    points = [(x1, y1), (mid_x, y1), (mid_x, y2), (x2, y2)]
+            elif not src_is_side and not dst_is_side:
+                # Both top/bottom anchors: Z-bend (vertical → horizontal → vertical)
+                if x1 == x2:
+                    points = [(x1, y1), (x2, y2)]
+                else:
+                    mid_y = (y1 + y2) // 2
+                    points = [(x1, y1), (x1, mid_y), (x2, mid_y), (x2, y2)]
+            else:
+                # Mixed anchors: L-bend
+                if src_is_side:
+                    # side → tb: horizontal then vertical
+                    points = [(x1, y1), (x2, y1), (x2, y2)]
+                else:
+                    # tb → side: vertical then horizontal
+                    points = [(x1, y1), (x1, y2), (x2, y2)]
+
+            # Check for collisions and reroute if needed
+            has_collision = False
             for key, rect in element_positions.items():
                 if key == from_key or key == to_key:
                     continue
-                if _rect_intersects_segment(rect, x1, y1, x2, y2):
-                    colliders.append(rect)
+                for i in range(len(points) - 1):
+                    px1, py1 = points[i]
+                    px2, py2 = points[i + 1]
+                    if _rect_intersects_segment(rect, px1, py1, px2, py2):
+                        has_collision = True
+                        break
+                if has_collision:
+                    break
 
-            if not colliders:
-                return x1, y1, x2, y2
+            if has_collision:
+                # Reroute: offset the middle segments to avoid collision
+                offset = 30
+                col = None
+                for key, rect in element_positions.items():
+                    if key == from_key or key == to_key:
+                        continue
+                    for i in range(len(points) - 1):
+                        px1, py1 = points[i]
+                        px2, py2 = points[i + 1]
+                        if _rect_intersects_segment(rect, px1, py1, px2, py2):
+                            col = rect
+                            break
+                    if col:
+                        break
 
-            # Route around the first (closest) collider via an offset midpoint
-            col = colliders[0]
-            mid_x = (x1 + x2) // 2
-            mid_y = (y1 + y2) // 2
-            offset = 30  # px clearance
+                if col:
+                    if src_is_side and dst_is_side:
+                        # Dodge vertically: shift mid segments above or below collider
+                        dodge_y = col['top'] - offset if y1 <= col['cy'] else col['bottom'] + offset
+                        mid_x = (x1 + x2) // 2
+                        points = [(x1, y1), (mid_x, y1), (mid_x, dodge_y), (x2, dodge_y), (x2, y2)]
+                    elif not src_is_side and not dst_is_side:
+                        # Dodge horizontally: shift mid segments left or right of collider
+                        dodge_x = col['left'] - offset if x1 <= col['cx'] else col['right'] + offset
+                        mid_y = (y1 + y2) // 2
+                        points = [(x1, y1), (x1, mid_y), (dodge_x, mid_y), (dodge_x, y2), (x2, y2)]
+                    else:
+                        # Mixed: reroute L-bend to Z-bend avoiding collider
+                        if src_is_side:
+                            dodge_y = col['top'] - offset if y1 <= col['cy'] else col['bottom'] + offset
+                            points = [(x1, y1), (x2, y1), (x2, dodge_y), (x2, y2)] if dodge_y == y2 else \
+                                     [(x1, y1), (x1, dodge_y), (x2, dodge_y), (x2, y2)]
+                        else:
+                            dodge_x = col['left'] - offset if x1 <= col['cx'] else col['right'] + offset
+                            points = [(x1, y1), (x1, y2), (dodge_x, y2), (x2, y2)] if dodge_x == x2 else \
+                                     [(x1, y1), (dodge_x, y1), (dodge_x, y2), (x2, y2)]
 
-            if abs(dx) >= abs(dy):
-                # Horizontal arrow — dodge vertically
-                if mid_y <= col['cy']:
-                    mid_y = col['top'] - offset
-                else:
-                    mid_y = col['bottom'] + offset
-            else:
-                # Vertical arrow — dodge horizontally
-                if mid_x <= col['cx']:
-                    mid_x = col['left'] - offset
-                else:
-                    mid_x = col['right'] + offset
-
-            return x1, y1, mid_x, mid_y, x2, y2
+            # Simplify: remove consecutive duplicate points
+            simplified = [points[0]]
+            for pt in points[1:]:
+                if pt != simplified[-1]:
+                    simplified.append(pt)
+            return simplified
 
         def _js_escape(s: str) -> str:
             return s.replace('\\', '\\\\').replace("'", "\\'")
@@ -1786,19 +1852,10 @@ class RemarpHTMLGenerator:
                     coords = _resolve_arrow(p['from'], p['to'])
 
                 if coords:
-                    if len(coords) == 6:
-                        # Routed arrow: (x1, y1, mx, my, x2, y2)
-                        x1, y1, mx, my, x2, y2 = coords
-                        seg1 = f"drawArrow(ctx, {x1}, {y1}, {mx}, {my}, {color}, {dashed}, false);"
-                        seg2 = f"drawArrow(ctx, {mx}, {my}, {x2}, {y2}, {color}, {dashed});"
-                        draw_lines.append(_wrap_step(seg1, step))
-                        draw_lines.append(_wrap_step(seg2, step))
-                        if label:
-                            label_line = f"drawText(ctx, '{_js_escape(label)}', {mx}, {my - 12}, {{size: 10, color: Colors.textSec, align: 'center'}});"
-                            draw_lines.append(_wrap_step(label_line, step))
-                    else:
-                        # Straight arrow: (x1, y1, x2, y2)
-                        x1, y1, x2, y2 = coords
+                    if len(coords) == 2:
+                        # Straight arrow (2 points on same axis)
+                        x1, y1 = coords[0]
+                        x2, y2 = coords[1]
                         arrow_line = f"drawArrow(ctx, {x1}, {y1}, {x2}, {y2}, {color}, {dashed});"
                         draw_lines.append(_wrap_step(arrow_line, step))
                         if label:
@@ -1806,9 +1863,27 @@ class RemarpHTMLGenerator:
                             mid_y = (y1 + y2) // 2 - 12
                             label_line = f"drawText(ctx, '{_js_escape(label)}', {mid_x}, {mid_y}, {{size: 10, color: Colors.textSec, align: 'center'}});"
                             draw_lines.append(_wrap_step(label_line, step))
+                    else:
+                        # Orthogonal polyline (3+ points)
+                        pts_js = ', '.join(f'{{x:{x},y:{y}}}' for x, y in coords)
+                        arrow_line = f"drawOrthogonalArrow(ctx, [{pts_js}], {color}, {dashed});"
+                        draw_lines.append(_wrap_step(arrow_line, step))
+                        if label:
+                            mid_idx = len(coords) // 2
+                            mx, my = coords[mid_idx]
+                            label_line = f"drawText(ctx, '{_js_escape(label)}', {mx}, {my - 12}, {{size: 10, color: Colors.textSec, align: 'center'}});"
+                            draw_lines.append(_wrap_step(label_line, step))
                 elif 'x1' in p:
-                    line = f"drawArrow(ctx, {p['x1']}, {p['y1']}, {p['x2']}, {p['y2']}, {color}, {dashed});"
-                    draw_lines.append(_wrap_step(line, step))
+                    cx1, cy1, cx2, cy2 = p['x1'], p['y1'], p['x2'], p['y2']
+                    if cx1 == cx2 or cy1 == cy2:
+                        # Already axis-aligned — straight arrow
+                        line = f"drawArrow(ctx, {cx1}, {cy1}, {cx2}, {cy2}, {color}, {dashed});"
+                        draw_lines.append(_wrap_step(line, step))
+                    else:
+                        # Diagonal coordinates — convert to orthogonal L-bend
+                        pts_js = f'{{x:{cx1},y:{cy1}}}, {{x:{cx2},y:{cy1}}}, {{x:{cx2},y:{cy2}}}'
+                        line = f"drawOrthogonalArrow(ctx, [{pts_js}], {color}, {dashed});"
+                        draw_lines.append(_wrap_step(line, step))
                 else:
                     fk = p.get('from_id', p.get('from', '?'))
                     tk = p.get('to_id', p.get('to', '?'))
@@ -2279,9 +2354,21 @@ class RemarpHTMLGenerator:
         sections: Dict[str, List[str]] = {}
         current_section = None
 
+        # Detect if ::: tab "Title" syntax is used
+        has_tab_blocks = any(re.match(r'^:::\s*tab\s+"', line) for line in lines)
+
         for line in lines:
             if line.startswith('## '):
                 heading = self._convert_markdown(line[3:].strip())
+            elif has_tab_blocks:
+                tab_match = re.match(r'^:::\s*tab\s+"([^"]+)"', line)
+                if tab_match:
+                    current_section = tab_match.group(1)
+                    sections[current_section] = []
+                elif line.strip() == ':::' and current_section is not None:
+                    pass  # closing marker, skip
+                elif current_section is not None:
+                    sections[current_section].append(line)
             elif line.startswith('### '):
                 current_section = line[4:].strip()
                 sections[current_section] = []
@@ -2774,6 +2861,91 @@ class RemarpHTMLGenerator:
     </div>
   </div>
   {timeline_js}
+</div>'''
+
+    def _gen_agenda_slide(self, slide: Slide) -> str:
+        """Generate agenda slide HTML with numbered dots, connectors, and time labels.
+
+        Supports:
+        - Numbered list: 1. Title (duration)
+        - Break items: - Break (duration) or - 휴식 (duration)
+        - @timing directive for subtitle (e.g., "총 40분 세션")
+        - Callout text after the list (lines starting with >)
+        """
+        content = slide.content
+        lines = content.split('\n')
+
+        heading = ''
+        subtitle = ''
+        steps = []
+        callout_lines = []
+
+        timing = slide.directives.get('timing', '')
+        if timing:
+            subtitle = f'총 {timing} 세션'
+
+        for line in lines:
+            if line.startswith('## '):
+                heading = self._convert_markdown(line[3:].strip())
+            elif re.match(r'^\d+\.\s', line):
+                step_text = re.sub(r'^\d+\.\s+', '', line).strip()
+                # Extract duration in parentheses
+                dur_match = re.search(r'\((\d+\s*분?|[\d]+\s*min)\)', step_text)
+                duration = dur_match.group(1) if dur_match else ''
+                title = re.sub(r'\s*\((\d+\s*분?|[\d]+\s*min)\)\s*', '', step_text).strip()
+                steps.append({'title': title, 'duration': duration, 'is_break': False})
+            elif re.match(r'^[-*]\s+(Break|break|휴식)', line):
+                step_text = re.sub(r'^[-*]\s+', '', line).strip()
+                dur_match = re.search(r'\((\d+\s*분?|[\d]+\s*min)\)', step_text)
+                duration = dur_match.group(1) if dur_match else ''
+                steps.append({'title': 'Break', 'duration': duration, 'is_break': True})
+            elif line.startswith('>'):
+                callout_lines.append(line.lstrip('> ').strip())
+
+        n = len(steps)
+
+        # Build agenda steps HTML
+        step_parts = []
+        step_num = 0
+        for i, step in enumerate(steps):
+            if step['is_break']:
+                dot_content = '☕'
+                step_class = ' break'
+            else:
+                step_num += 1
+                dot_content = str(step_num)
+                step_class = ' active' if step_num == 1 else ''
+
+            connector = f'<div class="agenda-connector"></div>' if i < n - 1 else ''
+            dur_html = f'<span>{step["duration"]}</span>' if step['duration'] else ''
+
+            step_parts.append(f'''<div class="agenda-step{step_class}">
+          <div class="agenda-dot">{dot_content}</div>
+          {connector}
+          <div class="agenda-label">
+            <strong>{self._convert_markdown(step["title"])}</strong>
+            {dur_html}
+          </div>
+        </div>''')
+
+        header_html = ''
+        if heading:
+            sub_html = f'<p class="subtitle">{subtitle}</p>' if subtitle else ''
+            header_html = f'<div class="slide-header" data-remarp-id="s{slide.index}-header"><h2>{heading}</h2>{sub_html}</div>'
+
+        callout_html = ''
+        if callout_lines:
+            callout_text = ' '.join(callout_lines)
+            callout_html = f'<div class="callout callout-info" style="margin-top: 1.5rem;">{self._convert_markdown(callout_text)}</div>'
+
+        return f'''<div class="slide">
+  {header_html}
+  <div class="slide-body" data-remarp-id="s{slide.index}-body">
+    <div class="agenda-timeline">
+      {chr(10).join("      " + p for p in step_parts)}
+    </div>
+    {callout_html}
+  </div>
 </div>'''
 
     def _gen_steps_slide(self, slide: Slide) -> str:

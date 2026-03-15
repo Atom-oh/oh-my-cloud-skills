@@ -187,6 +187,8 @@ Claude가 자동으로 `remarp_to_slides.py build` 또는 `sync`를 실행하여
 | Timeline | `@type: timeline` | 시간순 흐름 |
 | Cards | `@type: cards` | 카드 그리드 |
 | Checklist | `@type: checklist` | 체크리스트 |
+| Agenda | `@type: agenda` | 세션 아젠다 (번호 dot + 시간 + Break) |
+| Prompt | `@type: prompt` | AI 프롬프트 워크플로우 표시 |
 | Thank You | `@type: thankyou` | 마무리 슬라이드 |
 
 ## 다음 단계

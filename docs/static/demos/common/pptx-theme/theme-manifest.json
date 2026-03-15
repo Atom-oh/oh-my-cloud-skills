@@ -1,0 +1,5380 @@
+{
+  "source_file": "EKS Hybrid Nodes - \u110b\u1175\u110c\u1166\u1102\u1173\u11ab Amazon EKS\u1105\u1173\u11af \u110b\u1169\u11ab\u1111\u1173\u1105\u1166\u1106\u1175\u1109\u1173\u110b\u1166\u1109\u1165\u1103\u1169.pptx",
+  "theme_name": "AWS Confidential Dark",
+  "master_index": 0,
+  "master_name": "",
+  "slide_count": 40,
+  "layout_count": 95,
+  "colors": {
+    "dk1": "#000000",
+    "lt1": "#FFFFFF",
+    "dk2": "#161D26",
+    "lt2": "#F3F3F7",
+    "accent1": "#41B3FF",
+    "accent2": "#AD5CFF",
+    "accent3": "#00E500",
+    "accent4": "#FF5C85",
+    "accent5": "#FF693C",
+    "accent6": "#FBD332",
+    "hlink": "#41B1E8",
+    "folHlink": "#41B1E8"
+  },
+  "fonts": {
+    "heading": "Calibri Light",
+    "body": "Calibri"
+  },
+  "backgrounds": {
+    "master": {
+      "type": "inherited"
+    },
+    "layouts": {}
+  },
+  "logos": [
+    {
+      "name": "Picture 14",
+      "filename": "logo_1.png",
+      "content_type": "image/png",
+      "position": {
+        "left_emu": 595295,
+        "top_emu": 6338002,
+        "left_percent": 4.8827,
+        "top_percent": 92.4176
+      },
+      "size": {
+        "width_emu": 365760,
+        "height_emu": 218830,
+        "width_percent": 3.0,
+        "height_percent": 3.1909
+      },
+      "nearby_text": "2/23/26"
+    }
+  ],
+  "footer": {
+    "name": "Footer Placeholder 4",
+    "idx": 3,
+    "type": 15,
+    "type_name": "FOOTER (15)",
+    "position": {
+      "left_emu": 4038600,
+      "top_emu": 6953250,
+      "left_percent": 33.125,
+      "top_percent": 101.3889
+    },
+    "size": {
+      "width_emu": 4114800,
+      "height_emu": 365125,
+      "width_percent": 33.75,
+      "height_percent": 5.3241
+    },
+    "text": ""
+  },
+  "slide_number": {
+    "name": "Slide Number Placeholder 5",
+    "idx": 4,
+    "type": 13,
+    "type_name": "SLIDE_NUMBER (13)",
+    "position": {
+      "left_emu": 8929200,
+      "top_emu": 6289500,
+      "left_percent": 73.2382,
+      "top_percent": 91.7104
+    },
+    "size": {
+      "width_emu": 2743200,
+      "height_emu": 365125,
+      "width_percent": 22.5,
+      "height_percent": 5.3241
+    },
+    "text": "\u2039#\u203a"
+  },
+  "date": {
+    "name": "Date Placeholder 3",
+    "idx": 2,
+    "type": 16,
+    "type_name": "DATE (16)",
+    "position": {
+      "left_emu": 838200,
+      "top_emu": 6953250,
+      "left_percent": 6.875,
+      "top_percent": 101.3889
+    },
+    "size": {
+      "width_emu": 2743200,
+      "height_emu": 365125,
+      "width_percent": 22.5,
+      "height_percent": 5.3241
+    },
+    "text": "2/23/26"
+  },
+  "master_texts": [
+    {
+      "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+      "shape_name": "TextBox 10",
+      "position": {
+        "left_percent": 9.3593,
+        "top_percent": 93.1731
+      },
+      "size": {
+        "width_percent": 29.2306,
+        "height_percent": 2.6927
+      },
+      "is_footer_area": true
+    },
+    {
+      "text": "\u2039#\u203a",
+      "shape_name": "Slide Number Placeholder 5",
+      "position": {
+        "left_percent": 73.2382,
+        "top_percent": 91.7104
+      },
+      "size": {
+        "width_percent": 22.5,
+        "height_percent": 5.3241
+      },
+      "is_footer_area": true
+    }
+  ],
+  "layout_details": [
+    {
+      "index": 0,
+      "name": "Title Side 1A",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "CENTER_TITLE (3)",
+          "name": "Title 1",
+          "text": "Enter title"
+        },
+        {
+          "idx": 1,
+          "type": "SUBTITLE (4)",
+          "name": "Subtitle 2",
+          "text": "Enter subtitle"
+        },
+        {
+          "idx": 11,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 9",
+          "text": "Speaker name (pronouns)"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 7",
+          "text": "Enter session ID if required"
+        },
+        {
+          "idx": 12,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 11",
+          "text": "Speaker job title\u000bSpeaker company"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 10"
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "name": "Title Slide 1C",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 1,
+          "type": "SUBTITLE (4)",
+          "name": "Subtitle 2",
+          "text": "Enter subtitle"
+        },
+        {
+          "idx": 11,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 9",
+          "text": "Speaker name (pronouns)"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 7",
+          "text": "Enter session ID if required"
+        },
+        {
+          "idx": 12,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 11",
+          "text": "Speaker job title\u000bSpeaker company"
+        },
+        {
+          "idx": 0,
+          "type": "CENTER_TITLE (3)",
+          "name": "Title 1",
+          "text": "Enter title"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 7"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "name": "Title Slide 1B",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 1,
+          "type": "SUBTITLE (4)",
+          "name": "Subtitle 2",
+          "text": "Enter subtitle"
+        },
+        {
+          "idx": 11,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 9",
+          "text": "Speaker name (pronouns)"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 7",
+          "text": "Enter session ID if required"
+        },
+        {
+          "idx": 12,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 11",
+          "text": "Speaker job title\u000bSpeaker company"
+        },
+        {
+          "idx": 0,
+          "type": "CENTER_TITLE (3)",
+          "name": "Title 1",
+          "text": "Enter title"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 7"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "name": "Title Slide 2A",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 1,
+          "type": "SUBTITLE (4)",
+          "name": "Subtitle 2",
+          "text": "Enter subtitle"
+        },
+        {
+          "idx": 11,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 9",
+          "text": "Speaker name (pronouns)"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 7",
+          "text": "Enter session ID if required"
+        },
+        {
+          "idx": 12,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 11",
+          "text": "Speaker job title\u000bSpeaker company"
+        },
+        {
+          "idx": 0,
+          "type": "CENTER_TITLE (3)",
+          "name": "Title 1",
+          "text": "Enter title"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 7"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "name": "Title Slide 2B",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 11,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 9",
+          "text": "Speaker name (pronouns)"
+        },
+        {
+          "idx": 12,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 11",
+          "text": "Speaker job title\u000bSpeaker company"
+        },
+        {
+          "idx": 1,
+          "type": "SUBTITLE (4)",
+          "name": "Subtitle 2",
+          "text": "Enter subtitle"
+        },
+        {
+          "idx": 0,
+          "type": "CENTER_TITLE (3)",
+          "name": "Title 1",
+          "text": "Enter title"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 7"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "name": "1_Title Slide 2B",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 7",
+          "text": "Enter session ID if required"
+        },
+        {
+          "idx": 11,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 9",
+          "text": "Speaker name (pronouns)"
+        },
+        {
+          "idx": 12,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 11",
+          "text": "Speaker job title\u000bSpeaker company"
+        },
+        {
+          "idx": 1,
+          "type": "SUBTITLE (4)",
+          "name": "Subtitle 2",
+          "text": "Enter subtitle"
+        },
+        {
+          "idx": 13,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 7",
+          "text": "Enter session ID if required"
+        },
+        {
+          "idx": 0,
+          "type": "CENTER_TITLE (3)",
+          "name": "Title 1",
+          "text": "Enter title"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 7"
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "name": "Agenda Slide 1",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Agenda layout"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 6",
+          "text": "Enter high-level agenda items\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 11,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 2",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 12,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 3"
+        },
+        {
+          "idx": 13,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 4",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 7,
+      "name": "Agenda Slide 2",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 6",
+          "text": "Enter high-level agenda items\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 11,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 2",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 12,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 3"
+        },
+        {
+          "idx": 13,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 4",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Agenda layout"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 8,
+      "name": "Agenda Slide 3",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 6",
+          "text": "Enter high-level agenda items\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 11,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 2",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 12,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 3"
+        },
+        {
+          "idx": 13,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 4",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Agenda layout"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 9,
+      "name": "1_Agenda Slide 2 alternate",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 11,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 2",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 12,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 3"
+        },
+        {
+          "idx": 13,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 4",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Agenda layout alternate"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 6",
+          "text": "Enter high-level agenda items\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 15,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 12",
+          "text": "Click icon to add customer logo"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u2039#\u203a",
+          "shape_name": "Slide Number Placeholder 4"
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "name": "2_Agenda Slide 2 alternate 2",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 11,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 2",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 12,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 3"
+        },
+        {
+          "idx": 13,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 4",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Today\u2019s \u000bAgenda"
+        },
+        {
+          "idx": 2,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Agenda Item 1"
+        },
+        {
+          "idx": 14,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "01"
+        },
+        {
+          "idx": 15,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Agenda Item description"
+        },
+        {
+          "idx": 16,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Agenda Item 2"
+        },
+        {
+          "idx": 17,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "02"
+        },
+        {
+          "idx": 18,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Agenda Item description"
+        },
+        {
+          "idx": 19,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Agenda Item 3"
+        },
+        {
+          "idx": 20,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "03"
+        },
+        {
+          "idx": 21,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Agenda Item description"
+        },
+        {
+          "idx": 22,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Agenda Item 4"
+        },
+        {
+          "idx": 23,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "04"
+        },
+        {
+          "idx": 24,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Agenda Item description"
+        },
+        {
+          "idx": 25,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Agenda Item 5"
+        },
+        {
+          "idx": 26,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "05"
+        },
+        {
+          "idx": 27,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Agenda Item description"
+        },
+        {
+          "idx": 28,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Agenda Item 6"
+        },
+        {
+          "idx": 29,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "06"
+        },
+        {
+          "idx": 30,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Agenda Item description"
+        },
+        {
+          "idx": 31,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Agenda Item 7"
+        },
+        {
+          "idx": 32,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "07"
+        },
+        {
+          "idx": 33,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Agenda Item description"
+        },
+        {
+          "idx": 34,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Agenda Item 8"
+        },
+        {
+          "idx": 35,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "08"
+        },
+        {
+          "idx": 36,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Agenda Item description"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 11,
+      "name": "1_Agenda Slide 1",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Agenda layout"
+        },
+        {
+          "idx": 11,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 2",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 12,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 3"
+        },
+        {
+          "idx": 13,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 4",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 14,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 7",
+          "text": "Click icon to add picture"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 12,
+      "name": "2_Agenda Slide 1",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 6",
+          "text": "Enter high-level agenda items\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 13,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 4",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Agenda layout"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 13,
+      "name": "Title Only",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Title only layout"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 2",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 3"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 4",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 14,
+      "name": "Title Only Gradient 1",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Title only layout with gradient"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 6",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 7"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 8",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 4"
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "name": "Title Only Gradient 2",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Title only layout with gradient"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 6",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 7"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 8",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 4"
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "name": "Title Only Gradient 3",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Title only layout with gradient"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 6",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 7"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 8",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 4"
+        }
+      ]
+    },
+    {
+      "index": 17,
+      "name": "Title and Subtitle",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Title and subtitle layout"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Enter subtitle"
+        },
+        {
+          "idx": 11,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 2",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 12,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 4"
+        },
+        {
+          "idx": 13,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 5",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 18,
+      "name": "Blank",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 1",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 2"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 3",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 19,
+      "name": "Title and Content",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Title and content layout"
+        },
+        {
+          "idx": 1,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 3",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 4"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 5",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 20,
+      "name": "Title and Bulleted Content",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Title and bulleted content layout"
+        },
+        {
+          "idx": 1,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 3",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 4"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 5",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 21,
+      "name": "Title, Subtitle, and Content",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Title, subtitle, and content layout"
+        },
+        {
+          "idx": 1,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter subtitle"
+        },
+        {
+          "idx": 11,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 3",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 12,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 5"
+        },
+        {
+          "idx": 13,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 6",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 22,
+      "name": "Title, Subtitle, and Bulleted Content",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Title, subtitle, and bulleted content layout"
+        },
+        {
+          "idx": 1,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter subtitle"
+        },
+        {
+          "idx": 11,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 4",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 12,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 5"
+        },
+        {
+          "idx": 13,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 6",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 23,
+      "name": "Title, Content, and Image",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Title, content, and image layout"
+        },
+        {
+          "idx": 1,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text\nSecond level\nThird level"
+        },
+        {
+          "idx": 11,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 3",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 12,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 5"
+        },
+        {
+          "idx": 13,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 6",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 24,
+      "name": "1_Title, Content, and Image",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Title, content, and image layout"
+        },
+        {
+          "idx": 1,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text\nSecond level\nThird level"
+        },
+        {
+          "idx": 11,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 3",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 12,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 5"
+        },
+        {
+          "idx": 13,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 6",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 4"
+        }
+      ]
+    },
+    {
+      "index": 25,
+      "name": "Two Content",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Two-column layout"
+        },
+        {
+          "idx": 1,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 4",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 5"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 6",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 26,
+      "name": "2_Two Content_Image",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Two-column layout, image"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 4",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 5"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 6",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 14,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 6",
+          "text": "Click icon to add image"
+        },
+        {
+          "idx": 1,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text\nSecond level\nThird level"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 27,
+      "name": "1_Two Content",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Two-column layout"
+        },
+        {
+          "idx": 1,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 4",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 5"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 6",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 28,
+      "name": "Comparison",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Two-column layout with subheadings"
+        },
+        {
+          "idx": 1,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2",
+          "text": "Enter heading here"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level"
+        },
+        {
+          "idx": 3,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter heading here"
+        },
+        {
+          "idx": 4,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 5",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 6",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 7"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 8",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 29,
+      "name": "Three column with subheadings",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Three-column layout with subheadings"
+        },
+        {
+          "idx": 1,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2",
+          "text": "Enter heading here"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level"
+        },
+        {
+          "idx": 3,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter heading here"
+        },
+        {
+          "idx": 4,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 5",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter heading here"
+        },
+        {
+          "idx": 11,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 5",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level"
+        },
+        {
+          "idx": 12,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 8",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 13,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 9"
+        },
+        {
+          "idx": 14,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 10",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 30,
+      "name": "2_Three column statistics layout",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Three-column statistics layout"
+        },
+        {
+          "idx": 12,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 8",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 13,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 9"
+        },
+        {
+          "idx": 14,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 10",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 2,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Enter descriptive text here"
+        },
+        {
+          "idx": 15,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 7",
+          "text": "Numbers"
+        },
+        {
+          "idx": 22,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 7",
+          "text": "Numbers"
+        },
+        {
+          "idx": 24,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 7",
+          "text": "Numbers"
+        },
+        {
+          "idx": 25,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 7",
+          "text": "Information"
+        },
+        {
+          "idx": 32,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 7",
+          "text": "Information"
+        },
+        {
+          "idx": 33,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 7",
+          "text": "Information"
+        },
+        {
+          "idx": 34,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Enter descriptive text here"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 31,
+      "name": "2_Three column with vertical boxes",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Three-column layout with boxes"
+        },
+        {
+          "idx": 12,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 8",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 13,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 9"
+        },
+        {
+          "idx": 14,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 10",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 1,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2",
+          "text": "Enter heading here"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level"
+        },
+        {
+          "idx": 3,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter heading here"
+        },
+        {
+          "idx": 4,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 5",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter heading here"
+        },
+        {
+          "idx": 11,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 5",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 32,
+      "name": "2_Three column with horizontal boxes",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Three-column layout with horizontal boxes"
+        },
+        {
+          "idx": 12,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 8",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 13,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 9"
+        },
+        {
+          "idx": 14,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 10",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 1,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2",
+          "text": "Enter heading here"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text or click icon to add media\nSecond level"
+        },
+        {
+          "idx": 15,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2",
+          "text": "Enter heading here"
+        },
+        {
+          "idx": 16,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text or click icon to add media\nSecond level"
+        },
+        {
+          "idx": 17,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2",
+          "text": "Enter heading here"
+        },
+        {
+          "idx": 18,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text or click icon to add media\nSecond level"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 33,
+      "name": "2_Three column with subheadings, arrows",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Three-column layout with subheadings, arrows"
+        },
+        {
+          "idx": 12,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 8",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 13,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 9"
+        },
+        {
+          "idx": 14,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 10",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 1,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2",
+          "text": "Enter heading here"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level"
+        },
+        {
+          "idx": 3,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter heading here"
+        },
+        {
+          "idx": 4,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 5",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter heading here"
+        },
+        {
+          "idx": 11,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 5",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 34,
+      "name": "1_Three column with subheadings",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Three-column layout with subheadings and images"
+        },
+        {
+          "idx": 1,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2",
+          "text": "Enter heading here"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text\nSecond level\nThird level"
+        },
+        {
+          "idx": 3,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter heading here"
+        },
+        {
+          "idx": 4,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 5",
+          "text": "Enter text\nSecond level\nThird level"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter heading here"
+        },
+        {
+          "idx": 11,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 5",
+          "text": "Enter text\nSecond level\nThird level"
+        },
+        {
+          "idx": 12,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 8",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 13,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 9"
+        },
+        {
+          "idx": 14,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 10",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 15,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 12",
+          "text": "Click icon to add image"
+        },
+        {
+          "idx": 16,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 12",
+          "text": "Click icon to add image"
+        },
+        {
+          "idx": 17,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 12",
+          "text": "Click icon to add image"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 35,
+      "name": "Four column with subheadings",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Four-column layout with subheadings"
+        },
+        {
+          "idx": 1,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2",
+          "text": "Enter heading here"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text\nSecond level\nThird level"
+        },
+        {
+          "idx": 3,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter heading here"
+        },
+        {
+          "idx": 4,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 5",
+          "text": "Enter text\nSecond level\nThird level"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter heading here"
+        },
+        {
+          "idx": 11,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 5",
+          "text": "Enter text\nSecond level\nThird level"
+        },
+        {
+          "idx": 12,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter heading here"
+        },
+        {
+          "idx": 13,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 5",
+          "text": "Enter text\nSecond level\nThird level"
+        },
+        {
+          "idx": 14,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 10",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 15,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 11"
+        },
+        {
+          "idx": 16,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 12",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 36,
+      "name": "1_Fivecolumn with subheadings",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Five-column layout with subheadings"
+        },
+        {
+          "idx": 14,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 10",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 15,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 11"
+        },
+        {
+          "idx": 16,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 12",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 1,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2",
+          "text": "Enter heading"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text\nSecond level\nThird level"
+        },
+        {
+          "idx": 17,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2",
+          "text": "Enter heading"
+        },
+        {
+          "idx": 18,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text\nSecond level\nThird level"
+        },
+        {
+          "idx": 19,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2",
+          "text": "Enter heading"
+        },
+        {
+          "idx": 20,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text\nSecond level\nThird level"
+        },
+        {
+          "idx": 21,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2",
+          "text": "Enter heading"
+        },
+        {
+          "idx": 22,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text\nSecond level\nThird level"
+        },
+        {
+          "idx": 23,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2",
+          "text": "Enter heading"
+        },
+        {
+          "idx": 24,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text\nSecond level\nThird level"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 37,
+      "name": "1_Four column with subheadings, circles multi",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Four-column layout with subheadings, circles multi"
+        },
+        {
+          "idx": 14,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 10",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 15,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 11"
+        },
+        {
+          "idx": 16,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 12",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 1,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 6"
+        },
+        {
+          "idx": 3,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 7"
+        },
+        {
+          "idx": 4,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 8"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 9"
+        },
+        {
+          "idx": 11,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 10"
+        },
+        {
+          "idx": 12,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 11"
+        },
+        {
+          "idx": 13,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 12"
+        },
+        {
+          "idx": 17,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 26"
+        },
+        {
+          "idx": 18,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 26"
+        },
+        {
+          "idx": 19,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 26"
+        },
+        {
+          "idx": 20,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 26"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 38,
+      "name": "2_Four column with subheadings, circles blue",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Four-column layout with subheadings, circles blue"
+        },
+        {
+          "idx": 14,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 10",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 15,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 11"
+        },
+        {
+          "idx": 16,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 12",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 1,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 6"
+        },
+        {
+          "idx": 17,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 26"
+        },
+        {
+          "idx": 21,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2"
+        },
+        {
+          "idx": 22,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 6"
+        },
+        {
+          "idx": 23,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 26"
+        },
+        {
+          "idx": 24,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2"
+        },
+        {
+          "idx": 25,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 6"
+        },
+        {
+          "idx": 26,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 26"
+        },
+        {
+          "idx": 27,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2"
+        },
+        {
+          "idx": 28,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 6"
+        },
+        {
+          "idx": 29,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 26"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 39,
+      "name": "3_Four column with subheadings, large circles",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Four-column layout with subheadings, large circles"
+        },
+        {
+          "idx": 14,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 10",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 15,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 11"
+        },
+        {
+          "idx": 16,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 12",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 1,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 6"
+        },
+        {
+          "idx": 17,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2"
+        },
+        {
+          "idx": 18,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 6"
+        },
+        {
+          "idx": 19,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2"
+        },
+        {
+          "idx": 20,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 6"
+        },
+        {
+          "idx": 21,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2"
+        },
+        {
+          "idx": 22,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 6"
+        },
+        {
+          "idx": 23,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 12",
+          "text": "Click icon to add image"
+        },
+        {
+          "idx": 24,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 12",
+          "text": "Click icon to add image"
+        },
+        {
+          "idx": 25,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 12",
+          "text": "Click icon to add image"
+        },
+        {
+          "idx": 26,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 12",
+          "text": "Click icon to add image"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 40,
+      "name": "4_Four column with subheadings, large rectangles",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Four-column layout with subheadings, large rectangles"
+        },
+        {
+          "idx": 14,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 10",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 15,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 11"
+        },
+        {
+          "idx": 16,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 12",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 1,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 6"
+        },
+        {
+          "idx": 17,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2"
+        },
+        {
+          "idx": 18,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 6"
+        },
+        {
+          "idx": 19,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2"
+        },
+        {
+          "idx": 20,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 6"
+        },
+        {
+          "idx": 21,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2"
+        },
+        {
+          "idx": 22,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 6"
+        },
+        {
+          "idx": 23,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 12",
+          "text": "Click icon to add image"
+        },
+        {
+          "idx": 27,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 12",
+          "text": "Click icon to add image"
+        },
+        {
+          "idx": 28,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 12",
+          "text": "Click icon to add image"
+        },
+        {
+          "idx": 29,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 12",
+          "text": "Click icon to add image"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 41,
+      "name": "3_Six Pillars",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Six Pillars"
+        },
+        {
+          "idx": 14,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 10",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 15,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 11"
+        },
+        {
+          "idx": 16,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 12",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 1,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 6"
+        },
+        {
+          "idx": 17,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 26"
+        },
+        {
+          "idx": 18,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2"
+        },
+        {
+          "idx": 19,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 6"
+        },
+        {
+          "idx": 20,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 26"
+        },
+        {
+          "idx": 21,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2"
+        },
+        {
+          "idx": 22,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 6"
+        },
+        {
+          "idx": 23,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 26"
+        },
+        {
+          "idx": 24,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2"
+        },
+        {
+          "idx": 25,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 6"
+        },
+        {
+          "idx": 26,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 26"
+        },
+        {
+          "idx": 27,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2"
+        },
+        {
+          "idx": 28,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 6"
+        },
+        {
+          "idx": 29,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 26"
+        },
+        {
+          "idx": 30,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 2"
+        },
+        {
+          "idx": 31,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 6"
+        },
+        {
+          "idx": 32,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 26"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 42,
+      "name": "4_Case Study 1",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 14,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 10",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 15,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 11"
+        },
+        {
+          "idx": 16,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 12",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Case Study 1"
+        },
+        {
+          "idx": 13,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 6",
+          "text": "Click icon to add image"
+        },
+        {
+          "idx": 17,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 22,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 23,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 24,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 25,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 26,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 29,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 5",
+          "text": "Click icon to add company logo"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 43,
+      "name": "4_Case Study 2",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 14,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 10",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 15,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 11"
+        },
+        {
+          "idx": 16,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 12",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 17,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 22,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 23,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 24,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 25,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 26,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 29,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 5",
+          "text": "Click icon to add company logo"
+        },
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Case Study 2"
+        },
+        {
+          "idx": 33,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 12",
+          "text": "Click icon to add image"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 44,
+      "name": "4_Case Study 3",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 14,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 10",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 15,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 11"
+        },
+        {
+          "idx": 16,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 12",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 17,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 22,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Case Study 3"
+        },
+        {
+          "idx": 23,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 15",
+          "text": "Click icon to add image"
+        },
+        {
+          "idx": 24,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 24"
+        },
+        {
+          "idx": 18,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 15",
+          "text": "Click icon to add image"
+        },
+        {
+          "idx": 19,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 24"
+        },
+        {
+          "idx": 20,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 15",
+          "text": "Click icon to add image"
+        },
+        {
+          "idx": 21,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 24"
+        },
+        {
+          "idx": 25,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 26,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 45,
+      "name": "4_Case Study 4",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 14,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 10",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 15,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 11"
+        },
+        {
+          "idx": 16,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 12",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 17,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 22,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12",
+          "text": "Outcome:"
+        },
+        {
+          "idx": 23,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 24,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Case Study 4"
+        },
+        {
+          "idx": 34,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12",
+          "text": "Click to add service"
+        },
+        {
+          "idx": 35,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12",
+          "text": "Click to add text"
+        },
+        {
+          "idx": 36,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 37,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 38,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12",
+          "text": "Customer info:"
+        },
+        {
+          "idx": 29,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 5",
+          "text": "Click icon to add company logo"
+        },
+        {
+          "idx": 39,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12",
+          "text": "\u201cInsert quote\u201d"
+        },
+        {
+          "idx": 40,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12",
+          "text": "Name\u000bTitle, Company"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 46,
+      "name": "4_Case Study 5",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 14,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 10",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 15,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 11"
+        },
+        {
+          "idx": 16,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 12",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 17,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Case Study 5"
+        },
+        {
+          "idx": 34,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12",
+          "text": "Business Need"
+        },
+        {
+          "idx": 37,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 38,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12",
+          "text": "Customer info:"
+        },
+        {
+          "idx": 29,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 5",
+          "text": "Click icon to add company logo"
+        },
+        {
+          "idx": 39,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12",
+          "text": "\u201cInsert quote\u201d"
+        },
+        {
+          "idx": 40,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12",
+          "text": "Name\u000bTitle, Company"
+        },
+        {
+          "idx": 41,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 42,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12",
+          "text": "Solution"
+        },
+        {
+          "idx": 43,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 44,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12",
+          "text": "Impact"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 47,
+      "name": "4_AWS Roles",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 14,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 10",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 15,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 11"
+        },
+        {
+          "idx": 16,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 12",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 17,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 22,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12",
+          "text": "Profile:"
+        },
+        {
+          "idx": 23,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 24,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12",
+          "text": "Key Competencies:"
+        },
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Name"
+        },
+        {
+          "idx": 34,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12",
+          "text": "Click to add service"
+        },
+        {
+          "idx": 35,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12",
+          "text": "Experience:"
+        },
+        {
+          "idx": 36,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 37,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 38,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12",
+          "text": "Certifications:"
+        },
+        {
+          "idx": 48,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 29"
+        },
+        {
+          "idx": 49,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12"
+        },
+        {
+          "idx": 50,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 12",
+          "text": "Education:"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 48,
+      "name": "Picture with Caption",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Picture with caption layout"
+        },
+        {
+          "idx": 1,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 2",
+          "text": "Click icon to add picture"
+        },
+        {
+          "idx": 2,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Enter descriptive text here"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 4",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 5"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 6",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 49,
+      "name": "1_Picture with Caption 1/2 page",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 1,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 2",
+          "text": "Click icon to add picture"
+        },
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Picture with caption layout"
+        },
+        {
+          "idx": 2,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Enter descriptive text here"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 4",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 5"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 6",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 50,
+      "name": "2_Picture with Caption 1/2 page, blue",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 4",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 5"
+        },
+        {
+          "idx": 13,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 6",
+          "text": "Click icon to add image"
+        },
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Picture with caption layout"
+        },
+        {
+          "idx": 2,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Enter descriptive text here"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 6",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": [
+        {
+          "text": "2/23/26",
+          "shape_name": "Date Placeholder 4"
+        }
+      ]
+    },
+    {
+      "index": 51,
+      "name": "3_Picture with Caption, circle",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 4",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 5"
+        },
+        {
+          "idx": 15,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 19",
+          "text": "Click icon to add picture"
+        },
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Circle picture with caption layout"
+        },
+        {
+          "idx": 2,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Enter descriptive text here"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 6",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": [
+        {
+          "text": "2/23/26",
+          "shape_name": "Date Placeholder 4"
+        }
+      ]
+    },
+    {
+      "index": 52,
+      "name": "4_Picture with Caption, rectangle",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Picture with caption layout, gradient"
+        },
+        {
+          "idx": 2,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Enter descriptive text here"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 6",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 20,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 6",
+          "text": "Click icon to add image"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 4",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 5"
+        }
+      ],
+      "texts": [
+        {
+          "text": "2/23/26",
+          "shape_name": "Date Placeholder 4"
+        }
+      ]
+    },
+    {
+      "index": 53,
+      "name": "Full Screen Photo",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 10,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 6",
+          "text": "Click icon to add picture"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 54,
+      "name": "Customer logo wall light",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Customer logo wall layout"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 2",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 3"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 4",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 13,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 7",
+          "text": "Click photo icon to add logo"
+        },
+        {
+          "idx": 14,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 7",
+          "text": "Click photo icon to add logo"
+        },
+        {
+          "idx": 15,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 7",
+          "text": "Click photo icon to add logo"
+        },
+        {
+          "idx": 16,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 7",
+          "text": "Click photo icon to add logo"
+        },
+        {
+          "idx": 17,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 7",
+          "text": "Click photo icon to add logo"
+        },
+        {
+          "idx": 18,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 7",
+          "text": "Click photo icon to add logo"
+        },
+        {
+          "idx": 19,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 7",
+          "text": "Click photo icon to add logo"
+        },
+        {
+          "idx": 20,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 7",
+          "text": "Click photo icon to add logo"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 55,
+      "name": "3_Title, content layout, and circle icons",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Title, content layout, and circle icons"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 4",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 21,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 152",
+          "text": "Enter text"
+        },
+        {
+          "idx": 22,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 152",
+          "text": "Enter text"
+        },
+        {
+          "idx": 23,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 152",
+          "text": "Enter text"
+        },
+        {
+          "idx": 24,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 152",
+          "text": "Enter text"
+        },
+        {
+          "idx": 25,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 152",
+          "text": "Enter text"
+        },
+        {
+          "idx": 26,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 152",
+          "text": "Enter text"
+        },
+        {
+          "idx": 27,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 152",
+          "text": "Enter text"
+        },
+        {
+          "idx": 28,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 152",
+          "text": "Enter text"
+        },
+        {
+          "idx": 29,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 162",
+          "text": "Click icon to add icon"
+        },
+        {
+          "idx": 30,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 162",
+          "text": "Click icon to add icon"
+        },
+        {
+          "idx": 31,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 162",
+          "text": "Click icon to add icon"
+        },
+        {
+          "idx": 32,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 162",
+          "text": "Click icon to add icon"
+        },
+        {
+          "idx": 33,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 162",
+          "text": "Click icon to add icon"
+        },
+        {
+          "idx": 34,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 162",
+          "text": "Click icon to add icon"
+        },
+        {
+          "idx": 35,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 162",
+          "text": "Click icon to add icon"
+        },
+        {
+          "idx": 36,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 162",
+          "text": "Click icon to add icon"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 56,
+      "name": "4_Title, content layout, and circle icons, purple",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 4",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Title, content, and circle icons purple"
+        },
+        {
+          "idx": 21,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 152",
+          "text": "Enter text"
+        },
+        {
+          "idx": 22,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 152",
+          "text": "Enter text"
+        },
+        {
+          "idx": 23,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 152",
+          "text": "Enter text"
+        },
+        {
+          "idx": 24,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 152",
+          "text": "Enter text"
+        },
+        {
+          "idx": 29,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 162",
+          "text": "Click icon to add icon"
+        },
+        {
+          "idx": 30,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 162",
+          "text": "Click icon to add icon"
+        },
+        {
+          "idx": 33,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 162",
+          "text": "Click icon to add icon"
+        },
+        {
+          "idx": 34,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 162",
+          "text": "Click icon to add icon"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level\nFourth level\nFifth level"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 57,
+      "name": "Two Content with Bullets",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Two-column with bullets layout"
+        },
+        {
+          "idx": 1,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 4",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 5"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 6",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 58,
+      "name": "Two Content with Subtitle",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Two-column with subtitle layout"
+        },
+        {
+          "idx": 1,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter subtitle"
+        },
+        {
+          "idx": 11,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 5",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 12,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 6"
+        },
+        {
+          "idx": 13,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 7",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 59,
+      "name": "Two Content, Subtitle, and Bullets",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Two-column, subtitle, bullets layout"
+        },
+        {
+          "idx": 1,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter subtitle"
+        },
+        {
+          "idx": 11,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 5",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 12,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 6"
+        },
+        {
+          "idx": 13,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 7",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 60,
+      "name": "1_Two Content, Subtitle,image, Bullets",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 11,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 5",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 12,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 6"
+        },
+        {
+          "idx": 13,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 7",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Two-column, subtitle, image, bullets"
+        },
+        {
+          "idx": 1,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text or click icon to add media\nSecond level"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter subtitle"
+        },
+        {
+          "idx": 14,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 6",
+          "text": "Click icon to add image"
+        },
+        {
+          "idx": 15,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 6",
+          "text": "Click icon to add image"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 61,
+      "name": "2_Two Content, Subtitle,image, Bullets, horizontal",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 11,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 5",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 12,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 6"
+        },
+        {
+          "idx": 13,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 7",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Two-column horizontal, subtitle, image with bullets layout"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text or click icon to add media\nSecond level"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter subtitle"
+        },
+        {
+          "idx": 14,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 6",
+          "text": "Click icon to add image"
+        },
+        {
+          "idx": 15,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text or click icon to add media\nSecond level"
+        },
+        {
+          "idx": 16,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 6",
+          "text": "Click icon to add image"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 62,
+      "name": "3_Two Content, Subtitle,image, Bullets, diagonal",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Two-column, subtitle, bullets layout, diagonal images"
+        },
+        {
+          "idx": 1,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter subtitle"
+        },
+        {
+          "idx": 11,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 5",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 12,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 6"
+        },
+        {
+          "idx": 13,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 7",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 14,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 9",
+          "text": "Click icon to add picture"
+        },
+        {
+          "idx": 15,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 12",
+          "text": "Click icon to add picture"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 63,
+      "name": "4_Two Content, Subtitle,image, Bullets, diagonal alt",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Two-column, subtitle, bullets layout, diagonal images"
+        },
+        {
+          "idx": 1,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter subtitle"
+        },
+        {
+          "idx": 11,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 5",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 12,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 6"
+        },
+        {
+          "idx": 13,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 7",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 14,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 12",
+          "text": "Click icon to add picture"
+        },
+        {
+          "idx": 15,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 12",
+          "text": "Click icon to add picture"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 64,
+      "name": "5_Two Content, Subtitle,image, bulllets, alt",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 11,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 5",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 12,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 6"
+        },
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Two-column horizontal, subtitle, image"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text or click icon to add media\nSecond level"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter subtitle"
+        },
+        {
+          "idx": 13,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 7",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 14,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 6",
+          "text": "Click icon to add image"
+        },
+        {
+          "idx": 15,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter text or click icon to add media\nSecond level"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 65,
+      "name": "6_Three Content, Subtitle",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 11,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 5",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 12,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 6"
+        },
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Three-column, subtitle, bullets layout"
+        },
+        {
+          "idx": 1,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter subtitle"
+        },
+        {
+          "idx": 17,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level"
+        },
+        {
+          "idx": 18,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 66,
+      "name": "5_Three Content, Subtitle, images",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 11,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 5",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 12,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 6"
+        },
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Three-column, subtitle, image with bullets layout"
+        },
+        {
+          "idx": 1,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter subtitle"
+        },
+        {
+          "idx": 14,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 6",
+          "text": "Click icon to add image"
+        },
+        {
+          "idx": 15,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level"
+        },
+        {
+          "idx": 16,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 6",
+          "text": "Click icon to add image"
+        },
+        {
+          "idx": 17,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level"
+        },
+        {
+          "idx": 18,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 6",
+          "text": "Click icon to add image"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 67,
+      "name": "6_Three Content with callout, Subtitle",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 11,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 5",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 12,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 6"
+        },
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Three-column with callout, subtitle"
+        },
+        {
+          "idx": 1,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter subtitle"
+        },
+        {
+          "idx": 15,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level"
+        },
+        {
+          "idx": 17,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level"
+        },
+        {
+          "idx": 19,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 68,
+      "name": "5_Collage",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 11,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 5",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 12,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 6"
+        },
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Collage image, subtitle, content"
+        },
+        {
+          "idx": 1,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level"
+        },
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 4",
+          "text": "Enter subtitle"
+        },
+        {
+          "idx": 14,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 11",
+          "text": "Picture 1"
+        },
+        {
+          "idx": 15,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 20",
+          "text": "Picture 3"
+        },
+        {
+          "idx": 16,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 11",
+          "text": "Picture 4"
+        },
+        {
+          "idx": 17,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 20",
+          "text": "Picture 2"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 69,
+      "name": "Quote",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Enter quote here. Reposition quote mark graphics to frame the quote."
+        },
+        {
+          "idx": 15,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 8",
+          "text": "Quoted person\u2019s name"
+        },
+        {
+          "idx": 16,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 10",
+          "text": "Quoted person\u2019s affiliation"
+        },
+        {
+          "idx": 17,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 2",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 18,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 3"
+        },
+        {
+          "idx": 19,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 4",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 70,
+      "name": "Quote Gradient 1",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Enter quote here. Reposition quote mark graphics to frame the quote."
+        },
+        {
+          "idx": 15,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 8",
+          "text": "Quoted person\u2019s name"
+        },
+        {
+          "idx": 16,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 10",
+          "text": "Quoted person\u2019s affiliation"
+        },
+        {
+          "idx": 17,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 2",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 18,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 3"
+        },
+        {
+          "idx": 19,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 4",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 11"
+        }
+      ]
+    },
+    {
+      "index": 71,
+      "name": "Quote Gradient 2",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Enter quote here. Reposition quote mark graphics to frame the quote."
+        },
+        {
+          "idx": 15,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 8",
+          "text": "Quoted person\u2019s name"
+        },
+        {
+          "idx": 16,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 10",
+          "text": "Quoted person\u2019s affiliation"
+        },
+        {
+          "idx": 17,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 2",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 18,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 3"
+        },
+        {
+          "idx": 19,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 4",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2025, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 11"
+        }
+      ]
+    },
+    {
+      "index": 72,
+      "name": "Quote Gradient 3",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Enter quote here. Reposition quote mark graphics to frame the quote."
+        },
+        {
+          "idx": 15,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 8",
+          "text": "Quoted person\u2019s name"
+        },
+        {
+          "idx": 16,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 10",
+          "text": "Quoted person\u2019s affiliation"
+        },
+        {
+          "idx": 17,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 2",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 18,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 3"
+        },
+        {
+          "idx": 19,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 4",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 11"
+        }
+      ]
+    },
+    {
+      "index": 73,
+      "name": "1_Quote Gradient 3 alt",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Enter quote here. Reposition quote mark graphics to frame the quote."
+        },
+        {
+          "idx": 15,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 8",
+          "text": "Quoted person\u2019s name"
+        },
+        {
+          "idx": 16,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 10",
+          "text": "Quoted person\u2019s affiliation"
+        },
+        {
+          "idx": 17,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 2",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 18,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 3"
+        },
+        {
+          "idx": 19,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 4",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 11"
+        }
+      ]
+    },
+    {
+      "index": 74,
+      "name": "2_Quote Gradient 3 alt, image",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Enter quote here. Reposition quote mark graphics to frame the quote."
+        },
+        {
+          "idx": 15,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 8",
+          "text": "Quoted person\u2019s name"
+        },
+        {
+          "idx": 16,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 10",
+          "text": "Quoted person\u2019s affiliation"
+        },
+        {
+          "idx": 17,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 2",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 18,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 3"
+        },
+        {
+          "idx": 19,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 4",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 22,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 5"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 11"
+        }
+      ]
+    },
+    {
+      "index": 75,
+      "name": "Section Header Option 2",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Section layout: Enter section name here"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 5",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 6"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 7",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 4"
+        }
+      ]
+    },
+    {
+      "index": 76,
+      "name": "Section Header Option 1",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Section layout: Enter section name here"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 5",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 6"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 7",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 11"
+        }
+      ]
+    },
+    {
+      "index": 77,
+      "name": "1_Section Header Option 2 alt",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Section layout: Enter section name here"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 5",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 6"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 7",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 14,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 13",
+          "text": "Click icon to add picture"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 4"
+        }
+      ]
+    },
+    {
+      "index": 78,
+      "name": "1_Section Header Option 1 alt",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Section layout: Enter section name here"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 5",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 6"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 7",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "idx": 14,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 13",
+          "text": "Click icon to add picture"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 11"
+        }
+      ]
+    },
+    {
+      "index": 79,
+      "name": "Section Header Option 3",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Section layout: Enter section name here"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 5",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 6"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 7",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 4"
+        }
+      ]
+    },
+    {
+      "index": 80,
+      "name": "1_Section Header Option 3 alt",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Section layout: Enter section name here"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 5",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 6"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 7",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 4"
+        }
+      ]
+    },
+    {
+      "index": 81,
+      "name": "Code",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Code layout"
+        },
+        {
+          "idx": 1,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Type or paste plain-text code here; or click icon to add image\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 3",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 4"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 5",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 82,
+      "name": "Code - Two Content",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Two-column code layout"
+        },
+        {
+          "idx": 1,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter code\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 2,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 3",
+          "text": "Enter code\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 4",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 5"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 6",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 83,
+      "name": "Q&A",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Enter subtitle"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 2",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 3"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 4",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": [
+        {
+          "text": "Q&A",
+          "shape_name": "TextBox 5"
+        }
+      ]
+    },
+    {
+      "index": 84,
+      "name": "Video or Demo Divider",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Video or demo divider: Enter \u201cVideo\u201d or \u201cDemo\u201d here"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 85,
+      "name": "Video",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 10,
+          "type": "MEDIA_CLIP (10)",
+          "name": "Media Placeholder 6",
+          "text": "Click icon to add media"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 86,
+      "name": "Content with Caption",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Content with caption layout"
+        },
+        {
+          "idx": 1,
+          "type": "OBJECT (7)",
+          "name": "Content Placeholder 2",
+          "text": "Enter text or click icon to add media\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 2,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 3",
+          "text": "Enter descriptive text here"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 87,
+      "name": "1_Thank You Option 1 alt",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 14,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 5"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 1"
+        },
+        {
+          "text": "\uc5ec\ub7ec\ubd84\uc758 \uc18c\uc911\ud55c \ud53c\ub4dc\ubc31\uc744 \uae30\ub2e4\ub9bd\ub2c8\ub2e4.\n\ubcf4\ub2e4 \ub098\uc740 \ud589\uc0ac\ub97c \uc704\ud574 \uc124\ubb38 \ucc38\uc5ec\ub97c \ubd80\ud0c1\ub4dc\ub9bd\ub2c8\ub2e4.",
+          "shape_name": "TextBox 4"
+        }
+      ]
+    },
+    {
+      "index": 88,
+      "name": "Thank You Option 1",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 7",
+          "text": "Speaker name"
+        },
+        {
+          "idx": 11,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 9",
+          "text": "Speaker contact info (email or socials)"
+        },
+        {
+          "idx": 12,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 7",
+          "text": "Speaker name"
+        },
+        {
+          "idx": 13,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 9",
+          "text": "Speaker contact info (email or socials)"
+        },
+        {
+          "idx": 14,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 7",
+          "text": "Speaker name"
+        },
+        {
+          "idx": 15,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 9",
+          "text": "Speaker contact info (email or socials)"
+        }
+      ],
+      "texts": [
+        {
+          "text": "Thank you!",
+          "shape_name": "TextBox 15"
+        },
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 1"
+        }
+      ]
+    },
+    {
+      "index": 89,
+      "name": "1_Thank You Option 2 alt",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 16,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 5"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 9"
+        },
+        {
+          "text": "\uc5ec\ub7ec\ubd84\uc758 \uc18c\uc911\ud55c \ud53c\ub4dc\ubc31\uc744 \uae30\ub2e4\ub9bd\ub2c8\ub2e4.\n\ubcf4\ub2e4 \ub098\uc740 \ud589\uc0ac\ub97c \uc704\ud574 \uc124\ubb38 \ucc38\uc5ec\ub97c \ubd80\ud0c1\ub4dc\ub9bd\ub2c8\ub2e4.",
+          "shape_name": "TextBox 6"
+        }
+      ]
+    },
+    {
+      "index": 90,
+      "name": "Thank You Option 2",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 7",
+          "text": "Speaker name"
+        },
+        {
+          "idx": 11,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 9",
+          "text": "Speaker contact info (email or socials)"
+        },
+        {
+          "idx": 12,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 7",
+          "text": "Speaker name"
+        },
+        {
+          "idx": 13,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 9",
+          "text": "Speaker contact info (email or socials)"
+        },
+        {
+          "idx": 14,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 7",
+          "text": "Speaker name"
+        },
+        {
+          "idx": 15,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 9",
+          "text": "Speaker contact info (email or socials)"
+        }
+      ],
+      "texts": [
+        {
+          "text": "Thank you!",
+          "shape_name": "TextBox 19"
+        },
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 9"
+        }
+      ]
+    },
+    {
+      "index": 91,
+      "name": "1_Thank You Option 3 alt",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 16,
+          "type": "PICTURE (18)",
+          "name": "Picture Placeholder 5"
+        }
+      ],
+      "texts": [
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 9"
+        },
+        {
+          "text": "\uc5ec\ub7ec\ubd84\uc758 \uc18c\uc911\ud55c \ud53c\ub4dc\ubc31\uc744 \uae30\ub2e4\ub9bd\ub2c8\ub2e4.\n\ubcf4\ub2e4 \ub098\uc740 \ud589\uc0ac\ub97c \uc704\ud574 \uc124\ubb38 \ucc38\uc5ec\ub97c \ubd80\ud0c1\ub4dc\ub9bd\ub2c8\ub2e4.",
+          "shape_name": "TextBox 6"
+        }
+      ]
+    },
+    {
+      "index": 92,
+      "name": "Thank You Option 3",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 10,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 7",
+          "text": "Speaker name"
+        },
+        {
+          "idx": 11,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 9",
+          "text": "Speaker contact info (email or socials)"
+        },
+        {
+          "idx": 12,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 7",
+          "text": "Speaker name"
+        },
+        {
+          "idx": 13,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 9",
+          "text": "Speaker contact info (email or socials)"
+        },
+        {
+          "idx": 14,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 7",
+          "text": "Speaker name"
+        },
+        {
+          "idx": 15,
+          "type": "BODY (2)",
+          "name": "Text Placeholder 9",
+          "text": "Speaker contact info (email or socials)"
+        }
+      ],
+      "texts": [
+        {
+          "text": "Thank you!",
+          "shape_name": "TextBox 19"
+        },
+        {
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.",
+          "shape_name": "TextBox 9"
+        }
+      ]
+    },
+    {
+      "index": 93,
+      "name": "Title and Vertical Text",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Title 1",
+          "text": "Click to edit Master title style"
+        },
+        {
+          "idx": 1,
+          "type": "BODY (2)",
+          "name": "Vertical Text Placeholder 2",
+          "text": "Click to edit Master text styles\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 3",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 4"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 5",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    },
+    {
+      "index": 94,
+      "name": "Vertical Title and Text",
+      "background": {
+        "type": "inherited"
+      },
+      "placeholders": [
+        {
+          "idx": 0,
+          "type": "TITLE (1)",
+          "name": "Vertical Title 1",
+          "text": "Click to edit Master title style"
+        },
+        {
+          "idx": 1,
+          "type": "BODY (2)",
+          "name": "Vertical Text Placeholder 2",
+          "text": "Click to edit Master text styles\nSecond level\nThird level\nFourth level\nFifth level"
+        },
+        {
+          "idx": 10,
+          "type": "DATE (16)",
+          "name": "Date Placeholder 3",
+          "text": "2/23/26"
+        },
+        {
+          "idx": 11,
+          "type": "FOOTER (15)",
+          "name": "Footer Placeholder 4"
+        },
+        {
+          "idx": 12,
+          "type": "SLIDE_NUMBER (13)",
+          "name": "Slide Number Placeholder 5",
+          "text": "\u2039#\u203a"
+        }
+      ],
+      "texts": []
+    }
+  ],
+  "footer_text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark. | \u2039#\u203a"
+}

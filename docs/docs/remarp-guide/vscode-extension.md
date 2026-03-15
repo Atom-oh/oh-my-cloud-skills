@@ -182,7 +182,7 @@ Speaker notes go here - not visible during presentation
 ## 알려진 제한 사항
 
 - 미리보기는 단순화된 마크다운 렌더링 사용 (전체 Remarp 렌더러 아님)
-- Canvas DSL 미리보기는 문법만 표시, 그래픽 렌더링 안 함
+- Canvas DSL 미리보기는 소스 코드를 `<pre>` 블록으로 표시 (그래픽 렌더링 아님)
 - 일부 복잡한 중첩 블록은 하이라이팅이 완벽하지 않을 수 있음
 
 ## Marketplace 배포

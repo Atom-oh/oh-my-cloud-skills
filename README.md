@@ -99,6 +99,8 @@ your-repo/
 | Quiz | Multiple-choice questions with auto-grading |
 | Code Block | Syntax-highlighted YAML/JSON/HCL with semantic spans |
 | Slider | Range input with live computed output |
+| Agenda | Session agenda with numbered dots, time labels, and break markers |
+| Prompt | AI prompt workflow display with copy button |
 | Pain Quote | Customer problem statement with challenge list |
 
 ### Remarp VSCode Extension
@@ -633,9 +635,11 @@ plugins/
 │       │   ├── references/            # framework-guide.md, slide-patterns.md
 │       │   └── icons/                 # AWS Architecture Icons (4,224 files)
 │       ├── architecture-diagram/      # Draw.io templates & patterns
+│       │   └── reference/            # drawio-xml-guide.md, mcp-setup-guide.md
 │       ├── animated-diagram/          # SMIL animation guide & templates
 │       ├── gitbook/                   # GitBook structure & components
 │       └── workshop-creator/          # Workshop Studio directives & templates
+│           └── reference/            # infrastructure-guide.md, workshop-templates.md
 │
 ├── aws-ops-plugin/                    # Infrastructure operations plugin
 │   ├── .claude-plugin/plugin.json     # Plugin manifest (9 agents, 5 skills)
