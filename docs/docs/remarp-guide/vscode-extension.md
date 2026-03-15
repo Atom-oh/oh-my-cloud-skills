@@ -5,7 +5,7 @@ title: VSCode 확장
 
 # VSCode 확장
 
-Remarp Slides VSCode 확장은 `.remarp.md` 파일 작성을 위한 편집 환경을 제공합니다.
+Remarp Slides VSCode 확장은 `.remarp.md` 파일과 Remarp가 생성한 HTML 파일 모두를 위한 편집 환경을 제공합니다.
 
 ## 기능
 
@@ -27,6 +27,26 @@ Remarp 전용 TextMate 문법으로 다음 요소를 하이라이팅합니다:
 - 이전/다음 버튼으로 네비게이션
 - 키보드 네비게이션 (화살표 키, Space, PageUp/Down)
 - 커서 위치에 따라 해당 슬라이드로 동기화
+- Remarp가 생성한 HTML 파일 직접 프리뷰 (메타태그로 자동 인식)
+- HTML 파일에서도 동일한 Preview/Edit/Build 아이콘 표시
+
+### HTML 파일 지원
+
+Remarp가 생성한 HTML 파일을 자동으로 인식하여 `.remarp.md`와 동일한 편집 환경을 제공합니다.
+
+**인식 조건**: HTML `<head>`에 `<meta name="generator" content="remarp">` 태그가 있는 파일
+
+**지원 기능**:
+- 에디터 타이틀 바에 Preview(👁), Edit(✏️), Build(▶) 아이콘 표시
+- Preview: HTML 내용을 그대로 webview에서 렌더링
+- Visual Edit: 요소 드래그/리사이즈 시 소스 `.remarp.md`의 `:::css` 블록에 자동 반영
+- Build: 소스 `.remarp.md`를 찾아서 재빌드
+
+**소스 추적**: `<meta name="remarp-source" content="파일명.remarp.md">` 태그로 소스 파일을 자동 탐색합니다. HTML 파일 기준 상위 3단계까지 검색합니다.
+
+:::tip 일반 HTML 파일에는 영향 없음
+Remarp 메타태그가 없는 일반 `.html` 파일에서는 아이콘이 표시되지 않습니다.
+:::
 
 ### 문서 아웃라인
 
@@ -52,7 +72,7 @@ Remarp 전용 TextMate 문법으로 다음 요소를 하이라이팅합니다:
 
 ### VS Code Marketplace에서 설치
 
-Extensions 뷰(`Ctrl+Shift+X`)에서 **"Remarp Slides"**를 검색하고 Install을 클릭합니다.
+Extensions 뷰(`Ctrl+Shift+X`)에서 "**Remarp Slides**"를 검색하고 Install을 클릭합니다.
 
 ### VSIX에서 설치 (로컬)
 
@@ -76,6 +96,8 @@ npm run compile
 2. Remarp 문법으로 프레젠테이션 작성
 3. 에디터 제목 표시줄의 미리보기 아이콘 클릭 (또는 "Remarp: Open Preview" 명령 실행)
 4. 탐색기의 아웃라인 뷰에서 슬라이드 탐색
+5. Remarp가 생성한 `.html` 파일을 열면 동일한 Preview/Edit/Build 아이콘 자동 표시
+6. HTML에서 Visual Edit 모드로 편집하면 소스 `.remarp.md`에 자동 반영
 
 ## 키보드 단축키
 
@@ -93,6 +115,8 @@ npm run compile
 | `Remarp: Open Preview` | 슬라이드 미리보기 패널 열기 |
 | `Remarp: Next Slide` | 다음 슬라이드로 이동 |
 | `Remarp: Previous Slide` | 이전 슬라이드로 이동 |
+| `Remarp: Toggle Visual Edit Mode` | 비주얼 편집 모드 전환 |
+| `Remarp: Build HTML` | HTML 빌드 (HTML 파일에서는 소스 자동 탐색) |
 
 ## 예제
 
