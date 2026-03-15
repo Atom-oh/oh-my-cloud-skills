@@ -7,6 +7,11 @@ triggers:
   - "헬스체크"
   - "cluster health"
   - "인프라 점검"
+model: sonnet
+allowed-tools:
+  - Bash
+  - Read
+  - Grep
 ---
 
 # Ops Health Check Skill

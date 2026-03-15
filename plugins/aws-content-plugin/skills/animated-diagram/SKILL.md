@@ -1,6 +1,10 @@
 ---
 name: animated-diagram
 description: "Create dynamic animated SVG diagrams with SMIL animations for AWS architecture traffic flow, service interactions, and deployment pipelines. Use when creating animated or dynamic diagrams."
+model: sonnet
+allowed-tools:
+  - Read
+  - Write
 ---
 
 # Animated Diagram Skill
@@ -46,6 +50,70 @@ Each animated diagram is a self-contained HTML file with three layers:
 
 - `templates/traffic-flow.html` — SMIL traffic flow template with legend toggles
 - `templates/interactive-scaling.html` — Interactive EKS hybrid node bursting with Scale Out/In buttons (JavaScript + CSS transitions)
+
+## SMIL Animation Example
+
+Minimal traffic flow with animated dot following a path:
+
+```html
+<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Traffic path (ALB → Lambda → DynamoDB) -->
+  <path id="flow1" d="M50,100 H150 V50 H300"
+        fill="none" stroke="#FF9900" stroke-width="2" stroke-dasharray="5,3"/>
+
+  <!-- Animated dot following path -->
+  <circle r="6" fill="#147EBA">
+    <animateMotion dur="3s" repeatCount="indefinite">
+      <mpath href="#flow1"/>
+    </animateMotion>
+  </circle>
+
+  <!-- Pulsing status indicator -->
+  <circle cx="300" cy="50" r="10" fill="#1B660F">
+    <animate attributeName="opacity" values="1;0.4;1" dur="1.5s" repeatCount="indefinite"/>
+  </circle>
+</svg>
+```
+
+## Interactive Scenario Example
+
+Button-driven state machine for scaling scenarios:
+
+```javascript
+const states = { idle: 0, scalingOut: 1, scaled: 2, scalingIn: 3 };
+let current = states.idle;
+
+document.getElementById('scaleOut').onclick = () => {
+  if (current === states.idle) {
+    current = states.scalingOut;
+    animateScaleOut().then(() => current = states.scaled);
+  }
+};
+```
+
+## Decision Tree
+
+```mermaid
+flowchart TD
+    A[Animation Need] --> B{Continuous flow?}
+    B -->|Yes| C[SMIL animateMotion]
+    B -->|No| D{Pulsing/status?}
+    D -->|Yes| E[SMIL animate]
+    D -->|No| F{Button-driven?}
+    F -->|Yes| G[JavaScript + CSS]
+    F -->|No| H[Static SVG]
+```
+
+## Quick Start Commands
+
+```bash
+# Open animation in default browser
+open animation.html
+
+# Serve locally for development
+python3 -m http.server 8080
+# Then visit http://localhost:8080/animation.html
+```
 
 ## Quality Review (필수 — 생략 불가)
 

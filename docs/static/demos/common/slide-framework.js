@@ -19,6 +19,11 @@ class SlideFramework {
     this.fragmentState = {};  // { slideIndex: { fragments: [], currentIndex: -1 } }
     // Overview mode
     this.overviewMode = false;
+    // Sidebar
+    this.sidebarEnabled = options.sidebar !== false;
+    this.sidebarVisible = false;
+    this.sidebarWasVisible = false; // track state across fullscreen
+    this.sidebar = null;
     // Custom key mappings
     this.keyMappings = {};
     this.init();
@@ -46,6 +51,13 @@ class SlideFramework {
       this.createNavHint();
       if (this.pagination) this.createSlideNumber();
       this.createRefContainer();
+      if (this.sidebarEnabled) {
+        this.createSidebar();
+        this.bindSidebarFullscreen();
+        if (!document.fullscreenElement) {
+          this.showSidebar();
+        }
+      }
       this.bindKeys();
       this.bindTouch();
       this.handleHash();
@@ -82,7 +94,16 @@ class SlideFramework {
     if (state.currentIndex < state.fragments.length - 1) {
       state.currentIndex++;
       const fragment = state.fragments[state.currentIndex];
+      const targetIndex = fragment.dataset.fragmentIndex;
       fragment.classList.add('visible');
+      // Reveal all fragments sharing the same index
+      while (state.currentIndex + 1 < state.fragments.length) {
+        const next = state.fragments[state.currentIndex + 1];
+        if (next.dataset.fragmentIndex === targetIndex) {
+          state.currentIndex++;
+          next.classList.add('visible');
+        } else { break; }
+      }
       return true; // Fragment revealed, don't advance slide
     }
     return false; // All fragments revealed, can advance slide
@@ -94,7 +115,16 @@ class SlideFramework {
 
     if (state.currentIndex >= 0) {
       const fragment = state.fragments[state.currentIndex];
+      const targetIndex = fragment.dataset.fragmentIndex;
       fragment.classList.remove('visible');
+      // Hide all fragments sharing the same index (backwards)
+      while (state.currentIndex - 1 >= 0) {
+        const prev = state.fragments[state.currentIndex - 1];
+        if (prev.dataset.fragmentIndex === targetIndex) {
+          state.currentIndex--;
+          prev.classList.remove('visible');
+        } else { break; }
+      }
       state.currentIndex--;
       return true; // Fragment hidden, don't go back slide
     }
@@ -141,6 +171,86 @@ class SlideFramework {
     }
   }
 
+  // Sidebar methods
+  createSidebar() {
+    const sidebar = document.createElement('div');
+    sidebar.className = 'slide-sidebar';
+
+    this.slides.forEach((slide, idx) => {
+      const thumb = document.createElement('div');
+      thumb.className = 'sidebar-thumb';
+      thumb.dataset.index = idx;
+
+      const content = document.createElement('div');
+      content.className = 'sidebar-thumb-content';
+      content.innerHTML = slide.innerHTML;
+
+      // Calculate scale after layout: thumbWidth / 1920
+      // Use a fixed approximation; actual width is ~196px (220 - 2*10 padding - 2*2 border)
+      const thumbWidth = 196;
+      const scale = thumbWidth / 1920;
+      content.style.transform = `scale(${scale})`;
+
+      const number = document.createElement('span');
+      number.className = 'sidebar-thumb-number';
+      number.textContent = idx + 1;
+
+      thumb.appendChild(content);
+      thumb.appendChild(number);
+      thumb.addEventListener('click', () => this.goTo(idx));
+      sidebar.appendChild(thumb);
+    });
+
+    document.body.prepend(sidebar);
+    this.sidebar = sidebar;
+  }
+
+  toggleSidebar() {
+    if (this.sidebarVisible) {
+      this.hideSidebar();
+    } else {
+      this.showSidebar();
+    }
+  }
+
+  showSidebar() {
+    if (!this.sidebar) return;
+    document.body.classList.add('sidebar-visible');
+    this.sidebarVisible = true;
+    this.updateSidebarHighlight(this.currentSlide);
+  }
+
+  hideSidebar() {
+    if (!this.sidebar) return;
+    document.body.classList.remove('sidebar-visible');
+    this.sidebarVisible = false;
+  }
+
+  updateSidebarHighlight(index) {
+    if (!this.sidebar) return;
+    const thumbs = this.sidebar.querySelectorAll('.sidebar-thumb');
+    thumbs.forEach(t => t.classList.remove('active'));
+    if (thumbs[index]) {
+      thumbs[index].classList.add('active');
+      thumbs[index].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }
+
+  bindSidebarFullscreen() {
+    document.addEventListener('fullscreenchange', () => {
+      if (document.fullscreenElement) {
+        // Entering fullscreen — remember state and hide
+        this.sidebarWasVisible = this.sidebarVisible;
+        this.hideSidebar();
+      } else {
+        // Exiting fullscreen — restore previous state
+        if (this.sidebarWasVisible) {
+          this.showSidebar();
+        }
+      }
+    });
+  }
+
   // Get action for a key (supports custom mappings)
   getKeyAction(key) {
     // Check custom mappings first
@@ -164,6 +274,8 @@ class SlideFramework {
       'F': 'fullscreen',
       'o': 'overview',
       'O': 'overview',
+      's': 'sidebar',
+      'S': 'sidebar',
       'Escape': 'escape'
     };
     return defaults[key] || null;
@@ -262,20 +374,13 @@ class SlideFramework {
       switch (action) {
         case 'next':
           e.preventDefault();
-          // If in overview mode, do nothing on next
           if (this.overviewMode) return;
-          // Try to reveal next fragment first
-          if (!this.revealNextFragment()) {
-            this.next();
-          }
+          this.next();
           break;
         case 'prev':
           e.preventDefault();
           if (this.overviewMode) return;
-          // Try to hide previous fragment first
-          if (!this.revealPrevFragment()) {
-            this.prev();
-          }
+          this.prev();
           break;
         case 'down':
           e.preventDefault();
@@ -283,7 +388,9 @@ class SlideFramework {
             const result = this.slideActions[this.currentSlide].down();
             if (result === false) this.next();
           } else if (!this.cycleInteractive(1)) {
-            this.next();
+            if (!this.revealNextFragment()) {
+              this.next();
+            }
           }
           break;
         case 'up':
@@ -292,7 +399,9 @@ class SlideFramework {
             const result = this.slideActions[this.currentSlide].up();
             if (result === false) this.prev();
           } else if (!this.cycleInteractive(-1)) {
-            this.prev();
+            if (!this.revealPrevFragment()) {
+              this.prev();
+            }
           }
           break;
         case 'first':
@@ -314,6 +423,10 @@ class SlideFramework {
         case 'overview':
           e.preventDefault();
           this.toggleOverview();
+          break;
+        case 'sidebar':
+          e.preventDefault();
+          if (!document.fullscreenElement) this.toggleSidebar();
           break;
         case 'escape':
           if (this.overviewMode) {
@@ -398,6 +511,7 @@ class SlideFramework {
 
     this.currentSlide = index;
     this.updateProgress();
+    if (this.sidebar) this.updateSidebarHighlight(index);
     this.updateFooterVisibility(next);
     this.updateRefs(next);
     window.location.hash = index + 1;
@@ -452,6 +566,14 @@ class SlideFramework {
     const slide = this.slides[this.currentSlide];
     if (!slide) return false;
 
+    // Try canvas/timeline step navigation (registered via __canvasStep)
+    if (slide.__canvasStep) {
+      const dir = direction > 0 ? 'next' : 'prev';
+      const result = slide.__canvasStep(dir);
+      if (result !== false) return true;
+      return false;
+    }
+
     // Try tabs
     const tabBar = slide.querySelector('.tab-bar');
     if (tabBar) {
@@ -500,28 +622,55 @@ function initTabs() {
   });
 }
 
-// Checklist helper
+// Checklist helper with expand/collapse for detail blocks
 function initChecklists() {
   document.querySelectorAll('.checklist li').forEach(item => {
-    item.addEventListener('click', () => {
+    item.addEventListener('click', (e) => {
+      // Don't toggle if clicking inside the detail block
+      if (e.target.closest('.checklist-detail')) return;
       item.classList.toggle('checked');
+      // Expand/collapse detail block if present
+      const detail = item.querySelector('.checklist-detail');
+      if (detail) {
+        if (item.classList.contains('checked')) {
+          detail.style.display = 'block';
+          detail.style.maxHeight = detail.scrollHeight + 'px';
+        } else {
+          detail.style.maxHeight = '0';
+          setTimeout(() => { detail.style.display = 'none'; }, 300);
+        }
+      }
     });
   });
 }
 
-// Compare toggle helper
+// Compare toggle helper (supports side-by-side and toggle modes)
 function initCompareToggles() {
   document.querySelectorAll('.compare-toggle').forEach(toggle => {
     const btns = toggle.querySelectorAll('.compare-btn');
     const container = toggle.parentElement;
+    const isSideBySide = container.dataset.compareMode === 'side-by-side';
+
     btns.forEach(btn => {
       btn.addEventListener('click', () => {
         const target = btn.dataset.compare;
         btns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        container.querySelectorAll('.compare-content').forEach(c => {
-          c.classList.toggle('active', c.dataset.compare === target);
-        });
+
+        if (isSideBySide) {
+          // Side-by-side: both panels stay visible, highlight selected
+          container.querySelectorAll('.compare-content').forEach(c => {
+            c.classList.remove('compare-highlight');
+            if (c.dataset.compare === target) {
+              c.classList.add('compare-highlight');
+            }
+          });
+        } else {
+          // Toggle mode: show only selected panel
+          container.querySelectorAll('.compare-content').forEach(c => {
+            c.classList.toggle('active', c.dataset.compare === target);
+          });
+        }
       });
     });
   });

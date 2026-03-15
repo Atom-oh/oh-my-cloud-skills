@@ -37,7 +37,7 @@ class QuizManager {
           // Mark all options
           options.forEach(o => {
             o.classList.add('disabled');
-            if (o.dataset.correct === 'true') {
+            if (o.dataset.correct === 'true' && isCorrect) {
               o.classList.add('correct');
             } else if (o === opt && !isCorrect) {
               o.classList.add('wrong');
@@ -59,6 +59,27 @@ class QuizManager {
               </div>`;
             }
             feedback.classList.add('show');
+          }
+
+          // Wrong answer: allow retry after brief feedback
+          if (!isCorrect) {
+            setTimeout(() => {
+              state.answered = false;
+              state.correct = false;
+              options.forEach(o => {
+                o.classList.remove('disabled', 'correct');
+                // Keep wrong class on selected option briefly visible, then remove
+                if (o === opt) {
+                  o.classList.add('wrong-fade');
+                  setTimeout(() => o.classList.remove('wrong', 'wrong-fade'), 300);
+                } else {
+                  o.classList.remove('wrong');
+                }
+              });
+              if (feedback) {
+                feedback.classList.remove('show');
+              }
+            }, 1500);
           }
         });
       });
@@ -150,6 +171,10 @@ const quizManager = new QuizManager();
       background: var(--red-bg) !important;
       color: var(--red) !important;
       opacity: 1 !important;
+    }
+    .quiz-option.wrong-fade {
+      transition: all 300ms ease-out;
+      opacity: 0.5 !important;
     }
     .quiz-feedback {
       overflow: hidden;

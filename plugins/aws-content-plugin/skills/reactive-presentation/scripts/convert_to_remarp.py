@@ -425,6 +425,15 @@ class RemarpGenerator:
         self.block_size = block_size
         self.theme_dir = theme_dir
         self.source_stem = source_stem
+        self.theme_manifest: Dict[str, Any] = {}
+
+        # Load theme manifest if available
+        if theme_dir:
+            manifest_path = Path(theme_dir) / 'theme-manifest.json'
+            if manifest_path.exists():
+                import json
+                with open(manifest_path, 'r', encoding='utf-8') as f:
+                    self.theme_manifest = json.load(f)
 
     def generate(self, slides: List[RawSlide]) -> List[str]:
         """Generate Remarp project files. Returns list of created file paths."""
@@ -520,7 +529,12 @@ class RemarpGenerator:
             rel_theme = os.path.relpath(self.theme_dir, self.output_dir)
             lines.append('theme:')
             lines.append(f'  source: "./{rel_theme}"')
-            lines.append('  footer: auto')
+            # Resolve actual footer text from manifest instead of 'auto'
+            footer_text = self.theme_manifest.get('footer_text', '')
+            if footer_text:
+                lines.append(f'  footer: "{footer_text}"')
+            else:
+                lines.append('  footer: auto')
             lines.append('  logo: auto')
         else:
             lines.append('theme:')

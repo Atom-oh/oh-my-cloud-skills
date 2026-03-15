@@ -2,6 +2,12 @@
 name: network-agent
 description: "AWS/EKS network diagnostics agent. Troubleshoots VPC CNI, ALB/NLB, DNS, Security Groups, and IP exhaustion. Triggers on \"VPC CNI\", \"IP exhaustion\", \"load balancer\", \"ALB\", \"NLB\", \"DNS resolution\", \"security group\", \"네트워크 오류\", \"IP 부족\", \"로드밸런서\" requests."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
+model: sonnet
+skills:
+  - ops-network-diagnosis
+mcpServers:
+  - awsdocs
+  - awsapi
 ---
 
 # Network Agent

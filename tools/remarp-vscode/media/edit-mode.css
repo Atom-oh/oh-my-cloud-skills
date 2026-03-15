@@ -1,0 +1,353 @@
+/* Edit Mode Styles for Remarp Visual Editor */
+
+/* Hoverable elements in edit mode */
+[data-remarp-id]:hover {
+    outline: 2px dashed rgba(108, 92, 231, 0.5);
+    outline-offset: 2px;
+    cursor: pointer;
+}
+
+/* Selected element */
+.remarp-selected {
+    outline: 2px solid #6c5ce7 !important;
+    outline-offset: 2px;
+    position: relative;
+}
+
+/* 8-direction resize handles */
+.remarp-handle {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: #6c5ce7;
+    border: 1px solid #fff;
+    border-radius: 2px;
+    z-index: 1000;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.remarp-handle:hover {
+    background: #8b7cf7;
+    transform: scale(1.2);
+}
+
+/* Position each handle */
+.remarp-handle-nw { top: -4px; left: -4px; cursor: nw-resize; }
+.remarp-handle-n  { top: -4px; left: 50%; transform: translateX(-50%); cursor: n-resize; }
+.remarp-handle-ne { top: -4px; right: -4px; cursor: ne-resize; }
+.remarp-handle-e  { top: 50%; right: -4px; transform: translateY(-50%); cursor: e-resize; }
+.remarp-handle-se { bottom: -4px; right: -4px; cursor: se-resize; }
+.remarp-handle-s  { bottom: -4px; left: 50%; transform: translateX(-50%); cursor: s-resize; }
+.remarp-handle-sw { bottom: -4px; left: -4px; cursor: sw-resize; }
+.remarp-handle-w  { top: 50%; left: -4px; transform: translateY(-50%); cursor: w-resize; }
+
+/* Property panel (floating right side) */
+.remarp-property-panel {
+    position: fixed;
+    top: 60px;
+    right: 16px;
+    width: 240px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    background: #252526;
+    border: 1px solid #3c3c3c;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    z-index: 2000;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 12px;
+    color: #cccccc;
+    display: none;
+}
+
+.remarp-property-panel.visible {
+    display: block;
+}
+
+.remarp-property-panel-header {
+    padding: 10px 12px;
+    background: #1e1e1e;
+    border-bottom: 1px solid #3c3c3c;
+    border-radius: 6px 6px 0 0;
+    font-weight: 600;
+    color: #ffffff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.remarp-property-panel-close {
+    background: none;
+    border: none;
+    color: #808080;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0;
+    line-height: 1;
+}
+
+.remarp-property-panel-close:hover {
+    color: #ffffff;
+}
+
+.remarp-property-panel-body {
+    padding: 12px;
+}
+
+.remarp-property-group {
+    margin-bottom: 12px;
+}
+
+.remarp-property-group-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: #808080;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+}
+
+.remarp-property-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.remarp-property-label {
+    width: 70px;
+    color: #999999;
+    font-size: 11px;
+}
+
+.remarp-property-input {
+    flex: 1;
+    background: #3c3c3c;
+    border: 1px solid #4a4a4a;
+    border-radius: 3px;
+    padding: 4px 8px;
+    color: #ffffff;
+    font-size: 11px;
+    outline: none;
+}
+
+.remarp-property-input:focus {
+    border-color: #6c5ce7;
+}
+
+/* Font size A+/A- buttons */
+.remarp-font-btn {
+    background: #3c3c3c;
+    border: 1px solid #4a4a4a;
+    border-radius: 3px;
+    color: #cccccc;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 4px 6px;
+    cursor: pointer;
+    min-width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.remarp-font-btn:hover {
+    background: #4a4a4a;
+    border-color: #6c5ce7;
+    color: #ffffff;
+}
+
+.remarp-font-input {
+    text-align: center;
+    margin: 0 2px;
+}
+
+.remarp-property-input[type="color"] {
+    padding: 2px;
+    height: 26px;
+    cursor: pointer;
+}
+
+/* Step timeline bar */
+.remarp-timeline {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #252526;
+    border: 1px solid #3c3c3c;
+    border-radius: 20px;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    z-index: 2000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.remarp-timeline-label {
+    font-size: 11px;
+    color: #808080;
+    margin-right: 4px;
+}
+
+.remarp-step-btn {
+    width: 28px;
+    height: 28px;
+    border: 1px solid #4a4a4a;
+    border-radius: 50%;
+    background: #3c3c3c;
+    color: #cccccc;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.remarp-step-btn:hover {
+    background: #4a4a4a;
+    border-color: #6c5ce7;
+}
+
+.remarp-step-btn.active {
+    background: #6c5ce7;
+    border-color: #6c5ce7;
+    color: #ffffff;
+}
+
+.remarp-step-btn.add-step {
+    background: transparent;
+    border-style: dashed;
+    color: #808080;
+}
+
+.remarp-step-btn.add-step:hover {
+    background: rgba(108, 92, 231, 0.2);
+    border-color: #6c5ce7;
+    color: #6c5ce7;
+}
+
+/* Canvas SVG overlay */
+.remarp-canvas-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: all;
+    z-index: 100;
+}
+
+.remarp-canvas-hitbox {
+    fill: transparent;
+    stroke: transparent;
+    stroke-width: 2;
+    cursor: pointer;
+    transition: stroke 0.15s ease;
+}
+
+.remarp-canvas-hitbox:hover {
+    stroke: rgba(108, 92, 231, 0.5);
+    stroke-dasharray: 4 2;
+}
+
+.remarp-canvas-hitbox.selected {
+    stroke: #6c5ce7;
+    stroke-width: 2;
+    stroke-dasharray: none;
+}
+
+/* Waypoints for animate-path */
+.remarp-waypoint {
+    fill: #6c5ce7;
+    stroke: #ffffff;
+    stroke-width: 2;
+    cursor: move;
+    transition: r 0.15s ease;
+}
+
+.remarp-waypoint:hover {
+    r: 8;
+}
+
+.remarp-waypoint.selected {
+    fill: #ff6b6b;
+}
+
+.remarp-waypoint-path {
+    fill: none;
+    stroke: #6c5ce7;
+    stroke-width: 2;
+    stroke-dasharray: 4 4;
+    pointer-events: none;
+}
+
+.remarp-waypoint-line {
+    fill: none;
+    stroke: rgba(108, 92, 231, 0.4);
+    stroke-width: 1;
+    stroke-dasharray: 2 2;
+    pointer-events: stroke;
+    cursor: crosshair;
+}
+
+/* Edit mode indicator */
+.remarp-edit-indicator {
+    position: fixed;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #6c5ce7;
+    color: #ffffff;
+    padding: 6px 16px;
+    border-radius: 16px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    z-index: 3000;
+    box-shadow: 0 2px 8px rgba(108, 92, 231, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.remarp-edit-indicator::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    background: #ffffff;
+    border-radius: 50%;
+    animation: remarp-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes remarp-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.8); }
+}
+
+/* Element ID badge (shown on hover/select) */
+.remarp-element-id {
+    position: absolute;
+    top: -20px;
+    left: 0;
+    background: #1e1e1e;
+    color: #6c5ce7;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-family: 'SF Mono', Monaco, monospace;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 1001;
+}
+
+/* Drag ghost element */
+.remarp-drag-ghost {
+    position: fixed;
+    pointer-events: none;
+    opacity: 0.7;
+    z-index: 10000;
+    outline: 2px solid #6c5ce7;
+    outline-offset: 2px;
+}

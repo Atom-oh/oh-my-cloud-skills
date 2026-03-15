@@ -38,7 +38,7 @@ const vscode = __importStar(require("vscode"));
 class RemarpCompletionProvider {
     constructor() {
         this.directives = [
-            { name: '@type', description: 'Slide type', values: ['content', 'compare', 'canvas', 'quiz', 'tabs', 'timeline', 'checklist', 'slider', 'code', 'title', 'section', 'image', 'video', 'embed', 'quote', 'list', 'table', 'columns', 'grid', 'split', 'diagram'] },
+            { name: '@type', description: 'Slide type', values: ['content', 'compare', 'canvas', 'quiz', 'tabs', 'steps', 'timeline', 'checklist', 'slider', 'code', 'title', 'section', 'image', 'video', 'embed', 'quote', 'list', 'table', 'columns', 'grid', 'split', 'diagram'] },
             { name: '@layout', description: 'Slide layout', values: ['default', 'two-column', 'three-column', 'grid-2x2', 'grid-3x3', 'split-40-60', 'split-60-40', 'split-30-70', 'split-70-30', 'centered', 'fullscreen'] },
             { name: '@transition', description: 'Slide transition', values: ['fade', 'slide', 'slide-left', 'slide-right', 'slide-up', 'slide-down', 'zoom', 'zoom-in', 'zoom-out', 'flip', 'flip-x', 'flip-y', 'rotate', 'cube', 'none'] },
             { name: '@background', description: 'Slide background (color, image URL, or gradient)' },
@@ -55,6 +55,7 @@ class RemarpCompletionProvider {
         this.blockTypes = [
             { name: 'notes', description: 'Speaker notes (hidden during presentation)' },
             { name: 'canvas', description: 'Canvas DSL for programmatic graphics' },
+            { name: 'css', description: 'CSS overrides for visual element styling' },
             { name: 'click', description: 'Click-to-reveal content block' },
             { name: 'left', description: 'Left column in two-column layout' },
             { name: 'right', description: 'Right column in two-column layout' },
@@ -63,9 +64,41 @@ class RemarpCompletionProvider {
             { name: 'option', description: 'Quiz option' },
             { name: 'tab', description: 'Tab content' },
             { name: 'item', description: 'Timeline or checklist item' },
+            { name: 'steps', description: 'Step-by-step process or agenda (horizontal/vertical, circle/rect/icon)' },
             { name: 'step', description: 'Timeline step with year' },
             { name: 'fragment', description: 'Fragment for sequential reveal' },
             { name: 'speaker', description: 'Speaker notes (alternative syntax)' }
+        ];
+        this.cssTargets = [
+            'header', 'footer', 'body', 'left', 'right',
+            'card:N', 'li:N', 'cell:N', 'col:N', 'tab:N', 'step:N', 'option:N',
+            'canvas:ID'
+        ];
+        this.cssProperties = [
+            { name: 'width', description: 'Element width', snippet: 'width: ${1:100px}' },
+            { name: 'height', description: 'Element height', snippet: 'height: ${1:auto}' },
+            { name: 'margin', description: 'Element margin', snippet: 'margin: ${1:0}' },
+            { name: 'padding', description: 'Element padding', snippet: 'padding: ${1:0}' },
+            { name: 'color', description: 'Text color', snippet: 'color: ${1:#ffffff}' },
+            { name: 'font-size', description: 'Font size', snippet: 'font-size: ${1:16px}' },
+            { name: 'background', description: 'Background color/image', snippet: 'background: ${1:#000000}' },
+            { name: 'border', description: 'Border style', snippet: 'border: ${1:1px solid #ccc}' },
+            { name: 'border-radius', description: 'Border radius', snippet: 'border-radius: ${1:8px}' },
+            { name: 'transform', description: 'CSS transform', snippet: 'transform: ${1:translate(0, 0)}' },
+            { name: 'opacity', description: 'Element opacity', snippet: 'opacity: ${1:1}' },
+            { name: 'display', description: 'Display mode', snippet: 'display: ${1|block,flex,grid,none|}' },
+            { name: 'position', description: 'Position mode', snippet: 'position: ${1|relative,absolute,fixed|}' },
+            { name: 'top', description: 'Top offset', snippet: 'top: ${1:0}' },
+            { name: 'left', description: 'Left offset', snippet: 'left: ${1:0}' },
+            { name: 'right', description: 'Right offset', snippet: 'right: ${1:0}' },
+            { name: 'bottom', description: 'Bottom offset', snippet: 'bottom: ${1:0}' },
+            { name: 'z-index', description: 'Stack order', snippet: 'z-index: ${1:1}' },
+            { name: 'flex', description: 'Flex grow/shrink/basis', snippet: 'flex: ${1:1}' },
+            { name: 'gap', description: 'Gap between items', snippet: 'gap: ${1:16px}' },
+            // Aliases
+            { name: 'fontColor', description: 'Text color (alias for color)', snippet: 'fontColor: ${1:#ffffff}' },
+            { name: 'fontSize', description: 'Font size (alias)', snippet: 'fontSize: ${1:16px}' },
+            { name: 'bg', description: 'Background (alias)', snippet: 'bg: ${1:#000000}' }
         ];
         this.animations = [
             'fade-in', 'fade-up', 'fade-down', 'fade-left', 'fade-right',
@@ -104,6 +137,10 @@ class RemarpCompletionProvider {
         // Check if we're in a canvas block
         if (this._isInCanvasBlock(document, position)) {
             return this._getCanvasCompletions(linePrefix);
+        }
+        // Check if we're in a css block
+        if (this._isInCssBlock(document, position)) {
+            return this._getCssCompletions(document, position, linePrefix);
         }
         // @ directive completions
         if (linePrefix.endsWith('@') || linePrefix.match(/^@\w*$/)) {
@@ -172,6 +209,84 @@ class RemarpCompletionProvider {
             }
         }
         return false;
+    }
+    _isInCssBlock(document, position) {
+        // Look backwards for :::css
+        for (let i = position.line - 1; i >= 0; i--) {
+            const line = document.lineAt(i).text.trim();
+            if (line === ':::css') {
+                return true;
+            }
+            if (line === ':::' || line.startsWith('---')) {
+                return false;
+            }
+        }
+        return false;
+    }
+    _isInCssTargetBlock(document, position) {
+        // Look backwards for <target> opening tag within :::css block
+        for (let i = position.line - 1; i >= 0; i--) {
+            const line = document.lineAt(i).text.trim();
+            // Check for opening target tag
+            const openMatch = line.match(/^<([^/>]+)>$/);
+            if (openMatch) {
+                return openMatch[1];
+            }
+            // Check for closing target tag - means we're outside
+            if (line.match(/^<\/[^>]+>$/)) {
+                return null;
+            }
+            // Check for :::css - we're in the block but not in a target
+            if (line === ':::css') {
+                return null;
+            }
+            // Check for ::: or --- - we're outside the css block
+            if (line === ':::' || line.startsWith('---')) {
+                return null;
+            }
+        }
+        return null;
+    }
+    _getCssCompletions(document, position, linePrefix) {
+        const items = [];
+        const inTarget = this._isInCssTargetBlock(document, position);
+        if (inTarget) {
+            // Inside a target block - suggest CSS properties
+            // Only suggest if we're at the start of a line or after whitespace
+            if (linePrefix.trim() === '' || !linePrefix.includes(':')) {
+                for (const prop of this.cssProperties) {
+                    const item = new vscode.CompletionItem(prop.name, vscode.CompletionItemKind.Property);
+                    item.detail = prop.description;
+                    if (prop.snippet) {
+                        item.insertText = new vscode.SnippetString(prop.snippet);
+                    }
+                    items.push(item);
+                }
+            }
+        }
+        else {
+            // Inside :::css but not in a target - suggest target tags
+            if (linePrefix.trim() === '' || linePrefix.endsWith('<')) {
+                const targets = ['header', 'footer', 'body', 'left', 'right', 'card', 'li', 'cell', 'col', 'tab', 'step', 'option', 'canvas'];
+                for (const target of targets) {
+                    const item = new vscode.CompletionItem(`<${target}>`, vscode.CompletionItemKind.Struct);
+                    item.detail = `Target: ${target}`;
+                    if (['card', 'li', 'cell', 'col', 'tab', 'step', 'option'].includes(target)) {
+                        item.insertText = new vscode.SnippetString(`<${target}:\${1:0}>\n  \${0}\n</${target}:\${1:0}>`);
+                        item.documentation = new vscode.MarkdownString(`Target \`${target}\` elements by index (e.g., \`<${target}:0>\`)`);
+                    }
+                    else if (target === 'canvas') {
+                        item.insertText = new vscode.SnippetString(`<canvas:\${1:elementId}>\n  \${0}\n</canvas:\${1:elementId}>`);
+                        item.documentation = new vscode.MarkdownString(`Target canvas elements by ID`);
+                    }
+                    else {
+                        item.insertText = new vscode.SnippetString(`<${target}>\n  \${0}\n</${target}>`);
+                    }
+                    items.push(item);
+                }
+            }
+        }
+        return items;
     }
     _getDirectiveCompletions() {
         return this.directives.map(directive => {

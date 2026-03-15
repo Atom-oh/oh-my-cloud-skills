@@ -146,6 +146,23 @@ Key elements:
 </div>
 ```
 
+### 4b. Architecture Diagram Slide (Static Image)
+
+전체 아키텍처 개요처럼 정적 구조를 보여줄 때 사용. draw.io로 제작한 PNG/SVG를 삽입.
+
+```html
+<div class="slide">
+  <div class="slide-header"><h2>AWS AIOps Service Map</h2></div>
+  <div class="slide-body" style="display:flex; align-items:center; justify-content:center;">
+    <img src="diagrams/aiops-service-map.png" class="slide-img" style="max-width:90%; max-height:85%;" />
+  </div>
+</div>
+```
+
+Canvas와의 선택 기준:
+- step animation이 필요 → Canvas (`@type: canvas`)
+- 정적 아키텍처 한눈에 → Diagram Image (`@type: content` + `@img:`)
+
 ### 5. Canvas Animation Slide
 ```html
 <div class="slide">

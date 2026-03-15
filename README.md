@@ -99,7 +99,38 @@ your-repo/
 | Quiz | Multiple-choice questions with auto-grading |
 | Code Block | Syntax-highlighted YAML/JSON/HCL with semantic spans |
 | Slider | Range input with live computed output |
+| Agenda | Session agenda with numbered dots, time labels, and break markers |
+| Prompt | AI prompt workflow display with copy button |
 | Pain Quote | Customer problem statement with challenge list |
+
+### Remarp VSCode Extension
+
+A dedicated VSCode extension for authoring and previewing Remarp presentations. Install from VSIX or build from source.
+
+**Install:**
+```bash
+code --install-extension tools/remarp-vscode/remarp-vscode-0.1.0.vsix
+```
+
+**Features:**
+- **Syntax highlighting** — Remarp directives (`@type`, `@layout`, `@animation`), block tags (`:::canvas`, `:::notes`), click attributes (`{.click}`), Canvas DSL, frontmatter
+- **Live preview** — Side panel with auto-update, dark mode, slide navigation, cursor sync
+- **HTML preview** — Renders Remarp-generated HTML with full CSS/JS (slide framework, animations, fonts)
+- **IntelliSense** — Auto-complete for directives, values, block types, Canvas DSL, click attributes
+- **Visual edit** — Drag/resize elements in preview, changes written back to `.remarp.md` source
+- **Build** — One-click HTML generation via `remarp_to_slides.py` (auto-discovered)
+- **Document outline** — Slide tree view in Explorer sidebar
+- **Auto-detection** — Recognizes Remarp HTML via `<meta name="generator" content="remarp">`
+
+**Source:** `tools/remarp-vscode/` | **Docs:** [VSCode Extension Guide](docs/docs/remarp-guide/vscode-extension.md)
+
+### VSCode extension shortcuts
+
+| Key | Action | Available in |
+|-----|--------|-------------|
+| `Ctrl+Shift+V` | Open Preview | `.remarp.md`, Remarp HTML |
+| `Ctrl+Shift+E` | Toggle Visual Edit Mode | `.remarp.md`, Remarp HTML |
+| `Ctrl+Shift+B` | Build HTML | `.remarp.md`, Remarp HTML |
 
 ### Keyboard shortcuts
 
@@ -123,7 +154,7 @@ your-repo/
 1. **Plan** — Claude asks about topic, audience, duration, language, and optional PPTX/PDF source for corporate branding
 2. **Author** — Writes Remarp markdown as the content source of truth
 3. **Generate** — Builds HTML via `remarp_to_slides.py` with Canvas animations and interactive elements inline
-4. **Review** — Interactive feedback loop: edit Remarp directly, request changes via prompt, or proceed
+4. **Review** — Interactive feedback loop: edit Remarp directly, preview/edit generated HTML in VSCode (extension auto-detects Remarp HTML via meta tags), or request changes via prompt
 5. **Enhance** — Adds Canvas animations, extracts AWS icons, tests presenter view
 6. **Deploy** — `git push` to GitHub Pages. No build step required
 
@@ -604,9 +635,11 @@ plugins/
 │       │   ├── references/            # framework-guide.md, slide-patterns.md
 │       │   └── icons/                 # AWS Architecture Icons (4,224 files)
 │       ├── architecture-diagram/      # Draw.io templates & patterns
+│       │   └── reference/            # drawio-xml-guide.md, mcp-setup-guide.md
 │       ├── animated-diagram/          # SMIL animation guide & templates
 │       ├── gitbook/                   # GitBook structure & components
 │       └── workshop-creator/          # Workshop Studio directives & templates
+│           └── reference/            # infrastructure-guide.md, workshop-templates.md
 │
 ├── aws-ops-plugin/                    # Infrastructure operations plugin
 │   ├── .claude-plugin/plugin.json     # Plugin manifest (9 agents, 5 skills)

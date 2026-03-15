@@ -43,7 +43,7 @@ arrow api -> lambda "invoke" step 1
 | Box | `box <id> "<label>" at x,y size w,h color #HEX` |
 | Circle | `circle <id> "<label>" at x,y radius r color #HEX` |
 | Icon | `icon <id> "<service>" at x,y size s` |
-| Arrow | `arrow <from> -> <to> "<label>"` |
+| Arrow | `arrow <from> -> <to> "<label>"` (직교 경로 자동 라우팅) |
 | Group | `group "<label>" containing id1, id2, ...` |
 
 ## 예제
@@ -157,6 +157,10 @@ Canvas 슬라이드는 아키텍처 흐름을 단계별로 설명할 때 매우 
 
 :::warning
 복잡한 다이어그램은 스텝을 5-7개 이하로 유지하세요. 너무 많은 스텝은 청중의 집중을 분산시킵니다.
+:::
+
+:::info
+화살표는 직교(orthogonal) 라우팅으로 자동 변환됩니다. 대각선 대신 L자형/Z자형 직각 꺾임 경로가 생성되어 draw.io 스타일의 깔끔한 다이어그램이 만들어집니다. 자세한 내용은 [Canvas DSL — Arrow](../syntax/canvas-dsl.md#arrow-화살표) 문서를 참조하세요.
 :::
 
 :::info

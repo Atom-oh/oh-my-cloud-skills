@@ -101,6 +101,10 @@ ICON_NAME_MAP = {
     'Organizations': 'Arch_AWS-Organizations_48.svg',
     'Control-Tower': 'Arch_AWS-Control-Tower_48.svg',
     'DevOps-Guru': 'Arch_Amazon-DevOps-Guru_48.svg',
+    'CloudWatch-Logs': 'Arch_Amazon-CloudWatch_48.svg',
+    'Health': 'Arch_AWS-Health-Dashboard_48.svg',
+    'Lookout-for-Metrics': 'Arch_Amazon-Lookout-for-Metrics_48.svg',
+    'Step-Functions': 'Arch_AWS-Step-Functions_48.svg',
     # --- Analytics ---
     'Kinesis': 'Arch_Amazon-Kinesis_48.svg',
     'Athena': 'Arch_Amazon-Athena_48.svg',
@@ -130,10 +134,12 @@ class SlideType(Enum):
     QUIZ = 'quiz'
     CODE = 'code'
     CHECKLIST = 'checklist'
+    STEPS = 'steps'
     TIMELINE = 'timeline'
     SLIDER = 'slider'
     CARDS = 'cards'
     THANKYOU = 'thankyou'
+    AGENDA = 'agenda'
     IFRAME = 'iframe'
 
 
@@ -172,6 +178,8 @@ class Slide:
     canvas_elements: List[CanvasElement] = field(default_factory=list)
     params: Dict[str, Any] = field(default_factory=dict)
     index: int = 0
+    css_overrides: Dict[str, Dict[str, str]] = field(default_factory=dict)
+    references: List[Tuple[str, str]] = field(default_factory=list)
 
 
 def parse_yaml_simple(text: str) -> Dict[str, Any]:
@@ -221,12 +229,13 @@ class RemarpParser:
     """Parser for Remarp-style markdown files."""
 
     # Directive patterns
-    DIRECTIVE_PATTERN = re.compile(r'^@(\w+):\s*(.+)$', re.MULTILINE)
+    DIRECTIVE_PATTERN = re.compile(r'^@([\w-]+):\s*(.+)$', re.MULTILINE)
     FRAGMENT_INLINE_PATTERN = re.compile(r'\{\.click(?:\s+(\w+)=([^\s}]+))*\}')
     FRAGMENT_BLOCK_PATTERN = re.compile(r':::\s*click(?:\s+(\w+)=([^\s\n]+))*\n(.*?)\n:::', re.DOTALL)
     COLUMN_PATTERN = re.compile(r':::\s*(left|right|col|cell)\n(.*?)\n:::', re.DOTALL)
     NOTES_PATTERN = re.compile(r':::\s*notes\n(.*?)\n:::', re.DOTALL)
     CANVAS_PATTERN = re.compile(r':::\s*canvas(?:\s+id=([^\s\n]+))?\n(.*?)\n:::', re.DOTALL)
+    CSS_PATTERN = re.compile(r':::\s*css\s*\n(.*?)\n:::', re.DOTALL)
     TIMING_PATTERN = re.compile(r'\{timing:\s*([^}]+)\}')
     CUE_PATTERN = re.compile(r'\{cue:\s*([^}]+)\}')
 
@@ -330,8 +339,21 @@ class RemarpParser:
         return re.sub(r'^---\s*\n.*?\n---\s*\n?', '', self.md_content, count=1, flags=re.DOTALL)
 
     def _split_slides(self, content: str) -> List[str]:
-        """Split content by --- delimiter (slide separator)."""
-        return re.split(r'\n---\s*\n', content)
+        """Split content by --- delimiter (slide separator).
+
+        Filters out empty slides and comment-only slides that result from
+        agents generating per-slide frontmatter blocks (---\\n@type:...\\n---).
+        """
+        raw = re.split(r'\n---\s*\n', content)
+        cleaned = []
+        for slide in raw:
+            slide = slide.strip()
+            # Skip empty slides or comment-only slides
+            stripped = re.sub(r'<!--.*?-->', '', slide, flags=re.DOTALL).strip()
+            if not stripped:
+                continue
+            cleaned.append(slide)
+        return cleaned
 
     def _parse_slide(self, md_text: str, index: int) -> Optional[Slide]:
         """Parse a single slide."""
@@ -341,6 +363,9 @@ class RemarpParser:
         # Parse directives
         directives = self.parse_directives(md_text)
         md_text = self.DIRECTIVE_PATTERN.sub('', md_text)
+
+        # Strip residual leading --- lines left by per-slide frontmatter blocks
+        md_text = re.sub(r'^---\s*\n', '', md_text)
 
         # Parse notes (new style)
         notes = self.parse_notes(md_text)
@@ -356,6 +381,10 @@ class RemarpParser:
 
         # Parse columns
         columns = self.parse_columns(md_text)
+
+        # Parse CSS overrides
+        css_overrides = self.parse_css_overrides(md_text)
+        md_text = self.CSS_PATTERN.sub('', md_text)
 
         # Parse canvas DSL
         canvas_elements, canvas_id = self.parse_canvas_dsl(md_text)
@@ -379,6 +408,11 @@ class RemarpParser:
             return f'<!-- FRAG:{order}:{animation} -->\n{content.strip()}\n<!-- /FRAG -->'
 
         md_text = self.FRAGMENT_BLOCK_PATTERN.sub(_mark_click_block, md_text)
+
+        # Extract {.reference}[text](url) patterns
+        REFERENCE_PATTERN = re.compile(r'\{\.reference\}\[([^\]]+)\]\(([^)]+)\)')
+        references = REFERENCE_PATTERN.findall(md_text)
+        md_text = REFERENCE_PATTERN.sub('', md_text)
 
         # Detect slide type
         slide_type = self.detect_slide_type(md_text, directives, canvas_elements)
@@ -407,7 +441,9 @@ class RemarpParser:
             columns=columns,
             canvas_elements=canvas_elements,
             params=params,
-            index=index
+            index=index,
+            css_overrides=css_overrides,
+            references=references
         )
 
     def parse_directives(self, md_text: str) -> Dict[str, str]:
@@ -490,6 +526,58 @@ class RemarpParser:
             columns.append((side, content))
         return columns
 
+    def parse_css_overrides(self, md_text: str) -> Dict[str, Dict[str, str]]:
+        """Parse :::css blocks with <target> sections.
+
+        Syntax:
+            :::css
+            <header>
+              margin-bottom: 2rem
+            </header>
+
+            <left>
+              width: 40%
+            </left>
+
+            <card:1>
+              border-color: var(--accent)
+            </card:1>
+
+            <canvas:lambda>
+              x: 150
+              y: 80
+            </canvas:lambda>
+            :::
+
+        Returns dict like {"header": {"margin-bottom": "2rem"}, "left": {"width": "40%"}, ...}
+        """
+        overrides = {}
+        match = self.CSS_PATTERN.search(md_text)
+        if not match:
+            return overrides
+
+        css_content = match.group(1)
+
+        # Parse <target> ... </target> sections
+        target_pattern = re.compile(r'<([^>]+)>\s*\n(.*?)\n\s*</\1>', re.DOTALL)
+        for target_match in target_pattern.finditer(css_content):
+            target = target_match.group(1).strip()
+            props_text = target_match.group(2)
+
+            props = {}
+            for line in props_text.split('\n'):
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                if ':' in line:
+                    key, _, value = line.partition(':')
+                    props[key.strip()] = value.strip()
+
+            if props:
+                overrides[target] = props
+
+        return overrides
+
     def parse_canvas_dsl(self, md_text: str) -> Tuple[List[CanvasElement], Optional[str]]:
         """Parse :::canvas blocks with declarative DSL."""
         elements = []
@@ -532,16 +620,63 @@ class RemarpParser:
             elements.append(CanvasElement('preset', {'type': preset_type, 'config': config}))
             return elements, canvas_id
 
-        for line in dsl_content.split('\n'):
-            line = line.strip()
+        # Parse lines, handling indented continuation for animate-path
+        lines = dsl_content.split('\n')
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
             if not line or line.startswith('#'):
+                i += 1
                 continue
 
             element = self._parse_canvas_line(line)
             if element:
+                # Check for indented continuation lines (animate-path:)
+                i += 1
+                while i < len(lines) and lines[i].startswith('  '):
+                    cont_line = lines[i].strip()
+                    if cont_line.startswith('animate-path:'):
+                        animate_path = self._parse_animate_path(cont_line)
+                        if animate_path:
+                            element.params['animate_path'] = animate_path
+                    i += 1
                 elements.append(element)
+            else:
+                i += 1
 
         return elements, canvas_id
+
+    def _parse_animate_path(self, line: str) -> Optional[Dict[str, Any]]:
+        """Parse animate-path: (x1,y1) -> (x2,y2) -> ... duration Xs ease-in-out"""
+        # Extract the path part after 'animate-path:'
+        path_part = line.replace('animate-path:', '').strip()
+
+        # Parse points: (x,y) -> (x,y) -> ...
+        points = []
+        point_pattern = re.compile(r'\((\d+),(\d+)\)')
+        for match in point_pattern.finditer(path_part):
+            points.append((int(match.group(1)), int(match.group(2))))
+
+        if not points:
+            return None
+
+        # Parse duration (e.g., "2s", "500ms")
+        duration = '1s'
+        duration_match = re.search(r'duration\s+(\d+(?:\.\d+)?(?:s|ms))', path_part)
+        if duration_match:
+            duration = duration_match.group(1)
+
+        # Parse easing (e.g., "ease-in-out", "linear")
+        easing = 'ease-in-out'
+        easing_match = re.search(r'(ease(?:-in)?(?:-out)?|linear|ease-in-out)', path_part)
+        if easing_match:
+            easing = easing_match.group(1)
+
+        return {
+            'points': points,
+            'duration': duration,
+            'easing': easing
+        }
 
     def _parse_preset_body(self, body: str) -> Dict[str, Any]:
         """Parse preset DSL body into structured config."""
@@ -595,13 +730,15 @@ class RemarpParser:
         )
         if icon_remarp_match:
             icon_id = icon_remarp_match.group(1)
-            src = icon_remarp_match.group(2)
+            label = icon_remarp_match.group(2)
+            src = label
             if '/' not in src and '.' not in src:
                 filename = ICON_NAME_MAP.get(src, f'Arch_{src}_48.svg')
                 src = f'./common/aws-icons/services/{filename}'
             size = int(icon_remarp_match.group(5))
             return CanvasElement('icon', {
                 'id': icon_id,
+                'label': label,
                 'src': src,
                 'x': int(icon_remarp_match.group(3)),
                 'y': int(icon_remarp_match.group(4)),
@@ -735,7 +872,8 @@ class RemarpParser:
             line
         )
         if icon_match:
-            src = icon_match.group(1)
+            label = icon_match.group(1)
+            src = label
             # Map short service names to icon filenames
             if '/' not in src and '.' not in src:
                 filename = ICON_NAME_MAP.get(src, f'Arch_{src}_48.svg')
@@ -743,6 +881,7 @@ class RemarpParser:
             width = int(icon_match.group(4))
             height = int(icon_match.group(5)) if icon_match.group(5) else width
             return CanvasElement('icon', {
+                'label': label,
                 'src': src,
                 'x': int(icon_match.group(2)),
                 'y': int(icon_match.group(3)),
@@ -816,14 +955,24 @@ class RemarpParser:
             if h1_count == 1 and len(non_empty_lines) <= 4:
                 return SlideType.TITLE
 
-        # Check for compare (multiple h3 sections)
-        h3_matches = re.findall(r'^###\s+', md, re.MULTILINE)
+        # Check for compare (multiple h3 sections) — exclude FRAG blocks
+        md_no_frag = re.sub(r'<!-- FRAG:.*?/FRAG -->', '', md, flags=re.DOTALL)
+        h3_matches = re.findall(r'^###\s+', md_no_frag, re.MULTILINE)
         if len(h3_matches) >= 2:
             return SlideType.COMPARE
 
-        # Check for timeline (numbered steps)
-        numbered_steps = re.findall(r'^\d+\.\s+', md, re.MULTILINE)
-        if len(numbered_steps) >= 3:
+        # Check for explicit steps type (must come before timeline auto-detect)
+        if directives.get('type') == 'steps':
+            return SlideType.STEPS
+
+        # Check for timeline (numbered steps) — exclude content inside ::: and FRAG blocks.
+        # Do NOT auto-detect as timeline when numbered items have indented sub-items
+        # (sub-bullets indicate richer content that needs full list rendering).
+        md_outside_blocks = re.sub(r':::\s*\w+.*?:::', '', md, flags=re.DOTALL)
+        md_outside_blocks = re.sub(r'<!-- FRAG:.*?/FRAG -->', '', md_outside_blocks, flags=re.DOTALL)
+        numbered_steps = re.findall(r'^\d+\.\s+', md_outside_blocks, re.MULTILINE)
+        has_sub_items = bool(re.search(r'^\d+\.\s+.*\n\s{2,}[-*]\s', md_outside_blocks, re.MULTILINE))
+        if len(numbered_steps) >= 3 and not has_sub_items:
             return SlideType.TIMELINE
 
         # Check for checklist
@@ -863,9 +1012,11 @@ class RemarpHTMLGenerator:
         'action': '🎯'
     }
 
-    def __init__(self, theme_dir: Optional[str] = None, lang: str = 'ko'):
+    def __init__(self, theme_dir: Optional[str] = None, lang: str = 'ko',
+                 output_dir: Optional[str] = None):
         self.theme_dir = theme_dir
         self.lang = lang
+        self.output_dir = Path(output_dir) if output_dir else None
         self.quiz_counter = 0
         self.canvas_counter = 0
         self.deferred_canvas_scripts: List[str] = []
@@ -877,14 +1028,17 @@ class RemarpHTMLGenerator:
         return re.sub(r'^Block\s+\d+\s*:\s*', '', title)
 
     def generate_block(self, block_name: str, slides: List[Slide],
-                       config: Dict[str, Any]) -> str:
+                       config: Dict[str, Any], source_file: str = '') -> str:
         """Generate complete HTML file for one block."""
         title = config.get('title', block_name)
 
         # Find block-specific title from blocks config
         blocks_config = config.get('blocks', [])
         for block in blocks_config:
-            if block.get('name') == block_name:
+            if isinstance(block, str):
+                if block == block_name:
+                    break
+            elif isinstance(block, dict) and block.get('name') == block_name:
                 title = block.get('title', title)
                 break
 
@@ -921,7 +1075,8 @@ class RemarpHTMLGenerator:
                 notes_dict[slide.index] = slide.notes
 
         return self.wrap_html(title, slides_html, notes_dict, config,
-                              canvas_scripts=self.deferred_canvas_scripts)
+                              canvas_scripts=self.deferred_canvas_scripts,
+                              source_file=source_file, block_name=block_name)
 
     def slide_to_html(self, slide: Slide) -> str:
         """Convert parsed slide to HTML based on type."""
@@ -941,6 +1096,8 @@ class RemarpHTMLGenerator:
             html = self._gen_code_slide(slide)
         elif slide.slide_type == SlideType.CHECKLIST:
             html = self._gen_checklist_slide(slide)
+        elif slide.slide_type == SlideType.STEPS:
+            html = self._gen_steps_slide(slide)
         elif slide.slide_type == SlideType.TIMELINE:
             html = self._gen_timeline_slide(slide)
         elif slide.slide_type == SlideType.SLIDER:
@@ -949,17 +1106,64 @@ class RemarpHTMLGenerator:
             html = self._gen_cards_slide(slide)
         elif slide.slide_type == SlideType.THANKYOU:
             html = self._gen_thankyou_slide(slide)
+        elif slide.slide_type == SlideType.AGENDA:
+            html = self._gen_agenda_slide(slide)
         elif slide.slide_type == SlideType.IFRAME:
             html = self._gen_iframe_slide(slide)
         else:
             html = self._gen_content_slide(slide)
 
+        # Post-process: add data-remarp-id to the slide div
+        html = html.replace('<div class="slide"', f'<div class="slide" data-remarp-id="s{slide.index}"', 1)
+
         # Post-process: apply {.click} fragment wrappers to ALL slide types
         html = self.gen_fragment_wrappers(html, slide.fragments)
+
+        # Append reference links if present
+        if slide.references:
+            ref_html = self._gen_references_html(slide)
+            # Insert before the closing </div> of the outermost slide div
+            last_close = html.rfind('</div>')
+            if last_close != -1:
+                html = html[:last_close] + ref_html + '\n' + html[last_close:]
+
+        # Append CSS overrides style tag if present
+        css_style = self._gen_css_overrides(slide)
+        if css_style:
+            html = html + '\n' + css_style
+
         return html
+
+    def _gen_references_html(self, slide: Slide) -> str:
+        """Generate reference links HTML for slide bottom."""
+        if not slide.references:
+            return ''
+        links = ' | '.join(
+            f'<a href="{url}" target="_blank">{text}</a>'
+            for text, url in slide.references
+        )
+        return f'  <div class="slide-ref">{links}</div>\n'
+
+    def _gen_css_overrides(self, slide: Slide) -> str:
+        """Generate <style> tag for CSS overrides."""
+        if not slide.css_overrides:
+            return ''
+        rules = []
+        for target, props in slide.css_overrides.items():
+            selector = f'[data-remarp-id="s{slide.index}-{target}"]'
+            decls = '; '.join(f'{k}: {v}' for k, v in props.items())
+            rules.append(f'{selector} {{ {decls} }}')
+        return f'<style>{chr(10).join(rules)}</style>'
+
+    @staticmethod
+    def _normalize_asset_path(path: str) -> str:
+        """Normalize ../common/ to ./common/ for build output compatibility."""
+        return re.sub(r'(?:^|(?<=[\s"\'(]))\.\.\/common\/', './common/', path)
 
     def _convert_markdown(self, text: str) -> str:
         """Convert basic markdown to HTML."""
+        # Normalize asset paths (../common/ → ./common/)
+        text = re.sub(r'\.\./common/', './common/', text)
         # Bold
         text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
         # Italic
@@ -998,14 +1202,37 @@ class RemarpHTMLGenerator:
         return '', start_idx
 
     def _parse_ordered_list(self, lines: List[str], start_idx: int) -> Tuple[str, int]:
-        """Parse ordered list."""
+        """Parse ordered list, including indented sub-items as nested lists.
+
+        Blank lines between numbered items are tolerated so that:
+            1. First item
+               - sub
+
+            2. Second item
+        produces a single <ol> instead of two.
+        """
         items = []
         idx = start_idx
         while idx < len(lines):
+            # Skip blank lines between items
+            while idx < len(lines) and not lines[idx].strip():
+                idx += 1
+            if idx >= len(lines):
+                break
             match = re.match(r'^\d+\.\s+(.+)$', lines[idx])
             if match:
-                items.append(f'<li>{self._convert_markdown(match.group(1))}</li>')
+                item_text = self._convert_markdown(match.group(1))
                 idx += 1
+                # Collect indented sub-items (2+ spaces or tab)
+                sub_lines = []
+                while idx < len(lines) and re.match(r'^(\s{2,}|\t)', lines[idx]):
+                    sub_lines.append(re.sub(r'^(\s{2,}|\t)', '', lines[idx], count=1))
+                    idx += 1
+                if sub_lines:
+                    sub_html = self._parse_body_content(sub_lines)
+                    items.append(f'<li>{item_text}\n{sub_html}</li>')
+                else:
+                    items.append(f'<li>{item_text}</li>')
             else:
                 break
         if items:
@@ -1013,14 +1240,24 @@ class RemarpHTMLGenerator:
         return '', start_idx
 
     def _parse_unordered_list(self, lines: List[str], start_idx: int) -> Tuple[str, int]:
-        """Parse unordered list."""
+        """Parse unordered list, including indented sub-items as nested lists."""
         items = []
         idx = start_idx
         while idx < len(lines):
             match = re.match(r'^[-*]\s+(.+)$', lines[idx])
             if match:
-                items.append(f'<li>{self._convert_markdown(match.group(1))}</li>')
+                item_text = self._convert_markdown(match.group(1))
                 idx += 1
+                # Collect indented sub-items (2+ spaces or tab)
+                sub_lines = []
+                while idx < len(lines) and re.match(r'^(\s{2,}|\t)', lines[idx]):
+                    sub_lines.append(re.sub(r'^(\s{2,}|\t)', '', lines[idx], count=1))
+                    idx += 1
+                if sub_lines:
+                    sub_html = self._parse_body_content(sub_lines)
+                    items.append(f'<li>{item_text}\n{sub_html}</li>')
+                else:
+                    items.append(f'<li>{item_text}</li>')
             else:
                 break
         if items:
@@ -1164,38 +1401,187 @@ class RemarpHTMLGenerator:
     # Regex pattern matching all {.click ...} variants
     _CLICK_RE = r'\{\.click([^}]*)?\}'
 
-    def gen_fragment_wrappers(self, content: str, fragments: List[Fragment] = None) -> str:
-        """Wrap {.click} elements in fragment spans."""
-        result = content
+    def _apply_li_fragments(self, html: str, auto_idx: list = None) -> str:
+        """Process {.click} inside <li> elements with proper nesting awareness.
 
-        def _replace_tag(tag: str, pattern_tpl: str, result_tpl: str) -> str:
-            """Replace <tag>...{.click...}</tag> with fragment-attributed tag."""
-            nonlocal result
-            def replacer(m):
-                inner = m.group(1)
-                order, animation = self._extract_click_attrs(m.group(2) or '')
-                return f'<{tag} class="fragment {animation}" data-fragment-index="{order}">{inner}</{tag}>'
-            pattern = pattern_tpl.format(tag=tag, click=self._CLICK_RE)
-            result = re.sub(pattern, replacer, result)
+        Simple regex cannot reliably match the outer </li> when <li> contains
+        nested <ul>/<ol>.  This method tracks tag depth to find the correct
+        closing tag, then applies the fragment class to the outer <li>.
+
+        Fragment indices without an explicit ``order=N`` are auto-incremented
+        so that items animate one-by-one instead of all appearing at once.
+        """
+        if auto_idx is None:
+            auto_idx = [0]
+        result: List[str] = []
+        i = 0
+        while i < len(html):
+            li_start = html.find('<li>', i)
+            if li_start == -1:
+                result.append(html[i:])
+                break
+            result.append(html[i:li_start])
+
+            # Find the matching </li> by tracking nesting depth
+            depth = 1
+            j = li_start + 4  # right after opening <li>
+            while j < len(html) and depth > 0:
+                if html[j:j + 4] == '<li>':
+                    depth += 1
+                    j += 4
+                elif html[j:j + 5] == '</li>':
+                    depth -= 1
+                    if depth == 0:
+                        break
+                    j += 5
+                else:
+                    j += 1
+
+            if depth != 0:
+                # Malformed HTML — emit as-is and move on
+                result.append(html[li_start:])
+                break
+
+            li_content = html[li_start + 4:j]  # between <li> and </li>
+
+            # Only look for {.click} in the direct text, not inside nested lists
+            nested_start = len(li_content)
+            for tag in ('<ul>', '<ol>'):
+                pos = li_content.find(tag)
+                if pos != -1 and pos < nested_start:
+                    nested_start = pos
+            text_part = li_content[:nested_start]
+
+            click_match = re.search(self._CLICK_RE, text_part)
+            if click_match:
+                order, animation = self._extract_click_attrs(click_match.group(1) or '')
+                if order == '0' and not re.search(r'order=', click_match.group(0)):
+                    order = str(auto_idx[0])
+                auto_idx[0] += 1
+                clean_text = text_part[:click_match.start()].rstrip() + text_part[click_match.end():]
+                rest = li_content[nested_start:]
+                result.append(
+                    f'<li class="fragment {animation}" data-fragment-index="{order}">'
+                    f'{clean_text}{rest}</li>'
+                )
+            else:
+                result.append(f'<li>{li_content}</li>')
+
+            i = j + 5  # skip past </li>
+        return ''.join(result)
+
+    def gen_fragment_wrappers(self, content: str, fragments: List[Fragment] = None) -> str:
+        """Wrap {.click} elements in fragment spans.
+
+        Auto-increments ``data-fragment-index`` across all fragment types
+        when no explicit ``order=N`` is specified, ensuring sequential
+        animation instead of all fragments appearing at once.
+        """
+        result = content
+        auto_idx = [0]  # mutable counter shared across closures
+
+        def _next_order(attr_str: str):
+            """Return (order, animation), auto-incrementing when no explicit order."""
+            order, animation = self._extract_click_attrs(attr_str)
+            if order == '0' and not re.search(r'order=', attr_str or ''):
+                order = str(auto_idx[0])
+            auto_idx[0] += 1
+            return order, animation
 
         # 1) <p>...</p> containing {.click}
+        def _replace_p_fragment(m):
+            order, animation = _next_order(m.group(2) or '')
+            return f'<p class="fragment {animation}" data-fragment-index="{order}">{m.group(1)}</p>'
+
         result = re.sub(
             r'<p>(.*?)\s*' + self._CLICK_RE + r'\s*</p>',
-            lambda m: f'<p class="fragment {self._extract_click_attrs(m.group(2) or "")[1]}" data-fragment-index="{self._extract_click_attrs(m.group(2) or "")[0]}">{m.group(1)}</p>',
+            _replace_p_fragment,
             result
         )
 
-        # 2) <li>...</li> containing {.click}
+        # 1b) Group <p class="fragment ..."> with immediately following <ul>/<ol>
+        #     into a wrapper <div class="fragment"> so sub-lists animate together.
+        def _group_p_with_list(m):
+            attrs = m.group(1)  # e.g. fragment fade-up" data-fragment-index="3"
+            p_text = m.group(2)
+            list_block = m.group(3)
+            return (
+                f'<div class="{attrs}>'
+                f'<p>{p_text}</p>\n{list_block}'
+                f'</div>'
+            )
         result = re.sub(
-            r'<li>(.*?)\s*' + self._CLICK_RE + r'\s*</li>',
-            lambda m: f'<li class="fragment {self._extract_click_attrs(m.group(2) or "")[1]}" data-fragment-index="{self._extract_click_attrs(m.group(2) or "")[0]}">{m.group(1)}</li>',
+            r'<p class="(fragment[^"]*)" (data-fragment-index="[^"]*")>([^<]*)</p>\s*(<(?:ul|ol)>.*?</(?:ul|ol)>)',
+            _group_p_with_list,
+            result,
+            flags=re.DOTALL,
+        )
+
+        # 1c) <h3>..{.click}..</h3> → fragment heading
+        def _replace_h_fragment(m):
+            tag = m.group(1)  # h2, h3, h4
+            inner = m.group(2)
+            attr_str = m.group(3) or ''
+            order, animation = _next_order(attr_str)
+            return f'<{tag} class="fragment {animation}" data-fragment-index="{order}">{inner}</{tag}>'
+
+        result = re.sub(
+            r'<(h[2-4])>(.*?)\s*' + self._CLICK_RE + r'\s*</\1>',
+            _replace_h_fragment,
             result
         )
+
+        # 1d) Group <hN class="fragment ..."> with following content until next <hN> or end.
+        #     This ensures heading + its children animate together as one unit.
+        #     Inner fragment classes are stripped so only the wrapper div controls visibility.
+        def _group_heading_with_content(html):
+            pattern = re.compile(
+                r'(<h([2-4]) class="(fragment[^"]*)" (data-fragment-index="[^"]*")>.*?</h\2>)'
+                r'(.*?)'
+                r'(?=<h[2-4][ >]|$)',
+                re.DOTALL
+            )
+            def _wrap(m):
+                heading = m.group(1)
+                frag_cls = m.group(3)
+                frag_idx = m.group(4)
+                content_after = m.group(5)
+                if not content_after.strip():
+                    return heading + content_after
+                # Remove fragment class from heading (wrapper div handles it)
+                clean_heading = re.sub(r' class="fragment[^"]*"', '', heading)
+                clean_heading = re.sub(r' data-fragment-index="[^"]*"', '', clean_heading)
+                # Remove fragment classes from inner elements (they animate with the group)
+                clean_content = re.sub(r' class="fragment[^"]*"', '', content_after)
+                clean_content = re.sub(r' data-fragment-index="[^"]*"', '', clean_content)
+                return f'<div class="{frag_cls}" {frag_idx}>{clean_heading}{clean_content}</div>'
+            return pattern.sub(_wrap, html)
+
+        result = _group_heading_with_content(result)
+
+        # 2) <li>...</li> containing {.click} — nesting-aware, uses same counter
+        result = self._apply_li_fragments(result, auto_idx)
+
+        # 2b) <td>...</td> containing {.click} → fragment on <td>
+        def _replace_td_fragment(m):
+            td_content = m.group(1)
+            click_match = re.search(self._CLICK_RE, td_content)
+            if click_match:
+                order, animation = _next_order(click_match.group(1) or '')
+                clean = td_content[:click_match.start()].rstrip() + td_content[click_match.end():]
+                return f'<td class="fragment {animation}" data-fragment-index="{order}">{clean}</td>'
+            return m.group(0)
+
+        result = re.sub(r'<td>(.*?)</td>', _replace_td_fragment, result)
 
         # 3) Inline word{.click} (no space) → <span> wrap
+        def _replace_inline_fragment(m):
+            order, animation = _next_order(m.group(2) or '')
+            return f'<span class="fragment {animation}" data-fragment-index="{order}">{m.group(1)}</span>'
+
         result = re.sub(
             r'(\S+)' + self._CLICK_RE,
-            lambda m: f'<span class="fragment {self._extract_click_attrs(m.group(2) or "")[1]}" data-fragment-index="{self._extract_click_attrs(m.group(2) or "")[0]}">{m.group(1)}</span>',
+            _replace_inline_fragment,
             result
         )
 
@@ -1277,21 +1663,156 @@ class RemarpHTMLGenerator:
                 if 'id' in p:
                     element_positions[p['id']] = pos
 
+        def _rect_intersects_segment(rect, x1, y1, x2, y2) -> bool:
+            """Check if line segment (x1,y1)→(x2,y2) intersects a rectangle.
+
+            Uses Liang-Barsky clipping to detect intersection with the box
+            interior (shrunk by 2px to tolerate edge-touching).
+            """
+            left, top = rect['left'] + 2, rect['top'] + 2
+            right, bottom = rect['right'] - 2, rect['bottom'] - 2
+            dx = x2 - x1
+            dy = y2 - y1
+            p = [-dx, dx, -dy, dy]
+            q = [x1 - left, right - x1, y1 - top, bottom - y1]
+            t0, t1 = 0.0, 1.0
+            for pi, qi in zip(p, q):
+                if pi == 0:
+                    if qi < 0:
+                        return False
+                else:
+                    t = qi / pi
+                    if pi < 0:
+                        t0 = max(t0, t)
+                    else:
+                        t1 = min(t1, t)
+                if t0 > t1:
+                    return False
+            return t0 <= t1
+
         def _resolve_arrow(from_key: str, to_key: str):
-            """Resolve arrow endpoints from element positions (directional)."""
+            """Resolve arrow endpoints with orthogonal (right-angle) routing.
+
+            Returns a list of (x, y) waypoints forming an orthogonal path.
+            Picks the best anchor pair, then generates straight, L-bend, or
+            Z-bend routes using only horizontal/vertical segments.
+            """
             src = element_positions.get(from_key)
             dst = element_positions.get(to_key)
             if not src or not dst:
                 return None
+
             dx = dst['cx'] - src['cx']
             dy = dst['cy'] - src['cy']
+
+            # Determine anchor types based on primary direction
+            # side = left/right anchors, tb = top/bottom anchors
             if abs(dx) >= abs(dy):
+                # Primarily horizontal movement
                 if dx >= 0:
-                    return src['right'], src['cy'], dst['left'], dst['cy']
-                return src['left'], src['cy'], dst['right'], dst['cy']
-            if dy >= 0:
-                return src['cx'], src['bottom'], dst['cx'], dst['top']
-            return src['cx'], src['top'], dst['cx'], dst['bottom']
+                    x1, y1 = src['right'], src['cy']
+                    x2, y2 = dst['left'], dst['cy']
+                    src_anchor, dst_anchor = 'right', 'left'
+                else:
+                    x1, y1 = src['left'], src['cy']
+                    x2, y2 = dst['right'], dst['cy']
+                    src_anchor, dst_anchor = 'left', 'right'
+            else:
+                # Primarily vertical movement
+                if dy >= 0:
+                    x1, y1 = src['cx'], src['bottom']
+                    x2, y2 = dst['cx'], dst['top']
+                    src_anchor, dst_anchor = 'bottom', 'top'
+                else:
+                    x1, y1 = src['cx'], src['top']
+                    x2, y2 = dst['cx'], dst['bottom']
+                    src_anchor, dst_anchor = 'top', 'bottom'
+
+            # Build orthogonal path based on anchor types
+            src_is_side = src_anchor in ('left', 'right')
+            dst_is_side = dst_anchor in ('left', 'right')
+
+            if src_is_side and dst_is_side:
+                # Both side anchors: Z-bend (horizontal → vertical → horizontal)
+                if y1 == y2:
+                    points = [(x1, y1), (x2, y2)]
+                else:
+                    mid_x = (x1 + x2) // 2
+                    points = [(x1, y1), (mid_x, y1), (mid_x, y2), (x2, y2)]
+            elif not src_is_side and not dst_is_side:
+                # Both top/bottom anchors: Z-bend (vertical → horizontal → vertical)
+                if x1 == x2:
+                    points = [(x1, y1), (x2, y2)]
+                else:
+                    mid_y = (y1 + y2) // 2
+                    points = [(x1, y1), (x1, mid_y), (x2, mid_y), (x2, y2)]
+            else:
+                # Mixed anchors: L-bend
+                if src_is_side:
+                    # side → tb: horizontal then vertical
+                    points = [(x1, y1), (x2, y1), (x2, y2)]
+                else:
+                    # tb → side: vertical then horizontal
+                    points = [(x1, y1), (x1, y2), (x2, y2)]
+
+            # Check for collisions and reroute if needed
+            has_collision = False
+            for key, rect in element_positions.items():
+                if key == from_key or key == to_key:
+                    continue
+                for i in range(len(points) - 1):
+                    px1, py1 = points[i]
+                    px2, py2 = points[i + 1]
+                    if _rect_intersects_segment(rect, px1, py1, px2, py2):
+                        has_collision = True
+                        break
+                if has_collision:
+                    break
+
+            if has_collision:
+                # Reroute: offset the middle segments to avoid collision
+                offset = 30
+                col = None
+                for key, rect in element_positions.items():
+                    if key == from_key or key == to_key:
+                        continue
+                    for i in range(len(points) - 1):
+                        px1, py1 = points[i]
+                        px2, py2 = points[i + 1]
+                        if _rect_intersects_segment(rect, px1, py1, px2, py2):
+                            col = rect
+                            break
+                    if col:
+                        break
+
+                if col:
+                    if src_is_side and dst_is_side:
+                        # Dodge vertically: shift mid segments above or below collider
+                        dodge_y = col['top'] - offset if y1 <= col['cy'] else col['bottom'] + offset
+                        mid_x = (x1 + x2) // 2
+                        points = [(x1, y1), (mid_x, y1), (mid_x, dodge_y), (x2, dodge_y), (x2, y2)]
+                    elif not src_is_side and not dst_is_side:
+                        # Dodge horizontally: shift mid segments left or right of collider
+                        dodge_x = col['left'] - offset if x1 <= col['cx'] else col['right'] + offset
+                        mid_y = (y1 + y2) // 2
+                        points = [(x1, y1), (x1, mid_y), (dodge_x, mid_y), (dodge_x, y2), (x2, y2)]
+                    else:
+                        # Mixed: reroute L-bend to Z-bend avoiding collider
+                        if src_is_side:
+                            dodge_y = col['top'] - offset if y1 <= col['cy'] else col['bottom'] + offset
+                            points = [(x1, y1), (x2, y1), (x2, dodge_y), (x2, y2)] if dodge_y == y2 else \
+                                     [(x1, y1), (x1, dodge_y), (x2, dodge_y), (x2, y2)]
+                        else:
+                            dodge_x = col['left'] - offset if x1 <= col['cx'] else col['right'] + offset
+                            points = [(x1, y1), (x1, y2), (dodge_x, y2), (x2, y2)] if dodge_x == x2 else \
+                                     [(x1, y1), (dodge_x, y1), (dodge_x, y2), (x2, y2)]
+
+            # Simplify: remove consecutive duplicate points
+            simplified = [points[0]]
+            for pt in points[1:]:
+                if pt != simplified[-1]:
+                    simplified.append(pt)
+            return simplified
 
         def _js_escape(s: str) -> str:
             return s.replace('\\', '\\\\').replace("'", "\\'")
@@ -1331,17 +1852,38 @@ class RemarpHTMLGenerator:
                     coords = _resolve_arrow(p['from'], p['to'])
 
                 if coords:
-                    x1, y1, x2, y2 = coords
-                    arrow_line = f"drawArrow(ctx, {x1}, {y1}, {x2}, {y2}, {color}, {dashed});"
-                    draw_lines.append(_wrap_step(arrow_line, step))
-                    if label:
-                        mid_x = (x1 + x2) // 2
-                        mid_y = (y1 + y2) // 2 - 12
-                        label_line = f"drawText(ctx, '{_js_escape(label)}', {mid_x}, {mid_y}, {{size: 10, color: Colors.textSec, align: 'center'}});"
-                        draw_lines.append(_wrap_step(label_line, step))
+                    if len(coords) == 2:
+                        # Straight arrow (2 points on same axis)
+                        x1, y1 = coords[0]
+                        x2, y2 = coords[1]
+                        arrow_line = f"drawArrow(ctx, {x1}, {y1}, {x2}, {y2}, {color}, {dashed});"
+                        draw_lines.append(_wrap_step(arrow_line, step))
+                        if label:
+                            mid_x = (x1 + x2) // 2
+                            mid_y = (y1 + y2) // 2 - 12
+                            label_line = f"drawText(ctx, '{_js_escape(label)}', {mid_x}, {mid_y}, {{size: 10, color: Colors.textSec, align: 'center'}});"
+                            draw_lines.append(_wrap_step(label_line, step))
+                    else:
+                        # Orthogonal polyline (3+ points)
+                        pts_js = ', '.join(f'{{x:{x},y:{y}}}' for x, y in coords)
+                        arrow_line = f"drawOrthogonalArrow(ctx, [{pts_js}], {color}, {dashed});"
+                        draw_lines.append(_wrap_step(arrow_line, step))
+                        if label:
+                            mid_idx = len(coords) // 2
+                            mx, my = coords[mid_idx]
+                            label_line = f"drawText(ctx, '{_js_escape(label)}', {mx}, {my - 12}, {{size: 10, color: Colors.textSec, align: 'center'}});"
+                            draw_lines.append(_wrap_step(label_line, step))
                 elif 'x1' in p:
-                    line = f"drawArrow(ctx, {p['x1']}, {p['y1']}, {p['x2']}, {p['y2']}, {color}, {dashed});"
-                    draw_lines.append(_wrap_step(line, step))
+                    cx1, cy1, cx2, cy2 = p['x1'], p['y1'], p['x2'], p['y2']
+                    if cx1 == cx2 or cy1 == cy2:
+                        # Already axis-aligned — straight arrow
+                        line = f"drawArrow(ctx, {cx1}, {cy1}, {cx2}, {cy2}, {color}, {dashed});"
+                        draw_lines.append(_wrap_step(line, step))
+                    else:
+                        # Diagonal coordinates — convert to orthogonal L-bend
+                        pts_js = f'{{x:{cx1},y:{cy1}}}, {{x:{cx2},y:{cy1}}}, {{x:{cx2},y:{cy2}}}'
+                        line = f"drawOrthogonalArrow(ctx, [{pts_js}], {color}, {dashed});"
+                        draw_lines.append(_wrap_step(line, step))
                 else:
                     fk = p.get('from_id', p.get('from', '?'))
                     tk = p.get('to_id', p.get('to', '?'))
@@ -1356,8 +1898,13 @@ class RemarpHTMLGenerator:
                 src = p.get('src', '')
                 x, y = p.get('x', 0), p.get('y', 0)
                 size = p.get('width', 48)
+                label = p.get('label', '')
                 line = f"drawIcon(ctx, '{_js_escape(src)}', {x}, {y}, {size});"
                 draw_lines.append(_wrap_step(line, step))
+                if label:
+                    label_y = y + size // 2 + 14
+                    label_line = f"drawText(ctx, '{_js_escape(label)}', {x}, {label_y}, {{size: 9, color: Colors.textSec, align: 'center'}});"
+                    draw_lines.append(_wrap_step(label_line, step))
 
             elif elem.element_type == 'step':
                 pass  # Step metadata already captured in pass 1
@@ -1582,8 +2129,8 @@ class RemarpHTMLGenerator:
         speaker_company = slide.directives.get('company', '') or speaker_company
 
         # Check for PPTX background and badge in directives
-        pptx_bg = slide.directives.get('background', '')
-        badge_src = slide.directives.get('badge', '')
+        pptx_bg = slide.directives.get('background', '').replace('../common/', './common/')
+        badge_src = slide.directives.get('badge', '').replace('../common/', './common/')
 
         # Determine background style: gradient vs image URL
         is_gradient = pptx_bg.startswith('linear-gradient') or pptx_bg.startswith('radial-gradient')
@@ -1627,7 +2174,7 @@ class RemarpHTMLGenerator:
 
             subtitle_html = f'<p style="position:absolute; left:5%; top:60%; font-size:1.3rem; color:rgba(255,255,255,0.7); width:60%; margin:0;">{subtitle}</p>' if subtitle else ''
 
-            return f'''<div class="slide" style="{bg_style}; padding:0; overflow:hidden; position:relative;">
+            return f'''<div class="slide" style="{bg_style}; padding:0; overflow:hidden;">
   <div style="position:absolute; top:-20%; right:-10%; width:60%; height:80%; background:radial-gradient(ellipse, rgba(108,92,231,0.15) 0%, transparent 70%); pointer-events:none;"></div>
   <div style="position:absolute; left:5%; top:42%; width:80px; height:3px; background:linear-gradient(90deg, #6c5ce7, #a29bfe); border-radius:2px;"></div>
   <h1 style="position:absolute; left:5%; top:45%; font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:60%; margin:0;">{title}</h1>
@@ -1686,7 +2233,7 @@ class RemarpHTMLGenerator:
         else:
             body_html = self._parse_body_content(body_lines)
 
-        header_html = f'<div class="slide-header"><h2>{heading}</h2></div>' if heading else ''
+        header_html = f'<div class="slide-header" data-remarp-id="s{slide.index}-header"><h2>{heading}</h2></div>' if heading else ''
 
         # Apply transition if specified
         transition = slide.directives.get('transition', '')
@@ -1696,7 +2243,7 @@ class RemarpHTMLGenerator:
 
         return f'''<div class="slide"{style_attr}>
   {header_html}
-  <div class="slide-body">
+  <div class="slide-body" data-remarp-id="s{slide.index}-body">
     {body_html}
   </div>
 </div>'''
@@ -1723,15 +2270,35 @@ class RemarpHTMLGenerator:
             elif current_section:
                 sections[current_section].append(line)
 
+        # Fallback: if sections empty but slide.columns has data, use columns
+        if not sections and slide.columns:
+            for side, col_content in slide.columns:
+                col_lines = col_content.split('\n')
+                col_heading = None
+                for cl in col_lines:
+                    if cl.startswith('### '):
+                        col_heading = cl[4:].strip()
+                        sections[col_heading] = []
+                    elif col_heading is not None:
+                        sections[col_heading].append(cl)
+            if not heading:
+                for line in lines:
+                    if line.startswith('## '):
+                        heading = self._convert_markdown(line[3:].strip())
+                        break
+
         is_side_by_side = len(sections) == 2
 
         # Generate toggle buttons and content
         buttons = []
         contents = []
         first = True
+        col_idx = 0  # 0=left, 1=right for side-by-side
 
         for section_name, section_lines in sections.items():
             slug = re.sub(r'[^a-z0-9]+', '-', section_name.lower()).strip('-')
+            if not slug:
+                slug = f'tab-{len(buttons)}'
             active = ' active' if first else ''
 
             buttons.append(
@@ -1741,22 +2308,24 @@ class RemarpHTMLGenerator:
             section_html = self._parse_body_content(section_lines)
             if is_side_by_side:
                 highlight = ' compare-highlight' if first else ''
+                col_id = 'left' if col_idx == 0 else 'right'
                 contents.append(
-                    f'<div class="card compare-content active{highlight}" data-compare="{slug}">\n<h3 style="color:var(--text-accent);margin-bottom:.5rem">{section_name}</h3>\n{section_html}\n</div>'
+                    f'<div class="card compare-content active{highlight}" data-compare="{slug}" data-remarp-id="s{slide.index}-{col_id}">\n<h3 style="color:var(--text-accent);margin-bottom:.5rem">{section_name}</h3>\n{section_html}\n</div>'
                 )
+                col_idx += 1
             else:
                 contents.append(
                     f'<div class="compare-content{active}" data-compare="{slug}">\n{section_html}\n</div>'
                 )
             first = False
 
-        header_html = f'<div class="slide-header"><h2>{heading}</h2></div>' if heading else ''
+        header_html = f'<div class="slide-header" data-remarp-id="s{slide.index}-header"><h2>{heading}</h2></div>' if heading else ''
         mode_attr = ' data-compare-mode="side-by-side"' if is_side_by_side else ''
 
         if is_side_by_side:
             return f'''<div class="slide">
   {header_html}
-  <div class="slide-body"{mode_attr}>
+  <div class="slide-body" data-remarp-id="s{slide.index}-body"{mode_attr}>
     <div class="compare-toggle">
       {chr(10).join("      " + b for b in buttons)}
     </div>
@@ -1768,7 +2337,7 @@ class RemarpHTMLGenerator:
         else:
             return f'''<div class="slide">
   {header_html}
-  <div class="slide-body">
+  <div class="slide-body" data-remarp-id="s{slide.index}-body">
     <div class="compare-toggle">
       {chr(10).join("      " + b for b in buttons)}
     </div>
@@ -1785,9 +2354,21 @@ class RemarpHTMLGenerator:
         sections: Dict[str, List[str]] = {}
         current_section = None
 
+        # Detect if ::: tab "Title" syntax is used
+        has_tab_blocks = any(re.match(r'^:::\s*tab\s+"', line) for line in lines)
+
         for line in lines:
             if line.startswith('## '):
                 heading = self._convert_markdown(line[3:].strip())
+            elif has_tab_blocks:
+                tab_match = re.match(r'^:::\s*tab\s+"([^"]+)"', line)
+                if tab_match:
+                    current_section = tab_match.group(1)
+                    sections[current_section] = []
+                elif line.strip() == ':::' and current_section is not None:
+                    pass  # closing marker, skip
+                elif current_section is not None:
+                    sections[current_section].append(line)
             elif line.startswith('### '):
                 current_section = line[4:].strip()
                 sections[current_section] = []
@@ -1801,6 +2382,8 @@ class RemarpHTMLGenerator:
 
         for section_name, section_lines in sections.items():
             slug = re.sub(r'[^a-z0-9]+', '-', section_name.lower()).strip('-')
+            if not slug:
+                slug = f'tab-{len(buttons)}'
             active = ' active' if first else ''
 
             buttons.append(
@@ -1813,11 +2396,11 @@ class RemarpHTMLGenerator:
             )
             first = False
 
-        header_html = f'<div class="slide-header"><h2>{heading}</h2></div>' if heading else ''
+        header_html = f'<div class="slide-header" data-remarp-id="s{slide.index}-header"><h2>{heading}</h2></div>' if heading else ''
 
         return f'''<div class="slide">
   {header_html}
-  <div class="slide-body">
+  <div class="slide-body" data-remarp-id="s{slide.index}-body">
     <div class="tab-bar">
       {chr(10).join("      " + b for b in buttons)}
     </div>
@@ -1846,7 +2429,7 @@ class RemarpHTMLGenerator:
         if slide.canvas_elements:
             canvas_js = self.gen_canvas_from_dsl(canvas_id, slide.canvas_elements)
 
-        header_html = f'<div class="slide-header"><h2>{heading}</h2></div>' if heading else ''
+        header_html = f'<div class="slide-header" data-remarp-id="s{slide.index}-header"><h2>{heading}</h2></div>' if heading else ''
 
         # Check for mermaid elements
         for elem in slide.canvas_elements:
@@ -1854,8 +2437,8 @@ class RemarpHTMLGenerator:
                 mermaid_code = elem.params.get('code', '')
                 return f'''<div class="slide">
   {header_html}
-  <div class="slide-body">
-    <div class="canvas-container" style="flex:1">
+  <div class="slide-body" data-remarp-id="s{slide.index}-body">
+    <div class="canvas-container" data-remarp-id="s{slide.index}-canvas" style="flex:1">
       <div class="mermaid">{mermaid_code}</div>
     </div>
   </div>
@@ -1868,13 +2451,13 @@ class RemarpHTMLGenerator:
                 prompt_html = prompt_text.replace('\n', '<br>')
                 return f'''<div class="slide">
   {header_html}
-  <div class="slide-body">
-    <div class="canvas-container" style="flex:1; display:flex; align-items:center; justify-content:center;">
-      <!-- CANVAS_PROMPT_PENDING -->
-      <div style="text-align:center; color:#FF9900; padding:2rem; border:2px dashed #FF9900; border-radius:12px; max-width:600px;">
-        <p style="font-size:1.2rem; margin-bottom:1rem;">Canvas Prompt (Pending)</p>
-        <p style="font-size:0.9rem; opacity:0.8;">{prompt_html}</p>
-        <p style="font-size:0.8rem; opacity:0.5; margin-top:1rem;">Replace :::canvas prompt with :::canvas js before final build</p>
+  <div class="slide-body" data-remarp-id="s{slide.index}-body">
+    <div class="canvas-container" data-remarp-id="s{slide.index}-canvas" style="flex:1; display:flex; align-items:center; justify-content:center;">
+      <!-- CANVAS_PROMPT: {prompt_text[:80]} -->
+      <div style="text-align:left; color:#FF9900; padding:2rem; border:2px dashed #FF9900; border-radius:12px; max-width:700px; background:rgba(255,153,0,0.05);">
+        <p style="font-size:1.1rem; font-weight:600; margin-bottom:0.8rem;">\U0001f4ac Diagram Prompt</p>
+        <p style="font-size:0.95rem; line-height:1.6; opacity:0.85; white-space:pre-wrap;">{prompt_html}</p>
+        <p style="font-size:0.75rem; opacity:0.4; margin-top:1rem; font-style:italic;">Run presentation-agent to resolve this prompt into a diagram</p>
       </div>
     </div>
   </div>
@@ -1882,8 +2465,8 @@ class RemarpHTMLGenerator:
 
         canvas_html = f'''<div class="slide">
   {header_html}
-  <div class="slide-body">
-    <div class="canvas-container" style="flex:1">
+  <div class="slide-body" data-remarp-id="s{slide.index}-body">
+    <div class="canvas-container" data-remarp-id="s{slide.index}-canvas" style="flex:1">
       <canvas id="{canvas_id}"></canvas>
     </div>
   </div>
@@ -1948,8 +2531,8 @@ class RemarpHTMLGenerator:
     </div>''')
 
         return f'''<div class="slide">
-  <div class="slide-header"><h2>{heading}</h2></div>
-  <div class="slide-body" style="overflow-y:auto">
+  <div class="slide-header" data-remarp-id="s{slide.index}-header"><h2>{heading}</h2></div>
+  <div class="slide-body" data-remarp-id="s{slide.index}-body" style="overflow-y:auto">
     {chr(10).join(quiz_html_parts)}
   </div>
 </div>'''
@@ -1989,11 +2572,11 @@ class RemarpHTMLGenerator:
             label = f'<span class="code-label">{display_label}</span>' if display_label else ''
             code_html_parts.append(f'<div class="code-block">{label}{highlighted}</div>')
 
-        header_html = f'<div class="slide-header"><h2>{heading}</h2></div>' if heading else ''
+        header_html = f'<div class="slide-header" data-remarp-id="s{slide.index}-header"><h2>{heading}</h2></div>' if heading else ''
 
         return f'''<div class="slide">
   {header_html}
-  <div class="slide-body">
+  <div class="slide-body" data-remarp-id="s{slide.index}-body">
     {chr(10).join(code_html_parts)}
   </div>
 </div>'''
@@ -2141,18 +2724,18 @@ class RemarpHTMLGenerator:
 
         # Generate HTML
         item_htmls = []
-        for text, detail in items:
+        for i, (text, detail) in enumerate(items):
             has_detail = ' has-detail' if detail else ''
             detail_div = f'\n      <div class="checklist-detail">{detail}</div>' if detail else ''
             item_htmls.append(
-                f'<li class="{has_detail.strip()}"><span class="check"></span> <span class="checklist-text">{self._convert_markdown(text)}</span>{detail_div}</li>'
+                f'<li class="{has_detail.strip()}" data-remarp-id="s{slide.index}-li-{i}"><span class="check"></span> <span class="checklist-text">{self._convert_markdown(text)}</span>{detail_div}</li>'
             )
 
-        header_html = f'<div class="slide-header"><h2>{heading}</h2></div>' if heading else ''
+        header_html = f'<div class="slide-header" data-remarp-id="s{slide.index}-header"><h2>{heading}</h2></div>' if heading else ''
 
         return f'''<div class="slide">
   {header_html}
-  <div class="slide-body">
+  <div class="slide-body" data-remarp-id="s{slide.index}-body">
     <ul class="checklist">
       {chr(10).join("      " + item for item in item_htmls)}
     </ul>
@@ -2227,7 +2810,7 @@ class RemarpHTMLGenerator:
         for i, step in enumerate(steps):
             step_num = i + 1
             desc_html = f'<div class="timeline-desc">{self._convert_markdown(step["desc"])}</div>' if step['desc'] else ''
-            timeline_parts.append(f'''<div class="timeline-step" data-step="{step_num}">
+            timeline_parts.append(f'''<div class="timeline-step" data-step="{step_num}" data-remarp-id="s{slide.index}-step-{i}">
       <div class="timeline-dot" style="width:{dot_size};height:{dot_size};font-size:{font_size}">{step_num}</div>
       <div class="timeline-label" style="max-width:{label_width}">{self._convert_markdown(step["title"])}</div>
       {desc_html}
@@ -2236,7 +2819,7 @@ class RemarpHTMLGenerator:
             if i < n - 1:
                 timeline_parts.append('<div class="timeline-connector"></div>')
 
-        header_html = f'<div class="slide-header"><h2>{heading}</h2></div>' if heading else ''
+        header_html = f'<div class="slide-header" data-remarp-id="s{slide.index}-header"><h2>{heading}</h2></div>' if heading else ''
 
         # Timeline step navigation JS (inline)
         timeline_js = ''
@@ -2272,12 +2855,186 @@ class RemarpHTMLGenerator:
 
         return f'''<div class="slide">
   {header_html}
-  <div class="slide-body">
+  <div class="slide-body" data-remarp-id="s{slide.index}-body">
     <div class="timeline">
       {chr(10).join("      " + p for p in timeline_parts)}
     </div>
   </div>
   {timeline_js}
+</div>'''
+
+    def _gen_agenda_slide(self, slide: Slide) -> str:
+        """Generate agenda slide HTML with numbered dots, connectors, and time labels.
+
+        Supports:
+        - Numbered list: 1. Title (duration)
+        - Break items: - Break (duration) or - 휴식 (duration)
+        - @timing directive for subtitle (e.g., "총 40분 세션")
+        - Callout text after the list (lines starting with >)
+        """
+        content = slide.content
+        lines = content.split('\n')
+
+        heading = ''
+        subtitle = ''
+        steps = []
+        callout_lines = []
+
+        timing = slide.directives.get('timing', '')
+        if timing:
+            subtitle = f'총 {timing} 세션'
+
+        for line in lines:
+            if line.startswith('## '):
+                heading = self._convert_markdown(line[3:].strip())
+            elif re.match(r'^\d+\.\s', line):
+                step_text = re.sub(r'^\d+\.\s+', '', line).strip()
+                # Extract duration in parentheses
+                dur_match = re.search(r'\((\d+\s*분?|[\d]+\s*min)\)', step_text)
+                duration = dur_match.group(1) if dur_match else ''
+                title = re.sub(r'\s*\((\d+\s*분?|[\d]+\s*min)\)\s*', '', step_text).strip()
+                steps.append({'title': title, 'duration': duration, 'is_break': False})
+            elif re.match(r'^[-*]\s+(Break|break|휴식)', line):
+                step_text = re.sub(r'^[-*]\s+', '', line).strip()
+                dur_match = re.search(r'\((\d+\s*분?|[\d]+\s*min)\)', step_text)
+                duration = dur_match.group(1) if dur_match else ''
+                steps.append({'title': 'Break', 'duration': duration, 'is_break': True})
+            elif line.startswith('>'):
+                callout_lines.append(line.lstrip('> ').strip())
+
+        n = len(steps)
+
+        # Build agenda steps HTML
+        step_parts = []
+        step_num = 0
+        for i, step in enumerate(steps):
+            if step['is_break']:
+                dot_content = '☕'
+                step_class = ' break'
+            else:
+                step_num += 1
+                dot_content = str(step_num)
+                step_class = ' active' if step_num == 1 else ''
+
+            connector = f'<div class="agenda-connector"></div>' if i < n - 1 else ''
+            dur_html = f'<span>{step["duration"]}</span>' if step['duration'] else ''
+
+            step_parts.append(f'''<div class="agenda-step{step_class}">
+          <div class="agenda-dot">{dot_content}</div>
+          {connector}
+          <div class="agenda-label">
+            <strong>{self._convert_markdown(step["title"])}</strong>
+            {dur_html}
+          </div>
+        </div>''')
+
+        header_html = ''
+        if heading:
+            sub_html = f'<p class="subtitle">{subtitle}</p>' if subtitle else ''
+            header_html = f'<div class="slide-header" data-remarp-id="s{slide.index}-header"><h2>{heading}</h2>{sub_html}</div>'
+
+        callout_html = ''
+        if callout_lines:
+            callout_text = ' '.join(callout_lines)
+            callout_html = f'<div class="callout callout-info" style="margin-top: 1.5rem;">{self._convert_markdown(callout_text)}</div>'
+
+        return f'''<div class="slide">
+  {header_html}
+  <div class="slide-body" data-remarp-id="s{slide.index}-body">
+    <div class="agenda-timeline">
+      {chr(10).join("      " + p for p in step_parts)}
+    </div>
+    {callout_html}
+  </div>
+</div>'''
+
+    def _gen_steps_slide(self, slide: Slide) -> str:
+        """Generate steps slide HTML for agenda/process visualization.
+
+        Supports:
+        - ### headings with description lines below
+        - Numbered list items (1. **Title** — desc)
+        - @steps-shape: circle|rect|icon
+        - @steps-layout: horizontal|vertical
+        - @steps-icon: path to icon
+        """
+        content = slide.content
+        lines = content.split('\n')
+
+        heading = ''
+        steps = []
+        current_step_title = None
+        current_step_desc_lines = []
+
+        def _flush_step():
+            nonlocal current_step_title, current_step_desc_lines
+            if current_step_title is not None:
+                desc = ' '.join(l.strip() for l in current_step_desc_lines if l.strip())
+                steps.append({'title': current_step_title, 'desc': desc})
+                current_step_title = None
+                current_step_desc_lines = []
+
+        for line in lines:
+            if line.startswith('## '):
+                heading = self._convert_markdown(line[3:].strip())
+            elif line.startswith('### '):
+                _flush_step()
+                current_step_title = line[4:].strip()
+            elif re.match(r'^\d+\.\s', line):
+                _flush_step()
+                step_text = re.sub(r'^\d+\.\s+', '', line)
+                bold_match = re.match(r'\*\*(.+?)\*\*\s*[-—]\s*(.*)', step_text)
+                if bold_match:
+                    current_step_title = bold_match.group(1)
+                    current_step_desc_lines = [bold_match.group(2)] if bold_match.group(2) else []
+                else:
+                    steps.append({'title': step_text, 'desc': ''})
+            elif current_step_title is not None:
+                current_step_desc_lines.append(line)
+
+        _flush_step()
+
+        # Read directives
+        shape = slide.directives.get('steps-shape', 'circle')  # circle|rect|icon
+        layout = slide.directives.get('steps-layout', 'horizontal')  # horizontal|vertical
+        icon_path = slide.directives.get('steps-icon', '')
+
+        n = len(steps)
+
+        # Build steps HTML
+        step_parts = []
+        for i, step in enumerate(steps):
+            # Marker content
+            if shape == 'icon' and icon_path:
+                marker_html = f'<img src="{icon_path}" alt="">'
+            else:
+                marker_html = str(i + 1)
+
+            desc_html = f'<div class="step-desc">{self._convert_markdown(step["desc"])}</div>' if step['desc'] else ''
+
+            # Check for {.click} in title
+            has_click = '{.click}' in step['title']
+            title_clean = step['title'].replace('{.click}', '').strip()
+            frag_class = ' fragment fade-in' if has_click else ''
+
+            step_parts.append(f'''<div class="step-item{frag_class}" data-remarp-id="s{slide.index}-step-{i}">
+      <div class="step-marker">{marker_html}</div>
+      <div class="step-label">{self._convert_markdown(title_clean)}</div>
+      {desc_html}
+    </div>''')
+
+            if i < n - 1:
+                step_parts.append('<div class="step-connector"></div>')
+
+        header_html = f'<div class="slide-header" data-remarp-id="s{slide.index}-header"><h2>{heading}</h2></div>' if heading else ''
+
+        return f'''<div class="slide">
+  {header_html}
+  <div class="slide-body" data-remarp-id="s{slide.index}-body">
+    <div class="steps-container steps--{layout} steps--{shape}">
+      {chr(10).join("      " + p for p in step_parts)}
+    </div>
+  </div>
 </div>'''
 
     def _gen_slider_slide(self, slide: Slide) -> str:
@@ -2303,11 +3060,11 @@ class RemarpHTMLGenerator:
         default_val = slide.directives.get('value', '50')
         label = slide.directives.get('label', 'Value')
 
-        header_html = f'<div class="slide-header"><h2>{heading}</h2></div>' if heading else ''
+        header_html = f'<div class="slide-header" data-remarp-id="s{slide.index}-header"><h2>{heading}</h2></div>' if heading else ''
 
         return f'''<div class="slide">
   {header_html}
-  <div class="slide-body">
+  <div class="slide-body" data-remarp-id="s{slide.index}-body">
     <div class="slider-container">
       <label>{label}:</label>
       <input type="range" id="{slider_id}" min="{min_val}" max="{max_val}" value="{default_val}">
@@ -2345,18 +3102,18 @@ class RemarpHTMLGenerator:
         cards_html = []
         columns = int(slide.directives.get('columns', '3'))
 
-        for card in cards:
+        for i, card in enumerate(cards):
             card_content = self._parse_body_content(card['content'])
-            cards_html.append(f'''<div class="card">
+            cards_html.append(f'''<div class="card" data-remarp-id="s{slide.index}-card-{i}">
       <div class="card-title">{card['title']}</div>
       {card_content}
     </div>''')
 
-        header_html = f'<div class="slide-header"><h2>{heading}</h2></div>' if heading else ''
+        header_html = f'<div class="slide-header" data-remarp-id="s{slide.index}-header"><h2>{heading}</h2></div>' if heading else ''
 
         return f'''<div class="slide">
   {header_html}
-  <div class="slide-body">
+  <div class="slide-body" data-remarp-id="s{slide.index}-body">
     <div class="col-{columns}">
       {chr(10).join("      " + c for c in cards_html)}
     </div>
@@ -2435,13 +3192,14 @@ class RemarpHTMLGenerator:
   </div>
 </div>'''
 
-        return f'''<div class="slide" style="padding:0;position:relative;overflow:hidden;">
+        return f'''<div class="slide" style="padding:0;overflow:hidden;">
   {title_html}
   <iframe src="{src}" style="width:100%;height:100%;border:none;display:block;" loading="lazy" sandbox="allow-scripts allow-same-origin" title="Embedded content"></iframe>
 </div>'''
 
     def wrap_html(self, title: str, slides_html: str, notes: Dict[int, Note],
-                  config: Dict[str, Any], canvas_scripts: List[str] = None) -> str:
+                  config: Dict[str, Any], canvas_scripts: List[str] = None,
+                  source_file: str = '', block_name: str = '') -> str:
         """Wrap slides in full HTML template with key config injection."""
         # Build notes JavaScript
         def escape_js(s):
@@ -2465,13 +3223,19 @@ class RemarpHTMLGenerator:
         # Assets are copied to output_dir/common/pptx-theme/ by _copy_theme_assets_to_output()
         theme_override = ''
         theme_dir = config.get('_theme_dir', self.theme_dir)
+        # Check source theme dir OR already-copied output location
         if theme_dir and os.path.exists(os.path.join(theme_dir, 'theme-override.css')):
             theme_override = '<link rel="stylesheet" href="./common/pptx-theme/theme-override.css">'
+        elif self.output_dir and (self.output_dir / 'common' / 'pptx-theme' / 'theme-override.css').exists():
+            theme_override = '<link rel="stylesheet" href="./common/pptx-theme/theme-override.css">'
 
-        # Logo config
-        logo_src = config.get('logoSrc', '')
-        footer = config.get('footer', '')
-        pagination = config.get('pagination', True)
+        # Logo config — check top-level first, then fall back to theme.* nested keys
+        theme_cfg = config.get('theme', {})
+        if isinstance(theme_cfg, str):
+            theme_cfg = {}
+        logo_src = config.get('logoSrc', '') or config.get('logo', '') or theme_cfg.get('logo', '')
+        footer = config.get('footer', '') or theme_cfg.get('footer', '')
+        pagination = config.get('pagination', theme_cfg.get('pagination', True))
 
         logo_js = f"logoSrc: '{logo_src}'," if logo_src else ''
         footer_js = f"footer: '{footer}'," if footer else ''
@@ -2490,11 +3254,11 @@ class RemarpHTMLGenerator:
             mermaid_script = '''<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
 <script>mermaid.initialize({startOnLoad:true, theme:'dark'});</script>'''
 
-        # Theme config injection
+        # Theme config injection (use same fallback logic as logo/footer above)
         theme_js = ''
         theme_colors = config.get('_theme_colors', {})
-        theme_footer = config.get('footer', '')
-        theme_pagination = config.get('pagination', True)
+        theme_footer = footer  # reuse already-resolved footer from above
+        theme_pagination = pagination  # reuse already-resolved pagination
         theme_fonts = {}
         if theme_colors or theme_footer:
             theme_data = {
@@ -2521,12 +3285,19 @@ class RemarpHTMLGenerator:
         header_text = config.get('_header', '')
         header_js = f"header: '{header_text}'," if header_text else ''
 
+        remarp_version = config.get('version', '1')
+        remarp_meta = f'''  <meta name="generator" content="remarp">
+  <meta name="remarp-version" content="{remarp_version}">
+  <meta name="remarp-source" content="{source_file}">
+  <meta name="remarp-block" content="{block_name}">'''
+
         return f'''<!DOCTYPE html>
 <html lang="{self.lang}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{title}</title>
+{remarp_meta}
   <link rel="stylesheet" href="./common/theme.css">
   {theme_override}
   {global_style_tag}
@@ -2550,6 +3321,7 @@ class RemarpHTMLGenerator:
     {footer_js}
     {header_js}
     {pagination_js}
+    sidebar: false,
     presenterNotes: presenterNotes,
     onSlideChange: (index, slide) => {{}}
   }});
@@ -2627,30 +3399,42 @@ class RemarpProjectBuilder:
         - theme.logo -> 'auto' uses extracted logo, or explicit path
         """
         theme_config = self.main_config.get('theme', {})
-        if not theme_config:
-            return
+        if isinstance(theme_config, str):
+            theme_config = {}
 
-        source = theme_config.get('source', '')
-        if not source:
-            return
+        source = theme_config.get('source', '') if theme_config else ''
 
-        source_path = self.project_dir / source if not os.path.isabs(source) else Path(source)
+        if source:
+            source_path = self.project_dir / source if not os.path.isabs(source) else Path(source)
 
-        # Check if source is a file (PPTX/PDF) or directory
-        if source_path.is_file():
-            ext = source_path.suffix.lower()
-            if ext in ['.pptx', '.pdf']:
-                self._extract_theme_from_file(source_path, ext)
-        elif source_path.is_dir():
-            # Use as pre-extracted theme directory
-            self.theme_dir = source_path
-            manifest_path = source_path / 'theme-manifest.json'
-            if manifest_path.exists():
-                with open(manifest_path, 'r', encoding='utf-8') as f:
-                    self.theme_manifest = json.load(f)
+            # Check if source is a file (PPTX/PDF) or directory
+            if source_path.is_file():
+                ext = source_path.suffix.lower()
+                if ext in ['.pptx', '.pdf']:
+                    self._extract_theme_from_file(source_path, ext)
+            elif source_path.is_dir():
+                # Use as pre-extracted theme directory
+                self.theme_dir = source_path
+                manifest_path = source_path / 'theme-manifest.json'
+                if manifest_path.exists():
+                    with open(manifest_path, 'r', encoding='utf-8') as f:
+                        self.theme_manifest = json.load(f)
 
-        # Apply theme overrides to main_config
-        self._apply_theme_to_config(theme_config)
+        # Fallback: top-level 'pptx_theme' key as theme directory
+        if not self.theme_dir:
+            pptx_theme = self.main_config.get('pptx_theme', '')
+            if pptx_theme:
+                p = self.project_dir / pptx_theme if not os.path.isabs(pptx_theme) else Path(pptx_theme)
+                if p.is_dir():
+                    self.theme_dir = p
+                    manifest = p / 'theme-manifest.json'
+                    if manifest.exists():
+                        with open(manifest, 'r', encoding='utf-8') as f:
+                            self.theme_manifest = json.load(f)
+
+        # Apply theme overrides to main_config (always, even without source)
+        if theme_config:
+            self._apply_theme_to_config(theme_config)
 
     def _extract_theme_from_file(self, source_path: Path, ext: str) -> None:
         """Extract theme from PPTX or PDF file.
@@ -2724,6 +3508,20 @@ class RemarpProjectBuilder:
         print(f"Warning: PDF theme extraction not yet implemented for {pdf_path}")
         output_dir.mkdir(parents=True, exist_ok=True)
 
+    @staticmethod
+    def _sanitize_footer_text(text: str) -> str:
+        """Strip page-number placeholder ‹#› from PPTX-extracted footer text.
+
+        PPTX footers often contain ‹#› (U+2039 # U+203A) which the slide
+        master substitutes with the page number.  The HTML framework already
+        renders its own pagination, so keeping ‹#› would cause duplication.
+        """
+        # Remove ‹#› and any surrounding separator (pipe, mid-dot, dash)
+        text = re.sub(r'\s*[|·–—-]\s*‹#›', '', text)
+        text = re.sub(r'‹#›\s*[|·–—-]\s*', '', text)
+        text = re.sub(r'‹#›', '', text)
+        return text.strip()
+
     def _apply_theme_to_config(self, theme_config: Dict[str, Any]) -> None:
         """Apply theme settings to main_config for use in HTML generation."""
         # Footer: explicit string overrides; 'auto' or absent → manifest fallback
@@ -2731,7 +3529,7 @@ class RemarpProjectBuilder:
         if footer and footer != 'auto':
             self.main_config['footer'] = footer
         elif self.theme_manifest.get('footer_text'):
-            self.main_config['footer'] = self.theme_manifest['footer_text']
+            self.main_config['footer'] = self._sanitize_footer_text(self.theme_manifest['footer_text'])
 
         # Logo: 'auto' uses first extracted logo, or explicit path
         # Use relative HTML path (./common/pptx-theme/images/...) not absolute filesystem path
@@ -2768,7 +3566,7 @@ class RemarpProjectBuilder:
         # Resolve footer: auto
         footer = theme_config.get('footer', '')
         if footer == 'auto' and self.theme_manifest.get('footer_text'):
-            self.main_config['footer'] = self.theme_manifest['footer_text']
+            self.main_config['footer'] = self._sanitize_footer_text(self.theme_manifest['footer_text'])
 
         # Store sanitized manifest
         self.main_config['_theme_manifest'] = {
@@ -2859,7 +3657,7 @@ class RemarpProjectBuilder:
         shutil.copytree(str(self.theme_dir), str(dest), dirs_exist_ok=True)
 
     def _copy_framework_assets(self) -> None:
-        """Copy core framework CSS/JS and AWS icons to output common/ directory."""
+        """Copy core framework CSS/JS to output common/ directory (no icons)."""
         scripts_dir = Path(__file__).parent
         skill_dir = scripts_dir.parent  # reactive-presentation/
         assets_dir = skill_dir / 'assets'
@@ -2868,43 +3666,89 @@ class RemarpProjectBuilder:
 
         # Copy core framework files
         for fname in ['theme.css', 'slide-framework.js', 'animation-utils.js',
-                      'quiz-component.js', 'presenter-view.js']:
+                      'quiz-component.js', 'presenter-view.js', 'export-utils.js']:
             src = assets_dir / fname
             if src.exists():
                 shutil.copy2(str(src), str(dest / fname))
 
-        # Flatten AWS service icons into common/aws-icons/services/
-        # The converter references ./common/aws-icons/services/{filename}
+    def _copy_referenced_icons(self, html_files: List[str]) -> None:
+        """Copy only AWS icons that are actually referenced in HTML files.
+
+        Scans generated HTML for icon references like ./common/aws-icons/{category}/{filename}
+        and copies only those files from the source icons directory.
+        """
+        scripts_dir = Path(__file__).parent
+        skill_dir = scripts_dir.parent  # reactive-presentation/
         icons_dir = skill_dir / 'icons'
         if not icons_dir.exists():
-            icons_dir = assets_dir / 'aws-icons'
-        if icons_dir.exists():
-            services_dest = dest / 'aws-icons' / 'services'
-            services_dest.mkdir(parents=True, exist_ok=True)
-            # Flatten all 48px service icons from nested category dirs
-            service_icons_dir = icons_dir / 'Architecture-Service-Icons_07312025'
-            if service_icons_dir.exists():
-                for svg_file in service_icons_dir.rglob('*_48.svg'):
-                    shutil.copy2(str(svg_file), str(services_dest / svg_file.name))
-            # Also copy other icon categories (group, category, resource)
-            for subdir_name, dest_name in [
-                ('Architecture-Group-Icons_07312025', 'groups'),
-                ('Category-Icons_07312025', 'categories'),
-                ('Resource-Icons_07312025', 'resources'),
-            ]:
-                src_sub = icons_dir / subdir_name
-                if src_sub.exists():
-                    sub_dest = dest / 'aws-icons' / dest_name
-                    sub_dest.mkdir(parents=True, exist_ok=True)
-                    for svg_file in src_sub.rglob('*.svg'):
-                        shutil.copy2(str(svg_file), str(sub_dest / svg_file.name))
-            # Copy others/ (third-party icons)
-            others_src = icons_dir / 'others'
-            if others_src.exists():
-                others_dest = dest / 'aws-icons' / 'others'
-                if others_dest.exists():
-                    shutil.rmtree(str(others_dest))
-                shutil.copytree(str(others_src), str(others_dest))
+            icons_dir = skill_dir / 'assets' / 'aws-icons'
+        if not icons_dir.exists():
+            return
+
+        dest = self.output_dir / 'common' / 'aws-icons'
+        # Clean existing to remove bulk-extracted leftovers
+        if dest.exists():
+            shutil.rmtree(str(dest))
+
+        # Collect all icon references from HTML files
+        # Pattern matches: ./common/aws-icons/{category}/{filename} or ../common/aws-icons/...
+        icon_pattern = re.compile(r'\.\.?/common/aws-icons/(\w+)/([^"\'<>\s]+)')
+        referenced_icons: Dict[str, set] = {}  # category -> set of filenames
+
+        for html_file in html_files:
+            if not os.path.exists(html_file):
+                continue
+            with open(html_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            for match in icon_pattern.finditer(content):
+                category = match.group(1)
+                filename = match.group(2)
+                if category not in referenced_icons:
+                    referenced_icons[category] = set()
+                referenced_icons[category].add(filename)
+
+        if not referenced_icons:
+            return
+
+        # Map category names to source directories
+        category_to_source = {
+            'services': icons_dir / 'Architecture-Service-Icons_07312025',
+            'groups': icons_dir / 'Architecture-Group-Icons_07312025',
+            'categories': icons_dir / 'Category-Icons_07312025',
+            'resources': icons_dir / 'Resource-Icons_07312025',
+            'others': icons_dir / 'others',
+        }
+
+        # Build filename -> source path index for each category
+        for category, filenames in referenced_icons.items():
+            if not filenames:
+                continue
+
+            source_dir = category_to_source.get(category)
+            if not source_dir or not source_dir.exists():
+                continue
+
+            # Create destination directory only if we have files to copy
+            cat_dest = dest / category
+            cat_dest.mkdir(parents=True, exist_ok=True)
+
+            # Build index of available files in source directory
+            available_files: Dict[str, Path] = {}
+            if category == 'others':
+                # others/ has subdirectories, copy entire matching subdirs/files
+                for svg_file in source_dir.rglob('*.svg'):
+                    available_files[svg_file.name] = svg_file
+                for png_file in source_dir.rglob('*.png'):
+                    available_files[png_file.name] = png_file
+            else:
+                # Service/group/category/resource icons are nested, flatten
+                for svg_file in source_dir.rglob('*.svg'):
+                    available_files[svg_file.name] = svg_file
+
+            # Copy only referenced files
+            for filename in filenames:
+                if filename in available_files:
+                    shutil.copy2(str(available_files[filename]), str(cat_dest / filename))
 
     def build_all(self) -> List[str]:
         """Full rebuild: merge all blocks into single index.html.
@@ -2916,7 +3760,7 @@ class RemarpProjectBuilder:
         # 0. Copy PPTX theme assets to output/common/pptx-theme/
         self._copy_theme_assets_to_output()
 
-        # 0b. Copy core framework assets (CSS/JS) and AWS icons
+        # 0b. Copy core framework assets (CSS/JS only, icons copied on-demand later)
         self._copy_framework_assets()
 
         # 1. Build individual block files (for debugging/per-block editing)
@@ -2929,6 +3773,14 @@ class RemarpProjectBuilder:
         index_path = self._build_merged_index()
         if index_path:
             built_files.append(str(index_path))
+
+        # 3. Generate TOC page (toc.html)
+        toc_path = self.generate_index()
+        if toc_path:
+            built_files.append(str(toc_path))
+
+        # 4. Copy only AWS icons that are referenced in the generated HTML
+        self._copy_referenced_icons(built_files)
 
         return built_files
 
@@ -2949,7 +3801,7 @@ class RemarpProjectBuilder:
             merged_config = {**self.main_config, **config}
             lang = merged_config.get('lang', 'ko')
 
-            html_gen = RemarpHTMLGenerator(lang=lang)
+            html_gen = RemarpHTMLGenerator(lang=lang, output_dir=str(self.output_dir))
             if self.theme_dir:
                 html_gen.theme_dir = str(self.theme_dir)
 
@@ -2991,14 +3843,15 @@ class RemarpProjectBuilder:
             merged_config['_theme_dir'] = str(self.theme_dir)
 
         lang = merged_config.get('lang', 'ko')
-        html_gen = RemarpHTMLGenerator(lang=lang)
+        html_gen = RemarpHTMLGenerator(lang=lang, output_dir=str(self.output_dir))
         if self.theme_dir:
             html_gen.theme_dir = str(self.theme_dir)
 
         slides_html = '\n\n'.join(all_slides_html)
         index_html = html_gen.wrap_html(
             title, slides_html, all_notes, merged_config,
-            canvas_scripts=all_canvas_scripts)
+            canvas_scripts=all_canvas_scripts,
+            source_file='index', block_name='merged')
 
         index_path = self.output_dir / 'index.html'
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -3029,11 +3882,12 @@ class RemarpProjectBuilder:
         # Determine language
         lang = merged_config.get('lang', 'ko')
 
-        html_gen = RemarpHTMLGenerator(lang=lang)
+        html_gen = RemarpHTMLGenerator(lang=lang, output_dir=str(self.output_dir))
 
         # Generate HTML for each internal block
         for internal_block_name, slides in blocks.items():
-            html_content = html_gen.generate_block(internal_block_name, slides, merged_config)
+            html_content = html_gen.generate_block(internal_block_name, slides, merged_config,
+                                                       source_file=block_path.name)
 
             # Output filename
             if internal_block_name == 'default':
@@ -3078,9 +3932,15 @@ class RemarpProjectBuilder:
 
         block_links = []
         for block_name in sorted(self.blocks.keys()):
-            block_links.append(f'''<a href="{block_name}.html" class="block-card">
-      <h3>{block_name}</h3>
-    </a>''')
+            escaped_block = block_name.replace("'", "\\'")
+            block_links.append(f'''<div class="block-card">
+      <a href="{block_name}.html" class="block-link"><h3>{block_name}</h3></a>
+      <div class="block-export-row">
+        <button class="btn-sm" onclick="ExportUtils.exportPDF({{title:'{escaped_block}',blocks:['{block_name}.html']}})">PDF</button>
+        <button class="btn-sm" onclick="ExportUtils.downloadZIP({{blocks:['{block_name}.html']}})">ZIP</button>
+        <button class="btn-sm" onclick="ExportUtils.exportPPTX({{title:'{escaped_block}',blocks:['{block_name}.html']}})">PPTX</button>
+      </div>
+    </div>''')
 
         html = f'''<!DOCTYPE html>
 <html lang="{lang}">
@@ -3104,12 +3964,17 @@ class RemarpProjectBuilder:
     .block-card {{
       background: var(--bg-card); border: 1px solid var(--border);
       border-radius: .5rem; padding: 1.5rem; text-align: center;
-      text-decoration: none; transition: all var(--transition-fast);
+      display: flex; flex-direction: column; gap: 0.5rem;
+      transition: all var(--transition-fast);
     }}
     .block-card:hover {{
       border-color: var(--accent); box-shadow: 0 0 20px var(--accent-glow);
     }}
+    .block-link {{ text-decoration: none; flex: 1; }}
     .block-card h3 {{ color: var(--text-primary); margin: 0; }}
+    .block-export-row {{ display: flex; gap: 0.25rem; justify-content: center; }}
+    .btn-sm {{ padding: 0.2rem 0.5rem; font-size: 0.7rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 0.2rem; color: var(--text-secondary); cursor: pointer; }}
+    .btn-sm:hover {{ border-color: var(--accent); color: var(--text-primary); }}
     .export-toolbar {{
       display: flex; gap: 0.5rem; margin-top: 1.5rem;
     }}
@@ -3222,7 +4087,8 @@ def main():
             html_gen = RemarpHTMLGenerator(lang=args.lang)
 
             for block_name, slides in blocks.items():
-                html_content = html_gen.generate_block(block_name, slides, config)
+                html_content = html_gen.generate_block(block_name, slides, config,
+                                                       source_file=input_path.name)
                 output_file = output_dir / f'{block_name}.html'
 
                 with open(output_file, 'w', encoding='utf-8') as f:

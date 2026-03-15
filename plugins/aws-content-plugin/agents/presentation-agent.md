@@ -2,6 +2,9 @@
 name: presentation-agent
 description: Interactive HTML slideshow creation agent using reactive-presentation framework. Triggers on "create presentation", "create slides", "make slideshow", "training slides", "interactive presentation", "reactive presentation", "remarp" requests. Creates Remarp markdown content, generates HTML slideshows with Canvas animations, fragment animations, quizzes, and keyboard navigation. Supports PPTX/PDF theme extraction for corporate branding.
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
+model: opus
+skills:
+  - reactive-presentation
 ---
 
 # Presentation Agent
@@ -97,10 +100,8 @@ If user provides a `.pptx` template:
 python3 {plugin-dir}/skills/reactive-presentation/scripts/extract_pptx_theme.py <pptx_path> -o {repo}/common/pptx-theme/
 ```
 
-아이콘 추출 (항상 실행 — 테마 추출과 병렬):
-```bash
-python3 {plugin-dir}/skills/reactive-presentation/scripts/extract_aws_icons.py -o {repo}/common/aws-icons/
-```
+> **AWS Icons**: `remarp_to_slides.py build`가 HTML에서 참조된 아이콘만 `common/aws-icons/`에 자동 복사합니다.
+> 수동 `extract_aws_icons.py` 실행은 불필요하며, 실행 시 860+ 아이콘이 전체 복사되어 불필요한 파일이 포함됩니다.
 
 After extraction, read `{repo}/common/pptx-theme/theme-manifest.json` and apply:
 - **`footer_text`** → pass to `SlideFramework({ footer: manifest.footer_text })` in every block HTML
@@ -146,6 +147,13 @@ Remarp 기능:
 - `{.click}` 프래그먼트 애니메이션 + `:::click` 블록
 - `:::canvas` DSL로 선언적 Canvas 애니메이션
 - `:::notes` 풍부한 스피커 노트 (`{timing:}`, `{cue:}` 마커)
+
+**스피커 노트 작성 규칙 (MANDATORY)**:
+  - 모든 슬라이드에 `:::notes` 필수. 최소 150자, 권장 300~500자 (1~3분 발표 분량)
+  - 구조: `{timing: Nmin}` → 도입 → 핵심 설명 (보충 예시/비유) → 청중 큐 → 전환 멘트
+  - 슬라이드 텍스트를 그대로 반복하지 말 것. 왜 중요한지, 실무 적용법, 흔한 실수/팁을 보충
+  - 구어체로 작성: 발표자가 그대로 읽어도 자연스러운 톤
+  - 마지막에 `{cue: transition}` + 다음 슬라이드 브릿지 문장 포함
 - `::: left`/`::: right` 컬럼 레이아웃
 
 Reference: `{plugin-dir}/skills/reactive-presentation/references/remarp-format-guide.md`
@@ -193,10 +201,18 @@ HTML 빌드 후 Remarp 파일이 수정될 때마다 사용자가 수동으로 H
 
 이 명령을 받으면:
 1. 변경된 `.md` 파일을 감지
-2. **Canvas Prompt 처리**: 변경된 파일에 `:::canvas prompt` 또는 `:::prompt` 블록이 있으면:
-   a. `canvas-animation-prompt.md` 레퍼런스 참조
-   b. prompt 텍스트를 분석하여 Canvas JS (또는 DSL) 코드 생성
-   c. `.md` 소스에서 `:::prompt` → `:::canvas js` (또는 `:::canvas`) 교체
+2. **Canvas Prompt 처리** (Gemini Canvas-style): 변경된 파일에 `:::canvas prompt` 또는 `:::prompt` 블록이 있으면:
+   a. prompt 텍스트를 분석하여 모호한 부분 식별
+   b. **반복 질문**: 다음 항목이 불명확하면 AskUserQuestion으로 확인:
+      - 사용할 AWS 서비스 목록 (정확한 서비스명)
+      - 레이아웃 방향 (가로/세로/3계층 등)
+      - 애니메이션 step 구성 (순차/그룹별)
+      - 색상 테마 (기본/커스텀)
+      - 화살표 연결 관계
+   c. 확정된 요구사항으로 Canvas DSL 코드 생성
+   d. 생성된 DSL을 사용자에게 보여주고 확인 요청
+   e. 승인 시 `.md` 소스에서 `:::prompt` → `:::canvas` 교체
+   f. `canvas-animation-prompt.md` 레퍼런스 참조하여 DSL/Preset/JS 방식 선택
 3. `remarp_to_slides.py sync`로 변경된 블록만 증분 빌드
 4. 결과를 사용자에게 보고
 
@@ -256,6 +272,10 @@ For each block HTML file, check:
 - Slide count matches plan
 - `SlideFramework` initialized with correct options
 - All Canvas IDs have `setupCanvas()` calls
+- Canvas layout quality verified via Playwright screenshot:
+  - 요소 간 겹침 없음 (박스·아이콘·화살표·텍스트)
+  - 정렬·여백 균등하고 가독성 확보
+  - ↑↓ step 내비게이션 정상 동작 (각 step 스크린샷 촬영하여 확인)
 - Quiz components use correct `data-quiz` / `data-correct` attributes
 - Framework file references use correct relative paths (`../common/`)
 - Presenter view (P key) shows notes correctly
