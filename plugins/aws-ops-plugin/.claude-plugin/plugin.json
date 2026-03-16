@@ -61,8 +61,13 @@
     ],
     "SessionStart": [
       {
-        "type": "prompt",
-        "prompt": "AWS Ops Plugin loaded. Domains: EKS, Network, IAM, Observability, Storage, Database, Analytics, Cost."
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "AWS Ops Plugin loaded. Domains: EKS, Network, IAM, Observability, Storage, Database, Analytics, Cost."
+          }
+        ]
       }
     ]
   }

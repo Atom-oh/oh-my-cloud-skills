@@ -14,8 +14,13 @@
   "hooks": {
     "SessionStart": [
       {
-        "type": "prompt",
-        "prompt": "Kiro Power Converter loaded. Use 'convert to kiro' to start."
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Kiro Power Converter loaded. Use 'convert to kiro' to start."
+          }
+        ]
       }
     ]
   }

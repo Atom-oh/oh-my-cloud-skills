@@ -53,8 +53,13 @@
     ],
     "SessionStart": [
       {
-        "type": "prompt",
-        "prompt": "AWS Content Plugin loaded. Quality gate (content-review-agent >= 85) is mandatory before deployment."
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "AWS Content Plugin loaded. Quality gate (content-review-agent >= 85) is mandatory before deployment."
+          }
+        ]
       }
     ]
   }
