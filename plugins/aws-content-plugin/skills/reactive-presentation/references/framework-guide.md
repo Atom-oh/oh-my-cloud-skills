@@ -164,6 +164,36 @@ Methods: `quizManager.reset(id)`, `.resetAll()`, `.getScore()` → `{total, corr
 - `.export-progress-text` — status message
 - `.export-progress-track` / `.export-progress-bar` — animated progress bar
 
+## Data Visualization Classes
+
+### KPI Cards
+- `.kpi-row` — flex row for KPI cards (centered, wrapping)
+- `.kpi-card` — individual KPI card (bg-card, border, radius 8px, centered text)
+- `.kpi-value` — large number (2rem, weight 700, accent color, letter-spacing -0.03em)
+- `.kpi-label` — small label (0.75rem, text-muted, uppercase, letter-spacing 0.05em)
+- `.kpi-delta` — change indicator
+- `.kpi-delta.positive` — green (--green)
+- `.kpi-delta.negative` — red (--red)
+
+### Dashboard Layout
+- `.dashboard-grid` — CSS Grid auto-fit minmax(280px, 1fr)
+
+### Chart Container
+- `.chart-container` — bg-card, border, radius 8px, padding 1.5rem, min-height 300px
+
+### Data Table
+- `.data-table` — full-width table, collapse borders, 0.85rem font
+- `.data-table th` — header (border-bottom 2px, text-muted, weight 600, uppercase)
+- `.data-table td` — cell (border-bottom 1px)
+- `.data-table tr:hover` — subtle accent highlight (rgba(108,92,231,0.05))
+
+### Stat Highlight
+- `.stat-highlight` — 3rem, weight 700, letter-spacing -0.03em
+
+### Table Badges
+- `.badge-up` — small green badge for positive values
+- `.badge-down` — small red badge for negative values
+
 ## HTML Template Structure
 
 ```html

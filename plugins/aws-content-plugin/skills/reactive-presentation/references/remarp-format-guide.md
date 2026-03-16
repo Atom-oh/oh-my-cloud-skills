@@ -1246,6 +1246,180 @@ When a checklist item has a code block underneath, clicking the checkbox expands
 
 ---
 
+## Data Visualization in Remarp
+
+Remarp supports data visualization through Chart.js integration and custom HTML/CSS patterns for KPI cards, dashboards, and infographics.
+
+### Chart.js Slides
+
+To use Chart.js in Remarp slides, inject the Chart.js CDN via the `@head` directive in frontmatter:
+
+```markdown
+---
+@type: content
+@head: <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+---
+```
+
+Alternatively, inject Chart.js directly in an `:::html` block within the slide.
+
+**IMPORTANT**: Always include `Chart.defaults.animation = false;` before creating charts. This ensures reliable rendering, especially when navigating between slides or exporting to PDF.
+
+### Chart.js in :::canvas js vs HTML <canvas>
+
+There are two approaches for canvas-based graphics in Remarp:
+
+| Approach | Use Case | API |
+|----------|----------|-----|
+| `:::canvas js` block | Custom canvas drawing with step navigation | Uses reactive-presentation canvas system (`setupCanvas`, `Colors`, step navigation) |
+| `<canvas>` in `:::html` block | Standard Chart.js charts | Uses Chart.js API directly |
+
+**Recommendation**: Use `:::html` with `<canvas>` for Chart.js charts (bar, line, pie, doughnut, etc.). Use `:::canvas js` only for custom procedural drawing that needs the reactive-presentation canvas system with step-based reveals.
+
+### KPI Card Slide Example
+
+KPI cards display key metrics with delta indicators:
+
+```markdown
+---
+@type: content
+---
+# Monthly Performance
+
+:::html
+<div class="kpi-row">
+  <div class="kpi-card">
+    <div class="kpi-value">$2.4M</div>
+    <div class="kpi-delta positive">↑ 12.5%</div>
+    <div class="kpi-label">Revenue</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">1,847</div>
+    <div class="kpi-delta positive">↑ 8.3%</div>
+    <div class="kpi-label">Active Users</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">99.9%</div>
+    <div class="kpi-delta negative">↓ 0.1%</div>
+    <div class="kpi-label">Uptime</div>
+  </div>
+</div>
+:::
+```
+
+The `.kpi-row`, `.kpi-card`, `.kpi-value`, `.kpi-delta`, and `.kpi-label` classes are provided by the reactive-presentation theme. Use `.positive` or `.negative` on `.kpi-delta` to show green/red coloring.
+
+### Dashboard Slide Example
+
+Combine KPI cards with Chart.js charts for dashboard-style slides:
+
+```markdown
+---
+@type: content
+@head: <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+---
+# Service Dashboard
+
+:::html
+<div class="kpi-row" style="margin-bottom: 1rem;">
+  <div class="kpi-card">
+    <div class="kpi-value">342</div>
+    <div class="kpi-delta positive">↑ 15%</div>
+    <div class="kpi-label">Requests/sec</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">23ms</div>
+    <div class="kpi-delta positive">↑ 5%</div>
+    <div class="kpi-label">P99 Latency</div>
+  </div>
+</div>
+<div class="chart-container">
+  <canvas id="dash-chart"></canvas>
+</div>
+<script>
+Chart.defaults.animation = false;
+new Chart(document.getElementById('dash-chart'), {
+  type: 'line',
+  data: {
+    labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+    datasets: [{
+      label: 'Requests',
+      data: [280,310,295,342,380,290,310],
+      borderColor: '#6c5ce7',
+      backgroundColor: 'rgba(108,92,231,0.1)',
+      fill: true, tension: 0.3
+    }]
+  },
+  options: { plugins: { legend: { labels: { color: '#9ba1b8' }}}, scales: { x: { ticks: { color: '#6b7194' }}, y: { ticks: { color: '#6b7194' }, grid: { color: '#2d3250' }}}}
+});
+</script>
+:::
+```
+
+### Infographic Slide Example
+
+Create infographic-style slides with hero stats, icon grids, and progress bars:
+
+```markdown
+---
+@type: content
+---
+# Cloud Migration Progress
+
+:::html
+<div class="infographic">
+  <!-- Hero Stat -->
+  <div class="hero-stat">
+    <div class="hero-value">78%</div>
+    <div class="hero-label">Migration Complete</div>
+  </div>
+
+  <!-- Icon Grid -->
+  <div class="icon-grid">
+    <div class="icon-item completed">
+      <img src="icons/Arch_Amazon-EC2_48.svg" alt="EC2">
+      <span>EC2 Instances</span>
+    </div>
+    <div class="icon-item completed">
+      <img src="icons/Arch_Amazon-RDS_48.svg" alt="RDS">
+      <span>Databases</span>
+    </div>
+    <div class="icon-item in-progress">
+      <img src="icons/Arch_Amazon-S3_48.svg" alt="S3">
+      <span>Storage</span>
+    </div>
+    <div class="icon-item pending">
+      <img src="icons/Arch_AWS-Lambda_48.svg" alt="Lambda">
+      <span>Serverless</span>
+    </div>
+  </div>
+
+  <!-- Progress Bars -->
+  <div class="progress-section">
+    <div class="progress-item">
+      <span class="progress-label">Compute</span>
+      <div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+      <span class="progress-value">100%</span>
+    </div>
+    <div class="progress-item">
+      <span class="progress-label">Database</span>
+      <div class="progress-bar"><div class="progress-fill" style="width: 85%"></div></div>
+      <span class="progress-value">85%</span>
+    </div>
+    <div class="progress-item">
+      <span class="progress-label">Storage</span>
+      <div class="progress-bar"><div class="progress-fill" style="width: 60%"></div></div>
+      <span class="progress-value">60%</span>
+    </div>
+  </div>
+</div>
+:::
+```
+
+Use the `.completed`, `.in-progress`, and `.pending` classes on `.icon-item` elements to indicate status with appropriate styling.
+
+---
+
 ## Code Blocks
 
 Enhanced code blocks with highlighting and metadata.

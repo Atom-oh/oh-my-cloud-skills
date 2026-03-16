@@ -561,6 +561,810 @@ Notes formatting guide:
 - Use `-` or `•` for bullet points within notes
 - Korean with English technical terms
 
+### 15. Dashboard Slide
+
+KPI cards at top with a chart grid below. Ideal for executive summaries, operational dashboards, and metric overviews.
+
+```html
+<div class="slide">
+  <div class="slide-header"><h2>Operations Dashboard</h2></div>
+  <div class="slide-body">
+    <!-- KPI Row -->
+    <div class="kpi-row" style="display:flex; gap:16px; margin-bottom:20px;">
+      <div class="kpi-card" style="flex:1; background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:16px; text-align:center;">
+        <div class="kpi-value" style="font-size:2rem; font-weight:700; color:var(--accent);">99.9%</div>
+        <div class="kpi-label" style="font-size:0.85rem; color:var(--text-muted);">Availability</div>
+        <div class="kpi-delta" style="font-size:0.75rem; color:var(--green);">+0.2%</div>
+      </div>
+      <div class="kpi-card" style="flex:1; background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:16px; text-align:center;">
+        <div class="kpi-value" style="font-size:2rem; font-weight:700; color:var(--accent);">1.2s</div>
+        <div class="kpi-label" style="font-size:0.85rem; color:var(--text-muted);">Avg Latency</div>
+        <div class="kpi-delta" style="font-size:0.75rem; color:var(--green);">-15%</div>
+      </div>
+      <div class="kpi-card" style="flex:1; background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:16px; text-align:center;">
+        <div class="kpi-value" style="font-size:2rem; font-weight:700; color:var(--accent);">847</div>
+        <div class="kpi-label" style="font-size:0.85rem; color:var(--text-muted);">Active Pods</div>
+        <div class="kpi-delta" style="font-size:0.75rem; color:var(--red);">+12%</div>
+      </div>
+    </div>
+    <!-- Chart Grid -->
+    <div class="dashboard-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:16px; flex:1;">
+      <div class="chart-container" style="background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:16px;">
+        <canvas id="bar-chart"></canvas>
+      </div>
+      <div class="chart-container" style="background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:16px;">
+        <canvas id="doughnut-chart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  Chart.defaults.animation = false;
+
+  // Bar Chart
+  const barCtx = document.getElementById('bar-chart');
+  if (barCtx) {
+    new Chart(barCtx, {
+      type: 'bar',
+      data: {
+        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+        datasets: [{
+          label: 'Requests (K)',
+          data: [12, 19, 15, 25, 22],
+          backgroundColor: 'rgba(108, 92, 231, 0.7)',
+          borderColor: 'rgba(108, 92, 231, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#94a3b8' } } },
+        scales: {
+          x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } },
+          y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } }
+        }
+      }
+    });
+  }
+
+  // Doughnut Chart
+  const doughnutCtx = document.getElementById('doughnut-chart');
+  if (doughnutCtx) {
+    new Chart(doughnutCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Compute', 'Storage', 'Network', 'Other'],
+        datasets: [{
+          data: [45, 25, 20, 10],
+          backgroundColor: ['#6c5ce7', '#00cec9', '#fdcb6e', '#636e72']
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'right', labels: { color: '#94a3b8' } } }
+      }
+    });
+  }
+})();
+</script>
+```
+
+**Remarp equivalent:**
+
+```markdown
+---
+@type: content
+---
+## Operations Dashboard
+
+:::html
+<div class="kpi-row" style="display:flex; gap:16px; margin-bottom:20px;">
+  <div class="kpi-card" style="flex:1; background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:16px; text-align:center;">
+    <div class="kpi-value" style="font-size:2rem; font-weight:700; color:var(--accent);">99.9%</div>
+    <div class="kpi-label" style="font-size:0.85rem; color:var(--text-muted);">Availability</div>
+    <div class="kpi-delta" style="font-size:0.75rem; color:var(--green);">+0.2%</div>
+  </div>
+  <!-- Additional KPI cards... -->
+</div>
+<div class="dashboard-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+  <div class="chart-container" style="background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:16px;">
+    <canvas id="bar-chart"></canvas>
+  </div>
+  <div class="chart-container" style="background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:16px;">
+    <canvas id="doughnut-chart"></canvas>
+  </div>
+</div>
+:::
+
+:::script
+Chart.defaults.animation = false;
+// Chart initialization code...
+:::
+```
+
+### 16. Chart Slide
+
+Single Chart.js chart filling the slide body. Use for detailed data visualization when one chart needs full focus.
+
+#### Bar Chart Variant
+
+```html
+<div class="slide">
+  <div class="slide-header"><h2>Weekly Request Volume</h2></div>
+  <div class="slide-body" style="display:flex; align-items:center; justify-content:center;">
+    <div class="chart-container" style="width:90%; height:80%;">
+      <canvas id="full-bar-chart"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  Chart.defaults.animation = false;
+  const ctx = document.getElementById('full-bar-chart');
+  if (ctx) {
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+        datasets: [{
+          label: 'Requests (M)',
+          data: [2.4, 3.1, 2.8, 3.5],
+          backgroundColor: 'rgba(108, 92, 231, 0.7)',
+          borderColor: 'rgba(108, 92, 231, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#94a3b8' } } },
+        scales: {
+          x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } },
+          y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } }
+        }
+      }
+    });
+  }
+})();
+</script>
+```
+
+#### Line Chart Variant
+
+```html
+<div class="slide">
+  <div class="slide-header"><h2>Latency Trend</h2></div>
+  <div class="slide-body" style="display:flex; align-items:center; justify-content:center;">
+    <div class="chart-container" style="width:90%; height:80%;">
+      <canvas id="line-chart"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  Chart.defaults.animation = false;
+  const ctx = document.getElementById('line-chart');
+  if (ctx) {
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+        datasets: [{
+          label: 'P99 Latency (ms)',
+          data: [120, 95, 180, 220, 150, 110],
+          borderColor: '#00cec9',
+          backgroundColor: 'rgba(0, 206, 201, 0.1)',
+          fill: true,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#94a3b8' } } },
+        scales: {
+          x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } },
+          y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } }
+        }
+      }
+    });
+  }
+})();
+</script>
+```
+
+#### Doughnut Chart Variant
+
+```html
+<div class="slide">
+  <div class="slide-header"><h2>Cost Breakdown</h2></div>
+  <div class="slide-body" style="display:flex; align-items:center; justify-content:center;">
+    <div class="chart-container" style="width:60%; height:80%;">
+      <canvas id="doughnut-full"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  Chart.defaults.animation = false;
+  const ctx = document.getElementById('doughnut-full');
+  if (ctx) {
+    new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['EC2', 'RDS', 'S3', 'Lambda', 'Other'],
+        datasets: [{
+          data: [40, 25, 15, 12, 8],
+          backgroundColor: ['#6c5ce7', '#00cec9', '#fdcb6e', '#e17055', '#636e72']
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 14 } } }
+        }
+      }
+    });
+  }
+})();
+</script>
+```
+
+#### CSS-Only Pie Chart (No JavaScript)
+
+```html
+<div class="slide">
+  <div class="slide-header"><h2>Resource Allocation</h2></div>
+  <div class="slide-body" style="display:flex; align-items:center; justify-content:center; gap:40px;">
+    <!-- Conic-gradient pie chart -->
+    <div style="width:200px; height:200px; border-radius:50%; background:conic-gradient(
+      var(--accent) 0% 45%,
+      var(--cyan) 45% 70%,
+      #fdcb6e 70% 85%,
+      var(--text-muted) 85% 100%
+    );"></div>
+    <!-- Legend -->
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="width:16px; height:16px; background:var(--accent); border-radius:4px;"></span>
+        <span>Compute (45%)</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="width:16px; height:16px; background:var(--cyan); border-radius:4px;"></span>
+        <span>Storage (25%)</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="width:16px; height:16px; background:#fdcb6e; border-radius:4px;"></span>
+        <span>Network (15%)</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="width:16px; height:16px; background:var(--text-muted); border-radius:4px;"></span>
+        <span>Other (15%)</span>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+#### CSS-Only SVG Bar Chart (No JavaScript)
+
+```html
+<div class="slide">
+  <div class="slide-header"><h2>Service Comparison</h2></div>
+  <div class="slide-body" style="display:flex; align-items:center; justify-content:center;">
+    <svg viewBox="0 0 400 200" style="width:80%; max-height:80%;">
+      <!-- Bars -->
+      <rect x="50" y="20" width="60" height="140" fill="var(--accent)" rx="4"/>
+      <rect x="130" y="60" width="60" height="100" fill="var(--cyan)" rx="4"/>
+      <rect x="210" y="40" width="60" height="120" fill="#fdcb6e" rx="4"/>
+      <rect x="290" y="80" width="60" height="80" fill="#e17055" rx="4"/>
+      <!-- Labels -->
+      <text x="80" y="180" fill="var(--text-secondary)" text-anchor="middle" font-size="12">EKS</text>
+      <text x="160" y="180" fill="var(--text-secondary)" text-anchor="middle" font-size="12">ECS</text>
+      <text x="240" y="180" fill="var(--text-secondary)" text-anchor="middle" font-size="12">Lambda</text>
+      <text x="320" y="180" fill="var(--text-secondary)" text-anchor="middle" font-size="12">EC2</text>
+      <!-- Values -->
+      <text x="80" y="12" fill="var(--text-muted)" text-anchor="middle" font-size="10">70%</text>
+      <text x="160" y="52" fill="var(--text-muted)" text-anchor="middle" font-size="10">50%</text>
+      <text x="240" y="32" fill="var(--text-muted)" text-anchor="middle" font-size="10">60%</text>
+      <text x="320" y="72" fill="var(--text-muted)" text-anchor="middle" font-size="10">40%</text>
+    </svg>
+  </div>
+</div>
+```
+
+**Remarp equivalent:**
+
+```markdown
+---
+@type: content
+---
+## Weekly Request Volume
+
+:::html
+<div class="chart-container" style="width:90%; height:80%; margin:auto;">
+  <canvas id="full-bar-chart"></canvas>
+</div>
+:::
+
+:::script
+Chart.defaults.animation = false;
+const ctx = document.getElementById('full-bar-chart');
+new Chart(ctx, {
+  type: 'bar',
+  data: { /* ... */ },
+  options: { /* ... */ }
+});
+:::
+```
+
+### 17. KPI / Metric Slide
+
+Large numbers with delta indicators for highlighting key metrics. Use for status updates, performance summaries, and goal tracking.
+
+```html
+<div class="slide">
+  <div class="slide-header"><h2>Monthly Performance</h2></div>
+  <div class="slide-body">
+    <div class="kpi-row" style="display:flex; gap:20px; justify-content:center; flex-wrap:wrap;">
+      <div class="kpi-card" style="min-width:180px; background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:24px; text-align:center;">
+        <div class="kpi-value" style="font-size:3rem; font-weight:700; color:var(--accent);">$2.4M</div>
+        <div class="kpi-label" style="font-size:0.9rem; color:var(--text-muted); margin-top:8px;">Revenue</div>
+        <div class="kpi-delta" style="font-size:0.85rem; color:var(--green); margin-top:4px;">+18% MoM</div>
+      </div>
+      <div class="kpi-card" style="min-width:180px; background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:24px; text-align:center;">
+        <div class="kpi-value" style="font-size:3rem; font-weight:700; color:var(--cyan);">99.95%</div>
+        <div class="kpi-label" style="font-size:0.9rem; color:var(--text-muted); margin-top:8px;">Uptime SLA</div>
+        <div class="kpi-delta" style="font-size:0.85rem; color:var(--green); margin-top:4px;">+0.05%</div>
+      </div>
+      <div class="kpi-card" style="min-width:180px; background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:24px; text-align:center;">
+        <div class="kpi-value" style="font-size:3rem; font-weight:700; color:#fdcb6e;">142ms</div>
+        <div class="kpi-label" style="font-size:0.9rem; color:var(--text-muted); margin-top:8px;">P95 Latency</div>
+        <div class="kpi-delta" style="font-size:0.85rem; color:var(--green); margin-top:4px;">-23ms</div>
+      </div>
+      <div class="kpi-card" style="min-width:180px; background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:24px; text-align:center;">
+        <div class="kpi-value" style="font-size:3rem; font-weight:700; color:#e17055;">12</div>
+        <div class="kpi-label" style="font-size:0.9rem; color:var(--text-muted); margin-top:8px;">Open Incidents</div>
+        <div class="kpi-delta" style="font-size:0.85rem; color:var(--red); margin-top:4px;">+3</div>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+#### Variant with Sparkline SVG
+
+```html
+<div class="slide">
+  <div class="slide-header"><h2>Trend Metrics</h2></div>
+  <div class="slide-body">
+    <div class="kpi-row" style="display:flex; gap:20px; justify-content:center;">
+      <div class="kpi-card" style="min-width:220px; background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div>
+            <div class="kpi-value" style="font-size:2.5rem; font-weight:700; color:var(--accent);">8,432</div>
+            <div class="kpi-label" style="font-size:0.85rem; color:var(--text-muted);">Daily Active Users</div>
+          </div>
+          <div class="kpi-delta" style="font-size:0.8rem; color:var(--green);">+12%</div>
+        </div>
+        <!-- Sparkline SVG -->
+        <svg viewBox="0 0 100 30" style="width:100%; height:30px; margin-top:12px;">
+          <polyline
+            points="0,25 15,20 30,22 45,15 60,18 75,10 90,8 100,5"
+            fill="none"
+            stroke="var(--accent)"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <polyline
+            points="0,25 15,20 30,22 45,15 60,18 75,10 90,8 100,5 100,30 0,30"
+            fill="url(#sparkGradient)"
+          />
+          <defs>
+            <linearGradient id="sparkGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.3"/>
+              <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <div class="kpi-card" style="min-width:220px; background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div>
+            <div class="kpi-value" style="font-size:2.5rem; font-weight:700; color:var(--cyan);">$48.2K</div>
+            <div class="kpi-label" style="font-size:0.85rem; color:var(--text-muted);">Monthly Spend</div>
+          </div>
+          <div class="kpi-delta" style="font-size:0.8rem; color:var(--red);">+8%</div>
+        </div>
+        <svg viewBox="0 0 100 30" style="width:100%; height:30px; margin-top:12px;">
+          <polyline
+            points="0,20 15,18 30,22 45,19 60,25 75,22 90,28 100,25"
+            fill="none"
+            stroke="var(--cyan)"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+**Remarp equivalent:**
+
+```markdown
+---
+@type: content
+---
+## Monthly Performance
+
+:::html
+<div class="kpi-row" style="display:flex; gap:20px; justify-content:center; flex-wrap:wrap;">
+  <div class="kpi-card" style="min-width:180px; background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:24px; text-align:center;">
+    <div class="kpi-value" style="font-size:3rem; font-weight:700; color:var(--accent);">$2.4M</div>
+    <div class="kpi-label" style="font-size:0.9rem; color:var(--text-muted); margin-top:8px;">Revenue</div>
+    <div class="kpi-delta" style="font-size:0.85rem; color:var(--green); margin-top:4px;">+18% MoM</div>
+  </div>
+  <!-- Additional KPI cards... -->
+</div>
+:::
+```
+
+### 18. Infographic Slide
+
+Visual data storytelling with hero stats, icon grids, progress bars, and comparison visuals.
+
+```html
+<div class="slide">
+  <div class="slide-header"><h2>Cloud Migration Progress</h2></div>
+  <div class="slide-body">
+    <!-- Hero Stat -->
+    <div style="display:flex; align-items:center; justify-content:center; gap:20px; margin-bottom:24px;">
+      <img src="../assets/aws-icons/Architecture-Service-Icons_07312025/Arch_Migration-Transfer/64/Arch_AWS-Migration-Hub_64.svg" alt="Migration" style="width:64px; height:64px;">
+      <div class="stat-highlight" style="font-size:4rem; font-weight:700; color:var(--accent);">78%</div>
+      <div style="font-size:1.2rem; color:var(--text-secondary);">Workloads Migrated</div>
+    </div>
+
+    <!-- Icon + Text Grid -->
+    <div class="col-3" style="gap:16px; margin-bottom:24px;">
+      <div class="card" style="display:flex; align-items:center; gap:12px; padding:16px;">
+        <img src="../assets/aws-icons/Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_Amazon-EC2_48.svg" alt="EC2" style="width:40px;">
+        <div>
+          <div style="font-weight:600;">142 Instances</div>
+          <div style="font-size:0.85rem; color:var(--text-muted);">Compute layer</div>
+        </div>
+      </div>
+      <div class="card" style="display:flex; align-items:center; gap:12px; padding:16px;">
+        <img src="../assets/aws-icons/Architecture-Service-Icons_07312025/Arch_Database/48/Arch_Amazon-RDS_48.svg" alt="RDS" style="width:40px;">
+        <div>
+          <div style="font-weight:600;">24 Databases</div>
+          <div style="font-size:0.85rem; color:var(--text-muted);">Data layer</div>
+        </div>
+      </div>
+      <div class="card" style="display:flex; align-items:center; gap:12px; padding:16px;">
+        <img src="../assets/aws-icons/Architecture-Service-Icons_07312025/Arch_Storage/48/Arch_Amazon-S3_48.svg" alt="S3" style="width:40px;">
+        <div>
+          <div style="font-weight:600;">8.2 PB Storage</div>
+          <div style="font-size:0.85rem; color:var(--text-muted);">Object storage</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress Bars -->
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+          <span>Compute Migration</span>
+          <span style="color:var(--text-muted);">92%</span>
+        </div>
+        <div style="height:8px; background:var(--border); border-radius:4px; overflow:hidden;">
+          <div style="width:92%; height:100%; background:var(--accent); border-radius:4px;"></div>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+          <span>Database Migration</span>
+          <span style="color:var(--text-muted);">75%</span>
+        </div>
+        <div style="height:8px; background:var(--border); border-radius:4px; overflow:hidden;">
+          <div style="width:75%; height:100%; background:var(--cyan); border-radius:4px;"></div>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+          <span>Application Testing</span>
+          <span style="color:var(--text-muted);">60%</span>
+        </div>
+        <div style="height:8px; background:var(--border); border-radius:4px; overflow:hidden;">
+          <div style="width:60%; height:100%; background:#fdcb6e; border-radius:4px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+#### Progress Ring Variant (SVG)
+
+```html
+<div class="slide">
+  <div class="slide-header"><h2>Team Capacity</h2></div>
+  <div class="slide-body" style="display:flex; justify-content:center; gap:40px; align-items:center;">
+    <!-- Progress Ring 1 -->
+    <div style="text-align:center;">
+      <svg width="120" height="120" viewBox="0 0 120 120">
+        <circle cx="60" cy="60" r="50" fill="none" stroke="var(--border)" stroke-width="10"/>
+        <circle cx="60" cy="60" r="50" fill="none" stroke="var(--accent)" stroke-width="10"
+          stroke-dasharray="314" stroke-dashoffset="63" stroke-linecap="round"
+          transform="rotate(-90 60 60)"/>
+        <text x="60" y="65" text-anchor="middle" fill="var(--text-primary)" font-size="24" font-weight="700">80%</text>
+      </svg>
+      <div style="margin-top:8px; color:var(--text-secondary);">Dev Team</div>
+    </div>
+    <!-- Progress Ring 2 -->
+    <div style="text-align:center;">
+      <svg width="120" height="120" viewBox="0 0 120 120">
+        <circle cx="60" cy="60" r="50" fill="none" stroke="var(--border)" stroke-width="10"/>
+        <circle cx="60" cy="60" r="50" fill="none" stroke="var(--cyan)" stroke-width="10"
+          stroke-dasharray="314" stroke-dashoffset="94" stroke-linecap="round"
+          transform="rotate(-90 60 60)"/>
+        <text x="60" y="65" text-anchor="middle" fill="var(--text-primary)" font-size="24" font-weight="700">70%</text>
+      </svg>
+      <div style="margin-top:8px; color:var(--text-secondary);">Ops Team</div>
+    </div>
+    <!-- Progress Ring 3 -->
+    <div style="text-align:center;">
+      <svg width="120" height="120" viewBox="0 0 120 120">
+        <circle cx="60" cy="60" r="50" fill="none" stroke="var(--border)" stroke-width="10"/>
+        <circle cx="60" cy="60" r="50" fill="none" stroke="#fdcb6e" stroke-width="10"
+          stroke-dasharray="314" stroke-dashoffset="157" stroke-linecap="round"
+          transform="rotate(-90 60 60)"/>
+        <text x="60" y="65" text-anchor="middle" fill="var(--text-primary)" font-size="24" font-weight="700">50%</text>
+      </svg>
+      <div style="margin-top:8px; color:var(--text-secondary);">QA Team</div>
+    </div>
+  </div>
+</div>
+```
+
+Progress ring formula: `stroke-dashoffset = circumference * (1 - percentage/100)` where circumference = 2 * pi * r = 314 for r=50.
+
+#### Horizontal Comparison Bars
+
+```html
+<div class="slide">
+  <div class="slide-header"><h2>Service Comparison</h2></div>
+  <div class="slide-body">
+    <div style="display:flex; flex-direction:column; gap:20px; max-width:600px; margin:0 auto;">
+      <div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+          <span style="font-weight:600;">EKS</span>
+          <span style="color:var(--text-muted);">Performance: 95</span>
+        </div>
+        <div style="display:flex; height:24px; background:var(--border); border-radius:4px; overflow:hidden;">
+          <div style="width:95%; background:var(--accent);"></div>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+          <span style="font-weight:600;">ECS</span>
+          <span style="color:var(--text-muted);">Performance: 82</span>
+        </div>
+        <div style="display:flex; height:24px; background:var(--border); border-radius:4px; overflow:hidden;">
+          <div style="width:82%; background:var(--cyan);"></div>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+          <span style="font-weight:600;">Lambda</span>
+          <span style="color:var(--text-muted);">Performance: 78</span>
+        </div>
+        <div style="display:flex; height:24px; background:var(--border); border-radius:4px; overflow:hidden;">
+          <div style="width:78%; background:#fdcb6e;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+**Remarp equivalent:**
+
+```markdown
+---
+@type: content
+---
+## Cloud Migration Progress
+
+:::html
+<!-- Hero Stat -->
+<div style="display:flex; align-items:center; justify-content:center; gap:20px; margin-bottom:24px;">
+  <img src="../assets/aws-icons/Architecture-Service-Icons_07312025/Arch_Migration-Transfer/64/Arch_AWS-Migration-Hub_64.svg" alt="Migration" style="width:64px;">
+  <div class="stat-highlight" style="font-size:4rem; font-weight:700; color:var(--accent);">78%</div>
+  <div style="font-size:1.2rem; color:var(--text-secondary);">Workloads Migrated</div>
+</div>
+
+<!-- Progress Bars -->
+<div style="display:flex; flex-direction:column; gap:12px;">
+  <div>
+    <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+      <span>Compute Migration</span><span style="color:var(--text-muted);">92%</span>
+    </div>
+    <div style="height:8px; background:var(--border); border-radius:4px; overflow:hidden;">
+      <div style="width:92%; height:100%; background:var(--accent);"></div>
+    </div>
+  </div>
+</div>
+:::
+```
+
+### 19. Data Table Slide
+
+Styled data table with alternating rows, hover effects, and status badges.
+
+```html
+<div class="slide">
+  <div class="slide-header"><h2>Cluster Status</h2></div>
+  <div class="slide-body" style="overflow-x:auto;">
+    <table class="data-table" style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+      <thead>
+        <tr style="background:var(--bg-card); border-bottom:2px solid var(--border);">
+          <th style="padding:12px 16px; text-align:left; color:var(--text-muted); font-weight:600;">Cluster</th>
+          <th style="padding:12px 16px; text-align:left; color:var(--text-muted); font-weight:600;">Region</th>
+          <th style="padding:12px 16px; text-align:right; color:var(--text-muted); font-weight:600;">Nodes</th>
+          <th style="padding:12px 16px; text-align:right; color:var(--text-muted); font-weight:600;">CPU %</th>
+          <th style="padding:12px 16px; text-align:right; color:var(--text-muted); font-weight:600;">Memory %</th>
+          <th style="padding:12px 16px; text-align:center; color:var(--text-muted); font-weight:600;">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:12px 16px; font-weight:500;">prod-cluster-01</td>
+          <td style="padding:12px 16px; color:var(--text-secondary);">us-east-1</td>
+          <td style="padding:12px 16px; text-align:right;">24</td>
+          <td style="padding:12px 16px; text-align:right;">68%</td>
+          <td style="padding:12px 16px; text-align:right;">72%</td>
+          <td style="padding:12px 16px; text-align:center;">
+            <span class="badge-up" style="background:var(--green); color:#fff; padding:4px 12px; border-radius:12px; font-size:0.75rem;">Healthy</span>
+          </td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border); background:var(--bg-card);">
+          <td style="padding:12px 16px; font-weight:500;">prod-cluster-02</td>
+          <td style="padding:12px 16px; color:var(--text-secondary);">eu-west-1</td>
+          <td style="padding:12px 16px; text-align:right;">18</td>
+          <td style="padding:12px 16px; text-align:right;">45%</td>
+          <td style="padding:12px 16px; text-align:right;">52%</td>
+          <td style="padding:12px 16px; text-align:center;">
+            <span class="badge-up" style="background:var(--green); color:#fff; padding:4px 12px; border-radius:12px; font-size:0.75rem;">Healthy</span>
+          </td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:12px 16px; font-weight:500;">staging-cluster</td>
+          <td style="padding:12px 16px; color:var(--text-secondary);">us-west-2</td>
+          <td style="padding:12px 16px; text-align:right;">8</td>
+          <td style="padding:12px 16px; text-align:right;">82%</td>
+          <td style="padding:12px 16px; text-align:right;">78%</td>
+          <td style="padding:12px 16px; text-align:center;">
+            <span style="background:#fdcb6e; color:#1a1f35; padding:4px 12px; border-radius:12px; font-size:0.75rem;">Warning</span>
+          </td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border); background:var(--bg-card);">
+          <td style="padding:12px 16px; font-weight:500;">dev-cluster</td>
+          <td style="padding:12px 16px; color:var(--text-secondary);">ap-northeast-1</td>
+          <td style="padding:12px 16px; text-align:right;">4</td>
+          <td style="padding:12px 16px; text-align:right;">25%</td>
+          <td style="padding:12px 16px; text-align:right;">30%</td>
+          <td style="padding:12px 16px; text-align:center;">
+            <span class="badge-down" style="background:var(--red); color:#fff; padding:4px 12px; border-radius:12px; font-size:0.75rem;">Degraded</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+.data-table tbody tr:hover {
+  background: rgba(108, 92, 231, 0.1) !important;
+}
+</style>
+```
+
+#### Highlight Column Pattern
+
+```html
+<div class="slide">
+  <div class="slide-header"><h2>Feature Comparison</h2></div>
+  <div class="slide-body" style="overflow-x:auto;">
+    <table class="data-table" style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+      <thead>
+        <tr style="background:var(--bg-card); border-bottom:2px solid var(--border);">
+          <th style="padding:12px 16px; text-align:left;">Feature</th>
+          <th style="padding:12px 16px; text-align:center;">Basic</th>
+          <th style="padding:12px 16px; text-align:center; background:rgba(108,92,231,0.15); border-left:2px solid var(--accent); border-right:2px solid var(--accent);">Pro (Recommended)</th>
+          <th style="padding:12px 16px; text-align:center;">Enterprise</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:12px 16px;">Auto Scaling</td>
+          <td style="padding:12px 16px; text-align:center;">-</td>
+          <td style="padding:12px 16px; text-align:center; background:rgba(108,92,231,0.08); border-left:2px solid var(--accent); border-right:2px solid var(--accent); color:var(--green);">Yes</td>
+          <td style="padding:12px 16px; text-align:center; color:var(--green);">Yes</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border); background:var(--bg-card);">
+          <td style="padding:12px 16px;">Multi-Region</td>
+          <td style="padding:12px 16px; text-align:center;">-</td>
+          <td style="padding:12px 16px; text-align:center; background:rgba(108,92,231,0.08); border-left:2px solid var(--accent); border-right:2px solid var(--accent); color:var(--green);">Yes</td>
+          <td style="padding:12px 16px; text-align:center; color:var(--green);">Yes</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:12px 16px;">SLA</td>
+          <td style="padding:12px 16px; text-align:center;">99%</td>
+          <td style="padding:12px 16px; text-align:center; background:rgba(108,92,231,0.08); border-left:2px solid var(--accent); border-right:2px solid var(--accent); font-weight:600;">99.9%</td>
+          <td style="padding:12px 16px; text-align:center;">99.99%</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border); background:var(--bg-card);">
+          <td style="padding:12px 16px;">Support</td>
+          <td style="padding:12px 16px; text-align:center;">Email</td>
+          <td style="padding:12px 16px; text-align:center; background:rgba(108,92,231,0.08); border-left:2px solid var(--accent); border-right:2px solid var(--accent);">24/7 Chat</td>
+          <td style="padding:12px 16px; text-align:center;">Dedicated TAM</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+```
+
+**Remarp equivalent:**
+
+```markdown
+---
+@type: content
+---
+## Cluster Status
+
+:::html
+<table class="data-table" style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+  <thead>
+    <tr style="background:var(--bg-card); border-bottom:2px solid var(--border);">
+      <th style="padding:12px 16px; text-align:left; color:var(--text-muted);">Cluster</th>
+      <th style="padding:12px 16px; text-align:left; color:var(--text-muted);">Region</th>
+      <th style="padding:12px 16px; text-align:right; color:var(--text-muted);">Nodes</th>
+      <th style="padding:12px 16px; text-align:center; color:var(--text-muted);">Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:12px 16px;">prod-cluster-01</td>
+      <td style="padding:12px 16px;">us-east-1</td>
+      <td style="padding:12px 16px; text-align:right;">24</td>
+      <td style="padding:12px 16px; text-align:center;">
+        <span class="badge-up" style="background:var(--green); color:#fff; padding:4px 12px; border-radius:12px;">Healthy</span>
+      </td>
+    </tr>
+  </tbody>
+</table>
+:::
+
+:::css
+.data-table tbody tr:hover {
+  background: rgba(108, 92, 231, 0.1) !important;
+}
+:::
+```
+
 ## Slide Count Guidelines
 
 | Duration | Slides | Pace |
@@ -797,6 +1601,214 @@ export function init(canvasId, slideIndex, deck) {
 {
   "type": "thankyou",
   "message": "Block 3 — Advanced 완료"
+}
+```
+
+#### §15 Dashboard
+
+```jsonc
+{
+  "type": "dashboard",
+  "title": "Operations Dashboard",
+  "kpis": [
+    { "value": "99.9%", "label": "Availability", "delta": "+0.2%", "deltaType": "positive" },
+    { "value": "1.2s", "label": "Avg Latency", "delta": "-15%", "deltaType": "positive" },
+    { "value": "847", "label": "Active Pods", "delta": "+12%", "deltaType": "negative" }
+  ],
+  "charts": [
+    {
+      "id": "bar-chart",
+      "type": "bar",
+      "labels": ["Mon", "Tue", "Wed", "Thu", "Fri"],
+      "datasets": [{ "label": "Requests (K)", "data": [12, 19, 15, 25, 22] }]
+    },
+    {
+      "id": "doughnut-chart",
+      "type": "doughnut",
+      "labels": ["Compute", "Storage", "Network", "Other"],
+      "datasets": [{ "data": [45, 25, 20, 10] }]
+    }
+  ],
+  "notes": "KPI와 차트를 함께 보여주는 대시보드 슬라이드."
+}
+```
+
+#### §16 Chart
+
+```jsonc
+// Bar chart
+{
+  "type": "chart",
+  "title": "Weekly Request Volume",
+  "chartType": "bar",
+  "chartId": "weekly-bar",
+  "labels": ["Week 1", "Week 2", "Week 3", "Week 4"],
+  "datasets": [
+    { "label": "Requests (M)", "data": [2.4, 3.1, 2.8, 3.5], "color": "accent" }
+  ]
+}
+
+// Line chart
+{
+  "type": "chart",
+  "title": "Latency Trend",
+  "chartType": "line",
+  "chartId": "latency-line",
+  "labels": ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00"],
+  "datasets": [
+    { "label": "P99 Latency (ms)", "data": [120, 95, 180, 220, 150, 110], "color": "cyan", "fill": true }
+  ]
+}
+
+// Doughnut chart
+{
+  "type": "chart",
+  "title": "Cost Breakdown",
+  "chartType": "doughnut",
+  "chartId": "cost-doughnut",
+  "labels": ["EC2", "RDS", "S3", "Lambda", "Other"],
+  "datasets": [
+    { "data": [40, 25, 15, 12, 8], "colors": ["accent", "cyan", "#fdcb6e", "#e17055", "muted"] }
+  ]
+}
+
+// CSS-only pie (no Chart.js)
+{
+  "type": "chart",
+  "title": "Resource Allocation",
+  "chartType": "css-pie",
+  "segments": [
+    { "label": "Compute", "percent": 45, "color": "accent" },
+    { "label": "Storage", "percent": 25, "color": "cyan" },
+    { "label": "Network", "percent": 15, "color": "#fdcb6e" },
+    { "label": "Other", "percent": 15, "color": "muted" }
+  ]
+}
+```
+
+#### §17 KPI
+
+```jsonc
+{
+  "type": "kpi",
+  "title": "Monthly Performance",
+  "metrics": [
+    { "value": "$2.4M", "label": "Revenue", "delta": "+18% MoM", "deltaType": "positive", "color": "accent" },
+    { "value": "99.95%", "label": "Uptime SLA", "delta": "+0.05%", "deltaType": "positive", "color": "cyan" },
+    { "value": "142ms", "label": "P95 Latency", "delta": "-23ms", "deltaType": "positive", "color": "#fdcb6e" },
+    { "value": "12", "label": "Open Incidents", "delta": "+3", "deltaType": "negative", "color": "#e17055" }
+  ]
+}
+
+// With sparklines
+{
+  "type": "kpi",
+  "title": "Trend Metrics",
+  "metrics": [
+    {
+      "value": "8,432",
+      "label": "Daily Active Users",
+      "delta": "+12%",
+      "deltaType": "positive",
+      "sparkline": [25, 20, 22, 15, 18, 10, 8, 5]
+    },
+    {
+      "value": "$48.2K",
+      "label": "Monthly Spend",
+      "delta": "+8%",
+      "deltaType": "negative",
+      "sparkline": [20, 18, 22, 19, 25, 22, 28, 25]
+    }
+  ]
+}
+```
+
+#### §18 Infographic
+
+```jsonc
+{
+  "type": "infographic",
+  "title": "Cloud Migration Progress",
+  "heroStat": {
+    "value": "78%",
+    "label": "Workloads Migrated",
+    "icon": "../assets/aws-icons/Architecture-Service-Icons_07312025/Arch_Migration-Transfer/64/Arch_AWS-Migration-Hub_64.svg"
+  },
+  "iconGrid": [
+    { "icon": "ec2", "title": "142 Instances", "subtitle": "Compute layer" },
+    { "icon": "rds", "title": "24 Databases", "subtitle": "Data layer" },
+    { "icon": "s3", "title": "8.2 PB Storage", "subtitle": "Object storage" }
+  ],
+  "progressBars": [
+    { "label": "Compute Migration", "percent": 92, "color": "accent" },
+    { "label": "Database Migration", "percent": 75, "color": "cyan" },
+    { "label": "Application Testing", "percent": 60, "color": "#fdcb6e" }
+  ]
+}
+
+// Progress rings variant
+{
+  "type": "infographic",
+  "title": "Team Capacity",
+  "progressRings": [
+    { "label": "Dev Team", "percent": 80, "color": "accent" },
+    { "label": "Ops Team", "percent": 70, "color": "cyan" },
+    { "label": "QA Team", "percent": 50, "color": "#fdcb6e" }
+  ]
+}
+
+// Horizontal comparison bars
+{
+  "type": "infographic",
+  "title": "Service Comparison",
+  "comparisonBars": [
+    { "label": "EKS", "value": 95, "color": "accent" },
+    { "label": "ECS", "value": 82, "color": "cyan" },
+    { "label": "Lambda", "value": 78, "color": "#fdcb6e" }
+  ]
+}
+```
+
+#### §19 Data Table
+
+```jsonc
+{
+  "type": "datatable",
+  "title": "Cluster Status",
+  "columns": [
+    { "key": "cluster", "label": "Cluster", "align": "left" },
+    { "key": "region", "label": "Region", "align": "left" },
+    { "key": "nodes", "label": "Nodes", "align": "right" },
+    { "key": "cpu", "label": "CPU %", "align": "right" },
+    { "key": "memory", "label": "Memory %", "align": "right" },
+    { "key": "status", "label": "Status", "align": "center", "badge": true }
+  ],
+  "rows": [
+    { "cluster": "prod-cluster-01", "region": "us-east-1", "nodes": 24, "cpu": "68%", "memory": "72%", "status": { "text": "Healthy", "type": "success" } },
+    { "cluster": "prod-cluster-02", "region": "eu-west-1", "nodes": 18, "cpu": "45%", "memory": "52%", "status": { "text": "Healthy", "type": "success" } },
+    { "cluster": "staging-cluster", "region": "us-west-2", "nodes": 8, "cpu": "82%", "memory": "78%", "status": { "text": "Warning", "type": "warning" } },
+    { "cluster": "dev-cluster", "region": "ap-northeast-1", "nodes": 4, "cpu": "25%", "memory": "30%", "status": { "text": "Degraded", "type": "error" } }
+  ],
+  "hoverHighlight": true
+}
+
+// Highlight column variant
+{
+  "type": "datatable",
+  "title": "Feature Comparison",
+  "highlightColumn": "pro",
+  "columns": [
+    { "key": "feature", "label": "Feature", "align": "left" },
+    { "key": "basic", "label": "Basic", "align": "center" },
+    { "key": "pro", "label": "Pro (Recommended)", "align": "center" },
+    { "key": "enterprise", "label": "Enterprise", "align": "center" }
+  ],
+  "rows": [
+    { "feature": "Auto Scaling", "basic": "-", "pro": "Yes", "enterprise": "Yes" },
+    { "feature": "Multi-Region", "basic": "-", "pro": "Yes", "enterprise": "Yes" },
+    { "feature": "SLA", "basic": "99%", "pro": "99.9%", "enterprise": "99.99%" },
+    { "feature": "Support", "basic": "Email", "pro": "24/7 Chat", "enterprise": "Dedicated TAM" }
+  ]
 }
 ```
 
