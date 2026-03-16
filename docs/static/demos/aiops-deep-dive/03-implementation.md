@@ -23,10 +23,41 @@ block: implementation
 
 ---
 
+@type: timeline
+
+## AIOps 구현 로드맵 — Overview
+
+### Phase 1: Foundation (M1-2)
+Observability Pipeline 구축
+ADOT + CloudWatch 통합 수집, SLI/SLO 정의
+
+### Phase 2: Detection (M3-4)
+ML 기반 이상 탐지 활성화
+DevOps Guru, Anomaly Detection, Alert 최적화
+
+### Phase 3: Automation (M5-6)
+자동 복구 파이프라인 구현
+EventBridge → SSM Runbook, Human-in-the-Loop → Full Auto
+
+### Phase 4: Optimization (M7+)
+지능형 운영 고도화
+Bedrock Agent PoC, 피드백 루프, 비용 최적화
+
+:::notes
+{timing: 2min}
+AIOps 구현은 빅뱅이 아닌 단계적 접근이 핵심입니다. 이 타임라인은 4단계 로드맵의 전체 흐름을 보여줍니다. ↑↓ 키로 각 Phase를 하나씩 살펴보겠습니다.
+
+Phase 1에서 데이터 수집 파이프라인을 제대로 구축하는 것이 가장 중요합니다. Phase 2에서 ML 기반 이상 탐지를, Phase 3에서 자동 복구를, Phase 4에서 Bedrock Agent를 활용한 지능형 운영을 구현합니다.
+
+{cue: transition} 이제 각 Phase의 세부 구성요소를 다이어그램으로 살펴보겠습니다.
+:::
+
+---
+
 @type: canvas
 @canvas-id: implementation-roadmap
 
-## AIOps 구현 로드맵
+## AIOps 구현 로드맵 — Detail
 
 :::canvas
 box phase1 "Phase 1: Foundation (M1-2)" at 20,60 size 180,70 color #41B3FF step 1
