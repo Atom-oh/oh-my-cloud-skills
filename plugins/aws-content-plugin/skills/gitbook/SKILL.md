@@ -168,5 +168,5 @@ find . -name "*.md" | head -20
 
 ## References
 
-- `reference/structure-guide.md` — Project structure patterns and conventions
-- `reference/component-patterns.md` — GitBook component syntax and usage
+- `references/structure-guide.md` — Project structure patterns and conventions
+- `references/component-patterns.md` — GitBook component syntax and usage

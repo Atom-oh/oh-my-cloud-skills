@@ -1,29 +1,31 @@
 ---
 remarp: true
 version: 1
-title: "AIOps on AWS — AI 기반 클라우드 운영 자동화"
+title: "AIOps on AWS — Intelligent Cloud Operations"
 author: "Junseok Oh"
-audience: "AnyCompany 클라우드 엔지니어 (300 Level)"
-date: 2026-03-15
+audience: "AnyCompany 엔지니어링 팀 (300 레벨)"
+date: 2026-03-20
 event: "AnyCompany Technical Session"
 lang: ko
 
 blocks:
   - name: foundations
-    title: "AIOps 기반과 왜 지금인가"
-    duration: 25
-  - name: architecture
-    title: "AIOps 핵심 아키텍처와 AWS 서비스"
+    title: "AIOps Foundations & AWS Observability"
+    duration: 30
+  - name: ml-operations
+    title: "ML-Powered Operations & Anomaly Detection"
     duration: 30
   - name: implementation
-    title: "구현 전략과 Best Practices"
-    duration: 30
+    title: "Implementation Strategies & Best Practices"
+    duration: 25
 
 theme:
   primary: "#161D26"
   accent: "#41B3FF"
-  font: "Pretendard"
+  font: "Pretendard, Calibri, system-ui, sans-serif"
   codeTheme: "github-dark"
+  footer: "© 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark."
+  logo: "../common/pptx-theme/images/logo_1.png"
 
 transition:
   default: slide

@@ -14,6 +14,7 @@ const sidebars: SidebarsConfig = {
       label: 'Agents',
       items: [
         'aws-content-plugin/agents/presentation-agent',
+        'aws-content-plugin/agents/reactive-presentation-agent',
         'aws-content-plugin/agents/architecture-diagram-agent',
         'aws-content-plugin/agents/animated-diagram-agent',
         'aws-content-plugin/agents/document-agent',
@@ -138,6 +139,7 @@ const sidebars: SidebarsConfig = {
         'remarp-guide/themes/custom-themes',
       ],
     },
+    'remarp-guide/workflow',
     'remarp-guide/build-cli',
     'remarp-guide/vscode-extension',
     'remarp-guide/migration-from-marp',

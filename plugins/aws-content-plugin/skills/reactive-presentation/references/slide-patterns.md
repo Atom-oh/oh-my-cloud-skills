@@ -79,6 +79,230 @@ Key elements:
 | Skip | Yes | §0b full | CSS gradient + accent line + speaker |
 | Skip | Skip | §0b without speaker div | CSS gradient + accent line only |
 
+### Asset Path Rules
+
+Three path forms exist for `common/` assets. Each arises from a different authoring context:
+
+| Form | Source | Example |
+|------|--------|---------|
+| `../common/...` | Remarp `@directives` (`@background`, `@badge`) in `.md` source | `@background: ../common/pptx-theme/images/Picture_13.png` |
+| `./common/...` | Build script rewrites `../common/` → `./common/` for HTML output | `<img src="./common/pptx-theme/images/Picture_13.png">` |
+| `common/...` (bare) | `:::html` blocks where raw HTML bypasses path normalization | `<img src="common/aws-icons/services/Arch_Amazon-CloudWatch_48.svg">` |
+
+**pptx-theme resolution order** — the build script locates theme assets in this order:
+1. `self.theme_dir` — extracted from the PPTX file specified in frontmatter
+2. **Fallback**: `../common/pptx-theme/` — pre-extracted shared theme at the parent level
+
+**AWS icon paths in `:::html` blocks** — use bare `common/aws-icons/{category}/{filename}` (no `./` prefix needed). The build script's icon copier regex matches all three path forms and copies referenced icons to the output directory automatically.
+
+**Rule**: When writing `:::html` blocks with icon `<img>` tags, use `common/aws-icons/{category}/{filename}`. Do not add `./` or `../` prefixes — bare paths work and are the convention for raw HTML blocks.
+
+### Layout Alignment Rules
+
+#### A. Layout Class Quick Reference
+
+theme.css provides these layout classes. Always use them instead of writing inline `display:flex`/`display:grid`.
+
+| Class | Type | Columns | Gap | Use When |
+|-------|------|---------|-----|----------|
+| `.col-2` | Grid | 1fr 1fr | 1rem | Equal-width 2-column (cards, comparisons) |
+| `.col-3` | Grid | 1fr 1fr 1fr | 0.83rem | Equal-width 3-column |
+| `.grid-2x2` | Grid | 2×2 | 1.5rem | 4-cell dashboard/KPI |
+| `.grid-3x2` | Grid | 3×2 | 1rem | 6-cell dashboard |
+| `.columns` | Flex | equal | 2rem | Text-heavy 2+ columns |
+| `.columns-3` | Flex | equal ×3 | 1.5rem | Text-heavy 3-column |
+| `.columns-2-1` | Flex | 2:1 ratio | 2rem | Main + sidebar |
+| `.columns-1-2` | Flex | 1:2 ratio | 2rem | Sidebar + main |
+| `.center-content` | Flex | centered | — | Vertical + horizontal centering |
+
+#### B. Grid vs Flexbox Selection
+
+| Situation | Choose | Why |
+|-----------|--------|-----|
+| Equal-size cards/cells | Grid (`.col-2`, `.col-3`) | Guarantees uniform cell size |
+| Text + image mix | Flex (`.columns`) | Flexible content height |
+| Asymmetric layout | Flex (`.columns-2-1`) | Ratio control |
+| Dashboard / KPI tiles | Grid (`.grid-2x2`) | Precise cell placement |
+| Single content centered | `.center-content` | One class, done |
+
+#### C. Flow Diagram Utilities
+
+theme.css provides composable flow diagram classes. **Never create per-slide custom flow classes** (e.g. `obs-flow`, `devops-guru-flow`). Combine these utilities instead:
+
+| Class | Purpose |
+|-------|---------|
+| `.flow-h` | Horizontal flow container (flex row, centered, gap 1rem) |
+| `.flow-v` | Vertical flow container (flex column, centered, gap 0.5rem) |
+| `.flow-col` | Column within a flow (vertical stack) |
+| `.flow-arrow` | Arrow between steps (1.5rem, muted color) |
+| `.flow-arrow .arrow-label` | Small label under arrow |
+| `.flow-box` | Styled content block (padded, rounded, min-width 120px) |
+| `.flow-group` | Bordered region grouping items (padding, rounded) |
+| `.flow-group .flow-group-label` | Group header label |
+| `.flow-desc` | Bottom summary with step labels |
+| `.icon-item` | Icon + label component (48px default) |
+| `.icon-item.sm` | Small icon variant (32px) |
+| `.icon-item.lg` | Large icon variant (64px) |
+| `.text-icon` | Text-based icon substitute (40×40px box) |
+
+**Color utilities** (background + border):
+
+| Class | Color |
+|-------|-------|
+| `.bg-blue` | Blue tint + blue border |
+| `.bg-orange` | Orange tint + orange border |
+| `.bg-green` | Green tint + green border |
+| `.bg-red` | Red tint + red border |
+| `.bg-purple` | Purple tint + purple border |
+| `.bg-pink` | Pink tint + pink border |
+| `.bg-accent` | Card bg + accent border (2px) |
+| `.bg-dark` | Dark AWS (#232F3E) + white text |
+
+Text color: `.text-blue`, `.text-orange`, `.text-green`, `.text-red`, `.text-purple`, `.text-pink`
+
+**Pattern 1: Horizontal service flow** (A → B → C):
+```html
+<div class="flow-h">
+  <div class="card" style="text-align:center; padding:1rem;">
+    <img src="common/aws-icons/services/Arch_Amazon-CloudWatch_48.svg" style="width:48px;">
+    <p>CloudWatch</p>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="card" style="text-align:center; padding:1rem;">
+    <img src="common/aws-icons/services/Arch_Amazon-EventBridge_48.svg" style="width:48px;">
+    <p>EventBridge</p>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="card" style="text-align:center; padding:1rem;">
+    <img src="common/aws-icons/services/Arch_AWS-Lambda_48.svg" style="width:48px;">
+    <p>Lambda</p>
+  </div>
+</div>
+```
+
+**Pattern 2: Multi-column architecture flow** (grouped columns with icons):
+```html
+<div class="flow-h">
+  <div class="flow-group bg-blue">
+    <div class="flow-group-label">워크로드</div>
+    <div class="icon-item"><img src="common/aws-icons/services/Arch_Amazon-EC2_48.svg"><span>EC2</span></div>
+    <div class="icon-item"><img src="common/aws-icons/services/Arch_Amazon-Elastic-Container-Service_48.svg"><span>ECS</span></div>
+  </div>
+  <div class="flow-arrow">→<span class="arrow-label">telemetry</span></div>
+  <div class="flow-group bg-orange">
+    <div class="flow-group-label">수집 계층</div>
+    <div class="flow-box">OTEL Collector</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-col">
+    <div class="flow-box bg-green text-green">Metrics</div>
+    <div class="flow-box bg-pink text-pink">Logs</div>
+    <div class="flow-box bg-purple text-purple">Traces</div>
+  </div>
+</div>
+```
+
+**Pattern 3: Vertical branch flow** (horizontal main + vertical branch):
+```html
+<div class="flow-v" style="flex:1;">
+  <div class="flow-h" style="flex:0;">
+    <div class="card" style="text-align:center; padding:1rem;">
+      <h4>Step 1</h4>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="card" style="text-align:center; padding:1rem;">
+      <h4>Step 2</h4>
+    </div>
+  </div>
+  <div class="flow-arrow">↓</div>
+  <div class="card" style="text-align:center; padding:0.5rem 1rem;">
+    <h4>Branch Target</h4>
+  </div>
+</div>
+```
+
+**Pattern 4: Icon + text inline** (service label):
+```html
+<div class="icon-item sm" style="flex-direction:row; gap:0.5rem;">
+  <img src="common/aws-icons/services/Arch_Amazon-Bedrock_48.svg">
+  <span>Amazon Bedrock</span>
+</div>
+```
+
+**Pattern 5: Service card grid** (multi-service overview):
+```html
+<div class="col-3">
+  <div class="card" style="text-align:center; padding:1rem;">
+    <img src="common/aws-icons/services/Arch_Amazon-SageMaker_48.svg" style="width:48px; margin-bottom:0.5rem;">
+    <h4>SageMaker</h4>
+    <p style="font-size:0.85rem; color:var(--text-secondary);">Model training & deployment</p>
+  </div>
+  <div class="card" style="text-align:center; padding:1rem;">
+    <img src="common/aws-icons/services/Arch_Amazon-Bedrock_48.svg" style="width:48px; margin-bottom:0.5rem;">
+    <h4>Bedrock</h4>
+    <p style="font-size:0.85rem; color:var(--text-secondary);">Foundation model APIs</p>
+  </div>
+  <div class="card" style="text-align:center; padding:1rem;">
+    <img src="common/aws-icons/services/Arch_Amazon-CodeWhisperer_48.svg" style="width:48px; margin-bottom:0.5rem;">
+    <h4>CodeWhisperer</h4>
+    <p style="font-size:0.85rem; color:var(--text-secondary);">AI code generation</p>
+  </div>
+</div>
+```
+
+#### D. Spacing Rules
+
+Use rem-based values from theme.css. Do not use arbitrary px values in inline styles.
+
+| Standard Gap | rem | Use |
+|-------------|-----|-----|
+| Tight | `0.5rem` | Icon-text inline, compact elements |
+| Normal | `1rem` | Grid cells (`.col-2`, `.col-3`, `.grid-3x2`) |
+| Comfortable | `1.5rem` | Dashboard grids (`.grid-2x2`, `.columns-3`) |
+| Spacious | `2rem` | Flex columns (`.columns`, `.columns-2-1`) |
+
+**Rule**: When overriding gap in inline styles, pick the nearest standard value. Never use arbitrary values like `gap:17px` or `gap:23px`.
+
+#### E. Anti-patterns
+
+| Anti-pattern | Use Instead |
+|-------------|-------------|
+| Custom flow class per slide (`obs-flow`, `dg-flow`, `eb-flow`) | `.flow-h` + `.flow-col` + `.flow-box` + `.flow-group` combinations |
+| `:::css` block defining per-slide classes | Compose from theme.css utility classes (`.bg-blue`, `.flow-arrow`, `.icon-item`) |
+| `display:flex` / `display:grid` in inline style | `.columns`, `.col-2`, `.flow-h`, `.center-content` classes |
+| Arbitrary gap values (`gap:17px`, `gap:23px`) | Standard rem values (`1rem`, `1.5rem`, `2rem`) |
+| `position:absolute` on all elements | Reserve for title/cover slides only; use flex/grid everywhere else |
+| Duplicating card styles per slide via `<style>` | Use `.card` class from theme.css |
+| Custom icon sizing per slide | `.icon-item` (48px), `.icon-item.sm` (32px), `.icon-item.lg` (64px) |
+| Hardcoded color values (`background: rgba(59,130,246,0.1)`) | `.bg-blue`, `.bg-orange`, `.bg-green` etc. |
+
+### 0c. Agenda Slide
+
+Session agenda with numbered dots, horizontal timeline, time labels, and break markers.
+
+**Remarp source:**
+```markdown
+@type: agenda
+@timing: 90min
+
+## Agenda
+
+1. AIOps 기반과 왜 지금인가 (25분)
+2. AIOps 핵심 아키텍처와 AWS 서비스 (30분)
+- Break (5분)
+3. 구현 전략과 Best Practices (30분)
+
+> 질문은 각 Block 종료 시에 받겠습니다.
+```
+
+**Rules:**
+- `@type: agenda` 필수 — 없으면 일반 content 슬라이드로 렌더링됨
+- 번호 목록 사용 (`1. 2. 3.`) — "Block N" 접두사 금지 (렌더러가 자동으로 넘버링 dot 추가)
+- 휴식: `- Break (duration)` 또는 `- 휴식 (duration)` → ☕ break marker
+- `{.click}` 사용 금지 — agenda는 전체가 한번에 표시됨
+- `@timing` 디렉티브 → 부제목 "총 X 세션"
+- `> blockquote` → 타임라인 아래 callout 박스
+
 ### 1. Title Slide (per-block)
 ```html
 <div class="slide title-slide">
@@ -163,7 +387,178 @@ Canvas와의 선택 기준:
 - step animation이 필요 → Canvas (`@type: canvas`)
 - 정적 아키텍처 한눈에 → Diagram Image (`@type: content` + `@img:`)
 
+### 4c. HTML Architecture Slide (Multi-layer, 박스 5+)
+
+박스 5개 이상의 다계층 아키텍처, 서비스 에코시스템, 멀티노드 맵 등은 `:::canvas` DSL 대신 `:::html` + `:::css`로 작성한다. flexbox/grid 레이아웃이 복잡한 배치에서 더 안정적이고 정확한 결과를 제공한다.
+
+> **규칙**: 박스 5개 이상이면 `:::canvas` 사용 금지. 반드시 `:::html` + `:::css`를 사용한다.
+
+#### Remarp Source 형식 (에이전트가 직접 사용)
+
+```markdown
+---
+remarp: true
+theme: ../common/theme.css
+---
+
+# AWS AIOps 에코시스템
+
+@type: content
+
+:::html
+<div class="arch-diagram">
+  <!-- Layer 1: Data Sources -->
+  <div class="arch-layer" data-layer="sources">
+    <div class="layer-label">Data Sources</div>
+    <div class="flow-h">
+      <div class="arch-box">
+        <img src="../common/aws-icons/services/Arch_Amazon-CloudWatch_48.svg" alt="CloudWatch" />
+        <span>CloudWatch</span>
+      </div>
+      <div class="arch-box">
+        <img src="../common/aws-icons/services/Arch_AWS-CloudTrail_48.svg" alt="CloudTrail" />
+        <span>CloudTrail</span>
+      </div>
+      <div class="arch-box">
+        <img src="../common/aws-icons/services/Arch_AWS-X-Ray_48.svg" alt="X-Ray" />
+        <span>X-Ray</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="arch-arrow">▼</div>
+
+  <!-- Layer 2: Processing -->
+  <div class="arch-layer" data-layer="processing">
+    <div class="layer-label">AI/ML Processing</div>
+    <div class="flow-h">
+      <div class="arch-box highlight">
+        <img src="../common/aws-icons/services/Arch_Amazon-SageMaker_48.svg" alt="SageMaker" />
+        <span>SageMaker</span>
+      </div>
+      <div class="arch-box highlight">
+        <img src="../common/aws-icons/services/Arch_Amazon-Bedrock_48.svg" alt="Bedrock" />
+        <span>Bedrock</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="arch-arrow">▼</div>
+
+  <!-- Layer 3: Actions -->
+  <div class="arch-layer" data-layer="actions">
+    <div class="layer-label">Automated Actions</div>
+    <div class="flow-h">
+      <div class="arch-box">
+        <img src="../common/aws-icons/services/Arch_AWS-Systems-Manager_48.svg" alt="SSM" />
+        <span>Systems Manager</span>
+      </div>
+      <div class="arch-box">
+        <img src="../common/aws-icons/services/Arch_Amazon-EventBridge_48.svg" alt="EventBridge" />
+        <span>EventBridge</span>
+      </div>
+      <div class="arch-box">
+        <img src="../common/aws-icons/services/Arch_AWS-Lambda_48.svg" alt="Lambda" />
+        <span>Lambda</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="arch-arrow">▼</div>
+
+  <!-- Layer 4: Outputs -->
+  <div class="arch-layer" data-layer="outputs">
+    <div class="layer-label">Outcomes</div>
+    <div class="flow-h">
+      <div class="arch-box accent">
+        <span>자동 복구</span>
+      </div>
+      <div class="arch-box accent">
+        <span>이상 탐지 알림</span>
+      </div>
+      <div class="arch-box accent">
+        <span>비용 최적화</span>
+      </div>
+    </div>
+  </div>
+</div>
+:::
+
+:::css
+.arch-diagram { display:flex; flex-direction:column; align-items:center; gap:0.3rem; width:100%; padding:1rem; }
+.arch-layer { width:95%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:0.8rem 1rem; }
+.layer-label { font-size:0.75rem; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.5rem; }
+.flow-h { display:flex; gap:1rem; justify-content:center; flex-wrap:wrap; }
+.arch-box { display:flex; flex-direction:column; align-items:center; gap:0.3rem; padding:0.6rem 1rem; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:8px; min-width:100px; }
+.arch-box img { width:48px; height:48px; }
+.arch-box span { font-size:0.8rem; color:rgba(255,255,255,0.85); text-align:center; }
+.arch-box.highlight { border-color:#FF9900; background:rgba(255,153,0,0.08); }
+.arch-box.accent { border-color:#44B9E6; background:rgba(68,185,230,0.08); }
+.arch-arrow { font-size:1.2rem; color:rgba(255,255,255,0.3); line-height:1; }
+:::
+```
+
+#### Step Animation 추가 (`.click` 블록으로 레이어별 reveal)
+
+레이어별 순차 표시가 필요하면 `.click` 블록을 추가한다:
+
+```markdown
+:::click
+step 1: [data-layer="sources"] 계층이 나타남
+step 2: [data-layer="processing"] 계층이 나타남
+step 3: [data-layer="actions"] 계층이 나타남
+step 4: [data-layer="outputs"] 계층이 나타남
+:::
+
+:::css
+.arch-layer { opacity:0; transform:translateY(10px); transition:all 0.5s ease; }
+.arch-layer.visible { opacity:1; transform:translateY(0); }
+:::
+```
+
+#### 핵심 패턴 요약
+
+| 요소 | CSS 패턴 | 용도 |
+|------|----------|------|
+| 수직 레이어 쌓기 | `.arch-diagram` → `flex-direction:column` | 계층 간 위→아래 흐름 |
+| 수평 박스 배치 | `.flow-h` → `display:flex; gap:1rem` | 같은 계층 내 서비스 나열 |
+| 계층 구분 | `.arch-layer` → `background + border` | 계층별 시각적 그룹핑 |
+| AWS 아이콘 | `<img src="../common/aws-icons/...">` | 48x48 서비스 아이콘 |
+| 강조 | `.highlight` / `.accent` | 핵심 서비스 / 결과 구분 |
+| 화살표 연결 | `.arch-arrow` → `▼` 텍스트 | 계층 간 흐름 표시 |
+
 ### 5. Canvas Animation Slide
+
+#### Remarp Source 형식 (에이전트가 직접 사용)
+
+> **Canvas DSL 문법 (필수 준수)**: `box id "label" at X,Y size W,H color #HEX [step N]`
+> 다른 형식(bracket syntax `[x=..., y=...]`, positional `80,160 160,80`)은 파서가 인식하지 못합니다.
+
+```markdown
+---
+remarp: true
+theme: ../common/theme.css
+---
+
+# 서비스 흐름
+
+@type: canvas
+
+:::canvas
+box source "Source" at 80,180 size 130,55 color #FF9900 step 1
+box process "Process" at 300,180 size 130,55 color #3B82F6 step 2
+box target "Target" at 520,180 size 130,55 color #10B981 step 3
+arrow source -> process "invoke" step 2
+arrow process -> target "store" step 3
+:::
+
+:::notes
+{timing: 2min}
+3단계 흐름을 설명합니다...
+:::
+```
+
+#### HTML Output 패턴
 ```html
 <div class="slide">
   <div class="slide-header"><h2>Animation Title</h2></div>
@@ -1661,6 +2056,8 @@ export function init(canvasId, slideIndex, deck) {
 }
 
 // Doughnut chart
+// Note: use "colors" (array) for multi-segment charts like doughnut/pie
+// Use "color" (string) for single-color datasets like bar/line
 {
   "type": "chart",
   "title": "Cost Breakdown",
@@ -1669,6 +2066,19 @@ export function init(canvasId, slideIndex, deck) {
   "labels": ["EC2", "RDS", "S3", "Lambda", "Other"],
   "datasets": [
     { "data": [40, 25, 15, 12, 8], "colors": ["accent", "cyan", "#fdcb6e", "#e17055", "muted"] }
+  ]
+}
+
+// Radar chart
+{
+  "type": "chart",
+  "title": "Team Skills Assessment",
+  "chartType": "radar",
+  "chartId": "skills-radar",
+  "labels": ["Frontend", "Backend", "DevOps", "Security", "Testing", "Documentation"],
+  "datasets": [
+    { "label": "Current", "data": [85, 70, 60, 55, 75, 45], "color": "accent" },
+    { "label": "Target", "data": [90, 85, 80, 80, 85, 70], "color": "cyan" }
   ]
 }
 
@@ -1692,6 +2102,7 @@ export function init(canvasId, slideIndex, deck) {
 {
   "type": "kpi",
   "title": "Monthly Performance",
+  "animated": true,  // enables counter animation on slide enter
   "metrics": [
     { "value": "$2.4M", "label": "Revenue", "delta": "+18% MoM", "deltaType": "positive", "color": "accent" },
     { "value": "99.95%", "label": "Uptime SLA", "delta": "+0.05%", "deltaType": "positive", "color": "cyan" },

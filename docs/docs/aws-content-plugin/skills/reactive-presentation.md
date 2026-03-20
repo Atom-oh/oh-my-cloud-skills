@@ -50,6 +50,8 @@ title: "Reactive Presentation"
 | `marp-format-guide.md` | Marp 마크다운 포맷 명세 (레거시) |
 | `pptx-theme-guide.md` | PPTX 테마 추출 사용법, 색상 매핑, 트러블슈팅 |
 | `aws-icons-guide.md` | AWS Architecture Icons 사용법, 네이밍 규약 |
+| `canvas-animation-prompt.md` | Canvas prompt → JS 코드 생성 가이드 |
+| `interactive-patterns-guide.md` | 인터랙티브 슬라이드 패턴 (시뮬레이터, 대시보드 등) |
 | `colors-reference.md` | AWS 색상 팔레트 |
 
 ### icons/
@@ -107,12 +109,22 @@ python3 scripts/extract_pptx_theme.py <pptx_path> -o {repo}/common/pptx-theme/
 
 | 콘텐츠 타입 | 패턴 | 인터랙티브 요소 |
 |-------------|------|-----------------|
-| 아키텍처 개요 | Canvas Animation | Play 버튼, 단계별 흐름 |
+| 단순 흐름 (박스 ≤4) | Canvas Animation | `:::canvas` DSL, step ↑↓ 내비게이션 |
+| 복잡 아키텍처 (박스 5+) | HTML Architecture | `:::html` + `:::css` (flow-h, flow-group) |
 | A vs B 비교 | Compare Toggle | `.compare-toggle` 버튼 |
 | 설정 변형 | Tab Content | `.tab-bar` + YAML 코드 |
 | 단계별 프로세스 | Timeline | `.timeline` 애니메이션 |
+| 모니터링/대시보드 (박스 5+) | HTML Dashboard | `:::html` + `:::script` |
 | 베스트 프랙티스 | Checklist | `.checklist` 토글 |
 | 블록 요약 | Quiz | `data-quiz` 퀴즈 |
+
+### Canvas vs HTML 선택 기준
+
+:::warning STOP Gate
+Canvas 사용 전 반드시 박스/아이콘 개수를 확인하세요:
+- **≤4개**: `:::canvas` 사용 가능
+- **5개 이상**: `:::canvas` 금지 → `:::html` + `:::css` 필수
+:::
 
 ### 키보드 단축키
 

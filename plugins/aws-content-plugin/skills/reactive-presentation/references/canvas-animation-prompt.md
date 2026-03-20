@@ -754,6 +754,88 @@ function drawBarChart(ctx, x, y, w, h, data, colors) {
 :::
 ```
 
+#### Animated Variant: Bar Growth Animation
+
+Bars grow from bottom to target height with eased timing:
+
+```javascript
+:::canvas js
+(function() {
+  const { canvas, ctx, width: W, height: H } = setupCanvas('bar-chart-animated', 960, 400);
+  if (!canvas) return;
+
+  const data = [
+    { label: 'Q1', value: 120 },
+    { label: 'Q2', value: 180 },
+    { label: 'Q3', value: 150 },
+    { label: 'Q4', value: 220 }
+  ];
+  const colors = [Colors.accent, Colors.green, Colors.cyan, Colors.orange];
+
+  let animationProgress = 0;
+  let animationId = null;
+
+  function drawAnimatedBarChart(ctx, x, y, w, h, data, colors, progress) {
+    const barCount = data.length;
+    const barWidth = (w - (barCount + 1) * 10) / barCount;
+    const maxVal = Math.max(...data.map(d => d.value));
+
+    // Easing function (ease-out cubic)
+    const eased = 1 - Math.pow(1 - progress, 3);
+
+    // Draw grid lines
+    ctx.strokeStyle = Colors.border;
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const gy = y + h - (h * i / 4);
+      ctx.beginPath();
+      ctx.moveTo(x, gy);
+      ctx.lineTo(x + w, gy);
+      ctx.stroke();
+      drawText(ctx, String(Math.round(maxVal * i / 4)), x - 8, gy, { size: 10, color: Colors.textSec, align: 'right' });
+    }
+
+    // Draw bars with animated height
+    data.forEach((d, i) => {
+      const targetBarH = (d.value / maxVal) * (h - 20);
+      const barH = targetBarH * eased;
+      const bx = x + 10 + i * (barWidth + 10);
+      const by = y + h - barH;
+      ctx.fillStyle = colors[i % colors.length];
+      ctx.fillRect(bx, by, barWidth, barH);
+      drawText(ctx, d.label, bx + barWidth / 2, y + h + 14, { size: 10, color: Colors.textSec, align: 'center' });
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    drawText(ctx, 'Quarterly Revenue', W / 2, 30, { size: 16, color: Colors.textPri, align: 'center' });
+    drawAnimatedBarChart(ctx, 100, 60, W - 200, H - 120, data, colors, animationProgress);
+  }
+
+  function animate() {
+    animationProgress = Math.min(animationProgress + 0.02, 1);
+    draw();
+    if (animationProgress < 1) {
+      animationId = requestAnimationFrame(animate);
+    }
+  }
+
+  // Start animation when slide becomes visible
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting && animationProgress === 0) {
+        animate();
+      }
+    });
+  });
+  observer.observe(canvas);
+
+  draw(); // Initial render (empty bars)
+})();
+:::
+```
+
 ### 2. drawHorizontalBar — Horizontal Bar Chart
 
 ```javascript
@@ -953,6 +1035,95 @@ function drawPieChart(ctx, cx, cy, radius, segments, donut = false) {
 :::
 ```
 
+#### Animated Variant: Pie Sweep Animation
+
+Pie slices animate from 0 to 360 degrees with a sweep effect:
+
+```javascript
+:::canvas js
+(function() {
+  const { canvas, ctx, width: W, height: H } = setupCanvas('pie-chart-animated', 960, 400);
+  if (!canvas) return;
+
+  const segments = [
+    { label: 'Compute', value: 45, color: Colors.accent },
+    { label: 'Storage', value: 25, color: Colors.green },
+    { label: 'Network', value: 15, color: Colors.cyan },
+    { label: 'Database', value: 15, color: Colors.orange }
+  ];
+
+  let animationProgress = 0;
+
+  function drawAnimatedPieChart(ctx, cx, cy, radius, segments, donut, progress) {
+    const total = segments.reduce((sum, s) => sum + s.value, 0);
+    const innerRadius = donut ? radius * 0.6 : 0;
+
+    // Easing function (ease-out cubic)
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const maxAngle = Math.PI * 2 * eased;
+
+    let startAngle = -Math.PI / 2;
+    let accumulatedAngle = 0;
+
+    segments.forEach(seg => {
+      const sliceAngle = (seg.value / total) * Math.PI * 2;
+      const visibleAngle = Math.min(sliceAngle, Math.max(0, maxAngle - accumulatedAngle));
+
+      if (visibleAngle > 0) {
+        ctx.beginPath();
+        ctx.moveTo(cx + innerRadius * Math.cos(startAngle), cy + innerRadius * Math.sin(startAngle));
+        ctx.arc(cx, cy, radius, startAngle, startAngle + visibleAngle);
+        ctx.arc(cx, cy, innerRadius, startAngle + visibleAngle, startAngle, true);
+        ctx.closePath();
+        ctx.fillStyle = seg.color;
+        ctx.fill();
+
+        // Draw label only when segment is fully visible
+        if (accumulatedAngle + sliceAngle <= maxAngle) {
+          const midAngle = startAngle + sliceAngle / 2;
+          const labelRadius = radius + 20;
+          const lx = cx + labelRadius * Math.cos(midAngle);
+          const ly = cy + labelRadius * Math.sin(midAngle);
+          drawText(ctx, `${seg.label} (${Math.round(seg.value / total * 100)}%)`, lx, ly, {
+            size: 11, color: Colors.textSec, align: midAngle > Math.PI / 2 && midAngle < Math.PI * 1.5 ? 'right' : 'left'
+          });
+        }
+      }
+
+      accumulatedAngle += sliceAngle;
+      startAngle += sliceAngle;
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    drawText(ctx, 'Cost Distribution', W / 2, 30, { size: 16, color: Colors.textPri, align: 'center' });
+    drawAnimatedPieChart(ctx, W / 2, H / 2 + 20, 120, segments, true, animationProgress);
+  }
+
+  function animate() {
+    animationProgress = Math.min(animationProgress + 0.02, 1);
+    draw();
+    if (animationProgress < 1) {
+      requestAnimationFrame(animate);
+    }
+  }
+
+  // Start animation when slide becomes visible
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting && animationProgress === 0) {
+        animate();
+      }
+    });
+  });
+  observer.observe(canvas);
+
+  draw();
+})();
+:::
+```
+
 ### 4. drawLineChart — Line Chart with Area Fill
 
 ```javascript
@@ -1109,6 +1280,130 @@ function drawLineChart(ctx, x, y, w, h, points, color) {
 :::
 ```
 
+#### Animated Variant: Left-to-Right Line Drawing
+
+Line reveals from left to right using a clip path:
+
+```javascript
+:::canvas js
+(function() {
+  const { canvas, ctx, width: W, height: H } = setupCanvas('line-chart-animated', 960, 400);
+  if (!canvas) return;
+
+  const points = [
+    { label: 'Jan', value: 100 },
+    { label: 'Feb', value: 120 },
+    { label: 'Mar', value: 115 },
+    { label: 'Apr', value: 140 },
+    { label: 'May', value: 160 },
+    { label: 'Jun', value: 155 }
+  ];
+
+  const chartArea = { left: 100, top: 60, width: W - 200, height: H - 120 };
+  let animationProgress = 0;
+
+  function drawAnimatedLineChart(ctx, x, y, w, h, points, color, progress) {
+    const maxVal = Math.max(...points.map(p => p.value));
+    const minVal = Math.min(...points.map(p => p.value));
+    const range = maxVal - minVal || 1;
+    const stepX = w / (points.length - 1);
+
+    // Easing function (ease-out quad)
+    const eased = 1 - Math.pow(1 - progress, 2);
+    const clipWidth = w * eased;
+
+    // Draw grid lines (always visible)
+    ctx.strokeStyle = Colors.border;
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const gy = y + h - (h * i / 4);
+      ctx.beginPath();
+      ctx.moveTo(x, gy);
+      ctx.lineTo(x + w, gy);
+      ctx.stroke();
+      const val = minVal + (range * i / 4);
+      drawText(ctx, val.toFixed(0), x - 8, gy, { size: 10, color: Colors.textSec, align: 'right' });
+    }
+
+    // Draw labels
+    points.forEach((p, i) => {
+      const px = x + i * stepX;
+      drawText(ctx, p.label, px, y + h + 14, { size: 10, color: Colors.textSec, align: 'center' });
+    });
+
+    // Clip and draw area fill + line
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x, y - 10, clipWidth, h + 20);
+    ctx.clip();
+
+    // Area fill
+    ctx.beginPath();
+    ctx.moveTo(x, y + h);
+    points.forEach((p, i) => {
+      const px = x + i * stepX;
+      const py = y + h - ((p.value - minVal) / range) * h;
+      ctx.lineTo(px, py);
+    });
+    ctx.lineTo(x + w, y + h);
+    ctx.closePath();
+    ctx.fillStyle = color + '33';
+    ctx.fill();
+
+    // Line
+    ctx.beginPath();
+    points.forEach((p, i) => {
+      const px = x + i * stepX;
+      const py = y + h - ((p.value - minVal) / range) * h;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    });
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Points
+    points.forEach((p, i) => {
+      const px = x + i * stepX;
+      const py = y + h - ((p.value - minVal) / range) * h;
+      ctx.beginPath();
+      ctx.arc(px, py, 4, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+    });
+
+    ctx.restore();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    drawText(ctx, 'Monthly Requests (millions)', W / 2, 30, { size: 16, color: Colors.textPri, align: 'center' });
+    drawAnimatedLineChart(ctx, chartArea.left, chartArea.top, chartArea.width, chartArea.height, points, Colors.accent, animationProgress);
+  }
+
+  function animate() {
+    animationProgress = Math.min(animationProgress + 0.015, 1);
+    draw();
+    if (animationProgress < 1) {
+      requestAnimationFrame(animate);
+    }
+  }
+
+  // Start animation when slide becomes visible
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting && animationProgress === 0) {
+        animate();
+      }
+    });
+  });
+  observer.observe(canvas);
+
+  draw();
+})();
+:::
+```
+
 ### 5. drawGauge — Semicircle Gauge
 
 ```javascript
@@ -1199,6 +1494,86 @@ function drawGauge(ctx, cx, cy, radius, value, max, color) {
       return step;
     };
   }
+})();
+:::
+```
+
+#### Animated Variant: Gauge Needle Sweep
+
+Gauge arc sweeps from 0 to target value with animated number counter:
+
+```javascript
+:::canvas js
+(function() {
+  const { canvas, ctx, width: W, height: H } = setupCanvas('gauge-animated', 960, 400);
+  if (!canvas) return;
+
+  const gauges = [
+    { label: 'CPU', value: 72, max: 100, color: Colors.green, cx: W * 0.25 },
+    { label: 'Memory', value: 85, max: 100, color: Colors.yellow, cx: W * 0.5 },
+    { label: 'Disk', value: 45, max: 100, color: Colors.accent, cx: W * 0.75 }
+  ];
+
+  let animationProgress = 0;
+
+  function drawAnimatedGauge(ctx, cx, cy, radius, targetValue, max, color, progress) {
+    const startAngle = Math.PI;
+    const endAngle = Math.PI * 2;
+
+    // Easing function (ease-out quad)
+    const eased = 1 - Math.pow(1 - progress, 2);
+    const currentValue = targetValue * eased;
+    const valueAngle = startAngle + (currentValue / max) * Math.PI;
+
+    // Draw background arc
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, startAngle, endAngle);
+    ctx.strokeStyle = Colors.border;
+    ctx.lineWidth = 20;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Draw animated value arc
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, startAngle, valueAngle);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 20;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Draw animated value text
+    drawText(ctx, `${Math.round(currentValue)}`, cx, cy - 10, { size: 32, color: Colors.textPri, align: 'center', weight: 'bold' });
+    drawText(ctx, `/ ${max}`, cx, cy + 20, { size: 14, color: Colors.textSec, align: 'center' });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    drawText(ctx, 'System Metrics', W / 2, 30, { size: 16, color: Colors.textPri, align: 'center' });
+    gauges.forEach(g => {
+      drawAnimatedGauge(ctx, g.cx, H / 2 + 40, 80, g.value, g.max, g.color, animationProgress);
+      drawText(ctx, g.label, g.cx, H / 2 + 140, { size: 14, color: Colors.textSec, align: 'center' });
+    });
+  }
+
+  function animate() {
+    animationProgress = Math.min(animationProgress + 0.02, 1);
+    draw();
+    if (animationProgress < 1) {
+      requestAnimationFrame(animate);
+    }
+  }
+
+  // Start animation when slide becomes visible
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting && animationProgress === 0) {
+        animate();
+      }
+    });
+  });
+  observer.observe(canvas);
+
+  draw();
 })();
 :::
 ```
@@ -1387,6 +1762,84 @@ function drawProgressRing(ctx, cx, cy, radius, percent, color) {
       return step;
     };
   }
+})();
+:::
+```
+
+#### Animated Variant: Progress Ring Fill Animation
+
+Progress rings animate with stroke fill effect (stroke-dashoffset transition):
+
+```javascript
+:::canvas js
+(function() {
+  const { canvas, ctx, width: W, height: H } = setupCanvas('progress-ring-animated', 960, 400);
+  if (!canvas) return;
+
+  const rings = [
+    { label: 'Deployment', percent: 100, color: Colors.green, cx: W * 0.2 },
+    { label: 'Testing', percent: 75, color: Colors.accent, cx: W * 0.4 },
+    { label: 'Review', percent: 50, color: Colors.yellow, cx: W * 0.6 },
+    { label: 'Release', percent: 25, color: Colors.cyan, cx: W * 0.8 }
+  ];
+
+  let animationProgress = 0;
+
+  function drawAnimatedProgressRing(ctx, cx, cy, radius, targetPercent, color, progress) {
+    const startAngle = -Math.PI / 2;
+
+    // Easing function (ease-out cubic)
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const currentPercent = targetPercent * eased;
+    const endAngle = startAngle + (currentPercent / 100) * Math.PI * 2;
+
+    // Draw background ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = Colors.border;
+    ctx.lineWidth = 12;
+    ctx.stroke();
+
+    // Draw animated progress arc
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, startAngle, endAngle);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 12;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Draw animated percentage text
+    drawText(ctx, `${Math.round(currentPercent)}%`, cx, cy, { size: 20, color: Colors.textPri, align: 'center', baseline: 'middle', weight: 'bold' });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    drawText(ctx, 'Pipeline Progress', W / 2, 30, { size: 16, color: Colors.textPri, align: 'center' });
+    rings.forEach(r => {
+      drawAnimatedProgressRing(ctx, r.cx, H / 2, 60, r.percent, r.color, animationProgress);
+      drawText(ctx, r.label, r.cx, H / 2 + 90, { size: 12, color: Colors.textSec, align: 'center' });
+    });
+  }
+
+  function animate() {
+    animationProgress = Math.min(animationProgress + 0.02, 1);
+    draw();
+    if (animationProgress < 1) {
+      requestAnimationFrame(animate);
+    }
+  }
+
+  // Start animation when slide becomes visible
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting && animationProgress === 0) {
+        animate();
+      }
+    });
+  });
+  observer.observe(canvas);
+
+  draw();
 })();
 :::
 ```

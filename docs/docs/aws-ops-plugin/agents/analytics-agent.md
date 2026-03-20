@@ -44,6 +44,52 @@ curl -s "https://$OS_ENDPOINT/_cat/indices?v&s=store.size:desc" | head -20
 
 # ISM 정책 상태
 curl -s "https://$OS_ENDPOINT/_plugins/_ism/explain/*" | jq '.[] | {index: .index, policy_id: .policy_id, state: .state.name}'
+
+# 샤드 할당
+curl -s "https://$OS_ENDPOINT/_cat/shards?v&s=store:desc" | head -20
+```
+
+### OpenSearch Serverless
+
+```bash
+# 컬렉션 목록
+aws opensearchserverless list-collections
+
+# 컬렉션 상태 확인
+aws opensearchserverless batch-get-collection --ids $COLLECTION_ID
+
+# 보안 정책 목록
+aws opensearchserverless list-security-policies --type encryption
+aws opensearchserverless list-security-policies --type network
+aws opensearchserverless list-access-policies
+```
+
+### ClickHouse
+
+```bash
+# 클러스터 상태 (clickhouse-client 사용)
+clickhouse-client --query "SELECT * FROM system.clusters"
+
+# 테이블 크기
+clickhouse-client --query "
+SELECT database, table, formatReadableSize(sum(bytes_on_disk)) as size,
+       sum(rows) as total_rows
+FROM system.parts
+WHERE active
+GROUP BY database, table
+ORDER BY sum(bytes_on_disk) DESC
+LIMIT 20"
+
+# 느린 쿼리
+clickhouse-client --query "
+SELECT query, query_duration_ms, read_rows, memory_usage
+FROM system.query_log
+WHERE type = 'QueryFinish' AND query_duration_ms > 1000
+ORDER BY query_duration_ms DESC
+LIMIT 10"
+
+# 진행 중인 Merge
+clickhouse-client --query "SELECT * FROM system.merges"
 ```
 
 ### Amazon Athena
@@ -58,6 +104,29 @@ aws athena list-query-executions --work-group $WORKGROUP --max-results 10
 # 쿼리 실행 상세 (비용 + 스캔)
 aws athena get-query-execution --query-execution-id $QUERY_ID \
   --query '{status: QueryExecution.Status.State, scanned: QueryExecution.Statistics.DataScannedInBytes}'
+
+# Named Query 목록
+aws athena list-named-queries --work-group $WORKGROUP
+
+# 카탈로그 및 데이터베이스
+aws athena list-data-catalogs
+aws athena list-databases --catalog-name AwsDataCatalog
+```
+
+### Amazon QuickSight
+
+```bash
+# 대시보드 목록
+aws quicksight list-dashboards --aws-account-id $ACCOUNT_ID
+
+# 데이터셋 목록
+aws quicksight list-data-sets --aws-account-id $ACCOUNT_ID
+
+# SPICE 용량
+aws quicksight describe-account-settings --aws-account-id $ACCOUNT_ID
+
+# 데이터소스 연결
+aws quicksight list-data-sources --aws-account-id $ACCOUNT_ID
 ```
 
 ### Amazon Kinesis
@@ -65,6 +134,11 @@ aws athena get-query-execution --query-execution-id $QUERY_ID \
 ```bash
 # 스트림 정보
 aws kinesis describe-stream-summary --stream-name $STREAM_NAME
+
+# 샤드 Iterator + 레코드 조회 (테스트)
+SHARD_ID=$(aws kinesis list-shards --stream-name $STREAM_NAME --query 'Shards[0].ShardId' --output text)
+ITERATOR=$(aws kinesis get-shard-iterator --stream-name $STREAM_NAME --shard-id $SHARD_ID --shard-iterator-type LATEST --query 'ShardIterator' --output text)
+aws kinesis get-records --shard-iterator $ITERATOR --limit 5
 
 # Firehose 전달 스트림
 aws firehose describe-delivery-stream --delivery-stream-name $STREAM_NAME

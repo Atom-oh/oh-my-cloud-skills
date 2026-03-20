@@ -111,7 +111,8 @@ function drawBox(ctx, x, y, w, h, label, color, textColor) {
   });
 }
 
-function drawArrow(ctx, x1, y1, x2, y2, color, dashed) {
+function drawArrow(ctx, x1, y1, x2, y2, color, dashed, showHead) {
+  if (showHead === undefined) showHead = true;
   ctx.beginPath();
   if (dashed) ctx.setLineDash([6, 4]);
   else ctx.setLineDash([]);
@@ -122,7 +123,8 @@ function drawArrow(ctx, x1, y1, x2, y2, color, dashed) {
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // Arrowhead
+  // Arrowhead (skip when showHead is false, e.g. first segment of a routed arrow)
+  if (!showHead) return;
   const angle = Math.atan2(y2 - y1, x2 - x1);
   const headLen = 10;
   ctx.beginPath();
@@ -130,6 +132,34 @@ function drawArrow(ctx, x1, y1, x2, y2, color, dashed) {
   ctx.moveTo(x2, y2);
   ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
   ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawOrthogonalArrow(ctx, points, color, dashed) {
+  if (!points || points.length < 2) return;
+  ctx.beginPath();
+  if (dashed) ctx.setLineDash([6, 4]);
+  else ctx.setLineDash([]);
+  ctx.strokeStyle = color || Colors.accent;
+  ctx.lineWidth = 2;
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i].x, points[i].y);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Arrowhead on last segment
+  const last = points[points.length - 1];
+  const prev = points[points.length - 2];
+  const angle = Math.atan2(last.y - prev.y, last.x - prev.x);
+  const headLen = 10;
+  ctx.beginPath();
+  ctx.fillStyle = color || Colors.accent;
+  ctx.moveTo(last.x, last.y);
+  ctx.lineTo(last.x - headLen * Math.cos(angle - Math.PI / 6), last.y - headLen * Math.sin(angle - Math.PI / 6));
+  ctx.lineTo(last.x - headLen * Math.cos(angle + Math.PI / 6), last.y - headLen * Math.sin(angle + Math.PI / 6));
   ctx.closePath();
   ctx.fill();
 }

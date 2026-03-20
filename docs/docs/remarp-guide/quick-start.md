@@ -9,7 +9,7 @@ title: 빠른 시작
 
 ## 1. 파일 만들기
 
-`my-talk.remarp.md` 파일을 생성합니다:
+`my-talk.md` 파일을 생성합니다 (frontmatter에 `remarp: true` 필수):
 
 ```markdown
 ---
@@ -95,7 +95,7 @@ group "VPC" containing apigw, lambda, dynamo color #232F3E
 ## 2. HTML 빌드
 
 ```bash
-python3 remarp_to_slides.py build my-talk.remarp.md
+python3 remarp_to_slides.py build my-talk.md
 ```
 
 ## 3. 브라우저에서 열기

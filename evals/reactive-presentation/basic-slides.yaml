@@ -1,0 +1,40 @@
+name: basic-slides
+description: "Basic 3-slide presentation generation with correct structure"
+skill: reactive-presentation
+plugin: aws-content-plugin
+timeout: 120
+
+prompt: |
+  Create a 3-slide presentation about AWS Lambda best practices.
+  Slide 1: Title slide with session title "AWS Lambda Best Practices".
+  Slide 2: Key concepts - cold starts, memory tuning, layers.
+  Slide 3: Summary with 3 key takeaways.
+  Output the remarp markdown files to ./output/ and build HTML.
+  Use default theme. Skip all interactive questions - use defaults.
+
+scorers:
+  - type: file_exists
+    files:
+      - "output/*.html"
+      - "output/common/theme.css"
+
+  - type: html_check
+    target: "output/*.html"
+    contains:
+      - "SlideFramework"
+      - "slide"
+      - "Lambda"
+    not_contains:
+      - "undefined"
+      - "ERROR"
+
+  - type: build_check
+    project_dir: "output/"
+
+  - type: llm_judge
+    enabled: false
+    criteria:
+      - "Contains exactly 3 slides"
+      - "Title slide has session title"
+      - "Summary slide has takeaways"
+    max_score: 30

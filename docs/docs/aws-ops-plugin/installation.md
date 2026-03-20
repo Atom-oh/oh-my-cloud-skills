@@ -43,17 +43,17 @@ claude --plugin-dir ./plugins/aws-ops-plugin
 
 ## MCP 서버 설정
 
-AWS Ops Plugin은 5개의 MCP 서버를 사용합니다. 플러그인 설치 시 자동으로 구성됩니다.
+AWS Ops Plugin은 2개의 MCP 서버를 번들로 포함합니다. 나머지 3개 (`awsknowledge`, `awspricing`, `awsiac`)는 `deploy-on-aws` 플러그인에서 제공되며, 두 플러그인이 함께 로드될 때 사용 가능합니다.
 
 ### MCP 서버 목록
 
-| 서버 | 타입 | 용도 |
-|------|------|------|
-| `awsknowledge` | HTTP | AWS 아키텍처 지식, 권장사항 |
-| `awsdocs` | stdio/uvx | AWS 공식 문서 검색/읽기 |
-| `awsapi` | stdio/uvx | AWS API 직접 호출 |
-| `awspricing` | stdio/uvx | 비용 분석, 가격 조회 |
-| `awsiac` | stdio/uvx | CloudFormation/CDK 검증 |
+| 서버 | 소스 | 타입 | 용도 |
+|------|------|------|------|
+| `awsdocs` | **this plugin** | stdio/uvx | AWS 공식 문서 검색/읽기 |
+| `awsapi` | **this plugin** | stdio/uvx | AWS API 직접 호출 |
+| `awsknowledge` | deploy-on-aws | HTTP | AWS 아키텍처 지식, 권장사항 |
+| `awspricing` | deploy-on-aws | stdio/uvx | 비용 분석, 가격 조회 |
+| `awsiac` | deploy-on-aws | stdio/uvx | CloudFormation/CDK 검증 |
 
 ### uvx 설치
 
@@ -69,27 +69,11 @@ brew install uv
 
 ### 수동 MCP 설정 (필요한 경우)
 
-`.mcp.json` 파일이 자동 생성되지 않은 경우, 다음 내용으로 생성합니다.
+`.mcp.json` 파일이 자동 생성되지 않은 경우, 다음 내용으로 생성합니다. 이 플러그인이 번들하는 2개 서버만 포함됩니다.
 
 ```json
 {
   "mcpServers": {
-    "awsknowledge": {
-      "type": "http",
-      "url": "https://knowledge-mcp.global.api.aws"
-    },
-    "awspricing": {
-      "command": "uvx",
-      "args": ["awslabs.aws-pricing-mcp-server@latest"],
-      "type": "stdio",
-      "timeout": 120000,
-      "env": { "FASTMCP_LOG_LEVEL": "ERROR" }
-    },
-    "awsiac": {
-      "command": "uvx",
-      "args": ["awslabs.aws-iac-mcp-server@latest"],
-      "type": "stdio"
-    },
     "awsdocs": {
       "command": "uvx",
       "args": ["awslabs.aws-documentation-mcp-server@latest"],
@@ -107,6 +91,10 @@ brew install uv
   }
 }
 ```
+
+:::tip deploy-on-aws 플러그인
+`awsknowledge`, `awspricing`, `awsiac` 서버를 사용하려면 `deploy-on-aws` 플러그인도 함께 로드하세요.
+:::
 
 ## 설치 확인
 

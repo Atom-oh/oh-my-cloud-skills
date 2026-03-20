@@ -7,6 +7,15 @@ title: "개요"
 
 Kiro Power Converter는 Claude Code 플러그인을 Kiro Power 포맷으로 변환하는 도구입니다. GitHub URL, 로컬 경로, 마켓플레이스 이름, 개별 스킬 등 다양한 입력 소스를 지원하며, 변환된 결과물을 전역(global), 프로젝트(project), 또는 내보내기(export) 대상으로 출력할 수 있습니다.
 
+:::warning 중요: 공존 모델 (Coexistence)
+Kiro Power Converter는 **기존 Claude Code 플러그인을 절대 삭제하거나 수정하지 않습니다**. 변환 과정에서 원본 플러그인은 그대로 유지되며, Kiro Power 포맷의 새로운 파일들이 별도 위치에 생성됩니다.
+
+**Claude Code와 Kiro는 공존합니다:**
+- 동일한 프로젝트에서 Claude Code 플러그인과 Kiro Power를 동시에 사용할 수 있습니다
+- 변환은 **추가(additive)** 작업이며, **대체(replacement)** 작업이 아닙니다
+- 원본 `.claude-plugin/` 디렉토리는 변경되지 않습니다
+:::
+
 ## 주요 기능
 
 | 기능 | 설명 |
@@ -148,3 +157,26 @@ flowchart LR
 :::info Kiro Power란?
 Kiro Power는 Kiro IDE를 위한 모듈형 기능 패키지입니다. Claude Code 플러그인과 유사한 개념이지만 다른 구조와 설정 포맷을 사용합니다. 자세한 내용은 [Kiro 공식 문서](https://kiro.dev)를 참조하세요.
 :::
+
+## 공존 아키텍처
+
+Kiro Power Converter는 **비파괴적(non-destructive)** 변환 방식을 사용합니다:
+
+```
+프로젝트/
+├── .claude-plugin/          # 원본 유지 (변경 없음)
+│   └── plugin.json
+├── CLAUDE.md                # 원본 유지 (변경 없음)
+├── agents/                  # 원본 유지 (변경 없음)
+├── skills/                  # 원본 유지 (변경 없음)
+│
+└── [변환 출력 위치]         # 새로 생성되는 Kiro Power 파일
+    ├── POWER.md
+    ├── mcp.json
+    └── steering/
+```
+
+변환 출력 위치는 `--target` 옵션에 따라 결정됩니다:
+- `global`: `~/.kiro/powers/<name>/` (원본 프로젝트 외부)
+- `project`: `.kiro/powers/<name>/` (원본과 별도 디렉토리)
+- `export`: 사용자 지정 경로 (원본과 완전히 분리)

@@ -180,6 +180,8 @@ class Slide:
     index: int = 0
     css_overrides: Dict[str, Dict[str, str]] = field(default_factory=dict)
     references: List[Tuple[str, str]] = field(default_factory=list)
+    html_blocks: List[str] = field(default_factory=list)
+    script_blocks: List[str] = field(default_factory=list)
 
 
 def parse_yaml_simple(text: str) -> Dict[str, Any]:
@@ -236,6 +238,8 @@ class RemarpParser:
     NOTES_PATTERN = re.compile(r':::\s*notes\n(.*?)\n:::', re.DOTALL)
     CANVAS_PATTERN = re.compile(r':::\s*canvas(?:\s+id=([^\s\n]+))?\n(.*?)\n:::', re.DOTALL)
     CSS_PATTERN = re.compile(r':::\s*css\s*\n(.*?)\n:::', re.DOTALL)
+    HTML_BLOCK_PATTERN = re.compile(r':::\s*html\s*\n(.*?)\n:::', re.DOTALL)
+    SCRIPT_BLOCK_PATTERN = re.compile(r':::\s*script\s*\n(.*?)\n:::', re.DOTALL)
     TIMING_PATTERN = re.compile(r'\{timing:\s*([^}]+)\}')
     CUE_PATTERN = re.compile(r'\{cue:\s*([^}]+)\}')
 
@@ -379,12 +383,26 @@ class RemarpParser:
         # Parse fragments
         fragments = self.parse_fragments(md_text)
 
-        # Parse columns
+        # Extract :::html blocks — replace with placeholders to preserve position
+        # (must run BEFORE parse_columns so :::html inside columns becomes placeholders)
+        html_placeholder_counter = [0]
+        def _replace_html_block(match):
+            idx = html_placeholder_counter[0]
+            html_placeholder_counter[0] += 1
+            return f'<!-- __HTML_BLOCK_{idx}__ -->'
+        html_blocks = self.HTML_BLOCK_PATTERN.findall(md_text)
+        md_text = self.HTML_BLOCK_PATTERN.sub(_replace_html_block, md_text)
+
+        # Parse columns (after HTML extraction so column content has placeholders)
         columns = self.parse_columns(md_text)
 
         # Parse CSS overrides
         css_overrides = self.parse_css_overrides(md_text)
         md_text = self.CSS_PATTERN.sub('', md_text)
+
+        # Extract :::script blocks — remove from markdown flow
+        script_blocks = self.SCRIPT_BLOCK_PATTERN.findall(md_text)
+        md_text = self.SCRIPT_BLOCK_PATTERN.sub('', md_text)
 
         # Parse canvas DSL
         canvas_elements, canvas_id = self.parse_canvas_dsl(md_text)
@@ -443,7 +461,9 @@ class RemarpParser:
             params=params,
             index=index,
             css_overrides=css_overrides,
-            references=references
+            references=references,
+            html_blocks=html_blocks,
+            script_blocks=script_blocks
         )
 
     def parse_directives(self, md_text: str) -> Dict[str, str]:
@@ -917,11 +937,86 @@ class RemarpParser:
                 'name': group_match.group(1)
             })
 
+        # --- Compact positional formats (no keywords like 'at', 'size', 'color') ---
+
+        # size W H (canvas setting)
+        size_match = re.match(r'size\s+(\d+)\s+(\d+)$', line)
+        if size_match:
+            return CanvasElement('size', {
+                'width': int(size_match.group(1)),
+                'height': int(size_match.group(2))
+            })
+
+        # bg #HEX (canvas background setting)
+        bg_match = re.match(r'bg\s+([#\w]+)$', line)
+        if bg_match:
+            return CanvasElement('bg', {
+                'color': bg_match.group(1)
+            })
+
+        # Compact box: box "label" X,Y W,H #color [step N]
+        box_compact_match = re.match(
+            r'box\s+"([^"]+)"\s+(\d+),(\d+)\s+(\d+),(\d+)\s+([#\w]+)(?:\s+step\s+(\d+))?',
+            line
+        )
+        if box_compact_match:
+            return CanvasElement('box', {
+                'label': box_compact_match.group(1),
+                'x': int(box_compact_match.group(2)),
+                'y': int(box_compact_match.group(3)),
+                'width': int(box_compact_match.group(4)),
+                'height': int(box_compact_match.group(5)),
+                'color': box_compact_match.group(6),
+                'step': int(box_compact_match.group(7)) if box_compact_match.group(7) else None
+            })
+
+        # Compact text: text "label" X,Y size [#color] [step N]
+        text_compact_match = re.match(
+            r'text\s+"([^"]+)"\s+(\d+),(\d+)\s+(\d+)(?:\s+(#[\w]+))?(?:\s+step\s+(\d+))?',
+            line
+        )
+        if text_compact_match:
+            return CanvasElement('text', {
+                'text': text_compact_match.group(1),
+                'x': int(text_compact_match.group(2)),
+                'y': int(text_compact_match.group(3)),
+                'size': int(text_compact_match.group(4)),
+                'color': text_compact_match.group(5) or 'textPri',
+                'step': int(text_compact_match.group(6)) if text_compact_match.group(6) else None
+            })
+
+        # Compact arrow: arrow X1,Y1 -> X2,Y2 [step N]
+        arrow_compact_match = re.match(
+            r'arrow\s+(\d+),(\d+)\s*->\s*(\d+),(\d+)(?:\s+step\s+(\d+))?',
+            line
+        )
+        if arrow_compact_match:
+            return CanvasElement('arrow', {
+                'x1': int(arrow_compact_match.group(1)),
+                'y1': int(arrow_compact_match.group(2)),
+                'x2': int(arrow_compact_match.group(3)),
+                'y2': int(arrow_compact_match.group(4)),
+                'color': 'accent',
+                'dashed': False,
+                'step': int(arrow_compact_match.group(5)) if arrow_compact_match.group(5) else None
+            })
+
         return None
 
     def detect_slide_type(self, md: str, directives: Dict[str, str],
                           canvas_elements: List[CanvasElement]) -> SlideType:
         """Auto-detect slide type from content patterns and directives."""
+        # Canvas elements present → always CANVAS (override @type: content)
+        if canvas_elements:
+            explicit_type = directives.get('type', '').lower()
+            # Only honor explicit non-content types that aren't canvas
+            if explicit_type and explicit_type != 'content' and explicit_type != 'canvas':
+                try:
+                    return SlideType(explicit_type)
+                except ValueError:
+                    pass
+            return SlideType.CANVAS
+
         # Check explicit @type directive
         if 'type' in directives:
             type_str = directives['type'].lower()
@@ -938,10 +1033,6 @@ class RemarpParser:
                 return SlideType(type_str)
             except ValueError:
                 pass
-
-        # Canvas elements present
-        if canvas_elements:
-            return SlideType.CANVAS
 
         # Check for quiz (checkboxes)
         if re.search(r'\[[ x]\]', md):
@@ -1012,6 +1103,9 @@ class RemarpHTMLGenerator:
         'action': '🎯'
     }
 
+    # Fragment patterns (same as RemarpParser for column processing)
+    FRAGMENT_BLOCK_PATTERN = re.compile(r':::\s*click(?:\s+(\w+)=([^\s\n]+))*\n(.*?)\n:::', re.DOTALL)
+
     def __init__(self, theme_dir: Optional[str] = None, lang: str = 'ko',
                  output_dir: Optional[str] = None):
         self.theme_dir = theme_dir
@@ -1074,8 +1168,18 @@ class RemarpHTMLGenerator:
             if slide.notes:
                 notes_dict[slide.index] = slide.notes
 
+        # Collect :::script blocks from all slides
+        slide_script_blocks = []
+        for slide in slides:
+            for script_block in slide.script_blocks:
+                slide_script_blocks.append(f'(function(){{\n{script_block}\n}})();')
+
+        # Merge with canvas scripts for injection
+        all_scripts = list(self.deferred_canvas_scripts or [])
+        all_scripts.extend(slide_script_blocks)
+
         return self.wrap_html(title, slides_html, notes_dict, config,
-                              canvas_scripts=self.deferred_canvas_scripts,
+                              canvas_scripts=all_scripts,
                               source_file=source_file, block_name=block_name)
 
     def slide_to_html(self, slide: Slide) -> str:
@@ -1131,6 +1235,13 @@ class RemarpHTMLGenerator:
         css_style = self._gen_css_overrides(slide)
         if css_style:
             html = html + '\n' + css_style
+
+        # Replace HTML block placeholders with raw HTML
+        for idx, html_block in enumerate(slide.html_blocks):
+            html = html.replace(f'<!-- __HTML_BLOCK_{idx}__ -->', html_block)
+
+        # Normalize asset paths in restored HTML blocks (../common/ → ./common/)
+        html = re.sub(r'\.\./common/', './common/', html)
 
         return html
 
@@ -1368,6 +1479,12 @@ class RemarpHTMLGenerator:
                     html_parts.append(list_html)
                 continue
 
+            # HTML block placeholders — pass through without <p> wrapping
+            if re.match(r'^\s*<!-- __(?:HTML_BLOCK|COL_HTML)_\d+__ -->\s*$', line):
+                html_parts.append(line.strip())
+                idx += 1
+                continue
+
             # Regular paragraph
             html_parts.append(f'<p>{self._convert_markdown(line)}</p>')
             idx += 1
@@ -1596,7 +1713,19 @@ class RemarpHTMLGenerator:
             return ''
 
         col_html = []
+        frag_counter = [0]
         for side, content in columns:
+            # Process :::click blocks inside column content before parsing
+            def _mark_click_block(match, _ctr=frag_counter):
+                inner = match.group(3) if match.lastindex >= 3 else ''
+                attrs = {}
+                for am in re.finditer(r'(\w+)=([^\s\n]+)', match.group(0).split('\n')[0]):
+                    attrs[am.group(1)] = am.group(2)
+                animation = attrs.get('animation', 'fade-in')
+                order = attrs.get('order', str(_ctr[0]))
+                _ctr[0] = max(_ctr[0], int(order) + 1)
+                return f'<!-- FRAG:{order}:{animation} -->\n{inner.strip()}\n<!-- /FRAG -->'
+            content = self.FRAGMENT_BLOCK_PATTERN.sub(_mark_click_block, content)
             parsed_content = self._parse_body_content(content.split('\n'))
             col_html.append(f'<div class="col">\n{parsed_content}\n</div>')
 
@@ -1616,6 +1745,18 @@ class RemarpHTMLGenerator:
         for elem in elements:
             if elem.element_type == 'preset':
                 return self.compile_preset_to_js(canvas_id, elem.params['type'], elem.params['config'])
+
+        # --- Pass 0: Extract canvas settings (size, bg) ---
+        canvas_width = 960
+        canvas_height = 400
+        canvas_bg = None
+
+        for elem in elements:
+            if elem.element_type == 'size':
+                canvas_width = elem.params.get('width', 960)
+                canvas_height = elem.params.get('height', 400)
+            elif elem.element_type == 'bg':
+                canvas_bg = elem.params.get('color')
 
         # --- Pass 1: Collect element positions and max step ---
         element_positions = {}
@@ -1910,6 +2051,10 @@ class RemarpHTMLGenerator:
                 pass  # Step metadata already captured in pass 1
 
         # --- Build JavaScript ---
+        # Add background fill as first draw operation
+        if canvas_bg:
+            draw_lines.insert(0, f"ctx.fillStyle = '{canvas_bg}'; ctx.fillRect(0, 0, width, height);")
+
         draw_code = '\n    '.join(draw_lines)
         has_steps = max_step > 0
 
@@ -1938,7 +2083,7 @@ class RemarpHTMLGenerator:
   const canvas = document.getElementById('{canvas_id}');
   if (!canvas) return;
   const container = canvas.parentElement;
-  const BASE_W = 960, BASE_H = 400;
+  const BASE_W = {canvas_width}, BASE_H = {canvas_height};
 
   {resize_fn}
   resizeCanvas();
@@ -1973,7 +2118,7 @@ class RemarpHTMLGenerator:
   const canvas = document.getElementById('{canvas_id}');
   if (!canvas) return;
   const container = canvas.parentElement;
-  const BASE_W = 960, BASE_H = 400;
+  const BASE_W = {canvas_width}, BASE_H = {canvas_height};
 
   {resize_fn}
   resizeCanvas();
@@ -2001,7 +2146,7 @@ class RemarpHTMLGenerator:
   const canvas = document.getElementById('{canvas_id}');
   if (!canvas) return;
   const container = canvas.parentElement;
-  const BASE_W = 960, BASE_H = 400;
+  const BASE_W = {canvas_width}, BASE_H = {canvas_height};
   let currentStep = 0;
   const maxStep = {max_steps};
   const config = {config_json};
@@ -3129,6 +3274,8 @@ class RemarpHTMLGenerator:
         toc_href = slide.directives.get('toc', 'index.html')
         next_href = slide.directives.get('next', '')
         next_label = slide.directives.get('next-label', '다음')
+        more_href = slide.directives.get('more', '')
+        more_label = slide.directives.get('more-label', '더 많은 예제보기 →')
 
         # Check if this is the final block
         is_final = not next_href
@@ -3139,15 +3286,17 @@ class RemarpHTMLGenerator:
         else:
             buttons.append(f'<a href="{toc_href}" class="btn btn-sm" style="text-decoration:none;">← 목차로 돌아가기</a>')
             buttons.append(f'<a href="{next_href}" class="btn btn-primary btn-sm" style="text-decoration:none;">{next_label} →</a>')
+        if more_href:
+            buttons.append(f'<a href="{more_href}" target="_blank" rel="noopener" class="btn btn-sm" style="text-decoration:none;">{more_label}</a>')
 
-        congrats = '<p style="color:var(--text-muted); font-size:1rem; margin-top:8px;">수고하셨습니다!</p>' if is_final else ''
+        congrats = '<p style="color:var(--text-muted); font-size:1rem; margin-top:0.5rem;">수고하셨습니다!</p>' if is_final else ''
 
         return f'''<div class="slide">
-  <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:24px; text-align:center;">
+  <div class="center-content" style="height:100%; gap:1.5rem;">
     <h1 style="font-size:3rem; background:linear-gradient(135deg, var(--accent-light), var(--cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">Thank You</h1>
     <p style="color:var(--text-secondary); font-size:1.1rem;">{message}</p>
     {congrats}
-    <div style="display:flex; gap:16px; margin-top:20px;">
+    <div style="display:flex; gap:1rem; margin-top:1.5rem;">
       {chr(10).join("      " + b for b in buttons)}
     </div>
   </div>
@@ -3321,7 +3470,7 @@ class RemarpHTMLGenerator:
     {footer_js}
     {header_js}
     {pagination_js}
-    sidebar: false,
+    sidebar: true,
     presenterNotes: presenterNotes,
     onSlideChange: (index, slide) => {{}}
   }});
@@ -3651,10 +3800,18 @@ class RemarpProjectBuilder:
         Ensures theme-override.css, images/, and other extracted assets
         are available at the relative paths referenced by the HTML output.
         """
-        if not self.theme_dir or not Path(self.theme_dir).exists():
-            return
         dest = self.output_dir / 'common' / 'pptx-theme'
-        shutil.copytree(str(self.theme_dir), str(dest), dirs_exist_ok=True)
+
+        # Case 1: theme_dir from PPTX extraction
+        if self.theme_dir and Path(self.theme_dir).exists():
+            shutil.copytree(str(self.theme_dir), str(dest), dirs_exist_ok=True)
+            return
+
+        # Case 2: Fallback — pre-extracted theme at parent level
+        if not dest.exists():
+            parent_theme = self.output_dir.parent / 'common' / 'pptx-theme'
+            if parent_theme.exists():
+                shutil.copytree(str(parent_theme), str(dest), dirs_exist_ok=True)
 
     def _copy_framework_assets(self) -> None:
         """Copy core framework CSS/JS to output common/ directory (no icons)."""
@@ -3691,8 +3848,8 @@ class RemarpProjectBuilder:
             shutil.rmtree(str(dest))
 
         # Collect all icon references from HTML files
-        # Pattern matches: ./common/aws-icons/{category}/{filename} or ../common/aws-icons/...
-        icon_pattern = re.compile(r'\.\.?/common/aws-icons/(\w+)/([^"\'<>\s]+)')
+        # Pattern matches: ./common/aws-icons/{category}/{filename}, ../common/aws-icons/..., or bare common/aws-icons/...
+        icon_pattern = re.compile(r'(?:\.\.?/)?common/aws-icons/([\w-]+)/([^"\'<>\s]+)')
         referenced_icons: Dict[str, set] = {}  # category -> set of filenames
 
         for html_file in html_files:
@@ -3712,11 +3869,17 @@ class RemarpProjectBuilder:
 
         # Map category names to source directories
         category_to_source = {
+            # Short names (canonical)
             'services': icons_dir / 'Architecture-Service-Icons_07312025',
             'groups': icons_dir / 'Architecture-Group-Icons_07312025',
             'categories': icons_dir / 'Category-Icons_07312025',
             'resources': icons_dir / 'Resource-Icons_07312025',
             'others': icons_dir / 'others',
+            # Full dir name aliases (fallback for non-standard paths)
+            'Architecture-Service-Icons_07312025': icons_dir / 'Architecture-Service-Icons_07312025',
+            'Architecture-Group-Icons_07312025': icons_dir / 'Architecture-Group-Icons_07312025',
+            'Category-Icons_07312025': icons_dir / 'Category-Icons_07312025',
+            'Resource-Icons_07312025': icons_dir / 'Resource-Icons_07312025',
         }
 
         # Build filename -> source path index for each category
@@ -3826,6 +3989,10 @@ class RemarpProjectBuilder:
                     if slide.notes:
                         all_notes[slide_offset] = slide.notes
                     slide_offset += 1
+
+                    # Collect :::script blocks from slide
+                    for script_block in slide.script_blocks:
+                        all_canvas_scripts.append(f'(function(){{\n{script_block}\n}})();')
 
             # Collect canvas scripts
             if html_gen.deferred_canvas_scripts:

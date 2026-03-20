@@ -5,7 +5,11 @@ title: Remarp 소개
 
 # Remarp 소개
 
-Remarp는 **reactive-presentation** 프레임워크를 위한 차세대 마크다운 포맷입니다. 사람이 읽고 편집할 수 있는 `.remarp.md` 파일 하나가 프레젠테이션의 **단일 소스**가 됩니다.
+Remarp는 **reactive-presentation** 프레임워크를 위한 차세대 마크다운 포맷입니다. 사람이 읽고 편집할 수 있는 `.md` 파일 하나가 프레젠테이션의 **단일 소스**가 됩니다.
+
+:::tip 파일 확장자
+`.md` 확장자를 사용하고 frontmatter에 `remarp: true`를 추가합니다. 이전의 `.remarp.md` 확장자도 하위호환 지원됩니다.
+:::
 
 ## 왜 Remarp인가?
 
@@ -24,11 +28,14 @@ Remarp는 두 방식의 장점을 결합합니다.
 | 사람이 읽기 | 쉬움 | 어려움 | **쉬움** |
 | 프래그먼트 애니메이션 | 불가 | 수동 HTML | **`{.click}` 한 줄** |
 | Canvas 애니메이션 | 불가 (수동 JS) | 별도 JS 모듈 | **`:::canvas` DSL** |
+| 인터랙티브 패턴 | 불가 | 수동 구현 | **`:::html` + `:::script`** |
 | 스피커 노트 | `<!-- notes: -->` | JSON 필드 | **`:::notes` + 타이밍/큐** |
 | 컬럼 레이아웃 | 불가 | 수동 HTML | **`::: left`/`::: right`** |
 | 슬라이드 전환 효과 | 불가 | 불가 | **`@transition fade`** |
 | 키보드 커스텀 | 불가 | 불가 | **`keys:` frontmatter** |
 | 블록별 증분 빌드 | 불가 | 해당 없음 | **`sync` 명령** |
+| 비주얼 편집 | 불가 | 불가 | **VSCode Visual Edit** |
+| Canvas 비주얼 편집 | 불가 | 불가 | **VSCode Canvas Editor** |
 | 하위 호환 | - | - | **`marp: true` 지원** |
 
 ## 핵심 장점
@@ -89,11 +96,40 @@ theme:
 
 ```
 aws-scaling/
-├── _presentation.remarp.md   # 글로벌 설정
-├── 01-fundamentals.remarp.md # Block 1
-├── 02-advanced.remarp.md     # Block 2
+├── _presentation.md          # 글로벌 설정
+├── 01-fundamentals.md        # Block 1
+├── 02-advanced.md            # Block 2
 └── build/                    # 생성된 HTML
 ```
+
+### 7. 인터랙티브 패턴
+
+슬라이더, 계산기, 시뮬레이터 등 복잡한 인터랙션은 `:::html` + `:::script` 블록으로 구현합니다:
+
+```markdown
+:::html
+<div class="slider-group">
+  <input type="range" id="cpu" min="50" max="2000" value="250">
+  <span id="cpu-val">250m</span>
+</div>
+:::
+
+:::script
+document.getElementById('cpu').oninput = e => {
+  document.getElementById('cpu-val').textContent = e.target.value + 'm';
+};
+:::
+```
+
+### 8. VSCode Visual Edit
+
+Remarp VSCode 확장의 Visual Edit 모드로 슬라이드를 직접 드래그/리사이즈할 수 있습니다:
+
+- 요소 드래그 -> 소스 `.md`의 `:::css` 블록에 자동 반영 (CSS Writeback)
+- Canvas 요소 이동 -> `:::canvas` DSL 좌표 자동 업데이트 (Canvas Writeback)
+- 화살표 waypoint 편집 -> 경로 조정
+- Property Panel -> 선택한 요소의 폰트, 색상, 여백 등 속성 편집
+- 실시간 양방향 동기화
 
 ## 하위 호환성
 
@@ -104,3 +140,4 @@ aws-scaling/
 - [빠른 시작](./quick-start.md)으로 5분 만에 첫 프레젠테이션 만들기
 - [Frontmatter](./syntax/frontmatter.md)로 프레젠테이션 설정 알아보기
 - [VSCode 확장](./vscode-extension.md)으로 편집 환경 구성하기
+- [Canvas DSL](./syntax/canvas-dsl.md)로 다이어그램 작성하기

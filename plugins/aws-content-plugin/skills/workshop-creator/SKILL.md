@@ -78,7 +78,7 @@ weight: 10
 
 > **주의**: `chapter` 속성은 Workshop Studio에서 지원하지 않습니다.
 
-상세: `reference/front-matter.md`
+상세: `references/front-matter.md`
 
 ---
 
@@ -105,7 +105,7 @@ Before starting:
 | `warning` | 주의/경고 |
 | `error` | 에러/위험 |
 
-상세: `reference/alert-reference.md`
+상세: `references/alert-reference.md`
 
 ### Code
 
@@ -128,13 +128,13 @@ metadata:
 | `showCopyAction` | 복사 버튼 표시 |
 | `highlightLines` | 강조할 라인 (예: `4-6,10`) |
 
-상세: `reference/code-reference.md`
+상세: `references/code-reference.md`
 
 ### Tabs
 
 코드 포함 시 콜론 개수 증가 필요 (중첩 수준에 따라 `:::::tabs`).
 
-상세: `reference/tabs-reference.md`
+상세: `references/tabs-reference.md`
 
 ### Image
 
@@ -142,7 +142,7 @@ metadata:
 :image[Architecture]{src="/static/images/diagrams/arch.png" width=800}
 ```
 
-상세: `reference/image-reference.md`
+상세: `references/image-reference.md`
 
 ### Mermaid
 
@@ -162,7 +162,7 @@ graph LR
 ::::
 ```
 
-상세: `reference/directives-complete.md`
+상세: `references/directives-complete.md`
 
 ---
 
@@ -202,7 +202,7 @@ cfn-lint static/workshop.yaml
 cfn_nag_scan --input-path static/workshop.yaml
 ```
 
-상세: `reference/infrastructure-guide.md`, `reference/cloudformation-reference.md`
+상세: `references/infrastructure-guide.md`, `references/cloudformation-reference.md`
 
 ---
 
@@ -247,13 +247,13 @@ cfn_nag_scan --input-path static/workshop.yaml
 
 | 문서 | 설명 |
 |------|------|
-| `reference/front-matter.md` | Front Matter 속성 |
-| `reference/alert-reference.md` | Alert directive 상세 |
-| `reference/code-reference.md` | Code directive (40+ 언어) |
-| `reference/tabs-reference.md` | Tabs directive 상세 |
-| `reference/image-reference.md` | Image directive 상세 |
-| `reference/directives-complete.md` | 전체 directive 목록 |
-| `reference/workshop-templates.md` | 콘텐츠 템플릿 (Homepage, Module, Lab) |
-| `reference/infrastructure-guide.md` | Contentspec.yaml, Magic Variables, CloudFormation |
-| `reference/contentspec-complete.md` | contentspec.yaml 전체 설정 |
-| `reference/cloudformation-reference.md` | CloudFormation 인프라 패턴 |
+| `references/front-matter.md` | Front Matter 속성 |
+| `references/alert-reference.md` | Alert directive 상세 |
+| `references/code-reference.md` | Code directive (40+ 언어) |
+| `references/tabs-reference.md` | Tabs directive 상세 |
+| `references/image-reference.md` | Image directive 상세 |
+| `references/directives-complete.md` | 전체 directive 목록 |
+| `references/workshop-templates.md` | 콘텐츠 템플릿 (Homepage, Module, Lab) |
+| `references/infrastructure-guide.md` | Contentspec.yaml, Magic Variables, CloudFormation |
+| `references/contentspec-complete.md` | contentspec.yaml 전체 설정 |
+| `references/cloudformation-reference.md` | CloudFormation 인프라 패턴 |

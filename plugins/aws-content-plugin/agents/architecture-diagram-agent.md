@@ -2,7 +2,6 @@
 name: architecture-diagram-agent
 description: Specialized agent for creating AWS architecture diagrams as Draw.io XML. Activates for "architecture diagram", "infrastructure diagram", "system architecture", "AWS architecture", "cloud diagram", "draw.io diagram" requests.
 tools: Read, Write, Edit, Glob, Grep, Bash
-model: sonnet
 skills:
   - architecture-diagram
 ---

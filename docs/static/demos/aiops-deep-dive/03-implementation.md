@@ -3,576 +3,506 @@ remarp: true
 block: implementation
 ---
 
+<!-- Slide 1: Session Cover -->
 @type: cover
-@background: ../common/pptx-theme/images/Picture_13.png
-@badge: ../common/pptx-theme/images/Picture_8.png
+@background: linear-gradient(135deg, #161D26 0%, #0d1117 50%, #1a2332 100%)
 
 # AIOps on AWS
-구현 전략과 Best Practices
+Intelligent Cloud Operations for AnyCompany
 
 @speaker: Junseok Oh
-@title: Sr. Solutions Architect, AWS
-@company: AnyCompany Technical Session
+@speaker-title: Sr. Solutions Architect
+@company: AWS
 
 :::notes
-{timing: 1min}
-마지막 블록을 시작하겠습니다. 이번 블록에서는 앞서 다룬 아키텍처를 실제로 어떻게 단계적으로 구현하는지, 그리고 성공적인 AIOps 도입을 위한 Best Practices를 다루겠습니다.
-
-{cue: transition} 먼저 AIOps 구현 로드맵부터 보겠습니다.
+{timing: 0.5min}
+마지막 블록입니다. 지금까지 배운 서비스들을 AnyCompany 환경에 어떻게 적용할지 구체적인 전략을 논의하겠습니다.
+{cue: transition}
 :::
 
 ---
+<!-- Slide 2: Block 3 Title -->
+@type: title
+@transition: fade
 
-@type: timeline
-
-## AIOps 구현 로드맵 — Overview
-
-### Phase 1: Foundation (M1-2)
-Observability Pipeline 구축
-ADOT + CloudWatch 통합 수집, SLI/SLO 정의
-
-### Phase 2: Detection (M3-4)
-ML 기반 이상 탐지 활성화
-DevOps Guru, Anomaly Detection, Alert 최적화
-
-### Phase 3: Automation (M5-6)
-자동 복구 파이프라인 구현
-EventBridge → SSM Runbook, Human-in-the-Loop → Full Auto
-
-### Phase 4: Optimization (M7+)
-지능형 운영 고도화
-Bedrock Agent PoC, 피드백 루프, 비용 최적화
+# Implementation Strategies
+Block 3 — AnyCompany를 위한 AIOps 구현 (25분)
 
 :::notes
-{timing: 2min}
-AIOps 구현은 빅뱅이 아닌 단계적 접근이 핵심입니다. 이 타임라인은 4단계 로드맵의 전체 흐름을 보여줍니다. ↑↓ 키로 각 Phase를 하나씩 살펴보겠습니다.
-
-Phase 1에서 데이터 수집 파이프라인을 제대로 구축하는 것이 가장 중요합니다. Phase 2에서 ML 기반 이상 탐지를, Phase 3에서 자동 복구를, Phase 4에서 Bedrock Agent를 활용한 지능형 운영을 구현합니다.
-
-{cue: transition} 이제 각 Phase의 세부 구성요소를 다이어그램으로 살펴보겠습니다.
+{timing: 0.5min}
+세 번째 블록입니다. 이론을 넘어 실제 구현으로 들어갑니다. AnyCompany 환경을 가정한 아키텍처, 단계별 로드맵, 비용 최적화를 다룹니다.
 :::
 
 ---
-
+<!-- Slide 3: AnyCompany Reference Architecture -->
 @type: canvas
-@canvas-id: implementation-roadmap
 
-## AIOps 구현 로드맵 — Detail
+## AnyCompany AIOps 레퍼런스 아키텍처
 
 :::canvas
-box phase1 "Phase 1: Foundation (M1-2)" at 20,60 size 180,70 color #41B3FF step 1
-box phase2 "Phase 2: Detection (M3-4)" at 240,60 size 180,70 color #AD5CFF step 2
-box phase3 "Phase 3: Automation (M5-6)" at 460,60 size 180,70 color #00E500 step 3
-box phase4 "Phase 4: Optimization (M7+)" at 680,60 size 180,70 color #FF9900 step 4
+@width: 960
+@height: 420
 
-arrow phase1 -> phase2 "" step 2
-arrow phase2 -> phase3 "" step 3
-arrow phase3 -> phase4 "" step 4
+# Top: Application Layer
+box "EKS Cluster\n(Production)" 30,20 140,55 fill:#1a2744 border:#41B3FF step:0
+box "Lambda\nMicroservices" 200,20 140,55 fill:#1a2744 border:#41B3FF step:0
+box "Aurora\nPostgreSQL" 370,20 140,55 fill:#1a2744 border:#41B3FF step:0
+box "DynamoDB\nTables" 540,20 140,55 fill:#1a2744 border:#41B3FF step:0
+box "S3 + CloudFront\nStatic Assets" 710,20 140,55 fill:#1a2744 border:#41B3FF step:0
 
-box p1a "Observability Pipeline" at 20,170 size 180,35 color #41B3FF step 1
-box p1b "ADOT + CW 통합 수집" at 20,215 size 180,35 color #41B3FF step 1
-box p1c "SLI/SLO 정의" at 20,260 size 180,35 color #41B3FF step 1
+# Collection Layer
+box "ADOT\nCollector" 80,120 120,45 fill:#232f3e border:#FF9900 step:1
+box "CloudWatch\nAgent" 260,120 120,45 fill:#232f3e border:#FF9900 step:1
+box "VPC Flow\nLogs" 440,120 120,45 fill:#232f3e border:#FF9900 step:1
+box "CloudTrail" 620,120 120,45 fill:#232f3e border:#FF9900 step:1
 
-box p2a "DevOps Guru 활성화" at 240,170 size 180,35 color #AD5CFF step 2
-box p2b "Anomaly Detection 적용" at 240,215 size 180,35 color #AD5CFF step 2
-box p2c "Alert 최적화" at 240,260 size 180,35 color #AD5CFF step 2
+# Arrows: App -> Collection
+arrow 100,75 130,120 #41B3FF step:1
+arrow 270,75 310,120 #41B3FF step:1
+arrow 440,75 490,120 #41B3FF step:1
+arrow 610,75 670,120 #41B3FF step:1
 
-box p3a "EventBridge Rule 설정" at 460,170 size 180,35 color #00E500 step 3
-box p3b "SSM Runbook 자동 복구" at 460,215 size 180,35 color #00E500 step 3
-box p3c "Human -> Full Auto" at 460,260 size 180,35 color #00E500 step 3
+# Central Data Hub
+box "CloudWatch\n(Monitoring Account)" 250,200 200,55 fill:#232f3e border:#00E500 step:2
+box "AMP\n(Custom Metrics)" 500,200 160,55 fill:#232f3e border:#00E500 step:2
 
-box p4a "Bedrock Agent PoC" at 680,170 size 180,35 color #FF9900 step 4
-box p4b "피드백 루프 / 모델 개선" at 680,215 size 180,35 color #FF9900 step 4
-box p4c "비용 최적화 & 확장" at 680,260 size 180,35 color #FF9900 step 4
-:::
+arrow 140,165 310,200 #FF9900 step:2
+arrow 320,165 350,200 #FF9900 step:2
+arrow 500,165 400,200 #FF9900 step:2
+arrow 680,165 550,200 #FF9900 step:2
 
-:::notes
-{timing: 3min}
-AIOps 구현은 빅뱅이 아닌 단계적 접근이 핵심입니다. 4단계 로드맵을 제안합니다.
+# AI/ML Layer
+box "DevOps\nGuru" 80,300 110,50 fill:#161D26 border:#AD5CFF step:3
+box "CW Anomaly\nDetection" 220,300 120,50 fill:#161D26 border:#AD5CFF step:3
+box "Bedrock\nAgent" 370,300 110,50 fill:#161D26 border:#AD5CFF step:3
+box "Lookout\nfor Metrics" 510,300 120,50 fill:#161D26 border:#AD5CFF step:3
 
-Phase 1은 Foundation입니다. 1~2개월 동안 관측성 파이프라인을 구축합니다. ADOT Collector를 배포하고, CloudWatch에 메트릭/로그/트레이스를 통합 수집합니다. 이 단계에서 SLI와 SLO를 정의하는 것이 중요합니다. "우리 서비스의 정상이란 무엇인가?"를 데이터로 정의해야 이상을 탐지할 수 있습니다.
+arrow 320,255 135,300 #00E500 step:3
+arrow 350,255 280,300 #00E500 step:3
+arrow 380,255 425,300 #00E500 step:3
+arrow 560,255 570,300 #00E500 step:3
 
-Phase 2는 Detection입니다. 3~4개월차에 DevOps Guru를 활성화하고, 핵심 메트릭에 Anomaly Detection을 적용합니다. 이 단계의 핵심 작업은 Alert 최적화입니다. 기존 정적 알림을 ML 기반으로 전환하면서 false positive를 줄여나갑니다.
+# Action Layer
+box "EventBridge\nRules" 700,270 120,45 fill:#161D26 border:#FF5C85 step:4
+box "SSM\nAutomation" 700,330 120,45 fill:#161D26 border:#FF5C85 step:4
 
-Phase 3는 Automation입니다. 5~6개월차에 EventBridge와 SSM으로 자동 복구를 구현합니다. 반드시 Human Approval 단계부터 시작하세요. 자동 분석 → 사람 승인 → 자동 실행을 거쳐 신뢰가 쌓이면 완전 자동화로 전환합니다.
+arrow 630,325 700,290 #AD5CFF step:4
+arrow 630,325 700,352 #AD5CFF step:4
 
-Phase 4는 Optimization입니다. 7개월차 이후에 Bedrock Agent PoC를 시작하고, 피드백 루프로 모델을 개선합니다.
+# Notification
+box "Slack\nPagerDuty" 860,290 90,50 fill:#161D26 border:#FBD332 step:4
+arrow 820,292 860,310 #FF5C85 step:4
+arrow 820,352 860,320 #FF5C85 step:4
 
-{cue: question} 이 로드맵에서 가장 시간이 오래 걸리는 단계가 어딘지 아시나요? Phase 1입니다. 데이터 수집 파이프라인을 제대로 구축하는 것이 가장 중요하고 가장 시간이 걸립니다.
+# AMG Dashboard
+box "AMG\nDashboard" 860,200 90,50 fill:#161D26 border:#00E500 step:2
+arrow 660,227 860,225 #00E500 step:2
 
-{cue: transition} Phase 1의 구체적인 구현을 살펴보겠습니다.
-:::
-
----
-
-## Phase 1: 관측성 파이프라인 구축
-
-@type: tabs
-
-::: tab "EKS 환경"
-### EKS 관측성 구성
-```yaml
-# ADOT Collector DaemonSet
-apiVersion: opentelemetry.io/v1alpha1
-kind: OpenTelemetryCollector
-metadata:
-  name: adot-collector
-spec:
-  mode: daemonset
-  config: |
-    receivers:
-      otlp:
-        protocols:
-          grpc:
-            endpoint: 0.0.0.0:4317
-      prometheus:
-        config:
-          scrape_configs:
-            - job_name: 'kubernetes-pods'
-              kubernetes_sd_configs:
-                - role: pod
-    processors:
-      batch:
-        timeout: 10s
-      resourcedetection:
-        detectors: [eks]
-    exporters:
-      awsxray: {}
-      awsemf:
-        namespace: ContainerInsights
-        log_group_name: '/aws/eks/cluster/performance'
-      awscloudwatchlogs:
-        log_group_name: '/aws/eks/cluster/application'
-    service:
-      pipelines:
-        traces:
-          receivers: [otlp]
-          processors: [batch, resourcedetection]
-          exporters: [awsxray]
-        metrics:
-          receivers: [otlp, prometheus]
-          processors: [batch]
-          exporters: [awsemf]
-```
-:::
-
-::: tab "Lambda 환경"
-### Lambda 관측성 구성
-```yaml
-# SAM Template
-Resources:
-  MyFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      Runtime: python3.12
-      Layers:
-        # ADOT Lambda Layer
-        - !Sub arn:aws:lambda:${AWS::Region}:
-            901920570463:layer:
-            aws-otel-python-amd64-ver-1-25-0:1
-      Environment:
-        Variables:
-          AWS_LAMBDA_EXEC_WRAPPER:
-            /opt/otel-instrument
-          OTEL_SERVICE_NAME: my-service
-          OTEL_PROPAGATORS: xray
-      Tracing: Active
-      # Powertools for structured logging
-      # pip install aws-lambda-powertools
-```
-
-```python
-from aws_lambda_powertools import Logger, Tracer, Metrics
-
-logger = Logger()
-tracer = Tracer()
-metrics = Metrics(namespace="MyApp")
-
-@logger.inject_lambda_context
-@tracer.capture_lambda_handler
-@metrics.log_metrics
-def handler(event, context):
-    metrics.add_metric(
-        name="OrderProcessed", unit="Count", value=1
-    )
-    logger.info("Processing order",
-        extra={"order_id": event["id"]})
-```
-:::
-
-::: tab "SLI/SLO 정의"
-### SLI/SLO 프레임워크
-```yaml
-# Application Signals SLO 설정
-SLOs:
-  - name: api-availability
-    description: "API 가용성 SLO"
-    sli:
-      metric: 5xx_error_rate
-      source: Application Signals
-    goal:
-      target: 99.9%          # 월 43분 허용
-      warning: 99.95%
-    window: rolling_28_days
-
-  - name: api-latency
-    description: "API 응답시간 SLO"
-    sli:
-      metric: p99_latency
-      source: CloudWatch
-    goal:
-      target: 500ms
-      warning: 300ms
-    window: rolling_28_days
-
-  - name: order-processing
-    description: "주문 처리 SLO"
-    sli:
-      metric: processing_time
-      source: Custom Metric
-    goal:
-      target: 95%_under_3sec
-      warning: 95%_under_2sec
-    window: rolling_7_days
-```
-
-**Error Budget = 1 - SLO Target**
-- 99.9% SLO → 0.1% Error Budget → 월 43분
-- Error Budget 소진 시 → 새 배포 중단, 안정화 집중
+# Labels
+text "Application Layer" 400,85 size:12 color:#41B3FF step:0
+text "Collection" 400,175 size:12 color:#FF9900 step:1
+text "Data Hub" 400,265 size:12 color:#00E500 step:2
+text "AI/ML Analysis" 300,365 size:12 color:#AD5CFF step:3
+text "Automation & Notification" 770,385 size:12 color:#FF5C85 step:4
 :::
 
 :::notes
 {timing: 4min}
-Phase 1의 구체적인 구현을 환경별로 보겠습니다.
+이것이 AnyCompany를 위한 AIOps 레퍼런스 아키텍처입니다.
 
-EKS 환경에서는 ADOT Collector를 DaemonSet으로 배포합니다. 하나의 Collector가 OTLP로 트레이스를 받고, Prometheus scraping으로 메트릭을 수집하고, 로그도 수집합니다. exporter를 보면 X-Ray, EMF(메트릭), CloudWatch Logs로 모든 데이터를 보냅니다. 이것 하나로 3가지 시그널을 모두 커버합니다.
+Step 0 — Application Layer입니다. EKS 클러스터, Lambda 마이크로서비스, Aurora PostgreSQL, DynamoDB, S3+CloudFront까지 — 전형적인 현대 웹 서비스 스택입니다.
 
-Lambda 환경에서는 ADOT Lambda Layer를 추가하면 됩니다. 코드 변경은 최소화되고, Lambda Powertools를 함께 사용하면 구조화된 로깅, 자동 트레이싱, 커스텀 메트릭을 깔끔하게 구현할 수 있습니다.
+Step 1 — Collection Layer에서 ADOT Collector가 EKS 트레이스와 메트릭을, CloudWatch Agent가 시스템 메트릭과 로그를, VPC Flow Logs가 네트워크 데이터를, CloudTrail이 API 감사 로그를 수집합니다.
 
-세 번째 탭의 SLI/SLO 정의가 가장 중요합니다. SLI(Service Level Indicator)는 "무엇을 측정하는가"이고, SLO(Service Level Objective)는 "어디까지 허용하는가"입니다. 예를 들어 API 가용성 SLO 99.9%면 월 43분까지 다운타임을 허용한다는 의미입니다. Error Budget 개념을 도입하면 "이번 달 에러 예산을 50% 이상 소진했으니 새 배포를 중단하고 안정화에 집중하자"는 데이터 기반 의사결정이 가능해집니다.
+Step 2 — Central Data Hub는 Monitoring Account의 CloudWatch로 모든 계정의 데이터가 통합됩니다. AMP는 Prometheus 커스텀 메트릭을 저장하고, AMG 대시보드로 시각화합니다. Cross-Account Observability가 여기서 핵심입니다.
 
-{cue: transition} 다음은 노이즈 감소 전략입니다.
+Step 3 — AI/ML Layer에서 DevOps Guru가 운영 인사이트를, CloudWatch AD가 메트릭 이상을, Bedrock Agent가 자연어 분석을, Lookout이 비즈니스 이상을 각각 담당합니다.
+
+Step 4 — EventBridge가 탐지된 이상을 받아서 SSM Automation으로 자동 복구하고, Slack과 PagerDuty로 알림을 보냅니다.
+
+이 전체 아키텍처를 한 번에 구축하는 것은 비현실적입니다. 다음 슬라이드에서 단계별 로드맵을 보겠습니다.
+{cue: transition}
 :::
 
 ---
+<!-- Slide 4: Implementation Roadmap -->
+@type: canvas
 
-## Alert 노이즈 감소 전략
+## 단계별 도입 로드맵
 
-::: left
-### Before AIOps
-```
-[Alert Storm - 30분간 147개 알림]
-03:00 CPU > 80% on web-01     ← noise
-03:00 CPU > 80% on web-02     ← noise
-03:01 Memory > 90% on web-01  ← noise
-03:01 5xx > 1% on ALB         ← symptom
-03:02 p99 > 2s on API         ← symptom
-03:02 Connection pool full     ← ROOT CAUSE
-03:03 DynamoDB throttling     ← symptom
-...+140 more alerts
-```
-:::
+:::canvas
+@width: 960
+@height: 400
 
-::: right
-### After AIOps
-```
-[Single Insight - 1개 알림]
-03:02 DevOps Guru Insight:
-  Severity: HIGH
-  Root Cause: DynamoDB
-    write capacity exceeded
-  Related Events (7):
-    - ALB 5xx increase
-    - API latency spike
-    - Connection pool exhaustion
-    - CPU spikes (cascading)
-  Recommendation:
-    - Increase WCU or enable
-      auto-scaling
-    - Review burst traffic pattern
-  Auto-Action:
-    DynamoDB AutoScale triggered
-```
+# Phase 1 (Month 1-2)
+box "Phase 1\nFoundation\n(Month 1-2)" 30,30 180,80 fill:#1a2744 border:#41B3FF step:0
+text "CloudWatch Agent 전체 배포" 120,130 size:11 color:#ffffff step:0
+text "ADOT DaemonSet (EKS)" 120,150 size:11 color:#ffffff step:0
+text "Cross-Account Observability" 120,170 size:11 color:#ffffff step:0
+text "기본 대시보드 구축" 120,190 size:11 color:#ffffff step:0
+text "SLI/SLO 정의" 120,210 size:11 color:#ffffff step:0
+
+# Phase 2 (Month 3-4)
+arrow 210,70 260,70 #41B3FF step:1
+box "Phase 2\nDetection\n(Month 3-4)" 260,30 180,80 fill:#232f3e border:#FF9900 step:1
+text "CloudWatch Anomaly Detection" 350,130 size:11 color:#ffffff step:1
+text "DevOps Guru 활성화" 350,150 size:11 color:#ffffff step:1
+text "Composite Alarm 3계층" 350,170 size:11 color:#ffffff step:1
+text "AMP + AMG 구축" 350,190 size:11 color:#ffffff step:1
+text "Logs Insights 쿼리 라이브러리" 350,210 size:11 color:#ffffff step:1
+
+# Phase 3 (Month 5-6)
+arrow 440,70 490,70 #FF9900 step:2
+box "Phase 3\nAutomation\n(Month 5-6)" 490,30 180,80 fill:#232f3e border:#00E500 step:2
+text "EventBridge 자동화 규칙" 580,130 size:11 color:#ffffff step:2
+text "SSM Runbook 자동 복구" 580,150 size:11 color:#ffffff step:2
+text "Incident 자동 분류/라우팅" 580,170 size:11 color:#ffffff step:2
+text "CodeGuru Profiler 적용" 580,190 size:11 color:#ffffff step:2
+text "Lookout for Metrics 연동" 580,210 size:11 color:#ffffff step:2
+
+# Phase 4 (Month 7+)
+arrow 670,70 720,70 #00E500 step:3
+box "Phase 4\nIntelligence\n(Month 7+)" 720,30 180,80 fill:#161D26 border:#AD5CFF step:3
+text "Bedrock Agent AIOps 챗봇" 810,130 size:11 color:#ffffff step:3
+text "자동 RCA 파이프라인" 810,150 size:11 color:#ffffff step:3
+text "Predictive Scaling 연동" 810,170 size:11 color:#ffffff step:3
+text "Chaos Engineering 통합" 810,190 size:11 color:#ffffff step:3
+text "AIOps 성숙도 KPI 모니터링" 810,210 size:11 color:#ffffff step:3
+
+# Maturity bar
+text "Level 1: Reactive" 100,280 size:12 color:#41B3FF step:0
+text "Level 2: Proactive" 330,280 size:12 color:#FF9900 step:1
+text "Level 3: Automated" 560,280 size:12 color:#00E500 step:2
+text "Level 4: Intelligent" 790,280 size:12 color:#AD5CFF step:3
+
+# KPIs
+box "MTTR\n4h → 2h" 70,310 100,40 fill:#1a2744 border:#41B3FF step:0
+box "MTTR\n2h → 30m" 300,310 100,40 fill:#232f3e border:#FF9900 step:1
+box "MTTR\n30m → 5m" 530,310 100,40 fill:#232f3e border:#00E500 step:2
+box "MTTR\n5m → auto" 760,310 100,40 fill:#161D26 border:#AD5CFF step:3
+
+text "예상 MTTR 개선 추이" 430,370 size:13 color:#FBD332 step:0
 :::
 
 :::notes
-{timing: 3min}
-이 비교가 AIOps의 가치를 가장 직관적으로 보여줍니다.
+{timing: 4min}
+이 로드맵은 AnyCompany가 6-9개월에 걸쳐 AIOps를 도입하는 현실적 계획입니다.
 
-왼쪽은 전형적인 Alert Storm입니다. 새벽 3시에 30분 동안 147개 알림이 쏟아집니다. CPU 알림, 메모리 알림, 5xx 알림, 레이턴시 알림 — 다 연관된 건데 각각 따로 옵니다. 엔지니어는 잠에서 깨서 이 147개를 하나하나 보면서 "진짜 원인이 뭐지?" 추적해야 합니다.
+Phase 1 — Foundation은 2개월입니다. 가장 중요한 건 데이터 수집 체계를 완성하는 것입니다. CloudWatch Agent를 모든 워크로드에 배포하고, EKS에 ADOT DaemonSet을 올리고, Cross-Account Observability를 설정합니다. 이 단계에서 SLI/SLO를 반드시 정의하세요. 이 단계 완료 시 MTTR이 4시간에서 2시간으로 줄어듭니다 — 단순히 가시성만 확보해도 절반으로 줍니다.
 
-오른쪽은 AIOps 적용 후입니다. DevOps Guru가 147개 알림을 1개 Insight로 묶었습니다. 근본 원인은 DynamoDB write capacity 초과입니다. ALB 5xx, API 레이턴시, 커넥션 풀 고갈, CPU 스파이크 — 이 모든 것이 DynamoDB throttling에서 연쇄적으로 발생한 증상이라고 정리해줍니다. 그리고 이미 DynamoDB Auto Scaling이 자동으로 트리거되었습니다.
+Phase 2 — Detection은 3-4개월 차입니다. CloudWatch Anomaly Detection과 DevOps Guru를 활성화하고, Composite Alarm 3계층을 설정합니다. MTTR이 30분으로 줄어듭니다 — ML이 이상을 자동 탐지하고 노이즈를 줄여주니까요.
 
-Alert 건수로 보면 147개에서 1개로 — 99% 이상 노이즈가 감소합니다. MTTR은 어떨까요? 수동으로 원인 추적하면 30분~1시간, AIOps로는 2분입니다.
+Phase 3 — Automation은 5-6개월 차입니다. EventBridge와 SSM Runbook으로 자동 복구를 구현합니다. 자주 발생하는 문제(디스크 부족, OOM kill, DynamoDB throttle)부터 자동 대응을 만듭니다. MTTR 5분 목표.
 
-{cue: transition} 이제 이벤트 상관분석의 기술적 구현을 더 깊이 보겠습니다.
+Phase 4 — Intelligence는 7개월 이후입니다. Bedrock Agent로 AIOps 챗봇을 만들고, 자동 RCA 파이프라인을 구축합니다. 궁극적으로 MTTR을 "자동 복구"(auto-remediation) 수준까지 가져가는 것이 목표입니다.
+{cue: question}
+AnyCompany의 현재 MTTR은 어느 정도인가요? 현 위치에 따라 시작점이 달라집니다.
+{cue: transition}
+비용에 대해 이야기해 봅시다.
 :::
 
 ---
+<!-- Slide 5: Cost Optimization -->
+@type: tabs
 
-## 이벤트 상관분석 패턴
+## AIOps 비용 최적화 전략
 
-:::click
-### 1. 시간 기반 상관 (Temporal Correlation)
-- 같은 시간대에 발생한 이벤트 그룹핑
-- **Window**: 5분 이내 발생한 이벤트를 하나의 그룹으로
-- DevOps Guru가 자동으로 수행
+::: tab "비용 구조"
+### 서비스별 월간 비용 추정 (100 리소스 기준)
+| 서비스 | 항목 | 월 비용 |
+|--------|------|---------|
+| CloudWatch Metrics | 커스텀 메트릭 200개 | ~$60 |
+| CloudWatch Logs | 50GB 수집, 30일 보존 | ~$75 |
+| CloudWatch AD | 메트릭 50개 | 무료 (CW 포함) |
+| DevOps Guru | 100 리소스 | ~$200 |
+| AMP | 50M samples/month | ~$150 |
+| AMG | 1 workspace, 5 editors | ~$45 |
+| X-Ray | 10M traces | ~$50 |
+| Lookout | 50 메트릭 | ~$300 |
+| **합계** | | **~$880/month** |
+
+> Production 환경 기준. Dev/Staging은 DevOps Guru와 Lookout 비활성화로 ~$380/month
 :::
 
-:::click
-### 2. 토폴로지 기반 상관 (Topology Correlation)
-- 서비스 의존성 그래프 기반 원인 추적
-- **X-Ray Service Map** → 호출 경로 상의 이상 식별
-- Application Signals → 서비스 간 SLI 상관관계
+::: tab "비용 절감 팁"
+### 즉시 적용 가능
+- **로그 보존 정책**: hot 30일 → warm 90일 → S3 아카이브 {.click}
+- **메트릭 필터링**: 불필요한 high-cardinality 메트릭 drop {.click}
+- **AMP relabeling**: label 조합 100만 이하로 관리 {.click}
+- **X-Ray 샘플링**: reservoir 1/s + fixed_rate 5% {.click}
+
+### 아키텍처 레벨
+- **Monitoring Account** 통합으로 중복 수집 제거 {.click}
+- **ADOT Processor**: batch + filter로 불필요 데이터 제거 {.click}
+- **Tiered Alerting**: L1은 CloudWatch만, L2부터 DevOps Guru {.click}
+
+### ROI 측정 공식
+```
+AIOps ROI = (MTTR_before - MTTR_after) × incidents/month
+            × cost_per_minute_downtime
+            - AIOps_monthly_cost
+```
 :::
 
-:::click
-### 3. 변경 기반 상관 (Change Correlation)
-- CloudTrail + Config 변경 이력과 이상 시점 매칭
-- "이 이상이 시작된 시점에 어떤 변경이 있었나?"
-- **CodePipeline 배포** ↔ **성능 저하** 자동 연결
-:::
+::: tab "비용 vs 가치"
+### AnyCompany 시나리오 분석
 
-:::click
-### 4. 패턴 기반 상관 (Pattern Correlation)
-- 과거 장애와 유사한 패턴 매칭
-- Bedrock Knowledge Base에 과거 장애 보고서 저장
-- "이전에 비슷한 패턴에서 어떻게 해결했는가?"
+**Before AIOps**
+- 월 평균 장애: 8건
+- 평균 MTTR: 2시간
+- 분당 비즈니스 영향: $500
+- **월 손실: 8 × 120분 × $500 = $480,000**
+
+**After AIOps (Phase 3)**
+- 월 평균 장애: 5건 (3건 사전 예방)
+- 평균 MTTR: 15분
+- 분당 비즈니스 영향: $500
+- **월 손실: 5 × 15분 × $500 = $37,500**
+
+### 결과
+| 항목 | 금액 |
+|------|------|
+| 월 손실 감소 | $442,500 |
+| AIOps 월 비용 | $880 |
+| **월 순이익** | **$441,620** |
+| **ROI** | **50,000%+** |
+
+> 실제 수치는 다를 수 있지만, 장애 비용이 있는 환경이라면 AIOps는 거의 항상 positive ROI
 :::
 
 :::notes
-{timing: 3min}
-이벤트 상관분석에는 네 가지 패턴이 있습니다.
+{timing: 4min}
+비용 이야기를 해야죠. AIOps가 아무리 좋아도 비용이 문제라면 도입이 어려우니까요.
 
-첫째, 시간 기반 상관입니다. 5분 이내에 발생한 이벤트들을 하나의 그룹으로 묶습니다. 가장 기본적이면서도 효과적인 방법입니다. DevOps Guru가 자동으로 수행합니다.
+첫 번째 탭에서 100개 리소스 기준 월 880달러입니다. Production 환경만 적용하면 됩니다. Dev/Staging은 DevOps Guru와 Lookout을 끄면 월 380달러로 줄어듭니다.
 
-둘째, 토폴로지 기반 상관입니다. X-Ray Service Map이 서비스 간 호출 관계를 파악하고 있기 때문에, "A 서비스가 B를 호출하는데, B에서 에러가 나면 A도 영향받는다"는 것을 자동으로 추적합니다. 이것이 가능하려면 Phase 1의 관측성 파이프라인이 잘 구축되어 있어야 합니다.
+두 번째 탭의 비용 절감 팁이 중요합니다. 가장 큰 비용 요인은 보통 CloudWatch Logs입니다. 30일 이상 된 로그는 warm storage로, 90일 이상은 S3로 자동 이전하세요. AMP에서는 relabeling으로 불필요한 label 조합을 제거하면 cardinality가 줄어서 비용이 크게 절감됩니다. X-Ray 샘플링은 reservoir 1/s + fixed_rate 5%면 대부분 충분합니다.
 
-셋째, 변경 기반 상관입니다. 이것이 실무에서 가장 유용합니다. 장애의 70%는 변경에 의해 발생합니다. CloudTrail과 Config의 변경 이력을 이상 탐지 시점과 자동으로 매칭하면 "10분 전 이 IAM 정책이 변경되었습니다"라는 단서를 즉시 얻을 수 있습니다.
+세 번째 탭이 핵심입니다. AnyCompany 시나리오에서 장애 비용을 계산해 보면, Before AIOps에서 월 48만 달러 손실이 After AIOps에서 3.75만 달러로 줄어듭니다. AIOps 비용 880달러와 비교하면 ROI가 5만 퍼센트입니다.
 
-넷째, 패턴 기반 상관입니다. 이것은 Bedrock Knowledge Base를 활용하는 고급 패턴으로, 과거 장애 보고서와 현재 상황의 유사도를 비교합니다.
-
-{cue: transition} 이제 실제 구현에서 흔히 겪는 함정과 Best Practices를 살펴보겠습니다.
+물론 이 수치는 가정이지만, 요점은 명확합니다 — 장애가 비즈니스 비용을 발생시키는 환경이라면, AIOps는 거의 항상 정당화됩니다.
+{cue: transition}
+운영 성숙도 모델을 보겠습니다.
 :::
 
 ---
+<!-- Slide 6: Operations Maturity Model -->
 
-## AIOps 구현 Best Practices
+## AIOps 운영 성숙도 모델
 
-@type: checklist
+### Level 1 — Reactive (수동 대응)
+- 장애 발생 후 수동 확인, 개인 경험에 의존
+- 알람 = 정적 임계값, 대시보드 수동 확인
+- MTTR: 2-4시간 {.click}
 
-- **Start Small, Scale Fast** — 가장 빈번한 장애 유형 3가지부터 자동화 {.click}
-- **Data Quality First** — 커스텀 메트릭 네이밍 컨벤션 통일, 구조화된 로깅 필수 {.click}
-- **SLO-Driven** — SLO 위반 기준으로 Alert, 임의 임계값 금지 {.click}
-- **Gradual Automation** — 분석→승인→실행→풀오토 단계적 전환 {.click}
-- **Feedback Loop** — 모든 Insight에 유용/무용 피드백, ML 모델 개선 {.click}
-- **Runbook-as-Code** — SSM 문서를 CloudFormation/CDK로 관리, 버전 관리 필수 {.click}
-- **Blast Radius Control** — 자동 복구의 범위 제한 (한 번에 1 AZ, 10% 인스턴스) {.click}
-- **Cost Awareness** — Anomaly Detection 메트릭 선별, 로그 보존 기간 계층화 {.click}
+### Level 2 — Proactive (사전 탐지)
+- ML 기반 이상 탐지, 관측성 3 Pillars 구축
+- DevOps Guru + CloudWatch AD 활성화
+- MTTR: 15-30분 {.click}
+
+### Level 3 — Automated (자동 대응)
+- EventBridge + SSM 자동 복구
+- Runbook 기반 셀프 힐링
+- Composite Alarm으로 노이즈 제거
+- MTTR: 1-5분 {.click}
+
+### Level 4 — Intelligent (지능형 운영)
+- Gen AI 기반 자연어 분석
+- Predictive scaling + Chaos Engineering 통합
+- 자동 RCA → 자동 수정 → 자동 검증
+- MTTR: 자동 복구 (사람 개입 최소) {.click}
 
 :::notes
 {timing: 3min}
-8가지 Best Practices를 체크리스트로 정리했습니다.
+운영 성숙도를 4단계로 정의합니다.
 
-Start Small이 가장 중요합니다. 모든 것을 한번에 자동화하려 하지 마세요. 여러분 환경에서 가장 자주 발생하는 장애 유형 3가지를 뽑으세요. 그것부터 자동화합니다.
+Level 1 Reactive는 대부분의 조직이 시작하는 곳입니다. 장애가 터지면 수동으로 로그를 뒤지고, 경험 많은 시니어 엔지니어에게 의존합니다.
 
-Data Quality는 간과하기 쉽지만 치명적입니다. 메트릭 이름이 팀마다 다르면 — 어디는 api_latency, 어디는 ApiLatency, 어디는 api-response-time — 상관분석이 불가능합니다. 네이밍 컨벤션을 통일하고 구조화된 JSON 로깅을 필수로 하세요.
+Level 2 Proactive는 Phase 2를 완료한 상태입니다. ML이 이상을 자동 탐지하니 장애가 터지기 전에, 또는 터지자마자 알 수 있습니다.
 
-Blast Radius Control도 강조하고 싶습니다. 자동 복구가 잘못 판단하면 오히려 장애를 확대할 수 있습니다. 한 번에 전체 클러스터를 재시작하는 것이 아니라, 1개 AZ의 10% 인스턴스만 먼저 처리하고 결과를 확인하는 식으로 범위를 제한하세요.
+Level 3 Automated는 Phase 3를 완료한 상태입니다. 자주 발생하는 문제는 사람 개입 없이 자동 복구됩니다. Composite Alarm으로 온콜 엔지니어가 정말 중요한 것만 봅니다.
 
-Cost Awareness도 현실적으로 중요합니다. 모든 메트릭에 Anomaly Detection을 적용하면 비용이 급증합니다. 비즈니스 임팩트가 큰 핵심 메트릭만 선별하세요.
+Level 4 Intelligent는 최종 목표입니다. Gen AI가 자연어로 분석하고, 예측 기반으로 스케일링하고, Chaos Engineering으로 지속적으로 시스템을 강화합니다.
 
-{cue: transition} 흔한 실패 패턴도 알아두면 도움이 됩니다.
+AnyCompany는 현재 어디 계신가요? 대부분 Level 1에서 Level 2로 넘어가는 단계일 텐데, 6-9개월이면 Level 3까지 도달할 수 있습니다.
+{cue: transition}
+실전에서 자주 겪는 도전 과제들을 이야기해 봅시다.
 :::
 
 ---
-
-## AIOps 안티패턴
-
-::: left
-### 흔한 실패 패턴
-
-- **Tool-First Approach** {.click}
-  "DevOps Guru 켜면 끝 아닌가요?"
-  → 데이터 품질 없이 도구만 도입
-
-- **Big Bang Deployment** {.click}
-  전체 인프라 한번에 AIOps 적용
-  → 알림 폭주, 팀 피로, 포기
-
-- **No Feedback Loop** {.click}
-  Insight 무시하거나 피드백 안 줌
-  → ML 모델 개선 안 됨
-
-- **Over-Automation** {.click}
-  모든 것을 자동 복구하려 함
-  → 잘못된 자동 복구가 장애 확대
-:::
-
-::: right
-### 올바른 접근
-
-- **Outcome-First Approach** {.click}
-  "MTTR 30분→5분 달성"이 목표
-  → 목표 역산으로 필요 기능 식별
-
-- **Incremental Rollout** {.click}
-  1개 팀, 1개 서비스부터 시작
-  → 성공 사례 만들고 확산
-
-- **Active Feedback** {.click}
-  모든 Insight에 Thumbs up/down
-  → 2개월 후 정확도 체감 향상
-
-- **Tiered Automation** {.click}
-  L1 자동, L2 승인 필요, L3 수동
-  → 리스크 수준별 자동화 차등
-:::
-
-:::notes
-{timing: 3min}
-안티패턴을 알아야 피할 수 있습니다.
-
-가장 흔한 실패는 Tool-First Approach입니다. "DevOps Guru 활성화하면 자동으로 다 해주는 거 아닌가요?" — 아닙니다. 데이터 품질이 좋지 않으면 ML도 쓸모없는 결과를 냅니다. 도구보다 데이터가 먼저입니다.
-
-Big Bang Deployment도 흔합니다. 전체 인프라에 한번에 적용하면 Insight가 폭주합니다. 처음 보는 팀은 "이게 다 뭐야?" 하면서 무시하기 시작하고, 결국 Alert Fatigue로 돌아갑니다.
-
-올바른 접근은 오른쪽입니다. Outcome-First — "MTTR을 30분에서 5분으로 줄이겠다"는 명확한 목표를 세우고, 그 목표 달성에 필요한 기능만 구현합니다.
-
-Incremental Rollout — 가장 의지 있는 1개 팀의 1개 서비스에서 시작합니다. 성공 사례를 만들면 나머지 팀이 자발적으로 따라옵니다.
-
-Tiered Automation이 현실적입니다. 스케일 아웃처럼 리스크가 낮은 건 완전 자동화, 데이터베이스 failover처럼 리스크가 높은 건 승인 필요, 코드 롤백은 수동 — 이렇게 계층을 나눕니다.
-
-{cue: transition} 마지막으로 비용 측면을 살펴보겠습니다.
-:::
-
----
-
-## AIOps 비용 최적화
-
+<!-- Slide 7: Common Challenges -->
 @type: compare
 
-### 주요 서비스 비용 (ap-northeast-2)
+## AIOps 도입 시 흔한 도전과 해결책
 
-::: compare "DevOps Guru"
-### DevOps Guru
-| 항목 | 비용 |
-|------|------|
-| AWS 리소스 분석 | $0.0028/리소스/시간 |
-| 월 100 리소스 | ~$201/월 |
-| API 호출 분석 | $0.000005/API 호출 |
-| 월 1억 API 호출 | ~$500/월 |
+### Challenge
+- **데이터 사일로** — 팀마다 다른 모니터링 도구 사용
+- **알람 피로** — 수백 개 알람이 울려도 무시
+- **스킬 갭** — ML/데이터 분석 역량 부족
+- **신뢰 부족** — "ML 판단을 믿을 수 있나?"
+- **비용 우려** — 관측성 비용이 인프라 비용의 10%+
 
-**ROI 계산**: 장애 1건 MTTR 30분 단축
-→ 엔지니어 시간 절약 + 비즈니스 손실 방지
+### Solution
+- **Monitoring Account** 통합 + ADOT 표준화 → 사일로 해소
+- **Composite Alarm 3계층** + DevOps Guru 상관 분석 → 노이즈 80% 감소
+- **Amazon Q** — ML 전문성 없이 자연어로 분석 → 스킬 갭 해소
+- **점진적 자동화** — 알림부터 시작, 신뢰 구축 후 자동 대응
+- **Tiered 수집** — 전체가 아닌 핵심 SLI만 ML 적용 → 비용 최적화
+
+:::notes
+{timing: 3min}
+AIOps 도입 시 가장 흔히 겪는 5가지 도전을 정리했습니다.
+
+데이터 사일로가 가장 큰 장벽입니다. 개발팀은 Datadog, 인프라팀은 CloudWatch, SRE팀은 Prometheus를 각각 쓰는 경우가 많죠. 해결책은 Monitoring Account로 통합하고, ADOT를 표준 수집기로 채택하는 것입니다. 각 팀이 쓰는 시각화 도구는 유지하되, 데이터소스를 통합하는 게 핵심입니다.
+
+알람 피로는 Composite Alarm으로 해결합니다. 앞서 말씀드린 L1/L2/L3 구조를 적용하면 온콜 엔지니어가 받는 알림이 80% 줍니다.
+
+스킬 갭은 GenAI가 해결합니다. Amazon Q in CloudWatch를 쓰면 PromQL을 몰라도 자연어로 분석할 수 있습니다. ML 전문가를 채용할 필요 없이 기존 운영 팀이 바로 시작할 수 있습니다.
+
+가장 중요한 건 신뢰입니다. 처음부터 자동 대응을 켜지 마세요. 3-6개월간 알림만 보내면서 "ML이 맞게 판단하는지" 팀이 체감한 후에 단계적으로 자동화를 확대하세요.
+{cue: transition}
+AnyCompany를 위한 Quick Win부터 정리하겠습니다.
 :::
 
-::: compare "CloudWatch AI"
-### CloudWatch AI/ML
-| 항목 | 비용 |
-|------|------|
-| Anomaly Detection | $3/메트릭/월 |
-| 50개 핵심 메트릭 | $150/월 |
-| Application Signals | $12/서비스/월 |
-| 10개 서비스 | $120/월 |
-| Log Anomaly | Logs 비용에 포함 |
+---
+<!-- Slide 8: Quick Wins -->
 
-**최적화**: 핵심 메트릭만 선별
-→ 비즈니스 KPI + SLI 메트릭 위주
+## AnyCompany — 내일부터 시작할 수 있는 Quick Wins
+
+::: left
+### Week 1 — 즉시 적용
+1. **Amazon Q in CloudWatch** 활성화 (무료) {.click}
+   - 팀 전원에게 접근 권한 부여
+   - "가장 에러가 많은 Lambda는?" 테스트
+2. **CloudWatch Anomaly Detection** 핵심 SLI 5개 적용 {.click}
+   - API latency P99, Error rate, Lambda Duration
+   - Stddev = 2로 시작
+3. **Composite Alarm** 1개 시범 구성 {.click}
+   - 가장 중요한 서비스의 L3 알람
 :::
 
-::: compare "자동화 인프라"
-### Automation 비용
-| 항목 | 비용 |
-|------|------|
-| EventBridge | $1/백만 이벤트 |
-| SSM Automation | 무료 (API 호출만) |
-| SNS 알림 | $0.50/백만 발행 |
-| Lambda (glue) | $0.20/백만 요청 |
+::: right
+### Week 2-4 — 기반 구축
+4. **SLI/SLO 워크숍** 개최 {.click}
+   - 서비스 소유자와 함께 핵심 SLI 정의
+   - 99.9% availability = 월 43분 다운타임
+5. **DevOps Guru** Production 스택 활성화 {.click}
+   - CloudFormation 스택 기반으로 범위 지정
+   - HIGH severity만 SNS → Slack 알림
+6. **ADOT 파일럿** EKS 1개 클러스터 적용 {.click}
+   - DaemonSet 배포 + AMP 연동
+   - 기존 Prometheus 설정 재활용
 
-**합계**: $5~20/월 수준
-→ 거의 무시 가능한 비용
+### 성공 기준
+- 2주 내: "ML이 잡아낸 이상" 최초 사례 1건
+- 4주 내: MTTR 30% 감소 (측정 시작)
 :::
 
 :::notes
 {timing: 3min}
-AIOps 구현 비용을 현실적으로 살펴보겠습니다.
+이론은 충분합니다. 내일부터 할 수 있는 것들을 정리했습니다.
 
-DevOps Guru는 모니터링하는 리소스 수에 따라 과금됩니다. 100개 리소스면 월 약 200달러입니다. API 호출 분석도 별도로 과금되는데, 월 1억 호출이면 약 500달러입니다. 합하면 월 700달러 수준인데, 장애 1건의 비즈니스 손실을 생각하면 충분히 합리적입니다.
+Week 1에 바로 할 수 있는 세 가지가 있습니다. 첫째, Amazon Q in CloudWatch 활성화는 설정이 필요 없고 무료입니다. 팀 전원에게 CloudWatch 콘솔 접근만 주면 됩니다. 둘째, CloudWatch Anomaly Detection은 가장 중요한 SLI 5개에만 적용합니다. 전체에 적용하면 노이즈가 많으니 핵심 메트릭만 선별하세요. 셋째, Composite Alarm을 가장 중요한 서비스 하나에 시범 적용합니다.
 
-CloudWatch AI/ML은 Anomaly Detection이 메트릭당 월 3달러입니다. 모든 메트릭이 아니라 핵심 50개만 적용하면 150달러입니다. Application Signals는 서비스당 월 12달러로, 10개 서비스면 120달러입니다.
+Week 2-4에는 기반을 다집니다. SLI/SLO 워크숍은 AIOps 도입의 가장 중요한 첫 단계입니다. 서비스 소유자와 함께 "우리 서비스의 정상은 무엇인가"를 정의해야 ML이 비정상을 탐지할 수 있습니다.
 
-가장 좋은 소식은 자동화 인프라 비용입니다. EventBridge, SSM, SNS 비용은 합쳐도 월 5~20달러 수준으로 거의 무시할 수 있습니다. Level 4 자동 복구를 구현하는 데 추가 비용이 거의 들지 않는다는 것입니다.
-
-총 비용은 환경 규모에 따라 월 500~1,500달러 수준입니다. 이것은 장애 1건의 MTTR을 30분 단축하는 것만으로도 ROI가 나옵니다.
-
-{cue: transition} 마지막으로 이 세션의 전체 내용을 정리하겠습니다.
+성공 기준을 명확히 합니다. 2주 내에 ML이 실제로 이상을 잡아낸 사례 1건을 만들어야 팀의 buy-in을 얻을 수 있습니다. 4주 내에 MTTR 측정을 시작해서 before/after를 비교할 수 있어야 합니다.
+{cue: transition}
+마지막으로 전체 세션을 정리합니다.
 :::
 
 ---
+<!-- Slide 9: Session Summary -->
+@transition: fade
 
-## Session Summary — AIOps on AWS
+## 전체 세션 요약
 
-:::click
-### Foundation (L1→L2)
-관측성 파이프라인이 모든 것의 시작
-- ADOT + CloudWatch + X-Ray 통합 수집
-- SLI/SLO 정의 → 데이터 기반 운영
+::: left
+### Block 1 — Foundations
+- AIOps = Observe + Detect + Diagnose + Respond
+- ADOT 통합 수집 → CloudWatch + AMP + X-Ray
+- Cross-Account Observability로 통합 모니터링
+
+### Block 2 — ML Operations
+- DevOps Guru — 이벤트 상관 분석, 사전 예측
+- CloudWatch AD — RCF 기반 동적 이상 탐지
+- Gen AI (Q, Bedrock) — 자연어 운영 인터페이스
+- Composite Alarm — 3계층 알람 전략
 :::
 
-:::click
-### Intelligence (L2→L3)
-ML 기반 이상 탐지와 근본 원인 분석
-- CloudWatch Anomaly Detection → 동적 baseline
-- DevOps Guru → 이벤트 상관분석 + Insight
-- Amazon Q → 자연어 운영 지원
-:::
+::: right
+### Block 3 — Implementation
+- 4-Phase 로드맵: Foundation → Detection → Automation → Intelligence
+- MTTR: 4시간 → 30분 → 5분 → 자동 복구
+- ROI: AIOps 비용 대비 50,000%+ 절감 가능
 
-:::click
-### Automation (L3→L4)
-알려진 문제의 자동 복구
-- EventBridge → SSM Automation 파이프라인
-- 점진적 자동화: 분석 → 승인 → 실행 → 풀오토
-- Blast Radius 제한 필수
-:::
+### 핵심 메시지
+> **"AIOps는 목적지가 아니라 여정입니다."**
+> 작게 시작하고(Quick Wins), 신뢰를 구축하고(점진적 자동화), 지속적으로 발전시키세요(성숙도 모델).
 
-:::click
-### Next Steps for AnyCompany
-1. 핵심 서비스 3개의 SLI/SLO 정의 (2주)
-2. ADOT 배포 + DevOps Guru 활성화 (2주)
-3. 첫 번째 자동 복구 Runbook 작성 (2주)
+### Next Steps
+1. SLI/SLO 워크숍 스케줄링
+2. Amazon Q + CloudWatch AD 시범 적용
+3. DevOps Guru PoC 범위 합의
 :::
 
 :::notes
 {timing: 3min}
-90분간의 세션을 세 단계로 정리합니다.
+90분간의 세션을 마무리하겠습니다.
 
-Foundation — 관측성 파이프라인이 모든 것의 시작입니다. ADOT로 메트릭, 로그, 트레이스를 통합 수집하고, SLI/SLO를 정의하세요. 이것 없이 AIOps는 시작할 수 없습니다.
+Block 1에서 관측성 기반을, Block 2에서 ML 서비스를, Block 3에서 구현 전략을 다뤘습니다. 가장 기억하셨으면 하는 메시지는 "AIOps는 여정"이라는 것입니다.
 
-Intelligence — CloudWatch Anomaly Detection과 DevOps Guru로 ML 기반 이상 탐지와 근본 원인 분석을 구현합니다. 정적 임계값에서 동적 baseline으로의 전환이 핵심입니다.
+한꺼번에 모든 걸 도입하려고 하면 실패합니다. Quick Win으로 시작하세요. Amazon Q를 켜고, Anomaly Detection을 5개 메트릭에 적용하고, DevOps Guru를 Production에 활성화하세요. 2주 안에 첫 번째 성공 사례가 나올 겁니다.
 
-Automation — EventBridge와 SSM으로 자동 복구를 구현합니다. "알려진 문제는 자동화, 모르는 문제는 사람에게" 원칙을 지키세요.
+그 성공 사례로 팀의 신뢰를 얻고, 4-Phase 로드맵을 따라 점진적으로 확대하면 됩니다.
 
-AnyCompany의 다음 단계를 구체적으로 제안합니다. 먼저 핵심 서비스 3개의 SLI/SLO를 정의하는 데 2주, ADOT 배포와 DevOps Guru 활성화에 2주, 첫 번째 자동 복구 Runbook 작성에 2주 — 총 6주면 AIOps Level 3에 진입할 수 있습니다.
+다음 단계로 SLI/SLO 워크숍을 먼저 잡으시는 것을 추천합니다. 기술적 구현보다 "무엇이 정상인가"를 정의하는 게 AIOps의 출발점입니다.
 
-{cue: question} 질문 있으신 분 계신가요? 또는 여러분 환경에 특화된 아키텍처 상담이 필요하시면 세션 후에 개별적으로 이야기 나누겠습니다.
+AWS에서 AnyCompany의 AIOps 여정을 함께하겠습니다. 감사합니다!
+{cue: question}
+질문 있으신 분 계신가요?
 :::
 
 ---
+<!-- Slide 10: Q&A -->
+@transition: fade
 
-## Thank You
+## Q&A
 
-:::click
-> AIOps는 도구가 아니라 **여정**입니다.
-> 작게 시작하고, 데이터로 판단하고, 점진적으로 자동화하세요.
+궁금한 점을 자유롭게 질문해 주세요.
+
+::: left
+### 추가 리소스
+- AWS Well-Architected — Operational Excellence Pillar
+- Amazon DevOps Guru Documentation
+- AWS Observability Best Practices Guide
+- AWS AIOps Workshop (workshops.aws)
 :::
 
+::: right
+### Contact
 **Junseok Oh**
 Sr. Solutions Architect, AWS
 
-:::notes
-{timing: 1min}
-오늘 세션에 참석해 주셔서 감사합니다. AIOps는 하루아침에 완성되는 것이 아니라 여정입니다. 오늘 공유드린 로드맵과 Best Practices가 여러분의 AIOps 여정에 도움이 되길 바랍니다.
+세션 후에도 언제든 연락 주세요.
+:::
 
-추가 질문이나 아키텍처 상담이 필요하시면 언제든 연락 주세요. 감사합니다.
+:::notes
+{timing: 5min}
+Q&A 시간입니다. 오늘 다룬 내용 중 궁금한 점이나, AnyCompany 환경에 적용하면서 예상되는 이슈에 대해 편하게 질문해 주세요.
+
+추가 리소스도 정리해 놓았습니다. 특히 AWS Observability Best Practices Guide는 오늘 다룬 내용의 상세 구현 가이드가 포함되어 있으니 팀에 공유하시면 좋겠습니다.
+:::
+
+---
+<!-- Slide 11: Thank You -->
+@type: thankyou
+
+## Thank You!
+
+AIOps on AWS — Intelligent Cloud Operations
+
+:::notes
+{timing: 0.5min}
+감사합니다. 오늘 세션이 AnyCompany의 AIOps 여정에 도움이 되었길 바랍니다.
 :::

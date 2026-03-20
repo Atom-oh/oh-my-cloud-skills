@@ -1,12 +1,13 @@
 {
   "name": "aws-content-plugin",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "AWS cloud content creation plugin — presentations, architecture diagrams, animated diagrams, documents, GitBook sites, and workshops",
   "author": {
     "name": "atomoh"
   },
   "agents": [
     "./agents/presentation-agent.md",
+    "./agents/reactive-presentation-agent.md",
     "./agents/architecture-diagram-agent.md",
     "./agents/animated-diagram-agent.md",
     "./agents/document-agent.md",
@@ -37,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'FILE=\"$TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" == *reactive-presentation/references/* ]] || [[ \"$FILE\" == *reactive-presentation/SKILL.md ]] || [[ \"$FILE\" == *reactive-presentation/scripts/* ]]; then echo \"[SKILL CHANGED] reactive-presentation skill file modified: $(basename $FILE). Run skill-dev-pipeline test to verify.\"; fi'"
+            "command": "bash -c 'FILE=\"$TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" == *reactive-presentation/references/* ]] || [[ \"$FILE\" == *reactive-presentation/SKILL.md ]] || [[ \"$FILE\" == *reactive-presentation/scripts/* ]]; then PROJ=$(git rev-parse --show-toplevel 2>/dev/null || echo /home/ec2-user/oh-my-cloud-skills); mkdir -p \"$PROJ/.omc/logs\"; echo \"[SKILL CHANGED] reactive-presentation — $(basename $FILE). Running eval...\"; nohup python3 \"$PROJ/scripts/eval-skill-behavior.py\" --skill reactive-presentation > \"$PROJ/.omc/logs/eval-reactive-presentation-latest.log\" 2>&1 & echo \"[EVAL STARTED] PID=$! — results at .omc/logs/eval-reactive-presentation-latest.log\"; fi'"
           }
         ]
       },
@@ -47,6 +48,24 @@
           {
             "type": "command",
             "command": "bash -c 'FILE=\"$TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" == *.md ]] && head -5 \"$FILE\" 2>/dev/null | grep -q \"remarp: true\"; then python3 -c \"import re,sys; t=open(sys.argv[1]).read(); slides=t.split(chr(10)+\\\"---\\\"+chr(10)); missing=[i+1 for i,s in enumerate(slides) if s.strip() and \\\":::notes\\\" not in s and \\\"---\\\" in t]; print(f\\\"Slides missing notes: {missing}\\\") if missing else print(\\\"All slides have notes.\\\")\" \"$FILE\"; fi'"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'FILE=\"$TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" == *.html ]] && [[ \"$FILE\" != /tmp/eval-* ]] && [[ \"$FILE\" != *node_modules* ]] && grep -q '\"'\"'\"generator\".*\"remarp\"'\"'\"' \"$FILE\" 2>/dev/null; then echo \"[CONTENT COMPLETE] Remarp presentation written: $(basename \"$FILE\"). Quality gate required: run content-review-agent (>= 85) before deployment.\"; fi'"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'FILE=\"$TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" == *reactive-presentation/references/* ]] || [[ \"$FILE\" == *reactive-presentation/SKILL.md ]] || [[ \"$FILE\" == *reactive-presentation/scripts/* ]]; then PROJ=$(git rev-parse --show-toplevel 2>/dev/null || echo /home/ec2-user/oh-my-cloud-skills); mkdir -p \"$PROJ/.omc/logs\"; echo \"[SKILL CHANGED] reactive-presentation — $(basename $FILE). Running eval...\"; nohup python3 \"$PROJ/scripts/eval-skill-behavior.py\" --skill reactive-presentation > \"$PROJ/.omc/logs/eval-reactive-presentation-latest.log\" 2>&1 & echo \"[EVAL STARTED] PID=$! — results at .omc/logs/eval-reactive-presentation-latest.log\"; fi'"
           }
         ]
       }

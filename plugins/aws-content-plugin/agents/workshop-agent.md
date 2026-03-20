@@ -2,7 +2,6 @@
 name: workshop-agent
 description: AWS Workshop Studio content creation agent. Creates workshop content with proper structure, directives, multi-language support, Mermaid diagrams, and CloudFormation infrastructure. Triggers on "workshop", "lab content", "hands-on guide", "workshop create", "module content" requests.
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
-model: sonnet
 skills:
   - workshop-creator
 ---

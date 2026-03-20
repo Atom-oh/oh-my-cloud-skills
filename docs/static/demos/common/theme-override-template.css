@@ -1,0 +1,79 @@
+/* =============================================================
+   Theme Override — Generated from PPTX Template
+   Edit these values to customize the extracted theme.
+   This file is loaded AFTER theme.css to override defaults.
+   ============================================================= */
+
+:root {
+  /* --- Colors from PPTX color scheme --- */
+  /* --bg-primary:    #161D26;  /* dk2 (only if dark enough) */
+  /* --accent:        #41B3FF;  /* accent1 */
+  /* --accent-light:  #AD5CFF;  /* accent2 */
+  /* --accent-glow:   rgba(65, 179, 255, 0.3);  /* accent1 @ 30% */
+  /* --green:         #00E500;  /* accent3 */
+  /* --red:           #FF5C85;  /* accent4 */
+  /* --orange:        #FF693C;  /* accent5 */
+  /* --yellow:        #FBD332;  /* accent6 */
+  /* --cyan:          #00cec9;  /* hlink (if present) */
+
+  /* --- Fonts from PPTX font scheme --- */
+  /* --font-main: 'Calibri', -apple-system, sans-serif; */
+  /* --font-heading: 'Calibri Light', var(--font-main); */
+}
+
+/* --- Title Slide gradient using PPTX accents --- */
+/*
+.title-slide h1 {
+  background: linear-gradient(135deg, var(--accent), var(--accent-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+*/
+
+/* --- Logo positioning (converted from PPTX EMU coordinates) --- */
+/*
+.slide-logo {
+  position: fixed;
+  bottom: 16px;
+  left: 20px;
+  height: 32px;
+  width: auto;
+  z-index: 999;
+  opacity: 0.8;
+}
+*/
+
+/* --- Footer text via content property --- */
+/*
+.slide-footer::before {
+  content: 'Company Name';
+}
+*/
+
+/* --- Slide counter position override --- */
+/*
+.slide-counter {
+  bottom: 12px;
+  right: 20px;
+}
+*/
+
+/* --- Background image with dark overlay --- */
+/*
+.slide::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('../common/pptx-theme/images/bg_1.png') center/cover;
+  opacity: 0.15;
+  z-index: -1;
+}
+*/
+
+/* --- Gradient background --- */
+/*
+.slide {
+  background: linear-gradient(135deg, rgba(22,29,38,1) 0%, rgba(65,179,255,0.1) 100%);
+}
+*/

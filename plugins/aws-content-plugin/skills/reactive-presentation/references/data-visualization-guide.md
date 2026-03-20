@@ -100,14 +100,48 @@ Shadow-only hover transitions. No `transform: translateY()` or `scale()`.
 
 ### Anti-Patterns (Forbidden)
 
+**Layout**
 | Pattern | Why Forbidden | Alternative |
 |---------|--------------|-------------|
+| Orphan title | Heading alone on slide wastes space | Combine with content or use as section divider |
+| Wall-of-text | >6 bullet items overwhelm viewers | Split across slides or use progressive reveal |
+| Cramped grid | >6 cards cause cognitive overload | Max 4-6 cards, paginate if needed |
+| Inconsistent padding | Breaks visual rhythm | Use 8px grid system consistently |
+
+**Typography**
+| Pattern | Why Forbidden | Alternative |
+|---------|--------------|-------------|
+| font-size < 0.75rem | Unreadable on projection | Minimum 0.85rem for labels |
+| Mixing rem/px/em | Inconsistent scaling | Use rem exclusively |
+| >3 font weights per slide | Visual chaos | Limit to 400, 600, 700 |
 | Gradient text on data | Reduces readability | Solid `var(--accent-light)` |
-| Floating orbs/blobs | Distracts from data | Subtle radial gradient OR noise |
-| Rainbow borders | Visual noise | Single `var(--border)` or accent |
-| Scale transform hover | Causes layout shift | Shadow-only hover |
+
+**Color**
+| Pattern | Why Forbidden | Alternative |
+|---------|--------------|-------------|
+| Hardcoded hex instead of CSS vars | Theme switching breaks | Always use `var(--color)` |
+| Low-contrast text | Fails accessibility | Minimum 4.5:1 ratio |
+| >5 accent colors per slide | Rainbow noise | Max 3-4 semantic colors |
 | Hex alpha suffix (`#6c5ce780`) | Browser inconsistency | `rgba(108,92,231,0.5)` |
 | Random decorative colors | Breaks semantic meaning | Theme palette only |
+
+**Interaction**
+| Pattern | Why Forbidden | Alternative |
+|---------|--------------|-------------|
+| Click target < 44px | Touch/accessibility failure | Minimum 44x44px hit area |
+| No hover/focus states | Unclear interactivity | Add `:hover` and `:focus-visible` |
+| Broken keyboard nav | Accessibility violation | Test Tab/Enter navigation |
+| Scale transform hover | Causes layout shift | Shadow-only hover |
+
+**Charts**
+| Pattern | Why Forbidden | Alternative |
+|---------|--------------|-------------|
+| 3D chart effects | Distorts data perception | Flat 2D charts only |
+| Pie chart > 5 slices | Impossible to compare | Use bar chart or group "Other" |
+| Unlabeled axes | Data is meaningless | Always label with units |
+| Truncated Y-axis | Exaggerates differences | Start Y-axis at 0 |
+| Floating orbs/blobs | Distracts from data | Subtle radial gradient OR noise |
+| Rainbow borders | Visual noise | Single `var(--border)` or accent |
 
 ### 8px Grid Spacing System
 
@@ -162,6 +196,35 @@ Only one atmospheric effect per slide. Never combine.
 }
 ```
 
+### Accessibility
+
+Ensure data visualizations are accessible to all users:
+
+- All chart containers: `role="img"` + `aria-label="[description]"`
+- Interactive controls: `:focus-visible` outlines, keyboard-operable
+- Color contrast: minimum 4.5:1 for text, 3:1 for large text
+- Live regions: `aria-live="polite"` for dynamic value updates
+- Color-blind safe palette: avoid red/green-only distinctions, use patterns/shapes as secondary encoding
+
+```html
+<!-- Accessible chart container -->
+<div class="chart-container" role="img" aria-label="Bar chart showing monthly revenue: Jan $45K, Feb $52K, Mar $61K">
+  <canvas id="revenue-chart"></canvas>
+</div>
+
+<!-- Accessible KPI with live region -->
+<div class="kpi-value" data-count="99.97" aria-live="polite" aria-atomic="true">0</div>
+
+<!-- Focus-visible for interactive elements -->
+<style>
+.chart-legend-item:focus-visible,
+.kpi-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+</style>
+```
+
 ---
 
 ## 2. Chart.js Integration (Slide Context)
@@ -193,6 +256,35 @@ Chart.defaults.color = '#9ba1b8'; // --text-secondary
 CSS variable changes require destroy + recreate (CSS variable swap is insufficient for canvas):
 
 ```javascript
+// ChartManager singleton — prevents canvas reuse errors on slide transitions
+const ChartManager = {
+  instances: {},
+  create(id, ctx, config) {
+    if (this.instances[id]) this.instances[id].destroy();
+    this.instances[id] = new Chart(ctx, config);
+    return this.instances[id];
+  },
+  destroyAll() {
+    Object.values(this.instances).forEach(c => c.destroy());
+    this.instances = {};
+  }
+};
+
+// Read theme colors from CSS variables (useful for dynamic theming)
+function getThemeColors() {
+  const s = getComputedStyle(document.documentElement);
+  return {
+    accent: s.getPropertyValue('--accent').trim(),
+    green: s.getPropertyValue('--green').trim(),
+    red: s.getPropertyValue('--red').trim(),
+    yellow: s.getPropertyValue('--yellow').trim(),
+    text: s.getPropertyValue('--text-primary').trim(),
+    textMuted: s.getPropertyValue('--text-muted').trim(),
+    border: s.getPropertyValue('--border').trim(),
+    bgCard: s.getPropertyValue('--bg-card').trim(),
+  };
+}
+
 function createChart(canvasId, config) {
   const canvas = document.getElementById(canvasId);
   const existingChart = Chart.getChart(canvas);
@@ -980,40 +1072,39 @@ const radarChart = new Chart(document.getElementById('radarChart'), {
 </style>
 
 <script>
-// Number counter animation
-function animateCounters() {
-  document.querySelectorAll('[data-count]').forEach(el => {
+// Standalone counter animation — works without SlideFramework dependency
+function animateCounters(container = document) {
+  container.querySelectorAll('[data-count]').forEach(el => {
     const target = parseFloat(el.dataset.count);
-    const isFloat = target % 1 !== 0;
-    const duration = 1500;
+    const format = el.dataset.format || '';
+    const duration = 1200;
     const start = performance.now();
-
-    function update(now) {
-      const elapsed = now - start;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
-      const current = target * eased;
-
-      if (isFloat) {
-        el.textContent = current.toFixed(2);
-      } else {
-        el.textContent = Math.round(current).toLocaleString();
-      }
-
-      if (progress < 1) requestAnimationFrame(update);
+    function step(now) {
+      const t = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const val = eased * target;
+      el.textContent = format === 'percent' ? val.toFixed(1) + '%'
+        : format === 'currency' ? '$' + val.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+        : val.toFixed(0);
+      if (t < 1) requestAnimationFrame(step);
     }
-    requestAnimationFrame(update);
+    requestAnimationFrame(step);
   });
 }
 
-// Trigger on slide activation
-const deck = new SlideFramework({
-  onSlideChange: (index, slide) => {
-    if (slide.querySelector('[data-count]')) {
-      animateCounters();
+// Trigger on slide activation (if using SlideFramework)
+if (typeof SlideFramework !== 'undefined') {
+  const deck = new SlideFramework({
+    onSlideChange: (index, slide) => {
+      if (slide.querySelector('[data-count]')) {
+        animateCounters(slide);
+      }
     }
-  }
-});
+  });
+} else {
+  // Standalone: animate on DOMContentLoaded
+  document.addEventListener('DOMContentLoaded', () => animateCounters());
+}
 </script>
 ```
 
@@ -1705,6 +1796,24 @@ Adapted from data visualization eval dimensions for presentation context.
 - [ ] Counter animation triggers on slide entry
 - [ ] Tooltips use Popover API where appropriate
 - [ ] Chart.js animation disabled (`animation: false`)
+
+### D7. Technical Quality (10%)
+
+Page load time < 3s, zero console errors, responsive from 1024px to 4K, WCAG 2.1 AA color contrast (4.5:1).
+
+| Score | Criteria |
+|-------|----------|
+| 10 | Zero console errors, loads < 2s, fully responsive, passes WCAG AA |
+| 7 | Minor warnings, loads < 3s, responsive with minor issues |
+| 4 | Some errors, slow load, breaks at certain viewports |
+| 0-2 | Console errors, broken functionality, inaccessible |
+
+**Checklist**:
+- [ ] Zero console errors/warnings
+- [ ] Page load < 3s (including Chart.js CDN)
+- [ ] Works from 1024px to 4K displays
+- [ ] All text passes 4.5:1 contrast ratio
+- [ ] All interactive elements keyboard accessible
 
 ### D8. Shareability (10%)
 

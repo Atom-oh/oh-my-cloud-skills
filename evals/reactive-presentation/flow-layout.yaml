@@ -1,0 +1,42 @@
+name: flow-layout
+description: "Horizontal flow layout uses standard utility classes"
+skill: reactive-presentation
+plugin: aws-content-plugin
+timeout: 120
+
+prompt: |
+  Create a 3-slide presentation about CloudWatch Anomaly Detection.
+  Slide 1: Title slide.
+  Slide 2: Must have a horizontal flow diagram: Data Collection -> ML Model -> Anomaly Band -> Alert.
+  Use the flow-h class for horizontal layout with icon-item elements.
+  Slide 3: Summary.
+  Output remarp markdown to ./output/ and build HTML.
+  Use default theme. Skip all interactive questions - use defaults.
+
+scorers:
+  - type: file_exists
+    files:
+      - "output/*.html"
+      - "output/common/theme.css"
+
+  - type: html_check
+    target: "output/*.html"
+    contains:
+      - "flow-h"
+      - "icon-item"
+      - "card"
+      - "SlideFramework"
+    not_contains:
+      - ":::css"
+      - "obs-flow"
+      - "custom-flow"
+
+  - type: build_check
+    project_dir: "output/"
+
+  - type: llm_judge
+    enabled: false
+    criteria:
+      - "Uses flow-h for horizontal layout"
+      - "No custom CSS class definitions"
+    max_score: 30

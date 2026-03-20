@@ -42,6 +42,11 @@ code --install-extension remarp-vscode-0.1.0.vsix  # Install locally
 # Evaluate skills (quality, structure, token usage)
 python3 scripts/eval-skills.py
 python3 scripts/eval-skills.py --plugin aws-content-plugin --skill reactive-presentation
+
+# Behavioral eval (E2E skill runtime testing via claude --print)
+python3 scripts/eval-skill-behavior.py --skill reactive-presentation --dry-run
+python3 scripts/eval-skill-behavior.py --case evals/reactive-presentation/flow-layout.yaml
+python3 scripts/eval-skill-behavior.py --skill reactive-presentation --ci --threshold 70
 ```
 
 ## Plugin Architecture
@@ -172,11 +177,12 @@ Source: `tools/remarp-vscode/` | Entry: `src/extension.ts` | Preview: `src/previ
 
 ## Plugin Inventory
 
-### aws-content-plugin (7 agents, 5 skills)
+### aws-content-plugin (8 agents, 5 skills)
 
 | Agent | Creates |
 |-------|---------|
-| `presentation-agent` | Interactive HTML slideshows via reactive-presentation framework |
+| `presentation-agent` | Presentation format dispatcher (PPTX vs Web) |
+| `reactive-presentation-agent` | Interactive HTML slideshows via reactive-presentation framework (Remarp) |
 | `architecture-diagram-agent` | Draw.io XML → PNG/SVG |
 | `animated-diagram-agent` | SVG + SMIL animation HTML |
 | `document-agent` | Markdown technical documents |
@@ -211,7 +217,7 @@ Skill: `kiro-convert` — interactive workflow for plugin-to-power conversion wi
 ## Workflows
 
 ```
-Content:   presentation-agent → content-review-agent → GitHub Pages
+Content:   presentation-agent (dispatcher) → reactive-presentation-agent → content-review-agent → GitHub Pages
            Remarp HTML ↔ .remarp.md (bidirectional visual editing via VSCode extension)
            architecture-diagram-agent → .drawio → PNG
            animated-diagram-agent → .html (SVG+SMIL)
