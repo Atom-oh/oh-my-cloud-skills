@@ -2,7 +2,6 @@
 name: content-review-agent
 description: Cross-cutting content quality review agent. Reviews presentations, diagrams, documents, GitBook pages, and workshop content. Inspects layout, terminology, hallucination, language, PII/sensitive data, readability, accessibility, and structural completeness. Triggers on "review content", "quality check", "review document", "review presentation", "review workshop" requests.
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
-model: opus
 maxTurns: 50
 ---
 
@@ -85,6 +84,14 @@ Email:       [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
 - 텍스트 가독성: 캔버스 내 텍스트가 읽을 수 있는 크기인지 확인 (최소 12px)
 - ↑↓ Step 내비게이션: step이 있는 캔버스에서 ↑↓ 키로 단계가 정상 진행/후퇴하는지 확인
 - Step 순서 논리성: step 1→2→...→N 순서로 요소가 논리적으로 나타나는지 확인
+
+**Canvas Complexity Gate (캔버스 복잡도 검증):**
+- `:::canvas` 블록 내 `box` + `icon` 요소 개수를 카운트
+- **≤4개**: PASS
+- **5-7개**: WARNING — "이 캔버스는 :::html + :::css로 전환을 권장합니다" (감점: -5)
+- **8개 이상**: CRITICAL — ":::canvas 정책 위반. 박스 8개 이상은 반드시 :::html로 전환 필요" (감점: -15)
+- `group` 요소가 있으면: WARNING — "그룹이 포함된 캔버스는 :::html의 .flow-group으로 대체를 권장" (감점: -5)
+- 분기 화살표 (하나의 source에서 2+ target): WARNING — "분기 흐름은 :::html이 더 정확" (감점: -3)
 
 **GitBook:**
 - SUMMARY.md navigation matches actual pages
