@@ -15,8 +15,14 @@ title: 빠른 시작
 ---
 remarp: true
 title: "My First Remarp Presentation"
-author: "Your Name"
+speaker:
+  name: "Your Name"
+  title: "Solutions Architect"
+  company: "My Company"
 audience: "Cloud Engineers"
+level: "200"
+quiz: false
+duration: 15
 lang: ko
 
 theme:
