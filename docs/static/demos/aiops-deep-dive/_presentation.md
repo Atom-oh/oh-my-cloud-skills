@@ -4,7 +4,7 @@ version: 1
 title: "AIOps on AWS — Intelligent Cloud Operations"
 author: "Junseok Oh"
 audience: "AnyCompany 엔지니어링 팀 (300 레벨)"
-date: 2026-03-20
+date: 2026-03-21
 event: "AnyCompany Technical Session"
 lang: ko
 
