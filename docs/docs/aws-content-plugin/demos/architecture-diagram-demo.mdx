@@ -3,9 +3,20 @@ sidebar_position: 6
 title: "Architecture Diagram Demo"
 ---
 
+import DemoEmbed from '@site/src/components/DemoEmbed';
+
 # Architecture Diagram Demo
 
 Draw.io XML을 사용하여 3-Tier VPC 아키텍처 다이어그램을 생성하는 데모입니다. architecture-diagram-agent가 XML을 직접 작성하여 .drawio 파일을 생성하고, PNG로 내보내기합니다.
+
+## 라이브 데모
+
+<DemoEmbed
+  src="/oh-my-cloud-skills/demos/architecture-diagram/index.html"
+  title="3-Tier VPC Architecture — Draw.io Style SVG Rendering"
+  height="600px"
+  command="architecture-diagram-agent가 .drawio XML 생성 → SVG/PNG 내보내기"
+/>
 
 ## 생성 프롬프트
 
@@ -17,38 +28,9 @@ PPT 삽입용으로 1600x900 크기로 만들어줘."
 
 ## 결과 다이어그램
 
-아래는 생성된 3-Tier 아키텍처 다이어그램의 구조입니다:
+아래는 생성된 3-Tier 아키텍처 다이어그램의 스크린샷입니다:
 
-```
-┌─ AWS Cloud ─────────────────────────────────────────────────────────┐
-│  ┌─ Region (ap-northeast-2) ──────────────────────────────────────┐ │
-│  │  ┌─ VPC (10.0.0.0/16) ───────────────────────────────────────┐ │ │
-│  │  │                                                            │ │ │
-│  │  │  ┌─ Public Subnet ─────┐   ┌─ Public Subnet ─────┐        │ │ │
-│  │  │  │  AZ-a               │   │  AZ-c               │        │ │ │
-│  │  │  │  ┌─────┐            │   │  ┌─────┐            │        │ │ │
-│  │  │  │  │ ALB │            │   │  │ ALB │            │        │ │ │
-│  │  │  │  └─────┘            │   │  └─────┘            │        │ │ │
-│  │  │  └─────────────────────┘   └─────────────────────┘        │ │ │
-│  │  │                                                            │ │ │
-│  │  │  ┌─ Private Subnet ────┐   ┌─ Private Subnet ────┐        │ │ │
-│  │  │  │  AZ-a               │   │  AZ-c               │        │ │ │
-│  │  │  │  ┌─────┐ ┌─────┐    │   │  ┌─────┐ ┌─────┐    │        │ │ │
-│  │  │  │  │ EC2 │ │ EC2 │    │   │  │ EC2 │ │ EC2 │    │        │ │ │
-│  │  │  │  └─────┘ └─────┘    │   │  └─────┘ └─────┘    │        │ │ │
-│  │  │  │    Auto Scaling     │   │    Auto Scaling     │        │ │ │
-│  │  │  └─────────────────────┘   └─────────────────────┘        │ │ │
-│  │  │                                                            │ │ │
-│  │  │  ┌─ DB Subnet ─────────────────────────────────────┐      │ │ │
-│  │  │  │              ┌─────────┐                         │      │ │ │
-│  │  │  │              │ Aurora  │ ←── Multi-AZ           │      │ │ │
-│  │  │  │              │ Cluster │                         │      │ │ │
-│  │  │  │              └─────────┘                         │      │ │ │
-│  │  │  └─────────────────────────────────────────────────┘      │ │ │
-│  │  └────────────────────────────────────────────────────────────┘ │ │
-│  └────────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────┘
-```
+![3-Tier VPC Architecture](/img/demos/arch-diagram-3tier.png)
 
 ## Draw.io XML 코드 (발췌)
 

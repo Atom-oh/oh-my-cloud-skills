@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EKS Pod Scaling Simulation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #232F3E;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Amazon Ember', 'Segoe UI', system-ui, sans-serif;
+      color: #fff;
+    }
+    .container { width: 100%; max-width: 1000px; padding: 20px; }
+    h1 { font-size: 1.4rem; font-weight: 400; text-align: center; margin-bottom: 4px; }
+    h1 span { color: #FF9900; font-weight: 600; }
+    .subtitle { text-align: center; color: rgba(255,255,255,0.4); font-size: 12px; margin-bottom: 20px; }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    button {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-out { background: #FF9900; color: #232F3E; }
+    .btn-out:hover:not(:disabled) { background: #EC7211; }
+    .btn-in { background: #545B64; color: #fff; }
+    .btn-in:hover:not(:disabled) { background: #687078; }
+    .btn-reset { background: transparent; color: #FF9900; border: 1px solid #FF9900; }
+    .btn-reset:hover:not(:disabled) { background: rgba(255,153,0,0.1); }
+
+    .status {
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      font-size: 14px;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 20px;
+    }
+    .status strong { color: #FF9900; }
+
+    .cluster {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+      min-height: 200px;
+      padding: 20px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      position: relative;
+    }
+    .cluster::before {
+      content: 'EKS Cluster';
+      position: absolute;
+      top: -10px;
+      left: 16px;
+      background: #232F3E;
+      padding: 0 8px;
+      color: #FF9900;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .node {
+      border: 2px solid #545B64;
+      border-radius: 12px;
+      padding: 16px;
+      min-width: 180px;
+      transition: all 0.5s ease;
+      position: relative;
+    }
+    .node-header {
+      font-size: 11px;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .node-header .node-status {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #1B660F;
+      animation: pulse 2s infinite;
+    }
+    .pods {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .pod {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #FF9900 0%, #EC7211 100%);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 600;
+      color: #232F3E;
+      transition: all 0.3s ease;
+      transform-origin: center;
+    }
+
+    .pod.appearing { animation: popIn 0.3s ease forwards; }
+    .pod.removing { animation: popOut 0.3s ease forwards; }
+    .node.appearing { animation: slideIn 0.5s ease forwards; }
+    .node.removing { animation: slideOut 0.5s ease forwards; }
+
+    @keyframes popIn { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
+    @keyframes popOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0); } }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(20px); } }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .metrics {
+      margin-top: 16px;
+      padding: 12px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 8px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      text-align: center;
+    }
+    .bar-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 8px;
+    }
+    .bar-bg {
+      width: 300px;
+      height: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.5s ease, background 0.3s;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>EKS <span>Pod Scaling</span> Simulation</h1>
+    <p class="subtitle">Click Scale Out/In to see pods and nodes dynamically adjust</p>
+
+    <div class="controls">
+      <button class="btn-out" id="scaleOut" onclick="handleScaleOut()">Scale Out +3</button>
+      <button class="btn-in" id="scaleIn" onclick="handleScaleIn()">Scale In -3</button>
+      <button class="btn-reset" onclick="handleReset()">Reset</button>
+    </div>
+
+    <div class="status">
+      <span>Pods: <strong id="podCount">6</strong> / 15</span>
+      <span>Nodes: <strong id="nodeCount">2</strong></span>
+      <span>CPU: <strong id="cpuPct">40%</strong></span>
+    </div>
+
+    <div class="cluster" id="cluster"></div>
+
+    <div class="metrics">
+      <span>Cluster CPU Utilization</span>
+      <div class="bar-container">
+        <div class="bar-bg"><div class="bar-fill" id="cpuBar" style="width:40%;background:#1B660F"></div></div>
+        <span id="cpuLabel">40%</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var state = { pods: 6, nodes: 2, animating: false, podsPerNode: 3, maxPods: 15 };
+
+    function render() {
+      var cluster = document.getElementById('cluster');
+      cluster.innerHTML = '';
+      for (var n = 0; n < state.nodes; n++) {
+        var node = document.createElement('div');
+        node.className = 'node';
+        var header = document.createElement('div');
+        header.className = 'node-header';
+        header.innerHTML = '<span>Node ' + (n + 1) + ' (m5.xlarge)</span><span class="node-status"></span>';
+        node.appendChild(header);
+        var pods = document.createElement('div');
+        pods.className = 'pods';
+        var start = n * state.podsPerNode;
+        var end = Math.min(start + state.podsPerNode, state.pods);
+        for (var p = start; p < end; p++) {
+          var pod = document.createElement('div');
+          pod.className = 'pod';
+          pod.textContent = 'Pod ' + (p + 1);
+          pods.appendChild(pod);
+        }
+        node.appendChild(pods);
+        cluster.appendChild(node);
+      }
+      updateStatus();
+    }
+
+    function updateStatus() {
+      document.getElementById('podCount').textContent = state.pods;
+      document.getElementById('nodeCount').textContent = state.nodes;
+      var cpu = Math.round((state.pods / (state.nodes * state.podsPerNode)) * 67);
+      cpu = Math.min(cpu, 95);
+      document.getElementById('cpuPct').textContent = cpu + '%';
+      document.getElementById('cpuLabel').textContent = cpu + '%';
+      var bar = document.getElementById('cpuBar');
+      bar.style.width = cpu + '%';
+      bar.style.background = cpu > 80 ? '#DD344C' : cpu > 60 ? '#F2C94C' : '#1B660F';
+      document.getElementById('scaleOut').disabled = state.pods >= state.maxPods || state.animating;
+      document.getElementById('scaleIn').disabled = state.pods <= 3 || state.animating;
+    }
+
+    function handleScaleOut() {
+      if (state.animating || state.pods >= state.maxPods) return;
+      state.animating = true;
+      var toAdd = Math.min(3, state.maxPods - state.pods);
+      var needed = Math.ceil((state.pods + toAdd) / state.podsPerNode);
+
+      if (needed > state.nodes) {
+        state.nodes = needed;
+        render();
+        var nodes = document.querySelectorAll('.node');
+        nodes[nodes.length - 1].classList.add('appearing');
+      }
+
+      var podContainers = document.querySelectorAll('.pods');
+      var added = 0;
+      for (var i = 0; i < toAdd; i++) {
+        (function(idx) {
+          setTimeout(function() {
+            state.pods++;
+            var nodeIdx = Math.floor((state.pods - 1) / state.podsPerNode);
+            if (podContainers[nodeIdx]) {
+              var pod = document.createElement('div');
+              pod.className = 'pod appearing';
+              pod.textContent = 'Pod ' + state.pods;
+              podContainers[nodeIdx].appendChild(pod);
+              setTimeout(function() { pod.classList.remove('appearing'); }, 300);
+            }
+            updateStatus();
+            added++;
+            if (added >= toAdd) state.animating = false;
+          }, idx * 250);
+        })(i);
+      }
+    }
+
+    function handleScaleIn() {
+      if (state.animating || state.pods <= 3) return;
+      state.animating = true;
+      var toRemove = Math.min(3, state.pods - 3);
+      var allPods = document.querySelectorAll('.pod');
+
+      for (var i = 0; i < toRemove; i++) {
+        (function(idx) {
+          setTimeout(function() {
+            var pods = document.querySelectorAll('.pod');
+            var last = pods[pods.length - 1];
+            if (last) {
+              last.classList.add('removing');
+              setTimeout(function() {
+                last.remove();
+                state.pods--;
+                var needed = Math.ceil(state.pods / state.podsPerNode);
+                if (needed < state.nodes) {
+                  var nodes = document.querySelectorAll('.node');
+                  var lastNode = nodes[nodes.length - 1];
+                  lastNode.classList.add('removing');
+                  setTimeout(function() {
+                    lastNode.remove();
+                    state.nodes--;
+                    updateStatus();
+                  }, 400);
+                }
+                updateStatus();
+              }, 300);
+            }
+            if (idx === toRemove - 1) {
+              setTimeout(function() { state.animating = false; updateStatus(); }, 500);
+            }
+          }, idx * 300);
+        })(i);
+      }
+    }
+
+    function handleReset() {
+      state.pods = 6;
+      state.nodes = 2;
+      state.animating = false;
+      render();
+    }
+
+    render();
+  </script>
+</body>
+</html>
