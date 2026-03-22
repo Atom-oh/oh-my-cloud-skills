@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz Slides Demo</title>
+  <meta name="generator" content="remarp">
+  <meta name="remarp-version" content="1">
+  <meta name="remarp-source" content="index">
+  <meta name="remarp-block" content="merged">
+  <link rel="stylesheet" href="./common/theme.css">
+  <link rel="stylesheet" href="./common/pptx-theme/theme-override.css">
+  
+  
+  <script>window.__remarpTheme = {"colors": {}, "footer": "Remarp Quiz Demo", "pagination": true, "fonts": {}};</script>
+</head>
+<body>
+<div class="slide-deck">
+<div class="slide" data-remarp-id="s0" style="background:linear-gradient(135deg, #161D26 0%, #0d1117 50%, #1a2332 100%); padding:0; overflow:hidden;">
+  <h1 style="position:absolute; left:5%; top:48%; font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:53%; margin:0;">AIOps Knowledge Check</h1>
+  <p style="position:absolute; left:5%; top:62%; font-size:1.3rem; color:rgba(255,255,255,0.8); width:53%; margin:0;">핵심 개념 확인 퀴즈</p>
+  <div style="position:absolute; left:5%; top:76%;">
+    <p style="font-size:1.05rem; color:#fff; font-weight:600; margin:0;">Remarp Demo</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.65); margin:6px 0 0 0;">Interactive Presentation Framework</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.65); margin:2px 0 0 0;"></p>
+  </div>
+  
+</div>
+
+<div class="slide" data-remarp-id="s1">
+  <div class="slide-header" data-remarp-id="s1-header"><h2>AIOps 확인 퀴즈</h2></div>
+  <div class="slide-body" data-remarp-id="s1-body" style="overflow-y:auto">
+    <div class="quiz" data-quiz="q1">
+      <div class="quiz-question">Q1: AIOps의 4대 핵심 영역이 아닌 것은?</div>
+      <div class="quiz-options">
+        <button class="quiz-option" data-correct="false">Observe</button>
+<button class="quiz-option" data-correct="false">Analyze</button>
+<button class="quiz-option" data-correct="true">Deploy</button>
+<button class="quiz-option" data-correct="false">Act</button>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+<div class="quiz" data-quiz="q2">
+      <div class="quiz-question">Q2: CloudWatch Anomaly Detection의 주요 장점은?</div>
+      <div class="quiz-options">
+        <button class="quiz-option" data-correct="false">고정 임계값 설정이 쉽다</button>
+<button class="quiz-option" data-correct="true">ML 기반으로 동적 기준선을 자동 생성한다</button>
+<button class="quiz-option" data-correct="false">알림을 완전히 제거한다</button>
+<button class="quiz-option" data-correct="false">로그 수집이 불필요하다</button>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+<div class="quiz" data-quiz="q3">
+      <div class="quiz-question">Q3: Alert Fatigue를 줄이는 AIOps 접근법은?</div>
+      <div class="quiz-options">
+        <button class="quiz-option" data-correct="false">모든 알림을 비활성화</button>
+<button class="quiz-option" data-correct="false">임계값을 높게 설정</button>
+<button class="quiz-option" data-correct="true">ML 기반 상관관계 분석으로 노이즈 필터링</button>
+<button class="quiz-option" data-correct="false">알림을 이메일로만 전송</button>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+<div class="quiz" data-quiz="q4">
+      <div class="quiz-question">Q4: AWS DevOps Guru의 주요 기능은?</div>
+      <div class="quiz-options">
+        <button class="quiz-option" data-correct="false">코드 자동 배포</button>
+<button class="quiz-option" data-correct="false">인프라 프로비저닝</button>
+<button class="quiz-option" data-correct="true">ML 기반 운영 이상 탐지 및 인사이트 제공</button>
+<button class="quiz-option" data-correct="false">비용 최적화 추천</button>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </div>
+</div>
+</div>
+<script src="./common/animation-utils.js"></script>
+<script src="./common/slide-framework.js"></script>
+<script src="./common/quiz-component.js"></script>
+<script src="./common/presenter-view.js"></script>
+
+<script>
+  
+  const presenterNotes = {};
+  const deck = new SlideFramework({
+    
+    footer: 'Remarp Quiz Demo',
+    
+    pagination: true,
+    sidebar: true,
+    presenterNotes: presenterNotes,
+    onSlideChange: (index, slide) => {}
+  });
+</script>
+</body>
+</html>
