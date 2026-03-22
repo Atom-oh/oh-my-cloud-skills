@@ -23,35 +23,17 @@ Intelligent Cloud Operations for AnyCompany
 
 ---
 <!-- Slide 2: Agenda -->
+@type: agenda
+@timing: 90min
 
 ## 오늘의 아젠다
 
-::: left
-### Block 1 — Foundations (30분)
-- AIOps란 무엇인가?
-- Observability vs Monitoring
-- AWS Observability Stack 구성
-- 데이터 수집 파이프라인
+1. AIOps Foundations & AWS Observability (30분)
+2. ML-Powered Operations & Anomaly Detection (30분)
+- Break (5분)
+3. Implementation Strategies & Best Practices (25분)
 
-### Block 2 — ML Operations (30분)
-- Amazon DevOps Guru
-- CloudWatch Anomaly Detection
-- Amazon CodeGuru & Lookout for Metrics
-- Generative AI for Operations
-:::
-
-::: right
-### Block 3 — Implementation (25분)
-- AnyCompany 시나리오 기반 아키텍처
-- 단계별 도입 로드맵
-- 비용 최적화 전략
-- 운영 성숙도 모델
-
-### 진행 방식
-- 300 레벨 — 개념보다 실전 중심
-- 실시간 Q&A 환영
-- 각 블록 후 5분 브레이크
-:::
+> 300 레벨 — 개념보다 실전 중심 | 실시간 Q&A 환영 | 각 블록 후 브레이크
 
 :::notes
 {timing: 2min}
