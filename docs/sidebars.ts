@@ -43,6 +43,9 @@ const sidebars: SidebarsConfig = {
         'aws-content-plugin/demos/canvas-animation',
         'aws-content-plugin/demos/quiz-slides',
         'aws-content-plugin/demos/compare-tabs',
+        'aws-content-plugin/demos/architecture-diagram-demo',
+        'aws-content-plugin/demos/animated-diagram-demo',
+        'aws-content-plugin/demos/workshop-demo',
       ],
     },
   ],
@@ -89,6 +92,9 @@ const sidebars: SidebarsConfig = {
       items: [
         'aws-ops-plugin/demos/eks-troubleshooting',
         'aws-ops-plugin/demos/incident-response',
+        'aws-ops-plugin/demos/health-check-demo',
+        'aws-ops-plugin/demos/network-diagnosis-demo',
+        'aws-ops-plugin/demos/security-audit-demo',
       ],
     },
   ],
@@ -149,6 +155,8 @@ const sidebars: SidebarsConfig = {
       label: 'Examples',
       items: [
         'remarp-guide/examples/basic-example',
+        'remarp-guide/examples/canvas-example',
+        'remarp-guide/examples/data-viz-example',
       ],
     },
   ],

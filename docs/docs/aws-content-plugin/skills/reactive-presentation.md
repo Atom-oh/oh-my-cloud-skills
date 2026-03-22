@@ -5,72 +5,75 @@ title: "Reactive Presentation"
 
 # Reactive Presentation Skill
 
-인터랙티브 HTML 프레젠테이션 슬라이드쇼를 빌드하는 스킬입니다. Canvas 애니메이션, 퀴즈, 다크 테마, 키보드 네비게이션을 지원하며 GitHub Pages로 배포합니다.
+Build interactive HTML presentation slideshows with Canvas animations, quizzes, dark theme, and keyboard navigation. Deployed to GitHub Pages.
 
-## 트리거 키워드
+## Trigger Keywords
 
-다음 키워드로 활성화됩니다:
+Activated by the following keywords:
 - "create slides", "build a presentation", "make a slideshow"
 - "training slides", "interactive presentation"
 - "Canvas animation slides", "reactive presentation"
 
-## 제공 리소스
+## Provided Resources
 
 ### assets/
 
-프레임워크 파일 (`common/`에 복사):
+Framework files (copy to `common/`):
 
-| 파일 | 설명 |
-|------|------|
-| `theme.css` | 다크 테마, Pretendard 폰트, 16:9 레이아웃, 모든 컴포넌트 스타일 |
-| `theme-override-template.css` | PPTX 추출 CSS 오버라이드용 템플릿 |
-| `slide-framework.js` | SlideFramework 클래스 (키보드, 터치, 진행 표시, 프레젠터 뷰) |
-| `slide-renderer.js` | SlideRenderer 클래스: JSON → HTML 동적 렌더링 |
-| `presenter-view.js` | PresenterView 클래스 (드래그 가능 분할, BroadcastChannel 동기화) |
-| `animation-utils.js` | Canvas 프리미티브, AnimationLoop, TimelineAnimation, Colors, Ease |
-| `quiz-component.js` | QuizManager (자동 채점, 피드백) |
-| `export-utils.js` | ExportUtils (PDF 내보내기, ZIP 다운로드) |
+| File | Description |
+|------|-------------|
+| `theme.css` | Dark theme, Pretendard font, 16:9 layout, all component styles |
+| `theme-override-template.css` | Template for PPTX-extracted CSS overrides |
+| `slide-framework.js` | SlideFramework class (keyboard, touch, progress bar, presenter view) |
+| `slide-renderer.js` | SlideRenderer class: JSON to HTML dynamic rendering |
+| `presenter-view.js` | PresenterView class (draggable splitters, BroadcastChannel sync) |
+| `animation-utils.js` | Canvas primitives, AnimationLoop, TimelineAnimation, Colors, Ease |
+| `quiz-component.js` | QuizManager (auto-grading, feedback) |
+| `export-utils.js` | ExportUtils (PDF export, ZIP download) |
 
 ### scripts/
 
-| 스크립트 | 설명 |
-|----------|------|
-| `extract_pptx_theme.py` | PPTX 테마 추출 → CSS 오버라이드 + 이미지 |
-| `remarp_to_slides.py` | Remarp 마크다운 → HTML 슬라이드 변환 |
-| `marp_to_slides.py` | Marp 마크다운 → HTML 슬라이드 변환 (레거시) |
-| `extract_aws_icons.py` | AWS Architecture Icons 추출 |
+| Script | Description |
+|--------|-------------|
+| `extract_pptx_theme.py` | PPTX theme extraction to CSS overrides + images |
+| `remarp_to_slides.py` | Remarp markdown to HTML slide conversion |
+| `marp_to_slides.py` | Marp markdown to HTML slide conversion (legacy) |
+| `extract_aws_icons.py` | AWS Architecture Icons extraction |
 
 ### references/
 
-| 참조 문서 | 설명 |
-|----------|------|
-| `framework-guide.md` | CSS 클래스, JS 함수, HTML 템플릿 API 레퍼런스 |
-| `slide-patterns.md` | 슬라이드 타입별 HTML 패턴, Canvas 애니메이션 패턴 |
-| `remarp-format-guide.md` | Remarp 마크다운 포맷 명세 (권장) |
-| `marp-format-guide.md` | Marp 마크다운 포맷 명세 (레거시) |
-| `pptx-theme-guide.md` | PPTX 테마 추출 사용법, 색상 매핑, 트러블슈팅 |
-| `aws-icons-guide.md` | AWS Architecture Icons 사용법, 네이밍 규약 |
-| `canvas-animation-prompt.md` | Canvas prompt → JS 코드 생성 가이드 |
-| `interactive-patterns-guide.md` | 인터랙티브 슬라이드 패턴 (시뮬레이터, 대시보드 등) |
-| `colors-reference.md` | AWS 색상 팔레트 |
+| Reference Doc | Description |
+|---------------|-------------|
+| `framework-guide.md` | CSS classes, JS functions, HTML template API reference |
+| `slide-patterns.md` | HTML patterns by slide type, Canvas animation patterns |
+| `remarp-format-guide.md` | Remarp markdown format specification (recommended) |
+| `marp-format-guide.md` | Marp markdown format specification (legacy) |
+| `pptx-theme-guide.md` | PPTX theme extraction usage, color mapping, troubleshooting |
+| `aws-icons-guide.md` | AWS Architecture Icons usage, naming conventions |
+| `canvas-animation-prompt.md` | Canvas prompt to JS code generation guide |
+| `interactive-patterns-guide.md` | Interactive slide patterns (simulators, dashboards, etc.) |
+| `colors-reference.md` | AWS color palette |
+| `data-visualization-guide.md` | Charts, dashboards, KPI cards design patterns |
 
 ### icons/
 
-AWS Architecture Icons (4,224개 파일):
+AWS Architecture Icons (4,224 files):
 
-| 디렉토리 | 설명 |
-|----------|------|
-| `Architecture-Service-Icons_07312025/` | 서비스 레벨 아이콘 (121개 카테고리) |
-| `Architecture-Group-Icons_07312025/` | 그룹 아이콘 (Cloud, VPC, Region, Subnet) |
-| `Category-Icons_07312025/` | 카테고리 레벨 아이콘 (4개 크기) |
-| `Resource-Icons_07312025/` | 리소스 레벨 아이콘 (22개 카테고리) |
-| `others/` | 서드파티 아이콘 (LangChain, Grafana 등) |
+| Directory | Description |
+|-----------|-------------|
+| `Architecture-Service-Icons_07312025/` | Service-level icons (121 categories) |
+| `Architecture-Group-Icons_07312025/` | Group icons (Cloud, VPC, Region, Subnet) |
+| `Category-Icons_07312025/` | Category-level icons (4 sizes) |
+| `Resource-Icons_07312025/` | Resource-level icons (22 categories) |
+| `others/` | Third-party icons (LangChain, Grafana, etc.) |
 
-## 주요 기능
+---
 
-### Remarp 포맷 (권장)
+## Key Features
 
-프래그먼트 애니메이션, Canvas DSL, 스피커 노트, 슬라이드 전환을 마크다운에서 직접 제어:
+### Remarp Format (Recommended)
+
+Control fragment animations, Canvas DSL, speaker notes, and slide transitions directly in markdown:
 
 ```markdown
 ---
@@ -94,67 +97,402 @@ Speaker notes here
 :::
 ```
 
-### PPTX 테마 추출
+### PPTX Theme Extraction
 
 ```bash
 python3 scripts/extract_pptx_theme.py <pptx_path> -o {repo}/common/pptx-theme/
 ```
 
-생성물:
-- `theme-manifest.json` — 추출된 색상, 폰트, 로고, 푸터
-- `theme-override.css` — CSS 변수 오버라이드
-- `images/` — 로고, 배경 이미지
+Generated outputs:
+- `theme-manifest.json` — Extracted colors, fonts, logos, footer
+- `theme-override.css` — CSS variable overrides
+- `images/` — Logos, background images
 
-### 슬라이드 타입
+---
 
-| 콘텐츠 타입 | 패턴 | 인터랙티브 요소 |
-|-------------|------|-----------------|
-| 단순 흐름 (박스 ≤4) | Canvas Animation | `:::canvas` DSL, step ↑↓ 내비게이션 |
-| 복잡 아키텍처 (박스 5+) | HTML Architecture | `:::html` + `:::css` (flow-h, flow-group) |
-| A vs B 비교 | Compare Toggle | `.compare-toggle` 버튼 |
-| 설정 변형 | Tab Content | `.tab-bar` + YAML 코드 |
-| 단계별 프로세스 | Timeline | `.timeline` 애니메이션 |
-| 모니터링/대시보드 (박스 5+) | HTML Dashboard | `:::html` + `:::script` |
-| 베스트 프랙티스 | Checklist | `.checklist` 토글 |
-| 블록 요약 | Quiz | `data-quiz` 퀴즈 |
+## Data Visualization Patterns
 
-### Canvas vs HTML 선택 기준
+The reactive-presentation framework supports multiple data visualization techniques for creating impactful slides.
 
-:::warning STOP Gate
-Canvas 사용 전 반드시 박스/아이콘 개수를 확인하세요:
-- **≤4개**: `:::canvas` 사용 가능
-- **5개 이상**: `:::canvas` 금지 → `:::html` + `:::css` 필수
+### Typography Hierarchy
+
+| Element | Size | Weight | Additional |
+|---------|------|--------|------------|
+| Hero stat | 3.5rem+ | 700 | `text-shadow: 0 0 20px var(--accent-glow)` |
+| KPI value | 2.4rem | 700 | Monospace font |
+| Card title | 1.1rem | 600 | `text-wrap: balance` |
+| Body text | 1rem | 400 | — |
+| Label/caption | 0.85rem | 500 | Secondary color |
+
+### CSS-Only Charts
+
+For lightweight visualizations without JavaScript dependencies:
+
+```css
+/* Horizontal bar chart */
+.bar-chart .bar {
+  height: 24px;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-light) 100%);
+  border-radius: 4px;
+  transition: width 0.6s ease-out;
+}
+
+/* Progress ring */
+.progress-ring {
+  --progress: 75;
+  background: conic-gradient(
+    var(--accent) calc(var(--progress) * 1%),
+    var(--surface-2) 0
+  );
+}
+```
+
+### KPI Card Layout
+
+```html
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">Latency</div>
+    <div class="kpi-value">42<span class="kpi-unit">ms</span></div>
+    <div class="kpi-trend positive">-15% vs last week</div>
+  </div>
+</div>
+```
+
+### Chart.js Integration
+
+For dynamic charts, embed Chart.js in `:::script` blocks:
+
+```markdown
+:::html
+<canvas id="myChart" width="400" height="200"></canvas>
 :::
 
-### 키보드 단축키
-
-| 키 | 동작 |
-|----|------|
-| ← → | 이전/다음 슬라이드 |
-| ↑ ↓ | 탭/비교 옵션 순환 |
-| F | 전체 화면 |
-| P | 프레젠터 뷰 |
-| N | 스피커 노트 패널 |
-| O | 개요 모드 |
-
-## 사용 예시
-
-```
-사용자: "EKS 입문 프레젠테이션 만들어줘"
-
-1. presentation-agent 호출
-2. Remarp 콘텐츠 작성
-3. HTML 빌드: python3 scripts/remarp_to_slides.py build {slug}/
-4. content-review-agent 검토
-5. GitHub Pages 배포
+:::script
+new Chart(document.getElementById('myChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Jan', 'Feb', 'Mar'],
+    datasets: [{
+      data: [12, 19, 3],
+      backgroundColor: ['#6c5ce7', '#a29bfe', '#dfe6e9']
+    }]
+  }
+});
+:::
 ```
 
-## Quality Review (필수)
+---
 
-콘텐츠 완성 후 배포 전에 반드시:
-1. `content-review-agent` 호출
-2. PASS (85점 이상) 획득 후에만 배포
+## Canvas vs HTML Decision Guide
 
-:::warning 필수
-이 단계를 건너뛰고 배포하는 것은 금지됩니다.
+### The 4-Box Rule
+
+Before using Canvas, count the total boxes and icons on your slide:
+
+| Element Count | Approach | Why |
+|---------------|----------|-----|
+| **1-4 boxes** | `:::canvas` DSL allowed | Simple enough for Canvas coordinates |
+| **5+ boxes** | `:::html` + `:::css` **required** | Flexbox/Grid handles complex layouts better |
+
+### Decision Matrix
+
+| Content Type | Use Canvas | Use HTML |
+|--------------|------------|----------|
+| Simple A→B→C flow | Yes | — |
+| 3-tier architecture | — | Yes |
+| Service ecosystem map | — | Yes |
+| Step-by-step animation | Yes | — |
+| Multi-layer diagram | — | Yes |
+| Interactive dashboard | — | Yes (with `:::script`) |
+
+### HTML Architecture Pattern
+
+For 5+ elements, use this pattern:
+
+```markdown
+:::html
+<div class="flow-h">
+  <div class="flow-group bg-blue" data-fragment-index="1">
+    <div class="flow-group-label">Collect</div>
+    <div class="icon-item">
+      <img src="../common/aws-icons/services/Arch_Amazon-CloudWatch_48.svg">
+      <span>CloudWatch</span>
+    </div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-group bg-orange" data-fragment-index="2">
+    <div class="flow-group-label">Analyze</div>
+    <div class="flow-box">DevOps Guru</div>
+  </div>
+</div>
+:::
+```
+
+---
+
+## Remarp Workflow Detail
+
+The 9-step workflow for creating presentations:
+
+### Step 1: Theme Setup (Optional)
+
+If PPTX template is provided:
+
+```bash
+python3 scripts/extract_pptx_theme.py template.pptx -o common/pptx-theme/
+```
+
+### Step 2: Content Planning
+
+Answer these questions during planning:
+- **Topic & audience** — technical depth, learning objectives
+- **Duration** — determines block count (20-35 min per block)
+- **Quiz inclusion** — yes/no for end-of-block quizzes
+- **Speaker info** — name, title, company
+
+### Step 3: Create Project Structure
+
+```
+{slug}/
+├── _presentation.md           # Global settings
+├── 01-fundamentals.md         # Block 1
+├── 02-deep-dive.md            # Block 2
+└── animations/                # Canvas animation modules
+```
+
+### Step 4: Write Remarp Content
+
+Use `@type` directives for slide types:
+
+| Type | Usage |
+|------|-------|
+| `@type: cover` | Session cover slide |
+| `@type: title` | Block title slide |
+| `@type: content` | Standard content |
+| `@type: compare` | A vs B comparison |
+| `@type: tabs` | Tabbed content |
+| `@type: canvas` | Canvas animation |
+| `@type: quiz` | Quiz slide |
+| `@type: agenda` | Session agenda |
+
+### Step 5: Build HTML
+
+```bash
+# Full build
+python3 scripts/remarp_to_slides.py build {repo}/{slug}/
+
+# Incremental build (changed blocks only)
+python3 scripts/remarp_to_slides.py sync {repo}/{slug}/
+
+# Single block
+python3 scripts/remarp_to_slides.py build {repo}/{slug}/ --block 01-fundamentals
+```
+
+### Step 6: Review & Iterate
+
+Edit Remarp source or request changes via prompt, then rebuild.
+
+### Step 7: Enhancement
+
+Add Canvas animations, interactive elements, AWS icons.
+
+### Step 8: Quality Review
+
+**Mandatory**: Run `content-review-agent` and achieve PASS (85+ score).
+
+### Step 9: Deploy
+
+```bash
+git add common/ {slug}/ index.html
+git commit -m "feat: add {name} presentation"
+git push origin main
+```
+
+---
+
+## Interactive Pattern Guide
+
+### Simulator Pattern
+
+For parameter exploration (VPA, cost calculators):
+
+```markdown
+:::html
+<div class="simulator-layout">
+  <div class="slider-group">
+    <label>CPU Request</label>
+    <input type="range" id="cpu" min="50" max="2000" value="250">
+    <span id="cpu-val">250m</span>
+  </div>
+  <div class="yaml-output" id="output"></div>
+</div>
+:::
+
+:::script
+document.getElementById('cpu').oninput = function() {
+  document.getElementById('cpu-val').textContent = this.value + 'm';
+  updateYAML();
+};
+:::
+```
+
+### Calculator Pattern
+
+For cost/metric calculations:
+
+```markdown
+:::html
+<div class="calculator">
+  <div class="input-group">
+    <label>Instances</label>
+    <input type="number" id="instances" value="3">
+  </div>
+  <div class="result">
+    <span class="label">Monthly Cost</span>
+    <span class="value" id="cost">$0</span>
+  </div>
+</div>
+:::
+```
+
+### Dashboard Pattern
+
+For monitoring/metrics displays:
+
+```markdown
+:::html
+<div class="dashboard-grid">
+  <div class="stat-panel">
+    <div class="stat-label">Active Pods</div>
+    <div class="stat-value" id="pods">12</div>
+  </div>
+  <div class="node-grid" id="nodes"></div>
+  <div class="controls">
+    <button onclick="scaleOut()">Scale Out</button>
+    <button onclick="scaleIn()">Scale In</button>
+  </div>
+</div>
+:::
+```
+
+---
+
+## Speaker Notes Writing Guide
+
+All slides **must** include `:::notes` blocks meeting these requirements:
+
+### Requirements
+
+| Criterion | Requirement |
+|-----------|-------------|
+| **Minimum length** | 150 characters per slide |
+| **Recommended length** | 300-500 characters (1-3 minutes speaking) |
+| **Structure** | Timing marker → Intro → Key points → Cues → Transition |
+
+### Structure Template
+
+```markdown
+:::notes
+{timing: 2min}
+[Opening hook that connects to previous slide]
+
+Key points to cover:
+- Point 1 with real-world example or analogy
+- Point 2 with practical tip
+- Point 3 addressing common misconception
+
+{cue: question}
+Ask audience: "Has anyone experienced...?"
+
+{cue: transition}
+Now that we understand X, let's see how Y builds on this...
+:::
+```
+
+### Good Example
+
+```markdown
+:::notes
+{timing: 3min}
+Before diving into the code, let's understand why VPA matters.
+
+Traditional resource allocation is like buying clothes for a growing child —
+you either waste money on oversized clothes or constantly buy new ones. VPA
+solves this by automatically adjusting container resources based on actual usage.
+
+Key insight: VPA doesn't just save costs — it improves application stability
+by preventing OOM kills and CPU throttling.
+
+{cue: pause}
+Take a moment to think about your current resource allocation strategy.
+
+{cue: transition}
+With this mental model in place, let's look at the configuration options...
+:::
+```
+
+### Bad Example (What NOT to do)
+
+```markdown
+:::notes
+This slide shows VPA configuration.
+:::
+```
+
+Problems: Too short, no timing, repeats slide content, no engagement cues.
+
+---
+
+## Slide Types
+
+| Content Type | Pattern | Interactive Element |
+|--------------|---------|---------------------|
+| Simple flow (boxes ≤4) | Canvas Animation | `:::canvas` DSL, step navigation |
+| Complex architecture (boxes 5+) | HTML Architecture | `:::html` + `:::css` (flexbox/grid) |
+| A vs B comparison | Compare Toggle | `.compare-toggle` buttons |
+| Config variants | Tab Content | `.tab-bar` + YAML code blocks |
+| Step-by-step process | Timeline | `.timeline` animation |
+| Monitoring/dashboard (boxes 5+) | HTML Dashboard | `:::html` + `:::script` |
+| Best practices | Checklist | `.checklist` toggle |
+| Block summary | Quiz | `data-quiz` + 3-4 questions |
+
+---
+
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| ← → | Previous/Next slide |
+| ↑ ↓ | Cycle tabs/compare options |
+| F | Fullscreen |
+| P | Presenter view |
+| N | Speaker notes panel |
+| O | Overview mode |
+
+---
+
+## Usage Example
+
+```
+User: "Create an EKS introduction presentation"
+
+1. presentation-agent called
+2. Remarp content written
+3. HTML build: python3 scripts/remarp_to_slides.py build {slug}/
+4. content-review-agent review
+5. GitHub Pages deployment
+```
+
+---
+
+## Quality Review (Required)
+
+After content completion, before deployment:
+1. Call `content-review-agent`
+2. Achieve PASS (85+ score) before deployment
+3. Re-review after fixes if FAIL/REVIEW verdict
+
+:::warning Required
+Skipping this step and deploying is prohibited.
 :::
