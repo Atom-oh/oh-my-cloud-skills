@@ -4,6 +4,8 @@
 
 [Claude Code](https://docs.anthropic.com/en/docs/claude-code)용 AWS 클라우드 플러그인 — 콘텐츠 제작과 인프라 운영.
 
+**[문서](https://www.atomai.click/oh-my-cloud-skills/)** | **[릴리스 노트](https://github.com/Atom-oh/oh-my-cloud-skills/releases)**
+
 **제공 기능:**
 
 *콘텐츠 제작 (aws-content-plugin):*
@@ -99,7 +101,38 @@ your-repo/
 | Quiz | 자동 채점 포함 객관식 문제 |
 | Code Block | YAML/JSON/HCL 구문 강조 코드 블록 |
 | Slider | 실시간 계산 출력이 있는 Range 입력 |
+| Agenda | 번호 점, 시간 레이블, 휴식 마커가 있는 세션 안건 |
+| Prompt | 복사 버튼이 있는 AI 프롬프트 워크플로우 표시 |
 | Pain Quote | 고객 문제 설명 및 과제 목록 |
+
+### Remarp VSCode Extension
+
+Remarp 프레젠테이션을 작성하고 미리 보기 위한 전용 VSCode 확장 프로그램입니다. VSIX에서 설치하거나 소스에서 빌드할 수 있습니다.
+
+**설치:**
+```bash
+code --install-extension tools/remarp-vscode/remarp-vscode-0.1.0.vsix
+```
+
+**기능:**
+- **구문 강조** — Remarp 지시문 (`@type`, `@layout`, `@animation`), 블록 태그 (`:::canvas`, `:::notes`), 클릭 속성 (`{.click}`), Canvas DSL, frontmatter
+- **실시간 미리보기** — 자동 업데이트, 다크 모드, 슬라이드 내비게이션, 커서 동기화가 있는 사이드 패널
+- **HTML 미리보기** — 전체 CSS/JS (슬라이드 프레임워크, 애니메이션, 폰트)로 Remarp 생성 HTML 렌더링
+- **IntelliSense** — 지시문, 값, 블록 유형, Canvas DSL, 클릭 속성 자동 완성
+- **비주얼 편집** — 미리보기에서 요소 드래그/리사이즈, 변경 사항이 `.remarp.md` 소스에 자동 반영
+- **빌드** — `remarp_to_slides.py`를 통한 원클릭 HTML 생성 (자동 검색)
+- **문서 아웃라인** — Explorer 사이드바의 슬라이드 트리 뷰
+- **자동 감지** — `<meta name="generator" content="remarp">`를 통해 Remarp HTML 인식
+
+**소스:** `tools/remarp-vscode/` | **문서:** [VSCode Extension 가이드](docs/docs/remarp-guide/vscode-extension.md)
+
+### VSCode 확장 프로그램 단축키
+
+| 키 | 동작 | 사용 가능 위치 |
+|-----|--------|-------------|
+| `Ctrl+Shift+V` | 미리보기 열기 | `.remarp.md`, Remarp HTML |
+| `Ctrl+Shift+E` | 비주얼 편집 모드 전환 | `.remarp.md`, Remarp HTML |
+| `Ctrl+Shift+B` | HTML 빌드 | `.remarp.md`, Remarp HTML |
 
 ### 키보드 단축키
 
@@ -123,7 +156,7 @@ your-repo/
 1. **기획** — Claude가 주제, 대상, 시간, 언어, 선택적 PPTX/PDF 소스에 대해 질문
 2. **작성** — Remarp 마크다운으로 콘텐츠 원본 작성
 3. **생성** — `remarp_to_slides.py`로 Canvas 애니메이션과 인터랙티브 요소가 포함된 HTML 빌드
-4. **검토** — 인터랙티브 피드백 루프: Remarp 직접 편집, 프롬프트로 수정 요청, 또는 진행
+4. **검토** — 인터랙티브 피드백 루프: Remarp 직접 편집, VSCode에서 생성된 HTML 미리보기/편집 (확장 프로그램이 meta 태그로 Remarp HTML 자동 감지), 또는 프롬프트로 수정 요청
 5. **향상** — Canvas 애니메이션 추가, AWS 아이콘 추출, 발표자 뷰 테스트
 6. **배포** — GitHub Pages로 `git push`. 빌드 단계 불필요
 
@@ -317,18 +350,18 @@ AWS/EKS 인프라 운영 및 트러블슈팅. 문제를 설명하면 — 노드 
 | `storage-agent` | 스토리지 | "PVC가 Pending 상태" |
 | `database-agent` | 데이터베이스 | "EKS에서 Aurora 연결 타임아웃" |
 | `cost-agent` | 비용 | "EKS 클러스터 비용 분석해줘" |
-| `analytics-agent` | 데이터 분석 | "OpenSearch 클러스터 상태 확인해줘" |
+| `analytics-agent` | 데이터 분석 | "OpenSearch 클러스터 상태가 red" |
 | `ops-coordinator-agent` | 장애 조율 | "프로덕션 장애, 대응 조율해줘" |
 
 ### 스킬
 
 | 스킬 | 트리거 | 기능 |
 |------|--------|------|
-| `ops-troubleshoot` | "troubleshoot", "장애" | 5분 트리아지 → 조사 → 해결 → 포스트모텀 |
-| `ops-health-check` | "health check", "헬스체크" | 6개 도메인 인프라 상태 점검 |
-| `ops-network-diagnosis` | "network issue", "네트워크 오류" | VPC CNI, 로드밸런서, DNS 심층 진단 |
-| `ops-observability` | "monitoring", "모니터링" | CloudWatch, Prometheus, 로그 분석 |
-| `ops-security-audit` | "security audit", "보안 점검" | IAM 감사, 네트워크 보안, 컴플라이언스 |
+| `ops-troubleshoot` | "troubleshoot", "debug" | 5분 트리아지 → 조사 → 해결 → 포스트모텀 |
+| `ops-health-check` | "health check" | 6개 도메인 인프라 상태 점검 |
+| `ops-network-diagnosis` | "network issue" | VPC CNI, 로드밸런서, DNS 심층 진단 |
+| `ops-observability` | "monitoring setup" | CloudWatch, Prometheus, 로그 분석 |
+| `ops-security-audit` | "security audit" | IAM 감사, 네트워크 보안, 컴플라이언스 |
 
 ### MCP 연동
 
@@ -512,7 +545,7 @@ aws-ops-power/
 | `storage-agent` | 스토리지 | "PVC Pending 상태" | 진단 + 수정 |
 | `database-agent` | 데이터베이스 | "Aurora 타임아웃" | 진단 + 수정 |
 | `cost-agent` | 비용 | "클러스터 비용 분석" | 비용 보고서 |
-| `analytics-agent` | 데이터 분석 | "OpenSearch 상태 확인" | 진단 + 수정 |
+| `analytics-agent` | 데이터 분석 | "OpenSearch 상태가 red" | 진단 + 수정 |
 | `ops-coordinator-agent` | 장애 조율 | "프로덕션 장애 대응" | 조율된 대응 |
 
 모든 에이전트는 Claude가 프롬프트에서 일치하는 키워드를 감지하면 자동으로 활성화됩니다.
@@ -604,9 +637,11 @@ plugins/
 │       │   ├── references/            # framework-guide.md, slide-patterns.md
 │       │   └── icons/                 # AWS Architecture Icons (4,224 파일)
 │       ├── architecture-diagram/      # Draw.io 템플릿 및 패턴
+│       │   └── reference/            # drawio-xml-guide.md, mcp-setup-guide.md
 │       ├── animated-diagram/          # SMIL 애니메이션 가이드 및 템플릿
 │       ├── gitbook/                   # GitBook 구조 및 컴포넌트
 │       └── workshop-creator/          # Workshop Studio 지시문 및 템플릿
+│           └── reference/            # infrastructure-guide.md, workshop-templates.md
 │
 ├── aws-ops-plugin/                    # 인프라 운영 플러그인
 │   ├── .claude-plugin/plugin.json     # 플러그인 매니페스트 (9 에이전트, 5 스킬)
