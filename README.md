@@ -4,6 +4,8 @@
 
 AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) — content creation and infrastructure operations.
 
+**[Documentation](https://www.atomai.click/oh-my-cloud-skills/)** | **[Release Notes](https://github.com/Atom-oh/oh-my-cloud-skills/releases)**
+
 **What you can do:**
 
 *Content Creation (aws-content-plugin):*
