@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Remarp Feature Tour</title>
+  <meta name="generator" content="remarp">
+  <meta name="remarp-version" content="1">
+  <meta name="remarp-source" content="feature-tour.md">
+  <meta name="remarp-block" content="default">
+  <link rel="stylesheet" href="./common/theme.css">
+  <link rel="stylesheet" href="./common/pptx-theme/theme-override.css">
+  
+  
+  <script>window.__remarpTheme = {"colors": {}, "footer": "Remarp Feature Tour Demo", "pagination": true, "fonts": {}};</script>
+</head>
+<body>
+<div class="slide-deck">
+<div class="slide" data-remarp-id="s0" style="background:linear-gradient(135deg, #161D26 0%, #0d1117 50%, #1a2332 100%); padding:0; overflow:hidden;">
+  <h1 style="position:absolute; left:5%; top:48%; font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:53%; margin:0;">Remarp Feature Tour</h1>
+  <p style="position:absolute; left:5%; top:62%; font-size:1.3rem; color:rgba(255,255,255,0.8); width:53%; margin:0;">인터랙티브 프레젠테이션 프레임워크의 모든 기능</p>
+  <div style="position:absolute; left:5%; top:76%;">
+    <p style="font-size:1.05rem; color:#fff; font-weight:600; margin:0;">Remarp Demo</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.65); margin:6px 0 0 0;">Interactive Presentation Framework</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.65); margin:2px 0 0 0;"></p>
+  </div>
+  
+</div>
+
+<div class="slide title-slide">
+    <h1>Remarp 주요 기능</h1>
+  <p class="meta">마크다운으로 작성하고 HTML 슬라이드쇼로 변환</p>
+</div>
+
+<div class="slide" data-remarp-id="s2">
+  <div class="slide-header" data-remarp-id="s2-header"><h2>Fragment 순차 표시 <span class="fragment fade-in" data-fragment-index="4">(</span>)</h2></div>
+  <div class="slide-body" data-remarp-id="s2-body">
+    <p>Remarp에서는 <span class="fragment fade-in" data-fragment-index="5"><code></span></code> 문법으로 요소를 순차적으로 표시합니다:</p>
+<ul><li class="fragment fade-in" data-fragment-index="0"><strong>Step 1</strong>: 콘텐츠 기획 및 구조 설계</li><li class="fragment fade-in" data-fragment-index="1"><strong>Step 2</strong>: Remarp 마크다운 소스 작성</li><li class="fragment fade-in" data-fragment-index="2"><strong>Step 3</strong>: HTML 슬라이드쇼 빌드</li><li class="fragment fade-in" data-fragment-index="3"><strong>Step 4</strong>: 프레젠테이션 전달</li></ul>
+<blockquote><p>스페이스바를 눌러 하나씩 나타나는 것을 확인하세요</p></blockquote>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s3">
+  <div class="slide-header" data-remarp-id="s3-header"><h2>Compare 슬라이드</h2></div>
+  <div class="slide-body" data-remarp-id="s3-body" data-compare-mode="side-by-side">
+    <div class="compare-toggle">
+            <button class="compare-btn active" data-compare="before">Before: 기존 도구</button>
+      <button class="compare-btn" data-compare="after-remarp">After: Remarp</button>
+    </div>
+    <div class="col-2" style="flex:1">
+            <div class="card compare-content active compare-highlight" data-compare="before" data-remarp-id="s3-left">
+<h3 style="color:var(--text-accent);margin-bottom:.5rem">Before: 기존 도구</h3>
+<ul><li>PowerPoint/Keynote로 수작업</li><li>디자인에 시간 소모</li><li>버전 관리 어려움</li><li>인터랙티브 요소 제한</li></ul>
+</div>
+      <div class="card compare-content active" data-compare="after-remarp" data-remarp-id="s3-right">
+<h3 style="color:var(--text-accent);margin-bottom:.5rem">After: Remarp</h3>
+<ul><li>마크다운으로 빠른 작성</li><li>자동 레이아웃 & 테마</li><li>Git 기반 버전 관리</li><li>Canvas, Quiz, Tabs 내장</li></ul>
+</div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s4">
+  <div class="slide-header" data-remarp-id="s4-header"><h2>Remarp 워크플로우</h2></div>
+  <div class="slide-body" data-remarp-id="s4-body">
+    <div class="canvas-container" data-remarp-id="s4-canvas" style="flex:1">
+      <canvas id="remarp-workflow"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s5">
+  <div class="slide-header" data-remarp-id="s5-header"><h2>Code 하이라이팅</h2></div>
+  <div class="slide-body" data-remarp-id="s5-body">
+    <div class="code-block"><span class="code-label">python</span><span class="comment"># remarp_to_slides.py 빌드 명령</span>
+<span class="keyword">import</span> remarp
+
+project = remarp.load(<span class="string">"./my-presentation/"</span>)
+project.build(output=<span class="string">"./dist/"</span>, lang=<span class="string">"ko"</span>)</div>
+<div class="code-block"><span class="code-label">yaml</span><span class="comment"># _presentation.md 메타데이터</span>
+<span class="key">remarp</span>: <span class="keyword">true</span>
+<span class="key">title</span>: <span class="string">"My Presentation"</span>
+<span class="key">theme</span>:
+  <span class="key">primary</span>: <span class="string">"#232F3E"</span>
+  <span class="key">accent</span>: <span class="string">"#FF9900"</span></div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s6">
+  <div class="slide-header" data-remarp-id="s6-header"><h2>Remarp 확인 퀴즈</h2></div>
+  <div class="slide-body" data-remarp-id="s6-body" style="overflow-y:auto">
+    <div class="quiz" data-quiz="q1">
+      <div class="quiz-question">Q1: Remarp 소스 파일의 확장자는?</div>
+      <div class="quiz-options">
+        <button class="quiz-option" data-correct="false">.pptx</button>
+<button class="quiz-option" data-correct="true">.md (마크다운)</button>
+<button class="quiz-option" data-correct="false">.html</button>
+<button class="quiz-option" data-correct="false">.json</button>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+<div class="quiz" data-quiz="q2">
+      <div class="quiz-question">Q2: Canvas DSL에서 요소를 순차적으로 표시하는 키워드는?</div>
+      <div class="quiz-options">
+        <button class="quiz-option" data-correct="false">order</button>
+<button class="quiz-option" data-correct="false">sequence</button>
+<button class="quiz-option" data-correct="true">step</button>
+<button class="quiz-option" data-correct="false">animate</button>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s7">
+  <div class="slide-header" data-remarp-id="s7-header"><h2>Summary</h2></div>
+  <div class="slide-body" data-remarp-id="s7-body" style="overflow-y:auto">
+    
+  </div>
+</div>
+</div>
+<script src="./common/animation-utils.js"></script>
+<script src="./common/slide-framework.js"></script>
+<script src="./common/quiz-component.js"></script>
+<script src="./common/presenter-view.js"></script>
+<script>
+(function() {
+  const canvas = document.getElementById('remarp-workflow');
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  const BASE_W = 960, BASE_H = 400;
+
+  function resizeCanvas() {
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    if (cw <= 0 || ch <= 0) {
+      setupCanvas('remarp-workflow', BASE_W, BASE_H);
+      return;
+    }
+    const dpr = window.devicePixelRatio || 1;
+    const scale = cw / BASE_W;
+    const scaledH = Math.min(Math.round(BASE_H * scale), ch);
+    canvas.width = Math.round(cw * dpr);
+    canvas.height = Math.round(scaledH * dpr);
+    canvas.style.width = cw + 'px';
+    canvas.style.height = scaledH + 'px';
+    canvas.style.maxWidth = 'none';
+    const c = canvas.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.scale(scale * dpr, scale * dpr);
+  }
+  resizeCanvas();
+
+  const ctx = canvas.getContext('2d');
+  const width = BASE_W, height = BASE_H;
+  let step = 0;
+  const MAX_STEP = 6;
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    if (step >= 1) { drawBox(ctx, 60, 150, 150, 40, 'Markdown Source', '#41B3FF'); }
+    if (step >= 2) { drawBox(ctx, 280, 150, 170, 40, 'remarp_to_slides.py', '#FF9900'); }
+    if (step >= 3) { drawBox(ctx, 520, 150, 150, 40, 'HTML Slideshow', '#00E500'); }
+    if (step >= 4) { drawBox(ctx, 280, 60, 170, 40, 'Theme CSS', '#AD5CFF'); }
+    if (step >= 4) { drawBox(ctx, 280, 240, 170, 40, 'JS Framework', '#AD5CFF'); }
+    if (step >= 5) { drawArrow(ctx, 210, 170, 280, 170, Colors.accent, false); }
+    if (step >= 5) { drawText(ctx, 'input', 245, 158, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 5) { drawArrow(ctx, 450, 170, 520, 170, Colors.accent, false); }
+    if (step >= 5) { drawText(ctx, 'output', 485, 158, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 6) { drawArrow(ctx, 365, 100, 365, 150, Colors.accent, false); }
+    if (step >= 6) { drawText(ctx, 'styling', 365, 113, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 6) { drawArrow(ctx, 365, 240, 365, 190, Colors.accent, false); }
+    if (step >= 6) { drawText(ctx, 'interactivity', 365, 203, {size: 10, color: Colors.textSec, align: 'center'}); }
+  }
+
+  draw();
+  new ResizeObserver(() => { resizeCanvas(); draw(); }).observe(container);
+
+  const slide = canvas.closest('.slide');
+  if (slide) {
+    slide.dataset.slideAction = 'canvas-step';
+    slide.dataset.canvasMaxStep = String(MAX_STEP);
+    slide.__canvasStep = function(dir) {
+      if (dir === 'next' && step < MAX_STEP) step++;
+      if (dir === 'prev' && step > 0) step--;
+      draw();
+      return step;
+    };
+  }
+})();
+</script>
+<script>
+  
+  const presenterNotes = {};
+  const deck = new SlideFramework({
+    
+    footer: 'Remarp Feature Tour Demo',
+    
+    pagination: true,
+    sidebar: true,
+    presenterNotes: presenterNotes,
+    onSlideChange: (index, slide) => {}
+  });
+</script>
+</body>
+</html>

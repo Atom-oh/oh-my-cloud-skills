@@ -225,7 +225,7 @@ Set up CloudWatch Container Insights for observability.
 
 ---
 
-**[Get Started →](/introduction/)**
+`[Get Started →](/introduction/)`
 ```
 
 ---
@@ -251,10 +251,10 @@ By the end of this module, you will:
 
 ## Module Overview
 
-#### 1. [Create Cluster](./create-cluster)
+#### 1. Create Cluster
 Use eksctl to create a managed EKS cluster with node groups.
 
-#### 2. [Verify Cluster](./verify-cluster)
+#### 2. Verify Cluster
 Confirm cluster health and explore the components.
 
 ## Architecture
@@ -301,7 +301,7 @@ aws sts get-caller-identity
 
 ---
 
-**[Next: Create Cluster →](./create-cluster)**
+`[Next: Create Cluster →](./create-cluster)`
 ```
 
 ---
@@ -429,7 +429,7 @@ ip-192-168-xx-xx.ap-northeast-2.compute.internal   Ready    none     5m    v1.29
 
 ---
 
-**[Next: Verify Cluster →](../verify-cluster)**
+`[Next: Verify Cluster →](../verify-cluster)`
 ```
 
 ---

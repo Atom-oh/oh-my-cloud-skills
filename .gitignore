@@ -18,6 +18,8 @@ node_modules/
 
 # Debug screenshots
 *.png
+# But keep demo screenshots
+!docs/static/img/demos/*.png
 
 # Docusaurus
 docs/node_modules/

@@ -490,7 +490,7 @@ graph LR
 
 ---
 
-**[Get Started →](/introduction/)**
+`[Get Started →](/introduction/)`
 ```
 
 ### Module Index Template

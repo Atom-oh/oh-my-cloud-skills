@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canvas Animation Demo</title>
+  <meta name="generator" content="remarp">
+  <meta name="remarp-version" content="1">
+  <meta name="remarp-source" content="index">
+  <meta name="remarp-block" content="merged">
+  <link rel="stylesheet" href="./common/theme.css">
+  <link rel="stylesheet" href="./common/pptx-theme/theme-override.css">
+  
+  
+  <script>window.__remarpTheme = {"colors": {}, "footer": "Remarp Canvas Animation Demo", "pagination": true, "fonts": {}};</script>
+</head>
+<body>
+<div class="slide-deck">
+<div class="slide" data-remarp-id="s0" style="background:linear-gradient(135deg, #161D26 0%, #0d1117 50%, #1a2332 100%); padding:0; overflow:hidden;">
+  <h1 style="position:absolute; left:5%; top:48%; font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:53%; margin:0;">Canvas Animation Demo</h1>
+  <p style="position:absolute; left:5%; top:62%; font-size:1.3rem; color:rgba(255,255,255,0.8); width:53%; margin:0;">AWS Observability 서비스 맵 & 아키텍처 시각화</p>
+  <div style="position:absolute; left:5%; top:76%;">
+    <p style="font-size:1.05rem; color:#fff; font-weight:600; margin:0;">Remarp Demo</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.65); margin:6px 0 0 0;">Interactive Presentation Framework</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.65); margin:2px 0 0 0;"></p>
+  </div>
+  
+</div>
+
+<div class="slide" data-remarp-id="s1">
+  <div class="slide-header" data-remarp-id="s1-header"><h2>AWS Observability 서비스 맵</h2></div>
+  <div class="slide-body" data-remarp-id="s1-body">
+    <div class="canvas-container" data-remarp-id="s1-canvas" style="flex:1">
+      <canvas id="obs-service-map"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s2">
+  <div class="slide-header" data-remarp-id="s2-header"><h2>Serverless Event-Driven Architecture</h2></div>
+  <div class="slide-body" data-remarp-id="s2-body">
+    <div class="canvas-container" data-remarp-id="s2-canvas" style="flex:1">
+      <canvas id="serverless-arch"></canvas>
+    </div>
+  </div>
+</div>
+</div>
+<script src="./common/animation-utils.js"></script>
+<script src="./common/slide-framework.js"></script>
+<script src="./common/quiz-component.js"></script>
+<script src="./common/presenter-view.js"></script>
+<script>
+(function() {
+  const canvas = document.getElementById('obs-service-map');
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  const BASE_W = 960, BASE_H = 400;
+
+  function resizeCanvas() {
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    if (cw <= 0 || ch <= 0) {
+      setupCanvas('obs-service-map', BASE_W, BASE_H);
+      return;
+    }
+    const dpr = window.devicePixelRatio || 1;
+    const scale = cw / BASE_W;
+    const scaledH = Math.min(Math.round(BASE_H * scale), ch);
+    canvas.width = Math.round(cw * dpr);
+    canvas.height = Math.round(scaledH * dpr);
+    canvas.style.width = cw + 'px';
+    canvas.style.height = scaledH + 'px';
+    canvas.style.maxWidth = 'none';
+    const c = canvas.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.scale(scale * dpr, scale * dpr);
+  }
+  resizeCanvas();
+
+  const ctx = canvas.getContext('2d');
+  const width = BASE_W, height = BASE_H;
+  let step = 0;
+  const MAX_STEP = 7;
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    if (step >= 1) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-CloudWatch_48.svg', 80, 120, 48); }
+    if (step >= 1) { drawText(ctx, 'CloudWatch', 80, 158, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 1) { drawBox(ctx, 55, 180, 100, 35, 'Collect', '#41B3FF'); }
+    if (step >= 2) { drawIcon(ctx, './common/aws-icons/services/Arch_DevOpsGuru_48.svg', 272, 120, 48); }
+    if (step >= 2) { drawText(ctx, 'DevOpsGuru', 272, 158, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 2) { drawBox(ctx, 247, 180, 100, 35, 'Analyze', '#AD5CFF'); }
+    if (step >= 3) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-CloudWatch_48.svg', 464, 120, 48); }
+    if (step >= 3) { drawText(ctx, 'CloudWatch', 464, 158, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 3) { drawBox(ctx, 439, 180, 100, 35, 'Detect', '#FF5C85'); }
+    if (step >= 4) { drawIcon(ctx, './common/aws-icons/services/Arch_AWS-X-Ray_48.svg', 656, 120, 48); }
+    if (step >= 4) { drawText(ctx, 'X-Ray', 656, 158, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 4) { drawBox(ctx, 631, 180, 100, 35, 'Trace', '#00E500'); }
+    if (step >= 5) { drawIcon(ctx, './common/aws-icons/services/Arch_Amazon-EventBridge_48.svg', 848, 120, 48); }
+    if (step >= 5) { drawText(ctx, 'EventBridge', 848, 158, {size: 9, color: Colors.textSec, align: 'center'}); }
+    if (step >= 5) { drawBox(ctx, 823, 180, 100, 35, 'Act', '#FF693C'); }
+    if (step >= 6) { drawArrow(ctx, 155, 197, 247, 197, Colors.accent, false); }
+    if (step >= 6) { drawText(ctx, 'metrics', 201, 185, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 6) { drawArrow(ctx, 347, 197, 439, 197, Colors.accent, false); }
+    if (step >= 6) { drawText(ctx, 'insights', 393, 185, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 7) { drawArrow(ctx, 539, 197, 631, 197, Colors.accent, false); }
+    if (step >= 7) { drawText(ctx, 'traces', 585, 185, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 7) { drawArrow(ctx, 731, 197, 823, 197, Colors.accent, false); }
+    if (step >= 7) { drawText(ctx, 'events', 777, 185, {size: 10, color: Colors.textSec, align: 'center'}); }
+  }
+
+  draw();
+  new ResizeObserver(() => { resizeCanvas(); draw(); }).observe(container);
+
+  const slide = canvas.closest('.slide');
+  if (slide) {
+    slide.dataset.slideAction = 'canvas-step';
+    slide.dataset.canvasMaxStep = String(MAX_STEP);
+    slide.__canvasStep = function(dir) {
+      if (dir === 'next' && step < MAX_STEP) step++;
+      if (dir === 'prev' && step > 0) step--;
+      draw();
+      return step;
+    };
+  }
+})();
+</script>
+<script>
+(function() {
+  const canvas = document.getElementById('serverless-arch');
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  const BASE_W = 960, BASE_H = 400;
+
+  function resizeCanvas() {
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    if (cw <= 0 || ch <= 0) {
+      setupCanvas('serverless-arch', BASE_W, BASE_H);
+      return;
+    }
+    const dpr = window.devicePixelRatio || 1;
+    const scale = cw / BASE_W;
+    const scaledH = Math.min(Math.round(BASE_H * scale), ch);
+    canvas.width = Math.round(cw * dpr);
+    canvas.height = Math.round(scaledH * dpr);
+    canvas.style.width = cw + 'px';
+    canvas.style.height = scaledH + 'px';
+    canvas.style.maxWidth = 'none';
+    const c = canvas.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.scale(scale * dpr, scale * dpr);
+  }
+  resizeCanvas();
+
+  const ctx = canvas.getContext('2d');
+  const width = BASE_W, height = BASE_H;
+  let step = 0;
+  const MAX_STEP = 8;
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    if (step >= 1) { drawBox(ctx, 60, 150, 130, 40, 'API Gateway', '#41B3FF'); }
+    if (step >= 2) { drawBox(ctx, 260, 150, 130, 40, 'Lambda', '#FF9900'); }
+    if (step >= 3) { drawBox(ctx, 460, 150, 130, 40, 'DynamoDB', '#4053D6'); }
+    if (step >= 4) { drawBox(ctx, 460, 60, 130, 40, 'SNS', '#FF4F8B'); }
+    if (step >= 4) { drawBox(ctx, 660, 60, 130, 40, 'SQS', '#FF4F8B'); }
+    if (step >= 5) { drawBox(ctx, 460, 240, 130, 40, 'S3', '#3F8624'); }
+    if (step >= 6) { drawArrow(ctx, 190, 170, 260, 170, Colors.accent, false); }
+    if (step >= 6) { drawText(ctx, 'invoke', 225, 158, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 6) { drawArrow(ctx, 390, 170, 460, 170, Colors.accent, false); }
+    if (step >= 6) { drawText(ctx, 'read/write', 425, 158, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 7) { drawOrthogonalArrow(ctx, [{x:390,y:170}, {x:425,y:170}, {x:425,y:80}, {x:460,y:80}], Colors.accent, false); }
+    if (step >= 7) { drawText(ctx, 'publish', 425, 68, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 7) { drawArrow(ctx, 590, 80, 660, 80, Colors.accent, false); }
+    if (step >= 7) { drawText(ctx, 'fanout', 625, 68, {size: 10, color: Colors.textSec, align: 'center'}); }
+    if (step >= 8) { drawOrthogonalArrow(ctx, [{x:390,y:170}, {x:425,y:170}, {x:425,y:260}, {x:460,y:260}], Colors.accent, false); }
+    if (step >= 8) { drawText(ctx, 'store', 425, 248, {size: 10, color: Colors.textSec, align: 'center'}); }
+  }
+
+  draw();
+  new ResizeObserver(() => { resizeCanvas(); draw(); }).observe(container);
+
+  const slide = canvas.closest('.slide');
+  if (slide) {
+    slide.dataset.slideAction = 'canvas-step';
+    slide.dataset.canvasMaxStep = String(MAX_STEP);
+    slide.__canvasStep = function(dir) {
+      if (dir === 'next' && step < MAX_STEP) step++;
+      if (dir === 'prev' && step > 0) step--;
+      draw();
+      return step;
+    };
+  }
+})();
+</script>
+<script>
+  
+  const presenterNotes = {};
+  const deck = new SlideFramework({
+    
+    footer: 'Remarp Canvas Animation Demo',
+    
+    pagination: true,
+    sidebar: true,
+    presenterNotes: presenterNotes,
+    onSlideChange: (index, slide) => {}
+  });
+</script>
+</body>
+</html>

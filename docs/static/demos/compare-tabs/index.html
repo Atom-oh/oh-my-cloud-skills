@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Compare & Tabs Demo</title>
+  <meta name="generator" content="remarp">
+  <meta name="remarp-version" content="1">
+  <meta name="remarp-source" content="index">
+  <meta name="remarp-block" content="merged">
+  <link rel="stylesheet" href="./common/theme.css">
+  <link rel="stylesheet" href="./common/pptx-theme/theme-override.css">
+  
+  
+  <script>window.__remarpTheme = {"colors": {}, "footer": "Remarp Compare & Tabs Demo", "pagination": true, "fonts": {}};</script>
+</head>
+<body>
+<div class="slide-deck">
+<div class="slide" data-remarp-id="s0" style="background:linear-gradient(135deg, #161D26 0%, #0d1117 50%, #1a2332 100%); padding:0; overflow:hidden;">
+  <h1 style="position:absolute; left:5%; top:48%; font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:53%; margin:0;">Compare & Tabs Demo</h1>
+  <p style="position:absolute; left:5%; top:62%; font-size:1.3rem; color:rgba(255,255,255,0.8); width:53%; margin:0;">인터랙티브 비교/탭 슬라이드 데모</p>
+  <div style="position:absolute; left:5%; top:76%;">
+    <p style="font-size:1.05rem; color:#fff; font-weight:600; margin:0;">Remarp Demo</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.65); margin:6px 0 0 0;">Interactive Presentation Framework</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.65); margin:2px 0 0 0;"></p>
+  </div>
+  
+</div>
+
+<div class="slide" data-remarp-id="s1">
+  <div class="slide-header" data-remarp-id="s1-header"><h2>Traditional Ops vs AIOps</h2></div>
+  <div class="slide-body" data-remarp-id="s1-body" data-compare-mode="side-by-side">
+    <div class="compare-toggle">
+            <button class="compare-btn active" data-compare="traditional-ops">Traditional Ops</button>
+      <button class="compare-btn" data-compare="aiops">AIOps</button>
+    </div>
+    <div class="col-2" style="flex:1">
+            <div class="card compare-content active compare-highlight" data-compare="traditional-ops" data-remarp-id="s1-left">
+<h3 style="color:var(--text-accent);margin-bottom:.5rem">Traditional Ops</h3>
+<ul><li><strong>수동 모니터링</strong> -- 대시보드를 지속적으로 감시</li><li><strong>정적 임계값</strong> -- 고정된 threshold 기반 알림</li><li><strong>사후 대응</strong> -- 문제 발생 후 대응 시작</li><li><strong>사일로화된 도구</strong> -- 분리된 모니터링 시스템</li><li><strong>수동 상관관계 분석</strong> -- 담당자 경험에 의존</li></ul>
+</div>
+      <div class="card compare-content active" data-compare="aiops" data-remarp-id="s1-right">
+<h3 style="color:var(--text-accent);margin-bottom:.5rem">AIOps</h3>
+<ul><li><strong>ML 기반 이상 탐지</strong> -- 자동화된 패턴 인식</li><li><strong>동적 기준선</strong> -- 학습 기반 적응형 threshold</li><li><strong>예방적 운영</strong> -- 문제 예측 및 선제 대응</li><li><strong>통합 Observability</strong> -- 메트릭/로그/트레이스 통합</li><li><strong>자동 근본 원인 분석</strong> -- AI가 상관관계 파악</li></ul>
+</div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s2">
+  <div class="slide-header" data-remarp-id="s2-header"><h2>CloudWatch 핵심 개념</h2></div>
+  <div class="slide-body" data-remarp-id="s2-body">
+    <div class="tab-bar">
+            <button class="tab-btn active" data-tab="metrics">Metrics</button>
+      <button class="tab-btn" data-tab="logs">Logs</button>
+      <button class="tab-btn" data-tab="alarms">Alarms</button>
+    </div>
+        <div class="tab-content active" data-tab="metrics">
+<p><strong>Custom Metrics 발행</strong></p>
+<ul><li>Namespace 구조: <code>MyApp/ServiceName</code></li><li>해상도: Standard (60초) / High-Resolution (1초)</li><li>Dimension 설계가 비용과 쿼리 성능에 직결</li></ul>
+<p><strong>주요 지표</strong></p>
+<ul><li>CPUUtilization, NetworkIn/Out, DiskReadOps</li><li>Custom: RequestLatency, ErrorCount, ActiveConnections</li></ul>
+</div>
+    <div class="tab-content" data-tab="logs">
+<p><strong>Log 구조</strong></p>
+<ul><li><strong>Log Groups</strong> -- 애플리케이션/서비스 단위 그룹</li><li><strong>Log Streams</strong> -- 인스턴스/컨테이너 단위 스트림</li><li><strong>Insights</strong> -- SQL 유사 쿼리로 로그 분석</li></ul>
+<p><strong>보존 정책</strong></p>
+<ul><li>1일 ~ 영구 보관 설정 가능</li><li>S3 내보내기로 장기 보관 비용 절감</li></ul>
+</div>
+    <div class="tab-content" data-tab="alarms">
+<p><strong>알람 유형</strong></p>
+<ul><li><strong>Static Threshold</strong> -- 고정 임계값 기반</li><li><strong>Anomaly Detection</strong> -- ML 기반 동적 기준선</li><li><strong>Composite Alarms</strong> -- 여러 알람 조합</li></ul>
+<p><strong>알람 상태</strong></p>
+<ul><li>OK / ALARM / INSUFFICIENT_DATA</li><li>평가 기간(Period)과 평가 횟수(Evaluation Periods) 설정</li></ul>
+</div>
+  </div>
+</div>
+</div>
+<script src="./common/animation-utils.js"></script>
+<script src="./common/slide-framework.js"></script>
+<script src="./common/quiz-component.js"></script>
+<script src="./common/presenter-view.js"></script>
+
+<script>
+  
+  const presenterNotes = {};
+  const deck = new SlideFramework({
+    
+    footer: 'Remarp Compare & Tabs Demo',
+    
+    pagination: true,
+    sidebar: true,
+    presenterNotes: presenterNotes,
+    onSlideChange: (index, slide) => {}
+  });
+</script>
+</body>
+</html>
