@@ -5,81 +5,373 @@ title: Ops Troubleshoot
 
 # Ops Troubleshoot
 
-체계적인 AWS/EKS 트러블슈팅 워크플로우 스킬입니다.
+Systematic AWS/EKS troubleshooting workflow skill.
 
-## 설명
+## Description
 
-5분 트리아지 → 조사 → 해결 → 포스트모템의 체계적인 워크플로우를 제공합니다.
+Provides a systematic workflow: 5-minute triage → investigation → resolution → postmortem.
 
-## 트리거 키워드
+## Trigger Keywords
 
 - "troubleshoot"
 - "debug"
-- "장애"
-- "문제 해결"
 - "incident"
+- "problem solving"
 
-## 워크플로우
+## Workflow Overview
 
 ```mermaid
 flowchart LR
-    T[Triage<br/>5분] --> I[Investigation<br/>조사]
-    I --> R[Resolution<br/>해결]
-    R --> P[Postmortem<br/>포스트모템]
+    T[Triage<br/>5 min] --> I[Investigation<br/>Analysis]
+    I --> R[Resolution<br/>Fix]
+    R --> P[Postmortem<br/>Documentation]
 ```
 
-### Phase 1: Triage (5분)
+### Phase 1: Triage (5 minutes)
 
-1. **클러스터 상태** - `kubectl cluster-info`, `kubectl get nodes -o wide`
-2. **실패한 워크로드** - `kubectl get pods -A --field-selector=status.phase!=Running`
-3. **최근 이벤트** - `kubectl get events -A --sort-by='.lastTimestamp' | tail -50`
-4. **시스템 파드** - `kubectl get pods -n kube-system`
-5. **리소스 사용량** - `kubectl top nodes`, `kubectl top pods -A --sort-by=memory | head -20`
-6. **AWS 상태** - `aws eks describe-cluster --name $CLUSTER_NAME --query 'cluster.status'`
+1. **Cluster Status** - `kubectl cluster-info`, `kubectl get nodes -o wide`
+2. **Failed Workloads** - `kubectl get pods -A --field-selector=status.phase!=Running`
+3. **Recent Events** - `kubectl get events -A --sort-by='.lastTimestamp' | tail -50`
+4. **System Pods** - `kubectl get pods -n kube-system`
+5. **Resource Usage** - `kubectl top nodes`, `kubectl top pods -A --sort-by=memory | head -20`
+6. **AWS Status** - `aws eks describe-cluster --name $CLUSTER_NAME --query 'cluster.status'`
 
 ### Phase 2: Investigation
 
-1. 증상 도메인 식별 (network, auth, storage, compute, observability)
-2. 적절한 전문 에이전트로 라우팅
-3. 도메인별 진단 명령어로 데이터 수집
-4. 알려진 오류 패턴과 대조
+1. Identify symptom domain (network, auth, storage, compute, observability)
+2. Route to appropriate specialist agent
+3. Collect diagnostic data using domain-specific commands
+4. Cross-reference with known error patterns
 
 ### Phase 3: Resolution
 
-1. 수정 적용 (설정 변경, 스케일링, 재시작 등)
-2. 수정이 증상을 해결하는지 검증
-3. 회귀 모니터링 (5-15분)
+1. Apply fix (configuration change, scaling, restart, etc.)
+2. Verify fix resolves the symptom
+3. Monitor for regression (5-15 minutes)
 
 ### Phase 4: Postmortem
 
-1. 인시던트 문서화 (타임라인, 영향, 근본원인)
-2. 예방 조치 식별
-3. 새로운 패턴 발견 시 런북 업데이트
+1. Document incident (timeline, impact, root cause)
+2. Identify preventive measures
+3. Update runbooks if new pattern discovered
 
-## 심각도 분류
+## Severity Classification
 
-| 레벨 | 대응 | 기준 |
-|------|------|------|
-| P1 Critical | < 5분 | 서비스 중단, 데이터 손실 위험 |
-| P2 High | < 30분 | 주요 기능 저하, 높은 오류율 |
-| P3 Medium | < 4시간 | 경미한 영향, 단일 컴포넌트 |
-| P4 Low | 다음 영업일 | 경고, 최적화 |
+| Level | Response | Criteria |
+|-------|----------|----------|
+| P1 Critical | < 5 min | Service outage, data loss risk |
+| P2 High | < 30 min | Major degradation, high error rate |
+| P3 Medium | < 4 hr | Minor impact, single component |
+| P4 Low | Next business day | Warning, optimization |
 
-## 사용 예시
+---
+
+## Decision Trees (Extended)
+
+### Pod Not Starting Decision Tree
+
+```mermaid
+flowchart TD
+    START[Pod Not Running] --> STATUS{Pod Status?}
+
+    STATUS -->|Pending| PENDING{Has Events?}
+    PENDING -->|FailedScheduling| SCHED{Reason?}
+    SCHED -->|Insufficient CPU/Memory| SCALE[Scale node group or adjust requests]
+    SCHED -->|Taint/Toleration| TAINT[Add toleration or remove taint]
+    SCHED -->|NodeSelector/Affinity| AFFINITY[Fix node labels or affinity rules]
+    PENDING -->|No events| PVC_CHECK{PVC Pending?}
+    PVC_CHECK -->|Yes| PVC[Fix StorageClass or CSI driver]
+    PVC_CHECK -->|No| QUOTA[Check ResourceQuota/LimitRange]
+
+    STATUS -->|ImagePullBackOff| IMAGE{Registry?}
+    IMAGE -->|ECR| ECR[Check ECR policy + imagePullSecrets]
+    IMAGE -->|Public| PUBLIC[Check network + image tag exists]
+
+    STATUS -->|CrashLoopBackOff| CRASH[Check logs --previous]
+    CRASH --> CRASH_REASON{Log shows?}
+    CRASH_REASON -->|OOMKilled| OOM[Increase memory limit]
+    CRASH_REASON -->|Config error| CONFIG[Fix ConfigMap/Secret/env]
+    CRASH_REASON -->|App error| APP[Debug application code]
+
+    STATUS -->|Init:Error| INIT[Check init container logs]
+    STATUS -->|ContainerCreating| CREATE[Check CNI + image pull]
+```
+
+### Node Not Ready Decision Tree
+
+```mermaid
+flowchart TD
+    START[Node NotReady] --> CHECK{Node Conditions?}
+
+    CHECK -->|MemoryPressure| MEM[Check memory usage, evict pods, add memory]
+    CHECK -->|DiskPressure| DISK[Clean disk, expand volume, adjust thresholds]
+    CHECK -->|PIDPressure| PID[Check process count, increase PID limit]
+    CHECK -->|NetworkUnavailable| NET[Check VPC CNI, ENI, security groups]
+    CHECK -->|Unknown| UNK{kubelet Running?}
+    UNK -->|No| KUBELET[Restart kubelet, check journal logs]
+    UNK -->|Yes| API[Check node to API server connectivity]
+```
+
+### Network Connectivity Decision Tree
+
+```mermaid
+flowchart TD
+    START[Network Issue] --> LAYER{Which Layer?}
+
+    LAYER -->|Pod-to-Pod| P2P{Same Node?}
+    P2P -->|Yes| P2P_LOCAL[Check CNI, iptables, pod network namespace]
+    P2P -->|No| P2P_CROSS{Same VPC?}
+    P2P_CROSS -->|Yes| P2P_SG[Check security groups, NACLs]
+    P2P_CROSS -->|No| P2P_PEER[Check VPC peering, transit gateway]
+
+    LAYER -->|Pod-to-Service| SVC{Service Type?}
+    SVC -->|ClusterIP| SVC_EP[Check endpoints, kube-proxy, iptables]
+    SVC -->|NodePort| SVC_NP[Check node port range, firewall]
+    SVC -->|LoadBalancer| SVC_LB[Check LB controller, target health, SG]
+
+    LAYER -->|Pod-to-External| EXT{NAT Gateway?}
+    EXT -->|Yes| EXT_ROUTE[Check route table, NAT GW status]
+    EXT -->|No| EXT_IGW[Check IGW, public subnet, EIP]
+
+    LAYER -->|DNS| DNS{CoreDNS?}
+    DNS -->|Not Running| DNS_FIX[Restart CoreDNS pods]
+    DNS -->|Running| DNS_CFG[Check ConfigMap, ndots, search domains]
+```
+
+### Storage Issue Decision Tree
+
+```mermaid
+flowchart TD
+    START[Storage Issue] --> TYPE{Issue Type?}
+
+    TYPE -->|PVC Pending| PVC{Events?}
+    PVC -->|Provisioning failed| PROV{CSI Driver?}
+    PROV -->|Not running| CSI[Install/fix CSI driver]
+    PROV -->|Running| IAM[Check IRSA permissions for CSI]
+    PVC -->|WaitForFirstConsumer| WAIT[PVC waits for pod scheduling - normal]
+
+    TYPE -->|Mount Failed| MOUNT{Error?}
+    MOUNT -->|Permission denied| PERM[Check securityContext fsGroup]
+    MOUNT -->|Device busy| BUSY[Force detach old attachment]
+    MOUNT -->|Timeout| TIMEOUT[Check SG, mount target, AZ]
+
+    TYPE -->|Performance| PERF{Storage Type?}
+    PERF -->|EBS gp2| GP3[Migrate to gp3 for better IOPS]
+    PERF -->|EBS io1/io2| IOPS[Increase provisioned IOPS]
+    PERF -->|EFS| EFS[Check throughput mode, burst credits]
+```
+
+---
+
+## Error to Solution Mapping Table
+
+### Cluster Errors
+
+| Error Message | Root Cause | Solution |
+|---------------|------------|----------|
+| `Unable to connect to the server` | API server unreachable | Check VPC endpoint, SG, kubeconfig |
+| `error: the server doesn't have a resource type` | API version mismatch | Update kubectl version |
+| `Unauthorized` | Invalid/expired token | `aws eks update-kubeconfig --name <cluster>` |
+| `certificate signed by unknown authority` | Wrong CA | Update kubeconfig with correct cluster |
+
+### Node Errors
+
+| Error Message | Root Cause | Solution |
+|---------------|------------|----------|
+| `NodeNotReady` | kubelet stopped, network issue | Check kubelet: `journalctl -u kubelet -n 100` |
+| `MemoryPressure` | Node memory exhaustion | Evict pods, increase node size |
+| `DiskPressure` | Disk full | Clean images: `crictl rmi --prune`, expand disk |
+| `PIDPressure` | Too many processes | Increase PID limit, check for fork bombs |
+| `NetworkUnavailable` | CNI plugin failure | Restart aws-node DaemonSet |
+| `Taint node.kubernetes.io/not-ready` | Node not ready | Fix underlying condition |
+| `node has insufficient CPU/memory` | Resource exhaustion | Scale out node group |
+
+### Pod Errors
+
+| Error Message | Root Cause | Solution |
+|---------------|------------|----------|
+| `CrashLoopBackOff` | App crash, OOM, config error | `kubectl logs <pod> --previous` |
+| `ImagePullBackOff` | Wrong image/tag, auth failure | Check image name, imagePullSecrets |
+| `ErrImagePull` | ECR login expired, network | Refresh ECR token, check SG |
+| `OOMKilled` | Container exceeded memory limit | Increase memory limit |
+| `Evicted` | Node resource pressure | Set resource limits, increase node capacity |
+| `CreateContainerConfigError` | Missing ConfigMap/Secret | Verify ConfigMap/Secret exists |
+| `FailedScheduling: Insufficient cpu` | No node has enough CPU | Scale out or reduce resource requests |
+| `FailedScheduling: pod has unbound PVCs` | PVC not bound | Check StorageClass, CSI driver |
+
+### Network Errors
+
+| Error Message | Root Cause | Solution |
+|---------------|------------|----------|
+| `InsufficientFreeAddressesInSubnet` | IP exhaustion | Add secondary CIDR, enable prefix delegation |
+| `ENI limit reached` | Instance type ENI limit | Use larger instance or prefix delegation |
+| `dial tcp: lookup <service>: no such host` | DNS failure | Check CoreDNS, ndots setting |
+| `connection refused` | Service not listening | Check pod port, targetPort, service selector |
+| `context deadline exceeded` | Timeout | Check SG rules, network policy, routing |
+| `502 Bad Gateway` (ALB) | Target unhealthy | Check pod readiness, health check path |
+| `503 Service Temporarily Unavailable` | No healthy targets | Check target group registration |
+
+### Storage Errors
+
+| Error Message | Root Cause | Solution |
+|---------------|------------|----------|
+| `FailedAttachVolume` | AZ mismatch, volume busy | Match PV AZ, force detach old |
+| `FailedMount` | Mount point error, SG | Check mount target SG (EFS), device path |
+| `MountVolume.SetUp failed for volume` | Filesystem error | Check fsType, securityContext |
+| `volume already attached to another node` | Stale attachment | Delete VolumeAttachment, force detach |
+
+### IAM/Auth Errors
+
+| Error Message | Root Cause | Solution |
+|---------------|------------|----------|
+| `AccessDenied` | Missing IAM permission | Add policy to role |
+| `Forbidden: User "system:anonymous"` | Authentication failed | Fix aws-auth ConfigMap or access entries |
+| `could not get token` (IRSA) | OIDC provider issue | Verify OIDC provider, trust policy |
+| `WebIdentityErr` | Trust policy mismatch | Fix condition in IAM trust policy |
+| `AccessDenied when calling AssumeRoleWithWebIdentity` | IRSA misconfigured | Check SA annotation, OIDC, trust policy |
+
+---
+
+## Real-world Scenarios
+
+### Scenario 1: CrashLoopBackOff
+
+**Symptom**: Pod keeps restarting with CrashLoopBackOff status.
+
+**Diagnosis Steps**:
+
+```bash
+# 1. Check pod status and restart count
+kubectl get pod <pod-name> -n <namespace>
+
+# 2. Check pod events
+kubectl describe pod <pod-name> -n <namespace> | grep -A 20 "Events:"
+
+# 3. Check current container logs
+kubectl logs <pod-name> -n <namespace>
+
+# 4. Check previous container logs (crashed container)
+kubectl logs <pod-name> -n <namespace> --previous
+
+# 5. Check for OOMKilled
+kubectl get pod <pod-name> -n <namespace> -o jsonpath='{.status.containerStatuses[*].lastState.terminated.reason}'
+```
+
+**Common Causes and Resolutions**:
+
+| Cause | Log Pattern | Resolution |
+|-------|-------------|------------|
+| OOMKilled | Exit code 137, "OOMKilled" in terminated reason | Increase `resources.limits.memory` |
+| Config error | "file not found", "env variable not set" | Fix ConfigMap/Secret mounting |
+| Dependency failure | "connection refused", "ECONNREFUSED" | Check dependent service availability |
+| App bug | Application-specific stack trace | Fix application code |
+| Health check fail | "Liveness probe failed" in events | Adjust probe timing or fix health endpoint |
+
+**Resolution Example (OOMKilled)**:
+
+```yaml
+# Before: Insufficient memory
+resources:
+  limits:
+    memory: "128Mi"
+
+# After: Increased memory with buffer
+resources:
+  limits:
+    memory: "512Mi"
+  requests:
+    memory: "256Mi"
+```
+
+### Scenario 2: ImagePullBackOff
+
+**Symptom**: Pod stuck in ImagePullBackOff or ErrImagePull status.
+
+**Diagnosis Steps**:
+
+```bash
+# 1. Check pod events for specific error
+kubectl describe pod <pod-name> -n <namespace> | grep -A 5 "Events:"
+
+# 2. Verify image name and tag
+kubectl get pod <pod-name> -n <namespace> -o jsonpath='{.spec.containers[*].image}'
+
+# 3. For ECR, check node IAM permissions
+aws sts get-caller-identity  # Run from node via SSM
+
+# 4. Check imagePullSecrets
+kubectl get pod <pod-name> -n <namespace> -o jsonpath='{.spec.imagePullSecrets}'
+
+# 5. Test ECR login manually
+aws ecr get-login-password --region <region> | docker login --username AWS --password-stdin <account>.dkr.ecr.<region>.amazonaws.com
+```
+
+**Common Causes and Resolutions**:
+
+| Cause | Resolution |
+|-------|------------|
+| Image doesn't exist | Verify image:tag in registry |
+| ECR permissions | Add `ecr:GetDownloadUrlForLayer`, `ecr:BatchGetImage` to node role |
+| Private registry no secret | Create imagePullSecret and reference in pod spec |
+| Network blocked | Check security groups allow outbound 443 to registry |
+
+### Scenario 3: OOMKilled Investigation
+
+**Symptom**: Container terminates with OOMKilled reason.
+
+**Full Diagnosis Walkthrough**:
+
+```bash
+# 1. Confirm OOMKilled
+kubectl get pod <pod> -n <ns> -o json | jq '.status.containerStatuses[] | {name:.name, restartCount:.restartCount, lastState:.lastState}'
+
+# 2. Check current memory usage
+kubectl top pod <pod> -n <ns> --containers
+
+# 3. Check memory limits
+kubectl get pod <pod> -n <ns> -o json | jq '.spec.containers[] | {name:.name, limits:.resources.limits}'
+
+# 4. Check node memory pressure
+kubectl describe node <node> | grep -A 5 "Conditions:"
+
+# 5. Historical memory usage (if metrics-server available)
+kubectl get --raw "/apis/metrics.k8s.io/v1beta1/namespaces/<ns>/pods/<pod>" | jq '.containers[].usage'
+```
+
+**Resolution Strategy**:
+
+1. **Short-term**: Increase memory limit to 1.5-2x current peak usage
+2. **Medium-term**: Profile application to find memory leaks
+3. **Long-term**: Implement proper memory management in application
+
+```yaml
+# Recommended resource configuration
+resources:
+  requests:
+    memory: "256Mi"   # Average usage
+    cpu: "100m"
+  limits:
+    memory: "512Mi"   # Peak usage + 25% buffer
+    cpu: "500m"       # Allow burst
+```
+
+---
+
+## Usage Example
 
 ```
-파드가 계속 CrashLoopBackOff 상태야. 트러블슈팅 해줘.
+Pods keep CrashLoopBackOff. Please troubleshoot.
 ```
 
-워크플로우가 자동으로 시작됩니다:
-1. 5분 트리아지로 전체 상황 파악
-2. eks-agent로 라우팅하여 파드 로그 분석
-3. 근본원인 파악 후 해결책 제시
-4. 검증 및 재발 방지 권장
+Workflow starts automatically:
+1. 5-minute triage for overall situation assessment
+2. Route to eks-agent for pod log analysis
+3. Identify root cause and propose solution
+4. Verify and recommend recurrence prevention
 
-## 참조 파일
+## Reference Files
 
-- `references/troubleshooting-framework.md` - 체계적 접근법 및 명령어
-- `references/incident-response.md` - 5분 체크리스트, 심각도 매트릭스
-- `references/decision-trees.md` - 일반적인 시나리오를 위한 Mermaid 의사결정 트리
-- `references/common-errors.md` - 오류 메시지 → 해결책 매핑
+- `references/troubleshooting-framework.md` - Systematic approach and commands
+- `references/incident-response.md` - 5-minute checklist, severity matrix
+- `references/decision-trees.md` - Mermaid decision trees for common scenarios
+- `references/common-errors.md` - Error message to solution mapping

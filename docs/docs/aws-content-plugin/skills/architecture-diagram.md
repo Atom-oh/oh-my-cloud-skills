@@ -5,109 +5,324 @@ title: "Architecture Diagram"
 
 # Architecture Diagram Skill
 
-AWS 아키텍처 다이어그램을 생성하는 스킬입니다. Draw.io MCP 또는 XML 직접 작성 두 가지 모드를 지원합니다.
+Create AWS architecture diagrams using Draw.io. Supports two modes: XML direct writing and Draw.io MCP for real-time editing.
 
-## 트리거 키워드
+## Trigger Keywords
 
-다음 키워드로 활성화됩니다:
-- "아키텍처 다이어그램 그려줘"
-- "AWS 구성도 만들어줘"
-- "인프라 다이어그램", "시스템 아키텍처", "클라우드 아키텍처"
+Activated by the following keywords:
+- "architecture diagram", "draw architecture"
+- "AWS diagram", "create infrastructure diagram"
+- "system architecture", "cloud architecture"
 
-## 지원 모드
+## Supported Modes
 
-| 모드 | 방식 | 장점 | 사용 시점 |
-|------|------|------|----------|
-| **XML 직접 작성** | Write 도구로 .drawio 파일 생성 | 의존성 없음, 안정적 | 기본 (항상 사용 가능) |
-| **Draw.io MCP** | MCP로 실시간 편집 | 대화형 수정, 실시간 미리보기 | 선택적 (설정 필요) |
+| Mode | Method | Advantages | When to Use |
+|------|--------|------------|-------------|
+| **XML Direct Writing** | Create .drawio file with Write tool | No dependencies, stable | Default (always available) |
+| **Draw.io MCP** | Real-time editing via MCP | Interactive, live preview | Optional (requires setup) |
 
-## 제공 리소스
+## Provided Resources
 
 ### references/
 
-| 참조 문서 | 설명 |
-|----------|------|
-| `aws-icons.md` | AWS 아이콘 shape 이름 및 스타일 |
-| `best-practices.md` | 아키텍처 다이어그램 모범사례 |
-| `layout-patterns.md` | 레이아웃 패턴 |
-| `drawio-xml-guide.md` | XML 직접 작성 문법 가이드 |
-| `mcp-setup-guide.md` | Draw.io MCP 설정 및 도구 사용법 |
+| Reference Doc | Description |
+|---------------|-------------|
+| `aws-icons.md` | AWS icon shape names and styles |
+| `best-practices.md` | Architecture diagram best practices |
+| `layout-patterns.md` | Layout patterns |
+| `drawio-xml-guide.md` | XML direct writing syntax guide |
+| `mcp-setup-guide.md` | Draw.io MCP setup and tool usage |
+| `snippets.md` | Copy-paste XML code snippets |
 
 ### templates/
 
-| 템플릿 | 설명 |
-|--------|------|
-| `aws-basic.drawio` | VPC, Subnet, AZ 기본 구조 |
-| `aws-samples.drawio` | Data Lake 아키텍처 샘플 |
+| Template | Description |
+|----------|-------------|
+| `aws-basic.drawio` | VPC, Subnet, AZ basic structure |
+| `aws-samples.drawio` | Data Lake architecture sample |
 
-## 캔버스 크기 (PPT용)
+---
 
-| 용도 | 캔버스 크기 (px) | 비율 |
-|------|------------------|------|
-| 전체 슬라이드 | 1920 x 1080 | 16:9 |
-| 콘텐츠 영역 (권장) | 1600 x 900 | 16:9 |
-| 절반 슬라이드 | 900 x 900 | 1:1 |
-| 2/3 슬라이드 | 1200 x 900 | 4:3 |
+## Canvas Size (For PPT)
 
-## AWS 아이콘 라벨 규칙
+| Purpose | Canvas Size (px) | Ratio |
+|---------|------------------|-------|
+| Full slide | 1920 x 1080 | 16:9 |
+| Content area (recommended) | 1600 x 900 | 16:9 |
+| Half slide | 900 x 900 | 1:1 |
+| 2/3 slide | 1200 x 900 | 4:3 |
 
-:::warning 필수
-모든 AWS 아이콘 아래에 서비스 이름을 반드시 표시합니다.
+---
+
+## Draw.io XML Code Examples
+
+### Empty Canvas (PPT 1600x900)
+
+```xml
+<mxfile host="app.diagrams.net" agent="Claude Code" version="21.0.0">
+  <diagram name="Architecture" id="arch-1">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1"
+                  tooltips="1" connect="1" arrows="1" fold="1" page="1"
+                  pageScale="1" pageWidth="1600" pageHeight="900">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <!-- Add elements here -->
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
+```
+
+### AWS Cloud Container
+
+```xml
+<mxCell id="aws-cloud" value="AWS Cloud"
+        style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=14;fontStyle=1;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud_alt;strokeColor=#232F3E;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#232F3E;fontFamily=Amazon Ember;dashed=0;"
+        vertex="1" parent="1">
+  <mxGeometry x="20" y="20" width="1560" height="860" as="geometry" />
+</mxCell>
+```
+
+### VPC Container
+
+```xml
+<mxCell id="vpc-1" value="Production VPC (10.0.0.0/16)"
+        style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=11;fontStyle=1;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_vpc;strokeColor=#879196;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#879196;fontFamily=Amazon Ember;dashed=0;"
+        vertex="1" parent="region">
+  <mxGeometry x="20" y="40" width="500" height="400" as="geometry" />
+</mxCell>
+```
+
+### Public Subnet (Green)
+
+```xml
+<mxCell id="public-subnet" value="Public Subnet (10.0.1.0/24)"
+        style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=10;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_security_group;grStroke=0;strokeColor=#7AA116;fillColor=#F2F6E8;verticalAlign=top;align=left;spacingLeft=30;fontColor=#248814;fontFamily=Amazon Ember;dashed=0;"
+        vertex="1" parent="vpc-1">
+  <mxGeometry x="20" y="45" width="220" height="150" as="geometry" />
+</mxCell>
+```
+
+### Private Subnet (Blue)
+
+```xml
+<mxCell id="private-subnet" value="Private Subnet (10.0.10.0/24)"
+        style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=10;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_security_group;grStroke=0;strokeColor=#00A4A6;fillColor=#E6F6F7;verticalAlign=top;align=left;spacingLeft=30;fontColor=#147EBA;fontFamily=Amazon Ember;dashed=0;"
+        vertex="1" parent="vpc-1">
+  <mxGeometry x="20" y="210" width="220" height="170" as="geometry" />
+</mxCell>
+```
+
+### EC2 Instance Icon
+
+```xml
+<mxCell id="ec2-1" value="Web Server"
+        style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=#F78E04;gradientDirection=north;fillColor=#D05C17;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ec2;fontFamily=Amazon Ember;"
+        vertex="1" parent="private-subnet">
+  <mxGeometry x="86" y="60" width="48" height="48" as="geometry" />
+</mxCell>
+```
+
+### Lambda Function Icon
+
+```xml
+<mxCell id="lambda-1" value="Lambda"
+        style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=#F78E04;gradientDirection=north;fillColor=#D05C17;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;fontFamily=Amazon Ember;"
+        vertex="1" parent="1">
+  <mxGeometry x="200" y="200" width="48" height="48" as="geometry" />
+</mxCell>
+```
+
+### Aurora Database Icon
+
+```xml
+<mxCell id="aurora-1" value="Aurora"
+        style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=#4D72F3;gradientDirection=north;fillColor=#3334B9;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.aurora;fontFamily=Amazon Ember;"
+        vertex="1" parent="1">
+  <mxGeometry x="400" y="200" width="48" height="48" as="geometry" />
+</mxCell>
+```
+
+### Connection Arrow
+
+```xml
+<mxCell id="conn-1" value=""
+        style="endArrow=classic;startArrow=classic;html=1;rounded=0;strokeWidth=2;strokeColor=#545B64;"
+        edge="1" parent="1" source="source-id" target="target-id">
+  <mxGeometry width="50" height="50" relative="1" as="geometry" />
+</mxCell>
+```
+
+---
+
+## Layout Patterns Detail
+
+### 3-Tier Architecture Pattern
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Presentation Tier                        │
+│  CloudFront → ALB → Web Servers                              │
+├─────────────────────────────────────────────────────────────┤
+│                      Application Tier                        │
+│  API Gateway → Lambda/ECS → Application Logic                │
+├─────────────────────────────────────────────────────────────┤
+│                         Data Tier                            │
+│  RDS/Aurora → DynamoDB → ElastiCache → S3                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Layout coordinates:**
+- Presentation Tier: y = 50-200
+- Application Tier: y = 250-400
+- Data Tier: y = 450-600
+- Horizontal spacing between icons: 150px
+
+### Hybrid Cloud Pattern
+
+```
+┌─ On-Premise (IDC) ───────┐    ┌─ AWS Cloud ─────────────────┐
+│                          │    │  ┌─ Region ───────────────┐ │
+│  ┌────────┐  ┌────────┐  │    │  │  ┌─ VPC ────────────┐  │ │
+│  │ Server │  │Firewall│  │════│  │  │ Private Subnet   │  │ │
+│  └────────┘  └────────┘  │ DX │  │  │  ┌────┐ ┌────┐  │  │ │
+│                          │    │  │  │  │EC2 │ │RDS │  │  │ │
+│  Legacy Apps             │    │  │  │  └────┘ └────┘  │  │ │
+│                          │    │  │  └──────────────────┘  │ │
+└──────────────────────────┘    │  └────────────────────────┘ │
+                                └─────────────────────────────┘
+```
+
+**Key elements:**
+- IDC box: x=20, width=350
+- AWS Cloud box: x=400, width=rest
+- Direct Connect arrow: thick orange (#FF9800), strokeWidth=4
+
+### Serverless Architecture Pattern
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Client → API Gateway → Lambda → DynamoDB                    │
+│              ↓                                               │
+│          Cognito ←─────────────────────────────────┐        │
+│              ↓                                     │        │
+│         Step Functions → Lambda → S3 → EventBridge │        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Recommended icon sizes:**
+- API Gateway, Lambda, DynamoDB: 48x48
+- Cognito, Step Functions: 48x48
+- Arrows: strokeWidth=2, color=#545B64
+
+---
+
+## AWS Icon Label Rules
+
+:::warning Required
+Display service name below all AWS icons.
 :::
 
 ```
 ┌─────────────┐
-│   [아이콘]   │
+│   [Icon]    │
 │             │
-│ Lambda      │  ← 서비스 이름 필수
+│ Lambda      │  ← Service name required
 └─────────────┘
 ```
 
-라벨 설정:
+Label settings:
 - `verticalLabelPosition=bottom`
 - `fontFamily=Amazon Ember`
 - `fontSize=12`
-- `fontColor=#FFFFFF` (Dark 테마)
+- `fontColor=#FFFFFF` (Dark theme)
 
-## AWS 색상 가이드
+---
 
-| 용도 | 색상 코드 | 설명 |
-|------|-----------|------|
-| AWS Cloud | #232F3E | 다크 네이비 (배경) |
-| Region | #147EBA | 블루 |
-| VPC | #248814 | 그린 |
-| Public Subnet | #E7F4E8 | 라이트 그린 |
-| Private Subnet | #E6F2F8 | 라이트 블루 |
-| Security Group | #DF3312 | 레드 (보더) |
+## AWS Color Guide
 
-## PNG 내보내기
+| Purpose | Color Code | Description |
+|---------|------------|-------------|
+| AWS Cloud | #232F3E | Dark navy (background) |
+| Region | #147EBA | Blue |
+| VPC | #248814 | Green |
+| Public Subnet | #E7F4E8 | Light green |
+| Private Subnet | #E6F2F8 | Light blue |
+| Security Group | #DF3312 | Red (border) |
+
+### Service Category Colors
+
+| Category | fillColor | gradientColor |
+|----------|-----------|---------------|
+| Compute | #D05C17 | #F78E04 |
+| Storage | #277116 | #60A337 |
+| Database | #3334B9 | #4D72F3 |
+| Security | #C7131F | #F54749 |
+| Networking | #5A30B5 | #945DF2 |
+| Management | #BC1356 | #F34482 |
+| AI/ML | #116D5B | #4AB29A |
+
+---
+
+## Best Practices Checklist
+
+### Layout
+- [ ] Clear hierarchy (Cloud > Region > VPC > Subnet)
+- [ ] Consistent data flow direction (left to right)
+- [ ] Uniform icon sizes (recommended: 60x60)
+- [ ] Appropriate spacing maintained
+
+### Colors & Style
+- [ ] AWS official colors used
+- [ ] Amazon Ember font applied
+- [ ] Container colors are correct
+
+### Connections
+- [ ] Arrow directions are correct
+- [ ] Sync/async distinguished (solid/dashed)
+- [ ] No unnecessary line crossings
+
+### Completeness
+- [ ] All major components included
+- [ ] Legend present
+- [ ] Title and version info present
+- [ ] Labels below all AWS icons
+
+---
+
+## PNG Export
 
 ```bash
-# 기본 PNG 내보내기
+# Basic PNG export
 drawio -x -f png -o output.png input.drawio
 
-# 고해상도 PNG (2배 스케일, PPT용 권장)
+# High-resolution PNG (2x scale, recommended for PPT)
 drawio -x -f png -s 2 -o output.png input.drawio
 
-# 투명 배경 (Dark 테마 PPT용)
+# Transparent background (for dark theme PPT)
 drawio -x -f png -s 2 -t -o output.png input.drawio
 ```
 
-## 사용 예시
+---
+
+## Usage Example
 
 ```
-사용자: "3-tier 웹 아키텍처 다이어그램 그려줘"
+User: "Draw a 3-tier web architecture diagram"
 
-1. architecture-diagram-agent 호출
-2. 요구사항 분석 (VPC, Subnet, EC2, RDS 등)
-3. Draw.io XML 생성
-4. PNG 내보내기
-5. content-review-agent 검토
+1. architecture-diagram-agent called
+2. Requirements analysis (VPC, Subnet, EC2, RDS, etc.)
+3. Draw.io XML generation
+4. PNG export
+5. content-review-agent review
 ```
 
-## Draw.io MCP 설정 (선택사항)
+---
 
-Draw.io MCP를 사용하면 실시간 편집이 가능합니다:
+## Draw.io MCP Setup (Optional)
+
+Draw.io MCP enables real-time editing:
 
 ```json
 {
@@ -120,22 +335,24 @@ Draw.io MCP를 사용하면 실시간 편집이 가능합니다:
 }
 ```
 
-사전 요구사항:
-1. drawio-mcp-server가 HTTP 모드로 실행 중
-2. Browser Extension 설치 및 연결
-3. Draw.io 앱 열림
+Prerequisites:
+1. drawio-mcp-server running in HTTP mode
+2. Browser Extension installed and connected
+3. Draw.io app open
 
-## Quality Review (필수)
+---
 
-다이어그램 완성 후 반드시:
-1. `content-review-agent` 호출
-2. PASS (85점 이상) 획득 후에만 완료 선언
+## Quality Review (Required)
 
-## 검증 체크리스트
+After diagram completion:
+1. Call `content-review-agent`
+2. Achieve PASS (85+ score) before completion
 
-- [ ] Amazon Ember 폰트가 모든 텍스트에 설정됨
-- [ ] AWS 공식 색상 사용
-- [ ] 계층 구조 명확 (Cloud > Region > VPC > Subnet)
-- [ ] 데이터 흐름 방향 일관성
-- [ ] 아이콘 크기 균일 (권장: 60x60)
-- [ ] 라벨이 아이콘 아래에 배치됨
+## Validation Checklist
+
+- [ ] Amazon Ember font set for all text
+- [ ] AWS official colors used
+- [ ] Clear hierarchy (Cloud > Region > VPC > Subnet)
+- [ ] Consistent data flow direction
+- [ ] Uniform icon sizes (recommended: 60x60)
+- [ ] Labels placed below icons
