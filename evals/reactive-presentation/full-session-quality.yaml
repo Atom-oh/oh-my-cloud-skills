@@ -1,0 +1,89 @@
+name: full-session-quality
+description: "90-min multi-block session structural quality (margins, footer, agenda, codeblock, layout)"
+skill: reactive-presentation
+plugin: aws-content-plugin
+timeout: 300
+setup:
+  - "rm -rf docs/static/demos/aiops-deep-dive"
+
+prompt: |
+  Create a 90-minute AIOps deep-dive training session with 3 blocks:
+  Block 1 (30min): AIOps Foundations - what is AIOps, key concepts, ML for operations.
+  Block 2 (30min): AI Operations Architecture - observability pipeline, anomaly detection, automated remediation.
+  Block 3 (30min): Implementation Roadmap - tools, integration patterns, adoption strategy.
+
+  Requirements:
+  - Use _presentation.md with footer (copyright text), logo (AWS icon), author, and blocks metadata.
+  - Each block must start with an @type: agenda slide.
+  - Include at least one code block slide showing a Python or YAML example.
+  - Include at least one two-column or tabs layout slide per block.
+  - Include at least one canvas or :::html visualization slide.
+  - Use theme.css utility classes only. Do NOT use inline styles or :::css blocks.
+  - Footer must show copyright text, page number, and logo on every slide.
+  - Output remarp markdown files to ./output/ and build HTML.
+  - Use default theme. Skip all interactive questions - use defaults.
+
+scorers:
+  # 1. File structure: _presentation.md + 3 block .md files + HTML + theme
+  - type: file_exists
+    files:
+      - "output/_presentation.md"
+      - "output/01-*.md"
+      - "output/02-*.md"
+      - "output/03-*.md"
+      - "output/*.html"
+      - "output/common/theme.css"
+
+  # 2. _presentation.md metadata (footer, logo, author, blocks)
+  - type: html_check
+    target: "output/_presentation.md"
+    contains:
+      - "footer:"
+      - "logo:"
+      - "author:"
+      - "blocks:"
+
+  # 3. HTML structure: SlideFramework, footer, logo present; no errors
+  - type: html_check
+    target: "output/*.html"
+    contains:
+      - "SlideFramework"
+      - "footer"
+      - "logoSrc"
+    not_contains:
+      - "undefined"
+      - "ERROR"
+
+  # 4. Anti-pattern detection: no absolute positioning overlap, no hardcoded margins
+  - type: html_check
+    target: "output/*.html"
+    contains:
+      - "slide"
+    not_contains:
+      - "position: absolute; left: 0; right: 0"
+
+  # 5. Icon selective copy: icons dir exists with only needed icons (not bulk 4000+)
+  - type: file_count
+    pattern: "output/common/aws-icons/**/*.svg"
+    min: 1
+    max: 100
+
+  # 6. Build succeeds without errors
+  - type: build_check
+    project_dir: "output/"
+
+  # 7. LLM deep quality judgment (opt-in with --llm-judge)
+  - type: llm_judge
+    enabled: false
+    criteria:
+      - ":::html blocks have left/right margins within safe area and no hardcoded px margin abuse"
+      - "Footer shows copyright text, page number, and AWS logo without overlapping"
+      - "_presentation.md defines theme (footer, logo, primary, accent), speaker (author), and blocks"
+      - "@type: agenda or block title slide exists at the start of each block"
+      - "Canvas/HTML visualizations render within slide boundaries without overflow"
+      - "Code blocks fit the slide with scroll or font-size adjustment when content is long"
+      - "Wide content pairs use two-column or tabs layout instead of vertical stacking"
+      - "Tabs slides show tab-btn controls and display one tab content at a time"
+      - "Pagination numbers do not overlap with footer copyright text"
+      - "Click fragment ordering: parent elements must appear (via {.click}) before their children. A child must NOT have {.click} if its parent has not appeared yet. Conversely, if a parent has {.click}, its children must also have {.click} with a later order — children must not be visible before their parent animates in."
+    max_score: 100

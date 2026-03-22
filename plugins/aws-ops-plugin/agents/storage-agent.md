@@ -2,6 +2,12 @@
 name: storage-agent
 description: "AWS/EKS storage troubleshooting agent. Manages EBS CSI, EFS CSI, FSx CSI drivers, PVC binding, and volume mount issues. Triggers on \"EBS CSI\", \"EFS CSI\", \"FSx\", \"PVC\", \"PersistentVolume\", \"mount error\", \"volume attach\", \"스토리지 오류\", \"볼륨 마운트\", \"PVC 바인딩\" requests."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
+model: sonnet
+skills:
+  - ops-troubleshoot
+mcpServers:
+  - awsdocs
+  - awsapi
 ---
 
 # Storage Agent

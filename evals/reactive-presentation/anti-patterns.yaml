@@ -1,0 +1,44 @@
+name: anti-patterns
+description: "Detects generation of known anti-patterns"
+skill: reactive-presentation
+plugin: aws-content-plugin
+timeout: 120
+
+prompt: |
+  Create a 3-slide presentation about Amazon EKS networking.
+  Slide 1: Title slide.
+  Slide 2: VPC CNI architecture with icons for EKS, VPC, ENI, Pod.
+  Use standard theme classes (card, flow-h, icon-item, bg-accent).
+  Do NOT define custom CSS classes - use only theme.css utilities.
+  Slide 3: Key takeaways.
+  Output remarp markdown to ./output/ and build HTML.
+  Use default theme. Skip all interactive questions - use defaults.
+
+scorers:
+  - type: file_exists
+    files:
+      - "output/*.html"
+      - "output/common/theme.css"
+
+  - type: html_check
+    target: "output/*.html"
+    contains:
+      - "SlideFramework"
+      - "slide"
+    not_contains:
+      - "<style>"
+      - ":::css"
+      - "custom-"
+      - "margin-top:"
+      - "position: absolute"
+
+  - type: build_check
+    project_dir: "output/"
+
+  - type: llm_judge
+    enabled: false
+    criteria:
+      - "No inline styles or custom CSS"
+      - "Uses only theme.css utility classes"
+      - "AWS icons properly referenced"
+    max_score: 30

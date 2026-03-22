@@ -7,6 +7,10 @@ title: "Kiro Converter Agent"
 
 Claude Code 플러그인을 Kiro Power 포맷으로 변환하는 전문 에이전트입니다. 구조 변환, frontmatter 변환, MCP 설정 마이그레이션, 키워드 통합 등을 처리합니다.
 
+:::info 비파괴적 변환
+이 에이전트는 원본 Claude Code 플러그인을 절대 수정하거나 삭제하지 않습니다. Kiro Power 파일은 별도 위치에 생성되며, 두 포맷이 공존할 수 있습니다.
+:::
+
 ## 기본 정보
 
 | 항목 | 값 |

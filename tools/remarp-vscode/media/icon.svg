@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1e2864"/>
+      <stop offset="100%" stop-color="#642878"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="20" ry="20" fill="url(#bg)"/>
+  <text x="50%" y="42%" dominant-baseline="middle" text-anchor="middle"
+        font-family="system-ui, -apple-system, sans-serif" font-weight="900"
+        font-size="72" letter-spacing="-2" fill="white">RP</text>
+  <polygon points="46,88 46,114 72,101" fill="rgba(255,255,255,0.8)"/>
+</svg>

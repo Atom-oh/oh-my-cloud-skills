@@ -4,61 +4,11 @@ A unified plugin for AWS cloud content creation: presentations, architecture dia
 
 ---
 
-## Auto-Invocation Rules
-
-When the following keywords are detected, automatically invoke the corresponding agent.
-
-### Presentations
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "create presentation", "create slides", "make slideshow", "training slides", "interactive presentation", "reactive presentation" | `presentation-agent` | Interactive HTML slideshow creation |
-| "PPTX theme", "extract theme", "corporate branding" | `presentation-agent` | PPTX theme extraction for presentations |
-| "반영해주세요", "rebuild", "다시 빌드", "remarp 반영" | `presentation-agent` | Remarp → HTML 증분 빌드 |
-
-### Architecture Diagrams (Static)
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "architecture diagram", "infrastructure diagram", "system architecture", "AWS architecture", "cloud diagram", "draw.io" | `architecture-diagram-agent` | Draw.io XML diagram generation |
-
-### Animated Diagrams (Dynamic)
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "animated diagram", "traffic flow", "animated architecture", "dynamic diagram", "SMIL animation", "animated SVG" | `animated-diagram-agent` | SVG + SMIL animation diagrams |
-
-### Documents
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "create document", "write report", "technical report", "comparison document", "guide document", "write guide" | `document-agent` | Markdown documents and reports |
-
-### GitBook
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "gitbook", "documentation site", "create docs site", "gitbook project", "knowledge base" | `gitbook-agent` | GitBook documentation sites |
-
-### Workshops
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "workshop", "lab content", "hands-on guide", "workshop create", "module content" | `workshop-agent` | AWS Workshop Studio content |
-
-### Content Review
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "review content", "quality check", "review document", "review presentation", "review workshop" | `content-review-agent` | Cross-cutting quality review |
-
----
-
 ## Workflow Patterns
 
 ### Presentation Workflow
 ```
-presentation-agent → content-review-agent → Deploy (GitHub Pages)
+presentation-agent (dispatcher) → reactive-presentation-agent → content-review-agent → Deploy (GitHub Pages)
 ```
 
 ### Architecture Diagram Workflow
@@ -121,9 +71,9 @@ Phase 2 — Planning (단일)
   → 사용자 승인 대기
 
 Phase 3 — Content Creation (병렬, 블록별)
-  ├─ presentation-agent #1 → Block 1 (+ research-context.md 참조)
-  ├─ presentation-agent #2 → Block 2 (+ research-context.md 참조)
-  └─ presentation-agent #3 → Block 3 (+ research-context.md 참조)
+  ├─ reactive-presentation-agent #1 → Block 1 (+ research-context.md 참조)
+  ├─ reactive-presentation-agent #2 → Block 2 (+ research-context.md 참조)
+  └─ reactive-presentation-agent #3 → Block 3 (+ research-context.md 참조)
   → 산출물: block-N.html 파일들
 
 Phase 4 — Quality Gate (단일)
@@ -142,7 +92,7 @@ Phase 4 — Quality Gate (단일)
 | 2→3 | `presentation-outline.md` | 블록별 슬라이드 목록, 타입, 타이밍, 핵심 포인트 |
 | 3→4 | 각 `block-N.html` | 렌더링된 슬라이드 파일 |
 
-각 presentation-agent는 반드시 `research-context.md`와 자신의 블록에 해당하는 `presentation-outline.md` 섹션을 context로 받아야 합니다. 이를 통해 추측 대신 검증된 자료 기반으로 콘텐츠를 생성합니다.
+각 reactive-presentation-agent는 반드시 `research-context.md`와 자신의 블록에 해당하는 `presentation-outline.md` 섹션을 context로 받아야 합니다. 이를 통해 추측 대신 검증된 자료 기반으로 콘텐츠를 생성합니다.
 
 ### 오케스트레이션 실행 순서
 
@@ -151,9 +101,9 @@ Phase 4 — Quality Gate (단일)
 2. Phase 1: Research 에이전트 병렬 스폰 → research-context.md 생성
 3. Phase 2: Planner 에이전트 스폰 → presentation-outline.md 생성
 4. 사용자 승인 대기 (아웃라인 확인)
-5. Phase 3: TaskCreate x N (블록별) → presentation-agent 병렬 스폰
+5. Phase 3: TaskCreate x N (블록별) → reactive-presentation-agent 병렬 스폰
 6. Phase 4: content-review-agent → 전체 리뷰
-7. FAIL 블록 있으면 → 해당 presentation-agent만 재작업 (최대 2회)
+7. FAIL 블록 있으면 → 해당 reactive-presentation-agent만 재작업 (최대 2회)
 8. 결과 집계 + TeamDelete
 ```
 
@@ -163,7 +113,7 @@ Phase 4 — Quality Gate (단일)
 
 ```
 1. TeamCreate → 메인 세션에서 아웃라인 작성 → 사용자 승인
-2. TaskCreate x N → presentation-agent 병렬 스폰
+2. TaskCreate x N → reactive-presentation-agent 병렬 스폰
 3. content-review-agent 리뷰
 4. TeamDelete
 ```
@@ -217,7 +167,8 @@ Phase 4 — Quality Gate (단일)
 
 | Agent | Purpose |
 |-------|---------|
-| `presentation-agent` | Interactive HTML slideshows (reactive-presentation framework) |
+| `presentation-agent` | Presentation format dispatcher (PPTX vs Web) |
+| `reactive-presentation-agent` | Interactive HTML slideshows (reactive-presentation framework, Remarp) |
 | `architecture-diagram-agent` | Static Draw.io XML diagrams → PNG/SVG export |
 | `animated-diagram-agent` | Dynamic SVG diagrams with SMIL animations |
 | `document-agent` | Markdown documents and reports |
@@ -258,4 +209,4 @@ AWS Architecture Icons are located in `skills/reactive-presentation/assets/aws-i
 | Static AWS architecture | `architecture-diagram-agent` | .drawio → .png |
 | Animated traffic flow | `animated-diagram-agent` | .html with SVG + SMIL |
 | Workshop inline diagram | `workshop-agent` (Mermaid) | Mermaid in markdown |
-| Presentation Canvas animation | `presentation-agent` | Canvas JS in HTML slides |
+| Presentation Canvas animation | `reactive-presentation-agent` | Canvas JS in HTML slides |

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIOps on AWS — Intelligent Cloud Operations</title>
+  <meta name="generator" content="remarp">
+  <meta name="remarp-version" content="1">
+  <meta name="remarp-source" content="03-implementation.md">
+  <meta name="remarp-block" content="default">
+  <link rel="stylesheet" href="./common/theme.css">
+  
+  
+  
+  <script>window.__remarpTheme = {"colors": {}, "footer": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.", "pagination": true, "fonts": {}};</script>
+</head>
+<body>
+<div class="slide-deck">
+<div class="slide" data-remarp-id="s0" style="background:linear-gradient(135deg, #161D26 0%, #0d1117 50%, #1a2332 100%); padding:0; overflow:hidden;">
+  <h1 style="position:absolute; left:5%; top:48%; font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:53%; margin:0;">AIOps on AWS</h1>
+  <p style="position:absolute; left:5%; top:62%; font-size:1.3rem; color:rgba(255,255,255,0.8); width:53%; margin:0;">Intelligent Cloud Operations for AnyCompany</p>
+  <div style="position:absolute; left:5%; top:76%;">
+    <p style="font-size:1.05rem; color:#fff; font-weight:600; margin:0;">Junseok Oh</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.65); margin:6px 0 0 0;">Sr. Solutions Architect</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.65); margin:2px 0 0 0;">AWS</p>
+  </div>
+  
+</div>
+
+<div class="slide title-slide">
+    <h1>Implementation Strategies</h1>
+  <p class="meta">Block 3 — AnyCompany를 위한 AIOps 구현 (25분)</p>
+</div>
+
+<div class="slide" data-remarp-id="s2">
+  <div class="slide-header" data-remarp-id="s2-header"><h2>AnyCompany AIOps 레퍼런스 아키텍처</h2></div>
+  <div class="slide-body" data-remarp-id="s2-body">
+    <div class="canvas-container" data-remarp-id="s2-canvas" style="flex:1">
+      <canvas id="canvas-0"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s3">
+  <div class="slide-header" data-remarp-id="s3-header"><h2>단계별 도입 로드맵</h2></div>
+  <div class="slide-body" data-remarp-id="s3-body">
+    <div class="canvas-container" data-remarp-id="s3-canvas" style="flex:1">
+      <canvas id="canvas-1"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s4">
+  <div class="slide-header" data-remarp-id="s4-header"><h2>AIOps 비용 최적화 전략</h2></div>
+  <div class="slide-body" data-remarp-id="s4-body">
+    <div class="tab-bar">
+            <button class="tab-btn active" data-tab="tab-0">비용 구조</button>
+      <button class="tab-btn" data-tab="tab-1">비용 절감 팁</button>
+      <button class="tab-btn" data-tab="vs">비용 vs 가치</button>
+    </div>
+        <div class="tab-content active" data-tab="tab-0">
+<h3>서비스별 월간 비용 (100 리소스 기준)</h3>
+<table><thead><tr><th>서비스</th><th>항목</th><th>월 비용</th></tr></thead><tbody><tr><td>CloudWatch Metrics</td><td>커스텀 메트릭 200개</td><td>~$60</td></tr><tr><td>CloudWatch Logs</td><td>50GB 수집, 30일 보존</td><td>~$75</td></tr><tr><td>CloudWatch AD</td><td>메트릭 50개</td><td>무료 (CW 포함)</td></tr><tr><td>DevOps Guru</td><td>100 리소스</td><td>~$200</td></tr><tr><td>AMP</td><td>50M samples/month</td><td>~$150</td></tr><tr><td>AMG</td><td>1 workspace, 5 editors</td><td>~$45</td></tr><tr><td>X-Ray</td><td>10M traces</td><td>~$50</td></tr><tr><td>Lookout</td><td>50 메트릭</td><td>~$300</td></tr><tr><td><strong>합계</strong></td><td></td><td><strong>~$880/month</strong></td></tr></tbody></table>
+<blockquote><p>Production만 적용 시 기준. Dev/Staging은 ~$380/month로 축소 가능</p></blockquote>
+</div>
+    <div class="tab-content" data-tab="tab-1">
+<h3>즉시 적용 가능</h3>
+<ul><li class="fragment fade-in" data-fragment-index="0"><strong>로그 보존 정책</strong>: hot 30일 → warm 90일 → S3 아카이브</li><li class="fragment fade-in" data-fragment-index="1"><strong>메트릭 필터링</strong>: 불필요한 high-cardinality 메트릭 drop</li><li class="fragment fade-in" data-fragment-index="2"><strong>AMP relabeling</strong>: label 조합 100만 이하로 관리</li><li class="fragment fade-in" data-fragment-index="3"><strong>X-Ray 샘플링</strong>: reservoir 1/s + fixed_rate 5%</li></ul>
+<h3>아키텍처 레벨</h3>
+<ul><li class="fragment fade-in" data-fragment-index="4"><strong>Monitoring Account</strong> 통합으로 중복 수집 제거</li><li class="fragment fade-in" data-fragment-index="5"><strong>ADOT Processor</strong>: batch + filter로 불필요 데이터 제거</li><li class="fragment fade-in" data-fragment-index="6"><strong>Tiered Alerting</strong>: L1은 CloudWatch만, L2부터 DevOps Guru</li></ul>
+<h3>ROI 측정 공식</h3>
+<div class="code-block">AIOps ROI = (MTTR_before - MTTR_after) × incidents/month
+            × cost_per_minute_downtime
+            - AIOps_monthly_cost</div>
+</div>
+    <div class="tab-content" data-tab="vs">
+<h3>AnyCompany 시나리오</h3>
+<p><strong>Before AIOps</strong></p>
+<ul><li>월 평균 장애: 8건</li><li>평균 MTTR: 2시간</li><li>분당 비즈니스 영향: $500</li><li><strong>월 손실: 8 × 120분 × $500 = $480,000</strong></li></ul>
+<p><strong>After AIOps (Phase 3)</strong></p>
+<ul><li>월 평균 장애: 5건 (3건 사전 예방)</li><li>평균 MTTR: 15분</li><li><strong>월 손실: 5 × 15분 × $500 = $37,500</strong></li></ul>
+<h3>결과</h3>
+<table><thead><tr><th>항목</th><th>금액</th></tr></thead><tbody><tr><td>월 손실 감소</td><td>$442,500</td></tr><tr><td>AIOps 월 비용</td><td>$880</td></tr><tr><td><strong>월 순이익</strong></td><td><strong>$441,620</strong></td></tr><tr><td><strong>ROI</strong></td><td><strong>50,000%+</strong></td></tr></tbody></table>
+<blockquote><p>장애 비용이 있는 환경이라면 AIOps는 거의 항상 positive ROI</p></blockquote>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s5">
+  <div class="slide-header" data-remarp-id="s5-header"><h2>AIOps 운영 성숙도 모델</h2></div>
+  <div class="slide-body" data-remarp-id="s5-body">
+    <div class="compare-toggle">
+            <button class="compare-btn active" data-compare="level-1-reactive">Level 1 — Reactive (수동 대응)</button>
+      <button class="compare-btn" data-compare="level-2-proactive">Level 2 — Proactive (사전 탐지)</button>
+      <button class="compare-btn" data-compare="level-3-automated">Level 3 — Automated (자동 대응)</button>
+      <button class="compare-btn" data-compare="level-4-intelligent">Level 4 — Intelligent (지능형 운영)</button>
+    </div>
+    <div class="compare-content active" data-compare="level-1-reactive">
+<ul><li>장애 발생 후 수동 확인, 개인 경험에 의존</li><li>알람 = 정적 임계값, 대시보드 수동 확인</li><li class="fragment fade-in" data-fragment-index="0">MTTR: 2-4시간</li></ul>
+</div>
+<div class="compare-content" data-compare="level-2-proactive">
+<ul><li>ML 기반 이상 탐지, 관측성 3 Pillars 구축</li><li>DevOps Guru + CloudWatch AD 활성화</li><li class="fragment fade-in" data-fragment-index="1">MTTR: 15-30분</li></ul>
+</div>
+<div class="compare-content" data-compare="level-3-automated">
+<ul><li>EventBridge + SSM 자동 복구, Composite Alarm</li><li>Runbook 기반 셀프 힐링</li><li class="fragment fade-in" data-fragment-index="2">MTTR: 1-5분</li></ul>
+</div>
+<div class="compare-content" data-compare="level-4-intelligent">
+<ul><li>Gen AI 기반 자연어 분석, Predictive scaling</li><li>자동 RCA → 자동 수정 → 자동 검증</li><li class="fragment fade-in" data-fragment-index="3">MTTR: 자동 복구 (사람 개입 최소)</li></ul>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s6">
+  <div class="slide-header" data-remarp-id="s6-header"><h2>AIOps 도입 시 흔한 도전과 해결책</h2></div>
+  <div class="slide-body" data-remarp-id="s6-body" data-compare-mode="side-by-side">
+    <div class="compare-toggle">
+            <button class="compare-btn active" data-compare="challenge">Challenge</button>
+      <button class="compare-btn" data-compare="solution">Solution</button>
+    </div>
+    <div class="col-2" style="flex:1">
+            <div class="card compare-content active compare-highlight" data-compare="challenge" data-remarp-id="s6-left">
+<h3 style="color:var(--text-accent);margin-bottom:.5rem">Challenge</h3>
+<ul><li><strong>데이터 사일로</strong> — 팀마다 다른 모니터링 도구 사용</li><li><strong>알람 피로</strong> — 수백 개 알람이 울려도 무시</li><li><strong>스킬 갭</strong> — ML/데이터 분석 역량 부족</li><li><strong>신뢰 부족</strong> — "ML 판단을 믿을 수 있나?"</li><li><strong>비용 우려</strong> — 관측성 비용이 인프라 비용의 10%+</li></ul>
+</div>
+      <div class="card compare-content active" data-compare="solution" data-remarp-id="s6-right">
+<h3 style="color:var(--text-accent);margin-bottom:.5rem">Solution</h3>
+<ul><li><strong>Monitoring Account</strong> 통합 + ADOT 표준화 → 사일로 해소</li><li><strong>Composite Alarm 3계층</strong> + DevOps Guru 상관 분석 → 노이즈 80% 감소</li><li><strong>Amazon Q</strong> — ML 전문성 없이 자연어로 분석 → 스킬 갭 해소</li><li><strong>점진적 자동화</strong> — 알림부터 시작, 신뢰 구축 후 자동 대응</li><li><strong>Tiered 수집</strong> — 핵심 SLI만 ML 적용 → 비용 최적화</li></ul>
+</div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s7">
+  <div class="slide-header" data-remarp-id="s7-header"><h2>AnyCompany — 내일부터 시작할 수 있는 Quick Wins</h2></div>
+  <div class="slide-body" data-remarp-id="s7-body">
+    <div class="columns">
+<div class="col">
+<h3>Week 1 — 즉시 적용</h3>
+<ol><li class="fragment fade-in" data-fragment-index="0"><strong>Amazon Q in CloudWatch</strong> 활성화 (무료)
+<ul><li>팀 전원에게 접근 권한 부여</li><li>"가장 에러가 많은 Lambda는?" 테스트</li></ul></li><li class="fragment fade-in" data-fragment-index="1"><strong>CloudWatch Anomaly Detection</strong> 핵심 SLI 5개 적용
+<ul><li>API latency P99, Error rate, Lambda Duration</li><li>Stddev = 2로 시작</li></ul></li><li class="fragment fade-in" data-fragment-index="2"><strong>Composite Alarm</strong> 1개 시범 구성
+<ul><li>가장 중요한 서비스의 L3 알람</li></ul></li></ol>
+</div><div class="col">
+<h3>Week 2-4 — 기반 구축</h3>
+<ol><li class="fragment fade-in" data-fragment-index="3"><strong>SLI/SLO 워크숍</strong> 개최
+<ul><li>서비스 소유자와 함께 핵심 SLI 정의</li><li>99.9% availability = 월 43분 다운타임</li></ul></li><li class="fragment fade-in" data-fragment-index="4"><strong>DevOps Guru</strong> Production 스택 활성화
+<ul><li>HIGH severity만 SNS → Slack 알림</li></ul></li><li class="fragment fade-in" data-fragment-index="5"><strong>ADOT 파일럿</strong> EKS 1개 클러스터 적용
+<ul><li>DaemonSet 배포 + AMP 연동</li></ul></li></ol>
+<h3>성공 기준</h3>
+<ul><li>2주 내: "ML이 잡아낸 이상" 최초 사례 1건</li><li>4주 내: MTTR 30% 감소 (측정 시작)</li></ul>
+</div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s8" style="transition: opacity var(--transition-normal)">
+  <div class="slide-header" data-remarp-id="s8-header"><h2>전체 세션 요약</h2></div>
+  <div class="slide-body" data-remarp-id="s8-body">
+    <div class="columns">
+<div class="col">
+<h3>Block 1 — Foundations</h3>
+<ul><li>AIOps = Observe + Detect + Diagnose + Respond</li><li>ADOT 통합 수집 → CloudWatch + AMP + X-Ray</li><li>Cross-Account Observability로 통합 모니터링</li></ul>
+<h3>Block 2 — ML Operations</h3>
+<ul><li>DevOps Guru — 이벤트 상관 분석, 사전 예측</li><li>CloudWatch AD — RCF 기반 동적 이상 탐지</li><li>Gen AI (Q, Bedrock) — 자연어 운영 인터페이스</li><li>Composite Alarm — 3계층 알람 전략</li></ul>
+</div><div class="col">
+<h3>Block 3 — Implementation</h3>
+<ul><li>4-Phase 로드맵: Foundation → Detection → Automation → Intelligence</li><li>MTTR: 4시간 → 30분 → 5분 → 자동 복구</li><li>ROI: AIOps 비용 대비 50,000%+ 절감 가능</li></ul>
+<h3>핵심 메시지</h3>
+<blockquote><p><strong>"AIOps는 목적지가 아니라 여정입니다."</strong> 작게 시작하고(Quick Wins), 신뢰를 구축하고(점진적 자동화), 지속적으로 발전시키세요.</p></blockquote>
+<h3>Next Steps</h3>
+<ol><li>SLI/SLO 워크숍 스케줄링</li><li>Amazon Q + CloudWatch AD 시범 적용</li><li>DevOps Guru PoC 범위 합의</li></ol>
+</div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s9" style="transition: opacity var(--transition-normal)">
+  <div class="slide-header" data-remarp-id="s9-header"><h2>Q&A</h2></div>
+  <div class="slide-body" data-remarp-id="s9-body">
+    <div class="columns">
+<div class="col">
+<h3>추가 리소스</h3>
+<ul><li>AWS Well-Architected — Operational Excellence Pillar</li><li>Amazon DevOps Guru Documentation</li><li>AWS Observability Best Practices Guide</li><li>AWS AIOps Workshop (workshops.aws)</li></ul>
+</div><div class="col">
+<h3>Contact</h3>
+<p><strong>Junseok Oh</strong></p>
+<p>Sr. Solutions Architect, AWS</p>
+<p>세션 후에도 언제든 연락 주세요.</p>
+</div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s10">
+  <div class="center-content" style="height:100%; gap:1.5rem;">
+    <h1 style="font-size:3rem; background:linear-gradient(135deg, var(--accent-light), var(--cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">Thank You</h1>
+    <p style="color:var(--text-secondary); font-size:1.1rem;">Thank You</p>
+    <p style="color:var(--text-muted); font-size:1rem; margin-top:0.5rem;">수고하셨습니다!</p>
+    <div style="display:flex; gap:1rem; margin-top:1.5rem;">
+            <a href="index.html" class="btn btn-primary btn-sm" style="text-decoration:none;">← 목차로 돌아가기</a>
+    </div>
+  </div>
+</div>
+</div>
+<script src="./common/animation-utils.js"></script>
+<script src="./common/slide-framework.js"></script>
+<script src="./common/quiz-component.js"></script>
+<script src="./common/presenter-view.js"></script>
+<script>
+(function() {
+  const canvas = document.getElementById('canvas-0');
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  const BASE_W = 960, BASE_H = 400;
+
+  function resizeCanvas() {
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    if (cw <= 0 || ch <= 0) {
+      setupCanvas('canvas-0', BASE_W, BASE_H);
+      return;
+    }
+    const dpr = window.devicePixelRatio || 1;
+    const scale = cw / BASE_W;
+    const scaledH = Math.min(Math.round(BASE_H * scale), ch);
+    canvas.width = Math.round(cw * dpr);
+    canvas.height = Math.round(scaledH * dpr);
+    canvas.style.width = cw + 'px';
+    canvas.style.height = scaledH + 'px';
+    canvas.style.maxWidth = 'none';
+    const c = canvas.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.scale(scale * dpr, scale * dpr);
+  }
+  resizeCanvas();
+
+  const ctx = canvas.getContext('2d');
+  const width = BASE_W, height = BASE_H;
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    drawBox(ctx, 30, 20, 140, 55, 'EKS Cluster\\n(Production)', 'fill');
+    drawBox(ctx, 200, 20, 140, 55, 'Lambda\\nMicroservices', 'fill');
+    drawBox(ctx, 370, 20, 140, 55, 'Aurora\\nPostgreSQL', 'fill');
+    drawBox(ctx, 540, 20, 140, 55, 'DynamoDB\\nTables', 'fill');
+    drawBox(ctx, 710, 20, 140, 55, 'S3 + CloudFront\\nStatic Assets', 'fill');
+    drawBox(ctx, 80, 120, 120, 45, 'ADOT\\nCollector', 'fill');
+    drawBox(ctx, 260, 120, 120, 45, 'CloudWatch\\nAgent', 'fill');
+    drawBox(ctx, 440, 120, 120, 45, 'VPC Flow\\nLogs', 'fill');
+    drawBox(ctx, 620, 120, 120, 45, 'CloudTrail', 'fill');
+    drawBox(ctx, 250, 200, 200, 55, 'CloudWatch\\n(Monitoring Account)', 'fill');
+    drawBox(ctx, 500, 200, 160, 55, 'AMP\\n(Custom Metrics)', 'fill');
+    drawBox(ctx, 80, 300, 110, 50, 'DevOps\\nGuru', 'fill');
+    drawBox(ctx, 220, 300, 120, 50, 'CW Anomaly\\nDetection', 'fill');
+    drawBox(ctx, 370, 300, 110, 50, 'Bedrock\\nAgent', 'fill');
+    drawBox(ctx, 510, 300, 120, 50, 'Lookout\\nfor Metrics', 'fill');
+    drawBox(ctx, 700, 270, 120, 45, 'EventBridge\\nRules', 'fill');
+    drawBox(ctx, 700, 330, 120, 45, 'SSM\\nAutomation', 'fill');
+    drawBox(ctx, 860, 290, 90, 50, 'Slack\\nPagerDuty', 'fill');
+    drawBox(ctx, 860, 200, 90, 50, 'AMG\\nDashboard', 'fill');
+  }
+
+  draw();
+  new ResizeObserver(() => { resizeCanvas(); draw(); }).observe(container);
+})();
+</script>
+<script>
+(function() {
+  const canvas = document.getElementById('canvas-1');
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  const BASE_W = 960, BASE_H = 400;
+
+  function resizeCanvas() {
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    if (cw <= 0 || ch <= 0) {
+      setupCanvas('canvas-1', BASE_W, BASE_H);
+      return;
+    }
+    const dpr = window.devicePixelRatio || 1;
+    const scale = cw / BASE_W;
+    const scaledH = Math.min(Math.round(BASE_H * scale), ch);
+    canvas.width = Math.round(cw * dpr);
+    canvas.height = Math.round(scaledH * dpr);
+    canvas.style.width = cw + 'px';
+    canvas.style.height = scaledH + 'px';
+    canvas.style.maxWidth = 'none';
+    const c = canvas.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.scale(scale * dpr, scale * dpr);
+  }
+  resizeCanvas();
+
+  const ctx = canvas.getContext('2d');
+  const width = BASE_W, height = BASE_H;
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    drawBox(ctx, 30, 30, 180, 80, 'Phase 1\\nFoundation\\n(Month 1-2)', 'fill');
+    drawBox(ctx, 260, 30, 180, 80, 'Phase 2\\nDetection\\n(Month 3-4)', 'fill');
+    drawBox(ctx, 490, 30, 180, 80, 'Phase 3\\nAutomation\\n(Month 5-6)', 'fill');
+    drawBox(ctx, 720, 30, 180, 80, 'Phase 4\\nIntelligence\\n(Month 7+)', 'fill');
+    drawBox(ctx, 70, 280, 100, 40, 'MTTR\\n4h → 2h', 'fill');
+    drawBox(ctx, 300, 280, 100, 40, 'MTTR\\n2h → 30m', 'fill');
+    drawBox(ctx, 530, 280, 100, 40, 'MTTR\\n30m → 5m', 'fill');
+    drawBox(ctx, 760, 280, 100, 40, 'MTTR\\n5m → auto', 'fill');
+  }
+
+  draw();
+  new ResizeObserver(() => { resizeCanvas(); draw(); }).observe(container);
+})();
+</script>
+<script>
+  
+  const presenterNotes = {
+    1: "[0.5min] 마지막 블록입니다. 지금까지 배운 서비스들을 AnyCompany 환경에 어떻게 적용할지 구체적인 전략을 논의하겠습니다.",
+    2: "[0.5min] 세 번째 블록입니다. 이론을 넘어 실제 구현으로 들어갑니다. AnyCompany 환경을 가정한 아키텍처, 단계별 로드맵, 비용 최적화를 다룹니다.",
+    3: "[4min] 이것이 AnyCompany를 위한 AIOps 레퍼런스 아키텍처입니다.\n\nStep 0 — Application Layer입니다. EKS 클러스터, Lambda 마이크로서비스, Aurora PostgreSQL, DynamoDB, S3+CloudFront까지 — 전형적인 현대 웹 서비스 스택입니다.\n\nStep 1 — Collection Layer에서 ADOT Collector가 EKS 트레이스와 메트릭을, CloudWatch Agent가 시스템 메트릭과 로그를, VPC Flow Logs가 네트워크 데이터를, CloudTrail이 API 감사 로그를 수집합니다.\n\nStep 2 — Central Data Hub는 Monitoring Account의 CloudWatch로 모든 계정의 데이터가 통합됩니다. AMP는 Prometheus 커스텀 메트릭을 저장하고, AMG 대시보드로 시각화합니다.\n\nStep 3 — AI/ML Layer에서 DevOps Guru, CloudWatch AD, Bedrock Agent, Lookout이 각각의 분석을 수행합니다.\n\nStep 4 — EventBridge가 탐지된 이상을 받아서 SSM Automation으로 자동 복구하고, Slack과 PagerDuty로 알림을 보냅니다.\n\n이 전체 아키텍처를 한 번에 구축하는 것은 비현실적입니다. 다음 슬라이드에서 단계별 로드맵을 보겠습니다.",
+    4: "❓ [4min] 이 로드맵은 AnyCompany가 6-9개월에 걸쳐 AIOps를 도입하는 현실적 계획입니다.\n\nPhase 1 Foundation은 2개월입니다. 가장 중요한 건 데이터 수집 체계를 완성하는 것입니다. CloudWatch Agent를 모든 워크로드에 배포하고, EKS에 ADOT DaemonSet을 올리고, Cross-Account Observability를 설정합니다. 이 단계에서 SLI/SLO를 반드시 정의하세요. 단순히 가시성만 확보해도 MTTR이 4시간에서 2시간으로 줄어듭니다.\n\nPhase 2 Detection은 3-4개월 차입니다. CloudWatch AD와 DevOps Guru를 활성화하고, Composite Alarm 3계층을 설정합니다. MTTR이 30분으로 줄어듭니다.\n\nPhase 3 Automation은 5-6개월 차입니다. EventBridge와 SSM Runbook으로 자동 복구를 구현합니다. MTTR 5분 목표.\n\nPhase 4 Intelligence는 7개월 이후입니다. Bedrock Agent로 AIOps 챗봇을 만들고 자동 RCA 파이프라인을 구축합니다.\n\nAnyCompany의 현재 MTTR은 어느 정도인가요? 현 위치에 따라 시작점이 달라집니다.\n\n비용에 대해 이야기해 봅시다.",
+    5: "[4min] 비용 이야기를 해야죠. 첫 번째 탭에서 100개 리소스 기준 월 880달러입니다.\n\n두 번째 탭의 비용 절감 팁이 중요합니다. 가장 큰 비용 요인은 보통 CloudWatch Logs입니다. 30일 이상 된 로그는 warm storage로, 90일 이상은 S3로 자동 이전하세요. AMP에서는 relabeling으로 불필요한 label 조합을 제거하면 비용이 크게 절감됩니다.\n\n세 번째 탭이 핵심입니다. AnyCompany 시나리오에서 장애 비용을 계산해 보면, Before AIOps에서 월 48만 달러 손실이 After AIOps에서 3.75만 달러로 줄어듭니다. AIOps 비용 880달러와 비교하면 ROI가 5만 퍼센트입니다.\n\n운영 성숙도 모델을 보겠습니다.",
+    6: "[3min] 운영 성숙도를 4단계로 정의합니다.\n\nLevel 1 Reactive는 대부분의 조직이 시작하는 곳입니다. Level 2 Proactive는 Phase 2를 완료한 상태입니다. Level 3 Automated는 Phase 3를 완료한 상태입니다. Level 4 Intelligent는 최종 목표입니다.\n\nAnyCompany는 현재 어디 계신가요? 대부분 Level 1에서 Level 2로 넘어가는 단계일 텐데, 6-9개월이면 Level 3까지 도달할 수 있습니다.\n\n실전 도전 과제들을 이야기합시다.",
+    7: "[3min] AIOps 도입 시 가장 흔히 겪는 5가지 도전을 정리했습니다.\n\n데이터 사일로가 가장 큰 장벽입니다. 해결책은 Monitoring Account로 통합하고, ADOT를 표준 수집기로 채택하는 것입니다.\n\n스킬 갭은 GenAI가 해결합니다. Amazon Q in CloudWatch를 쓰면 PromQL을 몰라도 자연어로 분석할 수 있습니다.\n\n가장 중요한 건 신뢰입니다. 처음부터 자동 대응을 켜지 마세요. 3-6개월간 알림만 보내면서 팀이 ML 판단을 체감한 후에 단계적으로 자동화를 확대하세요.\n\nQuick Win을 정리하겠습니다.",
+    8: "[3min] 이론은 충분합니다. 내일부터 할 수 있는 것들을 정리했습니다.\n\nWeek 1에 바로 할 수 있는 세 가지가 있습니다. 첫째, Amazon Q in CloudWatch 활성화는 설정이 필요 없고 무료입니다. 둘째, CloudWatch Anomaly Detection은 가장 중요한 SLI 5개에만 적용합니다. 셋째, Composite Alarm을 가장 중요한 서비스 하나에 시범 적용합니다.\n\n성공 기준을 명확히 합니다. 2주 내에 ML이 실제로 이상을 잡아낸 사례 1건을 만들어야 팀의 buy-in을 얻을 수 있습니다.\n\n마지막으로 전체 세션을 정리합니다.",
+    9: "❓ [3min] 90분간의 세션을 마무리하겠습니다.\n\n가장 기억하셨으면 하는 메시지는 \"AIOps는 여정\"이라는 것입니다.\n\n한꺼번에 모든 걸 도입하려고 하면 실패합니다. Quick Win으로 시작하세요. Amazon Q를 켜고, Anomaly Detection을 5개 메트릭에 적용하고, DevOps Guru를 Production에 활성화하세요. 2주 안에 첫 번째 성공 사례가 나올 겁니다.\n\n다음 단계로 SLI/SLO 워크숍을 먼저 잡으시는 것을 추천합니다. 감사합니다!\n\n질문 있으신 분 계신가요?",
+    10: "[5min] Q&A 시간입니다. 오늘 다룬 내용 중 궁금한 점이나, AnyCompany 환경에 적용하면서 예상되는 이슈에 대해 편하게 질문해 주세요.",
+    11: "[0.5min] 감사합니다. 오늘 세션이 AnyCompany의 AIOps 여정에 도움이 되었길 바랍니다."
+  };
+  const deck = new SlideFramework({
+    logoSrc: '../common/pptx-theme/images/logo_1.png',
+    footer: '© 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.',
+    
+    pagination: true,
+    sidebar: true,
+    presenterNotes: presenterNotes,
+    onSlideChange: (index, slide) => {}
+  });
+</script>
+</body>
+</html>

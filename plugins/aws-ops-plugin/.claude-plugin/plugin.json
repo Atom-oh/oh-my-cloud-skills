@@ -1,8 +1,10 @@
 {
   "name": "aws-ops-plugin",
-  "version": "1.2.1",
+  "version": "1.2.3",
   "description": "AWS/EKS infrastructure operations and troubleshooting plugin — EKS cluster management, networking, IAM, observability, storage, database, and cost optimization",
-  "author": { "name": "atomoh" },
+  "author": {
+    "name": "atomoh"
+  },
   "agents": [
     "./agents/eks-agent.md",
     "./agents/network-agent.md",
@@ -20,5 +22,53 @@
     "./skills/ops-network-diagnosis",
     "./skills/ops-observability",
     "./skills/ops-security-audit"
-  ]
+  ],
+  "mcpServers": {
+    "awsdocs": {
+      "command": "uvx",
+      "args": [
+        "awslabs.aws-documentation-mcp-server@latest"
+      ],
+      "type": "stdio",
+      "timeout": 60000,
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    },
+    "awsapi": {
+      "command": "uvx",
+      "args": [
+        "awslabs.aws-api-mcp-server@latest"
+      ],
+      "type": "stdio",
+      "timeout": 120000,
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    }
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'if echo \"$TOOL_OUTPUT\" | grep -qi \"error\\|denied\\|forbidden\\|throttl\"; then echo \"AWS error pattern detected in output. Consider capturing for incident context.\"; fi'"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "AWS Ops Plugin loaded. Domains: EKS, Network, IAM, Observability, Storage, Database, Analytics, Cost."
+          }
+        ]
+      }
+    ]
+  }
 }

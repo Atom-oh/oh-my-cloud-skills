@@ -2,6 +2,8 @@
 name: animated-diagram-agent
 description: Dynamic animated SVG diagram agent using SMIL animations. Creates traffic flow visualizations, service interaction diagrams, and architectural animations with pulsing effects and interactive legends. Triggers on "animated diagram", "traffic flow", "animated architecture", "dynamic diagram", "SMIL animation" requests.
 tools: Read, Write, Glob, Grep, Bash
+skills:
+  - animated-diagram
 ---
 
 # Animated Diagram Agent

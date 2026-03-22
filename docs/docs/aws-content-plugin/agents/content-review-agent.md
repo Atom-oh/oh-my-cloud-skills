@@ -80,6 +80,15 @@ title: "Content Review Agent"
 - SlideFramework 올바르게 초기화
 - Canvas 애니메이션에 setupCanvas() 호출
 - Quiz data-quiz/data-correct 속성 유효
+- Canvas 레이아웃 품질: 요소 간 겹침 없음, 화살표와 텍스트 겹침 없음, 정렬 일관성
+
+**Canvas Complexity Gate (v1.2.3 캔버스 복잡도 검증):**
+- `:::canvas` 블록 내 `box` + `icon` 요소 개수 카운트
+- **≤4개**: PASS
+- **5-7개**: WARNING — "이 캔버스는 :::html + :::css로 전환을 권장합니다" (감점: -5)
+- **8개 이상**: CRITICAL — ":::canvas 정책 위반. 박스 8개 이상은 반드시 :::html로 전환 필요" (감점: -15)
+- `group` 요소 포함: WARNING — "그룹이 포함된 캔버스는 :::html의 .flow-group으로 대체를 권장" (감점: -5)
+- 분기 화살표 (1개 source에서 2+ target): WARNING — "분기 흐름은 :::html이 더 정확" (감점: -3)
 
 **GitBook:**
 - SUMMARY.md 네비게이션과 실제 페이지 일치

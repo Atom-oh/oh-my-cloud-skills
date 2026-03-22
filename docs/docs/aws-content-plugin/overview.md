@@ -9,11 +9,12 @@ AWS Content Plugin은 AWS 클라우드 관련 콘텐츠 제작을 위한 전문 
 
 ## 구성 요소
 
-### 에이전트 (7개)
+### 에이전트 (8개)
 
 | 에이전트 | 설명 | 출력물 |
 |----------|------|--------|
-| `presentation-agent` | Interactive HTML 슬라이드쇼 생성 | `.html` 프레젠테이션 |
+| `presentation-agent` | 프레젠테이션 포맷 디스패처 (PPTX vs Web) | 라우팅 |
+| `reactive-presentation-agent` | Interactive HTML 슬라이드쇼 생성 (Remarp) | `.html` 프레젠테이션 |
 | `architecture-diagram-agent` | Draw.io XML 아키텍처 다이어그램 생성 | `.drawio`, `.png` |
 | `animated-diagram-agent` | SVG + SMIL 애니메이션 다이어그램 | `.html` (애니메이션) |
 | `document-agent` | 마크다운 기술 문서 생성 | `.md` 문서 |
@@ -124,7 +125,7 @@ flowchart LR
 | 정적 AWS 아키텍처 | `architecture-diagram-agent` | .drawio → .png |
 | 애니메이션 트래픽 흐름 | `animated-diagram-agent` | .html (SVG + SMIL) |
 | Workshop 인라인 다이어그램 | `workshop-agent` (Mermaid) | Mermaid in markdown |
-| 프레젠테이션 Canvas 애니메이션 | `presentation-agent` | Canvas JS in HTML |
+| 프레젠테이션 Canvas 애니메이션 | `reactive-presentation-agent` | Canvas JS in HTML |
 
 ## AWS 아이콘
 

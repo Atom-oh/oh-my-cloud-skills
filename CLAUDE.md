@@ -32,6 +32,21 @@ for s in d['skills']:
     assert os.path.isfile(s.lstrip('./') + '/SKILL.md'), f'Missing skill: {s}'
 print('All references OK')
 "
+
+# Remarp VSCode Extension development
+cd tools/remarp-vscode
+npm install && npm run compile    # Build TypeScript
+npx vsce package                  # Package .vsix
+code --install-extension remarp-vscode-0.1.0.vsix  # Install locally
+
+# Evaluate skills (quality, structure, token usage)
+python3 scripts/eval-skills.py
+python3 scripts/eval-skills.py --plugin aws-content-plugin --skill reactive-presentation
+
+# Behavioral eval (E2E skill runtime testing via claude --print)
+python3 scripts/eval-skill-behavior.py --skill reactive-presentation --dry-run
+python3 scripts/eval-skill-behavior.py --case evals/reactive-presentation/flow-layout.yaml
+python3 scripts/eval-skill-behavior.py --skill reactive-presentation --ci --threshold 70
 ```
 
 ## Plugin Architecture
@@ -70,12 +85,21 @@ Each `SKILL.md` has frontmatter with `name`, `description`, and `triggers` (keyw
 
 ### MCP Configuration
 
-Only `aws-ops-plugin` has `.mcp.json` with 5 AWS MCP servers:
-- `awsknowledge` (HTTP) — Architecture recommendations
+`aws-ops-plugin` bundles 2 MCP servers in `.mcp.json`:
 - `awsdocs` (stdio/uvx) — Official AWS documentation search
 - `awsapi` (stdio/uvx) — Direct AWS API calls
+
+The remaining 3 servers are provided by the `deploy-on-aws` plugin (available when both plugins are loaded):
+- `awsknowledge` (HTTP) — Architecture recommendations
 - `awspricing` (stdio/uvx) — Pricing data
 - `awsiac` (stdio/uvx) — CloudFormation/CDK validation
+
+### Hooks
+
+Plugins use `hooks` in `plugin.json` for automated checks:
+- **PostToolUse (Bash)** — Detects build warnings in `remarp_to_slides.py` output (content), AWS error patterns (ops)
+- **PostToolUse (Edit/Write)** — Detects reactive-presentation skill file changes, validates Remarp frontmatter and slide notes
+- **SessionStart** — Plugin load announcements with domain context
 
 ### Auto-Invocation
 
@@ -108,14 +132,57 @@ echo "content=$V ops=$V2 converter=$V3 marketplace=$MV tag=$TAG"
 - Ops plugin reference files are commands-first, with Mermaid decision trees and error→solution tables
 - Korean/English bilingual keywords in all auto-invocation rules
 - AWS icons live in `aws-content-plugin/skills/reactive-presentation/icons/` (4,224 files)
+- Remarp-generated HTML contains `<meta name="generator" content="remarp">` for extension recognition
+- Remarp VSCode Extension source lives in `tools/remarp-vscode/` (TypeScript, packaged as .vsix)
+- Extension entry point: `src/extension.ts`, preview logic: `src/preview.ts`
+- HTML preview converts relative resource paths to webview URIs and injects CSP for proper rendering
+
+## Remarp VSCode Extension
+
+Source: `tools/remarp-vscode/` | Entry: `src/extension.ts` | Preview: `src/preview.ts`
+
+### File Detection
+- `.remarp.md` extension → auto `remarp` language ID
+- `.md` + frontmatter `remarp: true` → auto `remarp` language ID switch
+- `.html` + `<meta name="generator" content="remarp">` → recognized as Remarp HTML
+
+### Preview (2 modes)
+| Mode | File | Rendering |
+|------|------|-----------|
+| Markdown | `.md` / `.remarp.md` | Slide parsing → HTML (block types: canvas, tab, compare, quiz, etc.) |
+| HTML | Remarp HTML | Direct HTML load + resource path → webview URI conversion |
+
+- **Arrow key slide navigation**: ←→ / Space / PageUp/PageDown (inside preview)
+- **Scroll Sync**: `remarp.scrollSync` setting controls editor cursor ↔ preview slide sync
+- **Source file tracking**: HTML `<meta name="remarp-source">` → auto-discovers `.md` file (up to 3 parent dirs)
+
+### Visual Edit Mode (PPT edit mode)
+- **Activate**: `Cmd+Shift+E` / editor titlebar Edit button / per-slide floating Edit button
+- **Features**: element drag (position), resize, Property Panel (font/color/margin)
+- **CSS writeback**: changes → auto-written to `:::css` block in source `.md`
+- **Canvas writeback**: canvas element move/resize → `:::canvas` DSL coordinates updated in source `.md`
+- **Canvas editing**: drawio-style SVG overlay hitboxes for element select/move, waypoint editing, step animation control
+
+### Key Files
+| File | Role |
+|------|------|
+| `src/extension.ts` | Entry point: command registration, file detection, build script discovery |
+| `src/preview.ts` | Preview panel: MD/HTML rendering, slide parsing, navigation |
+| `src/completions.ts` | Autocomplete: @directives, :::blocks, :::css, :::canvas DSL |
+| `src/cssEditor.ts` | CSS editing: `:::css` block parse/create/update |
+| `src/canvasEditor.ts` | Canvas editing: `:::canvas` DSL coordinates/size/step/animate-path update |
+| `src/visualEditor.ts` | Visual editor controller: message routing (to CSS/Canvas editors) |
+| `media/edit-mode.js` | Webview: drag/resize/property panel UI |
+| `media/canvas-editor.js` | Webview: Canvas SVG overlay, hitbox, waypoint editing |
 
 ## Plugin Inventory
 
-### aws-content-plugin (7 agents, 5 skills)
+### aws-content-plugin (8 agents, 5 skills)
 
 | Agent | Creates |
 |-------|---------|
-| `presentation-agent` | Interactive HTML slideshows via reactive-presentation framework |
+| `presentation-agent` | Presentation format dispatcher (PPTX vs Web) |
+| `reactive-presentation-agent` | Interactive HTML slideshows via reactive-presentation framework (Remarp) |
 | `architecture-diagram-agent` | Draw.io XML → PNG/SVG |
 | `animated-diagram-agent` | SVG + SMIL animation HTML |
 | `document-agent` | Markdown technical documents |
@@ -150,7 +217,8 @@ Skill: `kiro-convert` — interactive workflow for plugin-to-power conversion wi
 ## Workflows
 
 ```
-Content:   presentation-agent → content-review-agent → GitHub Pages
+Content:   presentation-agent (dispatcher) → reactive-presentation-agent → content-review-agent → GitHub Pages
+           Remarp HTML ↔ .remarp.md (bidirectional visual editing via VSCode extension)
            architecture-diagram-agent → .drawio → PNG
            animated-diagram-agent → .html (SVG+SMIL)
            document-agent → content-review-agent → .md

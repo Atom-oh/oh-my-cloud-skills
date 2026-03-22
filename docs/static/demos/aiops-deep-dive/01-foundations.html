@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIOps on AWS — Intelligent Cloud Operations</title>
+  <meta name="generator" content="remarp">
+  <meta name="remarp-version" content="1">
+  <meta name="remarp-source" content="01-foundations.md">
+  <meta name="remarp-block" content="default">
+  <link rel="stylesheet" href="./common/theme.css">
+  
+  
+  
+  <script>window.__remarpTheme = {"colors": {}, "footer": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.", "pagination": true, "fonts": {}};</script>
+</head>
+<body>
+<div class="slide-deck">
+<div class="slide" data-remarp-id="s0" style="background:linear-gradient(135deg, #161D26 0%, #0d1117 50%, #1a2332 100%); padding:0; overflow:hidden;">
+  <h1 style="position:absolute; left:5%; top:48%; font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:53%; margin:0;">AIOps on AWS</h1>
+  <p style="position:absolute; left:5%; top:62%; font-size:1.3rem; color:rgba(255,255,255,0.8); width:53%; margin:0;">Intelligent Cloud Operations for AnyCompany</p>
+  <div style="position:absolute; left:5%; top:76%;">
+    <p style="font-size:1.05rem; color:#fff; font-weight:600; margin:0;">Junseok Oh</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.65); margin:6px 0 0 0;">Sr. Solutions Architect</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.65); margin:2px 0 0 0;">AWS</p>
+  </div>
+  
+</div>
+
+<div class="slide" data-remarp-id="s1">
+  <div class="slide-header" data-remarp-id="s1-header"><h2>오늘의 아젠다</h2><p class="subtitle">총 90min 세션</p></div>
+  <div class="slide-body" data-remarp-id="s1-body">
+    <div class="agenda-timeline">
+            <div class="agenda-step active">
+          <div class="agenda-dot">1</div>
+          <div class="agenda-connector"></div>
+          <div class="agenda-label">
+            <strong>AIOps Foundations & AWS Observability</strong>
+            <span>30분</span>
+          </div>
+        </div>
+      <div class="agenda-step">
+          <div class="agenda-dot">2</div>
+          <div class="agenda-connector"></div>
+          <div class="agenda-label">
+            <strong>ML-Powered Operations & Anomaly Detection</strong>
+            <span>30분</span>
+          </div>
+        </div>
+      <div class="agenda-step break">
+          <div class="agenda-dot">☕</div>
+          <div class="agenda-connector"></div>
+          <div class="agenda-label">
+            <strong>Break</strong>
+            <span>5분</span>
+          </div>
+        </div>
+      <div class="agenda-step">
+          <div class="agenda-dot">3</div>
+          
+          <div class="agenda-label">
+            <strong>Implementation Strategies & Best Practices</strong>
+            <span>25분</span>
+          </div>
+        </div>
+    </div>
+    <div class="callout callout-info" style="margin-top: 1.5rem;">300 레벨 — 개념보다 실전 중심 | 실시간 Q&A 환영 | 각 블록 후 브레이크</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s2" style="transition: opacity var(--transition-normal)">
+  <div class="slide-header" data-remarp-id="s2-header"><h2>AIOps란 무엇인가?</h2></div>
+  <div class="slide-body" data-remarp-id="s2-body">
+    <div class="columns">
+<div class="col">
+<h3>정의</h3>
+<p><strong>AI for IT Operations</strong> — ML과 빅데이터 분석을 활용하여 IT 운영을 자동화하고 향상시키는 접근법</p>
+<h3>핵심 요소</h3>
+<ul><li class="fragment fade-in" data-fragment-index="0"><strong>Observe</strong> — 전체 스택 가시성 확보</li><li class="fragment fade-in" data-fragment-index="1"><strong>Detect</strong> — 이상 징후 자동 탐지</li><li class="fragment fade-in" data-fragment-index="2"><strong>Diagnose</strong> — 근본 원인 분석 (RCA)</li><li class="fragment fade-in" data-fragment-index="3"><strong>Respond</strong> — 자동화된 대응 및 복구</li></ul>
+</div><div class="col">
+<h3>Gartner 정의 (2024)</h3>
+<blockquote><p>"AIOps platforms combine big data and ML to automate IT operations processes, including event correlation, anomaly detection, and causality determination."</p></blockquote>
+<h3>왜 지금 AIOps인가?</h3>
+<ul><li>마이크로서비스 → 복잡성 기하급수적 증가</li><li>분당 수백만 이벤트 → 사람이 처리 불가</li><li>MTTR 단축 압박 → 수동 분석의 한계</li><li>Gen AI 발전 → 자연어 기반 운영 가능</li></ul>
+</div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s3">
+  <div class="slide-header" data-remarp-id="s3-header"><h2>Observability vs Monitoring</h2></div>
+  <div class="slide-body" data-remarp-id="s3-body">
+    <div class="compare-toggle">
+            <button class="compare-btn active" data-compare="traditional-monitoring">Traditional Monitoring</button>
+      <button class="compare-btn" data-compare="modern-observability">Modern Observability</button>
+      <button class="compare-btn" data-compare="aiops">AIOps가 추가하는 가치</button>
+    </div>
+    <div class="compare-content active" data-compare="traditional-monitoring">
+<ul><li><strong>Known-unknowns</strong> — 미리 정의한 임계값 기반 알람</li><li>대시보드 중심, 사후 분석</li><li>"CPU > 80% 이면 알람" → 증상만 탐지</li></ul>
+</div>
+<div class="compare-content" data-compare="modern-observability">
+<ul><li><strong>Unknown-unknowns</strong> — 예상치 못한 문제를 발견하는 능력</li><li>세 가지 신호(Three Pillars): Metrics, Logs, Traces</li><li>"왜 이 API가 느려졌는지" 역추적 가능</li></ul>
+</div>
+<div class="compare-content" data-compare="aiops">
+<ul><li>ML 기반 <strong>이상 탐지</strong> — 시즌별/시간대별 패턴 학습 후 편차 감지</li><li><strong>이벤트 상관 분석</strong> — 수천 개 알람을 소수의 인시던트로 그룹핑</li><li><strong>예측</strong> — 리소스 고갈, 장애 전조 사전 경고</li></ul>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s4">
+  <div class="slide-header" data-remarp-id="s4-header"><h2>AWS Observability Stack — 전체 구성도</h2></div>
+  <div class="slide-body" data-remarp-id="s4-body">
+    <div class="canvas-container" data-remarp-id="s4-canvas" style="flex:1">
+      <canvas id="canvas-0"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s5">
+  <div class="slide-header" data-remarp-id="s5-header"><h2>CloudWatch — AIOps의 데이터 허브</h2></div>
+  <div class="slide-body" data-remarp-id="s5-body">
+    <div class="columns">
+<div class="col">
+<h3>Metrics</h3>
+<ul><li><strong>고해상도 메트릭</strong> — 1초 간격 수집 가능</li><li><strong>Embedded Metric Format (EMF)</strong> — 구조화된 로그에서 메트릭 자동 추출</li><li><strong>Metric Math</strong> — 실시간 연산 (에러율 = Errors / Invocations × 100)</li><li><strong>Contributor Insights</strong> — Top-N 기여자 실시간 분석</li></ul>
+<h3>Logs Insights</h3>
+<div class="code-block">fields @timestamp, @message
+| filter @message like /ERROR/
+| stats count(*) as errorCount by bin(5m)
+| sort errorCount desc</div>
+</div><div class="col">
+<h3>Anomaly Detection</h3>
+<ul><li>2주간 메트릭 패턴 학습 (시간대, 요일, 계절)</li><li><strong>Band 모델</strong> — 정상 범위를 밴드로 표현</li><li>밴드 이탈 시 알람 → 정적 임계값 없이 동적 탐지</li><li><code>ANOMALY_DETECTION_BAND(metric, stddev)</code> 함수</li></ul>
+<h3>Cross-Account Observability</h3>
+<ul><li><strong>Monitoring Account</strong> 하나에서 모든 계정 관측</li><li>Organization 전체 로그/메트릭/트레이스 통합</li><li>AnyCompany 멀티 계정 환경에 필수</li></ul>
+</div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s6">
+  <div class="slide-header" data-remarp-id="s6-header"><h2>ADOT — 통합 텔레메트리 수집</h2></div>
+  <div class="slide-body" data-remarp-id="s6-body">
+    <div class="columns">
+<div class="col">
+<h3>AWS Distro for OpenTelemetry</h3>
+<ul><li><strong>벤더 중립</strong> — CNCF 표준 기반</li><li><strong>하나의 에이전트</strong>로 Metrics + Traces + Logs 수집</li><li>EKS DaemonSet 또는 Sidecar 배포</li><li>Kubernetes 메타데이터 자동 태깅 (pod, namespace, node)</li></ul>
+<h3>수집 파이프라인</h3>
+<div class="code-block"><span class="key">receivers</span>:
+  <span class="key">otlp</span>:
+    <span class="key">protocols</span>:
+      <span class="key">grpc</span>:
+        <span class="key">endpoint</span>: 0.0.0.0:4317
+  <span class="key">prometheus</span>:
+    <span class="key">config</span>:
+      <span class="key">scrape_configs</span>:
+        - job_name: <span class="string">'k8s-pods'</span>
+          <span class="key">kubernetes_sd_configs</span>:
+            - role: pod</div>
+</div><div class="col">
+<h3>Exporters 구성</h3>
+<div class="code-block"><span class="key">exporters</span>:
+  <span class="key">awsxray</span>:
+    <span class="key">region</span>: ap-northeast-2
+  <span class="key">awsemf</span>:
+    <span class="key">namespace</span>: AnyCompany/App
+    <span class="key">region</span>: ap-northeast-2
+  <span class="key">prometheusremotewrite</span>:
+    <span class="key">endpoint</span>: https:<span class="comment">//aps-workspaces...</span>
+    <span class="key">auth</span>:
+      <span class="key">authenticator</span>: sigv4auth
+
+<span class="key">service</span>:
+  <span class="key">pipelines</span>:
+    <span class="key">traces</span>:
+      <span class="key">receivers</span>: [otlp]
+      <span class="key">exporters</span>: [awsxray]
+    <span class="key">metrics</span>:
+      <span class="key">receivers</span>: [otlp, prometheus]
+      <span class="key">exporters</span>: [awsemf, prometheusremotewrite]</div>
+<h3>핵심 이점</h3>
+<ul><li>X-Ray + CloudWatch + AMP에 동시 전송</li><li>애플리케이션 코드 변경 최소화</li></ul>
+</div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s7">
+  <div class="slide-header" data-remarp-id="s7-header"><h2>AMP & AMG — 시각화와 분석</h2></div>
+  <div class="slide-body" data-remarp-id="s7-body">
+    <div class="tab-bar">
+            <button class="tab-btn active" data-tab="amazon-managed-prometheus">Amazon Managed Prometheus</button>
+      <button class="tab-btn" data-tab="amazon-managed-grafana">Amazon Managed Grafana</button>
+      <button class="tab-btn" data-tab="promql-aiops">PromQL AIOps 패턴</button>
+    </div>
+        <div class="tab-content active" data-tab="amazon-managed-prometheus">
+<h3>AMP 핵심 기능</h3>
+<ul><li><strong>완전 관리형</strong> — PromQL 호환, 스케일링/패치 자동</li><li><strong>150일 보존</strong> — 장기 트렌드 분석 가능</li><li><strong>Cross-region replication</strong> — DR 지원</li><li><strong>IAM 인증</strong> — Prometheus 네이티브 인증 대비 보안 강화</li></ul>
+<h3>비용 고려</h3>
+<table><thead><tr><th>항목</th><th>가격</th></tr></thead><tbody><tr><td>샘플 수집</td><td>$0.003/1K samples</td></tr><tr><td>쿼리 처리</td><td>$0.10/10억 samples</td></tr><tr><td>스토리지</td><td>$0.03/GB/month</td></tr></tbody></table>
+<blockquote><p><strong>팁</strong>: cardinality 관리가 비용의 핵심. label 조합이 100만 개 넘으면 비용 급증</p></blockquote>
+</div>
+    <div class="tab-content" data-tab="amazon-managed-grafana">
+<h3>AMG로 AIOps 대시보드 구축</h3>
+<ul><li><strong>다중 데이터소스</strong>: CloudWatch, AMP, X-Ray, Athena</li><li><strong>Alerting</strong>: Grafana Alerting → SNS → PagerDuty/Slack</li><li><strong>ML Plugin</strong>: Prophet 기반 메트릭 예측 시각화</li></ul>
+<h3>권장 대시보드 구성</h3>
+<ol><li><strong>Overview</strong> — 서비스 헬스맵, 핵심 SLI/SLO</li><li><strong>Deep Dive</strong> — 서비스별 상세 메트릭 (p99, error rate)</li><li><strong>AIOps</strong> — Anomaly Detection 밴드, DevOps Guru 인사이트</li><li><strong>Cost</strong> — 리소스 사용량 vs 비용 트렌드</li></ol>
+</div>
+    <div class="tab-content" data-tab="promql-aiops">
+<h3>이상 탐지 PromQL 예시</h3>
+<div class="code-block"><span class="comment"># SLO burn rate (1시간 윈도우)</span>
+(
+  sum(rate(http_requests_total{code=~<span class="string">"5.."</span>}[1h]))
+  / sum(rate(http_requests_total[1h]))
+) / 0.001 &gt; 1
+
+<span class="comment"># P99 latency 이동 편차</span>
+histogram_quantile(0.99,
+  sum(rate(http_request_duration_seconds_bucket[5m]))
+  by (le, service)
+) &gt; 2 * histogram_quantile(0.99,
+  sum(rate(http_request_duration_seconds_bucket[1h]))
+  by (le, service)
+)
+
+<span class="comment"># CPU throttling 비율</span>
+sum(rate(container_cpu_cfs_throttled_periods_total[5m]))
+by (pod) /
+sum(rate(container_cpu_cfs_periods_total[5m]))
+by (pod) &gt; 0.25</div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s8">
+  <div class="slide-header" data-remarp-id="s8-header"><h2>AIOps 데이터 파이프라인 — 실시간 흐름</h2></div>
+  <div class="slide-body" data-remarp-id="s8-body">
+    <div class="canvas-container" data-remarp-id="s8-canvas" style="flex:1">
+      <canvas id="canvas-1"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s9" style="transition: opacity var(--transition-normal)">
+  <div class="slide-header" data-remarp-id="s9-header"><h2>Block 1 — Key Takeaways</h2></div>
+  <div class="slide-body" data-remarp-id="s9-body">
+    <div class="columns">
+<div class="col">
+<h3>핵심 포인트</h3>
+<ul><li class="fragment fade-in" data-fragment-index="0"><strong>AIOps = Observe + Detect + Diagnose + Respond</strong> 4단계 자동화</li><li class="fragment fade-in" data-fragment-index="1"><strong>Three Pillars</strong> — Metrics, Logs, Traces 통합 수집이 전제 조건</li><li class="fragment fade-in" data-fragment-index="2"><strong>ADOT</strong> — 벤더 중립 통합 수집기, EKS 환경의 표준</li><li class="fragment fade-in" data-fragment-index="3"><strong>CloudWatch Anomaly Detection</strong> — 정적 임계값의 대안, ML 기반 밴드 모델</li><li class="fragment fade-in" data-fragment-index="4"><strong>AMP + AMG</strong> — 오픈소스 호환 관리형 분석/시각화 스택</li></ul>
+</div><div class="col">
+<h3>AnyCompany 체크포인트</h3>
+<ul><li>[ ] CloudWatch Agent 전체 워크로드 배포 여부</li><li>[ ] ADOT 또는 기존 Prometheus 수집 파이프라인 존재</li><li>[ ] Cross-Account Observability 설정 유무</li><li>[ ] SLI/SLO 정량적 정의 및 대시보드 운영</li><li>[ ] 로그 보존 정책 및 아카이빙 전략</li></ul>
+<h3>다음 블록 예고</h3>
+<p>Block 2에서는 이 데이터를 활용하는 <strong>ML 서비스들</strong> — DevOps Guru, CodeGuru, Lookout for Metrics, 그리고 <strong>Gen AI 기반 운영</strong>을 다룹니다.</p>
+</div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s10">
+  <div class="center-content" style="height:100%; gap:1.5rem;">
+    <h1 style="font-size:3rem; background:linear-gradient(135deg, var(--accent-light), var(--cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">Thank You</h1>
+    <p style="color:var(--text-secondary); font-size:1.1rem;">Thank You</p>
+    <p style="color:var(--text-muted); font-size:1rem; margin-top:0.5rem;">수고하셨습니다!</p>
+    <div style="display:flex; gap:1rem; margin-top:1.5rem;">
+            <a href="index.html" class="btn btn-primary btn-sm" style="text-decoration:none;">← 목차로 돌아가기</a>
+    </div>
+  </div>
+</div>
+</div>
+<script src="./common/animation-utils.js"></script>
+<script src="./common/slide-framework.js"></script>
+<script src="./common/quiz-component.js"></script>
+<script src="./common/presenter-view.js"></script>
+<script>
+(function() {
+  const canvas = document.getElementById('canvas-0');
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  const BASE_W = 960, BASE_H = 400;
+
+  function resizeCanvas() {
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    if (cw <= 0 || ch <= 0) {
+      setupCanvas('canvas-0', BASE_W, BASE_H);
+      return;
+    }
+    const dpr = window.devicePixelRatio || 1;
+    const scale = cw / BASE_W;
+    const scaledH = Math.min(Math.round(BASE_H * scale), ch);
+    canvas.width = Math.round(cw * dpr);
+    canvas.height = Math.round(scaledH * dpr);
+    canvas.style.width = cw + 'px';
+    canvas.style.height = scaledH + 'px';
+    canvas.style.maxWidth = 'none';
+    const c = canvas.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.scale(scale * dpr, scale * dpr);
+  }
+  resizeCanvas();
+
+  const ctx = canvas.getContext('2d');
+  const width = BASE_W, height = BASE_H;
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    drawBox(ctx, 40, 30, 130, 50, 'EC2/EKS\\nWorkloads', 'fill');
+    drawBox(ctx, 40, 100, 130, 50, 'Lambda\\nFunctions', 'fill');
+    drawBox(ctx, 40, 170, 130, 50, 'API Gateway\\n& ALB', 'fill');
+    drawBox(ctx, 40, 240, 130, 50, 'RDS/DynamoDB\\nData Stores', 'fill');
+    drawBox(ctx, 240, 30, 130, 50, 'CloudWatch\\nAgent', 'fill');
+    drawBox(ctx, 240, 100, 130, 50, 'ADOT\\nCollector', 'fill');
+    drawBox(ctx, 240, 170, 130, 50, 'X-Ray\\nDaemon', 'fill');
+    drawBox(ctx, 240, 240, 130, 50, 'VPC Flow\\nLogs', 'fill');
+    drawBox(ctx, 440, 30, 140, 50, 'CloudWatch\\nMetrics & Logs', 'fill');
+    drawBox(ctx, 440, 100, 140, 55, 'Amazon\\nManaged\\nPrometheus', 'fill');
+    drawBox(ctx, 440, 175, 140, 50, 'AWS X-Ray\\nTraces', 'fill');
+    drawBox(ctx, 440, 245, 140, 50, 'S3 Data Lake\\n(Archive)', 'fill');
+    drawBox(ctx, 650, 30, 140, 50, 'DevOps Guru\\nInsights', 'fill');
+    drawBox(ctx, 650, 100, 140, 50, 'CloudWatch\\nAnomaly Detection', 'fill');
+    drawBox(ctx, 650, 175, 140, 50, 'Amazon\\nBedrock (GenAI)', 'fill');
+    drawBox(ctx, 650, 245, 140, 50, 'Lookout for\\nMetrics', 'fill');
+    drawBox(ctx, 850, 80, 100, 55, 'EventBridge\\nAutomation', 'fill');
+    drawBox(ctx, 850, 165, 100, 55, 'SNS/PagerDuty\\nNotification', 'fill');
+    drawBox(ctx, 850, 250, 100, 55, 'Systems Manager\\nRemediation', 'fill');
+  }
+
+  draw();
+  new ResizeObserver(() => { resizeCanvas(); draw(); }).observe(container);
+})();
+</script>
+<script>
+(function() {
+  const canvas = document.getElementById('canvas-1');
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  const BASE_W = 960, BASE_H = 400;
+
+  function resizeCanvas() {
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    if (cw <= 0 || ch <= 0) {
+      setupCanvas('canvas-1', BASE_W, BASE_H);
+      return;
+    }
+    const dpr = window.devicePixelRatio || 1;
+    const scale = cw / BASE_W;
+    const scaledH = Math.min(Math.round(BASE_H * scale), ch);
+    canvas.width = Math.round(cw * dpr);
+    canvas.height = Math.round(scaledH * dpr);
+    canvas.style.width = cw + 'px';
+    canvas.style.height = scaledH + 'px';
+    canvas.style.maxWidth = 'none';
+    const c = canvas.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.scale(scale * dpr, scale * dpr);
+  }
+  resizeCanvas();
+
+  const ctx = canvas.getContext('2d');
+  const width = BASE_W, height = BASE_H;
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    drawBox(ctx, 30, 20, 120, 50, 'App Pod\\n(OTel SDK)', 'fill');
+    drawBox(ctx, 30, 90, 120, 50, 'Sidecar\\nProxy', 'fill');
+    drawBox(ctx, 30, 160, 120, 50, 'System\\nMetrics', 'fill');
+    drawBox(ctx, 230, 70, 140, 70, 'ADOT Collector\\n(DaemonSet)', 'fill');
+    drawBox(ctx, 450, 10, 120, 45, 'CloudWatch\\nLogs', 'fill');
+    drawBox(ctx, 450, 70, 120, 45, 'CloudWatch\\nMetrics', 'fill');
+    drawBox(ctx, 450, 130, 120, 45, 'X-Ray\\nTraces', 'fill');
+    drawBox(ctx, 450, 190, 120, 45, 'AMP\\nMetrics', 'fill');
+    drawBox(ctx, 450, 250, 120, 45, 'S3\\nArchive', 'fill');
+    drawBox(ctx, 650, 30, 120, 50, 'Anomaly\\nDetection', 'fill');
+    drawBox(ctx, 650, 100, 120, 50, 'Logs\\nInsights', 'fill');
+    drawBox(ctx, 650, 170, 120, 50, 'DevOps\\nGuru', 'fill');
+    drawBox(ctx, 840, 80, 110, 70, 'EventBridge\\n→ Lambda\\n→ Remediation', 'fill');
+  }
+
+  draw();
+  new ResizeObserver(() => { resizeCanvas(); draw(); }).observe(container);
+})();
+</script>
+<script>
+  
+  const presenterNotes = {
+    1: "[1min] 안녕하세요, AWS Solutions Architect 오준석입니다. 오늘은 AnyCompany 여러분과 함께 AIOps, 즉 AI를 활용한 클라우드 운영 자동화에 대해 깊이 있게 다뤄보겠습니다. 90분 동안 3개 블록으로 나눠서 진행하며, 첫 번째 블록에서는 AIOps의 기반이 되는 관측성 스택을 살펴보겠습니다.\n\n먼저 오늘 세션의 전체 아젠다를 확인해 볼까요?",
+    2: "[2min] 오늘 세션은 크게 세 블록으로 구성됩니다. 첫 번째 블록에서는 AIOps의 핵심 기반인 관측성 스택을 다루고, 두 번째 블록에서는 ML 기반 서비스들을 깊이 살펴봅니다. 마지막 블록에서는 AnyCompany 환경에 맞는 실제 구현 전략을 논의하겠습니다.\n300레벨 세션인 만큼 기본 개념 설명은 최소화하고, 실제 구성과 운영 경험 중심으로 진행합니다. 궁금한 점은 언제든 질문해 주세요.\n\n그럼 AIOps가 정확히 무엇인지부터 정리해 보겠습니다.",
+    3: "❓ [3min] AIOps는 단순한 모니터링 자동화가 아닙니다. Gartner가 정의한 것처럼, 빅데이터와 ML을 결합해서 IT 운영 전체 프로세스를 자동화하는 플랫폼 접근법입니다.\n\n핵심은 네 가지 단계입니다. 먼저 Observe — 전체 인프라와 애플리케이션의 가시성을 확보합니다. 그다음 Detect — ML로 이상 징후를 자동 탐지하고, Diagnose — 근본 원인을 분석하며, Respond — 자동화된 대응까지 수행합니다.\n\n왜 지금 AIOps가 중요한지 생각해 보시면, AnyCompany에서도 마이크로서비스 전환 이후 서비스 간 의존성이 기하급수적으로 늘어났을 겁니다. 분당 수백만 개 이벤트를 사람이 일일이 보는 건 물리적으로 불가능합니다.\n\n여러분 팀에서 현재 장애 대응 시 MTTR이 어느 정도 되시나요? 보통 30분에서 수 시간이라고 말씀하시는 분이 많은데, AIOps는 이걸 분 단위로 줄이는 것이 목표입니다.\n\nAIOps의 기반에는 관측성이 있습니다. 모니터링과 어떻게 다른지 짚어 보겠습니다.",
+    4: "⏸️ [3min] 300레벨이시니 Observability의 기본 개념은 아실 겁니다. 핵심 차이만 짚겠습니다.\n\n전통적 모니터링은 \"CPU가 80% 넘으면 알람\"처럼 Known-unknown을 다룹니다. 반면 관측성은 \"이 API가 왜 갑자기 느려졌는지\"를 시스템 외부에서 내부 상태를 추론할 수 있는 능력입니다.\n\nAIOps는 여기에 세 가지를 더합니다. 첫째, ML 기반 이상 탐지 — CloudWatch가 2주간 메트릭 패턴을 학습하고 월요일 오전 트래픽 패턴과 일요일 패턴을 다르게 인식합니다. 둘째, 이벤트 상관 분석 — \"ELB 5xx 증가, Lambda Duration 급증, DynamoDB Throttle\" 세 알람이 실은 하나의 DynamoDB 용량 부족 때문이라는 걸 자동 파악합니다. 셋째, 예측 — 디스크가 3일 후에 부족해질 것을 사전에 알려줍니다.\n\n\n이 세 가지 기능을 AWS에서 어떤 서비스로 구현하는지 봐 보겠습니다.",
+    5: "❓ [4min] 이 다이어그램은 AWS에서 AIOps를 구현할 때의 전체 데이터 흐름입니다. 화살표 아래로 하나씩 따라가 보겠습니다.\n\n왼쪽 Data Sources에서 시작합니다. EC2, EKS 워크로드, Lambda, API Gateway, 데이터베이스까지 — AnyCompany의 전체 스택이 여기에 해당합니다.\n\n두 번째 레이어는 Collection입니다. CloudWatch Agent가 시스템 메트릭과 커스텀 메트릭을 수집하고, ADOT(AWS Distro for OpenTelemetry)가 분산 트레이싱 데이터를 수집합니다. 특히 EKS 환경이라면 ADOT이 Prometheus 메트릭까지 한 번에 수집할 수 있어서 효율적입니다.\n\n세 번째는 Storage입니다. CloudWatch Metrics & Logs가 핫 데이터를, AMP(Amazon Managed Prometheus)가 커스텀 메트릭을, X-Ray가 트레이스를, S3가 장기 아카이브를 담당합니다.\n\n네 번째 AI/ML 레이어가 AIOps의 핵심입니다. DevOps Guru가 운영 이상을 탐지하고, CloudWatch Anomaly Detection이 메트릭 이상을 잡고, Bedrock이 Gen AI 기반 분석을 수행합니다.\n\n마지막으로 Action 레이어에서 EventBridge가 자동화 워크플로를 트리거하고, Systems Manager가 자동 복구를 실행합니다.\n\nAnyCompany에서 현재 이 레이어 중 어디까지 구성되어 있으신가요?\n\n이제 각 레이어의 핵심 서비스를 하나씩 살펴보겠습니다.",
+    6: "[3min] CloudWatch를 단순한 모니터링 도구로 생각하시면 곤란합니다. AIOps 관점에서 CloudWatch는 데이터 허브 역할을 합니다.\n\nEmbedded Metric Format은 특히 강력합니다. 로그를 구조화된 JSON으로 보내면 CloudWatch가 자동으로 메트릭을 추출합니다. 커스텀 메트릭을 위해 별도 API 콜이 필요 없으니 비용도 절감됩니다.\n\nAnomaly Detection은 AIOps의 핵심 기능입니다. 정적 임계값 대신 2주간의 패턴을 학습해서 \"이 시간대에 이 정도면 비정상\"이라고 판단합니다. 예를 들어 월요일 오전 9시의 트래픽과 일요일 새벽 3시의 트래픽은 당연히 다르잖아요. ML 모델이 이런 계절성을 자동 학습합니다.\n\nCross-Account Observability는 AnyCompany처럼 멀티 계정을 운영하시는 환경에서 필수입니다. 하나의 모니터링 계정에서 전체 Organization의 데이터를 볼 수 있습니다.\n\nCloudWatch 단독으로는 부족합니다. OpenTelemetry 기반 수집 체계를 보겠습니다.",
+    7: "[3min] ADOT는 AWS가 배포하는 OpenTelemetry 디스트리뷰션입니다. 가장 큰 장점은 하나의 에이전트로 메트릭, 트레이스, 로그를 모두 수집하고 여러 백엔드로 동시에 보낼 수 있다는 점입니다.\n\nEKS에서는 DaemonSet으로 배포하면 각 노드의 모든 Pod에서 텔레메트리를 수집합니다. 왼쪽의 Receivers 설정을 보시면, OTLP 프로토콜로 트레이스를 받고, Prometheus 프로토콜로 메트릭도 스크래핑합니다.\n\n오른쪽 Exporters에서는 X-Ray, CloudWatch EMF, AMP 세 곳으로 동시에 데이터를 보냅니다. 이렇게 하면 트레이스는 X-Ray에서, 메트릭은 CloudWatch와 AMP 양쪽에서, 로그는 CloudWatch Logs에서 분석할 수 있습니다.\n\nAnyCompany에서 이미 Prometheus를 쓰고 계시다면 ADOT의 Prometheus receiver로 기존 설정을 그대로 재활용할 수 있습니다.\n\n수집 체계를 갖췄으니, 이 데이터를 어떻게 시각화하고 분석하는지 보겠습니다.",
+    8: "❓ [4min] AMP와 AMG는 Prometheus/Grafana 오픈소스 생태계를 완전 관리형으로 제공합니다.\n\nAMP는 PromQL 100% 호환이고, 150일까지 데이터를 보존합니다. 비용 측면에서 주의할 점은 cardinality입니다. label 조합이 많아지면 비용이 급증하니, 불필요한 high-cardinality label은 drop하는 relabeling 설정이 필수입니다.\n\nAMG에서는 여러 데이터소스를 하나의 대시보드에 통합할 수 있습니다. CloudWatch 메트릭과 AMP의 커스텀 메트릭, X-Ray 트레이스를 하나의 화면에서 상관 분석할 수 있는 게 큰 강점입니다.\n\n세 번째 탭의 PromQL 패턴은 AIOps에서 자주 사용하는 쿼리입니다. SLO burn rate 알림은 구글 SRE 책에서 제안하는 방식으로, 에러 예산 소진 속도를 모니터링합니다. P99 이동 편차는 현재 5분 레이턴시가 1시간 평균의 2배를 넘으면 알리는 방식입니다.\n\nAnyCompany에서 현재 SLO/SLI를 정량적으로 관리하고 계신가요? AIOps 도입의 출발점이 SLO 정의입니다.\n\n이제 데이터 수집부터 시각화까지의 파이프라인 전체 흐름을 애니메이션으로 정리해 보겠습니다.",
+    9: "[3min] 이 Canvas는 실제 데이터가 흐르는 경로를 step별로 보여줍니다.\n\nStep 0에서 애플리케이션 Pod는 OTel SDK로 트레이스를, Sidecar Proxy가 서비스 메시 메트릭을, 시스템 레벨에서 CPU/Memory 메트릭을 생성합니다.\n\nStep 1에서 ADOT Collector가 이 세 종류 데이터를 모두 수집합니다. DaemonSet으로 각 노드에 하나씩 배포되어 있으니 네트워크 홉이 최소화됩니다. 수집 지연은 1초 미만입니다.\n\nStep 2에서 팬아웃됩니다. 로그는 CloudWatch Logs로, 메트릭은 CloudWatch와 AMP 양쪽으로, 트레이스는 X-Ray로, 장기 보관은 S3로 갑니다. 이 팬아웃이 ADOT의 핵심 가치입니다.\n\nStep 3에서 ML 분석이 시작됩니다. CloudWatch Anomaly Detection이 메트릭 이상을, Logs Insights가 에러 패턴을, DevOps Guru가 운영 이상을 각각 탐지합니다. 분석 지연은 보통 5분 이내입니다.\n\nStep 4에서 탐지된 이상이 EventBridge를 통해 Lambda를 트리거하고, Lambda가 자동 복구 작업을 실행합니다.\n\nBlock 1의 핵심 내용을 정리해 보겠습니다.",
+    10: "[2min] Block 1을 정리하겠습니다.\n\nAIOps는 네 단계입니다 — 관측, 탐지, 진단, 대응. 오늘 이 첫 번째 블록에서는 관측 단계, 즉 데이터를 어떻게 수집하고 저장하는지를 다뤘습니다.\n\nAnyCompany에서 바로 확인해 보실 수 있는 체크리스트를 오른쪽에 정리했습니다. 특히 SLI/SLO 정의가 없으시다면, AIOps 도입 전에 이걸 먼저 정의하시는 것을 강력히 추천합니다. 이상 탐지는 \"정상이 뭔지\" 정의되어야 의미가 있으니까요.\n\n5분 브레이크 후 Block 2에서 ML 서비스들을 본격적으로 살펴보겠습니다.\n\n5분 쉬었다 오겠습니다!",
+    11: "[0.5min] Block 1이 끝났습니다. 5분 브레이크 후 Block 2를 시작하겠습니다."
+  };
+  const deck = new SlideFramework({
+    logoSrc: '../common/pptx-theme/images/logo_1.png',
+    footer: '© 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.',
+    
+    pagination: true,
+    sidebar: true,
+    presenterNotes: presenterNotes,
+    onSlideChange: (index, slide) => {}
+  });
+</script>
+</body>
+</html>

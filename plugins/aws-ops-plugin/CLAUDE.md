@@ -6,75 +6,17 @@ Uses AWS MCP servers for real-time documentation and resource analysis.
 
 ---
 
-## Auto-Invocation Rules
-
-When the following keywords are detected, automatically invoke the corresponding agent.
-
-### EKS Cluster Operations
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "EKS troubleshoot", "cluster issue", "node NotReady", "pod crash", "EKS upgrade", "add-on", "노드 문제", "클러스터 장애", "EKS 업그레이드" | `eks-agent` | EKS cluster operations and troubleshooting |
-
-### Network Diagnostics
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "VPC CNI", "IP exhaustion", "load balancer", "ALB", "NLB", "DNS resolution", "security group", "네트워크 오류", "IP 부족", "로드밸런서", "연결 문제" | `network-agent` | VPC, CNI, Load Balancer, DNS diagnostics |
-
-### IAM & Security
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "IRSA", "Pod Identity", "RBAC", "aws-auth", "IAM role", "permission denied", "AccessDenied", "권한 오류", "인증 실패", "보안 설정" | `iam-agent` | IAM, IRSA, Pod Identity, RBAC troubleshooting |
-
-### Observability
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "CloudWatch", "Prometheus", "Grafana", "ADOT", "OpenTelemetry", "Container Insights", "Logs Insights", "metric", "alarm", "X-Ray", "모니터링", "로그 분석", "알람 설정", "메트릭", "프로메테우스", "그라파나" | `observability-agent` | Metrics, logs, alarms, tracing, AMP, AMG, ADOT |
-
-### Analytics
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "OpenSearch", "Elasticsearch", "ClickHouse", "Athena", "QuickSight", "Kinesis", "데이터 분석", "로그 분석 파이프라인", "검색 엔진", "대시보드" | `analytics-agent` | OpenSearch, Athena, Kinesis, QuickSight, ClickHouse |
-
-### Storage
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "EBS CSI", "EFS CSI", "FSx", "PVC", "PersistentVolume", "mount error", "volume attach", "스토리지 오류", "볼륨 마운트", "PVC 바인딩" | `storage-agent` | EBS, EFS, FSx CSI driver troubleshooting |
-
-### Database
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "RDS", "Aurora", "DynamoDB", "ElastiCache", "database connection", "throttling", "DB 연결", "데이터베이스 오류", "스로틀링" | `database-agent` | RDS, Aurora, DynamoDB, ElastiCache operations |
-
-### Cost
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "cost analysis", "cost optimization", "billing", "savings plan", "reserved instance", "비용 분석", "비용 절감", "요금" | `cost-agent` | Cost analysis and optimization |
-
-### Incident Coordination
-
-| Keywords | Agent | Description |
-|----------|-------|-------------|
-| "incident", "outage", "서비스 장애", "긴급 대응", "복합 장애", "장애 조율" | `ops-coordinator-agent` | Multi-domain incident coordination |
-
----
-
 ## MCP Integration
 
-| MCP Server | Purpose | Used By |
-|------------|---------|---------|
-| `awsknowledge` | AWS architecture knowledge, recommendations, regional info | All agents |
-| `awsdocs` | AWS official documentation search/read | All agents |
-| `awsapi` | AWS API direct calls (describe, list, etc.) | eks, network, iam, storage, database, observability, analytics |
-| `awspricing` | Cost analysis, pricing queries | cost-agent |
-| `awsiac` | CloudFormation/CDK validation, troubleshooting | eks-agent, ops-coordinator |
+This plugin bundles 2 MCP servers. The remaining 3 (`awsknowledge`, `awspricing`, `awsiac`) are provided by the `deploy-on-aws` plugin and available when both plugins are loaded.
+
+| MCP Server | Source | Purpose | Used By |
+|------------|--------|---------|---------|
+| `awsdocs` | **this plugin** | AWS official documentation search/read | All agents |
+| `awsapi` | **this plugin** | AWS API direct calls (describe, list, etc.) | eks, network, iam, storage, database, observability, analytics |
+| `awsknowledge` | deploy-on-aws | AWS architecture knowledge, recommendations, regional info | All agents |
+| `awspricing` | deploy-on-aws | Cost analysis, pricing queries | cost-agent |
+| `awsiac` | deploy-on-aws | CloudFormation/CDK validation, troubleshooting | eks-agent, ops-coordinator |
 
 ---
 

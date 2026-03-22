@@ -3,15 +3,16 @@ sidebar_position: 1
 title: "Presentation Agent"
 ---
 
-# Presentation Agent
+# Presentation Agent (Dispatcher)
 
-Interactive HTML 슬라이드쇼를 생성하는 전문 에이전트입니다. reactive-presentation 프레임워크를 사용하여 Canvas 애니메이션, 퀴즈, 키보드 네비게이션이 포함된 프레젠테이션을 만듭니다.
+프레젠테이션 포맷을 결정하고 적절한 전문 에이전트로 라우팅하는 경량 디스패처입니다.
 
 ## 기본 정보
 
 | 항목 | 값 |
 |------|-----|
-| **도구** | Read, Write, Glob, Grep, Bash, AskUserQuestion |
+| **도구** | AskUserQuestion |
+| **역할** | 포맷 디스패처 |
 
 ## 트리거 키워드
 
@@ -20,126 +21,55 @@ Interactive HTML 슬라이드쇼를 생성하는 전문 에이전트입니다. r
 | 키워드 | 설명 |
 |--------|------|
 | "create presentation", "create slides", "make slideshow" | 프레젠테이션 생성 |
-| "training slides", "interactive presentation" | 교육용 슬라이드 |
-| "reactive presentation", "remarp" | Remarp 포맷 프레젠테이션 |
-| "PPTX theme", "extract theme", "corporate branding" | PPTX 테마 추출 |
-| "반영해주세요", "rebuild", "다시 빌드" | Remarp에서 HTML 증분 빌드 |
+| "프레젠테이션 만들어", "슬라이드 만들어", "발표 자료" | 한국어 트리거 |
 
-## 핵심 기능
+## 라우팅 로직
 
-1. **Remarp Markdown Authoring** — 프래그먼트 애니메이션, Canvas DSL, 스피커 노트, 슬라이드 전환을 지원하는 차세대 포맷
-2. **HTML Slide Generation** — Remarp/Marp를 Canvas 애니메이션과 프래그먼트 효과가 포함된 인터랙티브 HTML로 변환
-3. **PPTX/PDF Theme Extraction** — .pptx 또는 .pdf 템플릿에서 기업 브랜딩 추출 (선택사항)
-4. **Quiz Integration** — 교육 세션을 위한 자동 채점 퀴즈 컴포넌트
-5. **Presenter View** — 타이밍 가이드와 큐 마커가 포함된 스피커 노트 (P 키)
-6. **AWS Icon Integration** — AWS Architecture Icons를 사용한 아키텍처 다이어그램
-7. **Per-block Editing** — 개별 `.remarp.md` 블록 편집, 변경된 HTML만 재빌드
-
-## 워크플로우
-
-### Phase 1: Planning
-
-사용자에게 다음을 질문합니다:
-- **Topic & audience** (필수) — 주제 + 대상 청중 (기술 수준/역할) → `audience` 필드
-- **Duration** — 블록 수와 슬라이드 수 결정
-- **Blocks** — 20-35분 블록으로 분할, 5분 휴식
-- **Target repo** — 배포용 GitHub 저장소
-- **Language** — 한국어 또는 영어 (기술 용어는 항상 영어)
-- **PPTX/PDF template** (필수, 스킵 가능) — 디자인 참고용 파일
-- **Speaker info** (필수, 스킵 가능) → `author` 필드
-- **Footer text** (필수, 스킵 가능) → `theme.footer` 필드
-- **Logo** (필수, 스킵 가능) → `theme.logo` 필드
-- **Quiz inclusion** (필수 — 건너뛰기 금지)
-
-### Phase 2: Theme Setup (선택사항)
-
-PPTX 템플릿이 제공되면 테마를 추출합니다:
-
-```bash
-python3 {plugin-dir}/skills/reactive-presentation/scripts/extract_pptx_theme.py <pptx_path> -o {repo}/common/pptx-theme/
+```mermaid
+graph TD
+    A[사용자 요청] --> B{키워드 감지?}
+    B -->|reactive, remarp, web, html,<br/>interactive, 인터랙티브,<br/>웹 프레젠테이션| C[reactive-presentation-agent로 위임]
+    B -->|pptx, powerpoint, 파워포인트| D[PPTX 경로]
+    B -->|포맷 키워드 없음| E[사용자에게 포맷 선택 질문]
+    E -->|웹/인터랙티브| C
+    E -->|PPTX/PowerPoint| D
+    D --> F{전용 PPTX 에이전트?}
+    F -->|있음| G[PPTX 에이전트로 위임]
+    F -->|없음| H[PPTX 폴백 가이드]
 ```
 
-### Phase 3: Content Authoring
+## 키워드 분류
 
-Remarp 포맷으로 콘텐츠를 작성합니다:
+### Web/Interactive (즉시 위임)
+- English: "reactive", "remarp", "web", "html", "interactive", "web-based", "browser", "canvas animation"
+- Korean: "인터랙티브", "웹 프레젠테이션", "웹 슬라이드", "리마프", "HTML 슬라이드"
 
-```
-{slug}/
-├── _presentation.remarp.md       # 글로벌 설정 (title, theme, blocks, keys)
-├── 01-fundamentals.remarp.md     # Block 1 소스
-├── 02-advanced.remarp.md         # Block 2 소스
-└── build/                        # 생성된 HTML (gitignored)
-```
+Web/Interactive 키워드가 감지되면 질문 없이 **즉시 `reactive-presentation-agent`로 위임**합니다.
 
-### Phase 4: HTML Generation
+### PPTX (PPTX 경로)
+- English: "pptx", "powerpoint", "ppt", "office", "download as file"
+- Korean: "파워포인트", "PPT", "피피티"
 
-```bash
-# 전체 빌드
-python3 {plugin-dir}/skills/reactive-presentation/scripts/remarp_to_slides.py build {repo}/{slug}/
+## 포맷 선택 질문
 
-# 특정 블록만 빌드
-python3 {plugin-dir}/skills/reactive-presentation/scripts/remarp_to_slides.py build {repo}/{slug}/ --block 01-fundamentals
+포맷 키워드가 없으면 사용자에게 질문합니다:
 
-# 변경된 블록만 증분 빌드
-python3 {plugin-dir}/skills/reactive-presentation/scripts/remarp_to_slides.py sync {repo}/{slug}/
-```
+> 프레젠테이션 형식을 선택해 주세요:
+>
+> 1. **웹 기반 인터랙티브** — 브라우저에서 실행되는 HTML 프레젠테이션. Canvas 애니메이션, 퀴즈, 탭 전환 등 인터랙티브 요소 지원. GitHub Pages로 즉시 배포 가능.
+> 2. **PPTX (파워포인트)** — 다운로드 가능한 .pptx 파일. 오프라인 발표, 사내 공유에 적합.
 
-## 슬라이드 타입 가이드
+## reactive-presentation-agent와의 관계
 
-| 콘텐츠 타입 | 슬라이드 패턴 | 인터랙티브 요소 |
-|-------------|---------------|-----------------|
-| 아키텍처 개요 | Canvas Animation | 컴포넌트 흐름 + Play 버튼 |
-| A vs B 비교 | Compare Toggle | `.compare-toggle` 버튼 |
-| 설정 변형 | Tab Content | `.tab-bar` + YAML 코드 블록 |
-| 단계별 프로세스 | Timeline | `.timeline` + 애니메이션 단계 |
-| 모니터링/대시보드 | Canvas Animation | 노드 그리드 + 이벤트 로그 |
-| 파라미터 탐색 | Slider | `input[type=range]` + 라이브 출력 |
-| 베스트 프랙티스 | Checklist | `.checklist` + 클릭 토글 |
-| YAML/코드 예제 | Code Block | `.code-block` + 구문 강조 |
-| 블록 요약 | Quiz | `data-quiz` + 3-4개 질문 |
-| 블록 종료 | Thank You | 그라데이션 제목 + TOC 링크 |
-
-## 키보드 단축키
-
-| 키 | 동작 |
-|----|------|
-| ← → | 이전/다음 슬라이드 |
-| Space | 다음 슬라이드 |
-| ↑ ↓ | 탭/비교 옵션 순환, 애니메이션 단계 |
-| F | 전체 화면 토글 |
-| N | 스피커 노트 패널 토글 |
-| P | 프레젠터 뷰 열기 |
-| O | 개요 모드 토글 |
-| B | 화면 블랙아웃 |
-| 1-9 | 슬라이드 번호로 이동 |
-
-## 출력물
-
-| 산출물 | 형식 | 위치 |
-|--------|------|------|
-| Remarp Source | .remarp.md | `{repo}/{slug}/_presentation.remarp.md` + `{repo}/{slug}/0N-block.remarp.md` |
-| HTML Slides | .html | `{repo}/{slug}/build/0N-block.html` |
-| Hub Page | .html | `{repo}/index.html` |
-| Theme Override | .css | `{repo}/common/theme-override.css` |
-
-## 사용 예시
-
-```
-사용자: "EKS 교육 프레젠테이션 만들어줘"
-
-에이전트:
-1. 주제, 청중, 시간, 언어 등을 질문
-2. Remarp 콘텐츠 작성
-3. 사용자 검토 요청
-4. HTML 빌드
-5. content-review-agent로 품질 검토
-6. GitHub Pages 배포
-```
-
-## 협업 워크플로우
+`presentation-agent`는 포맷 선택만 담당하고, 실제 HTML 프레젠테이션 생성은 `reactive-presentation-agent`가 수행합니다.
 
 ```mermaid
 flowchart LR
-    A[presentation-agent] --> B[content-review-agent]
-    B --> C[Deploy to GitHub Pages]
+    A[사용자 요청] --> B[presentation-agent]
+    B -->|웹/HTML| C[reactive-presentation-agent]
+    B -->|PPTX| D[PPTX 가이드]
+    C --> E[content-review-agent]
+    E --> F[GitHub Pages 배포]
 ```
+
+실제 프레젠테이션 생성 기능(Remarp 작성, HTML 빌드, 테마 추출 등)은 [Reactive Presentation Agent](./reactive-presentation-agent)를 참조하세요.

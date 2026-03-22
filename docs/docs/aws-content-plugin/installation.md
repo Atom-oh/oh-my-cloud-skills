@@ -38,7 +38,7 @@ python3 -c "import json; d=json.load(open('plugins/aws-content-plugin/.claude-pl
 
 정상 출력:
 ```
-agents: 7, skills: 5
+agents: 8, skills: 5
 ```
 
 ## 파일 참조 확인
@@ -68,6 +68,7 @@ aws-content-plugin/
 ├── CLAUDE.md                # 자동 호출 규칙
 ├── agents/
 │   ├── presentation-agent.md
+│   ├── reactive-presentation-agent.md
 │   ├── architecture-diagram-agent.md
 │   ├── animated-diagram-agent.md
 │   ├── document-agent.md

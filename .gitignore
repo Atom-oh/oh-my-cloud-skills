@@ -16,6 +16,9 @@ node_modules/
 # macOS
 .DS_Store
 
+# Debug screenshots
+*.png
+
 # Docusaurus
 docs/node_modules/
 docs/build/

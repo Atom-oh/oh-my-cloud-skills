@@ -19,7 +19,8 @@
   ],
   "activationEvents": [
     "onLanguage:remarp",
-    "onLanguage:markdown"
+    "onLanguage:markdown",
+    "onLanguage:html"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -46,9 +47,12 @@
     "commands": [
       {
         "command": "remarp.preview",
-        "title": "Open Preview",
+        "title": "Remarp: Preview",
         "category": "Remarp",
-        "icon": "$(preview)"
+        "icon": {
+          "light": "media/icon.svg",
+          "dark": "media/icon.svg"
+        }
       },
       {
         "command": "remarp.nextSlide",
@@ -59,6 +63,18 @@
         "command": "remarp.prevSlide",
         "title": "Previous Slide",
         "category": "Remarp"
+      },
+      {
+        "command": "remarp.toggleEditMode",
+        "title": "Remarp: Toggle Visual Edit",
+        "category": "Remarp",
+        "icon": "$(paintcan)"
+      },
+      {
+        "command": "remarp.build",
+        "title": "Remarp: Build HTML",
+        "category": "Remarp",
+        "icon": "$(rocket)"
       }
     ],
     "keybindings": [
@@ -66,13 +82,25 @@
         "command": "remarp.nextSlide",
         "key": "ctrl+shift+right",
         "mac": "cmd+shift+right",
-        "when": "editorLangId == remarp"
+        "when": "editorLangId == remarp || remarp.isRemarpHtml"
       },
       {
         "command": "remarp.prevSlide",
         "key": "ctrl+shift+left",
         "mac": "cmd+shift+left",
-        "when": "editorLangId == remarp"
+        "when": "editorLangId == remarp || remarp.isRemarpHtml"
+      },
+      {
+        "command": "remarp.toggleEditMode",
+        "key": "ctrl+shift+e",
+        "mac": "cmd+shift+e",
+        "when": "editorLangId == remarp || remarp.isRemarpHtml"
+      },
+      {
+        "command": "remarp.build",
+        "key": "ctrl+shift+b",
+        "mac": "cmd+shift+b",
+        "when": "editorLangId == remarp || remarp.isRemarpHtml"
       }
     ],
     "views": {
@@ -80,15 +108,40 @@
         {
           "id": "remarpOutline",
           "name": "Remarp Slides",
-          "when": "editorLangId == remarp"
+          "when": "editorLangId == remarp || remarp.isRemarpHtml"
         }
       ]
+    },
+    "configuration": {
+      "title": "Remarp",
+      "properties": {
+        "remarp.buildScriptPath": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to remarp_to_slides.py. When set, this takes priority over automatic discovery."
+        },
+        "remarp.scrollSync": {
+          "type": "boolean",
+          "default": true,
+          "description": "Sync editor cursor position with preview slide. When enabled, clicking in the editor scrolls the preview to the corresponding slide."
+        }
+      }
     },
     "menus": {
       "editor/title": [
         {
           "command": "remarp.preview",
+          "when": "editorLangId == remarp || remarp.isRemarpHtml",
+          "group": "navigation"
+        },
+        {
+          "command": "remarp.build",
           "when": "editorLangId == remarp",
+          "group": "navigation"
+        },
+        {
+          "command": "remarp.toggleEditMode",
+          "when": "editorLangId == remarp || remarp.isRemarpHtml",
           "group": "navigation"
         }
       ]

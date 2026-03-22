@@ -360,4 +360,14 @@ Block 2의 슬라이드 5에 "비용 최적화 사례" 추가해줘
 | 정적 AWS 아키텍처 | `architecture-diagram-agent` |
 | 애니메이션 트래픽 흐름 | `animated-diagram-agent` |
 | Workshop 인라인 다이어그램 | `workshop-agent` (Mermaid) |
-| 프레젠테이션 Canvas 애니메이션 | `presentation-agent` |
+| 프레젠테이션 Canvas 애니메이션 (박스 4개 이하) | `reactive-presentation-agent` (`:::canvas` DSL) |
+| 프레젠테이션 HTML 아키텍처 (박스 5개 이상) | `reactive-presentation-agent` (`:::html` + `:::css`) |
+
+### Canvas vs HTML 선택 기준 (v1.2.3)
+
+:::warning STOP Gate
+프레젠테이션에서 다이어그램/흐름도 슬라이드를 만들 때 박스/아이콘 개수에 따라 방식이 달라집니다:
+- **≤4개**: `:::canvas` DSL 사용 가능 (단순 A→B→C 흐름)
+- **5개 이상**: `:::canvas` 금지 → `:::html` + `:::css` 필수 (flow-h, flow-group 클래스)
+- **인터랙션 필요**: `:::html` + `:::script` 사용 (슬라이더, 시뮬레이터 등)
+:::

@@ -6,14 +6,14 @@ title: 시작하기
 
 # oh-my-cloud-skills 시작하기
 
-**oh-my-cloud-skills**는 AWS 클라우드 작업을 위한 [Claude Code](https://claude.ai/code) 플러그인 마켓플레이스입니다. 3개의 플러그인이 총 16개의 AI 에이전트와 11개의 스킬을 제공합니다.
+**oh-my-cloud-skills**는 AWS 클라우드 작업을 위한 [Claude Code](https://claude.ai/code) 플러그인 마켓플레이스입니다. 3개의 플러그인이 총 18개의 AI 에이전트와 11개의 스킬을 제공합니다.
 
 ## 플러그인 목록
 
 | 플러그인 | 설명 | Agents | Skills |
 |----------|------|--------|--------|
-| [aws-content-plugin](/docs/aws-content-plugin/overview) | 프레젠테이션, 다이어그램, 문서, GitBook, 워크샵 | 7 | 5 |
-| [aws-ops-plugin](/docs/aws-ops-plugin/overview) | EKS, 네트워크, IAM, 옵저버빌리티, 스토리지, DB, 비용 | 8 | 5 |
+| [aws-content-plugin](/docs/aws-content-plugin/overview) | 프레젠테이션, 다이어그램, 문서, GitBook, 워크샵 | 8 | 5 |
+| [aws-ops-plugin](/docs/aws-ops-plugin/overview) | EKS, 네트워크, IAM, 옵저버빌리티, 스토리지, DB, 비용 | 9 | 5 |
 | [kiro-power-converter](/docs/kiro-power-converter/overview) | Claude Code 플러그인 → Kiro Power 변환 | 1 | 1 |
 
 ## 설치 방법

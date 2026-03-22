@@ -36,9 +36,15 @@ The global frontmatter defines presentation-wide settings. In single-file format
 remarp: true
 version: 1
 title: "AWS Architecture Deep Dive"
-author: "Cloud Team"
-audience: "클라우드 엔지니어 (중급)"
-date: 2025-01-15
+speaker:
+  name: "오준석 (Junseok Oh)"
+  title: "Sr. Solutions Architect"
+  company: "AWS"
+audience: "클라우드 엔지니어"
+level: "300"
+quiz: true
+duration: 85
+date: 2026-03-20
 event: "AWS Summit 2025"
 lang: ko
 
@@ -51,23 +57,19 @@ blocks:
     duration: 25
   - name: hands-on
     title: "Hands-On Lab"
-    duration: 45
+    duration: 30
 
 theme:
   primary: "#232F3E"
-  accent: "#FF9900"
-  font: "Amazon Ember"
-  codeTheme: "github-dark"
+  accent: "#6c5ce7"
+  footer: "© 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark."
+  logo: "./common/pptx-theme/images/logo_1.png"
+  badge: "./common/pptx-theme/images/Picture_8.png"
+  background: "./common/pptx-theme/images/Picture_13.png"
 
 transition:
   default: slide
   duration: 400
-
-keys:
-  next: ["ArrowRight", "Space", "n"]
-  prev: ["ArrowLeft", "Backspace", "p"]
-  overview: ["o", "Escape"]
-  presenter: ["s"]
 ---
 ```
 
@@ -78,13 +80,20 @@ keys:
 | `remarp` | boolean | Yes | Must be `true` to enable remarp processing |
 | `version` | number | No | Format version (default: 1) |
 | `title` | string | Yes | Presentation title (used in HTML `<title>`) |
-| `author` | string | No | Presenter name |
-| `audience` | string | No | Target audience description (기술 수준/역할) |
+| `speaker` | object | Yes | Speaker info (structured) |
+| `speaker.name` | string | Yes | Speaker name |
+| `speaker.title` | string | Yes | Job title |
+| `speaker.company` | string | Yes | Company/organization |
+| `audience` | string | Yes | Target audience (역할/직군) |
+| `level` | string | Yes | Target level (`100`-`400` or 입문/중급/고급/전문가) |
+| `quiz` | boolean | Yes | Include per-block quizzes |
+| `duration` | number | Yes | Total duration in minutes — must match sum of blocks durations |
 | `date` | date | No | Presentation date (YYYY-MM-DD) |
 | `event` | string | No | Event or conference name |
 | `lang` | string | No | Language code (`ko`, `en`, `ja`) |
 | `blocks` | array | Yes | Block definitions (see below) |
 | `theme` | object | No | Theme configuration |
+| `author` | string | No | (deprecated) Fallback for `speaker.name` |
 | `transition` | object | No | Transition defaults |
 | `keys` | object | No | Keyboard shortcut overrides |
 
@@ -105,6 +114,10 @@ theme:
   accent: "#FF9900"        # Accent color (highlights, links)
   font: "Amazon Ember"     # Body font family
   codeTheme: "github-dark" # Code syntax theme
+  footer: "© 2026, ..."   # Footer text for all slides
+  logo: "./common/pptx-theme/images/logo.png"       # Logo image path
+  badge: "./common/pptx-theme/images/badge.png"      # Badge image path (optional)
+  background: "./common/pptx-theme/images/bg.png"    # Background image path (optional)
 ```
 
 ### Transition Configuration
@@ -155,6 +168,132 @@ Content about regions and availability zones...
 | `block` | string | Yes | Block name (must match `blocks[].name` in global frontmatter) |
 | `title` | string | No | Block title (overrides global blocks[].title) |
 
+### Slide Separator Rules
+
+Slides are separated by `---` on its own line. Directives go **immediately after** the separator, with NO extra `---` block.
+
+#### Recommended: Slide Comment Pattern
+
+소스 가독성을 위해 각 슬라이드에 번호/제목 주석을 권장합니다:
+
+```markdown
+---
+<!-- Slide 1: Cover -->
+@type: cover
+
+# AIOps Deep Dive
+
+---
+<!-- Slide 2: Agenda -->
+
+## 오늘의 내용
+```
+
+주석은 converter가 무시하므로 출력에 영향 없습니다. `<!-- Slide N: Title -->` 형식을 일관되게 사용하면 소스 탐색이 용이합니다.
+
+#### WRONG — per-slide frontmatter (creates blank slides)
+
+```markdown
+---
+<!-- Slide 2: Block Title -->
+---
+@type: title
+@transition: fade
+---
+
+# AIOps Foundation
+```
+
+The converter splits on `---` and creates empty/comment-only slide fragments.
+
+#### CORRECT — directives immediately after separator
+
+```markdown
+---
+@type: title
+@transition: fade
+
+# AIOps Foundation
+```
+
+Directives use `@` prefix on lines immediately after `---`. No wrapping `---` block around them.
+
+### Supported `:::` Block Types
+
+Only these fenced div blocks are recognized by the converter:
+
+| Block | Purpose |
+|-------|---------|
+| `:::click` | Fragment animation — content appears on click |
+| `:::left` / `:::right` | Two-column layout halves |
+| `:::col` | Generic column in grid layouts |
+| `:::cell` | Grid cell |
+| `:::notes` | Speaker notes (hidden in presentation) |
+| `:::canvas` | Canvas DSL diagram block |
+| `:::css` | Per-slide CSS overrides |
+| `:::html` | Raw HTML block (no markdown processing) |
+| `:::script` | JavaScript block (executes on slide load) |
+
+| `::: tab "Title"` | Tab section in `@type: tabs` slides |
+
+**NOT supported** (will render as literal text): `:::compare`, `:::option`, `:::buttons`, `:::tabs`, `:::timeline`
+
+For tabs slides, use either `::: tab "Title"` blocks or `### ` headings — both are supported. For compare slides, use 2+ `### ` headings. For timeline, use ordered lists (NO `{.click}` — timeline has built-in ↑↓ keyboard step navigation via `__canvasStep`).
+
+### :::html — Raw HTML Block
+
+Embeds raw HTML directly into the slide body without markdown processing. Use for complex interactive layouts that can't be expressed in markdown.
+
+```markdown
+:::html
+<div class="simulator-layout">
+  <div class="slider-group">
+    <input type="range" id="cpu" min="0" max="2000" value="500">
+  </div>
+  <div class="yaml-output" id="output"></div>
+</div>
+:::
+```
+
+- Content is inserted as-is (no markdown conversion)
+- Position in slide is preserved (placeholder-based)
+- Can be combined with :::css for styling and :::script for behavior
+- Multiple :::html blocks per slide are supported
+
+#### :::html 렌더링 컨텍스트
+
+`:::html` 블록이 렌더링되는 환경을 이해해야 레이아웃 문제를 방지할 수 있습니다:
+
+- **렌더링 위치**: `.slide-body` (`flex: 1`) 안에 삽입됨
+- **슬라이드 패딩 이미 적용**: 외부에 `2rem 2.7rem` 패딩이 존재하므로 `:::html` 내부에서 추가 패딩을 최소화할 것 (합계 ≤60px)
+- **CSS 변수 사용 가능**: `var(--bg-card)`, `var(--text)`, `var(--accent)`, `var(--border)` 등 테마 변수가 스코프 내에 있음
+- **유틸리티 클래스 사용 가능**: `.col-2`, `.col-3`, `.flow-h`, `.flow-v` 등 테마 레이아웃 클래스 사용 가능
+- **`<div>`가 `<p>` 안에 중첩되지 않도록 주의**: `:::html` 앞뒤에 빈 줄을 넣어 마크다운 파서가 `<p>` 태그로 감싸지 않게 할 것
+- **max-height 필수**: 최상위 컨테이너에 `max-height: 500px` 또는 `calc(100% - 2rem)` 설정
+- **반응형 단위 사용**: `px` 대신 `rem`, `%`, `fr`, `clamp()` 사용 (border/shadow 제외)
+- **한국어 텍스트**: `word-break: keep-all; overflow-wrap: break-word;` 필수 적용
+
+> 상세 레이아웃 규칙과 패턴은 `interactive-patterns-guide.md` §0 참조.
+
+### :::script — JavaScript Block
+
+Adds JavaScript that executes when the slide loads. Each block is wrapped in an IIFE for scope isolation.
+
+```markdown
+:::script
+const slider = document.getElementById('cpu');
+slider.oninput = () => {
+  document.getElementById('output').textContent =
+    `resources:\n  requests:\n    cpu: ${slider.value}m`;
+};
+:::
+```
+
+- Wrapped in `(function(){ ... })()` automatically
+- Executes after slide HTML is in DOM
+- Multiple :::script blocks per slide are supported
+- Use with :::html for interactive widgets
+
 ---
 
 ## Slide Directives
@@ -178,7 +317,7 @@ Slide directives control individual slide behavior. Place them on the line immed
 
 | Directive | Values | Description |
 |-----------|--------|-------------|
-| `@type` | `content`, `compare`, `canvas`, `quiz`, `tabs`, `timeline`, `checklist`, `code` | Slide type |
+| `@type` | `content`, `compare`, `canvas`, `quiz`, `tabs`, `timeline`, `checklist`, `code`, `agenda`, `steps`, `cards`, `slider`, `cover`, `thankyou`, `iframe` | Slide type |
 | `@layout` | `default`, `two-column`, `three-column`, `grid-2x2`, `split-left`, `split-right` | Layout preset |
 | `@transition` | `none`, `fade`, `slide`, `convex`, `concave`, `zoom` | Slide-specific transition |
 | `@background` | CSS color/gradient/image | Slide background |
@@ -202,6 +341,37 @@ Parameters (space-separated after path):
 - **size**: CSS max-width value (`80%`, `400px`, `50vh`)
 
 Output: `<div>` with text-align + `<img class="slide-img">` with max-width constraint.
+
+### Architecture Diagram 삽입 패턴
+
+전체 아키텍처 개요는 draw.io로 제작한 PNG/SVG를 `@img:`로 삽입합니다.
+Canvas DSL은 step animation이 유효한 경우에만 사용합니다.
+
+```markdown
+---
+@type: content
+---
+## AWS AIOps Service Map
+
+@img: diagrams/aiops-service-map.png center 90%
+
+:::notes
+{timing: 3min}
+이 슬라이드는 전체 AIOps 아키텍처를 보여줍니다...
+:::
+```
+
+Diagram 파일은 프레젠테이션 디렉토리의 `diagrams/` 폴더에 저장:
+```
+{slug}/
+├── diagrams/
+│   ├── aiops-service-map.png
+│   └── container-observability.png
+├── 01-aiops-foundation.md
+└── ...
+```
+
+**선택 기준**: 아키텍처를 한눈에 보여주는 정적 구조 → `@img:` + draw.io 이미지. 단계별 흐름을 애니메이션으로 설명 → `@type: canvas` + `:::canvas` DSL.
 
 ### Type Auto-Detection
 
@@ -435,11 +605,227 @@ Specify animation type with the animation name:
 | `.strike` | Strikethrough text |
 | `.fade-out` | Fade out (for removing elements) |
 
+### Fragment Best Practices
+
+#### Avoid Excessive Per-Line `{.click}`
+
+Adding `{.click}` to every bullet point creates a tedious one-by-one reveal that slows down the presentation. Instead, group related content with `:::click` blocks for meaningful reveals:
+
+```markdown
+<!-- BAD: every line clicks individually — boring and slow -->
+- CloudWatch 기본 설정 {.click}
+- 로그 중앙화 {.click}
+- Anomaly Detection 활성화 {.click}
+- DevOps Guru 도입 {.click}
+
+<!-- GOOD: group by meaning with :::click blocks -->
+:::click
+### Phase 1: Foundation (1-2주)
+- CloudWatch 기본 설정
+- 로그 중앙화
+:::
+
+:::click
+### Phase 2: Detection (2-4주)
+- Anomaly Detection 활성화
+- DevOps Guru 도입
+:::
+```
+
+**When to use `{.click}` (individual):** Independent key points, statistics, or progressive number reveals.
+**When to use `:::click` (block):** Title + list, phase + description, card + content — any semantic group.
+
+#### Heading + Children: Use `:::click` Block
+
+`{.click}` on a heading only animates the heading itself — child content below it is pre-visible. To animate a heading together with its content, use `:::click` block:
+
+```markdown
+<!-- BAD: heading animates but list stays visible -->
+### ROI Analysis {.click}
+- Cost savings: $10,000/month
+- Time savings: 30hrs/week
+
+<!-- GOOD: heading + list animate as one unit -->
+:::click
+### ROI Analysis
+- Cost savings: $10,000/month
+- Time savings: 30hrs/week
+:::
+```
+
+#### Table Cells: Avoid `{.click}` Inside Tables
+
+`{.click}` in table cells (`<td>`) has limited support. For progressive table reveals, use one of these alternatives:
+
+```markdown
+<!-- Option 1: Fragment the entire table row description outside the table -->
+**MTTR**: 4hrs → 30min {.click}
+**Alert noise**: 1000/day → 50/day {.click}
+
+<!-- Option 2: Use two-column with left=labels, right=values with {.click} -->
+@layout: two-column
+
+::: left
+### Before
+- MTTR: 4 hours
+- Alert noise: 1,000+/day
+:::
+
+::: right
+### After
+- MTTR: 30 min {.click}
+- Alert noise: 50/day {.click}
+:::
+```
+
+#### Two-Column Fragment Order
+
+`gen_fragment_wrappers()` processes elements by **type** (`<p>` first, then `<li>`), not by DOM order. If left column uses `<li>` (list items) and right column uses `<p>` (bold text paragraphs), the right column gets lower fragment indices and appears first.
+
+**Solutions:**
+1. Use `order=N` to explicitly control reveal order across columns
+2. Use the same element type in both columns (both lists or both bold paragraphs)
+
+```markdown
+<!-- BAD: mixed types — right column <p> appears before left column <li> -->
+::: left
+- Item A {.click}
+- Item B {.click}
+:::
+::: right
+**Item C** {.click}
+**Item D** {.click}
+:::
+
+<!-- GOOD: explicit order controls left-to-right reveal -->
+::: left
+- Item A {.click order=1}
+- Item B {.click order=2}
+:::
+::: right
+**Item C** {.click order=3}
+**Item D** {.click order=4}
+:::
+```
+
+### Reference Links
+
+슬라이드 하단에 참조 링크를 표시합니다. `{.reference}[텍스트](URL)` 형태로 사용:
+
+```markdown
+## AIOps 아키텍처
+
+주요 구성 요소를 살펴봅니다.
+
+{.reference}[EKS 모범 사례](https://docs.aws.amazon.com/eks/latest/best-practices/)
+{.reference}[CloudWatch 가이드](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/)
+```
+
+여러 개를 한 슬라이드에 사용하면 `|`로 구분되어 하단에 작은 폰트로 표시됩니다. 본문에서는 자동 제거되므로 슬라이드 내용에 영향을 주지 않습니다.
+
+#### Content Overflow Prevention (MANDATORY)
+
+**Per-slide content limits** — exceeding these causes vertical overflow:
+
+| Content type | Maximum per slide |
+|-------------|------------------|
+| Heading + bullet list | 1 heading + 6–8 bullets |
+| Heading + paragraphs | 1 heading + 3–4 paragraphs |
+| Numbered list + sub-bullets | 3 items with 2 sub-bullets each |
+| Bold sections + descriptions | 3 sections (use two-column for 4+) |
+| `:::html` block | max-height 500px, 패딩 합계 ≤60px, 반응형 단위 필수 |
+
+**Rules**:
+1. When a slide has 4+ major sections (e.g., a 4-phase roadmap), **must** use `@layout: two-column` and split evenly across `:::left` / `:::right`
+2. Numbered list with 4+ items AND sub-bullets → split into two columns (items 1-2 left, 3-4+ right)
+3. Never place more than 8 visible elements (bullets, paragraphs, or bold headings) on a single-column slide
+4. If `{.click}` fragments reveal 4+ groups, ensure the fully-revealed state still fits within the slide area
+
+When a slide has 4+ major sections, use `@layout: two-column` to split content:
+
+```markdown
+<!-- BAD: 4 phases overflow vertically -->
+@type: content
+
+## Roadmap
+**Phase 1** ... **Phase 2** ... **Phase 3** ... **Phase 4** ...
+
+<!-- GOOD: split into two columns -->
+@layout: two-column
+
+## Roadmap
+
+::: left
+**Phase 1: Foundation (1-2wk)** {.click}
+- Item 1
+- Item 2
+
+**Phase 2: Detection (2-4wk)** {.click}
+- Item 1
+- Item 2
+:::
+
+::: right
+**Phase 3: Analysis (2-4wk)** {.click}
+- Item 1
+- Item 2
+
+**Phase 4: Self-Healing (4-8wk)** {.click}
+- Item 1
+- Item 2
+:::
+```
+
 ---
 
 ## Canvas DSL
 
 The Canvas DSL provides a declarative way to create animated diagrams with step-based reveals.
+
+### Canvas Layout Guidelines
+
+Canvas uses a 960×400 coordinate space. Follow these rules to avoid overlapping:
+
+| Rule | Constraint |
+|------|-----------|
+| **Box min spacing** | 40px gap between boxes (edge to edge) |
+| **Icon min spacing** | 60px gap between icons (center to center) |
+| **Arrow clearance** | Arrows must not pass through boxes/icons — route around them |
+| **Label clearance** | Labels must not overlap with other elements — offset by 10px minimum |
+| **X range** | Use 40–880 (leave 40px margins on both sides) |
+| **Y range** | Use 30–350 (leave 30px top margin, 50px bottom for labels) |
+| **Layer spacing** | Vertical layers should be 80–120px apart |
+| **Box width** | `width ≥ label_length × 9` (한글 label: `× 14`). E.g., "API Gateway" (11 chars) → width ≥ 99 → use 120 |
+| **Column formula** | `X_start = 40 + col_index × (880 / num_cols)`. E.g., 3 cols → X = 40, 333, 627 |
+| **Label-arrow gap** | 20px minimum between label text and any arrow path |
+
+**Workflow**: For complex diagrams, sketch in drawio or mermaid first to determine optimal layout, then convert coordinates to canvas DSL. This prevents alignment issues that are hard to fix after the fact.
+
+**Column layout quick-reference** (960×400 space):
+
+| Columns | X positions (box center) | Recommended box width |
+|---------|-------------------------|----------------------|
+| 2 | 240, 720 | 160–200 |
+| 3 | 160, 480, 800 | 120–160 |
+| 4 | 120, 340, 560, 780 | 100–130 |
+| 5 | 100, 270, 480, 650, 820 | 80–110 |
+
+```markdown
+<!-- GOOD: evenly spaced 3-column layout -->
+:::canvas
+box a "Service A" at 80,180 size 120,50 color #FF9900 step 1
+box b "Service B" at 380,180 size 120,50 color #FF9900 step 2
+box c "Service C" at 680,180 size 120,50 color #3B48CC step 3
+arrow a -> b "request" step 4
+arrow b -> c "query" step 4
+:::
+
+<!-- BAD: elements too close, labels overlap -->
+:::canvas
+box a "Service A" at 100,200 size 120,60 color #FF9900
+box b "Service B" at 180,200 size 120,60 color #FF9900
+:::
+```
 
 ### Basic Canvas Block
 
@@ -503,10 +889,20 @@ icon table "DynamoDB" at 400,150 size 48 step 3
 :::
 ```
 
-#### Arrow Element
+#### Arrow Element (Orthogonal Routing)
+
+화살표는 자동으로 직교(orthogonal) 경로로 라우팅됩니다. 대각선 직선 대신 수평/수직 세그먼트만 사용하는 draw.io 스타일의 직각 꺾임 경로를 생성합니다.
+
 ```
 arrow <from-id> -> <to-id> "<label>" [color <color>] [style <dashed|dotted>] [step <n>]
 ```
+
+라우팅 패턴:
+- **직선**: 두 요소가 같은 축에 정렬된 경우
+- **L자형**: 측면↔상하 앵커 조합 (수평→수직 또는 수직→수평)
+- **Z자형**: 같은 유형 앵커이면서 축이 어긋난 경우 (수평→수직→수평 또는 수직→수평→수직)
+
+앵커 자동 선택: 주 이동 방향(dx vs dy)에 따라 최적 앵커 쌍(좌/우/상/하 중앙)이 선택됩니다. 중간에 다른 요소가 있으면 자동 충돌 회피 경로를 생성합니다.
 
 ```markdown
 :::canvas
@@ -649,6 +1045,27 @@ Key points:
 - Explain the architecture
 - Show the demo
 - Answer questions
+:::
+```
+
+### Good Speaker Notes Example
+
+```markdown
+:::notes
+{timing: 2min}
+{cue: pause}
+이 슬라이드에서는 CloudWatch Container Insights의 핵심 메트릭 3가지를 살펴보겠습니다.
+
+먼저 CPU 사용률인데요, 단순히 높다 낮다가 아니라 request 대비 실제 사용량의 비율을 봐야 합니다.
+실무에서 흔한 실수가 limit만 설정하고 request를 너무 낮게 잡는 건데, 이러면 스케줄러가 노드를 과밀하게 채워서 throttling이 발생합니다.
+
+두 번째로 메모리 Working Set인데요, RSS가 아니라 Working Set을 봐야 하는 이유는 커널이 실제로 회수할 수 없는 메모리가 이것이기 때문입니다.
+
+{cue: question}
+혹시 여기서 OOMKilled를 경험해보신 분 계신가요? — 네, 대부분 이 메트릭을 모니터링하지 않아서 발생합니다.
+
+{cue: transition}
+그러면 이 메트릭들을 실시간으로 어떻게 대시보드에 구성하는지 다음 슬라이드에서 보겠습니다.
 :::
 ```
 
@@ -825,6 +1242,113 @@ Features:
 - **Description text**: Lines below each `###` heading appear as description text
 - **Keyboard navigation**: ↑↓ keys step through timeline, highlighting active step with done/active states
 
+> **WARNING**: Do NOT add `{.click}` to timeline items. Timeline uses its own `__canvasStep` keyboard navigation (↑↓ keys). Adding `{.click}` breaks the bold-title regex parsing in the converter and prevents step separation. Timeline items are revealed by ↑↓ navigation, not by click fragments.
+
+### Agenda Slides
+
+Session agenda with numbered dots, time labels, connectors, and optional break markers.
+
+**Directives:**
+- `@timing` — total session duration (displayed as subtitle)
+
+**Syntax:**
+
+```markdown
+@type: agenda
+@timing: 40min
+
+## Agenda
+
+1. 개요 & 아키텍처 (10분)
+2. 네트워킹 & 트래픽 (10분)
+3. 노드 구성 & 운영 (10분)
+- Break (5분)
+4. 고급 패턴 & 전략적 가치 (10분)
+
+> 질문은 각 Block 종료 시에 받겠습니다.
+```
+
+**Rules:**
+- Use topic names only — do NOT prefix with "Block N" (the renderer adds numbered dots automatically)
+- Break items: `- Break (duration)` or `- 휴식 (duration)` — rendered as ☕ break marker
+- Use `@timing` directive to show total session duration
+- Add a `> blockquote` for callout text below the timeline
+
+**Rendering:**
+- Numbered items → horizontal dots with connectors
+- `- Break (duration)` or `- 휴식 (duration)` → yellow break marker with ☕
+- First numbered step gets `active` highlight
+- `> blockquote` text → callout box below the timeline
+- `@timing` value → subtitle "총 X 세션"
+
+### Steps Slides
+
+Process visualization with numbered step indicators. Unlike agenda (which shows session schedule with time labels), steps are for generic process/workflow diagrams.
+
+**Directives:**
+- `@steps-shape`: `circle` (default), `rect`, or `icon`
+- `@steps-layout`: `horizontal` (default) or `vertical`
+- `@steps-icon`: path to icon file (used when shape is `icon`)
+
+**Format 1: ### headings with descriptions**
+```markdown
+---
+@type: steps
+@steps-shape: circle
+@steps-layout: horizontal
+
+## 이번 세션에서 다룰 내용
+
+### 현황 분석
+운영 환경의 문제점과 과제
+
+### 자동화 설계
+이벤트 기반 자동 복구 아키텍처
+
+### 구현 및 검증
+Lambda + EventBridge 실전 구현
+```
+
+**Format 2: Numbered list with bold title + description**
+```markdown
+---
+@type: steps
+@steps-shape: rect
+
+## Agenda
+
+1. **Problem Statement** — Why manual remediation fails at scale
+2. **Architecture Design** — Event-driven auto-remediation patterns
+3. **Implementation** — Step-by-step Lambda + EventBridge walkthrough
+4. **Live Demo** — See it in action {.click}
+```
+
+**Format 3: Vertical layout with icons**
+```markdown
+---
+@type: steps
+@steps-shape: icon
+@steps-layout: vertical
+@steps-icon: icons/Architecture-Service-Icons_07312025/Arch_AWS-Lambda_48.svg
+
+## Process Flow
+
+### Detect
+CloudWatch alarm triggers EventBridge rule
+
+### Evaluate
+Lambda function assesses the incident severity
+
+### Remediate
+Automated runbook executes corrective action
+```
+
+Features:
+- **Shape options**: `circle` (numbered circles), `rect` (rounded rectangles), `icon` (custom SVG/PNG)
+- **Layout options**: `horizontal` (side-by-side) or `vertical` (stacked)
+- **Click reveal**: Add `{.click}` to step titles for fragment animation
+- **Connectors**: Automatic lines between steps
+
 ### Checklist Slides
 
 Interactive click-to-toggle checklists. Items can include expandable code blocks that reveal on check:
@@ -855,6 +1379,180 @@ Interactive click-to-toggle checklists. Items can include expandable code blocks
 ```
 
 When a checklist item has a code block underneath, clicking the checkbox expands/collapses the code block.
+
+---
+
+## Data Visualization in Remarp
+
+Remarp supports data visualization through Chart.js integration and custom HTML/CSS patterns for KPI cards, dashboards, and infographics.
+
+### Chart.js Slides
+
+To use Chart.js in Remarp slides, inject the Chart.js CDN via the `@head` directive in frontmatter:
+
+```markdown
+---
+@type: content
+@head: <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+---
+```
+
+Alternatively, inject Chart.js directly in an `:::html` block within the slide.
+
+**IMPORTANT**: Always include `Chart.defaults.animation = false;` before creating charts. This ensures reliable rendering, especially when navigating between slides or exporting to PDF.
+
+### Chart.js in :::canvas js vs HTML <canvas>
+
+There are two approaches for canvas-based graphics in Remarp:
+
+| Approach | Use Case | API |
+|----------|----------|-----|
+| `:::canvas js` block | Custom canvas drawing with step navigation | Uses reactive-presentation canvas system (`setupCanvas`, `Colors`, step navigation) |
+| `<canvas>` in `:::html` block | Standard Chart.js charts | Uses Chart.js API directly |
+
+**Recommendation**: Use `:::html` with `<canvas>` for Chart.js charts (bar, line, pie, doughnut, etc.). Use `:::canvas js` only for custom procedural drawing that needs the reactive-presentation canvas system with step-based reveals.
+
+### KPI Card Slide Example
+
+KPI cards display key metrics with delta indicators:
+
+```markdown
+---
+@type: content
+---
+# Monthly Performance
+
+:::html
+<div class="kpi-row">
+  <div class="kpi-card">
+    <div class="kpi-value">$2.4M</div>
+    <div class="kpi-delta positive">↑ 12.5%</div>
+    <div class="kpi-label">Revenue</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">1,847</div>
+    <div class="kpi-delta positive">↑ 8.3%</div>
+    <div class="kpi-label">Active Users</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">99.9%</div>
+    <div class="kpi-delta negative">↓ 0.1%</div>
+    <div class="kpi-label">Uptime</div>
+  </div>
+</div>
+:::
+```
+
+The `.kpi-row`, `.kpi-card`, `.kpi-value`, `.kpi-delta`, and `.kpi-label` classes are provided by the reactive-presentation theme. Use `.positive` or `.negative` on `.kpi-delta` to show green/red coloring.
+
+### Dashboard Slide Example
+
+Combine KPI cards with Chart.js charts for dashboard-style slides:
+
+```markdown
+---
+@type: content
+@head: <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+---
+# Service Dashboard
+
+:::html
+<div class="kpi-row" style="margin-bottom: 1rem;">
+  <div class="kpi-card">
+    <div class="kpi-value">342</div>
+    <div class="kpi-delta positive">↑ 15%</div>
+    <div class="kpi-label">Requests/sec</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">23ms</div>
+    <div class="kpi-delta positive">↑ 5%</div>
+    <div class="kpi-label">P99 Latency</div>
+  </div>
+</div>
+<div class="chart-container">
+  <canvas id="dash-chart"></canvas>
+</div>
+<script>
+Chart.defaults.animation = false;
+new Chart(document.getElementById('dash-chart'), {
+  type: 'line',
+  data: {
+    labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+    datasets: [{
+      label: 'Requests',
+      data: [280,310,295,342,380,290,310],
+      borderColor: '#6c5ce7',
+      backgroundColor: 'rgba(108,92,231,0.1)',
+      fill: true, tension: 0.3
+    }]
+  },
+  options: { plugins: { legend: { labels: { color: '#9ba1b8' }}}, scales: { x: { ticks: { color: '#6b7194' }}, y: { ticks: { color: '#6b7194' }, grid: { color: '#2d3250' }}}}
+});
+</script>
+:::
+```
+
+### Infographic Slide Example
+
+Create infographic-style slides with hero stats, icon grids, and progress bars:
+
+```markdown
+---
+@type: content
+---
+# Cloud Migration Progress
+
+:::html
+<div class="infographic">
+  <!-- Hero Stat -->
+  <div class="hero-stat">
+    <div class="hero-value">78%</div>
+    <div class="hero-label">Migration Complete</div>
+  </div>
+
+  <!-- Icon Grid -->
+  <div class="icon-grid">
+    <div class="icon-item completed">
+      <img src="icons/Arch_Amazon-EC2_48.svg" alt="EC2">
+      <span>EC2 Instances</span>
+    </div>
+    <div class="icon-item completed">
+      <img src="icons/Arch_Amazon-RDS_48.svg" alt="RDS">
+      <span>Databases</span>
+    </div>
+    <div class="icon-item in-progress">
+      <img src="icons/Arch_Amazon-S3_48.svg" alt="S3">
+      <span>Storage</span>
+    </div>
+    <div class="icon-item pending">
+      <img src="icons/Arch_AWS-Lambda_48.svg" alt="Lambda">
+      <span>Serverless</span>
+    </div>
+  </div>
+
+  <!-- Progress Bars -->
+  <div class="progress-section">
+    <div class="progress-item">
+      <span class="progress-label">Compute</span>
+      <div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+      <span class="progress-value">100%</span>
+    </div>
+    <div class="progress-item">
+      <span class="progress-label">Database</span>
+      <div class="progress-bar"><div class="progress-fill" style="width: 85%"></div></div>
+      <span class="progress-value">85%</span>
+    </div>
+    <div class="progress-item">
+      <span class="progress-label">Storage</span>
+      <div class="progress-bar"><div class="progress-fill" style="width: 60%"></div></div>
+      <span class="progress-value">60%</span>
+    </div>
+  </div>
+</div>
+:::
+```
+
+Use the `.completed`, `.in-progress`, and `.pending` classes on `.icon-item` elements to indicate status with appropriate styling.
 
 ---
 
@@ -1845,3 +2543,266 @@ export function init(canvas, config) {
 # Uses the arch-flow animation module defined in frontmatter
 :::
 ```
+
+---
+
+## Remarp Component Examples
+
+Self-contained, copy-paste ready component snippets using `:::html`, `:::script`, and `:::css` blocks.
+
+### Gauge Component
+
+An animated circular gauge that fills to a target percentage.
+
+```markdown
+---
+@type: content
+---
+## System Health
+
+:::html
+<div class="gauge-container">
+  <svg class="gauge" viewBox="0 0 100 100">
+    <circle class="gauge-bg" cx="50" cy="50" r="45" fill="none" stroke="#2d3250" stroke-width="8"/>
+    <circle class="gauge-fill" cx="50" cy="50" r="45" fill="none" stroke="#00d68f" stroke-width="8"
+            stroke-dasharray="283" stroke-dashoffset="283" stroke-linecap="round"
+            transform="rotate(-90 50 50)"/>
+    <text class="gauge-value" x="50" y="55" text-anchor="middle" fill="#e8eaed" font-size="20">0%</text>
+  </svg>
+  <div class="gauge-label">CPU Usage</div>
+</div>
+:::
+
+:::css
+.gauge-container { text-align: center; }
+.gauge { width: 200px; height: 200px; }
+.gauge-fill { transition: stroke-dashoffset 1s ease-out; }
+.gauge-label { color: #9ba1b8; margin-top: 0.5rem; }
+:::
+
+:::script
+const target = 73;
+const circle = document.querySelector('.gauge-fill');
+const text = document.querySelector('.gauge-value');
+const circumference = 2 * Math.PI * 45;
+const offset = circumference - (target / 100) * circumference;
+circle.style.strokeDashoffset = offset;
+text.textContent = target + '%';
+:::
+```
+
+### Sparkline Component
+
+A compact inline SVG sparkline chart generated from data.
+
+```markdown
+---
+@type: content
+---
+## Weekly Trends
+
+:::html
+<div class="sparkline-row">
+  <div class="sparkline-item">
+    <span class="sparkline-label">Requests</span>
+    <svg class="sparkline" id="spark-requests" viewBox="0 0 100 30" preserveAspectRatio="none"></svg>
+    <span class="sparkline-value" id="spark-requests-val"></span>
+  </div>
+  <div class="sparkline-item">
+    <span class="sparkline-label">Latency</span>
+    <svg class="sparkline" id="spark-latency" viewBox="0 0 100 30" preserveAspectRatio="none"></svg>
+    <span class="sparkline-value" id="spark-latency-val"></span>
+  </div>
+</div>
+:::
+
+:::css
+.sparkline-row { display: flex; gap: 2rem; justify-content: center; margin: 2rem 0; }
+.sparkline-item { display: flex; align-items: center; gap: 0.5rem; }
+.sparkline-label { color: #9ba1b8; min-width: 80px; }
+.sparkline { width: 120px; height: 30px; }
+.sparkline-value { color: #e8eaed; font-weight: bold; min-width: 60px; }
+:::
+
+:::script
+function drawSparkline(id, data, color) {
+  const svg = document.getElementById(id);
+  const valEl = document.getElementById(id + '-val');
+  const max = Math.max(...data), min = Math.min(...data);
+  const range = max - min || 1;
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * 100;
+    const y = 30 - ((v - min) / range) * 28;
+    return `${x},${y}`;
+  }).join(' ');
+  svg.innerHTML = `<polyline points="${points}" fill="none" stroke="${color}" stroke-width="2"/>`;
+  valEl.textContent = data[data.length - 1].toLocaleString();
+}
+drawSparkline('spark-requests', [120, 145, 132, 178, 156, 189, 210], '#6c5ce7');
+drawSparkline('spark-latency', [45, 42, 48, 39, 44, 41, 38], '#00d68f');
+:::
+```
+
+### Progress Ring Component
+
+A CSS-animated progress ring with percentage display.
+
+```markdown
+---
+@type: content
+---
+## Migration Status
+
+:::html
+<div class="progress-rings">
+  <div class="ring-item">
+    <div class="ring" style="--progress: 85; --color: #00d68f;">
+      <span class="ring-value">85%</span>
+    </div>
+    <span class="ring-label">Compute</span>
+  </div>
+  <div class="ring-item">
+    <div class="ring" style="--progress: 62; --color: #6c5ce7;">
+      <span class="ring-value">62%</span>
+    </div>
+    <span class="ring-label">Storage</span>
+  </div>
+  <div class="ring-item">
+    <div class="ring" style="--progress: 94; --color: #00b8d9;">
+      <span class="ring-value">94%</span>
+    </div>
+    <span class="ring-label">Network</span>
+  </div>
+</div>
+:::
+
+:::css
+.progress-rings { display: flex; gap: 3rem; justify-content: center; margin: 2rem 0; }
+.ring-item { text-align: center; }
+.ring {
+  width: 120px; height: 120px; border-radius: 50%;
+  background: conic-gradient(var(--color) calc(var(--progress) * 3.6deg), #2d3250 0);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.ring::before {
+  content: ''; position: absolute; width: 90px; height: 90px;
+  background: #1a1a2e; border-radius: 50%;
+}
+.ring-value { position: relative; z-index: 1; color: #e8eaed; font-size: 1.5rem; font-weight: bold; }
+.ring-label { display: block; color: #9ba1b8; margin-top: 0.5rem; }
+:::
+```
+
+### Data Table Component
+
+A styled data table using the built-in `.data-table` class.
+
+```markdown
+---
+@type: content
+---
+## Instance Comparison
+
+:::html
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>Instance</th>
+      <th>vCPU</th>
+      <th>Memory</th>
+      <th>Price/hr</th>
+      <th>Use Case</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>t3.medium</code></td>
+      <td>2</td>
+      <td>4 GB</td>
+      <td>$0.0416</td>
+      <td>Dev/Test</td>
+    </tr>
+    <tr>
+      <td><code>m6i.large</code></td>
+      <td>2</td>
+      <td>8 GB</td>
+      <td>$0.096</td>
+      <td>General</td>
+    </tr>
+    <tr>
+      <td><code>c6i.xlarge</code></td>
+      <td>4</td>
+      <td>8 GB</td>
+      <td>$0.17</td>
+      <td>Compute</td>
+    </tr>
+    <tr>
+      <td><code>r6i.large</code></td>
+      <td>2</td>
+      <td>16 GB</td>
+      <td>$0.126</td>
+      <td>Memory</td>
+    </tr>
+  </tbody>
+</table>
+:::
+```
+
+The `.data-table` class is provided by the reactive-presentation theme and includes dark styling, hover effects, and responsive behavior.
+
+### CSS-only Donut Chart
+
+A donut chart using pure CSS conic-gradient — no JavaScript required.
+
+```markdown
+---
+@type: content
+---
+## Cost Breakdown
+
+:::html
+<div class="donut-chart-container">
+  <div class="donut-chart">
+    <div class="donut-hole">
+      <span class="donut-total">$4,250</span>
+      <span class="donut-subtitle">Monthly</span>
+    </div>
+  </div>
+  <div class="donut-legend">
+    <div class="legend-item"><span class="legend-color" style="background: #6c5ce7;"></span>Compute (45%)</div>
+    <div class="legend-item"><span class="legend-color" style="background: #00d68f;"></span>Storage (25%)</div>
+    <div class="legend-item"><span class="legend-color" style="background: #00b8d9;"></span>Network (18%)</div>
+    <div class="legend-item"><span class="legend-color" style="background: #ff6b6b;"></span>Other (12%)</div>
+  </div>
+</div>
+:::
+
+:::css
+.donut-chart-container { display: flex; align-items: center; justify-content: center; gap: 3rem; margin: 2rem 0; }
+.donut-chart {
+  width: 200px; height: 200px; border-radius: 50%;
+  background: conic-gradient(
+    #6c5ce7 0deg 162deg,
+    #00d68f 162deg 252deg,
+    #00b8d9 252deg 316.8deg,
+    #ff6b6b 316.8deg 360deg
+  );
+  display: flex; align-items: center; justify-content: center;
+}
+.donut-hole {
+  width: 120px; height: 120px; border-radius: 50%;
+  background: #1a1a2e; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.donut-total { color: #e8eaed; font-size: 1.5rem; font-weight: bold; }
+.donut-subtitle { color: #9ba1b8; font-size: 0.875rem; }
+.donut-legend { display: flex; flex-direction: column; gap: 0.5rem; }
+.legend-item { display: flex; align-items: center; gap: 0.5rem; color: #e8eaed; }
+.legend-color { width: 12px; height: 12px; border-radius: 2px; }
+:::
+```
+
+---
+
+For complex interactive patterns (simulators, dashboards, YAML builders), see [interactive-patterns-guide.md](interactive-patterns-guide.md).

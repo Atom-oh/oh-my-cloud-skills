@@ -23,7 +23,7 @@ title: "GitBook"
 
 ## 제공 리소스
 
-### reference/
+### references/
 
 | 참조 문서 | 설명 |
 |----------|------|

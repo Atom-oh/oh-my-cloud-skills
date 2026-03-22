@@ -7,6 +7,11 @@ triggers:
   - "compliance"
   - "security review"
   - "보안 감사"
+model: sonnet
+allowed-tools:
+  - Bash
+  - Read
+  - Grep
 ---
 
 # Ops Security Audit Skill

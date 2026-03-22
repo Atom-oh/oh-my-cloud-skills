@@ -100,6 +100,68 @@ aws cloudwatch get-metric-statistics \
   --period 60 --statistics Average
 ```
 
+### Amazon Managed Prometheus (AMP)
+
+```bash
+# 워크스페이스 목록
+aws amp list-workspaces
+
+# Remote Write 엔드포인트 확인
+aws amp describe-workspace --workspace-id $WORKSPACE_ID --query 'workspace.prometheusEndpoint'
+
+# AMP에 쓰는 Prometheus 파드 확인
+kubectl get pods -n prometheus -l app=prometheus
+kubectl logs -n prometheus -l app=prometheus --tail=20 | grep -i "remote_write"
+
+# awscurl로 AMP 쿼리
+awscurl --service aps --region $REGION \
+  "https://aps-workspaces.$REGION.amazonaws.com/workspaces/$WORKSPACE_ID/api/v1/query?query=up"
+```
+
+### Amazon Managed Grafana (AMG)
+
+```bash
+# 워크스페이스 목록
+aws grafana list-workspaces
+
+# 워크스페이스 상태 및 엔드포인트
+aws grafana describe-workspace --workspace-id $WORKSPACE_ID \
+  --query '{status: workspace.status, endpoint: workspace.endpoint}'
+
+# Grafana API로 데이터소스 목록
+curl -H "Authorization: Bearer $GRAFANA_API_KEY" \
+  "https://$GRAFANA_ENDPOINT/api/datasources"
+```
+
+### ADOT Collector
+
+```bash
+# ADOT 애드온 확인
+aws eks describe-addon --cluster-name $CLUSTER_NAME --addon-name adot
+
+# ADOT Collector 파드 확인
+kubectl get pods -n opentelemetry-operator-system
+kubectl get opentelemetrycollectors -A
+
+# Collector 설정 확인
+kubectl get opentelemetrycollector -n $NAMESPACE -o yaml
+```
+
+### Self-managed Prometheus/Grafana
+
+```bash
+# kube-prometheus-stack 확인
+helm list -n monitoring
+kubectl get pods -n monitoring
+
+# Prometheus 타겟
+kubectl port-forward -n monitoring svc/prometheus-operated 9090:9090 &
+curl -s localhost:9090/api/v1/targets | jq '.data.activeTargets | length'
+
+# Grafana 대시보드
+kubectl port-forward -n monitoring svc/grafana 3000:3000 &
+```
+
 ## 주요 메트릭 참조
 
 | 레벨 | 메트릭 | Warning | Critical |
@@ -146,9 +208,9 @@ flowchart TD
 
 | MCP 서버 | 용도 |
 |----------|------|
-| `awsdocs` | CloudWatch 문서, Container Insights 설정, Logs Insights 구문 |
-| `awsapi` | `cloudwatch:GetMetricStatistics`, `logs:StartQuery`, `logs:GetQueryResults` |
-| `awsknowledge` | 관측성 모범 사례 |
+| `awsdocs` | CloudWatch 문서, Container Insights 설정, Logs Insights 구문, AMP/AMG 가이드 |
+| `awsapi` | `cloudwatch:GetMetricStatistics`, `logs:StartQuery`, `logs:GetQueryResults`, `amp:ListWorkspaces`, `grafana:ListWorkspaces` |
+| `awsknowledge` | 관측성 모범 사례, AMP/AMG 아키텍처 패턴 |
 
 ## 사용 예시
 

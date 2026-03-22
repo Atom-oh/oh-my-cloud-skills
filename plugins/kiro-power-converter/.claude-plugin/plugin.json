@@ -1,8 +1,27 @@
 {
   "name": "kiro-power-converter",
-  "version": "1.2.1",
+  "version": "1.2.3",
   "description": "Convert Claude Code plugins to Kiro Power format. Supports GitHub URL, local path, marketplace name, and individual skill conversion.",
-  "author": { "name": "atomoh" },
-  "agents": ["./agents/kiro-converter-agent.md"],
-  "skills": ["./skills/kiro-convert"]
+  "author": {
+    "name": "atomoh"
+  },
+  "agents": [
+    "./agents/kiro-converter-agent.md"
+  ],
+  "skills": [
+    "./skills/kiro-convert"
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Kiro Power Converter loaded. Use 'convert to kiro' to start."
+          }
+        ]
+      }
+    ]
+  }
 }

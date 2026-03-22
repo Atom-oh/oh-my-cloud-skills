@@ -2,6 +2,12 @@
 name: database-agent
 description: "AWS database operations agent. Troubleshoots RDS/Aurora connectivity, DynamoDB throttling, ElastiCache, and database performance. Triggers on \"RDS\", \"Aurora\", \"DynamoDB\", \"ElastiCache\", \"database connection\", \"throttling\", \"DB 연결\", \"데이터베이스 오류\", \"스로틀링\" requests."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
+model: sonnet
+skills:
+  - ops-troubleshoot
+mcpServers:
+  - awsdocs
+  - awsapi
 ---
 
 # Database Agent

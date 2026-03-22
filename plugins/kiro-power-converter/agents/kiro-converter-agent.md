@@ -2,6 +2,9 @@
 name: kiro-converter-agent
 description: "Converts Claude Code plugins to Kiro Power format. Supports GitHub URL, local path, marketplace name, and individual skill conversion. Triggers on \"convert to kiro\", \"kiro power\", \"kiro convert\", \"export to kiro\", \"키로 변환\", \"키로 파워\", \"claude to kiro\", \"install kiro power\", \"kiro install\", \"키로 설치\" requests."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
+model: sonnet
+skills:
+  - kiro-convert
 ---
 
 # Kiro Power Converter Agent

@@ -2,6 +2,12 @@
 name: ops-coordinator-agent
 description: "Multi-domain incident coordination agent for AWS/EKS. Performs severity assessment, orchestrates specialist agents, and manages incident lifecycle. Triggers on \"incident\", \"outage\", \"서비스 장애\", \"긴급 대응\", \"복합 장애\" requests."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
+model: opus
+skills:
+  - ops-troubleshoot
+mcpServers:
+  - awsdocs
+  - awsapi
 ---
 
 # Ops Coordinator Agent

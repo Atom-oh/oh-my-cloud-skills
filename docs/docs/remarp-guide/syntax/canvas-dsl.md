@@ -7,6 +7,29 @@ title: Canvas DSL
 
 Canvas DSL은 애니메이션 다이어그램을 선언적으로 작성하는 도메인 특화 언어입니다. 복잡한 JavaScript 없이도 단계별로 나타나는 아키텍처 다이어그램을 만들 수 있습니다.
 
+:::danger Canvas 사용 전 필수 점검 (4-Box Rule)
+Canvas DSL은 **단순한 다이어그램에만 사용**합니다. 사용 전 반드시 확인하세요:
+
+1. **박스+아이콘 총 개수를 세기** - 4개 이하만 canvas 허용
+2. **5개 이상이면 canvas 사용 금지** - [HTML Architecture 패턴](#html-architecture-대안) 사용
+3. **단방향 직선 흐름(A->B->C)만** canvas 허용
+4. **다계층, 그룹, 분기 화살표**가 있으면 `:::html` + `:::css` 필수
+
+| 복잡도 | 방식 | 예시 |
+|--------|------|------|
+| **단순** (박스 4개 이하 + 화살표) | `:::canvas` DSL 허용 | A->B->C 단순 흐름 |
+| **중간** (박스 5개+, 다계층) | `:::html` + `:::css` **필수** | 3-tier 아키텍처, 서비스 맵 |
+| **복잡** (인터랙션 + 계산) | `:::html` + `:::script` 필수 | 슬라이더, 시뮬레이터, 대시보드 |
+| **정적 아키텍처** | `@img:` + draw.io | AWS 전체 아키텍처, VPC 네트워크 |
+
+**STOP 자가 점검**: Canvas 코드를 작성하기 전에 아래 체크리스트를 확인하세요:
+- [ ] 박스+아이콘 총 개수가 4개 이하인가?
+- [ ] 단방향 직선 흐름(A->B->C->D)인가?
+- [ ] 다계층, 그룹, 분기 화살표가 없는가?
+
+하나라도 "아니오"라면 **canvas 사용을 중단**하고 `:::html` + `:::css` 패턴을 사용하세요.
+:::
+
 ## 기본 문법
 
 ```markdown
@@ -124,7 +147,7 @@ icon custom "../common/aws-icons/services/Arch_Amazon-S3_48.svg" at 100,250 size
 
 ### Arrow (화살표)
 
-요소 간 연결을 그립니다.
+요소 간 연결을 그립니다. **화살표는 자동으로 직교(orthogonal) 경로로 라우팅되어** draw.io/Lucidchart 스타일의 직각 꺾임 경로를 생성합니다.
 
 ```
 arrow <from-id> -> <to-id> "<label>" [color <color>] [style <dashed|dotted>] [step <n>]
@@ -147,6 +170,34 @@ arrow b -> a "Response" color #4CAF50 style dashed step 3
 | `color` | 화살표 색상 |
 | `style` | `dashed` 또는 `dotted` |
 | `step n` | 해당 스텝에서 나타남 |
+
+#### Orthogonal 라우팅
+
+화살표는 대각선 직선 대신 수평/수직 세그먼트만 사용하는 직교 경로로 자동 라우팅됩니다:
+
+```
+직선 (같은 축):          L자형 꺾임:             Z자형 꺾임:
+A ─────────── B         A ───────┐              A ─────────┐
+                                 │                          │
+                                 B              ┌───────────┘
+                                                │
+                                                B
+```
+
+- **직선**: 두 요소가 같은 Y 또는 X 축에 있을 때
+- **L자형**: 한쪽이 측면 앵커, 한쪽이 상/하 앵커일 때 (수평→수직 또는 수직→수평)
+- **Z자형**: 양쪽 모두 측면 앵커이거나 양쪽 모두 상/하 앵커이면서 축이 어긋날 때
+
+앵커는 요소 간 주 이동 방향에 따라 자동 선택됩니다:
+
+| 이동 방향 | 출발 앵커 | 도착 앵커 |
+|-----------|-----------|-----------|
+| → 오른쪽 | 우측 중앙 | 좌측 중앙 |
+| ← 왼쪽 | 좌측 중앙 | 우측 중앙 |
+| ↓ 아래 | 하단 중앙 | 상단 중앙 |
+| ↑ 위 | 상단 중앙 | 하단 중앙 |
+
+중간 경로에 다른 요소가 있으면 자동으로 충돌 회피 경로를 생성합니다.
 
 ### Group (그룹)
 
@@ -264,6 +315,47 @@ graph LR
 - `erDiagram` - ER 다이어그램
 - `gantt` - 간트 차트
 - `pie` - 파이 차트
+
+## HTML Architecture 대안
+
+박스 5개 이상의 복잡한 다이어그램은 Canvas DSL 대신 `:::html` + `:::css` 패턴을 사용합니다. flexbox/grid 레이아웃이 더 안정적이고 유지보수가 쉽습니다.
+
+```markdown
+## Service Pipeline
+
+:::html
+<div class="flow-h">
+  <div class="flow-group bg-blue" data-fragment-index="1">
+    <div class="flow-group-label">수집</div>
+    <div class="icon-item"><img src="../common/aws-icons/services/Arch_Amazon-CloudWatch_48.svg"><span>CloudWatch</span></div>
+    <div class="icon-item"><img src="../common/aws-icons/services/Arch_AWS-X-Ray_48.svg"><span>X-Ray</span></div>
+  </div>
+  <div class="flow-arrow">-></div>
+  <div class="flow-group bg-orange" data-fragment-index="2">
+    <div class="flow-group-label">분석</div>
+    <div class="flow-box">DevOps Guru</div>
+  </div>
+</div>
+:::
+```
+
+### Canvas vs HTML Architecture 비교
+
+| 항목 | Canvas DSL | HTML Architecture |
+|------|------------|-------------------|
+| 적합한 경우 | 박스 4개 이하, 단순 흐름 | 박스 5개+, 다계층, 복잡한 레이아웃 |
+| 정렬/간격 | 수동 좌표 계산 | flexbox/grid 자동 처리 |
+| 순차 등장 | `step N` | `data-fragment-index="N"` |
+| 유지보수 | 좌표 수정 필요 | CSS만 수정 |
+
+### CSS 유틸리티 클래스
+
+theme.css에서 제공 (커스텀 CSS 불필요):
+
+- `flow-h` / `flow-v`: 수평/수직 플로우 컨테이너
+- `flow-group`: 요소 그룹 (배경색 적용)
+- `flow-box`, `flow-arrow`, `icon-item`: 박스, 화살표, 아이콘
+- `bg-blue`, `bg-orange`, `bg-pink`, `bg-green`: 색상 유틸리티
 
 ## JavaScript Escape Hatch
 

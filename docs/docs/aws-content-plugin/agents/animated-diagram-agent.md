@@ -120,6 +120,19 @@ SMIL 애니메이션이 포함된 SVG 오버레이 추가:
 | 하이라이트 플래시 | 1s | 3 times |
 | 순차 스태거 | dur/3 offset | indefinite |
 
+## Interactive Animation Pattern
+
+버튼 기반 상태 변경(스케일링, 배포, 장애조치)이 필요한 경우 SMIL 대신 JavaScript + CSS 전환을 사용합니다.
+
+### 시나리오 템플릿
+
+| 시나리오 | 트리거 키워드 | 컴포넌트 | 상태 |
+|----------|---------------|----------|------|
+| **Scaling** | "scaling", "autoscaling", "Karpenter" | 노드, 파드, 존 | steady → scaling-out → steady → scaling-in |
+| **Deployment** | "blue/green", "canary", "rolling update" | 서비스 그룹, 로드 밸런서, 트래픽 화살표 | v1-active → deploying-v2 → v2-active |
+| **Failover** | "failover", "disaster recovery", "multi-AZ" | 가용 영역, 헬스 체크, DNS 라우팅 | healthy → az-failure → failover → recovered |
+| **Pipeline** | "CI/CD", "pipeline", "CodePipeline" | 파이프라인 스테이지, 아티팩트 | idle → building → testing → deploying → complete |
+
 ## 출력물
 
 | 산출물 | 형식 | 위치 |

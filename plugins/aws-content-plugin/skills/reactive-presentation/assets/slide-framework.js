@@ -47,7 +47,7 @@ class SlideFramework {
       }
 
       this.createProgressBar();
-      this.createSlideCounter();
+      if (!this.pagination) this.createSlideCounter();
       this.createNavHint();
       if (this.pagination) this.createSlideNumber();
       this.createRefContainer();
