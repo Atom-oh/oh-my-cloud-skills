@@ -2,7 +2,8 @@
 .omc/
 
 # Claude Code
-.claude/
+.claude/*
+!.claude/settings.json
 
 # Playwright MCP
 .playwright-mcp/

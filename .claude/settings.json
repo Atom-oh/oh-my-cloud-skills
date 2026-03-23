@@ -1,0 +1,23 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [{
+          "type": "command",
+          "command": "bash -c 'CMD=\"$TOOL_INPUT_COMMAND\"; if echo \"$CMD\" | grep -q \"remarp_to_slides.py\"; then OUT_DIR=$(echo \"$CMD\" | grep -oP \"(?:build|sync)\\s+\\K\\S+\"); if [ -n \"$OUT_DIR\" ]; then COMMON=$(dirname \"$OUT_DIR\")/common; MISSING=\"\"; [ ! -f \"$COMMON/theme.css\" ] && MISSING=\"$MISSING theme.css\"; [ ! -f \"$COMMON/slide-framework.js\" ] && MISSING=\"$MISSING slide-framework.js\"; [ ! -f \"$COMMON/animation-utils.js\" ] && MISSING=\"$MISSING animation-utils.js\"; if [ -n \"$MISSING\" ]; then echo \"[ENV CHECK FAILED] Missing in $COMMON:$MISSING. Run: cp plugins/aws-content-plugin/skills/reactive-presentation/assets/* $COMMON/\"; else echo \"[ENV CHECK OK] common/ assets verified.\"; fi; fi; fi'"
+        }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [{
+          "type": "command",
+          "command": "jq -r '.tool_input.file_path // .tool_response.filePath // empty' | { read -r f; if [ -n \"$f\" ] && echo \"$f\" | grep -qE '/README\\.md$'; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"README.md was just modified. You MUST now read README.md and translate it to Korean, then write the result to README.ko.md in the same directory. Keep all markdown formatting, links, code blocks, and structure intact. Translate English text to natural Korean.\"}}'; fi; }",
+          "statusMessage": "Checking README sync..."
+        }]
+      }
+    ]
+  }
+}
