@@ -1165,6 +1165,11 @@ input[type="range"]::-webkit-slider-thumb {
   pointer-events: none;
 }
 
+/* Heading-group spacing: consecutive heading+content fragment sections */
+.heading-group + .heading-group {
+  margin-top: 1em;
+}
+
 /* ============================================================
    Slide Transitions
    ============================================================ */
