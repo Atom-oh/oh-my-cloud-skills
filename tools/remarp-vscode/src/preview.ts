@@ -347,7 +347,17 @@ export class RemarpPreviewPanel {
     }
 
     private _getHtmlForSlide(slide: Slide, totalSlides: number): string {
-        const { html: rawRenderedHtml, notes: rawNotes, notesArg } = this._renderMarkdown(slide.content, slide.index);
+        // Extract <!-- !issue: ... --> annotations before rendering
+        const issueRegex = /<!--\s*!issue:\s*(.+?)\s*-->/g;
+        const issues: string[] = [];
+        let issueMatch;
+        while ((issueMatch = issueRegex.exec(slide.content)) !== null) {
+            issues.push(issueMatch[1]);
+        }
+        // Strip issues from content before rendering
+        const cleanContent = slide.content.replace(/<!--\s*!issue:\s*.+?\s*-->\n?/g, '');
+
+        const { html: rawRenderedHtml, notes: rawNotes, notesArg } = this._renderMarkdown(cleanContent, slide.index);
 
         // Convert relative image paths to webview URIs (mirrors htmlPreview.ts behavior)
         const docDir = path.dirname(this._document.uri.fsPath);
@@ -824,6 +834,11 @@ export class RemarpPreviewPanel {
         .compare-btn { padding: 0.5rem 1.2rem; border: none; background: var(--surface); color: var(--text-muted); font-family: inherit; font-size: 0.9rem; cursor: pointer; transition: all 0.15s ease; }
         .compare-btn.active { background: var(--accent); color: #fff; }
         .compare-highlight { border-color: var(--accent) !important; box-shadow: 0 0 12px var(--accent-glow); }
+
+        /* Issue annotations */
+        .issue-bar { padding: 4px 12px; background: #2d1b00; border-bottom: 1px solid #664400; font-size: 12px; }
+        .issue-badge { display: inline-flex; align-items: center; gap: 4px; background: #443000; color: #ffbb33; border-radius: 4px; padding: 2px 8px; margin: 2px 4px 2px 0; font-size: 11px; line-height: 1.4; }
+        .issue-badge::before { content: '!'; display: inline-block; width: 14px; height: 14px; line-height: 14px; text-align: center; border-radius: 50%; background: #ff9900; color: #1a1a1a; font-size: 10px; font-weight: 700; flex-shrink: 0; }
     </style>
 </head>
 <body>
@@ -836,7 +851,8 @@ export class RemarpPreviewPanel {
             <button class="nav-button" onclick="prevSlide()" ${slide.index === 0 ? 'disabled' : ''}>Previous</button>
             <button class="nav-button" onclick="nextSlide()" ${slide.index === totalSlides - 1 ? 'disabled' : ''}>Next</button>
         </div>
-    </div>
+    </div>${issues.length > 0 ? `
+    <div class="issue-bar">${issues.map(iss => `<span class="issue-badge">${this._escapeHtml(iss)}</span>`).join('')}</div>` : ''}
     <div class="slide-container">
         <div class="slide-wrapper">
             <div class="${slideClasses}" data-remarp-id="${sid}">

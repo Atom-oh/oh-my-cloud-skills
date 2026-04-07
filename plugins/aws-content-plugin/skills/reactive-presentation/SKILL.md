@@ -175,6 +175,12 @@ python3 {skill-dir}/scripts/remarp_to_slides.py sync {repo}/{slug}/
 
 # Marp에서 Remarp로 마이그레이션
 python3 {skill-dir}/scripts/remarp_to_slides.py migrate content.md -o {repo}/{slug}/
+
+# 이슈 어노테이션 목록 추출
+python3 {skill-dir}/scripts/remarp_to_slides.py issues {repo}/{slug}/
+
+# JSON 형식으로 이슈 추출
+python3 {skill-dir}/scripts/remarp_to_slides.py issues {repo}/{slug}/ --json
 ```
 
 **Alternative Formats (명시적 요청 시에만):**

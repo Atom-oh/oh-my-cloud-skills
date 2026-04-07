@@ -228,7 +228,27 @@ HTML 빌드 후 Remarp 파일이 수정될 때마다 사용자가 수동으로 H
 
 **수동 트리거 원칙**: Remarp 수정이 자주 발생할 수 있으므로, 자동 hooks 대신 사용자가 최종 수정을 완료한 후 명시적으로 빌드를 요청합니다.
 
-### Phase 7: Enhancement
+### Phase 7: Issue-Driven Improvement (선택적)
+
+슬라이드에 `<!-- !issue: ... -->` 어노테이션이 있으면 이를 읽고 개선합니다.
+
+```bash
+# 전체 이슈 목록 확인
+python3 {plugin-dir}/skills/reactive-presentation/scripts/remarp_to_slides.py issues {repo}/{slug}/
+
+# JSON 형식으로 추출
+python3 {plugin-dir}/skills/reactive-presentation/scripts/remarp_to_slides.py issues {repo}/{slug}/ --json
+```
+
+**워크플로우**:
+1. `issues` 명령으로 프로젝트 내 모든 이슈 확인
+2. 각 이슈를 개선 프롬프트로 읽고 해당 슬라이드 수정
+3. 수정 완료 후 해당 `<!-- !issue: ... -->` 주석 제거
+4. `sync`로 변경된 블록만 증분 빌드
+
+이슈는 빌드 시 자동 제거되므로 프로덕션 HTML에는 포함되지 않습니다. Preview에서는 노란색 badge로 표시됩니다.
+
+### Phase 8: Enhancement (Canvas/Interactive)
 
 - Add Canvas animations to `@type: canvas` slides using animation-utils.js
 - Add interactive elements (compare toggles, tab content, timelines, sliders)
@@ -240,7 +260,7 @@ HTML 빌드 후 Remarp 파일이 수정될 때마다 사용자가 수동으로 H
   5. Re-run converter to produce final HTML with working animation
 - AWS 아이콘은 Phase 1에서 이미 추출됨. 추가 커스터마이징이 필요한 경우 여기서 진행.
 
-### Phase 8: Set Up Structure
+### Phase 9: Set Up Structure
 
 ```
 {repo}/
@@ -262,7 +282,7 @@ HTML 빌드 후 Remarp 파일이 수정될 때마다 사용자가 수동으로 H
 
 Copy assets: `cp {plugin-dir}/skills/reactive-presentation/assets/* {repo}/common/`
 
-### Phase 9: Quality Review (필수 — 생략 불가)
+### Phase 10: Quality Review (필수 — 생략 불가)
 
 콘텐츠 완성 후 배포/완료 선언 전에 반드시:
 1. content-review-agent 호출 → `review content at [파일경로]`
@@ -271,7 +291,7 @@ Copy assets: `cp {plugin-dir}/skills/reactive-presentation/assets/* {repo}/commo
 
 > 이 단계를 건너뛰고 배포하는 것은 금지됩니다.
 
-### Phase 10: Verify
+### Phase 11: Verify
 
 For each block HTML file, check:
 - First slide is Session Cover (NOT `.title-slide` class):
@@ -291,7 +311,7 @@ For each block HTML file, check:
 - Presenter view (P key) shows notes correctly
 - Last slide is Thank You with `← 목차로 돌아가기` link to `index.html` and `다음: Block N+1 →` link to next block (omit next link for final block)
 
-### Phase 11: Deploy
+### Phase 12: Deploy
 
 ```bash
 git add common/ {slug}/ index.html

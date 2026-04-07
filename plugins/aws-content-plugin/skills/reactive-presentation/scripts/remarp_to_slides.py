@@ -183,6 +183,7 @@ class Slide:
     html_blocks: List[str] = field(default_factory=list)
     script_blocks: List[str] = field(default_factory=list)
     tab_blocks: List['ParsedBlock'] = field(default_factory=list)
+    issues: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -387,6 +388,10 @@ class RemarpParser:
         # Strip residual leading --- lines left by per-slide frontmatter blocks
         md_text = re.sub(r'^---\s*\n', '', md_text)
 
+        # Extract issues (<!-- !issue: ... -->)
+        issues: List[str] = re.findall(r'<!--\s*!issue:\s*(.+?)\s*-->', md_text)
+        md_text = re.sub(r'<!--\s*!issue:\s*.+?\s*-->\n?', '', md_text)
+
         # Parse notes (new style)
         notes = self.parse_notes(md_text)
         md_text = self.NOTES_PATTERN.sub('', md_text)
@@ -530,6 +535,7 @@ class RemarpParser:
             html_blocks=html_blocks,
             script_blocks=script_blocks,
             tab_blocks=tab_blocks,
+            issues=issues,
         )
 
     def parse_directives(self, md_text: str) -> Dict[str, str]:
@@ -4438,6 +4444,11 @@ def main():
     migrate_parser.add_argument('marp_file', help='Input Marp file')
     migrate_parser.add_argument('-o', '--output', required=True, help='Output directory')
 
+    # Issues command
+    issues_parser = subparsers.add_parser('issues', help='List all <!-- !issue: --> annotations')
+    issues_parser.add_argument('path', help='Input file or project directory')
+    issues_parser.add_argument('--json', action='store_true', dest='json_output', help='Output as JSON')
+
     args = parser.parse_args()
 
     if args.command == 'build':
@@ -4509,6 +4520,57 @@ def main():
                 print(f'Rebuilt: {output}')
 
         print(f'\nSync complete. {len(changed)} block(s) rebuilt.')
+
+    elif args.command == 'issues':
+        input_path = Path(args.path)
+        all_issues: List[Dict[str, Any]] = []
+
+        # Collect .md / .remarp.md files
+        md_files: List[Path] = []
+        if input_path.is_file():
+            md_files = [input_path]
+        elif input_path.is_dir():
+            md_files = sorted(input_path.glob('**/*.md')) + sorted(input_path.glob('**/*.remarp.md'))
+        else:
+            print(f'Error: {input_path} not found')
+            return
+
+        for md_file in md_files:
+            with open(md_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            rp = RemarpParser(content)
+            _config, blocks = rp.parse()
+            for block_name, slides in blocks.items():
+                for slide in slides:
+                    if slide.issues:
+                        # Extract first heading as slide title
+                        title_match = re.match(r'^#+\s+(.+)', slide.content)
+                        title = title_match.group(1) if title_match else f'(slide {slide.index + 1})'
+                        for issue_text in slide.issues:
+                            all_issues.append({
+                                'file': str(md_file),
+                                'block': block_name,
+                                'slide': slide.index + 1,
+                                'title': title,
+                                'issue': issue_text,
+                            })
+
+        if not all_issues:
+            print('No issues found.')
+            return
+
+        if args.json_output:
+            import json as json_mod
+            print(json_mod.dumps(all_issues, ensure_ascii=False, indent=2))
+        else:
+            current_file = ''
+            for item in all_issues:
+                if item['file'] != current_file:
+                    current_file = item['file']
+                    print(f'\n## {current_file}')
+                print(f'  [{item["block"]}] Slide {item["slide"]} "{item["title"]}"')
+                print(f'    → {item["issue"]}')
+            print(f'\nTotal: {len(all_issues)} issue(s) across {len(md_files)} file(s).')
 
     elif args.command == 'migrate':
         migrated = migrate_marp_to_remarp(args.marp_file, args.output)

@@ -240,6 +240,29 @@ The converter splits on `---` and creates empty/comment-only slide fragments.
 
 Directives use `@` prefix on lines immediately after `---`. No wrapping `---` block around them.
 
+### Issue Annotations (`<!-- !issue: ... -->`)
+
+슬라이드에 개선 프롬프트를 인라인으로 남깁니다. 빌드 시 자동 제거되며, Preview에서는 노란색 badge로 표시됩니다.
+
+```markdown
+---
+# AWS Architecture Overview
+
+<!-- !issue: 다이어그램이 너무 복잡함, 3개 레이어로 단순화 -->
+<!-- !issue: 폰트 크기가 작아서 뒤에서 안 보임 -->
+
+- VPC 구조
+- Subnet 배치
+```
+
+**동작**:
+- **Preview**: 슬라이드 상단에 노란색 issue badge 표시
+- **Build** (`remarp_to_slides.py build`): 이슈가 제거된 깨끗한 HTML 생성
+- **Issues** (`remarp_to_slides.py issues <path>`): 전체 프로젝트의 이슈 목록 추출
+- **Issues JSON** (`remarp_to_slides.py issues <path> --json`): JSON 형식으로 출력
+
+**워크플로우**: 리뷰어가 이슈를 남기면 → `issues` 명령으로 목록 확인 → Claude가 이슈를 읽고 개선 → 이슈 제거 후 빌드.
+
 ### Supported `:::` Block Types
 
 Only these fenced div blocks are recognized by the converter:
