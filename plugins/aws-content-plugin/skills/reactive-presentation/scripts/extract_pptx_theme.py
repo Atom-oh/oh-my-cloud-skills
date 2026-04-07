@@ -2,9 +2,14 @@
 """
 PPTX Theme Extraction Script
 
-Extracts theme colors, fonts, backgrounds, logos, and footer information
-from PowerPoint presentations and generates CSS overrides for dark-theme
-presentations.
+Extracts theme colors, fonts, backgrounds, logos, footer information,
+and slide master template metadata from PowerPoint presentations.
+Generates CSS overrides for dark-theme presentations.
+
+The ``slide_master`` section in the manifest captures the common frame
+(header, footer, decorative elements, color palette, slide size) that
+applies uniformly across all slides — i.e. the PPT slide master, not
+individual slide content layouts.
 
 Requires: python-pptx >= 1.0.0, lxml
 """
@@ -476,6 +481,369 @@ class ThemeExtractor:
 
         return texts
 
+    # ------------------------------------------------------------------
+    # Slide-master template metadata (common frame across all slides)
+    # ------------------------------------------------------------------
+
+    def extract_slide_size(self) -> dict[str, Any]:
+        """Extract slide dimensions and compute aspect ratio.
+
+        Returns e.g. ``{"width_emu": 12192000, "height_emu": 6858000,
+        "width_px": 1280, "height_px": 720, "aspect_ratio": "16:9"}``.
+        """
+        w = self.prs.slide_width or SLIDE_WIDTH_EMU
+        h = self.prs.slide_height or SLIDE_HEIGHT_EMU
+
+        from math import gcd
+        g = gcd(int(w), int(h))
+        ratio_w, ratio_h = int(w) // g, int(h) // g
+
+        # Normalise common ratios that gcd misses due to rounding
+        KNOWN_RATIOS = {
+            (16, 9): "16:9", (4, 3): "4:3", (16, 10): "16:10",
+            (3, 2): "3:2", (5, 4): "5:4",
+        }
+        ratio_str = KNOWN_RATIOS.get((ratio_w, ratio_h))
+        if ratio_str is None:
+            # Check approximate match
+            decimal = w / h
+            if abs(decimal - 16 / 9) < 0.02:
+                ratio_str = "16:9"
+            elif abs(decimal - 4 / 3) < 0.02:
+                ratio_str = "4:3"
+            else:
+                ratio_str = f"{ratio_w}:{ratio_h}"
+
+        # Convert EMU to pixels (96 DPI, 914400 EMU per inch)
+        px_w = round(int(w) / 914400 * 96)
+        px_h = round(int(h) / 914400 * 96)
+
+        return {
+            'width_emu': int(w),
+            'height_emu': int(h),
+            'width_px': px_w,
+            'height_px': px_h,
+            'aspect_ratio': ratio_str,
+        }
+
+    def extract_color_palette(self, colors: dict[str, str]) -> dict[str, str]:
+        """Map raw PPTX scheme colors to a semantic color palette.
+
+        The semantic palette provides designer-friendly names that match
+        common design-system tokens (primary, secondary, accent, etc.).
+        """
+        palette: dict[str, str] = {}
+
+        # Background: dk2 if dark, else dk1
+        for key in ('dk2', 'dk1'):
+            if key in colors:
+                r, g, b = hex_to_rgb(colors[key])
+                if rgb_to_luminance(r, g, b) < 0.3:
+                    palette['background'] = colors[key]
+                    break
+        if 'background' not in palette:
+            palette['background'] = colors.get('lt1', '#FFFFFF')
+
+        # Determine if the template is dark or light
+        bg_lum = 1.0
+        if 'background' in palette:
+            r, g, b = hex_to_rgb(palette['background'])
+            bg_lum = rgb_to_luminance(r, g, b)
+        is_dark = bg_lum < 0.2
+
+        # Text colours: choose high contrast against background
+        if is_dark:
+            palette['text_primary'] = colors.get('lt1', '#FFFFFF')
+            palette['text_secondary'] = colors.get('lt2', '#B0B0B0')
+        else:
+            palette['text_primary'] = colors.get('dk1', '#000000')
+            palette['text_secondary'] = colors.get('dk2', '#333333')
+
+        # Primary = accent1, Secondary = accent2, Accent = accent3 or accent1
+        palette['primary'] = colors.get('accent1', '#0078D4')
+        palette['secondary'] = colors.get('accent2', palette['primary'])
+        palette['accent'] = colors.get('accent3', palette['primary'])
+
+        # Additional semantic tokens
+        if 'accent4' in colors:
+            palette['danger'] = colors['accent4']
+        if 'accent5' in colors:
+            palette['warning'] = colors['accent5']
+        if 'accent6' in colors:
+            palette['info'] = colors['accent6']
+        if 'hlink' in colors:
+            palette['link'] = colors['hlink']
+
+        return palette
+
+    def extract_header_region(self) -> dict[str, Any]:
+        """Detect the header region of the slide master.
+
+        Scans the top 15 % of the slide for shapes (text, lines, images)
+        that appear on every slide, and returns them as structured
+        ``header.elements``.
+        """
+        header_threshold = 15.0  # top 15 %
+        elements: list[dict[str, Any]] = []
+        min_top = 100.0
+        max_bottom = 0.0
+
+        for shape in self.master.shapes:
+            top_pct = emu_to_percent(shape.top, SLIDE_HEIGHT_EMU)
+            bottom_pct = emu_to_percent(shape.top + shape.height, SLIDE_HEIGHT_EMU)
+
+            if top_pct > header_threshold:
+                continue
+
+            elem: dict[str, Any] = {
+                'shape_name': shape.name,
+                'position': {
+                    'left_percent': emu_to_percent(shape.left, SLIDE_WIDTH_EMU),
+                    'top_percent': top_pct,
+                },
+                'size': {
+                    'width_percent': emu_to_percent(shape.width, SLIDE_WIDTH_EMU),
+                    'height_percent': emu_to_percent(shape.height, SLIDE_HEIGHT_EMU),
+                },
+            }
+
+            # Classify element type
+            if shape.is_placeholder:
+                ph = shape.placeholder_format
+                elem['type'] = 'placeholder'
+                elem['placeholder_type'] = str(ph.type) if ph.type else None
+            elif shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+                elem['type'] = 'image'
+            elif hasattr(shape, 'text_frame'):
+                text = ''
+                try:
+                    text = shape.text_frame.text.strip()
+                except Exception:
+                    pass
+                if text:
+                    elem['type'] = 'text'
+                    elem['text'] = text
+                else:
+                    elem['type'] = 'shape'
+            else:
+                elem['type'] = 'shape'
+
+            # Detect line / connector (divider)
+            try:
+                shape_type_name = str(shape.shape_type)
+                if 'LINE' in shape_type_name or 'CONNECTOR' in shape_type_name:
+                    elem['type'] = 'divider'
+            except Exception:
+                pass
+
+            # Track vertical extent
+            if top_pct < min_top:
+                min_top = top_pct
+            if bottom_pct > max_bottom:
+                max_bottom = bottom_pct
+
+            elements.append(elem)
+
+        height_pct = round(max_bottom - min_top, 2) if elements else 0
+
+        return {
+            'position': 'top',
+            'height_percent': height_pct,
+            'elements': elements,
+        }
+
+    def extract_footer_region(self, footer_info: Optional[dict],
+                               master_texts: list[dict]) -> dict[str, Any]:
+        """Build a structured footer region from placeholders + master shapes.
+
+        Similar to ``extract_header_region`` but for the bottom 15 % of the
+        slide.  Also incorporates the existing footer/slide-number/date
+        placeholders so everything is in one place.
+        """
+        footer_threshold = 85.0  # bottom 15 %
+        elements: list[dict[str, Any]] = []
+        min_top = 100.0
+        max_bottom = 0.0
+
+        for shape in self.master.shapes:
+            top_pct = emu_to_percent(shape.top, SLIDE_HEIGHT_EMU)
+            bottom_pct = emu_to_percent(shape.top + shape.height, SLIDE_HEIGHT_EMU)
+
+            if top_pct < footer_threshold:
+                continue
+
+            elem: dict[str, Any] = {
+                'shape_name': shape.name,
+                'position': {
+                    'left_percent': emu_to_percent(shape.left, SLIDE_WIDTH_EMU),
+                    'top_percent': top_pct,
+                },
+                'size': {
+                    'width_percent': emu_to_percent(shape.width, SLIDE_WIDTH_EMU),
+                    'height_percent': emu_to_percent(shape.height, SLIDE_HEIGHT_EMU),
+                },
+            }
+
+            if shape.is_placeholder:
+                ph = shape.placeholder_format
+                elem['type'] = 'placeholder'
+                elem['placeholder_type'] = str(ph.type) if ph.type else None
+                try:
+                    if hasattr(shape, 'text_frame'):
+                        elem['text'] = shape.text_frame.text.strip()
+                except Exception:
+                    pass
+            elif shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+                elem['type'] = 'image'
+            elif hasattr(shape, 'text_frame'):
+                text = ''
+                try:
+                    text = shape.text_frame.text.strip()
+                except Exception:
+                    pass
+                if text:
+                    elem['type'] = 'text'
+                    elem['text'] = text
+                else:
+                    elem['type'] = 'shape'
+            else:
+                elem['type'] = 'shape'
+
+            # Detect divider lines
+            try:
+                shape_type_name = str(shape.shape_type)
+                if 'LINE' in shape_type_name or 'CONNECTOR' in shape_type_name:
+                    elem['type'] = 'divider'
+            except Exception:
+                pass
+
+            if top_pct < min_top:
+                min_top = top_pct
+            if bottom_pct > max_bottom:
+                max_bottom = bottom_pct
+
+            elements.append(elem)
+
+        height_pct = round(max_bottom - min_top, 2) if elements else 0
+
+        # Consolidated text (reuse existing logic)
+        resolved_text = self._resolve_footer_text(footer_info, master_texts)
+
+        return {
+            'position': 'bottom',
+            'height_percent': height_pct,
+            'resolved_text': resolved_text,
+            'elements': elements,
+        }
+
+    def extract_decorative_elements(self) -> list[dict[str, Any]]:
+        """Detect decorative shapes on the slide master.
+
+        Decorative elements are non-placeholder, non-text, non-logo shapes
+        that serve a purely visual purpose (chevrons, dot patterns,
+        semicircles, colored bars, gradient rectangles, etc.).
+
+        Only shapes that are NOT in the header/footer regions and are NOT
+        identified as logos are included.
+        """
+        decorative: list[dict[str, Any]] = []
+        header_limit = 15.0
+        footer_limit = 85.0
+        logo_threshold = SLIDE_WIDTH_EMU * 0.20
+
+        for shape in self.master.shapes:
+            # Skip placeholders
+            if shape.is_placeholder:
+                continue
+
+            # Skip pictures that qualify as logos (handled separately)
+            if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+                if shape.width < logo_threshold and shape.height < logo_threshold:
+                    continue  # logo — already extracted
+                # Large pictures are background — also skip
+                if (shape.width > SLIDE_WIDTH_EMU * 0.8
+                        and shape.height > SLIDE_HEIGHT_EMU * 0.8):
+                    continue
+
+            # Skip shapes with meaningful text (those are master_texts)
+            if hasattr(shape, 'text_frame'):
+                try:
+                    text = shape.text_frame.text.strip()
+                    if text:
+                        continue
+                except Exception:
+                    pass
+
+            top_pct = emu_to_percent(shape.top, SLIDE_HEIGHT_EMU)
+            left_pct = emu_to_percent(shape.left, SLIDE_WIDTH_EMU)
+            w_pct = emu_to_percent(shape.width, SLIDE_WIDTH_EMU)
+            h_pct = emu_to_percent(shape.height, SLIDE_HEIGHT_EMU)
+
+            # Classify shape
+            shape_type_str = ''
+            try:
+                shape_type_str = str(shape.shape_type)
+            except Exception:
+                pass
+
+            # Try to get fill colour
+            fill_color = None
+            try:
+                fill = shape.fill
+                if fill and fill.type is not None:
+                    fill_type_str = str(fill.type)
+                    if 'SOLID' in fill_type_str:
+                        fore = fill.fore_color
+                        if fore and fore.rgb:
+                            fill_color = f"#{fore.rgb}"
+            except Exception:
+                pass
+
+            elem: dict[str, Any] = {
+                'shape_name': shape.name,
+                'shape_type': shape_type_str,
+                'position': {
+                    'left_percent': left_pct,
+                    'top_percent': top_pct,
+                },
+                'size': {
+                    'width_percent': w_pct,
+                    'height_percent': h_pct,
+                },
+            }
+
+            if fill_color:
+                elem['fill_color'] = fill_color
+
+            # Detect rotation
+            try:
+                if shape.rotation and shape.rotation != 0:
+                    elem['rotation'] = shape.rotation
+            except Exception:
+                pass
+
+            decorative.append(elem)
+
+        return decorative
+
+    def build_slide_master(self, manifest: dict[str, Any]) -> dict[str, Any]:
+        """Assemble the ``slide_master`` section from extracted data.
+
+        This is the structured representation of the common frame that
+        applies to every slide (as opposed to per-layout content areas).
+        """
+        colors = manifest.get('colors', {})
+        footer_info = manifest.get('footer')
+        master_texts = manifest.get('master_texts', [])
+
+        return {
+            'slide_size': self.extract_slide_size(),
+            'color_palette': self.extract_color_palette(colors),
+            'header': self.extract_header_region(),
+            'footer': self.extract_footer_region(footer_info, master_texts),
+            'decorative_elements': self.extract_decorative_elements(),
+        }
+
     def extract_layout_details(self) -> list[dict[str, Any]]:
         """Extract details from all slide master layouts.
 
@@ -608,6 +976,9 @@ class ThemeExtractor:
         manifest['footer_text'] = self._resolve_footer_text(
             manifest['footer'], manifest['master_texts']
         )
+
+        # Slide-master template: common frame across all slides
+        manifest['slide_master'] = self.build_slide_master(manifest)
 
         return manifest
 

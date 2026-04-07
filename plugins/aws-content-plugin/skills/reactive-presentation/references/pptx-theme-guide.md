@@ -213,6 +213,97 @@ Key layouts to reference when building HTML slides:
 - **Title and Content** — maps to standard content slides
 - **Blank** — maps to canvas/custom slides
 
+## Slide Master Template (slide_master)
+
+The `slide_master` section in `theme-manifest.json` captures the **common frame** that applies uniformly to all slides — the PPT slide master elements (header, footer, decorative shapes, color palette), not individual slide content.
+
+```json
+"slide_master": {
+  "slide_size": {
+    "width_emu": 12192000,
+    "height_emu": 6858000,
+    "width_px": 1280,
+    "height_px": 720,
+    "aspect_ratio": "16:9"
+  },
+  "color_palette": {
+    "primary": "#41B3FF",
+    "secondary": "#AD5CFF",
+    "accent": "#00E500",
+    "background": "#161D26",
+    "text_primary": "#FFFFFF",
+    "text_secondary": "#F3F3F7",
+    "danger": "#FF5C85",
+    "warning": "#FF693C",
+    "info": "#FBD332",
+    "link": "#0563C1"
+  },
+  "header": {
+    "position": "top",
+    "height_percent": 8.5,
+    "elements": [
+      { "shape_name": "TextBox 1", "type": "text", "text": "AWS re:Invent 2025",
+        "position": { "left_percent": 4.88, "top_percent": 2.0 },
+        "size": { "width_percent": 30.0, "height_percent": 4.5 } },
+      { "shape_name": "Line 3", "type": "divider",
+        "position": { "left_percent": 0.0, "top_percent": 8.0 },
+        "size": { "width_percent": 100.0, "height_percent": 0.2 } }
+    ]
+  },
+  "footer": {
+    "position": "bottom",
+    "height_percent": 6.0,
+    "resolved_text": "© 2025, Amazon Web Services, Inc. | AWS re:Invent 2025",
+    "elements": [
+      { "shape_name": "Footer Placeholder 3", "type": "placeholder",
+        "placeholder_type": "FOOTER (15)",
+        "text": "© 2025, Amazon Web Services, Inc.",
+        "position": { "left_percent": 4.88, "top_percent": 94.0 },
+        "size": { "width_percent": 40.0, "height_percent": 3.0 } },
+      { "shape_name": "Slide Number Placeholder 4", "type": "placeholder",
+        "placeholder_type": "SLIDE_NUMBER (13)",
+        "position": { "left_percent": 90.0, "top_percent": 94.0 },
+        "size": { "width_percent": 8.0, "height_percent": 3.0 } }
+    ]
+  },
+  "decorative_elements": [
+    { "shape_name": "Chevron 5", "shape_type": "AUTO_SHAPE (1)",
+      "position": { "left_percent": 85.0, "top_percent": 20.0 },
+      "size": { "width_percent": 15.0, "height_percent": 60.0 },
+      "fill_color": "#232F3E" },
+    { "shape_name": "Semicircle 8", "shape_type": "AUTO_SHAPE (1)",
+      "position": { "left_percent": 0.0, "top_percent": 40.0 },
+      "size": { "width_percent": 5.0, "height_percent": 20.0 },
+      "fill_color": "#FF9900", "rotation": 90.0 }
+  ]
+}
+```
+
+### slide_master fields
+
+| Field | Description |
+|-------|-------------|
+| `slide_size` | Slide dimensions in EMU, pixels, and aspect ratio string |
+| `color_palette` | Semantic color tokens mapped from PPTX scheme colors (primary, secondary, accent, background, text_primary, text_secondary, danger, warning, info, link) |
+| `header` | Top region (≤15%) elements: text labels, logos, divider lines |
+| `footer` | Bottom region (≥85%) elements: footer text, slide number, date, copyright |
+| `decorative_elements` | Non-content shapes: chevrons, dots, bars, semicircles with position, size, color, rotation |
+
+### Color Palette Mapping
+
+| Semantic Token | PPTX Source | Fallback |
+|---------------|-------------|----------|
+| `background` | `dk2` (if dark) or `dk1` (if dark) | `lt1` |
+| `text_primary` | `lt1` (dark bg) or `dk1` (light bg) | `#FFFFFF` / `#000000` |
+| `text_secondary` | `lt2` (dark bg) or `dk2` (light bg) | `#B0B0B0` / `#333333` |
+| `primary` | `accent1` | `#0078D4` |
+| `secondary` | `accent2` | same as primary |
+| `accent` | `accent3` | same as primary |
+| `danger` | `accent4` | — |
+| `warning` | `accent5` | — |
+| `info` | `accent6` | — |
+| `link` | `hlink` | — |
+
 ## Background Types
 
 | PPTX Fill Type | CSS Output |
