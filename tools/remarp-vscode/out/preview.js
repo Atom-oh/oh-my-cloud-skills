@@ -157,7 +157,7 @@ class RemarpPreviewPanel {
     }
     _parseFrontmatter() {
         const text = this._document.getText();
-        const match = text.match(/^---\s*\n([\s\S]*?)\n---/);
+        const match = text.match(/^---\s*\n([\s\S]*?)\n---\s*(?:\n|$)/);
         if (!match) {
             return {};
         }
@@ -1569,9 +1569,23 @@ ${speakerHtml}`;
         html = html.replace(/^## (.*)$/gm, '<h2>$1</h2>');
         html = html.replace(/^# (.*)$/gm, '<h1>$1</h1>');
         // Convert images (before links to avoid conflict)
-        html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+        // Sanitize URLs: block javascript:, data:, vbscript: schemes
+        const sanitizeUrl = (url) => {
+            const trimmed = url.trim().replace(/[\x00-\x1f]/g, '');
+            if (/^\s*(javascript|data|vbscript)\s*:/i.test(trimmed)) {
+                return '';
+            }
+            return trimmed;
+        };
+        html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt, url) => {
+            const safe = sanitizeUrl(url);
+            return safe ? `<img src="${safe}" alt="${this._escapeHtml(alt)}">` : `[${this._escapeHtml(alt)}]`;
+        });
         // Convert links
-        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, text, url) => {
+            const safe = sanitizeUrl(url);
+            return safe ? `<a href="${safe}">${text}</a>` : text;
+        });
         // Convert bold and italic
         html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
         html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
