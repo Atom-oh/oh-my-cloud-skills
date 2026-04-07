@@ -1264,6 +1264,480 @@ class CSSGenerator:
         return '\n'.join(lines)
 
 
+class DesignGuideGenerator:
+    """Generates a design.md design-system document from theme manifest.
+
+    Inspired by Figma's design-token philosophy: capture the *rules* behind
+    visual choices so that every new slide is automatically consistent.
+    The output is a Markdown file with YAML code blocks for machine-readable
+    tokens plus prose descriptions for human designers and AI agents.
+    """
+
+    def __init__(self, manifest: dict[str, Any]):
+        self.m = manifest
+        self.sm = manifest.get('slide_master', {})
+        self.colors = manifest.get('colors', {})
+        self.palette = self.sm.get('color_palette', {})
+        self.fonts = manifest.get('fonts', {})
+        self.logos = manifest.get('logos', [])
+        self.header = self.sm.get('header', {})
+        self.footer_region = self.sm.get('footer', {})
+        self.decorative = self.sm.get('decorative_elements', [])
+        self.slide_size = self.sm.get('slide_size', {})
+        self.backgrounds = manifest.get('backgrounds', {})
+        self.design_source = self.sm.get('design_source')
+
+    def generate(self) -> str:
+        sections = [
+            self._section_header(),
+            self._section_slide_canvas(),
+            self._section_color_system(),
+            self._section_typography(),
+            self._section_iconography(),
+            self._section_spacing_grid(),
+            self._section_shapes_and_corners(),
+            self._section_decorative_patterns(),
+            self._section_header_footer(),
+            self._section_logo_branding(),
+            self._section_backgrounds(),
+            self._section_motion(),
+            self._section_design_source(),
+            self._section_usage_rules(),
+        ]
+        return '\n\n'.join(filter(None, sections)) + '\n'
+
+    # -- Individual sections ------------------------------------------------
+
+    def _section_header(self) -> str:
+        theme_name = self.m.get('theme_name', 'Untitled')
+        source = self.m.get('source_file', 'unknown.pptx')
+        return f"""# Design System — {theme_name}
+
+> Auto-generated from `{source}` by `extract_pptx_theme.py`.
+> This document defines the visual language that must be followed when
+> creating new slides.  Treat every token below as a **constraint**, not
+> a suggestion.  Consistency > creativity."""
+
+    def _section_slide_canvas(self) -> str:
+        ss = self.slide_size
+        if not ss:
+            return ''
+        return f"""## 1. Slide Canvas
+
+| Property | Value |
+|----------|-------|
+| Aspect ratio | **{ss.get('aspect_ratio', '16:9')}** |
+| Resolution | {ss.get('width_px', 1280)} × {ss.get('height_px', 720)} px |
+| EMU | {ss.get('width_emu', '')} × {ss.get('height_emu', '')} |
+
+All content must be designed for this aspect ratio.  Do not stretch or
+crop to fit a different ratio."""
+
+    def _section_color_system(self) -> str:
+        if not self.palette:
+            return ''
+
+        lines = [
+            '## 2. Color System',
+            '',
+            'Semantic color tokens mapped from the PPTX theme scheme.',
+            'Use semantic names (not raw hex) so the palette can be',
+            'swapped without touching individual slides.',
+            '',
+            '```yaml',
+            'color_tokens:',
+        ]
+
+        role_desc = {
+            'primary': 'Primary brand / accent (CTA, links, highlights)',
+            'secondary': 'Secondary accent (gradients, hover, subtle emphasis)',
+            'accent': 'Tertiary accent (success, positive indicators)',
+            'background': 'Slide background',
+            'text_primary': 'Headings and body text',
+            'text_secondary': 'Captions, labels, muted text',
+            'danger': 'Error / destructive actions',
+            'warning': 'Caution indicators',
+            'info': 'Informational highlights',
+            'link': 'Hyperlinks and interactive text',
+        }
+
+        for key in ('background', 'text_primary', 'text_secondary',
+                     'primary', 'secondary', 'accent',
+                     'danger', 'warning', 'info', 'link'):
+            val = self.palette.get(key)
+            if val:
+                desc = role_desc.get(key, '')
+                lines.append(f'  {key}: "{val}"  # {desc}')
+
+        lines.append('```')
+        lines.append('')
+
+        # Contrast guidance
+        bg = self.palette.get('background', '#000000')
+        r, g, b = hex_to_rgb(bg)
+        lum = rgb_to_luminance(r, g, b)
+        if lum < 0.2:
+            lines.append('**Theme type**: Dark.  Text must be light (#fff / #ccc).')
+            lines.append('Avoid pure white on pure black — use the token values above.')
+        else:
+            lines.append('**Theme type**: Light.  Text must be dark (#000 / #333).')
+            lines.append('Ensure sufficient contrast (WCAG AA ≥ 4.5:1 for body text).')
+
+        # Raw PPTX scheme reference
+        if self.colors:
+            lines.append('')
+            lines.append('<details><summary>Raw PPTX scheme colors (reference)</summary>')
+            lines.append('')
+            lines.append('| Slot | Hex |')
+            lines.append('|------|-----|')
+            for k, v in self.colors.items():
+                lines.append(f'| {k} | `{v}` |')
+            lines.append('')
+            lines.append('</details>')
+
+        return '\n'.join(lines)
+
+    def _section_typography(self) -> str:
+        if not self.fonts:
+            return ''
+
+        heading = self.fonts.get('heading', 'system-ui')
+        body = self.fonts.get('body', 'system-ui')
+
+        return f"""## 3. Typography
+
+```yaml
+typography:
+  heading:
+    family: "{heading}"
+    weights: [400, 700]       # regular + bold
+    usage: "Slide titles, section headers, callout text"
+  body:
+    family: "{body}"
+    weights: [400, 600]       # regular + semibold
+    usage: "Body text, bullets, labels, speaker notes"
+```
+
+### Type Scale (recommended)
+
+| Level | Size | Weight | Use |
+|-------|------|--------|-----|
+| H1 | 2.5 rem | 700 | Cover slide title |
+| H2 | 1.8 rem | 700 | Slide title |
+| H3 | 1.3 rem | 600 | Sub-heading |
+| Body | 1.0 rem | 400 | Bullet text, paragraphs |
+| Caption | 0.8 rem | 400 | Footer, labels, annotations |
+| Code | 0.9 rem (mono) | 400 | Code blocks |
+
+> If `{heading}` or `{body}` is not a system font, add a `@import` or
+> `@font-face` declaration.  Never fall back to a visually different
+> typeface silently."""
+
+    def _section_iconography(self) -> str:
+        # Infer icon style from decorative elements and template characteristics
+        has_rounded = any('round' in d.get('shape_name', '').lower()
+                         for d in self.decorative)
+        has_sharp = any('rect' in d.get('shape_name', '').lower()
+                       or 'sharp' in d.get('shape_name', '').lower()
+                       for d in self.decorative)
+
+        # Default recommendation based on common patterns
+        style = 'rounded'
+        if has_sharp and not has_rounded:
+            style = 'sharp'
+
+        return f"""## 4. Iconography
+
+```yaml
+icons:
+  style: "{style}"           # rounded | sharp | outlined | filled
+  corner_radius: 4px         # icon container rounding
+  size_default: 48px         # standard icon size on content slides
+  size_small: 24px           # inline / label icons
+  size_large: 64px           # hero / feature highlight
+  color: "inherit"           # icons inherit text color by default
+  accent_color: "primary"    # highlighted icons use the primary token
+```
+
+### Rules
+
+- **Consistency**: all icons on a single slide must use the same style
+  (`{style}`).  Do not mix rounded and sharp icons.
+- **AWS service icons**: use the official SVG from
+  `skills/reactive-presentation/assets/aws-icons/`.  Keep the original
+  multi-color fill — do not monochrome AWS icons.
+- **Generic icons**: prefer a single icon library (e.g. Lucide, Phosphor,
+  Material Symbols) across the entire presentation.
+- **Sizing**: icons next to text should be vertically centered and match
+  the text line height.
+- **Padding**: maintain ≥ 8 px clear space around every icon."""
+
+    def _section_spacing_grid(self) -> str:
+        ar = self.slide_size.get('aspect_ratio', '16:9')
+        # Common safe-area margins
+        return f"""## 5. Spacing & Grid
+
+```yaml
+layout:
+  aspect_ratio: "{ar}"
+  safe_area:
+    top: 10%                  # below header region
+    bottom: 10%               # above footer region
+    left: 5%
+    right: 5%
+  grid:
+    columns: 12
+    gutter: 16px
+    margin: 40px              # outer margin
+spacing_scale:               # 4-px base unit
+  xs: 4px
+  sm: 8px
+  md: 16px
+  lg: 24px
+  xl: 32px
+  xxl: 48px
+```
+
+### Rules
+
+- Content must **never** overlap the header or footer regions.
+- Use multiples of the 4 px base unit for all padding and margins.
+- Two-column layouts: use 50/50 split with `md` gutter.
+- Three-column layouts: use 33/33/33 split with `md` gutter.
+- Maintain consistent vertical rhythm — every element should snap
+  to the spacing scale."""
+
+    def _section_shapes_and_corners(self) -> str:
+        # Infer corner radius from decorative elements
+        return """## 6. Shapes & Corners
+
+```yaml
+shapes:
+  border_radius:
+    none: 0px                 # tables, code blocks
+    sm: 4px                   # tags, badges, small chips
+    md: 8px                   # cards, content boxes, tooltips
+    lg: 16px                  # hero cards, feature panels
+    full: 9999px              # pills, avatar circles
+  border:
+    width: 1px
+    color: "text_secondary"   # use semantic token
+    style: "solid"
+  shadow:
+    none: "none"
+    sm: "0 1px 2px rgba(0,0,0,0.1)"
+    md: "0 4px 12px rgba(0,0,0,0.15)"
+    lg: "0 8px 24px rgba(0,0,0,0.2)"
+```
+
+### Rules
+
+- **Cards and containers**: use `md` radius (8 px).
+- **Buttons and badges**: use `sm` radius (4 px) or `full` for pills.
+- **Images inside cards**: clip to parent's border-radius.
+- **Do not mix** rounded and sharp containers on the same slide.
+- **Elevation (shadow)**: use sparingly; on dark backgrounds prefer
+  a subtle border or glow over a drop shadow."""
+
+    def _section_decorative_patterns(self) -> str:
+        if not self.decorative:
+            return """## 7. Decorative Patterns
+
+No decorative elements detected on the slide master.
+Keep slides clean — avoid adding ornamental shapes unless the
+design guide is updated."""
+
+        lines = [
+            '## 7. Decorative Patterns',
+            '',
+            'The following decorative shapes were detected on the slide master.',
+            'These **must be replicated** on every slide for consistency.',
+            '',
+            '```yaml',
+            'decorative_elements:',
+        ]
+
+        for i, d in enumerate(self.decorative):
+            pos = d.get('position', {})
+            size = d.get('size', {})
+            lines.append(f'  - name: "{d.get("shape_name", f"element_{i}")}"')
+            lines.append(f'    type: "{d.get("shape_type", "unknown")}"')
+            lines.append(f'    position: {{ left: {pos.get("left_percent", 0)}%, top: {pos.get("top_percent", 0)}% }}')
+            lines.append(f'    size: {{ width: {size.get("width_percent", 0)}%, height: {size.get("height_percent", 0)}% }}')
+            if d.get('fill_color'):
+                lines.append(f'    fill: "{d["fill_color"]}"')
+            if d.get('rotation'):
+                lines.append(f'    rotation: {d["rotation"]}deg')
+
+        lines.append('```')
+        lines.append('')
+        lines.append('> These shapes form the slide "frame" and must appear at the')
+        lines.append('> exact positions listed above.  Do not resize, recolor, or')
+        lines.append('> reposition them on individual slides.')
+
+        return '\n'.join(lines)
+
+    def _section_header_footer(self) -> str:
+        lines = ['## 8. Header & Footer Regions']
+
+        # Header
+        h = self.header
+        if h and h.get('elements'):
+            lines.append('')
+            lines.append(f'### Header (top {h.get("height_percent", 0)}%)')
+            lines.append('')
+            lines.append('| Element | Type | Position (L%, T%) | Size (W%, H%) |')
+            lines.append('|---------|------|--------------------|----------------|')
+            for el in h['elements']:
+                p = el.get('position', {})
+                s = el.get('size', {})
+                text = f' — "{el["text"]}"' if el.get('text') else ''
+                lines.append(f'| {el.get("shape_name", "")} | {el.get("type", "")}{text} | {p.get("left_percent", 0)}, {p.get("top_percent", 0)} | {s.get("width_percent", 0)}, {s.get("height_percent", 0)} |')
+        else:
+            lines.append('\nNo header region elements detected.')
+
+        # Footer
+        f = self.footer_region
+        if f and f.get('elements'):
+            lines.append('')
+            lines.append(f'### Footer (bottom, height {f.get("height_percent", 0)}%)')
+            lines.append('')
+            if f.get('resolved_text'):
+                lines.append(f'**Footer text**: `{f["resolved_text"]}`')
+                lines.append('')
+            lines.append('| Element | Type | Position (L%, T%) | Size (W%, H%) |')
+            lines.append('|---------|------|--------------------|----------------|')
+            for el in f['elements']:
+                p = el.get('position', {})
+                s = el.get('size', {})
+                text = f' — "{el["text"]}"' if el.get('text') else ''
+                lines.append(f'| {el.get("shape_name", "")} | {el.get("type", "")}{text} | {p.get("left_percent", 0)}, {p.get("top_percent", 0)} | {s.get("width_percent", 0)}, {s.get("height_percent", 0)} |')
+        else:
+            lines.append('\nNo footer region elements detected.')
+
+        lines.append('')
+        lines.append('> Header and footer are **fixed regions**.  Slide content must')
+        lines.append('> not intrude into these areas.')
+
+        return '\n'.join(lines)
+
+    def _section_logo_branding(self) -> str:
+        if not self.logos:
+            return '## 9. Logo & Branding\n\nNo logos detected on the slide master.'
+
+        lines = ['## 9. Logo & Branding', '']
+
+        for i, logo in enumerate(self.logos):
+            pos = logo.get('position', {})
+            size = logo.get('size', {})
+            lines.append(f'### Logo {i + 1}: `{logo.get("filename", "logo.png")}`')
+            lines.append('')
+            lines.append(f'- **Position**: left {pos.get("left_percent", 0)}%, top {pos.get("top_percent", 0)}%')
+            lines.append(f'- **Size**: {size.get("width_percent", 0)}% × {size.get("height_percent", 0)}%')
+            nearby = logo.get('nearby_text')
+            if nearby:
+                lines.append(f'- **Nearby text**: "{nearby}"')
+            lines.append('')
+
+        lines.append('### Rules')
+        lines.append('')
+        lines.append('- The logo must appear on **every slide** at the exact position above.')
+        lines.append('- Do not stretch, crop, or recolor the logo.')
+        lines.append('- Maintain clear space of at least the logo height around all edges.')
+
+        return '\n'.join(lines)
+
+    def _section_backgrounds(self) -> str:
+        master_bg = self.backgrounds.get('master', {})
+        bg_type = master_bg.get('type', 'inherited')
+
+        lines = ['## 10. Background', '']
+        lines.append(f'**Master background type**: `{bg_type}`')
+
+        if bg_type == 'solid':
+            lines.append(f'**Color**: `{master_bg.get("color", "N/A")}`')
+        elif bg_type == 'picture':
+            lines.append(f'**Image**: `images/{master_bg.get("image_filename", "background.png")}`')
+            lines.append('Apply a dark overlay (brightness 0.3) for text readability.')
+        elif bg_type == 'gradient':
+            stops = master_bg.get('stops', [])
+            if stops:
+                stop_str = ', '.join(f'{s.get("color", "?")} at {s.get("position", 0):.0%}'
+                                     for s in stops)
+                lines.append(f'**Gradient**: {stop_str}')
+
+        lines.append('')
+        lines.append('### Rules')
+        lines.append('')
+        lines.append('- Content slides: use the master background as-is.')
+        lines.append('- Title / cover slides: may use a layout-specific background')
+        lines.append('  (see `layout_details` in the manifest).')
+        lines.append('- Never use a background that clashes with the color tokens.')
+
+        return '\n'.join(lines)
+
+    def _section_motion(self) -> str:
+        return """## 11. Motion & Transitions
+
+```yaml
+transitions:
+  default: "slide"            # slide | fade | none
+  duration: 400ms
+  easing: "ease-out"
+fragment_animations:
+  default: "fade-up"          # fade-up | fade-in | zoom-in
+  duration: 300ms
+  stagger: 100ms              # delay between successive items
+```
+
+### Rules
+
+- Use **one** transition type across the entire presentation.
+- Fragment animations (`{.click}`) should use consistent direction.
+- Avoid bounce, spin, or other playful animations in professional decks.
+- Canvas animations follow their own timing (see `:::canvas` blocks)."""
+
+    def _section_design_source(self) -> Optional[str]:
+        if not self.design_source:
+            return None
+
+        lines = ['## 12. External Design Sources', '']
+
+        if 'sources' in self.design_source:
+            for src in self.design_source['sources']:
+                lines.append(f'- **{src.get("type", "unknown").title()}**: `{src.get("url", "")}`')
+                if src.get('description'):
+                    lines.append(f'  {src["description"]}')
+        else:
+            lines.append(f'- **{self.design_source.get("type", "unknown").title()}**: `{self.design_source.get("url", "")}`')
+            if self.design_source.get('description'):
+                lines.append(f'  {self.design_source["description"]}')
+
+        lines.append('')
+        lines.append('> When the PPTX-extracted values conflict with the external')
+        lines.append('> design guide, **the external guide takes precedence** for')
+        lines.append('> color tokens and typography.  The PPTX values serve as')
+        lines.append('> baseline defaults.')
+
+        return '\n'.join(lines)
+
+    def _section_usage_rules(self) -> str:
+        return """## Design Checklist
+
+Before finalizing any slide, verify:
+
+- [ ] Colors use semantic tokens from §2 (no hardcoded hex)
+- [ ] Typography follows the type scale from §3
+- [ ] Icons follow the style rules from §4
+- [ ] Content stays within the safe area from §5
+- [ ] Shapes use the border-radius scale from §6
+- [ ] Decorative elements match §7 exactly
+- [ ] Header/footer regions are untouched per §8
+- [ ] Logo appears at the correct position per §9
+- [ ] Background matches the master template per §10
+- [ ] Transitions are consistent per §11"""
+
+
 def _build_design_source(args) -> Optional[dict[str, Any]]:
     """Build design_source dict from CLI args (--figma, --stitch)."""
     sources = []
@@ -1299,9 +1773,9 @@ Examples:
   %(prog)s presentation.pptx -o ./theme
   %(prog)s template.pptx --list-masters
   %(prog)s template.pptx --master 1 -o ./theme --json-only
-  %(prog)s template.pptx -o ./theme --figma "https://figma.com/file/abc123"
-  %(prog)s template.pptx -o ./theme --stitch "https://stitch.google.com/..."
-  %(prog)s template.pptx -o ./theme --figma "..." --stitch "..."
+  %(prog)s template.pptx -o ./theme --design-md
+  %(prog)s template.pptx -o ./theme --design-md --figma "https://figma.com/file/abc123"
+  %(prog)s template.pptx -o ./theme --design-md --stitch "https://stitch.google.com/..."
         """
     )
 
@@ -1318,6 +1792,10 @@ Examples:
                        help='Generate only JSON manifest, skip CSS')
     parser.add_argument('--css-file', default='theme-override.css',
                        help='CSS output filename (default: theme-override.css)')
+    parser.add_argument('--design-md', action='store_true',
+                       help='Generate design.md design-system document')
+    parser.add_argument('--design-md-file', default='design.md',
+                       help='Design guide output filename (default: design.md)')
 
     # External design-guide references
     design_group = parser.add_argument_group(
@@ -1383,6 +1861,16 @@ Examples:
                 f.write(css_content)
             print(f"Created: {css_path}")
 
+        # Generate design.md design-system document
+        if args.design_md:
+            design_gen = DesignGuideGenerator(manifest)
+            design_content = design_gen.generate()
+
+            design_path = output_dir / args.design_md_file
+            with open(design_path, 'w') as f:
+                f.write(design_content)
+            print(f"Created: {design_path}")
+
         # Summary
         print(f"\nTheme: {manifest['theme_name']}")
         print(f"Colors extracted: {len(manifest['colors'])}")
@@ -1390,6 +1878,8 @@ Examples:
         print(f"Layouts: {manifest['layout_count']}")
         if design_source:
             print(f"Design source(s) linked: yes")
+        if args.design_md:
+            print(f"Design guide: {args.design_md_file}")
 
         return 0
 

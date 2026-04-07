@@ -304,6 +304,41 @@ The `slide_master` section in `theme-manifest.json` captures the **common frame*
 | `info` | `accent6` | — |
 | `link` | `hlink` | — |
 
+### Design System Document (design.md)
+
+Use `--design-md` to generate a Figma-style design-system document alongside the theme:
+
+```bash
+python3 scripts/extract_pptx_theme.py template.pptx -o common/pptx-theme/ --design-md
+
+# Output:
+# common/pptx-theme/
+# ├── theme-manifest.json
+# ├── theme-override.css
+# ├── design.md              ← NEW: design system guide
+# └── images/
+```
+
+The `design.md` contains:
+
+| Section | Contents |
+|---------|----------|
+| §1 Slide Canvas | Aspect ratio, resolution |
+| §2 Color System | Semantic tokens (primary, secondary, accent, etc.) + contrast guidance |
+| §3 Typography | Font families, type scale (H1–Caption), weight rules |
+| §4 Iconography | Icon style (rounded/sharp), sizes, AWS icon rules |
+| §5 Spacing & Grid | 12-column grid, 4px base unit, safe areas |
+| §6 Shapes & Corners | Border-radius scale (none→full), shadow scale |
+| §7 Decorative Patterns | Detected master shapes with exact positions |
+| §8 Header & Footer | Fixed regions — elements and no-go zones |
+| §9 Logo & Branding | Logo positions, clear space rules |
+| §10 Background | Master background type and overlay rules |
+| §11 Motion | Transition and fragment animation defaults |
+| §12 Design Sources | Linked Figma/Stitch URLs (if provided) |
+| Checklist | Pre-flight consistency verification |
+
+Agents and humans should treat `design.md` as the **single source of truth** for visual consistency. The document is fully machine-readable (YAML code blocks) and human-readable (prose + tables).
+
 ### External Design Source References
 
 Link external design guides (Figma, Google Stitch) so agents can consult them when building slides:
