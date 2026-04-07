@@ -233,12 +233,60 @@ Only these fenced div blocks are recognized by the converter:
 | `:::css` | Per-slide CSS overrides |
 | `:::html` | Raw HTML block (no markdown processing) |
 | `:::script` | JavaScript block (executes on slide load) |
+| `:::tab "Title"` | Tab section (in `@type: tabs` slides or as inner block) |
 
-| `::: tab "Title"` | Tab section in `@type: tabs` slides |
+**NOT supported** (will render as literal text): `:::compare`, `:::option`, `:::buttons`, `:::timeline`
 
-**NOT supported** (will render as literal text): `:::compare`, `:::option`, `:::buttons`, `:::tabs`, `:::timeline`
+For tabs slides, use either `:::tab "Title"` blocks or `### ` headings — both are supported. For compare slides, use 2+ `### ` headings. For timeline, use ordered lists (NO `{.click}` — timeline has built-in ↑↓ keyboard step navigation via `__canvasStep`).
 
-For tabs slides, use either `::: tab "Title"` blocks or `### ` headings — both are supported. For compare slides, use 2+ `### ` headings. For timeline, use ordered lists (NO `{.click}` — timeline has built-in ↑↓ keyboard step navigation via `__canvasStep`).
+### Nesting Blocks (Pandoc-style colon counting)
+
+Blocks can be nested by using **more colons** on the outer block (Pandoc convention). The closing marker must have the **same colon count** as the opening:
+
+```markdown
+::::left
+Some content in the left column
+
+:::click
+This appears on click (nested inside left)
+:::
+
+More left content
+::::
+```
+
+Rules:
+- `:::` (3 colons) is the standard inner block delimiter
+- `::::` (4+ colons) wraps around inner blocks for nesting
+- A closer `::::` only matches an opener with the same colon count
+- **Backward compatible**: flat `:::` without nesting works exactly as before
+
+Example — tabs with nested columns:
+
+```markdown
+@type: tabs
+
+## My Tabbed Slide
+
+:::::tab "Overview"
+::::left
+- Point 1
+- Point 2
+::::
+::::right
+- Detail A
+- Detail B
+::::
+:::::
+
+:::::tab "Architecture"
+:::canvas id=arch
+box api "API Gateway" at 100,50 size 120,40
+box lambda "Lambda" at 300,50 size 120,40
+arrow api lambda "invoke"
+:::
+:::::
+```
 
 ### :::html — Raw HTML Block
 

@@ -1425,15 +1425,22 @@ ${speakerHtml}`;
         const sid = `s${slideIndex}`;
 
         while (i < lines.length) {
-            const blockMatch = lines[i].match(/^:::\s*(\w+)(?:\s+(.*))?$/);
+            const blockMatch = lines[i].match(/^(:{3,})\s*(\w+)(?:\s+(.*))?$/);
 
             if (blockMatch) {
-                const blockType = blockMatch[1];
-                const blockArg = blockMatch[2]?.trim() || '';
-                // Collect inner content until closing :::
+                const openColons = blockMatch[1].length;
+                const blockType = blockMatch[2];
+                const blockArg = blockMatch[3]?.trim() || '';
+                // Collect inner content until matching colon-count closer
+                // Pandoc-style: :::click (3) closed by ::: (3),
+                //               ::::left (4) closed by :::: (4)
                 const innerLines: string[] = [];
                 i++;
-                while (i < lines.length && !/^:::\s*$/.test(lines[i])) {
+                while (i < lines.length) {
+                    const closeMatch = lines[i].match(/^(:{3,})\s*$/);
+                    if (closeMatch && closeMatch[1].length === openColons) {
+                        break;
+                    }
                     innerLines.push(lines[i]);
                     i++;
                 }
@@ -1466,11 +1473,14 @@ ${speakerHtml}`;
                         const leftHtml = this._renderInlineMarkdown(inner, slideIndex);
                         let rightHtml = '';
                         while (i < lines.length && lines[i].trim() === '') { i++; }
-                        const rightMatch = i < lines.length && lines[i].match(/^:::\s*right(?:\s+.*)?$/);
+                        const rightMatch = i < lines.length && lines[i].match(/^(:{3,})\s*right(?:\s+.*)?$/);
                         if (rightMatch) {
+                            const rightColons = rightMatch[1].length;
                             const rightInner: string[] = [];
                             i++;
-                            while (i < lines.length && !/^:::\s*$/.test(lines[i])) {
+                            while (i < lines.length) {
+                                const rc = lines[i].match(/^(:{3,})\s*$/);
+                                if (rc && rc[1].length === rightColons) { break; }
                                 rightInner.push(lines[i]);
                                 i++;
                             }
@@ -1488,11 +1498,14 @@ ${speakerHtml}`;
                         while (i < lines.length) {
                             let peek = i;
                             while (peek < lines.length && lines[peek].trim() === '') { peek++; }
-                            const nextCol = peek < lines.length && lines[peek].match(/^:::\s*col(?:\s+.*)?$/);
+                            const nextCol = peek < lines.length && lines[peek].match(/^(:{3,})\s*col(?:\s+.*)?$/);
                             if (!nextCol) { break; }
+                            const nextColons = nextCol[1].length;
                             i = peek + 1;
                             const colInner: string[] = [];
-                            while (i < lines.length && !/^:::\s*$/.test(lines[i])) {
+                            while (i < lines.length) {
+                                const cc = lines[i].match(/^(:{3,})\s*$/);
+                                if (cc && cc[1].length === nextColons) { break; }
                                 colInner.push(lines[i]);
                                 i++;
                             }
@@ -1508,11 +1521,14 @@ ${speakerHtml}`;
                         while (i < lines.length) {
                             let peek = i;
                             while (peek < lines.length && lines[peek].trim() === '') { peek++; }
-                            const nextCell = peek < lines.length && lines[peek].match(/^:::\s*cell(?:\s+.*)?$/);
+                            const nextCell = peek < lines.length && lines[peek].match(/^(:{3,})\s*cell(?:\s+.*)?$/);
                             if (!nextCell) { break; }
+                            const nextCellColons = nextCell[1].length;
                             i = peek + 1;
                             const cellInner: string[] = [];
-                            while (i < lines.length && !/^:::\s*$/.test(lines[i])) {
+                            while (i < lines.length) {
+                                const cc = lines[i].match(/^(:{3,})\s*$/);
+                                if (cc && cc[1].length === nextCellColons) { break; }
                                 cellInner.push(lines[i]);
                                 i++;
                             }
