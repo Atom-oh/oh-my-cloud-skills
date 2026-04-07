@@ -184,6 +184,21 @@ class Slide:
     script_blocks: List[str] = field(default_factory=list)
 
 
+@dataclass
+class ParsedBlock:
+    """Represents a ::: block extracted by the stack-based parser.
+
+    Nested blocks are stored in ``children`` so the outer block's
+    ``content`` only contains text and placeholder markers
+    (``<!-- __CHILD:N__ -->``) where children were removed.
+    """
+    block_type: str                                       # e.g. 'left', 'click', 'canvas'
+    args: str = ''                                        # text after the block type
+    content: str = ''                                     # inner text (children replaced by markers)
+    raw_content: str = ''                                 # inner text with original nested blocks
+    children: List['ParsedBlock'] = field(default_factory=list)
+
+
 def parse_yaml_simple(text: str) -> Dict[str, Any]:
     """Simple YAML parser for frontmatter when PyYAML is not available."""
     result = {}
@@ -536,6 +551,86 @@ class RemarpParser:
             order_counter = max(order_counter, order + 1)
 
         return fragments
+
+    # ---- Stack-based block parser ----------------------------------------
+
+    _BLOCK_OPEN_RE = re.compile(r'^:::\s*([\w][\w-]*)(.*)$')
+    _BLOCK_CLOSE_RE = re.compile(r'^:::\s*$')
+
+    def parse_all_blocks_stack(self, md_text: str) -> Tuple[str, Dict[str, List[ParsedBlock]]]:
+        """Stack-based parser that extracts **all** ::: blocks at once.
+
+        Properly handles nested blocks by tracking depth.  Returns
+        ``(remaining_text, blocks_by_type)`` where *remaining_text* has
+        every top-level block replaced by a placeholder comment
+        ``<!-- __BLOCK:type:N__ -->`` and *blocks_by_type* maps each
+        block type to a list of :class:`ParsedBlock` instances.
+
+        Nested child blocks are attached to their parent's ``children``
+        list and replaced in the parent's ``content`` with
+        ``<!-- __CHILD:N__ -->`` markers.
+        """
+        lines = md_text.split('\n')
+        # Stack entries: [block_type, args, content_lines, children, raw_lines]
+        stack: List[List] = []
+        blocks_by_type: Dict[str, List[ParsedBlock]] = {}
+        output_lines: List[str] = []
+        block_counter: Dict[str, int] = {}
+
+        for line in lines:
+            stripped = line.rstrip()
+            close_match = self._BLOCK_CLOSE_RE.match(stripped)
+            open_match = self._BLOCK_OPEN_RE.match(stripped)
+
+            if close_match and stack:
+                # --- Close the innermost block ---
+                btype, bargs, content_lines, children, raw_lines = stack.pop()
+                block = ParsedBlock(
+                    block_type=btype,
+                    args=bargs,
+                    content='\n'.join(content_lines),
+                    raw_content='\n'.join(raw_lines),
+                    children=children,
+                )
+                if stack:
+                    # Nested: attach to parent as child
+                    parent_children = stack[-1][3]
+                    child_idx = len(parent_children)
+                    parent_children.append(block)
+                    stack[-1][2].append(f'<!-- __CHILD:{child_idx}__ -->')
+                    # Also record raw lines for parent's raw_content
+                    stack[-1][4].append(f':::{btype} {bargs}'.rstrip())
+                    stack[-1][4].extend(raw_lines)
+                    stack[-1][4].append(':::')
+                else:
+                    # Top-level block: store and add placeholder to output
+                    idx = block_counter.get(btype, 0)
+                    block_counter[btype] = idx + 1
+                    blocks_by_type.setdefault(btype, []).append(block)
+                    output_lines.append(f'<!-- __BLOCK:{btype}:{idx}__ -->')
+
+            elif open_match and not close_match:
+                # --- Open a new block ---
+                btype = open_match.group(1)
+                bargs = (open_match.group(2) or '').strip()
+                stack.append([btype, bargs, [], [], []])
+
+            elif stack:
+                # --- Inside a block: collect content ---
+                stack[-1][2].append(line)
+                stack[-1][4].append(line)
+
+            else:
+                # --- Outside all blocks ---
+                output_lines.append(line)
+
+        # Unclosed blocks: dump back as plain text (error tolerance)
+        while stack:
+            btype, bargs, content_lines, _children, _raw = stack.pop()
+            output_lines.append(f':::{btype} {bargs}'.rstrip())
+            output_lines.extend(content_lines)
+
+        return '\n'.join(output_lines), blocks_by_type
 
     def parse_columns(self, md_text: str) -> List[Tuple[str, str]]:
         """Parse ::: left/right/col/cell blocks."""
