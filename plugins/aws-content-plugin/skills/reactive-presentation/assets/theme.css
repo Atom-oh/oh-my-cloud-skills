@@ -123,19 +123,23 @@ body {
 .slide h1 {
   font-size: 2.4rem; font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: .33rem;
+  margin-top: 0; margin-bottom: .33rem;
   line-height: 1.2;
 }
 .slide h2 {
   font-size: 1.8rem; font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: .5rem;
+  margin-top: .83rem; margin-bottom: .5rem;
 }
 .slide h3 {
   font-size: 1.3rem; font-weight: 600;
   color: var(--text-accent);
-  margin-bottom: .33rem;
+  margin-top: .67rem; margin-bottom: .33rem;
 }
+/* First heading in a container should not have extra top margin */
+.slide-body > h1:first-child,
+.slide-body > h2:first-child,
+.slide-body > h3:first-child { margin-top: 0; }
 .slide p, .slide li {
   font-size: 1.05rem;
   line-height: 1.7;
@@ -404,6 +408,7 @@ body {
 /* --- Lists --- */
 .slide ul, .slide ol {
   padding-left: 1rem;
+  margin-bottom: .5rem;
 }
 .slide ul li, .slide ol li {
   margin-bottom: .25rem;

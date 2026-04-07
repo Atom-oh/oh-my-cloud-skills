@@ -544,8 +544,10 @@ export class RemarpPreviewPanel {
             opacity: 0.5;
         }
         h1 { font-size: 2.5em; margin-top: 0; color: ${headingColor}; }
-        h2 { font-size: 2em; color: ${headingColor}; }
-        h3 { font-size: 1.5em; color: ${headingColor}; }
+        h2 { font-size: 2em; margin-top: 0.8em; color: ${headingColor}; }
+        h3 { font-size: 1.5em; margin-top: 0.6em; color: ${headingColor}; }
+        h1:first-child, h2:first-child, h3:first-child { margin-top: 0; }
+        ul, ol { margin-bottom: 0.5em; }
         p { line-height: 1.6; }
         code {
             background: #0d1117;
