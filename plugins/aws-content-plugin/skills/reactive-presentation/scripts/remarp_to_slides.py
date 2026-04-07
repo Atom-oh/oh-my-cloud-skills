@@ -432,14 +432,20 @@ class RemarpParser:
                         for m in re.finditer(r'(\w+)=([^\s]+)', child.args):
                             c_attrs[m.group(1)] = m.group(2)
                         c_anim = c_attrs.get('animation', 'fade-in')
-                        c_order = c_attrs.get('order', str(frag_counter))
-                        frag_counter = max(frag_counter, int(c_order) + 1)
+                        c_order = int(c_attrs.get('order', str(frag_counter)))
+                        frag_counter = max(frag_counter, c_order + 1)
                         marker = f'<!-- FRAG:{c_order}:{c_anim} -->\n{child.content.strip()}\n<!-- /FRAG -->'
                         col_content = col_content.replace(f'<!-- __CHILD:{ci}__ -->', marker)
                     elif child.block_type == 'html':
                         col_content = col_content.replace(
                             f'<!-- __CHILD:{ci}__ -->',
                             child.content)
+                    else:
+                        # Other nested block types (canvas, tab, script, css, etc.)
+                        # — render as raw content to avoid leaving placeholder markers
+                        col_content = col_content.replace(
+                            f'<!-- __CHILD:{ci}__ -->',
+                            child.raw_content if child.raw_content else child.content)
                 columns.append((btype, col_content))
 
         # CSS overrides
@@ -647,9 +653,9 @@ class RemarpParser:
                 close_colons = len(close_match.group(1))
                 # Find the nearest stack entry with matching colon count
                 matched_idx = None
-                for idx in range(len(stack) - 1, -1, -1):
-                    if stack[idx][0] == close_colons:
-                        matched_idx = idx
+                for si in range(len(stack) - 1, -1, -1):
+                    if stack[si][0] == close_colons:
+                        matched_idx = si
                         break
 
                 if matched_idx is not None:
