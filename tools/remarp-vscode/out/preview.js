@@ -510,8 +510,10 @@ class RemarpPreviewPanel {
             opacity: 0.5;
         }
         h1 { font-size: 2.5em; margin-top: 0; color: ${headingColor}; }
-        h2 { font-size: 2em; color: ${headingColor}; }
-        h3 { font-size: 1.5em; color: ${headingColor}; }
+        h2 { font-size: 2em; margin-top: 0.8em; color: ${headingColor}; }
+        h3 { font-size: 1.5em; margin-top: 0.6em; color: ${headingColor}; }
+        h1:first-child, h2:first-child, h3:first-child { margin-top: 0; }
+        ul, ol { margin-bottom: 0.5em; }
         p { line-height: 1.6; }
         code {
             background: #0d1117;
@@ -1323,14 +1325,21 @@ ${speakerHtml}`;
         let optionCounter = 0;
         const sid = `s${slideIndex}`;
         while (i < lines.length) {
-            const blockMatch = lines[i].match(/^:::\s*(\w+)(?:\s+(.*))?$/);
+            const blockMatch = lines[i].match(/^(:{3,})\s*(\w+)(?:\s+(.*))?$/);
             if (blockMatch) {
-                const blockType = blockMatch[1];
-                const blockArg = blockMatch[2]?.trim() || '';
-                // Collect inner content until closing :::
+                const openColons = blockMatch[1].length;
+                const blockType = blockMatch[2];
+                const blockArg = blockMatch[3]?.trim() || '';
+                // Collect inner content until matching colon-count closer
+                // Pandoc-style: :::click (3) closed by ::: (3),
+                //               ::::left (4) closed by :::: (4)
                 const innerLines = [];
                 i++;
-                while (i < lines.length && !/^:::\s*$/.test(lines[i])) {
+                while (i < lines.length) {
+                    const closeMatch = lines[i].match(/^(:{3,})\s*$/);
+                    if (closeMatch && closeMatch[1].length === openColons) {
+                        break;
+                    }
                     innerLines.push(lines[i]);
                     i++;
                 }
@@ -1362,11 +1371,16 @@ ${speakerHtml}`;
                         while (i < lines.length && lines[i].trim() === '') {
                             i++;
                         }
-                        const rightMatch = i < lines.length && lines[i].match(/^:::\s*right(?:\s+.*)?$/);
+                        const rightMatch = i < lines.length && lines[i].match(/^(:{3,})\s*right(?:\s+.*)?$/);
                         if (rightMatch) {
+                            const rightColons = rightMatch[1].length;
                             const rightInner = [];
                             i++;
-                            while (i < lines.length && !/^:::\s*$/.test(lines[i])) {
+                            while (i < lines.length) {
+                                const rc = lines[i].match(/^(:{3,})\s*$/);
+                                if (rc && rc[1].length === rightColons) {
+                                    break;
+                                }
                                 rightInner.push(lines[i]);
                                 i++;
                             }
@@ -1386,13 +1400,18 @@ ${speakerHtml}`;
                             while (peek < lines.length && lines[peek].trim() === '') {
                                 peek++;
                             }
-                            const nextCol = peek < lines.length && lines[peek].match(/^:::\s*col(?:\s+.*)?$/);
+                            const nextCol = peek < lines.length && lines[peek].match(/^(:{3,})\s*col(?:\s+.*)?$/);
                             if (!nextCol) {
                                 break;
                             }
+                            const nextColons = nextCol[1].length;
                             i = peek + 1;
                             const colInner = [];
-                            while (i < lines.length && !/^:::\s*$/.test(lines[i])) {
+                            while (i < lines.length) {
+                                const cc = lines[i].match(/^(:{3,})\s*$/);
+                                if (cc && cc[1].length === nextColons) {
+                                    break;
+                                }
                                 colInner.push(lines[i]);
                                 i++;
                             }
@@ -1410,13 +1429,18 @@ ${speakerHtml}`;
                             while (peek < lines.length && lines[peek].trim() === '') {
                                 peek++;
                             }
-                            const nextCell = peek < lines.length && lines[peek].match(/^:::\s*cell(?:\s+.*)?$/);
+                            const nextCell = peek < lines.length && lines[peek].match(/^(:{3,})\s*cell(?:\s+.*)?$/);
                             if (!nextCell) {
                                 break;
                             }
+                            const nextCellColons = nextCell[1].length;
                             i = peek + 1;
                             const cellInner = [];
-                            while (i < lines.length && !/^:::\s*$/.test(lines[i])) {
+                            while (i < lines.length) {
+                                const cc = lines[i].match(/^(:{3,})\s*$/);
+                                if (cc && cc[1].length === nextCellColons) {
+                                    break;
+                                }
                                 cellInner.push(lines[i]);
                                 i++;
                             }
