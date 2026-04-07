@@ -826,23 +826,34 @@ class ThemeExtractor:
 
         return decorative
 
-    def build_slide_master(self, manifest: dict[str, Any]) -> dict[str, Any]:
+    def build_slide_master(self, manifest: dict[str, Any],
+                           design_source: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """Assemble the ``slide_master`` section from extracted data.
 
         This is the structured representation of the common frame that
         applies to every slide (as opposed to per-layout content areas).
+
+        Args:
+            manifest: The partially-built theme manifest.
+            design_source: Optional external design source reference
+                (Figma, Google Slides URL with metadata).
         """
         colors = manifest.get('colors', {})
         footer_info = manifest.get('footer')
         master_texts = manifest.get('master_texts', [])
 
-        return {
+        result = {
             'slide_size': self.extract_slide_size(),
             'color_palette': self.extract_color_palette(colors),
             'header': self.extract_header_region(),
             'footer': self.extract_footer_region(footer_info, master_texts),
             'decorative_elements': self.extract_decorative_elements(),
         }
+
+        if design_source:
+            result['design_source'] = design_source
+
+        return result
 
     def extract_layout_details(self) -> list[dict[str, Any]]:
         """Extract details from all slide master layouts.
@@ -942,12 +953,15 @@ class ThemeExtractor:
             })
         return layouts
 
-    def extract_all(self, output_dir: Path) -> dict[str, Any]:
+    def extract_all(self, output_dir: Path,
+                    design_source: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """
         Extract all theme information.
 
         Args:
             output_dir: Directory to save extracted assets
+            design_source: Optional external design-guide reference
+                (Figma URL, Google Slides URL, etc.).
 
         Returns:
             Complete theme manifest dictionary.
@@ -978,7 +992,7 @@ class ThemeExtractor:
         )
 
         # Slide-master template: common frame across all slides
-        manifest['slide_master'] = self.build_slide_master(manifest)
+        manifest['slide_master'] = self.build_slide_master(manifest, design_source)
 
         return manifest
 
@@ -1250,6 +1264,31 @@ class CSSGenerator:
         return '\n'.join(lines)
 
 
+def _build_design_source(args) -> Optional[dict[str, Any]]:
+    """Build design_source dict from CLI args (--figma, --stitch)."""
+    sources = []
+
+    if getattr(args, 'figma', None):
+        sources.append({
+            'type': 'figma',
+            'url': args.figma,
+            'description': 'Figma design file — open to inspect colors, typography, spacing, and component styles.',
+        })
+
+    if getattr(args, 'stitch', None):
+        sources.append({
+            'type': 'stitch',
+            'url': args.stitch,
+            'description': 'Google Stitch design guide — reference for layout grid, color tokens, and asset exports.',
+        })
+
+    if not sources:
+        return None
+    if len(sources) == 1:
+        return sources[0]
+    return {'sources': sources}
+
+
 def main():
     """Main entry point for CLI."""
     parser = argparse.ArgumentParser(
@@ -1260,6 +1299,9 @@ Examples:
   %(prog)s presentation.pptx -o ./theme
   %(prog)s template.pptx --list-masters
   %(prog)s template.pptx --master 1 -o ./theme --json-only
+  %(prog)s template.pptx -o ./theme --figma "https://figma.com/file/abc123"
+  %(prog)s template.pptx -o ./theme --stitch "https://stitch.google.com/..."
+  %(prog)s template.pptx -o ./theme --figma "..." --stitch "..."
         """
     )
 
@@ -1276,6 +1318,20 @@ Examples:
                        help='Generate only JSON manifest, skip CSS')
     parser.add_argument('--css-file', default='theme-override.css',
                        help='CSS output filename (default: theme-override.css)')
+
+    # External design-guide references
+    design_group = parser.add_argument_group(
+        'design sources',
+        'Reference external design guides. URLs are stored in '
+        'slide_master.design_source so agents can consult them '
+        'when generating slides.'
+    )
+    design_group.add_argument(
+        '--figma', metavar='URL',
+        help='Figma file URL to reference as design guide')
+    design_group.add_argument(
+        '--stitch', metavar='URL',
+        help='Google Stitch design guide URL to reference')
 
     args = parser.parse_args()
 
@@ -1301,10 +1357,15 @@ Examples:
 
         # Extract theme
         output_dir = Path(args.output)
+        design_source = _build_design_source(args)
+
         print(f"Extracting theme from: {args.pptx_path}")
         print(f"Output directory: {output_dir}")
+        if design_source:
+            src_type = design_source.get('type', 'multiple')
+            print(f"Design source: {src_type}")
 
-        manifest = extractor.extract_all(output_dir)
+        manifest = extractor.extract_all(output_dir, design_source=design_source)
 
         # Save JSON manifest
         manifest_path = output_dir / 'theme-manifest.json'
@@ -1327,6 +1388,8 @@ Examples:
         print(f"Colors extracted: {len(manifest['colors'])}")
         print(f"Logos extracted: {len(manifest['logos'])}")
         print(f"Layouts: {manifest['layout_count']}")
+        if design_source:
+            print(f"Design source(s) linked: yes")
 
         return 0
 

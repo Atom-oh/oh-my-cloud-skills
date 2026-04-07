@@ -304,6 +304,48 @@ The `slide_master` section in `theme-manifest.json` captures the **common frame*
 | `info` | `accent6` | — |
 | `link` | `hlink` | — |
 
+### External Design Source References
+
+Link external design guides (Figma, Google Stitch) so agents can consult them when building slides:
+
+```bash
+# Link a Figma design file
+python3 scripts/extract_pptx_theme.py template.pptx -o common/pptx-theme/ \
+  --figma "https://figma.com/file/abc123/Design-System"
+
+# Link a Google Stitch design guide
+python3 scripts/extract_pptx_theme.py template.pptx -o common/pptx-theme/ \
+  --stitch "https://stitch.google.com/library/..."
+
+# Both at once
+python3 scripts/extract_pptx_theme.py template.pptx -o common/pptx-theme/ \
+  --figma "https://figma.com/file/abc123" \
+  --stitch "https://stitch.google.com/library/xyz"
+```
+
+The URL is stored in `slide_master.design_source`:
+
+```json
+"design_source": {
+  "type": "figma",
+  "url": "https://figma.com/file/abc123/Design-System",
+  "description": "Figma design file — open to inspect colors, typography, spacing, and component styles."
+}
+```
+
+When both `--figma` and `--stitch` are provided:
+
+```json
+"design_source": {
+  "sources": [
+    { "type": "figma", "url": "...", "description": "..." },
+    { "type": "stitch", "url": "...", "description": "..." }
+  ]
+}
+```
+
+Agents should open the linked URL via MCP browser or WebFetch to retrieve up-to-date design tokens (color palette, typography scale, spacing grid) that complement the PPTX-extracted values.
+
 ## Background Types
 
 | PPTX Fill Type | CSS Output |
