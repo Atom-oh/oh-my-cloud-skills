@@ -108,6 +108,26 @@ blocks:
 
 ### Theme Configuration
 
+Two modes are supported: (A) PPTX source extraction, (B) direct color specification.
+
+#### Mode A: PPTX Source (recommended)
+
+Extract theme colors, fonts, logos, and backgrounds from an existing PPTX template:
+
+```yaml
+theme:
+  source: "./company-template.pptx"  # Path to PPTX template
+  footer: "© 2026, ..."             # Override footer (or "auto" to extract from PPTX)
+  logo: auto                         # "auto" = extract from PPTX, or explicit path
+  pagination: true                   # Show page numbers (optional)
+```
+
+When `source` is set, `extract_pptx_theme.py` generates `theme-manifest.json` (with colors, fonts, images, `slide_master`) and `design.md` (Figma-style design system). The generated colors are then applied automatically. See `pptx-theme-guide.md` for the full `slide_master` schema.
+
+#### Mode B: Direct Colors
+
+Specify colors and assets explicitly (no PPTX required):
+
 ```yaml
 theme:
   primary: "#232F3E"       # Primary color (headers, backgrounds)
@@ -119,6 +139,8 @@ theme:
   badge: "./common/pptx-theme/images/badge.png"      # Badge image path (optional)
   background: "./common/pptx-theme/images/bg.png"    # Background image path (optional)
 ```
+
+Both modes share `footer`, `logo`, `badge`, and `background` fields. Mode A overrides any direct color values with extracted PPTX theme colors.
 
 ### Transition Configuration
 

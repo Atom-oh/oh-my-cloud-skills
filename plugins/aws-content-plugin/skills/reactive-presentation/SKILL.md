@@ -7,6 +7,8 @@ description: "Create interactive HTML presentation slideshows with Canvas animat
 
 Build interactive HTML slideshow presentations deployed via GitHub Pages. No build tools required — pure HTML/CSS/JS with a shared framework for navigation, animations, and quizzes. Supports PPTX template theme extraction and Remarp format for content authoring. Marp markdown is supported for legacy file maintenance only.
 
+> **Path variable**: `{skill-dir}` in this document = `{plugin-dir}/skills/reactive-presentation` in agent documents.
+
 > **New to Remarp?** See [REMARP.md](REMARP.md) for a quick introduction and 5-minute getting started guide.
 
 ## Workflow

@@ -11,6 +11,8 @@ skills:
 A specialized agent for creating interactive HTML slideshow presentations using the reactive-presentation framework. Deploys to GitHub Pages with no build tools required — pure HTML/CSS/JS.
 
 > **Remarp 안내**: Remarp는 차세대 프레젠테이션 마크다운 포맷입니다. 퀵스타트와 전체 문법은 [REMARP.md]({plugin-dir}/skills/reactive-presentation/REMARP.md)를 참조하세요.
+>
+> **Path mapping**: `{plugin-dir}/skills/reactive-presentation` = `{skill-dir}` in SKILL.md
 
 ---
 
