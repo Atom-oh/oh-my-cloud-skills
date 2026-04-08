@@ -393,7 +393,24 @@ class RemarpParser:
         html_blocks = self.HTML_BLOCK_PATTERN.findall(md_text)
         md_text = self.HTML_BLOCK_PATTERN.sub(_replace_html_block, md_text)
 
-        # Parse columns (after HTML extraction so column content has placeholders)
+        # Replace :::click blocks with fragment markers (content preserved for rendering)
+        # (must run BEFORE parse_columns so :::click inside columns becomes markers,
+        #  otherwise COLUMN_PATTERN's non-greedy regex stops at inner :::click closings)
+        frag_counter = [0]
+        def _mark_click_block(match):
+            content = match.group(3) if match.lastindex >= 3 else ''
+            attrs = {}
+            attr_text = match.group(0).split('\n')[0]
+            for attr_match in re.finditer(r'(\w+)=([^\s\n]+)', attr_text):
+                attrs[attr_match.group(1)] = attr_match.group(2)
+            animation = attrs.get('animation', 'fade-in')
+            order = attrs.get('order', str(frag_counter[0]))
+            frag_counter[0] = max(frag_counter[0], int(order) + 1)
+            return f'<!-- FRAG:{order}:{animation} -->\n{content.strip()}\n<!-- /FRAG -->'
+
+        md_text = self.FRAGMENT_BLOCK_PATTERN.sub(_mark_click_block, md_text)
+
+        # Parse columns (after HTML/click extraction so column content has placeholders/markers)
         columns = self.parse_columns(md_text)
 
         # Parse CSS overrides
@@ -411,21 +428,6 @@ class RemarpParser:
 
         # Remove column blocks from content
         md_text = self.COLUMN_PATTERN.sub('', md_text)
-
-        # Replace :::click blocks with fragment markers (content preserved for rendering)
-        frag_counter = [0]
-        def _mark_click_block(match):
-            content = match.group(3) if match.lastindex >= 3 else ''
-            attrs = {}
-            attr_text = match.group(0).split('\n')[0]
-            for attr_match in re.finditer(r'(\w+)=([^\s\n]+)', attr_text):
-                attrs[attr_match.group(1)] = attr_match.group(2)
-            animation = attrs.get('animation', 'fade-in')
-            order = attrs.get('order', str(frag_counter[0]))
-            frag_counter[0] = max(frag_counter[0], int(order) + 1)
-            return f'<!-- FRAG:{order}:{animation} -->\n{content.strip()}\n<!-- /FRAG -->'
-
-        md_text = self.FRAGMENT_BLOCK_PATTERN.sub(_mark_click_block, md_text)
 
         # Extract {.reference}[text](url) patterns
         REFERENCE_PATTERN = re.compile(r'\{\.reference\}\[([^\]]+)\]\(([^)]+)\)')
@@ -1651,6 +1653,8 @@ class RemarpHTMLGenerator:
         # 1d) Group <hN class="fragment ..."> with following content until next <hN> or end.
         #     This ensures heading + its children animate together as one unit.
         #     Inner fragment classes are stripped so only the wrapper div controls visibility.
+        #     Column boundaries (</div> before <div class="col"> or </div>) are respected
+        #     to prevent fragment wrappers from swallowing adjacent columns.
         def _group_heading_with_content(html):
             pattern = re.compile(
                 r'(<h([2-4]) class="(fragment[^"]*)" (data-fragment-index="[^"]*")>.*?</h\2>)'
@@ -1658,6 +1662,9 @@ class RemarpHTMLGenerator:
                 r'(?=<h[2-4][ >]|$)',
                 re.DOTALL
             )
+            # Matches a </div> that closes a column (followed by next col or columns-end)
+            _col_boundary_re = re.compile(r'</div>(?=\s*(?:<div class="col[ ">]|</div>))')
+
             def _wrap(m):
                 heading = m.group(1)
                 frag_cls = m.group(3)
@@ -1665,13 +1672,23 @@ class RemarpHTMLGenerator:
                 content_after = m.group(5)
                 if not content_after.strip():
                     return heading + content_after
+                # Truncate at column boundary to avoid wrapping across columns
+                col_bound = _col_boundary_re.search(content_after)
+                if col_bound:
+                    wrap_part = content_after[:col_bound.start()]
+                    rest_part = content_after[col_bound.start():]
+                    if not wrap_part.strip():
+                        return heading + content_after
+                else:
+                    wrap_part = content_after
+                    rest_part = ''
                 # Remove fragment class from heading (wrapper div handles it)
                 clean_heading = re.sub(r' class="fragment[^"]*"', '', heading)
                 clean_heading = re.sub(r' data-fragment-index="[^"]*"', '', clean_heading)
                 # Remove fragment classes from inner elements (they animate with the group)
-                clean_content = re.sub(r' class="fragment[^"]*"', '', content_after)
+                clean_content = re.sub(r' class="fragment[^"]*"', '', wrap_part)
                 clean_content = re.sub(r' data-fragment-index="[^"]*"', '', clean_content)
-                return f'<div class="{frag_cls}" {frag_idx}>{clean_heading}{clean_content}</div>'
+                return f'<div class="{frag_cls} heading-group" {frag_idx}>{clean_heading}{clean_content}</div>{rest_part}'
             return pattern.sub(_wrap, html)
 
         result = _group_heading_with_content(result)

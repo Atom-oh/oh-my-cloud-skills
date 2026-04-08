@@ -472,11 +472,11 @@ body {
   padding: .42rem .58rem;
   text-align: left;
   border-bottom: 1px solid var(--border);
+  font-size: inherit;
 }
 .slide th {
   color: var(--text-accent);
   font-weight: 600;
-  font-size: .85rem;
   text-transform: uppercase;
   letter-spacing: .04em;
 }
@@ -1163,6 +1163,11 @@ input[type="range"]::-webkit-slider-thumb {
 .fragment.fade-out.visible {
   opacity: 0;
   pointer-events: none;
+}
+
+/* Heading-group spacing: consecutive heading+content fragment sections */
+.heading-group + .heading-group {
+  margin-top: 1em;
 }
 
 /* ============================================================
