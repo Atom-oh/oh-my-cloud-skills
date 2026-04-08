@@ -1817,11 +1817,12 @@ class RemarpHTMLGenerator:
         # 1b) Group <p class="fragment ..."> with immediately following <ul>/<ol>
         #     into a wrapper <div class="fragment"> so sub-lists animate together.
         def _group_p_with_list(m):
-            attrs = m.group(1)  # e.g. fragment fade-up" data-fragment-index="3"
-            p_text = m.group(2)
-            list_block = m.group(3)
+            frag_cls = m.group(1)    # e.g. "fragment fade-up"
+            frag_idx = m.group(2)    # e.g. 'data-fragment-index="3"'
+            p_text = m.group(3)      # paragraph text content
+            list_block = m.group(4)  # <ul>...</ul> or <ol>...</ol>
             return (
-                f'<div class="{attrs}>'
+                f'<div class="{frag_cls}" {frag_idx}>'
                 f'<p>{p_text}</p>\n{list_block}'
                 f'</div>'
             )
@@ -1939,11 +1940,6 @@ class RemarpHTMLGenerator:
         if not elements:
             return ''
 
-        # Check for preset elements
-        for elem in elements:
-            if elem.element_type == 'preset':
-                return self.compile_preset_to_js(canvas_id, elem.params['type'], elem.params['config'])
-
         # --- Pass 0: Extract canvas settings (size, bg) ---
         canvas_width = 960
         canvas_height = 400
@@ -1955,6 +1951,12 @@ class RemarpHTMLGenerator:
                 canvas_height = elem.params.get('height', 400)
             elif elem.element_type == 'bg':
                 canvas_bg = elem.params.get('color')
+
+        # Check for preset elements (after size extraction so dimensions are available)
+        for elem in elements:
+            if elem.element_type == 'preset':
+                return self.compile_preset_to_js(canvas_id, elem.params['type'], elem.params['config'],
+                                                 canvas_width, canvas_height)
 
         # --- Pass 1: Collect element positions and max step ---
         element_positions = {}
@@ -2335,7 +2337,8 @@ class RemarpHTMLGenerator:
 
         return js
 
-    def compile_preset_to_js(self, canvas_id: str, preset_type: str, config: Dict[str, Any]) -> str:
+    def compile_preset_to_js(self, canvas_id: str, preset_type: str, config: Dict[str, Any],
+                             canvas_width: int = 960, canvas_height: int = 400) -> str:
         """Compile a preset to JavaScript that uses CanvasPresets."""
         config_json = json.dumps(config)
         max_steps = max((s.get('step', 0) for s in config.get('steps', [{'step': 3}])), default=3)

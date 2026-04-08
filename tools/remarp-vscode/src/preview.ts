@@ -1450,12 +1450,25 @@ ${speakerHtml}`;
                 // Collect inner content until matching colon-count closer
                 // Pandoc-style: :::click (3) closed by ::: (3),
                 //               ::::left (4) closed by :::: (4)
+                // Depth tracking: same-colon-count openers increment depth
                 const innerLines: string[] = [];
+                let depth = 1;
                 i++;
                 while (i < lines.length) {
+                    const nestedOpen = lines[i].match(/^(:{3,})\s*(\w+)(?:\s+(.*))?$/);
+                    if (nestedOpen && nestedOpen[1].length === openColons) {
+                        depth++;
+                        innerLines.push(lines[i]);
+                        i++;
+                        continue;
+                    }
                     const closeMatch = lines[i].match(/^(:{3,})\s*$/);
                     if (closeMatch && closeMatch[1].length === openColons) {
-                        break;
+                        depth--;
+                        if (depth === 0) { break; }
+                        innerLines.push(lines[i]);
+                        i++;
+                        continue;
                     }
                     innerLines.push(lines[i]);
                     i++;
