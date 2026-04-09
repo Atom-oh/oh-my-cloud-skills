@@ -1,10 +1,7 @@
 import * as vscode from 'vscode';
-import { VisualEditorController } from './visualEditor';
 export declare class RemarpPreviewPanel {
     static currentPanel: RemarpPreviewPanel | undefined;
     private static readonly viewType;
-    private static _editMode;
-    private static _visualEditor;
     private readonly _panel;
     private readonly _extensionUri;
     private _document;
@@ -12,10 +9,10 @@ export declare class RemarpPreviewPanel {
     private _disposables;
     private _updateTimeout;
     private _isHtmlMode;
+    private _suppressSync;
+    get document(): vscode.TextDocument;
     static createOrShow(extensionUri: vscode.Uri, document: vscode.TextDocument): void;
     static update(document: vscode.TextDocument): void;
-    static setEditMode(enabled: boolean): void;
-    static setVisualEditor(editor: VisualEditorController): void;
     static syncCursor(editor: vscode.TextEditor): void;
     private constructor();
     private _debouncedUpdate;
@@ -27,6 +24,9 @@ export declare class RemarpPreviewPanel {
     private _navigateToSlide;
     private _nextSlide;
     private _prevSlide;
+    private _addIssueToSlide;
+    private _removeIssueFromSlide;
+    private _countAllIssues;
     private _getEmptyHtml;
     private _getHtmlForSlide;
     private _transformByType;
@@ -41,6 +41,8 @@ export declare class RemarpPreviewPanel {
     private _renderChecklistContent;
     private _renderQuizContent;
     private _renderCardsContent;
+    private _renderAgendaContent;
+    private _renderTitleContent;
     private _wrapHeadingBody;
     private _escapeHtml;
     private _styleNotes;

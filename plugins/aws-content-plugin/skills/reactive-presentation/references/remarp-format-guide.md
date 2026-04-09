@@ -108,6 +108,26 @@ blocks:
 
 ### Theme Configuration
 
+Two modes are supported: (A) PPTX source extraction, (B) direct color specification.
+
+#### Mode A: PPTX Source (recommended)
+
+Extract theme colors, fonts, logos, and backgrounds from an existing PPTX template:
+
+```yaml
+theme:
+  source: "./company-template.pptx"  # Path to PPTX template
+  footer: "© 2026, ..."             # Override footer (or "auto" to extract from PPTX)
+  logo: auto                         # "auto" = extract from PPTX, or explicit path
+  pagination: true                   # Show page numbers (optional)
+```
+
+When `source` is set, `extract_pptx_theme.py` generates `theme-manifest.json` (with colors, fonts, images, `slide_master`) and `design.md` (Figma-style design system). The generated colors are then applied automatically. See `pptx-theme-guide.md` for the full `slide_master` schema.
+
+#### Mode B: Direct Colors
+
+Specify colors and assets explicitly (no PPTX required):
+
 ```yaml
 theme:
   primary: "#232F3E"       # Primary color (headers, backgrounds)
@@ -119,6 +139,8 @@ theme:
   badge: "./common/pptx-theme/images/badge.png"      # Badge image path (optional)
   background: "./common/pptx-theme/images/bg.png"    # Background image path (optional)
 ```
+
+Both modes share `footer`, `logo`, `badge`, and `background` fields. Mode A overrides any direct color values with extracted PPTX theme colors.
 
 ### Transition Configuration
 
@@ -218,6 +240,29 @@ The converter splits on `---` and creates empty/comment-only slide fragments.
 
 Directives use `@` prefix on lines immediately after `---`. No wrapping `---` block around them.
 
+### Issue Annotations (`<!-- !issue: ... -->`)
+
+슬라이드에 개선 프롬프트를 인라인으로 남깁니다. 빌드 시 자동 제거되며, Preview에서는 노란색 badge로 표시됩니다.
+
+```markdown
+---
+# AWS Architecture Overview
+
+<!-- !issue: 다이어그램이 너무 복잡함, 3개 레이어로 단순화 -->
+<!-- !issue: 폰트 크기가 작아서 뒤에서 안 보임 -->
+
+- VPC 구조
+- Subnet 배치
+```
+
+**동작**:
+- **Preview**: 슬라이드 상단에 노란색 issue badge 표시
+- **Build** (`remarp_to_slides.py build`): 이슈가 제거된 깨끗한 HTML 생성
+- **Issues** (`remarp_to_slides.py issues <path>`): 전체 프로젝트의 이슈 목록 추출
+- **Issues JSON** (`remarp_to_slides.py issues <path> --json`): JSON 형식으로 출력
+
+**워크플로우**: 리뷰어가 이슈를 남기면 → `issues` 명령으로 목록 확인 → Claude가 이슈를 읽고 개선 → 이슈 제거 후 빌드.
+
 ### Supported `:::` Block Types
 
 Only these fenced div blocks are recognized by the converter:
@@ -233,12 +278,60 @@ Only these fenced div blocks are recognized by the converter:
 | `:::css` | Per-slide CSS overrides |
 | `:::html` | Raw HTML block (no markdown processing) |
 | `:::script` | JavaScript block (executes on slide load) |
+| `:::tab "Title"` | Tab section (in `@type: tabs` slides or as inner block) |
 
-| `::: tab "Title"` | Tab section in `@type: tabs` slides |
+**NOT supported** (will render as literal text): `:::compare`, `:::option`, `:::buttons`, `:::timeline`
 
-**NOT supported** (will render as literal text): `:::compare`, `:::option`, `:::buttons`, `:::tabs`, `:::timeline`
+For tabs slides, use either `:::tab "Title"` blocks or `### ` headings — both are supported. For compare slides, use 2+ `### ` headings. For timeline, use ordered lists (NO `{.click}` — timeline has built-in ↑↓ keyboard step navigation via `__canvasStep`).
 
-For tabs slides, use either `::: tab "Title"` blocks or `### ` headings — both are supported. For compare slides, use 2+ `### ` headings. For timeline, use ordered lists (NO `{.click}` — timeline has built-in ↑↓ keyboard step navigation via `__canvasStep`).
+### Nesting Blocks (Pandoc-style colon counting)
+
+Blocks can be nested by using **more colons** on the outer block (Pandoc convention). The closing marker must have the **same colon count** as the opening:
+
+```markdown
+::::left
+Some content in the left column
+
+:::click
+This appears on click (nested inside left)
+:::
+
+More left content
+::::
+```
+
+Rules:
+- `:::` (3 colons) is the standard inner block delimiter
+- `::::` (4+ colons) wraps around inner blocks for nesting
+- A closer `::::` only matches an opener with the same colon count
+- **Backward compatible**: flat `:::` without nesting works exactly as before
+
+Example — tabs with nested columns:
+
+```markdown
+@type: tabs
+
+## My Tabbed Slide
+
+:::::tab "Overview"
+::::left
+- Point 1
+- Point 2
+::::
+::::right
+- Detail A
+- Detail B
+::::
+:::::
+
+:::::tab "Architecture"
+:::canvas id=arch
+box api "API Gateway" at 100,50 size 120,40
+box lambda "Lambda" at 300,50 size 120,40
+arrow api lambda "invoke"
+:::
+:::::
+```
 
 ### :::html — Raw HTML Block
 
@@ -274,6 +367,77 @@ Embeds raw HTML directly into the slide body without markdown processing. Use fo
 - **한국어 텍스트**: `word-break: keep-all; overflow-wrap: break-word;` 필수 적용
 
 > 상세 레이아웃 규칙과 패턴은 `interactive-patterns-guide.md` §0 참조.
+
+#### :::html Reactive 패턴 (필수)
+
+`:::html` 블록은 **정적이면 안 됩니다.** 모든 `:::html` 블록에 최소 하나의 reactive 패턴을 적용하세요:
+
+**1. Fragment 순차 등장 (가장 기본)**
+
+2개 이상의 항목이 있으면 `class="fragment fade-up"` + `data-fragment-index="N"`으로 순차 등장:
+
+```html
+:::html
+<div class="col-3" style="gap:1.5rem;">
+  <div class="card fragment fade-up" data-fragment-index="1">
+    <h4>항목 1</h4><p>설명</p>
+  </div>
+  <div class="card fragment fade-right" data-fragment-index="2">
+    <h4>항목 2</h4><p>설명</p>
+  </div>
+  <div class="card fragment zoom-in" data-fragment-index="3">
+    <h4>항목 3</h4><p>설명</p>
+  </div>
+</div>
+:::
+```
+
+**Animation 종류**: `fade-up`, `fade-right`, `fade-left`, `fade-down`, `zoom-in`, `grow` — 레이아웃 방향에 맞게 선택:
+- 수직 흐름 (위→아래) → `fade-up`
+- 수평 흐름 (좌→우) → `fade-right`
+- 강조/핵심 → `zoom-in`
+- 파이프라인 단계 → `fade-right` (방향성 암시)
+
+**2. 그룹 Fragment (관련 항목 동시 등장)**
+
+```html
+<div class="fragment fade-up" data-fragment-index="1">
+  <p>제목</p>
+  <ul><li>항목 A</li><li>항목 B</li></ul>
+</div>
+```
+
+제목과 하위 항목이 같은 `data-fragment-index`로 함께 등장.
+
+**3. Flow 다이어그램 순차 활성화**
+
+```html
+<div class="flow-h" style="gap:1rem;">
+  <div class="flow-box fragment fade-right" data-fragment-index="1">Step 1</div>
+  <div class="flow-arrow fragment fade-right" data-fragment-index="2">→</div>
+  <div class="flow-box fragment fade-right" data-fragment-index="2">Step 2</div>
+  <div class="flow-arrow fragment fade-right" data-fragment-index="3">→</div>
+  <div class="flow-box fragment fade-right" data-fragment-index="3">Step 3</div>
+</div>
+```
+
+화살표와 다음 박스를 같은 인덱스로 묶어 흐름감 부여.
+
+**4. Before/After 비교 순차**
+
+```html
+<div class="col-2" style="gap:2rem;">
+  <div class="card fragment fade-right" data-fragment-index="1" style="border-color:var(--red);">
+    <h4>Before</h4><p>문제 상황</p>
+  </div>
+  <div class="card fragment zoom-in" data-fragment-index="2" style="border-color:var(--green);">
+    <h4>After</h4><p>개선 결과</p>
+  </div>
+</div>
+```
+
+> **규칙**: `:::html` 블록에 3개 이상의 동위 요소가 있으면 반드시 fragment animation을 적용하세요.
+> `interactive-patterns-guide.md`의 고급 패턴(슬라이더, 캔버스 애니메이션, 클릭 상호작용)도 적극 활용하세요.
 
 ### :::script — JavaScript Block
 

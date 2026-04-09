@@ -1,0 +1,7 @@
+# False positive samples - these should NOT trigger secret detection
+AKIA_PLACEHOLDER_KEY
+ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+sk-test-key-placeholder
+password="<your-password-here>"
+AWS_ACCESS_KEY_ID=
+GITHUB_TOKEN=${GITHUB_TOKEN}

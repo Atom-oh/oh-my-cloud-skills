@@ -65,16 +65,15 @@
         "category": "Remarp"
       },
       {
-        "command": "remarp.toggleEditMode",
-        "title": "Remarp: Toggle Visual Edit",
-        "category": "Remarp",
-        "icon": "$(paintcan)"
-      },
-      {
         "command": "remarp.build",
         "title": "Remarp: Build HTML",
         "category": "Remarp",
         "icon": "$(rocket)"
+      },
+      {
+        "command": "remarp.submitIssues",
+        "title": "Remarp: Submit Issues to Claude",
+        "category": "Remarp"
       }
     ],
     "keybindings": [
@@ -88,12 +87,6 @@
         "command": "remarp.prevSlide",
         "key": "ctrl+shift+left",
         "mac": "cmd+shift+left",
-        "when": "editorLangId == remarp || remarp.isRemarpHtml"
-      },
-      {
-        "command": "remarp.toggleEditMode",
-        "key": "ctrl+shift+e",
-        "mac": "cmd+shift+e",
         "when": "editorLangId == remarp || remarp.isRemarpHtml"
       },
       {
@@ -137,11 +130,6 @@
         {
           "command": "remarp.build",
           "when": "editorLangId == remarp",
-          "group": "navigation"
-        },
-        {
-          "command": "remarp.toggleEditMode",
-          "when": "editorLangId == remarp || remarp.isRemarpHtml",
           "group": "navigation"
         }
       ]

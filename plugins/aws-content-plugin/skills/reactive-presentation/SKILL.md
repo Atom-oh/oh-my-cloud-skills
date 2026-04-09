@@ -7,6 +7,8 @@ description: "Create interactive HTML presentation slideshows with Canvas animat
 
 Build interactive HTML slideshow presentations deployed via GitHub Pages. No build tools required — pure HTML/CSS/JS with a shared framework for navigation, animations, and quizzes. Supports PPTX template theme extraction and Remarp format for content authoring. Marp markdown is supported for legacy file maintenance only.
 
+> **Path variable**: `{skill-dir}` in this document = `{plugin-dir}/skills/reactive-presentation` in agent documents.
+
 > **New to Remarp?** See [REMARP.md](REMARP.md) for a quick introduction and 5-minute getting started guide.
 
 ## Workflow
@@ -109,6 +111,11 @@ See [references/remarp-format-guide.md](references/remarp-format-guide.md) for f
 > ⚠️ 에이전트는 항상 Remarp로 진행합니다. 단, 복잡한 인터랙션이 필요한 슬라이드는
 > `:::html` + `:::script` 블록으로 자유로운 HTML/CSS/JS를 작성할 수 있습니다.
 > 일반 콘텐츠 슬라이드는 Remarp 마크다운, 인터랙티브 슬라이드는 :::html 블록을 사용하세요.
+>
+> ⚠️ **`:::html` 블록은 반드시 reactive해야 합니다.** 3개 이상의 동위 요소가 있으면
+> `class="fragment fade-up" data-fragment-index="N"`으로 순차 등장을 적용하세요.
+> 정적 HTML은 프레젠테이션의 핵심 가치를 훼손합니다.
+> 자세한 패턴: `remarp-format-guide.md` → ":::html Reactive 패턴" 섹션.
 
 **Alternative Formats (명시적 요청 시에만):**
 
@@ -173,6 +180,12 @@ python3 {skill-dir}/scripts/remarp_to_slides.py sync {repo}/{slug}/
 
 # Marp에서 Remarp로 마이그레이션
 python3 {skill-dir}/scripts/remarp_to_slides.py migrate content.md -o {repo}/{slug}/
+
+# 이슈 어노테이션 목록 추출
+python3 {skill-dir}/scripts/remarp_to_slides.py issues {repo}/{slug}/
+
+# JSON 형식으로 이슈 추출
+python3 {skill-dir}/scripts/remarp_to_slides.py issues {repo}/{slug}/ --json
 ```
 
 **Alternative Formats (명시적 요청 시에만):**

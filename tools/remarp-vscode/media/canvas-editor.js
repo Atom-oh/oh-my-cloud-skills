@@ -16,6 +16,10 @@ class CanvasVisualEditor {
         this.dragElement = null;
         this.waypointDragging = null;
 
+        // Find slide context for correct slide targeting
+        const slideEl = canvasContainer.closest('.slide[data-remarp-id]');
+        this.slideRemarpId = slideEl ? slideEl.dataset.remarpId : null;
+
         this._init();
     }
 
@@ -42,7 +46,7 @@ class CanvasVisualEditor {
             const trimmed = line.trim();
 
             // icon ID "Label" at X,Y size S
-            const iconMatch = trimmed.match(/^icon\s+(\w+)\s+"([^"]+)"\s+at\s+(\d+),(\d+)(?:\s+size\s+(\d+))?/);
+            const iconMatch = trimmed.match(/^icon\s+(\w+)\s+"([^"]+)"\s+at\s+(\d+)\s*,\s*(\d+)(?:\s+size\s+(\d+))?/);
             if (iconMatch) {
                 elements.push({
                     type: 'icon',
@@ -61,7 +65,7 @@ class CanvasVisualEditor {
             }
 
             // box ID "Label" at X,Y size W,H color C
-            const boxMatch = trimmed.match(/^box\s+(\w+)\s+"([^"]+)"\s+at\s+(\d+),(\d+)\s+size\s+(\d+),(\d+)(?:\s+color\s+(\S+))?/);
+            const boxMatch = trimmed.match(/^box\s+(\w+)\s+"([^"]+)"\s+at\s+(\d+)\s*,\s*(\d+)\s+size\s+(\d+)\s*,\s*(\d+)(?:\s+color\s+(\S+))?/);
             if (boxMatch) {
                 elements.push({
                     type: 'box',
@@ -80,7 +84,7 @@ class CanvasVisualEditor {
             }
 
             // circle "Label" at X,Y radius R
-            const circleMatch = trimmed.match(/^circle\s+"([^"]+)"\s+at\s+(\d+),(\d+)\s+radius\s+(\d+)/);
+            const circleMatch = trimmed.match(/^circle\s+"([^"]+)"\s+at\s+(\d+)\s*,\s*(\d+)\s+radius\s+(\d+)/);
             if (circleMatch) {
                 const r = parseInt(circleMatch[4]);
                 elements.push({
@@ -120,7 +124,7 @@ class CanvasVisualEditor {
             }
 
             // text "..." at X,Y
-            const textMatch = trimmed.match(/^text\s+"([^"]+)"\s+at\s+(\d+),(\d+)/);
+            const textMatch = trimmed.match(/^text\s+"([^"]+)"\s+at\s+(\d+)\s*,\s*(\d+)/);
             if (textMatch) {
                 elements.push({
                     type: 'text',
@@ -295,7 +299,8 @@ class CanvasVisualEditor {
         // Notify extension
         window._remarpPostMessage({
             command: 'canvasElementSelected',
-            elementId: elementId,
+            elementId: this.slideRemarpId || elementId,
+            canvasElementId: elementId,
             element: element
         });
     }
@@ -378,7 +383,8 @@ class CanvasVisualEditor {
 
         window._remarpPostMessage({
             command: 'waypointChanged',
-            elementId: element.id,
+            elementId: this.slideRemarpId || element.id,
+            canvasElementId: element.id,
             action: 'add',
             index: insertIndex,
             waypoints: element.animatePath.waypoints
@@ -396,7 +402,8 @@ class CanvasVisualEditor {
 
         window._remarpPostMessage({
             command: 'waypointChanged',
-            elementId: element.id,
+            elementId: this.slideRemarpId || element.id,
+            canvasElementId: element.id,
             action: 'delete',
             index: index,
             waypoints: element.animatePath.waypoints
@@ -438,7 +445,8 @@ class CanvasVisualEditor {
             if (element && element.animatePath) {
                 window._remarpPostMessage({
                     command: 'waypointChanged',
-                    elementId: element.id,
+                    elementId: this.slideRemarpId || element.id,
+                    canvasElementId: element.id,
                     action: 'move',
                     index: this.waypointDragging.index,
                     waypoints: element.animatePath.waypoints
@@ -458,8 +466,10 @@ class CanvasVisualEditor {
 
                 window._remarpPostMessage({
                     command: 'canvasElementMoved',
-                    elementId: this.dragElement.id,
-                    position: { x: this.dragElement.x, y: this.dragElement.y }
+                    elementId: this.slideRemarpId || this.dragElement.id,
+                    canvasElementId: this.dragElement.id,
+                    x: this.dragElement.x,
+                    y: this.dragElement.y
                 });
             }
 
@@ -513,6 +523,7 @@ class CanvasVisualEditor {
             this.updateTimeline();
             window._remarpPostMessage({
                 command: 'canvasStepAdded',
+                elementId: this.slideRemarpId,
                 newMaxStep: this.maxStep
             });
         });
@@ -530,6 +541,7 @@ class CanvasVisualEditor {
 
         window._remarpPostMessage({
             command: 'canvasStepChanged',
+            elementId: this.slideRemarpId,
             step: step
         });
     }

@@ -2,9 +2,14 @@
 """
 PPTX Theme Extraction Script
 
-Extracts theme colors, fonts, backgrounds, logos, and footer information
-from PowerPoint presentations and generates CSS overrides for dark-theme
-presentations.
+Extracts theme colors, fonts, backgrounds, logos, footer information,
+and slide master template metadata from PowerPoint presentations.
+Generates CSS overrides for dark-theme presentations.
+
+The ``slide_master`` section in the manifest captures the common frame
+(header, footer, decorative elements, color palette, slide size) that
+applies uniformly across all slides — i.e. the PPT slide master, not
+individual slide content layouts.
 
 Requires: python-pptx >= 1.0.0, lxml
 """
@@ -106,6 +111,9 @@ class ThemeExtractor:
         Returns:
             Dictionary mapping color names to hex values.
         """
+        if hasattr(self, '_theme_colors') and self._theme_colors:
+            return dict(self._theme_colors)
+
         colors = {}
         if self.theme_xml is None:
             return colors
@@ -141,6 +149,7 @@ class ThemeExtractor:
                         elif 'window' in sys_val:
                             colors[name] = '#FFFFFF'
 
+        self._theme_colors = colors
         return colors
 
     def extract_fonts(self) -> dict[str, str]:
@@ -476,6 +485,588 @@ class ThemeExtractor:
 
         return texts
 
+    # ------------------------------------------------------------------
+    # Slide-master template metadata (common frame across all slides)
+    # ------------------------------------------------------------------
+
+    def extract_slide_size(self) -> dict[str, Any]:
+        """Extract slide dimensions and compute aspect ratio.
+
+        Returns e.g. ``{"width_emu": 12192000, "height_emu": 6858000,
+        "width_px": 1280, "height_px": 720, "aspect_ratio": "16:9"}``.
+        """
+        w = self.prs.slide_width or SLIDE_WIDTH_EMU
+        h = self.prs.slide_height or SLIDE_HEIGHT_EMU
+
+        from math import gcd
+        g = gcd(int(w), int(h))
+        ratio_w, ratio_h = int(w) // g, int(h) // g
+
+        # Normalise common ratios that gcd misses due to rounding
+        KNOWN_RATIOS = {
+            (16, 9): "16:9", (4, 3): "4:3", (16, 10): "16:10",
+            (3, 2): "3:2", (5, 4): "5:4",
+        }
+        ratio_str = KNOWN_RATIOS.get((ratio_w, ratio_h))
+        if ratio_str is None:
+            # Check approximate match
+            decimal = w / h
+            if abs(decimal - 16 / 9) < 0.02:
+                ratio_str = "16:9"
+            elif abs(decimal - 4 / 3) < 0.02:
+                ratio_str = "4:3"
+            else:
+                ratio_str = f"{ratio_w}:{ratio_h}"
+
+        # Convert EMU to pixels (96 DPI, 914400 EMU per inch)
+        px_w = round(int(w) / 914400 * 96)
+        px_h = round(int(h) / 914400 * 96)
+
+        return {
+            'width_emu': int(w),
+            'height_emu': int(h),
+            'width_px': px_w,
+            'height_px': px_h,
+            'aspect_ratio': ratio_str,
+        }
+
+    def extract_color_palette(self, colors: dict[str, str]) -> dict[str, str]:
+        """Map raw PPTX scheme colors to a semantic color palette.
+
+        The semantic palette provides designer-friendly names that match
+        common design-system tokens (primary, secondary, accent, etc.).
+        """
+        palette: dict[str, str] = {}
+
+        # Background: dk2 if dark, else dk1
+        for key in ('dk2', 'dk1'):
+            if key in colors:
+                r, g, b = hex_to_rgb(colors[key])
+                if rgb_to_luminance(r, g, b) < 0.3:
+                    palette['background'] = colors[key]
+                    break
+        if 'background' not in palette:
+            palette['background'] = colors.get('lt1', '#FFFFFF')
+
+        # Determine if the template is dark or light
+        bg_lum = 1.0
+        if 'background' in palette:
+            r, g, b = hex_to_rgb(palette['background'])
+            bg_lum = rgb_to_luminance(r, g, b)
+        is_dark = bg_lum < 0.2
+
+        # Text colours: choose high contrast against background
+        if is_dark:
+            palette['text_primary'] = colors.get('lt1', '#FFFFFF')
+            palette['text_secondary'] = colors.get('lt2', '#B0B0B0')
+        else:
+            palette['text_primary'] = colors.get('dk1', '#000000')
+            palette['text_secondary'] = colors.get('dk2', '#333333')
+
+        # Primary = accent1, Secondary = accent2, Accent = accent3 or accent1
+        palette['primary'] = colors.get('accent1', '#0078D4')
+        palette['secondary'] = colors.get('accent2', palette['primary'])
+        palette['accent'] = colors.get('accent3', palette['primary'])
+
+        # Additional semantic tokens
+        if 'accent4' in colors:
+            palette['danger'] = colors['accent4']
+        if 'accent5' in colors:
+            palette['warning'] = colors['accent5']
+        if 'accent6' in colors:
+            palette['info'] = colors['accent6']
+        if 'hlink' in colors:
+            palette['link'] = colors['hlink']
+
+        return palette
+
+    def extract_header_region(self) -> dict[str, Any]:
+        """Detect the header region of the slide master.
+
+        Scans the top 15 % of the slide for shapes (text, lines, images)
+        that appear on every slide, and returns them as structured
+        ``header.elements``.
+        """
+        header_threshold = 15.0  # top 15 %
+        elements: list[dict[str, Any]] = []
+        min_top = 100.0
+        max_bottom = 0.0
+
+        for shape in self.master.shapes:
+            top_pct = emu_to_percent(shape.top, SLIDE_HEIGHT_EMU)
+            bottom_pct = emu_to_percent(shape.top + shape.height, SLIDE_HEIGHT_EMU)
+
+            if top_pct > header_threshold:
+                continue
+
+            elem: dict[str, Any] = {
+                'shape_name': shape.name,
+                'position': {
+                    'left_percent': emu_to_percent(shape.left, SLIDE_WIDTH_EMU),
+                    'top_percent': top_pct,
+                },
+                'size': {
+                    'width_percent': emu_to_percent(shape.width, SLIDE_WIDTH_EMU),
+                    'height_percent': emu_to_percent(shape.height, SLIDE_HEIGHT_EMU),
+                },
+            }
+
+            # Classify element type
+            if shape.is_placeholder:
+                ph = shape.placeholder_format
+                elem['type'] = 'placeholder'
+                elem['placeholder_type'] = str(ph.type) if ph.type else None
+            elif shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+                elem['type'] = 'image'
+            elif hasattr(shape, 'text_frame'):
+                text = ''
+                try:
+                    text = shape.text_frame.text.strip()
+                except Exception:
+                    pass
+                if text:
+                    elem['type'] = 'text'
+                    elem['text'] = text
+                else:
+                    elem['type'] = 'shape'
+            else:
+                elem['type'] = 'shape'
+
+            # Detect line / connector (divider)
+            try:
+                shape_type_name = str(shape.shape_type)
+                if 'LINE' in shape_type_name or 'CONNECTOR' in shape_type_name:
+                    elem['type'] = 'divider'
+            except Exception:
+                pass
+
+            # Track vertical extent
+            if top_pct < min_top:
+                min_top = top_pct
+            if bottom_pct > max_bottom:
+                max_bottom = bottom_pct
+
+            elements.append(elem)
+
+        height_pct = round(max_bottom - min_top, 2) if elements else 0
+
+        return {
+            'position': 'top',
+            'height_percent': height_pct,
+            'elements': elements,
+        }
+
+    def extract_footer_region(self, footer_info: Optional[dict],
+                               master_texts: list[dict]) -> dict[str, Any]:
+        """Build a structured footer region from placeholders + master shapes.
+
+        Similar to ``extract_header_region`` but for the bottom 15 % of the
+        slide.  Also incorporates the existing footer/slide-number/date
+        placeholders so everything is in one place.
+        """
+        footer_threshold = 85.0  # bottom 15 %
+        elements: list[dict[str, Any]] = []
+        min_top = 100.0
+        max_bottom = 0.0
+
+        for shape in self.master.shapes:
+            top_pct = emu_to_percent(shape.top, SLIDE_HEIGHT_EMU)
+            bottom_pct = emu_to_percent(shape.top + shape.height, SLIDE_HEIGHT_EMU)
+
+            if top_pct < footer_threshold:
+                continue
+
+            elem: dict[str, Any] = {
+                'shape_name': shape.name,
+                'position': {
+                    'left_percent': emu_to_percent(shape.left, SLIDE_WIDTH_EMU),
+                    'top_percent': top_pct,
+                },
+                'size': {
+                    'width_percent': emu_to_percent(shape.width, SLIDE_WIDTH_EMU),
+                    'height_percent': emu_to_percent(shape.height, SLIDE_HEIGHT_EMU),
+                },
+            }
+
+            if shape.is_placeholder:
+                ph = shape.placeholder_format
+                elem['type'] = 'placeholder'
+                elem['placeholder_type'] = str(ph.type) if ph.type else None
+                try:
+                    if hasattr(shape, 'text_frame'):
+                        elem['text'] = shape.text_frame.text.strip()
+                except Exception:
+                    pass
+            elif shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+                elem['type'] = 'image'
+            elif hasattr(shape, 'text_frame'):
+                text = ''
+                try:
+                    text = shape.text_frame.text.strip()
+                except Exception:
+                    pass
+                if text:
+                    elem['type'] = 'text'
+                    elem['text'] = text
+                else:
+                    elem['type'] = 'shape'
+            else:
+                elem['type'] = 'shape'
+
+            # Detect divider lines
+            try:
+                shape_type_name = str(shape.shape_type)
+                if 'LINE' in shape_type_name or 'CONNECTOR' in shape_type_name:
+                    elem['type'] = 'divider'
+            except Exception:
+                pass
+
+            if top_pct < min_top:
+                min_top = top_pct
+            if bottom_pct > max_bottom:
+                max_bottom = bottom_pct
+
+            elements.append(elem)
+
+        height_pct = round(max_bottom - min_top, 2) if elements else 0
+
+        # Consolidated text (reuse existing logic)
+        resolved_text = self._resolve_footer_text(footer_info, master_texts)
+
+        return {
+            'position': 'bottom',
+            'height_percent': height_pct,
+            'resolved_text': resolved_text,
+            'elements': elements,
+        }
+
+    def _extract_shape_fill(self, shape) -> dict[str, Any]:
+        """Extract fill information from a shape (solid, gradient, pattern).
+
+        Returns a dict with ``fill_type`` and type-specific fields:
+        - solid: ``fill_color``
+        - gradient: ``gradient`` with ``angle`` and ``stops``
+        - pattern/background: ``fill_type`` only
+        """
+        result: dict[str, Any] = {}
+        try:
+            fill = shape.fill
+            if fill is None or fill.type is None:
+                return result
+            fill_type_str = str(fill.type)
+
+            if 'SOLID' in fill_type_str:
+                result['fill_type'] = 'solid'
+                try:
+                    fore = fill.fore_color
+                    if fore and fore.rgb:
+                        result['fill_color'] = f"#{fore.rgb}"
+                except Exception:
+                    pass
+
+            elif 'GRADIENT' in fill_type_str:
+                result['fill_type'] = 'gradient'
+                grad_info: dict[str, Any] = {}
+                try:
+                    # Extract gradient stops from XML
+                    a_ns = '{http://schemas.openxmlformats.org/drawingml/2006/main}'
+                    gs_list = shape._element.findall('.//' + a_ns + 'gs')
+                    stops = []
+                    for gs in gs_list:
+                        pos = gs.get('pos')
+                        pos_val = int(pos) / 1000 if pos else 0  # pos is in 1/1000ths of %
+                        color = None
+                        # Try srgbClr first, then schemeClr
+                        srgb = gs.find('.//' + a_ns + 'srgbClr')
+                        if srgb is not None:
+                            color = f"#{srgb.get('val')}"
+                        else:
+                            scheme = gs.find('.//' + a_ns + 'schemeClr')
+                            if scheme is not None:
+                                scheme_name = scheme.get('val', '')
+                                # Map scheme color to extracted theme colors
+                                scheme_map = {
+                                    'dk1': 'dk1', 'dk2': 'dk2',
+                                    'lt1': 'lt1', 'lt2': 'lt2',
+                                    'tx1': 'dk1', 'tx2': 'dk2',
+                                    'bg1': 'lt1', 'bg2': 'lt2',
+                                    'accent1': 'accent1', 'accent2': 'accent2',
+                                    'accent3': 'accent3', 'accent4': 'accent4',
+                                    'accent5': 'accent5', 'accent6': 'accent6',
+                                    'hlink': 'hlink', 'folHlink': 'folHlink',
+                                }
+                                mapped = scheme_map.get(scheme_name)
+                                if mapped and hasattr(self, '_theme_colors'):
+                                    color = self._theme_colors.get(mapped)
+                                elif mapped:
+                                    color = f"scheme:{scheme_name}"
+                                else:
+                                    color = f"scheme:{scheme_name}"
+                        if color:
+                            stops.append({'pos': round(pos_val, 1), 'color': color})
+                    if stops:
+                        grad_info['stops'] = stops
+                except Exception:
+                    pass
+                try:
+                    lin = shape._element.find(
+                        './/' + '{http://schemas.openxmlformats.org/drawingml/2006/main}lin')
+                    if lin is not None:
+                        ang = lin.get('ang')
+                        if ang:
+                            grad_info['angle'] = int(ang) // 60000  # EMU to degrees
+                except Exception:
+                    pass
+                if grad_info:
+                    result['gradient'] = grad_info
+
+            elif 'PATTERN' in fill_type_str:
+                result['fill_type'] = 'pattern'
+            elif 'BACKGROUND' in fill_type_str:
+                result['fill_type'] = 'background'
+        except Exception:
+            pass
+        return result
+
+    def _extract_preset_geometry(self, shape) -> Optional[str]:
+        """Extract preset geometry name from a shape (e.g., chevron, arc, ellipse)."""
+        try:
+            prst = shape._element.find(
+                './/' + '{http://schemas.openxmlformats.org/drawingml/2006/main}prstGeom')
+            if prst is not None:
+                return prst.get('prst')
+        except Exception:
+            pass
+        return None
+
+    def _build_decorative_elem(self, shape, source: str = 'master') -> dict[str, Any]:
+        """Build a decorative element dict from a shape."""
+        top_pct = emu_to_percent(shape.top, SLIDE_HEIGHT_EMU)
+        left_pct = emu_to_percent(shape.left, SLIDE_WIDTH_EMU)
+        w_pct = emu_to_percent(shape.width, SLIDE_WIDTH_EMU)
+        h_pct = emu_to_percent(shape.height, SLIDE_HEIGHT_EMU)
+
+        shape_type_str = ''
+        try:
+            shape_type_str = str(shape.shape_type)
+        except Exception:
+            pass
+
+        elem: dict[str, Any] = {
+            'shape_name': shape.name,
+            'shape_type': shape_type_str,
+            'position': {
+                'left_percent': left_pct,
+                'top_percent': top_pct,
+            },
+            'size': {
+                'width_percent': w_pct,
+                'height_percent': h_pct,
+            },
+            'source': source,
+        }
+
+        # Preset geometry
+        geo = self._extract_preset_geometry(shape)
+        if geo:
+            elem['preset_geometry'] = geo
+
+        # Fill info
+        fill_info = self._extract_shape_fill(shape)
+        elem.update(fill_info)
+
+        # Rotation
+        try:
+            if shape.rotation and shape.rotation != 0:
+                elem['rotation'] = shape.rotation
+        except Exception:
+            pass
+
+        return elem
+
+    def _is_decorative_candidate(self, shape) -> bool:
+        """Check if a shape qualifies as a decorative element."""
+        if shape.is_placeholder:
+            return False
+
+        # Skip shapes whose names indicate structural (non-decorative) roles
+        name_lower = shape.name.lower()
+        if any(kw in name_lower for kw in ('placeholder', 'slide number', 'footer', 'date')):
+            return False
+
+        # Skip practically invisible shapes (< 0.5% in either dimension)
+        # but allow lines/connectors which are 1-dimensional
+        w_pct = emu_to_percent(shape.width, SLIDE_WIDTH_EMU)
+        h_pct = emu_to_percent(shape.height, SLIDE_HEIGHT_EMU)
+        shape_type_str = str(shape.shape_type) if shape.shape_type else ''
+        is_line = 'LINE' in shape_type_str or 'CONNECTOR' in shape_type_str
+        if not is_line and (w_pct < 0.5 or h_pct < 0.5):
+            return False
+
+        # Skip shapes entirely off-screen
+        left_pct = emu_to_percent(shape.left, SLIDE_WIDTH_EMU)
+        top_pct = emu_to_percent(shape.top, SLIDE_HEIGHT_EMU)
+        if left_pct + w_pct < 0 or top_pct + h_pct < 0:
+            return False
+
+        logo_threshold = SLIDE_WIDTH_EMU * 0.20
+
+        # Skip small pictures (logos) and large pictures (backgrounds)
+        if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+            if shape.width < logo_threshold and shape.height < logo_threshold:
+                return False
+            if (shape.width > SLIDE_WIDTH_EMU * 0.8
+                    and shape.height > SLIDE_HEIGHT_EMU * 0.8):
+                return False
+
+        # Allow shapes with short text (≤3 chars, e.g. ">" chevron labels)
+        # but skip shapes with meaningful text
+        if hasattr(shape, 'text_frame'):
+            try:
+                text = shape.text_frame.text.strip()
+                if len(text) > 3:
+                    return False
+            except Exception:
+                pass
+
+        return True
+
+    def extract_decorative_elements(self) -> list[dict[str, Any]]:
+        """Detect decorative shapes on the slide master and common layouts.
+
+        Decorative elements are non-placeholder, non-text, non-logo shapes
+        that serve a purely visual purpose (chevrons, dot patterns,
+        semicircles, colored bars, gradient rectangles, etc.).
+
+        Scans both the slide master and all layouts.  Master-level shapes
+        are always included.  Layout-level shapes are included when the
+        same shape name appears in multiple layouts (≥ 3 or ≥ 5% of
+        layouts, whichever is larger).
+        """
+        decorative: list[dict[str, Any]] = []
+
+        # --- 1. Master shapes ---
+        for shape in self.master.shapes:
+            if self._is_decorative_candidate(shape):
+                decorative.append(self._build_decorative_elem(shape, source='master'))
+
+        # --- 2. Layout common shapes ---
+        # Track shapes by name+approximate position across all layouts
+        layout_shapes: dict[str, list] = {}  # name -> list of (layout_idx, shape)
+        layouts = list(self.master.slide_layouts)
+        total_layouts = len(layouts)
+
+        for i, layout in enumerate(layouts):
+            for shape in layout.shapes:
+                if not self._is_decorative_candidate(shape):
+                    continue
+                key = shape.name
+                if key not in layout_shapes:
+                    layout_shapes[key] = []
+                layout_shapes[key].append((i, shape))
+
+        threshold = max(3, int(total_layouts * 0.05))
+        seen_names: set[str] = set()
+        for name, entries in layout_shapes.items():
+            if len(entries) >= threshold and name not in seen_names:
+                seen_names.add(name)
+                # Use the first occurrence as representative
+                _, rep_shape = entries[0]
+                elem = self._build_decorative_elem(rep_shape, source='layout_common')
+                elem['layout_count'] = len(entries)
+                elem['layout_total'] = total_layouts
+                decorative.append(elem)
+
+        return decorative
+
+    def extract_layout_decorative_patterns(self) -> list[dict[str, Any]]:
+        """Summarise decorative patterns found across all layouts.
+
+        Groups shapes by category (gradient_panel, circle_icon, divider,
+        rounded_accent, decorative_shape) and records representative
+        parameters for each category.
+        """
+        categories: dict[str, list[dict[str, Any]]] = {
+            'gradient_panel': [],
+            'circle_icon': [],
+            'divider': [],
+            'rounded_accent': [],
+            'decorative_shape': [],
+        }
+
+        for layout in self.master.slide_layouts:
+            for shape in layout.shapes:
+                if not self._is_decorative_candidate(shape):
+                    continue
+
+                geo = self._extract_preset_geometry(shape)
+                fill = self._extract_shape_fill(shape)
+                w_pct = emu_to_percent(shape.width, SLIDE_WIDTH_EMU)
+                h_pct = emu_to_percent(shape.height, SLIDE_HEIGHT_EMU)
+                shape_type_str = str(shape.shape_type) if shape.shape_type else ''
+
+                entry = {
+                    'layout': layout.name,
+                    'shape_name': shape.name,
+                    'preset_geometry': geo,
+                    'size': {'width_percent': w_pct, 'height_percent': h_pct},
+                }
+                entry.update(fill)
+
+                # Classify
+                if fill.get('fill_type') == 'gradient' and (w_pct > 20 or h_pct > 20):
+                    categories['gradient_panel'].append(entry)
+                elif geo == 'ellipse':
+                    categories['circle_icon'].append(entry)
+                elif 'LINE' in shape_type_str or geo == 'line':
+                    categories['divider'].append(entry)
+                elif geo == 'roundRect':
+                    categories['rounded_accent'].append(entry)
+                else:
+                    categories['decorative_shape'].append(entry)
+
+        patterns = []
+        for cat, items in categories.items():
+            if not items:
+                continue
+            patterns.append({
+                'category': cat,
+                'count': len(items),
+                'examples': items[:3],  # Up to 3 representative examples
+            })
+
+        return patterns
+
+    def build_slide_master(self, manifest: dict[str, Any],
+                           design_source: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+        """Assemble the ``slide_master`` section from extracted data.
+
+        This is the structured representation of the common frame that
+        applies to every slide (as opposed to per-layout content areas).
+
+        Args:
+            manifest: The partially-built theme manifest.
+            design_source: Optional external design source reference
+                (Figma, Google Slides URL with metadata).
+        """
+        colors = manifest.get('colors', {})
+        footer_info = manifest.get('footer')
+        master_texts = manifest.get('master_texts', [])
+
+        result = {
+            'slide_size': self.extract_slide_size(),
+            'color_palette': self.extract_color_palette(colors),
+            'header': self.extract_header_region(),
+            'footer': self.extract_footer_region(footer_info, master_texts),
+            'decorative_elements': self.extract_decorative_elements(),
+            'layout_decorative_patterns': self.extract_layout_decorative_patterns(),
+        }
+
+        if design_source:
+            result['design_source'] = design_source
+
+        return result
+
     def extract_layout_details(self) -> list[dict[str, Any]]:
         """Extract details from all slide master layouts.
 
@@ -574,12 +1165,15 @@ class ThemeExtractor:
             })
         return layouts
 
-    def extract_all(self, output_dir: Path) -> dict[str, Any]:
+    def extract_all(self, output_dir: Path,
+                    design_source: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """
         Extract all theme information.
 
         Args:
             output_dir: Directory to save extracted assets
+            design_source: Optional external design-guide reference
+                (Figma URL, Google Slides URL, etc.).
 
         Returns:
             Complete theme manifest dictionary.
@@ -608,6 +1202,9 @@ class ThemeExtractor:
         manifest['footer_text'] = self._resolve_footer_text(
             manifest['footer'], manifest['master_texts']
         )
+
+        # Slide-master template: common frame across all slides
+        manifest['slide_master'] = self.build_slide_master(manifest, design_source)
 
         return manifest
 
@@ -879,6 +1476,563 @@ class CSSGenerator:
         return '\n'.join(lines)
 
 
+class DesignGuideGenerator:
+    """Generates a design.md design-system document from theme manifest.
+
+    Inspired by Figma's design-token philosophy: capture the *rules* behind
+    visual choices so that every new slide is automatically consistent.
+    The output is a Markdown file with YAML code blocks for machine-readable
+    tokens plus prose descriptions for human designers and AI agents.
+    """
+
+    def __init__(self, manifest: dict[str, Any]):
+        self.m = manifest
+        self.sm = manifest.get('slide_master', {})
+        self.colors = manifest.get('colors', {})
+        self.palette = self.sm.get('color_palette', {})
+        self.fonts = manifest.get('fonts', {})
+        self.logos = manifest.get('logos', [])
+        self.header = self.sm.get('header', {})
+        self.footer_region = self.sm.get('footer', {})
+        self.decorative = self.sm.get('decorative_elements', [])
+        self.layout_patterns = self.sm.get('layout_decorative_patterns', [])
+        self.slide_size = self.sm.get('slide_size', {})
+        self.backgrounds = manifest.get('backgrounds', {})
+        self.design_source = self.sm.get('design_source')
+
+    def generate(self) -> str:
+        sections = [
+            self._section_header(),
+            self._section_slide_canvas(),
+            self._section_color_system(),
+            self._section_typography(),
+            self._section_iconography(),
+            self._section_spacing_grid(),
+            self._section_shapes_and_corners(),
+            self._section_decorative_patterns(),
+            self._section_header_footer(),
+            self._section_logo_branding(),
+            self._section_backgrounds(),
+            self._section_motion(),
+            self._section_design_source(),
+            self._section_usage_rules(),
+        ]
+        return '\n\n'.join(filter(None, sections)) + '\n'
+
+    # -- Individual sections ------------------------------------------------
+
+    def _section_header(self) -> str:
+        theme_name = self.m.get('theme_name', 'Untitled')
+        source = self.m.get('source_file', 'unknown.pptx')
+        return f"""# Design System — {theme_name}
+
+> Auto-generated from `{source}` by `extract_pptx_theme.py`.
+> This document defines the visual language that must be followed when
+> creating new slides.  Treat every token below as a **constraint**, not
+> a suggestion.  Consistency > creativity."""
+
+    def _section_slide_canvas(self) -> str:
+        ss = self.slide_size
+        if not ss:
+            return ''
+        w = ss.get('width_px', 1280)
+        h = ss.get('height_px', 720)
+        return f"""## 1. Slide Canvas
+
+| Property | Value |
+|----------|-------|
+| Aspect ratio | **{ss.get('aspect_ratio', '16:9')}** |
+| Resolution | {w} × {h} px |
+| EMU | {ss.get('width_emu', '')} × {ss.get('height_emu', '')} |
+| Remarp frontmatter | `size: {w}x{h}` |
+
+All content must be designed for this aspect ratio.  Do not stretch or
+crop to fit a different ratio.
+
+Add this to your `.remarp.md` frontmatter:
+```yaml
+size: {w}x{h}
+```"""
+
+    def _section_color_system(self) -> str:
+        if not self.palette:
+            return ''
+
+        lines = [
+            '## 2. Color System',
+            '',
+            'Semantic color tokens mapped from the PPTX theme scheme.',
+            'Use semantic names (not raw hex) so the palette can be',
+            'swapped without touching individual slides.',
+            '',
+            '```yaml',
+            'color_tokens:',
+        ]
+
+        role_desc = {
+            'primary': 'Primary brand / accent (CTA, links, highlights)',
+            'secondary': 'Secondary accent (gradients, hover, subtle emphasis)',
+            'accent': 'Tertiary accent (success, positive indicators)',
+            'background': 'Slide background',
+            'text_primary': 'Headings and body text',
+            'text_secondary': 'Captions, labels, muted text',
+            'danger': 'Error / destructive actions',
+            'warning': 'Caution indicators',
+            'info': 'Informational highlights',
+            'link': 'Hyperlinks and interactive text',
+        }
+
+        for key in ('background', 'text_primary', 'text_secondary',
+                     'primary', 'secondary', 'accent',
+                     'danger', 'warning', 'info', 'link'):
+            val = self.palette.get(key)
+            if val:
+                desc = role_desc.get(key, '')
+                lines.append(f'  {key}: "{val}"  # {desc}')
+
+        lines.append('```')
+        lines.append('')
+
+        # Contrast guidance
+        bg = self.palette.get('background', '#000000')
+        r, g, b = hex_to_rgb(bg)
+        lum = rgb_to_luminance(r, g, b)
+        if lum < 0.2:
+            lines.append('**Theme type**: Dark.  Text must be light (#fff / #ccc).')
+            lines.append('Avoid pure white on pure black — use the token values above.')
+        else:
+            lines.append('**Theme type**: Light.  Text must be dark (#000 / #333).')
+            lines.append('Ensure sufficient contrast (WCAG AA ≥ 4.5:1 for body text).')
+
+        # Raw PPTX scheme reference
+        if self.colors:
+            lines.append('')
+            lines.append('<details><summary>Raw PPTX scheme colors (reference)</summary>')
+            lines.append('')
+            lines.append('| Slot | Hex |')
+            lines.append('|------|-----|')
+            for k, v in self.colors.items():
+                lines.append(f'| {k} | `{v}` |')
+            lines.append('')
+            lines.append('</details>')
+
+        return '\n'.join(lines)
+
+    def _section_typography(self) -> str:
+        if not self.fonts:
+            return ''
+
+        heading = self.fonts.get('heading', 'system-ui')
+        body = self.fonts.get('body', 'system-ui')
+
+        return f"""## 3. Typography
+
+```yaml
+typography:
+  heading:
+    family: "{heading}"
+    weights: [400, 700]       # regular + bold
+    usage: "Slide titles, section headers, callout text"
+  body:
+    family: "{body}"
+    weights: [400, 600]       # regular + semibold
+    usage: "Body text, bullets, labels, speaker notes"
+```
+
+### Type Scale (recommended)
+
+| Level | Size | Weight | Use |
+|-------|------|--------|-----|
+| H1 | 2.5 rem | 700 | Cover slide title |
+| H2 | 1.8 rem | 700 | Slide title |
+| H3 | 1.3 rem | 600 | Sub-heading |
+| Body | 1.0 rem | 400 | Bullet text, paragraphs |
+| Caption | 0.8 rem | 400 | Footer, labels, annotations |
+| Code | 0.9 rem (mono) | 400 | Code blocks |
+
+> If `{heading}` or `{body}` is not a system font, add a `@import` or
+> `@font-face` declaration.  Never fall back to a visually different
+> typeface silently."""
+
+    def _section_iconography(self) -> str:
+        # Infer icon style from decorative elements and template characteristics
+        has_rounded = any('round' in d.get('shape_name', '').lower()
+                         for d in self.decorative)
+        has_sharp = any('rect' in d.get('shape_name', '').lower()
+                       or 'sharp' in d.get('shape_name', '').lower()
+                       for d in self.decorative)
+
+        # Default recommendation based on common patterns
+        style = 'rounded'
+        if has_sharp and not has_rounded:
+            style = 'sharp'
+
+        return f"""## 4. Iconography
+
+```yaml
+icons:
+  style: "{style}"           # rounded | sharp | outlined | filled
+  corner_radius: 4px         # icon container rounding
+  size_default: 48px         # standard icon size on content slides
+  size_small: 24px           # inline / label icons
+  size_large: 64px           # hero / feature highlight
+  color: "inherit"           # icons inherit text color by default
+  accent_color: "primary"    # highlighted icons use the primary token
+```
+
+### Rules
+
+- **Consistency**: all icons on a single slide must use the same style
+  (`{style}`).  Do not mix rounded and sharp icons.
+- **AWS service icons**: use the official SVG from
+  `skills/reactive-presentation/assets/aws-icons/`.  Keep the original
+  multi-color fill — do not monochrome AWS icons.
+- **Generic icons**: prefer a single icon library (e.g. Lucide, Phosphor,
+  Material Symbols) across the entire presentation.
+- **Sizing**: icons next to text should be vertically centered and match
+  the text line height.
+- **Padding**: maintain ≥ 8 px clear space around every icon."""
+
+    def _section_spacing_grid(self) -> str:
+        ar = self.slide_size.get('aspect_ratio', '16:9')
+        # Common safe-area margins
+        return f"""## 5. Spacing & Grid
+
+```yaml
+layout:
+  aspect_ratio: "{ar}"
+  safe_area:
+    top: 10%                  # below header region
+    bottom: 10%               # above footer region
+    left: 5%
+    right: 5%
+  grid:
+    columns: 12
+    gutter: 16px
+    margin: 40px              # outer margin
+spacing_scale:               # 4-px base unit
+  xs: 4px
+  sm: 8px
+  md: 16px
+  lg: 24px
+  xl: 32px
+  xxl: 48px
+```
+
+### Rules
+
+- Content must **never** overlap the header or footer regions.
+- Use multiples of the 4 px base unit for all padding and margins.
+- Two-column layouts: use 50/50 split with `md` gutter.
+- Three-column layouts: use 33/33/33 split with `md` gutter.
+- Maintain consistent vertical rhythm — every element should snap
+  to the spacing scale."""
+
+    def _section_shapes_and_corners(self) -> str:
+        # Infer corner radius from decorative elements
+        return """## 6. Shapes & Corners
+
+```yaml
+shapes:
+  border_radius:
+    none: 0px                 # tables, code blocks
+    sm: 4px                   # tags, badges, small chips
+    md: 8px                   # cards, content boxes, tooltips
+    lg: 16px                  # hero cards, feature panels
+    full: 9999px              # pills, avatar circles
+  border:
+    width: 1px
+    color: "text_secondary"   # use semantic token
+    style: "solid"
+  shadow:
+    none: "none"
+    sm: "0 1px 2px rgba(0,0,0,0.1)"
+    md: "0 4px 12px rgba(0,0,0,0.15)"
+    lg: "0 8px 24px rgba(0,0,0,0.2)"
+```
+
+### Rules
+
+- **Cards and containers**: use `md` radius (8 px).
+- **Buttons and badges**: use `sm` radius (4 px) or `full` for pills.
+- **Images inside cards**: clip to parent's border-radius.
+- **Do not mix** rounded and sharp containers on the same slide.
+- **Elevation (shadow)**: use sparingly; on dark backgrounds prefer
+  a subtle border or glow over a drop shadow."""
+
+    def _section_decorative_patterns(self) -> str:
+        lines = ['## 7. Decorative Patterns']
+
+        if self.decorative:
+            lines += [
+                '',
+                'The following decorative shapes were detected.',
+                'Master-level shapes **must be replicated** on every slide.',
+                '',
+                '```yaml',
+                'decorative_elements:',
+            ]
+
+            for i, d in enumerate(self.decorative):
+                pos = d.get('position', {})
+                size = d.get('size', {})
+                lines.append(f'  - name: "{d.get("shape_name", f"element_{i}")}"')
+                lines.append(f'    source: "{d.get("source", "master")}"')
+                if d.get('preset_geometry'):
+                    lines.append(f'    geometry: "{d["preset_geometry"]}"')
+                lines.append(f'    type: "{d.get("shape_type", "unknown")}"')
+                lines.append(f'    position: {{ left: {pos.get("left_percent", 0)}%, top: {pos.get("top_percent", 0)}% }}')
+                lines.append(f'    size: {{ width: {size.get("width_percent", 0)}%, height: {size.get("height_percent", 0)}% }}')
+                if d.get('fill_type'):
+                    lines.append(f'    fill_type: "{d["fill_type"]}"')
+                if d.get('fill_color'):
+                    lines.append(f'    fill_color: "{d["fill_color"]}"')
+                if d.get('gradient'):
+                    grad = d['gradient']
+                    lines.append(f'    gradient:')
+                    if 'angle' in grad:
+                        lines.append(f'      angle: {grad["angle"]}')
+                    if 'stops' in grad:
+                        lines.append(f'      stops: {grad["stops"]}')
+                if d.get('rotation'):
+                    lines.append(f'    rotation: {d["rotation"]}deg')
+                if d.get('layout_count'):
+                    lines.append(f'    layout_frequency: {d["layout_count"]}/{d["layout_total"]}')
+
+            lines.append('```')
+            lines.append('')
+            lines.append('> Master-level shapes form the slide "frame".  Layout-common')
+            lines.append('> shapes indicate prevalent design vocabulary in this template.')
+        else:
+            lines += [
+                '',
+                'No decorative elements detected on the slide master.',
+            ]
+
+        # Layout decorative patterns summary
+        if self.layout_patterns:
+            lines += [
+                '',
+                '### Layout Decorative Vocabulary',
+                '',
+                'The following decorative pattern categories were found across',
+                'slide layouts.  Use these as the design vocabulary when adding',
+                'visual elements to slides.',
+                '',
+            ]
+            for pat in self.layout_patterns:
+                cat = pat['category']
+                count = pat['count']
+                lines.append(f'**{cat}** ({count} instances)')
+                lines.append('')
+                for ex in pat.get('examples', []):
+                    geo = ex.get('preset_geometry', 'rect')
+                    size = ex.get('size', {})
+                    fill = ex.get('fill_type', '')
+                    layout = ex.get('layout', '')
+                    lines.append(f'  - `{geo}` {size.get("width_percent", 0)}%×{size.get("height_percent", 0)}% fill={fill} (from "{layout}")')
+                    if ex.get('gradient'):
+                        grad = ex['gradient']
+                        stops = grad.get('stops', [])
+                        if stops:
+                            colors = ' → '.join(s.get('color', '') for s in stops)
+                            lines.append(f'    gradient: {colors}')
+                lines.append('')
+        elif not self.decorative:
+            lines += [
+                '',
+                'Keep slides clean — avoid adding ornamental shapes unless the',
+                'design guide is updated.',
+            ]
+
+        return '\n'.join(lines)
+
+    def _section_header_footer(self) -> str:
+        lines = ['## 8. Header & Footer Regions']
+
+        # Header
+        h = self.header
+        if h and h.get('elements'):
+            lines.append('')
+            lines.append(f'### Header (top {h.get("height_percent", 0)}%)')
+            lines.append('')
+            lines.append('| Element | Type | Position (L%, T%) | Size (W%, H%) |')
+            lines.append('|---------|------|--------------------|----------------|')
+            for el in h['elements']:
+                p = el.get('position', {})
+                s = el.get('size', {})
+                text = f' — "{el["text"]}"' if el.get('text') else ''
+                lines.append(f'| {el.get("shape_name", "")} | {el.get("type", "")}{text} | {p.get("left_percent", 0)}, {p.get("top_percent", 0)} | {s.get("width_percent", 0)}, {s.get("height_percent", 0)} |')
+        else:
+            lines.append('\nNo header region elements detected.')
+
+        # Footer
+        f = self.footer_region
+        if f and f.get('elements'):
+            lines.append('')
+            lines.append(f'### Footer (bottom, height {f.get("height_percent", 0)}%)')
+            lines.append('')
+            if f.get('resolved_text'):
+                lines.append(f'**Footer text**: `{f["resolved_text"]}`')
+                lines.append('')
+            lines.append('| Element | Type | Position (L%, T%) | Size (W%, H%) |')
+            lines.append('|---------|------|--------------------|----------------|')
+            for el in f['elements']:
+                p = el.get('position', {})
+                s = el.get('size', {})
+                text = f' — "{el["text"]}"' if el.get('text') else ''
+                lines.append(f'| {el.get("shape_name", "")} | {el.get("type", "")}{text} | {p.get("left_percent", 0)}, {p.get("top_percent", 0)} | {s.get("width_percent", 0)}, {s.get("height_percent", 0)} |')
+        else:
+            lines.append('\nNo footer region elements detected.')
+
+        lines.append('')
+        lines.append('> Header and footer are **fixed regions**.  Slide content must')
+        lines.append('> not intrude into these areas.')
+
+        return '\n'.join(lines)
+
+    def _section_logo_branding(self) -> str:
+        if not self.logos:
+            return '## 9. Logo & Branding\n\nNo logos detected on the slide master.'
+
+        lines = ['## 9. Logo & Branding', '']
+
+        for i, logo in enumerate(self.logos):
+            pos = logo.get('position', {})
+            size = logo.get('size', {})
+            lines.append(f'### Logo {i + 1}: `{logo.get("filename", "logo.png")}`')
+            lines.append('')
+            lines.append(f'- **Position**: left {pos.get("left_percent", 0)}%, top {pos.get("top_percent", 0)}%')
+            lines.append(f'- **Size**: {size.get("width_percent", 0)}% × {size.get("height_percent", 0)}%')
+            nearby = logo.get('nearby_text')
+            if nearby:
+                lines.append(f'- **Nearby text**: "{nearby}"')
+            lines.append('')
+
+        lines.append('### Rules')
+        lines.append('')
+        lines.append('- The logo must appear on **every slide** at the exact position above.')
+        lines.append('- Do not stretch, crop, or recolor the logo.')
+        lines.append('- Maintain clear space of at least the logo height around all edges.')
+
+        return '\n'.join(lines)
+
+    def _section_backgrounds(self) -> str:
+        master_bg = self.backgrounds.get('master', {})
+        bg_type = master_bg.get('type', 'inherited')
+
+        lines = ['## 10. Background', '']
+        lines.append(f'**Master background type**: `{bg_type}`')
+
+        if bg_type == 'solid':
+            lines.append(f'**Color**: `{master_bg.get("color", "N/A")}`')
+        elif bg_type == 'picture':
+            lines.append(f'**Image**: `images/{master_bg.get("image_filename", "background.png")}`')
+            lines.append('Apply a dark overlay (brightness 0.3) for text readability.')
+        elif bg_type == 'gradient':
+            stops = master_bg.get('stops', [])
+            if stops:
+                stop_str = ', '.join(f'{s.get("color", "?")} at {s.get("position", 0):.0%}'
+                                     for s in stops)
+                lines.append(f'**Gradient**: {stop_str}')
+
+        lines.append('')
+        lines.append('### Rules')
+        lines.append('')
+        lines.append('- Content slides: use the master background as-is.')
+        lines.append('- Title / cover slides: may use a layout-specific background')
+        lines.append('  (see `layout_details` in the manifest).')
+        lines.append('- Never use a background that clashes with the color tokens.')
+
+        return '\n'.join(lines)
+
+    def _section_motion(self) -> str:
+        return """## 11. Motion & Transitions
+
+```yaml
+transitions:
+  default: "slide"            # slide | fade | none
+  duration: 400ms
+  easing: "ease-out"
+fragment_animations:
+  default: "fade-up"          # fade-up | fade-in | zoom-in
+  duration: 300ms
+  stagger: 100ms              # delay between successive items
+```
+
+### Rules
+
+- Use **one** transition type across the entire presentation.
+- Fragment animations (`{.click}`) should use consistent direction.
+- Avoid bounce, spin, or other playful animations in professional decks.
+- Canvas animations follow their own timing (see `:::canvas` blocks)."""
+
+    def _section_design_source(self) -> Optional[str]:
+        if not self.design_source:
+            return None
+
+        lines = ['## 12. External Design Sources', '']
+
+        if 'sources' in self.design_source:
+            for src in self.design_source['sources']:
+                lines.append(f'- **{src.get("type", "unknown").title()}**: `{src.get("url", "")}`')
+                if src.get('description'):
+                    lines.append(f'  {src["description"]}')
+        else:
+            lines.append(f'- **{self.design_source.get("type", "unknown").title()}**: `{self.design_source.get("url", "")}`')
+            if self.design_source.get('description'):
+                lines.append(f'  {self.design_source["description"]}')
+
+        lines.append('')
+        lines.append('> When the PPTX-extracted values conflict with the external')
+        lines.append('> design guide, **the external guide takes precedence** for')
+        lines.append('> color tokens and typography.  The PPTX values serve as')
+        lines.append('> baseline defaults.')
+
+        return '\n'.join(lines)
+
+    def _section_usage_rules(self) -> str:
+        return """## Design Checklist
+
+Before finalizing any slide, verify:
+
+- [ ] Colors use semantic tokens from §2 (no hardcoded hex)
+- [ ] Typography follows the type scale from §3
+- [ ] Icons follow the style rules from §4
+- [ ] Content stays within the safe area from §5
+- [ ] Shapes use the border-radius scale from §6
+- [ ] Decorative elements match §7 exactly
+- [ ] Header/footer regions are untouched per §8
+- [ ] Logo appears at the correct position per §9
+- [ ] Background matches the master template per §10
+- [ ] Transitions are consistent per §11"""
+
+
+def _build_design_source(args) -> Optional[dict[str, Any]]:
+    """Build design_source dict from CLI args (--figma, --stitch)."""
+    sources = []
+
+    if getattr(args, 'figma', None):
+        sources.append({
+            'type': 'figma',
+            'url': args.figma,
+            'description': 'Figma design file — open to inspect colors, typography, spacing, and component styles.',
+        })
+
+    if getattr(args, 'stitch', None):
+        sources.append({
+            'type': 'stitch',
+            'url': args.stitch,
+            'description': 'Google Stitch design guide — reference for layout grid, color tokens, and asset exports.',
+        })
+
+    if not sources:
+        return None
+    if len(sources) == 1:
+        return sources[0]
+    return {'sources': sources}
+
+
 def main():
     """Main entry point for CLI."""
     parser = argparse.ArgumentParser(
@@ -889,6 +2043,9 @@ Examples:
   %(prog)s presentation.pptx -o ./theme
   %(prog)s template.pptx --list-masters
   %(prog)s template.pptx --master 1 -o ./theme --json-only
+  %(prog)s template.pptx -o ./theme --design-md
+  %(prog)s template.pptx -o ./theme --design-md --figma "https://figma.com/file/abc123"
+  %(prog)s template.pptx -o ./theme --design-md --stitch "https://stitch.google.com/..."
         """
     )
 
@@ -905,6 +2062,24 @@ Examples:
                        help='Generate only JSON manifest, skip CSS')
     parser.add_argument('--css-file', default='theme-override.css',
                        help='CSS output filename (default: theme-override.css)')
+    parser.add_argument('--design-md', action='store_true',
+                       help='Generate design.md design-system document')
+    parser.add_argument('--design-md-file', default='design.md',
+                       help='Design guide output filename (default: design.md)')
+
+    # External design-guide references
+    design_group = parser.add_argument_group(
+        'design sources',
+        'Reference external design guides. URLs are stored in '
+        'slide_master.design_source so agents can consult them '
+        'when generating slides.'
+    )
+    design_group.add_argument(
+        '--figma', metavar='URL',
+        help='Figma file URL to reference as design guide')
+    design_group.add_argument(
+        '--stitch', metavar='URL',
+        help='Google Stitch design guide URL to reference')
 
     args = parser.parse_args()
 
@@ -930,10 +2105,15 @@ Examples:
 
         # Extract theme
         output_dir = Path(args.output)
+        design_source = _build_design_source(args)
+
         print(f"Extracting theme from: {args.pptx_path}")
         print(f"Output directory: {output_dir}")
+        if design_source:
+            src_type = design_source.get('type', 'multiple')
+            print(f"Design source: {src_type}")
 
-        manifest = extractor.extract_all(output_dir)
+        manifest = extractor.extract_all(output_dir, design_source=design_source)
 
         # Save JSON manifest
         manifest_path = output_dir / 'theme-manifest.json'
@@ -951,11 +2131,25 @@ Examples:
                 f.write(css_content)
             print(f"Created: {css_path}")
 
+        # Generate design.md design-system document
+        if args.design_md:
+            design_gen = DesignGuideGenerator(manifest)
+            design_content = design_gen.generate()
+
+            design_path = output_dir / args.design_md_file
+            with open(design_path, 'w') as f:
+                f.write(design_content)
+            print(f"Created: {design_path}")
+
         # Summary
         print(f"\nTheme: {manifest['theme_name']}")
         print(f"Colors extracted: {len(manifest['colors'])}")
         print(f"Logos extracted: {len(manifest['logos'])}")
         print(f"Layouts: {manifest['layout_count']}")
+        if design_source:
+            print(f"Design source(s) linked: yes")
+        if args.design_md:
+            print(f"Design guide: {args.design_md_file}")
 
         return 0
 

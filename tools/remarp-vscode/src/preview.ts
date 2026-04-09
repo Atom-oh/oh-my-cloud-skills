@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { VisualEditorController } from './visualEditor';
 import { isRemarpHtml } from './extension';
 import { HtmlPreviewRenderer } from './htmlPreview';
 
@@ -16,9 +15,6 @@ interface Slide {
 export class RemarpPreviewPanel {
     public static currentPanel: RemarpPreviewPanel | undefined;
     private static readonly viewType = 'remarpPreview';
-    private static _editMode: boolean = false;
-    private static _visualEditor: VisualEditorController | undefined;
-
     private readonly _panel: vscode.WebviewPanel;
     private readonly _extensionUri: vscode.Uri;
     private _document: vscode.TextDocument;
@@ -26,6 +22,9 @@ export class RemarpPreviewPanel {
     private _disposables: vscode.Disposable[] = [];
     private _updateTimeout: NodeJS.Timeout | undefined;
     private _isHtmlMode: boolean = false;
+    private _suppressSync: boolean = false;
+
+    public get document(): vscode.TextDocument { return this._document; }
 
     public static createOrShow(extensionUri: vscode.Uri, document: vscode.TextDocument): void {
         const column = vscode.ViewColumn.Beside;
@@ -70,22 +69,13 @@ export class RemarpPreviewPanel {
 
     public static update(document: vscode.TextDocument): void {
         if (RemarpPreviewPanel.currentPanel && RemarpPreviewPanel.currentPanel._document.uri.toString() === document.uri.toString()) {
+            RemarpPreviewPanel.currentPanel._document = document;
             RemarpPreviewPanel.currentPanel._debouncedUpdate();
         }
     }
 
-    public static setEditMode(enabled: boolean): void {
-        RemarpPreviewPanel._editMode = enabled;
-        if (RemarpPreviewPanel.currentPanel) {
-            RemarpPreviewPanel.currentPanel._updateContent();
-        }
-    }
-
-    public static setVisualEditor(editor: VisualEditorController): void {
-        RemarpPreviewPanel._visualEditor = editor;
-    }
-
     public static syncCursor(editor: vscode.TextEditor): void {
+        if (RemarpPreviewPanel.currentPanel && RemarpPreviewPanel.currentPanel._suppressSync) { return; }
         if (RemarpPreviewPanel.currentPanel && RemarpPreviewPanel.currentPanel._document.uri.toString() === editor.document.uri.toString()) {
             const slides = RemarpPreviewPanel.currentPanel._parseSlides();
             const cursorLine = editor.selection.active.line;
@@ -135,18 +125,15 @@ export class RemarpPreviewPanel {
                             'Remarp HTML preview: No slides detected. Check if slide-framework.js loaded correctly.'
                         );
                         break;
-                    // Edit mode messages - route to visual editor controller
-                    case 'elementMoved':
-                    case 'elementResized':
-                    case 'propertyChanged':
-                    case 'canvasElementMoved':
-                    case 'canvasElementResized':
-                    case 'canvasStepChanged':
-                    case 'waypointChanged':
-                    case 'editDone':
-                        if (RemarpPreviewPanel._visualEditor) {
-                            RemarpPreviewPanel._visualEditor.handleMessage(message, this._document);
-                        }
+                    // Issue annotation messages
+                    case 'addIssue':
+                        this._addIssueToSlide(message.text, message.slideIndex);
+                        break;
+                    case 'removeIssue':
+                        this._removeIssueFromSlide(message.issueText, message.slideIndex);
+                        break;
+                    case 'submitAllIssues':
+                        vscode.commands.executeCommand('remarp.submitIssues');
                         break;
                 }
             },
@@ -166,7 +153,7 @@ export class RemarpPreviewPanel {
 
     private _parseFrontmatter(): Record<string, string> {
         const text = this._document.getText();
-        const match = text.match(/^---\s*\n([\s\S]*?)\n---/);
+        const match = text.match(/^---\s*\n([\s\S]*?)\n---\s*(?:\n|$)/);
         if (!match) { return {}; }
         const result: Record<string, string> = {};
         for (const line of match[1].split('\n')) {
@@ -254,7 +241,7 @@ export class RemarpPreviewPanel {
     }
 
     private _extractType(content: string): string {
-        const typeMatch = content.match(/^@type\s+(\S+)/m);
+        const typeMatch = content.match(/^@type:?\s+(\S+)/m);
         return typeMatch ? typeMatch[1] : 'content';
     }
 
@@ -280,7 +267,14 @@ export class RemarpPreviewPanel {
         }
 
         const currentSlide = slides[this._currentSlideIndex];
-        this._panel.webview.html = this._getHtmlForSlide(currentSlide, slides.length);
+        try {
+            const html = this._getHtmlForSlide(currentSlide, slides.length);
+            if (html && html.includes('<!DOCTYPE html>')) {
+                this._panel.webview.html = html;
+            }
+        } catch (e) {
+            console.error('Remarp preview render error:', e);
+        }
     }
 
     private _navigateToSlide(index: number): void {
@@ -311,6 +305,69 @@ export class RemarpPreviewPanel {
         if (this._currentSlideIndex > 0) {
             this._navigateToSlide(this._currentSlideIndex - 1);
         }
+    }
+
+    private async _addIssueToSlide(text: string, slideIndex: number): Promise<void> {
+        const slides = this._parseSlides();
+        const slide = slides[slideIndex];
+        if (!slide || !text) { return; }
+
+        this._suppressSync = true;
+        try {
+            // Find insertion point: before :::notes if present, else end of slide content
+            const lines = this._document.getText().split('\n');
+            let insertLine = -1;
+            for (let i = slide.startLine; i <= slide.endLine; i++) {
+                if (lines[i] && lines[i].trim().startsWith(':::notes')) {
+                    insertLine = i;
+                    break;
+                }
+            }
+            // If no :::notes found, insert before the --- separator or at end of slide
+            if (insertLine < 0) {
+                // endLine+1 could be --- or EOF; insert a new line at end of endLine
+                insertLine = slide.endLine;
+            }
+
+            const edit = new vscode.WorkspaceEdit();
+            const pos = new vscode.Position(insertLine, 0);
+            edit.insert(this._document.uri, pos, `<!-- !issue: ${text} -->\n`);
+            await vscode.workspace.applyEdit(edit);
+        } finally {
+            setTimeout(() => { this._suppressSync = false; }, 500);
+        }
+    }
+
+    private async _removeIssueFromSlide(issueText: string, slideIndex: number): Promise<void> {
+        const slides = this._parseSlides();
+        const slide = slides[slideIndex];
+        if (!slide || !issueText) { return; }
+
+        this._suppressSync = true;
+        const text = this._document.getText();
+        const lines = text.split('\n');
+        const edit = new vscode.WorkspaceEdit();
+
+        for (let i = slide.startLine; i <= slide.endLine; i++) {
+            const line = lines[i];
+            const issueMatch = line.match(/<!--\s*!issue:\s*(.+?)\s*-->/);
+            if (issueMatch && issueMatch[1].trim() === issueText.trim()) {
+                const range = new vscode.Range(
+                    new vscode.Position(i, 0),
+                    new vscode.Position(i + 1, 0)
+                );
+                edit.delete(this._document.uri, range);
+                break;
+            }
+        }
+        await vscode.workspace.applyEdit(edit);
+        setTimeout(() => { this._suppressSync = false; }, 500);
+    }
+
+    private _countAllIssues(): number {
+        const text = this._document.getText();
+        const matches = text.match(/<!--\s*!issue:\s*.+?\s*-->/g);
+        return matches ? matches.length : 0;
     }
 
     private _getEmptyHtml(): string {
@@ -347,7 +404,17 @@ export class RemarpPreviewPanel {
     }
 
     private _getHtmlForSlide(slide: Slide, totalSlides: number): string {
-        const { html: rawRenderedHtml, notes: rawNotes, notesArg } = this._renderMarkdown(slide.content, slide.index);
+        // Extract <!-- !issue: ... --> annotations before rendering
+        const issueRegex = /<!--\s*!issue:\s*(.+?)\s*-->/g;
+        const issues: string[] = [];
+        let issueMatch;
+        while ((issueMatch = issueRegex.exec(slide.content)) !== null) {
+            issues.push(issueMatch[1]);
+        }
+        // Strip issues from content before rendering
+        const cleanContent = slide.content.replace(/<!--\s*!issue:\s*.+?\s*-->\n?/g, '');
+
+        const { html: rawRenderedHtml, notes: rawNotes, notesArg } = this._renderMarkdown(cleanContent, slide.index);
 
         // Convert relative image paths to webview URIs (mirrors htmlPreview.ts behavior)
         const docDir = path.dirname(this._document.uri.fsPath);
@@ -363,21 +430,35 @@ export class RemarpPreviewPanel {
         );
         const hasNotes = !!rawNotes;
         const fm = this._parseFrontmatter();
-        const isEditMode = RemarpPreviewPanel._editMode;
         const sid = `s${slide.index}`;
+        const totalIssueCount = this._countAllIssues();
 
         // Extract @type and @layout for slide-level CSS classes
         const slideType = slide.type || 'content';
-        const layoutMatch = slide.content.match(/^@layout\s+(\S+)/m);
+        const layoutMatch = slide.content.match(/^@layout:?\s+(\S+)/m);
         const slideLayout = layoutMatch ? layoutMatch[1] : '';
-        const slideClasses = ['slide', `slide-type-${slideType}`, slideLayout ? `slide-layout-${slideLayout}` : '', isEditMode ? 'edit-mode' : ''].filter(Boolean).join(' ');
+        const slideClasses = ['slide', `slide-type-${slideType}`, slideLayout ? `slide-layout-${slideLayout}` : ''].filter(Boolean).join(' ');
+
+        // Extract per-slide @background and @badge directives → webview URIs
+        const slideBgMatch = slide.content.match(/^@background:?\s+(.+)$/m);
+        const slideBadgeMatch = slide.content.match(/^@badge:?\s+(.+)$/m);
+        const slideBgUri = slideBgMatch
+            ? this._panel.webview.asWebviewUri(vscode.Uri.file(path.resolve(docDir, slideBgMatch[1].trim()))).toString()
+            : '';
+        const slideBadgeUri = slideBadgeMatch
+            ? this._panel.webview.asWebviewUri(vscode.Uri.file(path.resolve(docDir, slideBadgeMatch[1].trim()))).toString()
+            : '';
 
         // Type-specific content transformation
         const renderedContent = this._transformByType(slideType, rawRenderedContent, slide, fm);
 
-        // Edit mode media URIs
-        const editModeCssUri = this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'edit-mode.css'));
-        const editModeJsUri = this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'edit-mode.js'));
+        // Prompt bar JS URI
+        const promptBarJsUri = this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'prompt-bar.js'));
+
+        // Slide size from frontmatter (e.g. size: 960x720 for 4:3)
+        const sizeMatch = (fm['size'] || '').match(/^(\d+)x(\d+)$/);
+        const slideWidth = sizeMatch ? parseInt(sizeMatch[1], 10) : 1280;
+        const slideHeight = sizeMatch ? parseInt(sizeMatch[2], 10) : 720;
 
         // Global styles from frontmatter directives
         const bgColor = fm['backgroundColor'] || '';
@@ -409,7 +490,6 @@ export class RemarpPreviewPanel {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Remarp Preview - ${path.basename(this._document.uri.fsPath)}</title>
-    <link rel="stylesheet" href="${editModeCssUri}">
     <style>
         * {
             box-sizing: border-box;
@@ -488,6 +568,11 @@ export class RemarpPreviewPanel {
             opacity: 0.5;
             cursor: not-allowed;
         }
+        .main-layout {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
         .slide-container {
             flex: 1;
             overflow: hidden;
@@ -497,19 +582,42 @@ export class RemarpPreviewPanel {
             padding: 8px;
         }
         .slide-wrapper {
-            width: 1280px;
+            width: ${slideWidth}px;
             transform-origin: center center;
             border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
         }
+        .sidebar {
+            width: 320px;
+            min-width: 280px;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px;
+        }
+        .sidebar-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin: 0 0 8px 0;
+        }
+        .sidebar-section + .sidebar-section { margin-top: 16px; }
         .slide {
             background: ${slideBg};
             ${slideBgImage}
             background-size: cover;
             padding: 48px 60px;
-            width: 1280px;
-            height: 720px;
+            width: ${slideWidth}px;
+            height: ${slideHeight}px;
             position: relative;
             overflow: auto;
             display: flex;
@@ -544,8 +652,10 @@ export class RemarpPreviewPanel {
             opacity: 0.5;
         }
         h1 { font-size: 2.5em; margin-top: 0; color: ${headingColor}; }
-        h2 { font-size: 2em; color: ${headingColor}; }
-        h3 { font-size: 1.5em; color: ${headingColor}; }
+        h2 { font-size: 2em; margin-top: 0.8em; color: ${headingColor}; }
+        h3 { font-size: 1.5em; margin-top: 0.6em; color: ${headingColor}; }
+        h1:first-child, h2:first-child, h3:first-child { margin-top: 0; }
+        ul, ol { margin-bottom: 0.5em; }
         p { line-height: 1.6; }
         code {
             background: #0d1117;
@@ -614,33 +724,6 @@ export class RemarpPreviewPanel {
         .quiz-option:hover { border-color: var(--accent); }
         .quiz-option.correct { border-color: #27ae60; background: rgba(39,174,96,0.08); }
 
-        /* Per-slide Edit button */
-        .remarp-slide-edit-btn {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            background: rgba(55, 148, 255, 0.8);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 4px 12px;
-            font-size: 12px;
-            cursor: pointer;
-            opacity: 0;
-            transition: opacity 0.2s;
-            z-index: 100;
-        }
-        .slide:hover .remarp-slide-edit-btn,
-        .slide-wrapper:hover .remarp-slide-edit-btn {
-            opacity: 1;
-        }
-        .remarp-slide-edit-btn:hover {
-            background: rgba(55, 148, 255, 1);
-        }
-        .remarp-slide-edit-btn.active {
-            background: rgba(39, 174, 96, 0.8);
-        }
-
         /* Fragment blocks */
         .fragment-block { padding: 8px 0; }
 
@@ -648,11 +731,11 @@ export class RemarpPreviewPanel {
         .click-indicator { opacity: 0.5; font-size: 0.75em; color: var(--accent); margin-left: 4px; }
 
         /* Notes panel (inside slide-wrapper, below slide) */
-        .notes-panel { background: var(--bg-secondary); border-top: 1px solid var(--border); padding: 12px 20px; max-height: 150px; overflow-y: auto; }
+        .notes-panel { padding: 0; }
         /* notes-marker removed — no longer used */
         .notes-keyword { color: #4ec9b0; }
         .notes-arg { color: #ce9178; }
-        .notes-panel-content { font-size: 0.85em; color: #ccc; line-height: 1.5; padding: 2px 0; }
+        .notes-panel-content { font-size: 13px; color: #ccc; line-height: 1.6; padding: 2px 0; }
         .notes-timing { color: #ce9178; font-weight: 600; margin: 0 2px; }
         .notes-cue { color: #3498db; font-weight: 600; margin: 0 2px; }
         blockquote {
@@ -822,9 +905,33 @@ export class RemarpPreviewPanel {
         .compare-btn { padding: 0.5rem 1.2rem; border: none; background: var(--surface); color: var(--text-muted); font-family: inherit; font-size: 0.9rem; cursor: pointer; transition: all 0.15s ease; }
         .compare-btn.active { background: var(--accent); color: #fff; }
         .compare-highlight { border-color: var(--accent) !important; box-shadow: 0 0 12px var(--accent-glow); }
+        .slide-body:not([data-compare-mode="side-by-side"]) > .compare-content { display: none; }
+        .slide-body:not([data-compare-mode="side-by-side"]) > .compare-content.active { display: block; }
+
+        /* Issue annotations */
+        .issue-bar { display: flex; flex-wrap: wrap; gap: 4px; }
+        .issue-badge { display: inline-flex; align-items: center; gap: 4px; background: #443000; color: #ffbb33; border-radius: 4px; padding: 2px 8px; margin: 2px 4px 2px 0; font-size: 11px; line-height: 1.4; }
+        .issue-badge::before { content: '!'; display: inline-block; width: 14px; height: 14px; line-height: 14px; text-align: center; border-radius: 50%; background: #ff9900; color: #1a1a1a; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+        .issue-remove { background: none; border: none; color: #ffbb33; cursor: pointer; font-size: 14px; line-height: 1; padding: 0 2px; margin-left: 4px; opacity: 0.6; }
+        .issue-remove:hover { opacity: 1; color: #ff6644; }
+
+        /* Prompt bar (inside sidebar) */
+        .prompt-bar { padding: 10px 16px; border-top: 1px solid var(--border); background: var(--bg-secondary); }
+        .prompt-form { display: flex; gap: 6px; }
+        .prompt-input { flex: 1; background: var(--surface); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; font-size: 12px; font-family: inherit; outline: none; }
+        .prompt-input:focus { border-color: var(--accent); }
+        .prompt-input::placeholder { color: var(--text-muted); }
+        .prompt-submit { background: var(--accent); color: white; border: none; border-radius: 4px; padding: 6px 10px; cursor: pointer; font-size: 13px; line-height: 1; }
+        .prompt-submit:hover { background: var(--accent-light); }
+
+        /* Submit all issues button */
+        .submit-bar { padding: 8px 16px; border-top: 1px solid var(--border); }
+        .submit-all-btn { width: 100%; padding: 8px 12px; border: none; border-radius: 6px; background: var(--green); color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+        .submit-all-btn:hover:not(:disabled) { background: #00a884; }
+        .submit-all-btn:disabled { background: var(--surface); color: var(--text-muted); cursor: not-allowed; }
     </style>
 </head>
-<body>
+<body data-slide-index="${slide.index}">
     <div class="toolbar">
         <div class="toolbar-left">
             <span class="slide-counter">Slide ${slide.index + 1} of ${totalSlides}</span>
@@ -835,23 +942,48 @@ export class RemarpPreviewPanel {
             <button class="nav-button" onclick="nextSlide()" ${slide.index === totalSlides - 1 ? 'disabled' : ''}>Next</button>
         </div>
     </div>
-    <div class="slide-container">
-        <div class="slide-wrapper">
-            <div class="${slideClasses}" data-remarp-id="${sid}">
-                ${headerHtml}
-                ${renderedContent}
-                ${footerHtml}
-                ${paginationHtml}
-                <button class="remarp-slide-edit-btn" id="slideEditBtn">Edit</button>
-            </div>${hasNotes ? `
-            <div class="notes-panel">
-                <div class="notes-panel-content">${this._styleNotes(rawNotes)}</div>
-            </div>` : ''}
+    <div class="main-layout">
+        <div class="slide-container">
+            <div class="slide-wrapper">
+                <div class="${slideClasses}" data-remarp-id="${sid}"${slideBgUri ? ` style="background:url('${slideBgUri}') center/cover no-repeat;"` : ''}>
+                    ${headerHtml}
+                    ${renderedContent}
+                    ${slideBadgeUri ? `<img src="${slideBadgeUri}" alt="" style="position:absolute;right:5%;bottom:10%;width:8%;pointer-events:none;" />` : ''}
+                    ${footerHtml}
+                    ${paginationHtml}
+                </div>
+            </div>
+        </div>
+        <div class="sidebar">
+            <div class="sidebar-content">${hasNotes ? `
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Speaker Notes</div>
+                    <div class="notes-panel">
+                        <div class="notes-panel-content">${this._styleNotes(rawNotes)}</div>
+                    </div>
+                </div>` : ''}${issues.length > 0 ? `
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Issues</div>
+                    <div class="issue-bar">${issues.map(iss => `<span class="issue-badge">${this._escapeHtml(iss)}<button class="issue-remove" data-issue="${this._escapeHtml(iss)}">\u00d7</button></span>`).join('')}</div>
+                </div>` : ''}${!hasNotes && issues.length === 0 ? `
+                <div style="color:var(--text-muted);font-size:12px;padding-top:8px;">No notes or issues for this slide.</div>` : ''}
+            </div>
+            <div class="prompt-bar">
+                <form id="promptForm" class="prompt-form" autocomplete="off">
+                    <input type="text" id="promptInput" class="prompt-input" placeholder="이슈나 개선사항을 입력하세요..." />
+                    <button type="submit" class="prompt-submit">\u25b6</button>
+                </form>
+            </div>
+            <div class="submit-bar">
+                <button id="submitAllBtn" class="submit-all-btn" ${totalIssueCount === 0 ? 'disabled' : ''}>
+                    \ud83d\ude80 이슈 제출 (${totalIssueCount})
+                </button>
+            </div>
         </div>
     </div>
     <script>
         const vscode = acquireVsCodeApi();
-        window._remarpEditMode = false;
+        window._vscodeApi = vscode;
         window._remarpPostMessage = function(msg) { vscode.postMessage(msg); };
 
         function nextSlide() {
@@ -863,8 +995,8 @@ export class RemarpPreviewPanel {
         }
 
         document.addEventListener('keydown', (e) => {
-            // Disable arrow key navigation in edit mode
-            if (window._remarpEditMode) return;
+            // Don't capture keys when typing in the prompt input
+            if (e.target && e.target.id === 'promptInput') return;
             if (e.key === 'ArrowRight' || e.key === ' ') {
                 nextSlide();
             } else if (e.key === 'ArrowLeft') {
@@ -879,47 +1011,14 @@ export class RemarpPreviewPanel {
             const cw = container.clientWidth - 16;
             const ch = container.clientHeight - 16;
             const wrapperHeight = wrapper.scrollHeight;
-            const scale = Math.min(cw / 1280, ch / wrapperHeight);
+            const scale = Math.min(cw / ${slideWidth}, ch / wrapperHeight);
             wrapper.style.transform = 'scale(' + scale + ')';
         }
         scaleSlide();
         window.addEventListener('resize', scaleSlide);
         new ResizeObserver(scaleSlide).observe(document.querySelector('.slide-container'));
-
-        // Per-slide Edit button
-        (function() {
-            const editBtn = document.getElementById('slideEditBtn');
-            const slide = document.querySelector('.slide');
-            if (!editBtn || !slide) return;
-            editBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                slide.classList.toggle('edit-mode');
-                window._remarpEditMode = slide.classList.contains('edit-mode');
-                if (window._remarpEditMode) {
-                    editBtn.textContent = 'Done';
-                    editBtn.classList.add('active');
-                    // Lazy-init the full visual editor (resize handles, property panel)
-                    if (!window._remarpVisualEditor && window._RemarpVisualEditorClass) {
-                        window._remarpVisualEditor = new window._RemarpVisualEditorClass();
-                    }
-                    // Lazy-init the canvas editor
-                    if (!window._remarpCanvasEditor && window._RemarpCanvasEditorClass) {
-                        window._remarpCanvasEditor = new window._RemarpCanvasEditorClass();
-                    }
-                } else {
-                    editBtn.textContent = 'Edit';
-                    editBtn.classList.remove('active');
-                    if (window._remarpVisualEditor) {
-                        window._remarpVisualEditor.deselectAll();
-                    }
-                    // Flush buffered CSS changes to .md file
-                    vscode.postMessage({ command: 'editDone' });
-                }
-            });
-        })();
     </script>
-    <script src="${editModeJsUri}"></script>
-    <script src="${this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'canvas-editor.js'))}"></script>
+    <script src="${promptBarJsUri}"></script>
     <script>
         // Tab switching
         (function() {
@@ -943,16 +1042,24 @@ export class RemarpPreviewPanel {
         (function() {
             const slide = document.querySelector('.slide-type-compare');
             if (!slide) return;
+            const body = slide.querySelector('.slide-body');
+            const isSideBySide = body && body.getAttribute('data-compare-mode') === 'side-by-side';
             const btns = Array.from(slide.querySelectorAll('.compare-btn'));
             const cards = Array.from(slide.querySelectorAll('.compare-content'));
             btns.forEach(btn => {
                 btn.addEventListener('click', () => {
                     const idx = btn.getAttribute('data-compare');
                     btns.forEach(b => b.classList.remove('active'));
-                    cards.forEach(c => c.classList.remove('compare-highlight'));
                     btn.classList.add('active');
-                    const target = slide.querySelector('.compare-content[data-compare="' + idx + '"]');
-                    if (target) target.classList.add('compare-highlight');
+                    if (isSideBySide) {
+                        cards.forEach(c => c.classList.remove('compare-highlight'));
+                        const target = slide.querySelector('.compare-content[data-compare="' + idx + '"]');
+                        if (target) target.classList.add('compare-highlight');
+                    } else {
+                        cards.forEach(c => c.classList.remove('active'));
+                        const target = slide.querySelector('.compare-content[data-compare="' + idx + '"]');
+                        if (target) target.classList.add('active');
+                    }
                 });
             });
         })();
@@ -1043,6 +1150,10 @@ export class RemarpPreviewPanel {
                 return this._renderQuizContent(content);
             case 'cards':
                 return this._renderCardsContent(content, slide);
+            case 'agenda':
+                return this._renderAgendaContent(content);
+            case 'title':
+                return this._renderTitleContent(content);
             default:
                 return this._wrapHeadingBody(content);
         }
@@ -1150,33 +1261,53 @@ ${speakerHtml}`;
     }
 
     private _renderCompareContent(content: string): string {
-        // Extract column headings and content from .columns-2 structure
+        // Strategy 1: Extract from .columns-2 structure (:::left/:::right blocks)
         const colRegex = /<div class="col"[^>]*>([\s\S]*?)<\/div>/g;
         const cols: { heading: string; body: string }[] = [];
         let match;
         while ((match = colRegex.exec(content)) !== null) {
             const colHtml = match[1];
-            const h3Match = colHtml.match(/<h3>([\s\S]*?)<\/h3>/);
+            const h3Match = colHtml.match(/<h3[^>]*>([\s\S]*?)<\/h3>/);
             const heading = h3Match ? h3Match[1] : `Option ${cols.length + 1}`;
             const body = h3Match ? colHtml.replace(h3Match[0], '') : colHtml;
             cols.push({ heading, body });
         }
+
+        // Strategy 2: Split by <h3> headings (### heading markdown)
+        if (cols.length < 2) {
+            const h3Regex = /<h3[^>]*>([\s\S]*?)<\/h3>([\s\S]*?)(?=<h3|$)/g;
+            while ((match = h3Regex.exec(content)) !== null) {
+                cols.push({ heading: match[1].trim(), body: match[2].trim() });
+            }
+        }
+
         if (cols.length < 2) return this._wrapHeadingBody(content);
 
-        // Extract slide heading (h1/h2) from content before columns
-        const headingMatch = content.match(/^([\s\S]*?)(<div class="columns-2)/);
+        // Extract slide heading (h1/h2) before compare sections
+        const headingMatch = content.match(/^([\s\S]*?)(?:<div class="columns-2|<h3)/);
         const slideHeading = headingMatch ? headingMatch[1].replace(/<p>\s*<\/p>/g, '').trim() : '';
 
+        const isSideBySide = cols.length === 2;
+
         const toggleBar = `<div class="compare-toggle">${cols.map((c, i) =>
-            `<button class="compare-btn${i === 0 ? ' active' : ''}" data-compare="${i}">${this._escapeHtml(c.heading)}</button>`
+            `<button class="compare-btn${i === 0 ? ' active' : ''}" data-compare="${i}">${c.heading}</button>`
         ).join('')}</div>`;
 
-        const cards = `<div class="col-2">${cols.map((c, i) =>
-            `<div class="card compare-content${i === 0 ? ' compare-highlight' : ''}" data-compare="${i}">${c.body}</div>`
-        ).join('')}</div>`;
+        if (isSideBySide) {
+            const cards = `<div class="col-2">${cols.map((c, i) =>
+                `<div class="card compare-content active${i === 0 ? ' compare-highlight' : ''}" data-compare="${i}">${c.body}</div>`
+            ).join('')}</div>`;
 
-        return `${slideHeading ? `<div class="slide-header">${slideHeading}</div>` : ''}
+            return `${slideHeading ? `<div class="slide-header">${slideHeading}</div>` : ''}
+<div class="slide-body" data-compare-mode="side-by-side">${toggleBar}${cards}</div>`;
+        } else {
+            const cards = cols.map((c, i) =>
+                `<div class="compare-content${i === 0 ? ' active' : ''}" data-compare="${i}"><h3 style="color:var(--text-accent);margin-bottom:.5rem">${c.heading}</h3>${c.body}</div>`
+            ).join('');
+
+            return `${slideHeading ? `<div class="slide-header">${slideHeading}</div>` : ''}
 <div class="slide-body">${toggleBar}${cards}</div>`;
+        }
     }
 
     private _renderStepsContent(content: string, slide: Slide): string {
@@ -1378,6 +1509,53 @@ ${speakerHtml}`;
 <div class="slide-body"><div class="col-${colCount}">${cardsHtml}</div></div>`;
     }
 
+    private _renderAgendaContent(content: string): string {
+        // Extract heading
+        const hMatch = content.match(/(<h[12][^>]*>[\s\S]*?<\/h[12]>)/);
+        const slideHeading = hMatch ? hMatch[1] : '';
+        let bodyContent = hMatch ? content.replace(hMatch[0], '') : content;
+
+        // Parse numbered list items as agenda steps
+        const items: { num: string; text: string }[] = [];
+        const liRegex = /<li>([\s\S]*?)<\/li>/g;
+        let match;
+        let idx = 1;
+        while ((match = liRegex.exec(bodyContent)) !== null) {
+            items.push({ num: String(idx++), text: match[1].trim() });
+        }
+
+        if (items.length === 0) return this._wrapHeadingBody(content);
+
+        const stepsHtml = items.map((item, i) => {
+            const dotColor = i === 0 ? 'var(--accent)' : 'var(--surface)';
+            const textColor = i === 0 ? 'var(--text-primary)' : 'var(--text-secondary)';
+            return `<div style="display:flex;align-items:center;gap:16px;padding:10px 0;">
+                <div style="width:36px;height:36px;border-radius:50%;background:${dotColor};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.9rem;flex-shrink:0;">${item.num}</div>
+                <div style="flex:1;color:${textColor};font-size:1rem;">${item.text}</div>
+            </div>`;
+        }).join('');
+
+        return `${slideHeading ? `<div class="slide-header">${slideHeading}</div>` : ''}
+<div class="slide-body">${stepsHtml}</div>`;
+    }
+
+    private _renderTitleContent(content: string): string {
+        const h1Match = content.match(/<h1[^>]*>([\s\S]*?)<\/h1>/);
+        const h2Match = content.match(/<h2[^>]*>([\s\S]*?)<\/h2>/);
+        const title = h1Match ? h1Match[1] : '';
+        const subtitle = h2Match ? h2Match[1] : '';
+        let remaining = content;
+        if (h1Match) remaining = remaining.replace(h1Match[0], '');
+        if (h2Match) remaining = remaining.replace(h2Match[0], '');
+        remaining = remaining.replace(/<p>\s*<\/p>/g, '').trim();
+
+        return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;">
+            ${title ? `<h1 style="font-size:2.5rem;font-weight:700;margin:0 0 0.5rem 0;">${title}</h1>` : ''}
+            ${subtitle ? `<div style="font-size:1.3rem;color:var(--text-secondary);">${subtitle}</div>` : ''}
+            ${remaining ? `<div style="margin-top:1rem;color:var(--text-muted);font-size:0.95rem;">${remaining}</div>` : ''}
+        </div>`;
+    }
+
     private _wrapHeadingBody(content: string): string {
         // Split at first h1/h2 heading into heading area + body area
         const headingMatch = content.match(/^([\s\S]*?)(<h[12][^>]*>[\s\S]*?<\/h[12]>)([\s\S]*)$/);
@@ -1423,15 +1601,35 @@ ${speakerHtml}`;
         const sid = `s${slideIndex}`;
 
         while (i < lines.length) {
-            const blockMatch = lines[i].match(/^:::\s*(\w+)(?:\s+(.*))?$/);
+            const blockMatch = lines[i].match(/^(:{3,})\s*(\w+)(?:\s+(.*))?$/);
 
             if (blockMatch) {
-                const blockType = blockMatch[1];
-                const blockArg = blockMatch[2]?.trim() || '';
-                // Collect inner content until closing :::
+                const openColons = blockMatch[1].length;
+                const blockType = blockMatch[2];
+                const blockArg = blockMatch[3]?.trim() || '';
+                // Collect inner content until matching colon-count closer
+                // Pandoc-style: :::click (3) closed by ::: (3),
+                //               ::::left (4) closed by :::: (4)
+                // Depth tracking: same-colon-count openers increment depth
                 const innerLines: string[] = [];
+                let depth = 1;
                 i++;
-                while (i < lines.length && !/^:::\s*$/.test(lines[i])) {
+                while (i < lines.length) {
+                    const nestedOpen = lines[i].match(/^(:{3,})\s*(\w+)(?:\s+(.*))?$/);
+                    if (nestedOpen && nestedOpen[1].length === openColons) {
+                        depth++;
+                        innerLines.push(lines[i]);
+                        i++;
+                        continue;
+                    }
+                    const closeMatch = lines[i].match(/^(:{3,})\s*$/);
+                    if (closeMatch && closeMatch[1].length === openColons) {
+                        depth--;
+                        if (depth === 0) { break; }
+                        innerLines.push(lines[i]);
+                        i++;
+                        continue;
+                    }
                     innerLines.push(lines[i]);
                     i++;
                 }
@@ -1464,11 +1662,14 @@ ${speakerHtml}`;
                         const leftHtml = this._renderInlineMarkdown(inner, slideIndex);
                         let rightHtml = '';
                         while (i < lines.length && lines[i].trim() === '') { i++; }
-                        const rightMatch = i < lines.length && lines[i].match(/^:::\s*right(?:\s+.*)?$/);
+                        const rightMatch = i < lines.length && lines[i].match(/^(:{3,})\s*right(?:\s+.*)?$/);
                         if (rightMatch) {
+                            const rightColons = rightMatch[1].length;
                             const rightInner: string[] = [];
                             i++;
-                            while (i < lines.length && !/^:::\s*$/.test(lines[i])) {
+                            while (i < lines.length) {
+                                const rc = lines[i].match(/^(:{3,})\s*$/);
+                                if (rc && rc[1].length === rightColons) { break; }
                                 rightInner.push(lines[i]);
                                 i++;
                             }
@@ -1486,11 +1687,14 @@ ${speakerHtml}`;
                         while (i < lines.length) {
                             let peek = i;
                             while (peek < lines.length && lines[peek].trim() === '') { peek++; }
-                            const nextCol = peek < lines.length && lines[peek].match(/^:::\s*col(?:\s+.*)?$/);
+                            const nextCol = peek < lines.length && lines[peek].match(/^(:{3,})\s*col(?:\s+.*)?$/);
                             if (!nextCol) { break; }
+                            const nextColons = nextCol[1].length;
                             i = peek + 1;
                             const colInner: string[] = [];
-                            while (i < lines.length && !/^:::\s*$/.test(lines[i])) {
+                            while (i < lines.length) {
+                                const cc = lines[i].match(/^(:{3,})\s*$/);
+                                if (cc && cc[1].length === nextColons) { break; }
                                 colInner.push(lines[i]);
                                 i++;
                             }
@@ -1506,11 +1710,14 @@ ${speakerHtml}`;
                         while (i < lines.length) {
                             let peek = i;
                             while (peek < lines.length && lines[peek].trim() === '') { peek++; }
-                            const nextCell = peek < lines.length && lines[peek].match(/^:::\s*cell(?:\s+.*)?$/);
+                            const nextCell = peek < lines.length && lines[peek].match(/^(:{3,})\s*cell(?:\s+.*)?$/);
                             if (!nextCell) { break; }
+                            const nextCellColons = nextCell[1].length;
                             i = peek + 1;
                             const cellInner: string[] = [];
-                            while (i < lines.length && !/^:::\s*$/.test(lines[i])) {
+                            while (i < lines.length) {
+                                const cc = lines[i].match(/^(:{3,})\s*$/);
+                                if (cc && cc[1].length === nextCellColons) { break; }
                                 cellInner.push(lines[i]);
                                 i++;
                             }
@@ -1545,6 +1752,9 @@ ${speakerHtml}`;
                         // Collect notes for the panel below the slide
                         notesArg = blockArg; // e.g. {timing: 3min}
                         if (inner.trim()) { notesCollector.push(inner); }
+                        break;
+                    case 'html':
+                        emit(`<div data-remarp-id="${sid}-html">${inner}</div>`);
                         break;
                     case 'prompt': {
                         const escaped = inner.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -1582,8 +1792,8 @@ ${speakerHtml}`;
             return `\x00CODEBLOCK${idx}\x00`;
         });
 
-        // Convert directives to styled spans
-        html = html.replace(/^(@\w+(?:-\w+)*)\s+(.*)$/gm, '<div class="directive">$1 <span style="color: #ce9178;">$2</span></div>');
+        // Strip @directives from rendered content (they are metadata, not display text)
+        html = html.replace(/^@\w+(?:-\w+)*:?\s+.*$/gm, '');
 
         // Quiz checkboxes: - [ ] and - [x] with data-remarp-id
         html = html.replace(/^- \[x\]\s+(.*)$/gm, (_match, text) => {
@@ -1643,10 +1853,24 @@ ${speakerHtml}`;
         html = html.replace(/^# (.*)$/gm, '<h1>$1</h1>');
 
         // Convert images (before links to avoid conflict)
-        html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+        // Sanitize URLs: block javascript:, data:, vbscript: schemes
+        const sanitizeUrl = (url: string): string => {
+            const trimmed = url.trim().replace(/[\x00-\x1f]/g, '');
+            if (/^\s*(javascript|data|vbscript)\s*:/i.test(trimmed)) {
+                return '';
+            }
+            return trimmed;
+        };
+        html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt: string, url: string) => {
+            const safe = sanitizeUrl(url);
+            return safe ? `<img src="${safe}" alt="${this._escapeHtml(alt)}">` : `[${this._escapeHtml(alt)}]`;
+        });
 
         // Convert links
-        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, text: string, url: string) => {
+            const safe = sanitizeUrl(url);
+            return safe ? `<a href="${safe}">${text}</a>` : text;
+        });
 
         // Convert bold and italic
         html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');

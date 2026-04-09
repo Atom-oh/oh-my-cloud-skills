@@ -375,12 +375,16 @@ class SlideFramework {
         case 'next':
           e.preventDefault();
           if (this.overviewMode) return;
-          this.next();
+          if (!this.revealNextFragment()) {
+            this.next();
+          }
           break;
         case 'prev':
           e.preventDefault();
           if (this.overviewMode) return;
-          this.prev();
+          if (!this.revealPrevFragment()) {
+            this.prev();
+          }
           break;
         case 'down':
           e.preventDefault();
@@ -451,7 +455,11 @@ class SlideFramework {
     deck.addEventListener('touchend', (e) => {
       const dx = e.changedTouches[0].clientX - startX;
       if (Math.abs(dx) > 50) {
-        dx < 0 ? this.next() : this.prev();
+        if (dx < 0) {
+          if (!this.revealNextFragment()) this.next();
+        } else {
+          if (!this.revealPrevFragment()) this.prev();
+        }
       }
     }, { passive: true });
   }

@@ -182,6 +182,23 @@ class Slide:
     references: List[Tuple[str, str]] = field(default_factory=list)
     html_blocks: List[str] = field(default_factory=list)
     script_blocks: List[str] = field(default_factory=list)
+    tab_blocks: List['ParsedBlock'] = field(default_factory=list)
+    issues: List[str] = field(default_factory=list)
+
+
+@dataclass
+class ParsedBlock:
+    """Represents a ::: block extracted by the stack-based parser.
+
+    Nested blocks are stored in ``children`` so the outer block's
+    ``content`` only contains text and placeholder markers
+    (``<!-- __CHILD:N__ -->``) where children were removed.
+    """
+    block_type: str                                       # e.g. 'left', 'click', 'canvas'
+    args: str = ''                                        # text after the block type
+    content: str = ''                                     # inner text (children replaced by markers)
+    raw_content: str = ''                                 # inner text with original nested blocks
+    children: List['ParsedBlock'] = field(default_factory=list)
 
 
 def parse_yaml_simple(text: str) -> Dict[str, Any]:
@@ -371,6 +388,10 @@ class RemarpParser:
         # Strip residual leading --- lines left by per-slide frontmatter blocks
         md_text = re.sub(r'^---\s*\n', '', md_text)
 
+        # Extract issues (<!-- !issue: ... -->)
+        issues: List[str] = re.findall(r'<!--\s*!issue:\s*(.+?)\s*-->', md_text)
+        md_text = re.sub(r'<!--\s*!issue:\s*.+?\s*-->\n?', '', md_text)
+
         # Parse notes (new style)
         notes = self.parse_notes(md_text)
         md_text = self.NOTES_PATTERN.sub('', md_text)
@@ -380,54 +401,101 @@ class RemarpParser:
             notes = self.parse_legacy_notes(md_text)
             md_text = self.LEGACY_NOTES_PATTERN.sub('', md_text)
 
-        # Parse fragments
-        fragments = self.parse_fragments(md_text)
+        # ── Stack-based block extraction (handles nesting properly) ──
+        # Extracts ALL ::: blocks at once with Pandoc-style colon counting.
+        # Replaces the old sequential regex extraction.
+        md_text, all_blocks = self.parse_all_blocks_stack(md_text)
 
-        # Extract :::html blocks — replace with placeholders to preserve position
-        # (must run BEFORE parse_columns so :::html inside columns becomes placeholders)
-        html_placeholder_counter = [0]
-        def _replace_html_block(match):
-            idx = html_placeholder_counter[0]
-            html_placeholder_counter[0] += 1
-            return f'<!-- __HTML_BLOCK_{idx}__ -->'
-        html_blocks = self.HTML_BLOCK_PATTERN.findall(md_text)
-        md_text = self.HTML_BLOCK_PATTERN.sub(_replace_html_block, md_text)
+        # -- Distribute extracted blocks to their handlers --
 
-        # Replace :::click blocks with fragment markers (content preserved for rendering)
-        # (must run BEFORE parse_columns so :::click inside columns becomes markers,
-        #  otherwise COLUMN_PATTERN's non-greedy regex stops at inner :::click closings)
-        frag_counter = [0]
-        def _mark_click_block(match):
-            content = match.group(3) if match.lastindex >= 3 else ''
-            attrs = {}
-            attr_text = match.group(0).split('\n')[0]
-            for attr_match in re.finditer(r'(\w+)=([^\s\n]+)', attr_text):
-                attrs[attr_match.group(1)] = attr_match.group(2)
+        # Fragments (:::click)
+        fragments: List[Fragment] = []
+        frag_counter = 0
+        for blk in all_blocks.get('click', []):
+            attrs: Dict[str, str] = {}
+            for m in re.finditer(r'(\w+)=([^\s]+)', blk.args):
+                attrs[m.group(1)] = m.group(2)
+            order = int(attrs.get('order', frag_counter))
             animation = attrs.get('animation', 'fade-in')
-            order = attrs.get('order', str(frag_counter[0]))
-            frag_counter[0] = max(frag_counter[0], int(order) + 1)
-            return f'<!-- FRAG:{order}:{animation} -->\n{content.strip()}\n<!-- /FRAG -->'
+            fragments.append(Fragment(content=blk.content.strip(), order=order, animation=animation))
+            frag_counter = max(frag_counter, order + 1)
 
-        md_text = self.FRAGMENT_BLOCK_PATTERN.sub(_mark_click_block, md_text)
+        # HTML blocks
+        html_blocks = [blk.content for blk in all_blocks.get('html', [])]
 
-        # Parse columns (after HTML/click extraction so column content has placeholders/markers)
-        columns = self.parse_columns(md_text)
+        # Columns (:::left / :::right / :::col / :::cell)
+        # Content now properly preserves nested children via __CHILD:N__
+        # markers which gen_column_layout will process.
+        columns: List[Tuple[str, str]] = []
+        for btype in ('left', 'right', 'col', 'cell'):
+            for blk in all_blocks.get(btype, []):
+                # Re-expand nested :::click children as fragment markers
+                col_content = blk.content
+                for ci, child in enumerate(blk.children):
+                    if child.block_type == 'click':
+                        c_attrs: Dict[str, str] = {}
+                        for m in re.finditer(r'(\w+)=([^\s]+)', child.args):
+                            c_attrs[m.group(1)] = m.group(2)
+                        c_anim = c_attrs.get('animation', 'fade-in')
+                        c_order = int(c_attrs.get('order', str(frag_counter)))
+                        frag_counter = max(frag_counter, c_order + 1)
+                        marker = f'<!-- FRAG:{c_order}:{c_anim} -->\n{child.content.strip()}\n<!-- /FRAG -->'
+                        col_content = col_content.replace(f'<!-- __CHILD:{ci}__ -->', marker)
+                    elif child.block_type == 'html':
+                        col_content = col_content.replace(
+                            f'<!-- __CHILD:{ci}__ -->',
+                            child.content)
+                    else:
+                        # Other nested block types (canvas, tab, script, css, etc.)
+                        # — render as raw content to avoid leaving placeholder markers
+                        col_content = col_content.replace(
+                            f'<!-- __CHILD:{ci}__ -->',
+                            child.raw_content if child.raw_content else child.content)
+                columns.append((btype, col_content))
 
-        # Parse CSS overrides
-        css_overrides = self.parse_css_overrides(md_text)
-        md_text = self.CSS_PATTERN.sub('', md_text)
+        # CSS overrides
+        css_overrides: Dict[str, Dict[str, str]] = {}
+        for blk in all_blocks.get('css', []):
+            css_overrides.update(self.parse_css_overrides(f':::css\n{blk.content}\n:::'))
 
-        # Extract :::script blocks — remove from markdown flow
-        script_blocks = self.SCRIPT_BLOCK_PATTERN.findall(md_text)
-        md_text = self.SCRIPT_BLOCK_PATTERN.sub('', md_text)
+        # Script blocks
+        script_blocks = [blk.content for blk in all_blocks.get('script', [])]
 
-        # Parse canvas DSL
-        canvas_elements, canvas_id = self.parse_canvas_dsl(md_text)
-        md_text = self.CANVAS_PATTERN.sub('', md_text)
-        md_text = re.sub(r':::\s*(?:canvas\s+)?prompt\s*\n.*?\n:::', '', md_text, flags=re.DOTALL)
+        # Canvas DSL
+        canvas_elements: List[CanvasElement] = []
+        canvas_id: Optional[str] = None
+        for blk in all_blocks.get('canvas', []):
+            if blk.args:
+                # Parse canvas id from args: "id=flow-1" or just "flow-1"
+                id_match = re.match(r'(?:id=)?(\S+)', blk.args)
+                if id_match:
+                    canvas_id = id_match.group(1)
+            canvas_elements, canvas_id_parsed = self.parse_canvas_dsl(
+                f':::canvas{" " + blk.args if blk.args else ""}\n{blk.content}\n:::')
+            if canvas_id_parsed:
+                canvas_id = canvas_id_parsed
 
-        # Remove column blocks from content
-        md_text = self.COLUMN_PATTERN.sub('', md_text)
+        # Tab blocks (:::tab "Title") — now supported as inner blocks
+        tab_blocks = all_blocks.get('tab', [])
+
+        # Prompt blocks — remove from md flow (already removed by stack parser)
+
+        # ── Inject fragment markers for remaining :::click placeholders ──
+        # (top-level click blocks were extracted; re-inject as markers)
+        for i, blk in enumerate(all_blocks.get('click', [])):
+            attrs_dict: Dict[str, str] = {}
+            for m in re.finditer(r'(\w+)=([^\s]+)', blk.args):
+                attrs_dict[m.group(1)] = m.group(2)
+            anim = attrs_dict.get('animation', 'fade-in')
+            order_str = attrs_dict.get('order', str(i))
+            marker = f'<!-- FRAG:{order_str}:{anim} -->\n{blk.content.strip()}\n<!-- /FRAG -->'
+            md_text = md_text.replace(f'<!-- __BLOCK:click:{i}__ -->', marker)
+
+        # Re-inject HTML block placeholders (position-preserving)
+        for i, blk in enumerate(all_blocks.get('html', [])):
+            md_text = md_text.replace(
+                f'<!-- __BLOCK:html:{i}__ -->',
+                f'<!-- __HTML_BLOCK_{i}__ -->')
 
         # Extract {.reference}[text](url) patterns
         REFERENCE_PATTERN = re.compile(r'\{\.reference\}\[([^\]]+)\]\(([^)]+)\)')
@@ -465,7 +533,9 @@ class RemarpParser:
             css_overrides=css_overrides,
             references=references,
             html_blocks=html_blocks,
-            script_blocks=script_blocks
+            script_blocks=script_blocks,
+            tab_blocks=tab_blocks,
+            issues=issues,
         )
 
     def parse_directives(self, md_text: str) -> Dict[str, str]:
@@ -538,6 +608,132 @@ class RemarpParser:
             order_counter = max(order_counter, order + 1)
 
         return fragments
+
+    # ---- Stack-based block parser (Pandoc-style colon-count) ---------------
+    #
+    # Nesting uses increasing colon counts (3 = inner, 4 = outer, etc.):
+    #
+    #     ::::left               ← 4 colons: outer block
+    #     Some content
+    #     :::click               ← 3 colons: inner block
+    #     Animated part
+    #     :::                    ← 3 colons: closes :::click
+    #     ::::                   ← 4 colons: closes ::::left
+    #
+    # For backward compatibility, classic flat ::: still works when there
+    # is no nesting — the parser tracks colon counts and matches closers
+    # to the nearest opener with the same count.
+
+    _BLOCK_OPEN_RE = re.compile(r'^(:{3,})\s*([\w][\w-]*)(.*)$')
+    _BLOCK_CLOSE_RE = re.compile(r'^(:{3,})\s*$')
+
+    def parse_all_blocks_stack(self, md_text: str) -> Tuple[str, Dict[str, List[ParsedBlock]]]:
+        """Stack-based parser that extracts **all** fenced blocks at once.
+
+        Uses Pandoc-style colon counting for nesting: a ``::::left`` block
+        (4 colons) is closed by ``::::`` (4 colons), while a nested
+        ``:::click`` (3 colons) inside it is closed by ``:::`` (3 colons).
+
+        For backward compatibility with flat (non-nested) content, a ``:::``
+        closer also matches any ``:::`` opener of the same colon count.
+
+        Returns ``(remaining_text, blocks_by_type)`` where *remaining_text*
+        has every top-level block replaced by ``<!-- __BLOCK:type:N__ -->``
+        and *blocks_by_type* maps each block type to a list of
+        :class:`ParsedBlock` instances (children in ``block.children``).
+        """
+        lines = md_text.split('\n')
+        # Stack entries: [colon_count, block_type, args, content_lines,
+        #                  children, raw_lines]
+        stack: List[List] = []
+        blocks_by_type: Dict[str, List[ParsedBlock]] = {}
+        output_lines: List[str] = []
+        block_counter: Dict[str, int] = {}
+
+        for line in lines:
+            stripped = line.rstrip()
+            close_match = self._BLOCK_CLOSE_RE.match(stripped)
+            open_match = self._BLOCK_OPEN_RE.match(stripped)
+
+            if close_match and stack:
+                close_colons = len(close_match.group(1))
+                # Find the nearest stack entry with matching colon count
+                matched_idx = None
+                for si in range(len(stack) - 1, -1, -1):
+                    if stack[si][0] == close_colons:
+                        matched_idx = si
+                        break
+
+                if matched_idx is not None:
+                    # Pop everything from matched_idx upward (auto-close
+                    # any unclosed inner blocks for tolerance)
+                    popped: List[ParsedBlock] = []
+                    while len(stack) > matched_idx:
+                        cc, btype, bargs, content_lines, children, raw_lines = stack.pop()
+                        block = ParsedBlock(
+                            block_type=btype,
+                            args=bargs,
+                            content='\n'.join(content_lines),
+                            raw_content='\n'.join(raw_lines),
+                            children=children,
+                        )
+                        popped.append(block)
+
+                    # popped[-1] is the matched block; everything else
+                    # was auto-closed inner blocks → attach as children
+                    target = popped[-1]
+                    for orphan in reversed(popped[:-1]):
+                        target.children.append(orphan)
+
+                    if stack:
+                        # Still inside an outer block: attach as child
+                        parent_children = stack[-1][4]
+                        child_idx = len(parent_children)
+                        parent_children.append(target)
+                        stack[-1][3].append(f'<!-- __CHILD:{child_idx}__ -->')
+                        # Record raw lines for parent
+                        opener_colons = ':' * close_colons
+                        stack[-1][5].append(f'{opener_colons}{target.block_type} {target.args}'.rstrip())
+                        stack[-1][5].extend(target.raw_content.split('\n') if target.raw_content else [])
+                        stack[-1][5].append(opener_colons)
+                    else:
+                        # Top-level block
+                        bt = target.block_type
+                        idx = block_counter.get(bt, 0)
+                        block_counter[bt] = idx + 1
+                        blocks_by_type.setdefault(bt, []).append(target)
+                        output_lines.append(f'<!-- __BLOCK:{bt}:{idx}__ -->')
+                else:
+                    # No matching opener — treat as plain text
+                    if stack:
+                        stack[-1][3].append(line)
+                        stack[-1][5].append(line)
+                    else:
+                        output_lines.append(line)
+
+            elif open_match and not close_match:
+                # --- Open a new block ---
+                colons = len(open_match.group(1))
+                btype = open_match.group(2)
+                bargs = (open_match.group(3) or '').strip()
+                stack.append([colons, btype, bargs, [], [], []])
+
+            elif stack:
+                # --- Inside a block: collect content ---
+                stack[-1][3].append(line)
+                stack[-1][5].append(line)
+
+            else:
+                # --- Outside all blocks ---
+                output_lines.append(line)
+
+        # Unclosed blocks: dump back as plain text (error tolerance)
+        while stack:
+            cc, btype, bargs, content_lines, _children, _raw = stack.pop()
+            output_lines.append(f'{":" * cc}{btype} {bargs}'.rstrip())
+            output_lines.extend(content_lines)
+
+        return '\n'.join(output_lines), blocks_by_type
 
     def parse_columns(self, md_text: str) -> List[Tuple[str, str]]:
         """Parse ::: left/right/col/cell blocks."""
@@ -1621,11 +1817,12 @@ class RemarpHTMLGenerator:
         # 1b) Group <p class="fragment ..."> with immediately following <ul>/<ol>
         #     into a wrapper <div class="fragment"> so sub-lists animate together.
         def _group_p_with_list(m):
-            attrs = m.group(1)  # e.g. fragment fade-up" data-fragment-index="3"
-            p_text = m.group(2)
-            list_block = m.group(3)
+            frag_cls = m.group(1)    # e.g. "fragment fade-up"
+            frag_idx = m.group(2)    # e.g. 'data-fragment-index="3"'
+            p_text = m.group(3)      # paragraph text content
+            list_block = m.group(4)  # <ul>...</ul> or <ol>...</ol>
             return (
-                f'<div class="{attrs}>'
+                f'<div class="{frag_cls}" {frag_idx}>'
                 f'<p>{p_text}</p>\n{list_block}'
                 f'</div>'
             )
@@ -1758,11 +1955,6 @@ class RemarpHTMLGenerator:
         if not elements:
             return ''
 
-        # Check for preset elements
-        for elem in elements:
-            if elem.element_type == 'preset':
-                return self.compile_preset_to_js(canvas_id, elem.params['type'], elem.params['config'])
-
         # --- Pass 0: Extract canvas settings (size, bg) ---
         canvas_width = 960
         canvas_height = 400
@@ -1774,6 +1966,12 @@ class RemarpHTMLGenerator:
                 canvas_height = elem.params.get('height', 400)
             elif elem.element_type == 'bg':
                 canvas_bg = elem.params.get('color')
+
+        # Check for preset elements (after size extraction so dimensions are available)
+        for elem in elements:
+            if elem.element_type == 'preset':
+                return self.compile_preset_to_js(canvas_id, elem.params['type'], elem.params['config'],
+                                                 canvas_width, canvas_height)
 
         # --- Pass 1: Collect element positions and max step ---
         element_positions = {}
@@ -2154,7 +2352,8 @@ class RemarpHTMLGenerator:
 
         return js
 
-    def compile_preset_to_js(self, canvas_id: str, preset_type: str, config: Dict[str, Any]) -> str:
+    def compile_preset_to_js(self, canvas_id: str, preset_type: str, config: Dict[str, Any],
+                             canvas_width: int = 960, canvas_height: int = 400) -> str:
         """Compile a preset to JavaScript that uses CanvasPresets."""
         config_json = json.dumps(config)
         max_steps = max((s.get('step', 0) for s in config.get('steps', [{'step': 3}])), default=3)
@@ -2516,26 +2715,37 @@ class RemarpHTMLGenerator:
         sections: Dict[str, List[str]] = {}
         current_section = None
 
-        # Detect if ::: tab "Title" syntax is used
-        has_tab_blocks = any(re.match(r'^:::\s*tab\s+"', line) for line in lines)
+        # Prefer pre-parsed tab_blocks from the stack parser (handles nesting)
+        if slide.tab_blocks:
+            for line in lines:
+                if line.startswith('## '):
+                    heading = self._convert_markdown(line[3:].strip())
+                    break
+            for blk in slide.tab_blocks:
+                title_match = re.match(r'"([^"]+)"', blk.args)
+                title = title_match.group(1) if title_match else blk.args or f'Tab {len(sections) + 1}'
+                sections[title] = blk.content.split('\n')
+        else:
+            # Fallback: line-by-line parsing for legacy content
+            has_tab_blocks = any(re.match(r'^:::\s*tab\s+"', line) for line in lines)
 
-        for line in lines:
-            if line.startswith('## '):
-                heading = self._convert_markdown(line[3:].strip())
-            elif has_tab_blocks:
-                tab_match = re.match(r'^:::\s*tab\s+"([^"]+)"', line)
-                if tab_match:
-                    current_section = tab_match.group(1)
+            for line in lines:
+                if line.startswith('## '):
+                    heading = self._convert_markdown(line[3:].strip())
+                elif has_tab_blocks:
+                    tab_match = re.match(r'^:::\s*tab\s+"([^"]+)"', line)
+                    if tab_match:
+                        current_section = tab_match.group(1)
+                        sections[current_section] = []
+                    elif line.strip() == ':::' and current_section is not None:
+                        pass  # closing marker, skip
+                    elif current_section is not None:
+                        sections[current_section].append(line)
+                elif line.startswith('### '):
+                    current_section = line[4:].strip()
                     sections[current_section] = []
-                elif line.strip() == ':::' and current_section is not None:
-                    pass  # closing marker, skip
                 elif current_section is not None:
                     sections[current_section].append(line)
-            elif line.startswith('### '):
-                current_section = line[4:].strip()
-                sections[current_section] = []
-            elif current_section is not None:
-                sections[current_section].append(line)
 
         # Generate tab buttons and content panels
         buttons = []
@@ -3100,6 +3310,38 @@ class RemarpHTMLGenerator:
             callout_text = ' '.join(callout_lines)
             callout_html = f'<div class="callout callout-info" style="margin-top: 1.5rem;">{self._convert_markdown(callout_text)}</div>'
 
+        # Agenda step navigation JS (inline) — mirrors timeline pattern
+        agenda_js = ''
+        if step_num > 0:
+            agenda_js = f'''
+<script>(function() {{
+  const slide = document.currentScript.closest('.slide');
+  if (!slide) return;
+  const steps = slide.querySelectorAll('.agenda-step:not(.break)');
+  const connectors = slide.querySelectorAll('.agenda-connector');
+  let current = 0;
+  function update() {{
+    steps.forEach((s, i) => {{
+      s.classList.remove('active', 'done');
+      if (i < current) s.classList.add('done');
+      else if (i === current) s.classList.add('active');
+    }});
+    connectors.forEach((c, i) => {{
+      c.classList.toggle('done', i < current);
+    }});
+  }}
+  update();
+  slide.__canvasStep = function(dir) {{
+    if (dir === 'next' && current < steps.length - 1) current++;
+    else if (dir === 'prev' && current > 0) current--;
+    else return false;
+    update();
+    return current;
+  }};
+  slide.dataset.slideAction = 'canvas-step';
+  slide.dataset.canvasMaxStep = String(steps.length - 1);
+}})();</script>'''
+
         return f'''<div class="slide">
   {header_html}
   <div class="slide-body" data-remarp-id="s{slide.index}-body">
@@ -3108,6 +3350,7 @@ class RemarpHTMLGenerator:
     </div>
     {callout_html}
   </div>
+  {agenda_js}
 </div>'''
 
     def _gen_steps_slide(self, slide: Slide) -> str:
@@ -3445,6 +3688,12 @@ class RemarpHTMLGenerator:
             global_styles.append(f'.slide {{ {prop}: {global_bg}; }}')
         if global_color:
             global_styles.append(f'.slide {{ color: {global_color}; }}')
+        # Slide size override from frontmatter (e.g. size: 960x720)
+        size_str = config.get('size', '')
+        size_match = re.match(r'^(\d+)x(\d+)$', str(size_str))
+        if size_match:
+            global_styles.append(f':root {{ --slide-width: {size_match.group(1)}px; --slide-height: {size_match.group(2)}px; }}')
+
         global_style_tag = f'<style>{" ".join(global_styles)}</style>' if global_styles else ''
 
         # Header text (Marp-compat)
@@ -4252,6 +4501,11 @@ def main():
     migrate_parser.add_argument('marp_file', help='Input Marp file')
     migrate_parser.add_argument('-o', '--output', required=True, help='Output directory')
 
+    # Issues command
+    issues_parser = subparsers.add_parser('issues', help='List all <!-- !issue: --> annotations')
+    issues_parser.add_argument('path', help='Input file or project directory')
+    issues_parser.add_argument('--json', action='store_true', dest='json_output', help='Output as JSON')
+
     args = parser.parse_args()
 
     if args.command == 'build':
@@ -4323,6 +4577,57 @@ def main():
                 print(f'Rebuilt: {output}')
 
         print(f'\nSync complete. {len(changed)} block(s) rebuilt.')
+
+    elif args.command == 'issues':
+        input_path = Path(args.path)
+        all_issues: List[Dict[str, Any]] = []
+
+        # Collect .md / .remarp.md files
+        md_files: List[Path] = []
+        if input_path.is_file():
+            md_files = [input_path]
+        elif input_path.is_dir():
+            md_files = sorted(input_path.glob('**/*.md')) + sorted(input_path.glob('**/*.remarp.md'))
+        else:
+            print(f'Error: {input_path} not found')
+            return
+
+        for md_file in md_files:
+            with open(md_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            rp = RemarpParser(content)
+            _config, blocks = rp.parse()
+            for block_name, slides in blocks.items():
+                for slide in slides:
+                    if slide.issues:
+                        # Extract first heading as slide title
+                        title_match = re.match(r'^#+\s+(.+)', slide.content)
+                        title = title_match.group(1) if title_match else f'(slide {slide.index + 1})'
+                        for issue_text in slide.issues:
+                            all_issues.append({
+                                'file': str(md_file),
+                                'block': block_name,
+                                'slide': slide.index + 1,
+                                'title': title,
+                                'issue': issue_text,
+                            })
+
+        if not all_issues:
+            print('No issues found.')
+            return
+
+        if args.json_output:
+            import json as json_mod
+            print(json_mod.dumps(all_issues, ensure_ascii=False, indent=2))
+        else:
+            current_file = ''
+            for item in all_issues:
+                if item['file'] != current_file:
+                    current_file = item['file']
+                    print(f'\n## {current_file}')
+                print(f'  [{item["block"]}] Slide {item["slide"]} "{item["title"]}"')
+                print(f'    → {item["issue"]}')
+            print(f'\nTotal: {len(all_issues)} issue(s) across {len(md_files)} file(s).')
 
     elif args.command == 'migrate':
         migrated = migrate_marp_to_remarp(args.marp_file, args.output)
