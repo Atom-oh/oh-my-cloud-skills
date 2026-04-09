@@ -41,8 +41,8 @@
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 
   /* Sizing (overridden by PPTX theme extraction or frontmatter ratio:) */
-  --slide-width:  1280px;
-  --slide-height: 720px;
+  --slide-width:  960px;
+  --slide-height: 540px;
   --slide-ratio-w: 16;
   --slide-ratio-h: 9;
 

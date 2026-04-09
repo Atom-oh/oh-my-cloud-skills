@@ -3691,7 +3691,7 @@ class RemarpHTMLGenerator:
             global_styles.append(f'.slide {{ {prop}: {global_bg}; }}')
         if global_color:
             global_styles.append(f'.slide {{ color: {global_color}; }}')
-        # Slide size override from frontmatter (e.g. size: 960x720)
+        # Slide size override from frontmatter (e.g. size: 960x540)
         size_str = config.get('size', '')
         size_match = re.match(r'^(\d+)x(\d+)$', str(size_str))
         if size_match:
@@ -3710,9 +3710,9 @@ class RemarpHTMLGenerator:
             global_styles.append(f':root {{ --slide-ratio-w: {rw}; --slide-ratio-h: {rh}; }}')
             # Also set pixel dimensions for canvas rendering
             if rw > rh:
-                pw, ph = 1280, round(1280 * rh / rw)
+                pw, ph = 960, round(960 * rh / rw)
             else:
-                pw, ph = round(720 * rw / rh), 720
+                pw, ph = round(540 * rw / rh), 540
             global_styles.append(f':root {{ --slide-width: {pw}px; --slide-height: {ph}px; }}')
 
         global_style_tag = f'<style>{" ".join(global_styles)}</style>' if global_styles else ''

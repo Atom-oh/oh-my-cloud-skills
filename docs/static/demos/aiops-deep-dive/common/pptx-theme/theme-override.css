@@ -158,3 +158,34 @@
   --yellow: #FBD332;
   --cyan: #41B1E8;
 }
+
+/* Base theme variable overrides (auto-generated) */
+:root {
+  --slide-ratio-w: 16;
+  --slide-ratio-h: 9;
+  --slide-width: 1280px;
+  --slide-height: 720px;
+
+  --pptx-accent1: #41B3FF;
+  --pptx-accent2: #AD5CFF;
+  --pptx-accent3: #00E500;
+  --pptx-accent4: #FF5C85;
+  --pptx-accent5: #FF693C;
+  --pptx-accent6: #FBD332;
+  --pptx-dk1: #000000;
+  --pptx-lt1: #FFFFFF;
+  --pptx-dk2: #161D26;
+  --pptx-lt2: #F3F3F7;
+  --pptx-hlink: #41B1E8;
+  --pptx-folHlink: #41B1E8;
+
+  /* Base theme variable overrides */
+  --accent: #41B3FF;
+  --accent-glow: rgba(65, 179, 255, 0.3);
+  --accent-light: #AD5CFF;
+  --green: #00E500;
+  --red: #FF5C85;
+  --orange: #FF693C;
+  --yellow: #FBD332;
+  --cyan: #41B1E8;
+}
