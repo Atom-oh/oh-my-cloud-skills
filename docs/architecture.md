@@ -24,9 +24,11 @@ oh-my-cloud-skills는 Claude Code용 플러그인 마켓플레이스로, AWS 클
 
 | 컴포넌트 | 역할 |
 |----------|------|
-| remarp_to_slides.py | Markdown → HTML 슬라이드 변환기 |
-| remarp-vscode | VSCode 확장 (미리보기, 비주얼 편집) |
+| remarp_to_slides.py | Markdown → HTML 슬라이드 변환기 (stack-based parser) |
+| extract_pptx_theme.py | PPTX → theme-manifest.json + CSS 변수 추출 |
+| remarp-vscode | VSCode 확장 (미리보기, 비주얼 편집, 프롬프트 바) |
 | eval-skills.py | 스킬 품질 평가 |
+| eval-skill-behavior.py | E2E 스킬 행동 테스트 |
 
 ### 문서 레이어
 
@@ -71,8 +73,9 @@ oh-my-cloud-skills는 Claude Code용 플러그인 마켓플레이스로, AWS 클
 ├────────────────────────────────────┼─────────────────────────────┤
 │  Tools                             │  Docs                       │
 │  ├─ remarp_to_slides.py            │  ├─ Docusaurus site         │
-│  ├─ remarp-vscode (VSCode ext)     │  ├─ README.md / .ko.md     │
-│  ├─ eval-skills.py                 │  └─ CHANGELOG.md            │
+│  ├─ extract_pptx_theme.py          │  ├─ README.md / .ko.md     │
+│  ├─ remarp-vscode (VSCode ext)     │  └─ CHANGELOG.md            │
+│  ├─ eval-skills.py                 │                             │
 │  └─ eval-skill-behavior.py         │                             │
 └────────────────────────────────────┴─────────────────────────────┘
 ```
@@ -115,9 +118,11 @@ oh-my-cloud-skills is a Claude Code plugin marketplace providing 3 plugins for A
 
 | Component | Role |
 |-----------|------|
-| remarp_to_slides.py | Markdown → HTML slide converter |
-| remarp-vscode | VSCode extension (preview, visual editing) |
+| remarp_to_slides.py | Markdown → HTML slide converter (stack-based parser) |
+| extract_pptx_theme.py | PPTX → theme-manifest.json + CSS variable extraction |
+| remarp-vscode | VSCode extension (preview, visual editing, prompt bar) |
 | eval-skills.py | Skill quality evaluation |
+| eval-skill-behavior.py | E2E skill behavior testing |
 
 ### Documentation Layer
 
@@ -125,6 +130,49 @@ oh-my-cloud-skills is a Claude Code plugin marketplace providing 3 plugins for A
 |-----------|------|
 | Docusaurus site | Demo/docs site (docs/) |
 | marketplace.json | Plugin registry |
+
+## Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    oh-my-cloud-skills                            │
+│                   Plugin Marketplace                             │
+├─────────────────┬──────────────────┬───────────────────────────┤
+│                 │                  │                             │
+│  ┌──────────────▼───────────────┐  │  ┌─────────────────────┐   │
+│  │   aws-content-plugin         │  │  │  aws-ops-plugin      │   │
+│  │                              │  │  │                      │   │
+│  │  Agents:                     │  │  │  Agents:             │   │
+│  │  ├─ presentation-agent       │  │  │  ├─ eks-agent        │   │
+│  │  ├─ reactive-presentation    │  │  │  ├─ network-agent    │   │
+│  │  ├─ architecture-diagram     │  │  │  ├─ iam-agent        │   │
+│  │  ├─ animated-diagram         │  │  │  ├─ observability    │   │
+│  │  ├─ document-agent           │  │  │  ├─ storage-agent    │   │
+│  │  ├─ gitbook-agent            │  │  │  ├─ database-agent   │   │
+│  │  ├─ workshop-agent           │  │  │  ├─ cost-agent       │   │
+│  │  └─ content-review-agent     │  │  │  ├─ analytics-agent  │   │
+│  │                              │  │  │  └─ ops-coordinator  │   │
+│  │  Skills:                     │  │  │                      │   │
+│  │  ├─ reactive-presentation    │  │  │  Skills:             │   │
+│  │  ├─ architecture-diagram     │  │  │  ├─ ops-troubleshoot │   │
+│  │  ├─ animated-diagram         │  │  │  ├─ ops-health-check │   │
+│  │  ├─ gitbook                  │  │  │  ├─ ops-network      │   │
+│  │  └─ workshop-creator         │  │  │  ├─ ops-observability│   │
+│  └──────────────────────────────┘  │  │  └─ ops-security     │   │
+│                                    │  └─────────────────────┘   │
+│  ┌──────────────────────────────┐  │                             │
+│  │  kiro-power-converter        │  │                             │
+│  │  └─ kiro-converter-agent     │  │                             │
+│  └──────────────────────────────┘  │                             │
+├────────────────────────────────────┼─────────────────────────────┤
+│  Tools                             │  Docs                       │
+│  ├─ remarp_to_slides.py            │  ├─ Docusaurus site         │
+│  ├─ extract_pptx_theme.py          │  ├─ README.md / .ko.md     │
+│  ├─ remarp-vscode (VSCode ext)     │  └─ CHANGELOG.md            │
+│  ├─ eval-skills.py                 │                             │
+│  └─ eval-skill-behavior.py         │                             │
+└────────────────────────────────────┴─────────────────────────────┘
+```
 
 ## Data Flow
 

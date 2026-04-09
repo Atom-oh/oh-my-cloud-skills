@@ -55,8 +55,7 @@ Each plugin follows the same structure:
 
 ```
 plugins/<plugin-name>/
-├── .claude-plugin/plugin.json    # Manifest: lists agents[] and skills[]
-├── .mcp.json                     # MCP server config (ops-plugin only)
+├── .claude-plugin/plugin.json    # Manifest: agents[], skills[], mcpServers{}
 ├── CLAUDE.md                     # Auto-invocation keyword → agent routing rules
 ├── agents/<name>.md              # Agent definitions (YAML frontmatter + markdown body)
 └── skills/<name>/                # Skill directories
@@ -85,7 +84,7 @@ Each `SKILL.md` has frontmatter with `name`, `description`, and `triggers` (keyw
 
 ### MCP Configuration
 
-`aws-ops-plugin` bundles 2 MCP servers in `.mcp.json`:
+`aws-ops-plugin` bundles 2 MCP servers in `plugin.json` → `mcpServers`:
 - `awsdocs` (stdio/uvx) — Official AWS documentation search
 - `awsapi` (stdio/uvx) — Direct AWS API calls
 
@@ -131,7 +130,7 @@ echo "content=$V ops=$V2 converter=$V3 marketplace=$MV tag=$TAG"
 - Content goes through `content-review-agent` quality gate (100-point scale: PASS ≥85, REVIEW 70-84, FAIL <70)
 - Ops plugin reference files are commands-first, with Mermaid decision trees and error→solution tables
 - Korean/English bilingual keywords in all auto-invocation rules
-- AWS icons live in `aws-content-plugin/skills/reactive-presentation/icons/` (4,224 files)
+- AWS icons are packaged in `aws-content-plugin/skills/reactive-presentation/assets/aws-icons.zip` (4 icon sets: Service, Group, Category, Resource)
 - Remarp-generated HTML contains `<meta name="generator" content="remarp">` for extension recognition
 - Remarp VSCode Extension source lives in `tools/remarp-vscode/` (TypeScript, packaged as .vsix)
 - Extension entry point: `src/extension.ts`, preview logic: `src/preview.ts`
@@ -168,12 +167,15 @@ Source: `tools/remarp-vscode/` | Entry: `src/extension.ts` | Preview: `src/previ
 |------|------|
 | `src/extension.ts` | Entry point: command registration, file detection, build script discovery |
 | `src/preview.ts` | Preview panel: MD/HTML rendering, slide parsing, navigation |
+| `src/htmlPreview.ts` | Dedicated HTML preview handler for Remarp HTML files |
+| `src/outline.ts` | Slide outline provider for editor sidebar |
 | `src/completions.ts` | Autocomplete: @directives, :::blocks, :::css, :::canvas DSL |
 | `src/cssEditor.ts` | CSS editing: `:::css` block parse/create/update |
 | `src/canvasEditor.ts` | Canvas editing: `:::canvas` DSL coordinates/size/step/animate-path update |
 | `src/visualEditor.ts` | Visual editor controller: message routing (to CSS/Canvas editors) |
 | `media/edit-mode.js` | Webview: drag/resize/property panel UI |
 | `media/canvas-editor.js` | Webview: Canvas SVG overlay, hitbox, waypoint editing |
+| `media/prompt-bar.js` | Webview: AI prompt bar UI for slide improvement |
 
 ## Plugin Inventory
 
@@ -219,6 +221,8 @@ Skill: `kiro-convert` — interactive workflow for plugin-to-power conversion wi
 ```
 Content:   presentation-agent (dispatcher) → reactive-presentation-agent → content-review-agent → GitHub Pages
            Remarp HTML ↔ .remarp.md (bidirectional visual editing via VSCode extension)
+           PPTX theme:  .pptx → extract_pptx_theme.py → theme-manifest.json + theme-override.css
+           PPTX export: index.html → html2canvas iframe capture → PptxGenJS → .pptx download
            architecture-diagram-agent → .drawio → PNG
            animated-diagram-agent → .html (SVG+SMIL)
            document-agent → content-review-agent → .md
