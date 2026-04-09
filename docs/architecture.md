@@ -1,0 +1,143 @@
+<p align="center">
+  <kbd><a href="#한국어">한국어</a></kbd> · <kbd><a href="#english">English</a></kbd>
+</p>
+
+---
+
+# 한국어
+
+## 시스템 개요
+
+oh-my-cloud-skills는 Claude Code용 플러그인 마켓플레이스로, AWS 클라우드 콘텐츠 생성(프레젠테이션, 다이어그램, 문서, 워크숍)과 인프라 운영/트러블슈팅을 위한 3개 플러그인을 제공합니다.
+
+## 컴포넌트 구조
+
+### 플러그인 레이어
+
+| 컴포넌트 | 역할 | 주요 기술 |
+|----------|------|----------|
+| aws-content-plugin | 콘텐츠 생성 (8 agents, 5 skills) | Python, HTML/CSS/JS, Draw.io |
+| aws-ops-plugin | 인프라 운영 (9 agents, 5 skills) | MCP servers, AWS CLI |
+| kiro-power-converter | 플러그인 → Kiro Power 변환 | YAML/JSON 변환 |
+
+### 도구 레이어
+
+| 컴포넌트 | 역할 |
+|----------|------|
+| remarp_to_slides.py | Markdown → HTML 슬라이드 변환기 |
+| remarp-vscode | VSCode 확장 (미리보기, 비주얼 편집) |
+| eval-skills.py | 스킬 품질 평가 |
+
+### 문서 레이어
+
+| 컴포넌트 | 역할 |
+|----------|------|
+| Docusaurus site | 데모/문서 사이트 (docs/) |
+| marketplace.json | 플러그인 레지스트리 |
+
+## 아키텍처 다이어그램
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    oh-my-cloud-skills                            │
+│                   Plugin Marketplace                             │
+├─────────────────┬──────────────────┬───────────────────────────┤
+│                 │                  │                             │
+│  ┌──────────────▼───────────────┐  │  ┌─────────────────────┐   │
+│  │   aws-content-plugin         │  │  │  aws-ops-plugin      │   │
+│  │                              │  │  │                      │   │
+│  │  Agents:                     │  │  │  Agents:             │   │
+│  │  ├─ presentation-agent       │  │  │  ├─ eks-agent        │   │
+│  │  ├─ reactive-presentation    │  │  │  ├─ network-agent    │   │
+│  │  ├─ architecture-diagram     │  │  │  ├─ iam-agent        │   │
+│  │  ├─ animated-diagram         │  │  │  ├─ observability    │   │
+│  │  ├─ document-agent           │  │  │  ├─ storage-agent    │   │
+│  │  ├─ gitbook-agent            │  │  │  ├─ database-agent   │   │
+│  │  ├─ workshop-agent           │  │  │  ├─ cost-agent       │   │
+│  │  └─ content-review-agent     │  │  │  ├─ analytics-agent  │   │
+│  │                              │  │  │  └─ ops-coordinator  │   │
+│  │  Skills:                     │  │  │                      │   │
+│  │  ├─ reactive-presentation    │  │  │  Skills:             │   │
+│  │  ├─ architecture-diagram     │  │  │  ├─ ops-troubleshoot │   │
+│  │  ├─ animated-diagram         │  │  │  ├─ ops-health-check │   │
+│  │  ├─ gitbook                  │  │  │  ├─ ops-network      │   │
+│  │  └─ workshop-creator         │  │  │  ├─ ops-observability│   │
+│  └──────────────────────────────┘  │  │  └─ ops-security     │   │
+│                                    │  └─────────────────────┘   │
+│  ┌──────────────────────────────┐  │                             │
+│  │  kiro-power-converter        │  │                             │
+│  │  └─ kiro-converter-agent     │  │                             │
+│  └──────────────────────────────┘  │                             │
+├────────────────────────────────────┼─────────────────────────────┤
+│  Tools                             │  Docs                       │
+│  ├─ remarp_to_slides.py            │  ├─ Docusaurus site         │
+│  ├─ remarp-vscode (VSCode ext)     │  ├─ README.md / .ko.md     │
+│  ├─ eval-skills.py                 │  └─ CHANGELOG.md            │
+│  └─ eval-skill-behavior.py         │                             │
+└────────────────────────────────────┴─────────────────────────────┘
+```
+
+## 데이터 흐름
+
+```
+사용자 프롬프트 → 키워드 라우팅 (CLAUDE.md) → Agent → Skill/MCP → 아티팩트 생성 → Quality Gate → 배포
+```
+
+## 핵심 설계 결정
+
+| 결정 | 이유 |
+|------|------|
+| 플러그인별 독립 구조 | 개별 설치/업데이트 가능, 관심사 분리 |
+| 키워드 기반 자동 라우팅 | 사용자가 에이전트를 직접 선택할 필요 없음 |
+| 한/영 이중 키워드 | 한국어 사용자 우선 지원 |
+| Quality Gate 필수 | content-review-agent 통과 없이 배포 불가 |
+| 단일 버전 관리 | 모든 plugin.json + marketplace.json 동기화 |
+
+---
+
+# English
+
+## System Overview
+
+oh-my-cloud-skills is a Claude Code plugin marketplace providing 3 plugins for AWS cloud content creation (presentations, diagrams, docs, workshops) and infrastructure operations/troubleshooting.
+
+## Component Structure
+
+### Plugin Layer
+
+| Component | Role | Tech |
+|-----------|------|------|
+| aws-content-plugin | Content creation (8 agents, 5 skills) | Python, HTML/CSS/JS, Draw.io |
+| aws-ops-plugin | Infrastructure ops (9 agents, 5 skills) | MCP servers, AWS CLI |
+| kiro-power-converter | Plugin → Kiro Power conversion | YAML/JSON transform |
+
+### Tool Layer
+
+| Component | Role |
+|-----------|------|
+| remarp_to_slides.py | Markdown → HTML slide converter |
+| remarp-vscode | VSCode extension (preview, visual editing) |
+| eval-skills.py | Skill quality evaluation |
+
+### Documentation Layer
+
+| Component | Role |
+|-----------|------|
+| Docusaurus site | Demo/docs site (docs/) |
+| marketplace.json | Plugin registry |
+
+## Data Flow
+
+```
+User prompt → Keyword routing (CLAUDE.md) → Agent → Skill/MCP → Artifact → Quality Gate → Deploy
+```
+
+## Key Design Decisions
+
+| Decision | Why |
+|----------|-----|
+| Independent plugin structure | Individual install/update, separation of concerns |
+| Keyword-based auto-routing | Users don't need to manually select agents |
+| Bilingual KR/EN keywords | Korean-first user support |
+| Mandatory Quality Gate | No deployment without content-review-agent pass |
+| Single version management | All plugin.json + marketplace.json in sync |
