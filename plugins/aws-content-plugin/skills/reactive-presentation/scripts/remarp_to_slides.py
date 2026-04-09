@@ -3669,13 +3669,16 @@ class RemarpHTMLGenerator:
         theme_footer = footer  # reuse already-resolved footer from above
         theme_pagination = pagination  # reuse already-resolved pagination
         theme_fonts = {}
-        if theme_colors or theme_footer:
+        theme_slide_size = config.get('_slide_size', {})
+        if theme_colors or theme_footer or theme_slide_size:
             theme_data = {
                 'colors': theme_colors,
                 'footer': theme_footer,
                 'pagination': theme_pagination,
                 'fonts': theme_fonts
             }
+            if theme_slide_size:
+                theme_data['slideSize'] = theme_slide_size
             theme_js = f'<script>window.__remarpTheme = {json.dumps(theme_data)};</script>'
 
         # Global Marp-compat styles (backgroundColor, color, header)
@@ -3692,7 +3695,25 @@ class RemarpHTMLGenerator:
         size_str = config.get('size', '')
         size_match = re.match(r'^(\d+)x(\d+)$', str(size_str))
         if size_match:
-            global_styles.append(f':root {{ --slide-width: {size_match.group(1)}px; --slide-height: {size_match.group(2)}px; }}')
+            w, h = int(size_match.group(1)), int(size_match.group(2))
+            global_styles.append(f':root {{ --slide-width: {w}px; --slide-height: {h}px; }}')
+            # Derive ratio from explicit size
+            from math import gcd
+            g = gcd(w, h)
+            global_styles.append(f':root {{ --slide-ratio-w: {w // g}; --slide-ratio-h: {h // g}; }}')
+
+        # Aspect ratio override from frontmatter (e.g. ratio: "16:9") or PPTX manifest
+        ratio_str = config.get('ratio', '')
+        ratio_match = re.match(r'^(\d+)\s*:\s*(\d+)$', str(ratio_str))
+        if ratio_match and not size_match:
+            rw, rh = int(ratio_match.group(1)), int(ratio_match.group(2))
+            global_styles.append(f':root {{ --slide-ratio-w: {rw}; --slide-ratio-h: {rh}; }}')
+            # Also set pixel dimensions for canvas rendering
+            if rw > rh:
+                pw, ph = 1280, round(1280 * rh / rw)
+            else:
+                pw, ph = round(720 * rw / rh), 720
+            global_styles.append(f':root {{ --slide-width: {pw}px; --slide-height: {ph}px; }}')
 
         global_style_tag = f'<style>{" ".join(global_styles)}</style>' if global_styles else ''
 
@@ -3847,6 +3868,19 @@ class RemarpProjectBuilder:
                         with open(manifest, 'r', encoding='utf-8') as f:
                             self.theme_manifest = json.load(f)
 
+        # Fallback: auto-discover common/pptx-theme/ from previous build
+        if not self.theme_dir:
+            for candidate in [
+                self.project_dir / 'common' / 'pptx-theme',
+                self.project_dir / '_theme',
+            ]:
+                manifest = candidate / 'theme-manifest.json'
+                if manifest.exists():
+                    self.theme_dir = candidate
+                    with open(manifest, 'r', encoding='utf-8') as f:
+                        self.theme_manifest = json.load(f)
+                    break
+
         # Apply theme overrides to main_config (always, even without source)
         if theme_config:
             self._apply_theme_to_config(theme_config)
@@ -3983,24 +4017,54 @@ class RemarpProjectBuilder:
         if footer == 'auto' and self.theme_manifest.get('footer_text'):
             self.main_config['footer'] = self._sanitize_footer_text(self.theme_manifest['footer_text'])
 
+        # Extract slide size / aspect ratio from manifest
+        # slide_size can be at root or nested under slide_master
+        slide_size = self.theme_manifest.get('slide_size', {})
+        if not slide_size:
+            slide_size = self.theme_manifest.get('slide_master', {}).get('slide_size', {})
+        if slide_size:
+            self.main_config['_slide_size'] = slide_size
+            # Set aspect ratio if not already specified in frontmatter
+            if 'ratio' not in self.main_config:
+                aspect = slide_size.get('aspect_ratio', '')
+                if aspect:
+                    self.main_config['ratio'] = aspect
+
         # Store sanitized manifest
         self.main_config['_theme_manifest'] = {
             k: v for k, v in self.theme_manifest.items()
-            if k in ('footer_text', 'colors', 'logos', 'layout_details', 'fonts')
+            if k in ('footer_text', 'colors', 'logos', 'layout_details', 'fonts', 'slide_size')
         }
 
     def _generate_theme_css_vars(self) -> None:
-        """Write theme-override.css with PPTX color variables.
+        """Write theme-override.css with PPTX color variables and slide size.
 
         Maps PPTX accent colors to both --pptx-* reference variables and
         the base theme variables (--accent, --accent-glow, etc.) so the
         HTML slides actually pick up the corporate color scheme.
+        Also injects slide aspect ratio from the PPTX manifest.
         """
         colors = self.main_config.get('_theme_colors', {})
-        if not colors or not self.theme_dir:
+        slide_size = self.main_config.get('_slide_size', {})
+        if (not colors and not slide_size) or not self.theme_dir:
             return
 
         css_lines = [':root {']
+
+        # 0) Slide size / aspect ratio from PPTX manifest
+        if slide_size:
+            aspect = slide_size.get('aspect_ratio', '')
+            ratio_match = re.match(r'^(\d+)\s*:\s*(\d+)$', str(aspect))
+            if ratio_match:
+                rw, rh = ratio_match.group(1), ratio_match.group(2)
+                css_lines.append(f'  --slide-ratio-w: {rw};')
+                css_lines.append(f'  --slide-ratio-h: {rh};')
+            w_px = slide_size.get('width_px')
+            h_px = slide_size.get('height_px')
+            if w_px and h_px:
+                css_lines.append(f'  --slide-width: {w_px}px;')
+                css_lines.append(f'  --slide-height: {h_px}px;')
+            css_lines.append('')
 
         # 1) Original PPTX color references
         pptx_map = {
@@ -4068,9 +4132,12 @@ class RemarpProjectBuilder:
         """
         dest = self.output_dir / 'common' / 'pptx-theme'
 
-        # Case 1: theme_dir from PPTX extraction
+        # Case 1: theme_dir from PPTX extraction (skip if src == dest)
         if self.theme_dir and Path(self.theme_dir).exists():
-            shutil.copytree(str(self.theme_dir), str(dest), dirs_exist_ok=True)
+            src = Path(self.theme_dir).resolve()
+            dst = dest.resolve()
+            if src != dst:
+                shutil.copytree(str(self.theme_dir), str(dest), dirs_exist_ok=True)
             return
 
         # Case 2: Fallback — pre-extracted theme at parent level
