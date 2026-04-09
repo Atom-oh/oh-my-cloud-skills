@@ -3295,6 +3295,38 @@ class RemarpHTMLGenerator:
             callout_text = ' '.join(callout_lines)
             callout_html = f'<div class="callout callout-info" style="margin-top: 1.5rem;">{self._convert_markdown(callout_text)}</div>'
 
+        # Agenda step navigation JS (inline) — mirrors timeline pattern
+        agenda_js = ''
+        if step_num > 0:
+            agenda_js = f'''
+<script>(function() {{
+  const slide = document.currentScript.closest('.slide');
+  if (!slide) return;
+  const steps = slide.querySelectorAll('.agenda-step:not(.break)');
+  const connectors = slide.querySelectorAll('.agenda-connector');
+  let current = 0;
+  function update() {{
+    steps.forEach((s, i) => {{
+      s.classList.remove('active', 'done');
+      if (i < current) s.classList.add('done');
+      else if (i === current) s.classList.add('active');
+    }});
+    connectors.forEach((c, i) => {{
+      c.classList.toggle('done', i < current);
+    }});
+  }}
+  update();
+  slide.__canvasStep = function(dir) {{
+    if (dir === 'next' && current < steps.length - 1) current++;
+    else if (dir === 'prev' && current > 0) current--;
+    else return false;
+    update();
+    return current;
+  }};
+  slide.dataset.slideAction = 'canvas-step';
+  slide.dataset.canvasMaxStep = String(steps.length - 1);
+}})();</script>'''
+
         return f'''<div class="slide">
   {header_html}
   <div class="slide-body" data-remarp-id="s{slide.index}-body">
@@ -3303,6 +3335,7 @@ class RemarpHTMLGenerator:
     </div>
     {callout_html}
   </div>
+  {agenda_js}
 </div>'''
 
     def _gen_steps_slide(self, slide: Slide) -> str:
@@ -3640,6 +3673,12 @@ class RemarpHTMLGenerator:
             global_styles.append(f'.slide {{ {prop}: {global_bg}; }}')
         if global_color:
             global_styles.append(f'.slide {{ color: {global_color}; }}')
+        # Slide size override from frontmatter (e.g. size: 960x720)
+        size_str = config.get('size', '')
+        size_match = re.match(r'^(\d+)x(\d+)$', str(size_str))
+        if size_match:
+            global_styles.append(f':root {{ --slide-width: {size_match.group(1)}px; --slide-height: {size_match.group(2)}px; }}')
+
         global_style_tag = f'<style>{" ".join(global_styles)}</style>' if global_styles else ''
 
         # Header text (Marp-compat)

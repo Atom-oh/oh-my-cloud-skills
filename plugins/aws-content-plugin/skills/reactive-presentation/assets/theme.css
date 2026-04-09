@@ -593,6 +593,16 @@ body {
   color: #fff;
   box-shadow: 0 0 20px var(--accent-glow, rgba(108, 92, 231, 0.3));
 }
+.agenda-step.done .agenda-dot {
+  background: var(--accent, #6c5ce7);
+  border-color: var(--accent, #6c5ce7);
+  color: #fff;
+  opacity: 0.5;
+}
+.agenda-connector.done {
+  background: var(--accent, #6c5ce7);
+  opacity: 0.5;
+}
 .agenda-step.break .agenda-dot {
   background: var(--yellow, #f1c40f);
   border-color: var(--yellow, #f1c40f);

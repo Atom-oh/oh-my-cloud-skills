@@ -392,6 +392,8 @@ Canvas와의 선택 기준:
 박스 5개 이상의 다계층 아키텍처, 서비스 에코시스템, 멀티노드 맵 등은 `:::canvas` DSL 대신 `:::html` + `:::css`로 작성한다. flexbox/grid 레이아웃이 복잡한 배치에서 더 안정적이고 정확한 결과를 제공한다.
 
 > **규칙**: 박스 5개 이상이면 `:::canvas` 사용 금지. 반드시 `:::html` + `:::css`를 사용한다.
+>
+> **규칙**: `:::html` 블록에 3개 이상의 동위 요소가 있으면 `class="fragment fade-up" data-fragment-index="N"`으로 순차 등장 적용 필수. 정적 HTML은 금지.
 
 #### Remarp Source 형식 (에이전트가 직접 사용)
 

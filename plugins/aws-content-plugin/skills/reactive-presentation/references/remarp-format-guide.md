@@ -368,6 +368,77 @@ Embeds raw HTML directly into the slide body without markdown processing. Use fo
 
 > 상세 레이아웃 규칙과 패턴은 `interactive-patterns-guide.md` §0 참조.
 
+#### :::html Reactive 패턴 (필수)
+
+`:::html` 블록은 **정적이면 안 됩니다.** 모든 `:::html` 블록에 최소 하나의 reactive 패턴을 적용하세요:
+
+**1. Fragment 순차 등장 (가장 기본)**
+
+2개 이상의 항목이 있으면 `class="fragment fade-up"` + `data-fragment-index="N"`으로 순차 등장:
+
+```html
+:::html
+<div class="col-3" style="gap:1.5rem;">
+  <div class="card fragment fade-up" data-fragment-index="1">
+    <h4>항목 1</h4><p>설명</p>
+  </div>
+  <div class="card fragment fade-right" data-fragment-index="2">
+    <h4>항목 2</h4><p>설명</p>
+  </div>
+  <div class="card fragment zoom-in" data-fragment-index="3">
+    <h4>항목 3</h4><p>설명</p>
+  </div>
+</div>
+:::
+```
+
+**Animation 종류**: `fade-up`, `fade-right`, `fade-left`, `fade-down`, `zoom-in`, `grow` — 레이아웃 방향에 맞게 선택:
+- 수직 흐름 (위→아래) → `fade-up`
+- 수평 흐름 (좌→우) → `fade-right`
+- 강조/핵심 → `zoom-in`
+- 파이프라인 단계 → `fade-right` (방향성 암시)
+
+**2. 그룹 Fragment (관련 항목 동시 등장)**
+
+```html
+<div class="fragment fade-up" data-fragment-index="1">
+  <p>제목</p>
+  <ul><li>항목 A</li><li>항목 B</li></ul>
+</div>
+```
+
+제목과 하위 항목이 같은 `data-fragment-index`로 함께 등장.
+
+**3. Flow 다이어그램 순차 활성화**
+
+```html
+<div class="flow-h" style="gap:1rem;">
+  <div class="flow-box fragment fade-right" data-fragment-index="1">Step 1</div>
+  <div class="flow-arrow fragment fade-right" data-fragment-index="2">→</div>
+  <div class="flow-box fragment fade-right" data-fragment-index="2">Step 2</div>
+  <div class="flow-arrow fragment fade-right" data-fragment-index="3">→</div>
+  <div class="flow-box fragment fade-right" data-fragment-index="3">Step 3</div>
+</div>
+```
+
+화살표와 다음 박스를 같은 인덱스로 묶어 흐름감 부여.
+
+**4. Before/After 비교 순차**
+
+```html
+<div class="col-2" style="gap:2rem;">
+  <div class="card fragment fade-right" data-fragment-index="1" style="border-color:var(--red);">
+    <h4>Before</h4><p>문제 상황</p>
+  </div>
+  <div class="card fragment zoom-in" data-fragment-index="2" style="border-color:var(--green);">
+    <h4>After</h4><p>개선 결과</p>
+  </div>
+</div>
+```
+
+> **규칙**: `:::html` 블록에 3개 이상의 동위 요소가 있으면 반드시 fragment animation을 적용하세요.
+> `interactive-patterns-guide.md`의 고급 패턴(슬라이더, 캔버스 애니메이션, 클릭 상호작용)도 적극 활용하세요.
+
 ### :::script — JavaScript Block
 
 Adds JavaScript that executes when the slide loads. Each block is wrapped in an IIFE for scope isolation.

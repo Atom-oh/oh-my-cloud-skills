@@ -4,7 +4,6 @@ import * as fs from 'fs';
 import { RemarpPreviewPanel } from './preview';
 import { SlideOutlineProvider } from './outline';
 import { RemarpCompletionProvider } from './completions';
-import { VisualEditorController } from './visualEditor';
 import { execFile } from 'child_process';
 
 /**
@@ -79,12 +78,6 @@ async function setRemarpLanguageIfNeeded(document: vscode.TextDocument): Promise
 export function activate(context: vscode.ExtensionContext) {
     console.log('Remarp extension is now active');
 
-    // Create visual editor controller
-    const visualEditorController = new VisualEditorController(context);
-
-    // Set the visual editor on the preview panel
-    RemarpPreviewPanel.setVisualEditor(visualEditorController);
-
     // Check all open markdown files for remarp: true
     vscode.workspace.textDocuments.forEach(doc => {
         setRemarpLanguageIfNeeded(doc);
@@ -154,13 +147,6 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
-    // Register toggle edit mode command
-    context.subscriptions.push(
-        vscode.commands.registerCommand('remarp.toggleEditMode', () => {
-            visualEditorController.toggle();
-        })
-    );
-
     // Output channel for build logs
     const buildOutput = vscode.window.createOutputChannel('Remarp Build');
 
@@ -184,6 +170,21 @@ export function activate(context: vscode.ExtensionContext) {
                 }
             } else {
                 vscode.window.showWarningMessage('Open a .remarp.md file or Remarp HTML to build');
+            }
+        })
+    );
+
+    // Submit issues to Claude Code
+    context.subscriptions.push(
+        vscode.commands.registerCommand('remarp.submitIssues', () => {
+            const previewDoc = RemarpPreviewPanel.currentPanel?.document;
+            const editor = vscode.window.activeTextEditor;
+            const editorDoc = editor && (editor.document.languageId === 'remarp' || isRemarpDocument(editor.document)) ? editor.document : undefined;
+            const targetDoc = previewDoc || editorDoc;
+            if (targetDoc) {
+                submitIssuesToClaude(targetDoc, buildOutput);
+            } else {
+                vscode.window.showWarningMessage('Open a .remarp.md file to submit issues');
             }
         })
     );
@@ -397,6 +398,134 @@ function buildRemarpFile(document: vscode.TextDocument, outputChannel: vscode.Ou
         } else {
             outputChannel.appendLine('[Remarp Build] Done');
         }
+    });
+}
+
+/**
+ * Submit all issue annotations to Claude Code CLI for auto-fix
+ */
+/**
+ * Find claude CLI binary path
+ */
+function findClaudeCli(): string | null {
+    const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+    const candidates = [
+        path.join(homeDir, '.local', 'bin', 'claude'),
+        '/usr/local/bin/claude',
+        'claude', // fallback to PATH
+    ];
+    for (const candidate of candidates) {
+        if (candidate === 'claude' || fs.existsSync(candidate)) {
+            return candidate;
+        }
+    }
+    return null;
+}
+
+function submitIssuesToClaude(document: vscode.TextDocument, outputChannel: vscode.OutputChannel): void {
+    const scriptPath = findBuildScript(document);
+    if (!scriptPath) {
+        vscode.window.showWarningMessage('remarp_to_slides.py not found. Cannot collect issues.');
+        return;
+    }
+
+    const claudePath = findClaudeCli();
+    if (!claudePath) {
+        vscode.window.showErrorMessage('Claude CLI not found. Install with: npm install -g @anthropic-ai/claude-code');
+        return;
+    }
+
+    const filePath = document.fileName;
+    const fileDir = path.dirname(filePath);
+
+    outputChannel.show(true);
+    outputChannel.appendLine(`[Remarp Issues] Collecting issues from ${filePath}...`);
+
+    // Step 1: Collect issues via remarp_to_slides.py issues --json
+    execFile('python3', [scriptPath, 'issues', filePath, '--json'], { cwd: fileDir }, (error, stdout, stderr) => {
+        if (stderr) { outputChannel.appendLine(stderr); }
+        if (error) {
+            outputChannel.appendLine(`[Remarp Issues] Error: ${error.message}`);
+            vscode.window.showErrorMessage(`Failed to collect issues: ${error.message}`);
+            return;
+        }
+
+        let issues: Array<{ file: string; block: string; slide: number; title: string; issue: string }>;
+        try {
+            issues = JSON.parse(stdout);
+        } catch {
+            vscode.window.showInformationMessage('No issues found in this file.');
+            return;
+        }
+
+        if (!issues || issues.length === 0) {
+            vscode.window.showInformationMessage('No issues found in this file.');
+            return;
+        }
+
+        // Step 2: Build prompt
+        const issueList = issues.map(i => `- Slide ${i.slide} "${i.title}": ${i.issue}`).join('\n');
+        const prompt = [
+            `다음 Remarp 마크다운 파일의 슬라이드 이슈들을 수정해주세요.`,
+            `파일: ${filePath}`,
+            ``,
+            `이슈 목록:`,
+            issueList,
+            ``,
+            `각 이슈를 읽고 해당 슬라이드의 마크다운 내용을 직접 수정하세요.`,
+            `수정 완료 후 해당 <!-- !issue: ... --> 주석을 제거하세요.`,
+        ].join('\n');
+
+        outputChannel.appendLine(`[Remarp Issues] Submitting ${issues.length} issue(s) to Claude...`);
+        outputChannel.appendLine(`[Remarp Issues] Claude CLI: ${claudePath}`);
+        outputChannel.appendLine(`[Remarp Issues] Prompt:\n${prompt}\n`);
+
+        // Step 3: Execute Claude CLI with progress
+        vscode.window.withProgress(
+            {
+                location: vscode.ProgressLocation.Notification,
+                title: `Remarp: Claude가 ${issues.length}개 이슈를 처리 중...`,
+                cancellable: false,
+            },
+            () => {
+                return new Promise<void>((resolve) => {
+                    const env = { ...process.env };
+                    // Ensure ~/.local/bin is in PATH
+                    const homeDir = process.env.HOME || '';
+                    if (homeDir) {
+                        env.PATH = `${path.join(homeDir, '.local', 'bin')}:${env.PATH || ''}`;
+                    }
+
+                    execFile(
+                        claudePath,
+                        [
+                            '--print',
+                            '--allowedTools', 'Read,Edit,Glob,Grep',
+                            '--max-budget-usd', '1.00',
+                            '-p', prompt,
+                        ],
+                        { cwd: fileDir, timeout: 300000, env, maxBuffer: 10 * 1024 * 1024 },
+                        (err, cliStdout, cliStderr) => {
+                            if (cliStdout) { outputChannel.appendLine(cliStdout); }
+                            if (cliStderr) { outputChannel.appendLine(cliStderr); }
+
+                            if (err) {
+                                outputChannel.appendLine(`[Remarp Issues] Claude error: ${err.message}`);
+                                vscode.window.showErrorMessage(`Claude issue fix failed: ${err.message}`);
+                            } else {
+                                outputChannel.appendLine('[Remarp Issues] Claude completed successfully');
+                                vscode.window.showInformationMessage(
+                                    `${issues.length}개 이슈 처리 완료. 슬라이드를 확인하세요.`
+                                );
+                                // Refresh preview
+                                RemarpPreviewPanel.update(document);
+                            }
+                            resolve();
+                        }
+                    );
+                });
+            }
+        );
     });
 }
 

@@ -111,6 +111,9 @@ class ThemeExtractor:
         Returns:
             Dictionary mapping color names to hex values.
         """
+        if hasattr(self, '_theme_colors') and self._theme_colors:
+            return dict(self._theme_colors)
+
         colors = {}
         if self.theme_xml is None:
             return colors
@@ -146,6 +149,7 @@ class ThemeExtractor:
                         elif 'window' in sys_val:
                             colors[name] = '#FFFFFF'
 
+        self._theme_colors = colors
         return colors
 
     def extract_fonts(self) -> dict[str, str]:
@@ -736,95 +740,302 @@ class ThemeExtractor:
             'elements': elements,
         }
 
+    def _extract_shape_fill(self, shape) -> dict[str, Any]:
+        """Extract fill information from a shape (solid, gradient, pattern).
+
+        Returns a dict with ``fill_type`` and type-specific fields:
+        - solid: ``fill_color``
+        - gradient: ``gradient`` with ``angle`` and ``stops``
+        - pattern/background: ``fill_type`` only
+        """
+        result: dict[str, Any] = {}
+        try:
+            fill = shape.fill
+            if fill is None or fill.type is None:
+                return result
+            fill_type_str = str(fill.type)
+
+            if 'SOLID' in fill_type_str:
+                result['fill_type'] = 'solid'
+                try:
+                    fore = fill.fore_color
+                    if fore and fore.rgb:
+                        result['fill_color'] = f"#{fore.rgb}"
+                except Exception:
+                    pass
+
+            elif 'GRADIENT' in fill_type_str:
+                result['fill_type'] = 'gradient'
+                grad_info: dict[str, Any] = {}
+                try:
+                    # Extract gradient stops from XML
+                    a_ns = '{http://schemas.openxmlformats.org/drawingml/2006/main}'
+                    gs_list = shape._element.findall('.//' + a_ns + 'gs')
+                    stops = []
+                    for gs in gs_list:
+                        pos = gs.get('pos')
+                        pos_val = int(pos) / 1000 if pos else 0  # pos is in 1/1000ths of %
+                        color = None
+                        # Try srgbClr first, then schemeClr
+                        srgb = gs.find('.//' + a_ns + 'srgbClr')
+                        if srgb is not None:
+                            color = f"#{srgb.get('val')}"
+                        else:
+                            scheme = gs.find('.//' + a_ns + 'schemeClr')
+                            if scheme is not None:
+                                scheme_name = scheme.get('val', '')
+                                # Map scheme color to extracted theme colors
+                                scheme_map = {
+                                    'dk1': 'dk1', 'dk2': 'dk2',
+                                    'lt1': 'lt1', 'lt2': 'lt2',
+                                    'tx1': 'dk1', 'tx2': 'dk2',
+                                    'bg1': 'lt1', 'bg2': 'lt2',
+                                    'accent1': 'accent1', 'accent2': 'accent2',
+                                    'accent3': 'accent3', 'accent4': 'accent4',
+                                    'accent5': 'accent5', 'accent6': 'accent6',
+                                    'hlink': 'hlink', 'folHlink': 'folHlink',
+                                }
+                                mapped = scheme_map.get(scheme_name)
+                                if mapped and hasattr(self, '_theme_colors'):
+                                    color = self._theme_colors.get(mapped)
+                                elif mapped:
+                                    color = f"scheme:{scheme_name}"
+                                else:
+                                    color = f"scheme:{scheme_name}"
+                        if color:
+                            stops.append({'pos': round(pos_val, 1), 'color': color})
+                    if stops:
+                        grad_info['stops'] = stops
+                except Exception:
+                    pass
+                try:
+                    lin = shape._element.find(
+                        './/' + '{http://schemas.openxmlformats.org/drawingml/2006/main}lin')
+                    if lin is not None:
+                        ang = lin.get('ang')
+                        if ang:
+                            grad_info['angle'] = int(ang) // 60000  # EMU to degrees
+                except Exception:
+                    pass
+                if grad_info:
+                    result['gradient'] = grad_info
+
+            elif 'PATTERN' in fill_type_str:
+                result['fill_type'] = 'pattern'
+            elif 'BACKGROUND' in fill_type_str:
+                result['fill_type'] = 'background'
+        except Exception:
+            pass
+        return result
+
+    def _extract_preset_geometry(self, shape) -> Optional[str]:
+        """Extract preset geometry name from a shape (e.g., chevron, arc, ellipse)."""
+        try:
+            prst = shape._element.find(
+                './/' + '{http://schemas.openxmlformats.org/drawingml/2006/main}prstGeom')
+            if prst is not None:
+                return prst.get('prst')
+        except Exception:
+            pass
+        return None
+
+    def _build_decorative_elem(self, shape, source: str = 'master') -> dict[str, Any]:
+        """Build a decorative element dict from a shape."""
+        top_pct = emu_to_percent(shape.top, SLIDE_HEIGHT_EMU)
+        left_pct = emu_to_percent(shape.left, SLIDE_WIDTH_EMU)
+        w_pct = emu_to_percent(shape.width, SLIDE_WIDTH_EMU)
+        h_pct = emu_to_percent(shape.height, SLIDE_HEIGHT_EMU)
+
+        shape_type_str = ''
+        try:
+            shape_type_str = str(shape.shape_type)
+        except Exception:
+            pass
+
+        elem: dict[str, Any] = {
+            'shape_name': shape.name,
+            'shape_type': shape_type_str,
+            'position': {
+                'left_percent': left_pct,
+                'top_percent': top_pct,
+            },
+            'size': {
+                'width_percent': w_pct,
+                'height_percent': h_pct,
+            },
+            'source': source,
+        }
+
+        # Preset geometry
+        geo = self._extract_preset_geometry(shape)
+        if geo:
+            elem['preset_geometry'] = geo
+
+        # Fill info
+        fill_info = self._extract_shape_fill(shape)
+        elem.update(fill_info)
+
+        # Rotation
+        try:
+            if shape.rotation and shape.rotation != 0:
+                elem['rotation'] = shape.rotation
+        except Exception:
+            pass
+
+        return elem
+
+    def _is_decorative_candidate(self, shape) -> bool:
+        """Check if a shape qualifies as a decorative element."""
+        if shape.is_placeholder:
+            return False
+
+        # Skip shapes whose names indicate structural (non-decorative) roles
+        name_lower = shape.name.lower()
+        if any(kw in name_lower for kw in ('placeholder', 'slide number', 'footer', 'date')):
+            return False
+
+        # Skip practically invisible shapes (< 0.5% in either dimension)
+        # but allow lines/connectors which are 1-dimensional
+        w_pct = emu_to_percent(shape.width, SLIDE_WIDTH_EMU)
+        h_pct = emu_to_percent(shape.height, SLIDE_HEIGHT_EMU)
+        shape_type_str = str(shape.shape_type) if shape.shape_type else ''
+        is_line = 'LINE' in shape_type_str or 'CONNECTOR' in shape_type_str
+        if not is_line and (w_pct < 0.5 or h_pct < 0.5):
+            return False
+
+        # Skip shapes entirely off-screen
+        left_pct = emu_to_percent(shape.left, SLIDE_WIDTH_EMU)
+        top_pct = emu_to_percent(shape.top, SLIDE_HEIGHT_EMU)
+        if left_pct + w_pct < 0 or top_pct + h_pct < 0:
+            return False
+
+        logo_threshold = SLIDE_WIDTH_EMU * 0.20
+
+        # Skip small pictures (logos) and large pictures (backgrounds)
+        if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+            if shape.width < logo_threshold and shape.height < logo_threshold:
+                return False
+            if (shape.width > SLIDE_WIDTH_EMU * 0.8
+                    and shape.height > SLIDE_HEIGHT_EMU * 0.8):
+                return False
+
+        # Allow shapes with short text (≤3 chars, e.g. ">" chevron labels)
+        # but skip shapes with meaningful text
+        if hasattr(shape, 'text_frame'):
+            try:
+                text = shape.text_frame.text.strip()
+                if len(text) > 3:
+                    return False
+            except Exception:
+                pass
+
+        return True
+
     def extract_decorative_elements(self) -> list[dict[str, Any]]:
-        """Detect decorative shapes on the slide master.
+        """Detect decorative shapes on the slide master and common layouts.
 
         Decorative elements are non-placeholder, non-text, non-logo shapes
         that serve a purely visual purpose (chevrons, dot patterns,
         semicircles, colored bars, gradient rectangles, etc.).
 
-        Only shapes that are NOT in the header/footer regions and are NOT
-        identified as logos are included.
+        Scans both the slide master and all layouts.  Master-level shapes
+        are always included.  Layout-level shapes are included when the
+        same shape name appears in multiple layouts (≥ 3 or ≥ 5% of
+        layouts, whichever is larger).
         """
         decorative: list[dict[str, Any]] = []
-        header_limit = 15.0
-        footer_limit = 85.0
-        logo_threshold = SLIDE_WIDTH_EMU * 0.20
 
+        # --- 1. Master shapes ---
         for shape in self.master.shapes:
-            # Skip placeholders
-            if shape.is_placeholder:
-                continue
+            if self._is_decorative_candidate(shape):
+                decorative.append(self._build_decorative_elem(shape, source='master'))
 
-            # Skip pictures that qualify as logos (handled separately)
-            if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
-                if shape.width < logo_threshold and shape.height < logo_threshold:
-                    continue  # logo — already extracted
-                # Large pictures are background — also skip
-                if (shape.width > SLIDE_WIDTH_EMU * 0.8
-                        and shape.height > SLIDE_HEIGHT_EMU * 0.8):
+        # --- 2. Layout common shapes ---
+        # Track shapes by name+approximate position across all layouts
+        layout_shapes: dict[str, list] = {}  # name -> list of (layout_idx, shape)
+        layouts = list(self.master.slide_layouts)
+        total_layouts = len(layouts)
+
+        for i, layout in enumerate(layouts):
+            for shape in layout.shapes:
+                if not self._is_decorative_candidate(shape):
                     continue
+                key = shape.name
+                if key not in layout_shapes:
+                    layout_shapes[key] = []
+                layout_shapes[key].append((i, shape))
 
-            # Skip shapes with meaningful text (those are master_texts)
-            if hasattr(shape, 'text_frame'):
-                try:
-                    text = shape.text_frame.text.strip()
-                    if text:
-                        continue
-                except Exception:
-                    pass
-
-            top_pct = emu_to_percent(shape.top, SLIDE_HEIGHT_EMU)
-            left_pct = emu_to_percent(shape.left, SLIDE_WIDTH_EMU)
-            w_pct = emu_to_percent(shape.width, SLIDE_WIDTH_EMU)
-            h_pct = emu_to_percent(shape.height, SLIDE_HEIGHT_EMU)
-
-            # Classify shape
-            shape_type_str = ''
-            try:
-                shape_type_str = str(shape.shape_type)
-            except Exception:
-                pass
-
-            # Try to get fill colour
-            fill_color = None
-            try:
-                fill = shape.fill
-                if fill and fill.type is not None:
-                    fill_type_str = str(fill.type)
-                    if 'SOLID' in fill_type_str:
-                        fore = fill.fore_color
-                        if fore and fore.rgb:
-                            fill_color = f"#{fore.rgb}"
-            except Exception:
-                pass
-
-            elem: dict[str, Any] = {
-                'shape_name': shape.name,
-                'shape_type': shape_type_str,
-                'position': {
-                    'left_percent': left_pct,
-                    'top_percent': top_pct,
-                },
-                'size': {
-                    'width_percent': w_pct,
-                    'height_percent': h_pct,
-                },
-            }
-
-            if fill_color:
-                elem['fill_color'] = fill_color
-
-            # Detect rotation
-            try:
-                if shape.rotation and shape.rotation != 0:
-                    elem['rotation'] = shape.rotation
-            except Exception:
-                pass
-
-            decorative.append(elem)
+        threshold = max(3, int(total_layouts * 0.05))
+        seen_names: set[str] = set()
+        for name, entries in layout_shapes.items():
+            if len(entries) >= threshold and name not in seen_names:
+                seen_names.add(name)
+                # Use the first occurrence as representative
+                _, rep_shape = entries[0]
+                elem = self._build_decorative_elem(rep_shape, source='layout_common')
+                elem['layout_count'] = len(entries)
+                elem['layout_total'] = total_layouts
+                decorative.append(elem)
 
         return decorative
+
+    def extract_layout_decorative_patterns(self) -> list[dict[str, Any]]:
+        """Summarise decorative patterns found across all layouts.
+
+        Groups shapes by category (gradient_panel, circle_icon, divider,
+        rounded_accent, decorative_shape) and records representative
+        parameters for each category.
+        """
+        categories: dict[str, list[dict[str, Any]]] = {
+            'gradient_panel': [],
+            'circle_icon': [],
+            'divider': [],
+            'rounded_accent': [],
+            'decorative_shape': [],
+        }
+
+        for layout in self.master.slide_layouts:
+            for shape in layout.shapes:
+                if not self._is_decorative_candidate(shape):
+                    continue
+
+                geo = self._extract_preset_geometry(shape)
+                fill = self._extract_shape_fill(shape)
+                w_pct = emu_to_percent(shape.width, SLIDE_WIDTH_EMU)
+                h_pct = emu_to_percent(shape.height, SLIDE_HEIGHT_EMU)
+                shape_type_str = str(shape.shape_type) if shape.shape_type else ''
+
+                entry = {
+                    'layout': layout.name,
+                    'shape_name': shape.name,
+                    'preset_geometry': geo,
+                    'size': {'width_percent': w_pct, 'height_percent': h_pct},
+                }
+                entry.update(fill)
+
+                # Classify
+                if fill.get('fill_type') == 'gradient' and (w_pct > 20 or h_pct > 20):
+                    categories['gradient_panel'].append(entry)
+                elif geo == 'ellipse':
+                    categories['circle_icon'].append(entry)
+                elif 'LINE' in shape_type_str or geo == 'line':
+                    categories['divider'].append(entry)
+                elif geo == 'roundRect':
+                    categories['rounded_accent'].append(entry)
+                else:
+                    categories['decorative_shape'].append(entry)
+
+        patterns = []
+        for cat, items in categories.items():
+            if not items:
+                continue
+            patterns.append({
+                'category': cat,
+                'count': len(items),
+                'examples': items[:3],  # Up to 3 representative examples
+            })
+
+        return patterns
 
     def build_slide_master(self, manifest: dict[str, Any],
                            design_source: Optional[dict[str, Any]] = None) -> dict[str, Any]:
@@ -848,6 +1059,7 @@ class ThemeExtractor:
             'header': self.extract_header_region(),
             'footer': self.extract_footer_region(footer_info, master_texts),
             'decorative_elements': self.extract_decorative_elements(),
+            'layout_decorative_patterns': self.extract_layout_decorative_patterns(),
         }
 
         if design_source:
@@ -1283,6 +1495,7 @@ class DesignGuideGenerator:
         self.header = self.sm.get('header', {})
         self.footer_region = self.sm.get('footer', {})
         self.decorative = self.sm.get('decorative_elements', [])
+        self.layout_patterns = self.sm.get('layout_decorative_patterns', [])
         self.slide_size = self.sm.get('slide_size', {})
         self.backgrounds = manifest.get('backgrounds', {})
         self.design_source = self.sm.get('design_source')
@@ -1322,16 +1535,24 @@ class DesignGuideGenerator:
         ss = self.slide_size
         if not ss:
             return ''
+        w = ss.get('width_px', 1280)
+        h = ss.get('height_px', 720)
         return f"""## 1. Slide Canvas
 
 | Property | Value |
 |----------|-------|
 | Aspect ratio | **{ss.get('aspect_ratio', '16:9')}** |
-| Resolution | {ss.get('width_px', 1280)} × {ss.get('height_px', 720)} px |
+| Resolution | {w} × {h} px |
 | EMU | {ss.get('width_emu', '')} × {ss.get('height_emu', '')} |
+| Remarp frontmatter | `size: {w}x{h}` |
 
 All content must be designed for this aspect ratio.  Do not stretch or
-crop to fit a different ratio."""
+crop to fit a different ratio.
+
+Add this to your `.remarp.md` frontmatter:
+```yaml
+size: {w}x{h}
+```"""
 
     def _section_color_system(self) -> str:
         if not self.palette:
@@ -1540,40 +1761,89 @@ shapes:
   a subtle border or glow over a drop shadow."""
 
     def _section_decorative_patterns(self) -> str:
-        if not self.decorative:
-            return """## 7. Decorative Patterns
+        lines = ['## 7. Decorative Patterns']
 
-No decorative elements detected on the slide master.
-Keep slides clean — avoid adding ornamental shapes unless the
-design guide is updated."""
+        if self.decorative:
+            lines += [
+                '',
+                'The following decorative shapes were detected.',
+                'Master-level shapes **must be replicated** on every slide.',
+                '',
+                '```yaml',
+                'decorative_elements:',
+            ]
 
-        lines = [
-            '## 7. Decorative Patterns',
-            '',
-            'The following decorative shapes were detected on the slide master.',
-            'These **must be replicated** on every slide for consistency.',
-            '',
-            '```yaml',
-            'decorative_elements:',
-        ]
+            for i, d in enumerate(self.decorative):
+                pos = d.get('position', {})
+                size = d.get('size', {})
+                lines.append(f'  - name: "{d.get("shape_name", f"element_{i}")}"')
+                lines.append(f'    source: "{d.get("source", "master")}"')
+                if d.get('preset_geometry'):
+                    lines.append(f'    geometry: "{d["preset_geometry"]}"')
+                lines.append(f'    type: "{d.get("shape_type", "unknown")}"')
+                lines.append(f'    position: {{ left: {pos.get("left_percent", 0)}%, top: {pos.get("top_percent", 0)}% }}')
+                lines.append(f'    size: {{ width: {size.get("width_percent", 0)}%, height: {size.get("height_percent", 0)}% }}')
+                if d.get('fill_type'):
+                    lines.append(f'    fill_type: "{d["fill_type"]}"')
+                if d.get('fill_color'):
+                    lines.append(f'    fill_color: "{d["fill_color"]}"')
+                if d.get('gradient'):
+                    grad = d['gradient']
+                    lines.append(f'    gradient:')
+                    if 'angle' in grad:
+                        lines.append(f'      angle: {grad["angle"]}')
+                    if 'stops' in grad:
+                        lines.append(f'      stops: {grad["stops"]}')
+                if d.get('rotation'):
+                    lines.append(f'    rotation: {d["rotation"]}deg')
+                if d.get('layout_count'):
+                    lines.append(f'    layout_frequency: {d["layout_count"]}/{d["layout_total"]}')
 
-        for i, d in enumerate(self.decorative):
-            pos = d.get('position', {})
-            size = d.get('size', {})
-            lines.append(f'  - name: "{d.get("shape_name", f"element_{i}")}"')
-            lines.append(f'    type: "{d.get("shape_type", "unknown")}"')
-            lines.append(f'    position: {{ left: {pos.get("left_percent", 0)}%, top: {pos.get("top_percent", 0)}% }}')
-            lines.append(f'    size: {{ width: {size.get("width_percent", 0)}%, height: {size.get("height_percent", 0)}% }}')
-            if d.get('fill_color'):
-                lines.append(f'    fill: "{d["fill_color"]}"')
-            if d.get('rotation'):
-                lines.append(f'    rotation: {d["rotation"]}deg')
+            lines.append('```')
+            lines.append('')
+            lines.append('> Master-level shapes form the slide "frame".  Layout-common')
+            lines.append('> shapes indicate prevalent design vocabulary in this template.')
+        else:
+            lines += [
+                '',
+                'No decorative elements detected on the slide master.',
+            ]
 
-        lines.append('```')
-        lines.append('')
-        lines.append('> These shapes form the slide "frame" and must appear at the')
-        lines.append('> exact positions listed above.  Do not resize, recolor, or')
-        lines.append('> reposition them on individual slides.')
+        # Layout decorative patterns summary
+        if self.layout_patterns:
+            lines += [
+                '',
+                '### Layout Decorative Vocabulary',
+                '',
+                'The following decorative pattern categories were found across',
+                'slide layouts.  Use these as the design vocabulary when adding',
+                'visual elements to slides.',
+                '',
+            ]
+            for pat in self.layout_patterns:
+                cat = pat['category']
+                count = pat['count']
+                lines.append(f'**{cat}** ({count} instances)')
+                lines.append('')
+                for ex in pat.get('examples', []):
+                    geo = ex.get('preset_geometry', 'rect')
+                    size = ex.get('size', {})
+                    fill = ex.get('fill_type', '')
+                    layout = ex.get('layout', '')
+                    lines.append(f'  - `{geo}` {size.get("width_percent", 0)}%×{size.get("height_percent", 0)}% fill={fill} (from "{layout}")')
+                    if ex.get('gradient'):
+                        grad = ex['gradient']
+                        stops = grad.get('stops', [])
+                        if stops:
+                            colors = ' → '.join(s.get('color', '') for s in stops)
+                            lines.append(f'    gradient: {colors}')
+                lines.append('')
+        elif not self.decorative:
+            lines += [
+                '',
+                'Keep slides clean — avoid adding ornamental shapes unless the',
+                'design guide is updated.',
+            ]
 
         return '\n'.join(lines)
 

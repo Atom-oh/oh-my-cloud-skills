@@ -111,6 +111,11 @@ See [references/remarp-format-guide.md](references/remarp-format-guide.md) for f
 > ⚠️ 에이전트는 항상 Remarp로 진행합니다. 단, 복잡한 인터랙션이 필요한 슬라이드는
 > `:::html` + `:::script` 블록으로 자유로운 HTML/CSS/JS를 작성할 수 있습니다.
 > 일반 콘텐츠 슬라이드는 Remarp 마크다운, 인터랙티브 슬라이드는 :::html 블록을 사용하세요.
+>
+> ⚠️ **`:::html` 블록은 반드시 reactive해야 합니다.** 3개 이상의 동위 요소가 있으면
+> `class="fragment fade-up" data-fragment-index="N"`으로 순차 등장을 적용하세요.
+> 정적 HTML은 프레젠테이션의 핵심 가치를 훼손합니다.
+> 자세한 패턴: `remarp-format-guide.md` → ":::html Reactive 패턴" 섹션.
 
 **Alternative Formats (명시적 요청 시에만):**
 

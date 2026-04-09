@@ -9,7 +9,7 @@
   <meta name="remarp-source" content="01-foundations.md">
   <meta name="remarp-block" content="default">
   <link rel="stylesheet" href="./common/theme.css">
-  
+  <link rel="stylesheet" href="./common/pptx-theme/theme-override.css">
   
   
   <script>window.__remarpTheme = {"colors": {}, "footer": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.", "pagination": true, "fonts": {}};</script>
@@ -66,6 +66,34 @@
     </div>
     <div class="callout callout-info" style="margin-top: 1.5rem;">300 레벨 — 개념보다 실전 중심 | 실시간 Q&A 환영 | 각 블록 후 브레이크</div>
   </div>
+  
+<script>(function() {
+  const slide = document.currentScript.closest('.slide');
+  if (!slide) return;
+  const steps = slide.querySelectorAll('.agenda-step:not(.break)');
+  const connectors = slide.querySelectorAll('.agenda-connector');
+  let current = 0;
+  function update() {
+    steps.forEach((s, i) => {
+      s.classList.remove('active', 'done');
+      if (i < current) s.classList.add('done');
+      else if (i === current) s.classList.add('active');
+    });
+    connectors.forEach((c, i) => {
+      c.classList.toggle('done', i < current);
+    });
+  }
+  update();
+  slide.__canvasStep = function(dir) {
+    if (dir === 'next' && current < steps.length - 1) current++;
+    else if (dir === 'prev' && current > 0) current--;
+    else return false;
+    update();
+    return current;
+  };
+  slide.dataset.slideAction = 'canvas-step';
+  slide.dataset.canvasMaxStep = String(steps.length - 1);
+})();</script>
 </div>
 
 <div class="slide" data-remarp-id="s2" style="transition: opacity var(--transition-normal)">
