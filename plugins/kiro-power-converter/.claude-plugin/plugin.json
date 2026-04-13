@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo 'Kiro Power Converter loaded. Use convert to kiro to start.'"
+            "command": "echo \"Kiro Power Converter loaded. Use 'convert to kiro' to start.\""
           }
         ]
       }
