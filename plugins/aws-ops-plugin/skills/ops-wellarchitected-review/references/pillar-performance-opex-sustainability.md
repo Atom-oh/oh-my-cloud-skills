@@ -87,7 +87,7 @@ aws cloudwatch get-metric-statistics --namespace AWS/ElastiCache \
 aws cloudwatch describe-alarms --query 'MetricAlarms | length(@)'
 
 # Alarms by state
-aws cloudwatch describe-alarms --query 'MetricAlarms[].StateValue' | sort | uniq -c
+aws cloudwatch describe-alarms --query 'MetricAlarms[].StateValue' --output text | tr '\t' '\n' | sort | uniq -c
 
 # Log groups and retention
 aws logs describe-log-groups --query 'logGroups[].[logGroupName,retentionInDays,storedBytes]' --output table
