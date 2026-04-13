@@ -7,12 +7,17 @@ v1.0.0의 인터랙티브 패턴을 Remarp `:::html` / `:::script` / `:::css` �
 ## 사용 시점 Decision Tree
 
 ```
-정적 콘텐츠?
+정적 콘텐츠? (1-2문장, 이미지)
 ├─ Yes → Remarp 마크다운 그대로
-└─ No → 인터랙티브 필요
+└─ No → 데이터/정보가 있는 슬라이드
          │
-         ├─ 탭/비교 UI → Remarp `@type: tabs` / `@type: compare`
-         ├─ 단계별 다이어그램 → `:::canvas` DSL
+         ├─ 3+ 하위 항목/카테고리 → ★ 자체 완결 Tab 패턴 (SKILL.md "Interactive Design 원칙" 참조)
+         │     └─ inline onclick + .tc 토글 — 외부 JS 불필요
+         ├─ 4+ 나열 항목 → ★ Grid 카드 패턴 (불릿 리스트 대신)
+         │     └─ display:grid + 색상 border 카드
+         ├─ A vs B 비교 → Remarp `@type: compare` 또는 자체 Tab
+         ├─ 단계별 흐름 (박스 ≤4) → `:::canvas` DSL 또는 fragment
+         ├─ 다계층/5+ 박스 → `:::html` + `:::css` (canvas 금지)
          │
          └─ 동적 인터랙션 필요 → `:::html` + `:::script` (이 가이드)
               │
@@ -24,6 +29,10 @@ v1.0.0의 인터랙티브 패턴을 Remarp `:::html` / `:::script` / `:::css` �
               ├─ 펼치기/접기 상세 → §6 Expandable Content Patterns
               └─ DOM 애니메이션 → §7 DOM Animation Patterns
 ```
+
+> **★ Interactive-First**: 위 트리에서 ★ 표시된 패턴이 가장 자주 사용됩니다.
+> 대부분의 기술 슬라이드는 "탭 + 카드" 조합으로 충분히 interactive해집니다.
+> 슬라이더/시뮬레이터 같은 고급 패턴은 실제로 계산/입력이 필요할 때만 사용합니다.
 
 ---
 

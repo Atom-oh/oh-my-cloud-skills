@@ -80,9 +80,6 @@
     const submitBtn = document.getElementById('submitAllBtn');
     if (submitBtn) {
         submitBtn.addEventListener('click', () => {
-            if (submitBtn.disabled) { return; }
-            submitBtn.disabled = true;
-            submitBtn.textContent = '\u23f3 \ucc98\ub9ac \uc911...';
             window._remarpPostMessage({ command: 'submitAllIssues' });
         });
     }

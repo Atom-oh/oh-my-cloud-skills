@@ -40,9 +40,11 @@
   --font-main: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 
-  /* Sizing */
-  --slide-width:  1280px;
-  --slide-height: 720px;
+  /* Sizing (overridden by PPTX theme extraction or frontmatter ratio:) */
+  --slide-width:  960px;
+  --slide-height: 540px;
+  --slide-ratio-w: 16;
+  --slide-ratio-h: 9;
 
   /* Transitions */
   --transition-fast:   150ms ease;
@@ -83,11 +85,11 @@ body {
   justify-content: center;
 }
 
-/* --- Slide Container (16:9 enforced) --- */
+/* --- Slide Container (aspect ratio enforced via CSS variables) --- */
 .slide-deck {
   width: 100vw; height: 100vh;
-  max-width: calc(100vh * 16 / 9);
-  max-height: calc(100vw * 9 / 16);
+  max-width: calc(100vh * var(--slide-ratio-w) / var(--slide-ratio-h));
+  max-height: calc(100vw * var(--slide-ratio-h) / var(--slide-ratio-w));
   margin: auto;
   position: relative;
   overflow: hidden;
@@ -829,8 +831,8 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 /* --- Fullscreen --- */
-.slide-deck:-webkit-full-screen { background: var(--bg-primary); width: 100vw; height: 100vh; max-width: calc(100vh * 16 / 9); max-height: calc(100vw * 9 / 16); margin: auto; }
-.slide-deck:fullscreen          { background: var(--bg-primary); width: 100vw; height: 100vh; max-width: calc(100vh * 16 / 9); max-height: calc(100vw * 9 / 16); margin: auto; }
+.slide-deck:-webkit-full-screen { background: var(--bg-primary); width: 100vw; height: 100vh; max-width: calc(100vh * var(--slide-ratio-w) / var(--slide-ratio-h)); max-height: calc(100vw * var(--slide-ratio-h) / var(--slide-ratio-w)); margin: auto; }
+.slide-deck:fullscreen          { background: var(--bg-primary); width: 100vw; height: 100vh; max-width: calc(100vh * var(--slide-ratio-w) / var(--slide-ratio-h)); max-height: calc(100vw * var(--slide-ratio-h) / var(--slide-ratio-w)); margin: auto; }
 
 /* --- Scrollbar --- */
 ::-webkit-scrollbar { width: 6px; }
@@ -1517,8 +1519,8 @@ body.sidebar-visible {
 
 body.sidebar-visible .slide-deck {
   width: calc(100vw - 220px);
-  max-width: calc(100vh * 16 / 9);
-  max-height: calc((100vw - 220px) * 9 / 16);
+  max-width: calc(100vh * var(--slide-ratio-w) / var(--slide-ratio-h));
+  max-height: calc((100vw - 220px) * var(--slide-ratio-h) / var(--slide-ratio-w));
   margin-left: 220px;
   margin-right: auto;
 }

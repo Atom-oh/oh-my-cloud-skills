@@ -22,11 +22,14 @@ Remarp 전용 TextMate 문법으로 다음 요소를 하이라이팅합니다:
 ### 라이브 프리뷰
 
 - 사이드 패널에서 현재 슬라이드 미리보기
+- **사이드바 레이아웃**: 오른쪽 패널에 Speaker Notes + 이슈 배지 표시
 - 타이핑하면 자동 업데이트 (디바운스 적용)
 - VSCode 테마에 맞는 다크 모드
 - 이전/다음 버튼으로 네비게이션
 - 키보드 네비게이션 (화살표 키, Space, PageUp/Down)
 - 커서 위치에 따라 해당 슬라이드로 동기화 (`remarp.scrollSync` 설정)
+- **슬라이드 타입 렌더링**: cover, compare, tabs, agenda, timeline, quiz, checklist, cards, code, steps, title, section, thankyou
+- **`@background` / `@badge` 디렉티브**: 배경 이미지와 배지 오버레이로 렌더링
 - Remarp가 생성한 HTML 파일 직접 프리뷰 (메타태그로 자동 인식)
 - HTML 파일에서도 동일한 Preview/Edit/Build 아이콘 표시
 
@@ -80,6 +83,37 @@ box api "API Gateway" at 150,200 size 120,60 color #FF9900
 ```
 
 박스를 드래그하면 `at 150,200`이 새 위치로 변경됩니다.
+
+### 이슈 어노테이션 & AI 리뷰
+
+슬라이드에 개선 제안을 기록하면 Claude Code가 자동으로 수정합니다.
+
+**프리뷰 사이드바 구조:**
+
+```
+┌──────────────────┐
+│ Speaker Notes    │  ← :::notes 내용 표시
+├──────────────────┤
+│ Issues (배지)    │  ← <!-- issue: --> 배지 표시
+├──────────────────┤
+│ [입력 필드    ▶] │  ← 이슈/개선사항 입력
+├──────────────────┤
+│ [/slide-fix (N)] │  ← /slide-fix 안내
+└──────────────────┘
+```
+
+**사용 방법:**
+
+1. 프리뷰 사이드바 하단의 입력 필드에 이슈나 개선사항을 입력하고 Enter
+2. 소스 `.md` 파일에 `<!-- issue: 입력 내용 -->` 주석이 자동 삽입됨
+3. 슬라이드를 넘기며 각 슬라이드마다 이슈를 기록
+4. 모든 리뷰가 끝나면 Claude Code에서 `/slide-fix` 실행
+5. 스킬이 자동으로 이슈를 읽고 슬라이드를 수정하고 주석을 제거
+
+:::tip 이슈 포맷
+이슈는 `<!-- issue: 텍스트 -->` HTML 주석으로 저장되므로 마크다운 포맷에 영향을 주지 않습니다.
+빌드 시에도 이슈 주석은 자동으로 제거됩니다.
+:::
 
 ### HTML 파일 지원
 
@@ -145,11 +179,12 @@ npm run compile
 
 1. `.md` 확장자로 파일 생성하고 frontmatter에 `remarp: true` 추가
 2. Remarp 문법으로 프레젠테이션 작성
-3. 에디터 제목 표시줄의 미리보기 아이콘 클릭 (또는 "Remarp: Open Preview" 명령 실행)
+3. 에디터 제목 표시줄의 미리보기 아이콘 클릭 (또는 "Remarp: Preview" 명령 실행)
 4. 탐색기의 아웃라인 뷰에서 슬라이드 탐색
-5. Remarp가 생성한 `.html` 파일을 열면 동일한 Preview/Edit/Build 아이콘 자동 표시
-6. HTML에서 Visual Edit 모드로 편집하면 소스 `.md`에 자동 반영
-7. Canvas 슬라이드에서 요소를 드래그하면 `:::canvas` DSL 좌표 자동 업데이트
+5. 프리뷰 사이드바에서 슬라이드별 이슈/개선사항 입력 → 자동으로 소스에 기록
+6. 모든 슬라이드 리뷰 후 Claude Code에서 `/slide-fix` 실행 → 자동 수정
+7. Remarp가 생성한 `.html` 파일을 열면 동일한 Preview/Edit/Build 아이콘 자동 표시
+8. Canvas 슬라이드에서 요소를 드래그하면 `:::canvas` DSL 좌표 자동 업데이트
 
 ## 키보드 단축키
 
@@ -173,11 +208,11 @@ npm run compile
 
 | 명령어 | 설명 |
 |--------|------|
-| `Remarp: Open Preview` | 슬라이드 미리보기 패널 열기 |
+| `Remarp: Preview` | 슬라이드 미리보기 패널 열기 |
 | `Remarp: Next Slide` | 다음 슬라이드로 이동 |
 | `Remarp: Previous Slide` | 이전 슬라이드로 이동 |
-| `Remarp: Toggle Visual Edit Mode` | 비주얼 편집 모드 전환 |
 | `Remarp: Build HTML` | HTML 빌드 (HTML 파일에서는 소스 자동 탐색) |
+| `Remarp: Show Slide Fix Guide` | `<!-- issue: -->` 어노테이션 개수를 표시하고 `/slide-fix` 실행 안내 |
 
 ## 설정
 
@@ -250,9 +285,10 @@ Speaker notes go here - not visible during presentation
 
 ## 알려진 제한 사항
 
-- 미리보기는 단순화된 마크다운 렌더링 사용 (전체 Remarp 렌더러 아님)
-- Canvas DSL 미리보기는 소스 코드를 `<pre>` 블록으로 표시 (그래픽 렌더링 아님)
+- 미리보기는 단순화된 마크다운 렌더링 사용 (전체 Remarp HTML 빌더 아님)
+- Canvas DSL 미리보기는 소스를 `<pre>` 블록으로 표시 (그래픽 렌더링 아님)
 - 일부 복잡한 중첩 블록은 하이라이팅이 완벽하지 않을 수 있음
+- Claude CLI 연동을 위해 `claude`가 PATH 또는 `~/.local/bin/`에 설치되어 있어야 함
 
 ## Marketplace 배포
 

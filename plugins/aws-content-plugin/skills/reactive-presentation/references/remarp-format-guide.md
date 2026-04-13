@@ -240,7 +240,7 @@ The converter splits on `---` and creates empty/comment-only slide fragments.
 
 Directives use `@` prefix on lines immediately after `---`. No wrapping `---` block around them.
 
-### Issue Annotations (`<!-- !issue: ... -->`)
+### Issue Annotations (`<!-- issue: ... -->`)
 
 슬라이드에 개선 프롬프트를 인라인으로 남깁니다. 빌드 시 자동 제거되며, Preview에서는 노란색 badge로 표시됩니다.
 
@@ -248,8 +248,8 @@ Directives use `@` prefix on lines immediately after `---`. No wrapping `---` bl
 ---
 # AWS Architecture Overview
 
-<!-- !issue: 다이어그램이 너무 복잡함, 3개 레이어로 단순화 -->
-<!-- !issue: 폰트 크기가 작아서 뒤에서 안 보임 -->
+<!-- issue: 다이어그램이 너무 복잡함, 3개 레이어로 단순화 -->
+<!-- issue: 폰트 크기가 작아서 뒤에서 안 보임 -->
 
 - VPC 구조
 - Subnet 배치
@@ -261,7 +261,7 @@ Directives use `@` prefix on lines immediately after `---`. No wrapping `---` bl
 - **Issues** (`remarp_to_slides.py issues <path>`): 전체 프로젝트의 이슈 목록 추출
 - **Issues JSON** (`remarp_to_slides.py issues <path> --json`): JSON 형식으로 출력
 
-**워크플로우**: 리뷰어가 이슈를 남기면 → `issues` 명령으로 목록 확인 → Claude가 이슈를 읽고 개선 → 이슈 제거 후 빌드.
+**워크플로우**: 리뷰어가 VSCode 프리뷰에서 이슈를 남기면 → Claude Code에서 `/slide-fix` 실행 → 이슈를 읽고 개선 → 이슈 제거 후 리빌드.
 
 ### Supported `:::` Block Types
 

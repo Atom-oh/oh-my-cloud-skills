@@ -8,7 +8,6 @@ export declare class RemarpPreviewPanel {
     private _currentSlideIndex;
     private _disposables;
     private _updateTimeout;
-    private _isHtmlMode;
     private _suppressSync;
     get document(): vscode.TextDocument;
     static createOrShow(extensionUri: vscode.Uri, document: vscode.TextDocument): void;

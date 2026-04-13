@@ -19,8 +19,7 @@
   ],
   "activationEvents": [
     "onLanguage:remarp",
-    "onLanguage:markdown",
-    "onLanguage:html"
+    "onLanguage:markdown"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -72,7 +71,7 @@
       },
       {
         "command": "remarp.submitIssues",
-        "title": "Remarp: Submit Issues to Claude",
+        "title": "Remarp: Show Slide Fix Guide",
         "category": "Remarp"
       }
     ],
@@ -81,19 +80,19 @@
         "command": "remarp.nextSlide",
         "key": "ctrl+shift+right",
         "mac": "cmd+shift+right",
-        "when": "editorLangId == remarp || remarp.isRemarpHtml"
+        "when": "editorLangId == remarp"
       },
       {
         "command": "remarp.prevSlide",
         "key": "ctrl+shift+left",
         "mac": "cmd+shift+left",
-        "when": "editorLangId == remarp || remarp.isRemarpHtml"
+        "when": "editorLangId == remarp"
       },
       {
         "command": "remarp.build",
         "key": "ctrl+shift+b",
         "mac": "cmd+shift+b",
-        "when": "editorLangId == remarp || remarp.isRemarpHtml"
+        "when": "editorLangId == remarp"
       }
     ],
     "views": {
@@ -101,7 +100,7 @@
         {
           "id": "remarpOutline",
           "name": "Remarp Slides",
-          "when": "editorLangId == remarp || remarp.isRemarpHtml"
+          "when": "editorLangId == remarp"
         }
       ]
     },
@@ -124,7 +123,7 @@
       "editor/title": [
         {
           "command": "remarp.preview",
-          "when": "editorLangId == remarp || remarp.isRemarpHtml",
+          "when": "editorLangId == remarp",
           "group": "navigation"
         },
         {

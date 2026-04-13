@@ -388,9 +388,9 @@ class RemarpParser:
         # Strip residual leading --- lines left by per-slide frontmatter blocks
         md_text = re.sub(r'^---\s*\n', '', md_text)
 
-        # Extract issues (<!-- !issue: ... -->)
-        issues: List[str] = re.findall(r'<!--\s*!issue:\s*(.+?)\s*-->', md_text)
-        md_text = re.sub(r'<!--\s*!issue:\s*.+?\s*-->\n?', '', md_text)
+        # Extract issues (<!-- issue: ... -->)
+        issues: List[str] = re.findall(r'<!--\s*issue:\s*(.+?)\s*-->', md_text)
+        md_text = re.sub(r'<!--\s*issue:\s*.+?\s*-->\n?', '', md_text)
 
         # Parse notes (new style)
         notes = self.parse_notes(md_text)
@@ -1238,7 +1238,7 @@ class RemarpParser:
 
         # Check for title slide (single h1 at start, few lines)
         lines = md.strip().split('\n')
-        non_empty_lines = [l for l in lines if l.strip() and not l.strip().startswith('<!--') and not l.strip().startswith('@')]
+        non_empty_lines = [l for l in lines if l.strip() and not (l.strip().startswith('<!--') and '__HTML_BLOCK_' not in l) and not l.strip().startswith('@')]
         if non_empty_lines and non_empty_lines[0].startswith('# '):
             h1_count = sum(1 for l in non_empty_lines if l.startswith('# '))
             if h1_count == 1 and len(non_empty_lines) <= 4:
@@ -1680,6 +1680,11 @@ class RemarpHTMLGenerator:
             # HTML block placeholders — pass through without <p> wrapping
             if re.match(r'^\s*<!-- __(?:HTML_BLOCK|COL_HTML)_\d+__ -->\s*$', line):
                 html_parts.append(line.strip())
+                idx += 1
+                continue
+
+            # Strip extracted block markers (:::script, :::css, etc.)
+            if re.match(r'^\s*<!-- __BLOCK:\w+:\d+__ -->\s*$', line):
                 idx += 1
                 continue
 
@@ -3259,18 +3264,18 @@ class RemarpHTMLGenerator:
         for line in lines:
             if line.startswith('## '):
                 heading = self._convert_markdown(line[3:].strip())
-            elif re.match(r'^\d+\.\s', line):
-                step_text = re.sub(r'^\d+\.\s+', '', line).strip()
-                # Extract duration in parentheses
-                dur_match = re.search(r'\((\d+\s*분?|[\d]+\s*min)\)', step_text)
-                duration = dur_match.group(1) if dur_match else ''
-                title = re.sub(r'\s*\((\d+\s*분?|[\d]+\s*min)\)\s*', '', step_text).strip()
-                steps.append({'title': title, 'duration': duration, 'is_break': False})
             elif re.match(r'^[-*]\s+(Break|break|휴식)', line):
                 step_text = re.sub(r'^[-*]\s+', '', line).strip()
-                dur_match = re.search(r'\((\d+\s*분?|[\d]+\s*min)\)', step_text)
+                dur_match = re.search(r'[\(\{](\d+\s*분?|[\d]+\s*min)[\)\}]', step_text)
                 duration = dur_match.group(1) if dur_match else ''
                 steps.append({'title': 'Break', 'duration': duration, 'is_break': True})
+            elif re.match(r'^(\d+\.|-|\*)\s', line):
+                step_text = re.sub(r'^(\d+\.|-|\*)\s+', '', line).strip()
+                # Extract duration in parentheses or curly braces
+                dur_match = re.search(r'[\(\{](\d+\s*분?|[\d]+\s*min)[\)\}]', step_text)
+                duration = dur_match.group(1) if dur_match else ''
+                title = re.sub(r'\s*[\(\{](\d+\s*분?|[\d]+\s*min)[\)\}]\s*', '', step_text).strip()
+                steps.append({'title': title, 'duration': duration, 'is_break': False})
             elif line.startswith('>'):
                 callout_lines.append(line.lstrip('> ').strip())
 
@@ -3528,9 +3533,15 @@ class RemarpHTMLGenerator:
     def _gen_thankyou_slide(self, slide: Slide) -> str:
         """Generate thank you slide HTML."""
         content = slide.content
-        lines = [l for l in content.split('\n') if l.strip()]
+        # Filter out headings, links (used for nav), and directives from content lines
+        lines = [l for l in content.split('\n') if l.strip()
+                 and not l.strip().startswith('#')
+                 and not l.strip().startswith('[')
+                 and not l.strip().startswith('@')]
 
-        message = slide.directives.get('message', 'Thank You')
+        # Use first content line as subtitle, or @message directive
+        default_msg = lines[0] if lines else ''
+        message = slide.directives.get('message', default_msg)
         toc_href = slide.directives.get('toc', 'index.html')
         next_href = slide.directives.get('next', '')
         next_label = slide.directives.get('next-label', '다음')
@@ -3669,13 +3680,16 @@ class RemarpHTMLGenerator:
         theme_footer = footer  # reuse already-resolved footer from above
         theme_pagination = pagination  # reuse already-resolved pagination
         theme_fonts = {}
-        if theme_colors or theme_footer:
+        theme_slide_size = config.get('_slide_size', {})
+        if theme_colors or theme_footer or theme_slide_size:
             theme_data = {
                 'colors': theme_colors,
                 'footer': theme_footer,
                 'pagination': theme_pagination,
                 'fonts': theme_fonts
             }
+            if theme_slide_size:
+                theme_data['slideSize'] = theme_slide_size
             theme_js = f'<script>window.__remarpTheme = {json.dumps(theme_data)};</script>'
 
         # Global Marp-compat styles (backgroundColor, color, header)
@@ -3688,11 +3702,29 @@ class RemarpHTMLGenerator:
             global_styles.append(f'.slide {{ {prop}: {global_bg}; }}')
         if global_color:
             global_styles.append(f'.slide {{ color: {global_color}; }}')
-        # Slide size override from frontmatter (e.g. size: 960x720)
+        # Slide size override from frontmatter (e.g. size: 960x540)
         size_str = config.get('size', '')
         size_match = re.match(r'^(\d+)x(\d+)$', str(size_str))
         if size_match:
-            global_styles.append(f':root {{ --slide-width: {size_match.group(1)}px; --slide-height: {size_match.group(2)}px; }}')
+            w, h = int(size_match.group(1)), int(size_match.group(2))
+            global_styles.append(f':root {{ --slide-width: {w}px; --slide-height: {h}px; }}')
+            # Derive ratio from explicit size
+            from math import gcd
+            g = gcd(w, h)
+            global_styles.append(f':root {{ --slide-ratio-w: {w // g}; --slide-ratio-h: {h // g}; }}')
+
+        # Aspect ratio override from frontmatter (e.g. ratio: "16:9") or PPTX manifest
+        ratio_str = config.get('ratio', '')
+        ratio_match = re.match(r'^(\d+)\s*:\s*(\d+)$', str(ratio_str))
+        if ratio_match and not size_match:
+            rw, rh = int(ratio_match.group(1)), int(ratio_match.group(2))
+            global_styles.append(f':root {{ --slide-ratio-w: {rw}; --slide-ratio-h: {rh}; }}')
+            # Also set pixel dimensions for canvas rendering
+            if rw > rh:
+                pw, ph = 960, round(960 * rh / rw)
+            else:
+                pw, ph = round(540 * rw / rh), 540
+            global_styles.append(f':root {{ --slide-width: {pw}px; --slide-height: {ph}px; }}')
 
         global_style_tag = f'<style>{" ".join(global_styles)}</style>' if global_styles else ''
 
@@ -3847,6 +3879,19 @@ class RemarpProjectBuilder:
                         with open(manifest, 'r', encoding='utf-8') as f:
                             self.theme_manifest = json.load(f)
 
+        # Fallback: auto-discover common/pptx-theme/ from previous build
+        if not self.theme_dir:
+            for candidate in [
+                self.project_dir / 'common' / 'pptx-theme',
+                self.project_dir / '_theme',
+            ]:
+                manifest = candidate / 'theme-manifest.json'
+                if manifest.exists():
+                    self.theme_dir = candidate
+                    with open(manifest, 'r', encoding='utf-8') as f:
+                        self.theme_manifest = json.load(f)
+                    break
+
         # Apply theme overrides to main_config (always, even without source)
         if theme_config:
             self._apply_theme_to_config(theme_config)
@@ -3983,24 +4028,54 @@ class RemarpProjectBuilder:
         if footer == 'auto' and self.theme_manifest.get('footer_text'):
             self.main_config['footer'] = self._sanitize_footer_text(self.theme_manifest['footer_text'])
 
+        # Extract slide size / aspect ratio from manifest
+        # slide_size can be at root or nested under slide_master
+        slide_size = self.theme_manifest.get('slide_size', {})
+        if not slide_size:
+            slide_size = self.theme_manifest.get('slide_master', {}).get('slide_size', {})
+        if slide_size:
+            self.main_config['_slide_size'] = slide_size
+            # Set aspect ratio if not already specified in frontmatter
+            if 'ratio' not in self.main_config:
+                aspect = slide_size.get('aspect_ratio', '')
+                if aspect:
+                    self.main_config['ratio'] = aspect
+
         # Store sanitized manifest
         self.main_config['_theme_manifest'] = {
             k: v for k, v in self.theme_manifest.items()
-            if k in ('footer_text', 'colors', 'logos', 'layout_details', 'fonts')
+            if k in ('footer_text', 'colors', 'logos', 'layout_details', 'fonts', 'slide_size')
         }
 
     def _generate_theme_css_vars(self) -> None:
-        """Write theme-override.css with PPTX color variables.
+        """Write theme-override.css with PPTX color variables and slide size.
 
         Maps PPTX accent colors to both --pptx-* reference variables and
         the base theme variables (--accent, --accent-glow, etc.) so the
         HTML slides actually pick up the corporate color scheme.
+        Also injects slide aspect ratio from the PPTX manifest.
         """
         colors = self.main_config.get('_theme_colors', {})
-        if not colors or not self.theme_dir:
+        slide_size = self.main_config.get('_slide_size', {})
+        if (not colors and not slide_size) or not self.theme_dir:
             return
 
         css_lines = [':root {']
+
+        # 0) Slide size / aspect ratio from PPTX manifest
+        if slide_size:
+            aspect = slide_size.get('aspect_ratio', '')
+            ratio_match = re.match(r'^(\d+)\s*:\s*(\d+)$', str(aspect))
+            if ratio_match:
+                rw, rh = ratio_match.group(1), ratio_match.group(2)
+                css_lines.append(f'  --slide-ratio-w: {rw};')
+                css_lines.append(f'  --slide-ratio-h: {rh};')
+            w_px = slide_size.get('width_px')
+            h_px = slide_size.get('height_px')
+            if w_px and h_px:
+                css_lines.append(f'  --slide-width: {w_px}px;')
+                css_lines.append(f'  --slide-height: {h_px}px;')
+            css_lines.append('')
 
         # 1) Original PPTX color references
         pptx_map = {
@@ -4068,9 +4143,12 @@ class RemarpProjectBuilder:
         """
         dest = self.output_dir / 'common' / 'pptx-theme'
 
-        # Case 1: theme_dir from PPTX extraction
+        # Case 1: theme_dir from PPTX extraction (skip if src == dest)
         if self.theme_dir and Path(self.theme_dir).exists():
-            shutil.copytree(str(self.theme_dir), str(dest), dirs_exist_ok=True)
+            src = Path(self.theme_dir).resolve()
+            dst = dest.resolve()
+            if src != dst:
+                shutil.copytree(str(self.theme_dir), str(dest), dirs_exist_ok=True)
             return
 
         # Case 2: Fallback — pre-extracted theme at parent level
@@ -4502,7 +4580,7 @@ def main():
     migrate_parser.add_argument('-o', '--output', required=True, help='Output directory')
 
     # Issues command
-    issues_parser = subparsers.add_parser('issues', help='List all <!-- !issue: --> annotations')
+    issues_parser = subparsers.add_parser('issues', help='List all <!-- issue: --> annotations')
     issues_parser.add_argument('path', help='Input file or project directory')
     issues_parser.add_argument('--json', action='store_true', dest='json_output', help='Output as JSON')
 

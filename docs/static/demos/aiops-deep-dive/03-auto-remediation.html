@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>자동 복구와 AIOps 로드맵</title>
+  <meta name="generator" content="remarp">
+  <meta name="remarp-version" content="1">
+  <meta name="remarp-source" content="03-auto-remediation.md">
+  <meta name="remarp-block" content="default">
+  <link rel="stylesheet" href="./common/theme.css">
+  <link rel="stylesheet" href="./common/pptx-theme/theme-override.css">
+  <style>:root { --slide-ratio-w: 16; --slide-ratio-h: 9; } :root { --slide-width: 960px; --slide-height: 540px; }</style>
+  
+  <script>window.__remarpTheme = {"colors": {"dk1": "#000000", "lt1": "#FFFFFF", "dk2": "#161D26", "lt2": "#F3F3F7", "accent1": "#41B3FF", "accent2": "#AD5CFF", "accent3": "#00E500", "accent4": "#FF5C85", "accent5": "#FF693C", "accent6": "#FBD332", "hlink": "#41B1E8", "folHlink": "#41B1E8"}, "footer": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.", "pagination": true, "fonts": {}, "slideSize": {"width_emu": 12192000, "height_emu": 6858000, "width_px": 1280, "height_px": 720, "aspect_ratio": "16:9"}};</script>
+</head>
+<body>
+<div class="slide-deck">
+<div class="slide" data-remarp-id="s0">
+  <div class="slide-header" data-remarp-id="s0-header"><h2>자동 복구와 AIOps 로드맵</h2></div>
+  <div class="slide-body" data-remarp-id="s0-body">
+    <p>자동 복구 · Chaos Engineering · 성숙도 모델</p>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s1">
+  <div class="slide-header" data-remarp-id="s1-header"><h2>SSM Automation 기반 자동 복구</h2></div>
+  <div class="slide-body" data-remarp-id="s1-body">
+    <div class="tab-bar">
+            <button class="tab-btn active" data-tab="tab-0">아키텍처</button>
+      <button class="tab-btn" data-tab="runbook">Runbook 예시</button>
+      <button class="tab-btn" data-tab="tab-2">안전장치</button>
+    </div>
+        <div class="tab-content active" data-tab="tab-0">
+<div style="display:flex; flex-direction:column; gap:16px; margin-top:8px;">
+  <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+    <div style="background:rgba(255,92,133,0.15); padding:12px 16px; border-radius:8px; text-align:center; min-width:120px;">
+      <div style="font-size:0.85rem; font-weight:600; color:var(--accent4);">CloudWatch</div>
+      <div style="font-size:0.7rem; color:var(--text-secondary);">Alarm 발동</div>
+    </div>
+    <span style="color:var(--accent4);">→</span>
+    <div style="background:rgba(173,92,255,0.15); padding:12px 16px; border-radius:8px; text-align:center; min-width:120px;">
+      <div style="font-size:0.85rem; font-weight:600; color:var(--accent2);">EventBridge</div>
+      <div style="font-size:0.7rem; color:var(--text-secondary);">규칙 매칭</div>
+    </div>
+    <span style="color:var(--accent2);">→</span>
+    <div style="background:rgba(65,179,255,0.15); padding:12px 16px; border-radius:8px; text-align:center; min-width:120px;">
+      <div style="font-size:0.85rem; font-weight:600; color:var(--accent1);">SSM Automation</div>
+      <div style="font-size:0.7rem; color:var(--text-secondary);">Runbook 실행</div>
+    </div>
+    <span style="color:var(--accent1);">→</span>
+    <div style="background:rgba(0,229,0,0.15); padding:12px 16px; border-radius:8px; text-align:center; min-width:120px;">
+      <div style="font-size:0.85rem; font-weight:600; color:var(--accent3);">검증 + 알림</div>
+      <div style="font-size:0.7rem; color:var(--text-secondary);">Slack 보고</div>
+    </div>
+  </div>
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+    <div style="background:rgba(255,255,255,0.03); padding:12px; border-radius:8px; font-size:0.8rem;">
+      <div style="color:var(--accent1); font-weight:600; margin-bottom:4px;">Safety Guards</div>
+      <div style="color:var(--text-secondary);">• 영향 범위 제한 (blast radius)<br>• 롤백 조건 사전 정의<br>• 승인 게이트 (선택)</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.03); padding:12px; border-radius:8px; font-size:0.8rem;">
+      <div style="color:var(--accent2); font-weight:600; margin-bottom:4px;">Runbook 유형</div>
+      <div style="color:var(--text-secondary);">• ECS/EKS 스케일링<br>• RDS 스토리지 확장<br>• 배포 롤백</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.03); padding:12px; border-radius:8px; font-size:0.8rem;">
+      <div style="color:var(--accent3); font-weight:600; margin-bottom:4px;">검증 패턴</div>
+      <div style="color:var(--text-secondary);">• 메트릭 안정화 확인<br>• 헬스체크 통과<br>• 에러율 정상 복귀</div>
+    </div>
+  </div>
+</div>
+</div>
+    <div class="tab-content" data-tab="runbook">
+<div class="code-block"><span class="comment"># SSM Automation Runbook: ECS Auto-Scale</span>
+<span class="key">schemaVersion</span>: <span class="string">'0.3'</span>
+<span class="key">description</span>: <span class="string">'ECS Task 자동 스케일링 복구'</span>
+<span class="key">assumeRole</span>: <span class="string">'{{AutomationAssumeRole}}'</span>
+<span class="key">parameters</span>:
+  <span class="key">ClusterName</span>:
+    <span class="key">type</span>: String
+  <span class="key">ServiceName</span>:
+    <span class="key">type</span>: String
+  <span class="key">DesiredCount</span>:
+    <span class="key">type</span>: Integer
+    <span class="key">default</span>: 10
+
+<span class="key">mainSteps</span>:
+  - name: checkCurrentState
+    <span class="key">action</span>: aws:executeAwsApi
+    <span class="key">inputs</span>:
+      <span class="key">Service</span>: ecs
+      <span class="key">Api</span>: DescribeServices
+      <span class="key">cluster</span>: <span class="string">'{{ClusterName}}'</span>
+      <span class="key">services</span>: [<span class="string">'{{ServiceName}}'</span>]
+
+  - name: scaleUp
+    <span class="key">action</span>: aws:executeAwsApi
+    <span class="key">inputs</span>:
+      <span class="key">Service</span>: ecs
+      <span class="key">Api</span>: UpdateService
+      <span class="key">cluster</span>: <span class="string">'{{ClusterName}}'</span>
+      <span class="key">service</span>: <span class="string">'{{ServiceName}}'</span>
+      <span class="key">desiredCount</span>: <span class="string">'{{DesiredCount}}'</span>
+
+  - name: waitForStable
+    <span class="key">action</span>: aws:waitForAwsResourceProperty
+    <span class="key">inputs</span>:
+      <span class="key">Service</span>: ecs
+      <span class="key">Api</span>: DescribeServices
+      <span class="key">cluster</span>: <span class="string">'{{ClusterName}}'</span>
+      <span class="key">services</span>: [<span class="string">'{{ServiceName}}'</span>]
+      <span class="key">PropertySelector</span>: <span class="string">'$.services[0].runningCount'</span>
+      <span class="key">DesiredValues</span>: [<span class="string">'{{DesiredCount}}'</span>]
+    <span class="key">timeoutSeconds</span>: 300
+
+  - name: validateMetrics
+    <span class="key">action</span>: aws:executeScript
+    <span class="key">inputs</span>:
+      <span class="key">Runtime</span>: python3.11
+      <span class="key">Script</span>: |
+        <span class="keyword">import</span> boto3
+        cw = boto3.client(<span class="string">'cloudwatch'</span>)
+<span class="comment">        # 5XX 에러율이 1% 미만인지 확인</span>
+<span class="comment">        # 확인 실패 시 롤백 트리거</span></div>
+</div>
+    <div class="tab-content" data-tab="tab-2">
+<div class="code-block"><span class="comment"># Safety Guard 구현 패턴</span>
+<span class="keyword">class</span> RemediationGuard:
+    <span class="keyword">def</span> __init__(self, config):
+        self.max_blast_radius = config[<span class="string">'max_affected_pct'</span>]
+        self.require_approval = config[<span class="string">'require_approval'</span>]
+        self.rollback_conditions = config[<span class="string">'rollback_on'</span>]
+
+    <span class="keyword">def</span> can_execute(self, action, context):
+        <span class="comment"># 1. 영향 범위 확인</span>
+        affected = self.estimate_blast_radius(action)
+        <span class="keyword">if</span> affected &gt; self.max_blast_radius:
+            <span class="keyword">return</span> <span class="keyword">False</span>, f<span class="string">"Blast radius {affected}% &gt; {self.max_blast_radius}%"</span>
+
+        <span class="comment"># 2. 동시 실행 제한</span>
+        <span class="keyword">if</span> self.has_active_remediation(context):
+            <span class="keyword">return</span> <span class="keyword">False</span>, <span class="string">"Another remediation in progress"</span>
+
+        <span class="comment"># 3. 승인 필요 여부</span>
+        <span class="keyword">if</span> self.require_approval:
+            <span class="keyword">return</span> <span class="string">'pending_approval'</span>, <span class="string">"Waiting for operator approval"</span>
+
+        <span class="keyword">return</span> <span class="keyword">True</span>, <span class="string">"Safe to execute"</span>
+
+    <span class="keyword">def</span> should_rollback(self, metrics_after):
+        <span class="keyword">for</span> condition in self.rollback_conditions:
+            <span class="keyword">if</span> self.evaluate(condition, metrics_after):
+                <span class="keyword">return</span> <span class="keyword">True</span>, condition[<span class="string">'description'</span>]
+        <span class="keyword">return</span> <span class="keyword">False</span>, <span class="keyword">None</span></div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s2">
+  <div class="slide-header" data-remarp-id="s2-header"><h2>Chaos Engineering으로 복구 파이프라인 검증</h2></div>
+  <div class="slide-body" data-remarp-id="s2-body">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:12px;">
+  <div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--accent1); margin-bottom:12px;">AWS Fault Injection Service (FIS)</div>
+    <div style="font-size:0.9rem; line-height:1.9; color:var(--text-secondary);">
+      • <strong style="color:#fff;">관리형 카오스</strong>: AWS 네이티브 장애 주입 서비스<br>
+      • <strong style="color:#fff;">정밀 타겟팅</strong>: 특정 AZ, 서비스, 리소스 지정<br>
+      • <strong style="color:#fff;">자동 롤백</strong>: Stop Condition 충족 시 즉시 중단<br>
+      • <strong style="color:#fff;">실험 템플릿</strong>: 재사용 가능한 장애 시나리오<br>
+      • <strong style="color:#fff;">통합 관측</strong>: CloudWatch 메트릭으로 영향 추적
+    </div>
+  </div>
+  <div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--accent2); margin-bottom:12px;">검증 시나리오</div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <div style="background:rgba(255,92,133,0.1); padding:10px 16px; border-radius:8px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--accent4);">1. Pod 장애</div>
+        <div style="font-size:0.75rem; color:var(--text-secondary);">EKS Pod 50% Kill → Auto-scaling 복구 확인</div>
+      </div>
+      <div style="background:rgba(173,92,255,0.1); padding:10px 16px; border-radius:8px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--accent2);">2. AZ 장애</div>
+        <div style="font-size:0.75rem; color:var(--text-secondary);">단일 AZ 차단 → Multi-AZ 페일오버 확인</div>
+      </div>
+      <div style="background:rgba(65,179,255,0.1); padding:10px 16px; border-radius:8px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--accent1);">3. 네트워크 지연</div>
+        <div style="font-size:0.75rem; color:var(--text-secondary);">100ms 추가 지연 → Circuit Breaker 동작 확인</div>
+      </div>
+      <div style="background:rgba(251,211,50,0.1); padding:10px 16px; border-radius:8px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--accent6);">4. CPU 스트레스</div>
+        <div style="font-size:0.75rem; color:var(--text-secondary);">CPU 90% 부하 → Anomaly Detection + Auto-scale 확인</div>
+      </div>
+    </div>
+  </div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s3">
+  <div class="slide-header" data-remarp-id="s3-header"><h2>MTTR 개선 계산기</h2></div>
+  <div class="slide-body" data-remarp-id="s3-body">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:32px; margin-top:8px;">
+  <div>
+    <div style="font-size:1rem; font-weight:600; color:var(--accent1); margin-bottom:12px;">장애 대응 단계별 시간 (분)</div>
+    <div style="margin-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
+        <span>🔍 탐지 (Detection)</span>
+        <span id="detect-val" style="color:var(--accent1); font-weight:600;">15분 → 3분</span>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px;">
+        <div><div style="font-size:0.7rem; color:var(--text-secondary);">Before</div><input type="range" id="detect-before" min="1" max="60" value="15" style="width:100%;"></div>
+        <div><div style="font-size:0.7rem; color:var(--text-secondary);">After (AIOps)</div><input type="range" id="detect-after" min="1" max="60" value="3" style="width:100%;"></div>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
+        <span>🔬 분석 (RCA)</span>
+        <span id="rca-val" style="color:var(--accent2); font-weight:600;">30분 → 5분</span>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px;">
+        <div><div style="font-size:0.7rem; color:var(--text-secondary);">Before</div><input type="range" id="rca-before" min="1" max="120" value="30" style="width:100%;"></div>
+        <div><div style="font-size:0.7rem; color:var(--text-secondary);">After (AIOps)</div><input type="range" id="rca-after" min="1" max="120" value="5" style="width:100%;"></div>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
+        <span>🔧 복구 (Remediation)</span>
+        <span id="fix-val" style="color:var(--accent5); font-weight:600;">45분 → 8분</span>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px;">
+        <div><div style="font-size:0.7rem; color:var(--text-secondary);">Before</div><input type="range" id="fix-before" min="1" max="120" value="45" style="width:100%;"></div>
+        <div><div style="font-size:0.7rem; color:var(--text-secondary);">After (AIOps)</div><input type="range" id="fix-after" min="1" max="120" value="8" style="width:100%;"></div>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
+        <span>✅ 검증 (Verification)</span>
+        <span id="verify-val" style="color:var(--accent6); font-weight:600;">15분 → 5분</span>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px;">
+        <div><div style="font-size:0.7rem; color:var(--text-secondary);">Before</div><input type="range" id="verify-before" min="1" max="60" value="15" style="width:100%;"></div>
+        <div><div style="font-size:0.7rem; color:var(--text-secondary);">After (AIOps)</div><input type="range" id="verify-after" min="1" max="60" value="5" style="width:100%;"></div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div style="font-size:1rem; font-weight:600; color:var(--accent2); margin-bottom:12px;">MTTR 비교</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+      <div style="background:rgba(255,92,133,0.15); padding:16px; border-radius:8px; text-align:center;">
+        <div style="font-size:0.8rem; color:var(--text-secondary);">Before MTTR</div>
+        <div id="mttr-before" style="font-size:1.8rem; font-weight:700; color:var(--accent4);">105분</div>
+        <div id="mttr-before-hr" style="font-size:0.8rem; color:var(--text-secondary);">1시간 45분</div>
+      </div>
+      <div style="background:rgba(0,229,0,0.15); padding:16px; border-radius:8px; text-align:center;">
+        <div style="font-size:0.8rem; color:var(--text-secondary);">After MTTR</div>
+        <div id="mttr-after" style="font-size:1.8rem; font-weight:700; color:var(--accent3);">21분</div>
+        <div id="mttr-after-hr" style="font-size:0.8rem; color:var(--text-secondary);">21분</div>
+      </div>
+    </div>
+    <canvas id="mttr-canvas" width="380" height="160" style="width:100%; background:rgba(0,0,0,0.2); border-radius:8px;"></canvas>
+    <div style="text-align:center; margin-top:12px; padding:8px; background:rgba(0,229,0,0.08); border-radius:8px;">
+      <span style="font-size:0.85rem; color:var(--text-secondary);">개선율: </span>
+      <strong id="improvement" style="font-size:1.3rem; color:var(--accent3);">80%</strong>
+      <span style="font-size:0.85rem; color:var(--text-secondary);"> 단축</span>
+    </div>
+  </div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s4">
+  <div class="slide-header" data-remarp-id="s4-header"><h2>AIOps 성숙도 모델</h2></div>
+  <div class="slide-body" data-remarp-id="s4-body">
+    <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:16px; margin-top:16px;">
+  <div style="background:rgba(255,92,133,0.08); border:1px solid rgba(255,92,133,0.3); border-radius:12px; padding:16px; position:relative;">
+    <div style="position:absolute; top:-10px; left:16px; background:var(--accent4); color:#fff; font-size:0.7rem; padding:2px 8px; border-radius:10px;">Level 1</div>
+    <div style="font-size:1rem; font-weight:700; color:var(--accent4); margin-top:8px; margin-bottom:8px;">Reactive</div>
+    <div style="font-size:0.75rem; line-height:1.7; color:var(--text-secondary);">
+      • 수동 모니터링<br>
+      • 정적 임계값 알림<br>
+      • 수동 장애 대응<br>
+      • MTTR: 2-4시간
+    </div>
+  </div>
+  <div style="background:rgba(251,211,50,0.08); border:1px solid rgba(251,211,50,0.3); border-radius:12px; padding:16px; position:relative;">
+    <div style="position:absolute; top:-10px; left:16px; background:var(--accent6); color:#000; font-size:0.7rem; padding:2px 8px; border-radius:10px;">Level 2</div>
+    <div style="font-size:1rem; font-weight:700; color:var(--accent6); margin-top:8px; margin-bottom:8px;">Proactive</div>
+    <div style="font-size:0.75rem; line-height:1.7; color:var(--text-secondary);">
+      • 통합 관측성<br>
+      • ML 이상 탐지<br>
+      • 반자동 복구 (승인 필요)<br>
+      • MTTR: 30-60분
+    </div>
+  </div>
+  <div style="background:rgba(65,179,255,0.08); border:1px solid rgba(65,179,255,0.3); border-radius:12px; padding:16px; position:relative;">
+    <div style="position:absolute; top:-10px; left:16px; background:var(--accent1); color:#fff; font-size:0.7rem; padding:2px 8px; border-radius:10px;">Level 3</div>
+    <div style="font-size:1rem; font-weight:700; color:var(--accent1); margin-top:8px; margin-bottom:8px;">Predictive</div>
+    <div style="font-size:0.75rem; line-height:1.7; color:var(--text-secondary);">
+      • GenAI RCA 자동화<br>
+      • 예측 기반 선제 조치<br>
+      • 자동 복구 (safety guard)<br>
+      • MTTR: 10-20분
+    </div>
+  </div>
+  <div style="background:rgba(0,229,0,0.08); border:1px solid rgba(0,229,0,0.3); border-radius:12px; padding:16px; position:relative;">
+    <div style="position:absolute; top:-10px; left:16px; background:var(--accent3); color:#000; font-size:0.7rem; padding:2px 8px; border-radius:10px;">Level 4</div>
+    <div style="font-size:1rem; font-weight:700; color:var(--accent3); margin-top:8px; margin-bottom:8px;">Self-Healing</div>
+    <div style="font-size:0.75rem; line-height:1.7; color:var(--text-secondary);">
+      • 자가 치유 시스템<br>
+      • 지속적 학습/개선<br>
+      • Chaos 자동 검증<br>
+      • MTTR: <5분
+    </div>
+  </div>
+</div>
+<div style="margin-top:16px; display:flex; align-items:center; gap:8px;">
+  <div style="flex:1; height:4px; background:linear-gradient(90deg, var(--accent4), var(--accent6), var(--accent1), var(--accent3)); border-radius:2px;"></div>
+</div>
+<div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">
+  <span>대부분의 조직</span>
+  <span>선도 조직</span>
+  <span>AWS 권장 목표</span>
+  <span>미래 비전</span>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s5">
+  <div class="slide-header" data-remarp-id="s5-header"><h2>AIOps 도입 로드맵</h2></div>
+  <div class="slide-body" data-remarp-id="s5-body">
+    <div style="display:flex; flex-direction:column; gap:16px; margin-top:16px;">
+  <div style="display:grid; grid-template-columns:100px 1fr; gap:16px; align-items:start;">
+    <div style="background:rgba(65,179,255,0.15); padding:8px; border-radius:8px; text-align:center;">
+      <div style="font-size:0.8rem; font-weight:600; color:var(--accent1);">Month 1-2</div>
+      <div style="font-size:0.7rem; color:var(--text-secondary);">기반 구축</div>
+    </div>
+    <div style="font-size:0.85rem; line-height:1.8; color:var(--text-secondary);">
+      ✅ ADOT DaemonSet 배포 + OTel 자동 계측 적용<br>
+      ✅ CloudWatch Logs 비용 최적화 (DEBUG 필터 + 샘플링)<br>
+      ✅ AMG L1 Overview 대시보드 구축
+    </div>
+  </div>
+  <div style="display:grid; grid-template-columns:100px 1fr; gap:16px; align-items:start;">
+    <div style="background:rgba(173,92,255,0.15); padding:8px; border-radius:8px; text-align:center;">
+      <div style="font-size:0.8rem; font-weight:600; color:var(--accent2);">Month 3-4</div>
+      <div style="font-size:0.7rem; color:var(--text-secondary);">AI 탐지</div>
+    </div>
+    <div style="font-size:0.85rem; line-height:1.8; color:var(--text-secondary);">
+      ✅ CloudWatch Anomaly Detection 핵심 메트릭 10개 적용<br>
+      ✅ DevOps Guru 활성화 (CloudFormation Stack 단위)<br>
+      ✅ 알림 채널 통합 (Slack + PagerDuty)
+    </div>
+  </div>
+  <div style="display:grid; grid-template-columns:100px 1fr; gap:16px; align-items:start;">
+    <div style="background:rgba(0,229,0,0.15); padding:8px; border-radius:8px; text-align:center;">
+      <div style="font-size:0.8rem; font-weight:600; color:var(--accent3);">Month 5-6</div>
+      <div style="font-size:0.7rem; color:var(--text-secondary);">자동화</div>
+    </div>
+    <div style="font-size:0.85rem; line-height:1.8; color:var(--text-secondary);">
+      ✅ GenAI RCA 파이프라인 구축 (EventBridge → Lambda → Bedrock)<br>
+      ✅ SSM Automation Runbook 작성 (ECS 스케일링, RDS 확장)<br>
+      ✅ FIS Chaos 실험으로 복구 파이프라인 검증
+    </div>
+  </div>
+  <div style="display:grid; grid-template-columns:100px 1fr; gap:16px; align-items:start;">
+    <div style="background:rgba(251,211,50,0.15); padding:8px; border-radius:8px; text-align:center;">
+      <div style="font-size:0.8rem; font-weight:600; color:var(--accent6);">Month 7+</div>
+      <div style="font-size:0.7rem; color:var(--text-secondary);">고도화</div>
+    </div>
+    <div style="font-size:0.85rem; line-height:1.8; color:var(--text-secondary);">
+      ✅ RAG 인시던트 DB 구축 → RCA 정확도 향상<br>
+      ✅ 자동 복구 범위 확대 + Safety Guard 고도화<br>
+      ✅ 정기 Chaos Day 운영 → 복원력 지속 검증
+    </div>
+  </div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s6">
+  <div class="slide-header" data-remarp-id="s6-header"><h2>전체 세션 정리</h2></div>
+  <div class="slide-body" data-remarp-id="s6-body">
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:16px;">
+  <div style="background:rgba(65,179,255,0.08); border:1px solid rgba(65,179,255,0.2); border-radius:12px; padding:20px;">
+    <div style="font-size:1rem; font-weight:700; color:var(--accent1); margin-bottom:12px;">Block 1: 관측성</div>
+    <div style="font-size:0.8rem; line-height:1.9; color:var(--text-secondary);">
+      • 모니터링 → 관측성 전환<br>
+      • Metrics + Logs + Traces 통합<br>
+      • ADOT 기반 수집 파이프라인<br>
+      • 비용 최적화 40-60% 절감<br>
+      • AMG 4단계 대시보드
+    </div>
+  </div>
+  <div style="background:rgba(173,92,255,0.08); border:1px solid rgba(173,92,255,0.2); border-radius:12px; padding:20px;">
+    <div style="font-size:1rem; font-weight:700; color:var(--accent2); margin-bottom:12px;">Block 2: AI 탐지 + RCA</div>
+    <div style="font-size:0.8rem; line-height:1.9; color:var(--text-secondary);">
+      • ML 기반 동적 이상 탐지<br>
+      • DevOps Guru 자동 상관분석<br>
+      • GenAI RCA 30초 분석<br>
+      • EventBridge 자동화 파이프라인<br>
+      • RAG 기반 정확도 향상
+    </div>
+  </div>
+  <div style="background:rgba(0,229,0,0.08); border:1px solid rgba(0,229,0,0.2); border-radius:12px; padding:20px;">
+    <div style="font-size:1rem; font-weight:700; color:var(--accent3); margin-bottom:12px;">Block 3: 자동 복구</div>
+    <div style="font-size:0.8rem; line-height:1.9; color:var(--text-secondary);">
+      • SSM Automation Runbook<br>
+      • Safety Guard 안전장치<br>
+      • FIS Chaos 검증<br>
+      • MTTR 80% 단축<br>
+      • 6개월 도입 로드맵
+    </div>
+  </div>
+</div>
+<div style="margin-top:20px; padding:16px; background:rgba(255,255,255,0.03); border-radius:8px; text-align:center; font-size:1rem;">
+  <span style="color:var(--accent1);">관측성</span> → <span style="color:var(--accent2);">AI 탐지</span> → <span style="color:var(--accent3);">자동 복구</span> = <strong style="color:#fff;">AIOps 완성</strong>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s7">
+  <div class="center-content" style="height:100%; gap:1.5rem;">
+    <h1 style="font-size:3rem; background:linear-gradient(135deg, var(--accent-light), var(--cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">Thank You</h1>
+    <p style="color:var(--text-secondary); font-size:1.1rem;">Junseok Oh | Sr. Solutions Architect, AWS</p>
+    <p style="color:var(--text-muted); font-size:1rem; margin-top:0.5rem;">수고하셨습니다!</p>
+    <div style="display:flex; gap:1rem; margin-top:1.5rem;">
+            <a href="index.html" class="btn btn-primary btn-sm" style="text-decoration:none;">← 목차로 돌아가기</a>
+    </div>
+  </div>
+</div>
+</div>
+<script src="./common/animation-utils.js"></script>
+<script src="./common/slide-framework.js"></script>
+<script src="./common/quiz-component.js"></script>
+<script src="./common/presenter-view.js"></script>
+<script>
+(function(){
+(function() {
+  var el = document.querySelector('.slide-deck #mttr-canvas');
+  if (!el) return;
+  var slide = el.closest('.slide');
+  if (!slide) return;
+  var ids = ['detect','rca','fix','verify'];
+  var colors = ['#FF5C85','#AD5CFF','#FF693C','#FBD332'];
+  var colorsAfter = ['#00E500','#41B3FF','#00E500','#41B3FF'];
+  var canvas = slide.querySelector('#mttr-canvas');
+  var ctx = canvas.getContext('2d');
+  function calc() {
+    var before = 0, after = 0;
+    ids.forEach(function(id, i) {
+      var bv = +slide.querySelector('#' + id + '-before').value;
+      var av = +slide.querySelector('#' + id + '-after').value;
+      before += bv; after += av;
+      slide.querySelector('#' + id + '-val').textContent = bv + '분 → ' + av + '분';
+    });
+    slide.querySelector('#mttr-before').textContent = before + '분';
+    slide.querySelector('#mttr-after').textContent = after + '분';
+    var bh = Math.floor(before / 60), bm = before % 60;
+    var ah = Math.floor(after / 60), am = after % 60;
+    slide.querySelector('#mttr-before-hr').textContent = bh > 0 ? bh + '시간 ' + bm + '분' : bm + '분';
+    slide.querySelector('#mttr-after-hr').textContent = ah > 0 ? ah + '시간 ' + am + '분' : am + '분';
+    var pct = before > 0 ? ((before - after) / before * 100) : 0;
+    slide.querySelector('#improvement').textContent = pct.toFixed(0) + '%';
+    ctx.clearRect(0, 0, 380, 160);
+    var barH = 28, gap = 8, startY = 15;
+    var maxVal = before || 1;
+    var cumBefore = 0, cumAfter = 0;
+    ctx.font = '11px system-ui';
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fillText('Before', 5, startY - 2);
+    ctx.fillText('After', 5, startY + barH + gap + barH + gap + 8);
+    ids.forEach(function(id, i) {
+      var bv = +slide.querySelector('#' + id + '-before').value;
+      var av = +slide.querySelector('#' + id + '-after').value;
+      var bw = bv / maxVal * 340;
+      var aw = av / maxVal * 340;
+      ctx.fillStyle = colors[i];
+      ctx.fillRect(30 + cumBefore, startY, Math.max(bw, 2), barH);
+      ctx.fillStyle = colorsAfter[i];
+      ctx.fillRect(30 + cumAfter, startY + barH + gap, Math.max(aw, 2), barH);
+      cumBefore += bw; cumAfter += aw;
+    });
+    ctx.font = '10px system-ui';
+    var legendY = startY + barH * 2 + gap * 2 + 20;
+    ids.forEach(function(id, i) {
+      var labels = ['탐지','분석','복구','검증'];
+      var lx = i * 90 + 30;
+      ctx.fillStyle = colors[i];
+      ctx.fillRect(lx, legendY, 10, 10);
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fillText(labels[i], lx + 14, legendY + 9);
+    });
+  }
+  ids.forEach(function(id) {
+    slide.querySelector('#' + id + '-before').addEventListener('input', calc);
+    slide.querySelector('#' + id + '-after').addEventListener('input', calc);
+  });
+  calc();
+})();
+})();
+</script>
+<script>
+  
+  const presenterNotes = {
+    1: "[1min] 마지막 블록입니다. 이번에는 분석 결과를 기반으로 자동 복구하는 방법과, AIOps 성숙도 로드맵을 다룹니다.\n수동 복구에서 자동 복구로, 그리고 궁극적으로 자가 치유 시스템까지 — 어떻게 진화할 수 있는지 살펴보겠습니다.\n 먼저 SSM Automation 기반 자동 복구부터 시작합니다.",
+    2: "⏸️ [4min] 자동 복구의 핵심 아키텍처입니다. CloudWatch Alarm → EventBridge → SSM Automation Runbook → 검증 + 알림.\nSSM Automation Runbook은 AWS API 호출을 단계별로 실행하는 워크플로우입니다. ECS Runbook 예시를 보시면 — 현재 상태 확인 → 스케일 업 → 안정화 대기 → 메트릭 검증 4단계입니다.\n 자동 복구에서 가장 중요한 건 안전장치입니다. Safety Guard 패턴을 보시면 3가지 체크를 합니다.\n첫째, blast radius — 영향 범위가 설정 한도를 넘으면 실행하지 않습니다.\n둘째, 동시 실행 제한 — 복구 중에 또 다른 복구가 트리거되면 충돌할 수 있으므로 막습니다.\n셋째, 승인 게이트 — 위험도가 높은 작업은 사람 승인을 기다립니다.\n그리고 롤백 조건을 사전 정의해서, 복구 후 메트릭이 오히려 나빠지면 자동으로 원복합니다.\n 이런 자동 복구가 프로덕션에서 안전하게 동작하는지 어떻게 검증할까요? Chaos Engineering입니다.",
+    3: "❓ ⏸️ [3min] 자동 복구 파이프라인을 프로덕션에 배포하기 전에, Chaos Engineering으로 검증해야 합니다.\nAWS FIS — Fault Injection Service는 관리형 카오스 엔지니어링 서비스입니다. 특정 AZ나 리소스를 타겟팅해서 장애를 주입하고, Stop Condition을 설정해서 영향이 커지면 자동으로 중단합니다.\n 검증해야 할 4가지 시나리오를 보시면요.\n첫째, Pod 50%를 Kill하고 Auto-scaling이 복구하는지 확인합니다.\n둘째, 단일 AZ를 차단해서 Multi-AZ 페일오버가 동작하는지 확인합니다.\n셋째, 100ms 네트워크 지연을 주입해서 Circuit Breaker가 정상 동작하는지 확인합니다.\n넷째, CPU 스트레스를 주입해서 Anomaly Detection이 감지하고 Auto-scale이 트리거되는지 — 이건 Block 2에서 만든 탐지 파이프라인과 Block 3의 복구 파이프라인을 end-to-end로 검증하는 겁니다.\n 카오스 엔지니어링을 프로덕션에서 해야 하나요? 네, 스테이징에서는 프로덕션과 다른 문제를 발견합니다. 단, 반드시 Stop Condition을 설정하세요.\n 자동 복구가 MTTR을 얼마나 줄이는지, 직접 계산해 보겠습니다.",
+    4: "❓ ⏸️ [4min] AIOps 도입 전후의 MTTR을 직접 비교해 보겠습니다.\n왼쪽에서 각 단계별 시간을 조절할 수 있습니다. Before는 현재 수동 운영, After는 AIOps 도입 후입니다.\n 현재 상태를 보면 — 탐지 15분, 분석 30분, 복구 45분, 검증 15분으로 총 MTTR 105분, 약 1시간 45분입니다.\nAIOps 도입 후에는 — Anomaly Detection이 3분 내 탐지, GenAI RCA가 5분 내 분석, SSM Automation이 8분 내 자동 복구, 자동 검증 5분. 총 21분으로 80% 단축입니다.\n 현재 팀의 MTTR이 어느 정도인지 아시나요? 슬라이더로 직접 입력해 보시면 AIOps 도입 효과를 바로 계산할 수 있습니다.\n오른쪽 차트에서 Before/After 바가 시각적으로 비교됩니다. 각 단계별 색상으로 어디서 가장 큰 개선이 일어나는지 한눈에 볼 수 있습니다.\n 이제 전체적인 AIOps 도입 로드맵을 보겠습니다.",
+    5: "❓ ⏸️ [3min] AIOps 성숙도를 4단계로 정리했습니다.\nLevel 1 Reactive — 대부분의 조직이 여기 있습니다. 수동 모니터링, 정적 임계값, 수동 대응. MTTR 2-4시간.\nLevel 2 Proactive — 오늘 Block 1에서 다룬 내용입니다. 통합 관측성 구축, ML 이상 탐지 적용. 복구는 사람 승인이 필요하지만 자동화된 Runbook을 사용합니다. MTTR 30-60분.\n Level 3 Predictive — 오늘 Block 2와 3에서 다룬 내용입니다. GenAI RCA, 예측 기반 선제 조치, Safety Guard가 있는 자동 복구. MTTR 10-20분. AWS가 권장하는 목표 수준입니다.\nLevel 4 Self-Healing — 미래 비전입니다. 시스템이 스스로 문제를 감지하고, 분석하고, 복구하고, 학습까지 합니다. Chaos Engineering이 자동으로 돌면서 복원력을 지속 검증합니다. MTTR 5분 미만.\n 현재 조직이 어느 레벨에 있다고 생각하시나요? 대부분 Level 1-2 사이일 텐데, 오늘 세션 내용을 적용하시면 Level 2-3으로 올라갈 수 있습니다.\n 구체적인 도입 로드맵을 보겠습니다.",
+    6: "❓ ⏸️ [3min] 6개월 로드맵을 제안드립니다.\nMonth 1-2는 기반 구축입니다. ADOT 배포하고, 로그 비용 최적화하고, L1 대시보드를 만듭니다. 가장 빠르게 ROI가 나오는 구간입니다 — 비용 절감이 즉시 체감되거든요.\nMonth 3-4는 AI 탐지 적용입니다. CloudWatch Anomaly Detection을 핵심 메트릭에 적용하고, DevOps Guru를 활성화합니다. 이 시점부터 알림 품질이 크게 올라갑니다.\n Month 5-6이 핵심인데 — GenAI RCA 파이프라인을 구축하고, SSM Automation Runbook을 작성합니다. FIS로 검증까지 마치면 Level 3에 도달합니다.\nMonth 7 이후는 지속적 고도화입니다. RAG 인시던트 DB를 쌓아서 RCA 정확도를 높이고, 자동 복구 범위를 넓히고, 정기 Chaos Day로 복원력을 검증합니다.\n 이 중에서 가장 먼저 시작하고 싶은 단계는 어디인가요?\n 마지막으로 전체 세션을 정리하겠습니다.",
+    7: "⏸️ [2min] 전체 세션을 한 장으로 정리하겠습니다.\nBlock 1에서 관측성 파이프라인을 구축했습니다 — OTel 기반 데이터 수집, 비용 최적화, 통합 대시보드.\nBlock 2에서 AI로 분석했습니다 — ML 이상 탐지, DevOps Guru 상관분석, GenAI RCA.\nBlock 3에서 자동으로 복구했습니다 — SSM Automation, Safety Guard, Chaos 검증.\n이 3개를 합치면 AIOps가 완성됩니다. 관측성 → AI 탐지 → 자동 복구.\n 핵심 메시지는 — 한 번에 다 하려고 하지 마시고, 6개월 로드맵처럼 단계적으로 접근하세요. 관측성 기반부터 탄탄히 쌓고, AI 탐지를 붙이고, 마지막에 자동 복구를 올리는 순서입니다.\n오늘 세션이 도움이 되셨길 바랍니다. 감사합니다.",
+    8: "[1min] 감사합니다. 질문 있으시면 편하게 말씀해 주세요.\n세션 자료는 공유 링크를 통해 확인하실 수 있습니다."
+  };
+  const deck = new SlideFramework({
+    logoSrc: './common/pptx-theme/images/logo_1.png',
+    footer: '© 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.',
+    
+    pagination: true,
+    sidebar: true,
+    presenterNotes: presenterNotes,
+    onSlideChange: (index, slide) => {}
+  });
+</script>
+</body>
+</html>

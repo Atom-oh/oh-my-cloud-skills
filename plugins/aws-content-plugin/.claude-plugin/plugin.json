@@ -20,7 +20,8 @@
     "./skills/architecture-diagram",
     "./skills/animated-diagram",
     "./skills/gitbook",
-    "./skills/workshop-creator"
+    "./skills/workshop-creator",
+    "./skills/slide-fix"
   ],
   "hooks": {
     "PostToolUse": [

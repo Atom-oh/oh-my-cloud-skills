@@ -493,7 +493,7 @@ class ThemeExtractor:
         """Extract slide dimensions and compute aspect ratio.
 
         Returns e.g. ``{"width_emu": 12192000, "height_emu": 6858000,
-        "width_px": 1280, "height_px": 720, "aspect_ratio": "16:9"}``.
+        "width_px": 960, "height_px": 540, "aspect_ratio": "16:9"}``.
         """
         w = self.prs.slide_width or SLIDE_WIDTH_EMU
         h = self.prs.slide_height or SLIDE_HEIGHT_EMU
@@ -1535,8 +1535,8 @@ class DesignGuideGenerator:
         ss = self.slide_size
         if not ss:
             return ''
-        w = ss.get('width_px', 1280)
-        h = ss.get('height_px', 720)
+        w = ss.get('width_px', 960)
+        h = ss.get('height_px', 540)
         return f"""## 1. Slide Canvas
 
 | Property | Value |

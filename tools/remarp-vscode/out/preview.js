@@ -36,8 +36,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RemarpPreviewPanel = void 0;
 const vscode = __importStar(require("vscode"));
 const path = __importStar(require("path"));
-const extension_1 = require("./extension");
-const htmlPreview_1 = require("./htmlPreview");
 class RemarpPreviewPanel {
     get document() { return this._document; }
     static createOrShow(extensionUri, document) {
@@ -46,7 +44,6 @@ class RemarpPreviewPanel {
             RemarpPreviewPanel.currentPanel._panel.reveal(column);
             RemarpPreviewPanel.currentPanel._document = document;
             RemarpPreviewPanel.currentPanel._panel.title = `Remarp Preview - ${path.basename(document.uri.fsPath)}`;
-            RemarpPreviewPanel.currentPanel._isHtmlMode = (0, extension_1.isRemarpHtml)(document);
             RemarpPreviewPanel.currentPanel._updateContent();
             return;
         }
@@ -71,7 +68,6 @@ class RemarpPreviewPanel {
             retainContextWhenHidden: true
         });
         RemarpPreviewPanel.currentPanel = new RemarpPreviewPanel(panel, extensionUri, document);
-        RemarpPreviewPanel.currentPanel._isHtmlMode = (0, extension_1.isRemarpHtml)(document);
     }
     static update(document) {
         if (RemarpPreviewPanel.currentPanel && RemarpPreviewPanel.currentPanel._document.uri.toString() === document.uri.toString()) {
@@ -100,7 +96,6 @@ class RemarpPreviewPanel {
     constructor(panel, extensionUri, document) {
         this._currentSlideIndex = 0;
         this._disposables = [];
-        this._isHtmlMode = false;
         this._suppressSync = false;
         this._panel = panel;
         this._extensionUri = extensionUri;
@@ -117,16 +112,6 @@ class RemarpPreviewPanel {
                     break;
                 case 'prevSlide':
                     this._prevSlide();
-                    break;
-                // HTML preview slide navigation messages
-                case 'htmlSlideChanged':
-                    this._currentSlideIndex = message.index;
-                    break;
-                case 'htmlSlideCount':
-                    // Slide framework loaded successfully
-                    break;
-                case 'htmlSlideCountError':
-                    vscode.window.showWarningMessage('Remarp HTML preview: No slides detected. Check if slide-framework.js loaded correctly.');
                     break;
                 // Issue annotation messages
                 case 'addIssue':
@@ -239,11 +224,6 @@ class RemarpPreviewPanel {
         return typeMatch ? typeMatch[1] : 'content';
     }
     _updateContent() {
-        if (this._isHtmlMode) {
-            const renderer = new htmlPreview_1.HtmlPreviewRenderer(this._panel, this._extensionUri);
-            this._panel.webview.html = renderer.render(this._document);
-            return;
-        }
         const slides = this._parseSlides();
         if (slides.length === 0) {
             this._panel.webview.html = this._getEmptyHtml();
@@ -317,7 +297,7 @@ class RemarpPreviewPanel {
             }
             const edit = new vscode.WorkspaceEdit();
             const pos = new vscode.Position(insertLine, 0);
-            edit.insert(this._document.uri, pos, `<!-- !issue: ${text} -->\n`);
+            edit.insert(this._document.uri, pos, `<!-- issue: ${text} -->\n`);
             await vscode.workspace.applyEdit(edit);
         }
         finally {
@@ -336,7 +316,7 @@ class RemarpPreviewPanel {
         const edit = new vscode.WorkspaceEdit();
         for (let i = slide.startLine; i <= slide.endLine; i++) {
             const line = lines[i];
-            const issueMatch = line.match(/<!--\s*!issue:\s*(.+?)\s*-->/);
+            const issueMatch = line.match(/<!--\s*issue:\s*(.+?)\s*-->/);
             if (issueMatch && issueMatch[1].trim() === issueText.trim()) {
                 const range = new vscode.Range(new vscode.Position(i, 0), new vscode.Position(i + 1, 0));
                 edit.delete(this._document.uri, range);
@@ -348,7 +328,7 @@ class RemarpPreviewPanel {
     }
     _countAllIssues() {
         const text = this._document.getText();
-        const matches = text.match(/<!--\s*!issue:\s*.+?\s*-->/g);
+        const matches = text.match(/<!--\s*issue:\s*.+?\s*-->/g);
         return matches ? matches.length : 0;
     }
     _getEmptyHtml() {
@@ -384,15 +364,15 @@ class RemarpPreviewPanel {
 </html>`;
     }
     _getHtmlForSlide(slide, totalSlides) {
-        // Extract <!-- !issue: ... --> annotations before rendering
-        const issueRegex = /<!--\s*!issue:\s*(.+?)\s*-->/g;
+        // Extract <!-- issue: ... --> annotations before rendering
+        const issueRegex = /<!--\s*issue:\s*(.+?)\s*-->/g;
         const issues = [];
         let issueMatch;
         while ((issueMatch = issueRegex.exec(slide.content)) !== null) {
             issues.push(issueMatch[1]);
         }
         // Strip issues from content before rendering
-        const cleanContent = slide.content.replace(/<!--\s*!issue:\s*.+?\s*-->\n?/g, '');
+        const cleanContent = slide.content.replace(/<!--\s*issue:\s*.+?\s*-->\n?/g, '');
         const { html: rawRenderedHtml, notes: rawNotes, notesArg } = this._renderMarkdown(cleanContent, slide.index);
         // Convert relative image paths to webview URIs (mirrors htmlPreview.ts behavior)
         const docDir = path.dirname(this._document.uri.fsPath);
@@ -942,7 +922,7 @@ class RemarpPreviewPanel {
             </div>
             <div class="submit-bar">
                 <button id="submitAllBtn" class="submit-all-btn" ${totalIssueCount === 0 ? 'disabled' : ''}>
-                    \ud83d\ude80 이슈 제출 (${totalIssueCount})
+                    \ud83d\udccb /slide-fix (${totalIssueCount})
                 </button>
             </div>
         </div>

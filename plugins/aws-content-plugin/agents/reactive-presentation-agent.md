@@ -230,21 +230,14 @@ HTML 빌드 후 Remarp 파일이 수정될 때마다 사용자가 수동으로 H
 
 ### Phase 7: Issue-Driven Improvement (선택적)
 
-슬라이드에 `<!-- !issue: ... -->` 어노테이션이 있으면 이를 읽고 개선합니다.
+슬라이드에 `<!-- issue: ... -->` 어노테이션이 있으면 `/slide-fix` 스킬로 처리합니다.
 
-```bash
-# 전체 이슈 목록 확인
-python3 {plugin-dir}/skills/reactive-presentation/scripts/remarp_to_slides.py issues {repo}/{slug}/
-
-# JSON 형식으로 추출
-python3 {plugin-dir}/skills/reactive-presentation/scripts/remarp_to_slides.py issues {repo}/{slug}/ --json
-```
+> **참고**: 이슈 수정은 `/slide-fix` 스킬을 사용하세요. 이 에이전트가 직접 이슈를 처리하지 않고 스킬에 위임합니다.
 
 **워크플로우**:
-1. `issues` 명령으로 프로젝트 내 모든 이슈 확인
-2. 각 이슈를 개선 프롬프트로 읽고 해당 슬라이드 수정
-3. 수정 완료 후 해당 `<!-- !issue: ... -->` 주석 제거
-4. `sync`로 변경된 블록만 증분 빌드
+1. VSCode 프리뷰에서 이슈 어노테이션 작성
+2. Claude Code에서 `/slide-fix` 실행
+3. 스킬이 `remarp_to_slides.py issues --json`으로 이슈 수집 → 수정 → 어노테이션 제거 → 리빌드
 
 이슈는 빌드 시 자동 제거되므로 프로덕션 HTML에는 포함되지 않습니다. Preview에서는 노란색 badge로 표시됩니다.
 
