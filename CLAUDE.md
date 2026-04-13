@@ -226,6 +226,24 @@ Ops skills: `ops-troubleshoot`, `ops-health-check`, `ops-network-diagnosis`, `op
 
 Skill: `kiro-convert` — interactive workflow for plugin-to-power conversion with `references/` subdirectory containing format specs and conversion rules.
 
+### kiro-review (1 agent, 1 skill)
+
+| Agent | Purpose |
+|-------|---------|
+| `kiro-review-agent` | Comprehensive architecture deep review via Kiro CLI |
+
+Skill: `kiro-review` — 5-Phase deep review (code review, adversarial security, Well-Architected, spec-driven validation) + Stop Review Gate. Requires `kiro-cli-plugin`.
+
+### project-init (1 agent, 1 skill, 8 commands)
+
+| Agent | Purpose |
+|-------|---------|
+| `doc-sync-checker` | Documentation sync analysis, quality scoring, missing doc detection |
+
+Skill: `project-scaffolder` — Claude Code project structure patterns and conventions.
+
+Commands: `/init-project`, `/sync-docs`, `/add-adr`, `/add-module`, `/add-runbook`, `/generate-readme`, `/generate-changelog`, `/health-check`
+
 ## Workflows
 
 ```
@@ -241,4 +259,6 @@ Content:   presentation-agent (dispatcher) → reactive-presentation-agent → c
 
 Ops:       User issue → auto-routed agent → Diagnose → Resolve → Verify
            Incident → ops-coordinator → specialist agents (7) → aggregate → root cause → fix
+
+Review:    /kiro-review → kiro-review-agent → Kiro CLI delegation → Well-Architected → Report
 ```
