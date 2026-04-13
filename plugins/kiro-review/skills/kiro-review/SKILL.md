@@ -302,23 +302,6 @@ git diff main...HEAD 2>/dev/null | grep -n "^\+" | grep -iE \
 
 ---
 
-## Stop Review Gate
-
-이 스킬은 `Stop` 훅과 연동하여 Claude 응답 완료 시 자동 리뷰를 수행할 수 있습니다.
-
-자동 리뷰 게이트 활성화 시:
-1. Claude 응답 완료 -> `Stop` 훅 발화
-2. `git diff --stat` 으로 변경사항 존재 확인
-3. 변경이 있으면 CRITICAL 패턴 자동 스캔
-4. CRITICAL 발견 시 `decision: "block"` -> Claude가 수정 후 계속
-
-수동 실행:
-```
-/kiro-review
-```
-
----
-
 ## Spec-Driven Development Integration
 
 Kiro의 Spec-driven 개발 기능과 연계하여 요구사항부터 검증합니다.

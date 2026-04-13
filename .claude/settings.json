@@ -53,14 +53,14 @@
   },
   "permissions": {
     "deny": [
-      "rm -rf /",
-      "rm -rf ~",
-      "rm -rf .",
-      "git push --force",
-      "git push -f",
-      "git reset --hard",
-      "eval",
-      "> /dev/sda"
+      "Bash(rm -rf /)",
+      "Bash(rm -rf ~)",
+      "Bash(rm -rf .)",
+      "Bash(git push --force)",
+      "Bash(git push -f)",
+      "Bash(git reset --hard)",
+      "Bash(eval)",
+      "Bash(> /dev/sda)"
     ]
   }
 }
