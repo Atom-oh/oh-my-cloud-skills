@@ -245,6 +245,8 @@ SessionStart hooks with `type: prompt` become part of POWER.md onboarding sectio
 | `PreToolUse` | `preToolUse` | `matcher` → `toolName` field |
 | `PostToolUse` | `postToolUse` | `matcher` → `toolName` field |
 | `SessionStart` | — | No direct equivalent; content goes into POWER.md onboarding |
+| `Stop` | — | No Kiro equivalent; hook is dropped during conversion (warning logged) |
+| `Notification` | — | No Kiro equivalent; hook is dropped during conversion (warning logged) |
 
 ### Hook Matcher Conversion
 

@@ -437,6 +437,7 @@ def convert_hooks(hooks_config: dict, out_dir: str,
                 elif event_name == 'PostToolUse':
                     kiro_trigger = 'postToolUse'
                 else:
+                    print(f'  [WARN] Skipping unsupported hook event: {event_name} (no Kiro equivalent)')
                     continue
 
                 # Map tool matcher
