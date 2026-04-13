@@ -14,14 +14,16 @@
     "./agents/database-agent.md",
     "./agents/cost-agent.md",
     "./agents/analytics-agent.md",
-    "./agents/ops-coordinator-agent.md"
+    "./agents/ops-coordinator-agent.md",
+    "./agents/wellarchitected-agent.md"
   ],
   "skills": [
     "./skills/ops-troubleshoot",
     "./skills/ops-health-check",
     "./skills/ops-network-diagnosis",
     "./skills/ops-observability",
-    "./skills/ops-security-audit"
+    "./skills/ops-security-audit",
+    "./skills/ops-wellarchitected-review"
   ],
   "mcpServers": {
     "awsdocs": {
@@ -64,8 +66,8 @@
         "matcher": "",
         "hooks": [
           {
-            "type": "prompt",
-            "prompt": "AWS Ops Plugin loaded. Domains: EKS, Network, IAM, Observability, Storage, Database, Analytics, Cost."
+            "type": "command",
+            "command": "echo 'AWS Ops Plugin loaded. Domains: EKS, Network, IAM, Observability, Storage, Database, Analytics, Cost, Well-Architected.'"
           }
         ]
       }

@@ -202,7 +202,7 @@ Source: `tools/remarp-vscode/` | Entry: `src/extension.ts` | Preview: `src/previ
 | `workshop-agent` | AWS Workshop Studio content |
 | `content-review-agent` | Quality gate for all content types |
 
-### aws-ops-plugin (9 agents, 5 skills)
+### aws-ops-plugin (10 agents, 6 skills)
 
 | Agent | Domain |
 |-------|--------|
@@ -215,8 +215,9 @@ Source: `tools/remarp-vscode/` | Entry: `src/extension.ts` | Preview: `src/previ
 | `cost-agent` | Cost analysis via awspricing MCP |
 | `analytics-agent` | OpenSearch, ClickHouse, Athena, QuickSight, Kinesis |
 | `ops-coordinator-agent` | Multi-domain incident coordination |
+| `wellarchitected-agent` | AWS Well-Architected 6-pillar review, 100-point scoring |
 
-Ops skills: `ops-troubleshoot`, `ops-health-check`, `ops-network-diagnosis`, `ops-observability`, `ops-security-audit` — each with `references/` subdirectory containing distilled runbooks.
+Ops skills: `ops-troubleshoot`, `ops-health-check`, `ops-network-diagnosis`, `ops-observability`, `ops-security-audit`, `ops-wellarchitected-review` — each with `references/` subdirectory containing distilled runbooks.
 
 ### kiro-power-converter (1 agent, 1 skill)
 
