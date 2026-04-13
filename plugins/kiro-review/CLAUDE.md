@@ -16,7 +16,7 @@ Kiro CLI를 활용한 종합 아키텍처 심층 리뷰 플러그인. 코드 리
 
 | Skill | Trigger | Purpose |
 |-------|---------|---------|
-| `kiro-review` | "architecture review", "아키텍처 리뷰", "심층 리뷰", "deep review", "코드 리뷰", "적대적 리뷰", "보안 리뷰", "well-architected" | Kiro CLI 기반 5-Phase 종합 리뷰 + Stop Review Gate |
+| `kiro-review` | "architecture review", "아키텍처 리뷰", "심층 리뷰", "deep review", "코드 리뷰", "적대적 리뷰", "보안 리뷰", "well-architected" | Kiro CLI 기반 5-Phase 종합 리뷰 |
 
 ## Workflow
 
@@ -28,15 +28,6 @@ Kiro CLI를 활용한 종합 아키텍처 심층 리뷰 플러그인. 코드 리
   ├── Phase 4: /kiro-cli:review --adversarial 적대적 보안 리뷰
   └── Phase 5: 종합 보고서 (PASS / REVIEW / FAIL 판정)
 ```
-
-## Stop Review Gate
-
-이 플러그인은 `Stop` 훅을 통해 Claude 응답 완료 시 자동으로 CRITICAL 보안 패턴을 스캔합니다:
-- AWS 액세스 키 (AKIA...)
-- 하드코딩된 비밀번호
-- Private Key 노출
-
-CRITICAL 발견 시 Claude 응답을 차단하고 수정을 지시합니다.
 
 ## Auto-Invocation Keywords
 

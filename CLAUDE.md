@@ -233,7 +233,7 @@ Skill: `kiro-convert` — interactive workflow for plugin-to-power conversion wi
 |-------|---------|
 | `kiro-review-agent` | Comprehensive architecture deep review via Kiro CLI |
 
-Skill: `kiro-review` — 5-Phase deep review (code review, adversarial security, Well-Architected, spec-driven validation) + Stop Review Gate. Requires `kiro-cli-plugin`.
+Skill: `kiro-review` — 5-Phase deep review (code review, adversarial security, Well-Architected, spec-driven validation). Requires `kiro-cli-plugin`.
 
 ### project-init (1 agent, 1 skill, 8 commands)
 

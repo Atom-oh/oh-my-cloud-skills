@@ -117,10 +117,3 @@ def verdict(findings):
 4. `/kiro-cli:review --adversarial` → 적대적 보안 리뷰
 5. 결과 통합 → 종합 보고서 생성
 
-### Stop Review Gate (자동)
-
-1. Claude 응답 완료 시 `Stop` 훅 발화
-2. `git diff --name-only` → 변경 파일 존재 확인
-3. 변경 있으면 → CRITICAL 패턴 빠른 스캔
-4. CRITICAL 발견 → `decision: "block"` + 수정 지시
-5. 없으면 → 통과 (경고만 컨텍스트에 추가)

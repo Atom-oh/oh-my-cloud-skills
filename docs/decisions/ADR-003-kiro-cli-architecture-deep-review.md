@@ -17,7 +17,7 @@ Claude Code로 코딩하면서 코드 리뷰와 아키텍처 검토가 단일 �
 
 ### Option 2: Kiro CLI 플러그인으로 외부 리뷰 통합
 
-- **Pros**: 다중 관점 리뷰(일반 + 적대적 보안), EARS 요구사항 → 설계 → 구현 자동화, Stop Review Gate로 매 응답마다 자동 검증, AWS 인프라 전문 리뷰 지원, 백그라운드 태스크 위임 가능
+- **Pros**: 다중 관점 리뷰(일반 + 적대적 보안), EARS 요구사항 → 설계 → 구현 자동화, AWS 인프라 전문 리뷰 지원, 백그라운드 태스크 위임 가능
 - **Cons**: 외부 도구 의존성 추가, Kiro CLI 설치 필요, 네트워크 지연 발생 가능
 
 ### Option 3: MCP 서버로 리뷰 기능 직접 구현
@@ -36,7 +36,6 @@ Option 2 채택. kiro-cli-plugin(https://github.com/whchoi98/kiro-cli-plugin)을
 | `/kiro-cli:review` | 변경사항 코드 리뷰 위임 (보안 중심 적대적 리뷰 포함) |
 | `/kiro-cli:task` | 디버깅/구현 작업 위임 (백그라운드 실행 지원) |
 | `/kiro-cli:spec` | EARS 요구사항 + 아키텍처 설계 + 구현 태스크 자동 생성 |
-| Stop Review Gate | Claude 응답 완료 시 자동 코드 변경사항 검토 & 심각 이슈 차단 |
 
 ### AWS 인프라 지원 범위
 
@@ -58,7 +57,6 @@ Option 2 채택. kiro-cli-plugin(https://github.com/whchoi98/kiro-cli-plugin)을
 
 - 다중 관점 리뷰로 코드 품질 및 보안 수준 향상
 - Spec-driven 개발로 요구사항 → 설계 → 구현의 추적성 확보
-- Stop Review Gate가 매 턴마다 자동 검증하여 심각 이슈 조기 탐지
 - 기존 oh-my-cloud-skills의 content-review-agent Quality Gate와 상호 보완
 
 ### Negative

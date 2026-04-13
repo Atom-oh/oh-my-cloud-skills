@@ -20,7 +20,6 @@ Kiro CLI를 활용한 종합 아키텍처 심층 리뷰 에이전트. 코드 변
 3. **AWS Well-Architected Assessment** — 6개 필러(운영, 보안, 안정성, 성능, 비용, 지속가능성) 체크
 4. **Adversarial Security Review** — 공격자 관점의 적대적 보안 리뷰 (OWASP Top 10 + AWS 특화)
 5. **Spec-Driven Validation** — `/kiro-cli:spec` EARS 요구사항 기반 설계 추적성 검증
-6. **Stop Review Gate** — 자동 리뷰 게이트로 CRITICAL 이슈 조기 차단
 
 ---
 

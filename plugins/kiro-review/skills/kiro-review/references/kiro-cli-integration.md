@@ -73,37 +73,6 @@ kiro-review 시작
 
 ---
 
-## Stop Review Gate Configuration
-
-### Hook 설정 (settings.json)
-
-```json
-{
-  "Stop": [
-    {
-      "hooks": [{
-        "type": "command",
-        "command": "bash -c 'CHANGED=$(git diff --name-only HEAD 2>/dev/null | wc -l); if [ \"$CHANGED\" -gt 0 ]; then CRITICAL=$(git diff HEAD 2>/dev/null | grep -c -iE \"AKIA[0-9A-Z]{16}|password\\s*=\\s*[^$]|eval\\(|exec\\(\"); if [ \"$CRITICAL\" -gt 0 ]; then echo \"{\\\"hookSpecificOutput\\\":{\\\"decision\\\":\\\"block\\\",\\\"reason\\\":\\\"CRITICAL security pattern detected in changes\\\",\\\"additionalContext\\\":\\\"$CRITICAL critical pattern(s) found. Review and fix before proceeding.\\\"}}\"; fi; fi'"
-      }]
-    }
-  ]
-}
-```
-
-### Gate 동작 원리
-
-1. Claude 응답이 끝나면 `Stop` 이벤트 발화
-2. Hook이 `git diff --name-only HEAD`로 변경 확인
-3. 변경이 있으면 CRITICAL 패턴 grep
-4. 탐지 시 `decision: "block"` → Claude가 멈추지 않고 수정 진행
-5. 미탐지 시 → 정상 종료
-
-### Gate 비활성화
-
-자동 리뷰 게이트를 끄려면 `Stop` 훅을 제거합니다.
-
----
-
 ## Kiro Review Output Format
 
 Kiro CLI가 반환하는 리뷰 결과 형식:
