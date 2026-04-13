@@ -388,9 +388,9 @@ class RemarpParser:
         # Strip residual leading --- lines left by per-slide frontmatter blocks
         md_text = re.sub(r'^---\s*\n', '', md_text)
 
-        # Extract issues (<!-- !issue: ... -->)
-        issues: List[str] = re.findall(r'<!--\s*!issue:\s*(.+?)\s*-->', md_text)
-        md_text = re.sub(r'<!--\s*!issue:\s*.+?\s*-->\n?', '', md_text)
+        # Extract issues (<!-- issue: ... -->)
+        issues: List[str] = re.findall(r'<!--\s*issue:\s*(.+?)\s*-->', md_text)
+        md_text = re.sub(r'<!--\s*issue:\s*.+?\s*-->\n?', '', md_text)
 
         # Parse notes (new style)
         notes = self.parse_notes(md_text)
@@ -1238,7 +1238,7 @@ class RemarpParser:
 
         # Check for title slide (single h1 at start, few lines)
         lines = md.strip().split('\n')
-        non_empty_lines = [l for l in lines if l.strip() and not l.strip().startswith('<!--') and not l.strip().startswith('@')]
+        non_empty_lines = [l for l in lines if l.strip() and not (l.strip().startswith('<!--') and '__HTML_BLOCK_' not in l) and not l.strip().startswith('@')]
         if non_empty_lines and non_empty_lines[0].startswith('# '):
             h1_count = sum(1 for l in non_empty_lines if l.startswith('# '))
             if h1_count == 1 and len(non_empty_lines) <= 4:
@@ -1680,6 +1680,11 @@ class RemarpHTMLGenerator:
             # HTML block placeholders — pass through without <p> wrapping
             if re.match(r'^\s*<!-- __(?:HTML_BLOCK|COL_HTML)_\d+__ -->\s*$', line):
                 html_parts.append(line.strip())
+                idx += 1
+                continue
+
+            # Strip extracted block markers (:::script, :::css, etc.)
+            if re.match(r'^\s*<!-- __BLOCK:\w+:\d+__ -->\s*$', line):
                 idx += 1
                 continue
 
@@ -3259,18 +3264,18 @@ class RemarpHTMLGenerator:
         for line in lines:
             if line.startswith('## '):
                 heading = self._convert_markdown(line[3:].strip())
-            elif re.match(r'^\d+\.\s', line):
-                step_text = re.sub(r'^\d+\.\s+', '', line).strip()
-                # Extract duration in parentheses
-                dur_match = re.search(r'\((\d+\s*분?|[\d]+\s*min)\)', step_text)
-                duration = dur_match.group(1) if dur_match else ''
-                title = re.sub(r'\s*\((\d+\s*분?|[\d]+\s*min)\)\s*', '', step_text).strip()
-                steps.append({'title': title, 'duration': duration, 'is_break': False})
             elif re.match(r'^[-*]\s+(Break|break|휴식)', line):
                 step_text = re.sub(r'^[-*]\s+', '', line).strip()
-                dur_match = re.search(r'\((\d+\s*분?|[\d]+\s*min)\)', step_text)
+                dur_match = re.search(r'[\(\{](\d+\s*분?|[\d]+\s*min)[\)\}]', step_text)
                 duration = dur_match.group(1) if dur_match else ''
                 steps.append({'title': 'Break', 'duration': duration, 'is_break': True})
+            elif re.match(r'^(\d+\.|-|\*)\s', line):
+                step_text = re.sub(r'^(\d+\.|-|\*)\s+', '', line).strip()
+                # Extract duration in parentheses or curly braces
+                dur_match = re.search(r'[\(\{](\d+\s*분?|[\d]+\s*min)[\)\}]', step_text)
+                duration = dur_match.group(1) if dur_match else ''
+                title = re.sub(r'\s*[\(\{](\d+\s*분?|[\d]+\s*min)[\)\}]\s*', '', step_text).strip()
+                steps.append({'title': title, 'duration': duration, 'is_break': False})
             elif line.startswith('>'):
                 callout_lines.append(line.lstrip('> ').strip())
 
@@ -3528,9 +3533,15 @@ class RemarpHTMLGenerator:
     def _gen_thankyou_slide(self, slide: Slide) -> str:
         """Generate thank you slide HTML."""
         content = slide.content
-        lines = [l for l in content.split('\n') if l.strip()]
+        # Filter out headings, links (used for nav), and directives from content lines
+        lines = [l for l in content.split('\n') if l.strip()
+                 and not l.strip().startswith('#')
+                 and not l.strip().startswith('[')
+                 and not l.strip().startswith('@')]
 
-        message = slide.directives.get('message', 'Thank You')
+        # Use first content line as subtitle, or @message directive
+        default_msg = lines[0] if lines else ''
+        message = slide.directives.get('message', default_msg)
         toc_href = slide.directives.get('toc', 'index.html')
         next_href = slide.directives.get('next', '')
         next_label = slide.directives.get('next-label', '다음')
@@ -4569,7 +4580,7 @@ def main():
     migrate_parser.add_argument('-o', '--output', required=True, help='Output directory')
 
     # Issues command
-    issues_parser = subparsers.add_parser('issues', help='List all <!-- !issue: --> annotations')
+    issues_parser = subparsers.add_parser('issues', help='List all <!-- issue: --> annotations')
     issues_parser.add_argument('path', help='Input file or project directory')
     issues_parser.add_argument('--json', action='store_true', dest='json_output', help='Output as JSON')
 

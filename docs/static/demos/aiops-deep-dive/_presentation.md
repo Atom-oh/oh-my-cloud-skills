@@ -1,33 +1,26 @@
 ---
-remarp: true
-version: 1
-title: "AIOps on AWS — Intelligent Cloud Operations"
-author: "Junseok Oh"
-audience: "AnyCompany 엔지니어링 팀 (300 레벨)"
-date: 2026-03-21
-event: "AnyCompany Technical Session"
+title: "AIOps Deep Dive — 관측성에서 자동 복구까지"
+speaker:
+  name: "Junseok Oh"
+  title: "Sr. Solutions Architect"
+  company: "AWS"
+audience: "AnyCompany"
+level: 300
+duration: 90
+quiz: false
 lang: ko
-
-blocks:
-  - name: foundations
-    title: "AIOps Foundations & AWS Observability"
-    duration: 30
-  - name: ml-operations
-    title: "ML-Powered Operations & Anomaly Detection"
-    duration: 30
-  - name: implementation
-    title: "Implementation Strategies & Best Practices"
-    duration: 25
-
 theme:
-  primary: "#161D26"
-  accent: "#41B3FF"
-  font: "Pretendard, Calibri, system-ui, sans-serif"
-  codeTheme: "github-dark"
   footer: "© 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark."
-  logo: "../common/pptx-theme/images/logo_1.png"
-
-transition:
-  default: slide
-  duration: 400
+  logo: "./common/pptx-theme/images/logo_1.png"
+  override: "./common/pptx-theme/theme-override.css"
+blocks:
+  - file: 01-observability-pipeline.md
+    title: "관측성 파이프라인"
+    duration: 30
+  - file: 02-anomaly-detection-rca.md
+    title: "AI 기반 이상 탐지와 근본 원인 분석"
+    duration: 30
+  - file: 03-auto-remediation.md
+    title: "자동 복구와 AIOps 로드맵"
+    duration: 30
 ---

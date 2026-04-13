@@ -108,9 +108,13 @@ Remarp 마크다운으로 콘텐츠를 작성합니다 (기본). Remarp는 프�
 
 See [references/remarp-format-guide.md](references/remarp-format-guide.md) for full format specification.
 
-> ⚠️ 에이전트는 항상 Remarp로 진행합니다. 단, 복잡한 인터랙션이 필요한 슬라이드는
-> `:::html` + `:::script` 블록으로 자유로운 HTML/CSS/JS를 작성할 수 있습니다.
-> 일반 콘텐츠 슬라이드는 Remarp 마크다운, 인터랙티브 슬라이드는 :::html 블록을 사용하세요.
+> ⚠️ **Interactive-First 원칙**: 데이터가 많은 슬라이드일수록 `:::html` 블록으로 interactive하게 만들어야 합니다.
+> - 3+ 하위 항목 → **탭으로 분리** (자체 완결 inline onclick 패턴 사용)
+> - 4+ 나열 항목 → **grid 카드 배치** (불릿 리스트 금지)
+> - 5+ 박스 다이어그램 → **`:::html` + `:::css`** (canvas DSL 금지)
+> - 일반 1-2문장 슬라이드만 Remarp 마크다운 그대로 사용
+>
+> 구체적인 패턴과 복사-붙여넣기 템플릿: 아래 "Interactive Design 원칙" 섹션 참조.
 >
 > ⚠️ **`:::html` 블록은 반드시 reactive해야 합니다.** 3개 이상의 동위 요소가 있으면
 > `class="fragment fade-up" data-fragment-index="N"`으로 순차 등장을 적용하세요.
@@ -352,7 +356,100 @@ git push origin main
 
 Enable GitHub Pages: Settings → Pages → main branch / root.
 
-### Interactive Slide 작성 가이드
+### Interactive Design 원칙 (★ 최우선)
+
+> **핵심: 정보가 많은 슬라이드일수록 interactive하게 만들어야 한다.**
+> 불릿 리스트 10줄보다 탭 3개 × 카드 3개가 100배 효과적이다.
+> "데이터를 시각 카드로 배치 + 탭/토글로 점진적 공개"가 Remarp 프레젠테이션의 기본 패턴이다.
+
+**1) 탭 분할 기준**: 동일 주제의 3개 이상 하위 항목 → 탭으로 분리
+**2) 카드 그리드 기준**: 4개 이상 나열 항목 → CSS grid 카드로 배치 (불릿 리스트 금지)
+**3) 자체 완결 원칙**: 모든 인터랙션은 `:::html` 안에서 inline onclick으로 완결. 외부 JS에 의존하지 않음
+**4) 시각 계층**: 색상 border + rgba 배경으로 카테고리 구분. 단색 배경 금지
+
+#### 자체 완결 Tab 패턴 (복사-붙여넣기 템플릿)
+
+이 패턴은 slide-framework.js 없이도 동작합니다. 데이터가 3+ 카테고리로 나뉠 때 사용:
+
+```markdown
+:::html
+<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+  <button class="tab-btn" style="padding:8px 16px;border:none;border-radius:6px;background:#00d4ff;color:#0a0e1a;font-weight:bold;cursor:pointer;" onclick="(function(b,i){var p=b.closest('.slide-body')||b.parentNode.parentNode;p.querySelectorAll('.tc').forEach(function(c,j){c.style.display=j===i?'block':'none'});b.parentNode.querySelectorAll('.tab-btn').forEach(function(x){x.style.background='#1a2540';x.style.color='#b0b0b0'});b.style.background='#00d4ff';b.style.color='#0a0e1a'})(this,0)">Tab 1</button>
+  <button class="tab-btn" style="padding:8px 16px;border:none;border-radius:6px;background:#1a2540;color:#b0b0b0;font-weight:bold;cursor:pointer;" onclick="(function(b,i){var p=b.closest('.slide-body')||b.parentNode.parentNode;p.querySelectorAll('.tc').forEach(function(c,j){c.style.display=j===i?'block':'none'});b.parentNode.querySelectorAll('.tab-btn').forEach(function(x){x.style.background='#1a2540';x.style.color='#b0b0b0'});b.style.background='#00d4ff';b.style.color='#0a0e1a'})(this,1)">Tab 2</button>
+  <button class="tab-btn" style="padding:8px 16px;border:none;border-radius:6px;background:#1a2540;color:#b0b0b0;font-weight:bold;cursor:pointer;" onclick="(function(b,i){var p=b.closest('.slide-body')||b.parentNode.parentNode;p.querySelectorAll('.tc').forEach(function(c,j){c.style.display=j===i?'block':'none'});b.parentNode.querySelectorAll('.tab-btn').forEach(function(x){x.style.background='#1a2540';x.style.color='#b0b0b0'});b.style.background='#00d4ff';b.style.color='#0a0e1a'})(this,2)">Tab 3</button>
+</div>
+<!-- Tab 1 content -->
+<div class="tc" style="display:block;padding:12px;background:rgba(15,22,41,0.5);border-radius:8px;">
+  <div style="display:flex;align-items:center;gap:12px;justify-content:center;flex-wrap:wrap;">
+    <div style="background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);border-radius:8px;padding:12px;text-align:center;min-width:140px;">
+      <div style="color:#00d4ff;font-weight:bold;">Card Title</div>
+      <div style="color:#8b95a5;font-size:13px;">Description</div>
+    </div>
+    <div style="color:#00d4ff;font-size:20px;">→</div>
+    <div style="background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.3);border-radius:8px;padding:12px;text-align:center;min-width:140px;">
+      <div style="color:#00ff88;font-weight:bold;">Next Step</div>
+      <div style="color:#8b95a5;font-size:13px;">Description</div>
+    </div>
+  </div>
+</div>
+<!-- Tab 2 content (hidden by default) -->
+<div class="tc" style="display:none;padding:12px;background:rgba(15,22,41,0.5);border-radius:8px;">
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:13px;">
+    <div style="background:rgba(0,212,255,0.15);border-radius:6px;padding:8px;"><span style="color:#00d4ff;">item-1</span> — Description</div>
+    <div style="background:rgba(0,212,255,0.15);border-radius:6px;padding:8px;"><span style="color:#00d4ff;">item-2</span> — Description</div>
+    <div style="background:rgba(245,158,11,0.15);border-radius:6px;padding:8px;"><span style="color:#f59e0b;">item-3</span> — Description</div>
+  </div>
+</div>
+<!-- Tab 3 content (hidden by default) -->
+<div class="tc" style="display:none;padding:12px;background:rgba(15,22,41,0.5);border-radius:8px;">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+    <div style="background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.3);border-radius:8px;padding:12px;">
+      <div style="color:#00ff88;font-weight:bold;">Type A</div>
+      <div style="color:#8b95a5;font-size:13px;">Details here</div>
+    </div>
+    <div style="background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.3);border-radius:8px;padding:12px;">
+      <div style="color:#a855f7;font-weight:bold;">Type B</div>
+      <div style="color:#8b95a5;font-size:13px;">Details here</div>
+    </div>
+  </div>
+</div>
+:::
+```
+
+**색상 팔레트 (카드 border/배경용)**:
+| 색상 | border | 배경 (rgba) | 용도 |
+|------|--------|------------|------|
+| Cyan | `rgba(0,212,255,0.3)` | `rgba(0,212,255,0.1)` | 기본/입력/소스 |
+| Green | `rgba(0,255,136,0.3)` | `rgba(0,255,136,0.1)` | 성공/결과/자동화 |
+| Orange | `rgba(245,158,11,0.3)` | `rgba(245,158,11,0.1)` | 경고/처리/AI |
+| Purple | `rgba(168,85,247,0.3)` | `rgba(168,85,247,0.1)` | 고급/스트리밍/분석 |
+| Red | `rgba(239,68,68,0.3)` | `rgba(239,68,68,0.1)` | 에러/위험/알림 |
+
+#### 불릿 리스트 → 카드 변환 규칙
+
+**Before (비효과적)**:
+```markdown
+- CloudWatch Agent: 메트릭 수집
+- ADOT Collector: 분산 트레이싱  
+- VPC Flow Logs: 네트워크 로그
+- CloudTrail: API 감사 로그
+```
+
+**After (효과적)** — `:::html` grid 카드:
+```html
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+  <div style="background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);border-radius:8px;padding:12px;">
+    <div style="color:#00d4ff;font-weight:bold;">CloudWatch Agent</div>
+    <div style="color:#8b95a5;font-size:13px;">메트릭 수집</div>
+  </div>
+  <!-- ... 반복 ... -->
+</div>
+```
+
+> **⛔ STOP — 불릿 리스트 자가 점검**: 한 슬라이드에 4개 이상의 불릿 리스트를 만들려 하면 STOP.
+> grid 카드 + 색상 구분으로 변환하라. 청중은 텍스트 벽을 읽지 않는다.
+
+### Interactive Slide 작성 가이드 (고급)
 
 복잡한 인터랙션이 필요한 슬라이드는 `:::html` + `:::script` 블록을 사용합니다:
 

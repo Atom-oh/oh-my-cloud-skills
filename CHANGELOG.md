@@ -2,6 +2,26 @@
 
 All notable changes to oh-my-cloud-skills are documented in this file.
 
+## [Unreleased]
+
+### Added
+- Issue annotation system for Remarp VSCode extension: prompt bar, `<!-- issue: -->` annotations, issue badges in sidebar
+- `/slide-fix` skill: reads `<!-- issue: -->` annotations and applies fixes in Claude Code
+- "Show Slide Fix Guide" command: toast notification guiding users to run `/slide-fix` in Claude Code
+
+### Changed
+- Issue annotation syntax simplified: `<!-- !issue: -->` → `<!-- issue: -->` (removed `!` prefix)
+- Submit button replaced with `/slide-fix` guidance toast (removed `claude --print` CLI dependency)
+- Sidebar layout in preview: Speaker Notes + Issues on the right panel
+- Slide type rendering in preview: compare, tabs, agenda, timeline, quiz, checklist, cards, code, steps, title, section, thankyou
+- `@background` / `@badge` directive rendering as background image and badge overlay in preview
+- `@type: agenda` and `@type: title` slide type support in preview
+
+### Fixed
+- Blank screen when adding issue via prompt bar (var/const naming collision in prompt-bar.js)
+- `@directive` lines no longer rendered as visible text in preview (now stripped before rendering)
+- `@type: compare` rendering with `### h3` heading-based content (dual strategy: col-div + h3 splitting)
+
 ## [v1.2.3] - 2026-03-20
 
 ### Added

@@ -17,11 +17,14 @@ Comprehensive TextMate grammar for Remarp-specific syntax:
 ### Live Preview
 
 - Side-by-side preview panel showing the current slide
+- **Sidebar layout**: Speaker Notes + Issue badges on the right panel
 - Automatic updates as you type (debounced for performance)
 - Dark theme matching VSCode's appearance
 - Navigation controls (Previous/Next buttons)
 - Keyboard navigation (Arrow keys, Space, PageUp/PageDown)
-- Cursor position syncs with displayed slide
+- Cursor position syncs with displayed slide (`remarp.scrollSync` setting)
+- Slide type rendering: cover, compare, tabs, agenda, timeline, quiz, checklist, cards, code, steps, title, section, thankyou
+- `@background` / `@badge` directives rendered as background image and badge overlay
 
 ### Document Outline
 
@@ -42,6 +45,15 @@ Smart completions for:
 - **::: blocks**: All block types with snippet templates
 - **{.click} attributes**: Click animations and order
 - **Canvas DSL**: Shapes, positions, styles, and animations
+
+### Issue Annotation & AI Review
+
+Annotate slides with improvement suggestions that Claude Code can automatically fix:
+
+- **Prompt bar**: Input field in the sidebar to add `<!-- issue: text -->` annotations to the current slide
+- **Issue badges**: Annotations displayed as yellow badges in the sidebar
+- **Slide fix guide**: Button shows annotation count and guides to run `/slide-fix` in Claude Code
+- Issues are stored as HTML comments in the source `.md` — no format disruption
 
 ### Slide Navigation
 
@@ -187,9 +199,11 @@ Speaker notes go here - not visible during presentation
 
 | Command | Description |
 |---------|-------------|
-| `Remarp: Open Preview` | Open the slide preview panel |
+| `Remarp: Preview` | Open the slide preview panel |
 | `Remarp: Next Slide` | Navigate to the next slide |
 | `Remarp: Previous Slide` | Navigate to the previous slide |
+| `Remarp: Build HTML` | Build HTML from the current Remarp file |
+| `Remarp: Show Slide Fix Guide` | Show `<!-- issue: -->` annotation count and guide to run `/slide-fix` in Claude Code |
 
 ## Requirements
 
@@ -197,9 +211,10 @@ Speaker notes go here - not visible during presentation
 
 ## Known Issues
 
-- Preview uses simplified markdown rendering (not full Remarp renderer)
-- Canvas DSL preview shows syntax but doesn't render graphics
+- Preview uses simplified markdown rendering (not full Remarp HTML builder)
+- Canvas DSL preview shows source as `<pre>` block (no graphic rendering)
 - Some complex nested blocks may not highlight perfectly
+- Claude CLI integration requires `claude` to be installed and accessible in PATH or `~/.local/bin/`
 
 ## Contributing
 

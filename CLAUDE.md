@@ -148,12 +148,22 @@ Source: `tools/remarp-vscode/` | Entry: `src/extension.ts` | Preview: `src/previ
 ### Preview (2 modes)
 | Mode | File | Rendering |
 |------|------|-----------|
-| Markdown | `.md` / `.remarp.md` | Slide parsing → HTML (block types: canvas, tab, compare, quiz, etc.) |
+| Markdown | `.md` / `.remarp.md` | Slide parsing → HTML + sidebar (notes, issues, prompt bar) |
 | HTML | Remarp HTML | Direct HTML load + resource path → webview URI conversion |
 
+- **Sidebar layout**: Right panel with Speaker Notes + Issue badges + Prompt bar + Submit button
 - **Arrow key slide navigation**: ←→ / Space / PageUp/PageDown (inside preview)
 - **Scroll Sync**: `remarp.scrollSync` setting controls editor cursor ↔ preview slide sync
 - **Source file tracking**: HTML `<meta name="remarp-source">` → auto-discovers `.md` file (up to 3 parent dirs)
+- **Slide type rendering**: cover, compare, tabs, agenda, timeline, quiz, checklist, cards, code, steps, title, section, thankyou
+- **Directive rendering**: `@background` → background image, `@badge` → overlay image
+
+### Issue Annotation System
+- **Prompt bar**: Sidebar input → inserts `<!-- issue: text -->` into source `.md`
+- **Issue badges**: Yellow badges in sidebar, removable via × button
+- **Slide fix**: `remarp.submitIssues` command → shows toast guiding user to run `/slide-fix` in Claude Code
+- **`/slide-fix` skill**: Reads `<!-- issue: -->` annotations via `remarp_to_slides.py issues --json`, fixes each slide, removes annotations, rebuilds HTML
+- **Auto-cleanup**: `/slide-fix` removes `<!-- issue: -->` comments after fixing
 
 ### Visual Edit Mode (PPT edit mode)
 - **Activate**: `Cmd+Shift+E` / editor titlebar Edit button / per-slide floating Edit button

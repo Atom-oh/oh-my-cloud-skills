@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { isRemarpHtml } from './extension';
-import { HtmlPreviewRenderer } from './htmlPreview';
+
 
 interface Slide {
     index: number;
@@ -21,7 +20,6 @@ export class RemarpPreviewPanel {
     private _currentSlideIndex: number = 0;
     private _disposables: vscode.Disposable[] = [];
     private _updateTimeout: NodeJS.Timeout | undefined;
-    private _isHtmlMode: boolean = false;
     private _suppressSync: boolean = false;
 
     public get document(): vscode.TextDocument { return this._document; }
@@ -33,7 +31,6 @@ export class RemarpPreviewPanel {
             RemarpPreviewPanel.currentPanel._panel.reveal(column);
             RemarpPreviewPanel.currentPanel._document = document;
             RemarpPreviewPanel.currentPanel._panel.title = `Remarp Preview - ${path.basename(document.uri.fsPath)}`;
-            RemarpPreviewPanel.currentPanel._isHtmlMode = isRemarpHtml(document);
             RemarpPreviewPanel.currentPanel._updateContent();
             return;
         }
@@ -64,7 +61,6 @@ export class RemarpPreviewPanel {
         );
 
         RemarpPreviewPanel.currentPanel = new RemarpPreviewPanel(panel, extensionUri, document);
-        RemarpPreviewPanel.currentPanel._isHtmlMode = isRemarpHtml(document);
     }
 
     public static update(document: vscode.TextDocument): void {
@@ -112,18 +108,6 @@ export class RemarpPreviewPanel {
                         break;
                     case 'prevSlide':
                         this._prevSlide();
-                        break;
-                    // HTML preview slide navigation messages
-                    case 'htmlSlideChanged':
-                        this._currentSlideIndex = message.index;
-                        break;
-                    case 'htmlSlideCount':
-                        // Slide framework loaded successfully
-                        break;
-                    case 'htmlSlideCountError':
-                        vscode.window.showWarningMessage(
-                            'Remarp HTML preview: No slides detected. Check if slide-framework.js loaded correctly.'
-                        );
                         break;
                     // Issue annotation messages
                     case 'addIssue':
@@ -246,12 +230,6 @@ export class RemarpPreviewPanel {
     }
 
     private _updateContent(): void {
-        if (this._isHtmlMode) {
-            const renderer = new HtmlPreviewRenderer(this._panel, this._extensionUri);
-            this._panel.webview.html = renderer.render(this._document);
-            return;
-        }
-
         const slides = this._parseSlides();
         if (slides.length === 0) {
             this._panel.webview.html = this._getEmptyHtml();
@@ -331,7 +309,7 @@ export class RemarpPreviewPanel {
 
             const edit = new vscode.WorkspaceEdit();
             const pos = new vscode.Position(insertLine, 0);
-            edit.insert(this._document.uri, pos, `<!-- !issue: ${text} -->\n`);
+            edit.insert(this._document.uri, pos, `<!-- issue: ${text} -->\n`);
             await vscode.workspace.applyEdit(edit);
         } finally {
             setTimeout(() => { this._suppressSync = false; }, 500);
@@ -350,7 +328,7 @@ export class RemarpPreviewPanel {
 
         for (let i = slide.startLine; i <= slide.endLine; i++) {
             const line = lines[i];
-            const issueMatch = line.match(/<!--\s*!issue:\s*(.+?)\s*-->/);
+            const issueMatch = line.match(/<!--\s*issue:\s*(.+?)\s*-->/);
             if (issueMatch && issueMatch[1].trim() === issueText.trim()) {
                 const range = new vscode.Range(
                     new vscode.Position(i, 0),
@@ -366,7 +344,7 @@ export class RemarpPreviewPanel {
 
     private _countAllIssues(): number {
         const text = this._document.getText();
-        const matches = text.match(/<!--\s*!issue:\s*.+?\s*-->/g);
+        const matches = text.match(/<!--\s*issue:\s*.+?\s*-->/g);
         return matches ? matches.length : 0;
     }
 
@@ -404,15 +382,15 @@ export class RemarpPreviewPanel {
     }
 
     private _getHtmlForSlide(slide: Slide, totalSlides: number): string {
-        // Extract <!-- !issue: ... --> annotations before rendering
-        const issueRegex = /<!--\s*!issue:\s*(.+?)\s*-->/g;
+        // Extract <!-- issue: ... --> annotations before rendering
+        const issueRegex = /<!--\s*issue:\s*(.+?)\s*-->/g;
         const issues: string[] = [];
         let issueMatch;
         while ((issueMatch = issueRegex.exec(slide.content)) !== null) {
             issues.push(issueMatch[1]);
         }
         // Strip issues from content before rendering
-        const cleanContent = slide.content.replace(/<!--\s*!issue:\s*.+?\s*-->\n?/g, '');
+        const cleanContent = slide.content.replace(/<!--\s*issue:\s*.+?\s*-->\n?/g, '');
 
         const { html: rawRenderedHtml, notes: rawNotes, notesArg } = this._renderMarkdown(cleanContent, slide.index);
 
@@ -976,7 +954,7 @@ export class RemarpPreviewPanel {
             </div>
             <div class="submit-bar">
                 <button id="submitAllBtn" class="submit-all-btn" ${totalIssueCount === 0 ? 'disabled' : ''}>
-                    \ud83d\ude80 이슈 제출 (${totalIssueCount})
+                    \ud83d\udccb /slide-fix (${totalIssueCount})
                 </button>
             </div>
         </div>
