@@ -13,7 +13,7 @@ This plugin bundles 2 MCP servers. The remaining 3 (`awsknowledge`, `awspricing`
 | MCP Server | Source | Purpose | Used By |
 |------------|--------|---------|---------|
 | `awsdocs` | **this plugin** | AWS official documentation search/read | All agents |
-| `awsapi` | **this plugin** | AWS API direct calls (describe, list, etc.) | eks, network, iam, storage, database, observability, analytics |
+| `awsapi` | **this plugin** | AWS API direct calls (describe, list, etc.) | eks, network, iam, storage, database, observability, analytics, wellarchitected |
 | `awsknowledge` | deploy-on-aws | AWS architecture knowledge, recommendations, regional info | All agents |
 | `awspricing` | deploy-on-aws | Cost analysis, pricing queries | cost-agent |
 | `awsiac` | deploy-on-aws | CloudFormation/CDK validation, troubleshooting | eks-agent, ops-coordinator |
@@ -40,6 +40,22 @@ ops-coordinator-agent ← Aggregate results → Root cause → Resolve → Verif
 User query → Matched agent → Diagnose → Resolve → Verify
 ```
 
+### Well-Architected Review Workflow
+```
+User WAF request → wellarchitected-agent (scope)
+                    ├── Full review → All 6 pillars assessed
+                    │   ├── Cost Optimization → CE API + idle scan
+                    │   ├── Security → exposure + encryption + IAM
+                    │   ├── Reliability → HA + SPOF + backup
+                    │   ├── Performance → right-sizing + tuning
+                    │   ├── OpEx → monitoring + automation
+                    │   └── Sustainability → Graviton + efficiency
+                    └── Specific pillar → Targeted deep dive
+
+wellarchitected-agent → Score (XX/100) → Findings → AS-IS/TO-BE Roadmap
+                        └── Pillar < 60 → Delegate to specialist agent
+```
+
 ---
 
 ## Team Workflow Patterns
@@ -53,6 +69,7 @@ User query → Matched agent → Diagnose → Resolve → Verify
 | P1/P2 인시던트, 2+ 도메인 증상 | `ops-incident-response` | ops-coordinator + 전문 에이전트 병렬 |
 | "health check" 전체 점검 요청 | `ops-health-check` | eks + network + iam + storage + observability + analytics 병렬 |
 | "security audit" 보안 감사 요청 | `ops-security-audit` | iam + network + storage 병렬 감사 |
+| "well-architected review" 전체 아키텍처 리뷰 | `ops-waf-review` | wellarchitected + cost + iam + network 병렬 |
 
 ### 인시던트 대응 오케스트레이션
 
@@ -89,6 +106,7 @@ User query → Matched agent → Diagnose → Resolve → Verify
 | `cost-agent` | awspricing MCP cost analysis, savings strategies |
 | `analytics-agent` | OpenSearch, ClickHouse, Athena, QuickSight, Kinesis |
 | `ops-coordinator-agent` | Multi-domain incident coordination, severity assessment, team orchestration |
+| `wellarchitected-agent` | AWS Well-Architected 6-pillar review: 100-point scoring, findings, roadmap |
 
 ## Skills
 
@@ -99,3 +117,4 @@ User query → Matched agent → Diagnose → Resolve → Verify
 | `ops-network-diagnosis` | "network issue", "네트워크 오류", "연결 문제" | VPC CNI, LB, DNS deep diagnosis |
 | `ops-observability` | "monitoring", "모니터링", "로그 분석", "알람" | CloudWatch setup, PromQL, log analysis |
 | `ops-security-audit` | "security audit", "보안 점검", "compliance" | IAM audit, network security, compliance |
+| `ops-wellarchitected-review` | "well-architected", "WAF review", "인프라 진단", "아키텍처 리뷰" | 6-pillar assessment, 100-point scoring, AS-IS/TO-BE roadmap |
