@@ -1,0 +1,38 @@
+{
+  "name": "kiro-review",
+  "version": "1.3.0",
+  "description": "Comprehensive architecture deep review via Kiro CLI — code review, adversarial security audit, AWS Well-Architected assessment, spec-driven design validation, Stop Review Gate",
+  "author": {
+    "name": "atomoh"
+  },
+  "agents": [
+    "./agents/kiro-review-agent.md"
+  ],
+  "skills": [
+    "./skills/kiro-review"
+  ],
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/stop-review-gate.sh",
+            "timeout": 10000
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Kiro Review Plugin loaded. Use /kiro-review for comprehensive architecture deep review (code review, adversarial security, Well-Architected, spec-driven validation). Requires kiro-cli-plugin."
+          }
+        ]
+      }
+    ]
+  }
+}

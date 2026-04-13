@@ -9,18 +9,22 @@ skills:
 
 # Kiro Power Converter Agent
 
-A specialized agent that converts Claude Code plugins into Kiro Power format, handling structure translation, frontmatter transformation, MCP configuration migration, and keyword aggregation.
+A specialized agent that converts Claude Code plugins into Kiro Power format, handling structure translation, frontmatter transformation, hooks conversion, MCP configuration migration, and keyword aggregation.
 
 ---
 
 ## Core Capabilities
 
 1. **Multi-Source Input** — Accepts plugins from GitHub URLs (with branch/tag), local file paths, marketplace name lookup, or individual skill directories
-2. **Format Conversion** — Transforms Claude agent/skill markdown files into Kiro steering files with proper `inclusion` types
-3. **MCP Migration** — Converts `.mcp.json` to Kiro-compatible `mcp.json` (removes `type`, adds `autoApprove`/`disabled`)
-4. **Keyword Aggregation** — Extracts trigger keywords from agents, skills, and CLAUDE.md into unified `POWER.md` keywords list
-5. **Large Asset Handling** — Detects directories >10MB and generates download scripts instead of copying
-6. **Target Installation** — Supports global (`~/.kiro/powers/`), project (`.kiro/powers/`), or export output
+2. **Format Conversion** — Transforms Claude agent/skill markdown files into Kiro steering files with proper `inclusion` types (`always`, `auto`, `fileMatch`, `manual`)
+3. **Hooks Conversion** — Converts plugin.json hooks (PreToolUse, PostToolUse) to `.kiro.hook` JSON files with proper trigger/action mapping; migrates SessionStart prompts to POWER.md onboarding
+4. **MCP Migration** — Converts `.mcp.json` to Kiro-compatible `mcp.json` (removes `type`, adds `autoApprove`/`disabled`/`disabledTools`, sanitizes secrets to `${VAR}` syntax)
+5. **Skills Preservation** — Optional `--preserve-skills` mode outputs skills as `.kiro/skills/` format with `metadata` (author, version) instead of flattening to steering
+6. **POWER.md Generation** — Generates structured manifest with frontmatter (name, displayName, description, keywords, author) and body (onboarding section, steering mappings)
+7. **fileMatch Detection** — Auto-detects file-type-specific references and applies `inclusion: fileMatch` with appropriate glob patterns
+8. **Keyword Aggregation** — Extracts trigger keywords from agents, skills, and CLAUDE.md into unified `POWER.md` keywords list
+9. **Large Asset Handling** — Detects directories >10MB and generates download scripts instead of copying
+10. **Target Installation** — Supports global (`~/.kiro/powers/`), project (`.kiro/powers/`), or export output
 
 ---
 
@@ -40,22 +44,34 @@ flowchart TD
     FOUND -->|Yes| VALIDATE
     FOUND -->|No| FAIL[Error: Not Found]
 
-    VALIDATE -->|Yes| PARSE[Parse Plugin Structure]
+    VALIDATE -->|Yes| OPTIONS{Options?}
     VALIDATE -->|No| FAIL2[Error: Not a Plugin]
 
-    PARSE --> CONVERT[Convert Files]
+    OPTIONS -->|--preserve-skills| CONVERT_PS[Convert with Skills Preserved]
+    OPTIONS -->|default| CONVERT[Convert to Steering]
+
     CONVERT --> AGENTS[Agents → Steering]
     CONVERT --> SKILLS[Skills → Steering + Refs]
     CONVERT --> CLAUDE[CLAUDE.md → routing.md]
     CONVERT --> MCP[.mcp.json → mcp.json]
+    CONVERT --> HOOKS[Hooks → .kiro.hook files]
     CONVERT --> POWER[Generate POWER.md]
+
+    CONVERT_PS --> AGENTS
+    CONVERT_PS --> KSKILLS[Skills → .kiro/skills/]
+    CONVERT_PS --> CLAUDE
+    CONVERT_PS --> MCP
+    CONVERT_PS --> HOOKS
+    CONVERT_PS --> POWER
 
     SKILL --> STANDALONE[Convert to Standalone Steering]
 
     AGENTS --> TARGET{Target?}
     SKILLS --> TARGET
+    KSKILLS --> TARGET
     CLAUDE --> TARGET
     MCP --> TARGET
+    HOOKS --> TARGET
     POWER --> TARGET
     STANDALONE --> DONE
 
@@ -75,12 +91,15 @@ flowchart TD
 
 | Source | Target | Key Changes |
 |--------|--------|-------------|
-| `.claude-plugin/plugin.json` | `POWER.md` | name/description → frontmatter; keywords aggregated from all sources |
+| `.claude-plugin/plugin.json` | `POWER.md` | name/description/author → frontmatter; keywords aggregated; body with onboarding + mappings |
 | `CLAUDE.md` | `steering/routing.md` | Wrapped with `inclusion: always` frontmatter |
-| `agents/*.md` | `steering/<agent>.md` | `tools` and `model` removed; `inclusion: auto` added |
+| `agents/*.md` | `steering/<agent>.md` | `tools`/`model` removed; `inclusion: auto` added |
 | `skills/*/SKILL.md` | `steering/<skill>.md` | `triggers[]` merged into description; `inclusion: auto` added |
-| `skills/*/references/*.md` | `steering/ref-*.md` | `inclusion: manual` frontmatter added |
-| `.mcp.json` | `mcp.json` | `type` removed; `autoApprove: []` and `disabled: false` added |
+| `skills/*/SKILL.md` | `skills/<skill>/SKILL.md` | (with `--preserve-skills`) Kiro skill format with `metadata` |
+| `skills/*/references/*.md` | `steering/ref-*.md` | `inclusion: manual` or `fileMatch` (auto-detected from filename) |
+| `.mcp.json` | `mcp.json` | `type` removed; `autoApprove`/`disabled`/`disabledTools` added; secrets → `${VAR}` |
+| `hooks` (PreToolUse/PostToolUse) | `hooks/*.kiro.hook` | JSON hook files with Kiro trigger/action types |
+| `hooks` (SessionStart prompts) | POWER.md onboarding | Migrated to body — no Kiro SessionStart equivalent |
 
 ### Special Cases
 
@@ -91,6 +110,13 @@ flowchart TD
 | Bilingual keywords (Korean/English) | Both languages included in POWER.md keywords |
 | Missing `.mcp.json` | `mcp.json` generation skipped |
 | Nested path references `{plugin-dir}/...` | Converted to power-relative paths |
+| Hardcoded secrets in MCP env | Auto-detected and converted to `${VAR}` syntax |
+| File-type-specific references | Auto-detected → `inclusion: fileMatch` with glob patterns |
+| SessionStart hook with prompt | Content migrated to POWER.md onboarding section |
+| SessionStart hook with command | Created as `promptSubmit` hook with `enabled: false` |
+| Hook matcher `Bash` | Mapped to Kiro `shell` category |
+| Hook matcher `Read`/`Glob`/`Grep` | Mapped to Kiro `read` category |
+| Hook matcher `Write`/`Edit` | Mapped to Kiro `write` category |
 
 ---
 
@@ -119,7 +145,8 @@ flowchart TD
       "args": ["awslabs.aws-documentation-mcp-server@latest"],
       "timeout": 120000,
       "autoApprove": [],
-      "disabled": false
+      "disabled": false,
+      "disabledTools": []
     }
   }
 }
@@ -141,6 +168,12 @@ python3 convert_plugin_to_power.py --source ./plugins/aws-ops-plugin \
   --output /tmp/aws-ops-power --target export
 ```
 
+### Local Path with Skills Preservation
+```bash
+python3 convert_plugin_to_power.py --source ./plugins/aws-ops-plugin \
+  --output /tmp/aws-ops-power --preserve-skills
+```
+
 ### Marketplace
 ```bash
 python3 convert_plugin_to_power.py --marketplace aws-ops-plugin \
@@ -157,8 +190,8 @@ python3 convert_plugin_to_power.py --skill ./plugins/aws-ops-plugin/skills/ops-t
 
 ## Reference Files
 
-- `{plugin-dir}/skills/kiro-convert/references/kiro-power-format.md` — Kiro Power directory structure and format specification
-- `{plugin-dir}/skills/kiro-convert/references/conversion-rules.md` — Detailed conversion rules and edge case handling
+- `{plugin-dir}/skills/kiro-convert/references/kiro-power-format.md` — Kiro Power format specification (POWER.md, steering, MCP, hooks, skills, agents, lifecycle)
+- `{plugin-dir}/skills/kiro-convert/references/conversion-rules.md` — Detailed conversion rules, hook mapping, fileMatch detection, edge cases
 
 ---
 
@@ -168,19 +201,21 @@ python3 convert_plugin_to_power.py --skill ./plugins/aws-ops-plugin/skills/ops-t
 ============================================================
   Kiro Power Conversion Complete
 ============================================================
-  Source:       ./plugins/aws-ops-plugin
-  Output:       /tmp/aws-ops-power
+  Source:       ./plugins/aws-content-plugin
+  Output:       /tmp/aws-content-power
   Target:       export
 ============================================================
   Agents:       8
-  Skills:       5
-  References:   15
+  Skills:       6
+  Kiro Skills:  0 (preserved)
+  References:   31
+  Hooks:        5
   MCP config:   Yes
+  Env vars:     API_KEY, SECRET_TOKEN
 ============================================================
 
   Steering (agents):
     steering/eks-agent.md
-    steering/network-agent.md
     ...
 
   Steering (skills):
@@ -189,5 +224,9 @@ python3 convert_plugin_to_power.py --skill ./plugins/aws-ops-plugin/skills/ops-t
 
   References:
     steering/ref-ops-troubleshoot-commands.md
+    ...
+
+  Hooks:
+    hooks/postToolUse-shell.kiro.hook
     ...
 ```
