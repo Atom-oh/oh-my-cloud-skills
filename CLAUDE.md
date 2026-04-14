@@ -227,6 +227,14 @@ Ops skills: `ops-troubleshoot`, `ops-health-check`, `ops-network-diagnosis`, `op
 
 Skill: `kiro-convert` — interactive workflow for plugin-to-power conversion with `references/` subdirectory containing format specs and conversion rules.
 
+### agentcore-creator (1 agent, 1 skill)
+
+| Agent | Purpose |
+|-------|---------|
+| `agentcore-creator-agent` | Converts Claude Code plugins to Bedrock AgentCore (Runtime, Gateway, Memory, Lambda) |
+
+Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Skill-First Build, AgentCore Convert, Deploy) with `references/` and `scripts/` subdirectories.
+
 ### kiro-review (1 agent, 1 skill)
 
 | Agent | Purpose |
@@ -260,6 +268,8 @@ Content:   presentation-agent (dispatcher) → reactive-presentation-agent → c
 
 Ops:       User issue → auto-routed agent → Diagnose → Resolve → Verify
            Incident → ops-coordinator → specialist agents (7) → aggregate → root cause → fix
+
+AgentCore: Plugin source → analyze → map to AgentCore → generate artifacts → user refinement → deploy via AWS CLI → verify
 
 Review:    /kiro-review → kiro-review-agent → Kiro CLI delegation → Well-Architected → Report
 ```

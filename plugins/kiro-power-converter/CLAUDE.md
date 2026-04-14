@@ -18,6 +18,17 @@ Converts Claude Code plugins to Kiro Power format. Supports multiple input sourc
 
 ---
 
+## Auto-Invocation Keywords
+
+| Korean | English |
+|--------|---------|
+| 키로 변환 | convert to kiro |
+| 키로 파워 | kiro power |
+| 키로 설치 | kiro install |
+| 클로드 투 키로 | claude to kiro |
+
+---
+
 ## Workflow
 
 ```

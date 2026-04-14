@@ -96,6 +96,7 @@ oh-my-cloud-skills는 Claude Code용 플러그인 마켓플레이스로, AWS 클
 | Quality Gate 필수 | content-review-agent 통과 없이 배포 불가 |
 | 단일 버전 관리 | 모든 plugin.json + marketplace.json 동기화 |
 | Kiro CLI 외부 리뷰 통합 | 다중 관점 심층 리뷰 + 적대적 보안 검증 ([ADR-003](decisions/ADR-003-kiro-cli-architecture-deep-review.md)) |
+| AgentCore 변환 독립 플러그인 | Claude Code 플러그인 → Bedrock AgentCore 배포 변환 ([ADR-004](decisions/ADR-004-agentcore-creator-skill.md)) |
 
 ---
 
@@ -191,3 +192,4 @@ User prompt → Keyword routing (CLAUDE.md) → Agent → Skill/MCP → Artifact
 | Mandatory Quality Gate | No deployment without content-review-agent pass |
 | Single version management | All plugin.json + marketplace.json in sync |
 | Kiro CLI external review integration | Multi-perspective deep review + adversarial security verification ([ADR-003](decisions/ADR-003-kiro-cli-architecture-deep-review.md)) |
+| AgentCore converter as standalone plugin | Claude Code plugin to Bedrock AgentCore deployment conversion ([ADR-004](decisions/ADR-004-agentcore-creator-skill.md)) |
