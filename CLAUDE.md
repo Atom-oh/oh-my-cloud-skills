@@ -233,7 +233,7 @@ Skill: `kiro-convert` — interactive workflow for plugin-to-power conversion wi
 |-------|---------|
 | `agentcore-creator-agent` | Converts Claude Code plugins to Bedrock AgentCore (Runtime, Gateway, Memory, Lambda) |
 
-Skill: `agentcore-create` — 9-Phase conversion workflow (analyze, map, generate, refine, deploy) with `references/` and `scripts/` subdirectories.
+Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Skill-First Build, AgentCore Convert, Deploy) with `references/` and `scripts/` subdirectories.
 
 ### kiro-review (1 agent, 1 skill)
 

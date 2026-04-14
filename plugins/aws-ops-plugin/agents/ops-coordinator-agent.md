@@ -5,6 +5,7 @@ tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 model: opus
 skills:
   - ops-troubleshoot
+  - ops-health-check
 mcpServers:
   - awsdocs
   - awsapi

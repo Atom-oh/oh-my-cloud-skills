@@ -13,6 +13,8 @@ triggers:
   - "에이전트 배포"
   - "bedrock agent"
   - "deploy agent"
+  - "베드락 에이전트"
+  - "런타임 배포"
 model: sonnet
 allowed-tools:
   - Read

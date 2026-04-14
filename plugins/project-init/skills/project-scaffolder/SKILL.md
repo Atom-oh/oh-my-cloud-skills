@@ -158,3 +158,4 @@ For detailed templates, see:
 - [references/tests-templates.md](references/tests-templates.md) - Test framework and harness validation templates
 - [references/readme-template.md](references/readme-template.md) - Bilingual README.md generation rules and section structure
 - [references/changelog-template.md](references/changelog-template.md) - Bilingual CHANGELOG.md generation rules following Keep a Changelog
+- [references/writing-style-guide.md](references/writing-style-guide.md) - Bilingual writing style guide
