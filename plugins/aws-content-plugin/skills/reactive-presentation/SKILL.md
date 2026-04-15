@@ -169,6 +169,48 @@ python3 {skill-dir}/scripts/convert_to_remarp.py <input.pptx> -o {repo}/{slug}/ 
 
 **PDF 변환 참고**: PDF 슬라이드는 이미지 배경(`@background: assets/page-NN.png`) + 추출 텍스트로 변환됩니다. 정확한 텍스트가 필요하면 `@background`를 제거하고 텍스트를 직접 작성하세요.
 
+### Phase 2.8: Automated Validation — Rejection Loop (필수)
+
+> **LLM 공간 추론 한계 극복**: 언어 모델은 텍스트 기반 추론에 최적화되어 있어 2D 캔버스 위의
+> 레이아웃, 정렬, 요소 겹침 등 공간적 오류를 자가 감지하지 못합니다.
+> `validate` 명령은 **외부화된 거절 루프(Rejection Loop)** 역할을 하여
+> 빌드 전에 구조적/인지적 결함을 기계적으로 검출합니다.
+
+Remarp 마크다운 작성 후, **HTML 빌드 전에** 반드시 검증을 실행합니다:
+
+```bash
+python3 {skill-dir}/scripts/remarp_to_slides.py validate {repo}/{slug}/
+```
+
+**검증 규칙 (7가지 거절 기준)**:
+
+| 규칙 | 심각도 | 검사 내용 | 자동 교정 지침 |
+|------|--------|---------|-------------|
+| `TYPE_MISMATCH` | WARNING | 번호+시간 패턴이 있는데 `@type: agenda` 누락 | `@type: agenda` 추가 |
+| `INTERACTIVE_FIRST` | WARNING | 불릿 4+ → 카드/탭 미사용 | `:::html` grid 카드 또는 탭 패턴으로 변환 |
+| `CONTENT_OVERFLOW` | CRITICAL | 불릿 8+ 또는 요소 12+ (한 슬라이드) | 다수 슬라이드로 분할 |
+| `CANVAS_COMPLEXITY` | CRITICAL/WARN | 캔버스 시각 요소 5+/8+ | `:::html` + `:::css` + flow 유틸리티로 전환 |
+| `CANVAS_OVERLAP` | CRITICAL | 캔버스 요소 바운딩 박스 겹침 | 좌표 조정 (최소 40px 간격) |
+| `FRAGMENT_ORDER` | WARNING | 다단 레이아웃 + 명시적 `order=N` 없음 | `{.click order=N}` 추가 (td-lr 순서) |
+| `MISSING_NOTES` | WARNING | `:::notes` 블록 누락 | 150자+ 스피커 노트 작성 |
+| `STATIC_HTML` | WARNING | `:::html` 요소 3+ 이나 fragment 없음 | `fragment fade-up` + `data-fragment-index` 추가 |
+
+**거절 루프 프로세스**:
+```
+Remarp 작성 → validate 실행 → CRITICAL 있으면?
+  ├─ Yes → 수정 후 재검증 (최대 3회)
+  └─ No → WARNING 검토 → 수정 또는 의도적 무시 → Phase 3 빌드 진행
+```
+
+**Verdict**:
+- `❌ REJECT` — CRITICAL 1개 이상 → 빌드 진행 금지, 반드시 수정
+- `⚠️ REVIEW` — WARNING 6개 이상 → 수정 권장
+- `⚠️ PASS WITH WARNINGS` — WARNING 1-5개 → 선택적 수정
+- `✅ PASS` — 이슈 없음 → 빌드 진행
+
+> ⚠️ **이 단계를 건너뛰고 빌드하면 프랑켄슈타인 레이아웃이 생성됩니다.**
+> CRITICAL 이슈가 있는 상태에서 `build`를 실행하지 마세요.
+
 ### Phase 3: HTML Generation
 
 Remarp 프로젝트 디렉토리를 빌드합니다:
@@ -373,10 +415,10 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 
 ```markdown
 :::html
-<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-  <button class="tab-btn" style="padding:8px 16px;border:none;border-radius:6px;background:#00d4ff;color:#0a0e1a;font-weight:bold;cursor:pointer;" onclick="(function(b,i){var p=b.closest('.slide-body')||b.parentNode.parentNode;p.querySelectorAll('.tc').forEach(function(c,j){c.style.display=j===i?'block':'none'});b.parentNode.querySelectorAll('.tab-btn').forEach(function(x){x.style.background='#1a2540';x.style.color='#b0b0b0'});b.style.background='#00d4ff';b.style.color='#0a0e1a'})(this,0)">Tab 1</button>
-  <button class="tab-btn" style="padding:8px 16px;border:none;border-radius:6px;background:#1a2540;color:#b0b0b0;font-weight:bold;cursor:pointer;" onclick="(function(b,i){var p=b.closest('.slide-body')||b.parentNode.parentNode;p.querySelectorAll('.tc').forEach(function(c,j){c.style.display=j===i?'block':'none'});b.parentNode.querySelectorAll('.tab-btn').forEach(function(x){x.style.background='#1a2540';x.style.color='#b0b0b0'});b.style.background='#00d4ff';b.style.color='#0a0e1a'})(this,1)">Tab 2</button>
-  <button class="tab-btn" style="padding:8px 16px;border:none;border-radius:6px;background:#1a2540;color:#b0b0b0;font-weight:bold;cursor:pointer;" onclick="(function(b,i){var p=b.closest('.slide-body')||b.parentNode.parentNode;p.querySelectorAll('.tc').forEach(function(c,j){c.style.display=j===i?'block':'none'});b.parentNode.querySelectorAll('.tab-btn').forEach(function(x){x.style.background='#1a2540';x.style.color='#b0b0b0'});b.style.background='#00d4ff';b.style.color='#0a0e1a'})(this,2)">Tab 3</button>
+<div class="tab-bar" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+  <button class="tab-btn active" style="padding:8px 16px;border:none;border-radius:6px;background:#00d4ff;color:#0a0e1a;font-weight:bold;cursor:pointer;" onclick="(function(b,i){var p=b.closest('.slide-body')||b.parentNode.parentNode;p.querySelectorAll('.tc').forEach(function(c,j){c.style.display=j===i?'block':'none'});b.parentNode.querySelectorAll('.tab-btn').forEach(function(x){x.classList.remove('active');x.style.background='#1a2540';x.style.color='#b0b0b0'});b.classList.add('active');b.style.background='#00d4ff';b.style.color='#0a0e1a'})(this,0)">Tab 1</button>
+  <button class="tab-btn" style="padding:8px 16px;border:none;border-radius:6px;background:#1a2540;color:#b0b0b0;font-weight:bold;cursor:pointer;" onclick="(function(b,i){var p=b.closest('.slide-body')||b.parentNode.parentNode;p.querySelectorAll('.tc').forEach(function(c,j){c.style.display=j===i?'block':'none'});b.parentNode.querySelectorAll('.tab-btn').forEach(function(x){x.classList.remove('active');x.style.background='#1a2540';x.style.color='#b0b0b0'});b.classList.add('active');b.style.background='#00d4ff';b.style.color='#0a0e1a'})(this,1)">Tab 2</button>
+  <button class="tab-btn" style="padding:8px 16px;border:none;border-radius:6px;background:#1a2540;color:#b0b0b0;font-weight:bold;cursor:pointer;" onclick="(function(b,i){var p=b.closest('.slide-body')||b.parentNode.parentNode;p.querySelectorAll('.tc').forEach(function(c,j){c.style.display=j===i?'block':'none'});b.parentNode.querySelectorAll('.tab-btn').forEach(function(x){x.classList.remove('active');x.style.background='#1a2540';x.style.color='#b0b0b0'});b.classList.add('active');b.style.background='#00d4ff';b.style.color='#0a0e1a'})(this,2)">Tab 3</button>
 </div>
 <!-- Tab 1 content -->
 <div class="tc" style="display:block;padding:12px;background:rgba(15,22,41,0.5);border-radius:8px;">
@@ -494,6 +536,11 @@ VPA 시뮬레이터로 CPU/Memory 조절 시 추천값이 어떻게 변하는지
 
 ## Slide Type Decision Guide
 
+> **⛔ 필수: 모든 슬라이드에 명시적 `@type` 디렉티브를 작성하세요.**
+> auto-detect에 의존하지 마세요. 의도하지 않은 타입으로 렌더링되는 것을 방지합니다.
+> 특히 `agenda`, `tabs`, `steps`는 반드시 명시적 `@type`이 필요합니다.
+> `validate` 명령이 누락을 검출하지만, 작성 시 즉시 지정하는 것이 최선입니다.
+
 | Content Type | Slide Pattern | Interactive Element |
 |---|---|---|
 | Architecture overview (static) | Diagram Image | draw.io → PNG/SVG, `@img:` directive |
@@ -605,6 +652,82 @@ box db "DynamoDB" at 540,180 size 130,55 color #3B48CC step 3
 arrow api -> lambda "invoke" step 2
 arrow lambda -> db "query" step 3
 :::
+```
+
+### Canvas 좌표 계산 공식 (필수 — LLM 공간 추론 보정)
+
+> **원칙**: 좌표를 "상상"으로 배치하지 마세요. 아래 공식으로 계산하세요.
+> LLM은 공간 추론이 취약하므로 수학적 공식 기반 배치가 필수입니다.
+
+**캔버스 좌표계**: 960 × 400 (BASE_W × BASE_H), 안전 영역 40px 마진
+
+**수평 N-박스 직선 흐름** (A → B → C → ...):
+```
+gap = (880 - N * box_width) / (N - 1)     # 880 = 960 - 40*2 마진
+x[i] = 40 + i * (box_width + gap)         # i = 0, 1, 2, ...
+y = 180                                    # 수직 중앙
+```
+
+**2행 레이아웃** (위: 소스, 아래: 타겟):
+```
+row1_y = 100                               # 상단 행
+row2_y = 280                               # 하단 행
+x[i] = 40 + i * (880 / cols_in_row)       # 각 행 내 균등 분배
+```
+
+**박스 크기 규칙**:
+```
+width ≥ max(label_length × 9, 100)        # 영문 기준, 한글은 × 14
+height = 55                                # 기본값
+min_gap = 40                               # 박스 간 최소 간격 (edge-to-edge)
+```
+
+**아이콘 간격 규칙**:
+```
+min_gap = 60                               # 아이콘 center-to-center
+icon_size = 48                             # 기본 아이콘 크기
+x[i] = 40 + i * max(icon_size + min_gap, 880 / N)
+```
+
+**자가 검증 (작성 후 반드시 확인)**:
+1. 모든 x값이 40~880 범위 내인가?
+2. 모든 y값이 30~350 범위 내인가?
+3. 인접 박스 간 edge-to-edge 거리 ≥ 40px인가?
+4. `validate` 명령으로 CANVAS_OVERLAP 없는지 확인했는가?
+
+### Fragment 순서 규칙 (td-lr: Top-Down Left-Right)
+
+> **원칙**: 독자의 시선 흐름을 따릅니다 — **위에서 아래, 왼쪽에서 오른쪽**.
+
+**단일 컬럼**: DOM 순서대로 auto-increment (기본 동작)
+```markdown
+- Item A {.click}          ← order=1 (자동)
+- Item B {.click}          ← order=2 (자동)
+- Item C {.click}          ← order=3 (자동)
+```
+
+**다단 컬럼 (:::left/:::right)** — **반드시 명시적 order 사용**:
+```markdown
+::: left
+- Left Top {.click order=1}
+- Left Bottom {.click order=3}
+:::
+
+::: right
+- Right Top {.click order=2}
+- Right Bottom {.click order=4}
+:::
+```
+시각적 순서: 1(좌상) → 2(우상) → 3(좌하) → 4(우하)
+
+**:::html 블록 내 다단**: `data-fragment-index` 직접 지정:
+```html
+<div class="col-2">
+  <div class="fragment fade-up" data-fragment-index="1">좌상</div>
+  <div class="fragment fade-up" data-fragment-index="2">우상</div>
+  <div class="fragment fade-up" data-fragment-index="3">좌하</div>
+  <div class="fragment fade-up" data-fragment-index="4">우하</div>
+</div>
 ```
 
 ### 콘텐츠 작성 규칙

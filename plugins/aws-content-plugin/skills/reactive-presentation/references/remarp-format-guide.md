@@ -464,6 +464,10 @@ slider.oninput = () => {
 
 Slide directives control individual slide behavior. Place them on the line immediately after `---`, before slide content. Use `@` prefix.
 
+> **⛔ 필수: 모든 슬라이드에 명시적 `@type` 디렉티브를 작성하세요.**
+> auto-detect는 의도하지 않은 타입을 배정할 수 있습니다 (예: `###` 3개 → compare로 감지되어 tabs가 아닌 compare 렌더링).
+> `agenda`, `tabs`, `steps`, `timeline`은 반드시 명시적 `@type`이 필요합니다.
+
 ```markdown
 ---
 @type: compare
@@ -717,6 +721,41 @@ Item shown first {.click order=1}
 Item shown second {.click order=2}
 ```
 
+### Fragment 순서 규칙: Top-Down Left-Right (td-lr)
+
+> **⛔ 다단 레이아웃에서는 반드시 명시적 `order=N`을 지정하세요.**
+> `{.click}` auto-increment는 DOM 순서를 따르므로, 다단 레이아웃에서는
+> 시각적 읽기 순서(위→아래, 좌→우)와 불일치합니다.
+
+**단일 컬럼**: auto-increment로 충분 (DOM 순서 = 시각적 순서)
+
+**다단 컬럼 (:::left/:::right)**: 반드시 `order=N` 명시:
+```markdown
+::: left
+- 좌상 항목 {.click order=1}
+- 좌하 항목 {.click order=3}
+:::
+
+::: right
+- 우상 항목 {.click order=2}
+- 우하 항목 {.click order=4}
+:::
+```
+
+시각적 순서: ①좌상 → ②우상 → ③좌하 → ④우하 (Z 패턴)
+
+**:::html 블록 내 다단**: `data-fragment-index` 직접 지정:
+```html
+<div class="col-2">
+  <div class="fragment fade-up" data-fragment-index="1">좌상</div>
+  <div class="fragment fade-up" data-fragment-index="2">우상</div>
+  <div class="fragment fade-up" data-fragment-index="3">좌하</div>
+  <div class="fragment fade-up" data-fragment-index="4">우하</div>
+</div>
+```
+
+> `validate` 명령은 다단 레이아웃에 `order=N` 누락 시 `FRAGMENT_ORDER` 경고를 발생시킵니다.
+
 ### 동시 표시 (Same Fragment Index)
 
 같은 `order` 값을 가진 항목들은 한 번의 클릭으로 **동시에** reveal됩니다:
@@ -962,6 +1001,25 @@ Canvas uses a 960×400 coordinate space. Follow these rules to avoid overlapping
 | **Box width** | `width ≥ label_length × 9` (한글 label: `× 14`). E.g., "API Gateway" (11 chars) → width ≥ 99 → use 120 |
 | **Column formula** | `X_start = 40 + col_index × (880 / num_cols)`. E.g., 3 cols → X = 40, 333, 627 |
 | **Label-arrow gap** | 20px minimum between label text and any arrow path |
+
+**좌표 계산 공식 (LLM 공간 추론 보정 — 반드시 사용)**:
+
+> 좌표를 "감으로" 배치하지 마세요. 아래 공식을 적용하세요.
+
+수평 N-박스 직선 흐름 (A → B → C → ...):
+```
+gap = (880 - N * box_width) / (N - 1)
+x[i] = 40 + i * (box_width + gap)         # i = 0, 1, 2, ...
+y = 180                                    # 수직 중앙
+```
+
+2행 레이아웃:
+```
+row1_y = 100, row2_y = 280
+x[i] = 40 + i * (880 / cols_in_row)
+```
+
+**자가 검증**: 작성 후 `validate` 명령으로 `CANVAS_OVERLAP` 체크 필수.
 
 **Workflow**: For complex diagrams, sketch in drawio or mermaid first to determine optimal layout, then convert coordinates to canvas DSL. This prevents alignment issues that are hard to fix after the fact.
 

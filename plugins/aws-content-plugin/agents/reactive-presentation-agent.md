@@ -186,9 +186,36 @@ Remarp 파일 작성 후, 사용자에게 검토를 요청합니다:
 
 **중요**: HTML 빌드는 사용자가 Remarp 콘텐츠를 승인한 후에만 진행합니다.
 
-### Phase 5: HTML Generation (검토 완료 후)
+### Phase 4.5: Automated Validation — Rejection Loop (필수)
 
-사용자가 Remarp 콘텐츠를 승인하면 HTML을 빌드합니다:
+사용자 승인 후, HTML 빌드 전에 반드시 검증을 실행합니다:
+
+```bash
+python3 {plugin-dir}/skills/reactive-presentation/scripts/remarp_to_slides.py validate {repo}/{slug}/
+```
+
+**거절 루프 규칙**:
+- `❌ REJECT` (CRITICAL 1+) → 수정 후 재검증 (최대 3회). **빌드 진행 금지.**
+- `⚠️ REVIEW/WARNING` → 수정 권장. 사용자에게 이슈 리스트를 보여주고 수정 여부 확인.
+- `✅ PASS` → Phase 5 빌드 진행.
+
+**검증 항목**:
+| 규칙 | 내용 |
+|------|------|
+| TYPE_MISMATCH | agenda/timeline 내용인데 `@type` 누락 |
+| INTERACTIVE_FIRST | 불릿 4+ → 카드/탭으로 전환 필요 |
+| CANVAS_COMPLEXITY | 캔버스 요소 5+/8+ → :::html 전환 필요 |
+| CANVAS_OVERLAP | 요소 바운딩 박스 겹침 |
+| FRAGMENT_ORDER | 다단 레이아웃 + 명시적 order 없음 |
+| MISSING_NOTES | :::notes 누락 |
+| STATIC_HTML | :::html 요소 3+ fragment 없음 |
+
+> LLM은 공간 추론이 취약하므로 이 외부 검증 단계가 필수입니다.
+> CRITICAL 이슈를 무시하고 빌드하면 프랑켄슈타인 레이아웃이 생성됩니다.
+
+### Phase 5: HTML Generation (검증 통과 후)
+
+사용자가 Remarp 콘텐츠를 승인하고 검증을 통과하면 HTML을 빌드합니다:
 
 ```bash
 # 전체 빌드
@@ -385,10 +412,10 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 ## Collaboration Workflow
 
 ```
-reactive-presentation-agent → content-review-agent → Deploy (GitHub Pages)
+reactive-presentation-agent → validate (rejection loop) → build → content-review-agent → Deploy (GitHub Pages)
 ```
 
-After creating presentation content, invoke content-review-agent for quality review before deployment.
+After creating Remarp content: validate → fix CRITICAL issues → build HTML → invoke content-review-agent for quality review → deploy.
 
 ---
 

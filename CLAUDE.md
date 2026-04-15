@@ -47,6 +47,10 @@ python3 scripts/eval-skills.py --plugin aws-content-plugin --skill reactive-pres
 python3 scripts/eval-skill-behavior.py --skill reactive-presentation --dry-run
 python3 scripts/eval-skill-behavior.py --case evals/reactive-presentation/flow-layout.yaml
 python3 scripts/eval-skill-behavior.py --skill reactive-presentation --ci --threshold 70
+
+# Validate Remarp source (rejection loop — run before build)
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py validate <project-dir>/
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py validate <project-dir>/ --json
 ```
 
 ## Plugin Architecture

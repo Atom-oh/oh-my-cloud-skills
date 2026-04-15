@@ -4556,6 +4556,260 @@ def migrate_marp_to_remarp(marp_file: str, output_dir: str) -> List[str]:
     return [str(output_file)]
 
 
+# ---------------------------------------------------------------------------
+# Validate command — Automated Rejection Loop
+# ---------------------------------------------------------------------------
+
+def validate_presentation(input_path: Path, json_output: bool = False) -> List[Dict[str, Any]]:
+    """Validate Remarp source for quality issues.
+
+    Implements an automated rejection loop that checks for:
+    1. Slide type mismatches (content that looks like agenda/timeline but typed wrong)
+    2. Interactive-First violations (4+ bullets should be cards/tabs)
+    3. Canvas complexity violations (5+ elements should be :::html)
+    4. Fragment ordering issues in multi-column layouts
+    5. Missing speaker notes
+    6. Content overflow (too many items per slide)
+    7. Missing @type directives on specialized slides
+    """
+    md_files: List[Path] = []
+    if input_path.is_file():
+        md_files = [input_path]
+    elif input_path.is_dir():
+        md_files = sorted(input_path.glob('*.md')) + sorted(input_path.glob('*.remarp.md'))
+        # Exclude _presentation.md from content validation
+        md_files = [f for f in md_files if f.name != '_presentation.md']
+    else:
+        print(f'Error: {input_path} not found')
+        return []
+
+    all_findings: List[Dict[str, Any]] = []
+
+    for md_file in md_files:
+        with open(md_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        rp = RemarpParser(content)
+        _config, blocks = rp.parse()
+
+        for block_name, slides in blocks.items():
+            for slide in slides:
+                findings = _validate_slide(slide, md_file, block_name)
+                all_findings.extend(findings)
+
+    if json_output:
+        import json as json_mod
+        print(json_mod.dumps(all_findings, ensure_ascii=False, indent=2))
+    else:
+        if all_findings:
+            _print_validation_report(all_findings)
+
+    return all_findings
+
+
+def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[str, Any]]:
+    """Run all validation checks on a single slide."""
+    findings: List[Dict[str, Any]] = []
+    md = slide.content
+    title_match = re.match(r'^#+\s+(.+)', md)
+    title = title_match.group(1) if title_match else f'(slide {slide.index + 1})'
+
+    def add(severity: str, rule: str, message: str, fix: str = ''):
+        findings.append({
+            'file': str(md_file),
+            'block': block_name,
+            'slide': slide.index + 1,
+            'title': title,
+            'severity': severity,  # CRITICAL, WARNING, INFO
+            'rule': rule,
+            'message': message,
+            'fix': fix,
+        })
+
+    # --- Rule 1: Slide Type Mismatch Detection ---
+    explicit_type = slide.directives.get('type', '')
+
+    # Agenda detection: numbered list with time durations in parens
+    if not explicit_type:
+        agenda_pattern = re.findall(r'^\d+\.\s+.*?\(\d+분?\)', md, re.MULTILINE)
+        if len(agenda_pattern) >= 3:
+            add('WARNING', 'TYPE_MISMATCH',
+                f'Slide looks like an agenda ({len(agenda_pattern)} numbered items with durations) '
+                f'but has no @type directive — will render as {slide.slide_type.value}',
+                'Add @type: agenda')
+
+    # Timeline auto-detected but user might have wanted steps
+    if slide.slide_type == SlideType.TIMELINE and not explicit_type:
+        add('INFO', 'TYPE_AUTO_DETECTED',
+            'Slide auto-detected as timeline — add explicit @type: timeline to confirm intent',
+            'Add @type: timeline (or @type: steps if you want step-based rendering)')
+
+    # Compare auto-detected — check if tabs would be better
+    if slide.slide_type == SlideType.COMPARE and not explicit_type:
+        h3_count = len(re.findall(r'^###\s+', md, re.MULTILINE))
+        if h3_count >= 3:
+            add('WARNING', 'TYPE_MISMATCH',
+                f'{h3_count} subsections detected — auto-detected as compare, but tabs may be better',
+                'Add @type: tabs (for tabbed content) or @type: compare (to confirm)')
+
+    # --- Rule 2: Interactive-First Violations ---
+    # Count bullet items in content (exclude ::: blocks)
+    md_outside_blocks = re.sub(r':::\s*\w+.*?:::', '', md, flags=re.DOTALL)
+    bullet_items = re.findall(r'^[-*]\s+', md_outside_blocks, re.MULTILINE)
+    if len(bullet_items) >= 4 and not slide.html_blocks:
+        add('WARNING', 'INTERACTIVE_FIRST',
+            f'{len(bullet_items)} bullet items detected — should use grid cards or tabs instead of bullet list',
+            'Convert to :::html grid cards (4+ items) or self-contained tab pattern (3+ categories)')
+
+    if len(bullet_items) >= 8:
+        add('CRITICAL', 'CONTENT_OVERFLOW',
+            f'{len(bullet_items)} bullet items on one slide — exceeds maximum (8)',
+            'Split into multiple slides or use tabs to organize content')
+
+    # --- Rule 3: Canvas Complexity Violations ---
+    if slide.canvas_elements:
+        # Count non-meta elements (exclude size, bg, preset, step directives)
+        visual_elements = [e for e in slide.canvas_elements
+                           if e.element_type in ('box', 'circle', 'icon', 'group')]
+        arrows = [e for e in slide.canvas_elements if e.element_type == 'arrow']
+
+        if len(visual_elements) >= 8:
+            add('CRITICAL', 'CANVAS_COMPLEXITY',
+                f'{len(visual_elements)} visual elements in canvas — exceeds limit (max 4 for canvas)',
+                'Convert to :::html + :::css with flow utility classes (.flow-h, .flow-group)')
+        elif len(visual_elements) >= 5:
+            add('WARNING', 'CANVAS_COMPLEXITY',
+                f'{len(visual_elements)} visual elements in canvas — recommend :::html + :::css for better alignment',
+                'Consider converting to :::html + :::css with flow utilities')
+
+        # Check for branching arrows (one source → multiple targets)
+        arrow_sources: Dict[str, int] = {}
+        for a in arrows:
+            src = a.params.get('from', a.params.get('id', ''))
+            if src:
+                arrow_sources[src] = arrow_sources.get(src, 0) + 1
+        branching = {k: v for k, v in arrow_sources.items() if v >= 2}
+        if branching:
+            add('WARNING', 'CANVAS_BRANCHING',
+                f'Branching arrows detected (sources with 2+ targets: {list(branching.keys())}) — '
+                'canvas DSL produces unreliable layouts for branching flows',
+                'Convert to :::html + :::css for precise control')
+
+        # Canvas alignment check: detect potential overlaps
+        positions: List[Tuple[str, int, int, int, int]] = []  # (id, x, y, w, h)
+        for e in slide.canvas_elements:
+            p = e.params
+            if e.element_type == 'box' and 'x' in p and 'y' in p:
+                positions.append((p.get('id', '?'), p['x'], p['y'],
+                                  p.get('width', 130), p.get('height', 55)))
+            elif e.element_type == 'icon' and 'x' in p and 'y' in p:
+                s = p.get('width', 48)
+                positions.append((p.get('id', '?'), p['x'], p['y'], s, s))
+
+        for i, (id1, x1, y1, w1, h1) in enumerate(positions):
+            for id2, x2, y2, w2, h2 in positions[i + 1:]:
+                # Check bounding box overlap with 10px tolerance
+                if (x1 < x2 + w2 - 10 and x1 + w1 > x2 + 10 and
+                        y1 < y2 + h2 - 10 and y1 + h1 > y2 + 10):
+                    add('CRITICAL', 'CANVAS_OVERLAP',
+                        f'Elements "{id1}" and "{id2}" overlap at '
+                        f'({x1},{y1} {w1}x{h1}) vs ({x2},{y2} {w2}x{h2})',
+                        f'Adjust coordinates to maintain at least 40px gap between boxes')
+
+    # --- Rule 4: Fragment Ordering in Multi-Column Layouts ---
+    if slide.columns and slide.content.count('{.click}') > 0:
+        # Check if fragments have explicit order
+        explicit_orders = re.findall(r'\{\.click\s+order=(\d+)', md)
+        total_clicks = len(re.findall(r'\{\.click', md))
+        if total_clicks > 2 and not explicit_orders:
+            add('WARNING', 'FRAGMENT_ORDER',
+                f'{total_clicks} fragments in multi-column layout without explicit order — '
+                'DOM order may not match visual reading order (top-down, left-right)',
+                'Add explicit order=N to each {.click} following top-down left-right reading order')
+
+    # --- Rule 5: Missing Speaker Notes ---
+    if slide.slide_type not in (SlideType.COVER, SlideType.THANKYOU):
+        if not slide.notes or not slide.notes.content.strip():
+            add('WARNING', 'MISSING_NOTES',
+                'No speaker notes — all non-cover slides should have :::notes block',
+                'Add :::notes block with at least 150 characters of speaking guidance')
+        elif len(slide.notes.content.strip()) < 100:
+            add('INFO', 'SHORT_NOTES',
+                f'Speaker notes only {len(slide.notes.content.strip())} chars — '
+                'recommended minimum is 150 chars (300-500 ideal)',
+                'Expand notes with timing markers, cues, and supplementary explanations')
+
+    # --- Rule 6: Content Overflow ---
+    # Count total visible elements (headings + bullets + paragraphs)
+    heading_count = len(re.findall(r'^#{2,4}\s+', md_outside_blocks, re.MULTILINE))
+    paragraph_lines = [l for l in md_outside_blocks.strip().split('\n')
+                       if l.strip() and not l.strip().startswith(('#', '-', '*', '@', '<', '|', '`'))]
+    total_elements = heading_count + len(bullet_items) + len(paragraph_lines)
+    if total_elements > 12 and not slide.html_blocks and not slide.tab_blocks:
+        add('WARNING', 'CONTENT_OVERFLOW',
+            f'{total_elements} visible elements — slide may be too dense',
+            'Split into multiple slides, use tabs, or convert to interactive :::html cards')
+
+    # --- Rule 7: Static :::html without Fragments ---
+    if slide.html_blocks:
+        for idx, html_block in enumerate(slide.html_blocks):
+            # Count direct child elements (rough estimate)
+            child_elements = len(re.findall(r'<div[^>]*>', html_block))
+            has_fragments = 'fragment' in html_block
+            if child_elements >= 3 and not has_fragments:
+                add('WARNING', 'STATIC_HTML',
+                    f':::html block {idx + 1} has {child_elements}+ elements but no fragment animations — '
+                    'Interactive-First principle requires sequential reveal',
+                    'Add class="fragment fade-up" data-fragment-index="N" to child elements')
+
+    return findings
+
+
+def _print_validation_report(findings: List[Dict[str, Any]]):
+    """Print human-readable validation report."""
+    critical = [f for f in findings if f['severity'] == 'CRITICAL']
+    warnings = [f for f in findings if f['severity'] == 'WARNING']
+    infos = [f for f in findings if f['severity'] == 'INFO']
+
+    print('\n' + '=' * 70)
+    print(' REMARP VALIDATION REPORT (Rejection Loop)')
+    print('=' * 70)
+
+    if critical:
+        print(f'\n🔴 CRITICAL ({len(critical)}):')
+        for f in critical:
+            print(f'  [{f["block"]}] Slide {f["slide"]} "{f["title"]}"')
+            print(f'    {f["rule"]}: {f["message"]}')
+            if f['fix']:
+                print(f'    → Fix: {f["fix"]}')
+
+    if warnings:
+        print(f'\n🟡 WARNING ({len(warnings)}):')
+        for f in warnings:
+            print(f'  [{f["block"]}] Slide {f["slide"]} "{f["title"]}"')
+            print(f'    {f["rule"]}: {f["message"]}')
+            if f['fix']:
+                print(f'    → Fix: {f["fix"]}')
+
+    if infos:
+        print(f'\n🔵 INFO ({len(infos)}):')
+        for f in infos:
+            print(f'  [{f["block"]}] Slide {f["slide"]} "{f["title"]}"')
+            print(f'    {f["rule"]}: {f["message"]}')
+
+    # Verdict
+    print('\n' + '-' * 70)
+    if critical:
+        print(f'❌ REJECT — {len(critical)} critical issue(s) must be fixed before build')
+    elif len(warnings) > 5:
+        print(f'⚠️  REVIEW — {len(warnings)} warning(s) should be addressed')
+    elif warnings:
+        print(f'⚠️  PASS WITH WARNINGS — {len(warnings)} minor issue(s)')
+    else:
+        print('✅ PASS — No issues found')
+    print('-' * 70)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Convert Remarp markdown to reactive-presentation HTML'
@@ -4583,6 +4837,11 @@ def main():
     issues_parser = subparsers.add_parser('issues', help='List all <!-- issue: --> annotations')
     issues_parser.add_argument('path', help='Input file or project directory')
     issues_parser.add_argument('--json', action='store_true', dest='json_output', help='Output as JSON')
+
+    # Validate command — rejection loop checker
+    validate_parser = subparsers.add_parser('validate', help='Validate Remarp source for quality issues (rejection loop)')
+    validate_parser.add_argument('path', help='Input file or project directory')
+    validate_parser.add_argument('--json', action='store_true', dest='json_output', help='Output as JSON')
 
     args = parser.parse_args()
 
@@ -4706,6 +4965,12 @@ def main():
                 print(f'  [{item["block"]}] Slide {item["slide"]} "{item["title"]}"')
                 print(f'    → {item["issue"]}')
             print(f'\nTotal: {len(all_issues)} issue(s) across {len(md_files)} file(s).')
+
+    elif args.command == 'validate':
+        input_path = Path(args.path)
+        findings = validate_presentation(input_path, json_output=args.json_output)
+        if not findings and not args.json_output:
+            print('\n✅ All slides passed validation.')
 
     elif args.command == 'migrate':
         migrated = migrate_marp_to_remarp(args.marp_file, args.output)
