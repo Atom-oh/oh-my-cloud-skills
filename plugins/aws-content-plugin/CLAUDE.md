@@ -8,8 +8,9 @@ A unified plugin for AWS cloud content creation: presentations, architecture dia
 
 ### Presentation Workflow
 ```
-presentation-agent (dispatcher) → reactive-presentation-agent → content-review-agent → Deploy (GitHub Pages)
+presentation-agent (dispatcher) → reactive-presentation-agent → validate (rejection loop) → build → content-review-agent → Deploy (GitHub Pages)
 ```
+> **필수**: Remarp 작성 후 `remarp_to_slides.py validate`로 거절 루프 실행. CRITICAL 이슈 0건이어야 빌드 진행.
 
 ### Architecture Diagram Workflow
 ```
