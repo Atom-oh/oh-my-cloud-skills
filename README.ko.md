@@ -23,10 +23,30 @@
 - **관측성** — CloudWatch, Container Insights, Prometheus, X-Ray
 - **비용 최적화** — 가격 분석, 절감 계획, 라이트사이징
 
+*Well-Architected 리뷰 (aws-ops-plugin):*
+- **6-pillar 평가** — 비용, 보안, 안정성, 성능, 운영 우수성, 지속 가능성
+- **100점 스코어링** — 정량적 점수와 AS-IS/TO-BE 로드맵
+- **전문 에이전트 위임** — 60점 미만 pillar를 전문 에이전트에 위임
+
 *플러그인 변환 (kiro-power-converter):*
 - **Claude Code → Kiro Power** — 플러그인을 Kiro IDE에서 사용할 수 있도록 자동 변환
 - **다양한 입력 소스** — GitHub URL, 로컬 경로, 마켓플레이스 검색, 개별 스킬
 - **제로 의존성** — Python 3.8+ 표준 라이브러리만 사용
+
+*AgentCore 배포 (agentcore-creator):*
+- **Bedrock AgentCore** — Claude Code 플러그인을 AgentCore Runtime, Gateway, Memory로 변환
+- **5단계 워크플로우** — 발견, 설계, 스킬 우선 빌드, 변환, 배포
+- **Strands Agent 프레임워크** — BedrockModel을 사용한 배포 가능한 Python 에이전트 생성
+
+*아키텍처 리뷰 (kiro-review):*
+- **심층 코드 리뷰** — Kiro CLI 연동을 통한 다중 관점 리뷰
+- **적대적 보안 감사** — 공격 표면 분석 및 취약점 평가
+- **Well-Architected 정렬** — 6-pillar 점수와 개선 권장 사항
+
+*프로젝트 스캐폴딩 (project-init):*
+- **8개 슬래시 명령** — /init-project, /sync-docs, /add-adr, /add-module, /add-runbook 등
+- **문서 품질 스코어링** — CLAUDE.md 품질 평가 (100점 척도)
+- **자동 동기화 워크플로우** — 코드 변경에 따라 문서를 동기화 유지
 
 ---
 
@@ -40,6 +60,9 @@
 /plugin install aws-content-plugin@oh-my-cloud-skills
 /plugin install aws-ops-plugin@oh-my-cloud-skills
 /plugin install kiro-power-converter@oh-my-cloud-skills
+/plugin install agentcore-creator@oh-my-cloud-skills
+/plugin install kiro-review@oh-my-cloud-skills
+/plugin install project-init@oh-my-cloud-skills
 ```
 
 로컬 개발용:
@@ -48,6 +71,9 @@
 claude --plugin-dir ./plugins/aws-content-plugin
 claude --plugin-dir ./plugins/aws-ops-plugin
 claude --plugin-dir ./plugins/kiro-power-converter
+claude --plugin-dir ./plugins/agentcore-creator
+claude --plugin-dir ./plugins/kiro-review
+claude --plugin-dir ./plugins/project-init
 ```
 
 제거:
@@ -56,6 +82,9 @@ claude --plugin-dir ./plugins/kiro-power-converter
 /plugin uninstall aws-content-plugin@oh-my-cloud-skills
 /plugin uninstall aws-ops-plugin@oh-my-cloud-skills
 /plugin uninstall kiro-power-converter@oh-my-cloud-skills
+/plugin uninstall agentcore-creator@oh-my-cloud-skills
+/plugin uninstall kiro-review@oh-my-cloud-skills
+/plugin uninstall project-init@oh-my-cloud-skills
 
 # 마켓플레이스 제거
 /plugin marketplace remove oh-my-cloud-skills
@@ -352,6 +381,7 @@ AWS/EKS 인프라 운영 및 트러블슈팅. 문제를 설명하면 — 노드 
 | `cost-agent` | 비용 | "EKS 클러스터 비용 분석해줘" |
 | `analytics-agent` | 데이터 분석 | "OpenSearch 클러스터 상태가 red" |
 | `ops-coordinator-agent` | 장애 조율 | "프로덕션 장애, 대응 조율해줘" |
+| `wellarchitected-agent` | Well-Architected | "인프라 Well-Architected 리뷰 실행해줘" |
 
 ### 스킬
 
@@ -362,6 +392,7 @@ AWS/EKS 인프라 운영 및 트러블슈팅. 문제를 설명하면 — 노드 
 | `ops-network-diagnosis` | "network issue" | VPC CNI, 로드밸런서, DNS 심층 진단 |
 | `ops-observability` | "monitoring setup" | CloudWatch, Prometheus, 로그 분석 |
 | `ops-security-audit` | "security audit" | IAM 감사, 네트워크 보안, 컴플라이언스 |
+| `ops-wellarchitected-review` | "well-architected" | 6-pillar 평가, 100점 스코어링, AS-IS/TO-BE 로드맵 |
 
 ### MCP 연동
 
@@ -547,6 +578,16 @@ aws-ops-power/
 | `cost-agent` | 비용 | "클러스터 비용 분석" | 비용 보고서 |
 | `analytics-agent` | 데이터 분석 | "OpenSearch 상태가 red" | 진단 + 수정 |
 | `ops-coordinator-agent` | 장애 조율 | "프로덕션 장애 대응" | 조율된 대응 |
+| `wellarchitected-agent` | Well-Architected | "WAF 리뷰 실행해줘" | 100점 점수 + 로드맵 |
+
+### 변환, 리뷰, 스캐폴딩 에이전트
+
+| 에이전트 | 플러그인 | 예시 프롬프트 | 출력 |
+|---------|---------|-------------|------|
+| `kiro-converter-agent` | kiro-power-converter | "aws-ops-plugin을 Kiro로 변환" | Kiro Power 디렉토리 |
+| `agentcore-creator-agent` | agentcore-creator | "에이전트를 AgentCore에 배포" | Strands Agent + 배포 스크립트 |
+| `kiro-review-agent` | kiro-review | "아키텍처 리뷰 실행" | 5단계 리뷰 보고서 |
+| `doc-sync-checker` | project-init | "/sync-docs" | 문서 품질 점수 |
 
 모든 에이전트는 Claude가 프롬프트에서 일치하는 키워드를 감지하면 자동으로 활성화됩니다.
 
@@ -573,6 +614,29 @@ aws-ops-power/
 | `ops-network-diagnosis` | VPC CNI, 로드밸런서, DNS 심층 진단 참조 |
 | `ops-observability` | CloudWatch, Prometheus, 로그 분석 설정 |
 | `ops-security-audit` | IAM 감사, 네트워크 보안, 컴플라이언스 검사 절차 |
+| `ops-wellarchitected-review` | 6-pillar 평가, 100점 스코어링, AS-IS/TO-BE 로드맵 |
+
+### 변환 및 스캐폴딩 스킬
+
+| 스킬 | 제공 내용 |
+|------|----------|
+| `kiro-convert` | 플러그인-to-Kiro-Power 변환 워크플로우 |
+| `agentcore-create` | 5단계 AgentCore 설계, 빌드, 변환, 배포 워크플로우 |
+| `kiro-review` | Kiro CLI 기반 아키텍처 심층 리뷰 (코드, 보안, WAF, 스펙 기반) |
+| `project-scaffolder` | Claude Code 프로젝트 구조 패턴 및 컨벤션 |
+
+### Project Init 명령
+
+| 명령 | 기능 |
+|------|------|
+| `/init-project` | Claude Code 프로젝트 구조 초기화 |
+| `/sync-docs` | 문서와 코드 동기화 |
+| `/add-adr` | Architecture Decision Record 생성 |
+| `/add-module` | 모듈 디렉토리 및 CLAUDE.md 추가 |
+| `/add-runbook` | 운영 런북 생성 |
+| `/generate-readme` | 이중 언어 README.md 생성 |
+| `/generate-changelog` | 이중 언어 CHANGELOG.md 생성 |
+| `/health-check` | 프로젝트 설정 검증 |
 
 ---
 
@@ -592,10 +656,20 @@ GitBook:          gitbook-agent  -->  content-review-agent  -->  git push
 ### 운영 워크플로우
 
 ```
-장애 대응:     ops-coordinator  -->  전문 에이전트  -->  근본 원인  -->  해결  -->  검증
-트러블슈팅:    매칭된 에이전트  -->  진단  -->  해결  -->  검증
-헬스체크:      ops-health-check 스킬  -->  6개 도메인 평가
-보안 감사:     ops-security-audit 스킬  -->  IAM + 네트워크 + 컴플라이언스
+장애 대응:        ops-coordinator  -->  전문 에이전트  -->  근본 원인  -->  해결  -->  검증
+트러블슈팅:       매칭된 에이전트  -->  진단  -->  해결  -->  검증
+헬스체크:         ops-health-check 스킬  -->  6개 도메인 평가
+보안 감사:        ops-security-audit 스킬  -->  IAM + 네트워크 + 컴플라이언스
+Well-Architected: wellarchitected-agent  -->  6-pillar 스코어링  -->  AS-IS/TO-BE 로드맵
+```
+
+### 변환 및 리뷰 워크플로우
+
+```
+Kiro 변환:        플러그인 소스  -->  kiro-converter-agent  -->  Kiro Power 디렉토리  -->  설치/내보내기
+AgentCore 배포:   발견  -->  설계  -->  스킬 우선 빌드  -->  AgentCore 변환  -->  배포
+아키텍처 리뷰:    git diff  -->  kiro-review-agent  -->  코드 + 보안 + WAF  -->  보고서
+문서 동기화:      /sync-docs  -->  doc-sync-checker  -->  품질 점수  -->  문서 업데이트
 ```
 
 다이어그램은 프레젠테이션, 문서, GitBook 페이지에 더 큰 워크플로우의 일부로 임베드할 수 있습니다.
@@ -618,63 +692,86 @@ GitBook:          gitbook-agent  -->  content-review-agent  -->  git push
 
 ```
 plugins/
-├── aws-content-plugin/                # 콘텐츠 제작 플러그인
-│   ├── .claude-plugin/plugin.json     # 플러그인 매니페스트 (7 에이전트, 5 스킬)
-│   ├── CLAUDE.md                      # 자동 호출 규칙 및 워크플로우
-│   ├── agents/
-│   │   ├── presentation-agent.md      # 인터랙티브 HTML 슬라이드쇼
-│   │   ├── architecture-diagram-agent.md # Draw.io XML 다이어그램
+├── aws-content-plugin/                # 콘텐츠 제작 (8 에이전트, 6 스킬)
+│   ├── .claude-plugin/plugin.json
+│   ├── CLAUDE.md
+│   ├── agents/                        # 8 에이전트
+│   │   ├── presentation-agent.md      # 포맷 디스패처 (Web vs PPTX)
+│   │   ├── reactive-presentation-agent.md # 인터랙티브 HTML 슬라이드쇼
+│   │   ├── architecture-diagram-agent.md  # Draw.io XML 다이어그램
 │   │   ├── animated-diagram-agent.md  # SVG + SMIL 애니메이션
 │   │   ├── document-agent.md          # Markdown 문서 및 보고서
 │   │   ├── gitbook-agent.md           # GitBook 문서 사이트
 │   │   ├── workshop-agent.md          # AWS Workshop Studio 콘텐츠
 │   │   └── content-review-agent.md    # 통합 품질 검토
-│   └── skills/
+│   └── skills/                        # 6 스킬
 │       ├── reactive-presentation/     # 프레젠테이션 프레임워크 + AWS 아이콘
-│       │   ├── SKILL.md               # 워크플로우 및 슬라이드 유형 참조
-│       │   ├── assets/                # theme.css, slide-framework.js, export-utils.js, ...
-│       │   ├── scripts/               # remarp_to_slides.py, convert_to_remarp.py, marp_to_slides.py, extract_pptx_theme.py
-│       │   ├── references/            # framework-guide.md, slide-patterns.md
-│       │   └── icons/                 # AWS Architecture Icons (4,224 파일)
 │       ├── architecture-diagram/      # Draw.io 템플릿 및 패턴
-│       │   └── reference/            # drawio-xml-guide.md, mcp-setup-guide.md
 │       ├── animated-diagram/          # SMIL 애니메이션 가이드 및 템플릿
 │       ├── gitbook/                   # GitBook 구조 및 컴포넌트
-│       └── workshop-creator/          # Workshop Studio 지시문 및 템플릿
-│           └── reference/            # infrastructure-guide.md, workshop-templates.md
+│       ├── workshop-creator/          # Workshop Studio 지시문 및 템플릿
+│       └── slide-fix/                 # 슬라이드 이슈 어노테이션 처리
 │
-├── aws-ops-plugin/                    # 인프라 운영 플러그인
-│   ├── .claude-plugin/plugin.json     # 플러그인 매니페스트 (9 에이전트, 5 스킬)
-│   ├── .mcp.json                      # AWS MCP 서버 설정
-│   ├── CLAUDE.md                      # 자동 호출 규칙 및 워크플로우
-│   ├── agents/
+├── aws-ops-plugin/                    # 인프라 운영 (10 에이전트, 6 스킬)
+│   ├── .claude-plugin/plugin.json
+│   ├── CLAUDE.md
+│   ├── agents/                        # 10 에이전트
 │   │   ├── eks-agent.md               # EKS 클러스터 운영
 │   │   ├── network-agent.md           # VPC CNI, ALB/NLB, DNS
 │   │   ├── iam-agent.md               # IRSA, Pod Identity, RBAC
-│   │   ├── observability-agent.md      # CloudWatch, AMP, AMG, ADOT, Prometheus/Grafana
+│   │   ├── observability-agent.md     # CloudWatch, Prometheus, Grafana
 │   │   ├── storage-agent.md           # EBS/EFS/FSx CSI 드라이버
 │   │   ├── database-agent.md          # RDS, Aurora, DynamoDB, ElastiCache
 │   │   ├── cost-agent.md              # 비용 분석 및 최적화
-│   │   ├── analytics-agent.md         # OpenSearch, ClickHouse, Athena, QuickSight, Kinesis
-│   │   └── ops-coordinator-agent.md   # 다중 도메인 장애 조율
-│   └── skills/
+│   │   ├── analytics-agent.md         # OpenSearch, Athena, QuickSight, Kinesis
+│   │   ├── ops-coordinator-agent.md   # 다중 도메인 장애 조율
+│   │   └── wellarchitected-agent.md   # Well-Architected 6-pillar 리뷰
+│   └── skills/                        # 6 스킬
 │       ├── ops-troubleshoot/          # 체계적 트러블슈팅
 │       ├── ops-health-check/          # 인프라 상태 점검
 │       ├── ops-network-diagnosis/     # VPC CNI, LB, DNS 심층 진단
 │       ├── ops-observability/         # CloudWatch, Prometheus, 로그 분석
-│       └── ops-security-audit/        # IAM 감사, 네트워크 보안, 컴플라이언스
+│       ├── ops-security-audit/        # IAM 감사, 네트워크 보안, 컴플라이언스
+│       └── ops-wellarchitected-review/ # 6-pillar 스코어링, AS-IS/TO-BE 로드맵
 │
-└── kiro-power-converter/              # 플러그인 변환 도구
-    ├── .claude-plugin/plugin.json     # 플러그인 매니페스트 (1 에이전트, 1 스킬)
-    ├── CLAUDE.md                      # 자동 호출 규칙
+├── kiro-power-converter/              # Claude Code → Kiro Power (1 에이전트, 1 스킬)
+│   ├── .claude-plugin/plugin.json
+│   ├── CLAUDE.md
+│   ├── agents/
+│   │   └── kiro-converter-agent.md
+│   └── skills/
+│       └── kiro-convert/
+│
+├── agentcore-creator/                 # Claude Code → Bedrock AgentCore (1 에이전트, 1 스킬)
+│   ├── .claude-plugin/plugin.json
+│   ├── CLAUDE.md
+│   ├── agents/
+│   │   └── agentcore-creator-agent.md
+│   └── skills/
+│       └── agentcore-create/
+│
+├── kiro-review/                       # 아키텍처 심층 리뷰 (1 에이전트, 1 스킬)
+│   ├── .claude-plugin/plugin.json
+│   ├── CLAUDE.md
+│   ├── agents/
+│   │   └── kiro-review-agent.md
+│   └── skills/
+│       └── kiro-review/
+│
+└── project-init/                      # 프로젝트 스캐폴딩 (1 에이전트, 1 스킬, 8 명령)
+    ├── .claude-plugin/plugin.json
+    ├── CLAUDE.md
     ├── agents/
-    │   └── kiro-converter-agent.md    # 변환 에이전트 (4가지 입력 소스)
+    │   └── doc-sync-checker.md
+    ├── commands/                       # 8개 슬래시 명령
+    │   ├── init-project.md
+    │   ├── sync-docs.md
+    │   ├── add-adr.md
+    │   ├── add-module.md
+    │   ├── add-runbook.md
+    │   ├── generate-readme.md
+    │   ├── generate-changelog.md
+    │   └── health-check.md
     └── skills/
-        └── kiro-convert/              # 변환 스킬
-            ├── SKILL.md               # 대화형 변환 워크플로우
-            ├── scripts/
-            │   └── convert_plugin_to_power.py  # CLI 변환기 (Python 3.8+, 의존성 없음)
-            └── references/
-                ├── kiro-power-format.md        # Kiro Power 형식 사양
-                └── conversion-rules.md         # 필드별 변환 규칙
+        └── project-scaffolder/
 ```

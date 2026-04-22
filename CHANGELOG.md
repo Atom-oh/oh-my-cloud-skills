@@ -1,105 +1,276 @@
 # Changelog
 
-All notable changes to oh-my-cloud-skills are documented in this file.
+<a href="#english"><img src="https://img.shields.io/badge/lang-English-blue.svg" alt="English"></a>
+<a href="#korean"><img src="https://img.shields.io/badge/lang-한국어-red.svg" alt="Korean"></a>
+
+---
+
+<a id="english"></a>
+
+# English
+
+All notable changes to this project will be documented in this file.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
 ### Added
-- Issue annotation system for Remarp VSCode extension: prompt bar, `<!-- issue: -->` annotations, issue badges in sidebar
-- `/slide-fix` skill: reads `<!-- issue: -->` annotations and applies fixes in Claude Code
-- "Show Slide Fix Guide" command: toast notification guiding users to run `/slide-fix` in Claude Code
+- Add iterative refinement (rejection loop) for reactive-presentation quality validation ([#19](https://github.com/Atom-oh/oh-my-cloud-skills/pull/19))
 
-### Changed
-- Issue annotation syntax simplified: `<!-- !issue: -->` → `<!-- issue: -->` (removed `!` prefix)
-- Submit button replaced with `/slide-fix` guidance toast (removed `claude --print` CLI dependency)
-- Sidebar layout in preview: Speaker Notes + Issues on the right panel
-- Slide type rendering in preview: compare, tabs, agenda, timeline, quiz, checklist, cards, code, steps, title, section, thankyou
-- `@background` / `@badge` directive rendering as background image and badge overlay in preview
-- `@type: agenda` and `@type: title` slide type support in preview
-
-### Fixed
-- Blank screen when adding issue via prompt bar (var/const naming collision in prompt-bar.js)
-- `@directive` lines no longer rendered as visible text in preview (now stripped before rendering)
-- `@type: compare` rendering with `### h3` heading-based content (dual strategy: col-div + h3 splitting)
-
-## [v1.2.3] - 2026-03-20
+## [1.4.0] - 2026-04-14
 
 ### Added
-- Canvas complexity gate in content-review-agent
-- HTML Architecture pattern and STOP gate in reactive-presentation SKILL.md
-- Interactive slide patterns guide (interactive-patterns-guide.md)
+- Add agentcore-creator plugin with interactive 5-phase workflow for Bedrock AgentCore deployment
+- Add project-init plugin with 8 commands for project scaffolding and documentation sync
+- Add kiro-review plugin for comprehensive architecture deep review via Kiro CLI
+- Add Well-Architected Framework 6-pillar review to aws-ops-plugin (wellarchitected-agent, 100-point scoring) ([#16](https://github.com/Atom-oh/oh-my-cloud-skills/pull/16))
+- Add slide-fix skill for Remarp slide issue annotation processing
+- Add issue annotation system for Remarp VSCode extension (prompt bar, `<!-- issue: -->` annotations, issue badges in sidebar)
+- Add PPTX image export via html2canvas iframe capture
+- Add Pandoc-style colon-count nesting for ::: blocks with stack-based block parser
+- Add PPTX template extraction with Slide Master metadata, --figma and --stitch design source options
+- Add session-context, secret-scan, doc-sync hooks and safety permissions
 
 ### Changed
-- Strengthened canvas vs HTML selection guidance in agent and SKILL.md decision guides
-- Fixed monitoring/dashboard mapping from canvas to html+script
-- Enhanced plugin documentation with detailed agent and skill reviews
-- Enhanced Remarp guide documentation
+- Simplify issue annotation syntax from `<!-- !issue: -->` to `<!-- issue: -->`
+- Replace submit button with /slide-fix guidance toast (remove `claude --print` CLI dependency)
 
 ### Fixed
-- Canvas overuse — agent no longer defaults all diagrams to :::canvas
+- Fix XSS defense and frontmatter regex in preview.ts
+- Fix 3 bugs in stack-based block parser
+- Fix canvas editor slide context targeting
+- Fix canvas DSL whitespace handling around commas
+- Fix regex group indices in _group_p_with_list and NameError in compile_preset_to_js
+- Restore kiro-review SessionStart hook and fix converter quote escaping
 
-## [v1.2.2] - 2026-03-15
+## [1.2.5] - 2026-04-06
 
 ### Added
-- Orthogonal arrow routing to Canvas DSL
-- Data visualization design guide for reactive-presentation
-- Visual editor, canvas editor, and CSS editor to Remarp VSCode extension
-- `:::prompt` block support and per-block export buttons
-- AIOps 90-minute presentation demo
-
-### Changed
-- Enhanced plugin skills with hooks, references, and improved patterns
-- Migrated plugins to latest Claude Code format with hooks, validation, and token optimization
+- Add README.md to README.ko.md auto-translate hook
+- Add live diagram demos to documentation site ([#11](https://github.com/Atom-oh/oh-my-cloud-skills/pull/11))
+- Add detailed skill guides with 8 demo pages ([#9](https://github.com/Atom-oh/oh-my-cloud-skills/pull/9))
 
 ### Fixed
-- Blocks config bug in multi-block presentations
+- Fix table th/td font-size to inherit from parent table element
+- Fix fragment wrappers crossing column boundaries and heading-group spacing
+- Fix :::click blocks not working when nested inside :::left/:::right columns
 
-## [v1.2.1] - 2026-03-05
+## [1.2.3] - 2026-03-20
 
 ### Added
-- Remarp VSCode extension completions and preview improvements
-- Remarp-first workflow documentation
+- Add Canvas complexity gate in content-review-agent
+- Add HTML Architecture pattern and STOP gate in reactive-presentation SKILL.md
+- Add interactive slide patterns guide (interactive-patterns-guide.md)
 
 ### Changed
-- Enhanced canvas animation prompts, PPTX theme extractor, and kiro conversion rules
-- Updated plugin CLAUDE.md keyword routing and team workflow docs
-- Removed hardcoded model field from agent frontmatter
+- Strengthen canvas vs HTML selection guidance in agent and SKILL.md decision guides
+- Fix monitoring/dashboard mapping from canvas to html+script
+
+### Fixed
+- Fix canvas overuse -- agent no longer defaults all diagrams to :::canvas
+
+## [1.2.2] - 2026-03-15
+
+### Added
+- Add orthogonal arrow routing to Canvas DSL
+- Add data visualization design guide for reactive-presentation
+- Add visual editor, canvas editor, and CSS editor to Remarp VSCode extension
+- Add :::prompt block support and per-block export buttons
+- Add AIOps 90-minute presentation demo
+
+### Changed
+- Enhance plugin skills with hooks, references, and improved patterns
+- Migrate plugins to latest Claude Code format with hooks, validation, and token optimization
+
+### Fixed
+- Fix blocks config bug in multi-block presentations
+
+## [1.2.1] - 2026-03-05
+
+### Added
+- Add Remarp VSCode extension completions and preview improvements
+- Add Remarp-first workflow documentation
+
+### Changed
+- Enhance canvas animation prompts, PPTX theme extractor, and kiro conversion rules
+- Update plugin CLAUDE.md keyword routing and team workflow docs
+- Remove hardcoded model field from agent frontmatter
 
 ### Fixed
 - Strip 'Block N:' prefix from slide titles in converter
 - Correct `../common/` to `./common/` asset paths in remarp_to_slides.py
-- 3 rendering bugs in remarp_to_slides.py converter
+- Fix 3 rendering bugs in remarp_to_slides.py converter
 
-## [v1.1.0] - 2026-03-03
+## [1.1.0] - 2026-03-03
 
 ### Added
-- kiro-power-converter plugin for Claude Code to Kiro Power conversion
-- Docusaurus documentation site with GitHub Pages deployment
-- i18n support (ko default, en placeholder)
-- Remarp VSCode extension for syntax highlighting and preview
-- Audience frontmatter field and strengthened agent planning questions
+- Add kiro-power-converter plugin for Claude Code to Kiro Power conversion
+- Add Docusaurus documentation site with GitHub Pages deployment
+- Add i18n support (ko default, en placeholder)
+- Add Remarp VSCode extension for syntax highlighting and preview
+- Add audience frontmatter field and strengthen agent planning questions
 
 ### Changed
-- Replaced cloudwatch-agent with observability-agent, added analytics-agent
-- Made Remarp the default content authoring format for presentations
+- Replace cloudwatch-agent with observability-agent, add analytics-agent
+- Make Remarp the default content authoring format for presentations
 
 ### Fixed
-- PPTX theme extraction with Slide Master layout details
+- Fix PPTX theme extraction with Slide Master layout details
 
-## [v1.0.0] - 2026-02-26
+## [1.0.0] - 2026-02-26
 
 ### Added
 - Initial release
-- aws-content-plugin: presentation, architecture diagram, animated diagram, document, gitbook, workshop agents
-- aws-ops-plugin: EKS, network, IAM, observability, storage, database, cost, analytics, ops-coordinator agents
-- reactive-presentation skill with Canvas animations, quizzes, and keyboard navigation
-- Content review quality gate (100-point scale)
-- PPTX/PDF theme extraction
-- AWS Architecture Icons integration (4,224 files)
-- Presenter view with speaker notes
+- Add aws-content-plugin: presentation, architecture diagram, animated diagram, document, gitbook, workshop agents
+- Add aws-ops-plugin: EKS, network, IAM, observability, storage, database, cost, analytics, ops-coordinator agents
+- Add reactive-presentation skill with Canvas animations, quizzes, and keyboard navigation
+- Add content review quality gate (100-point scale)
+- Add PPTX/PDF theme extraction
+- Add AWS Architecture Icons integration (4,224 files)
+- Add presenter view with speaker notes
 
-[v1.2.3]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.2.2...v1.2.3
-[v1.2.2]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.2.1...v1.2.2
-[v1.2.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.1.0...v1.2.1
-[v1.1.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.0.0...v1.1.0
-[v1.0.0]: https://github.com/Atom-oh/oh-my-cloud-skills/releases/tag/v1.0.0
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.2.5...v1.4.0
+[1.2.5]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.2.3...v1.2.5
+[1.2.3]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.2.2...v1.2.3
+[1.2.2]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.2.1...v1.2.2
+[1.2.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.1.0...v1.2.1
+[1.1.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/Atom-oh/oh-my-cloud-skills/releases/tag/v1.0.0
+
+---
+
+<a id="korean"></a>
+
+# 한국어
+
+이 프로젝트의 모든 주요 변경 사항은 이 파일에 기록됩니다.
+이 문서는 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)를 기반으로 하며,
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 따릅니다.
+
+## [Unreleased]
+
+### Added
+- reactive-presentation 품질 검증을 위한 반복 개선(rejection loop) 추가 ([#19](https://github.com/Atom-oh/oh-my-cloud-skills/pull/19))
+
+## [1.4.0] - 2026-04-14
+
+### Added
+- Bedrock AgentCore 배포를 위한 agentcore-creator 플러그인 추가 (5-Phase 대화형 워크플로우)
+- 프로젝트 스캐폴딩 및 문서 동기화를 위한 project-init 플러그인 추가 (8개 명령)
+- Kiro CLI 기반 종합 아키텍처 심층 리뷰를 위한 kiro-review 플러그인 추가
+- aws-ops-plugin에 Well-Architected Framework 6-pillar 리뷰 추가 (wellarchitected-agent, 100점 스코어링) ([#16](https://github.com/Atom-oh/oh-my-cloud-skills/pull/16))
+- Remarp 슬라이드 이슈 어노테이션 처리를 위한 slide-fix 스킬 추가
+- Remarp VSCode 확장에 이슈 어노테이션 시스템 추가 (프롬프트 바, `<!-- issue: -->` 어노테이션, 사이드바 이슈 배지)
+- html2canvas iframe 캡처를 통한 PPTX 이미지 내보내기 추가
+- 스택 기반 블록 파서와 Pandoc 스타일 콜론 카운트 ::: 블록 중첩 추가
+- Slide Master 메타데이터, --figma, --stitch 디자인 소스 옵션을 포함한 PPTX 템플릿 추출 추가
+- session-context, secret-scan, doc-sync 훅 및 안전 권한 추가
+
+### Changed
+- 이슈 어노테이션 구문 간소화: `<!-- !issue: -->` → `<!-- issue: -->`
+- 제출 버튼을 /slide-fix 안내 토스트로 교체 (`claude --print` CLI 의존성 제거)
+
+### Fixed
+- preview.ts의 XSS 방어 및 frontmatter 정규식 수정
+- 스택 기반 블록 파서 버그 3건 수정
+- 캔버스 에디터 슬라이드 컨텍스트 타겟팅 수정
+- 캔버스 DSL 좌표 쉼표 주변 공백 처리 수정
+- _group_p_with_list의 정규식 그룹 인덱스 및 compile_preset_to_js NameError 수정
+- kiro-review SessionStart 훅 복원 및 컨버터 따옴표 이스케이프 수정
+
+## [1.2.5] - 2026-04-06
+
+### Added
+- README.md → README.ko.md 자동 번역 훅 추가
+- 문서 사이트에 라이브 다이어그램 데모 추가 ([#11](https://github.com/Atom-oh/oh-my-cloud-skills/pull/11))
+- 상세 스킬 가이드 및 8개 데모 페이지 추가 ([#9](https://github.com/Atom-oh/oh-my-cloud-skills/pull/9))
+
+### Fixed
+- 테이블 th/td 폰트 크기가 부모 테이블 요소에서 상속되도록 수정
+- fragment 래퍼가 열 경계를 넘는 문제 및 heading-group 간격 수정
+- :::left/:::right 열 내부에서 :::click 블록이 작동하지 않는 문제 수정
+
+## [1.2.3] - 2026-03-20
+
+### Added
+- content-review-agent에 Canvas 복잡도 게이트 추가
+- reactive-presentation SKILL.md에 HTML 아키텍처 패턴 및 STOP 게이트 추가
+- 인터랙티브 슬라이드 패턴 가이드 추가 (interactive-patterns-guide.md)
+
+### Changed
+- 에이전트 및 SKILL.md 결정 가이드에서 canvas vs HTML 선택 지침 강화
+- monitoring/dashboard 매핑을 canvas에서 html+script로 수정
+
+### Fixed
+- canvas 과다 사용 수정 -- 에이전트가 더 이상 모든 다이어그램을 :::canvas로 기본 설정하지 않음
+
+## [1.2.2] - 2026-03-15
+
+### Added
+- Canvas DSL에 직교 화살표 라우팅 추가
+- reactive-presentation 데이터 시각화 디자인 가이드 추가
+- Remarp VSCode 확장에 비주얼 에디터, 캔버스 에디터, CSS 에디터 추가
+- :::prompt 블록 지원 및 블록별 내보내기 버튼 추가
+- AIOps 90분 프레젠테이션 데모 추가
+
+### Changed
+- 플러그인 스킬에 훅, 참조 문서, 개선된 패턴 적용
+- 플러그인을 최신 Claude Code 형식으로 마이그레이션 (훅, 검증, 토큰 최적화)
+
+### Fixed
+- 멀티 블록 프레젠테이션의 blocks config 버그 수정
+
+## [1.2.1] - 2026-03-05
+
+### Added
+- Remarp VSCode 확장 자동완성 및 미리보기 개선
+- Remarp 우선 워크플로우 문서 추가
+
+### Changed
+- 캔버스 애니메이션 프롬프트, PPTX 테마 추출기, kiro 변환 규칙 개선
+- 플러그인 CLAUDE.md 키워드 라우팅 및 팀 워크플로우 문서 업데이트
+- 에이전트 frontmatter에서 하드코딩된 model 필드 제거
+
+### Fixed
+- 컨버터에서 'Block N:' 접두사 슬라이드 제목 제거
+- remarp_to_slides.py의 `../common/` → `./common/` 에셋 경로 수정
+- remarp_to_slides.py 컨버터 렌더링 버그 3건 수정
+
+## [1.1.0] - 2026-03-03
+
+### Added
+- Claude Code → Kiro Power 변환을 위한 kiro-power-converter 플러그인 추가
+- GitHub Pages 배포를 포함한 Docusaurus 문서 사이트 추가
+- i18n 지원 추가 (ko 기본, en 플레이스홀더)
+- 구문 하이라이팅 및 미리보기를 위한 Remarp VSCode 확장 추가
+- audience frontmatter 필드 추가 및 에이전트 계획 질문 강화
+
+### Changed
+- cloudwatch-agent를 observability-agent로 교체, analytics-agent 추가
+- Remarp를 프레젠테이션 기본 콘텐츠 저작 포맷으로 지정
+
+### Fixed
+- Slide Master 레이아웃 세부사항이 포함된 PPTX 테마 추출 수정
+
+## [1.0.0] - 2026-02-26
+
+### Added
+- 최초 릴리스
+- aws-content-plugin 추가: presentation, architecture diagram, animated diagram, document, gitbook, workshop 에이전트
+- aws-ops-plugin 추가: EKS, network, IAM, observability, storage, database, cost, analytics, ops-coordinator 에이전트
+- Canvas 애니메이션, 퀴즈, 키보드 내비게이션을 포함한 reactive-presentation 스킬 추가
+- 콘텐츠 리뷰 품질 게이트 추가 (100점 척도)
+- PPTX/PDF 테마 추출 추가
+- AWS Architecture Icons 통합 추가 (4,224개 파일)
+- 발표자 뷰 및 발표자 노트 추가
+
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.2.5...v1.4.0
+[1.2.5]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.2.3...v1.2.5
+[1.2.3]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.2.2...v1.2.3
+[1.2.2]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.2.1...v1.2.2
+[1.2.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.1.0...v1.2.1
+[1.1.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/Atom-oh/oh-my-cloud-skills/releases/tag/v1.0.0

@@ -23,10 +23,30 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 - **Observability** — CloudWatch, Container Insights, Prometheus, X-Ray
 - **Cost optimization** — Pricing analysis, savings plans, right-sizing
 
+*Well-Architected Review (aws-ops-plugin):*
+- **6-pillar assessment** — Cost, Security, Reliability, Performance, Operational Excellence, Sustainability
+- **100-point scoring** — Quantitative scoring with AS-IS/TO-BE roadmap
+- **Specialist delegation** — Pillars scoring below 60 delegated to specialist agents
+
 *Plugin Conversion (kiro-power-converter):*
 - **Claude Code → Kiro Power** — Automatically convert plugins for use in Kiro IDE
 - **Multiple input sources** — GitHub URL, local path, marketplace search, individual skill
 - **Zero dependencies** — Python 3.8+ standard library only
+
+*AgentCore Deployment (agentcore-creator):*
+- **Bedrock AgentCore** — Convert Claude Code plugins to AgentCore Runtime, Gateway, Memory
+- **5-phase workflow** — Discovery, Design, Skill-First Build, Convert, Deploy
+- **Strands Agent framework** — Generates deployable Python agents with BedrockModel
+
+*Architecture Review (kiro-review):*
+- **Deep code review** — Multi-perspective review via Kiro CLI integration
+- **Adversarial security audit** — Attack surface analysis and vulnerability assessment
+- **Well-Architected alignment** — 6-pillar scoring with improvement recommendations
+
+*Project Scaffolding (project-init):*
+- **8 slash commands** — /init-project, /sync-docs, /add-adr, /add-module, /add-runbook, and more
+- **Documentation quality scoring** — CLAUDE.md quality assessment on 100-point scale
+- **Auto-sync workflows** — Keep documentation in sync with code changes
 
 ---
 
@@ -40,6 +60,9 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 /plugin install aws-content-plugin@oh-my-cloud-skills
 /plugin install aws-ops-plugin@oh-my-cloud-skills
 /plugin install kiro-power-converter@oh-my-cloud-skills
+/plugin install agentcore-creator@oh-my-cloud-skills
+/plugin install kiro-review@oh-my-cloud-skills
+/plugin install project-init@oh-my-cloud-skills
 ```
 
 For local development:
@@ -48,6 +71,9 @@ For local development:
 claude --plugin-dir ./plugins/aws-content-plugin
 claude --plugin-dir ./plugins/aws-ops-plugin
 claude --plugin-dir ./plugins/kiro-power-converter
+claude --plugin-dir ./plugins/agentcore-creator
+claude --plugin-dir ./plugins/kiro-review
+claude --plugin-dir ./plugins/project-init
 ```
 
 Uninstall:
@@ -56,6 +82,9 @@ Uninstall:
 /plugin uninstall aws-content-plugin@oh-my-cloud-skills
 /plugin uninstall aws-ops-plugin@oh-my-cloud-skills
 /plugin uninstall kiro-power-converter@oh-my-cloud-skills
+/plugin uninstall agentcore-creator@oh-my-cloud-skills
+/plugin uninstall kiro-review@oh-my-cloud-skills
+/plugin uninstall project-init@oh-my-cloud-skills
 
 # Remove the marketplace
 /plugin marketplace remove oh-my-cloud-skills
@@ -352,6 +381,7 @@ Infrastructure operations and troubleshooting for AWS/EKS environments. Describe
 | `cost-agent` | Cost | "Analyze my EKS cluster costs" |
 | `analytics-agent` | Analytics | "OpenSearch cluster health is red" |
 | `ops-coordinator-agent` | Incidents | "Production outage, coordinate response" |
+| `wellarchitected-agent` | Well-Architected | "Run a Well-Architected review on my infra" |
 
 ### Skills
 
@@ -362,6 +392,7 @@ Infrastructure operations and troubleshooting for AWS/EKS environments. Describe
 | `ops-network-diagnosis` | "network issue" | VPC CNI, Load Balancer, DNS deep diagnosis |
 | `ops-observability` | "monitoring setup" | CloudWatch, Prometheus, log analysis |
 | `ops-security-audit` | "security audit" | IAM audit, network security, compliance |
+| `ops-wellarchitected-review` | "well-architected" | 6-pillar assessment, 100-point scoring, AS-IS/TO-BE roadmap |
 
 ### MCP Integration
 
@@ -547,6 +578,16 @@ aws-ops-power/
 | `cost-agent` | Cost | "Analyze cluster costs" | Cost report |
 | `analytics-agent` | Analytics | "OpenSearch cluster red" | Diagnosis + fix |
 | `ops-coordinator-agent` | Incidents | "Production outage" | Coordinated response |
+| `wellarchitected-agent` | Well-Architected | "Run a WAF review" | 100-point score + roadmap |
+
+### Conversion, Review, and Scaffolding Agents
+
+| Agent | Plugin | Example Prompt | Output |
+|-------|--------|----------------|--------|
+| `kiro-converter-agent` | kiro-power-converter | "Convert aws-ops-plugin to Kiro" | Kiro Power directory |
+| `agentcore-creator-agent` | agentcore-creator | "Deploy agent to AgentCore" | Strands Agent + deploy script |
+| `kiro-review-agent` | kiro-review | "Run architecture review" | 5-phase review report |
+| `doc-sync-checker` | project-init | "/sync-docs" | Doc quality scores |
 
 All agents activate automatically when Claude detects matching keywords in your prompt.
 
@@ -573,6 +614,29 @@ All agents activate automatically when Claude detects matching keywords in your 
 | `ops-network-diagnosis` | VPC CNI, Load Balancer, DNS deep diagnosis references |
 | `ops-observability` | CloudWatch, Prometheus, log analysis configuration |
 | `ops-security-audit` | IAM audit, network security, compliance scan procedures |
+| `ops-wellarchitected-review` | 6-pillar assessment, 100-point scoring, AS-IS/TO-BE roadmap |
+
+### Conversion and Scaffolding Skills
+
+| Skill | Provides |
+|-------|----------|
+| `kiro-convert` | Plugin-to-Kiro-Power conversion workflow |
+| `agentcore-create` | 5-phase AgentCore design, build, convert, deploy workflow |
+| `kiro-review` | Architecture deep review via Kiro CLI (code, security, WAF, spec-driven) |
+| `project-scaffolder` | Claude Code project structure patterns and conventions |
+
+### Project Init Commands
+
+| Command | What It Does |
+|---------|--------------|
+| `/init-project` | Initialize Claude Code project structure |
+| `/sync-docs` | Synchronize documentation with code |
+| `/add-adr` | Create Architecture Decision Record |
+| `/add-module` | Add module directory with CLAUDE.md |
+| `/add-runbook` | Create operational runbook |
+| `/generate-readme` | Generate bilingual README.md |
+| `/generate-changelog` | Generate bilingual CHANGELOG.md |
+| `/health-check` | Validate project setup |
 
 ---
 
@@ -592,10 +656,20 @@ Workshops:         workshop-agent  -->  content-review-agent  -->  Workshop Stud
 ### Operations Workflows
 
 ```
-Incident response: ops-coordinator  -->  specialist agents  -->  root cause  -->  resolve  -->  verify
-Troubleshooting:   matched agent  -->  diagnose  -->  resolve  -->  verify
-Health check:      ops-health-check skill  -->  6-domain assessment
-Security audit:    ops-security-audit skill  -->  IAM + network + compliance
+Incident response:  ops-coordinator  -->  specialist agents  -->  root cause  -->  resolve  -->  verify
+Troubleshooting:    matched agent  -->  diagnose  -->  resolve  -->  verify
+Health check:       ops-health-check skill  -->  6-domain assessment
+Security audit:     ops-security-audit skill  -->  IAM + network + compliance
+Well-Architected:   wellarchitected-agent  -->  6-pillar scoring  -->  AS-IS/TO-BE roadmap
+```
+
+### Conversion and Review Workflows
+
+```
+Kiro conversion:   plugin source  -->  kiro-converter-agent  -->  Kiro Power directory  -->  install/export
+AgentCore deploy:  discovery  -->  design  -->  skill-first build  -->  AgentCore convert  -->  deploy
+Architecture review: git diff  -->  kiro-review-agent  -->  code + security + WAF  -->  report
+Doc sync:          /sync-docs  -->  doc-sync-checker  -->  quality scores  -->  update docs
 ```
 
 Diagrams can be embedded into presentations, documents, or GitBook pages as part of a larger workflow.
@@ -618,63 +692,86 @@ All content passes through `content-review-agent` which scores on a 100-point sc
 
 ```
 plugins/
-├── aws-content-plugin/                # Content creation plugin
-│   ├── .claude-plugin/plugin.json     # Plugin manifest (7 agents, 5 skills)
-│   ├── CLAUDE.md                      # Auto-invocation rules & workflows
-│   ├── agents/
-│   │   ├── presentation-agent.md      # Interactive HTML slideshows
-│   │   ├── architecture-diagram-agent.md # Draw.io XML diagrams
+├── aws-content-plugin/                # Content creation (8 agents, 6 skills)
+│   ├── .claude-plugin/plugin.json
+│   ├── CLAUDE.md
+│   ├── agents/                        # 8 agents
+│   │   ├── presentation-agent.md      # Format dispatcher (Web vs PPTX)
+│   │   ├── reactive-presentation-agent.md # Interactive HTML slideshows
+│   │   ├── architecture-diagram-agent.md  # Draw.io XML diagrams
 │   │   ├── animated-diagram-agent.md  # SVG + SMIL animations
 │   │   ├── document-agent.md          # Markdown documents & reports
 │   │   ├── gitbook-agent.md           # GitBook documentation sites
 │   │   ├── workshop-agent.md          # AWS Workshop Studio content
 │   │   └── content-review-agent.md    # Cross-cutting quality review
-│   └── skills/
+│   └── skills/                        # 6 skills
 │       ├── reactive-presentation/     # Presentation framework + AWS icons
-│       │   ├── SKILL.md               # Workflow & slide type reference
-│       │   ├── assets/                # theme.css, slide-framework.js, export-utils.js, ...
-│       │   ├── scripts/               # remarp_to_slides.py, convert_to_remarp.py, marp_to_slides.py, extract_pptx_theme.py
-│       │   ├── references/            # framework-guide.md, slide-patterns.md
-│       │   └── icons/                 # AWS Architecture Icons (4,224 files)
 │       ├── architecture-diagram/      # Draw.io templates & patterns
-│       │   └── reference/            # drawio-xml-guide.md, mcp-setup-guide.md
 │       ├── animated-diagram/          # SMIL animation guide & templates
 │       ├── gitbook/                   # GitBook structure & components
-│       └── workshop-creator/          # Workshop Studio directives & templates
-│           └── reference/            # infrastructure-guide.md, workshop-templates.md
+│       ├── workshop-creator/          # Workshop Studio directives & templates
+│       └── slide-fix/                 # Slide issue annotation processing
 │
-├── aws-ops-plugin/                    # Infrastructure operations plugin
-│   ├── .claude-plugin/plugin.json     # Plugin manifest (9 agents, 5 skills)
-│   ├── .mcp.json                      # AWS MCP servers configuration
-│   ├── CLAUDE.md                      # Auto-invocation rules & workflows
-│   ├── agents/
+├── aws-ops-plugin/                    # Infrastructure operations (10 agents, 6 skills)
+│   ├── .claude-plugin/plugin.json
+│   ├── CLAUDE.md
+│   ├── agents/                        # 10 agents
 │   │   ├── eks-agent.md               # EKS cluster operations
 │   │   ├── network-agent.md           # VPC CNI, ALB/NLB, DNS
 │   │   ├── iam-agent.md               # IRSA, Pod Identity, RBAC
-│   │   ├── observability-agent.md      # CloudWatch, AMP, AMG, ADOT, Prometheus/Grafana
+│   │   ├── observability-agent.md     # CloudWatch, Prometheus, Grafana
 │   │   ├── storage-agent.md           # EBS/EFS/FSx CSI drivers
 │   │   ├── database-agent.md          # RDS, Aurora, DynamoDB, ElastiCache
 │   │   ├── cost-agent.md              # Cost analysis & optimization
-│   │   ├── analytics-agent.md         # OpenSearch, ClickHouse, Athena, QuickSight, Kinesis
-│   │   └── ops-coordinator-agent.md   # Multi-domain incident coordination
-│   └── skills/
+│   │   ├── analytics-agent.md         # OpenSearch, Athena, QuickSight, Kinesis
+│   │   ├── ops-coordinator-agent.md   # Multi-domain incident coordination
+│   │   └── wellarchitected-agent.md   # Well-Architected 6-pillar review
+│   └── skills/                        # 6 skills
 │       ├── ops-troubleshoot/          # Systematic troubleshooting
 │       ├── ops-health-check/          # Infrastructure health assessment
 │       ├── ops-network-diagnosis/     # VPC CNI, LB, DNS deep diagnosis
 │       ├── ops-observability/         # CloudWatch, Prometheus, log analysis
-│       └── ops-security-audit/        # IAM audit, network security, compliance
+│       ├── ops-security-audit/        # IAM audit, network security, compliance
+│       └── ops-wellarchitected-review/ # 6-pillar scoring, AS-IS/TO-BE roadmap
 │
-└── kiro-power-converter/              # Plugin conversion tool
-    ├── .claude-plugin/plugin.json     # Plugin manifest (1 agent, 1 skill)
-    ├── CLAUDE.md                      # Auto-invocation rules
+├── kiro-power-converter/              # Claude Code → Kiro Power (1 agent, 1 skill)
+│   ├── .claude-plugin/plugin.json
+│   ├── CLAUDE.md
+│   ├── agents/
+│   │   └── kiro-converter-agent.md
+│   └── skills/
+│       └── kiro-convert/
+│
+├── agentcore-creator/                 # Claude Code → Bedrock AgentCore (1 agent, 1 skill)
+│   ├── .claude-plugin/plugin.json
+│   ├── CLAUDE.md
+│   ├── agents/
+│   │   └── agentcore-creator-agent.md
+│   └── skills/
+│       └── agentcore-create/
+│
+├── kiro-review/                       # Architecture deep review (1 agent, 1 skill)
+│   ├── .claude-plugin/plugin.json
+│   ├── CLAUDE.md
+│   ├── agents/
+│   │   └── kiro-review-agent.md
+│   └── skills/
+│       └── kiro-review/
+│
+└── project-init/                      # Project scaffolding (1 agent, 1 skill, 8 commands)
+    ├── .claude-plugin/plugin.json
+    ├── CLAUDE.md
     ├── agents/
-    │   └── kiro-converter-agent.md    # Conversion agent (4 input sources)
+    │   └── doc-sync-checker.md
+    ├── commands/                       # 8 slash commands
+    │   ├── init-project.md
+    │   ├── sync-docs.md
+    │   ├── add-adr.md
+    │   ├── add-module.md
+    │   ├── add-runbook.md
+    │   ├── generate-readme.md
+    │   ├── generate-changelog.md
+    │   └── health-check.md
     └── skills/
-        └── kiro-convert/              # Conversion skill
-            ├── SKILL.md               # Interactive conversion workflow
-            ├── scripts/
-            │   └── convert_plugin_to_power.py  # CLI converter (Python 3.8+, no deps)
-            └── references/
-                ├── kiro-power-format.md        # Kiro Power format specification
-                └── conversion-rules.md         # Field-by-field conversion rules
+        └── project-scaffolder/
 ```
