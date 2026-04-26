@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Add iterative refinement (rejection loop) for reactive-presentation quality validation ([#19](https://github.com/Atom-oh/oh-my-cloud-skills/pull/19))
 
+### Fixed
+- Fix PPTX theme extraction color palette using luminance-based selection instead of dk/lt slot names (handles inverted dark themes)
+- Fix PPTX theme extraction footer misidentification with bottom-20% position filter
+- Fix PPTX theme extraction layout background with keyword-based matching and `<p:bgRef>` XML parsing
+- Fix PDF export CSS path resolution with dynamic `_resolveCommonPath()` instead of hardcoded `../common/`
+- Fix PPTX export missing theme background by extracting colors from `window.__remarpTheme` in block HTML
+- Fix TOC export block card selector to support both `<div class="block-card">` and `<a class="block-card">` structures
+
 ## [1.4.0] - 2026-04-14
 
 ### Added
@@ -153,6 +161,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - reactive-presentation 품질 검증을 위한 반복 개선(rejection loop) 추가 ([#19](https://github.com/Atom-oh/oh-my-cloud-skills/pull/19))
+
+### Fixed
+- PPTX 테마 추출 색상 팔레트를 dk/lt 슬롯명 대신 휘도 기반 선택으로 수정 (반전된 다크 테마 처리)
+- PPTX 테마 추출 푸터 오인식을 하단 20% 위치 필터로 수정
+- PPTX 테마 추출 레이아웃 배경을 키워드 기반 매칭 및 `<p:bgRef>` XML 파싱으로 수정
+- PDF 내보내기 CSS 경로를 하드코딩된 `../common/` 대신 동적 `_resolveCommonPath()`로 수정
+- PPTX 내보내기에서 블록 HTML의 `window.__remarpTheme`에서 색상을 추출하여 누락된 테마 배경 수정
+- TOC 내보내기 블록 카드 셀렉터를 `<div class="block-card">`와 `<a class="block-card">` 구조 모두 지원하도록 수정
 
 ## [1.4.0] - 2026-04-14
 

@@ -54,7 +54,24 @@ assert_bash_syntax() {
   fi
 }
 
-export -f assert_eq assert_contains assert_file_exists assert_file_executable assert_json_valid assert_bash_syntax
+assert_grep_match() {
+  TOTAL=$((TOTAL + 1))
+  if echo "$2" | grep -qP "$1" 2>/dev/null; then
+    echo -e "${GREEN}ok $TOTAL - $3${NC}"; PASS=$((PASS + 1))
+  else
+    echo -e "${RED}not ok $TOTAL - $3 (pattern '$1' did not match)${NC}"; FAIL=$((FAIL + 1))
+  fi
+}
+assert_grep_no_match() {
+  TOTAL=$((TOTAL + 1))
+  if echo "$2" | grep -qP "$1" 2>/dev/null; then
+    echo -e "${RED}not ok $TOTAL - $3 (pattern '$1' matched unexpectedly)${NC}"; FAIL=$((FAIL + 1))
+  else
+    echo -e "${GREEN}ok $TOTAL - $3${NC}"; PASS=$((PASS + 1))
+  fi
+}
+
+export -f assert_eq assert_contains assert_file_exists assert_file_executable assert_json_valid assert_bash_syntax assert_grep_match assert_grep_no_match
 export PASS FAIL TOTAL RED GREEN YELLOW NC
 
 echo "TAP version 14"

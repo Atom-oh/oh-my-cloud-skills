@@ -109,7 +109,7 @@ your-repo/
 │   ├── presenter-view.js           # Presenter view with draggable splitters
 │   ├── animation-utils.js          # Canvas primitives, AnimationLoop, easing
 │   ├── quiz-component.js           # Quiz auto-grading and feedback
-│   ├── export-utils.js             # PDF export and ZIP download
+│   ├── export-utils.js             # PDF/PPTX export and ZIP download
 │   └── aws-icons/                  # AWS Architecture Icons (optional)
 └── eks-autoscaling/                # One directory per presentation
     ├── index.html                  # Table of contents

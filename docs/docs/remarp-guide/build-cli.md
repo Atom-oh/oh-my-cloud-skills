@@ -159,9 +159,11 @@ python3 remarp_to_slides.py build my-talk.md --format pdf
 또는 브라우저에서 HTML을 열고 `ExportUtils.exportPDF()` 사용:
 
 ```javascript
-// 브라우저 콘솔에서
+// 브라우저 콘솔에서 (또는 TOC 페이지 Export 버튼)
 ExportUtils.exportPDF({ title: 'My Presentation' });
 ```
+
+PDF 내보내기는 `_resolveCommonPath()`를 통해 현재 페이지의 CSS 경로를 자동 감지하므로, TOC 페이지(`index.html`)와 블록 페이지 모두에서 올바르게 동작합니다.
 
 ### ZIP 내보내기
 
@@ -184,6 +186,8 @@ ExportUtils.downloadZIP({ slug: 'my-presentation' });
 // 브라우저에서
 ExportUtils.exportPPTX({ title: 'My Presentation' });
 ```
+
+PPTX 내보내기는 각 블록 HTML에 임베드된 `window.__remarpTheme`에서 테마 색상을 자동 추출하여 슬라이드 배경에 적용합니다. PPTX 테마가 적용된 프레젠테이션에서는 추출된 배경색이 그대로 반영됩니다.
 
 :::warning
 PPTX 내보내기는 정적 슬라이드로 변환됩니다. Canvas 애니메이션, 인터랙티브 요소는 정적 이미지로 대체됩니다.

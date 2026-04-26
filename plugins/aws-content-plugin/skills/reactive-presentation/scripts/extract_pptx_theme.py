@@ -198,15 +198,18 @@ class ThemeExtractor:
             'layouts': {}
         }
 
-        # Check key layouts
-        key_layout_names = ['Title Slide', 'Title and Content', 'Section Header',
-                          'Two Content', 'Blank']
+        # Check all layouts, include any with non-inherited backgrounds
+        key_layout_names = {'Title Slide', 'Title and Content', 'Section Header',
+                          'Two Content', 'Blank'}
+        key_keywords = {'title', 'section', 'blank', 'content', 'agenda', 'cover'}
 
         for layout in self.master.slide_layouts:
-            if layout.name in key_layout_names:
-                bg_info = self._extract_background_from_element(layout, output_dir)
-                if bg_info['type'] != 'inherited':
-                    backgrounds['layouts'][layout.name] = bg_info
+            name_lower = layout.name.lower()
+            is_key = (layout.name in key_layout_names
+                      or any(kw in name_lower for kw in key_keywords))
+            bg_info = self._extract_background_from_element(layout, output_dir)
+            if bg_info['type'] != 'inherited' and is_key:
+                backgrounds['layouts'][layout.name] = bg_info
 
         return backgrounds
 
@@ -215,6 +218,11 @@ class ThemeExtractor:
 
         When output_dir is provided and fill is a picture, the image blob
         is saved to output_dir/images/background.{ext}.
+
+        Handles three background definition patterns:
+        1. Explicit fill (solid/gradient/picture) via python-pptx FillFormat
+        2. Theme format-scheme reference (<p:bgRef>) resolved via theme XML
+        3. Raw XML fallback for fills that python-pptx doesn't expose
         """
         bg_info = {'type': 'inherited'}
 
@@ -223,8 +231,41 @@ class ThemeExtractor:
             if background is None:
                 return bg_info
 
+            # Check for <p:bgRef> (theme format scheme reference)
+            bg_elem = background._element
+            a_ns = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+            p_ns = 'http://schemas.openxmlformats.org/presentationml/2006/main'
+            bg_ref = bg_elem.find(f'{{{p_ns}}}bgRef')
+            if bg_ref is None:
+                bg_ref = bg_elem.find(f'.//{{{p_ns}}}bgRef')
+
+            if bg_ref is not None:
+                # Resolve color from bgRef
+                srgb = bg_ref.find(f'{{{a_ns}}}srgbClr')
+                if srgb is not None:
+                    bg_info = {'type': 'solid', 'color': f"#{srgb.get('val')}"}
+                    return bg_info
+                scheme_clr = bg_ref.find(f'{{{a_ns}}}schemeClr')
+                if scheme_clr is not None:
+                    scheme_name = scheme_clr.get('val', '')
+                    scheme_map = {
+                        'dk1': 'dk1', 'dk2': 'dk2', 'lt1': 'lt1', 'lt2': 'lt2',
+                        'tx1': 'dk1', 'tx2': 'dk2', 'bg1': 'lt1', 'bg2': 'lt2',
+                    }
+                    mapped = scheme_map.get(scheme_name)
+                    colors = self.extract_colors()
+                    if mapped and mapped in colors:
+                        bg_info = {'type': 'solid', 'color': colors[mapped]}
+                        return bg_info
+
             fill = background.fill
             if fill is None:
+                # Fallback: check raw XML for fills python-pptx missed
+                solid_fill = bg_elem.find(f'.//{{{a_ns}}}solidFill')
+                if solid_fill is not None:
+                    srgb = solid_fill.find(f'{{{a_ns}}}srgbClr')
+                    if srgb is not None:
+                        return {'type': 'solid', 'color': f"#{srgb.get('val')}"}
                 return bg_info
 
             fill_type = str(fill.type) if fill.type else 'none'
@@ -386,34 +427,62 @@ class ThemeExtractor:
 
     def extract_footer(self) -> Optional[dict[str, Any]]:
         """Extract footer placeholder information."""
-        return self._extract_placeholder(PH_TYPE_FOOTER, 3)
+        return self._extract_placeholder(PH_TYPE_FOOTER, 3, require_bottom=True)
 
     def extract_slide_number(self) -> Optional[dict[str, Any]]:
         """Extract slide number placeholder information."""
-        return self._extract_placeholder(PH_TYPE_SLIDE_NUMBER, 4)
+        return self._extract_placeholder(PH_TYPE_SLIDE_NUMBER, 4, require_bottom=True)
 
     def extract_date(self) -> Optional[dict[str, Any]]:
         """Extract date placeholder information."""
-        return self._extract_placeholder(PH_TYPE_DATE, 2)
+        return self._extract_placeholder(PH_TYPE_DATE, 2, require_bottom=True)
 
-    def _extract_placeholder(self, ph_type: int, ph_idx: int) -> Optional[dict[str, Any]]:
-        """Extract placeholder by type and index."""
-        # Check master shapes
-        for shape in self.master.shapes:
-            if shape.is_placeholder:
+    def _extract_placeholder(self, ph_type: int, ph_idx: int,
+                              require_bottom: bool = False) -> Optional[dict[str, Any]]:
+        """Extract placeholder by type, index, and optional position.
+
+        Args:
+            ph_type: PP_PLACEHOLDER type value to match.
+            ph_idx: Placeholder index to match.
+            require_bottom: If True, only match placeholders in the bottom
+                20% of the slide (for footer/slide-number/date).
+        """
+        candidates = []
+
+        for source in [self.master] + list(self.master.slide_layouts):
+            for shape in source.shapes:
+                if not shape.is_placeholder:
+                    continue
                 ph = shape.placeholder_format
-                if ph.idx == ph_idx or (ph.type and ph.type.value == ph_type):
-                    return self._get_placeholder_info(shape, ph)
+                type_match = ph.type and ph.type.value == ph_type
+                idx_match = ph.idx == ph_idx
+                if type_match or idx_match:
+                    info = self._get_placeholder_info(shape, ph)
+                    top_pct = emu_to_percent(shape.top, SLIDE_HEIGHT_EMU)
+                    info['_top_pct'] = top_pct
+                    info['_type_match'] = type_match
+                    candidates.append(info)
 
-        # Check layouts
-        for layout in self.master.slide_layouts:
-            for shape in layout.shapes:
-                if shape.is_placeholder:
-                    ph = shape.placeholder_format
-                    if ph.idx == ph_idx or (ph.type and ph.type.value == ph_type):
-                        return self._get_placeholder_info(shape, ph)
+        if not candidates:
+            return None
 
-        return None
+        # Filter by position if required (bottom 20% of slide)
+        if require_bottom:
+            bottom_candidates = [c for c in candidates if c['_top_pct'] > 80]
+            if bottom_candidates:
+                candidates = bottom_candidates
+            else:
+                # No candidates in footer area — likely misidentified body placeholders
+                return None
+
+        # Prefer type match over idx-only match
+        type_matched = [c for c in candidates if c['_type_match']]
+        best = type_matched[0] if type_matched else candidates[0]
+
+        # Clean up internal keys
+        best.pop('_top_pct', None)
+        best.pop('_type_match', None)
+        return best
 
     def _get_placeholder_info(self, shape, ph) -> dict[str, Any]:
         """Get placeholder information."""
@@ -535,33 +604,47 @@ class ThemeExtractor:
 
         The semantic palette provides designer-friendly names that match
         common design-system tokens (primary, secondary, accent, etc.).
+        Uses actual luminance rather than dk/lt slot names, because dark
+        theme PPTXs frequently swap the dk/lt conventions.
         """
         palette: dict[str, str] = {}
 
-        # Background: dk2 if dark, else dk1
-        for key in ('dk2', 'dk1'):
+        # Compute luminance for all base slots
+        base_slots = {}
+        for key in ('dk1', 'lt1', 'dk2', 'lt2'):
             if key in colors:
                 r, g, b = hex_to_rgb(colors[key])
-                if rgb_to_luminance(r, g, b) < 0.3:
-                    palette['background'] = colors[key]
-                    break
-        if 'background' not in palette:
+                base_slots[key] = {'hex': colors[key], 'lum': rgb_to_luminance(r, g, b)}
+
+        # Find the darkest color among base slots for background
+        darkest_key = min(base_slots, key=lambda k: base_slots[k]['lum']) if base_slots else None
+        if darkest_key and base_slots[darkest_key]['lum'] < 0.3:
+            palette['background'] = base_slots[darkest_key]['hex']
+        else:
             palette['background'] = colors.get('lt1', '#FFFFFF')
 
         # Determine if the template is dark or light
-        bg_lum = 1.0
-        if 'background' in palette:
-            r, g, b = hex_to_rgb(palette['background'])
-            bg_lum = rgb_to_luminance(r, g, b)
-        is_dark = bg_lum < 0.2
+        bg_r, bg_g, bg_b = hex_to_rgb(palette['background'])
+        bg_lum = rgb_to_luminance(bg_r, bg_g, bg_b)
+        is_dark = bg_lum < 0.3
 
-        # Text colours: choose high contrast against background
+        # Text colours: pick highest-contrast base slot against background
+        # Sort base slots by luminance distance from background
+        contrast_sorted = sorted(
+            base_slots.items(),
+            key=lambda item: abs(item[1]['lum'] - bg_lum),
+            reverse=True,
+        )
         if is_dark:
-            palette['text_primary'] = colors.get('lt1', '#FFFFFF')
-            palette['text_secondary'] = colors.get('lt2', '#B0B0B0')
+            # For dark bg, pick the two brightest slots
+            bright = [s for s in contrast_sorted if s[1]['lum'] > bg_lum]
+            palette['text_primary'] = bright[0][1]['hex'] if len(bright) >= 1 else '#FFFFFF'
+            palette['text_secondary'] = bright[1][1]['hex'] if len(bright) >= 2 else '#B0B0B0'
         else:
-            palette['text_primary'] = colors.get('dk1', '#000000')
-            palette['text_secondary'] = colors.get('dk2', '#333333')
+            # For light bg, pick the two darkest slots
+            dark = [s for s in contrast_sorted if s[1]['lum'] < bg_lum]
+            palette['text_primary'] = dark[0][1]['hex'] if len(dark) >= 1 else '#000000'
+            palette['text_secondary'] = dark[1][1]['hex'] if len(dark) >= 2 else '#333333'
 
         # Primary = accent1, Secondary = accent2, Accent = accent3 or accent1
         palette['primary'] = colors.get('accent1', '#0078D4')
