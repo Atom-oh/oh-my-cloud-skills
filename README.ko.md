@@ -109,7 +109,7 @@ your-repo/
 │   ├── presenter-view.js           # 드래그 가능한 스플리터가 있는 발표자 뷰
 │   ├── animation-utils.js          # Canvas 프리미티브, AnimationLoop, easing
 │   ├── quiz-component.js           # 퀴즈 자동 채점 및 피드백
-│   ├── export-utils.js             # PDF 내보내기 및 ZIP 다운로드
+│   ├── export-utils.js             # PDF/PPTX 내보내기 및 ZIP 다운로드
 │   └── aws-icons/                  # AWS Architecture Icons (선택사항)
 └── eks-autoscaling/                # 프레젠테이션당 하나의 디렉토리
     ├── index.html                  # 목차

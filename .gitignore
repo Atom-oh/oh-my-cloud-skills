@@ -1,6 +1,11 @@
 # oh-my-claudecode
 .omc/
 
+# Environment
+.env
+.env.local
+.env.*.local
+
 # Claude Code
 .claude/*
 !.claude/settings.json
@@ -21,6 +26,9 @@ node_modules/
 *.png
 # But keep demo screenshots
 !docs/static/img/demos/*.png
+
+# Test fixtures with fake secrets (triggers GitHub Push Protection)
+tests/fixtures/secret-samples.txt
 
 # Docusaurus
 docs/node_modules/

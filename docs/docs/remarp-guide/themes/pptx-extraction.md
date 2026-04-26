@@ -58,11 +58,23 @@ theme:
 
 ## 색상 매핑
 
-PPTX 테마 색상은 reactive-presentation CSS 변수로 매핑됩니다:
+PPTX 테마 색상은 reactive-presentation CSS 변수로 매핑됩니다.
+
+### 배경/텍스트 색상 (휘도 기반 선택)
+
+배경과 텍스트 색상은 슬롯 이름(dk1, lt1 등)이 아닌 **실제 휘도(luminance)** 기반으로 선택됩니다. 일부 다크 테마 PPTX에서는 dk1이 밝은 색(#FFFFFF), lt1이 어두운 색(#232E3D)으로 반전되어 있기 때문입니다.
+
+| 선택 기준 | CSS 변수 | 용도 |
+|----------|---------|------|
+| 기본 슬롯(dk1/lt1/dk2/lt2) 중 **가장 어두운 색** | `--bg-primary` | 메인 배경 |
+| 배경과 **가장 대비가 큰 색** | `--text-primary` | 기본 텍스트 |
+| 배경과 **두 번째로 대비가 큰 색** | `--text-secondary` | 보조 텍스트 |
+| 배경과 **세 번째로 대비가 큰 색** | `--text-muted` | 약한 텍스트 |
+
+### 강조색 (고정 매핑)
 
 | PPTX 색상 | CSS 변수 | 용도 |
 |----------|---------|------|
-| `dk2` | `--bg-primary` | 메인 배경 (충분히 어두운 경우에만) |
 | `accent1` | `--accent` | 기본 강조색 (버튼, 링크, 하이라이트) |
 | `accent2` | `--accent-light` | 보조 강조색 (그라데이션, 호버) |
 | `accent3` | `--green` | 성공 표시 |
@@ -70,7 +82,6 @@ PPTX 테마 색상은 reactive-presentation CSS 변수로 매핑됩니다:
 | `accent5` | `--orange` | 경고 표시 |
 | `accent6` | `--yellow` | 주의 표시 |
 | `hlink` | `--cyan` | 하이퍼링크 색상 |
-| `lt1` | `--text-primary` | 기본 텍스트 색상 (충분히 밝은 경우) |
 
 ## 로고 감지
 
@@ -95,9 +106,13 @@ const deck = new SlideFramework({
 
 ## 푸터 추출
 
-- **푸터 텍스트**: 슬라이드 마스터의 placeholder idx=3에서 추출
-- **슬라이드 번호 형식**: placeholder idx=4에서 추출 (예: `‹#›`)
-- **날짜 형식**: placeholder idx=2에서 추출
+푸터, 슬라이드 번호, 날짜는 OOXML placeholder 타입과 **위치 필터**를 조합하여 추출합니다:
+
+- **푸터 텍스트**: `PP_PLACEHOLDER.FOOTER` (type=15) 중 슬라이드 하단 20% 영역에 위치한 요소에서 추출
+- **슬라이드 번호 형식**: `PP_PLACEHOLDER.SLIDE_NUMBER` (type=13) 중 하단 20% 영역에서 추출 (예: `‹#›`)
+- **날짜 형식**: `PP_PLACEHOLDER.DATE` (type=16) 중 하단 20% 영역에서 추출
+
+위치 필터(`require_bottom=True`)는 슬라이드 상단에 있는 본문 placeholder가 푸터로 오인되는 문제를 방지합니다. 타입 일치 후보가 하단에 없으면 `null`을 반환합니다.
 
 푸터 텍스트는 `theme-manifest.json`의 `footer_text` 필드에서 확인하고 SlideFramework에 전달합니다.
 
@@ -109,6 +124,16 @@ const deck = new SlideFramework({
 | SOLID | `:root`에 `background-color` |
 | PICTURE | `::before` 가상 요소에 어두운 오버레이 |
 | GRADIENT | 추출된 색상으로 `linear-gradient()` |
+| `<p:bgRef>` (테마 포맷 스킴) | 스킴 색상 해석 후 `background-color` |
+
+:::info bgRef 지원
+일부 PPTX 템플릿은 `fill.type` 대신 XML의 `<p:bgRef>` 요소로 배경을 정의합니다. 추출기는 `<a:srgbClr>` (직접 색상)과 `<a:schemeClr>` (스킴 참조) 모두를 처리합니다.
+:::
+
+### 레이아웃 배경 추출
+
+슬라이드 레이아웃별 배경은 이름에 다음 키워드가 포함된 레이아웃에서만 추출됩니다:
+`title`, `section`, `blank`, `content`, `agenda`, `cover`
 
 ## 테마 매니페스트
 
@@ -165,7 +190,7 @@ python3 scripts/extract_pptx_theme.py template.pptx --master 1 -o theme-alt/
 
 ### 색상이 잘못 표시되는 경우
 
-스크립트는 dk2가 어두운 경우(휘도 < 0.2)에만 배경색으로 적용합니다. 밝은 테마 PPTX의 경우 기본 어두운 배경을 유지하고 강조색만 적용됩니다.
+스크립트는 기본 슬롯(dk1/lt1/dk2/lt2) 중 가장 어두운 색을 배경으로, 가장 대비가 큰 색을 텍스트로 선택합니다. 다크 테마에서 dk1=#FFFFFF, lt1=#232E3D처럼 슬롯명과 실제 밝기가 반전된 경우에도 올바르게 동작합니다. 밝은 테마 PPTX의 경우 기본 어두운 배경을 유지하고 강조색만 적용됩니다.
 
 ### 로고가 표시되지 않는 경우
 

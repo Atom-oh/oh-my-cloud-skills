@@ -277,3 +277,18 @@ AgentCore: Plugin source → analyze → map to AgentCore → generate artifacts
 
 Review:    /kiro-review → kiro-review-agent → Kiro CLI delegation → Well-Architected → Report
 ```
+
+## Auto-Sync Rules
+
+Documentation stays in sync via hooks and skills:
+
+| Trigger | Mechanism | Action |
+|---------|-----------|--------|
+| File edit (Write/Edit) | `check-doc-sync.sh` (PostToolUse) | Walks parent dirs for missing CLAUDE.md, warns if absent |
+| File edit on README.md | PostToolUse hook | Auto-prompts Korean translation to README.ko.md |
+| `git commit` (Bash) | `secret-scan.sh` (PreToolUse) | Blocks commits containing API keys, tokens, passwords |
+| Session start | `session-context.sh` (SessionStart) | Loads project type, version, branch, uncommitted file count |
+| `remarp_to_slides.py` run | PreToolUse inline hook | Verifies common/ assets (theme.css, JS) exist before build |
+| Commit creation | `.git/hooks/commit-msg` | Strips Co-Authored-By lines from commit messages |
+| Manual | `/sync-docs` skill | Full documentation sync with quality scoring |
+| Plan mode exit | CLAUDE.md convention | Update docs when architectural decisions change |

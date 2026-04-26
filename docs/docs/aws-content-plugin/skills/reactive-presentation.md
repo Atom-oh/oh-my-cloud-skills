@@ -29,7 +29,7 @@ Framework files (copy to `common/`):
 | `presenter-view.js` | PresenterView class (draggable splitters, BroadcastChannel sync) |
 | `animation-utils.js` | Canvas primitives, AnimationLoop, TimelineAnimation, Colors, Ease |
 | `quiz-component.js` | QuizManager (auto-grading, feedback) |
-| `export-utils.js` | ExportUtils (PDF export, ZIP download) |
+| `export-utils.js` | ExportUtils (PDF export, PPTX export with theme, ZIP download) |
 
 ### scripts/
 
