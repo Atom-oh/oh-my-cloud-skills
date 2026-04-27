@@ -88,10 +88,31 @@ const config: Config = {
           label: 'aws-ops-plugin',
         },
         {
-          type: 'docSidebar',
-          sidebarId: 'kiroConverter',
+          type: 'dropdown',
+          label: 'More Plugins',
           position: 'left',
-          label: 'kiro-power-converter',
+          items: [
+            {
+              type: 'docSidebar',
+              sidebarId: 'kiroConverter',
+              label: 'kiro-power-converter',
+            },
+            {
+              type: 'docSidebar',
+              sidebarId: 'agentcoreCreator',
+              label: 'agentcore-creator',
+            },
+            {
+              type: 'docSidebar',
+              sidebarId: 'kiroReview',
+              label: 'kiro-review',
+            },
+            {
+              type: 'docSidebar',
+              sidebarId: 'projectInit',
+              label: 'project-init',
+            },
+          ],
         },
         {
           type: 'docSidebar',
@@ -119,6 +140,9 @@ const config: Config = {
             {label: 'aws-content-plugin', to: '/docs/aws-content-plugin/overview'},
             {label: 'aws-ops-plugin', to: '/docs/aws-ops-plugin/overview'},
             {label: 'kiro-power-converter', to: '/docs/kiro-power-converter/overview'},
+            {label: 'agentcore-creator', to: '/docs/agentcore-creator/overview'},
+            {label: 'kiro-review', to: '/docs/kiro-review/overview'},
+            {label: 'project-init', to: '/docs/project-init/overview'},
           ],
         },
         {
