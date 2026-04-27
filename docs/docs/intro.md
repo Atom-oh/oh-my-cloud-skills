@@ -6,25 +6,34 @@ title: 시작하기
 
 # oh-my-cloud-skills 시작하기
 
-**oh-my-cloud-skills**는 AWS 클라우드 작업을 위한 [Claude Code](https://claude.ai/code) 플러그인 마켓플레이스입니다. 3개의 플러그인이 총 18개의 AI 에이전트와 11개의 스킬을 제공합니다.
+**oh-my-cloud-skills**는 AWS 클라우드 작업을 위한 [Claude Code](https://claude.ai/code) 플러그인 마켓플레이스입니다. 6개의 플러그인이 총 22개의 AI 에이전트와 14개의 스킬을 제공합니다.
 
 ## 플러그인 목록
 
 | 플러그인 | 설명 | Agents | Skills |
 |----------|------|--------|--------|
-| [aws-content-plugin](/docs/aws-content-plugin/overview) | 프레젠테이션, 다이어그램, 문서, GitBook, 워크샵 | 8 | 5 |
-| [aws-ops-plugin](/docs/aws-ops-plugin/overview) | EKS, 네트워크, IAM, 옵저버빌리티, 스토리지, DB, 비용 | 9 | 5 |
+| [aws-content-plugin](/docs/aws-content-plugin/overview) | 프레젠테이션, 다이어그램, 문서, GitBook, 워크샵 | 8 | 6 |
+| [aws-ops-plugin](/docs/aws-ops-plugin/overview) | EKS, 네트워크, IAM, 옵저버빌리티, 스토리지, DB, 비용, Well-Architected | 10 | 6 |
 | [kiro-power-converter](/docs/kiro-power-converter/overview) | Claude Code 플러그인 → Kiro Power 변환 | 1 | 1 |
+| [agentcore-creator](/docs/agentcore-creator/overview) | Claude Code 플러그인 → Bedrock AgentCore 배포 | 1 | 1 |
+| [kiro-review](/docs/kiro-review/overview) | Kiro CLI 기반 종합 아키텍처 심층 리뷰 | 1 | 1 |
+| [project-init](/docs/project-init/overview) | 프로젝트 스캐폴딩, 문서 동기화, 8개 명령 | 1 | 1 |
 
 ## 설치 방법
 
 ### Marketplace에서 설치 (권장)
 
 ```bash
-# Claude Code 세션에서 실행
-/plugin marketplace add aws-content-plugin
-/plugin marketplace add aws-ops-plugin
-/plugin marketplace add kiro-power-converter
+# 마켓플레이스 추가
+/plugin marketplace add https://github.com/Atom-oh/oh-my-cloud-skills
+
+# 플러그인 설치
+/plugin install aws-content-plugin@oh-my-cloud-skills
+/plugin install aws-ops-plugin@oh-my-cloud-skills
+/plugin install kiro-power-converter@oh-my-cloud-skills
+/plugin install agentcore-creator@oh-my-cloud-skills
+/plugin install kiro-review@oh-my-cloud-skills
+/plugin install project-init@oh-my-cloud-skills
 ```
 
 ### 로컬에서 직접 로드
@@ -36,6 +45,10 @@ git clone https://github.com/Atom-oh/oh-my-cloud-skills.git
 # 플러그인 디렉토리를 직접 지정하여 로드
 claude --plugin-dir ./oh-my-cloud-skills/plugins/aws-content-plugin
 claude --plugin-dir ./oh-my-cloud-skills/plugins/aws-ops-plugin
+claude --plugin-dir ./oh-my-cloud-skills/plugins/kiro-power-converter
+claude --plugin-dir ./oh-my-cloud-skills/plugins/agentcore-creator
+claude --plugin-dir ./oh-my-cloud-skills/plugins/kiro-review
+claude --plugin-dir ./oh-my-cloud-skills/plugins/project-init
 ```
 
 ## 플러그인 구조
@@ -85,4 +98,8 @@ plugins/<plugin-name>/
 
 - [aws-content-plugin 개요](/docs/aws-content-plugin/overview) — 콘텐츠 생성 플러그인
 - [aws-ops-plugin 개요](/docs/aws-ops-plugin/overview) — 인프라 운영 플러그인
+- [kiro-power-converter 개요](/docs/kiro-power-converter/overview) — Kiro Power 변환 플러그인
+- [agentcore-creator 개요](/docs/agentcore-creator/overview) — Bedrock AgentCore 배포 플러그인
+- [kiro-review 개요](/docs/kiro-review/overview) — 아키텍처 심층 리뷰 플러그인
+- [project-init 개요](/docs/project-init/overview) — 프로젝트 스캐폴딩 플러그인
 - [Remarp Guide](/docs/remarp-guide/introduction) — 차세대 프레젠테이션 마크다운 포맷

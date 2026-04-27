@@ -66,6 +66,7 @@ const sidebars: SidebarsConfig = {
         'aws-ops-plugin/agents/cost-agent',
         'aws-ops-plugin/agents/analytics-agent',
         'aws-ops-plugin/agents/ops-coordinator-agent',
+        'aws-ops-plugin/agents/wellarchitected-agent',
       ],
     },
     {
@@ -105,6 +106,28 @@ const sidebars: SidebarsConfig = {
     'kiro-power-converter/agents/kiro-converter-agent',
     'kiro-power-converter/skills/kiro-convert',
     'kiro-power-converter/demos/conversion-example',
+  ],
+
+  agentcoreCreator: [
+    'agentcore-creator/overview',
+    'agentcore-creator/installation',
+    'agentcore-creator/agents/agentcore-creator-agent',
+    'agentcore-creator/skills/agentcore-create',
+  ],
+
+  kiroReview: [
+    'kiro-review/overview',
+    'kiro-review/installation',
+    'kiro-review/agents/kiro-review-agent',
+    'kiro-review/skills/kiro-review',
+  ],
+
+  projectInit: [
+    'project-init/overview',
+    'project-init/installation',
+    'project-init/agents/doc-sync-checker',
+    'project-init/skills/project-scaffolder',
+    'project-init/commands/commands',
   ],
 
   remarpGuide: [
