@@ -4,10 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A Claude Code plugin marketplace containing three plugins for AWS cloud work:
+A Claude Code plugin marketplace containing six plugins for AWS cloud work:
 - **aws-content-plugin** — Content creation (presentations, diagrams, docs, workshops)
 - **aws-ops-plugin** — Infrastructure operations & troubleshooting (EKS, networking, IAM, observability)
 - **kiro-power-converter** — Convert Claude Code plugins to Kiro IDE Power format
+- **agentcore-creator** — Convert Claude Code plugins to Bedrock AgentCore
+- **kiro-review** — Architecture deep review via Kiro CLI
+- **project-init** — Project scaffolding and documentation management
 
 All plugins are installed via `/plugin marketplace add` or loaded locally with `--plugin-dir`.
 
