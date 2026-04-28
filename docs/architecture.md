@@ -21,7 +21,7 @@ oh-my-cloud-skills는 Claude Code용 플러그인 마켓플레이스로, AWS 클
 | kiro-power-converter | 플러그인 → Kiro Power 변환 | YAML/JSON 변환 |
 | kiro-review | Kiro CLI 기반 아키텍처 심층 리뷰 (1 agent, 1 skill) | Kiro CLI |
 | agentcore-creator | Claude Code → Bedrock AgentCore 변환 (1 agent, 1 skill) | AWS CLI, Python |
-| project-init | 프로젝트 초기화 및 문서 관리 (1 agent, 1 skill, 8 commands) | Bash, Markdown |
+| project-init | 프로젝트 초기화 및 문서 관리 (1 agent, 2 skills, 9 commands) | Bash, Markdown |
 
 ### 도구 레이어
 
@@ -129,7 +129,7 @@ oh-my-cloud-skills is a Claude Code plugin marketplace providing 6 plugins for A
 | kiro-power-converter | Plugin → Kiro Power conversion | YAML/JSON transform |
 | kiro-review | Architecture deep review via Kiro CLI (1 agent, 1 skill) | Kiro CLI |
 | agentcore-creator | Claude Code → Bedrock AgentCore conversion (1 agent, 1 skill) | AWS CLI, Python |
-| project-init | Project scaffolding & doc management (1 agent, 1 skill, 8 commands) | Bash, Markdown |
+| project-init | Project scaffolding & doc management (1 agent, 2 skills, 9 commands) | Bash, Markdown |
 
 ### Tool Layer
 
