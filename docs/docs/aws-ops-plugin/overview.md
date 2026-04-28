@@ -11,8 +11,8 @@ AWS Ops Plugin은 AWS/EKS 인프라 운영 및 트러블슈팅을 위한 Claude 
 
 | 카테고리 | 수량 | 설명 |
 |---------|------|------|
-| Agents | 9 | 도메인별 전문 에이전트 |
-| Skills | 5 | 워크플로우 기반 스킬 |
+| Agents | 10 | 도메인별 전문 에이전트 |
+| Skills | 6 | 워크플로우 기반 스킬 |
 | MCP Servers | 5 | AWS 서비스 연동 서버 |
 
 ## 에이전트 목록
@@ -28,6 +28,7 @@ AWS Ops Plugin은 AWS/EKS 인프라 운영 및 트러블슈팅을 위한 Claude 
 | `cost-agent` | awspricing MCP 비용 분석, 절감 전략 |
 | `analytics-agent` | OpenSearch, ClickHouse, Athena, QuickSight, Kinesis |
 | `ops-coordinator-agent` | 멀티 도메인 인시던트 조율, 심각도 평가, 팀 오케스트레이션 |
+| `wellarchitected-agent` | AWS Well-Architected 6 필러 리뷰, 100점 척도 평가, AS-IS→TO-BE 로드맵 |
 
 ## 스킬 목록
 
@@ -38,6 +39,7 @@ AWS Ops Plugin은 AWS/EKS 인프라 운영 및 트러블슈팅을 위한 Claude 
 | `ops-network-diagnosis` | "network issue", "네트워크 오류", "연결 문제" | VPC CNI, LB, DNS 심층 진단 |
 | `ops-observability` | "monitoring", "모니터링", "로그 분석", "알람" | CloudWatch 설정, PromQL, 로그 분석 |
 | `ops-security-audit` | "security audit", "보안 점검", "compliance" | IAM 감사, 네트워크 보안, 컴플라이언스 |
+| `ops-wellarchitected-review` | "well-architected", "WAF review", "인프라 진단", "아키텍처 리뷰" | 6 필러 심층 평가, 100점 스코어링, 개선 로드맵 |
 
 ## 인시던트 대응 워크플로우
 
@@ -116,4 +118,5 @@ flowchart LR
 | Storage | "EBS CSI", "EFS CSI", "FSx", "PVC", "mount error" | "스토리지 오류", "볼륨 마운트", "PVC 바인딩" |
 | Database | "RDS", "Aurora", "DynamoDB", "ElastiCache", "throttling" | "DB 연결", "데이터베이스 오류", "스로틀링" |
 | Cost | "cost analysis", "cost optimization", "billing", "savings plan" | "비용 분석", "비용 절감", "요금" |
+| Well-Architected | "well-architected", "WAF review", "인프라 점수" | "인프라 진단", "아키텍처 리뷰", "심층 진단", "WAF 점검" |
 | Incident | "incident", "outage" | "서비스 장애", "긴급 대응", "복합 장애" |

@@ -30,6 +30,7 @@ const sidebars: SidebarsConfig = {
         'aws-content-plugin/skills/reactive-presentation',
         'aws-content-plugin/skills/architecture-diagram',
         'aws-content-plugin/skills/animated-diagram',
+        'aws-content-plugin/skills/slide-fix',
         'aws-content-plugin/skills/gitbook',
         'aws-content-plugin/skills/workshop-creator',
       ],
@@ -78,6 +79,7 @@ const sidebars: SidebarsConfig = {
         'aws-ops-plugin/skills/ops-network-diagnosis',
         'aws-ops-plugin/skills/ops-observability',
         'aws-ops-plugin/skills/ops-security-audit',
+        'aws-ops-plugin/skills/ops-wellarchitected-review',
       ],
     },
     {

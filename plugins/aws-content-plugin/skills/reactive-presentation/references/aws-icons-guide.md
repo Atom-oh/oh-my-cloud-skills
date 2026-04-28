@@ -2,6 +2,51 @@
 
 Official AWS Architecture Icons for use in reactive presentations. Source: [AWS Architecture Icons](https://aws.amazon.com/architecture/icons/)
 
+## Icon Index (`icons/index.json`)
+
+A unified index of all 811 icons is available at `{skill-dir}/icons/index.json`. Use this to look up icon paths by name instead of browsing directories.
+
+### Structure
+
+```json
+{
+  "sets": {
+    "services":   { "count": 307, "icons": { "Amazon-Elastic-Kubernetes-Service": { "svg": "...", "png": "..." } } },
+    "categories": { "count": 25,  "icons": { "Containers": { "svg": "...", "png": "..." } } },
+    "groups":     { "count": 13,  "icons": { "AWS-Cloud": { "variants": { "light": {...}, "dark": {...} } } } },
+    "resources":  { "count": 430, "icons": { "Amazon-EC2_Instance": { "svg": "...", "png": "..." } } },
+    "agentcore":  { "count": 11,  "icons": { "Runtime": { "variants": { "dark-purple": "...", ... } } } },
+    "others":     { "count": 25,  "icons": { "grafana": { "files": { "png": "others/grafana.png" } } } }
+  }
+}
+```
+
+### Quick Lookup Examples
+
+```python
+import json
+with open(f"{skill_dir}/icons/index.json") as f:
+    idx = json.load(f)
+
+# Find EKS service icon
+eks = idx["sets"]["services"]["icons"]["Amazon-Elastic-Kubernetes-Service"]
+print(eks["svg"])  # Architecture-Service-Icons_07312025/Arch_Containers/48/Arch_Amazon-Elastic-Kubernetes-Service_48.svg
+
+# Find AgentCore Runtime icon (dark-purple variant)
+rt = idx["sets"]["agentcore"]["icons"]["Runtime"]
+print(rt["variants"]["dark-purple"])  # AgentCore/dark-purple/Runtime.png
+
+# Search by keyword
+keyword = "Lambda"
+matches = {k: v for k, v in idx["sets"]["services"]["icons"].items() if keyword.lower() in k.lower()}
+```
+
+### When to Use the Index
+
+- **Building slides with many icons**: grep the index instead of `find` on disk
+- **AgentCore slides**: look up `sets.agentcore` for variant paths
+- **Verifying icon exists**: check before referencing in HTML to avoid broken images
+
 ## Setup
 
 Extract icons into the presentation repo's `common/aws-icons/` directory:
@@ -27,7 +72,6 @@ common/aws-icons/
 ├── services/          # Architecture Service Icons (main service logos)
 │   ├── Arch_Amazon-Elastic-Kubernetes-Service_48.svg
 │   ├── Arch_Amazon-Managed-Grafana_48.svg
-│   ├── Arch_Amazon-Managed-Service-for-Prometheus_48.svg
 │   ├── Arch_AWS-Lambda_48.svg
 │   └── ...
 ├── categories/        # Category Icons (group-level)
@@ -42,6 +86,13 @@ common/aws-icons/
 │   ├── Virtual-private-cloud-VPC_32.svg
 │   ├── Private-subnet_32.svg
 │   └── ...
+├── agentcore/         # Amazon Bedrock AgentCore Icons (PNG, 7 variants)
+│   ├── dark-purple/   # Hexagon + purple accent
+│   │   ├── Agentcore.png
+│   │   ├── Runtime.png
+│   │   └── ...
+│   ├── light-purple/  # Icon only, purple accent
+│   └── ...            # dark-teal, light-teal, dark-blue, light-blue, light-cyan
 └── icon-index.txt     # Auto-generated index of all extracted icons
 ```
 
@@ -160,6 +211,26 @@ eksIcon.onload = () => {
 | IAM | `services/Arch_AWS-Identity-and-Access-Management_48.svg` |
 | Secrets Manager | `services/Arch_AWS-Secrets-Manager_48.svg` |
 | KMS | `services/Arch_AWS-Key-Management-Service_48.svg` |
+
+### Amazon Bedrock AgentCore
+| Icon | Filename (dark-purple) |
+|------|----------------------|
+| Agentcore | `AgentCore/dark-purple/Agentcore.png` |
+| AI Agent | `AgentCore/dark-purple/AI-Agent.png` |
+| Runtime | `AgentCore/dark-purple/Runtime.png` |
+| Gateway | `AgentCore/dark-purple/Gateway.png` |
+| Memory | `AgentCore/dark-purple/Memory.png` |
+| Identity | `AgentCore/dark-purple/Identity.png` |
+| Code Interpreter | `AgentCore/dark-purple/Code-Interpreter.png` |
+| Observability | `AgentCore/dark-purple/Observability.png` |
+| Browser Tool | `AgentCore/dark-purple/Browser-Tool.png` |
+| Evaluations | `AgentCore/dark-purple/Evaluations.png` |
+| Policy Engine | `AgentCore/dark-purple/Policy-Engine.png` |
+
+> **AgentCore icon variants**: 7 theme variants available — `dark-purple`, `light-purple`, `dark-teal`, `light-teal`, `dark-blue`, `light-blue`, `light-cyan`. Replace `dark-purple` in the path with any variant.
+> - **dark-***: Hexagon logo + colored accent (for dark slide backgrounds)
+> - **light-***: Icon only, no hexagon (for light backgrounds or inline use)
+> - All AgentCore icons are PNG format (not SVG).
 
 ## Dark Theme Tips
 

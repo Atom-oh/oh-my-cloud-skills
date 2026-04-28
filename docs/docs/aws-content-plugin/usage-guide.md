@@ -79,7 +79,9 @@ theme는 "example.pptx"를 가지고 사용하면 되고
 flowchart TD
     A[프롬프트 입력] --> B[에이전트가 정보 수집]
     B --> C[Remarp 소스 작성]
-    C --> D[HTML 빌드]
+    C --> V[validate 거절 루프]
+    V -->|CRITICAL 0| D[HTML 빌드]
+    V -->|CRITICAL ≥1| C
     D --> E[content-review-agent 리뷰]
     E --> F{판정}
     F -->|PASS ≥85점| G[완료 / 배포]
@@ -95,9 +97,10 @@ flowchart TD
 ```
 
 에이전트가 PPTX 파일에서 다음을 자동 추출합니다:
+- 슬라이드 비율 (`slide_size.aspect_ratio`) → `_presentation.md`의 `ratio` 필드에 반영
 - 배경색, 텍스트 색상, 강조색
 - 폰트 패밀리
-- 로고 이미지 (있는 경우)
+- 로고 이미지, 푸터 텍스트
 
 ### Remarp 포맷
 
@@ -113,11 +116,11 @@ my-presentation.remarp.md
 **멀티블록 프로젝트** (30분 초과):
 ```
 my-presentation/
-├── _presentation.remarp.md     # 공통 메타데이터 (제목, 테마, 스피커)
-├── 01-introduction.remarp.md   # Block 1
-├── 02-deep-dive.remarp.md      # Block 2
-├── 03-hands-on.remarp.md       # Block 3
-└── build/                      # 빌드 결과 (.html)
+├── _presentation.md            # 공통 메타데이터 (제목, ratio, 테마, 스피커, 블록)
+├── 01-introduction.md          # Block 1 (remarp: true)
+├── 02-deep-dive.md             # Block 2
+├── 03-hands-on.md              # Block 3
+└── animations/                 # Canvas 애니메이션 JS 모듈 (선택)
 ```
 
 #### 핵심 문법
@@ -194,6 +197,7 @@ arrow from "API GW" to "Lambda" at step=1 animate=draw
 ---
 remarp: true
 title: "프레젠테이션 제목"
+ratio: "16:9"                    # ← 필수! 누락 시 VSCode Extension 프리뷰 비율 깨짐
 author: "발표자 이름"
 
 # Marp 호환 디렉티브 (top-level)
@@ -216,12 +220,23 @@ transition:
 ---
 ```
 
+:::warning ratio 필수
+`ratio` 필드가 누락되면 CSS 변수 `--slide-ratio-w/h`가 설정되지 않아 VSCode Extension 프리뷰에서 슬라이드 비율이 깨집니다. `remarp_to_slides.py validate`에서 WARNING으로 감지됩니다.
+:::
+
 > **Marp 호환성:** `footer`, `paginate`, `backgroundColor`, `backgroundImage`, `header`, `color` 디렉티브를 top-level에서 직접 사용할 수 있습니다. Remarp 네이티브 형식(`theme.footer`, `theme.pagination`)과 동일하게 동작하며, 둘 다 지정된 경우 `theme.*` 값이 우선합니다.
 
 #### 빌드
 
 ```bash
+# 1. 검증 (거절 루프) — CRITICAL 0건이어야 빌드 가능
+python3 remarp_to_slides.py validate <project-dir>/
+
+# 2. 빌드
 python3 remarp_to_slides.py build <project-dir>/
+
+# 3. 증분 빌드 (변경 블록만)
+python3 remarp_to_slides.py sync <project-dir>/
 ```
 
 수정 후 증분 빌드:

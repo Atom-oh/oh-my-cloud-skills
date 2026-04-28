@@ -185,6 +185,7 @@ Phase 4 — Quality Gate (단일)
 | `architecture-diagram` | Draw.io templates, AWS icon reference, layout patterns |
 | `animated-diagram` | SMIL animation guide, HTML templates, AWS diagram patterns |
 | `gitbook` | GitBook structure guide, component patterns |
+| `slide-fix` | Issue annotation-based slide repair (reads `<!-- issue: -->`, fixes, rebuilds) |
 | `workshop-creator` | Workshop Studio directives, templates, references |
 
 ---

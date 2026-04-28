@@ -193,7 +193,7 @@ Source: `tools/remarp-vscode/` | Entry: `src/extension.ts` | Preview: `src/previ
 
 ## Plugin Inventory
 
-### aws-content-plugin (8 agents, 5 skills)
+### aws-content-plugin (8 agents, 6 skills)
 
 | Agent | Creates |
 |-------|---------|

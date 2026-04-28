@@ -8,7 +8,7 @@
 
 ## 시스템 개요
 
-oh-my-cloud-skills는 Claude Code용 플러그인 마켓플레이스로, AWS 클라우드 콘텐츠 생성(프레젠테이션, 다이어그램, 문서, 워크숍)과 인프라 운영/트러블슈팅을 위한 3개 플러그인을 제공합니다.
+oh-my-cloud-skills는 Claude Code용 플러그인 마켓플레이스로, AWS 클라우드 콘텐츠 생성(프레젠테이션, 다이어그램, 문서, 워크숍)과 인프라 운영/트러블슈팅을 위한 6개 플러그인을 제공합니다.
 
 ## 컴포넌트 구조
 
@@ -16,9 +16,12 @@ oh-my-cloud-skills는 Claude Code용 플러그인 마켓플레이스로, AWS 클
 
 | 컴포넌트 | 역할 | 주요 기술 |
 |----------|------|----------|
-| aws-content-plugin | 콘텐츠 생성 (8 agents, 5 skills) | Python, HTML/CSS/JS, Draw.io |
-| aws-ops-plugin | 인프라 운영 (9 agents, 5 skills) | MCP servers, AWS CLI |
+| aws-content-plugin | 콘텐츠 생성 (8 agents, 6 skills) | Python, HTML/CSS/JS, Draw.io |
+| aws-ops-plugin | 인프라 운영 (10 agents, 6 skills) | MCP servers, AWS CLI |
 | kiro-power-converter | 플러그인 → Kiro Power 변환 | YAML/JSON 변환 |
+| kiro-review | Kiro CLI 기반 아키텍처 심층 리뷰 (1 agent, 1 skill) | Kiro CLI |
+| agentcore-creator | Claude Code → Bedrock AgentCore 변환 (1 agent, 1 skill) | AWS CLI, Python |
+| project-init | 프로젝트 초기화 및 문서 관리 (1 agent, 1 skill, 8 commands) | Bash, Markdown |
 
 ### 도구 레이어
 
@@ -57,19 +60,25 @@ oh-my-cloud-skills는 Claude Code용 플러그인 마켓플레이스로, AWS 클
 │  │  ├─ gitbook-agent            │  │  │  ├─ database-agent   │   │
 │  │  ├─ workshop-agent           │  │  │  ├─ cost-agent       │   │
 │  │  └─ content-review-agent     │  │  │  ├─ analytics-agent  │   │
-│  │                              │  │  │  └─ ops-coordinator  │   │
+│  │                              │  │  │  ├─ ops-coordinator  │   │
+│  │                              │  │  │  └─ wellarchitected  │   │
 │  │  Skills:                     │  │  │                      │   │
 │  │  ├─ reactive-presentation    │  │  │  Skills:             │   │
 │  │  ├─ architecture-diagram     │  │  │  ├─ ops-troubleshoot │   │
 │  │  ├─ animated-diagram         │  │  │  ├─ ops-health-check │   │
 │  │  ├─ gitbook                  │  │  │  ├─ ops-network      │   │
-│  │  └─ workshop-creator         │  │  │  ├─ ops-observability│   │
-│  └──────────────────────────────┘  │  │  └─ ops-security     │   │
+│  │  ├─ workshop-creator         │  │  │  ├─ ops-observability│   │
+│  │  └─ slide-fix                │  │  │  ├─ ops-security     │   │
+│  └──────────────────────────────┘  │  │  └─ ops-wellarchitect│   │
 │                                    │  └─────────────────────┘   │
-│  ┌──────────────────────────────┐  │                             │
-│  │  kiro-power-converter        │  │                             │
-│  │  └─ kiro-converter-agent     │  │                             │
-│  └──────────────────────────────┘  │                             │
+│  ┌──────────────────────────────┐  │  ┌─────────────────────┐   │
+│  │  kiro-power-converter        │  │  │  kiro-review         │   │
+│  │  └─ kiro-converter-agent     │  │  │  └─ kiro-review-agent│   │
+│  └──────────────────────────────┘  │  └─────────────────────┘   │
+│  ┌──────────────────────────────┐  │  ┌─────────────────────┐   │
+│  │  agentcore-creator           │  │  │  project-init        │   │
+│  │  └─ agentcore-creator-agent  │  │  │  └─ doc-sync-checker │   │
+│  └──────────────────────────────┘  │  └─────────────────────┘   │
 ├────────────────────────────────────┼─────────────────────────────┤
 │  Tools                             │  Docs                       │
 │  ├─ remarp_to_slides.py            │  ├─ Docusaurus site         │
@@ -97,6 +106,9 @@ oh-my-cloud-skills는 Claude Code용 플러그인 마켓플레이스로, AWS 클
 | 단일 버전 관리 | 모든 plugin.json + marketplace.json 동기화 |
 | Kiro CLI 외부 리뷰 통합 | 다중 관점 심층 리뷰 + 적대적 보안 검증 ([ADR-003](decisions/ADR-003-kiro-cli-architecture-deep-review.md)) |
 | AgentCore 변환 독립 플러그인 | Claude Code 플러그인 → Bedrock AgentCore 배포 변환 ([ADR-004](decisions/ADR-004-agentcore-creator-skill.md)) |
+| Rejection Loop (거절 루프) | Remarp 빌드 전 validate로 품질 강제 — CRITICAL 0건이어야 빌드 진행 ([ADR-005](decisions/ADR-005-rejection-loop.md)) |
+| project-init 플러그인 도입 | 프로젝트 초기화/문서 동기화를 독립 플러그인으로 분리 ([ADR-006](decisions/ADR-006-project-init-plugin.md)) |
+| Remarp ratio 필수화 | ratio 누락 시 VSCode Extension 프리뷰 비율 깨짐 방지 ([ADR-007](decisions/ADR-007-ratio-enforcement.md)) |
 
 ---
 
@@ -104,7 +116,7 @@ oh-my-cloud-skills는 Claude Code용 플러그인 마켓플레이스로, AWS 클
 
 ## System Overview
 
-oh-my-cloud-skills is a Claude Code plugin marketplace providing 3 plugins for AWS cloud content creation (presentations, diagrams, docs, workshops) and infrastructure operations/troubleshooting.
+oh-my-cloud-skills is a Claude Code plugin marketplace providing 6 plugins for AWS cloud content creation (presentations, diagrams, docs, workshops), infrastructure operations/troubleshooting, and developer tooling.
 
 ## Component Structure
 
@@ -112,9 +124,12 @@ oh-my-cloud-skills is a Claude Code plugin marketplace providing 3 plugins for A
 
 | Component | Role | Tech |
 |-----------|------|------|
-| aws-content-plugin | Content creation (8 agents, 5 skills) | Python, HTML/CSS/JS, Draw.io |
-| aws-ops-plugin | Infrastructure ops (9 agents, 5 skills) | MCP servers, AWS CLI |
+| aws-content-plugin | Content creation (8 agents, 6 skills) | Python, HTML/CSS/JS, Draw.io |
+| aws-ops-plugin | Infrastructure ops (10 agents, 6 skills) | MCP servers, AWS CLI |
 | kiro-power-converter | Plugin → Kiro Power conversion | YAML/JSON transform |
+| kiro-review | Architecture deep review via Kiro CLI (1 agent, 1 skill) | Kiro CLI |
+| agentcore-creator | Claude Code → Bedrock AgentCore conversion (1 agent, 1 skill) | AWS CLI, Python |
+| project-init | Project scaffolding & doc management (1 agent, 1 skill, 8 commands) | Bash, Markdown |
 
 ### Tool Layer
 
@@ -153,19 +168,25 @@ oh-my-cloud-skills is a Claude Code plugin marketplace providing 3 plugins for A
 │  │  ├─ gitbook-agent            │  │  │  ├─ database-agent   │   │
 │  │  ├─ workshop-agent           │  │  │  ├─ cost-agent       │   │
 │  │  └─ content-review-agent     │  │  │  ├─ analytics-agent  │   │
-│  │                              │  │  │  └─ ops-coordinator  │   │
+│  │                              │  │  │  ├─ ops-coordinator  │   │
+│  │                              │  │  │  └─ wellarchitected  │   │
 │  │  Skills:                     │  │  │                      │   │
 │  │  ├─ reactive-presentation    │  │  │  Skills:             │   │
 │  │  ├─ architecture-diagram     │  │  │  ├─ ops-troubleshoot │   │
 │  │  ├─ animated-diagram         │  │  │  ├─ ops-health-check │   │
 │  │  ├─ gitbook                  │  │  │  ├─ ops-network      │   │
-│  │  └─ workshop-creator         │  │  │  ├─ ops-observability│   │
-│  └──────────────────────────────┘  │  │  └─ ops-security     │   │
+│  │  ├─ workshop-creator         │  │  │  ├─ ops-observability│   │
+│  │  └─ slide-fix                │  │  │  ├─ ops-security     │   │
+│  └──────────────────────────────┘  │  │  └─ ops-wellarchitect│   │
 │                                    │  └─────────────────────┘   │
-│  ┌──────────────────────────────┐  │                             │
-│  │  kiro-power-converter        │  │                             │
-│  │  └─ kiro-converter-agent     │  │                             │
-│  └──────────────────────────────┘  │                             │
+│  ┌──────────────────────────────┐  │  ┌─────────────────────┐   │
+│  │  kiro-power-converter        │  │  │  kiro-review         │   │
+│  │  └─ kiro-converter-agent     │  │  │  └─ kiro-review-agent│   │
+│  └──────────────────────────────┘  │  └─────────────────────┘   │
+│  ┌──────────────────────────────┐  │  ┌─────────────────────┐   │
+│  │  agentcore-creator           │  │  │  project-init        │   │
+│  │  └─ agentcore-creator-agent  │  │  │  └─ doc-sync-checker │   │
+│  └──────────────────────────────┘  │  └─────────────────────┘   │
 ├────────────────────────────────────┼─────────────────────────────┤
 │  Tools                             │  Docs                       │
 │  ├─ remarp_to_slides.py            │  ├─ Docusaurus site         │
@@ -193,3 +214,6 @@ User prompt → Keyword routing (CLAUDE.md) → Agent → Skill/MCP → Artifact
 | Single version management | All plugin.json + marketplace.json in sync |
 | Kiro CLI external review integration | Multi-perspective deep review + adversarial security verification ([ADR-003](decisions/ADR-003-kiro-cli-architecture-deep-review.md)) |
 | AgentCore converter as standalone plugin | Claude Code plugin to Bedrock AgentCore deployment conversion ([ADR-004](decisions/ADR-004-agentcore-creator-skill.md)) |
+| Rejection Loop | Validate before build — zero CRITICAL issues required to proceed ([ADR-005](decisions/ADR-005-rejection-loop.md)) |
+| project-init plugin | Separated project scaffolding/doc sync into standalone plugin ([ADR-006](decisions/ADR-006-project-init-plugin.md)) |
+| Remarp ratio enforcement | Prevent VSCode Extension preview aspect ratio breakage ([ADR-007](decisions/ADR-007-ratio-enforcement.md)) |

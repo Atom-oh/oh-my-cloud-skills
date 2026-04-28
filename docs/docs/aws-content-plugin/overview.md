@@ -22,7 +22,7 @@ AWS Content Plugin은 AWS 클라우드 관련 콘텐츠 제작을 위한 전문 
 | `workshop-agent` | AWS Workshop Studio 콘텐츠 생성 | Workshop 프로젝트 |
 | `content-review-agent` | 모든 콘텐츠 타입의 품질 검토 | 리뷰 리포트 |
 
-### 스킬 (5개)
+### 스킬 (6개)
 
 | 스킬 | 설명 |
 |------|------|
@@ -30,6 +30,7 @@ AWS Content Plugin은 AWS 클라우드 관련 콘텐츠 제작을 위한 전문 
 | `architecture-diagram` | Draw.io 템플릿, AWS 아이콘 참조, 레이아웃 패턴 |
 | `animated-diagram` | SMIL 애니메이션 가이드, HTML 템플릿 |
 | `gitbook` | GitBook 구조 가이드, 컴포넌트 패턴 |
+| `slide-fix` | Issue annotation 기반 슬라이드 수정 (`<!-- issue: -->` 읽기 → 수정 → 재빌드) |
 | `workshop-creator` | Workshop Studio 디렉티브, 템플릿, 참조 문서 |
 
 ## 워크플로우
@@ -38,7 +39,9 @@ AWS Content Plugin은 AWS 클라우드 관련 콘텐츠 제작을 위한 전문 
 
 ```mermaid
 flowchart LR
-    A[presentation-agent x N] -->|블록별 .remarp.md| B[통합 빌드]
+    A[presentation-agent x N] -->|블록별 .remarp.md| V[validate 거절 루프]
+    V -->|CRITICAL 0| B[통합 빌드]
+    V -->|CRITICAL ≥1| A
     B -->|index.html + block-N.html| C[content-review-agent]
     C --> D{판정}
     D -->|PASS| E[완료]
@@ -135,4 +138,7 @@ AWS Architecture Icons는 `skills/reactive-presentation/assets/aws-icons/`에 �
 - `Architecture-Group-Icons_07312025/` — 그룹 아이콘 (Cloud, VPC, Region, Subnet)
 - `Category-Icons_07312025/` — 카테고리 레벨 아이콘 (4개 크기)
 - `Resource-Icons_07312025/` — 리소스 레벨 아이콘 (22개 카테고리)
+- `AgentCore/` — Amazon Bedrock AgentCore 아이콘 (11개, 7개 테마 변형: dark-purple, light-purple, dark-teal, light-teal, dark-blue, light-blue, light-cyan)
 - `others/` — 서드파티 아이콘 (LangChain, Grafana 등)
+
+통합 아이콘 인덱스(`icons/index.json`)로 811개 아이콘을 이름으로 빠르게 검색할 수 있습니다.
