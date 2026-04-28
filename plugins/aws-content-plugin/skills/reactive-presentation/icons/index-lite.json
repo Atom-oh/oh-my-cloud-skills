@@ -1,0 +1,4798 @@
+{
+ "description": "Lightweight icon lookup. Key = icon name, value = {set, path, label}. For full variant info see index.json.",
+ "total": 811,
+ "icons": {
+  "AI-Agent": {
+   "set": "agentcore",
+   "path": "AgentCore/dark-purple/AI-Agent.png",
+   "label": "AI Agent"
+  },
+  "AWS-Account": {
+   "set": "groups",
+   "path": "Architecture-Group-Icons_07312025/AWS-Account_32.svg",
+   "label": "AWS Account"
+  },
+  "AWS-Activate": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Customer-Enablement/48/Arch_AWS-Activate_48.svg",
+   "label": "AWS Activate",
+   "category": "Customer-Enablement"
+  },
+  "AWS-Amplify": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Front-End-Web-Mobile/48/Arch_AWS-Amplify_48.svg",
+   "label": "AWS Amplify",
+   "category": "Front-End-Web-Mobile"
+  },
+  "AWS-Amplify_AWS-Amplify-Studio": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Front-End-Web-Mobile/Res_AWS-Amplify_AWS-Amplify-Studio_48.svg",
+   "label": "AWS Amplify AWS Amplify Studio",
+   "category": "Front-End-Web-Mobile"
+  },
+  "AWS-App-Mesh": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/48/Arch_AWS-App-Mesh_48.svg",
+   "label": "AWS App Mesh",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-App-Mesh_Mesh": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_AWS-App-Mesh_Mesh_48.svg",
+   "label": "AWS App Mesh Mesh",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-App-Mesh_Virtual-Gateway": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_AWS-App-Mesh_Virtual-Gateway_48.svg",
+   "label": "AWS App Mesh Virtual Gateway",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-App-Mesh_Virtual-Node": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_AWS-App-Mesh_Virtual-Node_48.svg",
+   "label": "AWS App Mesh Virtual Node",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-App-Mesh_Virtual-Router": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_AWS-App-Mesh_Virtual-Router_48.svg",
+   "label": "AWS App Mesh Virtual Router",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-App-Mesh_Virtual-Service": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_AWS-App-Mesh_Virtual-Service_48.svg",
+   "label": "AWS App Mesh Virtual Service",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-App-Runner": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_AWS-App-Runner_48.svg",
+   "label": "AWS App Runner",
+   "category": "Compute"
+  },
+  "AWS-App-Studio": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_AWS-App-Studio_48.svg",
+   "label": "AWS App Studio",
+   "category": "Artificial-Intelligence"
+  },
+  "AWS-AppConfig": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-AppConfig_48.svg",
+   "label": "AWS AppConfig",
+   "category": "Management-Governance"
+  },
+  "AWS-AppFabric": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Business-Applications/48/Arch_AWS-AppFabric_48.svg",
+   "label": "AWS AppFabric",
+   "category": "Business-Applications"
+  },
+  "AWS-AppSync": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_App-Integration/48/Arch_AWS-AppSync_48.svg",
+   "label": "AWS AppSync",
+   "category": "App-Integration"
+  },
+  "AWS-Application-Auto-Scaling": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-Application-Auto-Scaling_48.svg",
+   "label": "AWS Application Auto Scaling",
+   "category": "Management-Governance"
+  },
+  "AWS-Application-Discovery-Service": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Migration-Modernization/48/Arch_AWS-Application-Discovery-Service_48.svg",
+   "label": "AWS Application Discovery Service",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Application-Discovery-Service_AWS-Agentless-Collector": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Migration-Modernization/Res_AWS-Application-Discovery-Service_AWS-Agentless-Collector_48.svg",
+   "label": "AWS Application Discovery Service AWS Agentless Collector",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Application-Discovery-Service_AWS-Discovery-Agent": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Migration-Modernization/Res_AWS-Application-Discovery-Service_AWS-Discovery-Agent_48.svg",
+   "label": "AWS Application Discovery Service AWS Discovery Agent",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Application-Discovery-Service_Migration-Evaluator-Collector": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Migration-Modernization/Res_AWS-Application-Discovery-Service_Migration-Evaluator-Collector_48.svg",
+   "label": "AWS Application Discovery Service Migration Evaluator Collector",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Application-Migration-Service": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Migration-Modernization/48/Arch_AWS-Application-Migration-Service_48.svg",
+   "label": "AWS Application Migration Service",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Artifact": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_AWS-Artifact_48.svg",
+   "label": "AWS Artifact",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Audit-Manager": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_AWS-Audit-Manager_48.svg",
+   "label": "AWS Audit Manager",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Auto-Scaling": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-Auto-Scaling_48.svg",
+   "label": "AWS Auto Scaling",
+   "category": "Management-Governance"
+  },
+  "AWS-B2B-Data-Interchange": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_App-Integration/48/Arch_AWS-B2B-Data-Interchange_48.svg",
+   "label": "AWS B2B Data Interchange",
+   "category": "App-Integration"
+  },
+  "AWS-Backint-Agent": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-Backint-Agent_48.svg",
+   "label": "AWS Backint Agent",
+   "category": "Management-Governance"
+  },
+  "AWS-Backup": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Storage/48/Arch_AWS-Backup_48.svg",
+   "label": "AWS Backup",
+   "category": "Storage"
+  },
+  "AWS-Backup_AWS-Backup-Support-for-VMware-Workloads": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Backup_AWS-Backup-Support-for-VMware-Workloads_48.svg",
+   "label": "AWS Backup AWS Backup Support for VMware Workloads",
+   "category": "Storage"
+  },
+  "AWS-Backup_AWS-Backup-for-AWS-CloudFormation": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Backup_AWS-Backup-for-AWS-CloudFormation_48.svg",
+   "label": "AWS Backup AWS Backup for AWS CloudFormation",
+   "category": "Storage"
+  },
+  "AWS-Backup_AWS-Backup-support-for-Amazon-FSx-for-NetApp-ONTAP": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Backup_AWS-Backup-support-for-Amazon-FSx-for-NetApp-ONTAP_48.svg",
+   "label": "AWS Backup AWS Backup support for Amazon FSx for NetApp ONTAP",
+   "category": "Storage"
+  },
+  "AWS-Backup_AWS-Backup-support-for-Amazon-S3": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Backup_AWS-Backup-support-for-Amazon-S3_48.svg",
+   "label": "AWS Backup AWS Backup support for Amazon S3",
+   "category": "Storage"
+  },
+  "AWS-Backup_Audit-Manager": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Backup_Audit-Manager_48.svg",
+   "label": "AWS Backup Audit Manager",
+   "category": "Storage"
+  },
+  "AWS-Backup_Backup-Plan": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Backup_Backup-Plan_48.svg",
+   "label": "AWS Backup Backup Plan",
+   "category": "Storage"
+  },
+  "AWS-Backup_Backup-Restore": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Backup_Backup-Restore_48.svg",
+   "label": "AWS Backup Backup Restore",
+   "category": "Storage"
+  },
+  "AWS-Backup_Backup-Vault": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Backup_Backup-Vault_48.svg",
+   "label": "AWS Backup Backup Vault",
+   "category": "Storage"
+  },
+  "AWS-Backup_Compliance-Reporting": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Backup_Compliance-Reporting_48.svg",
+   "label": "AWS Backup Compliance Reporting",
+   "category": "Storage"
+  },
+  "AWS-Backup_Compute": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Backup_Compute_48.svg",
+   "label": "AWS Backup Compute",
+   "category": "Storage"
+  },
+  "AWS-Backup_Database": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Backup_Database_48.svg",
+   "label": "AWS Backup Database",
+   "category": "Storage"
+  },
+  "AWS-Backup_Gateway": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Backup_Gateway_48.svg",
+   "label": "AWS Backup Gateway",
+   "category": "Storage"
+  },
+  "AWS-Backup_Legal-Hold": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Backup_Legal-Hold_48.svg",
+   "label": "AWS Backup Legal Hold",
+   "category": "Storage"
+  },
+  "AWS-Backup_Recovery-Point-Objective": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Backup_Recovery-Point-Objective_48.svg",
+   "label": "AWS Backup Recovery Point Objective",
+   "category": "Storage"
+  },
+  "AWS-Backup_Recovery-Time-Objective": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Backup_Recovery-Time-Objective_48.svg",
+   "label": "AWS Backup Recovery Time Objective",
+   "category": "Storage"
+  },
+  "AWS-Backup_Storage": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Backup_Storage_48.svg",
+   "label": "AWS Backup Storage",
+   "category": "Storage"
+  },
+  "AWS-Backup_Vault-Lock": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Backup_Vault-Lock_48.svg",
+   "label": "AWS Backup Vault Lock",
+   "category": "Storage"
+  },
+  "AWS-Backup_Virtual-Machine": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Backup_Virtual-Machine_48.svg",
+   "label": "AWS Backup Virtual Machine",
+   "category": "Storage"
+  },
+  "AWS-Backup_Virtual-Machine-Monitor": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Backup_Virtual-Machine-Monitor_48.svg",
+   "label": "AWS Backup Virtual Machine Monitor",
+   "category": "Storage"
+  },
+  "AWS-Batch": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_AWS-Batch_48.svg",
+   "label": "AWS Batch",
+   "category": "Compute"
+  },
+  "AWS-Billing-Conductor": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Cloud-Financial-Management/48/Arch_AWS-Billing-Conductor_48.svg",
+   "label": "AWS Billing Conductor",
+   "category": "Cloud-Financial-Management"
+  },
+  "AWS-Budgets": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Cloud-Financial-Management/48/Arch_AWS-Budgets_48.svg",
+   "label": "AWS Budgets",
+   "category": "Cloud-Financial-Management"
+  },
+  "AWS-Certificate-Manager": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_AWS-Certificate-Manager_48.svg",
+   "label": "AWS Certificate Manager",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Certificate-Manager_Certificate-Authority": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-Certificate-Manager_Certificate-Authority_48.svg",
+   "label": "AWS Certificate Manager Certificate Authority",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Chatbot": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-Chatbot_48.svg",
+   "label": "AWS Chatbot",
+   "category": "Management-Governance"
+  },
+  "AWS-Clean-Rooms": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Analytics/48/Arch_AWS-Clean-Rooms_48.svg",
+   "label": "AWS Clean Rooms",
+   "category": "Analytics"
+  },
+  "AWS-Client-VPN": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/48/Arch_AWS-Client-VPN_48.svg",
+   "label": "AWS Client VPN",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-Cloud": {
+   "set": "groups",
+   "path": "Architecture-Group-Icons_07312025/AWS-Cloud_32.svg",
+   "label": "AWS Cloud"
+  },
+  "AWS-Cloud-Control-API": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Developer-Tools/48/Arch_AWS-Cloud-Control-API_48.svg",
+   "label": "AWS Cloud Control API",
+   "category": "Developer-Tools"
+  },
+  "AWS-Cloud-Development-Kit": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Developer-Tools/48/Arch_AWS-Cloud-Development-Kit_48.svg",
+   "label": "AWS Cloud Development Kit",
+   "category": "Developer-Tools"
+  },
+  "AWS-Cloud-Digital-Interface": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Media-Services/Res_AWS-Cloud-Digital-Interface_48.svg",
+   "label": "AWS Cloud Digital Interface",
+   "category": "Media-Services"
+  },
+  "AWS-Cloud-Map": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/48/Arch_AWS-Cloud-Map_48.svg",
+   "label": "AWS Cloud Map",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-Cloud-Map_Namespace": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_AWS-Cloud-Map_Namespace_48.svg",
+   "label": "AWS Cloud Map Namespace",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-Cloud-Map_Resource": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_AWS-Cloud-Map_Resource_48.svg",
+   "label": "AWS Cloud Map Resource",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-Cloud-Map_Service": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_AWS-Cloud-Map_Service_48.svg",
+   "label": "AWS Cloud Map Service",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-Cloud-WAN": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/48/Arch_AWS-Cloud-WAN_48.svg",
+   "label": "AWS Cloud WAN",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-Cloud-WAN_Core-Network-Edge": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_AWS-Cloud-WAN_Core-Network-Edge_48.svg",
+   "label": "AWS Cloud WAN Core Network Edge",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-Cloud-WAN_Segment-Network": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_AWS-Cloud-WAN_Segment-Network_48.svg",
+   "label": "AWS Cloud WAN Segment Network",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-Cloud-WAN_Transit-Gateway-Route-Table-Attachment": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_AWS-Cloud-WAN_Transit-Gateway-Route-Table-Attachment_48.svg",
+   "label": "AWS Cloud WAN Transit Gateway Route Table Attachment",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-Cloud-logo": {
+   "set": "groups",
+   "path": "Architecture-Group-Icons_07312025/AWS-Cloud-logo_32.svg",
+   "label": "AWS Cloud logo"
+  },
+  "AWS-Cloud9": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Developer-Tools/48/Arch_AWS-Cloud9_48.svg",
+   "label": "AWS Cloud9",
+   "category": "Developer-Tools"
+  },
+  "AWS-Cloud9_Cloud9": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Developer-Tools/Res_AWS-Cloud9_Cloud9_48.svg",
+   "label": "AWS Cloud9 Cloud9",
+   "category": "Developer-Tools"
+  },
+  "AWS-CloudFormation": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-CloudFormation_48.svg",
+   "label": "AWS CloudFormation",
+   "category": "Management-Governance"
+  },
+  "AWS-CloudFormation_Change-Set": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-CloudFormation_Change-Set_48.svg",
+   "label": "AWS CloudFormation Change Set",
+   "category": "Management-Governance"
+  },
+  "AWS-CloudFormation_Stack": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-CloudFormation_Stack_48.svg",
+   "label": "AWS CloudFormation Stack",
+   "category": "Management-Governance"
+  },
+  "AWS-CloudFormation_Template": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-CloudFormation_Template_48.svg",
+   "label": "AWS CloudFormation Template",
+   "category": "Management-Governance"
+  },
+  "AWS-CloudHSM": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_AWS-CloudHSM_48.svg",
+   "label": "AWS CloudHSM",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-CloudShell": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Developer-Tools/48/Arch_AWS-CloudShell_48.svg",
+   "label": "AWS CloudShell",
+   "category": "Developer-Tools"
+  },
+  "AWS-CloudTrail": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-CloudTrail_48.svg",
+   "label": "AWS CloudTrail",
+   "category": "Management-Governance"
+  },
+  "AWS-CloudTrail_CloudTrail-Lake": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-CloudTrail_CloudTrail-Lake_48.svg",
+   "label": "AWS CloudTrail CloudTrail Lake",
+   "category": "Management-Governance"
+  },
+  "AWS-CodeArtifact": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Developer-Tools/48/Arch_AWS-CodeArtifact_48.svg",
+   "label": "AWS CodeArtifact",
+   "category": "Developer-Tools"
+  },
+  "AWS-CodeBuild": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Developer-Tools/48/Arch_AWS-CodeBuild_48.svg",
+   "label": "AWS CodeBuild",
+   "category": "Developer-Tools"
+  },
+  "AWS-CodeCommit": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Developer-Tools/48/Arch_AWS-CodeCommit_48.svg",
+   "label": "AWS CodeCommit",
+   "category": "Developer-Tools"
+  },
+  "AWS-CodeDeploy": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Developer-Tools/48/Arch_AWS-CodeDeploy_48.svg",
+   "label": "AWS CodeDeploy",
+   "category": "Developer-Tools"
+  },
+  "AWS-CodePipeline": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Developer-Tools/48/Arch_AWS-CodePipeline_48.svg",
+   "label": "AWS CodePipeline",
+   "category": "Developer-Tools"
+  },
+  "AWS-Command-Line-Interface": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Developer-Tools/48/Arch_AWS-Command-Line-Interface_48.svg",
+   "label": "AWS Command Line Interface",
+   "category": "Developer-Tools"
+  },
+  "AWS-Compute-Optimizer": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-Compute-Optimizer_48.svg",
+   "label": "AWS Compute Optimizer",
+   "category": "Management-Governance"
+  },
+  "AWS-Config": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-Config_48.svg",
+   "label": "AWS Config",
+   "category": "Management-Governance"
+  },
+  "AWS-Console-Mobile-Application": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-Console-Mobile-Application_48.svg",
+   "label": "AWS Console Mobile Application",
+   "category": "Management-Governance"
+  },
+  "AWS-Control-Tower": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-Control-Tower_48.svg",
+   "label": "AWS Control Tower",
+   "category": "Management-Governance"
+  },
+  "AWS-Cost-Explorer": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Cloud-Financial-Management/48/Arch_AWS-Cost-Explorer_48.svg",
+   "label": "AWS Cost Explorer",
+   "category": "Cloud-Financial-Management"
+  },
+  "AWS-Cost-and-Usage-Report": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Cloud-Financial-Management/48/Arch_AWS-Cost-and-Usage-Report_48.svg",
+   "label": "AWS Cost and Usage Report",
+   "category": "Cloud-Financial-Management"
+  },
+  "AWS-Data-Exchange": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Analytics/48/Arch_AWS-Data-Exchange_48.svg",
+   "label": "AWS Data Exchange",
+   "category": "Analytics"
+  },
+  "AWS-Data-Exchange-for-APIs": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_AWS-Data-Exchange-for-APIs_48.svg",
+   "label": "AWS Data Exchange for APIs",
+   "category": "Analytics"
+  },
+  "AWS-Data-Transfer-Terminal": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Migration-Modernization/48/Arch_AWS-Data-Transfer-Terminal_48.svg",
+   "label": "AWS Data Transfer Terminal",
+   "category": "Migration-Modernization"
+  },
+  "AWS-DataSync": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Migration-Modernization/48/Arch_AWS-DataSync_48.svg",
+   "label": "AWS DataSync",
+   "category": "Migration-Modernization"
+  },
+  "AWS-DataSync_Discovery": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Migration-Modernization/Res_AWS-DataSync_Discovery_48.svg",
+   "label": "AWS DataSync Discovery",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Database-Migration-Service": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Database/48/Arch_AWS-Database-Migration-Service_48.svg",
+   "label": "AWS Database Migration Service",
+   "category": "Database"
+  },
+  "AWS-Database-Migration-Service_Database-migration-workflow-or-job": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_AWS-Database-Migration-Service_Database-migration-workflow-or-job_48.svg",
+   "label": "AWS Database Migration Service Database migration workflow or job",
+   "category": "Database"
+  },
+  "AWS-Datasync_Agent": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Migration-Modernization/Res_AWS-Datasync_Agent_48.svg",
+   "label": "AWS Datasync Agent",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Deadline-Cloud": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Media-Services/48/Arch_AWS-Deadline-Cloud_48.svg",
+   "label": "AWS Deadline Cloud",
+   "category": "Media-Services"
+  },
+  "AWS-Deep-Learning-AMIs": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_AWS-Deep-Learning-AMIs_48.svg",
+   "label": "AWS Deep Learning AMIs",
+   "category": "Artificial-Intelligence"
+  },
+  "AWS-Deep-Learning-Containers": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_AWS-Deep-Learning-Containers_48.svg",
+   "label": "AWS Deep Learning Containers",
+   "category": "Artificial-Intelligence"
+  },
+  "AWS-DeepComposer": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_AWS-DeepComposer_48.svg",
+   "label": "AWS DeepComposer",
+   "category": "Artificial-Intelligence"
+  },
+  "AWS-DeepRacer": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_AWS-DeepRacer_48.svg",
+   "label": "AWS DeepRacer",
+   "category": "Artificial-Intelligence"
+  },
+  "AWS-Device-Farm": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Front-End-Web-Mobile/48/Arch_AWS-Device-Farm_48.svg",
+   "label": "AWS Device Farm",
+   "category": "Front-End-Web-Mobile"
+  },
+  "AWS-Direct-Connect": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/48/Arch_AWS-Direct-Connect_48.svg",
+   "label": "AWS Direct Connect",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-Direct-Connect_Gateway": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_AWS-Direct-Connect_Gateway_48.svg",
+   "label": "AWS Direct Connect Gateway",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-Directory-Service": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_AWS-Directory-Service_48.svg",
+   "label": "AWS Directory Service",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Directory-Service_AD-Connector": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-Directory-Service_AD-Connector_48.svg",
+   "label": "AWS Directory Service AD Connector",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Directory-Service_AWS-Managed-Microsoft-AD": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-Directory-Service_AWS-Managed-Microsoft-AD_48.svg",
+   "label": "AWS Directory Service AWS Managed Microsoft AD",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Directory-Service_Simple-AD": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-Directory-Service_Simple-AD_48.svg",
+   "label": "AWS Directory Service Simple AD",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Distro-for-OpenTelemetry": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-Distro-for-OpenTelemetry_48.svg",
+   "label": "AWS Distro for OpenTelemetry",
+   "category": "Management-Governance"
+  },
+  "AWS-Elastic-Beanstalk": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_AWS-Elastic-Beanstalk_48.svg",
+   "label": "AWS Elastic Beanstalk",
+   "category": "Compute"
+  },
+  "AWS-Elastic-Beanstalk_Application": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Compute/Res_AWS-Elastic-Beanstalk_Application_48.svg",
+   "label": "AWS Elastic Beanstalk Application",
+   "category": "Compute"
+  },
+  "AWS-Elastic-Beanstalk_Deployment": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Compute/Res_AWS-Elastic-Beanstalk_Deployment_48.svg",
+   "label": "AWS Elastic Beanstalk Deployment",
+   "category": "Compute"
+  },
+  "AWS-Elastic-Disaster-Recovery": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Storage/48/Arch_AWS-Elastic-Disaster-Recovery_48.svg",
+   "label": "AWS Elastic Disaster Recovery",
+   "category": "Storage"
+  },
+  "AWS-Elemental-Appliances-&-Software": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Media-Services/48/Arch_AWS-Elemental-Appliances-&-Software_48.svg",
+   "label": "AWS Elemental Appliances & Software",
+   "category": "Media-Services"
+  },
+  "AWS-Elemental-Conductor": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Media-Services/48/Arch_AWS-Elemental-Conductor_48.svg",
+   "label": "AWS Elemental Conductor",
+   "category": "Media-Services"
+  },
+  "AWS-Elemental-Delta": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Media-Services/48/Arch_AWS-Elemental-Delta_48.svg",
+   "label": "AWS Elemental Delta",
+   "category": "Media-Services"
+  },
+  "AWS-Elemental-Link": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Media-Services/48/Arch_AWS-Elemental-Link_48.svg",
+   "label": "AWS Elemental Link",
+   "category": "Media-Services"
+  },
+  "AWS-Elemental-Live": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Media-Services/48/Arch_AWS-Elemental-Live_48.svg",
+   "label": "AWS Elemental Live",
+   "category": "Media-Services"
+  },
+  "AWS-Elemental-MediaConnect": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Media-Services/48/Arch_AWS-Elemental-MediaConnect_48.svg",
+   "label": "AWS Elemental MediaConnect",
+   "category": "Media-Services"
+  },
+  "AWS-Elemental-MediaConnect_MediaConnect-Gateway": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Media-Services/Res_AWS-Elemental-MediaConnect_MediaConnect-Gateway_48.svg",
+   "label": "AWS Elemental MediaConnect MediaConnect Gateway",
+   "category": "Media-Services"
+  },
+  "AWS-Elemental-MediaConvert": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Media-Services/48/Arch_AWS-Elemental-MediaConvert_48.svg",
+   "label": "AWS Elemental MediaConvert",
+   "category": "Media-Services"
+  },
+  "AWS-Elemental-MediaLive": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Media-Services/48/Arch_AWS-Elemental-MediaLive_48.svg",
+   "label": "AWS Elemental MediaLive",
+   "category": "Media-Services"
+  },
+  "AWS-Elemental-MediaPackage": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Media-Services/48/Arch_AWS-Elemental-MediaPackage_48.svg",
+   "label": "AWS Elemental MediaPackage",
+   "category": "Media-Services"
+  },
+  "AWS-Elemental-MediaStore": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Media-Services/48/Arch_AWS-Elemental-MediaStore_48.svg",
+   "label": "AWS Elemental MediaStore",
+   "category": "Media-Services"
+  },
+  "AWS-Elemental-MediaTailor": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Media-Services/48/Arch_AWS-Elemental-MediaTailor_48.svg",
+   "label": "AWS Elemental MediaTailor",
+   "category": "Media-Services"
+  },
+  "AWS-Elemental-Server": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Media-Services/48/Arch_AWS-Elemental-Server_48.svg",
+   "label": "AWS Elemental Server",
+   "category": "Media-Services"
+  },
+  "AWS-End-User-Messaging": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Business-Applications/48/Arch_AWS-End-User-Messaging_48.svg",
+   "label": "AWS End User Messaging",
+   "category": "Business-Applications"
+  },
+  "AWS-Entity-Resolution": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Analytics/48/Arch_AWS-Entity-Resolution_48.svg",
+   "label": "AWS Entity Resolution",
+   "category": "Analytics"
+  },
+  "AWS-Express-Workflows": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_App-Integration/48/Arch_AWS-Express-Workflows_48.svg",
+   "label": "AWS Express Workflows",
+   "category": "App-Integration"
+  },
+  "AWS-Fargate": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Containers/48/Arch_AWS-Fargate_48.svg",
+   "label": "AWS Fargate",
+   "category": "Containers"
+  },
+  "AWS-Fault-Injection-Service": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Developer-Tools/48/Arch_AWS-Fault-Injection-Service_48.svg",
+   "label": "AWS Fault Injection Service",
+   "category": "Developer-Tools"
+  },
+  "AWS-Firewall-Manager": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_AWS-Firewall-Manager_48.svg",
+   "label": "AWS Firewall Manager",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Global-Accelerator": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/48/Arch_AWS-Global-Accelerator_48.svg",
+   "label": "AWS Global Accelerator",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-Glue": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Analytics/48/Arch_AWS-Glue_48.svg",
+   "label": "AWS Glue",
+   "category": "Analytics"
+  },
+  "AWS-Glue-DataBrew": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Analytics/48/Arch_AWS-Glue-DataBrew_48.svg",
+   "label": "AWS Glue DataBrew",
+   "category": "Analytics"
+  },
+  "AWS-Glue_AWS-Glue-for-Ray": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_AWS-Glue_AWS-Glue-for-Ray_48.svg",
+   "label": "AWS Glue AWS Glue for Ray",
+   "category": "Analytics"
+  },
+  "AWS-Glue_Crawler": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_AWS-Glue_Crawler_48.svg",
+   "label": "AWS Glue Crawler",
+   "category": "Analytics"
+  },
+  "AWS-Glue_Data-Catalog": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_AWS-Glue_Data-Catalog_48.svg",
+   "label": "AWS Glue Data Catalog",
+   "category": "Analytics"
+  },
+  "AWS-Glue_Data-Quality": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_AWS-Glue_Data-Quality_48.svg",
+   "label": "AWS Glue Data Quality",
+   "category": "Analytics"
+  },
+  "AWS-Ground-Station": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Satellite/48/Arch_AWS-Ground-Station_48.svg",
+   "label": "AWS Ground Station",
+   "category": "Satellite"
+  },
+  "AWS-Health-Dashboard": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-Health-Dashboard_48.svg",
+   "label": "AWS Health Dashboard",
+   "category": "Management-Governance"
+  },
+  "AWS-HealthImaging": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_AWS-HealthImaging_48.svg",
+   "label": "AWS HealthImaging",
+   "category": "Artificial-Intelligence"
+  },
+  "AWS-HealthLake": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_AWS-HealthLake_48.svg",
+   "label": "AWS HealthLake",
+   "category": "Artificial-Intelligence"
+  },
+  "AWS-HealthOmics": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_AWS-HealthOmics_48.svg",
+   "label": "AWS HealthOmics",
+   "category": "Artificial-Intelligence"
+  },
+  "AWS-HealthScribe": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_AWS-HealthScribe_48.svg",
+   "label": "AWS HealthScribe",
+   "category": "Artificial-Intelligence"
+  },
+  "AWS-IAM-Identity-Center": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_AWS-IAM-Identity-Center_48.svg",
+   "label": "AWS IAM Identity Center",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-IQ": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Customer-Enablement/48/Arch_AWS-IQ_48.svg",
+   "label": "AWS IQ",
+   "category": "Customer-Enablement"
+  },
+  "AWS-Identity-Access-Management_AWS-STS": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-Identity-Access-Management_AWS-STS_48.svg",
+   "label": "AWS Identity Access Management AWS STS",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Identity-Access-Management_AWS-STS-Alternate": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-Identity-Access-Management_AWS-STS-Alternate_48.svg",
+   "label": "AWS Identity Access Management AWS STS Alternate",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Identity-Access-Management_Add-on": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-Identity-Access-Management_Add-on_48.svg",
+   "label": "AWS Identity Access Management Add on",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Identity-Access-Management_Data-Encryption-Key": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-Identity-Access-Management_Data-Encryption-Key_48.svg",
+   "label": "AWS Identity Access Management Data Encryption Key",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Identity-Access-Management_Encrypted-Data": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-Identity-Access-Management_Encrypted-Data_48.svg",
+   "label": "AWS Identity Access Management Encrypted Data",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Identity-Access-Management_IAM-Access-Analyzer": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-Identity-Access-Management_IAM-Access-Analyzer_48.svg",
+   "label": "AWS Identity Access Management IAM Access Analyzer",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Identity-Access-Management_IAM-Roles-Anywhere": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-Identity-Access-Management_IAM-Roles-Anywhere_48.svg",
+   "label": "AWS Identity Access Management IAM Roles Anywhere",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Identity-Access-Management_Long-Term-Security-Credential": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-Identity-Access-Management_Long-Term-Security-Credential_48.svg",
+   "label": "AWS Identity Access Management Long Term Security Credential",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Identity-Access-Management_MFA-Token": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-Identity-Access-Management_MFA-Token_48.svg",
+   "label": "AWS Identity Access Management MFA Token",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Identity-Access-Management_Permissions": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-Identity-Access-Management_Permissions_48.svg",
+   "label": "AWS Identity Access Management Permissions",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Identity-Access-Management_Role": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-Identity-Access-Management_Role_48.svg",
+   "label": "AWS Identity Access Management Role",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Identity-Access-Management_Temporary-Security-Credential": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-Identity-Access-Management_Temporary-Security-Credential_48.svg",
+   "label": "AWS Identity Access Management Temporary Security Credential",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Identity-and-Access-Management": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_AWS-Identity-and-Access-Management_48.svg",
+   "label": "AWS Identity and Access Management",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Infrastructure-Composer": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Developer-Tools/48/Arch_AWS-Infrastructure-Composer_48.svg",
+   "label": "AWS Infrastructure Composer",
+   "category": "Developer-Tools"
+  },
+  "AWS-IoT-Analytics": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Internet-of-Things/48/Arch_AWS-IoT-Analytics_48.svg",
+   "label": "AWS IoT Analytics",
+   "category": "Internet-of-Things"
+  },
+  "AWS-IoT-Analytics_Channel": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Analytics_Channel_48.svg",
+   "label": "AWS IoT Analytics Channel",
+   "category": "IoT"
+  },
+  "AWS-IoT-Analytics_Data-Store": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Analytics_Data-Store_48.svg",
+   "label": "AWS IoT Analytics Data Store",
+   "category": "IoT"
+  },
+  "AWS-IoT-Analytics_Dataset": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Analytics_Dataset_48.svg",
+   "label": "AWS IoT Analytics Dataset",
+   "category": "IoT"
+  },
+  "AWS-IoT-Analytics_Notebook": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Analytics_Notebook_48.svg",
+   "label": "AWS IoT Analytics Notebook",
+   "category": "IoT"
+  },
+  "AWS-IoT-Analytics_Pipeline": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Analytics_Pipeline_48.svg",
+   "label": "AWS IoT Analytics Pipeline",
+   "category": "IoT"
+  },
+  "AWS-IoT-Button": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Internet-of-Things/48/Arch_AWS-IoT-Button_48.svg",
+   "label": "AWS IoT Button",
+   "category": "Internet-of-Things"
+  },
+  "AWS-IoT-Core": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Internet-of-Things/48/Arch_AWS-IoT-Core_48.svg",
+   "label": "AWS IoT Core",
+   "category": "Internet-of-Things"
+  },
+  "AWS-IoT-Core_Device-Advisor": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Core_Device-Advisor_48.svg",
+   "label": "AWS IoT Core Device Advisor",
+   "category": "IoT"
+  },
+  "AWS-IoT-Core_Device-Location": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Core_Device-Location_48.svg",
+   "label": "AWS IoT Core Device Location",
+   "category": "IoT"
+  },
+  "AWS-IoT-Device-Defender": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Internet-of-Things/48/Arch_AWS-IoT-Device-Defender_48.svg",
+   "label": "AWS IoT Device Defender",
+   "category": "Internet-of-Things"
+  },
+  "AWS-IoT-Device-Defender_IoT-Device-Jobs": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Device-Defender_IoT-Device-Jobs_48.svg",
+   "label": "AWS IoT Device Defender IoT Device Jobs",
+   "category": "IoT"
+  },
+  "AWS-IoT-Device-Management": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Internet-of-Things/48/Arch_AWS-IoT-Device-Management_48.svg",
+   "label": "AWS IoT Device Management",
+   "category": "Internet-of-Things"
+  },
+  "AWS-IoT-Device-Management_Fleet-Hub": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Device-Management_Fleet-Hub_48.svg",
+   "label": "AWS IoT Device Management Fleet Hub",
+   "category": "IoT"
+  },
+  "AWS-IoT-Device-Tester": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Device-Tester_48.svg",
+   "label": "AWS IoT Device Tester",
+   "category": "IoT"
+  },
+  "AWS-IoT-Events": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Internet-of-Things/48/Arch_AWS-IoT-Events_48.svg",
+   "label": "AWS IoT Events",
+   "category": "Internet-of-Things"
+  },
+  "AWS-IoT-ExpressLink": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Internet-of-Things/48/Arch_AWS-IoT-ExpressLink_48.svg",
+   "label": "AWS IoT ExpressLink",
+   "category": "Internet-of-Things"
+  },
+  "AWS-IoT-FleetWise": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Internet-of-Things/48/Arch_AWS-IoT-FleetWise_48.svg",
+   "label": "AWS IoT FleetWise",
+   "category": "Internet-of-Things"
+  },
+  "AWS-IoT-Greengrass": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Internet-of-Things/48/Arch_AWS-IoT-Greengrass_48.svg",
+   "label": "AWS IoT Greengrass",
+   "category": "Internet-of-Things"
+  },
+  "AWS-IoT-Greengrass-Deployment": {
+   "set": "groups",
+   "path": "Architecture-Group-Icons_07312025/AWS-IoT-Greengrass-Deployment_32.svg",
+   "label": "AWS IoT Greengrass Deployment"
+  },
+  "AWS-IoT-Greengrass_Artifact": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Greengrass_Artifact_48.svg",
+   "label": "AWS IoT Greengrass Artifact",
+   "category": "IoT"
+  },
+  "AWS-IoT-Greengrass_Component": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Greengrass_Component_48.svg",
+   "label": "AWS IoT Greengrass Component",
+   "category": "IoT"
+  },
+  "AWS-IoT-Greengrass_Component-Machine-Learning": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Greengrass_Component-Machine-Learning_48.svg",
+   "label": "AWS IoT Greengrass Component Machine Learning",
+   "category": "IoT"
+  },
+  "AWS-IoT-Greengrass_Component-Nucleus": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Greengrass_Component-Nucleus_48.svg",
+   "label": "AWS IoT Greengrass Component Nucleus",
+   "category": "IoT"
+  },
+  "AWS-IoT-Greengrass_Component-Private": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Greengrass_Component-Private_48.svg",
+   "label": "AWS IoT Greengrass Component Private",
+   "category": "IoT"
+  },
+  "AWS-IoT-Greengrass_Component-Public": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Greengrass_Component-Public_48.svg",
+   "label": "AWS IoT Greengrass Component Public",
+   "category": "IoT"
+  },
+  "AWS-IoT-Greengrass_Connector": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Greengrass_Connector_48.svg",
+   "label": "AWS IoT Greengrass Connector",
+   "category": "IoT"
+  },
+  "AWS-IoT-Greengrass_Interprocess-Communication": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Greengrass_Interprocess-Communication_48.svg",
+   "label": "AWS IoT Greengrass Interprocess Communication",
+   "category": "IoT"
+  },
+  "AWS-IoT-Greengrass_Protocol": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Greengrass_Protocol_48.svg",
+   "label": "AWS IoT Greengrass Protocol",
+   "category": "IoT"
+  },
+  "AWS-IoT-Greengrass_Recipe": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Greengrass_Recipe_48.svg",
+   "label": "AWS IoT Greengrass Recipe",
+   "category": "IoT"
+  },
+  "AWS-IoT-Greengrass_Stream-Manager": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Greengrass_Stream-Manager_48.svg",
+   "label": "AWS IoT Greengrass Stream Manager",
+   "category": "IoT"
+  },
+  "AWS-IoT-Hardware-Board": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Hardware-Board_48.svg",
+   "label": "AWS IoT Hardware Board",
+   "category": "IoT"
+  },
+  "AWS-IoT-Rule": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-Rule_48.svg",
+   "label": "AWS IoT Rule",
+   "category": "IoT"
+  },
+  "AWS-IoT-SiteWise": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Internet-of-Things/48/Arch_AWS-IoT-SiteWise_48.svg",
+   "label": "AWS IoT SiteWise",
+   "category": "Internet-of-Things"
+  },
+  "AWS-IoT-SiteWise_Asset": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-SiteWise_Asset_48.svg",
+   "label": "AWS IoT SiteWise Asset",
+   "category": "IoT"
+  },
+  "AWS-IoT-SiteWise_Asset-Hierarchy": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-SiteWise_Asset-Hierarchy_48.svg",
+   "label": "AWS IoT SiteWise Asset Hierarchy",
+   "category": "IoT"
+  },
+  "AWS-IoT-SiteWise_Asset-Model": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-SiteWise_Asset-Model_48.svg",
+   "label": "AWS IoT SiteWise Asset Model",
+   "category": "IoT"
+  },
+  "AWS-IoT-SiteWise_Asset-Properties": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-SiteWise_Asset-Properties_48.svg",
+   "label": "AWS IoT SiteWise Asset Properties",
+   "category": "IoT"
+  },
+  "AWS-IoT-SiteWise_Data-Streams": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT-SiteWise_Data-Streams_48.svg",
+   "label": "AWS IoT SiteWise Data Streams",
+   "category": "IoT"
+  },
+  "AWS-IoT-TwinMaker": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Internet-of-Things/48/Arch_AWS-IoT-TwinMaker_48.svg",
+   "label": "AWS IoT TwinMaker",
+   "category": "Internet-of-Things"
+  },
+  "AWS-IoT_Action": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Action_48.svg",
+   "label": "AWS IoT Action",
+   "category": "IoT"
+  },
+  "AWS-IoT_Actuator": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Actuator_48.svg",
+   "label": "AWS IoT Actuator",
+   "category": "IoT"
+  },
+  "AWS-IoT_Alexa_Enabled-Device": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Alexa_Enabled-Device_48.svg",
+   "label": "AWS IoT Alexa Enabled Device",
+   "category": "IoT"
+  },
+  "AWS-IoT_Alexa_Skill": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Alexa_Skill_48.svg",
+   "label": "AWS IoT Alexa Skill",
+   "category": "IoT"
+  },
+  "AWS-IoT_Alexa_Voice-Service": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Alexa_Voice-Service_48.svg",
+   "label": "AWS IoT Alexa Voice Service",
+   "category": "IoT"
+  },
+  "AWS-IoT_Certificate": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Certificate_48.svg",
+   "label": "AWS IoT Certificate",
+   "category": "IoT"
+  },
+  "AWS-IoT_Desired-State": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Desired-State_48.svg",
+   "label": "AWS IoT Desired State",
+   "category": "IoT"
+  },
+  "AWS-IoT_Device-Gateway": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Device-Gateway_48.svg",
+   "label": "AWS IoT Device Gateway",
+   "category": "IoT"
+  },
+  "AWS-IoT_Echo": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Echo_48.svg",
+   "label": "AWS IoT Echo",
+   "category": "IoT"
+  },
+  "AWS-IoT_Fire-TV_Stick": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Fire-TV_Stick_48.svg",
+   "label": "AWS IoT Fire TV Stick",
+   "category": "IoT"
+  },
+  "AWS-IoT_Fire_TV": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Fire_TV_48.svg",
+   "label": "AWS IoT Fire TV",
+   "category": "IoT"
+  },
+  "AWS-IoT_HTTP2-Protocol": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_HTTP2-Protocol_48.svg",
+   "label": "AWS IoT HTTP2 Protocol",
+   "category": "IoT"
+  },
+  "AWS-IoT_HTTP_Protocol": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_HTTP_Protocol_48.svg",
+   "label": "AWS IoT HTTP Protocol",
+   "category": "IoT"
+  },
+  "AWS-IoT_Lambda_Function": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Lambda_Function_48.svg",
+   "label": "AWS IoT Lambda Function",
+   "category": "IoT"
+  },
+  "AWS-IoT_LoRaWAN-Protocol": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_LoRaWAN-Protocol_48.svg",
+   "label": "AWS IoT LoRaWAN Protocol",
+   "category": "IoT"
+  },
+  "AWS-IoT_MQTT_Protocol": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_MQTT_Protocol_48.svg",
+   "label": "AWS IoT MQTT Protocol",
+   "category": "IoT"
+  },
+  "AWS-IoT_Over-Air-Update": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Over-Air-Update_48.svg",
+   "label": "AWS IoT Over Air Update",
+   "category": "IoT"
+  },
+  "AWS-IoT_Policy": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Policy_48.svg",
+   "label": "AWS IoT Policy",
+   "category": "IoT"
+  },
+  "AWS-IoT_Reported-State": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Reported-State_48.svg",
+   "label": "AWS IoT Reported State",
+   "category": "IoT"
+  },
+  "AWS-IoT_Sailboat": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Sailboat_48.svg",
+   "label": "AWS IoT Sailboat",
+   "category": "IoT"
+  },
+  "AWS-IoT_Sensor": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Sensor_48.svg",
+   "label": "AWS IoT Sensor",
+   "category": "IoT"
+  },
+  "AWS-IoT_Servo": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Servo_48.svg",
+   "label": "AWS IoT Servo",
+   "category": "IoT"
+  },
+  "AWS-IoT_Shadow": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Shadow_48.svg",
+   "label": "AWS IoT Shadow",
+   "category": "IoT"
+  },
+  "AWS-IoT_Simulator": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Simulator_48.svg",
+   "label": "AWS IoT Simulator",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Bank": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Bank_48.svg",
+   "label": "AWS IoT Thing Bank",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Bicycle": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Bicycle_48.svg",
+   "label": "AWS IoT Thing Bicycle",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Camera": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Camera_48.svg",
+   "label": "AWS IoT Thing Camera",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Car": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Car_48.svg",
+   "label": "AWS IoT Thing Car",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Cart": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Cart_48.svg",
+   "label": "AWS IoT Thing Cart",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Coffee-Pot": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Coffee-Pot_48.svg",
+   "label": "AWS IoT Thing Coffee Pot",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Door-Lock": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Door-Lock_48.svg",
+   "label": "AWS IoT Thing Door Lock",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Factory": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Factory_48.svg",
+   "label": "AWS IoT Thing Factory",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_FreeRTOS-Device": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_FreeRTOS-Device_48.svg",
+   "label": "AWS IoT Thing FreeRTOS Device",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Generic": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Generic_48.svg",
+   "label": "AWS IoT Thing Generic",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_House": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_House_48.svg",
+   "label": "AWS IoT Thing House",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Humidity-Sensor": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Humidity-Sensor_48.svg",
+   "label": "AWS IoT Thing Humidity Sensor",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Industrial-PC": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Industrial-PC_48.svg",
+   "label": "AWS IoT Thing Industrial PC",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Lightbulb": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Lightbulb_48.svg",
+   "label": "AWS IoT Thing Lightbulb",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Medical-Emergency": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Medical-Emergency_48.svg",
+   "label": "AWS IoT Thing Medical Emergency",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_PLC": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_PLC_48.svg",
+   "label": "AWS IoT Thing PLC",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Police-Emergency": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Police-Emergency_48.svg",
+   "label": "AWS IoT Thing Police Emergency",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Relay": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Relay_48.svg",
+   "label": "AWS IoT Thing Relay",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Stacklight": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Stacklight_48.svg",
+   "label": "AWS IoT Thing Stacklight",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Temperature-Humidity-Sensor": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Temperature-Humidity-Sensor_48.svg",
+   "label": "AWS IoT Thing Temperature Humidity Sensor",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Temperature-Sensor": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Temperature-Sensor_48.svg",
+   "label": "AWS IoT Thing Temperature Sensor",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Temperature-Vibration-Sensor": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Temperature-Vibration-Sensor_48.svg",
+   "label": "AWS IoT Thing Temperature Vibration Sensor",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Thermostat": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Thermostat_48.svg",
+   "label": "AWS IoT Thing Thermostat",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Travel": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Travel_48.svg",
+   "label": "AWS IoT Thing Travel",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Utility": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Utility_48.svg",
+   "label": "AWS IoT Thing Utility",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Vibration-Sensor": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Vibration-Sensor_48.svg",
+   "label": "AWS IoT Thing Vibration Sensor",
+   "category": "IoT"
+  },
+  "AWS-IoT_Thing_Windfarm": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Thing_Windfarm_48.svg",
+   "label": "AWS IoT Thing Windfarm",
+   "category": "IoT"
+  },
+  "AWS-IoT_Topic": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_IoT/Res_AWS-IoT_Topic_48.svg",
+   "label": "AWS IoT Topic",
+   "category": "IoT"
+  },
+  "AWS-Key-Management-Service": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_AWS-Key-Management-Service_48.svg",
+   "label": "AWS Key Management Service",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Key-Management-Service_External-Key-Store": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-Key-Management-Service_External-Key-Store_48.svg",
+   "label": "AWS Key Management Service External Key Store",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Lake-Formation": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Analytics/48/Arch_AWS-Lake-Formation_48.svg",
+   "label": "AWS Lake Formation",
+   "category": "Analytics"
+  },
+  "AWS-Lake-Formation_Data-Lake": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_AWS-Lake-Formation_Data-Lake_48.svg",
+   "label": "AWS Lake Formation Data Lake",
+   "category": "Analytics"
+  },
+  "AWS-Lambda": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_AWS-Lambda_48.svg",
+   "label": "AWS Lambda",
+   "category": "Compute"
+  },
+  "AWS-Lambda_Lambda-Function": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Compute/Res_AWS-Lambda_Lambda-Function_48.svg",
+   "label": "AWS Lambda Lambda Function",
+   "category": "Compute"
+  },
+  "AWS-Launch-Wizard": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-Launch-Wizard_48.svg",
+   "label": "AWS Launch Wizard",
+   "category": "Management-Governance"
+  },
+  "AWS-License-Manager": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-License-Manager_48.svg",
+   "label": "AWS License Manager",
+   "category": "Management-Governance"
+  },
+  "AWS-License-Manager_Application-Discovery": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-License-Manager_Application-Discovery_48.svg",
+   "label": "AWS License Manager Application Discovery",
+   "category": "Management-Governance"
+  },
+  "AWS-License-Manager_License-Blending": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-License-Manager_License-Blending_48.svg",
+   "label": "AWS License Manager License Blending",
+   "category": "Management-Governance"
+  },
+  "AWS-Local-Zones": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_AWS-Local-Zones_48.svg",
+   "label": "AWS Local Zones",
+   "category": "Compute"
+  },
+  "AWS-Mainframe-Modernization": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Migration-Modernization/48/Arch_AWS-Mainframe-Modernization_48.svg",
+   "label": "AWS Mainframe Modernization",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Mainframe-Modernization_Analyzer": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Migration-Modernization/Res_AWS-Mainframe-Modernization_Analyzer_48.svg",
+   "label": "AWS Mainframe Modernization Analyzer",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Mainframe-Modernization_Compiler": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Migration-Modernization/Res_AWS-Mainframe-Modernization_Compiler_48.svg",
+   "label": "AWS Mainframe Modernization Compiler",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Mainframe-Modernization_Converter": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Migration-Modernization/Res_AWS-Mainframe-Modernization_Converter_48.svg",
+   "label": "AWS Mainframe Modernization Converter",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Mainframe-Modernization_Developer": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Migration-Modernization/Res_AWS-Mainframe-Modernization_Developer_48.svg",
+   "label": "AWS Mainframe Modernization Developer",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Mainframe-Modernization_Runtime": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Migration-Modernization/Res_AWS-Mainframe-Modernization_Runtime_48.svg",
+   "label": "AWS Mainframe Modernization Runtime",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Managed-Services": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Customer-Enablement/48/Arch_AWS-Managed-Services_48.svg",
+   "label": "AWS Managed Services",
+   "category": "Customer-Enablement"
+  },
+  "AWS-Management-Console": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-Management-Console_48.svg",
+   "label": "AWS Management Console",
+   "category": "Management-Governance"
+  },
+  "AWS-Marketplace_Dark": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_General-Icons/48/Arch_AWS-Marketplace_Dark_48.svg",
+   "label": "AWS Marketplace Dark",
+   "category": "General-Icons"
+  },
+  "AWS-Marketplace_Light": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_General-Icons/48/Arch_AWS-Marketplace_Light_48.svg",
+   "label": "AWS Marketplace Light",
+   "category": "General-Icons"
+  },
+  "AWS-Migration-Evaluator": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Migration-Modernization/48/Arch_AWS-Migration-Evaluator_48.svg",
+   "label": "AWS Migration Evaluator",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Migration-Hub": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Migration-Modernization/48/Arch_AWS-Migration-Hub_48.svg",
+   "label": "AWS Migration Hub",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Migration-Hub_Refactor-Spaces-Applications": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Migration-Modernization/Res_AWS-Migration-Hub_Refactor-Spaces-Applications_48.svg",
+   "label": "AWS Migration Hub Refactor Spaces Applications",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Migration-Hub_Refactor-Spaces-Environments": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Migration-Modernization/Res_AWS-Migration-Hub_Refactor-Spaces-Environments_48.svg",
+   "label": "AWS Migration Hub Refactor Spaces Environments",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Migration-Hub_Refactor-Spaces-Services": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Migration-Modernization/Res_AWS-Migration-Hub_Refactor-Spaces-Services_48.svg",
+   "label": "AWS Migration Hub Refactor Spaces Services",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Network-Firewall": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_AWS-Network-Firewall_48.svg",
+   "label": "AWS Network Firewall",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Network-Firewall_Endpoints": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-Network-Firewall_Endpoints_48.svg",
+   "label": "AWS Network Firewall Endpoints",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Neuron": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_AWS-Neuron_48.svg",
+   "label": "AWS Neuron",
+   "category": "Artificial-Intelligence"
+  },
+  "AWS-Nitro-Enclaves": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_AWS-Nitro-Enclaves_48.svg",
+   "label": "AWS Nitro Enclaves",
+   "category": "Compute"
+  },
+  "AWS-Organizations": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-Organizations_48.svg",
+   "label": "AWS Organizations",
+   "category": "Management-Governance"
+  },
+  "AWS-Organizations_Account": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Organizations_Account_48.svg",
+   "label": "AWS Organizations Account",
+   "category": "Management-Governance"
+  },
+  "AWS-Organizations_Management-Account": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Organizations_Management-Account_48.svg",
+   "label": "AWS Organizations Management Account",
+   "category": "Management-Governance"
+  },
+  "AWS-Organizations_Organizational-Unit": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Organizations_Organizational-Unit_48.svg",
+   "label": "AWS Organizations Organizational Unit",
+   "category": "Management-Governance"
+  },
+  "AWS-Outposts-family": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_AWS-Outposts-family_48.svg",
+   "label": "AWS Outposts family",
+   "category": "Compute"
+  },
+  "AWS-Outposts-rack": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_AWS-Outposts-rack_48.svg",
+   "label": "AWS Outposts rack",
+   "category": "Compute"
+  },
+  "AWS-Outposts-servers": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_AWS-Outposts-servers_48.svg",
+   "label": "AWS Outposts servers",
+   "category": "Compute"
+  },
+  "AWS-Panorama": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_AWS-Panorama_48.svg",
+   "label": "AWS Panorama",
+   "category": "Artificial-Intelligence"
+  },
+  "AWS-Parallel-Cluster": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_AWS-Parallel-Cluster_48.svg",
+   "label": "AWS Parallel Cluster",
+   "category": "Compute"
+  },
+  "AWS-Parallel-Computing-Service": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_AWS-Parallel-Computing-Service_48.svg",
+   "label": "AWS Parallel Computing Service",
+   "category": "Compute"
+  },
+  "AWS-Payment-Cryptography": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_AWS-Payment-Cryptography_48.svg",
+   "label": "AWS Payment Cryptography",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Private-5G": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/48/Arch_AWS-Private-5G_48.svg",
+   "label": "AWS Private 5G",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-Private-Certificate-Authority": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_AWS-Private-Certificate-Authority_48.svg",
+   "label": "AWS Private Certificate Authority",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-PrivateLink": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/48/Arch_AWS-PrivateLink_48.svg",
+   "label": "AWS PrivateLink",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-Professional-Services": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Customer-Enablement/48/Arch_AWS-Professional-Services_48.svg",
+   "label": "AWS Professional Services",
+   "category": "Customer-Enablement"
+  },
+  "AWS-Proton": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-Proton_48.svg",
+   "label": "AWS Proton",
+   "category": "Management-Governance"
+  },
+  "AWS-Resilience-Hub": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-Resilience-Hub_48.svg",
+   "label": "AWS Resilience Hub",
+   "category": "Management-Governance"
+  },
+  "AWS-Resource-Access-Manager": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_AWS-Resource-Access-Manager_48.svg",
+   "label": "AWS Resource Access Manager",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Resource-Explorer": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-Resource-Explorer_48.svg",
+   "label": "AWS Resource Explorer",
+   "category": "Management-Governance"
+  },
+  "AWS-Secrets-Manager": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_AWS-Secrets-Manager_48.svg",
+   "label": "AWS Secrets Manager",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Security-Hub": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_AWS-Security-Hub_48.svg",
+   "label": "AWS Security Hub",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Security-Hub_Finding": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-Security-Hub_Finding_48.svg",
+   "label": "AWS Security Hub Finding",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Security-Incident-Response": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_AWS-Security-Incident-Response_48.svg",
+   "label": "AWS Security Incident Response",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Serverless-Application-Repository": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_AWS-Serverless-Application-Repository_48.svg",
+   "label": "AWS Serverless Application Repository",
+   "category": "Compute"
+  },
+  "AWS-Service-Catalog": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-Service-Catalog_48.svg",
+   "label": "AWS Service Catalog",
+   "category": "Management-Governance"
+  },
+  "AWS-Service-Management-Connector": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-Service-Management-Connector_48.svg",
+   "label": "AWS Service Management Connector",
+   "category": "Management-Governance"
+  },
+  "AWS-Shield": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_AWS-Shield_48.svg",
+   "label": "AWS Shield",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Shield_AWS-Shield-Advanced": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-Shield_AWS-Shield-Advanced_48.svg",
+   "label": "AWS Shield AWS Shield Advanced",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Signer": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_AWS-Signer_48.svg",
+   "label": "AWS Signer",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-SimSpace-Weaver": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_AWS-SimSpace-Weaver_48.svg",
+   "label": "AWS SimSpace Weaver",
+   "category": "Compute"
+  },
+  "AWS-Site-to-Site-VPN": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/48/Arch_AWS-Site-to-Site-VPN_48.svg",
+   "label": "AWS Site to Site VPN",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-Snowball": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Storage/48/Arch_AWS-Snowball_48.svg",
+   "label": "AWS Snowball",
+   "category": "Storage"
+  },
+  "AWS-Snowball-Edge": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Storage/48/Arch_AWS-Snowball-Edge_48.svg",
+   "label": "AWS Snowball Edge",
+   "category": "Storage"
+  },
+  "AWS-Snowball_Snowball-Import-Export": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Snowball_Snowball-Import-Export_48.svg",
+   "label": "AWS Snowball Snowball Import Export",
+   "category": "Storage"
+  },
+  "AWS-Step-Functions": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_App-Integration/48/Arch_AWS-Step-Functions_48.svg",
+   "label": "AWS Step Functions",
+   "category": "App-Integration"
+  },
+  "AWS-Storage-Gateway": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Storage/48/Arch_AWS-Storage-Gateway_48.svg",
+   "label": "AWS Storage Gateway",
+   "category": "Storage"
+  },
+  "AWS-Storage-Gateway_Amazon-FSx-File-Gateway": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Storage-Gateway_Amazon-FSx-File-Gateway_48.svg",
+   "label": "AWS Storage Gateway Amazon FSx File Gateway",
+   "category": "Storage"
+  },
+  "AWS-Storage-Gateway_Amazon-S3-File-Gateway": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Storage-Gateway_Amazon-S3-File-Gateway_48.svg",
+   "label": "AWS Storage Gateway Amazon S3 File Gateway",
+   "category": "Storage"
+  },
+  "AWS-Storage-Gateway_Cached-Volume": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Storage-Gateway_Cached-Volume_48.svg",
+   "label": "AWS Storage Gateway Cached Volume",
+   "category": "Storage"
+  },
+  "AWS-Storage-Gateway_File-Gateway": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Storage-Gateway_File-Gateway_48.svg",
+   "label": "AWS Storage Gateway File Gateway",
+   "category": "Storage"
+  },
+  "AWS-Storage-Gateway_Noncached-Volume": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Storage-Gateway_Noncached-Volume_48.svg",
+   "label": "AWS Storage Gateway Noncached Volume",
+   "category": "Storage"
+  },
+  "AWS-Storage-Gateway_Tape-Gateway": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Storage-Gateway_Tape-Gateway_48.svg",
+   "label": "AWS Storage Gateway Tape Gateway",
+   "category": "Storage"
+  },
+  "AWS-Storage-Gateway_Virtual-Tape-Library": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Storage-Gateway_Virtual-Tape-Library_48.svg",
+   "label": "AWS Storage Gateway Virtual Tape Library",
+   "category": "Storage"
+  },
+  "AWS-Storage-Gateway_Volume-Gateway": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_AWS-Storage-Gateway_Volume-Gateway_48.svg",
+   "label": "AWS Storage Gateway Volume Gateway",
+   "category": "Storage"
+  },
+  "AWS-Supply-Chain": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Business-Applications/48/Arch_AWS-Supply-Chain_48.svg",
+   "label": "AWS Supply Chain",
+   "category": "Business-Applications"
+  },
+  "AWS-Support": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Customer-Enablement/48/Arch_AWS-Support_48.svg",
+   "label": "AWS Support",
+   "category": "Customer-Enablement"
+  },
+  "AWS-Systems-Manager": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-Systems-Manager_48.svg",
+   "label": "AWS Systems Manager",
+   "category": "Management-Governance"
+  },
+  "AWS-Systems-Manager_Application-Manager": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Systems-Manager_Application-Manager_48.svg",
+   "label": "AWS Systems Manager Application Manager",
+   "category": "Management-Governance"
+  },
+  "AWS-Systems-Manager_Automation": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Systems-Manager_Automation_48.svg",
+   "label": "AWS Systems Manager Automation",
+   "category": "Management-Governance"
+  },
+  "AWS-Systems-Manager_Change-Calendar": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Systems-Manager_Change-Calendar_48.svg",
+   "label": "AWS Systems Manager Change Calendar",
+   "category": "Management-Governance"
+  },
+  "AWS-Systems-Manager_Change-Manager": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Systems-Manager_Change-Manager_48.svg",
+   "label": "AWS Systems Manager Change Manager",
+   "category": "Management-Governance"
+  },
+  "AWS-Systems-Manager_Compliance": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Systems-Manager_Compliance_48.svg",
+   "label": "AWS Systems Manager Compliance",
+   "category": "Management-Governance"
+  },
+  "AWS-Systems-Manager_Distributor": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Systems-Manager_Distributor_48.svg",
+   "label": "AWS Systems Manager Distributor",
+   "category": "Management-Governance"
+  },
+  "AWS-Systems-Manager_Documents": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Systems-Manager_Documents_48.svg",
+   "label": "AWS Systems Manager Documents",
+   "category": "Management-Governance"
+  },
+  "AWS-Systems-Manager_Incident-Manager": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Systems-Manager_Incident-Manager_48.svg",
+   "label": "AWS Systems Manager Incident Manager",
+   "category": "Management-Governance"
+  },
+  "AWS-Systems-Manager_Inventory": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Systems-Manager_Inventory_48.svg",
+   "label": "AWS Systems Manager Inventory",
+   "category": "Management-Governance"
+  },
+  "AWS-Systems-Manager_Maintenance-Windows": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Systems-Manager_Maintenance-Windows_48.svg",
+   "label": "AWS Systems Manager Maintenance Windows",
+   "category": "Management-Governance"
+  },
+  "AWS-Systems-Manager_OpsCenter": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Systems-Manager_OpsCenter_48.svg",
+   "label": "AWS Systems Manager OpsCenter",
+   "category": "Management-Governance"
+  },
+  "AWS-Systems-Manager_Parameter-Store": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Systems-Manager_Parameter-Store_48.svg",
+   "label": "AWS Systems Manager Parameter Store",
+   "category": "Management-Governance"
+  },
+  "AWS-Systems-Manager_Patch-Manager": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Systems-Manager_Patch-Manager_48.svg",
+   "label": "AWS Systems Manager Patch Manager",
+   "category": "Management-Governance"
+  },
+  "AWS-Systems-Manager_Run-Command": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Systems-Manager_Run-Command_48.svg",
+   "label": "AWS Systems Manager Run Command",
+   "category": "Management-Governance"
+  },
+  "AWS-Systems-Manager_Session-Manager": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Systems-Manager_Session-Manager_48.svg",
+   "label": "AWS Systems Manager Session Manager",
+   "category": "Management-Governance"
+  },
+  "AWS-Systems-Manager_State-Manager": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Systems-Manager_State-Manager_48.svg",
+   "label": "AWS Systems Manager State Manager",
+   "category": "Management-Governance"
+  },
+  "AWS-Telco-Network-Builder": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-Telco-Network-Builder_48.svg",
+   "label": "AWS Telco Network Builder",
+   "category": "Management-Governance"
+  },
+  "AWS-Thinkbox-Deadline": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Media-Services/48/Arch_AWS-Thinkbox-Deadline_48.svg",
+   "label": "AWS Thinkbox Deadline",
+   "category": "Media-Services"
+  },
+  "AWS-Thinkbox-Frost": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Media-Services/48/Arch_AWS-Thinkbox-Frost_48.svg",
+   "label": "AWS Thinkbox Frost",
+   "category": "Media-Services"
+  },
+  "AWS-Thinkbox-Krakatoa": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Media-Services/48/Arch_AWS-Thinkbox-Krakatoa_48.svg",
+   "label": "AWS Thinkbox Krakatoa",
+   "category": "Media-Services"
+  },
+  "AWS-Thinkbox-Sequoia": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Media-Services/48/Arch_AWS-Thinkbox-Sequoia_48.svg",
+   "label": "AWS Thinkbox Sequoia",
+   "category": "Media-Services"
+  },
+  "AWS-Thinkbox-Stoke": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Media-Services/48/Arch_AWS-Thinkbox-Stoke_48.svg",
+   "label": "AWS Thinkbox Stoke",
+   "category": "Media-Services"
+  },
+  "AWS-Thinkbox-XMesh": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Media-Services/48/Arch_AWS-Thinkbox-XMesh_48.svg",
+   "label": "AWS Thinkbox XMesh",
+   "category": "Media-Services"
+  },
+  "AWS-Tools-and-SDKs": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Developer-Tools/48/Arch_AWS-Tools-and-SDKs_48.svg",
+   "label": "AWS Tools and SDKs",
+   "category": "Developer-Tools"
+  },
+  "AWS-Training-Certification": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Customer-Enablement/48/Arch_AWS-Training-Certification_48.svg",
+   "label": "AWS Training Certification",
+   "category": "Customer-Enablement"
+  },
+  "AWS-Transfer-Family": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Migration-Modernization/48/Arch_AWS-Transfer-Family_48.svg",
+   "label": "AWS Transfer Family",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Transfer-Family_AWS-AS2": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Migration-Modernization/Res_AWS-Transfer-Family_AWS-AS2_48.svg",
+   "label": "AWS Transfer Family AWS AS2",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Transfer-Family_AWS-FTP": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Migration-Modernization/Res_AWS-Transfer-Family_AWS-FTP_48.svg",
+   "label": "AWS Transfer Family AWS FTP",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Transfer-Family_AWS-FTPS": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Migration-Modernization/Res_AWS-Transfer-Family_AWS-FTPS_48.svg",
+   "label": "AWS Transfer Family AWS FTPS",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Transfer-Family_AWS-SFTP": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Migration-Modernization/Res_AWS-Transfer-Family_AWS-SFTP_48.svg",
+   "label": "AWS Transfer Family AWS SFTP",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Transform": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Migration-Modernization/48/Arch_AWS-Transform_48.svg",
+   "label": "AWS Transform",
+   "category": "Migration-Modernization"
+  },
+  "AWS-Transit-Gateway": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/48/Arch_AWS-Transit-Gateway_48.svg",
+   "label": "AWS Transit Gateway",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-Transit-Gateway_Attachment": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_AWS-Transit-Gateway_Attachment_48.svg",
+   "label": "AWS Transit Gateway Attachment",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-Trusted-Advisor": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-Trusted-Advisor_48.svg",
+   "label": "AWS Trusted Advisor",
+   "category": "Management-Governance"
+  },
+  "AWS-Trusted-Advisor_Checklist": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Trusted-Advisor_Checklist_48.svg",
+   "label": "AWS Trusted Advisor Checklist",
+   "category": "Management-Governance"
+  },
+  "AWS-Trusted-Advisor_Checklist-Cost": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Trusted-Advisor_Checklist-Cost_48.svg",
+   "label": "AWS Trusted Advisor Checklist Cost",
+   "category": "Management-Governance"
+  },
+  "AWS-Trusted-Advisor_Checklist-Fault-Tolerant": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Trusted-Advisor_Checklist-Fault-Tolerant_48.svg",
+   "label": "AWS Trusted Advisor Checklist Fault Tolerant",
+   "category": "Management-Governance"
+  },
+  "AWS-Trusted-Advisor_Checklist-Performance": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Trusted-Advisor_Checklist-Performance_48.svg",
+   "label": "AWS Trusted Advisor Checklist Performance",
+   "category": "Management-Governance"
+  },
+  "AWS-Trusted-Advisor_Checklist-Security": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_AWS-Trusted-Advisor_Checklist-Security_48.svg",
+   "label": "AWS Trusted Advisor Checklist Security",
+   "category": "Management-Governance"
+  },
+  "AWS-User-Notifications": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-User-Notifications_48.svg",
+   "label": "AWS User Notifications",
+   "category": "Management-Governance"
+  },
+  "AWS-Verified-Access": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/48/Arch_AWS-Verified-Access_48.svg",
+   "label": "AWS Verified Access",
+   "category": "Networking-Content-Delivery"
+  },
+  "AWS-WAF": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_AWS-WAF_48.svg",
+   "label": "AWS WAF",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-WAF_Bad-Bot": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-WAF_Bad-Bot_48.svg",
+   "label": "AWS WAF Bad Bot",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-WAF_Bot": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-WAF_Bot_48.svg",
+   "label": "AWS WAF Bot",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-WAF_Bot-Control": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-WAF_Bot-Control_48.svg",
+   "label": "AWS WAF Bot Control",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-WAF_Filtering-Rule": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-WAF_Filtering-Rule_48.svg",
+   "label": "AWS WAF Filtering Rule",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-WAF_Labels": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-WAF_Labels_48.svg",
+   "label": "AWS WAF Labels",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-WAF_Managed-Rule": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-WAF_Managed-Rule_48.svg",
+   "label": "AWS WAF Managed Rule",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-WAF_Rule": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_AWS-WAF_Rule_48.svg",
+   "label": "AWS WAF Rule",
+   "category": "Security-Identity-Compliance"
+  },
+  "AWS-Wavelength": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_AWS-Wavelength_48.svg",
+   "label": "AWS Wavelength",
+   "category": "Compute"
+  },
+  "AWS-Well-Architected-Tool": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_AWS-Well-Architected-Tool_48.svg",
+   "label": "AWS Well Architected Tool",
+   "category": "Management-Governance"
+  },
+  "AWS-Wickr": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Business-Applications/48/Arch_AWS-Wickr_48.svg",
+   "label": "AWS Wickr",
+   "category": "Business-Applications"
+  },
+  "AWS-X-Ray": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Developer-Tools/48/Arch_AWS-X-Ray_48.svg",
+   "label": "AWS X Ray",
+   "category": "Developer-Tools"
+  },
+  "AWS-rePost": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Customer-Enablement/48/Arch_AWS-rePost_48.svg",
+   "label": "AWS rePost",
+   "category": "Customer-Enablement"
+  },
+  "AWS-rePost-Private": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Customer-Enablement/48/Arch_AWS-rePost-Private_48.svg",
+   "label": "AWS rePost Private",
+   "category": "Customer-Enablement"
+  },
+  "Agentcore": {
+   "set": "agentcore",
+   "path": "AgentCore/dark-purple/Agentcore.png",
+   "label": "Agentcore"
+  },
+  "Alexa-For-Business": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Business-Applications/48/Arch_Alexa-For-Business_48.svg",
+   "label": "Alexa For Business",
+   "category": "Business-Applications"
+  },
+  "Amazon-API-Gateway": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/48/Arch_Amazon-API-Gateway_48.svg",
+   "label": "Amazon API Gateway",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-API-Gateway_Endpoint": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-API-Gateway_Endpoint_48.svg",
+   "label": "Amazon API Gateway Endpoint",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-AppFlow": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_App-Integration/48/Arch_Amazon-AppFlow_48.svg",
+   "label": "Amazon AppFlow",
+   "category": "App-Integration"
+  },
+  "Amazon-AppStream-2": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_End-User-Computing/48/Arch_Amazon-AppStream-2_48.svg",
+   "label": "Amazon AppStream 2",
+   "category": "End-User-Computing"
+  },
+  "Amazon-Application-Recovery-Controller": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/48/Arch_Amazon-Application-Recovery-Controller_48.svg",
+   "label": "Amazon Application Recovery Controller",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-Athena": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Analytics/48/Arch_Amazon-Athena_48.svg",
+   "label": "Amazon Athena",
+   "category": "Analytics"
+  },
+  "Amazon-Athena_Data-Source-Connectors": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-Athena_Data-Source-Connectors_48.svg",
+   "label": "Amazon Athena Data Source Connectors",
+   "category": "Analytics"
+  },
+  "Amazon-Augmented-AI-A2I": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-Augmented-AI-A2I_48.svg",
+   "label": "Amazon Augmented AI A2I",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-Aurora": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Database/48/Arch_Amazon-Aurora_48.svg",
+   "label": "Amazon Aurora",
+   "category": "Database"
+  },
+  "Amazon-Aurora-Instance": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-Aurora-Instance_48.svg",
+   "label": "Amazon Aurora Instance",
+   "category": "Database"
+  },
+  "Amazon-Aurora-MariaDB-Instance": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-Aurora-MariaDB-Instance_48.svg",
+   "label": "Amazon Aurora MariaDB Instance",
+   "category": "Database"
+  },
+  "Amazon-Aurora-MariaDB-Instance-Alternate": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-Aurora-MariaDB-Instance-Alternate_48.svg",
+   "label": "Amazon Aurora MariaDB Instance Alternate",
+   "category": "Database"
+  },
+  "Amazon-Aurora-MySQL-Instance": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-Aurora-MySQL-Instance_48.svg",
+   "label": "Amazon Aurora MySQL Instance",
+   "category": "Database"
+  },
+  "Amazon-Aurora-MySQL-Instance-Alternate": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-Aurora-MySQL-Instance-Alternate_48.svg",
+   "label": "Amazon Aurora MySQL Instance Alternate",
+   "category": "Database"
+  },
+  "Amazon-Aurora-Oracle-Instance": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-Aurora-Oracle-Instance_48.svg",
+   "label": "Amazon Aurora Oracle Instance",
+   "category": "Database"
+  },
+  "Amazon-Aurora-Oracle-Instance-Alternate": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-Aurora-Oracle-Instance-Alternate_48.svg",
+   "label": "Amazon Aurora Oracle Instance Alternate",
+   "category": "Database"
+  },
+  "Amazon-Aurora-PIOPS-Instance": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-Aurora-PIOPS-Instance_48.svg",
+   "label": "Amazon Aurora PIOPS Instance",
+   "category": "Database"
+  },
+  "Amazon-Aurora-PostgreSQL-Instance": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-Aurora-PostgreSQL-Instance_48.svg",
+   "label": "Amazon Aurora PostgreSQL Instance",
+   "category": "Database"
+  },
+  "Amazon-Aurora-PostgreSQL-Instance-Alternate": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-Aurora-PostgreSQL-Instance-Alternate_48.svg",
+   "label": "Amazon Aurora PostgreSQL Instance Alternate",
+   "category": "Database"
+  },
+  "Amazon-Aurora-SQL-Server-Instance": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-Aurora-SQL-Server-Instance_48.svg",
+   "label": "Amazon Aurora SQL Server Instance",
+   "category": "Database"
+  },
+  "Amazon-Aurora-SQL-Server-Instance-Alternate": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-Aurora-SQL-Server-Instance-Alternate_48.svg",
+   "label": "Amazon Aurora SQL Server Instance Alternate",
+   "category": "Database"
+  },
+  "Amazon-Aurora_Amazon-Aurora-Instance-alternate": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-Aurora_Amazon-Aurora-Instance-alternate_48.svg",
+   "label": "Amazon Aurora Amazon Aurora Instance alternate",
+   "category": "Database"
+  },
+  "Amazon-Aurora_Amazon-RDS-Instance": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-Aurora_Amazon-RDS-Instance_48.svg",
+   "label": "Amazon Aurora Amazon RDS Instance",
+   "category": "Database"
+  },
+  "Amazon-Aurora_Amazon-RDS-Instance-Aternate": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-Aurora_Amazon-RDS-Instance-Aternate_48.svg",
+   "label": "Amazon Aurora Amazon RDS Instance Aternate",
+   "category": "Database"
+  },
+  "Amazon-Aurora_Trusted-Language-Extensions-for-PostgreSQL": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-Aurora_Trusted-Language-Extensions-for-PostgreSQL_48.svg",
+   "label": "Amazon Aurora Trusted Language Extensions for PostgreSQL",
+   "category": "Database"
+  },
+  "Amazon-Bedrock": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-Bedrock_48.svg",
+   "label": "Amazon Bedrock",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-Braket": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Quantum-Technologies/48/Arch_Amazon-Braket_48.svg",
+   "label": "Amazon Braket",
+   "category": "Quantum-Technologies"
+  },
+  "Amazon-Braket_Chandelier": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Quantum-Technologies/Res_Amazon-Braket_Chandelier_48.svg",
+   "label": "Amazon Braket Chandelier",
+   "category": "Quantum-Technologies"
+  },
+  "Amazon-Braket_Chip": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Quantum-Technologies/Res_Amazon-Braket_Chip_48.svg",
+   "label": "Amazon Braket Chip",
+   "category": "Quantum-Technologies"
+  },
+  "Amazon-Braket_Embedded-Simulator": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Quantum-Technologies/Res_Amazon-Braket_Embedded-Simulator_48.svg",
+   "label": "Amazon Braket Embedded Simulator",
+   "category": "Quantum-Technologies"
+  },
+  "Amazon-Braket_Managed-Simulator": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Quantum-Technologies/Res_Amazon-Braket_Managed-Simulator_48.svg",
+   "label": "Amazon Braket Managed Simulator",
+   "category": "Quantum-Technologies"
+  },
+  "Amazon-Braket_Noise-Simulator": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Quantum-Technologies/Res_Amazon-Braket_Noise-Simulator_48.svg",
+   "label": "Amazon Braket Noise Simulator",
+   "category": "Quantum-Technologies"
+  },
+  "Amazon-Braket_QPU": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Quantum-Technologies/Res_Amazon-Braket_QPU_48.svg",
+   "label": "Amazon Braket QPU",
+   "category": "Quantum-Technologies"
+  },
+  "Amazon-Braket_Simulator": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Quantum-Technologies/Res_Amazon-Braket_Simulator_48.svg",
+   "label": "Amazon Braket Simulator",
+   "category": "Quantum-Technologies"
+  },
+  "Amazon-Braket_Simulator-1": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Quantum-Technologies/Res_Amazon-Braket_Simulator-1_48.svg",
+   "label": "Amazon Braket Simulator 1",
+   "category": "Quantum-Technologies"
+  },
+  "Amazon-Braket_Simulator-2": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Quantum-Technologies/Res_Amazon-Braket_Simulator-2_48.svg",
+   "label": "Amazon Braket Simulator 2",
+   "category": "Quantum-Technologies"
+  },
+  "Amazon-Braket_Simulator-3": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Quantum-Technologies/Res_Amazon-Braket_Simulator-3_48.svg",
+   "label": "Amazon Braket Simulator 3",
+   "category": "Quantum-Technologies"
+  },
+  "Amazon-Braket_Simulator-4": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Quantum-Technologies/Res_Amazon-Braket_Simulator-4_48.svg",
+   "label": "Amazon Braket Simulator 4",
+   "category": "Quantum-Technologies"
+  },
+  "Amazon-Braket_State-Vector": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Quantum-Technologies/Res_Amazon-Braket_State-Vector_48.svg",
+   "label": "Amazon Braket State Vector",
+   "category": "Quantum-Technologies"
+  },
+  "Amazon-Braket_Tensor-Network": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Quantum-Technologies/Res_Amazon-Braket_Tensor-Network_48.svg",
+   "label": "Amazon Braket Tensor Network",
+   "category": "Quantum-Technologies"
+  },
+  "Amazon-Chime": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Business-Applications/48/Arch_Amazon-Chime_48.svg",
+   "label": "Amazon Chime",
+   "category": "Business-Applications"
+  },
+  "Amazon-Chime-SDK": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Business-Applications/48/Arch_Amazon-Chime-SDK_48.svg",
+   "label": "Amazon Chime SDK",
+   "category": "Business-Applications"
+  },
+  "Amazon-Cloud-Directory": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_Amazon-Cloud-Directory_48.svg",
+   "label": "Amazon Cloud Directory",
+   "category": "Security-Identity-Compliance"
+  },
+  "Amazon-CloudFront": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/48/Arch_Amazon-CloudFront_48.svg",
+   "label": "Amazon CloudFront",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-CloudFront_Download-Distribution": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-CloudFront_Download-Distribution_48.svg",
+   "label": "Amazon CloudFront Download Distribution",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-CloudFront_Edge-Location": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-CloudFront_Edge-Location_48.svg",
+   "label": "Amazon CloudFront Edge Location",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-CloudFront_Functions": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-CloudFront_Functions_48.svg",
+   "label": "Amazon CloudFront Functions",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-CloudFront_Streaming-Distribution": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-CloudFront_Streaming-Distribution_48.svg",
+   "label": "Amazon CloudFront Streaming Distribution",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-CloudSearch": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Analytics/48/Arch_Amazon-CloudSearch_48.svg",
+   "label": "Amazon CloudSearch",
+   "category": "Analytics"
+  },
+  "Amazon-CloudSearch_Search-Documents": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-CloudSearch_Search-Documents_48.svg",
+   "label": "Amazon CloudSearch Search Documents",
+   "category": "Analytics"
+  },
+  "Amazon-CloudWatch": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_Amazon-CloudWatch_48.svg",
+   "label": "Amazon CloudWatch",
+   "category": "Management-Governance"
+  },
+  "Amazon-CloudWatch_Alarm": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_Amazon-CloudWatch_Alarm_48.svg",
+   "label": "Amazon CloudWatch Alarm",
+   "category": "Management-Governance"
+  },
+  "Amazon-CloudWatch_Cross-account-Observability": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_Amazon-CloudWatch_Cross-account-Observability_48.svg",
+   "label": "Amazon CloudWatch Cross account Observability",
+   "category": "Management-Governance"
+  },
+  "Amazon-CloudWatch_Data-Protection": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_Amazon-CloudWatch_Data-Protection_48.svg",
+   "label": "Amazon CloudWatch Data Protection",
+   "category": "Management-Governance"
+  },
+  "Amazon-CloudWatch_Event-Event-Based": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_Amazon-CloudWatch_Event-Event-Based_48.svg",
+   "label": "Amazon CloudWatch Event Event Based",
+   "category": "Management-Governance"
+  },
+  "Amazon-CloudWatch_Event-Time-Based": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_Amazon-CloudWatch_Event-Time-Based_48.svg",
+   "label": "Amazon CloudWatch Event Time Based",
+   "category": "Management-Governance"
+  },
+  "Amazon-CloudWatch_Evidently": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_Amazon-CloudWatch_Evidently_48.svg",
+   "label": "Amazon CloudWatch Evidently",
+   "category": "Management-Governance"
+  },
+  "Amazon-CloudWatch_Logs": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_Amazon-CloudWatch_Logs_48.svg",
+   "label": "Amazon CloudWatch Logs",
+   "category": "Management-Governance"
+  },
+  "Amazon-CloudWatch_Metrics-Insights": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_Amazon-CloudWatch_Metrics-Insights_48.svg",
+   "label": "Amazon CloudWatch Metrics Insights",
+   "category": "Management-Governance"
+  },
+  "Amazon-CloudWatch_RUM": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_Amazon-CloudWatch_RUM_48.svg",
+   "label": "Amazon CloudWatch RUM",
+   "category": "Management-Governance"
+  },
+  "Amazon-CloudWatch_Rule": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_Amazon-CloudWatch_Rule_48.svg",
+   "label": "Amazon CloudWatch Rule",
+   "category": "Management-Governance"
+  },
+  "Amazon-CloudWatch_Synthetics": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Management-Governance/Res_Amazon-CloudWatch_Synthetics_48.svg",
+   "label": "Amazon CloudWatch Synthetics",
+   "category": "Management-Governance"
+  },
+  "Amazon-CodeCatalyst": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Developer-Tools/48/Arch_Amazon-CodeCatalyst_48.svg",
+   "label": "Amazon CodeCatalyst",
+   "category": "Developer-Tools"
+  },
+  "Amazon-CodeGuru": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-CodeGuru_48.svg",
+   "label": "Amazon CodeGuru",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-CodeWhisperer": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-CodeWhisperer_48.svg",
+   "label": "Amazon CodeWhisperer",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-Cognito": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_Amazon-Cognito_48.svg",
+   "label": "Amazon Cognito",
+   "category": "Security-Identity-Compliance"
+  },
+  "Amazon-Comprehend": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-Comprehend_48.svg",
+   "label": "Amazon Comprehend",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-Comprehend-Medical": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-Comprehend-Medical_48.svg",
+   "label": "Amazon Comprehend Medical",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-Connect": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Business-Applications/48/Arch_Amazon-Connect_48.svg",
+   "label": "Amazon Connect",
+   "category": "Business-Applications"
+  },
+  "Amazon-Corretto": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Developer-Tools/48/Arch_Amazon-Corretto_48.svg",
+   "label": "Amazon Corretto",
+   "category": "Developer-Tools"
+  },
+  "Amazon-DCV": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_Amazon-DCV_48.svg",
+   "label": "Amazon DCV",
+   "category": "Compute"
+  },
+  "Amazon-Data-Firehose": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Analytics/48/Arch_Amazon-Data-Firehose_48.svg",
+   "label": "Amazon Data Firehose",
+   "category": "Analytics"
+  },
+  "Amazon-DataZone": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Analytics/48/Arch_Amazon-DataZone_48.svg",
+   "label": "Amazon DataZone",
+   "category": "Analytics"
+  },
+  "Amazon-DataZone_Business-Data-Catalog": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-DataZone_Business-Data-Catalog_48.svg",
+   "label": "Amazon DataZone Business Data Catalog",
+   "category": "Analytics"
+  },
+  "Amazon-DataZone_Data-Portal": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-DataZone_Data-Portal_48.svg",
+   "label": "Amazon DataZone Data Portal",
+   "category": "Analytics"
+  },
+  "Amazon-DataZone_Data-Projects": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-DataZone_Data-Projects_48.svg",
+   "label": "Amazon DataZone Data Projects",
+   "category": "Analytics"
+  },
+  "Amazon-Detective": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_Amazon-Detective_48.svg",
+   "label": "Amazon Detective",
+   "category": "Security-Identity-Compliance"
+  },
+  "Amazon-DevOps-Guru": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-DevOps-Guru_48.svg",
+   "label": "Amazon DevOps Guru",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-DevOps-Guru_Insights": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Artificial-Intelligence/Res_Amazon-DevOps-Guru_Insights_48.svg",
+   "label": "Amazon DevOps Guru Insights",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-DocumentDB": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Database/48/Arch_Amazon-DocumentDB_48.svg",
+   "label": "Amazon DocumentDB",
+   "category": "Database"
+  },
+  "Amazon-DocumentDB_Elastic-Clusters": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-DocumentDB_Elastic-Clusters_48.svg",
+   "label": "Amazon DocumentDB Elastic Clusters",
+   "category": "Database"
+  },
+  "Amazon-DynamoDB": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Database/48/Arch_Amazon-DynamoDB_48.svg",
+   "label": "Amazon DynamoDB",
+   "category": "Database"
+  },
+  "Amazon-DynamoDB_Amazon-DynamoDB-Accelerator": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-DynamoDB_Amazon-DynamoDB-Accelerator_48.svg",
+   "label": "Amazon DynamoDB Amazon DynamoDB Accelerator",
+   "category": "Database"
+  },
+  "Amazon-DynamoDB_Attribute": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-DynamoDB_Attribute_48.svg",
+   "label": "Amazon DynamoDB Attribute",
+   "category": "Database"
+  },
+  "Amazon-DynamoDB_Attributes": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-DynamoDB_Attributes_48.svg",
+   "label": "Amazon DynamoDB Attributes",
+   "category": "Database"
+  },
+  "Amazon-DynamoDB_Global-secondary-index": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-DynamoDB_Global-secondary-index_48.svg",
+   "label": "Amazon DynamoDB Global secondary index",
+   "category": "Database"
+  },
+  "Amazon-DynamoDB_Item": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-DynamoDB_Item_48.svg",
+   "label": "Amazon DynamoDB Item",
+   "category": "Database"
+  },
+  "Amazon-DynamoDB_Items": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-DynamoDB_Items_48.svg",
+   "label": "Amazon DynamoDB Items",
+   "category": "Database"
+  },
+  "Amazon-DynamoDB_Standard-Access-Table-Class": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-DynamoDB_Standard-Access-Table-Class_48.svg",
+   "label": "Amazon DynamoDB Standard Access Table Class",
+   "category": "Database"
+  },
+  "Amazon-DynamoDB_Standard-Infrequent-Access-Table-Class": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-DynamoDB_Standard-Infrequent-Access-Table-Class_48.svg",
+   "label": "Amazon DynamoDB Standard Infrequent Access Table Class",
+   "category": "Database"
+  },
+  "Amazon-DynamoDB_Stream": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-DynamoDB_Stream_48.svg",
+   "label": "Amazon DynamoDB Stream",
+   "category": "Database"
+  },
+  "Amazon-DynamoDB_Table": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-DynamoDB_Table_48.svg",
+   "label": "Amazon DynamoDB Table",
+   "category": "Database"
+  },
+  "Amazon-EC2": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_Amazon-EC2_48.svg",
+   "label": "Amazon EC2",
+   "category": "Compute"
+  },
+  "Amazon-EC2-Auto-Scaling": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_Amazon-EC2-Auto-Scaling_48.svg",
+   "label": "Amazon EC2 Auto Scaling",
+   "category": "Compute"
+  },
+  "Amazon-EC2-Image-Builder": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_Amazon-EC2-Image-Builder_48.svg",
+   "label": "Amazon EC2 Image Builder",
+   "category": "Compute"
+  },
+  "Amazon-EC2_AMI": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Compute/Res_Amazon-EC2_AMI_48.svg",
+   "label": "Amazon EC2 AMI",
+   "category": "Compute"
+  },
+  "Amazon-EC2_AWS-Microservice-Extractor-for-.NET": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Compute/Res_Amazon-EC2_AWS-Microservice-Extractor-for-.NET_48.svg",
+   "label": "Amazon EC2 AWS Microservice Extractor for .NET",
+   "category": "Compute"
+  },
+  "Amazon-EC2_Auto-Scaling": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Compute/Res_Amazon-EC2_Auto-Scaling_48.svg",
+   "label": "Amazon EC2 Auto Scaling",
+   "category": "Compute"
+  },
+  "Amazon-EC2_DB-Instance": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Compute/Res_Amazon-EC2_DB-Instance_48.svg",
+   "label": "Amazon EC2 DB Instance",
+   "category": "Compute"
+  },
+  "Amazon-EC2_Elastic-IP-Address": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Compute/Res_Amazon-EC2_Elastic-IP-Address_48.svg",
+   "label": "Amazon EC2 Elastic IP Address",
+   "category": "Compute"
+  },
+  "Amazon-EC2_Instance": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Compute/Res_Amazon-EC2_Instance_48.svg",
+   "label": "Amazon EC2 Instance",
+   "category": "Compute"
+  },
+  "Amazon-EC2_Instance-with-CloudWatch": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Compute/Res_Amazon-EC2_Instance-with-CloudWatch_48.svg",
+   "label": "Amazon EC2 Instance with CloudWatch",
+   "category": "Compute"
+  },
+  "Amazon-EC2_Instances": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Compute/Res_Amazon-EC2_Instances_48.svg",
+   "label": "Amazon EC2 Instances",
+   "category": "Compute"
+  },
+  "Amazon-EC2_Rescue": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Compute/Res_Amazon-EC2_Rescue_48.svg",
+   "label": "Amazon EC2 Rescue",
+   "category": "Compute"
+  },
+  "Amazon-EC2_Spot-Instance": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Compute/Res_Amazon-EC2_Spot-Instance_48.svg",
+   "label": "Amazon EC2 Spot Instance",
+   "category": "Compute"
+  },
+  "Amazon-ECS-Anywhere": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Containers/48/Arch_Amazon-ECS-Anywhere_48.svg",
+   "label": "Amazon ECS Anywhere",
+   "category": "Containers"
+  },
+  "Amazon-EFS": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Storage/48/Arch_Amazon-EFS_48.svg",
+   "label": "Amazon EFS",
+   "category": "Storage"
+  },
+  "Amazon-EKS-Anywhere": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Containers/48/Arch_Amazon-EKS-Anywhere_48.svg",
+   "label": "Amazon EKS Anywhere",
+   "category": "Containers"
+  },
+  "Amazon-EKS-Cloud": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Containers/48/Arch_Amazon-EKS-Cloud_48.svg",
+   "label": "Amazon EKS Cloud",
+   "category": "Containers"
+  },
+  "Amazon-EKS-Distro": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Containers/48/Arch_Amazon-EKS-Distro_48.svg",
+   "label": "Amazon EKS Distro",
+   "category": "Containers"
+  },
+  "Amazon-EMR": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Analytics/48/Arch_Amazon-EMR_48.svg",
+   "label": "Amazon EMR",
+   "category": "Analytics"
+  },
+  "Amazon-EMR_Cluster": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-EMR_Cluster_48.svg",
+   "label": "Amazon EMR Cluster",
+   "category": "Analytics"
+  },
+  "Amazon-EMR_EMR-Engine": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-EMR_EMR-Engine_48.svg",
+   "label": "Amazon EMR EMR Engine",
+   "category": "Analytics"
+  },
+  "Amazon-EMR_HDFS-Cluster": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-EMR_HDFS-Cluster_48.svg",
+   "label": "Amazon EMR HDFS Cluster",
+   "category": "Analytics"
+  },
+  "Amazon-ElastiCache": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Database/48/Arch_Amazon-ElastiCache_48.svg",
+   "label": "Amazon ElastiCache",
+   "category": "Database"
+  },
+  "Amazon-ElastiCache_Cache-Node": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-ElastiCache_Cache-Node_48.svg",
+   "label": "Amazon ElastiCache Cache Node",
+   "category": "Database"
+  },
+  "Amazon-ElastiCache_ElastiCache-for-Memcached": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-ElastiCache_ElastiCache-for-Memcached_48.svg",
+   "label": "Amazon ElastiCache ElastiCache for Memcached",
+   "category": "Database"
+  },
+  "Amazon-ElastiCache_ElastiCache-for-Redis": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-ElastiCache_ElastiCache-for-Redis_48.svg",
+   "label": "Amazon ElastiCache ElastiCache for Redis",
+   "category": "Database"
+  },
+  "Amazon-ElastiCache_ElastiCache-for-Valkey": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-ElastiCache_ElastiCache-for-Valkey_48.svg",
+   "label": "Amazon ElastiCache ElastiCache for Valkey",
+   "category": "Database"
+  },
+  "Amazon-Elastic-Block-Store": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Storage/48/Arch_Amazon-Elastic-Block-Store_48.svg",
+   "label": "Amazon Elastic Block Store",
+   "category": "Storage"
+  },
+  "Amazon-Elastic-Block-Store_Amazon-Data-Lifecycle-Manager": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Elastic-Block-Store_Amazon-Data-Lifecycle-Manager_48.svg",
+   "label": "Amazon Elastic Block Store Amazon Data Lifecycle Manager",
+   "category": "Storage"
+  },
+  "Amazon-Elastic-Block-Store_Multiple-Volumes": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Elastic-Block-Store_Multiple-Volumes_48.svg",
+   "label": "Amazon Elastic Block Store Multiple Volumes",
+   "category": "Storage"
+  },
+  "Amazon-Elastic-Block-Store_Snapshot": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Elastic-Block-Store_Snapshot_48.svg",
+   "label": "Amazon Elastic Block Store Snapshot",
+   "category": "Storage"
+  },
+  "Amazon-Elastic-Block-Store_Volume": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Elastic-Block-Store_Volume_48.svg",
+   "label": "Amazon Elastic Block Store Volume",
+   "category": "Storage"
+  },
+  "Amazon-Elastic-Block-Store_Volume-gp3": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Elastic-Block-Store_Volume-gp3_48.svg",
+   "label": "Amazon Elastic Block Store Volume gp3",
+   "category": "Storage"
+  },
+  "Amazon-Elastic-Container-Registry": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Containers/48/Arch_Amazon-Elastic-Container-Registry_48.svg",
+   "label": "Amazon Elastic Container Registry",
+   "category": "Containers"
+  },
+  "Amazon-Elastic-Container-Registry_Image": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Containers/Res_Amazon-Elastic-Container-Registry_Image_48.svg",
+   "label": "Amazon Elastic Container Registry Image",
+   "category": "Containers"
+  },
+  "Amazon-Elastic-Container-Registry_Registry": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Containers/Res_Amazon-Elastic-Container-Registry_Registry_48.svg",
+   "label": "Amazon Elastic Container Registry Registry",
+   "category": "Containers"
+  },
+  "Amazon-Elastic-Container-Service": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Containers/48/Arch_Amazon-Elastic-Container-Service_48.svg",
+   "label": "Amazon Elastic Container Service",
+   "category": "Containers"
+  },
+  "Amazon-Elastic-Container-Service_Container-1": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Containers/Res_Amazon-Elastic-Container-Service_Container-1_48.svg",
+   "label": "Amazon Elastic Container Service Container 1",
+   "category": "Containers"
+  },
+  "Amazon-Elastic-Container-Service_Container-2": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Containers/Res_Amazon-Elastic-Container-Service_Container-2_48.svg",
+   "label": "Amazon Elastic Container Service Container 2",
+   "category": "Containers"
+  },
+  "Amazon-Elastic-Container-Service_Container-3": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Containers/Res_Amazon-Elastic-Container-Service_Container-3_48.svg",
+   "label": "Amazon Elastic Container Service Container 3",
+   "category": "Containers"
+  },
+  "Amazon-Elastic-Container-Service_CopiIoT-CLI": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Containers/Res_Amazon-Elastic-Container-Service_CopiIoT-CLI_48.svg",
+   "label": "Amazon Elastic Container Service CopiIoT CLI",
+   "category": "Containers"
+  },
+  "Amazon-Elastic-Container-Service_ECS-Service-Connect": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Containers/Res_Amazon-Elastic-Container-Service_ECS-Service-Connect_48.svg",
+   "label": "Amazon Elastic Container Service ECS Service Connect",
+   "category": "Containers"
+  },
+  "Amazon-Elastic-Container-Service_Service": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Containers/Res_Amazon-Elastic-Container-Service_Service_48.svg",
+   "label": "Amazon Elastic Container Service Service",
+   "category": "Containers"
+  },
+  "Amazon-Elastic-Container-Service_Task": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Containers/Res_Amazon-Elastic-Container-Service_Task_48.svg",
+   "label": "Amazon Elastic Container Service Task",
+   "category": "Containers"
+  },
+  "Amazon-Elastic-File-System_EFS-Intelligent-Tiering": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Elastic-File-System_EFS-Intelligent-Tiering_48.svg",
+   "label": "Amazon Elastic File System EFS Intelligent Tiering",
+   "category": "Storage"
+  },
+  "Amazon-Elastic-File-System_EFS-One-Zone": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Elastic-File-System_EFS-One-Zone_48.svg",
+   "label": "Amazon Elastic File System EFS One Zone",
+   "category": "Storage"
+  },
+  "Amazon-Elastic-File-System_EFS-One-Zone-Infrequent-Access": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Elastic-File-System_EFS-One-Zone-Infrequent-Access_48.svg",
+   "label": "Amazon Elastic File System EFS One Zone Infrequent Access",
+   "category": "Storage"
+  },
+  "Amazon-Elastic-File-System_EFS-Standard": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Elastic-File-System_EFS-Standard_48.svg",
+   "label": "Amazon Elastic File System EFS Standard",
+   "category": "Storage"
+  },
+  "Amazon-Elastic-File-System_EFS-Standard-Infrequent-Access": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Elastic-File-System_EFS-Standard-Infrequent-Access_48.svg",
+   "label": "Amazon Elastic File System EFS Standard Infrequent Access",
+   "category": "Storage"
+  },
+  "Amazon-Elastic-File-System_Elastic-Throughput": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Elastic-File-System_Elastic-Throughput_48.svg",
+   "label": "Amazon Elastic File System Elastic Throughput",
+   "category": "Storage"
+  },
+  "Amazon-Elastic-File-System_File-System": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Elastic-File-System_File-System_48.svg",
+   "label": "Amazon Elastic File System File System",
+   "category": "Storage"
+  },
+  "Amazon-Elastic-Inference": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-Elastic-Inference_48.svg",
+   "label": "Amazon Elastic Inference",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-Elastic-Kubernetes-Service": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Containers/48/Arch_Amazon-Elastic-Kubernetes-Service_48.svg",
+   "label": "Amazon Elastic Kubernetes Service",
+   "category": "Containers"
+  },
+  "Amazon-Elastic-Kubernetes-Service_EKS-on-Outposts": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Containers/Res_Amazon-Elastic-Kubernetes-Service_EKS-on-Outposts_48.svg",
+   "label": "Amazon Elastic Kubernetes Service EKS on Outposts",
+   "category": "Containers"
+  },
+  "Amazon-Elastic-Transcoder": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Media-Services/48/Arch_Amazon-Elastic-Transcoder_48.svg",
+   "label": "Amazon Elastic Transcoder",
+   "category": "Media-Services"
+  },
+  "Amazon-Elastic-VMware-Service": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_Amazon-Elastic-VMware-Service_48.svg",
+   "label": "Amazon Elastic VMware Service",
+   "category": "Compute"
+  },
+  "Amazon-EventBridge": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_App-Integration/48/Arch_Amazon-EventBridge_48.svg",
+   "label": "Amazon EventBridge",
+   "category": "App-Integration"
+  },
+  "Amazon-EventBridge-Event": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Application-Integration/Res_Amazon-EventBridge-Event_48.svg",
+   "label": "Amazon EventBridge Event",
+   "category": "Application-Integration"
+  },
+  "Amazon-EventBridge_Custom-Event-Bus": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Application-Integration/Res_Amazon-EventBridge_Custom-Event-Bus_48.svg",
+   "label": "Amazon EventBridge Custom Event Bus",
+   "category": "Application-Integration"
+  },
+  "Amazon-EventBridge_Default-Event-Bus": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Application-Integration/Res_Amazon-EventBridge_Default-Event-Bus_48.svg",
+   "label": "Amazon EventBridge Default Event Bus",
+   "category": "Application-Integration"
+  },
+  "Amazon-EventBridge_Pipes": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Application-Integration/Res_Amazon-EventBridge_Pipes_48.svg",
+   "label": "Amazon EventBridge Pipes",
+   "category": "Application-Integration"
+  },
+  "Amazon-EventBridge_Rule": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Application-Integration/Res_Amazon-EventBridge_Rule_48.svg",
+   "label": "Amazon EventBridge Rule",
+   "category": "Application-Integration"
+  },
+  "Amazon-EventBridge_Saas-Partner-Event": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Application-Integration/Res_Amazon-EventBridge_Saas-Partner-Event_48.svg",
+   "label": "Amazon EventBridge Saas Partner Event",
+   "category": "Application-Integration"
+  },
+  "Amazon-EventBridge_Scheduler": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Application-Integration/Res_Amazon-EventBridge_Scheduler_48.svg",
+   "label": "Amazon EventBridge Scheduler",
+   "category": "Application-Integration"
+  },
+  "Amazon-EventBridge_Schema": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Application-Integration/Res_Amazon-EventBridge_Schema_48.svg",
+   "label": "Amazon EventBridge Schema",
+   "category": "Application-Integration"
+  },
+  "Amazon-EventBridge_Schema-Registry": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Application-Integration/Res_Amazon-EventBridge_Schema-Registry_48.svg",
+   "label": "Amazon EventBridge Schema Registry",
+   "category": "Application-Integration"
+  },
+  "Amazon-FSx": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Storage/48/Arch_Amazon-FSx_48.svg",
+   "label": "Amazon FSx",
+   "category": "Storage"
+  },
+  "Amazon-FSx-for-Lustre": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Storage/48/Arch_Amazon-FSx-for-Lustre_48.svg",
+   "label": "Amazon FSx for Lustre",
+   "category": "Storage"
+  },
+  "Amazon-FSx-for-NetApp-ONTAP": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Storage/48/Arch_Amazon-FSx-for-NetApp-ONTAP_48.svg",
+   "label": "Amazon FSx for NetApp ONTAP",
+   "category": "Storage"
+  },
+  "Amazon-FSx-for-OpenZFS": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Storage/48/Arch_Amazon-FSx-for-OpenZFS_48.svg",
+   "label": "Amazon FSx for OpenZFS",
+   "category": "Storage"
+  },
+  "Amazon-FSx-for-WFS": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Storage/48/Arch_Amazon-FSx-for-WFS_48.svg",
+   "label": "Amazon FSx for WFS",
+   "category": "Storage"
+  },
+  "Amazon-File-Cache": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Storage/48/Arch_Amazon-File-Cache_48.svg",
+   "label": "Amazon File Cache",
+   "category": "Storage"
+  },
+  "Amazon-File-Cache_Hybrid-NFS-linked-datasets": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-File-Cache_Hybrid-NFS-linked-datasets_48.svg",
+   "label": "Amazon File Cache Hybrid NFS linked datasets",
+   "category": "Storage"
+  },
+  "Amazon-File-Cache_On-premises-NFS-linked-datasets": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-File-Cache_On-premises-NFS-linked-datasets_48.svg",
+   "label": "Amazon File Cache On premises NFS linked datasets",
+   "category": "Storage"
+  },
+  "Amazon-File-Cache_S3-linked-datasets": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-File-Cache_S3-linked-datasets_48.svg",
+   "label": "Amazon File Cache S3 linked datasets",
+   "category": "Storage"
+  },
+  "Amazon-FinSpace": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Analytics/48/Arch_Amazon-FinSpace_48.svg",
+   "label": "Amazon FinSpace",
+   "category": "Analytics"
+  },
+  "Amazon-Forecast": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-Forecast_48.svg",
+   "label": "Amazon Forecast",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-Fraud-Detector": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-Fraud-Detector_48.svg",
+   "label": "Amazon Fraud Detector",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-GameLift-Servers": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Games/48/Arch_Amazon-GameLift-Servers_48.svg",
+   "label": "Amazon GameLift Servers",
+   "category": "Games"
+  },
+  "Amazon-GameLift-Streams": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Games/48/Arch_Amazon-GameLift-Streams_48.svg",
+   "label": "Amazon GameLift Streams",
+   "category": "Games"
+  },
+  "Amazon-GuardDuty": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_Amazon-GuardDuty_48.svg",
+   "label": "Amazon GuardDuty",
+   "category": "Security-Identity-Compliance"
+  },
+  "Amazon-Inspector": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_Amazon-Inspector_48.svg",
+   "label": "Amazon Inspector",
+   "category": "Security-Identity-Compliance"
+  },
+  "Amazon-Inspector_Agent": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Security-Identity-Compliance/Res_Amazon-Inspector_Agent_48.svg",
+   "label": "Amazon Inspector Agent",
+   "category": "Security-Identity-Compliance"
+  },
+  "Amazon-Interactive-Video-Service": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Media-Services/48/Arch_Amazon-Interactive-Video-Service_48.svg",
+   "label": "Amazon Interactive Video Service",
+   "category": "Media-Services"
+  },
+  "Amazon-Kendra": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-Kendra_48.svg",
+   "label": "Amazon Kendra",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-Keyspaces": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Database/48/Arch_Amazon-Keyspaces_48.svg",
+   "label": "Amazon Keyspaces",
+   "category": "Database"
+  },
+  "Amazon-Kinesis": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Analytics/48/Arch_Amazon-Kinesis_48.svg",
+   "label": "Amazon Kinesis",
+   "category": "Analytics"
+  },
+  "Amazon-Kinesis-Data-Streams": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Analytics/48/Arch_Amazon-Kinesis-Data-Streams_48.svg",
+   "label": "Amazon Kinesis Data Streams",
+   "category": "Analytics"
+  },
+  "Amazon-Kinesis-Video-Streams": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Media-Services/48/Arch_Amazon-Kinesis-Video-Streams_48.svg",
+   "label": "Amazon Kinesis Video Streams",
+   "category": "Media-Services"
+  },
+  "Amazon-Lex": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-Lex_48.svg",
+   "label": "Amazon Lex",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-Lightsail": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_Amazon-Lightsail_48.svg",
+   "label": "Amazon Lightsail",
+   "category": "Compute"
+  },
+  "Amazon-Lightsail-for-Research": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_Amazon-Lightsail-for-Research_48.svg",
+   "label": "Amazon Lightsail for Research",
+   "category": "Compute"
+  },
+  "Amazon-Location-Service": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Front-End-Web-Mobile/48/Arch_Amazon-Location-Service_48.svg",
+   "label": "Amazon Location Service",
+   "category": "Front-End-Web-Mobile"
+  },
+  "Amazon-Location-Service_Geofence": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Front-End-Web-Mobile/Res_Amazon-Location-Service_Geofence_48.svg",
+   "label": "Amazon Location Service Geofence",
+   "category": "Front-End-Web-Mobile"
+  },
+  "Amazon-Location-Service_Map ": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Front-End-Web-Mobile/Res_Amazon-Location-Service_Map _48.svg",
+   "label": "Amazon Location Service Map ",
+   "category": "Front-End-Web-Mobile"
+  },
+  "Amazon-Location-Service_Place": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Front-End-Web-Mobile/Res_Amazon-Location-Service_Place_48.svg",
+   "label": "Amazon Location Service Place",
+   "category": "Front-End-Web-Mobile"
+  },
+  "Amazon-Location-Service_Routes": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Front-End-Web-Mobile/Res_Amazon-Location-Service_Routes_48.svg",
+   "label": "Amazon Location Service Routes",
+   "category": "Front-End-Web-Mobile"
+  },
+  "Amazon-Location-Service_Track ": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Front-End-Web-Mobile/Res_Amazon-Location-Service_Track _48.svg",
+   "label": "Amazon Location Service Track ",
+   "category": "Front-End-Web-Mobile"
+  },
+  "Amazon-Lookout-for-Equipment": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-Lookout-for-Equipment_48.svg",
+   "label": "Amazon Lookout for Equipment",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-Lookout-for-Metrics": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-Lookout-for-Metrics_48.svg",
+   "label": "Amazon Lookout for Metrics",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-Lookout-for-Vision": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-Lookout-for-Vision_48.svg",
+   "label": "Amazon Lookout for Vision",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-MQ": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_App-Integration/48/Arch_Amazon-MQ_48.svg",
+   "label": "Amazon MQ",
+   "category": "App-Integration"
+  },
+  "Amazon-MQ_Broker": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Application-Integration/Res_Amazon-MQ_Broker_48.svg",
+   "label": "Amazon MQ Broker",
+   "category": "Application-Integration"
+  },
+  "Amazon-MSK_Amazon-MSK-Connect": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-MSK_Amazon-MSK-Connect_48.svg",
+   "label": "Amazon MSK Amazon MSK Connect",
+   "category": "Analytics"
+  },
+  "Amazon-Macie": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_Amazon-Macie_48.svg",
+   "label": "Amazon Macie",
+   "category": "Security-Identity-Compliance"
+  },
+  "Amazon-Managed-Blockchain": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Blockchain/48/Arch_Amazon-Managed-Blockchain_48.svg",
+   "label": "Amazon Managed Blockchain",
+   "category": "Blockchain"
+  },
+  "Amazon-Managed-Blockchain_Blockchain": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Blockchain/Res_Amazon-Managed-Blockchain_Blockchain_48.svg",
+   "label": "Amazon Managed Blockchain Blockchain",
+   "category": "Blockchain"
+  },
+  "Amazon-Managed-Grafana": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_Amazon-Managed-Grafana_48.svg",
+   "label": "Amazon Managed Grafana",
+   "category": "Management-Governance"
+  },
+  "Amazon-Managed-Service-for-Apache-Flink": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Analytics/48/Arch_Amazon-Managed-Service-for-Apache-Flink_48.svg",
+   "label": "Amazon Managed Service for Apache Flink",
+   "category": "Analytics"
+  },
+  "Amazon-Managed-Service-for-Prometheus": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Management-Governance/48/Arch_Amazon-Managed-Service-for-Prometheus_48.svg",
+   "label": "Amazon Managed Service for Prometheus",
+   "category": "Management-Governance"
+  },
+  "Amazon-Managed-Streaming-for-Apache-Kafka": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Analytics/48/Arch_Amazon-Managed-Streaming-for-Apache-Kafka_48.svg",
+   "label": "Amazon Managed Streaming for Apache Kafka",
+   "category": "Analytics"
+  },
+  "Amazon-Managed-Workflows-for-Apache-Airflow": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_App-Integration/48/Arch_Amazon-Managed-Workflows-for-Apache-Airflow_48.svg",
+   "label": "Amazon Managed Workflows for Apache Airflow",
+   "category": "App-Integration"
+  },
+  "Amazon-MemoryDB": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Database/48/Arch_Amazon-MemoryDB_48.svg",
+   "label": "Amazon MemoryDB",
+   "category": "Database"
+  },
+  "Amazon-Monitron": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-Monitron_48.svg",
+   "label": "Amazon Monitron",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-Neptune": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Database/48/Arch_Amazon-Neptune_48.svg",
+   "label": "Amazon Neptune",
+   "category": "Database"
+  },
+  "Amazon-Nova": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-Nova_48.svg",
+   "label": "Amazon Nova",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-OpenSearch-Service": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Analytics/48/Arch_Amazon-OpenSearch-Service_48.svg",
+   "label": "Amazon OpenSearch Service",
+   "category": "Analytics"
+  },
+  "Amazon-OpenSearch-Service_Cluster-Administrator-Node": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-OpenSearch-Service_Cluster-Administrator-Node_48.svg",
+   "label": "Amazon OpenSearch Service Cluster Administrator Node",
+   "category": "Analytics"
+  },
+  "Amazon-OpenSearch-Service_Data-Node": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-OpenSearch-Service_Data-Node_48.svg",
+   "label": "Amazon OpenSearch Service Data Node",
+   "category": "Analytics"
+  },
+  "Amazon-OpenSearch-Service_Index": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-OpenSearch-Service_Index_48.svg",
+   "label": "Amazon OpenSearch Service Index",
+   "category": "Analytics"
+  },
+  "Amazon-OpenSearch-Service_Observability": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-OpenSearch-Service_Observability_48.svg",
+   "label": "Amazon OpenSearch Service Observability",
+   "category": "Analytics"
+  },
+  "Amazon-OpenSearch-Service_OpenSearch-Dashboards": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-OpenSearch-Service_OpenSearch-Dashboards_48.svg",
+   "label": "Amazon OpenSearch Service OpenSearch Dashboards",
+   "category": "Analytics"
+  },
+  "Amazon-OpenSearch-Service_OpenSearch-Ingestion": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-OpenSearch-Service_OpenSearch-Ingestion_48.svg",
+   "label": "Amazon OpenSearch Service OpenSearch Ingestion",
+   "category": "Analytics"
+  },
+  "Amazon-OpenSearch-Service_Traces": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-OpenSearch-Service_Traces_48.svg",
+   "label": "Amazon OpenSearch Service Traces",
+   "category": "Analytics"
+  },
+  "Amazon-OpenSearch-Service_UltraWarm-Node": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-OpenSearch-Service_UltraWarm-Node_48.svg",
+   "label": "Amazon OpenSearch Service UltraWarm Node",
+   "category": "Analytics"
+  },
+  "Amazon-Personalize": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-Personalize_48.svg",
+   "label": "Amazon Personalize",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-Pinpoint": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Business-Applications/48/Arch_Amazon-Pinpoint_48.svg",
+   "label": "Amazon Pinpoint",
+   "category": "Business-Applications"
+  },
+  "Amazon-Pinpoint-APIs": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Business-Applications/48/Arch_Amazon-Pinpoint-APIs_48.svg",
+   "label": "Amazon Pinpoint APIs",
+   "category": "Business-Applications"
+  },
+  "Amazon-Pinpoint_Journey": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Business-Applications/Res_Amazon-Pinpoint_Journey_48.svg",
+   "label": "Amazon Pinpoint Journey",
+   "category": "Business-Applications"
+  },
+  "Amazon-Polly": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-Polly_48.svg",
+   "label": "Amazon Polly",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-Q": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-Q_48.svg",
+   "label": "Amazon Q",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-Quantum-Ledger-Database": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Blockchain/48/Arch_Amazon-Quantum-Ledger-Database_48.svg",
+   "label": "Amazon Quantum Ledger Database",
+   "category": "Blockchain"
+  },
+  "Amazon-QuickSight": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Analytics/48/Arch_Amazon-QuickSight_48.svg",
+   "label": "Amazon QuickSight",
+   "category": "Analytics"
+  },
+  "Amazon-Quicksight_Paginated-Reports": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-Quicksight_Paginated-Reports_48.svg",
+   "label": "Amazon Quicksight Paginated Reports",
+   "category": "Analytics"
+  },
+  "Amazon-RDS": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Database/48/Arch_Amazon-RDS_48.svg",
+   "label": "Amazon RDS",
+   "category": "Database"
+  },
+  "Amazon-RDS-Proxy-Instance": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-RDS-Proxy-Instance_48.svg",
+   "label": "Amazon RDS Proxy Instance",
+   "category": "Database"
+  },
+  "Amazon-RDS-Proxy-Instance-Alternate": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-RDS-Proxy-Instance-Alternate_48.svg",
+   "label": "Amazon RDS Proxy Instance Alternate",
+   "category": "Database"
+  },
+  "Amazon-RDS_Blue-Green-Deployments": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-RDS_Blue-Green-Deployments_48.svg",
+   "label": "Amazon RDS Blue Green Deployments",
+   "category": "Database"
+  },
+  "Amazon-RDS_Multi-AZ": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-RDS_Multi-AZ_48.svg",
+   "label": "Amazon RDS Multi AZ",
+   "category": "Database"
+  },
+  "Amazon-RDS_Multi-AZ-DB-Cluster": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-RDS_Multi-AZ-DB-Cluster_48.svg",
+   "label": "Amazon RDS Multi AZ DB Cluster",
+   "category": "Database"
+  },
+  "Amazon-RDS_Optimized-Writes": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-RDS_Optimized-Writes_48.svg",
+   "label": "Amazon RDS Optimized Writes",
+   "category": "Database"
+  },
+  "Amazon-RDS_Trusted-Language-Extensions-for-PostgreSQL": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Database/Res_Amazon-RDS_Trusted-Language-Extensions-for-PostgreSQL_48.svg",
+   "label": "Amazon RDS Trusted Language Extensions for PostgreSQL",
+   "category": "Database"
+  },
+  "Amazon-Redshift": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Analytics/48/Arch_Amazon-Redshift_48.svg",
+   "label": "Amazon Redshift",
+   "category": "Analytics"
+  },
+  "Amazon-Redshift_Auto-copy": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-Redshift_Auto-copy_48.svg",
+   "label": "Amazon Redshift Auto copy",
+   "category": "Analytics"
+  },
+  "Amazon-Redshift_Data-Sharing-Governance": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-Redshift_Data-Sharing-Governance_48.svg",
+   "label": "Amazon Redshift Data Sharing Governance",
+   "category": "Analytics"
+  },
+  "Amazon-Redshift_Dense-Compute-Node": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-Redshift_Dense-Compute-Node_48.svg",
+   "label": "Amazon Redshift Dense Compute Node",
+   "category": "Analytics"
+  },
+  "Amazon-Redshift_Dense-Storage-Node": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-Redshift_Dense-Storage-Node_48.svg",
+   "label": "Amazon Redshift Dense Storage Node",
+   "category": "Analytics"
+  },
+  "Amazon-Redshift_ML": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-Redshift_ML_48.svg",
+   "label": "Amazon Redshift ML",
+   "category": "Analytics"
+  },
+  "Amazon-Redshift_Query-Editor-v2.0": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-Redshift_Query-Editor-v2.0_48.svg",
+   "label": "Amazon Redshift Query Editor v2.0",
+   "category": "Analytics"
+  },
+  "Amazon-Redshift_RA3": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-Redshift_RA3_48.svg",
+   "label": "Amazon Redshift RA3",
+   "category": "Analytics"
+  },
+  "Amazon-Redshift_Streaming-Ingestion": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Analytics/Res_Amazon-Redshift_Streaming-Ingestion_48.svg",
+   "label": "Amazon Redshift Streaming Ingestion",
+   "category": "Analytics"
+  },
+  "Amazon-Rekognition": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-Rekognition_48.svg",
+   "label": "Amazon Rekognition",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-Rekognition_Image": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Artificial-Intelligence/Res_Amazon-Rekognition_Image_48.svg",
+   "label": "Amazon Rekognition Image",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-Rekognition_Video": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Artificial-Intelligence/Res_Amazon-Rekognition_Video_48.svg",
+   "label": "Amazon Rekognition Video",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-Route-53": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/48/Arch_Amazon-Route-53_48.svg",
+   "label": "Amazon Route 53",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-Route-53-Hosted-Zone": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-Route-53-Hosted-Zone_48.svg",
+   "label": "Amazon Route 53 Hosted Zone",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-Route-53_Readiness-Checks": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-Route-53_Readiness-Checks_48.svg",
+   "label": "Amazon Route 53 Readiness Checks",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-Route-53_Resolver": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-Route-53_Resolver_48.svg",
+   "label": "Amazon Route 53 Resolver",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-Route-53_Resolver-DNS-Firewall": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-Route-53_Resolver-DNS-Firewall_48.svg",
+   "label": "Amazon Route 53 Resolver DNS Firewall",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-Route-53_Resolver-Query-Logging": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-Route-53_Resolver-Query-Logging_48.svg",
+   "label": "Amazon Route 53 Resolver Query Logging",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-Route-53_Route-Table": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-Route-53_Route-Table_48.svg",
+   "label": "Amazon Route 53 Route Table",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-Route-53_Routing-Controls": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-Route-53_Routing-Controls_48.svg",
+   "label": "Amazon Route 53 Routing Controls",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-S3-on-Outposts": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Storage/48/Arch_Amazon-S3-on-Outposts_48.svg",
+   "label": "Amazon S3 on Outposts",
+   "category": "Storage"
+  },
+  "Amazon-SageMaker": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Analytics/48/Arch_Amazon-SageMaker_48.svg",
+   "label": "Amazon SageMaker",
+   "category": "Analytics"
+  },
+  "Amazon-SageMaker-AI": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-SageMaker-AI_48.svg",
+   "label": "Amazon SageMaker AI",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-SageMaker-AI_Canvas": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Artificial-Intelligence/Res_Amazon-SageMaker-AI_Canvas_48.svg",
+   "label": "Amazon SageMaker AI Canvas",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-SageMaker-AI_Geospatial-ML": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Artificial-Intelligence/Res_Amazon-SageMaker-AI_Geospatial-ML_48.svg",
+   "label": "Amazon SageMaker AI Geospatial ML",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-SageMaker-AI_Model": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Artificial-Intelligence/Res_Amazon-SageMaker-AI_Model_48.svg",
+   "label": "Amazon SageMaker AI Model",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-SageMaker-AI_Notebook": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Artificial-Intelligence/Res_Amazon-SageMaker-AI_Notebook_48.svg",
+   "label": "Amazon SageMaker AI Notebook",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-SageMaker-AI_Shadow-Testing": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Artificial-Intelligence/Res_Amazon-SageMaker-AI_Shadow-Testing_48.svg",
+   "label": "Amazon SageMaker AI Shadow Testing",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-SageMaker-AI_Train": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Artificial-Intelligence/Res_Amazon-SageMaker-AI_Train_48.svg",
+   "label": "Amazon SageMaker AI Train",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-SageMaker-Ground-Truth": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-SageMaker-Ground-Truth_48.svg",
+   "label": "Amazon SageMaker Ground Truth",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-SageMaker-Studio-Lab": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-SageMaker-Studio-Lab_48.svg",
+   "label": "Amazon SageMaker Studio Lab",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-Security-Lake": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_Amazon-Security-Lake_48.svg",
+   "label": "Amazon Security Lake",
+   "category": "Security-Identity-Compliance"
+  },
+  "Amazon-Simple-Email-Service": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Business-Applications/48/Arch_Amazon-Simple-Email-Service_48.svg",
+   "label": "Amazon Simple Email Service",
+   "category": "Business-Applications"
+  },
+  "Amazon-Simple-Email-Service_Email": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Business-Applications/Res_Amazon-Simple-Email-Service_Email_48.svg",
+   "label": "Amazon Simple Email Service Email",
+   "category": "Business-Applications"
+  },
+  "Amazon-Simple-Notification-Service": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_App-Integration/48/Arch_Amazon-Simple-Notification-Service_48.svg",
+   "label": "Amazon Simple Notification Service",
+   "category": "App-Integration"
+  },
+  "Amazon-Simple-Notification-Service_Email-Notification": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Application-Integration/Res_Amazon-Simple-Notification-Service_Email-Notification_48.svg",
+   "label": "Amazon Simple Notification Service Email Notification",
+   "category": "Application-Integration"
+  },
+  "Amazon-Simple-Notification-Service_HTTP-Notification": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Application-Integration/Res_Amazon-Simple-Notification-Service_HTTP-Notification_48.svg",
+   "label": "Amazon Simple Notification Service HTTP Notification",
+   "category": "Application-Integration"
+  },
+  "Amazon-Simple-Notification-Service_Topic": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Application-Integration/Res_Amazon-Simple-Notification-Service_Topic_48.svg",
+   "label": "Amazon Simple Notification Service Topic",
+   "category": "Application-Integration"
+  },
+  "Amazon-Simple-Queue-Service": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_App-Integration/48/Arch_Amazon-Simple-Queue-Service_48.svg",
+   "label": "Amazon Simple Queue Service",
+   "category": "App-Integration"
+  },
+  "Amazon-Simple-Queue-Service_Message": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Application-Integration/Res_Amazon-Simple-Queue-Service_Message_48.svg",
+   "label": "Amazon Simple Queue Service Message",
+   "category": "Application-Integration"
+  },
+  "Amazon-Simple-Queue-Service_Queue": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Application-Integration/Res_Amazon-Simple-Queue-Service_Queue_48.svg",
+   "label": "Amazon Simple Queue Service Queue",
+   "category": "Application-Integration"
+  },
+  "Amazon-Simple-Storage-Service": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Storage/48/Arch_Amazon-Simple-Storage-Service_48.svg",
+   "label": "Amazon Simple Storage Service",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service-Glacier": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Storage/48/Arch_Amazon-Simple-Storage-Service-Glacier_48.svg",
+   "label": "Amazon Simple Storage Service Glacier",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service-Glacier_Archive": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service-Glacier_Archive_48.svg",
+   "label": "Amazon Simple Storage Service Glacier Archive",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service-Glacier_Vault": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service-Glacier_Vault_48.svg",
+   "label": "Amazon Simple Storage Service Glacier Vault",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_Bucket": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_Bucket_48.svg",
+   "label": "Amazon Simple Storage Service Bucket",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_Bucket-With-Objects": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_Bucket-With-Objects_48.svg",
+   "label": "Amazon Simple Storage Service Bucket With Objects",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_Directory-bucket": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_Directory-bucket_48.svg",
+   "label": "Amazon Simple Storage Service Directory bucket",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_General-Access-Points": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_General-Access-Points_48.svg",
+   "label": "Amazon Simple Storage Service General Access Points",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_Object": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_Object_48.svg",
+   "label": "Amazon Simple Storage Service Object",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_S3-Batch-Operations": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_S3-Batch-Operations_48.svg",
+   "label": "Amazon Simple Storage Service S3 Batch Operations",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_S3-Express-One-Zone": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_S3-Express-One-Zone_48.svg",
+   "label": "Amazon Simple Storage Service S3 Express One Zone",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_S3-Glacier-Deep-Archive": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_S3-Glacier-Deep-Archive_48.svg",
+   "label": "Amazon Simple Storage Service S3 Glacier Deep Archive",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_S3-Glacier-Flexible-Retrieval": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_S3-Glacier-Flexible-Retrieval_48.svg",
+   "label": "Amazon Simple Storage Service S3 Glacier Flexible Retrieval",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_S3-Glacier-Instant-Retrieval": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_S3-Glacier-Instant-Retrieval_48.svg",
+   "label": "Amazon Simple Storage Service S3 Glacier Instant Retrieval",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_S3-Intelligent-Tiering": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_S3-Intelligent-Tiering_48.svg",
+   "label": "Amazon Simple Storage Service S3 Intelligent Tiering",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_S3-Multi-Region-Access-Points": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_S3-Multi-Region-Access-Points_48.svg",
+   "label": "Amazon Simple Storage Service S3 Multi Region Access Points",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_S3-Object-Lambda": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_S3-Object-Lambda_48.svg",
+   "label": "Amazon Simple Storage Service S3 Object Lambda",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_S3-Object-Lambda-Access-Points": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_S3-Object-Lambda-Access-Points_48.svg",
+   "label": "Amazon Simple Storage Service S3 Object Lambda Access Points",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_S3-Object-Lock": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_S3-Object-Lock_48.svg",
+   "label": "Amazon Simple Storage Service S3 Object Lock",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_S3-On-Outposts": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_S3-On-Outposts_48.svg",
+   "label": "Amazon Simple Storage Service S3 On Outposts",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_S3-One-Zone-IA": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_S3-One-Zone-IA_48.svg",
+   "label": "Amazon Simple Storage Service S3 One Zone IA",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_S3-Replication": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_S3-Replication_48.svg",
+   "label": "Amazon Simple Storage Service S3 Replication",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_S3-Replication-Time-Control": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_S3-Replication-Time-Control_48.svg",
+   "label": "Amazon Simple Storage Service S3 Replication Time Control",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_S3-Select": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_S3-Select_48.svg",
+   "label": "Amazon Simple Storage Service S3 Select",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_S3-Standard": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_S3-Standard_48.svg",
+   "label": "Amazon Simple Storage Service S3 Standard",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_S3-Standard-IA": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_S3-Standard-IA_48.svg",
+   "label": "Amazon Simple Storage Service S3 Standard IA",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_S3-Storage-Lens": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_S3-Storage-Lens_48.svg",
+   "label": "Amazon Simple Storage Service S3 Storage Lens",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_S3-Tables": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_S3-Tables_48.svg",
+   "label": "Amazon Simple Storage Service S3 Tables",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_S3-Vectors": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_S3-Vectors_48.svg",
+   "label": "Amazon Simple Storage Service S3 Vectors",
+   "category": "Storage"
+  },
+  "Amazon-Simple-Storage-Service_VPC-Access-Points": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Storage/Res_Amazon-Simple-Storage-Service_VPC-Access-Points_48.svg",
+   "label": "Amazon Simple Storage Service VPC Access Points",
+   "category": "Storage"
+  },
+  "Amazon-Textract": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-Textract_48.svg",
+   "label": "Amazon Textract",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-Textract_Analyze-Lending": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Artificial-Intelligence/Res_Amazon-Textract_Analyze-Lending_48.svg",
+   "label": "Amazon Textract Analyze Lending",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-Timestream": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Database/48/Arch_Amazon-Timestream_48.svg",
+   "label": "Amazon Timestream",
+   "category": "Database"
+  },
+  "Amazon-Transcribe": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-Transcribe_48.svg",
+   "label": "Amazon Transcribe",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-Translate": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Amazon-Translate_48.svg",
+   "label": "Amazon Translate",
+   "category": "Artificial-Intelligence"
+  },
+  "Amazon-VPC-Lattice": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/48/Arch_Amazon-VPC-Lattice_48.svg",
+   "label": "Amazon VPC Lattice",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-VPC_Carrier-Gateway": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-VPC_Carrier-Gateway_48.svg",
+   "label": "Amazon VPC Carrier Gateway",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-VPC_Customer-Gateway": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-VPC_Customer-Gateway_48.svg",
+   "label": "Amazon VPC Customer Gateway",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-VPC_Elastic-Network-Adapter": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-VPC_Elastic-Network-Adapter_48.svg",
+   "label": "Amazon VPC Elastic Network Adapter",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-VPC_Elastic-Network-Interface": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-VPC_Elastic-Network-Interface_48.svg",
+   "label": "Amazon VPC Elastic Network Interface",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-VPC_Endpoints": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-VPC_Endpoints_48.svg",
+   "label": "Amazon VPC Endpoints",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-VPC_Flow-Logs": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-VPC_Flow-Logs_48.svg",
+   "label": "Amazon VPC Flow Logs",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-VPC_Internet-Gateway": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-VPC_Internet-Gateway_48.svg",
+   "label": "Amazon VPC Internet Gateway",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-VPC_NAT-Gateway": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-VPC_NAT-Gateway_48.svg",
+   "label": "Amazon VPC NAT Gateway",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-VPC_Network-Access-Analyzer": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-VPC_Network-Access-Analyzer_48.svg",
+   "label": "Amazon VPC Network Access Analyzer",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-VPC_Network-Access-Control-List": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-VPC_Network-Access-Control-List_48.svg",
+   "label": "Amazon VPC Network Access Control List",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-VPC_Peering-Connection": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-VPC_Peering-Connection_48.svg",
+   "label": "Amazon VPC Peering Connection",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-VPC_Reachability-Analyzer": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-VPC_Reachability-Analyzer_48.svg",
+   "label": "Amazon VPC Reachability Analyzer",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-VPC_Router": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-VPC_Router_48.svg",
+   "label": "Amazon VPC Router",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-VPC_Traffic-Mirroring": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-VPC_Traffic-Mirroring_48.svg",
+   "label": "Amazon VPC Traffic Mirroring",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-VPC_VPN-Connection": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-VPC_VPN-Connection_48.svg",
+   "label": "Amazon VPC VPN Connection",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-VPC_VPN-Gateway": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-VPC_VPN-Gateway_48.svg",
+   "label": "Amazon VPC VPN Gateway",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-VPC_Virtual-private-cloud-VPC": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Amazon-VPC_Virtual-private-cloud-VPC_48.svg",
+   "label": "Amazon VPC Virtual private cloud VPC",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-Verified-Permissions": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Security-Identity-Compliance/48/Arch_Amazon-Verified-Permissions_48.svg",
+   "label": "Amazon Verified Permissions",
+   "category": "Security-Identity-Compliance"
+  },
+  "Amazon-Virtual-Private-Cloud": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/48/Arch_Amazon-Virtual-Private-Cloud_48.svg",
+   "label": "Amazon Virtual Private Cloud",
+   "category": "Networking-Content-Delivery"
+  },
+  "Amazon-WorkDocs": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Business-Applications/48/Arch_Amazon-WorkDocs_48.svg",
+   "label": "Amazon WorkDocs",
+   "category": "Business-Applications"
+  },
+  "Amazon-WorkDocs-SDK": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Business-Applications/48/Arch_Amazon-WorkDocs-SDK_48.svg",
+   "label": "Amazon WorkDocs SDK",
+   "category": "Business-Applications"
+  },
+  "Amazon-WorkMail": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Business-Applications/48/Arch_Amazon-WorkMail_48.svg",
+   "label": "Amazon WorkMail",
+   "category": "Business-Applications"
+  },
+  "Amazon-WorkSpaces-Family": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_End-User-Computing/48/Arch_Amazon-WorkSpaces-Family_48.svg",
+   "label": "Amazon WorkSpaces Family",
+   "category": "End-User-Computing"
+  },
+  "Amazon-WorkSpaces-Family_Amazon-WorkSpaces": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_End-User-Computing/Res_Amazon-WorkSpaces-Family_Amazon-WorkSpaces_48.svg",
+   "label": "Amazon WorkSpaces Family Amazon WorkSpaces",
+   "category": "End-User-Computing"
+  },
+  "Amazon-WorkSpaces-Family_Amazon-WorkSpaces-Core": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_End-User-Computing/Res_Amazon-WorkSpaces-Family_Amazon-WorkSpaces-Core_48.svg",
+   "label": "Amazon WorkSpaces Family Amazon WorkSpaces Core",
+   "category": "End-User-Computing"
+  },
+  "Amazon-WorkSpaces-Family_Amazon-WorkSpaces-Secure-Browser": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_End-User-Computing/Res_Amazon-WorkSpaces-Family_Amazon-WorkSpaces-Secure-Browser_48.svg",
+   "label": "Amazon WorkSpaces Family Amazon WorkSpaces Secure Browser",
+   "category": "End-User-Computing"
+  },
+  "Analytics": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Analytics_48.svg",
+   "label": "Analytics"
+  },
+  "Apache-MXNet-on-AWS": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_Apache-MXNet-on-AWS_48.svg",
+   "label": "Apache MXNet on AWS",
+   "category": "Artificial-Intelligence"
+  },
+  "Application-Integration": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Application-Integration_48.svg",
+   "label": "Application Integration"
+  },
+  "Artificial-Intelligence": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Artificial-Intelligence_48.svg",
+   "label": "Artificial Intelligence"
+  },
+  "Auto-Scaling-group": {
+   "set": "groups",
+   "path": "Architecture-Group-Icons_07312025/Auto-Scaling-group_32.svg",
+   "label": "Auto Scaling group"
+  },
+  "Blockchain": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Blockchain_48.svg",
+   "label": "Blockchain"
+  },
+  "Bottlerocket": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_Bottlerocket_48.svg",
+   "label": "Bottlerocket",
+   "category": "Compute"
+  },
+  "Browser-Tool": {
+   "set": "agentcore",
+   "path": "AgentCore/dark-purple/Browser-Tool.png",
+   "label": "Browser Tool"
+  },
+  "Business-Applications": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Business-Applications_48.svg",
+   "label": "Business Applications"
+  },
+  "Cloud-Financial-Management": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Cloud-Financial-Management_48.svg",
+   "label": "Cloud Financial Management"
+  },
+  "Code-Interpreter": {
+   "set": "agentcore",
+   "path": "AgentCore/dark-purple/Code-Interpreter.png",
+   "label": "Code Interpreter"
+  },
+  "Compute": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Compute_48.svg",
+   "label": "Compute"
+  },
+  "Contact-Center": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Contact-Center_48.svg",
+   "label": "Contact Center"
+  },
+  "Containers": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Containers_48.svg",
+   "label": "Containers"
+  },
+  "Corporate-data-center": {
+   "set": "groups",
+   "path": "Architecture-Group-Icons_07312025/Corporate-data-center_32.svg",
+   "label": "Corporate data center"
+  },
+  "Customer-Enablement": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Customer-Enablement_48.svg",
+   "label": "Customer Enablement"
+  },
+  "Database": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Database_48.svg",
+   "label": "Database"
+  },
+  "Developer-Tools": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Developer-Tools_48.svg",
+   "label": "Developer Tools"
+  },
+  "EC2-instance-contents": {
+   "set": "groups",
+   "path": "Architecture-Group-Icons_07312025/EC2-instance-contents_32.svg",
+   "label": "EC2 instance contents"
+  },
+  "Elastic-Fabric-Adapter": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_Elastic-Fabric-Adapter_48.svg",
+   "label": "Elastic Fabric Adapter",
+   "category": "Compute"
+  },
+  "Elastic-Load-Balancing": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Networking-Content-Delivery/48/Arch_Elastic-Load-Balancing_48.svg",
+   "label": "Elastic Load Balancing",
+   "category": "Networking-Content-Delivery"
+  },
+  "Elastic-Load-Balancing_Application-Load-Balancer": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Elastic-Load-Balancing_Application-Load-Balancer_48.svg",
+   "label": "Elastic Load Balancing Application Load Balancer",
+   "category": "Networking-Content-Delivery"
+  },
+  "Elastic-Load-Balancing_Classic-Load-Balancer": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Elastic-Load-Balancing_Classic-Load-Balancer_48.svg",
+   "label": "Elastic Load Balancing Classic Load Balancer",
+   "category": "Networking-Content-Delivery"
+  },
+  "Elastic-Load-Balancing_Gateway-Load-Balancer": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Elastic-Load-Balancing_Gateway-Load-Balancer_48.svg",
+   "label": "Elastic Load Balancing Gateway Load Balancer",
+   "category": "Networking-Content-Delivery"
+  },
+  "Elastic-Load-Balancing_Network-Load-Balancer": {
+   "set": "resources",
+   "path": "Resource-Icons_07312025/Res_Networking-Content-Delivery/Res_Elastic-Load-Balancing_Network-Load-Balancer_48.svg",
+   "label": "Elastic Load Balancing Network Load Balancer",
+   "category": "Networking-Content-Delivery"
+  },
+  "End-User-Computing": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_End-User-Computing_48.svg",
+   "label": "End User Computing"
+  },
+  "Evaluations": {
+   "set": "agentcore",
+   "path": "AgentCore/dark-purple/Evaluations.png",
+   "label": "Evaluations"
+  },
+  "FreeRTOS": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Internet-of-Things/48/Arch_FreeRTOS_48.svg",
+   "label": "FreeRTOS",
+   "category": "Internet-of-Things"
+  },
+  "Front-End-Web-Mobile": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Front-End-Web-Mobile_48.svg",
+   "label": "Front End Web Mobile"
+  },
+  "Games": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Games_48.svg",
+   "label": "Games"
+  },
+  "Gateway": {
+   "set": "agentcore",
+   "path": "AgentCore/dark-purple/Gateway.png",
+   "label": "Gateway"
+  },
+  "Identity": {
+   "set": "agentcore",
+   "path": "AgentCore/dark-purple/Identity.png",
+   "label": "Identity"
+  },
+  "Internet-of-Things": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Internet-of-Things_48.svg",
+   "label": "Internet of Things"
+  },
+  "Management-Governance": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Management-Governance_48.svg",
+   "label": "Management Governance"
+  },
+  "Media-Services": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Media-Services_48.svg",
+   "label": "Media Services"
+  },
+  "Memory": {
+   "set": "agentcore",
+   "path": "AgentCore/dark-purple/Memory.png",
+   "label": "Memory"
+  },
+  "Migration-Modernization": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Migration-Modernization_48.svg",
+   "label": "Migration Modernization"
+  },
+  "NICE-EnginFrame": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Compute/48/Arch_NICE-EnginFrame_48.svg",
+   "label": "NICE EnginFrame",
+   "category": "Compute"
+  },
+  "Networking-Content-Delivery": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Networking-Content-Delivery_48.svg",
+   "label": "Networking Content Delivery"
+  },
+  "Observability": {
+   "set": "agentcore",
+   "path": "AgentCore/dark-purple/Observability.png",
+   "label": "Observability"
+  },
+  "Open-3D-Engine": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Games/48/Arch_Open-3D-Engine_48.svg",
+   "label": "Open 3D Engine",
+   "category": "Games"
+  },
+  "Oracle-Database-at-AWS": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Database/48/Arch_Oracle-Database-at-AWS_48.svg",
+   "label": "Oracle Database at AWS",
+   "category": "Database"
+  },
+  "Policy-Engine": {
+   "set": "agentcore",
+   "path": "AgentCore/dark-purple/Policy-Engine.png",
+   "label": "Policy Engine"
+  },
+  "Private-subnet": {
+   "set": "groups",
+   "path": "Architecture-Group-Icons_07312025/Private-subnet_32.svg",
+   "label": "Private subnet"
+  },
+  "Public-subnet": {
+   "set": "groups",
+   "path": "Architecture-Group-Icons_07312025/Public-subnet_32.svg",
+   "label": "Public subnet"
+  },
+  "PyTorch-on-AWS": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_PyTorch-on-AWS_48.svg",
+   "label": "PyTorch on AWS",
+   "category": "Artificial-Intelligence"
+  },
+  "Quantum-Technologies": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Quantum-Technologies_48.svg",
+   "label": "Quantum Technologies"
+  },
+  "Red-Hat-OpenShift-Service-on-AWS": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Containers/48/Arch_Red-Hat-OpenShift-Service-on-AWS_48.svg",
+   "label": "Red Hat OpenShift Service on AWS",
+   "category": "Containers"
+  },
+  "Region": {
+   "set": "groups",
+   "path": "Architecture-Group-Icons_07312025/Region_32.svg",
+   "label": "Region"
+  },
+  "Reserved-Instance-Reporting": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Cloud-Financial-Management/48/Arch_Reserved-Instance-Reporting_48.svg",
+   "label": "Reserved Instance Reporting",
+   "category": "Cloud-Financial-Management"
+  },
+  "Runtime": {
+   "set": "agentcore",
+   "path": "AgentCore/dark-purple/Runtime.png",
+   "label": "Runtime"
+  },
+  "Satellite": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Satellite_48.svg",
+   "label": "Satellite"
+  },
+  "Savings-Plans": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Cloud-Financial-Management/48/Arch_Savings-Plans_48.svg",
+   "label": "Savings Plans",
+   "category": "Cloud-Financial-Management"
+  },
+  "Security-Identity-Compliance": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Security-Identity-Compliance_48.svg",
+   "label": "Security Identity Compliance"
+  },
+  "Server-contents": {
+   "set": "groups",
+   "path": "Architecture-Group-Icons_07312025/Server-contents_32.svg",
+   "label": "Server contents"
+  },
+  "Serverless": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Serverless_48.svg",
+   "label": "Serverless"
+  },
+  "Spot-Fleet": {
+   "set": "groups",
+   "path": "Architecture-Group-Icons_07312025/Spot-Fleet_32.svg",
+   "label": "Spot Fleet"
+  },
+  "Storage": {
+   "set": "categories",
+   "path": "Category-Icons_07312025/Arch-Category_48/Arch-Category_Storage_48.svg",
+   "label": "Storage"
+  },
+  "TensorFlow-on-AWS": {
+   "set": "services",
+   "path": "Architecture-Service-Icons_07312025/Arch_Artificial-Intelligence/48/Arch_TensorFlow-on-AWS_48.svg",
+   "label": "TensorFlow on AWS",
+   "category": "Artificial-Intelligence"
+  },
+  "VictoriaMetrics_logo": {
+   "set": "others",
+   "path": "others/VictoriaMetrics_logo.svg",
+   "label": "VictoriaMetrics logo"
+  },
+  "Virtual-private-cloud-VPC": {
+   "set": "groups",
+   "path": "Architecture-Group-Icons_07312025/Virtual-private-cloud-VPC_32.svg",
+   "label": "Virtual private cloud VPC"
+  },
+  "ack": {
+   "set": "others",
+   "path": "others/ack.png",
+   "label": "ack"
+  },
+  "argocd": {
+   "set": "others",
+   "path": "others/argocd.png",
+   "label": "argocd"
+  },
+  "bottleRocket": {
+   "set": "others",
+   "path": "others/bottleRocket.png",
+   "label": "bottleRocket"
+  },
+  "clipart": {
+   "set": "others",
+   "path": "others/clipart.png",
+   "label": "clipart"
+  },
+  "descheduler": {
+   "set": "others",
+   "path": "others/descheduler.png",
+   "label": "descheduler"
+  },
+  "fluentbit": {
+   "set": "others",
+   "path": "others/fluentbit.png",
+   "label": "fluentbit"
+  },
+  "github-mark": {
+   "set": "others",
+   "path": "others/github-mark.png",
+   "label": "github mark"
+  },
+  "github-mark-white": {
+   "set": "others",
+   "path": "others/github-mark-white.png",
+   "label": "github mark white"
+  },
+  "grafana": {
+   "set": "others",
+   "path": "others/grafana.png",
+   "label": "grafana"
+  },
+  "ingress": {
+   "set": "others",
+   "path": "others/ingress.webp",
+   "label": "ingress"
+  },
+  "istio-icon-color": {
+   "set": "others",
+   "path": "others/istio-icon-color.png",
+   "label": "istio icon color"
+  },
+  "keda-icon-color": {
+   "set": "others",
+   "path": "others/keda-icon-color.png",
+   "label": "keda icon color"
+  },
+  "langchain": {
+   "set": "others",
+   "path": "others/langchain.svg",
+   "label": "langchain"
+  },
+  "langfuse": {
+   "set": "others",
+   "path": "others/langfuse.svg",
+   "label": "langfuse"
+  },
+  "langsmith": {
+   "set": "others",
+   "path": "others/langsmith.png",
+   "label": "langsmith"
+  },
+  "lens-logo": {
+   "set": "others",
+   "path": "others/lens-logo.png",
+   "label": "lens logo"
+  },
+  "litellm": {
+   "set": "others",
+   "path": "others/litellm.svg",
+   "label": "litellm"
+  },
+  "phoenix": {
+   "set": "others",
+   "path": "others/phoenix.svg",
+   "label": "phoenix"
+  },
+  "phoenix-arize": {
+   "set": "others",
+   "path": "others/phoenix-arize.png",
+   "label": "phoenix arize"
+  },
+  "prometheus": {
+   "set": "others",
+   "path": "others/prometheus.png",
+   "label": "prometheus"
+  },
+  "prometheus-dark": {
+   "set": "others",
+   "path": "others/prometheus-dark.png",
+   "label": "prometheus dark"
+  },
+  "vanguard": {
+   "set": "others",
+   "path": "others/vanguard.svg",
+   "label": "vanguard"
+  },
+  "victoriametrics": {
+   "set": "others",
+   "path": "others/victoriametrics.png",
+   "label": "victoriametrics"
+  },
+  "vllm": {
+   "set": "others",
+   "path": "others/vllm.png",
+   "label": "vllm"
+  }
+ }
+}

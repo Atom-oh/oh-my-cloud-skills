@@ -4560,6 +4560,50 @@ def migrate_marp_to_remarp(marp_file: str, output_dir: str) -> List[str]:
 # Validate command — Automated Rejection Loop
 # ---------------------------------------------------------------------------
 
+
+def _validate_global_frontmatter(pres_file: Path) -> List[Dict[str, Any]]:
+    """Validate _presentation.md global frontmatter for required fields."""
+    findings: List[Dict[str, Any]] = []
+    with open(pres_file, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    # Extract frontmatter
+    fm_match = re.match(r'^---\s*\n(.+?)\n---', content, re.DOTALL)
+    if not fm_match:
+        findings.append({
+            'file': str(pres_file), 'block': '_global', 'slide': 0,
+            'title': '_presentation.md', 'severity': 'CRITICAL',
+            'rule': 'MISSING_FRONTMATTER',
+            'message': '_presentation.md has no valid frontmatter',
+            'fix': 'Add --- delimited YAML frontmatter with remarp: true'
+        })
+        return findings
+
+    fm_text = fm_match.group(1)
+
+    # Check ratio field
+    if not re.search(r'^ratio\s*:', fm_text, re.MULTILINE):
+        findings.append({
+            'file': str(pres_file), 'block': '_global', 'slide': 0,
+            'title': '_presentation.md', 'severity': 'WARNING',
+            'rule': 'MISSING_RATIO',
+            'message': 'Missing `ratio` field — preview aspect ratio will be incorrect',
+            'fix': 'Add `ratio: "16:9"` to _presentation.md frontmatter'
+        })
+
+    # Check footer
+    if 'footer' not in fm_text:
+        findings.append({
+            'file': str(pres_file), 'block': '_global', 'slide': 0,
+            'title': '_presentation.md', 'severity': 'WARNING',
+            'rule': 'MISSING_FOOTER',
+            'message': 'Missing footer configuration — slides will have empty footer area',
+            'fix': 'Add `theme.footer` or top-level `footer` to _presentation.md'
+        })
+
+    return findings
+
+
 def validate_presentation(input_path: Path, json_output: bool = False) -> List[Dict[str, Any]]:
     """Validate Remarp source for quality issues.
 
@@ -4584,6 +4628,12 @@ def validate_presentation(input_path: Path, json_output: bool = False) -> List[D
         return []
 
     all_findings: List[Dict[str, Any]] = []
+
+    # Validate global frontmatter (_presentation.md)
+    if input_path.is_dir():
+        pres_file = input_path / '_presentation.md'
+        if pres_file.exists():
+            all_findings.extend(_validate_global_frontmatter(pres_file))
 
     for md_file in md_files:
         with open(md_file, 'r', encoding='utf-8') as f:

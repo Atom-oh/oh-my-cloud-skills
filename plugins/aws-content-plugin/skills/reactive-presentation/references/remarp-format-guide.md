@@ -36,6 +36,7 @@ The global frontmatter defines presentation-wide settings. In single-file format
 remarp: true
 version: 1
 title: "AWS Architecture Deep Dive"
+ratio: "16:9"
 speaker:
   name: "오준석 (Junseok Oh)"
   title: "Sr. Solutions Architect"
@@ -80,6 +81,7 @@ transition:
 | `remarp` | boolean | Yes | Must be `true` to enable remarp processing |
 | `version` | number | No | Format version (default: 1) |
 | `title` | string | Yes | Presentation title (used in HTML `<title>`) |
+| `ratio` | string | Yes | Slide aspect ratio (e.g. `"16:9"`, `"4:3"`). Sets CSS `--slide-ratio-w/h` variables. **누락 시 프리뷰 비율 깨짐** |
 | `speaker` | object | Yes | Speaker info (structured) |
 | `speaker.name` | string | Yes | Speaker name |
 | `speaker.title` | string | Yes | Job title |

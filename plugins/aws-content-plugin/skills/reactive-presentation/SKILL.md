@@ -27,6 +27,7 @@ This generates:
 - `images/` — extracted logos and background images
 
 After extraction, read `theme-manifest.json` and apply in every block HTML:
+- **`slide_size.aspect_ratio`** → `_presentation.md` frontmatter `ratio:` 필드에 반영 (e.g. `ratio: "16:9"`). **이 값이 누락되면 VSCode Extension 프리뷰에서 비율이 깨집니다.**
 - **`footer_text`** → `SlideFramework({ footer: manifest.footer_text })` — deduplicated footer from placeholder + master text shapes
 - **`master_texts`** → additional branding text from slide master (copyright, event name, confidentiality notices); `is_footer_area: true` marks text in bottom 15%
 - **`layout_details`** → reference original PPTX layout structure (Title Slide → §0a cover, Section Header → §1 title)
@@ -78,15 +79,19 @@ Remarp 마크다운으로 콘텐츠를 작성합니다 (기본). Remarp는 프�
     └── slide-05-flow.js
 ```
 
-> **`_presentation.md` footer/logo 설정 (필수)**:
+> **`_presentation.md` 필수 설정 (ratio / footer / logo)**:
+> - **`ratio` (필수)**: `_presentation.md` frontmatter에 반드시 `ratio: "16:9"` 포함. 이 값이 없으면 VSCode Extension 프리뷰에서 슬라이드 비율이 깨지고, CSS 변수 `--slide-ratio-w/h`가 설정되지 않습니다.
+>   - PPTX 있는 경우: `theme-manifest.json`의 `slide_size.aspect_ratio` 값 사용
+>   - PPTX 없는 경우: `ratio: "16:9"` (기본값)
 > - **PPTX 있는 경우**: Phase 1에서 `theme-manifest.json`의 `footer_text` → `theme.footer`, `logos[0].filename` → `theme.logo`로 자동 반영
 > - **PPTX 없는 경우**: `_presentation.md`의 `theme:` 섹션에 반드시 수동 설정:
 >   ```yaml
+>   ratio: "16:9"
 >   theme:
 >     footer: "© 2026 Company Name. All rights reserved."
 >     logo: "./common/logo.png"
 >   ```
-> - footer/logo가 누락되면 `SlideFramework` 초기화에서 해당 옵션이 빠져 빈 영역으로 렌더링됩니다.
+> - ratio/footer/logo가 누락되면 프리뷰 비율 깨짐 및 `SlideFramework` 초기화에서 해당 옵션이 빠져 빈 영역으로 렌더링됩니다.
 
 > `.md` 확장자 사용 (이전: `.remarp.md`). `remarp: true` frontmatter로 일반 마크다운과 구분됩니다. `.remarp.md` 확장자도 하위호환 지원.
 
