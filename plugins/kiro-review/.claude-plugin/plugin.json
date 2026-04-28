@@ -1,6 +1,6 @@
 {
   "name": "kiro-review",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Comprehensive architecture deep review via Kiro CLI — code review, adversarial security audit, AWS Well-Architected assessment, spec-driven design validation",
   "author": {
     "name": "atomoh"
