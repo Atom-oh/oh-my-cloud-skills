@@ -1,0 +1,147 @@
+# AI Code Review — GitHub Actions Workflow
+#
+# Posts an AI-generated review comment on every PR. The pr-autofix skill
+# reads this comment to decide whether to auto-fix issues.
+#
+# Setup:
+#   1. Copy to .github/workflows/pr-review.yml
+#   2. Set repository variable ANTHROPIC_MODEL (e.g. us.anthropic.claude-opus-4-7)
+#   3. Configure runner with AWS Bedrock access OR set ANTHROPIC_API_KEY secret
+#   4. Ensure CLAUDE.md exists at repo root for project context
+#
+# Marker: <!-- bedrock-pr-review --> (used by pr-autofix skill for detection)
+
+name: AI Code Review
+
+on:
+  pull_request_target:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pr-review-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      pull-requests: write
+      contents: read
+    env:
+      ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL || 'us.anthropic.claude-opus-4-7' }}
+      CLAUDE_CODE_USE_BEDROCK: 1
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Get PR diff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr diff "$PR_NUMBER" > /tmp/pr-diff.txt
+          TOTAL_LINES=$(wc -l < /tmp/pr-diff.txt)
+          echo "total_lines=$TOTAL_LINES" >> "$GITHUB_ENV"
+          echo "Diff: $TOTAL_LINES lines"
+
+      - name: Review with Claude Code
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          MAX_LINES=3000
+          TRUNCATED=""
+          if [ "$total_lines" -gt "$MAX_LINES" ]; then
+            TRUNCATED="⚠️ Diff truncated: ${total_lines} lines, only first ${MAX_LINES} reviewed."
+          fi
+          head -"$MAX_LINES" /tmp/pr-diff.txt > /tmp/pr-diff-truncated.txt
+
+          cat <<PROMPT_EOF > /tmp/prompt.txt
+          You are reviewing PR #${PR_NUMBER}: ${PR_TITLE}
+          ${TRUNCATED:+
+          ${TRUNCATED}}
+
+          Read CLAUDE.md for project context. Then review the diff provided via stdin.
+
+          Provide:
+          1. **Summary** — what this PR does (2-3 sentences)
+          2. **Issues** — bugs, security risks, logic errors (CRITICAL/MAJOR/MINOR)
+          3. **Suggestions** — improvements
+          4. **Verdict** — LGTM / Changes Requested
+
+          Rules:
+          - Read CLAUDE.md to understand project conventions
+          - Check: error handling, input validation, injection risks
+          - Check: no hardcoded secrets, proper authentication
+          - Be concise.
+          - Output ONLY the review markdown, no preamble.
+          - IMPORTANT: The very last line of your output MUST be exactly one of:
+            VERDICT: PASS
+            VERDICT: FAIL
+          Use FAIL if there are any CRITICAL or MAJOR issues. Use PASS otherwise.
+          PROMPT_EOF
+
+          cat /tmp/pr-diff-truncated.txt | claude -p "$(cat /tmp/prompt.txt)" --output-format text > /tmp/review.md
+
+          if [ ! -s /tmp/review.md ]; then
+            echo "ERROR: review output is empty" >&2
+            echo "VERDICT: FAIL" > /tmp/review.md
+            echo "Review generation failed — Claude CLI returned empty response." >> /tmp/review.md
+          fi
+          echo "Review generated: $(wc -c < /tmp/review.md) bytes"
+
+      - name: Check for blocking issues
+        id: gate
+        run: |
+          if grep -q "^VERDICT: FAIL$" /tmp/review.md; then
+            echo "result=fail" >> "$GITHUB_OUTPUT"
+          elif grep -q "^VERDICT: PASS$" /tmp/review.md; then
+            echo "result=pass" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=fail" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post review comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          GATE_RESULT: ${{ steps.gate.outputs.result }}
+        run: |
+          MARKER="<!-- bedrock-pr-review -->"
+          if [ "$GATE_RESULT" = "fail" ]; then
+            STATUS_BADGE="**Status: BLOCKED** — CRITICAL/MAJOR issues must be resolved before merge"
+          else
+            STATUS_BADGE="**Status: PASSED** — No blocking issues found"
+          fi
+          sed '$ { /^VERDICT:/d }' /tmp/review.md > /tmp/review-clean.md
+          {
+            echo "$MARKER"
+            echo "## AI Code Review"
+            echo ""
+            echo "$STATUS_BADGE"
+            echo ""
+            cat /tmp/review-clean.md
+            echo ""
+            echo "---"
+            echo "_Automated review by Claude Code CLI_"
+          } > /tmp/comment.md
+
+          EXISTING=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+            --jq '.[] | select(.body | contains("<!-- bedrock-pr-review -->")) | .id' 2>/dev/null | head -1)
+          if [ -n "$EXISTING" ]; then
+            gh api "repos/$REPO/issues/comments/$EXISTING" -X PATCH -f body="$(cat /tmp/comment.md)" 2>/dev/null || \
+            gh pr comment "$PR_NUMBER" --body-file /tmp/comment.md
+          else
+            gh pr comment "$PR_NUMBER" --body-file /tmp/comment.md
+          fi
+
+      - name: Fail if CRITICAL or MAJOR
+        if: steps.gate.outputs.result == 'fail'
+        run: |
+          echo "AI Review blocked: CRITICAL or MAJOR issues found"
+          exit 1

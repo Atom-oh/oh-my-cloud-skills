@@ -13,9 +13,12 @@ Core plugin providing project structure initialization, documentation quality sc
 - `commands/generate-readme.md` - Bilingual README.md generation/update
 - `commands/generate-changelog.md` - Bilingual CHANGELOG.md generation/update
 - `commands/health-check.md` - Project validation
+- `commands/pr-autofix.md` - PR review feedback auto-fix (AI + human review polling)
 - `agents/doc-sync-checker.md` - Documentation sync analysis agent
 - `skills/project-scaffolder/SKILL.md` - Scaffolding skill definition
 - `skills/project-scaffolder/references/` - 12 template files for code generation (includes shared writing-style-guide)
+- `skills/pr-autofix/SKILL.md` - PR auto-fix skill (AI review + human review loop)
+- `skills/pr-autofix/references/pr-review-workflow.yml` - Reference CI workflow for AI code review
 
 ## Upstream
 - **Source**: `git@github.com:whchoi98/project-init.git` (path: `plugins/project-init/`)

@@ -250,15 +250,15 @@ Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Sk
 
 Skill: `kiro-review` — 5-Phase deep review (code review, adversarial security, Well-Architected, spec-driven validation). Requires `kiro-cli-plugin`.
 
-### project-init (1 agent, 1 skill, 8 commands)
+### project-init (1 agent, 2 skills, 9 commands)
 
 | Agent | Purpose |
 |-------|---------|
 | `doc-sync-checker` | Documentation sync analysis, quality scoring, missing doc detection |
 
-Skill: `project-scaffolder` — Claude Code project structure patterns and conventions.
+Skills: `project-scaffolder` — Claude Code project structure patterns and conventions. `pr-autofix` — PR review feedback auto-fix (AI + human review polling, max 3 iterations).
 
-Commands: `/init-project`, `/sync-docs`, `/add-adr`, `/add-module`, `/add-runbook`, `/generate-readme`, `/generate-changelog`, `/health-check`
+Commands: `/init-project`, `/sync-docs`, `/add-adr`, `/add-module`, `/add-runbook`, `/generate-readme`, `/generate-changelog`, `/health-check`, `/pr-autofix`
 
 ## Workflows
 
