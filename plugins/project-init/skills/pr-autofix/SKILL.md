@@ -1,6 +1,11 @@
 ---
 name: pr-autofix
 description: After creating a PR, poll for AI and human review feedback, auto-fix issues, and push (max 3 iterations)
+triggers:
+  - "pr autofix"
+  - "pr review fix"
+  - "PR 자동 수정"
+  - "리뷰 피드백 수정"
 ---
 
 # PR Auto-Fix Skill
