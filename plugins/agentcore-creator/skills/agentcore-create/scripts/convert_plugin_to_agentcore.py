@@ -29,12 +29,12 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 MODEL_MAP = {
-    "sonnet": "us.anthropic.claude-sonnet-4-20250514",
-    "opus": "us.anthropic.claude-opus-4-20250514",
-    "haiku": "us.anthropic.claude-haiku-4-20250514",
+    "sonnet": "us.anthropic.claude-sonnet-4-6",
+    "opus": "us.anthropic.claude-opus-4-7",
+    "haiku": "us.anthropic.claude-haiku-4-5",
 }
 
-DEFAULT_MODEL = "us.anthropic.claude-sonnet-4-20250514"
+DEFAULT_MODEL = "us.anthropic.claude-sonnet-4-6"
 
 
 # ---------------------------------------------------------------------------
@@ -275,6 +275,9 @@ def generate_system_prompt(agent: dict, skills: list) -> str:
 
 def generate_agent_code(agent_name: str, model_id: str, framework: str) -> str:
     """Generate Python agent code with BedrockAgentCoreApp wrapper."""
+    # 4.7 compatibility note: Opus 4.7 rejects temperature/top_p/top_k and
+    # thinking.type="enabled" with budget_tokens. The templates below avoid
+    # those parameters; uncomment adaptive thinking when reasoning is needed.
     if framework == "strands":
         return f'''"""
 AgentCore agent: {agent_name}
@@ -299,6 +302,9 @@ async def invoke(payload, context):
     model = BedrockModel(
         model_id="{model_id}",
         region_name=context.get("region", "us-east-1"),
+        max_tokens=16000,  # default; raise to 64000 for long outputs (streaming recommended)
+        # For Opus 4.6/4.7: enable adaptive thinking when reasoning is needed
+        # additional_request_fields={{"thinking": {{"type": "adaptive"}}}},
     )
 
     agent = Agent(
@@ -325,6 +331,11 @@ from pathlib import Path
 import boto3
 
 
+# Default inference config — adjust per use case
+# 4.7 note: do NOT add temperature/topP/topK on Opus 4.7 (400 error)
+DEFAULT_MAX_TOKENS = 16000
+
+
 class LocalTestAgent:
     """Agent using boto3 Bedrock Runtime for local testing."""
 
@@ -342,6 +353,9 @@ class LocalTestAgent:
             modelId=self.model_id,
             system=[{{"text": self.system_prompt}}],
             messages=self.messages,
+            inferenceConfig={{"maxTokens": DEFAULT_MAX_TOKENS}},
+            # For Opus 4.6/4.7 reasoning, uncomment:
+            # additionalModelRequestFields={{"thinking": {{"type": "adaptive"}}}},
         )
         text = response["output"]["message"]["content"][0]["text"]
         self.messages.append({{"role": "assistant", "content": [{{"text": text}}]}})

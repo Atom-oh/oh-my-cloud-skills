@@ -32,6 +32,9 @@ async def invoke(payload, context):
     model = BedrockModel(
         model_id="{{bedrock_model_id}}",
         region_name="{{region}}",
+        max_tokens=16000,  # 64000 for streaming/long output; do NOT lowball — truncation forces retries
+        # For Opus 4.6/4.7 reasoning:
+        # additional_request_fields={"thinking": {"type": "adaptive"}},
     )
 
     agent = Agent(
@@ -252,7 +255,7 @@ if __name__ == "__main__":
 | `{{agent_name}}` | Agent frontmatter `name` | `eks-agent` |
 | `{{source_plugin}}` | plugin.json `name` | `aws-ops-plugin` |
 | `{{source_version}}` | plugin.json `version` | `1.3.1` |
-| `{{bedrock_model_id}}` | Model mapping table | `us.anthropic.claude-sonnet-4-20250514` |
+| `{{bedrock_model_id}}` | Model mapping table | `us.anthropic.claude-sonnet-4-6` |
 | `{{region}}` | User-specified region | `us-east-1` |
 | `{{tool_imports}}` | strands-agents-tools imports | `shell, file_read` |
 | `{{tool_list}}` | Tool function references | `shell, file_read` |
@@ -266,6 +269,28 @@ if __name__ == "__main__":
 | Strands + AgentCore (memory) | `strands-agents>=0.1.0`, `bedrock-agentcore>=0.1.0`, `boto3>=1.34.0` | AgentCore with STM/LTM |
 | Strands local test | `strands-agents>=0.1.0`, `boto3>=1.34.0` | Local development |
 | Raw Python local test | `boto3>=1.34.0` | Minimal local testing |
+
+## Recommended Inference Defaults
+
+These defaults are applied by the conversion script and templates. Tune per use case:
+
+| Parameter | Default | Tuning Notes |
+|-----------|---------|--------------|
+| `max_tokens` | 16000 | Use 64000 for long outputs (requires streaming). Truncation forces retries — don't lowball. |
+| `thinking` | omitted | For reasoning-heavy tasks on Opus 4.6/4.7, enable `{"type": "adaptive"}` |
+| `temperature` / `top_p` / `top_k` | NOT SET | Removed on Opus 4.7 (400 error). Use prompting for variance instead. |
+| `effort` (Opus 4.5+, Sonnet 4.6) | not set | `xhigh` for coding/agentic, `high` for intelligence-sensitive, `medium` for balanced |
+
+### Opus 4.7 Specific Defaults
+
+When `{{bedrock_model_id}}` resolves to `us.anthropic.claude-opus-4-7`:
+- Do NOT set `temperature`, `top_p`, `top_k` → 400 error
+- Do NOT use `thinking: {"type": "enabled", "budget_tokens": N}` → 400 error
+- Use `thinking: {"type": "adaptive"}` for reasoning control
+- To surface thinking content: add `thinking: {"type": "adaptive", "display": "summarized"}` (default is `"omitted"`)
+- Re-baseline `max_tokens` with `count_tokens()` — Opus 4.7 tokenizes more than 4.6
+
+See `references/agentcore-mapping-rules.md` → Model-Specific Compatibility Notes for full breaking-change details.
 
 ## Deployment CLI
 

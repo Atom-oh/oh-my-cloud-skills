@@ -139,8 +139,19 @@ Based on the approved concept, design the agent's components:
 **Agent definition** — Propose the agent `.md` file structure:
 - Name, description (with trigger keywords)
 - Tools needed (Read, Write, Bash, Glob, Grep, etc.)
-- Model recommendation (sonnet for most, opus for complex reasoning)
+- Model recommendation (see Model Selection Guide below)
 - Core capabilities list
+
+**Model Selection Guide (Bedrock):**
+
+| Task profile | Recommended model | Notes |
+|---|---|---|
+| Coding, agentic loops, long-horizon work | `us.anthropic.claude-opus-4-7` | Most capable; on Bedrock with extended thinking, use adaptive thinking. Budget for higher token counts than 4.6. |
+| Most production workloads (balanced) | `us.anthropic.claude-sonnet-4-6` | Best speed/intelligence balance. Supports adaptive thinking. |
+| High-volume simple tasks | `us.anthropic.claude-haiku-4-5` | Fastest, lowest cost. No `effort` parameter support. |
+| Complex reasoning with cost flexibility | `us.anthropic.claude-opus-4-7` | When correctness matters more than latency |
+
+> **Note on Opus 4.7 deployment**: Generated code must NOT include `temperature`, `top_p`, `top_k`, or `thinking.type: "enabled"` with `budget_tokens` — these return 400 errors on 4.7. Use `thinking.type: "adaptive"` for reasoning depth control. See `references/agentcore-mapping-rules.md` → Model-Specific Compatibility Notes.
 
 **Skill definition** — Propose the SKILL.md structure:
 - Trigger phrases (Korean + English)
@@ -337,7 +348,7 @@ async def invoke(payload, context):
     prompt_path = Path(__file__).parent / "system-prompts" / "<name>.md"
     system_prompt = prompt_path.read_text(encoding="utf-8")
     agent = Agent(
-        model=BedrockModel(model_id="us.anthropic.claude-sonnet-4-20250514"),
+        model=BedrockModel(model_id="us.anthropic.claude-sonnet-4-6"),
         system_prompt=system_prompt,
     )
     result = agent(payload["prompt"])

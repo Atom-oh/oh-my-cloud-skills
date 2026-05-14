@@ -442,7 +442,7 @@ def handler(event, context):
 
     # Bedrock Claude로 RCA 실행
     response = bedrock.invoke_model(
-        modelId='anthropic.claude-sonnet-4-6-20250514',
+        modelId='anthropic.claude-sonnet-4-6',
         body=json.dumps({
             'messages': [{
                 'role': 'user',

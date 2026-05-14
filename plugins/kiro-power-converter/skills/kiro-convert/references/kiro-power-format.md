@@ -365,7 +365,7 @@ Kiro supports two agent definition formats:
 name: code-reviewer
 description: "Expert code review assistant"
 tools: ["@builtin", "@context7"]
-model: claude-sonnet-4
+model: claude-sonnet-4-6
 includeMcpJson: true
 includePowers: true
 ---
@@ -401,7 +401,7 @@ System prompt and instructions here.
     "postToolUse": [{"command": "audit.sh"}],
     "stop": [{"command": "cleanup.sh"}]
   },
-  "model": "claude-sonnet-4",
+  "model": "claude-sonnet-4-6",
   "includeMcpJson": true,
   "keyboardShortcut": "ctrl+r",
   "welcomeMessage": "Hello!"

@@ -11,7 +11,7 @@ Field-by-field conversion rules for transforming Claude Code plugin components i
 | `name` | Agent name | Preserve as-is; validate against AgentCore naming rules (alphanumeric + hyphens, 1-128 chars) |
 | `description` | Agent description | Preserve; strip trigger keyword list (moved to routing config) |
 | `tools` | Tool permissions | Map to AgentCore tool list: `Read`/`Glob`/`Grep` -> knowledge retrieval, `Bash` -> code execution, `Write`/`Edit` -> file operations |
-| `model` | Bedrock model ID | `sonnet` -> `us.anthropic.claude-sonnet-4-20250514`, `opus` -> `us.anthropic.claude-opus-4-20250514`, `haiku` -> `us.anthropic.claude-haiku-4-20250514` |
+| `model` | Bedrock model ID | `sonnet` -> `us.anthropic.claude-sonnet-4-6`, `opus` -> `us.anthropic.claude-opus-4-7`, `haiku` -> `us.anthropic.claude-haiku-4-5` |
 | `skills` | System prompt sections | Each referenced skill's SKILL.md body merged into system prompt |
 | `mcpServers` | Gateway targets | Each server becomes a Gateway target definition |
 
@@ -164,3 +164,37 @@ agentcore destroy       # Tear down
 | Korean-only content in system prompts | Preserve as-is; note language in agent config |
 | Multiple agents sharing same skill | Skill content duplicated into each agent's system prompt |
 | Nested references (reference citing another reference) | Flatten; include both in same namespace |
+
+## Model-Specific Compatibility Notes
+
+Generated agent code uses `BedrockModel(model_id=...)` via Strands. Different Claude model versions on Bedrock have different parameter requirements — the generated code must respect these or requests will return 400.
+
+### Opus 4.7 (`us.anthropic.claude-opus-4-7`)
+
+When generating code that will use Opus 4.7, the following are **removed and will 400 if sent**:
+- Sampling parameters: `temperature`, `top_p`, `top_k`
+- Extended thinking: `thinking.type: "enabled"` with `budget_tokens`
+
+Use these instead:
+- For thinking control: `thinking.type: "adaptive"` (default behavior — Claude decides depth)
+- For variance/determinism: tune via system prompt instructions, not sampling params
+- For thinking content display: add `thinking.display: "summarized"` if surfacing reasoning to users (default is `"omitted"` on 4.7)
+
+Token counting on 4.7 differs from 4.6 — same input produces higher token counts. Generated code should leave headroom in `max_tokens` and not assume 4.6-calibrated estimates.
+
+### Sonnet 4.6 / Opus 4.6 (`us.anthropic.claude-sonnet-4-6`, `us.anthropic.claude-opus-4-6`)
+
+`budget_tokens` is deprecated (still functional during migration) — use `thinking.type: "adaptive"` for new code. Assistant-turn prefills return 400 on both 4.6 models — use structured outputs (`output_config.format`) or system prompt instructions instead.
+
+### Haiku 4.5 (`us.anthropic.claude-haiku-4-5`)
+
+No `effort` parameter support — only Opus 4.5+ and Sonnet 4.6 accept it.
+
+### Generated Code Checklist
+
+When `MODEL_MAP` resolves to a 4.7 model, the converter should:
+1. Not emit `temperature=`, `top_p=`, `top_k=` parameters in BedrockModel construction
+2. Not emit `thinking={"type": "enabled", "budget_tokens": N}` — use `{"type": "adaptive"}` if thinking needed
+3. Allow generous `max_tokens` for output (Opus 4.7 supports up to 128K with streaming)
+
+For full migration details, see [Model Migration Guide](https://platform.claude.com/docs/en/about-claude/models/migration-guide).
