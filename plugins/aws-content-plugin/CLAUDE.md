@@ -52,6 +52,21 @@ workshop-agent → content-review-agent → Workshop Studio content
 | GitBook 5+ 챕터 | `content-gitbook` | Block-Parallel (Phase 3만) |
 | 프레젠테이션 + 다이어그램 + 문서 동시 요청 | `content-cross-type` | Cross-Type Parallel |
 
+### Subagent Spawn Policy
+
+**위 트리거 조건이 충족되면 subagent를 반드시 스폰합니다.** 다음 작업은 단일 응답으로 처리하지 말고 subagent로 위임:
+
+- 3+ 블록 프레젠테이션의 Phase 3 (Content Creation) — 블록당 1개 subagent를 병렬로 스폰
+- Phase 1 Research — explore, document-specialist, dependency-expert를 병렬로 스폰
+- 5+ 챕터 GitBook의 챕터별 작성 — 챕터당 1개 subagent
+- Cross-type 요청 (프레젠테이션 + 다이어그램 + 문서) — 콘텐츠 타입당 1개 subagent
+
+**Subagent를 스폰하지 않는 경우:**
+- 트리거 조건 미달 (예: 단일 블록, 30분 미만)
+- 사용자가 명시적으로 순차 실행 요청
+- 직접 read/grep으로 빠르게 해결 가능한 단순 작업
+- 순차 의존성이 있어 병렬화가 의미 없는 작업
+
 ### Multi-Phase Pipeline (프레젠테이션/워크숍)
 
 4단계 파이프라인으로 전문 에이전트가 역할을 분담합니다:

@@ -268,7 +268,7 @@ cw_logs = boto3.client(<span class="string">'logs'</span>)
 
     <span class="comment"># Bedrock Claude로 RCA 실행</span>
     response = bedrock.invoke_model(
-        modelId=<span class="string">'anthropic.claude-sonnet-4-6-20250514'</span>,
+        modelId=<span class="string">'anthropic.claude-sonnet-4-6'</span>,
         body=json.dumps({
             <span class="string">'messages'</span>: [{
                 <span class="string">'role'</span>: <span class="string">'user'</span>,

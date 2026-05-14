@@ -13,10 +13,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.5.1] - 2026-05-14
+
+### Changed
+- Migrate all plugin Bedrock model IDs from Claude 4.0 (`-4-20250514`) to current models (Opus 4.7, Sonnet 4.6, Haiku 4.5) in `agentcore-creator` MODEL_MAP and templates
+- Update generated agent code (`convert_plugin_to_agentcore.py`) to include 4.7-compatible defaults (`max_tokens=16000`, adaptive thinking guidance, no `temperature`/`top_p`/`top_k`)
+- Update `kiro-power-converter` model examples from `claude-sonnet-4` to `claude-sonnet-4-6`
+
+### Added
+- Add Model-Specific Compatibility Notes section to `agentcore-mapping-rules.md` (Opus 4.7 breaking changes, 4.6 deprecations, Haiku 4.5 limitations)
+- Add Model Selection Guide table to `agentcore-create/SKILL.md` Phase 2.1 with Bedrock model recommendations per task profile
+- Add Recommended Inference Defaults section to `agent-code-templates.md` with 4.7-specific defaults
+- Add Subagent Spawn Policy section to `aws-content-plugin/CLAUDE.md` (4.7 compatibility — explicit spawn/skip conditions)
+
+### Fixed
+- Fix invalid model ID `anthropic.claude-sonnet-4-6-20250514` in AIOps demo pages (date suffix was Claude 4.0 release date, not 4.6)
+
+## [1.5.0] - 2026-04-29
 
 ### Added
 - Add iterative refinement (rejection loop) for reactive-presentation quality validation ([#19](https://github.com/Atom-oh/oh-my-cloud-skills/pull/19))
+- Add pr-autofix skill to project-init plugin ([#23](https://github.com/Atom-oh/oh-my-cloud-skills/pull/23))
 
 ### Fixed
 - Fix PPTX theme extraction color palette using luminance-based selection instead of dk/lt slot names (handles inverted dark themes)
@@ -157,10 +174,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 이 문서는 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)를 기반으로 하며,
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 따릅니다.
 
-## [Unreleased]
+## [1.5.1] - 2026-05-14
+
+### Changed
+- 모든 플러그인의 Bedrock 모델 ID를 Claude 4.0 (`-4-20250514`)에서 최신 모델(Opus 4.7, Sonnet 4.6, Haiku 4.5)로 마이그레이션 (`agentcore-creator` MODEL_MAP 및 템플릿)
+- 생성되는 에이전트 코드(`convert_plugin_to_agentcore.py`)에 4.7 호환 기본값 적용 (`max_tokens=16000`, adaptive thinking 가이드, `temperature`/`top_p`/`top_k` 제거)
+- `kiro-power-converter` 모델 예시를 `claude-sonnet-4`에서 `claude-sonnet-4-6`로 업데이트
+
+### Added
+- `agentcore-mapping-rules.md`에 Model-Specific Compatibility Notes 섹션 추가 (Opus 4.7 breaking changes, 4.6 deprecations, Haiku 4.5 제약)
+- `agentcore-create/SKILL.md` Phase 2.1에 작업 프로필별 Bedrock 모델 추천 테이블 추가
+- `agent-code-templates.md`에 Recommended Inference Defaults 섹션과 4.7 specific defaults 추가
+- `aws-content-plugin/CLAUDE.md`에 Subagent Spawn Policy 섹션 추가 (4.7 호환 — 명시적 spawn/skip 조건)
+
+### Fixed
+- AIOps 데모 페이지의 잘못된 모델 ID `anthropic.claude-sonnet-4-6-20250514` 수정 (date suffix는 Claude 4.6이 아닌 Claude 4.0 출시일)
+
+## [1.5.0] - 2026-04-29
 
 ### Added
 - reactive-presentation 품질 검증을 위한 반복 개선(rejection loop) 추가 ([#19](https://github.com/Atom-oh/oh-my-cloud-skills/pull/19))
+- project-init 플러그인에 pr-autofix 스킬 추가 ([#23](https://github.com/Atom-oh/oh-my-cloud-skills/pull/23))
 
 ### Fixed
 - PPTX 테마 추출 색상 팔레트를 dk/lt 슬롯명 대신 휘도 기반 선택으로 수정 (반전된 다크 테마 처리)
