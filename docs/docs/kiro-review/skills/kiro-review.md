@@ -28,7 +28,7 @@ git diff --name-only HEAD~1
 
 ### Phase 2: Kiro 코드 리뷰 (위임)
 
-`/kiro-cli:review` 명령으로 Kiro에 일반 코드 리뷰를 위임합니다.
+`kiro-cli chat --no-interactive`(headless)로 Kiro CLI에 일반 코드 리뷰를 위임합니다(`git diff`를 파이프로 전달). 대화형 환경에서는 kiro-cli-plugin 래퍼 커맨드 `/kiro-cli:review`를 사용할 수 있습니다.
 
 ### Phase 3: Well-Architected 평가 (자체)
 
@@ -45,7 +45,7 @@ git diff --name-only HEAD~1
 
 ### Phase 4: 적대적 보안 리뷰 (위임)
 
-`/kiro-cli:review --adversarial`로 공격자 관점의 보안 감사를 실행합니다:
+`kiro-cli chat --no-interactive`로 적대적 보안 프롬프트를 전달해 공격자 관점의 보안 감사를 실행합니다(대화형 래퍼에서는 별도 커맨드 `/kiro-cli:adversarial-review`):
 - OWASP Top 10 취약점 스캔
 - AWS 특화 보안 체크 (SG, IAM, S3, Lambda)
 - 공격 표면 분석

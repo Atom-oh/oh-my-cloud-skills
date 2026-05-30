@@ -44,7 +44,7 @@
 - **Well-Architected 정렬** — 6-pillar 점수와 개선 권장 사항
 
 *프로젝트 스캐폴딩 (project-init):*
-- **8개 슬래시 명령** — /init-project, /sync-docs, /add-adr, /add-module, /add-runbook 등
+- **10개 슬래시 명령** — /init-project, /sync-docs, /add-adr, /add-module, /add-runbook, /add-reference-doc 등
 - **문서 품질 스코어링** — CLAUDE.md 품질 평가 (100점 척도)
 - **자동 동기화 워크플로우** — 코드 변경에 따라 문서를 동기화 유지
 
@@ -390,8 +390,8 @@ AWS/EKS 인프라 운영 및 트러블슈팅. 문제를 설명하면 — 노드 
 | `ops-troubleshoot` | "troubleshoot", "debug" | 5분 트리아지 → 조사 → 해결 → 포스트모텀 |
 | `ops-health-check` | "health check" | 6개 도메인 인프라 상태 점검 |
 | `ops-network-diagnosis` | "network issue" | VPC CNI, 로드밸런서, DNS 심층 진단 |
-| `ops-observability` | "monitoring setup" | CloudWatch, Prometheus, 로그 분석 |
-| `ops-security-audit` | "security audit" | IAM 감사, 네트워크 보안, 컴플라이언스 |
+| `ops-observability` | "monitoring setup", "opentelemetry", "devops agent" | CloudWatch/Prometheus/로그 + OSS 스택(OpenTelemetry, Grafana, Loki, Tempo, ClickHouse) + AWS DevOps Agent 인시던트 에스컬레이션 |
+| `ops-security-audit` | "security audit", "penetration testing" | IAM/네트워크/CIS 포스처 + AWS Security Agent(설계/코드 리뷰, 온디맨드 침투 테스트) |
 | `ops-wellarchitected-review` | "well-architected" | 6-pillar 평가, 100점 스코어링, AS-IS/TO-BE 로드맵 |
 
 ### MCP 연동
@@ -612,8 +612,8 @@ aws-ops-power/
 | `ops-troubleshoot` | 체계적 트러블슈팅 프레임워크, 장애 대응 절차 |
 | `ops-health-check` | 6개 도메인 인프라 상태 점검 |
 | `ops-network-diagnosis` | VPC CNI, 로드밸런서, DNS 심층 진단 참조 |
-| `ops-observability` | CloudWatch, Prometheus, 로그 분석 설정 |
-| `ops-security-audit` | IAM 감사, 네트워크 보안, 컴플라이언스 검사 절차 |
+| `ops-observability` | CloudWatch/Prometheus/로그 + OSS 스택(OpenTelemetry, Grafana, Loki, Tempo, ClickHouse) + AWS DevOps Agent 에스컬레이션 |
+| `ops-security-audit` | IAM/네트워크/CIS 포스처 + AWS Security Agent(설계/코드 리뷰, 온디맨드 침투 테스트) |
 | `ops-wellarchitected-review` | 6-pillar 평가, 100점 스코어링, AS-IS/TO-BE 로드맵 |
 
 ### 변환 및 스캐폴딩 스킬
@@ -758,12 +758,12 @@ plugins/
 │   └── skills/
 │       └── kiro-review/
 │
-└── project-init/                      # 프로젝트 스캐폴딩 (1 에이전트, 1 스킬, 8 명령)
+└── project-init/                      # 프로젝트 스캐폴딩 (1 에이전트, 2 스킬, 10 명령)
     ├── .claude-plugin/plugin.json
     ├── CLAUDE.md
     ├── agents/
     │   └── doc-sync-checker.md
-    ├── commands/                       # 8개 슬래시 명령
+    ├── commands/                       # 10개 슬래시 명령
     │   ├── init-project.md
     │   ├── sync-docs.md
     │   ├── add-adr.md

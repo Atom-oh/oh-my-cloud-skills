@@ -60,6 +60,59 @@ aws eks create-addon --cluster-name $CLUSTER_NAME --addon-name amazon-cloudwatch
 
 ---
 
+## Open-Source Observability Stack
+
+Beyond AWS-managed CloudWatch/AMP/AMG, the skill supports a self-managed
+open-source unified stack on EKS. See `references/opensource-observability.md`.
+
+| Signal | Components |
+|--------|------------|
+| Collection | **OpenTelemetry Collector** (DaemonSet for host metrics/logs + Deployment gateway) — vendor-neutral, routes to any backend |
+| Metrics | Prometheus + Grafana; long-term/HA via **VictoriaMetrics**, **Thanos**, or **Mimir** (all accept Prometheus remote-write, store on S3) |
+| Logs | **Loki** (LogQL) + Grafana |
+| Traces | **Tempo** or **Jaeger** |
+| Unified logs+traces+metrics | **ClickHouse**-backed telemetry via turnkey distros: **SigNoz**, **OpenObserve**, **Uptrace** (columnar OLAP store + SQL over telemetry behind an OTel pipeline) |
+
+The OTel Collector can also bridge OSS to AWS: the `awsemf` exporter feeds
+CloudWatch metrics and `awsxray` feeds X-Ray, while Prometheus remote-write feeds
+AMP and Grafana points at AMG.
+
+### Version Coupling (ClickHouse-backed stacks)
+
+ClickHouse-backed stacks are **tightly version-coupled** — the ClickHouse server,
+the OTel Collector `clickhouseexporter`, the Altinity operator (CHI CRD), and the
+turnkey distro (SigNoz/OpenObserve/Uptrace) must move together. Mixing versions
+causes silent schema mismatches, failed migrations, or dropped telemetry.
+
+- **Pin every version; never track `latest`.** Pin the Helm chart version and
+  record the `appVersion` it installs; pin the ClickHouse server image in the CHI spec.
+- For SigNoz/OpenObserve/Uptrace, pin the **distro** chart version and let it own
+  the ClickHouse version — do not independently upgrade ClickHouse under it.
+- Upgrade in order: **server → operator/exporter → distro**, one step at a time,
+  verifying `SHOW TABLES`/inserts between steps. Prefer ClickHouse **LTS** releases.
+
+---
+
+## AWS DevOps Agent Incident Escalation
+
+When an alarm/anomaly has no single obvious cause (multi-resource, unclear root
+cause), escalate to **AWS DevOps Agent** instead of guessing. It is a frontier
+agent (GA 2026-03-31) that correlates telemetry + code + deployment data and
+returns a root cause plus a mitigation plan. See `references/aws-devops-agent.md`.
+
+- **Agent Space** — logical container for account configs, tool integrations, and
+  access controls; created via the console or AWS CLI.
+- **Autonomous wiring** — connection chain **CloudWatch Alarm → EventBridge →
+  Lambda → DevOps Agent webhook** (HMAC-SHA256 signed). Other entry points include
+  Splunk alerts and manual operator queries.
+- **Programmatic trigger** — `aws devopsagent create-backlog-task --agent-space-id
+  <id> --title "..." --priority HIGH`; advance with
+  `aws devopsagent update-backlog-task --action approve-mitigation`.
+- **Mitigation plans** are emitted as Kiro-compatible specs with four phases:
+  **Prepare → Pre-Validate → Apply → Post-Validate**.
+
+---
+
 ## PromQL Alarm Rules Extended
 
 ### Alert Severity Levels

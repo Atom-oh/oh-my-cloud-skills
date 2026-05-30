@@ -63,6 +63,33 @@ flowchart TD
 - Pod Security Standards
 - Secret management
 
+### 4. Application Security — AWS Security Agent
+
+For application-layer security (beyond cluster/IAM posture), delegate to the **AWS
+Security Agent**, a frontier agent that proactively secures applications across the
+development lifecycle. See `references/aws-security-agent.md`.
+
+| Capability | Status | Notes |
+|------------|--------|-------|
+| On-demand penetration testing | **GA (2026-03-31)** | 6 regions: N. Virginia, Oregon, Ireland, Frankfurt, Sydney, Tokyo |
+| Design security review | Preview | Upload design docs → feedback vs org requirements |
+| Code security review (full repo + PR) | Preview | GitHub repos or S3 source; PR comments + auto fix PRs |
+
+- **Org security requirements** (approved auth libraries, logging standards,
+  data-access policies) are defined **once in the AWS Console** and enforced across
+  every review.
+- **Full API support** lets you embed reviews in **CI/CD**.
+- Penetration testing produces **proof-based** findings with reproducible exploit
+  paths and ready-to-merge fix PRs.
+
+#### Scope Split
+
+| Layer | Tool |
+|-------|------|
+| App design / code vulnerabilities / pentest | **AWS Security Agent** |
+| EKS / IAM / network / CIS posture | **This skill** |
+| Per-diff adversarial review during PRs | **`kiro-review` plugin** |
+
 ## Quick Audit Commands
 
 ```bash

@@ -5,7 +5,7 @@ title: "명령 목록"
 
 # Project Init 명령
 
-9개의 슬래시 명령으로 프로젝트 설정부터 문서 관리, PR 자동 수정까지 지원합니다.
+10개의 슬래시 명령으로 프로젝트 설정부터 문서 관리, 구현 참조 문서, PR 자동 수정까지 지원합니다.
 
 ## /init-project
 
@@ -85,6 +85,17 @@ git 태그와 커밋 히스토리를 분석하여 변경사항을 자동 분류�
 ```
 
 검증 항목: 코어 파일, 훅 설정, 스킬, 문서 커버리지, 보안, CLAUDE.md 품질, 테스트 구조
+
+## /add-reference-doc
+
+레이어별 구현 참조 문서 스켈레톤을 `docs/reference/`에 생성합니다. (upstream implementation-reference-docs 기능)
+
+```bash
+/add-reference-doc api              # 단일 레이어
+/add-reference-doc infrastructure data security  # 다중 레이어
+```
+
+유효 레이어(enum): `infrastructure`, `data`, `api`, `iac`, `frontend`, `ui`, `security`, `agent-llm`. `/init-project`의 Step 4.5(레이어 자동 감지)와 `/sync-docs`의 Phase 1.5(참조 문서 검증)가 이 기능과 연동됩니다.
 
 ## /pr-autofix
 

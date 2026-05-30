@@ -61,4 +61,4 @@ cp plugins/project-init/skills/pr-autofix/references/pr-review-workflow.yml \
 
 필요한 설정:
 - AWS Bedrock 자격 증명 — GitHub Secrets에 `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` 등록 (또는 `ANTHROPIC_API_KEY`로 직접 API 사용)
-- `vars.ANTHROPIC_MODEL` — GitHub Variables에 모델 ID 설정 (기본: `us.anthropic.claude-opus-4-7`)
+- `vars.ANTHROPIC_MODEL` — GitHub Variables에 모델 ID 설정 (기본: `us.anthropic.claude-opus-4-8`)

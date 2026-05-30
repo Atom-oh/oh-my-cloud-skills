@@ -44,7 +44,7 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 - **Well-Architected alignment** — 6-pillar scoring with improvement recommendations
 
 *Project Scaffolding (project-init):*
-- **8 slash commands** — /init-project, /sync-docs, /add-adr, /add-module, /add-runbook, and more
+- **10 slash commands** — /init-project, /sync-docs, /add-adr, /add-module, /add-runbook, /add-reference-doc, and more
 - **Documentation quality scoring** — CLAUDE.md quality assessment on 100-point scale
 - **Auto-sync workflows** — Keep documentation in sync with code changes
 
@@ -390,8 +390,8 @@ Infrastructure operations and troubleshooting for AWS/EKS environments. Describe
 | `ops-troubleshoot` | "troubleshoot", "debug" | Systematic 5-min triage → investigate → resolve → postmortem |
 | `ops-health-check` | "health check" | Full 6-domain infrastructure assessment |
 | `ops-network-diagnosis` | "network issue" | VPC CNI, Load Balancer, DNS deep diagnosis |
-| `ops-observability` | "monitoring setup" | CloudWatch, Prometheus, log analysis |
-| `ops-security-audit` | "security audit" | IAM audit, network security, compliance |
+| `ops-observability` | "monitoring setup", "opentelemetry", "devops agent" | CloudWatch/Prometheus/logs + OSS stack (OpenTelemetry, Grafana, Loki, Tempo, ClickHouse) + AWS DevOps Agent incident escalation |
+| `ops-security-audit` | "security audit", "penetration testing" | IAM/network/CIS posture + AWS Security Agent (design/code review, on-demand pentest) |
 | `ops-wellarchitected-review` | "well-architected" | 6-pillar assessment, 100-point scoring, AS-IS/TO-BE roadmap |
 
 ### MCP Integration
@@ -758,12 +758,12 @@ plugins/
 │   └── skills/
 │       └── kiro-review/
 │
-└── project-init/                      # Project scaffolding (1 agent, 1 skill, 8 commands)
+└── project-init/                      # Project scaffolding (1 agent, 2 skills, 10 commands)
     ├── .claude-plugin/plugin.json
     ├── CLAUDE.md
     ├── agents/
     │   └── doc-sync-checker.md
-    ├── commands/                       # 8 slash commands
+    ├── commands/                       # 10 slash commands
     │   ├── init-project.md
     │   ├── sync-docs.md
     │   ├── add-adr.md

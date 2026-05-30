@@ -22,7 +22,7 @@ Project Init는 Claude Code 프로젝트 구조 초기화, 문서 품질 스코�
 | `project-scaffolder` | Claude Code 프로젝트 구조 패턴 및 컨벤션 |
 | `pr-autofix` | PR 리뷰 피드백 자동 수정 (AI + 사람 리뷰 polling, 최대 3회 반복) |
 
-### 명령 (9개)
+### 명령 (10개)
 
 | 명령 | 설명 |
 |------|------|
@@ -31,6 +31,7 @@ Project Init는 Claude Code 프로젝트 구조 초기화, 문서 품질 스코�
 | `/add-adr` | Architecture Decision Record 생성 |
 | `/add-module` | 모듈 디렉토리 및 CLAUDE.md 추가 |
 | `/add-runbook` | 운영 런북 생성 |
+| `/add-reference-doc` | 레이어별 구현 참조 문서 스켈레톤 생성 (`docs/reference/`) |
 | `/generate-readme` | 이중 언어 README.md 생성/업데이트 |
 | `/generate-changelog` | 이중 언어 CHANGELOG.md 생성/업데이트 |
 | `/health-check` | 프로젝트 설정 검증 (200점 척도) |

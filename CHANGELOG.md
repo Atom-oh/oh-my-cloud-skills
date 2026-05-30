@@ -13,6 +13,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-05-30
+
+### Added
+- **AWS DevOps Agent** integration in `aws-ops-plugin` ops-observability — incident escalation via Agent Spaces, CloudWatch→EventBridge→Lambda→webhook wiring, `aws devopsagent create-backlog-task`, and Kiro-compatible mitigation plans ([#25](https://github.com/Atom-oh/oh-my-cloud-skills/pull/25))
+- **AWS Security Agent** integration in `aws-ops-plugin` ops-security-audit — design/code security review, on-demand penetration testing, org requirements, CI/CD API
+- Open-source observability reference in ops-observability — OpenTelemetry, Grafana, Loki, Tempo, ClickHouse, VictoriaMetrics/Thanos/Mimir — plus a Version Compatibility section (ClickHouse server ↔ OTel exporter ↔ operator ↔ distro pinning)
+- `/add-reference-doc` command and implementation-reference-docs workflow in `project-init` (synced from upstream): init-project Step 4.5, sync-docs Phase 1.5, doc-sync-checker validation
+- Opus 4.8 compatibility section in `agentcore-creator` mapping rules and code templates (4.6/4.7 retained as history)
+
+### Changed
+- Migrate `agentcore-creator` `opus` alias to `us.anthropic.claude-opus-4-8` (MODEL_MAP + mirrored docs); bump `agentcore-creator-agent` to opus; de-stale "most capable" 4.6/4.7 claims
+- Rewrite `kiro-review` Kiro CLI integration for Kiro CLI 2.5.0 — delegate via `kiro-cli chat --no-interactive` (headless) instead of the non-existent `Skill(skill: "kiro-cli:review")`; fix detection with `command -v kiro-cli`; drop over-provisioned `model: opus` pin (inherit parent session)
+- Harden `project-init` rsync exclude list so upstream sync no longer clobbers local CLAUDE.md/SKILL.md customizations
+- Bump all plugins and `marketplace.json` to 1.6.0
+
+### Fixed
+- `kiro-review`: add the missing delegation mechanism (`kiro-cli:review` is a slash command, not a skill); fix adversarial review (`/kiro-cli:adversarial-review`, not `review --adversarial`); guard `git diff | kiro-cli` pipes against empty-diff false PASS and kiro-cli runtime failure
+- `pr-autofix`: fix invalid `gh pr reviews` → `gh pr view --json reviews`; fix `&&/||` precedence that ran `npx tsc` with no `package.json`; fix fail-open build verification that hid compiler errors (now keeps stderr visible and blocks commit on failure); update model IDs/Co-Authored-By to Opus 4.8
+- Fix wrong Altinity ClickHouse operator Helm repo URL (`docs.altinity.com` → `helm.altinity.com`)
+
 ## [1.5.1] - 2026-05-14
 
 ### Changed
@@ -173,6 +193,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 이 프로젝트의 모든 주요 변경 사항은 이 파일에 기록됩니다.
 이 문서는 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)를 기반으로 하며,
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 따릅니다.
+
+## [1.6.0] - 2026-05-30
+
+### Added
+- `aws-ops-plugin` ops-observability에 **AWS DevOps Agent** 연동 — Agent Spaces, CloudWatch→EventBridge→Lambda→webhook 연결, `aws devopsagent create-backlog-task`, Kiro 호환 완화 계획을 통한 인시던트 에스컬레이션 ([#25](https://github.com/Atom-oh/oh-my-cloud-skills/pull/25))
+- `aws-ops-plugin` ops-security-audit에 **AWS Security Agent** 연동 — 설계/코드 보안 리뷰, 온디맨드 침투 테스트, 조직 보안 요구사항, CI/CD API
+- ops-observability에 오픈소스 observability 레퍼런스 추가 — OpenTelemetry, Grafana, Loki, Tempo, ClickHouse, VictoriaMetrics/Thanos/Mimir — 및 버전 호환성 섹션 (ClickHouse 서버 ↔ OTel exporter ↔ operator ↔ 디스트로 고정)
+- `project-init`에 `/add-reference-doc` 커맨드 및 implementation-reference-docs 워크플로우 추가 (upstream 동기화): init-project Step 4.5, sync-docs Phase 1.5, doc-sync-checker 검증
+- `agentcore-creator` 매핑 규칙/코드 템플릿에 Opus 4.8 호환성 섹션 추가 (4.6/4.7은 이력 보존)
+
+### Changed
+- `agentcore-creator` `opus` 별칭을 `us.anthropic.claude-opus-4-8`로 마이그레이션 (MODEL_MAP + 미러 문서); `agentcore-creator-agent`를 opus로 상향; "most capable" 4.6/4.7 표기 정리
+- `kiro-review`의 Kiro CLI 연동을 Kiro CLI 2.5.0 기준으로 재작성 — 존재하지 않는 `Skill(skill: "kiro-cli:review")` 대신 `kiro-cli chat --no-interactive`(headless) 위임; `command -v kiro-cli` 탐지로 수정; 과도한 `model: opus` 핀 제거
+- `project-init` rsync exclude 목록 강화 — upstream 동기화가 로컬 CLAUDE.md/SKILL.md 커스터마이징을 덮어쓰지 않도록
+- 모든 플러그인 및 `marketplace.json`을 1.6.0으로 상향
+
+### Fixed
+- `kiro-review`: 누락된 위임 메커니즘 추가 (`kiro-cli:review`는 스킬이 아닌 슬래시 커맨드); 적대적 리뷰 수정 (`/kiro-cli:adversarial-review`); `git diff | kiro-cli` 파이프의 빈 diff 거짓 PASS 및 kiro-cli 실패 가드
+- `pr-autofix`: 잘못된 `gh pr reviews` → `gh pr view --json reviews` 수정; `package.json` 없이 `npx tsc`가 실행되던 `&&/||` 우선순위 수정; 컴파일 에러를 숨기던 fail-open 빌드 검증 수정 (stderr 노출 + 실패 시 커밋 차단); 모델 ID/Co-Authored-By를 Opus 4.8로 갱신
+- 잘못된 Altinity ClickHouse operator Helm repo URL 수정 (`docs.altinity.com` → `helm.altinity.com`)
 
 ## [1.5.1] - 2026-05-14
 
