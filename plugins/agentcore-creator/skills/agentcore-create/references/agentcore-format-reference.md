@@ -73,8 +73,8 @@ async def invoke(payload, context):
     model = BedrockModel(
         model_id="<bedrock-model-id>",
         region_name="<region>",
-        max_tokens=16000,  # 4.7 compatible default; stream for >16K outputs
-        # For Opus 4.6/4.7: enable adaptive thinking when reasoning is needed
+        max_tokens=16000,  # 4.7/4.8 compatible default; stream for >16K outputs
+        # For Opus 4.6/4.7/4.8: enable adaptive thinking when reasoning is needed
         # additional_request_fields={"thinking": {"type": "adaptive"}},
     )
 
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     app.run()
 ```
 
-> **4.7 호환 주의사항**: Opus 4.7은 `temperature`/`top_p`/`top_k`와 `thinking.type: "enabled"` (with `budget_tokens`)를 거부합니다 (400 에러). 위 템플릿은 이를 모두 회피하며, adaptive thinking은 주석 처리되어 있어 필요시 활성화할 수 있습니다. 자세한 내용: `references/agentcore-mapping-rules.md` → Model-Specific Compatibility Notes.
+> **모던 Opus(4.7/4.8) 호환 주의사항**: Opus 4.7과 4.8은 `temperature`/`top_p`/`top_k`와 `thinking.type: "enabled"` (with `budget_tokens`)를 거부합니다 (400 에러). `opus` 별칭은 현재 4.8로 매핑됩니다. 위 템플릿은 이를 모두 회피하며, adaptive thinking은 주석 처리되어 있어 필요시 활성화할 수 있습니다. 자세한 내용: `references/agentcore-mapping-rules.md` → Model-Specific Compatibility Notes.
 
 ### agents/requirements.txt
 

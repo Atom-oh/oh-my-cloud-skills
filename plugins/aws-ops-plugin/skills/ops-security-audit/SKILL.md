@@ -1,12 +1,18 @@
 ---
 name: ops-security-audit
-description: "AWS/EKS security audit: IAM, network security, compliance checks"
+description: "AWS/EKS security audit: IAM, network security, compliance checks, plus AWS Security Agent (design/code review, on-demand penetration testing)"
 triggers:
   - "security audit"
   - "보안 점검"
   - "compliance"
   - "security review"
   - "보안 감사"
+  - "security agent"
+  - "시큐리티 에이전트"
+  - "penetration testing"
+  - "pentest"
+  - "code security review"
+  - "취약점 점검"
 model: sonnet
 allowed-tools:
   - Bash
@@ -37,6 +43,16 @@ Comprehensive security audit for AWS/EKS environments covering IAM, network, and
 - AWS security best practices
 - Pod security standards
 - Secret management
+
+### 4. Application Security — AWS Security Agent
+For application-layer security (beyond cluster/IAM posture), delegate to **AWS
+Security Agent** (frontier agent): design review, full-repo/PR code security
+review, and on-demand penetration testing validated with proof-based exploit
+paths + fix PRs. This skill covers cloud/cluster posture; Security Agent covers
+the app. See `references/aws-security-agent.md`.
+
+> Scope split: **AWS Security Agent** = app design/code/pentest · **this skill** =
+> EKS/IAM/network/CIS posture · **`kiro-review` plugin** = per-diff adversarial review.
 
 ## Quick Audit Commands
 
@@ -88,3 +104,4 @@ kubectl get svc -A -o json | jq '[.items[] | select(.spec.type=="LoadBalancer") 
 - `references/iam-audit.md` — IAM, IRSA, Pod Identity, RBAC audit
 - `references/network-security.md` — Security groups, network policies, VPC endpoints
 - `references/compliance-checklist.md` — CIS benchmark, best practices checklist
+- `references/aws-security-agent.md` — AWS Security Agent: design/code review, on-demand penetration testing, org requirements, CI/CD API

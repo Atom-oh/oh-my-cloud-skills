@@ -5,7 +5,7 @@
 #
 # Setup:
 #   1. Copy to .github/workflows/pr-review.yml
-#   2. Set repository variable ANTHROPIC_MODEL (e.g. us.anthropic.claude-opus-4-7)
+#   2. Set repository variable ANTHROPIC_MODEL (e.g. us.anthropic.claude-opus-4-8)
 #   3. Configure runner with AWS Bedrock access OR set ANTHROPIC_API_KEY secret
 #   4. Ensure CLAUDE.md exists at repo root for project context
 #
@@ -28,7 +28,7 @@ jobs:
       pull-requests: write
       contents: read
     env:
-      ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL || 'us.anthropic.claude-opus-4-7' }}
+      ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL || 'us.anthropic.claude-opus-4-8' }}
       CLAUDE_CODE_USE_BEDROCK: 1
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
     steps:

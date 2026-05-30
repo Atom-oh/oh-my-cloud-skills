@@ -3,6 +3,7 @@ name: doc-sync-checker
 description: Check if project documentation is in sync with current code state. Returns list of missing or outdated documents with quality scores.
 tools: Read, Glob, Grep, Bash(find:*), Bash(git log:*), Bash(ls:*)
 model: opus
+color: cyan
 ---
 
 # Documentation Sync Checker
@@ -183,3 +184,18 @@ Return a structured report:
 - P anti-patterns detected
 - Average quality score: XX/100 (after anti-pattern deductions)
 ```
+
+## Implementation Reference Validation
+
+In addition to CLAUDE.md and existing documents, examine `docs/reference/`:
+
+1. Enumerate `docs/reference/*.md` (excluding `INDEX.md`).
+2. For each file, parse the `### 4. Code Pointers` section. Extract path-like
+   tokens matching `[A-Za-z0-9_./-]+\.[A-Za-z0-9]+` containing at least one
+   `/`. Verify each exists on disk; report missing ones.
+3. Compare `docs/reference/INDEX.md` table inside the
+   `<!-- AUTO-MANAGED:index -->` block against the actual directory
+   listing. Report any mismatch.
+4. Report `<!-- TODO -->` marker counts per file (informational).
+
+Report findings in the same structured format used elsewhere in the agent.

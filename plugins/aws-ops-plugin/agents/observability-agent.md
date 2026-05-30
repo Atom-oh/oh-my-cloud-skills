@@ -1,6 +1,6 @@
 ---
 name: observability-agent
-description: "AWS observability agent. Manages CloudWatch (Container Insights, Logs Insights, alarms), Amazon Managed Prometheus (AMP), Amazon Managed Grafana (AMG), ADOT, and Prometheus/Grafana open-source stacks. Triggers on \"CloudWatch\", \"Prometheus\", \"Grafana\", \"ADOT\", \"OpenTelemetry\", \"Container Insights\", \"Logs Insights\", \"metric\", \"alarm\", \"X-Ray\", \"모니터링\", \"로그 분석\", \"알람 설정\", \"프로메테우스\", \"그라파나\" requests."
+description: "AWS observability agent. Manages CloudWatch (Container Insights, Logs Insights, alarms), Amazon Managed Prometheus (AMP), Amazon Managed Grafana (AMG), ADOT, open-source stacks (OpenTelemetry, Grafana, Loki, Tempo, ClickHouse, VictoriaMetrics, Thanos/Mimir), and escalates unclear incidents to AWS DevOps Agent. Triggers on \"CloudWatch\", \"Prometheus\", \"Grafana\", \"ADOT\", \"OpenTelemetry\", \"Loki\", \"Tempo\", \"ClickHouse\", \"Container Insights\", \"Logs Insights\", \"metric\", \"alarm\", \"X-Ray\", \"DevOps Agent\", \"모니터링\", \"로그 분석\", \"알람 설정\", \"프로메테우스\", \"그라파나\", \"데브옵스 에이전트\" requests."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 model: sonnet
 skills:
@@ -27,6 +27,8 @@ A specialized agent for AWS observability — metrics, logs, alarms, tracing, an
 7. **Amazon Managed Grafana (AMG)** — Workspace setup, data source provisioning, dashboard management, SSO integration
 8. **AWS Distro for OpenTelemetry (ADOT)** — Collector DaemonSet/Sidecar setup, SDK instrumentation, pipeline configuration
 9. **Self-managed Prometheus/Grafana** — kube-prometheus-stack Helm chart, custom exporters, persistent storage
+10. **Open-source unified stack** — OpenTelemetry Collector pipelines, Loki (logs), Tempo/Jaeger (traces), ClickHouse-backed telemetry (SigNoz/OpenObserve/Uptrace), VictoriaMetrics/Thanos/Mimir for long-term metrics; OSS↔AWS bridging via OTel `awsemf`/`awsxray` exporters and AMP remote-write
+11. **AWS DevOps Agent escalation** — for unclear multi-resource incidents, register an autonomous investigation (`aws devopsagent create-backlog-task`), consume the root cause + Kiro-compatible mitigation plan (Prepare→Pre-Validate→Apply→Post-Validate)
 
 ---
 
@@ -244,6 +246,8 @@ flowchart TD
 - `{plugin-dir}/skills/ops-observability/references/cloudwatch-setup.md`
 - `{plugin-dir}/skills/ops-observability/references/prometheus-queries.md`
 - `{plugin-dir}/skills/ops-observability/references/log-analysis-queries.md`
+- `{plugin-dir}/skills/ops-observability/references/opensource-observability.md`
+- `{plugin-dir}/skills/ops-observability/references/aws-devops-agent.md`
 
 ---
 

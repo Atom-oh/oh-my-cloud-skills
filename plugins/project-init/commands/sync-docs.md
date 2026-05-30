@@ -33,6 +33,31 @@ Launch the `doc-sync-checker` agent to analyze documentation gaps in parallel. T
 
 Use this report to prioritize updates in the following steps.
 
+### Phase 1.5: Implementation References
+
+Re-run the layer detection from `/init-project` Step 4.5 (signal matrix).
+For each detected layer, check `docs/reference/{layer}.md`:
+
+- **Missing file** for a detected layer → output:
+  `❌ {layer}.md missing — run /add-reference-doc {layer}`
+
+- **Existing file with Code Pointers** → for each path-like string under the
+  `### 4. Code Pointers` section that matches the regex
+  `[A-Za-z0-9_./-]+\.[A-Za-z0-9]+` with at least one `/`, verify the path
+  exists on disk. Report:
+  `⚠ {layer}.md: Code Pointer "<path>" not found in repo`
+
+- **TODO marker count** → report only (no grade):
+  `ℹ {layer}.md: 5 TODO markers remaining`
+
+- **INDEX.md drift** → regenerate the table inside
+  `<!-- AUTO-MANAGED:index -->` markers from the current
+  `docs/reference/*.md` listing. If contents differed, report:
+  `✓ INDEX.md auto-corrected (was out of sync)`
+
+This block reports and may rewrite **only** the AUTO-MANAGED region in
+INDEX.md. Layer files themselves are never modified by `/sync-docs`.
+
 ## Phase 2: CLAUDE.md Quality Assessment
 
 For each CLAUDE.md file found, evaluate quality against these criteria:

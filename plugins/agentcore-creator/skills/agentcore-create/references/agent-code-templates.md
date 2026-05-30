@@ -277,18 +277,18 @@ These defaults are applied by the conversion script and templates. Tune per use 
 | Parameter | Default | Tuning Notes |
 |-----------|---------|--------------|
 | `max_tokens` | 16000 | Use 64000 for long outputs (requires streaming). Truncation forces retries — don't lowball. |
-| `thinking` | omitted | For reasoning-heavy tasks on Opus 4.6/4.7, enable `{"type": "adaptive"}` |
-| `temperature` / `top_p` / `top_k` | NOT SET | Removed on Opus 4.7 (400 error). Use prompting for variance instead. |
+| `thinking` | omitted | For reasoning-heavy tasks on Opus 4.6/4.7/4.8, enable `{"type": "adaptive"}` |
+| `temperature` / `top_p` / `top_k` | NOT SET | Removed on Opus 4.7/4.8 (400 error). Use prompting for variance instead. |
 | `effort` (Opus 4.5+, Sonnet 4.6) | not set | `xhigh` for coding/agentic, `high` for intelligence-sensitive, `medium` for balanced |
 
-### Opus 4.7 Specific Defaults
+### Modern Opus (4.7 / 4.8) Specific Defaults
 
-When `{{bedrock_model_id}}` resolves to `us.anthropic.claude-opus-4-7`:
+When `{{bedrock_model_id}}` resolves to `us.anthropic.claude-opus-4-8` (the `opus` alias default) or `...-opus-4-7`:
 - Do NOT set `temperature`, `top_p`, `top_k` → 400 error
 - Do NOT use `thinking: {"type": "enabled", "budget_tokens": N}` → 400 error
 - Use `thinking: {"type": "adaptive"}` for reasoning control
 - To surface thinking content: add `thinking: {"type": "adaptive", "display": "summarized"}` (default is `"omitted"`)
-- Re-baseline `max_tokens` with `count_tokens()` — Opus 4.7 tokenizes more than 4.6
+- Re-baseline `max_tokens` with `count_tokens()` — do not reuse 4.6-calibrated estimates
 
 See `references/agentcore-mapping-rules.md` → Model-Specific Compatibility Notes for full breaking-change details.
 

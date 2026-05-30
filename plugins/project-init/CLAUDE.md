@@ -5,7 +5,8 @@ Core plugin providing project structure initialization, documentation quality sc
 
 ## Key Files
 - `.claude-plugin/plugin.json` - Plugin manifest (name, version, description)
-- `commands/init-project.md` - Main initialization command (10K+ lines)
+- `commands/init-project.md` - Main initialization command (project scaffolding, all generated files)
+- `commands/add-reference-doc.md` - Implementation reference doc skeleton generator (per-layer)
 - `commands/sync-docs.md` - Documentation synchronization
 - `commands/add-adr.md` - ADR creation
 - `commands/add-module.md` - Module scaffolding
@@ -27,14 +28,28 @@ Core plugin providing project structure initialization, documentation quality sc
 
 ```bash
 # Upstream 변경사항 확인
-git clone --depth 1 git@github.com:whchoi98/project-init.git /tmp/project-init-upstream
+git clone --depth 1 https://github.com/whchoi98/project-init.git /tmp/project-init-upstream
 diff -rq /tmp/project-init-upstream/plugins/project-init/ plugins/project-init/ \
-  --exclude=plugin.json  # plugin.json은 로컬에서 보강했으므로 제외
+  --exclude=plugin.json --exclude=CLAUDE.md --exclude=SKILL.md --exclude=readme-template.md
 
-# Upstream에서 업데이트 가져오기 (plugin.json 제외)
-rsync -av --exclude='.claude-plugin/plugin.json' \
+# Upstream에서 업데이트 가져오기 — 로컬에서 분기한 파일은 반드시 제외할 것.
+# (blanket rsync는 이들을 덮어써 로컬 커스터마이징/4.8 수정을 날림)
+rsync -av \
+  --exclude='.claude-plugin/plugin.json' \
+  --exclude='CLAUDE.md' \
+  --exclude='skills/project-scaffolder/SKILL.md' \
+  --exclude='skills/project-scaffolder/references/readme-template.md' \
   /tmp/project-init-upstream/plugins/project-init/ plugins/project-init/
 ```
+
+**로컬 분기 파일(동기화 제외 대상):**
+- `.claude-plugin/plugin.json` — 로컬에서 agents/skills/commands 배열 + version 보강
+- `CLAUDE.md` — 로컬 Upstream/version 섹션 보유
+- `skills/project-scaffolder/SKILL.md` — 로컬 전용 `writing-style-guide.md` 참조 라인 보유
+- `skills/project-scaffolder/references/readme-template.md` — 로컬은 `--`, upstream은 `—` 사용
+- `skills/pr-autofix/**`, `commands/pr-autofix.md` — 로컬 전용 기능(upstream에 없음, rsync가 건드리지 않음). 모델 ID는 Opus 4.8로 로컬 고정.
+
+> **모델 티어 메모**: `agents/doc-sync-checker.md`의 `model: opus`는 upstream과 동일하나, 작업 내용(기계적 doc 상태 비교/채점)에 비해 과도함. 비용 최적화하려면 **upstream(whchoi98/project-init)에서** `opus` 핀 제거(부모 세션 상속) 후 동기화 권장. 로컬 단독 변경은 동기화 시 되돌아감.
 
 ## Rules
 - All commands must have clear step-by-step instructions

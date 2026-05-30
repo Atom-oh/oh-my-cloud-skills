@@ -13,14 +13,12 @@ triggers:
   - "보안 리뷰"
   - "설계 검증"
   - "well-architected"
-model: opus
 allowed-tools:
   - Bash
   - Read
   - Write
   - Grep
   - Glob
-  - Agent
   - AskUserQuestion
 ---
 
@@ -30,20 +28,16 @@ Kiro CLI를 활용한 종합 아키텍처 심층 리뷰. 다중 관점(일반 �
 
 ## Prerequisites
 
-Kiro CLI 플러그인이 설치되어 있어야 합니다:
+이 스킬은 **Kiro CLI 바이너리**(`kiro-cli`, v2.5.0+ 기준)를 서브프로세스로 호출해 코드/보안 리뷰를 위임합니다. (kiro-cli-plugin 슬래시 커맨드 래퍼도 내부적으로 동일하게 `kiro-cli chat --no-interactive`를 사용합니다.)
+
 ```bash
-# 설치 확인
-claude /plugin list 2>/dev/null | grep -i kiro-cli || echo "kiro-cli-plugin not installed"
+# Kiro CLI 설치 및 headless 인증 확인
+command -v kiro-cli >/dev/null 2>&1 && echo "kiro-cli installed" || echo "kiro-cli NOT installed"
+[ -n "$KIRO_API_KEY" ] && echo "headless auth OK" || echo "KIRO_API_KEY not set (headless 불가)"
 ```
 
-설치되지 않은 경우 사용자에게 안내:
-```
-/plugin marketplace add https://github.com/whchoi98/kiro-cli-plugin
-/plugin install kiro-cli@kiro-cli-plugin
-/reload-plugins
-```
-
-Kiro CLI가 없어도 Phase 1(코드 분석), Phase 3(AWS Well-Architected), Phase 5(종합 보고서)는 독립 실행 가능합니다.
+- 설치/사용법: https://kiro.dev/docs/cli/ — headless(비대화형) 호출은 `KIRO_API_KEY` 필요(Kiro Pro/Pro+/Power 구독).
+- `kiro-cli`가 없거나 `KIRO_API_KEY` 미설정 시: Phase 1(코드 분석), Phase 3(Well-Architected), Phase 5(보고서)와 Phase 2/4의 **자체 패턴 스캔 폴백**으로 독립 실행됩니다.
 
 ---
 
@@ -102,19 +96,23 @@ git log --oneline main...HEAD 2>/dev/null || git log --oneline -10
 
 Kiro CLI에 변경사항 리뷰를 위임합니다.
 
-### Step 1: Kiro CLI 설치 확인
+### Step 1: Kiro CLI 사용 가능 여부 확인
 
 ```bash
-# kiro-cli 스킬 존재 여부 확인
-claude /skill list 2>/dev/null | grep -i kiro-cli || echo "NOT_INSTALLED"
+command -v kiro-cli >/dev/null 2>&1 && [ -n "$KIRO_API_KEY" ] && echo "AVAILABLE" || echo "NOT_AVAILABLE"
 ```
 
 ### Step 2: 일반 코드 리뷰 위임
 
-**Kiro CLI가 설치된 경우**: Skill 도구를 사용하여 kiro-cli의 review 스킬을 직접 호출합니다.
+**Kiro CLI 사용 가능 시**: `Bash`로 `kiro-cli`를 headless 호출하여 diff를 리뷰합니다.
 
-> **IMPORTANT**: 반드시 `Skill` 도구를 사용하여 `kiro-cli:review` 스킬을 호출하세요.
-> 텍스트로 "/kiro-cli:review"를 출력하는 것이 아니라, Skill tool의 skill 파라미터에 `"kiro-cli:review"`를 전달해야 합니다.
+```bash
+git diff main...HEAD 2>/dev/null \
+  | kiro-cli chat --no-interactive --trust-tools=read,grep \
+    "Review this code diff. Report findings as: [SEVERITY] file:line — description. Cover code quality (complexity, duplication, naming), error handling (missing catches, bad fallbacks), test coverage, and new-dependency license/security risks."
+```
+
+> **주의**: `kiro-cli:review`는 kiro-cli-plugin이 노출하는 **슬래시 커맨드**(스킬 아님)입니다. 자동 위임에는 위처럼 `kiro-cli chat --no-interactive`를 직접 호출하세요. 대화형 환경에서 래퍼를 쓰려면 사용자가 `/kiro-cli:review`를 실행합니다.
 
 Kiro가 반환하는 리뷰 항목:
 - 코드 품질 (복잡도, 중복, 네이밍)
@@ -205,13 +203,17 @@ grep -rn "^USER root\|^FROM.*AS root" --include="Dockerfile*" 2>/dev/null
 
 ### Kiro 적대적 리뷰 위임
 
-**Kiro CLI가 설치된 경우**: Skill 도구로 적대적 보안 리뷰를 위임합니다.
+**Kiro CLI 사용 가능 시**: `Bash`로 적대적 보안 리뷰 프롬프트를 headless 호출합니다.
 
-> **IMPORTANT**: `Skill` 도구를 사용하여 `kiro-cli:review` 스킬을 호출하되,
-> args 파라미터에 `"--adversarial"` 또는 `"adversarial security review"` 를 전달합니다.
-> 예: `Skill(skill: "kiro-cli:review", args: "--adversarial")`
+```bash
+git diff main...HEAD 2>/dev/null \
+  | kiro-cli chat --no-interactive --trust-tools=read,grep \
+    "Perform an ADVERSARIAL security review from an attacker's perspective. Check: auth bypass / JWT validation, injection (SQL/command/XSS), privilege escalation (RBAC, horizontal/vertical), data exfiltration (secrets in logs/errors), supply-chain (unverified deps), misconfig (CORS, debug exposed). Report [SEVERITY] file:line — description."
+```
 
-Kiro CLI가 없으면 아래 체크리스트와 자동 탐지 패턴으로 자체 수행합니다.
+> kiro-cli-plugin 래퍼에서 적대적 리뷰는 별도 커맨드 `/kiro-cli:adversarial-review`입니다(대화형 사용 시). 자동 위임은 위 headless 호출을 사용합니다.
+
+Kiro CLI를 쓸 수 없으면 아래 체크리스트와 자동 탐지 패턴으로 자체 수행합니다.
 
 ### 적대적 리뷰 체크리스트
 
@@ -306,8 +308,7 @@ git diff main...HEAD 2>/dev/null | grep -n "^\+" | grep -iE \
 
 Kiro의 Spec-driven 개발 기능과 연계하여 요구사항부터 검증합니다.
 
-> **IMPORTANT**: `Skill` 도구를 사용하여 `kiro-cli:spec` 스킬을 호출하세요.
-> 예: `Skill(skill: "kiro-cli:spec")`
+> **위임**: `Bash`로 `kiro-cli chat --no-interactive "<spec 요청>"`을 호출합니다(또는 대화형에서 래퍼 커맨드 `/kiro-cli:spec`). `kiro-cli:spec`은 스킬이 아니라 슬래시 커맨드입니다.
 
 EARS(Easy Approach to Requirements Syntax) 기반:
 1. **요구사항 정의** -> EARS 형식으로 구조화

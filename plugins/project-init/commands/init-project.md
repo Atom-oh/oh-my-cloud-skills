@@ -100,6 +100,61 @@ Read the template from [references/claude-md-template.md](../skills/project-scaf
 
 Always include Auto-Sync Rules section.
 
+## Step 4.5: Implementation Reference Detection
+
+Before generating files, detect which implementation layers apply to this
+project and produce skeletons under `docs/reference/`. This runs the same
+logic as `/add-reference-doc`, applied to a detected layer set the user
+confirms.
+
+### 4.5.a Detection signal matrix
+
+| Layer | Detect when ANY present |
+|---|---|
+| infrastructure | `Dockerfile`, `docker-compose.yml`, `compose.yaml`, `k8s/`, `helm/` |
+| data | `migrations/`, `prisma/`, `schema.sql`, `*.prisma`, `models/`, `entities/`, `db/` |
+| api | `routes/`, `controllers/`, `api/`, `openapi.yaml`, `*.proto`, `swagger.json` |
+| iac | `*.tf`, `cdk.json`, `template.yaml`, `serverless.yml`, `terragrunt.hcl` |
+| frontend | `package.json` deps with react/vue/svelte/next/nuxt/angular, `index.html`, `vite.config.*` |
+| ui | (frontend detected) AND any of `components/`, `styles/`, `tailwind.config.*`, `*.css`/`*.scss` |
+| security | `.env.example`, `auth/`, `middleware/`, `permissions/`, `iam/`, `policies/` — **always pre-checked** |
+| agent-llm | `prompts/`, package deps with anthropic/openai/langchain/bedrock |
+
+### 4.5.b Confirmation prompt
+
+Print detection results and ask the user to confirm or edit:
+
+```
+Detected implementation layers:
+  ✓ Infrastructure (Dockerfile)
+  ✓ API (routes/)
+  ✓ Security (.env.example) — auto-recommended
+  ─ Data — not detected
+  ...
+
+Proceed with detected set, or adjust? (a)ccept / (e)dit
+```
+
+On `(e)dit`, present a multi-select prompt with each layer pre-checked per
+detection, allowing toggle. Empty projects (zero detections) show all layers
+unchecked except Security, plus the note: *"More layers can be added later
+with /add-reference-doc <layer>."*
+
+### 4.5.c Generation
+
+For each selected layer:
+- Extract its skeleton from
+  `plugins/project-init/skills/project-scaffolder/references/reference-doc-template.md`
+  (fenced block under `## Layer: {layer}`)
+- Substitute variables: `{{COMPONENTS_TABLE}}` rows from detected paths;
+  `{{CODE_POINTERS_AUTO}}` from top 1-3 detected files
+- Write to `docs/reference/{layer}.md`
+- **If file exists**: skip silently and log `(existing, kept)`
+
+After all layer files: regenerate `docs/reference/INDEX.md` (AUTO-MANAGED
+region) and upsert `## Implementation References` block in root
+`CLAUDE.md` between `<!-- AUTO-MANAGED:references -->` markers.
+
 ## Step 5: Generate .claude/settings.json and All Hooks
 
 Read [references/settings-json-template.md](../skills/project-scaffolder/references/settings-json-template.md) and create `.claude/settings.json` with all hook registrations (SessionStart, PreToolUse, PostToolUse, Notification).
@@ -217,10 +272,36 @@ If `README.md` already exists, read it to preserve user-specific content.
 - Demo image/GIF path (optional)
 
 Generate `README.md` with bilingual (English/Korean) structure:
-1. Top layout: project name (h1), shields.io badges (license, version, language toggle), bilingual one-line description
-2. `# English` section with all applicable sections (Overview, Features, Prerequisites, Installation, Usage, Project Structure, Testing, Contributing, License, Contact)
-3. `# 한국어` section with identical structure in Korean
-4. No emojis, code blocks with language tags, 경어체 for Korean, imperative for English
+1. Top layout: project name (h1), shields.io badges (license, build status, version, language toggle), bilingual one-line description
+2. `# English` section with applicable sections in this exact order:
+   1. `## Overview` (required)
+   2. `## Features` (required) -- format: `- **Feature name** — Description`
+   3. `## Prerequisites` (required)
+   4. `## Installation` (required)
+   5. `## Usage` (required)
+   6. `## Configuration` (only when env vars exist; table: Variable | Description | Default)
+   7. `## Project Structure` (recommended; tree code block with English comments)
+   8. `## Testing` (only when tests exist)
+   9. `## API Documentation` (only when an API exists)
+   10. `## Contributing` (required; 5-step Fork->Branch->Commit->Push->PR with Conventional Commits example)
+   11. `## License` (required; link to LICENSE file)
+   12. `## Contact` (required; maintainer GitHub profile, Issues page, email)
+3. `# 한국어` section with identical structure in Korean (Korean section uses Korean tree comments in Project Structure)
+4. No emojis anywhere, code blocks with language tags, 경어체 for Korean, imperative for English
+5. Language toggle uses HTML `<a><img></a>` linking to ASCII anchors `#english` and `#korean` (per ADR-002), with explicit `<a id="english">` / `<a id="korean">` sentinel tags before each language heading
+
+### Step 12 Validation Checklist
+
+Before completing, verify the generated README satisfies:
+- [ ] All required sections present in both language sections (12-section table above)
+- [ ] Both language sections contain identical structure, code blocks, tables, and directory trees
+- [ ] Language toggle uses ASCII anchors (`#english`, `#korean`) with explicit sentinel tags
+- [ ] Features use em-dash `—` separator
+- [ ] Configuration table format matches `Variable | Description | Default`
+- [ ] Contributing section includes Fork->Branch->Commit->Push->PR five steps and Conventional Commits example (`feat:`, `fix:`)
+- [ ] No emojis in headings or body
+- [ ] Code blocks specify the language (```bash, ```typescript, etc.)
+- [ ] Shields.io badges reflect actual license and version values
 
 ## Step 13: Generate CHANGELOG.md (Bilingual)
 
@@ -236,14 +317,47 @@ git log --oneline -30 2>/dev/null
 ```
 
 Generate `CHANGELOG.md` with bilingual (English/Korean) structure:
-1. Title: `# Changelog` with language toggle badges
-2. `# English` section: introductory statement, `[Unreleased]`, version sections (newest first), reference links
-3. `# 한국어` section: identical structure with Korean descriptions
-4. Categorize changes under standard headings (Added, Changed, Deprecated, Removed, Fixed, Security)
-5. Category headings stay in English in both sections (Keep a Changelog convention)
-6. English entries use imperative verbs, Korean entries use 명사형 종결
+1. Title: `# Changelog` (h1) with language toggle badges (shields.io, link to `#english` and `#korean` anchors)
+2. Horizontal rule, then `<a id="english"></a>` sentinel, then `# English` heading
+3. `# English` section in this order:
+   1. Introductory statement (exact text):
+      ```
+      All notable changes to this project will be documented in this file.
+      The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+      and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+      ```
+   2. `## [Unreleased]` heading (always present, even if empty)
+   3. Version sections in reverse chronological order: `## [X.Y.Z] - YYYY-MM-DD`
+   4. Within each version, h3 category headings (only those with items): `### Added`, `### Changed`, `### Deprecated`, `### Removed`, `### Fixed`, `### Security`
+   5. Reference links at the bottom: `[Unreleased]`, `[X.Y.Z]`, ... pointing to GitHub `compare/...` URLs
+4. Horizontal rule, then `<a id="korean"></a>` sentinel, then `# 한국어` heading
+5. `# 한국어` section with identical version list and identical reference links; introductory statement (exact Korean text):
+   ```
+   이 프로젝트의 모든 주요 변경 사항은 이 파일에 기록됩니다.
+   이 문서는 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)를 기반으로 하며,
+   [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 따릅니다.
+   ```
+6. Category headings stay in English in both sections (Keep a Changelog convention; do not translate `Added`, `Fixed`, etc.)
+7. English entries use imperative verbs ("Add plugin system", "Fix symlink error")
+8. Korean entries use 명사형 종결 ("플러그인 시스템 추가", "심링크 오류 수정")
+9. Breaking changes get `**BREAKING:**` prefix in both sections
+10. Issue/PR references appended in parentheses: `([#42](https://github.com/<user>/<repo>/pull/42))`
 
-If this is a new project with no tags or history, create the template with an empty `[Unreleased]` section.
+If this is a new project with no tags or history, create the template with an empty `[Unreleased]` section in both language blocks.
+
+### Step 13 Validation Checklist
+
+Before completing, verify the generated CHANGELOG satisfies:
+- [ ] Title is exactly `# Changelog`
+- [ ] Both language sections contain the introductory statement (English text in `# English`, Korean text in `# 한국어`)
+- [ ] Both language sections contain `## [Unreleased]` heading
+- [ ] Versions appear in reverse chronological order in both sections
+- [ ] Category headings (`### Added`, `### Fixed`, etc.) are in English in both sections (no translation)
+- [ ] Dates use ISO 8601 (`YYYY-MM-DD`)
+- [ ] Reference links at the bottom of each section point to GitHub `compare/...` URLs (or `releases/tag/...` for the first version)
+- [ ] Language toggle uses ASCII anchors (`#english`, `#korean`) with explicit sentinel tags
+- [ ] No emojis, no commit-log copy-paste, no vague phrases ("various fixes")
+- [ ] Internal-only changes (test additions, CI changes) are excluded
 
 ## Step 14: Generate Other Supporting Files
 
