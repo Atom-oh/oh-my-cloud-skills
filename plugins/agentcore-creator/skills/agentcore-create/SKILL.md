@@ -15,7 +15,7 @@ triggers:
   - "deploy agent"
   - "베드락 에이전트"
   - "런타임 배포"
-model: sonnet
+model: opus
 allowed-tools:
   - Read
   - Write
@@ -146,12 +146,12 @@ Based on the approved concept, design the agent's components:
 
 | Task profile | Recommended model | Notes |
 |---|---|---|
-| Coding, agentic loops, long-horizon work | `us.anthropic.claude-opus-4-7` | Most capable; on Bedrock with extended thinking, use adaptive thinking. Budget for higher token counts than 4.6. |
+| Coding, agentic loops, long-horizon work | `us.anthropic.claude-opus-4-8` | Current most-capable Opus; on Bedrock with extended thinking, use adaptive thinking. Budget generously for output tokens. |
 | Most production workloads (balanced) | `us.anthropic.claude-sonnet-4-6` | Best speed/intelligence balance. Supports adaptive thinking. |
 | High-volume simple tasks | `us.anthropic.claude-haiku-4-5` | Fastest, lowest cost. No `effort` parameter support. |
-| Complex reasoning with cost flexibility | `us.anthropic.claude-opus-4-7` | When correctness matters more than latency |
+| Complex reasoning with cost flexibility | `us.anthropic.claude-opus-4-8` | When correctness matters more than latency |
 
-> **Note on Opus 4.7 deployment**: Generated code must NOT include `temperature`, `top_p`, `top_k`, or `thinking.type: "enabled"` with `budget_tokens` — these return 400 errors on 4.7. Use `thinking.type: "adaptive"` for reasoning depth control. See `references/agentcore-mapping-rules.md` → Model-Specific Compatibility Notes.
+> **Note on modern Opus (4.7/4.8) deployment**: Generated code must NOT include `temperature`, `top_p`, `top_k`, or `thinking.type: "enabled"` with `budget_tokens` — these return 400 errors on Opus 4.7 and 4.8. Use `thinking.type: "adaptive"` for reasoning depth control. 4.6/4.7 remain valid for pinned deployments. See `references/agentcore-mapping-rules.md` → Model-Specific Compatibility Notes.
 
 **Skill definition** — Propose the SKILL.md structure:
 - Trigger phrases (Korean + English)

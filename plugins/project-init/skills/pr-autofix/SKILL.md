@@ -65,8 +65,10 @@ Verify the comment's `updated_at` timestamp is after the last push to ensure it 
 **Human Review:**
 
 ```bash
-gh pr reviews "$PR_NUMBER" --json author,state,body,submittedAt \
-  --jq '.[] | select(.state == "CHANGES_REQUESTED" or .state == "APPROVED")'
+# NOTE: `gh pr reviews` does not exist — reviews are read via `gh pr view --json reviews`.
+gh pr view "$PR_NUMBER" --json reviews \
+  --jq '.reviews[] | select(.state == "CHANGES_REQUESTED" or .state == "APPROVED")
+        | {author: .author.login, state, body, submittedAt}'
 ```
 
 Also read inline review comments (line-level feedback):
@@ -114,11 +116,19 @@ Read all blocking feedback and the current diff. Fix issues from both sources:
 - Verify the fix compiles/builds before committing:
 
 ```bash
-# Detect project type and verify build
-[ -f go.mod ] && go build ./...
-[ -f package.json ] && npm run build 2>/dev/null || npx tsc --noEmit 2>/dev/null
-[ -f pyproject.toml ] && python3 -m py_compile $(git diff --name-only --diff-filter=M -- '*.py')
-[ -f Cargo.toml ] && cargo check
+# Verify the build BEFORE committing. Each check is self-contained so a missing
+# manifest never falls through to another toolchain (grouped to avoid the
+# `A && B || C` precedence trap). Compiler output is kept VISIBLE — the agent must
+# read errors to fix them — and failure is recorded so the agent does NOT commit.
+BUILD_OK=1
+[ -f go.mod ]       && { go build ./...                   || BUILD_OK=0; }
+[ -f package.json ] && { npm run build || npx tsc --noEmit || BUILD_OK=0; }
+if [ -f pyproject.toml ]; then
+  PY=$(git diff --name-only --diff-filter=M -- '*.py')
+  [ -n "$PY" ] && { python3 -m py_compile $PY             || BUILD_OK=0; }
+fi
+[ -f Cargo.toml ]   && { cargo check                      || BUILD_OK=0; }
+[ "$BUILD_OK" = 1 ] || echo "BUILD FAILED — read the errors above, fix them, and do NOT commit until the build passes."
 ```
 
 ### 5. Commit and push
@@ -127,7 +137,7 @@ Read all blocking feedback and the current diff. Fix issues from both sources:
 git add <changed-files>
 git commit -m "fix: address review feedback (iteration N/3)
 
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 git push
 ```
 
@@ -159,6 +169,6 @@ references/pr-review-workflow.yml
 ```
 
 Copy it to your project's `.github/workflows/pr-review.yml` and configure:
-1. Set `ANTHROPIC_MODEL` in repository variables (e.g., `us.anthropic.claude-opus-4-7`)
+1. Set `ANTHROPIC_MODEL` in repository variables (e.g., `us.anthropic.claude-opus-4-8`)
 2. Ensure the runner has AWS Bedrock access (or set `ANTHROPIC_API_KEY` for direct API)
 3. Grant `pull-requests: write` and `contents: read` permissions

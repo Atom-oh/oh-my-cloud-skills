@@ -1,6 +1,6 @@
 {
   "name": "project-init",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "Initialize and maintain Claude Code project structures with adaptive project detection, CLAUDE.md quality scoring, and auto-sync documentation workflows",
   "author": {
     "name": "whchoi98",
@@ -22,6 +22,7 @@
     "./commands/generate-readme.md",
     "./commands/generate-changelog.md",
     "./commands/health-check.md",
-    "./commands/pr-autofix.md"
+    "./commands/pr-autofix.md",
+    "./commands/add-reference-doc.md"
   ]
 }

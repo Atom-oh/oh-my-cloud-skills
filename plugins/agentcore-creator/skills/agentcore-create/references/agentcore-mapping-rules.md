@@ -11,7 +11,7 @@ Field-by-field conversion rules for transforming Claude Code plugin components i
 | `name` | Agent name | Preserve as-is; validate against AgentCore naming rules (alphanumeric + hyphens, 1-128 chars) |
 | `description` | Agent description | Preserve; strip trigger keyword list (moved to routing config) |
 | `tools` | Tool permissions | Map to AgentCore tool list: `Read`/`Glob`/`Grep` -> knowledge retrieval, `Bash` -> code execution, `Write`/`Edit` -> file operations |
-| `model` | Bedrock model ID | `sonnet` -> `us.anthropic.claude-sonnet-4-6`, `opus` -> `us.anthropic.claude-opus-4-7`, `haiku` -> `us.anthropic.claude-haiku-4-5` |
+| `model` | Bedrock model ID | `sonnet` -> `us.anthropic.claude-sonnet-4-6`, `opus` -> `us.anthropic.claude-opus-4-8`, `haiku` -> `us.anthropic.claude-haiku-4-5` (keep in sync with `MODEL_MAP` in `scripts/convert_plugin_to_agentcore.py`) |
 | `skills` | System prompt sections | Each referenced skill's SKILL.md body merged into system prompt |
 | `mcpServers` | Gateway targets | Each server becomes a Gateway target definition |
 
@@ -169,6 +169,17 @@ agentcore destroy       # Tear down
 
 Generated agent code uses `BedrockModel(model_id=...)` via Strands. Different Claude model versions on Bedrock have different parameter requirements — the generated code must respect these or requests will return 400.
 
+### Opus 4.8 (`us.anthropic.claude-opus-4-8`) — current target for the `opus` alias
+
+Opus 4.8 is the current most-capable Opus and is what the `opus` alias resolves to in `MODEL_MAP`. It inherits the Opus 4.7 parameter contract:
+
+- **Removed and will 400 if sent**: sampling params `temperature`, `top_p`, `top_k`; extended thinking `thinking.type: "enabled"` with `budget_tokens`.
+- For thinking control: `thinking.type: "adaptive"`. For thinking display: `thinking.display: "summarized"` (default `"omitted"`).
+- `effort` is supported (Opus 4.5+): `xhigh` for coding/agentic, `high` for intelligence-sensitive, `medium` for balanced.
+- Budget output tokens generously; re-baseline `max_tokens` with `count_tokens()` rather than reusing 4.6/4.7 estimates.
+
+> Confirm the exact Bedrock inference-profile ID and any 4.8-specific output ceiling against the current AWS Bedrock model catalog before pinning in production. 4.6/4.7 remain valid IDs for deployments that must stay pinned.
+
 ### Opus 4.7 (`us.anthropic.claude-opus-4-7`)
 
 When generating code that will use Opus 4.7, the following are **removed and will 400 if sent**:
@@ -192,9 +203,9 @@ No `effort` parameter support — only Opus 4.5+ and Sonnet 4.6 accept it.
 
 ### Generated Code Checklist
 
-When `MODEL_MAP` resolves to a 4.7 model, the converter should:
+When `MODEL_MAP` resolves to a modern Opus model (4.7 or 4.8), the converter should:
 1. Not emit `temperature=`, `top_p=`, `top_k=` parameters in BedrockModel construction
 2. Not emit `thinking={"type": "enabled", "budget_tokens": N}` — use `{"type": "adaptive"}` if thinking needed
-3. Allow generous `max_tokens` for output (Opus 4.7 supports up to 128K with streaming)
+3. Allow generous `max_tokens` for output (modern Opus supports large outputs with streaming — confirm the ceiling for the pinned model)
 
 For full migration details, see [Model Migration Guide](https://platform.claude.com/docs/en/about-claude/models/migration-guide).

@@ -1,6 +1,6 @@
 ---
 name: ops-observability
-description: "AWS/EKS observability setup and analysis: CloudWatch, Prometheus, log analysis"
+description: "AWS/EKS observability setup and analysis: CloudWatch, Prometheus, open-source stack (OpenTelemetry, Grafana, Loki, Tempo, ClickHouse), and AWS DevOps Agent incident escalation"
 triggers:
   - "monitoring"
   - "모니터링"
@@ -8,6 +8,15 @@ triggers:
   - "알람"
   - "observability"
   - "logs insights"
+  - "opentelemetry"
+  - "otel"
+  - "grafana"
+  - "clickhouse"
+  - "오픈소스 모니터링"
+  - "distributed tracing"
+  - "devops agent"
+  - "데브옵스 에이전트"
+  - "incident investigation"
 model: sonnet
 allowed-tools:
   - Bash
@@ -41,6 +50,13 @@ Route to appropriate reference for setup procedures.
 ### Step 3: Create Queries and Alarms
 Use reference files for query templates and threshold guidelines.
 
+### Step 4: Escalate Unclear Incidents to AWS DevOps Agent
+When an alarm/anomaly has no single obvious cause (multi-resource, unclear RCA),
+register an **AWS DevOps Agent** investigation instead of guessing. It correlates
+telemetry + code + deployment data and returns a root cause + Kiro-compatible
+mitigation plan. See `references/aws-devops-agent.md` (wiring, `aws devopsagent
+create-backlog-task`, Slack/console/CLI surfaces).
+
 ## Monitoring Stack Decision Tree
 
 ```mermaid
@@ -54,8 +70,15 @@ graph TD
     G -->|Small < 50 nodes| H[Prometheus + Grafana self-managed]
     G -->|Large 50+ nodes| I[AMP + AMG managed]
     A --> J{Tracing needed?}
-    J -->|Yes| K[ADOT + X-Ray]
+    J -->|Yes, AWS| K[ADOT + X-Ray]
+    J -->|Yes, OSS| L[OpenTelemetry → Tempo/Jaeger/ClickHouse]
+    B -->|Prefer OSS unified| M[OTel Collector → Prometheus/Loki/ClickHouse + Grafana]
+    A --> N{Unclear multi-resource incident?}
+    N -->|Yes| O[Escalate to AWS DevOps Agent]
 ```
+
+OSS stack setup (OpenTelemetry, Grafana, Loki, Tempo, ClickHouse, VictoriaMetrics,
+Thanos/Mimir): see `references/opensource-observability.md`.
 
 ## Common Issues
 
@@ -130,3 +153,5 @@ aws cloudwatch put-metric-alarm --alarm-name "$CLUSTER_NAME-high-cpu" --namespac
 - `references/cloudwatch-setup.md` — Container Insights, log groups, dashboards
 - `references/prometheus-queries.md` — PromQL alert rules for EKS
 - `references/log-analysis-queries.md` — CloudWatch Logs Insights query templates
+- `references/opensource-observability.md` — OpenTelemetry, Grafana, Loki, Tempo, ClickHouse, VictoriaMetrics, Thanos/Mimir on EKS
+- `references/aws-devops-agent.md` — AWS DevOps Agent incident escalation (Agent Spaces, CloudWatch→webhook wiring, `aws devopsagent` CLI, mitigation plans)

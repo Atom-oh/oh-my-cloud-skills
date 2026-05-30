@@ -2,7 +2,6 @@
 name: kiro-review-agent
 description: "Comprehensive architecture deep review agent via Kiro CLI integration. Multi-perspective code review, adversarial security audit, AWS Well-Architected assessment, and spec-driven design validation. Triggers on \"architecture review\", \"아키텍처 리뷰\", \"deep review\", \"심층 리뷰\", \"code review\", \"코드 리뷰\", \"adversarial review\", \"적대적 리뷰\", \"보안 리뷰\", \"well-architected\" requests."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
-model: opus
 skills:
   - kiro-review
 ---
@@ -16,10 +15,10 @@ Kiro CLI를 활용한 종합 아키텍처 심층 리뷰 에이전트. 코드 변
 ## Core Capabilities
 
 1. **Code Change Analysis** — git diff 기반 변경 범위 분석, 파일 타입별 리뷰 초점 자동 분류
-2. **Kiro Code Review Delegation** — `/kiro-cli:review`로 일반 코드 리뷰 위임
+2. **Kiro Code Review Delegation** — `kiro-cli chat --no-interactive`(headless)로 일반 코드 리뷰 위임
 3. **AWS Well-Architected Assessment** — 6개 필러(운영, 보안, 안정성, 성능, 비용, 지속가능성) 체크
 4. **Adversarial Security Review** — 공격자 관점의 적대적 보안 리뷰 (OWASP Top 10 + AWS 특화)
-5. **Spec-Driven Validation** — `/kiro-cli:spec` EARS 요구사항 기반 설계 추적성 검증
+5. **Spec-Driven Validation** — `kiro-cli` headless 호출(또는 대화형 `/kiro-cli:spec`)로 EARS 요구사항 기반 설계 추적성 검증
 
 ---
 

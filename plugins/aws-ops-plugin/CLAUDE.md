@@ -115,6 +115,6 @@ wellarchitected-agent → Score (XX/100) → Findings → AS-IS/TO-BE Roadmap
 | `ops-troubleshoot` | "troubleshoot", "debug", "장애", "문제 해결" | 5-min triage → investigate → resolve → postmortem |
 | `ops-health-check` | "health check", "상태 점검", "헬스체크" | Full infrastructure health assessment (includes analytics) |
 | `ops-network-diagnosis` | "network issue", "네트워크 오류", "연결 문제" | VPC CNI, LB, DNS deep diagnosis |
-| `ops-observability` | "monitoring", "모니터링", "로그 분석", "알람" | CloudWatch setup, PromQL, log analysis |
-| `ops-security-audit` | "security audit", "보안 점검", "compliance" | IAM audit, network security, compliance |
+| `ops-observability` | "monitoring", "모니터링", "로그 분석", "알람", "opentelemetry", "clickhouse", "grafana", "devops agent", "데브옵스 에이전트" | CloudWatch/PromQL/logs + OSS stack (OTel, Loki, Tempo, ClickHouse, VictoriaMetrics) + AWS DevOps Agent incident escalation |
+| `ops-security-audit` | "security audit", "보안 점검", "compliance", "security agent", "penetration testing", "pentest" | IAM/network/CIS posture + AWS Security Agent (design/code review, on-demand pentest) |
 | `ops-wellarchitected-review` | "well-architected", "WAF review", "인프라 진단", "아키텍처 리뷰" | 6-pillar assessment, 100-point scoring, AS-IS/TO-BE roadmap |

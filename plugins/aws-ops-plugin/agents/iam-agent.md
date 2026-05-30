@@ -134,6 +134,7 @@ flowchart TD
 ## Reference Files
 
 - `{plugin-dir}/skills/ops-security-audit/references/iam-audit.md`
+- `{plugin-dir}/skills/ops-security-audit/references/aws-security-agent.md` — application-layer security (design/code review, penetration testing) via AWS Security Agent; this agent covers IAM/RBAC posture only
 
 ---
 
