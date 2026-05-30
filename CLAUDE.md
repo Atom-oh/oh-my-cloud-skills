@@ -224,7 +224,7 @@ Source: `tools/remarp-vscode/` | Entry: `src/extension.ts` | Preview: `src/previ
 | `ops-coordinator-agent` | Multi-domain incident coordination |
 | `wellarchitected-agent` | AWS Well-Architected 6-pillar review, 100-point scoring |
 
-Ops skills: `ops-troubleshoot`, `ops-health-check`, `ops-network-diagnosis`, `ops-observability`, `ops-security-audit`, `ops-wellarchitected-review` — each with `references/` subdirectory containing distilled runbooks.
+Ops skills: `ops-troubleshoot`, `ops-health-check`, `ops-network-diagnosis`, `ops-observability`, `ops-security-audit`, `ops-wellarchitected-review` — each with `references/` subdirectory containing distilled runbooks. `ops-observability` also covers the open-source stack (OpenTelemetry, Grafana, Loki, Tempo, ClickHouse, VictoriaMetrics) and **AWS DevOps Agent** incident escalation; `ops-security-audit` covers **AWS Security Agent** (design/code review, on-demand penetration testing).
 
 ### kiro-power-converter (1 agent, 1 skill)
 
@@ -240,7 +240,7 @@ Skill: `kiro-convert` — interactive workflow for plugin-to-power conversion wi
 |-------|---------|
 | `agentcore-creator-agent` | Converts Claude Code plugins to Bedrock AgentCore (Runtime, Gateway, Memory, Lambda) |
 
-Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Skill-First Build, AgentCore Convert, Deploy) with `references/` and `scripts/` subdirectories.
+Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Skill-First Build, AgentCore Convert, Deploy) with `references/` and `scripts/` subdirectories. The `opus` alias resolves to `us.anthropic.claude-opus-4-8`; modern-Opus (4.7/4.8) param contract (no `temperature`/`top_p`/`top_k`, no `thinking.type:"enabled"`+`budget_tokens`) is documented in `references/agentcore-mapping-rules.md`.
 
 ### kiro-review (1 agent, 1 skill)
 
@@ -248,9 +248,9 @@ Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Sk
 |-------|---------|
 | `kiro-review-agent` | Comprehensive architecture deep review via Kiro CLI |
 
-Skill: `kiro-review` — 5-Phase deep review (code review, adversarial security, Well-Architected, spec-driven validation). Requires `kiro-cli-plugin`.
+Skill: `kiro-review` — 5-Phase deep review (code review, adversarial security, Well-Architected, spec-driven validation). Delegates to **Kiro CLI 2.5.0** via `kiro-cli chat --no-interactive` (headless; needs `kiro-cli` binary + `KIRO_API_KEY`). The `kiro-cli-plugin` slash commands (`/kiro-cli:review`, `/kiro-cli:adversarial-review`) are an optional interactive wrapper; without either, falls back to self pattern-scan.
 
-### project-init (1 agent, 2 skills, 9 commands)
+### project-init (1 agent, 2 skills, 10 commands)
 
 | Agent | Purpose |
 |-------|---------|
@@ -258,7 +258,7 @@ Skill: `kiro-review` — 5-Phase deep review (code review, adversarial security,
 
 Skills: `project-scaffolder` — Claude Code project structure patterns and conventions. `pr-autofix` — PR review feedback auto-fix (AI + human review polling, max 3 iterations).
 
-Commands: `/init-project`, `/sync-docs`, `/add-adr`, `/add-module`, `/add-runbook`, `/generate-readme`, `/generate-changelog`, `/health-check`, `/pr-autofix`
+Commands: `/init-project`, `/sync-docs`, `/add-adr`, `/add-module`, `/add-runbook`, `/generate-readme`, `/generate-changelog`, `/health-check`, `/pr-autofix`, `/add-reference-doc`
 
 ## Workflows
 

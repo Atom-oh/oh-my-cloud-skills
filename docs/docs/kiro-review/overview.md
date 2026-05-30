@@ -49,9 +49,9 @@ flowchart LR
 | Phase | 이름 | 방식 | 설명 |
 |-------|------|------|------|
 | 1 | 코드 변경 분석 | 자체 | git diff 기반 변경 범위 파악, 파일 타입별 리뷰 초점 분류 |
-| 2 | 코드 리뷰 | Kiro CLI 위임 | `/kiro-cli:review`로 일반 코드 리뷰 위임 |
+| 2 | 코드 리뷰 | Kiro CLI 위임 | `kiro-cli chat --no-interactive`(headless)로 일반 코드 리뷰 위임 |
 | 3 | Well-Architected | 자체 | 6개 필러 (운영, 보안, 안정성, 성능, 비용, 지속가능성) 평가 |
-| 4 | 적대적 보안 | Kiro CLI 위임 | `/kiro-cli:review --adversarial` OWASP Top 10 + AWS 특화 |
+| 4 | 적대적 보안 | Kiro CLI 위임 | `kiro-cli chat --no-interactive` 적대적 프롬프트, OWASP Top 10 + AWS 특화 (대화형: `/kiro-cli:adversarial-review`) |
 | 5 | 종합 보고서 | 자체 | PASS / REVIEW / FAIL 판정 |
 
 ## 판정 기준

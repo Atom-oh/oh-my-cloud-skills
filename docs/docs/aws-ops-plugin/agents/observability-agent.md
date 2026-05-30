@@ -30,6 +30,8 @@ AWS 관측성 전문 에이전트입니다. CloudWatch, AMP, AMG, ADOT, Promethe
 7. **Amazon Managed Grafana (AMG)** - 워크스페이스 설정, 데이터소스 프로비저닝, 대시보드 관리, SSO 연동
 8. **AWS Distro for OpenTelemetry (ADOT)** - Collector DaemonSet/Sidecar 설정, SDK 계측, 파이프라인 구성
 9. **Self-managed Prometheus/Grafana** - kube-prometheus-stack Helm 차트, 커스텀 Exporter, 영구 스토리지
+10. **오픈소스 통합 스택** - OpenTelemetry Collector 파이프라인, Loki(로그), Tempo/Jaeger(트레이스), ClickHouse 기반 텔레메트리(SigNoz/OpenObserve/Uptrace), 장기 메트릭용 VictoriaMetrics/Thanos/Mimir; OTel `awsemf`/`awsxray` Exporter와 AMP Remote Write를 통한 OSS↔AWS 브릿지
+11. **AWS DevOps Agent 에스컬레이션** - 원인이 불명확한 다중 리소스 인시던트의 경우 자율 조사를 등록(`aws devopsagent create-backlog-task`)하고, 근본 원인과 Kiro 호환 완화 계획(Prepare→Pre-Validate→Apply→Post-Validate)을 활용
 
 ## 진단 명령어
 
