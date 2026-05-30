@@ -77,9 +77,10 @@ Distinct from analytics-agent's ClickHouse (ad-hoc analytics): here it is the
 telemetry sink behind an OTel pipeline.
 
 ```bash
-# Altinity ClickHouse operator on EKS
-helm repo add altinity https://docs.altinity.com/clickhouse-operator/
-helm upgrade --install clickhouse-operator altinity/altinity-clickhouse-operator -n observability
+# Altinity ClickHouse operator on EKS (pin --version — see Version Compatibility below)
+helm repo add altinity https://helm.altinity.com
+helm upgrade --install clickhouse-operator altinity/altinity-clickhouse-operator \
+  --version <pinned-chart-version> -n observability
 kubectl get chi -A   # ClickHouseInstallation custom resources
 
 # OTel Collector → ClickHouse exporter (in collector config):
@@ -105,11 +106,65 @@ helm upgrade --install tempo grafana/tempo -n observability --set storage.trace.
 kubectl create -f https://github.com/jaegertracing/jaeger-operator/releases/latest/download/jaeger-operator.yaml -n observability
 ```
 
+## Version Compatibility (pin everything — esp. ClickHouse)
+
+OSS observability components are **tightly version-coupled**. ClickHouse in
+particular ships fast (multiple releases/month) and its telemetry schema, the OTel
+ClickHouse exporter, the operator, and turnkey distros (SigNoz/OpenObserve/Uptrace)
+must move together. Mixing versions causes silent schema mismatches, failed
+migrations, or dropped telemetry. **Pin every version; never track `latest`.**
+
+### Coupling map
+
+| Component | Couples with | Failure if mismatched |
+|-----------|-------------|----------------------|
+| ClickHouse **server** | exporter schema, distro's tested range | `TYPE_MISMATCH` / unknown column on insert; failed migrations |
+| OTel Collector **clickhouseexporter** (contrib) | ClickHouse server, OTLP schema | exporter is still evolving — table DDL/column names change between collector releases |
+| Altinity **clickhouse-operator** (CHI CRD) | ClickHouse server version it provisions | CRD/feature gaps; pod won't reconcile |
+| **SigNoz / OpenObserve / Uptrace** | a *bundled, tested* ClickHouse version | distro upgrades expect a specific CH version + run schema migrations on boot |
+| kube-prometheus-stack | Prometheus/Grafana/CRD versions (chart `appVersion`) | CRD upgrade skew; scrape config breakage |
+
+### Rules
+
+```bash
+# 1. ALWAYS pin Helm chart version AND record the appVersion it installs
+helm upgrade --install clickhouse-operator altinity/altinity-clickhouse-operator \
+  --version <chart-ver> -n observability
+helm list -n observability -o json | jq '.[] | {name,chart,app_version}'   # record this
+
+# 2. Pin ClickHouse server image explicitly in the CHI spec (don't use :latest)
+#    spec.templates.podTemplates[].spec.containers[].image: clickhouse/clickhouse-server:<X.Y>
+kubectl get chi -A -o jsonpath='{.items[*].spec.configuration.settings}'   # audit
+
+# 3. For SigNoz/OpenObserve/Uptrace: pin the DISTRO chart version and let IT own
+#    the ClickHouse version — do not independently upgrade ClickHouse under them.
+helm show chart signoz/signoz --version <ver> | grep -E 'appVersion|version'
+
+# 4. Pin the OTel Collector image to a release whose clickhouseexporter matches
+#    your server; verify the exporter created the expected tables after deploy.
+kubectl -n observability exec chi-... -- clickhouse-client -q "SHOW TABLES FROM otel"
+```
+
+### Upgrade procedure (ClickHouse-backed stacks)
+
+1. Read the distro/exporter release notes for **schema migrations** and the
+   supported ClickHouse version range.
+2. Snapshot/backup ClickHouse (or rely on S3-backed `MergeTree` + TTL) before upgrade.
+3. Upgrade in order: **server → operator/exporter → distro**, one step at a time,
+   verifying `SHOW TABLES`/inserts between steps. Never jump multiple major versions.
+4. ClickHouse supports **stable** (fast) and **LTS** releases — prefer LTS for
+   observability backends to reduce churn.
+
+> Record the pinned set (chart versions + appVersions + ClickHouse image tag) in
+> the cluster's IaC/runbook so the compatibility matrix is reproducible.
+
 ## Common Issues
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | OTel Collector dropping spans | `memory_limiter` too tight / no `batch` | Add `batch` processor, raise `memory_limiter` limit_mib |
+| ClickHouse insert fails after upgrade | server/exporter schema skew | Re-pin matched versions; run distro's migration; check `SHOW TABLES FROM otel` |
+| SigNoz won't start after `helm upgrade` | ClickHouse version outside distro's tested range | Roll back to the distro-bundled CH version; upgrade server only via the distro |
 | Prometheus high RAM | Cardinality explosion | `metric_relabel_configs` drop labels; offload to VictoriaMetrics |
 | Loki "too many outstanding requests" | Single-binary under load | Switch to simple-scalable/microservices mode, S3 backend |
 | ClickHouse disk fills fast | No TTL on telemetry tables | `ALTER TABLE otel_logs MODIFY TTL Timestamp + INTERVAL 30 DAY` |

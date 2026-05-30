@@ -16,6 +16,8 @@ kiro-review는 **`kiro-cli` 바이너리를 headless 서브프로세스로 직�
 | Spec-Driven Dev | `kiro-cli chat --no-interactive "<spec 요청>"` | `/kiro-cli:spec` |
 
 > **주의**: `kiro-cli:review` 등은 래퍼 플러그인의 **슬래시 커맨드**이지 스킬이 아닙니다 — `Skill` 도구로 호출할 수 없습니다. 자동화에는 위 `kiro-cli chat --no-interactive`를 사용하세요. (적대적 리뷰는 래퍼에서 별도 커맨드 `/kiro-cli:adversarial-review`이며, `review --adversarial`이 아닙니다.)
+>
+> **파이프 주의**: 표의 `git diff … | kiro-cli` 약식 표기를 그대로 실행하지 마세요. diff를 먼저 변수에 담아 **빈 diff(잘못된 base ref)** 와 **kiro-cli 실패**를 검사해야 합니다 — 파이프의 종료코드는 마지막 명령(kiro-cli)의 것이라 `git diff` 실패가 숨겨져 *빈 입력에 대한 거짓 PASS*가 날 수 있습니다. SKILL.md Phase 2/4의 가드 패턴(`DIFF=$(...)`; empty 체크; `|| 폴백`)을 사용하세요.
 
 ## Installation
 

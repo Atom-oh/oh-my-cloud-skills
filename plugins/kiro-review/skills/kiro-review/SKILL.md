@@ -107,9 +107,14 @@ command -v kiro-cli >/dev/null 2>&1 && [ -n "$KIRO_API_KEY" ] && echo "AVAILABLE
 **Kiro CLI 사용 가능 시**: `Bash`로 `kiro-cli`를 headless 호출하여 diff를 리뷰합니다.
 
 ```bash
-git diff main...HEAD 2>/dev/null \
-  | kiro-cli chat --no-interactive --trust-tools=read,grep \
-    "Review this code diff. Report findings as: [SEVERITY] file:line — description. Cover code quality (complexity, duplication, naming), error handling (missing catches, bad fallbacks), test coverage, and new-dependency license/security risks."
+# Capture the diff FIRST — a bad base ref must not silently pipe an EMPTY diff into
+# the reviewer (a pipe returns kiro-cli's exit code, hiding git-diff failure → the
+# agent would report a false "no issues" PASS on zero input).
+DIFF=$(git diff main...HEAD 2>/dev/null); [ -z "$DIFF" ] && DIFF=$(git diff origin/main...HEAD 2>/dev/null)
+if [ -z "$DIFF" ]; then echo "EMPTY DIFF — verify base ref; do NOT delegate (skip to Phase 1 scope/standalone)"; fi
+printf '%s\n' "$DIFF" | kiro-cli chat --no-interactive --trust-tools=read,grep \
+  "Review this code diff. Report findings as: [SEVERITY] file:line — description. Cover code quality (complexity, duplication, naming), error handling (missing catches, bad fallbacks), test coverage, and new-dependency license/security risks." \
+  || echo "kiro-cli failed (auth/rate/unavailable) — fall back to Step 3 self pattern scan"
 ```
 
 > **주의**: `kiro-cli:review`는 kiro-cli-plugin이 노출하는 **슬래시 커맨드**(스킬 아님)입니다. 자동 위임에는 위처럼 `kiro-cli chat --no-interactive`를 직접 호출하세요. 대화형 환경에서 래퍼를 쓰려면 사용자가 `/kiro-cli:review`를 실행합니다.
@@ -206,9 +211,12 @@ grep -rn "^USER root\|^FROM.*AS root" --include="Dockerfile*" 2>/dev/null
 **Kiro CLI 사용 가능 시**: `Bash`로 적대적 보안 리뷰 프롬프트를 headless 호출합니다.
 
 ```bash
-git diff main...HEAD 2>/dev/null \
-  | kiro-cli chat --no-interactive --trust-tools=read,grep \
-    "Perform an ADVERSARIAL security review from an attacker's perspective. Check: auth bypass / JWT validation, injection (SQL/command/XSS), privilege escalation (RBAC, horizontal/vertical), data exfiltration (secrets in logs/errors), supply-chain (unverified deps), misconfig (CORS, debug exposed). Report [SEVERITY] file:line — description."
+# Capture diff first (same empty-diff / pipe-exit-code guard as Phase 2).
+DIFF=$(git diff main...HEAD 2>/dev/null); [ -z "$DIFF" ] && DIFF=$(git diff origin/main...HEAD 2>/dev/null)
+[ -z "$DIFF" ] && echo "EMPTY DIFF — verify base ref before delegating"
+printf '%s\n' "$DIFF" | kiro-cli chat --no-interactive --trust-tools=read,grep \
+  "Perform an ADVERSARIAL security review from an attacker's perspective. Check: auth bypass / JWT validation, injection (SQL/command/XSS), privilege escalation (RBAC, horizontal/vertical), data exfiltration (secrets in logs/errors), supply-chain (unverified deps), misconfig (CORS, debug exposed). Report [SEVERITY] file:line — description." \
+  || echo "kiro-cli failed — fall back to the adversarial checklist + auto-detection patterns below"
 ```
 
 > kiro-cli-plugin 래퍼에서 적대적 리뷰는 별도 커맨드 `/kiro-cli:adversarial-review`입니다(대화형 사용 시). 자동 위임은 위 headless 호출을 사용합니다.

@@ -116,16 +116,19 @@ Read all blocking feedback and the current diff. Fix issues from both sources:
 - Verify the fix compiles/builds before committing:
 
 ```bash
-# Detect project type and verify build. Each check is self-contained so a
-# missing manifest never falls through and triggers a different toolchain
-# (e.g. `A && B || C` would run C when A is false — grouped to prevent that).
-[ -f go.mod ] && go build ./...
-[ -f package.json ] && { npm run build 2>/dev/null || npx tsc --noEmit 2>/dev/null; }
+# Verify the build BEFORE committing. Each check is self-contained so a missing
+# manifest never falls through to another toolchain (grouped to avoid the
+# `A && B || C` precedence trap). Compiler output is kept VISIBLE — the agent must
+# read errors to fix them — and failure is recorded so the agent does NOT commit.
+BUILD_OK=1
+[ -f go.mod ]       && { go build ./...                   || BUILD_OK=0; }
+[ -f package.json ] && { npm run build || npx tsc --noEmit || BUILD_OK=0; }
 if [ -f pyproject.toml ]; then
   PY=$(git diff --name-only --diff-filter=M -- '*.py')
-  [ -n "$PY" ] && python3 -m py_compile $PY
+  [ -n "$PY" ] && { python3 -m py_compile $PY             || BUILD_OK=0; }
 fi
-[ -f Cargo.toml ] && cargo check
+[ -f Cargo.toml ]   && { cargo check                      || BUILD_OK=0; }
+[ "$BUILD_OK" = 1 ] || echo "BUILD FAILED — read the errors above, fix them, and do NOT commit until the build passes."
 ```
 
 ### 5. Commit and push

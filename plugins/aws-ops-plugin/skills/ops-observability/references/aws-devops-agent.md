@@ -49,8 +49,8 @@ aws cloudwatch set-alarm-state --alarm-name "$CLUSTER_NAME-high-cpu" \
 # then confirm the investigation appears in the operator web app.
 ```
 
-Other entry points: Splunk alerts (via "Better Webhooks"), and **manual** operator
-queries ("What is causing high CPU usage?").
+Other entry points: Splunk alerts (via a Splunk webhook integration), and
+**manual** operator queries ("What is causing high CPU usage?").
 
 ## Programmatic investigation (CLI)
 
@@ -75,7 +75,7 @@ aws devopsagent update-backlog-task --task-id <id> --action approve-mitigation
 | Surface | Use |
 |---------|-----|
 | Web operator console | "Chat with DevOps Agent" — steer investigations, browse Topology/Prevention |
-| Slack | `/invite @AWS DevOps Agent` — receives investigation updates automatically |
+| Slack | invite the DevOps Agent Slack app to the channel (e.g. `/invite @AWS DevOps Agent`) — receives investigation updates automatically |
 | CLI / API | `aws devopsagent ...` — trigger/approve from CI/CD or this skill |
 
 ## Integrations (no workflow change)
