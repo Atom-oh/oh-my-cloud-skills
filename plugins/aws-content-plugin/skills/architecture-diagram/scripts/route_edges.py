@@ -32,10 +32,17 @@ except ImportError:
 
 
 def load(path):
-    text = open(path, encoding="utf-8").read()
+    try:
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+    except OSError as e:
+        sys.exit(f"Cannot read '{path}': {e}")
     if re.search(r"<!DOCTYPE|<!ENTITY", text, re.I):
         sys.exit("Refusing to parse: file contains <!DOCTYPE>/<!ENTITY> (invalid in .drawio / XXE risk).")
-    root = ET.fromstring(text)
+    try:
+        root = ET.fromstring(text)
+    except ET.ParseError as e:
+        sys.exit(f"Malformed XML in '{path}': {e}")
     return {c.get("id"): c for c in root.iter("mxCell")}
 
 
@@ -61,7 +68,10 @@ def abs_box(cells, cid, _seen=None):
 
 
 def resolve(cells, key):
-    if key in cells:
+    c = cells.get(key)
+    if c is not None:
+        if c.get("vertex") != "1":
+            sys.exit(f"'{key}' resolves to a non-vertex cell (edge/layer); pick a box/icon id.")
         return key
     matches = [cid for cid, c in cells.items()
                if key.lower() in (c.get("value") or "").lower() and c.get("vertex") == "1"]
@@ -124,8 +134,9 @@ def main():
     ap.add_argument("file")
     ap.add_argument("--from", dest="src")
     ap.add_argument("--to", dest="dst")
-    ap.add_argument("--via-x", type=float)
-    ap.add_argument("--via-y", type=float)
+    via = ap.add_mutually_exclusive_group()   # --via-x and --via-y are alternatives
+    via.add_argument("--via-x", type=float)
+    via.add_argument("--via-y", type=float)
     ap.add_argument("--list", action="store_true")
     a = ap.parse_args()
     cells = load(a.file)
@@ -142,6 +153,22 @@ def main():
         ap.error("--from and --to required (or use --list)")
     s, d = resolve(cells, a.src), resolve(cells, a.dst)
     sb, db = abs_box(cells, s), abs_box(cells, d)
+    if sb is None or db is None:
+        missing = a.src if sb is None else a.dst
+        sys.exit(f"'{missing}' has no usable geometry (no/empty mxGeometry). Pick a positioned box or icon.")
+
+    # Warn (non-fatal) if the channel falls inside either box — it would route through the shape.
+    # axis: (flag name, value, box-start index, box-span index) for x=(0,2) / y=(1,3).
+    for axis, val, si, wi in (("via-x", a.via_x, 0, 2), ("via-y", a.via_y, 1, 3)):
+        if val is None:
+            continue
+        for who, b in (("source", sb), ("target", db)):
+            start, end = b[si], b[si] + b[wi]
+            if start <= val <= end:
+                print(f"# WARNING: --{axis} {val:.0f} falls inside the {who} box "
+                      f"[{start:.0f}..{end:.0f}] — the channel may route through the shape.",
+                      file=sys.stderr)
+
     wps, (eax, eay), (nax, nay) = route(sb, db, a.via_x, a.via_y)
 
     print(f"# {a.src} → {a.dst}")

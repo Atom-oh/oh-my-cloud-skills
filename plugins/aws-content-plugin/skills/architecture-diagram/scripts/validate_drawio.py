@@ -25,19 +25,28 @@ except ImportError:
     _DEFUSED = False
 
 
+def _blank_regions(text: str) -> str:
+    """Replace XML comment and CDATA spans with spaces (newlines preserved, so
+    line numbers stay accurate). Content-level checks run on this blanked copy so
+    they don't false-positive on '&' or '<!DOCTYPE>' text that is legal inside a
+    comment or CDATA section."""
+    blank = lambda m: re.sub(r"[^\n]", " ", m.group(0))
+    text = re.sub(r"<!--.*?-->", blank, text, flags=re.S)
+    text = re.sub(r"<!\[CDATA\[.*?\]\]>", blank, text, flags=re.S)
+    return text
+
+
 def lint_raw(text: str) -> list[str]:
     """Catch the silent killers that pass `drawio -x` with a truncated render."""
     errors = []
+    orig_lines = text.splitlines()
+    blanked = _blank_regions(text)          # comments + CDATA blanked
+    blanked_lines = blanked.splitlines()
 
     # 1) Unescaped '&' (must be &amp; &lt; &gt; &quot; &#NN;) in element text or
-    #    attribute values. XML comments are SKIPPED — '&' is legal inside
-    #    <!-- ... -->, so scanning them produces false positives (the real
-    #    comment killer is '--', caught in check 2). Comments are blanked to
-    #    spaces (newlines preserved) so reported line numbers stay accurate.
-    orig_lines = text.splitlines()
-    blanked = re.sub(r"<!--.*?-->",
-                     lambda m: re.sub(r"[^\n]", " ", m.group(0)), text, flags=re.S)
-    for i, bline in enumerate(blanked.splitlines(), 1):
+    #    attribute values. Comments and CDATA are blanked above, where a raw '&'
+    #    is legal — the real comment killer is '--' (check 2).
+    for i, bline in enumerate(blanked_lines, 1):
         for m in re.finditer(r"&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9A-Fa-f]+;)", bline):
             oline = orig_lines[i - 1] if i - 1 < len(orig_lines) else bline
             errors.append(f"L{i}: unescaped '&' (use &amp;) near: …{oline[max(0,m.start()-20):m.start()+10].strip()}…")
@@ -52,9 +61,10 @@ def lint_raw(text: str) -> list[str]:
         errors.append("Mismatched <!-- / --> comment markers.")
 
     # 3) Security + validity: .drawio must never carry a DTD or entity definition.
-    #    Rejecting these also neutralizes XXE / billion-laughs when the stdlib
-    #    parser is the fallback (no defusedxml installed).
-    if re.search(r"<!DOCTYPE", text, re.I) or re.search(r"<!ENTITY", text, re.I):
+    #    Rejecting these also neutralizes XXE / billion-laughs on the stdlib
+    #    fallback. Checked on the blanked copy so a comment merely *mentioning*
+    #    <!DOCTYPE>/<!ENTITY> isn't falsely rejected.
+    if re.search(r"<!DOCTYPE", blanked, re.I) or re.search(r"<!ENTITY", blanked, re.I):
         errors.append("Contains <!DOCTYPE>/<!ENTITY> — not valid in a .drawio file "
                       "(and an XXE/entity-expansion risk). Remove it.")
 
@@ -67,7 +77,15 @@ def main() -> int:
         return 2
     path = sys.argv[1]
     show_coords = "--coords" in sys.argv[2:]
-    text = open(path, encoding="utf-8").read()
+    try:
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+    except OSError as e:
+        print(f"❌ cannot read {path}: {e}")
+        return 2
+    except UnicodeDecodeError as e:
+        print(f"❌ {path} is not valid UTF-8: {e}")
+        return 2
 
     errors = lint_raw(text)
 
