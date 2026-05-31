@@ -8,7 +8,10 @@ below are verified against the installed CLIs and the existing `arch-review` /
 ## Detection
 
 ```bash
-command -v kiro-cli >/dev/null 2>&1 && [ -n "$KIRO_API_KEY" ] && echo "kiro ok"
+# Detect by binary presence only. kiro-cli is usable headless via an interactive
+# login session OR $KIRO_API_KEY — do NOT require the env key. An unauthenticated
+# CLI simply errors at call time and is skipped (graceful fallback).
+command -v kiro-cli >/dev/null 2>&1 && echo "kiro ok"
 command -v codex    >/dev/null 2>&1 && echo "codex ok"
 command -v gemini   >/dev/null 2>&1 && echo "gemini ok"
 ```
@@ -17,7 +20,7 @@ command -v gemini   >/dev/null 2>&1 && echo "gemini ok"
 
 | AI | Command | Notes |
 |----|---------|-------|
-| **Kiro** | `kiro-cli chat "<PROMPT>" --no-interactive --trust-tools=read,grep --wrap never` | Needs `KIRO_API_KEY` (Pro/Pro+/Power). `--wrap never` = clean output. Pipe ctx: `echo "$CTX" \| kiro-cli chat … --no-interactive`. |
+| **Kiro** | `kiro-cli chat "<PROMPT>" --no-interactive --trust-tools=read,grep --wrap never` | Auth via interactive login **or** `KIRO_API_KEY` (Pro/Pro+/Power) — either works headless. `--wrap never` = clean output. Pipe ctx: `echo "$CTX" \| kiro-cli chat … --no-interactive`. |
 | **Codex** | `codex exec -s read-only "<PROMPT>"` | `-s read-only` = read-only sandbox (no writes). Pipe ctx: `cat ctx \| codex exec -s read-only "<PROMPT>"`. Free tier has model limits. |
 | **Gemini** | `gemini -p "<PROMPT>" -o text` | `-o text` plain output; optional `-m gemini-2.5-pro`. Pipe ctx: `cat ctx \| gemini -p "<PROMPT>" -o text`. |
 
