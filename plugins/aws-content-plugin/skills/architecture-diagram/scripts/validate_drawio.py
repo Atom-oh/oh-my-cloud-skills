@@ -29,11 +29,18 @@ def lint_raw(text: str) -> list[str]:
     """Catch the silent killers that pass `drawio -x` with a truncated render."""
     errors = []
 
-    # 1) Unescaped '&' (must be &amp; &lt; &gt; &quot; &#NN;). Most common in
-    #    decorative comments like "<!-- EDGE & AUTH -->" and in labels.
-    for i, line in enumerate(text.splitlines(), 1):
-        for m in re.finditer(r"&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9A-Fa-f]+;)", line):
-            errors.append(f"L{i}: unescaped '&' (use &amp;) near: …{line[max(0,m.start()-20):m.start()+10].strip()}…")
+    # 1) Unescaped '&' (must be &amp; &lt; &gt; &quot; &#NN;) in element text or
+    #    attribute values. XML comments are SKIPPED — '&' is legal inside
+    #    <!-- ... -->, so scanning them produces false positives (the real
+    #    comment killer is '--', caught in check 2). Comments are blanked to
+    #    spaces (newlines preserved) so reported line numbers stay accurate.
+    orig_lines = text.splitlines()
+    blanked = re.sub(r"<!--.*?-->",
+                     lambda m: re.sub(r"[^\n]", " ", m.group(0)), text, flags=re.S)
+    for i, bline in enumerate(blanked.splitlines(), 1):
+        for m in re.finditer(r"&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9A-Fa-f]+;)", bline):
+            oline = orig_lines[i - 1] if i - 1 < len(orig_lines) else bline
+            errors.append(f"L{i}: unescaped '&' (use &amp;) near: …{oline[max(0,m.start()-20):m.start()+10].strip()}…")
 
     # 2) '--' inside an XML comment is illegal and aborts the parser mid-file.
     for m in re.finditer(r"<!--(.*?)-->", text, re.S):
@@ -64,12 +71,17 @@ def main() -> int:
 
     errors = lint_raw(text)
 
-    # Hard parse check (this is what drawio effectively does).
+    # Hard parse check (this is what drawio effectively does) — but ONLY when the
+    # lint is clean. If lint already failed (e.g. it found a <!DOCTYPE>/<!ENTITY>),
+    # do NOT hand the document to the stdlib XML parser: that is exactly the
+    # XXE / billion-laughs vector when defusedxml is not installed. Skipping the
+    # parse here keeps the DOCTYPE/ENTITY guard effective on the stdlib fallback.
     root = None
-    try:
-        root = ET.fromstring(text)
-    except ET.ParseError as e:
-        errors.append(f"XML ParseError: {e} — drawio would render a TRUNCATED/empty diagram.")
+    if not errors:
+        try:
+            root = ET.fromstring(text)
+        except ET.ParseError as e:
+            errors.append(f"XML ParseError: {e} — drawio would render a TRUNCATED/empty diagram.")
 
     if errors:
         print(f"❌ {path}: {len(errors)} issue(s) — DO NOT export until fixed:")
