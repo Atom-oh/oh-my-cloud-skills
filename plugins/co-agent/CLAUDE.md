@@ -22,7 +22,7 @@
 
 ```
 co-agent
-  ├── Step 0: 패널 감지 (kiro / codex / gemini 중 설치된 것)
+  ├── Step 0: 패널 감지 (kiro-cli / codex / gemini 중 설치된 것; Kiro 바이너리는 `kiro-cli`, NOT `kiro`)
   ├── Review   : git diff → 동일 프롬프트 팬아웃 → 합의/이견 종합 → PASS/REVIEW/FAIL
   ├── Decide   : 결정+옵션 팬아웃 → 비교표 → Claude 추천 (의장)
   └── ADR      : 대안·트레이드오프·리스크 팬아웃 → Nygard ADR 초안 → /add-adr 연동
