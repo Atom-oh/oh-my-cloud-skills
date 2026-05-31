@@ -82,16 +82,33 @@ PPT 삽입용 다이어그램은 **캔버스 크기 설정이 필수**입니다.
 
 ---
 
-## PNG 내보내기
+## ⚠️ 내보내기 전 검증 (필수 — 침묵 실패 방지)
 
-macOS Homebrew CLI: `/opt/homebrew/bin/drawio`
+> **drawio CLI는 잘못된 XML에서도 exit 0으로 "성공"하면서 셀의 90%를 조용히 누락시킵니다** —
+> "완성된 듯하지만 텅 빈 PNG"의 주범입니다. **export 전에 반드시 검증**하세요.
 
 ```bash
-# 기본 PNG
-drawio -x -f png -o output.png input.drawio
+python3 scripts/validate_drawio.py output.drawio
+# ✅ 통과 시 cells/vertices/edges/icons/groups 개수 출력 → 의도한 개수와 비교(누락 감지)
+# ❌ 실패 시 export 금지하고 먼저 수정
+```
 
+**가장 흔한 침묵 킬러 (생성 시 절대 금지):**
+- XML 주석 안의 `&` (반드시 `&amp;`) — 예: `<!-- EDGE & AUTH -->` ❌ → 주석을 아예 쓰지 말 것
+- XML 주석 안의 `--` (예: `<!-- ----- -->`) — XML 불법, 이후 모든 셀 누락
+- 라벨/값 안의 미이스케이프 `&`, `<`, `>` → `&amp;` `&lt;` `&gt;`
+- 장식용 주석은 **생략**을 권장 (디버깅 가치 < 렌더 파괴 위험)
+
+## PNG 내보내기
+
+CLI 경로: Linux `/usr/bin/drawio` · macOS Homebrew `/opt/homebrew/bin/drawio`
+
+```bash
 # 고해상도 PNG (PPT용, 권장)
 drawio -x -f png -s 2 -o output.png input.drawio
+
+# Headless Linux (디스플레이 없음) — xvfb 필요. dbus/GPU stderr 경고는 무시 가능.
+xvfb-run -a drawio -x -f png -s 2 -o output.png input.drawio
 
 # 투명 배경 (Dark 테마 PPT)
 drawio -x -f png -s 2 -t -o output.png input.drawio
@@ -99,6 +116,9 @@ drawio -x -f png -s 2 -t -o output.png input.drawio
 # SVG (벡터, 확대해도 선명)
 drawio -x -f svg -o output.svg input.drawio
 ```
+
+> **export 후 확인**: PNG 용량이 비정상적으로 작거나(<10KB) 셀이 비면 truncation 의심.
+> validator의 cell 개수와 실제 렌더를 대조하세요.
 
 ### CLI 옵션
 
@@ -158,6 +178,26 @@ drawio -x -f svg -o output.svg input.drawio
 4. **AZ 표시**: 고가용성 설계 시 가용영역 명확히 구분
 5. **요소 겹침 방지**: 범례/설명 박스는 VPC 영역과 겹치지 않도록 배치
 
+## 엣지 라우팅 (품질의 핵심 — "안 이쁨"의 주원인)
+
+스파게티 엣지가 다이어그램을 망치는 1순위입니다. 다음을 지키세요:
+
+1. **같은 종류 리소스는 단일 컬럼(세로 일렬)으로 묶기**. 여러 Lambda를 한 그룹에 세로로 쌓으면, 자동 라우팅이 옆 아이콘을 관통하는 문제가 사라집니다(가장 효과적인 수정).
+2. **직교 엣지 고정**: `edgeStyle=orthogonalEdgeStyle;rounded=0;`. 자동 라우팅이 아이콘을 관통하면 **명시적 앵커**로 출입점을 고정: `exitX/exitY`(출발), `entryX/entryY`(도착) — 예: 오른쪽 중앙에서 나가려면 `exitX=1;exitY=0.5;exitDx=0;exitDy=0;`.
+3. **조밀한 밴드는 웨이포인트 레인 사용**: 엣지가 많으면 공통 수직/수평 채널(레인)로 묶어 교차를 줄입니다. **`scripts/route_edges.py --from <id> --to <id> --via-x <X>`** (또는 `--via-y`)가 깨끗한 직교 웨이포인트 + exit/entry 앵커를 계산해 줍니다(절대좌표 수동 계산 불필요). 들어오는(async) 엣지와 나가는(sync) 엣지는 **서로 다른 X 채널**로 분리하세요.
+4. **엣지 종류별 색상/스타일 구분 + 범례**: 동기 API(검정 실선), WebSocket(파랑 점선), 비동기 이벤트(분홍 점선), AI 호출(초록), 인증(빨강 점선) 등. 범례는 빈 코너에 겹치지 않게.
+5. **라벨이 보더/아이콘과 겹치지 않게** 엣지 라벨 위치 조정.
+6. **엣지가 많으면(>~15) 줄여라 — "번호 플로우" 패턴** (밀집 다이어그램을 이쁘게 만드는 결정적 기법): 모든 연결을 다 그리지 말고 **핵심 데이터 플로우 5개 내외**로 압축하고 각 플로우에 단일 색상 + 번호 배지(①②③④⑤)를 붙입니다. 부수적 연결(인증 JWKS, authorizer, static 등)은 **번호 범례의 텍스트**로만 표기합니다. 정보 밀도가 혼잡의 근본 원인 — 전문 AWS 다이어그램이 깔끔한 이유는 모든 연결을 그리지 않기 때문입니다.
+
+## 아이콘 사이징 (균일성)
+
+| 레벨 | 크기 | 용도 |
+|------|------|------|
+| 표준 서비스 아이콘 | **78x78** | 대부분의 AWS 서비스 (기본값) |
+| 중첩 리소스 | 48~52 | 좁은 subnet 안에 여러 리소스를 넣을 때만 |
+
+> 한 다이어그램 안에서 같은 레벨 아이콘은 **반드시 동일 크기**. 섞으면 산만해 보입니다.
+
 > 레이아웃 패턴 상세는 **`references/layout-patterns.md`** 참조
 
 ---
@@ -172,6 +212,8 @@ drawio -x -f svg -o output.svg input.drawio
 | `references/snippets.md` | 복사해서 사용할 XML 코드 조각 |
 | `references/drawio-xml-guide.md` | XML 직접 작성 문법 가이드 |
 | `references/mcp-setup-guide.md` | Draw.io MCP 설정 및 도구 사용법 |
+| `scripts/validate_drawio.py` | **export 전 검증** — 침묵 킬러(주석 `&`/`--`, 미이스케이프 문자, DOCTYPE) 검출 + 셀 개수 리포트(truncation 감지) + `--coords` 절대좌표 |
+| `scripts/route_edges.py` | **엣지 웨이포인트 자동계산** — `--from/--to`로 깨끗한 직교 경로(채널 라우팅) + exit/entry 앵커 생성. 어지러운 화살표 정리의 핵심 도구. `--list`로 셀 절대좌표 확인 |
 
 ---
 
@@ -189,9 +231,14 @@ drawio -x -f svg -o output.svg input.drawio
 
 ## 검증 체크리스트
 
+- [ ] **`scripts/validate_drawio.py`로 검증 통과** (export 전 필수 — 침묵 truncation 방지)
+- [ ] 셀/아이콘 개수가 의도와 일치하는가 (validator 출력 대조)
+- [ ] XML 주석에 `&`/`--` 없음 (또는 주석 미사용)
 - [ ] Amazon Ember 폰트가 모든 텍스트에 설정되었는가
 - [ ] AWS 공식 색상을 사용하고 있는가
 - [ ] 계층 구조가 명확한가 (Cloud > Region > VPC > Subnet)
-- [ ] 데이터 흐름 방향이 일관성 있는가
-- [ ] 아이콘 크기가 균일한가 (권장: 60x60)
+- [ ] 데이터 흐름 방향이 일관성 있는가 (왼쪽→오른쪽)
+- [ ] 엣지가 직교(orthogonal)이고 아이콘을 관통하지 않는가
+- [ ] 엣지 종류가 색상/스타일로 구분되고 범례가 있는가
+- [ ] 같은 레벨 아이콘 크기가 균일한가 (표준 78x78)
 - [ ] 라벨이 아이콘 아래에 배치되었는가

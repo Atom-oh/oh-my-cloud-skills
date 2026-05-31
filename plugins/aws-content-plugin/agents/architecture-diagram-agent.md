@@ -164,9 +164,17 @@ id="0" (root)
 ## Workflow
 
 1. **Requirements** — Architecture type, services, connections
-2. **Layout** — Canvas size, group box placement, icon grid
-3. **XML Writing** — Structure → Groups (outside-in) → Icons → Edges → Legend
-4. **Export** — `drawio -x -f png -s 2 -t -o output.png input.drawio`
+2. **Layout** — Canvas size, group box placement, icon grid. Group same-kind
+   resources into a **single vertical column** so edges don't cross siblings.
+3. **XML Writing** — Structure → Groups (outside-in) → Icons (uniform 78x78) →
+   Edges (orthogonal, explicit `exitX/exitY`/`entryX/entryY` anchors) → Legend.
+   **Never put `&` or `--` inside XML comments** — drawio silently drops every
+   cell after them (exit 0, truncated PNG). Prefer no decorative comments.
+4. **Validate (필수, before export)** — `python3 ${CLAUDE_PLUGIN_ROOT}/skills/architecture-diagram/scripts/validate_drawio.py output.drawio`
+   → must pass; compare the reported cell/icon counts to what you intended.
+5. **Export** — `drawio -x -f png -s 2 -t -o output.png input.drawio`
+   (headless Linux: prefix with `xvfb-run -a`). Then re-open/inspect the PNG —
+   a tiny file or empty render means truncation; fix and re-validate.
 
 ---
 
