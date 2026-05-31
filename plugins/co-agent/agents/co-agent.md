@@ -34,7 +34,7 @@ Claude is always the chair: attribute points to each AI, surface disagreement, o
 
 ```mermaid
 graph TD
-    A[요청] --> P[Step 0: 패널 감지<br/>kiro / codex / gemini 중 설치된 것]
+    A[요청] --> P[Step 0: 패널 감지<br/>kiro-cli / codex / gemini 중 설치된 것]
     P --> B{의도?}
     B -->|코드/아키텍처 리뷰| R[Review: diff 팬아웃 → 종합 → PASS/REVIEW/FAIL]
     B -->|"잘 모르겠어" / 의사결정| D[Decide: 옵션 팬아웃 → 비교표 → 추천]
@@ -55,7 +55,8 @@ Detailed per-mode steps live in `skills/co-agent/SKILL.md`.
 PANEL=""
 # Binary presence only — kiro-cli works headless via interactive login OR
 # $KIRO_API_KEY. Unauthenticated CLIs just error at call time → skipped.
-command -v kiro-cli >/dev/null 2>&1 && PANEL="$PANEL kiro"
+# NOTE: the Kiro binary is `kiro-cli` (NOT `kiro`) — the label matches the binary.
+command -v kiro-cli >/dev/null 2>&1 && PANEL="$PANEL kiro-cli"
 command -v codex    >/dev/null 2>&1 && PANEL="$PANEL codex"
 command -v gemini   >/dev/null 2>&1 && PANEL="$PANEL gemini"
 echo "Panel: ${PANEL:-none (Claude solo)}"

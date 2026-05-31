@@ -43,11 +43,15 @@ PANEL=""
 # interactive login session OR $KIRO_API_KEY (Pro+). Don't pre-gate on the env
 # key; if a CLI isn't actually authenticated it just errors at call time and
 # we skip it (graceful fallback), same as codex/gemini.
-command -v kiro-cli >/dev/null 2>&1 && PANEL="$PANEL kiro"
+command -v kiro-cli >/dev/null 2>&1 && PANEL="$PANEL kiro-cli"
 command -v codex    >/dev/null 2>&1 && PANEL="$PANEL codex"
 command -v gemini   >/dev/null 2>&1 && PANEL="$PANEL gemini"
 echo "Panel: ${PANEL:-(none — Claude will answer solo and say so)}"
 ```
+
+> ⚠️ **The Kiro binary is `kiro-cli`, NOT `kiro`.** Always invoke `kiro-cli chat …`.
+> (codex/gemini binaries match their names; only Kiro differs — labels above use the
+> exact binary name so you never type a bare `kiro`.)
 
 Tell the user which AIs are on the panel. If none are available, do the task as
 Claude alone and state that no external panel was reached.
@@ -59,10 +63,14 @@ Route by intent (triggers above):
 ### Mode 1 — Review  (`review`, "코드/아키텍처 리뷰", "second opinion")
 Get multiple AIs to review a change, then synthesize.
 
-1. Capture the diff (guard against empty/bad base ref):
+1. Capture the diff (detect the repo's default branch — don't assume `main`):
    ```bash
-   DIFF=$(git diff main...HEAD 2>/dev/null); [ -z "$DIFF" ] && DIFF=$(git diff origin/main...HEAD 2>/dev/null)
-   [ -z "$DIFF" ] && { echo "EMPTY DIFF — check base ref"; }
+   # Resolve the trunk from origin/HEAD (handles main / master / custom trunk).
+   BASE=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's@^origin/@@')
+   BASE=${BASE:-$(git rev-parse --verify --quiet main >/dev/null 2>&1 && echo main || echo master)}
+   DIFF=$(git diff "origin/$BASE...HEAD" 2>/dev/null); [ -z "$DIFF" ] && DIFF=$(git diff "$BASE...HEAD" 2>/dev/null)
+   [ -z "$DIFF" ] && DIFF=$(git diff HEAD~1...HEAD 2>/dev/null)   # last-resort: previous commit
+   [ -z "$DIFF" ] && echo "EMPTY DIFF — pass an explicit base or check the branch"
    ```
 2. Fan out the SAME review prompt to each panel member (run in parallel, capture to
    files). Prompt: *"Review this diff. Report [SEVERITY] file:line — issue. Cover
