@@ -38,8 +38,8 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 - **5-phase workflow** — Discovery, Design, Skill-First Build, Convert, Deploy
 - **Strands Agent framework** — Generates deployable Python agents with BedrockModel
 
-*Architecture Review (kiro-review):*
-- **Deep code review** — Multi-perspective review via Kiro CLI integration
+*Multi-AI Collaboration (co-agent):*
+- **Multi-AI second opinion** — fan reviews/decisions/ADRs out to Kiro/Codex/Gemini CLIs; Claude synthesizes
 - **Adversarial security audit** — Attack surface analysis and vulnerability assessment
 - **Well-Architected alignment** — 6-pillar scoring with improvement recommendations
 
@@ -61,7 +61,7 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 /plugin install aws-ops-plugin@oh-my-cloud-skills
 /plugin install kiro-power-converter@oh-my-cloud-skills
 /plugin install agentcore-creator@oh-my-cloud-skills
-/plugin install kiro-review@oh-my-cloud-skills
+/plugin install co-agent@oh-my-cloud-skills
 /plugin install project-init@oh-my-cloud-skills
 ```
 
@@ -72,7 +72,7 @@ claude --plugin-dir ./plugins/aws-content-plugin
 claude --plugin-dir ./plugins/aws-ops-plugin
 claude --plugin-dir ./plugins/kiro-power-converter
 claude --plugin-dir ./plugins/agentcore-creator
-claude --plugin-dir ./plugins/kiro-review
+claude --plugin-dir ./plugins/co-agent
 claude --plugin-dir ./plugins/project-init
 ```
 
@@ -83,7 +83,7 @@ Uninstall:
 /plugin uninstall aws-ops-plugin@oh-my-cloud-skills
 /plugin uninstall kiro-power-converter@oh-my-cloud-skills
 /plugin uninstall agentcore-creator@oh-my-cloud-skills
-/plugin uninstall kiro-review@oh-my-cloud-skills
+/plugin uninstall co-agent@oh-my-cloud-skills
 /plugin uninstall project-init@oh-my-cloud-skills
 
 # Remove the marketplace
@@ -586,7 +586,7 @@ aws-ops-power/
 |-------|--------|----------------|--------|
 | `kiro-converter-agent` | kiro-power-converter | "Convert aws-ops-plugin to Kiro" | Kiro Power directory |
 | `agentcore-creator-agent` | agentcore-creator | "Deploy agent to AgentCore" | Strands Agent + deploy script |
-| `kiro-review-agent` | kiro-review | "Run architecture review" | 5-phase review report |
+| `co-agent` | co-agent | "second opinion" / "help me decide" / "co-author ADR" | Multi-AI review / decision / ADR |
 | `doc-sync-checker` | project-init | "/sync-docs" | Doc quality scores |
 
 All agents activate automatically when Claude detects matching keywords in your prompt.
@@ -622,7 +622,7 @@ All agents activate automatically when Claude detects matching keywords in your 
 |-------|----------|
 | `kiro-convert` | Plugin-to-Kiro-Power conversion workflow |
 | `agentcore-create` | 5-phase AgentCore design, build, convert, deploy workflow |
-| `kiro-review` | Architecture deep review via Kiro CLI (code, security, WAF, spec-driven) |
+| `co-agent` | Multi-AI collaboration (Kiro/Codex/Gemini) — review, decision support, ADR co-authoring; Claude chairs |
 | `project-scaffolder` | Claude Code project structure patterns and conventions |
 
 ### Project Init Commands
@@ -668,7 +668,7 @@ Well-Architected:   wellarchitected-agent  -->  6-pillar scoring  -->  AS-IS/TO-
 ```
 Kiro conversion:   plugin source  -->  kiro-converter-agent  -->  Kiro Power directory  -->  install/export
 AgentCore deploy:  discovery  -->  design  -->  skill-first build  -->  AgentCore convert  -->  deploy
-Architecture review: git diff  -->  kiro-review-agent  -->  code + security + WAF  -->  report
+Co-agent collab:     prompt  -->  fan-out to Kiro/Codex/Gemini  -->  Claude synthesizes  -->  review / decision / ADR
 Doc sync:          /sync-docs  -->  doc-sync-checker  -->  quality scores  -->  update docs
 ```
 
@@ -750,13 +750,13 @@ plugins/
 │   └── skills/
 │       └── agentcore-create/
 │
-├── kiro-review/                       # Architecture deep review (1 agent, 1 skill)
+├── co-agent/                       # Multi-AI collaboration (1 agent, 1 skill)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
 │   ├── agents/
-│   │   └── kiro-review-agent.md
+│   │   └── co-agent.md
 │   └── skills/
-│       └── kiro-review/
+│       └── co-agent/
 │
 └── project-init/                      # Project scaffolding (1 agent, 2 skills, 10 commands)
     ├── .claude-plugin/plugin.json

@@ -38,8 +38,8 @@
 - **5단계 워크플로우** — 발견, 설계, 스킬 우선 빌드, 변환, 배포
 - **Strands Agent 프레임워크** — BedrockModel을 사용한 배포 가능한 Python 에이전트 생성
 
-*아키텍처 리뷰 (kiro-review):*
-- **심층 코드 리뷰** — Kiro CLI 연동을 통한 다중 관점 리뷰
+*멀티-AI 협업 (co-agent):*
+- **멀티-AI second opinion** — 리뷰/의사결정/ADR을 Kiro/Codex/Gemini CLI에 팬아웃, Claude가 종합
 - **적대적 보안 감사** — 공격 표면 분석 및 취약점 평가
 - **Well-Architected 정렬** — 6-pillar 점수와 개선 권장 사항
 
@@ -61,7 +61,7 @@
 /plugin install aws-ops-plugin@oh-my-cloud-skills
 /plugin install kiro-power-converter@oh-my-cloud-skills
 /plugin install agentcore-creator@oh-my-cloud-skills
-/plugin install kiro-review@oh-my-cloud-skills
+/plugin install co-agent@oh-my-cloud-skills
 /plugin install project-init@oh-my-cloud-skills
 ```
 
@@ -72,7 +72,7 @@ claude --plugin-dir ./plugins/aws-content-plugin
 claude --plugin-dir ./plugins/aws-ops-plugin
 claude --plugin-dir ./plugins/kiro-power-converter
 claude --plugin-dir ./plugins/agentcore-creator
-claude --plugin-dir ./plugins/kiro-review
+claude --plugin-dir ./plugins/co-agent
 claude --plugin-dir ./plugins/project-init
 ```
 
@@ -83,7 +83,7 @@ claude --plugin-dir ./plugins/project-init
 /plugin uninstall aws-ops-plugin@oh-my-cloud-skills
 /plugin uninstall kiro-power-converter@oh-my-cloud-skills
 /plugin uninstall agentcore-creator@oh-my-cloud-skills
-/plugin uninstall kiro-review@oh-my-cloud-skills
+/plugin uninstall co-agent@oh-my-cloud-skills
 /plugin uninstall project-init@oh-my-cloud-skills
 
 # 마켓플레이스 제거
@@ -586,7 +586,7 @@ aws-ops-power/
 |---------|---------|-------------|------|
 | `kiro-converter-agent` | kiro-power-converter | "aws-ops-plugin을 Kiro로 변환" | Kiro Power 디렉토리 |
 | `agentcore-creator-agent` | agentcore-creator | "에이전트를 AgentCore에 배포" | Strands Agent + 배포 스크립트 |
-| `kiro-review-agent` | kiro-review | "아키텍처 리뷰 실행" | 5단계 리뷰 보고서 |
+| `co-agent` | co-agent | "second opinion" / "help me decide" / "ADR 협업" | 멀티-AI 리뷰 / 의사결정 / ADR |
 | `doc-sync-checker` | project-init | "/sync-docs" | 문서 품질 점수 |
 
 모든 에이전트는 Claude가 프롬프트에서 일치하는 키워드를 감지하면 자동으로 활성화됩니다.
@@ -622,7 +622,7 @@ aws-ops-power/
 |------|----------|
 | `kiro-convert` | 플러그인-to-Kiro-Power 변환 워크플로우 |
 | `agentcore-create` | 5단계 AgentCore 설계, 빌드, 변환, 배포 워크플로우 |
-| `kiro-review` | Kiro CLI 기반 아키텍처 심층 리뷰 (코드, 보안, WAF, 스펙 기반) |
+| `co-agent` | 멀티-AI 협업 (Kiro/Codex/Gemini) — 리뷰, 의사결정 보조, ADR 협업; Claude가 의장 |
 | `project-scaffolder` | Claude Code 프로젝트 구조 패턴 및 컨벤션 |
 
 ### Project Init 명령
@@ -668,7 +668,7 @@ Well-Architected: wellarchitected-agent  -->  6-pillar 스코어링  -->  AS-IS/
 ```
 Kiro 변환:        플러그인 소스  -->  kiro-converter-agent  -->  Kiro Power 디렉토리  -->  설치/내보내기
 AgentCore 배포:   발견  -->  설계  -->  스킬 우선 빌드  -->  AgentCore 변환  -->  배포
-아키텍처 리뷰:    git diff  -->  kiro-review-agent  -->  코드 + 보안 + WAF  -->  보고서
+co-agent 협업:   프롬프트  -->  Kiro/Codex/Gemini 팬아웃  -->  Claude 종합  -->  리뷰 / 의사결정 / ADR
 문서 동기화:      /sync-docs  -->  doc-sync-checker  -->  품질 점수  -->  문서 업데이트
 ```
 
@@ -750,13 +750,13 @@ plugins/
 │   └── skills/
 │       └── agentcore-create/
 │
-├── kiro-review/                       # 아키텍처 심층 리뷰 (1 에이전트, 1 스킬)
+├── co-agent/                       # 멀티-AI 협업 (1 에이전트, 1 스킬)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
 │   ├── agents/
-│   │   └── kiro-review-agent.md
+│   │   └── co-agent.md
 │   └── skills/
-│       └── kiro-review/
+│       └── co-agent/
 │
 └── project-init/                      # 프로젝트 스캐폴딩 (1 에이전트, 2 스킬, 10 명령)
     ├── .claude-plugin/plugin.json

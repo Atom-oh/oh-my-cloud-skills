@@ -52,7 +52,7 @@ paths + fix PRs. This skill covers cloud/cluster posture; Security Agent covers
 the app. See `references/aws-security-agent.md`.
 
 > Scope split: **AWS Security Agent** = app design/code/pentest · **this skill** =
-> EKS/IAM/network/CIS posture · **`kiro-review` plugin** = per-diff adversarial review.
+> EKS/IAM/network/CIS posture · **`co-agent` plugin** = per-diff adversarial review.
 
 ## Quick Audit Commands
 
