@@ -53,7 +53,9 @@ Detailed per-mode steps live in `skills/co-agent/SKILL.md`.
 
 ```bash
 PANEL=""
-command -v kiro-cli >/dev/null 2>&1 && [ -n "$KIRO_API_KEY" ] && PANEL="$PANEL kiro"
+# Binary presence only — kiro-cli works headless via interactive login OR
+# $KIRO_API_KEY. Unauthenticated CLIs just error at call time → skipped.
+command -v kiro-cli >/dev/null 2>&1 && PANEL="$PANEL kiro"
 command -v codex    >/dev/null 2>&1 && PANEL="$PANEL codex"
 command -v gemini   >/dev/null 2>&1 && PANEL="$PANEL gemini"
 echo "Panel: ${PANEL:-none (Claude solo)}"

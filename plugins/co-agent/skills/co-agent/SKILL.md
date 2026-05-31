@@ -39,7 +39,11 @@ gracefully, never hard-fail.
 
 ```bash
 PANEL=""
-command -v kiro-cli >/dev/null 2>&1 && [ -n "$KIRO_API_KEY" ] && PANEL="$PANEL kiro"
+# Detect by binary presence only — kiro-cli is usable headless via EITHER an
+# interactive login session OR $KIRO_API_KEY (Pro+). Don't pre-gate on the env
+# key; if a CLI isn't actually authenticated it just errors at call time and
+# we skip it (graceful fallback), same as codex/gemini.
+command -v kiro-cli >/dev/null 2>&1 && PANEL="$PANEL kiro"
 command -v codex    >/dev/null 2>&1 && PANEL="$PANEL codex"
 command -v gemini   >/dev/null 2>&1 && PANEL="$PANEL gemini"
 echo "Panel: ${PANEL:-(none — Claude will answer solo and say so)}"
