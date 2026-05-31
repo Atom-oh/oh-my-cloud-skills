@@ -323,7 +323,7 @@ python3 {skill-dir}/scripts/convert_plugin_to_agentcore.py \
   --output <output-path> \
   --region <region> \
   --framework strands \
-  [--enable-memory] [--enable-gateway]
+  [--disable-memory] [--disable-gateway] [--enable-lambda]   # Memory/Gateway on by default
 ```
 
 ### 4.4 Artifact Review
@@ -485,5 +485,5 @@ python3 {skill-dir}/scripts/convert_plugin_to_agentcore.py \
   --output <output-path> \
   --region <aws-region> \
   --framework strands \
-  [--enable-memory] [--enable-gateway]
+  [--disable-memory] [--disable-gateway] [--enable-lambda]   # Memory/Gateway on by default
 ```
