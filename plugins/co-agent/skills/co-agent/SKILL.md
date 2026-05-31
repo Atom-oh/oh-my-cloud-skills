@@ -2,20 +2,22 @@
 name: co-agent
 description: "Collaborate with other AI agents (Kiro CLI, Codex, Gemini) for a second opinion. Three modes — multi-AI review of code/architecture, decision support when you're unsure, and ADR co-authoring. Claude chairs and synthesizes the final answer. 멀티 AI 협업: 리뷰, 의사결정 보조, ADR 협업."
 triggers:
+  # High-precision: only fire when the user clearly wants MULTIPLE AIs / a panel.
+  # Generic "code review"/"architecture review"/"decide"/"adr" are intentionally
+  # NOT triggers — they collide with code-review/arch-review/pr-review skills and
+  # over-fire. Use /co-agent explicitly for those, or the multi-AI phrasings below.
   - "co-agent"
   - "second opinion"
   - "다른 ai"
+  - "다른 ai한테"
+  - "다른 ai로 리뷰"
   - "ai 협업"
+  - "ai 패널"
+  - "멀티 ai"
   - "multi-ai review"
-  - "architecture review"
-  - "아키텍처 리뷰"
-  - "코드 리뷰"
-  - "잘 모르겠"
-  - "모르겠어"
-  - "의사결정"
-  - "decide"
-  - "help me decide"
-  - "adr"
+  - "잘 모르겠어"        # decision support (user requirement: ask the panel when unsure)
+  - "의사결정 도와"
+  - "adr 협업"
   - "협업해서 결정"
 allowed-tools:
   - Bash
