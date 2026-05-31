@@ -248,7 +248,7 @@ Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Sk
 |-------|---------|
 | `co-agent` | Multi-AI panel chair — fans review/decision/ADR prompts to Kiro/Codex/Gemini CLIs and synthesizes |
 
-Skill: `co-agent` — 3 modes: **Review** (multi-AI code/arch review + Well-Architected), **Decide** (decision support when unsure), **ADR** (co-author ADRs). Fans the same prompt to whichever AI CLIs are installed — Kiro (`kiro-cli chat --no-interactive`, needs `KIRO_API_KEY`), Codex (`codex exec -s read-only`), Gemini (`gemini -p … -o text`) — in parallel, then **Claude synthesizes** (consensus vs. dissent). Degrades gracefully; if no CLI is present, Claude answers solo. Adapters: `references/ai-cli-adapters.md`.
+Skill: `co-agent` — 3 modes: **Review** (multi-AI code/arch review + Well-Architected), **Decide** (decision support when unsure), **ADR** (co-author ADRs). Fans the same prompt to whichever AI CLIs are installed — Kiro (`kiro-cli chat --no-interactive`; auth via login or `KIRO_API_KEY`), Codex (`codex exec -s read-only`), Gemini (`gemini -p … -o text`) — in parallel, then **Claude synthesizes** (consensus vs. dissent). Degrades gracefully; if no CLI is present, Claude answers solo. Adapters: `references/ai-cli-adapters.md`.
 
 ### project-init (1 agent, 2 skills, 10 commands)
 
