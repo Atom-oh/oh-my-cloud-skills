@@ -1,6 +1,13 @@
 ---
 name: reactive-presentation
 description: "Create interactive HTML presentation slideshows with Canvas animations, quizzes, dark theme, and keyboard navigation. Deploy to GitHub Pages. Use when user asks to: create slides, build a presentation, make a slideshow, training slides, interactive presentation, Canvas animation slides, or mentions 'reactive presentation'. Supports PPTX template theming and Remarp markdown content authoring. Supports multi-block training sessions (30min-3hr), technical deep-dives, and workshop content."
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
+  - Glob
+  - Grep
 ---
 
 # Reactive Presentation
@@ -498,46 +505,8 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 
 ### Interactive Slide 작성 가이드 (고급)
 
-복잡한 인터랙션이 필요한 슬라이드는 `:::html` + `:::script` 블록을 사용합니다:
-
-```markdown
----
-# VPA 시뮬레이터 슬라이드
-
-:::html
-<div class="simulator-layout">
-  <div class="slider-group">
-    <div class="slider-row">
-      <label>CPU Request</label>
-      <input type="range" id="cpu-req" min="50" max="2000" value="250">
-      <span class="value" id="cpu-req-val">250m</span>
-    </div>
-  </div>
-  <div class="yaml-output" id="vpa-yaml"></div>
-  <canvas id="vpa-gauge"></canvas>
-</div>
-:::
-
-:::script
-const cpuReq = document.getElementById('cpu-req');
-cpuReq.oninput = () => {
-  document.getElementById('cpu-req-val').textContent = cpuReq.value + 'm';
-  updateYAML();
-  drawGauge();
-};
-:::
-
-:::css
-.simulator-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-:::
-
-:::notes
-{timing: 5min}
-VPA 시뮬레이터로 CPU/Memory 조절 시 추천값이 어떻게 변하는지 보여줍니다.
-:::
-```
-
-자세한 패턴 템플릿: [references/interactive-patterns-guide.md](references/interactive-patterns-guide.md)
+복잡한 인터랙션(슬라이더, 시뮬레이터, 대시보드)은 `:::html` + `:::script` + `:::css` 블록을 사용합니다.
+패턴 템플릿과 예시: [references/interactive-patterns-guide.md](references/interactive-patterns-guide.md).
 
 ## Slide Type Decision Guide
 
@@ -637,147 +606,16 @@ VPA 시뮬레이터로 CPU/Memory 조절 시 추천값이 어떻게 변하는지
 > 3. 단방향 직선 흐름(A→B→C→D)만 canvas 허용
 > 4. 다계층, 그룹, 분기 화살표가 있으면 → `:::html` + `:::css` 필수
 
-### Canvas DSL 문법 (필수 준수)
+### Canvas & Fragment 작성 (상세는 레퍼런스)
 
-> **주의**: 아래 정확한 문법만 파서가 인식합니다. bracket syntax `[x=..., y=...]`이나 다른 변형은 동작하지 않습니다.
-
-```
-box <id> "<label>" at <x>,<y> size <w>,<h> color <#hex> [step <n>]
-icon <id> "<service-name>" at <x>,<y> size <s> [step <n>]
-arrow <from-id> -> <to-id> "<label>" [color <#hex>] [step <n>]
-group "<label>" containing <id1>, <id2> [color <#hex>] [step <n>]
-```
-
-예시:
-```markdown
-:::canvas
-box api "API Gateway" at 100,180 size 130,55 color #FF9900 step 1
-box lambda "Lambda" at 320,180 size 130,55 color #FF9900 step 2
-box db "DynamoDB" at 540,180 size 130,55 color #3B48CC step 3
-arrow api -> lambda "invoke" step 2
-arrow lambda -> db "query" step 3
-:::
-```
-
-### Canvas 좌표 계산 공식 (필수 — LLM 공간 추론 보정)
-
-> **원칙**: 좌표를 "상상"으로 배치하지 마세요. 아래 공식으로 계산하세요.
-> LLM은 공간 추론이 취약하므로 수학적 공식 기반 배치가 필수입니다.
-
-**캔버스 좌표계**: 960 × 400 (BASE_W × BASE_H), 안전 영역 40px 마진
-
-**수평 N-박스 직선 흐름** (A → B → C → ...):
-```
-gap = (880 - N * box_width) / (N - 1)     # 880 = 960 - 40*2 마진
-x[i] = 40 + i * (box_width + gap)         # i = 0, 1, 2, ...
-y = 180                                    # 수직 중앙
-```
-
-**2행 레이아웃** (위: 소스, 아래: 타겟):
-```
-row1_y = 100                               # 상단 행
-row2_y = 280                               # 하단 행
-x[i] = 40 + i * (880 / cols_in_row)       # 각 행 내 균등 분배
-```
-
-**박스 크기 규칙**:
-```
-width ≥ max(label_length × 9, 100)        # 영문 기준, 한글은 × 14
-height = 55                                # 기본값
-min_gap = 40                               # 박스 간 최소 간격 (edge-to-edge)
-```
-
-**아이콘 간격 규칙**:
-```
-min_gap = 60                               # 아이콘 center-to-center
-icon_size = 48                             # 기본 아이콘 크기
-x[i] = 40 + i * max(icon_size + min_gap, 880 / N)
-```
-
-**자가 검증 (작성 후 반드시 확인)**:
-1. 모든 x값이 40~880 범위 내인가?
-2. 모든 y값이 30~350 범위 내인가?
-3. 인접 박스 간 edge-to-edge 거리 ≥ 40px인가?
-4. `validate` 명령으로 CANVAS_OVERLAP 없는지 확인했는가?
-
-### Fragment 순서 규칙 (td-lr: Top-Down Left-Right)
-
-> **원칙**: 독자의 시선 흐름을 따릅니다 — **위에서 아래, 왼쪽에서 오른쪽**.
-
-**단일 컬럼**: DOM 순서대로 auto-increment (기본 동작)
-```markdown
-- Item A {.click}          ← order=1 (자동)
-- Item B {.click}          ← order=2 (자동)
-- Item C {.click}          ← order=3 (자동)
-```
-
-**다단 컬럼 (:::left/:::right)** — **반드시 명시적 order 사용**:
-```markdown
-::: left
-- Left Top {.click order=1}
-- Left Bottom {.click order=3}
-:::
-
-::: right
-- Right Top {.click order=2}
-- Right Bottom {.click order=4}
-:::
-```
-시각적 순서: 1(좌상) → 2(우상) → 3(좌하) → 4(우하)
-
-**:::html 블록 내 다단**: `data-fragment-index` 직접 지정:
-```html
-<div class="col-2">
-  <div class="fragment fade-up" data-fragment-index="1">좌상</div>
-  <div class="fragment fade-up" data-fragment-index="2">우상</div>
-  <div class="fragment fade-up" data-fragment-index="3">좌하</div>
-  <div class="fragment fade-up" data-fragment-index="4">우하</div>
-</div>
-```
-
-### 콘텐츠 작성 규칙
-
-1. **슬라이드 주석**: 각 슬라이드 구분선(`---`) 아래에 `<!-- Slide N: 제목 (슬라이드 타입) -->` 주석 필수
-2. **Raw HTML**: 마크다운 본문에 `<div>`, `<table>` 등 블록 HTML을 직접 삽입하면 `<p>` 태그로 감싸여 깨짐 → 반드시 `:::html` 블록 사용
-3. **AWS 아이콘 경로**: `../common/aws-icons/services/Arch_{ServiceName}_48.svg` 형식 사용 (전체 디렉토리 경로 `Architecture-Service-Icons_07312025/...` 금지)
+> **⛔ `:::canvas` 블록을 쓰기 전에 반드시 [references/canvas-authoring-guide.md](references/canvas-authoring-guide.md)를 읽으세요.**
+> 정확한 DSL 문법(bracket syntax는 동작 안 함), **필수 좌표 계산 공식**(LLM 공간추론 보정),
+> Fragment 순서 규칙(td-lr), 콘텐츠 작성 규칙이 거기 있습니다. `validate` 명령이 CANVAS_OVERLAP을 backstop으로 검출합니다.
 
 ## Keyboard Shortcuts
 
-| Key | Action |
-|-----|--------|
-| ← → | Previous / Next slide |
-| Space | Next slide |
-| ↑ ↓ | Cycle tabs/compare options on current slide; step animation if registered |
-| F | Toggle fullscreen |
-| N | Toggle speaker notes panel (bottom 20% overlay) |
-| P | Open presenter view (new window with notes, timer, slide sync) |
-| O | Toggle overview mode (slide grid thumbnails) |
-| S | Toggle slide sidebar (non-fullscreen only) |
-| B | Blackout screen |
-| Esc | Exit fullscreen / dismiss notes panel / exit overview |
-| Home/End | First/Last slide |
-| 1-9 | Jump to slide number |
-
-### Tab/Step Navigation (↑↓)
-
-The ↑↓ arrow keys control interactive elements on the current slide:
-
-- **↓ key**: Next tab, next compare option, or next animation step
-- **↑ key**: Previous tab, previous compare option, or previous animation step
-
-Detection priority:
-1. **Registered slide action** (`deck.registerSlideAction(index, { up, down })`) — takes priority. Used for animation step control where JS state can't be auto-detected from DOM.
-2. **Auto-detect `.tab-bar`** on current slide — cycles through `.tab-btn` elements
-3. **Auto-detect `.compare-toggle`** on current slide — cycles through `.compare-btn` elements
-4. **No interactive element** — does nothing
-
-Register animation step control:
-```javascript
-deck.registerSlideAction(SLIDE_INDEX, {
-  down: () => timeline.nextStep(),
-  up: () => timeline.prevStep(),
-});
-```
+뷰어 런타임 단축키(←→ Space ↑↓ F N P O S B Esc Home/End 1-9)와 ↑↓ Tab/Step 내비게이션 상세:
+[references/keyboard-shortcuts.md](references/keyboard-shortcuts.md).
 
 ## Quality Assurance
 
@@ -816,3 +654,5 @@ Framework files to copy into `common/`:
 - [marp-format-guide.md](references/marp-format-guide.md) — Marp markdown format specification (legacy)
 - [pptx-theme-guide.md](references/pptx-theme-guide.md) — PPTX theme extraction usage, color mapping, troubleshooting
 - [aws-icons-guide.md](references/aws-icons-guide.md) — AWS Architecture Icons usage, naming conventions, commonly used icons by topic
+- [canvas-authoring-guide.md](references/canvas-authoring-guide.md) — `:::canvas` DSL grammar, mandatory coordinate formula, fragment ordering, content rules (read before any canvas block)
+- [keyboard-shortcuts.md](references/keyboard-shortcuts.md) — runtime viewer shortcuts + ↑↓ tab/step navigation
