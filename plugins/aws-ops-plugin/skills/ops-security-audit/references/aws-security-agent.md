@@ -72,10 +72,10 @@ graph TD
 |-------|------|
 | App design & code vulnerabilities, pentest | **AWS Security Agent** |
 | EKS/IAM/RBAC/network/CIS posture | This skill (`iam-audit.md`, `network-security.md`, `compliance-checklist.md`) |
-| Adversarial review of a code change/diff | `kiro-review` plugin (Kiro CLI) |
+| Adversarial review of a code change/diff | `co-agent` plugin (Kiro CLI) |
 
 Use all three together: Security Agent for application-layer SAST/DAST/pentest,
-this skill for cloud/cluster posture, and `kiro-review` for per-diff adversarial
+this skill for cloud/cluster posture, and `co-agent` for per-diff adversarial
 review during PRs.
 
 ## Common Issues

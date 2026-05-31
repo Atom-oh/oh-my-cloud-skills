@@ -88,7 +88,7 @@ development lifecycle. See `references/aws-security-agent.md`.
 |-------|------|
 | App design / code vulnerabilities / pentest | **AWS Security Agent** |
 | EKS / IAM / network / CIS posture | **This skill** |
-| Per-diff adversarial review during PRs | **`kiro-review` plugin** |
+| Per-diff adversarial review during PRs | **`co-agent` plugin** |
 
 ## Quick Audit Commands
 

@@ -90,7 +90,7 @@ aws devopsagent update-backlog-task --task-id <id> --action approve-mitigation
 
 Mitigation plans are emitted as Kiro-compatible specs (Prepare → Pre-Validate →
 Apply → Post-Validate). After the agent produces an RCA, hand the spec to a coding
-agent or apply via IaC. Pair with the `kiro-review` plugin for a deep review of the
+agent or apply via IaC. Pair with the `co-agent` plugin for a deep review of the
 proposed fix before `Apply`.
 
 ## Common Issues

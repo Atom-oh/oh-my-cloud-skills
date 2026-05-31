@@ -9,7 +9,7 @@ A Claude Code plugin marketplace containing six plugins for AWS cloud work:
 - **aws-ops-plugin** — Infrastructure operations & troubleshooting (EKS, networking, IAM, observability)
 - **kiro-power-converter** — Convert Claude Code plugins to Kiro IDE Power format
 - **agentcore-creator** — Convert Claude Code plugins to Bedrock AgentCore
-- **kiro-review** — Architecture deep review via Kiro CLI
+- **co-agent** — Multi-AI collaboration (Kiro CLI, Codex, Gemini): review, decision support, ADR co-authoring; Claude chairs
 - **project-init** — Project scaffolding and documentation management
 
 All plugins are installed via `/plugin marketplace add` or loaded locally with `--plugin-dir`.
@@ -242,13 +242,13 @@ Skill: `kiro-convert` — interactive workflow for plugin-to-power conversion wi
 
 Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Skill-First Build, AgentCore Convert, Deploy) with `references/` and `scripts/` subdirectories. The `opus` alias resolves to `us.anthropic.claude-opus-4-8`; modern-Opus (4.7/4.8) param contract (no `temperature`/`top_p`/`top_k`, no `thinking.type:"enabled"`+`budget_tokens`) is documented in `references/agentcore-mapping-rules.md`.
 
-### kiro-review (1 agent, 1 skill)
+### co-agent (1 agent, 1 skill)
 
 | Agent | Purpose |
 |-------|---------|
-| `kiro-review-agent` | Comprehensive architecture deep review via Kiro CLI |
+| `co-agent` | Multi-AI panel chair — fans review/decision/ADR prompts to Kiro/Codex/Gemini CLIs and synthesizes |
 
-Skill: `kiro-review` — 5-Phase deep review (code review, adversarial security, Well-Architected, spec-driven validation). Delegates to **Kiro CLI 2.5.0** via `kiro-cli chat --no-interactive` (headless; needs `kiro-cli` binary + `KIRO_API_KEY`). The `kiro-cli-plugin` slash commands (`/kiro-cli:review`, `/kiro-cli:adversarial-review`) are an optional interactive wrapper; without either, falls back to self pattern-scan.
+Skill: `co-agent` — 3 modes: **Review** (multi-AI code/arch review + Well-Architected), **Decide** (decision support when unsure), **ADR** (co-author ADRs). Fans the same prompt to whichever AI CLIs are installed — Kiro (`kiro-cli chat --no-interactive`, needs `KIRO_API_KEY`), Codex (`codex exec -s read-only`), Gemini (`gemini -p … -o text`) — in parallel, then **Claude synthesizes** (consensus vs. dissent). Degrades gracefully; if no CLI is present, Claude answers solo. Adapters: `references/ai-cli-adapters.md`.
 
 ### project-init (1 agent, 2 skills, 10 commands)
 
@@ -278,7 +278,7 @@ Ops:       User issue → auto-routed agent → Diagnose → Resolve → Verify
 
 AgentCore: Plugin source → analyze → map to AgentCore → generate artifacts → user refinement → deploy via AWS CLI → verify
 
-Review:    /kiro-review → kiro-review-agent → Kiro CLI delegation → Well-Architected → Report
+Co-agent:  /co-agent → detect panel (Kiro/Codex/Gemini) → fan-out prompt → Claude synthesizes → Review report / Decision / ADR
 ```
 
 ## Auto-Sync Rules
