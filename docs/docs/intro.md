@@ -6,7 +6,7 @@ title: 시작하기
 
 # oh-my-cloud-skills 시작하기
 
-**oh-my-cloud-skills**는 AWS 클라우드 작업을 위한 [Claude Code](https://claude.ai/code) 플러그인 마켓플레이스입니다. 6개의 플러그인이 총 22개의 AI 에이전트와 14개의 스킬을 제공합니다.
+**oh-my-cloud-skills**는 AWS 클라우드 작업을 위한 [Claude Code](https://claude.ai/code) 플러그인 마켓플레이스입니다. 6개의 플러그인이 총 22개의 AI 에이전트와 17개의 스킬을 제공합니다.
 
 ## 플러그인 목록
 
@@ -17,7 +17,7 @@ title: 시작하기
 | [kiro-power-converter](/docs/kiro-power-converter/overview) | Claude Code 플러그인 → Kiro Power 변환 | 1 | 1 |
 | [agentcore-creator](/docs/agentcore-creator/overview) | Claude Code 플러그인 → Bedrock AgentCore 배포 | 1 | 1 |
 | [co-agent](/docs/co-agent/overview) | 멀티-AI 협업 (Kiro/Codex/Gemini) — 리뷰·의사결정·ADR | 1 | 1 |
-| [project-init](/docs/project-init/overview) | 프로젝트 스캐폴딩, 문서 동기화, 8개 명령 | 1 | 1 |
+| [project-init](/docs/project-init/overview) | 프로젝트 스캐폴딩, 문서 동기화, 10개 명령 | 1 | 2 |
 
 ## 설치 방법
 
