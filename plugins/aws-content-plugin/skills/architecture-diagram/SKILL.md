@@ -184,7 +184,7 @@ drawio -x -f svg -o output.svg input.drawio
 
 1. **같은 종류 리소스는 단일 컬럼(세로 일렬)으로 묶기**. 여러 Lambda를 한 그룹에 세로로 쌓으면, 자동 라우팅이 옆 아이콘을 관통하는 문제가 사라집니다(가장 효과적인 수정).
 2. **직교 엣지 고정**: `edgeStyle=orthogonalEdgeStyle;rounded=0;`. 자동 라우팅이 아이콘을 관통하면 **명시적 앵커**로 출입점을 고정: `exitX/exitY`(출발), `entryX/entryY`(도착) — 예: 오른쪽 중앙에서 나가려면 `exitX=1;exitY=0.5;exitDx=0;exitDy=0;`.
-3. **조밀한 밴드는 웨이포인트 레인 사용**: 엣지가 많으면 `<mxPoint as="...">` 웨이포인트로 공통 통로(레인)를 만들어 교차를 줄입니다. 절대좌표 계산은 `scripts/validate_drawio.py --coords`로 확인.
+3. **조밀한 밴드는 웨이포인트 레인 사용**: 엣지가 많으면 공통 수직/수평 채널(레인)로 묶어 교차를 줄입니다. **`scripts/route_edges.py --from <id> --to <id> --via-x <X>`** (또는 `--via-y`)가 깨끗한 직교 웨이포인트 + exit/entry 앵커를 계산해 줍니다(절대좌표 수동 계산 불필요). 들어오는(async) 엣지와 나가는(sync) 엣지는 **서로 다른 X 채널**로 분리하세요.
 4. **엣지 종류별 색상/스타일 구분 + 범례**: 동기 API(검정 실선), WebSocket(파랑 점선), 비동기 이벤트(분홍 점선), AI 호출(초록), 인증(빨강 점선) 등. 범례는 빈 코너에 겹치지 않게.
 5. **라벨이 보더/아이콘과 겹치지 않게** 엣지 라벨 위치 조정.
 
@@ -212,6 +212,7 @@ drawio -x -f svg -o output.svg input.drawio
 | `references/drawio-xml-guide.md` | XML 직접 작성 문법 가이드 |
 | `references/mcp-setup-guide.md` | Draw.io MCP 설정 및 도구 사용법 |
 | `scripts/validate_drawio.py` | **export 전 검증** — 침묵 킬러(주석 `&`/`--`, 미이스케이프 문자, DOCTYPE) 검출 + 셀 개수 리포트(truncation 감지) + `--coords` 절대좌표 |
+| `scripts/route_edges.py` | **엣지 웨이포인트 자동계산** — `--from/--to`로 깨끗한 직교 경로(채널 라우팅) + exit/entry 앵커 생성. 어지러운 화살표 정리의 핵심 도구. `--list`로 셀 절대좌표 확인 |
 
 ---
 

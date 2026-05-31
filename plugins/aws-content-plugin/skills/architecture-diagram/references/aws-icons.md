@@ -142,7 +142,8 @@ fontColor=#FFFFFF;         # Dark 테마용 흰색
 | EMR | `mxgraph.aws4.emr` | 빅데이터 처리 |
 | Glue | `mxgraph.aws4.glue` | ETL 서비스 |
 | QuickSight | `mxgraph.aws4.quicksight` | BI 시각화 |
-| OpenSearch | `mxgraph.aws4.elasticsearch_service` | 검색/분석 (ES 아이콘 사용) |
+| OpenSearch Service | `mxgraph.aws4.opensearch_service` | 검색/분석 (최신 OpenSearch 글리프 — 우선 사용) |
+| OpenSearch (legacy) | `mxgraph.aws4.elasticsearch_service` | 구버전 draw.io 폴백 (옛 ES 아이콘) |
 | Data Pipeline | `mxgraph.aws4.data_pipeline` | 데이터 이동 |
 | Lake Formation | `mxgraph.aws4.lake_formation` | 데이터 레이크 |
 | MSK | `mxgraph.aws4.managed_streaming_for_kafka` | Kafka |

@@ -58,15 +58,25 @@ PPT 16:9 Widescreen 기준 권장 크기:
 - `fontSize=12`
 - `fontColor=#FFFFFF` (Dark 테마)
 
-### Step 3: PNG Export
+### Step 3: 검증 후 PNG Export
+
+> **drawio CLI는 잘못된 XML에서도 exit 0으로 셀의 90%를 조용히 누락**시킵니다("성공한 듯 텅 빈 PNG").
+> export **전에 반드시** 검증하세요. (주석 안의 `&`/`--`가 가장 흔한 침묵 킬러 — 주석은 생략 권장.)
 
 ```bash
-# 고해상도 PNG 내보내기 (PPT용)
+# 1) 검증 (필수) — 침묵 킬러 검출 + 셀 개수로 truncation 감지
+python3 scripts/validate_drawio.py architecture.drawio
+
+# 2) 고해상도 PNG 내보내기 (PPT용)
 drawio -x -f png -s 2 -o architecture.png architecture.drawio
+# Headless Linux(디스플레이 없음)는 xvfb 필요 (dbus/GPU stderr 경고 무시 가능):
+xvfb-run -a drawio -x -f png -s 2 -o architecture.png architecture.drawio
 
 # 투명 배경 (Dark 테마 PPT용)
 drawio -x -f png -s 2 -t -o architecture.png architecture.drawio
 ```
+
+> export 후 PNG가 비정상적으로 작거나(<10KB) 비면 truncation — validator 셀 개수와 대조.
 
 ### Step 4: PPT에 삽입
 
@@ -261,6 +271,14 @@ mcp__drawio__add-cell-of-shape
 2. **왼쪽에서 오른쪽으로**: 데이터 흐름 방향
 3. **계층 구분**: 프레젠테이션 → 애플리케이션 → 데이터
 4. **AZ 표시**: 고가용성 설계 시 가용영역 명확히 구분
+
+### 엣지 라우팅 (어지러운 화살표 정리 — 품질의 핵심)
+
+1. **같은 종류 리소스는 단일 컬럼(세로 일렬)** → 자동 라우팅이 옆 아이콘을 관통하는 문제 제거(가장 효과적).
+2. **직교 고정** `edgeStyle=orthogonalEdgeStyle;rounded=0;` + 명시적 앵커 `exitX/exitY`·`entryX/entryY`.
+3. **들어오는(async)·나가는(sync) 엣지를 서로 다른 수직 채널로 분리**해 교차를 줄입니다. 웨이포인트는 `scripts/route_edges.py --from <id> --to <id> --via-x <X>`로 자동 계산.
+4. **엣지 종류별 색상/스타일 + 범례** (동기 API/WebSocket/async 이벤트/AI 호출/인증).
+5. 같은 레벨 아이콘은 동일 크기(표준 **78x78**, 중첩 리소스만 48~52).
 
 ### 하이브리드 아키텍처 패턴 (IDC + AWS)
 
