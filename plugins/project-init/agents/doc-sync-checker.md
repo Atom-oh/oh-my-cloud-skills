@@ -2,7 +2,7 @@
 name: doc-sync-checker
 description: Check if project documentation is in sync with current code state. Returns list of missing or outdated documents with quality scores.
 tools: Read, Glob, Grep, Bash(find:*), Bash(git log:*), Bash(ls:*)
-model: opus
+model: sonnet
 color: cyan
 ---
 
