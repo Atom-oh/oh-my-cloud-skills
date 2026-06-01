@@ -1,6 +1,9 @@
 # oh-my-cloud-skills
 
-[English](README.md)
+<a href="README.md"><img src="https://img.shields.io/badge/lang-English-lightgrey.svg" alt="English"></a>
+<a href="README.ko.md"><img src="https://img.shields.io/badge/lang-한국어-red.svg" alt="한국어"></a>
+[![version](https://img.shields.io/github/v/tag/Atom-oh/oh-my-cloud-skills?label=version&color=green)](https://github.com/Atom-oh/oh-my-cloud-skills/releases)
+[![license](https://img.shields.io/github/license/Atom-oh/oh-my-cloud-skills?color=yellow)](LICENSE)
 
 [Claude Code](https://docs.anthropic.com/en/docs/claude-code)용 AWS 클라우드 플러그인 — 콘텐츠 제작과 인프라 운영.
 
