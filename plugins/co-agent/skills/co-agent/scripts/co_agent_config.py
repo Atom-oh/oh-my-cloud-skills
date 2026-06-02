@@ -20,10 +20,12 @@ Usage:
   co_agent_config.py show                      # effective merged config (table)
   co_agent_config.py set <ai> <key> <value>    # write to .claude/co-agent.local.json
   co_agent_config.py set timeout <seconds>     # global per-CLI timeout
+  co_agent_config.py set autosync <on|off>     # auto-run sync-context on CLAUDE.md change
   co_agent_config.py flags <ai>                # CLI flag fragment for the fan-out
   co_agent_config.py panel                     # space-separated enabled AIs
   co_agent_config.py timeout                    # effective timeout (int)
   co_agent_config.py enabled <ai>              # exit 0 if enabled, 1 if not
+  co_agent_config.py autosync                  # exit 0 if sync-on-change is on, 1 if off
 Add --root DIR to target a repo other than the cwd.
 """
 import sys
@@ -80,7 +82,8 @@ def effective(root):
 
 def cmd_show(root):
     cfg = effective(root)
-    print(f"co-agent panel config  (timeout {cfg.get('timeout')}s)")
+    autosync = "on" if cfg.get("sync_on_change") else "off"
+    print(f"co-agent panel config  (timeout {cfg.get('timeout')}s · autosync {autosync})")
     print(f"  source: defaults + {local_path(root) if os.path.isfile(local_path(root)) else '(no local override)'}")
     print(f"  {'AI':7} {'enabled':8} {'model':22} effort")
     for ai in AIS:
@@ -109,6 +112,11 @@ def cmd_set(root, rest):
             print("usage: set timeout <positive seconds>", file=sys.stderr)
             return 2
         local["timeout"] = int(rest[1])
+    elif rest[0] == "autosync":
+        if len(rest) != 2 or rest[1].lower() not in ("on", "off", "true", "false", "1", "0", "yes", "no"):
+            print("usage: set autosync <on|off>", file=sys.stderr)
+            return 2
+        local["sync_on_change"] = rest[1].lower() in ("on", "true", "1", "yes")
     else:
         if len(rest) != 3:
             print("usage: set <ai> <key> <value>", file=sys.stderr)
@@ -185,6 +193,10 @@ def cmd_enabled(root, ai):
     return 0 if effective(root)["panel"].get(ai, {}).get("enabled", True) else 1
 
 
+def cmd_autosync(root):
+    return 0 if effective(root).get("sync_on_change") else 1
+
+
 def main():
     root = _argval("--root", os.getcwd())
     args = [a for a in sys.argv[1:] if a != "--root" and a != root]
@@ -203,6 +215,8 @@ def main():
         return cmd_timeout(root)
     if cmd == "enabled":
         return cmd_enabled(root, rest[0]) if rest else 2
+    if cmd == "autosync":
+        return cmd_autosync(root)
     print(__doc__)
     return 2
 

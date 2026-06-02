@@ -121,7 +121,7 @@ Co-author an Architecture Decision Record with the panel.
    following that convention. (We don't modify `/add-adr` — it can optionally invoke
    co-agent; see `references/ai-cli-adapters.md` → ADR hand-off.)
 
-### Mode 4 — sync-context  (`sync-context`, "AI 컨텍스트 동기화")
+### Mode 4 — sync-context  (also the standalone command **`/co-agent:sync-context`**)
 Give the external AIs project context so they review with the project's conventions —
 each CLI auto-loads its own native file from the repo root:
 
