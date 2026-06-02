@@ -100,6 +100,55 @@ co-agent's ADR mode provides the **collaboration layer** that enriches the
    (or paste into the file `/add-adr` created). co-agent does **not** modify the
    upstream `/add-adr` command itself.
 
+## Project context files (per-AI, auto-loaded)
+
+Each CLI auto-loads a project-context file from the repo root and uses it as system
+context for every invocation — the analogue of Claude's `CLAUDE.md`. co-agent
+**distills** `CLAUDE.md` into these so the panel reviews with the project's conventions
+(verified by asking each AI directly):
+
+| AI | File | Behaviour / limits | co-agent generates? |
+|----|------|--------------------|--------------------|
+| **Kiro** | `CLAUDE.md` | Reads the repo's `CLAUDE.md` directly (root + parent dirs) in default mode — NOT `AGENTS.md` or `.kiro/steering`. | ❌ — uses the canonical source as-is |
+| **Codex** | `AGENTS.md` | Merged git-root→cwd; **~32 KiB project-doc cap** (oversized → truncated). `AGENTS.override.md` wins locally. | ✅ |
+| **Gemini** | `GEMINI.md` | Loaded into the context window; **bloat degrades reasoning** — keep lean. Configurable via `contextFileName`. | ✅ |
+
+### Distill — do NOT copy CLAUDE.md verbatim
+
+All three warn against a dumped copy (Codex truncates at the cap; Gemini's context
+degrades; Kiro favors ~2000 words). Produce ONE lean, **review-oriented** shared core
+and write it to both `AGENTS.md` and `GEMINI.md`. Include only what helps an external
+reviewer judge a diff:
+
+- language / stack / runtime
+- build · test · lint commands (copy-paste ready)
+- naming conventions + **banned patterns** (e.g. the global AWS security mandates)
+- architectural boundaries (what may import what; where logic belongs)
+- PR/review expectations: test-coverage bar, error-handling style, security rules
+- a short review checklist + known false-positives to suppress
+
+Omit: transient project state, version-bump/release mechanics, tool internals, and
+exhaustive file inventories. **Never include secrets** — these files go to third-party AIs.
+
+### Generation marker + safety
+
+Every generated file carries a marker on line 1 so the validator can detect staleness
+and never clobber a hand-written file:
+
+```
+<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: <sha12> · generated-at: <date> · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
+```
+
+- Emit it with `python3 scripts/check_ai_context.py <dir> --emit-marker` (hashes the
+  current `CLAUDE.md`), then prepend a one-line role header
+  (`> You are <Codex|Gemini>, an external reviewer — project context below.`).
+- Files **without** the marker are treated as hand-written → left untouched (this also
+  protects Codex's `AGENTS.override.md`).
+- Validate after writing: `python3 scripts/check_ai_context.py <project-dir>` — checks
+  marker, size cap, staleness (claude-md-sha vs current `CLAUDE.md`), and runs a secret scan.
+- A plugin **PostToolUse hook** on `CLAUDE.md` Edit/Write runs the validator and prints a
+  reminder when the generated files drift out of sync.
+
 ## Notes
 
 - ACP (Agent Client Protocol) exists for Kiro but `session/prompt` isn't supported for

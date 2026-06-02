@@ -23,10 +23,23 @@
 ```
 co-agent
   ├── Step 0: 패널 감지 (kiro-cli / codex / gemini 중 설치된 것; Kiro 바이너리는 `kiro-cli`, NOT `kiro`)
-  ├── Review   : git diff → 동일 프롬프트 팬아웃 → 합의/이견 종합 → PASS/REVIEW/FAIL
-  ├── Decide   : 결정+옵션 팬아웃 → 비교표 → Claude 추천 (의장)
-  └── ADR      : 대안·트레이드오프·리스크 팬아웃 → Nygard ADR 초안 → /add-adr 연동
+  ├── Review       : git diff → 동일 프롬프트 팬아웃 → 합의/이견 종합 → PASS/REVIEW/FAIL
+  ├── Decide       : 결정+옵션 팬아웃 → 비교표 → Claude 추천 (의장)
+  ├── ADR          : 대안·트레이드오프·리스크 팬아웃 → Nygard ADR 초안 → /add-adr 연동
+  └── sync-context : CLAUDE.md 증류 → AGENTS.md(Codex)·GEMINI.md(Gemini) 생성 (Kiro는 CLAUDE.md 직접 사용)
 ```
+
+## AI Context Files (per-AI project docs)
+
+각 AI CLI가 리포 루트에서 자동 로드하는 컨텍스트 파일. co-agent가 **CLAUDE.md를 증류(distill)** 해 생성 — 복사 ❌.
+
+| AI | 파일 | 생성? |
+|----|------|-------|
+| Kiro | `CLAUDE.md` (직접 읽음) | ❌ |
+| Codex | `AGENTS.md` (~32 KiB cap) | ✅ |
+| Gemini | `GEMINI.md` (lean 유지) | ✅ |
+
+생성 마커(`generated-by: co-agent · claude-md-sha:`)로 staleness/수기파일 보호. `scripts/check_ai_context.py`가 검증(크기·마커·동기화·시크릿 스캔). CLAUDE.md 편집 시 PostToolUse 훅이 동기화 알림.
 
 ## AI CLI Adapters (read-only advisory)
 

@@ -12,6 +12,17 @@
     "./skills/co-agent"
   ],
   "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'FILE=\"$TOOL_INPUT_FILE_PATH\"; [ \"$(basename \"$FILE\" 2>/dev/null)\" = \"CLAUDE.md\" ] || exit 0; DIR=$(dirname \"$FILE\"); OUT=$(python3 \"${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/check_ai_context.py\" \"$DIR\" 2>/dev/null); [ $? -ne 0 ] && echo \"[co-agent] CLAUDE.md changed — AI context files are stale. Run /co-agent sync-context to regenerate AGENTS.md / GEMINI.md.\" && echo \"$OUT\"; exit 0'"
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "matcher": "",
