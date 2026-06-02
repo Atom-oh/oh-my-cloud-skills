@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+"""Validate / check staleness of co-agent-generated AI context files.
+
+co-agent distills CLAUDE.md into lean, review-oriented context files that the
+external AI CLIs auto-load from the repo root:
+  - AGENTS.md  → Codex CLI   (32 KiB project-doc cap; merged git-root→cwd)
+  - GEMINI.md  → Gemini CLI  (keep lean; bloat degrades the context window)
+  - (Kiro CLI reads CLAUDE.md directly — no generated file)
+
+Claude (the co-agent skill) writes these; this script does the mechanical checks:
+staleness vs CLAUDE.md, size caps, the generated marker, and a secret scan. It is
+NOT the distiller — distillation needs Claude.
+
+Usage:
+  python3 check_ai_context.py [project_dir]          # check (exit 1 if stale/oversized/missing)
+  python3 check_ai_context.py [project_dir] --emit-marker   # print the marker line to embed when generating
+
+Marker (must be on/near line 1 of a generated file):
+  <!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: <sha12> · generated-at: <date> -->
+"""
+import sys
+import os
+import re
+import hashlib
+import datetime
+
+MANAGED = {"AGENTS.md": 32 * 1024, "GEMINI.md": 24 * 1024}  # filename → soft size cap (bytes)
+MARKER_RE = re.compile(r"generated-by:\s*co-agent")
+SHA_RE = re.compile(r"claude-md-sha:\s*([0-9a-f]{12})")
+SECRET_RE = re.compile(r"AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY|ghp_[A-Za-z0-9]{30,}|(?:password|secret|api[_-]?key)\s*[:=]\s*['\"][^'\"]{6,}", re.I)
+
+
+def claude_sha(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+
+
+def main() -> int:
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    root = args[0] if args else "."
+    emit = "--emit-marker" in sys.argv[1:]
+
+    claude_path = os.path.join(root, "CLAUDE.md")
+    if not os.path.isfile(claude_path):
+        print(f"❌ no CLAUDE.md in {root} — nothing to sync from.")
+        return 2
+    src = open(claude_path, encoding="utf-8").read()
+    sha = claude_sha(src)
+
+    if emit:
+        today = datetime.date.today().isoformat()
+        print(f"<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: {sha} · "
+              f"generated-at: {today} · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->")
+        return 0
+
+    problems, notes = [], []
+    for name, cap in MANAGED.items():
+        p = os.path.join(root, name)
+        if not os.path.isfile(p):
+            notes.append(f"{name}: not generated yet (run /co-agent sync-context)")
+            continue
+        body = open(p, encoding="utf-8").read()
+        if not MARKER_RE.search(body):
+            notes.append(f"{name}: hand-written (no co-agent marker) — leaving it alone")
+            continue
+        size = len(body.encode("utf-8"))
+        if size > cap:
+            problems.append(f"{name}: {size} B > {cap} B cap — distill further (CLI will truncate)")
+        m = SHA_RE.search(body)
+        if not m:
+            problems.append(f"{name}: missing claude-md-sha in marker — regenerate")
+        elif m.group(1) != sha:
+            problems.append(f"{name}: STALE — CLAUDE.md changed since generation (run /co-agent sync-context)")
+        if SECRET_RE.search(body):
+            problems.append(f"{name}: possible secret/credential in generated context — remove before sharing with external AIs")
+
+    for n in notes:
+        print(f"   • {n}")
+    if problems:
+        print(f"❌ AI context files need attention ({len(problems)}):")
+        for p in problems:
+            print(f"   • {p}")
+        return 1
+    print("✅ AI context files in sync with CLAUDE.md (AGENTS.md / GEMINI.md), within size caps, no secrets.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

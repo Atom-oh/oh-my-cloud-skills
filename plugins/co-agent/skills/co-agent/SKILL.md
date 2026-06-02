@@ -116,6 +116,38 @@ Co-author an Architecture Decision Record with the panel.
    following that convention. (We don't modify `/add-adr` — it can optionally invoke
    co-agent; see `references/ai-cli-adapters.md` → ADR hand-off.)
 
+### Mode 4 — sync-context  (`sync-context`, "AI 컨텍스트 동기화")
+Give the external AIs project context so they review with the project's conventions —
+each CLI auto-loads its own native file from the repo root:
+
+| AI | Reads | co-agent generates? |
+|----|-------|--------------------|
+| Kiro CLI | **`CLAUDE.md`** (root + parents) | ❌ no — it reads the canonical source directly |
+| Codex | **`AGENTS.md`** | ✅ |
+| Gemini | **`GEMINI.md`** | ✅ |
+
+**DISTILL — do NOT copy CLAUDE.md verbatim.** All three CLIs warn that a dumped copy
+bloats/truncates (Codex 32 KiB project-doc cap; Gemini context-window degradation;
+Kiro ~2000 words). Produce one **lean, review-oriented core** and write it to BOTH
+`AGENTS.md` and `GEMINI.md` (Kiro needs none):
+
+1. Read the project's `CLAUDE.md`.
+2. **Claude distills** a lean core (bullets, absolute mandates) covering: language/stack,
+   build·test·lint commands, naming + banned patterns, architectural boundaries
+   (what imports what), PR/review expectations (test coverage, error-handling style,
+   security), a short review checklist, and known false-positives. Omit transient
+   state, version-bump commands, and tool internals not relevant to review. **No secrets,
+   no huge file inventories.**
+3. Prepend the marker line (run `scripts/check_ai_context.py <dir> --emit-marker`) plus a
+   one-line per-file header: `> You are <Codex|Gemini>, an external reviewer — project
+   context below.` Write to `AGENTS.md` and `GEMINI.md`.
+4. **Only overwrite files that carry the co-agent marker** — never clobber a hand-written
+   `AGENTS.md` or Codex's `AGENTS.override.md`.
+5. Validate: `python3 scripts/check_ai_context.py <project-dir>` (size caps, marker,
+   staleness, secret scan).
+
+> A PostToolUse hook reminds you when `CLAUDE.md` changes so these stay in sync.
+
 ## Chair principle (non-negotiable)
 
 - External AIs **advise**; **Claude decides and writes the final artifact**.
@@ -125,6 +157,7 @@ Co-author an Architecture Decision Record with the panel.
 
 ## References
 
-- `references/ai-cli-adapters.md` — Kiro/Codex/Gemini CLI commands, detection, fan-out pattern, fallbacks
+- `references/ai-cli-adapters.md` — Kiro/Codex/Gemini CLI commands, detection, fan-out pattern, fallbacks, **per-AI project-context files**
 - `references/architecture-review-framework.md` — review rubric, severity, PASS/REVIEW/FAIL
 - `references/aws-well-architected.md` — 6-pillar checklist for the review mode
+- `scripts/check_ai_context.py` — validate/staleness-check generated AGENTS.md/GEMINI.md (size caps, marker, secrets); `--emit-marker` for generation
