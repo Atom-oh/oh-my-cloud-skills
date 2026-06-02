@@ -34,3 +34,6 @@ tests/fixtures/secret-samples.txt
 docs/node_modules/
 docs/build/
 docs/.docusaurus/
+
+# co-agent personal panel settings (model/effort/enabled/timeout overrides)
+.claude/co-agent.local.json

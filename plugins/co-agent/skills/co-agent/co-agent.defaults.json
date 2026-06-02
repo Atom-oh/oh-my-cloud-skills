@@ -1,0 +1,9 @@
+{
+  "_comment": "co-agent panel defaults. Override per-repo/personal in .claude/co-agent.local.json (gitignored) via /co-agent:configure. Only settings the CLIs actually accept headlessly are here: model (all 3), effort (Codex only), enabled, timeout.",
+  "timeout": 240,
+  "panel": {
+    "kiro":   { "enabled": true, "model": "auto" },
+    "codex":  { "enabled": true, "model": null, "effort": "medium" },
+    "gemini": { "enabled": true, "model": null }
+  }
+}
