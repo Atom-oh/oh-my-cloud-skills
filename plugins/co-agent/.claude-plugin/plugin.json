@@ -1,6 +1,6 @@
 {
   "name": "co-agent",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "Collaborate with other AI agents (Kiro CLI, Codex, Gemini) — multi-AI code/architecture review, decision support when you're unsure, and ADR co-authoring. Claude chairs and synthesizes the final answer.",
   "author": {
     "name": "atomoh"

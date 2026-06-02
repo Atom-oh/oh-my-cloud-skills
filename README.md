@@ -42,9 +42,9 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 - **Strands Agent framework** — Generates deployable Python agents with BedrockModel
 
 *Multi-AI Collaboration (co-agent):*
-- **Multi-AI second opinion** — fan reviews/decisions/ADRs out to Kiro/Codex/Gemini CLIs; Claude synthesizes
-- **Adversarial security audit** — Attack surface analysis and vulnerability assessment
-- **Well-Architected alignment** — 6-pillar scoring with improvement recommendations
+- **4 modes** — multi-AI review, decision support, ADR co-authoring, and `sync-context` (distill `CLAUDE.md` -> `AGENTS.md`/`GEMINI.md`)
+- **Panel of installed CLIs** — fan the same prompt to Kiro/Codex/Gemini in parallel; Claude chairs and synthesizes consensus vs. dissent (degrades gracefully if none installed)
+- **`/co-agent:configure`** — tune per-AI model, Codex effort, enable/disable, timeout, and `autosync` (regenerate AI context on `CLAUDE.md` change)
 
 *Project Scaffolding (project-init):*
 - **10 slash commands** — /init-project, /sync-docs, /add-adr, /add-module, /add-runbook, /add-reference-doc, and more
@@ -625,7 +625,7 @@ All agents activate automatically when Claude detects matching keywords in your 
 |-------|----------|
 | `kiro-convert` | Plugin-to-Kiro-Power conversion workflow |
 | `agentcore-create` | 5-phase AgentCore design, build, convert, deploy workflow |
-| `co-agent` | Multi-AI collaboration (Kiro/Codex/Gemini) — review, decision support, ADR co-authoring; Claude chairs |
+| `co-agent` | Multi-AI collaboration (Kiro/Codex/Gemini) — review, decision support, ADR co-authoring, and `sync-context`; Claude chairs. Commands: `/co-agent:configure`, `/co-agent:sync-context` |
 | `project-scaffolder` | Claude Code project structure patterns and conventions |
 
 ### Project Init Commands
@@ -671,7 +671,7 @@ Well-Architected:   wellarchitected-agent  -->  6-pillar scoring  -->  AS-IS/TO-
 ```
 Kiro conversion:   plugin source  -->  kiro-converter-agent  -->  Kiro Power directory  -->  install/export
 AgentCore deploy:  discovery  -->  design  -->  skill-first build  -->  AgentCore convert  -->  deploy
-Co-agent collab:     prompt  -->  fan-out to Kiro/Codex/Gemini  -->  Claude synthesizes  -->  review / decision / ADR
+Co-agent collab:     prompt  -->  fan-out to Kiro/Codex/Gemini  -->  Claude synthesizes  -->  review / decision / ADR / sync-context
 Doc sync:          /sync-docs  -->  doc-sync-checker  -->  quality scores  -->  update docs
 ```
 
@@ -753,11 +753,12 @@ plugins/
 │   └── skills/
 │       └── agentcore-create/
 │
-├── co-agent/                       # Multi-AI collaboration (1 agent, 1 skill)
+├── co-agent/                       # Multi-AI collaboration (1 agent, 1 skill, 2 commands)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
 │   ├── agents/
 │   │   └── co-agent.md
+│   ├── commands/                   # /co-agent:configure, /co-agent:sync-context
 │   └── skills/
 │       └── co-agent/
 │

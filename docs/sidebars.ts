@@ -117,11 +117,12 @@ const sidebars: SidebarsConfig = {
     'agentcore-creator/skills/agentcore-create',
   ],
 
-  kiroReview: [
-    'kiro-review/overview',
-    'kiro-review/installation',
-    'kiro-review/agents/kiro-review-agent',
-    'kiro-review/skills/kiro-review',
+  coAgent: [
+    'co-agent/overview',
+    'co-agent/installation',
+    'co-agent/usage-guide',
+    'co-agent/agents/co-agent',
+    'co-agent/skills/co-agent',
   ],
 
   projectInit: [
