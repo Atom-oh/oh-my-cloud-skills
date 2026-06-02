@@ -60,8 +60,13 @@ co-agent
 | model | `--model` | `-m` | `-m` |
 | effort | — | `-c model_reasoning_effort` | — |
 | enabled / timeout | ✅ | ✅ | ✅ |
+| autosync (global) | `set autosync on` → CLAUDE.md 변경 시 `/co-agent:sync-context` 자동 실행 (옵트인, 기본 off) |
 
 > effort는 **Codex 전용** (Gemini/Kiro는 헤드리스 effort 플래그 없음 — dead 설정 미노출). 팬아웃이 `co_agent_config.py`의 `panel`/`flags`/`timeout`을 호출해 설정이 **실시간 반영**됨.
+
+## Sync-context (`/co-agent:sync-context`)
+
+`CLAUDE.md`를 **증류**해 외부 AI가 읽는 컨텍스트 파일 생성 (스킬 Mode 4를 독립 명령으로 노출). Codex→`AGENTS.md`, Gemini→`GEMINI.md`, Kiro→`CLAUDE.md` 직접. 생성 마커로 staleness 추적·수기파일 보호. `CLAUDE.md` PostToolUse 훅이 drift 알림 — `autosync on`이면 Claude에게 재동기화 지시.
 
 ## Chair Principle
 

@@ -50,6 +50,18 @@ assert_eq "0" "$CO_RC" "enabled codex → exit 0 when enabled"
 python3 "$CFG" set timeout 300 --root "$R" >/dev/null 2>&1
 assert_eq "300" "$(python3 "$CFG" timeout --root "$R" 2>&1)" "set/get timeout round-trips"
 
+# autosync (sync-on-change) toggle: default off, opt-in
+R2=$(mktemp -d "${TMPDIR:-/tmp}/coagentcfg2.XXXXXX")
+python3 "$CFG" autosync --root "$R2" >/dev/null 2>&1 && AS0=0 || AS0=$?
+assert_eq "1" "$AS0" "autosync default off → exit 1"
+python3 "$CFG" set autosync on --root "$R2" >/dev/null 2>&1
+python3 "$CFG" autosync --root "$R2" >/dev/null 2>&1 && AS1=0 || AS1=$?
+assert_eq "0" "$AS1" "set autosync on → exit 0"
+assert_contains "$(python3 "$CFG" show --root "$R2" 2>&1)" "autosync on" "show reports autosync on"
+python3 "$CFG" set autosync bogus --root "$R2" >/dev/null 2>&1 && ASB=0 || ASB=$?
+assert_eq "2" "$ASB" "invalid autosync value → exit 2"
+rm -rf "$R2"
+
 # local override file is written under .claude/
 assert_file_exists "$R/.claude/co-agent.local.json" "writes .claude/co-agent.local.json"
 assert_json_valid "$R/.claude/co-agent.local.json" "local override is valid JSON"
