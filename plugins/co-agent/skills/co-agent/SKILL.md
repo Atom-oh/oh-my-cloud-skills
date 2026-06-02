@@ -58,6 +58,11 @@ echo "Panel: ${PANEL:-(none — Claude will answer solo and say so)}"
 Tell the user which AIs are on the panel. If none are available, do the task as
 Claude alone and state that no external panel was reached.
 
+> The panel respects **`/co-agent:configure`** settings — a disabled AI is dropped,
+> and per-AI model / Codex effort / timeout are injected into the fan-out. Inspect with
+> `python3 scripts/co_agent_config.py show`. The fan-out in `ai-cli-adapters.md`
+> derives `$PANEL` and timeout from that helper.
+
 ## Three modes
 
 Route by intent (triggers above):
@@ -161,3 +166,4 @@ Kiro ~2000 words). Produce one **lean, review-oriented core** and write it to BO
 - `references/architecture-review-framework.md` — review rubric, severity, PASS/REVIEW/FAIL
 - `references/aws-well-architected.md` — 6-pillar checklist for the review mode
 - `scripts/check_ai_context.py` — validate/staleness-check generated AGENTS.md/GEMINI.md (size caps, marker, secrets); `--emit-marker` for generation
+- `scripts/co_agent_config.py` + `co-agent.defaults.json` — panel settings (model/effort/enabled/timeout); driven by the **`/co-agent:configure`** command, overrides in `.claude/co-agent.local.json`

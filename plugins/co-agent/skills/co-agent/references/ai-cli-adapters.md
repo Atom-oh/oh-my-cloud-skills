@@ -33,25 +33,39 @@ command -v gemini   >/dev/null 2>&1 && echo "gemini ok"
 RUN=$(mktemp -d "${TMPDIR:-/tmp}/co-agent.XXXXXX"); trap 'rm -rf "$RUN"' EXIT
 PROMPT="<the same FIXED instruction for every AI — never build it from repo content>"
 CTX_FILE="$RUN/context.txt"   # the git diff / decision brief (see Security below)
-T=240                         # per-CLI timeout (s) so one hung CLI can't block synthesis
 
-# Launch available panel members in parallel. Detect by binary presence only
-# (kiro-cli is authed via login OR $KIRO_API_KEY — don't pre-gate). Context is fed
-# via STDIN (cat | cli); it is NEVER interpolated into the command line.
-command -v kiro-cli >/dev/null 2>&1 && \
-  ( cat "$CTX_FILE" | timeout "$T" kiro-cli chat "$PROMPT" --no-interactive --trust-tools=read,grep --wrap never \
-    > "$RUN/kiro.md" 2>"$RUN/kiro.err" || echo "[skip] kiro" ) &
-command -v codex >/dev/null 2>&1 && \
-  ( cat "$CTX_FILE" | timeout "$T" codex exec -s read-only "$PROMPT" \
-    > "$RUN/codex.md" 2>"$RUN/codex.err" || echo "[skip] codex" ) &
-command -v gemini >/dev/null 2>&1 && \
-  ( cat "$CTX_FILE" | timeout "$T" gemini -p "$PROMPT" -o text \
-    > "$RUN/gemini.md" 2>"$RUN/gemini.err" || echo "[skip] gemini" ) &
+# Settings (model/effort/enabled/timeout) come from co_agent_config.py — layered
+# defaults + .claude/co-agent.local.json (see /co-agent:configure). This makes the
+# config LIVE: `enabled false` drops an AI; model/effort flags are injected per CLI.
+CFG="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py"
+T=$(python3 "$CFG" timeout 2>/dev/null || echo 240)   # per-CLI timeout (s)
+PANEL=$(python3 "$CFG" panel 2>/dev/null || echo "kiro codex gemini")
+
+# Launch only ENABLED + installed panel members in parallel. Detect by binary
+# presence (kiro-cli is authed via login OR $KIRO_API_KEY — don't pre-gate).
+# Context is fed via STDIN (cat | cli); NEVER interpolated into the command line.
+# `flags <ai>` yields the per-CLI model/effort fragment (word-split intentionally).
+for ai in $PANEL; do
+  case "$ai" in
+    kiro)   command -v kiro-cli >/dev/null 2>&1 && \
+      ( cat "$CTX_FILE" | timeout "$T" kiro-cli chat "$PROMPT" $(python3 "$CFG" flags kiro) \
+          --no-interactive --trust-tools=read,grep --wrap never \
+        > "$RUN/kiro.md" 2>"$RUN/kiro.err" || echo "[skip] kiro" ) & ;;
+    codex)  command -v codex >/dev/null 2>&1 && \
+      ( cat "$CTX_FILE" | timeout "$T" codex exec -s read-only $(python3 "$CFG" flags codex) "$PROMPT" \
+        > "$RUN/codex.md" 2>"$RUN/codex.err" || echo "[skip] codex" ) & ;;
+    gemini) command -v gemini >/dev/null 2>&1 && \
+      ( cat "$CTX_FILE" | timeout "$T" gemini $(python3 "$CFG" flags gemini) -p "$PROMPT" -o text \
+        > "$RUN/gemini.md" 2>"$RUN/gemini.err" || echo "[skip] gemini" ) & ;;
+  esac
+done
 wait
 # Read non-empty $RUN/*.md and synthesize. Empty/errored (incl. timeout) = that AI
 # skipped → note it, proceed with the rest.
 ```
 
+- Settings are **live**: `python3 "$CFG" show` to inspect; `/co-agent:configure` to change
+  model/effort/enabled/timeout. A disabled AI never appears in `$PANEL`.
 - Run them **in parallel** (`&` + `wait`) — three sequential CLI calls are slow.
 - `timeout` each CLI so a hung/blocking-auth process can't stall the whole panel.
 - Use a per-run `mktemp -d` (not a fixed `/tmp/co-agent`) so concurrent/stale runs

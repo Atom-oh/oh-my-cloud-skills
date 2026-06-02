@@ -51,6 +51,18 @@ co-agent
 
 > 상세: `skills/co-agent/references/ai-cli-adapters.md`. 패널은 병렬 실행, 누락/에러 시 스킵.
 
+## Configure (`/co-agent:configure`)
+
+패널 설정을 레이어드(`co-agent.defaults.json` ← `.claude/co-agent.local.json`)로 관리. **CLI가 헤드리스로 실제 받는 것만** 노출:
+
+| 설정 | kiro | codex | gemini |
+|------|------|-------|--------|
+| model | `--model` | `-m` | `-m` |
+| effort | — | `-c model_reasoning_effort` | — |
+| enabled / timeout | ✅ | ✅ | ✅ |
+
+> effort는 **Codex 전용** (Gemini/Kiro는 헤드리스 effort 플래그 없음 — dead 설정 미노출). 팬아웃이 `co_agent_config.py`의 `panel`/`flags`/`timeout`을 호출해 설정이 **실시간 반영**됨.
+
 ## Chair Principle
 
 외부 AI는 **자문**, **Claude가 최종 결정·작성**. 출처 표기 + 이견 명시. 단일 AI에 의존/차단 금지.
