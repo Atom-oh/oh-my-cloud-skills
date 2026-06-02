@@ -104,8 +104,8 @@ const config: Config = {
             },
             {
               type: 'docSidebar',
-              sidebarId: 'kiroReview',
-              label: 'kiro-review',
+              sidebarId: 'coAgent',
+              label: 'co-agent',
             },
             {
               type: 'docSidebar',
@@ -141,7 +141,7 @@ const config: Config = {
             {label: 'aws-ops-plugin', to: '/docs/aws-ops-plugin/overview'},
             {label: 'kiro-power-converter', to: '/docs/kiro-power-converter/overview'},
             {label: 'agentcore-creator', to: '/docs/agentcore-creator/overview'},
-            {label: 'kiro-review', to: '/docs/kiro-review/overview'},
+            {label: 'co-agent', to: '/docs/co-agent/overview'},
             {label: 'project-init', to: '/docs/project-init/overview'},
           ],
         },

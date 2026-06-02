@@ -24,7 +24,7 @@ claude --plugin-dir ./plugins/co-agent
 
 | AI | CLI 설치 확인 | 비고 |
 |----|---------------|------|
-| Kiro | `command -v kiro-cli` | `KIRO_API_KEY` 환경변수 필요 (Pro/Pro+/Power) |
+| Kiro | `command -v kiro-cli` | 인터랙티브 로그인 **또는** `KIRO_API_KEY`로 헤드리스 인증 (둘 중 하나면 됨) |
 | Codex | `command -v codex` | `codex exec -s read-only` (read-only sandbox) |
 | Gemini | `command -v gemini` | `gemini -p … -o text` |
 

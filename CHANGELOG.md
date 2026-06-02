@@ -13,6 +13,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.1] - 2026-06-02
+
+### Added
+- **co-agent `sync-context`** — distill `CLAUDE.md` into the per-AI context files the panel auto-loads: `AGENTS.md` (Codex, ~32 KiB cap) and `GEMINI.md` (Gemini, kept lean); Kiro reads `CLAUDE.md` directly. Available as Mode 4 and the standalone `/co-agent:sync-context` command. `check_ai_context.py` validates marker, size caps, staleness (`claude-md-sha`), and runs a secret scan; hand-written files (no marker) and `AGENTS.override.md` are protected ([#39](https://github.com/Atom-oh/oh-my-cloud-skills/pull/39), [#41](https://github.com/Atom-oh/oh-my-cloud-skills/pull/41))
+- **`/co-agent:configure`** — tune the panel (per-AI `model`, Codex `effort`, `enabled`, `timeout`). Only headless-settable options are exposed (effort is Codex-only — Gemini/Kiro have no headless effort flag); the fan-out reads `co_agent_config.py` so settings are live (a disabled AI is dropped; model/effort flags are injected). Layered config: `co-agent.defaults.json` (committed) <- `.claude/co-agent.local.json` (gitignored) ([#40](https://github.com/Atom-oh/oh-my-cloud-skills/pull/40))
+- **Opt-in autosync** — `/co-agent:configure set autosync on` makes the `CLAUDE.md` PostToolUse hook tell Claude to re-run `/co-agent:sync-context` when the generated context files drift stale (default off = reminder only) ([#41](https://github.com/Atom-oh/oh-my-cloud-skills/pull/41))
+- co-agent usage guide + Docusaurus docs refresh (overview/installation/skill, sidebar/navbar `kiro-review` -> `co-agent`)
+
+### Changed
+- Bump all plugins and `marketplace.json` to 1.7.1
+
+## [1.7.0] - 2026-05-31
+
+### Changed
+- **Rename `kiro-review` -> `co-agent`** — reframe as a multi-AI collaboration plugin. Chairs a panel of installed CLIs (Kiro `kiro-cli chat --no-interactive`, Codex `codex exec -s read-only`, Gemini `gemini -p -o text`), fanning the same prompt out in parallel and letting Claude synthesize consensus vs. dissent. Three modes: multi-AI Review (code/arch + Well-Architected -> PASS/REVIEW/FAIL), Decide (decision support when unsure), ADR co-authoring (Nygard format, `/add-adr` integration). Degrades gracefully — no CLI present means Claude answers solo
+- Detect the panel by binary presence only (`command -v`); `kiro-cli` authenticates via interactive login **or** `KIRO_API_KEY`, so no env-key pre-gating
+- Pass context via STDIN only (never interpolate untrusted repo content into the command line); treat panel output as advisory (prompt-injection boundary); per-CLI `timeout` so one hung CLI can't block synthesis
+- Tighten skill triggers to multi-AI intent only (drop generic "code review"/"decide"/"adr" that collided with other skills)
+- Bump all plugins and `marketplace.json` to 1.7.0
+
 ## [1.6.0] - 2026-05-30
 
 ### Added
@@ -193,6 +213,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 이 프로젝트의 모든 주요 변경 사항은 이 파일에 기록됩니다.
 이 문서는 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)를 기반으로 하며,
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 따릅니다.
+
+## [1.7.1] - 2026-06-02
+
+### Added
+- **co-agent `sync-context`** — `CLAUDE.md`를 증류해 패널이 자동 로드하는 AI별 컨텍스트 파일 생성: `AGENTS.md`(Codex, ~32 KiB 캡), `GEMINI.md`(Gemini, 가볍게 유지). Kiro는 `CLAUDE.md` 직접 사용. 스킬 Mode 4이자 독립 명령 `/co-agent:sync-context`로 제공. `check_ai_context.py`가 마커·크기 캡·staleness(`claude-md-sha`)·시크릿 스캔 검증; 마커 없는 수기 파일과 `AGENTS.override.md`는 보호 ([#39](https://github.com/Atom-oh/oh-my-cloud-skills/pull/39), [#41](https://github.com/Atom-oh/oh-my-cloud-skills/pull/41))
+- **`/co-agent:configure`** — 패널 튜닝 (AI별 `model`, Codex `effort`, `enabled`, `timeout`). 헤드리스로 실제 설정 가능한 것만 노출(effort는 Codex 전용 — Gemini/Kiro는 헤드리스 effort 플래그 없음); 팬아웃이 `co_agent_config.py`를 읽어 설정이 실시간 반영(비활성 AI 제외, model/effort 플래그 주입). 레이어드 설정: `co-agent.defaults.json`(커밋) <- `.claude/co-agent.local.json`(gitignore) ([#40](https://github.com/Atom-oh/oh-my-cloud-skills/pull/40))
+- **옵트인 autosync** — `/co-agent:configure set autosync on`이면 `CLAUDE.md` PostToolUse 훅이 컨텍스트 파일 stale 시 Claude에게 `/co-agent:sync-context` 재실행을 지시(기본 off = 알림만) ([#41](https://github.com/Atom-oh/oh-my-cloud-skills/pull/41))
+- co-agent 사용법 가이드 + Docusaurus 문서 갱신 (개요/설치/스킬, 사이드바/내비 `kiro-review` -> `co-agent`)
+
+### Changed
+- 모든 플러그인과 `marketplace.json`을 1.7.1로 범프
+
+## [1.7.0] - 2026-05-31
+
+### Changed
+- **`kiro-review` -> `co-agent` 리네임** — 멀티-AI 협업 플러그인으로 재정의. 설치된 CLI(Kiro `kiro-cli chat --no-interactive`, Codex `codex exec -s read-only`, Gemini `gemini -p -o text`) 패널을 의장으로 운영, 같은 프롬프트를 병렬 팬아웃하고 Claude가 합의/이견 종합. 3가지 모드: 멀티-AI 리뷰(코드/아키텍처 + Well-Architected -> PASS/REVIEW/FAIL), Decide(의사결정 보조), ADR 협업(Nygard 형식, `/add-adr` 연동). CLI가 하나도 없으면 Claude 단독 — graceful degradation
+- 패널을 바이너리 존재(`command -v`)만으로 감지; `kiro-cli`는 인터랙티브 로그인 **또는** `KIRO_API_KEY`로 인증되므로 env-key 사전 게이트 제거
+- 컨텍스트는 STDIN으로만 전달(신뢰 불가 리포 내용을 명령줄에 인터폴레이션 금지); 패널 출력은 자문으로 취급(프롬프트 인젝션 경계); CLI별 `timeout`으로 멈춘 CLI가 종합을 막지 않음
+- 스킬 트리거를 멀티-AI 의도로만 좁힘(다른 스킬과 충돌하던 일반 "코드 리뷰"/"decide"/"adr" 제거)
+- 모든 플러그인과 `marketplace.json`을 1.7.0으로 범프
 
 ## [1.6.0] - 2026-05-30
 

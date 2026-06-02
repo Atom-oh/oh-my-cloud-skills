@@ -42,9 +42,9 @@
 - **Strands Agent 프레임워크** — BedrockModel을 사용한 배포 가능한 Python 에이전트 생성
 
 *멀티-AI 협업 (co-agent):*
-- **멀티-AI second opinion** — 리뷰/의사결정/ADR을 Kiro/Codex/Gemini CLI에 팬아웃, Claude가 종합
-- **적대적 보안 감사** — 공격 표면 분석 및 취약점 평가
-- **Well-Architected 정렬** — 6-pillar 점수와 개선 권장 사항
+- **4가지 모드** — 멀티-AI 리뷰, 의사결정 보조, ADR 협업, `sync-context`(`CLAUDE.md` 증류 -> `AGENTS.md`/`GEMINI.md`)
+- **설치된 CLI 패널** — 같은 프롬프트를 Kiro/Codex/Gemini에 병렬 팬아웃, Claude가 의장으로 합의/이견 종합 (없으면 Claude 단독, hard-fail 없음)
+- **`/co-agent:configure`** — AI별 model, Codex effort, 활성/비활성, timeout, `autosync`(`CLAUDE.md` 변경 시 AI 컨텍스트 재생성) 튜닝
 
 *프로젝트 스캐폴딩 (project-init):*
 - **10개 슬래시 명령** — /init-project, /sync-docs, /add-adr, /add-module, /add-runbook, /add-reference-doc 등
@@ -625,7 +625,7 @@ aws-ops-power/
 |------|----------|
 | `kiro-convert` | 플러그인-to-Kiro-Power 변환 워크플로우 |
 | `agentcore-create` | 5단계 AgentCore 설계, 빌드, 변환, 배포 워크플로우 |
-| `co-agent` | 멀티-AI 협업 (Kiro/Codex/Gemini) — 리뷰, 의사결정 보조, ADR 협업; Claude가 의장 |
+| `co-agent` | 멀티-AI 협업 (Kiro/Codex/Gemini) — 리뷰, 의사결정 보조, ADR 협업, `sync-context`; Claude가 의장. 명령: `/co-agent:configure`, `/co-agent:sync-context` |
 | `project-scaffolder` | Claude Code 프로젝트 구조 패턴 및 컨벤션 |
 
 ### Project Init 명령
@@ -671,7 +671,7 @@ Well-Architected: wellarchitected-agent  -->  6-pillar 스코어링  -->  AS-IS/
 ```
 Kiro 변환:        플러그인 소스  -->  kiro-converter-agent  -->  Kiro Power 디렉토리  -->  설치/내보내기
 AgentCore 배포:   발견  -->  설계  -->  스킬 우선 빌드  -->  AgentCore 변환  -->  배포
-co-agent 협업:   프롬프트  -->  Kiro/Codex/Gemini 팬아웃  -->  Claude 종합  -->  리뷰 / 의사결정 / ADR
+co-agent 협업:   프롬프트  -->  Kiro/Codex/Gemini 팬아웃  -->  Claude 종합  -->  리뷰 / 의사결정 / ADR / 컨텍스트 동기화
 문서 동기화:      /sync-docs  -->  doc-sync-checker  -->  품질 점수  -->  문서 업데이트
 ```
 
@@ -753,11 +753,12 @@ plugins/
 │   └── skills/
 │       └── agentcore-create/
 │
-├── co-agent/                       # 멀티-AI 협업 (1 에이전트, 1 스킬)
+├── co-agent/                       # 멀티-AI 협업 (1 에이전트, 1 스킬, 2 명령)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
 │   ├── agents/
 │   │   └── co-agent.md
+│   ├── commands/                   # /co-agent:configure, /co-agent:sync-context
 │   └── skills/
 │       └── co-agent/
 │
