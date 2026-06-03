@@ -1,10 +1,10 @@
 {
-  "_comment": "co-agent panel defaults. Override per-repo/personal in .claude/co-agent.local.json (gitignored) via /co-agent:configure. Only settings the CLIs actually accept headlessly are here: model (all 3), effort (Codex only), enabled, timeout. sync_on_change: when true, the CLAUDE.md PostToolUse hook tells Claude to run /co-agent:sync-context automatically once the generated files exist (opt-in; default off = reminder only).",
+  "_comment": "co-agent panel defaults. Override per-repo/personal in .claude/co-agent.local.json (gitignored) via /co-agent:configure. Only settings the CLIs actually accept headlessly are here: model (all 3), effort (Codex only), enabled, timeout. context_limit = model context window in tokens; the fan-out skips an AI whose window can't hold the context instead of hard-failing (Kiro/Gemini ~1M, Codex gpt-5.x ~272K). sync_on_change: when true, the CLAUDE.md PostToolUse hook tells Claude to run /co-agent:sync-context automatically once the generated files exist (opt-in; default off = reminder only).",
   "timeout": 240,
   "sync_on_change": false,
   "panel": {
-    "kiro":   { "enabled": true, "model": "auto" },
-    "codex":  { "enabled": true, "model": null, "effort": "medium" },
-    "gemini": { "enabled": true, "model": null }
+    "kiro":   { "enabled": true, "model": "auto", "context_limit": 1000000 },
+    "codex":  { "enabled": true, "model": null, "effort": "medium", "context_limit": 272000 },
+    "gemini": { "enabled": true, "model": null, "context_limit": 1000000 }
   }
 }

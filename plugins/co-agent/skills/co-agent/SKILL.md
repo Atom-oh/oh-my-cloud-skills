@@ -70,7 +70,15 @@ Route by intent (triggers above):
 ### Mode 1 — Review  (`review`, "코드/아키텍처 리뷰", "second opinion")
 Get multiple AIs to review a change, then synthesize.
 
-1. Capture the diff (detect the repo's default branch — don't assume `main`):
+0. **Consent before fan-out (MANDATORY).** Fan-out ships repo content to third-party AI
+   services. Before the first fan-out in a session, **confirm scope with `AskUserQuestion`**:
+   diff-only / selected files / full context — and flag if the repo is private or the diff
+   may contain secrets. Skip this only when the user has already opted in this session.
+1. **Scope the context to fit model windows.** Don't pipe the whole repo. Exclude
+   generated/vendored paths (`docs/build/`, `node_modules/`, large binaries) — a bloated
+   context is the usual cause of a CLI's "tokens exceed model maximum" error. The fan-out's
+   size guard will skip any AI whose window can't hold it, but a tight diff is better.
+2. Capture the diff (detect the repo's default branch — don't assume `main`):
    ```bash
    # Resolve the trunk from origin/HEAD (handles main / master / custom trunk).
    BASE=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's@^origin/@@')
@@ -79,11 +87,11 @@ Get multiple AIs to review a change, then synthesize.
    [ -z "$DIFF" ] && DIFF=$(git diff HEAD~1...HEAD 2>/dev/null)   # last-resort: previous commit
    [ -z "$DIFF" ] && echo "EMPTY DIFF — pass an explicit base or check the branch"
    ```
-2. Fan out the SAME review prompt to each panel member (run in parallel, capture to
+3. Fan out the SAME review prompt to each panel member (run in parallel, capture to
    files). Prompt: *"Review this diff. Report [SEVERITY] file:line — issue. Cover
    correctness, error handling, security, tests, and AWS Well-Architected concerns."*
-   See `ai-cli-adapters.md` for the exact per-CLI commands.
-3. **Claude synthesizes** into one report:
+   See `ai-cli-adapters.md` for the exact per-CLI commands (incl. the size guard).
+4. **Claude synthesizes** into one report:
    - **Consensus** (issues ≥2 AIs agree on) — highest confidence.
    - **Dissent / unique findings** (only one AI raised) — note which AI.
    - Severity table + AWS Well-Architected (use `references/aws-well-architected.md`).

@@ -60,9 +60,10 @@ co-agent
 | model | `--model` | `-m` | `-m` |
 | effort | — | `-c model_reasoning_effort` | — |
 | enabled / timeout | ✅ | ✅ | ✅ |
+| context_limit (토큰) | 1,000,000 | 272,000 | 1,000,000 |
 | autosync (global) | `set autosync on` → CLAUDE.md 변경 시 `/co-agent:sync-context` 자동 실행 (옵트인, 기본 off) |
 
-> effort는 **Codex 전용** (Gemini/Kiro는 헤드리스 effort 플래그 없음 — dead 설정 미노출). 팬아웃이 `co_agent_config.py`의 `panel`/`flags`/`timeout`을 호출해 설정이 **실시간 반영**됨.
+> effort는 **Codex 전용** (Gemini/Kiro는 헤드리스 effort 플래그 없음 — dead 설정 미노출). 팬아웃이 `co_agent_config.py`의 `panel`/`flags`/`timeout`/`fits`을 호출해 설정이 **실시간 반영**됨. `context_limit` 초과 AI는 하드 실패 대신 **스킵**(예: 거대 diff에서 Codex 272K 초과 → Kiro/Gemini만). model 값은 charset 검증으로 팬아웃 주입 차단.
 
 ## Sync-context (`/co-agent:sync-context`)
 

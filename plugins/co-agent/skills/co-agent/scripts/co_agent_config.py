@@ -12,39 +12,38 @@ CLIs) — no dead settings:
               headless effort flag — `/effort` is interactive-only)
   - enabled : panel membership (orchestration)
   - timeout : per-CLI wall-clock budget in the fan-out (orchestration)
+  - context_limit : per-AI model context window (tokens) — the fan-out skips an AI
+              whose window can't hold the context instead of hard-failing
 
-The fan-out (see references/ai-cli-adapters.md) consumes `flags`/`panel`/`timeout` so
-these settings are LIVE — changing them changes what actually runs.
+The fan-out (see references/ai-cli-adapters.md) consumes `flags`/`panel`/`timeout`/`fits`
+so these settings are LIVE — changing them changes what actually runs.
 
 Usage:
-  co_agent_config.py show                      # effective merged config (table)
-  co_agent_config.py set <ai> <key> <value>    # write to .claude/co-agent.local.json
-  co_agent_config.py set timeout <seconds>     # global per-CLI timeout
-  co_agent_config.py set autosync <on|off>     # auto-run sync-context on CLAUDE.md change
-  co_agent_config.py flags <ai>                # CLI flag fragment for the fan-out
-  co_agent_config.py panel                     # space-separated enabled AIs
-  co_agent_config.py timeout                    # effective timeout (int)
-  co_agent_config.py enabled <ai>              # exit 0 if enabled, 1 if not
-  co_agent_config.py autosync                  # exit 0 if sync-on-change is on, 1 if off
+  co_agent_config.py show                       # effective merged config (table)
+  co_agent_config.py set <ai> <key> <value>     # write to .claude/co-agent.local.json
+  co_agent_config.py set timeout <seconds>      # global per-CLI timeout
+  co_agent_config.py set autosync <on|off>      # auto-run sync-context on CLAUDE.md change
+  co_agent_config.py set <ai> context_limit <n> # per-AI context window (tokens)
+  co_agent_config.py flags <ai>                 # CLI flag fragment for the fan-out
+  co_agent_config.py panel                      # space-separated enabled AIs
+  co_agent_config.py timeout                     # effective timeout (int)
+  co_agent_config.py enabled <ai>               # exit 0 if enabled, 1 if not
+  co_agent_config.py autosync                   # exit 0 if sync-on-change is on, 1 if off
+  co_agent_config.py context-limit <ai>         # effective context window (tokens; 0 = none)
+  co_agent_config.py fits <ai> <tokens>         # exit 0 if tokens fit the window, 1 if not
 Add --root DIR to target a repo other than the cwd.
 """
 import sys
 import os
+import re
 import json
 import copy
 
 AIS = ("kiro", "codex", "gemini")
 EFFORTS = ("minimal", "low", "medium", "high")
+MODEL_RE = re.compile(r"^[A-Za-z0-9._:/-]+$")  # reject spaces / shell metacharacters
 DEFAULTS_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                              "co-agent.defaults.json")
-
-
-def _argval(flag, default=None):
-    a = sys.argv[1:]
-    if flag in a:
-        i = a.index(flag)
-        return a[i + 1] if i + 1 < len(a) else default
-    return default
 
 
 def local_path(root):
@@ -85,12 +84,14 @@ def cmd_show(root):
     autosync = "on" if cfg.get("sync_on_change") else "off"
     print(f"co-agent panel config  (timeout {cfg.get('timeout')}s · autosync {autosync})")
     print(f"  source: defaults + {local_path(root) if os.path.isfile(local_path(root)) else '(no local override)'}")
-    print(f"  {'AI':7} {'enabled':8} {'model':22} effort")
+    print(f"  {'AI':7} {'enabled':8} {'model':18} {'ctx(tok)':>11}  effort")
     for ai in AIS:
         p = cfg["panel"].get(ai, {})
-        model = p.get("model") or "(CLI default)"
-        effort = p.get("effort", "—") if ai == "codex" else "n/a (CLI has no headless effort)"
-        print(f"  {ai:7} {str(p.get('enabled', True)):8} {model:22} {effort}")
+        model = p.get("model") or "(default)"
+        ctx = int(p.get("context_limit", 0) or 0)
+        ctxs = f"{ctx:,}" if ctx else "—"
+        effort = p.get("effort", "—") if ai == "codex" else "n/a"
+        print(f"  {ai:7} {str(p.get('enabled', True)):8} {model:18} {ctxs:>11}  {effort}")
     return 0
 
 
@@ -132,7 +133,19 @@ def cmd_set(root, rest):
                 return 2
             slot["enabled"] = val.lower() in ("true", "1", "yes")
         elif key == "model":
-            slot["model"] = None if val.lower() in ("null", "default", "") else val
+            if val.lower() in ("null", "default", ""):
+                slot["model"] = None
+            elif MODEL_RE.match(val):
+                slot["model"] = val
+            else:
+                print("model may contain only letters, digits, and . _ : / - "
+                      "(no spaces or shell metacharacters)", file=sys.stderr)
+                return 2
+        elif key == "context_limit":
+            if not val.isdigit() or int(val) <= 0:
+                print("context_limit must be a positive integer (tokens)", file=sys.stderr)
+                return 2
+            slot["context_limit"] = int(val)
         elif key == "effort":
             if ai != "codex":
                 print(f"effort is not settable for {ai} — only Codex accepts a headless "
@@ -143,8 +156,8 @@ def cmd_set(root, rest):
                 return 2
             slot["effort"] = val
         else:
-            print(f"unknown key '{key}' (enabled, model{', effort' if ai == 'codex' else ''})",
-                  file=sys.stderr)
+            keys = "enabled, model, context_limit" + (", effort" if ai == "codex" else "")
+            print(f"unknown key '{key}' ({keys})", file=sys.stderr)
             return 2
 
     with open(lp, "w", encoding="utf-8") as f:
@@ -197,9 +210,38 @@ def cmd_autosync(root):
     return 0 if effective(root).get("sync_on_change") else 1
 
 
+def cmd_context_limit(root, ai):
+    if ai not in AIS:
+        return 2
+    print(int(effective(root)["panel"].get(ai, {}).get("context_limit", 0) or 0))
+    return 0
+
+
+def cmd_fits(root, ai, tokens):
+    """exit 0 if `tokens` fit the AI's context window (or no limit set), 1 if it overflows."""
+    if ai not in AIS:
+        return 2
+    limit = int(effective(root)["panel"].get(ai, {}).get("context_limit", 0) or 0)
+    if limit <= 0:
+        return 0  # unknown/unlimited → don't block
+    try:
+        return 0 if int(tokens) <= limit else 1
+    except (TypeError, ValueError):
+        return 0  # un-parseable estimate → don't block on a guess
+
+
 def main():
-    root = _argval("--root", os.getcwd())
-    args = [a for a in sys.argv[1:] if a != "--root" and a != root]
+    # Parse out `--root DIR` precisely (don't drop positional args that equal the path).
+    argv, root, args, i = sys.argv[1:], os.getcwd(), [], 0
+    while i < len(argv):
+        if argv[i] == "--root":
+            if i + 1 < len(argv):
+                root = argv[i + 1]
+            i += 2
+            continue
+        args.append(argv[i])
+        i += 1
+
     if not args:
         return cmd_show(root)
     cmd, rest = args[0], args[1:]
@@ -217,6 +259,10 @@ def main():
         return cmd_enabled(root, rest[0]) if rest else 2
     if cmd == "autosync":
         return cmd_autosync(root)
+    if cmd == "context-limit":
+        return cmd_context_limit(root, rest[0]) if rest else 2
+    if cmd == "fits":
+        return cmd_fits(root, rest[0], rest[1]) if len(rest) >= 2 else 2
     print(__doc__)
     return 2
 
