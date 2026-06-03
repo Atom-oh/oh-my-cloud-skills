@@ -41,31 +41,48 @@ CFG="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py"
 T=$(python3 "$CFG" timeout 2>/dev/null || echo 240)   # per-CLI timeout (s)
 PANEL=$(python3 "$CFG" panel 2>/dev/null || echo "kiro codex gemini")
 
+# Context-size guard: estimate tokens (~4 bytes/token) so we can SKIP an AI whose
+# model window can't hold the context (e.g. Codex ~272K) instead of letting it
+# hard-fail with "prompt tokens exceed model maximum". Kiro/Gemini ~1M still run.
+TOKENS=$(( ( $(wc -c < "$CTX_FILE") + 3 ) / 4 ))
+
 # Launch only ENABLED + installed panel members in parallel. Detect by binary
 # presence (kiro-cli is authed via login OR $KIRO_API_KEY — don't pre-gate).
 # Context is fed via STDIN (cat | cli); NEVER interpolated into the command line.
-# `flags <ai>` yields the per-CLI model/effort fragment (word-split intentionally).
+# `read -ra FLAGS` consumes `flags <ai>` SAFELY — array words are not re-globbed
+# or re-split, so a stray model value can't inject extra flags / expand globs.
 for ai in $PANEL; do
+  if ! python3 "$CFG" fits "$ai" "$TOKENS" 2>/dev/null; then
+    echo "[skip] $ai — context ~${TOKENS} tok > model window ($(python3 "$CFG" context-limit "$ai") tok). Narrow the diff, raise the limit, or switch model via /co-agent:configure."
+    continue
+  fi
+  read -ra FLAGS < <(python3 "$CFG" flags "$ai")
   case "$ai" in
     kiro)   command -v kiro-cli >/dev/null 2>&1 && \
-      ( cat "$CTX_FILE" | timeout "$T" kiro-cli chat "$PROMPT" $(python3 "$CFG" flags kiro) \
+      ( cat "$CTX_FILE" | timeout "$T" kiro-cli chat "$PROMPT" "${FLAGS[@]}" \
           --no-interactive --trust-tools=read,grep --wrap never \
         > "$RUN/kiro.md" 2>"$RUN/kiro.err" || echo "[skip] kiro" ) & ;;
     codex)  command -v codex >/dev/null 2>&1 && \
-      ( cat "$CTX_FILE" | timeout "$T" codex exec -s read-only $(python3 "$CFG" flags codex) "$PROMPT" \
+      ( cat "$CTX_FILE" | timeout "$T" codex exec -s read-only "${FLAGS[@]}" "$PROMPT" \
         > "$RUN/codex.md" 2>"$RUN/codex.err" || echo "[skip] codex" ) & ;;
     gemini) command -v gemini >/dev/null 2>&1 && \
-      ( cat "$CTX_FILE" | timeout "$T" gemini $(python3 "$CFG" flags gemini) -p "$PROMPT" -o text \
+      ( cat "$CTX_FILE" | timeout "$T" gemini "${FLAGS[@]}" -p "$PROMPT" -o text \
         > "$RUN/gemini.md" 2>"$RUN/gemini.err" || echo "[skip] gemini" ) & ;;
   esac
 done
 wait
-# Read non-empty $RUN/*.md and synthesize. Empty/errored (incl. timeout) = that AI
-# skipped → note it, proceed with the rest.
+# Read non-empty $RUN/*.md and synthesize. Empty/errored (incl. timeout / size-skip)
+# = that AI skipped → note it, proceed with the rest.
 ```
 
+- **Context-size guard**: each AI is skipped (not hard-failed) when the estimated
+  context exceeds its `context_limit`. Inspect/raise via `/co-agent:configure`
+  (`set codex context_limit <n>` or `set codex model <1M-model>`); narrowing the diff
+  is usually the right fix. A 0/unset limit means "no check".
+- **Safe flag expansion**: `read -ra FLAGS < <(...)` + `"${FLAGS[@]}"` — model values are
+  charset-validated at `set` time AND never word-split/globbed at call time (defense in depth).
 - Settings are **live**: `python3 "$CFG" show` to inspect; `/co-agent:configure` to change
-  model/effort/enabled/timeout. A disabled AI never appears in `$PANEL`.
+  model/effort/enabled/timeout/context_limit. A disabled AI never appears in `$PANEL`.
 - Run them **in parallel** (`&` + `wait`) — three sequential CLI calls are slow.
 - `timeout` each CLI so a hung/blocking-auth process can't stall the whole panel.
 - Use a per-run `mktemp -d` (not a fixed `/tmp/co-agent`) so concurrent/stale runs

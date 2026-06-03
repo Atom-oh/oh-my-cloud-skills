@@ -43,7 +43,8 @@ def main() -> int:
     if not os.path.isfile(claude_path):
         print(f"❌ no CLAUDE.md in {root} — nothing to sync from.")
         return 2
-    src = open(claude_path, encoding="utf-8").read()
+    with open(claude_path, encoding="utf-8") as f:
+        src = f.read()
     sha = claude_sha(src)
 
     if emit:
@@ -58,7 +59,8 @@ def main() -> int:
         if not os.path.isfile(p):
             notes.append(f"{name}: not generated yet (run /co-agent sync-context)")
             continue
-        body = open(p, encoding="utf-8").read()
+        with open(p, encoding="utf-8") as f:
+            body = f.read()
         if not MARKER_RE.search(body):
             notes.append(f"{name}: hand-written (no co-agent marker) — leaving it alone")
             continue

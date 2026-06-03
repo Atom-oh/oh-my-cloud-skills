@@ -19,7 +19,9 @@ assert_contains "$SHOW" "gemini" "show lists gemini"
 assert_contains "$SHOW" "240" "show reports default timeout 240"
 
 # effort is Codex-only — show marks gemini/kiro as n/a
-assert_contains "$SHOW" "n/a (CLI has no headless effort)" "effort marked n/a for non-Codex"
+assert_contains "$SHOW" "n/a" "effort marked n/a for non-Codex"
+# context window column present in show
+assert_contains "$SHOW" "272,000" "show reports codex context window"
 
 # set Codex model + effort → flags inject -m and reasoning effort
 python3 "$CFG" set codex model gpt-5-codex --root "$R" >/dev/null 2>&1
@@ -61,6 +63,31 @@ assert_contains "$(python3 "$CFG" show --root "$R2" 2>&1)" "autosync on" "show r
 python3 "$CFG" set autosync bogus --root "$R2" >/dev/null 2>&1 && ASB=0 || ASB=$?
 assert_eq "2" "$ASB" "invalid autosync value → exit 2"
 rm -rf "$R2"
+
+# model value is charset-validated (blocks shell-metachar / glob injection at the source)
+python3 "$CFG" set codex model 'x; rm -rf ~' --root "$R" >/dev/null 2>&1 && MJ=0 || MJ=$?
+assert_eq "2" "$MJ" "model with shell metachars rejected (exit 2)"
+python3 "$CFG" set codex model '*' --root "$R" >/dev/null 2>&1 && MG=0 || MG=$?
+assert_eq "2" "$MG" "model with glob char rejected (exit 2)"
+python3 "$CFG" set codex model gpt-4.1 --root "$R" >/dev/null 2>&1 && MV=0 || MV=$?
+assert_eq "0" "$MV" "valid model accepted (exit 0)"
+
+# context-size guard: defaults Kiro/Gemini 1M, Codex 272K
+R3=$(mktemp -d "${TMPDIR:-/tmp}/coagentctx3.XXXXXX")
+assert_eq "272000" "$(python3 "$CFG" context-limit codex --root "$R3" 2>&1)" "codex default context-limit 272000"
+assert_eq "1000000" "$(python3 "$CFG" context-limit kiro --root "$R3" 2>&1)" "kiro default context-limit 1000000"
+python3 "$CFG" fits codex 200000 --root "$R3" >/dev/null 2>&1 && F1=0 || F1=$?
+assert_eq "0" "$F1" "200K tokens fits codex window (exit 0)"
+python3 "$CFG" fits codex 812861 --root "$R3" >/dev/null 2>&1 && F2=0 || F2=$?
+assert_eq "1" "$F2" "812K tokens exceeds codex window (exit 1)"
+python3 "$CFG" fits kiro 812861 --root "$R3" >/dev/null 2>&1 && F3=0 || F3=$?
+assert_eq "0" "$F3" "812K tokens fits kiro 1M window (exit 0)"
+python3 "$CFG" set codex context_limit 900000 --root "$R3" >/dev/null 2>&1
+python3 "$CFG" fits codex 812861 --root "$R3" >/dev/null 2>&1 && F4=0 || F4=$?
+assert_eq "0" "$F4" "raised codex context_limit lets 812K fit (exit 0)"
+python3 "$CFG" set codex context_limit 0 --root "$R3" >/dev/null 2>&1 && CL0=0 || CL0=$?
+assert_eq "2" "$CL0" "context_limit must be positive (0 rejected)"
+rm -rf "$R3"
 
 # local override file is written under .claude/
 assert_file_exists "$R/.claude/co-agent.local.json" "writes .claude/co-agent.local.json"

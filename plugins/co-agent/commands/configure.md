@@ -19,6 +19,7 @@ Only options the CLIs **actually accept headlessly** are exposed (no dead settin
 | `effort` (`minimal\|low\|medium\|high`) | — | `-c model_reasoning_effort` | — |
 | `enabled` (panel membership) | ✅ | ✅ | ✅ |
 | `timeout` (global, seconds) | ✅ | ✅ | ✅ |
+| `context_limit` (per-AI, tokens) | model context window — fan-out **skips** an AI whose window can't hold the context (default: Kiro/Gemini 1,000,000 · Codex 272,000) |
 | `autosync` (global, on/off) | run `/co-agent:sync-context` automatically when `CLAUDE.md` changes (opt-in; default off) |
 
 > `effort` is **Codex-only** — Gemini and Kiro have no headless reasoning-effort flag
@@ -52,8 +53,13 @@ Argument: `$ARGUMENTS`
    python3 "$H" set kiro  model claude-opus-4.8 # Kiro model (see `kiro-cli chat --list-models`)
    python3 "$H" set gemini enabled false        # drop Gemini from the panel
    python3 "$H" set timeout 300                 # global per-CLI timeout (s)
+   python3 "$H" set codex context_limit 400000  # raise/lower a model's context window
    python3 "$H" set autosync on                 # auto-sync AI context on CLAUDE.md change
    ```
+   `context_limit` lets the fan-out **skip** an AI when the context is too large for its
+   model window (the cause of "prompt tokens exceed model maximum"), instead of hard-failing
+   — e.g. Codex (~272K) is skipped on a huge diff while Kiro/Gemini (~1M) still run. `model`
+   values are charset-validated (letters/digits/`. _ : / -` only) to keep the fan-out safe.
    `autosync on` makes the `CLAUDE.md` PostToolUse hook tell Claude to run
    `/co-agent:sync-context` whenever the generated files drift stale (opt-in; default
    off = reminder only). It refreshes existing `AGENTS.md`/`GEMINI.md`; first-time
