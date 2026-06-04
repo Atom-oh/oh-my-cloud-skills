@@ -52,15 +52,18 @@ AWS 아키텍처 다이어그램 작성 시 따라야 할 가이드라인과 모
 
 ### 컨테이너 색상
 
+> **정본은 `references/design-tokens.md`** (실제 `templates/*.drawio` 기준). 아래 표는 그 값과 일치해야 함. **Public=초록(#7AA116), Private=청록(#00A4A6)** — 뒤바꾸지 말 것.
+
 | 컨테이너 | 테두리 | 배경 | 텍스트 |
 |----------|--------|------|--------|
-| AWS Cloud | #232F3E | transparent | #232F3E |
-| Region | #147EBA | #E6F2F8 | #147EBA |
-| VPC | #248814 | #E7F4E8 | #248814 |
-| Public Subnet | #248814 | #E7F4E8 | #248814 |
-| Private Subnet | #147EBA | #E6F2F8 | #147EBA |
-| Security Group | #DF3312 | transparent | #DF3312 |
-| Availability Zone | #147EBA | transparent | #147EBA |
+| AWS Cloud | #232F3E | none | #232F3E |
+| Region | #00A4A6 | none | #147EBA |
+| VPC | #879196 | none | #879196 |
+| Public Subnet | #7AA116 | #F2F6E8 | #248814 |
+| Private Subnet | #00A4A6 | #E6F6F7 | #147EBA |
+| Security Group | #C7131F | #FEE7E7 | #C62828 |
+| Availability Zone | #00A4A6 | none | #147EBA |
+| Corporate / IDC | #5A6C86 | #E6E6E6 | #5A6C86 |
 
 ### 화살표 색상
 
@@ -106,10 +109,11 @@ Amazon Ember, Arial, Helvetica, sans-serif
 
 ### 아이콘 크기 일관성
 
+> **정본은 `references/design-tokens.md`.** 표준 **78×78** (전 아이콘 동일), 밀집 예외 **48×48** (≥16개일 때만, 한 다이어그램 내 혼용 금지). 40/60은 폐기.
+
 ```
-표준 크기: 60x60px
-소형 (밀집 레이아웃): 40x40px
-대형 (강조): 80x80px
+표준 크기: 78x78px      (icon.standard — 기본값)
+밀집 예외: 48x48px      (icon.dense — ≥16개 아이콘일 때만)
 ```
 
 ### 아이콘 간격

@@ -71,10 +71,12 @@ style="verticalAlign=middle;align=center;..."
 
 ### 좌표 계산
 
+> **아이콘 크기 정본은 `references/design-tokens.md`: 표준 78×78** (밀집 예외 48×48). 아래 예시 수치는 좌표 계산 방법 설명용이며, 실제 크기는 78을 사용.
+
 ```
-아이콘 크기: 40x40 (작은 그리드) 또는 48x48 (표준)
+아이콘 크기: 78x78 (표준, design-tokens.md) — 밀집 예외만 48x48
 라벨 높이: 25px
-행 간격: 아이콘높이 + 라벨높이 + 여백 = 40 + 25 + 3 = 68px
+행 간격: 아이콘높이 + 라벨높이 + 여백 = 78 + 25 + 17 = 120px
 
 예시 (시작점 x=914, y=162):
 - Row 1 아이콘: y=162, 라벨: y=202
@@ -236,14 +238,16 @@ Region width = 890 - 410 = 480
 
 ### 그룹 박스 색상
 
+> **정본은 `references/design-tokens.md`.** Public=초록(#7AA116), Private=청록(#00A4A6) — `templates/*.drawio`의 Web Tier(초록)/App·Data Tier(청록)와 일치. 뒤바꾸지 말 것.
+
 | 그룹 | strokeColor | fillColor | fontColor |
 |------|-------------|-----------|-----------|
 | AWS Cloud | #232F3E | none | #232F3E |
 | Region | #00A4A6 | none | #147EBA |
 | VPC | #879196 | none | #879196 |
-| Public Subnet | #00A4A6 | #E6F6F7 | #147EBA |
-| Private Subnet | #7AA116 | #F2F6E8 | #248814 |
-| Security Group | #DD344C | #FBE9E7 | #C62828 |
+| Public Subnet | #7AA116 | #F2F6E8 | #248814 |
+| Private Subnet | #00A4A6 | #E6F6F7 | #147EBA |
+| Security Group | #C7131F | #FEE7E7 | #C62828 |
 | IDC | #5A6C86 | #E6E6E6 | #5A6C86 |
 
 ### 커스텀 박스 색상

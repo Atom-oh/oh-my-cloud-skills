@@ -264,13 +264,16 @@ spacingLeft=10;
 
 ### 그룹 색상 팔레트
 
+> **색상 정본은 `references/design-tokens.md`.** 아래는 그 값과 일치 (Public=초록 #7AA116, Private=청록 #00A4A6).
+
 | 그룹 유형 | Border Color | Fill Color | 용도 |
 |----------|--------------|------------|------|
-| AWS Cloud | #242F3E | none | 전체 클라우드 |
-| Region/AZ | #147EBA | none | 지역/가용영역 |
-| VPC/Public Subnet | #248814 | none | 네트워크 (실선) |
-| Private Subnet | #147EBA | none | 프라이빗 (점선) |
-| Security Group | #DF3312 | none | 보안 |
+| AWS Cloud | #232F3E | none | 전체 클라우드 |
+| Region/AZ | #00A4A6 | none | 지역/가용영역 |
+| VPC | #879196 | none | 네트워크 (실선) |
+| Public Subnet | #7AA116 | #F2F6E8 | 퍼블릭 (초록) |
+| Private Subnet | #00A4A6 | #E6F6F7 | 프라이빗 (청록) |
+| Security Group | #C7131F | #FEE7E7 | 보안 |
 | Compute (ASG/EC2) | #ED7100 | none | 컴퓨팅 |
 | Generic | #7D8998 | none | 일반 |
 
@@ -391,12 +394,12 @@ dashed=0;
 
 ## 아이콘 크기 가이드
 
-| 유형 | 권장 크기 | 용도 |
-|------|----------|------|
-| 서비스 아이콘 | 60x60 | 표준 아이콘 |
-| 소형 아이콘 | 40x40 | 밀집 레이아웃 |
-| 대형 아이콘 | 80x80 | 강조할 때 |
-| 리소스 아이콘 | 48x48 | 세부 리소스 |
+> **정본은 `references/design-tokens.md`: 표준 78×78** (전 아이콘 통일), 밀집 예외 48×48 (≥16개일 때만). 40/60은 폐기.
+
+| 유형 | 크기 | 용도 |
+|------|------|------|
+| 서비스/리소스 아이콘 (표준) | **78x78** | 기본값 — 모든 아이콘 동일 |
+| 밀집 예외 | 48x48 | ≥16개 아이콘일 때만, 다이어그램 내 통일 |
 
 ## MCP로 아이콘 검색
 

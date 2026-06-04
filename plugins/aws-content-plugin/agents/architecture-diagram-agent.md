@@ -170,8 +170,9 @@ id="0" (root)
    Edges (orthogonal, explicit `exitX/exitY`/`entryX/entryY` anchors) → Legend.
    **Never put `&` or `--` inside XML comments** — drawio silently drops every
    cell after them (exit 0, truncated PNG). Prefer no decorative comments.
-4. **Validate (필수, before export)** — `python3 ${CLAUDE_PLUGIN_ROOT}/skills/architecture-diagram/scripts/validate_drawio.py output.drawio`
-   → must pass; compare the reported cell/icon counts to what you intended.
+4. **Validate (필수, before export)** — two gates, both must pass:
+   - `python3 …/scripts/validate_drawio.py output.drawio` → XML/truncation; compare cell/icon counts to intent.
+   - `python3 …/scripts/lint_layout.py output.drawio` → **layout score ≥ 80** (grid alignment, container containment, icon overlap, spacing, edge budget). Below 80 → fix before export. Canonical numbers: `references/design-tokens.md`.
 5. **Export** — `drawio -x -f png -s 2 -t -o output.png input.drawio`
    (headless Linux: prefix with `xvfb-run -a`). Then re-open/inspect the PNG —
    a tiny file or empty render means truncation; fix and re-validate.
@@ -180,13 +181,17 @@ id="0" (root)
 
 ## Icon Grid Placement
 
-```
-Icon size: 48x48 (recommended)
-Icon spacing: 27px horizontal, 20px vertical
-Label height: 20px
+> Canonical sizes/spacing live in `skills/architecture-diagram/references/design-tokens.md`:
+> standard icon **78×78** (dense exception 48×48), icon gap ≥ 60px. Use those, not the
+> older 48/27 figures below.
 
-Per-row calculation (N icons):
-  total_width = N * 48 + (N-1) * 27
+```
+Icon size: 78x78 (standard — design-tokens.md; 48x48 only for dense ≥16-icon diagrams)
+Icon spacing: ≥60px center-to-center horizontal, row pitch = 78 + label + gap
+Label height: 25px
+
+Per-row calculation (N icons, standard 78 + 60 gap):
+  total_width = N * 78 + (N-1) * 60
   start_x = container_x + (container_width - total_width) / 2
   icon[i].x = start_x + i * 75
 ```
@@ -196,8 +201,10 @@ Per-row calculation (N icons):
 ## Reference Files
 
 - `{plugin-dir}/skills/architecture-diagram/SKILL.md` — Detailed guide
-- `{plugin-dir}/skills/architecture-diagram/reference/aws-icons.md` — AWS icon list
-- `{plugin-dir}/skills/architecture-diagram/reference/layout-patterns.md` — Layout patterns
+- `{plugin-dir}/skills/architecture-diagram/references/design-tokens.md` — **SINGLE SOURCE** for sizes/colors/fonts/spacing
+- `{plugin-dir}/skills/architecture-diagram/references/aws-icons.md` — AWS icon list
+- `{plugin-dir}/skills/architecture-diagram/references/layout-patterns.md` — Layout patterns
+- `{plugin-dir}/skills/architecture-diagram/scripts/lint_layout.py` — geometric layout gate (pre-export)
 - `{plugin-dir}/skills/architecture-diagram/templates/` — Template .drawio files
 
 ---
