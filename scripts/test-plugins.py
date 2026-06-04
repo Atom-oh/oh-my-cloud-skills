@@ -531,7 +531,7 @@ def main():
     project_root = Path(__file__).parent.parent
     plugins_dir = project_root / 'plugins'
 
-    plugins = ["aws-content-plugin", "aws-ops-plugin", "kiro-power-converter"]
+    plugins = ["aws-content-plugin", "aws-ops-plugin", "kiro-power-converter", "co-agent", "agentcore-creator", "project-init"]
     if args.plugin:
         if args.plugin not in plugins:
             print(f"Unknown plugin: {args.plugin}")
