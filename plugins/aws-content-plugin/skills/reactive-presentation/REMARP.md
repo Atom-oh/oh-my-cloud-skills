@@ -1,4 +1,4 @@
-m# Remarp — Reactive Markdown for Presentations
+# Remarp — Reactive Markdown for Presentations
 
 Remarp는 **reactive-presentation** 프레임워크를 위한 차세대 마크다운 포맷입니다. 사람이 읽고 편집할 수 있는 `.remarp.md` 파일 하나가 프레젠테이션의 **단일 소스**가 됩니다.
 

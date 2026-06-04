@@ -522,6 +522,9 @@ class RemarpGenerator:
         lines.append(f'title: "{title}"')
         lines.append(f'date: {today}')
         lines.append(f'lang: {self.lang}')
+        slide_size = self.theme_manifest.get('slide_size', {})
+        aspect_ratio = slide_size.get('aspect_ratio') or '16:9'
+        lines.append(f'ratio: "{aspect_ratio}"')
         lines.append('')
 
         # Theme section
