@@ -64,10 +64,13 @@ PPT 16:9 Widescreen 기준 권장 크기:
 > export **전에 반드시** 검증하세요. (주석 안의 `&`/`--`가 가장 흔한 침묵 킬러 — 주석은 생략 권장.)
 
 ```bash
-# 1) 검증 (필수) — 침묵 킬러 검출 + 셀 개수로 truncation 감지
+# 1) 구조 검증 (필수) — 침묵 킬러 검출 + 셀 개수로 truncation 감지
 python3 scripts/validate_drawio.py architecture.drawio
 
-# 2) 고해상도 PNG 내보내기 (PPT용)
+# 2) 레이아웃 게이트 (필수) — 정렬/컨테이너 이탈/겹침/간격/엣지 예산 점수화 (≥80)
+python3 scripts/lint_layout.py architecture.drawio
+
+# 3) 고해상도 PNG 내보내기 (PPT용)
 drawio -x -f png -s 2 -o architecture.png architecture.drawio
 # Headless Linux(디스플레이 없음)는 xvfb 필요 (dbus/GPU stderr 경고 무시 가능):
 xvfb-run -a drawio -x -f png -s 2 -o architecture.png architecture.drawio
@@ -365,6 +368,8 @@ VPC 추가 시 아래 영역 요소 위치를 자동으로 내려야 함.
 
 ### 색상 가이드 (AWS 공식)
 
+> ⚠️ **색상 정본은 `references/design-tokens.md`** (실제 템플릿 기준: Region #00A4A6, VPC #879196, Public=초록 #7AA116, Private=청록 #00A4A6). 아래 표는 구버전 참고치이며 충돌 시 design-tokens.md를 따른다.
+
 | 용도 | 색상 코드 | 설명 |
 |------|-----------|------|
 | AWS Cloud | #232F3E | 다크 네이비 (배경) |
@@ -510,5 +515,6 @@ drawio -x -f pdf -o output.pdf input.drawio
 - [ ] AWS 공식 색상을 사용하고 있는가
 - [ ] 계층 구조가 명확한가 (Cloud > Region > VPC > Subnet)
 - [ ] 데이터 흐름 방향이 일관성 있는가
-- [ ] 아이콘 크기가 균일한가 (권장: 60x60)
+- [ ] 아이콘 크기가 균일한가 (표준 78×78 — `references/design-tokens.md`)
+- [ ] `scripts/lint_layout.py` layout score ≥ 80 (export 전 필수)
 - [ ] 라벨이 아이콘 아래에 배치되었는가

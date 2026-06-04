@@ -289,7 +289,7 @@ fontColor=#FFFFFF  <!-- Dark theme -->
 ## Best Practices
 
 1. **Font**: Use `Amazon Ember` everywhere
-2. **Icon size**: Consistent 60x60 px
+2. **Icon size**: Consistent **78x78 px** (canonical — see `references/design-tokens.md`; the `width="60"` in the inline examples below is illustrative only)
 3. **Grid**: Enable with `gridSize=10`
 4. **Hierarchy**: Cloud > Region > VPC > Subnet > Resources
 5. **Labels**: Always below icons with service name
