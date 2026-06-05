@@ -371,13 +371,40 @@
 
 ### 좌표 계산 팁
 
+> 크기/간격 정본은 `references/design-tokens.md` (표준 아이콘 78×78, 간격 ≥60px). 모든 좌표는 10px 그리드 배수로 — 마지막에 `scripts/snap_grid.py`로 자동 정렬.
+
 ```
 # 아이콘 가운데 정렬
-icon_x = container_x + (container_width - icon_width) / 2
+icon_x = container_x + (container_width - icon_width) / 2   # icon_width = 78
 
-# 아이콘 그리드 (48x48, 간격 27px)
-icon2_x = icon1_x + 48 + 27
+# 아이콘 그리드 (78x78, 중심간 간격 ≥60px → 피치 138)
+icon2_x = icon1_x + 78 + 60
 
-# 다음 행
-next_row_y = current_y + 48 + 20 + 20 (아이콘 + 라벨 + 간격)
+# 다음 행 (아이콘 + 라벨 + 여백)
+next_row_y = current_y + 78 + 25 + 17   # = 120
 ```
+
+### 33. 번호 플로우 배지 + 스텝 범례 (busy 다이어그램의 핵심)
+
+엣지가 12개를 넘으면 선을 더 그리지 말고, **주 경로만 화살표로** 그린 뒤 ①②③ 배지 + 범례로 흐름을 설명합니다. (스파게티 제거 — `lint_layout.py`가 권하는 패턴)
+
+```xml
+<!-- 흐름 단계 배지 (아이콘 좌상단에 겹쳐 배치) -->
+<mxCell id="step-1" value="1"
+        style="ellipse;fillColor=#FF9900;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;fontStyle=1;fontSize=13;fontFamily=Amazon Ember;"
+        vertex="1" parent="1">
+  <mxGeometry x="170" y="150" width="24" height="24" as="geometry" />
+</mxCell>
+<!-- step-2, step-3 … value 와 x/y 만 변경 -->
+
+<!-- 스텝 범례 박스 (우하단) -->
+<mxCell id="flow-legend"
+        value="&lt;b&gt;Request Flow&lt;/b&gt;&lt;br&gt;① User → CloudFront&lt;br&gt;② → ALB&lt;br&gt;③ → ECS&lt;br&gt;④ → RDS"
+        style="rounded=1;fillColor=#FAFAFA;strokeColor=#5A6C86;align=left;verticalAlign=top;fontFamily=Amazon Ember;fontSize=11;fontColor=#232F3E;spacing=8;"
+        vertex="1" parent="1">
+  <mxGeometry x="1180" y="640" width="240" height="120" as="geometry" />
+</mxCell>
+```
+
+- 배지: 주황 원(#FF9900) + 흰 테두리/숫자, 24×24, 해당 아이콘 좌상단에 겹침.
+- 범례 텍스트의 `→`/`&`는 반드시 `&amp;` 등으로 이스케이프 (validate_drawio가 검출).

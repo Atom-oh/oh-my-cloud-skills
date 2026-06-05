@@ -88,6 +88,9 @@ PPT 삽입용 다이어그램은 **캔버스 크기 설정이 필수**입니다.
 > "완성된 듯하지만 텅 빈 PNG"의 주범입니다. **export 전에 반드시 검증**하세요.
 
 ```bash
+# 0) 그리드 자동 정렬 — 좌표 1~5px 어긋남을 10px 그리드로 스냅 (아이콘 크기 78은 보존)
+python3 scripts/snap_grid.py output.drawio --in-place
+
 # 1) 구조 검증 — XML 침묵 킬러 / truncation
 python3 scripts/validate_drawio.py output.drawio
 # ✅ 통과 시 cells/vertices/edges/icons/groups 개수 출력 → 의도한 개수와 비교(누락 감지)
@@ -156,6 +159,23 @@ drawio -x -f svg -o output.svg input.drawio
 
 ## 워크플로우
 
+### Step 0 — 사전 입력 받기 (필수, 그리기 전에)
+
+"EKS 그려줘"만으로 추측하면 과밀·스파게티 다이어그램이 됩니다. PPT 수준 결과는 **구조화된 입력**에서 나옵니다. 빠진 항목은 `AskUserQuestion`으로 묻습니다(이미 명확하면 생략).
+
+| # | 질문 | 이유 | 기본값 |
+|---|------|------|--------|
+| 1 | 컴포넌트 목록 | 환각 서비스 방지 | 필수 |
+| 2 | 논리 그룹 (VPC/서브넷/계정) | 컨테이너 계층 결정 | 컴포넌트에서 추론 |
+| 3 | **주 데이터 흐름 (최대 5경로)** | 엣지 집합 결정 | 필수 |
+| 4 | 강조 포인트 (이 다이어그램의 "주연") | 시각 위계 | 없음(균등) |
+| 5 | 환경 (단일 리전 / Multi-AZ / 멀티리전 / DR) | 레이아웃 전략 | 단일 리전, 2-AZ |
+| 6 | 외부 행위자 (사용자, 온프렘, SaaS) | 좌측 배치 | 인터넷 사용자 |
+| 7 | 캔버스/용도 (전체 슬라이드, 보안리뷰 vs 개발개요) | 추상화 수준 | 1600×900, 기술 리뷰 |
+
+> 흐름이 5개를 넘으면 **번호 플로우 패턴**(snippets.md #33)으로 — 주 경로만 화살표, 나머지는 ①②③ 배지+범례.
+> 배치 규칙(VPC 안/밖, AZ 나란히, DB는 private 등)은 **`references/aws-reference-conventions.md`** 참조.
+
 ### MCP 활용 시
 
 1. Draw.io 앱 열기
@@ -213,12 +233,14 @@ drawio -x -f svg -o output.svg input.drawio
 | 파일 | 내용 |
 |------|------|
 | `references/design-tokens.md` | **정본(SINGLE SOURCE)** — 아이콘 크기(78×78)·컨테이너 색상·엣지·폰트·간격. 다른 문서는 이 값과 일치해야 함 |
+| `references/aws-reference-conventions.md` | **배치 규칙** — VPC 안/밖, 흐름 방향, AZ 나란히, DB는 private, 범례/제목 (PPT "취향" 격차 해소) |
 | `references/aws-icons.md` | AWS 아이콘 shape 이름 및 스타일 |
 | `references/best-practices.md` | 아키텍처 다이어그램 모범사례 |
 | `references/layout-patterns.md` | 3-Tier, 하이브리드 등 레이아웃 패턴 |
 | `references/snippets.md` | 복사해서 사용할 XML 코드 조각 |
 | `references/drawio-xml-guide.md` | XML 직접 작성 문법 가이드 |
 | `references/mcp-setup-guide.md` | Draw.io MCP 설정 및 도구 사용법 |
+| `scripts/snap_grid.py` | **export 전 0단계** — 모든 좌표를 10px 그리드로 자동 스냅(아이콘 크기 78 보존). `--in-place`/`--report` |
 | `scripts/validate_drawio.py` | **export 전 검증 1** — 침묵 킬러(주석 `&`/`--`, 미이스케이프 문자, DOCTYPE) 검출 + 셀 개수 리포트(truncation 감지) + `--coords` 절대좌표 |
 | `scripts/lint_layout.py` | **export 전 검증 2 (레이아웃 게이트)** — 그리드 정렬·컨테이너 이탈·아이콘 겹침·간격 균일도·엣지 예산을 점수화. score ≥ 80 이어야 export |
 | `scripts/route_edges.py` | **엣지 웨이포인트 자동계산** — `--from/--to`로 깨끗한 직교 경로(채널 라우팅) + exit/entry 앵커 생성. 어지러운 화살표 정리의 핵심 도구. `--list`로 셀 절대좌표 확인 |
