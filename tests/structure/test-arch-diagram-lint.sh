@@ -42,4 +42,34 @@ assert_eq "0" "$(echo "$MV" | grep -c 'overlapping icons')" "no false icon-overl
 # Canon: design-tokens declares 78x78 standard; stale 60x60 not reintroduced as 'standard'
 assert_contains "$(cat "$TOKENS")" "78" "design-tokens declares the 78px standard"
 
-rm -f "$BAD"
+# --- snap_grid.py (grid auto-snap, P1) ---
+SNAP="$AD/scripts/snap_grid.py"
+assert_file_exists "$SNAP" "snap_grid.py exists"
+assert_file_executable "$SNAP" "snap_grid.py is executable"
+assert_file_exists "$AD/references/aws-reference-conventions.md" "aws-reference-conventions.md exists"
+
+# Off-grid drift → snap → lint should pass, and the 78px icon size must be preserved.
+DRIFT=$(mktemp "${TMPDIR:-/tmp}/drift.XXXXXX.drawio")
+cat > "$DRIFT" <<'XML'
+<mxGraphModel><root>
+<mxCell id="0"/><mxCell id="1" parent="0"/>
+<mxCell id="vpc" vertex="1" parent="1" style="mxgraph.aws4.group_vpc"><mxGeometry x="43" y="47" width="400" height="200" as="geometry"/></mxCell>
+<mxCell id="a" vertex="1" parent="vpc" style="resIcon=x" value="A"><mxGeometry x="22" y="33" width="78" height="78" as="geometry"/></mxCell>
+<mxCell id="b" vertex="1" parent="vpc" style="resIcon=x" value="B"><mxGeometry x="162" y="33" width="78" height="78" as="geometry"/></mxCell>
+<mxCell id="c" vertex="1" parent="vpc" style="resIcon=x" value="C"><mxGeometry x="302" y="33" width="78" height="78" as="geometry"/></mxCell>
+</root></mxGraphModel>
+XML
+RPT=$(python3 "$SNAP" "$DRIFT" --report 2>&1)
+assert_contains "$RPT" "would snap" "snap_grid --report detects off-grid coords"
+python3 "$SNAP" "$DRIFT" --in-place >/dev/null 2>&1
+python3 "$LINT" "$DRIFT" >/dev/null 2>&1 && SRC=0 || SRC=$?
+assert_eq "0" "$SRC" "after snap_grid, diagram passes the layout gate"
+assert_contains "$(cat "$DRIFT")" 'width="78" height="78"' "snap_grid preserves 78x78 icon size"
+
+# snap_grid must refuse DOCTYPE (XXE guard)
+XXE=$(mktemp "${TMPDIR:-/tmp}/xxe.XXXXXX.drawio")
+printf '<!DOCTYPE x><mxGraphModel><root></root></mxGraphModel>' > "$XXE"
+python3 "$SNAP" "$XXE" >/dev/null 2>&1 && XRC=0 || XRC=$?
+assert_eq "2" "$XRC" "snap_grid refuses DOCTYPE (XXE guard)"
+
+rm -f "$BAD" "$DRIFT" "$XXE"
