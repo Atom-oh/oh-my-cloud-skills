@@ -1,0 +1,27 @@
+{
+  "name": "project-init",
+  "version": "1.7.1",
+  "description": "Initialize and maintain project structures with adaptive project detection, project documentation quality scoring, and auto-sync documentation workflows",
+  "author": {
+    "name": "whchoi98",
+    "email": "whchoi98@gmail.com"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Project Init",
+    "shortDescription": "Create and maintain repo docs, runbooks, ADRs, and project scaffolds.",
+    "longDescription": "Use Codex skills to scaffold project documentation, improve repository guidance, generate ADRs and runbooks, and automate PR review fixes.",
+    "developerName": "whchoi98",
+    "category": "Project Setup",
+    "capabilities": [
+      "Skills",
+      "Write",
+      "Documentation"
+    ],
+    "defaultPrompt": [
+      "Initialize project docs.",
+      "Generate a runbook.",
+      "Autofix this PR review."
+    ]
+  }
+}

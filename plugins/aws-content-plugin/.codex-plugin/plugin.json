@@ -1,0 +1,27 @@
+{
+  "name": "aws-content-plugin",
+  "version": "1.7.1",
+  "description": "AWS cloud content creation plugin for presentations, architecture diagrams, animated diagrams, documents, GitBook sites, and workshops",
+  "author": {
+    "name": "atomoh"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "AWS Content Plugin",
+    "shortDescription": "Create AWS presentations, diagrams, docs, GitBook sites, and workshops.",
+    "longDescription": "Build AWS-focused content with reusable Codex skills for reactive presentations, architecture diagrams, animated diagrams, GitBook pages, workshops, and slide quality fixes.",
+    "developerName": "atomoh",
+    "category": "Content Creation",
+    "capabilities": [
+      "Skills",
+      "Write",
+      "Interactive",
+      "Export"
+    ],
+    "defaultPrompt": [
+      "Create an AWS architecture presentation.",
+      "Review my Remarp slides.",
+      "Draw an AWS architecture diagram."
+    ]
+  }
+}
