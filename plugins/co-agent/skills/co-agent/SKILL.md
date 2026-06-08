@@ -91,6 +91,11 @@ Get multiple AIs to review a change, then synthesize.
    files). Prompt: *"Review this diff. Report [SEVERITY] file:line — issue. Cover
    correctness, error handling, security, tests, and AWS Well-Architected concerns."*
    See `ai-cli-adapters.md` for the exact per-CLI commands (incl. the size guard).
+   3b. **Validate citations (all modes)**: collect each AI's findings as JSON
+      `[{ai,severity,file,line,snippet,issue}]` and run
+      `python3 scripts/check_citations.py <diff_file> <findings.json>`. **Drop `unsupported`**
+      (hallucinated paths); treat `needs-review` with caution. This makes
+      "verify, don't vote-count" mechanical.
 4. **Claude synthesizes** into one report:
    - **Consensus** (issues ≥2 AIs agree on) — highest confidence.
    - **Dissent / unique findings** (only one AI raised) — note which AI.
@@ -161,6 +166,17 @@ Kiro ~2000 words). Produce one **lean, review-oriented core** and write it to BO
 
 > A PostToolUse hook reminds you when `CLAUDE.md` changes so these stay in sync.
 
+### Mode 5 — Consensus  (also the command **`/co-agent:consensus`**)
+Higher-confidence review via a **model-diverse** panel + **citation validation**.
+Review-only in this version; the `--apply` fix loop is Phase 2 (`references/consensus-mode.md`).
+
+1. Consent + scope (as Mode 1 step 0). Show `co_agent_config.py matrix` (cost).
+2. Build the panel from `(ai,model)` pairs (`deep` profile = each AI's model list, capped).
+3. One independent fan-out round → `check_citations.py` → drop `unsupported`.
+4. **Claude synthesizes** by raw agreement + evidence strength (NO confidence math).
+   Quorum guard: ≤1 usable pair → "single-opinion review", not consensus.
+5. Verdict PASS/REVIEW/FAIL.
+
 ## Chair principle (non-negotiable)
 
 - External AIs **advise**; **Claude decides and writes the final artifact**.
@@ -175,3 +191,5 @@ Kiro ~2000 words). Produce one **lean, review-oriented core** and write it to BO
 - `references/aws-well-architected.md` — 6-pillar checklist for the review mode
 - `scripts/check_ai_context.py` — validate/staleness-check generated AGENTS.md/GEMINI.md (size caps, marker, secrets); `--emit-marker` for generation
 - `scripts/co_agent_config.py` + `co-agent.defaults.json` — panel settings (model/effort/enabled/timeout); driven by the **`/co-agent:configure`** command, overrides in `.claude/co-agent.local.json`
+- `scripts/check_citations.py` — tiered citation validation (supported/needs-review/unsupported) for all review modes
+- `references/consensus-mode.md` — consensus loop, multi-model rules, quorum guard
