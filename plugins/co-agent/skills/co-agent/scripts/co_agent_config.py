@@ -81,22 +81,37 @@ def effective(root):
 
 def effective_models(cfg, ai):
     """Models to run for an AI given the profile. default → [single model];
-    deep → the `models` list (fallback to single model if list empty)."""
+    deep → the `models` list (fallback to single model if list empty).
+
+    Re-validates every non-None model against MODEL_RE (defense-in-depth: a
+    hand-edited JSON could bypass the set-time check) and silently drops any that
+    fail, so this never emits an unvalidated non-None model. None means "CLI
+    default" and is always kept. Never returns empty → falls back to [None]."""
     p = cfg["panel"].get(ai, {})
     single = p.get("model")
-    if cfg.get("profile") == "deep" and p.get("models"):
-        return list(dict.fromkeys(p["models"]))  # de-dupe, keep order
-    return [single]  # single may be None → CLI default
+    raw = p["models"] if (cfg.get("profile") == "deep" and p.get("models")) else [single]
+    out = []
+    for m in dict.fromkeys(raw):           # de-dupe, keep order
+        if m is None or MODEL_RE.match(m):
+            out.append(m)
+        # else: silently drop an invalid model name (defense-in-depth)
+    return out or [None]                   # never return empty → fall back to CLI default
 
 
 def panel_pairs(cfg):
-    """Enabled (ai, model) pairs, capped at consensus.max_calls / rounds."""
-    pairs = []
+    """Enabled (ai, model) pairs, interleaved round-robin across AIs so a cap trims
+    extra same-provider models before dropping a whole provider."""
+    queues = []
     for ai in AIS:
-        if not cfg["panel"].get(ai, {}).get("enabled", True):
-            continue
-        for m in effective_models(cfg, ai):
-            pairs.append((ai, m))
+        if cfg["panel"].get(ai, {}).get("enabled", True):
+            queues.append([(ai, m) for m in effective_models(cfg, ai)])
+    pairs = []
+    i = 0
+    while any(i < len(q) for q in queues):
+        for q in queues:
+            if i < len(q):
+                pairs.append(q[i])
+        i += 1
     return pairs
 
 

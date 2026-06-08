@@ -435,7 +435,7 @@ Argument: `$ARGUMENTS`
 1. **Consent + scope** (mandatory first fan-out): confirm with `AskUserQuestion` what to
    send (diff-only / selected files), and that the repo isn't private/secret-bearing.
 2. **Show the panel matrix** (cost visibility):
-   `python3 ${CLAUDE_PLUGIN_ROOT}/skills/co-agent/skills/co-agent/scripts/co_agent_config.py matrix`
+   `python3 ${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py matrix`
    (Use `--deep` → first run `co_agent_config.py set profile deep` for this run; reset after.)
 3. **Capture the diff** (default-branch aware — see SKILL.md Mode 1 step 2).
 4. **Fan out one round** over `(ai,model)` pairs (see `references/ai-cli-adapters.md`).
@@ -607,9 +607,10 @@ DEEP=$(python3 "$CFG" pairs --root "$R" 2>/dev/null | wc -l | tr -d ' ')
 assert_eq "5" "$DEEP" "deep profile → kiro 3 models + codex + gemini (5)"
 assert_contains "$(python3 "$CFG" matrix --root "$R" 2>&1)" "max calls" "matrix prints max-calls budget"
 assert_contains "$(python3 "$CFG" matrix --root "$R" 2>&1)" "same provider family" "matrix warns on same-family duplicates"
-# invalid model name in list rejected
-python3 "$CFG" set kiro models "good-model, bad model" --root "$R" >/dev/null 2>&1 && MB=0 || MB=$?
-assert_eq "2" "$MB" "models list rejects names with spaces/metacharacters"
+# invalid model name in list rejected (space/comma are list delimiters, so use a
+# genuine shell metacharacter to trigger MODEL_RE rejection)
+python3 "$CFG" set kiro models "good-model;rm" --root "$R" >/dev/null 2>&1 && MB=0 || MB=$?
+assert_eq "2" "$MB" "models list rejects names with shell metacharacters"
 rm -rf "$R"
 ```
 
