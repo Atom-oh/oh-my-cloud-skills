@@ -13,7 +13,8 @@
   ],
   "commands": [
     "./commands/configure.md",
-    "./commands/sync-context.md"
+    "./commands/sync-context.md",
+    "./commands/consensus.md"
   ],
   "hooks": {
     "PostToolUse": [
