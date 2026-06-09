@@ -8,51 +8,73 @@
 
 ## Problem & Goal
 
-A decision/design has been made (an ADR via `/add-adr`, a spec, or a brainstorming design doc). The user wants to **carry that document autonomously through plan → implementation**, with **multi-model consensus gates** validating each stage, finishing with working, tested code.
+The **design and the plan already exist as written documents** — produced upstream by the superpowers pipeline (brainstorming → spec doc; writing-plans → implementation plan doc) and/or `/add-adr` (decision). The user wants co-agent to **take that document set and autonomously IMPLEMENT it**, with **multi-model consensus gates** validating the work, finishing with working, tested code.
 
-**Goal:** `/co-agent:consensus <decision-or-design-doc>` runs an autonomous **doc → plan → TDD implementation** pipeline; each gate is a co-agent multi-model independent fan-out + citation validation; it stops with a working implementation (tests green) or a clear non-convergence report.
+**Goal:** `/co-agent:consensus` reads the input **document set (ADR + spec + writing-plans plan)** and autonomously executes the plan's tasks via TDD, with each gate being a co-agent **cross-family multi-model** independent fan-out + citation validation. It stops with a working implementation (tests green) or a clear non-convergence report.
 
-This is **document-driven** (not a one-line feature). The spec/decision phase is **upstream** (done by `/add-adr`, co-agent ADR mode, or brainstorming) — consensus picks up from the approved artifact.
+**Entry depends on which documents are present** (a decision tree, not a one-line desc):
 
-## Closed loop (integration)
+| Input docs | Entry point |
+|------------|-------------|
+| **ADR only** (no plan) | **generate the plan** → plan consensus gate → implement |
+| **Spec only** (brainstorming design, no plan) | **generate the plan** → plan consensus gate → implement |
+| **Plan doc present** (writing-plans output) | **review the existing plan** (consensus gate) → implement (no regeneration) |
 
-```
-/add-adr  ·OR·  co-agent ADR mode (multi-AI)  ·OR·  superpowers brainstorming
-        →  decision/design doc  (docs/decisions/ADR-NNN.md | spec.md | design.md)
-        ↓
-/co-agent:consensus <doc>
-        →  plan (consensus gate) → TDD implementation (consensus gate) → working code + report
-```
+So **plan generation is a normal path** (for ADR/spec inputs that have no plan), and the **plan consensus gate ALWAYS runs** before implementation — a freshly-generated plan especially needs multi-model review; a supplied plan is reviewed before it's trusted. consensus is the autonomous executor: an autonomous sibling to `subagent-driven-development`/`executing-plans`, except the cross-family multi-model panel (not Claude-only subagents + a human) is the gate.
 
-## Pipeline (borrowed from consensus-build, doc-driven)
+## Closed loop (integration with the superpowers pipeline)
 
 ```
-P0  State init: .claude/co-agent-consensus/state.local.md (session_id, phase, round counters,
-    artifact paths) + load docs/.../learnings.md.  Require a CLEAN working tree.
-P1  PLAN: from the input doc, generate a TDD+Tidy implementation plan (impl-plan-{name}.md).
-P2  PLAN consensus gate ← multi-model fan-out (Kiro[models]/Codex/Gemini, independent) +
-    check_citations.py; aggregate; iterate (max N rounds) until no CRITICAL/MAJOR.
-P3  Auto-resolve "needs-review" items into a decisions log (session-local).
-P4  TDD IMPLEMENT: per plan task → Red (failing test) → Green (code) → Refactor; ONE commit
-    per task; **tests must pass** (`bash tests/run-all.sh` + project tests) before each commit;
-    scope-lock to the plan's file set; git checkpoint before each task.
-P5  IMPLEMENTATION consensus gate ← multi-model review of the cumulative diff
-    (this IS the shipped review-only consensus mode, reused as the final gate) → fix loop
-    (max N) until no CRITICAL/MAJOR + tests green.
-P6  Append learnings + final report (what was built, decisions, test results).
+superpowers:brainstorming → docs/superpowers/specs/<date>-<topic>-design.md
+superpowers:writing-plans → docs/superpowers/plans/<date>-<feature>.md   (bite-sized TDD tasks)
+(optional) /add-adr        → docs/decisions/ADR-NNN.md
+        ↓  (input = this document set)
+/co-agent:consensus            (reads spec + plan [+ ADR])
+        →  validate plan (consensus gate) → autonomous TDD implementation of the plan's tasks
+           (per-task multi-model gate) → working code + report
 ```
 
-Spec/decision review (consensus-build's Phase 2) is **out** — that happened upstream in the ADR/brainstorming step.
+> consensus consumes the SAME plan format `writing-plans` emits (checkbox `- [ ]` TDD steps,
+> exact file paths, per-task commits), so the two compose directly.
+
+## Pipeline (plan is an INPUT; implementation is the core)
+
+```
+P0  Detect & load the input doc set (ADR? spec? plan?); init state file
+    .claude/co-agent-consensus/state.local.md (session_id, phase, current task index, round
+    counters, artifact paths) + load learnings. Require a CLEAN working tree.
+P1  PLAN (conditional on inputs):
+      - plan doc present  → LOAD it as-is (no regeneration).
+      - ADR/spec only (no plan) → GENERATE a TDD+Tidy plan from the decision/design.
+    Either way, parse the plan into bite-sized tasks (checkbox `- [ ]` TDD steps + file paths).
+P2  PLAN consensus gate (ALWAYS): multi-model fan-out (Kiro[models]/Codex/Gemini, independent)
+    + check_citations.py — review the plan (generated or supplied) for implementability,
+    bounded scope, missing tasks, and security-mandate violations; iterate (max rounds) until
+    no CRITICAL/MAJOR. A generated plan especially must clear this before any code is written.
+P3  Per-task loop over the plan's tasks (the heart of the feature):
+      checkpoint → TDD: Red (write failing test) → Green (code) → Refactor →
+      run gate: `bash tests/run-all.sh` + project tests MUST pass →
+      multi-model consensus gate on the task's diff (Kiro[models]/Codex/Gemini independent +
+        check_citations.py) → if CRITICAL/MAJOR: fix within round budget, else abort →
+      ONE commit per task → advance task index in state (resumable).
+    scope-lock to the plan's declared file set throughout.
+P4  Final IMPLEMENTATION consensus gate ← multi-model review of the cumulative diff
+    (this IS the shipped review-only consensus mode, reused) → fix loop until clean + tests green.
+P5  Append learnings + final report (tasks done, decisions, test results, any aborted tasks).
+```
+
+Spec/decision authoring AND plan authoring happen **upstream** (brainstorming + writing-plans + ADR). consensus's job is faithful, gated, autonomous **execution** of that plan.
 
 ## Sub-modes (like consensus-build)
 
 | Invocation | Does |
 |------------|------|
-| `/co-agent:consensus <doc>` | full: doc → plan → implement (default) |
-| `/co-agent:consensus plan <doc>` | doc → plan only (stop after P2) |
-| `/co-agent:consensus implement <plan>` | existing plan → P4–P6 |
-| `/co-agent:consensus review` | the shipped multi-model diff review (P5 standalone gate) |
+| `/co-agent:consensus <doc>` | full pipeline P0–P5: detect inputs → plan (load or generate) → plan gate → implement → final gate → report (default) |
+| `/co-agent:consensus plan <doc>` | P0–P2 only: plan (load/generate) + plan consensus gate, then stop |
+| `/co-agent:consensus implement <plan>` | P0–P1(load)–P2(gate)→P3–P5: take an existing plan and implement it |
+| `/co-agent:consensus review` | the shipped multi-model diff review (P4 standalone gate) |
 | `--deep` | activate each AI's full model list for the gates |
+| `--trust-plan` | skip the P2 plan gate (only sensible when the plan was already reviewed upstream) |
 
 ## Components
 
@@ -60,12 +82,12 @@ Spec/decision review (consensus-build's Phase 2) is **out** — that happened up
 - `check_citations.py` — gate citation validation.
 - `co_agent_config.py` `pairs`/`matrix` + per-AI model lists + `deep` profile + MAX_CALLS cap.
 - Fan-out (`ai-cli-adapters.md`) — the independent multi-model round.
-- The review-only consensus = P5 gate.
+- The review-only consensus = P4 final implementation gate (and the per-task gate in P3).
 
 **New:**
 - `scripts/consensus_state.py` — state file (bound to repo/branch/base/HEAD/initial-doc-hash/allowed-paths/session_id), phase/round counters, convergence + no-progress/oscillation detection, decisions/learnings (session-local, gitignored).
-- Phase-orchestration in the co-agent skill (Mode "consensus build") — the monolithic prompt that drives P0–P6, calling the existing fan-out for gates and TDD for P4.
-- `hooks` in co-agent plugin.json: **Stop** (block premature stop while a consensus session is active & not converged), **PostToolUse** (track test pass/fail in P4), **PostToolUseFailure** (detect stuck/repeated-failure loops) — all **gated to the active `session_id`** so unrelated work is untouched.
+- Phase-orchestration in the co-agent skill (Mode "consensus build") — the monolithic prompt that drives P0–P5, calling the existing fan-out for gates and TDD for the P3 per-task loop.
+- `hooks` in co-agent plugin.json: **Stop** (block premature stop while a consensus session is active & not converged), **PostToolUse** (track test pass/fail during P3), **PostToolUseFailure** (detect stuck/repeated-failure loops) — all **gated to the active `session_id`** so unrelated work is untouched.
 - `commands/consensus.md` extended with the sub-modes + doc argument.
 - `references/consensus-pipeline.md` — phase reference + safety.
 
@@ -103,10 +125,10 @@ Spec/decision review (consensus-build's Phase 2) is **out** — that happened up
 
 ## Phasing (implementation)
 
-- **Stage A**: P1–P3 (doc → plan → plan consensus gate) + state file + sub-modes `plan`. Lowest risk (no code edits).
-- **Stage B**: P4 TDD implement + hooks (Stop/PostToolUse/PostToolUseFailure) + checkpoints + scope-lock + test gate.
-- **Stage C**: P5 implementation gate (reuse review-only) + P6 learnings/report + full autonomy wiring.
-Each stage is its own implementation plan.
+- **Stage A**: P0–P2 (detect inputs → plan load/generate → plan consensus gate) + state file + `plan` sub-mode. Lowest risk — no code edits, ends with a reviewed plan.
+- **Stage B**: P3 per-task TDD implement loop + hooks (Stop/PostToolUse/PostToolUseFailure) + checkpoints + scope-lock + per-task test gate.
+- **Stage C**: P4 final implementation gate (reuse review-only) + P5 learnings/report + full autonomy wiring + resume-from-state.
+Each stage is its own implementation plan (writing-plans).
 
 ## Out of Scope / Future
 
