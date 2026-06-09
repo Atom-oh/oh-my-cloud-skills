@@ -13,6 +13,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.2] - 2026-06-09
+
+### Added
+- **co-agent consensus mode (Phase 1)** — higher-confidence multi-AI review. `check_citations.py` classifies each finding against the diff (`supported`/`needs-review`/`unsupported`); per-AI model lists with a `deep` profile + `MAX_CALLS=12` cap + round-robin trim + cost matrix; `/co-agent:consensus` review-only command + SKILL Mode 5. Reshaped by a co-agent panel review (cut confidence-voting, persistent logs, autonomous-fix-by-default; `--apply` fix loop deferred to Phase 2) ([#47](https://github.com/Atom-oh/oh-my-cloud-skills/pull/47))
+- **Codex plugin support** — `.codex-plugin/plugin.json` for all 6 plugins, `.agents/plugins/marketplace.json` (codex marketplace), and `scripts/test-codex-plugins.py` validator wired into the structure tests
+- **AI context files** — `AGENTS.md` (Codex) + `GEMINI.md` (Gemini) distilled from `CLAUDE.md` via `/co-agent:sync-context`
+- Bedrock reactive-presentation demo under `docs/static/demos/`
+
+### Changed
+- Bump all plugins and `marketplace.json` to 1.7.2
+
 ## [1.7.1] - 2026-06-02
 
 ### Added
@@ -213,6 +224,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 이 프로젝트의 모든 주요 변경 사항은 이 파일에 기록됩니다.
 이 문서는 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)를 기반으로 하며,
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 따릅니다.
+
+## [1.7.2] - 2026-06-09
+
+### Added
+- **co-agent consensus 모드 (Phase 1)** — 고신뢰 멀티-AI 리뷰. `check_citations.py`가 각 발견을 diff와 대조해 `supported`/`needs-review`/`unsupported` 분류; AI별 모델 리스트 + `deep` 프로파일 + `MAX_CALLS=12` 캡 + 라운드로빈 트림 + 비용 매트릭스; `/co-agent:consensus` 리뷰 전용 명령 + SKILL Mode 5. co-agent 패널 리뷰로 재설계(confidence 투표·영속 로그·자동수정 기본값 컷; `--apply` 수정 루프는 Phase 2로 연기) ([#47](https://github.com/Atom-oh/oh-my-cloud-skills/pull/47))
+- **Codex 플러그인 지원** — 6개 플러그인의 `.codex-plugin/plugin.json`, `.agents/plugins/marketplace.json`(codex 마켓플레이스), `scripts/test-codex-plugins.py` 검증기(구조 테스트 연동)
+- **AI 컨텍스트 파일** — `CLAUDE.md`를 증류한 `AGENTS.md`(Codex)·`GEMINI.md`(Gemini), `/co-agent:sync-context` 산출
+- `docs/static/demos/`에 Bedrock reactive-presentation 데모
+
+### Changed
+- 모든 플러그인과 `marketplace.json`을 1.7.2로 범프
 
 ## [1.7.1] - 2026-06-02
 

@@ -1,6 +1,6 @@
 {
   "name": "kiro-power-converter",
-  "version": "1.7.1",
+  "version": "1.7.2",
   "description": "Convert Claude Code plugins and skills to Kiro Power format from GitHub URLs, local paths, marketplace names, or individual skills",
   "author": {
     "name": "atomoh"
