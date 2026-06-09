@@ -22,7 +22,8 @@ Detect with `scripts/consensus_state.py detect <root> <paths>` → `adr|spec|pla
   Require a clean tree (`consensus_state.py verify`).
 - **P1** — plan doc present → `parse_plan.py <plan>` to load tasks + file set; else generate a
   TDD+Tidy plan from the ADR/spec (Claude), then parse it.
-- **P2 (ALWAYS)** — plan consensus gate: fan out the plan to the multi-model panel
+- **P2 (default-on; `--trust-plan` is the explicit escape hatch for an already-reviewed plan)**
+  — plan consensus gate: fan out the plan to the multi-model panel
   (`co_agent_config.py matrix` to show cost; `pairs` for the (ai,model) set; fan-out per
   `ai-cli-adapters.md`), collect findings, run `check_citations.py`, drop `unsupported`,
   synthesize by agreement + evidence (NOT vote-count). Iterate up to `consensus.max_rounds`

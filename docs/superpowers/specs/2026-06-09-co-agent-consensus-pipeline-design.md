@@ -69,7 +69,7 @@ Spec/decision authoring AND plan authoring happen **upstream** (brainstorming + 
 
 | Invocation | Does |
 |------------|------|
-| `/co-agent:consensus <doc>` | full pipeline P0–P5: detect inputs → plan (load or generate) → plan gate → implement → final gate → report (default) |
+| `/co-agent:consensus <doc>` | full pipeline P0–P5: detect inputs → plan (load or generate) → plan gate → implement → final gate → report (default — **target behavior; currently aliases Stage A / P0–P2 until Stage B/C land**) |
 | `/co-agent:consensus plan <doc>` | P0–P2 only: plan (load/generate) + plan consensus gate, then stop |
 | `/co-agent:consensus implement <plan>` | P0–P1(load)–P2(gate)→P3–P5: take an existing plan and implement it |
 | `/co-agent:consensus review` | the shipped multi-model diff review (P4 standalone gate) |
@@ -100,7 +100,7 @@ Spec/decision authoring AND plan authoring happen **upstream** (brainstorming + 
 ## Safety (panel concerns + consensus-build mitigations)
 
 - **session_id state guard** — hooks no-op unless the active consensus session matches (unrelated work unaffected).
-- **Clean working tree required**; **git checkpoint** (stash/tag) before each P4 task → trivial rollback.
+- **Clean working tree required**; **git checkpoint** (stash/tag) before each P3 task → trivial rollback.
 - **Tests must pass** before every task commit (`tests/run-all.sh` + project tests); a failing build aborts rather than letting the panel review broken code.
 - **Scope-lock**: edits restricted to the plan's declared file set.
 - **AWS security-mandate veto**: a proposed change violating the global rules (`0.0.0.0/0`, `Principal:"*"`, secrets in env, …) is rejected before apply.
@@ -113,7 +113,7 @@ Spec/decision authoring AND plan authoring happen **upstream** (brainstorming + 
 
 - Missing/oversized/errored `(ai,model)` pair → skip, note, continue (size guard + graceful degradation). Quorum guard if ≤1 remains.
 - Input doc missing/unreadable → stop with a clear message (nothing to build from).
-- P4 test failure → revert to checkpoint, attempt fix within round budget, else abort with the failing output.
+- P3 per-task test failure → revert to checkpoint, attempt fix within round budget, else abort with the failing output.
 - Crash/interrupt mid-run → state file lets a re-invocation resume from the last completed phase.
 
 ## Testing

@@ -175,7 +175,8 @@ Entry is conditional on the input docs:
 - **plan doc present** (writing-plans) → LOAD it (`scripts/parse_plan.py`), do NOT regenerate.
 - **ADR / spec only** (no plan) → GENERATE a TDD plan from the decision/design, then parse it.
 
-Then ALWAYS run the **plan consensus gate**: fan the plan to the panel
+Then run the **plan consensus gate** (default-on; `--trust-plan` skips it only when the
+plan was already reviewed upstream): fan the plan to the panel
 (`scripts/co_agent_config.py` `matrix`/`pairs` + `references/ai-cli-adapters.md`), validate
 findings with `scripts/check_citations.py` (drop `unsupported`), synthesize by agreement +
 evidence (never vote-count), iterate to no CRITICAL/MAJOR — checking implementability,
@@ -197,7 +198,7 @@ bounded scope, missing tasks, and AWS security-mandate violations. Session state
 - `scripts/check_ai_context.py` — validate/staleness-check generated AGENTS.md/GEMINI.md (size caps, marker, secrets); `--emit-marker` for generation
 - `scripts/co_agent_config.py` + `co-agent.defaults.json` — panel settings (model/effort/enabled/timeout); driven by the **`/co-agent:configure`** command, overrides in `.claude/co-agent.local.json`
 - `scripts/check_citations.py` — tiered citation validation (supported/needs-review/unsupported) for all review modes
-- `references/consensus-mode.md` — consensus loop, multi-model rules, quorum guard
+- `references/consensus-pipeline.md` — **AUTHORITATIVE** for `/co-agent:consensus`: P0–P5 phases (Stage A implements P0–P2), entry decision table, Stage A/B/C roadmap
+- `references/consensus-mode.md` — the reusable consensus GATE mechanics (fan-out + citation validation + quorum) used by `review` and pipeline gates P2/P4
 - `scripts/consensus_state.py` — consensus session state + input-doc detection (adr/spec/plan)
 - `scripts/parse_plan.py` — parse a writing-plans plan into tasks + the allowed file set
-- `references/consensus-pipeline.md` — P0–P5 phases (Stage A implements P0–P2) + entry table

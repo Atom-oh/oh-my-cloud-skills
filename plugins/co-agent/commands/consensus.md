@@ -1,7 +1,7 @@
 ---
-description: Multi-AI consensus review — model-diverse independent rounds with citation validation (review-only; --apply fix loop is Phase 2)
+description: Autonomous doc→plan→implementation pipeline with cross-family multi-model consensus gates. Current Stage A runs P0–P2 (load/generate a plan + plan-review gate, no code edits); implementation is Stage B.
 allowed-tools: Read, Glob, Grep, Bash, AskUserQuestion
-argument-hint: "plan <doc> | implement <plan> | review [diff base] | (full)  [--deep] [--trust-plan]"
+argument-hint: "plan <doc...> | review [diff base] | (full)  [--deep] [--trust-plan]   (implement = Stage B, reserved)"
 ---
 
 # co-agent: consensus
@@ -13,18 +13,18 @@ implement (Stage B) and P4/P5 (Stage C) land later. Full reference: `references/
 Argument: `$ARGUMENTS`
 
 ## Sub-modes
-- `plan <doc>` — P0–P2: detect input, load-or-generate the plan, run the plan consensus gate.
-- `implement <plan>` — (Stage B, not yet) take a reviewed plan and implement it.
-- `review` — the shipped multi-model diff review (P4 gate, standalone).
-- (default) full pipeline — P0 onward (currently runs Stage A; implement arrives in Stage B).
-- Flags: `--deep` (use each AI's full model list for gates), `--trust-plan` (skip P2).
+- `plan <doc...>` — P0–P2: detect input(s), load-or-generate the plan, run the plan consensus gate. **(available — Stage A)**
+- `review [diff base]` — standalone multi-model diff review (the consensus gate run on its own). **(available — shipped v1.7.2)**
+- `implement <plan>` — autonomously implement a reviewed plan (P3 TDD loop). **(Stage B — reserved, not yet)**
+- (default, no sub-mode) — runs the full pipeline; **currently an alias for Stage A (P0–P2)** until Stage B/C land.
+- Flags: `--deep` (use each AI's full model list for the gates), `--trust-plan` (skip the P2 plan gate when the plan was already reviewed upstream). Round/call limits come from `consensus.max_rounds`/`consensus.max_calls` (config) — there is no `--apply`/`--max-rounds` flag.
 
 ## Stage A workflow (`plan <doc>`)
 Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"`.
 
 1. **Consent + cost**: confirm sending the doc(s) to third-party AIs; show
    `python3 "$SK/co_agent_config.py" matrix`.
-2. **Detect & init**: `python3 "$SK/consensus_state.py" detect . <doc paths>` → if a `plan`
+2. **Detect & init**: `python3 "$SK/consensus_state.py" detect . <doc...>` → if a `plan`
    doc is present, use it; else (`adr`/`spec`) you'll generate one. Then
    `python3 "$SK/consensus_state.py" init . --docs <comma paths> --base <trunk>` and
    `python3 "$SK/consensus_state.py" verify .` (clean tree required).
