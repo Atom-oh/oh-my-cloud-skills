@@ -1,0 +1,28 @@
+{
+  "name": "aws-ops-plugin",
+  "version": "1.7.1",
+  "description": "AWS/EKS infrastructure operations and troubleshooting plugin for EKS, networking, IAM, observability, storage, database, analytics, cost, and Well-Architected reviews",
+  "author": {
+    "name": "atomoh"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "AWS Ops Plugin",
+    "shortDescription": "Troubleshoot, review, and operate AWS and EKS environments.",
+    "longDescription": "Use Codex skills for AWS operations workflows including troubleshooting, health checks, network diagnosis, observability, security audit, and Well-Architected review.",
+    "developerName": "atomoh",
+    "category": "Cloud Operations",
+    "capabilities": [
+      "Skills",
+      "MCP",
+      "Read",
+      "Shell"
+    ],
+    "defaultPrompt": [
+      "Troubleshoot this EKS issue.",
+      "Run an AWS security audit.",
+      "Review this workload against Well-Architected."
+    ]
+  },
+  "mcpServers": "./.mcp.json"
+}

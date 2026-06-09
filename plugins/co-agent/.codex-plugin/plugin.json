@@ -1,0 +1,26 @@
+{
+  "name": "co-agent",
+  "version": "1.7.1",
+  "description": "Collaborate with other AI agents such as Kiro CLI, Codex, and Gemini for multi-AI review, decision support, ADR drafting, and context synchronization",
+  "author": {
+    "name": "atomoh"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Co Agent",
+    "shortDescription": "Coordinate multi-AI review and decision workflows.",
+    "longDescription": "Use Codex with co-agent workflows for multi-agent code review, architecture review, decision support, ADR co-authoring, and AI context synchronization.",
+    "developerName": "atomoh",
+    "category": "Collaboration",
+    "capabilities": [
+      "Skills",
+      "Shell",
+      "Review"
+    ],
+    "defaultPrompt": [
+      "Run a multi-AI review.",
+      "Help me decide with co-agent.",
+      "Sync AI context files."
+    ]
+  }
+}

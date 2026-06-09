@@ -37,3 +37,9 @@ docs/.docusaurus/
 
 # co-agent personal panel settings (model/effort/enabled/timeout overrides)
 .claude/co-agent.local.json
+
+# co-agent consensus session artifacts (raw model outputs, validated findings — ephemeral)
+.claude/co-agent-consensus/
+
+# scratch working dir (presentation/demo authoring — not tracked)
+work/

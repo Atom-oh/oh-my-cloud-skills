@@ -38,42 +38,39 @@ CTX_FILE="$RUN/context.txt"   # the git diff / decision brief (see Security belo
 # defaults + .claude/co-agent.local.json (see /co-agent:configure). This makes the
 # config LIVE: `enabled false` drops an AI; model/effort flags are injected per CLI.
 CFG="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py"
-T=$(python3 "$CFG" timeout 2>/dev/null || echo 240)   # per-CLI timeout (s)
-PANEL=$(python3 "$CFG" panel 2>/dev/null || echo "kiro codex gemini")
-
-# Context-size guard: estimate tokens (~4 bytes/token) so we can SKIP an AI whose
-# model window can't hold the context (e.g. Codex ~272K) instead of letting it
-# hard-fail with "prompt tokens exceed model maximum". Kiro/Gemini ~1M still run.
+T=$(python3 "$CFG" timeout 2>/dev/null || echo 240)
+python3 "$CFG" matrix          # show provider·model·ctx + max-calls BEFORE running (cost visibility)
 TOKENS=$(( ( $(wc -c < "$CTX_FILE") + 3 ) / 4 ))
 
-# Launch only ENABLED + installed panel members in parallel. Detect by binary
-# presence (kiro-cli is authed via login OR $KIRO_API_KEY — don't pre-gate).
-# Context is fed via STDIN (cat | cli); NEVER interpolated into the command line.
-# `read -ra FLAGS` consumes `flags <ai>` SAFELY — array words are not re-globbed
-# or re-split, so a stray model value can't inject extra flags / expand globs.
-for ai in $PANEL; do
+# One fan-out per ENABLED (ai, model) pair (capped). `pairs` emits "ai<TAB>model".
+i=0
+python3 "$CFG" pairs 2>/dev/null | while IFS=$'\t' read -r ai model; do
+  i=$((i+1)); slot="$RUN/${ai}-${i}"
+  MFLAGS=(); [ "$model" != "(default)" ] && MFLAGS=(--model "$model")   # codex/gemini use -m; see note
   if ! python3 "$CFG" fits "$ai" "$TOKENS" 2>/dev/null; then
-    echo "[skip] $ai — context ~${TOKENS} tok > model window ($(python3 "$CFG" context-limit "$ai") tok). Narrow the diff, raise the limit, or switch model via /co-agent:configure."
-    continue
+    echo "[skip] $ai/$model — context ~${TOKENS} tok > model window"; continue
   fi
-  read -ra FLAGS < <(python3 "$CFG" flags "$ai")
   case "$ai" in
-    kiro)   command -v kiro-cli >/dev/null 2>&1 && \
-      ( cat "$CTX_FILE" | timeout "$T" kiro-cli chat "$PROMPT" "${FLAGS[@]}" \
-          --no-interactive --trust-tools=read,grep --wrap never \
-        > "$RUN/kiro.md" 2>"$RUN/kiro.err" || echo "[skip] kiro" ) & ;;
-    codex)  command -v codex >/dev/null 2>&1 && \
-      ( cat "$CTX_FILE" | timeout "$T" codex exec -s read-only "${FLAGS[@]}" "$PROMPT" \
-        > "$RUN/codex.md" 2>"$RUN/codex.err" || echo "[skip] codex" ) & ;;
-    gemini) command -v gemini >/dev/null 2>&1 && \
-      ( cat "$CTX_FILE" | timeout "$T" gemini "${FLAGS[@]}" -p "$PROMPT" -o text \
-        > "$RUN/gemini.md" 2>"$RUN/gemini.err" || echo "[skip] gemini" ) & ;;
+    kiro)   command -v kiro-cli >/dev/null 2>&1 && ( cat "$CTX_FILE" | timeout "$T" \
+              kiro-cli chat "$PROMPT" "${MFLAGS[@]}" --no-interactive --trust-tools=read,grep --wrap never \
+              > "$slot.md" 2>"$slot.err" || echo "[skip] kiro/$model" ) & ;;
+    codex)  command -v codex >/dev/null 2>&1 && ( cat "$CTX_FILE" | timeout "$T" \
+              codex exec -s read-only "${MFLAGS[@]/--model/-m}" "$PROMPT" \
+              > "$slot.md" 2>"$slot.err" || echo "[skip] codex/$model" ) & ;;
+    gemini) command -v gemini >/dev/null 2>&1 && ( cat "$CTX_FILE" | timeout "$T" \
+              gemini "${MFLAGS[@]/--model/-m}" -p "$PROMPT" -o text \
+              > "$slot.md" 2>"$slot.err" || echo "[skip] gemini/$model" ) & ;;
   esac
 done
 wait
-# Read non-empty $RUN/*.md and synthesize. Empty/errored (incl. timeout / size-skip)
-# = that AI skipped → note it, proceed with the rest.
+# Synthesize from $RUN/*-*.md. Empty/errored/size-skipped = that pair skipped.
+# QUORUM GUARD: if ≤1 pair produced usable output, do NOT call it consensus —
+# report as single-opinion review and say so.
 ```
+
+- **Multi-model**: the panel is now `(ai, model)` pairs from `co_agent_config.py pairs`
+  (default = one per AI; `deep` profile = each AI's `models` list, capped by
+  `consensus.max_calls`). `matrix` prints the effective set + max calls before running.
 
 - **Context-size guard**: each AI is skipped (not hard-failed) when the estimated
   context exceeds its `context_limit`. Inspect/raise via `/co-agent:configure`

@@ -1,0 +1,26 @@
+{
+  "name": "agentcore-creator",
+  "version": "1.7.1",
+  "description": "Convert Claude Code plugins to Amazon Bedrock AgentCore deployable formats including Runtime agents, Gateway tools, Memory knowledge stores, and Lambda functions",
+  "author": {
+    "name": "atomoh"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "AgentCore Creator",
+    "shortDescription": "Convert plugin workflows into Bedrock AgentCore artifacts.",
+    "longDescription": "Use Codex to map Claude Code plugin assets into Amazon Bedrock AgentCore runtimes, gateways, memory stores, Lambda functions, and deployment guidance.",
+    "developerName": "atomoh",
+    "category": "Conversion",
+    "capabilities": [
+      "Skills",
+      "Write",
+      "AWS",
+      "Migration"
+    ],
+    "defaultPrompt": [
+      "Convert this plugin to AgentCore.",
+      "Generate AgentCore deployment artifacts."
+    ]
+  }
+}

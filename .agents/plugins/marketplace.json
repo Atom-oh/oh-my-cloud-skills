@@ -1,0 +1,80 @@
+{
+  "name": "oh-my-cloud-skills",
+  "interface": {
+    "displayName": "Oh My Cloud Skills"
+  },
+  "plugins": [
+    {
+      "name": "aws-content-plugin",
+      "source": {
+        "source": "local",
+        "path": "./plugins/aws-content-plugin"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Content Creation"
+    },
+    {
+      "name": "aws-ops-plugin",
+      "source": {
+        "source": "local",
+        "path": "./plugins/aws-ops-plugin"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Cloud Operations"
+    },
+    {
+      "name": "kiro-power-converter",
+      "source": {
+        "source": "local",
+        "path": "./plugins/kiro-power-converter"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Conversion"
+    },
+    {
+      "name": "co-agent",
+      "source": {
+        "source": "local",
+        "path": "./plugins/co-agent"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Collaboration"
+    },
+    {
+      "name": "agentcore-creator",
+      "source": {
+        "source": "local",
+        "path": "./plugins/agentcore-creator"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Conversion"
+    },
+    {
+      "name": "project-init",
+      "source": {
+        "source": "local",
+        "path": "./plugins/project-init"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Project Setup"
+    }
+  ]
+}

@@ -79,6 +79,76 @@ def effective(root):
     return cfg
 
 
+def effective_models(cfg, ai):
+    """Models to run for an AI given the profile. default → [single model];
+    deep → the `models` list (fallback to single model if list empty).
+
+    Re-validates every non-None model against MODEL_RE (defense-in-depth: a
+    hand-edited JSON could bypass the set-time check) and silently drops any that
+    fail, so this never emits an unvalidated non-None model. None means "CLI
+    default" and is always kept. Never returns empty → falls back to [None]."""
+    p = cfg["panel"].get(ai, {})
+    single = p.get("model")
+    raw = p["models"] if (cfg.get("profile") == "deep" and p.get("models")) else [single]
+    out = []
+    for m in dict.fromkeys(raw):           # de-dupe, keep order
+        if m is None or MODEL_RE.match(m):
+            out.append(m)
+        # else: silently drop an invalid model name (defense-in-depth)
+    return out or [None]                   # never return empty → fall back to CLI default
+
+
+def panel_pairs(cfg):
+    """Enabled (ai, model) pairs, interleaved round-robin across AIs so a cap trims
+    extra same-provider models before dropping a whole provider."""
+    queues = []
+    for ai in AIS:
+        if cfg["panel"].get(ai, {}).get("enabled", True):
+            queues.append([(ai, m) for m in effective_models(cfg, ai)])
+    pairs = []
+    i = 0
+    while any(i < len(q) for q in queues):
+        for q in queues:
+            if i < len(q):
+                pairs.append(q[i])
+        i += 1
+    return pairs
+
+
+def cmd_pairs(root):
+    cfg = effective(root)
+    cap = int(cfg.get("consensus", {}).get("max_calls", 12))
+    rounds = int(cfg.get("consensus", {}).get("max_rounds", 2))
+    per_round_cap = max(1, cap // max(1, rounds))
+    pairs = panel_pairs(cfg)
+    if len(pairs) > per_round_cap:
+        print(f"⚠️  {len(pairs)} pairs exceeds per-round cap {per_round_cap} "
+              f"(max_calls {cap} / {rounds} rounds) — trimming", file=sys.stderr)
+        pairs = pairs[:per_round_cap]
+    for ai, m in pairs:
+        print(f"{ai}\t{m or '(default)'}")
+    return 0
+
+
+def cmd_matrix(root):
+    cfg = effective(root)
+    rounds = int(cfg.get("consensus", {}).get("max_rounds", 2))
+    pairs = panel_pairs(cfg)
+    print(f"co-agent panel matrix  (profile {cfg.get('profile','default')} · "
+          f"{len(pairs)} pairs × up to {rounds} rounds = {len(pairs)*rounds} max calls)")
+    print(f"  {'AI':7} {'model':22} {'ctx(tok)':>11}")
+    fam = {}
+    for ai, m in pairs:
+        ctx = int(cfg['panel'].get(ai, {}).get('context_limit', 0) or 0)
+        print(f"  {ai:7} {(m or '(default)'):22} {(f'{ctx:,}' if ctx else '—'):>11}")
+        fam.setdefault(ai, 0)
+        fam[ai] += 1
+    for ai, n in fam.items():
+        if n > 1:
+            print(f"  ⚠️  {ai}: {n} models (same provider family — diminishing returns vs cost)")
+    return 0
+
+
 def cmd_show(root):
     cfg = effective(root)
     autosync = "on" if cfg.get("sync_on_change") else "off"
@@ -118,6 +188,11 @@ def cmd_set(root, rest):
             print("usage: set autosync <on|off>", file=sys.stderr)
             return 2
         local["sync_on_change"] = rest[1].lower() in ("on", "true", "1", "yes")
+    elif rest[0] == "profile":
+        if len(rest) != 2 or rest[1] not in ("default", "deep"):
+            print("usage: set profile <default|deep>", file=sys.stderr)
+            return 2
+        local["profile"] = rest[1]
     else:
         if len(rest) != 3:
             print("usage: set <ai> <key> <value>", file=sys.stderr)
@@ -141,6 +216,14 @@ def cmd_set(root, rest):
                 print("model may contain only letters, digits, and . _ : / - "
                       "(no spaces or shell metacharacters)", file=sys.stderr)
                 return 2
+        elif key == "models":
+            items = [m for m in re.split(r"[,\s]+", val) if m]
+            bad = [m for m in items if not MODEL_RE.match(m)]
+            if bad:
+                print(f"invalid model name(s): {', '.join(bad)} "
+                      f"(letters/digits/. _ : / - only)", file=sys.stderr)
+                return 2
+            slot["models"] = items
         elif key == "context_limit":
             if not val.isdigit() or int(val) <= 0:
                 print("context_limit must be a positive integer (tokens)", file=sys.stderr)
@@ -156,7 +239,7 @@ def cmd_set(root, rest):
                 return 2
             slot["effort"] = val
         else:
-            keys = "enabled, model, context_limit" + (", effort" if ai == "codex" else "")
+            keys = "enabled, model, models, context_limit" + (", effort" if ai == "codex" else "")
             print(f"unknown key '{key}' ({keys})", file=sys.stderr)
             return 2
 
@@ -263,6 +346,10 @@ def main():
         return cmd_context_limit(root, rest[0]) if rest else 2
     if cmd == "fits":
         return cmd_fits(root, rest[0], rest[1]) if len(rest) >= 2 else 2
+    if cmd == "pairs":
+        return cmd_pairs(root)
+    if cmd == "matrix":
+        return cmd_matrix(root)
     print(__doc__)
     return 2
 
