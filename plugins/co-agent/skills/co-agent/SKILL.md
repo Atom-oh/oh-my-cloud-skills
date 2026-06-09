@@ -166,16 +166,22 @@ Kiro ~2000 words). Produce one **lean, review-oriented core** and write it to BO
 
 > A PostToolUse hook reminds you when `CLAUDE.md` changes so these stay in sync.
 
-### Mode 5 — Consensus  (also the command **`/co-agent:consensus`**)
-Higher-confidence review via a **model-diverse** panel + **citation validation**.
-Review-only in this version; the `--apply` fix loop is Phase 2 (`references/consensus-mode.md`).
+### Mode 5 — Consensus pipeline  (also **`/co-agent:consensus`**)
+Autonomous **doc → plan → implementation** with cross-family multi-model gates. **This
+version = Stage A (P0–P2)**: load-or-generate a plan and run the plan consensus gate (no
+code edits). Implementation (P3) = Stage B. Full phases: `references/consensus-pipeline.md`.
 
-1. Consent + scope (as Mode 1 step 0). Show `co_agent_config.py matrix` (cost).
-2. Build the panel from `(ai,model)` pairs (`deep` profile = each AI's model list, capped).
-3. One independent fan-out round → `check_citations.py` → drop `unsupported`.
-4. **Claude synthesizes** by raw agreement + evidence strength (NO confidence math).
-   Quorum guard: ≤1 usable pair → "single-opinion review", not consensus.
-5. Verdict PASS/REVIEW/FAIL.
+Entry is conditional on the input docs:
+- **plan doc present** (writing-plans) → LOAD it (`scripts/parse_plan.py`), do NOT regenerate.
+- **ADR / spec only** (no plan) → GENERATE a TDD plan from the decision/design, then parse it.
+
+Then run the **plan consensus gate** (default-on; `--trust-plan` skips it only when the
+plan was already reviewed upstream): fan the plan to the panel
+(`scripts/co_agent_config.py` `matrix`/`pairs` + `references/ai-cli-adapters.md`), validate
+findings with `scripts/check_citations.py` (drop `unsupported`), synthesize by agreement +
+evidence (never vote-count), iterate to no CRITICAL/MAJOR — checking implementability,
+bounded scope, missing tasks, and AWS security-mandate violations. Session state via
+`scripts/consensus_state.py`; clean tree required.
 
 ## Chair principle (non-negotiable)
 
@@ -192,4 +198,7 @@ Review-only in this version; the `--apply` fix loop is Phase 2 (`references/cons
 - `scripts/check_ai_context.py` — validate/staleness-check generated AGENTS.md/GEMINI.md (size caps, marker, secrets); `--emit-marker` for generation
 - `scripts/co_agent_config.py` + `co-agent.defaults.json` — panel settings (model/effort/enabled/timeout); driven by the **`/co-agent:configure`** command, overrides in `.claude/co-agent.local.json`
 - `scripts/check_citations.py` — tiered citation validation (supported/needs-review/unsupported) for all review modes
-- `references/consensus-mode.md` — consensus loop, multi-model rules, quorum guard
+- `references/consensus-pipeline.md` — **AUTHORITATIVE** for `/co-agent:consensus`: P0–P5 phases (Stage A implements P0–P2), entry decision table, Stage A/B/C roadmap
+- `references/consensus-mode.md` — the reusable consensus GATE mechanics (fan-out + citation validation + quorum) used by `review` and pipeline gates P2/P4
+- `scripts/consensus_state.py` — consensus session state + input-doc detection (adr/spec/plan)
+- `scripts/parse_plan.py` — parse a writing-plans plan into tasks + the allowed file set

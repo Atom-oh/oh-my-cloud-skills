@@ -1,7 +1,14 @@
 # co-agent Consensus Mode — Design Spec
 
+> ⚠️ **SUPERSEDED by [`2026-06-09-co-agent-consensus-pipeline-design.md`](2026-06-09-co-agent-consensus-pipeline-design.md).**
+> This spec described the **review-only** scope that shipped in v1.7.2 (the multi-model
+> review GATE — now reused by `/co-agent:consensus review` and the pipeline's P2/P4 gates).
+> The feature was redefined into the full **doc→plan→implementation pipeline**; the
+> "Phase 2 / `--apply`" terminology here is retired in favor of **Stage A/B/C · P0–P5**.
+> Kept for history; do NOT implement from this file.
+
 - **Date**: 2026-06-08
-- **Status**: Approved (design); pending implementation plan
+- **Status**: Superseded (shipped scope = the review gate); see the 2026-06-09 pipeline spec
 - **Inspiration**: [NB3025/consensus-build](https://github.com/NB3025/consensus-build) (autonomous spec→plan→implement pipeline with consensus gates)
 - **Reviewed by**: co-agent panel (Kiro + Codex + Gemini, 3/3) — this design is the **reshaped** result of that review, which cut the riskiest parts of the initial proposal.
 
