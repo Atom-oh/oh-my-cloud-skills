@@ -40,3 +40,6 @@ docs/.docusaurus/
 
 # co-agent consensus session artifacts (raw model outputs, validated findings — ephemeral)
 .claude/co-agent-consensus/
+
+# scratch working dir (presentation/demo authoring — not tracked)
+work/
