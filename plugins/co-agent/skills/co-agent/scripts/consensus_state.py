@@ -135,7 +135,13 @@ def cmd_set(root, key, value):
     if s is None:
         print("no active consensus session (run init)", file=sys.stderr)
         return 2
-    s[key] = int(value) if key == "task_index" and value.isdigit() else value
+    if key == "task_index":
+        if not value.isdigit():
+            print("task_index must be a non-negative integer", file=sys.stderr)
+            return 2
+        s[key] = int(value)
+    else:
+        s[key] = value
     write_state(root, s)
     print(f"{key} = {s[key]}")
     return 0

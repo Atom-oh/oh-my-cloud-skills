@@ -29,6 +29,8 @@ python3 "$ST" set "$D" phase P2 >/dev/null 2>&1
 assert_eq "P2" "$(python3 "$ST" get "$D" phase 2>&1)" "set phase → P2"
 python3 "$ST" set "$D" task_index 3 >/dev/null 2>&1
 assert_eq "3" "$(python3 "$ST" get "$D" task_index 2>&1)" "set task_index → 3"
+python3 "$ST" set "$D" task_index notanint >/dev/null 2>&1 && TI=0 || TI=$?
+assert_eq "2" "$TI" "set task_index rejects non-integer"
 assert_file_exists "$D/.claude/co-agent-consensus/state.local.md" "state file written"
 # set rejects unknown key
 python3 "$ST" set "$D" bogus x >/dev/null 2>&1 && SK=0 || SK=$?
