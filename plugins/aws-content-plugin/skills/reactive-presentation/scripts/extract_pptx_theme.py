@@ -1347,49 +1347,24 @@ class CSSGenerator:
         if not self.colors:
             return ""
 
-        lines = ["/* Color Variables */", ":root {"]
+        lines = [
+            "/* Brand tokens — extracted PPTX palette drives the design-token",
+            " * system. theme.css consumes these via var(--pptx-*, <default>),",
+            " * so setting them here re-brands --accent and the surface roles",
+            " * (and everything built on top, including primitive components). */",
+            ":root {",
+        ]
 
-        # Map PPTX colors to CSS variables
-        color_mapping = {
-            'accent1': '--accent',
-            'accent2': '--accent-light',
-            'accent3': '--green',
-            'accent4': '--red',
-            'accent5': '--orange',
-            'accent6': '--yellow',
-            'hlink': '--cyan',
-        }
-
-        # Check if dk2 is dark enough for background
-        dk2 = self.colors.get('dk2', '')
-        if dk2:
-            r, g, b = hex_to_rgb(dk2)
-            luminance = rgb_to_luminance(r, g, b)
-            if luminance < 0.2:
-                lines.append(f"  --bg-primary: {dk2};")
-            else:
-                lines.append("  /* dk2 too light for dark theme, keeping default */")
-                lines.append("  --bg-primary: #0f1117;")
-
-        # Map accent colors
-        for pptx_name, css_var in color_mapping.items():
-            if pptx_name in self.colors:
-                lines.append(f"  {css_var}: {self.colors[pptx_name]};")
-
-        # Generate accent glow from accent1
-        accent1 = self.colors.get('accent1', '#41B3FF')
-        r, g, b = hex_to_rgb(accent1)
-        lines.append(f"  --accent-glow: rgba({r}, {g}, {b}, 0.3);")
-
-        # Keep text colors light for dark background
-        lines.append("")
-        lines.append("  /* Text colors (kept light for dark background) */")
-        lines.append("  --text-primary: #ffffff;")
-        lines.append("  --text-secondary: #b0b0b0;")
-
-        # Include original PPTX colors as reference
-        lines.append("")
-        lines.append("  /* Original PPTX theme colors (reference) */")
+        # Emit the extracted palette as --pptx-* BRAND tokens ONLY. These are the
+        # input layer the role tokens in theme.css route through via
+        # var(--pptx-*, <default>) PER THEME SCOPE, so the brand color flows into
+        # BOTH the light and dark scopes without forcing surface darkness.
+        #
+        # We deliberately do NOT emit bare :root role tokens (--accent /
+        # --surface-1 / --bg-primary). theme-override.css loads AFTER theme.css,
+        # so a bare :root --surface-1/--bg-primary derived from a possibly-dark
+        # dk2 would override the light default and force the deck dark — the very
+        # FINAL-GATE defect this avoids. The brand inputs alone re-theme the deck.
         for name, value in self.colors.items():
             lines.append(f"  --pptx-{name}: {value};")
 

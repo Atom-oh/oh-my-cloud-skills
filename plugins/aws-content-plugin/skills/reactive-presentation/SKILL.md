@@ -417,67 +417,70 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 > "데이터를 시각 카드로 배치 + 탭/토글로 점진적 공개"가 Remarp 프레젠테이션의 기본 패턴이다.
 
 **1) 탭 분할 기준**: 동일 주제의 3개 이상 하위 항목 → 탭으로 분리
-**2) 카드 그리드 기준**: 4개 이상 나열 항목 → CSS grid 카드로 배치 (불릿 리스트 금지)
+**2) 카드 그리드 기준**: 4개 이상 나열 항목 → `.card-grid` 토큰 클래스로 배치 (불릿 리스트 금지)
 **3) 자체 완결 원칙**: 모든 인터랙션은 `:::html` 안에서 inline onclick으로 완결. 외부 JS에 의존하지 않음
-**4) 시각 계층**: 색상 border + rgba 배경으로 카테고리 구분. 단색 배경 금지
+**4) 시각 계층**: 색상은 **시맨틱 역할 토큰**(`var(--accent)`, `var(--info)`, `var(--success)`, `var(--warning)`, `var(--danger)`)으로만 구분. 하드코딩 hex/rgba 금지, 단색 배경 금지
+
+> **테마**: light가 기본 테마입니다. dark로 되돌리려면 덱 루트에 `class="… theme-dark"`를 지정하세요. 모든 색상은 theme.css 토큰 클래스 + `var(--*)`로 해결되어 light/dark 양쪽에 자동 적응합니다.
 
 #### 자체 완결 Tab 패턴 (복사-붙여넣기 템플릿)
 
-이 패턴은 slide-framework.js 없이도 동작합니다. 데이터가 3+ 카테고리로 나뉠 때 사용:
+이 패턴은 slide-framework.js 없이도 동작합니다. 색상은 theme.css의 `.tab-set`/`.tab-btn.active`/`.metric-card`/`.callout` 클래스가 담당하므로 inline 스타일을 쓰지 않습니다 (탭 토글은 `.active` 클래스 + 표시 여부만 제어). 데이터가 3+ 카테고리로 나뉠 때 사용:
 
 ```markdown
 :::html
-<div class="tab-bar" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-  <button class="tab-btn active" style="padding:8px 16px;border:none;border-radius:6px;background:#00d4ff;color:#0a0e1a;font-weight:bold;cursor:pointer;" onclick="(function(b,i){var p=b.closest('.slide-body')||b.parentNode.parentNode;p.querySelectorAll('.tc').forEach(function(c,j){c.style.display=j===i?'block':'none'});b.parentNode.querySelectorAll('.tab-btn').forEach(function(x){x.classList.remove('active');x.style.background='#1a2540';x.style.color='#b0b0b0'});b.classList.add('active');b.style.background='#00d4ff';b.style.color='#0a0e1a'})(this,0)">Tab 1</button>
-  <button class="tab-btn" style="padding:8px 16px;border:none;border-radius:6px;background:#1a2540;color:#b0b0b0;font-weight:bold;cursor:pointer;" onclick="(function(b,i){var p=b.closest('.slide-body')||b.parentNode.parentNode;p.querySelectorAll('.tc').forEach(function(c,j){c.style.display=j===i?'block':'none'});b.parentNode.querySelectorAll('.tab-btn').forEach(function(x){x.classList.remove('active');x.style.background='#1a2540';x.style.color='#b0b0b0'});b.classList.add('active');b.style.background='#00d4ff';b.style.color='#0a0e1a'})(this,1)">Tab 2</button>
-  <button class="tab-btn" style="padding:8px 16px;border:none;border-radius:6px;background:#1a2540;color:#b0b0b0;font-weight:bold;cursor:pointer;" onclick="(function(b,i){var p=b.closest('.slide-body')||b.parentNode.parentNode;p.querySelectorAll('.tc').forEach(function(c,j){c.style.display=j===i?'block':'none'});b.parentNode.querySelectorAll('.tab-btn').forEach(function(x){x.classList.remove('active');x.style.background='#1a2540';x.style.color='#b0b0b0'});b.classList.add('active');b.style.background='#00d4ff';b.style.color='#0a0e1a'})(this,2)">Tab 3</button>
+<div class="tab-set" onclick="(function(e){var b=e.target.closest('.tab-btn');if(!b)return;var bar=b.parentNode,p=bar.parentNode,i=[].indexOf.call(bar.children,b);bar.querySelectorAll('.tab-btn').forEach(function(x){x.classList.remove('active')});b.classList.add('active');p.querySelectorAll('.tc').forEach(function(c,j){c.hidden=j!==i})})(event)">
+  <button class="tab-btn active">Tab 1</button>
+  <button class="tab-btn">Tab 2</button>
+  <button class="tab-btn">Tab 3</button>
 </div>
 <!-- Tab 1 content -->
-<div class="tc" style="display:block;padding:12px;background:rgba(15,22,41,0.5);border-radius:8px;">
-  <div style="display:flex;align-items:center;gap:12px;justify-content:center;flex-wrap:wrap;">
-    <div style="background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);border-radius:8px;padding:12px;text-align:center;min-width:140px;">
-      <div style="color:#00d4ff;font-weight:bold;">Card Title</div>
-      <div style="color:#8b95a5;font-size:13px;">Description</div>
-    </div>
-    <div style="color:#00d4ff;font-size:20px;">→</div>
-    <div style="background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.3);border-radius:8px;padding:12px;text-align:center;min-width:140px;">
-      <div style="color:#00ff88;font-weight:bold;">Next Step</div>
-      <div style="color:#8b95a5;font-size:13px;">Description</div>
-    </div>
+<div class="tc">
+  <div class="card-grid">
+    <div class="metric-card"><strong class="text-accent">Card Title</strong><div class="on-surface-muted">Description</div></div>
+    <div class="metric-card"><strong class="text-success">Next Step</strong><div class="on-surface-muted">Description</div></div>
   </div>
 </div>
-<!-- Tab 2 content (hidden by default) -->
-<div class="tc" style="display:none;padding:12px;background:rgba(15,22,41,0.5);border-radius:8px;">
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:13px;">
-    <div style="background:rgba(0,212,255,0.15);border-radius:6px;padding:8px;"><span style="color:#00d4ff;">item-1</span> — Description</div>
-    <div style="background:rgba(0,212,255,0.15);border-radius:6px;padding:8px;"><span style="color:#00d4ff;">item-2</span> — Description</div>
-    <div style="background:rgba(245,158,11,0.15);border-radius:6px;padding:8px;"><span style="color:#f59e0b;">item-3</span> — Description</div>
+<!-- Tab 2 content (hidden) -->
+<div class="tc" hidden>
+  <div class="card-grid">
+    <div class="callout callout-info"><strong class="text-info">item-1</strong> — Description</div>
+    <div class="callout callout-info"><strong class="text-info">item-2</strong> — Description</div>
+    <div class="callout callout-warning"><strong class="text-warning">item-3</strong> — Description</div>
   </div>
 </div>
-<!-- Tab 3 content (hidden by default) -->
-<div class="tc" style="display:none;padding:12px;background:rgba(15,22,41,0.5);border-radius:8px;">
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-    <div style="background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.3);border-radius:8px;padding:12px;">
-      <div style="color:#00ff88;font-weight:bold;">Type A</div>
-      <div style="color:#8b95a5;font-size:13px;">Details here</div>
-    </div>
-    <div style="background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.3);border-radius:8px;padding:12px;">
-      <div style="color:#a855f7;font-weight:bold;">Type B</div>
-      <div style="color:#8b95a5;font-size:13px;">Details here</div>
-    </div>
+<!-- Tab 3 content (hidden) -->
+<div class="tc" hidden>
+  <div class="card-grid">
+    <div class="callout callout-success"><strong class="text-success">Type A</strong><div class="on-surface-muted">Details here</div></div>
+    <div class="callout callout-info"><strong class="text-accent">Type B</strong><div class="on-surface-muted">Details here</div></div>
   </div>
 </div>
 :::
+
+:::css
+/* semantic text helpers — resolve to role tokens, adapt to light/dark */
+.text-accent  { color: var(--accent);  font-weight: var(--weight-bold); }
+.text-info    { color: var(--info);    font-weight: var(--weight-bold); }
+.text-success { color: var(--success); font-weight: var(--weight-bold); }
+.text-warning { color: var(--warning); font-weight: var(--weight-bold); }
+.text-danger  { color: var(--danger);  font-weight: var(--weight-bold); }
+.on-surface-muted { color: var(--on-surface-muted); font-size: var(--text-sm); }
+:::
 ```
 
-**색상 팔레트 (카드 border/배경용)**:
-| 색상 | border | 배경 (rgba) | 용도 |
-|------|--------|------------|------|
-| Cyan | `rgba(0,212,255,0.3)` | `rgba(0,212,255,0.1)` | 기본/입력/소스 |
-| Green | `rgba(0,255,136,0.3)` | `rgba(0,255,136,0.1)` | 성공/결과/자동화 |
-| Orange | `rgba(245,158,11,0.3)` | `rgba(245,158,11,0.1)` | 경고/처리/AI |
-| Purple | `rgba(168,85,247,0.3)` | `rgba(168,85,247,0.1)` | 고급/스트리밍/분석 |
-| Red | `rgba(239,68,68,0.3)` | `rgba(239,68,68,0.1)` | 에러/위험/알림 |
+> 인접한 박스 흐름이 필요하면 `.flow-h` / `.flow-group` / `.flow-box` / `.flow-arrow` (theme.css 유틸리티)를 사용하세요 — "HTML Architecture 패턴" 섹션 참조.
+
+**시맨틱 색상 역할 (카드/배지/강조용)** — 하드코딩 hex 대신 역할 토큰을 사용합니다:
+| 역할 | 토큰 | subtle 배경 | 클래스 헬퍼 | 용도 |
+|------|------|------------|-------------|------|
+| accent | `var(--accent)` | `var(--accent-subtle)` | `.text-accent` | 기본/입력/소스 |
+| success | `var(--success)` | `var(--success-subtle)` | `.callout-success` | 성공/결과/자동화 |
+| warning | `var(--warning)` | `var(--warning-subtle)` | `.callout-warning` | 경고/처리/AI |
+| info | `var(--info)` | `var(--info-subtle)` | `.callout-info` | 보조/스트리밍/분석 |
+| danger | `var(--danger)` | `var(--danger-subtle)` | `.callout-danger` | 에러/위험/알림 |
+
+서피스/텍스트는 `var(--surface-1/2/3)`, `var(--on-surface)`, `var(--on-surface-muted)`를 사용합니다. 자세한 토큰 레퍼런스: [references/colors-reference.md](references/colors-reference.md).
 
 #### 불릿 리스트 → 카드 변환 규칙
 
@@ -489,12 +492,12 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 - CloudTrail: API 감사 로그
 ```
 
-**After (효과적)** — `:::html` grid 카드:
+**After (효과적)** — `:::html` `.card-grid` + `.metric-card` 토큰 클래스 (색상은 theme.css가 담당):
 ```html
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-  <div style="background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);border-radius:8px;padding:12px;">
-    <div style="color:#00d4ff;font-weight:bold;">CloudWatch Agent</div>
-    <div style="color:#8b95a5;font-size:13px;">메트릭 수집</div>
+<div class="card-grid">
+  <div class="metric-card">
+    <strong class="text-accent">CloudWatch Agent</strong>
+    <div class="on-surface-muted">메트릭 수집</div>
   </div>
   <!-- ... 반복 ... -->
 </div>

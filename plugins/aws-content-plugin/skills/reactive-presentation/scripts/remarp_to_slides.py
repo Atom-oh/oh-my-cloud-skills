@@ -4090,32 +4090,11 @@ class RemarpProjectBuilder:
             if key in colors:
                 css_lines.append(f'  {var_name}: {colors[key]};')
 
-        css_lines.append('')
-        css_lines.append('  /* Base theme variable overrides */')
-
-        # 2) Map accent1 → base theme variables
-        accent1 = colors.get('accent1')
-        if accent1:
-            css_lines.append(f'  --accent: {accent1};')
-            # Compute glow color (accent with 30% opacity)
-            hex_val = accent1.lstrip('#')
-            if len(hex_val) == 6:
-                r, g, b = int(hex_val[0:2], 16), int(hex_val[2:4], 16), int(hex_val[4:6], 16)
-                css_lines.append(f'  --accent-glow: rgba({r}, {g}, {b}, 0.3);')
-
-        # 3) Map remaining accents to theme palette
-        base_map = {
-            'accent2': '--accent-light',
-            'accent3': '--green',
-            'accent4': '--red',
-            'accent5': '--orange',
-            'accent6': '--yellow',
-            'hlink': '--cyan',
-        }
-        for pptx_key, css_var in base_map.items():
-            if pptx_key in colors:
-                css_lines.append(f'  {css_var}: {colors[pptx_key]};')
-
+        # NOTE: we deliberately emit ONLY the --pptx-* brand-input tokens here.
+        # theme.css consumes them per-theme via `var(--pptx-accent1, <default>)`, so the
+        # brand color flows into BOTH .theme-light and .theme-dark without writing bare
+        # `:root` role tokens (--accent/--green/...) — those would override the theme
+        # scopes by source order and could force a light deck dark.
         css_lines.append('}')
 
         # Check if extract_pptx_theme.py already wrote a theme-override.css
@@ -4166,7 +4145,7 @@ class RemarpProjectBuilder:
         dest.mkdir(parents=True, exist_ok=True)
 
         # Copy core framework files
-        for fname in ['theme.css', 'slide-framework.js', 'animation-utils.js',
+        for fname in ['design-tokens.css', 'theme.css', 'slide-framework.js', 'animation-utils.js',
                       'quiz-component.js', 'presenter-view.js', 'export-utils.js']:
             src = assets_dir / fname
             if src.exists():
@@ -4811,6 +4790,65 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
                     f':::html block {idx + 1} has {child_elements}+ elements but no fragment animations — '
                     'Interactive-First principle requires sequential reveal',
                     'Add class="fragment fade-up" data-fragment-index="N" to child elements')
+
+    # --- Rule 8: Design-Token Lint (scan :::html / :::css block content) ---
+    # Collect the raw text of every :::html and :::css block on the slide.
+    lint_chunks: List[str] = list(slide.html_blocks)
+    for css_match in re.finditer(r':::\s*css\b(.*?):::', slide.content, re.DOTALL):
+        lint_chunks.append(css_match.group(1))
+    # raw_content preserves nested blocks; html_blocks already covers :::html.
+    lint_text = '\n'.join(lint_chunks)
+
+    if lint_text.strip():
+        # RAW_HEX — #rrggbb or #rgb literal used as a COLOR VALUE inside an
+        # html/css block. Anchored to a `:` (CSS property value, e.g.
+        # `color:#00d4ff`) via a lookbehind so HTML/CSS ids (`#fff{…}`,
+        # `href="#fff"`, `id="abc"`) are not false-positives.
+        if re.search(r'(?<=:)\s*#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b', lint_text):
+            add('WARNING', 'RAW_HEX',
+                'Raw hex color literal in :::html/:::css block — bypasses the design-token system',
+                'Replace with var(--token) (e.g. var(--color-accent), var(--surface-1))')
+
+        # RAW_RGBA — rgb()/rgba() literal in slide HTML/CSS.
+        if re.search(r'\brgba?\(', lint_text):
+            add('WARNING', 'RAW_RGBA',
+                'Raw rgb()/rgba() literal in :::html/:::css block — bypasses the design-token system',
+                'Use var(--token) or color-mix(in srgb, var(--token) N%, transparent)')
+
+        # INLINE_STYLE — style="…" whose value touches color/background/padding/margin/border-radius.
+        for style_val in re.findall(r'style\s*=\s*"([^"]*)"', lint_text):
+            if re.search(r'(?<![\w-])(?:color|background|padding|margin|border-radius)\s*:', style_val):
+                add('WARNING', 'INLINE_STYLE',
+                    'Inline style="…" sets color/background/spacing — bypasses token-backed classes',
+                    'Move to a token-backed class (e.g. .card-grid, .metric-card) using var(--token)')
+                break
+
+        # OFF_SCALE — px/rem spacing value (padding/margin/gap) not on the 8px (4px-step) scale.
+        allowed_rem = {'.25', '0.25', '.5', '0.5', '.75', '0.75',
+                       '1', '1.5', '2', '3', '4'}
+        off_scale_hit = False
+        for prop, val in re.findall(
+                r'(?<![\w-])(padding|margin|gap)\s*:\s*([^;"\'}]+)', lint_text):
+            for num, unit in re.findall(r'(\d*\.?\d+)\s*(px|rem)', val):
+                if unit == 'px':
+                    try:
+                        n = float(num)
+                    except ValueError:
+                        continue
+                    # 0 and multiples of 4 are on-scale; anything else (e.g. 13px) is off.
+                    if n != 0 and n % 4 != 0:
+                        off_scale_hit = True
+                        break
+                else:  # rem
+                    if num.lstrip('0') not in allowed_rem and num not in allowed_rem:
+                        off_scale_hit = True
+                        break
+            if off_scale_hit:
+                break
+        if off_scale_hit:
+            add('WARNING', 'OFF_SCALE',
+                'Off-scale spacing value (not on the 8px / 4px-step scale) in :::html/:::css block',
+                'Use var(--space-*) (8px scale) instead of an arbitrary px/rem value')
 
     return findings
 

@@ -1,314 +1,129 @@
-# AWS Color Palette Reference
+# Semantic Color Token Reference
 
-AWS 브랜드 공식 색상 팔레트와 PPT에서의 활용 가이드.
+Reactive-presentation 색상은 **하드코딩 hex가 아니라 시맨틱 역할 토큰**으로 표현합니다. 토큰은
+`assets/design-tokens.css`에 정의되고, `assets/theme.css`의 `.theme-light`(기본) / `.theme-dark`
+스코프에서 실제 값으로 바인딩됩니다. 슬라이드/템플릿은 항상 `var(--*)` 토큰을 사용하므로
+light/dark 테마 전환과 PPTX 브랜드 추출(Phase 1)에 자동으로 적응합니다.
 
-## Primary Colors
-
-### Brand Core
-
-| 이름 | Hex | RGB | 용도 |
-|------|-----|-----|------|
-| Squid Ink | #232F3E | [35, 47, 62] | 주 배경 (Dark Theme) |
-| Smile Orange | #FF9900 | [255, 153, 0] | 강조, CTA |
-| White | #FFFFFF | [255, 255, 255] | 텍스트 (Dark), 배경 (Light) |
-| Black | #000000 | [0, 0, 0] | 텍스트 (Light) |
-
-### Secondary
-
-| 이름 | Hex | RGB | 용도 |
-|------|-----|-----|------|
-| Amazon Blue | #146EB4 | [20, 110, 180] | 링크, 보조 강조 |
-| Deep Blue | #16191F | [22, 25, 31] | 더 어두운 배경 |
-| Light Gray | #D5DBDB | [213, 219, 219] | 테두리, 구분선 |
-| Warm Gray | #545B64 | [84, 91, 100] | 보조 텍스트 |
+> **테마 기본값**: light가 기본입니다. dark로 되돌리려면 덱 루트 요소에 `class="… theme-dark"`를
+> 지정하세요. 토큰을 쓰면 같은 마크업이 양쪽 테마에서 올바른 대비로 렌더링됩니다.
 
 ---
 
-## Service Category Colors
+## Role Tokens (사용 우선순위 1순위)
 
-AWS 서비스 카테고리별 공식 색상.
+### Surfaces & Text
 
-### Compute (Orange)
+| 토큰 | 역할 | 사용 |
+|------|------|------|
+| `--surface-1` | 가장 낮은 표면 (덱/슬라이드 배경) | `background: var(--surface-1)` |
+| `--surface-2` | 카드/패널 표면 | `background: var(--surface-2)` |
+| `--surface-3` | 표면 위 경계/구분선/그리드 라인 | `border-color: var(--surface-3)` |
+| `--on-surface` | 표면 위 본문 텍스트 | `color: var(--on-surface)` |
+| `--on-surface-muted` | 보조/캡션 텍스트, 차트 축 라벨 | `color: var(--on-surface-muted)` |
 
-| 이름 | Hex | RGB | 서비스 |
-|------|-----|-----|--------|
-| Compute Orange | #ED7100 | [237, 113, 0] | EC2, Lambda, ECS |
-| Compute Light | #F78E04 | [247, 142, 4] | 그라데이션용 |
-| Compute Dark | #D05C17 | [208, 92, 23] | 그라데이션용 |
+### Accent & Status
 
-### Storage (Green)
+각 역할은 3종 토큰을 가집니다: **base**(채움/선), **`-subtle`**(연한 배경 틴트), **`-on`**(base 위 텍스트).
 
-| 이름 | Hex | RGB | 서비스 |
-|------|-----|-----|--------|
-| Storage Green | #3B48CC | [59, 72, 204] | S3, EBS, EFS |
-| Storage Dark | #1F8476 | [31, 132, 118] | Glacier |
+| 역할 | base | subtle 배경 | on (텍스트) | 의미 |
+|------|------|-------------|-------------|------|
+| accent | `--accent` | `--accent-subtle` | `--accent-on` | 기본 강조, 입력/소스, 1차 CTA |
+| info | `--info` | `--info-subtle` | `--info-on` | 보조 정보, 스트리밍/분석 |
+| success | `--success` | `--success-subtle` | `--success-on` | 성공, 결과, 자동화 |
+| warning | `--warning` | `--warning-subtle` | `--warning-on` | 경고, 처리 중, AI/추론 |
+| danger | `--danger` | `--danger-subtle` | `--danger-on` | 에러, 위험, 알림 |
 
-### Database (Blue)
+**사용 패턴**:
 
-| 이름 | Hex | RGB | 서비스 |
-|------|-----|-----|--------|
-| Database Blue | #527FFF | [82, 127, 255] | RDS, DynamoDB |
-| Database Purple | #3B48CC | [59, 72, 204] | Aurora |
+```css
+/* 카드: 표면 + 본문 텍스트 */
+.metric-card { background: var(--surface-2); color: var(--on-surface); border: 1px solid var(--surface-3); }
 
-### Networking (Purple)
+/* 상태 배지: base 채움 + on 텍스트 (대비 보장) */
+.badge-warn  { background: var(--warning); color: var(--warning-on); }
 
-| 이름 | Hex | RGB | 서비스 |
-|------|-----|-----|--------|
-| Networking Purple | #8C4FFF | [140, 79, 255] | VPC, CloudFront |
-| Networking Dark | #5A30B5 | [90, 48, 181] | Route 53 |
+/* 연한 강조 영역: subtle 틴트 + base 보더 + role 텍스트 */
+.callout-info { background: var(--info-subtle); border: 1px solid var(--info); color: var(--on-surface); }
 
-### Security (Red)
+/* 강조 텍스트 */
+.text-accent { color: var(--accent); }
+```
 
-| 이름 | Hex | RGB | 서비스 |
-|------|-----|-----|--------|
-| Security Red | #DD344C | [221, 52, 76] | IAM, WAF |
-| Security Dark | #BF0816 | [191, 8, 22] | GuardDuty |
-
-### Analytics (Purple)
-
-| 이름 | Hex | RGB | 서비스 |
-|------|-----|-----|--------|
-| Analytics Purple | #8C4FFF | [140, 79, 255] | Kinesis, Athena |
-| Analytics Blue | #4D27AA | [77, 39, 170] | Redshift |
-
-### Machine Learning (Green)
-
-| 이름 | Hex | RGB | 서비스 |
-|------|-----|-----|--------|
-| ML Green | #01A88D | [1, 168, 141] | SageMaker |
-| ML Teal | #055F4E | [5, 95, 78] | Bedrock |
-
-### Integration (Pink)
-
-| 이름 | Hex | RGB | 서비스 |
-|------|-----|-----|--------|
-| Integration Pink | #E7157B | [231, 21, 123] | SQS, SNS |
-| Integration Dark | #C2185B | [194, 24, 91] | EventBridge |
+> 옛 레거시 별칭(`--blue`, `--cyan`, `--green`, `--yellow`, `--red`, `--text-muted`)은
+> 하위호환을 위해 theme.css에 남아 있을 수 있으나, **새 콘텐츠는 위 역할 토큰을 사용하세요.**
+> 매핑: blue/cyan→`--info`·`--accent`, green→`--success`, yellow/orange→`--warning`,
+> red→`--danger`, text-muted→`--on-surface-muted`.
 
 ---
 
-## Architecture Diagram Colors
+## Scale Tokens (간격·반경·타이포·그림자)
 
-### Container Borders
+색상 외 디자인 값도 토큰을 사용합니다. 하드코딩 px/rem 대신:
 
-| 요소 | Hex | RGB | strokeColor |
-|------|-----|-----|-------------|
-| AWS Cloud | #232F3E | [35, 47, 62] | #232F3E |
-| Region | #00A4A6 | [0, 164, 166] | #00A4A6 |
-| VPC | #879196 | [135, 145, 150] | #879196 |
-| Availability Zone | #147EBA | [20, 126, 186] | #147EBA |
-| Security Group | #DF3312 | [223, 51, 18] | #DF3312 |
-
-### Subnet Fill Colors
-
-| 요소 | Hex | RGB | fillColor |
-|------|-----|-----|-----------|
-| Public Subnet | #F2F6E8 | [242, 246, 232] | #F2F6E8 |
-| Private Subnet | #E6F6F7 | [230, 246, 247] | #E6F6F7 |
-
-### Subnet Stroke Colors
-
-| 요소 | Hex | RGB | strokeColor |
-|------|-----|-----|-------------|
-| Public Subnet | #7AA116 | [122, 161, 22] | #7AA116 |
-| Private Subnet | #00A4A6 | [0, 164, 166] | #00A4A6 |
-
-### Text Colors
-
-| 요소 | Hex | RGB | fontColor |
-|------|-----|-----|-----------|
-| AWS Cloud Label | #232F3E | [35, 47, 62] | #232F3E |
-| Region Label | #147EBA | [20, 126, 186] | #147EBA |
-| VPC Label | #879196 | [135, 145, 150] | #879196 |
-| Public Subnet | #248814 | [36, 136, 20] | #248814 |
-| Private Subnet | #147EBA | [20, 126, 186] | #147EBA |
+| 그룹 | 토큰 | 용도 |
+|------|------|------|
+| Spacing (8px 그리드) | `--space-1`…`--space-8` | `padding`, `gap`, `margin` |
+| Radius | `--radius-sm` / `--radius-md` / `--radius-lg` / `--radius-pill` | `border-radius` |
+| Type scale | `--text-xs`…`--text-4xl` | `font-size` |
+| Type role | `--leading-tight/normal/relaxed`, `--weight-regular/medium/semibold/bold` | line-height, weight |
+| Shadow | `--shadow-1/2/3`, `--shadow-glow` | `box-shadow` |
+| Motion | `--duration-fast/normal/slow` | transition/animation |
+| Z ladder | `--z-base/nav/overlay/modal/toast` | `z-index` |
 
 ---
 
-## Template Theme Colors
+## Token-backed Primitive Classes
 
-AWS Dark Template에서 정의된 테마 색상입니다.
+대부분의 슬라이드는 직접 `var(--*)`를 쓰기보다 theme.css의 **프리미티브 클래스**를 조합합니다
+(클래스가 토큰을 소비하므로 테마 적응이 자동):
 
-### Theme Color Scheme
+| 클래스 | 역할 |
+|--------|------|
+| `.card-grid` | auto-fit 반응형 카드 그리드 |
+| `.metric-card` | 표면 카드 (KPI/지표) |
+| `.callout` + `.callout-info/-warning/-danger/-success` | 상태별 강조 박스 |
+| `.comparison` | 비교 표면 박스 |
+| `.tab-set` / `.tab-btn`(+`.active`) | 탭 바 (active는 accent로 채움) |
+| `.flow-group` / `.flow-h` / `.flow-box` / `.flow-arrow` | 아키텍처 흐름 레이아웃 |
 
-| Scheme Color | Hex | RGB | 용도 |
-|--------------|-----|-----|------|
-| dk1 (Dark 1) | #000000 | [0, 0, 0] | 기본 텍스트 (Light 배경) |
-| dk2 (Dark 2) | #161D26 | [22, 29, 38] | 진한 배경, 테이블 헤더 |
-| lt1 (Light 1) | #FFFFFF | [255, 255, 255] | 기본 텍스트 (Dark 배경) |
-| lt2 (Light 2) | #F3F3F7 | [243, 243, 247] | 밝은 배경, 테이블 본문 |
-| accent1 | #41B3FF | [65, 179, 255] | 강조 (Blue) |
-| accent2 | #AD5CFF | [173, 92, 255] | 강조 (Purple) |
-| accent3 | #00E500 | [0, 229, 0] | 강조 (Green) |
-| accent4 | #FF5C85 | [255, 92, 133] | 강조 (Pink) |
-| accent5 | #FF693C | [255, 105, 60] | 강조 (Orange) |
-| accent6 | #FBD332 | [251, 211, 50] | 강조 (Yellow) |
+---
 
-### Table Formatting (Slide 89 Reference)
+## Canvas & JSON 색상 (named tokens)
 
-AWS Dark Template에서 추출한 실제 테이블 포맷입니다.
+런타임 렌더링 경로는 hex 대신 **이름 토큰**을 받습니다.
 
-**Table 8 (Comparison Table):**
-| 요소 | 값 | 설명 |
-|------|-----|------|
-| 위치 | left=0.93", top=2.05" | 853,441 EMU, 1,872,143 EMU |
-| 크기 | width=11.45", height=2.20" | 10,472,928 EMU |
-| Fill | schemeClr=tx1 | 테마 색상 (Dark) |
-| Font Size | 16pt | 헤더/본문 동일 |
-| Header | Bold | 첫 행 굵게 |
-| First Column | Bold | 첫 열 굵게 |
+- **Canvas DSL** (`:::canvas`): `box id "label" at X,Y size W,H color <name>` — `<name>`은
+  `accent`, `green`, `yellow`, `red`, `blue`, `cyan` (animation-utils.js `Colors.*`로 해석, 테마/PPTX 적응).
+- **slides.json**: `"color"` / `"colors"` 필드에 같은 이름 토큰(`accent`, `cyan`, `yellow`, `red`, `muted` 등)을 사용.
+- **Chart.js**: `getComputedStyle(document.documentElement).getPropertyValue('--accent')`로 토큰을 읽어 사용 (slide-patterns.md §16 참조).
 
-**Table 9 (Tips Table):**
-| 요소 | 값 | 설명 |
-|------|-----|------|
-| 위치 | left=0.93", top=4.48" | 853,440 EMU, 4,094,791 EMU |
-| 크기 | width=11.45", height=2.12" | 10,472,928 EMU |
-| Fill | schemeClr=bg2 | 테마 색상 (Light) |
-| Font Size | 16pt | 헤더/본문 동일 |
-| Header | Bold | 첫 행 굵게 |
-| First Column | Bold | 첫 열 굵게 |
+---
 
-### Theme Color to RGB Mapping (MCP 도구용)
+## PPTX 브랜드 추출 → 토큰 (Phase 1)
 
-MCP 도구는 테마 색상을 직접 지원하지 않으므로 RGB로 변환하여 사용합니다:
+`.pptx` 템플릿을 제공하면 `extract_pptx_theme.py`가 브랜드 색을 추출해 `theme-override.css`에서
+역할 토큰을 재바인딩합니다. 즉 **추출된 브랜드 색이 `--accent`, `--surface-*` 등으로 흘러들어가**
+모든 토큰 기반 슬라이드에 일괄 반영됩니다. 슬라이드 마크업은 바뀌지 않습니다 — 토큰 값만 바뀝니다.
 
-| Theme Scheme | Dark Theme RGB | Light Theme RGB | MCP 사용 값 |
-|--------------|----------------|-----------------|-------------|
-| tx1 (Text 1) | [22, 29, 38] | [0, 0, 0] | Dark: [22, 29, 38] |
-| bg2 (Background 2) | [243, 243, 247] | [243, 243, 247] | [243, 243, 247] |
-| Text on tx1 fill | [255, 255, 255] | - | [255, 255, 255] |
-| Text on bg2 fill | [22, 29, 38] | - | [22, 29, 38] |
-
-### Table Color Recommendation (Dark Theme)
-
-**권장 조합 (AWS Dark Template 기반):**
+PPTX MCP 도구(`mcp__ppt__*`)는 토큰을 직접 받지 않고 `[r, g, b]` 배열을 받으므로, 추출된 매니페스트
+(`theme-manifest.json`)의 RGB 값을 그대로 전달합니다. 이때도 의미는 동일한 역할(accent/surface/on-surface)에
+매핑하여 사용하세요. 예:
 
 ```yaml
-# 어두운 테이블 (tx1 스타일)
+# 표면 배경 = surface 역할, 텍스트 = on-surface 역할 (값은 매니페스트에서)
 mcp__ppt__add_table:
-  header_bg_color: [22, 29, 38]     # dk2
-  body_bg_color: [22, 29, 38]       # dk2
-  header_font_size: 16
-  body_font_size: 16
-
-mcp__ppt__format_table_cell:
-  color: [255, 255, 255]            # 흰색 텍스트
-  font_size: 16
-  bold: true                        # 헤더와 첫 열
-
-# 밝은 테이블 (bg2 스타일)
-mcp__ppt__add_table:
-  header_bg_color: [243, 243, 247]  # lt2
-  body_bg_color: [243, 243, 247]    # lt2
-  header_font_size: 16
-  body_font_size: 16
-
-mcp__ppt__format_table_cell:
-  color: [22, 29, 38]               # 어두운 텍스트
-  font_size: 16
-  bold: true                        # 헤더와 첫 열
-```
-
-**대안 조합 (SKILL.md 기존 권장 - Dark Slate):**
-
-```yaml
-mcp__ppt__add_table:
-  header_bg_color: [55, 75, 100]    # Slate Blue
-  body_bg_color: [40, 55, 75]       # Dark Slate
-  header_font_size: 16
-  body_font_size: 16
-
-mcp__ppt__format_table_cell:
-  color: [255, 255, 255]            # 흰색 텍스트
-  font_size: 16
-```
-
----
-
-## PPT Color Schemes
-
-MCP에서 사용 가능한 색상 스킴.
-
-### modern_blue
-
-```
-Primary: #0066CC (Blue)
-Accent: #FF6B35 (Orange)
-Background: #1A1A2E (Dark)
-Text: #FFFFFF (White)
-```
-
-### corporate_gray
-
-```
-Primary: #545B64 (Gray)
-Accent: #FF9900 (Orange)
-Background: #232F3E (Squid Ink)
-Text: #FFFFFF (White)
-```
-
-### elegant_green
-
-```
-Primary: #01A88D (Teal)
-Accent: #FF9900 (Orange)
-Background: #FFFFFF (White)
-Text: #232F3E (Dark)
-```
-
-### warm_red
-
-```
-Primary: #DD344C (Red)
-Accent: #FF9900 (Orange)
-Background: #232F3E (Dark)
-Text: #FFFFFF (White)
-```
-
----
-
-## Usage Examples
-
-### Dark Theme Slide
-
-```
-mcp__ppt__manage_text:
-  color: [255, 255, 255]      # White text
-
-mcp__ppt__add_table:
-  header_bg_color: [35, 47, 62]     # Squid Ink
-  header_font_color: [255, 255, 255] # White
-```
-
-### Accent Elements
-
-```
+  header_bg_color: <theme-manifest surface RGB>
+  header_font_color: <theme-manifest on-surface RGB>
 mcp__ppt__add_shape:
-  fill_color: [255, 153, 0]   # Smile Orange
-  line_color: [35, 47, 62]    # Squid Ink
-```
-
-### Chart Colors
-
-```
-mcp__ppt__add_chart:
-  # Series colors are auto-assigned based on color_scheme
-  # To customize, use chart-specific color settings
+  fill_color: <theme-manifest accent RGB>   # accent 역할
 ```
 
 ---
 
-## Accessibility Notes
+## Accessibility
 
-1. **대비율**: 텍스트와 배경 간 최소 4.5:1 대비율 유지
-2. **색맹 고려**: 빨강-초록 조합 피하기
-3. **일관성**: 동일한 의미에 동일한 색상 사용
-
-### Safe Color Combinations
-
-| 배경 | 텍스트 | 대비율 |
-|------|--------|--------|
-| #232F3E | #FFFFFF | 12.6:1 ✓ |
-| #232F3E | #FF9900 | 6.8:1 ✓ |
-| #FFFFFF | #232F3E | 12.6:1 ✓ |
-| #FFFFFF | #545B64 | 7.1:1 ✓ |
+1. **대비율**: 본문 텍스트는 표면 대비 최소 4.5:1. `--on-surface` / `--on-surface-muted`와
+   `--surface-*` 조합, 그리고 status base와 짝지어진 `-on` 토큰은 이 대비를 만족하도록 정의되어 있습니다.
+2. **색맹 고려**: 색만으로 의미를 전달하지 말고 아이콘/라벨을 병행 (특히 success/danger).
+3. **일관성**: 같은 의미에는 같은 역할 토큰을 사용 (예: "성공"은 항상 `--success`).

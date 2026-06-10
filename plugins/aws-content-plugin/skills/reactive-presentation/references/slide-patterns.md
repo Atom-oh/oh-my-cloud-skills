@@ -48,23 +48,23 @@ When no PPTX template is provided, use this CSS-only cover with a dark gradient 
 
 ```html
 <!-- Session Cover — CSS-only fallback -->
-<div class="slide" style="background:linear-gradient(135deg, #1a1f35 0%, #0d1117 50%, #161b2e 100%); padding:0; overflow:hidden; position:relative;">
-  <div style="position:absolute; top:-20%; right:-10%; width:60%; height:80%; background:radial-gradient(ellipse, rgba(108,92,231,0.15) 0%, transparent 70%); pointer-events:none;"></div>
-  <div style="position:absolute; left:5%; top:42%; width:80px; height:3px; background:linear-gradient(90deg, #6c5ce7, #a29bfe); border-radius:2px;"></div>
-  <h1 style="position:absolute; left:5%; top:45%; font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:60%; margin:0;">Session Title</h1>
-  <p style="position:absolute; left:5%; top:60%; font-size:1.3rem; color:rgba(255,255,255,0.7); width:60%; margin:0;">Subtitle</p>
+<div class="slide" style="background:linear-gradient(135deg, var(--surface-2) 0%, var(--surface-1) 50%, var(--surface-2) 100%); padding:0; overflow:hidden; position:relative;">
+  <div style="position:absolute; top:-20%; right:-10%; width:60%; height:80%; background:radial-gradient(ellipse, var(--accent-subtle) 0%, transparent 70%); pointer-events:none;"></div>
+  <div style="position:absolute; left:5%; top:42%; width:80px; height:3px; background:var(--accent); border-radius:var(--radius-sm);"></div>
+  <h1 style="position:absolute; left:5%; top:45%; font-size:var(--text-4xl); color:var(--on-surface); font-weight:var(--weight-regular); line-height:var(--leading-tight); width:60%; margin:0;">Session Title</h1>
+  <p style="position:absolute; left:5%; top:60%; font-size:var(--text-xl); color:var(--on-surface-muted); width:60%; margin:0;">Subtitle</p>
   <div style="position:absolute; left:5%; top:75%;">
-    <p style="font-size:1.05rem; color:#fff; font-weight:600; margin:0;">Speaker Name</p>
-    <p style="font-size:0.9rem; color:rgba(255,255,255,0.6); margin:6px 0 0 0;">Speaker Title</p>
-    <p style="font-size:0.9rem; color:rgba(255,255,255,0.6); margin:2px 0 0 0;">Company</p>
+    <p style="font-size:var(--text-lg); color:var(--on-surface); font-weight:var(--weight-semibold); margin:0;">Speaker Name</p>
+    <p style="font-size:var(--text-base); color:var(--on-surface-muted); margin:6px 0 0 0;">Speaker Title</p>
+    <p style="font-size:var(--text-base); color:var(--on-surface-muted); margin:2px 0 0 0;">Company</p>
   </div>
 </div>
 ```
 
 Key elements:
-- **CSS gradient background**: dark gradient (`#1a1f35` → `#0d1117` → `#161b2e`) — no PPTX image dependency
-- **Decorative glow**: subtle radial gradient (`rgba(108,92,231,0.15)`) for visual depth
-- **Accent line**: purple gradient line (`#6c5ce7` → `#a29bfe`) above the title
+- **CSS gradient background**: surface-token gradient (`var(--surface-2)` → `var(--surface-1)` → `var(--surface-2)`) — no PPTX image dependency, adapts to light/dark
+- **Decorative glow**: subtle radial gradient (`var(--accent-subtle)`) for visual depth
+- **Accent line**: `var(--accent)` line above the title
 - **Left-aligned layout**: matches §0a positioning for visual consistency
 - **Speaker info at ~75%**: same structure as §0a (omit entire `<div>` if user chose "skip")
 - Uses `padding:0` and `position:relative` for edge-to-edge layout
@@ -156,7 +156,7 @@ theme.css provides composable flow diagram classes. **Never create per-slide cus
 | `.bg-purple` | Purple tint + purple border |
 | `.bg-pink` | Pink tint + pink border |
 | `.bg-accent` | Card bg + accent border (2px) |
-| `.bg-dark` | Dark AWS (#232F3E) + white text |
+| `.bg-dark` | Dark AWS surface + inverted text |
 
 Text color: `.text-blue`, `.text-orange`, `.text-green`, `.text-red`, `.text-purple`, `.text-pink`
 
@@ -494,8 +494,8 @@ theme: ../common/theme.css
 .arch-box { display:flex; flex-direction:column; align-items:center; gap:0.3rem; padding:0.6rem 1rem; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:8px; min-width:100px; }
 .arch-box img { width:48px; height:48px; }
 .arch-box span { font-size:0.8rem; color:rgba(255,255,255,0.85); text-align:center; }
-.arch-box.highlight { border-color:#FF9900; background:rgba(255,153,0,0.08); }
-.arch-box.accent { border-color:#44B9E6; background:rgba(68,185,230,0.08); }
+.arch-box.highlight { border-color:var(--warning); background:var(--warning-subtle); }
+.arch-box.accent { border-color:var(--accent); background:var(--accent-subtle); }
 .arch-arrow { font-size:1.2rem; color:rgba(255,255,255,0.3); line-height:1; }
 :::
 ```
@@ -533,7 +533,8 @@ step 4: [data-layer="outputs"] 계층이 나타남
 
 #### Remarp Source 형식 (에이전트가 직접 사용)
 
-> **Canvas DSL 문법 (필수 준수)**: `box id "label" at X,Y size W,H color #HEX [step N]`
+> **Canvas DSL 문법 (필수 준수)**: `box id "label" at X,Y size W,H color <name> [step N]`
+> 색상은 **시맨틱 이름**(`accent`, `green`, `yellow`, `red`, `blue`, `cyan`)을 사용합니다 — `Colors.*`로 해석되어 테마/PPTX 브랜드에 자동 적응합니다. 하드코딩 hex 금지.
 > 다른 형식(bracket syntax `[x=..., y=...]`, positional `80,160 160,80`)은 파서가 인식하지 못합니다.
 
 ```markdown
@@ -547,9 +548,9 @@ theme: ../common/theme.css
 @type: canvas
 
 :::canvas
-box source "Source" at 80,180 size 130,55 color #FF9900 step 1
-box process "Process" at 300,180 size 130,55 color #3B82F6 step 2
-box target "Target" at 520,180 size 130,55 color #10B981 step 3
+box source "Source" at 80,180 size 130,55 color yellow step 1
+box process "Process" at 300,180 size 130,55 color blue step 2
+box target "Target" at 520,180 size 130,55 color green step 3
 arrow source -> process "invoke" step 2
 arrow process -> target "store" step 3
 :::
@@ -999,6 +1000,11 @@ KPI cards at top with a chart grid below. Ideal for executive summaries, operati
 <script>
 (function() {
   Chart.defaults.animation = false;
+  // Read theme tokens at runtime so charts adapt to light/dark + brand overrides.
+  const css = getComputedStyle(document.documentElement);
+  const T = n => css.getPropertyValue(n).trim();
+  const axis = T('--on-surface-muted'), grid = T('--surface-3');
+  const palette = [T('--accent'), T('--info'), T('--warning'), T('--on-surface-muted')];
 
   // Bar Chart
   const barCtx = document.getElementById('bar-chart');
@@ -1010,18 +1016,18 @@ KPI cards at top with a chart grid below. Ideal for executive summaries, operati
         datasets: [{
           label: 'Requests (K)',
           data: [12, 19, 15, 25, 22],
-          backgroundColor: 'rgba(108, 92, 231, 0.7)',
-          borderColor: 'rgba(108, 92, 231, 1)',
+          backgroundColor: T('--accent-subtle'),
+          borderColor: T('--accent'),
           borderWidth: 1
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: '#94a3b8' } } },
+        plugins: { legend: { labels: { color: axis } } },
         scales: {
-          x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } },
-          y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } }
+          x: { ticks: { color: axis }, grid: { color: grid } },
+          y: { ticks: { color: axis }, grid: { color: grid } }
         }
       }
     });
@@ -1036,18 +1042,20 @@ KPI cards at top with a chart grid below. Ideal for executive summaries, operati
         labels: ['Compute', 'Storage', 'Network', 'Other'],
         datasets: [{
           data: [45, 25, 20, 10],
-          backgroundColor: ['#6c5ce7', '#00cec9', '#fdcb6e', '#636e72']
+          backgroundColor: palette
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { position: 'right', labels: { color: '#94a3b8' } } }
+        plugins: { legend: { position: 'right', labels: { color: axis } } }
       }
     });
   }
 })();
 </script>
+
+> **Chart.js 색상 규약**: 차트 색상은 `getComputedStyle`으로 역할 토큰(`--accent`, `--info`, `--warning`, `--on-surface-muted`, `--surface-3`)을 읽어 사용합니다. 하드코딩 hex 금지 — 토큰을 읽으면 light/dark + PPTX 브랜드에 자동 적응합니다.
 ```
 
 **Remarp equivalent:**
@@ -1102,6 +1110,9 @@ Single Chart.js chart filling the slide body. Use for detailed data visualizatio
 <script>
 (function() {
   Chart.defaults.animation = false;
+  const css = getComputedStyle(document.documentElement);
+  const T = n => css.getPropertyValue(n).trim();
+  const axis = T('--on-surface-muted'), grid = T('--surface-3');
   const ctx = document.getElementById('full-bar-chart');
   if (ctx) {
     new Chart(ctx, {
@@ -1111,18 +1122,18 @@ Single Chart.js chart filling the slide body. Use for detailed data visualizatio
         datasets: [{
           label: 'Requests (M)',
           data: [2.4, 3.1, 2.8, 3.5],
-          backgroundColor: 'rgba(108, 92, 231, 0.7)',
-          borderColor: 'rgba(108, 92, 231, 1)',
+          backgroundColor: T('--accent-subtle'),
+          borderColor: T('--accent'),
           borderWidth: 1
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: '#94a3b8' } } },
+        plugins: { legend: { labels: { color: axis } } },
         scales: {
-          x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } },
-          y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } }
+          x: { ticks: { color: axis }, grid: { color: grid } },
+          y: { ticks: { color: axis }, grid: { color: grid } }
         }
       }
     });
@@ -1146,6 +1157,9 @@ Single Chart.js chart filling the slide body. Use for detailed data visualizatio
 <script>
 (function() {
   Chart.defaults.animation = false;
+  const css = getComputedStyle(document.documentElement);
+  const T = n => css.getPropertyValue(n).trim();
+  const axis = T('--on-surface-muted'), grid = T('--surface-3');
   const ctx = document.getElementById('line-chart');
   if (ctx) {
     new Chart(ctx, {
@@ -1155,8 +1169,8 @@ Single Chart.js chart filling the slide body. Use for detailed data visualizatio
         datasets: [{
           label: 'P99 Latency (ms)',
           data: [120, 95, 180, 220, 150, 110],
-          borderColor: '#00cec9',
-          backgroundColor: 'rgba(0, 206, 201, 0.1)',
+          borderColor: T('--info'),
+          backgroundColor: T('--info-subtle'),
           fill: true,
           tension: 0.3
         }]
@@ -1164,10 +1178,10 @@ Single Chart.js chart filling the slide body. Use for detailed data visualizatio
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: '#94a3b8' } } },
+        plugins: { legend: { labels: { color: axis } } },
         scales: {
-          x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } },
-          y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } }
+          x: { ticks: { color: axis }, grid: { color: grid } },
+          y: { ticks: { color: axis }, grid: { color: grid } }
         }
       }
     });
@@ -1191,6 +1205,8 @@ Single Chart.js chart filling the slide body. Use for detailed data visualizatio
 <script>
 (function() {
   Chart.defaults.animation = false;
+  const css = getComputedStyle(document.documentElement);
+  const T = n => css.getPropertyValue(n).trim();
   const ctx = document.getElementById('doughnut-full');
   if (ctx) {
     new Chart(ctx, {
@@ -1199,14 +1215,14 @@ Single Chart.js chart filling the slide body. Use for detailed data visualizatio
         labels: ['EC2', 'RDS', 'S3', 'Lambda', 'Other'],
         datasets: [{
           data: [40, 25, 15, 12, 8],
-          backgroundColor: ['#6c5ce7', '#00cec9', '#fdcb6e', '#e17055', '#636e72']
+          backgroundColor: [T('--accent'), T('--info'), T('--warning'), T('--danger'), T('--on-surface-muted')]
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 14 } } }
+          legend: { position: 'right', labels: { color: T('--on-surface-muted'), font: { size: 14 } } }
         }
       }
     });
@@ -1224,9 +1240,9 @@ Single Chart.js chart filling the slide body. Use for detailed data visualizatio
     <!-- Conic-gradient pie chart -->
     <div style="width:200px; height:200px; border-radius:50%; background:conic-gradient(
       var(--accent) 0% 45%,
-      var(--cyan) 45% 70%,
-      #fdcb6e 70% 85%,
-      var(--text-muted) 85% 100%
+      var(--info) 45% 70%,
+      var(--warning) 70% 85%,
+      var(--on-surface-muted) 85% 100%
     );"></div>
     <!-- Legend -->
     <div style="display:flex; flex-direction:column; gap:12px;">
@@ -1235,15 +1251,15 @@ Single Chart.js chart filling the slide body. Use for detailed data visualizatio
         <span>Compute (45%)</span>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
-        <span style="width:16px; height:16px; background:var(--cyan); border-radius:4px;"></span>
+        <span style="width:16px; height:16px; background:var(--info); border-radius:4px;"></span>
         <span>Storage (25%)</span>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
-        <span style="width:16px; height:16px; background:#fdcb6e; border-radius:4px;"></span>
+        <span style="width:16px; height:16px; background:var(--warning); border-radius:4px;"></span>
         <span>Network (15%)</span>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
-        <span style="width:16px; height:16px; background:var(--text-muted); border-radius:4px;"></span>
+        <span style="width:16px; height:16px; background:var(--on-surface-muted); border-radius:4px;"></span>
         <span>Other (15%)</span>
       </div>
     </div>
@@ -1260,9 +1276,9 @@ Single Chart.js chart filling the slide body. Use for detailed data visualizatio
     <svg viewBox="0 0 400 200" style="width:80%; max-height:80%;">
       <!-- Bars -->
       <rect x="50" y="20" width="60" height="140" fill="var(--accent)" rx="4"/>
-      <rect x="130" y="60" width="60" height="100" fill="var(--cyan)" rx="4"/>
-      <rect x="210" y="40" width="60" height="120" fill="#fdcb6e" rx="4"/>
-      <rect x="290" y="80" width="60" height="80" fill="#e17055" rx="4"/>
+      <rect x="130" y="60" width="60" height="100" fill="var(--info)" rx="4"/>
+      <rect x="210" y="40" width="60" height="120" fill="var(--warning)" rx="4"/>
+      <rect x="290" y="80" width="60" height="80" fill="var(--danger)" rx="4"/>
       <!-- Labels -->
       <text x="80" y="180" fill="var(--text-secondary)" text-anchor="middle" font-size="12">EKS</text>
       <text x="160" y="180" fill="var(--text-secondary)" text-anchor="middle" font-size="12">ECS</text>
@@ -1323,12 +1339,12 @@ Large numbers with delta indicators for highlighting key metrics. Use for status
         <div class="kpi-delta" style="font-size:0.85rem; color:var(--green); margin-top:4px;">+0.05%</div>
       </div>
       <div class="kpi-card" style="min-width:180px; background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:24px; text-align:center;">
-        <div class="kpi-value" style="font-size:3rem; font-weight:700; color:#fdcb6e;">142ms</div>
+        <div class="kpi-value" style="font-size:3rem; font-weight:700; color:var(--warning);">142ms</div>
         <div class="kpi-label" style="font-size:0.9rem; color:var(--text-muted); margin-top:8px;">P95 Latency</div>
         <div class="kpi-delta" style="font-size:0.85rem; color:var(--green); margin-top:4px;">-23ms</div>
       </div>
       <div class="kpi-card" style="min-width:180px; background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:24px; text-align:center;">
-        <div class="kpi-value" style="font-size:3rem; font-weight:700; color:#e17055;">12</div>
+        <div class="kpi-value" style="font-size:3rem; font-weight:700; color:var(--danger);">12</div>
         <div class="kpi-label" style="font-size:0.9rem; color:var(--text-muted); margin-top:8px;">Open Incidents</div>
         <div class="kpi-delta" style="font-size:0.85rem; color:var(--red); margin-top:4px;">+3</div>
       </div>
@@ -1484,7 +1500,7 @@ Visual data storytelling with hero stats, icon grids, progress bars, and compari
           <span style="color:var(--text-muted);">60%</span>
         </div>
         <div style="height:8px; background:var(--border); border-radius:4px; overflow:hidden;">
-          <div style="width:60%; height:100%; background:#fdcb6e; border-radius:4px;"></div>
+          <div style="width:60%; height:100%; background:var(--warning); border-radius:4px;"></div>
         </div>
       </div>
     </div>
@@ -1524,7 +1540,7 @@ Visual data storytelling with hero stats, icon grids, progress bars, and compari
     <div style="text-align:center;">
       <svg width="120" height="120" viewBox="0 0 120 120">
         <circle cx="60" cy="60" r="50" fill="none" stroke="var(--border)" stroke-width="10"/>
-        <circle cx="60" cy="60" r="50" fill="none" stroke="#fdcb6e" stroke-width="10"
+        <circle cx="60" cy="60" r="50" fill="none" stroke="var(--warning)" stroke-width="10"
           stroke-dasharray="314" stroke-dashoffset="157" stroke-linecap="round"
           transform="rotate(-90 60 60)"/>
         <text x="60" y="65" text-anchor="middle" fill="var(--text-primary)" font-size="24" font-weight="700">50%</text>
@@ -1568,7 +1584,7 @@ Progress ring formula: `stroke-dashoffset = circumference * (1 - percentage/100)
           <span style="color:var(--text-muted);">Performance: 78</span>
         </div>
         <div style="display:flex; height:24px; background:var(--border); border-radius:4px; overflow:hidden;">
-          <div style="width:78%; background:#fdcb6e;"></div>
+          <div style="width:78%; background:var(--warning);"></div>
         </div>
       </div>
     </div>
@@ -1653,7 +1669,7 @@ Styled data table with alternating rows, hover effects, and status badges.
           <td style="padding:12px 16px; text-align:right;">82%</td>
           <td style="padding:12px 16px; text-align:right;">78%</td>
           <td style="padding:12px 16px; text-align:center;">
-            <span style="background:#fdcb6e; color:#1a1f35; padding:4px 12px; border-radius:12px; font-size:0.75rem;">Warning</span>
+            <span style="background:var(--warning); color:var(--warning-on); padding:4px 12px; border-radius:12px; font-size:0.75rem;">Warning</span>
           </td>
         </tr>
         <tr style="border-bottom:1px solid var(--border); background:var(--bg-card);">
@@ -2067,7 +2083,7 @@ export function init(canvasId, slideIndex, deck) {
   "chartId": "cost-doughnut",
   "labels": ["EC2", "RDS", "S3", "Lambda", "Other"],
   "datasets": [
-    { "data": [40, 25, 15, 12, 8], "colors": ["accent", "cyan", "#fdcb6e", "#e17055", "muted"] }
+    { "data": [40, 25, 15, 12, 8], "colors": ["accent", "cyan", "yellow", "red", "muted"] }
   ]
 }
 
@@ -2092,7 +2108,7 @@ export function init(canvasId, slideIndex, deck) {
   "segments": [
     { "label": "Compute", "percent": 45, "color": "accent" },
     { "label": "Storage", "percent": 25, "color": "cyan" },
-    { "label": "Network", "percent": 15, "color": "#fdcb6e" },
+    { "label": "Network", "percent": 15, "color": "yellow" },
     { "label": "Other", "percent": 15, "color": "muted" }
   ]
 }
@@ -2108,8 +2124,8 @@ export function init(canvasId, slideIndex, deck) {
   "metrics": [
     { "value": "$2.4M", "label": "Revenue", "delta": "+18% MoM", "deltaType": "positive", "color": "accent" },
     { "value": "99.95%", "label": "Uptime SLA", "delta": "+0.05%", "deltaType": "positive", "color": "cyan" },
-    { "value": "142ms", "label": "P95 Latency", "delta": "-23ms", "deltaType": "positive", "color": "#fdcb6e" },
-    { "value": "12", "label": "Open Incidents", "delta": "+3", "deltaType": "negative", "color": "#e17055" }
+    { "value": "142ms", "label": "P95 Latency", "delta": "-23ms", "deltaType": "positive", "color": "yellow" },
+    { "value": "12", "label": "Open Incidents", "delta": "+3", "deltaType": "negative", "color": "red" }
   ]
 }
 
@@ -2155,7 +2171,7 @@ export function init(canvasId, slideIndex, deck) {
   "progressBars": [
     { "label": "Compute Migration", "percent": 92, "color": "accent" },
     { "label": "Database Migration", "percent": 75, "color": "cyan" },
-    { "label": "Application Testing", "percent": 60, "color": "#fdcb6e" }
+    { "label": "Application Testing", "percent": 60, "color": "yellow" }
   ]
 }
 
@@ -2166,7 +2182,7 @@ export function init(canvasId, slideIndex, deck) {
   "progressRings": [
     { "label": "Dev Team", "percent": 80, "color": "accent" },
     { "label": "Ops Team", "percent": 70, "color": "cyan" },
-    { "label": "QA Team", "percent": 50, "color": "#fdcb6e" }
+    { "label": "QA Team", "percent": 50, "color": "yellow" }
   ]
 }
 
@@ -2177,7 +2193,7 @@ export function init(canvasId, slideIndex, deck) {
   "comparisonBars": [
     { "label": "EKS", "value": 95, "color": "accent" },
     { "label": "ECS", "value": 82, "color": "cyan" },
-    { "label": "Lambda", "value": 78, "color": "#fdcb6e" }
+    { "label": "Lambda", "value": 78, "color": "yellow" }
   ]
 }
 ```
