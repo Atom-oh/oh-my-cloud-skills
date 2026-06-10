@@ -1347,51 +1347,41 @@ class CSSGenerator:
         if not self.colors:
             return ""
 
-        lines = ["/* Color Variables */", ":root {"]
+        lines = [
+            "/* Brand tokens — extracted PPTX palette drives the design-token",
+            " * system. theme.css consumes these via var(--pptx-*, <default>),",
+            " * so setting them here re-brands --accent and the surface roles",
+            " * (and everything built on top, including primitive components). */",
+            ":root {",
+        ]
 
-        # Map PPTX colors to CSS variables
-        color_mapping = {
-            'accent1': '--accent',
-            'accent2': '--accent-light',
-            'accent3': '--green',
-            'accent4': '--red',
-            'accent5': '--orange',
-            'accent6': '--yellow',
-            'hlink': '--cyan',
-        }
+        # Emit the extracted palette as --pptx-* BRAND tokens. These are the
+        # input layer the role tokens in theme.css route through; they are NOT
+        # legacy per-component colors (--green/--cyan/etc.).
+        for name, value in self.colors.items():
+            lines.append(f"  --pptx-{name}: {value};")
 
-        # Check if dk2 is dark enough for background
+        # Also set role tokens directly for any consumer that reads them without
+        # the brand indirection. --accent mirrors accent1; surfaces mirror dk2/lt2.
+        lines.append("")
+        lines.append("  /* Role tokens derived from the brand palette */")
+        accent1 = self.colors.get('accent1')
+        if accent1:
+            lines.append(f"  --accent: {accent1};")
+            r, g, b = hex_to_rgb(accent1)
+            lines.append(f"  --accent-subtle: rgba({r}, {g}, {b}, 0.18);")
+            lines.append(f"  --accent-glow: rgba({r}, {g}, {b}, 0.3);")
+
+        # Use dk2 for the dark surface only when it is genuinely dark.
         dk2 = self.colors.get('dk2', '')
         if dk2:
             r, g, b = hex_to_rgb(dk2)
             luminance = rgb_to_luminance(r, g, b)
             if luminance < 0.2:
+                lines.append(f"  --surface-1: {dk2};")
                 lines.append(f"  --bg-primary: {dk2};")
             else:
-                lines.append("  /* dk2 too light for dark theme, keeping default */")
-                lines.append("  --bg-primary: #0f1117;")
-
-        # Map accent colors
-        for pptx_name, css_var in color_mapping.items():
-            if pptx_name in self.colors:
-                lines.append(f"  {css_var}: {self.colors[pptx_name]};")
-
-        # Generate accent glow from accent1
-        accent1 = self.colors.get('accent1', '#41B3FF')
-        r, g, b = hex_to_rgb(accent1)
-        lines.append(f"  --accent-glow: rgba({r}, {g}, {b}, 0.3);")
-
-        # Keep text colors light for dark background
-        lines.append("")
-        lines.append("  /* Text colors (kept light for dark background) */")
-        lines.append("  --text-primary: #ffffff;")
-        lines.append("  --text-secondary: #b0b0b0;")
-
-        # Include original PPTX colors as reference
-        lines.append("")
-        lines.append("  /* Original PPTX theme colors (reference) */")
-        for name, value in self.colors.items():
-            lines.append(f"  --pptx-{name}: {value};")
+                lines.append("  /* dk2 too light for a dark surface, keeping default */")
 
         lines.append("}")
 
