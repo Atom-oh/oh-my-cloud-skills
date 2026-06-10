@@ -1326,8 +1326,9 @@ Transition to the next section on security.
 ### Structured Note Schema (recommended for content slides)
 
 Free-form notes still work, but content slides read far better when the `:::notes`
-block follows a **5-layer schema** (a superset of the free-form style — `{timing}` /
-`{cue}` markers are kept). Layers, in order:
+block follows a **layered schema** (a superset of the free-form style — `{timing}` /
+`{cue}` markers are kept). Layers, in order (the `{timing}`/`{cue}` markers are a
+preamble; the content layers are `[요약]` → spoken → `[약어]` → `[출처]` → `[변경이력]`):
 
 1. **`{timing}` / `{cue}` markers** — kept exactly as before (timing first, cues inline).
 2. **`[요약]`** — 3–5 one-line bullets summarizing the slide's key points so the

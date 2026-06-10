@@ -69,3 +69,14 @@ assert_contains "$SKL" "NOTE_STRUCTURE" "Forbidden section references the NOTE_S
 CRA="$(cat plugins/aws-content-plugin/agents/content-review-agent.md 2>/dev/null || true)"
 assert_contains "$CRA" "omission" "content-review-agent has a source-omission cross-check"
 assert_contains "$CRA" "diagram" "omission check lists architecture diagrams as a common gap"
+
+# --- content-quality P4: section-divider (@type: title) must NOT trip NOTE_STRUCTURE/TITLE_LENGTH ---
+SC="$RP/scripts/remarp_to_slides.py"
+D="$(mktemp -d "${TMPDIR:-/tmp}/tsec.XXXXXX")"
+printf -- '---\nratio: "16:9"\n---\n' > "$D/_presentation.md"
+# a section divider: long title + a short transition note with no [요약] — both legit for a divider
+printf -- '---\nremarp: true\n---\n@type: title\n## 2장. 관측성 스택 심화 아키텍처와 운영 전략 그리고 더 긴 제목\n\n:::notes\n{timing: 1min}\n다음 장으로 넘어가겠습니다. 이번 장에서는 관측성 스택을 깊이 다룹니다.\n:::\n' > "$D/01.md"
+OUT="$(python3 "$SC" validate "$D" 2>&1 || true)"
+assert_grep_no_match "NOTE_STRUCTURE" "$OUT" "section-divider not flagged for missing [요약]"
+assert_grep_no_match "TITLE_LENGTH" "$OUT" "section-divider title length not flagged"
+rm -rf "$D"

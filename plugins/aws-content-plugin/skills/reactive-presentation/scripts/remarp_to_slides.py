@@ -4775,7 +4775,7 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
     # with no notes (handled by MISSING_NOTES above). Literal-substring check
     # only — NOT regex — so digits in {timing: 2min} cannot false-positive.
     if (slide.slide_type not in (SlideType.COVER, SlideType.THANKYOU,
-                                 SlideType.AGENDA, SlideType.QUIZ)
+                                 SlideType.AGENDA, SlideType.QUIZ, SlideType.TITLE)
             and slide.notes and slide.notes.content.strip()):
         notes_text = slide.notes.content
         if '[요약]' not in notes_text:
@@ -4791,7 +4791,8 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
     # Skip slide types where a heading-length rule does not apply (cover/agenda/
     # quiz render their own layout and don't carry a scannable headline title).
     if (title_match and slide.slide_type not in (SlideType.COVER, SlideType.AGENDA,
-                                                 SlideType.QUIZ, SlideType.THANKYOU)):
+                                                 SlideType.QUIZ, SlideType.THANKYOU,
+                                                 SlideType.TITLE)):
         title_text = title_match.group(1).strip()
         if len(title_text) > 28:
             add('WARNING', 'TITLE_LENGTH',
