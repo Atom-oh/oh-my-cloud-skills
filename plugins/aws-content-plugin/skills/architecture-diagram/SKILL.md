@@ -10,14 +10,44 @@ allowed-tools:
 
 # Architecture Diagram Skill
 
-AWS 아키텍처 다이어그램을 생성하는 스킬. **두 가지 모드**를 지원합니다:
+AWS 아키텍처 다이어그램을 생성하는 스킬. **세 가지 모드**를 지원합니다:
 
 | 모드 | 방식 | 장점 | 사용 시점 |
 |------|------|------|----------|
-| **XML 직접 작성** | Write 도구로 .drawio 파일 생성 | 의존성 없음, 안정적 | 기본 (항상 사용 가능) |
+| **스펙 생성기 (권장)** | `scripts/layout_aws.py` 로 YAML 스펙 → .drawio | **좌표 자동계산** · Multi-AZ 미러 대칭 보장 · 항상 게이트 통과 | VPC/Multi-AZ/티어 패턴 (가장 흔함) |
+| **XML 직접 작성** | Write 도구로 .drawio 파일 생성 | 완전한 자유도 | 생성기 패턴에 안 맞는 비정형 구조 |
 | **Draw.io MCP** | MCP로 실시간 편집 | 대화형 수정, 실시간 미리보기 | 선택적 (설정 필요) |
 
+> **왜 스펙 생성기인가**: PPT 대비 품질 격차의 근본 원인은 *LLM이 픽셀 좌표를 직접 찍는 것*입니다
+> (LLM이 가장 약한 2D 공간 배치). 범용 자동배치 엔진(D2/ELK, Python diagrams/Graphviz)도
+> AWS 관례(AZ 좌우 미러·VPC 중첩·좌→우 티어)를 몰라 깨뜨립니다. `layout_aws.py`는 LLM이
+> **구조·라벨·흐름만 선언**하면 AWS 관례 좌표를 결정적으로 계산해 drawio로 출력합니다 →
+> 기존 validate/lint 게이트를 그대로 통과. 실측 근거: `examples/` + bake-off.
+>
 > MCP 설정 방법은 **`references/mcp-setup-guide.md`** 참조
+
+---
+
+## 스펙 생성기 (Spec-Driven Generation) — 권장 경로
+
+VPC·Multi-AZ·티어형 아키텍처는 **좌표를 직접 쓰지 말고** 고수준 YAML 스펙으로 선언하세요.
+
+```bash
+# 1) 스펙 작성 (examples/multi-az-3tier.yaml 를 출발점으로 복사) — 좌표 없음, 구조만
+#    external(외부 행위자) → edge(CDN/DNS/WAF) → region.vpc.{azs, tiers[].services} + flows
+# 2) 생성
+python3 scripts/layout_aws.py my-spec.yaml -o output.drawio
+# 3) 게이트 (필수)
+python3 scripts/validate_drawio.py output.drawio
+python3 scripts/lint_layout.py output.drawio    # 생성기 출력은 100/100 [geometry · design] 설계
+# 4) export
+xvfb-run -a drawio -x -f png -s 2 -o output.png output.drawio
+```
+
+- AZ는 자동 **미러**(동일 크기·좌우 대칭). 서비스 id는 AZ별로 `id_0`, `id_1` 로 인스턴스화 → flow가 참조.
+- 아이콘 레지스트리·색상·간격은 전부 `design-tokens.md` 정본을 따름 (생성기에 내장).
+- 골든 예시: **`examples/`** (`multi-az-3tier`, `eks-multi-az`). 스펙+drawio 쌍 — 복사해서 수정.
+- 비정형 구조(서버리스 메시 등)는 아래 XML 직접 작성 모드를 사용.
 
 ---
 
@@ -243,6 +273,8 @@ drawio -x -f svg -o output.svg input.drawio
 | `references/snippets.md` | 복사해서 사용할 XML 코드 조각 |
 | `references/drawio-xml-guide.md` | XML 직접 작성 문법 가이드 |
 | `references/mcp-setup-guide.md` | Draw.io MCP 설정 및 도구 사용법 |
+| `scripts/layout_aws.py` | **스펙 생성기 (권장)** — YAML 스펙(구조·라벨·흐름) → AWS 관례 좌표 자동계산 → .drawio. Multi-AZ 미러·VPC 중첩·티어 배치·엣지 앵커 내장. `examples/` 참조 |
+| `examples/` | **골든 exemplar 라이브러리** — 게이트 100/100 통과하는 스펙+drawio 쌍 (multi-az-3tier, eks-multi-az). 새 다이어그램의 출발점 |
 | `scripts/snap_grid.py` | **export 전 0단계** — 모든 좌표를 10px 그리드로 자동 스냅(아이콘 크기 78 보존). `--in-place`/`--report` |
 | `scripts/validate_drawio.py` | **export 전 검증 1** — 침묵 킬러(주석 `&`/`--`, 미이스케이프 문자, DOCTYPE) 검출 + 셀 개수 리포트(truncation 감지) + `--coords` 절대좌표 |
 | `scripts/lint_layout.py` | **export 전 검증 2 (레이아웃 게이트)** — geometry(정렬·이탈·겹침·간격·엣지) + design(아이콘 크기 규율·라벨·여백·제목·폰트)을 점수화. `score/100 [geometry · design]`, score ≥ 80 이어야 export |
