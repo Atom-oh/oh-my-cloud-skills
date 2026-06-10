@@ -248,7 +248,7 @@ fn = getattr(e,'build_override_css', None) or getattr(e,'generate_override_css',
 colors={'accent1':'#11AA22','accent2':'#3344FF','dk1':'#101010','lt1':'#FFFFFF'}
 print(fn(colors) if fn else 'NO_FN')
 " 2>/dev/null || true)"
-assert_grep_match "--pptx-accent1|--accent" "$GENOUT" "override generator emits brand/role tokens"
+assert_grep_match "\-\-pptx-accent1|\-\-accent" "$GENOUT" "override generator emits brand/role tokens"
 ```
 
 > If the generator's function name differs, the implementer wires the test to the real entry point (one of the candidate names above) — the assertion is that generated CSS sets `--pptx-*`/role tokens, not `--green`/`--cyan` component colors.
@@ -280,7 +280,7 @@ git commit -m "feat(reactive-presentation): PPTX/brand extraction drives core de
 # append to tests/structure/test-reactive-design-lint.sh
 SC="$RP/scripts/remarp_to_slides.py"
 D="$(mktemp -d "${TMPDIR:-/tmp}/rpl.XXXXXX")"
-printf 'ratio: "16:9"\n' > "$D/_presentation.md"
+printf -- '---\nratio: "16:9"\n---\n' > "$D/_presentation.md"
 # offending slide: raw hex + inline style + off-scale px + raw rgba inside :::html
 printf -- '---\nremarp: true\n---\n## S\n\n:::html\n<div style="color:#00d4ff;padding:13px;background:rgba(0,0,0,.3)">x</div>\n:::\n' > "$D/01.md"
 OUT="$(python3 "$SC" validate "$D" 2>&1 || true)"
