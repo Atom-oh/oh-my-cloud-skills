@@ -226,6 +226,46 @@ def cmd_task(root, action, idx):
     return 0
 
 
+def cmd_report(root):
+    """Render a final markdown report from session state → stdout, and write it to
+    <root>/.claude/co-agent-consensus/report.md (gitignored, session-local)."""
+    s = read_state(root)
+    if s is None:
+        print("no active consensus session (run init)", file=sys.stderr)
+        return 2
+    tasks = s.get("tasks", {})
+    if not isinstance(tasks, dict):
+        tasks = {}
+    done = [i for i, t in tasks.items() if isinstance(t, dict) and t.get("status") == "done"]
+    aborted = [i for i, t in tasks.items() if isinstance(t, dict) and t.get("status") == "aborted"]
+    lines = []
+    lines.append(f"# Consensus run report — session `{s.get('session_id', '')}`")
+    lines.append("")
+    lines.append(f"- **status**: {s.get('status', '?')}")
+    lines.append(f"- **phase**: {s.get('phase', '?')}")
+    lines.append(f"- **branch**: {s.get('branch') or '?'}  (base {s.get('base') or '?'})")
+    lines.append(f"- **tasks**: {len(done)} done, {len(aborted)} aborted, {len(tasks)} total")
+    lines.append(f"- **tests**: {'PASS' if s.get('last_test_pass') else 'unknown/fail'}")
+    docs = s.get("docs", [])
+    if docs:
+        lines.append(f"- **inputs**: " + ", ".join(
+            f"{d.get('kind')}:{os.path.basename(d.get('path', ''))}" for d in docs if isinstance(d, dict)))
+    lines.append("")
+    lines.append("| task | status | rounds |")
+    lines.append("|------|--------|--------|")
+    for i in sorted(tasks, key=lambda k: int(k) if str(k).isdigit() else 0):
+        t = tasks[i] if isinstance(tasks[i], dict) else {}
+        lines.append(f"| {i} | {t.get('status', '?')} | {t.get('rounds', 0)} |")
+    report = "\n".join(lines) + "\n"
+
+    out_path = os.path.join(root, ".claude", "co-agent-consensus", "report.md")
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(report)
+    sys.stdout.write(report)
+    return 0
+
+
 def main():
     a = sys.argv[1:]
     if not a:
@@ -255,6 +295,8 @@ def main():
         return cmd_autonomous(root, rest[1]) if len(rest) >= 2 else 2
     if cmd in ("task-start", "task-done", "task-abort", "task-round"):
         return cmd_task(root, cmd, rest[1]) if len(rest) >= 2 else 2
+    if cmd == "report":
+        return cmd_report(root)
     print(__doc__)
     return 2
 
