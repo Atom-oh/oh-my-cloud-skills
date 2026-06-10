@@ -1,6 +1,6 @@
 {
   "name": "project-init",
-  "version": "1.7.2",
+  "version": "1.8.0",
   "description": "Initialize and maintain project structures with adaptive project detection, project documentation quality scoring, and auto-sync documentation workflows",
   "author": {
     "name": "whchoi98",
