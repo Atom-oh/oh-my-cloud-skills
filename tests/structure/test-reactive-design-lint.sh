@@ -26,3 +26,20 @@ OUT2="$(python3 "$SC" validate "$D" 2>&1 || true)"
 assert_grep_no_match "RAW_HEX" "$OUT2" "token slide not flagged for hex"
 assert_grep_no_match "INLINE_STYLE" "$OUT2" "token slide not flagged for inline style"
 rm -rf "$D"
+
+# --- content-quality: NOTE_STRUCTURE ---
+RP="plugins/aws-content-plugin/skills/reactive-presentation"
+# `[요약]` must match as a LITERAL — assert_contains uses grep BRE (no -F) where `[요약]` is a
+# bracket expression (any one of 요/약). Use assert_grep_match with PCRE-escaped brackets.
+assert_grep_match "\[요약\]" "$(cat "$RP/references/remarp-format-guide.md" 2>/dev/null || true)" "remarp-format-guide documents [요약] note layer"
+assert_grep_match "\[요약\]" "$(cat "$RP/SKILL.md" 2>/dev/null || true)" "SKILL.md references the structured note schema"
+SC="$RP/scripts/remarp_to_slides.py"
+D="$(mktemp -d "${TMPDIR:-/tmp}/ns.XXXXXX")"
+printf -- '---\nratio: "16:9"\n---\n' > "$D/_presentation.md"
+printf -- '---\nremarp: true\n---\n## A title\n\nSome body text here.\n\n:::notes\n{timing: 2min}\nThis is a free-form note with no summary block, long enough to pass the length check easily by adding words and words and more words.\n:::\n' > "$D/01.md"
+OUT="$(python3 "$SC" validate "$D" 2>&1 || true)"
+assert_contains "$OUT" "NOTE_STRUCTURE" "lint flags notes missing [요약]"
+printf -- '---\nremarp: true\n---\n## A title\n\nSome body text here.\n\n:::notes\n{timing: 2min}\n[요약]\n• key point one here\n• key point two here\nThe spoken script in conversational Korean goes here with enough words to pass length.\n:::\n' > "$D/01.md"
+OUT2="$(python3 "$SC" validate "$D" 2>&1 || true)"
+assert_grep_no_match "NOTE_STRUCTURE" "$OUT2" "structured note not flagged"
+rm -rf "$D"

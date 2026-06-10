@@ -4768,6 +4768,23 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
                 'recommended minimum is 150 chars (300-500 ideal)',
                 'Expand notes with timing markers, cues, and supplementary explanations')
 
+    # --- Rule 5b: Structured Speaker-Note Schema ([요약] layer) ---
+    # Content-type slides that carry a :::notes block should open with a
+    # structured [요약] (one-line bullet summary) layer so the speaker can scan
+    # key points at a glance. Skip cover/agenda/quiz slide types and slides
+    # with no notes (handled by MISSING_NOTES above). Literal-substring check
+    # only — NOT regex — so digits in {timing: 2min} cannot false-positive.
+    if (slide.slide_type not in (SlideType.COVER, SlideType.THANKYOU,
+                                 SlideType.AGENDA, SlideType.QUIZ)
+            and slide.notes and slide.notes.content.strip()):
+        notes_text = slide.notes.content
+        if '[요약]' not in notes_text:
+            add('WARNING', 'NOTE_STRUCTURE',
+                'Speaker notes lack a [요약] summary layer — structured notes open '
+                'with 3–5 one-line bullets before the spoken script',
+                'Add a [요약] block (3–5 one-line bullets) at the top of :::notes, '
+                'then the spoken script in 존댓말')
+
     # --- Rule 6: Content Overflow ---
     # Count total visible elements (headings + bullets + paragraphs)
     heading_count = len(re.findall(r'^#{2,4}\s+', md_outside_blocks, re.MULTILINE))

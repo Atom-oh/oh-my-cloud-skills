@@ -115,6 +115,12 @@ Remarp 마크다운으로 콘텐츠를 작성합니다 (기본). Remarp는 프�
 > - **톤**: 발표자가 그대로 읽어도 자연스러운 구어체. "~입니다", "~해보겠습니다" 스타일
 > - **내용**: 슬라이드 텍스트를 반복하지 말고, 왜 중요한지, 실무에서 어떻게 적용하는지, 흔한 실수나 팁을 보충
 > - **전환**: 마지막에 `{cue: transition}` + 다음 슬라이드로 이어지는 브릿지 문장
+>
+> **구조화된 노트 스키마 (권장)**: 콘텐츠 슬라이드의 `:::notes`는 `{timing}`/`{cue}` 마커 →
+> `[요약]` (3~5개 한 줄 불릿) → 발표 스크립트(존댓말) → `[약어]`(필요 시) → `[출처]`(수치/벤치마크 인용 시)
+> 5계층 스키마를 따르는 것을 권장합니다. 특히 `[요약]` 블록은 콘텐츠 슬라이드에 권장되며,
+> 누락 시 `validate`의 `NOTE_STRUCTURE` 린트가 경고합니다. 전체 스키마와 예시는
+> [references/remarp-format-guide.md](references/remarp-format-guide.md)의 "Structured Note Schema" 참조.
 - `:::canvas` DSL로 선언적 Canvas 애니메이션
 - `::: left`/`::: right` 컬럼 레이아웃
 
@@ -205,6 +211,7 @@ python3 {skill-dir}/scripts/remarp_to_slides.py validate {repo}/{slug}/
 | `CANVAS_OVERLAP` | CRITICAL | 캔버스 요소 바운딩 박스 겹침 | 좌표 조정 (최소 40px 간격) |
 | `FRAGMENT_ORDER` | WARNING | 다단 레이아웃 + 명시적 `order=N` 없음 | `{.click order=N}` 추가 (td-lr 순서) |
 | `MISSING_NOTES` | WARNING | `:::notes` 블록 누락 | 150자+ 스피커 노트 작성 |
+| `NOTE_STRUCTURE` | WARNING | 콘텐츠 슬라이드 노트에 `[요약]` 계층 없음 | `:::notes` 상단에 `[요약]` (3~5 불릿) 추가 |
 | `STATIC_HTML` | WARNING | `:::html` 요소 3+ 이나 fragment 없음 | `fragment fade-up` + `data-fragment-index` 추가 |
 
 **거절 루프 프로세스**:
