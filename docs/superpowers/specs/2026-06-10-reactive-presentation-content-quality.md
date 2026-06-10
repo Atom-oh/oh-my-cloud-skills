@@ -67,7 +67,7 @@ Add one sharp anti-pattern section to `SKILL.md` that **consolidates** existing 
 
 ### 4. New design-lint rules (`remarp_to_slides.py validate`)
 
-- **`NOTE_STRUCTURE`** (WARNING): a content slide whose `:::notes` lacks a `[요약]` block; a claims/number slide lacking `[출처]`.
+- **`NOTE_STRUCTURE`** (WARNING): a content slide whose `:::notes` lacks a literal `[요약]` block. (The `[출처]`-on-claims rule is a *documented convention*, NOT lint-enforced — number-detection would false-positive on `{timing: 2min}` markers.)
 - **`TITLE_LENGTH`** (WARNING): slide title > 28 KO chars (or subtitle > 45) — the mechanical half of §2.
 - Keep `--json` shape consistent with existing rules.
 

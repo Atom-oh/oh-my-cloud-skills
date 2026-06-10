@@ -25,9 +25,11 @@
 ```bash
 # --- content-quality: NOTE_STRUCTURE ---
 RP="plugins/aws-content-plugin/skills/reactive-presentation"
-# docs document the schema
-assert_contains "$(cat "$RP/references/remarp-format-guide.md" 2>/dev/null || true)" "[요약]" "remarp-format-guide documents [요약] note layer"
-assert_contains "$(cat "$RP/SKILL.md" 2>/dev/null || true)" "[요약]" "SKILL.md references the structured note schema"
+# docs document the schema — NOTE: `[요약]` must be matched as a LITERAL. assert_contains uses
+# `grep -q` (BRE, no -F), where `[요약]` is a bracket expression (any one of 요/약). Use
+# assert_grep_match with PCRE-escaped brackets `\[요약\]` so the literal string is required.
+assert_grep_match "\[요약\]" "$(cat "$RP/references/remarp-format-guide.md" 2>/dev/null || true)" "remarp-format-guide documents [요약] note layer"
+assert_grep_match "\[요약\]" "$(cat "$RP/SKILL.md" 2>/dev/null || true)" "SKILL.md references the structured note schema"
 # lint: a content slide whose :::notes lacks [요약] is flagged
 SC="$RP/scripts/remarp_to_slides.py"
 D="$(mktemp -d "${TMPDIR:-/tmp}/ns.XXXXXX")"
@@ -46,7 +48,7 @@ rm -rf "$D"
 
 - [ ] **Step 3: Implement**
   - In `references/remarp-format-guide.md` (notes section) document the 5-layer schema: `{timing}`/`{cue}` (kept) + `[요약]` (3–5 bullets) → spoken script → `[약어]` (domain abbreviations; omit if none) → `[출처]` (conditional: claims/numbers) → `[변경이력]` (optional). Show a full `:::notes` example. In `SKILL.md` add a short subsection pointing to it and stating `[요약]` is recommended on content slides.
-  - In `remarp_to_slides.py validate`, add rule **`NOTE_STRUCTURE`** (WARNING): for a content-type slide that HAS a `:::notes` block, flag if the block lacks a `[요약]` line. (Do not flag slides without notes — `MISSING_NOTES` already covers that; do not flag cover/section/agenda/quiz types.) Mirror the existing rule dict shape; keep `--json`.
+  - In `remarp_to_slides.py validate`, add rule **`NOTE_STRUCTURE`** (WARNING): for a content-type slide that HAS a `:::notes` block, flag if the block lacks a literal `[요약]` line. **Check ONLY for the missing `[요약]` — do NOT implement a "[출처]-when-numbers" arm** (a digit inside `{timing: 2min}`/`{cue}` markers would false-positive the clean case). The `[출처]`-on-claims rule stays a *documented convention*, not lint-enforced. Do not flag slides without notes (`MISSING_NOTES` covers that) or cover/section/agenda/quiz types. Match `[요약]` as a literal substring in Python (`"[요약]" in notes_text`), not via regex. Mirror the existing rule dict shape; keep `--json`.
 
 - [ ] **Step 4: Run, verify PASS** — `bash tests/run-all.sh 2>&1 | tail -3`
 
