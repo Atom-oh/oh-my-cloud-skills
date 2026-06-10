@@ -41,14 +41,6 @@
         ]
       }
     ],
-    "PostToolUseFailure": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/consensus_hooks.py\" post-tooluse-failure --root . 2>/dev/null" }
-        ]
-      }
-    ],
     "SessionStart": [
       {
         "hooks": [

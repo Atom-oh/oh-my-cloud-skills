@@ -187,8 +187,8 @@ bounded scope, missing tasks, and AWS security-mandate violations. Session state
 implement it — reuse the `subagent-driven-development` loop but with the **multi-model gate**
 as the review checkpoint. Per task: checkpoint → TDD → `scope_guard.py` (stay in the plan's
 file set) → security-mandate veto → test gate (`tests/run-all.sh` must pass) → multi-model
-gate → one commit → `consensus_state.py task-done`. Session-gated hooks (Stop/PostToolUse/
-PostToolUseFailure) keep the loop going and catch stuck states. Local commits only.
+gate → one commit → `consensus_state.py task-done`. Session-gated hooks (Stop/PostToolUse)
+keep the loop going; PostToolUse also catches stuck states. Local commits only.
 
 ## Chair principle (non-negotiable)
 

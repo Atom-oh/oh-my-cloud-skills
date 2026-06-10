@@ -35,8 +35,8 @@ Detect with `scripts/consensus_state.py detect <root> <paths>` → `adr|spec|pla
   test gate (`tests/run-all.sh` + project tests must pass; revert on failure) → multi-model
   consensus gate on the task diff → fix ≤`consensus.max_rounds` or `task-abort` → one commit
   per task → `consensus_state.py task-done`. Session-gated hooks: **Stop** keeps the loop
-  going until all tasks are done/aborted, **PostToolUse** records test results,
-  **PostToolUseFailure** flags stuck loops. Local commits only — never push/reset/rebase.
+  going until all tasks are done/aborted, **PostToolUse** records test results and flags
+  stuck loops (consecutive failing test runs). Local commits only — never push/reset/rebase.
 
 ## Safety (applies fully in Stage B/C; relevant flags here)
 - Local only; clean-tree required; session_id-gated; consent + cost matrix before fan-out;

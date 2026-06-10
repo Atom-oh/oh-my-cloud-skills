@@ -42,4 +42,29 @@ python3 "$ST" task-round "$D" 0 >/dev/null 2>&1
 assert_contains "$(python3 "$ST" get "$D" tasks 2>&1)" "rounds" "task-round records per-task rounds"
 python3 "$ST" set "$D" status bogus >/dev/null 2>&1 && SB=0 || SB=$?
 assert_eq "2" "$SB" "status rejects invalid value"
+
+# --- Fix 1 regression: stop hook never hard-fails on malformed tasks (always exit 0) ---
+python3 "$ST" set "$D" phase P3 >/dev/null 2>&1
+python3 "$ST" autonomous "$D" on >/dev/null 2>&1
+python3 - "$D" "$CO/scripts" <<'PY'
+import sys, os
+d, scripts = sys.argv[1], sys.argv[2]
+sys.path.insert(0, scripts)
+import consensus_state as cs
+s = cs.read_state(d) or {}
+s["tasks"] = []  # malformed: list instead of dict
+cs.write_state(d, s)
+PY
+python3 "$HK" stop --root "$D" >/dev/null 2>&1 && rc=0 || rc=$?
+assert_eq "0" "$rc" "stop hook never hard-fails on malformed tasks"
+
+# --- Fix 2 regression: scope_guard matches absolute candidate against plan-relative entry ---
+P2=$(mktemp "${TMPDIR:-/tmp}/sgplan2.XXXXXX.md")
+printf '### Task 1: a\n**Files:**\n- Create: `src/a.py`\n- Test: `tests/a.sh`\n- [ ] x\n' > "$P2"
+python3 "$SG" --plan "$P2" /abs/prefix/src/a.py >/dev/null 2>&1 && AIN=0 || AIN=$?
+assert_eq "0" "$AIN" "scope_guard: absolute in-scope path allowed"
+python3 "$SG" --plan "$P2" /abs/prefix/src/evil.py >/dev/null 2>&1 && AOUT=0 || AOUT=$?
+assert_eq "1" "$AOUT" "scope_guard: absolute out-of-scope path rejected"
+rm -f "$P2"
+
 rm -rf "$D"

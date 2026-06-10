@@ -9,20 +9,20 @@ Events:
   stop                 — while an autonomous P3 session has tasks left, emit a JSON
                          block decision so the agent keeps going instead of stopping.
   post-tooluse         — record the last test result (pass/fail) into the state when a
-                         test command ran, so the loop can read it.
-  post-tooluse-failure — increment a consecutive-failure counter; if it crosses
-                         STUCK_LIMIT, emit a 'stuck — abort' notice.
+                         test command ran. Also drives stuck-detection: a test PASS resets
+                         the consecutive-failure counter; a test FAIL increments it and, if
+                         it crosses STUCK_LIMIT, emits a 'stuck — abort' notice.
 
 Usage (bash hook pipes the hook JSON on stdin):
   consensus_hooks.py stop --root .
   consensus_hooks.py post-tooluse --root .
-  consensus_hooks.py post-tooluse-failure --root .
 Always exits 0 (a hook must never hard-fail the session). Prints either nothing
 (no-op) or a hook-control JSON / advisory line.
 """
 import sys
 import os
 import json
+import re
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
@@ -52,6 +52,8 @@ def _stdin_json():
 
 def _tasks_remaining(s):
     tasks = s.get("tasks", {})
+    if not isinstance(tasks, dict):
+        return []
     return [i for i, t in tasks.items() if t.get("status") not in ("done", "aborted")]
 
 
@@ -81,22 +83,20 @@ def ev_post_tooluse(root):
     if "run-all.sh" in cmd or "test-plugins.py" in cmd or "pytest" in cmd:
         # record a coarse pass/fail signal from the tool result if present
         out = json.dumps(payload.get("tool_response", payload.get("tool_result", "")))
-        s["last_test_pass"] = ("ALL TESTS PASSED" in out) or ("passed" in out and "failed" not in out)
-        cs.write_state(root, s)
-    return 0
-
-
-def ev_post_tooluse_failure(root):
-    s = _active(root)
-    if not s:
-        return 0
-    n = int(s.get("consec_failures", 0)) + 1
-    s["consec_failures"] = n
-    cs.write_state(root, s)
-    if n >= STUCK_LIMIT:
-        print(f"[co-agent consensus] {n} consecutive tool failures — the P3 loop looks STUCK. "
-              f"Revert to the last checkpoint and abort this task "
-              f"(`consensus_state.py task-abort . {s.get('task_index')}`).")
+        passed = ("ALL TESTS PASSED" in out) or ("passed" in out and not re.search(r"[1-9]\d* failed", out))
+        s["last_test_pass"] = passed
+        if passed:
+            # a green test run clears the stuck counter
+            s["consec_failures"] = 0
+            cs.write_state(root, s)
+        else:
+            n = int(s.get("consec_failures", 0)) + 1
+            s["consec_failures"] = n
+            cs.write_state(root, s)
+            if n >= STUCK_LIMIT:
+                print(f"[co-agent consensus] {n} consecutive failing test runs — the P3 loop looks STUCK. "
+                      f"Revert to the last checkpoint and abort this task "
+                      f"(`consensus_state.py task-abort . {s.get('task_index')}`).")
     return 0
 
 
@@ -107,13 +107,14 @@ def main():
         return 0
     event = a[0]
     root = a[a.index("--root") + 1] if "--root" in a and a.index("--root") + 1 < len(a) else "."
-    if event == "stop":
-        return ev_stop(root)
-    if event == "post-tooluse":
-        return ev_post_tooluse(root)
-    if event == "post-tooluse-failure":
-        return ev_post_tooluse_failure(root)
-    return 0
+    try:
+        if event == "stop":
+            return ev_stop(root)
+        if event == "post-tooluse":
+            return ev_post_tooluse(root)
+        return 0
+    except Exception:
+        return 0
 
 
 if __name__ == "__main__":

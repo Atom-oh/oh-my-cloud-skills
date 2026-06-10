@@ -58,7 +58,11 @@ def main():
         print("no candidate paths given", file=sys.stderr)
         return 2
     allowed_norm = {_norm(a) for a in allowed}
-    out = [p for p in paths if _norm(p) not in allowed_norm]
+
+    def in_scope(c):
+        cn = _norm(c)
+        return any(cn == a or cn.endswith("/" + a) for a in allowed_norm)
+    out = [p for p in paths if not in_scope(p)]
     if out:
         print("❌ out of plan scope (not in the reviewed plan's file set):", file=sys.stderr)
         for p in out:

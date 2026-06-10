@@ -87,7 +87,7 @@ Spec/decision authoring AND plan authoring happen **upstream** (brainstorming + 
 **New:**
 - `scripts/consensus_state.py` — state file (bound to repo/branch/base/HEAD/initial-doc-hash/allowed-paths/session_id), phase/round counters, convergence + no-progress/oscillation detection, decisions/learnings (session-local, gitignored).
 - Phase-orchestration in the co-agent skill (Mode "consensus build") — the monolithic prompt that drives P0–P5, calling the existing fan-out for gates and TDD for the P3 per-task loop.
-- `hooks` in co-agent plugin.json: **Stop** (block premature stop while a consensus session is active & not converged), **PostToolUse** (track test pass/fail during P3), **PostToolUseFailure** (detect stuck/repeated-failure loops) — all **gated to the active `session_id`** so unrelated work is untouched.
+- `hooks` in co-agent plugin.json: **Stop** (block premature stop while a consensus session is active & not converged), **PostToolUse** (track test pass/fail during P3 and detect stuck/repeated-failure loops) — all **gated to the active `session_id`** so unrelated work is untouched.
 - `commands/consensus.md` extended with the sub-modes + doc argument.
 - `references/consensus-pipeline.md` — phase reference + safety.
 
@@ -126,7 +126,7 @@ Spec/decision authoring AND plan authoring happen **upstream** (brainstorming + 
 ## Phasing (implementation)
 
 - **Stage A**: P0–P2 (detect inputs → plan load/generate → plan consensus gate) + state file + `plan` sub-mode. Lowest risk — no code edits, ends with a reviewed plan.
-- **Stage B**: P3 per-task TDD implement loop + hooks (Stop/PostToolUse/PostToolUseFailure) + checkpoints + scope-lock + per-task test gate.
+- **Stage B**: P3 per-task TDD implement loop + hooks (Stop/PostToolUse; stuck-detection lives in PostToolUse) + checkpoints + scope-lock + per-task test gate.
 - **Stage C**: P4 final implementation gate (reuse review-only) + P5 learnings/report + full autonomy wiring + resume-from-state.
 Each stage is its own implementation plan (writing-plans).
 
