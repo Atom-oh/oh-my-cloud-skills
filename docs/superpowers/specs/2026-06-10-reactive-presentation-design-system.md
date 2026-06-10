@@ -52,7 +52,7 @@ per-slide LLM discipline.
 
 ### 1. Token layer — `assets/design-tokens.css` (new), imported first by `theme.css`
 
-- **Type scale**: modular, ratio **1.25** (major third), 8 steps → `--text-xs … --text-5xl`,
+- **Type scale**: modular, ratio **1.25** (major third), 8 steps → `--text-xs … --text-4xl`,
   each paired with a line-height and weight role (display/title/subtitle/body/caption/eyebrow/
   metric/code). Headings/body map to roles, not raw rem.
 - **Spacing scale**: 8px grid → `--space-1:.25rem … --space-8:4rem`. One slide-padding token,
