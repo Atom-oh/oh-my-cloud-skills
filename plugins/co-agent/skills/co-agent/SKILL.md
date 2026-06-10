@@ -183,6 +183,13 @@ evidence (never vote-count), iterate to no CRITICAL/MAJOR — checking implement
 bounded scope, missing tasks, and AWS security-mandate violations. Session state via
 `scripts/consensus_state.py`; clean tree required.
 
+**Implement (Stage B, `implement <plan>`)**: once the plan passes the gate, autonomously
+implement it — reuse the `subagent-driven-development` loop but with the **multi-model gate**
+as the review checkpoint. Per task: checkpoint → TDD → `scope_guard.py` (stay in the plan's
+file set) → security-mandate veto → test gate (`tests/run-all.sh` must pass) → multi-model
+gate → one commit → `consensus_state.py task-done`. Session-gated hooks (Stop/PostToolUse)
+keep the loop going; PostToolUse also catches stuck states. Local commits only.
+
 ## Chair principle (non-negotiable)
 
 - External AIs **advise**; **Claude decides and writes the final artifact**.

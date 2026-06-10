@@ -1,7 +1,7 @@
 ---
 description: Autonomous doc→plan→implementation pipeline with cross-family multi-model consensus gates. Current Stage A runs P0–P2 (load/generate a plan + plan-review gate, no code edits); implementation is Stage B.
 allowed-tools: Read, Glob, Grep, Bash, AskUserQuestion
-argument-hint: "plan <doc...> | review [diff base] | (full)  [--deep] [--trust-plan]   (implement = Stage B, reserved)"
+argument-hint: "plan <doc...> | review [diff base] | implement <plan> | (full)  [--deep] [--trust-plan]"
 ---
 
 # co-agent: consensus
@@ -15,7 +15,7 @@ Argument: `$ARGUMENTS`
 ## Sub-modes
 - `plan <doc...>` — P0–P2: detect input(s), load-or-generate the plan, run the plan consensus gate. **(available — Stage A)**
 - `review [diff base]` — standalone multi-model diff review (the consensus gate run on its own). **(available — shipped v1.7.2)**
-- `implement <plan>` — autonomously implement a reviewed plan (P3 TDD loop). **(Stage B — reserved, not yet)**
+- `implement <plan>` — autonomously implement a reviewed plan (P3 TDD loop, multi-model gated). **(available — Stage B)**
 - (default, no sub-mode) — runs the full pipeline; **currently an alias for Stage A (P0–P2)** until Stage B/C land.
 - Flags: `--deep` (use each AI's full model list for the gates), `--trust-plan` (skip the P2 plan gate when the plan was already reviewed upstream). Round/call limits come from `consensus.max_rounds`/`consensus.max_calls` (config) — there is no `--apply`/`--max-rounds` flag.
 
@@ -37,3 +37,23 @@ Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"`.
    CRITICAL/MAJOR. Verify the plan is implementable, scoped, complete, and violates no AWS
    security mandate. Set phase: `consensus_state.py set . phase P2`.
 5. **Report** the reviewed plan + gate verdict. (Implementation = Stage B.)
+
+## Stage B workflow (`implement <plan>`)
+Reuses the `subagent-driven-development` pattern with the **co-agent multi-model gate** as
+the review checkpoint. Requires a clean tree; commits locally only (never push/reset/rebase).
+
+0. **Init/resume**: `consensus_state.py verify .` (clean tree); if no session, `init` it from
+   the plan; set `phase P3` and `autonomous on`. Tasks come from `parse_plan.py <plan>`;
+   allowed file set from `parse_plan.py <plan> --files` (enforced by `scope_guard.py`).
+1. **Per task** (advance `consensus_state.py task-start . <i>`):
+   a. **Checkpoint**: `git stash create`/tag or a WIP commit you can reset to.
+   b. **Implement (TDD)**: write the failing test → minimal code → refactor. Every file you
+      touch MUST pass `scope_guard.py --plan <plan> <path>` (else stop — out of scope).
+   c. **Security veto**: reject any change violating the AWS mandates (0.0.0.0/0, Principal:"*",
+      secrets in env, …) before applying.
+   d. **Test gate**: `bash tests/run-all.sh` (+ project tests) MUST pass; on failure, revert to
+      the checkpoint and either fix within `consensus.max_rounds` or `task-abort`.
+   e. **Multi-model gate**: run the consensus gate (references/consensus-mode.md) on the task's
+      diff; drop `unsupported` findings; if CRITICAL/MAJOR remain, fix (≤ max_rounds) or abort.
+   f. **Commit** the single task (explicit paths) and `consensus_state.py task-done . <i>`.
+2. When all tasks are done, set `status done` (the Stop hook then allows stopping). Report.

@@ -29,6 +29,14 @@ Detect with `scripts/consensus_state.py detect <root> <paths>` → `adr|spec|pla
   synthesize by agreement + evidence (NOT vote-count). Iterate up to `consensus.max_rounds`
   until no CRITICAL/MAJOR. Check the plan for: implementability, bounded scope, missing tasks,
   and **AWS security-mandate violations**. `--trust-plan` skips this (plan already reviewed).
+- **P3 (Stage B) — autonomous TDD implement loop**: reuse `subagent-driven-development` with
+  the co-agent multi-model gate as the review checkpoint. Per plan task: git checkpoint →
+  TDD (red→green→refactor) → `scope_guard.py` scope-lock → AWS security-mandate veto →
+  test gate (`tests/run-all.sh` + project tests must pass; revert on failure) → multi-model
+  consensus gate on the task diff → fix ≤`consensus.max_rounds` or `task-abort` → one commit
+  per task → `consensus_state.py task-done`. Session-gated hooks: **Stop** keeps the loop
+  going until all tasks are done/aborted, **PostToolUse** records test results and flags
+  stuck loops (consecutive failing test runs). Local commits only — never push/reset/rebase.
 
 ## Safety (applies fully in Stage B/C; relevant flags here)
 - Local only; clean-tree required; session_id-gated; consent + cost matrix before fan-out;

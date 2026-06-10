@@ -24,7 +24,7 @@ import hashlib
 import subprocess
 
 STATE_REL = os.path.join(".claude", "co-agent-consensus", "state.local.md")
-SET_KEYS = ("phase", "task_index")
+SET_KEYS = ("phase", "task_index", "status")
 
 
 def _git(root, *args):
@@ -100,6 +100,9 @@ def cmd_init(root, docs, base, allowed):
         "session_id": uuid.uuid4().hex[:16],
         "phase": "P0",
         "task_index": 0,
+        "status": "running",
+        "autonomous": False,
+        "tasks": {},
         "rounds": {},
         "repo_root": os.path.abspath(root),
         "branch": _git(root, "rev-parse", "--abbrev-ref", "HEAD"),
@@ -140,6 +143,11 @@ def cmd_set(root, key, value):
             print("task_index must be a non-negative integer", file=sys.stderr)
             return 2
         s[key] = int(value)
+    elif key == "status":
+        if value not in ("running", "done", "aborted"):
+            print("status must be running|done|aborted", file=sys.stderr)
+            return 2
+        s[key] = value
     else:
         s[key] = value
     write_state(root, s)
@@ -171,6 +179,53 @@ def cmd_verify(root):
     return 0
 
 
+def _load_or_die(root):
+    s = read_state(root)
+    if s is None:
+        print("no active consensus session (run init)", file=sys.stderr)
+    return s
+
+
+def cmd_autonomous(root, value):
+    s = _load_or_die(root)
+    if s is None:
+        return 2
+    if value.lower() not in ("on", "off", "true", "false", "1", "0"):
+        print("usage: autonomous <on|off>", file=sys.stderr)
+        return 2
+    s["autonomous"] = value.lower() in ("on", "true", "1")
+    write_state(root, s)
+    print(f"autonomous = {s['autonomous']}")
+    return 0
+
+
+def cmd_task(root, action, idx):
+    """task-start/done/abort/round <idx> — track per-task progress in state['tasks']."""
+    s = _load_or_die(root)
+    if s is None:
+        return 2
+    if not idx.isdigit():
+        print("task index must be a non-negative integer", file=sys.stderr)
+        return 2
+    t = s.setdefault("tasks", {}).setdefault(idx, {"status": "pending", "rounds": 0})
+    if action == "task-start":
+        t["status"] = "in_progress"
+        s["task_index"] = int(idx)
+    elif action == "task-done":
+        t["status"] = "done"
+    elif action == "task-abort":
+        t["status"] = "aborted"
+        s["status"] = "aborted"
+    elif action == "task-round":
+        t["rounds"] = int(t.get("rounds", 0)) + 1
+    else:
+        print(f"unknown task action '{action}'", file=sys.stderr)
+        return 2
+    write_state(root, s)
+    print(f"task {idx}: {t['status']} (rounds {t['rounds']})")
+    return 0
+
+
 def main():
     a = sys.argv[1:]
     if not a:
@@ -196,6 +251,10 @@ def main():
         return cmd_detect(root, paths) if paths else 2
     if cmd == "verify":
         return cmd_verify(root)
+    if cmd == "autonomous":
+        return cmd_autonomous(root, rest[1]) if len(rest) >= 2 else 2
+    if cmd in ("task-start", "task-done", "task-abort", "task-round"):
+        return cmd_task(root, cmd, rest[1]) if len(rest) >= 2 else 2
     print(__doc__)
     return 2
 
