@@ -57,3 +57,10 @@ printf -- '---\nremarp: true\n---\n## 비용은 싸졌고 모델은 똑똑해졌
 OUT2="$(python3 "$SC" validate "$D" 2>&1 || true)"
 assert_grep_no_match "TITLE_LENGTH" "$OUT2" "concise title not flagged"
 rm -rf "$D"
+
+# --- content-quality: consolidated Forbidden AI-tells ---
+SKL="$(cat "$RP/SKILL.md" 2>/dev/null || true)"
+assert_contains "$SKL" "Forbidden" "SKILL.md has a consolidated Forbidden AI-tells section"
+assert_contains "$SKL" "AI-slide tells" "Forbidden section titled for AI-slide tells"
+assert_contains "$SKL" "RAW_HEX" "Forbidden section references the RAW_HEX lint rule"
+assert_contains "$SKL" "NOTE_STRUCTURE" "Forbidden section references the NOTE_STRUCTURE lint rule"

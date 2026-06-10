@@ -240,6 +240,27 @@ Remarp 작성 → validate 실행 → CRITICAL 있으면?
 > ⚠️ **이 단계를 건너뛰고 빌드하면 프랑켄슈타인 레이아웃이 생성됩니다.**
 > CRITICAL 이슈가 있는 상태에서 `build`를 실행하지 마세요.
 
+### Forbidden — AI-slide tells (피해야 할 AI 슬라이드 티)
+
+> 아래는 "AI가 만든 티"가 나는 안티패턴을 한 곳에 모은 **단일 레퍼런스**입니다.
+> 각 tell은 이를 강제하는 **lint 규칙 id**(기계 검출) 또는 리뷰 게이트(사람/`content-review-agent`)에
+> 연결됩니다. 규칙 상세는 위 "Phase 2.8" 표를, 색상 토큰은 "Interactive Design 원칙"을 참조하세요.
+
+| 안티패턴 (AI-slide tell) | 왜 티가 나는가 | 대신 | 강제 (lint rule / gate) |
+|--------------------------|----------------|------|--------------------------|
+| 하드코딩 hex (생 6자리 색상값) | 테마 토큰 무시, 단일 테마 고착 | `var(--accent)` 등 시맨틱 역할 토큰 | `RAW_HEX` (lint) |
+| 인라인 색상/여백 style (`style=`에 color/padding 직접 기입) | 토큰 시스템 우회, 일관성 붕괴 | 토큰 클래스 (`.card-grid`, `.metric-card`) + `:::css` | `INLINE_STYLE` (lint) |
+| 생(raw) rgba 색상 함수 | 테마 적응 불가, 하드코딩 그림자/오버레이 | `var(--surface-*)`, `color-mix()` 토큰 | `RAW_RGBA` (lint) |
+| 매직넘버 타입/오프스케일 여백 (4·8px 스케일 밖의 px) | 들쭉날쭉한 간격 | 스페이싱 스케일 토큰 (`var(--space-*)`) | `OFF_SCALE` (lint) + 토큰 시스템 |
+| 텍스트 벽 불릿 (8+ 줄) | 한 슬라이드 과부하, 읽히지 않음 | 슬라이드 분할 또는 카드/탭 분리 | `CONTENT_OVERFLOW` (lint) |
+| 다크 전용 / 제네릭 blue-teal 기본 | "AI 기본 테마" 인상 | **light 기본** 듀얼 테마 + 역할 토큰 | dual-theme (light default) |
+| 그라데이션 텍스트 헤딩 · 장식용 gradient orb · 빈 하단 영역 | 의미 없는 장식, 정보 밀도 0 | 콘텐츠/시각 계층으로 영역 채우기, 장식 제거 | 가이드 (자동 lint 미적용 — 리뷰 게이트) |
+| 서술형 백과사전 톤 제목 ("2026년 Frontier AI 모델 동향") | 밋밋한 라벨, 엣지 없음 | 단정/주장/질문/반전 헤드라인 (28자 이하) | Slide Title Voice (리뷰 게이트) + `TITLE_LENGTH` (길이만 lint) |
+| 자유형 / 누락 스피커 노트 | 발표 불가, 구조 없음 | `[요약]` 5계층 구조 노트 (150자+) | `NOTE_STRUCTURE` / `MISSING_NOTES` (lint) |
+
+> 규칙 id가 붙은 항목은 `validate`가 기계적으로 잡아냅니다 (빌드 전 거절 루프).
+> 게이트 항목(장식·제목 보이스)은 자동 lint가 없으므로 `content-review-agent` 리뷰에서 감점됩니다.
+
 ### Phase 3: HTML Generation
 
 Remarp 프로젝트 디렉토리를 빌드합니다:
