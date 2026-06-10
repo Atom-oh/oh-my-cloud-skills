@@ -43,3 +43,16 @@ assert_grep_no_match "var\(--yellow,\s*#f1c40f" "$TC3" "drifted --yellow fallbac
 assert_grep_no_match "var\(--text-muted,\s*#8b8fa3" "$TC3" "drifted --text-muted fallback removed"
 assert_grep_match "var\(--space-" "$TC3" "rules consume spacing tokens"
 assert_grep_match "var\(--radius-" "$TC3" "rules consume radius tokens"
+
+# --- FINAL-GATE: light-first cascade + theme-scoped legacy vars + callout roles ---
+TC4="$(cat "$RP/assets/theme.css" 2>/dev/null || true)"
+# Block-spanning checks: collapse newlines so [^}]* (line-oriented in grep -P)
+# can span a multi-line CSS rule body up to the closing brace.
+TC4FLAT="$(printf '%s' "$TC4" | tr '\n' ' ')"
+assert_grep_match ":root, ?\.theme-light" "$TC4" "light default uses :root (wins specificity vs design-tokens :root)"
+assert_grep_no_match ":where\(html\), ?\.theme-light" "$TC4" "no zero-specificity :where light default"
+# legacy base vars are theme-scoped, not on a bare dark :root anymore
+assert_grep_match "\.theme-dark[^}]*--bg-primary" "$TC4FLAT" "dark scope defines --bg-primary"
+assert_grep_match "(:root, ?\.theme-light)[^}]*--bg-primary" "$TC4FLAT" "light scope defines --bg-primary"
+# callout role variant bound to semantic role after primitive
+assert_grep_match "\.callout\.callout-info[^}]*var\(--info" "$TC4FLAT" "callout-info bound to --info role token"

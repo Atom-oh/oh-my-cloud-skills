@@ -4821,8 +4821,11 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
     lint_text = '\n'.join(lint_chunks)
 
     if lint_text.strip():
-        # RAW_HEX — #rrggbb or #rgb literal inside an html/css block.
-        if re.search(r'#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b', lint_text):
+        # RAW_HEX — #rrggbb or #rgb literal used as a COLOR VALUE inside an
+        # html/css block. Anchored to a `:` (CSS property value, e.g.
+        # `color:#00d4ff`) via a lookbehind so HTML/CSS ids (`#fff{…}`,
+        # `href="#fff"`, `id="abc"`) are not false-positives.
+        if re.search(r'(?<=:)\s*#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b', lint_text):
             add('WARNING', 'RAW_HEX',
                 'Raw hex color literal in :::html/:::css block — bypasses the design-token system',
                 'Replace with var(--token) (e.g. var(--color-accent), var(--surface-1))')

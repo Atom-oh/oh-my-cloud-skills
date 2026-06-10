@@ -1355,33 +1355,18 @@ class CSSGenerator:
             ":root {",
         ]
 
-        # Emit the extracted palette as --pptx-* BRAND tokens. These are the
-        # input layer the role tokens in theme.css route through; they are NOT
-        # legacy per-component colors (--green/--cyan/etc.).
+        # Emit the extracted palette as --pptx-* BRAND tokens ONLY. These are the
+        # input layer the role tokens in theme.css route through via
+        # var(--pptx-*, <default>) PER THEME SCOPE, so the brand color flows into
+        # BOTH the light and dark scopes without forcing surface darkness.
+        #
+        # We deliberately do NOT emit bare :root role tokens (--accent /
+        # --surface-1 / --bg-primary). theme-override.css loads AFTER theme.css,
+        # so a bare :root --surface-1/--bg-primary derived from a possibly-dark
+        # dk2 would override the light default and force the deck dark — the very
+        # FINAL-GATE defect this avoids. The brand inputs alone re-theme the deck.
         for name, value in self.colors.items():
             lines.append(f"  --pptx-{name}: {value};")
-
-        # Also set role tokens directly for any consumer that reads them without
-        # the brand indirection. --accent mirrors accent1; surfaces mirror dk2/lt2.
-        lines.append("")
-        lines.append("  /* Role tokens derived from the brand palette */")
-        accent1 = self.colors.get('accent1')
-        if accent1:
-            lines.append(f"  --accent: {accent1};")
-            r, g, b = hex_to_rgb(accent1)
-            lines.append(f"  --accent-subtle: rgba({r}, {g}, {b}, 0.18);")
-            lines.append(f"  --accent-glow: rgba({r}, {g}, {b}, 0.3);")
-
-        # Use dk2 for the dark surface only when it is genuinely dark.
-        dk2 = self.colors.get('dk2', '')
-        if dk2:
-            r, g, b = hex_to_rgb(dk2)
-            luminance = rgb_to_luminance(r, g, b)
-            if luminance < 0.2:
-                lines.append(f"  --surface-1: {dk2};")
-                lines.append(f"  --bg-primary: {dk2};")
-            else:
-                lines.append("  /* dk2 too light for a dark surface, keeping default */")
 
         lines.append("}")
 

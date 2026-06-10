@@ -10,7 +10,14 @@
    so .theme-dark overrides cleanly. Dark reproduces the
    historical look so existing decks don't regress.
    ============================================================ */
-:where(html), .theme-light {
+/* Light is the no-class default. We use `:root, .theme-light` — specificity
+   (0,1,0) — so it WINS the cascade against design-tokens.css's own `:root`
+   placeholders (also (0,1,0)) by virtue of LATER source order (theme.css
+   @imports design-tokens.css at the top). A zero-specificity :where(html)
+   here would LOSE to those :root placeholders and the deck would not be light.
+   The legacy base vars (--bg-primary/--text-primary/etc.) are mapped onto the
+   semantic roles below so the base chrome follows the active theme. */
+:root, .theme-light {
   /* Surfaces route through brand tokens (--pptx-lt1/lt2) so an extracted
      PPTX/brand theme can drive them; theme defaults are the var() fallbacks. */
   --surface-1:var(--pptx-lt1, #ffffff); --surface-2:#f6f7f9; --surface-3:var(--pptx-lt2, #eceff3);
@@ -22,6 +29,17 @@
   --success:#0e9f6e; --success-subtle:rgba(14,159,110,.12); --success-on:#fff;
   --warning:#b45309; --warning-subtle:rgba(180,83,9,.12); --warning-on:#fff;
   --danger:#dc2626; --danger-subtle:rgba(220,38,38,.12); --danger-on:#fff;
+
+  /* Legacy base vars mapped onto the LIGHT roles (base chrome follows theme). */
+  --bg-primary:   var(--surface-1);
+  --bg-secondary: var(--surface-2);
+  --bg-tertiary:  var(--surface-3);
+  --bg-card:      var(--surface-2);
+  --surface:      var(--surface-3);
+  --border:       #e2e5ea;
+  --text-primary:   var(--on-surface);
+  --text-secondary: var(--on-surface-muted);
+  --text-muted:     var(--on-surface-muted);
 }
 .theme-dark { --surface-1:var(--pptx-dk2, #0f1117); --surface-2:#1a1d2e; --surface-3:#232740;
   --on-surface:var(--pptx-lt1, #e8eaf0); --on-surface-muted:#9ba1b8;
@@ -30,27 +48,30 @@
   --success:#00b894; --success-subtle:rgba(0,184,148,.15); --success-on:#0f1117;
   --warning:#fdcb6e; --warning-subtle:rgba(253,203,110,.15); --warning-on:#0f1117;
   --danger:#e17055; --danger-subtle:rgba(225,112,85,.15); --danger-on:#0f1117;
+
+  /* Legacy base vars — ORIGINAL dark values so today's dark look is exact. */
+  --bg-primary:   #0f1117;
+  --bg-secondary: #1a1d2e;
+  --bg-tertiary:  #232740;
+  --bg-card:      #1e2235;
+  --surface:      #282d45;
+  --border:       #2d3250;
+  --text-primary:   #e8eaf0;
+  --text-secondary: #9ba1b8;
+  --text-muted:     #6b7194;
 }
 
 /* --- Reset & Base --- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* Palette */
-  --bg-primary:    #0f1117;
-  --bg-secondary:  #1a1d2e;
-  --bg-tertiary:   #232740;
-  --bg-card:       #1e2235;
-  --surface:       #282d45;
-  --border:        #2d3250;
+  /* Palette — base chrome vars (--bg-*/--surface/--border/--text-*) are now
+     theme-scoped in `:root, .theme-light` and `.theme-dark` above so they
+     follow the active theme. Only theme-agnostic helpers remain here. */
   --border-focus:  #5b6abf;
-
-  --text-primary:  #e8eaf0;
-  --text-secondary:#9ba1b8;
-  --text-muted:    #6b7194;
   --text-accent:   #7b8cff;
 
-  /* --accent is theme-scoped (see :where(html)/.theme-dark above) */
+  /* --accent is theme-scoped (see :root,.theme-light / .theme-dark above) */
   --accent-light:  var(--accent);
   --accent-glow:   var(--accent-subtle);
 
@@ -148,18 +169,18 @@ body {
 
 /* --- Typography --- */
 .slide h1 {
-  font-size: 2.4rem; font-weight: 700;
+  font-size: var(--text-3xl); font-weight: var(--weight-bold);
   color: var(--text-primary);
   margin-top: 0; margin-bottom: var(--space-1);
-  line-height: 1.2;
+  line-height: var(--leading-tight);
 }
 .slide h2 {
-  font-size: 1.8rem; font-weight: 600;
+  font-size: var(--text-2xl); font-weight: var(--weight-semibold);
   color: var(--text-primary);
   margin-top: var(--space-3); margin-bottom: var(--space-2);
 }
 .slide h3 {
-  font-size: 1.3rem; font-weight: 600;
+  font-size: var(--text-lg); font-weight: var(--weight-semibold);
   color: var(--text-accent);
   margin-top: var(--space-3); margin-bottom: var(--space-1);
 }
@@ -521,10 +542,8 @@ body {
   border-left: 4px solid;
   font-size: .95rem;
 }
-.callout-info    { border-color: var(--blue);   background: var(--blue-bg); }
-.callout-warning { border-color: var(--yellow); background: var(--yellow-bg); }
-.callout-danger  { border-color: var(--red);    background: var(--red-bg); }
-.callout-success { border-color: var(--green);  background: var(--green-bg); }
+/* .callout-* role variants are defined AFTER the .callout primitive block
+   (token-backed primitives section) so they win source order; see below. */
 
 /* --- Timeline --- */
 .timeline {
@@ -1835,6 +1854,14 @@ body.sidebar-visible .slide-deck {
   padding: var(--space-4);
   box-shadow: var(--shadow-1);
 }
+
+/* Callout role variants — bound to semantic role tokens and placed AFTER the
+   .callout primitive so they override its generic background/border by source
+   order. Specificity raised to (0,2,0) via .callout.callout-* for safety. */
+.callout.callout-info    { border-color: var(--info);    background: var(--info-subtle); }
+.callout.callout-success { border-color: var(--success); background: var(--success-subtle); }
+.callout.callout-warning { border-color: var(--warning); background: var(--warning-subtle); }
+.callout.callout-danger  { border-color: var(--danger);  background: var(--danger-subtle); }
 
 /* Tab set */
 .tab-set {
