@@ -7,8 +7,9 @@
 
 | 스펙 | 패턴 | 시연 내용 |
 |------|------|-----------|
-| `multi-az-3tier.yaml` | Multi-AZ 웹 3-Tier (CloudFront → ALB → ECS → RDS) | 미러된 2-AZ 컬럼, 퍼블릭/프라이빗 서브넷, cross-AZ 흐름 |
-| `eks-multi-az.yaml` | EKS Multi-AZ 클러스터 | 서브넷당 다중 서비스 행(EKS Node + Worker), Aurora 데이터 티어 |
+| `multi-az-3tier.yaml` | Multi-AZ 웹 3-Tier (CloudFront → ALB → ECS → RDS) | `vpc` 엔진: 미러된 2-AZ 컬럼, 퍼블릭/프라이빗 서브넷, cross-AZ 흐름 |
+| `eks-multi-az.yaml` | EKS Multi-AZ 클러스터 | `vpc` 엔진: 서브넷당 다중 서비스 행(EKS Node + Worker), Aurora 데이터 티어 |
+| `serverless-api.yaml` | 서버리스 REST API (API GW → Lambda → DynamoDB/S3 + EventBridge) | `stages` 엔진: 좌→우 스테이지 컬럼, VPC 없음, 동기 + 비동기 흐름 |
 
 ## 재생성 / 검증
 
@@ -21,6 +22,11 @@ xvfb-run -a drawio -x -f png -s 2 -o /tmp/out.png /tmp/out.drawio
 ```
 
 ## 스펙 형식 (좌표 없음)
+
+Region의 형태가 레이아웃 엔진을 선택합니다: **`vpc`**(Multi-AZ / 티어) 또는 **`stages`**
+(서버리스 / 파이프라인). `external`, `edge`, `title`, `flows`는 공통입니다.
+
+### `vpc` 엔진 — Multi-AZ / 티어형
 
 ```yaml
 title: "..."
@@ -37,7 +43,20 @@ flows: [{from, to, label, kind: sync|async|highlight}]
 ```
 
 서비스 id는 AZ별로 인스턴스화됩니다: `alb` → `alb_0`(AZ-0), `alb_1`(AZ-1). bare id를 쓴
-flow는 AZ-0 인스턴스에 연결됩니다. 아이콘 short-name은 `layout_aws.py`(`ICONS`)에 있습니다.
+flow는 AZ-0 인스턴스에 연결됩니다.
+
+### `stages` 엔진 — 서버리스 / 파이프라인
+
+```yaml
+region:
+  label: "AWS Region (...)"
+  stages:                              # 좌→우 컬럼, VPC/서브넷 없음
+    - {name: "Compute", services: [{id: fn, icon: lambda, label: "OrderFn"}, ...]}
+    - {name: "Data",    services: [{id: ddb, icon: dynamodb, label: "DynamoDB"}, ...]}
+flows: [{from: client, to: fn}, {from: fn, to: ddb}]   # id를 직접 사용 (AZ 접미사 없음)
+```
+
+아이콘 short-name은 `layout_aws.py`(`ICONS`)에 있습니다.
 
 > 손으로 좌표를 찍는 XML이나 범용 자동배치 엔진보다 나은 이유: `../SKILL.md` 상단과
 > bake-off 보고서 참조 (drawio가 충실도 1위; ELK/Graphviz는 AWS Multi-AZ 대칭을 깨뜨림;

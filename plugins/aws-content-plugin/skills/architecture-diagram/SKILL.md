@@ -14,7 +14,7 @@ AWS 아키텍처 다이어그램을 생성하는 스킬. **세 가지 모드**�
 
 | 모드 | 방식 | 장점 | 사용 시점 |
 |------|------|------|----------|
-| **스펙 생성기 (권장)** | `scripts/layout_aws.py` 로 YAML 스펙 → .drawio | **좌표 자동계산** · Multi-AZ 미러 대칭 보장 · 항상 게이트 통과 | VPC/Multi-AZ/티어 패턴 (가장 흔함) |
+| **스펙 생성기 (권장)** | `scripts/layout_aws.py` 로 YAML 스펙 → .drawio | **좌표 자동계산** · Multi-AZ 미러 대칭 보장 · 항상 게이트 통과 | VPC/Multi-AZ/티어 · 서버리스/파이프라인 패턴 (가장 흔함) |
 | **XML 직접 작성** | Write 도구로 .drawio 파일 생성 | 완전한 자유도 | 생성기 패턴에 안 맞는 비정형 구조 |
 | **Draw.io MCP** | MCP로 실시간 편집 | 대화형 수정, 실시간 미리보기 | 선택적 (설정 필요) |
 
@@ -44,10 +44,13 @@ python3 scripts/lint_layout.py output.drawio    # 생성기 출력은 100/100 [g
 xvfb-run -a drawio -x -f png -s 2 -o output.png output.drawio
 ```
 
-- AZ는 자동 **미러**(동일 크기·좌우 대칭). 서비스 id는 AZ별로 `id_0`, `id_1` 로 인스턴스화 → flow가 참조.
+**두 가지 엔진** (Region 형태로 자동 선택):
+- **`vpc`** — Multi-AZ/티어형. AZ는 자동 **미러**(동일 크기·좌우 대칭), 서비스 id는 AZ별 `id_0`/`id_1` 인스턴스화 → flow가 참조.
+- **`stages`** — 서버리스/파이프라인. `region.stages`로 VPC 없이 좌→우 스테이지 컬럼(API→compute→data). id는 그대로 사용.
+
 - 아이콘 레지스트리·색상·간격은 전부 `design-tokens.md` 정본을 따름 (생성기에 내장).
-- 골든 예시: **`examples/`** (`multi-az-3tier`, `eks-multi-az`). 스펙+drawio 쌍 — 복사해서 수정.
-- 비정형 구조(서버리스 메시 등)는 아래 XML 직접 작성 모드를 사용.
+- 골든 예시: **`examples/`** — `multi-az-3tier`·`eks-multi-az`(vpc), `serverless-api`(stages). 스펙+drawio 쌍, 복사해서 수정.
+- 멀티리전·하이브리드(IDC) 등 두 엔진에 안 맞는 비정형 구조만 XML 직접 작성 모드를 사용.
 
 ---
 

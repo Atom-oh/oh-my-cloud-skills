@@ -42,6 +42,22 @@ Service / actor ids are unique handles for flows. Inside a tier, each service is
 instantiated once per AZ; instance id = "<id>_<az-index>". A flow endpoint that names a
 bare base id resolves to the AZ-0 instance.
 
+PATTERN 2 — serverless / stages (no VPC). Replace `region.vpc` with `region.stages`:
+a left-to-right row of labelled groups, each a vertical column of services. For
+serverless / event-driven / pipeline shapes (API -> compute -> data). Service ids are
+NOT AZ-instanced here (they are unique as written), so flows use the ids directly.
+
+    region:
+      label: "AWS Region (us-east-1)"
+      stages:
+        - {name: "Compute", services: [{id: fn, icon: lambda, label: "OrderFn"}]}
+        - {name: "Data",    services: [{id: ddb, icon: dynamodb, label: "DynamoDB"}]}
+    flows:
+      - {from: client, to: fn, label: "invoke"}
+      - {from: fn, to: ddb, label: "put"}
+
+The Region's shape selects the engine: `vpc` -> Multi-AZ/tier; `stages` -> serverless.
+
 Usage:
     python3 layout_aws.py spec.yaml -o out.drawio
     python3 layout_aws.py spec.yaml            # writes <spec>.drawio next to the spec
@@ -190,58 +206,35 @@ def _anchors(src_box, tgt_box):
 
 
 # ---------- layout engine ----------
-def build(spec):
-    cells = []
-    pos = {}  # id -> (abs_x, abs_y, w, h) for flow anchoring
+def col_h(items):
+    """Visual height of a vertical column of icons (icon spans only, label-gapped)."""
+    if not items:
+        return 0
+    return len(items) * ICON + (len(items) - 1) * (ICON_GAP + ICON_LABEL)
 
-    azs = spec["region"]["vpc"].get("azs") or ["AZ"]
-    tiers = spec["region"]["vpc"]["tiers"]
-    n_az = len(azs)
 
-    # --- pass 1: uniform sizing (mirror all AZs) ---
-    # subnet width = widest service row across all tiers; subnet height per tier.
-    def row_w(services):
-        n = max(1, len(services))
-        return n * ICON + (n - 1) * ICON_GAP
+def stage_style():
+    """A serverless 'stage' group — a light neutral box, not a VPC/subnet container."""
+    return ("rounded=1;arcSize=4;whiteSpace=wrap;html=1;container=1;collapsible=0;"
+            "pointerEvents=0;fillColor=#F7F8FA;strokeColor=#B0B7BF;fontColor=#5A6C86;"
+            "verticalAlign=top;align=left;spacingLeft=12;spacingTop=8;fontSize=12;"
+            "fontStyle=1;fontFamily=Amazon Ember;dashed=0;")
 
-    subnet_inner_w = max(row_w(t.get("services", [])) for t in tiers)
-    subnet_w = subnet_inner_w + 2 * PAD
-    tier_h = []
-    for t in tiers:
-        rows = 1  # v1: single row of services per subnet
-        h = LABEL_TOP + rows * ICON + ICON_LABEL + PAD
-        tier_h.append(h)
 
-    az_inner_w = subnet_w
-    az_content_h = sum(tier_h) + (len(tiers) - 1) * GAP
-    az_w = az_inner_w + 2 * PAD
-    az_h = LABEL_TOP + az_content_h + PAD
-
-    vpc_inner_w = n_az * az_w + (n_az - 1) * GAP
-    vpc_w = vpc_inner_w + 2 * PAD
-    vpc_h = LABEL_TOP + az_h + PAD
-
-    region_w = vpc_w + 2 * PAD
-    region_h = LABEL_TOP + vpc_h + PAD
-
+def _scaffold(spec, region_w, region_h, fill_region):
+    """Shared frame for every pattern: places the left external column, the edge-actor
+    column, the Region box (vertically centred), a title, then lets the pattern fill the
+    Region interior, and finally wires the flows. Patterns only differ in `fill_region`."""
+    cells, pos, parent = [], {}, {}
     external = spec.get("external", [])
     edge_actors = spec.get("edge", [])
-
-    def col_h(items):
-        if not items:
-            return 0
-        return len(items) * ICON + (len(items) - 1) * (ICON_GAP + ICON_LABEL)
-
-    left_h = max(col_h(external), col_h(edge_actors), region_h)
-    content_h = max(region_h, left_h)
-
+    content_h = max(region_h, col_h(external), col_h(edge_actors))
     has_title = bool(spec.get("title"))
     title_h = 40 if has_title else 0
 
-    # --- pass 2: absolute placement ---
-    x0 = MARGIN                                   # external column
-    x1 = x0 + (ICON if external else 0) + (FLOW_GAP if external else 0)   # edge column
-    x2 = x1 + (ICON if edge_actors else 0) + (FLOW_GAP if edge_actors else 0)  # region
+    x0 = MARGIN
+    x1 = x0 + ((ICON + FLOW_GAP) if external else 0)
+    x2 = x1 + ((ICON + FLOW_GAP) if edge_actors else 0)
     top = MARGIN + title_h
 
     def place_col(items, cx):
@@ -251,67 +244,21 @@ def build(spec):
         for k, it in enumerate(items):
             ax, ay = snap(cx), snap(cy + k * step)
             cells.append(Cell(it["id"], esc(it.get("label", it["id"])),
-                              icon_style(it.get("icon", "ec2")),
-                              ax, ay, ICON, ICON))
+                              icon_style(it.get("icon", "ec2")), ax, ay, ICON, ICON))
             pos[it["id"]] = (ax, ay, ICON, ICON)
+            parent[it["id"]] = "1"
 
     place_col(external, x0)
     place_col(edge_actors, x1)
 
-    # region container (absolute, parent=1)
     rx, ry = snap(x2), snap(top + (content_h - region_h) / 2)
     cells.append(Cell("region", esc(spec["region"].get("label", "AWS Region")),
                       container_style("group_region", C["region_stroke"], C["region_font"], dashed=1),
                       rx, ry, region_w, region_h))
-    # vpc (child of region)
-    vx, vy = rx + PAD, ry + LABEL_TOP
-    cells.append(Cell("vpc", esc(spec["region"]["vpc"].get("label", "VPC")),
-                      container_style("group_vpc", C["vpc_stroke"], C["vpc_font"]),
-                      snap(vx - rx), snap(vy - ry), vpc_w, vpc_h, ))
-    # mark parents via a parallel list
-    parent = {"region": "1", "vpc": "region"}
+    parent["region"] = "1"
 
-    for j, az_name in enumerate(azs):
-        ax = vx + PAD + j * (az_w + GAP)
-        ay = vy + LABEL_TOP
-        az_id = f"az_{j}"
-        cells.append(Cell(az_id, esc(az_name), az_style(),
-                          snap(ax - vx), snap(ay - vy), az_w, az_h))
-        parent[az_id] = "vpc"
-        # tiers stacked
-        ty = ay + LABEL_TOP
-        for ti, t in enumerate(tiers):
-            kind = t.get("kind", "private")
-            if kind == "public":
-                gi, st, fi, fo = "group_public_subnet", C["pub_stroke"], C["pub_fill"], C["pub_font"]
-            else:
-                gi, st, fi, fo = "group_private_subnet", C["prv_stroke"], C["prv_fill"], C["prv_font"]
-            sx = ax + PAD
-            sub_id = f"subnet_{j}_{ti}"
-            cells.append(Cell(sub_id, esc(t.get("name", "Subnet")),
-                              container_style(gi, st, fo, fill=fi),
-                              snap(sx - ax), snap(ty - ay), subnet_w, tier_h[ti]))
-            parent[sub_id] = az_id
-            # services row, centered
-            services = t.get("services", [])
-            rw = row_w(services)
-            startx = sx + (subnet_w - rw) / 2
-            icy = ty + LABEL_TOP
-            for si, svc in enumerate(services):
-                icx = startx + si * (ICON + ICON_GAP)
-                inst_id = f"{svc['id']}_{j}"
-                cells.append(Cell(inst_id, esc(svc.get("label", svc["id"])),
-                                  icon_style(svc.get("icon", "ec2")),
-                                  snap(icx - sx), snap(icy - ty), ICON, ICON))
-                parent[inst_id] = sub_id
-                pos[inst_id] = (snap(icx), snap(icy), ICON, ICON)
-                if j == 0:
-                    pos[svc["id"]] = pos[inst_id]   # bare id -> AZ-0 instance
-            ty += tier_h[ti] + GAP
+    fill_region(rx, ry, cells, parent, pos)  # pattern-specific interior
 
-    # title
-    canvas_w = x2 + region_w + MARGIN
-    canvas_h = top + content_h + MARGIN
     if has_title:
         cells.append(Cell("title", esc(spec["title"]),
                           (f"text;html=1;strokeColor=none;fillColor=none;align=left;"
@@ -320,7 +267,6 @@ def build(spec):
                           MARGIN, MARGIN, 600, 30))
         parent["title"] = "1"
 
-    # flows
     def resolve(ref):
         return ref if ref in pos else (f"{ref}_0" if f"{ref}_0" in pos else ref)
 
@@ -332,7 +278,110 @@ def build(spec):
                           vertex=False, edge=True, src=s, tgt=tg))
         parent[f"e{i}"] = "1"
 
+    canvas_w = x2 + region_w + MARGIN
+    canvas_h = top + content_h + MARGIN
     return cells, parent, snap(canvas_w), snap(canvas_h)
+
+
+def _build_vpc(spec):
+    """Pattern: Region > VPC > mirrored AZ columns > top-to-bottom tier subnets > icons."""
+    azs = spec["region"]["vpc"].get("azs") or ["AZ"]
+    tiers = spec["region"]["vpc"]["tiers"]
+    n_az = len(azs)
+
+    def row_w(services):
+        n = max(1, len(services))
+        return n * ICON + (n - 1) * ICON_GAP
+
+    subnet_w = max(row_w(t.get("services", [])) for t in tiers) + 2 * PAD
+    tier_h = [LABEL_TOP + ICON + ICON_LABEL + PAD for _ in tiers]
+    az_w = subnet_w + 2 * PAD
+    az_h = LABEL_TOP + sum(tier_h) + (len(tiers) - 1) * GAP + PAD
+    vpc_w = n_az * az_w + (n_az - 1) * GAP + 2 * PAD
+    vpc_h = LABEL_TOP + az_h + PAD
+    region_w = vpc_w + 2 * PAD
+    region_h = LABEL_TOP + vpc_h + PAD
+
+    def fill(rx, ry, cells, parent, pos):
+        vx, vy = rx + PAD, ry + LABEL_TOP
+        cells.append(Cell("vpc", esc(spec["region"]["vpc"].get("label", "VPC")),
+                          container_style("group_vpc", C["vpc_stroke"], C["vpc_font"]),
+                          snap(vx - rx), snap(vy - ry), vpc_w, vpc_h))
+        parent["vpc"] = "region"
+        for j, az_name in enumerate(azs):
+            ax, ay = vx + PAD + j * (az_w + GAP), vy + LABEL_TOP
+            az_id = f"az_{j}"
+            cells.append(Cell(az_id, esc(az_name), az_style(),
+                              snap(ax - vx), snap(ay - vy), az_w, az_h))
+            parent[az_id] = "vpc"
+            ty = ay + LABEL_TOP
+            for ti, t in enumerate(tiers):
+                if t.get("kind", "private") == "public":
+                    gi, st, fi, fo = "group_public_subnet", C["pub_stroke"], C["pub_fill"], C["pub_font"]
+                else:
+                    gi, st, fi, fo = "group_private_subnet", C["prv_stroke"], C["prv_fill"], C["prv_font"]
+                sx = ax + PAD
+                sub_id = f"subnet_{j}_{ti}"
+                cells.append(Cell(sub_id, esc(t.get("name", "Subnet")),
+                                  container_style(gi, st, fo, fill=fi),
+                                  snap(sx - ax), snap(ty - ay), subnet_w, tier_h[ti]))
+                parent[sub_id] = az_id
+                services = t.get("services", [])
+                startx = sx + (subnet_w - row_w(services)) / 2
+                icy = ty + LABEL_TOP
+                for si, svc in enumerate(services):
+                    icx = startx + si * (ICON + ICON_GAP)
+                    inst_id = f"{svc['id']}_{j}"
+                    cells.append(Cell(inst_id, esc(svc.get("label", svc["id"])),
+                                      icon_style(svc.get("icon", "ec2")),
+                                      snap(icx - sx), snap(icy - ty), ICON, ICON))
+                    parent[inst_id] = sub_id
+                    pos[inst_id] = (snap(icx), snap(icy), ICON, ICON)
+                    if j == 0:
+                        pos[svc["id"]] = pos[inst_id]   # bare id -> AZ-0 instance
+                ty += tier_h[ti] + GAP
+
+    return _scaffold(spec, region_w, region_h, fill)
+
+
+def _build_stages(spec):
+    """Pattern: Region > left-to-right STAGES (no VPC/subnets), each a vertical column of
+    services. For serverless / event-driven / pipeline shapes (API → compute → data)."""
+    stages = spec["region"]["stages"]
+    stage_w = max(ICON + 2 * PAD, 150)
+    stage_h = LABEL_TOP + max(col_h(s.get("services", [])) + ICON_LABEL for s in stages) + PAD
+    region_w = len(stages) * stage_w + (len(stages) - 1) * GAP + 2 * PAD
+    region_h = LABEL_TOP + stage_h + PAD
+
+    def fill(rx, ry, cells, parent, pos):
+        for i, stg in enumerate(stages):
+            stx, sty = rx + PAD + i * (stage_w + GAP), ry + LABEL_TOP
+            sid = f"stage_{i}"
+            cells.append(Cell(sid, esc(stg.get("name", "")), stage_style(),
+                              snap(stx - rx), snap(sty - ry), stage_w, stage_h))
+            parent[sid] = "region"
+            svcs = stg.get("services", [])
+            avail = stage_h - LABEL_TOP - PAD
+            cy = sty + LABEL_TOP + max(0, (avail - (col_h(svcs) + ICON_LABEL)) / 2)
+            step = ICON + ICON_GAP + ICON_LABEL
+            icx = stx + (stage_w - ICON) / 2
+            for k, svc in enumerate(svcs):
+                icy = cy + k * step
+                cells.append(Cell(svc["id"], esc(svc.get("label", svc["id"])),
+                                  icon_style(svc.get("icon", "ec2")),
+                                  snap(icx - stx), snap(icy - sty), ICON, ICON))
+                parent[svc["id"]] = sid
+                pos[svc["id"]] = (snap(icx), snap(icy), ICON, ICON)
+
+    return _scaffold(spec, region_w, region_h, fill)
+
+
+def build(spec):
+    """Dispatch on the Region's shape: `vpc` (Multi-AZ/tier) vs `stages` (serverless)."""
+    region = spec.get("region", {})
+    if "stages" in region:
+        return _build_stages(spec)
+    return _build_vpc(spec)
 
 
 def to_xml(cells, parent, cw, ch, name="Architecture"):
