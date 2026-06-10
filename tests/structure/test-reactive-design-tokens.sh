@@ -23,3 +23,14 @@ done
 assert_grep_match "\-\-space-2:\s*0?\.5rem" "$T" "--space-2 is 0.5rem (8px grid)"
 assert_grep_match "\-\-space-4:\s*1rem" "$T" "--space-4 is 1rem (16px grid)"
 assert_grep_match "\-\-text-base:\s*1rem" "$T" "--text-base is 1rem"
+
+TC="$(cat "$RP/assets/theme.css" 2>/dev/null || true)"
+assert_grep_match "@import\s+url\(['\"]?design-tokens\.css" "$TC" "theme.css imports design-tokens.css"
+assert_contains "$TC" ".theme-dark" "dark theme scope present"
+assert_contains "$TC" ".theme-light" "light theme scope present"
+assert_grep_match ":where\(" "$TC" "light defaults applied at zero specificity (:where)"
+assert_grep_match "\.theme-dark[^}]*--surface-1" "$TC" "dark scope assigns --surface-1"
+for cls in card-grid metric-card tab-set callout comparison flow-group; do
+  assert_grep_match "\.$cls\b" "$TC" "component primitive .$cls defined in theme.css"
+done
+assert_grep_no_match "#00d4ff" "$TC" "theme.css has no legacy cyan literal"

@@ -1,6 +1,32 @@
+@import url('design-tokens.css');
+
 /* ============================================================
-   Reactive Presentation - Dark Theme (16:9)
+   Reactive Presentation - Dual Theme (light default, 16:9)
    ============================================================ */
+
+/* ============================================================
+   Theme Scopes — semantic color-role values per theme.
+   Light is the no-class default at ZERO specificity (:where),
+   so .theme-dark overrides cleanly. Dark reproduces the
+   historical look so existing decks don't regress.
+   ============================================================ */
+:where(html), .theme-light {
+  --surface-1:#ffffff; --surface-2:#f6f7f9; --surface-3:#eceff3;
+  --on-surface:#1a1d2e; --on-surface-muted:#5b6072;
+  --accent:#5b51d8; --accent-subtle:rgba(91,81,216,.12); --accent-on:#ffffff;
+  --info:#2563eb; --info-subtle:rgba(37,99,235,.12); --info-on:#fff;
+  --success:#0e9f6e; --success-subtle:rgba(14,159,110,.12); --success-on:#fff;
+  --warning:#b45309; --warning-subtle:rgba(180,83,9,.12); --warning-on:#fff;
+  --danger:#dc2626; --danger-subtle:rgba(220,38,38,.12); --danger-on:#fff;
+}
+.theme-dark { --surface-1:#0f1117; --surface-2:#1a1d2e; --surface-3:#232740;
+  --on-surface:#e8eaf0; --on-surface-muted:#9ba1b8;
+  --accent:#a29bfe; --accent-subtle:rgba(162,155,254,.18); --accent-on:#0f1117;
+  --info:#74b9ff; --info-subtle:rgba(116,185,255,.15); --info-on:#0f1117;
+  --success:#00b894; --success-subtle:rgba(0,184,148,.15); --success-on:#0f1117;
+  --warning:#fdcb6e; --warning-subtle:rgba(253,203,110,.15); --warning-on:#0f1117;
+  --danger:#e17055; --danger-subtle:rgba(225,112,85,.15); --danger-on:#0f1117;
+}
 
 /* --- Reset & Base --- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -20,9 +46,9 @@
   --text-muted:    #6b7194;
   --text-accent:   #7b8cff;
 
-  --accent:        #6c5ce7;
-  --accent-light:  #a29bfe;
-  --accent-glow:   rgba(108, 92, 231, .3);
+  /* --accent is theme-scoped (see :where(html)/.theme-dark above) */
+  --accent-light:  var(--accent);
+  --accent-glow:   var(--accent-subtle);
 
   --green:  #00b894;
   --green-bg: rgba(0, 184, 148, .15);
@@ -1784,4 +1810,55 @@ body.sidebar-visible .slide-deck {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-in, .animate-slide, .animate-scale, .kpi-card { animation: none !important; }
+}
+
+/* ============================================================
+   Token-backed Component Primitives (theme-agnostic)
+   Consume semantic color roles + spacing/radius/shadow scales
+   so they adapt automatically to .theme-light / .theme-dark.
+   ============================================================ */
+
+/* Responsive card grid */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+
+/* Surface-based content primitives */
+.metric-card,
+.callout,
+.comparison {
+  background: var(--surface-2);
+  color: var(--on-surface);
+  border: 1px solid var(--surface-3);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-1);
+}
+
+/* Tab set */
+.tab-set {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-2);
+}
+.tab-set .tab-btn {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 0;
+  background: var(--surface-2);
+  color: var(--on-surface-muted);
+  cursor: pointer;
+}
+.tab-set .tab-btn.active {
+  background: var(--accent);
+  color: var(--accent-on);
+}
+
+/* Flow group — tokenized */
+.flow-group {
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
 }
