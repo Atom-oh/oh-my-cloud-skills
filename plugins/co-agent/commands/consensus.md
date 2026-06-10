@@ -16,7 +16,7 @@ Argument: `$ARGUMENTS`
 - `plan <doc...>` — P0–P2: detect input(s), load-or-generate the plan, run the plan consensus gate. **(available — Stage A)**
 - `review [diff base]` — standalone multi-model diff review (the consensus gate run on its own). **(available — shipped v1.7.2)**
 - `implement <plan>` — autonomously implement a reviewed plan (P3 TDD loop, multi-model gated). **(available — Stage B)**
-- (default, no sub-mode) — runs the full pipeline; **currently an alias for Stage A (P0–P2)** until Stage B/C land.
+- (default, no sub-mode) — runs the **full pipeline P0→P5** end-to-end: detect inputs → load/generate plan → P2 plan gate → P3 implement → P4 final gate → P5 report. **Resumable** — re-running reads `consensus_state` (phase/task_index) and continues.
 - Flags: `--deep` (use each AI's full model list for the gates), `--trust-plan` (skip the P2 plan gate when the plan was already reviewed upstream). Round/call limits come from `consensus.max_rounds`/`consensus.max_calls` (config) — there is no `--apply`/`--max-rounds` flag.
 
 ## Stage A workflow (`plan <doc>`)
@@ -57,3 +57,15 @@ the review checkpoint. Requires a clean tree; commits locally only (never push/r
       diff; drop `unsupported` findings; if CRITICAL/MAJOR remain, fix (≤ max_rounds) or abort.
    f. **Commit** the single task (explicit paths) and `consensus_state.py task-done . <i>`.
 2. When all tasks are done, set `status done` (the Stop hook then allows stopping). Report.
+
+## Stage C — final gate + report (`P4`, `P5`) and full-pipeline default
+1. **P4 final gate**: capture the cumulative implementation diff, scoped to the plan's files —
+   `python3 "$SK/consensus_state.py" cumulative-diff . --plan <plan> --base <trunk>` — and run the
+   multi-model consensus gate on it (references/consensus-mode.md). Drop `unsupported` findings;
+   if CRITICAL/MAJOR remain, fix (≤ `consensus.max_rounds`) and re-run; require tests green.
+2. **P5 report**: `python3 "$SK/consensus_state.py" set . status done` then
+   `python3 "$SK/consensus_state.py" report .` — emits the run summary (tasks done/aborted, rounds,
+   tests) to stdout and `.claude/co-agent-consensus/report.md` (gitignored). Present it to the user.
+3. **Full pipeline / resume**: the default invocation chains P0→P5. On re-invocation, read
+   `consensus_state.py get . phase` + `get . task_index` and continue from there (don't restart);
+   the Stop hook keeps the loop going until `status` is `done`/`aborted`.
