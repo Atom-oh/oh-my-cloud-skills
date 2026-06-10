@@ -287,6 +287,12 @@ def cmd_cumulative_diff(root, plan_path, base):
     if not files:
         print("❌ plan declares no files — nothing to diff", file=sys.stderr)
         return 2
+    # Validate the base ref resolves — otherwise `git diff` would error and _git()
+    # would swallow it as an empty diff, making the P4 gate falsely "pass" on a
+    # typo'd or unfetched base. Fail loudly instead.
+    if not _git(root, "rev-parse", "--verify", "--quiet", f"{base}^{{commit}}"):
+        print(f"❌ base ref not found: {base} (fetch it or pass a valid --base)", file=sys.stderr)
+        return 2
     diff = _git(root, "diff", f"{base}...HEAD", "--", *files)
     sys.stdout.write(diff + ("\n" if diff and not diff.endswith("\n") else ""))
     return 0
