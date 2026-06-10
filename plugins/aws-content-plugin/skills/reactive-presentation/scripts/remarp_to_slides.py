@@ -4090,32 +4090,11 @@ class RemarpProjectBuilder:
             if key in colors:
                 css_lines.append(f'  {var_name}: {colors[key]};')
 
-        css_lines.append('')
-        css_lines.append('  /* Base theme variable overrides */')
-
-        # 2) Map accent1 → base theme variables
-        accent1 = colors.get('accent1')
-        if accent1:
-            css_lines.append(f'  --accent: {accent1};')
-            # Compute glow color (accent with 30% opacity)
-            hex_val = accent1.lstrip('#')
-            if len(hex_val) == 6:
-                r, g, b = int(hex_val[0:2], 16), int(hex_val[2:4], 16), int(hex_val[4:6], 16)
-                css_lines.append(f'  --accent-glow: rgba({r}, {g}, {b}, 0.3);')
-
-        # 3) Map remaining accents to theme palette
-        base_map = {
-            'accent2': '--accent-light',
-            'accent3': '--green',
-            'accent4': '--red',
-            'accent5': '--orange',
-            'accent6': '--yellow',
-            'hlink': '--cyan',
-        }
-        for pptx_key, css_var in base_map.items():
-            if pptx_key in colors:
-                css_lines.append(f'  {css_var}: {colors[pptx_key]};')
-
+        # NOTE: we deliberately emit ONLY the --pptx-* brand-input tokens here.
+        # theme.css consumes them per-theme via `var(--pptx-accent1, <default>)`, so the
+        # brand color flows into BOTH .theme-light and .theme-dark without writing bare
+        # `:root` role tokens (--accent/--green/...) — those would override the theme
+        # scopes by source order and could force a light deck dark.
         css_lines.append('}')
 
         # Check if extract_pptx_theme.py already wrote a theme-override.css
@@ -4166,7 +4145,7 @@ class RemarpProjectBuilder:
         dest.mkdir(parents=True, exist_ok=True)
 
         # Copy core framework files
-        for fname in ['theme.css', 'slide-framework.js', 'animation-utils.js',
+        for fname in ['design-tokens.css', 'theme.css', 'slide-framework.js', 'animation-utils.js',
                       'quiz-component.js', 'presenter-view.js', 'export-utils.js']:
             src = assets_dir / fname
             if src.exists():

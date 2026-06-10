@@ -65,7 +65,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* Palette — base chrome vars (--bg-*/--surface/--border/--text-*) are now
+  /* Palette — base chrome vars (bg, surface, border, text) are now
      theme-scoped in `:root, .theme-light` and `.theme-dark` above so they
      follow the active theme. Only theme-agnostic helpers remain here. */
   --border-focus:  #5b6abf;

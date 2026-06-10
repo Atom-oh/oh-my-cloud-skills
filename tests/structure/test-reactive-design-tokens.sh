@@ -28,7 +28,7 @@ TC="$(cat "$RP/assets/theme.css" 2>/dev/null || true)"
 assert_grep_match "@import\s+url\(['\"]?design-tokens\.css" "$TC" "theme.css imports design-tokens.css"
 assert_contains "$TC" ".theme-dark" "dark theme scope present"
 assert_contains "$TC" ".theme-light" "light theme scope present"
-assert_grep_match ":where\(" "$TC" "light defaults applied at zero specificity (:where)"
+assert_grep_match ":root, ?\.theme-light" "$TC" "light defaults applied via :root, .theme-light (beats design-tokens :root by source order)"
 assert_grep_match "\.theme-dark[^}]*--surface-1" "$TC" "dark scope assigns --surface-1"
 for cls in card-grid metric-card tab-set callout comparison flow-group; do
   assert_grep_match "\.$cls\b" "$TC" "component primitive .$cls defined in theme.css"
@@ -56,3 +56,11 @@ assert_grep_match "\.theme-dark[^}]*--bg-primary" "$TC4FLAT" "dark scope defines
 assert_grep_match "(:root, ?\.theme-light)[^}]*--bg-primary" "$TC4FLAT" "light scope defines --bg-primary"
 # callout role variant bound to semantic role after primitive
 assert_grep_match "\.callout\.callout-info[^}]*var\(--info" "$TC4FLAT" "callout-info bound to --info role token"
+
+# --- P4 regression: the new design-tokens.css MUST ship with generated/exported decks ---
+# (theme.css @imports it; if it isn't copied, every --space/--text/--radius token breaks)
+REMARP="$(cat "$RP/scripts/remarp_to_slides.py" 2>/dev/null || true)"
+assert_grep_match "_copy_framework_assets" "$REMARP" "framework asset-copy routine exists"
+assert_grep_match "['\"]design-tokens\.css['\"]" "$REMARP" "remarp copies design-tokens.css to common/"
+EXPORTJS="$(cat "$RP/assets/export-utils.js" 2>/dev/null || true)"
+assert_grep_match "design-tokens\.css" "$EXPORTJS" "export-utils ZIP bundles design-tokens.css"

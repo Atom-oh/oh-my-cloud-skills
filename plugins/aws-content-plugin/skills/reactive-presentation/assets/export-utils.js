@@ -46,7 +46,7 @@ const ExportUtils = {
   },
 
   COMMON_FILES: [
-    'theme.css', 'theme-override.css', 'slide-framework.js',
+    'design-tokens.css', 'theme.css', 'theme-override.css', 'slide-framework.js',
     'presenter-view.js', 'animation-utils.js', 'quiz-component.js',
     'export-utils.js'
   ],
