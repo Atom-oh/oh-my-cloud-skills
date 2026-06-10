@@ -190,6 +190,13 @@ file set) → security-mandate veto → test gate (`tests/run-all.sh` must pass)
 gate → one commit → `consensus_state.py task-done`. Session-gated hooks (Stop/PostToolUse)
 keep the loop going; PostToolUse also catches stuck states. Local commits only.
 
+**Final gate + report (Stage C, P4/P5)**: when all tasks are done, run the consensus gate once
+more on the **cumulative** diff (`consensus_state.py cumulative-diff . --plan <plan> --base <trunk>`
+→ gate) until clean + tests green, then `consensus_state.py set . status done` and
+`consensus_state.py report .` (writes `.claude/co-agent-consensus/report.md`, gitignored).
+The **default** `/co-agent:consensus <doc>` runs the full P0→P5 pipeline and is **resumable** —
+re-running reads `phase`/`task_index` from state and continues.
+
 ## Chair principle (non-negotiable)
 
 - External AIs **advise**; **Claude decides and writes the final artifact**.

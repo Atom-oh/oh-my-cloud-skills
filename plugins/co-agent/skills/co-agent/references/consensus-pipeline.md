@@ -2,8 +2,7 @@
 
 Autonomous **doc → plan → implementation** with cross-family multi-model consensus gates.
 Borrows consensus-build's pipeline; the gates use co-agent's panel (Kiro models + Codex +
-Gemini). **Stage A (this version) implements P0–P2 only** — it ends with a reviewed plan and
-does NOT edit code. P3 implement loop = Stage B; P4 final gate + P5 report = Stage C.
+Gemini). **All phases P0–P5 are implemented (Stage A: P0–P2, Stage B: P3, Stage C: P4–P5).**
 
 ## Entry — conditional on input documents
 
@@ -37,6 +36,16 @@ Detect with `scripts/consensus_state.py detect <root> <paths>` → `adr|spec|pla
   per task → `consensus_state.py task-done`. Session-gated hooks: **Stop** keeps the loop
   going until all tasks are done/aborted, **PostToolUse** records test results and flags
   stuck loops (consecutive failing test runs). Local commits only — never push/reset/rebase.
+- **P4 (Stage C) — final cumulative-diff gate**: run the multi-model gate on
+  `consensus_state.py cumulative-diff . --plan <plan> --base <trunk>` (the whole implementation
+  diff, scoped to the plan's file set) → fix ≤`consensus.max_rounds` until no CRITICAL/MAJOR AND
+  tests green.
+- **P5 (Stage C) — report**: `consensus_state.py report .` renders the run summary (tasks
+  done/aborted, per-task rounds, status, tests) to stdout + `.claude/co-agent-consensus/report.md`
+  (gitignored, session-local — no committed cross-run learnings).
+
+**Resume**: the pipeline is resumable — `consensus_state` persists `phase`/`task_index`/`tasks`,
+so a re-invocation continues from the last completed step rather than restarting.
 
 ## Safety (applies fully in Stage B/C; relevant flags here)
 - Local only; clean-tree required; session_id-gated; consent + cost matrix before fan-out;

@@ -226,6 +226,78 @@ def cmd_task(root, action, idx):
     return 0
 
 
+def cmd_report(root):
+    """Render a final markdown report from session state → stdout, and write it to
+    <root>/.claude/co-agent-consensus/report.md (gitignored, session-local)."""
+    s = read_state(root)
+    if s is None:
+        print("no active consensus session (run init)", file=sys.stderr)
+        return 2
+    tasks = s.get("tasks", {})
+    if not isinstance(tasks, dict):
+        tasks = {}
+    done = [i for i, t in tasks.items() if isinstance(t, dict) and t.get("status") == "done"]
+    aborted = [i for i, t in tasks.items() if isinstance(t, dict) and t.get("status") == "aborted"]
+    lines = []
+    lines.append(f"# Consensus run report — session `{s.get('session_id', '')}`")
+    lines.append("")
+    lines.append(f"- **status**: {s.get('status', '?')}")
+    lines.append(f"- **phase**: {s.get('phase', '?')}")
+    lines.append(f"- **branch**: {s.get('branch') or '?'}  (base {s.get('base') or '?'})")
+    lines.append(f"- **tasks**: {len(done)} done, {len(aborted)} aborted, {len(tasks)} total")
+    lines.append(f"- **tests**: {'PASS' if s.get('last_test_pass') else 'unknown/fail'}")
+    docs = s.get("docs", [])
+    if docs:
+        lines.append(f"- **inputs**: " + ", ".join(
+            f"{d.get('kind')}:{os.path.basename(d.get('path', ''))}" for d in docs if isinstance(d, dict)))
+    lines.append("")
+    lines.append("| task | status | rounds |")
+    lines.append("|------|--------|--------|")
+    for i in sorted(tasks, key=lambda k: int(k) if str(k).isdigit() else 0):
+        t = tasks[i] if isinstance(tasks[i], dict) else {}
+        lines.append(f"| {i} | {t.get('status', '?')} | {t.get('rounds', 0)} |")
+    report = "\n".join(lines) + "\n"
+
+    out_path = os.path.join(root, ".claude", "co-agent-consensus", "report.md")
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(report)
+    sys.stdout.write(report)
+    return 0
+
+
+def cmd_cumulative_diff(root, plan_path, base):
+    """Print `git diff <base>...HEAD` limited to the plan's declared file set (P4 input)."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    import parse_plan
+    try:
+        with open(plan_path, encoding="utf-8") as f:
+            tasks = parse_plan.parse(f.read())
+    except (OSError, UnicodeDecodeError) as e:
+        print(f"❌ cannot read plan {plan_path}: {e}", file=sys.stderr)
+        return 2
+    files = []
+    for t in tasks:
+        for fp in t.get("files", []):
+            n = fp.strip().lstrip("./")
+            if n and n not in files:
+                files.append(n)
+    if not files:
+        print("❌ plan declares no files — nothing to diff", file=sys.stderr)
+        return 2
+    # Validate the base ref resolves — otherwise `git diff` would error and _git()
+    # would swallow it as an empty diff, making the P4 gate falsely "pass" on a
+    # typo'd or unfetched base. Fail loudly instead.
+    if not _git(root, "rev-parse", "--verify", "--quiet", f"{base}^{{commit}}"):
+        print(f"❌ base ref not found: {base} (fetch it or pass a valid --base)", file=sys.stderr)
+        return 2
+    diff = _git(root, "diff", f"{base}...HEAD", "--", *files)
+    sys.stdout.write(diff + ("\n" if diff and not diff.endswith("\n") else ""))
+    return 0
+
+
 def main():
     a = sys.argv[1:]
     if not a:
@@ -236,6 +308,9 @@ def main():
 
     def opt(flag):
         return rest[rest.index(flag) + 1] if flag in rest and rest.index(flag) + 1 < len(rest) else None
+
+    def opt_after(seq, flag):
+        return seq[seq.index(flag) + 1] if flag in seq and seq.index(flag) + 1 < len(seq) else None
 
     if cmd == "init":
         docs = [d for d in (opt("--docs") or "").split(",") if d]
@@ -255,6 +330,12 @@ def main():
         return cmd_autonomous(root, rest[1]) if len(rest) >= 2 else 2
     if cmd in ("task-start", "task-done", "task-abort", "task-round"):
         return cmd_task(root, cmd, rest[1]) if len(rest) >= 2 else 2
+    if cmd == "report":
+        return cmd_report(root)
+    if cmd == "cumulative-diff":
+        plan = opt_after(rest, "--plan")
+        base = opt_after(rest, "--base") or "main"
+        return cmd_cumulative_diff(root, plan, base) if plan else 2
     print(__doc__)
     return 2
 
