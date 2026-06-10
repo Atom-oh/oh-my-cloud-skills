@@ -64,3 +64,8 @@ assert_contains "$SKL" "Forbidden" "SKILL.md has a consolidated Forbidden AI-tel
 assert_contains "$SKL" "AI-slide tells" "Forbidden section titled for AI-slide tells"
 assert_contains "$SKL" "RAW_HEX" "Forbidden section references the RAW_HEX lint rule"
 assert_contains "$SKL" "NOTE_STRUCTURE" "Forbidden section references the NOTE_STRUCTURE lint rule"
+
+# --- content-quality: source-omission cross-check ---
+CRA="$(cat plugins/aws-content-plugin/agents/content-review-agent.md 2>/dev/null || true)"
+assert_contains "$CRA" "omission" "content-review-agent has a source-omission cross-check"
+assert_contains "$CRA" "diagram" "omission check lists architecture diagrams as a common gap"
