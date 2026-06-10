@@ -1,0 +1,27 @@
+title: "Multi-Region Active/DR"
+external:
+  - {id: users, icon: users, label: "Users"}
+edge:
+  - {id: r53, icon: route53, label: "Route 53"}
+regions:
+  - label: "Primary (us-east-1)"
+    vpc:
+      label: "VPC 10.0.0.0/16"
+      azs: ["AZ-1a"]
+      tiers:
+        - {name: "Public Subnet", kind: public, services: [{id: alb, icon: alb, label: "ALB"}]}
+        - {name: "Data Subnet", kind: private, services: [{id: rds, icon: aurora, label: "Aurora Primary"}]}
+  - label: "DR (us-west-2)"
+    vpc:
+      label: "VPC 10.1.0.0/16"
+      azs: ["AZ-2a"]
+      tiers:
+        - {name: "Public Subnet", kind: public, services: [{id: alb, icon: alb, label: "ALB"}]}
+        - {name: "Data Subnet", kind: private, services: [{id: rds, icon: aurora, label: "Aurora Replica"}]}
+flows:
+  - {from: users, to: r53, label: "DNS"}
+  - {from: r53, to: r0_alb, label: "active"}
+  - {from: r53, to: r1_alb, label: "failover", kind: async}
+  - {from: r0_alb, to: r0_rds, label: "rw"}
+  - {from: r1_alb, to: r1_rds, label: "ro"}
+  - {from: r0_rds, to: r1_rds, label: "replicate", kind: async}

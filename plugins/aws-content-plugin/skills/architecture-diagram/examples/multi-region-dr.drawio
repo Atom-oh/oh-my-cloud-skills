@@ -1,0 +1,79 @@
+<mxfile host="app.diagrams.net" agent="layout_aws.py">
+  <diagram id="arch" name="Multi-Region Active/DR">
+    <mxGraphModel dx="990" dy="650" grid="1" gridSize="10" guides="1" page="1" pageWidth="990" pageHeight="650" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="users" value="Users" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#232F3E;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontFamily=Amazon Ember;shape=mxgraph.aws4.users;" vertex="1" parent="1">
+          <mxGeometry x="40" y="310" width="78" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="r53" value="Route 53" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=#945DF2;gradientDirection=north;fillColor=#5A30B5;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontFamily=Amazon Ember;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.route_53;" vertex="1" parent="1">
+          <mxGeometry x="190" y="310" width="78" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="region_0" value="Primary (us-east-1)" style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;grStroke=0;strokeColor=#00A4A6;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#147EBA;fontFamily=Amazon Ember;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="340" y="80" width="270" height="534" as="geometry" />
+        </mxCell>
+        <mxCell id="r0_vpc" value="VPC 10.0.0.0/16" style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_vpc;grStroke=0;strokeColor=#879196;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#879196;fontFamily=Amazon Ember;dashed=0;" vertex="1" parent="region_0">
+          <mxGeometry x="20" y="30" width="222" height="476" as="geometry" />
+        </mxCell>
+        <mxCell id="r0_az_0" value="AZ-1a" style="fillColor=none;strokeColor=#00A4A6;dashed=1;verticalAlign=top;fontStyle=0;fontSize=12;align=left;spacingLeft=12;html=1;fontColor=#147EBA;fontFamily=Amazon Ember;" vertex="1" parent="r0_vpc">
+          <mxGeometry x="20" y="30" width="174" height="418" as="geometry" />
+        </mxCell>
+        <mxCell id="r0_subnet_0_0" value="Public Subnet" style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_public_subnet;grStroke=0;strokeColor=#7AA116;fillColor=#F2F6E8;verticalAlign=top;align=left;spacingLeft=30;fontColor=#248814;fontFamily=Amazon Ember;dashed=0;" vertex="1" parent="r0_az_0">
+          <mxGeometry x="20" y="30" width="126" height="162" as="geometry" />
+        </mxCell>
+        <mxCell id="r0_alb_0" value="ALB" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=#945DF2;gradientDirection=north;fillColor=#5A30B5;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontFamily=Amazon Ember;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.application_load_balancer;" vertex="1" parent="r0_subnet_0_0">
+          <mxGeometry x="20" y="30" width="78" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="r0_subnet_0_1" value="Data Subnet" style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_private_subnet;grStroke=0;strokeColor=#00A4A6;fillColor=#E6F6F7;verticalAlign=top;align=left;spacingLeft=30;fontColor=#147EBA;fontFamily=Amazon Ember;dashed=0;" vertex="1" parent="r0_az_0">
+          <mxGeometry x="20" y="230" width="126" height="162" as="geometry" />
+        </mxCell>
+        <mxCell id="r0_rds_0" value="Aurora Primary" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=#4D72F3;gradientDirection=north;fillColor=#3334B9;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontFamily=Amazon Ember;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.aurora;" vertex="1" parent="r0_subnet_0_1">
+          <mxGeometry x="20" y="30" width="78" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="region_1" value="DR (us-west-2)" style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_region;grStroke=0;strokeColor=#00A4A6;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#147EBA;fontFamily=Amazon Ember;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="680" y="80" width="270" height="534" as="geometry" />
+        </mxCell>
+        <mxCell id="r1_vpc" value="VPC 10.1.0.0/16" style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_vpc;grStroke=0;strokeColor=#879196;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#879196;fontFamily=Amazon Ember;dashed=0;" vertex="1" parent="region_1">
+          <mxGeometry x="20" y="30" width="222" height="476" as="geometry" />
+        </mxCell>
+        <mxCell id="r1_az_0" value="AZ-2a" style="fillColor=none;strokeColor=#00A4A6;dashed=1;verticalAlign=top;fontStyle=0;fontSize=12;align=left;spacingLeft=12;html=1;fontColor=#147EBA;fontFamily=Amazon Ember;" vertex="1" parent="r1_vpc">
+          <mxGeometry x="20" y="30" width="174" height="418" as="geometry" />
+        </mxCell>
+        <mxCell id="r1_subnet_0_0" value="Public Subnet" style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_public_subnet;grStroke=0;strokeColor=#7AA116;fillColor=#F2F6E8;verticalAlign=top;align=left;spacingLeft=30;fontColor=#248814;fontFamily=Amazon Ember;dashed=0;" vertex="1" parent="r1_az_0">
+          <mxGeometry x="20" y="30" width="126" height="162" as="geometry" />
+        </mxCell>
+        <mxCell id="r1_alb_0" value="ALB" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=#945DF2;gradientDirection=north;fillColor=#5A30B5;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontFamily=Amazon Ember;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.application_load_balancer;" vertex="1" parent="r1_subnet_0_0">
+          <mxGeometry x="20" y="30" width="78" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="r1_subnet_0_1" value="Data Subnet" style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_private_subnet;grStroke=0;strokeColor=#00A4A6;fillColor=#E6F6F7;verticalAlign=top;align=left;spacingLeft=30;fontColor=#147EBA;fontFamily=Amazon Ember;dashed=0;" vertex="1" parent="r1_az_0">
+          <mxGeometry x="20" y="230" width="126" height="162" as="geometry" />
+        </mxCell>
+        <mxCell id="r1_rds_0" value="Aurora Replica" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=#4D72F3;gradientDirection=north;fillColor=#3334B9;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontFamily=Amazon Ember;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.aurora;" vertex="1" parent="r1_subnet_0_1">
+          <mxGeometry x="20" y="30" width="78" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="title" value="Multi-Region Active/DR" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=18;fontStyle=1;fontColor=#232F3E;fontFamily=Amazon Ember;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="600" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="e0" value="DNS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#545B64;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=9;fontFamily=Amazon Ember;" edge="1" parent="1" source="users" target="r53">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="active" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#545B64;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=9;fontFamily=Amazon Ember;" edge="1" parent="1" source="r53" target="r0_alb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="failover" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;dashPattern=8 8;strokeColor=#545B64;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=9;fontFamily=Amazon Ember;" edge="1" parent="1" source="r53" target="r1_alb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="rw" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#545B64;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=9;fontFamily=Amazon Ember;" edge="1" parent="1" source="r0_alb" target="r0_rds">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="ro" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#545B64;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=9;fontFamily=Amazon Ember;" edge="1" parent="1" source="r1_alb" target="r1_rds">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="replicate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;dashPattern=8 8;strokeColor=#545B64;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=9;fontFamily=Amazon Ember;" edge="1" parent="1" source="r0_rds" target="r1_rds">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

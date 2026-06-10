@@ -44,13 +44,15 @@ python3 scripts/lint_layout.py output.drawio    # 생성기 출력은 100/100 [g
 xvfb-run -a drawio -x -f png -s 2 -o output.png output.drawio
 ```
 
-**두 가지 엔진** (Region 형태로 자동 선택):
-- **`vpc`** — Multi-AZ/티어형. AZ는 자동 **미러**(동일 크기·좌우 대칭), 서비스 id는 AZ별 `id_0`/`id_1` 인스턴스화 → flow가 참조.
-- **`stages`** — 서버리스/파이프라인. `region.stages`로 VPC 없이 좌→우 스테이지 컬럼(API→compute→data). id는 그대로 사용.
+**블록 합성** — 좌→우로 `[external] [onprem] [edge] [region(s)]` 배치. 4가지 패턴 지원:
+- **`vpc`** — Multi-AZ/티어형. AZ 자동 **미러**(동일 크기·좌우 대칭), 서비스 id는 AZ별 `id_0`/`id_1` 인스턴스화.
+- **`stages`** — 서버리스/파이프라인. `region.stages`로 VPC 없이 좌→우 스테이지 컬럼. id 그대로 사용.
+- **멀티리전** — `regions:` 리스트. 리전별 id 접두사 `r0_`/`r1_` (예: `{from: r0_rds, to: r1_rds, kind: async}`).
+- **하이브리드** — `onprem:` 블록(기업 DC 컨테이너) + Direct Connect/VPN 엣지로 Region 연결.
 
 - 아이콘 레지스트리·색상·간격은 전부 `design-tokens.md` 정본을 따름 (생성기에 내장).
-- 골든 예시: **`examples/`** — `multi-az-3tier`·`eks-multi-az`(vpc), `serverless-api`(stages). 스펙+drawio 쌍, 복사해서 수정.
-- 멀티리전·하이브리드(IDC) 등 두 엔진에 안 맞는 비정형 구조만 XML 직접 작성 모드를 사용.
+- 골든 예시: **`examples/`** — `multi-az-3tier`·`eks-multi-az`(vpc), `serverless-api`(stages), `multi-region-dr`(regions), `hybrid-dx`(onprem). 스펙+drawio 쌍, 복사해서 수정.
+- Transit Gateway 메시 등 위 4패턴에 안 맞는 비정형 구조만 XML 직접 작성 모드를 사용.
 
 ---
 

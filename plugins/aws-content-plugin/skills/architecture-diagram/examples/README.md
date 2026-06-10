@@ -10,6 +10,8 @@ structure/labels/flows, never coordinates.
 | `multi-az-3tier.yaml` | Multi-AZ Web 3-Tier (CloudFront → ALB → ECS → RDS) | `vpc` engine: mirrored 2-AZ columns, public/private subnets, cross-AZ flows |
 | `eks-multi-az.yaml` | EKS Multi-AZ cluster | `vpc` engine: multi-service subnet rows (EKS Node + Worker), Aurora data tier |
 | `serverless-api.yaml` | Serverless REST API (API GW → Lambda → DynamoDB/S3 + EventBridge) | `stages` engine: left→right stage columns, no VPC, sync + async flows |
+| `multi-region-dr.yaml` | Multi-Region Active/DR (Route 53 → 2 regions, Aurora replication) | `regions:` list, per-region id prefixes (`r0_`/`r1_`), cross-region async flow |
+| `hybrid-dx.yaml` | Hybrid (On-prem IDC ↔ AWS via Direct Connect, DMS migration) | `onprem:` block + DX edge + Multi-AZ VPC |
 
 ## Regenerate / verify
 
@@ -56,7 +58,32 @@ region:
 flows: [{from: client, to: fn}, {from: fn, to: ddb}]   # ids used directly (no AZ suffix)
 ```
 
-Icon short-names are in `layout_aws.py` (`ICONS`).
+### Multi-region — `regions:` (a list)
+
+Replace `region:` with `regions:` (each entry is a full `vpc` or `stages` region). Ids are
+namespaced per region: `r<i>_<id>` (vpc instances: `r<i>_<id>_<az>`).
+
+```yaml
+edge: [{id: r53, icon: route53, label: "Route 53"}]
+regions:
+  - {label: "Primary (us-east-1)", vpc: {azs: ["AZ-1a"], tiers: [...]}}
+  - {label: "DR (us-west-2)",      vpc: {azs: ["AZ-2a"], tiers: [...]}}
+flows: [{from: r0_rds, to: r1_rds, label: "replicate", kind: async}]
+```
+
+### Hybrid — `onprem:` block
+
+Adds a corporate-DC container left of the Region, connected via a Direct Connect / VPN edge.
+
+```yaml
+onprem: {label: "On-Premises (IDC)", services: [{id: app_srv, icon: ec2, label: "App"}]}
+edge:   [{id: dx, icon: directconnect, label: "Direct Connect"}]
+region: {vpc: {...}}
+flows:  [{from: app_srv, to: dx}, {from: dx, to: ec2_0}]
+```
+
+Blocks compose left→right: **[external] [onprem] [edge] [region(s)]**. Icon short-names
+are in `layout_aws.py` (`ICONS`).
 
 > Why this beats hand-placed XML and general auto-layout engines: see the top of
 > `../SKILL.md` and the bake-off report (drawio won fidelity; ELK/Graphviz broke AWS

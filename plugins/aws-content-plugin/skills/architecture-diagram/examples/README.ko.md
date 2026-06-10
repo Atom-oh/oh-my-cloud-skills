@@ -10,6 +10,8 @@
 | `multi-az-3tier.yaml` | Multi-AZ 웹 3-Tier (CloudFront → ALB → ECS → RDS) | `vpc` 엔진: 미러된 2-AZ 컬럼, 퍼블릭/프라이빗 서브넷, cross-AZ 흐름 |
 | `eks-multi-az.yaml` | EKS Multi-AZ 클러스터 | `vpc` 엔진: 서브넷당 다중 서비스 행(EKS Node + Worker), Aurora 데이터 티어 |
 | `serverless-api.yaml` | 서버리스 REST API (API GW → Lambda → DynamoDB/S3 + EventBridge) | `stages` 엔진: 좌→우 스테이지 컬럼, VPC 없음, 동기 + 비동기 흐름 |
+| `multi-region-dr.yaml` | 멀티리전 Active/DR (Route 53 → 2개 리전, Aurora 복제) | `regions:` 리스트, 리전별 id 접두사(`r0_`/`r1_`), cross-region 비동기 흐름 |
+| `hybrid-dx.yaml` | 하이브리드 (온프렘 IDC ↔ AWS via Direct Connect, DMS 마이그레이션) | `onprem:` 블록 + DX 엣지 + Multi-AZ VPC |
 
 ## 재생성 / 검증
 
@@ -56,7 +58,32 @@ region:
 flows: [{from: client, to: fn}, {from: fn, to: ddb}]   # id를 직접 사용 (AZ 접미사 없음)
 ```
 
-아이콘 short-name은 `layout_aws.py`(`ICONS`)에 있습니다.
+### 멀티리전 — `regions:` (리스트)
+
+`region:` 대신 `regions:`를 사용합니다(각 항목이 완전한 `vpc` 또는 `stages` 리전). id는
+리전별로 네임스페이스됩니다: `r<i>_<id>` (vpc 인스턴스: `r<i>_<id>_<az>`).
+
+```yaml
+edge: [{id: r53, icon: route53, label: "Route 53"}]
+regions:
+  - {label: "Primary (us-east-1)", vpc: {azs: ["AZ-1a"], tiers: [...]}}
+  - {label: "DR (us-west-2)",      vpc: {azs: ["AZ-2a"], tiers: [...]}}
+flows: [{from: r0_rds, to: r1_rds, label: "replicate", kind: async}]
+```
+
+### 하이브리드 — `onprem:` 블록
+
+Region 좌측에 기업 데이터센터(corporate-DC) 컨테이너를 추가하고 Direct Connect / VPN 엣지로 연결합니다.
+
+```yaml
+onprem: {label: "On-Premises (IDC)", services: [{id: app_srv, icon: ec2, label: "App"}]}
+edge:   [{id: dx, icon: directconnect, label: "Direct Connect"}]
+region: {vpc: {...}}
+flows:  [{from: app_srv, to: dx}, {from: dx, to: ec2_0}]
+```
+
+블록은 좌→우로 합성됩니다: **[external] [onprem] [edge] [region(s)]**. 아이콘 short-name은
+`layout_aws.py`(`ICONS`)에 있습니다.
 
 > 손으로 좌표를 찍는 XML이나 범용 자동배치 엔진보다 나은 이유: `../SKILL.md` 상단과
 > bake-off 보고서 참조 (drawio가 충실도 1위; ELK/Graphviz는 AWS Multi-AZ 대칭을 깨뜨림;
