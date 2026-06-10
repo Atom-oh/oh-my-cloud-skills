@@ -34,3 +34,12 @@ for cls in card-grid metric-card tab-set callout comparison flow-group; do
   assert_grep_match "\.$cls\b" "$TC" "component primitive .$cls defined in theme.css"
 done
 assert_grep_no_match "#00d4ff" "$TC" "theme.css has no legacy cyan literal"
+
+TC3="$(cat "$RP/assets/theme.css" 2>/dev/null || true)"
+for bad in "0\.17rem" "0\.21rem" "0\.29rem" "0\.42rem" "0\.58rem" "0\.67rem" "0\.83rem" "2\.7rem"; do
+  assert_grep_no_match "$bad" "$TC3" "legacy off-scale value $bad removed"
+done
+assert_grep_no_match "var\(--yellow,\s*#f1c40f" "$TC3" "drifted --yellow fallback removed"
+assert_grep_no_match "var\(--text-muted,\s*#8b8fa3" "$TC3" "drifted --text-muted fallback removed"
+assert_grep_match "var\(--space-" "$TC3" "rules consume spacing tokens"
+assert_grep_match "var\(--radius-" "$TC3" "rules consume radius tokens"
