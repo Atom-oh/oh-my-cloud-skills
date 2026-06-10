@@ -96,9 +96,12 @@ python3 scripts/validate_drawio.py output.drawio
 # ✅ 통과 시 cells/vertices/edges/icons/groups 개수 출력 → 의도한 개수와 비교(누락 감지)
 # ❌ 실패 시 export 금지하고 먼저 수정
 
-# 2) 레이아웃 게이트 — "PPT처럼 깔끔한가" 기하 QA (그리드 정렬·컨테이너 이탈·아이콘 겹침·간격·엣지 예산)
+# 2) 레이아웃 게이트 — "PPT처럼 깔끔한가" QA. 두 층위로 점수화:
+#    · geometry: 그리드 정렬·컨테이너 이탈·아이콘 겹침·간격·엣지 예산
+#    · design:   아이콘 크기 규율(78 + 중첩 48; 40/60 retired)·라벨 누락·여백·제목·폰트
 python3 scripts/lint_layout.py output.drawio
-# ✅ layout score ≥ 80 이어야 export. ❌ 미달 시 정렬/겹침/간격을 고치고 재실행
+# ✅ layout score ≥ 80 이어야 export. 출력: score/100 [geometry · design]
+# ❌ 미달 시 [geometry]/[design] 지적을 고치고 재실행 (--json 으로 세부 점수)
 # (수치 정본: references/design-tokens.md)
 ```
 
@@ -242,7 +245,7 @@ drawio -x -f svg -o output.svg input.drawio
 | `references/mcp-setup-guide.md` | Draw.io MCP 설정 및 도구 사용법 |
 | `scripts/snap_grid.py` | **export 전 0단계** — 모든 좌표를 10px 그리드로 자동 스냅(아이콘 크기 78 보존). `--in-place`/`--report` |
 | `scripts/validate_drawio.py` | **export 전 검증 1** — 침묵 킬러(주석 `&`/`--`, 미이스케이프 문자, DOCTYPE) 검출 + 셀 개수 리포트(truncation 감지) + `--coords` 절대좌표 |
-| `scripts/lint_layout.py` | **export 전 검증 2 (레이아웃 게이트)** — 그리드 정렬·컨테이너 이탈·아이콘 겹침·간격 균일도·엣지 예산을 점수화. score ≥ 80 이어야 export |
+| `scripts/lint_layout.py` | **export 전 검증 2 (레이아웃 게이트)** — geometry(정렬·이탈·겹침·간격·엣지) + design(아이콘 크기 규율·라벨·여백·제목·폰트)을 점수화. `score/100 [geometry · design]`, score ≥ 80 이어야 export |
 | `scripts/route_edges.py` | **엣지 웨이포인트 자동계산** — `--from/--to`로 깨끗한 직교 경로(채널 라우팅) + exit/entry 앵커 생성. 어지러운 화살표 정리의 핵심 도구. `--list`로 셀 절대좌표 확인 |
 
 ---
@@ -262,7 +265,7 @@ drawio -x -f svg -o output.svg input.drawio
 ## 검증 체크리스트
 
 - [ ] **`scripts/validate_drawio.py`로 검증 통과** (export 전 필수 — 침묵 truncation 방지)
-- [ ] **`scripts/lint_layout.py` layout score ≥ 80** (export 전 필수 — 정렬/겹침/간격/엣지)
+- [ ] **`scripts/lint_layout.py` layout score ≥ 80** (export 전 필수 — geometry: 정렬/겹침/간격/엣지 · design: 아이콘 크기/라벨/여백/제목/폰트)
 - [ ] 셀/아이콘 개수가 의도와 일치하는가 (validator 출력 대조)
 - [ ] XML 주석에 `&`/`--` 없음 (또는 주석 미사용)
 - [ ] 아이콘 크기가 78×78로 통일되었는가 (design-tokens.md)

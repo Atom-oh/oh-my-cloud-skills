@@ -84,6 +84,11 @@ fixes that — the LLM stops guessing.
 ## 6. Verification (gate before export)
 
 1. `scripts/validate_drawio.py <file>` — XML / silent-killer check (truncation guard).
-2. `scripts/lint_layout.py <file>` — **geometric QA**: grid alignment, sibling-spacing
-   uniformity, child-in-parent containment, icon overlap, edge-budget. Prints a layout
-   score; **non-zero exit = below threshold → do NOT export, fix first.**
+2. `scripts/lint_layout.py <file>` — **layout QA, two layers**:
+   - *geometry*: grid alignment, sibling-spacing uniformity, child-in-parent containment,
+     icon overlap, edge-budget.
+   - *design* (the "looks finished like a PPT" layer): icon-size discipline (78 + at most
+     one nested 48 tier; 40/60/64 are retired), every icon labeled, container breathing
+     room, a title present, consistent Amazon Ember/Helvetica type.
+   Prints `score /100 [geometry · design]`; **non-zero exit = below threshold → do NOT
+   export, fix first.** Use `--json` for the breakdown.
