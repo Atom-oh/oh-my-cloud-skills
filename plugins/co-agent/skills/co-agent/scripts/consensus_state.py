@@ -266,6 +266,32 @@ def cmd_report(root):
     return 0
 
 
+def cmd_cumulative_diff(root, plan_path, base):
+    """Print `git diff <base>...HEAD` limited to the plan's declared file set (P4 input)."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    import parse_plan
+    try:
+        with open(plan_path, encoding="utf-8") as f:
+            tasks = parse_plan.parse(f.read())
+    except (OSError, UnicodeDecodeError) as e:
+        print(f"❌ cannot read plan {plan_path}: {e}", file=sys.stderr)
+        return 2
+    files = []
+    for t in tasks:
+        for fp in t.get("files", []):
+            n = fp.strip().lstrip("./")
+            if n and n not in files:
+                files.append(n)
+    if not files:
+        print("❌ plan declares no files — nothing to diff", file=sys.stderr)
+        return 2
+    diff = _git(root, "diff", f"{base}...HEAD", "--", *files)
+    sys.stdout.write(diff + ("\n" if diff and not diff.endswith("\n") else ""))
+    return 0
+
+
 def main():
     a = sys.argv[1:]
     if not a:
@@ -276,6 +302,9 @@ def main():
 
     def opt(flag):
         return rest[rest.index(flag) + 1] if flag in rest and rest.index(flag) + 1 < len(rest) else None
+
+    def opt_after(seq, flag):
+        return seq[seq.index(flag) + 1] if flag in seq and seq.index(flag) + 1 < len(seq) else None
 
     if cmd == "init":
         docs = [d for d in (opt("--docs") or "").split(",") if d]
@@ -297,6 +326,10 @@ def main():
         return cmd_task(root, cmd, rest[1]) if len(rest) >= 2 else 2
     if cmd == "report":
         return cmd_report(root)
+    if cmd == "cumulative-diff":
+        plan = opt_after(rest, "--plan")
+        base = opt_after(rest, "--base") or "main"
+        return cmd_cumulative_diff(root, plan, base) if plan else 2
     print(__doc__)
     return 2
 
