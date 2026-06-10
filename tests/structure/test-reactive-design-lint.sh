@@ -43,3 +43,17 @@ printf -- '---\nremarp: true\n---\n## A title\n\nSome body text here.\n\n:::note
 OUT2="$(python3 "$SC" validate "$D" 2>&1 || true)"
 assert_grep_no_match "NOTE_STRUCTURE" "$OUT2" "structured note not flagged"
 rm -rf "$D"
+
+# --- content-quality: title voice + TITLE_LENGTH ---
+assert_contains "$(cat "$RP/SKILL.md" 2>/dev/null || true)" "체언 종결" "SKILL.md documents noun-ending subtitle voice"
+assert_contains "$(cat "$RP/references/slide-patterns.md" 2>/dev/null || true)" "headline" "slide-patterns documents headline title voice"
+SC="$RP/scripts/remarp_to_slides.py"
+D="$(mktemp -d "${TMPDIR:-/tmp}/tl.XXXXXX")"
+printf -- '---\nratio: "16:9"\n---\n' > "$D/_presentation.md"
+printf -- '---\nremarp: true\n---\n## 이것은 스물여덟 글자를 훨씬 넘어가는 아주 길고 장황한 슬라이드 제목입니다 정말로\n\nbody\n' > "$D/01.md"
+OUT="$(python3 "$SC" validate "$D" 2>&1 || true)"
+assert_contains "$OUT" "TITLE_LENGTH" "lint flags over-long title"
+printf -- '---\nremarp: true\n---\n## 비용은 싸졌고 모델은 똑똑해졌다\n\nbody\n' > "$D/01.md"
+OUT2="$(python3 "$SC" validate "$D" 2>&1 || true)"
+assert_grep_no_match "TITLE_LENGTH" "$OUT2" "concise title not flagged"
+rm -rf "$D"

@@ -121,6 +121,15 @@ Remarp 마크다운으로 콘텐츠를 작성합니다 (기본). Remarp는 프�
 > 5계층 스키마를 따르는 것을 권장합니다. 특히 `[요약]` 블록은 콘텐츠 슬라이드에 권장되며,
 > 누락 시 `validate`의 `NOTE_STRUCTURE` 린트가 경고합니다. 전체 스키마와 예시는
 > [references/remarp-format-guide.md](references/remarp-format-guide.md)의 "Structured Note Schema" 참조.
+>
+> **슬라이드 제목 보이스 (권장)**: 슬라이드 제목(`## heading`)은 1초 안에 읽히는 **헤드라인**으로 작성합니다 —
+> 단정/주장/질문/반전 형태로 **엣지**를 담고 **28자 이하**로 유지합니다. 부제목은 **체언 종결**
+> (명사형 어미: `~화/~등극/~재편/~본격화` …)로 **45자 이하**로 작성합니다.
+> ✅ "비용은 싸졌고, 모델은 똑똑해졌다"  ❌ "2026년 Frontier AI 모델 동향"(밋밋한 라벨).
+> **레벨 게이트**: `level` 100~200(브리핑/개요)에서는 헤드라인 보이스를 권장하고,
+> `level` 300~400(기술 심화)에서는 명확한 서술형 제목(API 이름·설정 키 등)도 허용합니다.
+> 제목이 28자를 초과하면 `validate`의 `TITLE_LENGTH` 린트가 경고합니다.
+> 전체 가이드와 예시는 [references/slide-patterns.md](references/slide-patterns.md)의 "Slide Title Voice" 참조.
 - `:::canvas` DSL로 선언적 Canvas 애니메이션
 - `::: left`/`::: right` 컬럼 레이아웃
 
@@ -212,6 +221,7 @@ python3 {skill-dir}/scripts/remarp_to_slides.py validate {repo}/{slug}/
 | `FRAGMENT_ORDER` | WARNING | 다단 레이아웃 + 명시적 `order=N` 없음 | `{.click order=N}` 추가 (td-lr 순서) |
 | `MISSING_NOTES` | WARNING | `:::notes` 블록 누락 | 150자+ 스피커 노트 작성 |
 | `NOTE_STRUCTURE` | WARNING | 콘텐츠 슬라이드 노트에 `[요약]` 계층 없음 | `:::notes` 상단에 `[요약]` (3~5 불릿) 추가 |
+| `TITLE_LENGTH` | WARNING | 슬라이드 제목 28자 초과 (헤드라인으로 부적합) | 28자 이하 헤드라인으로 축약, 세부는 부제목/본문으로 (Slide Title Voice 참조) |
 | `STATIC_HTML` | WARNING | `:::html` 요소 3+ 이나 fragment 없음 | `fragment fade-up` + `data-fragment-index` 추가 |
 
 **거절 루프 프로세스**:

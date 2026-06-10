@@ -4785,6 +4785,20 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
                 'Add a [요약] block (3–5 one-line bullets) at the top of :::notes, '
                 'then the spoken script in 존댓말')
 
+    # --- Rule 5c: Slide Title Voice (TITLE_LENGTH) ---
+    # A slide title should read as a headline with edge (≤28 KO chars), not a
+    # long descriptive label. Count code points with len() on the title string.
+    # Skip slide types where a heading-length rule does not apply (cover/agenda/
+    # quiz render their own layout and don't carry a scannable headline title).
+    if (title_match and slide.slide_type not in (SlideType.COVER, SlideType.AGENDA,
+                                                 SlideType.QUIZ, SlideType.THANKYOU)):
+        title_text = title_match.group(1).strip()
+        if len(title_text) > 28:
+            add('WARNING', 'TITLE_LENGTH',
+                f'Slide title is {len(title_text)} chars — too long for a scannable headline (max 28)',
+                'Shorten to a headline ≤28 chars (see Slide Title Voice); '
+                'move detail into a subtitle or the body')
+
     # --- Rule 6: Content Overflow ---
     # Count total visible elements (headings + bullets + paragraphs)
     heading_count = len(re.findall(r'^#{2,4}\s+', md_outside_blocks, re.MULTILINE))
