@@ -115,6 +115,21 @@ Remarp 마크다운으로 콘텐츠를 작성합니다 (기본). Remarp는 프�
 > - **톤**: 발표자가 그대로 읽어도 자연스러운 구어체. "~입니다", "~해보겠습니다" 스타일
 > - **내용**: 슬라이드 텍스트를 반복하지 말고, 왜 중요한지, 실무에서 어떻게 적용하는지, 흔한 실수나 팁을 보충
 > - **전환**: 마지막에 `{cue: transition}` + 다음 슬라이드로 이어지는 브릿지 문장
+>
+> **구조화된 노트 스키마 (권장)**: 콘텐츠 슬라이드의 `:::notes`는 `{timing}`/`{cue}` 마커 →
+> `[요약]` (3~5개 한 줄 불릿) → 발표 스크립트(존댓말) → `[약어]`(필요 시) → `[출처]`(수치/벤치마크 인용 시)
+> `[변경이력]`(선택) 계층형 스키마를 따르는 것을 권장합니다. 특히 `[요약]` 블록은 콘텐츠 슬라이드에 권장되며,
+> 누락 시 `validate`의 `NOTE_STRUCTURE` 린트가 경고합니다. 전체 스키마와 예시는
+> [references/remarp-format-guide.md](references/remarp-format-guide.md)의 "Structured Note Schema" 참조.
+>
+> **슬라이드 제목 보이스 (권장)**: 슬라이드 제목(`## heading`)은 1초 안에 읽히는 **헤드라인**으로 작성합니다 —
+> 단정/주장/질문/반전 형태로 **엣지**를 담고 **28자 이하**로 유지합니다. 부제목은 **체언 종결**
+> (명사형 어미: `~화/~등극/~재편/~본격화` …)로 **45자 이하**로 작성합니다.
+> ✅ "비용은 싸졌고, 모델은 똑똑해졌다"  ❌ "2026년 Frontier AI 모델 동향"(밋밋한 라벨).
+> **레벨 게이트**: `level` 100~200(브리핑/개요)에서는 헤드라인 보이스를 권장하고,
+> `level` 300~400(기술 심화)에서는 명확한 서술형 제목(API 이름·설정 키 등)도 허용합니다.
+> 제목이 28자를 초과하면 `validate`의 `TITLE_LENGTH` 린트가 경고합니다.
+> 전체 가이드와 예시는 [references/slide-patterns.md](references/slide-patterns.md)의 "Slide Title Voice" 참조.
 - `:::canvas` DSL로 선언적 Canvas 애니메이션
 - `::: left`/`::: right` 컬럼 레이아웃
 
@@ -194,7 +209,7 @@ Remarp 마크다운 작성 후, **HTML 빌드 전에** 반드시 검증을 실�
 python3 {skill-dir}/scripts/remarp_to_slides.py validate {repo}/{slug}/
 ```
 
-**검증 규칙 (7가지 거절 기준)**:
+**검증 규칙 (거절 기준)**:
 
 | 규칙 | 심각도 | 검사 내용 | 자동 교정 지침 |
 |------|--------|---------|-------------|
@@ -205,6 +220,8 @@ python3 {skill-dir}/scripts/remarp_to_slides.py validate {repo}/{slug}/
 | `CANVAS_OVERLAP` | CRITICAL | 캔버스 요소 바운딩 박스 겹침 | 좌표 조정 (최소 40px 간격) |
 | `FRAGMENT_ORDER` | WARNING | 다단 레이아웃 + 명시적 `order=N` 없음 | `{.click order=N}` 추가 (td-lr 순서) |
 | `MISSING_NOTES` | WARNING | `:::notes` 블록 누락 | 150자+ 스피커 노트 작성 |
+| `NOTE_STRUCTURE` | WARNING | 콘텐츠 슬라이드 노트에 `[요약]` 계층 없음 | `:::notes` 상단에 `[요약]` (3~5 불릿) 추가 |
+| `TITLE_LENGTH` | WARNING | 슬라이드 제목 28자 초과 (헤드라인으로 부적합) | 28자 이하 헤드라인으로 축약, 세부는 부제목/본문으로 (Slide Title Voice 참조) |
 | `STATIC_HTML` | WARNING | `:::html` 요소 3+ 이나 fragment 없음 | `fragment fade-up` + `data-fragment-index` 추가 |
 
 **거절 루프 프로세스**:
@@ -222,6 +239,27 @@ Remarp 작성 → validate 실행 → CRITICAL 있으면?
 
 > ⚠️ **이 단계를 건너뛰고 빌드하면 프랑켄슈타인 레이아웃이 생성됩니다.**
 > CRITICAL 이슈가 있는 상태에서 `build`를 실행하지 마세요.
+
+### Forbidden — AI-slide tells (피해야 할 AI 슬라이드 티)
+
+> 아래는 "AI가 만든 티"가 나는 안티패턴을 한 곳에 모은 **단일 레퍼런스**입니다.
+> 각 tell은 이를 강제하는 **lint 규칙 id**(기계 검출) 또는 리뷰 게이트(사람/`content-review-agent`)에
+> 연결됩니다. 규칙 상세는 위 "Phase 2.8" 표를, 색상 토큰은 "Interactive Design 원칙"을 참조하세요.
+
+| 안티패턴 (AI-slide tell) | 왜 티가 나는가 | 대신 | 강제 (lint rule / gate) |
+|--------------------------|----------------|------|--------------------------|
+| 하드코딩 hex (생 6자리 색상값) | 테마 토큰 무시, 단일 테마 고착 | `var(--accent)` 등 시맨틱 역할 토큰 | `RAW_HEX` (lint) |
+| 인라인 색상/여백 style (`style=`에 color/padding 직접 기입) | 토큰 시스템 우회, 일관성 붕괴 | 토큰 클래스 (`.card-grid`, `.metric-card`) + `:::css` | `INLINE_STYLE` (lint) |
+| 생(raw) rgba 색상 함수 | 테마 적응 불가, 하드코딩 그림자/오버레이 | `var(--surface-*)`, `color-mix()` 토큰 | `RAW_RGBA` (lint) |
+| 매직넘버 타입/오프스케일 여백 (4·8px 스케일 밖의 px) | 들쭉날쭉한 간격 | 스페이싱 스케일 토큰 (`var(--space-*)`) | `OFF_SCALE` (lint) + 토큰 시스템 |
+| 텍스트 벽 불릿 (8+ 줄) | 한 슬라이드 과부하, 읽히지 않음 | 슬라이드 분할 또는 카드/탭 분리 | `CONTENT_OVERFLOW` (lint) |
+| 다크 전용 / 제네릭 blue-teal 기본 | "AI 기본 테마" 인상 | **light 기본** 듀얼 테마 + 역할 토큰 | dual-theme (light default) |
+| 그라데이션 텍스트 헤딩 · 장식용 gradient orb · 빈 하단 영역 | 의미 없는 장식, 정보 밀도 0 | 콘텐츠/시각 계층으로 영역 채우기, 장식 제거 | 가이드 (자동 lint 미적용 — 리뷰 게이트) |
+| 서술형 백과사전 톤 제목 ("2026년 Frontier AI 모델 동향") | 밋밋한 라벨, 엣지 없음 | 단정/주장/질문/반전 헤드라인 (28자 이하) | Slide Title Voice (리뷰 게이트) + `TITLE_LENGTH` (길이만 lint) |
+| 자유형 / 누락 스피커 노트 | 발표 불가, 구조 없음 | `[요약]` 5계층 구조 노트 (150자+) | `NOTE_STRUCTURE` / `MISSING_NOTES` (lint) |
+
+> 규칙 id가 붙은 항목은 `validate`가 기계적으로 잡아냅니다 (빌드 전 거절 루프).
+> 게이트 항목(장식·제목 보이스)은 자동 lint가 없으므로 `content-review-agent` 리뷰에서 감점됩니다.
 
 ### Phase 3: HTML Generation
 

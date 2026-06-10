@@ -4768,6 +4768,38 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
                 'recommended minimum is 150 chars (300-500 ideal)',
                 'Expand notes with timing markers, cues, and supplementary explanations')
 
+    # --- Rule 5b: Structured Speaker-Note Schema ([요약] layer) ---
+    # Content-type slides that carry a :::notes block should open with a
+    # structured [요약] (one-line bullet summary) layer so the speaker can scan
+    # key points at a glance. Skip cover/agenda/quiz slide types and slides
+    # with no notes (handled by MISSING_NOTES above). Literal-substring check
+    # only — NOT regex — so digits in {timing: 2min} cannot false-positive.
+    if (slide.slide_type not in (SlideType.COVER, SlideType.THANKYOU,
+                                 SlideType.AGENDA, SlideType.QUIZ, SlideType.TITLE)
+            and slide.notes and slide.notes.content.strip()):
+        notes_text = slide.notes.content
+        if '[요약]' not in notes_text:
+            add('WARNING', 'NOTE_STRUCTURE',
+                'Speaker notes lack a [요약] summary layer — structured notes open '
+                'with 3–5 one-line bullets before the spoken script',
+                'Add a [요약] block (3–5 one-line bullets) at the top of :::notes, '
+                'then the spoken script in 존댓말')
+
+    # --- Rule 5c: Slide Title Voice (TITLE_LENGTH) ---
+    # A slide title should read as a headline with edge (≤28 KO chars), not a
+    # long descriptive label. Count code points with len() on the title string.
+    # Skip slide types where a heading-length rule does not apply (cover/agenda/
+    # quiz render their own layout and don't carry a scannable headline title).
+    if (title_match and slide.slide_type not in (SlideType.COVER, SlideType.AGENDA,
+                                                 SlideType.QUIZ, SlideType.THANKYOU,
+                                                 SlideType.TITLE)):
+        title_text = title_match.group(1).strip()
+        if len(title_text) > 28:
+            add('WARNING', 'TITLE_LENGTH',
+                f'Slide title is {len(title_text)} chars — too long for a scannable headline (max 28)',
+                'Shorten to a headline ≤28 chars (see Slide Title Voice); '
+                'move detail into a subtitle or the body')
+
     # --- Rule 6: Content Overflow ---
     # Count total visible elements (headings + bullets + paragraphs)
     heading_count = len(re.findall(r'^#{2,4}\s+', md_outside_blocks, re.MULTILINE))

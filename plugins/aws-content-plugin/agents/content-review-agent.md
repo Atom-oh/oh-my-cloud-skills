@@ -307,6 +307,13 @@ HTML 파일을 브라우저에서 열어 테스트하려면:
 ## Warning Issues (Should Fix)
 [Same format as Critical]
 
+## Source-omission Findings
+> Which source sections did NOT make it into the output (see Review Process Step 5).
+
+| Source section | Output status | Note |
+|----------------|---------------|------|
+| [section title] | INCLUDED / PARTIAL / OMITTED | [what was lost — e.g., architecture diagram dropped] |
+
 ## Revision Checklist
 ### Critical (Must Fix)
 - [ ] Issue #N: [Type] - [Location] - [Action]
@@ -352,6 +359,39 @@ HTML 기반 콘텐츠인 경우 Playwright MCP 도구로 브라우저 검증 수
 
 ### Step 4: Report Generation
 Save as `[ProjectName]_Review_Report.md`
+
+### Step 5: Source-omission Cross-check
+
+After the main review (Steps 1–4), perform an explicit **source-omission cross-check**:
+compare the original source material (briefing docs, reference articles, transcripts,
+spec sheets) against the generated deck/document and identify which source sections did
+**not** make it into the output. The goal is to catch silent omissions — content the
+author intended to convey but that the generation step dropped or summarized away.
+
+Walk the source top-to-bottom and, for each section, mark it as `INCLUDED`, `PARTIAL`,
+or `OMITTED` in the output. Common gaps to call out (these are the usual omission
+suspects):
+
+- **Architecture diagrams / technical figures** — diagram-heavy source sections often
+  get reduced to a single bullet, losing the visual
+- **Domestic (Korean) case studies** — local customer references frequently dropped in
+  favor of global examples
+- **Comparison tables** — side-by-side feature/cost tables flattened into prose
+- **Incident / failure cases** — postmortems and "what went wrong" stories cut for time
+- **Partnerships** — partner/ISV mentions and joint solutions
+- **Timelines** — roadmap or chronological milestones
+- **Awards** — recognitions, certifications, rankings
+
+Record findings in the report (see the **Source-omission Findings** section of the Review
+Report Format). Notable omissions are flagged as Warnings (-1 each); an omission that
+removes a load-bearing claim or a required disclosure is escalated to Critical.
+
+| Source section | Output status | Note |
+|----------------|---------------|------|
+| [section title] | INCLUDED / PARTIAL / OMITTED | [what was lost, if any] |
+
+> If no source material was provided to the reviewer, note "source unavailable — omission
+> cross-check skipped" and proceed; do not fabricate a source to compare against.
 
 ---
 

@@ -1323,6 +1323,55 @@ Transition to the next section on security.
 | `{cue: poll}` | Launch audience poll |
 | `{cue: break}` | Take a break |
 
+### Structured Note Schema (recommended for content slides)
+
+Free-form notes still work, but content slides read far better when the `:::notes`
+block follows a **layered schema** (a superset of the free-form style — `{timing}` /
+`{cue}` markers are kept). Layers, in order (the `{timing}`/`{cue}` markers are a
+preamble; the content layers are `[요약]` → spoken → `[약어]` → `[출처]` → `[변경이력]`):
+
+1. **`{timing}` / `{cue}` markers** — kept exactly as before (timing first, cues inline).
+2. **`[요약]`** — 3–5 one-line bullets summarizing the slide's key points so the
+   speaker can scan them at a glance. The `NOTE_STRUCTURE` lint warns when a content
+   slide's notes omit this `[요약]` layer.
+3. **Spoken script** — the actual talk track in 존댓말 (polite conversational Korean),
+   with inline `{cue: ...}` markers where you want to pause, ask, or transition.
+4. **`[약어]`** — domain-specific abbreviations only (omit the block entirely if there
+   are none). Skip AWS / IT-common terms like API, JSON, EKS, S3 — only gloss
+   abbreviations the audience may genuinely not know.
+5. **`[출처]`** — **conditional**: include only on slides that cite numbers, benchmarks,
+   or vendor claims. Omit otherwise.
+6. **`[변경이력]`** — optional and lightweight; git history is the canonical record, so
+   use this only for a one-line "what changed and why" when it helps the speaker.
+
+Full example:
+
+```markdown
+:::notes
+{timing: 2min}
+{cue: pause}
+[요약]
+• Container Insights 핵심 메트릭은 CPU·메모리·네트워크 3가지
+• request 대비 사용률을 봐야 함 — limit만 보면 throttling 놓침
+• 메모리는 RSS가 아니라 Working Set 기준
+
+이 슬라이드에서는 CloudWatch Container Insights의 핵심 메트릭 3가지를 살펴보겠습니다.
+먼저 CPU 사용률인데요, request 대비 실제 사용량 비율을 봐야 합니다.
+
+{cue: question}
+혹시 OOMKilled를 경험해보신 분 계신가요? — 대부분 메모리 메트릭을 모니터링하지 않아 발생합니다.
+
+{cue: transition}
+다음 슬라이드에서 이 메트릭들을 대시보드로 구성하는 방법을 보겠습니다.
+
+[약어]
+• RSS: Resident Set Size — 프로세스가 점유한 물리 메모리
+
+[출처]
+• AWS Container Insights 문서, throttling 임계값 수치
+:::
+```
+
 ---
 
 ## Interactive Slide Types

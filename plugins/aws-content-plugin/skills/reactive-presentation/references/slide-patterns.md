@@ -1,5 +1,35 @@
 # Slide Design Patterns
 
+## Slide Title Voice
+
+A slide title (the `## heading`) is read in under a second — it must carry **edge**, not be a
+descriptive label. Write the title as a **headline**: a declarative claim, a question, or a
+reversal. Keep it **≤ 28 KO chars**. Put detail in the **subtitle**, written in **체언 종결**
+(noun-ending: `~화 / ~등극 / ~재편 / ~본격화` …), **≤ 45 KO chars**.
+
+| Slot | Voice | Limit | Example |
+|------|-------|-------|---------|
+| Title (`##`) | headline with edge (claim / question / reversal) | ≤ 28 chars | "비용은 싸졌고, 모델은 똑똑해졌다" |
+| Subtitle | 체언 종결 (noun-ending phrase) | ≤ 45 chars | "추론 비용 90% 하락, Frontier 모델의 대중화" |
+
+✅ Good (headline):
+- "비용은 싸졌고, 모델은 똑똑해졌다"
+- "왜 지금 에이전트인가?"
+- "RAG는 죽지 않았다 — 역할이 바뀌었다"
+
+❌ Bad (flat label):
+- "2026년 Frontier AI 모델 동향"  → reword to a claim/question
+- "비용 및 성능에 대한 개요"  → no edge, generic noun phrase as a title
+
+**Level gate** — recommend headline voice by the `level` frontmatter field (`_presentation.md`):
+- **level 100–200** (briefing / overview): use headline titles. The audience scans for the
+  takeaway, so each title should state the point.
+- **level 300–400** (technical deep-dive): clear **descriptive** titles are acceptable
+  (e.g. an API name, a config key, a precise mechanism) — accuracy outranks punch here.
+
+The `validate` rule **`TITLE_LENGTH`** (WARNING) flags any content-slide title > 28 chars
+regardless of level; shorten it to a headline and move the detail into a subtitle or body.
+
 ## Common Slide Types
 
 ### 0a. Session Cover — With PPTX Theme (Required — first slide of every block HTML file)
