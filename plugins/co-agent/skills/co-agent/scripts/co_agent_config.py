@@ -145,7 +145,15 @@ def cmd_matrix(root):
         fam[ai] += 1
     for ai, n in fam.items():
         if n > 1:
-            print(f"  ⚠️  {ai}: {n} models (same provider family — diminishing returns vs cost)")
+            if ai == "kiro":
+                # Kiro is a cross-vendor router (e.g. Claude / Moonshot / Zhipu), so
+                # multiple Kiro models are genuine cross-family diversity — exactly
+                # what co-agent wants — not the same-family redundancy flagged below.
+                # Still surface the cost (each model is a separate Kiro call).
+                print(f"  ℹ️  kiro: {n} models — cross-vendor via the Kiro router "
+                      f"(intended diversity; {n}× Kiro credits/round)")
+            else:
+                print(f"  ⚠️  {ai}: {n} models (same provider family — diminishing returns vs cost)")
     return 0
 
 
