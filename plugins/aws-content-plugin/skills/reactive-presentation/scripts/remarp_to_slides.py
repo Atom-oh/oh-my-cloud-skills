@@ -4812,6 +4812,62 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
                     'Interactive-First principle requires sequential reveal',
                     'Add class="fragment fade-up" data-fragment-index="N" to child elements')
 
+    # --- Rule 8: Design-Token Lint (scan :::html / :::css block content) ---
+    # Collect the raw text of every :::html and :::css block on the slide.
+    lint_chunks: List[str] = list(slide.html_blocks)
+    for css_match in re.finditer(r':::\s*css\b(.*?):::', slide.content, re.DOTALL):
+        lint_chunks.append(css_match.group(1))
+    # raw_content preserves nested blocks; html_blocks already covers :::html.
+    lint_text = '\n'.join(lint_chunks)
+
+    if lint_text.strip():
+        # RAW_HEX — #rrggbb or #rgb literal inside an html/css block.
+        if re.search(r'#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b', lint_text):
+            add('WARNING', 'RAW_HEX',
+                'Raw hex color literal in :::html/:::css block — bypasses the design-token system',
+                'Replace with var(--token) (e.g. var(--color-accent), var(--surface-1))')
+
+        # RAW_RGBA — rgb()/rgba() literal in slide HTML/CSS.
+        if re.search(r'\brgba?\(', lint_text):
+            add('WARNING', 'RAW_RGBA',
+                'Raw rgb()/rgba() literal in :::html/:::css block — bypasses the design-token system',
+                'Use var(--token) or color-mix(in srgb, var(--token) N%, transparent)')
+
+        # INLINE_STYLE — style="…" whose value touches color/background/padding/margin/border-radius.
+        for style_val in re.findall(r'style\s*=\s*"([^"]*)"', lint_text):
+            if re.search(r'(?<![\w-])(?:color|background|padding|margin|border-radius)\s*:', style_val):
+                add('WARNING', 'INLINE_STYLE',
+                    'Inline style="…" sets color/background/spacing — bypasses token-backed classes',
+                    'Move to a token-backed class (e.g. .card-grid, .metric-card) using var(--token)')
+                break
+
+        # OFF_SCALE — px/rem spacing value (padding/margin/gap) not on the 8px (4px-step) scale.
+        allowed_rem = {'.25', '0.25', '.5', '0.5', '.75', '0.75',
+                       '1', '1.5', '2', '3', '4'}
+        off_scale_hit = False
+        for prop, val in re.findall(
+                r'(?<![\w-])(padding|margin|gap)\s*:\s*([^;"\'}]+)', lint_text):
+            for num, unit in re.findall(r'(\d*\.?\d+)\s*(px|rem)', val):
+                if unit == 'px':
+                    try:
+                        n = float(num)
+                    except ValueError:
+                        continue
+                    # 0 and multiples of 4 are on-scale; anything else (e.g. 13px) is off.
+                    if n != 0 and n % 4 != 0:
+                        off_scale_hit = True
+                        break
+                else:  # rem
+                    if num.lstrip('0') not in allowed_rem and num not in allowed_rem:
+                        off_scale_hit = True
+                        break
+            if off_scale_hit:
+                break
+        if off_scale_hit:
+            add('WARNING', 'OFF_SCALE',
+                'Off-scale spacing value (not on the 8px / 4px-step scale) in :::html/:::css block',
+                'Use var(--space-*) (8px scale) instead of an arbitrary px/rem value')
+
     return findings
 
 
