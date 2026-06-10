@@ -29,6 +29,11 @@ CRITICAL/MAJOR finding remains (also stop on no-progress / oscillation).
 - Same provider *family* (e.g. two Gemini variants) = diminishing returns; the matrix warns.
   **Kiro is the exception** — it's a cross-vendor router (Claude / Moonshot / Zhipu), so
   multiple Kiro models are genuine cross-family diversity (matrix notes it, no warning).
+- **`kimi-k2.5` is an `[Internal]` preview** in `kiro-cli --list-models`. If an account
+  can't access it, the fan-out *skips* that pair (Kiro drops to 2 models) — it does not
+  auto-substitute. The designated fallback is **`claude-sonnet-4.6`** (stable, 1M ctx):
+  `python3 scripts/co_agent_config.py set kiro models claude-opus-4.8,claude-sonnet-4.6,glm-5`
+  (write to `.claude/co-agent.local.json` to keep it personal, or edit `co-agent.defaults.json`).
 
 ## Where the gate is used
 - **`/co-agent:consensus review`** — the gate, standalone, on a git diff (shipped v1.7.2).
