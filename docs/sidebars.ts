@@ -40,7 +40,7 @@ const sidebars: SidebarsConfig = {
       label: 'Demos',
       items: [
         'aws-content-plugin/demos/full-presentation-demo',
-        'aws-content-plugin/demos/bedrock-codex-reactive-presentation',
+        'aws-content-plugin/demos/bedrock-first-calldeck',
         'aws-content-plugin/demos/basic-presentation',
         'aws-content-plugin/demos/canvas-animation',
         'aws-content-plugin/demos/quiz-slides',
