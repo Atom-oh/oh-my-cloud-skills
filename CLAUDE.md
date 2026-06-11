@@ -269,7 +269,8 @@ Content:   presentation-agent (dispatcher) → reactive-presentation-agent → c
            Remarp HTML ↔ .remarp.md (bidirectional visual editing via VSCode extension)
            PPTX theme:  .pptx → extract_pptx_theme.py → theme-manifest.json + theme-override.css
            PPTX export: index.html → html2canvas iframe capture → PptxGenJS → .pptx download
-           architecture-diagram-agent → .drawio → PNG
+           architecture-diagram-agent → layout_aws.py (YAML spec → .drawio, standard patterns) → validate+lint → PNG
+                                       → hand-authored .drawio (non-standard shapes) → PNG
            animated-diagram-agent → .html (SVG+SMIL)
            document-agent → content-review-agent → .md
            gitbook-agent → content-review-agent → git push

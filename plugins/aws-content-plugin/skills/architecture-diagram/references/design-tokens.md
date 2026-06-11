@@ -30,8 +30,8 @@ fixes that — the LLM stops guessing.
 | AWS Cloud | `#232F3E` | none | `#232F3E` | `group_aws_cloud` |
 | Region | `#00A4A6` | none | `#147EBA` | `group_region` (dashed) |
 | VPC | `#879196` | none | `#879196` | `group_vpc` |
-| **Public subnet** | **`#7AA116`** (green) | `#F2F6E8` | `#248814` | `group_security_group` |
-| **Private subnet** | **`#00A4A6`** (teal) | `#E6F6F7` | `#147EBA` | `group_security_group` |
+| **Public subnet** | **`#7AA116`** (green) | `#F2F6E8` | `#248814` | `group_public_subnet` |
+| **Private subnet** | **`#00A4A6`** (teal) | `#E6F6F7` | `#147EBA` | `group_private_subnet` |
 | Security group / Inspection | `#C7131F` (red) | `#FEE7E7` | `#C62828` | `group_security_group` |
 | Availability Zone | `#00A4A6` | none | `#147EBA` | dashed border |
 | Corporate / On-prem (IDC) | `#5A6C86` | `#E6E6E6` | `#5A6C86` | `group_corporate_data_center` |
@@ -39,6 +39,11 @@ fixes that — the LLM stops guessing.
 
 > **Public = green, Private = teal.** This matches the templates (Web Tier = green,
 > App/Data Tier = teal). Do not swap them.
+>
+> ⚠️ **Subnets use `group_public_subnet` / `group_private_subnet` — NOT `group_security_group`.**
+> The security-group icon is a padlock glyph at top-left: it (1) overlaps and clips the
+> subnet label and (2) misreads as a security boundary. The subnet group shapes carry the
+> correct border style (public = solid, private = dashed) and leave the label clear.
 
 ## 3. Edge / connector styles
 
@@ -79,6 +84,11 @@ fixes that — the LLM stops guessing.
 ## 6. Verification (gate before export)
 
 1. `scripts/validate_drawio.py <file>` — XML / silent-killer check (truncation guard).
-2. `scripts/lint_layout.py <file>` — **geometric QA**: grid alignment, sibling-spacing
-   uniformity, child-in-parent containment, icon overlap, edge-budget. Prints a layout
-   score; **non-zero exit = below threshold → do NOT export, fix first.**
+2. `scripts/lint_layout.py <file>` — **layout QA, two layers**:
+   - *geometry*: grid alignment, sibling-spacing uniformity, child-in-parent containment,
+     icon overlap, edge-budget.
+   - *design* (the "looks finished like a PPT" layer): icon-size discipline (78 + at most
+     one nested 48 tier; 40/60/64 are retired), every icon labeled, container breathing
+     room, a title present, consistent Amazon Ember/Helvetica type.
+   Prints `score /100 [geometry · design]`; **non-zero exit = below threshold → do NOT
+   export, fix first.** Use `--json` for the breakdown.

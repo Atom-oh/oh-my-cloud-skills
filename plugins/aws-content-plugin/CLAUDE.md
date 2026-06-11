@@ -14,8 +14,12 @@ presentation-agent (dispatcher) → reactive-presentation-agent → validate (re
 
 ### Architecture Diagram Workflow
 ```
-architecture-diagram-agent → .drawio → PNG export → (embed in presentation/document/gitbook)
+# Recommended (VPC/Multi-AZ · serverless · multi-region · hybrid):
+architecture-diagram-agent → layout_aws.py (YAML spec → .drawio) → validate + lint (100/100) → PNG export
+# Hand-authored (non-standard shapes only): → .drawio → validate + lint → PNG export
+→ (embed in presentation/document/gitbook)
 ```
+> 표준 패턴은 좌표를 손으로 찍지 말고 `skills/architecture-diagram/scripts/layout_aws.py` 스펙 생성기를 사용. 골든 예시: `skills/architecture-diagram/examples/`.
 
 ### Animated Diagram Workflow
 ```

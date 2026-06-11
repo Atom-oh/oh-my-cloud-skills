@@ -1,0 +1,29 @@
+title: "Serverless REST API"
+external:
+  - {id: client, icon: users, label: "Clients"}
+edge:
+  - {id: apigw, icon: apigateway, label: "API Gateway"}
+region:
+  label: "AWS Region (us-east-1)"
+  stages:
+    - name: "Compute"
+      services:
+        - {id: order_fn, icon: lambda, label: "OrderFn"}
+        - {id: pay_fn, icon: lambda, label: "PaymentFn"}
+    - name: "Data"
+      services:
+        - {id: ddb, icon: dynamodb, label: "DynamoDB"}
+        - {id: assets, icon: s3, label: "S3 Assets"}
+    - name: "Async"
+      services:
+        - {id: bus, icon: eventbridge, label: "EventBridge"}
+        - {id: notify_fn, icon: lambda, label: "NotifyFn"}
+flows:
+  - {from: client, to: apigw, label: "HTTPS"}
+  - {from: apigw, to: order_fn, label: "invoke"}
+  - {from: apigw, to: pay_fn, label: "invoke"}
+  - {from: order_fn, to: ddb, label: "put"}
+  - {from: pay_fn, to: ddb, label: "put"}
+  - {from: order_fn, to: assets, label: "read"}
+  - {from: order_fn, to: bus, label: "event", kind: async}
+  - {from: bus, to: notify_fn, label: "trigger", kind: async}

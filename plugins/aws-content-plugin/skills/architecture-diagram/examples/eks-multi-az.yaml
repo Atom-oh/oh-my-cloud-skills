@@ -1,0 +1,21 @@
+title: "EKS Multi-AZ Cluster"
+external:
+  - {id: users, icon: users, label: "Users"}
+edge:
+  - {id: alb, icon: alb, label: "ALB (Ingress)"}
+region:
+  label: "AWS Region (ap-northeast-2)"
+  vpc:
+    label: "VPC 10.0.0.0/16"
+    azs: ["AZ-2a", "AZ-2c"]
+    tiers:
+      - {name: "Public Subnet", kind: public, services: [{id: nat, icon: ec2, label: "NAT GW"}]}
+      - {name: "Private Node Subnet", kind: private, services: [{id: eks, icon: eks, label: "EKS Node"}, {id: app, icon: ec2, label: "Worker"}]}
+      - {name: "Data Subnet", kind: private, services: [{id: rds, icon: aurora, label: "Aurora"}]}
+flows:
+  - {from: users, to: alb, label: "HTTPS"}
+  - {from: alb, to: eks_0, label: "ingress"}
+  - {from: alb, to: eks_1, label: "ingress"}
+  - {from: eks_0, to: rds_0, label: "query"}
+  - {from: eks_1, to: rds_0, label: "query"}
+  - {from: rds_0, to: rds_1, label: "replica", kind: async}
