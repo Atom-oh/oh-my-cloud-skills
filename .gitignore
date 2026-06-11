@@ -27,6 +27,8 @@ node_modules/
 # But keep demo screenshots (flat + per-demo subdirectories)
 !docs/static/img/demos/*.png
 !docs/static/img/demos/**/*.png
+# ...and demo deck assets (logos, etc.) shipped under each deck's common/
+!docs/static/demos/**/*.png
 
 # Test fixtures with fake secrets (triggers GitHub Push Protection)
 tests/fixtures/secret-samples.txt

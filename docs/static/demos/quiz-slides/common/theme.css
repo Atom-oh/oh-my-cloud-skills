@@ -906,12 +906,10 @@ input[type="range"]::-webkit-slider-thumb {
   z-index: 999;
   opacity: 0.8;
   pointer-events: none;
-  /* Logos are typically light/white (built for dark backgrounds). On the light
-     default theme that makes them invisible — invert luminance while preserving
-     hue so the mark reads on a light surface. Dark theme keeps the original. */
-  filter: invert(1) hue-rotate(180deg);
+  /* No blanket invert — each deck supplies a logo matching its own theme
+     (dark-ink logo for light decks, light/white logo for dark decks) via
+     `theme.logo` in _presentation.md. */
 }
-.theme-dark .slide-logo { filter: none; }
 
 /* --- Footer --- */
 .slide-footer {
