@@ -50,6 +50,7 @@
 - **10개 슬래시 명령** — /init-project, /sync-docs, /add-adr, /add-module, /add-runbook, /add-reference-doc 등
 - **문서 품질 스코어링** — CLAUDE.md 품질 평가 (100점 척도)
 - **자동 동기화 워크플로우** — 코드 변경에 따라 문서를 동기화 유지
+- **ADR 모순 검토** — `decision-reconcile`가 다양성 멀티 에이전트 패널로 충돌하는 ADR(및 ADR vs 현실 drift)을 찾아 번복 ADR 초안 작성
 
 ---
 
@@ -627,6 +628,8 @@ aws-ops-power/
 | `agentcore-create` | 5단계 AgentCore 설계, 빌드, 변환, 배포 워크플로우 |
 | `co-agent` | 멀티-AI 협업 (Kiro/Codex/Gemini) — 리뷰, 의사결정 보조, ADR 협업, `sync-context`; Claude가 의장. 명령: `/co-agent:configure`, `/co-agent:sync-context` |
 | `project-scaffolder` | Claude Code 프로젝트 구조 패턴 및 컨벤션 |
+| `pr-autofix` | AI + 사람 PR 리뷰 피드백 polling 후 이슈 자동 수정 (최대 3회 반복) |
+| `decision-reconcile` | 누적 ADR 간 모순(및 ADR vs 현실 drift)을 다양성 멀티 에이전트 패널(Claude 모델 티어 + 선택적 Kiro/Codex/Gemini, 렌즈 1개씩)로 검출 후 번복 ADR 초안 작성 |
 
 ### Project Init 명령
 
@@ -762,7 +765,7 @@ plugins/
 │   └── skills/
 │       └── co-agent/
 │
-└── project-init/                      # 프로젝트 스캐폴딩 (1 에이전트, 2 스킬, 10 명령)
+└── project-init/                      # 프로젝트 스캐폴딩 (1 에이전트, 3 스킬, 10 명령)
     ├── .claude-plugin/plugin.json
     ├── CLAUDE.md
     ├── agents/
@@ -777,5 +780,7 @@ plugins/
     │   ├── generate-changelog.md
     │   └── health-check.md
     └── skills/
-        └── project-scaffolder/
+        ├── project-scaffolder/
+        ├── pr-autofix/
+        └── decision-reconcile/
 ```

@@ -15,12 +15,13 @@ Project Init는 Claude Code 프로젝트 구조 초기화, 문서 품질 스코�
 |----------|------|--------|
 | `doc-sync-checker` | 문서 동기화 분석, 품질 스코어링, 누락 문서 감지 | 품질 점수 보고서 |
 
-### 스킬 (2개)
+### 스킬 (3개)
 
 | 스킬 | 설명 |
 |------|------|
 | `project-scaffolder` | Claude Code 프로젝트 구조 패턴 및 컨벤션 |
 | `pr-autofix` | PR 리뷰 피드백 자동 수정 (AI + 사람 리뷰 polling, 최대 3회 반복) |
+| `decision-reconcile` | 누적 ADR 간 모순·ADR vs 현실 drift를 다양성 멀티 에이전트 패널(Claude 모델 티어 ± 외부 CLI)로 검출, 번복 ADR 초안 작성 |
 
 ### 명령 (10개)
 
