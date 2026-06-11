@@ -26,3 +26,7 @@ Accepted (2026-04-27)
 - SKILL.md Phase 1, Phase 2
 - `remarp-format-guide.md` Frontmatter Fields
 - `remarp_to_slides.py` `_validate_global_frontmatter()`
+
+---
+
+> **Reconciliation note (2026-06-11, decision-reconcile)** — 본 ADR은 [ADR-005](ADR-005-rejection-loop.md)의 검증 항목 목록(`_presentation.md` 필수 frontmatter (ratio, footer))을 정밀화합니다. `ratio`를 "필수 항목으로 격상"한다고 했으나 실제 강제 수준은 **WARNING**(누락 시 비차단 경고)이며 build-blocking이 아닙니다. `footer` 역시 구현상 WARNING입니다. 따라서 ADR-005의 "필수/CRITICAL 게이트" 표현과 본 ADR은 *심각도 = WARNING*으로 일치합니다.

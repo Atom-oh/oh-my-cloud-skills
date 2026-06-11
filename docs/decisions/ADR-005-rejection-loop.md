@@ -29,3 +29,7 @@ Remarp 프레젠테이션 빌드 시 콘텐츠 품질 문제(누락된 스피커
 
 - Commit: 8aec151
 - SKILL.md Phase 3 workflow
+
+---
+
+> **Reconciliation note (2026-06-11, decision-reconcile)** — 본 ADR의 검증 항목 목록에 있는 "`_presentation.md` 필수 frontmatter (ratio, footer)"는 *build-blocking(CRITICAL)*이 아닙니다. 실제 구현(`remarp_to_slides.py` `_validate_global_frontmatter()`)은 `ratio`/`footer` 누락을 **WARNING**으로 분류하며, 빌드를 막는 것은 frontmatter 블록 자체의 부재(`MISSING_FRONTMATTER`, CRITICAL)뿐입니다. ratio 검증 규칙은 [ADR-007](ADR-007-ratio-enforcement.md)이 정밀화합니다. 즉 "필수"는 *권장/경고 수준*으로 읽어야 하며, "CRITICAL 0건 게이트"는 frontmatter 부재 등 CRITICAL 항목에만 적용됩니다.
