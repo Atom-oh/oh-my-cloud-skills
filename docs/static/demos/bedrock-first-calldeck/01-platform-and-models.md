@@ -46,6 +46,7 @@ title: "플랫폼과 파운데이션 모델"
 ## PoC는 쉽고, 프로덕션은 어렵다
 
 @type: content
+@theme: dark
 
 :::html
 <div class="col-2">
@@ -207,6 +208,75 @@ Claude는 복잡한 추론과 코딩에서 강하고, Opus·Sonnet·Haiku로 난
 
 ---
 
+## 추론 비용, 직접 계산
+
+@type: content
+
+:::html
+<div class="col-2">
+  <div>
+    <div class="slider-row"><label>월 입력 토큰</label><input type="range" id="bc-in" min="1" max="500" value="50"><span class="value" id="bc-inv">50M</span></div>
+    <div class="slider-row"><label>월 출력 토큰</label><input type="range" id="bc-out" min="1" max="200" value="20"><span class="value" id="bc-outv">20M</span></div>
+    <div class="btn-group" id="bc-models">
+      <button class="btn btn-sm active" data-in="3" data-out="15">Claude Sonnet</button>
+      <button class="btn btn-sm" data-in="1" data-out="5">Claude Haiku</button>
+      <button class="btn btn-sm" data-in="0.06" data-out="0.24">Nova Lite</button>
+    </div>
+  </div>
+  <div class="card-grid">
+    <div class="metric-card"><div class="metric-value" id="bc-od">$0</div><div class="metric-label">On-Demand / 월</div></div>
+    <div class="metric-card"><div class="metric-value text-success" id="bc-batch">$0</div><div class="metric-label">Batch (50%↓)</div></div>
+    <div class="metric-card"><div class="metric-value text-accent" id="bc-cache">$0</div><div class="metric-label">Prompt Caching (입력 90%↓)</div></div>
+  </div>
+</div>
+:::
+
+:::css
+.text-success { color: var(--success); }
+.text-accent  { color: var(--accent); }
+:::
+
+:::script
+(function(){
+  const $ = id => document.getElementById(id);
+  const inEl=$('bc-in'), outEl=$('bc-out'), inV=$('bc-inv'), outV=$('bc-outv');
+  const od=$('bc-od'), bt=$('bc-batch'), ca=$('bc-cache'), models=$('bc-models');
+  if(!inEl||!models) return;
+  let pin=3, pout=15;
+  const fmt = n => '$' + (n>=1000 ? (n/1000).toFixed(1)+'k' : n.toFixed(0));
+  function calc(){
+    const i=+inEl.value, o=+outEl.value;
+    inV.textContent=i+'M'; outV.textContent=o+'M';
+    const cost=i*pin + o*pout;            // per 1M token pricing × M tokens
+    od.textContent=fmt(cost);
+    bt.textContent=fmt(cost*0.5);          // batch ~50% off
+    ca.textContent=fmt(i*pin*0.1 + o*pout); // ~90% off cached input
+  }
+  inEl.addEventListener('input', calc);
+  outEl.addEventListener('input', calc);
+  models.addEventListener('click', e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    models.querySelectorAll('button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); pin=+b.dataset.in; pout=+b.dataset.out; calc();
+  });
+  calc();
+})();
+:::
+
+:::notes
+{timing: 2min}
+[요약]
+- 슬라이더로 월 토큰량·모델을 바꾸면 On-Demand / Batch / Caching 비용이 실시간 계산
+- 추론 옵션만으로 비용이 크게 달라짐을 체감
+
+직접 만져보겠습니다. 월 입력·출력 토큰을 슬라이더로 조절하고 모델을 바꾸면 비용이 실시간으로 갱신됩니다.
+같은 워크로드라도 Batch는 약 절반, Prompt Caching은 반복 입력에서 최대 90%까지 줄여줍니다 — 모델 단가만큼이나 "어떻게 호출하느냐"가 비용을 좌우합니다.
+{cue: question} 우리 워크로드의 월 토큰량이 대략 어느 정도일지 같이 넣어볼까요?
+{cue: transition} 이 추론을 떠받치는 엔진이 새로워졌습니다 — Mantle입니다.
+:::
+
+---
+
 ## Mantle: 추론 엔진의 진화
 
 @type: content
@@ -299,6 +369,7 @@ Claude는 Anthropic Messages API로 네이티브하게 호출해 도구 사용�
 ## 1부 핵심 정리
 
 @type: content
+@theme: dark
 
 :::html
 <div class="col-2">

@@ -153,6 +153,13 @@ body {
   opacity: 0;
   transition: opacity var(--transition-normal);
 }
+/* Per-slide dark scope: a slide carrying .theme-dark re-binds its tokens to the dark
+   palette (see .theme-dark above) and gets a dark surface + light text, so a mostly
+   light deck can intersperse dark cover/section/emphasis slides (light:dark mix). */
+.slide.theme-dark {
+  background: var(--surface-1);
+  color: var(--on-surface);
+}
 .slide.active {
   display: flex;
   opacity: 1;

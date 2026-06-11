@@ -1415,8 +1415,21 @@ class RemarpHTMLGenerator:
         else:
             html = self._gen_content_slide(slide)
 
-        # Post-process: add data-remarp-id to the slide div
-        html = html.replace('<div class="slide"', f'<div class="slide" data-remarp-id="s{slide.index}"', 1)
+        # Post-process: add data-remarp-id + optional per-slide theme class to the slide div.
+        # `@theme: dark|light` lets any slide opt into the dark/light token scope; cover
+        # slides default to dark (white text on a dark gradient). This enables a mostly-light
+        # deck to intersperse dark cover/section/emphasis slides (light:dark mix), with the
+        # framework swapping to the light/white logo on dark slides (logoDarkSrc).
+        _theme_dir = str(slide.directives.get('theme', '')).strip().lower()
+        if slide.slide_type == SlideType.COVER and _theme_dir != 'light':
+            _theme_dir = _theme_dir or 'dark'
+        _theme_cls = f' theme-{_theme_dir}' if _theme_dir in ('dark', 'light') else ''
+        # Match the first slide div whether or not it carries extra classes
+        # (e.g. `slide title-slide`), preserving them while prepending the theme class.
+        html = re.sub(
+            r'<div class="slide([^"]*)"',
+            lambda m: f'<div class="slide{_theme_cls}{m.group(1)}" data-remarp-id="s{slide.index}"',
+            html, count=1)
 
         # Post-process: apply {.click} fragment wrappers to ALL slide types
         html = self.gen_fragment_wrappers(html, slide.fragments)
@@ -3667,7 +3680,10 @@ class RemarpHTMLGenerator:
             _dark_flag = str(_dark_raw).strip().lower() in ('true', '1', 'yes', 'dark')
         deck_theme_class = ' theme-dark' if (_mode == 'dark' or _dark_flag) else ''
 
+        # Optional dark-slide logo (white/light logo shown on theme-dark slides).
+        logo_dark = config.get('logoDark', '') or theme_cfg.get('logoDark', '')
         logo_js = f"logoSrc: '{logo_src}'," if logo_src else ''
+        logo_dark_js = f"logoDarkSrc: '{logo_dark}'," if logo_dark else ''
         footer_js = f"footer: '{footer}'," if footer else ''
         pagination_js = f"pagination: {'true' if pagination else 'false'},"
 
@@ -3775,6 +3791,7 @@ class RemarpHTMLGenerator:
   {notes_block}
   const deck = new SlideFramework({{
     {logo_js}
+    {logo_dark_js}
     {footer_js}
     {header_js}
     {pagination_js}
@@ -4115,10 +4132,15 @@ class RemarpProjectBuilder:
             with open(css_path, 'r', encoding='utf-8') as f:
                 existing = f.read()
 
+        marker = '/* Base theme variable overrides (auto-generated) */'
         if existing:
-            # Append base-variable overrides after existing content
-            with open(css_path, 'a', encoding='utf-8') as f:
-                f.write('\n\n/* Base theme variable overrides (auto-generated) */\n')
+            # Idempotent: strip any previously auto-generated block(s) before re-appending,
+            # so repeated builds don't keep growing the file (the original extract_pptx_theme
+            # content before the marker is preserved).
+            base = existing.split(marker)[0].rstrip()
+            with open(css_path, 'w', encoding='utf-8') as f:
+                f.write(base)
+                f.write(f'\n\n{marker}\n')
                 f.write('\n'.join(css_lines))
         else:
             with open(css_path, 'w', encoding='utf-8') as f:

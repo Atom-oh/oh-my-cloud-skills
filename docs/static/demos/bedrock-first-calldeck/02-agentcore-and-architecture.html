@@ -12,11 +12,11 @@
   <link rel="stylesheet" href="./common/pptx-theme/theme-override.css">
   <style>:root { --slide-ratio-w: 16; --slide-ratio-h: 9; } :root { --slide-width: 960px; --slide-height: 540px; }</style>
   
-  <script>window.__remarpTheme = {"colors": {}, "footer": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.", "pagination": true, "fonts": {}};</script>
+  <script>window.__remarpTheme = {"colors": {"dk1": "#000000", "lt1": "#FFFFFF", "dk2": "#161D26", "lt2": "#F3F3F7", "accent1": "#41B3FF", "accent2": "#AD5CFF", "accent3": "#00E500", "accent4": "#FF5C85", "accent5": "#FF693C", "accent6": "#FBD332", "hlink": "#41B1E8", "folHlink": "#41B1E8"}, "footer": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.", "pagination": true, "fonts": {}, "slideSize": {"width_emu": 12192000, "height_emu": 6858000, "width_px": 1280, "height_px": 720, "aspect_ratio": "16:9"}};</script>
 </head>
 <body>
 <div class="slide-deck">
-<div class="slide title-slide">
+<div class="slide theme-dark title-slide" data-remarp-id="s0">
     <h1>AgentCore와 레퍼런스 아키텍처</h1>
   <p class="subtitle">모델을 넘어, 프로덕션 에이전트로</p>
 </div>
@@ -100,34 +100,32 @@
   </div>
 </div>
 
-<div class="slide" data-remarp-id="s6">
+<div class="slide theme-dark" data-remarp-id="s6">
   <div class="slide-header" data-remarp-id="s6-header"><h2>끝에서 끝까지</h2></div>
   <div class="slide-body" data-remarp-id="s6-body">
     <div class="flow-h">
   <div class="flow-group bg-blue" data-fragment-index="1">
     <div class="flow-group-label">사용자·앱</div>
-    <div class="flow-box">웹·모바일</div>
-    <div class="flow-box">백엔드 API</div>
+    <div class="icon-item"><img src="common/aws-icons/services/Arch_Amazon-CloudFront_48.svg"><span>CloudFront</span></div>
+    <div class="flow-box">웹·모바일·API</div>
   </div>
   <div class="flow-arrow">→</div>
   <div class="flow-group bg-orange" data-fragment-index="2">
     <div class="flow-group-label">Bedrock · Mantle</div>
-    <div class="flow-box">모델 추론</div>
-    <div class="flow-box">Guardrails</div>
-    <div class="flow-box">Knowledge Base (RAG)</div>
+    <div class="icon-item"><img src="common/aws-icons/services/Arch_Amazon-Bedrock_48.svg"><span>모델 추론</span></div>
+    <div class="flow-box">Guardrails · Knowledge Base</div>
   </div>
   <div class="flow-arrow">→</div>
   <div class="flow-group bg-purple" data-fragment-index="3">
     <div class="flow-group-label">AgentCore</div>
-    <div class="flow-box">Runtime</div>
-    <div class="flow-box">Gateway</div>
-    <div class="flow-box">Memory · Identity</div>
+    <div class="icon-item"><img src="common/aws-icons/services/Arch_Amazon-Bedrock_48.svg"><span>Runtime·Gateway</span></div>
+    <div class="icon-item"><img src="common/aws-icons/services/Arch_AWS-Lambda_48.svg"><span>도구 (Lambda)</span></div>
   </div>
   <div class="flow-arrow">→</div>
   <div class="flow-group bg-green" data-fragment-index="4">
     <div class="flow-group-label">기업 자산</div>
-    <div class="flow-box">API · DB</div>
-    <div class="flow-box">SaaS · 도구</div>
+    <div class="icon-item"><img src="common/aws-icons/services/Arch_Amazon-DynamoDB_48.svg"><span>DynamoDB</span></div>
+    <div class="icon-item"><img src="common/aws-icons/services/Arch_Amazon-Simple-Storage-Service_48.svg"><span>S3</span></div>
   </div>
 </div>
   </div>
@@ -160,7 +158,7 @@
   </div>
 </div>
 
-<div class="slide" data-remarp-id="s9">
+<div class="slide theme-dark" data-remarp-id="s9">
   <div class="center-content" style="height:100%; gap:1.5rem;">
     <h1 style="font-size:3rem; background:linear-gradient(135deg, var(--accent-light), var(--cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">Thank You</h1>
     <p style="color:var(--text-secondary); font-size:1.1rem;"></p>
@@ -192,6 +190,7 @@
   };
   const deck = new SlideFramework({
     logoSrc: './common/pptx-theme/images/logo_1_light.png',
+    logoDarkSrc: './common/pptx-theme/images/logo_1.png',
     footer: '© 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.',
     
     pagination: true,

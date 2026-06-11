@@ -13,6 +13,7 @@ ratio: "16:9"
 theme:
   footer: "© 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark."
   logo: "./common/pptx-theme/images/logo_1_light.png"
+  logoDark: "./common/pptx-theme/images/logo_1.png"
   override: "./common/pptx-theme/theme-override.css"
 blocks:
   - file: 01-platform-and-models.md

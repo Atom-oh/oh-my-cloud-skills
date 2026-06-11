@@ -11,6 +11,8 @@ class SlideFramework {
     this.onSlideChange = options.onSlideChange || null;
     this.footer = options.footer || null;
     this.logoSrc = options.logoSrc || null;
+    // Logo shown on dark slides (white/light logo). Falls back to logoSrc when unset.
+    this.logoDarkSrc = options.logoDarkSrc || null;
     this.presenterNotes = options.presenterNotes || {};
     this.presenterView = null;
     this.slideActions = {};  // { slideIndex: { up: fn, down: fn } }
@@ -295,7 +297,19 @@ class SlideFramework {
     const footer = deck.querySelector('.slide-footer');
     // Hide framework logo/footer when the current slide already contains an <img>
     const hide = slide.querySelector('img') !== null;
-    if (logo) logo.style.display = hide ? 'none' : '';
+    if (logo) {
+      logo.style.display = hide ? 'none' : '';
+      // Per-slide adaptive logo: dark slides show the light/white logo, light slides
+      // show the default (dark) logo. A slide is "dark" when it (or the deck) carries
+      // the theme-dark class. Only swaps when a distinct dark logo was supplied.
+      if (this.logoDarkSrc) {
+        const deckDark = (this.getDeck() || document.body).classList.contains('theme-dark');
+        const slideDark = slide.classList.contains('theme-dark') ||
+          (deckDark && !slide.classList.contains('theme-light'));
+        const want = slideDark ? this.logoDarkSrc : this.logoSrc;
+        if (want && logo.getAttribute('src') !== want) logo.src = want;
+      }
+    }
     if (footer) footer.style.display = hide ? 'none' : '';
     const slideNum = deck.querySelector('.slide-number');
     if (slideNum) slideNum.style.display = hide ? 'none' : '';
