@@ -46,3 +46,8 @@ docs/.docusaurus/
 
 # scratch working dir (presentation/demo authoring — not tracked)
 work/
+
+# user-provided design-system reference (kept on disk, not tracked)
+/colors.css
+/spacing.css
+/typography.css

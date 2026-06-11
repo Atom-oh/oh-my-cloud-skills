@@ -18,30 +18,34 @@
    The legacy base vars (--bg-primary/--text-primary/etc.) are mapped onto the
    semantic roles below so the base chrome follows the active theme. */
 :root, .theme-light {
-  /* Surfaces route through brand tokens (--pptx-lt1/lt2) so an extracted
-     PPTX/brand theme can drive them; theme defaults are the var() fallbacks. */
-  --surface-1:var(--pptx-lt1, #ffffff); --surface-2:#f6f7f9; --surface-3:var(--pptx-lt2, #eceff3);
-  --on-surface:var(--pptx-dk2, #1a1d2e); --on-surface-muted:#5b6072;
-  /* --accent routes through the brand token --pptx-accent1; the historical
-     theme value is the fallback so non-extracted decks are unchanged. */
-  --accent:var(--pptx-accent1, #5b51d8); --accent-subtle:rgba(91,81,216,.12); --accent-on:#ffffff;
+  /* Warm "paper + ink" neutrals (ref: design-system colors.css) — softer and
+     less clinical than cool blue-greys (the old "too bright" feel). Cards
+     (surface-1) still route through brand --pptx-lt1; surface-2/3 are warm
+     paper-muted / ink so an extracted PPTX theme keeps its brand accent while
+     the canvas stays warm. */
+  --surface-1:var(--pptx-lt1, #ffffff); --surface-2:#f3f1eb; --surface-3:#edebe4;
+  --on-surface:var(--pptx-dk2, #1f1e1d); --on-surface-muted:#5f5a4d;
+  /* --accent routes through the brand token --pptx-accent1; the design-system
+     Claude-orange is the fallback so non-extracted decks pick up brand warmth. */
+  --accent:var(--pptx-accent1, #d97757); --accent-subtle:rgba(217,119,87,.12); --accent-on:#ffffff;
   --info:#2563eb; --info-subtle:rgba(37,99,235,.12); --info-on:#fff;
-  --success:#0e9f6e; --success-subtle:rgba(14,159,110,.12); --success-on:#fff;
+  --success:#10b981; --success-subtle:rgba(16,185,129,.12); --success-on:#fff;
   --warning:#b45309; --warning-subtle:rgba(180,83,9,.12); --warning-on:#fff;
-  --danger:#dc2626; --danger-subtle:rgba(220,38,38,.12); --danger-on:#fff;
+  --danger:#f43f5e; --danger-subtle:rgba(244,63,94,.12); --danger-on:#fff;
 
-  /* Legacy base vars mapped onto the LIGHT roles (base chrome follows theme).
-     Page sits on a soft off-white (surface-3) and cards elevate in white
-     (surface-1) — pure-white-on-pure-white read as flat/"too white". */
-  --bg-primary:   var(--surface-3);
+  /* Legacy base vars mapped onto the LIGHT roles. Page = warm paper (#faf9f5,
+     a FIXED canvas — NOT the brightest brand token, which used to wash the
+     whole slide near-white); cards elevate in white above it. Borders/muted
+     text are warm ink, never blue-grey. */
+  --bg-primary:   #faf9f5;
   --bg-secondary: var(--surface-2);
   --bg-tertiary:  var(--surface-3);
   --bg-card:      var(--surface-1);
-  --surface:      var(--surface-3);
-  --border:       #e2e5ea;
+  --surface:      var(--surface-2);
+  --border:       #d7d3c7;
   --text-primary:   var(--on-surface);
   --text-secondary: var(--on-surface-muted);
-  --text-muted:     var(--on-surface-muted);
+  --text-muted:     #8a8474;
 }
 .theme-dark { --surface-1:var(--pptx-dk2, #0f1117); --surface-2:#1a1d2e; --surface-3:#232740;
   --on-surface:var(--pptx-lt1, #e8eaf0); --on-surface-muted:#9ba1b8;
