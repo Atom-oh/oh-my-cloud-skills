@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Superseded (대체됨) — Superseded by ADR-008
+
+> Reconciliation (2026-06-11, decision-reconcile): co-agent 플러그인이 멀티 AI 리뷰 메커니즘으로 이 결정을 대체했습니다. co-agent는 `/kiro-cli:*` 대화형 명령 대신 headless `kiro-cli chat --no-interactive`를 사용하며 Kiro/Codex/Gemini를 병렬 fan-out합니다. 본 ADR은 시점 기록으로 보존됩니다.
 
 ## Context
 
