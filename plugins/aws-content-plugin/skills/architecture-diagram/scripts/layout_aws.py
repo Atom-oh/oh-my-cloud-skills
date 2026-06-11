@@ -272,7 +272,7 @@ def _region_size(region):
     return (vpc_w + 2 * PAD, LABEL_TOP + (LABEL_TOP + az_h + PAD) + PAD)
 
 
-def _render_region(region, rx, ry, prefix, rid, cells, parent, pos):
+def _render_region(region, rx, ry, prefix, rid, cells, parent, pos, alias):
     """Draw one Region box at absolute (rx, ry) + its interior. `prefix` namespaces ids so
     multiple regions don't collide (e.g. r0_, r1_). Returns (w, h)."""
     rx, ry = snap(rx), snap(ry)
@@ -284,11 +284,11 @@ def _render_region(region, rx, ry, prefix, rid, cells, parent, pos):
     if "stages" in region:
         _fill_stages(region, rx, ry, rid, prefix, cells, parent, pos)
     else:
-        _fill_vpc(region, rx, ry, rid, prefix, cells, parent, pos)
+        _fill_vpc(region, rx, ry, rid, prefix, cells, parent, pos, alias)
     return region_w, region_h
 
 
-def _fill_vpc(region, rx, ry, rid, prefix, cells, parent, pos):
+def _fill_vpc(region, rx, ry, rid, prefix, cells, parent, pos, alias):
     vpc = region["vpc"]
     azs = vpc.get("azs") or ["AZ"]
     tiers = vpc["tiers"]
@@ -339,7 +339,9 @@ def _fill_vpc(region, rx, ry, rid, prefix, cells, parent, pos):
                 parent[inst_id] = sub_id
                 pos[inst_id] = (snap(icx), snap(icy), ICON, ICON)
                 if j == 0:
-                    pos[f"{prefix}{svc['id']}"] = pos[inst_id]   # bare (prefixed) id -> AZ-0
+                    # bare (prefixed) id -> the real AZ-0 CELL id, so a flow naming
+                    # `rds` / `r0_rds` connects to the actual `rds_0` / `r0_rds_0` cell.
+                    alias[f"{prefix}{svc['id']}"] = inst_id
             ty += tier_h[ti] + GAP
 
 
@@ -404,6 +406,7 @@ def build(spec):
     multi-region (`regions:` list, ids prefixed r0_/r1_), and hybrid (`onprem:` block
     connected to the region). Flows are wired last by id."""
     cells, parent, pos = [], {}, {}
+    alias = {}   # bare/AZ-0 handle -> real cell id (e.g. rds -> rds_0, r0_rds -> r0_rds_0)
 
     def emit_column(items, ax, ay):
         step = ICON + ICON_GAP + ICON_LABEL
@@ -430,12 +433,12 @@ def build(spec):
         for ri, rg in enumerate(spec["regions"]):
             rw, rh = _region_size(rg)
             blocks.append((rw, rh, lambda ax, ay, rg=rg, ri=ri:
-                           _render_region(rg, ax, ay, f"r{ri}_", f"region_{ri}", cells, parent, pos)))
+                           _render_region(rg, ax, ay, f"r{ri}_", f"region_{ri}", cells, parent, pos, alias)))
     elif "region" in spec:
         rg = spec["region"]
         rw, rh = _region_size(rg)
         blocks.append((rw, rh, lambda ax, ay, rg=rg:
-                       _render_region(rg, ax, ay, "", "region", cells, parent, pos)))
+                       _render_region(rg, ax, ay, "", "region", cells, parent, pos, alias)))
 
     has_title = bool(spec.get("title"))
     top = MARGIN + (40 if has_title else 0)
@@ -453,11 +456,15 @@ def build(spec):
         parent["title"] = "1"
 
     def resolve(ref):
-        if ref in pos:
+        if ref in pos:                 # explicit real cell (alb_0, r0_rds_0, ddb, users)
             return ref
-        for cand in (f"{ref}_0", f"r0_{ref}", f"r0_{ref}_0"):
+        if ref in alias:               # AZ-0 handle (rds -> rds_0, r0_rds -> r0_rds_0)
+            return alias[ref]
+        for cand in (f"{ref}_0", f"r0_{ref}"):   # bare convenience fallbacks
             if cand in pos:
                 return cand
+            if cand in alias:
+                return alias[cand]
         return ref
 
     for i, fl in enumerate(spec.get("flows", [])):
