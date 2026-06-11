@@ -7,6 +7,8 @@ title: 커스텀 테마
 
 PPTX 추출 외에도 직접 커스텀 테마를 만들 수 있습니다.
 
+> ⚠️ **v1.9.0 토큰 시스템 (필독)**: 테마는 **light가 기본**이고, 브랜드 색은 **`--pptx-*` 입력 토큰**으로 주입합니다 — `:root`에 `--bg-primary`/`--text-primary` 같은 bare 토큰을 직접 박지 마세요. 그러면 light 배경에 흰 글자가 되거나(가독성 깨짐) light/dark 스코프를 무너뜨립니다. dark가 필요하면 덱 루트에 `class="slide-deck theme-dark"`를 붙입니다. 아래 예시 중 `--bg-primary`를 직접 세팅하는 패턴은 **레거시**이며, 신규 테마는 `--pptx-*` + 역할 토큰(`--accent/--info/--success/...`)을 사용하세요. 토큰 전체 레퍼런스: [CSS 변수](./css-variables).
+
 ## Frontmatter에서 테마 정의
 
 ```yaml

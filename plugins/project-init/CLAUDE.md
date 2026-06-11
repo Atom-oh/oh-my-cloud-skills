@@ -20,6 +20,9 @@ Core plugin providing project structure initialization, documentation quality sc
 - `skills/project-scaffolder/references/` - 12 template files for code generation (includes shared writing-style-guide)
 - `skills/pr-autofix/SKILL.md` - PR auto-fix skill (AI review + human review loop)
 - `skills/pr-autofix/references/pr-review-workflow.yml` - Reference CI workflow for AI code review
+- `skills/decision-reconcile/SKILL.md` - ADR contradiction detection + superseding-ADR drafting (diverse multi-agent panel)
+- `skills/decision-reconcile/scripts/collect_adrs.py` - Parse `docs/decisions/ADR-*.md` → JSON + deterministic inconsistency pre-checks
+- `skills/decision-reconcile/references/contradiction-taxonomy.md` - C1–C6 contradiction categories, per-agent review lenses, severity, resolution patterns
 
 ## Upstream
 - **Source**: `git@github.com:whchoi98/project-init.git` (path: `plugins/project-init/`)
@@ -50,7 +53,8 @@ rsync -av \
 - `skills/project-scaffolder/SKILL.md` — 로컬 전용 `writing-style-guide.md` 참조 라인 보유
 - `skills/project-scaffolder/references/readme-template.md` — 로컬은 `--`, upstream은 `—` 사용
 - `skills/pr-autofix/**`, `commands/pr-autofix.md` — 로컬 전용 기능(upstream에 없음, rsync가 건드리지 않음). 모델 ID는 Opus 4.8로 로컬 고정.
-- `agents/doc-sync-checker.md` — **모델 티어를 로컬에서 `sonnet`으로 하향** (upstream은 `opus`). 기계적 doc 상태 비교/채점이라 opus는 과도하고 `/sync-docs`마다 호출되어 비용 큼. 가급적 upstream(whchoi98/project-init)에도 반영 권장.
+- `skills/decision-reconcile/**` — 로컬 전용 기능(upstream에 없음, rsync가 건드리지 않음). ADR 모순 검출·번복 ADR 초안. 멀티 에이전트 패널(Claude 모델 티어 + 선택적 co-agent CLI)로 ADR-vs-ADR/ADR-vs-현실 모순 검토.
+- `agents/doc-sync-checker.md` — **모델 티어를 로컬에서 `sonnet`으로 하향** (upstream은 `opus`). 기계적 doc 상태 비교/채점이라 opus는 과도하고 `/sync-docs`마다 호출되어 비용 큼. 가급적 upstream(whchoi98/project-init)에도 반영 권장. **tools**: read-only Bash 스코핑으로 제한 — `Bash(find:*), Bash(git log:*), Bash(ls:*), Bash(wc:*)`. upstream은 `wc`를 빠뜨려(본문 line 109 `wc -l`가 채점에 쓰임) 자기 불일치가 있으므로 로컬은 `Bash(wc:*)`를 추가함. upstream에도 `wc` 추가 권장.
 
 ## Rules
 - All commands must have clear step-by-step instructions

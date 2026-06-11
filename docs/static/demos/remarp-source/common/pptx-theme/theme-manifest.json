@@ -5376,5 +5376,349 @@
       "texts": []
     }
   ],
-  "footer_text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark. | \u2039#\u203a"
+  "footer_text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark. | \u2039#\u203a",
+  "slide_master": {
+    "slide_size": {
+      "width_emu": 12192000,
+      "height_emu": 6858000,
+      "width_px": 1280,
+      "height_px": 720,
+      "aspect_ratio": "16:9"
+    },
+    "color_palette": {
+      "background": "#161D26",
+      "text_primary": "#FFFFFF",
+      "text_secondary": "#F3F3F7",
+      "primary": "#41B3FF",
+      "secondary": "#AD5CFF",
+      "accent": "#00E500",
+      "danger": "#FF5C85",
+      "warning": "#FF693C",
+      "info": "#FBD332",
+      "link": "#41B1E8"
+    },
+    "header": {
+      "position": "top",
+      "height_percent": 19.33,
+      "elements": [
+        {
+          "shape_name": "Title Placeholder 19",
+          "position": {
+            "left_percent": 5.0,
+            "top_percent": 4.4444
+          },
+          "size": {
+            "width_percent": 86.25,
+            "height_percent": 19.3287
+          },
+          "type": "placeholder",
+          "placeholder_type": "TITLE (1)"
+        }
+      ]
+    },
+    "footer": {
+      "position": "bottom",
+      "height_percent": 15.0,
+      "resolved_text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark. | \u2039#\u203a",
+      "elements": [
+        {
+          "shape_name": "Picture 14",
+          "position": {
+            "left_percent": 4.8827,
+            "top_percent": 92.4176
+          },
+          "size": {
+            "width_percent": 3.0,
+            "height_percent": 3.1909
+          },
+          "type": "image"
+        },
+        {
+          "shape_name": "Date Placeholder 3",
+          "position": {
+            "left_percent": 6.875,
+            "top_percent": 101.3889
+          },
+          "size": {
+            "width_percent": 22.5,
+            "height_percent": 5.3241
+          },
+          "type": "placeholder",
+          "placeholder_type": "DATE (16)",
+          "text": "2/23/26"
+        },
+        {
+          "shape_name": "Footer Placeholder 4",
+          "position": {
+            "left_percent": 33.125,
+            "top_percent": 101.3889
+          },
+          "size": {
+            "width_percent": 33.75,
+            "height_percent": 5.3241
+          },
+          "type": "placeholder",
+          "placeholder_type": "FOOTER (15)",
+          "text": ""
+        },
+        {
+          "shape_name": "Slide Number Placeholder 5",
+          "position": {
+            "left_percent": 73.2382,
+            "top_percent": 91.7104
+          },
+          "size": {
+            "width_percent": 22.5,
+            "height_percent": 5.3241
+          },
+          "type": "placeholder",
+          "placeholder_type": "SLIDE_NUMBER (13)",
+          "text": "\u2039#\u203a"
+        },
+        {
+          "shape_name": "TextBox 10",
+          "position": {
+            "left_percent": 9.3593,
+            "top_percent": 93.1731
+          },
+          "size": {
+            "width_percent": 29.2306,
+            "height_percent": 2.6927
+          },
+          "type": "text",
+          "text": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark."
+        },
+        {
+          "shape_name": "Slide Number Placeholder 5",
+          "position": {
+            "left_percent": 73.2382,
+            "top_percent": 91.7104
+          },
+          "size": {
+            "width_percent": 22.5,
+            "height_percent": 5.3241
+          },
+          "type": "text",
+          "text": "\u2039#\u203a"
+        }
+      ]
+    },
+    "decorative_elements": [],
+    "layout_decorative_patterns": [
+      {
+        "category": "gradient_panel",
+        "count": 11,
+        "examples": [
+          {
+            "layout": "1_Agenda Slide 2 alternate",
+            "shape_name": "Rectangle: Rounded Corners 13",
+            "preset_geometry": "roundRect",
+            "size": {
+              "width_percent": 39.6484,
+              "height_percent": 100.0
+            },
+            "fill_type": "gradient",
+            "gradient": {
+              "stops": [
+                {
+                  "pos": 0.0,
+                  "color": "#F3F3F7"
+                },
+                {
+                  "pos": 99.0,
+                  "color": "#41B3FF"
+                }
+              ],
+              "angle": 90
+            }
+          },
+          {
+            "layout": "Title Only Gradient 3",
+            "shape_name": "Rectangle 5",
+            "preset_geometry": "rect",
+            "size": {
+              "width_percent": 65.5603,
+              "height_percent": 100.0
+            },
+            "fill_type": "gradient",
+            "gradient": {
+              "stops": [
+                {
+                  "pos": 0.0,
+                  "color": "#F3F3F7"
+                },
+                {
+                  "pos": 99.0,
+                  "color": "#F3F3F7"
+                }
+              ],
+              "angle": 0
+            }
+          },
+          {
+            "layout": "2_Two Content_Image",
+            "shape_name": "Rectangle 11",
+            "preset_geometry": "rect",
+            "size": {
+              "width_percent": 50.0,
+              "height_percent": 100.0
+            },
+            "fill_type": "gradient",
+            "gradient": {
+              "stops": [
+                {
+                  "pos": 0.0,
+                  "color": "#000000"
+                },
+                {
+                  "pos": 99.0,
+                  "color": "#41B3FF"
+                }
+              ],
+              "angle": 0
+            }
+          }
+        ]
+      },
+      {
+        "category": "circle_icon",
+        "count": 21,
+        "examples": [
+          {
+            "layout": "2_Agenda Slide 2 alternate 2",
+            "shape_name": "Group 41",
+            "preset_geometry": "ellipse",
+            "size": {
+              "width_percent": 9.5103,
+              "height_percent": 16.9072
+            }
+          },
+          {
+            "layout": "1_Four column with subheadings, circles multi",
+            "shape_name": "Oval 21",
+            "preset_geometry": "ellipse",
+            "size": {
+              "width_percent": 7.9545,
+              "height_percent": 14.1414
+            },
+            "fill_type": "background"
+          },
+          {
+            "layout": "1_Four column with subheadings, circles multi",
+            "shape_name": "Oval 22",
+            "preset_geometry": "ellipse",
+            "size": {
+              "width_percent": 7.9545,
+              "height_percent": 14.1414
+            },
+            "fill_type": "background"
+          }
+        ]
+      },
+      {
+        "category": "divider",
+        "count": 13,
+        "examples": [
+          {
+            "layout": "1_Agenda Slide 2 alternate",
+            "shape_name": "Straight Connector 11",
+            "preset_geometry": "line",
+            "size": {
+              "width_percent": 14.0817,
+              "height_percent": 0.0
+            }
+          },
+          {
+            "layout": "2_Three column statistics layout",
+            "shape_name": "Straight Connector 19",
+            "preset_geometry": "line",
+            "size": {
+              "width_percent": 27.7358,
+              "height_percent": 0.0
+            }
+          },
+          {
+            "layout": "2_Three column statistics layout",
+            "shape_name": "Straight Connector 20",
+            "preset_geometry": "line",
+            "size": {
+              "width_percent": 27.7358,
+              "height_percent": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "category": "rounded_accent",
+        "count": 3,
+        "examples": [
+          {
+            "layout": "Title Slide 2A",
+            "shape_name": "Rounded Rectangle 20",
+            "preset_geometry": "roundRect",
+            "size": {
+              "width_percent": 24.5545,
+              "height_percent": 4.2133
+            },
+            "fill_type": "solid"
+          },
+          {
+            "layout": "1_Title Slide 2B",
+            "shape_name": "Rounded Rectangle 23",
+            "preset_geometry": "roundRect",
+            "size": {
+              "width_percent": 24.5545,
+              "height_percent": 4.2133
+            },
+            "fill_type": "solid"
+          },
+          {
+            "layout": "Quote",
+            "shape_name": "Rounded Rectangle 5",
+            "preset_geometry": "roundRect",
+            "size": {
+              "width_percent": 92.1951,
+              "height_percent": 83.2385
+            },
+            "fill_type": "solid",
+            "fill_color": "#1D262F"
+          }
+        ]
+      },
+      {
+        "category": "decorative_shape",
+        "count": 13,
+        "examples": [
+          {
+            "layout": "2_Agenda Slide 2 alternate 2",
+            "shape_name": "Rectangle 38",
+            "preset_geometry": "rect",
+            "size": {
+              "width_percent": 50.625,
+              "height_percent": 100.0
+            },
+            "fill_type": "solid"
+          },
+          {
+            "layout": "1_Agenda Slide 1",
+            "shape_name": "Table 7",
+            "preset_geometry": null,
+            "size": {
+              "width_percent": 58.2812,
+              "height_percent": 65.3355
+            }
+          },
+          {
+            "layout": "2_Agenda Slide 1",
+            "shape_name": "Google Shape;714;p4",
+            "preset_geometry": "rect",
+            "size": {
+              "width_percent": 6.5502,
+              "height_percent": 100.2003
+            }
+          }
+        ]
+      }
+    ]
+  }
 }

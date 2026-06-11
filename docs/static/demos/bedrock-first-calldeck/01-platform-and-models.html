@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>플랫폼과 파운데이션 모델</title>
+  <meta name="generator" content="remarp">
+  <meta name="remarp-version" content="1">
+  <meta name="remarp-source" content="01-platform-and-models.md">
+  <meta name="remarp-block" content="default">
+  <link rel="stylesheet" href="./common/theme.css">
+  <link rel="stylesheet" href="./common/pptx-theme/theme-override.css">
+  <style>:root { --slide-ratio-w: 16; --slide-ratio-h: 9; } :root { --slide-width: 960px; --slide-height: 540px; }</style>
+  
+  <script>window.__remarpTheme = {"colors": {}, "footer": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.", "pagination": true, "fonts": {}};</script>
+</head>
+<body>
+<div class="slide-deck">
+<div class="slide" data-remarp-id="s0" style="background:linear-gradient(135deg, #1a1f35 0%, #0d1117 50%, #161b2e 100%); padding:0; overflow:hidden;">
+  <div style="position:absolute; top:-20%; right:-10%; width:60%; height:80%; background:radial-gradient(ellipse, rgba(108,92,231,0.15) 0%, transparent 70%); pointer-events:none;"></div>
+  <div style="position:absolute; left:5%; top:42%; width:80px; height:3px; background:linear-gradient(90deg, #6c5ce7, #a29bfe); border-radius:2px;"></div>
+  <h1 style="position:absolute; left:5%; top:45%; font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:60%; margin:0;">Amazon Bedrock</h1>
+  <p style="position:absolute; left:5%; top:60%; font-size:1.3rem; color:rgba(255,255,255,0.7); width:60%; margin:0;">생성형 AI를 프로덕션으로 — First Call</p>
+  <div style="position:absolute; left:5%; top:75%;">
+    <p style="font-size:1.05rem; color:#fff; font-weight:600; margin:0;">AWS Solutions Architect</p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.6); margin:6px 0 0 0;"></p>
+    <p style="font-size:0.9rem; color:rgba(255,255,255,0.6); margin:2px 0 0 0;"></p>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s1">
+  <div class="slide-header" data-remarp-id="s1-header"><h2>오늘 함께 볼 것</h2></div>
+  <div class="slide-body" data-remarp-id="s1-body">
+    <div class="agenda-timeline">
+            <div class="agenda-step active">
+          <div class="agenda-dot">1</div>
+          <div class="agenda-connector"></div>
+          <div class="agenda-label">
+            <strong>플랫폼과 파운데이션 모델</strong>
+            <span>18min</span>
+          </div>
+        </div>
+      <div class="agenda-step">
+          <div class="agenda-dot">2</div>
+          
+          <div class="agenda-label">
+            <strong>AgentCore와 레퍼런스 아키텍처</strong>
+            <span>17min</span>
+          </div>
+        </div>
+    </div>
+    
+  </div>
+  
+<script>(function() {
+  const slide = document.currentScript.closest('.slide');
+  if (!slide) return;
+  const steps = slide.querySelectorAll('.agenda-step:not(.break)');
+  const connectors = slide.querySelectorAll('.agenda-connector');
+  let current = 0;
+  function update() {
+    steps.forEach((s, i) => {
+      s.classList.remove('active', 'done');
+      if (i < current) s.classList.add('done');
+      else if (i === current) s.classList.add('active');
+    });
+    connectors.forEach((c, i) => {
+      c.classList.toggle('done', i < current);
+    });
+  }
+  update();
+  slide.__canvasStep = function(dir) {
+    if (dir === 'next' && current < steps.length - 1) current++;
+    else if (dir === 'prev' && current > 0) current--;
+    else return false;
+    update();
+    return current;
+  };
+  slide.dataset.slideAction = 'canvas-step';
+  slide.dataset.canvasMaxStep = String(steps.length - 1);
+})();</script>
+</div>
+
+<div class="slide" data-remarp-id="s2">
+  <div class="slide-header" data-remarp-id="s2-header"><h2>PoC는 쉽고, 프로덕션은 어렵다</h2></div>
+  <div class="slide-body" data-remarp-id="s2-body">
+    <div class="col-2">
+  <div class="callout callout-warning fragment fade-up" data-fragment-index="1">
+    <strong>모델 고착</strong><div class="metric-label">한 모델에 코드가 묶여 교체·비교가 어렵다</div>
+  </div>
+  <div class="callout callout-warning fragment fade-up" data-fragment-index="2">
+    <strong>운영·확장</strong><div class="metric-label">쿼터·지연·가용성을 직접 떠안게 된다</div>
+  </div>
+  <div class="callout callout-danger fragment fade-up" data-fragment-index="3">
+    <strong>보안·거버넌스</strong><div class="metric-label">데이터 경계·감사·비용 가시성 부재</div>
+  </div>
+  <div class="callout callout-danger fragment fade-up" data-fragment-index="4">
+    <strong>에이전트의 벽</strong><div class="metric-label">세션·메모리·도구 연동이 프로토타입에서 멈춘다</div>
+  </div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s3">
+  <div class="slide-header" data-remarp-id="s3-header"><h2>Bedrock은 무엇인가</h2></div>
+  <div class="slide-body" data-remarp-id="s3-body">
+    <div class="col-3">
+  <div class="metric-card fragment fade-up" data-fragment-index="1">
+    <strong>단일 API · 멀티 모델</strong>
+    <div class="metric-label">15+ 프로바이더를 하나의 인터페이스로</div>
+  </div>
+  <div class="metric-card fragment fade-up" data-fragment-index="2">
+    <strong>서버리스</strong>
+    <div class="metric-label">인프라 0 · 호출당 과금 · 자동 확장</div>
+  </div>
+  <div class="metric-card fragment fade-up" data-fragment-index="3">
+    <strong>커스터마이즈</strong>
+    <div class="metric-label">RAG · 파인튜닝 · 모델 증류</div>
+  </div>
+  <div class="metric-card fragment fade-up" data-fragment-index="4">
+    <strong>책임형 AI</strong>
+    <div class="metric-label">Guardrails로 안전·정책 일괄 적용</div>
+  </div>
+  <div class="metric-card fragment fade-up" data-fragment-index="5">
+    <strong>엔터프라이즈</strong>
+    <div class="metric-label">VPC · PrivateLink · IAM · CloudTrail</div>
+  </div>
+  <div class="metric-card fragment fade-up" data-fragment-index="6">
+    <strong>에이전트</strong>
+    <div class="metric-label">AgentCore로 프로덕션 에이전트까지</div>
+  </div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s4">
+  <div class="slide-header" data-remarp-id="s4-header"><h2>모델은 골라 쓰는 시대</h2></div>
+  <div class="slide-body" data-remarp-id="s4-body">
+    <div class="tab-bar">
+            <button class="tab-btn active" data-tab="anthropic-claude">Anthropic Claude</button>
+      <button class="tab-btn" data-tab="amazon-nova">Amazon Nova</button>
+      <button class="tab-btn" data-tab="open-weight-15">Open-weight · 15+</button>
+    </div>
+        <div class="tab-content active" data-tab="anthropic-claude">
+<div class="col-3">
+  <div class="metric-card"><strong>Opus</strong><div class="metric-label">최고 난도 추론·코딩 · $5/$25 per 1M</div></div>
+  <div class="metric-card"><strong>Sonnet</strong><div class="metric-label">균형형 주력 · $3/$15 per 1M</div></div>
+  <div class="metric-card"><strong>Haiku</strong><div class="metric-label">저지연·대량 처리 · $1/$5 per 1M</div></div>
+</div>
+<p class="metric-label">고난도는 Opus, 일상 워크로드는 Sonnet, 대량·실시간은 Haiku로 계층화</p>
+</div>
+    <div class="tab-content" data-tab="amazon-nova">
+<div class="col-3">
+  <div class="metric-card"><strong>Nova Pro</strong><div class="metric-label">멀티모달 주력 · $0.80/$3.20 per 1M</div></div>
+  <div class="metric-card"><strong>Nova Lite</strong><div class="metric-label">빠르고 저렴 · $0.06/$0.24 per 1M</div></div>
+  <div class="metric-card"><strong>Nova Micro</strong><div class="metric-label">텍스트 초경량 · $0.035/$0.14 per 1M</div></div>
+</div>
+<p class="metric-label">AWS 자체 모델 — 가격 대비 성능이 강점, 비용 민감 워크로드의 기본값. 가격은 On-Demand·us-east-1·2026-06 기준 입력/출력 1M 토큰 (변동 가능)</p>
+</div>
+    <div class="tab-content" data-tab="open-weight-15">
+<div class="col-2">
+  <div class="callout callout-info"><strong>오픈웨이트</strong><div class="metric-label">DeepSeek · GLM · Kimi · Qwen · MiniMax 등 풀리매니지드</div></div>
+  <div class="callout callout-info"><strong>프론티어 외부 모델</strong><div class="metric-label">Meta Llama · Mistral · Cohere · Stability · GPT 계열</div></div>
+</div>
+<p class="metric-label">같은 Bedrock API로 15+ 프로바이더를 호출 — 벤더 락인 없이 비교·교체</p>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s5">
+  <div class="slide-header" data-remarp-id="s5-header"><h2>추론은 워크로드에 맞춰</h2></div>
+  <div class="slide-body" data-remarp-id="s5-body">
+    <div class="col-3">
+  <div class="metric-card fragment fade-up" data-fragment-index="1"><strong>On-Demand</strong><div class="metric-label">약정 없이 호출당 과금 · 기본값</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="2"><strong>Provisioned</strong><div class="metric-label">처리량 예약 · 안정적 지연 · 할인</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="3"><strong>Batch</strong><div class="metric-label">대량 비동기 · 약 50% 절감</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="4"><strong>Prompt Caching</strong><div class="metric-label">반복 컨텍스트 캐시 · 최대 90% 절감</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="5"><strong>Global Endpoints</strong><div class="metric-label">최적 리전 자동 라우팅</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="6"><strong>Cross-Region</strong><div class="metric-label">용량 분산으로 스로틀 완화</div></div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s6">
+  <div class="slide-header" data-remarp-id="s6-header"><h2>Mantle: 추론 엔진의 진화</h2></div>
+  <div class="slide-body" data-remarp-id="s6-body">
+    <div class="flow-h">
+  <div class="flow-group bg-blue" data-fragment-index="1">
+    <div class="flow-group-label">호출</div>
+    <div class="flow-box">OpenAI 호환 API</div>
+    <div class="flow-box">Anthropic Messages</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-group bg-orange" data-fragment-index="2">
+    <div class="flow-group-label">bedrock-mantle 엔진</div>
+    <div class="flow-box">자동 용량관리</div>
+    <div class="flow-box">통합 쿼터 풀</div>
+    <div class="flow-box">QoS 제어</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-group bg-green" data-fragment-index="3">
+    <div class="flow-group-label">결과</div>
+    <div class="flow-box">서버리스 추론</div>
+    <div class="flow-box">빠른 신규 모델 온보딩</div>
+  </div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s7">
+  <div class="slide-header" data-remarp-id="s7-header"><h2>Mantle: OpenAI처럼, Bedrock답게</h2></div>
+  <div class="slide-body" data-remarp-id="s7-body">
+    <div class="tab-bar">
+            <button class="tab-btn active" data-tab="openai">OpenAI 호환</button>
+      <button class="tab-btn" data-tab="anthropic-messages">Anthropic Messages</button>
+      <button class="tab-btn" data-tab="projects">Projects & 모델</button>
+    </div>
+        <div class="tab-content active" data-tab="openai">
+<div class="col-2">
+  <div class="callout callout-success"><strong>Chat Completions · Responses API</strong><div class="metric-label">기존 OpenAI SDK 코드를 엔드포인트만 바꿔 재사용</div></div>
+  <div class="callout callout-info"><strong>마이그레이션 비용 ↓</strong><div class="metric-label">앱 재작성 없이 Bedrock의 보안·거버넌스로 이전</div></div>
+</div>
+</div>
+    <div class="tab-content" data-tab="anthropic-messages">
+<div class="col-2">
+  <div class="callout callout-success"><strong>Messages API 네이티브</strong><div class="metric-label">Claude를 표준 Anthropic 포맷으로 직접 호출</div></div>
+  <div class="callout callout-info"><strong>도구 호출·비전</strong><div class="metric-label">tool use·멀티모달을 그대로 활용</div></div>
+</div>
+</div>
+    <div class="tab-content" data-tab="projects">
+<div class="col-3">
+  <div class="metric-card"><strong>Projects API</strong><div class="metric-label">앱·팀·환경별 격리 + IAM + 태그 비용 가시성</div></div>
+  <div class="metric-card"><strong>오픈웨이트 6종</strong><div class="metric-label">DeepSeek·MiniMax·GLM·Kimi·Qwen 등</div></div>
+  <div class="metric-card"><strong>CloudWatch</strong><div class="metric-label">mantle 엔드포인트 트래픽 메트릭</div></div>
+</div>
+</div>
+  </div>
+</div>
+
+<div class="slide" data-remarp-id="s8">
+  <div class="slide-header" data-remarp-id="s8-header"><h2>1부 핵심 정리</h2></div>
+  <div class="slide-body" data-remarp-id="s8-body">
+    <div class="col-2">
+  <div class="callout callout-success fragment fade-up" data-fragment-index="1"><strong>단일 API·멀티 모델</strong><div class="metric-label">Claude·Nova·오픈웨이트 15+ 를 락인 없이</div></div>
+  <div class="callout callout-success fragment fade-up" data-fragment-index="2"><strong>추론 옵션으로 비용·안정성</strong><div class="metric-label">Provisioned·Batch·Caching·Global</div></div>
+  <div class="callout callout-info fragment fade-up" data-fragment-index="3"><strong>Mantle</strong><div class="metric-label">OpenAI 호환 + 자동 용량 + Projects</div></div>
+  <div class="callout callout-info fragment fade-up" data-fragment-index="4"><strong>다음</strong><div class="metric-label">AgentCore로 프로덕션 에이전트</div></div>
+</div>
+  </div>
+</div>
+</div>
+<script src="./common/animation-utils.js"></script>
+<script src="./common/slide-framework.js"></script>
+<script src="./common/quiz-component.js"></script>
+<script src="./common/presenter-view.js"></script>
+
+<script>
+  
+  const presenterNotes = {
+    1: "[1min] 안녕하세요. 오늘은 Amazon Bedrock을 처음 검토하시는 관점에서, 플랫폼 전체 그림을 함께 그려보는 자리입니다.\n이미 생성형 AI PoC는 많이들 해보셨을 겁니다. 핵심 질문은 \"이걸 어떻게 안전하게, 비용 효율적으로, 프로덕션까지 가져가느냐\"입니다.\n오늘 세션은 200 레벨로, 서비스 나열이 아니라 \"왜 Bedrock인가\"와 \"무엇을 먼저 시작하면 되는가\"에 초점을 둡니다.\n 먼저 오늘의 큰 흐름을 보겠습니다.",
+    2: "❓ [1min] [요약]\n- 1부: Bedrock 플랫폼·모델 선택·추론 옵션·Mantle 추론 엔진\n- 2부: AgentCore로 에이전트를 프로덕션화 + 끝에서 끝 아키텍처\n- 총 35분, 중간에 질문 환영\n\n오늘은 크게 두 부분입니다. 1부에서는 Bedrock이 무엇이고, 어떤 모델을 어떻게 고르며, 새로워진 추론 엔진 Mantle이 무엇을 바꾸는지 봅니다.\n2부에서는 모델을 넘어 \"에이전트\"를 프로덕션으로 올리는 AgentCore와, 이 모든 걸 합친 레퍼런스 아키텍처, 그리고 다음 단계를 다룹니다.\n 혹시 지금 가장 관심 있는 워크로드가 챗봇인지, 검색/RAG인지, 아니면 에이전트인지 먼저 여쭤봐도 될까요?\n 그럼 왜 지금 이 논의가 필요한지부터 시작하겠습니다.",
+    3: "⏸️ [2min] [요약]\n- PoC→프로덕션 전환에서 막히는 4가지: 모델 고착, 운영·확장, 보안·거버넌스, 에이전트화\n- Bedrock은 이 네 가지를 \"관리형 플랫폼\"으로 흡수\n\n대부분의 조직이 데모까지는 빠르게 갑니다. 문제는 그다음입니다.\n첫째, 특정 모델 SDK에 코드가 묶여서 더 좋은 모델이 나와도 갈아타기 어렵습니다. 둘째, 트래픽이 늘면 쿼터와 지연, 가용성을 직접 관리해야 합니다.\n셋째, 고객 데이터가 외부로 나가지 않는지, 누가 무엇을 호출했는지 감사할 수 있는지가 발목을 잡습니다. 넷째, 에이전트로 가면 세션·메모리·도구 연동·인증이라는 새로운 난관이 생깁니다.\n 이 네 가지가 오늘 이야기의 뼈대입니다.\n Bedrock은 이걸 어떻게 흡수하는지 보겠습니다.",
+    4: "[2min] [요약]\n- Bedrock = 파운데이션 모델을 위한 완전관리형 서버리스 플랫폼\n- 6개 기둥: 단일 API·서버리스·커스터마이즈·Guardrails·엔터프라이즈·에이전트\n\n한 문장으로 정의하면, Bedrock은 \"여러 회사의 파운데이션 모델을 하나의 API로, 서버리스로 쓰게 해 주는 완전관리형 플랫폼\"입니다.\n인프라를 띄울 필요가 없고 호출한 만큼만 냅니다. 모델을 그대로 쓰는 것을 넘어 RAG, 파인튜닝, 모델 증류로 우리 데이터에 맞출 수 있습니다.\nGuardrails로 유해 콘텐츠·민감정보·주제 이탈을 모델과 무관하게 일괄 통제하고, VPC·PrivateLink·IAM·CloudTrail로 엔터프라이즈 보안 요건을 충족합니다.\n 그럼 가장 먼저 마주치는 질문, \"어떤 모델을 고르지?\"로 가겠습니다.",
+    5: "⏸️ [2min] [요약]\n- Claude(Opus/Sonnet/Haiku): 추론·코딩 강자, 난도별 계층화\n- Nova(Pro/Lite/Micro): AWS 자체 모델, 가성비\n- Open-weight·15+: 단일 API로 멀티 벤더, 락인 없음\n\n모델 선택의 핵심은 \"하나로 통일\"이 아니라 \"작업별로 맞춰 쓰는 것\"입니다.\nClaude는 복잡한 추론과 코딩에서 강하고, Opus·Sonnet·Haiku로 난도와 비용을 계층화합니다. Amazon Nova는 AWS 자체 모델로 가성비가 뛰어나 비용 민감한 대량 워크로드의 기본값으로 좋습니다.\n여기에 DeepSeek, Llama, Mistral 등 오픈웨이트와 외부 프론티어 모델까지 같은 API로 부릅니다. 즉, 더 좋은 모델이 나오면 코드를 거의 안 바꾸고 갈아탈 수 있습니다.\n 가격은 입력/출력 100만 토큰 기준이며, 캐싱·배치로 더 낮출 수 있습니다.\n 그 \"더 낮추는 방법\", 추론 옵션을 보겠습니다.",
+    6: "[2min] [요약]\n- 4가지 과금: On-Demand(기본)·Provisioned(예약)·Batch(50%↓)·Caching(90%↓)\n- 라우팅: Global/Cross-Region 엔드포인트로 가용성·지연 개선\n\n같은 모델이라도 어떻게 호출하느냐로 비용과 안정성이 크게 달라집니다.\n기본은 약정 없는 On-Demand입니다. 트래픽이 꾸준하면 Provisioned로 처리량을 예약해 지연을 안정화하고 단가를 낮춥니다. 야간 일괄 처리 같은 비동기 작업은 Batch로 약 절반 비용에 돌립니다.\n특히 RAG처럼 같은 시스템 프롬프트가 반복되면 Prompt Caching으로 캐시된 입력에 최대 90%까지 할인을 받습니다. 가용성은 Global·Cross-Region 엔드포인트가 최적 리전으로 분산해 스로틀과 지연을 줄여줍니다.\n 이 추론을 실제로 떠받치는 엔진이 새로워졌습니다. Mantle입니다.",
+    7: "⏸️ [2min] [요약]\n- Mantle = Bedrock의 대규모 분산 추론 엔진(bedrock-mantle 엔드포인트)\n- 자동 용량관리·통합 쿼터 풀·QoS로 높은 기본 쿼터와 안정성\n- 신규 모델을 더 빠르게 서비스에 올림\n\nMantle은 Bedrock의 새로운 분산 추론 엔진입니다. 기존에 모델마다 따로 관리하던 용량과 쿼터를 통합 풀로 묶고, 자동 용량관리와 QoS 제어로 더 높은 기본 쿼터와 안정적인 성능을 제공합니다.\n운영 관점에서 중요한 변화는 두 가지입니다. 하나는 신규 모델이 나왔을 때 서비스에 올라오는 속도가 빨라진다는 것, 다른 하나는 엔드포인트 하나로 일관된 서버리스 추론을 받는다는 것입니다.\n bedrock-mantle 엔드포인트는 PrivateLink로 사설 접근도 됩니다.\n 개발자 입장에서 가장 체감되는 건 \"API 호환성\"입니다. 다음 슬라이드에서 보죠.",
+    8: "[2min] [요약]\n- OpenAI 호환 API: 기존 SDK 코드 재사용, 마이그레이션 비용 최소\n- Anthropic Messages API: Claude 네이티브 호출(tool use·비전)\n- Projects API: 프로젝트별 격리·IAM·태그 / CloudWatch 메트릭\n\nMantle의 개발자 가치는 \"표준 API 호환\"입니다. OpenAI의 Chat Completions와 Responses API를 그대로 지원하므로, 기존 OpenAI SDK로 짠 앱을 엔드포인트만 바꿔 Bedrock으로 옮길 수 있습니다. 앱을 다시 쓰지 않고 Bedrock의 보안·거버넌스를 얻는 거죠.\nClaude는 Anthropic Messages API로 네이티브하게 호출해 도구 사용과 비전까지 씁니다.\n운영 측면에서는 Projects API로 앱·팀·환경을 격리하고 IAM 권한과 태그 기반 비용 가시성을 분리할 수 있으며, CloudWatch로 엔드포인트 트래픽을 모니터링합니다.\n 여기까지가 \"모델\"입니다. 이제 모델을 넘어 \"에이전트\"로 갑니다.",
+    9: "⏸️ [1min] [요약]\n- 모델은 골라 쓰고, 추론 옵션으로 비용·안정성을 잡는다\n- Mantle이 호환성과 용량 관리를 끌어올린다\n- 다음은 에이전트의 프로덕션화\n\n1부를 정리하면, Bedrock은 모델을 골라 쓰게 해 주고, 추론 옵션으로 비용과 안정성을 조절하게 해 주며, Mantle이 그 추론을 표준 API와 자동 용량 관리로 끌어올립니다.\n 여기까지는 \"똑똑한 모델을 잘 부르는\" 이야기였습니다.\n 2부에서는 그 모델이 스스로 도구를 쓰고 일을 끝내는 \"에이전트\"를 어떻게 프로덕션으로 올리는지 보겠습니다."
+  };
+  const deck = new SlideFramework({
+    logoSrc: './common/pptx-theme/images/logo_1_light.png',
+    footer: '© 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.',
+    
+    pagination: true,
+    sidebar: true,
+    presenterNotes: presenterNotes,
+    onSlideChange: (index, slide) => {}
+  });
+</script>
+</body>
+</html>

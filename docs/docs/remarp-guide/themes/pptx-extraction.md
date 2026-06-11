@@ -7,6 +7,8 @@ title: PPTX 테마 추출
 
 기업 PowerPoint 템플릿에서 색상, 폰트, 로고를 추출하여 Remarp 프레젠테이션에 적용할 수 있습니다.
 
+> ⚠️ **v1.9.0 토큰 시스템**: 추출된 `theme-override.css`는 **`--pptx-*` 브랜드 입력 토큰만** 담아야 합니다. theme.css가 이를 per-theme로 소비(`--accent: var(--pptx-accent1, …)`)하므로 light/dark 양쪽에 적용됩니다. 구버전 추출기처럼 `:root`에 `--bg-primary`/`--accent`/`--text-primary` 같은 bare 역할 토큰을 직접 쓰면 **light 기본 테마가 깨집니다**(흰 배경에 흰 글자, footer 위치 오류 등). 추출 결과에 그런 직접 오버라이드가 있으면 `--pptx-*`만 남기고 제거하세요. 자세한 토큰 계약: [CSS 변수](./css-variables).
+
 ## 빠른 시작
 
 ```bash

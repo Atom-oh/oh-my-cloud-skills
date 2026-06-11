@@ -61,16 +61,16 @@ ML 기반 이상 탐지는 이 문제를 해결합니다. 시계열 패턴을 �
 :::html
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:12px;">
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent1); margin-bottom:12px;">동작 원리</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--accent); margin-bottom:12px;">동작 원리</div>
     <div style="font-size:0.9rem; line-height:1.9; color:var(--text-secondary);">
-      • <strong style="color:#fff;">Random Cut Forest (RCF)</strong> 알고리즘 기반<br>
-      • 최대 <strong style="color:#fff;">2주 학습 기간</strong> 후 이상 탐지 시작<br>
-      • <strong style="color:#fff;">계절성 자동 감지</strong>: 시간별, 요일별, 월별 패턴<br>
-      • <strong style="color:#fff;">밴드 폭 조절</strong>: 표준편차 배수(1x-5x)로 민감도 설정<br>
-      • <strong style="color:#fff;">알림 조건</strong>: ANOMALY_DETECTION_BAND 함수 사용
+      • <strong style="color:var(--on-surface);">Random Cut Forest (RCF)</strong> 알고리즘 기반<br>
+      • 최대 <strong style="color:var(--on-surface);">2주 학습 기간</strong> 후 이상 탐지 시작<br>
+      • <strong style="color:var(--on-surface);">계절성 자동 감지</strong>: 시간별, 요일별, 월별 패턴<br>
+      • <strong style="color:var(--on-surface);">밴드 폭 조절</strong>: 표준편차 배수(1x-5x)로 민감도 설정<br>
+      • <strong style="color:var(--on-surface);">알림 조건</strong>: ANOMALY_DETECTION_BAND 함수 사용
     </div>
-    <div style="margin-top:16px; padding:12px; background:rgba(65,179,255,0.08); border-radius:8px;">
-      <div style="font-size:0.8rem; font-family:monospace; color:var(--accent1);">
+    <div style="margin-top:16px; padding:12px; background:var(--accent-subtle); border-radius:8px;">
+      <div style="font-size:0.8rem; font-family:monospace; color:var(--accent);">
         ANOMALY_DETECTION_BAND(<br>
         &nbsp;&nbsp;m1, // target metric<br>
         &nbsp;&nbsp;2   // band width (σ multiplier)<br>
@@ -79,22 +79,22 @@ ML 기반 이상 탐지는 이 문제를 해결합니다. 시계열 패턴을 �
     </div>
   </div>
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent2); margin-bottom:12px;">지원 메트릭</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--info); margin-bottom:12px;">지원 메트릭</div>
     <div style="display:flex; flex-direction:column; gap:8px;">
-      <div style="background:rgba(65,179,255,0.1); padding:10px 16px; border-radius:8px;">
-        <div style="font-size:0.85rem; font-weight:600; color:#fff;">EC2/ECS/EKS</div>
+      <div style="background:var(--accent-subtle); padding:10px 16px; border-radius:8px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--on-surface);">EC2/ECS/EKS</div>
         <div style="font-size:0.75rem; color:var(--text-secondary);">CPUUtilization, NetworkIn/Out, MemoryUtilization</div>
       </div>
-      <div style="background:rgba(173,92,255,0.1); padding:10px 16px; border-radius:8px;">
-        <div style="font-size:0.85rem; font-weight:600; color:#fff;">ALB/NLB</div>
+      <div style="background:var(--info-subtle); padding:10px 16px; border-radius:8px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--on-surface);">ALB/NLB</div>
         <div style="font-size:0.75rem; color:var(--text-secondary);">RequestCount, TargetResponseTime, 5XXCount</div>
       </div>
-      <div style="background:rgba(0,229,0,0.1); padding:10px 16px; border-radius:8px;">
-        <div style="font-size:0.85rem; font-weight:600; color:#fff;">RDS/DynamoDB</div>
+      <div style="background:var(--success-subtle); padding:10px 16px; border-radius:8px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--on-surface);">RDS/DynamoDB</div>
         <div style="font-size:0.75rem; color:var(--text-secondary);">ReadLatency, WriteLatency, ThrottledRequests</div>
       </div>
-      <div style="background:rgba(251,211,50,0.1); padding:10px 16px; border-radius:8px;">
-        <div style="font-size:0.85rem; font-weight:600; color:#fff;">Lambda</div>
+      <div style="background:var(--warning-subtle); padding:10px 16px; border-radius:8px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--on-surface);">Lambda</div>
         <div style="font-size:0.75rem; color:var(--text-secondary);">Duration, Errors, ConcurrentExecutions</div>
       </div>
     </div>
@@ -120,26 +120,26 @@ CloudWatch Anomaly Detection은 Random Cut Forest 알고리즘을 사용합니�
 :::html
 <div style="display:grid; grid-template-columns:2fr 1fr; gap:24px; margin-top:8px;">
   <div>
-    <canvas id="anomaly-canvas" width="800" height="340" style="width:100%; background:rgba(0,0,0,0.3); border-radius:8px;"></canvas>
+    <canvas id="anomaly-canvas" width="800" height="340" style="width:100%; background:var(--surface-3); border-radius:8px;"></canvas>
   </div>
   <div>
     <div style="font-size:0.9rem; color:var(--text-secondary); margin-bottom:4px;">밴드 폭 (표준편차 배수)</div>
     <div style="display:flex; align-items:center; gap:12px;">
       <input type="range" id="band-width" min="1" max="5" step="0.5" value="2" style="flex:1;">
-      <span id="band-val" style="font-size:1.5rem; font-weight:700; color:var(--accent1); min-width:40px; text-align:right;">2x</span>
+      <span id="band-val" style="font-size:1.5rem; font-weight:700; color:var(--accent); min-width:40px; text-align:right;">2x</span>
     </div>
     <div style="margin-top:16px;">
       <div style="font-size:0.9rem; color:var(--text-secondary); margin-bottom:8px;">🔴 이상치 주입</div>
-      <button id="inject-btn" style="width:100%; padding:10px; background:rgba(255,92,133,0.2); border:1px solid var(--accent4); color:var(--accent4); border-radius:6px; cursor:pointer; font-size:0.85rem;">이상치 3개 주입</button>
-      <button id="reset-btn" style="width:100%; padding:10px; margin-top:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.2); color:var(--text-secondary); border-radius:6px; cursor:pointer; font-size:0.85rem;">초기화</button>
+      <button id="inject-btn" style="width:100%; padding:10px; background:var(--danger-subtle); border:1px solid var(--danger); color:var(--danger); border-radius:6px; cursor:pointer; font-size:0.85rem;">이상치 3개 주입</button>
+      <button id="reset-btn" style="width:100%; padding:10px; margin-top:8px; background:var(--surface-2); border:1px solid var(--surface-2); color:var(--text-secondary); border-radius:6px; cursor:pointer; font-size:0.85rem;">초기화</button>
     </div>
     <div style="margin-top:16px; font-size:0.85rem; line-height:1.8;">
-      <div>🟢 감지된 이상: <strong id="detected" style="color:var(--accent3);">0건</strong></div>
-      <div>⚠️ False Positive: <strong id="fp" style="color:var(--accent6);">0건</strong></div>
-      <div>🔴 False Negative: <strong id="fn" style="color:var(--accent4);">0건</strong></div>
+      <div>🟢 감지된 이상: <strong id="detected" style="color:var(--success);">0건</strong></div>
+      <div>⚠️ False Positive: <strong id="fp" style="color:var(--warning);">0건</strong></div>
+      <div>🔴 False Negative: <strong id="fn" style="color:var(--danger);">0건</strong></div>
     </div>
-    <div style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1);">
-      <span id="advice" style="color:var(--accent1);">밴드 폭을 조절해 보세요</span>
+    <div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--surface-2);">
+      <span id="advice" style="color:var(--accent);">밴드 폭을 조절해 보세요</span>
     </div>
   </div>
 </div>
@@ -267,28 +267,28 @@ CloudWatch Anomaly Detection은 Random Cut Forest 알고리즘을 사용합니�
 :::html
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:12px;">
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent1); margin-bottom:12px;">핵심 기능</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--accent); margin-bottom:12px;">핵심 기능</div>
     <div style="font-size:0.9rem; line-height:1.9; color:var(--text-secondary);">
-      • <strong style="color:#fff;">Proactive Insights</strong>: 장애 발생 전 예측 알림<br>
-      • <strong style="color:#fff;">Reactive Insights</strong>: 현재 이상 탐지 + 관련 리소스 그룹핑<br>
-      • <strong style="color:#fff;">자동 상관분석</strong>: 관련 메트릭/로그/이벤트를 하나의 Insight로 묶음<br>
-      • <strong style="color:#fff;">권장 조치</strong>: ML 기반 해결 방안 제안<br>
-      • <strong style="color:#fff;">통합 범위</strong>: CloudFormation Stack / Tag 기반 범위 설정
+      • <strong style="color:var(--on-surface);">Proactive Insights</strong>: 장애 발생 전 예측 알림<br>
+      • <strong style="color:var(--on-surface);">Reactive Insights</strong>: 현재 이상 탐지 + 관련 리소스 그룹핑<br>
+      • <strong style="color:var(--on-surface);">자동 상관분석</strong>: 관련 메트릭/로그/이벤트를 하나의 Insight로 묶음<br>
+      • <strong style="color:var(--on-surface);">권장 조치</strong>: ML 기반 해결 방안 제안<br>
+      • <strong style="color:var(--on-surface);">통합 범위</strong>: CloudFormation Stack / Tag 기반 범위 설정
     </div>
   </div>
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent2); margin-bottom:12px;">Insight 구조 예시</div>
-    <div style="background:rgba(0,0,0,0.3); padding:16px; border-radius:8px; font-family:monospace; font-size:0.75rem; line-height:1.8; color:var(--accent1);">
-      <div style="color:var(--accent4);">🔴 Reactive Insight #247</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--info); margin-bottom:12px;">Insight 구조 예시</div>
+    <div style="background:var(--surface-3); padding:16px; border-radius:8px; font-family:monospace; font-size:0.75rem; line-height:1.8; color:var(--accent);">
+      <div style="color:var(--danger);">🔴 Reactive Insight #247</div>
       <div style="color:var(--text-secondary);">─────────────────────</div>
-      <div><span style="color:var(--accent6);">Anomalies:</span></div>
+      <div><span style="color:var(--warning);">Anomalies:</span></div>
       <div>&nbsp;&nbsp;• ALB 5XX ↑320% (p99: 4.2s → 18.7s)</div>
       <div>&nbsp;&nbsp;• ECS TaskCount ↓ (desired: 10, running: 4)</div>
       <div>&nbsp;&nbsp;• RDS ReadLatency ↑ (2ms → 89ms)</div>
-      <div style="color:var(--accent6);">Related Events:</div>
+      <div style="color:var(--warning);">Related Events:</div>
       <div>&nbsp;&nbsp;• ECS Deployment 14:32 UTC</div>
       <div>&nbsp;&nbsp;• RDS Storage Full 14:28 UTC</div>
-      <div style="color:var(--accent3);">Recommendation:</div>
+      <div style="color:var(--success);">Recommendation:</div>
       <div>&nbsp;&nbsp;→ RDS storage 확장 + ECS rollback 검토</div>
     </div>
   </div>
@@ -316,30 +316,30 @@ Proactive Insights는 더 흥미로운데, 장애가 발생하기 전에 "이 �
 :::html
 <div style="display:flex; flex-direction:column; gap:12px; margin-top:8px;">
   <div style="display:flex; align-items:center; gap:12px;">
-    <div style="background:rgba(65,179,255,0.15); padding:12px 20px; border-radius:8px; min-width:160px; text-align:center;">
-      <div style="font-size:0.9rem; font-weight:600; color:var(--accent1);">DevOps Guru Insight</div>
+    <div style="background:var(--accent-subtle); padding:12px 20px; border-radius:8px; min-width:160px; text-align:center;">
+      <div style="font-size:0.9rem; font-weight:600; color:var(--accent);">DevOps Guru Insight</div>
       <div style="font-size:0.75rem; color:var(--text-secondary);">이상 탐지 + 상관분석</div>
     </div>
-    <div style="color:var(--accent1); font-size:1.2rem;">→</div>
-    <div style="background:rgba(173,92,255,0.15); padding:12px 20px; border-radius:8px; min-width:160px; text-align:center;">
-      <div style="font-size:0.9rem; font-weight:600; color:var(--accent2);">Amazon Bedrock</div>
+    <div style="color:var(--accent); font-size:1.2rem;">→</div>
+    <div style="background:var(--info-subtle); padding:12px 20px; border-radius:8px; min-width:160px; text-align:center;">
+      <div style="font-size:0.9rem; font-weight:600; color:var(--info);">Amazon Bedrock</div>
       <div style="font-size:0.75rem; color:var(--text-secondary);">Claude + RAG 분석</div>
     </div>
-    <div style="color:var(--accent2); font-size:1.2rem;">→</div>
-    <div style="background:rgba(0,229,0,0.15); padding:12px 20px; border-radius:8px; min-width:160px; text-align:center;">
-      <div style="font-size:0.9rem; font-weight:600; color:var(--accent3);">RCA Report</div>
+    <div style="color:var(--info); font-size:1.2rem;">→</div>
+    <div style="background:var(--success-subtle); padding:12px 20px; border-radius:8px; min-width:160px; text-align:center;">
+      <div style="font-size:0.9rem; font-weight:600; color:var(--success);">RCA Report</div>
       <div style="font-size:0.75rem; color:var(--text-secondary);">근본 원인 + 복구 계획</div>
     </div>
   </div>
   <div style="display:flex; gap:12px; margin-top:8px;">
-    <div style="flex:1; background:rgba(255,255,255,0.03); padding:12px; border-radius:8px; font-size:0.8rem; color:var(--text-secondary);">
-      <strong style="color:#fff;">Input:</strong> Anomaly 메트릭, 관련 로그, 배포 이력, 변경 이벤트
+    <div style="flex:1; background:var(--surface-2); padding:12px; border-radius:8px; font-size:0.8rem; color:var(--text-secondary);">
+      <strong style="color:var(--on-surface);">Input:</strong> Anomaly 메트릭, 관련 로그, 배포 이력, 변경 이벤트
     </div>
-    <div style="flex:1; background:rgba(255,255,255,0.03); padding:12px; border-radius:8px; font-size:0.8rem; color:var(--text-secondary);">
-      <strong style="color:#fff;">RAG:</strong> 과거 인시던트 DB, 런북, 아키텍처 문서, 변경 로그
+    <div style="flex:1; background:var(--surface-2); padding:12px; border-radius:8px; font-size:0.8rem; color:var(--text-secondary);">
+      <strong style="color:var(--on-surface);">RAG:</strong> 과거 인시던트 DB, 런북, 아키텍처 문서, 변경 로그
     </div>
-    <div style="flex:1; background:rgba(255,255,255,0.03); padding:12px; border-radius:8px; font-size:0.8rem; color:var(--text-secondary);">
-      <strong style="color:#fff;">Output:</strong> 근본 원인 분석, 영향 범위, 복구 단계, 재발 방지책
+    <div style="flex:1; background:var(--surface-2); padding:12px; border-radius:8px; font-size:0.8rem; color:var(--text-secondary);">
+      <strong style="color:var(--on-surface);">Output:</strong> 근본 원인 분석, 영향 범위, 복구 단계, 재발 방지책
     </div>
   </div>
 </div>
@@ -499,17 +499,17 @@ DevOps Guru가 새 Insight를 생성하면 EventBridge 규칙이 Lambda를 트�
 :::html
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:24px;">
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent1); margin-bottom:16px;">🔑 Key Takeaways</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--accent); margin-bottom:16px;">🔑 Key Takeaways</div>
     <div style="font-size:0.9rem; line-height:2.2; color:var(--text-secondary);">
-      <div>✅ <strong style="color:#fff;">정적 임계값 탈피</strong> — ML 기반 동적 밴드로 전환</div>
-      <div>✅ <strong style="color:#fff;">CloudWatch AD</strong> — RCF 알고리즘, 밴드 폭 2-3x 권장</div>
-      <div>✅ <strong style="color:#fff;">DevOps Guru</strong> — 서비스 레벨 자동 상관분석</div>
-      <div>✅ <strong style="color:#fff;">GenAI RCA</strong> — Bedrock + RAG로 근본 원인 30초 분석</div>
-      <div>✅ <strong style="color:#fff;">자동화 파이프라인</strong> — EventBridge → Lambda → Bedrock</div>
+      <div>✅ <strong style="color:var(--on-surface);">정적 임계값 탈피</strong> — ML 기반 동적 밴드로 전환</div>
+      <div>✅ <strong style="color:var(--on-surface);">CloudWatch AD</strong> — RCF 알고리즘, 밴드 폭 2-3x 권장</div>
+      <div>✅ <strong style="color:var(--on-surface);">DevOps Guru</strong> — 서비스 레벨 자동 상관분석</div>
+      <div>✅ <strong style="color:var(--on-surface);">GenAI RCA</strong> — Bedrock + RAG로 근본 원인 30초 분석</div>
+      <div>✅ <strong style="color:var(--on-surface);">자동화 파이프라인</strong> — EventBridge → Lambda → Bedrock</div>
     </div>
   </div>
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent2); margin-bottom:16px;">💡 실무 적용 포인트</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--info); margin-bottom:16px;">💡 실무 적용 포인트</div>
     <div style="font-size:0.9rem; line-height:2.2; color:var(--text-secondary);">
       <div>→ 핵심 메트릭 10개부터 Anomaly Detection 적용</div>
       <div>→ 밴드 폭은 서비스 특성에 맞게 (결제: 좁게, 로그: 넓게)</div>

@@ -252,13 +252,13 @@ Skill: `co-agent` — 4 modes: **Review** (multi-AI code/arch review + Well-Arch
 
 Commands: `/co-agent:configure` — tune the panel (per-AI `model`, Codex `effort`, `enabled`, `timeout`, and `autosync` opt-in). `/co-agent:sync-context` — distill `CLAUDE.md` → `AGENTS.md`/`GEMINI.md` (Mode 4 surfaced as a standalone command). Layered config: `co-agent.defaults.json` (committed) ← `.claude/co-agent.local.json` (gitignored). Only headless-settable options are exposed (effort is Codex-only); the fan-out reads `co_agent_config.py` so settings are live. The `CLAUDE.md` PostToolUse hook reminds when context files drift stale, and — if `autosync on` — tells Claude to re-run sync-context. Scripts: `check_ai_context.py` (context-file validator), `co_agent_config.py` (panel settings).
 
-### project-init (1 agent, 2 skills, 10 commands)
+### project-init (1 agent, 3 skills, 10 commands)
 
 | Agent | Purpose |
 |-------|---------|
 | `doc-sync-checker` | Documentation sync analysis, quality scoring, missing doc detection |
 
-Skills: `project-scaffolder` — Claude Code project structure patterns and conventions. `pr-autofix` — PR review feedback auto-fix (AI + human review polling, max 3 iterations).
+Skills: `project-scaffolder` — Claude Code project structure patterns and conventions. `pr-autofix` — PR review feedback auto-fix (AI + human review polling, max 3 iterations). `decision-reconcile` — ADR contradiction detection across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (varied Claude model tiers + optional co-agent CLIs, one review lens each), then drafts a superseding ADR to reverse/reconcile the decision. **Local-only** (not in upstream). Triggers: 의사결정 번복, ADR 모순, reconcile ADRs.
 
 Commands: `/init-project`, `/sync-docs`, `/add-adr`, `/add-module`, `/add-runbook`, `/generate-readme`, `/generate-changelog`, `/health-check`, `/pr-autofix`, `/add-reference-doc`
 

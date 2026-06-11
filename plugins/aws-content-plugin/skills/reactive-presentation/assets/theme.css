@@ -30,11 +30,13 @@
   --warning:#b45309; --warning-subtle:rgba(180,83,9,.12); --warning-on:#fff;
   --danger:#dc2626; --danger-subtle:rgba(220,38,38,.12); --danger-on:#fff;
 
-  /* Legacy base vars mapped onto the LIGHT roles (base chrome follows theme). */
-  --bg-primary:   var(--surface-1);
+  /* Legacy base vars mapped onto the LIGHT roles (base chrome follows theme).
+     Page sits on a soft off-white (surface-3) and cards elevate in white
+     (surface-1) — pure-white-on-pure-white read as flat/"too white". */
+  --bg-primary:   var(--surface-3);
   --bg-secondary: var(--surface-2);
   --bg-tertiary:  var(--surface-3);
-  --bg-card:      var(--surface-2);
+  --bg-card:      var(--surface-1);
   --surface:      var(--surface-3);
   --border:       #e2e5ea;
   --text-primary:   var(--on-surface);
@@ -904,6 +906,9 @@ input[type="range"]::-webkit-slider-thumb {
   z-index: 999;
   opacity: 0.8;
   pointer-events: none;
+  /* No blanket invert — each deck supplies a logo matching its own theme
+     (dark-ink logo for light decks, light/white logo for dark decks) via
+     `theme.logo` in _presentation.md. */
 }
 
 /* --- Footer --- */

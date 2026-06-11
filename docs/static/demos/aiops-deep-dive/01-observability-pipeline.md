@@ -82,39 +82,39 @@ AIOps를 이야기하기 전에, 모니터링과 관측성의 차이를 명확�
 
 :::html
 <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:24px; margin-top:24px;">
-  <div style="background:rgba(65,179,255,0.08); border:1px solid rgba(65,179,255,0.3); border-radius:12px; padding:24px; text-align:center;">
+  <div style="background:var(--accent-subtle); border:1px solid var(--accent-subtle); border-radius:12px; padding:24px; text-align:center;">
     <div style="font-size:2.5rem; margin-bottom:12px;">📊</div>
-    <div style="font-size:1.3rem; font-weight:700; color:var(--accent1); margin-bottom:8px;">Metrics</div>
+    <div style="font-size:1.3rem; font-weight:700; color:var(--accent); margin-bottom:8px;">Metrics</div>
     <div style="font-size:0.85rem; color:var(--text-secondary); line-height:1.7;">
       수치형 시계열 데이터<br>
       CPU, Memory, 응답시간<br>
-      <strong style="color:#fff;">CloudWatch Metrics</strong><br>
-      <strong style="color:#fff;">Amazon Managed Prometheus</strong>
+      <strong style="color:var(--on-surface);">CloudWatch Metrics</strong><br>
+      <strong style="color:var(--on-surface);">Amazon Managed Prometheus</strong>
     </div>
   </div>
-  <div style="background:rgba(173,92,255,0.08); border:1px solid rgba(173,92,255,0.3); border-radius:12px; padding:24px; text-align:center;">
+  <div style="background:var(--info-subtle); border:1px solid var(--info-subtle); border-radius:12px; padding:24px; text-align:center;">
     <div style="font-size:2.5rem; margin-bottom:12px;">📝</div>
-    <div style="font-size:1.3rem; font-weight:700; color:var(--accent2); margin-bottom:8px;">Logs</div>
+    <div style="font-size:1.3rem; font-weight:700; color:var(--info); margin-bottom:8px;">Logs</div>
     <div style="font-size:0.85rem; color:var(--text-secondary); line-height:1.7;">
       이벤트 기록 (텍스트)<br>
       에러 스택트레이스, 감사 로그<br>
-      <strong style="color:#fff;">CloudWatch Logs</strong><br>
-      <strong style="color:#fff;">OpenSearch Service</strong>
+      <strong style="color:var(--on-surface);">CloudWatch Logs</strong><br>
+      <strong style="color:var(--on-surface);">OpenSearch Service</strong>
     </div>
   </div>
-  <div style="background:rgba(0,229,0,0.08); border:1px solid rgba(0,229,0,0.3); border-radius:12px; padding:24px; text-align:center;">
+  <div style="background:var(--success-subtle); border:1px solid var(--success-subtle); border-radius:12px; padding:24px; text-align:center;">
     <div style="font-size:2.5rem; margin-bottom:12px;">🔗</div>
-    <div style="font-size:1.3rem; font-weight:700; color:var(--accent3); margin-bottom:8px;">Traces</div>
+    <div style="font-size:1.3rem; font-weight:700; color:var(--success); margin-bottom:8px;">Traces</div>
     <div style="font-size:0.85rem; color:var(--text-secondary); line-height:1.7;">
       요청 흐름 추적<br>
       서비스 간 호출 체인<br>
-      <strong style="color:#fff;">AWS X-Ray</strong><br>
-      <strong style="color:#fff;">CloudWatch ServiceLens</strong>
+      <strong style="color:var(--on-surface);">AWS X-Ray</strong><br>
+      <strong style="color:var(--on-surface);">CloudWatch ServiceLens</strong>
     </div>
   </div>
 </div>
-<div style="margin-top:24px; padding:16px; background:rgba(255,255,255,0.03); border-radius:8px; text-align:center;">
-  <span style="color:var(--accent1);">Metrics</span>이 "무엇이" 문제인지 알려주고, <span style="color:var(--accent2);">Logs</span>가 "왜" 발생했는지 설명하고, <span style="color:var(--accent3);">Traces</span>가 "어디서" 발생했는지 보여줍니다.
+<div style="margin-top:24px; padding:16px; background:var(--surface-2); border-radius:8px; text-align:center;">
+  <span style="color:var(--accent);">Metrics</span>이 "무엇이" 문제인지 알려주고, <span style="color:var(--info);">Logs</span>가 "왜" 발생했는지 설명하고, <span style="color:var(--success);">Traces</span>가 "어디서" 발생했는지 보여줍니다.
 </div>
 :::
 
@@ -137,36 +137,36 @@ Traces는 분산 시스템에서 요청이 어떤 경로로 흘러가는지 추�
 :::html
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:12px;">
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent1); margin-bottom:12px;">ADOT (AWS Distro for OpenTelemetry)</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--accent); margin-bottom:12px;">ADOT (AWS Distro for OpenTelemetry)</div>
     <div style="font-size:0.9rem; line-height:1.9; color:var(--text-secondary);">
-      • <strong style="color:#fff;">벤더 중립</strong>: OTel 표준 기반 — 백엔드 교체 시 코드 변경 불필요<br>
-      • <strong style="color:#fff;">통합 에이전트</strong>: Metrics + Logs + Traces를 하나의 Collector로 수집<br>
-      • <strong style="color:#fff;">자동 계측</strong>: Java/Python/Node.js SDK로 코드 변경 최소화<br>
-      • <strong style="color:#fff;">EKS 네이티브</strong>: DaemonSet 또는 Sidecar 배포<br>
-      • <strong style="color:#fff;">AWS 최적화</strong>: X-Ray, CloudWatch, AMP 익스포터 내장
+      • <strong style="color:var(--on-surface);">벤더 중립</strong>: OTel 표준 기반 — 백엔드 교체 시 코드 변경 불필요<br>
+      • <strong style="color:var(--on-surface);">통합 에이전트</strong>: Metrics + Logs + Traces를 하나의 Collector로 수집<br>
+      • <strong style="color:var(--on-surface);">자동 계측</strong>: Java/Python/Node.js SDK로 코드 변경 최소화<br>
+      • <strong style="color:var(--on-surface);">EKS 네이티브</strong>: DaemonSet 또는 Sidecar 배포<br>
+      • <strong style="color:var(--on-surface);">AWS 최적화</strong>: X-Ray, CloudWatch, AMP 익스포터 내장
     </div>
   </div>
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent2); margin-bottom:12px;">수집 아키텍처 패턴</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--info); margin-bottom:12px;">수집 아키텍처 패턴</div>
     <div style="display:flex; flex-direction:column; gap:8px;">
-      <div style="background:rgba(65,179,255,0.1); padding:12px 16px; border-radius:8px; display:flex; align-items:center; gap:12px;">
+      <div style="background:var(--accent-subtle); padding:12px 16px; border-radius:8px; display:flex; align-items:center; gap:12px;">
         <span style="font-size:1.5rem;">📦</span>
         <div>
-          <div style="font-size:0.9rem; font-weight:600; color:#fff;">DaemonSet (권장)</div>
+          <div style="font-size:0.9rem; font-weight:600; color:var(--on-surface);">DaemonSet (권장)</div>
           <div style="font-size:0.8rem; color:var(--text-secondary);">노드당 1개 Collector → 리소스 효율적</div>
         </div>
       </div>
-      <div style="background:rgba(173,92,255,0.1); padding:12px 16px; border-radius:8px; display:flex; align-items:center; gap:12px;">
+      <div style="background:var(--info-subtle); padding:12px 16px; border-radius:8px; display:flex; align-items:center; gap:12px;">
         <span style="font-size:1.5rem;">🔄</span>
         <div>
-          <div style="font-size:0.9rem; font-weight:600; color:#fff;">Sidecar</div>
+          <div style="font-size:0.9rem; font-weight:600; color:var(--on-surface);">Sidecar</div>
           <div style="font-size:0.8rem; color:var(--text-secondary);">Pod별 격리 필요 시 → 보안 민감 워크로드</div>
         </div>
       </div>
-      <div style="background:rgba(0,229,0,0.1); padding:12px 16px; border-radius:8px; display:flex; align-items:center; gap:12px;">
+      <div style="background:var(--success-subtle); padding:12px 16px; border-radius:8px; display:flex; align-items:center; gap:12px;">
         <span style="font-size:1.5rem;">🌐</span>
         <div>
-          <div style="font-size:0.9rem; font-weight:600; color:#fff;">Gateway</div>
+          <div style="font-size:0.9rem; font-weight:600; color:var(--on-surface);">Gateway</div>
           <div style="font-size:0.8rem; color:var(--text-secondary);">중앙 집중 처리 → 필터링/샘플링 로직 통합</div>
         </div>
       </div>
@@ -319,7 +319,7 @@ CloudWatch Logs Insights는 관측성의 핵심 쿼리 도구입니다. 3가지 
 :::html
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:32px; margin-top:12px;">
   <div>
-    <div style="font-size:1rem; font-weight:600; color:var(--accent1); margin-bottom:16px;">파라미터 조정</div>
+    <div style="font-size:1rem; font-weight:600; color:var(--accent); margin-bottom:16px;">파라미터 조정</div>
     <div style="margin-bottom:16px;">
       <div style="font-size:0.85rem; color:var(--text-secondary);">일일 로그 볼륨</div>
       <div style="display:flex; align-items:center; gap:12px; margin-top:4px;">
@@ -350,22 +350,22 @@ CloudWatch Logs Insights는 관측성의 핵심 쿼리 도구입니다. 3가지 
     </div>
   </div>
   <div>
-    <div style="font-size:1rem; font-weight:600; color:var(--accent2); margin-bottom:16px;">비용 비교</div>
+    <div style="font-size:1rem; font-weight:600; color:var(--info); margin-bottom:16px;">비용 비교</div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
-      <div style="background:rgba(255,92,133,0.15); padding:16px; border-radius:8px; text-align:center;">
+      <div style="background:var(--danger-subtle); padding:16px; border-radius:8px; text-align:center;">
         <div style="font-size:0.8rem; color:var(--text-secondary);">현재 월 비용</div>
-        <div id="cost-before" style="font-size:1.8rem; font-weight:700; color:var(--accent4);">$5,040</div>
+        <div id="cost-before" style="font-size:1.8rem; font-weight:700; color:var(--danger);">$5,040</div>
       </div>
-      <div style="background:rgba(0,229,0,0.15); padding:16px; border-radius:8px; text-align:center;">
+      <div style="background:var(--success-subtle); padding:16px; border-radius:8px; text-align:center;">
         <div style="font-size:0.8rem; color:var(--text-secondary);">최적화 후</div>
-        <div id="cost-after" style="font-size:1.8rem; font-weight:700; color:var(--accent3);">$2,739</div>
+        <div id="cost-after" style="font-size:1.8rem; font-weight:700; color:var(--success);">$2,739</div>
       </div>
     </div>
-    <div style="background:rgba(255,255,255,0.05); border-radius:8px; padding:8px 16px; margin-bottom:12px;">
-      <div style="height:24px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
-        <div id="savings-fill" style="height:100%; background:linear-gradient(90deg, var(--accent3), var(--accent1)); border-radius:4px; width:45%; transition:width 0.3s;"></div>
+    <div style="background:var(--surface-2); border-radius:8px; padding:8px 16px; margin-bottom:12px;">
+      <div style="height:24px; background:var(--surface-2); border-radius:4px; overflow:hidden;">
+        <div id="savings-fill" style="height:100%; background:linear-gradient(90deg, var(--success), var(--accent)); border-radius:4px; width:45%; transition:width 0.3s;"></div>
       </div>
-      <div id="savings-label" style="font-size:0.85rem; text-align:center; margin-top:4px; color:var(--accent3);">절감: 45.7%</div>
+      <div id="savings-label" style="font-size:0.85rem; text-align:center; margin-top:4px; color:var(--success);">절감: 45.7%</div>
     </div>
     <div style="font-size:0.8rem; line-height:1.8; color:var(--text-secondary);">
       <div id="detail-log">• 로그 레벨 최적화: —</div>
@@ -435,32 +435,32 @@ CloudWatch Logs Insights는 관측성의 핵심 쿼리 도구입니다. 3가지 
 :::html
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:12px;">
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent1); margin-bottom:12px;">Amazon Managed Grafana (AMG)</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--accent); margin-bottom:12px;">Amazon Managed Grafana (AMG)</div>
     <div style="font-size:0.9rem; line-height:1.9; color:var(--text-secondary);">
-      • <strong style="color:#fff;">Multi-source</strong>: CloudWatch + AMP + X-Ray + OpenSearch를 단일 대시보드에 통합<br>
-      • <strong style="color:#fff;">SSO 연동</strong>: IAM Identity Center로 팀별 접근 제어<br>
-      • <strong style="color:#fff;">알림 통합</strong>: SNS, Slack, PagerDuty 연동<br>
-      • <strong style="color:#fff;">관리형</strong>: Grafana 서버 운영 불필요, 자동 스케일링<br>
-      • <strong style="color:#fff;">플러그인</strong>: 150+ 데이터 소스 플러그인 지원
+      • <strong style="color:var(--on-surface);">Multi-source</strong>: CloudWatch + AMP + X-Ray + OpenSearch를 단일 대시보드에 통합<br>
+      • <strong style="color:var(--on-surface);">SSO 연동</strong>: IAM Identity Center로 팀별 접근 제어<br>
+      • <strong style="color:var(--on-surface);">알림 통합</strong>: SNS, Slack, PagerDuty 연동<br>
+      • <strong style="color:var(--on-surface);">관리형</strong>: Grafana 서버 운영 불필요, 자동 스케일링<br>
+      • <strong style="color:var(--on-surface);">플러그인</strong>: 150+ 데이터 소스 플러그인 지원
     </div>
   </div>
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent2); margin-bottom:12px;">권장 대시보드 구성</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--info); margin-bottom:12px;">권장 대시보드 구성</div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-      <div style="background:rgba(65,179,255,0.1); padding:12px; border-radius:6px; text-align:center;">
-        <div style="font-size:0.8rem; color:var(--accent1);">L1 — Overview</div>
+      <div style="background:var(--accent-subtle); padding:12px; border-radius:6px; text-align:center;">
+        <div style="font-size:0.8rem; color:var(--accent);">L1 — Overview</div>
         <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">SLO 상태 + 핵심 KPI<br>Golden Signals</div>
       </div>
-      <div style="background:rgba(173,92,255,0.1); padding:12px; border-radius:6px; text-align:center;">
-        <div style="font-size:0.8rem; color:var(--accent2);">L2 — Service</div>
+      <div style="background:var(--info-subtle); padding:12px; border-radius:6px; text-align:center;">
+        <div style="font-size:0.8rem; color:var(--info);">L2 — Service</div>
         <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">서비스별 상세 메트릭<br>에러율 + 레이턴시</div>
       </div>
-      <div style="background:rgba(0,229,0,0.1); padding:12px; border-radius:6px; text-align:center;">
-        <div style="font-size:0.8rem; color:var(--accent3);">L3 — Debug</div>
+      <div style="background:var(--success-subtle); padding:12px; border-radius:6px; text-align:center;">
+        <div style="font-size:0.8rem; color:var(--success);">L3 — Debug</div>
         <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">트레이스 + 로그 상관<br>Pod/Node 레벨</div>
       </div>
-      <div style="background:rgba(251,211,50,0.1); padding:12px; border-radius:6px; text-align:center;">
-        <div style="font-size:0.8rem; color:var(--accent6);">L4 — Business</div>
+      <div style="background:var(--warning-subtle); padding:12px; border-radius:6px; text-align:center;">
+        <div style="font-size:0.8rem; color:var(--warning);">L4 — Business</div>
         <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">비즈니스 KPI<br>매출 영향도 + 사용자 경험</div>
       </div>
     </div>
@@ -489,17 +489,17 @@ L4는 비즈니스 KPI — 장애가 매출이나 사용자 경험에 미치는 
 :::html
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:24px;">
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent1); margin-bottom:16px;">🔑 Key Takeaways</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--accent); margin-bottom:16px;">🔑 Key Takeaways</div>
     <div style="font-size:0.9rem; line-height:2.2; color:var(--text-secondary);">
-      <div>✅ <strong style="color:#fff;">관측성 ≠ 모니터링</strong> — "왜?"에 답하는 능력</div>
-      <div>✅ <strong style="color:#fff;">3대 축 통합</strong> — Metrics + Logs + Traces 상관분석</div>
-      <div>✅ <strong style="color:#fff;">ADOT</strong> — 벤더 중립 통합 수집 에이전트</div>
-      <div>✅ <strong style="color:#fff;">비용 최적화</strong> — 로그 레벨 + 샘플링으로 40-60% 절감 가능</div>
-      <div>✅ <strong style="color:#fff;">대시보드 계층화</strong> — L1~L4 4단계 구성</div>
+      <div>✅ <strong style="color:var(--on-surface);">관측성 ≠ 모니터링</strong> — "왜?"에 답하는 능력</div>
+      <div>✅ <strong style="color:var(--on-surface);">3대 축 통합</strong> — Metrics + Logs + Traces 상관분석</div>
+      <div>✅ <strong style="color:var(--on-surface);">ADOT</strong> — 벤더 중립 통합 수집 에이전트</div>
+      <div>✅ <strong style="color:var(--on-surface);">비용 최적화</strong> — 로그 레벨 + 샘플링으로 40-60% 절감 가능</div>
+      <div>✅ <strong style="color:var(--on-surface);">대시보드 계층화</strong> — L1~L4 4단계 구성</div>
     </div>
   </div>
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent2); margin-bottom:16px;">💡 실무 적용 포인트</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--info); margin-bottom:16px;">💡 실무 적용 포인트</div>
     <div style="font-size:0.9rem; line-height:2.2; color:var(--text-secondary);">
       <div>→ OTel 자동 계측부터 시작 (코드 변경 최소)</div>
       <div>→ DEBUG 로그 비율 확인 → filter/severity 적용</div>

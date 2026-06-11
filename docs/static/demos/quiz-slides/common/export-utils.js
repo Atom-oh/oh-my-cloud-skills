@@ -6,6 +6,7 @@
 const ExportUtils = {
   JSZIP_CDN: 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
   PPTXGEN_CDN: 'https://cdn.jsdelivr.net/gh/gitbrent/PptxGenJS@3.12.0/dist/pptxgen.bundle.js',
+  HTML2CANVAS_CDN: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
 
   /** Escape HTML special characters to prevent XSS in generated markup */
   _escapeHTML: function(str) {
@@ -45,7 +46,7 @@ const ExportUtils = {
   },
 
   COMMON_FILES: [
-    'theme.css', 'theme-override.css', 'slide-framework.js',
+    'design-tokens.css', 'theme.css', 'theme-override.css', 'slide-framework.js',
     'presenter-view.js', 'animation-utils.js', 'quiz-component.js',
     'export-utils.js'
   ],
@@ -61,6 +62,16 @@ const ExportUtils = {
   getSlug: function() {
     var parts = window.location.pathname.replace(/\/index\.html$/, '').split('/').filter(Boolean);
     return parts[parts.length - 1] || 'presentation';
+  },
+
+  _resolveCommonPath: function() {
+    var tags = document.querySelectorAll('link[href*="common/"], script[src*="common/"]');
+    for (var i = 0; i < tags.length; i++) {
+      var attr = tags[i].getAttribute('href') || tags[i].getAttribute('src') || '';
+      var idx = attr.indexOf('common/');
+      if (idx !== -1) return attr.substring(0, idx + 7);
+    }
+    return './common/';
   },
 
   /**
@@ -103,12 +114,13 @@ const ExportUtils = {
       this.updateProgress('Building print view (' + slideCount + ' slides)...', 75);
 
       var baseURL = window.location.href;
+      var commonPath = this._resolveCommonPath();
       var printHTML = '<!DOCTYPE html>\n<html lang="ko">\n<head>\n' +
         '<meta charset="UTF-8">\n' +
         '<base href="' + this._escapeHTML(baseURL) + '">\n' +
         '<title>' + this._escapeHTML(title) + ' - PDF Export</title>\n' +
-        '<link rel="stylesheet" href="../common/theme.css">\n' +
-        '<link rel="stylesheet" href="../common/theme-override.css">\n' +
+        '<link rel="stylesheet" href="' + commonPath + 'theme.css">\n' +
+        '<link rel="stylesheet" href="' + commonPath + 'theme-override.css">\n' +
         '<style>\n' +
         '@page { size: 16in 9in landscape; margin: 0; }\n' +
         'html, body { margin: 0; padding: 0; background: #000; overflow: visible !important; display: block !important; height: auto !important; }\n' +
@@ -309,9 +321,158 @@ const ExportUtils = {
     });
   },
 
+  /** Lazy-load html2canvas from CDN */
+  loadHtml2Canvas: function() {
+    if (window.html2canvas) return Promise.resolve();
+    return new Promise(function(resolve, reject) {
+      var script = document.createElement('script');
+      script.src = ExportUtils.HTML2CANVAS_CDN;
+      script.onload = resolve;
+      script.onerror = function() { reject(new Error('Failed to load html2canvas from CDN')); };
+      document.head.appendChild(script);
+    });
+  },
+
   /**
-   * Export presentation as PPTX file via PptxGenJS.
-   * Extracts text content from HTML slides and generates downloadable .pptx.
+   * Load a block HTML file into a hidden iframe and wait for full rendering.
+   * Returns the iframe's contentDocument with all CSS/JS applied.
+   */
+  _loadBlockInIframe: function(blockUrl) {
+    return new Promise(function(resolve, reject) {
+      var iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:1920px;height:1080px;border:none;opacity:0;pointer-events:none;';
+      document.body.appendChild(iframe);
+
+      iframe.onload = function() {
+        // Wait for images and fonts to load
+        var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        var checkReady = function() {
+          // Give scripts time to execute (canvas rendering, etc.)
+          setTimeout(function() { resolve({ doc: iframeDoc, iframe: iframe }); }, 800);
+        };
+
+        if (iframeDoc.readyState === 'complete') {
+          checkReady();
+        } else {
+          iframe.contentWindow.addEventListener('load', checkReady);
+        }
+      };
+      iframe.onerror = function() {
+        document.body.removeChild(iframe);
+        reject(new Error('Failed to load ' + blockUrl));
+      };
+
+      // Resolve relative URL against current page
+      var baseUrl = window.location.href.replace(/[^/]*$/, '');
+      iframe.src = new URL(blockUrl, baseUrl).href;
+    });
+  },
+
+  /**
+   * Reveal all fragments and complete all canvas steps in a document.
+   * This puts every slide into its "finished" visual state.
+   */
+  _completeAllAnimations: function(doc) {
+    // 1. Reveal all fragments
+    doc.querySelectorAll('.fragment').forEach(function(el) {
+      el.classList.add('visible');
+    });
+
+    // 2. Complete all canvas step animations
+    doc.querySelectorAll('.slide').forEach(function(slide) {
+      // Advance __canvasStep to MAX_STEP
+      if (slide.__canvasStep) {
+        var maxStep = parseInt(slide.dataset.canvasMaxStep || '20', 10);
+        for (var s = 0; s < maxStep; s++) {
+          var result = slide.__canvasStep('next');
+          if (result === false) break;
+        }
+      }
+
+      // Show all tab panels (capture the active one)
+      // Show all compare sections
+    });
+
+    // 3. Make all slides visible for capture (override framework's active logic)
+    doc.querySelectorAll('.slide').forEach(function(slide) {
+      slide.style.display = 'flex';
+      slide.style.opacity = '1';
+      slide.style.visibility = 'visible';
+      slide.style.position = 'relative';
+      slide.style.transform = 'none';
+    });
+  },
+
+  /**
+   * Extract theme info from a block HTML for PPTX metadata.
+   * Reads __remarpTheme and CSS custom properties.
+   */
+  _extractThemeFromBlock: async function(blockFile) {
+    var info = { bgColor: null, footerText: null, fonts: {} };
+    try {
+      var resp = await fetch(blockFile);
+      if (!resp.ok) return info;
+      var html = await resp.text();
+
+      // Extract __remarpTheme JSON
+      var themeMatch = html.match(/window\.__remarpTheme\s*=\s*(\{[^;]+\})/);
+      if (themeMatch) {
+        var theme = JSON.parse(themeMatch[1]);
+        if (theme.footer) info.footerText = theme.footer;
+        if (theme.fonts) info.fonts = theme.fonts;
+
+        // Derive background color from theme colors (darkest of dk1/dk2/lt1/lt2)
+        var colors = theme.colors || {};
+        var darkest = null;
+        var darkestLum = 1;
+        ['dk1', 'dk2', 'lt1', 'lt2'].forEach(function(k) {
+          if (!colors[k]) return;
+          var hex = colors[k].replace('#', '');
+          var r = parseInt(hex.substr(0, 2), 16) / 255;
+          var g = parseInt(hex.substr(2, 2), 16) / 255;
+          var b = parseInt(hex.substr(4, 2), 16) / 255;
+          var lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+          if (lum < darkestLum) { darkestLum = lum; darkest = hex; }
+        });
+        if (darkest && darkestLum < 0.3) info.bgColor = darkest;
+      }
+
+      // Fallback: extract --bg-primary from CSS
+      if (!info.bgColor) {
+        var bgMatch = html.match(/--bg-primary:\s*([#\w]+)/);
+        if (bgMatch) info.bgColor = bgMatch[1].replace('#', '');
+      }
+    } catch (e) {
+      console.warn('Theme extraction failed:', e);
+    }
+    return info;
+  },
+
+  /**
+   * Capture a single slide element as a base64 PNG using html2canvas.
+   * The html2canvas library must be loaded in the PARENT window.
+   */
+  _captureSlide: async function(slideEl, iframeWindow) {
+    // html2canvas is loaded in the parent window; we need to pass the element
+    // html2canvas can work cross-frame if same-origin
+    var canvas = await html2canvas(slideEl, {
+      width: 1920,
+      height: 1080,
+      scale: 1,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: null,
+      logging: false,
+      windowWidth: 1920,
+      windowHeight: 1080
+    });
+    return canvas.toDataURL('image/png');
+  },
+
+  /**
+   * Export presentation as PPTX with slide screenshots.
+   * Each slide is rendered in a hidden iframe with all animations completed,
+   * captured as an image via html2canvas, and inserted into the PPTX.
    * @param {Object} options - { title: string }
    */
   exportPPTX: async function(options) {
@@ -324,146 +485,94 @@ const ExportUtils = {
     this.showProgress('Preparing PPTX export...');
 
     try {
-      this.updateProgress('Loading PptxGenJS library...', 5);
-      await this.loadPptxGen();
+      // Load libraries in parallel
+      this.updateProgress('Loading libraries...', 5);
+      await Promise.all([this.loadPptxGen(), this.loadHtml2Canvas()]);
 
       var pres = new PptxGenJS();
-      pres.layout = 'LAYOUT_WIDE';
+      pres.layout = 'LAYOUT_WIDE'; // 13.33 x 7.5 inches (16:9)
       pres.author = 'Reactive Presentation';
       pres.title = title;
 
-      // Apply theme colors if available
-      var theme = window.__remarpTheme || {};
-      var bgColor = '1a1d2e';
-      var textColor = 'FFFFFF';
-      var accentColor = 'FF9900';
-      if (theme.colors) {
-        if (theme.colors.dk1) bgColor = theme.colors.dk1.replace('#', '');
-        if (theme.colors.lt1) textColor = theme.colors.lt1.replace('#', '');
-        if (theme.colors.accent1) accentColor = theme.colors.accent1.replace('#', '');
-      }
-
-      pres.defineSlideMaster({
-        title: 'REACTIVE_MASTER',
-        background: { color: bgColor },
-        objects: []
-      });
-
-      // Fetch all block HTML files
       var totalSlides = 0;
+      var self = this;
+
       for (var i = 0; i < blocks.length; i++) {
-        var file = blocks[i];
-        this.updateProgress('Processing ' + file + '...', 10 + (i / blocks.length) * 70);
+        var blockFile = blocks[i];
+        this.updateProgress('Loading ' + blockFile + '...', 10 + (i / blocks.length) * 30);
 
-        var resp = await fetch(file);
-        if (!resp.ok) continue;
-        var html = await resp.text();
+        // Load block HTML in hidden iframe for full rendering
+        var result;
+        try {
+          result = await this._loadBlockInIframe(blockFile);
+        } catch (e) {
+          console.warn('Skipping block:', blockFile, e);
+          continue;
+        }
 
-        var doc = new DOMParser().parseFromString(html, 'text/html');
-        var slides = doc.querySelectorAll('.slide');
+        var iframeDoc = result.doc;
+        var iframe = result.iframe;
 
+        // Complete all animations (fragments visible, canvas at final step)
+        this._completeAllAnimations(iframeDoc);
+
+        // Wait a moment for canvas redraws to finish
+        await new Promise(function(r) { setTimeout(r, 300); });
+
+        // Capture each slide
+        var slides = iframeDoc.querySelectorAll('.slide');
         for (var j = 0; j < slides.length; j++) {
           var slideEl = slides[j];
-          var pptxSlide = pres.addSlide({ masterName: 'REACTIVE_MASTER' });
           totalSlides++;
+          var pctBase = 40 + ((totalSlides - 1) / Math.max(slides.length * blocks.length, 1)) * 45;
+          self.updateProgress('Capturing slide ' + totalSlides + '...', pctBase);
 
-          // Extract heading
-          var heading = slideEl.querySelector('h1, h2');
-          if (heading) {
-            var isH1 = heading.tagName === 'H1';
-            pptxSlide.addText(heading.textContent.trim(), {
-              x: 0.5, y: isH1 ? 1.5 : 0.3, w: '90%',
-              fontSize: isH1 ? 36 : 24,
-              color: isH1 ? accentColor : accentColor,
-              bold: true,
-              fontFace: 'Arial'
-            });
-          }
+          // Ensure slide is properly sized for capture
+          slideEl.style.width = '1920px';
+          slideEl.style.height = '1080px';
+          slideEl.style.minHeight = '1080px';
+          slideEl.style.overflow = 'hidden';
 
-          // Extract bullet points
-          var listItems = slideEl.querySelectorAll('li');
-          if (listItems.length > 0) {
-            var bullets = [];
-            listItems.forEach(function(li) {
-              bullets.push({
-                text: li.textContent.trim(),
-                options: { fontSize: 16, color: textColor, bullet: true, fontFace: 'Arial' }
-              });
-            });
-            pptxSlide.addText(bullets, {
-              x: 0.5, y: heading ? 1.2 : 0.5, w: '90%', h: '60%',
-              valign: 'top'
-            });
-          }
+          var pptxSlide = pres.addSlide();
+          var slideHeading = slideEl.querySelector('h1, h2');
 
-          // Extract paragraphs (non-list text)
-          var paragraphs = slideEl.querySelectorAll('.slide-body > p, .slide-body .col > p');
-          if (paragraphs.length > 0 && listItems.length === 0) {
-            var pTexts = [];
-            paragraphs.forEach(function(p) {
-              if (p.textContent.trim()) {
-                pTexts.push({
-                  text: p.textContent.trim(),
-                  options: { fontSize: 16, color: textColor, fontFace: 'Arial', breakLine: true }
-                });
-              }
+          try {
+            var dataUrl = await self._captureSlide(slideEl, iframe.contentWindow);
+
+            pptxSlide.addImage({
+              data: dataUrl,
+              x: 0, y: 0,
+              w: '100%', h: '100%'
             });
-            if (pTexts.length > 0) {
-              pptxSlide.addText(pTexts, {
-                x: 0.5, y: heading ? 1.2 : 0.5, w: '90%', h: '60%',
-                valign: 'top'
+
+            // Add heading text as slide notes (for searchability)
+            if (slideHeading) {
+              pptxSlide.addNotes(slideHeading.textContent.trim());
+            }
+          } catch (captureErr) {
+            console.warn('Capture failed for slide ' + totalSlides + ', using text fallback:', captureErr);
+            // Fallback: text-based slide
+            if (slideHeading) {
+              pptxSlide.addText(slideHeading.textContent.trim(), {
+                x: 0.5, y: 0.5, w: '90%', fontSize: 24, color: 'FFFFFF', bold: true
               });
             }
+            pptxSlide.background = { color: '1a1d2e' };
           }
-
-          // Extract code blocks
-          var codeBlocks = slideEl.querySelectorAll('.code-block, pre, code');
-          codeBlocks.forEach(function(codeEl, ci) {
-            var codeText = codeEl.textContent.trim();
-            if (codeText.length > 500) codeText = codeText.substring(0, 500) + '\n...';
-            pptxSlide.addText(codeText, {
-              x: 0.5, y: 3.0 + ci * 1.5, w: '90%',
-              fontSize: 10, color: 'C0C0C0', fontFace: 'Courier New',
-              fill: { color: '2D2D2D' },
-              margin: [8, 12, 8, 12]
-            });
-          });
-
-          // Canvas/interactive placeholders
-          var canvases = slideEl.querySelectorAll('canvas, .canvas-container');
-          canvases.forEach(function(c) {
-            var canvasId = c.id || c.querySelector('canvas')?.id || 'interactive';
-            pptxSlide.addText('[Interactive: ' + canvasId + ']', {
-              x: 1, y: 2.5, w: '80%', h: 2,
-              fontSize: 18, color: '888888', fontFace: 'Arial',
-              align: 'center', valign: 'middle',
-              fill: { color: '2D2D2D' },
-              border: { type: 'dash', pt: 1, color: '666666' }
-            });
-          });
-
-          // Mermaid placeholders
-          var mermaids = slideEl.querySelectorAll('.mermaid');
-          mermaids.forEach(function() {
-            pptxSlide.addText('[Mermaid Diagram]', {
-              x: 1, y: 2.5, w: '80%', h: 2,
-              fontSize: 18, color: '888888', fontFace: 'Arial',
-              align: 'center', valign: 'middle',
-              fill: { color: '2D2D2D' },
-              border: { type: 'dash', pt: 1, color: '666666' }
-            });
-          });
         }
+
+        // Clean up iframe
+        document.body.removeChild(iframe);
       }
 
-      this.updateProgress('Generating PPTX (' + totalSlides + ' slides)...', 85);
-
-      // Generate and trigger download
+      this.updateProgress('Generating PPTX (' + totalSlides + ' slides)...', 90);
       await pres.writeFile({ fileName: slug + '.pptx' });
 
       this.hideProgress();
     } catch (err) {
       this.hideProgress();
+      // Clean up any remaining iframes
+      document.querySelectorAll('iframe[style*="-9999px"]').forEach(function(f) { f.remove(); });
       alert('PPTX export failed: ' + err.message);
       console.error('PPTX export error:', err);
     }

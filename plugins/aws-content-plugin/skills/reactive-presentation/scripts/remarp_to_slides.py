@@ -3651,11 +3651,21 @@ class RemarpHTMLGenerator:
 
         # Logo config — check top-level first, then fall back to theme.* nested keys
         theme_cfg = config.get('theme', {})
-        if isinstance(theme_cfg, str):
+        if not isinstance(theme_cfg, dict):   # str/list/None → ignore (defensive)
             theme_cfg = {}
         logo_src = config.get('logoSrc', '') or config.get('logo', '') or theme_cfg.get('logo', '')
         footer = config.get('footer', '') or theme_cfg.get('footer', '')
         pagination = config.get('pagination', theme_cfg.get('pagination', True))
+
+        # Theme mode: token theme is light by default; opt into dark via
+        # `theme.mode: dark` (or `theme.dark: true`) → deck root gets `theme-dark`.
+        _mode = str(theme_cfg.get('mode', '') or config.get('mode', '')).strip().lower()
+        _dark_raw = theme_cfg.get('dark', config.get('dark', False))
+        if isinstance(_dark_raw, bool):
+            _dark_flag = _dark_raw
+        else:  # tolerate YAML strings like "false"/"0"/"no"
+            _dark_flag = str(_dark_raw).strip().lower() in ('true', '1', 'yes', 'dark')
+        deck_theme_class = ' theme-dark' if (_mode == 'dark' or _dark_flag) else ''
 
         logo_js = f"logoSrc: '{logo_src}'," if logo_src else ''
         footer_js = f"footer: '{footer}'," if footer else ''
@@ -3752,7 +3762,7 @@ class RemarpHTMLGenerator:
   {theme_js}
 </head>
 <body>
-<div class="slide-deck">
+<div class="slide-deck{deck_theme_class}">
 {slides_html}
 </div>
 <script src="./common/animation-utils.js"></script>
