@@ -11,7 +11,9 @@
 
 ## Status
 
-Proposed
+Superseded — Superseded by ADR-009
+
+> Reconciliation (2026-06-11, decision-reconcile): the plugin shipped, but the as-built design is a 5-phase brainstorm-/skill-first workflow, not the proposed 9-phase converter. This proposal is preserved as a point-in-time record and superseded by ADR-009.
 
 ## Context
 
@@ -150,7 +152,9 @@ plugins/agentcore-creator/
 
 ## 상태
 
-제안됨
+대체됨 — Superseded by ADR-009
+
+> 화해 (2026-06-11, decision-reconcile): 플러그인은 출시되었으나 실구현은 제안된 9단계 변환기가 아니라 5단계 브레인스토밍/스킬 우선 워크플로우입니다. 본 제안은 시점 기록으로 보존되며 ADR-009로 대체됩니다.
 
 ## 배경
 
