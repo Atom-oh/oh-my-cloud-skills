@@ -175,16 +175,16 @@ ${styleSheets}
     position: absolute;
     top: 0;
     left: 0;
-    width: 1280px;
-    height: 720px;
+    width: 960px;
+    height: 540px;
     transform-origin: top left;
     overflow: hidden;
     background: var(--bg-primary, #0f1117);
     border-radius: 4px;
   }
   .slide-scaler .slide-deck {
-    width: 1280px !important;
-    height: 720px !important;
+    width: 960px !important;
+    height: 540px !important;
     max-width: none !important;
     max-height: none !important;
     position: relative !important;
@@ -705,9 +705,9 @@ ${styleSheets}
   }
 
   _applyScale(scaler, containerW, containerH) {
-    const scale = Math.min(containerW / 1280, containerH / 720);
-    const scaledW = 1280 * scale;
-    const scaledH = 720 * scale;
+    const scale = Math.min(containerW / 960, containerH / 540);
+    const scaledW = 960 * scale;
+    const scaledH = 540 * scale;
     const offsetX = (containerW - scaledW) / 2;
     const offsetY = (containerH - scaledH) / 2;
     scaler.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;

@@ -1,0 +1,288 @@
+---
+remarp: true
+block: 2
+title: "AgentCore와 레퍼런스 아키텍처"
+---
+
+# AgentCore와 레퍼런스 아키텍처
+## 모델을 넘어, 프로덕션 에이전트로
+
+@type: section
+
+:::notes
+{timing: 1min}
+1부에서는 모델을 잘 고르고 잘 부르는 법을 봤습니다. 그런데 요즘 고객들이 진짜 원하는 건 "스스로 도구를 쓰고 일을 끝내는" 에이전트입니다.
+2부에서는 에이전트를 프로토타입에서 프로덕션으로 올리는 AgentCore, 그리고 모델과 에이전트를 합친 끝에서 끝 아키텍처를 보겠습니다.
+{cue: transition} 먼저, 에이전트가 왜 프로덕션에서 막히는지부터 짚겠습니다.
+:::
+
+---
+
+## 에이전트, 프로토타입의 벽
+
+@type: content
+
+:::html
+<div class="col-3">
+  <div class="callout callout-warning fragment fade-up" data-fragment-index="1"><strong>세션·확장</strong><div class="metric-label">장시간 작업·동시 사용자 격리</div></div>
+  <div class="callout callout-warning fragment fade-up" data-fragment-index="2"><strong>도구 연동</strong><div class="metric-label">API·DB·SaaS를 안전하게 호출</div></div>
+  <div class="callout callout-warning fragment fade-up" data-fragment-index="3"><strong>메모리</strong><div class="metric-label">대화·선호·컨텍스트 지속</div></div>
+  <div class="callout callout-danger fragment fade-up" data-fragment-index="4"><strong>인증·권한</strong><div class="metric-label">사용자 대신 행동할 때의 신원</div></div>
+  <div class="callout callout-danger fragment fade-up" data-fragment-index="5"><strong>관측</strong><div class="metric-label">에이전트 추론·도구 호출 추적</div></div>
+  <div class="callout callout-danger fragment fade-up" data-fragment-index="6"><strong>코드 실행·웹</strong><div class="metric-label">샌드박스·브라우저 자동화</div></div>
+</div>
+:::
+
+:::notes
+{timing: 2min}
+[요약]
+- 에이전트 프로덕션화의 6대 난관: 세션·확장, 도구, 메모리, 인증, 관측, 코드/웹
+- 프레임워크는 "추론 루프"는 주지만 "운영 기반"은 안 줌
+
+LangGraph, CrewAI 같은 프레임워크로 에이전트 로직은 금방 만듭니다. 문제는 운영입니다.
+장시간 실행되는 작업과 동시 사용자를 어떻게 격리할지, 도구로서의 API·DB·SaaS를 어떻게 안전하게 연결할지, 대화와 선호를 어떻게 기억할지가 막힙니다.
+특히 에이전트가 사용자를 대신해 행동할 때의 인증·권한, 그리고 무엇을 왜 했는지 추적하는 관측은 직접 만들면 상당한 부담입니다.
+{cue: pause} AgentCore는 바로 이 "운영 기반"을 모듈형 관리형 서비스로 제공합니다.
+{cue: transition} 7개 빌딩블록을 보겠습니다.
+:::
+
+---
+
+## AgentCore: 모듈형 빌딩블록
+
+@type: content
+
+:::html
+<div class="col-3">
+  <div class="metric-card fragment fade-up" data-fragment-index="1"><strong>Runtime</strong><div class="metric-label">8시간·세션 격리 실행</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="2"><strong>Gateway</strong><div class="metric-label">API·Lambda·MCP → 도구</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="3"><strong>Memory</strong><div class="metric-label">단기·장기 기억</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="4"><strong>Identity</strong><div class="metric-label">신원·토큰 볼트</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="5"><strong>Browser</strong><div class="metric-label">관리형 웹 자동화</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="6"><strong>Code Interpreter</strong><div class="metric-label">격리 코드 실행</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="7"><strong>Observability</strong><div class="metric-label">추적·메트릭</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="8"><strong>프레임워크 무관</strong><div class="metric-label">원하는 라이브러리와 조합</div></div>
+</div>
+:::
+
+:::notes
+{timing: 2min}
+[요약]
+- AgentCore = 에이전트 운영을 위한 모듈형 관리형 서비스 묶음
+- Runtime·Gateway·Memory·Identity·Browser·Code Interpreter·Observability
+- 골라 쓰기 가능 — 프레임워크·모델 무관
+
+AgentCore는 이 7가지를 따로따로 골라 쓸 수 있는 모듈형 서비스입니다. 전부 다 쓸 필요 없이 필요한 것만 조합합니다.
+Runtime이 실행을 맡고, Gateway가 도구 연동을, Memory가 기억을, Identity가 신원을 책임집니다. 여기에 Browser와 Code Interpreter가 실제 행동 능력을, Observability가 추적을 더합니다.
+중요한 건 프레임워크와 모델에 종속되지 않는다는 점입니다. Bedrock 모델이든 외부 모델이든, LangGraph든 직접 짠 루프든 그대로 올립니다.
+{cue: transition} 핵심부터 하나씩 보겠습니다. 먼저 Runtime입니다.
+:::
+
+---
+
+## Runtime: 8시간 격리 실행
+
+@type: content
+
+:::html
+<div class="col-3">
+  <div class="metric-card fragment fade-up" data-fragment-index="1"><strong>최대 8시간</strong><div class="metric-label">장시간·비동기 추론 워크로드</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="2"><strong>세션 격리</strong><div class="metric-label">사용자별 완전 분리 실행</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="3"><strong>A2A 프로토콜</strong><div class="metric-label">에이전트 간 협업</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="4"><strong>실시간 + 롱런</strong><div class="metric-label">대화형과 배치형 모두</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="5"><strong>프레임워크 무관</strong><div class="metric-label">기존 에이전트 코드 그대로</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="6"><strong>VPC·PrivateLink</strong><div class="metric-label">엔터프라이즈 네트워크</div></div>
+</div>
+:::
+
+:::notes
+{timing: 2min}
+[요약]
+- Runtime: 최대 8시간 실행 + 세션 격리 (업계 최고 수준)
+- A2A로 멀티 에이전트 협업, 실시간·롱런 동시 지원
+- 프레임워크 무관, GA로 VPC·PrivateLink·CloudFormation 지원
+
+Runtime은 에이전트를 실제로 돌리는 곳입니다. 가장 큰 특징은 최대 8시간 실행과 완전한 세션 격리입니다. 복잡한 다단계 추론이나 비동기 작업을 끝까지 돌릴 수 있고, 사용자별로 실행이 분리돼 안전합니다.
+Agent-to-Agent(A2A) 프로토콜로 여러 에이전트가 협업하고, 실시간 대화형과 장시간 배치형을 모두 지원합니다.
+기존 프레임워크 코드를 그대로 올릴 수 있고, GA가 되면서 VPC·PrivateLink·CloudFormation·태깅까지 엔터프라이즈 요건을 갖췄습니다.
+{cue: transition} 실행이 됐으면, 이제 "도구를 안전하게 연결"하는 Gateway와 "신원"을 담당하는 Identity를 보겠습니다.
+:::
+
+---
+
+## Gateway & Identity
+
+@type: tabs
+
+### Gateway
+
+:::html
+<div class="col-2">
+  <div class="callout callout-info"><strong>API·Lambda·MCP → 도구</strong><div class="metric-label">기존 자산을 에이전트 도구로 변환</div></div>
+  <div class="callout callout-success"><strong>IAM + OAuth 인가</strong><div class="metric-label">도구 호출을 표준 권한으로 통제</div></div>
+</div>
+<p class="metric-label">기존 MCP 서버에 연결하거나, REST API·Lambda를 도구로 노출 — 에이전트가 곧바로 사용</p>
+:::
+
+### Identity
+
+:::html
+<div class="col-2">
+  <div class="callout callout-info"><strong>Identity-aware 인가</strong><div class="metric-label">사용자 대신 / 에이전트 자체로 행동</div></div>
+  <div class="callout callout-success"><strong>토큰 볼트</strong><div class="metric-label">refresh 토큰 안전 저장 · OAuth 연동</div></div>
+</div>
+<p class="metric-label">에이전트가 "누구의 권한으로" 행동하는지 명확히 — 최소 권한 원칙 적용</p>
+:::
+
+:::notes
+{timing: 2min}
+[요약]
+- Gateway: API·Lambda·기존 MCP 서버를 에이전트 도구로, IAM/OAuth 인가
+- Identity: identity-aware 인가 + 토큰 볼트 + OAuth 프로바이더 연동
+
+도구 연동은 에이전트의 손발입니다. Gateway는 우리가 이미 가진 REST API, Lambda 함수, 그리고 기존 MCP 서버를 에이전트가 바로 쓸 수 있는 "도구"로 변환합니다. 호출 권한은 OAuth뿐 아니라 IAM으로도 통제할 수 있습니다.
+Identity는 에이전트의 신원을 책임집니다. 사용자를 대신해 행동할 때와 에이전트 스스로 행동할 때를 구분해 인가하고, refresh 토큰을 안전한 볼트에 보관하며 외부 OAuth 서비스와 연동합니다.
+{cue: pause} 이 둘이 있어야 "에이전트가 함부로, 익명으로 도구를 호출하는" 위험을 막습니다.
+{cue: transition} 기억과 행동 능력을 더하는 세 가지를 보겠습니다.
+:::
+
+---
+
+## 기억과 행동을 더하다
+
+@type: content
+
+:::html
+<div class="col-3">
+  <div class="metric-card fragment fade-up" data-fragment-index="1"><strong>Memory</strong><div class="metric-label">단기 대화 + 장기 선호·사실. self-managed 추출/통합 전략으로 파이프라인 직접 제어</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="2"><strong>Browser</strong><div class="metric-label">관리형 헤드리스 브라우저로 웹 탐색·폼 작성·데이터 추출을 안전하게 자동화</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="3"><strong>Code Interpreter</strong><div class="metric-label">격리 샌드박스에서 코드 실행 — 계산·데이터 처리·파일 변환</div></div>
+</div>
+:::
+
+:::notes
+{timing: 2min}
+[요약]
+- Memory: 단기+장기 기억, self-managed 전략으로 추출/통합 제어
+- Browser: 관리형 브라우저로 웹 자동화
+- Code Interpreter: 격리 샌드박스 코드 실행
+
+이 세 가지가 에이전트에 "기억"과 "행동"을 줍니다.
+Memory는 한 대화 안의 단기 컨텍스트와, 사용자 선호·사실 같은 장기 기억을 모두 다룹니다. self-managed 전략을 쓰면 무엇을 어떻게 추출하고 통합할지 파이프라인을 직접 제어할 수 있습니다.
+Browser는 관리형 헤드리스 브라우저로, 사람처럼 웹을 탐색하고 폼을 채우고 데이터를 뽑습니다. Code Interpreter는 격리 샌드박스에서 코드를 실행해 계산·데이터 처리·파일 변환을 안전하게 수행합니다.
+{cue: transition} 이제 1부의 모델과 2부의 에이전트를 하나의 그림으로 합쳐보겠습니다.
+:::
+
+---
+
+## 끝에서 끝까지
+
+@type: content
+
+:::html
+<div class="flow-h">
+  <div class="flow-group bg-blue" data-fragment-index="1">
+    <div class="flow-group-label">사용자·앱</div>
+    <div class="flow-box">웹·모바일</div>
+    <div class="flow-box">백엔드 API</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-group bg-orange" data-fragment-index="2">
+    <div class="flow-group-label">Bedrock · Mantle</div>
+    <div class="flow-box">모델 추론</div>
+    <div class="flow-box">Guardrails</div>
+    <div class="flow-box">Knowledge Base (RAG)</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-group bg-purple" data-fragment-index="3">
+    <div class="flow-group-label">AgentCore</div>
+    <div class="flow-box">Runtime</div>
+    <div class="flow-box">Gateway</div>
+    <div class="flow-box">Memory · Identity</div>
+  </div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-group bg-green" data-fragment-index="4">
+    <div class="flow-group-label">기업 자산</div>
+    <div class="flow-box">API · DB</div>
+    <div class="flow-box">SaaS · 도구</div>
+  </div>
+</div>
+:::
+
+:::notes
+{timing: 2min}
+[요약]
+- 사용자/앱 → Bedrock(Mantle 추론·Guardrails·RAG) → AgentCore(실행·도구·기억·신원) → 기업 자산
+- 모든 구간이 VPC·IAM·PrivateLink로 감싸짐
+
+이게 오늘의 그림을 합친 레퍼런스 아키텍처입니다. 왼쪽 사용자·앱의 요청이 Bedrock으로 들어가면, Mantle 추론 엔진이 모델을 호출하고 Guardrails가 안전을 보장하며 Knowledge Base가 RAG로 근거를 더합니다.
+단순 질의응답을 넘어 "행동"이 필요하면 AgentCore가 받습니다. Runtime이 실행하고, Gateway로 기업의 API·DB·SaaS를 도구로 호출하며, Memory와 Identity가 기억과 신원을 책임집니다.
+{cue: pause} 핵심은 이 전 구간이 VPC·IAM·PrivateLink로 감싸여 데이터가 경계를 벗어나지 않는다는 점입니다.
+{cue: transition} 그래서 보안·거버넌스를 별도 슬라이드로 짚겠습니다.
+:::
+
+---
+
+## 보안과 거버넌스는 기본
+
+@type: content
+
+:::html
+<div class="col-3">
+  <div class="metric-card fragment fade-up" data-fragment-index="1"><strong>Guardrails</strong><div class="metric-label">유해·민감정보·주제 이탈 차단</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="2"><strong>VPC · PrivateLink</strong><div class="metric-label">데이터 사설 경로 유지</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="3"><strong>IAM 최소권한</strong><div class="metric-label">모델·도구·프로젝트별 통제</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="4"><strong>사용량 귀속</strong><div class="metric-label">요청 단위 비용·태그 가시성</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="5"><strong>CloudWatch · CloudTrail</strong><div class="metric-label">메트릭 + API 감사</div></div>
+  <div class="metric-card fragment fade-up" data-fragment-index="6"><strong>CloudFormation</strong><div class="metric-label">IaC로 재현·거버넌스</div></div>
+</div>
+:::
+
+:::notes
+{timing: 1min}
+[요약]
+- Guardrails로 안전, VPC/PrivateLink로 데이터 경계
+- IAM 최소권한·요청 단위 사용량 귀속·CloudTrail 감사·IaC
+
+보안은 사후가 아니라 기본 전제입니다. Guardrails로 모델과 무관하게 안전 정책을 일괄 적용하고, VPC와 PrivateLink로 데이터가 인터넷을 타지 않게 합니다.
+IAM으로 모델·도구·프로젝트별 최소 권한을 주고, 요청 단위 사용량 귀속으로 어느 팀·앱이 얼마를 썼는지 태그로 봅니다. CloudWatch 메트릭과 CloudTrail 감사로 운영을 추적하고, CloudFormation으로 전체를 코드로 재현합니다.
+{cue: transition} 그럼 "무엇부터 시작하면 되는지" 다음 단계로 마무리하겠습니다.
+:::
+
+---
+
+## 다음 단계
+
+@type: checklist
+
+- 1주: 유스케이스 1개 선정 (RAG 챗봇 / 문서요약 / 에이전트)
+- 2주: 모델 2-3종 벤치마크 (품질·지연·비용)
+- 3주: Guardrails + Knowledge Base로 PoC 구축
+- 4주: VPC·IAM·사용량 귀속으로 보안 검증
+- 이후: AgentCore로 에이전트화 + Well-Architected 리뷰
+
+:::notes
+{timing: 1min}
+[요약]
+- 작게 시작: 유스케이스 1개 → 모델 벤치마크 → PoC → 보안 검증 → 에이전트화
+- 4주 안에 검증 가능한 현실적 경로
+
+마지막으로 현실적인 시작 경로입니다. 거창하게 시작하지 말고 유스케이스 하나를 정하는 것부터입니다.
+1주차에 RAG 챗봇이든 문서 요약이든 에이전트든 한 가지를 고르고, 2주차에 모델 두세 개를 품질·지연·비용으로 벤치마크합니다. 3주차에 Guardrails와 Knowledge Base로 PoC를 만들고, 4주차에 VPC·IAM·사용량 귀속으로 보안을 검증합니다.
+그다음 행동이 필요한 시나리오면 AgentCore로 에이전트화하고, Well-Architected 리뷰로 운영 성숙도를 높입니다.
+{cue: question} 이 중 어느 유스케이스가 지금 가장 임팩트가 클지 함께 골라볼까요?
+{cue: transition} 함께 정리하겠습니다.
+:::
+
+---
+
+## 감사합니다
+
+@type: thankyou
+
+:::notes
+{timing: 1min}
+오늘은 Bedrock의 전체 그림 — 모델 선택, 추론 옵션, Mantle 엔진, 그리고 AgentCore로 에이전트를 프로덕션화하는 길까지 함께 봤습니다.
+핵심은 "작게 시작해서, 락인 없이, 안전하게 키운다"입니다. 다음 미팅에서는 고른 유스케이스로 실제 PoC 설계를 함께 그려보면 좋겠습니다.
+{cue: pause} 질문 환영합니다. 감사합니다.
+:::

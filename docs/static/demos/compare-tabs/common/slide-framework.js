@@ -375,12 +375,16 @@ class SlideFramework {
         case 'next':
           e.preventDefault();
           if (this.overviewMode) return;
-          this.next();
+          if (!this.revealNextFragment()) {
+            this.next();
+          }
           break;
         case 'prev':
           e.preventDefault();
           if (this.overviewMode) return;
-          this.prev();
+          if (!this.revealPrevFragment()) {
+            this.prev();
+          }
           break;
         case 'down':
           e.preventDefault();
@@ -451,7 +455,11 @@ class SlideFramework {
     deck.addEventListener('touchend', (e) => {
       const dx = e.changedTouches[0].clientX - startX;
       if (Math.abs(dx) > 50) {
-        dx < 0 ? this.next() : this.prev();
+        if (dx < 0) {
+          if (!this.revealNextFragment()) this.next();
+        } else {
+          if (!this.revealPrevFragment()) this.prev();
+        }
       }
     }, { passive: true });
   }
@@ -574,14 +582,25 @@ class SlideFramework {
       return false;
     }
 
-    // Try tabs
+    // Try tabs — detect .tab-bar container first, then fall back to any .tab-btn group
     const tabBar = slide.querySelector('.tab-bar');
-    if (tabBar) {
-      const tabs = Array.from(tabBar.querySelectorAll('.tab-btn'));
-      const activeIdx = tabs.findIndex(t => t.classList.contains('active'));
-      const nextIdx = Math.max(0, Math.min(activeIdx + direction, tabs.length - 1));
+    const tabBtns = tabBar
+      ? Array.from(tabBar.querySelectorAll('.tab-btn'))
+      : Array.from(slide.querySelectorAll('.tab-btn'));
+    if (tabBtns.length > 1) {
+      // Detect active tab: .active class OR visually highlighted (inline background)
+      let activeIdx = tabBtns.findIndex(t => t.classList.contains('active'));
+      if (activeIdx < 0) {
+        // Self-contained tabs use inline style instead of .active class
+        activeIdx = tabBtns.findIndex(t => {
+          const bg = (t.style.background || t.style.backgroundColor || '').toLowerCase();
+          return bg.includes('#00d4ff') || bg.includes('var(--accent');
+        });
+      }
+      if (activeIdx < 0) activeIdx = 0;
+      const nextIdx = Math.max(0, Math.min(activeIdx + direction, tabBtns.length - 1));
       if (nextIdx !== activeIdx) {
-        tabs[nextIdx].click();
+        tabBtns[nextIdx].click();
         return true;
       }
       return false;
