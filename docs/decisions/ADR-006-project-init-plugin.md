@@ -25,3 +25,7 @@ Accepted (2026-04-20)
 
 - Commit: 375ac6e
 - Plugin path: `plugins/project-init/`
+
+---
+
+> **Reconciliation note (2026-06-11, decision-reconcile)** — 본 ADR의 "1 skill / 8 commands"는 작성 시점 기록입니다. 플러그인은 이후 확장되어 현재 **3 skills**(project-scaffolder, pr-autofix, decision-reconcile) / **10 commands**입니다 (정본은 루트 `CLAUDE.md` 및 `docs/docs/project-init/overview.md`). 이는 결정의 모순이 아닌 부수적 열거의 자연스러운 변화이므로 번복 대상이 아닙니다.
