@@ -3657,6 +3657,12 @@ class RemarpHTMLGenerator:
         footer = config.get('footer', '') or theme_cfg.get('footer', '')
         pagination = config.get('pagination', theme_cfg.get('pagination', True))
 
+        # Theme mode: token theme is light by default; opt into dark via
+        # `theme.mode: dark` (or `theme.dark: true`) → deck root gets `theme-dark`.
+        _mode = str(theme_cfg.get('mode', '') or config.get('mode', '')).lower()
+        _dark = _mode == 'dark' or bool(theme_cfg.get('dark') or config.get('dark'))
+        deck_theme_class = ' theme-dark' if _dark else ''
+
         logo_js = f"logoSrc: '{logo_src}'," if logo_src else ''
         footer_js = f"footer: '{footer}'," if footer else ''
         pagination_js = f"pagination: {'true' if pagination else 'false'},"
@@ -3752,7 +3758,7 @@ class RemarpHTMLGenerator:
   {theme_js}
 </head>
 <body>
-<div class="slide-deck">
+<div class="slide-deck{deck_theme_class}">
 {slides_html}
 </div>
 <script src="./common/animation-utils.js"></script>

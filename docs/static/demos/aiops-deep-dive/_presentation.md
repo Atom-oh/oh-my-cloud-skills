@@ -10,6 +10,7 @@ duration: 90
 quiz: false
 lang: ko
 theme:
+  mode: dark
   footer: "© 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark."
   logo: "./common/pptx-theme/images/logo_1.png"
   override: "./common/pptx-theme/theme-override.css"

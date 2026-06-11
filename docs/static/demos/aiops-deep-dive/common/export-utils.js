@@ -46,7 +46,7 @@ const ExportUtils = {
   },
 
   COMMON_FILES: [
-    'theme.css', 'theme-override.css', 'slide-framework.js',
+    'design-tokens.css', 'theme.css', 'theme-override.css', 'slide-framework.js',
     'presenter-view.js', 'animation-utils.js', 'quiz-component.js',
     'export-utils.js'
   ],
@@ -62,6 +62,16 @@ const ExportUtils = {
   getSlug: function() {
     var parts = window.location.pathname.replace(/\/index\.html$/, '').split('/').filter(Boolean);
     return parts[parts.length - 1] || 'presentation';
+  },
+
+  _resolveCommonPath: function() {
+    var tags = document.querySelectorAll('link[href*="common/"], script[src*="common/"]');
+    for (var i = 0; i < tags.length; i++) {
+      var attr = tags[i].getAttribute('href') || tags[i].getAttribute('src') || '';
+      var idx = attr.indexOf('common/');
+      if (idx !== -1) return attr.substring(0, idx + 7);
+    }
+    return './common/';
   },
 
   /**
@@ -104,12 +114,13 @@ const ExportUtils = {
       this.updateProgress('Building print view (' + slideCount + ' slides)...', 75);
 
       var baseURL = window.location.href;
+      var commonPath = this._resolveCommonPath();
       var printHTML = '<!DOCTYPE html>\n<html lang="ko">\n<head>\n' +
         '<meta charset="UTF-8">\n' +
         '<base href="' + this._escapeHTML(baseURL) + '">\n' +
         '<title>' + this._escapeHTML(title) + ' - PDF Export</title>\n' +
-        '<link rel="stylesheet" href="../common/theme.css">\n' +
-        '<link rel="stylesheet" href="../common/theme-override.css">\n' +
+        '<link rel="stylesheet" href="' + commonPath + 'theme.css">\n' +
+        '<link rel="stylesheet" href="' + commonPath + 'theme-override.css">\n' +
         '<style>\n' +
         '@page { size: 16in 9in landscape; margin: 0; }\n' +
         'html, body { margin: 0; padding: 0; background: #000; overflow: visible !important; display: block !important; height: auto !important; }\n' +
@@ -390,6 +401,51 @@ const ExportUtils = {
       slide.style.position = 'relative';
       slide.style.transform = 'none';
     });
+  },
+
+  /**
+   * Extract theme info from a block HTML for PPTX metadata.
+   * Reads __remarpTheme and CSS custom properties.
+   */
+  _extractThemeFromBlock: async function(blockFile) {
+    var info = { bgColor: null, footerText: null, fonts: {} };
+    try {
+      var resp = await fetch(blockFile);
+      if (!resp.ok) return info;
+      var html = await resp.text();
+
+      // Extract __remarpTheme JSON
+      var themeMatch = html.match(/window\.__remarpTheme\s*=\s*(\{[^;]+\})/);
+      if (themeMatch) {
+        var theme = JSON.parse(themeMatch[1]);
+        if (theme.footer) info.footerText = theme.footer;
+        if (theme.fonts) info.fonts = theme.fonts;
+
+        // Derive background color from theme colors (darkest of dk1/dk2/lt1/lt2)
+        var colors = theme.colors || {};
+        var darkest = null;
+        var darkestLum = 1;
+        ['dk1', 'dk2', 'lt1', 'lt2'].forEach(function(k) {
+          if (!colors[k]) return;
+          var hex = colors[k].replace('#', '');
+          var r = parseInt(hex.substr(0, 2), 16) / 255;
+          var g = parseInt(hex.substr(2, 2), 16) / 255;
+          var b = parseInt(hex.substr(4, 2), 16) / 255;
+          var lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+          if (lum < darkestLum) { darkestLum = lum; darkest = hex; }
+        });
+        if (darkest && darkestLum < 0.3) info.bgColor = darkest;
+      }
+
+      // Fallback: extract --bg-primary from CSS
+      if (!info.bgColor) {
+        var bgMatch = html.match(/--bg-primary:\s*([#\w]+)/);
+        if (bgMatch) info.bgColor = bgMatch[1].replace('#', '');
+      }
+    } catch (e) {
+      console.warn('Theme extraction failed:', e);
+    }
+    return info;
   },
 
   /**

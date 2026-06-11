@@ -28,37 +28,37 @@ title: "자동 복구와 AIOps 로드맵"
 :::html
 <div style="display:flex; flex-direction:column; gap:16px; margin-top:8px;">
   <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
-    <div style="background:rgba(255,92,133,0.15); padding:12px 16px; border-radius:8px; text-align:center; min-width:120px;">
-      <div style="font-size:0.85rem; font-weight:600; color:var(--accent4);">CloudWatch</div>
+    <div style="background:var(--danger-subtle); padding:12px 16px; border-radius:8px; text-align:center; min-width:120px;">
+      <div style="font-size:0.85rem; font-weight:600; color:var(--danger);">CloudWatch</div>
       <div style="font-size:0.7rem; color:var(--text-secondary);">Alarm 발동</div>
     </div>
-    <span style="color:var(--accent4);">→</span>
-    <div style="background:rgba(173,92,255,0.15); padding:12px 16px; border-radius:8px; text-align:center; min-width:120px;">
-      <div style="font-size:0.85rem; font-weight:600; color:var(--accent2);">EventBridge</div>
+    <span style="color:var(--danger);">→</span>
+    <div style="background:var(--info-subtle); padding:12px 16px; border-radius:8px; text-align:center; min-width:120px;">
+      <div style="font-size:0.85rem; font-weight:600; color:var(--info);">EventBridge</div>
       <div style="font-size:0.7rem; color:var(--text-secondary);">규칙 매칭</div>
     </div>
-    <span style="color:var(--accent2);">→</span>
-    <div style="background:rgba(65,179,255,0.15); padding:12px 16px; border-radius:8px; text-align:center; min-width:120px;">
-      <div style="font-size:0.85rem; font-weight:600; color:var(--accent1);">SSM Automation</div>
+    <span style="color:var(--info);">→</span>
+    <div style="background:var(--accent-subtle); padding:12px 16px; border-radius:8px; text-align:center; min-width:120px;">
+      <div style="font-size:0.85rem; font-weight:600; color:var(--accent);">SSM Automation</div>
       <div style="font-size:0.7rem; color:var(--text-secondary);">Runbook 실행</div>
     </div>
-    <span style="color:var(--accent1);">→</span>
-    <div style="background:rgba(0,229,0,0.15); padding:12px 16px; border-radius:8px; text-align:center; min-width:120px;">
-      <div style="font-size:0.85rem; font-weight:600; color:var(--accent3);">검증 + 알림</div>
+    <span style="color:var(--accent);">→</span>
+    <div style="background:var(--success-subtle); padding:12px 16px; border-radius:8px; text-align:center; min-width:120px;">
+      <div style="font-size:0.85rem; font-weight:600; color:var(--success);">검증 + 알림</div>
       <div style="font-size:0.7rem; color:var(--text-secondary);">Slack 보고</div>
     </div>
   </div>
   <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
-    <div style="background:rgba(255,255,255,0.03); padding:12px; border-radius:8px; font-size:0.8rem;">
-      <div style="color:var(--accent1); font-weight:600; margin-bottom:4px;">Safety Guards</div>
+    <div style="background:var(--surface-2); padding:12px; border-radius:8px; font-size:0.8rem;">
+      <div style="color:var(--accent); font-weight:600; margin-bottom:4px;">Safety Guards</div>
       <div style="color:var(--text-secondary);">• 영향 범위 제한 (blast radius)<br>• 롤백 조건 사전 정의<br>• 승인 게이트 (선택)</div>
     </div>
-    <div style="background:rgba(255,255,255,0.03); padding:12px; border-radius:8px; font-size:0.8rem;">
-      <div style="color:var(--accent2); font-weight:600; margin-bottom:4px;">Runbook 유형</div>
+    <div style="background:var(--surface-2); padding:12px; border-radius:8px; font-size:0.8rem;">
+      <div style="color:var(--info); font-weight:600; margin-bottom:4px;">Runbook 유형</div>
       <div style="color:var(--text-secondary);">• ECS/EKS 스케일링<br>• RDS 스토리지 확장<br>• 배포 롤백</div>
     </div>
-    <div style="background:rgba(255,255,255,0.03); padding:12px; border-radius:8px; font-size:0.8rem;">
-      <div style="color:var(--accent3); font-weight:600; margin-bottom:4px;">검증 패턴</div>
+    <div style="background:var(--surface-2); padding:12px; border-radius:8px; font-size:0.8rem;">
+      <div style="color:var(--success); font-weight:600; margin-bottom:4px;">검증 패턴</div>
       <div style="color:var(--text-secondary);">• 메트릭 안정화 확인<br>• 헬스체크 통과<br>• 에러율 정상 복귀</div>
     </div>
   </div>
@@ -175,32 +175,32 @@ SSM Automation Runbook은 AWS API 호출을 단계별로 실행하는 워크플�
 :::html
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:12px;">
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent1); margin-bottom:12px;">AWS Fault Injection Service (FIS)</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--accent); margin-bottom:12px;">AWS Fault Injection Service (FIS)</div>
     <div style="font-size:0.9rem; line-height:1.9; color:var(--text-secondary);">
-      • <strong style="color:#fff;">관리형 카오스</strong>: AWS 네이티브 장애 주입 서비스<br>
-      • <strong style="color:#fff;">정밀 타겟팅</strong>: 특정 AZ, 서비스, 리소스 지정<br>
-      • <strong style="color:#fff;">자동 롤백</strong>: Stop Condition 충족 시 즉시 중단<br>
-      • <strong style="color:#fff;">실험 템플릿</strong>: 재사용 가능한 장애 시나리오<br>
-      • <strong style="color:#fff;">통합 관측</strong>: CloudWatch 메트릭으로 영향 추적
+      • <strong style="color:var(--on-surface);">관리형 카오스</strong>: AWS 네이티브 장애 주입 서비스<br>
+      • <strong style="color:var(--on-surface);">정밀 타겟팅</strong>: 특정 AZ, 서비스, 리소스 지정<br>
+      • <strong style="color:var(--on-surface);">자동 롤백</strong>: Stop Condition 충족 시 즉시 중단<br>
+      • <strong style="color:var(--on-surface);">실험 템플릿</strong>: 재사용 가능한 장애 시나리오<br>
+      • <strong style="color:var(--on-surface);">통합 관측</strong>: CloudWatch 메트릭으로 영향 추적
     </div>
   </div>
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent2); margin-bottom:12px;">검증 시나리오</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--info); margin-bottom:12px;">검증 시나리오</div>
     <div style="display:flex; flex-direction:column; gap:8px;">
-      <div style="background:rgba(255,92,133,0.1); padding:10px 16px; border-radius:8px;">
-        <div style="font-size:0.85rem; font-weight:600; color:var(--accent4);">1. Pod 장애</div>
+      <div style="background:var(--danger-subtle); padding:10px 16px; border-radius:8px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--danger);">1. Pod 장애</div>
         <div style="font-size:0.75rem; color:var(--text-secondary);">EKS Pod 50% Kill → Auto-scaling 복구 확인</div>
       </div>
-      <div style="background:rgba(173,92,255,0.1); padding:10px 16px; border-radius:8px;">
-        <div style="font-size:0.85rem; font-weight:600; color:var(--accent2);">2. AZ 장애</div>
+      <div style="background:var(--info-subtle); padding:10px 16px; border-radius:8px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--info);">2. AZ 장애</div>
         <div style="font-size:0.75rem; color:var(--text-secondary);">단일 AZ 차단 → Multi-AZ 페일오버 확인</div>
       </div>
-      <div style="background:rgba(65,179,255,0.1); padding:10px 16px; border-radius:8px;">
-        <div style="font-size:0.85rem; font-weight:600; color:var(--accent1);">3. 네트워크 지연</div>
+      <div style="background:var(--accent-subtle); padding:10px 16px; border-radius:8px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--accent);">3. 네트워크 지연</div>
         <div style="font-size:0.75rem; color:var(--text-secondary);">100ms 추가 지연 → Circuit Breaker 동작 확인</div>
       </div>
-      <div style="background:rgba(251,211,50,0.1); padding:10px 16px; border-radius:8px;">
-        <div style="font-size:0.85rem; font-weight:600; color:var(--accent6);">4. CPU 스트레스</div>
+      <div style="background:var(--warning-subtle); padding:10px 16px; border-radius:8px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--warning);">4. CPU 스트레스</div>
         <div style="font-size:0.75rem; color:var(--text-secondary);">CPU 90% 부하 → Anomaly Detection + Auto-scale 확인</div>
       </div>
     </div>
@@ -230,11 +230,11 @@ AWS FIS — Fault Injection Service는 관리형 카오스 엔지니어링 서�
 :::html
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:32px; margin-top:8px;">
   <div>
-    <div style="font-size:1rem; font-weight:600; color:var(--accent1); margin-bottom:12px;">장애 대응 단계별 시간 (분)</div>
+    <div style="font-size:1rem; font-weight:600; color:var(--accent); margin-bottom:12px;">장애 대응 단계별 시간 (분)</div>
     <div style="margin-bottom:12px;">
       <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
         <span>🔍 탐지 (Detection)</span>
-        <span id="detect-val" style="color:var(--accent1); font-weight:600;">15분 → 3분</span>
+        <span id="detect-val" style="color:var(--accent); font-weight:600;">15분 → 3분</span>
       </div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px;">
         <div><div style="font-size:0.7rem; color:var(--text-secondary);">Before</div><input type="range" id="detect-before" min="1" max="60" value="15" style="width:100%;"></div>
@@ -244,7 +244,7 @@ AWS FIS — Fault Injection Service는 관리형 카오스 엔지니어링 서�
     <div style="margin-bottom:12px;">
       <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
         <span>🔬 분석 (RCA)</span>
-        <span id="rca-val" style="color:var(--accent2); font-weight:600;">30분 → 5분</span>
+        <span id="rca-val" style="color:var(--info); font-weight:600;">30분 → 5분</span>
       </div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px;">
         <div><div style="font-size:0.7rem; color:var(--text-secondary);">Before</div><input type="range" id="rca-before" min="1" max="120" value="30" style="width:100%;"></div>
@@ -254,7 +254,7 @@ AWS FIS — Fault Injection Service는 관리형 카오스 엔지니어링 서�
     <div style="margin-bottom:12px;">
       <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
         <span>🔧 복구 (Remediation)</span>
-        <span id="fix-val" style="color:var(--accent5); font-weight:600;">45분 → 8분</span>
+        <span id="fix-val" style="color:var(--warning); font-weight:600;">45분 → 8분</span>
       </div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px;">
         <div><div style="font-size:0.7rem; color:var(--text-secondary);">Before</div><input type="range" id="fix-before" min="1" max="120" value="45" style="width:100%;"></div>
@@ -264,7 +264,7 @@ AWS FIS — Fault Injection Service는 관리형 카오스 엔지니어링 서�
     <div style="margin-bottom:12px;">
       <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
         <span>✅ 검증 (Verification)</span>
-        <span id="verify-val" style="color:var(--accent6); font-weight:600;">15분 → 5분</span>
+        <span id="verify-val" style="color:var(--warning); font-weight:600;">15분 → 5분</span>
       </div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px;">
         <div><div style="font-size:0.7rem; color:var(--text-secondary);">Before</div><input type="range" id="verify-before" min="1" max="60" value="15" style="width:100%;"></div>
@@ -273,23 +273,23 @@ AWS FIS — Fault Injection Service는 관리형 카오스 엔지니어링 서�
     </div>
   </div>
   <div>
-    <div style="font-size:1rem; font-weight:600; color:var(--accent2); margin-bottom:12px;">MTTR 비교</div>
+    <div style="font-size:1rem; font-weight:600; color:var(--info); margin-bottom:12px;">MTTR 비교</div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
-      <div style="background:rgba(255,92,133,0.15); padding:16px; border-radius:8px; text-align:center;">
+      <div style="background:var(--danger-subtle); padding:16px; border-radius:8px; text-align:center;">
         <div style="font-size:0.8rem; color:var(--text-secondary);">Before MTTR</div>
-        <div id="mttr-before" style="font-size:1.8rem; font-weight:700; color:var(--accent4);">105분</div>
+        <div id="mttr-before" style="font-size:1.8rem; font-weight:700; color:var(--danger);">105분</div>
         <div id="mttr-before-hr" style="font-size:0.8rem; color:var(--text-secondary);">1시간 45분</div>
       </div>
-      <div style="background:rgba(0,229,0,0.15); padding:16px; border-radius:8px; text-align:center;">
+      <div style="background:var(--success-subtle); padding:16px; border-radius:8px; text-align:center;">
         <div style="font-size:0.8rem; color:var(--text-secondary);">After MTTR</div>
-        <div id="mttr-after" style="font-size:1.8rem; font-weight:700; color:var(--accent3);">21분</div>
+        <div id="mttr-after" style="font-size:1.8rem; font-weight:700; color:var(--success);">21분</div>
         <div id="mttr-after-hr" style="font-size:0.8rem; color:var(--text-secondary);">21분</div>
       </div>
     </div>
-    <canvas id="mttr-canvas" width="380" height="160" style="width:100%; background:rgba(0,0,0,0.2); border-radius:8px;"></canvas>
-    <div style="text-align:center; margin-top:12px; padding:8px; background:rgba(0,229,0,0.08); border-radius:8px;">
+    <canvas id="mttr-canvas" width="380" height="160" style="width:100%; background:var(--surface-3); border-radius:8px;"></canvas>
+    <div style="text-align:center; margin-top:12px; padding:8px; background:var(--success-subtle); border-radius:8px;">
       <span style="font-size:0.85rem; color:var(--text-secondary);">개선율: </span>
-      <strong id="improvement" style="font-size:1.3rem; color:var(--accent3);">80%</strong>
+      <strong id="improvement" style="font-size:1.3rem; color:var(--success);">80%</strong>
       <span style="font-size:0.85rem; color:var(--text-secondary);"> 단축</span>
     </div>
   </div>
@@ -380,9 +380,9 @@ AIOps 도입 후에는 — Anomaly Detection이 3분 내 탐지, GenAI RCA가 5�
 
 :::html
 <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:16px; margin-top:16px;">
-  <div style="background:rgba(255,92,133,0.08); border:1px solid rgba(255,92,133,0.3); border-radius:12px; padding:16px; position:relative;">
-    <div style="position:absolute; top:-10px; left:16px; background:var(--accent4); color:#fff; font-size:0.7rem; padding:2px 8px; border-radius:10px;">Level 1</div>
-    <div style="font-size:1rem; font-weight:700; color:var(--accent4); margin-top:8px; margin-bottom:8px;">Reactive</div>
+  <div style="background:var(--danger-subtle); border:1px solid var(--danger-subtle); border-radius:12px; padding:16px; position:relative;">
+    <div style="position:absolute; top:-10px; left:16px; background:var(--danger); color:var(--on-surface); font-size:0.7rem; padding:2px 8px; border-radius:10px;">Level 1</div>
+    <div style="font-size:1rem; font-weight:700; color:var(--danger); margin-top:8px; margin-bottom:8px;">Reactive</div>
     <div style="font-size:0.75rem; line-height:1.7; color:var(--text-secondary);">
       • 수동 모니터링<br>
       • 정적 임계값 알림<br>
@@ -390,9 +390,9 @@ AIOps 도입 후에는 — Anomaly Detection이 3분 내 탐지, GenAI RCA가 5�
       • MTTR: 2-4시간
     </div>
   </div>
-  <div style="background:rgba(251,211,50,0.08); border:1px solid rgba(251,211,50,0.3); border-radius:12px; padding:16px; position:relative;">
-    <div style="position:absolute; top:-10px; left:16px; background:var(--accent6); color:#000; font-size:0.7rem; padding:2px 8px; border-radius:10px;">Level 2</div>
-    <div style="font-size:1rem; font-weight:700; color:var(--accent6); margin-top:8px; margin-bottom:8px;">Proactive</div>
+  <div style="background:var(--warning-subtle); border:1px solid var(--warning-subtle); border-radius:12px; padding:16px; position:relative;">
+    <div style="position:absolute; top:-10px; left:16px; background:var(--warning); color:var(--on-surface); font-size:0.7rem; padding:2px 8px; border-radius:10px;">Level 2</div>
+    <div style="font-size:1rem; font-weight:700; color:var(--warning); margin-top:8px; margin-bottom:8px;">Proactive</div>
     <div style="font-size:0.75rem; line-height:1.7; color:var(--text-secondary);">
       • 통합 관측성<br>
       • ML 이상 탐지<br>
@@ -400,9 +400,9 @@ AIOps 도입 후에는 — Anomaly Detection이 3분 내 탐지, GenAI RCA가 5�
       • MTTR: 30-60분
     </div>
   </div>
-  <div style="background:rgba(65,179,255,0.08); border:1px solid rgba(65,179,255,0.3); border-radius:12px; padding:16px; position:relative;">
-    <div style="position:absolute; top:-10px; left:16px; background:var(--accent1); color:#fff; font-size:0.7rem; padding:2px 8px; border-radius:10px;">Level 3</div>
-    <div style="font-size:1rem; font-weight:700; color:var(--accent1); margin-top:8px; margin-bottom:8px;">Predictive</div>
+  <div style="background:var(--accent-subtle); border:1px solid var(--accent-subtle); border-radius:12px; padding:16px; position:relative;">
+    <div style="position:absolute; top:-10px; left:16px; background:var(--accent); color:var(--on-surface); font-size:0.7rem; padding:2px 8px; border-radius:10px;">Level 3</div>
+    <div style="font-size:1rem; font-weight:700; color:var(--accent); margin-top:8px; margin-bottom:8px;">Predictive</div>
     <div style="font-size:0.75rem; line-height:1.7; color:var(--text-secondary);">
       • GenAI RCA 자동화<br>
       • 예측 기반 선제 조치<br>
@@ -410,9 +410,9 @@ AIOps 도입 후에는 — Anomaly Detection이 3분 내 탐지, GenAI RCA가 5�
       • MTTR: 10-20분
     </div>
   </div>
-  <div style="background:rgba(0,229,0,0.08); border:1px solid rgba(0,229,0,0.3); border-radius:12px; padding:16px; position:relative;">
-    <div style="position:absolute; top:-10px; left:16px; background:var(--accent3); color:#000; font-size:0.7rem; padding:2px 8px; border-radius:10px;">Level 4</div>
-    <div style="font-size:1rem; font-weight:700; color:var(--accent3); margin-top:8px; margin-bottom:8px;">Self-Healing</div>
+  <div style="background:var(--success-subtle); border:1px solid var(--success-subtle); border-radius:12px; padding:16px; position:relative;">
+    <div style="position:absolute; top:-10px; left:16px; background:var(--success); color:var(--on-surface); font-size:0.7rem; padding:2px 8px; border-radius:10px;">Level 4</div>
+    <div style="font-size:1rem; font-weight:700; color:var(--success); margin-top:8px; margin-bottom:8px;">Self-Healing</div>
     <div style="font-size:0.75rem; line-height:1.7; color:var(--text-secondary);">
       • 자가 치유 시스템<br>
       • 지속적 학습/개선<br>
@@ -422,7 +422,7 @@ AIOps 도입 후에는 — Anomaly Detection이 3분 내 탐지, GenAI RCA가 5�
   </div>
 </div>
 <div style="margin-top:16px; display:flex; align-items:center; gap:8px;">
-  <div style="flex:1; height:4px; background:linear-gradient(90deg, var(--accent4), var(--accent6), var(--accent1), var(--accent3)); border-radius:2px;"></div>
+  <div style="flex:1; height:4px; background:linear-gradient(90deg, var(--danger), var(--warning), var(--accent), var(--success)); border-radius:2px;"></div>
 </div>
 <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">
   <span>대부분의 조직</span>
@@ -452,8 +452,8 @@ Level 4 Self-Healing — 미래 비전입니다. 시스템이 스스로 문제�
 :::html
 <div style="display:flex; flex-direction:column; gap:16px; margin-top:16px;">
   <div style="display:grid; grid-template-columns:100px 1fr; gap:16px; align-items:start;">
-    <div style="background:rgba(65,179,255,0.15); padding:8px; border-radius:8px; text-align:center;">
-      <div style="font-size:0.8rem; font-weight:600; color:var(--accent1);">Month 1-2</div>
+    <div style="background:var(--accent-subtle); padding:8px; border-radius:8px; text-align:center;">
+      <div style="font-size:0.8rem; font-weight:600; color:var(--accent);">Month 1-2</div>
       <div style="font-size:0.7rem; color:var(--text-secondary);">기반 구축</div>
     </div>
     <div style="font-size:0.85rem; line-height:1.8; color:var(--text-secondary);">
@@ -463,8 +463,8 @@ Level 4 Self-Healing — 미래 비전입니다. 시스템이 스스로 문제�
     </div>
   </div>
   <div style="display:grid; grid-template-columns:100px 1fr; gap:16px; align-items:start;">
-    <div style="background:rgba(173,92,255,0.15); padding:8px; border-radius:8px; text-align:center;">
-      <div style="font-size:0.8rem; font-weight:600; color:var(--accent2);">Month 3-4</div>
+    <div style="background:var(--info-subtle); padding:8px; border-radius:8px; text-align:center;">
+      <div style="font-size:0.8rem; font-weight:600; color:var(--info);">Month 3-4</div>
       <div style="font-size:0.7rem; color:var(--text-secondary);">AI 탐지</div>
     </div>
     <div style="font-size:0.85rem; line-height:1.8; color:var(--text-secondary);">
@@ -474,8 +474,8 @@ Level 4 Self-Healing — 미래 비전입니다. 시스템이 스스로 문제�
     </div>
   </div>
   <div style="display:grid; grid-template-columns:100px 1fr; gap:16px; align-items:start;">
-    <div style="background:rgba(0,229,0,0.15); padding:8px; border-radius:8px; text-align:center;">
-      <div style="font-size:0.8rem; font-weight:600; color:var(--accent3);">Month 5-6</div>
+    <div style="background:var(--success-subtle); padding:8px; border-radius:8px; text-align:center;">
+      <div style="font-size:0.8rem; font-weight:600; color:var(--success);">Month 5-6</div>
       <div style="font-size:0.7rem; color:var(--text-secondary);">자동화</div>
     </div>
     <div style="font-size:0.85rem; line-height:1.8; color:var(--text-secondary);">
@@ -485,8 +485,8 @@ Level 4 Self-Healing — 미래 비전입니다. 시스템이 스스로 문제�
     </div>
   </div>
   <div style="display:grid; grid-template-columns:100px 1fr; gap:16px; align-items:start;">
-    <div style="background:rgba(251,211,50,0.15); padding:8px; border-radius:8px; text-align:center;">
-      <div style="font-size:0.8rem; font-weight:600; color:var(--accent6);">Month 7+</div>
+    <div style="background:var(--warning-subtle); padding:8px; border-radius:8px; text-align:center;">
+      <div style="font-size:0.8rem; font-weight:600; color:var(--warning);">Month 7+</div>
       <div style="font-size:0.7rem; color:var(--text-secondary);">고도화</div>
     </div>
     <div style="font-size:0.85rem; line-height:1.8; color:var(--text-secondary);">
@@ -517,8 +517,8 @@ Month 7 이후는 지속적 고도화입니다. RAG 인시던트 DB를 쌓아서
 
 :::html
 <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:16px;">
-  <div style="background:rgba(65,179,255,0.08); border:1px solid rgba(65,179,255,0.2); border-radius:12px; padding:20px;">
-    <div style="font-size:1rem; font-weight:700; color:var(--accent1); margin-bottom:12px;">Block 1: 관측성</div>
+  <div style="background:var(--accent-subtle); border:1px solid var(--accent-subtle); border-radius:12px; padding:20px;">
+    <div style="font-size:1rem; font-weight:700; color:var(--accent); margin-bottom:12px;">Block 1: 관측성</div>
     <div style="font-size:0.8rem; line-height:1.9; color:var(--text-secondary);">
       • 모니터링 → 관측성 전환<br>
       • Metrics + Logs + Traces 통합<br>
@@ -527,8 +527,8 @@ Month 7 이후는 지속적 고도화입니다. RAG 인시던트 DB를 쌓아서
       • AMG 4단계 대시보드
     </div>
   </div>
-  <div style="background:rgba(173,92,255,0.08); border:1px solid rgba(173,92,255,0.2); border-radius:12px; padding:20px;">
-    <div style="font-size:1rem; font-weight:700; color:var(--accent2); margin-bottom:12px;">Block 2: AI 탐지 + RCA</div>
+  <div style="background:var(--info-subtle); border:1px solid var(--info-subtle); border-radius:12px; padding:20px;">
+    <div style="font-size:1rem; font-weight:700; color:var(--info); margin-bottom:12px;">Block 2: AI 탐지 + RCA</div>
     <div style="font-size:0.8rem; line-height:1.9; color:var(--text-secondary);">
       • ML 기반 동적 이상 탐지<br>
       • DevOps Guru 자동 상관분석<br>
@@ -537,8 +537,8 @@ Month 7 이후는 지속적 고도화입니다. RAG 인시던트 DB를 쌓아서
       • RAG 기반 정확도 향상
     </div>
   </div>
-  <div style="background:rgba(0,229,0,0.08); border:1px solid rgba(0,229,0,0.2); border-radius:12px; padding:20px;">
-    <div style="font-size:1rem; font-weight:700; color:var(--accent3); margin-bottom:12px;">Block 3: 자동 복구</div>
+  <div style="background:var(--success-subtle); border:1px solid var(--success-subtle); border-radius:12px; padding:20px;">
+    <div style="font-size:1rem; font-weight:700; color:var(--success); margin-bottom:12px;">Block 3: 자동 복구</div>
     <div style="font-size:0.8rem; line-height:1.9; color:var(--text-secondary);">
       • SSM Automation Runbook<br>
       • Safety Guard 안전장치<br>
@@ -548,8 +548,8 @@ Month 7 이후는 지속적 고도화입니다. RAG 인시던트 DB를 쌓아서
     </div>
   </div>
 </div>
-<div style="margin-top:20px; padding:16px; background:rgba(255,255,255,0.03); border-radius:8px; text-align:center; font-size:1rem;">
-  <span style="color:var(--accent1);">관측성</span> → <span style="color:var(--accent2);">AI 탐지</span> → <span style="color:var(--accent3);">자동 복구</span> = <strong style="color:#fff;">AIOps 완성</strong>
+<div style="margin-top:20px; padding:16px; background:var(--surface-2); border-radius:8px; text-align:center; font-size:1rem;">
+  <span style="color:var(--accent);">관측성</span> → <span style="color:var(--info);">AI 탐지</span> → <span style="color:var(--success);">자동 복구</span> = <strong style="color:var(--on-surface);">AIOps 완성</strong>
 </div>
 :::
 

@@ -10,12 +10,12 @@
   <meta name="remarp-block" content="merged">
   <link rel="stylesheet" href="./common/theme.css">
   <link rel="stylesheet" href="./common/pptx-theme/theme-override.css">
-  <style>:root { --slide-ratio-w: 16; --slide-ratio-h: 9; } :root { --slide-width: 960px; --slide-height: 540px; }</style>
   
-  <script>window.__remarpTheme = {"colors": {"dk1": "#000000", "lt1": "#FFFFFF", "dk2": "#161D26", "lt2": "#F3F3F7", "accent1": "#41B3FF", "accent2": "#AD5CFF", "accent3": "#00E500", "accent4": "#FF5C85", "accent5": "#FF693C", "accent6": "#FBD332", "hlink": "#41B1E8", "folHlink": "#41B1E8"}, "footer": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.", "pagination": true, "fonts": {}, "slideSize": {"width_emu": 12192000, "height_emu": 6858000, "width_px": 1280, "height_px": 720, "aspect_ratio": "16:9"}};</script>
+  
+  <script>window.__remarpTheme = {"colors": {}, "footer": "\u00a9 2026, Amazon Web Services, Inc. or its affiliates. All rights reserved. Amazon Confidential and Trademark.", "pagination": true, "fonts": {}};</script>
 </head>
 <body>
-<div class="slide-deck">
+<div class="slide-deck theme-dark">
 <div class="slide" data-remarp-id="s0" style="background:linear-gradient(135deg, #1a1f35 0%, #0d1117 50%, #161b2e 100%); padding:0; overflow:hidden;">
   <div style="position:absolute; top:-20%; right:-10%; width:60%; height:80%; background:radial-gradient(ellipse, rgba(108,92,231,0.15) 0%, transparent 70%); pointer-events:none;"></div>
   <div style="position:absolute; left:5%; top:42%; width:80px; height:3px; background:linear-gradient(90deg, #6c5ce7, #a29bfe); border-radius:2px;"></div>
@@ -108,39 +108,39 @@
   <div class="slide-header" data-remarp-id="s3-header"><h2>관측성 데이터 3대 축</h2></div>
   <div class="slide-body" data-remarp-id="s3-body">
     <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:24px; margin-top:24px;">
-  <div style="background:rgba(65,179,255,0.08); border:1px solid rgba(65,179,255,0.3); border-radius:12px; padding:24px; text-align:center;">
+  <div style="background:var(--accent-subtle); border:1px solid var(--accent-subtle); border-radius:12px; padding:24px; text-align:center;">
     <div style="font-size:2.5rem; margin-bottom:12px;">📊</div>
-    <div style="font-size:1.3rem; font-weight:700; color:var(--accent1); margin-bottom:8px;">Metrics</div>
+    <div style="font-size:1.3rem; font-weight:700; color:var(--accent); margin-bottom:8px;">Metrics</div>
     <div style="font-size:0.85rem; color:var(--text-secondary); line-height:1.7;">
       수치형 시계열 데이터<br>
       CPU, Memory, 응답시간<br>
-      <strong style="color:#fff;">CloudWatch Metrics</strong><br>
-      <strong style="color:#fff;">Amazon Managed Prometheus</strong>
+      <strong style="color:var(--on-surface);">CloudWatch Metrics</strong><br>
+      <strong style="color:var(--on-surface);">Amazon Managed Prometheus</strong>
     </div>
   </div>
-  <div style="background:rgba(173,92,255,0.08); border:1px solid rgba(173,92,255,0.3); border-radius:12px; padding:24px; text-align:center;">
+  <div style="background:var(--info-subtle); border:1px solid var(--info-subtle); border-radius:12px; padding:24px; text-align:center;">
     <div style="font-size:2.5rem; margin-bottom:12px;">📝</div>
-    <div style="font-size:1.3rem; font-weight:700; color:var(--accent2); margin-bottom:8px;">Logs</div>
+    <div style="font-size:1.3rem; font-weight:700; color:var(--info); margin-bottom:8px;">Logs</div>
     <div style="font-size:0.85rem; color:var(--text-secondary); line-height:1.7;">
       이벤트 기록 (텍스트)<br>
       에러 스택트레이스, 감사 로그<br>
-      <strong style="color:#fff;">CloudWatch Logs</strong><br>
-      <strong style="color:#fff;">OpenSearch Service</strong>
+      <strong style="color:var(--on-surface);">CloudWatch Logs</strong><br>
+      <strong style="color:var(--on-surface);">OpenSearch Service</strong>
     </div>
   </div>
-  <div style="background:rgba(0,229,0,0.08); border:1px solid rgba(0,229,0,0.3); border-radius:12px; padding:24px; text-align:center;">
+  <div style="background:var(--success-subtle); border:1px solid var(--success-subtle); border-radius:12px; padding:24px; text-align:center;">
     <div style="font-size:2.5rem; margin-bottom:12px;">🔗</div>
-    <div style="font-size:1.3rem; font-weight:700; color:var(--accent3); margin-bottom:8px;">Traces</div>
+    <div style="font-size:1.3rem; font-weight:700; color:var(--success); margin-bottom:8px;">Traces</div>
     <div style="font-size:0.85rem; color:var(--text-secondary); line-height:1.7;">
       요청 흐름 추적<br>
       서비스 간 호출 체인<br>
-      <strong style="color:#fff;">AWS X-Ray</strong><br>
-      <strong style="color:#fff;">CloudWatch ServiceLens</strong>
+      <strong style="color:var(--on-surface);">AWS X-Ray</strong><br>
+      <strong style="color:var(--on-surface);">CloudWatch ServiceLens</strong>
     </div>
   </div>
 </div>
-<div style="margin-top:24px; padding:16px; background:rgba(255,255,255,0.03); border-radius:8px; text-align:center;">
-  <span style="color:var(--accent1);">Metrics</span>이 "무엇이" 문제인지 알려주고, <span style="color:var(--accent2);">Logs</span>가 "왜" 발생했는지 설명하고, <span style="color:var(--accent3);">Traces</span>가 "어디서" 발생했는지 보여줍니다.
+<div style="margin-top:24px; padding:16px; background:var(--surface-2); border-radius:8px; text-align:center;">
+  <span style="color:var(--accent);">Metrics</span>이 "무엇이" 문제인지 알려주고, <span style="color:var(--info);">Logs</span>가 "왜" 발생했는지 설명하고, <span style="color:var(--success);">Traces</span>가 "어디서" 발생했는지 보여줍니다.
 </div>
   </div>
 </div>
@@ -150,36 +150,36 @@
   <div class="slide-body" data-remarp-id="s4-body">
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:12px;">
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent1); margin-bottom:12px;">ADOT (AWS Distro for OpenTelemetry)</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--accent); margin-bottom:12px;">ADOT (AWS Distro for OpenTelemetry)</div>
     <div style="font-size:0.9rem; line-height:1.9; color:var(--text-secondary);">
-      • <strong style="color:#fff;">벤더 중립</strong>: OTel 표준 기반 — 백엔드 교체 시 코드 변경 불필요<br>
-      • <strong style="color:#fff;">통합 에이전트</strong>: Metrics + Logs + Traces를 하나의 Collector로 수집<br>
-      • <strong style="color:#fff;">자동 계측</strong>: Java/Python/Node.js SDK로 코드 변경 최소화<br>
-      • <strong style="color:#fff;">EKS 네이티브</strong>: DaemonSet 또는 Sidecar 배포<br>
-      • <strong style="color:#fff;">AWS 최적화</strong>: X-Ray, CloudWatch, AMP 익스포터 내장
+      • <strong style="color:var(--on-surface);">벤더 중립</strong>: OTel 표준 기반 — 백엔드 교체 시 코드 변경 불필요<br>
+      • <strong style="color:var(--on-surface);">통합 에이전트</strong>: Metrics + Logs + Traces를 하나의 Collector로 수집<br>
+      • <strong style="color:var(--on-surface);">자동 계측</strong>: Java/Python/Node.js SDK로 코드 변경 최소화<br>
+      • <strong style="color:var(--on-surface);">EKS 네이티브</strong>: DaemonSet 또는 Sidecar 배포<br>
+      • <strong style="color:var(--on-surface);">AWS 최적화</strong>: X-Ray, CloudWatch, AMP 익스포터 내장
     </div>
   </div>
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent2); margin-bottom:12px;">수집 아키텍처 패턴</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--info); margin-bottom:12px;">수집 아키텍처 패턴</div>
     <div style="display:flex; flex-direction:column; gap:8px;">
-      <div style="background:rgba(65,179,255,0.1); padding:12px 16px; border-radius:8px; display:flex; align-items:center; gap:12px;">
+      <div style="background:var(--accent-subtle); padding:12px 16px; border-radius:8px; display:flex; align-items:center; gap:12px;">
         <span style="font-size:1.5rem;">📦</span>
         <div>
-          <div style="font-size:0.9rem; font-weight:600; color:#fff;">DaemonSet (권장)</div>
+          <div style="font-size:0.9rem; font-weight:600; color:var(--on-surface);">DaemonSet (권장)</div>
           <div style="font-size:0.8rem; color:var(--text-secondary);">노드당 1개 Collector → 리소스 효율적</div>
         </div>
       </div>
-      <div style="background:rgba(173,92,255,0.1); padding:12px 16px; border-radius:8px; display:flex; align-items:center; gap:12px;">
+      <div style="background:var(--info-subtle); padding:12px 16px; border-radius:8px; display:flex; align-items:center; gap:12px;">
         <span style="font-size:1.5rem;">🔄</span>
         <div>
-          <div style="font-size:0.9rem; font-weight:600; color:#fff;">Sidecar</div>
+          <div style="font-size:0.9rem; font-weight:600; color:var(--on-surface);">Sidecar</div>
           <div style="font-size:0.8rem; color:var(--text-secondary);">Pod별 격리 필요 시 → 보안 민감 워크로드</div>
         </div>
       </div>
-      <div style="background:rgba(0,229,0,0.1); padding:12px 16px; border-radius:8px; display:flex; align-items:center; gap:12px;">
+      <div style="background:var(--success-subtle); padding:12px 16px; border-radius:8px; display:flex; align-items:center; gap:12px;">
         <span style="font-size:1.5rem;">🌐</span>
         <div>
-          <div style="font-size:0.9rem; font-weight:600; color:#fff;">Gateway</div>
+          <div style="font-size:0.9rem; font-weight:600; color:var(--on-surface);">Gateway</div>
           <div style="font-size:0.8rem; color:var(--text-secondary);">중앙 집중 처리 → 필터링/샘플링 로직 통합</div>
         </div>
       </div>
@@ -288,7 +288,7 @@ stats sum(strlen(@message)) as total_bytes by @logStream
   <div class="slide-body" data-remarp-id="s7-body">
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:32px; margin-top:12px;">
   <div>
-    <div style="font-size:1rem; font-weight:600; color:var(--accent1); margin-bottom:16px;">파라미터 조정</div>
+    <div style="font-size:1rem; font-weight:600; color:var(--accent); margin-bottom:16px;">파라미터 조정</div>
     <div style="margin-bottom:16px;">
       <div style="font-size:0.85rem; color:var(--text-secondary);">일일 로그 볼륨</div>
       <div style="display:flex; align-items:center; gap:12px; margin-top:4px;">
@@ -319,22 +319,22 @@ stats sum(strlen(@message)) as total_bytes by @logStream
     </div>
   </div>
   <div>
-    <div style="font-size:1rem; font-weight:600; color:var(--accent2); margin-bottom:16px;">비용 비교</div>
+    <div style="font-size:1rem; font-weight:600; color:var(--info); margin-bottom:16px;">비용 비교</div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
-      <div style="background:rgba(255,92,133,0.15); padding:16px; border-radius:8px; text-align:center;">
+      <div style="background:var(--danger-subtle); padding:16px; border-radius:8px; text-align:center;">
         <div style="font-size:0.8rem; color:var(--text-secondary);">현재 월 비용</div>
-        <div id="cost-before" style="font-size:1.8rem; font-weight:700; color:var(--accent4);">$5,040</div>
+        <div id="cost-before" style="font-size:1.8rem; font-weight:700; color:var(--danger);">$5,040</div>
       </div>
-      <div style="background:rgba(0,229,0,0.15); padding:16px; border-radius:8px; text-align:center;">
+      <div style="background:var(--success-subtle); padding:16px; border-radius:8px; text-align:center;">
         <div style="font-size:0.8rem; color:var(--text-secondary);">최적화 후</div>
-        <div id="cost-after" style="font-size:1.8rem; font-weight:700; color:var(--accent3);">$2,739</div>
+        <div id="cost-after" style="font-size:1.8rem; font-weight:700; color:var(--success);">$2,739</div>
       </div>
     </div>
-    <div style="background:rgba(255,255,255,0.05); border-radius:8px; padding:8px 16px; margin-bottom:12px;">
-      <div style="height:24px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
-        <div id="savings-fill" style="height:100%; background:linear-gradient(90deg, var(--accent3), var(--accent1)); border-radius:4px; width:45%; transition:width 0.3s;"></div>
+    <div style="background:var(--surface-2); border-radius:8px; padding:8px 16px; margin-bottom:12px;">
+      <div style="height:24px; background:var(--surface-2); border-radius:4px; overflow:hidden;">
+        <div id="savings-fill" style="height:100%; background:linear-gradient(90deg, var(--success), var(--accent)); border-radius:4px; width:45%; transition:width 0.3s;"></div>
       </div>
-      <div id="savings-label" style="font-size:0.85rem; text-align:center; margin-top:4px; color:var(--accent3);">절감: 45.7%</div>
+      <div id="savings-label" style="font-size:0.85rem; text-align:center; margin-top:4px; color:var(--success);">절감: 45.7%</div>
     </div>
     <div style="font-size:0.8rem; line-height:1.8; color:var(--text-secondary);">
       <div id="detail-log">• 로그 레벨 최적화: —</div>
@@ -352,32 +352,32 @@ stats sum(strlen(@message)) as total_bytes by @logStream
   <div class="slide-body" data-remarp-id="s8-body">
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:12px;">
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent1); margin-bottom:12px;">Amazon Managed Grafana (AMG)</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--accent); margin-bottom:12px;">Amazon Managed Grafana (AMG)</div>
     <div style="font-size:0.9rem; line-height:1.9; color:var(--text-secondary);">
-      • <strong style="color:#fff;">Multi-source</strong>: CloudWatch + AMP + X-Ray + OpenSearch를 단일 대시보드에 통합<br>
-      • <strong style="color:#fff;">SSO 연동</strong>: IAM Identity Center로 팀별 접근 제어<br>
-      • <strong style="color:#fff;">알림 통합</strong>: SNS, Slack, PagerDuty 연동<br>
-      • <strong style="color:#fff;">관리형</strong>: Grafana 서버 운영 불필요, 자동 스케일링<br>
-      • <strong style="color:#fff;">플러그인</strong>: 150+ 데이터 소스 플러그인 지원
+      • <strong style="color:var(--on-surface);">Multi-source</strong>: CloudWatch + AMP + X-Ray + OpenSearch를 단일 대시보드에 통합<br>
+      • <strong style="color:var(--on-surface);">SSO 연동</strong>: IAM Identity Center로 팀별 접근 제어<br>
+      • <strong style="color:var(--on-surface);">알림 통합</strong>: SNS, Slack, PagerDuty 연동<br>
+      • <strong style="color:var(--on-surface);">관리형</strong>: Grafana 서버 운영 불필요, 자동 스케일링<br>
+      • <strong style="color:var(--on-surface);">플러그인</strong>: 150+ 데이터 소스 플러그인 지원
     </div>
   </div>
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent2); margin-bottom:12px;">권장 대시보드 구성</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--info); margin-bottom:12px;">권장 대시보드 구성</div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-      <div style="background:rgba(65,179,255,0.1); padding:12px; border-radius:6px; text-align:center;">
-        <div style="font-size:0.8rem; color:var(--accent1);">L1 — Overview</div>
+      <div style="background:var(--accent-subtle); padding:12px; border-radius:6px; text-align:center;">
+        <div style="font-size:0.8rem; color:var(--accent);">L1 — Overview</div>
         <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">SLO 상태 + 핵심 KPI<br>Golden Signals</div>
       </div>
-      <div style="background:rgba(173,92,255,0.1); padding:12px; border-radius:6px; text-align:center;">
-        <div style="font-size:0.8rem; color:var(--accent2);">L2 — Service</div>
+      <div style="background:var(--info-subtle); padding:12px; border-radius:6px; text-align:center;">
+        <div style="font-size:0.8rem; color:var(--info);">L2 — Service</div>
         <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">서비스별 상세 메트릭<br>에러율 + 레이턴시</div>
       </div>
-      <div style="background:rgba(0,229,0,0.1); padding:12px; border-radius:6px; text-align:center;">
-        <div style="font-size:0.8rem; color:var(--accent3);">L3 — Debug</div>
+      <div style="background:var(--success-subtle); padding:12px; border-radius:6px; text-align:center;">
+        <div style="font-size:0.8rem; color:var(--success);">L3 — Debug</div>
         <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">트레이스 + 로그 상관<br>Pod/Node 레벨</div>
       </div>
-      <div style="background:rgba(251,211,50,0.1); padding:12px; border-radius:6px; text-align:center;">
-        <div style="font-size:0.8rem; color:var(--accent6);">L4 — Business</div>
+      <div style="background:var(--warning-subtle); padding:12px; border-radius:6px; text-align:center;">
+        <div style="font-size:0.8rem; color:var(--warning);">L4 — Business</div>
         <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">비즈니스 KPI<br>매출 영향도 + 사용자 경험</div>
       </div>
     </div>
@@ -391,17 +391,17 @@ stats sum(strlen(@message)) as total_bytes by @logStream
   <div class="slide-body" data-remarp-id="s9-body">
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:24px;">
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent1); margin-bottom:16px;">🔑 Key Takeaways</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--accent); margin-bottom:16px;">🔑 Key Takeaways</div>
     <div style="font-size:0.9rem; line-height:2.2; color:var(--text-secondary);">
-      <div>✅ <strong style="color:#fff;">관측성 ≠ 모니터링</strong> — "왜?"에 답하는 능력</div>
-      <div>✅ <strong style="color:#fff;">3대 축 통합</strong> — Metrics + Logs + Traces 상관분석</div>
-      <div>✅ <strong style="color:#fff;">ADOT</strong> — 벤더 중립 통합 수집 에이전트</div>
-      <div>✅ <strong style="color:#fff;">비용 최적화</strong> — 로그 레벨 + 샘플링으로 40-60% 절감 가능</div>
-      <div>✅ <strong style="color:#fff;">대시보드 계층화</strong> — L1~L4 4단계 구성</div>
+      <div>✅ <strong style="color:var(--on-surface);">관측성 ≠ 모니터링</strong> — "왜?"에 답하는 능력</div>
+      <div>✅ <strong style="color:var(--on-surface);">3대 축 통합</strong> — Metrics + Logs + Traces 상관분석</div>
+      <div>✅ <strong style="color:var(--on-surface);">ADOT</strong> — 벤더 중립 통합 수집 에이전트</div>
+      <div>✅ <strong style="color:var(--on-surface);">비용 최적화</strong> — 로그 레벨 + 샘플링으로 40-60% 절감 가능</div>
+      <div>✅ <strong style="color:var(--on-surface);">대시보드 계층화</strong> — L1~L4 4단계 구성</div>
     </div>
   </div>
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent2); margin-bottom:16px;">💡 실무 적용 포인트</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--info); margin-bottom:16px;">💡 실무 적용 포인트</div>
     <div style="font-size:0.9rem; line-height:2.2; color:var(--text-secondary);">
       <div>→ OTel 자동 계측부터 시작 (코드 변경 최소)</div>
       <div>→ DEBUG 로그 비율 확인 → filter/severity 적용</div>
@@ -441,16 +441,16 @@ stats sum(strlen(@message)) as total_bytes by @logStream
   <div class="slide-body" data-remarp-id="s2-body">
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:12px;">
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent1); margin-bottom:12px;">동작 원리</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--accent); margin-bottom:12px;">동작 원리</div>
     <div style="font-size:0.9rem; line-height:1.9; color:var(--text-secondary);">
-      • <strong style="color:#fff;">Random Cut Forest (RCF)</strong> 알고리즘 기반<br>
-      • 최대 <strong style="color:#fff;">2주 학습 기간</strong> 후 이상 탐지 시작<br>
-      • <strong style="color:#fff;">계절성 자동 감지</strong>: 시간별, 요일별, 월별 패턴<br>
-      • <strong style="color:#fff;">밴드 폭 조절</strong>: 표준편차 배수(1x-5x)로 민감도 설정<br>
-      • <strong style="color:#fff;">알림 조건</strong>: ANOMALY_DETECTION_BAND 함수 사용
+      • <strong style="color:var(--on-surface);">Random Cut Forest (RCF)</strong> 알고리즘 기반<br>
+      • 최대 <strong style="color:var(--on-surface);">2주 학습 기간</strong> 후 이상 탐지 시작<br>
+      • <strong style="color:var(--on-surface);">계절성 자동 감지</strong>: 시간별, 요일별, 월별 패턴<br>
+      • <strong style="color:var(--on-surface);">밴드 폭 조절</strong>: 표준편차 배수(1x-5x)로 민감도 설정<br>
+      • <strong style="color:var(--on-surface);">알림 조건</strong>: ANOMALY_DETECTION_BAND 함수 사용
     </div>
-    <div style="margin-top:16px; padding:12px; background:rgba(65,179,255,0.08); border-radius:8px;">
-      <div style="font-size:0.8rem; font-family:monospace; color:var(--accent1);">
+    <div style="margin-top:16px; padding:12px; background:var(--accent-subtle); border-radius:8px;">
+      <div style="font-size:0.8rem; font-family:monospace; color:var(--accent);">
         ANOMALY_DETECTION_BAND(<br>
         &nbsp;&nbsp;m1, // target metric<br>
         &nbsp;&nbsp;2   // band width (σ multiplier)<br>
@@ -459,22 +459,22 @@ stats sum(strlen(@message)) as total_bytes by @logStream
     </div>
   </div>
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent2); margin-bottom:12px;">지원 메트릭</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--info); margin-bottom:12px;">지원 메트릭</div>
     <div style="display:flex; flex-direction:column; gap:8px;">
-      <div style="background:rgba(65,179,255,0.1); padding:10px 16px; border-radius:8px;">
-        <div style="font-size:0.85rem; font-weight:600; color:#fff;">EC2/ECS/EKS</div>
+      <div style="background:var(--accent-subtle); padding:10px 16px; border-radius:8px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--on-surface);">EC2/ECS/EKS</div>
         <div style="font-size:0.75rem; color:var(--text-secondary);">CPUUtilization, NetworkIn/Out, MemoryUtilization</div>
       </div>
-      <div style="background:rgba(173,92,255,0.1); padding:10px 16px; border-radius:8px;">
-        <div style="font-size:0.85rem; font-weight:600; color:#fff;">ALB/NLB</div>
+      <div style="background:var(--info-subtle); padding:10px 16px; border-radius:8px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--on-surface);">ALB/NLB</div>
         <div style="font-size:0.75rem; color:var(--text-secondary);">RequestCount, TargetResponseTime, 5XXCount</div>
       </div>
-      <div style="background:rgba(0,229,0,0.1); padding:10px 16px; border-radius:8px;">
-        <div style="font-size:0.85rem; font-weight:600; color:#fff;">RDS/DynamoDB</div>
+      <div style="background:var(--success-subtle); padding:10px 16px; border-radius:8px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--on-surface);">RDS/DynamoDB</div>
         <div style="font-size:0.75rem; color:var(--text-secondary);">ReadLatency, WriteLatency, ThrottledRequests</div>
       </div>
-      <div style="background:rgba(251,211,50,0.1); padding:10px 16px; border-radius:8px;">
-        <div style="font-size:0.85rem; font-weight:600; color:#fff;">Lambda</div>
+      <div style="background:var(--warning-subtle); padding:10px 16px; border-radius:8px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--on-surface);">Lambda</div>
         <div style="font-size:0.75rem; color:var(--text-secondary);">Duration, Errors, ConcurrentExecutions</div>
       </div>
     </div>
@@ -488,26 +488,26 @@ stats sum(strlen(@message)) as total_bytes by @logStream
   <div class="slide-body" data-remarp-id="s3-body">
     <div style="display:grid; grid-template-columns:2fr 1fr; gap:24px; margin-top:8px;">
   <div>
-    <canvas id="anomaly-canvas" width="800" height="340" style="width:100%; background:rgba(0,0,0,0.3); border-radius:8px;"></canvas>
+    <canvas id="anomaly-canvas" width="800" height="340" style="width:100%; background:var(--surface-3); border-radius:8px;"></canvas>
   </div>
   <div>
     <div style="font-size:0.9rem; color:var(--text-secondary); margin-bottom:4px;">밴드 폭 (표준편차 배수)</div>
     <div style="display:flex; align-items:center; gap:12px;">
       <input type="range" id="band-width" min="1" max="5" step="0.5" value="2" style="flex:1;">
-      <span id="band-val" style="font-size:1.5rem; font-weight:700; color:var(--accent1); min-width:40px; text-align:right;">2x</span>
+      <span id="band-val" style="font-size:1.5rem; font-weight:700; color:var(--accent); min-width:40px; text-align:right;">2x</span>
     </div>
     <div style="margin-top:16px;">
       <div style="font-size:0.9rem; color:var(--text-secondary); margin-bottom:8px;">🔴 이상치 주입</div>
-      <button id="inject-btn" style="width:100%; padding:10px; background:rgba(255,92,133,0.2); border:1px solid var(--accent4); color:var(--accent4); border-radius:6px; cursor:pointer; font-size:0.85rem;">이상치 3개 주입</button>
-      <button id="reset-btn" style="width:100%; padding:10px; margin-top:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.2); color:var(--text-secondary); border-radius:6px; cursor:pointer; font-size:0.85rem;">초기화</button>
+      <button id="inject-btn" style="width:100%; padding:10px; background:var(--danger-subtle); border:1px solid var(--danger); color:var(--danger); border-radius:6px; cursor:pointer; font-size:0.85rem;">이상치 3개 주입</button>
+      <button id="reset-btn" style="width:100%; padding:10px; margin-top:8px; background:var(--surface-2); border:1px solid var(--surface-2); color:var(--text-secondary); border-radius:6px; cursor:pointer; font-size:0.85rem;">초기화</button>
     </div>
     <div style="margin-top:16px; font-size:0.85rem; line-height:1.8;">
-      <div>🟢 감지된 이상: <strong id="detected" style="color:var(--accent3);">0건</strong></div>
-      <div>⚠️ False Positive: <strong id="fp" style="color:var(--accent6);">0건</strong></div>
-      <div>🔴 False Negative: <strong id="fn" style="color:var(--accent4);">0건</strong></div>
+      <div>🟢 감지된 이상: <strong id="detected" style="color:var(--success);">0건</strong></div>
+      <div>⚠️ False Positive: <strong id="fp" style="color:var(--warning);">0건</strong></div>
+      <div>🔴 False Negative: <strong id="fn" style="color:var(--danger);">0건</strong></div>
     </div>
-    <div style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1);">
-      <span id="advice" style="color:var(--accent1);">밴드 폭을 조절해 보세요</span>
+    <div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--surface-2);">
+      <span id="advice" style="color:var(--accent);">밴드 폭을 조절해 보세요</span>
     </div>
   </div>
 </div>
@@ -519,28 +519,28 @@ stats sum(strlen(@message)) as total_bytes by @logStream
   <div class="slide-body" data-remarp-id="s4-body">
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:12px;">
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent1); margin-bottom:12px;">핵심 기능</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--accent); margin-bottom:12px;">핵심 기능</div>
     <div style="font-size:0.9rem; line-height:1.9; color:var(--text-secondary);">
-      • <strong style="color:#fff;">Proactive Insights</strong>: 장애 발생 전 예측 알림<br>
-      • <strong style="color:#fff;">Reactive Insights</strong>: 현재 이상 탐지 + 관련 리소스 그룹핑<br>
-      • <strong style="color:#fff;">자동 상관분석</strong>: 관련 메트릭/로그/이벤트를 하나의 Insight로 묶음<br>
-      • <strong style="color:#fff;">권장 조치</strong>: ML 기반 해결 방안 제안<br>
-      • <strong style="color:#fff;">통합 범위</strong>: CloudFormation Stack / Tag 기반 범위 설정
+      • <strong style="color:var(--on-surface);">Proactive Insights</strong>: 장애 발생 전 예측 알림<br>
+      • <strong style="color:var(--on-surface);">Reactive Insights</strong>: 현재 이상 탐지 + 관련 리소스 그룹핑<br>
+      • <strong style="color:var(--on-surface);">자동 상관분석</strong>: 관련 메트릭/로그/이벤트를 하나의 Insight로 묶음<br>
+      • <strong style="color:var(--on-surface);">권장 조치</strong>: ML 기반 해결 방안 제안<br>
+      • <strong style="color:var(--on-surface);">통합 범위</strong>: CloudFormation Stack / Tag 기반 범위 설정
     </div>
   </div>
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent2); margin-bottom:12px;">Insight 구조 예시</div>
-    <div style="background:rgba(0,0,0,0.3); padding:16px; border-radius:8px; font-family:monospace; font-size:0.75rem; line-height:1.8; color:var(--accent1);">
-      <div style="color:var(--accent4);">🔴 Reactive Insight #247</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--info); margin-bottom:12px;">Insight 구조 예시</div>
+    <div style="background:var(--surface-3); padding:16px; border-radius:8px; font-family:monospace; font-size:0.75rem; line-height:1.8; color:var(--accent);">
+      <div style="color:var(--danger);">🔴 Reactive Insight #247</div>
       <div style="color:var(--text-secondary);">─────────────────────</div>
-      <div><span style="color:var(--accent6);">Anomalies:</span></div>
+      <div><span style="color:var(--warning);">Anomalies:</span></div>
       <div>&nbsp;&nbsp;• ALB 5XX ↑320% (p99: 4.2s → 18.7s)</div>
       <div>&nbsp;&nbsp;• ECS TaskCount ↓ (desired: 10, running: 4)</div>
       <div>&nbsp;&nbsp;• RDS ReadLatency ↑ (2ms → 89ms)</div>
-      <div style="color:var(--accent6);">Related Events:</div>
+      <div style="color:var(--warning);">Related Events:</div>
       <div>&nbsp;&nbsp;• ECS Deployment 14:32 UTC</div>
       <div>&nbsp;&nbsp;• RDS Storage Full 14:28 UTC</div>
-      <div style="color:var(--accent3);">Recommendation:</div>
+      <div style="color:var(--success);">Recommendation:</div>
       <div>&nbsp;&nbsp;→ RDS storage 확장 + ECS rollback 검토</div>
     </div>
   </div>
@@ -562,30 +562,30 @@ stats sum(strlen(@message)) as total_bytes by @logStream
         <div class="tab-content active" data-tab="tab-0">
 <div style="display:flex; flex-direction:column; gap:12px; margin-top:8px;">
   <div style="display:flex; align-items:center; gap:12px;">
-    <div style="background:rgba(65,179,255,0.15); padding:12px 20px; border-radius:8px; min-width:160px; text-align:center;">
-      <div style="font-size:0.9rem; font-weight:600; color:var(--accent1);">DevOps Guru Insight</div>
+    <div style="background:var(--accent-subtle); padding:12px 20px; border-radius:8px; min-width:160px; text-align:center;">
+      <div style="font-size:0.9rem; font-weight:600; color:var(--accent);">DevOps Guru Insight</div>
       <div style="font-size:0.75rem; color:var(--text-secondary);">이상 탐지 + 상관분석</div>
     </div>
-    <div style="color:var(--accent1); font-size:1.2rem;">→</div>
-    <div style="background:rgba(173,92,255,0.15); padding:12px 20px; border-radius:8px; min-width:160px; text-align:center;">
-      <div style="font-size:0.9rem; font-weight:600; color:var(--accent2);">Amazon Bedrock</div>
+    <div style="color:var(--accent); font-size:1.2rem;">→</div>
+    <div style="background:var(--info-subtle); padding:12px 20px; border-radius:8px; min-width:160px; text-align:center;">
+      <div style="font-size:0.9rem; font-weight:600; color:var(--info);">Amazon Bedrock</div>
       <div style="font-size:0.75rem; color:var(--text-secondary);">Claude + RAG 분석</div>
     </div>
-    <div style="color:var(--accent2); font-size:1.2rem;">→</div>
-    <div style="background:rgba(0,229,0,0.15); padding:12px 20px; border-radius:8px; min-width:160px; text-align:center;">
-      <div style="font-size:0.9rem; font-weight:600; color:var(--accent3);">RCA Report</div>
+    <div style="color:var(--info); font-size:1.2rem;">→</div>
+    <div style="background:var(--success-subtle); padding:12px 20px; border-radius:8px; min-width:160px; text-align:center;">
+      <div style="font-size:0.9rem; font-weight:600; color:var(--success);">RCA Report</div>
       <div style="font-size:0.75rem; color:var(--text-secondary);">근본 원인 + 복구 계획</div>
     </div>
   </div>
   <div style="display:flex; gap:12px; margin-top:8px;">
-    <div style="flex:1; background:rgba(255,255,255,0.03); padding:12px; border-radius:8px; font-size:0.8rem; color:var(--text-secondary);">
-      <strong style="color:#fff;">Input:</strong> Anomaly 메트릭, 관련 로그, 배포 이력, 변경 이벤트
+    <div style="flex:1; background:var(--surface-2); padding:12px; border-radius:8px; font-size:0.8rem; color:var(--text-secondary);">
+      <strong style="color:var(--on-surface);">Input:</strong> Anomaly 메트릭, 관련 로그, 배포 이력, 변경 이벤트
     </div>
-    <div style="flex:1; background:rgba(255,255,255,0.03); padding:12px; border-radius:8px; font-size:0.8rem; color:var(--text-secondary);">
-      <strong style="color:#fff;">RAG:</strong> 과거 인시던트 DB, 런북, 아키텍처 문서, 변경 로그
+    <div style="flex:1; background:var(--surface-2); padding:12px; border-radius:8px; font-size:0.8rem; color:var(--text-secondary);">
+      <strong style="color:var(--on-surface);">RAG:</strong> 과거 인시던트 DB, 런북, 아키텍처 문서, 변경 로그
     </div>
-    <div style="flex:1; background:rgba(255,255,255,0.03); padding:12px; border-radius:8px; font-size:0.8rem; color:var(--text-secondary);">
-      <strong style="color:#fff;">Output:</strong> 근본 원인 분석, 영향 범위, 복구 단계, 재발 방지책
+    <div style="flex:1; background:var(--surface-2); padding:12px; border-radius:8px; font-size:0.8rem; color:var(--text-secondary);">
+      <strong style="color:var(--on-surface);">Output:</strong> 근본 원인 분석, 영향 범위, 복구 단계, 재발 방지책
     </div>
   </div>
 </div>
@@ -708,17 +708,17 @@ cw_logs = boto3.client(<span class="string">'logs'</span>)
   <div class="slide-body" data-remarp-id="s7-body">
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:24px;">
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent1); margin-bottom:16px;">🔑 Key Takeaways</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--accent); margin-bottom:16px;">🔑 Key Takeaways</div>
     <div style="font-size:0.9rem; line-height:2.2; color:var(--text-secondary);">
-      <div>✅ <strong style="color:#fff;">정적 임계값 탈피</strong> — ML 기반 동적 밴드로 전환</div>
-      <div>✅ <strong style="color:#fff;">CloudWatch AD</strong> — RCF 알고리즘, 밴드 폭 2-3x 권장</div>
-      <div>✅ <strong style="color:#fff;">DevOps Guru</strong> — 서비스 레벨 자동 상관분석</div>
-      <div>✅ <strong style="color:#fff;">GenAI RCA</strong> — Bedrock + RAG로 근본 원인 30초 분석</div>
-      <div>✅ <strong style="color:#fff;">자동화 파이프라인</strong> — EventBridge → Lambda → Bedrock</div>
+      <div>✅ <strong style="color:var(--on-surface);">정적 임계값 탈피</strong> — ML 기반 동적 밴드로 전환</div>
+      <div>✅ <strong style="color:var(--on-surface);">CloudWatch AD</strong> — RCF 알고리즘, 밴드 폭 2-3x 권장</div>
+      <div>✅ <strong style="color:var(--on-surface);">DevOps Guru</strong> — 서비스 레벨 자동 상관분석</div>
+      <div>✅ <strong style="color:var(--on-surface);">GenAI RCA</strong> — Bedrock + RAG로 근본 원인 30초 분석</div>
+      <div>✅ <strong style="color:var(--on-surface);">자동화 파이프라인</strong> — EventBridge → Lambda → Bedrock</div>
     </div>
   </div>
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent2); margin-bottom:16px;">💡 실무 적용 포인트</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--info); margin-bottom:16px;">💡 실무 적용 포인트</div>
     <div style="font-size:0.9rem; line-height:2.2; color:var(--text-secondary);">
       <div>→ 핵심 메트릭 10개부터 Anomaly Detection 적용</div>
       <div>→ 밴드 폭은 서비스 특성에 맞게 (결제: 좁게, 로그: 넓게)</div>
@@ -749,37 +749,37 @@ cw_logs = boto3.client(<span class="string">'logs'</span>)
         <div class="tab-content active" data-tab="tab-0">
 <div style="display:flex; flex-direction:column; gap:16px; margin-top:8px;">
   <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
-    <div style="background:rgba(255,92,133,0.15); padding:12px 16px; border-radius:8px; text-align:center; min-width:120px;">
-      <div style="font-size:0.85rem; font-weight:600; color:var(--accent4);">CloudWatch</div>
+    <div style="background:var(--danger-subtle); padding:12px 16px; border-radius:8px; text-align:center; min-width:120px;">
+      <div style="font-size:0.85rem; font-weight:600; color:var(--danger);">CloudWatch</div>
       <div style="font-size:0.7rem; color:var(--text-secondary);">Alarm 발동</div>
     </div>
-    <span style="color:var(--accent4);">→</span>
-    <div style="background:rgba(173,92,255,0.15); padding:12px 16px; border-radius:8px; text-align:center; min-width:120px;">
-      <div style="font-size:0.85rem; font-weight:600; color:var(--accent2);">EventBridge</div>
+    <span style="color:var(--danger);">→</span>
+    <div style="background:var(--info-subtle); padding:12px 16px; border-radius:8px; text-align:center; min-width:120px;">
+      <div style="font-size:0.85rem; font-weight:600; color:var(--info);">EventBridge</div>
       <div style="font-size:0.7rem; color:var(--text-secondary);">규칙 매칭</div>
     </div>
-    <span style="color:var(--accent2);">→</span>
-    <div style="background:rgba(65,179,255,0.15); padding:12px 16px; border-radius:8px; text-align:center; min-width:120px;">
-      <div style="font-size:0.85rem; font-weight:600; color:var(--accent1);">SSM Automation</div>
+    <span style="color:var(--info);">→</span>
+    <div style="background:var(--accent-subtle); padding:12px 16px; border-radius:8px; text-align:center; min-width:120px;">
+      <div style="font-size:0.85rem; font-weight:600; color:var(--accent);">SSM Automation</div>
       <div style="font-size:0.7rem; color:var(--text-secondary);">Runbook 실행</div>
     </div>
-    <span style="color:var(--accent1);">→</span>
-    <div style="background:rgba(0,229,0,0.15); padding:12px 16px; border-radius:8px; text-align:center; min-width:120px;">
-      <div style="font-size:0.85rem; font-weight:600; color:var(--accent3);">검증 + 알림</div>
+    <span style="color:var(--accent);">→</span>
+    <div style="background:var(--success-subtle); padding:12px 16px; border-radius:8px; text-align:center; min-width:120px;">
+      <div style="font-size:0.85rem; font-weight:600; color:var(--success);">검증 + 알림</div>
       <div style="font-size:0.7rem; color:var(--text-secondary);">Slack 보고</div>
     </div>
   </div>
   <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
-    <div style="background:rgba(255,255,255,0.03); padding:12px; border-radius:8px; font-size:0.8rem;">
-      <div style="color:var(--accent1); font-weight:600; margin-bottom:4px;">Safety Guards</div>
+    <div style="background:var(--surface-2); padding:12px; border-radius:8px; font-size:0.8rem;">
+      <div style="color:var(--accent); font-weight:600; margin-bottom:4px;">Safety Guards</div>
       <div style="color:var(--text-secondary);">• 영향 범위 제한 (blast radius)<br>• 롤백 조건 사전 정의<br>• 승인 게이트 (선택)</div>
     </div>
-    <div style="background:rgba(255,255,255,0.03); padding:12px; border-radius:8px; font-size:0.8rem;">
-      <div style="color:var(--accent2); font-weight:600; margin-bottom:4px;">Runbook 유형</div>
+    <div style="background:var(--surface-2); padding:12px; border-radius:8px; font-size:0.8rem;">
+      <div style="color:var(--info); font-weight:600; margin-bottom:4px;">Runbook 유형</div>
       <div style="color:var(--text-secondary);">• ECS/EKS 스케일링<br>• RDS 스토리지 확장<br>• 배포 롤백</div>
     </div>
-    <div style="background:rgba(255,255,255,0.03); padding:12px; border-radius:8px; font-size:0.8rem;">
-      <div style="color:var(--accent3); font-weight:600; margin-bottom:4px;">검증 패턴</div>
+    <div style="background:var(--surface-2); padding:12px; border-radius:8px; font-size:0.8rem;">
+      <div style="color:var(--success); font-weight:600; margin-bottom:4px;">검증 패턴</div>
       <div style="color:var(--text-secondary);">• 메트릭 안정화 확인<br>• 헬스체크 통과<br>• 에러율 정상 복귀</div>
     </div>
   </div>
@@ -876,32 +876,32 @@ cw_logs = boto3.client(<span class="string">'logs'</span>)
   <div class="slide-body" data-remarp-id="s2-body">
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:12px;">
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent1); margin-bottom:12px;">AWS Fault Injection Service (FIS)</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--accent); margin-bottom:12px;">AWS Fault Injection Service (FIS)</div>
     <div style="font-size:0.9rem; line-height:1.9; color:var(--text-secondary);">
-      • <strong style="color:#fff;">관리형 카오스</strong>: AWS 네이티브 장애 주입 서비스<br>
-      • <strong style="color:#fff;">정밀 타겟팅</strong>: 특정 AZ, 서비스, 리소스 지정<br>
-      • <strong style="color:#fff;">자동 롤백</strong>: Stop Condition 충족 시 즉시 중단<br>
-      • <strong style="color:#fff;">실험 템플릿</strong>: 재사용 가능한 장애 시나리오<br>
-      • <strong style="color:#fff;">통합 관측</strong>: CloudWatch 메트릭으로 영향 추적
+      • <strong style="color:var(--on-surface);">관리형 카오스</strong>: AWS 네이티브 장애 주입 서비스<br>
+      • <strong style="color:var(--on-surface);">정밀 타겟팅</strong>: 특정 AZ, 서비스, 리소스 지정<br>
+      • <strong style="color:var(--on-surface);">자동 롤백</strong>: Stop Condition 충족 시 즉시 중단<br>
+      • <strong style="color:var(--on-surface);">실험 템플릿</strong>: 재사용 가능한 장애 시나리오<br>
+      • <strong style="color:var(--on-surface);">통합 관측</strong>: CloudWatch 메트릭으로 영향 추적
     </div>
   </div>
   <div>
-    <div style="font-size:1.1rem; font-weight:600; color:var(--accent2); margin-bottom:12px;">검증 시나리오</div>
+    <div style="font-size:1.1rem; font-weight:600; color:var(--info); margin-bottom:12px;">검증 시나리오</div>
     <div style="display:flex; flex-direction:column; gap:8px;">
-      <div style="background:rgba(255,92,133,0.1); padding:10px 16px; border-radius:8px;">
-        <div style="font-size:0.85rem; font-weight:600; color:var(--accent4);">1. Pod 장애</div>
+      <div style="background:var(--danger-subtle); padding:10px 16px; border-radius:8px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--danger);">1. Pod 장애</div>
         <div style="font-size:0.75rem; color:var(--text-secondary);">EKS Pod 50% Kill → Auto-scaling 복구 확인</div>
       </div>
-      <div style="background:rgba(173,92,255,0.1); padding:10px 16px; border-radius:8px;">
-        <div style="font-size:0.85rem; font-weight:600; color:var(--accent2);">2. AZ 장애</div>
+      <div style="background:var(--info-subtle); padding:10px 16px; border-radius:8px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--info);">2. AZ 장애</div>
         <div style="font-size:0.75rem; color:var(--text-secondary);">단일 AZ 차단 → Multi-AZ 페일오버 확인</div>
       </div>
-      <div style="background:rgba(65,179,255,0.1); padding:10px 16px; border-radius:8px;">
-        <div style="font-size:0.85rem; font-weight:600; color:var(--accent1);">3. 네트워크 지연</div>
+      <div style="background:var(--accent-subtle); padding:10px 16px; border-radius:8px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--accent);">3. 네트워크 지연</div>
         <div style="font-size:0.75rem; color:var(--text-secondary);">100ms 추가 지연 → Circuit Breaker 동작 확인</div>
       </div>
-      <div style="background:rgba(251,211,50,0.1); padding:10px 16px; border-radius:8px;">
-        <div style="font-size:0.85rem; font-weight:600; color:var(--accent6);">4. CPU 스트레스</div>
+      <div style="background:var(--warning-subtle); padding:10px 16px; border-radius:8px;">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--warning);">4. CPU 스트레스</div>
         <div style="font-size:0.75rem; color:var(--text-secondary);">CPU 90% 부하 → Anomaly Detection + Auto-scale 확인</div>
       </div>
     </div>
@@ -915,11 +915,11 @@ cw_logs = boto3.client(<span class="string">'logs'</span>)
   <div class="slide-body" data-remarp-id="s3-body">
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:32px; margin-top:8px;">
   <div>
-    <div style="font-size:1rem; font-weight:600; color:var(--accent1); margin-bottom:12px;">장애 대응 단계별 시간 (분)</div>
+    <div style="font-size:1rem; font-weight:600; color:var(--accent); margin-bottom:12px;">장애 대응 단계별 시간 (분)</div>
     <div style="margin-bottom:12px;">
       <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
         <span>🔍 탐지 (Detection)</span>
-        <span id="detect-val" style="color:var(--accent1); font-weight:600;">15분 → 3분</span>
+        <span id="detect-val" style="color:var(--accent); font-weight:600;">15분 → 3분</span>
       </div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px;">
         <div><div style="font-size:0.7rem; color:var(--text-secondary);">Before</div><input type="range" id="detect-before" min="1" max="60" value="15" style="width:100%;"></div>
@@ -929,7 +929,7 @@ cw_logs = boto3.client(<span class="string">'logs'</span>)
     <div style="margin-bottom:12px;">
       <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
         <span>🔬 분석 (RCA)</span>
-        <span id="rca-val" style="color:var(--accent2); font-weight:600;">30분 → 5분</span>
+        <span id="rca-val" style="color:var(--info); font-weight:600;">30분 → 5분</span>
       </div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px;">
         <div><div style="font-size:0.7rem; color:var(--text-secondary);">Before</div><input type="range" id="rca-before" min="1" max="120" value="30" style="width:100%;"></div>
@@ -939,7 +939,7 @@ cw_logs = boto3.client(<span class="string">'logs'</span>)
     <div style="margin-bottom:12px;">
       <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
         <span>🔧 복구 (Remediation)</span>
-        <span id="fix-val" style="color:var(--accent5); font-weight:600;">45분 → 8분</span>
+        <span id="fix-val" style="color:var(--warning); font-weight:600;">45분 → 8분</span>
       </div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px;">
         <div><div style="font-size:0.7rem; color:var(--text-secondary);">Before</div><input type="range" id="fix-before" min="1" max="120" value="45" style="width:100%;"></div>
@@ -949,7 +949,7 @@ cw_logs = boto3.client(<span class="string">'logs'</span>)
     <div style="margin-bottom:12px;">
       <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
         <span>✅ 검증 (Verification)</span>
-        <span id="verify-val" style="color:var(--accent6); font-weight:600;">15분 → 5분</span>
+        <span id="verify-val" style="color:var(--warning); font-weight:600;">15분 → 5분</span>
       </div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px;">
         <div><div style="font-size:0.7rem; color:var(--text-secondary);">Before</div><input type="range" id="verify-before" min="1" max="60" value="15" style="width:100%;"></div>
@@ -958,23 +958,23 @@ cw_logs = boto3.client(<span class="string">'logs'</span>)
     </div>
   </div>
   <div>
-    <div style="font-size:1rem; font-weight:600; color:var(--accent2); margin-bottom:12px;">MTTR 비교</div>
+    <div style="font-size:1rem; font-weight:600; color:var(--info); margin-bottom:12px;">MTTR 비교</div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
-      <div style="background:rgba(255,92,133,0.15); padding:16px; border-radius:8px; text-align:center;">
+      <div style="background:var(--danger-subtle); padding:16px; border-radius:8px; text-align:center;">
         <div style="font-size:0.8rem; color:var(--text-secondary);">Before MTTR</div>
-        <div id="mttr-before" style="font-size:1.8rem; font-weight:700; color:var(--accent4);">105분</div>
+        <div id="mttr-before" style="font-size:1.8rem; font-weight:700; color:var(--danger);">105분</div>
         <div id="mttr-before-hr" style="font-size:0.8rem; color:var(--text-secondary);">1시간 45분</div>
       </div>
-      <div style="background:rgba(0,229,0,0.15); padding:16px; border-radius:8px; text-align:center;">
+      <div style="background:var(--success-subtle); padding:16px; border-radius:8px; text-align:center;">
         <div style="font-size:0.8rem; color:var(--text-secondary);">After MTTR</div>
-        <div id="mttr-after" style="font-size:1.8rem; font-weight:700; color:var(--accent3);">21분</div>
+        <div id="mttr-after" style="font-size:1.8rem; font-weight:700; color:var(--success);">21분</div>
         <div id="mttr-after-hr" style="font-size:0.8rem; color:var(--text-secondary);">21분</div>
       </div>
     </div>
-    <canvas id="mttr-canvas" width="380" height="160" style="width:100%; background:rgba(0,0,0,0.2); border-radius:8px;"></canvas>
-    <div style="text-align:center; margin-top:12px; padding:8px; background:rgba(0,229,0,0.08); border-radius:8px;">
+    <canvas id="mttr-canvas" width="380" height="160" style="width:100%; background:var(--surface-3); border-radius:8px;"></canvas>
+    <div style="text-align:center; margin-top:12px; padding:8px; background:var(--success-subtle); border-radius:8px;">
       <span style="font-size:0.85rem; color:var(--text-secondary);">개선율: </span>
-      <strong id="improvement" style="font-size:1.3rem; color:var(--accent3);">80%</strong>
+      <strong id="improvement" style="font-size:1.3rem; color:var(--success);">80%</strong>
       <span style="font-size:0.85rem; color:var(--text-secondary);"> 단축</span>
     </div>
   </div>
@@ -986,9 +986,9 @@ cw_logs = boto3.client(<span class="string">'logs'</span>)
   <div class="slide-header" data-remarp-id="s4-header"><h2>AIOps 성숙도 모델</h2></div>
   <div class="slide-body" data-remarp-id="s4-body">
     <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:16px; margin-top:16px;">
-  <div style="background:rgba(255,92,133,0.08); border:1px solid rgba(255,92,133,0.3); border-radius:12px; padding:16px; position:relative;">
-    <div style="position:absolute; top:-10px; left:16px; background:var(--accent4); color:#fff; font-size:0.7rem; padding:2px 8px; border-radius:10px;">Level 1</div>
-    <div style="font-size:1rem; font-weight:700; color:var(--accent4); margin-top:8px; margin-bottom:8px;">Reactive</div>
+  <div style="background:var(--danger-subtle); border:1px solid var(--danger-subtle); border-radius:12px; padding:16px; position:relative;">
+    <div style="position:absolute; top:-10px; left:16px; background:var(--danger); color:var(--on-surface); font-size:0.7rem; padding:2px 8px; border-radius:10px;">Level 1</div>
+    <div style="font-size:1rem; font-weight:700; color:var(--danger); margin-top:8px; margin-bottom:8px;">Reactive</div>
     <div style="font-size:0.75rem; line-height:1.7; color:var(--text-secondary);">
       • 수동 모니터링<br>
       • 정적 임계값 알림<br>
@@ -996,9 +996,9 @@ cw_logs = boto3.client(<span class="string">'logs'</span>)
       • MTTR: 2-4시간
     </div>
   </div>
-  <div style="background:rgba(251,211,50,0.08); border:1px solid rgba(251,211,50,0.3); border-radius:12px; padding:16px; position:relative;">
-    <div style="position:absolute; top:-10px; left:16px; background:var(--accent6); color:#000; font-size:0.7rem; padding:2px 8px; border-radius:10px;">Level 2</div>
-    <div style="font-size:1rem; font-weight:700; color:var(--accent6); margin-top:8px; margin-bottom:8px;">Proactive</div>
+  <div style="background:var(--warning-subtle); border:1px solid var(--warning-subtle); border-radius:12px; padding:16px; position:relative;">
+    <div style="position:absolute; top:-10px; left:16px; background:var(--warning); color:var(--on-surface); font-size:0.7rem; padding:2px 8px; border-radius:10px;">Level 2</div>
+    <div style="font-size:1rem; font-weight:700; color:var(--warning); margin-top:8px; margin-bottom:8px;">Proactive</div>
     <div style="font-size:0.75rem; line-height:1.7; color:var(--text-secondary);">
       • 통합 관측성<br>
       • ML 이상 탐지<br>
@@ -1006,9 +1006,9 @@ cw_logs = boto3.client(<span class="string">'logs'</span>)
       • MTTR: 30-60분
     </div>
   </div>
-  <div style="background:rgba(65,179,255,0.08); border:1px solid rgba(65,179,255,0.3); border-radius:12px; padding:16px; position:relative;">
-    <div style="position:absolute; top:-10px; left:16px; background:var(--accent1); color:#fff; font-size:0.7rem; padding:2px 8px; border-radius:10px;">Level 3</div>
-    <div style="font-size:1rem; font-weight:700; color:var(--accent1); margin-top:8px; margin-bottom:8px;">Predictive</div>
+  <div style="background:var(--accent-subtle); border:1px solid var(--accent-subtle); border-radius:12px; padding:16px; position:relative;">
+    <div style="position:absolute; top:-10px; left:16px; background:var(--accent); color:var(--on-surface); font-size:0.7rem; padding:2px 8px; border-radius:10px;">Level 3</div>
+    <div style="font-size:1rem; font-weight:700; color:var(--accent); margin-top:8px; margin-bottom:8px;">Predictive</div>
     <div style="font-size:0.75rem; line-height:1.7; color:var(--text-secondary);">
       • GenAI RCA 자동화<br>
       • 예측 기반 선제 조치<br>
@@ -1016,9 +1016,9 @@ cw_logs = boto3.client(<span class="string">'logs'</span>)
       • MTTR: 10-20분
     </div>
   </div>
-  <div style="background:rgba(0,229,0,0.08); border:1px solid rgba(0,229,0,0.3); border-radius:12px; padding:16px; position:relative;">
-    <div style="position:absolute; top:-10px; left:16px; background:var(--accent3); color:#000; font-size:0.7rem; padding:2px 8px; border-radius:10px;">Level 4</div>
-    <div style="font-size:1rem; font-weight:700; color:var(--accent3); margin-top:8px; margin-bottom:8px;">Self-Healing</div>
+  <div style="background:var(--success-subtle); border:1px solid var(--success-subtle); border-radius:12px; padding:16px; position:relative;">
+    <div style="position:absolute; top:-10px; left:16px; background:var(--success); color:var(--on-surface); font-size:0.7rem; padding:2px 8px; border-radius:10px;">Level 4</div>
+    <div style="font-size:1rem; font-weight:700; color:var(--success); margin-top:8px; margin-bottom:8px;">Self-Healing</div>
     <div style="font-size:0.75rem; line-height:1.7; color:var(--text-secondary);">
       • 자가 치유 시스템<br>
       • 지속적 학습/개선<br>
@@ -1028,7 +1028,7 @@ cw_logs = boto3.client(<span class="string">'logs'</span>)
   </div>
 </div>
 <div style="margin-top:16px; display:flex; align-items:center; gap:8px;">
-  <div style="flex:1; height:4px; background:linear-gradient(90deg, var(--accent4), var(--accent6), var(--accent1), var(--accent3)); border-radius:2px;"></div>
+  <div style="flex:1; height:4px; background:linear-gradient(90deg, var(--danger), var(--warning), var(--accent), var(--success)); border-radius:2px;"></div>
 </div>
 <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">
   <span>대부분의 조직</span>
@@ -1044,8 +1044,8 @@ cw_logs = boto3.client(<span class="string">'logs'</span>)
   <div class="slide-body" data-remarp-id="s5-body">
     <div style="display:flex; flex-direction:column; gap:16px; margin-top:16px;">
   <div style="display:grid; grid-template-columns:100px 1fr; gap:16px; align-items:start;">
-    <div style="background:rgba(65,179,255,0.15); padding:8px; border-radius:8px; text-align:center;">
-      <div style="font-size:0.8rem; font-weight:600; color:var(--accent1);">Month 1-2</div>
+    <div style="background:var(--accent-subtle); padding:8px; border-radius:8px; text-align:center;">
+      <div style="font-size:0.8rem; font-weight:600; color:var(--accent);">Month 1-2</div>
       <div style="font-size:0.7rem; color:var(--text-secondary);">기반 구축</div>
     </div>
     <div style="font-size:0.85rem; line-height:1.8; color:var(--text-secondary);">
@@ -1055,8 +1055,8 @@ cw_logs = boto3.client(<span class="string">'logs'</span>)
     </div>
   </div>
   <div style="display:grid; grid-template-columns:100px 1fr; gap:16px; align-items:start;">
-    <div style="background:rgba(173,92,255,0.15); padding:8px; border-radius:8px; text-align:center;">
-      <div style="font-size:0.8rem; font-weight:600; color:var(--accent2);">Month 3-4</div>
+    <div style="background:var(--info-subtle); padding:8px; border-radius:8px; text-align:center;">
+      <div style="font-size:0.8rem; font-weight:600; color:var(--info);">Month 3-4</div>
       <div style="font-size:0.7rem; color:var(--text-secondary);">AI 탐지</div>
     </div>
     <div style="font-size:0.85rem; line-height:1.8; color:var(--text-secondary);">
@@ -1066,8 +1066,8 @@ cw_logs = boto3.client(<span class="string">'logs'</span>)
     </div>
   </div>
   <div style="display:grid; grid-template-columns:100px 1fr; gap:16px; align-items:start;">
-    <div style="background:rgba(0,229,0,0.15); padding:8px; border-radius:8px; text-align:center;">
-      <div style="font-size:0.8rem; font-weight:600; color:var(--accent3);">Month 5-6</div>
+    <div style="background:var(--success-subtle); padding:8px; border-radius:8px; text-align:center;">
+      <div style="font-size:0.8rem; font-weight:600; color:var(--success);">Month 5-6</div>
       <div style="font-size:0.7rem; color:var(--text-secondary);">자동화</div>
     </div>
     <div style="font-size:0.85rem; line-height:1.8; color:var(--text-secondary);">
@@ -1077,8 +1077,8 @@ cw_logs = boto3.client(<span class="string">'logs'</span>)
     </div>
   </div>
   <div style="display:grid; grid-template-columns:100px 1fr; gap:16px; align-items:start;">
-    <div style="background:rgba(251,211,50,0.15); padding:8px; border-radius:8px; text-align:center;">
-      <div style="font-size:0.8rem; font-weight:600; color:var(--accent6);">Month 7+</div>
+    <div style="background:var(--warning-subtle); padding:8px; border-radius:8px; text-align:center;">
+      <div style="font-size:0.8rem; font-weight:600; color:var(--warning);">Month 7+</div>
       <div style="font-size:0.7rem; color:var(--text-secondary);">고도화</div>
     </div>
     <div style="font-size:0.85rem; line-height:1.8; color:var(--text-secondary);">
@@ -1095,8 +1095,8 @@ cw_logs = boto3.client(<span class="string">'logs'</span>)
   <div class="slide-header" data-remarp-id="s6-header"><h2>전체 세션 정리</h2></div>
   <div class="slide-body" data-remarp-id="s6-body">
     <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:16px;">
-  <div style="background:rgba(65,179,255,0.08); border:1px solid rgba(65,179,255,0.2); border-radius:12px; padding:20px;">
-    <div style="font-size:1rem; font-weight:700; color:var(--accent1); margin-bottom:12px;">Block 1: 관측성</div>
+  <div style="background:var(--accent-subtle); border:1px solid var(--accent-subtle); border-radius:12px; padding:20px;">
+    <div style="font-size:1rem; font-weight:700; color:var(--accent); margin-bottom:12px;">Block 1: 관측성</div>
     <div style="font-size:0.8rem; line-height:1.9; color:var(--text-secondary);">
       • 모니터링 → 관측성 전환<br>
       • Metrics + Logs + Traces 통합<br>
@@ -1105,8 +1105,8 @@ cw_logs = boto3.client(<span class="string">'logs'</span>)
       • AMG 4단계 대시보드
     </div>
   </div>
-  <div style="background:rgba(173,92,255,0.08); border:1px solid rgba(173,92,255,0.2); border-radius:12px; padding:20px;">
-    <div style="font-size:1rem; font-weight:700; color:var(--accent2); margin-bottom:12px;">Block 2: AI 탐지 + RCA</div>
+  <div style="background:var(--info-subtle); border:1px solid var(--info-subtle); border-radius:12px; padding:20px;">
+    <div style="font-size:1rem; font-weight:700; color:var(--info); margin-bottom:12px;">Block 2: AI 탐지 + RCA</div>
     <div style="font-size:0.8rem; line-height:1.9; color:var(--text-secondary);">
       • ML 기반 동적 이상 탐지<br>
       • DevOps Guru 자동 상관분석<br>
@@ -1115,8 +1115,8 @@ cw_logs = boto3.client(<span class="string">'logs'</span>)
       • RAG 기반 정확도 향상
     </div>
   </div>
-  <div style="background:rgba(0,229,0,0.08); border:1px solid rgba(0,229,0,0.2); border-radius:12px; padding:20px;">
-    <div style="font-size:1rem; font-weight:700; color:var(--accent3); margin-bottom:12px;">Block 3: 자동 복구</div>
+  <div style="background:var(--success-subtle); border:1px solid var(--success-subtle); border-radius:12px; padding:20px;">
+    <div style="font-size:1rem; font-weight:700; color:var(--success); margin-bottom:12px;">Block 3: 자동 복구</div>
     <div style="font-size:0.8rem; line-height:1.9; color:var(--text-secondary);">
       • SSM Automation Runbook<br>
       • Safety Guard 안전장치<br>
@@ -1126,8 +1126,8 @@ cw_logs = boto3.client(<span class="string">'logs'</span>)
     </div>
   </div>
 </div>
-<div style="margin-top:20px; padding:16px; background:rgba(255,255,255,0.03); border-radius:8px; text-align:center; font-size:1rem;">
-  <span style="color:var(--accent1);">관측성</span> → <span style="color:var(--accent2);">AI 탐지</span> → <span style="color:var(--accent3);">자동 복구</span> = <strong style="color:#fff;">AIOps 완성</strong>
+<div style="margin-top:20px; padding:16px; background:var(--surface-2); border-radius:8px; text-align:center; font-size:1rem;">
+  <span style="color:var(--accent);">관측성</span> → <span style="color:var(--info);">AI 탐지</span> → <span style="color:var(--success);">자동 복구</span> = <strong style="color:var(--on-surface);">AIOps 완성</strong>
 </div>
   </div>
 </div>
