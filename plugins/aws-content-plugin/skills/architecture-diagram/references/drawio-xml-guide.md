@@ -2,6 +2,12 @@
 
 Create .drawio files directly without MCP dependency. This method always works.
 
+> 💡 **Prefer the spec generator for standard patterns.** For VPC/Multi-AZ, serverless,
+> multi-region, or hybrid diagrams, do **not** hand-write coordinates — declare a YAML spec
+> and run `scripts/layout_aws.py` (see `examples/`). It computes every coordinate with AWS
+> conventions baked in and passes the gates. Use this hand-authoring guide only for shapes
+> the generator doesn't cover (e.g. Transit Gateway meshes) or for post-generation tweaks.
+
 ## Basic XML Structure
 
 ```xml
