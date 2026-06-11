@@ -11,7 +11,8 @@
   ],
   "skills": [
     "./skills/project-scaffolder",
-    "./skills/pr-autofix"
+    "./skills/pr-autofix",
+    "./skills/decision-reconcile"
   ],
   "commands": [
     "./commands/init-project.md",
