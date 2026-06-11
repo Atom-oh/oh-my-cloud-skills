@@ -1,0 +1,79 @@
+---
+sidebar_position: 1
+title: "Amazon Bedrock First-Call 덱"
+---
+
+import DemoEmbed from '@site/src/components/DemoEmbed';
+
+# Amazon Bedrock First-Call 덱
+
+`aws-content-plugin:reactive-presentation` 스킬(v1.9.0 토큰 디자인 시스템)로 만든 **Amazon Bedrock first-call 덱**입니다. 고객 첫 미팅(200 레벨)에서 플랫폼 전체 그림 — 모델 선택, 추론 옵션, **Mantle** 추론 엔진, **AgentCore** — 을 35분 안에 설명하도록 설계했습니다. 결과물은 `docs/static/demos/bedrock-first-calldeck/`에 배치됩니다.
+
+## 데모
+
+<DemoEmbed
+  src="/oh-my-cloud-skills/demos/bedrock-first-calldeck/index.html"
+  title="Amazon Bedrock — First Call (200-level)"
+  height={620}
+  command="python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build docs/static/demos/bedrock-first-calldeck"
+  remarpSource="_presentation.md, 01-platform-and-models.md, 02-agentcore-and-architecture.md"
+/>
+
+## 스크린샷
+
+### 커버
+
+![커버 — Amazon Bedrock First Call](/img/demos/bedrock-first-calldeck/bfc-cover.png)
+
+### 아젠다 (2개 블록)
+
+![아젠다 — 플랫폼/모델 + AgentCore/아키텍처](/img/demos/bedrock-first-calldeck/bfc-agenda.png)
+
+### 카드 그리드 — 보안과 거버넌스
+
+토큰 디자인 시스템의 `.card-grid` + `.metric-card`로 만든 6-카드 그리드. light 기본 테마에서 AWS 블루 액센트와 고대비 텍스트가 적용됩니다.
+
+![보안과 거버넌스 카드 그리드](/img/demos/bedrock-first-calldeck/bfc-security.png)
+
+## 구성
+
+| 블록 | 슬라이드 | 핵심 |
+|------|----------|------|
+| 1 — 플랫폼과 파운데이션 모델 (18분) | 9 | PoC→프로덕션 격차 · Bedrock 플랫폼 · 모델 landscape(Claude/Nova/오픈웨이트 15+) · 추론·비용 옵션 · **Mantle** (OpenAI 호환·Projects API·자동 용량) |
+| 2 — AgentCore와 레퍼런스 아키텍처 (17분) | 10 | 에이전트 프로덕션 격차 · **AgentCore** 빌딩블록(Runtime/Gateway/Memory/Identity/Browser/Code Interpreter) · 끝에서 끝 아키텍처 · 보안/거버넌스 · 4주 시작 경로 |
+
+## 생성 프롬프트
+
+```text
+aws-content-plugin:reactive-presentation 으로 Amazon Bedrock first-call 덱을 만들어줘.
+
+요구사항:
+- 결과물은 docs/static/demos/bedrock-first-calldeck 에 배치
+- 대상: 200 레벨 (고객 첫 미팅), 한국어 + 영어 기술용어
+- 35분, 2개 블록 (플랫폼/모델 + AgentCore/아키텍처)
+- Bedrock runtime · Mantle · AgentCore · 모델을 리서치해 반영
+- 복잡한 아키텍처는 :::html + flow 유틸리티로
+- 모든 슬라이드에 speaker notes, 퀴즈 미포함
+- validate → build 까지 실행
+```
+
+## 검증과 빌드
+
+Remarp 소스 수정 후 먼저 validate, critical issue가 없을 때 build 합니다.
+
+```bash
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py validate docs/static/demos/bedrock-first-calldeck
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build docs/static/demos/bedrock-first-calldeck
+```
+
+## 디자인 노트
+
+- **토큰 디자인 시스템(v1.9.0)**: light 기본 테마 + role 토큰(`--accent/--info/--success/--warning/--danger`)·surface 토큰. 하드코딩 색상 대신 토큰 클래스(`.card-grid`·`.metric-card`·`.callout`·`.flow-h`)를 사용해 light/dark 양쪽에 자동 적응합니다.
+- **AWS 브랜딩**: `common/pptx-theme/theme-override.css`는 `--pptx-*` 브랜드 입력만 세팅하고, theme.css가 이를 per-theme로 소비합니다. (구 추출기처럼 bare role 토큰을 `:root`에 직접 박으면 light 배경에 흰 글자가 되어 가독성이 깨집니다.)
+- **아키텍처 도식**: 요소가 많은 그림은 Canvas 좌표 대신 `:::html` + flow 유틸리티(`.flow-h`/`.flow-group`/`.flow-box`)로 만들어 간격·정렬을 안정적으로 관리하고 fragment로 단계 공개합니다.
+
+## 관련 문서
+
+- [Reactive Presentation Skill](../skills/reactive-presentation)
+- [Remarp 빠른 시작](../../remarp-guide/quick-start)
+- [Build CLI](../../remarp-guide/build-cli)
