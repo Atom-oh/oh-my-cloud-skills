@@ -20,17 +20,16 @@
 
 - [ ] **Step 1: Confirm RED** — `python3 $SK/scripts/lint_layout.py $SK/templates/aws-multi-vpc.drawio` → score 70 (<80, exit 1). Note the exact deductions (3 off-scale icons 40×40/60×60; no title; 2 off-5px-grid e.g. `id=tgw` at 756,370; 2 uneven rows/cols).
 
-- [ ] **Step 2: Apply surgical fixes**
-  - Resize the 3 off-scale icon cells to **78×78** (width/height); if an icon is nested inside a group/container, 48×48 is allowed. Keep their grid-aligned top-left.
-  - Add a **title** text cell at the top: a heading `mxCell` with `fontSize≥14` (match aws-hybrid-idc's title-cell style/value pattern), e.g. value "Multi-VPC Architecture", placed above the canvas content, width spanning, Amazon Ember font.
-  - Snap ONLY the 2 off-grid elements (e.g. `tgw` 756,370 → 755,370) to the nearest multiple of 5 — do not move others.
-  - Even out the 2 uneven rows/cols (equalize the gaps that vary >50%).
+- [ ] **Step 2: Apply surgical fixes** (resize+title alone is expected to reach ~88 ≥ 80 — keep it minimal)
+  - Resize the 3 off-scale icon cells to **78×78** (width/height); if an icon is nested inside a group/container, 48×48 is allowed. Keep their grid-aligned top-left. (The Transit Gateway icon at 60×60 is one of these.)
+  - Add a **title** text cell at the top: a heading `mxCell` with `fontSize≥14`, `fontFamily=Amazon Ember`, value e.g. "Multi-VPC Architecture". **Placement constraints**: non-negative coords (negative coords trigger the canvas-margin deduction) and within the top band (y between 0 and ~140, e.g. y≈5); match aws-hybrid-idc's title-cell pattern.
+  - **Do NOT equalize spacing or run a blind grid snap** — moving sibling icons risks a real overlap (fails the overlap regression guard) and re-introduces off-grid drift, for ~zero score benefit. ONLY if lint is still <80 after resize+title: surgically snap the 2 named off-grid elements to the nearest 5 (`tgw` 756→755, `cloudwatch` 147→145), then re-check overlap=0.
   - Do not change icon glyphs (the subnet glyph fix from 6ffa91f stays).
 
-- [ ] **Step 3: Verify GREEN** —
-  `python3 $SK/scripts/validate_drawio.py $SK/templates/aws-multi-vpc.drawio` → clean;
-  `python3 $SK/scripts/lint_layout.py $SK/templates/aws-multi-vpc.drawio` → **≥80, exit 0**;
-  `bash tests/run-all.sh 2>&1 | grep "aws-multi-vpc"` → `ok`. If <80, iterate (read the remaining deductions and address them).
+- [ ] **Step 3: Verify GREEN** (mechanical) —
+  `python3 $SK/scripts/validate_drawio.py $SK/templates/aws-multi-vpc.drawio` → clean (valid XML, no overlaps);
+  `python3 $SK/scripts/lint_layout.py $SK/templates/aws-multi-vpc.drawio; echo "exit=$?"` → score **≥80, exit 0**;
+  then the SUITE must be green: `bash tests/run-all.sh; echo "suite exit=$?"` → **exit 0** (do NOT `grep "aws-multi-vpc"` — that matches `not ok` too and false-passes). If <80, read the remaining deductions and iterate.
 
 - [ ] **Step 4: Commit**
 
@@ -48,15 +47,14 @@ git commit -m "fix(architecture-diagram): aws-multi-vpc passes layout gate (icon
 
 - [ ] **Step 1: Confirm RED** — `python3 $SK/scripts/lint_layout.py $SK/templates/aws-samples.drawio` → score 71 (<80). Deductions: no title; 15 labels not Amazon Ember; 15 off-5px-grid; 18 edges (soft spaghetti note).
 
-- [ ] **Step 2: Apply surgical fixes**
-  - Add a **title** text cell (fontSize≥14, Amazon Ember) at the top.
-  - Set the **font** of the 15 labeled cells to **Amazon Ember** (fontFamily in the style string; Helvetica fallback) per design-tokens.md.
-  - Snap the 15 off-grid elements to the nearest multiple of 5 (surgical; this file tolerated the grid snap well — geometry rose to 94 in testing — but verify no containment breaks).
-  - If still <80 after title+fonts+grid, apply the **numbered-flow** pattern (badges + legend) to the secondary edges to reduce the 18-edge spaghetti penalty. Only if needed.
+- [ ] **Step 2: Apply surgical fixes** (title+fonts alone is expected to reach ~86 ≥ 80 — edges/grid are optional)
+  - Add a **title** text cell (fontSize≥14, `fontFamily=Amazon Ember`) at the top — non-negative coords, top band (y 0–~140).
+  - Set the **font** of **all 15 labeled cells** to **Amazon Ember** (fontFamily in the style string; Helvetica fallback) — D5 counts every labeled vertex, incl. the non-resIcon ones (illustration_*, lambda_function, role, cloudwatch-shape), not just resIcons.
+  - **Optional, only if lint <80 after title+fonts**: surgically snap the off-grid `.5` coords to the nearest 5 (this file tolerated snapping — geometry rose to 94 — but verify containment), and/or apply the **numbered-flow** pattern (badges + legend) to secondary edges to ease the 18-edge note. Do not over-restructure a working diagram.
 
-- [ ] **Step 3: Verify GREEN** —
-  `validate_drawio.py` clean; `lint_layout.py` → **≥80, exit 0**;
-  `bash tests/run-all.sh 2>&1 | grep "aws-samples"` → `ok`.
+- [ ] **Step 3: Verify GREEN** (mechanical) —
+  `validate_drawio.py` clean; `lint_layout.py … ; echo exit=$?` → **≥80, exit 0**;
+  `bash tests/run-all.sh; echo "suite exit=$?"` → **exit 0** (do NOT grep the template name — `not ok` matches too).
 
 - [ ] **Step 4: Commit**
 
