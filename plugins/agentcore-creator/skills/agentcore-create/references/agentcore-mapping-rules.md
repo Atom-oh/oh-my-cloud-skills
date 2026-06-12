@@ -147,9 +147,9 @@ agentcore destroy       # Tear down
 
 | MCP Tool | Purpose | When to Use |
 |----------|---------|-------------|
-| `manage_agentcore_runtime` | Runtime management | Check/update agent after deploy |
-| `manage_agentcore_gateway` | Gateway configuration | Set up tool targets post-deploy |
-| `manage_agentcore_memory` | Memory management | Configure STM/LTM strategies post-deploy |
+| `create_agent_runtime` / `get_agent_runtime` / `update_agent_runtime` | Runtime management | Create, check, and update the agent after deploy |
+| `gateway_create` / `gateway_target_create` | Gateway configuration | Create the gateway and register tool targets post-deploy |
+| `memory_create` / `memory_update` | Memory management | Create the memory store and configure STM/LTM strategies post-deploy |
 | `search_agentcore_docs` | Documentation search | Resolve format questions during conversion |
 | `fetch_agentcore_doc` | Fetch specific doc | Detailed API reference |
 

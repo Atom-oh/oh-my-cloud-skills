@@ -664,9 +664,9 @@ fi
 echo ""
 echo "=== Step 4: Post-deployment setup ==="
 echo "Use AgentCore MCP tools for additional configuration:"
-echo "  - manage_agentcore_memory: Configure STM/LTM strategies"
-echo "  - manage_agentcore_gateway: Register tool targets"
-echo "  - manage_agentcore_runtime: Check agent status"
+echo "  - memory_create / memory_update: Create store, configure STM/LTM strategies"
+echo "  - gateway_create / gateway_target_create: Create gateway, register tool targets"
+echo "  - get_agent_runtime / update_agent_runtime: Check agent status, update config"
 
 # Step 5: Verify
 echo ""

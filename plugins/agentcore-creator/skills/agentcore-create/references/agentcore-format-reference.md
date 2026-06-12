@@ -367,9 +367,9 @@ After `agentcore deploy`, use AgentCore MCP tools for additional setup:
 
 | Component | MCP Tool | Action |
 |-----------|----------|--------|
-| Memory | `manage_agentcore_memory` | Create memory store, configure STM/LTM strategies |
-| Gateway | `manage_agentcore_gateway` | Create gateway, register tool targets |
-| Runtime | `manage_agentcore_runtime` | Check agent status, update configuration |
+| Memory | `memory_create` / `memory_update` | Create memory store, configure STM/LTM strategies |
+| Gateway | `gateway_create` / `gateway_target_create` | Create gateway, register tool targets |
+| Runtime | `get_agent_runtime` / `update_agent_runtime` | Check agent status, update configuration |
 
 ### Verification Commands
 
