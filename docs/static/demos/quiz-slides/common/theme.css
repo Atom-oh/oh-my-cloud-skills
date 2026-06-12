@@ -1871,6 +1871,20 @@ body.sidebar-visible .slide-deck {
   box-shadow: var(--shadow-1);
 }
 
+/* Light theme only: lift cards off the warm paper canvas. The primitive above paints
+   cards in paper-muted (--surface-2), which sits only a hair above the page and reads
+   flat. In LIGHT we promote them to a white surface with a soft layered shadow so they
+   read as distinct, floating cards. Scoped to a non-dark deck AND non-dark slide, so the
+   dark theme (deck-level or per-slide @theme:dark) keeps the surface-2 look untouched. */
+.slide-deck:not(.theme-dark) .slide:not(.theme-dark) :is(.metric-card, .comparison, .flow-box) {
+  background: var(--surface-1);
+  border: 1px solid var(--surface-3);
+  box-shadow: var(--shadow-2);
+}
+.slide-deck:not(.theme-dark) .slide:not(.theme-dark) :is(.card, .callout) {
+  box-shadow: var(--shadow-2);
+}
+
 /* Callout role variants — bound to semantic role tokens and placed AFTER the
    .callout primitive so they override its generic background/border by source
    order. Specificity raised to (0,2,0) via .callout.callout-* for safety. */
