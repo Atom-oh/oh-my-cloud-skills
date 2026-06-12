@@ -8,6 +8,7 @@ title: "AgentCore와 레퍼런스 아키텍처"
 ## 모델을 넘어, 프로덕션 에이전트로
 
 @type: section
+@theme: dark
 
 :::notes
 {timing: 1min}
@@ -178,33 +179,32 @@ Browser는 관리형 헤드리스 브라우저로, 사람처럼 웹을 탐색하
 ## 끝에서 끝까지
 
 @type: content
+@theme: dark
 
 :::html
 <div class="flow-h">
   <div class="flow-group bg-blue" data-fragment-index="1">
     <div class="flow-group-label">사용자·앱</div>
-    <div class="flow-box">웹·모바일</div>
-    <div class="flow-box">백엔드 API</div>
+    <div class="icon-item"><img src="common/aws-icons/services/Arch_Amazon-CloudFront_48.svg"><span>CloudFront</span></div>
+    <div class="flow-box">웹·모바일·API</div>
   </div>
   <div class="flow-arrow">→</div>
   <div class="flow-group bg-orange" data-fragment-index="2">
     <div class="flow-group-label">Bedrock · Mantle</div>
-    <div class="flow-box">모델 추론</div>
-    <div class="flow-box">Guardrails</div>
-    <div class="flow-box">Knowledge Base (RAG)</div>
+    <div class="icon-item"><img src="common/aws-icons/services/Arch_Amazon-Bedrock_48.svg"><span>모델 추론</span></div>
+    <div class="flow-box">Guardrails · Knowledge Base</div>
   </div>
   <div class="flow-arrow">→</div>
   <div class="flow-group bg-purple" data-fragment-index="3">
     <div class="flow-group-label">AgentCore</div>
-    <div class="flow-box">Runtime</div>
-    <div class="flow-box">Gateway</div>
-    <div class="flow-box">Memory · Identity</div>
+    <div class="icon-item"><img src="common/aws-icons/services/Arch_Amazon-Bedrock_48.svg"><span>Runtime·Gateway</span></div>
+    <div class="icon-item"><img src="common/aws-icons/services/Arch_AWS-Lambda_48.svg"><span>도구 (Lambda)</span></div>
   </div>
   <div class="flow-arrow">→</div>
   <div class="flow-group bg-green" data-fragment-index="4">
     <div class="flow-group-label">기업 자산</div>
-    <div class="flow-box">API · DB</div>
-    <div class="flow-box">SaaS · 도구</div>
+    <div class="icon-item"><img src="common/aws-icons/services/Arch_Amazon-DynamoDB_48.svg"><span>DynamoDB</span></div>
+    <div class="icon-item"><img src="common/aws-icons/services/Arch_Amazon-Simple-Storage-Service_48.svg"><span>S3</span></div>
   </div>
 </div>
 :::
@@ -279,6 +279,7 @@ IAM으로 모델·도구·프로젝트별 최소 권한을 주고, 요청 단위
 ## 감사합니다
 
 @type: thankyou
+@theme: dark
 
 :::notes
 {timing: 1min}

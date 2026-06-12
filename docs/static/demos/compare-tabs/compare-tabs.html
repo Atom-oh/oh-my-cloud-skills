@@ -10,13 +10,13 @@
   <meta name="remarp-block" content="default">
   <link rel="stylesheet" href="./common/theme.css">
   <link rel="stylesheet" href="./common/pptx-theme/theme-override.css">
+  <style>:root { --slide-ratio-w: 16; --slide-ratio-h: 9; } :root { --slide-width: 960px; --slide-height: 540px; }</style>
   
-  
-  <script>window.__remarpTheme = {"colors": {}, "footer": "Remarp Compare & Tabs Demo", "pagination": true, "fonts": {}};</script>
+  <script>window.__remarpTheme = {"colors": {"dk1": "#000000", "lt1": "#FFFFFF", "dk2": "#161D26", "lt2": "#F3F3F7", "accent1": "#41B3FF", "accent2": "#AD5CFF", "accent3": "#00E500", "accent4": "#FF5C85", "accent5": "#FF693C", "accent6": "#FBD332", "hlink": "#41B1E8", "folHlink": "#41B1E8"}, "footer": "Remarp Compare & Tabs Demo", "pagination": true, "fonts": {}, "slideSize": {"width_emu": 12192000, "height_emu": 6858000, "width_px": 1280, "height_px": 720, "aspect_ratio": "16:9"}};</script>
 </head>
 <body>
 <div class="slide-deck">
-<div class="slide" data-remarp-id="s0" style="background:linear-gradient(135deg, #161D26 0%, #0d1117 50%, #1a2332 100%); padding:0; overflow:hidden;">
+<div class="slide theme-dark" data-remarp-id="s0" style="background:linear-gradient(135deg, #161D26 0%, #0d1117 50%, #1a2332 100%); padding:0; overflow:hidden;">
   <h1 style="position:absolute; left:5%; top:48%; font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:53%; margin:0;">Compare & Tabs Demo</h1>
   <p style="position:absolute; left:5%; top:62%; font-size:1.3rem; color:rgba(255,255,255,0.8); width:53%; margin:0;">인터랙티브 비교/탭 슬라이드 데모</p>
   <div style="position:absolute; left:5%; top:76%;">
@@ -85,6 +85,7 @@
   
   const presenterNotes = {};
   const deck = new SlideFramework({
+    logoSrc: './common/pptx-theme/images/logo_1.png',
     
     footer: 'Remarp Compare & Tabs Demo',
     

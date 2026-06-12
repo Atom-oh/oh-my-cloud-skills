@@ -18,30 +18,34 @@
    The legacy base vars (--bg-primary/--text-primary/etc.) are mapped onto the
    semantic roles below so the base chrome follows the active theme. */
 :root, .theme-light {
-  /* Surfaces route through brand tokens (--pptx-lt1/lt2) so an extracted
-     PPTX/brand theme can drive them; theme defaults are the var() fallbacks. */
-  --surface-1:var(--pptx-lt1, #ffffff); --surface-2:#f6f7f9; --surface-3:var(--pptx-lt2, #eceff3);
-  --on-surface:var(--pptx-dk2, #1a1d2e); --on-surface-muted:#5b6072;
-  /* --accent routes through the brand token --pptx-accent1; the historical
-     theme value is the fallback so non-extracted decks are unchanged. */
-  --accent:var(--pptx-accent1, #5b51d8); --accent-subtle:rgba(91,81,216,.12); --accent-on:#ffffff;
+  /* Warm "paper + ink" neutrals (ref: design-system colors.css) — softer and
+     less clinical than cool blue-greys (the old "too bright" feel). Cards
+     (surface-1) still route through brand --pptx-lt1; surface-2/3 are warm
+     paper-muted / ink so an extracted PPTX theme keeps its brand accent while
+     the canvas stays warm. */
+  --surface-1:var(--pptx-lt1, #ffffff); --surface-2:#f3f1eb; --surface-3:#edebe4;
+  --on-surface:var(--pptx-dk2, #1f1e1d); --on-surface-muted:#5f5a4d;
+  /* --accent routes through the brand token --pptx-accent1; the design-system
+     Claude-orange is the fallback so non-extracted decks pick up brand warmth. */
+  --accent:var(--pptx-accent1, #d97757); --accent-subtle:rgba(217,119,87,.12); --accent-on:#ffffff;
   --info:#2563eb; --info-subtle:rgba(37,99,235,.12); --info-on:#fff;
-  --success:#0e9f6e; --success-subtle:rgba(14,159,110,.12); --success-on:#fff;
+  --success:#10b981; --success-subtle:rgba(16,185,129,.12); --success-on:#fff;
   --warning:#b45309; --warning-subtle:rgba(180,83,9,.12); --warning-on:#fff;
-  --danger:#dc2626; --danger-subtle:rgba(220,38,38,.12); --danger-on:#fff;
+  --danger:#f43f5e; --danger-subtle:rgba(244,63,94,.12); --danger-on:#fff;
 
-  /* Legacy base vars mapped onto the LIGHT roles (base chrome follows theme).
-     Page sits on a soft off-white (surface-3) and cards elevate in white
-     (surface-1) — pure-white-on-pure-white read as flat/"too white". */
-  --bg-primary:   var(--surface-3);
+  /* Legacy base vars mapped onto the LIGHT roles. Page = warm off-white canvas
+     (#ece9e0 — a FIXED value, clearly not white, so white cards elevate above it;
+     NOT the brightest brand token, which used to wash the whole slide near-white).
+     Borders/muted text are warm ink, never blue-grey. */
+  --bg-primary:   #ece9e0;
   --bg-secondary: var(--surface-2);
   --bg-tertiary:  var(--surface-3);
   --bg-card:      var(--surface-1);
-  --surface:      var(--surface-3);
-  --border:       #e2e5ea;
+  --surface:      var(--surface-2);
+  --border:       #d7d3c7;
   --text-primary:   var(--on-surface);
   --text-secondary: var(--on-surface-muted);
-  --text-muted:     var(--on-surface-muted);
+  --text-muted:     #8a8474;
 }
 .theme-dark { --surface-1:var(--pptx-dk2, #0f1117); --surface-2:#1a1d2e; --surface-3:#232740;
   --on-surface:var(--pptx-lt1, #e8eaf0); --on-surface-muted:#9ba1b8;
@@ -152,6 +156,13 @@ body {
   padding: var(--space-6);
   opacity: 0;
   transition: opacity var(--transition-normal);
+}
+/* Per-slide dark scope: a slide carrying .theme-dark re-binds its tokens to the dark
+   palette (see .theme-dark above) and gets a dark surface + light text, so a mostly
+   light deck can intersperse dark cover/section/emphasis slides (light:dark mix). */
+.slide.theme-dark {
+  background: var(--surface-1);
+  color: var(--on-surface);
 }
 .slide.active {
   display: flex;
@@ -1412,10 +1423,10 @@ input[type="range"]::-webkit-slider-thumb {
 /* --- Flow Containers --- */
 .flow-h {
   display: flex;
-  align-items: center;
+  align-items: stretch;   /* all flow-groups share the tallest one's height */
   justify-content: center;
-  gap: 1rem;
-  flex: 1;
+  gap: 1.25rem;
+  margin: auto 0;         /* size to the tallest group, centered vertically in the slide */
 }
 .flow-v {
   display: flex;
@@ -1439,6 +1450,7 @@ input[type="range"]::-webkit-slider-thumb {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;  /* stay vertically centered between equal-height groups */
   flex-shrink: 0;
 }
 .flow-arrow .arrow-label {
@@ -1453,6 +1465,8 @@ input[type="range"]::-webkit-slider-thumb {
   font-weight: 500;
   text-align: center;
   min-width: 120px;
+  width: 100%;             /* fill the group → uniform box width across stages */
+  box-sizing: border-box;
 }
 
 /* --- Icon + Label component --- */
@@ -1514,6 +1528,7 @@ input[type="range"]::-webkit-slider-thumb {
   gap: 0.75rem;
   padding: 1rem;
   border-radius: 8px;
+  flex: 1 1 0;            /* equal width, spread evenly across the row */
 }
 .flow-group .flow-group-label {
   font-size: 0.85rem;
@@ -1858,6 +1873,20 @@ body.sidebar-visible .slide-deck {
   border-radius: var(--radius-md);
   padding: var(--space-4);
   box-shadow: var(--shadow-1);
+}
+
+/* Light theme only: lift cards off the warm paper canvas. The primitive above paints
+   cards in paper-muted (--surface-2), which sits only a hair above the page and reads
+   flat. In LIGHT we promote them to a white surface with a soft layered shadow so they
+   read as distinct, floating cards. Scoped to a non-dark deck AND non-dark slide, so the
+   dark theme (deck-level or per-slide @theme:dark) keeps the surface-2 look untouched. */
+.slide-deck:not(.theme-dark) .slide:not(.theme-dark) :is(.metric-card, .comparison, .flow-box) {
+  background: var(--surface-1);
+  border: 1px solid var(--surface-3);
+  box-shadow: var(--shadow-2);
+}
+.slide-deck:not(.theme-dark) .slide:not(.theme-dark) :is(.card, .callout) {
+  box-shadow: var(--shadow-2);
 }
 
 /* Callout role variants — bound to semantic role tokens and placed AFTER the
