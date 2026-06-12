@@ -33,11 +33,11 @@
   --warning:#b45309; --warning-subtle:rgba(180,83,9,.12); --warning-on:#fff;
   --danger:#f43f5e; --danger-subtle:rgba(244,63,94,.12); --danger-on:#fff;
 
-  /* Legacy base vars mapped onto the LIGHT roles. Page = warm paper (#faf9f5,
-     a FIXED canvas — NOT the brightest brand token, which used to wash the
-     whole slide near-white); cards elevate in white above it. Borders/muted
-     text are warm ink, never blue-grey. */
-  --bg-primary:   #faf9f5;
+  /* Legacy base vars mapped onto the LIGHT roles. Page = warm off-white canvas
+     (#ece9e0 — a FIXED value, clearly not white, so white cards elevate above it;
+     NOT the brightest brand token, which used to wash the whole slide near-white).
+     Borders/muted text are warm ink, never blue-grey. */
+  --bg-primary:   #ece9e0;
   --bg-secondary: var(--surface-2);
   --bg-tertiary:  var(--surface-3);
   --bg-card:      var(--surface-1);
