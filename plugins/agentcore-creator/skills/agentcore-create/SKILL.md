@@ -406,13 +406,13 @@ agentcore deploy
 ```
 
 **Step 4: Memory setup** (if enabled)
-Use AgentCore MCP tool `manage_agentcore_memory` to:
+Use AgentCore MCP tools `memory_create` / `memory_update` to:
 - Create memory store
 - Configure STM/LTM strategies
 - Initialize knowledge namespaces
 
 **Step 5: Gateway setup** (if enabled)
-Use AgentCore MCP tool `manage_agentcore_gateway` to:
+Use AgentCore MCP tools `gateway_create` / `gateway_target_create` to:
 - Create gateway
 - Register tool targets (Lambda, MCP Server, etc.)
 - Configure authorization

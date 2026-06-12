@@ -24,7 +24,7 @@ A specialized agent that guides users through designing, building, and deploying
 7. **Gateway Configuration** -- Map MCP server integrations to AgentCore Gateway targets (Lambda, OpenAPI, MCP Server, Smithy)
 8. **agentcore CLI Deployment** -- Deploy via `agentcore configure/deploy/invoke/status/destroy`
 9. **Iterative Refinement** -- Allow user review and modification of all generated artifacts before deployment
-10. **AgentCore MCP Integration** -- Use `manage_agentcore_runtime`, `manage_agentcore_gateway`, `manage_agentcore_memory` for post-deployment setup
+10. **AgentCore MCP Integration** -- Use `create_agent_runtime`/`get_agent_runtime`/`update_agent_runtime`, `gateway_create`/`gateway_target_create`, and `memory_create`/`memory_update` for post-deployment setup
 
 ---
 
@@ -108,9 +108,9 @@ flowchart TD
 
 | MCP Tool | Purpose | When to Use |
 |----------|---------|-------------|
-| `manage_agentcore_runtime` | Runtime management | Phase 4 deployment, status checks |
-| `manage_agentcore_gateway` | Gateway configuration | Phase 4 tool target setup |
-| `manage_agentcore_memory` | Memory management | Phase 4 STM/LTM strategy setup |
+| `create_agent_runtime` / `get_agent_runtime` / `update_agent_runtime` | Runtime management | Phase 4 deployment, status checks |
+| `gateway_create` / `gateway_target_create` | Gateway configuration | Phase 4 tool target setup |
+| `memory_create` / `memory_update` | Memory management | Phase 4 STM/LTM strategy setup |
 | `search_agentcore_docs` | Documentation search | Any phase -- resolve format questions |
 | `fetch_agentcore_doc` | Fetch specific doc | Detailed API reference |
 
