@@ -1,13 +1,16 @@
 # tests/structure/test-reactive-design-lint.sh   (sourced by run-all.sh — no shebang, no exit)
 RP="plugins/aws-content-plugin/skills/reactive-presentation"
-for f in SKILL.md references/slide-patterns.md references/colors-reference.md; do
+for f in SKILL.md references/authoring-rules.md references/slide-patterns.md references/colors-reference.md; do
   N=$( { grep -oE "#[0-9a-fA-F]{6}" "$RP/$f" 2>/dev/null || true; } | wc -l | tr -d ' ')
   assert_eq "0" "$N" "$f has no raw 6-digit hex"
 done
-SN=$( { grep -oE "style=\"[^\"]*(color|background|padding|border-radius):[^\"]*\"" "$RP/SKILL.md" 2>/dev/null || true; } | wc -l | tr -d ' ')
-assert_eq "0" "$SN" "SKILL.md templates carry no inline color/spacing styles"
-assert_contains "$(cat "$RP/SKILL.md" 2>/dev/null || true)" "var(--" "SKILL.md templates use CSS token vars"
-assert_contains "$(cat "$RP/SKILL.md" 2>/dev/null || true)" "card-grid" "SKILL.md uses token-backed primitives"
+# Authoring rules/templates were relocated from SKILL.md into references/authoring-rules.md
+# (progressive disclosure — lean SKILL.md). Assert content lives in the skill (either file).
+SKILL_ALL="$(cat "$RP/SKILL.md" "$RP/references/authoring-rules.md" 2>/dev/null || true)"
+SN=$( { grep -oE "style=\"[^\"]*(color|background|padding|border-radius):[^\"]*\"" "$RP/SKILL.md" "$RP/references/authoring-rules.md" 2>/dev/null || true; } | wc -l | tr -d ' ')
+assert_eq "0" "$SN" "SKILL/authoring-rules templates carry no inline color/spacing styles"
+assert_contains "$SKILL_ALL" "var(--" "authoring templates use CSS token vars"
+assert_contains "$SKILL_ALL" "card-grid" "authoring uses token-backed primitives"
 
 # --- Task 6: design-lint validate rules ---
 SC="$RP/scripts/remarp_to_slides.py"
@@ -45,7 +48,7 @@ assert_grep_no_match "NOTE_STRUCTURE" "$OUT2" "structured note not flagged"
 rm -rf "$D"
 
 # --- content-quality: title voice + TITLE_LENGTH ---
-assert_contains "$(cat "$RP/SKILL.md" 2>/dev/null || true)" "체언 종결" "SKILL.md documents noun-ending subtitle voice"
+assert_contains "$SKILL_ALL" "체언 종결" "authoring documents noun-ending subtitle voice"
 assert_contains "$(cat "$RP/references/slide-patterns.md" 2>/dev/null || true)" "headline" "slide-patterns documents headline title voice"
 SC="$RP/scripts/remarp_to_slides.py"
 D="$(mktemp -d "${TMPDIR:-/tmp}/tl.XXXXXX")"
@@ -59,8 +62,8 @@ assert_grep_no_match "TITLE_LENGTH" "$OUT2" "concise title not flagged"
 rm -rf "$D"
 
 # --- content-quality: consolidated Forbidden AI-tells ---
-SKL="$(cat "$RP/SKILL.md" 2>/dev/null || true)"
-assert_contains "$SKL" "Forbidden" "SKILL.md has a consolidated Forbidden AI-tells section"
+SKL="$SKILL_ALL"
+assert_contains "$SKL" "Forbidden" "skill has a consolidated Forbidden AI-tells section"
 assert_contains "$SKL" "AI-slide tells" "Forbidden section titled for AI-slide tells"
 assert_contains "$SKL" "RAW_HEX" "Forbidden section references the RAW_HEX lint rule"
 assert_contains "$SKL" "NOTE_STRUCTURE" "Forbidden section references the NOTE_STRUCTURE lint rule"
