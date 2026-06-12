@@ -1,3 +1,32 @@
+<!-- SECTION INDEX (auto) — 큰 파일. 전체를 읽지 말고 필요한 ## 섹션만 offset-read.
+     라인번호 정확값(11 sec). 예: Read(file, offset=L, limit=다음섹션L-L). -->
+<!--
+  L32    Slide Title Voice
+  L62    Common Slide Types
+  L347   Agenda
+  L867   Canvas Animation Patterns
+  L1126  Operations Dashboard
+  L1362  Weekly Request Volume
+  L1482  Monthly Performance
+  L1660  Cloud Migration Progress
+  L1808  Cluster Status
+  L1840  Slide Count Guidelines
+  L1853  JSON Authoring Mode (권장)
+-->
+
+<!--
+  L3     Slide Title Voice
+  L33    Common Slide Types
+  L318   Agenda
+  L838   Canvas Animation Patterns
+  L1097  Operations Dashboard
+  L1333  Weekly Request Volume
+  L1453  Monthly Performance
+  L1631  Cloud Migration Progress
+  L1779  Cluster Status
+  L1811  Slide Count Guidelines
+  L1824  JSON Authoring Mode (권장)
+-->
 # Slide Design Patterns
 
 ## Slide Title Voice

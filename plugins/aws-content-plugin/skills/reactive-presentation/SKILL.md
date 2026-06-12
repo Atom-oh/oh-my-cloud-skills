@@ -119,3 +119,5 @@ GitHub Pages: Settings → Pages → main / root.
 **assets/** (→ `common/`): theme.css · theme-override-template.css · slide-framework.js · slide-renderer.js · presenter-view.js · animation-utils.js · quiz-component.js · export-utils.js
 **scripts/**: extract_pptx_theme.py · remarp_to_slides.py · marp_to_slides.py(레거시) · extract_aws_icons.py
 **references/**: authoring-rules.md(작성 규칙/패턴) · framework-guide.md(CSS/JS API) · slide-patterns.md(타입별 패턴) · remarp-format-guide.md(Remarp 문법) · interactive-patterns-guide.md(고급 인터랙션) · canvas-authoring-guide.md(Canvas DSL) · colors-reference.md(토큰) · pptx-theme-guide.md · aws-icons-guide.md · keyboard-shortcuts.md · marp-format-guide.md(레거시)
+
+> ⚡ **토큰 절약**: `slide-patterns.md`·`interactive-patterns-guide.md`·`remarp-format-guide.md`는 큰 파일(각 ~25K토큰)입니다. 전체를 Read하지 말고 **상단 `<!-- SECTION INDEX -->`의 정확 라인번호로 필요한 `##` 섹션만 offset-read** 하세요 (예: `Read(file, offset=L, limit=다음섹션L−L)`).

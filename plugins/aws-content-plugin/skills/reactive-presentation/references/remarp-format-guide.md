@@ -1,3 +1,158 @@
+<!-- SECTION INDEX (auto) — 큰 파일. 전체를 읽지 말고 필요한 ## 섹션만 offset-read.
+     라인번호 정확값(74 sec). 예: Read(file, offset=L, limit=다음섹션L-L). -->
+<!--
+  L160   File Convention
+  L185   Global Frontmatter
+  L314   Block File Format
+  L329   Why Cloud Computing?
+  L337   AWS Global Infrastructure
+  L368   오늘의 내용
+  L471   My Tabbed Slide
+  L620   Slide Directives
+  L638   Slide Title
+  L679   AWS AIOps Service Map
+  L715   Column and Grid Layouts
+  L725   Feature Comparison
+  L748   Service Options
+  L778   AWS Pillars
+  L808   Architecture Overview
+  L820   Element Animations (Fragments)
+  L829   Build Process
+  L843   Deployment Stages
+  L872   Out of Order Reveal
+  L935   Animation Showcase
+  L1076  AIOps 아키텍처
+  L1110  Roadmap
+  L1116  Roadmap
+  L1141  Canvas DSL
+  L1216  Simple Architecture
+  L1320  Data Pipeline
+  L1400  Speaker Notes
+  L1407  Slide Title
+  L1532  Interactive Slide Types
+  L1542  Knowledge Check
+  L1571  EC2 vs Lambda
+  L1594  Configuration Examples
+  L1635  Project Milestones
+  L1659  Upgrade Steps
+  L1688  Agenda
+  L1728  이번 세션에서 다룰 내용
+  L1746  Agenda
+  L1762  Process Flow
+  L1788  Deployment Checklist
+  L1813  Data Visualization in Remarp
+  L1987  Code Blocks
+  L2082  Backward Compatibility
+  L2114  Options
+  L2148  Options
+  L2167  Complete Example: Multi-Block Presentation
+  L2220  What is Serverless?
+  L2236  Serverless vs Traditional
+  L2258  Lambda Execution Model
+  L2278  Quick Check
+  L2305  Common Patterns
+  L2325  API Backend Pattern
+  L2342  Code Examples
+  L2387  Evolution of Serverless
+  L2430  Lab Prerequisites
+  L2440  Step 1: Create Lambda Function
+  L2464  Step 2: Deploy
+  L2492  Final Architecture
+  L2509  Lab Complete!
+  L2534  CLI Usage
+  L2555  Quick Reference
+  L2604  Theme Frontmatter Schema
+  L2654  Canvas DSL Preset Specification
+  L2696  Canvas DSL Icon Specification
+  L2853  Mermaid Block Specification
+  L2888  @ref Directive Specification
+  L2900  Slide Content
+  L2921  Animations Field Schema
+  L2968  Architecture Flow
+  L2977  Remarp Component Examples
+  L2989  System Health
+  L3030  Weekly Trends
+  L3082  Migration Status
+  L3133  Instance Comparison
+  L3190  Cost Breakdown
+-->
+
+<!--
+  L5     File Convention
+  L30    Global Frontmatter
+  L159   Block File Format
+  L174   Why Cloud Computing?
+  L182   AWS Global Infrastructure
+  L213   오늘의 내용
+  L316   My Tabbed Slide
+  L465   Slide Directives
+  L483   Slide Title
+  L524   AWS AIOps Service Map
+  L560   Column and Grid Layouts
+  L570   Feature Comparison
+  L593   Service Options
+  L623   AWS Pillars
+  L653   Architecture Overview
+  L665   Element Animations (Fragments)
+  L674   Build Process
+  L688   Deployment Stages
+  L717   Out of Order Reveal
+  L780   Animation Showcase
+  L921   AIOps 아키텍처
+  L955   Roadmap
+  L961   Roadmap
+  L986   Canvas DSL
+  L1061  Simple Architecture
+  L1165  Data Pipeline
+  L1245  Speaker Notes
+  L1252  Slide Title
+  L1377  Interactive Slide Types
+  L1387  Knowledge Check
+  L1416  EC2 vs Lambda
+  L1439  Configuration Examples
+  L1480  Project Milestones
+  L1504  Upgrade Steps
+  L1533  Agenda
+  L1573  이번 세션에서 다룰 내용
+  L1591  Agenda
+  L1607  Process Flow
+  L1633  Deployment Checklist
+  L1658  Data Visualization in Remarp
+  L1832  Code Blocks
+  L1927  Backward Compatibility
+  L1959  Options
+  L1993  Options
+  L2012  Complete Example: Multi-Block Presentation
+  L2065  What is Serverless?
+  L2081  Serverless vs Traditional
+  L2103  Lambda Execution Model
+  L2123  Quick Check
+  L2150  Common Patterns
+  L2170  API Backend Pattern
+  L2187  Code Examples
+  L2232  Evolution of Serverless
+  L2275  Lab Prerequisites
+  L2285  Step 1: Create Lambda Function
+  L2309  Step 2: Deploy
+  L2337  Final Architecture
+  L2354  Lab Complete!
+  L2379  CLI Usage
+  L2400  Quick Reference
+  L2449  Theme Frontmatter Schema
+  L2499  Canvas DSL Preset Specification
+  L2541  Canvas DSL Icon Specification
+  L2698  Mermaid Block Specification
+  L2733  @ref Directive Specification
+  L2745  Slide Content
+  L2766  Animations Field Schema
+  L2813  Architecture Flow
+  L2822  Remarp Component Examples
+  L2834  System Health
+  L2875  Weekly Trends
+  L2927  Migration Status
+  L2978  Instance Comparison
+  L3035  Cost Breakdown
+-->
 # Remarp Format Guide
 
 Remarp is the next-generation content authoring format for reactive-presentation. It extends Marp-style markdown with enhanced directives, animations, layouts, and canvas DSL while maintaining backward compatibility.
