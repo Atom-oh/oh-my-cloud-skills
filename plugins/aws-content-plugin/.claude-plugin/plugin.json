@@ -1,7 +1,7 @@
 {
   "name": "aws-content-plugin",
   "version": "1.9.0",
-  "description": "AWS cloud content creation plugin — presentations, architecture diagrams, animated diagrams, documents, GitBook sites, and workshops",
+  "description": "AWS cloud content creation plugin — presentations, architecture diagrams, animated diagrams, documents, GitBook sites, workshops, and brochures",
   "author": {
     "name": "atomoh"
   },
@@ -13,6 +13,7 @@
     "./agents/document-agent.md",
     "./agents/gitbook-agent.md",
     "./agents/workshop-agent.md",
+    "./agents/brochure-agent.md",
     "./agents/content-review-agent.md"
   ],
   "skills": [
@@ -21,7 +22,8 @@
     "./skills/animated-diagram",
     "./skills/gitbook",
     "./skills/workshop-creator",
-    "./skills/slide-fix"
+    "./skills/slide-fix",
+    "./skills/brochure"
   ],
   "hooks": {
     "PostToolUse": [

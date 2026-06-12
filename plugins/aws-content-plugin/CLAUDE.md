@@ -1,6 +1,6 @@
 # AWS Content Plugin — Claude Code Configuration
 
-A unified plugin for AWS cloud content creation: presentations, architecture diagrams, animated diagrams, documents, GitBook documentation sites, and workshops.
+A unified plugin for AWS cloud content creation: presentations, architecture diagrams, animated diagrams, documents, GitBook documentation sites, workshops, and brochures.
 
 ---
 
@@ -41,6 +41,13 @@ gitbook-agent → content-review-agent → GitBook pages → git push
 workshop-agent → content-review-agent → Workshop Studio content
 ```
 
+### Brochure Workflow
+```
+brochure-agent → gather product facts → (architecture-diagram → SVG) → self-contained responsive HTML
+  → check_brochure.py → content-review-agent (≥85) → GitHub Pages (public, verify no-auth 200)
+```
+> 단일 자기완결 HTML(모바일/태블릿/PC 반응형). 아키텍처는 `architecture-diagram`으로 만들어 SVG로 임베드하고 카피와 같은 이야기를 유지. **공개 호스팅은 GitHub Pages** — 인증 엣지(Cognito Lambda@Edge 등) 뒤 도메인엔 공개 우회 경로가 없으면 올릴 수 없음.
+
 ---
 
 ## Team Workflow Patterns (병렬 오케스트레이션)
@@ -76,6 +83,7 @@ workshop-agent → content-review-agent → Workshop Studio content
 | 문서 완성 | `.md` 기술문서 작성 완료 | `review content at [파일경로]` |
 | GitBook 페이지 완성 | GitBook 프로젝트 구조 작성 완료 | `review content at [프로젝트경로]` |
 | Workshop 콘텐츠 완성 | Workshop 모듈 콘텐츠 작성 완료 | `review content at [프로젝트경로]` |
+| 브로셔 완성 | 브로셔 `.html` 작성 완료 | `review content at [파일경로]` |
 
 ### Review Loop
 
@@ -106,6 +114,7 @@ workshop-agent → content-review-agent → Workshop Studio content
 | `document-agent` | Markdown documents and reports |
 | `gitbook-agent` | GitBook documentation sites |
 | `workshop-agent` | AWS Workshop Studio content |
+| `brochure-agent` | Single-page responsive marketing brochure (HTML → GitHub Pages) |
 | `content-review-agent` | Cross-cutting quality review (all content types) |
 
 ## Skills
@@ -118,6 +127,7 @@ workshop-agent → content-review-agent → Workshop Studio content
 | `gitbook` | GitBook structure guide, component patterns |
 | `slide-fix` | Issue annotation-based slide repair (reads `<!-- issue: -->`, fixes, rebuilds) |
 | `workshop-creator` | Workshop Studio directives, templates, references |
+| `brochure` | Responsive brochure design system, golden example, self-check script |
 
 ---
 

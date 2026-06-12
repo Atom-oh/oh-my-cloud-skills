@@ -49,6 +49,9 @@ docs/.docusaurus/
 # scratch working dir (presentation/demo authoring — not tracked)
 work/
 
+# skill eval workspaces — generated run artifacts, not tracked
+plugins/*/skills/*-workspace/
+
 # user-provided design-system reference (kept on disk, not tracked)
 /colors.css
 /spacing.css

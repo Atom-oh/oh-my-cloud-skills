@@ -1,0 +1,39 @@
+{
+  "skill_name": "brochure",
+  "evals": [
+    {
+      "id": 0,
+      "name": "streamforge-ko",
+      "prompt": "우리 팀 서버리스 실시간 분석 플랫폼 'StreamForge' 온라인 브로셔를 만들어줘. Amazon Kinesis Data Streams + Lambda + DynamoDB + QuickSight 기반이고, 핵심 메시지는 '코드 없이 실시간 인사이트'. 핵심 지표는 처리량 200만 events/sec, 지연 <2초, 관리형 100%. 모바일·태블릿·PC 모두 잘 보여야 하고 아키텍처도 보이게 해줘.",
+      "expected_output": "A single self-contained responsive HTML brochure (mobile/tablet/PC) with hero/core message, value, feature grid, an embedded architecture diagram, CTA, accessibility primitives.",
+      "files": [],
+      "assertions": [
+        "Responsive viewport meta present (width=device-width)",
+        "Mobile breakpoint present (@media max-width:640px)",
+        "Keyboard :focus-visible styles present (accessibility)",
+        "prefers-reduced-motion handling present (accessibility)",
+        "Architecture diagram embedded as SVG (inline <svg> or <img *.svg>)",
+        "Call-to-action present (demo / GitHub / contact button or link)",
+        "Self-contained: CSS inlined in <style> (no build step)",
+        "Well-formed: section & style tags balanced"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "trimcloud-en",
+      "prompt": "make a one-page landing page for our AWS cost-optimization SaaS called TrimCloud — hero with the tagline 'cut your AWS bill, not your workloads', 3 value props, a feature grid, an architecture diagram (it uses Cost Explorer API + Lambda + a React dashboard on S3/CloudFront), and a 'Request a demo' CTA. it has to look good on phones too.",
+      "expected_output": "A single self-contained responsive HTML landing page (mobile/tablet/PC), hero+tagline, 3 value props, feature grid, embedded architecture diagram, demo CTA, accessibility primitives.",
+      "files": [],
+      "assertions": [
+        "Responsive viewport meta present (width=device-width)",
+        "Mobile breakpoint present (@media max-width:640px)",
+        "Keyboard :focus-visible styles present (accessibility)",
+        "prefers-reduced-motion handling present (accessibility)",
+        "Architecture diagram embedded as SVG (inline <svg> or <img *.svg>)",
+        "Call-to-action present (demo / GitHub / contact button or link)",
+        "Self-contained: CSS inlined in <style> (no build step)",
+        "Well-formed: section & style tags balanced"
+      ]
+    }
+  ]
+}
