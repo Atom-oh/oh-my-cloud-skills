@@ -148,7 +148,13 @@ class CodexPluginValidator:
         if not skills_dir.is_dir():
             self.error(f"{plugin_name}: skills directory missing")
             return
-        skill_dirs = [path for path in skills_dir.iterdir() if path.is_dir() and not path.name.startswith(".")]
+        skill_dirs = [
+            path
+            for path in skills_dir.iterdir()
+            if path.is_dir()
+            and not path.name.startswith(".")
+            and not path.name.endswith("-workspace")
+        ]
         if not skill_dirs:
             self.error(f"{plugin_name}: no skill directories found")
             return

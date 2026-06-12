@@ -23,6 +23,7 @@ A comprehensive review agent for all content types produced by the aws-content-p
 | Markdown Documents | document-agent | Structure, content, references |
 | GitBook Pages | gitbook-agent | Navigation, components, cross-refs |
 | Workshop Content | workshop-agent | Directives, structure, bilingual consistency |
+| Brochure (HTML) | brochure-agent | Responsive tiers (mobile/tablet/PC), CTA presence, copy↔diagram consistency, relative asset links, accessibility, PII (account IDs / internal CIDRs/IPs) |
 
 ---
 

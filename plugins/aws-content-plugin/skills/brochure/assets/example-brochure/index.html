@@ -1,0 +1,652 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>AWSops — AWS · Kubernetes 운영을 하나의 화면에서</title>
+<meta name="description" content="AWSops는 AWS와 Kubernetes 운영을 단일 화면에서 실시간 모니터링하고, Amazon Bedrock AgentCore로 AI 진단하는 read-only 운영 대시보드입니다." />
+<meta property="og:title" content="AWSops — Cloud Operations, one calm screen" />
+<meta property="og:description" content="실시간 가시성 · AI 진단 · FinOps · CIS 컴플라이언스. Terraform · ECS Fargate · Aurora · Bedrock AgentCore 기반." />
+<meta property="og:type" content="website" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+
+<style>
+  :root{
+    /* brand — Claude orange */
+    --claude-50:#FBF1EC; --claude-100:#F5DCCF; --claude-200:#EEBFAA; --claude-300:#E69F7F;
+    --claude-400:#DF8663; --claude-500:#D97757; --claude-600:#B75E40; --claude-700:#8E4830;
+    /* ink — warm neutral */
+    --ink-50:#F7F6F2; --ink-100:#EDEBE4; --ink-200:#D7D3C7; --ink-300:#B5AFA0;
+    --ink-400:#8A8474; --ink-500:#5F5A4D; --ink-600:#3F3B32; --ink-700:#2B2823; --ink-800:#1F1E1D; --ink-900:#14130F;
+    /* paper */
+    --paper:#FAF9F5; --paper-muted:#F3F1EB; --white:#FFFFFF;
+    /* semantic */
+    --emerald-500:#10B981; --emerald-700:#047857; --rose-500:#F43F5E; --rose-700:#BE123C;
+
+    --bg:var(--paper); --surface:var(--white); --sunken:var(--paper-muted);
+    /* --text-3 darkened from ink-400(#8A8474, ~3.2:1) to meet WCAG AA on paper */
+    --text:var(--ink-800); --text-2:var(--ink-500); --text-3:#6B665A;
+    --line:var(--ink-100); --line-2:var(--ink-200);
+    --brand:var(--claude-500); --brand-ink:var(--claude-700);
+
+    --serif:"Fraunces",Georgia,serif;
+    --sans:"Pretendard Variable",Pretendard,-apple-system,system-ui,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,monospace;
+
+    --shadow-card:0 1px 2px rgba(31,30,29,.04), 0 8px 28px rgba(31,30,29,.06);
+    --shadow-pop:0 10px 40px rgba(31,30,29,.14);
+    --maxw:1180px;
+    --r:16px;
+  }
+
+  *{box-sizing:border-box}
+  /* keyboard focus — visible on the warm paper bg */
+  :focus-visible{outline:2px solid var(--brand); outline-offset:3px; border-radius:4px}
+  a:focus-visible, .btn:focus-visible, .nav-cta:focus-visible{outline-offset:4px}
+  /* skip link */
+  .skip-link{position:absolute; left:12px; top:-48px; z-index:200; background:var(--ink-900); color:var(--paper);
+    padding:10px 16px; border-radius:10px; font-size:14px; font-weight:600; transition:top .18s}
+  .skip-link:focus{top:12px}
+  .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0}
+  html{scroll-behavior:smooth; -webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:var(--sans); font-size:17px; line-height:1.6;
+    font-feature-settings:"ss01","cv01"; -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility; overflow-x:hidden;
+  }
+  /* warm paper grain */
+  body::before{
+    content:""; position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.5;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.035'/%3E%3C/svg%3E");
+  }
+  .num{font-variant-numeric:tabular-nums lining-nums}
+  a{color:inherit; text-decoration:none}
+  img,svg{display:block}
+
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 24px; position:relative; z-index:1}
+  section{position:relative; z-index:1}
+
+  /* ---------- nav ---------- */
+  .nav{
+    position:sticky; top:0; z-index:50;
+    backdrop-filter:saturate(1.4) blur(10px);
+    background:color-mix(in srgb, var(--paper) 78%, transparent);
+    border-bottom:1px solid var(--line);
+  }
+  .nav-in{display:flex; align-items:center; gap:24px; height:64px}
+  .brand{display:flex; align-items:center; gap:11px; font-weight:600; letter-spacing:-.01em}
+  .brand .mark{width:30px; height:30px}
+  .brand b{font-family:var(--serif); font-weight:600; font-size:20px; letter-spacing:-.02em}
+  .brand .mono{font-family:var(--mono); font-size:11px; color:var(--text-3); padding:2px 7px; border:1px solid var(--line-2); border-radius:99px; letter-spacing:0}
+  .nav-links{margin-left:auto; display:flex; gap:28px; align-items:center}
+  .nav-links a{font-size:14.5px; color:var(--text-2); transition:color .2s}
+  .nav-links a:hover{color:var(--brand-ink)}
+  .nav-cta{
+    font-size:14px; font-weight:600; color:var(--white)!important; background:var(--ink-800);
+    padding:9px 16px; border-radius:99px; transition:transform .2s, background .2s;
+  }
+  .nav-cta:hover{background:var(--claude-600); transform:translateY(-1px)}
+  @media (max-width:880px){ .nav-links a:not(.nav-cta){display:none} }
+
+  /* ---------- hero ---------- */
+  .hero{padding:88px 0 64px; overflow:hidden}
+  .hero-grid{display:grid; grid-template-columns:1.15fr .85fr; gap:48px; align-items:center}
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:9px; font-family:var(--mono); font-size:12.5px;
+    letter-spacing:.04em; color:var(--brand-ink); background:var(--claude-50);
+    border:1px solid var(--claude-100); padding:6px 13px; border-radius:99px; margin-bottom:26px;
+  }
+  .eyebrow .dot{width:7px; height:7px; border-radius:99px; background:var(--brand); box-shadow:0 0 0 0 rgba(217,119,87,.5); animation:pulse 2.4s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(217,119,87,.45)}70%{box-shadow:0 0 0 9px rgba(217,119,87,0)}100%{box-shadow:0 0 0 0 rgba(217,119,87,0)}}
+  h1.hero-title{
+    font-family:var(--sans); font-weight:800; font-size:clamp(34px,5.4vw,60px); line-height:1.04;
+    letter-spacing:-.035em; margin:0 0 22px;
+  }
+  h1.hero-title em{font-family:var(--serif); font-style:italic; font-weight:500; color:var(--brand-ink); letter-spacing:-.01em}
+  .hero-sub{font-size:clamp(16px,1.6vw,18.5px); color:var(--text-2); max-width:36ch; margin:0 0 30px}
+  .hero-actions{display:flex; flex-wrap:wrap; gap:14px; align-items:center}
+  .btn{font-weight:600; font-size:15px; padding:13px 22px; border-radius:99px; transition:transform .2s, box-shadow .2s, background .2s; cursor:pointer; border:1px solid transparent}
+  .btn-primary{background:var(--brand); color:var(--white); box-shadow:0 6px 20px rgba(217,119,87,.28)}
+  .btn-primary:hover{background:var(--claude-600); transform:translateY(-2px); box-shadow:0 10px 28px rgba(217,119,87,.34)}
+  .btn-ghost{background:var(--surface); color:var(--text); border-color:var(--line-2)}
+  .btn-ghost:hover{border-color:var(--ink-400); transform:translateY(-2px)}
+
+  /* hero metrics rail */
+  .metrics{display:flex; flex-wrap:wrap; gap:10px; margin-top:38px; padding-top:30px; border-top:1px solid var(--line)}
+  .metric{flex:1 1 120px}
+  .metric .v{font-family:var(--serif); font-weight:600; font-size:30px; letter-spacing:-.02em; line-height:1}
+  .metric .v small{font-size:16px; color:var(--brand-ink)}
+  .metric .l{font-size:12.5px; color:var(--text-3); margin-top:6px; letter-spacing:.01em}
+
+  /* hero figure — neural graph */
+  .hero-fig{position:relative; background:var(--surface); border:1px solid var(--line); border-radius:24px; padding:28px; box-shadow:var(--shadow-card); overflow:hidden}
+  .hero-fig .cap{font-family:var(--mono); font-size:11px; color:var(--text-3); letter-spacing:.05em; text-transform:uppercase; margin-bottom:6px}
+  .hero-fig .cap2{font-size:14.5px; color:var(--text-2); margin-bottom:18px}
+  .glyph{width:100%; height:auto}
+
+  /* ---------- section heads ---------- */
+  .sec{padding:78px 0}
+  .sec-head{max-width:62ch; margin-bottom:44px}
+  .kicker{font-family:var(--mono); font-size:12.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--brand-ink); margin-bottom:14px}
+  h2{font-family:var(--sans); font-weight:800; font-size:clamp(26px,3.4vw,38px); letter-spacing:-.03em; line-height:1.1; margin:0 0 16px}
+  h2 em{font-family:var(--serif); font-style:italic; font-weight:500; color:var(--brand-ink)}
+  .sec-head p{font-size:17px; color:var(--text-2); margin:0}
+
+  /* ---------- pillars ---------- */
+  .pillars{display:grid; grid-template-columns:repeat(3,1fr); gap:20px}
+  .pillar{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:30px; box-shadow:var(--shadow-card); transition:transform .3s, box-shadow .3s; position:relative; overflow:hidden}
+  .pillar:hover{transform:translateY(-4px); box-shadow:var(--shadow-pop)}
+  .pillar .pn{font-family:var(--serif); font-size:14px; color:var(--brand); font-weight:600}
+  .pillar .ic{width:42px; height:42px; border-radius:11px; background:var(--claude-50); border:1px solid var(--claude-100); display:grid; place-items:center; margin:8px 0 18px; color:var(--brand-ink)}
+  .pillar h3{font-size:20px; font-weight:700; letter-spacing:-.02em; margin:0 0 10px}
+  .pillar p{font-size:15px; color:var(--text-2); margin:0}
+
+  /* ---------- features ---------- */
+  .feat-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:var(--r); overflow:hidden}
+  .feat{background:var(--surface); padding:28px; transition:background .25s}
+  .feat:hover{background:var(--ink-50)}
+  .feat .fic{color:var(--brand-ink); margin-bottom:14px}
+  .feat h3{font-size:16.5px; font-weight:700; letter-spacing:-.01em; margin:0 0 8px}
+  .feat p{font-size:14px; color:var(--text-2); margin:0; line-height:1.55}
+  .feat .tag{font-family:var(--mono); font-size:11px; color:var(--text-3); margin-top:12px; display:block}
+
+  /* ---------- gateways table ---------- */
+  .gw-wrap{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow-card); overflow:hidden}
+  table.gw{width:100%; border-collapse:collapse}
+  table.gw th, table.gw td{text-align:left; padding:15px 20px; border-bottom:1px solid var(--line); font-size:14.5px}
+  table.gw thead th{font-family:var(--mono); font-size:11.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); font-weight:500; background:var(--sunken)}
+  table.gw tbody tr{transition:background .2s}
+  table.gw tbody tr:hover{background:var(--claude-50)}
+  table.gw td.gname{font-weight:600; white-space:nowrap}
+  table.gw td.gtools{font-family:var(--mono); color:var(--brand-ink); font-weight:600; text-align:right; width:64px}
+  table.gw td.gcap{color:var(--text-2)}
+  .gw-foot{display:flex; flex-wrap:wrap; gap:8px; padding:18px 20px; background:var(--sunken); font-size:13px; color:var(--text-2)}
+  .pill{display:inline-flex; align-items:center; gap:6px; font-family:var(--mono); font-size:12px; padding:5px 11px; border-radius:99px; background:var(--surface); border:1px solid var(--line-2)}
+  .pill.orange{background:var(--claude-50); border-color:var(--claude-100); color:var(--brand-ink)}
+
+  /* ---------- architecture diagram ---------- */
+  .arch{background:linear-gradient(180deg, var(--sunken), var(--paper)); border-top:1px solid var(--line); border-bottom:1px solid var(--line)}
+  .arch-legend{display:flex; flex-wrap:wrap; gap:16px; margin-bottom:28px; font-size:13px; color:var(--text-2)}
+  .arch-legend span{display:inline-flex; align-items:center; gap:7px}
+  .lg{width:13px; height:13px; border-radius:4px; border:1px solid}
+  .lg.edge{background:var(--claude-50); border-color:var(--claude-200)}
+  .lg.compute{background:#EAF3FF; border-color:#BBD7F5}
+  .lg.data{background:#EAF7F1; border-color:#B7E2CC}
+  .lg.ai{background:#F3EEFB; border-color:#D8C8F0}
+  .lg.obs{background:var(--ink-50); border-color:var(--line-2)}
+
+  .diagram{display:grid; gap:18px; grid-template-columns:repeat(5,1fr); align-items:stretch}
+  .lane{display:flex; flex-direction:column; gap:14px; min-width:0; position:relative}
+  /* desktop/tablet flow connectors between lanes (sit in the grid gap) */
+  @media (min-width:641px){
+    .lane:not(:last-child)::after{
+      content:"→"; position:absolute; right:-15px; top:46px; transform:translateY(-50%);
+      color:var(--brand); font-size:18px; font-weight:700; opacity:.7; z-index:2;
+    }
+  }
+  .lane-title{font-family:var(--mono); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); padding-bottom:8px; border-bottom:1px dashed var(--line-2); margin-bottom:2px}
+  .node{
+    background:var(--surface); border:1px solid var(--line-2); border-radius:13px; padding:14px 15px;
+    box-shadow:var(--shadow-card); position:relative; transition:transform .25s, box-shadow .25s;
+  }
+  .node:hover{transform:translateY(-3px); box-shadow:var(--shadow-pop)}
+  .node .nt{font-weight:700; font-size:14px; letter-spacing:-.01em; display:flex; align-items:center; gap:8px}
+  .node .nd{font-size:12.5px; color:var(--text-2); margin-top:5px; line-height:1.45}
+  .node .meta{font-family:var(--mono); font-size:10.5px; color:var(--text-3); margin-top:8px; letter-spacing:.02em}
+  .node.edge{border-color:var(--claude-200); background:linear-gradient(180deg,var(--claude-50),var(--surface))}
+  .node.compute{border-color:#BBD7F5}
+  .node.data{border-color:#B7E2CC}
+  .node.ai{border-color:#D8C8F0}
+  .node.obs{border-style:dashed; background:var(--ink-50)}
+  .node .badge{font-family:var(--mono); font-size:9.5px; padding:2px 7px; border-radius:99px; background:var(--ink-800); color:var(--white); letter-spacing:.03em}
+  .node .badge.ro{background:var(--emerald-700)}
+  .chip-row{display:flex; flex-wrap:wrap; gap:5px; margin-top:9px}
+  .chip{font-family:var(--mono); font-size:10px; padding:2px 7px; border-radius:6px; background:var(--sunken); border:1px solid var(--line); color:var(--text-2)}
+  .flowline{display:none}
+  .arch-note{margin-top:24px; font-size:13px; color:var(--text-3); display:flex; flex-wrap:wrap; gap:18px}
+  .arch-note b{color:var(--text-2); font-weight:600}
+  .arch-dl{margin-top:26px}
+  /* exported architecture SVG */
+  .arch-figure{margin:0; background:var(--surface); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow-card); padding:14px; overflow:hidden}
+  .arch-figure img{display:block; width:100%; height:auto}
+  .arch-rot-hint{display:none}
+  @media (max-width:640px){
+    .arch-figure{position:relative; padding:0; aspect-ratio:871 / 1411}
+    .arch-figure img{position:absolute; top:50%; left:50%; max-width:none; width:calc((100vw - 36px) * 1411 / 871); height:auto; transform:translate(-50%,-50%) rotate(90deg)}
+    .arch-rot-hint{display:block; font-size:12.5px; color:var(--text-3); text-align:center; margin-top:12px}
+  }
+
+  /* ---------- security / stack ---------- */
+  .split{display:grid; grid-template-columns:1fr 1fr; gap:48px; align-items:start}
+  .checklist{list-style:none; padding:0; margin:0}
+  .checklist li{display:flex; gap:13px; padding:14px 0; border-bottom:1px solid var(--line)}
+  .checklist li:last-child{border-bottom:0}
+  .checklist .ci{flex:none; width:22px; height:22px; border-radius:99px; background:var(--claude-50); border:1px solid var(--claude-200); color:var(--brand-ink); display:grid; place-items:center; margin-top:2px}
+  .checklist h4{margin:0 0 3px; font-size:15.5px; font-weight:700; letter-spacing:-.01em}
+  .checklist p{margin:0; font-size:13.5px; color:var(--text-2)}
+  .stack{display:flex; flex-wrap:wrap; gap:9px}
+  .stack .s{font-family:var(--mono); font-size:13px; padding:9px 14px; border-radius:10px; background:var(--surface); border:1px solid var(--line-2); color:var(--text); transition:transform .2s, border-color .2s}
+  .stack .s:hover{transform:translateY(-2px); border-color:var(--brand)}
+  .stack .s b{color:var(--brand-ink)}
+  .stack-card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:30px; box-shadow:var(--shadow-card)}
+
+  /* ---------- closing CTA ---------- */
+  .cta{margin:40px auto 0}
+  .cta-box{background:var(--ink-900); color:var(--ink-50); border-radius:28px; padding:clamp(36px,5vw,64px); text-align:center; position:relative; overflow:hidden}
+  .cta-box::after{content:""; position:absolute; inset:0; background:radial-gradient(600px 300px at 50% -10%, rgba(217,119,87,.28), transparent 70%); pointer-events:none}
+  .cta-box h2{color:var(--paper); position:relative; text-align:center; max-width:20ch; margin:0 auto 16px}
+  .cta-box h2 em{color:var(--claude-300)}
+  .cta-box p{color:var(--ink-200); max-width:48ch; margin:0 auto 28px; position:relative}
+  .cta-box .btn-primary{position:relative}
+  .cta-box .btn-ghost{background:transparent; color:var(--paper); border-color:rgba(247,246,242,.25)}
+  .cta-box .btn-ghost:hover{border-color:var(--paper)}
+
+  /* ---------- footer ---------- */
+  footer{border-top:1px solid var(--line); padding:40px 0; margin-top:80px}
+  .foot-in{display:flex; flex-direction:column; gap:10px; align-items:center; justify-content:center; text-align:center; font-size:13px; color:var(--text-3)}
+  .foot-in .mono{font-family:var(--mono)}
+
+  /* reveal */
+  .reveal{opacity:0; transform:translateY(18px); transition:opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1)}
+  .reveal.in{opacity:1; transform:none}
+  @media (prefers-reduced-motion:reduce){.reveal{opacity:1; transform:none; transition:none} .eyebrow .dot{animation:none} *{scroll-behavior:auto!important}}
+
+  /* ============ RESPONSIVE — tablet ============ */
+  @media (max-width:1024px){
+    .hero-grid{grid-template-columns:1fr; gap:36px}
+    .hero{padding:64px 0 48px}
+    .pillars{grid-template-columns:repeat(2,1fr)}
+    .pillars .pillar:nth-child(3){grid-column:1 / -1}
+    .feat-grid{grid-template-columns:repeat(2,1fr)}
+    .split{grid-template-columns:1fr; gap:36px}
+    /* diagram → 2 lanes of flow, vertical-ish */
+    .diagram{grid-template-columns:repeat(2,1fr); gap:16px}
+    .diagram .lane:last-child{grid-column:1 / -1}
+  }
+
+  /* ============ RESPONSIVE — mobile ============ */
+  @media (max-width:640px){
+    body{font-size:16px}
+    .wrap{padding:0 18px}
+    .sec{padding:54px 0}
+    .hero{padding:44px 0 36px}
+    .metrics{gap:18px 10px}
+    .metric{flex:1 1 40%}
+    .pillars{grid-template-columns:1fr}
+    .pillars .pillar:nth-child(3){grid-column:auto}
+    .feat-grid{grid-template-columns:1fr}
+    .diagram{grid-template-columns:1fr; gap:12px}
+    .diagram .lane:last-child{grid-column:auto}
+    .lane{flex-direction:column}
+    /* stacked flow arrows between lanes on mobile */
+    .lane:not(:last-child)::after{content:"↓"; display:block; text-align:center; color:var(--brand); font-size:20px; margin-top:2px}
+    /* responsive table → stacked cards (keep capability text, don't hide meaning) */
+    table.gw thead{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0)}
+    table.gw, table.gw tbody, table.gw tr{display:block; width:100%}
+    table.gw tr{border-bottom:1px solid var(--line); padding:14px 16px; position:relative}
+    table.gw tr:last-child{border-bottom:0}
+    table.gw td{display:block; border:0; padding:0; width:auto}
+    table.gw td.gname{font-size:15px; padding-right:48px}
+    table.gw td.gtools{position:absolute; top:14px; right:16px; width:auto; text-align:right}
+    table.gw td.gcap{font-size:13px; color:var(--text-2); margin-top:5px}
+    .hero .hero-actions .btn{flex:1 1 100%; text-align:center}
+    .cta-box{border-radius:20px}
+  }
+  @media (max-width:380px){ .metric{flex:1 1 100%} }
+</style>
+</head>
+<body>
+<a href="#value" class="skip-link">본문으로 건너뛰기</a>
+
+<!-- ===================== NAV ===================== -->
+<nav class="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#top" aria-label="AWSops">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="7" fill="#14130F"/>
+        <g stroke="#5F5A4D" stroke-width="1.8">
+          <line x1="9" y1="23" x2="16" y2="12"/><line x1="16" y1="12" x2="24" y2="20"/><line x1="9" y1="23" x2="24" y2="20"/>
+        </g>
+        <circle cx="9" cy="23" r="3.2" fill="#FAF9F5"/><circle cx="24" cy="20" r="3.2" fill="#FAF9F5"/>
+        <circle cx="16" cy="12" r="5.4" fill="#D9775733"/><circle cx="16" cy="12" r="3.6" fill="#D97757"/>
+      </svg>
+      <b>AWSops</b><span class="mono">ops dashboard</span>
+    </a>
+    <div class="nav-links">
+      <a href="#value">핵심 가치</a>
+      <a href="#features">기능</a>
+      <a href="#ai">AI 게이트웨이</a>
+      <a href="#architecture">아키텍처</a>
+      <a href="#trust">보안</a>
+      <a href="#start" class="nav-cta">데모 보기</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ===================== HERO ===================== -->
+<header class="hero" id="top">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow reveal"><span class="dot"></span> READ-ONLY OPS · AI DIAGNOSIS</span>
+      <h1 class="hero-title reveal">클라우드 운영을<br>하나의 <em>차분한 화면</em>에서.</h1>
+      <p class="hero-sub reveal">AWS와 Kubernetes를 실시간으로 모니터링하고, Amazon Bedrock AgentCore가 라이브 데이터를 근거로 진단합니다. 43개 운영 화면, 125개 AI 도구 — 변경 없는 안전한 관측.</p>
+      <div class="hero-actions reveal">
+        <a href="#start" class="btn btn-primary">라이브 데모 살펴보기</a>
+        <a href="#architecture" class="btn btn-ghost">아키텍처 보기 →</a>
+      </div>
+      <div class="metrics reveal">
+        <div class="metric"><div class="v num">43</div><div class="l">운영 화면 (pages)</div></div>
+        <div class="metric"><div class="v num">125</div><div class="l">AI MCP 도구</div></div>
+        <div class="metric"><div class="v num">8<small> live</small></div><div class="l">AI 게이트웨이 (+ 설계 확장)</div></div>
+        <div class="metric"><div class="v num">400<small>+</small></div><div class="l">CIS 컴플라이언스 제어</div></div>
+      </div>
+    </div>
+
+    <!-- neural graph figure -->
+    <aside class="hero-fig reveal" aria-label="AWSops 신경망 모티프">
+      <div class="cap">SINGLE PANE OF GLASS</div>
+      <div class="cap2">계정 · 리전 · 클러스터를 가로질러 하나의 운영 신경망으로.</div>
+      <svg class="glyph" viewBox="0 0 420 300" role="img" aria-label="연결된 운영 노드 그래프">
+        <defs>
+          <radialGradient id="halo" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#D97757" stop-opacity=".35"/>
+            <stop offset="100%" stop-color="#D97757" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <!-- edges -->
+        <g stroke="#D7D3C7" stroke-width="1.4" fill="none">
+          <line x1="60" y1="220" x2="210" y2="150"/>
+          <line x1="210" y1="150" x2="360" y2="90"/>
+          <line x1="210" y1="150" x2="350" y2="220"/>
+          <line x1="60" y1="220" x2="150" y2="70"/>
+          <line x1="150" y1="70" x2="210" y2="150"/>
+          <line x1="350" y1="220" x2="360" y2="90"/>
+          <line x1="60" y1="220" x2="350" y2="220"/>
+        </g>
+        <!-- pulse edges (orange, animated) -->
+        <g stroke="#D97757" stroke-width="1.8" fill="none" stroke-dasharray="4 6">
+          <line x1="210" y1="150" x2="360" y2="90"><animate attributeName="stroke-dashoffset" from="40" to="0" dur="2.4s" repeatCount="indefinite"/></line>
+          <line x1="60" y1="220" x2="210" y2="150"><animate attributeName="stroke-dashoffset" from="40" to="0" dur="3s" repeatCount="indefinite"/></line>
+        </g>
+        <!-- satellite nodes -->
+        <g>
+          <circle cx="60" cy="220" r="9" fill="#FFFFFF" stroke="#8A8474" stroke-width="1.6"/>
+          <circle cx="150" cy="70" r="9" fill="#FFFFFF" stroke="#8A8474" stroke-width="1.6"/>
+          <circle cx="360" cy="90" r="9" fill="#FFFFFF" stroke="#8A8474" stroke-width="1.6"/>
+          <circle cx="350" cy="220" r="9" fill="#FFFFFF" stroke="#8A8474" stroke-width="1.6"/>
+        </g>
+        <!-- central AI node -->
+        <circle cx="210" cy="150" r="46" fill="url(#halo)"><animate attributeName="r" values="40;52;40" dur="3.2s" repeatCount="indefinite"/></circle>
+        <circle cx="210" cy="150" r="17" fill="#D97757"/>
+        <circle cx="210" cy="150" r="9" fill="#FBF1EC"/>
+        <!-- labels -->
+        <g font-family="JetBrains Mono, monospace" font-size="11" fill="#5F5A4D">
+          <text x="60" y="246" text-anchor="middle">EC2 · EKS</text>
+          <text x="150" y="52" text-anchor="middle">VPC · 네트워크</text>
+          <text x="360" y="72" text-anchor="middle">비용 · FinOps</text>
+          <text x="350" y="246" text-anchor="middle">보안 · CIS</text>
+          <text x="210" y="207" text-anchor="middle" fill="#8E4830" font-weight="600">AgentCore</text>
+        </g>
+      </svg>
+    </aside>
+  </div>
+</header>
+
+<!-- ===================== VALUE / PILLARS ===================== -->
+<section class="sec" id="value">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="kicker">왜 AWSops인가</div>
+      <h2>흩어진 콘솔 대신, <em>운영의 단일 화면</em>.</h2>
+      <p>장애 하나에 EC2·EKS·CloudWatch·Cost Explorer 콘솔을 넘나들고, 컨텍스트 전환에 초동 대응 시간을 흘려보냅니다. AWSops는 이 흩어진 화면들을 하나로 모으고, AI가 라이브 데이터를 근거로 먼저 짚어 줍니다 — 실시간 가시성 · AI 진단 · 비용·컴플라이언스 세 축으로.</p>
+    </div>
+    <div class="pillars">
+      <article class="pillar reveal">
+        <div class="pn">01</div>
+        <div class="ic">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        </div>
+        <h3>실시간 단일 가시성</h3>
+        <p>EC2 · Lambda · ECS · EKS · VPC · RDS … 43개 화면과 React Flow 토폴로지 맵. 멀티 계정을 합쳐 보거나 전환하며 라이브 차트로 본다.</p>
+      </article>
+      <article class="pillar reveal">
+        <div class="pn">02</div>
+        <div class="ic">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>
+        </div>
+        <h3>AI 진단 &amp; 어시스턴트</h3>
+        <p>질문을 분류기가 1~3개 게이트웨이로 병렬 라우팅해 종합. SSE 스트리밍, Python Code Interpreter, 대화 기록, 15개 섹션 Bedrock 리포트.</p>
+      </article>
+      <article class="pillar reveal">
+        <div class="pn">03</div>
+        <div class="ic">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 3v18h18"/><path d="M7 14l3-4 3 3 5-7"/></svg>
+        </div>
+        <h3>FinOps &amp; 컴플라이언스</h3>
+        <p>Cost Explorer · 컨테이너 비용(Fargate·EKS OpenCost) · 인벤토리 추세. CIS v1.5–v4.0 400+ 제어를 Powerpipe로 점검.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FEATURES ===================== -->
+<section class="sec" id="features" style="padding-top:0">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="kicker">기능</div>
+      <h2>운영에 필요한 것을 <em>빠짐없이</em>.</h2>
+      <p>모니터링부터 트러블슈팅, 비용, 컴플라이언스, 외부 관측성, AI 진단까지 — 하나의 BFF 위에서 동작합니다.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat reveal">
+        <div class="fic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M8 13h3"/></svg></div>
+        <h3>리소스 모니터링</h3>
+        <p>EC2·Lambda·ECS/ECR·EKS(파드/노드/디플로이/서비스)·VPC·CloudFront·WAF·EBS·S3·RDS·DynamoDB·MSK·OpenSearch를 라이브 차트로.</p>
+        <span class="tag">43 pages · React Flow 토폴로지</span>
+      </div>
+      <div class="feat reveal">
+        <div class="fic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="12" cy="10" r="1"/><circle cx="8" cy="10" r="1"/><circle cx="16" cy="10" r="1"/></svg></div>
+        <h3>AI 어시스턴트 (멀티 라우트)</h3>
+        <p>하이브리드 라우팅(정규식 fast-path + Haiku 분류기 + 프롬프트 캐싱)으로 적합한 게이트웨이에 병렬 질의 후 답을 합성.</p>
+        <span class="tag">SSE · Code Interpreter · 스레드 영속</span>
+      </div>
+      <div class="feat reveal">
+        <div class="fic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 17H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v4"/><rect x="9" y="9" width="12" height="12" rx="2"/></svg></div>
+        <h3>멀티 계정</h3>
+        <p>여러 계정을 전환하거나 통합해 조회. 인벤토리는 플래그 게이트형 동기화로 Aurora에 적재 — 설정만 바꾸면 코드 변경 없이 확장.</p>
+        <span class="tag">계정 전환 · 통합 뷰</span>
+      </div>
+      <div class="feat reveal">
+        <div class="fic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg></div>
+        <h3>CIS 컴플라이언스</h3>
+        <p>Powerpipe 벤치마크로 CIS v1.5–v4.0, 400+ 제어를 점검하고 위반 항목을 한눈에 추적.</p>
+        <span class="tag">CIS v1.5 – v4.0</span>
+      </div>
+      <div class="feat reveal">
+        <div class="fic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+        <h3>비용 &amp; FinOps</h3>
+        <p>Cost Explorer, 컨테이너 비용(Fargate 가격·EKS OpenCost), 리소스 인벤토리 추세 — 서비스별 드릴다운까지.</p>
+        <span class="tag">Cost Explorer · OpenCost</span>
+      </div>
+      <div class="feat reveal">
+        <div class="fic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 4h16v12H4z"/><path d="M2 20h20M9 8l2 2 4-4"/></svg></div>
+        <h3>외부 관측성 통합</h3>
+        <p>Prometheus · Loki · Tempo · ClickHouse · Jaeger · Dynatrace · Datadog 연동. SSRF 차단 allowlist로 안전하게.</p>
+        <span class="tag">SSRF-protected allowlist</span>
+      </div>
+      <div class="feat reveal">
+        <div class="fic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 2l2.4 7.4H22l-6 4.4 2.3 7.2L12 16.8 5.7 21l2.3-7.2-6-4.4h7.6z"/></svg></div>
+        <h3>AI 진단 &amp; 알림</h3>
+        <p>15개 섹션 Bedrock 리포트(DOCX/MD/PDF), 알림 트리거 자동 진단, Slack 통지, 이벤트 대비 read-only 용량 분석. 변경은 운영자 몫.</p>
+        <span class="tag">자동 진단 · Slack · 리포트</span>
+      </div>
+      <div class="feat reveal">
+        <div class="fic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="9"/></svg></div>
+        <h3>비동기 워커 티어</h3>
+        <p>무겁거나 OOM 위험이 있는 작업은 SQS→Step Functions→Lambda/Fargate로 비동기 처리. 웹은 가볍게 유지.</p>
+        <span class="tag">SQS · Step Functions · 멱등</span>
+      </div>
+      <div class="feat reveal">
+        <div class="fic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/></svg></div>
+        <h3>EKS 온보딩</h3>
+        <p>Access Entry + AmazonEKSViewPolicy(읽기 전용)로 클러스터 등록. 노드·파드·디플로이·서비스를 BFF에서 직접 조회.</p>
+        <span class="tag">read-only · Access Entry</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== AI GATEWAYS ===================== -->
+<section class="sec" id="ai" style="padding-top:0">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="kicker">Amazon Bedrock AgentCore</div>
+      <h2>섹션별 전문 <em>에이전트 함대</em>.</h2>
+      <p>하나의 AgentCore Runtime(Strands) 위에서 섹션 게이트웨이들이 라이브 AWS를 조회합니다. 분류기가 질문을 적합한 게이트웨이로 라우팅하고 결과를 합성합니다.</p>
+    </div>
+    <div class="gw-wrap reveal">
+      <table class="gw">
+        <caption class="sr-only">AWSops AI 섹션 게이트웨이와 도구 수</caption>
+        <thead><tr><th>게이트웨이</th><th class="gcap">대표 역량</th><th class="gtools">도구</th></tr></thead>
+        <tbody>
+          <tr><td class="gname">Network</td><td class="gcap">VPC · TGW · VPN · ENI · Reachability Analyzer · Flow Logs</td><td class="gtools num">17</td></tr>
+          <tr><td class="gname">Container</td><td class="gcap">EKS 클러스터/노드/파드 · ECS 서비스/태스크 · Istio 메시</td><td class="gtools num">24</td></tr>
+          <tr><td class="gname">Data</td><td class="gcap">DynamoDB · RDS Data API · ElastiCache · MSK</td><td class="gtools num">24</td></tr>
+          <tr><td class="gname">Monitoring</td><td class="gcap">CloudWatch 지표/알람 · Log Insights · CloudTrail</td><td class="gtools num">16</td></tr>
+          <tr><td class="gname">Security</td><td class="gcap">IAM 사용자/역할/정책 · 정책 시뮬레이션</td><td class="gtools num">14</td></tr>
+          <tr><td class="gname">IaC</td><td class="gcap">CloudFormation 검증 · CDK 문서 · Terraform 모듈</td><td class="gtools num">12</td></tr>
+          <tr><td class="gname">Cost</td><td class="gcap">Cost Explorer · Pricing · Budgets · 예측</td><td class="gtools num">9</td></tr>
+          <tr><td class="gname">Ops</td><td class="gcap">AWS 문서 · CLI 실행 · Steampipe SQL</td><td class="gtools num">9</td></tr>
+          <tr><td class="gname">External-Obs <span class="badge ro" style="font-size:9px">설계</span></td><td class="gcap">Prometheus · Loki · Tempo 등 외부 관측성 (read-only)</td><td class="gtools" style="color:var(--text-3)">설계</td></tr>
+        </tbody>
+      </table>
+      <div class="gw-foot">
+        <span class="pill orange">합계 125 MCP 도구 · 8 라이브 게이트웨이</span>
+        <span class="pill">로드맵 — 9 섹션 에이전트 + 1 인시던트 오케스트레이터</span>
+        <span class="pill">Sonnet 4.6 · Opus 4.8 · Haiku 4.5</span>
+        <span class="pill">Memory · Code Interpreter</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== ARCHITECTURE ===================== -->
+<section class="sec arch" id="architecture">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="kicker">아키텍처 (Terraform · ECS Fargate · Aurora)</div>
+      <h2>비공개 엣지에서 <em>비동기 워커</em>까지.</h2>
+      <p>CloudFront VPC Origin → 내부 ALB → Fargate thin-BFF. 공개 ALB가 없습니다. 무거운 작업은 워커 티어로 흘러가고, AI는 AgentCore가 라이브로 조회합니다.</p>
+    </div>
+
+    <figure class="arch-figure reveal" aria-label="AWSops 아키텍처 다이어그램">
+      <img src="awsops-arch.svg" loading="lazy" alt="AWSops 아키텍처 — CloudFront·Lambda@Edge·Cognito 엣지 → VPC Origin → 내부 ALB → Fargate web → Aurora·AgentCore(9 Gateway·MCP)·비동기 워커, 관측 대상은 read-only" />
+    </figure>
+    <p class="arch-rot-hint reveal">모바일에서는 가로 다이어그램을 세로로 회전해 보여드립니다.</p>
+
+    <div class="arch-note reveal">
+      <span><b>흐름</b> 사용자 → CloudFront → VPC Origin → 내부 ALB → Fargate web → (Aurora · AgentCore · 워커)</span>
+      <span><b>포지셔닝</b> read-only 운영 대시보드 + AI 진단 — 인프라 변경은 운영자의 SSM/IaC가 담당</span>
+    </div>
+    <div class="arch-dl reveal">
+      <a href="awsops-arch.drawio" class="btn btn-ghost" download>고해상도 다이어그램 (draw.io) 내려받기 ↓</a>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== TRUST / STACK ===================== -->
+<section class="sec" id="trust">
+  <div class="wrap split">
+    <div>
+      <div class="sec-head reveal" style="margin-bottom:28px">
+        <div class="kicker">보안 자세</div>
+        <h2>변경하지 않기에 <em>안전한</em> 관측.</h2>
+        <p>AWSops는 read-only 운영 대시보드 + AI 진단입니다. mutating·자율 제어 티어는 비활성 플래그 뒤에서 프로토타이핑된 뒤 번복되었습니다 — 인프라 변경 권한은 보유하지 않습니다.</p>
+      </div>
+      <ul class="checklist">
+        <li class="reveal"><span class="ci"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6L9 17l-5-5"/></svg></span><div><h4>비공개 엣지</h4><p>공개 ALB 없음. CloudFront VPC Origin → 내부 ALB(HTTPS) → Fargate, end-to-end TLS.</p></div></li>
+        <li class="reveal"><span class="ci"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6L9 17l-5-5"/></svg></span><div><h4>강한 인증</h4><p>Cognito + Lambda@Edge. RS256 JWKS 서명 검증 + iss/aud/token_use + OAuth state + PKCE public client.</p></div></li>
+        <li class="reveal"><span class="ci"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6L9 17l-5-5"/></svg></span><div><h4>최소 권한</h4><p>EKS는 AmazonEKSViewPolicy(읽기 전용). 외부 데이터소스는 SSRF allowlist로 차단.</p></div></li>
+        <li class="reveal"><span class="ci"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6L9 17l-5-5"/></svg></span><div><h4>저장 데이터 암호화</h4><p>Aurora는 KMS CMK. 마스터 시크릿은 RDS 관리. 설정은 SSM Parameter Store가 단일 진실 원천.</p></div></li>
+      </ul>
+    </div>
+
+    <div class="stack-card reveal">
+      <div class="kicker">기술 스택</div>
+      <h2 style="font-size:22px; margin-bottom:20px">검증된 AWS 매니지드 위에서.</h2>
+      <div class="stack">
+        <span class="s"><b>IaC</b> Terraform</span>
+        <span class="s"><b>Edge</b> CloudFront VPC Origin</span>
+        <span class="s"><b>Auth</b> Cognito · Lambda@Edge</span>
+        <span class="s"><b>Compute</b> ECS Fargate (arm64)</span>
+        <span class="s"><b>Web</b> Next.js 14</span>
+        <span class="s"><b>Data</b> Aurora Serverless v2 · PG17</span>
+        <span class="s"><b>AI</b> Bedrock AgentCore</span>
+        <span class="s"><b>Async</b> SQS · Step Functions</span>
+        <span class="s"><b>Inventory</b> Steampipe sync</span>
+        <span class="s"><b>Compliance</b> Powerpipe</span>
+      </div>
+      <div style="margin-top:26px; padding-top:22px; border-top:1px solid var(--line); display:flex; gap:24px; flex-wrap:wrap">
+        <div><div class="metric"><div class="v num" style="font-size:26px">0.5–4<small> ACU</small></div><div class="l">Aurora 오토스케일</div></div></div>
+        <div><div class="metric"><div class="v num" style="font-size:26px">end-to-end</div><div class="l">TLS 엣지</div></div></div>
+        <div><div class="metric"><div class="v num" style="font-size:26px">$0</div><div class="l">플래그 OFF 시 비용</div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CLOSING CTA ===================== -->
+<section class="wrap cta" id="start">
+  <div class="cta-box reveal">
+    <h2>운영을 <em>하나의 화면</em>으로 옮길 준비가 되셨나요?</h2>
+    <p>AWSops를 직접 둘러보거나, 우리 환경에 맞춘 데모를 받아보세요. 설치는 Terraform 한 번, 운영은 한 화면에서.</p>
+    <div class="hero-actions" style="justify-content:center">
+      <a href="https://github.com/Atom-oh/awsops" class="btn btn-primary">GitHub 저장소 →</a>
+      <a href="#architecture" class="btn btn-ghost">아키텍처 다시 보기</a>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FOOTER ===================== -->
+<footer>
+  <div class="wrap foot-in">
+    <div class="brand" style="gap:9px">
+      <svg class="mark" style="width:24px;height:24px" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="7" fill="#14130F"/>
+        <g stroke="#5F5A4D" stroke-width="1.8"><line x1="9" y1="23" x2="16" y2="12"/><line x1="16" y1="12" x2="24" y2="20"/><line x1="9" y1="23" x2="24" y2="20"/></g>
+        <circle cx="9" cy="23" r="3.2" fill="#FAF9F5"/><circle cx="24" cy="20" r="3.2" fill="#FAF9F5"/>
+        <circle cx="16" cy="12" r="5.4" fill="#D9775733"/><circle cx="16" cy="12" r="3.6" fill="#D97757"/>
+      </svg>
+      <span>AWSops — AWS · Kubernetes 운영 대시보드</span>
+    </div>
+    <div class="mono">Terraform · ECS Fargate · Aurora · Bedrock AgentCore · read-only ops + AI diagnosis</div>
+  </div>
+</footer>
+
+<script>
+  // respect reduced-motion for SVG SMIL (CSS can't disable <animate>)
+  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.querySelectorAll('svg animate, svg animateTransform').forEach(a=>a.remove());
+  }
+  // staggered hero load
+  document.querySelectorAll('.hero .reveal').forEach((el,i)=>{
+    el.style.transitionDelay=(i*90)+'ms';
+  });
+  requestAnimationFrame(()=>document.querySelectorAll('.hero .reveal').forEach(el=>el.classList.add('in')));
+
+  // scroll reveal
+  const io=new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
+  },{threshold:.12, rootMargin:'0px 0px -8% 0px'});
+  document.querySelectorAll('.reveal:not(.in)').forEach((el,i)=>{
+    if(!el.closest('.hero')){ io.observe(el); }
+  });
+</script>
+</body>
+</html>
