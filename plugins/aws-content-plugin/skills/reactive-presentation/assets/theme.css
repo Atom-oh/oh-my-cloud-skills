@@ -1423,10 +1423,10 @@ input[type="range"]::-webkit-slider-thumb {
 /* --- Flow Containers --- */
 .flow-h {
   display: flex;
-  align-items: center;
+  align-items: stretch;   /* all flow-groups share the tallest one's height */
   justify-content: center;
-  gap: 1rem;
-  flex: 1;
+  gap: 1.25rem;
+  margin: auto 0;         /* size to the tallest group, centered vertically in the slide */
 }
 .flow-v {
   display: flex;
@@ -1450,6 +1450,7 @@ input[type="range"]::-webkit-slider-thumb {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;  /* stay vertically centered between equal-height groups */
   flex-shrink: 0;
 }
 .flow-arrow .arrow-label {
@@ -1464,6 +1465,8 @@ input[type="range"]::-webkit-slider-thumb {
   font-weight: 500;
   text-align: center;
   min-width: 120px;
+  width: 100%;             /* fill the group → uniform box width across stages */
+  box-sizing: border-box;
 }
 
 /* --- Icon + Label component --- */
@@ -1525,6 +1528,7 @@ input[type="range"]::-webkit-slider-thumb {
   gap: 0.75rem;
   padding: 1rem;
   border-radius: 8px;
+  flex: 1 1 0;            /* equal width, spread evenly across the row */
 }
 .flow-group .flow-group-label {
   font-size: 0.85rem;
