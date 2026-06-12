@@ -99,6 +99,10 @@ PPT 삽입용 다이어그램은 **캔버스 크기 설정이 필수**입니다.
 
 > 전체 아이콘 목록은 **`references/aws-icons.md`** 참조
 
+**mxgraph에 없는 신규/제품 아이콘 (AgentCore 등):** 스펙에서 `icon: agentcore` 또는
+`icon: "arch:<Service-Name>"`(예: `arch:Amazon-Bedrock`)를 쓰면 `reactive-presentation`의 공유
+아이콘 라이브러리에서 가져와 base64로 임베드합니다(`.drawio` 자체완결). 상세: `references/aws-icons.md` → "공유 아이콘".
+
 ---
 
 ## 색상 가이드 (AWS 공식)

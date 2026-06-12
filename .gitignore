@@ -29,6 +29,8 @@ node_modules/
 !docs/static/img/demos/**/*.png
 # ...and demo deck assets (logos, etc.) shipped under each deck's common/
 !docs/static/demos/**/*.png
+# ...and shared skill AWS icon libraries (official set + product icons like AgentCore)
+!plugins/**/icons/**/*.png
 
 # Test fixtures with fake secrets (triggers GitHub Push Protection)
 tests/fixtures/secret-samples.txt

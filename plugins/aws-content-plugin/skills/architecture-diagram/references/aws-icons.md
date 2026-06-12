@@ -9,6 +9,34 @@ AWS 아이콘의 shape 이름 형식:
 shape=mxgraph.aws4.[service_name]
 ```
 
+## 공유 아이콘 — mxgraph에 없는 신규/제품 아이콘 (AgentCore 등)
+
+draw.io 내장 `mxgraph.aws4.*` 셰이프 세트는 **고정**이라 신규/제품 아이콘(예: **Bedrock AgentCore**)이
+없습니다. 이런 아이콘은 `reactive-presentation` 스킬의 **공유 아이콘 라이브러리**
+(`skills/reactive-presentation/icons/` — 공식 Architecture-Service-Icons SVG + AgentCore 등 제품 PNG)에서
+가져와 **base64 이미지로 임베드**합니다. `layout_aws.py`가 자동 처리하므로 스펙에서 `icon:` 값만 지정하면 됩니다.
+
+| 스펙의 `icon:` 값 | 동작 |
+|------|------|
+| `ec2`, `lambda`, `s3` … | 내장 `mxgraph.aws4.*` 셰이프 (벡터, 기본) |
+| `agentcore` | 공유 라이브러리의 AgentCore PNG를 임베드 (`EMBED_ICONS` 등록) |
+| `arch:Amazon-Bedrock` | 공식 Service 세트에서 `Arch_Amazon-Bedrock_48.svg`를 찾아 임베드 |
+| `arch:<Service-Name>` | 임의의 공식 서비스 아이콘 (`Arch_<Service-Name>_48.svg`) 임베드 |
+
+```yaml
+# 예: AgentCore 레퍼런스 (stages 패턴)
+stages:
+  - {name: "Inference", services: [{id: br, icon: "arch:Amazon-Bedrock", label: "Bedrock"}]}
+  - {name: "Agent",     services: [{id: ac, icon: agentcore, label: "AgentCore"},
+                                    {id: fn, icon: lambda,    label: "Tools"}]}
+```
+
+- 임베드 형식은 draw.io 규약인 `image=data:<mime>,<base64>` (콤마형 — 스타일의 `;` 충돌 회피). PNG/SVG 모두 익스포트에서 정상 렌더됩니다.
+- `.drawio`는 **자체완결**(아이콘이 파일에 박힘)이라 외부 의존 없이 공유·PNG 익스포트 가능.
+- 새 제품 아이콘을 추가하려면: 공유 라이브러리(`reactive-presentation/icons/`)에 파일을 두고 `layout_aws.py`의 `EMBED_ICONS`에 `"shortname": "<상대경로>"`를 등록. `arch:` 접두사는 공식 Service 세트에 한해 등록 없이 바로 사용 가능.
+
+> 이 공유 라이브러리는 reactive-presentation(슬라이드 AWS 아이콘)과 **동일 소스**입니다 — 콘텐츠 스킬 간 아이콘이 일관됩니다.
+
 ## ⚠️ 필수 규칙: 아이콘 라벨 표시
 
 **AWS 아이콘 추가 시 반드시 아이콘 이름을 라벨로 표시해야 합니다.**

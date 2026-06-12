@@ -88,6 +88,9 @@ import sys
 import os
 import json
 import html
+import base64
+import glob
+import functools
 
 # ---- canonical metrics (design-tokens.md) ----
 ICON = 78
@@ -148,6 +151,71 @@ ICONS = {
     "sagemaker":  ("sagemaker", *_GREEN),
 }
 
+# ---- shared AWS icon library (canonical: reactive-presentation/icons) ----
+# draw.io's built-in mxgraph.aws4 shape set is fixed and omits new / product icons
+# (e.g. Bedrock AgentCore). Those live in the sibling reactive-presentation skill's
+# icon library and are SHARED: when a service isn't a built-in shape we embed the
+# official icon as a base64 data URI (shape=image), so the .drawio stays portable.
+_SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_SHARED_ICONS = os.path.normpath(
+    os.path.join(_SKILL_DIR, "..", "reactive-presentation", "icons"))
+_SERVICE_SET = "Architecture-Service-Icons_07312025"
+
+# Short name -> path (relative to _SHARED_ICONS) for icons NOT in mxgraph.aws4.
+# Anything here renders as an embedded image instead of a built-in shape.
+# Bedrock AgentCore product icons + its component icons (Runtime/Gateway/Memory/…).
+_AC = "AgentCore/dark-purple"
+EMBED_ICONS = {
+    "agentcore":                  f"{_AC}/Agentcore.png",
+    "agentcore-runtime":          f"{_AC}/Runtime.png",
+    "agentcore-gateway":          f"{_AC}/Gateway.png",
+    "agentcore-memory":           f"{_AC}/Memory.png",
+    "agentcore-identity":         f"{_AC}/Identity.png",
+    "agentcore-browser":          f"{_AC}/Browser-Tool.png",
+    "agentcore-code-interpreter": f"{_AC}/Code-Interpreter.png",
+    "agentcore-observability":    f"{_AC}/Observability.png",
+    "agentcore-policy":           f"{_AC}/Policy-Engine.png",
+    "agentcore-evaluations":      f"{_AC}/Evaluations.png",
+    "ai-agent":                   f"{_AC}/AI-Agent.png",
+}
+
+
+@functools.lru_cache(maxsize=None)
+def _icon_data_uri(rel_path):
+    """Read a shared icon file and return a draw.io-ready data URI, or None.
+
+    draw.io stores embedded images as `data:<mime>,<base64>` (comma form, no
+    `;base64`) so the URI never contains a `;` that would break style parsing.
+    """
+    full = os.path.join(_SHARED_ICONS, rel_path)
+    if not os.path.isfile(full):
+        return None
+    with open(full, "rb") as fh:
+        raw = fh.read()
+    ext = os.path.splitext(full)[1].lower()
+    mime = {".svg": "image/svg+xml", ".png": "image/png",
+            ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}.get(ext, "image/png")
+    return f"data:{mime},{base64.b64encode(raw).decode('ascii')}"
+
+
+@functools.lru_cache(maxsize=None)
+def _resolve_embed(short):
+    """Map a service short name to a shared-icon relative path, or None.
+
+    - explicit EMBED_ICONS entries (e.g. ``agentcore``)
+    - ``arch:<Service-Name>`` pulls the 48px SVG from the official Service set,
+      e.g. ``arch:Amazon-Bedrock`` -> Arch_Amazon-Bedrock_48.svg
+    """
+    if short in EMBED_ICONS:
+        return EMBED_ICONS[short]
+    if short.startswith("arch:"):
+        name = short[5:]
+        hits = glob.glob(os.path.join(
+            _SHARED_ICONS, _SERVICE_SET, "*", "48", f"Arch_{name}_48.svg"))
+        if hits:
+            return os.path.relpath(hits[0], _SHARED_ICONS)
+    return None
+
 
 def esc(s):
     return html.escape(str(s), quote=True)
@@ -185,6 +253,16 @@ def az_style():
 
 
 def icon_style(short):
+    # Shared-library icons not in mxgraph.aws4 (AgentCore, arch:<Service>) → embed
+    # the official icon as a base64 image so the .drawio stays self-contained.
+    rel = _resolve_embed(short)
+    if rel:
+        uri = _icon_data_uri(rel)
+        if uri:
+            return (f"sketch=0;outlineConnect=0;fontColor={C['title']};dashed=0;"
+                    f"verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;"
+                    f"fontSize=10;fontFamily=Amazon Ember;shape=image;imageAspect=1;"
+                    f"aspect=fixed;image={uri};")
     res, fill, grad = ICONS.get(short, (short, *_ORANGE))
     if fill is None:  # plain shape (users/user) — no resourceIcon frame
         return (f"sketch=0;outlineConnect=0;fontColor={C['title']};gradientColor=none;"
