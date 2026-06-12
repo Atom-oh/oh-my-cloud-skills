@@ -2,7 +2,6 @@
 # Tests that agentcore-creator references REAL Bedrock AgentCore MCP tool names.
 # The `manage_agentcore_*` names never existed on the MCP server; the real API
 # exposes verb-specific tools (create_agent_runtime, gateway_create, memory_create, …).
-# See ADR-009 (F6 follow-up).
 
 ACC="plugins/agentcore-creator"
 
