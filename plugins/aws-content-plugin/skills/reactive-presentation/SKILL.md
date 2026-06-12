@@ -28,7 +28,7 @@ python3 {skill-dir}/scripts/extract_pptx_theme.py <pptx_path> -o {repo}/common/p
 ### Phase 2 — Content Authoring
 **플래닝 질문** (planning 시 확인, 빠진 것만 질문):
 - Topic & audience / Duration(블록당 20-35분 + 5분 휴식) / Target repo(기본 `~/reactive_presentation/`) / Language(KO·EN, 기술용어는 영어) / Aspect ratio(기본 16:9)
-- **Design refs** (REQUIRED, skippable): "참고 디자인(PPTX/PDF/이미지/기존 프레젠테이션 경로)이 있나요? (또는 skip)" → 제공 시 브랜딩+레이아웃 추출(`.pptx`=Phase 1, `.pdf`/이미지=시각 레이아웃 참고). skip 시 CSS-only cover + 기본 theme + **`_presentation.md`에 footer/logo 수동 설정 필수**.
+- **Design refs** (REQUIRED, skippable): "참고 디자인(PPTX/PDF/이미지/기존 프레젠테이션 경로)이 있나요? (또는 skip)" → 제공 시 브랜딩+레이아웃 추출(`.pptx`=Phase 1, `.pdf`/이미지=시각 레이아웃 참고). 기존 프레젠테이션은 `~/oh-my-skill-tester/`도 자동 탐색해 목록 제시. skip 시 CSS-only cover + 기본 theme + **`_presentation.md`에 footer/logo 수동 설정 필수**.
 - **Speaker** (skippable): 이름·직함·소속 → frontmatter `speaker`{name,title,company} (MEMORY.md에 저장·재사용)
 - **Level** (REQUIRED): 100/200/300/400 → frontmatter `level`
 - **Quiz** (skippable): 블록 끝 복습 퀴즈? → frontmatter `quiz`(true/false). 미포함 시 Key Takeaways로 대체. 전체 시간 → `duration`(blocks 합과 일치)
@@ -92,7 +92,7 @@ python3 {skill-dir}/scripts/remarp_to_slides.py issues {repo}/{slug}/ [--json]  
 > ⚠️ 이 단계를 건너뛰고 배포 금지.
 
 ### Phase 8 — Verify
-블록별 점검: 슬라이드 수 일치 · `SlideFramework` 옵션(footer/logoSrc/presenterNotes) · 모든 Canvas ID에 `setupCanvas()` · quiz `data-quiz`/`data-correct` · `../common/` 상대경로 · 언어 · 첫 슬라이드=Session Cover(§0a/§0b, `.title-slide` 아님) · 마지막=Thank You(목차 링크).
+블록별 점검: 슬라이드 수 일치 · `SlideFramework` 옵션(footer/logoSrc/presenterNotes) · 모든 Canvas ID에 `setupCanvas()` · quiz `data-quiz`/`data-correct` · `../common/` 상대경로 · **theme-override.css 링크됨(PPTX 추출 시)** · 언어 · 첫 슬라이드=Session Cover(§0a/§0b, `.title-slide` 아님) · 마지막=Thank You(목차 링크).
 
 > **Screenshot 검증 (필수)**: Playwright MCP로 **FHD 1920×1080**(주 해상도) + **4K 3840×2160**에서 모든 인터랙티브/Canvas 슬라이드 캡처. 확인: 텍스트 가독성·캔버스 비율·오버플로우 없음·컨트롤 표시. 인터랙션(탭/슬라이더/버튼) 후 캡처. **Canvas step 슬라이드는 ArrowDown/Up으로 전체 step 순회하며 각 step 캡처**(겹침·정렬·가독성). N(노트)·F(풀스크린) 스케일링 확인.
 > 스케일링: 고정 1920×1080 디자인 캔버스 + `transform: scale(min(vw/1920, vh/1080))` → FHD/4K 픽셀 일관.
@@ -104,7 +104,7 @@ git add common/ {slug}/ index.html && git commit -m "feat: add {name} interactiv
 GitHub Pages: Settings → Pages → main / root.
 
 ## 작성 규칙·패턴 (상세 — 작성/검증 시 읽기)
-- **[references/authoring-rules.md](references/authoring-rules.md)** — Validation 규칙(§1) · Forbidden AI-tells(§2) · Slide Title Voice(§3) · Interactive 패턴+탭 템플릿+색상 토큰(§4) · Slide Type 결정 + Canvas vs html/diagram(§5) · HTML Architecture flow 패턴(§7)
+- **[references/authoring-rules.md](references/authoring-rules.md)** — Validation 규칙(§1) · Forbidden AI-tells(§2) · Slide Title Voice(§3) · Interactive 패턴+탭 템플릿+색상 토큰(§4) · Slide Type 결정 + Canvas vs html/diagram(§5) · HTML Architecture flow 패턴(§6)
 - `:::canvas`를 쓰기 전 반드시 **[references/canvas-authoring-guide.md](references/canvas-authoring-guide.md)** (DSL 문법, 필수 좌표 공식, fragment 순서). `validate`가 CANVAS_OVERLAP backstop.
 - 뷰어 단축키(←→ Space ↑↓ F N P O S B Esc 1-9): [references/keyboard-shortcuts.md](references/keyboard-shortcuts.md).
 

@@ -103,6 +103,12 @@ slide-framework.js 없이 동작. 색상은 theme.css `.tab-set`/`.tab-btn.activ
     <div class="callout callout-warning"><strong class="text-warning">item-3</strong> — Description</div>
   </div>
 </div>
+<div class="tc" hidden>
+  <div class="card-grid">
+    <div class="callout callout-success"><strong class="text-success">Type A</strong><div class="on-surface-muted">Details here</div></div>
+    <div class="callout callout-info"><strong class="text-accent">Type B</strong><div class="on-surface-muted">Details here</div></div>
+  </div>
+</div>
 :::
 
 :::css
@@ -151,7 +157,7 @@ slide-framework.js 없이 동작. 색상은 theme.css `.tab-set`/`.tab-btn.activ
 |---|---|---|
 | Architecture overview (static) | Diagram Image | draw.io → PNG/SVG, `@img:` |
 | Step-by-step flow (박스 ≤4) | Canvas Animation | `:::canvas` DSL, step ↑↓ |
-| Multi-layer architecture (박스 5+) | HTML Architecture | `:::html` + `:::css` flexbox/grid (§7) |
+| Multi-layer architecture (박스 5+) | HTML Architecture | `:::html` + `:::css` flexbox/grid (§6) |
 | A vs B comparison | Compare Toggle | `.compare-toggle` buttons |
 | Config variants | Tab Content | `.tab-bar` + YAML code |
 | Step-by-step process | Timeline | `.timeline` animated steps |
@@ -190,9 +196,7 @@ slide-framework.js 없이 동작. 색상은 theme.css `.tab-set`/`.tab-btn.activ
 
 ---
 
-## 6. (예약) — 추가 작성 규칙은 이 문서에 누적
-
-## 7. HTML Architecture 패턴 (박스 5+ 필수)
+## 6. HTML Architecture 패턴 (박스 5+ 필수)
 
 ```markdown
 ## Service Pipeline
