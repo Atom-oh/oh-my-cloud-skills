@@ -2,6 +2,7 @@
 name: presentation-agent
 description: Presentation format dispatcher. Routes to reactive-presentation-agent for web/HTML slides or provides PPTX fallback guidance. Triggers on "create presentation", "create slides", "make slideshow", "프레젠테이션 만들어", "슬라이드 만들어", "발표 자료". Low priority for PPTX — if a dedicated PPTX agent is available, defer to it.
 tools: AskUserQuestion
+model: sonnet
 ---
 
 # Presentation Agent (Dispatcher)
