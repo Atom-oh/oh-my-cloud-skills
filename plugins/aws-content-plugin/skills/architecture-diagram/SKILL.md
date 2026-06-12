@@ -17,6 +17,7 @@ AWS 아키텍처 다이어그램을 생성하는 스킬. **세 가지 모드**�
 | **스펙 생성기 (권장)** | `scripts/layout_aws.py` 로 YAML 스펙 → .drawio | **좌표 자동계산** · Multi-AZ 미러 대칭 보장 · 항상 게이트 통과 | VPC/Multi-AZ/티어 · 서버리스/파이프라인 패턴 (가장 흔함) |
 | **XML 직접 작성** | Write 도구로 .drawio 파일 생성 | 완전한 자유도 | 생성기 패턴에 안 맞는 비정형 구조 |
 | **Draw.io MCP** | MCP로 실시간 편집 | 대화형 수정, 실시간 미리보기 | 선택적 (설정 필요) |
+| **스케치 (Excalidraw)** | `scripts/excalidraw_gen.py` 로 YAML 스펙 → 로컬 `.excalidraw` | 손그림/화이트보드 미학, 같은 공유 아이콘(AgentCore 포함) | 브레인스토밍·개념도·캐주얼 느낌 (정식 인프라도는 drawio 권장) |
 
 > **왜 스펙 생성기인가**: PPT 대비 품질 격차의 근본 원인은 *LLM이 픽셀 좌표를 직접 찍는 것*입니다
 > (LLM이 가장 약한 2D 공간 배치). 범용 자동배치 엔진(D2/ELK, Python diagrams/Graphviz)도
@@ -53,6 +54,17 @@ xvfb-run -a drawio -x -f png -s 2 -o output.png output.drawio
 - 아이콘 레지스트리·색상·간격은 전부 `design-tokens.md` 정본을 따름 (생성기에 내장).
 - 골든 예시: **`examples/`** — `multi-az-3tier`·`eks-multi-az`(vpc), `serverless-api`(stages), `multi-region-dr`(regions), `hybrid-dx`(onprem). 스펙+drawio 쌍, 복사해서 수정.
 - Transit Gateway 메시 등 위 4패턴에 안 맞는 비정형 구조만 XML 직접 작성 모드를 사용.
+
+### 스케치 출력 (Excalidraw) — 화이트보드 미학
+
+손그림/화이트보드 느낌이 필요하면 같은 `stages` 스펙을 로컬 `.excalidraw`로 출력합니다 (서버 불필요):
+```bash
+python3 scripts/excalidraw_gen.py my-spec.yaml -o output.excalidraw
+# → excalidraw.com / VSCode Excalidraw 확장 / Obsidian 에서 열어 편집
+```
+- 공유 아이콘 라이브러리(reactive-presentation/icons — 공식 Service + **AgentCore**)를 image로 임베드 → 자체완결.
+- `icon:` 어휘는 layout_aws.py와 동일 (`agentcore`, `arch:Amazon-Bedrock`, 공통 short names). Excalidraw는 내장 AWS 셰이프가 없어 **모든 아이콘이 임베드 이미지**입니다.
+- 정식 인프라 다이어그램(충실도 우선)은 drawio(`layout_aws.py`)를 권장 — bake-off 기준 drawio 우위. 스케치는 브레인스토밍·개념 설명용.
 
 ---
 
@@ -98,6 +110,10 @@ PPT 삽입용 다이어그램은 **캔버스 크기 설정이 필수**입니다.
 | Integration | SQS, SNS, EventBridge, Step Functions |
 
 > 전체 아이콘 목록은 **`references/aws-icons.md`** 참조
+
+**mxgraph에 없는 신규/제품 아이콘 (AgentCore 등):** 스펙에서 `icon: agentcore` 또는
+`icon: "arch:<Service-Name>"`(예: `arch:Amazon-Bedrock`)를 쓰면 `reactive-presentation`의 공유
+아이콘 라이브러리에서 가져와 base64로 임베드합니다(`.drawio` 자체완결). 상세: `references/aws-icons.md` → "공유 아이콘".
 
 ---
 
