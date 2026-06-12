@@ -100,7 +100,7 @@ slide-framework.js 없이 동작. 색상은 theme.css `.tab-set`/`.tab-btn.activ
 <div class="tc" hidden>
   <div class="card-grid">
     <div class="callout callout-info"><strong class="text-info">item-1</strong> — Description</div>
-    <div class="callout callout-warning"><strong class="text-warning">item-3</strong> — Description</div>
+    <div class="callout callout-warning"><strong class="text-warning">item-2</strong> — Description</div>
   </div>
 </div>
 <div class="tc" hidden>
