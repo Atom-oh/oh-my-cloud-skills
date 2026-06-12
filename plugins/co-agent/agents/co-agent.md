@@ -2,6 +2,7 @@
 name: co-agent
 description: "Collaborate with other AI agents (Kiro CLI, Codex, Gemini) for a second opinion, with Claude as chair. Three modes — multi-AI code/architecture review, decision support when the user is unsure, and ADR co-authoring. Triggers on multi-AI intent only — \"co-agent\", \"second opinion\", \"다른 AI\", \"다른 AI로 리뷰\", \"AI 협업\", \"AI 패널\", \"멀티 AI\", \"잘 모르겠어\" (decision help), \"ADR 협업\" — NOT on bare \"code review\"/\"decide\"/\"adr\" (use /co-agent for those)."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
+model: fable
 skills:
   - co-agent
 ---

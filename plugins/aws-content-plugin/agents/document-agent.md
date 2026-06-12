@@ -2,6 +2,7 @@
 name: document-agent
 description: Technical document and report generation agent. Creates professional markdown documents, technical reports, solution comparisons, and architecture documentation. Triggers on "create document", "write report", "guide document", "comparison document", "write guide", "technical report" requests.
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
+model: sonnet
 ---
 
 # Document Agent

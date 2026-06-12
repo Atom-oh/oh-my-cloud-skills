@@ -12,365 +12,73 @@ allowed-tools:
 
 # Reactive Presentation
 
-Build interactive HTML slideshow presentations deployed via GitHub Pages. No build tools required — pure HTML/CSS/JS with a shared framework for navigation, animations, and quizzes. Supports PPTX template theme extraction and Remarp format for content authoring. Marp markdown is supported for legacy file maintenance only.
+Build interactive HTML slideshows deployed via GitHub Pages. No build tools — pure HTML/CSS/JS with a shared framework (nav, animations, quizzes). Authoring format is **Remarp markdown** (Marp = legacy maintenance only).
 
-> **Path variable**: `{skill-dir}` in this document = `{plugin-dir}/skills/reactive-presentation` in agent documents.
+> `{skill-dir}` = `{plugin-dir}/skills/reactive-presentation`. New to Remarp? See [REMARP.md](REMARP.md).
+> **상세 작성 규칙·표·복사용 템플릿은 [references/authoring-rules.md](references/authoring-rules.md)** (validation 규칙, Forbidden AI-tells, Interactive 패턴/탭 템플릿, Slide Type 결정, HTML Architecture). 실제 슬라이드를 작성·검증할 때 이 문서를 읽으세요.
 
-> **New to Remarp?** See [REMARP.md](REMARP.md) for a quick introduction and 5-minute getting started guide.
+## Workflow (9 phases)
 
-## Workflow
-
-### Phase 1: Theme Setup (optional — when PPTX template provided)
-
-If the user provides a `.pptx` template file, extract theme elements:
-
+### Phase 1 — Theme Setup (optional, PPTX 제공 시)
 ```bash
 python3 {skill-dir}/scripts/extract_pptx_theme.py <pptx_path> -o {repo}/common/pptx-theme/
 ```
+생성물: `theme-manifest.json`(colors/fonts/logos/footer/layout) · `theme-override.css` · `images/`. 매니페스트 매핑 → `_presentation.md`: `slide_size.aspect_ratio`→`ratio`, `footer_text`→`theme.footer`, `logos[0]`→`theme.logo`. `theme-override.css`를 `common/`에 복사. 상세: [references/pptx-theme-guide.md](references/pptx-theme-guide.md). (AWS 아이콘은 build가 참조분만 자동 복사 — 수동 추출 불필요.)
 
-This generates:
-- `theme-manifest.json` — extracted colors, fonts, logos, footer text, master texts, layout details
-- `theme-override.css` — CSS variable overrides for the dark theme
-- `images/` — extracted logos and background images
+### Phase 2 — Content Authoring
+**플래닝 질문** (planning 시 확인, 빠진 것만 질문):
+- Topic & audience / Duration(블록당 20-35분 + 5분 휴식) / Target repo(기본 `~/reactive_presentation/`) / Language(KO·EN, 기술용어는 영어) / Aspect ratio(기본 16:9)
+- **Design refs** (REQUIRED, skippable): "참고 디자인(PPTX/PDF/이미지/기존 프레젠테이션 경로)이 있나요? (또는 skip)" → 제공 시 브랜딩+레이아웃 추출(`.pptx`=Phase 1, `.pdf`/이미지=시각 레이아웃 참고). 기존 프레젠테이션은 `~/oh-my-skill-tester/`도 자동 탐색해 목록 제시. skip 시 CSS-only cover + 기본 theme + **`_presentation.md`에 footer/logo 수동 설정 필수**.
+- **Speaker** (skippable): 이름·직함·소속 → frontmatter `speaker`{name,title,company} (MEMORY.md에 저장·재사용)
+- **Level** (REQUIRED): 100/200/300/400 → frontmatter `level`
+- **Quiz** (skippable): 블록 끝 복습 퀴즈? → frontmatter `quiz`(true/false). 미포함 시 Key Takeaways로 대체. 전체 시간 → `duration`(blocks 합과 일치)
 
-After extraction, read `theme-manifest.json` and apply in every block HTML:
-- **`slide_size.aspect_ratio`** → `_presentation.md` frontmatter `ratio:` 필드에 반영 (e.g. `ratio: "16:9"`). **이 값이 누락되면 VSCode Extension 프리뷰에서 비율이 깨집니다.**
-- **`footer_text`** → `SlideFramework({ footer: manifest.footer_text })` — deduplicated footer from placeholder + master text shapes
-- **`master_texts`** → additional branding text from slide master (copyright, event name, confidentiality notices); `is_footer_area: true` marks text in bottom 15%
-- **`layout_details`** → reference original PPTX layout structure (Title Slide → §0a cover, Section Header → §1 title)
-- **`logos[0].filename`** → `SlideFramework({ logoSrc: './common/pptx-theme/images/...' })`
+**프로젝트 구조** (멀티파일): `_presentation.md`(글로벌 theme/footer/logo/blocks) + `NN-block.md`(remarp:true) + `animations/`(Canvas JS).
 
-Copy `theme-override.css` into `common/` alongside `theme.css`. Review the manifest and adjust colors/logo positioning if needed.
+> **`_presentation.md` 필수 (ratio/footer/logo)**: `ratio: "16:9"` 누락 시 프리뷰 비율 깨짐. PPTX 없으면 `theme:`에 `footer`·`logo` 수동 설정:
+> ```yaml
+> ratio: "16:9"
+> theme: { footer: "© 2026 Company. All rights reserved.", logo: "./common/logo.png" }
+> ```
 
-> **Note**: AWS Architecture Icons은 `remarp_to_slides.py build`가 HTML에서 참조된 아이콘만 자동으로 `common/aws-icons/`에 복사합니다. 수동 추출은 불필요합니다.
-> 디버깅/확인 용도로만 `extract_aws_icons.py`를 사용하세요.
+**Remarp 핵심**: `remarp: true` frontmatter · `@type`/`@layout`/`@transition`/`@theme` 디렉티브 · `{.click}`·`:::click` 프래그먼트 · `:::notes` 스피커 노트 · `:::canvas` DSL · `::: left`/`::: right` 컬럼. 전체 문법: [references/remarp-format-guide.md](references/remarp-format-guide.md).
 
-### Phase 2: Content Authoring
+> **스피커 노트 (필수)**: 모든 슬라이드에 `:::notes` — 150자+ (권장 300~500), `{timing}`/`{cue}` 마커 + `[요약]`(3~5 불릿) + 구어체 스크립트. 누락/무구조 시 `MISSING_NOTES`/`NOTE_STRUCTURE` 경고. 스키마: remarp-format-guide.md "Structured Note Schema".
 
-Plan the presentation structure with the user. **Ask these questions during planning:**
-- **Topic & audience** — technical depth, pain points, learning objectives
-- **Duration** — determines block count and slide count (see slide-patterns.md for pacing)
-- **Blocks** — split into 20-35 min blocks with 5 min breaks
-- **Target repo** — GitHub repo for deployment (default: `~/reactive_presentation/`)
-- **Language** — Korean or English (technical terms always English)
-- **Aspect ratio** — confirm 16:9 (default). The framework enforces 16:9 with letterboxing on non-16:9 displays
-- **Design & layout references** (REQUIRED, skippable) — "참고할 디자인 자료가 있으신가요? PPTX, PDF, 이미지, 또는 기존 프레젠테이션 경로를 알려주세요. (또는 'skip')"
-  - Provided → 제공된 자료에서 **브랜딩 + 레이아웃** 모두 추출하여 반영:
-    - `.pptx` → Phase 1 테마 추출 실행: 색상, 로고, 폰트 + **Slide Master 레이아웃** (플레이스홀더 배치, 폰트 계층 구조, 여백/간격, 타이틀/본문 위치) + `layout_details`로 PPTX 레이아웃→슬라이드 타입 매핑 참고
-    - `.pdf` / 이미지 → 시각적 레이아웃, 색상 배치, 콘텐츠 밀도, 타이포그래피 참고
-    - 기존 프레젠테이션 경로 (slides.json, HTML, animations/ JS) → 슬라이드 타입 배치, body HTML 구조, Canvas 애니메이션 패턴, CSS 클래스 활용 참고
-  - "skip" → CSS-only fallback cover §0b + 기본 테마(theme.css) + slide-patterns.md 표준 패턴으로 진행. **PPTX 없이 진행 시 `_presentation.md`의 `theme:` 섹션에 `footer`와 `logo`를 반드시 수동 설정** (아래 예시 참조)
-  - **자동 탐색**: `~/oh-my-skill-tester/` 내 기존 프레젠테이션이 있으면 목록을 보여주고 참고 여부를 확인
-- **Speaker info** (REQUIRED, skippable) — "발표자 이름, 직함/소속? (또는 'skip')"
-  - Provided → store in `MEMORY.md` for reuse across sessions. Used in the session cover slide (see slide-patterns.md §0a)
-  - "skip" → omit speaker section from cover
-  - Already in `MEMORY.md` → confirm with user or reuse
-  - → frontmatter `speaker` object에 저장 (`name`, `title`, `company`)
-- **Target level** (REQUIRED) — "대상 기술 수준은? (100/200/300/400 또는 입문/중급/고급/전문가)"
-  - → frontmatter `level` 필드에 저장
-- **Quiz inclusion** (REQUIRED, skippable) — "각 블록 끝에 복습 퀴즈를 포함할까요? (yes/no 또는 'skip' 입력 시 퀴즈 미포함)"
-  - "yes" → 각 블록 끝에 Quiz 슬라이드 (3-4문항) 포함
-  - "no" / "skip" → 퀴즈 미포함. Block summary는 Key Takeaways 또는 Summary 슬라이드로 대체
-  - → frontmatter `quiz` 필드에 저장 (true/false)
-  - → frontmatter `duration` 필드에 전체 시간(분) 저장 — blocks duration 합산과 일치해야 함
+> ⚠️ **Interactive-First**: 3+ 하위항목→탭 · 4+ 나열→grid 카드(불릿 금지) · 5+ 박스→`:::html`+`:::css`(canvas 금지) · `:::html`은 3+ 동위요소면 `fragment fade-up`로 reactive. 원칙·탭 템플릿·색상 토큰: **authoring-rules.md §4**.
 
-Remarp 마크다운으로 콘텐츠를 작성합니다 (기본). Remarp는 프래그먼트 애니메이션, Canvas DSL, 풍부한 스피커 노트, 슬라이드 전환 효과를 마크다운에서 직접 제어하는 차세대 포맷입니다.
+**대안 포맷** (명시 요청 시만): slides.json(런타임 렌더, slide-patterns.md "JSON Authoring Mode") · Marp(레거시, marp-format-guide.md).
 
-**멀티파일 프로젝트 구조:**
-```
-{slug}/
-├── _presentation.md           ← 글로벌 설정 (theme, footer, logo)
-├── 01-fundamentals.md         ← 블록 1
-├── 02-deep-dive.md            ← 블록 2
-└── animations/                ← Canvas 애니메이션 JS 모듈 (해당 시)
-    └── slide-05-flow.js
-```
-
-> **`_presentation.md` 필수 설정 (ratio / footer / logo)**:
-> - **`ratio` (필수)**: `_presentation.md` frontmatter에 반드시 `ratio: "16:9"` 포함. 이 값이 없으면 VSCode Extension 프리뷰에서 슬라이드 비율이 깨지고, CSS 변수 `--slide-ratio-w/h`가 설정되지 않습니다.
->   - PPTX 있는 경우: `theme-manifest.json`의 `slide_size.aspect_ratio` 값 사용
->   - PPTX 없는 경우: `ratio: "16:9"` (기본값)
-> - **PPTX 있는 경우**: Phase 1에서 `theme-manifest.json`의 `footer_text` → `theme.footer`, `logos[0].filename` → `theme.logo`로 자동 반영
-> - **PPTX 없는 경우**: `_presentation.md`의 `theme:` 섹션에 반드시 수동 설정:
->   ```yaml
->   ratio: "16:9"
->   theme:
->     footer: "© 2026 Company Name. All rights reserved."
->     logo: "./common/logo.png"
->   ```
-> - ratio/footer/logo가 누락되면 프리뷰 비율 깨짐 및 `SlideFramework` 초기화에서 해당 옵션이 빠져 빈 영역으로 렌더링됩니다.
-
-> `.md` 확장자 사용 (이전: `.remarp.md`). `remarp: true` frontmatter로 일반 마크다운과 구분됩니다. `.remarp.md` 확장자도 하위호환 지원.
-
-**핵심 기능:**
-- `remarp: true` frontmatter로 시작
-- `@type`, `@layout`, `@transition` 슬라이드 디렉티브
-- `{.click}` 인라인 프래그먼트 + `:::click` 블록 애니메이션
-- `:::notes` 블록으로 스피커 노트 (타이밍, 큐 마커 지원)
-
-> **스피커 노트 품질 기준 (필수)**:
-> 모든 슬라이드에는 반드시 `:::notes` 블록을 포함하며, 다음 기준을 충족해야 합니다:
-> - **분량**: 슬라이드당 최소 150자, 권장 300~500자 (발표 시 1~3분 분량)
-> - **구조**: `{timing: Nmin}` 마커로 시작 → 도입 멘트 → 핵심 포인트 설명 (슬라이드에 없는 보충 설명, 예시, 비유 포함) → 청중 인터랙션 큐 (`{cue: question}`, `{cue: pause}`) → 전환 멘트
-> - **톤**: 발표자가 그대로 읽어도 자연스러운 구어체. "~입니다", "~해보겠습니다" 스타일
-> - **내용**: 슬라이드 텍스트를 반복하지 말고, 왜 중요한지, 실무에서 어떻게 적용하는지, 흔한 실수나 팁을 보충
-> - **전환**: 마지막에 `{cue: transition}` + 다음 슬라이드로 이어지는 브릿지 문장
->
-> **구조화된 노트 스키마 (권장)**: 콘텐츠 슬라이드의 `:::notes`는 `{timing}`/`{cue}` 마커 →
-> `[요약]` (3~5개 한 줄 불릿) → 발표 스크립트(존댓말) → `[약어]`(필요 시) → `[출처]`(수치/벤치마크 인용 시)
-> `[변경이력]`(선택) 계층형 스키마를 따르는 것을 권장합니다. 특히 `[요약]` 블록은 콘텐츠 슬라이드에 권장되며,
-> 누락 시 `validate`의 `NOTE_STRUCTURE` 린트가 경고합니다. 전체 스키마와 예시는
-> [references/remarp-format-guide.md](references/remarp-format-guide.md)의 "Structured Note Schema" 참조.
->
-> **슬라이드 제목 보이스 (권장)**: 슬라이드 제목(`## heading`)은 1초 안에 읽히는 **헤드라인**으로 작성합니다 —
-> 단정/주장/질문/반전 형태로 **엣지**를 담고 **28자 이하**로 유지합니다. 부제목은 **체언 종결**
-> (명사형 어미: `~화/~등극/~재편/~본격화` …)로 **45자 이하**로 작성합니다.
-> ✅ "비용은 싸졌고, 모델은 똑똑해졌다"  ❌ "2026년 Frontier AI 모델 동향"(밋밋한 라벨).
-> **레벨 게이트**: `level` 100~200(브리핑/개요)에서는 헤드라인 보이스를 권장하고,
-> `level` 300~400(기술 심화)에서는 명확한 서술형 제목(API 이름·설정 키 등)도 허용합니다.
-> 제목이 28자를 초과하면 `validate`의 `TITLE_LENGTH` 린트가 경고합니다.
-> 전체 가이드와 예시는 [references/slide-patterns.md](references/slide-patterns.md)의 "Slide Title Voice" 참조.
-- `:::canvas` DSL로 선언적 Canvas 애니메이션
-- `::: left`/`::: right` 컬럼 레이아웃
-
-See [references/remarp-format-guide.md](references/remarp-format-guide.md) for full format specification.
-
-> ⚠️ **Interactive-First 원칙**: 데이터가 많은 슬라이드일수록 `:::html` 블록으로 interactive하게 만들어야 합니다.
-> - 3+ 하위 항목 → **탭으로 분리** (자체 완결 inline onclick 패턴 사용)
-> - 4+ 나열 항목 → **grid 카드 배치** (불릿 리스트 금지)
-> - 5+ 박스 다이어그램 → **`:::html` + `:::css`** (canvas DSL 금지)
-> - 일반 1-2문장 슬라이드만 Remarp 마크다운 그대로 사용
->
-> 구체적인 패턴과 복사-붙여넣기 템플릿: 아래 "Interactive Design 원칙" 섹션 참조.
->
-> ⚠️ **`:::html` 블록은 반드시 reactive해야 합니다.** 3개 이상의 동위 요소가 있으면
-> `class="fragment fade-up" data-fragment-index="N"`으로 순차 등장을 적용하세요.
-> 정적 HTML은 프레젠테이션의 핵심 가치를 훼손합니다.
-> 자세한 패턴: `remarp-format-guide.md` → ":::html Reactive 패턴" 섹션.
-
-**Alternative Formats (명시적 요청 시에만):**
-
-**slides.json** — 사용자가 JSON 런타임 렌더링을 명시적으로 요청할 때만 사용합니다. 각 블록별 `slides.json` 파일을 작성하면 `slide-renderer.js`가 런타임에 HTML을 생성합니다.
-- JSON 스키마: [references/slide-patterns.md](references/slide-patterns.md) → "JSON Authoring Mode" 섹션
-
-**Marp Markdown (레거시)** — 기존 Marp 파일 유지보수 또는 사용자가 Marp를 명시적으로 요청할 때만 사용합니다.
-- See [references/marp-format-guide.md](references/marp-format-guide.md) for full format specification.
-
-### Phase 2.5: Convert Existing PPTX/PDF (optional)
-
-기존 PPTX 또는 PDF 파일을 Remarp 프로젝트로 변환합니다. 변환된 `.md` 파일을 편집한 후 Phase 3에서 HTML을 빌드합니다.
-
+### Phase 2.5 — Convert PPTX/PDF (optional)
 ```bash
-# PPTX → Remarp 프로젝트 (테마 자동 추출 포함)
-python3 {skill-dir}/scripts/convert_to_remarp.py <input.pptx> -o {repo}/{slug}/ --lang ko
-
-# PDF → Remarp 프로젝트 (이미지 배경 + 텍스트 추출)
-python3 {skill-dir}/scripts/convert_to_remarp.py <input.pdf> -o {repo}/{slug}/ --lang ko
-
-# 변환 + 즉시 HTML 빌드
-python3 {skill-dir}/scripts/convert_to_remarp.py <input.pptx> -o {repo}/{slug}/ --build
-
-# 블록 분할 크기 지정 (기본: Section Header 기반, 없으면 15 슬라이드씩)
-python3 {skill-dir}/scripts/convert_to_remarp.py <input.pptx> -o {repo}/{slug}/ --block-size 10
-
-# 기존 변환 결과 덮어쓰기 (타임스탬프 .bak 백업 생성)
-python3 {skill-dir}/scripts/convert_to_remarp.py <input.pptx> -o {repo}/{slug}/ --force
+python3 {skill-dir}/scripts/convert_to_remarp.py <input.pptx|pdf> -o {repo}/{slug}/ --lang ko
+#   --build(즉시 빌드) · --block-size N(분할) · --force(덮어쓰기+.bak)
 ```
+변환 후 `.md`에서 `@speaker`/`{.click}`/`:::canvas`/`@type` 자유 편집. PDF는 이미지 배경+추출 텍스트.
 
-**변환 결과물:**
-```
-{slug}/
-├── _presentation.md       ← 글로벌 설정 (theme, blocks)
-├── 01-introduction.md     ← 블록 1 (remarp: true)
-├── 02-deep-dive.md        ← 블록 2
-├── assets/                ← 추출된 이미지
-│   ├── slide-00-logo.png
-│   └── slide-03-diagram.png
-└── _theme/{stem}/         ← 추출된 테마 (PPTX만)
-    ├── theme-manifest.json
-    ├── theme-override.css
-    └── images/
-```
-
-**변환 후 편집**: 생성된 `.md` 파일에서 `@speaker`, `{.click}` 프래그먼트, `:::canvas` DSL, `@type: quiz` 등을 자유롭게 추가/수정할 수 있습니다. Remarp 문법은 [references/remarp-format-guide.md](references/remarp-format-guide.md) 참조.
-
-**PDF 변환 참고**: PDF 슬라이드는 이미지 배경(`@background: assets/page-NN.png`) + 추출 텍스트로 변환됩니다. 정확한 텍스트가 필요하면 `@background`를 제거하고 텍스트를 직접 작성하세요.
-
-### Phase 2.8: Automated Validation — Rejection Loop (필수)
-
-> **LLM 공간 추론 한계 극복**: 언어 모델은 텍스트 기반 추론에 최적화되어 있어 2D 캔버스 위의
-> 레이아웃, 정렬, 요소 겹침 등 공간적 오류를 자가 감지하지 못합니다.
-> `validate` 명령은 **외부화된 거절 루프(Rejection Loop)** 역할을 하여
-> 빌드 전에 구조적/인지적 결함을 기계적으로 검출합니다.
-
-Remarp 마크다운 작성 후, **HTML 빌드 전에** 반드시 검증을 실행합니다:
-
+### Phase 2.8 — Validate (Rejection Loop, 필수 — build 전)
 ```bash
 python3 {skill-dir}/scripts/remarp_to_slides.py validate {repo}/{slug}/
 ```
+> ⚠️ **CRITICAL 0건이어야 build**. 규칙 표·Verdict·자동교정 지침: **authoring-rules.md §1**. CRITICAL 있으면 수정 후 재검증(최대 3회).
 
-**검증 규칙 (거절 기준)**:
-
-| 규칙 | 심각도 | 검사 내용 | 자동 교정 지침 |
-|------|--------|---------|-------------|
-| `TYPE_MISMATCH` | WARNING | 번호+시간 패턴이 있는데 `@type: agenda` 누락 | `@type: agenda` 추가 |
-| `INTERACTIVE_FIRST` | WARNING | 불릿 4+ → 카드/탭 미사용 | `:::html` grid 카드 또는 탭 패턴으로 변환 |
-| `CONTENT_OVERFLOW` | CRITICAL | 불릿 8+ 또는 요소 12+ (한 슬라이드) | 다수 슬라이드로 분할 |
-| `CANVAS_COMPLEXITY` | CRITICAL/WARN | 캔버스 시각 요소 5+/8+ | `:::html` + `:::css` + flow 유틸리티로 전환 |
-| `CANVAS_OVERLAP` | CRITICAL | 캔버스 요소 바운딩 박스 겹침 | 좌표 조정 (최소 40px 간격) |
-| `FRAGMENT_ORDER` | WARNING | 다단 레이아웃 + 명시적 `order=N` 없음 | `{.click order=N}` 추가 (td-lr 순서) |
-| `MISSING_NOTES` | WARNING | `:::notes` 블록 누락 | 150자+ 스피커 노트 작성 |
-| `NOTE_STRUCTURE` | WARNING | 콘텐츠 슬라이드 노트에 `[요약]` 계층 없음 | `:::notes` 상단에 `[요약]` (3~5 불릿) 추가 |
-| `TITLE_LENGTH` | WARNING | 슬라이드 제목 28자 초과 (헤드라인으로 부적합) | 28자 이하 헤드라인으로 축약, 세부는 부제목/본문으로 (Slide Title Voice 참조) |
-| `STATIC_HTML` | WARNING | `:::html` 요소 3+ 이나 fragment 없음 | `fragment fade-up` + `data-fragment-index` 추가 |
-
-**거절 루프 프로세스**:
-```
-Remarp 작성 → validate 실행 → CRITICAL 있으면?
-  ├─ Yes → 수정 후 재검증 (최대 3회)
-  └─ No → WARNING 검토 → 수정 또는 의도적 무시 → Phase 3 빌드 진행
-```
-
-**Verdict**:
-- `❌ REJECT` — CRITICAL 1개 이상 → 빌드 진행 금지, 반드시 수정
-- `⚠️ REVIEW` — WARNING 6개 이상 → 수정 권장
-- `⚠️ PASS WITH WARNINGS` — WARNING 1-5개 → 선택적 수정
-- `✅ PASS` — 이슈 없음 → 빌드 진행
-
-> ⚠️ **이 단계를 건너뛰고 빌드하면 프랑켄슈타인 레이아웃이 생성됩니다.**
-> CRITICAL 이슈가 있는 상태에서 `build`를 실행하지 마세요.
-
-### Forbidden — AI-slide tells (피해야 할 AI 슬라이드 티)
-
-> 아래는 "AI가 만든 티"가 나는 안티패턴을 한 곳에 모은 **단일 레퍼런스**입니다.
-> 각 tell은 이를 강제하는 **lint 규칙 id**(기계 검출) 또는 리뷰 게이트(사람/`content-review-agent`)에
-> 연결됩니다. 규칙 상세는 위 "Phase 2.8" 표를, 색상 토큰은 "Interactive Design 원칙"을 참조하세요.
-
-| 안티패턴 (AI-slide tell) | 왜 티가 나는가 | 대신 | 강제 (lint rule / gate) |
-|--------------------------|----------------|------|--------------------------|
-| 하드코딩 hex (생 6자리 색상값) | 테마 토큰 무시, 단일 테마 고착 | `var(--accent)` 등 시맨틱 역할 토큰 | `RAW_HEX` (lint) |
-| 인라인 색상/여백 style (`style=`에 color/padding 직접 기입) | 토큰 시스템 우회, 일관성 붕괴 | 토큰 클래스 (`.card-grid`, `.metric-card`) + `:::css` | `INLINE_STYLE` (lint) |
-| 생(raw) rgba 색상 함수 | 테마 적응 불가, 하드코딩 그림자/오버레이 | `var(--surface-*)`, `color-mix()` 토큰 | `RAW_RGBA` (lint) |
-| 매직넘버 타입/오프스케일 여백 (4·8px 스케일 밖의 px) | 들쭉날쭉한 간격 | 스페이싱 스케일 토큰 (`var(--space-*)`) | `OFF_SCALE` (lint) + 토큰 시스템 |
-| 텍스트 벽 불릿 (8+ 줄) | 한 슬라이드 과부하, 읽히지 않음 | 슬라이드 분할 또는 카드/탭 분리 | `CONTENT_OVERFLOW` (lint) |
-| 다크 전용 / 제네릭 blue-teal 기본 | "AI 기본 테마" 인상 | **light 기본** 듀얼 테마 + 역할 토큰 | dual-theme (light default) |
-| 그라데이션 텍스트 헤딩 · 장식용 gradient orb · 빈 하단 영역 | 의미 없는 장식, 정보 밀도 0 | 콘텐츠/시각 계층으로 영역 채우기, 장식 제거 | 가이드 (자동 lint 미적용 — 리뷰 게이트) |
-| 서술형 백과사전 톤 제목 ("2026년 Frontier AI 모델 동향") | 밋밋한 라벨, 엣지 없음 | 단정/주장/질문/반전 헤드라인 (28자 이하) | Slide Title Voice (리뷰 게이트) + `TITLE_LENGTH` (길이만 lint) |
-| 자유형 / 누락 스피커 노트 | 발표 불가, 구조 없음 | `[요약]` 5계층 구조 노트 (150자+) | `NOTE_STRUCTURE` / `MISSING_NOTES` (lint) |
-
-> 규칙 id가 붙은 항목은 `validate`가 기계적으로 잡아냅니다 (빌드 전 거절 루프).
-> 게이트 항목(장식·제목 보이스)은 자동 lint가 없으므로 `content-review-agent` 리뷰에서 감점됩니다.
-
-### Phase 3: HTML Generation
-
-Remarp 프로젝트 디렉토리를 빌드합니다:
+### Phase 3 — Build
 ```bash
-# 전체 빌드
-python3 {skill-dir}/scripts/remarp_to_slides.py build {repo}/{slug}/
-
-# 특정 블록만 빌드
+python3 {skill-dir}/scripts/remarp_to_slides.py build {repo}/{slug}/          # 전체
 python3 {skill-dir}/scripts/remarp_to_slides.py build {repo}/{slug}/ --block 01-fundamentals
-
-# 변경된 블록만 빌드 (증분 빌드)
-python3 {skill-dir}/scripts/remarp_to_slides.py sync {repo}/{slug}/
-
-# Marp에서 Remarp로 마이그레이션
-python3 {skill-dir}/scripts/remarp_to_slides.py migrate content.md -o {repo}/{slug}/
-
-# 이슈 어노테이션 목록 추출
-python3 {skill-dir}/scripts/remarp_to_slides.py issues {repo}/{slug}/
-
-# JSON 형식으로 이슈 추출
-python3 {skill-dir}/scripts/remarp_to_slides.py issues {repo}/{slug}/ --json
+python3 {skill-dir}/scripts/remarp_to_slides.py sync  {repo}/{slug}/          # 변경분만(증분)
+python3 {skill-dir}/scripts/remarp_to_slides.py issues {repo}/{slug}/ [--json]  # 이슈 어노테이션
 ```
 
-**Alternative Formats (명시적 요청 시에만):**
+### Phase 4 — Review & Iterate
+콘텐츠 생성 후 사용자에게 선택지를 제시: ① Remarp 직접 수정 후 "반영해주세요"(→ Claude가 읽고 `sync`) · ② 프롬프트로 수정 요청(→ Remarp+HTML 동시 수정) · ③ 진행.
+규칙: Remarp↔HTML 동기 유지(Remarp가 소스) · 기존 Canvas/quiz/인터랙션 보존 · 변경 슬라이드만 수정 · 무엇이 바뀌었는지 요약.
 
-**slides.json** — `index.html` 보일러플레이트를 생성합니다. `slide-renderer.js`가 런타임에 `slides.json`을 읽어 HTML을 동적 생성합니다.
-```html
-<div class="slide-deck"></div>
-<script src="../common/slide-renderer.js"></script>
-<script>
-  new SlideRenderer({ footer, logoSrc }).render('./slides.json');
-</script>
-```
-보일러플레이트 전체 템플릿: [references/framework-guide.md](references/framework-guide.md) → "index.html 보일러플레이트"
+### Phase 5 — Enhancement
+`@type: canvas` 슬라이드에 Canvas 애니메이션 구현(animation-utils.js) · 복잡 인터랙션 보강 · presenter view(P) 노트 확인.
 
-**Marp (레거시 유지보수 전용 — 새 프레젠테이션에 사용 금지)**:
-```bash
-python3 {skill-dir}/scripts/marp_to_slides.py content.md -o {repo}/{slug}/ --theme-dir {repo}/common/pptx-theme/
-```
-
-### Phase 4: Content Review & Iteration
-
-After generating Remarp markdown and/or initial HTML, enter a feedback loop with the user. **Always ask:**
-
-> 콘텐츠를 검토해 주세요. 수정 방법을 선택해 주세요:
-> 1. **Remarp 직접 수정** — `.remarp.md` 파일을 직접 편집하신 후 "반영해주세요"라고 알려주시면, 변경 사항을 읽어서 HTML에 반영합니다.
-> 2. **프롬프트로 수정 요청** — 변경하고 싶은 내용을 말씀해 주시면 Remarp와 HTML을 함께 수정합니다.
-> 3. **진행** — 현재 내용이 좋으면 다음 단계로 넘어갑니다.
-
-**Option 1 — User edits Remarp directly:**
-1. User opens and edits the `.md` file(s) in their editor
-2. User signals completion (e.g., "반영해주세요", "done editing")
-3. Claude reads the updated Remarp file(s), diffs against the previous version
-4. Claude runs `remarp_to_slides.py sync` to rebuild changed blocks
-5. Return to feedback prompt (user may iterate multiple times)
-
-**Option 2 — User requests changes via prompt:**
-1. User describes what to change (e.g., "슬라이드 5에 비교 탭 추가해줘", "퀴즈 문제를 3개로 줄여줘")
-2. Claude updates both the Remarp source file AND rebuilds the HTML block files to stay in sync
-3. Return to feedback prompt
-
-**Option 3 — Proceed:**
-Continue to Enhancement phase.
-
-Key rules for iteration:
-- **Remarp ↔ HTML sync**: When either is modified, keep both in sync. Remarp is the content source of truth; HTML adds interactivity on top.
-- **Preserve interactivity**: When updating HTML from Remarp changes, preserve existing Canvas animations, quiz components, and interactive elements unless the user explicitly removed them.
-- **Incremental updates**: Only modify the slides that changed, not the entire file.
-- **Show what changed**: After applying updates, briefly summarize which slides were modified and what changed.
-
-### Phase 5: Enhancement
-
-- Add Canvas animations to `@type: canvas` slides (implement JS using animation-utils.js)
-- Add complex interactive elements (the Remarp/Marp converter creates placeholders)
-- AWS Architecture Icons은 `build` 시 HTML에서 참조된 아이콘만 자동 복사됩니다 (see [references/aws-icons-guide.md](references/aws-icons-guide.md))
-- Test presenter view (P key) with speaker notes
-
-### Phase 6: Set Up Structure
-
-Copy framework assets from this skill into the repo's `common/` directory:
-
-```
-{repo}/
-├── index.html                      # Hub page (all presentations)
-├── common/                         # Copy from skill assets/
-│   ├── theme.css                   # Dark theme, 16:9
-│   ├── theme-override.css          # PPTX theme overrides (optional)
-│   ├── slide-framework.js          # Keyboard/touch nav, progress, presenter
-│   ├── slide-renderer.js           # JSON → HTML renderer
-│   ├── presenter-view.js           # Presenter view (P key)
-│   ├── animation-utils.js          # Canvas primitives
-│   ├── quiz-component.js           # Quiz component
-│   ├── aws-icons/                  # AWS Architecture Icons (optional, see aws-icons-guide.md)
-│   │   ├── services/               # Service-level icons (EKS, Lambda, etc.)
-│   │   ├── categories/             # Category icons (Compute, Containers, etc.)
-│   │   ├── resources/              # Resource-level icons (EC2 Instance, etc.)
-│   │   └── groups/                 # Group icons (VPC, Subnet, Region)
-│   └── pptx-theme/                 # Extracted PPTX assets (optional)
-│       ├── theme-manifest.json
-│       └── images/
-└── {presentation-slug}/
-    ├── index.html                  # TOC page with block links
-    ├── 01-block-name.html          # Block 1
-    ├── 02-block-name.html          # Block 2
-    └── ...
-```
-
-Copy assets: `cp {skill-dir}/assets/* {repo}/common/`
-
-For TOC `index.html` pages, add export buttons and include the export script:
+### Phase 6 — Set Up Structure
+스킬 `assets/*`를 repo `common/`에 복사: `cp {skill-dir}/assets/* {repo}/common/`. 구조: `{repo}/index.html`(허브) + `common/`(theme.css, slide-framework.js, slide-renderer.js, presenter-view.js, animation-utils.js, quiz-component.js, export-utils.js, [aws-icons/], [pptx-theme/]) + `{slug}/`(TOC index.html + `NN-block.html`). TOC에 export 버튼:
 ```html
 <div class="export-toolbar">
   <button class="export-btn" onclick="ExportUtils.exportPDF({ title: 'Title' })">Export PDF</button>
@@ -379,321 +87,35 @@ For TOC `index.html` pages, add export buttons and include the export script:
 <script src="../common/export-utils.js"></script>
 ```
 
-If `index.html` hub already exists, add a new card. If new repo, create the hub page.
+### Phase 7 — Quality Review (필수 — 생략 불가)
+1. content-review-agent 호출 → `review content at [경로]` · 2. FAIL/REVIEW 시 수정 후 재리뷰(최대 3회) · 3. **PASS(≥85점) 후에만 완료 선언**.
+> ⚠️ 이 단계를 건너뛰고 배포 금지.
 
-### Phase 7: Quality Review (필수 — 생략 불가)
+### Phase 8 — Verify
+블록별 점검: 슬라이드 수 일치 · `SlideFramework` 옵션(footer/logoSrc/presenterNotes) · 모든 Canvas ID에 `setupCanvas()` · quiz `data-quiz`/`data-correct` · `../common/` 상대경로 · **theme-override.css 링크됨(PPTX 추출 시)** · 언어 · 첫 슬라이드=Session Cover(§0a/§0b, `.title-slide` 아님) · 마지막=Thank You(목차 링크).
 
-콘텐츠 완성 후 배포/완료 선언 전에 반드시:
-1. content-review-agent 호출 → `review content at [파일경로]`
-2. FAIL/REVIEW 판정 시 수정 후 재리뷰 (최대 3회)
-3. PASS (≥85점) 획득 후에만 완료 선언
+> **Screenshot 검증 (필수)**: Playwright MCP로 **FHD 1920×1080**(주 해상도) + **4K 3840×2160**에서 모든 인터랙티브/Canvas 슬라이드 캡처. 확인: 텍스트 가독성·캔버스 비율·오버플로우 없음·컨트롤 표시. 인터랙션(탭/슬라이더/버튼) 후 캡처. **Canvas step 슬라이드는 ArrowDown/Up으로 전체 step 순회하며 각 step 캡처**(겹침·정렬·가독성). N(노트)·F(풀스크린) 스케일링 확인.
+> 스케일링: 고정 1920×1080 디자인 캔버스 + `transform: scale(min(vw/1920, vh/1080))` → FHD/4K 픽셀 일관.
 
-> ⚠️ 이 단계를 건너뛰고 배포하는 것은 금지됩니다.
-
-### Phase 8: Verify
-
-For each block HTML file, check:
-- Slide count matches plan
-- `SlideFramework` initialized with correct options (footer, logoSrc, presenterNotes)
-- All Canvas IDs have `setupCanvas()` calls
-- **Canvas Layout Quality Check (필수)**:
-  - Playwright로 각 Canvas 슬라이드 스크린샷 촬영
-  - 요소 겹침 확인: 박스/아이콘이 서로 겹치지 않는지, 화살표가 텍스트를 가리지 않는지
-  - 정렬·여백 확인: 같은 행/열 요소의 수평·수직 정렬, 요소 간 간격 균등 (최소 20px)
-  - 텍스트 가독성: 캔버스 내 텍스트가 읽을 수 있는 크기 (최소 12px)
-  - ↑↓ Step 내비게이션 검증: ArrowDown으로 step 0→MAX_STEP 순차 진행, ArrowUp으로 역순 후퇴
-  - 각 step별 스크린샷 촬영하여 요소가 논리적 순서로 나타나는지 확인
-- Quiz components use correct `data-quiz` / `data-correct` attributes
-- Framework file references use correct relative paths (`../common/`)
-- Theme override CSS is linked (if PPTX theme was extracted)
-- Content is in the correct language
-- Presenter view (P key) shows notes correctly
-- First slide is Session Cover (§0a or §0b) — NOT `.title-slide` class
-- Last slide is a Thank You closing slide with `← 목차로 돌아가기` link to `index.html` and optional next block link
-
-**Screenshot Verification (필수 — FHD/4K 해상도 검증):**
-
-모든 프레젠테이션은 FHD(1920×1080)와 4K(3840×2160) 두 해상도에서 레이아웃을 캡쳐하여 검증해야 합니다. 이 단계를 건너뛰지 마세요.
-
-Use Playwright MCP to capture and visually review every interactive slide at two resolutions:
-
-1. **FHD (1920×1080)** — primary target resolution
-   ```
-   browser_resize({ width: 1920, height: 1080 })
-   ```
-2. **4K (3840×2160)** — high-DPI scaling verification
-   ```
-   browser_resize({ width: 3840, height: 2160 })
-   ```
-
-For each resolution:
-- Navigate to each Canvas/interactive slide and take a screenshot (`browser_take_screenshot`)
-- Visually confirm: text readability, canvas proportions, layout not overflowing, buttons/controls visible
-- Test interactive elements: tab switching, slider input, button clicks — screenshot after interaction
-- Verify responsive canvas fills container proportionally (no letterboxing, no cropping)
-- Check that DPR-aware rendering produces crisp text/lines at 4K (no blurry upscaling)
-- **↑↓ tab/step navigation**: Verify tab cycling and animation step control work correctly at both resolutions. **Canvas step 슬라이드의 경우 반드시 ArrowDown/ArrowUp으로 전체 step을 순회하며 각 step 스크린샷을 촬영하여 레이아웃 겹침·정렬·가독성을 확인할 것**
-- **Speaker notes panel (N key)**: Verify notes panel layout doesn't break presentation scaling
-- **Fullscreen (F key)**: Verify auto-hide controls and proper scaling in fullscreen mode
-
-**Scaling approach**: Presentations use a fixed 1920×1080 design canvas with `transform: scale()` to fit any viewport. All internal dimensions are in `px`. The scale factor is calculated as `Math.min(viewportWidth/1920, viewportHeight/1080)` and applied via CSS transform. This ensures pixel-perfect consistency across FHD, 4K, and arbitrary resolutions.
-
-### Phase 9: Deploy
-
+### Phase 9 — Deploy
 ```bash
-git add common/ {slug}/ index.html
-git commit -m "feat: add {presentation-name} interactive training"
-git push origin main
+git add common/ {slug}/ index.html && git commit -m "feat: add {name} interactive training" && git push origin main
 ```
+GitHub Pages: Settings → Pages → main / root.
 
-Enable GitHub Pages: Settings → Pages → main branch / root.
+## 작성 규칙·패턴 (상세 — 작성/검증 시 읽기)
+- **[references/authoring-rules.md](references/authoring-rules.md)** — Validation 규칙(§1) · Forbidden AI-tells(§2) · Slide Title Voice(§3) · Interactive 패턴+탭 템플릿+색상 토큰(§4) · Slide Type 결정 + Canvas vs html/diagram(§5) · HTML Architecture flow 패턴(§6)
+- `:::canvas`를 쓰기 전 반드시 **[references/canvas-authoring-guide.md](references/canvas-authoring-guide.md)** (DSL 문법, 필수 좌표 공식, fragment 순서). `validate`가 CANVAS_OVERLAP backstop.
+- 뷰어 단축키(←→ Space ↑↓ F N P O S B Esc 1-9): [references/keyboard-shortcuts.md](references/keyboard-shortcuts.md).
 
-### Interactive Design 원칙 (★ 최우선)
-
-> **핵심: 정보가 많은 슬라이드일수록 interactive하게 만들어야 한다.**
-> 불릿 리스트 10줄보다 탭 3개 × 카드 3개가 100배 효과적이다.
-> "데이터를 시각 카드로 배치 + 탭/토글로 점진적 공개"가 Remarp 프레젠테이션의 기본 패턴이다.
-
-**1) 탭 분할 기준**: 동일 주제의 3개 이상 하위 항목 → 탭으로 분리
-**2) 카드 그리드 기준**: 4개 이상 나열 항목 → `.card-grid` 토큰 클래스로 배치 (불릿 리스트 금지)
-**3) 자체 완결 원칙**: 모든 인터랙션은 `:::html` 안에서 inline onclick으로 완결. 외부 JS에 의존하지 않음
-**4) 시각 계층**: 색상은 **시맨틱 역할 토큰**(`var(--accent)`, `var(--info)`, `var(--success)`, `var(--warning)`, `var(--danger)`)으로만 구분. 하드코딩 hex/rgba 금지, 단색 배경 금지
-
-> **테마**: light가 기본 테마입니다. dark로 되돌리려면 덱 루트에 `class="… theme-dark"`를 지정하세요. 모든 색상은 theme.css 토큰 클래스 + `var(--*)`로 해결되어 light/dark 양쪽에 자동 적응합니다.
-
-#### 자체 완결 Tab 패턴 (복사-붙여넣기 템플릿)
-
-이 패턴은 slide-framework.js 없이도 동작합니다. 색상은 theme.css의 `.tab-set`/`.tab-btn.active`/`.metric-card`/`.callout` 클래스가 담당하므로 inline 스타일을 쓰지 않습니다 (탭 토글은 `.active` 클래스 + 표시 여부만 제어). 데이터가 3+ 카테고리로 나뉠 때 사용:
-
-```markdown
-:::html
-<div class="tab-set" onclick="(function(e){var b=e.target.closest('.tab-btn');if(!b)return;var bar=b.parentNode,p=bar.parentNode,i=[].indexOf.call(bar.children,b);bar.querySelectorAll('.tab-btn').forEach(function(x){x.classList.remove('active')});b.classList.add('active');p.querySelectorAll('.tc').forEach(function(c,j){c.hidden=j!==i})})(event)">
-  <button class="tab-btn active">Tab 1</button>
-  <button class="tab-btn">Tab 2</button>
-  <button class="tab-btn">Tab 3</button>
-</div>
-<!-- Tab 1 content -->
-<div class="tc">
-  <div class="card-grid">
-    <div class="metric-card"><strong class="text-accent">Card Title</strong><div class="on-surface-muted">Description</div></div>
-    <div class="metric-card"><strong class="text-success">Next Step</strong><div class="on-surface-muted">Description</div></div>
-  </div>
-</div>
-<!-- Tab 2 content (hidden) -->
-<div class="tc" hidden>
-  <div class="card-grid">
-    <div class="callout callout-info"><strong class="text-info">item-1</strong> — Description</div>
-    <div class="callout callout-info"><strong class="text-info">item-2</strong> — Description</div>
-    <div class="callout callout-warning"><strong class="text-warning">item-3</strong> — Description</div>
-  </div>
-</div>
-<!-- Tab 3 content (hidden) -->
-<div class="tc" hidden>
-  <div class="card-grid">
-    <div class="callout callout-success"><strong class="text-success">Type A</strong><div class="on-surface-muted">Details here</div></div>
-    <div class="callout callout-info"><strong class="text-accent">Type B</strong><div class="on-surface-muted">Details here</div></div>
-  </div>
-</div>
-:::
-
-:::css
-/* semantic text helpers — resolve to role tokens, adapt to light/dark */
-.text-accent  { color: var(--accent);  font-weight: var(--weight-bold); }
-.text-info    { color: var(--info);    font-weight: var(--weight-bold); }
-.text-success { color: var(--success); font-weight: var(--weight-bold); }
-.text-warning { color: var(--warning); font-weight: var(--weight-bold); }
-.text-danger  { color: var(--danger);  font-weight: var(--weight-bold); }
-.on-surface-muted { color: var(--on-surface-muted); font-size: var(--text-sm); }
-:::
-```
-
-> 인접한 박스 흐름이 필요하면 `.flow-h` / `.flow-group` / `.flow-box` / `.flow-arrow` (theme.css 유틸리티)를 사용하세요 — "HTML Architecture 패턴" 섹션 참조.
-
-**시맨틱 색상 역할 (카드/배지/강조용)** — 하드코딩 hex 대신 역할 토큰을 사용합니다:
-| 역할 | 토큰 | subtle 배경 | 클래스 헬퍼 | 용도 |
-|------|------|------------|-------------|------|
-| accent | `var(--accent)` | `var(--accent-subtle)` | `.text-accent` | 기본/입력/소스 |
-| success | `var(--success)` | `var(--success-subtle)` | `.callout-success` | 성공/결과/자동화 |
-| warning | `var(--warning)` | `var(--warning-subtle)` | `.callout-warning` | 경고/처리/AI |
-| info | `var(--info)` | `var(--info-subtle)` | `.callout-info` | 보조/스트리밍/분석 |
-| danger | `var(--danger)` | `var(--danger-subtle)` | `.callout-danger` | 에러/위험/알림 |
-
-서피스/텍스트는 `var(--surface-1/2/3)`, `var(--on-surface)`, `var(--on-surface-muted)`를 사용합니다. 자세한 토큰 레퍼런스: [references/colors-reference.md](references/colors-reference.md).
-
-#### 불릿 리스트 → 카드 변환 규칙
-
-**Before (비효과적)**:
-```markdown
-- CloudWatch Agent: 메트릭 수집
-- ADOT Collector: 분산 트레이싱  
-- VPC Flow Logs: 네트워크 로그
-- CloudTrail: API 감사 로그
-```
-
-**After (효과적)** — `:::html` `.card-grid` + `.metric-card` 토큰 클래스 (색상은 theme.css가 담당):
-```html
-<div class="card-grid">
-  <div class="metric-card">
-    <strong class="text-accent">CloudWatch Agent</strong>
-    <div class="on-surface-muted">메트릭 수집</div>
-  </div>
-  <!-- ... 반복 ... -->
-</div>
-```
-
-> **⛔ STOP — 불릿 리스트 자가 점검**: 한 슬라이드에 4개 이상의 불릿 리스트를 만들려 하면 STOP.
-> grid 카드 + 색상 구분으로 변환하라. 청중은 텍스트 벽을 읽지 않는다.
-
-### Interactive Slide 작성 가이드 (고급)
-
-복잡한 인터랙션(슬라이더, 시뮬레이터, 대시보드)은 `:::html` + `:::script` + `:::css` 블록을 사용합니다.
-패턴 템플릿과 예시: [references/interactive-patterns-guide.md](references/interactive-patterns-guide.md).
-
-## Slide Type Decision Guide
-
-> **⛔ 필수: 모든 슬라이드에 명시적 `@type` 디렉티브를 작성하세요.**
-> auto-detect에 의존하지 마세요. 의도하지 않은 타입으로 렌더링되는 것을 방지합니다.
-> 특히 `agenda`, `tabs`, `steps`는 반드시 명시적 `@type`이 필요합니다.
-> `validate` 명령이 누락을 검출하지만, 작성 시 즉시 지정하는 것이 최선입니다.
-
-| Content Type | Slide Pattern | Interactive Element |
-|---|---|---|
-| Architecture overview (static) | Diagram Image | draw.io → PNG/SVG, `@img:` directive |
-| Step-by-step flow (박스 ≤4) | Canvas Animation | `:::canvas` DSL, step ↑↓ navigation |
-| Multi-layer architecture/에코시스템 (박스 5+) | HTML Architecture | `:::html` + `:::css` — flexbox/grid 레이아웃 (slide-patterns.md §4c 참조) |
-| A vs B comparison | Compare Toggle | `.compare-toggle` buttons |
-| Config variants | Tab Content | `.tab-bar` with YAML code blocks |
-| Step-by-step process | Timeline | `.timeline` with animated steps |
-| Monitoring/dashboard (박스 5+) | `:::html` + `:::script` | Stat panels + node grid + buttons |
-| Parameter exploration | Slider | `input[type=range]` + live output |
-| Best practices | Checklist | `.checklist` with click-to-toggle |
-| Best practices + config | Checklist with YAML | `.checklist` + `.check-yaml` expand on click (see slide-patterns.md §7b) |
-| YAML/code example | Code Block | `.code-block` with syntax spans |
-| Customer problem | Pain Quote | `.pain-quote` + challenge list |
-| Block summary (퀴즈 포함 시) | Quiz | `data-quiz` + 3-4 questions |
-| Session agenda/목차 | Agenda | `@type: agenda` — numbered dots + time labels + break markers |
-| Block summary (퀴즈 미포함 시) | Content | Key Takeaways 요약 리스트 |
-| Block closing | Thank You | Gradient heading + TOC link + next block link |
-| VPA/리소스 시뮬레이터 | `:::html` + `:::script` | Range sliders + live YAML + canvas gauge |
-| Grafana-style 대시보드 | `:::html` + `:::script` | Stat panels + time series + node grid |
-| 3-Signal 상관분석 | `:::html` + `:::script` | Phase animation + canvas + buttons |
-| Regex 테스터 | `:::html` + `:::script` | Text input + live highlighting |
-| YAML 빌더 | `:::html` + `:::script` | Checkbox/radio → dynamic YAML |
-| Mode 선택기 | `:::html` + `:::script` | Button group + content swap |
-| 비용/메트릭 계산기 | `:::html` + `:::script` | Sliders → calculation display |
-
-### Canvas DSL vs :::html 선택 기준 (중요)
-
-> **정책: 복잡한 다이어그램/인터랙션은 `:::html` + `:::css` + `:::script` 블록을 우선 사용한다.**
-> Canvas DSL(`:::canvas`)은 단순한 박스+화살표 수준에서만 사용하고, 복잡한 레이아웃(3계층 아키텍처, 서비스 맵, 멀티노드 플로우 등)은 HTML/CSS의 flexbox/grid가 더 안정적이고 정확한 결과를 제공한다.
-
-| 복잡도 | 방식 | 예시 |
-|--------|------|------|
-| **단순** (박스 ≤4개 + 화살표) | `:::canvas` DSL 허용 | A→B→C 단순 흐름 |
-| **중간** (박스 5개+, 다계층) | `:::html` + `:::css` **필수** (canvas 금지) | 3-tier 아키텍처, 서비스 맵, 에코시스템 |
-| **복잡** (인터랙션 + 계산) | `:::html` + `:::script` 필수 | 슬라이더, 계산기, 시뮬레이터, 대시보드 |
-| **정적 아키텍처** | `@img:` + draw.io | AWS 전체 아키텍처, VPC 네트워크 |
-
-### Canvas vs Diagram 선택 기준
-
-| 기준 | Canvas (`@type: canvas`) | Diagram (`@img:`) |
-|------|--------------------------|---------------------|
-| 목적 | 단계별 흐름을 애니메이션으로 설명 | 전체 아키텍처를 한눈에 보여줌 |
-| 예시 | Auto-scaling 과정, 데이터 파이프라인 단계, 장애 전파 흐름 | AWS 서비스 맵, 3-tier 아키텍처, VPC 네트워크 구성 |
-| 장점 | ↑↓ step 내비게이션으로 순차적 설명 가능 | 복잡한 레이아웃/화살표를 정확하게 표현 |
-| 제작 | Canvas DSL로 직접 코딩 | draw.io/architecture-diagram-agent로 제작 → PNG/SVG |
-| 삽입 | `@type: canvas` + `:::canvas` 블록 | `@type: content` + `@img: diagrams/arch.png center 90%` |
-
-**원칙**: 애니메이션이 설명력을 높이지 않는다면 diagram 이미지를 사용한다. 복잡한 다이어그램은 `:::html` + `:::css`를 우선 고려한다.
-
-### HTML Architecture 패턴 (박스 5+ 필수)
-
-박스 5개 이상의 아키텍처/파이프라인은 반드시 이 패턴을 사용합니다:
-
-```markdown
-## Service Pipeline
-
-:::html
-<div class="flow-h">
-  <div class="flow-group bg-blue" data-fragment-index="1">
-    <div class="flow-group-label">수집</div>
-    <div class="icon-item"><img src="common/aws-icons/services/Arch_Amazon-CloudWatch_48.svg"><span>CloudWatch</span></div>
-    <div class="icon-item"><img src="common/aws-icons/services/Arch_AWS-X-Ray_48.svg"><span>X-Ray</span></div>
-  </div>
-  <div class="flow-arrow">→</div>
-  <div class="flow-group bg-orange" data-fragment-index="2">
-    <div class="flow-group-label">분석</div>
-    <div class="flow-box">DevOps Guru</div>
-    <div class="flow-box">Bedrock</div>
-  </div>
-  <div class="flow-arrow">→</div>
-  <div class="flow-group bg-pink" data-fragment-index="3">
-    <div class="flow-group-label">대응</div>
-    <div class="flow-box">EventBridge</div>
-    <div class="flow-box">Lambda</div>
-  </div>
-</div>
-:::
-```
-
-- `flow-h` / `flow-group` / `flow-box` / `flow-arrow`: theme.css 제공 유틸리티 (커스텀 CSS 불필요)
-- `bg-blue`, `bg-orange`, `bg-pink`: 색상 유틸리티
-- `data-fragment-index="N"`: 그룹별 순차 등장 (canvas step 대체)
-- AWS 아이콘: `common/aws-icons/services/Arch_{Name}_48.svg`
-
-> **⛔ STOP — Canvas 사용 전 자가 점검**
-> 1. 이 슬라이드의 박스+아이콘 총 개수를 세시오
-> 2. **5개 이상이면 canvas 사용 금지** → 위 "HTML Architecture 패턴" 사용
-> 3. 단방향 직선 흐름(A→B→C→D)만 canvas 허용
-> 4. 다계층, 그룹, 분기 화살표가 있으면 → `:::html` + `:::css` 필수
-
-### Canvas & Fragment 작성 (상세는 레퍼런스)
-
-> **⛔ `:::canvas` 블록을 쓰기 전에 반드시 [references/canvas-authoring-guide.md](references/canvas-authoring-guide.md)를 읽으세요.**
-> 정확한 DSL 문법(bracket syntax는 동작 안 함), **필수 좌표 계산 공식**(LLM 공간추론 보정),
-> Fragment 순서 규칙(td-lr), 콘텐츠 작성 규칙이 거기 있습니다. `validate` 명령이 CANVAS_OVERLAP을 backstop으로 검출합니다.
-
-## Keyboard Shortcuts
-
-뷰어 런타임 단축키(←→ Space ↑↓ F N P O S B Esc Home/End 1-9)와 ↑↓ Tab/Step 내비게이션 상세:
-[references/keyboard-shortcuts.md](references/keyboard-shortcuts.md).
-
-## Quality Assurance
-
-When slides contain YAML/config examples, verify against official documentation:
-
-- **Canvas proportional scaling**: All canvas animations MUST use `ResizeObserver` + `BASE_W/BASE_H` + `ctx.scale(scale * dpr, scale * dpr)` pattern for FHD/4K responsiveness. Never use `setupCanvas()` alone (it sets `max-width` in pixels). See slide-patterns.md §5 for the full pattern.
-- **Karpenter v1 API**: `expireAfter` is under `spec.template.spec`, NOT `spec.disruption`. Verify at https://karpenter.sh/docs/concepts/nodepools/
-- **Karpenter metrics**: Use `_total` suffix for counters (e.g., `karpenter_nodeclaims_terminated_total`). Verify at https://karpenter.sh/docs/reference/metrics/
-- **Grafana datasources**: Loki derivedFields uses `regex` (not `matcherRegex`). Verify at https://grafana.com/docs/grafana/latest/datasources/loki/
-- **GitBook anchors**: Korean headings generate Korean slug anchors (e.g., `## 1. 관측성 스택 아키텍처` → `#1-관측성-스택-아키텍처`). Dots after numbers are removed, Korean chars preserved, spaces→hyphens.
-- **Kubernetes API**: `topologySpreadConstraints` requires `labelSelector`. VPA `Auto` mode is deprecated (use `Recreate`).
+## Quality Assurance (사실 검증 — YAML/config 인용 시)
+- **Canvas 비례 스케일**: 모든 Canvas는 `ResizeObserver` + `BASE_W/BASE_H` + `ctx.scale(scale*dpr, scale*dpr)` 패턴 필수 (FHD/4K 대응). `setupCanvas()` 단독 금지 (px max-width 고정됨). slide-patterns.md §5.
+- **Karpenter v1**: `expireAfter`는 `spec.template.spec` (NOT `spec.disruption`). 메트릭은 `_total` 접미사. (karpenter.sh 확인)
+- **Grafana Loki**: derivedFields는 `regex` (NOT `matcherRegex`).
+- **GitBook 앵커**: 한글 제목은 한글 슬러그 (`## 1. 관측성` → `#1-관측성`, 숫자 뒤 점 제거, 공백→하이픈).
+- **K8s**: `topologySpreadConstraints`는 `labelSelector` 필요. VPA `Auto`는 deprecated (→ `Recreate`).
 
 ## Resources
-
-### assets/
-Framework files to copy into `common/`:
-- `theme.css` — dark theme, Pretendard font, 16:9 layout, all component styles
-- `theme-override-template.css` — template for PPTX-extracted CSS overrides
-- `slide-framework.js` — SlideFramework class (keyboard, touch, progress, hash nav, footer, logo, presenter view)
-- `slide-renderer.js` — SlideRenderer class: JSON → HTML 동적 렌더링 (13개 슬라이드 타입 지원)
-- `presenter-view.js` — PresenterView class (draggable splitters, large notes area, Pretendard font, localStorage persistence, BroadcastChannel sync)
-- `animation-utils.js` — Canvas primitives, AnimationLoop, TimelineAnimation, Colors, Ease
-- `quiz-component.js` — QuizManager with auto-grading and feedback
-- `export-utils.js` — ExportUtils with PDF export (browser print) and ZIP download (JSZip CDN, auto-discovers and bundles all referenced images)
-
-### scripts/
-- `extract_pptx_theme.py` — Extract PPTX theme → CSS overrides + images (see [references/pptx-theme-guide.md](references/pptx-theme-guide.md))
-- `remarp_to_slides.py` — Convert Remarp markdown → HTML slide files with fragments, transitions, canvas DSL, rich notes (see [references/remarp-format-guide.md](references/remarp-format-guide.md))
-- `marp_to_slides.py` — Convert Marp markdown → HTML slide files (legacy, see [references/marp-format-guide.md](references/marp-format-guide.md))
-- `extract_aws_icons.py` — Extract AWS Architecture Icons from bundled zip → SVG files organized by category (see [references/aws-icons-guide.md](references/aws-icons-guide.md))
-
-### references/
-- [framework-guide.md](references/framework-guide.md) — Complete API reference for CSS classes, JS functions, HTML template
-- [slide-patterns.md](references/slide-patterns.md) — Copy-paste HTML patterns for each slide type, Canvas animation patterns
-- [remarp-format-guide.md](references/remarp-format-guide.md) — Remarp markdown format specification (recommended) — fragments, canvas DSL, rich notes, transitions
-- [marp-format-guide.md](references/marp-format-guide.md) — Marp markdown format specification (legacy)
-- [pptx-theme-guide.md](references/pptx-theme-guide.md) — PPTX theme extraction usage, color mapping, troubleshooting
-- [aws-icons-guide.md](references/aws-icons-guide.md) — AWS Architecture Icons usage, naming conventions, commonly used icons by topic
-- [canvas-authoring-guide.md](references/canvas-authoring-guide.md) — `:::canvas` DSL grammar, mandatory coordinate formula, fragment ordering, content rules (read before any canvas block)
-- [keyboard-shortcuts.md](references/keyboard-shortcuts.md) — runtime viewer shortcuts + ↑↓ tab/step navigation
+**assets/** (→ `common/`): theme.css · theme-override-template.css · slide-framework.js · slide-renderer.js · presenter-view.js · animation-utils.js · quiz-component.js · export-utils.js
+**scripts/**: extract_pptx_theme.py · remarp_to_slides.py · marp_to_slides.py(레거시) · extract_aws_icons.py
+**references/**: authoring-rules.md(작성 규칙/패턴) · framework-guide.md(CSS/JS API) · slide-patterns.md(타입별 패턴) · remarp-format-guide.md(Remarp 문법) · interactive-patterns-guide.md(고급 인터랙션) · canvas-authoring-guide.md(Canvas DSL) · colors-reference.md(토큰) · pptx-theme-guide.md · aws-icons-guide.md · keyboard-shortcuts.md · marp-format-guide.md(레거시)
