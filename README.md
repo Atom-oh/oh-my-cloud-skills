@@ -50,6 +50,7 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 - **10 slash commands** — /init-project, /sync-docs, /add-adr, /add-module, /add-runbook, /add-reference-doc, and more
 - **Documentation quality scoring** — CLAUDE.md quality assessment on 100-point scale
 - **Auto-sync workflows** — Keep documentation in sync with code changes
+- **ADR contradiction review** — `decision-reconcile` finds conflicting ADRs (and ADR-vs-reality drift) with a diverse multi-agent panel and drafts a superseding ADR
 
 ---
 
@@ -627,6 +628,8 @@ All agents activate automatically when Claude detects matching keywords in your 
 | `agentcore-create` | 5-phase AgentCore design, build, convert, deploy workflow |
 | `co-agent` | Multi-AI collaboration (Kiro/Codex/Gemini) — review, decision support, ADR co-authoring, and `sync-context`; Claude chairs. Commands: `/co-agent:configure`, `/co-agent:sync-context` |
 | `project-scaffolder` | Claude Code project structure patterns and conventions |
+| `pr-autofix` | Poll AI + human PR review feedback and auto-fix issues (max 3 iterations) |
+| `decision-reconcile` | Detect contradictions across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (varied Claude model tiers + optional Kiro/Codex/Gemini, one review lens each), then draft a superseding ADR |
 
 ### Project Init Commands
 
@@ -762,7 +765,7 @@ plugins/
 │   └── skills/
 │       └── co-agent/
 │
-└── project-init/                      # Project scaffolding (1 agent, 2 skills, 10 commands)
+└── project-init/                      # Project scaffolding (1 agent, 3 skills, 10 commands)
     ├── .claude-plugin/plugin.json
     ├── CLAUDE.md
     ├── agents/
@@ -777,5 +780,7 @@ plugins/
     │   ├── generate-changelog.md
     │   └── health-check.md
     └── skills/
-        └── project-scaffolder/
+        ├── project-scaffolder/
+        ├── pr-autofix/
+        └── decision-reconcile/
 ```
