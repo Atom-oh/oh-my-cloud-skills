@@ -132,6 +132,7 @@ const sidebars: SidebarsConfig = {
     'project-init/agents/doc-sync-checker',
     'project-init/skills/project-scaffolder',
     'project-init/skills/pr-autofix',
+    'project-init/skills/decision-reconcile',
     'project-init/commands/commands',
   ],
 

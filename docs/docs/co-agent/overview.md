@@ -21,12 +21,13 @@ co-agent는 **다른 AI 에이전트(Kiro CLI, Codex, Gemini)와 협업**해 sec
 |------|------|
 | `co-agent` | 4-모드 멀티-AI 협업 (review · decide · adr · sync-context) |
 
-### 명령 (2개)
+### 명령 (3개)
 
 | 명령 | 설명 |
 |------|------|
 | `/co-agent:configure` | 패널 설정 — AI별 `model`, Codex `effort`, `enabled`, `timeout`, `autosync` 토글 |
 | `/co-agent:sync-context` | `CLAUDE.md` 증류 → `AGENTS.md`(Codex) + `GEMINI.md`(Gemini) 생성 |
+| `/co-agent:consensus` | 자율 doc→plan→implementation 파이프라인 — 교차 패밀리 멀티모델 합의 게이트 (Stage A 계획 리뷰 / Stage B 구현 / Stage C 최종 게이트·리포트). `plan`/`review`/`implement` 서브모드 + 전체 파이프라인 기본 |
 
 ## 사전 요구사항 (선택적 — 있는 것만 사용)
 

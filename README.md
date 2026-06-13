@@ -13,7 +13,7 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 
 *Content Creation (aws-content-plugin):*
 - **Interactive HTML/CSS/JS presentations** — Canvas animations, quizzes, presenter view, deployed to GitHub Pages
-- **AWS architecture diagrams** — Draw.io XML with auto-layout, exportable to PNG/SVG
+- **AWS architecture diagrams** — spec-driven `layout_aws.py` engine (YAML → Draw.io) for standard patterns, embedded shared AWS icons, plus a sketch-style `.excalidraw` generator; exportable to PNG/SVG
 - **Animated traffic flow diagrams** — SVG + SMIL animations with interactive legends
 - **Technical documents** — Professional Markdown reports and comparisons
 - **GitBook documentation sites** — Structured docs with navigation and components
@@ -45,11 +45,13 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 - **4 modes** — multi-AI review, decision support, ADR co-authoring, and `sync-context` (distill `CLAUDE.md` -> `AGENTS.md`/`GEMINI.md`)
 - **Panel of installed CLIs** — fan the same prompt to Kiro/Codex/Gemini in parallel; Claude chairs and synthesizes consensus vs. dissent (degrades gracefully if none installed)
 - **`/co-agent:configure`** — tune per-AI model, Codex effort, enable/disable, timeout, and `autosync` (regenerate AI context on `CLAUDE.md` change)
+- **`/co-agent:consensus`** — autonomous doc→plan→implementation pipeline with cross-family multi-model consensus gates (plan review, implement, final gate)
 
 *Project Scaffolding (project-init):*
 - **10 slash commands** — /init-project, /sync-docs, /add-adr, /add-module, /add-runbook, /add-reference-doc, and more
 - **Documentation quality scoring** — CLAUDE.md quality assessment on 100-point scale
 - **Auto-sync workflows** — Keep documentation in sync with code changes
+- **`decision-reconcile`** — detect contradictions across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel, then draft a superseding ADR
 
 ---
 
@@ -518,12 +520,12 @@ python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_
 
 ### Example Output
 
-Converting `aws-ops-plugin` (9 agents, 5 skills, 5 MCP servers) produces:
+Converting `aws-ops-plugin` (10 agents, 6 skills, 2 MCP servers) produces:
 
 ```
 aws-ops-power/
-├── POWER.md                      # Manifest with ~96 aggregated keywords
-├── mcp.json                      # 5 AWS MCP servers (type field removed)
+├── POWER.md                      # Manifest with aggregated keywords
+├── mcp.json                      # AWS MCP servers (type field removed)
 └── steering/
     ├── routing.md                # Always-loaded routing context
     ├── eks-agent.md              # Auto-activated agent steering files
@@ -533,13 +535,16 @@ aws-ops-power/
     ├── storage-agent.md
     ├── database-agent.md
     ├── cost-agent.md
+    ├── analytics-agent.md
     ├── ops-coordinator-agent.md  # "(Advanced reasoning)" in description
+    ├── wellarchitected-agent.md
     ├── ops-troubleshoot.md       # Skill with triggers merged
     ├── ops-health-check.md
     ├── ops-network-diagnosis.md
     ├── ops-observability.md
     ├── ops-security-audit.md
-    └── ref-*.md                  # 15 reference files (manual inclusion)
+    ├── ops-wellarchitected-review.md
+    └── ref-*.md                  # Reference files (manual inclusion)
 ```
 
 ### Edge Cases
@@ -603,8 +608,9 @@ All agents activate automatically when Claude detects matching keywords in your 
 | Skill | Provides |
 |-------|----------|
 | `reactive-presentation` | Presentation framework (CSS/JS), Remarp conversion, PPTX→Remarp converter, AWS icon extraction, slide pattern reference |
-| `architecture-diagram` | Draw.io XML templates, AWS icon reference, layout patterns |
+| `architecture-diagram` | Spec-driven `layout_aws.py` engine (YAML → Draw.io), embedded shared AWS icons, `.excalidraw` generator, layout/design lint gate |
 | `animated-diagram` | SMIL animation guide, HTML wrapper templates, traffic flow patterns |
+| `slide-fix` | Apply Remarp slide issue annotations (`<!-- issue: -->`) and rebuild |
 | `gitbook` | GitBook structure guide, component patterns, navigation templates |
 | `workshop-creator` | Workshop Studio directives, module templates, CloudFormation references |
 
@@ -625,8 +631,10 @@ All agents activate automatically when Claude detects matching keywords in your 
 |-------|----------|
 | `kiro-convert` | Plugin-to-Kiro-Power conversion workflow |
 | `agentcore-create` | 5-phase AgentCore design, build, convert, deploy workflow |
-| `co-agent` | Multi-AI collaboration (Kiro/Codex/Gemini) — review, decision support, ADR co-authoring, and `sync-context`; Claude chairs. Commands: `/co-agent:configure`, `/co-agent:sync-context` |
+| `co-agent` | Multi-AI collaboration (Kiro/Codex/Gemini) — review, decision support, ADR co-authoring, and `sync-context`; Claude chairs. Commands: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus` |
 | `project-scaffolder` | Claude Code project structure patterns and conventions |
+| `pr-autofix` | Poll PR review feedback (AI + human) and auto-fix issues (max 3 iterations) |
+| `decision-reconcile` | Detect ADR contradictions / drift via a diverse multi-agent panel, then draft a superseding ADR |
 
 ### Project Init Commands
 
@@ -637,9 +645,11 @@ All agents activate automatically when Claude detects matching keywords in your 
 | `/add-adr` | Create Architecture Decision Record |
 | `/add-module` | Add module directory with CLAUDE.md |
 | `/add-runbook` | Create operational runbook |
+| `/add-reference-doc` | Add implementation reference doc skeleton (`docs/reference/`) |
 | `/generate-readme` | Generate bilingual README.md |
 | `/generate-changelog` | Generate bilingual CHANGELOG.md |
 | `/health-check` | Validate project setup |
+| `/pr-autofix` | Poll PR review feedback (AI + human) and auto-fix (max 3 iterations) |
 
 ---
 
@@ -753,16 +763,16 @@ plugins/
 │   └── skills/
 │       └── agentcore-create/
 │
-├── co-agent/                       # Multi-AI collaboration (1 agent, 1 skill, 2 commands)
+├── co-agent/                       # Multi-AI collaboration (1 agent, 1 skill, 3 commands)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
 │   ├── agents/
 │   │   └── co-agent.md
-│   ├── commands/                   # /co-agent:configure, /co-agent:sync-context
+│   ├── commands/                   # /co-agent:configure, /co-agent:sync-context, /co-agent:consensus
 │   └── skills/
 │       └── co-agent/
 │
-└── project-init/                      # Project scaffolding (1 agent, 2 skills, 10 commands)
+└── project-init/                      # Project scaffolding (1 agent, 3 skills, 10 commands)
     ├── .claude-plugin/plugin.json
     ├── CLAUDE.md
     ├── agents/
@@ -777,5 +787,7 @@ plugins/
     │   ├── generate-changelog.md
     │   └── health-check.md
     └── skills/
-        └── project-scaffolder/
+        ├── project-scaffolder/
+        ├── pr-autofix/
+        └── decision-reconcile/
 ```

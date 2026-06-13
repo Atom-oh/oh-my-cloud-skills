@@ -6,6 +6,10 @@ A plan has `### Task N: <title>` sections, each with a `**Files:**` block listin
 that structure so the consensus pipeline knows the task list and the ALLOWED FILE SET
 (used for scope-lock in Stage B) without re-reading prose.
 
+NOTE: file paths MUST be backtick-wrapped — `- Create: ` + backtick + path + backtick.
+Bare paths (no backticks) are silently ignored, which yields an EMPTY allowed-file set
+and makes scope_guard reject every edit. Plan generators must emit backticks.
+
 Usage:
   parse_plan.py <plan.md>            # JSON: [{n,title,files:[...],steps:N}]
   parse_plan.py <plan.md> --files    # unique declared file paths, one per line

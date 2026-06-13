@@ -5,7 +5,7 @@ title: "개요"
 
 # Project Init 개요
 
-Project Init는 Claude Code 프로젝트 구조 초기화, 문서 품질 스코어링, 자동 동기화 워크플로우를 제공하는 플러그인입니다. 9개의 슬래시 명령으로 프로젝트 설정부터 문서 관리까지 지원합니다.
+Project Init는 Claude Code 프로젝트 구조 초기화, 문서 품질 스코어링, 자동 동기화 워크플로우를 제공하는 플러그인입니다. 10개의 슬래시 명령으로 프로젝트 설정부터 문서 관리까지 지원합니다.
 
 ## 구성 요소
 
@@ -15,12 +15,13 @@ Project Init는 Claude Code 프로젝트 구조 초기화, 문서 품질 스코�
 |----------|------|--------|
 | `doc-sync-checker` | 문서 동기화 분석, 품질 스코어링, 누락 문서 감지 | 품질 점수 보고서 |
 
-### 스킬 (2개)
+### 스킬 (3개)
 
 | 스킬 | 설명 |
 |------|------|
 | `project-scaffolder` | Claude Code 프로젝트 구조 패턴 및 컨벤션 |
 | `pr-autofix` | PR 리뷰 피드백 자동 수정 (AI + 사람 리뷰 polling, 최대 3회 반복) |
+| `decision-reconcile` | 누적된 ADR(`ADR-NNN`) 간 모순 및 ADR-현실 드리프트를 다양한 멀티-에이전트 패널(여러 Claude 티어 + 선택적 co-agent CLI)로 탐지한 뒤 superseding ADR 초안 작성 (로컬 전용) |
 
 ### 명령 (10개)
 

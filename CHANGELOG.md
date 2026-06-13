@@ -13,6 +13,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **architecture-diagram spec-driven layout engine** — `layout_aws.py` turns a YAML spec into a `.drawio` for standard AWS patterns, with golden exemplars; adds a serverless `stages` engine plus multi-region and hybrid block-composition engines; `lint_layout` gains design scoring (geometry + design) and a layout gate. Added a `layout_aws` test suite ([#55](https://github.com/Atom-oh/oh-my-cloud-skills/pull/55))
+- **architecture-diagram shared AWS icons in drawio** — embed the reactive-presentation shared icon library directly in `.drawio` (AgentCore + any official AWS icon, data-URI form); a sketch-style `.excalidraw` generator reuses the same shared icons (local, offline)
+- **project-init `decision-reconcile` skill** — detect contradictions across accumulated ADRs (`ADR-NNN`) and ADR-vs-reality drift via a diverse multi-agent panel (varied Claude model tiers + optional co-agent CLIs, one review lens each), then draft a superseding ADR to reverse/reconcile the decision. Local-only (not in upstream) ([#56](https://github.com/Atom-oh/oh-my-cloud-skills/pull/56))
+- **reactive-presentation `theme.mode:dark` build option** — opt-in dark build on the v1.9.0 token system; per-theme native logos (no blanket invert); light-theme depth + logo visibility fixes
+
+### Changed
+- **Per-agent model tiers (quality-first)** — retier all plugin agents by deliverable: Fable 5 for the judgment/synthesis agents (`content-review-agent`, `wellarchitected-agent`, `co-agent` chair), Opus for high-stakes orchestration/conversion/IAM (`ops-coordinator-agent`, `agentcore-creator-agent`, `iam-agent`), Sonnet for generation + diagnosis workers; reviewed by a multi-AI panel ([#62](https://github.com/Atom-oh/oh-my-cloud-skills/pull/62))
+
+## [1.9.0] - 2026-06-10
+
+### Added
+- **reactive-presentation v1.9.0 token design system** — a design-token foundation (type/spacing/radius/shadow/color-role/motion/z), light-default dual-theme scopes with token-backed component primitives, a tokenized `theme.css` (spacing/radius/shadow/type, drifted fallbacks dropped), templates detoxed to token classes, and `design-tokens.css` shipped. PPTX/brand extraction now drives the core design tokens, and `validate` gains design-lint rules (raw-hex / inline-style / off-scale / raw-rgba / overflow) ([#53](https://github.com/Atom-oh/oh-my-cloud-skills/pull/53))
+- **reactive-presentation content-quality layer** — structured speaker-note schema with a `NOTE_STRUCTURE` lint, slide-title voice guidance with a `TITLE_LENGTH` lint (scoped to content slides), a consolidated "Forbidden AI-slide-tells" section linked to lint, and a content-review source-omission cross-check after generation ([#54](https://github.com/Atom-oh/oh-my-cloud-skills/pull/54))
+
+### Changed
+- Bump all plugins and `marketplace.json` to 1.9.0
+
+## [1.8.0] - 2026-06-10
+
+### Added
+- **co-agent consensus pipeline** — autonomous doc→plan→implementation with cross-family multi-model consensus gates, superseding the 1.7.2 review-only framing. Stage A (P0–P2: detect input docs, load or generate a TDD+Tidy plan, run the plan-review gate), Stage B (P3: session-gated autonomous TDD implement loop with a `scope_guard.py` plan file-set lock and Stop/PostToolUse hooks), Stage C (P4 final gate on the cumulative scoped diff + P5 report + full-pipeline default + resume). New scripts: `consensus_state.py` (session state + input-doc detection + cumulative-diff + report), `parse_plan.py`, `scope_guard.py`, `consensus_hooks.py`. `/co-agent:consensus` gains `plan`/`review`/`implement` sub-modes plus a full-pipeline default ([#49](https://github.com/Atom-oh/oh-my-cloud-skills/pull/49), [#50](https://github.com/Atom-oh/oh-my-cloud-skills/pull/50), [#51](https://github.com/Atom-oh/oh-my-cloud-skills/pull/51))
+- **co-agent Kiro multi-model panel** — mainstay panel is opus / kimi-k2.5 / glm-5 (cross-vendor diversity via the Kiro router), `deep` by default; documents the `claude-sonnet-4.6` fallback for the internal kimi-k2.5 ([#52](https://github.com/Atom-oh/oh-my-cloud-skills/pull/52))
+
+### Changed
+- Bump all plugins and `marketplace.json` to 1.8.0
+
 ## [1.7.2] - 2026-06-09
 
 ### Added
@@ -206,7 +235,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add AWS Architecture Icons integration (4,224 files)
 - Add presenter view with speaker notes
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.9.0...HEAD
+[1.9.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.8.0...v1.9.0
+[1.8.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.7.2...v1.8.0
+[1.7.2]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.7.1...v1.7.2
+[1.7.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.7.0...v1.7.1
+[1.7.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.6.0...v1.7.0
+[1.6.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.5.1...v1.6.0
+[1.5.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.5.0...v1.5.1
+[1.5.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.2.5...v1.4.0
 [1.2.5]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.2.3...v1.2.5
 [1.2.3]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.2.2...v1.2.3
@@ -224,6 +261,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 이 프로젝트의 모든 주요 변경 사항은 이 파일에 기록됩니다.
 이 문서는 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)를 기반으로 하며,
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 따릅니다.
+
+## [Unreleased]
+
+### Added
+- **architecture-diagram 스펙 기반 레이아웃 엔진** — `layout_aws.py`가 YAML 스펙을 표준 AWS 패턴 `.drawio`로 변환(골든 예제 포함); 서버리스 `stages` 엔진 + 멀티리전·하이브리드 블록 합성 엔진 추가; `lint_layout`에 디자인 스코어링(지오메트리 + 디자인)과 레이아웃 게이트 추가; `layout_aws` 테스트 스위트 추가 ([#55](https://github.com/Atom-oh/oh-my-cloud-skills/pull/55))
+- **architecture-diagram drawio 공유 AWS 아이콘** — reactive-presentation 공유 아이콘 라이브러리를 `.drawio`에 직접 임베드(AgentCore + 모든 공식 AWS 아이콘, data-URI 형식); 스케치 스타일 `.excalidraw` 생성기가 동일한 공유 아이콘을 재사용(로컬·오프라인)
+- **project-init `decision-reconcile` 스킬** — 누적된 ADR(`ADR-NNN`) 간 모순 및 ADR-현실 드리프트를, 다양한 패널(여러 Claude 모델 티어 + 선택적 co-agent CLI, 각각 다른 리뷰 렌즈)로 탐지한 뒤 결정을 번복/조정하는 superseding ADR 초안 작성. 로컬 전용(upstream 미포함) ([#56](https://github.com/Atom-oh/oh-my-cloud-skills/pull/56))
+- **reactive-presentation `theme.mode:dark` 빌드 옵션** — v1.9.0 토큰 시스템 기반 옵트인 다크 빌드; 테마별 네이티브 로고(일괄 invert 제거); 라이트 테마 깊이감·로고 가시성 수정
+
+### Changed
+- **에이전트별 모델 티어 (품질 우선)** — 산출물 기준으로 전체 플러그인 에이전트 재편: 판단/종합 에이전트(`content-review-agent`, `wellarchitected-agent`, `co-agent` 의장)는 Fable 5, 고위험 오케스트레이션/변환/IAM(`ops-coordinator-agent`, `agentcore-creator-agent`, `iam-agent`)은 Opus, 생성·진단 워커는 Sonnet; 멀티-AI 패널 리뷰 반영 ([#62](https://github.com/Atom-oh/oh-my-cloud-skills/pull/62))
+
+## [1.9.0] - 2026-06-10
+
+### Added
+- **reactive-presentation v1.9.0 토큰 디자인 시스템** — 디자인 토큰 기반(type/spacing/radius/shadow/color-role/motion/z), 라이트 기본 듀얼 테마 스코프 + 토큰 기반 컴포넌트 프리미티브, `theme.css` 토큰화(spacing/radius/shadow/type, 드리프트된 폴백 제거), 템플릿을 토큰 클래스로 정리, `design-tokens.css` 동봉. PPTX/브랜드 추출이 코어 디자인 토큰을 구동하고, `validate`에 디자인-린트 규칙(raw-hex / inline-style / off-scale / raw-rgba / overflow) 추가 ([#53](https://github.com/Atom-oh/oh-my-cloud-skills/pull/53))
+- **reactive-presentation 콘텐츠 품질 레이어** — 구조화된 발표자 노트 스키마 + `NOTE_STRUCTURE` 린트, 슬라이드 제목 보이스 가이드 + `TITLE_LENGTH` 린트(콘텐츠 슬라이드로 한정), 린트 연동 "Forbidden AI-slide-tells" 섹션 통합, 생성 후 content-review 소스 누락 교차 검증 ([#54](https://github.com/Atom-oh/oh-my-cloud-skills/pull/54))
+
+### Changed
+- 모든 플러그인과 `marketplace.json`을 1.9.0으로 범프
+
+## [1.8.0] - 2026-06-10
+
+### Added
+- **co-agent consensus 파이프라인** — 교차 패밀리 멀티모델 합의 게이트가 적용된 자율 doc→plan→implementation 파이프라인으로, 1.7.2의 리뷰 전용 프레이밍을 대체. Stage A(P0–P2: 입력 문서 탐지, TDD+Tidy 계획 로드/생성, 계획 리뷰 게이트), Stage B(P3: `scope_guard.py` 계획 파일셋 락 + Stop/PostToolUse 훅을 갖춘 세션 게이트 자율 TDD 구현 루프), Stage C(P4 누적 스코프 diff 최종 게이트 + P5 리포트 + 전체 파이프라인 기본 + 재개). 신규 스크립트: `consensus_state.py`(세션 상태 + 입력 문서 탐지 + cumulative-diff + report), `parse_plan.py`, `scope_guard.py`, `consensus_hooks.py`. `/co-agent:consensus`에 `plan`/`review`/`implement` 서브모드 + 전체 파이프라인 기본 추가 ([#49](https://github.com/Atom-oh/oh-my-cloud-skills/pull/49), [#50](https://github.com/Atom-oh/oh-my-cloud-skills/pull/50), [#51](https://github.com/Atom-oh/oh-my-cloud-skills/pull/51))
+- **co-agent Kiro 멀티모델 패널** — 주력 패널은 opus / kimi-k2.5 / glm-5(Kiro 라우터를 통한 교차 벤더 다양성), `deep` 기본; 내부 kimi-k2.5의 `claude-sonnet-4.6` 폴백 문서화 ([#52](https://github.com/Atom-oh/oh-my-cloud-skills/pull/52))
+
+### Changed
+- 모든 플러그인과 `marketplace.json`을 1.8.0으로 범프
 
 ## [1.7.2] - 2026-06-09
 
@@ -418,7 +484,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AWS Architecture Icons 통합 추가 (4,224개 파일)
 - 발표자 뷰 및 발표자 노트 추가
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.9.0...HEAD
+[1.9.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.8.0...v1.9.0
+[1.8.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.7.2...v1.8.0
+[1.7.2]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.7.1...v1.7.2
+[1.7.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.7.0...v1.7.1
+[1.7.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.6.0...v1.7.0
+[1.6.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.5.1...v1.6.0
+[1.5.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.5.0...v1.5.1
+[1.5.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.2.5...v1.4.0
 [1.2.5]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.2.3...v1.2.5
 [1.2.3]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.2.2...v1.2.3

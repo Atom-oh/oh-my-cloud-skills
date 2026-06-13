@@ -1,5 +1,5 @@
 ---
-description: Autonomous doc→plan→implementation pipeline with cross-family multi-model consensus gates. Current Stage A runs P0–P2 (load/generate a plan + plan-review gate, no code edits); implementation is Stage B.
+description: Autonomous doc→plan→implementation pipeline with cross-family multi-model consensus gates. All stages shipped — Stage A (P0–P2 plan gate), Stage B (P3 autonomous implement), Stage C (P4 final gate + P5 report); full-pipeline default with resume.
 allowed-tools: Read, Glob, Grep, Bash, AskUserQuestion
 argument-hint: "plan <doc...> | review [diff base] | implement <plan> | (full)  [--deep] [--trust-plan]"
 ---
@@ -7,8 +7,8 @@ argument-hint: "plan <doc...> | review [diff base] | implement <plan> | (full)  
 # co-agent: consensus
 
 Autonomous **doc → plan → implementation** with cross-family multi-model consensus gates.
-**This version implements Stage A (P0–P2): plan + plan-review gate, no code edits.** P3
-implement (Stage B) and P4/P5 (Stage C) land later. Full reference: `references/consensus-pipeline.md`.
+**All stages are implemented** — Stage A (P0–P2: plan + plan-review gate), Stage B (P3:
+autonomous implement), Stage C (P4 final gate + P5 report). Full reference: `references/consensus-pipeline.md`.
 
 Argument: `$ARGUMENTS`
 
@@ -30,7 +30,9 @@ Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"`.
    `python3 "$SK/consensus_state.py" verify .` (clean tree required).
 3. **P1 plan**: plan doc → `python3 "$SK/parse_plan.py" <plan>` (tasks + `--files` scope).
    No plan → GENERATE a TDD+Tidy plan from the ADR/spec (bite-sized `- [ ]` tasks, exact
-   file paths, per-task commits) and write it to `docs/superpowers/plans/`, then parse it.
+   file paths — **backtick-wrapped** in `Create:`/`Modify:`/`Test:` entries, since
+   `parse_plan.py` ignores bare paths — per-task commits) and write it to
+   `docs/superpowers/plans/`, then parse it.
 4. **P2 gate (unless `--trust-plan`)**: fan the plan out to the panel (`pairs` → per-(ai,model)
    fan-out per `references/ai-cli-adapters.md`), `check_citations.py` the findings, drop
    `unsupported`, synthesize by agreement+evidence. Iterate ≤ `consensus.max_rounds` until no

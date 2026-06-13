@@ -13,7 +13,7 @@
 
 *콘텐츠 제작 (aws-content-plugin):*
 - **인터랙티브 HTML/CSS/JS 프레젠테이션** — Canvas 애니메이션, 퀴즈, 발표자 뷰, GitHub Pages 배포
-- **AWS 아키텍처 다이어그램** — Draw.io XML 자동 레이아웃, PNG/SVG 내보내기
+- **AWS 아키텍처 다이어그램** — 스펙 기반 `layout_aws.py` 엔진(YAML → Draw.io) 표준 패턴, 공유 AWS 아이콘 임베드, 스케치 스타일 `.excalidraw` 생성기; PNG/SVG 내보내기
 - **애니메이션 트래픽 흐름 다이어그램** — SVG + SMIL 애니메이션, 인터랙티브 범례
 - **기술 문서** — 전문적인 Markdown 보고서 및 비교 문서
 - **GitBook 문서 사이트** — 내비게이션과 컴포넌트가 포함된 구조화된 문서
@@ -45,11 +45,13 @@
 - **4가지 모드** — 멀티-AI 리뷰, 의사결정 보조, ADR 협업, `sync-context`(`CLAUDE.md` 증류 -> `AGENTS.md`/`GEMINI.md`)
 - **설치된 CLI 패널** — 같은 프롬프트를 Kiro/Codex/Gemini에 병렬 팬아웃, Claude가 의장으로 합의/이견 종합 (없으면 Claude 단독, hard-fail 없음)
 - **`/co-agent:configure`** — AI별 model, Codex effort, 활성/비활성, timeout, `autosync`(`CLAUDE.md` 변경 시 AI 컨텍스트 재생성) 튜닝
+- **`/co-agent:consensus`** — 교차 패밀리 멀티모델 합의 게이트가 적용된 자율 doc→plan→implementation 파이프라인 (계획 리뷰, 구현, 최종 게이트)
 
 *프로젝트 스캐폴딩 (project-init):*
 - **10개 슬래시 명령** — /init-project, /sync-docs, /add-adr, /add-module, /add-runbook, /add-reference-doc 등
 - **문서 품질 스코어링** — CLAUDE.md 품질 평가 (100점 척도)
 - **자동 동기화 워크플로우** — 코드 변경에 따라 문서를 동기화 유지
+- **`decision-reconcile`** — 누적된 ADR 간 모순(및 ADR-현실 드리프트)을 다양한 멀티-에이전트 패널로 탐지한 뒤 superseding ADR 초안 작성
 
 ---
 
@@ -518,12 +520,12 @@ python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_
 
 ### 변환 결과 예시
 
-`aws-ops-plugin` (에이전트 9개, 스킬 5개, MCP 서버 5개) 변환 결과:
+`aws-ops-plugin` (에이전트 10개, 스킬 6개, MCP 서버 2개) 변환 결과:
 
 ```
 aws-ops-power/
-├── POWER.md                      # 약 96개 키워드가 집계된 매니페스트
-├── mcp.json                      # 5개 AWS MCP 서버 (type 필드 제거됨)
+├── POWER.md                      # 키워드가 집계된 매니페스트
+├── mcp.json                      # AWS MCP 서버 (type 필드 제거됨)
 └── steering/
     ├── routing.md                # 항상 로드되는 라우팅 컨텍스트
     ├── eks-agent.md              # 자동 활성화 에이전트 steering 파일
@@ -533,13 +535,16 @@ aws-ops-power/
     ├── storage-agent.md
     ├── database-agent.md
     ├── cost-agent.md
+    ├── analytics-agent.md
     ├── ops-coordinator-agent.md  # description에 "(Advanced reasoning)" 추가
+    ├── wellarchitected-agent.md
     ├── ops-troubleshoot.md       # 트리거가 병합된 스킬
     ├── ops-health-check.md
     ├── ops-network-diagnosis.md
     ├── ops-observability.md
     ├── ops-security-audit.md
-    └── ref-*.md                  # 15개 레퍼런스 파일 (manual inclusion)
+    ├── ops-wellarchitected-review.md
+    └── ref-*.md                  # 레퍼런스 파일 (manual inclusion)
 ```
 
 ### 엣지 케이스
@@ -603,8 +608,9 @@ aws-ops-power/
 | 스킬 | 제공 내용 |
 |------|----------|
 | `reactive-presentation` | 프레젠테이션 프레임워크 (CSS/JS), Remarp 변환, PPTX→Remarp 변환기, AWS 아이콘 추출, 슬라이드 패턴 참조 |
-| `architecture-diagram` | Draw.io XML 템플릿, AWS 아이콘 참조, 레이아웃 패턴 |
+| `architecture-diagram` | 스펙 기반 `layout_aws.py` 엔진(YAML → Draw.io), 공유 AWS 아이콘 임베드, `.excalidraw` 생성기, 레이아웃/디자인 린트 게이트 |
 | `animated-diagram` | SMIL 애니메이션 가이드, HTML 래퍼 템플릿, 트래픽 흐름 패턴 |
+| `slide-fix` | Remarp 슬라이드 이슈 어노테이션(`<!-- issue: -->`) 반영 후 재빌드 |
 | `gitbook` | GitBook 구조 가이드, 컴포넌트 패턴, 내비게이션 템플릿 |
 | `workshop-creator` | Workshop Studio 지시문, 모듈 템플릿, CloudFormation 참조 |
 
@@ -625,8 +631,10 @@ aws-ops-power/
 |------|----------|
 | `kiro-convert` | 플러그인-to-Kiro-Power 변환 워크플로우 |
 | `agentcore-create` | 5단계 AgentCore 설계, 빌드, 변환, 배포 워크플로우 |
-| `co-agent` | 멀티-AI 협업 (Kiro/Codex/Gemini) — 리뷰, 의사결정 보조, ADR 협업, `sync-context`; Claude가 의장. 명령: `/co-agent:configure`, `/co-agent:sync-context` |
+| `co-agent` | 멀티-AI 협업 (Kiro/Codex/Gemini) — 리뷰, 의사결정 보조, ADR 협업, `sync-context`; Claude가 의장. 명령: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus` |
 | `project-scaffolder` | Claude Code 프로젝트 구조 패턴 및 컨벤션 |
+| `pr-autofix` | PR 리뷰 피드백(AI + 사람) 폴링 후 이슈 자동 수정 (최대 3회 반복) |
+| `decision-reconcile` | 다양한 멀티-에이전트 패널로 ADR 모순/드리프트 탐지 후 superseding ADR 초안 작성 |
 
 ### Project Init 명령
 
@@ -637,9 +645,11 @@ aws-ops-power/
 | `/add-adr` | Architecture Decision Record 생성 |
 | `/add-module` | 모듈 디렉토리 및 CLAUDE.md 추가 |
 | `/add-runbook` | 운영 런북 생성 |
+| `/add-reference-doc` | 구현 참조 문서 스켈레톤 추가 (`docs/reference/`) |
 | `/generate-readme` | 이중 언어 README.md 생성 |
 | `/generate-changelog` | 이중 언어 CHANGELOG.md 생성 |
 | `/health-check` | 프로젝트 설정 검증 |
+| `/pr-autofix` | PR 리뷰 피드백(AI + 사람) 폴링 후 자동 수정 (최대 3회 반복) |
 
 ---
 
@@ -753,16 +763,16 @@ plugins/
 │   └── skills/
 │       └── agentcore-create/
 │
-├── co-agent/                       # 멀티-AI 협업 (1 에이전트, 1 스킬, 2 명령)
+├── co-agent/                       # 멀티-AI 협업 (1 에이전트, 1 스킬, 3 명령)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
 │   ├── agents/
 │   │   └── co-agent.md
-│   ├── commands/                   # /co-agent:configure, /co-agent:sync-context
+│   ├── commands/                   # /co-agent:configure, /co-agent:sync-context, /co-agent:consensus
 │   └── skills/
 │       └── co-agent/
 │
-└── project-init/                      # 프로젝트 스캐폴딩 (1 에이전트, 2 스킬, 10 명령)
+└── project-init/                      # 프로젝트 스캐폴딩 (1 에이전트, 3 스킬, 10 명령)
     ├── .claude-plugin/plugin.json
     ├── CLAUDE.md
     ├── agents/
@@ -777,5 +787,7 @@ plugins/
     │   ├── generate-changelog.md
     │   └── health-check.md
     └── skills/
-        └── project-scaffolder/
+        ├── project-scaffolder/
+        ├── pr-autofix/
+        └── decision-reconcile/
 ```
