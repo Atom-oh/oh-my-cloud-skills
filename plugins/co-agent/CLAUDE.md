@@ -53,21 +53,9 @@ co-agent
 
 ## Configure (`/co-agent:configure`)
 
-패널 설정을 레이어드(`co-agent.defaults.json` ← `.claude/co-agent.local.json`)로 관리. **CLI가 헤드리스로 실제 받는 것만** 노출:
+패널 설정(per-AI `model`, Codex `effort`, `enabled`/`timeout`, `context_limit`, `autosync`)을 레이어드 관리: `co-agent.defaults.json` ← `.claude/co-agent.local.json`. 팬아웃이 `scripts/co_agent_config.py`(`panel`/`flags`/`timeout`/`fits`)를 **실시간** 호출 — `context_limit` 초과 AI는 하드실패 대신 **스킵**. effort는 **Codex 전용**. `autosync on` 시 CLAUDE.md 변경 → `/co-agent:sync-context` 자동.
 
-| 설정 | kiro | codex | gemini |
-|------|------|-------|--------|
-| model | `--model` | `-m` | `-m` |
-| effort | — | `-c model_reasoning_effort` | — |
-| enabled / timeout | ✅ | ✅ | ✅ |
-| context_limit (토큰) | 1,000,000 | 272,000 | 1,000,000 |
-| autosync (global) | `set autosync on` → CLAUDE.md 변경 시 `/co-agent:sync-context` 자동 실행 (옵트인, 기본 off) |
-
-> effort는 **Codex 전용** (Gemini/Kiro는 헤드리스 effort 플래그 없음 — dead 설정 미노출). 팬아웃이 `co_agent_config.py`의 `panel`/`flags`/`timeout`/`fits`을 호출해 설정이 **실시간 반영**됨. `context_limit` 초과 AI는 하드 실패 대신 **스킵**(예: 거대 diff에서 Codex 272K 초과 → Kiro/Gemini만). model 값은 charset 검증으로 팬아웃 주입 차단.
-
-## Sync-context (`/co-agent:sync-context`)
-
-`CLAUDE.md`를 **증류**해 외부 AI가 읽는 컨텍스트 파일 생성 (스킬 Mode 4를 독립 명령으로 노출). Codex→`AGENTS.md`, Gemini→`GEMINI.md`, Kiro→`CLAUDE.md` 직접. 생성 마커로 staleness 추적·수기파일 보호. `CLAUDE.md` PostToolUse 훅이 drift 알림 — `autosync on`이면 Claude에게 재동기화 지시.
+> 설정 표·플래그 매핑 상세: **`/co-agent:configure`** 명령 + `scripts/co_agent_config.py`. (Sync-context = 스킬 Mode 4, 독립 명령 `/co-agent:sync-context` — AI Context Files 위 참조.)
 
 ## Chair Principle
 
