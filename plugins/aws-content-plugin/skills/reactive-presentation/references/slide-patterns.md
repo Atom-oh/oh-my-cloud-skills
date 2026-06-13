@@ -1,32 +1,19 @@
-<!-- SECTION INDEX (auto) — 큰 파일. 전체를 읽지 말고 필요한 ## 섹션만 offset-read.
-     라인번호 정확값(11 sec). 예: Read(file, offset=L, limit=다음섹션L-L). -->
+<!-- SECTION INDEX (auto) — 큰 파일. 전체 읽지 말고 필요한 ## 섹션만 offset-read.
+     라인번호 정확값(11 sec). 예: Read(file, offset=L, limit=다음섹션L−L). 해당 섹션이 §/## 참조 시 그 섹션도 함께. -->
 <!--
-  L32    Slide Title Voice
-  L62    Common Slide Types
-  L347   Agenda
-  L867   Canvas Animation Patterns
-  L1126  Operations Dashboard
-  L1362  Weekly Request Volume
-  L1482  Monthly Performance
-  L1660  Cloud Migration Progress
-  L1808  Cluster Status
-  L1840  Slide Count Guidelines
-  L1853  JSON Authoring Mode (권장)
+  L19    Slide Title Voice
+  L49    Common Slide Types
+  L334   Agenda
+  L854   Canvas Animation Patterns
+  L1113  Operations Dashboard
+  L1349  Weekly Request Volume
+  L1469  Monthly Performance
+  L1647  Cloud Migration Progress
+  L1795  Cluster Status
+  L1827  Slide Count Guidelines
+  L1840  JSON Authoring Mode (권장)
 -->
 
-<!--
-  L3     Slide Title Voice
-  L33    Common Slide Types
-  L318   Agenda
-  L838   Canvas Animation Patterns
-  L1097  Operations Dashboard
-  L1333  Weekly Request Volume
-  L1453  Monthly Performance
-  L1631  Cloud Migration Progress
-  L1779  Cluster Status
-  L1811  Slide Count Guidelines
-  L1824  JSON Authoring Mode (권장)
--->
 # Slide Design Patterns
 
 ## Slide Title Voice
