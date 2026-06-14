@@ -43,11 +43,8 @@ for entry in "${KIRO_MODELS[@]}"; do
   else echo "[skip] $tag (binary absent)" >&2; : > "$SLOT/$tag.md"; fi
 done
 
-# Antigravity (agy). best-effort: ANTIGRAVITY_API_KEY free tier(rate-limited).
-if command -v agy >/dev/null 2>&1; then
-  ( try_panel "$SLOT/antigravity.md" "$SLOT/antigravity.err" \
-      timeout "$T" agy -p "$PROMPT" ) &
-else echo "[skip] antigravity (binary absent)" >&2; : > "$SLOT/antigravity.md"; fi
+# NOTE: Antigravity(agy) 는 제거됨 — OAuth 인터랙티브 로그인 전용(API 키 인증 모드 없음)
+# 이라 헤드리스 CI 에서 인증 불가. 패널 = Codex + Kiro x3 → Claude 의장.
 wait
 
 # 결과 집계 (KIRO_MODELS 와 동일 소스에서 tag 파생 → 하드코딩 불일치 방지)
@@ -55,7 +52,6 @@ record_result "$SLOT/codex.md" "codex" "$RESP"
 for entry in "${KIRO_MODELS[@]}"; do
   tag="${entry##*:}"; record_result "$SLOT/$tag.md" "$tag" "$RESP"
 done
-record_result "$SLOT/antigravity.md" "antigravity" "$RESP"
 echo "Panel responded: $(tr '\n' ' ' < "$RESP")"
 
 # skip 원인 노출: 빈 슬롯인데 stderr 가 있으면 stderr 의 끝(실제 에러)을 로그에 찍는다.
