@@ -42,7 +42,7 @@ assert_eq "2" "$IE_RC" "invalid effort value → exit 2"
 # disable kiro → dropped from panel, enabled check fails
 python3 "$CFG" set kiro enabled false --root "$R" >/dev/null 2>&1
 PANEL=$(python3 "$CFG" panel --root "$R" 2>&1)
-assert_eq "codex gemini" "$PANEL" "disabled kiro removed from panel"
+assert_eq "codex gemini antigravity" "$PANEL" "disabled kiro removed from panel (antigravity present)"
 python3 "$CFG" enabled kiro --root "$R" >/dev/null 2>&1 && KI_RC=0 || KI_RC=$?
 assert_eq "1" "$KI_RC" "enabled kiro → exit 1 when disabled"
 python3 "$CFG" enabled codex --root "$R" >/dev/null 2>&1 && CO_RC=0 || CO_RC=$?
@@ -71,6 +71,18 @@ python3 "$CFG" set codex model '*' --root "$R" >/dev/null 2>&1 && MG=0 || MG=$?
 assert_eq "2" "$MG" "model with glob char rejected (exit 2)"
 python3 "$CFG" set codex model gpt-4.1 --root "$R" >/dev/null 2>&1 && MV=0 || MV=$?
 assert_eq "0" "$MV" "valid model accepted (exit 0)"
+
+# antigravity (agy): spaced/parenthesized model token accepted; shell metachars still rejected
+python3 "$CFG" set antigravity model "Gemini 3.1 Pro (High)" --root "$R" >/dev/null 2>&1 && AGM=0 || AGM=$?
+assert_eq "0" "$AGM" "antigravity spaced/paren model accepted (exit 0)"
+AG_FLAGS=$(python3 "$CFG" flags antigravity --root "$R" 2>&1)
+assert_contains "$AG_FLAGS" "Gemini 3.1 Pro (High)" "antigravity flags include the --model token"
+python3 "$CFG" set antigravity model 'x; rm -rf ~' --root "$R" >/dev/null 2>&1 && AGJ=0 || AGJ=$?
+assert_eq "2" "$AGJ" "antigravity model with shell metachars rejected (exit 2)"
+python3 "$CFG" set antigravity model '$(whoami)' --root "$R" >/dev/null 2>&1 && AGS=0 || AGS=$?
+assert_eq "2" "$AGS" "antigravity model with command-substitution rejected (exit 2)"
+python3 "$CFG" set antigravity model '*' --root "$R" >/dev/null 2>&1 && AGG=0 || AGG=$?
+assert_eq "2" "$AGG" "antigravity model with glob char rejected (exit 2)"
 
 # context-size guard: defaults Kiro/Gemini 1M, Codex 272K
 R3=$(mktemp -d "${TMPDIR:-/tmp}/coagentctx3.XXXXXX")

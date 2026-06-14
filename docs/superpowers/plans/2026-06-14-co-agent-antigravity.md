@@ -8,6 +8,7 @@ TDD where testable; per-task commit. All file paths backtick-wrapped (parse_plan
 **Files:**
 - Modify: `plugins/co-agent/skills/co-agent/scripts/co_agent_config.py`
 - Modify: `tests/structure/test-co-agent-config.sh`
+- Modify: `tests/structure/test-co-agent-consensus.sh`
 
 - [ ] Test first: in `test-co-agent-config.sh`, update the panel assertion (kiro disabled) to expect `codex gemini antigravity`; add: `set antigravity model "Gemini 3.1 Pro (High)"` → exit 0; `flags antigravity` includes `--model "Gemini 3.1 Pro (High)"`; `set antigravity model 'x; rm -rf ~'` → exit 2; `set antigravity model '*'` → exit 2.
 - [ ] `AIS = ("kiro", "codex", "gemini", "antigravity")`.
