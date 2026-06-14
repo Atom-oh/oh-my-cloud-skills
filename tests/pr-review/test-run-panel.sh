@@ -22,32 +22,30 @@ EOF
 setup() { WORK=$(mktemp -d); BIN=$(mktemp -d); export PATH="$BIN:$PATH"
   echo "diff --git a b" > "$WORK/diff.txt"; echo "review this" > "$WORK/prompt.txt"; }
 
-# (a) 전원 응답 (codex + kiro x3 + antigravity = 5)
-setup; mkfake codex 0 "codex-finding"; mkfake kiro-cli 0 "kiro-finding"; mkfake agy 0 "agy-finding"
+# (a) 전원 응답 (codex + kiro x3 = 4)
+setup; mkfake codex 0 "codex-finding"; mkfake kiro-cli 0 "kiro-finding"
 "$SCRIPT" "$WORK/diff.txt" "$WORK/prompt.txt" "$WORK" >/dev/null 2>&1
 allok=1; diffok=1
-for f in codex kiro-opus kiro-kimi kiro-glm antigravity; do
+for f in codex kiro-opus kiro-kimi kiro-glm; do
   [ -s "$WORK/slot/$f.md" ] || allok=0
   # 각 패널의 stdin 으로 diff 가 실제 전달됐는지 검증 (</dev/null 가 파이프를 덮는 회귀 방지)
   grep -q "diff --git" "$WORK/slot/$f.md" 2>/dev/null || diffok=0
 done
 [ "$allok" = 1 ] && pass "run-panel (a) all slots filled" || fail "run-panel (a) all slots filled" "a slot is empty"
 [ "$diffok" = 1 ] && pass "run-panel (a) diff reached every panel (stdin)" || fail "run-panel (a) diff reached every panel (stdin)" "a panel got empty stdin"
-[ "$(wc -l < "$WORK/responded.txt" 2>/dev/null || echo 0)" = 5 ] \
-  && pass "run-panel (a) responded=5" || fail "run-panel (a) responded=5" "responded != 5"
+[ "$(wc -l < "$WORK/responded.txt" 2>/dev/null || echo 0)" = 4 ] \
+  && pass "run-panel (a) responded=4" || fail "run-panel (a) responded=4" "responded != 4"
 
-# (b) kiro+antigravity 실패(codex만 응답)
-setup; mkfake codex 0 "codex-finding"; mkfake kiro-cli 1 ""; mkfake agy 1 ""
+# (b) kiro 실패(codex만 응답)
+setup; mkfake codex 0 "codex-finding"; mkfake kiro-cli 1 ""
 "$SCRIPT" "$WORK/diff.txt" "$WORK/prompt.txt" "$WORK" >/dev/null 2>&1
 grep -q codex "$WORK/responded.txt" 2>/dev/null \
   && pass "run-panel (b) codex responded" || fail "run-panel (b) codex responded" "codex missing"
 grep -q kiro "$WORK/responded.txt" 2>/dev/null \
   && fail "run-panel (b) kiro skipped" "kiro should be absent" || pass "run-panel (b) kiro skipped"
-grep -q antigravity "$WORK/responded.txt" 2>/dev/null \
-  && fail "run-panel (b) antigravity skipped" "antigravity should be absent" || pass "run-panel (b) antigravity skipped"
 
 # (c) 전원 실패 → responded 비어야 함
-setup; mkfake codex 1 ""; mkfake kiro-cli 1 ""; mkfake agy 1 ""
+setup; mkfake codex 1 ""; mkfake kiro-cli 1 ""
 "$SCRIPT" "$WORK/diff.txt" "$WORK/prompt.txt" "$WORK" >/dev/null 2>&1
 { [ -f "$WORK/responded.txt" ] && [ ! -s "$WORK/responded.txt" ]; } \
   && pass "run-panel (c) responded empty" || fail "run-panel (c) responded empty" "responded not empty"
