@@ -157,6 +157,12 @@ def cmd_matrix(root):
                       f"(intended diversity; {n}× Kiro credits/round)")
             else:
                 print(f"  ⚠️  {ai}: {n} models (same provider family — diminishing returns vs cost)")
+    panel = cfg.get("panel", {})
+    if (panel.get("gemini", {}).get("enabled", True)
+            and panel.get("antigravity", {}).get("enabled", True)):
+        print("  ℹ️  antigravity (agy) supersedes the deprecated gemini — the fan-out drops "
+              "gemini when agy is installed, so the runtime count is one Gemini-family pair "
+              "(the budget above counts both, since this preview is install-unaware)")
     return 0
 
 
