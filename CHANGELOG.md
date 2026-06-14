@@ -13,6 +13,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2026-06-14
+
+### Added
+- **co-agent Antigravity (`agy`) panel member** — Google Antigravity joins the panel as the Gemini-family member (default model `Gemini 3.1 Pro (High)`; adapter `agy -p "<P>" --model "<token>" --sandbox`, read-only via `--sandbox`). **Supersedes the deprecated `gemini` CLI** — when both are installed the fan-out runs `agy` and skips `gemini`; `gemini` still runs if `agy` is absent. Wired across all modes (Review/Decide/ADR + consensus). `MODEL_RE` relaxed to allow the spaced/parenthesized model token (e.g. `Gemini 3.1 Pro (High)`) while still blocking shell metacharacters ([#69](https://github.com/Atom-oh/oh-my-cloud-skills/pull/69))
+
+### Changed
+- **co-agent doc-sync-aware `CLAUDE.md` hook** — the `PostToolUse(CLAUDE.md)` hook message names `/sync-docs` as a trigger (and the affected `AGENTS.md`/`GEMINI.md`), and `/co-agent:configure` recommends `autosync on` so the AI context regenerates as part of a doc sync — closing the loop on the co-agent side without forking the upstream-synced `/sync-docs` ([#68](https://github.com/Atom-oh/oh-my-cloud-skills/pull/68))
+- Bump all plugins and `marketplace.json` to 1.11.0
+
+### Fixed
+- **co-agent: stop bare-`kiro` invocation in consensus** — `pairs` emits the panel **key** (`kiro`, `antigravity`), not the runnable binary (`kiro-cli`, `agy`); add a `BINARIES` map + `co_agent_config.py binary <ai>` source-of-truth, loud guards at the `pairs`→fan-out boundary, and a regression test. Also replace the stale `/kiro-cli:review` slash-delegation (Review mode) with the headless `kiro-cli chat` adapter ([#71](https://github.com/Atom-oh/oh-my-cloud-skills/pull/71))
+
 ## [1.10.0] - 2026-06-14
 
 ### Added
@@ -240,7 +252,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add AWS Architecture Icons integration (4,224 files)
 - Add presenter view with speaker notes
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.10.0...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.11.0...HEAD
+[1.11.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.7.2...v1.8.0
@@ -267,6 +280,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 이 프로젝트의 모든 주요 변경 사항은 이 파일에 기록됩니다.
 이 문서는 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)를 기반으로 하며,
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 따릅니다.
+
+## [1.11.0] - 2026-06-14
+
+### Added
+- **co-agent Antigravity(`agy`) 패널 멤버** — Google Antigravity가 Gemini 패밀리 멤버로 패널에 합류(기본 모델 `Gemini 3.1 Pro (High)`; 어댑터 `agy -p "<P>" --model "<token>" --sandbox`, `--sandbox`로 읽기전용). **deprecated된 `gemini` CLI를 대체** — 둘 다 설치 시 팬아웃은 `agy`만 쓰고 `gemini`는 스킵, `agy` 없으면 `gemini` 사용. 전 모드(Review/Decide/ADR + consensus)에 연결. `MODEL_RE`를 완화해 공백·괄호 포함 모델 토큰을 허용하되 셸 메타문자는 계속 차단 ([#69](https://github.com/Atom-oh/oh-my-cloud-skills/pull/69))
+
+### Changed
+- **co-agent doc-sync 인지형 `CLAUDE.md` 훅** — `PostToolUse(CLAUDE.md)` 훅이 `/sync-docs`를 트리거로 명시(영향 파일 `AGENTS.md`/`GEMINI.md`)하고, `/co-agent:configure`가 `autosync on`을 권장해 AI 컨텍스트가 doc sync의 일부로 재생성되도록 함 — upstream 동기화 대상 `/sync-docs`를 fork하지 않고 co-agent 쪽에서 루프를 닫음 ([#68](https://github.com/Atom-oh/oh-my-cloud-skills/pull/68))
+- 모든 플러그인과 `marketplace.json`을 1.11.0으로 범프
+
+### Fixed
+- **co-agent: consensus에서 bare-`kiro` 호출 차단** — `pairs`는 패널 **키**(`kiro`, `antigravity`)를 내보내지만 실행 바이너리는 `kiro-cli`/`agy`. `BINARIES` 맵 + `co_agent_config.py binary <ai>` 단일 진실원천, `pairs`→팬아웃 경계 가드, 회귀 테스트 추가. Review 모드의 stale `/kiro-cli:review` 슬래시 위임도 headless `kiro-cli chat` 어댑터로 교체 ([#71](https://github.com/Atom-oh/oh-my-cloud-skills/pull/71))
 
 ## [1.10.0] - 2026-06-14
 
@@ -495,7 +520,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AWS Architecture Icons 통합 추가 (4,224개 파일)
 - 발표자 뷰 및 발표자 노트 추가
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.10.0...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.11.0...HEAD
+[1.11.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.7.2...v1.8.0
