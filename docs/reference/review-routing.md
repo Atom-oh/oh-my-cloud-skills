@@ -12,7 +12,7 @@ required review is silently skipped.
 
 | Artifact type in the diff | Review gate | Pass bar |
 |---------------------------|-------------|----------|
-| Code (source, scripts, tests) | `co-agent` Review (multi-AI) and/or `superpowers:requesting-code-review` | reviewer judgment |
+| Code (source, scripts, tests) | `co-agent` Review (multi-AI) / standard PR review | reviewer judgment |
 | Presentation / slides (Remarp, HTML) | `aws-content`: `content-review-agent` | ≥ 85 / 100 |
 | Diagram (`.drawio`, animated SVG/HTML) | `aws-content`: `content-review-agent` | ≥ 85 / 100 |
 | Document / GitBook / workshop / brochure | `aws-content`: `content-review-agent` | ≥ 85 / 100 |
@@ -28,10 +28,14 @@ Procedure:
 1. Classify every changed path by artifact type (a path may match more than one).
 2. Run **each** matching gate from the table above.
 3. **Security is non-negotiable**: if any changed path touches AWS security surface
-   (Security Group, IAM policy/role, Lambda permission/URL, S3 bucket policy, Route53, secrets),
-   `ops-security-audit`'s banned-pattern check (no `0.0.0.0/0` ingress, no `Principal:"*"`,
-   no `Resource:"*"` without a Condition, no `AuthType:NONE`, no secrets in env, no ALB bypassing
-   CloudFront) is a **required, blocking** leg — even if the change is "mostly docs".
+   (Security Group, IAM policy/role, Lambda permission/URL, S3 bucket policy, Route53, KMS,
+   API Gateway, WAF, CloudTrail, secrets — *representative, not exhaustive*),
+   `ops-security-audit`'s banned-pattern check is a **required, blocking** leg — even if the
+   change is "mostly docs". Canonical banned patterns (see the global AWS security mandates in
+   `CLAUDE.md` / `AGENTS.md` for the authoritative list): no `0.0.0.0/0` ingress; no IAM
+   `Principal:"*"` or `Resource:"*"` without a Condition; no Lambda `AuthType:NONE`; no secrets
+   in env (use Secrets Manager / Parameter Store); S3 Block Public Access always on; no ALB
+   bypassing CloudFront; CloudTrail logs retained (never deleted).
 4. Aggregate: the review passes only when **every** fired gate passes. One failing gate blocks.
 
 ## Notes

@@ -1,6 +1,6 @@
 ---
 name: ops-security-audit
-description: "AWS/EKS security audit: IAM, network security, compliance checks, plus AWS Security Agent (design/code review, on-demand penetration testing). The mandatory security leg of superpowers:requesting-code-review for IaC/AWS changes (banned-pattern checks: 0.0.0.0/0, Principal:* , secrets-in-env), and a shift-left security pre-check during superpowers:writing-plans."
+description: "AWS/EKS security audit: IAM, network security, compliance checks, plus AWS Security Agent (design/code review, on-demand penetration testing). The mandatory security leg of superpowers:requesting-code-review for IaC/AWS changes — enforces the repo's global AWS security mandates (no 0.0.0.0/0 ingress; no IAM Principal:\"*\" or Resource:\"*\" without Condition; no Lambda AuthType:NONE; no secrets in env; S3 Block Public Access on; no ALB bypassing CloudFront) — and a shift-left security pre-check during superpowers:writing-plans."
 triggers:
   - "security audit"
   - "보안 점검"
