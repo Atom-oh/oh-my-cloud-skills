@@ -73,13 +73,17 @@ plugins/<plugin-name>/
 
 ### Agent File Format
 
-Every agent `.md` file has YAML frontmatter with exactly three fields:
+Every agent `.md` file has YAML frontmatter with four core fields (some agents add
+optional `skills`/`color`/`mcpServers`). `model` tiers are quality-first (per PR #62):
+`opus` for judgment/synthesis gates and high-stakes orchestration/IAM, `sonnet` for
+generation/diagnosis workers.
 
 ```yaml
 ---
 name: eks-agent
 description: "Description with trigger keywords."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
+model: sonnet
 ---
 ```
 
@@ -196,7 +200,7 @@ Source: `tools/remarp-vscode/` | Entry: `src/extension.ts` | Preview: `src/previ
 
 ## Plugin Inventory
 
-### aws-content-plugin (8 agents, 6 skills)
+### aws-content-plugin (9 agents, 7 skills)
 
 | Agent | Creates |
 |-------|---------|
@@ -207,6 +211,7 @@ Source: `tools/remarp-vscode/` | Entry: `src/extension.ts` | Preview: `src/previ
 | `document-agent` | Markdown technical documents |
 | `gitbook-agent` | GitBook documentation sites |
 | `workshop-agent` | AWS Workshop Studio content |
+| `brochure-agent` | Single-page responsive online brochure (landing page) HTML |
 | `content-review-agent` | Quality gate for all content types |
 
 ### aws-ops-plugin (10 agents, 6 skills)
@@ -242,7 +247,7 @@ Skill: `kiro-convert` — interactive workflow for plugin-to-power conversion wi
 
 Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Skill-First Build, AgentCore Convert, Deploy) with `references/` and `scripts/` subdirectories. The `opus` alias resolves to `us.anthropic.claude-opus-4-8`; modern-Opus (4.7/4.8) param contract (no `temperature`/`top_p`/`top_k`, no `thinking.type:"enabled"`+`budget_tokens`) is documented in `references/agentcore-mapping-rules.md`.
 
-### co-agent (1 agent, 1 skill, 2 commands)
+### co-agent (1 agent, 1 skill, 3 commands)
 
 | Agent | Purpose |
 |-------|---------|
@@ -250,7 +255,7 @@ Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Sk
 
 Skill: `co-agent` — 4 modes: **Review** (multi-AI code/arch review + Well-Architected), **Decide** (decision support when unsure), **ADR** (co-author ADRs), **sync-context** (distill `CLAUDE.md` → `AGENTS.md` (Codex) + `GEMINI.md` (Gemini); Kiro reads `CLAUDE.md` directly). Fans the same prompt to whichever AI CLIs are installed — Kiro (`kiro-cli chat --no-interactive`; auth via login or `KIRO_API_KEY`), Codex (`codex exec -s read-only`), Gemini (`gemini -p … -o text`) — in parallel, then **Claude synthesizes** (consensus vs. dissent). Degrades gracefully; if no CLI is present, Claude answers solo. Adapters: `references/ai-cli-adapters.md`.
 
-Commands: `/co-agent:configure` — tune the panel (per-AI `model`, Codex `effort`, `enabled`, `timeout`, and `autosync` opt-in). `/co-agent:sync-context` — distill `CLAUDE.md` → `AGENTS.md`/`GEMINI.md` (Mode 4 surfaced as a standalone command). Layered config: `co-agent.defaults.json` (committed) ← `.claude/co-agent.local.json` (gitignored). Only headless-settable options are exposed (effort is Codex-only); the fan-out reads `co_agent_config.py` so settings are live. The `CLAUDE.md` PostToolUse hook reminds when context files drift stale, and — if `autosync on` — tells Claude to re-run sync-context. Scripts: `check_ai_context.py` (context-file validator), `co_agent_config.py` (panel settings).
+Commands: `/co-agent:configure` — tune the panel (per-AI `model`, Codex `effort`, `enabled`, `timeout`, and `autosync` opt-in). `/co-agent:sync-context` — distill `CLAUDE.md` → `AGENTS.md`/`GEMINI.md` (Mode 4 surfaced as a standalone command). `/co-agent:consensus` — autonomous doc→plan→implementation pipeline with multi-model gates (Mode 5; sub-modes `plan`/`review`/`implement`, full-pipeline default with resume). Layered config: `co-agent.defaults.json` (committed) ← `.claude/co-agent.local.json` (gitignored). Only headless-settable options are exposed (effort is Codex-only); the fan-out reads `co_agent_config.py` so settings are live. The `CLAUDE.md` PostToolUse hook reminds when context files drift stale, and — if `autosync on` — tells Claude to re-run sync-context. Scripts: `check_ai_context.py` (context-file validator), `co_agent_config.py` (panel settings).
 
 ### project-init (1 agent, 3 skills, 10 commands)
 

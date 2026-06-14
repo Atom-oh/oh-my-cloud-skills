@@ -167,9 +167,9 @@ Kiro ~2000 words). Produce one **lean, review-oriented core** and write it to BO
 > A PostToolUse hook reminds you when `CLAUDE.md` changes so these stay in sync.
 
 ### Mode 5 — Consensus pipeline  (also **`/co-agent:consensus`**)
-Autonomous **doc → plan → implementation** with cross-family multi-model gates. **This
-version = Stage A (P0–P2)**: load-or-generate a plan and run the plan consensus gate (no
-code edits). Implementation (P3) = Stage B. Full phases: `references/consensus-pipeline.md`.
+Autonomous **doc → plan → implementation** with cross-family multi-model gates — **all
+stages shipped**: Stage A (P0–P2 plan gate), Stage B (P3 autonomous implement), Stage C
+(P4 final gate + P5 report). Full phases: `references/consensus-pipeline.md`.
 
 Entry is conditional on the input docs:
 - **plan doc present** (writing-plans) → LOAD it (`scripts/parse_plan.py`), do NOT regenerate.

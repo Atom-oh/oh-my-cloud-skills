@@ -18,6 +18,7 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 - **Technical documents** — Professional Markdown reports and comparisons
 - **GitBook documentation sites** — Structured docs with navigation and components
 - **AWS Workshop Studio content** — Hands-on labs with multi-language support
+- **Single-page online brochures** — Self-contained responsive landing pages with embedded architecture diagram, deployed to GitHub Pages
 
 *Infrastructure Operations (aws-ops-plugin):*
 - **EKS troubleshooting** — Node issues, upgrades, add-ons, 5-minute triage
@@ -567,6 +568,7 @@ aws-ops-power/
 | `document-agent` | Technical documents | "Write an EKS vs ECS comparison document" | `.md` |
 | `gitbook-agent` | Documentation sites | "Create a GitBook documentation site" | GitBook project |
 | `workshop-agent` | Workshop content | "Create an EKS workshop" | Workshop Studio |
+| `brochure-agent` | Single-page online brochure | "Make a landing page for our platform" | `.html` (GitHub Pages) |
 | `content-review-agent` | Quality review | "Review the presentation" | Review report |
 
 ### Operations Agents
@@ -604,10 +606,12 @@ All agents activate automatically when Claude detects matching keywords in your 
 | Skill | Provides |
 |-------|----------|
 | `reactive-presentation` | Presentation framework (CSS/JS), Remarp conversion, PPTX→Remarp converter, AWS icon extraction, slide pattern reference |
-| `architecture-diagram` | Draw.io XML templates, AWS icon reference, layout patterns |
+| `architecture-diagram` | Spec-driven `layout_aws.py` engine (YAML → Draw.io), embedded shared AWS icons, `.excalidraw` generator, layout/design lint gate |
 | `animated-diagram` | SMIL animation guide, HTML wrapper templates, traffic flow patterns |
+| `slide-fix` | Apply Remarp slide issue annotations (`<!-- issue: -->`) and rebuild |
 | `gitbook` | GitBook structure guide, component patterns, navigation templates |
 | `workshop-creator` | Workshop Studio directives, module templates, CloudFormation references |
+| `brochure` | Single-page responsive brochure (self-contained HTML), editorial design system, embedded architecture SVG, public GitHub Pages deploy |
 
 ### Operations Skills
 
@@ -698,7 +702,7 @@ All content passes through `content-review-agent` which scores on a 100-point sc
 
 ```
 plugins/
-├── aws-content-plugin/                # Content creation (8 agents, 6 skills)
+├── aws-content-plugin/                # Content creation (9 agents, 7 skills)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
 │   ├── agents/                        # 8 agents

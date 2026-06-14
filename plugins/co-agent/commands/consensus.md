@@ -1,5 +1,5 @@
 ---
-description: Autonomous doc→plan→implementation pipeline with cross-family multi-model consensus gates. Current Stage A runs P0–P2 (load/generate a plan + plan-review gate, no code edits); implementation is Stage B.
+description: Autonomous doc→plan→implementation pipeline with cross-family multi-model consensus gates. All stages shipped — Stage A (P0–P2 plan gate), Stage B (P3 autonomous implement), Stage C (P4 final gate + P5 report); full-pipeline default with resume.
 allowed-tools: Read, Glob, Grep, Bash, AskUserQuestion
 argument-hint: "plan <doc...> | review [diff base] | implement <plan> | (full)  [--deep] [--trust-plan]"
 ---
@@ -7,8 +7,8 @@ argument-hint: "plan <doc...> | review [diff base] | implement <plan> | (full)  
 # co-agent: consensus
 
 Autonomous **doc → plan → implementation** with cross-family multi-model consensus gates.
-**This version implements Stage A (P0–P2): plan + plan-review gate, no code edits.** P3
-implement (Stage B) and P4/P5 (Stage C) land later. Full reference: `references/consensus-pipeline.md`.
+**All stages are implemented** — Stage A (P0–P2: plan + plan-review gate), Stage B (P3:
+autonomous implement), Stage C (P4 final gate + P5 report). Full reference: `references/consensus-pipeline.md`.
 
 Argument: `$ARGUMENTS`
 

@@ -20,6 +20,7 @@ const sidebars: SidebarsConfig = {
         'aws-content-plugin/agents/document-agent',
         'aws-content-plugin/agents/gitbook-agent',
         'aws-content-plugin/agents/workshop-agent',
+        'aws-content-plugin/agents/brochure-agent',
         'aws-content-plugin/agents/content-review-agent',
       ],
     },
@@ -33,6 +34,7 @@ const sidebars: SidebarsConfig = {
         'aws-content-plugin/skills/slide-fix',
         'aws-content-plugin/skills/gitbook',
         'aws-content-plugin/skills/workshop-creator',
+        'aws-content-plugin/skills/brochure',
       ],
     },
     {
