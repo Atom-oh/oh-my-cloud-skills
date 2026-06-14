@@ -1,7 +1,7 @@
 {
   "name": "co-agent",
   "version": "1.11.0",
-  "description": "Collaborate with other AI agents such as Kiro CLI, Codex, and Gemini for multi-AI review, decision support, ADR drafting, and context synchronization",
+  "description": "Collaborate with other AI agents such as Kiro CLI, Codex, and Antigravity for multi-AI review, decision support, ADR drafting, and context synchronization",
   "author": {
     "name": "atomoh"
   },

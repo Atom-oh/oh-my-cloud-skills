@@ -60,14 +60,29 @@ aws eks describe-pod-identity-association --cluster-name $CLUSTER_NAME --associa
 **Cross-account access (GA 2025-06, verified)** — a pod can now reach AWS resources in
 a *separate* account via **IAM role chaining**, no application code changes: the Pod
 Identity role assumes a **target role** in the resource account (pass `--target-role-arn`
-on the association). The target role's trust policy grants `sts:AssumeRole` to the Pod
-Identity role. Prefer this over the brittle multi-account IRSA wiring for cross-account
-workloads.
+on the association). Prefer this over the brittle multi-account IRSA wiring for
+cross-account workloads.
+
+Role chaining needs **both** sides wired (least-privilege — don't widen to `Resource:"*"`):
+- **Target role (resource account)** — trust policy allows the Pod Identity role to assume it.
+- **Pod Identity / source role (cluster account)** — identity policy grants `sts:AssumeRole`
+  scoped to the *exact* target ARN. Omitting this is the usual `AccessDenied` cause.
+
 ```bash
-aws eks create-pod-identity-association --cluster-name $CLUSTER_NAME \
+aws eks create-pod-identity-association --cluster-name "$CLUSTER_NAME" \
   --namespace <ns> --service-account <sa> \
   --role-arn <pod-identity-role-in-cluster-acct> \
   --target-role-arn <target-role-in-resource-acct>
+```
+```json
+// Source (Pod Identity) role — identity policy: allow assuming ONLY the target role
+{ "Version": "2012-10-17", "Statement": [{
+    "Effect": "Allow", "Action": "sts:AssumeRole",
+    "Resource": "arn:aws:iam::<resource-acct-id>:role/<target-role>" }] }
+// Target role — trust policy: allow the Pod Identity role to assume it
+{ "Version": "2012-10-17", "Statement": [{
+    "Effect": "Allow", "Principal": { "AWS": "arn:aws:iam::<cluster-acct-id>:role/<pod-identity-role>" },
+    "Action": "sts:AssumeRole" }] }
 ```
 
 ### RBAC
