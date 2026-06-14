@@ -1,6 +1,6 @@
 ---
 name: content-review-agent
-description: Cross-cutting content quality review agent. Reviews presentations, diagrams, documents, GitBook pages, and workshop content. Inspects layout, terminology, hallucination, language, PII/sensitive data, readability, accessibility, and structural completeness. Triggers on "review content", "quality check", "review document", "review presentation", "review workshop" requests.
+description: Cross-cutting content quality review agent. Reviews presentations, diagrams, documents, GitBook pages, and workshop content. Inspects layout, terminology, hallucination, language, PII/sensitive data, readability, accessibility, and structural completeness. Triggers on "review content", "quality check", "review document", "review presentation", "review workshop" requests. The non-code-artifact analog of superpowers:requesting-code-review — route here to review slides/diagrams/docs/gitbook/workshop artifacts.
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 model: opus
 maxTurns: 50

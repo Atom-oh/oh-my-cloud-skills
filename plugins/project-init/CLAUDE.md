@@ -30,6 +30,24 @@ Core plugin providing project structure initialization, documentation quality sc
 
 > **동기화 명령·제외 목록·로컬 분기 사유 상세**: **`references/upstream-sync.md`** — upstream sync 수행 시 참조.
 
+## superpowers Handoff
+
+This plugin attaches to two `superpowers` lifecycle phases (superpowers is read-only — routing
+lives here + in the root `CLAUDE.md` table):
+
+- **② Before `superpowers:finishing-a-development-branch`** — code is done but docs drift. Run
+  `/sync-docs` + `/generate-changelog`; if the branch made an architectural decision, capture it
+  with `/add-adr`. (This also keeps co-agent's `AGENTS.md`/`GEMINI.md` fresh via the CLAUDE.md
+  PostToolUse autosync.) 브랜치 마무리 전 문서 동기화 단계.
+- **④ Shift-left security at `superpowers:writing-plans`** — when a plan proposes AWS/IaC changes,
+  cross-check the global security mandates **at plan time** (no `0.0.0.0/0` ingress, no IAM
+  `Principal:"*"`/`Resource:"*"`, no Lambda `AuthType:NONE`, no secrets in env, no ALB bypassing
+  CloudFront) and flag violations before implementation. Delegate the deep check to
+  `aws-ops:ops-security-audit`. 계획 단계에서 보안 위반 좌측 차단 — 리뷰까지 미루지 않음.
+
+> Recommendation, not an enforced hook (superpowers owns no such hook). See the root
+> `CLAUDE.md` "superpowers Integration Routing" table.
+
 ## Rules
 - All commands must have clear step-by-step instructions
 - Reference templates contain code in fenced blocks for extraction
