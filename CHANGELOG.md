@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **reactive-presentation `theme.mode:dark` build option** — opt-in dark build on the v1.9.0 token system; per-theme native logos (no blanket invert); light-theme depth + logo visibility fixes
 
 ### Changed
-- **Per-agent model tiers (quality-first)** — retier all plugin agents by deliverable: Fable 5 for the judgment/synthesis agents (`content-review-agent`, `wellarchitected-agent`, `co-agent` chair), Opus for high-stakes orchestration/conversion/IAM (`ops-coordinator-agent`, `agentcore-creator-agent`, `iam-agent`), Sonnet for generation + diagnosis workers; reviewed by a multi-AI panel ([#62](https://github.com/Atom-oh/oh-my-cloud-skills/pull/62))
+- **Per-agent model tiers (quality-first)** — retier all plugin agents by deliverable: Opus for the judgment/synthesis gates (`content-review-agent`, `wellarchitected-agent`, `co-agent` chair) and for high-stakes orchestration/conversion/IAM (`ops-coordinator-agent`, `agentcore-creator-agent`, `iam-agent`), Sonnet for generation + diagnosis workers; reviewed by a multi-AI panel ([#62](https://github.com/Atom-oh/oh-my-cloud-skills/pull/62))
 
 ## [1.9.0] - 2026-06-10
 
@@ -271,7 +271,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **reactive-presentation `theme.mode:dark` 빌드 옵션** — v1.9.0 토큰 시스템 기반 옵트인 다크 빌드; 테마별 네이티브 로고(일괄 invert 제거); 라이트 테마 깊이감·로고 가시성 수정
 
 ### Changed
-- **에이전트별 모델 티어 (품질 우선)** — 산출물 기준으로 전체 플러그인 에이전트 재편: 판단/종합 에이전트(`content-review-agent`, `wellarchitected-agent`, `co-agent` 의장)는 Fable 5, 고위험 오케스트레이션/변환/IAM(`ops-coordinator-agent`, `agentcore-creator-agent`, `iam-agent`)은 Opus, 생성·진단 워커는 Sonnet; 멀티-AI 패널 리뷰 반영 ([#62](https://github.com/Atom-oh/oh-my-cloud-skills/pull/62))
+- **에이전트별 모델 티어 (품질 우선)** — 산출물 기준으로 전체 플러그인 에이전트 재편: 판단/종합 게이트(`content-review-agent`, `wellarchitected-agent`, `co-agent` 의장)와 고위험 오케스트레이션/변환/IAM(`ops-coordinator-agent`, `agentcore-creator-agent`, `iam-agent`)은 Opus, 생성·진단 워커는 Sonnet; 멀티-AI 패널 리뷰 반영 ([#62](https://github.com/Atom-oh/oh-my-cloud-skills/pull/62))
 
 ## [1.9.0] - 2026-06-10
 

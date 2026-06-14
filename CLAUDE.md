@@ -74,8 +74,9 @@ plugins/<plugin-name>/
 ### Agent File Format
 
 Every agent `.md` file has YAML frontmatter with four fields (`model` tiers are
-quality-first per PR #62 — `fable` for judgment/synthesis gates, `opus` for high-stakes
-orchestration, `sonnet` for generation/diagnosis workers):
+quality-first per PR #62 — `opus` for judgment/synthesis gates and high-stakes
+orchestration, `sonnet` for generation/diagnosis workers; `fable` is not currently
+selectable, so the former Fable-5 judgment/synthesis agents run on `opus`):
 
 ```yaml
 ---
