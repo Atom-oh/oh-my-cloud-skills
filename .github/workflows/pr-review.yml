@@ -22,12 +22,14 @@ jobs:
       pull-requests: write
       contents: read
     env:
-      # 리전 통일: us-east-1 In-Region (opus-4-8 + openai.gpt-5.5 둘 다 In-Region 제공).
-      # 핵심: model id 를 In-Region 으로 — `anthropic.claude-opus-4-8` (global.* 아님).
-      # gpt-5.5(bedrock-mantle)는 In-Region 만 지원이라 전체를 In-Region 으로 맞춤. 노드 IAM(ci_runner) SigV4.
-      ANTHROPIC_MODEL: us.anthropic.claude-opus-4-8
+      # AWS_REGION=us-east-1: codex(openai.gpt-5.5 / bedrock-mantle, In-Region 전용) 가
+      #   us-east-1 로 호출되도록 SDK 리전을 us-east-1 로 둔다(codex 가 잡 env 상속).
+      # Claude 의장: global 추론 프로파일 + ap-northeast-2 엔드포인트(base URL 명시).
+      #   global 은 리전 무관 + on-demand 지원 → bare/In-Region id on-demand 미지원 회피.
+      # 노드 IAM(ci_runner, bedrock Resource=*) SigV4.
+      ANTHROPIC_MODEL: global.anthropic.claude-opus-4-8
       CLAUDE_CODE_USE_BEDROCK: 1
-      ANTHROPIC_BEDROCK_BASE_URL: https://bedrock-runtime.us-east-1.amazonaws.com
+      ANTHROPIC_BEDROCK_BASE_URL: https://bedrock-runtime.ap-northeast-2.amazonaws.com
       AWS_REGION: us-east-1
     steps:
       # 보안(M1): pull_request_target 는 시크릿/쓰기권한 컨텍스트다. PR head 코드를
