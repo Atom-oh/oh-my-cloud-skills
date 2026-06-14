@@ -13,6 +13,7 @@
 
 *콘텐츠 제작 (aws-content-plugin):*
 - **인터랙티브 HTML/CSS/JS 프레젠테이션** — Canvas 애니메이션, 퀴즈, 발표자 뷰, GitHub Pages 배포
+- **네이티브 PowerPoint(.pptx) 덱** — `aws-light-fcd` 스킬로 AWS 라이트 테마 슬라이드 생성 (PptxGenJS, Pretendard 타이포그래피, 폰트 임베드, AWS 아키텍처 다이어그램 킷)
 - **AWS 아키텍처 다이어그램** — Draw.io XML 자동 레이아웃, PNG/SVG 내보내기
 - **애니메이션 트래픽 흐름 다이어그램** — SVG + SMIL 애니메이션, 인터랙티브 범례
 - **기술 문서** — 전문적인 Markdown 보고서 및 비교 문서
@@ -702,7 +703,7 @@ co-agent 협업:   프롬프트  -->  Kiro/Codex/Gemini 팬아웃  -->  Claude �
 
 ```
 plugins/
-├── aws-content-plugin/                # 콘텐츠 제작 (9 에이전트, 7 스킬)
+├── aws-content-plugin/                # 콘텐츠 제작 (9 에이전트, 8 스킬)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
 │   ├── agents/                        # 8 에이전트

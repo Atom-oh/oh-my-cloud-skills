@@ -200,7 +200,7 @@ Source: `tools/remarp-vscode/` | Entry: `src/extension.ts` | Preview: `src/previ
 
 ## Plugin Inventory
 
-### aws-content-plugin (9 agents, 7 skills)
+### aws-content-plugin (9 agents, 8 skills)
 
 | Agent | Creates |
 |-------|---------|
@@ -213,6 +213,12 @@ Source: `tools/remarp-vscode/` | Entry: `src/extension.ts` | Preview: `src/previ
 | `workshop-agent` | AWS Workshop Studio content |
 | `brochure-agent` | Single-page responsive online brochure (landing page) HTML |
 | `content-review-agent` | Quality gate for all content types |
+
+Content skills: `reactive-presentation`, `architecture-diagram`, `animated-diagram`,
+`gitbook`, `workshop-creator`, `slide-fix`, `brochure`, and **`aws-light-fcd`** — the
+native **PPTX** skill (PptxGenJS, AWS Light theme, Pretendard). The presentation-agent
+dispatcher routes PPTX requests to `aws-light-fcd`; it shares the official 811-icon
+library with `reactive-presentation` via `kit.icon()` (referenced in place, not duplicated).
 
 ### aws-ops-plugin (10 agents, 6 skills)
 
@@ -271,9 +277,11 @@ Commands: `/init-project`, `/sync-docs`, `/add-adr`, `/add-module`, `/add-runboo
 
 ```
 Content:   presentation-agent (dispatcher) → reactive-presentation-agent → content-review-agent → GitHub Pages
+                                          → aws-light-fcd skill (native .pptx) → QA render → embed_fonts.py
            Remarp HTML ↔ .remarp.md (bidirectional visual editing via VSCode extension)
            PPTX theme:  .pptx → extract_pptx_theme.py → theme-manifest.json + theme-override.css
            PPTX export: index.html → html2canvas iframe capture → PptxGenJS → .pptx download
+           PPTX native: aws-light-fcd → deck_kit.js/arch_kit.js (PptxGenJS) → kit.icon() shares reactive-presentation 811-icon lib
            architecture-diagram-agent → layout_aws.py (YAML spec → .drawio, standard patterns) → validate+lint → PNG
                                        → hand-authored .drawio (non-standard shapes) → PNG
            animated-diagram-agent → .html (SVG+SMIL)

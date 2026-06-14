@@ -1,12 +1,12 @@
-<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 5afa187a28e4 · generated-at: 2026-06-08 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
+<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 492a2f7e50bb · generated-at: 2026-06-14 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
 > You are Gemini, an external reviewer — project context below. Distilled from CLAUDE.md.
 
 # oh-my-cloud-skills — reviewer context
 
-A **Claude Code plugin marketplace**: 6 plugins (aws-content, aws-ops, kiro-power-converter, agentcore-creator, co-agent, project-init). Not a runtime app — the deliverables are plugin definitions (Markdown agents/skills/commands) plus Python/Bash helper scripts.
+A **Claude Code plugin marketplace**: 6 plugins (aws-content, aws-ops, kiro-power-converter, agentcore-creator, co-agent, project-init). Not a runtime app — the deliverables are plugin definitions (Markdown agents/skills/commands) plus Python/Bash/Node helper scripts.
 
 ## Stack
-- **Python 3** (stdlib-first; `defusedxml` for XML), **Bash**, **Markdown** (agents/skills/commands), JSON manifests. Docs site = Docusaurus (`docs/`).
+- **Python 3** (stdlib-first; `defusedxml` for XML), **Bash**, **Node.js** (PptxGenJS deck scripts), **Markdown** (agents/skills/commands), JSON manifests. Docs site = Docusaurus (`docs/`).
 - No app server. "Code" = helper scripts under `plugins/*/skills/*/scripts/` and `scripts/`.
 
 ## Build / test / lint (run from repo root)
@@ -15,12 +15,13 @@ A **Claude Code plugin marketplace**: 6 plugins (aws-content, aws-ops, kiro-powe
 - `python3 scripts/eval-skills.py` — skill quality/structure/token eval.
 - Diagram skill gates (before exporting a `.drawio`): `validate_drawio.py` (XML/truncation) → `lint_layout.py` (layout score ≥80) → optional `snap_grid.py` (grid align).
 - Remarp: `remarp_to_slides.py validate <dir>` before build.
+- PPTX (`aws-light-fcd` skill): build with `NODE_PATH=$(npm root -g) node build.js`; finish with `python scripts/embed_fonts.py <deck>.pptx`.
 
 ## Architectural boundaries
 - Each plugin: `.claude-plugin/plugin.json` (manifest: `agents[]`, `skills[]`, `commands[]`, `hooks`, `mcpServers`) + `CLAUDE.md` (routing) + `agents/*.md` + `skills/<name>/{SKILL.md,references/,scripts/}`.
 - **Every path in plugin.json must resolve to a real file** (test-plugins.py enforces).
-- Content plugin → artifacts (HTML/.drawio/.md) → **content-review-agent quality gate (≥85)** before "done".
-- Ops plugin → diagnoses (commands-first runbooks). co-agent → chairs a multi-AI panel (Kiro/Codex/Gemini), Claude synthesizes.
+- Content plugin → artifacts (HTML/.drawio/.md/.pptx) → **content-review-agent quality gate (≥85)** before "done". Native PPTX is the `aws-light-fcd` skill (PptxGenJS); it references `reactive-presentation`'s 811-icon library in place via `kit.icon()` — don't duplicate icon assets.
+- Ops plugin → diagnoses (commands-first runbooks). co-agent → chairs a multi-AI panel (Kiro/Codex/Antigravity), Claude synthesizes.
 - A single shared **version** across all `plugin.json` + `marketplace.json` + git tag `v{version}` — they must match.
 
 ## Conventions
@@ -48,3 +49,4 @@ A **Claude Code plugin marketplace**: 6 plugins (aws-content, aws-ops, kiro-powe
 - Placeholder credentials in `tests/fixtures/` and the secret-scan pattern tests (example AWS keys / tokens) are intentional test data, not leaks.
 - `width="60"` in `drawio-xml-guide.md` inline examples is illustrative; the canonical icon size is 78 (design-tokens.md).
 - Multi-AI panel "verdicts" are advisory — verify against the actual diff, never vote-count.
+- `aws-light-fcd` icons resolved via `kit.icon()` live in the sibling `reactive-presentation` skill — a cross-skill relative path (`../reactive-presentation/icons/`) is intentional, not a broken reference.
