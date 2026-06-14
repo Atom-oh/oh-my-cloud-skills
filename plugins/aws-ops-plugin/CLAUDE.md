@@ -112,7 +112,7 @@ wellarchitected-agent → Score (XX/100) → Findings → AS-IS/TO-BE Roadmap
 
 | Skill | Trigger | Purpose |
 |-------|---------|---------|
-| `ops-troubleshoot` | "troubleshoot", "debug", "장애", "문제 해결" | 5-min triage → investigate → resolve → postmortem |
+| `ops-troubleshoot` | "troubleshoot", "debug", "systematic-debugging", "장애", "디버깅", "문제 해결" | 5-min triage → investigate → resolve → postmortem (AWS/EKS arm of `superpowers:systematic-debugging`) |
 | `ops-health-check` | "health check", "상태 점검", "헬스체크" | Full infrastructure health assessment (includes analytics) |
 | `ops-network-diagnosis` | "network issue", "네트워크 오류", "연결 문제" | VPC CNI, LB, DNS deep diagnosis |
 | `ops-observability` | "monitoring", "모니터링", "로그 분석", "알람", "opentelemetry", "clickhouse", "grafana", "devops agent", "데브옵스 에이전트" | CloudWatch/PromQL/logs + OSS stack (OTel, Loki, Tempo, ClickHouse, VictoriaMetrics) + AWS DevOps Agent incident escalation |

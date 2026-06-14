@@ -4,7 +4,9 @@ description: "Systematic AWS/EKS troubleshooting workflow: 5-minute triage → i
 triggers:
   - "troubleshoot"
   - "debug"
+  - "systematic-debugging"
   - "장애"
+  - "디버깅"
   - "문제 해결"
   - "incident"
 model: sonnet
