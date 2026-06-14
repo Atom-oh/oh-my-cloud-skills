@@ -18,11 +18,12 @@ KIRO_MODELS=("claude-opus-4.8:kiro-opus" "kimi-k2.5:kiro-kimi" "glm-5:kiro-glm")
 
 # Codex (Bedrock, config.toml). --skip-git-repo-check 필수: codex exec 는 신뢰된 git
 # 디렉터리가 아니면 거부한다("Not inside a trusted directory"). stdin=diff(파일), 비대화형.
-# AWS_REGION/AWS_DEFAULT_REGION=${CODEX_AWS_REGION:-us-east-2} 강제: 잡 env 의
-# AWS_REGION(ap-northeast-2, Claude/Seoul용)을 codex 가 상속하면 openai 모델이 없는
-# 리전으로 Bedrock 호출 → 실패한다(config.toml region 은 AWS_REGION env 에 덮인다).
+# AWS_REGION/AWS_DEFAULT_REGION=${CODEX_AWS_REGION:-us-east-1} 강제: codex 의
+# openai.gpt-5.5(bedrock-mantle)는 In-Region 만 지원(us-east-1/us-east-2; global/geo X).
+# 잡 region 이 바뀌어도 codex 는 gpt-5.5 가 있는 리전으로 고정(config.toml region 은
+# AWS_REGION env 에 덮이므로 여기서 명시).
 if command -v codex >/dev/null 2>&1; then
-  ( AWS_REGION="${CODEX_AWS_REGION:-us-east-2}" AWS_DEFAULT_REGION="${CODEX_AWS_REGION:-us-east-2}" \
+  ( AWS_REGION="${CODEX_AWS_REGION:-us-east-1}" AWS_DEFAULT_REGION="${CODEX_AWS_REGION:-us-east-1}" \
     timeout "$T" codex exec -s read-only --skip-git-repo-check "$PROMPT" \
       > "$SLOT/codex.md" 2>"$SLOT/codex.err" < "$DIFF" || true ) &
 else echo "[skip] codex (binary absent)" >&2; : > "$SLOT/codex.md"; fi

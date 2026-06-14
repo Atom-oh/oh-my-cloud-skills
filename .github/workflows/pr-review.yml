@@ -22,11 +22,13 @@ jobs:
       pull-requests: write
       contents: read
     env:
-      # Cross-region inference profile (Asia Pacific). 노드 IAM 에 bedrock:InvokeModel 필요.
-      ANTHROPIC_MODEL: global.anthropic.claude-opus-4-8
+      # 리전 통일: us-east-1 In-Region (opus-4-8 + openai.gpt-5.5 둘 다 In-Region 제공).
+      # 핵심: model id 를 In-Region 으로 — `anthropic.claude-opus-4-8` (global.* 아님).
+      # gpt-5.5(bedrock-mantle)는 In-Region 만 지원이라 전체를 In-Region 으로 맞춤. 노드 IAM(ci_runner) SigV4.
+      ANTHROPIC_MODEL: anthropic.claude-opus-4-8
       CLAUDE_CODE_USE_BEDROCK: 1
-      ANTHROPIC_BEDROCK_BASE_URL: https://bedrock-runtime.ap-northeast-2.amazonaws.com
-      AWS_REGION: ap-northeast-2
+      ANTHROPIC_BEDROCK_BASE_URL: https://bedrock-runtime.us-east-1.amazonaws.com
+      AWS_REGION: us-east-1
     steps:
       # 보안(M1): pull_request_target 는 시크릿/쓰기권한 컨텍스트다. PR head 코드를
       # 실행하면 push 권한자가 scripts/*.sh 를 바꿔 패널 키/노드 IAM 을 탈취할 수 있다.
