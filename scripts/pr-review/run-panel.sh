@@ -58,6 +58,6 @@ for e in "$SLOT"/*.err; do
   [ -s "$e" ] || continue
   b="$(basename "$e" .err)"
   [ -s "$SLOT/$b.md" ] && continue   # 응답 성공이면 건너뜀
-  echo "--- [$b] skipped; stderr (first 12 lines) ---" >&2
-  head -12 "$e" >&2
+  echo "--- [$b] skipped; stderr (first 40 lines) ---" >&2
+  head -40 "$e" >&2
 done
