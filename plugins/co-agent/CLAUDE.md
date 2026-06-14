@@ -1,8 +1,10 @@
 # co-agent Plugin — Claude Code Configuration
 
-다른 AI 에이전트(Kiro CLI, Codex, Gemini)와 협업해 **second opinion**을 받고, **Claude가 의장으로 종합**하는 플러그인. 세 가지 모드: 멀티-AI 리뷰, 의사결정 보조, ADR 협업.
+다른 AI 에이전트(Kiro CLI, Codex, Antigravity)와 협업해 **second opinion**을 받고, **Claude가 의장으로 종합**하는 플러그인. 세 가지 모드: 멀티-AI 리뷰, 의사결정 보조, ADR 협업.
 
-**Prerequisites (선택적 — 있는 것만 사용)**: `kiro-cli`(+`KIRO_API_KEY`), `codex`, `gemini` CLI 중 설치된 것을 패널로 활용. 하나도 없으면 Claude 단독 수행 + 그 사실을 명시. 절대 hard-fail 하지 않음.
+**Prerequisites (선택적 — 있는 것만 사용)**: `kiro-cli`(+`KIRO_API_KEY`), `codex`, `agy`(Antigravity) CLI 중 설치된 것을 패널로 활용. 하나도 없으면 Claude 단독 수행 + 그 사실을 명시. 절대 hard-fail 하지 않음.
+
+> **Antigravity(`agy`)는 deprecated된 Gemini CLI의 후속**입니다 — Gemini 패밀리 멤버. `agy`와 `gemini`가 둘 다 설치돼 있으면 팬아웃은 `agy`만 쓰고 `gemini`는 스킵합니다. `agy` 없고 `gemini`만 있으면 `gemini` 사용(하위호환).
 
 ---
 
@@ -22,7 +24,7 @@
 
 ```
 co-agent
-  ├── Step 0: 패널 감지 (kiro-cli / codex / gemini 중 설치된 것; Kiro 바이너리는 `kiro-cli`, NOT `kiro`)
+  ├── Step 0: 패널 감지 (kiro-cli / codex / agy 중 설치된 것; Kiro 바이너리는 `kiro-cli` NOT `kiro`, Antigravity는 `agy` NOT `agv`; agy 있으면 deprecated gemini는 스킵)
   ├── Review       : git diff → 동일 프롬프트 팬아웃 → 합의/이견 종합 → PASS/REVIEW/FAIL
   ├── Decide       : 결정+옵션 팬아웃 → 비교표 → Claude 추천 (의장)
   ├── ADR          : 대안·트레이드오프·리스크 팬아웃 → Nygard ADR 초안 → /add-adr 연동
@@ -47,7 +49,8 @@ co-agent
 |----|---------|
 | Kiro | `kiro-cli chat "<P>" --no-interactive --trust-tools=read,grep --wrap never` |
 | Codex | `codex exec -s read-only "<P>"` |
-| Gemini | `gemini -p "<P>" -o text` |
+| Antigravity | `agy -p "<P>" --model "<token>" --sandbox` (binary `agy`; `--sandbox` read-only; 모델 토큰 예 `Gemini 3.1 Pro (High)`) |
+| Gemini *(deprecated)* | `gemini -p "<P>" -o text` — `agy` 설치 시 스킵 |
 
 > 상세: `skills/co-agent/references/ai-cli-adapters.md`. 패널은 병렬 실행, 누락/에러 시 스킵.
 

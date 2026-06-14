@@ -251,9 +251,9 @@ Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Sk
 
 | Agent | Purpose |
 |-------|---------|
-| `co-agent` | Multi-AI panel chair — fans review/decision/ADR prompts to Kiro/Codex/Gemini CLIs and synthesizes |
+| `co-agent` | Multi-AI panel chair — fans review/decision/ADR prompts to Kiro/Codex/Antigravity CLIs and synthesizes |
 
-Skill: `co-agent` — 4 modes: **Review** (multi-AI code/arch review + Well-Architected), **Decide** (decision support when unsure), **ADR** (co-author ADRs), **sync-context** (distill `CLAUDE.md` → `AGENTS.md` (Codex) + `GEMINI.md` (Gemini); Kiro reads `CLAUDE.md` directly). Fans the same prompt to whichever AI CLIs are installed — Kiro (`kiro-cli chat --no-interactive`; auth via login or `KIRO_API_KEY`), Codex (`codex exec -s read-only`), Gemini (`gemini -p … -o text`) — in parallel, then **Claude synthesizes** (consensus vs. dissent). Degrades gracefully; if no CLI is present, Claude answers solo. Adapters: `references/ai-cli-adapters.md`.
+Skill: `co-agent` — 4 modes: **Review** (multi-AI code/arch review + Well-Architected), **Decide** (decision support when unsure), **ADR** (co-author ADRs), **sync-context** (distill `CLAUDE.md` → `AGENTS.md` (Codex) + `GEMINI.md`; Kiro reads `CLAUDE.md` directly). Fans the same prompt to whichever AI CLIs are installed — Kiro (`kiro-cli chat --no-interactive`; auth via login or `KIRO_API_KEY`), Codex (`codex exec -s read-only`), Antigravity (`agy -p … --model "Gemini 3.1 Pro (High)" --sandbox`) — in parallel, then **Claude synthesizes** (consensus vs. dissent). **Antigravity (`agy`) supersedes the deprecated `gemini` CLI** — when both are installed the fan-out uses `agy` and skips `gemini` (Gemini family); `gemini` still runs if `agy` is absent. Degrades gracefully; if no CLI is present, Claude answers solo. Adapters: `references/ai-cli-adapters.md`.
 
 Commands: `/co-agent:configure` — tune the panel (per-AI `model`, Codex `effort`, `enabled`, `timeout`, and `autosync` opt-in). `/co-agent:sync-context` — distill `CLAUDE.md` → `AGENTS.md`/`GEMINI.md` (Mode 4 surfaced as a standalone command). `/co-agent:consensus` — autonomous doc→plan→implementation pipeline with multi-model gates (Mode 5; sub-modes `plan`/`review`/`implement`, full-pipeline default with resume). Layered config: `co-agent.defaults.json` (committed) ← `.claude/co-agent.local.json` (gitignored). Only headless-settable options are exposed (effort is Codex-only); the fan-out reads `co_agent_config.py` so settings are live. The `CLAUDE.md` PostToolUse hook reminds when context files drift stale, and — if `autosync on` — tells Claude to re-run sync-context. Scripts: `check_ai_context.py` (context-file validator), `co_agent_config.py` (panel settings).
 
@@ -286,7 +286,7 @@ Ops:       User issue → auto-routed agent → Diagnose → Resolve → Verify
 
 AgentCore: Plugin source → analyze → map to AgentCore → generate artifacts → user refinement → deploy via AWS CLI → verify
 
-Co-agent:  /co-agent → detect panel (Kiro/Codex/Gemini) → fan-out prompt → Claude synthesizes → Review report / Decision / ADR
+Co-agent:  /co-agent → detect panel (Kiro/Codex/Antigravity) → fan-out prompt → Claude synthesizes → Review report / Decision / ADR
 ```
 
 ## Auto-Sync Rules
