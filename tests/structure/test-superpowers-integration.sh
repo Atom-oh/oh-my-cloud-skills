@@ -46,3 +46,52 @@ assert_contains "$SP_ROOT_BODY" "systematic-debugging" \
   "① root routing table maps systematic-debugging"
 assert_contains "$SP_ROOT_BODY" "ops-troubleshoot" \
   "① root routing table targets ops-troubleshoot"
+
+# --- ② finishing-a-development-branch ↔ project-init doc sync ---
+
+SP_SYNC="plugins/project-init/commands/sync-docs.md"
+SP_CHLOG="plugins/project-init/commands/generate-changelog.md"
+SP_PI_MD="plugins/project-init/CLAUDE.md"
+
+assert_contains "$(cat "$SP_SYNC")" "finishing-a-development-branch" \
+  "② sync-docs.md references superpowers:finishing-a-development-branch"
+assert_contains "$(cat "$SP_CHLOG")" "finishing-a-development-branch" \
+  "② generate-changelog.md references superpowers:finishing-a-development-branch"
+assert_contains "$(cat "$SP_PI_MD")" "finishing-a-development-branch" \
+  "② project-init CLAUDE.md has the finish-branch doc-sync routing note"
+
+# --- ③ requesting-code-review ↔ non-code review gates ---
+
+SP_CRA="plugins/aws-content-plugin/agents/content-review-agent.md"
+SP_WAA="plugins/aws-ops-plugin/agents/wellarchitected-agent.md"
+SP_SECAUDIT="plugins/aws-ops-plugin/skills/ops-security-audit/SKILL.md"
+SP_REVROUTE="docs/reference/review-routing.md"
+
+assert_contains "$(cat "$SP_CRA")" "requesting-code-review" \
+  "③ content-review-agent is the non-code analog of superpowers:requesting-code-review"
+assert_contains "$(cat "$SP_WAA")" "requesting-code-review" \
+  "③ wellarchitected-agent is the infra review arm at requesting-code-review"
+assert_contains "$(cat "$SP_SECAUDIT")" "requesting-code-review" \
+  "③ ops-security-audit is the security leg of requesting-code-review"
+assert_file_exists "$SP_REVROUTE" "③ docs/reference/review-routing.md exists"
+assert_contains "$(cat "$SP_REVROUTE" 2>/dev/null || true)" "mixed" \
+  "③ review-routing.md documents mixed-changeset precedence"
+assert_contains "$SP_ROOT_BODY" "review-routing.md" \
+  "③ root CLAUDE.md force-reads docs/reference/review-routing.md"
+
+# --- ④ shift-left security at writing-plans ---
+
+assert_contains "$(cat "$SP_WAA")" "writing-plans" \
+  "④ wellarchitected-agent can run as a writing-plans shift-left pre-check"
+assert_contains "$(cat "$SP_SECAUDIT")" "writing-plans" \
+  "④ ops-security-audit can run as a writing-plans shift-left pre-check"
+assert_contains "$(cat "$SP_PI_MD")" "writing-plans" \
+  "④ project-init CLAUDE.md has the plan-time security pre-check note"
+
+# --- root routing table: ②③④ flipped from planned → active ---
+# Extract the routing table rows and assert no "planned" status remains on ②③④.
+SP_RTABLE="$(awk '/superpowers Integration Routing/{f=1} f{print} /^## Development Commands/{if(f)exit}' "$SP_ROOT_MD")"
+assert_contains "$SP_RTABLE" "finishing-a-development-branch" "②③④ root table lists finishing-a-development-branch"
+assert_contains "$SP_RTABLE" "requesting-code-review" "②③④ root table lists requesting-code-review"
+assert_contains "$SP_RTABLE" "writing-plans" "②③④ root table lists writing-plans"
+assert_grep_no_match "planned" "$SP_RTABLE" "②③④ root table has no 'planned' rows left (all active)"

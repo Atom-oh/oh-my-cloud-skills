@@ -23,11 +23,12 @@ routing — per-plugin `CLAUDE.md` holds the detail. Design: `docs/superpowers/s
 | superpowers phase | + signal | → route to | status |
 |-------------------|----------|-----------|--------|
 | `systematic-debugging` | AWS/EKS symptom (NotReady, IP 고갈, AccessDenied, PVC, throttling) | `aws-ops`: `ops-troubleshoot` or matched domain agent (eks/network/iam/storage/database) | ✅ active |
-| `finishing-a-development-branch` | branch done, docs may be stale | `project-init`: `/sync-docs` + `/generate-changelog` (+ `/add-adr` if a decision was made) | planned (②) |
-| `requesting-code-review` | non-code artifact (slides/diagram/doc/gitbook) or IaC | `aws-content`: `content-review-agent`; IaC → `aws-ops`: `wellarchitected-agent` + `ops-security-audit` | planned (③) |
-| `writing-plans` | plan proposes AWS/IaC change | shift-left AWS security pre-check (`ops-security-audit` / mandate check: no 0.0.0.0/0, IAM `*`, secrets-in-env) | planned (④) |
+| `finishing-a-development-branch` | branch done, docs may be stale | `project-init`: `/sync-docs` + `/generate-changelog` (+ `/add-adr` if a decision was made) | ✅ active |
+| `requesting-code-review` | non-code artifact (slides/diagram/doc/gitbook) or IaC | `aws-content`: `content-review-agent`; IaC → `aws-ops`: `wellarchitected-agent` + `ops-security-audit`. **Read `docs/reference/review-routing.md` for gate precedence on mixed changesets.** | ✅ active |
+| `writing-plans` | plan proposes AWS/IaC change | shift-left AWS security pre-check (`aws-ops`: `ops-security-audit` / mandate check: no 0.0.0.0/0, IAM `*`, secrets-in-env) before implement | ✅ active |
 
 > co-agent is already wired separately: `co-agent:consensus` reuses `superpowers:subagent-driven-development` + writing-plans output, gated by the multi-AI panel.
+> A diff that spans multiple artifact types fires ALL matching review gates — see `docs/reference/review-routing.md`.
 
 ## Development Commands
 

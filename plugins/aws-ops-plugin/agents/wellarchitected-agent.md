@@ -1,6 +1,6 @@
 ---
 name: wellarchitected-agent
-description: "AWS Well-Architected Framework review agent. Performs comprehensive 6-pillar infrastructure assessments with 100-point scoring: Operational Excellence, Security, Reliability, Performance Efficiency, Cost Optimization, Sustainability. Generates severity-rated findings and AS-IS to TO-BE transformation roadmaps. Triggers on \"well-architected\", \"WAF review\", \"인프라 진단\", \"아키텍처 리뷰\", \"심층 진단\", \"WAF 점검\", \"인프라 점수\" requests."
+description: "AWS Well-Architected Framework review agent. Performs comprehensive 6-pillar infrastructure assessments with 100-point scoring: Operational Excellence, Security, Reliability, Performance Efficiency, Cost Optimization, Sustainability. Generates severity-rated findings and AS-IS to TO-BE transformation roadmaps. Triggers on \"well-architected\", \"WAF review\", \"인프라 진단\", \"아키텍처 리뷰\", \"심층 진단\", \"WAF 점검\", \"인프라 점수\" requests. The infrastructure review arm of superpowers:requesting-code-review for IaC/architecture changes, and a shift-left security pre-check during superpowers:writing-plans (route security-critical IaC to ops-security-audit)."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 model: opus
 skills:
