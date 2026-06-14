@@ -18,8 +18,12 @@ KIRO_MODELS=("claude-opus-4.8:kiro-opus" "kimi-k2.5:kiro-kimi" "glm-5:kiro-glm")
 
 # Codex (Bedrock, config.toml). --skip-git-repo-check 필수: codex exec 는 신뢰된 git
 # 디렉터리가 아니면 거부한다("Not inside a trusted directory"). stdin=diff(파일), 비대화형.
+# AWS_REGION/AWS_DEFAULT_REGION=${CODEX_AWS_REGION:-us-east-2} 강제: 잡 env 의
+# AWS_REGION(ap-northeast-2, Claude/Seoul용)을 codex 가 상속하면 openai 모델이 없는
+# 리전으로 Bedrock 호출 → 실패한다(config.toml region 은 AWS_REGION env 에 덮인다).
 if command -v codex >/dev/null 2>&1; then
-  ( timeout "$T" codex exec -s read-only --skip-git-repo-check "$PROMPT" \
+  ( AWS_REGION="${CODEX_AWS_REGION:-us-east-2}" AWS_DEFAULT_REGION="${CODEX_AWS_REGION:-us-east-2}" \
+    timeout "$T" codex exec -s read-only --skip-git-repo-check "$PROMPT" \
       > "$SLOT/codex.md" 2>"$SLOT/codex.err" < "$DIFF" || true ) &
 else echo "[skip] codex (binary absent)" >&2; : > "$SLOT/codex.md"; fi
 
@@ -47,3 +51,12 @@ for entry in "${KIRO_MODELS[@]}"; do
 done
 record_result "$SLOT/antigravity.md" "antigravity" "$RESP"
 echo "Panel responded: $(tr '\n' ' ' < "$RESP")"
+
+# skip 원인 노출(디버깅): 빈 슬롯인데 stderr 가 있으면 첫 줄들을 로그에 찍는다.
+for e in "$SLOT"/*.err; do
+  [ -s "$e" ] || continue
+  b="$(basename "$e" .err)"
+  [ -s "$SLOT/$b.md" ] && continue   # 응답 성공이면 건너뜀
+  echo "--- [$b] skipped; stderr (first 12 lines) ---" >&2
+  head -12 "$e" >&2
+done
