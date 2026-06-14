@@ -64,6 +64,13 @@ Argument: `$ARGUMENTS`
    `/co-agent:sync-context` whenever the generated files drift stale (opt-in; default
    off = reminder only). It refreshes existing `AGENTS.md`/`GEMINI.md`; first-time
    generation is still done by running the command once.
+   - **Doc-sync workflows**: any flow that rewrites `CLAUDE.md` — notably project-init's
+     `/sync-docs`, but also `/init-project` or a manual edit — leaves `AGENTS.md`/`GEMINI.md`
+     stale, since they are *distilled from* `CLAUDE.md`. The hook fires on that edit, so for
+     a project that uses the panel, **recommend `autosync on`** so the AI context regenerates
+     as part of the doc sync instead of relying on the reminder. (`/sync-docs` itself is not
+     co-agent-aware and is upstream-synced, so the loop is closed here — on the co-agent side —
+     rather than by editing `/sync-docs`.)
 3. If the user asks for a setting that isn't headless-settable (e.g. Gemini effort),
    explain why it's not offered and suggest the closest real lever (model, or run
    that AI interactively). Do **not** invent a setting that the CLI ignores.
