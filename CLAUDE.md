@@ -9,7 +9,7 @@ A Claude Code plugin marketplace containing six plugins for AWS cloud work:
 - **aws-ops-plugin** — Infrastructure operations & troubleshooting (EKS, networking, IAM, observability)
 - **kiro-power-converter** — Convert Claude Code plugins to Kiro IDE Power format
 - **agentcore-creator** — Convert Claude Code plugins to Bedrock AgentCore
-- **co-agent** — Multi-AI collaboration (Kiro CLI, Codex, Gemini): review, decision support, ADR co-authoring; Claude chairs
+- **co-agent** — Multi-AI collaboration (Kiro CLI, Codex, Antigravity): review, decision support, ADR co-authoring; Claude chairs
 - **project-init** — Project scaffolding and documentation management
 
 All plugins are installed via `/plugin marketplace add` or loaded locally with `--plugin-dir`.
