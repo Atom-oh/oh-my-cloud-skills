@@ -18,6 +18,7 @@
 - **기술 문서** — 전문적인 Markdown 보고서 및 비교 문서
 - **GitBook 문서 사이트** — 내비게이션과 컴포넌트가 포함된 구조화된 문서
 - **AWS Workshop Studio 콘텐츠** — 다국어 지원 실습 랩
+- **단일 페이지 온라인 브로셔** — 아키텍처 다이어그램이 임베드된 자기완결 반응형 랜딩 페이지, GitHub Pages 배포
 
 *인프라 운영 (aws-ops-plugin):*
 - **EKS 트러블슈팅** — 노드 문제, 업그레이드, 애드온, 5분 트리아지
@@ -567,6 +568,7 @@ aws-ops-power/
 | `document-agent` | 기술 문서 | "EKS vs ECS 비교 문서 작성해줘" | `.md` |
 | `gitbook-agent` | 문서 사이트 | "GitBook 문서 사이트 만들어줘" | GitBook project |
 | `workshop-agent` | 워크샵 콘텐츠 | "EKS 워크샵 만들어줘" | Workshop Studio |
+| `brochure-agent` | 단일 페이지 온라인 브로셔 | "우리 플랫폼 랜딩 페이지 만들어줘" | `.html` (GitHub Pages) |
 | `content-review-agent` | 품질 검토 | "프레젠테이션 검토해줘" | Review report |
 
 ### 운영 에이전트
@@ -604,10 +606,12 @@ aws-ops-power/
 | 스킬 | 제공 내용 |
 |------|----------|
 | `reactive-presentation` | 프레젠테이션 프레임워크 (CSS/JS), Remarp 변환, PPTX→Remarp 변환기, AWS 아이콘 추출, 슬라이드 패턴 참조 |
-| `architecture-diagram` | Draw.io XML 템플릿, AWS 아이콘 참조, 레이아웃 패턴 |
+| `architecture-diagram` | 스펙 기반 `layout_aws.py` 엔진(YAML → Draw.io), 공유 AWS 아이콘 임베드, `.excalidraw` 생성기, 레이아웃/디자인 린트 게이트 |
 | `animated-diagram` | SMIL 애니메이션 가이드, HTML 래퍼 템플릿, 트래픽 흐름 패턴 |
+| `slide-fix` | Remarp 슬라이드 이슈 어노테이션(`<!-- issue: -->`) 반영 후 재빌드 |
 | `gitbook` | GitBook 구조 가이드, 컴포넌트 패턴, 내비게이션 템플릿 |
 | `workshop-creator` | Workshop Studio 지시문, 모듈 템플릿, CloudFormation 참조 |
+| `brochure` | 단일 페이지 반응형 브로셔(자기완결 HTML), 에디토리얼 디자인 시스템, 아키텍처 SVG 임베드, GitHub Pages 공개 배포 |
 
 ### 운영 스킬
 
@@ -698,7 +702,7 @@ co-agent 협업:   프롬프트  -->  Kiro/Codex/Gemini 팬아웃  -->  Claude �
 
 ```
 plugins/
-├── aws-content-plugin/                # 콘텐츠 제작 (8 에이전트, 6 스킬)
+├── aws-content-plugin/                # 콘텐츠 제작 (9 에이전트, 7 스킬)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
 │   ├── agents/                        # 8 에이전트
