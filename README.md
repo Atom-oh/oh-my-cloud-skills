@@ -13,6 +13,7 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 
 *Content Creation (aws-content-plugin):*
 - **Interactive HTML/CSS/JS presentations** — Canvas animations, quizzes, presenter view, deployed to GitHub Pages
+- **Native PowerPoint (.pptx) decks** — AWS Light-theme slides via the `aws-light-fcd` skill (PptxGenJS, Pretendard typography, embedded fonts, AWS architecture-diagram kit)
 - **AWS architecture diagrams** — Draw.io XML with auto-layout, exportable to PNG/SVG
 - **Animated traffic flow diagrams** — SVG + SMIL animations with interactive legends
 - **Technical documents** — Professional Markdown reports and comparisons
@@ -702,7 +703,7 @@ All content passes through `content-review-agent` which scores on a 100-point sc
 
 ```
 plugins/
-├── aws-content-plugin/                # Content creation (9 agents, 7 skills)
+├── aws-content-plugin/                # Content creation (9 agents, 8 skills)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
 │   ├── agents/                        # 8 agents

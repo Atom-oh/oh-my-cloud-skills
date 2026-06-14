@@ -23,7 +23,8 @@
     "./skills/gitbook",
     "./skills/workshop-creator",
     "./skills/slide-fix",
-    "./skills/brochure"
+    "./skills/brochure",
+    "./skills/aws-light-fcd"
   ],
   "hooks": {
     "PostToolUse": [
