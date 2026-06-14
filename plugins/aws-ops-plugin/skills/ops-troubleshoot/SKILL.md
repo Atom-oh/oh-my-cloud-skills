@@ -1,6 +1,6 @@
 ---
 name: ops-troubleshoot
-description: "Systematic AWS/EKS troubleshooting workflow: 5-minute triage → investigation → resolution → postmortem"
+description: "Systematic AWS/EKS troubleshooting workflow: 5-minute triage → investigation → resolution → postmortem. The AWS/EKS domain arm of superpowers:systematic-debugging — invoke when a debugging symptom is cloud-infra-shaped."
 triggers:
   - "troubleshoot"
   - "debug"
@@ -17,6 +17,15 @@ allowed-tools:
 # Ops Troubleshoot Skill
 
 A systematic troubleshooting workflow for AWS/EKS infrastructure issues.
+
+## Relationship to superpowers:systematic-debugging
+
+This skill is the **AWS/EKS domain arm** of `superpowers:systematic-debugging`, not a
+replacement. When a debugging session's failing system is cloud infrastructure, the
+*method* — hypothesis → reproduce → isolate → verify — stays with
+`superpowers:systematic-debugging`; this skill supplies the **domain reproduce/diagnose
+commands** (kubectl/AWS triage, the error→solution tables) and returns the root cause to
+that loop. For a non-infra bug, use `superpowers:systematic-debugging` directly.
 
 ## Workflow
 
