@@ -17,8 +17,17 @@ Security Agent for *application security validation*.
 | Design security review | Preview | Upload design docs → feedback vs org requirements |
 | Code security review (full repo + PR) | Preview | GitHub repos or S3 source; PR comments + fix PRs |
 
-Full **API support** to embed in CI/CD; 2-month free trial for new customers.
-Operates across AWS, on-prem, hybrid, multicloud, and SaaS.
+Full **API support** to embed in CI/CD; **subscription-based** pricing with a
+**2-month free trial** for new customers. Operates across AWS, Azure, GCP, on-prem,
+hybrid, and SaaS. Pen-test output is proof-based: **CVSS risk scores**,
+application-specific severity ratings, reproduction steps, and remediation
+suggestions. AWS frames it as compressing pen-test timelines "from weeks to hours"
+(vendor claim — not an independent benchmark).
+
+> Verified 2026-06 against AWS official sources (What's New "AWS Security Agent
+> on-demand penetration" GA post + re:Invent 2025 frontier-agents announcement). GA
+> date, the 6 regions, multicloud scope, and the subscription + 2-month-trial model
+> are confirmed; the design/code-review sub-capabilities remained **preview** at GA.
 
 ## Concepts
 

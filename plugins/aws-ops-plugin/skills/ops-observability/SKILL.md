@@ -50,12 +50,18 @@ Route to appropriate reference for setup procedures.
 ### Step 3: Create Queries and Alarms
 Use reference files for query templates and threshold guidelines.
 
-### Step 4: Escalate Unclear Incidents to AWS DevOps Agent
-When an alarm/anomaly has no single obvious cause (multi-resource, unclear RCA),
-register an **AWS DevOps Agent** investigation instead of guessing. It correlates
-telemetry + code + deployment data and returns a root cause + Kiro-compatible
-mitigation plan. See `references/aws-devops-agent.md` (wiring, `aws devopsagent
-create-backlog-task`, Slack/console/CLI surfaces).
+### Step 4: Agentic RCA — investigations first, DevOps Agent for cross-signal incidents
+When an alarm/anomaly has no single obvious cause, use agentic RCA instead of guessing:
+
+1. **First-line — native CloudWatch investigations** (GA 2025-06): trigger an AI
+   investigation from the metric widget or as an alarm action; it surfaces related
+   signals, root-cause hypotheses, and remediation (incl. SSM Automation runbooks).
+   The **Five Whys** incident-report workflow (Amazon Q, no extra cost) deepens the RCA.
+   See `references/cloudwatch-setup.md` → *Native CloudWatch agentic AIOps*.
+2. **Escalate — AWS DevOps Agent** (GA 2026-03, built on Bedrock AgentCore) when the
+   incident spans **multiple resources / services / clouds** beyond CloudWatch. It
+   correlates telemetry + code + deployment data and returns a root cause + Kiro-compatible
+   mitigation plan — **human-approved, not auto-applied**. See `references/aws-devops-agent.md`.
 
 ## Monitoring Stack Decision Tree
 

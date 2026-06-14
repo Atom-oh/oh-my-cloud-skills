@@ -57,6 +57,19 @@ aws eks list-pod-identity-associations --cluster-name $CLUSTER_NAME
 aws eks describe-pod-identity-association --cluster-name $CLUSTER_NAME --association-id <id>
 ```
 
+**Cross-account access (GA 2025-06, verified)** — a pod can now reach AWS resources in
+a *separate* account via **IAM role chaining**, no application code changes: the Pod
+Identity role assumes a **target role** in the resource account (pass `--target-role-arn`
+on the association). The target role's trust policy grants `sts:AssumeRole` to the Pod
+Identity role. Prefer this over the brittle multi-account IRSA wiring for cross-account
+workloads.
+```bash
+aws eks create-pod-identity-association --cluster-name $CLUSTER_NAME \
+  --namespace <ns> --service-account <sa> \
+  --role-arn <pod-identity-role-in-cluster-acct> \
+  --target-role-arn <target-role-in-resource-acct>
+```
+
 ### RBAC
 ```bash
 # Check permissions
