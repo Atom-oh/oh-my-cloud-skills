@@ -39,9 +39,12 @@ import re
 import json
 import copy
 
-AIS = ("kiro", "codex", "gemini")
+AIS = ("kiro", "codex", "gemini", "antigravity")
 EFFORTS = ("minimal", "low", "medium", "high")
-MODEL_RE = re.compile(r"^[A-Za-z0-9._:/-]+$")  # reject spaces / shell metacharacters
+# Allow space + parentheses so antigravity model tokens like "Gemini 3.1 Pro (High)" pass;
+# still reject every shell metacharacter (; | & $ ` " ' < > \ * { } etc.). Safe because the
+# fan-out always passes the model as a single quoted argv element (--model "$model").
+MODEL_RE = re.compile(r"^[A-Za-z0-9 ._:/()-]+$")
 DEFAULTS_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                              "co-agent.defaults.json")
 
@@ -154,6 +157,12 @@ def cmd_matrix(root):
                       f"(intended diversity; {n}× Kiro credits/round)")
             else:
                 print(f"  ⚠️  {ai}: {n} models (same provider family — diminishing returns vs cost)")
+    panel = cfg.get("panel", {})
+    if (panel.get("gemini", {}).get("enabled", True)
+            and panel.get("antigravity", {}).get("enabled", True)):
+        print("  ℹ️  antigravity (agy) supersedes the deprecated gemini — the fan-out drops "
+              "gemini when agy is installed, so the runtime count is one Gemini-family pair "
+              "(the budget above counts both, since this preview is install-unaware)")
     return 0
 
 
@@ -276,6 +285,9 @@ def cmd_flags(root, ai):
     elif ai == "gemini":
         if model:
             parts += ["-m", model]
+    elif ai == "antigravity":
+        if model:
+            parts += ["--model", model]
     print(" ".join(parts))
     return 0
 

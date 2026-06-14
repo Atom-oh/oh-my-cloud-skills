@@ -14,7 +14,12 @@ below are verified against the installed CLIs and the existing `arch-review` /
 command -v kiro-cli >/dev/null 2>&1 && echo "kiro ok"
 command -v codex    >/dev/null 2>&1 && echo "codex ok"
 command -v gemini   >/dev/null 2>&1 && echo "gemini ok"
+command -v agy      >/dev/null 2>&1 && echo "antigravity ok"   # binary is `agy` (NOT `agv`)
 ```
+
+> **`agy` supersedes `gemini`** (Gemini-family successor; `gemini` CLI deprecated). When
+> **both** are installed, the fan-out runs `agy` and **skips `gemini`** (avoids same-family
+> redundancy). When only `gemini` exists, it still runs (backward compatible).
 
 ## Adapter commands (read-only advisory)
 
@@ -22,7 +27,8 @@ command -v gemini   >/dev/null 2>&1 && echo "gemini ok"
 |----|---------|-------|
 | **Kiro** | `kiro-cli chat "<PROMPT>" --no-interactive --trust-tools=read,grep --wrap never` | ⚠️ Binary is **`kiro-cli`**, NOT `kiro` — a bare `kiro` fails. Auth via interactive login **or** `KIRO_API_KEY` (Pro/Pro+/Power) — either works headless. `--wrap never` = clean output. Pipe ctx: `echo "$CTX" \| kiro-cli chat … --no-interactive`. |
 | **Codex** | `codex exec -s read-only "<PROMPT>"` | `-s read-only` = read-only sandbox (no writes). Pipe ctx: `cat ctx \| codex exec -s read-only "<PROMPT>"`. Free tier has model limits. |
-| **Gemini** | `gemini -p "<PROMPT>" -o text` | `-o text` plain output; optional `-m gemini-2.5-pro`. Pipe ctx: `cat ctx \| gemini -p "<PROMPT>" -o text`. |
+| **Gemini** | `gemini -p "<PROMPT>" -o text` | `-o text` plain output; optional `-m gemini-2.5-pro`. Pipe ctx: `cat ctx \| gemini -p "<PROMPT>" -o text`. **Deprecated → superseded by Antigravity (`agy`) when installed.** |
+| **Antigravity** | `agy -p "<PROMPT>" --model "<model>" --sandbox` | Binary is **`agy`** (NOT `agv`). `-p`/`--print` runs one prompt non-interactively and prints it (no TUI; there is no `-o text`). `--sandbox` = terminal-restricted (no writes) — the read-only guard. **NEVER `--dangerously-skip-permissions`.** `--model` takes the exact `agy models` token incl. spaces/parens, e.g. `"Gemini 3.1 Pro (High)"` (no separate effort flag — the tier is in the token). Pipe ctx: `cat ctx \| agy -p "<PROMPT>" --model "<model>" --sandbox`. |
 
 > These are **advisory** calls — no AI writes to the repo. Claude alone writes the
 > final report/decision/ADR.
@@ -42,10 +48,15 @@ T=$(python3 "$CFG" timeout 2>/dev/null || echo 240)
 python3 "$CFG" matrix          # show provider·model·ctx + max-calls BEFORE running (cost visibility)
 TOKENS=$(( ( $(wc -c < "$CTX_FILE") + 3 ) / 4 ))
 
+# `agy` supersedes the deprecated `gemini` (same Gemini family): if agy is installed,
+# drop gemini pairs at runtime (config still lists both; this is install-aware).
+command -v agy >/dev/null 2>&1 && HAS_AGY=1 || HAS_AGY=
+
 # One fan-out per ENABLED (ai, model) pair (capped). `pairs` emits "ai<TAB>model".
 i=0
 python3 "$CFG" pairs 2>/dev/null | while IFS=$'\t' read -r ai model; do
   i=$((i+1)); slot="$RUN/${ai}-${i}"
+  [ -n "$HAS_AGY" ] && [ "$ai" = "gemini" ] && { echo "[skip] gemini — superseded by agy"; continue; }
   MFLAGS=(); [ "$model" != "(default)" ] && MFLAGS=(--model "$model")   # codex/gemini use -m; see note
   if ! python3 "$CFG" fits "$ai" "$TOKENS" 2>/dev/null; then
     echo "[skip] $ai/$model — context ~${TOKENS} tok > model window"; continue
@@ -60,6 +71,9 @@ python3 "$CFG" pairs 2>/dev/null | while IFS=$'\t' read -r ai model; do
     gemini) command -v gemini >/dev/null 2>&1 && ( cat "$CTX_FILE" | timeout "$T" \
               gemini "${MFLAGS[@]/--model/-m}" -p "$PROMPT" -o text \
               > "$slot.md" 2>"$slot.err" || echo "[skip] gemini/$model" ) & ;;
+    antigravity) command -v agy >/dev/null 2>&1 && ( cat "$CTX_FILE" | timeout "$T" \
+              agy -p "$PROMPT" "${MFLAGS[@]}" --sandbox \
+              > "$slot.md" 2>"$slot.err" || echo "[skip] antigravity/$model" ) & ;;
   esac
 done
 wait

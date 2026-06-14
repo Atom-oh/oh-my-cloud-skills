@@ -1,6 +1,6 @@
 ---
 name: co-agent
-description: "Collaborate with other AI agents (Kiro CLI, Codex, Gemini) for a second opinion. Three modes — multi-AI review of code/architecture, decision support when you're unsure, and ADR co-authoring. Claude chairs and synthesizes the final answer. 멀티 AI 협업: 리뷰, 의사결정 보조, ADR 협업."
+description: "Collaborate with other AI agents (Kiro CLI, Codex, Antigravity) for a second opinion. Three modes — multi-AI review of code/architecture, decision support when you're unsure, and ADR co-authoring. Claude chairs and synthesizes the final answer. 멀티 AI 협업: 리뷰, 의사결정 보조, ADR 협업."
 triggers:
   # High-precision: only fire when the user clearly wants MULTIPLE AIs / a panel.
   # Generic "code review"/"architecture review"/"decide"/"adr" are intentionally
@@ -30,7 +30,7 @@ allowed-tools:
 
 # co-agent — Multi-AI Collaboration
 
-Consult **other AI agents** (Kiro CLI, Codex, Gemini) and let **Claude chair the
+Consult **other AI agents** (Kiro CLI, Codex, Antigravity) and let **Claude chair the
 panel** and synthesize the final answer. The external AIs are advisors; Claude
 always produces the decision/report. Use whichever AI CLIs are installed — degrade
 gracefully, never hard-fail.
@@ -47,7 +47,9 @@ PANEL=""
 # we skip it (graceful fallback), same as codex/gemini.
 command -v kiro-cli >/dev/null 2>&1 && PANEL="$PANEL kiro-cli"
 command -v codex    >/dev/null 2>&1 && PANEL="$PANEL codex"
-command -v gemini   >/dev/null 2>&1 && PANEL="$PANEL gemini"
+command -v agy      >/dev/null 2>&1 && PANEL="$PANEL agy"   # Antigravity (binary `agy`, NOT `agv`)
+# gemini is deprecated → superseded by agy: add it ONLY when agy is absent.
+command -v agy >/dev/null 2>&1 || { command -v gemini >/dev/null 2>&1 && PANEL="$PANEL gemini"; }
 echo "Panel: ${PANEL:-(none — Claude will answer solo and say so)}"
 ```
 
@@ -206,7 +208,7 @@ re-running reads `phase`/`task_index` from state and continues.
 
 ## References
 
-- `references/ai-cli-adapters.md` — Kiro/Codex/Gemini CLI commands, detection, fan-out pattern, fallbacks, **per-AI project-context files**
+- `references/ai-cli-adapters.md` — Kiro/Codex/Antigravity (+ deprecated Gemini) CLI commands, detection, fan-out pattern, fallbacks, **per-AI project-context files**
 - `references/architecture-review-framework.md` — review rubric, severity, PASS/REVIEW/FAIL
 - `references/aws-well-architected.md` — 6-pillar checklist for the review mode
 - `scripts/check_ai_context.py` — validate/staleness-check generated AGENTS.md/GEMINI.md (size caps, marker, secrets); `--emit-marker` for generation

@@ -24,11 +24,14 @@ R=$(mktemp -d "${TMPDIR:-/tmp}/coc.XXXXXX")
 # Set the profile explicitly so these assertions don't depend on the committed default
 # (which is `deep` — opus/kimi/glm as the mainstay Kiro panel).
 python3 "$CFG" set profile default --root "$R" >/dev/null 2>&1
+# Config-level pair counts include all 4 AIs (kiro/codex/gemini/antigravity). The fan-out's
+# install-aware D4 rule (skip gemini when agy is present) nets ≤5 at runtime, but `pairs` is
+# pure config and does not know what is installed.
 DEF=$(python3 "$CFG" pairs --root "$R" 2>/dev/null | wc -l | tr -d ' ')
-assert_eq "3" "$DEF" "default profile → one pair per AI (3)"
+assert_eq "4" "$DEF" "default profile → one pair per AI (4: kiro/codex/gemini/antigravity)"
 python3 "$CFG" set profile deep --root "$R" >/dev/null 2>&1
 DEEP=$(python3 "$CFG" pairs --root "$R" 2>/dev/null | wc -l | tr -d ' ')
-assert_eq "5" "$DEEP" "deep profile → kiro 3 models + codex + gemini (5)"
+assert_eq "6" "$DEEP" "deep profile → kiro 3 models + codex + gemini + antigravity (6)"
 assert_contains "$(python3 "$CFG" matrix --root "$R" 2>&1)" "max calls" "matrix prints max-calls budget"
 # Kiro's 3 models (opus/kimi/glm) are cross-vendor via the router → intended diversity,
 # NOT the same-family redundancy warning.

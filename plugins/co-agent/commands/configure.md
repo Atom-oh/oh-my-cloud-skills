@@ -13,17 +13,23 @@ Configure the multi-AI panel. Settings are **layered** like Claude Code's own se
 
 Only options the CLIs **actually accept headlessly** are exposed (no dead settings):
 
-| Setting | kiro | codex | gemini |
-|---------|------|-------|--------|
-| `model` | `--model` | `-m` | `-m` |
-| `effort` (`minimal\|low\|medium\|high`) | — | `-c model_reasoning_effort` | — |
-| `enabled` (panel membership) | ✅ | ✅ | ✅ |
-| `timeout` (global, seconds) | ✅ | ✅ | ✅ |
-| `context_limit` (per-AI, tokens) | model context window — fan-out **skips** an AI whose window can't hold the context (default: Kiro/Gemini 1,000,000 · Codex 272,000) |
+| Setting | kiro | codex | gemini | antigravity |
+|---------|------|-------|--------|-------------|
+| `model` | `--model` | `-m` | `-m` | `--model` |
+| `effort` (`minimal\|low\|medium\|high`) | — | `-c model_reasoning_effort` | — | — |
+| `enabled` (panel membership) | ✅ | ✅ | ✅ | ✅ |
+| `timeout` (global, seconds) | ✅ | ✅ | ✅ | ✅ |
+| `context_limit` (per-AI, tokens) | model context window — fan-out **skips** an AI whose window can't hold the context (default: Kiro/Gemini/Antigravity 1,000,000 · Codex 272,000) |
 | `autosync` (global, on/off) | run `/co-agent:sync-context` automatically when `CLAUDE.md` changes (opt-in; default off) |
 
-> `effort` is **Codex-only** — Gemini and Kiro have no headless reasoning-effort flag
-> (`/effort` is interactive-only), so it isn't offered for them.
+> `effort` is **Codex-only** — Gemini, Kiro, and Antigravity have no headless reasoning-effort
+> flag, so it isn't offered for them.
+>
+> **Antigravity** (binary `agy`) is the Gemini-family panel member going forward. Its
+> `--model` value is a full `agy models` token *including* the reasoning tier — e.g.
+> `Gemini 3.1 Pro (High)` (so "(High)" is part of the model, not a separate effort flag).
+> The deprecated `gemini` CLI is **superseded by `agy`**: when both are installed the fan-out
+> runs `agy` and skips `gemini`.
 
 The fan-out in `references/ai-cli-adapters.md` reads these via the helper, so a change
 here changes what actually runs (e.g. `enabled false` drops that AI from the panel).
