@@ -13,6 +13,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **co-agent Antigravity (`agy`) panel member** — Google Antigravity joins the panel as the Gemini-family member (default model `Gemini 3.1 Pro (High)`; adapter `agy -p "<P>" --model "<token>" --sandbox`, read-only via `--sandbox`). **Supersedes the deprecated `gemini` CLI** — when both are installed the fan-out runs `agy` and skips `gemini`; `gemini` still runs if `agy` is absent. Wired across all modes (Review/Decide/ADR + consensus). `MODEL_RE` relaxed to allow the spaced/parenthesized model token (e.g. `Gemini 3.1 Pro (High)`) while still blocking shell metacharacters ([#69](https://github.com/Atom-oh/oh-my-cloud-skills/pull/69))
+
+### Changed
+- **co-agent doc-sync-aware `CLAUDE.md` hook** — the `PostToolUse(CLAUDE.md)` hook message names `/sync-docs` as a trigger (and the affected `AGENTS.md`/`GEMINI.md`), and `/co-agent:configure` recommends `autosync on` so the AI context regenerates as part of a doc sync rather than just a reminder — closing the loop on the co-agent side without forking the upstream-synced `/sync-docs` ([#68](https://github.com/Atom-oh/oh-my-cloud-skills/pull/68))
+
 ## [1.10.0] - 2026-06-14
 
 ### Added
@@ -267,6 +275,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 이 프로젝트의 모든 주요 변경 사항은 이 파일에 기록됩니다.
 이 문서는 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)를 기반으로 하며,
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 따릅니다.
+
+## [Unreleased]
+
+### Added
+- **co-agent Antigravity(`agy`) 패널 멤버** — Google Antigravity가 Gemini 패밀리 멤버로 패널에 합류(기본 모델 `Gemini 3.1 Pro (High)`; 어댑터 `agy -p "<P>" --model "<token>" --sandbox`, `--sandbox`로 읽기전용). **deprecated된 `gemini` CLI를 대체** — 둘 다 설치 시 팬아웃은 `agy`만 쓰고 `gemini`는 스킵, `agy` 없으면 `gemini` 사용. 전 모드(Review/Decide/ADR + consensus)에 연결. `MODEL_RE`를 완화해 공백·괄호 포함 모델 토큰(`Gemini 3.1 Pro (High)`)을 허용하되 셸 메타문자는 계속 차단 ([#69](https://github.com/Atom-oh/oh-my-cloud-skills/pull/69))
+
+### Changed
+- **co-agent doc-sync 인지형 `CLAUDE.md` 훅** — `PostToolUse(CLAUDE.md)` 훅 메시지가 `/sync-docs`를 트리거로 명시(영향 파일 `AGENTS.md`/`GEMINI.md`)하고, `/co-agent:configure`가 `autosync on`을 권장해 AI 컨텍스트가 단순 알림이 아니라 doc sync의 일부로 재생성되도록 함 — upstream 동기화 대상인 `/sync-docs`를 fork하지 않고 co-agent 쪽에서 루프를 닫음 ([#68](https://github.com/Atom-oh/oh-my-cloud-skills/pull/68))
 
 ## [1.10.0] - 2026-06-14
 
