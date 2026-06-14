@@ -52,6 +52,10 @@ TOKENS=$(( ( $(wc -c < "$CTX_FILE") + 3 ) / 4 ))
 # drop gemini pairs at runtime (config still lists both; this is install-aware).
 command -v agy >/dev/null 2>&1 && HAS_AGY=1 || HAS_AGY=
 
+# ⚠️ The `ai` from `pairs` is the panel KEY, NOT the runnable binary. `kiro`→`kiro-cli`,
+#    `antigravity`→`agy` (codex/gemini match). NEVER run a bare key (`kiro …` fails — the
+#    binary is `kiro-cli`). Resolve with: BIN=$(python3 "$CFG" binary "$ai"). The case
+#    block below already uses the correct binary per branch — do NOT improvise `$ai …`.
 # One fan-out per ENABLED (ai, model) pair (capped). `pairs` emits "ai<TAB>model".
 i=0
 python3 "$CFG" pairs 2>/dev/null | while IFS=$'\t' read -r ai model; do

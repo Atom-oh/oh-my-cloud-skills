@@ -84,6 +84,21 @@ assert_eq "2" "$AGS" "antigravity model with command-substitution rejected (exit
 python3 "$CFG" set antigravity model '*' --root "$R" >/dev/null 2>&1 && AGG=0 || AGG=$?
 assert_eq "2" "$AGG" "antigravity model with glob char rejected (exit 2)"
 
+# `binary` resolves panel key → actual CLI binary (kiro→kiro-cli, antigravity→agy; never a bare key)
+assert_eq "kiro-cli" "$(python3 "$CFG" binary kiro --root "$R" 2>&1)" "binary kiro → kiro-cli"
+assert_eq "agy" "$(python3 "$CFG" binary antigravity --root "$R" 2>&1)" "binary antigravity → agy"
+assert_eq "codex" "$(python3 "$CFG" binary codex --root "$R" 2>&1)" "binary codex → codex"
+assert_eq "gemini" "$(python3 "$CFG" binary gemini --root "$R" 2>&1)" "binary gemini → gemini"
+python3 "$CFG" binary bogus --root "$R" >/dev/null 2>&1 && BB=0 || BB=$?
+assert_eq "2" "$BB" "binary unknown-ai → exit 2"
+
+# Regression guard: co-agent must NEVER invoke a bare `kiro` (binary is kiro-cli). Match only
+# real invocation forms — `command -v kiro`(no -cli), `kiro chat/exec/-p/--`, or the
+# `/kiro-cli:review` slash-delegation — NOT markdown table cells like `| kiro |`.
+CO_REF="plugins/co-agent"
+BARE_KIRO=$(grep -rnE '(command -v kiro([^-]|$))|(\bkiro (chat|exec|-p|--|"))|(/kiro-cli:review)' "$CO_REF" 2>/dev/null | grep -v 'kiro-cli' || true)
+assert_eq "" "$BARE_KIRO" "no bare-kiro invocation or /kiro-cli:review slash-delegation in co-agent"
+
 # context-size guard: defaults Kiro/Gemini 1M, Codex 272K
 R3=$(mktemp -d "${TMPDIR:-/tmp}/coagentctx3.XXXXXX")
 assert_eq "272000" "$(python3 "$CFG" context-limit codex --root "$R3" 2>&1)" "codex default context-limit 272000"

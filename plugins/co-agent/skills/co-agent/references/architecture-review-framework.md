@@ -109,11 +109,16 @@ def verdict(findings):
 3. AWS Well-Architected 체크리스트 (인프라 코드 대상)
 4. 종합 보고서 생성
 
-### Kiro 연동 실행
+### 패널 연동 실행 (Kiro/Codex/Antigravity)
 
-1. `git diff` 기반 변경 분석
-2. `/kiro-cli:review` → 일반 코드 리뷰 위임
-3. AWS Well-Architected 체크리스트
-4. `/kiro-cli:review --adversarial` → 적대적 보안 리뷰
-5. 결과 통합 → 종합 보고서 생성
+설치된 패널 CLI에 **동일한 리뷰 프롬프트를 headless로 팬아웃**합니다 — 슬래시 커맨드가 아니라
+`references/ai-cli-adapters.md`의 어댑터를 그대로 사용합니다 (바이너리는 `co_agent_config.py
+binary <ai>`로 해석: `kiro`→`kiro-cli`, `antigravity`→`agy`; **bare `kiro` 호출 금지**).
+
+1. `git diff` 기반 변경 분석 → 컨텍스트(diff)를 stdin으로 전달
+2. 패널 팬아웃 (예: `cat ctx | kiro-cli chat "<리뷰 프롬프트>" --no-interactive --trust-tools=read,grep --wrap never`,
+   `codex exec -s read-only`, `agy -p … --sandbox`) — 동일 프롬프트, 병렬
+3. AWS Well-Architected 체크리스트 적용
+4. `check_citations.py`로 발견 검증 → 합의/이견 종합
+5. 결과 통합 → PASS/REVIEW/FAIL 종합 보고서
 
