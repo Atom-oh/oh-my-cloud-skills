@@ -40,6 +40,24 @@ ops-coordinator-agent ← Aggregate results → Root cause → Resolve → Verif
 User query → Matched agent → Diagnose → Resolve → Verify
 ```
 
+### superpowers Handoff (systematic-debugging ↔ aws-ops)
+
+When a debugging session runs under **`superpowers:systematic-debugging`** and the failing
+system is AWS/EKS, hand the *reproduce → diagnose* step to this plugin, then return the root
+cause to the debugging loop. The method stays with superpowers; we supply domain commands.
+
+| 증상 신호 (symptom) | 라우팅 대상 (route to) |
+|---------------------|------------------------|
+| 노드 NotReady, pod crash/OOM, 업그레이드 실패 | `eks-agent` |
+| DNS 실패, ALB/NLB, IP 고갈, VPC CNI | `network-agent` |
+| AccessDenied, IRSA/Pod Identity, aws-auth, RBAC | `iam-agent` |
+| PVC pending, 볼륨 mount 실패, CSI | `storage-agent` |
+| DB 연결 실패, throttling, ElastiCache | `database-agent` |
+| 증상이 불명확/다중 도메인 | `ops-troubleshoot` (5분 triage 먼저) |
+
+> 트리거 (KO/EN): `디버깅`, `systematic-debugging`, `버그`, `장애 디버깅`, "debug an AWS/EKS issue".
+> Non-infra 버그는 `superpowers:systematic-debugging`을 직접 사용 — 이 핸드오프는 클라우드 인프라 증상에만.
+
 ### Well-Architected Review Workflow
 ```
 User WAF request → wellarchitected-agent (scope)
@@ -94,7 +112,7 @@ wellarchitected-agent → Score (XX/100) → Findings → AS-IS/TO-BE Roadmap
 
 | Skill | Trigger | Purpose |
 |-------|---------|---------|
-| `ops-troubleshoot` | "troubleshoot", "debug", "장애", "문제 해결" | 5-min triage → investigate → resolve → postmortem |
+| `ops-troubleshoot` | "troubleshoot", "debug", "systematic-debugging", "장애", "디버깅", "문제 해결" | 5-min triage → investigate → resolve → postmortem (AWS/EKS arm of `superpowers:systematic-debugging`) |
 | `ops-health-check` | "health check", "상태 점검", "헬스체크" | Full infrastructure health assessment (includes analytics) |
 | `ops-network-diagnosis` | "network issue", "네트워크 오류", "연결 문제" | VPC CNI, LB, DNS deep diagnosis |
 | `ops-observability` | "monitoring", "모니터링", "로그 분석", "알람", "opentelemetry", "clickhouse", "grafana", "devops agent", "데브옵스 에이전트" | CloudWatch/PromQL/logs + OSS stack (OTel, Loki, Tempo, ClickHouse, VictoriaMetrics) + AWS DevOps Agent incident escalation |

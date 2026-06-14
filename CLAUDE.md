@@ -14,6 +14,21 @@ A Claude Code plugin marketplace containing six plugins for AWS cloud work:
 
 All plugins are installed via `/plugin marketplace add` or loaded locally with `--plugin-dir`.
 
+## superpowers Integration Routing
+
+When the `superpowers` workflow plugin is active, route into these plugins at the matching
+lifecycle phase. (`superpowers` is read-only; this table is the authoritative, always-in-context
+routing — per-plugin `CLAUDE.md` holds the detail. Design: `docs/superpowers/specs/2026-06-14-superpowers-integration-design.md`.)
+
+| superpowers phase | + signal | → route to | status |
+|-------------------|----------|-----------|--------|
+| `systematic-debugging` | AWS/EKS symptom (NotReady, IP 고갈, AccessDenied, PVC, throttling) | `aws-ops`: `ops-troubleshoot` or matched domain agent (eks/network/iam/storage/database) | ✅ active |
+| `finishing-a-development-branch` | branch done, docs may be stale | `project-init`: `/sync-docs` + `/generate-changelog` (+ `/add-adr` if a decision was made) | planned (②) |
+| `requesting-code-review` | non-code artifact (slides/diagram/doc/gitbook) or IaC | `aws-content`: `content-review-agent`; IaC → `aws-ops`: `wellarchitected-agent` + `ops-security-audit` | planned (③) |
+| `writing-plans` | plan proposes AWS/IaC change | shift-left AWS security pre-check (`ops-security-audit` / mandate check: no 0.0.0.0/0, IAM `*`, secrets-in-env) | planned (④) |
+
+> co-agent is already wired separately: `co-agent:consensus` reuses `superpowers:subagent-driven-development` + writing-plans output, gated by the multi-AI panel.
+
 ## Development Commands
 
 ```bash
