@@ -26,6 +26,7 @@ Usage:
   co_agent_config.py set <ai> context_limit <n> # per-AI context window (tokens)
   co_agent_config.py flags <ai>                 # CLI flag fragment for the fan-out
   co_agent_config.py panel                      # space-separated enabled AIs
+  co_agent_config.py binary <ai>                # actual CLI binary (kiro→kiro-cli, antigravity→agy)
   co_agent_config.py timeout                     # effective timeout (int)
   co_agent_config.py enabled <ai>               # exit 0 if enabled, 1 if not
   co_agent_config.py autosync                   # exit 0 if sync-on-change is on, 1 if off
@@ -40,6 +41,11 @@ import json
 import copy
 
 AIS = ("kiro", "codex", "gemini", "antigravity")
+# Panel KEY → actual CLI BINARY. The key (used in config, `pairs`, `panel`) is NOT always
+# the runnable command: Kiro's binary is `kiro-cli` and Antigravity's is `agy`. The fan-out
+# MUST resolve the binary via this map (or `co_agent_config.py binary <ai>`) — never run a
+# bare panel key like `kiro`/`antigravity` as a command.
+BINARIES = {"kiro": "kiro-cli", "antigravity": "agy"}  # others: binary == key
 EFFORTS = ("minimal", "low", "medium", "high")
 # Allow space + parentheses so antigravity model tokens like "Gemini 3.1 Pro (High)" pass;
 # still reject every shell metacharacter (; | & $ ` " ' < > \ * { } etc.). Safe because the
@@ -303,6 +309,15 @@ def cmd_timeout(root):
     return 0
 
 
+def cmd_binary(root, ai):
+    """Print the actual CLI binary for a panel key (kiro→kiro-cli, antigravity→agy,
+    others unchanged). The fan-out uses this so it never runs a bare key as a command."""
+    if ai not in AIS:
+        return 2
+    print(BINARIES.get(ai, ai))
+    return 0
+
+
 def cmd_enabled(root, ai):
     if ai not in AIS:
         return 2
@@ -356,6 +371,8 @@ def main():
         return cmd_flags(root, rest[0]) if rest else 2
     if cmd == "panel":
         return cmd_panel(root)
+    if cmd == "binary":
+        return cmd_binary(root, rest[0]) if rest else 2
     if cmd == "timeout":
         return cmd_timeout(root)
     if cmd == "enabled":
