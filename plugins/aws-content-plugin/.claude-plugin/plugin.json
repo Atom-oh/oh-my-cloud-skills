@@ -42,7 +42,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'FILE=\"$TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" == *reactive-presentation/references/* ]] || [[ \"$FILE\" == *reactive-presentation/SKILL.md ]] || [[ \"$FILE\" == *reactive-presentation/scripts/* ]]; then PROJ=$(git rev-parse --show-toplevel 2>/dev/null || echo /home/ec2-user/oh-my-cloud-skills); mkdir -p \"$PROJ/.omc/logs\"; echo \"[SKILL CHANGED] reactive-presentation — $(basename $FILE). Running eval...\"; nohup python3 \"$PROJ/scripts/eval-skill-behavior.py\" --skill reactive-presentation > \"$PROJ/.omc/logs/eval-reactive-presentation-latest.log\" 2>&1 & echo \"[EVAL STARTED] PID=$! — results at .omc/logs/eval-reactive-presentation-latest.log\"; fi'"
+            "command": "bash -c 'FILE=\"$TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" == *reactive-presentation/references/* ]] || [[ \"$FILE\" == *reactive-presentation/SKILL.md ]] || [[ \"$FILE\" == *reactive-presentation/scripts/* ]]; then PROJ=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\"; [ -f \"$PROJ/scripts/eval-skill-behavior.py\" ] || exit 0; mkdir -p \"$PROJ/.omc/logs\"; echo \"[SKILL CHANGED] reactive-presentation — $(basename \"$FILE\"). Running eval...\"; nohup python3 \"$PROJ/scripts/eval-skill-behavior.py\" --skill reactive-presentation > \"$PROJ/.omc/logs/eval-reactive-presentation-latest.log\" 2>&1 & echo \"[EVAL STARTED] PID=$! — results at .omc/logs/eval-reactive-presentation-latest.log\"; fi'"
           }
         ]
       },
@@ -69,7 +69,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'FILE=\"$TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" == *reactive-presentation/references/* ]] || [[ \"$FILE\" == *reactive-presentation/SKILL.md ]] || [[ \"$FILE\" == *reactive-presentation/scripts/* ]]; then PROJ=$(git rev-parse --show-toplevel 2>/dev/null || echo /home/ec2-user/oh-my-cloud-skills); mkdir -p \"$PROJ/.omc/logs\"; echo \"[SKILL CHANGED] reactive-presentation — $(basename $FILE). Running eval...\"; nohup python3 \"$PROJ/scripts/eval-skill-behavior.py\" --skill reactive-presentation > \"$PROJ/.omc/logs/eval-reactive-presentation-latest.log\" 2>&1 & echo \"[EVAL STARTED] PID=$! — results at .omc/logs/eval-reactive-presentation-latest.log\"; fi'"
+            "command": "bash -c 'FILE=\"$TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" == *reactive-presentation/references/* ]] || [[ \"$FILE\" == *reactive-presentation/SKILL.md ]] || [[ \"$FILE\" == *reactive-presentation/scripts/* ]]; then PROJ=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\"; [ -f \"$PROJ/scripts/eval-skill-behavior.py\" ] || exit 0; mkdir -p \"$PROJ/.omc/logs\"; echo \"[SKILL CHANGED] reactive-presentation — $(basename \"$FILE\"). Running eval...\"; nohup python3 \"$PROJ/scripts/eval-skill-behavior.py\" --skill reactive-presentation > \"$PROJ/.omc/logs/eval-reactive-presentation-latest.log\" 2>&1 & echo \"[EVAL STARTED] PID=$! — results at .omc/logs/eval-reactive-presentation-latest.log\"; fi'"
           }
         ]
       }
