@@ -80,7 +80,8 @@ jobs:
           MAX_LINES=3000
           head -"$MAX_LINES" /tmp/pr-diff.txt > /tmp/pr-diff-truncated.txt
           cat <<'PROMPT_EOF' > /tmp/panel-prompt.txt
-          Review the diff provided via stdin for bugs, security risks, logic errors,
+          Review the diff under review (provided via stdin, or inline below the
+          "--- DIFF UNDER REVIEW ---" marker) for bugs, security risks, logic errors,
           and convention violations in this Claude Code plugin marketplace
           (plugin.json/marketplace.json validity, dangling agent/skill refs,
           SKILL.md frontmatter, hook safety, version alignment, hardcoded secrets).

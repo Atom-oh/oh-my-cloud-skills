@@ -13,6 +13,15 @@ RETRIES="${PANEL_RETRIES:-3}"
 PROMPT="$(cat "$PROMPT_FILE")"
 KIRO_MODELS=("claude-opus-4.8:kiro-opus" "kimi-k2.5:kiro-kimi" "glm-5:kiro-glm")
 
+# Kiro's non-interactive `chat` reads ONLY the prompt arg — it ignores the stdin the
+# `< "$DIFF"` redirect feeds it, so without this embed the Kiro panels review blind
+# (they fall back to scanning the whole repo). Codex DOES read the diff from stdin, and
+# a large inline arg times it out — so we embed for Kiro only and keep Codex on stdin.
+KIRO_PROMPT="$PROMPT
+
+--- DIFF UNDER REVIEW (review THIS diff only; do not scan the wider repo) ---
+$(cat "$DIFF")"
+
 # 한 패널을 최대 $RETRIES 회 실행 — 슬롯이 비면 재시도(transient). 백그라운드로 호출.
 #   try_panel <slot> <err> <cmd...>   (stdin=$DIFF, stdout=slot, stderr=err)
 try_panel() {
@@ -38,7 +47,7 @@ for entry in "${KIRO_MODELS[@]}"; do
   m="${entry%%:*}"; tag="${entry##*:}"
   if command -v kiro-cli >/dev/null 2>&1; then
     ( try_panel "$SLOT/$tag.md" "$SLOT/$tag.err" \
-        timeout "$T" kiro-cli chat "$PROMPT" --model "$m" \
+        timeout "$T" kiro-cli chat "$KIRO_PROMPT" --model "$m" \
         --no-interactive --trust-tools=read,grep --wrap never ) &
   else echo "[skip] $tag (binary absent)" >&2; : > "$SLOT/$tag.md"; fi
 done
