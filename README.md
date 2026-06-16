@@ -45,7 +45,7 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 
 *Multi-AI Collaboration (co-agent):*
 - **4 modes** — multi-AI review, decision support, ADR co-authoring, and `sync-context` (distill `CLAUDE.md` -> `AGENTS.md`/`GEMINI.md`)
-- **Panel of installed CLIs** — fan the same prompt to Kiro/Codex/Gemini in parallel; Claude chairs and synthesizes consensus vs. dissent (degrades gracefully if none installed)
+- **Panel of installed CLIs** — fan the same prompt to Kiro/Codex/Antigravity in parallel; Claude chairs and synthesizes consensus vs. dissent (degrades gracefully if none installed). The Gemini-family slot prefers Antigravity (`agy`) and **falls back to the `gemini` CLI when `agy` is absent** — skipped if neither is installed
 - **`/co-agent:configure`** — tune per-AI model, Codex effort, enable/disable, timeout, and `autosync` (regenerate AI context on `CLAUDE.md` change)
 
 *Project Scaffolding (project-init):*
@@ -631,10 +631,10 @@ All agents activate automatically when Claude detects matching keywords in your 
 |-------|----------|
 | `kiro-convert` | Plugin-to-Kiro-Power conversion workflow |
 | `agentcore-create` | 5-phase AgentCore design, build, convert, deploy workflow |
-| `co-agent` | Multi-AI collaboration (Kiro/Codex/Gemini) — review, decision support, ADR co-authoring, and `sync-context`; Claude chairs. Commands: `/co-agent:configure`, `/co-agent:sync-context` |
+| `co-agent` | Multi-AI collaboration (Kiro/Codex/Antigravity — `agy`, Gemini fallback) — review, decision support, ADR co-authoring, and `sync-context`; Claude chairs. Commands: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus` |
 | `project-scaffolder` | Claude Code project structure patterns and conventions |
 | `pr-autofix` | Poll AI + human PR review feedback and auto-fix issues (max 3 iterations) |
-| `decision-reconcile` | Detect contradictions across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (varied Claude model tiers + optional Kiro/Codex/Gemini, one review lens each), then draft a superseding ADR |
+| `decision-reconcile` | Detect contradictions across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (varied Claude model tiers + optional Kiro/Codex/Antigravity-or-Gemini, one review lens each), then draft a superseding ADR |
 
 ### Project Init Commands
 
@@ -679,7 +679,7 @@ Well-Architected:   wellarchitected-agent  -->  6-pillar scoring  -->  AS-IS/TO-
 ```
 Kiro conversion:   plugin source  -->  kiro-converter-agent  -->  Kiro Power directory  -->  install/export
 AgentCore deploy:  discovery  -->  design  -->  skill-first build  -->  AgentCore convert  -->  deploy
-Co-agent collab:     prompt  -->  fan-out to Kiro/Codex/Gemini  -->  Claude synthesizes  -->  review / decision / ADR / sync-context
+Co-agent collab:     prompt  -->  fan-out to Kiro/Codex/Antigravity(agy->gemini fallback)  -->  Claude synthesizes  -->  review / decision / ADR / sync-context
 Doc sync:          /sync-docs  -->  doc-sync-checker  -->  quality scores  -->  update docs
 ```
 
@@ -706,7 +706,7 @@ plugins/
 ├── aws-content-plugin/                # Content creation (9 agents, 8 skills)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
-│   ├── agents/                        # 8 agents
+│   ├── agents/                        # 9 agents
 │   │   ├── presentation-agent.md      # Format dispatcher (Web vs PPTX)
 │   │   ├── reactive-presentation-agent.md # Interactive HTML slideshows
 │   │   ├── architecture-diagram-agent.md  # Draw.io XML diagrams
@@ -714,14 +714,17 @@ plugins/
 │   │   ├── document-agent.md          # Markdown documents & reports
 │   │   ├── gitbook-agent.md           # GitBook documentation sites
 │   │   ├── workshop-agent.md          # AWS Workshop Studio content
+│   │   ├── brochure-agent.md          # Single-page responsive brochure
 │   │   └── content-review-agent.md    # Cross-cutting quality review
-│   └── skills/                        # 6 skills
+│   └── skills/                        # 8 skills
 │       ├── reactive-presentation/     # Presentation framework + AWS icons
 │       ├── architecture-diagram/      # Draw.io templates & patterns
 │       ├── animated-diagram/          # SMIL animation guide & templates
 │       ├── gitbook/                   # GitBook structure & components
 │       ├── workshop-creator/          # Workshop Studio directives & templates
-│       └── slide-fix/                 # Slide issue annotation processing
+│       ├── slide-fix/                 # Slide issue annotation processing
+│       ├── brochure/                  # Responsive brochure design system
+│       └── aws-light-fcd/             # Native PPTX decks (PptxGenJS, AWS Light theme)
 │
 ├── aws-ops-plugin/                    # Infrastructure operations (10 agents, 6 skills)
 │   ├── .claude-plugin/plugin.json
@@ -761,12 +764,12 @@ plugins/
 │   └── skills/
 │       └── agentcore-create/
 │
-├── co-agent/                       # Multi-AI collaboration (1 agent, 1 skill, 2 commands)
+├── co-agent/                       # Multi-AI collaboration (1 agent, 1 skill, 3 commands)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
 │   ├── agents/
 │   │   └── co-agent.md
-│   ├── commands/                   # /co-agent:configure, /co-agent:sync-context
+│   ├── commands/                   # /co-agent:configure, /co-agent:sync-context, /co-agent:consensus
 │   └── skills/
 │       └── co-agent/
 │

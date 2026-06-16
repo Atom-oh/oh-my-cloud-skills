@@ -45,7 +45,7 @@
 
 *멀티-AI 협업 (co-agent):*
 - **4가지 모드** — 멀티-AI 리뷰, 의사결정 보조, ADR 협업, `sync-context`(`CLAUDE.md` 증류 -> `AGENTS.md`/`GEMINI.md`)
-- **설치된 CLI 패널** — 같은 프롬프트를 Kiro/Codex/Gemini에 병렬 팬아웃, Claude가 의장으로 합의/이견 종합 (없으면 Claude 단독, hard-fail 없음)
+- **설치된 CLI 패널** — 같은 프롬프트를 Kiro/Codex/Antigravity에 병렬 팬아웃, Claude가 의장으로 합의/이견 종합 (없으면 Claude 단독, hard-fail 없음). Gemini 계열 슬롯은 Antigravity(`agy`)를 우선 사용하고, **`agy`가 없으면 `gemini` CLI로 폴백** — 둘 다 없으면 스킵
 - **`/co-agent:configure`** — AI별 model, Codex effort, 활성/비활성, timeout, `autosync`(`CLAUDE.md` 변경 시 AI 컨텍스트 재생성) 튜닝
 
 *프로젝트 스캐폴딩 (project-init):*
@@ -631,10 +631,10 @@ aws-ops-power/
 |------|----------|
 | `kiro-convert` | 플러그인-to-Kiro-Power 변환 워크플로우 |
 | `agentcore-create` | 5단계 AgentCore 설계, 빌드, 변환, 배포 워크플로우 |
-| `co-agent` | 멀티-AI 협업 (Kiro/Codex/Gemini) — 리뷰, 의사결정 보조, ADR 협업, `sync-context`; Claude가 의장. 명령: `/co-agent:configure`, `/co-agent:sync-context` |
+| `co-agent` | 멀티-AI 협업 (Kiro/Codex/Antigravity — `agy`, Gemini 폴백) — 리뷰, 의사결정 보조, ADR 협업, `sync-context`; Claude가 의장. 명령: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus` |
 | `project-scaffolder` | Claude Code 프로젝트 구조 패턴 및 컨벤션 |
 | `pr-autofix` | AI + 사람 PR 리뷰 피드백 polling 후 이슈 자동 수정 (최대 3회 반복) |
-| `decision-reconcile` | 누적 ADR 간 모순(및 ADR vs 현실 drift)을 다양성 멀티 에이전트 패널(Claude 모델 티어 + 선택적 Kiro/Codex/Gemini, 렌즈 1개씩)로 검출 후 번복 ADR 초안 작성 |
+| `decision-reconcile` | 누적 ADR 간 모순(및 ADR vs 현실 drift)을 다양성 멀티 에이전트 패널(Claude 모델 티어 + 선택적 Kiro/Codex/Antigravity-또는-Gemini, 렌즈 1개씩)로 검출 후 번복 ADR 초안 작성 |
 
 ### Project Init 명령
 
@@ -679,7 +679,7 @@ Well-Architected: wellarchitected-agent  -->  6-pillar 스코어링  -->  AS-IS/
 ```
 Kiro 변환:        플러그인 소스  -->  kiro-converter-agent  -->  Kiro Power 디렉토리  -->  설치/내보내기
 AgentCore 배포:   발견  -->  설계  -->  스킬 우선 빌드  -->  AgentCore 변환  -->  배포
-co-agent 협업:   프롬프트  -->  Kiro/Codex/Gemini 팬아웃  -->  Claude 종합  -->  리뷰 / 의사결정 / ADR / 컨텍스트 동기화
+co-agent 협업:   프롬프트  -->  Kiro/Codex/Antigravity(agy->gemini 폴백) 팬아웃  -->  Claude 종합  -->  리뷰 / 의사결정 / ADR / 컨텍스트 동기화
 문서 동기화:      /sync-docs  -->  doc-sync-checker  -->  품질 점수  -->  문서 업데이트
 ```
 
@@ -706,7 +706,7 @@ plugins/
 ├── aws-content-plugin/                # 콘텐츠 제작 (9 에이전트, 8 스킬)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
-│   ├── agents/                        # 8 에이전트
+│   ├── agents/                        # 9 에이전트
 │   │   ├── presentation-agent.md      # 포맷 디스패처 (Web vs PPTX)
 │   │   ├── reactive-presentation-agent.md # 인터랙티브 HTML 슬라이드쇼
 │   │   ├── architecture-diagram-agent.md  # Draw.io XML 다이어그램
@@ -714,14 +714,17 @@ plugins/
 │   │   ├── document-agent.md          # Markdown 문서 및 보고서
 │   │   ├── gitbook-agent.md           # GitBook 문서 사이트
 │   │   ├── workshop-agent.md          # AWS Workshop Studio 콘텐츠
+│   │   ├── brochure-agent.md          # 단일 페이지 반응형 브로셔
 │   │   └── content-review-agent.md    # 통합 품질 검토
-│   └── skills/                        # 6 스킬
+│   └── skills/                        # 8 스킬
 │       ├── reactive-presentation/     # 프레젠테이션 프레임워크 + AWS 아이콘
 │       ├── architecture-diagram/      # Draw.io 템플릿 및 패턴
 │       ├── animated-diagram/          # SMIL 애니메이션 가이드 및 템플릿
 │       ├── gitbook/                   # GitBook 구조 및 컴포넌트
 │       ├── workshop-creator/          # Workshop Studio 지시문 및 템플릿
-│       └── slide-fix/                 # 슬라이드 이슈 어노테이션 처리
+│       ├── slide-fix/                 # 슬라이드 이슈 어노테이션 처리
+│       ├── brochure/                  # 반응형 브로셔 디자인 시스템
+│       └── aws-light-fcd/             # 네이티브 PPTX 덱 (PptxGenJS, AWS 라이트 테마)
 │
 ├── aws-ops-plugin/                    # 인프라 운영 (10 에이전트, 6 스킬)
 │   ├── .claude-plugin/plugin.json
@@ -761,12 +764,12 @@ plugins/
 │   └── skills/
 │       └── agentcore-create/
 │
-├── co-agent/                       # 멀티-AI 협업 (1 에이전트, 1 스킬, 2 명령)
+├── co-agent/                       # 멀티-AI 협업 (1 에이전트, 1 스킬, 3 명령)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
 │   ├── agents/
 │   │   └── co-agent.md
-│   ├── commands/                   # /co-agent:configure, /co-agent:sync-context
+│   ├── commands/                   # /co-agent:configure, /co-agent:sync-context, /co-agent:consensus
 │   └── skills/
 │       └── co-agent/
 │

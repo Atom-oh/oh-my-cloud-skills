@@ -1,4 +1,4 @@
-<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 492a2f7e50bb · generated-at: 2026-06-14 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
+<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 1665642f53d3 · generated-at: 2026-06-14 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
 > You are Codex, an external reviewer — project context below. Distilled from CLAUDE.md.
 
 # oh-my-cloud-skills — reviewer context
@@ -21,7 +21,7 @@ A **Claude Code plugin marketplace**: 6 plugins (aws-content, aws-ops, kiro-powe
 - Each plugin: `.claude-plugin/plugin.json` (manifest: `agents[]`, `skills[]`, `commands[]`, `hooks`, `mcpServers`) + `CLAUDE.md` (routing) + `agents/*.md` + `skills/<name>/{SKILL.md,references/,scripts/}`.
 - **Every path in plugin.json must resolve to a real file** (test-plugins.py enforces).
 - Content plugin → artifacts (HTML/.drawio/.md/.pptx) → **content-review-agent quality gate (≥85)** before "done". Native PPTX is the `aws-light-fcd` skill (PptxGenJS); it references `reactive-presentation`'s 811-icon library in place via `kit.icon()` — don't duplicate icon assets.
-- Ops plugin → diagnoses (commands-first runbooks). co-agent → chairs a multi-AI panel (Kiro/Codex/Antigravity), Claude synthesizes.
+- Ops plugin → diagnoses (commands-first runbooks). co-agent → chairs a multi-AI panel (Kiro/Codex/Antigravity — `agy`, falls back to `gemini` when `agy` absent), Claude synthesizes.
 - A single shared **version** across all `plugin.json` + `marketplace.json` + git tag `v{version}` — they must match.
 
 ## Conventions
