@@ -52,6 +52,12 @@ docs/.docusaurus/
 # scratch working dir (presentation/demo authoring — not tracked)
 work/
 
+# runtime artifacts + stray input archives (never commit)
+*.pid
+/Agentcore-Bedrock-Icons.pptx
+/Pretendard-*.zip
+/*.skill
+
 # skill eval workspaces — generated run artifacts, not tracked
 plugins/*/skills/*-workspace/
 
