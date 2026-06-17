@@ -1,8 +1,10 @@
-# ADR-010: Antigravity (`agy`) Supersedes the Gemini CLI
+# ADR-010: Antigravity (`agy`) Supersedes the Gemini CLI (with `gemini` fallback)
 
 ## Status
 
-Accepted (2026-06-17)
+Accepted (2026-06-17) — no prior ADR established the Gemini-family slot, so none is marked
+`Superseded`. "Supersedes" here means **preferred-over-with-fallback**, not full removal
+(`gemini` still runs when `agy` is absent; see Decision).
 
 ## Context
 

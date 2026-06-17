@@ -7,7 +7,7 @@ edit a decision's rationale after acceptance — supersede it with a new ADR ins
 - **Filename**: `ADR-NNN-kebab-title.md` (zero-padded, monotonic). `ADR-001`/`ADR-002`
   predate the slug convention; `ADR-003+` use the descriptive slug. `.template.md` is the
   skeleton (not a real ADR — excluded from numbering scans).
-- **Last number** (increment by 1 for the next): `find docs/decisions -name 'ADR-*.md' -not -name '.template.md' | sort -V | tail -1` (`-V` so ADR-010 sorts after ADR-009, not after ADR-001). The `/add-adr` command (project-init) auto-numbers.
+- **Last number** (increment by 1 for the next): `find docs/decisions -name 'ADR-*.md' | sort -V | tail -1` (`-V` so ADR-010 sorts after ADR-009, not after ADR-001; `.template.md` doesn't match `ADR-*.md` so no filter needed). The `/add-adr` command (project-init) auto-numbers.
 - **Sections**: `# ADR-NNN: Title` (English title) → `## Status` → `## Context` →
   `## Options Considered` (optional) → `## Decision` → `## Consequences` → `## References`.
 - **Status line**: `Accepted (YYYY-MM-DD)` / `Proposed` / `Deprecated` / `Superseded by ADR-NNN`.
