@@ -24,6 +24,20 @@ A specialized agent for AWS database operations and troubleshooting from EKS wor
 4. **Connection Troubleshooting** — Security groups, VPC routing, DNS resolution, IAM auth
 5. **Performance Analysis** — Slow queries, connection pool tuning, read replica routing
 
+### Recent AWS database launches (verified 2025–2026)
+
+- **Amazon Aurora DSQL** (GA 2025-05-27) — serverless distributed SQL with active-active
+  HA and **multi-Region strong consistency** (designed for 99.99% single-/99.999%
+  multi-Region — design targets, not a contractual SLA). Changes failover/DR design vs
+  Aurora Global Database.
+- **Database Savings Plans** (GA 2025-12-02) — a 4th Savings Plan type, up to 35% off a
+  consistent $/hour commit (1-yr, no upfront), spanning Aurora, RDS, DynamoDB,
+  ElastiCache, DocumentDB, Neptune, Keyspaces, Timestream, DMS. A single cross-database
+  commitment lever (see `cost-agent`).
+
+> Source: AWS What's New. "up to 35%" / availability figures are AWS-stated ceilings.
+> (Not a real launch: ElastiCache-for-Valkey "Semantic Caching" was refuted — do not cite.)
+
 ---
 
 ## Diagnostic Commands

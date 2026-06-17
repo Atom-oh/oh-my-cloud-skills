@@ -24,6 +24,21 @@ A specialized agent for AWS/EKS storage troubleshooting — EBS, EFS, and FSx CS
 4. **PVC Lifecycle** — Binding, resizing, reclaim policies, StorageClass
 5. **Mount Troubleshooting** — Mount errors, permission issues, AZ mismatch
 
+### Recent AWS storage launches (verified 2025–2026)
+
+- **Amazon S3 Files** (GA 2026-04-07, 34 regions) — S3 presented as a POSIX file
+  system; mountable in EKS as RWX PersistentVolumes via the **EFS CSI driver v3.0.0+**
+  (new `AmazonS3FilesCSIDriverPolicy`, NFS v4.1/4.2). Lets apps use file semantics over
+  S3 without re-architecting to the S3 API — distinct from the older Mountpoint-for-S3
+  CSI driver. See EKS User Guide `s3files-csi.html`.
+- **Amazon S3 Vectors** (GA 2025-12-02, 14 regions) — native vector store/query in
+  object storage (up to 2B vectors/index, 10K indexes/bucket): a cheap, durable vector
+  backing store for RAG/semantic search. Size/region-plan/cost-model it vs managed
+  vector DBs. (AWS-stated "up to 90% cheaper / ~100ms" are vendor figures; positioned as
+  complementary to vector DBs for cold/infrequent workloads.)
+
+> Source: EKS User Guide + AWS What's New. Re-check region availability at use time.
+
 ---
 
 ## Diagnostic Commands

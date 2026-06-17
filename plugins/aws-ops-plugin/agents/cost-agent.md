@@ -23,6 +23,17 @@ A specialized agent for AWS cost analysis and optimization, leveraging the awspr
 4. **Resource Optimization** — Idle resource detection, right-sizing, cleanup
 5. **CloudWatch Cost** — Metric/log cost optimization, retention tuning
 
+### Recent AWS cost launches (verified 2025–2026)
+
+- **Database Savings Plans** (GA 2025-12-02) — a 4th Savings Plan type (alongside
+  Compute, EC2 Instance, SageMaker): up to 35% off a consistent $/hour commit (1-yr, no
+  upfront) across Aurora / RDS / DynamoDB / ElastiCache / DocumentDB / Neptune /
+  Keyspaces / Timestream / DMS, applying across family/size, serverless vs provisioned,
+  and Region. Weigh DSP coverage across the data tier in FinOps planning.
+
+> Note (research gap): no new **Cost Optimization Hub** / **Compute Optimizer** launches
+> were verified in this 2025–26 window — re-check before assuming none.
+
 ---
 
 ## Analysis Commands

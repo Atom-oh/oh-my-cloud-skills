@@ -26,6 +26,22 @@ A specialized agent for AWS data analytics — search engines, query services, v
 4. **Amazon QuickSight** — Data source connections, dashboard creation, SPICE optimization, embedding
 5. **Amazon Kinesis** — Data Streams, Firehose, Analytics pipeline setup, troubleshooting, scaling
 
+### Recent AWS analytics launches (verified 2025–2026)
+
+- **OpenSearch GPU-accelerated, auto-optimized vector indexes** (GA 2025-12-02) — build
+  billion-scale vector indexes ~10× faster at a quarter of the **indexing** cost;
+  serverless GPUs activate dynamically and bill only when boosting; auto-optimize
+  balances quality/speed/cost. GPU regions: us-east-1, us-west-2, ap-southeast-2,
+  eu-west-1, ap-northeast-1 (OpenSearch 3.1+); auto-optimize in 9 regions (2.17+). Plan
+  GPU-region placement + serverless-GPU billing. (AWS-measured 6.4–13.8×; "10×"/"¼ cost"
+  are representative / indexing-only.)
+- **OpenSearch Agentic Search** (3.3+, 2025-11-25, Commercial + GovCloud US) —
+  natural-language query planning/orchestration (vector/neural/lexical), no hand-written
+  DSL. (Medium confidence: GA inferred from launch language + live docs.)
+
+> Source: AWS What's New + Big Data blog. No verified in-window launches surfaced for
+> Athena / QuickSight / Kinesis / Glue / EMR — re-check before assuming none.
+
 ---
 
 ## Diagnostic Commands
