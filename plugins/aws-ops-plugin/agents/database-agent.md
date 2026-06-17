@@ -34,8 +34,9 @@ A specialized agent for AWS database operations and troubleshooting from EKS wor
   Aurora/RDS/DynamoDB/ElastiCache/DocumentDB/Neptune/Keyspaces/Timestream/DMS.
   **`cost-agent` is the single source** for the details (rates, term, scope).
 
-> Source: AWS What's New. (Not a real launch: ElastiCache-for-Valkey "Semantic Caching"
-> was refuted — do not cite.)
+> (Not a real launch: ElastiCache-for-Valkey "Semantic Caching" was refuted — do not cite.)
+> Sources: https://aws.amazon.com/about-aws/whats-new/2025/05/amazon-aurora-dsql-generally-available ·
+> https://aws.amazon.com/about-aws/whats-new/2025/12/database-savings-plans-savings (DSP details in `cost-agent`).
 
 ---
 

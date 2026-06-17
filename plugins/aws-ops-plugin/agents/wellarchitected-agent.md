@@ -36,6 +36,8 @@ A specialized agent for comprehensive AWS infrastructure assessment based on the
 
 > Note: separate **AI/ML** and **Responsible AI** lenses were referenced at re:Invent 2025
 > but not verified here — confirm before citing.
+> Sources: https://aws.amazon.com/about-aws/whats-new/2025/04/well-architected-generative-ai-lens ·
+> https://docs.aws.amazon.com/wellarchitected/latest/generative-ai-lens/generative-ai-lens.html
 
 ---
 

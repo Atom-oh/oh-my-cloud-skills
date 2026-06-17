@@ -39,7 +39,10 @@ A specialized agent for AWS/EKS storage troubleshooting — EBS, EFS, and FSx CS
   vector DBs. (AWS-stated "up to 90% cheaper / ~100ms" are vendor figures; positioned as
   complementary to vector DBs for cold/infrequent workloads.)
 
-> Source: EKS User Guide + AWS What's New. Re-check region availability at use time.
+> Re-check region availability at use time.
+> Sources: https://docs.aws.amazon.com/eks/latest/userguide/s3files-csi.html ·
+> https://aws.amazon.com/about-aws/whats-new/2026/04/amazon-s3-files ·
+> https://aws.amazon.com/about-aws/whats-new/2025/12/amazon-s3-vectors-generally-available/
 
 ---
 

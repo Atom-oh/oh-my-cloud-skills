@@ -30,9 +30,11 @@ A specialized agent for AWS cost analysis and optimization, leveraging the awspr
   upfront) across Aurora / RDS / DynamoDB / ElastiCache / DocumentDB / Neptune /
   Keyspaces / Timestream / DMS, applying across family/size, serverless vs provisioned,
   and Region. Weigh DSP coverage across the data tier in FinOps planning.
+  Source: https://aws.amazon.com/about-aws/whats-new/2025/12/database-savings-plans-savings
 
-> Note (research gap): no new **Cost Optimization Hub** / **Compute Optimizer** launches
-> were verified in this 2025–26 window — re-check before assuming none.
+> Note (research gap, no source by definition): no new **Cost Optimization Hub** /
+> **Compute Optimizer** launches were verified in this 2025–26 window — re-check before
+> assuming none.
 
 ---
 
