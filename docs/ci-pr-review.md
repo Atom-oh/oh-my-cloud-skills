@@ -15,5 +15,5 @@
 - `scripts/pr-review/{lib,run-panel,synthesize}.sh` — 패널 병렬 실행 + 의장 종합. 실패 패널은 graceful skip. 진단 로그는 **redact(auth/provider/프롬프트/diff 단편 제거) + 길이 제한**을 기본 동작으로 함(원시 stderr를 코멘트/로그로 노출하지 않음).
 
 ## 인증
-- Kiro/Antigravity: `ai-panel-keys` ExternalSecret(`<secret-path>`) → 러너 env
-- Codex/Claude: 노드 IAM(`<ci-runner-role>`, Bedrock) SigV4 — Pod Identity Association 필요
+- Kiro: `ai-panel-keys` ExternalSecret(`<secret-path>`) → 러너 env (외부 API-key)
+- Codex/Claude: EKS Pod Identity(`<ci-runner-role>`, Bedrock) SigV4 — Pod Identity Association 필요

@@ -42,4 +42,5 @@ co-agent)으로 작업을 넘겨야 한다. 그러나 `superpowers`는 **read-on
 - 루트 `CLAUDE.md` — "superpowers Integration Routing" 표
 - `docs/superpowers/specs/2026-06-14-superpowers-integration-design.md`
 - `plugins/aws-ops-plugin/CLAUDE.md`, `plugins/project-init/CLAUDE.md` — superpowers Handoff 섹션
+- 관련 결정: ADR-009 (multi-AI PR 리뷰 CI 패널), ADR-010 (Antigravity/Gemini precedence)
 - PR #74
