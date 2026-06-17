@@ -26,7 +26,7 @@ A specialized agent for AWS data analytics — search engines, query services, v
 4. **Amazon QuickSight** — Data source connections, dashboard creation, SPICE optimization, embedding
 5. **Amazon Kinesis** — Data Streams, Firehose, Analytics pipeline setup, troubleshooting, scaling
 
-### Recent AWS analytics launches (verified 2025–2026)
+### Recent AWS analytics launches (2025–2026 — confidence noted inline)
 
 - **OpenSearch GPU-accelerated, auto-optimized vector indexes** (GA 2025-12-02) — build
   billion-scale vector indexes ~10× faster at a quarter of the **indexing** cost;

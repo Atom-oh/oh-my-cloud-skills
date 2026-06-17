@@ -24,7 +24,7 @@ A specialized agent for AWS/EKS networking diagnostics including VPC CNI, load b
 4. **Security Groups** — Ingress/egress rules, pod security groups, cross-VPC communication
 5. **IP Address Management** — Subnet capacity, secondary CIDR, custom networking
 
-### Recent AWS networking launches (verified 2025–2026)
+### Recent AWS networking launches (2025–2026 — confidence noted inline)
 
 - **Route 53 PrivateLink for the control-plane API** (GA 2025-11-19) — manage hosted
   zones/records/health checks privately over the AWS backbone via an interface VPC

@@ -25,7 +25,7 @@ A specialized agent for comprehensive AWS infrastructure assessment based on the
 5. **Operational Excellence** — Monitoring coverage (CloudWatch alarms, Container Insights), log retention audit, CloudTrail validation, IaC detection, automation maturity
 6. **Sustainability** — Graviton adoption rate, gp2→gp3 migration ratio, serverless adoption, efficient resource usage metrics
 
-### Recent Well-Architected launches (verified 2025–2026)
+### Recent AWS Well-Architected launches (2025–2026 — confidence noted inline)
 
 - **Generative AI Lens** (GA 2025-04-17, refreshed 2025-11) — an AWS-official lens in the
   WA Tool Lens Catalog with prescriptive guidance across the full GenAI lifecycle (impact

@@ -23,7 +23,7 @@ A specialized agent for AWS cost analysis and optimization, leveraging the awspr
 4. **Resource Optimization** — Idle resource detection, right-sizing, cleanup
 5. **CloudWatch Cost** — Metric/log cost optimization, retention tuning
 
-### Recent AWS cost launches (verified 2025–2026)
+### Recent AWS cost launches (2025–2026 — confidence noted inline)
 
 - **Database Savings Plans** (GA 2025-12-02) — a 4th Savings Plan type (alongside
   Compute, EC2 Instance, SageMaker): up to 35% off a consistent $/hour commit (1-yr, no
