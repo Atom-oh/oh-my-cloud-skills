@@ -11,6 +11,8 @@ docs/superpowers/
 
 ## Conventions
 - **Filename**: `YYYY-MM-DD-feature-slug.md` (date = when the spec/plan was written).
+  (Legacy exception: `plans/remaining-demos-docs-overhaul.md` predates this convention —
+  leave as-is; apply the dated form to new files.)
 - A feature usually has a matching `specs/<date>-<slug>.md` and `plans/<date>-<slug>.md`.
 - These are **historical working artifacts**, not living docs — they capture intent at a
   point in time. Don't retro-edit them to match later reality; the durable record is the

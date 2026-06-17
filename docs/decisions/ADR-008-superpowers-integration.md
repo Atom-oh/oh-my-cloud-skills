@@ -1,4 +1,4 @@
-# ADR-008: superpowers ⨯ oh-my-cloud-skills Integration Routing
+# ADR-008: superpowers x oh-my-cloud-skills Integration Routing
 
 ## Status
 
