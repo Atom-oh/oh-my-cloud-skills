@@ -19,7 +19,7 @@ done
 cat > "$WORK/synth-prompt.txt" <<PROMPT_EOF
 You are the CHAIR reviewing PR #${PR_NUMBER}: ${PR_TITLE}.
 Read CLAUDE.md + AGENTS.md for project context.
-Below are independent panel reviews (Codex, Kiro models, Antigravity) of the diff.
+Below are independent panel reviews (Codex, Kiro models) of the diff.
 패널: ${RESP}
 
 Synthesize ONE final review:

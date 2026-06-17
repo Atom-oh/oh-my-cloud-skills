@@ -1,8 +1,8 @@
 name: AI Code Review
 
-# PR마다 멀티 AI 패널(Codex + Kiro x3 + Antigravity)이 변경을 리뷰하고
+# PR마다 멀티 AI 패널(Codex + Kiro x3)이 변경을 리뷰하고
 # Claude Opus 4.8 의장이 종합해 PR 코멘트로 게시한다. (AWS-Demo-Platform 검증 패턴)
-#   - self-hosted 러너(oh-my-cloud-skills-claude-arm) IAM Instance Profile 로 Bedrock 호출
+#   - self-hosted 러너(oh-my-cloud-skills-claude-arm)가 EKS Pod Identity(SigV4)로 Bedrock 호출
 #   - 패널 fan-out: scripts/pr-review/run-panel.sh → synthesize.sh
 #   - VERDICT: PASS|FAIL 마지막 줄 룰로 job exit code 결정 (fail-closed)
 #   - <!-- oh-my-cloud-skills-pr-review --> marker 로 코멘트 upsert
@@ -94,7 +94,7 @@ jobs:
             echo "panel_truncated=1" >> "$GITHUB_ENV"
           fi
 
-      - name: Run panel + synthesize (Codex + Kiro x3 + Antigravity -> Claude chair)
+      - name: Run panel + synthesize (Codex + Kiro x3 -> Claude chair)
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
