@@ -30,7 +30,7 @@ A specialized agent for AWS/EKS networking diagnostics including VPC CNI, load b
   zones/records/health checks privately over the AWS backbone via an interface VPC
   endpoint; lock down DNS-management API access (no public internet). Control-plane
   only, not data-plane resolution.
-- **Route 53 Global Resolver** (preview 2025-11-30 → GA 2026-03) — one managed
+- **Route 53 Global Resolver** (preview 2025-11-30 → GA 2026-03-09, 30 regions) — one managed
   split-horizon DNS: resolves public domains on the internet and private (Route 53 PHZ)
   domains from anywhere (on-prem/branch) via anycast IPs; replaces bespoke
   resolver-endpoint + forwarding-rule plumbing.
@@ -40,8 +40,10 @@ A specialized agent for AWS/EKS networking diagnostics including VPC CNI, load b
 
 > Re-check region availability at use time. (No VPC CNI / ALB-NLB / GWLB data-plane
 > launches surfaced as verified in this window.)
-> Sources: aws.amazon.com/about-aws/whats-new/2025/11/amazon-route-53-dns-service-aws-privatelink/ ·
-> .../2026/03/amazon-route-53-global-resolver · .../2025/06/aws-network-firewall-transit-gateway-native-integration/
+> Sources: https://aws.amazon.com/about-aws/whats-new/2025/11/amazon-route-53-dns-service-aws-privatelink/ ·
+> https://aws.amazon.com/about-aws/whats-new/2026/03/amazon-route-53-global-resolver ·
+> https://aws.amazon.com/about-aws/whats-new/2025/06/aws-network-firewall-transit-gateway-native-integration/ (GA, 5 regions) ·
+> https://aws.amazon.com/about-aws/whats-new/2025/07/aws-network-firewall-native-transit-gateway-support (all regions)
 
 ---
 

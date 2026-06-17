@@ -35,8 +35,8 @@ A specialized agent for AWS database operations and troubleshooting from EKS wor
   **`cost-agent` is the single source** for the details (rates, term, scope).
 
 > (Not a real launch: ElastiCache-for-Valkey "Semantic Caching" was refuted — do not cite.)
-> Sources: aws.amazon.com/about-aws/whats-new/2025/05/amazon-aurora-dsql-generally-available ·
-> .../2025/12/database-savings-plans-savings (DSP details in `cost-agent`).
+> Sources: https://aws.amazon.com/about-aws/whats-new/2025/05/amazon-aurora-dsql-generally-available ·
+> https://aws.amazon.com/about-aws/whats-new/2025/12/database-savings-plans-savings (DSP details in `cost-agent`).
 
 ---
 

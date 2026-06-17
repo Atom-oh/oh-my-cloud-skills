@@ -33,7 +33,7 @@ A specialized agent for AWS cost analysis and optimization, leveraging the awspr
 
 > Note (research gap): no new **Cost Optimization Hub** / **Compute Optimizer** launches
 > were verified in this 2025–26 window — re-check before assuming none.
-> Source: aws.amazon.com/about-aws/whats-new/2025/12/database-savings-plans-savings
+> Source: https://aws.amazon.com/about-aws/whats-new/2025/12/database-savings-plans-savings
 
 ---
 

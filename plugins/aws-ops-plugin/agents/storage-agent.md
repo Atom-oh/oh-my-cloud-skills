@@ -40,9 +40,9 @@ A specialized agent for AWS/EKS storage troubleshooting — EBS, EFS, and FSx CS
   complementary to vector DBs for cold/infrequent workloads.)
 
 > Re-check region availability at use time.
-> Sources: docs.aws.amazon.com/eks/latest/userguide/s3files-csi.html ·
-> aws.amazon.com/about-aws/whats-new/2026/04/amazon-s3-files ·
-> .../2025/12/amazon-s3-vectors-generally-available/
+> Sources: https://docs.aws.amazon.com/eks/latest/userguide/s3files-csi.html ·
+> https://aws.amazon.com/about-aws/whats-new/2026/04/amazon-s3-files ·
+> https://aws.amazon.com/about-aws/whats-new/2025/12/amazon-s3-vectors-generally-available/
 
 ---
 

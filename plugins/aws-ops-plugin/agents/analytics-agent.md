@@ -41,8 +41,8 @@ A specialized agent for AWS data analytics — search engines, query services, v
 
 > No verified in-window launches surfaced for Athena / QuickSight / Kinesis / Glue / EMR
 > — re-check before assuming none.
-> Sources: aws.amazon.com/about-aws/whats-new/2025/12/amazon-opensearch-service-gpu-accelerated-auto-optimized-vector-indexes ·
-> docs.aws.amazon.com/opensearch-service/latest/developerguide/agentic-search.html
+> Sources: https://aws.amazon.com/about-aws/whats-new/2025/12/amazon-opensearch-service-gpu-accelerated-auto-optimized-vector-indexes ·
+> https://docs.aws.amazon.com/opensearch-service/latest/developerguide/agentic-search.html
 
 ---
 
