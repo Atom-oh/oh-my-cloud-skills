@@ -39,8 +39,10 @@ A specialized agent for AWS data analytics — search engines, query services, v
   natural-language query planning/orchestration (vector/neural/lexical), no hand-written
   DSL. (Medium confidence: GA inferred from launch language + live docs.)
 
-> Source: AWS What's New + Big Data blog. No verified in-window launches surfaced for
-> Athena / QuickSight / Kinesis / Glue / EMR — re-check before assuming none.
+> No verified in-window launches surfaced for Athena / QuickSight / Kinesis / Glue / EMR
+> — re-check before assuming none.
+> Sources: aws.amazon.com/about-aws/whats-new/2025/12/amazon-opensearch-service-gpu-accelerated-auto-optimized-vector-indexes ·
+> docs.aws.amazon.com/opensearch-service/latest/developerguide/agentic-search.html
 
 ---
 
