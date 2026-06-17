@@ -34,12 +34,28 @@ try_panel() {
   done
 }
 
-# Codex (Bedrock, config.toml). --skip-git-repo-check 필수. AWS_REGION 강제: gpt-5.5
-# (bedrock-mantle)는 In-Region(us-east-1) 만 지원 — 잡 region 무관하게 고정.
+# Codex on Bedrock: gpt-5.5 (bedrock-mantle) is In-Region, and when one region returns
+# nothing (transient capacity / region-specific model availability) we want to fail over
+# to the next region instead of giving up. Cycle $CODEX_AWS_REGIONS across the retry
+# attempts (default: us-east-1 → us-east-2 → …) and stop at the first non-empty slot.
+#   try_codex <slot> <err>   (stdin=$DIFF, AWS_REGION cycled per attempt)
+try_codex() {
+  local slot="$1" err="$2"; shift 2
+  local regions; read -ra regions <<< "${CODEX_AWS_REGIONS:-us-east-1 us-east-2}"
+  local a region
+  for a in $(seq 1 "$RETRIES"); do
+    region="${regions[$(( (a - 1) % ${#regions[@]} ))]}"
+    env AWS_REGION="$region" AWS_DEFAULT_REGION="$region" \
+      timeout "$T" codex exec -s read-only --skip-git-repo-check "$PROMPT" \
+      > "$slot" 2>"$err" < "$DIFF" || true
+    [ -s "$slot" ] && break
+    [ "$a" -lt "$RETRIES" ] && echo "[retry $a/$RETRIES @ $region] codex — next: ${regions[$(( a % ${#regions[@]} ))]}" >&2
+  done
+}
+
+# --skip-git-repo-check 필수. 무응답 시 try_codex 가 us-east-1↔us-east-2 를 넘나든다.
 if command -v codex >/dev/null 2>&1; then
-  ( try_panel "$SLOT/codex.md" "$SLOT/codex.err" \
-      env AWS_REGION="${CODEX_AWS_REGION:-us-east-1}" AWS_DEFAULT_REGION="${CODEX_AWS_REGION:-us-east-1}" \
-      timeout "$T" codex exec -s read-only --skip-git-repo-check "$PROMPT" ) &
+  ( try_codex "$SLOT/codex.md" "$SLOT/codex.err" ) &
 else echo "[skip] codex (binary absent)" >&2; : > "$SLOT/codex.md"; fi
 
 # Kiro x3 — model:tag 를 한 배열에서 파생(호출/집계 동기화).

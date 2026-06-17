@@ -60,6 +60,18 @@ setup; mkfake codex 1 ""; mkfake kiro-cli 1 ""
 { [ -f "$WORK/responded.txt" ] && [ ! -s "$WORK/responded.txt" ]; } \
   && pass "run-panel (c) responded empty" || fail "run-panel (c) responded empty" "responded not empty"
 
+# (d) codex Bedrock region failover: empty in us-east-1, responds only in us-east-2.
+# Proves try_codex cycles $CODEX_AWS_REGIONS across retries (needs RETRIES>=2; default 3).
+setup; mkfake kiro-cli 1 ""   # isolate codex
+cat > "$BIN/codex" <<'CODEX_EOF'
+#!/usr/bin/env bash
+if [ "${AWS_REGION:-}" = "us-east-2" ]; then echo "codex-finding"; cat; else exit 1; fi
+CODEX_EOF
+chmod +x "$BIN/codex"
+"$SCRIPT" "$WORK/diff.txt" "$WORK/prompt.txt" "$WORK" >/dev/null 2>&1
+grep -q codex "$WORK/responded.txt" 2>/dev/null \
+  && pass "run-panel (d) codex fails over us-east-1 -> us-east-2" || fail "run-panel (d) codex region failover" "codex empty in us-east-1 was not retried in us-east-2"
+
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then
   [ "$_t_fail" = 0 ] && echo "PASS: test-run-panel" || exit 1
