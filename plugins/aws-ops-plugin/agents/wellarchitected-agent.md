@@ -34,8 +34,10 @@ A specialized agent for comprehensive AWS infrastructure assessment based on the
   HyperPod guidance. Run a structured GenAI review against the official lens rather than
   improvising.
 
-> Note: separate **AI/ML** and **Responsible AI** lenses were referenced at re:Invent 2025
-> but not verified here — confirm before citing.
+> Note: separate **AI/ML** and **Responsible AI** lenses were referenced for re:Invent 2025
+> but **remain unverified** — a dedicated research pass found no primary source confirming
+> their name/status/date. Treat as "not researched", not "nothing shipped"; confirm against
+> the WA Tool Lens Catalog before citing.
 > Sources: https://aws.amazon.com/about-aws/whats-new/2025/04/well-architected-generative-ai-lens ·
 > https://docs.aws.amazon.com/wellarchitected/latest/generative-ai-lens/generative-ai-lens.html
 
