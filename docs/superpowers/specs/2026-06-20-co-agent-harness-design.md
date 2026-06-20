@@ -25,6 +25,8 @@ implements, and neither is the sole reviewer.
 - Let a strong code-generation model implement while the host orchestrates and judges.
 - Preserve the co-agent trust model: only the host writes to the working branch.
 - Reuse the consensus pipeline's infrastructure rather than duplicating it.
+- Run as a **durable relay**: each stage leaves an on-disk artifact and only advances when
+  that artifact validates (output gate), so runs resume, verify, and debug from disk.
 - Keep the skill body lean (repo token-economy value); delegate heavy rules to references.
 
 **Non-Goals**
@@ -60,10 +62,14 @@ set to any installed peer (`codex`/`claude`/`agy`); `null` resolves to the count
         └ not green / out-of-scope → feedback → bounded fix loop ≤ harness.max_fix_rounds
                                               → exhausted → task-abort + escalate
      e) host applies the validated diff to the working branch — SOLE committer, one commit/task
-     f) consensus_state task-done; remove the worktree
+     f) write tasks/<idx>/result.json; consensus_state task-done; remove the worktree
  H4  CODE GATE         : consensus gate on the cumulative diff (consensus P4) → fix loop → escalate if unresolved
  H5  REPORT            : consensus_state report + implementer attribution; assert all worktrees removed
 ```
+
+Every stage **emits an artifact to the run directory** (§12) and **only advances when that
+artifact exists and validates** (output gate). This makes the relay durable: resume,
+verification, and debugging all read from disk rather than re-deriving.
 
 ## 5. Trust Boundary (the crux)
 
@@ -91,6 +97,9 @@ set to any installed peer (`codex`/`claude`/`agy`); `null` resolves to the count
 - Worktree lifecycle helper (create-at-base / scoped / pull-diff / remove). Implemented in
   bash within the reference, or a small `scripts/worktree.py` if logic warrants — decided
   in the implementation plan.
+- `scripts/stage_result.py` — write/validate a stage `result.json` against a shared schema
+  and append a row to `stage_wall.tsv`; gates call it and exit non-zero on missing/failing
+  artifacts (the output-gate mechanism, §11).
 - `co_agent_config.py` additions: `harness.implementer`, `harness.max_fix_rounds`, and
   write-mode flag plumbing for the implementer adapter.
 
@@ -143,6 +152,12 @@ Added to `co-agent.defaults.json` (overridable in `.claude/co-agent.local.json` 
 - Live-tree-untouched invariant: during a simulated implement step the live tree stays clean.
 - Graceful fallback to host-implement when the implementer CLI is absent.
 - `harness.*` config round-trip (set/get/show) and host-equals-implementer rejection.
+- **Output gates**: a stage with a missing/invalid `result.json` blocks advancement
+  (e.g. no `plan.md` → H2 refused; task `result.json` with `green=false` → no commit).
+- `stage_result.py` schema validation: well-formed result accepted, malformed rejected;
+  `stage_wall.tsv` gets one row per stage.
+- Resume skips a stage whose valid artifact already exists in the run directory.
+- Run directory is gitignored (no session artifacts leak into commits).
 
 ## 10. Relationship to consensus & Token Economy
 
@@ -153,9 +168,58 @@ details to `ai-cli-adapters.md`. The harness depends on the agreed gate upgrades
 (#1 adversarial cross-critique round, #2 explicit disagreement/escalation protocol) being
 present in the consensus gate; those are tracked as separate prerequisite work.
 
-## 11. Open Questions (to resolve in the plan)
+## 11. Stage artifacts, relay & output gates
+
+The harness runs as a **durable relay** (dev host → peer artifact → host improvement),
+not an in-memory synthesis. Every stage writes its output to disk, and a stage is
+considered passed **only when its artifact exists and validates** — this is the output
+gate. The state machine in `consensus_state.py` advances on artifact presence, which is
+what makes the pipeline resumable, auditable, and debuggable.
+
+**Run directory** (`.claude/co-agent-consensus/runs/<session_id>/`, gitignored —
+session-local, never committed):
+
+```
+runs/<session_id>/
+  plan.md                         # H1 design output (or a copy of the loaded plan)
+  plan-gate/
+    review-<ai>-<round>.md        # raw per-AI plan review
+    findings.json                 # parsed + citation-validated findings
+    result.json                   # { verdict, criticals, majors, rounds }
+  tasks/<idx>/
+    red.diff                      # H3a host-authored failing test
+    task.diff                     # H3d validated implementer worktree diff
+    review-<ai>.md                # per-AI task review
+    result.json                   # { green, in_scope, verdict, rounds, implementer }
+  code-gate/
+    review-<ai>.md
+    result.json                   # { verdict, criticals, majors, rounds }
+  stage_wall.tsv                  # one row per stage: stage \t start \t end \t status (timing/debug)
+  report.md                       # H5 human summary (rendered by consensus_state report)
+```
+
+**Output gate rules**
+- **H1 → H2**: a `plan.md` must exist and parse (`parse_plan`); otherwise the run cannot
+  enter the plan gate.
+- **H2 → H3**: `plan-gate/result.json` must exist with `verdict != FAIL` and no unresolved
+  CRITICAL/MAJOR; otherwise escalate (REVIEW), do not implement.
+- **per task (H3)**: `tasks/<idx>/result.json` must record `green=true` and `in_scope=true`
+  before `consensus_state task-done`. A missing/red/out-of-scope result blocks the commit.
+- **H4 → H5**: `code-gate/result.json` must show no unresolved CRITICAL/MAJOR and tests green.
+
+`result.json` files use a small shared schema so gates are **machine-checkable** rather
+than prose-parsed. A new helper `scripts/stage_result.py` (write/validate a result.json
+against the schema, and append to `stage_wall.tsv`) keeps this mechanical; gate scripts
+exit non-zero on a missing or failing artifact.
+
+**Resume** reads `consensus_state` *and* the run directory: a stage whose valid artifact
+already exists is skipped, so re-invocation continues exactly where it stopped.
+
+## 12. Open Questions (to resolve in the plan)
 
 - Worktree helper as inline bash vs a small `scripts/worktree.py` (lean vs testable).
 - Whether H3a (host red test) is mandatory for *every* task or skippable for pure-refactor
   tasks that already have coverage.
-- Exact escalation surface: a `needs-human` status in `consensus_state` vs a report flag.
+- Escalation surface: a `needs-human` status in `consensus_state` is the leading option,
+  recorded alongside the failing `result.json` verdict (REVIEW) — confirm in the plan.
+- Whether `stage_result.py` is its own script or folded into `consensus_state.py`.
