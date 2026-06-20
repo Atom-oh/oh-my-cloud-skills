@@ -1,6 +1,6 @@
 # co-agent:harness — Design Spec
 
-**Status:** Draft (pending co-agent panel re-orientation + user review)
+**Status:** Revised after co-agent panel re-orientation (2026-06-20) — pending user review
 **Date:** 2026-06-20
 **Author:** Junseok Oh (with Claude)
 **Plugin:** `co-agent` (oh-my-cloud-skills marketplace)
@@ -73,19 +73,28 @@ verification, and debugging all read from disk rather than re-deriving.
 
 ## 5. Trust Boundary (the crux)
 
-- **Quarantined writes.** The peer writes *only* inside an ephemeral worktree, never the
-  live tree or branch. The worktree is created at the base commit, scoped to the task,
-  and removed (`trap … EXIT`, plus explicit removal in H3f) including on abort.
-- **Quarantined write-mode adapters.** The write variants (`codex exec` without
-  `-s read-only`; `claude -p` without `--permission-mode plan`; `agy -p` without
-  `--sandbox`) exist **only** on the harness implement path and are clearly marked as
-  such. Every other co-agent path (review, decide, ADR, plan/code gates) stays
+- **Worktree is git-isolation, NOT a security sandbox.** A worktree isolates the *git
+  working tree* but does not stop a process from writing via `..`/absolute paths or
+  touching the shared object store. So writes are confined by a **workspace-write sandbox
+  scoped to the worktree**, not by the worktree alone: `codex exec -s workspace-write`,
+  `claude -p --permission-mode acceptEdits` (cwd = worktree), `agy -p --sandbox`
+  (workspace-write). These write variants exist **only** on the harness implement path;
+  every other co-agent path (review, decide, ADR, plan/code gates) stays
   read-only/advisory. This is the single place in the plugin where an external AI may write.
+- **Trust only the tracked diff, verify on the main tree.** Gitignored/untracked files a
+  peer creates in the worktree are invisible to `git diff` yet could execute during a test
+  run. Therefore the host (a) cleans untracked + ignored files in the worktree before
+  diffing (`git clean -fdx` scoped check), (b) takes only the **tracked** diff, and
+  (c) **applies it to the main branch and runs the tests there** — never trusts a test run
+  performed inside the peer's worktree.
+- **Worktree lifecycle hygiene.** Create with `git worktree add` at the base commit; remove
+  with `git worktree remove --force` followed by `git worktree prune`; run
+  `git worktree prune` at H0 to reap orphans left by a `SIGKILL` that bypassed `trap … EXIT`.
 - **Host owns verification + commits.** Host writes the red test, runs `scope_guard` +
   the test gate + the consensus review gate, and is the only committer to the working branch.
 - **Model output is untrusted.** The implementer cannot change scope, round counts, or
   commit. Out-of-scope paths are reverted. A passing self-claim is never trusted — only
-  the host-run test gate decides green.
+  the host-run test gate (on the main tree) decides green.
 - **Decorrelation.** Designer, implementer, and the review panel are distinct providers.
 
 ## 6. Components
@@ -97,9 +106,10 @@ verification, and debugging all read from disk rather than re-deriving.
 - Worktree lifecycle helper (create-at-base / scoped / pull-diff / remove). Implemented in
   bash within the reference, or a small `scripts/worktree.py` if logic warrants — decided
   in the implementation plan.
-- `scripts/stage_result.py` — write/validate a stage `result.json` against a shared schema
-  and append a row to `stage_wall.tsv`; gates call it and exit non-zero on missing/failing
-  artifacts (the output-gate mechanism, §11).
+- Stage-result handling — write/validate a stage `result.json` against a shared schema and
+  append a row to `stage_wall.tsv`; gates exit non-zero on missing/failing artifacts (the
+  output-gate mechanism, §11). **Folded into `consensus_state.py` as a subcommand** (e.g.
+  `consensus_state.py stage-result …`) rather than a separate script, to avoid file sprawl.
 - `co_agent_config.py` additions: `harness.implementer`, `harness.max_fix_rounds`, and
   write-mode flag plumbing for the implementer adapter.
 
@@ -132,12 +142,13 @@ Added to `co-agent.defaults.json` (overridable in `.claude/co-agent.local.json` 
 
 | Condition | Behavior |
 |-----------|----------|
-| Implementer CLI missing / errors / timeout | **Fall back to host-implement** for that task, note it. Never blocks. |
+| Implementer CLI missing / errors / timeout | **Fallback chain**: configured counterpart → next installed peer (preserve provider separation) → host-implement. Note which was used. Never blocks. |
 | Worktree creation fails | Abort the harness run with a clear message. Never silently write to the live tree. |
 | Out-of-scope path in worktree diff | Revert those paths, feed back to the implementer. |
-| Fix loop exhausted (still red / still flagged) | `task-abort` + escalate (verdict REVIEW); continue or stop per state policy. |
+| Fix loop exhausted (still red / still flagged) | `task-abort` + set `needs-human` (verdict REVIEW); continue or stop per state policy. |
 | Dirty working tree at H0 | Refuse to start (clean-tree required, same as consensus). |
-| Plan gate (H2) unresolved after max_rounds | Escalate (REVIEW); do not enter implement. |
+| Plan gate (H2) unresolved after max_rounds | Set `needs-human` (REVIEW); do not enter implement. |
+| Resume after a manual fix/commit during escalation | `consensus_state` HEAD-drift check would block resume; a **`--rebind`** option re-records HEAD/base to the current commit so the run can continue. |
 
 ## 9. Testing
 
@@ -164,9 +175,10 @@ Added to `co-agent.defaults.json` (overridable in `.claude/co-agent.local.json` 
 `harness` is the **orchestration layer** (design → implement → review); `consensus` is the
 **gate** it calls for H2/H4 and remains usable standalone. The skill body stays lean —
 orchestration steps only — with gate mechanics delegated to `consensus-mode.md` and CLI
-details to `ai-cli-adapters.md`. The harness depends on the agreed gate upgrades
-(#1 adversarial cross-critique round, #2 explicit disagreement/escalation protocol) being
-present in the consensus gate; those are tracked as separate prerequisite work.
+details to `ai-cli-adapters.md`. The harness **works with the current consensus gate** and
+is implementable/testable today; the agreed gate upgrades (#1 adversarial cross-critique
+round, #2 explicit disagreement/escalation protocol) are *optional enhancements* it
+benefits from when present — **not hard prerequisites**.
 
 ## 11. Stage artifacts, relay & output gates
 
@@ -187,10 +199,10 @@ runs/<session_id>/
     findings.json                 # parsed + citation-validated findings
     result.json                   # { verdict, criticals, majors, rounds }
   tasks/<idx>/
-    red.diff                      # H3a host-authored failing test
+    red.diff                      # H3a host-authored failing test (absent if test_required:false)
     task.diff                     # H3d validated implementer worktree diff
-    review-<ai>.md                # per-AI task review
-    result.json                   # { green, in_scope, verdict, rounds, implementer }
+    review-<ai>.md                # OPTIONAL — only when per-task review is enabled (default: review at H4 only)
+    result.json                   # { green, in_scope, rounds, implementer, status }
   code-gate/
     review-<ai>.md
     result.json                   # { verdict, criticals, majors, rounds }
@@ -208,18 +220,28 @@ runs/<session_id>/
 - **H4 → H5**: `code-gate/result.json` must show no unresolved CRITICAL/MAJOR and tests green.
 
 `result.json` files use a small shared schema so gates are **machine-checkable** rather
-than prose-parsed. A new helper `scripts/stage_result.py` (write/validate a result.json
-against the schema, and append to `stage_wall.tsv`) keeps this mechanical; gate scripts
-exit non-zero on a missing or failing artifact.
+than prose-parsed. A `consensus_state.py stage-result` subcommand (write/validate a
+result.json against the schema, and append to `stage_wall.tsv`) keeps this mechanical; gate
+scripts exit non-zero on a missing or failing artifact. Per-task multi-model review is
+**off by default** (the H4 cumulative gate is the review of record) to bound token cost; it
+can be enabled when a task warrants it, producing the optional `review-<ai>.md` artifacts.
+A `needs-human` run/task status (new in `consensus_state.py`) records escalation distinctly
+from a hard `aborted`, and is what H2/H3/H4 set when a fix loop is exhausted.
 
 **Resume** reads `consensus_state` *and* the run directory: a stage whose valid artifact
 already exists is skipped, so re-invocation continues exactly where it stopped.
 
 ## 12. Open Questions (to resolve in the plan)
 
+Resolved during the co-agent panel re-orientation (Agy review, 2026-06-20):
+- ~~Red test mandatory per task?~~ → tasks may set `test_required:false` (skips H3a).
+- ~~Escalation surface?~~ → add a `needs-human` status to `consensus_state.py`.
+- ~~`stage_result.py` separate?~~ → folded into `consensus_state.py` as a subcommand.
+- ~~Per-task review gate?~~ → off by default; H4 cumulative gate is the review of record.
+- ~~Hard dependency on #1/#2 gate upgrades?~~ → works with the current gate; #1/#2 optional.
+
+Still open (decide in the plan):
 - Worktree helper as inline bash vs a small `scripts/worktree.py` (lean vs testable).
-- Whether H3a (host red test) is mandatory for *every* task or skippable for pure-refactor
-  tasks that already have coverage.
-- Escalation surface: a `needs-human` status in `consensus_state` is the leading option,
-  recorded alongside the failing `result.json` verdict (REVIEW) — confirm in the plan.
-- Whether `stage_result.py` is its own script or folded into `consensus_state.py`.
+- Heuristic / flag for when to enable the optional per-task review gate.
+- Exact `workspace-write` sandbox invocation per CLI (verify each CLI honors a cwd-scoped
+  write sandbox in headless mode before relying on it).
