@@ -5,23 +5,31 @@ CFG="plugins/co-agent/skills/co-agent/scripts/co_agent_config.py"
 ST="plugins/co-agent/skills/co-agent/scripts/consensus_state.py"
 WT="plugins/co-agent/skills/co-agent/scripts/worktree.py"
 
-# --- Task 1: implementer resolution ---
+# --- Task 1 / R2-A: implementer resolution (sandbox CLIs only: codex, agy) ---
 R=$(mktemp -d "${TMPDIR:-/tmp}/coagent-harness.XXXXXX")
 assert_eq "codex" "$(python3 "$CFG" implementer --host claude --root "$R" 2>&1)" "default implementer for claude host = codex"
-assert_eq "claude" "$(python3 "$CFG" implementer --host codex --root "$R" 2>&1)" "default implementer for codex host = claude"
+assert_eq "agy" "$(python3 "$CFG" implementer --host codex --root "$R" 2>&1)" "default implementer for codex host = agy (claude is not a sandbox CLI)"
 python3 "$CFG" set harness implementer agy --root "$R" >/dev/null 2>&1
-assert_eq "agy" "$(python3 "$CFG" implementer --host claude --root "$R" 2>&1)" "override implementer respected"
-python3 "$CFG" set harness implementer claude --root "$R" >/dev/null 2>&1
-python3 "$CFG" implementer --host claude --root "$R" >/dev/null 2>&1 && IRC=0 || IRC=$?
+assert_eq "agy" "$(python3 "$CFG" implementer --host claude --root "$R" 2>&1)" "override to a sandbox CLI respected"
+# non-sandbox implementers rejected at set time (claude/kiro/gemini have no worktree sandbox)
+python3 "$CFG" set harness implementer claude --root "$R" >/dev/null 2>&1 && C1=0 || C1=$?
+assert_eq "2" "$C1" "non-sandbox implementer claude rejected (exit 2)"
+python3 "$CFG" set harness implementer kiro --root "$R" >/dev/null 2>&1 && C2=0 || C2=$?
+assert_eq "2" "$C2" "non-sandbox implementer kiro rejected (exit 2)"
+# a valid sandbox implementer equal to the host is rejected at resolve time
+python3 "$CFG" set harness implementer codex --root "$R" >/dev/null 2>&1
+python3 "$CFG" implementer --host codex --root "$R" >/dev/null 2>&1 && IRC=0 || IRC=$?
 assert_eq "2" "$IRC" "implementer equal to host rejected (exit 2)"
 rm -rf "$R"
 
-# --- Task 2: write-mode implementer flags ---
+# --- Task 2 / R2-A: write-mode implementer flags (sandbox CLIs only) ---
 R2=$(mktemp -d "${TMPDIR:-/tmp}/coagent-harness2.XXXXXX")
 assert_contains "$(python3 "$CFG" impl-flags codex --host claude --root "$R2" 2>&1)" "workspace-write" "codex impl-flags use workspace-write sandbox"
-assert_contains "$(python3 "$CFG" impl-flags claude --host codex --root "$R2" 2>&1)" "acceptEdits" "claude impl-flags use acceptEdits permission mode"
 assert_contains "$(python3 "$CFG" impl-flags agy --host claude --root "$R2" 2>&1)" "sandbox" "agy impl-flags keep sandbox"
-python3 "$CFG" impl-flags claude --host claude --root "$R2" >/dev/null 2>&1 && HRC=0 || HRC=$?
+# non-sandbox CLIs are not valid implementers — impl-flags rejects them
+python3 "$CFG" impl-flags claude --host codex --root "$R2" >/dev/null 2>&1 && NF=0 || NF=$?
+assert_eq "2" "$NF" "impl-flags rejects non-sandbox implementer claude (exit 2)"
+python3 "$CFG" impl-flags codex --host codex --root "$R2" >/dev/null 2>&1 && HRC=0 || HRC=$?
 assert_eq "2" "$HRC" "impl-flags rejects ai equal to host (exit 2)"
 assert_grep_no_match "workspace-write|acceptEdits" "$(python3 "$CFG" flags codex --host claude --root "$R2" 2>&1)" "review flags stay read-only (no write sandbox)"
 rm -rf "$R2"

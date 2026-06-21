@@ -11,16 +11,19 @@ sandbox; the host owns the failing test, the verification, and every commit.
 
 A git worktree isolates the *working tree*, **not** the process — a peer can still write
 via `..`/absolute paths. So writes are confined by a **workspace-write sandbox scoped to
-the worktree**, emitted by `co_agent_config.py impl-flags <ai> --host <h>`:
+the worktree**, emitted by `co_agent_config.py impl-flags <ai> --host <h>`. Only CLIs with
+a real workspace-write sandbox are valid implementers:
 
 | Implementer | Write-mode flags |
 |-------------|------------------|
 | Codex | `-s workspace-write` (+ `-m <model>`, effort) |
-| Claude | `--permission-mode acceptEdits` (+ `--model`, `--effort`) |
 | Agy | `--sandbox` (+ `--model`) |
 
-These write variants exist **only** here. Review / decide / ADR / plan / code-gate paths
-stay read-only/advisory (`flags`, not `impl-flags`).
+**Not valid implementers:** `claude --permission-mode acceptEdits`, `kiro --trust-tools`,
+and `gemini --yolo` auto-accept writes but do **not** confine them to the worktree, so the
+trust boundary would not hold — `implementer`/`impl-flags` reject them. Default implementer:
+claude host → `codex`, codex host → `agy`. These write variants exist **only** here; review /
+decide / ADR / plan / code-gate paths stay read-only/advisory (`flags`, not `impl-flags`).
 
 **Trust only the tracked diff.** `worktree.py capture-diff` runs `git add -A` (which
 respects `.gitignore`) then `git diff --cached`, so new source files are captured and

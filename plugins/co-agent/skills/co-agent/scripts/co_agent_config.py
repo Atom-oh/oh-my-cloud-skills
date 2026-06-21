@@ -77,15 +77,24 @@ def panel_ais(host):
     return ("kiro", peer, third_ai())
 
 
+# Only these CLIs enforce a worktree-scoped WRITE sandbox (codex -s workspace-write,
+# agy --sandbox). claude(--permission-mode acceptEdits), kiro(--trust-tools) and
+# gemini(--yolo) auto-accept writes but do NOT confine them to the worktree, so they
+# are NOT safe delegated implementers — the trust boundary would not hold.
+SANDBOX_IMPLEMENTERS = ("codex", "agy")
+
+
 def implementer_ai(cfg, host):
     """Effective harness implementer: the configured harness.implementer, else the
-    peer-host counterpart (claude↔codex). Returns (ai, error_str|None)."""
-    counterpart = "codex" if host == "claude" else "claude"
-    ai = (cfg.get("harness", {}) or {}).get("implementer") or counterpart
+    default sandbox counterpart (claude host → codex; codex host → agy). Only
+    sandbox-capable CLIs are allowed. Returns (ai, error_str|None)."""
+    default = "codex" if host == "claude" else "agy"
+    ai = (cfg.get("harness", {}) or {}).get("implementer") or default
     if ai == host:
         return ai, f"implementer '{ai}' cannot equal the current host '{host}'"
-    if ai not in ALL_AIS:
-        return ai, f"unknown implementer '{ai}' (one of: {', '.join(ALL_AIS)})"
+    if ai not in SANDBOX_IMPLEMENTERS:
+        return ai, (f"implementer '{ai}' has no worktree-scoped write sandbox; "
+                    f"use one of: {', '.join(SANDBOX_IMPLEMENTERS)}")
     return ai, None
 
 
@@ -254,14 +263,17 @@ def cmd_set(root, rest, host):
             print("usage: set harness <implementer|max_fix_rounds> <value>", file=sys.stderr)
             return 2
         _, key, val = rest
-        h = local.setdefault("harness", {})
+        h = local.get("harness")
+        if not isinstance(h, dict):
+            h = {}
+            local["harness"] = h
         if key == "implementer":
             if val.lower() in ("none", "null", "default", ""):
                 h["implementer"] = None
-            elif MODEL_RE.match(val) and val in ALL_AIS:
+            elif val in SANDBOX_IMPLEMENTERS:
                 h["implementer"] = val
             else:
-                print(f"implementer must be one of: {', '.join(ALL_AIS)}", file=sys.stderr)
+                print(f"implementer must be a sandbox CLI: {', '.join(SANDBOX_IMPLEMENTERS)}", file=sys.stderr)
                 return 2
         elif key == "max_fix_rounds":
             if not val.isdigit() or int(val) < 1:
@@ -419,8 +431,9 @@ def cmd_impl_flags(root, ai, host):
     if ai == host:
         print(f"implementer '{ai}' cannot equal host '{host}'", file=sys.stderr)
         return 2
-    if ai not in ALL_AIS:
-        print(f"unknown ai '{ai}'", file=sys.stderr)
+    if ai not in SANDBOX_IMPLEMENTERS:
+        print(f"implementer '{ai}' has no worktree-scoped write sandbox; "
+              f"use one of: {', '.join(SANDBOX_IMPLEMENTERS)}", file=sys.stderr)
         return 2
     p = effective(root)["panel"].get(ai, {})
     model = p.get("model")
@@ -431,24 +444,10 @@ def cmd_impl_flags(root, ai, host):
             parts += ["-m", model]
         if p.get("effort"):
             parts += ["-c", f'model_reasoning_effort="{p["effort"]}"']
-    elif ai == "claude":
-        parts += ["--permission-mode", "acceptEdits"]
-        if model:
-            parts += ["--model", model]
-        if p.get("effort"):
-            parts += ["--effort", p["effort"]]
     elif ai == "agy":
         parts += ["--sandbox"]
         if model:
             parts += ["--model", model]
-    elif ai == "kiro":
-        parts += ["--trust-tools=read,write,grep"]
-        if model:
-            parts += ["--model", model]
-    elif ai == "gemini":
-        parts += ["--yolo"]
-        if model:
-            parts += ["-m", model]
     print(" ".join(parts))
     return 0
 
