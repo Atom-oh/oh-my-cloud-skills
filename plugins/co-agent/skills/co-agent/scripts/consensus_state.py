@@ -144,8 +144,8 @@ def cmd_set(root, key, value):
             return 2
         s[key] = int(value)
     elif key == "status":
-        if value not in ("running", "done", "aborted"):
-            print("status must be running|done|aborted", file=sys.stderr)
+        if value not in ("running", "done", "aborted", "needs-human"):
+            print("status must be running|done|aborted|needs-human", file=sys.stderr)
             return 2
         s[key] = value
     else:

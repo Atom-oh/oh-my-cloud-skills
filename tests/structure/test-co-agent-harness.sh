@@ -25,3 +25,16 @@ python3 "$CFG" impl-flags claude --host claude --root "$R2" >/dev/null 2>&1 && H
 assert_eq "2" "$HRC" "impl-flags rejects ai equal to host (exit 2)"
 assert_grep_no_match "workspace-write|acceptEdits" "$(python3 "$CFG" flags codex --host claude --root "$R2" 2>&1)" "review flags stay read-only (no write sandbox)"
 rm -rf "$R2"
+
+# --- Task 3: needs-human status ---
+R3=$(mktemp -d "${TMPDIR:-/tmp}/coagent-harness3.XXXXXX")
+git -C "$R3" init -q
+git -C "$R3" config user.email t@t.t; git -C "$R3" config user.name t
+git -C "$R3" commit -q --allow-empty -m init >/dev/null 2>&1
+python3 "$ST" init "$R3" --docs none --base HEAD >/dev/null 2>&1
+python3 "$ST" set "$R3" status needs-human >/dev/null 2>&1 && NRC=0 || NRC=$?
+assert_eq "0" "$NRC" "status needs-human accepted (exit 0)"
+assert_eq "needs-human" "$(python3 "$ST" get "$R3" status 2>&1)" "get status returns needs-human"
+python3 "$ST" set "$R3" status bogus >/dev/null 2>&1 && BRC=0 || BRC=$?
+assert_eq "2" "$BRC" "invalid status still rejected (exit 2)"
+rm -rf "$R3"
