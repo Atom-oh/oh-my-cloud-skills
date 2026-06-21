@@ -88,3 +88,11 @@ python3 "$WT" remove "$WTD" --root "$R6" >/dev/null 2>&1 && RM=0 || RM=$?
 assert_eq "0" "$RM" "worktree remove succeeds"
 assert_eq "" "$(git -C "$R6" worktree list --porcelain | grep -F "$WTD")" "no stale worktree ref after remove"
 rm -rf "$R6"
+
+# --- Task 7: delegated-implement reference ---
+REF="plugins/co-agent/skills/co-agent/references/delegated-implement.md"
+assert_file_exists "$REF" "delegated-implement.md exists"
+assert_contains "$(cat "$REF" 2>/dev/null)" "workspace-write" "reference documents workspace-write sandbox"
+assert_contains "$(cat "$REF" 2>/dev/null)" "capture-diff" "reference documents capture-diff"
+assert_contains "$(cat "$REF" 2>/dev/null)" "only committer" "reference states host is the only committer"
+assert_grep_no_match "AKIA[0-9A-Z]{16}|-----BEGIN" "$(cat "$REF" 2>/dev/null)" "reference has no leaked secrets"
