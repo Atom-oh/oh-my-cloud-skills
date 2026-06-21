@@ -41,7 +41,8 @@ Unresolved → `set . status needs-human` and stop. (Works with the current gate
 from the adversarial/escalation upgrades when present — not required.)
 
 ## H3 — Delegated implement (per task) — see `references/delegated-implement.md`
-Per task: host writes red test → `worktree.py add` (under a gitignored path) → run the
+Per task: host writes **and commits** the failing test (so the `--base HEAD` worktree
+contains it) → `worktree.py add` (under a gitignored path) → run the
 implementer with `co_agent_config.py impl-flags <ai> --host "$HOST"` **inside the worktree**
 → `worktree.py capture-diff` → `scope_guard.py` (drop out-of-scope) → apply patch to main +
 `tests/run-all.sh` **on main** → bounded fix loop (`harness.max_fix_rounds`) → `stage-result`

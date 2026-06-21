@@ -35,10 +35,14 @@ never trusting a test run performed inside the peer's worktree.
 
 For each plan task (`scope_guard.py` enforces the plan's file set throughout):
 
-1. **Red (host).** Host writes the failing test on the working branch. (Skip if the task
-   declares `test_required:false`, e.g. a pure refactor with existing coverage.)
-2. **Worktree.** `worktree.py add <wt> --base HEAD` — create the isolated tree at base.
-   Put `<wt>` under a gitignored path (e.g. `.claude/co-agent-consensus/worktrees/<task>`).
+1. **Red (host).** Host writes **and commits** the failing test on the working branch
+   (host is the only committer, so this is consistent). Committing first is **required**:
+   the worktree is created at `HEAD`, so an uncommitted red test would not exist inside it
+   and the peer would implement blind. (Skip the whole step if the task declares
+   `test_required:false`, e.g. a pure refactor with existing coverage.)
+2. **Worktree.** `worktree.py add <wt> --base HEAD` — create the isolated tree at the
+   red-test commit, so the peer sees the failing test. Put `<wt>` under a gitignored path
+   (e.g. `.claude/co-agent-consensus/worktrees/<task>`).
 3. **Implement (peer).** Run the implementer with `impl-flags` **inside `<wt>`**, scoped to
    the task's files. Fallback chain on missing/error/timeout: configured implementer →
    next installed peer (keep provider separation) → host-implement. Never block.

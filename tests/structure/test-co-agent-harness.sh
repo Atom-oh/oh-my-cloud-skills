@@ -147,6 +147,8 @@ assert_contains "$(cat "$REF" 2>/dev/null)" "workspace-write" "reference documen
 assert_contains "$(cat "$REF" 2>/dev/null)" "capture-diff" "reference documents capture-diff"
 assert_contains "$(cat "$REF" 2>/dev/null)" "only committer" "reference states host is the only committer"
 assert_grep_no_match "AKIA[0-9A-Z]{16}|-----BEGIN" "$(cat "$REF" 2>/dev/null)" "reference has no leaked secrets"
+# R2-F: the red test must be committed BEFORE the worktree is created (else --base HEAD omits it)
+assert_grep_match "commit[^.]*(failing|red) test" "$(cat "$REF" 2>/dev/null)" "reference: host commits the red test before the worktree"
 
 # --- Task 8: command + manifest wiring ---
 CMD="plugins/co-agent/commands/harness.md"
