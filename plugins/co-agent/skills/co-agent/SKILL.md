@@ -200,6 +200,14 @@ more on the **cumulative** diff (`consensus_state.py cumulative-diff . --plan <p
 The **default** `/co-agent:consensus <doc>` runs the full P0→P5 pipeline and is **resumable** —
 re-running reads `phase`/`task_index` from state and continues.
 
+### Mode 6 — harness  (also **`/co-agent:harness`**)
+Host-designs / peer-implements / panel-reviews. The **host** designs, writes the failing
+test, and is the **only committer**; a cross-provider **peer implementer** writes code only
+inside an **isolated git worktree** under a workspace-write sandbox; the consensus gate
+reviews. Opt-in, local commits only. Per-task loop, trust boundary, and fallback chain:
+**`references/delegated-implement.md`**. Implementer selection / write-mode flags:
+`co_agent_config.py implementer|impl-flags`.
+
 ## Chair principle (non-negotiable)
 
 - External AIs **advise**; **the current host decides and writes the final artifact**.

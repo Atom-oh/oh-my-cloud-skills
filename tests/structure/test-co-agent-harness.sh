@@ -96,3 +96,12 @@ assert_contains "$(cat "$REF" 2>/dev/null)" "workspace-write" "reference documen
 assert_contains "$(cat "$REF" 2>/dev/null)" "capture-diff" "reference documents capture-diff"
 assert_contains "$(cat "$REF" 2>/dev/null)" "only committer" "reference states host is the only committer"
 assert_grep_no_match "AKIA[0-9A-Z]{16}|-----BEGIN" "$(cat "$REF" 2>/dev/null)" "reference has no leaked secrets"
+
+# --- Task 8: command + manifest wiring ---
+CMD="plugins/co-agent/commands/harness.md"
+assert_file_exists "$CMD" "harness command file exists"
+assert_contains "$(cat "$CMD" 2>/dev/null)" "delegated-implement" "command links the delegated-implement reference"
+assert_contains "$(cat "$CMD" 2>/dev/null)" "worktree" "command references the worktree isolation"
+PJ="plugins/co-agent/.claude-plugin/plugin.json"
+assert_eq "True" "$(python3 -c "import json;print('./commands/harness.md' in json.load(open('$PJ'))['commands'])" 2>&1)" "harness command registered in plugin.json"
+assert_contains "$(cat plugins/co-agent/skills/co-agent/SKILL.md 2>/dev/null)" "harness" "SKILL.md mentions the harness mode"
