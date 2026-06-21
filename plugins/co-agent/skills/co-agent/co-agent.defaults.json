@@ -10,5 +10,6 @@
     "codex":  { "enabled": true, "model": null, "effort": "medium", "models": [], "context_limit": 272000 },
     "agy":    { "enabled": true, "model": null, "models": [], "context_limit": 1000000 },
     "gemini": { "enabled": true, "model": null, "models": [], "context_limit": 1000000 }
-  }
+  },
+  "harness": { "implementer": null, "max_fix_rounds": null }
 }

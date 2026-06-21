@@ -77,6 +77,18 @@ def panel_ais(host):
     return ("kiro", peer, third_ai())
 
 
+def implementer_ai(cfg, host):
+    """Effective harness implementer: the configured harness.implementer, else the
+    peer-host counterpart (claude↔codex). Returns (ai, error_str|None)."""
+    counterpart = "codex" if host == "claude" else "claude"
+    ai = (cfg.get("harness", {}) or {}).get("implementer") or counterpart
+    if ai == host:
+        return ai, f"implementer '{ai}' cannot equal the current host '{host}'"
+    if ai not in ALL_AIS:
+        return ai, f"unknown implementer '{ai}' (one of: {', '.join(ALL_AIS)})"
+    return ai, None
+
+
 def effort_values(ai):
     return EFFORTS_BY_AI.get(ai, ())
 
@@ -237,6 +249,28 @@ def cmd_set(root, rest, host):
             print("usage: set profile <default|deep>", file=sys.stderr)
             return 2
         local["profile"] = rest[1]
+    elif rest[0] == "harness":
+        if len(rest) != 3:
+            print("usage: set harness <implementer|max_fix_rounds> <value>", file=sys.stderr)
+            return 2
+        _, key, val = rest
+        h = local.setdefault("harness", {})
+        if key == "implementer":
+            if val.lower() in ("none", "null", "default", ""):
+                h["implementer"] = None
+            elif MODEL_RE.match(val) and val in ALL_AIS:
+                h["implementer"] = val
+            else:
+                print(f"implementer must be one of: {', '.join(ALL_AIS)}", file=sys.stderr)
+                return 2
+        elif key == "max_fix_rounds":
+            if not val.isdigit() or int(val) < 1:
+                print("max_fix_rounds must be a positive integer", file=sys.stderr)
+                return 2
+            h["max_fix_rounds"] = int(val)
+        else:
+            print("harness keys: implementer, max_fix_rounds", file=sys.stderr)
+            return 2
     else:
         if len(rest) != 3:
             print("usage: set <ai> <key> <value>", file=sys.stderr)
@@ -368,6 +402,16 @@ def cmd_fits(root, ai, tokens, host):
         return 0  # un-parseable estimate → don't block on a guess
 
 
+def cmd_implementer(root, host):
+    """Print the effective harness implementer (counterpart when unset)."""
+    ai, err = implementer_ai(effective(root), host)
+    if err:
+        print(err, file=sys.stderr)
+        return 2
+    print(ai)
+    return 0
+
+
 def main():
     # Parse out global flags precisely (don't drop positional args that equal the path).
     argv, root, host_arg, args, i = sys.argv[1:], os.getcwd(), None, [], 0
@@ -414,6 +458,8 @@ def main():
         return cmd_pairs(root, host)
     if cmd == "matrix":
         return cmd_matrix(root, host)
+    if cmd == "implementer":
+        return cmd_implementer(root, host)
     print(__doc__)
     return 2
 
