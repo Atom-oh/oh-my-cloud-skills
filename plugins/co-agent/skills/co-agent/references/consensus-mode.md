@@ -26,7 +26,7 @@ CRITICAL/MAJOR finding remains (also stop on no-progress / oscillation).
 - Default profile = one model per AI. The committed default is `deep`, which activates
   each AI's `models` list — Kiro's mainstay panel is **opus / kimi-k2.5 / glm-5**.
 - Cap: `rounds × pairs ≤ max_calls`; trim same-family (round-robin) first, then warn.
-- Same provider *family* (e.g. two Gemini variants) = diminishing returns; the matrix warns.
+- Same provider *family* (e.g. two Agy-routed or Gemini fallback variants) = diminishing returns; the matrix warns.
   **Kiro is the exception** — it's a cross-vendor router (Claude / Moonshot / Zhipu), so
   multiple Kiro models are genuine cross-family diversity (matrix notes it, no warning).
 - **`kimi-k2.5` is an `[Internal]` preview** in `kiro-cli --list-models`. If an account

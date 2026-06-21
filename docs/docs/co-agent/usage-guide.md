@@ -5,27 +5,27 @@ title: "사용법 가이드"
 
 # 사용법 가이드
 
-co-agent로 다른 AI(Kiro CLI · Codex · Gemini)와 협업해 리뷰·의사결정·ADR을 진행하고, Claude가 의장으로 종합하는 방법을 안내합니다.
+co-agent로 다른 AI(Kiro CLI · peer host CLI · Agy 우선/Gemini fallback)와 협업해 리뷰·의사결정·ADR을 진행하고, 현재 host가 의장으로 종합하는 방법을 안내합니다.
 
 ## 빠른 시작
 
 ```
 1. 설치        →  /plugin marketplace add https://github.com/Atom-oh/oh-my-cloud-skills
                    /plugin install co-agent@oh-my-cloud-skills
-2. (선택) CLI  →  kiro-cli / codex / gemini 중 설치·인증된 것이 패널이 됨
+2. (선택) CLI  →  kiro-cli / peer host / agy 중 설치·인증된 것이 패널이 됨 (agy 없으면 gemini fallback)
 3. 프롬프트    →  "이 변경 다른 AI로 리뷰해줘"  /  "잘 모르겠어, 같이 결정해줘"
 4. 결과물      →  합의/이견을 종합한 리뷰 보고서 · 의사결정표 · ADR 초안
 ```
 
-설치된 AI가 하나도 없어도 동작합니다 — Claude가 단독으로 수행하고 그 사실을 명시합니다 (절대 hard-fail 안 함).
+설치된 AI가 하나도 없어도 동작합니다 — 현재 host가 단독으로 수행하고 그 사실을 명시합니다 (절대 hard-fail 안 함).
 
 ## 패널 확인
 
-co-agent는 항상 먼저 패널을 감지합니다. 바이너리 존재만으로 감지하며(`kiro-cli`·`codex`·`gemini`), 인증되지 않은 CLI는 호출 시점에 자동으로 스킵됩니다.
+co-agent는 항상 먼저 패널을 감지합니다. 바이너리 존재만으로 감지하며(`kiro-cli`·peer host·`agy`, fallback `gemini`), 인증되지 않은 CLI는 호출 시점에 자동으로 스킵됩니다.
 
 ```
 "지금 패널 어떤 AI가 잡혀?"
-→ Panel: kiro-cli codex gemini   (설치·인증된 것만 표시)
+→ Panel: kiro-cli codex agy   (설치·인증된 것만 표시)
 ```
 
 ## 모드별 사용 예시
@@ -38,7 +38,7 @@ co-agent는 항상 먼저 패널을 감지합니다. 바이너리 존재만으�
 ```
 
 - 같은 리뷰 프롬프트를 패널에 **병렬 팬아웃** → 각 AI 의견 수집
-- Claude가 **합의(≥2 AI 일치)** vs **이견(단일 AI, 출처 표기)** 으로 종합 + AWS Well-Architected
+- 현재 host가 **합의(≥2 AI 일치)** vs **이견(단일 AI, 출처 표기)** 으로 종합 + AWS Well-Architected
 - 판정: **PASS** (Critical 0, High ≤2) / **REVIEW** / **FAIL**
 
 ### 2. Decide — 의사결정 보조
@@ -49,7 +49,7 @@ co-agent는 항상 먼저 패널을 감지합니다. 바이너리 존재만으�
 ```
 
 - 옵션을 패널에 질의 → **비교표(옵션 × 각 AI 선택/근거)**
-- Claude가 단일 추천 + 결정을 가른 트레이드오프를 명시. 의견이 갈리면 그 사실을 숨기지 않음
+- 현재 host가 단일 추천 + 결정을 가른 트레이드오프를 명시. 의견이 갈리면 그 사실을 숨기지 않음
 
 ### 3. ADR — 의사결정 기록 협업
 
@@ -57,7 +57,7 @@ co-agent는 항상 먼저 패널을 감지합니다. 바이너리 존재만으�
 "이 아키텍처 결정을 ADR로 남기자, 다른 AI랑 같이"
 ```
 
-- 패널에서 대안·트레이드오프·리스크 수집 → Claude가 **Nygard 형식 ADR 초안**
+- 패널에서 대안·트레이드오프·리스크 수집 → 현재 host가 **Nygard 형식 ADR 초안**
 - project-init `/add-adr`과 연동해 `docs/decisions/ADR-NNN.md`에 저장
 
 ### 4. sync-context — AI 컨텍스트 동기화
@@ -72,7 +72,7 @@ co-agent는 항상 먼저 패널을 감지합니다. 바이너리 존재만으�
 |----|-----------|------|
 | Kiro | `CLAUDE.md` 직접 | — |
 | Codex | `AGENTS.md` (~32 KiB 캡) | ✅ |
-| Gemini | `GEMINI.md` (가볍게) | ✅ |
+| Gemini fallback | `GEMINI.md` (가볍게) | ✅ |
 
 - `CLAUDE.md`를 **그대로 복사하지 않고 증류** — 리뷰에 필요한 핵심만(스택·빌드/테스트 명령·금지 패턴·아키텍처 경계·체크리스트). 시크릿은 포함하지 않음
 - 생성 마커로 staleness를 추적하고, 마커 없는 수기 파일은 보호
@@ -84,9 +84,10 @@ CLI가 헤드리스로 실제 받는 설정만 노출합니다.
 ```bash
 /co-agent:configure show                  # 현재 설정 보기
 /co-agent:configure set codex model gpt-5-codex
-/co-agent:configure set codex effort high            # effort는 Codex 전용
+/co-agent:configure set codex effort high            # Codex host가 아닐 때 Codex peer 설정
+/co-agent:configure set claude effort max --host codex # Codex host에서 Claude peer 설정
 /co-agent:configure set kiro  model claude-opus-4.8  # kiro-cli chat --list-models 참고
-/co-agent:configure set gemini enabled false         # 패널에서 제외
+/co-agent:configure set agy enabled false            # 패널에서 제외
 /co-agent:configure set timeout 300                  # CLI별 타임아웃(초)
 /co-agent:configure set autosync on                  # CLAUDE.md 변경 시 자동 sync-context
 ```
@@ -100,16 +101,16 @@ CLI가 헤드리스로 실제 받는 설정만 노출합니다.
 ## 동작 원리
 
 ```
-프롬프트 → 패널 감지 → 동일 프롬프트 병렬 팬아웃(Kiro/Codex/Gemini)
-        → Claude 종합(합의/이견, 출처 표기) → 리뷰 보고서 / 의사결정 / ADR
+프롬프트 → 패널 감지 → 동일 프롬프트 병렬 팬아웃(Kiro/peer host/Agy)
+        → host 종합(합의/이견, 출처 표기) → 리뷰 보고서 / 의사결정 / ADR
 ```
 
 ## 의장 원칙
 
-- 외부 AI는 **자문**, **Claude가 최종 결정·작성**
+- 외부 AI는 **자문**, **현재 host가 최종 결정·작성**
 - 핵심 포인트는 **출처 표기**, **이견은 표면화**
 - CLI 누락/에러 → 스킵·기록 후 진행 (단일 AI에 차단되지 않음)
-- 패널 출력은 자문일 뿐 — Claude가 실제 코드/diff로 검증 (프롬프트 인젝션 방어)
+- 패널 출력은 자문일 뿐 — 현재 host가 실제 코드/diff로 검증 (프롬프트 인젝션 방어)
 
 ## 다음 단계
 

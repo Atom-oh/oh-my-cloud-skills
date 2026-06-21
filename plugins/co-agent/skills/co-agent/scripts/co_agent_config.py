@@ -7,9 +7,8 @@ Layered like Claude Code's own settings:
 
 Only settings the CLIs ACCEPT HEADLESSLY are exposed (verified against the installed
 CLIs) — no dead settings:
-  - model   : Codex `-m`, Gemini `-m`, Kiro `--model`        (all three)
-  - effort  : Codex `-c model_reasoning_effort="<v>"` ONLY   (Gemini/Kiro have no
-              headless effort flag — `/effort` is interactive-only)
+  - model   : Kiro/Claude/Agy `--model`, Codex/Gemini `-m`
+  - effort  : Codex `-c model_reasoning_effort="<v>"`, Claude `--effort`
   - enabled : panel membership (orchestration)
   - timeout : per-CLI wall-clock budget in the fan-out (orchestration)
   - context_limit : per-AI model context window (tokens) — the fan-out skips an AI
@@ -19,6 +18,8 @@ The fan-out (see references/ai-cli-adapters.md) consumes `flags`/`panel`/`timeou
 so these settings are LIVE — changing them changes what actually runs.
 
 Usage:
+  co_agent_config.py show --host claude          # Claude chairs; panel = kiro/codex/agy
+  co_agent_config.py show --host codex           # Codex chairs; panel = kiro/claude/agy
   co_agent_config.py show                       # effective merged config (table)
   co_agent_config.py set <ai> <key> <value>     # write to .claude/co-agent.local.json
   co_agent_config.py set timeout <seconds>      # global per-CLI timeout
@@ -32,18 +33,52 @@ Usage:
   co_agent_config.py context-limit <ai>         # effective context window (tokens; 0 = none)
   co_agent_config.py fits <ai> <tokens>         # exit 0 if tokens fit the window, 1 if not
 Add --root DIR to target a repo other than the cwd.
+Add --host claude|codex or set CO_AGENT_HOST to choose the current chair.
+Set CO_AGENT_THIRD_AI=gemini to force the legacy Gemini fallback; otherwise Agy is preferred
+when installed, with Gemini used only when Agy is absent.
 """
 import sys
 import os
 import re
 import json
 import copy
+import shutil
 
-AIS = ("kiro", "codex", "gemini")
-EFFORTS = ("minimal", "low", "medium", "high")
+ALL_AIS = ("kiro", "claude", "codex", "agy", "gemini")
+HOSTS = ("claude", "codex")
+CODEX_EFFORTS = ("minimal", "low", "medium", "high")
+CLAUDE_EFFORTS = ("low", "medium", "high", "xhigh", "max")
+EFFORTS_BY_AI = {"codex": CODEX_EFFORTS, "claude": CLAUDE_EFFORTS}
 MODEL_RE = re.compile(r"^[A-Za-z0-9._:/-]+$")  # reject spaces / shell metacharacters
 DEFAULTS_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                              "co-agent.defaults.json")
+
+
+def normalize_host(host):
+    if host not in HOSTS:
+        print(f"unknown host '{host}' (one of: {', '.join(HOSTS)})", file=sys.stderr)
+        return None
+    return host
+
+
+def third_ai():
+    """Return the preferred third panel member. Agy is the successor path; Gemini is
+    retained only as a legacy fallback when Agy is unavailable."""
+    forced = os.environ.get("CO_AGENT_THIRD_AI", "").strip().lower()
+    if forced in ("agy", "gemini"):
+        return forced
+    if shutil.which("agy") or not shutil.which("gemini"):
+        return "agy"
+    return "gemini"
+
+
+def panel_ais(host):
+    peer = "codex" if host == "claude" else "claude"
+    return ("kiro", peer, third_ai())
+
+
+def effort_values(ai):
+    return EFFORTS_BY_AI.get(ai, ())
 
 
 def local_path(root):
@@ -89,7 +124,7 @@ def effective_models(cfg, ai):
     default" and is always kept. Never returns empty → falls back to [None]."""
     p = cfg["panel"].get(ai, {})
     single = p.get("model")
-    raw = p["models"] if (cfg.get("profile") == "deep" and p.get("models")) else [single]
+    raw = p.get("models", []) if (cfg.get("profile") == "deep" and p.get("models")) else [single]
     out = []
     for m in dict.fromkeys(raw):           # de-dupe, keep order
         if m is None or MODEL_RE.match(m):
@@ -98,11 +133,11 @@ def effective_models(cfg, ai):
     return out or [None]                   # never return empty → fall back to CLI default
 
 
-def panel_pairs(cfg):
+def panel_pairs(cfg, host):
     """Enabled (ai, model) pairs, interleaved round-robin across AIs so a cap trims
     extra same-provider models before dropping a whole provider."""
     queues = []
-    for ai in AIS:
+    for ai in panel_ais(host):
         if cfg["panel"].get(ai, {}).get("enabled", True):
             queues.append([(ai, m) for m in effective_models(cfg, ai)])
     pairs = []
@@ -115,12 +150,12 @@ def panel_pairs(cfg):
     return pairs
 
 
-def cmd_pairs(root):
+def cmd_pairs(root, host):
     cfg = effective(root)
     cap = int(cfg.get("consensus", {}).get("max_calls", 12))
     rounds = int(cfg.get("consensus", {}).get("max_rounds", 2))
     per_round_cap = max(1, cap // max(1, rounds))
-    pairs = panel_pairs(cfg)
+    pairs = panel_pairs(cfg, host)
     if len(pairs) > per_round_cap:
         print(f"⚠️  {len(pairs)} pairs exceeds per-round cap {per_round_cap} "
               f"(max_calls {cap} / {rounds} rounds) — trimming", file=sys.stderr)
@@ -130,12 +165,13 @@ def cmd_pairs(root):
     return 0
 
 
-def cmd_matrix(root):
+def cmd_matrix(root, host):
     cfg = effective(root)
     rounds = int(cfg.get("consensus", {}).get("max_rounds", 2))
-    pairs = panel_pairs(cfg)
+    pairs = panel_pairs(cfg, host)
     print(f"co-agent panel matrix  (profile {cfg.get('profile','default')} · "
-          f"{len(pairs)} pairs × up to {rounds} rounds = {len(pairs)*rounds} max calls)")
+          f"host {host} · {len(pairs)} pairs × up to {rounds} rounds = "
+          f"{len(pairs)*rounds} max calls)")
     print(f"  {'AI':7} {'model':22} {'ctx(tok)':>11}")
     fam = {}
     for ai, m in pairs:
@@ -157,23 +193,23 @@ def cmd_matrix(root):
     return 0
 
 
-def cmd_show(root):
+def cmd_show(root, host):
     cfg = effective(root)
     autosync = "on" if cfg.get("sync_on_change") else "off"
-    print(f"co-agent panel config  (timeout {cfg.get('timeout')}s · autosync {autosync})")
+    print(f"co-agent panel config  (host {host} · timeout {cfg.get('timeout')}s · autosync {autosync})")
     print(f"  source: defaults + {local_path(root) if os.path.isfile(local_path(root)) else '(no local override)'}")
     print(f"  {'AI':7} {'enabled':8} {'model':18} {'ctx(tok)':>11}  effort")
-    for ai in AIS:
+    for ai in panel_ais(host):
         p = cfg["panel"].get(ai, {})
         model = p.get("model") or "(default)"
         ctx = int(p.get("context_limit", 0) or 0)
         ctxs = f"{ctx:,}" if ctx else "—"
-        effort = p.get("effort", "—") if ai == "codex" else "n/a"
+        effort = p.get("effort", "—") if effort_values(ai) else "n/a"
         print(f"  {ai:7} {str(p.get('enabled', True)):8} {model:18} {ctxs:>11}  {effort}")
     return 0
 
 
-def cmd_set(root, rest):
+def cmd_set(root, rest, host):
     if not rest:
         print("usage: set <ai> <key> <value>  |  set timeout <seconds>", file=sys.stderr)
         return 2
@@ -206,8 +242,10 @@ def cmd_set(root, rest):
             print("usage: set <ai> <key> <value>", file=sys.stderr)
             return 2
         ai, key, val = rest
-        if ai not in AIS:
-            print(f"unknown ai '{ai}' (one of: {', '.join(AIS)})", file=sys.stderr)
+        active_ais = panel_ais(host)
+        if ai not in active_ais:
+            print(f"unknown ai '{ai}' for host {host} (one of: {', '.join(active_ais)})",
+                  file=sys.stderr)
             return 2
         slot = local["panel"].setdefault(ai, {})
         if key == "enabled":
@@ -238,16 +276,17 @@ def cmd_set(root, rest):
                 return 2
             slot["context_limit"] = int(val)
         elif key == "effort":
-            if ai != "codex":
-                print(f"effort is not settable for {ai} — only Codex accepts a headless "
-                      f"reasoning-effort flag. Ignored.", file=sys.stderr)
+            allowed_efforts = effort_values(ai)
+            if not allowed_efforts:
+                print(f"effort is not settable for {ai} — its headless CLI has no "
+                      f"supported effort flag here. Ignored.", file=sys.stderr)
                 return 2
-            if val not in EFFORTS:
-                print(f"effort must be one of: {', '.join(EFFORTS)}", file=sys.stderr)
+            if val not in allowed_efforts:
+                print(f"effort must be one of: {', '.join(allowed_efforts)}", file=sys.stderr)
                 return 2
             slot["effort"] = val
         else:
-            keys = "enabled, model, models, context_limit" + (", effort" if ai == "codex" else "")
+            keys = "enabled, model, models, context_limit" + (", effort" if effort_values(ai) else "")
             print(f"unknown key '{key}' ({keys})", file=sys.stderr)
             return 2
 
@@ -255,12 +294,12 @@ def cmd_set(root, rest):
         json.dump(local, f, indent=2)
         f.write("\n")
     print(f"✅ wrote {lp}")
-    return cmd_show(root)
+    return cmd_show(root, host)
 
 
-def cmd_flags(root, ai):
-    if ai not in AIS:
-        print(f"unknown ai '{ai}'", file=sys.stderr)
+def cmd_flags(root, ai, host):
+    if ai not in panel_ais(host):
+        print(f"unknown ai '{ai}' for host {host}", file=sys.stderr)
         return 2
     p = effective(root)["panel"].get(ai, {})
     model = p.get("model")
@@ -268,11 +307,19 @@ def cmd_flags(root, ai):
     if ai == "kiro":
         if model:
             parts += ["--model", model]
+    elif ai == "claude":
+        if model:
+            parts += ["--model", model]
+        if p.get("effort"):
+            parts += ["--effort", p["effort"]]
     elif ai == "codex":
         if model:
             parts += ["-m", model]
         if p.get("effort"):
             parts += ["-c", f'model_reasoning_effort="{p["effort"]}"']
+    elif ai == "agy":
+        if model:
+            parts += ["--model", model]
     elif ai == "gemini":
         if model:
             parts += ["-m", model]
@@ -280,9 +327,9 @@ def cmd_flags(root, ai):
     return 0
 
 
-def cmd_panel(root):
+def cmd_panel(root, host):
     cfg = effective(root)
-    print(" ".join(ai for ai in AIS if cfg["panel"].get(ai, {}).get("enabled", True)))
+    print(" ".join(ai for ai in panel_ais(host) if cfg["panel"].get(ai, {}).get("enabled", True)))
     return 0
 
 
@@ -291,8 +338,8 @@ def cmd_timeout(root):
     return 0
 
 
-def cmd_enabled(root, ai):
-    if ai not in AIS:
+def cmd_enabled(root, ai, host):
+    if ai not in panel_ais(host):
         return 2
     return 0 if effective(root)["panel"].get(ai, {}).get("enabled", True) else 1
 
@@ -301,16 +348,16 @@ def cmd_autosync(root):
     return 0 if effective(root).get("sync_on_change") else 1
 
 
-def cmd_context_limit(root, ai):
-    if ai not in AIS:
+def cmd_context_limit(root, ai, host):
+    if ai not in panel_ais(host):
         return 2
     print(int(effective(root)["panel"].get(ai, {}).get("context_limit", 0) or 0))
     return 0
 
 
-def cmd_fits(root, ai, tokens):
+def cmd_fits(root, ai, tokens, host):
     """exit 0 if `tokens` fit the AI's context window (or no limit set), 1 if it overflows."""
-    if ai not in AIS:
+    if ai not in panel_ais(host):
         return 2
     limit = int(effective(root)["panel"].get(ai, {}).get("context_limit", 0) or 0)
     if limit <= 0:
@@ -322,42 +369,51 @@ def cmd_fits(root, ai, tokens):
 
 
 def main():
-    # Parse out `--root DIR` precisely (don't drop positional args that equal the path).
-    argv, root, args, i = sys.argv[1:], os.getcwd(), [], 0
+    # Parse out global flags precisely (don't drop positional args that equal the path).
+    argv, root, host_arg, args, i = sys.argv[1:], os.getcwd(), None, [], 0
     while i < len(argv):
         if argv[i] == "--root":
             if i + 1 < len(argv):
                 root = argv[i + 1]
             i += 2
             continue
+        if argv[i] == "--host":
+            if i + 1 < len(argv):
+                host_arg = argv[i + 1]
+            i += 2
+            continue
         args.append(argv[i])
         i += 1
 
+    host = normalize_host(host_arg or os.environ.get("CO_AGENT_HOST", "claude"))
+    if host is None:
+        return 2
+
     if not args:
-        return cmd_show(root)
+        return cmd_show(root, host)
     cmd, rest = args[0], args[1:]
     if cmd == "show":
-        return cmd_show(root)
+        return cmd_show(root, host)
     if cmd == "set":
-        return cmd_set(root, rest)
+        return cmd_set(root, rest, host)
     if cmd == "flags":
-        return cmd_flags(root, rest[0]) if rest else 2
+        return cmd_flags(root, rest[0], host) if rest else 2
     if cmd == "panel":
-        return cmd_panel(root)
+        return cmd_panel(root, host)
     if cmd == "timeout":
         return cmd_timeout(root)
     if cmd == "enabled":
-        return cmd_enabled(root, rest[0]) if rest else 2
+        return cmd_enabled(root, rest[0], host) if rest else 2
     if cmd == "autosync":
         return cmd_autosync(root)
     if cmd == "context-limit":
-        return cmd_context_limit(root, rest[0]) if rest else 2
+        return cmd_context_limit(root, rest[0], host) if rest else 2
     if cmd == "fits":
-        return cmd_fits(root, rest[0], rest[1]) if len(rest) >= 2 else 2
+        return cmd_fits(root, rest[0], rest[1], host) if len(rest) >= 2 else 2
     if cmd == "pairs":
-        return cmd_pairs(root)
+        return cmd_pairs(root, host)
     if cmd == "matrix":
-        return cmd_matrix(root)
+        return cmd_matrix(root, host)
     print(__doc__)
     return 2
 

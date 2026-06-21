@@ -1,6 +1,6 @@
 ---
 name: co-agent
-description: "Collaborate with other AI agents (Kiro CLI, Codex, Gemini) for a second opinion. Three modes — multi-AI review of code/architecture, decision support when you're unsure, and ADR co-authoring. Claude chairs and synthesizes the final answer. 멀티 AI 협업: 리뷰, 의사결정 보조, ADR 협업."
+description: "Collaborate with other AI agents (Kiro CLI, the peer host CLI, and Agy with Gemini fallback) for a second opinion. Three modes — multi-AI review of code/architecture, decision support when you're unsure, and ADR co-authoring. The current host chairs and synthesizes the final answer. 멀티 AI 협업: 리뷰, 의사결정 보조, ADR 협업."
 triggers:
   # High-precision: only fire when the user clearly wants MULTIPLE AIs / a panel.
   # Generic "code review"/"architecture review"/"decide"/"adr" are intentionally
@@ -30,10 +30,17 @@ allowed-tools:
 
 # co-agent — Multi-AI Collaboration
 
-Consult **other AI agents** (Kiro CLI, Codex, Gemini) and let **Claude chair the
-panel** and synthesize the final answer. The external AIs are advisors; Claude
-always produces the decision/report. Use whichever AI CLIs are installed — degrade
-gracefully, never hard-fail.
+Consult **other AI agents** and let the **current host agent chair the panel** and
+synthesize the final answer. The external AIs are advisors; the host always produces
+the decision/report.
+
+- In Claude Code: Claude chairs; the peer panel is Kiro CLI, Codex, and Agy.
+- In Codex: Codex chairs; the peer panel is Kiro CLI, Claude CLI, and Agy.
+- Agy is preferred over Gemini. Use Gemini only as the legacy fallback when `agy` is
+  not installed.
+
+Never call the current host CLI as a panel member. Use whichever peer AI CLIs are
+installed — degrade gracefully, never hard-fail.
 
 > CLI invocation, detection, and per-tool quirks: **`references/ai-cli-adapters.md`**.
 
@@ -41,27 +48,23 @@ gracefully, never hard-fail.
 
 ```bash
 PANEL=""
-# Detect by binary presence only — kiro-cli is usable headless via EITHER an
-# interactive login session OR $KIRO_API_KEY (Pro+). Don't pre-gate on the env
-# key; if a CLI isn't actually authenticated it just errors at call time and
-# we skip it (graceful fallback), same as codex/gemini.
-command -v kiro-cli >/dev/null 2>&1 && PANEL="$PANEL kiro-cli"
-command -v codex    >/dev/null 2>&1 && PANEL="$PANEL codex"
-command -v gemini   >/dev/null 2>&1 && PANEL="$PANEL gemini"
-echo "Panel: ${PANEL:-(none — Claude will answer solo and say so)}"
+# Set CO_AGENT_HOST=codex when running this skill from Codex. Default host is claude.
+HOST="${CO_AGENT_HOST:-claude}"
+CFG="${CLAUDE_PLUGIN_ROOT:-plugins/co-agent}/skills/co-agent/scripts/co_agent_config.py"
+PANEL=$(python3 "$CFG" panel --host "$HOST" 2>/dev/null || true)
+echo "Panel: ${PANEL:-(none — the host will answer solo and say so)}"
 ```
 
 > ⚠️ **The Kiro binary is `kiro-cli`, NOT `kiro`.** Always invoke `kiro-cli chat …`.
-> (codex/gemini binaries match their names; only Kiro differs — labels above use the
-> exact binary name so you never type a bare `kiro`.)
+> Agy supersedes Gemini. Prefer `agy`; call `gemini` only when Agy is unavailable.
 
-Tell the user which AIs are on the panel. If none are available, do the task as
-Claude alone and state that no external panel was reached.
+Tell the user which AIs are on the panel. If none are available, do the task as the
+host alone and state that no external panel was reached.
 
 > The panel respects **`/co-agent:configure`** settings — a disabled AI is dropped,
-> and per-AI model / Codex effort / timeout are injected into the fan-out. Inspect with
-> `python3 scripts/co_agent_config.py show`. The fan-out in `ai-cli-adapters.md`
-> derives `$PANEL` and timeout from that helper.
+> and per-AI model / supported effort / timeout are injected into the fan-out. Inspect
+> with `python3 scripts/co_agent_config.py show --host <claude|codex>`. The fan-out in
+> `ai-cli-adapters.md` derives `$PANEL` and timeout from that helper.
 
 ## Three modes
 
@@ -96,7 +99,7 @@ Get multiple AIs to review a change, then synthesize.
       `python3 scripts/check_citations.py <diff_file> <findings.json>`. **Drop `unsupported`**
       (hallucinated paths); treat `needs-review` with caution. This makes
       "verify, don't vote-count" mechanical.
-4. **Claude synthesizes** into one report:
+4. **The host synthesizes** into one report:
    - **Consensus** (issues ≥2 AIs agree on) — highest confidence.
    - **Dissent / unique findings** (only one AI raised) — note which AI.
    - Severity table + AWS Well-Architected (use `references/aws-well-architected.md`).
@@ -106,14 +109,14 @@ Get multiple AIs to review a change, then synthesize.
 ### Mode 2 — Decision support  (`decide`, "잘 모르겠어", "의사결정", "help me decide")
 When the user is unsure, bring the panel in.
 
-1. Pin down the decision + options. If the user only gave a question, Claude first
+1. Pin down the decision + options. If the user only gave a question, the host first
    enumerates 2-4 concrete options, then asks the panel about those.
 2. Fan out: *"Decision: <X>. Options: <A/B/C>. Recommend ONE with 2-3 reasons and the
    key trade-off. Be concise."* to each panel member.
-3. **Claude synthesizes** a comparison table:
+3. **The host synthesizes** a comparison table:
 
-   | Option | Kiro | Codex | Gemini | Claude |
-   |--------|------|-------|--------|--------|
+   | Option | Kiro | Peer host | Agy/Gemini | Chair |
+   |--------|------|-----------|------------|-------|
    | A | ✅ reason | — | ✅ reason | ✅ |
 
    Then give a **single recommendation** and name the trade-off that decided it.
@@ -125,7 +128,7 @@ Co-author an Architecture Decision Record with the panel.
 1. Establish context + the decision to record.
 2. Fan out: *"For this decision, list realistic ALTERNATIVES, their TRADE-OFFS, and
    RISKS/CONSEQUENCES. Be specific."* to each panel member.
-3. **Claude drafts the ADR** (Nygard format) merging the panel input:
+3. **The host drafts the ADR** (Nygard format) merging the panel input:
    `# ADR-NNN: <title>` → Status · Context · Decision · **Considered Alternatives**
    (enriched by the panel, attributing notable points) · **Consequences** (pros/cons,
    risks the panel surfaced) · Date.
@@ -199,14 +202,15 @@ re-running reads `phase`/`task_index` from state and continues.
 
 ## Chair principle (non-negotiable)
 
-- External AIs **advise**; **Claude decides and writes the final artifact**.
+- External AIs **advise**; **the current host decides and writes the final artifact**.
+- Claude Code host: Claude is the chair. Codex host: Codex is the chair.
 - Always **attribute** notable points to the AI that made them ("Gemini flagged …").
 - **Surface disagreement** instead of hiding it — divergent opinions are the value.
 - If a CLI errors or is missing, skip it, note it, continue. Never block on one AI.
 
 ## References
 
-- `references/ai-cli-adapters.md` — Kiro/Codex/Gemini CLI commands, detection, fan-out pattern, fallbacks, **per-AI project-context files**
+- `references/ai-cli-adapters.md` — Kiro/Claude/Codex/Agy/Gemini CLI commands, detection, fan-out pattern, fallbacks, **per-AI project-context files**
 - `references/architecture-review-framework.md` — review rubric, severity, PASS/REVIEW/FAIL
 - `references/aws-well-architected.md` — 6-pillar checklist for the review mode
 - `scripts/check_ai_context.py` — validate/staleness-check generated AGENTS.md/GEMINI.md (size caps, marker, secrets); `--emit-marker` for generation

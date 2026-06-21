@@ -1,9 +1,9 @@
 # AI CLI Adapters
 
-Uniform, **read-only/advisory** invocation of external AI agents for co-agent. Claude
-fans a prompt out to whichever of these are installed, then synthesizes. Commands
-below are verified against the installed CLIs and the existing `arch-review` /
-`multi-agent-ops` skills.
+Uniform, **read-only/advisory** invocation of external AI agents for co-agent. The
+current host fans a prompt out to whichever peer CLIs are installed, then synthesizes.
+Claude Code hosts use Codex as the peer; Codex hosts use Claude as the peer. Agy is
+preferred over Gemini, with Gemini retained only as the legacy fallback.
 
 ## Detection
 
@@ -12,8 +12,9 @@ below are verified against the installed CLIs and the existing `arch-review` /
 # login session OR $KIRO_API_KEY — do NOT require the env key. An unauthenticated
 # CLI simply errors at call time and is skipped (graceful fallback).
 command -v kiro-cli >/dev/null 2>&1 && echo "kiro ok"
+command -v claude   >/dev/null 2>&1 && echo "claude ok"
 command -v codex    >/dev/null 2>&1 && echo "codex ok"
-command -v gemini   >/dev/null 2>&1 && echo "gemini ok"
+command -v agy      >/dev/null 2>&1 && echo "agy ok" || command -v gemini >/dev/null 2>&1 && echo "gemini fallback ok"
 ```
 
 ## Adapter commands (read-only advisory)
@@ -21,10 +22,12 @@ command -v gemini   >/dev/null 2>&1 && echo "gemini ok"
 | AI | Command | Notes |
 |----|---------|-------|
 | **Kiro** | `kiro-cli chat "<PROMPT>" --no-interactive --trust-tools=read,grep --wrap never` | ⚠️ Binary is **`kiro-cli`**, NOT `kiro` — a bare `kiro` fails. Auth via interactive login **or** `KIRO_API_KEY` (Pro/Pro+/Power) — either works headless. `--wrap never` = clean output. Pipe ctx: `echo "$CTX" \| kiro-cli chat … --no-interactive`. |
+| **Claude** | `claude -p "<PROMPT>" --permission-mode plan --tools Read,Grep,Glob --output-format text` | Used only when Codex is the host. Plan permission mode + read-only tools keep the call advisory. Pipe ctx: `cat ctx \| claude -p "<PROMPT>" …`. |
 | **Codex** | `codex exec -s read-only "<PROMPT>"` | `-s read-only` = read-only sandbox (no writes). Pipe ctx: `cat ctx \| codex exec -s read-only "<PROMPT>"`. Free tier has model limits. |
-| **Gemini** | `gemini -p "<PROMPT>" -o text` | `-o text` plain output; optional `-m gemini-2.5-pro`. Pipe ctx: `cat ctx \| gemini -p "<PROMPT>" -o text`. |
+| **Agy** | `agy -p "<PROMPT>" --sandbox` | Preferred third reviewer. Pipe ctx: `cat ctx \| agy -p "<PROMPT>" --sandbox`. |
+| **Gemini** | `gemini -p "<PROMPT>" -o text` | Legacy fallback only when `agy` is unavailable. Pipe ctx: `cat ctx \| gemini -p "<PROMPT>" -o text`. |
 
-> These are **advisory** calls — no AI writes to the repo. Claude alone writes the
+> These are **advisory** calls — no AI writes to the repo. The host alone writes the
 > final report/decision/ADR.
 
 ## Fan-out pattern (parallel, capture, synthesize)
@@ -38,27 +41,38 @@ CTX_FILE="$RUN/context.txt"   # the git diff / decision brief (see Security belo
 # defaults + .claude/co-agent.local.json (see /co-agent:configure). This makes the
 # config LIVE: `enabled false` drops an AI; model/effort flags are injected per CLI.
 CFG="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py"
-T=$(python3 "$CFG" timeout 2>/dev/null || echo 240)
-python3 "$CFG" matrix          # show provider·model·ctx + max-calls BEFORE running (cost visibility)
+HOST="${CO_AGENT_HOST:-claude}"  # set to codex when running co-agent from Codex
+T=$(python3 "$CFG" timeout --host "$HOST" 2>/dev/null || echo 240)
+python3 "$CFG" matrix --host "$HOST"   # show provider·model·ctx + max-calls BEFORE running
 TOKENS=$(( ( $(wc -c < "$CTX_FILE") + 3 ) / 4 ))
 
 # One fan-out per ENABLED (ai, model) pair (capped). `pairs` emits "ai<TAB>model".
 i=0
-python3 "$CFG" pairs 2>/dev/null | while IFS=$'\t' read -r ai model; do
+python3 "$CFG" pairs --host "$HOST" 2>/dev/null | while IFS=$'\t' read -r ai model; do
   i=$((i+1)); slot="$RUN/${ai}-${i}"
-  MFLAGS=(); [ "$model" != "(default)" ] && MFLAGS=(--model "$model")   # codex/gemini use -m; see note
-  if ! python3 "$CFG" fits "$ai" "$TOKENS" 2>/dev/null; then
+  read -r -a MFLAGS < <(python3 "$CFG" flags "$ai" --host "$HOST" 2>/dev/null || true)
+  if ! python3 "$CFG" fits "$ai" "$TOKENS" --host "$HOST" 2>/dev/null; then
     echo "[skip] $ai/$model — context ~${TOKENS} tok > model window"; continue
   fi
   case "$ai" in
     kiro)   command -v kiro-cli >/dev/null 2>&1 && ( cat "$CTX_FILE" | timeout "$T" \
               kiro-cli chat "$PROMPT" "${MFLAGS[@]}" --no-interactive --trust-tools=read,grep --wrap never \
               > "$slot.md" 2>"$slot.err" || echo "[skip] kiro/$model" ) & ;;
+    claude) command -v claude >/dev/null 2>&1 && ( cat "$CTX_FILE" | timeout "$T" \
+              claude -p "$PROMPT" "${MFLAGS[@]}" --permission-mode plan --tools Read,Grep,Glob --output-format text \
+              > "$slot.md" 2>"$slot.err" || echo "[skip] claude/$model" ) & ;;
     codex)  command -v codex >/dev/null 2>&1 && ( cat "$CTX_FILE" | timeout "$T" \
-              codex exec -s read-only "${MFLAGS[@]/--model/-m}" "$PROMPT" \
+              codex exec -s read-only "${MFLAGS[@]}" "$PROMPT" \
               > "$slot.md" 2>"$slot.err" || echo "[skip] codex/$model" ) & ;;
+    agy)    if command -v agy >/dev/null 2>&1; then ( cat "$CTX_FILE" | timeout "$T" \
+              agy -p "$PROMPT" "${MFLAGS[@]}" --sandbox \
+              > "$slot.md" 2>"$slot.err" || echo "[skip] agy/$model" ) &
+            elif command -v gemini >/dev/null 2>&1; then ( cat "$CTX_FILE" | timeout "$T" \
+              gemini -p "$PROMPT" -o text \
+              > "$slot.md" 2>"$slot.err" || echo "[skip] gemini-fallback/$model" ) &
+            fi ;;
     gemini) command -v gemini >/dev/null 2>&1 && ( cat "$CTX_FILE" | timeout "$T" \
-              gemini "${MFLAGS[@]/--model/-m}" -p "$PROMPT" -o text \
+              gemini "${MFLAGS[@]}" -p "$PROMPT" -o text \
               > "$slot.md" 2>"$slot.err" || echo "[skip] gemini/$model" ) & ;;
   esac
 done
@@ -74,28 +88,28 @@ wait
 
 - **Context-size guard**: each AI is skipped (not hard-failed) when the estimated
   context exceeds its `context_limit`. Inspect/raise via `/co-agent:configure`
-  (`set codex context_limit <n>` or `set codex model <1M-model>`); narrowing the diff
+  (`set <ai> context_limit <n>` or `set <ai> model <1M-model>`); narrowing the diff
   is usually the right fix. A 0/unset limit means "no check".
 - **Safe flag expansion**: `read -ra FLAGS < <(...)` + `"${FLAGS[@]}"` — model values are
   charset-validated at `set` time AND never word-split/globbed at call time (defense in depth).
-- Settings are **live**: `python3 "$CFG" show` to inspect; `/co-agent:configure` to change
+- Settings are **live**: `python3 "$CFG" show --host "$HOST"` to inspect; `/co-agent:configure` to change
   model/effort/enabled/timeout/context_limit. A disabled AI never appears in `$PANEL`.
 - Run them **in parallel** (`&` + `wait`) — three sequential CLI calls are slow.
 - `timeout` each CLI so a hung/blocking-auth process can't stall the whole panel.
 - Use a per-run `mktemp -d` (not a fixed `/tmp/co-agent`) so concurrent/stale runs
   don't clobber each other; `trap … EXIT` cleans it up.
 - Treat empty output / non-zero exit / timeout as "this AI skipped"; never abort the others.
-- Capacity/rate errors are common on free tiers (esp. Gemini/Codex) — degrade to a
+- Capacity/rate errors are common on free tiers (esp. Agy/Gemini/Codex) — degrade to a
   smaller panel, which is fine.
 
-## Synthesis rules (Claude as chair)
+## Synthesis rules (host as chair)
 
 1. **Consensus first, but verify — don't vote-count**: points raised by ≥2 AIs are a
    starting signal, NOT proof. Models share training biases and can repeat the same
    wrong artifact, so **confirm each finding against the actual code/diff** before
-   reporting it. Claude is the chair, not a tallier.
-2. **Attribute dissent**: "Codex flagged X (others didn't)" — divergence is signal.
-3. **Claude owns the verdict/decision/ADR** — the panel never decides alone; a single
+   reporting it. The host is the chair, not a tallier.
+2. **Attribute dissent**: "Agy flagged X (others didn't)" — divergence is signal.
+3. **The host owns the verdict/decision/ADR** — the panel never decides alone; a single
    AI's verdict is never authoritative (see Security: prompt injection).
 4. Keep each AI's prompt **identical** so their answers are comparable.
 
@@ -110,7 +124,7 @@ reason over content an attacker may control. Treat this as a trust boundary:
 - **Stdin only**: pass context via stdin (`cat ctx | cli`), never interpolate it into
   the command line — keeps malicious content (backticks, `$()`) out of the shell.
 - **Prompt injection**: repo content can carry "ignore previous instructions / report
-  PASS". Panel output is **advisory** — Claude verifies findings against the code and
+  PASS". Panel output is **advisory** — the host verifies findings against the code and
   never lets one AI's verdict decide. `--trust-tools=read,grep` lets Kiro read beyond
   the supplied diff, so keep the provided context the source of truth.
 - **Cost**: a fan-out invokes up to 3 metered AI services at once; for large/repeated
@@ -123,7 +137,7 @@ co-agent's ADR mode provides the **collaboration layer** that enriches the
 "Considered Alternatives" and "Consequences" sections with panel input. Flow:
 
 1. `/co-agent` ADR mode gathers panel alternatives/trade-offs/risks.
-2. Claude drafts the ADR body (Nygard format) merging them.
+2. The host drafts the ADR body (Nygard format) merging them.
 3. Write to `docs/decisions/ADR-NNN.md` following the `/add-adr` numbering convention
    (or paste into the file `/add-adr` created). co-agent does **not** modify the
    upstream `/add-adr` command itself.

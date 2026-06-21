@@ -4,6 +4,7 @@
 CO="plugins/co-agent/skills/co-agent"
 CIT="$CO/scripts/check_citations.py"
 CFG="$CO/scripts/co_agent_config.py"
+export CO_AGENT_THIRD_AI=agy
 
 assert_file_exists "$CIT" "check_citations.py exists"
 assert_file_executable "$CIT" "check_citations.py is executable"
@@ -28,16 +29,17 @@ DEF=$(python3 "$CFG" pairs --root "$R" 2>/dev/null | wc -l | tr -d ' ')
 assert_eq "3" "$DEF" "default profile → one pair per AI (3)"
 python3 "$CFG" set profile deep --root "$R" >/dev/null 2>&1
 DEEP=$(python3 "$CFG" pairs --root "$R" 2>/dev/null | wc -l | tr -d ' ')
-assert_eq "5" "$DEEP" "deep profile → kiro 3 models + codex + gemini (5)"
+assert_eq "5" "$DEEP" "deep profile → kiro 3 models + codex + agy (5)"
 assert_contains "$(python3 "$CFG" matrix --root "$R" 2>&1)" "max calls" "matrix prints max-calls budget"
 # Kiro's 3 models (opus/kimi/glm) are cross-vendor via the router → intended diversity,
 # NOT the same-family redundancy warning.
 assert_contains "$(python3 "$CFG" matrix --root "$R" 2>&1)" "cross-vendor" "matrix notes kiro cross-vendor diversity"
-# A genuine same-family duplicate (two Gemini models) DOES warn.
-python3 "$CFG" set gemini models "gemini-2.5-pro,gemini-2.5-flash" --root "$R" >/dev/null 2>&1
+# A genuine same-family duplicate (two Agy-routed models) DOES warn.
+python3 "$CFG" set agy models "gemini-2.5-pro,gemini-2.5-flash" --root "$R" >/dev/null 2>&1
 assert_contains "$(python3 "$CFG" matrix --root "$R" 2>&1)" "same provider family" "matrix warns on same-family duplicates"
 # invalid model name in list rejected (space/comma are list delimiters, so use a
 # genuine shell metacharacter to trigger MODEL_RE rejection)
 python3 "$CFG" set kiro models "good-model;rm" --root "$R" >/dev/null 2>&1 && MB=0 || MB=$?
 assert_eq "2" "$MB" "models list rejects names with shell metacharacters"
 rm -rf "$R"
+unset CO_AGENT_THIRD_AI

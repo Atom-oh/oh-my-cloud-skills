@@ -56,3 +56,7 @@ plugins/*/skills/*-workspace/
 /colors.css
 /spacing.css
 /typography.css
+
+# local AI tool caches
+.serena/
+.headroom/

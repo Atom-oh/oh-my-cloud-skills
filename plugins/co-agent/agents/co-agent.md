@@ -1,6 +1,6 @@
 ---
 name: co-agent
-description: "Collaborate with other AI agents (Kiro CLI, Codex, Gemini) for a second opinion, with Claude as chair. Three modes — multi-AI code/architecture review, decision support when the user is unsure, and ADR co-authoring. Triggers on multi-AI intent only — \"co-agent\", \"second opinion\", \"다른 AI\", \"다른 AI로 리뷰\", \"AI 협업\", \"AI 패널\", \"멀티 AI\", \"잘 모르겠어\" (decision help), \"ADR 협업\" — NOT on bare \"code review\"/\"decide\"/\"adr\" (use /co-agent for those)."
+description: "Collaborate with other AI agents (Kiro CLI, Codex, and Agy with Gemini fallback) for a second opinion, with Claude as chair in Claude Code. Three modes — multi-AI code/architecture review, decision support when the user is unsure, and ADR co-authoring. Triggers on multi-AI intent only — \"co-agent\", \"second opinion\", \"다른 AI\", \"다른 AI로 리뷰\", \"AI 협업\", \"AI 패널\", \"멀티 AI\", \"잘 모르겠어\" (decision help), \"ADR 협업\" — NOT on bare \"code review\"/\"decide\"/\"adr\" (use /co-agent for those)."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 model: fable
 skills:
@@ -9,7 +9,7 @@ skills:
 
 # co-agent
 
-Chairs a panel of **external AI agents** (Kiro CLI, Codex, Gemini) to get a second
+Chairs a panel of **external AI agents** (Kiro CLI, Codex, and Agy with Gemini fallback) to get a second
 opinion, then **synthesizes the final answer as Claude**. The external AIs advise;
 Claude decides and writes the artifact. Uses whichever AI CLIs are installed —
 degrades gracefully, never hard-fails on a missing one.
@@ -35,7 +35,7 @@ Claude is always the chair: attribute points to each AI, surface disagreement, o
 
 ```mermaid
 graph TD
-    A[요청] --> P[Step 0: 패널 감지<br/>kiro-cli / codex / gemini 중 설치된 것]
+    A[요청] --> P[Step 0: 패널 감지<br/>kiro-cli / codex / agy 중 설치된 것<br/>agy 없으면 gemini fallback]
     P --> B{의도?}
     B -->|코드/아키텍처 리뷰| R[Review: diff 팬아웃 → 종합 → PASS/REVIEW/FAIL]
     B -->|"잘 모르겠어" / 의사결정| D[Decide: 옵션 팬아웃 → 비교표 → 추천]
@@ -59,7 +59,7 @@ PANEL=""
 # NOTE: the Kiro binary is `kiro-cli` (NOT `kiro`) — the label matches the binary.
 command -v kiro-cli >/dev/null 2>&1 && PANEL="$PANEL kiro-cli"
 command -v codex    >/dev/null 2>&1 && PANEL="$PANEL codex"
-command -v gemini   >/dev/null 2>&1 && PANEL="$PANEL gemini"
+command -v agy      >/dev/null 2>&1 && PANEL="$PANEL agy" || command -v gemini >/dev/null 2>&1 && PANEL="$PANEL gemini"
 echo "Panel: ${PANEL:-none (Claude solo)}"
 ```
 
@@ -71,7 +71,7 @@ or errored output means that AI skipped this run — note it and continue.
 ## Chair principle (non-negotiable)
 
 - External AIs **advise**; **Claude decides and writes the final artifact**.
-- **Attribute** notable points ("Gemini flagged …"); **surface disagreement** rather than hide it.
+- **Attribute** notable points ("Agy flagged …"); **surface disagreement** rather than hide it.
 - Missing/errored CLI → skip, note, continue. Never block on one AI.
 - Keep every AI's prompt **identical** so answers are comparable.
 
@@ -89,6 +89,6 @@ or errored output means that AI skipped this run — note it and continue.
 
 ## Reference Files
 
-- `references/ai-cli-adapters.md` — Kiro/Codex/Gemini CLI commands, detection, fan-out, fallbacks, ADR hand-off
+- `references/ai-cli-adapters.md` — Kiro/Claude/Codex/Agy/Gemini CLI commands, detection, fan-out, fallbacks, ADR hand-off
 - `references/architecture-review-framework.md` — review rubric, severity, PASS/REVIEW/FAIL
 - `references/aws-well-architected.md` — 6-pillar checklist for review mode

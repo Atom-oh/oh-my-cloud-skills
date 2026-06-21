@@ -29,7 +29,7 @@
       "name": "co-agent",
       "version": "1.10.0",
       "source": "./plugins/co-agent",
-      "description": "Collaborate with other AI agents (Kiro CLI, Codex, Gemini) — multi-AI code/architecture review, decision support when unsure, and ADR co-authoring, with Claude as chair"
+      "description": "Collaborate with other AI agents (Kiro CLI, Codex/Claude peer host, Agy with Gemini fallback) — multi-AI code/architecture review, decision support when unsure, and ADR co-authoring"
     },
     {
       "name": "agentcore-creator",

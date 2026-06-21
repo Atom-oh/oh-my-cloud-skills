@@ -43,7 +43,7 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 
 *Multi-AI Collaboration (co-agent):*
 - **4 modes** — multi-AI review, decision support, ADR co-authoring, and `sync-context` (distill `CLAUDE.md` -> `AGENTS.md`/`GEMINI.md`)
-- **Panel of installed CLIs** — fan the same prompt to Kiro/Codex/Gemini in parallel; Claude chairs and synthesizes consensus vs. dissent (degrades gracefully if none installed)
+- **Panel of installed CLIs** — fan the same prompt to Kiro/peer host/Agy in parallel, with Gemini as fallback; the current host chairs and synthesizes consensus vs. dissent (degrades gracefully if none installed)
 - **`/co-agent:configure`** — tune per-AI model, Codex effort, enable/disable, timeout, and `autosync` (regenerate AI context on `CLAUDE.md` change)
 
 *Project Scaffolding (project-init):*
@@ -626,10 +626,10 @@ All agents activate automatically when Claude detects matching keywords in your 
 |-------|----------|
 | `kiro-convert` | Plugin-to-Kiro-Power conversion workflow |
 | `agentcore-create` | 5-phase AgentCore design, build, convert, deploy workflow |
-| `co-agent` | Multi-AI collaboration (Kiro/Codex/Gemini) — review, decision support, ADR co-authoring, and `sync-context`; Claude chairs. Commands: `/co-agent:configure`, `/co-agent:sync-context` |
+| `co-agent` | Multi-AI collaboration (Kiro/peer host/Agy, Gemini fallback) — review, decision support, ADR co-authoring, and `sync-context`; current host chairs. Commands: `/co-agent:configure`, `/co-agent:sync-context` |
 | `project-scaffolder` | Claude Code project structure patterns and conventions |
 | `pr-autofix` | Poll AI + human PR review feedback and auto-fix issues (max 3 iterations) |
-| `decision-reconcile` | Detect contradictions across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (varied Claude model tiers + optional Kiro/Codex/Gemini, one review lens each), then draft a superseding ADR |
+| `decision-reconcile` | Detect contradictions across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (varied Claude model tiers + optional Kiro/Codex/Agy, one review lens each), then draft a superseding ADR |
 
 ### Project Init Commands
 
@@ -674,7 +674,7 @@ Well-Architected:   wellarchitected-agent  -->  6-pillar scoring  -->  AS-IS/TO-
 ```
 Kiro conversion:   plugin source  -->  kiro-converter-agent  -->  Kiro Power directory  -->  install/export
 AgentCore deploy:  discovery  -->  design  -->  skill-first build  -->  AgentCore convert  -->  deploy
-Co-agent collab:     prompt  -->  fan-out to Kiro/Codex/Gemini  -->  Claude synthesizes  -->  review / decision / ADR / sync-context
+Co-agent collab:     prompt  -->  fan-out to Kiro/peer host/Agy  -->  host synthesizes  -->  review / decision / ADR / sync-context
 Doc sync:          /sync-docs  -->  doc-sync-checker  -->  quality scores  -->  update docs
 ```
 

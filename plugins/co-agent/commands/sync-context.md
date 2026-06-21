@@ -1,5 +1,5 @@
 ---
-description: Distill CLAUDE.md into the per-AI context files the panel reads — AGENTS.md (Codex) and GEMINI.md (Gemini)
+description: Distill CLAUDE.md into the per-AI context files the panel reads — AGENTS.md (Codex) and GEMINI.md (Gemini fallback)
 allowed-tools: Read, Write, Glob, Grep, Bash(python3:*)
 argument-hint: "[project-dir]  (defaults to the repo root / cwd)"
 ---
@@ -13,10 +13,10 @@ conventions. Each CLI auto-loads its own native file from the repo root:
 |----|-------|-----------|
 | Kiro | `CLAUDE.md` (root + parents) directly | ❌ |
 | Codex | `AGENTS.md` (~32 KiB cap) | ✅ |
-| Gemini | `GEMINI.md` (kept lean) | ✅ |
+| Gemini fallback | `GEMINI.md` (kept lean) | ✅ |
 
-**DISTILL — never copy `CLAUDE.md` verbatim.** All three CLIs degrade on a dumped copy
-(Codex truncates at the cap, Gemini's context window degrades, Kiro favors ~2000 words).
+**DISTILL — never copy `CLAUDE.md` verbatim.** These context channels degrade on a dumped copy
+(Codex truncates at the cap, Gemini fallback's context window degrades, Kiro favors ~2000 words).
 Produce ONE lean, review-oriented core and write it to **both** `AGENTS.md` and `GEMINI.md`.
 
 ## Steps

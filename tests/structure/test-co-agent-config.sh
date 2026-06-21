@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Tests for co-agent co_agent_config.py — panel model/effort/enabled/timeout settings.
-# Only headless-settable options are exposed (model: all 3; effort: Codex only).
+# Only headless-settable options are exposed.
 
 CFG="plugins/co-agent/skills/co-agent/scripts/co_agent_config.py"
 DEF="plugins/co-agent/skills/co-agent/co-agent.defaults.json"
+export CO_AGENT_THIRD_AI=agy
 
 assert_file_exists "$CFG" "co_agent_config.py exists"
 assert_file_executable "$CFG" "co_agent_config.py is executable"
@@ -15,10 +16,28 @@ R=$(mktemp -d "${TMPDIR:-/tmp}/coagentcfg.XXXXXX")
 SHOW=$(python3 "$CFG" show --root "$R" 2>&1)
 assert_contains "$SHOW" "kiro" "show lists kiro"
 assert_contains "$SHOW" "codex" "show lists codex"
-assert_contains "$SHOW" "gemini" "show lists gemini"
+assert_contains "$SHOW" "agy" "show lists agy"
 assert_contains "$SHOW" "240" "show reports default timeout 240"
 
-# effort is Codex-only — show marks gemini/kiro as n/a
+# Codex-hosted co-agent swaps the current host out of the advisory panel:
+# Codex chairs; Claude becomes the external reviewer instead of calling Codex again.
+CODEX_HOST_SHOW=$(python3 "$CFG" show --host codex --root "$R" 2>&1)
+assert_contains "$CODEX_HOST_SHOW" "host codex" "codex-host show reports host"
+assert_contains "$CODEX_HOST_SHOW" "claude" "codex-host show lists claude"
+CODEX_HOST_PANEL=$(python3 "$CFG" panel --host codex --root "$R" 2>&1)
+assert_eq "kiro claude agy" "$CODEX_HOST_PANEL" "codex-host panel swaps codex for claude and prefers agy"
+
+python3 "$CFG" set claude model sonnet --host codex --root "$R" >/dev/null 2>&1
+python3 "$CFG" set claude effort max --host codex --root "$R" >/dev/null 2>&1
+CLAUDE_FLAGS=$(python3 "$CFG" flags claude --host codex --root "$R" 2>&1)
+assert_contains "$CLAUDE_FLAGS" "model sonnet" "claude flags include model (--model)"
+assert_contains "$CLAUDE_FLAGS" "effort max" "claude flags include effort"
+
+# Legacy fallback can still produce a Gemini panel when Agy is unavailable.
+LEGACY_PANEL=$(CO_AGENT_THIRD_AI=gemini python3 "$CFG" panel --root "$R" 2>&1)
+assert_eq "kiro codex gemini" "$LEGACY_PANEL" "legacy fallback panel uses gemini when agy is unavailable"
+
+# effort is available only where the headless CLI supports it; others show n/a
 assert_contains "$SHOW" "n/a" "effort marked n/a for non-Codex"
 # context window column present in show
 assert_contains "$SHOW" "272,000" "show reports codex context window"
@@ -31,9 +50,9 @@ CODEX_FLAGS=$(python3 "$CFG" flags codex --root "$R" 2>&1)
 assert_contains "$CODEX_FLAGS" "m gpt-5-codex" "codex flags include model (-m)"
 assert_contains "$CODEX_FLAGS" 'model_reasoning_effort="high"' "codex flags include effort"
 
-# effort on a non-Codex AI is rejected (not a dead setting)
-python3 "$CFG" set gemini effort high --root "$R" >/dev/null 2>&1 && GE_RC=0 || GE_RC=$?
-assert_eq "2" "$GE_RC" "set gemini effort → rejected (exit 2)"
+# effort on a non-effort AI is rejected (not a dead setting)
+python3 "$CFG" set agy effort high --root "$R" >/dev/null 2>&1 && GE_RC=0 || GE_RC=$?
+assert_eq "2" "$GE_RC" "set agy effort → rejected (exit 2)"
 
 # invalid effort value rejected
 python3 "$CFG" set codex effort turbo --root "$R" >/dev/null 2>&1 && IE_RC=0 || IE_RC=$?
@@ -42,7 +61,7 @@ assert_eq "2" "$IE_RC" "invalid effort value → exit 2"
 # disable kiro → dropped from panel, enabled check fails
 python3 "$CFG" set kiro enabled false --root "$R" >/dev/null 2>&1
 PANEL=$(python3 "$CFG" panel --root "$R" 2>&1)
-assert_eq "codex gemini" "$PANEL" "disabled kiro removed from panel"
+assert_eq "codex agy" "$PANEL" "disabled kiro removed from panel"
 python3 "$CFG" enabled kiro --root "$R" >/dev/null 2>&1 && KI_RC=0 || KI_RC=$?
 assert_eq "1" "$KI_RC" "enabled kiro → exit 1 when disabled"
 python3 "$CFG" enabled codex --root "$R" >/dev/null 2>&1 && CO_RC=0 || CO_RC=$?
@@ -72,10 +91,11 @@ assert_eq "2" "$MG" "model with glob char rejected (exit 2)"
 python3 "$CFG" set codex model gpt-4.1 --root "$R" >/dev/null 2>&1 && MV=0 || MV=$?
 assert_eq "0" "$MV" "valid model accepted (exit 0)"
 
-# context-size guard: defaults Kiro/Gemini 1M, Codex 272K
+# context-size guard: defaults Kiro/Agy 1M, Codex 272K
 R3=$(mktemp -d "${TMPDIR:-/tmp}/coagentctx3.XXXXXX")
 assert_eq "272000" "$(python3 "$CFG" context-limit codex --root "$R3" 2>&1)" "codex default context-limit 272000"
 assert_eq "1000000" "$(python3 "$CFG" context-limit kiro --root "$R3" 2>&1)" "kiro default context-limit 1000000"
+assert_eq "1000000" "$(python3 "$CFG" context-limit agy --root "$R3" 2>&1)" "agy default context-limit 1000000"
 python3 "$CFG" fits codex 200000 --root "$R3" >/dev/null 2>&1 && F1=0 || F1=$?
 assert_eq "0" "$F1" "200K tokens fits codex window (exit 0)"
 python3 "$CFG" fits codex 812861 --root "$R3" >/dev/null 2>&1 && F2=0 || F2=$?
@@ -94,3 +114,4 @@ assert_file_exists "$R/.claude/co-agent.local.json" "writes .claude/co-agent.loc
 assert_json_valid "$R/.claude/co-agent.local.json" "local override is valid JSON"
 
 rm -rf "$R"
+unset CO_AGENT_THIRD_AI
