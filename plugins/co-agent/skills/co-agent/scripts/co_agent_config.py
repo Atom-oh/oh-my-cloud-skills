@@ -412,6 +412,47 @@ def cmd_implementer(root, host):
     return 0
 
 
+def cmd_impl_flags(root, ai, host):
+    """Write-mode flags for the harness implementer: a workspace-write sandbox scoped
+    to the worktree, plus the AI's configured model/effort. ONLY for the implement path
+    — review/gate paths use the read-only `flags` command."""
+    if ai == host:
+        print(f"implementer '{ai}' cannot equal host '{host}'", file=sys.stderr)
+        return 2
+    if ai not in ALL_AIS:
+        print(f"unknown ai '{ai}'", file=sys.stderr)
+        return 2
+    p = effective(root)["panel"].get(ai, {})
+    model = p.get("model")
+    parts = []
+    if ai == "codex":
+        parts += ["-s", "workspace-write"]
+        if model:
+            parts += ["-m", model]
+        if p.get("effort"):
+            parts += ["-c", f'model_reasoning_effort="{p["effort"]}"']
+    elif ai == "claude":
+        parts += ["--permission-mode", "acceptEdits"]
+        if model:
+            parts += ["--model", model]
+        if p.get("effort"):
+            parts += ["--effort", p["effort"]]
+    elif ai == "agy":
+        parts += ["--sandbox"]
+        if model:
+            parts += ["--model", model]
+    elif ai == "kiro":
+        parts += ["--trust-tools=read,write,grep"]
+        if model:
+            parts += ["--model", model]
+    elif ai == "gemini":
+        parts += ["--yolo"]
+        if model:
+            parts += ["-m", model]
+    print(" ".join(parts))
+    return 0
+
+
 def main():
     # Parse out global flags precisely (don't drop positional args that equal the path).
     argv, root, host_arg, args, i = sys.argv[1:], os.getcwd(), None, [], 0
@@ -460,6 +501,8 @@ def main():
         return cmd_matrix(root, host)
     if cmd == "implementer":
         return cmd_implementer(root, host)
+    if cmd == "impl-flags":
+        return cmd_impl_flags(root, rest[0], host) if rest else 2
     print(__doc__)
     return 2
 
