@@ -38,3 +38,15 @@ assert_eq "needs-human" "$(python3 "$ST" get "$R3" status 2>&1)" "get status ret
 python3 "$ST" set "$R3" status bogus >/dev/null 2>&1 && BRC=0 || BRC=$?
 assert_eq "2" "$BRC" "invalid status still rejected (exit 2)"
 rm -rf "$R3"
+
+# --- Task 4: stage-result output gate ---
+R4=$(mktemp -d "${TMPDIR:-/tmp}/coagent-harness4.XXXXXX")
+python3 "$ST" stage-result check "$R4/missing.json" >/dev/null 2>&1 && M=0 || M=$?
+assert_eq "1" "$M" "stage-result check on missing artifact fails (exit 1)"
+python3 "$ST" stage-result write "$R4/plan-gate/result.json" --stage plan-gate --verdict PASS --rounds 1 --wall "$R4/stage_wall.tsv" >/dev/null 2>&1
+assert_file_exists "$R4/plan-gate/result.json" "stage-result write creates result.json"
+assert_json_valid "$R4/plan-gate/result.json" "result.json is valid JSON"
+python3 "$ST" stage-result check "$R4/plan-gate/result.json" >/dev/null 2>&1 && C=0 || C=$?
+assert_eq "0" "$C" "stage-result check on valid artifact passes (exit 0)"
+assert_contains "$(cat "$R4/stage_wall.tsv")" "plan-gate" "stage_wall.tsv got a row"
+rm -rf "$R4"

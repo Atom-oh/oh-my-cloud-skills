@@ -298,6 +298,55 @@ def cmd_cumulative_diff(root, plan_path, base):
     return 0
 
 
+def cmd_stage_result(rest):
+    """Durable per-stage output gate.
+      stage-result write <path> --stage S --verdict PASS|REVIEW|FAIL [--green b]
+                        [--in-scope b] [--rounds N] [--implementer ai] [--wall tsv]
+      stage-result check <path>   # exit 0 if exists + schema-valid, else 1
+    """
+    if not rest or rest[0] not in ("write", "check") or len(rest) < 2:
+        print("usage: stage-result write <path> --stage S --verdict V [...] | check <path>", file=sys.stderr)
+        return 2
+    action, path, args = rest[0], rest[1], rest[2:]
+    if action == "check":
+        if not os.path.isfile(path):
+            return 1
+        try:
+            d = json.load(open(path, encoding="utf-8"))
+        except Exception:
+            return 1
+        return 0 if d.get("stage") and d.get("verdict") in ("PASS", "REVIEW", "FAIL") else 1
+    # write
+    opts, i = {}, 0
+    while i < len(args):
+        if args[i].startswith("--") and i + 1 < len(args):
+            opts[args[i][2:]] = args[i + 1]
+            i += 2
+        else:
+            i += 1
+    verdict = opts.get("verdict")
+    if not opts.get("stage") or verdict not in ("PASS", "REVIEW", "FAIL"):
+        print("stage-result write needs --stage and --verdict PASS|REVIEW|FAIL", file=sys.stderr)
+        return 2
+    rec = {"stage": opts["stage"], "verdict": verdict}
+    for k in ("green", "in-scope"):
+        if k in opts:
+            rec[k.replace("-", "_")] = opts[k].lower() in ("true", "1", "yes")
+    if "rounds" in opts:
+        rec["rounds"] = int(opts["rounds"]) if opts["rounds"].isdigit() else 0
+    if "implementer" in opts:
+        rec["implementer"] = opts["implementer"]
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(rec, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+    if "wall" in opts:
+        with open(opts["wall"], "a", encoding="utf-8") as w:
+            w.write(f"{rec['stage']}\t{verdict}\t{rec.get('green', '')}\n")
+    print(f"✅ wrote {path}")
+    return 0
+
+
 def main():
     a = sys.argv[1:]
     if not a:
@@ -336,6 +385,8 @@ def main():
         plan = opt_after(rest, "--plan")
         base = opt_after(rest, "--base") or "main"
         return cmd_cumulative_diff(root, plan, base) if plan else 2
+    if cmd == "stage-result":
+        return cmd_stage_result(rest)
     print(__doc__)
     return 2
 
