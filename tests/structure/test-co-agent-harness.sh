@@ -50,3 +50,20 @@ python3 "$ST" stage-result check "$R4/plan-gate/result.json" >/dev/null 2>&1 && 
 assert_eq "0" "$C" "stage-result check on valid artifact passes (exit 0)"
 assert_contains "$(cat "$R4/stage_wall.tsv")" "plan-gate" "stage_wall.tsv got a row"
 rm -rf "$R4"
+
+# --- Task 5: rebind after manual commit ---
+R5=$(mktemp -d "${TMPDIR:-/tmp}/coagent-harness5.XXXXXX")
+git -C "$R5" init -q
+git -C "$R5" config user.email t@t.t; git -C "$R5" config user.name t
+printf '.claude/\n' > "$R5/.gitignore"   # session state is gitignored (as in the real repo)
+git -C "$R5" add .gitignore >/dev/null 2>&1
+git -C "$R5" commit -q -m init >/dev/null 2>&1
+python3 "$ST" init "$R5" --docs none --base HEAD >/dev/null 2>&1
+git -C "$R5" commit -q --allow-empty -m "manual fix" >/dev/null 2>&1
+python3 "$ST" verify "$R5" >/dev/null 2>&1 && V1=0 || V1=$?
+assert_eq "1" "$V1" "verify fails after HEAD drift (exit 1)"
+python3 "$ST" rebind "$R5" >/dev/null 2>&1 && RB=0 || RB=$?
+assert_eq "0" "$RB" "rebind succeeds (exit 0)"
+python3 "$ST" verify "$R5" >/dev/null 2>&1 && V2=0 || V2=$?
+assert_eq "0" "$V2" "verify passes after rebind (exit 0)"
+rm -rf "$R5"

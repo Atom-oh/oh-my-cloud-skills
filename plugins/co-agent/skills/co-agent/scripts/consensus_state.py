@@ -298,6 +298,23 @@ def cmd_cumulative_diff(root, plan_path, base):
     return 0
 
 
+def cmd_rebind(root):
+    """Re-record HEAD to the current commit so verify passes after an intentional
+    manual commit (e.g. resuming a needs-human escalation)."""
+    s = read_state(root)
+    if s is None:
+        print("no active consensus session (run init)", file=sys.stderr)
+        return 2
+    head = _git(root, "rev-parse", "HEAD")
+    if not head:
+        print("cannot read HEAD", file=sys.stderr)
+        return 2
+    s["head"] = head
+    write_state(root, s)
+    print(f"✅ rebound head → {head[:8]}")
+    return 0
+
+
 def cmd_stage_result(rest):
     """Durable per-stage output gate.
       stage-result write <path> --stage S --verdict PASS|REVIEW|FAIL [--green b]
@@ -387,6 +404,8 @@ def main():
         return cmd_cumulative_diff(root, plan, base) if plan else 2
     if cmd == "stage-result":
         return cmd_stage_result(rest)
+    if cmd == "rebind":
+        return cmd_rebind(root)
     print(__doc__)
     return 2
 
