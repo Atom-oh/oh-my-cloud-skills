@@ -26,8 +26,12 @@ co-agent
   ├── Review       : git diff → 동일 프롬프트 팬아웃 → 합의/이견 종합 → PASS/REVIEW/FAIL
   ├── Decide       : 결정+옵션 팬아웃 → 비교표 → Claude 추천 (의장)
   ├── ADR          : 대안·트레이드오프·리스크 팬아웃 → Nygard ADR 초안 → /add-adr 연동
-  └── sync-context : CLAUDE.md 증류 → AGENTS.md(Codex)·GEMINI.md(Gemini fallback) 생성 (Kiro는 CLAUDE.md 직접 사용)
+  ├── sync-context : CLAUDE.md 증류 → AGENTS.md(Codex)·GEMINI.md(Gemini fallback) 생성 (Kiro는 CLAUDE.md 직접 사용)
+  ├── consensus    : doc→plan→구현 자율 파이프라인 + 멀티모델 게이트 (`/co-agent:consensus`)
+  └── harness      : host 설계 / peer 구현(격리 worktree+workspace-write) / 패널 리뷰; host가 red·커밋 소유 (`/co-agent:harness`)
 ```
+
+> harness 신뢰 경계·태스크 루프: `skills/co-agent/references/delegated-implement.md`. 구현자 선택/쓰기 플래그: `co_agent_config.py implementer|impl-flags`.
 
 ## AI Context Files (per-AI project docs)
 
