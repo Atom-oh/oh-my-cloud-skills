@@ -57,6 +57,19 @@ assert_json_valid "$R4/plan-gate/result.json" "result.json is valid JSON"
 python3 "$ST" stage-result check "$R4/plan-gate/result.json" >/dev/null 2>&1 && C=0 || C=$?
 assert_eq "0" "$C" "stage-result check on valid artifact passes (exit 0)"
 assert_contains "$(cat "$R4/stage_wall.tsv")" "plan-gate" "stage_wall.tsv got a row"
+# R2-E: the output gate must STOP on FAIL / green=false / in_scope=false
+python3 "$ST" stage-result write "$R4/fail.json" --stage g --verdict FAIL >/dev/null 2>&1
+python3 "$ST" stage-result check "$R4/fail.json" >/dev/null 2>&1 && FG=0 || FG=$?
+assert_eq "1" "$FG" "stage-result check fails on verdict FAIL (exit 1)"
+python3 "$ST" stage-result write "$R4/red.json" --stage t --verdict PASS --green false >/dev/null 2>&1
+python3 "$ST" stage-result check "$R4/red.json" >/dev/null 2>&1 && RG=0 || RG=$?
+assert_eq "1" "$RG" "stage-result check fails when green=false (exit 1)"
+python3 "$ST" stage-result write "$R4/oos.json" --stage t --verdict PASS --in-scope false >/dev/null 2>&1
+python3 "$ST" stage-result check "$R4/oos.json" >/dev/null 2>&1 && OG=0 || OG=$?
+assert_eq "1" "$OG" "stage-result check fails when in_scope=false (exit 1)"
+python3 "$ST" stage-result write "$R4/ok.json" --stage t --verdict PASS --green true --in-scope true >/dev/null 2>&1
+python3 "$ST" stage-result check "$R4/ok.json" >/dev/null 2>&1 && OK=0 || OK=$?
+assert_eq "0" "$OK" "stage-result check passes on PASS + green + in_scope (exit 0)"
 rm -rf "$R4"
 
 # --- Task 5: rebind after manual commit ---

@@ -329,10 +329,19 @@ def cmd_stage_result(rest):
         if not os.path.isfile(path):
             return 1
         try:
-            d = json.load(open(path, encoding="utf-8"))
+            with open(path, encoding="utf-8") as f:
+                d = json.load(f)
         except Exception:
             return 1
-        return 0 if d.get("stage") and d.get("verdict") in ("PASS", "REVIEW", "FAIL") else 1
+        # Schema present?
+        if not d.get("stage") or d.get("verdict") not in ("PASS", "REVIEW", "FAIL"):
+            return 1
+        # Output gate: STOP on a failed gate or a red / out-of-scope task result.
+        if d.get("verdict") == "FAIL":
+            return 1
+        if d.get("green") is False or d.get("in_scope") is False:
+            return 1
+        return 0
     # write
     opts, i = {}, 0
     while i < len(args):
