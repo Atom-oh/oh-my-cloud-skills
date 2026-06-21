@@ -43,7 +43,13 @@ def main():
             print("usage: worktree.py add <wt_path> --base <ref>", file=sys.stderr)
             return 2
         wt = argv[1]
-        base = argv[argv.index("--base") + 1] if "--base" in argv else "HEAD"
+        base = "HEAD"
+        if "--base" in argv:
+            bi = argv.index("--base") + 1
+            if bi >= len(argv):
+                print("usage: worktree.py add <wt_path> --base <ref>", file=sys.stderr)
+                return 2
+            base = argv[bi]
         r = git(root, "worktree", "add", wt, base)
         sys.stderr.write(r.stderr)
         return r.returncode

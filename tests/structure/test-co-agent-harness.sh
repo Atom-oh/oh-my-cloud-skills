@@ -134,6 +134,10 @@ assert_eq "0" "$([ -e "$W/PWNED" ] && echo 1 || echo 0)" "capture-diff uses --no
 # D: capture-diff on a non-git path surfaces the failure (non-zero)
 python3 "$WT" capture-diff "$R7/nope" >/dev/null 2>&1 && DF=0 || DF=$?
 assert_grep_no_match "^0$" "$DF" "capture-diff on a non-git path returns non-zero"
+# R2-H: `--base` as the last arg with no value must not crash (graceful exit 2, no IndexError)
+ERR=$(python3 "$WT" add "$R7/.wt-x" --base 2>&1); BR=$?
+assert_eq "2" "$BR" "worktree add --base with no value → graceful exit 2"
+assert_grep_no_match "IndexError|Traceback" "$ERR" "worktree add --base with no value → no Python traceback"
 rm -rf "$R7"
 
 # --- Task 7: delegated-implement reference ---
