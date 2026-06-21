@@ -67,3 +67,24 @@ assert_eq "0" "$RB" "rebind succeeds (exit 0)"
 python3 "$ST" verify "$R5" >/dev/null 2>&1 && V2=0 || V2=$?
 assert_eq "0" "$V2" "verify passes after rebind (exit 0)"
 rm -rf "$R5"
+
+# --- Task 6: worktree helper excludes gitignored, keeps new source ---
+R6=$(mktemp -d "${TMPDIR:-/tmp}/coagent-harness6.XXXXXX")
+git -C "$R6" init -q
+git -C "$R6" config user.email t@t.t; git -C "$R6" config user.name t
+printf 'secret.env\n' > "$R6/.gitignore"
+git -C "$R6" add .gitignore >/dev/null 2>&1
+git -C "$R6" commit -q -m init >/dev/null 2>&1
+assert_file_exists "$WT" "worktree.py exists"
+WTD="$R6/.wt-task0"
+python3 "$WT" add "$WTD" --base HEAD --root "$R6" >/dev/null 2>&1 && A=0 || A=$?
+assert_eq "0" "$A" "worktree add succeeds"
+printf 'def f():\n    return 1\n' > "$WTD/feature.py"
+printf 'TOKEN=abc\n' > "$WTD/secret.env"
+DIFF=$(python3 "$WT" capture-diff "$WTD" 2>/dev/null)
+assert_contains "$DIFF" "feature.py" "capture-diff includes the new non-ignored file"
+assert_grep_no_match "secret.env" "$DIFF" "capture-diff excludes the gitignored file"
+python3 "$WT" remove "$WTD" --root "$R6" >/dev/null 2>&1 && RM=0 || RM=$?
+assert_eq "0" "$RM" "worktree remove succeeds"
+assert_eq "" "$(git -C "$R6" worktree list --porcelain | grep -F "$WTD")" "no stale worktree ref after remove"
+rm -rf "$R6"
