@@ -14,12 +14,16 @@ Usage:
 
 Exit: 0 ok · 2 usage error · git's return code on failure.
 """
+import os
 import sys
 import subprocess
 
+# Neutralize system/global git config when reading an untrusted worktree.
+_CLEAN_ENV = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null"}
 
-def git(cwd, *args):
-    return subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True)
+
+def git(cwd, *args, env=None):
+    return subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, env=env)
 
 
 def main():
@@ -49,8 +53,24 @@ def main():
             print("usage: worktree.py capture-diff <wt_path>", file=sys.stderr)
             return 2
         wt = argv[1]
-        git(wt, "add", "-A")              # respects .gitignore — ignored files not staged
-        r = git(wt, "diff", "--cached")
+        # Reset the index first so a peer's pre-staged `git add -f <ignored>` can't sneak in.
+        rst = git(wt, "reset", "-q", env=_CLEAN_ENV)
+        if rst.returncode != 0:
+            sys.stderr.write(rst.stderr)
+            return rst.returncode
+        add = git(wt, "add", "-A", env=_CLEAN_ENV)   # respects .gitignore for untracked
+        if add.returncode != 0:                      # surface failures — never emit a stale diff
+            sys.stderr.write(add.stderr)
+            return add.returncode
+        # Unstage tracked-but-ignored files (committed before being gitignored).
+        ig = git(wt, "ls-files", "--cached", "-i", "--exclude-standard", env=_CLEAN_ENV)
+        ignored = [p for p in ig.stdout.splitlines() if p]
+        if ignored:
+            git(wt, "reset", "-q", "--", *ignored, env=_CLEAN_ENV)
+        # --no-ext-diff blocks external diff drivers (.gitattributes / diff.external RCE);
+        # attributesFile=/dev/null + clean env drop system/global influence.
+        r = git(wt, "-c", "core.attributesFile=/dev/null",
+                "diff", "--cached", "--no-ext-diff", "--binary", env=_CLEAN_ENV)
         sys.stdout.write(r.stdout)
         return r.returncode
 

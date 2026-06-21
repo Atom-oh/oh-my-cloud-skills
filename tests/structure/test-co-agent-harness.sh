@@ -97,6 +97,32 @@ assert_eq "0" "$RM" "worktree remove succeeds"
 assert_eq "" "$(git -C "$R6" worktree list --porcelain | grep -F "$WTD")" "no stale worktree ref after remove"
 rm -rf "$R6"
 
+# --- R2-BCD: capture-diff hardening (bypass cases) ---
+R7=$(mktemp -d "${TMPDIR:-/tmp}/coagent-harness7.XXXXXX")
+git -C "$R7" init -q
+git -C "$R7" config user.email t@t.t; git -C "$R7" config user.name t
+printf 'secret.env\n' > "$R7/.gitignore"
+git -C "$R7" add .gitignore >/dev/null 2>&1
+git -C "$R7" commit -q -m init >/dev/null 2>&1
+W="$R7/.wt"
+python3 "$WT" add "$W" --base HEAD --root "$R7" >/dev/null 2>&1
+# B: peer force-stages an ignored file; capture-diff must reset the index and exclude it
+printf 'TOKEN=abc\n' > "$W/secret.env"
+git -C "$W" add -f secret.env >/dev/null 2>&1
+printf 'def f():\n    return 1\n' > "$W/feature.py"
+DIFF=$(python3 "$WT" capture-diff "$W" 2>/dev/null) && CD=0 || CD=$?
+assert_grep_no_match "secret.env" "$DIFF" "capture-diff resets index — pre-staged (add -f) ignored file excluded"
+assert_contains "$DIFF" "feature.py" "capture-diff still includes the legitimate new file"
+# C: an external diff driver in the worktree must NOT execute during capture-diff
+git -C "$W" config diff.evil.command "touch $W/PWNED" >/dev/null 2>&1
+printf '*.py diff=evil\n' > "$W/.gitattributes"
+python3 "$WT" capture-diff "$W" >/dev/null 2>&1
+assert_eq "0" "$([ -e "$W/PWNED" ] && echo 1 || echo 0)" "capture-diff uses --no-ext-diff — external diff driver did NOT execute"
+# D: capture-diff on a non-git path surfaces the failure (non-zero)
+python3 "$WT" capture-diff "$R7/nope" >/dev/null 2>&1 && DF=0 || DF=$?
+assert_grep_no_match "^0$" "$DF" "capture-diff on a non-git path returns non-zero"
+rm -rf "$R7"
+
 # --- Task 7: delegated-implement reference ---
 REF="plugins/co-agent/skills/co-agent/references/delegated-implement.md"
 assert_file_exists "$REF" "delegated-implement.md exists"
