@@ -52,3 +52,13 @@ assert_eq "READY" "$(PATH="$S2:$PATH" python3 "$CP" status codex --root "$R" 2>&
 assert_eq "raw"   "$(PATH="$S2:$PATH" python3 "$CP" access codex --root "$R" 2>&1)" "access reader returns codex raw (no plugin)"
 assert_eq "none"  "$(python3 "$CP" access codex --root "$(mktemp -d)" 2>&1)" "access reader: no summary → sane default none"
 rm -rf "$S2" "$R"
+
+# --- Task 5: command + manifest wiring ---
+CMD="plugins/co-agent/commands/setup.md"
+assert_file_exists "$CMD" "setup command file exists"
+assert_contains "$(cat "$CMD" 2>/dev/null)" "check_panel.py" "command runs check_panel.py"
+assert_contains "$(cat "$CMD" 2>/dev/null)" "marketplace add" "command offers the official plugin install"
+PJ="plugins/co-agent/.claude-plugin/plugin.json"
+assert_eq "True" "$(python3 -c "import json;print('./commands/setup.md' in json.load(open('$PJ'))['commands'])" 2>&1)" "setup registered in plugin.json"
+assert_contains "$(cat plugins/co-agent/skills/co-agent/SKILL.md 2>/dev/null)" "co-agent:setup" "SKILL.md mentions setup"
+assert_contains "$(cat .gitignore 2>/dev/null)" "co-agent-panel.local.json" "panel summary is gitignored"

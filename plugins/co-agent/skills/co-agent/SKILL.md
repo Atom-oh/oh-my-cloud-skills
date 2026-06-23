@@ -208,6 +208,12 @@ reviews. Opt-in, local commits only. Per-task loop, trust boundary, and fallback
 **`references/delegated-implement.md`**. Implementer selection / write-mode flags:
 `co_agent_config.py implementer|impl-flags`.
 
+### Setup — panel-readiness preflight  (the standalone command **`/co-agent:setup`**)
+Detects each peer's best access path (official plugin → raw CLI + install nudge → none),
+probes real CLI usability, and records a readiness summary to `.claude/co-agent-panel.local.json`
+that review / consensus / harness consult (READY peers only). Run it once before relying on the
+panel; auth fixes stay guidance-only.
+
 ## Chair principle (non-negotiable)
 
 - External AIs **advise**; **the current host decides and writes the final artifact**.

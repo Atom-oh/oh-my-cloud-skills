@@ -46,6 +46,9 @@ docs/.docusaurus/
 # co-agent consensus session artifacts (raw model outputs, validated findings — ephemeral)
 .claude/co-agent-consensus/
 
+# co-agent panel-readiness summary (written by /co-agent:setup — machine-local)
+.claude/co-agent-panel.local.json
+
 # scratch working dir (presentation/demo authoring — not tracked)
 work/
 

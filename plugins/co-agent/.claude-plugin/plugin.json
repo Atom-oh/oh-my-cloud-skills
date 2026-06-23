@@ -15,7 +15,8 @@
     "./commands/configure.md",
     "./commands/sync-context.md",
     "./commands/consensus.md",
-    "./commands/harness.md"
+    "./commands/harness.md",
+    "./commands/setup.md"
   ],
   "hooks": {
     "PostToolUse": [
