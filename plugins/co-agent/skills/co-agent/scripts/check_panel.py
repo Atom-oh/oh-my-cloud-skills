@@ -43,7 +43,7 @@ def detect_plugin(peer, plugins_root):
         return False
     needle = repo.split("/")[-1]   # e.g. "codex-plugin-cc"
     for dirpath, dirnames, _files in os.walk(plugins_root):
-        if needle in os.path.basename(dirpath) or needle in dirnames:
+        if os.path.basename(dirpath) == needle or needle in dirnames:
             return True
     return False
 
@@ -55,7 +55,7 @@ def decide_access(peer, has_cli, has_plugin):
         return "raw", peer in PEER_PLUGINS   # suggest installing the official plugin if one exists
     return "none", False
 
-_AUTH_RE = re.compile(r"not logged in|unauthenticated|please (log|sign) in|run .*login|401|auth", re.I)
+_AUTH_RE = re.compile(r"not logged in|unauthenticated|please (log|sign) in|run .*login|\b401\b|\b403\b|forbidden", re.I)
 
 
 def classify(sentinel, stdout, stderr, returncode, timed_out):
@@ -90,6 +90,7 @@ ADAPTERS = {
     "codex":    {"argv": ["codex", "exec", "-s", "read-only", "{P}"], "channel": "stdin"},
     "agy":      {"argv": ["agy", "-p", "{P}", "--sandbox"], "channel": "stdin"},
     "gemini":   {"argv": ["gemini", "-p", "{P}", "-o", "text"], "channel": "stdin"},
+    "claude":   {"argv": ["claude", "-p", "{P}", "--permission-mode", "plan", "--output-format", "text"], "channel": "stdin"},
     "kiro-cli": {"argv": ["kiro-cli", "chat", "{I}", "--v3", "--mode", "default",
                           "--no-interactive", "--trust-tools=fs_read", "--wrap", "never"],
                  "channel": "argv"},

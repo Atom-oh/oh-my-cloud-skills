@@ -69,3 +69,22 @@ assert_contains "$(cat "$ADP" 2>/dev/null)" " --v3" "Kiro adapter documents --v3
 assert_contains "$(cat "$ADP" 2>/dev/null)" "fs_read" "Kiro adapter uses fs_read tool name"
 assert_contains "$(cat "$ADP" 2>/dev/null)" "co-agent-panel.local.json" "adapters doc references readiness summary"
 assert_contains "$(cat plugins/co-agent/commands/harness.md 2>/dev/null)" "co-agent-panel" "harness consults readiness (run /co-agent:setup)"
+
+# --- Task 7: review-fix regressions (I1 claude probe, I2 narrowed auth regex, #3 exact plugin-dir match) ---
+# I1: claude is a legitimate read-only peer when codex hosts; it must be probeable via stdin.
+S7=$(mktemp -d "${TMPDIR:-/tmp}/coagent-shim7.XXXXXX")
+printf '#!/usr/bin/env bash\ncat\n' > "$S7/claude"; chmod +x "$S7/claude"
+ln -sf "$(command -v python3)" "$S7/python3"
+assert_eq "READY" "$(PATH="$S7:$PATH" python3 "$CP" probe claude 2>&1)" "I1: claude adapter present, stdin-echo → READY"
+rm -rf "$S7"
+
+# I2: exit-0 output containing "author" must NOT be misclassified AUTH; genuine "not logged in" on exit 1 still AUTH.
+assert_eq "NO_INGEST" "$(cl TOK 'written by the author' 0 0)" "I2: 'author' on exit0 → NO_INGEST (not AUTH)"
+assert_eq "AUTH" "$(cl TOK 'Error: not logged in' 1 0)" "I2: 'not logged in' on exit1 → still AUTH"
+
+# #3: detect_plugin uses an exact basename match — a fork dir must not falsely satisfy codex's official plugin.
+DP_FORK=$(mktemp -d "${TMPDIR:-/tmp}/coagent-pf.XXXXXX"); mkdir -p "$DP_FORK/codex-plugin-cc-fork"
+assert_eq "False" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_FORK'))" 2>&1)" "#3: codex-plugin-cc-fork does NOT match official plugin"
+DP_OK=$(mktemp -d "${TMPDIR:-/tmp}/coagent-po.XXXXXX"); mkdir -p "$DP_OK/codex-plugin-cc"
+assert_eq "True" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_OK'))" 2>&1)" "#3: exact codex-plugin-cc dir matches"
+rm -rf "$DP_FORK" "$DP_OK"
