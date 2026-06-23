@@ -631,7 +631,7 @@ aws-ops-power/
 |------|----------|
 | `kiro-convert` | 플러그인-to-Kiro-Power 변환 워크플로우 |
 | `agentcore-create` | 5단계 AgentCore 설계, 빌드, 변환, 배포 워크플로우 |
-| `co-agent` | 멀티-AI 협업 (Kiro/peer host/Agy, Gemini fallback) — 리뷰, 의사결정 보조, ADR 협업, `sync-context`; 현재 host가 의장. 명령: `/co-agent:configure`, `/co-agent:sync-context` |
+| `co-agent` | 멀티-AI 협업 (Kiro/peer host/Agy, Gemini fallback) — 리뷰, 의사결정 보조, ADR 협업, `sync-context`; 현재 host가 의장. 명령: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus`, `/co-agent:harness`, `/co-agent:setup` |
 | `project-scaffolder` | Claude Code 프로젝트 구조 패턴 및 컨벤션 |
 | `pr-autofix` | AI + 사람 PR 리뷰 피드백 polling 후 이슈 자동 수정 (최대 3회 반복) |
 | `decision-reconcile` | 누적 ADR 간 모순(및 ADR vs 현실 drift)을 다양성 멀티 에이전트 패널(Claude 모델 티어 + 선택적 Kiro/Codex/Antigravity-또는-Gemini, 렌즈 1개씩)로 검출 후 번복 ADR 초안 작성 |

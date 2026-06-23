@@ -631,7 +631,7 @@ All agents activate automatically when Claude detects matching keywords in your 
 |-------|----------|
 | `kiro-convert` | Plugin-to-Kiro-Power conversion workflow |
 | `agentcore-create` | 5-phase AgentCore design, build, convert, deploy workflow |
-| `co-agent` | Multi-AI collaboration (Kiro/peer host/Agy, Gemini fallback) — review, decision support, ADR co-authoring, and `sync-context`; current host chairs. Commands: `/co-agent:configure`, `/co-agent:sync-context` |
+| `co-agent` | Multi-AI collaboration (Kiro/peer host/Agy, Gemini fallback) — review, decision support, ADR co-authoring, and `sync-context`; current host chairs. Commands: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus`, `/co-agent:harness`, `/co-agent:setup` |
 | `project-scaffolder` | Claude Code project structure patterns and conventions |
 | `pr-autofix` | Poll AI + human PR review feedback and auto-fix issues (max 3 iterations) |
 | `decision-reconcile` | Detect contradictions across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (varied Claude model tiers + optional Kiro/Codex/Agy, one review lens each), then draft a superseding ADR |

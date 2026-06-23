@@ -59,9 +59,9 @@ implementer with `co_agent_config.py impl-flags <ai> --host "$HOST"` **inside th
 `tests/run-all.sh` **on main** → bounded fix loop (`harness.max_fix_rounds`) → `stage-result`
 → **host commits once**: before H3a, record the pre-task checkpoint SHA
 (`CKPT=$(git rev-parse HEAD)`); on green, fold the red-test commit and the implementation
-into **one passing commit** (`git commit --amend` onto the red-test commit, or
-`git reset --soft "$CKPT" && git commit`) so the branch never carries a committed-but-red
-test → `worktree.py remove`. Fallback chain: counterpart → other peer → host-implement.
+into **one passing commit** with `git commit --amend` onto the red-test commit (no
+`reset`/`rebase` — consistent with the "never reset/rebase autonomously" constraint) so
+the branch never carries a committed-but-red test → `worktree.py remove`. Fallback chain: counterpart → other peer → host-implement.
 **On exhausted fix loop / abort**: undo the red-test commit with
 `git revert --no-edit <red-test-sha>` — a non-destructive inverse commit that leaves nothing
 red staged or in the working tree (do **not** use `git reset --soft`, which keeps the red
