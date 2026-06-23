@@ -11,7 +11,7 @@ preferred over Gemini, with Gemini retained only as the legacy fallback.
 # Detect by binary presence only. kiro-cli is usable headless via an interactive
 # login session OR $KIRO_API_KEY — do NOT require the env key. An unauthenticated
 # CLI simply errors at call time and is skipped (graceful fallback).
-command -v kiro-cli >/dev/null 2>&1 && echo "kiro ok"
+command -v kiro-cli >/dev/null 2>&1 && echo "kiro-cli ok"
 command -v claude   >/dev/null 2>&1 && echo "claude ok"
 command -v codex    >/dev/null 2>&1 && echo "codex ok"
 command -v agy      >/dev/null 2>&1 && echo "agy ok" || command -v gemini >/dev/null 2>&1 && echo "gemini fallback ok"
@@ -21,7 +21,7 @@ command -v agy      >/dev/null 2>&1 && echo "agy ok" || command -v gemini >/dev/
 
 | AI | Command | Notes |
 |----|---------|-------|
-| **Kiro** | `kiro-cli chat "<PROMPT>" --no-interactive --trust-tools=read,grep --wrap never` | ⚠️ Binary is **`kiro-cli`**, NOT `kiro` — a bare `kiro` fails. Auth via interactive login **or** `KIRO_API_KEY` (Pro/Pro+/Power) — either works headless. `--wrap never` = clean output. Pipe ctx: `echo "$CTX" \| kiro-cli chat … --no-interactive`. |
+| **Kiro** | `kiro-cli chat "<PROMPT>" --no-interactive --trust-tools=read,grep --wrap never` | ⚠️ The binary is **`kiro-cli`** — always invoke it by that exact name. Auth via interactive login **or** `KIRO_API_KEY` (Pro/Pro+/Power) — either works headless. `--wrap never` = clean output. Pipe ctx: `echo "$CTX" \| kiro-cli chat … --no-interactive`. |
 | **Claude** | `claude -p "<PROMPT>" --permission-mode plan --tools Read,Grep,Glob --output-format text` | Used only when Codex is the host. Plan permission mode + read-only tools keep the call advisory. Pipe ctx: `cat ctx \| claude -p "<PROMPT>" …`. |
 | **Codex** | `codex exec -s read-only "<PROMPT>"` | `-s read-only` = read-only sandbox (no writes). Pipe ctx: `cat ctx \| codex exec -s read-only "<PROMPT>"`. Free tier has model limits. |
 | **Agy** | `agy -p "<PROMPT>" --sandbox` | Preferred third reviewer. Pipe ctx: `cat ctx \| agy -p "<PROMPT>" --sandbox`. |
@@ -55,9 +55,9 @@ python3 "$CFG" pairs --host "$HOST" 2>/dev/null | while IFS=$'\t' read -r ai mod
     echo "[skip] $ai/$model — context ~${TOKENS} tok > model window"; continue
   fi
   case "$ai" in
-    kiro)   command -v kiro-cli >/dev/null 2>&1 && ( cat "$CTX_FILE" | timeout "$T" \
+    kiro-cli)   command -v kiro-cli >/dev/null 2>&1 && ( cat "$CTX_FILE" | timeout "$T" \
               kiro-cli chat "$PROMPT" "${MFLAGS[@]}" --no-interactive --trust-tools=read,grep --wrap never \
-              > "$slot.md" 2>"$slot.err" || echo "[skip] kiro/$model" ) & ;;
+              > "$slot.md" 2>"$slot.err" || echo "[skip] kiro-cli/$model" ) & ;;
     claude) command -v claude >/dev/null 2>&1 && ( cat "$CTX_FILE" | timeout "$T" \
               claude -p "$PROMPT" "${MFLAGS[@]}" --permission-mode plan --tools Read,Grep,Glob --output-format text \
               > "$slot.md" 2>"$slot.err" || echo "[skip] claude/$model" ) & ;;

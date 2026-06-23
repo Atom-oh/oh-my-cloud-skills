@@ -18,8 +18,8 @@ The fan-out (see references/ai-cli-adapters.md) consumes `flags`/`panel`/`timeou
 so these settings are LIVE — changing them changes what actually runs.
 
 Usage:
-  co_agent_config.py show --host claude          # Claude chairs; panel = kiro/codex/agy
-  co_agent_config.py show --host codex           # Codex chairs; panel = kiro/claude/agy
+  co_agent_config.py show --host claude          # Claude chairs; panel = kiro-cli/codex/agy
+  co_agent_config.py show --host codex           # Codex chairs; panel = kiro-cli/claude/agy
   co_agent_config.py show                       # effective merged config (table)
   co_agent_config.py set <ai> <key> <value>     # write to .claude/co-agent.local.json
   co_agent_config.py set timeout <seconds>      # global per-CLI timeout
@@ -44,7 +44,7 @@ import json
 import copy
 import shutil
 
-ALL_AIS = ("kiro", "claude", "codex", "agy", "gemini")
+ALL_AIS = ("kiro-cli", "claude", "codex", "agy", "gemini")
 HOSTS = ("claude", "codex")
 CODEX_EFFORTS = ("minimal", "low", "medium", "high")
 CLAUDE_EFFORTS = ("low", "medium", "high", "xhigh", "max")
@@ -74,11 +74,11 @@ def third_ai():
 
 def panel_ais(host):
     peer = "codex" if host == "claude" else "claude"
-    return ("kiro", peer, third_ai())
+    return ("kiro-cli", peer, third_ai())
 
 
 # Only these CLIs enforce a worktree-scoped WRITE sandbox (codex -s workspace-write,
-# agy --sandbox). claude(--permission-mode acceptEdits), kiro(--trust-tools) and
+# agy --sandbox). claude(--permission-mode acceptEdits), kiro-cli(--trust-tools) and
 # gemini(--yolo) auto-accept writes but do NOT confine them to the worktree, so they
 # are NOT safe delegated implementers — the trust boundary would not hold.
 SANDBOX_IMPLEMENTERS = ("codex", "agy")
@@ -202,12 +202,12 @@ def cmd_matrix(root, host):
         fam[ai] += 1
     for ai, n in fam.items():
         if n > 1:
-            if ai == "kiro":
+            if ai == "kiro-cli":
                 # Kiro is a cross-vendor router (e.g. Claude / Moonshot / Zhipu), so
                 # multiple Kiro models are genuine cross-family diversity — exactly
                 # what co-agent wants — not the same-family redundancy flagged below.
                 # Still surface the cost (each model is a separate Kiro call).
-                print(f"  ℹ️  kiro: {n} models — cross-vendor via the Kiro router "
+                print(f"  ℹ️  kiro-cli: {n} models — cross-vendor via the Kiro router "
                       f"(intended diversity; {n}× Kiro credits/round)")
             else:
                 print(f"  ⚠️  {ai}: {n} models (same provider family — diminishing returns vs cost)")
@@ -350,7 +350,7 @@ def cmd_flags(root, ai, host):
     p = effective(root)["panel"].get(ai, {})
     model = p.get("model")
     parts = []
-    if ai == "kiro":
+    if ai == "kiro-cli":
         if model:
             parts += ["--model", model]
     elif ai == "claude":

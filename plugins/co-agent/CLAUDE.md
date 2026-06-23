@@ -22,7 +22,7 @@
 
 ```
 co-agent
-  ├── Step 0: 패널 감지 (kiro-cli / codex / agy 중 설치된 것; agy 없으면 gemini fallback; Kiro 바이너리는 `kiro-cli`, NOT `kiro`)
+  ├── Step 0: 패널 감지 (kiro-cli / codex / agy 중 설치된 것; agy 없으면 gemini fallback)
   ├── Review       : git diff → 동일 프롬프트 팬아웃 → 합의/이견 종합 → PASS/REVIEW/FAIL
   ├── Decide       : 결정+옵션 팬아웃 → 비교표 → Claude 추천 (의장)
   ├── ADR          : 대안·트레이드오프·리스크 팬아웃 → Nygard ADR 초안 → /add-adr 연동
@@ -60,7 +60,7 @@ co-agent
 
 패널 설정을 레이어드(`co-agent.defaults.json` ← `.claude/co-agent.local.json`)로 관리. **CLI가 헤드리스로 실제 받는 것만** 노출:
 
-| 설정 | kiro | codex | agy | gemini fallback |
+| 설정 | kiro-cli | codex | agy | gemini fallback |
 |------|------|-------|-----|-----------------|
 | model | `--model` | `-m` | `--model` | `-m` |
 | effort | — | `-c model_reasoning_effort` | — | — |

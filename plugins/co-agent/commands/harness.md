@@ -24,7 +24,7 @@ Let `SK="${CLAUDE_PLUGIN_ROOT:-plugins/co-agent}/skills/co-agent/scripts"` and
    `python3 "$SK/co_agent_config.py" matrix --host "$HOST"`.
 2. Resolve roles: panel = `co_agent_config.py panel --host "$HOST"`; implementer =
    `co_agent_config.py implementer --host "$HOST"`. Only **sandbox CLIs** (codex, agy) are
-   valid implementers (claude/kiro/gemini have no worktree-scoped write sandbox); default is
+   valid implementers (claude/kiro-cli/gemini have no worktree-scoped write sandbox); default is
    claude host → codex, codex host → agy. Never equals the host. Tell the user panel + implementer.
 3. **Clean tree required**: `python3 "$SK/consensus_state.py" verify .`
    (`rebind` after an intentional manual commit when resuming). `git worktree prune` to reap orphans.

@@ -56,7 +56,7 @@ Detailed per-mode steps live in `skills/co-agent/SKILL.md`.
 PANEL=""
 # Binary presence only — kiro-cli works headless via interactive login OR
 # $KIRO_API_KEY. Unauthenticated CLIs just error at call time → skipped.
-# NOTE: the Kiro binary is `kiro-cli` (NOT `kiro`) — the label matches the binary.
+# NOTE: the peer label `kiro-cli` is also the binary name — invoke `kiro-cli` directly.
 command -v kiro-cli >/dev/null 2>&1 && PANEL="$PANEL kiro-cli"
 command -v codex    >/dev/null 2>&1 && PANEL="$PANEL codex"
 command -v agy      >/dev/null 2>&1 && PANEL="$PANEL agy" || command -v gemini >/dev/null 2>&1 && PANEL="$PANEL gemini"

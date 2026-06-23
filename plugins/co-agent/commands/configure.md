@@ -1,7 +1,7 @@
 ---
 description: Configure the co-agent panel — host-aware peer AI model, effort, enable/disable, and timeout
 allowed-tools: Bash(python3:*), Read
-argument-hint: "show | set <ai> <key> <value> | set timeout <seconds>  (host: claude|codex; ai: kiro|claude|codex|agy|gemini)"
+argument-hint: "show | set <ai> <key> <value> | set timeout <seconds>  (host: claude|codex; ai: kiro-cli|claude|codex|agy|gemini)"
 ---
 
 # co-agent: configure
@@ -13,7 +13,7 @@ Configure the host-aware multi-AI panel. Settings are **layered** like Claude Co
 
 Only options the CLIs **actually accept headlessly** are exposed (no dead settings):
 
-| Setting | kiro | claude | codex | agy | gemini fallback |
+| Setting | kiro-cli | claude | codex | agy | gemini fallback |
 |---------|------|--------|-------|-----|-----------------|
 | `model` | `--model` | `--model` | `-m` | `--model` | `-m` |
 | `effort` | — | `--effort` (`low\|medium\|high\|xhigh\|max`) | `-c model_reasoning_effort` (`minimal\|low\|medium\|high`) | — | — |
@@ -58,7 +58,7 @@ Argument: `$ARGUMENTS`
    python3 "$H" set claude model sonnet --host codex
    python3 "$H" set claude effort max --host codex
    python3 "$H" set agy model default
-   python3 "$H" set kiro  model claude-opus-4.8 # Kiro model (see `kiro-cli chat --list-models`)
+   python3 "$H" set kiro-cli  model claude-opus-4.8 # Kiro model (see `kiro-cli chat --list-models`)
    python3 "$H" set agy enabled false           # drop Agy from the panel
    python3 "$H" set timeout 300                 # global per-CLI timeout (s)
    python3 "$H" set codex context_limit 400000  # raise/lower a model's context window

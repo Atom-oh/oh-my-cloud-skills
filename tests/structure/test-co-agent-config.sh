@@ -14,7 +14,7 @@ R=$(mktemp -d "${TMPDIR:-/tmp}/coagentcfg.XXXXXX")
 
 # show on a fresh root → all three AIs + default timeout
 SHOW=$(python3 "$CFG" show --root "$R" 2>&1)
-assert_contains "$SHOW" "kiro" "show lists kiro"
+assert_contains "$SHOW" "kiro-cli" "show lists kiro-cli"
 assert_contains "$SHOW" "codex" "show lists codex"
 assert_contains "$SHOW" "agy" "show lists agy"
 assert_contains "$SHOW" "240" "show reports default timeout 240"
@@ -25,7 +25,7 @@ CODEX_HOST_SHOW=$(python3 "$CFG" show --host codex --root "$R" 2>&1)
 assert_contains "$CODEX_HOST_SHOW" "host codex" "codex-host show reports host"
 assert_contains "$CODEX_HOST_SHOW" "claude" "codex-host show lists claude"
 CODEX_HOST_PANEL=$(python3 "$CFG" panel --host codex --root "$R" 2>&1)
-assert_eq "kiro claude agy" "$CODEX_HOST_PANEL" "codex-host panel swaps codex for claude and prefers agy"
+assert_eq "kiro-cli claude agy" "$CODEX_HOST_PANEL" "codex-host panel swaps codex for claude and prefers agy"
 
 python3 "$CFG" set claude model sonnet --host codex --root "$R" >/dev/null 2>&1
 python3 "$CFG" set claude effort max --host codex --root "$R" >/dev/null 2>&1
@@ -35,7 +35,7 @@ assert_contains "$CLAUDE_FLAGS" "effort max" "claude flags include effort"
 
 # Legacy fallback can still produce a Gemini panel when Agy is unavailable.
 LEGACY_PANEL=$(CO_AGENT_THIRD_AI=gemini python3 "$CFG" panel --root "$R" 2>&1)
-assert_eq "kiro codex gemini" "$LEGACY_PANEL" "legacy fallback panel uses gemini when agy is unavailable"
+assert_eq "kiro-cli codex gemini" "$LEGACY_PANEL" "legacy fallback panel uses gemini when agy is unavailable"
 
 # effort is available only where the headless CLI supports it; others show n/a
 assert_contains "$SHOW" "n/a" "effort marked n/a for non-Codex"
@@ -58,12 +58,12 @@ assert_eq "2" "$GE_RC" "set agy effort → rejected (exit 2)"
 python3 "$CFG" set codex effort turbo --root "$R" >/dev/null 2>&1 && IE_RC=0 || IE_RC=$?
 assert_eq "2" "$IE_RC" "invalid effort value → exit 2"
 
-# disable kiro → dropped from panel, enabled check fails
-python3 "$CFG" set kiro enabled false --root "$R" >/dev/null 2>&1
+# disable kiro-cli → dropped from panel, enabled check fails
+python3 "$CFG" set kiro-cli enabled false --root "$R" >/dev/null 2>&1
 PANEL=$(python3 "$CFG" panel --root "$R" 2>&1)
-assert_eq "codex agy" "$PANEL" "disabled kiro removed from panel"
-python3 "$CFG" enabled kiro --root "$R" >/dev/null 2>&1 && KI_RC=0 || KI_RC=$?
-assert_eq "1" "$KI_RC" "enabled kiro → exit 1 when disabled"
+assert_eq "codex agy" "$PANEL" "disabled kiro-cli removed from panel"
+python3 "$CFG" enabled kiro-cli --root "$R" >/dev/null 2>&1 && KI_RC=0 || KI_RC=$?
+assert_eq "1" "$KI_RC" "enabled kiro-cli → exit 1 when disabled"
 python3 "$CFG" enabled codex --root "$R" >/dev/null 2>&1 && CO_RC=0 || CO_RC=$?
 assert_eq "0" "$CO_RC" "enabled codex → exit 0 when enabled"
 
@@ -94,14 +94,14 @@ assert_eq "0" "$MV" "valid model accepted (exit 0)"
 # context-size guard: defaults Kiro/Agy 1M, Codex 272K
 R3=$(mktemp -d "${TMPDIR:-/tmp}/coagentctx3.XXXXXX")
 assert_eq "272000" "$(python3 "$CFG" context-limit codex --root "$R3" 2>&1)" "codex default context-limit 272000"
-assert_eq "1000000" "$(python3 "$CFG" context-limit kiro --root "$R3" 2>&1)" "kiro default context-limit 1000000"
+assert_eq "1000000" "$(python3 "$CFG" context-limit kiro-cli --root "$R3" 2>&1)" "kiro-cli default context-limit 1000000"
 assert_eq "1000000" "$(python3 "$CFG" context-limit agy --root "$R3" 2>&1)" "agy default context-limit 1000000"
 python3 "$CFG" fits codex 200000 --root "$R3" >/dev/null 2>&1 && F1=0 || F1=$?
 assert_eq "0" "$F1" "200K tokens fits codex window (exit 0)"
 python3 "$CFG" fits codex 812861 --root "$R3" >/dev/null 2>&1 && F2=0 || F2=$?
 assert_eq "1" "$F2" "812K tokens exceeds codex window (exit 1)"
-python3 "$CFG" fits kiro 812861 --root "$R3" >/dev/null 2>&1 && F3=0 || F3=$?
-assert_eq "0" "$F3" "812K tokens fits kiro 1M window (exit 0)"
+python3 "$CFG" fits kiro-cli 812861 --root "$R3" >/dev/null 2>&1 && F3=0 || F3=$?
+assert_eq "0" "$F3" "812K tokens fits kiro-cli 1M window (exit 0)"
 python3 "$CFG" set codex context_limit 900000 --root "$R3" >/dev/null 2>&1
 python3 "$CFG" fits codex 812861 --root "$R3" >/dev/null 2>&1 && F4=0 || F4=$?
 assert_eq "0" "$F4" "raised codex context_limit lets 812K fit (exit 0)"

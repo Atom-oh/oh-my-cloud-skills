@@ -55,7 +55,7 @@ PANEL=$(python3 "$CFG" panel --host "$HOST" 2>/dev/null || true)
 echo "Panel: ${PANEL:-(none — the host will answer solo and say so)}"
 ```
 
-> ⚠️ **The Kiro binary is `kiro-cli`, NOT `kiro`.** Always invoke `kiro-cli chat …`.
+> ⚠️ **The Kiro binary is `kiro-cli`** — always invoke `kiro-cli chat …` by that exact name.
 > Agy supersedes Gemini. Prefer `agy`; call `gemini` only when Agy is unavailable.
 
 Tell the user which AIs are on the panel. If none are available, do the task as the

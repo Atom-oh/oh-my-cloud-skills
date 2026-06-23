@@ -19,7 +19,7 @@ a real workspace-write sandbox are valid implementers:
 | Codex | `-s workspace-write` (+ `-m <model>`, effort) |
 | Agy | `--sandbox` (+ `--model`) |
 
-**Not valid implementers:** `claude --permission-mode acceptEdits`, `kiro --trust-tools`,
+**Not valid implementers:** `claude --permission-mode acceptEdits`, `kiro-cli --trust-tools`,
 and `gemini --yolo` auto-accept writes but do **not** confine them to the worktree, so the
 trust boundary would not hold — `implementer`/`impl-flags` reject them. Default implementer:
 claude host → `codex`, codex host → `agy`. These write variants exist **only** here; review /
