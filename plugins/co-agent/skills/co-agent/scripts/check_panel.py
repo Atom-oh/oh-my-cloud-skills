@@ -10,6 +10,34 @@ Usage:
 import sys
 import os
 import re
+import shutil
+
+PEERS = ("kiro-cli", "claude", "codex", "agy", "gemini")
+PEER_PLUGINS = {"codex": "openai/codex-plugin-cc"}   # peer → official Claude Code plugin repo
+
+
+def detect_cli(peer):
+    return shutil.which(peer)
+
+
+def detect_plugin(peer, plugins_root):
+    """True if the peer's official plugin appears installed under the plugin cache."""
+    repo = PEER_PLUGINS.get(peer)
+    if not repo or not plugins_root or not os.path.isdir(plugins_root):
+        return False
+    needle = repo.split("/")[-1]   # e.g. "codex-plugin-cc"
+    for dirpath, dirnames, _files in os.walk(plugins_root):
+        if needle in os.path.basename(dirpath) or needle in dirnames:
+            return True
+    return False
+
+
+def decide_access(peer, has_cli, has_plugin):
+    if has_plugin:
+        return "plugin", False
+    if has_cli:
+        return "raw", peer in PEER_PLUGINS   # suggest installing the official plugin if one exists
+    return "none", False
 
 _AUTH_RE = re.compile(r"not logged in|unauthenticated|please (log|sign) in|run .*login|401|auth", re.I)
 
@@ -48,6 +76,11 @@ def main():
         return 2
     if argv[0] == "classify":
         return _cmd_classify(argv[1:])
+    if argv[0] == "--selftest-access":
+        peer, hc, hp = argv[1], argv[2] == "1", argv[3] == "1"
+        access, suggest = decide_access(peer, hc, hp)
+        print(f"{access} {1 if suggest else 0}")
+        return 0
     print(__doc__)
     return 2
 
