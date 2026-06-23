@@ -62,3 +62,10 @@ PJ="plugins/co-agent/.claude-plugin/plugin.json"
 assert_eq "True" "$(python3 -c "import json;print('./commands/setup.md' in json.load(open('$PJ'))['commands'])" 2>&1)" "setup registered in plugin.json"
 assert_contains "$(cat plugins/co-agent/skills/co-agent/SKILL.md 2>/dev/null)" "co-agent:setup" "SKILL.md mentions setup"
 assert_contains "$(cat .gitignore 2>/dev/null)" "co-agent-panel.local.json" "panel summary is gitignored"
+
+# --- Task 6: v3 adapter + readiness consult documented ---
+ADP="plugins/co-agent/skills/co-agent/references/ai-cli-adapters.md"
+assert_contains "$(cat "$ADP" 2>/dev/null)" " --v3" "Kiro adapter documents --v3"
+assert_contains "$(cat "$ADP" 2>/dev/null)" "fs_read" "Kiro adapter uses fs_read tool name"
+assert_contains "$(cat "$ADP" 2>/dev/null)" "co-agent-panel.local.json" "adapters doc references readiness summary"
+assert_contains "$(cat plugins/co-agent/commands/harness.md 2>/dev/null)" "co-agent-panel" "harness consults readiness (run /co-agent:setup)"

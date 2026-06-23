@@ -26,7 +26,12 @@ Let `SK="${CLAUDE_PLUGIN_ROOT:-plugins/co-agent}/skills/co-agent/scripts"` and
    `co_agent_config.py implementer --host "$HOST"`. Only **sandbox CLIs** (codex, agy) are
    valid implementers (claude/kiro-cli/gemini have no worktree-scoped write sandbox); default is
    claude host → codex, codex host → agy. Never equals the host. Tell the user panel + implementer.
-3. **Clean tree required**: `python3 "$SK/consensus_state.py" verify .`
+3. **Consult readiness** (`.claude/co-agent-panel.local.json` from `/co-agent:setup`):
+   `python3 "$SK/check_panel.py" status <peer>` — keep only **READY** peers in the panel /
+   implementer pool; drop AUTH/NO_INGEST/ABSENT/etc. If **no READY sandbox peer** (codex/agy)
+   remains, the multi-model gate cannot run — **block** and tell the user to run
+   `/co-agent:setup` (or install/auth a peer). Absent summary → run `/co-agent:setup` first.
+4. **Clean tree required**: `python3 "$SK/consensus_state.py" verify .`
    (`rebind` after an intentional manual commit when resuming). `git worktree prune` to reap orphans.
 
 ## H1 — Design (host)

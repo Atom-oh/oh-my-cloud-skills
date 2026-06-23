@@ -43,9 +43,13 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
 2. **Worktree.** `worktree.py add <wt> --base HEAD` — create the isolated tree at the
    red-test commit, so the peer sees the failing test. Put `<wt>` under a gitignored path
    (e.g. `.claude/co-agent-consensus/worktrees/<task>`).
-3. **Implement (peer).** Run the implementer with `impl-flags` **inside `<wt>`**, scoped to
-   the task's files. Fallback chain on missing/error/timeout: configured implementer →
-   next installed peer (keep provider separation) → host-implement. Never block.
+3. **Implement (peer).** Pick the implementer from **READY** sandbox peers only —
+   consult `.claude/co-agent-panel.local.json` via `check_panel.py status <peer>` (written
+   by `/co-agent:setup`) and skip any peer that is not READY. Run the implementer with
+   `impl-flags` **inside `<wt>`**, scoped to the task's files. Fallback chain on
+   missing/error/not-READY/timeout: configured implementer → next READY peer (keep provider
+   separation) → host-implement. If **no** sandbox peer is READY, the multi-model gate
+   cannot run — **block** and tell the user to run `/co-agent:setup`. Never silently block.
 4. **Capture + scope.** `worktree.py capture-diff <wt>` → patch; every path must pass
    `scope_guard.py --plan <plan>`. Out-of-scope hunks are dropped and fed back.
 5. **Apply + verify (host).** Apply the patch to the main branch; run `tests/run-all.sh`
