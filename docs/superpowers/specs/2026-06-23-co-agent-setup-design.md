@@ -42,7 +42,7 @@ ingestion, auth, and background-job orchestration.
 
 ## 3. Tiered peer access (the core idea)
 
-For each peer (codex first; kiro/agy/gemini follow the same pattern later), co-agent selects:
+For each peer (codex first; kiro-cli/agy/gemini follow the same pattern later), co-agent selects:
 
 | Tier | Condition | Behavior | `access` |
 |------|-----------|----------|----------|
@@ -53,7 +53,7 @@ For each peer (codex first; kiro/agy/gemini follow the same pattern later), co-a
 Only **codex** has a known official Claude Code plugin today (`openai/codex-plugin-cc`,
 providing `/codex:review`, `/codex:adversarial-review`, `/codex:rescue`, `/codex:status`,
 `/codex:result`, `/codex:cancel`, `/codex:setup`). The mechanism is written generically so a
-future kiro/agy/gemini plugin slots in by adding a row to a small registry.
+future kiro-cli/agy/gemini plugin slots in by adding a row to a small registry.
 
 ## 4. What setup detects (per peer)
 
@@ -234,7 +234,7 @@ Three corrections vs. the current adapter, all verified from `kiro-cli chat --he
   argv INPUT** (not stdin) and classifies a correct echo as `READY` — guards the regression
   where piping to stdin produced `NO_INGEST`. The `codex`/`agy` probes keep the sentinel on
   stdin only.
-- **v3 flag**: the kiro adapter includes `--v3`; a fixture/old-CLI path falls back to v2 and
+- **v3 flag**: the kiro-cli adapter includes `--v3`; a fixture/old-CLI path falls back to v2 and
   the engine used is recorded in the summary.
 
 ## 10. Open questions (resolve in the plan)
