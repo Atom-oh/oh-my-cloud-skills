@@ -153,8 +153,8 @@ setup writes `.claude/co-agent-panel.local.json` (gitignored), **atomically**:
 The peer is renamed everywhere so the **label equals the binary** and the
 `kiro`-vs-`kiro-cli` confusion disappears for good. This touches existing shipped code, not
 just setup: `ALL_AIS` / `SANDBOX_IMPLEMENTERS` / `panel_ais` in `co_agent_config.py`, the
-`panel.kiro` key in `co-agent.defaults.json`, `references/ai-cli-adapters.md`, the structure
-tests, and the inventories. Because the peer labels are now all binaries, **no binary map is
+`panel.kiro-cli` key in `co-agent.defaults.json`, `references/ai-cli-adapters.md`, the
+structure tests, and the inventories. Because the peer labels are now all binaries, **no binary map is
 needed** — `shutil.which(<peer>)` is correct for every peer.
 
 **Back-compat:** on read, an existing `.claude/co-agent.local.json` with a legacy `"kiro"`
