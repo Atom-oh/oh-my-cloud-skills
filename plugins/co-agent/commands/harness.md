@@ -57,12 +57,15 @@ contains it) → `worktree.py add` (under a gitignored path) → run the
 implementer with `co_agent_config.py impl-flags <ai> --host "$HOST"` **inside the worktree**
 → `worktree.py capture-diff` → `scope_guard.py` (drop out-of-scope) → apply patch to main +
 `tests/run-all.sh` **on main** → bounded fix loop (`harness.max_fix_rounds`) → `stage-result`
-→ **host commits once** (the red-test commit + the green implementation are squashed into
-that single passing commit, so the branch never carries a committed-but-red test) →
-`worktree.py remove`. Fallback chain: counterpart → other peer → host-implement. **On
-exhausted fix loop / abort**: revert the red-test commit (`git reset --hard` to the
-pre-task checkpoint) so no failing test is left on the branch, then `set . status
-needs-human`. External AIs never commit.
+→ **host commits once**: before H3a, record the pre-task checkpoint SHA
+(`CKPT=$(git rev-parse HEAD)`); on green, fold the red-test commit and the implementation
+into **one passing commit** (`git commit --amend` onto the red-test commit, or
+`git reset --soft "$CKPT" && git commit`) so the branch never carries a committed-but-red
+test → `worktree.py remove`. Fallback chain: counterpart → other peer → host-implement.
+**On exhausted fix loop / abort**: undo only the red-test commit by reverting to the
+recorded checkpoint — `git reset --soft "$CKPT"` (keeps any unrelated working-tree state) or
+`git revert <red-test-sha>`; **never a bare `git reset --hard`** that could discard unrelated
+work — then `set . status needs-human`. External AIs never commit.
 
 ## H4 — Final gate
 `consensus_state.py cumulative-diff . --plan <plan> --base <trunk>` → consensus gate →

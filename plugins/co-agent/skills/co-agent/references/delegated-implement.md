@@ -62,15 +62,18 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
    loop, bounded by `harness.max_fix_rounds` (inherits `consensus.max_rounds`).
 6. **Review gate (optional).** Per-task multi-model review is **off by default** — the H4
    cumulative gate is the review of record. Enable it only when a task warrants it.
-7. **Record + commit.** `consensus_state.py stage-result write …/tasks/<i>/result.json
-   --stage task-<i> --verdict … --green true --in-scope true --implementer <ai>`; then the
-   **host is the only committer** — **squash the red-test commit and the green implementation
-   into one passing commit** (e.g. `git commit --amend`/soft-reset), so the branch never
-   carries a committed-but-red test. `worktree.py remove <wt>`.
-8. **Escalate / abort** when the fix loop is exhausted: **revert the red-test commit**
-   (`git reset --hard` to the pre-task checkpoint) so no failing test is left on the branch,
-   then `consensus_state.py set . status needs-human` and stop the task. Never leave a red
-   commit on the working branch.
+7. **Record + commit.** Record the pre-task checkpoint SHA before H3a's red commit
+   (`CKPT=$(git rev-parse HEAD)`). `consensus_state.py stage-result write
+   …/tasks/<i>/result.json --stage task-<i> --verdict … --green true --in-scope true
+   --implementer <ai>`; then the **host is the only committer** — fold the red-test commit
+   and the green implementation into **one passing commit** (`git commit --amend` onto the
+   red-test commit, or `git reset --soft "$CKPT" && git commit`), so the branch never carries
+   a committed-but-red test. `worktree.py remove <wt>`.
+8. **Escalate / abort** when the fix loop is exhausted: undo only the red-test commit —
+   `git reset --soft "$CKPT"` (preserves any unrelated working-tree state) or
+   `git revert <red-test-sha>`. **Never a bare `git reset --hard`** (it could discard
+   unrelated work). Then `consensus_state.py set . status needs-human` and stop the task.
+   Never leave a red commit on the working branch.
 
 ## Host-only-commit (non-negotiable)
 

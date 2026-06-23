@@ -41,7 +41,14 @@ implements, and neither is the sole reviewer.
 | Role | Who | Notes |
 |------|-----|-------|
 | Chair / Designer / Committer | **host** | Claude Code → Claude; Codex → Codex (`CO_AGENT_HOST`) |
-| Implementer | **peer-host counterpart** (default) | host=claude → codex; host=codex → claude(opus). Overridable via `harness.implementer`. |
+| Implementer | **sandbox-CLI counterpart** (default) | host=claude → codex; host=codex → **agy**. Overridable via `harness.implementer` (codex/agy only). |
+
+> **SUPERSEDED NOTE (shipped behavior, post panel-review R2-A):** the implementer is
+> restricted to CLIs with a real worktree-scoped write sandbox — **`codex` and `agy` only**.
+> `claude`/`kiro-cli`/`gemini` are **not** valid implementers (their write flags don't confine
+> to the worktree). The codex-host default is therefore **`agy`**, not `claude(opus)`. The
+> `co_agent_config.py implementer/impl-flags` code and `commands/harness.md` are the single
+> source of truth; the original "codex→claude counterpart" text below is retained for history.
 | Review panel | Kiro + peer host CLI + Agy (Gemini fallback) | the existing host-aware consensus panel |
 
 By construction the implementer ≠ designer ≠ sole reviewer. `harness.implementer` may be

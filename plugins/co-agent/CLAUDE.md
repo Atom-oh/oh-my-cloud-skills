@@ -2,7 +2,7 @@
 
 다른 AI 에이전트(Kiro CLI, Codex, Agy 우선/Gemini fallback)와 협업해 **second opinion**을 받고, **Claude가 의장으로 종합**하는 플러그인. 멀티-AI 리뷰, 의사결정 보조, ADR 협업, 컨텍스트 동기화를 제공.
 
-**Prerequisites (선택적 — 있는 것만 사용)**: `kiro-cli`(+`KIRO_API_KEY`), `codex`, `agy` CLI 중 설치된 것을 패널로 활용. `agy`가 없으면 legacy `gemini` CLI를 fallback으로 사용. 하나도 없으면 Claude 단독 수행 + 그 사실을 명시. 절대 hard-fail 하지 않음.
+**Prerequisites (선택적 — 있는 것만 사용)**: `kiro-cli`(+`KIRO_API_KEY`), `codex`, `agy` CLI 중 설치된 것을 패널로 활용. `agy`가 없으면 legacy `gemini` CLI를 fallback으로 사용. 하나도 없으면 Claude 단독 수행 + 그 사실을 명시. 절대 hard-fail 하지 않음. **예외:** `harness`·`consensus`는 멀티모델 게이트가 본질인 **non-degraded 모드** — READY peer가 하나도 없으면 solo 강등 대신 멈추고 `/co-agent:setup`을 안내함(리뷰/의사결정/ADR은 평소대로 solo 강등).
 
 ---
 

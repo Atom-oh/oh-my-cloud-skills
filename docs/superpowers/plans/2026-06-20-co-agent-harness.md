@@ -11,7 +11,14 @@
 ## Global Constraints
 
 - Python scripts use the **standard library only** (no third-party imports) — matches every existing co-agent script.
-- Model/AI identifiers are validated against `MODEL_RE = ^[A-Za-z0-9._:/-]+$` in `co_agent_config.py` — never weaken it.
+- Model/AI identifiers are validated against `MODEL_RE` in `co_agent_config.py`. **Shipped
+  value: `^[A-Za-z0-9 ._:/()-]+$`** — deliberately allows spaces + parentheses for Agy tokens
+  like `Gemini 3.1 Pro (High)`; shell metacharacters stay rejected. (The original
+  `^[A-Za-z0-9._:/-]+$` was widened in a later change — this note supersedes it.)
+- **SUPERSEDED (post panel-review R2-A):** the implementer is restricted to sandbox CLIs
+  **`codex`/`agy` only**; codex-host default = **`agy`** (not `claude`). The Task 1 snippets
+  below show the original `codex↔claude` counterpart logic for history — the shipped
+  `implementer_ai()` rejects non-sandbox implementers and defaults codex-host to `agy`.
 - The hosts are `claude` and `codex`; AIs are `kiro, claude, codex, agy, gemini` (`ALL_AIS` in `co_agent_config.py`).
 - Write-mode adapters (workspace-write sandbox) exist **only** on the harness implement path; review/decide/ADR/gate paths stay read-only/advisory.
 - The host is the **only** committer to the working branch; external AIs write only inside a worktree.
