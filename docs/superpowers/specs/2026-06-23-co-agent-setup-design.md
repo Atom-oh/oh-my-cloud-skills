@@ -55,7 +55,10 @@ future kiro/agy/gemini plugin slots in by adding a row to a small registry.
 
 1. **Plugin installed?** — look for the peer's official plugin in the Claude Code plugin
    cache / installed marketplaces (detection path is an open question — see §10).
-2. **CLI present?** — `shutil.which`.
+2. **CLI present?** — `shutil.which(<binary>)` using the **explicit peer→binary map**
+   (§6), never the bare peer name. Critically, **kiro's binary is `kiro-cli`, not `kiro`** —
+   `shutil.which("kiro")` would falsely report it absent. The map is the single source of
+   truth for both detection and the probe invocation.
 3. **CLI actually usable?** — a stdin **sentinel probe** (Tier-2 path only; a Tier-1 plugin
    does not need it because the plugin handles ingestion).
 
@@ -133,8 +136,13 @@ setup writes `.claude/co-agent-panel.local.json` (gitignored), **atomically**:
 
 **Registry (small, in `check_panel.py`)**
 ```
-PEER_PLUGINS = { "codex": "openai/codex-plugin-cc" }   # peer → official plugin repo
+# peer → CLI binary (NOT the bare peer name — kiro's binary is kiro-cli)
+PEER_BINARIES = { "kiro": "kiro-cli", "codex": "codex", "agy": "agy", "gemini": "gemini" }
+# peer → official Claude Code plugin repo (Tier-1)
+PEER_PLUGINS  = { "codex": "openai/codex-plugin-cc" }
 ```
+Detection, the probe, and the readiness summary all resolve the binary through
+`PEER_BINARIES`, so a peer is never missed because its binary name differs from its label.
 
 ## 7. Routing & synthesis
 
@@ -165,6 +173,9 @@ PEER_PLUGINS = { "codex": "openai/codex-plugin-cc" }   # peer → official plugi
   is reported stale.
 - `detect_plugin` against a fixture plugin-cache layout (present / absent).
 - `status`/`access` readers return the recorded values; absent summary → a sane default.
+- **Binary mapping**: the kiro probe/detection resolves to `kiro-cli` (a shim named only
+  `kiro-cli` on `PATH` is detected; a bare `kiro` is not required) — guards the regression
+  where `shutil.which("kiro")` falsely reports `ABSENT`.
 
 ## 10. Open questions (resolve in the plan)
 
