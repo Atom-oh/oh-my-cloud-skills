@@ -109,10 +109,10 @@ setup writes `.claude/co-agent-panel.local.json` (gitignored), **atomically**:
   "schema_version": 1,
   "generated_at": "<ISO8601>",
   "peers": {
-    "codex":  { "access": "plugin", "status": "READY", "cli_path": "...", "cli_version": "...", "plugin": "openai/codex-plugin-cc" },
-    "kiro":   { "access": "raw",    "status": "NO_INGEST", "cli_path": "...", "reason": "stdin not consumed" },
-    "agy":    { "access": "raw",    "status": "READY", "cli_path": "...", "cli_version": "..." },
-    "gemini": { "access": "none",   "status": "ABSENT" }
+    "codex":    { "access": "plugin", "status": "READY", "cli_path": "...", "cli_version": "...", "plugin": "openai/codex-plugin-cc" },
+    "kiro-cli": { "access": "raw",    "status": "READY", "cli_path": "...", "cli_version": "2.8.1", "engine": "v3" },
+    "agy":      { "access": "raw",    "status": "READY", "cli_path": "...", "cli_version": "..." },
+    "gemini":   { "access": "none",   "status": "ABSENT" }
   },
   "config_hash": "<hash of effective co_agent_config>"
 }
