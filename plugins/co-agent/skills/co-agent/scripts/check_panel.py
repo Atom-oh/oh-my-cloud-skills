@@ -14,6 +14,19 @@ import shutil
 import subprocess
 import tempfile
 import signal
+import json
+import datetime
+import hashlib
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+try:
+    import co_agent_config  # sibling — for config_hash
+except Exception:
+    co_agent_config = None
+
+SCHEMA_VERSION = 1
 
 PEERS = ("kiro-cli", "claude", "codex", "agy", "gemini")
 PEER_PLUGINS = {"codex": "openai/codex-plugin-cc"}   # peer → official Claude Code plugin repo
@@ -117,6 +130,85 @@ def probe(peer, timeout=20, nonce="STATIC"):
             return "ERROR", str(e)[:200]
 
 
+def _config_hash(root):
+    if co_agent_config is None:
+        return ""
+    try:
+        blob = json.dumps(co_agent_config.effective(root), sort_keys=True)
+        return hashlib.sha256(blob.encode()).hexdigest()[:16]
+    except Exception:
+        return ""
+
+
+def _summary_path(root):
+    return os.path.join(root, ".claude", "co-agent-panel.local.json")
+
+
+def _atomic_write_json(path, obj):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(obj, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+    os.replace(tmp, path)
+
+
+def report(root, plugins_root, as_json=False):
+    peers = {}
+    for peer in PEERS:
+        cli = detect_cli(peer)
+        has_plugin = detect_plugin(peer, plugins_root)
+        access, suggest = decide_access(peer, bool(cli), has_plugin)
+        entry = {"access": access}
+        if access == "plugin":
+            entry["status"] = "READY"
+            entry["plugin"] = PEER_PLUGINS.get(peer)
+        elif access == "raw":
+            status, reason = probe(peer)
+            entry["status"] = status
+            entry["cli_path"] = cli
+            if reason:
+                entry["reason"] = reason
+            if suggest:
+                entry["suggest_install"] = PEER_PLUGINS.get(peer)
+        else:
+            entry["status"] = "ABSENT"
+        peers[peer] = entry
+    summary = {
+        "schema_version": SCHEMA_VERSION,
+        "generated_at": datetime.datetime.now().astimezone().isoformat(),
+        "config_hash": _config_hash(root),
+        "peers": peers,
+    }
+    _atomic_write_json(_summary_path(root), summary)
+    if as_json:
+        print(json.dumps(summary, indent=2, ensure_ascii=False))
+    else:
+        print(f"{'peer':10} {'access':7} {'status':10} note")
+        for peer, e in peers.items():
+            note = e.get("suggest_install") or e.get("reason") or e.get("plugin") or ""
+            print(f"{peer:10} {e['access']:7} {e['status']:10} {note}")
+    return 0
+
+
+def _read_summary(root):
+    p = _summary_path(root)
+    if not os.path.isfile(p):
+        return None
+    try:
+        with open(p, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def _reader(root, peer, field, default):
+    s = _read_summary(root)
+    if not s:
+        return default
+    return s.get("peers", {}).get(peer, {}).get(field, default)
+
+
 def main():
     argv = sys.argv[1:]
     if not argv:
@@ -134,6 +226,16 @@ def main():
         peer, hc, hp = argv[1], argv[2] == "1", argv[3] == "1"
         access, suggest = decide_access(peer, hc, hp)
         print(f"{access} {1 if suggest else 0}")
+        return 0
+    if argv[0] == "report":
+        root = argv[argv.index("--root") + 1] if "--root" in argv else "."
+        proot = argv[argv.index("--plugins-root") + 1] if "--plugins-root" in argv else os.path.expanduser("~/.claude/plugins")
+        return report(root, proot, as_json="--json" in argv)
+    if argv[0] in ("status", "access"):
+        peer = argv[1]
+        root = argv[argv.index("--root") + 1] if "--root" in argv else "."
+        default = "ABSENT" if argv[0] == "status" else "none"
+        print(_reader(root, peer, argv[0], default))
         return 0
     print(__doc__)
     return 2
