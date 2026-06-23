@@ -14,10 +14,14 @@ fall back to the raw CLI, and nudge the user to install the plugin when only the
 present**.
 
 This is motivated by a repeatedly-observed failure: `command -v` reports a CLI as present,
-but the raw adapter does not actually work — Kiro ignored piped stdin and Codex drifted into
-a meta loop on three separate live runs. Presence checks miss this; a real stdin probe
-catches it, and an official plugin (e.g. `openai/codex-plugin-cc`) sidesteps it entirely by
-owning ingestion, auth, and background-job orchestration.
+but the raw adapter does not actually work — across three live runs Kiro "ignored" the
+context and Codex drifted into a meta loop. Investigating the installed CLI root-caused the
+Kiro case: `kiro-cli chat` reads its question from a **positional argument**, but the adapter
+piped context to **stdin**, so Kiro never received it (fixed in §6.2 — argv input + `--v3` +
+correct `fs_read` tool name). The general lesson stands: presence checks miss real-usability
+failures; a sentinel probe through the adapter's true input channel catches them, and an
+official plugin (e.g. `openai/codex-plugin-cc`) sidesteps the whole class by owning
+ingestion, auth, and background-job orchestration.
 
 ## 2. Goals / Non-Goals
 
@@ -55,21 +59,31 @@ future kiro/agy/gemini plugin slots in by adding a row to a small registry.
 
 1. **Plugin installed?** — look for the peer's official plugin in the Claude Code plugin
    cache / installed marketplaces (detection path is an open question — see §10).
-2. **CLI present?** — `shutil.which(<binary>)` using the **explicit peer→binary map**
-   (§6), never the bare peer name. Critically, **kiro's binary is `kiro-cli`, not `kiro`** —
-   `shutil.which("kiro")` would falsely report it absent. The map is the single source of
-   truth for both detection and the probe invocation.
-3. **CLI actually usable?** — a stdin **sentinel probe** (Tier-2 path only; a Tier-1 plugin
-   does not need it because the plugin handles ingestion).
+2. **CLI present?** — `shutil.which(<peer>)`. **The peer is renamed `kiro` → `kiro-cli`
+   repo-wide** (§6.1) so the peer label *is* its binary name — `shutil.which("kiro-cli")`
+   never falsely reports absent, and no separate binary map is needed.
+3. **CLI actually usable?** — a **sentinel probe** through the adapter's *real* input
+   channel (Tier-2 path only; a Tier-1 plugin handles ingestion itself). The channel differs
+   per CLI and the probe must mirror the exact adapter (§4.1).
 
-### 3-level sentinel probe (raw path only)
+### 4.1 Sentinel probe (raw path only)
 
-Run the peer's **exact read-only adapter** (the same command the fan-out uses) with:
-- The sentinel `COAGENT_PROBE_<nonce>` placed **only on stdin** (never in argv).
-- An argv prompt that says, *without containing the token*: "read the single token from the
-  input on stdin and reply with exactly that token, nothing else."
-- A short per-CLI timeout, run from an **empty temp cwd** (so the CLI cannot auto-load
-  `CLAUDE.md`/`AGENTS.md`/project memory and leak repo context).
+Run the peer's **exact read-only adapter** (the same command the fan-out uses) with a
+short per-CLI timeout, from an **empty temp cwd** (so the CLI cannot auto-load
+`CLAUDE.md`/`AGENTS.md`/project memory and leak repo context).
+
+The sentinel `COAGENT_PROBE_<nonce>` is delivered through **the adapter's real input
+channel** — which is exactly what we are certifying — and the prompt instructs the CLI to
+echo it back verbatim:
+- **`codex` / `agy`** read context on **stdin** → sentinel on stdin only; the argv prompt
+  must NOT contain the token (else a stdin-ignoring CLI could echo argv → false `READY`).
+- **`kiro-cli`** reads the question as a **positional `[INPUT]` argument**, NOT stdin →
+  sentinel goes in the positional INPUT. (This is the root cause of the earlier Kiro
+  `NO_INGEST`: the adapter piped context to stdin while `chat` only reads `[INPUT]` from
+  argv, so Kiro never saw it — see §6.2.)
+
+`READY` requires exit 0, no timeout, and stdout matching the sentinel exactly after
+trim/normalize.
 
 `classify(sentinel, stdout, stderr, returncode, timed_out)` — a **pure function** (unit
 tested) — returns:
@@ -134,15 +148,55 @@ setup writes `.claude/co-agent-panel.local.json` (gitignored), **atomically**:
   gate explicitly and surface the skipped peers with reasons**.
 - `.gitignore` — ignore `.claude/co-agent-panel.local.json` (if not already covered).
 
-**Registry (small, in `check_panel.py`)**
+### 6.1 Peer rename: `kiro` → `kiro-cli` (repo-wide)
+
+The peer is renamed everywhere so the **label equals the binary** and the
+`kiro`-vs-`kiro-cli` confusion disappears for good. This touches existing shipped code, not
+just setup: `ALL_AIS` / `SANDBOX_IMPLEMENTERS` / `panel_ais` in `co_agent_config.py`, the
+`panel.kiro` key in `co-agent.defaults.json`, `references/ai-cli-adapters.md`, the structure
+tests, and the inventories. Because the peer labels are now all binaries, **no binary map is
+needed** — `shutil.which(<peer>)` is correct for every peer.
+
+**Back-compat:** on read, an existing `.claude/co-agent.local.json` with a legacy `"kiro"`
+panel key is accepted and treated as `"kiro-cli"` (migrate-on-write); new writes use
+`kiro-cli`. So a user's prior local override is not silently dropped.
+
 ```
-# peer → CLI binary (NOT the bare peer name — kiro's binary is kiro-cli)
-PEER_BINARIES = { "kiro": "kiro-cli", "codex": "codex", "agy": "agy", "gemini": "gemini" }
-# peer → official Claude Code plugin repo (Tier-1)
-PEER_PLUGINS  = { "codex": "openai/codex-plugin-cc" }
+PEER_PLUGINS = { "codex": "openai/codex-plugin-cc" }   # peer → official CC plugin repo (Tier-1)
 ```
-Detection, the probe, and the readiness summary all resolve the binary through
-`PEER_BINARIES`, so a peer is never missed because its binary name differs from its label.
+
+### 6.2 Kiro CLI v3 adapter (corrects the read-only fan-out)
+
+Verified against the installed `kiro-cli` (2.8.1): `chat` already supports `--v3`,
+`--agent-engine v3`, and `--mode default|spec`. The read-only review adapter becomes:
+
+```
+kiro-cli chat "<PROMPT + CONTEXT as the positional INPUT>" \
+  --v3 --mode default --no-interactive --trust-tools=fs_read --wrap never
+```
+
+Three corrections vs. the current adapter, all verified from `kiro-cli chat --help`:
+- **Content goes in the positional `[INPUT]` (argv), not piped stdin** — fixes Kiro
+  `NO_INGEST`.
+- **`--trust-tools=fs_read`** for a read-only review (the real tool name; the old
+  `read,grep` were not valid Kiro tool names). Write-mode harness would use `fs_read,fs_write`.
+- **`--v3 --mode default`** selects the next-gen agent engine; `--mode spec` is reserved for
+  spec-driven delegated work (see §6.3). When a `kiro-cli` is too old to accept `--v3`, fall
+  back to the v2 invocation and record the engine in the readiness summary.
+
+### 6.3 configure / sync-context, v3-aligned
+
+- **`/co-agent:configure`** gains Kiro v3 knobs that the CLI accepts headlessly:
+  `--agent-engine`/`--v3` (engine), `--mode` (`default`|`spec`), `--model`. The permission
+  model is `--trust-tools=<fs_read,…>` / `--trust-all-tools` (the 2.8.1 surface of v3's
+  declarative capability model). Only headlessly-settable options are exposed, per the
+  existing configure principle.
+- **`/co-agent:sync-context`** gains a Kiro v3 target: v3 prefers a **Markdown agent config**
+  (frontmatter + body-as-system-prompt, tag-based tool categories, inline MCP/permissions)
+  over reading `CLAUDE.md` directly. co-agent distills `CLAUDE.md` into a Kiro agent config
+  via `kiro-cli agent create` (and `kiro-cli agent migrate` for existing profiles), marked
+  with the same `generated-by: co-agent` marker for staleness/hand-edit protection. Under v2
+  Kiro still reads `CLAUDE.md` directly, so the Kiro target is **engine-conditional**.
 
 ## 7. Routing & synthesis
 
@@ -173,9 +227,15 @@ Detection, the probe, and the readiness summary all resolve the binary through
   is reported stale.
 - `detect_plugin` against a fixture plugin-cache layout (present / absent).
 - `status`/`access` readers return the recorded values; absent summary → a sane default.
-- **Binary mapping**: the kiro probe/detection resolves to `kiro-cli` (a shim named only
-  `kiro-cli` on `PATH` is detected; a bare `kiro` is not required) — guards the regression
-  where `shutil.which("kiro")` falsely reports `ABSENT`.
+- **Peer rename / detection**: `kiro-cli` is detected via `shutil.which("kiro-cli")` (a shim
+  named `kiro-cli` on `PATH` is found); a legacy `"kiro"` key in a local config is read as
+  `kiro-cli` (back-compat) and rewritten as `kiro-cli`.
+- **Probe input channel**: the `kiro-cli` probe places the sentinel in the **positional
+  argv INPUT** (not stdin) and classifies a correct echo as `READY` — guards the regression
+  where piping to stdin produced `NO_INGEST`. The `codex`/`agy` probes keep the sentinel on
+  stdin only.
+- **v3 flag**: the kiro adapter includes `--v3`; a fixture/old-CLI path falls back to v2 and
+  the engine used is recorded in the summary.
 
 ## 10. Open questions (resolve in the plan)
 
@@ -187,5 +247,12 @@ Detection, the probe, and the readiness summary all resolve the binary through
   drive `/codex:review` and capture its output for synthesis, or is a script-level hand-off
   needed? Confirm the routing mechanism.
 - **TTL value** and whether `config_hash` alone is enough to invalidate.
-- **Kiro raw-adapter stdin fix** (separate follow-up) — does Kiro need content in argv rather
-  than piped stdin? setup flags it as `NO_INGEST` regardless.
+- ~~**Kiro raw-adapter stdin fix**~~ — RESOLVED during exploration: `kiro-cli chat` reads
+  the question from the positional `[INPUT]` arg, not stdin; the adapter now passes content
+  in argv with `--v3 --trust-tools=fs_read` (§6.2).
+- **Kiro v3 agent-config schema** — confirm the exact Markdown agent-config frontmatter/tag
+  format `kiro-cli agent create` emits on 2.8.1 before sync-context generates it; verify
+  `--v3`/`--mode` behavior is stable headlessly. (The CLI may evolve toward the full 3.0
+  release; record the engine and degrade to v2 + `CLAUDE.md` when `--v3` is unavailable.)
+- **Repo-wide `kiro`→`kiro-cli` rename** is a companion refactor with back-compat read of the
+  legacy key; sequence it so existing tests are updated in the same change.
