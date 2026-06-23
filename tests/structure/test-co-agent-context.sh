@@ -1,11 +1,20 @@
 #!/usr/bin/env bash
 # Tests for co-agent check_ai_context.py — validator/staleness checker for the
-# distilled AI context files (AGENTS.md / GEMINI.md) generated from CLAUDE.md.
+# distilled AI context file (AGENTS.md) generated from CLAUDE.md.
 
 SCRIPT="plugins/co-agent/skills/co-agent/scripts/check_ai_context.py"
+CMD="plugins/co-agent/commands/sync-context.md"
+KIRO_BRIDGE=".kiro/steering/project-context.md"
 
 assert_file_exists "$SCRIPT" "co-agent check_ai_context.py exists"
 assert_file_executable "$SCRIPT" "check_ai_context.py is executable"
+assert_file_exists "$CMD" "sync-context command exists"
+CMD_BODY=$(cat "$CMD" 2>/dev/null)
+assert_contains "$CMD_BODY" ".kiro/steering/project-context.md" "sync-context documents Kiro steering bridge"
+assert_grep_match "#\\[\\[file:CLAUDE\\.md\\]\\]" "$CMD_BODY" "sync-context references CLAUDE.md from Kiro steering"
+assert_grep_no_match "GEMINI\\.md" "$CMD_BODY" "sync-context no longer targets GEMINI.md"
+assert_file_exists "$KIRO_BRIDGE" "repo Kiro steering bridge exists"
+assert_grep_match "#\\[\\[file:CLAUDE\\.md\\]\\]" "$(cat "$KIRO_BRIDGE" 2>/dev/null)" "repo Kiro steering bridge references CLAUDE.md"
 
 # Scratch project with a minimal CLAUDE.md
 CTX_DIR=$(mktemp -d "${TMPDIR:-/tmp}/coagentctx.XXXXXX")
@@ -24,6 +33,12 @@ assert_eq "0" "$?" "no AI files → exit 0 (nothing to sync)"
 printf '%s\n# Codex context\n' "$MARKER" > "$CTX_DIR/AGENTS.md"
 python3 "$SCRIPT" "$CTX_DIR" >/dev/null 2>&1
 assert_eq "0" "$?" "in-sync AGENTS.md → exit 0"
+
+# Legacy generated GEMINI.md is ignored; sync-context now manages AGENTS.md only.
+printf '<!-- generated-by: co-agent · claude-md-sha: 000000000000 -->\n# old gemini context\n' > "$CTX_DIR/GEMINI.md"
+GEMINI_OUT=$(python3 "$SCRIPT" "$CTX_DIR" 2>&1) && GEMINI_RC=0 || GEMINI_RC=$?
+assert_eq "0" "$GEMINI_RC" "legacy GEMINI.md → ignored"
+assert_grep_no_match "GEMINI\\.md: STALE" "$GEMINI_OUT" "legacy GEMINI.md → no stale warning"
 
 # Stale marker (wrong sha) → exit 1 + STALE message
 # (capture with the `&& rc=0 || rc=$?` idiom so set -e in the runner doesn't abort)

@@ -42,7 +42,7 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 - **Strands Agent framework** — Generates deployable Python agents with BedrockModel
 
 *Multi-AI Collaboration (co-agent):*
-- **4 modes** — multi-AI review, decision support, ADR co-authoring, and `sync-context` (distill `CLAUDE.md` -> `AGENTS.md`/`GEMINI.md`)
+- **4 modes** — multi-AI review, decision support, ADR co-authoring, and `sync-context` (distill `CLAUDE.md` -> `AGENTS.md`, wire Kiro steering to `CLAUDE.md`)
 - **Panel of installed CLIs** — fan the same prompt to Kiro/peer host/Agy in parallel, with Gemini as fallback; the current host chairs and synthesizes consensus vs. dissent (degrades gracefully if none installed)
 - **`/co-agent:configure`** — tune per-AI model, Codex effort, enable/disable, timeout, and `autosync` (regenerate AI context on `CLAUDE.md` change)
 

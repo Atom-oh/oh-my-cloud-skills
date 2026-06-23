@@ -38,14 +38,19 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
 1. **Red (host).** Host writes **and commits** the failing test on the working branch
    (host is the only committer, so this is consistent). Committing first is **required**:
    the worktree is created at `HEAD`, so an uncommitted red test would not exist inside it
-   and the peer would implement blind. (Skip the whole step if the task declares
+   and the peer would implement blind. This red-test commit is **transient** — step 7
+   squashes it into a single passing commit, and step 8 reverts it on abort, so the branch
+   never retains a committed-but-red test. (Skip the whole step if the task declares
    `test_required:false`, e.g. a pure refactor with existing coverage.)
 2. **Worktree.** `worktree.py add <wt> --base HEAD` — create the isolated tree at the
    red-test commit, so the peer sees the failing test. Put `<wt>` under a gitignored path
    (e.g. `.claude/co-agent-consensus/worktrees/<task>`).
-3. **Implement (peer).** Pick the implementer from **READY** sandbox peers only —
-   consult `.claude/co-agent-panel.local.json` via `check_panel.py status <peer>` (written
-   by `/co-agent:setup`) and skip any peer that is not READY. Run the implementer with
+3. **Implement (peer).** Pick the implementer from peers that are **READY** AND
+   `access == raw` AND a sandbox CLI (codex/agy) — consult `.claude/co-agent-panel.local.json`
+   via `check_panel.py status <peer>` / `access <peer>` (written by `/co-agent:setup`). A
+   plugin-only peer (e.g. codex via the official plugin) can be READY yet have **no raw
+   write-mode CLI**, so it cannot run `impl-flags` and is not implementer-eligible. Run the
+   implementer with
    `impl-flags` **inside `<wt>`**, scoped to the task's files. Fallback chain on
    missing/error/not-READY/timeout: configured implementer → next READY peer (keep provider
    separation) → host-implement. If **no** sandbox peer is READY, the multi-model gate
@@ -59,9 +64,13 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
    cumulative gate is the review of record. Enable it only when a task warrants it.
 7. **Record + commit.** `consensus_state.py stage-result write …/tasks/<i>/result.json
    --stage task-<i> --verdict … --green true --in-scope true --implementer <ai>`; then the
-   **host is the only committer** — one commit for the task. `worktree.py remove <wt>`.
-8. **Escalate** when the fix loop is exhausted: `consensus_state.py set . status needs-human`
-   and stop the task (do not commit a red task).
+   **host is the only committer** — **squash the red-test commit and the green implementation
+   into one passing commit** (e.g. `git commit --amend`/soft-reset), so the branch never
+   carries a committed-but-red test. `worktree.py remove <wt>`.
+8. **Escalate / abort** when the fix loop is exhausted: **revert the red-test commit**
+   (`git reset --hard` to the pre-task checkpoint) so no failing test is left on the branch,
+   then `consensus_state.py set . status needs-human` and stop the task. Never leave a red
+   commit on the working branch.
 
 ## Host-only-commit (non-negotiable)
 

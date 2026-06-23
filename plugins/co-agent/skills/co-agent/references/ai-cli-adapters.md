@@ -169,25 +169,22 @@ co-agent's ADR mode provides the **collaboration layer** that enriches the
    (or paste into the file `/add-adr` created). co-agent does **not** modify the
    upstream `/add-adr` command itself.
 
-## Project context files (per-AI, auto-loaded)
+## Project context files
 
-Each CLI auto-loads a project-context file from the repo root and uses it as system
-context for every invocation — the analogue of Claude's `CLAUDE.md`. co-agent
-**distills** `CLAUDE.md` into these so the panel reviews with the project's conventions
-(verified by asking each AI directly):
+Keep `CLAUDE.md` as the canonical project memory. co-agent maintains only the context
+surfaces that have reliable repo-local loading semantics:
 
-| AI | File | Behaviour / limits | co-agent generates? |
-|----|------|--------------------|--------------------|
-| **Kiro** | `CLAUDE.md` | Reads the repo's `CLAUDE.md` directly (root + parent dirs) in default mode — NOT `AGENTS.md` or `.kiro/steering`. | ❌ — uses the canonical source as-is |
-| **Codex** | `AGENTS.md` | Merged git-root→cwd; **~32 KiB project-doc cap** (oversized → truncated). `AGENTS.override.md` wins locally. | ✅ |
-| **Gemini** | `GEMINI.md` | Loaded into the context window; **bloat degrades reasoning** — keep lean. Configurable via `contextFileName`. | ✅ |
+| AI | File | Behaviour / limits | co-agent action |
+|----|------|--------------------|-----------------|
+| **Kiro** | `.kiro/steering/project-context.md` | Always-loaded steering bridge that references `CLAUDE.md` with `#[[file:CLAUDE.md]]`. | create/update bridge |
+| **Codex** | `AGENTS.md` | Merged git-root→cwd; **~32 KiB project-doc cap** (oversized → truncated). `AGENTS.override.md` wins locally. | distill + validate |
+| **Agy / legacy Gemini fallback** | prompt-supplied context | Receives the fan-out prompt/context directly; no maintained repo context file. | none |
 
 ### Distill — do NOT copy CLAUDE.md verbatim
 
-All three warn against a dumped copy (Codex truncates at the cap; Gemini's context
-degrades; Kiro favors ~2000 words). Produce ONE lean, **review-oriented** shared core
-and write it to both `AGENTS.md` and `GEMINI.md`. Include only what helps an external
-reviewer judge a diff:
+Codex truncates dumped copies at the project-doc cap. Produce one lean,
+**review-oriented** core and write it to `AGENTS.md` only. Include only what helps an
+external reviewer judge a diff:
 
 - language / stack / runtime
 - build · test · lint commands (copy-paste ready)
@@ -197,11 +194,30 @@ reviewer judge a diff:
 - a short review checklist + known false-positives to suppress
 
 Omit: transient project state, version-bump/release mechanics, tool internals, and
-exhaustive file inventories. **Never include secrets** — these files go to third-party AIs.
+exhaustive file inventories. **Never include secrets** — this file goes to third-party AIs.
+
+### Kiro steering bridge
+
+Kiro shares Claude's canonical context through a steering file instead of a distilled
+copy:
+
+```markdown
+---
+name: project-context
+inclusion: always
+---
+
+# Project Context
+
+#[[file:CLAUDE.md]]
+```
+
+If a hand-written `.kiro/steering/project-context.md` already exists without that file
+reference, leave it untouched and report that it needs manual merge.
 
 ### Generation marker + safety
 
-Every generated file carries a marker on line 1 so the validator can detect staleness
+The generated `AGENTS.md` carries a marker on line 1 so the validator can detect staleness
 and never clobber a hand-written file:
 
 ```
@@ -210,13 +226,13 @@ and never clobber a hand-written file:
 
 - Emit it with `python3 scripts/check_ai_context.py <dir> --emit-marker` (hashes the
   current `CLAUDE.md`), then prepend a one-line role header
-  (`> You are <Codex|Gemini>, an external reviewer — project context below.`).
+  (`> You are Codex, an external reviewer — project context below.`).
 - Files **without** the marker are treated as hand-written → left untouched (this also
   protects Codex's `AGENTS.override.md`).
 - Validate after writing: `python3 scripts/check_ai_context.py <project-dir>` — checks
   marker, size cap, staleness (claude-md-sha vs current `CLAUDE.md`), and runs a secret scan.
 - A plugin **PostToolUse hook** on `CLAUDE.md` Edit/Write runs the validator and prints a
-  reminder when the generated files drift out of sync.
+  reminder when `AGENTS.md` drifts out of sync.
 
 ## Notes
 

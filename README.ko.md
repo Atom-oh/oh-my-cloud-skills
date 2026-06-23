@@ -42,7 +42,7 @@
 - **Strands Agent 프레임워크** — BedrockModel을 사용한 배포 가능한 Python 에이전트 생성
 
 *멀티-AI 협업 (co-agent):*
-- **4가지 모드** — 멀티-AI 리뷰, 의사결정 보조, ADR 협업, `sync-context`(`CLAUDE.md` 증류 -> `AGENTS.md`/`GEMINI.md`)
+- **4가지 모드** — 멀티-AI 리뷰, 의사결정 보조, ADR 협업, `sync-context`(`CLAUDE.md` 증류 -> `AGENTS.md`, Kiro steering은 `CLAUDE.md` 참조)
 - **설치된 CLI 패널** — 같은 프롬프트를 Kiro/Codex/Gemini에 병렬 팬아웃, Claude가 의장으로 합의/이견 종합 (없으면 Claude 단독, hard-fail 없음)
 - **`/co-agent:configure`** — AI별 model, Codex effort, 활성/비활성, timeout, `autosync`(`CLAUDE.md` 변경 시 AI 컨텍스트 재생성) 튜닝
 

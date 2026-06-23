@@ -1,6 +1,6 @@
 # co-agent Plugin — Claude Code Configuration
 
-다른 AI 에이전트(Kiro CLI, Codex, Agy 우선/Gemini fallback)와 협업해 **second opinion**을 받고, **Claude가 의장으로 종합**하는 플러그인. 세 가지 모드: 멀티-AI 리뷰, 의사결정 보조, ADR 협업.
+다른 AI 에이전트(Kiro CLI, Codex, Agy 우선/Gemini fallback)와 협업해 **second opinion**을 받고, **Claude가 의장으로 종합**하는 플러그인. 멀티-AI 리뷰, 의사결정 보조, ADR 협업, 컨텍스트 동기화를 제공.
 
 **Prerequisites (선택적 — 있는 것만 사용)**: `kiro-cli`(+`KIRO_API_KEY`), `codex`, `agy` CLI 중 설치된 것을 패널로 활용. `agy`가 없으면 legacy `gemini` CLI를 fallback으로 사용. 하나도 없으면 Claude 단독 수행 + 그 사실을 명시. 절대 hard-fail 하지 않음.
 
@@ -26,7 +26,7 @@ co-agent
   ├── Review       : git diff → 동일 프롬프트 팬아웃 → 합의/이견 종합 → PASS/REVIEW/FAIL
   ├── Decide       : 결정+옵션 팬아웃 → 비교표 → Claude 추천 (의장)
   ├── ADR          : 대안·트레이드오프·리스크 팬아웃 → Nygard ADR 초안 → /add-adr 연동
-  ├── sync-context : CLAUDE.md 증류 → AGENTS.md(Codex)·GEMINI.md(Gemini fallback) 생성 (Kiro는 CLAUDE.md 직접 사용)
+  ├── sync-context : CLAUDE.md 증류 → AGENTS.md(Codex) 생성 + Kiro steering bridge 연결
   ├── consensus    : doc→plan→구현 자율 파이프라인 + 멀티모델 게이트 (`/co-agent:consensus`)
   ├── harness      : host 설계 / peer 구현(격리 worktree+workspace-write) / 패널 리뷰; host가 red·커밋 소유 (`/co-agent:harness`)
   └── setup        : 패널 준비도 프리플라이트 — peer별 plugin→raw→none 감지 + 실사용 프로브, 흐름이 참조하는 readiness 요약 기록 (`/co-agent:setup`)
@@ -36,21 +36,21 @@ co-agent
 
 ## AI Context Files (per-AI project docs)
 
-각 AI CLI가 리포 루트에서 자동 로드하는 컨텍스트 파일. co-agent가 **CLAUDE.md를 증류(distill)** 해 생성 — 복사 ❌.
+각 AI CLI가 리포 루트에서 자동 로드/참조하는 컨텍스트 파일. `CLAUDE.md`가 canonical source이고, co-agent는 Codex용 `AGENTS.md`만 **증류(distill)** 해 생성 — 복사 ❌.
 
 | AI | 파일 | 생성? |
 |----|------|-------|
-| Kiro | `CLAUDE.md` (직접 읽음) | ❌ |
+| Kiro | `.kiro/steering/project-context.md` → `#[[file:CLAUDE.md]]` | bridge 생성 |
 | Codex | `AGENTS.md` (~32 KiB cap) | ✅ |
-| Gemini fallback | `GEMINI.md` (lean 유지) | ✅ |
+| Agy/Gemini fallback | 팬아웃 prompt context | ❌ |
 
-생성 마커(`generated-by: co-agent · claude-md-sha:`)로 staleness/수기파일 보호. `scripts/check_ai_context.py`가 검증(크기·마커·동기화·시크릿 스캔). CLAUDE.md 편집 시 PostToolUse 훅이 동기화 알림.
+`AGENTS.md` 생성 마커(`generated-by: co-agent · claude-md-sha:`)로 staleness/수기파일 보호. `scripts/check_ai_context.py`가 검증(크기·마커·동기화·시크릿 스캔). CLAUDE.md 편집 시 PostToolUse 훅이 동기화 알림.
 
 ## AI CLI Adapters (read-only advisory)
 
 | AI | Command |
 |----|---------|
-| Kiro | `kiro-cli chat "<P>" --no-interactive --trust-tools=read,grep --wrap never` |
+| Kiro | `kiro-cli chat "<P + CTX as the positional INPUT>" --v3 --mode default --no-interactive --trust-tools=fs_read --wrap never` (content in argv `[INPUT]`, NOT stdin) |
 | Codex | `codex exec -s read-only "<P>"` |
 | Agy | `agy -p "<P>" --sandbox` |
 | Gemini fallback | `gemini -p "<P>" -o text` |
@@ -73,7 +73,7 @@ co-agent
 
 ## Sync-context (`/co-agent:sync-context`)
 
-`CLAUDE.md`를 **증류**해 외부 AI가 읽는 컨텍스트 파일 생성 (스킬 Mode 4를 독립 명령으로 노출). Codex→`AGENTS.md`, Gemini fallback→`GEMINI.md`, Kiro→`CLAUDE.md` 직접. 생성 마커로 staleness 추적·수기파일 보호. `CLAUDE.md` PostToolUse 훅이 drift 알림 — `autosync on`이면 Claude에게 재동기화 지시.
+`CLAUDE.md`를 **증류**해 Codex가 읽는 `AGENTS.md`를 생성하고, Kiro는 `.kiro/steering/project-context.md`에서 `#[[file:CLAUDE.md]]`로 같은 canonical context를 참조하게 함. 생성 마커로 `AGENTS.md` staleness 추적·수기파일 보호. `CLAUDE.md` PostToolUse 훅이 drift 알림 — `autosync on`이면 Claude에게 재동기화 지시.
 
 ## Chair Principle
 

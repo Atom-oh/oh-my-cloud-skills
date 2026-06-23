@@ -78,9 +78,9 @@ Argument: `$ARGUMENTS`
    values are charset-validated (letters/digits/`. _ : / - ( )` + spaces — agy tokens like
    `Gemini 3.1 Pro (High)`; shell metacharacters stay rejected) to keep the fan-out safe.
    `autosync on` makes the `CLAUDE.md` PostToolUse hook tell Claude to run
-   `/co-agent:sync-context` whenever the generated files drift stale (opt-in; default
-   off = reminder only). It refreshes existing `AGENTS.md`/`GEMINI.md`; first-time
-   generation is still done by running the command once.
+   `/co-agent:sync-context` whenever `AGENTS.md` drifts stale (opt-in; default
+   off = reminder only). It refreshes `AGENTS.md` and the Kiro steering bridge;
+   first-time generation is still done by running the command once.
 3. If the user asks for a setting that isn't headless-settable (e.g. Agy effort),
    explain why it's not offered and suggest the closest real lever (model, or run
    that AI interactively). Do **not** invent a setting that the CLI ignores.

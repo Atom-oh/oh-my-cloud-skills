@@ -62,12 +62,13 @@ python3 "$CLAUDE_PLUGIN_ROOT/skills/co-agent/scripts/co_agent_config.py" panel -
 
 ## 모드 4 — sync-context (AI 컨텍스트 동기화)
 
-`/co-agent:sync-context` 명령으로도 실행. 외부 AI가 프로젝트 컨벤션으로 리뷰하도록 `CLAUDE.md`를 **증류**해 각 CLI의 컨텍스트 파일 생성:
+`/co-agent:sync-context` 명령으로도 실행. 외부 AI가 프로젝트 컨벤션으로 리뷰하도록 `CLAUDE.md`를 canonical source로 유지하고, Codex용 `AGENTS.md`만 **증류**:
 
 1. `CLAUDE.md` 읽기 → 리뷰에 필요한 핵심만(스택·빌드/테스트 명령·금지 패턴·아키텍처 경계·리뷰 체크리스트) **증류** (그대로 복사 ❌, 시크릿 ❌).
-2. 생성 마커(`check_ai_context.py --emit-marker`)를 붙여 `AGENTS.md`(Codex)·`GEMINI.md`(Gemini fallback)에 기록. Kiro는 `CLAUDE.md` 직접 사용.
-3. 마커 없는 수기 파일/`AGENTS.override.md`는 건드리지 않음.
-4. `check_ai_context.py`로 검증(마커·크기 캡·staleness·시크릿 스캔).
+2. 생성 마커(`check_ai_context.py --emit-marker`)를 붙여 `AGENTS.md`(Codex)에 기록.
+3. Kiro는 `.kiro/steering/project-context.md`에서 `#[[file:CLAUDE.md]]`로 같은 canonical context 참조.
+4. 마커 없는 수기 파일/`AGENTS.override.md`는 건드리지 않음.
+5. `check_ai_context.py`로 검증(마커·크기 캡·staleness·시크릿 스캔).
 
 ## 의장 원칙
 

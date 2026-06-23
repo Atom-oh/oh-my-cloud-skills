@@ -141,16 +141,16 @@ Co-author an Architecture Decision Record with the panel.
 Give the external AIs project context so they review with the project's conventions —
 each CLI auto-loads its own native file from the repo root:
 
-| AI | Reads | co-agent generates? |
-|----|-------|--------------------|
-| Kiro CLI | **`CLAUDE.md`** (root + parents) | ❌ no — it reads the canonical source directly |
-| Codex | **`AGENTS.md`** | ✅ |
-| Gemini | **`GEMINI.md`** | ✅ |
+| AI | Reads | co-agent action |
+|----|-------|-----------------|
+| Kiro CLI | **`.kiro/steering/project-context.md`** → `#[[file:CLAUDE.md]]` | ✅ bridge to canonical source |
+| Codex | **`AGENTS.md`** | ✅ distilled context |
+| Agy / legacy Gemini fallback | prompt-supplied context during fan-out | ❌ no repo context file |
 
 **DISTILL — do NOT copy CLAUDE.md verbatim.** All three CLIs warn that a dumped copy
-bloats/truncates (Codex 32 KiB project-doc cap; Gemini context-window degradation;
-Kiro ~2000 words). Produce one **lean, review-oriented core** and write it to BOTH
-`AGENTS.md` and `GEMINI.md` (Kiro needs none):
+bloats/truncates (Codex 32 KiB project-doc cap; Kiro steering should reference the
+canonical file instead of maintaining a second copy). Produce one **lean,
+review-oriented core** and write it to **`AGENTS.md` only**:
 
 1. Read the project's `CLAUDE.md`.
 2. **Claude distills** a lean core (bullets, absolute mandates) covering: language/stack,
@@ -159,12 +159,25 @@ Kiro ~2000 words). Produce one **lean, review-oriented core** and write it to BO
    security), a short review checklist, and known false-positives. Omit transient
    state, version-bump commands, and tool internals not relevant to review. **No secrets,
    no huge file inventories.**
-3. Prepend the marker line (run `scripts/check_ai_context.py <dir> --emit-marker`) plus a
-   one-line per-file header: `> You are <Codex|Gemini>, an external reviewer — project
-   context below.` Write to `AGENTS.md` and `GEMINI.md`.
+3. Prepend the marker line (run `scripts/check_ai_context.py <dir> --emit-marker`) plus
+   the header `> You are Codex, an external reviewer — project context below.` Write to
+   `AGENTS.md`.
 4. **Only overwrite files that carry the co-agent marker** — never clobber a hand-written
    `AGENTS.md` or Codex's `AGENTS.override.md`.
-5. Validate: `python3 scripts/check_ai_context.py <project-dir>` (size caps, marker,
+5. Ensure `.kiro/steering/project-context.md` exists and contains:
+   ```markdown
+   ---
+   name: project-context
+   inclusion: always
+   ---
+
+   # Project Context
+
+   #[[file:CLAUDE.md]]
+   ```
+   If an existing steering file has other hand-written content and does not already
+   contain that file reference, leave it and report that it needs manual merge.
+6. Validate: `python3 scripts/check_ai_context.py <project-dir>` (size cap, marker,
    staleness, secret scan).
 
 > A PostToolUse hook reminds you when `CLAUDE.md` changes so these stay in sync.
@@ -224,10 +237,10 @@ panel; auth fixes stay guidance-only.
 
 ## References
 
-- `references/ai-cli-adapters.md` — Kiro/Claude/Codex/Agy/Gemini CLI commands, detection, fan-out pattern, fallbacks, **per-AI project-context files**
+- `references/ai-cli-adapters.md` — Kiro/Claude/Codex/Agy/Gemini CLI commands, detection, fan-out pattern, fallbacks, **project-context files**
 - `references/architecture-review-framework.md` — review rubric, severity, PASS/REVIEW/FAIL
 - `references/aws-well-architected.md` — 6-pillar checklist for the review mode
-- `scripts/check_ai_context.py` — validate/staleness-check generated AGENTS.md/GEMINI.md (size caps, marker, secrets); `--emit-marker` for generation
+- `scripts/check_ai_context.py` — validate/staleness-check generated AGENTS.md (size cap, marker, secrets); `--emit-marker` for generation
 - `scripts/co_agent_config.py` + `co-agent.defaults.json` — panel settings (model/effort/enabled/timeout); driven by the **`/co-agent:configure`** command, overrides in `.claude/co-agent.local.json`
 - `scripts/check_citations.py` — tiered citation validation (supported/needs-review/unsupported) for all review modes
 - `references/consensus-pipeline.md` — **AUTHORITATIVE** for `/co-agent:consensus`: P0–P5 phases (Stage A implements P0–P2), entry decision table, Stage A/B/C roadmap

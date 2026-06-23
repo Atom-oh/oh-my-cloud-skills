@@ -1,7 +1,7 @@
 ---
 description: Host-designs / peer-implements / panel-reviews orchestrator. The host owns the design, the failing test, and every commit; a cross-provider peer writes code only inside an isolated git worktree under a workspace-write sandbox; the consensus gate reviews. Opt-in, local commits only.
 allowed-tools: Read, Glob, Grep, Bash, AskUserQuestion
-argument-hint: "<adr|spec|plan|task>  [--implementer codex|claude|agy]"
+argument-hint: "<adr|spec|plan|task>  [--implementer codex|agy]"
 ---
 
 # co-agent: harness
@@ -27,12 +27,18 @@ Let `SK="${CLAUDE_PLUGIN_ROOT:-plugins/co-agent}/skills/co-agent/scripts"` and
    valid implementers (claude/kiro-cli/gemini have no worktree-scoped write sandbox); default is
    claude host → codex, codex host → agy. Never equals the host. Tell the user panel + implementer.
 3. **Consult readiness** (`.claude/co-agent-panel.local.json` from `/co-agent:setup`):
-   `python3 "$SK/check_panel.py" status <peer>` — keep only **READY** peers in the panel /
-   implementer pool; drop AUTH/NO_INGEST/ABSENT/etc. If **no READY sandbox peer** (codex/agy)
-   remains, the multi-model gate cannot run — **block** and tell the user to run
+   `python3 "$SK/check_panel.py" status <peer>` / `access <peer>` — keep only **READY** peers
+   for the review panel; drop AUTH/NO_INGEST/ABSENT/etc. The **implementer** has a stricter
+   gate: it must be READY **and** `access == raw` **and** a sandbox CLI (codex/agy) — a
+   plugin-only peer (e.g. codex via the official plugin) can be READY yet have no raw
+   write-mode CLI for `impl-flags`, so it is **not** eligible as implementer. If no peer
+   satisfies the implementer gate, fall back to host-implement; if **no READY peer** remains
+   at all, the multi-model gate cannot run — **block** and tell the user to run
    `/co-agent:setup` (or install/auth a peer). Absent summary → run `/co-agent:setup` first.
-4. **Clean tree required**: `python3 "$SK/consensus_state.py" verify .`
-   (`rebind` after an intentional manual commit when resuming). `git worktree prune` to reap orphans.
+4. **Clean tree required**: refuse to start on a dirty tree — `test -z "$(git -C . status --porcelain)"`.
+   `git worktree prune` to reap orphans. (`consensus_state.py verify`/`rebind` are for **resume**,
+   after a session exists — they are run in H1+, not here, since `verify` fails when no session
+   has been `init`'d yet.)
 
 ## H1 — Design (host)
 Detect input: `consensus_state.py detect . <doc...>`. A **plan** doc → `parse_plan.py` (no
@@ -51,8 +57,12 @@ contains it) → `worktree.py add` (under a gitignored path) → run the
 implementer with `co_agent_config.py impl-flags <ai> --host "$HOST"` **inside the worktree**
 → `worktree.py capture-diff` → `scope_guard.py` (drop out-of-scope) → apply patch to main +
 `tests/run-all.sh` **on main** → bounded fix loop (`harness.max_fix_rounds`) → `stage-result`
-→ **host commits once** → `worktree.py remove`. Fallback chain: counterpart → other peer →
-host-implement. Exhausted fix loop → `needs-human`. External AIs never commit.
+→ **host commits once** (the red-test commit + the green implementation are squashed into
+that single passing commit, so the branch never carries a committed-but-red test) →
+`worktree.py remove`. Fallback chain: counterpart → other peer → host-implement. **On
+exhausted fix loop / abort**: revert the red-test commit (`git reset --hard` to the
+pre-task checkpoint) so no failing test is left on the branch, then `set . status
+needs-human`. External AIs never commit.
 
 ## H4 — Final gate
 `consensus_state.py cumulative-diff . --plan <plan> --base <trunk>` → consensus gate →

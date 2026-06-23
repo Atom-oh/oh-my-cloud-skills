@@ -62,7 +62,7 @@ co-agent는 항상 먼저 패널을 감지합니다. 바이너리 존재만으�
 
 ### 4. sync-context — AI 컨텍스트 동기화
 
-외부 AI가 **프로젝트 컨벤션을 알고** 리뷰하도록, 각 CLI가 자동 로드하는 컨텍스트 파일을 만듭니다.
+외부 AI가 **프로젝트 컨벤션을 알고** 리뷰하도록, `CLAUDE.md`를 canonical source로 유지하고 필요한 bridge/context만 만듭니다.
 
 ```
 /co-agent:sync-context
@@ -70,11 +70,11 @@ co-agent는 항상 먼저 패널을 감지합니다. 바이너리 존재만으�
 
 | AI | 읽는 파일 | 생성 |
 |----|-----------|------|
-| Kiro | `CLAUDE.md` 직접 | — |
+| Kiro | `.kiro/steering/project-context.md` → `#[[file:CLAUDE.md]]` | bridge |
 | Codex | `AGENTS.md` (~32 KiB 캡) | ✅ |
-| Gemini fallback | `GEMINI.md` (가볍게) | ✅ |
+| Agy/Gemini fallback | 팬아웃 prompt context | — |
 
-- `CLAUDE.md`를 **그대로 복사하지 않고 증류** — 리뷰에 필요한 핵심만(스택·빌드/테스트 명령·금지 패턴·아키텍처 경계·체크리스트). 시크릿은 포함하지 않음
+- `AGENTS.md`는 `CLAUDE.md`를 **그대로 복사하지 않고 증류** — 리뷰에 필요한 핵심만(스택·빌드/테스트 명령·금지 패턴·아키텍처 경계·체크리스트). 시크릿은 포함하지 않음
 - 생성 마커로 staleness를 추적하고, 마커 없는 수기 파일은 보호
 
 ## 패널 튜닝 (`/co-agent:configure`)
@@ -96,7 +96,7 @@ CLI가 헤드리스로 실제 받는 설정만 노출합니다.
 
 ## 자동 동기화 (autosync)
 
-`autosync on`이면 `CLAUDE.md`가 바뀌어 컨텍스트 파일이 stale해질 때 PostToolUse 훅이 Claude에게 `/co-agent:sync-context` 실행을 지시합니다 (기본 off = 알림만). 훅은 bash라 직접 증류할 수 없으므로, **자동이라도 Claude가 루프 안에서** 파일을 다시 씁니다 — 몰래 쓰기가 아닙니다.
+`autosync on`이면 `CLAUDE.md`가 바뀌어 `AGENTS.md`가 stale해질 때 PostToolUse 훅이 Claude에게 `/co-agent:sync-context` 실행을 지시합니다 (기본 off = 알림만). 훅은 bash라 직접 증류할 수 없으므로, **자동이라도 Claude가 루프 안에서** 파일을 다시 씁니다 — 몰래 쓰기가 아닙니다.
 
 ## 동작 원리
 

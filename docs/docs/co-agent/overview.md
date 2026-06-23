@@ -26,7 +26,7 @@ co-agent는 **다른 AI 에이전트(Kiro CLI, peer host CLI, Agy 우선/Gemini 
 | 명령 | 설명 |
 |------|------|
 | `/co-agent:configure` | host-aware 패널 설정 — AI별 `model`, 지원되는 `effort`, `enabled`, `timeout`, `autosync` 토글 |
-| `/co-agent:sync-context` | `CLAUDE.md` 증류 → `AGENTS.md`(Codex) + `GEMINI.md`(Gemini fallback) 생성 |
+| `/co-agent:sync-context` | `CLAUDE.md` 증류 → `AGENTS.md`(Codex) 생성 + Kiro steering bridge 연결 |
 
 ## 사전 요구사항 (선택적 — 있는 것만 사용)
 
@@ -48,7 +48,7 @@ flowchart LR
     P --> R["Review: diff 팬아웃 → 합의/이견 종합 → PASS/REVIEW/FAIL"]
     P --> D["Decide: 옵션 팬아웃 → 비교표 → host 추천"]
     P --> ADR["ADR: 대안·트레이드오프 팬아웃 → Nygard ADR 초안"]
-    P --> S["sync-context: CLAUDE.md 증류 → AGENTS.md/GEMINI.md"]
+    P --> S["sync-context: CLAUDE.md 증류 → AGENTS.md + Kiro steering"]
 ```
 
 | 모드 | 트리거 | 동작 |
@@ -56,7 +56,7 @@ flowchart LR
 | **Review** | "다른 AI로 리뷰", "second opinion", "멀티 AI" | 같은 리뷰 프롬프트를 패널에 병렬 팬아웃 → host가 합의/이견 종합 + Well-Architected → PASS/REVIEW/FAIL |
 | **Decide** | "잘 모르겠어", "의사결정 도와", "협업해서 결정" | 결정+옵션을 패널에 질의 → 비교표(옵션×AI) → host 단일 추천 + 결정 트레이드오프 |
 | **ADR** | "ADR 협업" | 패널에서 대안·트레이드오프·리스크 수집 → host가 Nygard ADR 초안 (project-init `/add-adr` 연동) |
-| **sync-context** | `/co-agent:sync-context`, "AI 컨텍스트 동기화" | `CLAUDE.md`를 증류해 Codex(`AGENTS.md`)·Gemini fallback(`GEMINI.md`)용 컨텍스트 파일 생성 (Kiro는 `CLAUDE.md` 직접 사용) |
+| **sync-context** | `/co-agent:sync-context`, "AI 컨텍스트 동기화" | `CLAUDE.md`를 증류해 Codex(`AGENTS.md`)용 컨텍스트 파일 생성, Kiro는 steering bridge로 `CLAUDE.md` 참조 |
 
 ## 의장 원칙 (Chair Principle)
 
@@ -88,15 +88,15 @@ flowchart LR
 
 ## AI 컨텍스트 동기화 (`/co-agent:sync-context`)
 
-외부 AI가 프로젝트 컨벤션으로 리뷰하도록, `CLAUDE.md`를 **증류**해 각 CLI가 자동 로드하는 컨텍스트 파일을 생성합니다 (그대로 복사 ❌).
+외부 AI가 프로젝트 컨벤션으로 리뷰하도록, `CLAUDE.md`를 canonical source로 유지합니다. Codex용 `AGENTS.md`만 **증류**해 생성하고, Kiro는 steering bridge로 같은 `CLAUDE.md`를 참조합니다 (그대로 복사 ❌).
 
 | AI | 파일 | 생성 |
 |----|------|------|
-| Kiro | `CLAUDE.md` 직접 | — |
+| Kiro | `.kiro/steering/project-context.md` → `#[[file:CLAUDE.md]]` | bridge |
 | Codex | `AGENTS.md` (~32 KiB 캡) | ✅ |
-| Gemini fallback | `GEMINI.md` (가볍게 유지) | ✅ |
+| Agy/Gemini fallback | 팬아웃 prompt context | — |
 
-생성 마커(`claude-md-sha`)로 staleness를 추적하고, 마커 없는 수기 파일은 보호합니다. `CLAUDE.md` 편집 시 PostToolUse 훅이 drift를 알리며, `autosync on`이면 재동기화를 지시합니다.
+`AGENTS.md` 생성 마커(`claude-md-sha`)로 staleness를 추적하고, 마커 없는 수기 파일은 보호합니다. `CLAUDE.md` 편집 시 PostToolUse 훅이 drift를 알리며, `autosync on`이면 재동기화를 지시합니다.
 
 ## Auto-Invocation 키워드
 

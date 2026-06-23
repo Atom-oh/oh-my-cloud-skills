@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Validate / check staleness of co-agent-generated AI context files.
+"""Validate / check staleness of co-agent-generated Codex context.
 
-co-agent distills CLAUDE.md into lean, review-oriented context files that the
-external AI CLIs auto-load from the repo root:
+co-agent distills CLAUDE.md into a lean, review-oriented context file that Codex
+auto-loads from the repo root:
   - AGENTS.md  → Codex CLI   (32 KiB project-doc cap; merged git-root→cwd)
-  - GEMINI.md  → Gemini CLI  (keep lean; bloat degrades the context window)
-  - (Kiro CLI reads CLAUDE.md directly — no generated file)
 
-Claude (the co-agent skill) writes these; this script does the mechanical checks:
+Kiro context sharing is handled by .kiro/steering/project-context.md referencing
+CLAUDE.md directly; it is not a distilled generated context file.
+
+Claude (the co-agent skill) writes AGENTS.md; this script does the mechanical checks:
 staleness vs CLAUDE.md, size caps, the generated marker, and a secret scan. It is
 NOT the distiller — distillation needs Claude.
 
@@ -24,7 +25,7 @@ import re
 import hashlib
 import datetime
 
-MANAGED = {"AGENTS.md": 32 * 1024, "GEMINI.md": 24 * 1024}  # filename → soft size cap (bytes)
+MANAGED = {"AGENTS.md": 32 * 1024}  # filename → soft size cap (bytes)
 MARKER_RE = re.compile(r"generated-by:\s*co-agent")
 SHA_RE = re.compile(r"claude-md-sha:\s*([0-9a-f]{12})")
 SECRET_RE = re.compile(r"AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY|ghp_[A-Za-z0-9]{30,}|(?:password|secret|api[_-]?key)\s*[:=]\s*['\"][^'\"]{6,}", re.I)
@@ -82,7 +83,7 @@ def main() -> int:
         for p in problems:
             print(f"   • {p}")
         return 1
-    print("✅ AI context files in sync with CLAUDE.md (AGENTS.md / GEMINI.md), within size caps, no secrets.")
+    print("✅ AGENTS.md is in sync with CLAUDE.md, within size cap, no secrets.")
     return 0
 
 
