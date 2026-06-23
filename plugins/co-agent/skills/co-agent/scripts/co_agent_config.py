@@ -49,7 +49,12 @@ HOSTS = ("claude", "codex")
 CODEX_EFFORTS = ("minimal", "low", "medium", "high")
 CLAUDE_EFFORTS = ("low", "medium", "high", "xhigh", "max")
 EFFORTS_BY_AI = {"codex": CODEX_EFFORTS, "claude": CLAUDE_EFFORTS}
-MODEL_RE = re.compile(r"^[A-Za-z0-9._:/-]+$")  # reject spaces / shell metacharacters
+# Allow the chars in real model tokens — incl. spaces and parens for Agy tokens like
+# "Gemini 3.1 Pro (High)". Shell metacharacters (; | & $ ` " ' < > \ * ? etc.) stay
+# rejected; the value is always passed as a single argv element (never shell-interpolated),
+# so spaces/parens are safe. Flags are emitted newline-delimited so a spaced value
+# survives as one token (see cmd_flags / the fan-out's `mapfile -t`).
+MODEL_RE = re.compile(r"^[A-Za-z0-9 ._:/()-]+$")
 DEFAULTS_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                              "co-agent.defaults.json")
 
@@ -369,7 +374,7 @@ def cmd_flags(root, ai, host):
     elif ai == "gemini":
         if model:
             parts += ["-m", model]
-    print(" ".join(parts))
+    print("\n".join(parts))   # newline-delimited so a spaced model value stays one token
     return 0
 
 
@@ -448,7 +453,7 @@ def cmd_impl_flags(root, ai, host):
         parts += ["--sandbox"]
         if model:
             parts += ["--model", model]
-    print(" ".join(parts))
+    print("\n".join(parts))   # newline-delimited so a spaced model value stays one token
     return 0
 
 

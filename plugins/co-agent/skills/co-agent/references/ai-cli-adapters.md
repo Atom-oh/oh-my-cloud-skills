@@ -50,7 +50,7 @@ TOKENS=$(( ( $(wc -c < "$CTX_FILE") + 3 ) / 4 ))
 i=0
 python3 "$CFG" pairs --host "$HOST" 2>/dev/null | while IFS=$'\t' read -r ai model; do
   i=$((i+1)); slot="$RUN/${ai}-${i}"
-  read -r -a MFLAGS < <(python3 "$CFG" flags "$ai" --host "$HOST" 2>/dev/null || true)
+  mapfile -t MFLAGS < <(python3 "$CFG" flags "$ai" --host "$HOST" 2>/dev/null || true)   # newline-delimited: a spaced model value (e.g. agy "Gemini 3.1 Pro (High)") stays one arg
   if ! python3 "$CFG" fits "$ai" "$TOKENS" --host "$HOST" 2>/dev/null; then
     echo "[skip] $ai/$model — context ~${TOKENS} tok > model window"; continue
   fi
@@ -90,8 +90,10 @@ wait
   context exceeds its `context_limit`. Inspect/raise via `/co-agent:configure`
   (`set <ai> context_limit <n>` or `set <ai> model <1M-model>`); narrowing the diff
   is usually the right fix. A 0/unset limit means "no check".
-- **Safe flag expansion**: `read -ra FLAGS < <(...)` + `"${FLAGS[@]}"` — model values are
-  charset-validated at `set` time AND never word-split/globbed at call time (defense in depth).
+- **Safe flag expansion**: `mapfile -t MFLAGS < <(...)` + `"${MFLAGS[@]}"` — flags are
+  newline-delimited so a value with spaces (e.g. agy's `Gemini 3.1 Pro (High)`) stays one
+  argv element; model values are charset-validated at `set` time (no shell metacharacters)
+  AND never word-split/globbed at call time (defense in depth).
 - Settings are **live**: `python3 "$CFG" show --host "$HOST"` to inspect; `/co-agent:configure` to change
   model/effort/enabled/timeout/context_limit. A disabled AI never appears in `$PANEL`.
 - Run them **in parallel** (`&` + `wait`) — three sequential CLI calls are slow.

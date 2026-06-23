@@ -29,7 +29,7 @@ assert_eq "kiro-cli claude agy" "$CODEX_HOST_PANEL" "codex-host panel swaps code
 
 python3 "$CFG" set claude model sonnet --host codex --root "$R" >/dev/null 2>&1
 python3 "$CFG" set claude effort max --host codex --root "$R" >/dev/null 2>&1
-CLAUDE_FLAGS=$(python3 "$CFG" flags claude --host codex --root "$R" 2>&1)
+CLAUDE_FLAGS=$(python3 "$CFG" flags claude --host codex --root "$R" 2>&1 | tr '\n' ' ')   # flags are newline-delimited
 assert_contains "$CLAUDE_FLAGS" "model sonnet" "claude flags include model (--model)"
 assert_contains "$CLAUDE_FLAGS" "effort max" "claude flags include effort"
 
@@ -45,10 +45,18 @@ assert_contains "$SHOW" "272,000" "show reports codex context window"
 # set Codex model + effort → flags inject -m and reasoning effort
 python3 "$CFG" set codex model gpt-5-codex --root "$R" >/dev/null 2>&1
 python3 "$CFG" set codex effort high --root "$R" >/dev/null 2>&1
-CODEX_FLAGS=$(python3 "$CFG" flags codex --root "$R" 2>&1)
+CODEX_FLAGS=$(python3 "$CFG" flags codex --root "$R" 2>&1 | tr '\n' ' ')   # flags are newline-delimited
 # needle avoids a leading '-' so grep (in assert_contains) doesn't read it as a flag
 assert_contains "$CODEX_FLAGS" "m gpt-5-codex" "codex flags include model (-m)"
 assert_contains "$CODEX_FLAGS" 'model_reasoning_effort="high"' "codex flags include effort"
+# agy model tokens contain spaces + parens (e.g. "Gemini 3.1 Pro (High)") — accepted, carried as ONE flag token
+python3 "$CFG" set agy model "Gemini 3.1 Pro (High)" --root "$R" >/dev/null 2>&1 && AM=0 || AM=$?
+assert_eq "0" "$AM" "agy spaced model accepted (exit 0)"
+AGY_FLAGS=$(python3 "$CFG" flags agy --host claude --root "$R" 2>&1 | tr '\n' ' ')
+assert_contains "$AGY_FLAGS" "model Gemini 3.1 Pro (High)" "agy flags carry the spaced model as one token"
+# shell metacharacters in a model value are still rejected
+python3 "$CFG" set agy model "Gemini; rm -rf /" --root "$R" >/dev/null 2>&1 && MM=0 || MM=$?
+assert_eq "2" "$MM" "model with shell metacharacter still rejected (exit 2)"
 
 # effort on a non-effort AI is rejected (not a dead setting)
 python3 "$CFG" set agy effort high --root "$R" >/dev/null 2>&1 && GE_RC=0 || GE_RC=$?
