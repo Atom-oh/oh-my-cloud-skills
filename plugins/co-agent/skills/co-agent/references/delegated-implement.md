@@ -66,10 +66,12 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
    (`CKPT=$(git rev-parse HEAD)`). `consensus_state.py stage-result write
    …/tasks/<i>/result.json --stage task-<i> --verdict … --green true --in-scope true
    --implementer <ai>`; then the **host is the only committer** — fold the red-test commit
-   and the green implementation into **one passing commit** with `git commit --amend` onto
-   the red-test commit (no `reset`/`rebase` — consistent with the "never reset/rebase
-   autonomously" constraint), so the branch never carries a committed-but-red test.
-   `worktree.py remove <wt>`.
+   and the green implementation into **one passing commit**. **Only when step 1 made a
+   red-test commit** (not a `test_required:false` task), `git commit --amend` onto it (no
+   `reset`/`rebase` — matches the "never reset/rebase autonomously" constraint) so the branch
+   never carries a committed-but-red test. For a `test_required:false` task there is **no
+   red-test commit**, so make a **fresh `git commit`** — never `--amend` (it would rewrite an
+   unrelated prior commit). `worktree.py remove <wt>`.
 8. **Escalate / abort** when the fix loop is exhausted: undo the red-test commit with
    `git revert --no-edit <red-test-sha>` — a non-destructive inverse commit that leaves
    nothing red staged or in the working tree. Do **not** use `git reset --soft` (keeps the
