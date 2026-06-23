@@ -40,6 +40,24 @@ ops-coordinator-agent ← Aggregate results → Root cause → Resolve → Verif
 User query → Matched agent → Diagnose → Resolve → Verify
 ```
 
+### superpowers Handoff (systematic-debugging ↔ aws-ops)
+
+When a debugging session runs under **`superpowers:systematic-debugging`** and the failing
+system is AWS/EKS, hand the *reproduce → diagnose* step to this plugin, then return the root
+cause to the debugging loop. The method stays with superpowers; we supply domain commands.
+
+| 증상 신호 (symptom) | 라우팅 대상 (route to) |
+|---------------------|------------------------|
+| 노드 NotReady, pod crash/OOM, 업그레이드 실패 | `eks-agent` |
+| DNS 실패, ALB/NLB, IP 고갈, VPC CNI | `network-agent` |
+| AccessDenied, IRSA/Pod Identity, aws-auth, RBAC | `iam-agent` |
+| PVC pending, 볼륨 mount 실패, CSI | `storage-agent` |
+| DB 연결 실패, throttling, ElastiCache | `database-agent` |
+| 증상이 불명확/다중 도메인 | `ops-troubleshoot` (5분 triage 먼저) |
+
+> 트리거 (KO/EN): `디버깅`, `systematic-debugging`, `버그`, `장애 디버깅`, "debug an AWS/EKS issue".
+> Non-infra 버그는 `superpowers:systematic-debugging`을 직접 사용 — 이 핸드오프는 클라우드 인프라 증상에만.
+
 ### Well-Architected Review Workflow
 ```
 User WAF request → wellarchitected-agent (scope)
@@ -58,38 +76,20 @@ wellarchitected-agent → Score (XX/100) → Findings → AS-IS/TO-BE Roadmap
 
 ---
 
-## Team Workflow Patterns
+## Team Workflow Patterns (병렬 오케스트레이션)
 
-기본값은 순차 워크플로우입니다. 팀 기반 병렬 실행은 아래 트리거 조건 충족 시에만 사용합니다.
+**기본값은 순차** (`쿼리 → 매칭 에이전트 → 진단 → 해결 → 검증`). 단일 도메인 이슈는 팀 미사용. 팀 기반 병렬은 트리거 충족 시에만:
 
-### 팀 생성 트리거
+| 트리거 | 팀 |
+|--------|----|
+| P1/P2 인시던트, 2+ 도메인 | `ops-incident-response` (coordinator + 전문 에이전트 병렬) |
+| 전체 health check | `ops-health-check` (eks+network+iam+storage+observability+analytics) |
+| security audit | `ops-security-audit` (iam+network+storage) |
+| well-architected review | `ops-waf-review` (wellarchitected+cost+iam+network) |
 
-| 트리거 조건 | 팀 이름 | 구성 |
-|-------------|---------|------|
-| P1/P2 인시던트, 2+ 도메인 증상 | `ops-incident-response` | ops-coordinator + 전문 에이전트 병렬 |
-| "health check" 전체 점검 요청 | `ops-health-check` | eks + network + iam + storage + observability + analytics 병렬 |
-| "security audit" 보안 감사 요청 | `ops-security-audit` | iam + network + storage 병렬 감사 |
-| "well-architected review" 전체 아키텍처 리뷰 | `ops-waf-review` | wellarchitected + cost + iam + network 병렬 |
+사용자가 "병렬/동시에" 명시 시에도 사용.
 
-### 인시던트 대응 오케스트레이션
-
-```
-1. TeamCreate("incident-{timestamp}")
-2. ops-coordinator 5분 트리아지 (메인 세션)
-3. 증상별 TaskCreate (network, eks, iam 등)
-4. 전문 에이전트 병렬 스폰 (team_name 파라미터)
-5. 결과 수집 (TaskList 모니터링)
-6. ops-coordinator 근본원인 분석 + 타임스탬프 상관분석
-7. 수정 실행 → 검증
-8. TeamDelete + 포스트모템
-```
-
-### 순차 워크플로우 보존 규칙
-
-- **단일 도메인 이슈는 팀을 사용하지 않습니다** (오버헤드 방지)
-- 기본값: `사용자 쿼리 → 매칭 에이전트 → 진단 → 해결 → 검증`
-- 팀은 위 트리거 테이블의 조건을 충족하는 경우에만 사용
-- 사용자가 "병렬", "동시에", "in parallel"을 명시적으로 요청한 경우에도 사용 가능
+> **상세**(인시던트 오케스트레이션 실행 순서, 순차 보존 규칙): **`references/team-workflows.md`** — 팀을 실제로 스폰할 때 참조.
 
 ---
 
@@ -112,7 +112,7 @@ wellarchitected-agent → Score (XX/100) → Findings → AS-IS/TO-BE Roadmap
 
 | Skill | Trigger | Purpose |
 |-------|---------|---------|
-| `ops-troubleshoot` | "troubleshoot", "debug", "장애", "문제 해결" | 5-min triage → investigate → resolve → postmortem |
+| `ops-troubleshoot` | "troubleshoot", "debug", "systematic-debugging", "장애", "디버깅", "문제 해결" | 5-min triage → investigate → resolve → postmortem (AWS/EKS arm of `superpowers:systematic-debugging`) |
 | `ops-health-check` | "health check", "상태 점검", "헬스체크" | Full infrastructure health assessment (includes analytics) |
 | `ops-network-diagnosis` | "network issue", "네트워크 오류", "연결 문제" | VPC CNI, LB, DNS deep diagnosis |
 | `ops-observability` | "monitoring", "모니터링", "로그 분석", "알람", "opentelemetry", "clickhouse", "grafana", "devops agent", "데브옵스 에이전트" | CloudWatch/PromQL/logs + OSS stack (OTel, Loki, Tempo, ClickHouse, VictoriaMetrics) + AWS DevOps Agent incident escalation |

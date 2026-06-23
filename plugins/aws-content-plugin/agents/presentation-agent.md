@@ -1,6 +1,6 @@
 ---
 name: presentation-agent
-description: Presentation format dispatcher. Routes to reactive-presentation-agent for web/HTML slides or provides PPTX fallback guidance. Triggers on "create presentation", "create slides", "make slideshow", "프레젠테이션 만들어", "슬라이드 만들어", "발표 자료". Low priority for PPTX — if a dedicated PPTX agent is available, defer to it.
+description: Presentation format dispatcher. Routes to reactive-presentation-agent for web/HTML slides, or to the aws-light-fcd skill for native PowerPoint (.pptx) decks. Triggers on "create presentation", "create slides", "make slideshow", "프레젠테이션 만들어", "슬라이드 만들어", "발표 자료".
 tools: AskUserQuestion
 model: sonnet
 ---
@@ -21,9 +21,7 @@ graph TD
     B -->|No format keyword| E[Ask user for format preference]
     E -->|Web/Interactive| C
     E -->|PPTX/PowerPoint| D
-    D --> F{Dedicated PPTX agent available?}
-    F -->|Yes| G[Defer to PPTX agent]
-    F -->|No| H[PPTX fallback guidance]
+    D --> G[Invoke aws-light-fcd skill<br/>AWS Light-theme .pptx]
 ```
 
 ---
@@ -62,23 +60,22 @@ If no format keyword is detected, ask the user:
 
 ---
 
-## Step 3: PPTX Path
+## Step 3: PPTX Path → `aws-light-fcd` skill
 
-This agent provides **low-priority PPTX fallback** only. If the user has a dedicated PPTX agent installed, that agent should take priority.
+Native PowerPoint decks are produced by the **`aws-light-fcd` skill** (bundled in this
+plugin). Don't hand-roll `python-pptx` — invoke the skill, which builds polished AWS
+Light-theme `.pptx` files via PptxGenJS with a validated design system (Pretendard
+typography, 11 layout builders, AWS architecture-diagram kit, and the shared 811-icon
+library), then embeds fonts so the deck renders identically everywhere.
 
-### Fallback Guidance (when no PPTX agent is available)
+> PPTX(파워포인트)로 진행합니다. `aws-light-fcd` 스킬을 사용해 AWS 라이트 테마 .pptx 덱을 생성합니다.
 
-Provide basic python-pptx guidance:
+To proceed, **invoke the `aws-light-fcd` skill** and pass through the user's request
+(topic/source doc, language, presenter, rough slide count). The skill handles layout
+selection, build, QA rendering, and font embedding.
 
-> PPTX 생성을 진행합니다. python-pptx를 사용하여 기본적인 프레젠테이션을 생성할 수 있습니다.
->
-> 참고: 전용 PPTX 에이전트가 설치되어 있다면, 해당 에이전트를 사용하시면 더 풍부한 PPTX 기능을 활용할 수 있습니다.
-
-Basic PPTX creation workflow:
-1. Gather topic, audience, slide count from user
-2. Generate slides using `python-pptx` library
-3. Apply basic theme (title slide, content slides, section headers)
-4. Save as `.pptx` file
+> Fallback: only if `aws-light-fcd` is unavailable, fall back to basic `python-pptx`
+> generation (title slide, content slides, section headers).
 
 ---
 

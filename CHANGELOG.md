@@ -13,6 +13,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2026-06-14
+
+### Added
+- **co-agent Antigravity (`agy`) panel member** — Google Antigravity joins the panel as the Gemini-family member (default model `Gemini 3.1 Pro (High)`; adapter `agy -p "<P>" --model "<token>" --sandbox`, read-only via `--sandbox`). **Supersedes the deprecated `gemini` CLI** — when both are installed the fan-out runs `agy` and skips `gemini`; `gemini` still runs if `agy` is absent. Wired across all modes (Review/Decide/ADR + consensus). `MODEL_RE` relaxed to allow the spaced/parenthesized model token (e.g. `Gemini 3.1 Pro (High)`) while still blocking shell metacharacters ([#69](https://github.com/Atom-oh/oh-my-cloud-skills/pull/69))
+
+### Changed
+- **co-agent doc-sync-aware `CLAUDE.md` hook** — the `PostToolUse(CLAUDE.md)` hook message names `/sync-docs` as a trigger (and the affected `AGENTS.md`/`GEMINI.md`), and `/co-agent:configure` recommends `autosync on` so the AI context regenerates as part of a doc sync — closing the loop on the co-agent side without forking the upstream-synced `/sync-docs` ([#68](https://github.com/Atom-oh/oh-my-cloud-skills/pull/68))
+- Bump all plugins and `marketplace.json` to 1.11.0
+
+### Fixed
+- **co-agent: stop bare-`kiro` invocation in consensus** — `pairs` emits the panel **key** (`kiro`, `antigravity`), not the runnable binary (`kiro-cli`, `agy`); add a `BINARIES` map + `co_agent_config.py binary <ai>` source-of-truth, loud guards at the `pairs`→fan-out boundary, and a regression test. Also replace the stale `/kiro-cli:review` slash-delegation (Review mode) with the headless `kiro-cli chat` adapter ([#71](https://github.com/Atom-oh/oh-my-cloud-skills/pull/71))
+
+## [1.10.0] - 2026-06-14
+
+### Added
+- **brochure skill + agent** (`aws-content-plugin`) — single-page responsive online brochure (landing page) for an AWS solution as one self-contained HTML file: hero + value + features + embedded architecture diagram + CTA, accessibility/responsive (mobile/tablet/PC) checks, deployed publicly via GitHub Pages ([#63](https://github.com/Atom-oh/oh-my-cloud-skills/pull/63))
+- **architecture-diagram spec-driven layout engine** — `layout_aws.py` (YAML spec → `.drawio`) with golden exemplars; serverless `stages` + multi-region + hybrid block-composition engines; design scoring + layout gate in `lint_layout`; embedded shared AWS icons in `.drawio` (AgentCore + any official icon) and a sketch-style `.excalidraw` generator ([#55](https://github.com/Atom-oh/oh-my-cloud-skills/pull/55), [#61](https://github.com/Atom-oh/oh-my-cloud-skills/pull/61))
+- **project-init `decision-reconcile` skill** — detect contradictions across accumulated ADRs (`ADR-NNN`) and ADR-vs-reality drift via a diverse multi-agent panel, then draft a superseding ADR; local-only ([#56](https://github.com/Atom-oh/oh-my-cloud-skills/pull/56), [#57](https://github.com/Atom-oh/oh-my-cloud-skills/pull/57))
+- **reactive-presentation** — `theme.mode:dark` build option, per-slide theme + adaptive logo (light:dark mix), per-theme native logos (no blanket invert)
+
+### Changed
+- **Per-agent model tiers (quality-first)** — retier all plugin agents by deliverable: Opus for the judgment/synthesis gates (`content-review-agent`, `wellarchitected-agent`, `co-agent` chair) and high-stakes orchestration/conversion/IAM (`ops-coordinator-agent`, `agentcore-creator-agent`, `iam-agent`), Sonnet for generation + diagnosis workers; reviewed by a multi-AI panel ([#62](https://github.com/Atom-oh/oh-my-cloud-skills/pull/62))
+- **reactive-presentation token economy** — lean SKILL.md/CLAUDE.md (progressive disclosure) + a single accurate SECTION INDEX with spanning-context guidance for the 25K reference docs ([#64](https://github.com/Atom-oh/oh-my-cloud-skills/pull/64))
+- Bump all plugins and `marketplace.json` to 1.10.0
+
+### Fixed
+- `agentcore-creator`: use the real AgentCore MCP tool names (ADR-009) ([#60](https://github.com/Atom-oh/oh-my-cloud-skills/pull/60))
+
+## [1.9.0] - 2026-06-10
+
+### Added
+- **reactive-presentation v1.9.0 token design system** — a design-token foundation (type/spacing/radius/shadow/color-role/motion/z), light-default dual-theme scopes with token-backed component primitives, a tokenized `theme.css`, and `design-tokens.css` shipped. PPTX/brand extraction drives the core tokens, and `validate` gains design-lint rules (raw-hex / inline-style / off-scale / raw-rgba / overflow) ([#53](https://github.com/Atom-oh/oh-my-cloud-skills/pull/53))
+- **reactive-presentation content-quality layer** — structured speaker-note schema (`NOTE_STRUCTURE` lint), slide-title voice guidance (`TITLE_LENGTH` lint, scoped to content slides), a consolidated "Forbidden AI-slide-tells" section, and a content-review source-omission cross-check ([#54](https://github.com/Atom-oh/oh-my-cloud-skills/pull/54))
+
+### Changed
+- Bump all plugins and `marketplace.json` to 1.9.0
+
+## [1.8.0] - 2026-06-10
+
+### Added
+- **co-agent consensus pipeline** — autonomous doc→plan→implementation with cross-family multi-model consensus gates. Stage A (P0–P2 plan gate), Stage B (P3 session-gated autonomous TDD implement loop with `scope_guard.py` file-set lock + Stop/PostToolUse hooks), Stage C (P4 final gate on the cumulative scoped diff + P5 report + full-pipeline default + resume). New scripts: `consensus_state.py`, `parse_plan.py`, `scope_guard.py`, `consensus_hooks.py`; `/co-agent:consensus` gains `plan`/`review`/`implement` sub-modes ([#49](https://github.com/Atom-oh/oh-my-cloud-skills/pull/49), [#50](https://github.com/Atom-oh/oh-my-cloud-skills/pull/50), [#51](https://github.com/Atom-oh/oh-my-cloud-skills/pull/51))
+- **co-agent Kiro multi-model panel** — mainstay panel opus / kimi-k2.5 / glm-5 (cross-vendor via the Kiro router), `deep` by default ([#52](https://github.com/Atom-oh/oh-my-cloud-skills/pull/52))
+
+### Changed
+- Bump all plugins and `marketplace.json` to 1.8.0
+
 ## [1.7.2] - 2026-06-09
 
 ### Added
@@ -206,7 +252,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add AWS Architecture Icons integration (4,224 files)
 - Add presenter view with speaker notes
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.11.0...HEAD
+[1.11.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.10.0...v1.11.0
+[1.10.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.9.0...v1.10.0
+[1.9.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.8.0...v1.9.0
+[1.8.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.7.2...v1.8.0
+[1.7.2]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.7.1...v1.7.2
+[1.7.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.7.0...v1.7.1
+[1.7.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.6.0...v1.7.0
+[1.6.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.5.1...v1.6.0
+[1.5.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.5.0...v1.5.1
+[1.5.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.2.5...v1.4.0
 [1.2.5]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.2.3...v1.2.5
 [1.2.3]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.2.2...v1.2.3
@@ -224,6 +280,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 이 프로젝트의 모든 주요 변경 사항은 이 파일에 기록됩니다.
 이 문서는 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)를 기반으로 하며,
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 따릅니다.
+
+## [1.11.0] - 2026-06-14
+
+### Added
+- **co-agent Antigravity(`agy`) 패널 멤버** — Google Antigravity가 Gemini 패밀리 멤버로 패널에 합류(기본 모델 `Gemini 3.1 Pro (High)`; 어댑터 `agy -p "<P>" --model "<token>" --sandbox`, `--sandbox`로 읽기전용). **deprecated된 `gemini` CLI를 대체** — 둘 다 설치 시 팬아웃은 `agy`만 쓰고 `gemini`는 스킵, `agy` 없으면 `gemini` 사용. 전 모드(Review/Decide/ADR + consensus)에 연결. `MODEL_RE`를 완화해 공백·괄호 포함 모델 토큰을 허용하되 셸 메타문자는 계속 차단 ([#69](https://github.com/Atom-oh/oh-my-cloud-skills/pull/69))
+
+### Changed
+- **co-agent doc-sync 인지형 `CLAUDE.md` 훅** — `PostToolUse(CLAUDE.md)` 훅이 `/sync-docs`를 트리거로 명시(영향 파일 `AGENTS.md`/`GEMINI.md`)하고, `/co-agent:configure`가 `autosync on`을 권장해 AI 컨텍스트가 doc sync의 일부로 재생성되도록 함 — upstream 동기화 대상 `/sync-docs`를 fork하지 않고 co-agent 쪽에서 루프를 닫음 ([#68](https://github.com/Atom-oh/oh-my-cloud-skills/pull/68))
+- 모든 플러그인과 `marketplace.json`을 1.11.0으로 범프
+
+### Fixed
+- **co-agent: consensus에서 bare-`kiro` 호출 차단** — `pairs`는 패널 **키**(`kiro`, `antigravity`)를 내보내지만 실행 바이너리는 `kiro-cli`/`agy`. `BINARIES` 맵 + `co_agent_config.py binary <ai>` 단일 진실원천, `pairs`→팬아웃 경계 가드, 회귀 테스트 추가. Review 모드의 stale `/kiro-cli:review` 슬래시 위임도 headless `kiro-cli chat` 어댑터로 교체 ([#71](https://github.com/Atom-oh/oh-my-cloud-skills/pull/71))
+
+## [1.10.0] - 2026-06-14
+
+### Added
+- **brochure 스킬 + 에이전트** (`aws-content-plugin`) — AWS 솔루션용 단일 페이지 반응형 온라인 브로셔(랜딩 페이지)를 자기완결 HTML 한 파일로: 히어로 + 가치 + 기능 + 임베드 아키텍처 다이어그램 + CTA, 접근성/반응형(모바일·태블릿·PC) 검증, GitHub Pages 공개 배포 ([#63](https://github.com/Atom-oh/oh-my-cloud-skills/pull/63))
+- **architecture-diagram 스펙 기반 레이아웃 엔진** — `layout_aws.py`(YAML 스펙 → `.drawio`) + 골든 예제; 서버리스 `stages` + 멀티리전 + 하이브리드 블록 합성 엔진; `lint_layout` 디자인 스코어링 + 레이아웃 게이트; `.drawio`에 공유 AWS 아이콘 임베드(AgentCore + 모든 공식 아이콘) + 스케치 스타일 `.excalidraw` 생성기 ([#55](https://github.com/Atom-oh/oh-my-cloud-skills/pull/55), [#61](https://github.com/Atom-oh/oh-my-cloud-skills/pull/61))
+- **project-init `decision-reconcile` 스킬** — 누적 ADR(`ADR-NNN`) 모순 및 ADR-현실 드리프트를 다양한 멀티-에이전트 패널로 탐지 후 superseding ADR 초안 작성; 로컬 전용 ([#56](https://github.com/Atom-oh/oh-my-cloud-skills/pull/56), [#57](https://github.com/Atom-oh/oh-my-cloud-skills/pull/57))
+- **reactive-presentation** — `theme.mode:dark` 빌드 옵션, 슬라이드별 테마 + 적응형 로고(light:dark 혼합), 테마별 네이티브 로고(일괄 invert 제거)
+
+### Changed
+- **에이전트별 모델 티어 (품질 우선)** — 산출물 기준 전체 에이전트 재편: 판단/종합 게이트(`content-review-agent`, `wellarchitected-agent`, `co-agent` 의장)와 고위험 오케스트레이션/변환/IAM(`ops-coordinator-agent`, `agentcore-creator-agent`, `iam-agent`)은 Opus, 생성·진단 워커는 Sonnet; 멀티-AI 패널 리뷰 반영 ([#62](https://github.com/Atom-oh/oh-my-cloud-skills/pull/62))
+- **reactive-presentation 토큰 이코노미** — lean SKILL.md/CLAUDE.md(progressive disclosure) + 25K 레퍼런스 문서의 정확한 단일 SECTION INDEX·스패닝 컨텍스트 가이드 ([#64](https://github.com/Atom-oh/oh-my-cloud-skills/pull/64))
+- 모든 플러그인과 `marketplace.json`을 1.10.0으로 범프
+
+### Fixed
+- `agentcore-creator`: 실제 AgentCore MCP 도구 이름 사용 (ADR-009) ([#60](https://github.com/Atom-oh/oh-my-cloud-skills/pull/60))
+
+## [1.9.0] - 2026-06-10
+
+### Added
+- **reactive-presentation v1.9.0 토큰 디자인 시스템** — 디자인 토큰 기반(type/spacing/radius/shadow/color-role/motion/z), 라이트 기본 듀얼 테마 스코프 + 토큰 기반 컴포넌트 프리미티브, `theme.css` 토큰화, `design-tokens.css` 동봉. PPTX/브랜드 추출이 코어 토큰을 구동, `validate`에 디자인-린트 규칙(raw-hex / inline-style / off-scale / raw-rgba / overflow) 추가 ([#53](https://github.com/Atom-oh/oh-my-cloud-skills/pull/53))
+- **reactive-presentation 콘텐츠 품질 레이어** — 구조화된 발표자 노트 스키마(`NOTE_STRUCTURE` 린트), 슬라이드 제목 보이스 가이드(`TITLE_LENGTH` 린트, 콘텐츠 슬라이드 한정), "Forbidden AI-slide-tells" 섹션 통합, content-review 소스 누락 교차 검증 ([#54](https://github.com/Atom-oh/oh-my-cloud-skills/pull/54))
+
+### Changed
+- 모든 플러그인과 `marketplace.json`을 1.9.0으로 범프
+
+## [1.8.0] - 2026-06-10
+
+### Added
+- **co-agent consensus 파이프라인** — 교차 패밀리 멀티모델 합의 게이트가 적용된 자율 doc→plan→implementation. Stage A(P0–P2 계획 게이트), Stage B(P3 `scope_guard.py` 파일셋 락 + Stop/PostToolUse 훅을 갖춘 세션 게이트 자율 TDD 루프), Stage C(P4 누적 스코프 diff 최종 게이트 + P5 리포트 + 전체 파이프라인 기본 + 재개). 신규 스크립트: `consensus_state.py`, `parse_plan.py`, `scope_guard.py`, `consensus_hooks.py`; `/co-agent:consensus`에 `plan`/`review`/`implement` 서브모드 ([#49](https://github.com/Atom-oh/oh-my-cloud-skills/pull/49), [#50](https://github.com/Atom-oh/oh-my-cloud-skills/pull/50), [#51](https://github.com/Atom-oh/oh-my-cloud-skills/pull/51))
+- **co-agent Kiro 멀티모델 패널** — 주력 패널 opus / kimi-k2.5 / glm-5(Kiro 라우터 교차 벤더), `deep` 기본 ([#52](https://github.com/Atom-oh/oh-my-cloud-skills/pull/52))
+
+### Changed
+- 모든 플러그인과 `marketplace.json`을 1.8.0으로 범프
 
 ## [1.7.2] - 2026-06-09
 
@@ -418,7 +520,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AWS Architecture Icons 통합 추가 (4,224개 파일)
 - 발표자 뷰 및 발표자 노트 추가
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.11.0...HEAD
+[1.11.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.10.0...v1.11.0
+[1.10.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.9.0...v1.10.0
+[1.9.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.8.0...v1.9.0
+[1.8.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.7.2...v1.8.0
+[1.7.2]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.7.1...v1.7.2
+[1.7.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.7.0...v1.7.1
+[1.7.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.6.0...v1.7.0
+[1.6.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.5.1...v1.6.0
+[1.5.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.5.0...v1.5.1
+[1.5.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.2.5...v1.4.0
 [1.2.5]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.2.3...v1.2.5
 [1.2.3]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.2.2...v1.2.3

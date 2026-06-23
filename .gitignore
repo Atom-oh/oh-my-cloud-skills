@@ -31,6 +31,9 @@ node_modules/
 !docs/static/demos/**/*.png
 # ...and shared skill AWS icon libraries (official set + product icons like AgentCore)
 !plugins/**/icons/**/*.png
+# ...and the aws-light-fcd PPTX skill's bundled deck assets (backgrounds + AWS logo)
+!plugins/aws-content-plugin/skills/aws-light-fcd/assets/backgrounds/*.png
+!plugins/aws-content-plugin/skills/aws-light-fcd/assets/logo/*.png
 
 # Test fixtures with fake secrets (triggers GitHub Push Protection)
 tests/fixtures/secret-samples.txt
@@ -51,6 +54,12 @@ docs/.docusaurus/
 
 # scratch working dir (presentation/demo authoring — not tracked)
 work/
+
+# runtime artifacts + stray input archives (never commit)
+*.pid
+/Agentcore-Bedrock-Icons.pptx
+/Pretendard-*.zip
+/*.skill
 
 # skill eval workspaces — generated run artifacts, not tracked
 plugins/*/skills/*-workspace/

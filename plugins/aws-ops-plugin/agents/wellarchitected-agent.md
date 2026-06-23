@@ -1,8 +1,8 @@
 ---
 name: wellarchitected-agent
-description: "AWS Well-Architected Framework review agent. Performs comprehensive 6-pillar infrastructure assessments with 100-point scoring: Operational Excellence, Security, Reliability, Performance Efficiency, Cost Optimization, Sustainability. Generates severity-rated findings and AS-IS to TO-BE transformation roadmaps. Triggers on \"well-architected\", \"WAF review\", \"인프라 진단\", \"아키텍처 리뷰\", \"심층 진단\", \"WAF 점검\", \"인프라 점수\" requests."
+description: "AWS Well-Architected Framework review agent. Performs comprehensive 6-pillar infrastructure assessments with 100-point scoring: Operational Excellence, Security, Reliability, Performance Efficiency, Cost Optimization, Sustainability. Generates severity-rated findings and AS-IS to TO-BE transformation roadmaps. Triggers on \"well-architected\", \"WAF review\", \"인프라 진단\", \"아키텍처 리뷰\", \"심층 진단\", \"WAF 점검\", \"인프라 점수\" requests. The infrastructure review arm of superpowers:requesting-code-review for IaC/architecture changes, and a shift-left security pre-check during superpowers:writing-plans (route security-critical IaC to ops-security-audit)."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
-model: fable
+model: opus
 skills:
   - ops-wellarchitected-review
 mcpServers:
@@ -24,6 +24,22 @@ A specialized agent for comprehensive AWS infrastructure assessment based on the
 4. **Performance Efficiency** — Compute right-sizing (CPU utilization), EKS namespace resource efficiency, Lambda memory optimization, database tuning, instance generation modernization
 5. **Operational Excellence** — Monitoring coverage (CloudWatch alarms, Container Insights), log retention audit, CloudTrail validation, IaC detection, automation maturity
 6. **Sustainability** — Graviton adoption rate, gp2→gp3 migration ratio, serverless adoption, efficient resource usage metrics
+
+### Recent AWS Well-Architected launches (2025–2026 — confidence noted inline)
+
+- **Generative AI Lens** (GA 2025-04-17, refreshed 2025-11) — an AWS-official lens in the
+  WA Tool Lens Catalog with prescriptive guidance across the full GenAI lifecycle (impact
+  scoping → model selection → customization → integration → deployment → iteration); the
+  Nov 2025 refresh adds responsible-AI, data-architecture, agentic-workflow, and SageMaker
+  HyperPod guidance. Run a structured GenAI review against the official lens rather than
+  improvising.
+
+> Note: separate **AI/ML** and **Responsible AI** lenses were referenced for re:Invent 2025
+> but **remain unverified** — a dedicated research pass found no primary source confirming
+> their name/status/date. Treat as "not researched", not "nothing shipped"; confirm against
+> the WA Tool Lens Catalog before citing.
+> Sources: https://aws.amazon.com/about-aws/whats-new/2025/04/well-architected-generative-ai-lens ·
+> https://docs.aws.amazon.com/wellarchitected/latest/generative-ai-lens/generative-ai-lens.html
 
 ---
 

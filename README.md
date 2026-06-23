@@ -13,11 +13,13 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 
 *Content Creation (aws-content-plugin):*
 - **Interactive HTML/CSS/JS presentations** — Canvas animations, quizzes, presenter view, deployed to GitHub Pages
+- **Native PowerPoint (.pptx) decks** — AWS Light-theme slides via the `aws-light-fcd` skill (PptxGenJS, Pretendard typography, embedded fonts, AWS architecture-diagram kit)
 - **AWS architecture diagrams** — Draw.io XML with auto-layout, exportable to PNG/SVG
 - **Animated traffic flow diagrams** — SVG + SMIL animations with interactive legends
 - **Technical documents** — Professional Markdown reports and comparisons
 - **GitBook documentation sites** — Structured docs with navigation and components
 - **AWS Workshop Studio content** — Hands-on labs with multi-language support
+- **Single-page online brochures** — Self-contained responsive landing pages with embedded architecture diagram, deployed to GitHub Pages
 
 *Infrastructure Operations (aws-ops-plugin):*
 - **EKS troubleshooting** — Node issues, upgrades, add-ons, 5-minute triage
@@ -567,6 +569,7 @@ aws-ops-power/
 | `document-agent` | Technical documents | "Write an EKS vs ECS comparison document" | `.md` |
 | `gitbook-agent` | Documentation sites | "Create a GitBook documentation site" | GitBook project |
 | `workshop-agent` | Workshop content | "Create an EKS workshop" | Workshop Studio |
+| `brochure-agent` | Single-page online brochure | "Make a landing page for our platform" | `.html` (GitHub Pages) |
 | `content-review-agent` | Quality review | "Review the presentation" | Review report |
 
 ### Operations Agents
@@ -604,10 +607,12 @@ All agents activate automatically when Claude detects matching keywords in your 
 | Skill | Provides |
 |-------|----------|
 | `reactive-presentation` | Presentation framework (CSS/JS), Remarp conversion, PPTX→Remarp converter, AWS icon extraction, slide pattern reference |
-| `architecture-diagram` | Draw.io XML templates, AWS icon reference, layout patterns |
+| `architecture-diagram` | Spec-driven `layout_aws.py` engine (YAML → Draw.io), embedded shared AWS icons, `.excalidraw` generator, layout/design lint gate |
 | `animated-diagram` | SMIL animation guide, HTML wrapper templates, traffic flow patterns |
+| `slide-fix` | Apply Remarp slide issue annotations (`<!-- issue: -->`) and rebuild |
 | `gitbook` | GitBook structure guide, component patterns, navigation templates |
 | `workshop-creator` | Workshop Studio directives, module templates, CloudFormation references |
+| `brochure` | Single-page responsive brochure (self-contained HTML), editorial design system, embedded architecture SVG, public GitHub Pages deploy |
 
 ### Operations Skills
 
@@ -698,10 +703,10 @@ All content passes through `content-review-agent` which scores on a 100-point sc
 
 ```
 plugins/
-├── aws-content-plugin/                # Content creation (8 agents, 6 skills)
+├── aws-content-plugin/                # Content creation (9 agents, 8 skills)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
-│   ├── agents/                        # 8 agents
+│   ├── agents/                        # 9 agents
 │   │   ├── presentation-agent.md      # Format dispatcher (Web vs PPTX)
 │   │   ├── reactive-presentation-agent.md # Interactive HTML slideshows
 │   │   ├── architecture-diagram-agent.md  # Draw.io XML diagrams
@@ -709,14 +714,17 @@ plugins/
 │   │   ├── document-agent.md          # Markdown documents & reports
 │   │   ├── gitbook-agent.md           # GitBook documentation sites
 │   │   ├── workshop-agent.md          # AWS Workshop Studio content
+│   │   ├── brochure-agent.md          # Single-page responsive brochure
 │   │   └── content-review-agent.md    # Cross-cutting quality review
-│   └── skills/                        # 6 skills
+│   └── skills/                        # 8 skills
 │       ├── reactive-presentation/     # Presentation framework + AWS icons
 │       ├── architecture-diagram/      # Draw.io templates & patterns
 │       ├── animated-diagram/          # SMIL animation guide & templates
 │       ├── gitbook/                   # GitBook structure & components
 │       ├── workshop-creator/          # Workshop Studio directives & templates
-│       └── slide-fix/                 # Slide issue annotation processing
+│       ├── slide-fix/                 # Slide issue annotation processing
+│       ├── brochure/                  # Responsive brochure design system
+│       └── aws-light-fcd/             # Native PPTX decks (PptxGenJS, AWS Light theme)
 │
 ├── aws-ops-plugin/                    # Infrastructure operations (10 agents, 6 skills)
 │   ├── .claude-plugin/plugin.json
@@ -756,12 +764,12 @@ plugins/
 │   └── skills/
 │       └── agentcore-create/
 │
-├── co-agent/                       # Multi-AI collaboration (1 agent, 1 skill, 2 commands)
+├── co-agent/                       # Multi-AI collaboration (1 agent, 1 skill, 3 commands)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
 │   ├── agents/
 │   │   └── co-agent.md
-│   ├── commands/                   # /co-agent:configure, /co-agent:sync-context
+│   ├── commands/                   # /co-agent:configure, /co-agent:sync-context, /co-agent:consensus
 │   └── skills/
 │       └── co-agent/
 │

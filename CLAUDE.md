@@ -9,10 +9,26 @@ A Claude Code plugin marketplace containing six plugins for AWS cloud work:
 - **aws-ops-plugin** — Infrastructure operations & troubleshooting (EKS, networking, IAM, observability)
 - **kiro-power-converter** — Convert Claude Code plugins to Kiro IDE Power format
 - **agentcore-creator** — Convert Claude Code plugins to Bedrock AgentCore
-- **co-agent** — Multi-AI collaboration (Kiro CLI, Codex, Gemini): review, decision support, ADR co-authoring; Claude chairs
+- **co-agent** — Multi-AI collaboration (Kiro CLI, Codex, Antigravity): review, decision support, ADR co-authoring; Claude chairs
 - **project-init** — Project scaffolding and documentation management
 
 All plugins are installed via `/plugin marketplace add` or loaded locally with `--plugin-dir`.
+
+## superpowers Integration Routing
+
+When the `superpowers` workflow plugin is active, route into these plugins at the matching
+lifecycle phase. (`superpowers` is read-only; this table is the authoritative, always-in-context
+routing — per-plugin `CLAUDE.md` holds the detail. Design: `docs/superpowers/specs/2026-06-14-superpowers-integration-design.md`.)
+
+| superpowers phase | + signal | → route to | status |
+|-------------------|----------|-----------|--------|
+| `systematic-debugging` | AWS/EKS symptom (NotReady, IP 고갈, AccessDenied, PVC, throttling) | `aws-ops`: `ops-troubleshoot` or matched domain agent (eks/network/iam/storage/database) | ✅ active |
+| `finishing-a-development-branch` | branch done, docs may be stale | `project-init`: `/sync-docs` + `/generate-changelog` (+ `/add-adr` if a decision was made) | ✅ active |
+| `requesting-code-review` | non-code artifact (slides/diagram/doc/gitbook) or IaC | `aws-content`: `content-review-agent`; IaC → `aws-ops`: `wellarchitected-agent` + `ops-security-audit`. **Read `docs/reference/review-routing.md` for gate precedence on mixed changesets.** | ✅ active |
+| `writing-plans` | plan proposes AWS/IaC change | shift-left AWS security pre-check (`aws-ops`: `ops-security-audit` / mandate check: no 0.0.0.0/0, IAM `*`, secrets-in-env) before implement | ✅ active |
+
+> co-agent is already wired separately: `co-agent:consensus` reuses `superpowers:subagent-driven-development` + writing-plans output, gated by the multi-AI panel.
+> A diff that spans multiple artifact types fires ALL matching review gates — see `docs/reference/review-routing.md`.
 
 ## Development Commands
 
@@ -73,13 +89,17 @@ plugins/<plugin-name>/
 
 ### Agent File Format
 
-Every agent `.md` file has YAML frontmatter with exactly three fields:
+Every agent `.md` file has YAML frontmatter with four core fields (some agents add
+optional `skills`/`color`/`mcpServers`). `model` tiers are quality-first (per PR #62):
+`opus` for judgment/synthesis gates and high-stakes orchestration/IAM, `sonnet` for
+generation/diagnosis workers.
 
 ```yaml
 ---
 name: eks-agent
 description: "Description with trigger keywords."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
+model: sonnet
 ---
 ```
 
@@ -196,7 +216,7 @@ Source: `tools/remarp-vscode/` | Entry: `src/extension.ts` | Preview: `src/previ
 
 ## Plugin Inventory
 
-### aws-content-plugin (8 agents, 6 skills)
+### aws-content-plugin (9 agents, 8 skills)
 
 | Agent | Creates |
 |-------|---------|
@@ -207,7 +227,14 @@ Source: `tools/remarp-vscode/` | Entry: `src/extension.ts` | Preview: `src/previ
 | `document-agent` | Markdown technical documents |
 | `gitbook-agent` | GitBook documentation sites |
 | `workshop-agent` | AWS Workshop Studio content |
+| `brochure-agent` | Single-page responsive online brochure (landing page) HTML |
 | `content-review-agent` | Quality gate for all content types |
+
+Content skills: `reactive-presentation`, `architecture-diagram`, `animated-diagram`,
+`gitbook`, `workshop-creator`, `slide-fix`, `brochure`, and **`aws-light-fcd`** — the
+native **PPTX** skill (PptxGenJS, AWS Light theme, Pretendard). The presentation-agent
+dispatcher routes PPTX requests to `aws-light-fcd`; it shares the official 811-icon
+library with `reactive-presentation` via `kit.icon()` (referenced in place, not duplicated).
 
 ### aws-ops-plugin (10 agents, 6 skills)
 
@@ -242,11 +269,11 @@ Skill: `kiro-convert` — interactive workflow for plugin-to-power conversion wi
 
 Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Skill-First Build, AgentCore Convert, Deploy) with `references/` and `scripts/` subdirectories. The `opus` alias resolves to `us.anthropic.claude-opus-4-8`; modern-Opus (4.7/4.8) param contract (no `temperature`/`top_p`/`top_k`, no `thinking.type:"enabled"`+`budget_tokens`) is documented in `references/agentcore-mapping-rules.md`.
 
-### co-agent (1 agent, 1 skill, 2 commands)
+### co-agent (1 agent, 1 skill, 3 commands)
 
 | Agent | Purpose |
 |-------|---------|
-| `co-agent` | Multi-AI panel chair — fans review/decision/ADR prompts to Kiro/Codex/Gemini CLIs and synthesizes |
+| `co-agent` | Multi-AI panel chair — fans review/decision/ADR prompts to Kiro/Codex/Antigravity CLIs and synthesizes |
 
 Skill: `co-agent` — 4 modes: **Review** (multi-AI code/arch review + Well-Architected), **Decide** (decision support when unsure), **ADR** (co-author ADRs), **sync-context** (distill `CLAUDE.md` → `AGENTS.md` for Codex; Kiro uses `.kiro/steering/project-context.md` with `#[[file:CLAUDE.md]]`). Fans the same prompt to whichever AI CLIs are installed — Kiro (`kiro-cli chat --no-interactive`; auth via login or `KIRO_API_KEY`), Codex (`codex exec -s read-only`), Agy/Gemini fallback — in parallel, then **Claude synthesizes** (consensus vs. dissent). Degrades gracefully; if no CLI is present, Claude answers solo. Adapters: `references/ai-cli-adapters.md`.
 
@@ -266,9 +293,11 @@ Commands: `/init-project`, `/sync-docs`, `/add-adr`, `/add-module`, `/add-runboo
 
 ```
 Content:   presentation-agent (dispatcher) → reactive-presentation-agent → content-review-agent → GitHub Pages
+                                          → aws-light-fcd skill (native .pptx) → QA render → embed_fonts.py
            Remarp HTML ↔ .remarp.md (bidirectional visual editing via VSCode extension)
            PPTX theme:  .pptx → extract_pptx_theme.py → theme-manifest.json + theme-override.css
            PPTX export: index.html → html2canvas iframe capture → PptxGenJS → .pptx download
+           PPTX native: aws-light-fcd → deck_kit.js/arch_kit.js (PptxGenJS) → kit.icon() shares reactive-presentation 811-icon lib
            architecture-diagram-agent → layout_aws.py (YAML spec → .drawio, standard patterns) → validate+lint → PNG
                                        → hand-authored .drawio (non-standard shapes) → PNG
            animated-diagram-agent → .html (SVG+SMIL)
@@ -281,7 +310,7 @@ Ops:       User issue → auto-routed agent → Diagnose → Resolve → Verify
 
 AgentCore: Plugin source → analyze → map to AgentCore → generate artifacts → user refinement → deploy via AWS CLI → verify
 
-Co-agent:  /co-agent → detect panel (Kiro/Codex/Gemini) → fan-out prompt → Claude synthesizes → Review report / Decision / ADR
+Co-agent:  /co-agent → detect panel (Kiro/Codex/Antigravity) → fan-out prompt → Claude synthesizes → Review report / Decision / ADR
 ```
 
 ## Auto-Sync Rules

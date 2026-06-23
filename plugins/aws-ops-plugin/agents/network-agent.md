@@ -24,6 +24,27 @@ A specialized agent for AWS/EKS networking diagnostics including VPC CNI, load b
 4. **Security Groups** — Ingress/egress rules, pod security groups, cross-VPC communication
 5. **IP Address Management** — Subnet capacity, secondary CIDR, custom networking
 
+### Recent AWS networking launches (2025–2026 — confidence noted inline)
+
+- **Route 53 PrivateLink for the control-plane API** (GA 2025-11-19) — manage hosted
+  zones/records/health checks privately over the AWS backbone via an interface VPC
+  endpoint; lock down DNS-management API access (no public internet). Control-plane
+  only, not data-plane resolution.
+- **Route 53 Global Resolver** (preview 2025-11-30 → GA 2026-03-09, 30 regions) — one managed
+  split-horizon DNS: resolves public domains on the internet and private (Route 53 PHZ)
+  domains from anywhere (on-prem/branch) via anycast IPs; replaces bespoke
+  resolver-endpoint + forwarding-rule plumbing.
+- **Network Firewall native Transit Gateway integration** (GA 2025-06-16; all-region
+  2025-07-08) — attach Network Firewall directly to a TGW for centralized inspection,
+  no dedicated inspection-VPC subnets/route tables.
+
+> Re-check region availability at use time. (No VPC CNI / ALB-NLB / GWLB data-plane
+> launches surfaced as verified in this window.)
+> Sources: https://aws.amazon.com/about-aws/whats-new/2025/11/amazon-route-53-dns-service-aws-privatelink/ ·
+> https://aws.amazon.com/about-aws/whats-new/2026/03/amazon-route-53-global-resolver ·
+> https://aws.amazon.com/about-aws/whats-new/2025/06/aws-network-firewall-transit-gateway-native-integration/ (GA, 5 regions) ·
+> https://aws.amazon.com/about-aws/whats-new/2025/07/aws-network-firewall-native-transit-gateway-support (all regions)
+
 ---
 
 ## Diagnostic Commands

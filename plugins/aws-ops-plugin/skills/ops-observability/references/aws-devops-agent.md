@@ -1,11 +1,24 @@
 # AWS DevOps Agent Integration
 
-**AWS DevOps Agent** is a frontier agent (GA 2026-03-31) that autonomously
-investigates incidents and recommends preventative improvements — like an
-experienced SRE. It learns your resource topology, correlates telemetry + code +
-deployment data, and works across AWS, multicloud, and on-prem. Use this skill to
-**route an alarm/anomaly into a DevOps Agent investigation** and consume its
-mitigation plan.
+**AWS DevOps Agent** is a fully managed frontier agent (GA 2026-03-31; public
+preview at re:Invent 2025-12-02) **built on Amazon Bedrock AgentCore** (memory,
+policies, evaluations, observability). It autonomously investigates incidents and
+recommends preventative improvements — like an experienced SRE. It learns your
+resource topology, correlates telemetry + code + deployment data, and works across
+AWS, multicloud, and on-prem. Use this skill to **route an alarm/anomaly into a
+DevOps Agent investigation** and consume its mitigation plan.
+
+> **Human-approval boundary (verified)**: DevOps Agent "produces a mitigation plan
+> but does **not** make changes to your AWS environment on its own" — execution
+> always requires human approval. Treat it as a diagnosis + plan engine, not an
+> auto-remediator. Vendor-reported metrics (e.g. up to 75% lower MTTR, 94% RCA
+> accuracy) are AWS/preview-customer self-reported — cite as claims, not guarantees.
+
+> Distinct from **Amazon Bedrock AgentCore** itself (GA 2025-10-13), which is the
+> build-your-own-agent *platform* — DevOps Agent is the prebuilt ops agent on top of
+> it. And distinct from native **CloudWatch investigations** (see
+> `cloudwatch-setup.md` → AIOps): investigations are first-line RCA inside CloudWatch;
+> DevOps Agent is the standalone teammate for cross-service/cross-cloud incidents.
 
 > Service docs: https://docs.aws.amazon.com/devopsagent/latest/userguide/about-aws-devops-agent.html
 
@@ -49,8 +62,10 @@ aws cloudwatch set-alarm-state --alarm-name "$CLUSTER_NAME-high-cpu" \
 # then confirm the investigation appears in the operator web app.
 ```
 
-Other entry points: Splunk alerts (via a Splunk webhook integration), and
-**manual** operator queries ("What is causing high CPU usage?").
+Other entry points (verified trigger sources): **CloudWatch alarms, PagerDuty,
+Dynatrace, ServiceNow, and generic webhooks**, plus **manual** operator queries
+("What is causing high CPU usage?"). The agent begins investigating without a human
+prompt once a configured source fires.
 
 ## Programmatic investigation (CLI)
 

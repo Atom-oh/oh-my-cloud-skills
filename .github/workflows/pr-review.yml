@@ -1,0 +1,165 @@
+name: AI Code Review
+
+# PR마다 멀티 AI 패널(Codex + Kiro x3)이 변경을 리뷰하고
+# Claude Opus 4.8 의장이 종합해 PR 코멘트로 게시한다. (AWS-Demo-Platform 검증 패턴)
+#   - self-hosted 러너(oh-my-cloud-skills-claude-arm)가 EKS Pod Identity(SigV4)로 Bedrock 호출
+#   - 패널 fan-out: scripts/pr-review/run-panel.sh → synthesize.sh
+#   - VERDICT: PASS|FAIL 마지막 줄 룰로 job exit code 결정 (fail-closed)
+#   - <!-- oh-my-cloud-skills-pr-review --> marker 로 코멘트 upsert
+
+on:
+  pull_request_target:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    name: AI Code Review
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: oh-my-cloud-skills-claude-arm
+    concurrency:
+      group: pr-review-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      pull-requests: write
+      contents: read
+    env:
+      # 리전 통일: us-east-1 In-Region (opus-4-8 + openai.gpt-5.5 둘 다 In-Region 제공).
+      # 핵심: model id 를 In-Region 으로 — `anthropic.claude-opus-4-8` (global.* 아님).
+      # gpt-5.5(bedrock-mantle)는 In-Region 만 지원이라 전체를 In-Region 으로 맞춤. 노드 IAM(ci_runner) SigV4.
+      ANTHROPIC_MODEL: us.anthropic.claude-opus-4-8
+      CLAUDE_CODE_USE_BEDROCK: 1
+      ANTHROPIC_BEDROCK_BASE_URL: https://bedrock-runtime.us-east-1.amazonaws.com
+      AWS_REGION: us-east-1
+    steps:
+      # 보안(M1): pull_request_target 는 시크릿/쓰기권한 컨텍스트다. PR head 코드를
+      # 실행하면 push 권한자가 scripts/*.sh 를 바꿔 패널 키/노드 IAM 을 탈취할 수 있다.
+      # base(머지 대상, 신뢰됨)를 체크아웃해 scripts/* + CLAUDE.md/AGENTS.md 를 신뢰
+      # 컨텍스트로 쓰고, PR 변경분은 아래 `gh pr diff` 로 '데이터'로만 받는다(미실행).
+      - uses: actions/checkout@v4
+
+      - name: Verify CLIs present (pre-installed on runner image)
+        run: |
+          if ! command -v claude >/dev/null 2>&1; then
+            echo "::warning::claude CLI not found on runner, falling back to npm global install"
+            npm install -g @anthropic-ai/claude-code
+          fi
+          claude --version
+          # 패널 CLI 는 actions-runner-claude 이미지에 baking 되어 있어야 한다. 부재 시 graceful skip.
+          for c in codex kiro-cli; do
+            command -v "$c" >/dev/null 2>&1 || echo "::warning::$c not found on runner (image needs rebuild)"
+          done
+
+      - name: Get PR diff (with marketplace-specific filters)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # 락파일/바이너리/빌드 산출물 hunk 제거 — 리뷰 surface 를 가리지 않게.
+          gh pr diff "$PR_NUMBER" > /tmp/pr-diff-raw.txt
+          awk '
+            /^diff --git/ {
+              path = substr($3, 3)
+              skip = (path ~ /(^|\/)package-lock\.json$/) ||
+                     (path ~ /(^|\/)pnpm-lock\.yaml$/) ||
+                     (path ~ /(^|\/)yarn\.lock$/) ||
+                     (path ~ /(^|\/)node_modules\//) ||
+                     (path ~ /\.(pptx|png|jpg|jpeg|gif|pdf|vsix)$/) ||
+                     (path ~ /(^|\/)dist\//) ||
+                     (path ~ /(^|\/)out\//)
+            }
+            !skip
+          ' /tmp/pr-diff-raw.txt > /tmp/pr-diff.txt
+          RAW=$(wc -l < /tmp/pr-diff-raw.txt)
+          TOTAL_LINES=$(wc -l < /tmp/pr-diff.txt)
+          echo "total_lines=$TOTAL_LINES" >> "$GITHUB_ENV"
+          echo "Diff: $TOTAL_LINES lines (raw $RAW, filtered $((RAW - TOTAL_LINES)))"
+
+      - name: Build panel prompt
+        run: |
+          set -euo pipefail
+          MAX_LINES=3000
+          head -"$MAX_LINES" /tmp/pr-diff.txt > /tmp/pr-diff-truncated.txt
+          cat <<'PROMPT_EOF' > /tmp/panel-prompt.txt
+          Review the diff under review (provided via stdin, or inline below the
+          "--- DIFF UNDER REVIEW ---" marker) for bugs, security risks, logic errors,
+          and convention violations in this Claude Code plugin marketplace
+          (plugin.json/marketplace.json validity, dangling agent/skill refs,
+          SKILL.md frontmatter, hook safety, version alignment, hardcoded secrets).
+          Output concise findings grouped CRITICAL/MAJOR/MINOR.
+          DO NOT output a VERDICT line — that is the chair's job.
+          한국어+영문 기술용어 혼용 가능.
+          PROMPT_EOF
+          if [ "${total_lines:-0}" -gt "$MAX_LINES" ]; then
+            echo "WARNING: diff was ${total_lines} lines; only the first ${MAX_LINES} were reviewed." >> /tmp/panel-prompt.txt
+            echo "panel_truncated=1" >> "$GITHUB_ENV"
+          fi
+
+      - name: Run panel + synthesize (Codex + Kiro x3 -> Claude chair)
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PANEL_TIMEOUT: "300"
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pr-review
+          bash scripts/pr-review/run-panel.sh /tmp/pr-diff-truncated.txt /tmp/panel-prompt.txt /tmp/pr-review
+          bash scripts/pr-review/synthesize.sh /tmp/pr-diff-truncated.txt /tmp/pr-review \
+            "$PR_NUMBER" "$PR_TITLE" /tmp/review.md
+          echo "panel_responded=$(tr '\n' ' ' < /tmp/pr-review/responded.txt 2>/dev/null)" >> "$GITHUB_ENV"
+
+      - name: Check for blocking issues
+        id: gate
+        run: |
+          if grep -q "^VERDICT: FAIL$" /tmp/review.md; then
+            echo "result=fail" >> "$GITHUB_OUTPUT"
+            echo "reason=VERDICT: FAIL" >> "$GITHUB_OUTPUT"
+          elif grep -q "^VERDICT: PASS$" /tmp/review.md; then
+            echo "result=pass" >> "$GITHUB_OUTPUT"
+            echo "reason=No blocking issues" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=fail" >> "$GITHUB_OUTPUT"
+            echo "reason=No VERDICT line found — fail-closed" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post review comment (upsert)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          GATE_RESULT: ${{ steps.gate.outputs.result }}
+        run: |
+          MARKER="<!-- oh-my-cloud-skills-pr-review -->"
+          if [ "$GATE_RESULT" = "fail" ]; then
+            STATUS_BADGE="**Status: BLOCKED** — CRITICAL/MAJOR issues must be resolved before merge"
+          else
+            STATUS_BADGE="**Status: PASSED** — No blocking issues found"
+          fi
+          sed '$ { /^VERDICT:/d }' /tmp/review.md > /tmp/review-clean.md
+          {
+            echo "$MARKER"
+            echo "## 🤖 AI Code Review (Claude Opus 4.8 chair · Codex + Kiro panel)"
+            echo ""
+            echo "_Panel: Claude(chair) · ${panel_responded:-solo}_"
+            [ "${panel_truncated:-0}" = "1" ] && echo "_⚠️ diff truncated to first 3000 lines — review is partial._"
+            echo ""
+            echo "$STATUS_BADGE"
+            echo ""
+            cat /tmp/review-clean.md
+            echo ""
+            echo "---"
+            echo "_Triggered by commit \`${{ github.event.pull_request.head.sha }}\` · workflow: \`.github/workflows/pr-review.yml\`_"
+          } > /tmp/comment.md
+          EXISTING=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+            --jq '.[] | select(.body | contains("<!-- oh-my-cloud-skills-pr-review -->")) | .id' 2>/dev/null | head -1)
+          if [ -n "$EXISTING" ]; then
+            gh api "repos/$REPO/issues/comments/$EXISTING" -X PATCH -f body="$(cat /tmp/comment.md)" 2>/dev/null || \
+              gh pr comment "$PR_NUMBER" --body-file /tmp/comment.md
+          else
+            gh pr comment "$PR_NUMBER" --body-file /tmp/comment.md
+          fi
+
+      - name: Fail if CRITICAL or MAJOR
+        if: steps.gate.outputs.result == 'fail'
+        run: |
+          echo "AI Review failed: ${{ steps.gate.outputs.reason }}"
+          exit 1

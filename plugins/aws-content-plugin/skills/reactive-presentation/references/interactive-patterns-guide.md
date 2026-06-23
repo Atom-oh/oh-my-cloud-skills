@@ -1,3 +1,18 @@
+<!-- SECTION INDEX (auto) — 큰 파일. 전체 읽지 말고 필요한 ## 섹션만 offset-read.
+     라인번호 정확값(10 sec). 예: Read(file, offset=L, limit=다음섹션L−L). 해당 섹션이 §/## 참조 시 그 섹션도 함께. -->
+<!--
+  L22    사용 시점 Decision Tree
+  L54    §0 :::html 블록 레이아웃 규칙 (MANDATORY)
+  L176   §1 Range Slider Patterns
+  L628   §2 Mode Selector / Toggle Patterns
+  L1083  §3 Dynamic YAML Generation
+  L1407  §4 Canvas Animation with Controls
+  L1877  §5 Live Input Patterns
+  L2343  §6 Expandable Content Patterns
+  L2644  §7 DOM Animation Patterns
+  L3233  Quick Reference
+-->
+
 # Interactive Patterns Guide
 
 v1.0.0의 인터랙티브 패턴을 Remarp `:::html` / `:::script` / `:::css` 블록으로 구현하는 복사-붙여넣기 템플릿 라이브러리.

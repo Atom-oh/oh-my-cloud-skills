@@ -13,11 +13,13 @@
 
 *콘텐츠 제작 (aws-content-plugin):*
 - **인터랙티브 HTML/CSS/JS 프레젠테이션** — Canvas 애니메이션, 퀴즈, 발표자 뷰, GitHub Pages 배포
+- **네이티브 PowerPoint(.pptx) 덱** — `aws-light-fcd` 스킬로 AWS 라이트 테마 슬라이드 생성 (PptxGenJS, Pretendard 타이포그래피, 폰트 임베드, AWS 아키텍처 다이어그램 킷)
 - **AWS 아키텍처 다이어그램** — Draw.io XML 자동 레이아웃, PNG/SVG 내보내기
 - **애니메이션 트래픽 흐름 다이어그램** — SVG + SMIL 애니메이션, 인터랙티브 범례
 - **기술 문서** — 전문적인 Markdown 보고서 및 비교 문서
 - **GitBook 문서 사이트** — 내비게이션과 컴포넌트가 포함된 구조화된 문서
 - **AWS Workshop Studio 콘텐츠** — 다국어 지원 실습 랩
+- **단일 페이지 온라인 브로셔** — 아키텍처 다이어그램이 임베드된 자기완결 반응형 랜딩 페이지, GitHub Pages 배포
 
 *인프라 운영 (aws-ops-plugin):*
 - **EKS 트러블슈팅** — 노드 문제, 업그레이드, 애드온, 5분 트리아지
@@ -567,6 +569,7 @@ aws-ops-power/
 | `document-agent` | 기술 문서 | "EKS vs ECS 비교 문서 작성해줘" | `.md` |
 | `gitbook-agent` | 문서 사이트 | "GitBook 문서 사이트 만들어줘" | GitBook project |
 | `workshop-agent` | 워크샵 콘텐츠 | "EKS 워크샵 만들어줘" | Workshop Studio |
+| `brochure-agent` | 단일 페이지 온라인 브로셔 | "우리 플랫폼 랜딩 페이지 만들어줘" | `.html` (GitHub Pages) |
 | `content-review-agent` | 품질 검토 | "프레젠테이션 검토해줘" | Review report |
 
 ### 운영 에이전트
@@ -604,10 +607,12 @@ aws-ops-power/
 | 스킬 | 제공 내용 |
 |------|----------|
 | `reactive-presentation` | 프레젠테이션 프레임워크 (CSS/JS), Remarp 변환, PPTX→Remarp 변환기, AWS 아이콘 추출, 슬라이드 패턴 참조 |
-| `architecture-diagram` | Draw.io XML 템플릿, AWS 아이콘 참조, 레이아웃 패턴 |
+| `architecture-diagram` | 스펙 기반 `layout_aws.py` 엔진(YAML → Draw.io), 공유 AWS 아이콘 임베드, `.excalidraw` 생성기, 레이아웃/디자인 린트 게이트 |
 | `animated-diagram` | SMIL 애니메이션 가이드, HTML 래퍼 템플릿, 트래픽 흐름 패턴 |
+| `slide-fix` | Remarp 슬라이드 이슈 어노테이션(`<!-- issue: -->`) 반영 후 재빌드 |
 | `gitbook` | GitBook 구조 가이드, 컴포넌트 패턴, 내비게이션 템플릿 |
 | `workshop-creator` | Workshop Studio 지시문, 모듈 템플릿, CloudFormation 참조 |
+| `brochure` | 단일 페이지 반응형 브로셔(자기완결 HTML), 에디토리얼 디자인 시스템, 아키텍처 SVG 임베드, GitHub Pages 공개 배포 |
 
 ### 운영 스킬
 
@@ -629,7 +634,7 @@ aws-ops-power/
 | `co-agent` | 멀티-AI 협업 (Kiro/peer host/Agy, Gemini fallback) — 리뷰, 의사결정 보조, ADR 협업, `sync-context`; 현재 host가 의장. 명령: `/co-agent:configure`, `/co-agent:sync-context` |
 | `project-scaffolder` | Claude Code 프로젝트 구조 패턴 및 컨벤션 |
 | `pr-autofix` | AI + 사람 PR 리뷰 피드백 polling 후 이슈 자동 수정 (최대 3회 반복) |
-| `decision-reconcile` | 누적 ADR 간 모순(및 ADR vs 현실 drift)을 다양성 멀티 에이전트 패널(Claude 모델 티어 + 선택적 Kiro/Codex/Gemini, 렌즈 1개씩)로 검출 후 번복 ADR 초안 작성 |
+| `decision-reconcile` | 누적 ADR 간 모순(및 ADR vs 현실 drift)을 다양성 멀티 에이전트 패널(Claude 모델 티어 + 선택적 Kiro/Codex/Antigravity-또는-Gemini, 렌즈 1개씩)로 검출 후 번복 ADR 초안 작성 |
 
 ### Project Init 명령
 
@@ -698,10 +703,10 @@ co-agent 협업:   프롬프트  -->  Kiro/peer host/Agy 팬아웃  -->  host �
 
 ```
 plugins/
-├── aws-content-plugin/                # 콘텐츠 제작 (8 에이전트, 6 스킬)
+├── aws-content-plugin/                # 콘텐츠 제작 (9 에이전트, 8 스킬)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
-│   ├── agents/                        # 8 에이전트
+│   ├── agents/                        # 9 에이전트
 │   │   ├── presentation-agent.md      # 포맷 디스패처 (Web vs PPTX)
 │   │   ├── reactive-presentation-agent.md # 인터랙티브 HTML 슬라이드쇼
 │   │   ├── architecture-diagram-agent.md  # Draw.io XML 다이어그램
@@ -709,14 +714,17 @@ plugins/
 │   │   ├── document-agent.md          # Markdown 문서 및 보고서
 │   │   ├── gitbook-agent.md           # GitBook 문서 사이트
 │   │   ├── workshop-agent.md          # AWS Workshop Studio 콘텐츠
+│   │   ├── brochure-agent.md          # 단일 페이지 반응형 브로셔
 │   │   └── content-review-agent.md    # 통합 품질 검토
-│   └── skills/                        # 6 스킬
+│   └── skills/                        # 8 스킬
 │       ├── reactive-presentation/     # 프레젠테이션 프레임워크 + AWS 아이콘
 │       ├── architecture-diagram/      # Draw.io 템플릿 및 패턴
 │       ├── animated-diagram/          # SMIL 애니메이션 가이드 및 템플릿
 │       ├── gitbook/                   # GitBook 구조 및 컴포넌트
 │       ├── workshop-creator/          # Workshop Studio 지시문 및 템플릿
-│       └── slide-fix/                 # 슬라이드 이슈 어노테이션 처리
+│       ├── slide-fix/                 # 슬라이드 이슈 어노테이션 처리
+│       ├── brochure/                  # 반응형 브로셔 디자인 시스템
+│       └── aws-light-fcd/             # 네이티브 PPTX 덱 (PptxGenJS, AWS 라이트 테마)
 │
 ├── aws-ops-plugin/                    # 인프라 운영 (10 에이전트, 6 스킬)
 │   ├── .claude-plugin/plugin.json
@@ -756,12 +764,12 @@ plugins/
 │   └── skills/
 │       └── agentcore-create/
 │
-├── co-agent/                       # 멀티-AI 협업 (1 에이전트, 1 스킬, 2 명령)
+├── co-agent/                       # 멀티-AI 협업 (1 에이전트, 1 스킬, 3 명령)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
 │   ├── agents/
 │   │   └── co-agent.md
-│   ├── commands/                   # /co-agent:configure, /co-agent:sync-context
+│   ├── commands/                   # /co-agent:configure, /co-agent:sync-context, /co-agent:consensus
 │   └── skills/
 │       └── co-agent/
 │

@@ -1,5 +1,5 @@
 ---
-description: Synchronize all project documentation with current code state
+description: Synchronize all project documentation with current code state — the doc-sync step when finishing a dev branch (superpowers:finishing-a-development-branch)
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(find:*), Bash(git log:*), Bash(git tag:*), Bash(git describe:*), Bash(git remote:*), Bash(ls:*), Agent
 ---
 

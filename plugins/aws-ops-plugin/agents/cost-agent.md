@@ -23,6 +23,37 @@ A specialized agent for AWS cost analysis and optimization, leveraging the awspr
 4. **Resource Optimization** — Idle resource detection, right-sizing, cleanup
 5. **CloudWatch Cost** — Metric/log cost optimization, retention tuning
 
+### Recent AWS cost launches (2025–2026 — confidence noted inline)
+
+- **Database Savings Plans** (GA 2025-12-02) — a 4th Savings Plan type (alongside
+  Compute, EC2 Instance, SageMaker): up to 35% off a consistent $/hour commit (1-yr, no
+  upfront) across Aurora / RDS / DynamoDB / ElastiCache / DocumentDB / Neptune /
+  Keyspaces / Timestream / DMS, applying across family/size, serverless vs provisioned,
+  and Region. Weigh DSP coverage across the data tier in FinOps planning.
+  Source: https://aws.amazon.com/about-aws/whats-new/2025/12/database-savings-plans-savings
+- **Cost Optimization Hub — Cost Efficiency metric** (GA 2025-11-19) — auto-computes the
+  % of spend optimizable via rightsizing/idle/commitment recs (score = 1 − potential
+  savings / optimizable spend), refreshed daily. (COH consolidates 18+ rec types
+  cross-account/Region, discount-aware.)
+- **Compute Optimizer — unused NAT Gateway recommendations** (GA 2025-11-26) — flags NAT
+  GWs with no traffic over 32 days (CloudWatch metrics + route-table checks) with savings
+  + utilization to verify before deleting. (Also powers the Trusted Advisor NAT check.)
+- **Compute Optimizer — automation rules** (GA 2025-11-21) — auto-apply EBS recommendations
+  on a schedule (delete unattached, upgrade gp2→gp3 / io1→io2).
+- **Cost Explorer — 18-month ML forecasting** (GA 2025-11-19; up to 36 months history) —
+  AI-generated forecast explanations in **public preview**.
+- **Cost Anomaly Detection — extended dimensional monitoring** (GA 2025-11-19, all
+  commercial regions, no extra charge) — one managed monitor tracks all values in a
+  dimension (linked accounts / tags / cost categories) — e.g. 500 teams, one monitor.
+
+> Dates Nov-19/21/26 2025 are the What's New dates (the week before re:Invent main-stage),
+> which AWS itself bundles as "re:Invent 2025" launches. Figures are AWS-stated "up to".
+> Sources: https://aws.amazon.com/about-aws/whats-new/2025/11/aws-cost-optimization-hub-cost-efficiency-metric-measure-track/ ·
+> https://aws.amazon.com/about-aws/whats-new/2025/11/aws-compute-optimizer-unused-nat-gateway-recommendations/ ·
+> https://aws.amazon.com/about-aws/whats-new/2025/11/aws-compute-optimizer-automation-rules/ ·
+> https://aws.amazon.com/about-aws/whats-new/2025/11/cost-explorer-18-month-forecasting-ai-powered-forecasts/ ·
+> https://aws.amazon.com/about-aws/whats-new/2025/11/aws-cost-anomaly-detection-managed-monitoring/
+
 ---
 
 ## Analysis Commands

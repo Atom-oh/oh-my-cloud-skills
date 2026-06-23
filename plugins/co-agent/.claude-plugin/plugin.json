@@ -1,6 +1,6 @@
 {
   "name": "co-agent",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "description": "Collaborate with other AI agents (Kiro CLI, Codex, Agy with Gemini fallback) — multi-AI code/architecture review, decision support when you're unsure, and ADR co-authoring. Claude chairs in Claude Code; Codex chairs in Codex.",
   "author": {
     "name": "atomoh"
@@ -32,14 +32,20 @@
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/consensus_hooks.py\" post-tooluse --root . 2>/dev/null" }
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/consensus_hooks.py\" post-tooluse --root . 2>/dev/null"
+          }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/consensus_hooks.py\" stop --root . 2>/dev/null" }
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/consensus_hooks.py\" stop --root . 2>/dev/null"
+          }
         ]
       }
     ],

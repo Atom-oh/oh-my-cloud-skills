@@ -5,7 +5,7 @@ title: "Architecture Diagram"
 
 # Architecture Diagram Skill
 
-Create AWS architecture diagrams using Draw.io. Supports two modes: XML direct writing and Draw.io MCP for real-time editing.
+Create AWS architecture diagrams using Draw.io. The recommended path is the **spec-driven layout engine** (`layout_aws.py`): a compact YAML spec → a clean `.drawio` with auto-computed coordinates, Multi-AZ mirror symmetry, VPC nesting, tier placement, and edge anchors — so it always passes the layout/design gate. Hand-authored XML and Draw.io MCP remain available for non-standard shapes and live editing, and a sketch-style `.excalidraw` generator (`excalidraw_gen.py`) reuses the same shared AWS icon vocabulary for whiteboard-style concept diagrams.
 
 ## Trigger Keywords
 
@@ -18,8 +18,12 @@ Activated by the following keywords:
 
 | Mode | Method | Advantages | When to Use |
 |------|--------|------------|-------------|
-| **XML Direct Writing** | Create .drawio file with Write tool | No dependencies, stable | Default (always available) |
+| **Spec generator (recommended)** | `scripts/layout_aws.py` — YAML/JSON spec → .drawio | Auto-computed coordinates, Multi-AZ mirror symmetry, always passes the gate | VPC/Multi-AZ/tier, serverless & pipeline patterns (most common) |
+| **XML Direct Writing** | Create .drawio file with Write tool | No dependencies, stable | Non-standard shapes / full manual control |
 | **Draw.io MCP** | Real-time editing via MCP | Interactive, live preview | Optional (requires setup) |
+| **Sketch (Excalidraw)** | `scripts/excalidraw_gen.py` — same spec → local `.excalidraw` | Hand-drawn/whiteboard aesthetic, same shared icons (incl. AgentCore) | Brainstorming / concept diagrams (use drawio for formal infra) |
+
+The spec engine ships extra composition engines — serverless `stages`, multi-region, and hybrid block composition — and `lint_layout.py` scores geometry + design as a gate.
 
 ## Provided Resources
 
@@ -40,6 +44,16 @@ Activated by the following keywords:
 |----------|-------------|
 | `aws-basic.drawio` | VPC, Subnet, AZ basic structure |
 | `aws-samples.drawio` | Data Lake architecture sample |
+
+### scripts/
+
+| Script | Description |
+|--------|-------------|
+| `layout_aws.py` | Spec-driven layout engine (YAML/JSON → .drawio); VPC/Multi-AZ/tier + serverless `stages`, multi-region, hybrid engines |
+| `excalidraw_gen.py` | Sketch-style `.excalidraw` generator reusing the shared AWS icon vocabulary (local, offline) |
+| `lint_layout.py` | Layout/design gate — scores geometry + design, exit code drives PASS/FAIL |
+| `validate_drawio.py` | Validate `.drawio` XML structure |
+| `route_edges.py` / `snap_grid.py` | Edge routing and grid snapping helpers |
 
 ---
 

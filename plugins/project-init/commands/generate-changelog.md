@@ -1,5 +1,5 @@
 ---
-description: Generate or update a bilingual (English/Korean) CHANGELOG.md following Keep a Changelog and Semantic Versioning
+description: Generate or update a bilingual (English/Korean) CHANGELOG.md following Keep a Changelog and Semantic Versioning — the changelog step when finishing a dev branch (superpowers:finishing-a-development-branch)
 allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(git log:*), Bash(git remote:*), Bash(git describe:*), Bash(git tag:*), Bash(git diff:*), Glob, Grep
 argument-hint: "Optional: version to release (e.g. 1.2.0) or 'unreleased' to add to unreleased section"
 ---

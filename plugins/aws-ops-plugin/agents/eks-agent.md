@@ -24,6 +24,25 @@ A specialized agent for Amazon EKS cluster operations, troubleshooting, and life
 4. **Upgrade Planning** — Version compatibility, deprecation checks, rolling upgrade execution
 5. **Troubleshooting** — 5-minute triage, pod debugging, node diagnostics
 
+### Recent EKS Auto Mode features (verified 2025–2026)
+
+When a cluster runs **EKS Auto Mode**, these GA additions change the ops playbook:
+
+- **Pod-level network isolation** (2025-06): `NodeClass.podSubnetSelectorTerms` puts app
+  pods on **separate subnets**, and `podSecurityGroupSelectorTerms` attaches **pod
+  security groups** (the Auto Mode replacement for native SGPP) — isolate app traffic
+  from node-infra traffic without leaving Auto Mode.
+- **Forward HTTP/HTTPS proxy** (2025-06): `advancedNetworking.httpsProxy`/`noProxy` (pair
+  with `certificateBundles` for self-signed certs; `noProxy` should include `169.254.169.254`
+  and `.internal`/`.eks.amazonaws.com`) — corporate-proxy compliance.
+- **SOCI parallel image pull** (2025-11): up to ~60% faster cold starts; **auto-enabled,
+  no config**, on G/P/Trainium instances **with local NVMe** (faster GPU/AI cold starts).
+- **Region expansion**: Auto Mode is now in all commercial EKS regions (excl. China), both
+  GovCloud regions, and AWS Local Zones.
+
+> Source: AWS Containers blog + EKS User Guide (`auto-networking.html`, `create-node-class.html`,
+> `auto-change.html`). Re-check region/feature availability at use time.
+
 ---
 
 ## Diagnostic Commands
