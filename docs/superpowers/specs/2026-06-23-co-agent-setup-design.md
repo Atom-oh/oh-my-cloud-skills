@@ -157,9 +157,9 @@ just setup: `ALL_AIS` / `SANDBOX_IMPLEMENTERS` / `panel_ais` in `co_agent_config
 structure tests, and the inventories. Because the peer labels are now all binaries, **no binary map is
 needed** — `shutil.which(<peer>)` is correct for every peer.
 
-**Back-compat:** on read, an existing `.claude/co-agent.local.json` with a legacy `"kiro"`
-panel key is accepted and treated as `"kiro-cli"` (migrate-on-write); new writes use
-`kiro-cli`. So a user's prior local override is not silently dropped.
+No legacy-key compatibility is carried: the peer key is `kiro-cli` everywhere. (co-agent is
+recent enough that a stale pre-rename local override is not a concern; if one exists, the
+user re-runs `/co-agent:configure`.)
 
 ```
 PEER_PLUGINS = { "codex": "openai/codex-plugin-cc" }   # peer → official CC plugin repo (Tier-1)
@@ -254,5 +254,6 @@ Three corrections vs. the current adapter, all verified from `kiro-cli chat --he
   format `kiro-cli agent create` emits on 2.8.1 before sync-context generates it; verify
   `--v3`/`--mode` behavior is stable headlessly. (The CLI may evolve toward the full 3.0
   release; record the engine and degrade to v2 + `CLAUDE.md` when `--v3` is unavailable.)
-- **Repo-wide `kiro`→`kiro-cli` rename** is a companion refactor with back-compat read of the
-  legacy key; sequence it so existing tests are updated in the same change.
+- **Repo-wide `kiro`→`kiro-cli` unification** is a companion refactor: the peer label, every
+  CLI invocation, detection, and docs must use `kiro-cli` (a bare `kiro` is "command not
+  found"). No legacy-key compat. Sequence it so existing tests are updated in the same change.
