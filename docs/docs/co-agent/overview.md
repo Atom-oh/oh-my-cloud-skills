@@ -27,6 +27,9 @@ co-agent는 **다른 AI 에이전트(Kiro CLI, peer host CLI, Agy 우선/Gemini 
 |------|------|
 | `/co-agent:configure` | host-aware 패널 설정 — AI별 `model`, 지원되는 `effort`, `enabled`, `timeout`, `autosync` 토글 |
 | `/co-agent:sync-context` | `CLAUDE.md` 증류 → `AGENTS.md`(Codex) 생성 + Kiro steering bridge 연결 |
+| `/co-agent:consensus` | doc→plan→구현 자율 파이프라인 + 멀티모델 합의 게이트 |
+| `/co-agent:harness` | host 설계 / peer 구현(격리 worktree+workspace-write) / 패널 리뷰; host가 red·커밋 소유 |
+| `/co-agent:setup` | 패널 준비도 프리플라이트 — peer별 plugin→raw→none 감지 + 실사용 프로브, readiness 요약 기록 |
 
 ## 사전 요구사항 (선택적 — 있는 것만 사용)
 

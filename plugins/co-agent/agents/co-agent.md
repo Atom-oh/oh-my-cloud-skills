@@ -59,7 +59,10 @@ PANEL=""
 # NOTE: the peer label `kiro-cli` is also the binary name — invoke `kiro-cli` directly.
 command -v kiro-cli >/dev/null 2>&1 && PANEL="$PANEL kiro-cli"
 command -v codex    >/dev/null 2>&1 && PANEL="$PANEL codex"
-command -v agy      >/dev/null 2>&1 && PANEL="$PANEL agy" || command -v gemini >/dev/null 2>&1 && PANEL="$PANEL gemini"
+# Agy supersedes Gemini — use Gemini ONLY when agy is absent (if/elif, not &&/||,
+# which would add BOTH because the assignment's exit 0 lets the `&& gemini` arm run).
+if command -v agy >/dev/null 2>&1; then PANEL="$PANEL agy"
+elif command -v gemini >/dev/null 2>&1; then PANEL="$PANEL gemini"; fi
 echo "Panel: ${PANEL:-none (Claude solo)}"
 ```
 

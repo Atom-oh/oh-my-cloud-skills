@@ -62,10 +62,11 @@ implementer with `co_agent_config.py impl-flags <ai> --host "$HOST"` **inside th
 into **one passing commit** (`git commit --amend` onto the red-test commit, or
 `git reset --soft "$CKPT" && git commit`) so the branch never carries a committed-but-red
 test → `worktree.py remove`. Fallback chain: counterpart → other peer → host-implement.
-**On exhausted fix loop / abort**: undo only the red-test commit by reverting to the
-recorded checkpoint — `git reset --soft "$CKPT"` (keeps any unrelated working-tree state) or
-`git revert <red-test-sha>`; **never a bare `git reset --hard`** that could discard unrelated
-work — then `set . status needs-human`. External AIs never commit.
+**On exhausted fix loop / abort**: undo the red-test commit with
+`git revert --no-edit <red-test-sha>` — a non-destructive inverse commit that leaves nothing
+red staged or in the working tree (do **not** use `git reset --soft`, which keeps the red
+test staged, nor a bare `git reset --hard`, which could discard unrelated work) — then
+`set . status needs-human`. External AIs never commit.
 
 ## H4 — Final gate
 `consensus_state.py cumulative-diff . --plan <plan> --base <trunk>` → consensus gate →

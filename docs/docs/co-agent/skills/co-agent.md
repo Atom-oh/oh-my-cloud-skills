@@ -34,7 +34,7 @@ python3 "$CLAUDE_PLUGIN_ROOT/skills/co-agent/scripts/co_agent_config.py" panel -
 
 | AI | 명령 |
 |----|------|
-| Kiro | `kiro-cli chat "<P>" --no-interactive --trust-tools=read,grep --wrap never` |
+| Kiro | `kiro-cli chat "<P + CTX as the positional INPUT>" --v3 --mode default --no-interactive --trust-tools=fs_read --wrap never` (content in argv `[INPUT]`, NOT stdin) |
 | Claude | `claude -p "<P>" --permission-mode plan --tools Read,Grep,Glob --output-format text` |
 | Codex | `codex exec -s read-only "<P>"` |
 | Agy | `agy -p "<P>" --sandbox` |

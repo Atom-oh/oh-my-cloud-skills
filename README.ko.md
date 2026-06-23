@@ -43,7 +43,7 @@
 
 *멀티-AI 협업 (co-agent):*
 - **4가지 모드** — 멀티-AI 리뷰, 의사결정 보조, ADR 협업, `sync-context`(`CLAUDE.md` 증류 -> `AGENTS.md`, Kiro steering은 `CLAUDE.md` 참조)
-- **설치된 CLI 패널** — 같은 프롬프트를 Kiro/Codex/Gemini에 병렬 팬아웃, Claude가 의장으로 합의/이견 종합 (없으면 Claude 단독, hard-fail 없음)
+- **설치된 CLI 패널** — 같은 프롬프트를 Kiro/peer host/Agy에 병렬 팬아웃(Gemini는 fallback), 현재 host가 의장으로 합의/이견 종합 (없으면 host 단독, hard-fail 없음)
 - **`/co-agent:configure`** — AI별 model, Codex effort, 활성/비활성, timeout, `autosync`(`CLAUDE.md` 변경 시 AI 컨텍스트 재생성) 튜닝
 
 *프로젝트 스캐폴딩 (project-init):*
@@ -626,7 +626,7 @@ aws-ops-power/
 |------|----------|
 | `kiro-convert` | 플러그인-to-Kiro-Power 변환 워크플로우 |
 | `agentcore-create` | 5단계 AgentCore 설계, 빌드, 변환, 배포 워크플로우 |
-| `co-agent` | 멀티-AI 협업 (Kiro/Codex/Gemini) — 리뷰, 의사결정 보조, ADR 협업, `sync-context`; Claude가 의장. 명령: `/co-agent:configure`, `/co-agent:sync-context` |
+| `co-agent` | 멀티-AI 협업 (Kiro/peer host/Agy, Gemini fallback) — 리뷰, 의사결정 보조, ADR 협업, `sync-context`; 현재 host가 의장. 명령: `/co-agent:configure`, `/co-agent:sync-context` |
 | `project-scaffolder` | Claude Code 프로젝트 구조 패턴 및 컨벤션 |
 | `pr-autofix` | AI + 사람 PR 리뷰 피드백 polling 후 이슈 자동 수정 (최대 3회 반복) |
 | `decision-reconcile` | 누적 ADR 간 모순(및 ADR vs 현실 drift)을 다양성 멀티 에이전트 패널(Claude 모델 티어 + 선택적 Kiro/Codex/Gemini, 렌즈 1개씩)로 검출 후 번복 ADR 초안 작성 |
@@ -674,7 +674,7 @@ Well-Architected: wellarchitected-agent  -->  6-pillar 스코어링  -->  AS-IS/
 ```
 Kiro 변환:        플러그인 소스  -->  kiro-converter-agent  -->  Kiro Power 디렉토리  -->  설치/내보내기
 AgentCore 배포:   발견  -->  설계  -->  스킬 우선 빌드  -->  AgentCore 변환  -->  배포
-co-agent 협업:   프롬프트  -->  Kiro/Codex/Gemini 팬아웃  -->  Claude 종합  -->  리뷰 / 의사결정 / ADR / 컨텍스트 동기화
+co-agent 협업:   프롬프트  -->  Kiro/peer host/Agy 팬아웃  -->  host 종합  -->  리뷰 / 의사결정 / ADR / 컨텍스트 동기화
 문서 동기화:      /sync-docs  -->  doc-sync-checker  -->  품질 점수  -->  문서 업데이트
 ```
 

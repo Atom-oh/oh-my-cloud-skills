@@ -14,7 +14,8 @@ preferred over Gemini, with Gemini retained only as the legacy fallback.
 command -v kiro-cli >/dev/null 2>&1 && echo "kiro-cli ok"
 command -v claude   >/dev/null 2>&1 && echo "claude ok"
 command -v codex    >/dev/null 2>&1 && echo "codex ok"
-command -v agy      >/dev/null 2>&1 && echo "agy ok" || command -v gemini >/dev/null 2>&1 && echo "gemini fallback ok"
+if command -v agy >/dev/null 2>&1; then echo "agy ok"   # Agy supersedes Gemini
+elif command -v gemini >/dev/null 2>&1; then echo "gemini fallback ok"; fi
 ```
 
 ## Adapter commands (read-only advisory)

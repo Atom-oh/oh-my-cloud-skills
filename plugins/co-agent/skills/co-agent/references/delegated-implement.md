@@ -69,11 +69,12 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
    and the green implementation into **one passing commit** (`git commit --amend` onto the
    red-test commit, or `git reset --soft "$CKPT" && git commit`), so the branch never carries
    a committed-but-red test. `worktree.py remove <wt>`.
-8. **Escalate / abort** when the fix loop is exhausted: undo only the red-test commit —
-   `git reset --soft "$CKPT"` (preserves any unrelated working-tree state) or
-   `git revert <red-test-sha>`. **Never a bare `git reset --hard`** (it could discard
-   unrelated work). Then `consensus_state.py set . status needs-human` and stop the task.
-   Never leave a red commit on the working branch.
+8. **Escalate / abort** when the fix loop is exhausted: undo the red-test commit with
+   `git revert --no-edit <red-test-sha>` — a non-destructive inverse commit that leaves
+   nothing red staged or in the working tree. Do **not** use `git reset --soft` (keeps the
+   red test staged) nor a bare `git reset --hard` (could discard unrelated work). Then
+   `consensus_state.py set . status needs-human` and stop the task. Never leave a red commit
+   on the working branch.
 
 ## Host-only-commit (non-negotiable)
 
