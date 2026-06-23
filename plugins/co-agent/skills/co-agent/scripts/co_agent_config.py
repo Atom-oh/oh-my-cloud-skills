@@ -111,6 +111,16 @@ def local_path(root):
     return os.path.join(root, ".claude", "co-agent.local.json")
 
 
+def user_path():
+    """User-scope override applied across all repos (lower precedence than repo-local).
+    Override the location with $CO_AGENT_USER_CONFIG (used by tests)."""
+    return os.environ.get("CO_AGENT_USER_CONFIG") or os.path.expanduser("~/.claude/co-agent.user.json")
+
+
+def config_path(root, scope):
+    return user_path() if scope == "user" else local_path(root)
+
+
 def load_defaults():
     with open(DEFAULTS_PATH, encoding="utf-8") as f:
         d = json.load(f)
@@ -129,14 +139,15 @@ def deep_merge(base, over):
 
 
 def effective(root):
+    # Precedence low→high: committed defaults → user scope (~/.claude) → repo-local (.claude).
     cfg = load_defaults()
-    lp = local_path(root)
-    if os.path.isfile(lp):
-        try:
-            with open(lp, encoding="utf-8") as f:
-                cfg = deep_merge(cfg, json.load(f))
-        except (json.JSONDecodeError, OSError) as e:
-            print(f"⚠️  ignoring malformed {lp}: {e}", file=sys.stderr)
+    for lp in (user_path(), local_path(root)):
+        if os.path.isfile(lp):
+            try:
+                with open(lp, encoding="utf-8") as f:
+                    cfg = deep_merge(cfg, json.load(f))
+            except (json.JSONDecodeError, OSError) as e:
+                print(f"⚠️  ignoring malformed {lp}: {e}", file=sys.stderr)
     return cfg
 
 
@@ -223,7 +234,12 @@ def cmd_show(root, host):
     cfg = effective(root)
     autosync = "on" if cfg.get("sync_on_change") else "off"
     print(f"co-agent panel config  (host {host} · timeout {cfg.get('timeout')}s · autosync {autosync})")
-    print(f"  source: defaults + {local_path(root) if os.path.isfile(local_path(root)) else '(no local override)'}")
+    layers = ["defaults"]
+    if os.path.isfile(user_path()):
+        layers.append(f"user:{user_path()}")
+    if os.path.isfile(local_path(root)):
+        layers.append(f"local:{local_path(root)}")
+    print(f"  source: {' + '.join(layers)}" + ("" if len(layers) > 1 else " (no user/local override)"))
     print(f"  {'AI':7} {'enabled':8} {'model':18} {'ctx(tok)':>11}  effort")
     for ai in panel_ais(host):
         p = cfg["panel"].get(ai, {})
@@ -235,12 +251,12 @@ def cmd_show(root, host):
     return 0
 
 
-def cmd_set(root, rest, host):
+def cmd_set(root, rest, host, scope="local"):
     if not rest:
-        print("usage: set <ai> <key> <value>  |  set timeout <seconds>", file=sys.stderr)
+        print("usage: set [--scope user|local] <ai> <key> <value>  |  set timeout <seconds>", file=sys.stderr)
         return 2
 
-    lp = local_path(root)
+    lp = config_path(root, scope)   # scope=user → ~/.claude/co-agent.user.json; else repo-local
     os.makedirs(os.path.dirname(lp), exist_ok=True)
     local = {}
     if os.path.isfile(lp):
@@ -459,7 +475,7 @@ def cmd_impl_flags(root, ai, host):
 
 def main():
     # Parse out global flags precisely (don't drop positional args that equal the path).
-    argv, root, host_arg, args, i = sys.argv[1:], os.getcwd(), None, [], 0
+    argv, root, host_arg, scope, args, i = sys.argv[1:], os.getcwd(), None, "local", [], 0
     while i < len(argv):
         if argv[i] == "--root":
             if i + 1 < len(argv):
@@ -471,8 +487,17 @@ def main():
                 host_arg = argv[i + 1]
             i += 2
             continue
+        if argv[i] == "--scope":
+            if i + 1 < len(argv):
+                scope = argv[i + 1]
+            i += 2
+            continue
         args.append(argv[i])
         i += 1
+
+    if scope not in ("user", "local"):
+        print("--scope must be user|local", file=sys.stderr)
+        return 2
 
     host = normalize_host(host_arg or os.environ.get("CO_AGENT_HOST", "claude"))
     if host is None:
@@ -484,7 +509,7 @@ def main():
     if cmd == "show":
         return cmd_show(root, host)
     if cmd == "set":
-        return cmd_set(root, rest, host)
+        return cmd_set(root, rest, host, scope)
     if cmd == "flags":
         return cmd_flags(root, rest[0], host) if rest else 2
     if cmd == "panel":

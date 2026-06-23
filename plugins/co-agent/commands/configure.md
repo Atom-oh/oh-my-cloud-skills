@@ -6,10 +6,16 @@ argument-hint: "show | set <ai> <key> <value> | set timeout <seconds>  (host: cl
 
 # co-agent: configure
 
-Configure the host-aware multi-AI panel. Settings are **layered** like Claude Code's own settings:
+Configure the host-aware multi-AI panel. Settings are **layered** like Claude Code's own
+settings — precedence low→high:
 
-- `co-agent.defaults.json` (committed, in the skill) — base
-- `<repo>/.claude/co-agent.local.json` (gitignored) — personal/per-repo override written here
+- `co-agent.defaults.json` (committed, in the skill) — base/shared
+- `~/.claude/co-agent.user.json` (**user scope** — applies across all your repos) — written with `--scope user`
+- `<repo>/.claude/co-agent.local.json` (gitignored, this repo only) — default write target
+
+`set` writes to the **repo-local** scope by default; add `--scope user` to write the
+user-global file instead (repo-local still overrides user, user overrides defaults).
+(Override the user-file path with `$CO_AGENT_USER_CONFIG`.)
 
 Only options the CLIs **actually accept headlessly** are exposed (no dead settings):
 
@@ -63,11 +69,14 @@ Argument: `$ARGUMENTS`
    python3 "$H" set timeout 300                 # global per-CLI timeout (s)
    python3 "$H" set codex context_limit 400000  # raise/lower a model's context window
    python3 "$H" set autosync on                 # auto-sync AI context on CLAUDE.md change
+   python3 "$H" set codex model gpt-5.5 --scope user   # write to ~/.claude (all your repos)
+   python3 "$H" set agy model "Gemini 3.1 Pro (High)"  # Agy tokens have spaces + parens
    ```
    `context_limit` lets the fan-out **skip** an AI when the context is too large for its
    model window (the cause of "prompt tokens exceed model maximum"), instead of hard-failing
    — e.g. Codex (~272K) is skipped on a huge diff while Kiro/Agy (~1M) still run. `model`
-   values are charset-validated (letters/digits/`. _ : / -` only) to keep the fan-out safe.
+   values are charset-validated (letters/digits/`. _ : / - ( )` + spaces — agy tokens like
+   `Gemini 3.1 Pro (High)`; shell metacharacters stay rejected) to keep the fan-out safe.
    `autosync on` makes the `CLAUDE.md` PostToolUse hook tell Claude to run
    `/co-agent:sync-context` whenever the generated files drift stale (opt-in; default
    off = reminder only). It refreshes existing `AGENTS.md`/`GEMINI.md`; first-time
