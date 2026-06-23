@@ -11,6 +11,9 @@ import sys
 import os
 import re
 import shutil
+import subprocess
+import tempfile
+import signal
 
 PEERS = ("kiro-cli", "claude", "codex", "agy", "gemini")
 PEER_PLUGINS = {"codex": "openai/codex-plugin-cc"}   # peer → official Claude Code plugin repo
@@ -69,6 +72,51 @@ def _cmd_classify(argv):
     return 0
 
 
+# Read-only adapters, mirroring references/ai-cli-adapters.md. "{P}" = prompt, "{I}" = INPUT (prompt+sentinel).
+ADAPTERS = {
+    "codex":    {"argv": ["codex", "exec", "-s", "read-only", "{P}"], "channel": "stdin"},
+    "agy":      {"argv": ["agy", "-p", "{P}", "--sandbox"], "channel": "stdin"},
+    "gemini":   {"argv": ["gemini", "-p", "{P}", "-o", "text"], "channel": "stdin"},
+    "kiro-cli": {"argv": ["kiro-cli", "chat", "{I}", "--v3", "--mode", "default",
+                          "--no-interactive", "--trust-tools=fs_read", "--wrap", "never"],
+                 "channel": "argv"},
+}
+_CAP = 64 * 1024   # output-size cap
+
+
+def probe(peer, timeout=20, nonce="STATIC"):
+    if peer not in ADAPTERS:
+        return "ERROR", f"unknown peer {peer}"
+    if not detect_cli(peer):
+        return "ABSENT", "command not found"
+    sentinel = f"COAGENT_PROBE_{nonce}"
+    spec = ADAPTERS[peer]
+    if spec["channel"] == "stdin":
+        prompt = "Read the single token provided on stdin and reply with exactly that token, nothing else."
+        argv = [a.replace("{P}", prompt) for a in spec["argv"]]
+        stdin_data = sentinel + "\n"
+    else:  # argv
+        inp = f"Reply with exactly this token and nothing else: {sentinel}"
+        argv = [a.replace("{I}", inp) for a in spec["argv"]]
+        stdin_data = ""
+    with tempfile.TemporaryDirectory() as cwd:
+        try:
+            p = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE, text=True, start_new_session=True)
+            try:
+                out, err = p.communicate(input=stdin_data, timeout=timeout)
+                timed_out = False
+            except subprocess.TimeoutExpired:
+                os.killpg(os.getpgid(p.pid), signal.SIGKILL)
+                out, err = p.communicate()
+                timed_out = True
+            return classify(sentinel, out[:_CAP], (err or "")[:_CAP], p.returncode, timed_out)
+        except FileNotFoundError:
+            return "ABSENT", "command not found"
+        except Exception as e:  # never hard-fail a probe
+            return "ERROR", str(e)[:200]
+
+
 def main():
     argv = sys.argv[1:]
     if not argv:
@@ -76,6 +124,12 @@ def main():
         return 2
     if argv[0] == "classify":
         return _cmd_classify(argv[1:])
+    if argv[0] == "probe":
+        peer = argv[1]
+        timeout = int(argv[argv.index("--timeout") + 1]) if "--timeout" in argv else 20
+        status, _ = probe(peer, timeout=timeout)
+        print(status)
+        return 0
     if argv[0] == "--selftest-access":
         peer, hc, hp = argv[1], argv[2] == "1", argv[3] == "1"
         access, suggest = decide_access(peer, hc, hp)
