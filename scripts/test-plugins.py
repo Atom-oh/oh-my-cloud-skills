@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 
 # Valid constants
-VALID_MODELS = {"haiku", "sonnet", "opus", "fable"}
+VALID_MODELS = {"haiku", "sonnet", "opus"}
 VALID_TOOLS = {"Read", "Write", "Edit", "Glob", "Grep", "Bash", "AskUserQuestion",
                "Agent", "Skill", "WebFetch", "NotebookEdit"}
 VALID_HOOK_EVENTS = {"SessionStart", "PreToolUse", "PostToolUse", "PostToolUseFailure",
