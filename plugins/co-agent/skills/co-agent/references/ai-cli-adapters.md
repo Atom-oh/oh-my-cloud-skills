@@ -22,7 +22,7 @@ elif command -v gemini >/dev/null 2>&1; then echo "gemini fallback ok"; fi
 
 | AI | Command | Notes |
 |----|---------|-------|
-| **Kiro** | `kiro-cli chat "<PROMPT + CONTEXT as the positional INPUT>" --v3 --mode default --no-interactive --trust-tools=fs_read --wrap never` | ⚠️ The binary is **`kiro-cli`** — always invoke it by that exact name. Content goes in the positional `[INPUT]` (argv), **NOT** piped stdin — Kiro ignores stdin in `chat`, which is why the old stdin-piped form returned nothing. `fs_read` is the real read-only tool name (the old `read,grep` were not valid Kiro tool names). Auth via interactive login **or** `KIRO_API_KEY` (Pro/Pro+/Power) — either works headless. `--wrap never` = clean output. |
+| **Kiro** | `kiro-cli chat "<PROMPT>\n\nRead the review context with fs_read from: <CTX_FILE>" --v3 --mode default --no-interactive --trust-tools=fs_read --wrap never` | ⚠️ The binary is **`kiro-cli`** — always invoke it by that exact name. Input goes in the positional `[INPUT]` (argv), **NOT** piped stdin (Kiro ignores stdin in `chat`). For anything beyond a tiny probe, **do NOT embed the diff in argv** (`ps` exposure + `ARG_MAX`) — write it to a temp file and put a short *"fs_read this file"* instruction in argv; Kiro reads it via `fs_read` (the real read-only tool name; the old `read,grep` were invalid). Auth via login **or** `KIRO_API_KEY` (Pro/Pro+/Power). `--wrap never` = clean output. |
 | **Claude** | `claude -p "<PROMPT>" --permission-mode plan --tools Read,Grep,Glob --output-format text` | Used only when Codex is the host. Plan permission mode + read-only tools keep the call advisory. Pipe ctx: `cat ctx \| claude -p "<PROMPT>" …`. |
 | **Codex** | `codex exec -s read-only "<PROMPT>"` | `-s read-only` = read-only sandbox (no writes). Pipe ctx: `cat ctx \| codex exec -s read-only "<PROMPT>"`. Free tier has model limits. |
 | **Agy** | `agy -p "<PROMPT>" --sandbox` | Preferred third reviewer. Pipe ctx: `cat ctx \| agy -p "<PROMPT>" --sandbox`. |
@@ -57,7 +57,7 @@ python3 "$CFG" pairs --host "$HOST" 2>/dev/null | while IFS=$'\t' read -r ai mod
   fi
   case "$ai" in
     kiro-cli)   command -v kiro-cli >/dev/null 2>&1 && ( timeout "$T" \
-              kiro-cli chat "$PROMPT"$'\n\n'"$(cat "$CTX_FILE")" "${MFLAGS[@]}" --v3 --mode default --no-interactive --trust-tools=fs_read --wrap never \
+              kiro-cli chat "$PROMPT"$'\n\n'"Read the review context with fs_read from: $CTX_FILE" "${MFLAGS[@]}" --v3 --mode default --no-interactive --trust-tools=fs_read --wrap never \
               > "$slot.md" 2>"$slot.err" || echo "[skip] kiro-cli/$model" ) & ;;
     claude) command -v claude >/dev/null 2>&1 && ( cat "$CTX_FILE" | timeout "$T" \
               claude -p "$PROMPT" "${MFLAGS[@]}" --permission-mode plan --tools Read,Grep,Glob --output-format text \
