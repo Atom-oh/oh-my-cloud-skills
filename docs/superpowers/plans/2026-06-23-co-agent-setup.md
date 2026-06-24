@@ -223,7 +223,9 @@ def detect_plugin(peer, plugins_root):
         return False
     needle = repo.split("/")[-1]   # e.g. "codex-plugin-cc"
     for dirpath, dirnames, _files in os.walk(plugins_root):
-        if needle in os.path.basename(dirpath) or needle in dirnames:
+        # EXACT basename match (== / set membership), NOT substring — else a fork/backup dir like
+        # "codex-plugin-cc-fork" would falsely count as the official plugin → route to a missing command.
+        if os.path.basename(dirpath) == needle or needle in dirnames:
             return True
     return False
 
@@ -322,8 +324,19 @@ ADAPTERS = {
                           "--no-interactive", "--trust-tools=fs_read", "--wrap", "never"],
                  "channel": "argv"},
 }
-assert set(ADAPTERS) == set(PEERS), "every PEER needs an adapter (and vice-versa)"
+# Explicit check (NOT `assert`, which `python -O` strips): every PEER needs an adapter.
+if set(ADAPTERS) != set(PEERS):
+    raise RuntimeError(f"ADAPTERS {set(ADAPTERS)} != PEERS {set(PEERS)}")
 _CAP = 64 * 1024   # output-size cap
+
+
+def _kill_group(p):
+    """SIGKILL the whole process group, tolerating an already-reaped pid so a probe never
+    leaks a zombie or raises on cleanup."""
+    try:
+        os.killpg(os.getpgid(p.pid), signal.SIGKILL)
+    except (ProcessLookupError, OSError):
+        pass
 
 
 def probe(peer, timeout=20, nonce="STATIC"):
@@ -346,15 +359,15 @@ def probe(peer, timeout=20, nonce="STATIC"):
             p = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                   stderr=subprocess.PIPE, text=True, start_new_session=True)
             try:
-                # `timeout` bounds the *time* window (and a sentinel reply is tiny). `_CAP`
-                # below bounds what we hand to classify(). For a hard MEMORY bound against a CLI
-                # that floods within the timeout, redirect stdout/stderr to a TemporaryFile (no
-                # pipe-buffer deadlock), `p.wait(timeout)`, then read back only `_CAP` bytes —
-                # do NOT buffer unbounded output in memory via communicate() for an untrusted CLI.
+                # `timeout` bounds the time window (a sentinel reply is tiny) and `_CAP` below
+                # bounds what classify() sees. NOTE (hardening follow-up): communicate() buffers
+                # output in memory until the timeout, so a CLI that floods within the window can
+                # spike memory before the `[:_CAP]` slice. A hard memory bound would redirect
+                # stdout/stderr to a TemporaryFile (no pipe-buffer deadlock) + read back only _CAP.
                 out, err = p.communicate(input=stdin_data, timeout=timeout)
                 timed_out = False
             except subprocess.TimeoutExpired:
-                os.killpg(os.getpgid(p.pid), signal.SIGKILL)
+                _kill_group(p)        # SIGKILL the whole session; tolerate an already-reaped pid
                 out, err = p.communicate()
                 timed_out = True
             return classify(sentinel, out[:_CAP], (err or "")[:_CAP], p.returncode, timed_out)

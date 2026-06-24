@@ -619,12 +619,35 @@ Usage:
   worktree.py remove <wt_path> [--root DIR]
   worktree.py prune [--root DIR]
 """
+import os
 import sys
 import subprocess
 
 
-def git(cwd, *args):
-    return subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True)
+def git(cwd, *args, env=None):
+    return subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, env=env)
+
+
+# Untrusted-worktree hardening — these MUST exist; do not delete to "make it run". Without
+# them, `add`/`diff`/checkout in a peer worktree can execute host-side code via system/global
+# git config, in-tree .gitattributes filter/textconv drivers, or hooks.
+_CLEAN_ENV = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
+              "GIT_ATTR_NOSYSTEM": "1"}
+
+
+def _capture_neutralizers(wt):
+    """`-c` overrides that defang in-tree .gitattributes clean/smudge/process filters (run at
+    `git add`) and textconv/diff command drivers (run at `git diff`), plus core.hooksPath. We
+    can't ignore an in-tree .gitattributes, so each driver is overridden to pass-through/empty."""
+    ov = ["-c", f"core.hooksPath={os.devnull}"]
+    for prefix, keys in (("filter", ("clean", "smudge", "process")), ("diff", ("textconv", "command"))):
+        r = git(wt, "config", "--name-only", "--get-regexp", rf"^{prefix}\.", env=_CLEAN_ENV)
+        names = {".".join(line.split(".")[1:-1]) for line in r.stdout.splitlines()
+                 if len(line.split(".")) >= 3}
+        for n in names:
+            for k in keys:
+                ov += ["-c", f"{prefix}.{n}.{k}=" + ("cat" if k in ("clean", "smudge") else "")]
+    return ov
 
 
 def main():
@@ -682,12 +705,16 @@ def main():
         return r.returncode
     if cmd == "remove":
         wt = argv[1]
-        r = git(root, "worktree", "remove", "--force", wt)
-        git(root, "worktree", "prune")
+        # --force may check out / clean the worktree → neutralize hooksPath/fsmonitor + clean env
+        # so a peer-planted hook/config can't execute during removal.
+        nb = ["-c", f"core.hooksPath={os.devnull}", "-c", "core.fsmonitor="]
+        r = git(root, *nb, "worktree", "remove", "--force", wt, env=_CLEAN_ENV)
+        git(root, *nb, "worktree", "prune", env=_CLEAN_ENV)
         sys.stderr.write(r.stderr)
         return r.returncode
     if cmd == "prune":
-        git(root, "worktree", "prune")
+        git(root, "-c", f"core.hooksPath={os.devnull}", "-c", "core.fsmonitor=",
+            "worktree", "prune", env=_CLEAN_ENV)
         return 0
     print(__doc__)
     return 2
