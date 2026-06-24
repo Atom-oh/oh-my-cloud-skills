@@ -160,10 +160,21 @@ def report(root, plugins_root, as_json=False):
         cli = detect_cli(peer)
         has_plugin = detect_plugin(peer, plugins_root)
         access, suggest = decide_access(peer, bool(cli), has_plugin)
-        entry = {"access": access}
+        # raw_cli is recorded independently of access so a peer that has BOTH the official
+        # plugin AND a raw CLI stays implementer-eligible (the implementer gate needs a raw
+        # write-mode CLI, which access=="plugin" alone would otherwise hide).
+        entry = {"access": access, "raw_cli": bool(cli)}
         if access == "plugin":
-            entry["status"] = "READY"
             entry["plugin"] = PEER_PLUGINS.get(peer)
+            if cli:
+                # also has a raw CLI → probe it so its raw usability (implementer gate) is known
+                status, reason = probe(peer)
+                entry["status"] = status
+                entry["cli_path"] = cli
+                if reason:
+                    entry["reason"] = reason
+            else:
+                entry["status"] = "READY"   # plugin-only: the plugin handles ingestion
         elif access == "raw":
             status, reason = probe(peer)
             entry["status"] = status

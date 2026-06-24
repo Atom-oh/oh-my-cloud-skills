@@ -24,6 +24,12 @@ Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"`.
 
 1. **Consent + cost**: confirm sending the doc(s) to third-party AIs; show
    `python3 "$SK/co_agent_config.py" matrix`.
+1a. **Consult readiness** (`.claude/co-agent-panel.local.json` from `/co-agent:setup`):
+   `python3 "$SK/check_panel.py" status <peer>` per panel peer — keep only **READY** peers
+   for the gate; drop AUTH/NO_INGEST/ABSENT/etc. consensus is a **non-degraded** mode (the
+   multi-model gate is its essence): if **no READY peer** remains, do **not** silently fall
+   back to solo — **block** and tell the user to run `/co-agent:setup` (or install/auth a
+   peer). Absent summary → run `/co-agent:setup` first.
 2. **Detect & init**: `python3 "$SK/consensus_state.py" detect . <doc...>` → if a `plan`
    doc is present, use it; else (`adr`/`spec`) you'll generate one. Then
    `python3 "$SK/consensus_state.py" init . --docs <comma paths> --base <trunk>` and

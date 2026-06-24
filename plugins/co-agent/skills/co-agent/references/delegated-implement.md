@@ -19,6 +19,15 @@ a real workspace-write sandbox are valid implementers:
 | Codex | `-s workspace-write` (+ `-m <model>`, effort) |
 | Agy | `--sandbox` (+ `--model`) |
 
+**Agy has a *single* `--sandbox` mode** — unlike Codex's split `-s read-only` vs
+`-s workspace-write`, there is no separate read-only sandbox flag. The advisory (review)
+path keeps agy non-writing by running it in **`-p` print mode** (it emits text, does not
+act); the implement path drops `-p` so agy runs as an agent that can write, and confines
+those writes by launching it **with cwd set to the worktree** under `--sandbox`. So for
+agy the worktree-scoped cwd — not a distinct write flag — is what holds the trust boundary.
+`impl-flags agy` therefore emits the same `--sandbox` the advisory `flags agy` would, plus
+`--model`; the difference is print-vs-agent mode and the cwd, set by the per-task loop.
+
 **Not valid implementers:** `claude --permission-mode acceptEdits`, `kiro-cli --trust-tools`,
 and `gemini --yolo` auto-accept writes but do **not** confine them to the worktree, so the
 trust boundary would not hold — `implementer`/`impl-flags` reject them. Default implementer:
@@ -46,11 +55,11 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
    red-test commit, so the peer sees the failing test. Put `<wt>` under a gitignored path
    (e.g. `.claude/co-agent-consensus/worktrees/<task>`).
 3. **Implement (peer).** Pick the implementer from peers that are **READY** AND
-   `access == raw` AND a sandbox CLI (codex/agy) — consult `.claude/co-agent-panel.local.json`
-   via `check_panel.py status <peer>` / `access <peer>` (written by `/co-agent:setup`). A
-   plugin-only peer (e.g. codex via the official plugin) can be READY yet have **no raw
-   write-mode CLI**, so it cannot run `impl-flags` and is not implementer-eligible. Run the
-   implementer with
+   **`raw_cli: true`** (a usable raw write CLI) AND a sandbox CLI (codex/agy) — consult
+   `.claude/co-agent-panel.local.json` (written by `/co-agent:setup`). Gate on `raw_cli`,
+   NOT `access`: a peer with BOTH the official plugin and a raw CLI is `access: plugin` yet
+   `raw_cli: true` → still eligible. Only a peer with **no raw CLI** (`raw_cli: false`) can't
+   run `impl-flags` and is ineligible. Run the implementer with
    `impl-flags` **inside `<wt>`**, scoped to the task's files. Fallback chain on
    missing/error/not-READY/timeout: configured implementer → next READY peer (keep provider
    separation) → host-implement. If **no** sandbox peer is READY, the multi-model gate
@@ -74,8 +83,11 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
    unrelated prior commit). `worktree.py remove <wt>`.
 8. **Escalate / abort** when the fix loop is exhausted: **first discard the applied
    implementation patch** that step 5 put in the working tree, scoped to the task's files —
-   `git restore --staged --worktree -- <task files>` (or `git checkout -- <task files>`) —
-   so the tree is clean. **Then** undo the red-test commit with `git revert --no-edit
+   `git restore --staged --worktree -- <task files>` (or `git checkout -- <task files>`).
+   `restore` only reverts files that exist in `HEAD`; a patch that **added new files** leaves
+   them as untracked, so also `git clean -fd -- <task files>` (scoped to the task's file set,
+   **never a bare `git clean`** — that would wipe unrelated untracked work) to remove them.
+   The tree is then clean. **Then** undo the red-test commit with `git revert --no-edit
    <red-test-sha>` (a non-destructive inverse commit; revert refuses on a dirty tree, which is
    why the restore comes first). Do **not** use `git reset --soft` (keeps the red test staged)
    nor a bare `git reset --hard` (could discard unrelated work). Then `consensus_state.py set .

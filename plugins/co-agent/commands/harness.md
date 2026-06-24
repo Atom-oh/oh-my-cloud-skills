@@ -29,9 +29,10 @@ Let `SK="${CLAUDE_PLUGIN_ROOT:-plugins/co-agent}/skills/co-agent/scripts"` and
 3. **Consult readiness** (`.claude/co-agent-panel.local.json` from `/co-agent:setup`):
    `python3 "$SK/check_panel.py" status <peer>` / `access <peer>` — keep only **READY** peers
    for the review panel; drop AUTH/NO_INGEST/ABSENT/etc. The **implementer** has a stricter
-   gate: it must be READY **and** `access == raw` **and** a sandbox CLI (codex/agy) — a
-   plugin-only peer (e.g. codex via the official plugin) can be READY yet have no raw
-   write-mode CLI for `impl-flags`, so it is **not** eligible as implementer. If no peer
+   gate: it must be READY **and** `raw_cli: true` (a usable raw write CLI) **and** a sandbox
+   CLI (codex/agy). Use `raw_cli`, NOT `access`: a peer that has BOTH the official plugin and
+   a raw CLI is `access: plugin` yet `raw_cli: true` → still implementer-eligible. Only a
+   peer with no raw CLI (`raw_cli: false`) is ineligible. If no peer
    satisfies the implementer gate, fall back to host-implement; if **no READY peer** remains
    at all, the multi-model gate cannot run — **block** and tell the user to run
    `/co-agent:setup` (or install/auth a peer). Absent summary → run `/co-agent:setup` first.
@@ -66,8 +67,9 @@ branch never carries a committed-but-red test. For a `test_required:false` task 
 red-test commit**, so make a **fresh `git commit`** — never `--amend` (it would rewrite an
 unrelated prior commit). Then `worktree.py remove`. Fallback chain: counterpart → other peer → host-implement.
 **On exhausted fix loop / abort**: **first discard the applied implementation patch**
-(scoped to the task files: `git restore --staged --worktree -- <task files>`) so the tree is
-clean, **then** undo the red-test commit with `git revert --no-edit <red-test-sha>` — a
+(scoped to the task files: `git restore --staged --worktree -- <task files>`, then
+`git clean -fd -- <task files>` to remove any **new files** the patch added — scoped, never
+bare) so the tree is clean, **then** undo the red-test commit with `git revert --no-edit <red-test-sha>` — a
 non-destructive inverse commit (revert refuses on a dirty tree, so restore first; do **not**
 use `git reset --soft`, which keeps the red test staged, nor a bare `git reset --hard`, which
 could discard unrelated work) — then
