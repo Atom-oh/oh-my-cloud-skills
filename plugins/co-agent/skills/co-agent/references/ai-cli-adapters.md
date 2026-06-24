@@ -25,7 +25,7 @@ elif command -v gemini >/dev/null 2>&1; then echo "gemini fallback ok"; fi
 | **Kiro** | `kiro-cli chat "<PROMPT>\n\nRead the review context with fs_read from: <CTX_FILE>" --v3 --mode default --no-interactive --trust-tools=fs_read --wrap never` | ⚠️ The binary is **`kiro-cli`** — always invoke it by that exact name. Input goes in the positional `[INPUT]` (argv), **NOT** piped stdin (Kiro ignores stdin in `chat`). For anything beyond a tiny probe, **do NOT embed the diff in argv** (`ps` exposure + `ARG_MAX`) — write it to a temp file and put a short *"fs_read this file"* instruction in argv; Kiro reads it via `fs_read` (the real read-only tool name; the old `read,grep` were invalid). Auth via login **or** `KIRO_API_KEY` (Pro/Pro+/Power). `--wrap never` = clean output. |
 | **Claude** | `claude -p "<PROMPT>" --permission-mode plan --tools Read,Grep,Glob --output-format text` | Used only when Codex is the host. Plan permission mode + read-only tools keep the call advisory. Pipe ctx: `cat ctx \| claude -p "<PROMPT>" …`. |
 | **Codex** | `codex exec -s read-only "<PROMPT>"` | `-s read-only` = read-only sandbox (no writes). Pipe ctx: `cat ctx \| codex exec -s read-only "<PROMPT>"`. Free tier has model limits. |
-| **Agy** | `agy -p "<PROMPT>" --sandbox` | Preferred third reviewer. **`-p` print mode = advisory** (emits text, never acts/writes) — agy has a *single* `--sandbox` mode (no separate read-only flag like Codex's `-s read-only`), so the read-only guarantee here comes from `-p`, not from a distinct sandbox flag. Pipe ctx: `cat ctx \| agy -p "<PROMPT>" --sandbox`. (Implement path drops `-p` + runs inside a worktree cwd — see `delegated-implement.md`.) |
+| **Agy** | `agy -p "<PROMPT>" --sandbox` | Preferred third reviewer. **`-p` print mode = advisory** (emits text, never acts) — agy's read-only guarantee comes from `-p`, not from `--sandbox` (a *single* mode, no read-only flag like Codex's). Pipe ctx: `cat ctx \| agy -p "<PROMPT>" --sandbox`. Implement path drops `-p`, runs in a worktree cwd — see `delegated-implement.md`. |
 | **Gemini** | `gemini -p "<PROMPT>" -o text` | Legacy fallback only when `agy` is unavailable. Pipe ctx: `cat ctx \| gemini -p "<PROMPT>" -o text`. |
 
 > These are **advisory** calls — no AI writes to the repo. The host alone writes the
@@ -129,12 +129,11 @@ python3 "$CP" access <peer>   # plugin | raw | none
   future path — the slash command must be invoked by the host agent, not from this script.
   Until then, the gate relies on the raw path above.
 - **Include only gate-eligible peers** (`check_panel.py gate-eligible <peer>` → `true`:
-  `status==READY` **and** `raw_cli`). Skip auth/ingest/absent **and** plugin-only peers — the
-  bash fan-out calls raw CLIs only, so a plugin-only peer would produce no output.
-- **No gate-eligible peer → mode-specific (decided once in `/co-agent:setup` step 5):**
-  **review / decide / ADR** degrade to **solo** (Claude answers alone and **says so
-  explicitly**, then suggests `/co-agent:setup`); **consensus / harness** are **non-degraded**
-  and **block** instead of soloing (run `/co-agent:setup` or install/auth a raw peer).
+  `status==READY` **and** `raw_cli`). Skip auth/ingest/absent **and** plugin-only peers (the
+  fan-out calls raw CLIs only).
+- **No gate-eligible peer → mode-specific (decided in `/co-agent:setup` step 5):** review /
+  decide / ADR degrade to **solo** (say so, suggest `/co-agent:setup`); consensus / harness are
+  **non-degraded** and **block** instead of soloing.
 - If `.claude/co-agent-panel.local.json` is absent, run `/co-agent:setup` first (or fall
   back to binary detection above and degrade gracefully).
 
@@ -192,12 +191,10 @@ surfaces that have reliable repo-local loading semantics:
 | **Codex** | `AGENTS.md` | Merged git-root→cwd; **~32 KiB project-doc cap** (oversized → truncated). `AGENTS.override.md` wins locally. | distill + validate |
 | **Agy / legacy Gemini fallback** | prompt-supplied context | Receives the fan-out prompt/context directly; no maintained repo context file. | none |
 
-> **Residual `GEMINI.md` (legacy).** co-agent no longer generates or validates `GEMINI.md`,
-> so it is **not** in the managed/secret-scanned set. But the `gemini` CLI still auto-loads a
-> repo-root `GEMINI.md` if one exists — a file an older co-agent version may have written.
-> Before using the gemini fallback, **secret-scan any residual `GEMINI.md`** (`check_ai_context.py`
-> over it) or delete it; a stale/secret-bearing `GEMINI.md` would otherwise be injected into
-> fallback calls unchecked. Agy (the preferred third reviewer) has no such auto-loaded file.
+> **Residual `GEMINI.md` (legacy).** No longer generated or in the managed/secret-scanned
+> set, but the `gemini` CLI still auto-loads a repo-root `GEMINI.md` an older version may have
+> written. Before using the gemini fallback, secret-scan any residual `GEMINI.md`
+> (`check_ai_context.py`) or delete it. Agy has no such auto-loaded file.
 
 ### Distill — do NOT copy CLAUDE.md verbatim
 

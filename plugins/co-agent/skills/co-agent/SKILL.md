@@ -64,10 +64,9 @@ echo "Panel: ${PANEL:-(none — the host will answer solo and say so)}"
 > ⚠️ **The Kiro binary is `kiro-cli`** — always invoke `kiro-cli chat …` by that exact name.
 > Agy supersedes Gemini. Prefer `agy`; call `gemini` only when Agy is unavailable.
 
-Tell the user which AIs are on the panel — the **installed** set, not merely the
-config-enabled set. If `/co-agent:setup` has written a readiness summary, prefer it
-(`check_panel.py status <peer>`) — it also reflects auth/ingest, which `command -v` can't.
-If none are available, do the task as the host alone and state that no external panel was reached.
+Tell the user the **installed** set, not the config-enabled set. If `/co-agent:setup` wrote a
+readiness summary, prefer it (`check_panel.py status <peer>`) — it also reflects auth/ingest
+that `command -v` can't. If none are available, the host answers solo and says so.
 
 > The panel respects **`/co-agent:configure`** settings — a disabled AI is dropped,
 > and per-AI model / supported effort / timeout are injected into the fan-out. Inspect

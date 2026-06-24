@@ -224,29 +224,20 @@ def _reader(root, peer, field, default):
 
 
 def is_fresh(root):
-    """True iff the saved summary's config_hash still matches the current effective config.
-
-    The summary records config_hash but nothing consumed it, so a config/host/auth change
-    could leave a stale READY in place. Callers run `fresh` before trusting readiness and
-    re-run `/co-agent:setup` (re-probe) on a mismatch.
-    """
+    """True iff the saved summary's config_hash matches the current effective config.
+    Callers run `fresh` before trusting readiness and re-run `/co-agent:setup` on a mismatch."""
     s = _read_summary(root)
     if not s:
         return False
-    saved = s.get("config_hash", "")
     cur = _config_hash(root)
-    # If we can't compute a current hash (config module unavailable), don't force churn.
-    return (not cur) or saved == cur
+    # Can't compute current hash (config module unavailable) → don't force churn.
+    return (not cur) or s.get("config_hash", "") == cur
 
 
 def gate_eligible(root, peer):
-    """A peer can produce panel/gate output only if it is READY AND has a raw CLI.
-
-    The bash fan-out invokes raw CLIs only (Tier-1 plugin routing is not wired), so a
-    plugin-only peer (status READY, raw_cli false) would contribute zero output — counting
-    it toward a non-degraded gate is the 'plugin-only READY but silent' bug. Both
-    consensus and harness must share this single predicate.
-    """
+    """A peer produces panel/gate output only if READY AND has a raw CLI. The fan-out calls
+    raw CLIs only, so a plugin-only peer (READY, raw_cli false) is silent — the 'plugin-only
+    READY but silent' bug. consensus and harness share this single predicate."""
     s = _read_summary(root)
     if not s:
         return False

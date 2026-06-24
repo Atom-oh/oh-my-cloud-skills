@@ -9,46 +9,38 @@ sandbox; the host owns the failing test, the verification, and every commit.
 
 ## Trust boundary
 
-The **hard guarantee is not the sandbox — it is that the host only ever applies the
-worktree's captured, scope-guarded diff.** A git worktree isolates the *working tree*, not
-the process, so a peer could in principle write via `..`/absolute paths. That cannot reach
-the main tree, because the host never copies the peer's filesystem: `worktree.py
-capture-diff` runs `git add -A` (which respects `.gitignore`) **inside the worktree** then
-`git diff --cached`, so **only files the peer changed within the worktree** are captured;
-anything written outside it is invisible to the patch. Every captured path must then pass
-`scope_guard.py --plan <plan>` (out-of-scope hunks dropped), and the host applies the result
-to the main branch and **runs the tests there** — never trusting a test run inside the peer's
-worktree. So even a peer that escaped its cwd cannot land an out-of-worktree or out-of-scope
-write. This — capture-scoped-to-worktree + scope_guard + host-applies-only-that — is what
-holds the boundary; the sandbox below is defense-in-depth, not the sole guard.
+The **hard guarantee is the host applies only the worktree's captured, scope-guarded
+diff** — not the sandbox. A git worktree isolates the *working tree*, not the process, so a
+peer could in principle write via `..`/absolute paths; that never reaches the main tree
+because the host never copies the peer's filesystem. `worktree.py capture-diff` runs
+`git add -A` (respects `.gitignore`) **inside the worktree** then `git diff --cached`, so
+**only files changed within the worktree** are captured; out-of-worktree writes are invisible.
+Each captured path must pass `scope_guard.py --plan <plan>` (out-of-scope hunks dropped), and
+the host applies the result and **runs the tests on the main tree** — never trusting a test
+run inside the worktree. Capture-scoped-to-worktree + scope_guard + host-applies-only-that is
+the load-bearing guarantee; the sandbox is defense-in-depth.
 
-**Defense-in-depth: a workspace-write sandbox with cwd = the worktree**, emitted by
-`co_agent_config.py impl-flags <ai> --host <h>`. Only CLIs with a real workspace-write
-sandbox are eligible implementers:
+**Defense-in-depth: a workspace-write sandbox with cwd = the worktree** (`co_agent_config.py
+impl-flags <ai> --host <h>`). Only CLIs with a real workspace-write sandbox are eligible:
 
 | Implementer | Write-mode flags |
 |-------------|------------------|
 | Codex | `-s workspace-write` (+ `-m <model>`, effort) |
 | Agy | `--sandbox` (+ `--model`) |
 
-Codex `-s workspace-write` confines writes to the working directory; **agy has a *single*
-`--sandbox` mode** (no separate read-only flag like Codex's `-s read-only`), which likewise
-sandboxes to the launch cwd. For **both**, the per-task loop sets **cwd = the worktree**, so
-the sandbox confines writes there. The advisory (review) path instead runs agy in **`-p`
-print mode** (emits text, never acts), which is why `impl-flags agy` emits the same
-`--sandbox` the advisory `flags agy` would, plus `--model` — the difference is print-vs-agent
-mode and the cwd. **Whether agy's `--sandbox` fully blocks `..`/absolute writes is not
-something we assert as proven** — that is exactly why the capture-scoped-to-worktree backstop
-above, not the sandbox, is the load-bearing guarantee. (To raise the floor, the host may run
-the implementer with `worktree.py` from inside `<wt>`; if a future audit shows a sandbox does
-not confine to cwd, drop that implementer from `impl-flags`.)
+Codex `-s workspace-write` confines writes to the cwd; **agy has a *single* `--sandbox` mode**
+(no separate read-only flag like Codex's `-s read-only`) that likewise sandboxes to the launch
+cwd — the per-task loop sets cwd = the worktree for both. The advisory path instead runs agy
+in **`-p` print mode** (emits text, never acts), so `impl-flags agy` differs from `flags agy`
+only by print-vs-agent mode (same `--sandbox`). We do **not** assert agy's `--sandbox`
+provably blocks `..`/absolute writes — which is exactly why the capture backstop above, not
+the sandbox, is load-bearing (if an audit shows a sandbox doesn't confine to cwd, drop that
+implementer from `impl-flags`).
 
-**Not eligible implementers:** `claude --permission-mode acceptEdits`, `kiro-cli
---trust-tools`, and `gemini --yolo` auto-accept writes but do **not** sandbox them to a cwd,
-so they lack even the defense-in-depth layer — `implementer`/`impl-flags` reject them.
-Default implementer: claude host → `codex`, codex host → `agy`. These write variants exist
-**only** here; review / decide / ADR / plan / code-gate paths stay read-only/advisory
-(`flags`, not `impl-flags`).
+**Not eligible:** `claude --permission-mode acceptEdits`, `kiro-cli --trust-tools`, and
+`gemini --yolo` auto-accept writes but don't sandbox them to a cwd — `implementer`/`impl-flags`
+reject them. Default: claude host → `codex`, codex host → `agy`. These write variants exist
+**only** here; review/decide/ADR/plan/code-gate paths stay advisory (`flags`, not `impl-flags`).
 
 ## Per-task loop
 
@@ -94,10 +86,9 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
 8. **Escalate / abort** when the fix loop is exhausted: **first discard the applied
    implementation patch** that step 5 put in the working tree, scoped to the task's files —
    `git restore --staged --worktree -- <task files>` (or `git checkout -- <task files>`).
-   `restore` only reverts files that exist in `HEAD`; a patch that **added new files** leaves
-   them as untracked, so also `git clean -fd -- <task files>` (scoped to the task's file set,
-   **never a bare `git clean`** — that would wipe unrelated untracked work) to remove them.
-   The tree is then clean. **Then** undo the red-test commit with `git revert --no-edit
+   `restore` only reverts `HEAD`-tracked files; a patch that **added new files** leaves them
+   untracked, so also `git clean -fd -- <task files>` (scoped — **never a bare `git clean`**)
+   to remove them. The tree is then clean. **Then** undo the red-test commit with `git revert --no-edit
    <red-test-sha>` (a non-destructive inverse commit; revert refuses on a dirty tree, which is
    why the restore comes first). Do **not** use `git reset --soft` (keeps the red test staged)
    nor a bare `git reset --hard` (could discard unrelated work). Then `consensus_state.py set .

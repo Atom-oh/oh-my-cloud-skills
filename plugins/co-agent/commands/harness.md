@@ -27,19 +27,14 @@ Let `SK="${CLAUDE_PLUGIN_ROOT:-plugins/co-agent}/skills/co-agent/scripts"` and
    valid implementers (claude/kiro-cli/gemini have no worktree-scoped write sandbox); default is
    claude host → codex, codex host → agy. Never equals the host. Tell the user panel + implementer.
 3. **Consult readiness** (`.claude/co-agent-panel.local.json` from `/co-agent:setup`):
-   first `python3 "$SK/check_panel.py" fresh` — if `stale` (config/host/auth changed), re-run
-   `/co-agent:setup` before trusting it. Then
-   `python3 "$SK/check_panel.py" gate-eligible <peer>` — keep for the **review panel** only
-   peers that return **`true`** (predicate: `status==READY` **AND** `raw_cli==true`). Use
-   `gate-eligible`, **not** bare `status`: the bash fan-out calls raw CLIs only, so a
-   plugin-only peer (status READY, `raw_cli:false`) would contribute zero panel output. The
-   **implementer** has the same `raw_cli` requirement **plus** a sandbox CLI (codex/agy): it
-   must be gate-eligible **and** codex/agy. (A peer with BOTH the official plugin and a raw
-   CLI is `access: plugin` yet `raw_cli: true` → still eligible; only `raw_cli:false` is out.)
-   If no peer satisfies the implementer gate, fall back to host-implement; if **no
-   gate-eligible peer** remains at all, the multi-model gate cannot run — **block** and tell
-   the user to run `/co-agent:setup` (or install/auth a raw peer CLI). Absent summary → run
-   `/co-agent:setup` first.
+   `check_panel.py fresh` (re-run `/co-agent:setup` if `stale`), then `check_panel.py
+   gate-eligible <peer>` — keep for the **review panel** only peers returning `true`
+   (`status==READY` **and** `raw_cli`), **not** bare `status` (the fan-out calls raw CLIs only,
+   so a plugin-only peer yields zero panel output). The **implementer** must be gate-eligible
+   **plus** a sandbox CLI (codex/agy). (A peer with BOTH the plugin and a raw CLI is
+   `access: plugin` yet `raw_cli: true` → still eligible; only `raw_cli:false` is out.) No
+   implementer-eligible peer → host-implement; **no gate-eligible peer** at all → **block** and
+   run `/co-agent:setup`. Absent summary → run `/co-agent:setup` first.
 4. **Clean tree required**: refuse to start on a dirty tree — `test -z "$(git -C . status --porcelain)"`.
    `git worktree prune` to reap orphans. (`consensus_state.py verify`/`rebind` are for **resume**,
    after a session exists — they are run in H1+, not here, since `verify` fails when no session
