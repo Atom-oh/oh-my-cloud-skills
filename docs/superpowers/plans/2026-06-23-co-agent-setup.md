@@ -115,11 +115,14 @@ def classify(sentinel, stdout, stderr, returncode, timed_out):
     text = (stdout or "")
     if returncode == 0 and sentinel and sentinel in text.strip().split():
         return "READY", ""
-    blob = f"{stdout}\n{stderr}"
-    if _AUTH_RE.search(blob):
-        return "AUTH", "authentication required"
     if returncode == 0:
+        # Exit 0 but no sentinel = ran fine, didn't consume input. Decide this BEFORE the
+        # AUTH check so an exit-0 peer whose output merely mentions "login"/"auth" (e.g.
+        # "run X to finish login") is NOT misclassified AUTH and silently dropped from the panel.
         return "NO_INGEST", "ran but did not echo the sentinel (input channel not consumed)"
+    # Non-zero exit only: distinguish an auth failure from a generic error.
+    if _AUTH_RE.search(f"{stdout}\n{stderr}"):
+        return "AUTH", "authentication required"
     return "ERROR", f"exit {returncode}"
 
 
@@ -343,6 +346,11 @@ def probe(peer, timeout=20, nonce="STATIC"):
             p = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                   stderr=subprocess.PIPE, text=True, start_new_session=True)
             try:
+                # `timeout` bounds the *time* window (and a sentinel reply is tiny). `_CAP`
+                # below bounds what we hand to classify(). For a hard MEMORY bound against a CLI
+                # that floods within the timeout, redirect stdout/stderr to a TemporaryFile (no
+                # pipe-buffer deadlock), `p.wait(timeout)`, then read back only `_CAP` bytes —
+                # do NOT buffer unbounded output in memory via communicate() for an untrusted CLI.
                 out, err = p.communicate(input=stdin_data, timeout=timeout)
                 timed_out = False
             except subprocess.TimeoutExpired:
@@ -477,10 +485,21 @@ def report(root, plugins_root, as_json=False):
         cli = detect_cli(peer)
         has_plugin = detect_plugin(peer, plugins_root)
         access, suggest = decide_access(peer, bool(cli), has_plugin)
-        entry = {"access": access}
+        # raw_cli is recorded INDEPENDENTLY of access so a raw consumer (the harness implementer /
+        # impl-flags, which need an actual write-mode CLI) can distinguish a plugin-only peer
+        # (status READY but raw_cli false) from one with a usable raw CLI. Raw consumers MUST check
+        # raw_cli, not status, before treating a peer as implementer-eligible.
+        entry = {"access": access, "raw_cli": bool(cli)}
         if access == "plugin":
-            entry["status"] = "READY"
             entry["plugin"] = PEER_PLUGINS.get(peer)
+            if cli:                       # also has a raw CLI → probe it so raw usability is known
+                status, reason = probe(peer)
+                entry["status"] = status
+                entry["cli_path"] = cli
+                if reason:
+                    entry["reason"] = reason
+            else:
+                entry["status"] = "READY"  # plugin-only: the plugin handles ingestion
         elif access == "raw":
             status, reason = probe(peer)
             entry["status"] = status

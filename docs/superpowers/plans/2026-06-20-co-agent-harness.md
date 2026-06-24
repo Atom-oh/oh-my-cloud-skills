@@ -424,7 +424,10 @@ def cmd_stage_result(root, rest):
             return 0 if (d.get("green") is True and d.get("in_scope") is True) else 1
         if stage_kind in ("code-gate", "final", "H4"):
             return 0 if d.get("verdict") == "PASS" else 1
-        return 0
+        # No --stage given: a generic check must still NOT let a FAIL (or an
+        # un-overridden REVIEW) advance — a caller that forgets --stage cannot bypass
+        # the output gate. Only an explicit PASS passes by default.
+        return 0 if d.get("verdict") == "PASS" else 1
     # write
     opts, i = {}, 1
     while i < len(args):
@@ -556,7 +559,7 @@ git commit -m "feat(co-agent): rebind to resume after a manual commit"
 
 **Interfaces:**
 - Produces:
-  - `worktree.py add <wt_path> --base <ref> [--root DIR]` → `git worktree add <wt_path> <ref>`; exit 0.
+  - `worktree.py add <wt_path> --base <ref> [--root DIR]` → `git worktree add --detach <wt_path> <ref>` (detached so an already-checked-out branch ref like `main` doesn't fail), with `core.hooksPath` neutralized + clean env; exit 0.
   - `worktree.py capture-diff <wt_path>` → stages all **non-ignored** changes inside the worktree (`git -C <wt> add -A`, which respects `.gitignore`) and prints `git -C <wt> diff --cached`. New normal files are included; `.gitignore`d files are excluded **by construction**. It additionally unstages any **tracked-but-now-ignored** path (`ls-files -i -c` → `reset HEAD`), the one case `add -A` would otherwise still carry, so a hidden ignored file can never reach the main tree.
   - `worktree.py remove <wt_path> [--root DIR]` → `git worktree remove --force <wt_path>` then `git worktree prune`; exit 0.
   - `worktree.py prune [--root DIR]` → `git worktree prune`; exit 0.
@@ -635,24 +638,46 @@ def main():
         print(__doc__)
         return 2
     cmd = argv[0]
+    # TRUST BOUNDARY — this block MUST match the shipped worktree.py and MUST NOT be regressed:
+    # `git()` runs with `_CLEAN_ENV` (GIT_CONFIG_NOSYSTEM=1, GIT_CONFIG_GLOBAL=os.devnull,
+    # GIT_ATTR_NOSYSTEM=1) and `_capture_neutralizers(wt)` returns `-c` overrides that defang
+    # in-tree `.gitattributes` filter/textconv drivers + `core.hooksPath`. A peer worktree is
+    # untrusted: without these, `add`/`diff`/checkout can execute peer-planted host-side code.
+    # NOTE: this block is a SUPERSET of the shipped worktree.py — it keeps every hardening the
+    # shipped file already has AND adds two corrections the shipped file predates: `--detach` on
+    # `worktree add` (so an already-checked-out ref like `main` doesn't fail) and the AUTH-ordering
+    # fix in check_panel.classify(). Apply those two to the shipped scripts when implementing. Do
+    # NOT drop any hardening below.
     if cmd == "add":
         wt = argv[1]
         base = "HEAD"
         if "--base" in argv:
             base = argv[argv.index("--base") + 1]
-        r = git(root, "worktree", "add", wt, base)
+        # --detach + neutralized hooksPath/fsmonitor + clean env so a planted post-checkout hook
+        # or fsmonitor command can't execute at checkout, and an already-checked-out ref is OK.
+        r = git(root, "-c", f"core.hooksPath={os.devnull}", "-c", "core.fsmonitor=",
+                "worktree", "add", "--detach", wt, base, env=_CLEAN_ENV)
         sys.stderr.write(r.stderr)
         return r.returncode
     if cmd == "capture-diff":
         wt = argv[1]
-        git(wt, "add", "-A")              # new ignored files are not staged (respects .gitignore)
-        # `add -A` still re-stages a file that was tracked BEFORE it was gitignored. Unstage any
-        # currently-ignored-but-tracked path so an ignored file's changes can never reach main
-        # (`reset HEAD` leaves the worktree untouched; it just drops the change from the diff).
-        ignored = git(wt, "ls-files", "-i", "-c", "--exclude-standard").stdout.split("\n")
-        for f in (p for p in ignored if p):
-            git(wt, "reset", "--quiet", "HEAD", "--", f)
-        r = git(wt, "diff", "--cached")
+        nf = _capture_neutralizers(wt)              # filter/diff driver + core.hooksPath overrides
+        rst = git(wt, "reset", "-q", env=_CLEAN_ENV)  # reset index first: a peer's pre-staged
+        if rst.returncode != 0:                       # `git add -f <ignored>` can't sneak through
+            sys.stderr.write(rst.stderr)
+            return rst.returncode
+        add = git(wt, *nf, "add", "-A", env=_CLEAN_ENV)   # respects .gitignore for untracked
+        if add.returncode != 0:                       # surface failures — never emit a stale diff
+            sys.stderr.write(add.stderr)
+            return add.returncode
+        # `add -A` still re-stages a file tracked BEFORE it was gitignored. Drop any
+        # currently-ignored-but-tracked path so an ignored file's changes can never reach main.
+        ignored = [p for p in git(wt, "ls-files", "--cached", "-i", "--exclude-standard",
+                                  env=_CLEAN_ENV).stdout.splitlines() if p]
+        if ignored:
+            git(wt, "reset", "-q", "--", *ignored, env=_CLEAN_ENV)
+        r = git(wt, "-c", f"core.attributesFile={os.devnull}", *nf,
+                "diff", "--cached", "--no-ext-diff", "--no-textconv", "--binary", env=_CLEAN_ENV)
         sys.stdout.write(r.stdout)
         return r.returncode
     if cmd == "remove":
@@ -792,9 +817,17 @@ NEW="<next-version>"   # pick per semver; ALL plugin.json + marketplace.json mus
 python3 - "$NEW" <<'PY'
 import json, glob, sys
 new = sys.argv[1]
+def load(p):
+    with open(p, encoding="utf-8") as f:
+        return json.load(f)
+# MECHANICAL idempotency guard (not just prose): read the current shared version and only
+# advance if it differs. If the setup plan already bumped to NEW this release, this is a safe
+# no-op — no double-bump, so plugin.json ↔ marketplace.json never desync.
+cur = load("plugins/co-agent/.claude-plugin/plugin.json")["version"]
+if cur == new:
+    print(f"version already {new}; release already owns the bump — skipping"); sys.exit(0)
 def bump(path, mutate):
-    with open(path, encoding="utf-8") as f:
-        d = json.load(f)
+    d = load(path)
     mutate(d)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(d, f, indent=2, ensure_ascii=False)
@@ -803,6 +836,7 @@ for p in glob.glob("plugins/*/.claude-plugin/plugin.json"):
     bump(p, lambda d: d.__setitem__("version", new))
 bump(".claude-plugin/marketplace.json",
      lambda d: [pl.__setitem__("version", new) for pl in d.get("plugins", [])])
+print(f"bumped {cur} → {new}")
 PY
 # verify alignment (the version-consistency check in the root CLAUDE.md) before committing.
 # NOTE: re-indenting every plugin.json to indent=2 can produce noisy diffs if a manifest used
