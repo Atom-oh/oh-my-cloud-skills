@@ -137,6 +137,11 @@ printf '*.py filter=pwn\ndata.txt filter=pwn\n' > "$W/.gitattributes"
 printf 'payload\n' > "$W/data.txt"
 python3 "$WT" capture-diff "$W" >/dev/null 2>&1
 assert_eq "0" "$([ -e "$W/PWNED_CLEAN" ] && echo 1 || echo 0)" "capture-diff neutralizes clean filters — add-time filter did NOT execute"
+# F: a TEXTCONV driver runs at `git diff` time — --no-ext-diff does NOT block it; must neutralize
+git -C "$W" config diff.tc.textconv "touch $W/PWNED_TC; cat" >/dev/null 2>&1
+printf '*.py diff=tc\ndata.txt diff=tc\n' > "$W/.gitattributes"
+python3 "$WT" capture-diff "$W" >/dev/null 2>&1
+assert_eq "0" "$([ -e "$W/PWNED_TC" ] && echo 1 || echo 0)" "capture-diff uses --no-textconv + neutralizers — textconv driver did NOT execute"
 # D: capture-diff on a non-git path surfaces the failure (non-zero)
 python3 "$WT" capture-diff "$R7/nope" >/dev/null 2>&1 && DF=0 || DF=$?
 assert_grep_no_match "^0$" "$DF" "capture-diff on a non-git path returns non-zero"

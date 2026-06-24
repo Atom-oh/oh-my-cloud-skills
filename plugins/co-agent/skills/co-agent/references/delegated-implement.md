@@ -64,8 +64,10 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
    run `impl-flags` and is ineligible. Run the implementer with
    `impl-flags` **inside `<wt>`**, scoped to the task's files. Fallback chain on
    missing/error/not-READY/timeout: configured implementer → next READY peer (keep provider
-   separation) → host-implement. If **no** sandbox peer is READY, the multi-model gate
-   cannot run — **block** and tell the user to run `/co-agent:setup`. Never silently block.
+   separation) → **host-implement**. No-implementer vs no-reviewer differ (matches harness H3):
+   **no implementer-eligible peer → host-implement** (don't block — the host can write the
+   code); **block** only when **no gate-eligible peer** remains for the review panel, since
+   then the multi-model gate can't run — tell the user to run `/co-agent:setup`. Never silently block.
 4. **Capture + scope.** `worktree.py capture-diff <wt>` → patch; every path must pass
    `scope_guard.py --plan <plan>`. Out-of-scope hunks are dropped and fed back.
 5. **Apply + verify (host).** Snapshot the main tree before the peer runs

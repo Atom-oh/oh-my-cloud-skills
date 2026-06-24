@@ -27,20 +27,23 @@ def git(cwd, *args, env=None):
     return subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, env=env)
 
 
-def _filter_neutralizers(wt):
-    """`-c` overrides making every configured clean/smudge/process filter a pass-through.
-    A clean filter RUNS during `git add`, so a peer's `.gitattributes` (`* filter=x`) +
-    `filter.x.clean=<cmd>` in shared config would execute `<cmd>` on the host at capture
-    time. We can't ignore in-tree `.gitattributes`, so we override each filter command."""
-    r = git(wt, "config", "--name-only", "--get-regexp", r"^filter\.", env=_CLEAN_ENV)
-    names = set()
-    for line in r.stdout.splitlines():
-        parts = line.split(".")
-        if len(parts) >= 3:                   # filter.<name>.<clean|smudge|process>
-            names.add(".".join(parts[1:-1]))  # <name> may contain dots
+def _capture_neutralizers(wt):
+    """`-c` overrides that defuse EVERY git-config code-execution surface a peer could plant
+    via in-tree `.gitattributes` + shared repo config: clean/smudge/process filters (run at
+    `git add`) AND diff textconv/command drivers (run at `git diff`). We can't ignore in-tree
+    `.gitattributes`, so each driver command is overridden to a pass-through / empty. Pair with
+    `--no-ext-diff --no-textconv` on the diff itself."""
     ov = []
-    for n in names:
-        ov += ["-c", f"filter.{n}.clean=cat", "-c", f"filter.{n}.smudge=cat", "-c", f"filter.{n}.process="]
+    for prefix, keys in (("filter", ("clean", "smudge", "process")), ("diff", ("textconv", "command"))):
+        r = git(wt, "config", "--name-only", "--get-regexp", rf"^{prefix}\.", env=_CLEAN_ENV)
+        names = set()
+        for line in r.stdout.splitlines():
+            parts = line.split(".")
+            if len(parts) >= 3:                   # <prefix>.<name>.<key>; <name> may contain dots
+                names.add(".".join(parts[1:-1]))
+        for n in names:
+            for k in keys:
+                ov += ["-c", f"{prefix}.{n}.{k}=" + ("cat" if k in ("clean", "smudge") else "")]
     return ov
 
 
@@ -77,9 +80,9 @@ def main():
             print("usage: worktree.py capture-diff <wt_path>", file=sys.stderr)
             return 2
         wt = argv[1]
-        # Neutralize any configured clean/smudge/process filters BEFORE `git add` — a clean
-        # filter executes at add time, so this is the RCE-bearing stage, not just diff.
-        nf = _filter_neutralizers(wt)
+        # Defuse every git-config exec surface (filters at add-time, textconv/diff drivers at
+        # diff-time) BEFORE staging — both are RCE-bearing stages, not just ext-diff.
+        nf = _capture_neutralizers(wt)
         # Reset the index first so a peer's pre-staged `git add -f <ignored>` can't sneak in.
         rst = git(wt, "reset", "-q", env=_CLEAN_ENV)
         if rst.returncode != 0:
@@ -94,10 +97,11 @@ def main():
         ignored = [p for p in ig.stdout.splitlines() if p]
         if ignored:
             git(wt, "reset", "-q", "--", *ignored, env=_CLEAN_ENV)
-        # --no-ext-diff blocks external diff drivers (.gitattributes / diff.external RCE);
-        # attributesFile=/dev/null + clean env + filter neutralizers drop all influence.
+        # --no-ext-diff blocks external diff *command* drivers; --no-textconv blocks textconv
+        # (NOT covered by --no-ext-diff); attributesFile=/dev/null + clean env + neutralizers
+        # drop all remaining config/attribute influence.
         r = git(wt, "-c", "core.attributesFile=/dev/null", *nf,
-                "diff", "--cached", "--no-ext-diff", "--binary", env=_CLEAN_ENV)
+                "diff", "--cached", "--no-ext-diff", "--no-textconv", "--binary", env=_CLEAN_ENV)
         sys.stdout.write(r.stdout)
         return r.returncode
 

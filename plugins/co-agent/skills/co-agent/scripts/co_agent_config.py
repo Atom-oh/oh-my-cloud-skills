@@ -100,6 +100,10 @@ def implementer_ai(cfg, host):
     if ai not in SANDBOX_IMPLEMENTERS:
         return ai, (f"implementer '{ai}' has no worktree-scoped write sandbox; "
                     f"use one of: {', '.join(SANDBOX_IMPLEMENTERS)}")
+    # A peer the user removed from the panel (`set <ai> enabled false`) must not be silently
+    # picked as the implementer — that would bypass the "disabled AI is dropped" contract.
+    if not cfg.get("panel", {}).get(ai, {}).get("enabled", True):
+        return ai, f"implementer '{ai}' is disabled (panel.{ai}.enabled=false) — enable it or pick another"
     return ai, None
 
 
