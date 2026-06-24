@@ -57,6 +57,20 @@ co-agent
 
 > 상세: `skills/co-agent/references/ai-cli-adapters.md`. 패널은 병렬 실행, 누락/에러 시 스킵.
 
+## PR Consensus Gate (PreToolUse hook)
+
+`gh pr create`/`gh pr edit`를 올릴 때 **자동으로 멀티-AI 합의 게이트**를 거침. `plugin.json`의
+`PreToolUse(Bash)` 훅이 `consensus_hooks.py pre-pr-gate`를 호출 → PR diff(`origin/main...HEAD`,
+60KB cap)를 설치·enabled된 패널(host 제외)에 **병렬 팬아웃** → 각 peer가 `PASS`/`BLOCK` 응답
+→ 하나라도 CRITICAL/MAJOR를 플래그하면 **exit 2로 PR을 차단**하고 findings를 호스트에 피드백
+(수정 후 재시도). 패널을 동기 실행하므로 PR당 2-3분 소요.
+
+- **Fail-open**: 내부 오류·전 peer 타임아웃·설치된 peer 없음 → exit 0 (게이트 버그/오프라인이
+  PR을 영구 차단하지 않음; peer 없으면 안내만).
+- **Bypass / 설정**: `CO_AGENT_PR_GATE=off` env, 또는 `pr_gate`(`enabled`/`block`/`timeout`) 설정.
+- 다른 Bash 명령은 즉시 통과(`gh pr create|edit`만 매칭). Codex 호스트는 Claude Code 훅을
+  돌리지 않으므로 적용 안 됨(`.codex-plugin`에는 미등록).
+
 ## Configure (`/co-agent:configure`)
 
 패널 설정을 레이어드(`co-agent.defaults.json` ← `.claude/co-agent.local.json`)로 관리. **CLI가 헤드리스로 실제 받는 것만** 노출:
