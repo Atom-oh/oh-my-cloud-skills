@@ -46,24 +46,30 @@ except Exception:
 STUCK_LIMIT = 3
 
 # --- PR consensus gate ---------------------------------------------------------
-_PR_CMD_RE = re.compile(r"\bgh\s+pr\s+(create|edit)\b")
-_DIFF_CAP = 60 * 1024            # cap the diff sent to each peer (argv/ctx safety)
-_BLOCK_RE = re.compile(r"\bBLOCK\b|\bCRITICAL\b|\bMAJOR\b|심각|차단", re.I)
-_PASS_RE = re.compile(r"^\s*PASS\b|\bno (critical|major|blocking)\b|이상\s*없", re.I)
+# Anchor to the command START (after optional `VAR=val ` env prefixes) so a substring like
+# `echo "gh pr create"` or `git commit -m "gh pr create"` does NOT trigger the gate.
+_PR_CMD_RE = re.compile(r"^\s*(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*gh\s+pr\s+(?:create|edit)\b")
+_DIFF_CAP = 30 * 1024            # cap (argv-safe: well under MAX_ARG_STRLEN 128KB)
+# Verdict is read from the FIRST non-empty line ONLY (a machine-readable token), never a
+# free-text body scan — a banner/preamble or an incidental "MAJOR" in prose must not flip it.
+_VERDICT_RE = re.compile(r"^\s*(PASS|BLOCK)\b", re.I)
 
-# Review adapters (read-only), mirroring references/ai-cli-adapters.md. Context (prompt+diff)
-# is piped on stdin for codex/agy/gemini; kiro-cli takes it as the positional argv [INPUT].
+# Review adapters (read-only), mirroring references/ai-cli-adapters.md. The full prompt+diff
+# goes BOTH on stdin and (capped) as the trailing argv token, so a CLI that reads either
+# channel still sees the diff — never a vacuous review. {M} expands to the per-peer model flag.
 _REVIEW = {
-    "codex":    {"argv": ["codex", "exec", "-s", "read-only", "{P}"], "channel": "stdin"},
-    "agy":      {"argv": ["agy", "-p", "{P}", "--sandbox"], "channel": "stdin"},
-    "gemini":   {"argv": ["gemini", "-p", "{P}", "-o", "text"], "channel": "stdin"},
-    "kiro-cli": {"argv": ["kiro-cli", "chat", "{I}", "--v3", "--mode", "default",
-                          "--no-interactive", "--wrap", "never"], "channel": "argv"},
+    "codex":    {"argv": ["codex", "exec", "-s", "read-only", "{M}", "{P}"]},
+    "agy":      {"argv": ["agy", "-p", "{P}", "--sandbox", "{M}"]},
+    "gemini":   {"argv": ["gemini", "-p", "{P}", "-o", "text", "{M}"]},
+    "kiro-cli": {"argv": ["kiro-cli", "chat", "{P}", "--v3", "--mode", "default",
+                          "--no-interactive", "--wrap", "never", "{M}"]},
 }
+_MODEL_FLAG = {"codex": "-m", "agy": "--model", "gemini": "-m", "kiro-cli": "--model"}
 _GATE_PROMPT = (
-    "Adversarially review this PR diff for a Claude Code plugin. Reply on the FIRST line with "
-    "exactly `PASS` if there is no CRITICAL or MAJOR issue, otherwise `BLOCK` then a terse list "
-    "of the CRITICAL/MAJOR issues. Ignore nits/style. Diff follows:\n\n"
+    "Adversarially review the following PR diff for a Claude Code plugin. Your reply's FIRST "
+    "line MUST be a machine-readable verdict token — EXACTLY `PASS` (no CRITICAL or MAJOR issue) "
+    "or `BLOCK: <one-line reason>`. Put any detail on later lines. Ignore nits/style. If you "
+    "cannot see a diff below, reply `BLOCK: no diff received`.\n\n=== PR DIFF ===\n"
 )
 
 
@@ -165,6 +171,29 @@ def _gate_config(root):
     }
 
 
+_SECRET_RE = re.compile(
+    r"AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY|ghp_[A-Za-z0-9]{30,}|"
+    r"(?:password|secret|api[_-]?key|token)\s*[:=]\s*['\"][^'\"]{8,}",
+    re.I,
+)
+
+
+def _scan_secret(diff):
+    """Return a short label if the diff's ADDED lines look like they carry a secret, else ''.
+    Only scans `+` lines (new content) so an existing/removed secret-shaped string is ignored.
+    Reuses check_ai_context.SECRET_RE when importable, for one source of truth."""
+    rx = _SECRET_RE
+    try:
+        import check_ai_context as cac2
+        rx = getattr(cac2, "SECRET_RE", _SECRET_RE)
+    except Exception:
+        pass
+    for ln in diff.splitlines():
+        if ln.startswith("+") and not ln.startswith("+++") and rx.search(ln):
+            return "matched a credential pattern on an added line"
+    return ""
+
+
 def _panel(root):
     """Enabled (config) ∩ installed (PATH) peers, never the host."""
     host = os.environ.get("CO_AGENT_HOST", "claude")
@@ -185,15 +214,27 @@ def _panel(root):
     return peers, models
 
 
-def _review_one(peer, prompt_text, timeout, out):
-    spec = _REVIEW[peer]
+def _build_argv(peer, prompt_text, model):
+    """Expand the adapter template: {P} → the full prompt+diff (also sent on stdin), {M} →
+    the per-peer model flag (or dropped if no model configured)."""
+    argv = []
+    for tok in _REVIEW[peer]["argv"]:
+        if tok == "{P}":
+            argv.append(prompt_text)
+        elif tok == "{M}":
+            if model and _MODEL_FLAG.get(peer):
+                argv += [_MODEL_FLAG[peer], model]
+        else:
+            argv.append(tok)
+    return argv
+
+
+def _review_one(peer, prompt_text, model, timeout, out):
     try:
-        if spec["channel"] == "stdin":
-            argv = [a.replace("{P}", "Review the PR diff piped on stdin per the instructions.") for a in spec["argv"]]
-            r = subprocess.run(argv, input=prompt_text, capture_output=True, text=True, timeout=timeout)
-        else:  # argv (kiro-cli) — input goes in the positional [INPUT]
-            argv = [a.replace("{I}", prompt_text) for a in spec["argv"]]
-            r = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+        argv = _build_argv(peer, prompt_text, model)
+        # Send the prompt+diff on BOTH stdin and the trailing argv token, so a CLI that
+        # consumes either channel still sees the diff (avoids a vacuous, diff-less PASS).
+        r = subprocess.run(argv, input=prompt_text, capture_output=True, text=True, timeout=timeout)
         out[peer] = (r.stdout or "")[:8000]
     except subprocess.TimeoutExpired:
         out[peer] = "__TIMEOUT__"
@@ -215,16 +256,30 @@ def ev_pre_pr_gate(root):
     diff = _git(root, "diff", "--no-color", f"{base}...HEAD") if base else _git(root, "diff", "--no-color", "HEAD")
     if not diff.strip():
         return 0  # nothing to review
-    truncated = len(diff) > _DIFF_CAP
-    body = _GATE_PROMPT + diff[:_DIFF_CAP] + ("\n\n[diff truncated for the gate]" if truncated else "")
-    peers, _models = _panel(root)
+    # Data boundary: never fan a secret-bearing diff out to third-party CLIs. Refuse + flag.
+    secret = _scan_secret(diff)
+    if secret:
+        sys.stderr.write("[co-agent PR gate] BLOCKED — the diff appears to contain a secret "
+                         f"({secret}); the gate will NOT send it to third-party AIs. Remove/redact it, "
+                         "or export CO_AGENT_PR_GATE=off to bypass.\n")
+        return 2
+    # Truncate on a LINE boundary (never mid-line / mid-UTF-8), and tell the panel it's partial.
+    body_diff = diff
+    if len(diff) > _DIFF_CAP:
+        body_diff = diff[:_DIFF_CAP].rsplit("\n", 1)[0] + "\n[...diff truncated to the first ~30KB for the gate...]"
+    body = _GATE_PROMPT + body_diff
+    peers, models = _panel(root)
     if not peers:
         # Can't reach consensus with no peer — degrade (advisory), never block on absence.
         sys.stderr.write("[co-agent PR gate] no panel peer installed/enabled — skipping consensus gate "
                           "(install/auth a peer or run /co-agent:setup to enforce it).\n")
         return 0
     out = {}
-    threads = [threading.Thread(target=_review_one, args=(p, body, gate["timeout"], out)) for p in peers]
+    threads = []
+    for p in peers:
+        t = threading.Thread(target=_review_one, args=(p, body, models.get(p), gate["timeout"], out))
+        t.daemon = True   # never keep the process alive on a wedged peer thread
+        threads.append(t)
     for t in threads:
         t.start()
     for t in threads:
@@ -234,13 +289,23 @@ def ev_pre_pr_gate(root):
         v = out.get(p, "")
         if not v or v.startswith("__TIMEOUT__") or v.startswith("__ERROR__"):
             continue
+        # Verdict = the first line that IS a `PASS`/`BLOCK` token among the first few non-empty
+        # lines (tolerates a short CLI banner) — NOT a free-text body scan, so an incidental
+        # "MAJOR" in prose can't flip it. No token in the head → unparseable → fail-open.
+        verdict = None
+        for ln in [l.strip() for l in v.splitlines() if l.strip()][:8]:
+            m = _VERDICT_RE.match(ln)
+            if m:
+                verdict = m.group(1).upper()
+                break
+        if verdict is None:
+            continue   # unparseable verdict → don't count, don't block (fail-open)
         usable += 1
-        first = v.strip().splitlines()[0] if v.strip() else ""
-        if _BLOCK_RE.search(v) and not _PASS_RE.search(first):
+        if verdict == "BLOCK":
             blockers.append((p, v.strip()[:1200]))
     if usable == 0:
-        sys.stderr.write("[co-agent PR gate] every peer timed out/errored — gate could not run; allowing the PR "
-                         "(fail-open). Re-run /co-agent:consensus review manually if needed.\n")
+        sys.stderr.write("[co-agent PR gate] no peer returned a parseable PASS/BLOCK verdict — gate could not "
+                         "run; allowing the PR (fail-open). Re-run /co-agent:consensus review manually if needed.\n")
         return 0
     if blockers and gate["block"]:
         msg = ["[co-agent PR gate] BLOCKED — the consensus panel flagged CRITICAL/MAJOR issues on this PR diff.",

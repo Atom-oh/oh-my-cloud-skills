@@ -67,7 +67,9 @@ co-agent
 
 - **Fail-open**: 내부 오류·전 peer 타임아웃·설치된 peer 없음 → exit 0 (게이트 버그/오프라인이
   PR을 영구 차단하지 않음; peer 없으면 안내만).
-- **Bypass / 설정**: `CO_AGENT_PR_GATE=off` env, 또는 `pr_gate`(`enabled`/`block`/`timeout`) 설정.
+- **데이터 경계**: 팬아웃 전 추가(`+`) 라인을 secret-scan — 크리덴셜 패턴이 보이면 3rd-party로 **전송하지 않고** 차단(유출 방지). diff는 30KB·라인 경계로 절단.
+- **Bypass / 설정**: 세션에 `export CO_AGENT_PR_GATE=off` (훅은 자기 프로세스 env를 읽으므로 `CO_AGENT_PR_GATE=off gh pr create` 같은 **인라인 prefix는 안 먹힘**), 또는 `pr_gate`(`enabled`/`block`/`timeout`) 설정.
+- **판정 계약**: peer 응답 첫 토큰 줄(`PASS` / `BLOCK: …`)만 신뢰 — 본문 free-text 스캔 안 함(배너 몇 줄은 허용). 파싱 불가 응답은 fail-open(미차단).
 - 다른 Bash 명령은 즉시 통과(`gh pr create|edit`만 매칭). Codex 호스트는 Claude Code 훅을
   돌리지 않으므로 적용 안 됨(`.codex-plugin`에는 미등록).
 
