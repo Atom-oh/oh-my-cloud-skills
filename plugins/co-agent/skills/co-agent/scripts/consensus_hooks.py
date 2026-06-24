@@ -12,9 +12,9 @@ Events:
                          test command ran. Also drives stuck-detection: a test PASS resets
                          the consecutive-failure counter; a test FAIL increments it and, if
                          it crosses STUCK_LIMIT, emits a 'stuck — abort' notice.
-  pre-pr-gate          — PreToolUse(Bash) gate: when the command is `gh pr create`/`edit`,
-                         fan the PR diff out to the installed panel and BLOCK (exit 2) if any
-                         peer flags a CRITICAL/MAJOR. Runs the panel synchronously (2-3 min).
+  pre-pr-gate          — PreToolUse(Bash) gate: when the command is `gh pr create`, fan the PR
+                         diff out to the installed panel and BLOCK (exit 2) when a QUORUM of
+                         peers (default majority) flags CRITICAL/MAJOR. Runs synchronously (2-3 min).
                          Fails OPEN (exit 0) on any internal error or when no peer is usable —
                          a gate bug or offline panel must never permanently wedge PR creation.
                          Bypass: env CO_AGENT_PR_GATE=off, or config `pr_gate.enabled=false`.
@@ -48,11 +48,13 @@ except Exception as _e:   # missing OR a SyntaxError/etc. in the module — degr
 STUCK_LIMIT = 3
 
 # --- PR consensus gate ---------------------------------------------------------
-# Fire when `gh pr create|edit` is invoked at a COMMAND boundary — start of line, or right
-# after a shell separator (`;` `&` `|` `&&` `||` newline), allowing optional `VAR=val ` env
-# prefixes. This catches `cd x && gh pr create` (compound) while still NOT matching it inside a
-# string like `echo "gh pr create"` / `git commit -m "gh pr create"` (preceded by a quote).
-_PR_CMD_RE = re.compile(r"(?:^|[\n;&|])\s*(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*gh\s+pr\s+(?:create|edit)\b")
+# Fire only on `gh pr create` (the PR-raise event) at a COMMAND boundary — start of line, or
+# right after a shell separator (`;` `&` `|` `&&` `||` newline), allowing optional `VAR=val ` env
+# prefixes. Catches `cd x && gh pr create` (compound) but NOT a string like `echo "gh pr create"`
+# / `git commit -m "gh pr create"` (preceded by a quote). `gh pr edit` is intentionally NOT
+# gated — a metadata edit needn't re-run a 2-3 min panel, and `edit <n>` would diff a possibly
+# unrelated local `base...HEAD`. Code updates land via push (not `gh pr edit`), at PR-raise time.
+_PR_CMD_RE = re.compile(r"(?:^|[\n;&|])\s*(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*gh\s+pr\s+create\b")
 _DIFF_CAP = 30 * 1024            # cap the diff sent to each peer (context-window / cost bound)
 # Verdict is read from the FIRST non-empty line ONLY (a machine-readable token), never a
 # free-text body scan — a banner/preamble or an incidental "MAJOR" in prose must not flip it.
@@ -204,10 +206,14 @@ def _gate_config(root):
         timeout = int(cfg.get("timeout", 180))     # tolerate a stray "300s"/None → default
     except (TypeError, ValueError):
         timeout = 180
+    quorum = cfg.get("quorum", "majority")
+    if quorum not in ("majority", "any"):          # validate, don't silently accept a typo
+        sys.stderr.write(f"[co-agent PR gate] invalid pr_gate.quorum '{quorum}' — using 'majority'.\n")
+        quorum = "majority"
     return {
         "enabled": cfg.get("enabled", False),     # opt-in: enabling = consent to external fan-out
         "block": cfg.get("block", True),          # hard-block (vs advisory-only) on a quorum BLOCK
-        "quorum": cfg.get("quorum", "majority"),  # "majority" (default) | "any"
+        "quorum": quorum,                         # "majority" (default) | "any"
         "timeout": max(30, timeout),
     }
 
@@ -230,11 +236,16 @@ _SECRET_RE = re.compile(
 )
 
 
+_DIFF_META = ("diff --git", "index ", "--- ", "+++ ", "@@", "new file", "deleted file",
+              "old mode", "new mode", "similarity ", "rename ", "copy ", "Binary files")
+
+
 def _scan_secret(diff):
-    """Return a short label if the diff carries a secret, else ''. Scans BOTH added (`+`) AND
-    removed (`-`) content lines — the fanned-out payload is the WHOLE diff, so a PR that
-    deletes/moves a credential exposes it on a `-` line too. Uses the UNION of the strong local
-    pattern and check_ai_context.SECRET_RE (never a weaker-only fallback)."""
+    """Return a short label if the fanned-out diff carries a secret, else ''. Scans EVERY line
+    that will be sent — added (`+`), removed (`-`), AND context (unchanged) lines — skipping only
+    diff metadata headers. The payload is the whole diff, so a credential in a context line near
+    a change would otherwise leak unscanned. Uses the UNION of the strong local pattern and
+    check_ai_context.SECRET_RE (never a weaker-only fallback)."""
     extra = None
     try:
         import check_ai_context as cac2
@@ -242,16 +253,21 @@ def _scan_secret(diff):
     except ImportError:
         pass
     for ln in diff.splitlines():
-        if (ln.startswith("+") or ln.startswith("-")) and not ln.startswith(("+++", "---")):
-            if _SECRET_RE.search(ln) or (extra is not None and extra.search(ln)):
-                side = "an added" if ln.startswith("+") else "a removed"
-                return f"matched a credential pattern on {side} line"
+        if ln.startswith(_DIFF_META):
+            continue   # diff metadata, not content
+        if _SECRET_RE.search(ln) or (extra is not None and extra.search(ln)):
+            kind = "an added" if ln.startswith("+") else ("a removed" if ln.startswith("-") else "a context")
+            return f"matched a credential pattern on {kind} line"
     return ""
 
 
 def _path_panel(host):
-    """Degraded fallback when the config module is unavailable: review CLIs on PATH."""
-    return [ai for ai in _REVIEW if ai != host and shutil.which(ai)], {}
+    """Degraded fallback when the config module is unavailable: review CLIs on PATH. Keeps only
+    ONE of the Gemini family (agy preferred over gemini) so it isn't double-counted in quorum."""
+    peers = [ai for ai in _REVIEW if ai != host and shutil.which(ai)]
+    if "agy" in peers and "gemini" in peers:
+        peers.remove("gemini")     # agy supersedes gemini — never count both
+    return peers, {}
 
 
 def _panel(root):
@@ -320,7 +336,7 @@ def ev_pre_pr_gate(root):
     payload = _stdin_json()
     cmd = (payload.get("tool_input", {}) or {}).get("command", "")
     if not _PR_CMD_RE.search(cmd):
-        return 0  # not a PR create/edit — pass through
+        return 0  # not a `gh pr create` — pass through
     gate = _gate_config(root)
     if not gate["enabled"]:
         return 0
@@ -334,6 +350,13 @@ def ev_pre_pr_gate(root):
             if _git(root, "rev-parse", "--verify", "--quiet", ref):
                 base = ref
                 break
+        if not base:
+            # An explicit --base that doesn't resolve must NOT silently fall back to trunk (that
+            # would review a different scope than the PR). Warn + skip instead.
+            sys.stderr.write(f"[co-agent PR gate] --base '{cand}' does not resolve (locally or "
+                             "origin/) — consensus gate SKIPPED rather than review a different "
+                             "scope. `git fetch origin` or check the base name.\n")
+            return 0
     base = base or _base_ref(root)
     if not base:
         # No base ref (shallow clone / no remote): do NOT silently `git diff HEAD` (empty for an
@@ -355,11 +378,19 @@ def ev_pre_pr_gate(root):
     # PR, even past the cap) and refuse to fan out if any is found — before truncating the payload.
     secret = _scan_secret(diff)
     if secret:
-        sys.stderr.write("[co-agent PR gate] BLOCKED — the diff appears to contain a secret "
-                         f"({secret}); the gate will NOT send it to third-party AIs. **Remove/redact "
-                         "the secret from the diff, then retry the PR.** (CO_AGENT_PR_GATE=off would "
-                         "disable the whole gate, NOT a safe fix for a leak.)\n")
-        return 2
+        # ALWAYS refuse to fan a secret-bearing diff to third-party AIs. Whether that also HARD-
+        # BLOCKS the PR follows the same block/advisory mode as a panel verdict: block→exit 2,
+        # advisory→exit 0 with a loud warning (the diff is still never sent either way).
+        if gate["block"]:
+            sys.stderr.write("[co-agent PR gate] BLOCKED — the diff appears to contain a secret "
+                             f"({secret}); it was NOT sent to third-party AIs. **Remove/redact the "
+                             "secret from the diff, then retry the PR.** (CO_AGENT_PR_GATE=off would "
+                             "disable the whole gate, NOT a safe fix for a leak.)\n")
+            return 2
+        sys.stderr.write("[co-agent PR gate] ADVISORY — the diff appears to contain a secret "
+                         f"({secret}); it was NOT sent to third-party AIs and the consensus gate was "
+                         "SKIPPED (block is off). Remove/redact the secret before relying on the gate.\n")
+        return 0
     # Truncate the SENT payload on a line boundary (never mid-line / mid-UTF-8); tell the panel.
     body_diff = diff
     if len(diff) > _DIFF_CAP:
