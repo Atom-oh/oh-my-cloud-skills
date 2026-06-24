@@ -48,11 +48,12 @@ implements, and neither is the sole reviewer.
 > `claude`/`kiro-cli`/`gemini` are **not** valid implementers (their write flags don't confine
 > to the worktree). The codex-host default is therefore **`agy`**, not `claude(opus)`. The
 > `co_agent_config.py implementer/impl-flags` code and `commands/harness.md` are the single
-> source of truth; the original "codex→claude counterpart" text below is retained for history.
+> source of truth, and the prose in §3–§5 has been corrected to match (no `claude` implementer).
 | Review panel | Kiro + peer host CLI + Agy (Gemini fallback) | the existing host-aware consensus panel |
 
 By construction the implementer ≠ designer ≠ sole reviewer. `harness.implementer` may be
-set to any installed peer (`codex`/`claude`/`agy`); `null` resolves to the counterpart.
+set to a **sandbox CLI** (`codex`/`agy`) only; `null` resolves to the host's sandbox default
+(claude-host → `codex`, codex-host → `agy`). A non-sandbox peer is rejected (exit 2).
 
 ## 4. Flow
 
@@ -83,9 +84,12 @@ verification, and debugging all read from disk rather than re-deriving.
 - **Worktree is git-isolation, NOT a security sandbox.** A worktree isolates the *git
   working tree* but does not stop a process from writing via `..`/absolute paths or
   touching the shared object store. So writes are confined by a **workspace-write sandbox
-  scoped to the worktree**, not by the worktree alone: `codex exec -s workspace-write`,
-  `claude -p --permission-mode acceptEdits` (cwd = worktree), `agy -p --sandbox`
-  (workspace-write). These write variants exist **only** on the harness implement path;
+  scoped to the worktree**, not by the worktree alone — and only the CLIs that actually
+  confine writes to a cwd-scoped workspace-write sandbox qualify: `codex exec -s workspace-write`
+  and `agy -p --sandbox`. `claude --permission-mode acceptEdits`, `kiro-cli --trust-tools=read,write`
+  and `gemini --yolo` grant writes but do **not** scope them to the worktree, so they are **not**
+  valid implementers (**SUPERSEDED R2-A — DO NOT IMPLEMENT as write adapters**). These write
+  variants exist **only** on the harness implement path;
   every other co-agent path (review, decide, ADR, plan/code gates) stays
   read-only/advisory. This is the single place in the plugin where an external AI may write.
 - **Trust only the tracked diff, verify on the main tree.** Gitignored/untracked files a
@@ -135,21 +139,22 @@ Added to `co-agent.defaults.json` (overridable in `.claude/co-agent.local.json` 
 
 ```jsonc
 "harness": {
-  "implementer": null,        // ai id | null → peer-host counterpart
+  "implementer": null,        // sandbox ai id (codex/agy) | null → host's sandbox default
   "max_fix_rounds": null      // int | null → inherit consensus.max_rounds
 }
 ```
 
-- `harness.implementer` validated against the installed-AI charset rules already in
-  `co_agent_config.py`; rejected if it equals the current host.
+- `harness.implementer` validated against `SANDBOX_IMPLEMENTERS = ("codex", "agy")`;
+  rejected (exit 2) if it equals the current host **or** is any non-sandbox peer.
 - Resolution helper `co_agent_config.py implementer --host <h>` prints the effective
-  implementer (counterpart when null), mirroring `panel`/`pairs`.
+  implementer (host's sandbox default when null: claude-host → `codex`, codex-host → `agy`),
+  mirroring `panel`/`pairs`.
 
 ## 8. Error Handling
 
 | Condition | Behavior |
 |-----------|----------|
-| Implementer CLI missing / errors / timeout | **Fallback chain**: configured counterpart → next installed peer (preserve provider separation) → host-implement. Note which was used. Never blocks. |
+| Implementer CLI missing / errors / timeout | **Fallback chain**: configured sandbox implementer → next installed **sandbox** peer (`codex`/`agy`; preserve provider separation) → host-implement. Note which was used. Never blocks. |
 | Worktree creation fails | Abort the harness run with a clear message. Never silently write to the live tree. |
 | Out-of-scope path in worktree diff | Revert those paths, feed back to the implementer. |
 | Fix loop exhausted (still red / still flagged) | `task-abort` + set `needs-human` (verdict REVIEW); continue or stop per state policy. |
@@ -160,7 +165,7 @@ Added to `co-agent.defaults.json` (overridable in `.claude/co-agent.local.json` 
 ## 9. Testing
 
 `tests/structure/test-co-agent-harness.sh`:
-- Implementer resolution: default = counterpart per host (claude↔codex); explicit override
+- Implementer resolution: default = sandbox CLI per host (claude-host → codex, codex-host → agy); explicit override
   respected; host-as-implementer rejected.
 - Write-mode adapter flags built correctly per AI; read-only/advisory paths unaffected
   (regression guard that review/gate adapters still carry `-s read-only` / `plan` / `--sandbox`).

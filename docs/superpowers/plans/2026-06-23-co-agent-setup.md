@@ -21,6 +21,29 @@
 
 ---
 
+### Task 0 (precondition): repo-wide `kiro` → `kiro-cli` rename — **owner of the rename this plan and the harness plan both assume**
+
+The peer label/binary is `kiro-cli` (Global Constraints): `co_agent_config.py` must expose
+`ALL_AIS`/`PEERS` with `kiro-cli`, and every adapter/config/test must use it. This already
+landed in the repo, so Task 0 is normally a **verification gate** rather than new work — but it
+is recorded here so the sequencing the harness plan **depends-on** has an explicit owner and is
+re-runnable from a tree where it has *not* landed.
+
+- [ ] **Verify it has landed** (must pass before Task 1):
+
+```bash
+grep -q '"kiro-cli"' plugins/co-agent/skills/co-agent/scripts/co_agent_config.py \
+  && echo "rename landed (ALL_AIS uses kiro-cli)" \
+  || echo "RENAME NOT LANDED — perform it before any further task"
+```
+
+- [ ] **If NOT landed**, do the rename as the first change and commit it separately before Task 1:
+  replace the bare `kiro` label with `kiro-cli` across `co_agent_config.py` (`ALL_AIS`/`PEERS`/defaults),
+  `references/ai-cli-adapters.md`, `co-agent.defaults.json`, and any test fixtures; update the
+  fan-out `kiro)` case to `kiro-cli)`. Commit: `refactor(co-agent): kiro → kiro-cli label/binary rename`.
+
+---
+
 ### Task 1: `check_panel.py` skeleton + `classify()` (pure)
 
 **Files:**
@@ -72,9 +95,14 @@ import sys
 import os
 import re
 
-# Word-boundary the bare tokens so `author`/`4012`/`oauth2-ish` substrings don't
-# misclassify a working peer's output as an auth failure.
-_AUTH_RE = re.compile(r"not logged in|unauthenticated|please (log|sign) in|run .*login|\b401\b|\bauth\b", re.I)
+# Narrow patterns so normal output ("authenticate the request", "author", "4012",
+# "run the build then login flow") doesn't misclassify a working peer as an auth failure:
+# require explicit auth-failure phrasing, a bounded "run … login" hint, and word-bounded 401.
+_AUTH_RE = re.compile(
+    r"not logged in|unauthenticated|authentication (failed|required)|"
+    r"please (log|sign) in|run [^\n]{0,40}\blogin\b|\b401\b",
+    re.I,
+)
 
 
 def classify(sentinel, stdout, stderr, returncode, timed_out):
@@ -251,10 +279,15 @@ printf '#!/usr/bin/env bash\necho ignored\n' > "$SHIM/agy"   # ignores stdin →
 # kiro-cli reads the positional INPUT (last non-flag arg). Echo every arg so the sentinel returns.
 printf '#!/usr/bin/env bash\nfor a in "$@"; do printf "%%s\\n" "$a"; done\n' > "$SHIM/kiro-cli"
 chmod +x "$SHIM/codex" "$SHIM/agy" "$SHIM/kiro-cli"
-assert_eq "READY"     "$(PATH="$SHIM:$PATH" python3 "$CP" probe codex 2>&1)"    "probe: stdin-echo codex → READY"
-assert_eq "NO_INGEST" "$(PATH="$SHIM:$PATH" python3 "$CP" probe agy 2>&1)"      "probe: stdin-ignoring agy → NO_INGEST"
-assert_eq "READY"     "$(PATH="$SHIM:$PATH" python3 "$CP" probe kiro-cli 2>&1)" "probe: kiro-cli argv INPUT echoed → READY"
-assert_eq "ABSENT"    "$(PATH="$SHIM" python3 "$CP" probe gemini 2>&1)"         "probe: missing CLI → ABSENT"
+# Isolated PATH: keep python3 + coreutils reachable, but DROP the dirs where real peer CLIs
+# install (~/.local/bin, /usr/local/bin) so probe can NEVER hit a real CLI — only the shims
+# above resolve, and an un-shimmed peer (gemini) is deterministically ABSENT.
+PYBIN=$(dirname "$(command -v python3)")
+ISO="$SHIM:$PYBIN:/usr/bin:/bin"
+assert_eq "READY"     "$(PATH="$ISO" python3 "$CP" probe codex 2>&1)"    "probe: stdin-echo codex → READY"
+assert_eq "NO_INGEST" "$(PATH="$ISO" python3 "$CP" probe agy 2>&1)"      "probe: stdin-ignoring agy → NO_INGEST"
+assert_eq "READY"     "$(PATH="$ISO" python3 "$CP" probe kiro-cli 2>&1)" "probe: kiro-cli argv INPUT echoed → READY"
+assert_eq "ABSENT"    "$(PATH="$ISO" python3 "$CP" probe gemini 2>&1)"   "probe: un-shimmed CLI → ABSENT (python3 still reachable)"
 rm -rf "$SHIM"
 ```
 
@@ -359,15 +392,18 @@ git commit -m "feat(co-agent): probe peers via each adapter's real input channel
 # --- Task 4: report + readers (fake CLIs so probe is deterministic) ---
 S2=$(mktemp -d "${TMPDIR:-/tmp}/coagent-shim2.XXXXXX"); R=$(mktemp -d "${TMPDIR:-/tmp}/coagent-root.XXXXXX")
 printf '#!/usr/bin/env bash\ncat\n' > "$S2/codex"; chmod +x "$S2/codex"   # codex READY via stdin echo
-PATH="$S2:$PATH" python3 "$CP" report --root "$R" --plugins-root /nonexistent >/dev/null 2>&1
+# Isolated PATH so report() probes ONLY the codex shim — never a real kiro-cli/agy/gemini on
+# the runner (deterministic; honors the plan's "tests must not invoke real peer CLIs" rule).
+PYBIN=$(dirname "$(command -v python3)"); ISO2="$S2:$PYBIN:/usr/bin:/bin"
+PATH="$ISO2" python3 "$CP" report --root "$R" --plugins-root /nonexistent >/dev/null 2>&1
 SUM="$R/.claude/co-agent-panel.local.json"
 assert_file_exists "$SUM" "report writes the readiness summary"
 assert_json_valid "$SUM" "summary is valid JSON"
 assert_contains "$(cat "$SUM")" "schema_version" "summary has schema_version"
 assert_contains "$(cat "$SUM")" "generated_at" "summary has generated_at"
 assert_contains "$(cat "$SUM")" "config_hash" "summary has config_hash"
-assert_eq "READY" "$(PATH="$S2:$PATH" python3 "$CP" status codex --root "$R" 2>&1)" "status reader returns codex READY"
-assert_eq "raw"   "$(PATH="$S2:$PATH" python3 "$CP" access codex --root "$R" 2>&1)" "access reader returns codex raw (no plugin)"
+assert_eq "READY" "$(PATH="$ISO2" python3 "$CP" status codex --root "$R" 2>&1)" "status reader returns codex READY"
+assert_eq "raw"   "$(PATH="$ISO2" python3 "$CP" access codex --root "$R" 2>&1)" "access reader returns codex raw (no plugin)"
 assert_eq "none"  "$(python3 "$CP" access codex --root "$(mktemp -d)" 2>&1)" "access reader: no summary → sane default none"
 # M4: a summary older than the TTL is stale → readers ignore it and fall back to the absent default
 python3 - "$SUM" <<'PY'
@@ -377,7 +413,7 @@ d["generated_at"] = "2000-01-01T00:00:00+00:00"
 with open(sys.argv[1], "w") as f: json.dump(d, f)
 PY
 EMPTY=$(mktemp -d)
-assert_eq "$(python3 "$CP" status codex --root "$EMPTY" 2>/dev/null)" "$(PATH="$S2:$PATH" python3 "$CP" status codex --root "$R" 2>/dev/null)" "TTL-stale summary is ignored (reader falls back to absent default)"
+assert_eq "$(python3 "$CP" status codex --root "$EMPTY" 2>/dev/null)" "$(PATH="$ISO2" python3 "$CP" status codex --root "$R" 2>/dev/null)" "TTL-stale summary is ignored (reader falls back to absent default)"
 rm -rf "$S2" "$R" "$EMPTY"
 ```
 
@@ -617,11 +653,21 @@ Run: `bash tests/run-all.sh 2>&1 | grep -iE "setup command|runs check_panel|plug
 Expected: all assertions PASS. Confirm the manifest still parses:
 `python3 -c "import json;json.load(open('plugins/co-agent/.claude-plugin/plugin.json'))"`
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Version bump (M6 — explicit, not prose)**
+
+Adding `./commands/setup.md` to `commands[]` is a release change. Bump the single shared
+version across **every** `plugins/*/.claude-plugin/plugin.json` + `marketplace.json` and add a
+`CHANGELOG.md` entry (same recipe as the harness plan's Step 5). **Coordinate with the harness
+plan:** if both the `harness` and `setup` commands land in the same release, bump the version
+**once** (not twice) — do the bump in whichever lands last and skip it in the other to avoid a
+version collision. Verify alignment with the root `CLAUDE.md` version-consistency check.
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add plugins/co-agent/commands/setup.md plugins/co-agent/.claude-plugin/plugin.json \
-        plugins/co-agent/skills/co-agent/SKILL.md .gitignore tests/structure/test-co-agent-setup.sh
+git add plugins/co-agent/commands/setup.md plugins/*/.claude-plugin/plugin.json \
+        plugins/co-agent/skills/co-agent/SKILL.md .gitignore .claude-plugin/marketplace.json \
+        CHANGELOG.md tests/structure/test-co-agent-setup.sh
 git commit -m "feat(co-agent): /co-agent:setup command + registration"
 ```
 

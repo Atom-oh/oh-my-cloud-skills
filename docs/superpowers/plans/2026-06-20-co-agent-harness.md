@@ -27,10 +27,14 @@
 - The hosts are `claude` and `codex`; the panel AIs are `kiro-cli, claude, codex, agy, gemini`
   (`ALL_AIS` in `co_agent_config.py`, after the repo-wide `kiro`→`kiro-cli` rename). Only the
   sandbox subset `(codex, agy)` (`SANDBOX_IMPLEMENTERS`) may implement.
-- **Execution order:** the `co-agent:setup` plan's repo-wide `kiro`→`kiro-cli` rename
-  (setup plan §6.1, already landed) is a precondition for this plan — confirm it first so the
-  `ALL_AIS`/config keys this plan reads are already `kiro-cli` (the harness adds no `kiro`
-  branch of its own, so once the rename has landed there is no stale `kiro` key to collide).
+- **Execution order — rename precondition (owner: `co-agent:setup` plan, Task 0).** This plan
+  reads `ALL_AIS`/`panel.kiro-cli`/`SANDBOX_IMPLEMENTERS` and assumes the label is `kiro-cli`,
+  but it does **not** perform the `kiro`→`kiro-cli` rename itself. That rename is owned by the
+  setup plan's **Task 0** (repo-wide `kiro`→`kiro-cli` across `co_agent_config.py` `ALL_AIS`,
+  adapters, configs, and tests). **Verify, don't assume** it has landed before starting Task 1:
+  `grep -q '"kiro-cli"' plugins/co-agent/skills/co-agent/scripts/co_agent_config.py` (the runtime
+  already ships `ALL_AIS = ("kiro-cli", …)`). If that grep fails in your tree, run setup Task 0
+  first — this plan **depends-on** it; otherwise both plans fail on a `kiro`/`kiro-cli` key mismatch.
 - Write-mode adapters (workspace-write sandbox) exist **only** on the harness implement path; review/decide/ADR/gate paths stay read-only/advisory.
 - The host is the **only** committer to the working branch; external AIs write only inside a worktree.
 - Local commits only — never push/reset/rebase autonomously.
@@ -189,7 +193,7 @@ git commit -m "feat(co-agent): harness config + implementer resolution"
 - Test: `tests/structure/test-co-agent-harness.sh`
 
 **Interfaces:**
-- Produces: `co_agent_config.py impl-flags <ai> --host <h>` → space-separated write-mode flags scoping the peer to a workspace-write sandbox plus its model/effort. Rejects an `ai` equal to the host **or** any non-sandbox `ai` (exit 2).
+- Produces: `co_agent_config.py impl-flags <ai> --host <h>` → **shell-quoted** (`shlex.join`) write-mode flags scoping the peer to a workspace-write sandbox plus its model/effort; consumers word-split the output as a shell word list (so a model name like `Gemini 3.1 Pro (High)` survives). Rejects an `ai` equal to the host **or** any non-sandbox `ai` (exit 2).
 - Consumes: `implementer_ai`, `SANDBOX_IMPLEMENTERS`, existing per-AI `flags` model/effort logic.
 
 - [ ] **Step 1: Write the failing test** (append to `test-co-agent-harness.sh`)
@@ -239,7 +243,12 @@ def cmd_impl_flags(root, ai, host):
         parts += ["--sandbox"]
         if model:
             parts += ["--model", model]
-    print(" ".join(parts))
+    # shlex.join quotes tokens containing spaces/parens (e.g. model "Gemini 3.1 Pro
+    # (High)") so a shell consumer can `read -ra` / word-split the output back into argv
+    # without mis-splitting the model name. Consumers MUST treat the output as a shell
+    # word list (not re-split on raw whitespace).
+    import shlex
+    print(shlex.join(parts))
     return 0
 ```
 
@@ -278,7 +287,8 @@ git commit -m "feat(co-agent): write-mode implementer flags (workspace-write san
 ```bash
 # --- Task 3: needs-human status ---
 R3=$(mktemp -d "${TMPDIR:-/tmp}/coagent-harness3.XXXXXX")
-( cd "$R3" && git init -q && git commit -q --allow-empty -m init )
+( cd "$R3" && git init -q && git config user.email t@example.invalid && git config user.name t \
+    && git commit -q --allow-empty -m init )
 python3 "$ST" init "$R3" --docs none --base main >/dev/null 2>&1
 python3 "$ST" set "$R3" status needs-human >/dev/null 2>&1 && NRC=0 || NRC=$?
 assert_eq "0" "$NRC" "status needs-human accepted (exit 0)"
@@ -461,7 +471,8 @@ git commit -m "feat(co-agent): stage-result subcommand for durable output gates"
 ```bash
 # --- Task 5: rebind after manual commit ---
 R5=$(mktemp -d "${TMPDIR:-/tmp}/coagent-harness5.XXXXXX")
-( cd "$R5" && git init -q && git commit -q --allow-empty -m init )
+( cd "$R5" && git init -q && git config user.email t@example.invalid && git config user.name t \
+    && git commit -q --allow-empty -m init )
 python3 "$ST" init "$R5" --docs none --base main >/dev/null 2>&1
 ( cd "$R5" && git commit -q --allow-empty -m "manual fix" )
 python3 "$ST" verify "$R5" >/dev/null 2>&1 && V1=0 || V1=$?
@@ -526,7 +537,7 @@ git commit -m "feat(co-agent): rebind to resume after a manual commit"
 **Interfaces:**
 - Produces:
   - `worktree.py add <wt_path> --base <ref> [--root DIR]` → `git worktree add <wt_path> <ref>`; exit 0.
-  - `worktree.py capture-diff <wt_path>` → stages all **non-ignored** changes inside the worktree (`git -C <wt> add -A`, which respects `.gitignore`) and prints `git -C <wt> diff --cached`. New normal files are included; `.gitignore`d files are excluded **by construction** (so a hidden ignored file can never be carried to the main tree).
+  - `worktree.py capture-diff <wt_path>` → stages all **non-ignored** changes inside the worktree (`git -C <wt> add -A`, which respects `.gitignore`) and prints `git -C <wt> diff --cached`. New normal files are included; `.gitignore`d files are excluded **by construction**. It additionally unstages any **tracked-but-now-ignored** path (`ls-files -i -c` → `reset HEAD`), the one case `add -A` would otherwise still carry, so a hidden ignored file can never reach the main tree.
   - `worktree.py remove <wt_path> [--root DIR]` → `git worktree remove --force <wt_path>` then `git worktree prune`; exit 0.
   - `worktree.py prune [--root DIR]` → `git worktree prune`; exit 0.
 
@@ -537,7 +548,8 @@ git commit -m "feat(co-agent): rebind to resume after a manual commit"
 ```bash
 # --- Task 6: worktree helper excludes gitignored, keeps new source ---
 R6=$(mktemp -d "${TMPDIR:-/tmp}/coagent-harness6.XXXXXX")
-( cd "$R6" && git init -q && printf 'secret.env\n' > .gitignore && git add .gitignore && git commit -q -m init )
+( cd "$R6" && git init -q && git config user.email t@example.invalid && git config user.name t \
+    && printf 'secret.env\n' > .gitignore && git add .gitignore && git commit -q -m init )
 assert_file_exists "$WT" "worktree.py exists"
 WTD="$R6/.wt-task0"
 python3 "$WT" add "$WTD" --base HEAD --root "$R6" >/dev/null 2>&1 && A=0 || A=$?
@@ -551,6 +563,15 @@ assert_grep_no_match "secret.env" "$DIFF" "capture-diff excludes the gitignored 
 python3 "$WT" remove "$WTD" --root "$R6" >/dev/null 2>&1 && RM=0 || RM=$?
 assert_eq "0" "$RM" "worktree remove succeeds"
 assert_grep_no_match "." "$(git -C "$R6" worktree list --porcelain | grep -F "$WTD")" "no stale worktree ref after remove"
+# tracked-BEFORE-ignored edge case: a file committed earlier, later gitignored, must NOT leak
+( cd "$R6" && printf 'orig\n' > pre.tracked && git add pre.tracked && git commit -q -m "track pre.tracked" )
+WTD2="$R6/.wt-task1"
+python3 "$WT" add "$WTD2" --base HEAD --root "$R6" >/dev/null 2>&1
+printf 'pre.tracked\n' >> "$WTD2/.gitignore"   # now ignore the already-tracked file
+printf 'LEAK=1\n' >> "$WTD2/pre.tracked"        # and modify it inside the worktree
+DIFF2=$(python3 "$WT" capture-diff "$WTD2" 2>/dev/null)
+assert_grep_no_match "LEAK=1" "$DIFF2" "capture-diff drops a tracked-then-ignored file's changes"
+python3 "$WT" remove "$WTD2" --root "$R6" >/dev/null 2>&1
 rm -rf "$R6"
 ```
 
@@ -604,7 +625,13 @@ def main():
         return r.returncode
     if cmd == "capture-diff":
         wt = argv[1]
-        git(wt, "add", "-A")              # respects .gitignore — ignored files not staged
+        git(wt, "add", "-A")              # new ignored files are not staged (respects .gitignore)
+        # `add -A` still re-stages a file that was tracked BEFORE it was gitignored. Unstage any
+        # currently-ignored-but-tracked path so an ignored file's changes can never reach main
+        # (`reset HEAD` leaves the worktree untouched; it just drops the change from the diff).
+        ignored = git(wt, "ls-files", "-i", "-c", "--exclude-standard").stdout.split("\n")
+        for f in (p for p in ignored if p):
+            git(wt, "reset", "--quiet", "HEAD", "--", f)
         r = git(wt, "diff", "--cached")
         sys.stdout.write(r.stdout)
         return r.returncode
@@ -630,7 +657,7 @@ Make it executable: `chmod +x plugins/co-agent/skills/co-agent/scripts/worktree.
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `bash tests/run-all.sh 2>&1 | grep 'worktree'`
-Expected: all six assertions PASS.
+Expected: all seven assertions PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -728,12 +755,37 @@ Run: `bash tests/run-all.sh 2>&1 | grep 'harness command\|delegated-implement re
 Expected: all four assertions PASS. Also confirm the manifest still validates:
 `python3 -c "import json;json.load(open('plugins/co-agent/.claude-plugin/plugin.json'))"`
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Version bump (M6 — explicit, not prose)**
+
+Adding a `commands[]` entry is a release change, so bump the single shared version across
+**every** `plugins/*/.claude-plugin/plugin.json` + `marketplace.json` (they must stay
+identical), add a `CHANGELOG.md` entry, and tag `v{NEW}`:
+
+```bash
+NEW="<next-version>"   # pick per semver; ALL plugin.json + marketplace.json must match
+python3 - "$NEW" <<'PY'
+import json, glob, sys
+new = sys.argv[1]
+for p in glob.glob("plugins/*/.claude-plugin/plugin.json"):
+    d = json.load(open(p)); d["version"] = new
+    json.dump(d, open(p, "w"), indent=2); open(p, "a").write("\n")
+mp = ".claude-plugin/marketplace.json"; d = json.load(open(mp))
+for pl in d.get("plugins", []): pl["version"] = new
+json.dump(d, open(mp, "w"), indent=2); open(mp, "a").write("\n")
+PY
+# verify alignment (the version-consistency check in the root CLAUDE.md) before committing.
+```
+
+- [ ] **Step 6: Commit**
 
 ```bash
 git add plugins/co-agent/commands/harness.md plugins/co-agent/skills/co-agent/SKILL.md \
-        plugins/co-agent/.claude-plugin/plugin.json plugins/co-agent/.codex-plugin/plugin.json
-git commit -m "feat(co-agent): /co-agent:harness command + skill wiring"
+        plugins/*/.claude-plugin/plugin.json .claude-plugin/marketplace.json CHANGELOG.md
+# .codex-plugin/plugin.json exists only for some plugins and may not enumerate commands —
+# add it ONLY if it is present and actually changed, so a missing file can't fail the commit.
+[ -n "$(git status --porcelain plugins/co-agent/.codex-plugin/plugin.json 2>/dev/null)" ] && \
+    git add plugins/co-agent/.codex-plugin/plugin.json
+git commit -m "feat(co-agent): /co-agent:harness command + skill wiring (v$NEW)"
 ```
 
 ---
