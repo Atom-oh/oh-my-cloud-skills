@@ -57,7 +57,16 @@ def decide_access(peer, has_cli, has_plugin):
         return "raw", peer in PEER_PLUGINS   # suggest installing the official plugin if one exists
     return "none", False
 
-_AUTH_RE = re.compile(r"not logged in|unauthenticated|please (log|sign) in|run .*login|\b401\b|\b403\b|forbidden", re.I)
+# AUTH vs ERROR only affects the diagnostic label on an already-failing (non-READY) probe —
+# both are non-READY, so the gate behaves identically. We keep bare 401/403 (catches
+# "got 401 from server", "server returned 403") and accept the rare cosmetic false-positive
+# (e.g. "Processed 401 items") rather than miss real auth failures.
+_AUTH_RE = re.compile(
+    r"not logged in|unauthenticated|invalid credentials|access denied|"
+    r"token expired|expired token|expiredtoken|"
+    r"please (log|sign) in|run .*login|\b401\b|\b403\b|unauthorized|forbidden",
+    re.I,
+)
 
 
 def classify(sentinel, stdout, stderr, returncode, timed_out):
@@ -100,6 +109,22 @@ ADAPTERS = {
 _CAP = 64 * 1024   # output-size cap
 
 
+def _kill_proc(p):
+    """Kill a probe child, whole process group on POSIX. os.killpg/getpgid don't exist on
+    Windows — fall back to p.kill() there instead of raising AttributeError (which the callers'
+    broad excepts would swallow, leaving the child alive)."""
+    try:
+        if hasattr(os, "killpg") and hasattr(os, "getpgid"):
+            os.killpg(os.getpgid(p.pid), signal.SIGKILL)
+        else:
+            p.kill()
+    except Exception:
+        try:
+            p.kill()
+        except Exception:
+            pass
+
+
 def probe(peer, timeout=20, nonce="STATIC"):
     if peer not in ADAPTERS:
         return "ERROR", f"unknown peer {peer}"
@@ -116,6 +141,7 @@ def probe(peer, timeout=20, nonce="STATIC"):
         argv = [a.replace("{I}", inp) for a in spec["argv"]]
         stdin_data = ""
     with tempfile.TemporaryDirectory() as cwd:
+        p = None
         try:
             p = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                   stderr=subprocess.PIPE, text=True, start_new_session=True)
@@ -123,7 +149,7 @@ def probe(peer, timeout=20, nonce="STATIC"):
                 out, err = p.communicate(input=stdin_data, timeout=timeout)
                 timed_out = False
             except subprocess.TimeoutExpired:
-                os.killpg(os.getpgid(p.pid), signal.SIGKILL)
+                _kill_proc(p)
                 out, err = p.communicate()
                 timed_out = True
             return classify(sentinel, out[:_CAP], (err or "")[:_CAP], p.returncode, timed_out)
@@ -131,6 +157,11 @@ def probe(peer, timeout=20, nonce="STATIC"):
             return "ABSENT", "command not found"
         except Exception as e:  # never hard-fail a probe
             return "ERROR", str(e)[:200]
+        finally:
+            # Ensure no detached child survives an error path other than TimeoutExpired
+            # (e.g. communicate raising mid-read) — Windows-safe kill (see _kill_proc).
+            if p is not None and p.poll() is None:
+                _kill_proc(p)
 
 
 def _config_hash(root):

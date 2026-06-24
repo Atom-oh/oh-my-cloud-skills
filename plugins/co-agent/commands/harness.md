@@ -68,7 +68,10 @@ unrelated prior commit). Then `worktree.py remove`. Fallback chain: counterpart 
 **On exhausted fix loop / abort**: **first discard the applied implementation patch**
 (scoped to the task files: `git restore --staged --worktree -- <task files>`, then
 `git clean -fd -- <task files>` to remove any **new files** the patch added — scoped, never
-bare) so the tree is clean, **then** undo the red-test commit with `git revert --no-edit <red-test-sha>` — a
+bare. Use a bash **array** + count guard so a whitespace-only value can't pass and spaced
+filenames don't word-split: `[ ${#FILES[@]} -gt 0 ] && git clean -fd -- "${FILES[@]}"`
+(an empty pathspec makes `git clean -fd --` wipe *all* untracked files). So the tree is clean,
+**then** undo the red-test commit with `git revert --no-edit <red-test-sha>` — a
 non-destructive inverse commit (revert refuses on a dirty tree, so restore first; do **not**
 use `git reset --soft`, which keeps the red test staged, nor a bare `git reset --hard`, which
 could discard unrelated work) — then

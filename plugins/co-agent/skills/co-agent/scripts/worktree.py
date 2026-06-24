@@ -19,8 +19,11 @@ import sys
 import subprocess
 
 # Neutralize system/global git config when reading an untrusted worktree.
-_CLEAN_ENV = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null",
-              "GIT_ATTR_NOSYSTEM": "1"}
+# os.devnull (not a hard-coded "/dev/null") so this also holds on Windows.
+# GIT_PAGER=cat defuses a peer-planted core.pager/pager.<cmd> command (git would otherwise
+# exec the pager on some operations).
+_CLEAN_ENV = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
+              "GIT_ATTR_NOSYSTEM": "1", "GIT_PAGER": "cat", "GIT_OPTIONAL_LOCKS": "0"}
 
 
 def git(cwd, *args, env=None):
@@ -32,8 +35,10 @@ def _capture_neutralizers(wt):
     via in-tree `.gitattributes` + shared repo config: clean/smudge/process filters (run at
     `git add`) AND diff textconv/command drivers (run at `git diff`). We can't ignore in-tree
     `.gitattributes`, so each driver command is overridden to a pass-through / empty. Pair with
-    `--no-ext-diff --no-textconv` on the diff itself."""
-    ov = []
+    `--no-ext-diff --no-textconv` on the diff itself. Also point `core.hooksPath` at an empty
+    dir so no hook a peer planted via shared repo config can fire on any capture-stage git call.
+    Also blanks `core.fsmonitor`/`core.pager` (both can name a command git would exec)."""
+    ov = ["-c", f"core.hooksPath={os.devnull}", "-c", "core.fsmonitor=", "-c", "core.pager=cat"]
     for prefix, keys in (("filter", ("clean", "smudge", "process")), ("diff", ("textconv", "command"))):
         r = git(wt, "config", "--name-only", "--get-regexp", rf"^{prefix}\.", env=_CLEAN_ENV)
         names = set()
@@ -71,7 +76,10 @@ def main():
                 print("usage: worktree.py add <wt_path> --base <ref>", file=sys.stderr)
                 return 2
             base = argv[bi]
-        r = git(root, "worktree", "add", wt, base)
+        # Neutralize core.hooksPath/fsmonitor (+ clean env) so a post-checkout hook or fsmonitor
+        # command a peer planted via shared repo/global config can't execute at checkout time.
+        r = git(root, "-c", f"core.hooksPath={os.devnull}", "-c", "core.fsmonitor=",
+                "worktree", "add", wt, base, env=_CLEAN_ENV)
         sys.stderr.write(r.stderr)
         return r.returncode
 
@@ -100,7 +108,7 @@ def main():
         # --no-ext-diff blocks external diff *command* drivers; --no-textconv blocks textconv
         # (NOT covered by --no-ext-diff); attributesFile=/dev/null + clean env + neutralizers
         # drop all remaining config/attribute influence.
-        r = git(wt, "-c", "core.attributesFile=/dev/null", *nf,
+        r = git(wt, "-c", f"core.attributesFile={os.devnull}", *nf,
                 "diff", "--cached", "--no-ext-diff", "--no-textconv", "--binary", env=_CLEAN_ENV)
         sys.stdout.write(r.stdout)
         return r.returncode

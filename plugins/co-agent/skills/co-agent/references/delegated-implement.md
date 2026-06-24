@@ -92,8 +92,12 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
    implementation patch** that step 5 put in the working tree, scoped to the task's files —
    `git restore --staged --worktree -- <task files>` (or `git checkout -- <task files>`).
    `restore` only reverts `HEAD`-tracked files; a patch that **added new files** leaves them
-   untracked, so also `git clean -fd -- <task files>` (scoped — **never a bare `git clean`**)
-   to remove them. The tree is then clean. **Then** undo the red-test commit with `git revert --no-edit
+   untracked, so also `git clean -fd -- <task files>` (scoped — **never a bare `git clean`**).
+   ⚠️ **Guard the pathspec first**: if `<task files>` is empty, `git clean -fd --` deletes
+   **every** untracked file in the tree. Use a bash **array** (not a string) and a count guard,
+   so a whitespace-only value can't pass and filenames with spaces don't word-split:
+   `[ ${#FILES[@]} -gt 0 ] && git clean -fd -- "${FILES[@]}"` — build `FILES=(...)` from the
+   plan's task set, never an unquoted glob that can expand to nothing. The tree is then clean. **Then** undo the red-test commit with `git revert --no-edit
    <red-test-sha>` (a non-destructive inverse commit; revert refuses on a dirty tree, which is
    why the restore comes first). Do **not** use `git reset --soft` (keeps the red test staged)
    nor a bare `git reset --hard` (could discard unrelated work). Then `consensus_state.py set .
