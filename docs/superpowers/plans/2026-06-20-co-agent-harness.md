@@ -15,18 +15,22 @@
   value: `^[A-Za-z0-9 ._:/()-]+$`** — deliberately allows spaces + parentheses for Agy tokens
   like `Gemini 3.1 Pro (High)`; shell metacharacters stay rejected. (The original
   `^[A-Za-z0-9._:/-]+$` was widened in a later change — this note supersedes it.)
-- **SUPERSEDED (post panel-review R2-A):** the implementer is restricted to sandbox CLIs
-  **`codex`/`agy` only**; codex-host default = **`agy`** (not `claude`). This supersedes
-  **every snippet below that still shows a non-sandbox implementer** (kept verbatim for
-  history): the Task 1 `codex↔claude` counterpart logic; the Task 2 `cmd_impl_flags`
-  `claude`/`kiro`/`gemini` branches and its `impl-flags claude --host codex` test
-  assertion (`--permission-mode acceptEdits` / `--trust-tools=read,write,grep` / `--yolo`
-  are permission grants, **not** workspace-write sandboxes, so they cannot be implementer
-  flags); and the `delegated-implement.md` `claude --permission-mode acceptEdits` example.
-  The shipped `implementer_ai()` rejects non-sandbox implementers and defaults codex-host
-  to `agy`; the shipped `cmd_impl_flags` emits write-mode flags **only** for the sandbox
-  CLIs (`codex -s workspace-write`, `agy --sandbox`) and rejects any other `ai` (exit 2).
-- The hosts are `claude` and `codex`; AIs are `kiro, claude, codex, agy, gemini` (`ALL_AIS` in `co_agent_config.py`).
+- **Implementer = sandbox CLI only (trust boundary).** The delegated implementer is
+  restricted to the workspace-write **sandbox CLIs `codex`/`agy`**; `implementer_ai()`,
+  `cmd_set`, and `cmd_impl_flags` all reject any other `ai` (exit 2). Host defaults:
+  claude-host → `codex`, codex-host → `agy` (never a non-sandbox peer like `claude`).
+  `claude --permission-mode acceptEdits`, `kiro-cli --trust-tools=read,write,grep`, and
+  `gemini --yolo` are broad permission grants, **not** worktree-scoped write sandboxes
+  (design spec §5: a worktree is git isolation, NOT a security sandbox), so they can
+  never be implementer flags. The Task 1 / Task 2 code and tests below encode this
+  directly via the `SANDBOX_IMPLEMENTERS = ("codex", "agy")` whitelist.
+- The hosts are `claude` and `codex`; the panel AIs are `kiro-cli, claude, codex, agy, gemini`
+  (`ALL_AIS` in `co_agent_config.py`, after the repo-wide `kiro`→`kiro-cli` rename). Only the
+  sandbox subset `(codex, agy)` (`SANDBOX_IMPLEMENTERS`) may implement.
+- **Execution order:** the `co-agent:setup` plan's repo-wide `kiro`→`kiro-cli` rename
+  (setup plan §6.1, already landed) is a precondition for this plan — confirm it first so the
+  `ALL_AIS`/config keys this plan reads are already `kiro-cli` (the harness adds no `kiro`
+  branch of its own, so once the rename has landed there is no stale `kiro` key to collide).
 - Write-mode adapters (workspace-write sandbox) exist **only** on the harness implement path; review/decide/ADR/gate paths stay read-only/advisory.
 - The host is the **only** committer to the working branch; external AIs write only inside a worktree.
 - Local commits only — never push/reset/rebase autonomously.
@@ -58,14 +62,18 @@ CFG="plugins/co-agent/skills/co-agent/scripts/co_agent_config.py"
 ST="plugins/co-agent/skills/co-agent/scripts/consensus_state.py"
 WT="plugins/co-agent/skills/co-agent/scripts/worktree.py"
 
-# --- Task 1: implementer resolution ---
+# --- Task 1: implementer resolution (sandbox CLIs codex/agy only) ---
 R=$(mktemp -d "${TMPDIR:-/tmp}/coagent-harness.XXXXXX")
-assert_eq "codex" "$(python3 "$CFG" implementer --host claude --root "$R" 2>&1)" "default implementer for claude host = codex"
-assert_eq "claude" "$(python3 "$CFG" implementer --host codex --root "$R" 2>&1)" "default implementer for codex host = claude"
+assert_eq "codex" "$(python3 "$CFG" implementer --host claude --root "$R" 2>/dev/null)" "default implementer for claude host = codex (sandbox)"
+assert_eq "agy" "$(python3 "$CFG" implementer --host codex --root "$R" 2>/dev/null)" "default implementer for codex host = agy (sandbox, not claude)"
 python3 "$CFG" set harness implementer agy --root "$R" >/dev/null 2>&1
-assert_eq "agy" "$(python3 "$CFG" implementer --host claude --root "$R" 2>&1)" "override implementer respected"
-python3 "$CFG" set harness implementer claude --root "$R" >/dev/null 2>&1
-python3 "$CFG" implementer --host claude --root "$R" >/dev/null 2>&1 && IRC=0 || IRC=$?
+assert_eq "agy" "$(python3 "$CFG" implementer --host claude --root "$R" 2>/dev/null)" "override implementer respected"
+# a non-sandbox implementer (claude/kiro-cli/gemini) is rejected at set time
+python3 "$CFG" set harness implementer claude --root "$R" >/dev/null 2>&1 && SRC=0 || SRC=$?
+assert_eq "2" "$SRC" "non-sandbox implementer 'claude' rejected by set (exit 2)"
+# implementer equal to the host is rejected (codex implementer on a codex host)
+python3 "$CFG" set harness implementer codex --root "$R" >/dev/null 2>&1
+python3 "$CFG" implementer --host codex --root "$R" >/dev/null 2>&1 && IRC=0 || IRC=$?
 assert_eq "2" "$IRC" "implementer equal to host rejected (exit 2)"
 rm -rf "$R"
 ```
@@ -88,15 +96,23 @@ In `co-agent.defaults.json`, add after the `panel` object (sibling key):
 Add near `panel_ais`:
 
 ```python
+# Only CLIs with a real worktree-scoped write sandbox may implement, so a delegated
+# peer can never write outside its worktree (design spec §5). claude/kiro-cli/gemini
+# have permission grants but no such sandbox, so they are NOT eligible implementers.
+SANDBOX_IMPLEMENTERS = ("codex", "agy")
+
+
 def implementer_ai(cfg, host):
-    """Effective implementer: configured harness.implementer, else the peer-host
-    counterpart. Returns (ai, error_str|None)."""
-    counterpart = "codex" if host == "claude" else "claude"
-    ai = (cfg.get("harness", {}) or {}).get("implementer") or counterpart
+    """Effective implementer: configured harness.implementer, else the sandbox-CLI
+    default for this host (claude-host → codex, codex-host → agy). Restricted to
+    SANDBOX_IMPLEMENTERS. Returns (ai, error_str|None)."""
+    default = "agy" if host == "codex" else "codex"
+    ai = (cfg.get("harness", {}) or {}).get("implementer") or default
     if ai == host:
         return ai, f"implementer '{ai}' cannot equal the current host '{host}'"
-    if ai not in ALL_AIS:
-        return ai, f"unknown implementer '{ai}' (one of: {', '.join(ALL_AIS)})"
+    if ai not in SANDBOX_IMPLEMENTERS:
+        return ai, (f"implementer '{ai}' is not a sandbox CLI; choose one of: "
+                    f"{', '.join(SANDBOX_IMPLEMENTERS)}")
     return ai, None
 
 
@@ -121,8 +137,8 @@ Extend `cmd_set` to accept the `harness` namespace. Add this branch where `ai`/`
         if key == "implementer":
             if val in ("", "none", "null"):
                 h["implementer"] = None
-            elif not MODEL_RE.match(val) or val not in ALL_AIS:
-                print(f"implementer must be one of: {', '.join(ALL_AIS)}", file=sys.stderr)
+            elif not MODEL_RE.match(val) or val not in SANDBOX_IMPLEMENTERS:
+                print(f"implementer must be a sandbox CLI: {', '.join(SANDBOX_IMPLEMENTERS)}", file=sys.stderr)
                 return 2
             else:
                 h["implementer"] = val
@@ -137,7 +153,7 @@ Extend `cmd_set` to accept the `harness` namespace. Add this branch where `ai`/`
         with open(lp, "w") as f:
             json.dump(local, f, indent=2)
             f.write("\n")
-        print(f"✅ wrote {lp}")
+        print(f"wrote {lp}")
         return cmd_show(root, host)
 ```
 
@@ -153,7 +169,7 @@ Wire the dispatch in `main()` next to the other commands:
 - [ ] **Step 5: Run test to verify it passes**
 
 Run: `bash tests/run-all.sh 2>&1 | grep 'implementer'`
-Expected: all four `implementer` assertions PASS.
+Expected: all five `implementer` assertions PASS.
 
 - [ ] **Step 6: Commit**
 
@@ -173,19 +189,21 @@ git commit -m "feat(co-agent): harness config + implementer resolution"
 - Test: `tests/structure/test-co-agent-harness.sh`
 
 **Interfaces:**
-- Produces: `co_agent_config.py impl-flags <ai> --host <h>` → space-separated write-mode flags scoping the peer to a workspace-write sandbox plus its model/effort. Rejects an `ai` equal to the host (exit 2).
-- Consumes: `implementer_ai`, existing per-AI `flags` model/effort logic.
+- Produces: `co_agent_config.py impl-flags <ai> --host <h>` → space-separated write-mode flags scoping the peer to a workspace-write sandbox plus its model/effort. Rejects an `ai` equal to the host **or** any non-sandbox `ai` (exit 2).
+- Consumes: `implementer_ai`, `SANDBOX_IMPLEMENTERS`, existing per-AI `flags` model/effort logic.
 
 - [ ] **Step 1: Write the failing test** (append to `test-co-agent-harness.sh`)
 
 ```bash
-# --- Task 2: write-mode implementer flags ---
+# --- Task 2: write-mode implementer flags (sandbox CLIs codex/agy only) ---
 R2=$(mktemp -d "${TMPDIR:-/tmp}/coagent-harness2.XXXXXX")
-assert_contains "$(python3 "$CFG" impl-flags codex --host claude --root "$R2" 2>&1)" "workspace-write" "codex impl-flags use workspace-write sandbox"
-assert_contains "$(python3 "$CFG" impl-flags claude --host codex --root "$R2" 2>&1)" "acceptEdits" "claude impl-flags use acceptEdits permission mode"
-assert_contains "$(python3 "$CFG" impl-flags agy --host claude --root "$R2" 2>&1)" "sandbox" "agy impl-flags keep sandbox"
+assert_contains "$(python3 "$CFG" impl-flags codex --host claude --root "$R2" 2>/dev/null)" "workspace-write" "codex impl-flags use workspace-write sandbox"
+assert_contains "$(python3 "$CFG" impl-flags agy --host claude --root "$R2" 2>/dev/null)" "sandbox" "agy impl-flags keep sandbox"
+# a non-sandbox implementer (claude/kiro-cli/gemini) has no workspace-write sandbox → rejected (exit 2)
+python3 "$CFG" impl-flags claude --host codex --root "$R2" >/dev/null 2>&1 && FRC=0 || FRC=$?
+assert_eq "2" "$FRC" "non-sandbox implementer 'claude' rejected by impl-flags (exit 2)"
 # regression: read-only review flags never carry a write sandbox
-assert_grep_no_match "workspace-write|acceptEdits" "$(python3 "$CFG" flags codex --host claude --root "$R2" 2>&1)" "review flags stay read-only (no write sandbox)"
+assert_grep_no_match "workspace-write|acceptEdits" "$(python3 "$CFG" flags codex --host claude --root "$R2" 2>/dev/null)" "review flags stay read-only (no write sandbox)"
 rm -rf "$R2"
 ```
 
@@ -201,8 +219,12 @@ def cmd_impl_flags(root, ai, host):
     if ai == host:
         print(f"implementer '{ai}' cannot equal host '{host}'", file=sys.stderr)
         return 2
-    if ai not in ALL_AIS:
-        print(f"unknown ai '{ai}'", file=sys.stderr)
+    # Implementers are restricted to workspace-write sandbox CLIs (codex/agy). A
+    # non-sandbox peer (claude/kiro-cli/gemini) could write outside the worktree, so
+    # it gets no write-mode flags — it is rejected, never granted acceptEdits/--yolo.
+    if ai not in SANDBOX_IMPLEMENTERS:
+        print(f"implementer '{ai}' is not a sandbox CLI; choose one of: "
+              f"{', '.join(SANDBOX_IMPLEMENTERS)}", file=sys.stderr)
         return 2
     p = effective(root)["panel"].get(ai, {})
     model = p.get("model")
@@ -213,24 +235,10 @@ def cmd_impl_flags(root, ai, host):
             parts += ["-m", model]
         if p.get("effort"):
             parts += ["-c", f'model_reasoning_effort="{p["effort"]}"']
-    elif ai == "claude":
-        parts += ["--permission-mode", "acceptEdits"]
-        if model:
-            parts += ["--model", model]
-        if p.get("effort"):
-            parts += ["--effort", p["effort"]]
     elif ai == "agy":
         parts += ["--sandbox"]
         if model:
             parts += ["--model", model]
-    elif ai == "kiro":
-        parts += ["--trust-tools=read,write,grep"]
-        if model:
-            parts += ["--model", model]
-    elif ai == "gemini":
-        parts += ["--yolo"]
-        if model:
-            parts += ["-m", model]
     print(" ".join(parts))
     return 0
 ```
@@ -318,7 +326,7 @@ git commit -m "feat(co-agent): needs-human escalation status in consensus_state"
 **Interfaces:**
 - Produces:
   - `consensus_state.py stage-result write <path.json> --stage <s> --verdict <PASS|REVIEW|FAIL> [--green true|false] [--in-scope true|false] [--rounds N] [--implementer <ai>] [--wall <tsv>]` → writes a schema-valid result.json (creating parent dirs); if `--wall` given, appends `<stage>\t<verdict>\t<green>` to the tsv.
-  - `consensus_state.py stage-result check <path.json>` → exit 0 if the file exists and has `stage` + `verdict` (one of PASS/REVIEW/FAIL); else exit 1.
+  - `consensus_state.py stage-result check <path.json> [--stage <s>]` → exit 0 if the file exists and has `stage` + `verdict` (one of PASS/REVIEW/FAIL). With `--stage`, additionally enforces that stage's output schema: an implement/task stage (`implement`/`task`/`H3`) must be `green` **and** `in_scope`; a code/final gate (`code-gate`/`final`/`H4`) must be `verdict == PASS` (no unresolved CRITICAL/MAJOR). Else exit 1.
 
 - [ ] **Step 1: Write the failing test** (append)
 
@@ -333,6 +341,17 @@ assert_json_valid "$R4/plan-gate/result.json" "result.json is valid JSON"
 python3 "$ST" stage-result check "$R4/plan-gate/result.json" >/dev/null 2>&1 && C=0 || C=$?
 assert_eq "0" "$C" "stage-result check on valid artifact passes (exit 0)"
 assert_contains "$(cat "$R4/stage_wall.tsv")" "plan-gate" "stage_wall.tsv got a row"
+# stage-aware check: an implement/task stage (H3) must be green AND in-scope
+python3 "$ST" stage-result write "$R4/impl/bad.json" --stage impl --verdict PASS --green false --in-scope true >/dev/null 2>&1
+python3 "$ST" stage-result check "$R4/impl/bad.json" --stage H3 >/dev/null 2>&1 && G=0 || G=$?
+assert_eq "1" "$G" "stage-aware check (H3) fails when green=false"
+python3 "$ST" stage-result write "$R4/impl/ok.json" --stage impl --verdict PASS --green true --in-scope true >/dev/null 2>&1
+python3 "$ST" stage-result check "$R4/impl/ok.json" --stage H3 >/dev/null 2>&1 && GO=0 || GO=$?
+assert_eq "0" "$GO" "stage-aware check (H3) passes when green=true and in_scope=true"
+# stage-aware check: a code/final gate (H4) must be PASS (REVIEW/FAIL → block)
+python3 "$ST" stage-result write "$R4/gate/result.json" --stage code-gate --verdict REVIEW >/dev/null 2>&1
+python3 "$ST" stage-result check "$R4/gate/result.json" --stage H4 >/dev/null 2>&1 && H=0 || H=$?
+assert_eq "1" "$H" "stage-aware check (H4) blocks a non-PASS code gate"
 rm -rf "$R4"
 ```
 
@@ -355,13 +374,27 @@ def cmd_stage_result(root, rest):
         return 2
     path = args[0]
     if action == "check":
+        stage_kind = None
+        for j in range(1, len(args) - 1):
+            if args[j] == "--stage":
+                stage_kind = args[j + 1]
         if not os.path.isfile(path):
             return 1
         try:
-            d = json.load(open(path, encoding="utf-8"))
+            with open(path, encoding="utf-8") as f:
+                d = json.load(f)
         except Exception:
             return 1
-        return 0 if d.get("stage") and d.get("verdict") in ("PASS", "REVIEW", "FAIL") else 1
+        if not (d.get("stage") and d.get("verdict") in ("PASS", "REVIEW", "FAIL")):
+            return 1
+        # Stage-aware output gate: a stage advances only when ITS schema checks out,
+        # not merely when verdict is a known value. An implement/task stage must be
+        # green and in-scope; a code/final gate must be PASS (no CRITICAL/MAJOR left).
+        if stage_kind in ("implement", "task", "H3"):
+            return 0 if (d.get("green") is True and d.get("in_scope") is True) else 1
+        if stage_kind in ("code-gate", "final", "H4"):
+            return 0 if d.get("verdict") == "PASS" else 1
+        return 0
     # write
     opts, i = {}, 1
     while i < len(args):
@@ -388,8 +421,8 @@ def cmd_stage_result(root, rest):
         f.write("\n")
     if "wall" in opts:
         with open(opts["wall"], "a", encoding="utf-8") as w:
-            w.write(f"{rec['stage']}\t{verdict}\t{rec.get('green','')}\n")
-    print(f"✅ wrote {path}")
+            w.write(f"{rec['stage']}\t{verdict}\t{rec.get('green', '')}\n")
+    print(f"wrote {path}")
     return 0
 ```
 
@@ -403,7 +436,7 @@ Wire in `main()`:
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `bash tests/run-all.sh 2>&1 | grep 'stage-result\|stage_wall'`
-Expected: all five assertions PASS.
+Expected: all eight assertions PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -459,7 +492,7 @@ def cmd_rebind(root):
         return 2
     s["head"] = head
     write_state(root, s)
-    print(f"✅ rebound head → {head[:8]}")
+    print(f"rebound head → {head[:8]}")
     return 0
 ```
 
@@ -634,7 +667,7 @@ assert_grep_no_match "AKIA[0-9A-Z]{16}|-----BEGIN" "$(cat "$REF" 2>/dev/null)" "
 Run: `bash tests/run-all.sh 2>&1 | grep 'delegated-implement\|workspace-write\|capture-diff\|only committer'`
 Expected: FAIL — file missing.
 
-- [ ] **Step 3: Write the reference** — create `references/delegated-implement.md` with these sections (lean, ≤ ~150 lines): **Trust boundary** (worktree ≠ sandbox; workspace-write per CLI: `codex -s workspace-write`, `claude --permission-mode acceptEdits`, `agy --sandbox`; via `co_agent_config.py impl-flags`), **Per-task loop** (host writes red test → `worktree.py add` → implementer writes in worktree → `worktree.py capture-diff` → `scope_guard.py` → host applies patch to main → `tests/run-all.sh` on main → bounded fix loop ≤ `harness.max_fix_rounds` → `consensus_state.py stage-result` → host commits → `worktree.py remove`), **Host-only-commit** (external AIs never commit; host is the only committer), **Fallback chain** (counterpart → next installed peer → host-implement; never block), **Output gate** (a stage advances only when its `result.json` checks out). Keep prose minimal; link to `consensus-mode.md` for the review gate and `ai-cli-adapters.md` for CLI details.
+- [ ] **Step 3: Write the reference** — create `references/delegated-implement.md` with these sections (lean, ≤ ~150 lines): **Trust boundary** (worktree ≠ sandbox; workspace-write sandbox per CLI — **sandbox CLIs only**: `codex -s workspace-write`, `agy --sandbox`; via `co_agent_config.py impl-flags`, which rejects any non-sandbox implementer), **Per-task loop** (host writes red test → `worktree.py add` → implementer writes in worktree → `worktree.py capture-diff` → `scope_guard.py` → host applies patch to main → `tests/run-all.sh` on main → bounded fix loop ≤ `harness.max_fix_rounds` → `consensus_state.py stage-result` → host commits → `worktree.py remove`), **Host-only-commit** (external AIs never commit; host is the only committer), **Fallback chain** (counterpart → next installed peer → host-implement; never block), **Output gate** (a stage advances only when its `result.json` checks out). Keep prose minimal; link to `consensus-mode.md` for the review gate and `ai-cli-adapters.md` for CLI details.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -657,6 +690,7 @@ git commit -m "docs(co-agent): delegated-implement reference"
 - Modify: `plugins/co-agent/skills/co-agent/SKILL.md` (add a Mode 6 — harness — pointer + trigger)
 - Modify: `plugins/co-agent/.claude-plugin/plugin.json` (`commands[]` += `./commands/harness.md`)
 - Modify: `plugins/co-agent/.codex-plugin/plugin.json` (mirror the command list if it enumerates commands; otherwise no change)
+- Version bump: adding a `commands[]` entry is a release change — bump the single shared `"version"` across every `plugins/*/plugin.json` + `marketplace.json`, add a `CHANGELOG.md` entry, and tag `v{version}` (repo versioning rule). Run the version-consistency check in the root `CLAUDE.md` before the release commit.
 - Test: `tests/structure/test-co-agent-harness.sh`
 
 **Interfaces:**

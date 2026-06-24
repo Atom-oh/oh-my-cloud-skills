@@ -72,7 +72,9 @@ import sys
 import os
 import re
 
-_AUTH_RE = re.compile(r"not logged in|unauthenticated|please (log|sign) in|run .*login|401|auth", re.I)
+# Word-boundary the bare tokens so `author`/`4012`/`oauth2-ish` substrings don't
+# misclassify a working peer's output as an auth failure.
+_AUTH_RE = re.compile(r"not logged in|unauthenticated|please (log|sign) in|run .*login|\b401\b|\bauth\b", re.I)
 
 
 def classify(sentinel, stdout, stderr, returncode, timed_out):
@@ -367,7 +369,16 @@ assert_contains "$(cat "$SUM")" "config_hash" "summary has config_hash"
 assert_eq "READY" "$(PATH="$S2:$PATH" python3 "$CP" status codex --root "$R" 2>&1)" "status reader returns codex READY"
 assert_eq "raw"   "$(PATH="$S2:$PATH" python3 "$CP" access codex --root "$R" 2>&1)" "access reader returns codex raw (no plugin)"
 assert_eq "none"  "$(python3 "$CP" access codex --root "$(mktemp -d)" 2>&1)" "access reader: no summary → sane default none"
-rm -rf "$S2" "$R"
+# M4: a summary older than the TTL is stale → readers ignore it and fall back to the absent default
+python3 - "$SUM" <<'PY'
+import json, sys
+with open(sys.argv[1]) as f: d = json.load(f)
+d["generated_at"] = "2000-01-01T00:00:00+00:00"
+with open(sys.argv[1], "w") as f: json.dump(d, f)
+PY
+EMPTY=$(mktemp -d)
+assert_eq "$(python3 "$CP" status codex --root "$EMPTY" 2>/dev/null)" "$(PATH="$S2:$PATH" python3 "$CP" status codex --root "$R" 2>/dev/null)" "TTL-stale summary is ignored (reader falls back to absent default)"
+rm -rf "$S2" "$R" "$EMPTY"
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -454,15 +465,41 @@ def report(root, plugins_root, as_json=False):
     return 0
 
 
+# A readiness summary goes stale: a peer can be installed/removed or its config
+# changed after the summary was written (spec §5). Readers must treat a summary
+# older than the TTL, or one whose config_hash no longer matches the current config,
+# as absent — otherwise the fan-out routes to a peer that is no longer usable (or
+# skips one that just became ready).
+_SUMMARY_TTL_SEC = 24 * 3600
+
+
+def _is_stale(root, s):
+    ch = _config_hash(root)
+    if ch and s.get("config_hash") and s["config_hash"] != ch:
+        return True
+    ts = s.get("generated_at")
+    if not ts:
+        return True
+    try:
+        gen = datetime.datetime.fromisoformat(ts)
+    except ValueError:
+        return True
+    now = datetime.datetime.now(gen.tzinfo)
+    return (now - gen).total_seconds() > _SUMMARY_TTL_SEC
+
+
 def _read_summary(root):
     p = _summary_path(root)
     if not os.path.isfile(p):
         return None
     try:
         with open(p, encoding="utf-8") as f:
-            return json.load(f)
+            s = json.load(f)
     except Exception:
         return None
+    if _is_stale(root, s):  # TTL- or config-hash-stale → treat as absent
+        return None
+    return s
 
 
 def _reader(root, peer, field, default):
@@ -509,6 +546,7 @@ git commit -m "feat(co-agent): readiness report (atomic summary + status/access 
 - Modify: `plugins/co-agent/.claude-plugin/plugin.json` (`commands[]` += `./commands/setup.md`)
 - Modify: `plugins/co-agent/skills/co-agent/SKILL.md` (add a setup-mode pointer)
 - Modify: `.gitignore` (explicit `.claude/co-agent-panel.local.json` entry, for parity with the other `.claude/*` entries)
+- Version bump: adding a `commands[]` entry is a release change — bump the single shared `"version"` across every `plugins/*/plugin.json` + `marketplace.json`, add a `CHANGELOG.md` entry, and tag `v{version}` (repo versioning rule).
 - Test: `tests/structure/test-co-agent-setup.sh`
 
 **Interfaces:**

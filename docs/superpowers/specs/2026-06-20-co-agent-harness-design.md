@@ -213,7 +213,7 @@ runs/<session_id>/
   code-gate/
     review-<ai>.md
     result.json                   # { verdict, criticals, majors, rounds }
-  stage_wall.tsv                  # one row per stage: stage \t start \t end \t status (timing/debug)
+  stage_wall.tsv                  # one row per stage: stage \t verdict \t green (audit/debug; written by stage-result --wall)
   report.md                       # H5 human summary (rendered by consensus_state report)
 ```
 
