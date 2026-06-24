@@ -188,8 +188,9 @@ def _gate_config(root):
     except (TypeError, ValueError):
         timeout = 180
     return {
-        "enabled": cfg.get("enabled", True),
-        "block": cfg.get("block", True),          # block on a flagged peer (vs advisory)
+        "enabled": cfg.get("enabled", False),     # opt-in: enabling = consent to external fan-out
+        "block": cfg.get("block", True),          # hard-block (vs advisory-only) on a quorum BLOCK
+        "quorum": cfg.get("quorum", "majority"),  # "majority" (default) | "any"
         "timeout": max(30, timeout),
     }
 
@@ -217,23 +218,33 @@ def _scan_secret(diff):
     return ""
 
 
+def _path_panel(host):
+    """Degraded fallback when the config module is unavailable: review CLIs on PATH."""
+    return [ai for ai in _REVIEW if ai != host and shutil.which(ai)], {}
+
+
 def _panel(root):
-    """Enabled (config) ∩ installed (PATH) peers, never the host."""
+    """The canonical panel (`panel_ais`: kiro-cli + cross-provider peer + agy|gemini fallback —
+    so agy and gemini are never BOTH counted), filtered by config `enabled` and PATH. Never the
+    host. An explicit "all disabled" yields [] (no PATH override). Only a missing/failed config
+    module degrades to a best-effort PATH scan."""
     host = os.environ.get("CO_AGENT_HOST", "claude")
+    if cac is None:
+        return _path_panel(host)
+    try:
+        ais = cac.panel_ais(host)
+        panelcfg = (cac.effective(root) or {}).get("panel", {}) or {}
+    except Exception as e:   # config/panel resolution failed — log, then PATH fallback (no hide)
+        sys.stderr.write(f"[co-agent PR gate] panel resolution failed (fail-open, PATH fallback): {e}\n")
+        return _path_panel(host)
     peers, models = [], {}
-    if cac is not None:
-        try:
-            eff = cac.effective(root) or {}
-            for ai, p in (eff.get("panel", {}) or {}).items():
-                if ai == host or ai not in _REVIEW:
-                    continue
-                if p.get("enabled", True) and shutil.which(ai):
-                    peers.append(ai)
-                    models[ai] = p.get("model")
-        except Exception as e:   # config parse failed — log, then fall back (don't hide it)
-            sys.stderr.write(f"[co-agent PR gate] panel config unreadable, using PATH fallback (fail-open): {e}\n")
-    if not peers:  # config unavailable → fall back to whatever review CLIs are on PATH
-        peers = [ai for ai in _REVIEW if ai != host and shutil.which(ai)]
+    for ai in ais:
+        if ai == host or ai not in _REVIEW or not shutil.which(ai):
+            continue
+        if not panelcfg.get(ai, {}).get("enabled", True):
+            continue   # respect an explicit disable (do NOT PATH-override it)
+        peers.append(ai)
+        models[ai] = panelcfg.get(ai, {}).get("model")
     return peers, models
 
 
@@ -282,10 +293,16 @@ def ev_pre_pr_gate(root):
     gate = _gate_config(root)
     if not gate["enabled"]:
         return 0
-    base = _base_ref(root)
+    # Prefer the PR's explicit base (`gh pr create --base <ref>`) over the repo trunk, so we
+    # gate the same diff the PR will show; fall back to the detected trunk.
+    mbase = re.search(r"(?:--base|-B)[= ]+(\S+)", cmd)
+    base = ""
+    if mbase and _git(root, "rev-parse", "--verify", "--quiet", mbase.group(1)):
+        base = mbase.group(1)
+    base = base or _base_ref(root)
     if not base:
-        # No trunk ref (shallow clone / no remote): do NOT silently `git diff HEAD` (empty for
-        # an all-committed PR → silent pass). Warn instead so the bypass is never invisible.
+        # No base ref (shallow clone / no remote): do NOT silently `git diff HEAD` (empty for an
+        # all-committed PR → silent pass). Warn instead so the bypass is never invisible.
         sys.stderr.write("[co-agent PR gate] could not determine a base branch to diff against "
                          "(shallow clone / no remote?) — consensus gate SKIPPED. Run "
                          "/co-agent:consensus review manually, or `git fetch origin main`.\n")
@@ -293,20 +310,19 @@ def ev_pre_pr_gate(root):
     diff = _git(root, "diff", "--no-color", f"{base}...HEAD")
     if not diff.strip():
         return 0  # nothing to review
-    # Data boundary: never fan a secret-bearing diff out to third-party CLIs. Refuse + flag.
-    # Truncate on a LINE boundary (never mid-line / mid-UTF-8) BEFORE scanning+sending, so the
-    # scan covers exactly what is transmitted. Tell the panel when it's partial.
-    body_diff = diff
-    if len(diff) > _DIFF_CAP:
-        body_diff = diff[:_DIFF_CAP].rsplit("\n", 1)[0] + "\n[...diff truncated to the first ~30KB for the gate...]"
-    # Data boundary: never fan a secret-bearing diff out to third-party CLIs. Refuse + flag.
-    secret = _scan_secret(body_diff)
+    # Data boundary: secret-scan the FULL diff's added lines (catch a credential ANYWHERE in the
+    # PR, even past the cap) and refuse to fan out if any is found — before truncating the payload.
+    secret = _scan_secret(diff)
     if secret:
         sys.stderr.write("[co-agent PR gate] BLOCKED — the diff appears to contain a secret "
                          f"({secret}); the gate will NOT send it to third-party AIs. **Remove/redact "
                          "the secret from the diff, then retry the PR.** (CO_AGENT_PR_GATE=off would "
                          "disable the whole gate, NOT a safe fix for a leak.)\n")
         return 2
+    # Truncate the SENT payload on a line boundary (never mid-line / mid-UTF-8); tell the panel.
+    body_diff = diff
+    if len(diff) > _DIFF_CAP:
+        body_diff = diff[:_DIFF_CAP].rsplit("\n", 1)[0] + "\n[...diff truncated to the first ~30KB for the gate...]"
     body = _GATE_PROMPT + body_diff
     peers, models = _panel(root)
     if not peers:
@@ -363,15 +379,26 @@ def ev_pre_pr_gate(root):
         sys.stderr.write("[co-agent PR gate] no peer returned a parseable PASS/BLOCK verdict — gate could not "
                          "run; allowing the PR (fail-open). Re-run /co-agent:consensus review manually if needed.\n")
         return 0
-    if blockers and gate["block"]:
-        msg = ["[co-agent PR gate] BLOCKED — the consensus panel flagged CRITICAL/MAJOR issues on this PR diff.",
-               "Resolve them (or re-run after fixing), then retry the PR. Set CO_AGENT_PR_GATE=off to bypass."]
+    # Chair Principle — never let ONE AI's verdict decide. Hard-block only on a QUORUM:
+    # "majority" (default) needs >half of voters AND ≥2 blockers; "any" needs ≥1. Below quorum,
+    # a BLOCK is surfaced as ADVISORY (the host decides), not an automatic veto.
+    n_block = len(blockers)
+    if gate["quorum"] == "any":
+        quorum_met = n_block >= 1
+    else:  # majority
+        quorum_met = n_block >= 2 and n_block * 2 > usable
+    if blockers and gate["block"] and quorum_met:
+        msg = [f"[co-agent PR gate] BLOCKED — {n_block}/{usable} panel peers flagged CRITICAL/MAJOR "
+               "issues on this PR diff (quorum reached).",
+               "Resolve them (or re-run after fixing), then retry the PR. To bypass, "
+               "`export CO_AGENT_PR_GATE=off` (disables the gate)."]
         for p, v in blockers:
             msg.append(f"\n── {p} ──\n{v}")
         sys.stderr.write("\n".join(msg) + "\n")
         return 2  # PreToolUse: exit 2 blocks the tool call and feeds stderr back to the agent
-    if blockers:  # advisory mode
-        sys.stderr.write("[co-agent PR gate] advisory — peers flagged issues but block is off:\n"
+    if blockers:  # below quorum (or block off) → advisory; the host weighs it, gate does not veto
+        sys.stderr.write(f"[co-agent PR gate] ADVISORY — {n_block}/{usable} peer(s) flagged issues "
+                         "(below block quorum; not vetoing — review and decide):\n"
                          + "\n".join(f"- {p}: {v[:300]}" for p, v in blockers) + "\n")
         return 0
     sys.stderr.write(f"[co-agent PR gate] ✅ consensus PASS ({usable} voting peer(s): {', '.join(voted)}).\n")
