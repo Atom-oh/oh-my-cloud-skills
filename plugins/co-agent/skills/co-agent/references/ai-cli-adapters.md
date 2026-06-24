@@ -128,10 +128,13 @@ python3 "$CP" access <peer>   # plugin | raw | none
   (codex with `access: plugin`) through `/codex:review` // `/codex:rescue` is a documented
   future path — the slash command must be invoked by the host agent, not from this script.
   Until then, the gate relies on the raw path above.
-- **Include only READY (raw) peers.** Skip any peer whose `status` is not `READY` (auth/
-  ingest/absent) — it would only error at call time anyway.
-- **No READY peer → degrade to solo.** If nothing is READY, Claude answers solo and
-  **says so explicitly**, then suggests `/co-agent:setup` to wire up a peer.
+- **Include only gate-eligible peers** (`check_panel.py gate-eligible <peer>` → `true`:
+  `status==READY` **and** `raw_cli`). Skip auth/ingest/absent **and** plugin-only peers — the
+  bash fan-out calls raw CLIs only, so a plugin-only peer would produce no output.
+- **No gate-eligible peer → mode-specific (decided once in `/co-agent:setup` step 5):**
+  **review / decide / ADR** degrade to **solo** (Claude answers alone and **says so
+  explicitly**, then suggests `/co-agent:setup`); **consensus / harness** are **non-degraded**
+  and **block** instead of soloing (run `/co-agent:setup` or install/auth a raw peer).
 - If `.claude/co-agent-panel.local.json` is absent, run `/co-agent:setup` first (or fall
   back to binary detection above and degrade gracefully).
 
@@ -188,6 +191,13 @@ surfaces that have reliable repo-local loading semantics:
 | **Kiro** | `.kiro/steering/project-context.md` | Always-loaded steering bridge that references `CLAUDE.md` with `#[[file:CLAUDE.md]]`. | create/update bridge |
 | **Codex** | `AGENTS.md` | Merged git-root→cwd; **~32 KiB project-doc cap** (oversized → truncated). `AGENTS.override.md` wins locally. | distill + validate |
 | **Agy / legacy Gemini fallback** | prompt-supplied context | Receives the fan-out prompt/context directly; no maintained repo context file. | none |
+
+> **Residual `GEMINI.md` (legacy).** co-agent no longer generates or validates `GEMINI.md`,
+> so it is **not** in the managed/secret-scanned set. But the `gemini` CLI still auto-loads a
+> repo-root `GEMINI.md` if one exists — a file an older co-agent version may have written.
+> Before using the gemini fallback, **secret-scan any residual `GEMINI.md`** (`check_ai_context.py`
+> over it) or delete it; a stale/secret-bearing `GEMINI.md` would otherwise be injected into
+> fallback calls unchecked. Agy (the preferred third reviewer) has no such auto-loaded file.
 
 ### Distill — do NOT copy CLAUDE.md verbatim
 

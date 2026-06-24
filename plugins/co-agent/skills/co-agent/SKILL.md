@@ -47,19 +47,27 @@ installed — degrade gracefully, never hard-fail.
 ## Step 0: Detect the panel (always first)
 
 ```bash
-PANEL=""
 # Set CO_AGENT_HOST=codex when running this skill from Codex. Default host is claude.
 HOST="${CO_AGENT_HOST:-claude}"
 CFG="${CLAUDE_PLUGIN_ROOT:-plugins/co-agent}/skills/co-agent/scripts/co_agent_config.py"
-PANEL=$(python3 "$CFG" panel --host "$HOST" 2>/dev/null || true)
+# config `panel` lists ENABLED peers regardless of install/auth — announce only the ones
+# actually present on PATH, so we never tell the user "Panel: kiro-cli codex agy" on a box
+# where none are installed. (`/co-agent:setup` readiness, if present, is even more precise.)
+PANEL=""; MISSING=""
+for ai in $(python3 "$CFG" panel --host "$HOST" 2>/dev/null); do
+  if command -v "$ai" >/dev/null 2>&1; then PANEL="${PANEL:+$PANEL }$ai"; else MISSING="${MISSING:+$MISSING }$ai"; fi
+done
 echo "Panel: ${PANEL:-(none — the host will answer solo and say so)}"
+[ -n "$MISSING" ] && echo "Enabled but not installed (skipped): $MISSING"
 ```
 
 > ⚠️ **The Kiro binary is `kiro-cli`** — always invoke `kiro-cli chat …` by that exact name.
 > Agy supersedes Gemini. Prefer `agy`; call `gemini` only when Agy is unavailable.
 
-Tell the user which AIs are on the panel. If none are available, do the task as the
-host alone and state that no external panel was reached.
+Tell the user which AIs are on the panel — the **installed** set, not merely the
+config-enabled set. If `/co-agent:setup` has written a readiness summary, prefer it
+(`check_panel.py status <peer>`) — it also reflects auth/ingest, which `command -v` can't.
+If none are available, do the task as the host alone and state that no external panel was reached.
 
 > The panel respects **`/co-agent:configure`** settings — a disabled AI is dropped,
 > and per-AI model / supported effort / timeout are injected into the fan-out. Inspect

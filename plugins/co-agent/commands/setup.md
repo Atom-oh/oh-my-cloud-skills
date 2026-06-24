@@ -22,5 +22,9 @@ Let `SK="${CLAUDE_PLUGIN_ROOT:-plugins/co-agent}/skills/co-agent/scripts"`.
 4. Auth issues (`AUTH` status) are guidance only — tell the user to run the peer's login
    (e.g. `!codex login`, `!kiro-cli` login). Do not automate auth.
 5. Present the final readiness table. The summary is written to
-   `.claude/co-agent-panel.local.json`; review / consensus / harness consult it (READY peers
-   only; if none are usable they degrade to solo and say so).
+   `.claude/co-agent-panel.local.json`; the flows consult it (gate-eligible peers only —
+   `status==READY` **and** `raw_cli`). **No-peer behavior is mode-specific, decided in one
+   place:** **review / decide / ADR** degrade to **solo** (Claude answers alone and says so);
+   **consensus / harness** are **non-degraded** (the multi-model gate is their essence) — with
+   no gate-eligible peer they **block** and tell the user to run `/co-agent:setup` (or
+   install/auth a raw peer CLI), never silently solo.

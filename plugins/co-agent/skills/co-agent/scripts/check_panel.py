@@ -6,6 +6,8 @@ Usage:
   check_panel.py report [--root DIR] [--json]
   check_panel.py status <peer> [--root DIR]
   check_panel.py access <peer> [--root DIR]
+  check_panel.py gate-eligible <peer> [--root DIR]   # exit 0 + "true" iff READY AND raw_cli
+  check_panel.py fresh [--root DIR]                  # exit 0 iff summary config_hash matches current
 """
 import sys
 import os
@@ -221,6 +223,37 @@ def _reader(root, peer, field, default):
     return s.get("peers", {}).get(peer, {}).get(field, default)
 
 
+def is_fresh(root):
+    """True iff the saved summary's config_hash still matches the current effective config.
+
+    The summary records config_hash but nothing consumed it, so a config/host/auth change
+    could leave a stale READY in place. Callers run `fresh` before trusting readiness and
+    re-run `/co-agent:setup` (re-probe) on a mismatch.
+    """
+    s = _read_summary(root)
+    if not s:
+        return False
+    saved = s.get("config_hash", "")
+    cur = _config_hash(root)
+    # If we can't compute a current hash (config module unavailable), don't force churn.
+    return (not cur) or saved == cur
+
+
+def gate_eligible(root, peer):
+    """A peer can produce panel/gate output only if it is READY AND has a raw CLI.
+
+    The bash fan-out invokes raw CLIs only (Tier-1 plugin routing is not wired), so a
+    plugin-only peer (status READY, raw_cli false) would contribute zero output — counting
+    it toward a non-degraded gate is the 'plugin-only READY but silent' bug. Both
+    consensus and harness must share this single predicate.
+    """
+    s = _read_summary(root)
+    if not s:
+        return False
+    e = s.get("peers", {}).get(peer, {})
+    return e.get("status") == "READY" and bool(e.get("raw_cli"))
+
+
 def main():
     argv = sys.argv[1:]
     if not argv:
@@ -249,6 +282,17 @@ def main():
         default = "ABSENT" if argv[0] == "status" else "none"
         print(_reader(root, peer, argv[0], default))
         return 0
+    if argv[0] == "gate-eligible":
+        peer = argv[1]
+        root = argv[argv.index("--root") + 1] if "--root" in argv else "."
+        ok = gate_eligible(root, peer)
+        print("true" if ok else "false")
+        return 0 if ok else 1
+    if argv[0] == "fresh":
+        root = argv[argv.index("--root") + 1] if "--root" in argv else "."
+        ok = is_fresh(root)
+        print("fresh" if ok else "stale")
+        return 0 if ok else 1
     print(__doc__)
     return 2
 

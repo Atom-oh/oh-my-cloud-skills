@@ -9,36 +9,46 @@ sandbox; the host owns the failing test, the verification, and every commit.
 
 ## Trust boundary
 
-A git worktree isolates the *working tree*, **not** the process — a peer can still write
-via `..`/absolute paths. So writes are confined by a **workspace-write sandbox scoped to
-the worktree**, emitted by `co_agent_config.py impl-flags <ai> --host <h>`. Only CLIs with
-a real workspace-write sandbox are valid implementers:
+The **hard guarantee is not the sandbox — it is that the host only ever applies the
+worktree's captured, scope-guarded diff.** A git worktree isolates the *working tree*, not
+the process, so a peer could in principle write via `..`/absolute paths. That cannot reach
+the main tree, because the host never copies the peer's filesystem: `worktree.py
+capture-diff` runs `git add -A` (which respects `.gitignore`) **inside the worktree** then
+`git diff --cached`, so **only files the peer changed within the worktree** are captured;
+anything written outside it is invisible to the patch. Every captured path must then pass
+`scope_guard.py --plan <plan>` (out-of-scope hunks dropped), and the host applies the result
+to the main branch and **runs the tests there** — never trusting a test run inside the peer's
+worktree. So even a peer that escaped its cwd cannot land an out-of-worktree or out-of-scope
+write. This — capture-scoped-to-worktree + scope_guard + host-applies-only-that — is what
+holds the boundary; the sandbox below is defense-in-depth, not the sole guard.
+
+**Defense-in-depth: a workspace-write sandbox with cwd = the worktree**, emitted by
+`co_agent_config.py impl-flags <ai> --host <h>`. Only CLIs with a real workspace-write
+sandbox are eligible implementers:
 
 | Implementer | Write-mode flags |
 |-------------|------------------|
 | Codex | `-s workspace-write` (+ `-m <model>`, effort) |
 | Agy | `--sandbox` (+ `--model`) |
 
-**Agy has a *single* `--sandbox` mode** — unlike Codex's split `-s read-only` vs
-`-s workspace-write`, there is no separate read-only sandbox flag. The advisory (review)
-path keeps agy non-writing by running it in **`-p` print mode** (it emits text, does not
-act); the implement path drops `-p` so agy runs as an agent that can write, and confines
-those writes by launching it **with cwd set to the worktree** under `--sandbox`. So for
-agy the worktree-scoped cwd — not a distinct write flag — is what holds the trust boundary.
-`impl-flags agy` therefore emits the same `--sandbox` the advisory `flags agy` would, plus
-`--model`; the difference is print-vs-agent mode and the cwd, set by the per-task loop.
+Codex `-s workspace-write` confines writes to the working directory; **agy has a *single*
+`--sandbox` mode** (no separate read-only flag like Codex's `-s read-only`), which likewise
+sandboxes to the launch cwd. For **both**, the per-task loop sets **cwd = the worktree**, so
+the sandbox confines writes there. The advisory (review) path instead runs agy in **`-p`
+print mode** (emits text, never acts), which is why `impl-flags agy` emits the same
+`--sandbox` the advisory `flags agy` would, plus `--model` — the difference is print-vs-agent
+mode and the cwd. **Whether agy's `--sandbox` fully blocks `..`/absolute writes is not
+something we assert as proven** — that is exactly why the capture-scoped-to-worktree backstop
+above, not the sandbox, is the load-bearing guarantee. (To raise the floor, the host may run
+the implementer with `worktree.py` from inside `<wt>`; if a future audit shows a sandbox does
+not confine to cwd, drop that implementer from `impl-flags`.)
 
-**Not valid implementers:** `claude --permission-mode acceptEdits`, `kiro-cli --trust-tools`,
-and `gemini --yolo` auto-accept writes but do **not** confine them to the worktree, so the
-trust boundary would not hold — `implementer`/`impl-flags` reject them. Default implementer:
-claude host → `codex`, codex host → `agy`. These write variants exist **only** here; review /
-decide / ADR / plan / code-gate paths stay read-only/advisory (`flags`, not `impl-flags`).
-
-**Trust only the tracked diff.** `worktree.py capture-diff` runs `git add -A` (which
-respects `.gitignore`) then `git diff --cached`, so new source files are captured and
-`.gitignore`'d files are excluded *by construction* — a hidden ignored file can never reach
-the main tree. The host applies that patch to the main branch and **runs the tests there**,
-never trusting a test run performed inside the peer's worktree.
+**Not eligible implementers:** `claude --permission-mode acceptEdits`, `kiro-cli
+--trust-tools`, and `gemini --yolo` auto-accept writes but do **not** sandbox them to a cwd,
+so they lack even the defense-in-depth layer — `implementer`/`impl-flags` reject them.
+Default implementer: claude host → `codex`, codex host → `agy`. These write variants exist
+**only** here; review / decide / ADR / plan / code-gate paths stay read-only/advisory
+(`flags`, not `impl-flags`).
 
 ## Per-task loop
 

@@ -319,10 +319,10 @@ def cmd_stage_result(rest):
     """Durable per-stage output gate.
       stage-result write <path> --stage S --verdict PASS|REVIEW|FAIL [--green b]
                         [--in-scope b] [--rounds N] [--implementer ai] [--wall tsv]
-      stage-result check <path>   # exit 0 if exists + schema-valid, else 1
+      stage-result check <path> [--allow-review]   # exit 0 if exists + schema-valid + passing, else 1
     """
     if not rest or rest[0] not in ("write", "check") or len(rest) < 2:
-        print("usage: stage-result write <path> --stage S --verdict V [...] | check <path>", file=sys.stderr)
+        print("usage: stage-result write <path> --stage S --verdict V [...] | check <path> [--allow-review]", file=sys.stderr)
         return 2
     action, path, args = rest[0], rest[1], rest[2:]
     if action == "check":
@@ -340,6 +340,12 @@ def cmd_stage_result(rest):
         if d.get("verdict") == "FAIL":
             return 1
         if d.get("green") is False or d.get("in_scope") is False:
+            return 1
+        # REVIEW means "needs human approval" — it is NON-passing for autonomous
+        # progression. Only an explicit --allow-review override lets a flow advance
+        # past it (e.g. a human already approved). Without it, REVIEW → exit 1 so
+        # harness/consensus stop at the gate rather than silently auto-advancing.
+        if d.get("verdict") == "REVIEW" and "--allow-review" not in args:
             return 1
         return 0
     # write
