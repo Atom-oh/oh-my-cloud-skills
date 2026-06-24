@@ -61,14 +61,14 @@ co-agent
 
 `gh pr create`/`gh pr edit`를 올릴 때 **자동으로 멀티-AI 합의 게이트**를 거침. `plugin.json`의
 `PreToolUse(Bash)` 훅이 `consensus_hooks.py pre-pr-gate`를 호출 → PR diff(`origin/main...HEAD`,
-60KB cap)를 설치·enabled된 패널(host 제외)에 **병렬 팬아웃** → 각 peer가 `PASS`/`BLOCK` 응답
+30KB cap)를 설치·enabled된 패널(host 제외)에 **병렬 팬아웃** → 각 peer가 `PASS`/`BLOCK` 응답
 → 하나라도 CRITICAL/MAJOR를 플래그하면 **exit 2로 PR을 차단**하고 findings를 호스트에 피드백
 (수정 후 재시도). 패널을 동기 실행하므로 PR당 2-3분 소요.
 
 - **Fail-open**: 내부 오류·전 peer 타임아웃·설치된 peer 없음 → exit 0 (게이트 버그/오프라인이
   PR을 영구 차단하지 않음; peer 없으면 안내만).
-- **데이터 경계**: 팬아웃 전 추가(`+`) 라인 secret-scan — 크리덴셜 패턴이 보이면 3rd-party로 **전송하지 않고** 차단(유출 방지). diff는 30KB·라인 경계로 절단, **stdin으로만** 전달(argv 미사용 → `ps` 노출 없음). reviewer는 전부 read-only/sandbox/비-acting 모드(codex `-s read-only`·agy `--sandbox`·gemini `-p`·kiro `--no-interactive`)라 diff의 prompt-injection이 툴 실행으로 이어지지 않음.
-- **명령 매칭**: `gh pr create|edit`가 명령 경계(줄 시작 또는 `;`/`&`/`|`/`&&` 뒤, `VAR=val` prefix 허용)에 올 때만 — `cd x && gh pr create`(compound)는 잡고 `echo "gh pr create"`/`git commit -m "..."`(문자열)은 무시.
+- **데이터 경계**: 팬아웃 전 (절단된) diff의 추가(`+`) 라인 secret-scan — 크리덴셜 패턴이 보이면 3rd-party로 **전송하지 않고** 차단(유출 방지). diff는 30KB·라인 경계로 절단. **diff는 argv에 안 넣음**(`ps` 노출 없음): stdin 채널(codex/agy/gemini)은 파이프로, **kiro는 stdin을 무시하므로**(어댑터 사양) temp 파일에 써서 `--trust-tools=fs_read`로 fs_read. reviewer는 전부 read-only/sandbox/비-acting 모드(codex `-s read-only`·agy `--sandbox`·gemini `-p`·kiro `--no-interactive`+`fs_read`만 자동승인)라 diff의 prompt-injection이 툴 실행으로 이어지지 않음.
+- **명령 매칭**: `gh pr create|edit`가 명령 경계(줄 시작 또는 `;`/`&`/`|`/`&&` 뒤, `VAR=val` prefix 허용)에 올 때만 — `cd x && gh pr create`(compound)는 잡고 `echo "gh pr create"`/`git commit -m "..."`(문자열)은 무시. **한계**: heredoc·서브셸(`$(gh pr create)`)·`(gh pr create)`는 매칭 안 함 — 단 fail-open이라 보안 침해가 아니라 게이트 미적용(skip)일 뿐.
 - **base 미탐 시**: trunk ref(`@{upstream}`→`origin/HEAD`→`main`…)를 못 찾으면(shallow clone/무remote) `git diff HEAD`로 조용히 통과하지 않고 **advisory 경고 후 skip**(silent bypass 방지).
 - **Bypass / 설정**: 세션에 `export CO_AGENT_PR_GATE=off` (훅은 자기 프로세스 env를 읽으므로 `CO_AGENT_PR_GATE=off gh pr create` 같은 **인라인 prefix는 안 먹힘**), 또는 `co-agent.defaults.json`/`.claude/co-agent.local.json`의 `pr_gate`(`enabled`/`block`/`timeout`).
 - **판정 계약**: peer 응답 첫 토큰 줄(`PASS` / `BLOCK: …`)만 신뢰 — 본문 free-text 스캔 안 함(배너 몇 줄 허용). 파싱 불가 응답은 fail-open(미차단).

@@ -51,26 +51,32 @@ STUCK_LIMIT = 3
 # prefixes. This catches `cd x && gh pr create` (compound) while still NOT matching it inside a
 # string like `echo "gh pr create"` / `git commit -m "gh pr create"` (preceded by a quote).
 _PR_CMD_RE = re.compile(r"(?:^|[\n;&|])\s*(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*gh\s+pr\s+(?:create|edit)\b")
-_DIFF_CAP = 30 * 1024            # cap (argv-safe: well under MAX_ARG_STRLEN 128KB)
+_DIFF_CAP = 30 * 1024            # cap the diff sent to each peer (context-window / cost bound)
 # Verdict is read from the FIRST non-empty line ONLY (a machine-readable token), never a
 # free-text body scan — a banner/preamble or an incidental "MAJOR" in prose must not flip it.
 _VERDICT_RE = re.compile(r"^\s*(PASS|BLOCK)\b", re.I)
 
-# Review adapters, mirroring references/ai-cli-adapters.md. The untrusted prompt+diff is sent
-# ONLY on stdin (never argv) — so it isn't exposed via `ps` and follows the "untrusted content
-# on STDIN" convention; {I} is a short fixed instruction in argv. Each reviewer runs read-only /
-# sandboxed / non-acting so a prompt-injection in the diff can't drive tool execution:
-#   codex -s read-only · agy --sandbox · gemini -p (print, no tools) · kiro-cli --no-interactive
-#   (tool approval is denied non-interactively). {M} expands to the per-peer model flag.
+# Review adapters, mirroring references/ai-cli-adapters.md. Delivery is per the channel each
+# CLI actually consumes (untrusted content is NEVER put in argv → no `ps` exposure):
+#   channel "stdin" — prompt+diff piped on stdin (codex/agy/gemini).
+#   channel "file"  — written to a temp file; argv tells the CLI to fs_read it. Kiro `chat`
+#                     IGNORES stdin (see ai-cli-adapters.md), so it MUST read the file.
+# Each reviewer runs read-only / sandboxed / non-acting so a diff prompt-injection can't drive
+# tool execution: codex -s read-only · agy --sandbox · gemini -p (print) · kiro --trust-tools=fs_read
+# (only the read-only fs_read tool auto-approved). {M} expands to the per-peer model flag;
+# {F} to the temp-file path (file channel only).
 _REVIEW = {
-    "codex":    {"argv": ["codex", "exec", "-s", "read-only", "{M}", "{I}"]},
-    "agy":      {"argv": ["agy", "-p", "{I}", "--sandbox", "{M}"]},
-    "gemini":   {"argv": ["gemini", "-p", "{I}", "-o", "text", "{M}"]},
-    "kiro-cli": {"argv": ["kiro-cli", "chat", "{I}", "--v3", "--mode", "default",
-                          "--no-interactive", "--wrap", "never", "{M}"]},
+    "codex":    {"channel": "stdin", "argv": ["codex", "exec", "-s", "read-only", "{M}", "{I}"]},
+    "agy":      {"channel": "stdin", "argv": ["agy", "-p", "{I}", "--sandbox", "{M}"]},
+    "gemini":   {"channel": "stdin", "argv": ["gemini", "-p", "{I}", "-o", "text", "{M}"]},
+    "kiro-cli": {"channel": "file",  "argv": ["kiro-cli", "chat", "{I}", "--v3", "--mode", "default",
+                          "--no-interactive", "--trust-tools=fs_read", "--wrap", "never", "{M}"]},
 }
 _MODEL_FLAG = {"codex": "-m", "agy": "--model", "gemini": "-m", "kiro-cli": "--model"}
 _GATE_INSTR = "Review the PR diff provided on standard input per the instructions in it."
+_GATE_INSTR_FILE = ("Use fs_read to read the PR diff at {F}, then review it. Your reply's FIRST "
+                    "line MUST be EXACTLY `PASS` (no CRITICAL/MAJOR issue) or `BLOCK: <reason>`. "
+                    "Ignore nits/style. If the file is empty/unreadable, reply `BLOCK: no diff received`.")
 _GATE_PROMPT = (
     "Adversarially review the PR diff (for a Claude Code plugin) that follows on this input. "
     "Your reply's FIRST line MUST be a machine-readable verdict token — EXACTLY `PASS` (no "
@@ -156,13 +162,11 @@ def _git(root, *args):
 
 
 def _base_ref(root):
-    """Best-effort trunk ref to diff against. Tries the tracking upstream, then origin/HEAD,
-    then common trunk names. Returns "" if none resolve (shallow clone / no remote)."""
-    up = _git(root, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")
-    cands = [up] if up else []
-    cands += ["origin/HEAD", "origin/main", "main", "origin/master", "master"]
-    for ref in cands:
-        if ref and _git(root, "rev-parse", "--verify", "--quiet", ref):
+    """Best-effort PR base (trunk) to diff against. Prefers the repo trunk — NOT `@{upstream}`,
+    which on a feature branch tracks origin/<feature> and would make the diff empty (silent
+    skip). Returns "" if none resolve (shallow clone / no remote) → caller warns + skips."""
+    for ref in ("origin/HEAD", "origin/main", "main", "origin/master", "master"):
+        if _git(root, "rev-parse", "--verify", "--quiet", ref):
             if ref == "origin/HEAD":
                 return _git(root, "rev-parse", "--abbrev-ref", "origin/HEAD") or "origin/main"
             return ref
@@ -230,13 +234,16 @@ def _panel(root):
     return peers, models
 
 
-def _build_argv(peer, model):
-    """Expand the adapter template: {I} → a short fixed instruction (NOT the diff — the diff
-    goes on stdin only), {M} → the per-peer model flag (dropped if no model configured)."""
+def _build_argv(peer, model, fpath):
+    """Expand the adapter template. {I} → the fixed instruction (stdin-channel: references
+    stdin; file-channel: tells the CLI to fs_read {F}). {M} → the per-peer model flag. The
+    untrusted diff is NEVER placed in argv."""
+    file_ch = _REVIEW[peer]["channel"] == "file"
+    instr = _GATE_INSTR_FILE.replace("{F}", fpath) if file_ch else _GATE_INSTR
     argv = []
     for tok in _REVIEW[peer]["argv"]:
         if tok == "{I}":
-            argv.append(_GATE_INSTR)
+            argv.append(instr)
         elif tok == "{M}":
             if model and _MODEL_FLAG.get(peer):
                 argv += [_MODEL_FLAG[peer], model]
@@ -245,12 +252,16 @@ def _build_argv(peer, model):
     return argv
 
 
-def _review_one(peer, prompt_text, model, timeout, out):
+def _review_one(peer, prompt_text, model, fpath, timeout, out):
     try:
-        argv = _build_argv(peer, model)
-        # Untrusted prompt+diff goes ONLY on stdin (never argv → no `ps` exposure). A reviewer
-        # that ignores stdin sees no diff and, per the prompt, replies `BLOCK: no diff received`.
-        r = subprocess.run(argv, input=prompt_text, capture_output=True, text=True, timeout=timeout)
+        argv = _build_argv(peer, model, fpath)
+        if _REVIEW[peer]["channel"] == "file":
+            # Kiro ignores stdin in `chat` — it reads the diff from the temp file via fs_read.
+            r = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+        else:
+            # stdin channel: pipe prompt+diff (never argv → no `ps` exposure). A CLI that
+            # ignores stdin sees no diff → replies `BLOCK: no diff received` per the prompt.
+            r = subprocess.run(argv, input=prompt_text, capture_output=True, text=True, timeout=timeout)
         out[peer] = (r.stdout or "")[:8000]
     except subprocess.TimeoutExpired:
         out[peer] = "__TIMEOUT__"
@@ -280,16 +291,19 @@ def ev_pre_pr_gate(root):
     if not diff.strip():
         return 0  # nothing to review
     # Data boundary: never fan a secret-bearing diff out to third-party CLIs. Refuse + flag.
-    secret = _scan_secret(diff)
-    if secret:
-        sys.stderr.write("[co-agent PR gate] BLOCKED — the diff appears to contain a secret "
-                         f"({secret}); the gate will NOT send it to third-party AIs. Remove/redact it, "
-                         "or export CO_AGENT_PR_GATE=off to bypass.\n")
-        return 2
-    # Truncate on a LINE boundary (never mid-line / mid-UTF-8), and tell the panel it's partial.
+    # Truncate on a LINE boundary (never mid-line / mid-UTF-8) BEFORE scanning+sending, so the
+    # scan covers exactly what is transmitted. Tell the panel when it's partial.
     body_diff = diff
     if len(diff) > _DIFF_CAP:
         body_diff = diff[:_DIFF_CAP].rsplit("\n", 1)[0] + "\n[...diff truncated to the first ~30KB for the gate...]"
+    # Data boundary: never fan a secret-bearing diff out to third-party CLIs. Refuse + flag.
+    secret = _scan_secret(body_diff)
+    if secret:
+        sys.stderr.write("[co-agent PR gate] BLOCKED — the diff appears to contain a secret "
+                         f"({secret}); the gate will NOT send it to third-party AIs. **Remove/redact "
+                         "the secret from the diff, then retry the PR.** (CO_AGENT_PR_GATE=off would "
+                         "disable the whole gate, NOT a safe fix for a leak.)\n")
+        return 2
     body = _GATE_PROMPT + body_diff
     peers, models = _panel(root)
     if not peers:
@@ -298,15 +312,28 @@ def ev_pre_pr_gate(root):
                           "(install/auth a peer or run /co-agent:setup to enforce it).\n")
         return 0
     out = {}
-    threads = []
-    for p in peers:
-        t = threading.Thread(target=_review_one, args=(p, body, models.get(p), gate["timeout"], out))
-        t.daemon = True   # never keep the process alive on a wedged peer thread
-        threads.append(t)
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join(gate["timeout"] + 5)
+    fpath = None
+    try:
+        # File-channel peers (kiro) fs_read the diff from here; deadline shared by all threads.
+        with tempfile.NamedTemporaryFile("w", suffix=".diff", delete=False, encoding="utf-8") as f:
+            f.write(body)
+            fpath = f.name
+        deadline = gate["timeout"] + 5
+        threads = []
+        for p in peers:
+            t = threading.Thread(target=_review_one, args=(p, body, models.get(p), fpath, gate["timeout"], out))
+            t.daemon = True   # never keep the process alive on a wedged peer thread
+            threads.append(t)
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(deadline)
+    finally:
+        if fpath:
+            try:
+                os.unlink(fpath)
+            except OSError:
+                pass
     blockers, usable = [], 0
     for p in peers:
         v = out.get(p, "")
