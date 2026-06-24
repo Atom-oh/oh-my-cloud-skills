@@ -222,7 +222,10 @@ _SECRET_RE = re.compile(
     r"|xox[abprs]-[A-Za-z0-9-]{10,}"                     # Slack tokens
     r"|sk-[A-Za-z0-9]{20,}|sk-ant-[A-Za-z0-9-]{20,}"     # OpenAI / Anthropic keys
     r"|AIza[0-9A-Za-z_\-]{30,}"                          # Google API key
-    r"|(?:password|passwd|secret|api[_-]?key|token|client[_-]?secret)\s*[:=]\s*['\"]?[^\s'\"]{8,}",
+    # generic keyword=value — require a QUOTED literal value so a code assignment like
+    # `secret = _scan_secret(diff)` (an identifier/call, not a credential) is NOT a false match;
+    # unquoted real secrets are covered by the dedicated high-entropy patterns above.
+    r"|(?:password|passwd|secret|api[_-]?key|token|client[_-]?secret)['\"]?\s*[:=]\s*['\"][^'\"]{8,}",
     re.I,
 )
 
