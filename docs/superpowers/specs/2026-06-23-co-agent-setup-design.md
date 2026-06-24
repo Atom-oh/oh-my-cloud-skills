@@ -37,8 +37,10 @@ ingestion, auth, and background-job orchestration.
 - A codex-style stop-time review-gate hook (separate feature).
 - Automatic authentication or bulk auto-install.
 - Re-implementing what an official plugin already does (background broker, app-server).
-- Fixing the Kiro raw-adapter stdin path itself (tracked as a separate follow-up; setup
-  merely *detects* it as `NO_INGEST`).
+- Deeper Kiro raw-adapter work beyond the v3/argv input-channel correction. **This spec DOES
+  correct the Kiro adapter to its working form** (positional `[INPUT]` argv + `--v3` + `fs_read`,
+  §6.2) — that is what makes the sentinel probe meaningful. Out of scope is anything further
+  (e.g. a stdin-ingest broker); setup otherwise merely *detects* a broken adapter as `NO_INGEST`.
 
 ## 3. Tiered peer access (the core idea)
 
@@ -82,15 +84,19 @@ echo it back verbatim:
   `NO_INGEST`: the adapter piped context to stdin while `chat` only reads `[INPUT]` from
   argv, so Kiro never saw it — see §6.2.)
 
-`READY` requires exit 0, no timeout, and stdout matching the sentinel exactly after
-trim/normalize.
+`READY` requires exit 0, no timeout, and the unique sentinel appearing as a
+whitespace-delimited token in trimmed stdout (`sentinel in stdout.strip().split()`).
+Token **membership** — not whole-string equality — is deliberate: a working CLI often frames
+its reply (`Sure, here it is: COAGENT_PROBE_X`), and echoing the unique sentinel at all proves
+the input channel was consumed, which is exactly what the probe certifies. The sentinel is
+unique per run, so framing text cannot spuriously satisfy it.
 
 `classify(sentinel, stdout, stderr, returncode, timed_out)` — a **pure function** (unit
 tested) — returns:
 
 | Status | Condition |
 |--------|-----------|
-| `READY` | exit 0, no timeout, stdout matches the sentinel exactly (after trim/normalize) |
+| `READY` | exit 0, no timeout, sentinel present as a token in trimmed stdout (`sentinel in stdout.split()`) |
 | `NO_INGEST` | exit 0 but sentinel absent — the CLI ran yet ignored stdin (Kiro) or drifted (Codex meta) |
 | `AUTH` | recognized auth/login-required error pattern |
 | `TIMEOUT` | the probe timed out |

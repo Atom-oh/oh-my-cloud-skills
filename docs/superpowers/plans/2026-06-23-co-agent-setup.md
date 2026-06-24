@@ -15,7 +15,8 @@
 - Sibling imports follow the existing pattern (`_HERE = dirname(abspath(__file__)); sys.path.insert(0, _HERE); import co_agent_config`).
 - Readiness summary path: `.claude/co-agent-panel.local.json` (already gitignored by `.claude/*`); writes are **atomic** (temp file + `os.replace`).
 - New test file `tests/structure/test-co-agent-setup.sh` is auto-discovered; it is **sourced** (no shebang exec, no `exit`); use the exported `assert_*` helpers; guard any failing command with `&& X=0 || X=$?` (a bare `ERR=$(failing-cmd)` trips `set -e` and aborts the file).
-- Tests must NOT invoke the real peer CLIs — use fake shim scripts placed first on `PATH`.
+- **Precondition (verify before Task 1):** the `assert_*` helpers this file uses — `assert_eq`, `assert_contains`, `assert_file_exists`, `assert_json_valid`, `assert_grep_no_match` — must be exported by `run-all.sh` (`grep -nE 'assert_(json_valid|grep_no_match)\(\)' tests/run-all.sh`). A missing helper aborts the whole sourced structure run with command-not-found under `set -e`; add it to `run-all.sh` first if absent.
+- Tests must NOT invoke the real peer CLIs — use fake shim scripts placed first on `PATH`, and isolate `PATH` (shim dir + a `python3` symlink + `/usr/bin:/bin`, **not** `~/.local/bin`/`/usr/local/bin`) so `report()`/`probe()` can never reach a real `agy`/`kiro-cli`/`gemini` and hang on an interactive CLI.
 - Run the full suite after each task: `bash tests/run-all.sh`. Pre-existing failures (missing `.claude/hooks/*.sh`; reactive-presentation pptx-token tests) are out of scope — confirm they predate this work.
 - Out of scope (separate follow-up plan): configure/sync-context v3-alignment (generating Kiro v3 Markdown agent configs via `kiro-cli agent create`).
 
@@ -32,7 +33,9 @@ re-runnable from a tree where it has *not* landed.
 - [ ] **Verify it has landed** (must pass before Task 1):
 
 ```bash
-grep -q '"kiro-cli"' plugins/co-agent/skills/co-agent/scripts/co_agent_config.py \
+# Match the ALL_AIS tuple itself — a bare "kiro-cli" anywhere (e.g. a BINARIES mapping) would
+# pass a loose grep while the panel key is still "kiro".
+grep -qE 'ALL_AIS *= *\([^)]*"kiro-cli"' plugins/co-agent/skills/co-agent/scripts/co_agent_config.py \
   && echo "rename landed (ALL_AIS uses kiro-cli)" \
   || echo "RENAME NOT LANDED — perform it before any further task"
 ```
@@ -304,14 +307,19 @@ import tempfile
 import signal
 
 # Read-only adapters, mirroring references/ai-cli-adapters.md. "{P}" = prompt, "{I}" = INPUT (prompt+sentinel).
+# Every peer in PEERS MUST have an adapter here, else report()→probe() returns
+# "ERROR unknown peer" for it. `claude` is a peer (it can be a read-only panel member when
+# Codex hosts), so it needs an adapter too.
 ADAPTERS = {
     "codex":    {"argv": ["codex", "exec", "-s", "read-only", "{P}"], "channel": "stdin"},
     "agy":      {"argv": ["agy", "-p", "{P}", "--sandbox"], "channel": "stdin"},
     "gemini":   {"argv": ["gemini", "-p", "{P}", "-o", "text"], "channel": "stdin"},
+    "claude":   {"argv": ["claude", "-p", "{P}", "--permission-mode", "plan", "--output-format", "text"], "channel": "stdin"},
     "kiro-cli": {"argv": ["kiro-cli", "chat", "{I}", "--v3", "--mode", "default",
                           "--no-interactive", "--trust-tools=fs_read", "--wrap", "never"],
                  "channel": "argv"},
 }
+assert set(ADAPTERS) == set(PEERS), "every PEER needs an adapter (and vice-versa)"
 _CAP = 64 * 1024   # output-size cap
 
 

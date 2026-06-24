@@ -32,14 +32,31 @@
   but it does **not** perform the `kiro`→`kiro-cli` rename itself. That rename is owned by the
   setup plan's **Task 0** (repo-wide `kiro`→`kiro-cli` across `co_agent_config.py` `ALL_AIS`,
   adapters, configs, and tests). **Verify, don't assume** it has landed before starting Task 1:
-  `grep -q '"kiro-cli"' plugins/co-agent/skills/co-agent/scripts/co_agent_config.py` (the runtime
-  already ships `ALL_AIS = ("kiro-cli", …)`). If that grep fails in your tree, run setup Task 0
+  `grep -qE 'ALL_AIS *= *\([^)]*"kiro-cli"' plugins/co-agent/skills/co-agent/scripts/co_agent_config.py`
+  — match the **`ALL_AIS` tuple** itself, not a bare `"kiro-cli"` anywhere (a `BINARIES={"kiro":"kiro-cli"}`
+  mapping would satisfy a loose grep while the panel key is still `kiro`). The runtime already ships
+  `ALL_AIS = ("kiro-cli", …)`. If that grep fails in your tree, run setup Task 0
   first — this plan **depends-on** it; otherwise both plans fail on a `kiro`/`kiro-cli` key mismatch.
 - Write-mode adapters (workspace-write sandbox) exist **only** on the harness implement path; review/decide/ADR/gate paths stay read-only/advisory.
 - The host is the **only** committer to the working branch; external AIs write only inside a worktree.
 - Local commits only — never push/reset/rebase autonomously.
 - New test file `tests/structure/test-co-agent-harness.sh` is auto-discovered (glob); `assert_*` helpers are exported by `run-all.sh` — call them directly, do not redefine.
 - Run the **full suite** after each task: `bash tests/run-all.sh`.
+
+### Test-harness constraints (READ FIRST — same model as the setup plan)
+
+- **Files are `source`d by `run-all.sh`, not executed.** The `#!/usr/bin/env bash` shebang shown
+  in the snippets is illustrative only — **do NOT call `exit`** in a test file (it would abort the
+  whole sourced run). End-of-file cleanup only.
+- **The runner uses `set -e`.** Any command whose non-zero exit is expected (e.g. asserting an
+  `exit 2`) MUST be guarded so it can't abort the run: `cmd … && RC=0 || RC=$?` then assert on
+  `$RC`. Bare `python3 "$CFG" set harness …` lines that may exit non-zero must use this guard.
+- **Precondition — assertion helpers exist.** These tests rely on helpers exported by
+  `run-all.sh`: `assert_eq`, `assert_contains`, `assert_file_exists`, `assert_file_executable`,
+  `assert_json_valid`, `assert_grep_match`, `assert_grep_no_match`. Confirm they are exported
+  (`grep -nE 'assert_(grep_no_match|json_valid)\(\)' tests/run-all.sh`) **before** Step 1; if any
+  is missing, add it to `run-all.sh` first (a missing helper aborts the sourced run with
+  command-not-found under `set -e`).
 
 ---
 
@@ -53,6 +70,12 @@
 **Interfaces:**
 - Produces: `co_agent_config.py implementer --host <claude|codex>` → prints the effective implementer AI id (counterpart when `harness.implementer` is null); exits 2 if the configured implementer equals the host.
 - Consumes: existing `normalize_host`, `panel_ais`, `effective`, `MODEL_RE`.
+- **Dispatch context (already in `main()`, not re-shown in the per-task snippets):** `main()`
+  already parses `--root DIR` → `root` and `--host claude|codex` (or `$CO_AGENT_HOST`) →
+  `host = normalize_host(...)`, then `cmd, rest = args[0], args[1:]`. The `implementer` /
+  `impl-flags` dispatch lines below append to that existing parser — `host`/`root`/`rest` are
+  already bound, and `cmd_show(root, host)` is the **existing 2-arg signature** (host-aware),
+  so the snippets don't crash or mismatch. Do NOT re-introduce a 1-arg `cmd_show(root)`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -115,7 +138,7 @@ def implementer_ai(cfg, host):
     if ai == host:
         return ai, f"implementer '{ai}' cannot equal the current host '{host}'"
     if ai not in SANDBOX_IMPLEMENTERS:
-        return ai, (f"implementer '{ai}' is not a sandbox CLI; choose one of: "
+        return ai, (f"implementer '{ai}' has no worktree-scoped write sandbox; use one of: "
                     f"{', '.join(SANDBOX_IMPLEMENTERS)}")
     return ai, None
 
@@ -193,7 +216,7 @@ git commit -m "feat(co-agent): harness config + implementer resolution"
 - Test: `tests/structure/test-co-agent-harness.sh`
 
 **Interfaces:**
-- Produces: `co_agent_config.py impl-flags <ai> --host <h>` → **shell-quoted** (`shlex.join`) write-mode flags scoping the peer to a workspace-write sandbox plus its model/effort; consumers word-split the output as a shell word list (so a model name like `Gemini 3.1 Pro (High)` survives). Rejects an `ai` equal to the host **or** any non-sandbox `ai` (exit 2).
+- Produces: `co_agent_config.py impl-flags <ai> --host <h>` → **newline-delimited** write-mode flags (one token per line) scoping the peer to a workspace-write sandbox plus its model/effort. **Consumer contract (explicit, matches the shipped code):** read one flag per line — `mapfile -t flags < <(… impl-flags …)` (bash) or `out.splitlines()` (Python) — then pass `"${flags[@]}"`. Newline (not space/shlex) delimiting is what keeps a spaced model name like `Gemini 3.1 Pro (High)` a single token **without** any quoting or `eval`. Rejects an `ai` equal to the host **or** any non-sandbox `ai` (exit 2).
 - Consumes: `implementer_ai`, `SANDBOX_IMPLEMENTERS`, existing per-AI `flags` model/effort logic.
 
 - [ ] **Step 1: Write the failing test** (append to `test-co-agent-harness.sh`)
@@ -227,8 +250,8 @@ def cmd_impl_flags(root, ai, host):
     # non-sandbox peer (claude/kiro-cli/gemini) could write outside the worktree, so
     # it gets no write-mode flags — it is rejected, never granted acceptEdits/--yolo.
     if ai not in SANDBOX_IMPLEMENTERS:
-        print(f"implementer '{ai}' is not a sandbox CLI; choose one of: "
-              f"{', '.join(SANDBOX_IMPLEMENTERS)}", file=sys.stderr)
+        print(f"implementer '{ai}' has no worktree-scoped write sandbox; "
+              f"use one of: {', '.join(SANDBOX_IMPLEMENTERS)}", file=sys.stderr)
         return 2
     p = effective(root)["panel"].get(ai, {})
     model = p.get("model")
@@ -243,12 +266,9 @@ def cmd_impl_flags(root, ai, host):
         parts += ["--sandbox"]
         if model:
             parts += ["--model", model]
-    # shlex.join quotes tokens containing spaces/parens (e.g. model "Gemini 3.1 Pro
-    # (High)") so a shell consumer can `read -ra` / word-split the output back into argv
-    # without mis-splitting the model name. Consumers MUST treat the output as a shell
-    # word list (not re-split on raw whitespace).
-    import shlex
-    print(shlex.join(parts))
+    # Newline-delimited (NOT space/shlex) so a spaced model value (e.g. "Gemini 3.1 Pro (High)")
+    # stays one token. Consumer: `mapfile -t flags < <(… impl-flags …)` then `"${flags[@]}"`.
+    print("\n".join(parts))
     return 0
 ```
 
@@ -759,21 +779,34 @@ Expected: all four assertions PASS. Also confirm the manifest still validates:
 
 Adding a `commands[]` entry is a release change, so bump the single shared version across
 **every** `plugins/*/.claude-plugin/plugin.json` + `marketplace.json` (they must stay
-identical), add a `CHANGELOG.md` entry, and tag `v{NEW}`:
+identical), add a `CHANGELOG.md` entry, and tag `v{NEW}`.
+
+**Coordinate with the setup plan (bump exactly once per release).** The `harness` and `setup`
+commands share one version. If both land in the same release, the plan that lands **last**
+owns the bump and the other skips it — bumping twice would desync `plugins/*/plugin.json` ↔
+`marketplace.json` and fail the version-consistency check. Before bumping, read the current
+shared version and only advance if this is the release-owning change:
 
 ```bash
 NEW="<next-version>"   # pick per semver; ALL plugin.json + marketplace.json must match
 python3 - "$NEW" <<'PY'
 import json, glob, sys
 new = sys.argv[1]
+def bump(path, mutate):
+    with open(path, encoding="utf-8") as f:
+        d = json.load(f)
+    mutate(d)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(d, f, indent=2, ensure_ascii=False)
+        f.write("\n")
 for p in glob.glob("plugins/*/.claude-plugin/plugin.json"):
-    d = json.load(open(p)); d["version"] = new
-    json.dump(d, open(p, "w"), indent=2); open(p, "a").write("\n")
-mp = ".claude-plugin/marketplace.json"; d = json.load(open(mp))
-for pl in d.get("plugins", []): pl["version"] = new
-json.dump(d, open(mp, "w"), indent=2); open(mp, "a").write("\n")
+    bump(p, lambda d: d.__setitem__("version", new))
+bump(".claude-plugin/marketplace.json",
+     lambda d: [pl.__setitem__("version", new) for pl in d.get("plugins", [])])
 PY
 # verify alignment (the version-consistency check in the root CLAUDE.md) before committing.
+# NOTE: re-indenting every plugin.json to indent=2 can produce noisy diffs if a manifest used
+# different formatting — eyeball `git diff` and keep only the version-line change where possible.
 ```
 
 - [ ] **Step 6: Commit**

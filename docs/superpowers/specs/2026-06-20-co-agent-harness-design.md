@@ -42,6 +42,7 @@ implements, and neither is the sole reviewer.
 |------|-----|-------|
 | Chair / Designer / Committer | **host** | Claude Code → Claude; Codex → Codex (`CO_AGENT_HOST`) |
 | Implementer | **sandbox-CLI counterpart** (default) | host=claude → codex; host=codex → **agy**. Overridable via `harness.implementer` (codex/agy only). |
+| Review panel | Kiro + peer host CLI + Agy (Gemini fallback) | the existing host-aware consensus panel |
 
 > **SUPERSEDED NOTE (shipped behavior, post panel-review R2-A):** the implementer is
 > restricted to CLIs with a real worktree-scoped write sandbox — **`codex` and `agy` only**.
@@ -49,7 +50,6 @@ implements, and neither is the sole reviewer.
 > to the worktree). The codex-host default is therefore **`agy`**, not `claude(opus)`. The
 > `co_agent_config.py implementer/impl-flags` code and `commands/harness.md` are the single
 > source of truth, and the prose in §3–§5 has been corrected to match (no `claude` implementer).
-| Review panel | Kiro + peer host CLI + Agy (Gemini fallback) | the existing host-aware consensus panel |
 
 By construction the implementer ≠ designer ≠ sole reviewer. `harness.implementer` may be
 set to a **sandbox CLI** (`codex`/`agy`) only; `null` resolves to the host's sandbox default
@@ -92,12 +92,15 @@ verification, and debugging all read from disk rather than re-deriving.
   variants exist **only** on the harness implement path;
   every other co-agent path (review, decide, ADR, plan/code gates) stays
   read-only/advisory. This is the single place in the plugin where an external AI may write.
-- **Trust only the tracked diff, verify on the main tree.** Gitignored/untracked files a
-  peer creates in the worktree are invisible to `git diff` yet could execute during a test
-  run. Therefore the host (a) cleans untracked + ignored files in the worktree before
-  diffing (`git clean -fdx` scoped check), (b) takes only the **tracked** diff, and
-  (c) **applies it to the main branch and runs the tests there** — never trusts a test run
-  performed inside the peer's worktree.
+- **Trust only the non-ignored diff, verify on the main tree.** Gitignored files a peer
+  creates in the worktree are invisible to a plain `git diff` yet could execute during a test
+  run. Therefore the host (a) stages all **non-ignored** changes with `git add -A` — which
+  honors `.gitignore`, so the implementer's legitimate new source (e.g. `feature.py`) **is**
+  captured while ignored files are not — and additionally **unstages any tracked-but-now-ignored**
+  path (`ls-files -i -c` → `reset HEAD`); it does **NOT** `git clean -fdx`, which would delete the
+  implementer's new untracked source. Then it (b) takes the staged (`--cached`) diff, and
+  (c) **applies it to the main branch and runs the tests there** — never trusting a test run
+  performed inside the peer's worktree. (This is exactly what `worktree.py capture-diff` does.)
 - **Worktree lifecycle hygiene.** Create with `git worktree add` at the base commit; remove
   with `git worktree remove --force` followed by `git worktree prune`; run
   `git worktree prune` at H0 to reap orphans left by a `SIGKILL` that bypassed `trap … EXIT`.
