@@ -224,8 +224,9 @@ def _reader(root, peer, field, default):
 
 
 def is_fresh(root):
-    """True iff the saved summary's config_hash matches the current effective config.
-    Callers run `fresh` before trusting readiness and re-run `/co-agent:setup` on a mismatch."""
+    """True iff the saved summary's config_hash matches the current effective config; callers
+    re-run `/co-agent:setup` on a mismatch. Catches CONFIG drift only — not PATH/auth/install
+    (a full `report` re-probe catches those; config_hash can't see them)."""
     s = _read_summary(root)
     if not s:
         return False

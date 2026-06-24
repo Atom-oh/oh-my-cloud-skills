@@ -131,6 +131,12 @@ git -C "$W" config diff.evil.command "touch $W/PWNED" >/dev/null 2>&1
 printf '*.py diff=evil\n' > "$W/.gitattributes"
 python3 "$WT" capture-diff "$W" >/dev/null 2>&1
 assert_eq "0" "$([ -e "$W/PWNED" ] && echo 1 || echo 0)" "capture-diff uses --no-ext-diff — external diff driver did NOT execute"
+# E: a clean FILTER runs at `git add` time (not diff) — capture-diff must neutralize it too
+git -C "$W" config filter.pwn.clean "touch $W/PWNED_CLEAN; cat" >/dev/null 2>&1
+printf '*.py filter=pwn\ndata.txt filter=pwn\n' > "$W/.gitattributes"
+printf 'payload\n' > "$W/data.txt"
+python3 "$WT" capture-diff "$W" >/dev/null 2>&1
+assert_eq "0" "$([ -e "$W/PWNED_CLEAN" ] && echo 1 || echo 0)" "capture-diff neutralizes clean filters — add-time filter did NOT execute"
 # D: capture-diff on a non-git path surfaces the failure (non-zero)
 python3 "$WT" capture-diff "$R7/nope" >/dev/null 2>&1 && DF=0 || DF=$?
 assert_grep_no_match "^0$" "$DF" "capture-diff on a non-git path returns non-zero"

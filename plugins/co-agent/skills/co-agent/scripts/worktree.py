@@ -19,11 +19,29 @@ import sys
 import subprocess
 
 # Neutralize system/global git config when reading an untrusted worktree.
-_CLEAN_ENV = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null"}
+_CLEAN_ENV = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null",
+              "GIT_ATTR_NOSYSTEM": "1"}
 
 
 def git(cwd, *args, env=None):
     return subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, env=env)
+
+
+def _filter_neutralizers(wt):
+    """`-c` overrides making every configured clean/smudge/process filter a pass-through.
+    A clean filter RUNS during `git add`, so a peer's `.gitattributes` (`* filter=x`) +
+    `filter.x.clean=<cmd>` in shared config would execute `<cmd>` on the host at capture
+    time. We can't ignore in-tree `.gitattributes`, so we override each filter command."""
+    r = git(wt, "config", "--name-only", "--get-regexp", r"^filter\.", env=_CLEAN_ENV)
+    names = set()
+    for line in r.stdout.splitlines():
+        parts = line.split(".")
+        if len(parts) >= 3:                   # filter.<name>.<clean|smudge|process>
+            names.add(".".join(parts[1:-1]))  # <name> may contain dots
+    ov = []
+    for n in names:
+        ov += ["-c", f"filter.{n}.clean=cat", "-c", f"filter.{n}.smudge=cat", "-c", f"filter.{n}.process="]
+    return ov
 
 
 def main():
@@ -59,12 +77,15 @@ def main():
             print("usage: worktree.py capture-diff <wt_path>", file=sys.stderr)
             return 2
         wt = argv[1]
+        # Neutralize any configured clean/smudge/process filters BEFORE `git add` — a clean
+        # filter executes at add time, so this is the RCE-bearing stage, not just diff.
+        nf = _filter_neutralizers(wt)
         # Reset the index first so a peer's pre-staged `git add -f <ignored>` can't sneak in.
         rst = git(wt, "reset", "-q", env=_CLEAN_ENV)
         if rst.returncode != 0:
             sys.stderr.write(rst.stderr)
             return rst.returncode
-        add = git(wt, "add", "-A", env=_CLEAN_ENV)   # respects .gitignore for untracked
+        add = git(wt, *nf, "add", "-A", env=_CLEAN_ENV)   # respects .gitignore for untracked
         if add.returncode != 0:                      # surface failures — never emit a stale diff
             sys.stderr.write(add.stderr)
             return add.returncode
@@ -74,8 +95,8 @@ def main():
         if ignored:
             git(wt, "reset", "-q", "--", *ignored, env=_CLEAN_ENV)
         # --no-ext-diff blocks external diff drivers (.gitattributes / diff.external RCE);
-        # attributesFile=/dev/null + clean env drop system/global influence.
-        r = git(wt, "-c", "core.attributesFile=/dev/null",
+        # attributesFile=/dev/null + clean env + filter neutralizers drop all influence.
+        r = git(wt, "-c", "core.attributesFile=/dev/null", *nf,
                 "diff", "--cached", "--no-ext-diff", "--binary", env=_CLEAN_ENV)
         sys.stdout.write(r.stdout)
         return r.returncode

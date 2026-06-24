@@ -68,9 +68,12 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
    cannot run — **block** and tell the user to run `/co-agent:setup`. Never silently block.
 4. **Capture + scope.** `worktree.py capture-diff <wt>` → patch; every path must pass
    `scope_guard.py --plan <plan>`. Out-of-scope hunks are dropped and fed back.
-5. **Apply + verify (host).** Apply the patch to the main branch; run `tests/run-all.sh`
-   (+ project tests) **on the main tree**. Red → feed the failure back to the peer and
-   loop, bounded by `harness.max_fix_rounds` (inherits `consensus.max_rounds`).
+5. **Apply + verify (host).** Snapshot the main tree before the peer runs
+   (`MAIN0=$(git -C . status --porcelain)`) and re-check after — **abort if it changed**
+   (a peer that escaped its cwd and wrote into the main checkout out-of-band, which the
+   captured diff would miss). Backs the trust claim with a check, not just the sandbox. Then
+   apply the captured patch to the main branch; run `tests/run-all.sh` (+ project tests) **on
+   the main tree**. Red → feed the failure back and loop, bounded by `harness.max_fix_rounds`.
 6. **Review gate (optional).** Per-task multi-model review is **off by default** — the H4
    cumulative gate is the review of record. Enable it only when a task warrants it.
 7. **Record + commit.** Record the pre-task checkpoint SHA before H3a's red commit

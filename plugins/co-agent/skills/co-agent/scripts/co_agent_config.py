@@ -138,6 +138,11 @@ def deep_merge(base, over):
     return out
 
 
+# Peer keys renamed in 1.10. Not read as aliases (no back-compat) — but WARN so a stale
+# override (e.g. `kiro.enabled:false`) isn't silently dropped, re-enabling a disabled AI.
+LEGACY_KEYS = {"kiro": "kiro-cli", "antigravity": "agy"}
+
+
 def effective(root):
     # Precedence low→high: committed defaults → user scope (~/.claude) → repo-local (.claude).
     cfg = load_defaults()
@@ -145,7 +150,13 @@ def effective(root):
         if os.path.isfile(lp):
             try:
                 with open(lp, encoding="utf-8") as f:
-                    cfg = deep_merge(cfg, json.load(f))
+                    raw = json.load(f)
+                stale = [k for k in raw.get("panel", {}) if k in LEGACY_KEYS]
+                if stale:
+                    hint = ", ".join(f"{k}→{LEGACY_KEYS[k]}" for k in stale)
+                    print(f"⚠️  {lp}: legacy panel key(s) {hint} are NO LONGER read — "
+                          f"rename them or the override is ignored.", file=sys.stderr)
+                cfg = deep_merge(cfg, raw)
             except (json.JSONDecodeError, OSError) as e:
                 print(f"⚠️  ignoring malformed {lp}: {e}", file=sys.stderr)
     return cfg
@@ -330,7 +341,9 @@ def cmd_set(root, rest, host, scope="local"):
                       "(no spaces or shell metacharacters)", file=sys.stderr)
                 return 2
         elif key == "models":
-            items = [m for m in re.split(r"[,\s]+", val) if m]
+            # Split on COMMAS only (trim surrounding whitespace) — NOT whitespace, or a
+            # single spaced token like "Gemini 3.1 Pro (High)" would shatter into 4 models.
+            items = [m.strip() for m in val.split(",") if m.strip()]
             bad = [m for m in items if not MODEL_RE.match(m)]
             if bad:
                 print(f"invalid model name(s): {', '.join(bad)} "

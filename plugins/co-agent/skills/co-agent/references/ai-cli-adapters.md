@@ -48,8 +48,10 @@ python3 "$CFG" matrix --host "$HOST"   # show provider·model·ctx + max-calls B
 TOKENS=$(( ( $(wc -c < "$CTX_FILE") + 3 ) / 4 ))
 
 # One fan-out per ENABLED (ai, model) pair (capped). `pairs` emits "ai<TAB>model".
+# PROCESS SUBSTITUTION, not `pairs | while …`: a pipe runs the loop in a subshell, so the
+# `&` jobs would be its children and the parent `wait` (below) would reap nothing.
 i=0
-python3 "$CFG" pairs --host "$HOST" 2>/dev/null | while IFS=$'\t' read -r ai model; do
+while IFS=$'\t' read -r ai model; do
   i=$((i+1)); slot="$RUN/${ai}-${i}"
   # Pass the per-(ai,model) PAIR model so the deep profile runs EACH model (not the single
   # configured one N times). newline-delimited: a spaced value ("Gemini 3.1 Pro (High)") stays one arg.
@@ -78,8 +80,8 @@ python3 "$CFG" pairs --host "$HOST" 2>/dev/null | while IFS=$'\t' read -r ai mod
               gemini "${MFLAGS[@]}" -p "$PROMPT" -o text \
               > "$slot.md" 2>"$slot.err" || echo "[skip] gemini/$model" ) & ;;
   esac
-done
-wait
+done < <(python3 "$CFG" pairs --host "$HOST" 2>/dev/null)
+wait    # reaps the `&` jobs above — they are children of THIS shell (process substitution)
 # Synthesize from $RUN/*-*.md. Empty/errored/size-skipped = that pair skipped.
 # QUORUM GUARD: if ≤1 pair produced usable output, do NOT call it consensus —
 # report as single-opinion review and say so.
@@ -120,10 +122,12 @@ python3 "$CP" access <peer>   # plugin | raw | none
 ```
 
 - **The bash fan-out uses RAW CLIs only.** The `case "$ai"` block above calls raw binaries
-  (`codex exec`, `agy -p`, …). A peer is eligible for the gate only when it has a usable raw
-  path — `access == raw` **and** `status == READY`. A peer that is `access: plugin` but has
-  **no raw CLI** is *not* gate-eligible in this fan-out (it would produce no output); treat it
-  as skipped and tell the user, so the gate never silently proceeds without that peer.
+  (`codex exec`, `agy -p`, …). A peer is gate-eligible only with a usable raw path —
+  `status==READY` **and** `raw_cli` (use `check_panel.py gate-eligible`, the single predicate;
+  do **not** key on `access`, since a peer with BOTH the plugin and a raw CLI is `access:plugin`
+  yet `raw_cli:true` → eligible). Only a peer with **no raw CLI** (`raw_cli:false`, e.g.
+  plugin-only) is skipped here (it would produce no output); tell the user so the gate never
+  silently proceeds without it.
 - **Tier-1 plugin routing is NOT wired into this bash fan-out yet.** Routing a Tier-1 peer
   (codex with `access: plugin`) through `/codex:review` // `/codex:rescue` is a documented
   future path — the slash command must be invoked by the host agent, not from this script.
@@ -191,10 +195,10 @@ surfaces that have reliable repo-local loading semantics:
 | **Codex** | `AGENTS.md` | Merged git-root→cwd; **~32 KiB project-doc cap** (oversized → truncated). `AGENTS.override.md` wins locally. | distill + validate |
 | **Agy / legacy Gemini fallback** | prompt-supplied context | Receives the fan-out prompt/context directly; no maintained repo context file. | none |
 
-> **Residual `GEMINI.md` (legacy).** No longer generated or in the managed/secret-scanned
-> set, but the `gemini` CLI still auto-loads a repo-root `GEMINI.md` an older version may have
-> written. Before using the gemini fallback, secret-scan any residual `GEMINI.md`
-> (`check_ai_context.py`) or delete it. Agy has no such auto-loaded file.
+> **Residual `GEMINI.md` (legacy).** Not generated and **not** in `check_ai_context.py`'s
+> `MANAGED` set (so not secret-scanned), yet the `gemini` CLI still auto-loads a repo-root
+> `GEMINI.md` an older version may have written. Since nothing scans it, **delete any residual
+> `GEMINI.md` before using the gemini fallback.** Agy has no such auto-loaded file.
 
 ### Distill — do NOT copy CLAUDE.md verbatim
 
