@@ -666,11 +666,11 @@ def main():
     # GIT_ATTR_NOSYSTEM=1) and `_capture_neutralizers(wt)` returns `-c` overrides that defang
     # in-tree `.gitattributes` filter/textconv drivers + `core.hooksPath`. A peer worktree is
     # untrusted: without these, `add`/`diff`/checkout can execute peer-planted host-side code.
-    # NOTE: this block is a SUPERSET of the shipped worktree.py — it keeps every hardening the
-    # shipped file already has AND adds two corrections the shipped file predates: `--detach` on
-    # `worktree add` (so an already-checked-out ref like `main` doesn't fail) and the AUTH-ordering
-    # fix in check_panel.classify(). Apply those two to the shipped scripts when implementing. Do
-    # NOT drop any hardening below.
+    # This block keeps every hardening the shipped worktree.py has AND adds `--detach` on
+    # `worktree add` (so an already-checked-out ref like `main` doesn't fail) — apply that one
+    # correction to the shipped worktree.py when implementing. Do NOT drop any hardening below.
+    # (Unrelated: check_panel.classify() also needs an AUTH-ordering fix — see the setup plan,
+    # NOT here; it has nothing to do with the worktree trust boundary.)
     if cmd == "add":
         wt = argv[1]
         base = "HEAD"

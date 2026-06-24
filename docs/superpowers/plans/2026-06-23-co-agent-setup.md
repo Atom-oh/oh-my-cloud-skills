@@ -731,7 +731,10 @@ git commit -m "feat(co-agent): /co-agent:setup command + registration"
 ```bash
 # --- Task 6: v3 adapter + readiness consult documented ---
 ADP="plugins/co-agent/skills/co-agent/references/ai-cli-adapters.md"
-assert_contains "$(cat "$ADP" 2>/dev/null)" "--v3" "Kiro adapter documents --v3"
+# Needle must NOT start with "-" or assert_contains's `grep -q "$needle"` parses it as an option
+# and fails even when present. A leading space keeps it dash-safe AND pins the literal `--v3`
+# flag (this is the post-Task-6-Step-3 adapter line — a TDD failing-test-first assertion).
+assert_contains "$(cat "$ADP" 2>/dev/null)" " --v3 --mode" "Kiro adapter documents --v3 --mode"
 assert_contains "$(cat "$ADP" 2>/dev/null)" "fs_read" "Kiro adapter uses fs_read tool name"
 assert_contains "$(cat "$ADP" 2>/dev/null)" "co-agent-panel.local.json" "adapters doc references the readiness summary"
 assert_contains "$(cat plugins/co-agent/commands/harness.md 2>/dev/null)" "co-agent-panel" "harness consults readiness (run /co-agent:setup)"

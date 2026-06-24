@@ -234,8 +234,11 @@ Three corrections vs. the current adapter, all verified from `kiro-cli chat --he
 - `detect_plugin` against a fixture plugin-cache layout (present / absent).
 - `status`/`access` readers return the recorded values; absent summary → a sane default.
 - **Peer rename / detection**: `kiro-cli` is detected via `shutil.which("kiro-cli")` (a shim
-  named `kiro-cli` on `PATH` is found); a legacy `"kiro"` key in a local config is read as
-  `kiro-cli` (back-compat) and rewritten as `kiro-cli`.
+  named `kiro-cli` on `PATH` is found). Consistent with §6.1 ("**no legacy-key compatibility**"):
+  after the repo-wide rename, `kiro-cli` is the only panel key, and a stale `"kiro"` key is **not**
+  silently treated as `kiro-cli` (no back-compat read/rewrite) — it is surfaced to the user to
+  re-key. (The config layer MAY emit a one-time warning for a dropped legacy key; the policy, not
+  the warning mechanism, is the contract here.)
 - **Probe input channel**: the `kiro-cli` probe places the sentinel in the **positional
   argv INPUT** (not stdin) and classifies a correct echo as `READY` — guards the regression
   where piping to stdin produced `NO_INGEST`. The `codex`/`agy` probes keep the sentinel on
