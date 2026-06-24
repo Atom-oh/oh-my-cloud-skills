@@ -156,8 +156,9 @@ def ev_post_tooluse(root):
 def _git(root, *args):
     try:
         r = subprocess.run(["git", "-C", root, *args], capture_output=True, text=True, timeout=15)
-        return r.stdout.strip() if r.returncode == 0 else ""
-    except Exception:
+        return r.stdout.strip() if r.returncode == 0 else ""   # non-zero = expected (ref absent)
+    except Exception as e:   # a real failure (git missing / timeout) — log, don't hide (fail-open)
+        sys.stderr.write(f"[co-agent PR gate] git {' '.join(args[:2])} failed (fail-open): {e}\n")
         return ""
 
 
@@ -206,8 +207,8 @@ def _scan_secret(diff):
     try:
         import check_ai_context as cac2
         rx = getattr(cac2, "SECRET_RE", _SECRET_RE)
-    except Exception:
-        pass
+    except ImportError:
+        pass   # sibling not importable → use the local _SECRET_RE (no logging needed)
     for ln in diff.splitlines():
         if ln.startswith("+") and not ln.startswith("+++") and rx.search(ln):
             return "matched a credential pattern on an added line"
@@ -227,8 +228,8 @@ def _panel(root):
                 if p.get("enabled", True) and shutil.which(ai):
                     peers.append(ai)
                     models[ai] = p.get("model")
-        except Exception:
-            pass
+        except Exception as e:   # config parse failed — log, then fall back (don't hide it)
+            sys.stderr.write(f"[co-agent PR gate] panel config unreadable, using PATH fallback (fail-open): {e}\n")
     if not peers:  # config unavailable → fall back to whatever review CLIs are on PATH
         peers = [ai for ai in _REVIEW if ai != host and shutil.which(ai)]
     return peers, models
@@ -387,8 +388,12 @@ def main():
         if event == "pre-pr-gate":
             return ev_pre_pr_gate(root)
         return 0
-    except Exception:
-        # Fail-open for the PR gate (never wedge PR creation on a gate bug); no-op for others.
+    except Exception as e:
+        # Fail-open (never wedge PR creation on a gate bug) but NOT silent — surface the error
+        # to stderr with a traceback so a swallowed bug is debuggable, then allow the action.
+        import traceback
+        sys.stderr.write(f"[co-agent {event}] internal error (fail-open): {e}\n")
+        traceback.print_exc(file=sys.stderr)
         return 0
 
 
