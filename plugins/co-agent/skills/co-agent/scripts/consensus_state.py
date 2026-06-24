@@ -144,8 +144,8 @@ def cmd_set(root, key, value):
             return 2
         s[key] = int(value)
     elif key == "status":
-        if value not in ("running", "done", "aborted"):
-            print("status must be running|done|aborted", file=sys.stderr)
+        if value not in ("running", "done", "aborted", "needs-human"):
+            print("status must be running|done|aborted|needs-human", file=sys.stderr)
             return 2
         s[key] = value
     else:
@@ -298,6 +298,87 @@ def cmd_cumulative_diff(root, plan_path, base):
     return 0
 
 
+def cmd_rebind(root):
+    """Re-record HEAD to the current commit so verify passes after an intentional
+    manual commit (e.g. resuming a needs-human escalation)."""
+    s = read_state(root)
+    if s is None:
+        print("no active consensus session (run init)", file=sys.stderr)
+        return 2
+    head = _git(root, "rev-parse", "HEAD")
+    if not head:
+        print("cannot read HEAD", file=sys.stderr)
+        return 2
+    s["head"] = head
+    write_state(root, s)
+    print(f"✅ rebound head → {head[:8]}")
+    return 0
+
+
+def cmd_stage_result(rest):
+    """Durable per-stage output gate.
+      stage-result write <path> --stage S --verdict PASS|REVIEW|FAIL [--green b]
+                        [--in-scope b] [--rounds N] [--implementer ai] [--wall tsv]
+      stage-result check <path> [--allow-review]   # exit 0 if exists + schema-valid + passing, else 1
+    """
+    if not rest or rest[0] not in ("write", "check") or len(rest) < 2:
+        print("usage: stage-result write <path> --stage S --verdict V [...] | check <path> [--allow-review]", file=sys.stderr)
+        return 2
+    action, path, args = rest[0], rest[1], rest[2:]
+    if action == "check":
+        if not os.path.isfile(path):
+            return 1
+        try:
+            with open(path, encoding="utf-8") as f:
+                d = json.load(f)
+        except Exception:
+            return 1
+        # Schema present?
+        if not d.get("stage") or d.get("verdict") not in ("PASS", "REVIEW", "FAIL"):
+            return 1
+        # Output gate: STOP on a failed gate or a red / out-of-scope task result.
+        if d.get("verdict") == "FAIL":
+            return 1
+        if d.get("green") is False or d.get("in_scope") is False:
+            return 1
+        # REVIEW means "needs human approval" — it is NON-passing for autonomous
+        # progression. Only an explicit --allow-review override lets a flow advance
+        # past it (e.g. a human already approved). Without it, REVIEW → exit 1 so
+        # harness/consensus stop at the gate rather than silently auto-advancing.
+        if d.get("verdict") == "REVIEW" and "--allow-review" not in args:
+            return 1
+        return 0
+    # write
+    opts, i = {}, 0
+    while i < len(args):
+        if args[i].startswith("--") and i + 1 < len(args):
+            opts[args[i][2:]] = args[i + 1]
+            i += 2
+        else:
+            i += 1
+    verdict = opts.get("verdict")
+    if not opts.get("stage") or verdict not in ("PASS", "REVIEW", "FAIL"):
+        print("stage-result write needs --stage and --verdict PASS|REVIEW|FAIL", file=sys.stderr)
+        return 2
+    rec = {"stage": opts["stage"], "verdict": verdict}
+    for k in ("green", "in-scope"):
+        if k in opts:
+            rec[k.replace("-", "_")] = opts[k].lower() in ("true", "1", "yes")
+    if "rounds" in opts:
+        rec["rounds"] = int(opts["rounds"]) if opts["rounds"].isdigit() else 0
+    if "implementer" in opts:
+        rec["implementer"] = opts["implementer"]
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(rec, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+    if "wall" in opts:
+        with open(opts["wall"], "a", encoding="utf-8") as w:
+            w.write(f"{rec['stage']}\t{verdict}\t{rec.get('green', '')}\n")
+    print(f"✅ wrote {path}")
+    return 0
+
+
 def main():
     a = sys.argv[1:]
     if not a:
@@ -336,6 +417,10 @@ def main():
         plan = opt_after(rest, "--plan")
         base = opt_after(rest, "--base") or "main"
         return cmd_cumulative_diff(root, plan, base) if plan else 2
+    if cmd == "stage-result":
+        return cmd_stage_result(rest)
+    if cmd == "rebind":
+        return cmd_rebind(root)
     print(__doc__)
     return 2
 

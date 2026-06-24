@@ -1,6 +1,6 @@
 ---
 name: co-agent
-description: "Collaborate with other AI agents (Kiro CLI, Codex, Antigravity) for a second opinion. Three modes — multi-AI review of code/architecture, decision support when you're unsure, and ADR co-authoring. Claude chairs and synthesizes the final answer. 멀티 AI 협업: 리뷰, 의사결정 보조, ADR 협업."
+description: "Collaborate with other AI agents (Kiro CLI, the peer host CLI, and Agy with Gemini fallback) for a second opinion. Three modes — multi-AI review of code/architecture, decision support when you're unsure, and ADR co-authoring. The current host chairs and synthesizes the final answer. 멀티 AI 협업: 리뷰, 의사결정 보조, ADR 협업."
 triggers:
   # High-precision: only fire when the user clearly wants MULTIPLE AIs / a panel.
   # Generic "code review"/"architecture review"/"decide"/"adr" are intentionally
@@ -30,40 +30,48 @@ allowed-tools:
 
 # co-agent — Multi-AI Collaboration
 
-Consult **other AI agents** (Kiro CLI, Codex, Antigravity) and let **Claude chair the
-panel** and synthesize the final answer. The external AIs are advisors; Claude
-always produces the decision/report. Use whichever AI CLIs are installed — degrade
-gracefully, never hard-fail.
+Consult **other AI agents** and let the **current host agent chair the panel** and
+synthesize the final answer. The external AIs are advisors; the host always produces
+the decision/report.
+
+- In Claude Code: Claude chairs; the peer panel is Kiro CLI, Codex, and Agy.
+- In Codex: Codex chairs; the peer panel is Kiro CLI, Claude CLI, and Agy.
+- Agy is preferred over Gemini. Use Gemini only as the legacy fallback when `agy` is
+  not installed.
+
+Never call the current host CLI as a panel member. Use whichever peer AI CLIs are
+installed — degrade gracefully, never hard-fail.
 
 > CLI invocation, detection, and per-tool quirks: **`references/ai-cli-adapters.md`**.
 
 ## Step 0: Detect the panel (always first)
 
 ```bash
-PANEL=""
-# Detect by binary presence only — kiro-cli is usable headless via EITHER an
-# interactive login session OR $KIRO_API_KEY (Pro+). Don't pre-gate on the env
-# key; if a CLI isn't actually authenticated it just errors at call time and
-# we skip it (graceful fallback), same as codex/gemini.
-command -v kiro-cli >/dev/null 2>&1 && PANEL="$PANEL kiro-cli"
-command -v codex    >/dev/null 2>&1 && PANEL="$PANEL codex"
-command -v agy      >/dev/null 2>&1 && PANEL="$PANEL agy"   # Antigravity (binary `agy`, NOT `agv`)
-# gemini is deprecated → superseded by agy: add it ONLY when agy is absent.
-command -v agy >/dev/null 2>&1 || { command -v gemini >/dev/null 2>&1 && PANEL="$PANEL gemini"; }
-echo "Panel: ${PANEL:-(none — Claude will answer solo and say so)}"
+# Set CO_AGENT_HOST=codex when running this skill from Codex. Default host is claude.
+HOST="${CO_AGENT_HOST:-claude}"
+CFG="${CLAUDE_PLUGIN_ROOT:-plugins/co-agent}/skills/co-agent/scripts/co_agent_config.py"
+# config `panel` lists ENABLED peers regardless of install/auth — announce only the ones
+# actually present on PATH, so we never tell the user "Panel: kiro-cli codex agy" on a box
+# where none are installed. (`/co-agent:setup` readiness, if present, is even more precise.)
+PANEL=""; MISSING=""
+for ai in $(python3 "$CFG" panel --host "$HOST" 2>/dev/null); do
+  if command -v "$ai" >/dev/null 2>&1; then PANEL="${PANEL:+$PANEL }$ai"; else MISSING="${MISSING:+$MISSING }$ai"; fi
+done
+echo "Panel: ${PANEL:-(none — the host will answer solo and say so)}"
+[ -n "$MISSING" ] && echo "Enabled but not installed (skipped): $MISSING"
 ```
 
-> ⚠️ **The Kiro binary is `kiro-cli`, NOT `kiro`.** Always invoke `kiro-cli chat …`.
-> (codex/gemini binaries match their names; only Kiro differs — labels above use the
-> exact binary name so you never type a bare `kiro`.)
+> ⚠️ **The Kiro binary is `kiro-cli`** — always invoke `kiro-cli chat …` by that exact name.
+> Agy supersedes Gemini. Prefer `agy`; call `gemini` only when Agy is unavailable.
 
-Tell the user which AIs are on the panel. If none are available, do the task as
-Claude alone and state that no external panel was reached.
+Tell the user the **installed** set, not the config-enabled set. If `/co-agent:setup` wrote a
+readiness summary, prefer it (`check_panel.py status <peer>`) — it also reflects auth/ingest
+that `command -v` can't. If none are available, the host answers solo and says so.
 
 > The panel respects **`/co-agent:configure`** settings — a disabled AI is dropped,
-> and per-AI model / Codex effort / timeout are injected into the fan-out. Inspect with
-> `python3 scripts/co_agent_config.py show`. The fan-out in `ai-cli-adapters.md`
-> derives `$PANEL` and timeout from that helper.
+> and per-AI model / supported effort / timeout are injected into the fan-out. Inspect
+> with `python3 scripts/co_agent_config.py show --host <claude|codex>`. The fan-out in
+> `ai-cli-adapters.md` derives `$PANEL` and timeout from that helper.
 
 ## Three modes
 
@@ -98,7 +106,7 @@ Get multiple AIs to review a change, then synthesize.
       `python3 scripts/check_citations.py <diff_file> <findings.json>`. **Drop `unsupported`**
       (hallucinated paths); treat `needs-review` with caution. This makes
       "verify, don't vote-count" mechanical.
-4. **Claude synthesizes** into one report:
+4. **The host synthesizes** into one report:
    - **Consensus** (issues ≥2 AIs agree on) — highest confidence.
    - **Dissent / unique findings** (only one AI raised) — note which AI.
    - Severity table + AWS Well-Architected (use `references/aws-well-architected.md`).
@@ -108,14 +116,14 @@ Get multiple AIs to review a change, then synthesize.
 ### Mode 2 — Decision support  (`decide`, "잘 모르겠어", "의사결정", "help me decide")
 When the user is unsure, bring the panel in.
 
-1. Pin down the decision + options. If the user only gave a question, Claude first
+1. Pin down the decision + options. If the user only gave a question, the host first
    enumerates 2-4 concrete options, then asks the panel about those.
 2. Fan out: *"Decision: <X>. Options: <A/B/C>. Recommend ONE with 2-3 reasons and the
    key trade-off. Be concise."* to each panel member.
-3. **Claude synthesizes** a comparison table:
+3. **The host synthesizes** a comparison table:
 
-   | Option | Kiro | Codex | Gemini | Claude |
-   |--------|------|-------|--------|--------|
+   | Option | Kiro | Peer host | Agy/Gemini | Chair |
+   |--------|------|-----------|------------|-------|
    | A | ✅ reason | — | ✅ reason | ✅ |
 
    Then give a **single recommendation** and name the trade-off that decided it.
@@ -127,7 +135,7 @@ Co-author an Architecture Decision Record with the panel.
 1. Establish context + the decision to record.
 2. Fan out: *"For this decision, list realistic ALTERNATIVES, their TRADE-OFFS, and
    RISKS/CONSEQUENCES. Be specific."* to each panel member.
-3. **Claude drafts the ADR** (Nygard format) merging the panel input:
+3. **The host drafts the ADR** (Nygard format) merging the panel input:
    `# ADR-NNN: <title>` → Status · Context · Decision · **Considered Alternatives**
    (enriched by the panel, attributing notable points) · **Consequences** (pros/cons,
    risks the panel surfaced) · Date.
@@ -140,16 +148,16 @@ Co-author an Architecture Decision Record with the panel.
 Give the external AIs project context so they review with the project's conventions —
 each CLI auto-loads its own native file from the repo root:
 
-| AI | Reads | co-agent generates? |
-|----|-------|--------------------|
-| Kiro CLI | **`CLAUDE.md`** (root + parents) | ❌ no — it reads the canonical source directly |
-| Codex | **`AGENTS.md`** | ✅ |
-| Gemini | **`GEMINI.md`** | ✅ |
+| AI | Reads | co-agent action |
+|----|-------|-----------------|
+| Kiro CLI | **`.kiro/steering/project-context.md`** → `#[[file:CLAUDE.md]]` | ✅ bridge to canonical source |
+| Codex | **`AGENTS.md`** | ✅ distilled context |
+| Agy / legacy Gemini fallback | prompt-supplied context during fan-out | ❌ no repo context file |
 
 **DISTILL — do NOT copy CLAUDE.md verbatim.** All three CLIs warn that a dumped copy
-bloats/truncates (Codex 32 KiB project-doc cap; Gemini context-window degradation;
-Kiro ~2000 words). Produce one **lean, review-oriented core** and write it to BOTH
-`AGENTS.md` and `GEMINI.md` (Kiro needs none):
+bloats/truncates (Codex 32 KiB project-doc cap; Kiro steering should reference the
+canonical file instead of maintaining a second copy). Produce one **lean,
+review-oriented core** and write it to **`AGENTS.md` only**:
 
 1. Read the project's `CLAUDE.md`.
 2. **Claude distills** a lean core (bullets, absolute mandates) covering: language/stack,
@@ -158,20 +166,34 @@ Kiro ~2000 words). Produce one **lean, review-oriented core** and write it to BO
    security), a short review checklist, and known false-positives. Omit transient
    state, version-bump commands, and tool internals not relevant to review. **No secrets,
    no huge file inventories.**
-3. Prepend the marker line (run `scripts/check_ai_context.py <dir> --emit-marker`) plus a
-   one-line per-file header: `> You are <Codex|Gemini>, an external reviewer — project
-   context below.` Write to `AGENTS.md` and `GEMINI.md`.
+3. Prepend the marker line (run `scripts/check_ai_context.py <dir> --emit-marker`) plus
+   the header `> You are Codex, an external reviewer — project context below.` Write to
+   `AGENTS.md`.
 4. **Only overwrite files that carry the co-agent marker** — never clobber a hand-written
    `AGENTS.md` or Codex's `AGENTS.override.md`.
-5. Validate: `python3 scripts/check_ai_context.py <project-dir>` (size caps, marker,
+5. Ensure `.kiro/steering/project-context.md` exists and contains:
+   ```markdown
+   ---
+   name: project-context
+   inclusion: always
+   ---
+
+   # Project Context
+
+   #[[file:CLAUDE.md]]
+   ```
+   If an existing steering file has other hand-written content and does not already
+   contain that file reference, leave it and report that it needs manual merge.
+6. Validate: `python3 scripts/check_ai_context.py <project-dir>` (size cap, marker,
    staleness, secret scan).
 
 > A PostToolUse hook reminds you when `CLAUDE.md` changes so these stay in sync.
 
 ### Mode 5 — Consensus pipeline  (also **`/co-agent:consensus`**)
-Autonomous **doc → plan → implementation** with cross-family multi-model gates — **all
-stages shipped**: Stage A (P0–P2 plan gate), Stage B (P3 autonomous implement), Stage C
-(P4 final gate + P5 report). Full phases: `references/consensus-pipeline.md`.
+Autonomous **doc → plan → implementation** with cross-family multi-model gates. **All
+stages are implemented** — Stage A (P0–P2: plan + plan-review gate), Stage B (P3: autonomous
+implement, **edits + local commits**), Stage C (P4 final gate + P5 report). The default
+`/co-agent:consensus <doc>` runs the full P0→P5 pipeline. Full phases: `references/consensus-pipeline.md`.
 
 Entry is conditional on the input docs:
 - **plan doc present** (writing-plans) → LOAD it (`scripts/parse_plan.py`), do NOT regenerate.
@@ -199,19 +221,34 @@ more on the **cumulative** diff (`consensus_state.py cumulative-diff . --plan <p
 The **default** `/co-agent:consensus <doc>` runs the full P0→P5 pipeline and is **resumable** —
 re-running reads `phase`/`task_index` from state and continues.
 
+### Mode 6 — harness  (also **`/co-agent:harness`**)
+Host-designs / peer-implements / panel-reviews. The **host** designs, writes the failing
+test, and is the **only committer**; a cross-provider **peer implementer** writes code only
+inside an **isolated git worktree** under a workspace-write sandbox; the consensus gate
+reviews. Opt-in, local commits only. Per-task loop, trust boundary, and fallback chain:
+**`references/delegated-implement.md`**. Implementer selection / write-mode flags:
+`co_agent_config.py implementer|impl-flags`.
+
+### Setup — panel-readiness preflight  (the standalone command **`/co-agent:setup`**)
+Detects each peer's best access path (official plugin → raw CLI + install nudge → none),
+probes real CLI usability, and records a readiness summary to `.claude/co-agent-panel.local.json`
+that review / consensus / harness consult (READY peers only). Run it once before relying on the
+panel; auth fixes stay guidance-only.
+
 ## Chair principle (non-negotiable)
 
-- External AIs **advise**; **Claude decides and writes the final artifact**.
-- Always **attribute** notable points to the AI that made them ("Gemini flagged …").
+- External AIs **advise**; **the current host decides and writes the final artifact**.
+- Claude Code host: Claude is the chair. Codex host: Codex is the chair.
+- Always **attribute** notable points to the AI that made them ("Agy flagged …").
 - **Surface disagreement** instead of hiding it — divergent opinions are the value.
 - If a CLI errors or is missing, skip it, note it, continue. Never block on one AI.
 
 ## References
 
-- `references/ai-cli-adapters.md` — Kiro/Codex/Antigravity (+ deprecated Gemini) CLI commands, detection, fan-out pattern, fallbacks, **per-AI project-context files**
+- `references/ai-cli-adapters.md` — Kiro/Claude/Codex/Agy/Gemini CLI commands, detection, fan-out pattern, fallbacks, **project-context files**
 - `references/architecture-review-framework.md` — review rubric, severity, PASS/REVIEW/FAIL
 - `references/aws-well-architected.md` — 6-pillar checklist for the review mode
-- `scripts/check_ai_context.py` — validate/staleness-check generated AGENTS.md/GEMINI.md (size caps, marker, secrets); `--emit-marker` for generation
+- `scripts/check_ai_context.py` — validate/staleness-check generated AGENTS.md (size cap, marker, secrets); `--emit-marker` for generation
 - `scripts/co_agent_config.py` + `co-agent.defaults.json` — panel settings (model/effort/enabled/timeout); driven by the **`/co-agent:configure`** command, overrides in `.claude/co-agent.local.json`
 - `scripts/check_citations.py` — tiered citation validation (supported/needs-review/unsupported) for all review modes
 - `references/consensus-pipeline.md` — **AUTHORITATIVE** for `/co-agent:consensus`: P0–P5 phases (Stage A implements P0–P2), entry decision table, Stage A/B/C roadmap
