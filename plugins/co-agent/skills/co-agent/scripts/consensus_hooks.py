@@ -339,7 +339,7 @@ def ev_pre_pr_gate(root):
                 os.unlink(fpath)
             except OSError:
                 pass
-    blockers, usable = [], 0
+    blockers, voted = [], []
     for p in peers:
         v = out.get(p, "")
         if not v or v.startswith("__TIMEOUT__") or v.startswith("__ERROR__"):
@@ -355,9 +355,10 @@ def ev_pre_pr_gate(root):
                 break
         if verdict is None:
             continue   # unparseable verdict → don't count, don't block (fail-open)
-        usable += 1
+        voted.append(p)   # peers that returned a parseable verdict (the actual voters)
         if verdict == "BLOCK":
             blockers.append((p, v.strip()[:1200]))
+    usable = len(voted)
     if usable == 0:
         sys.stderr.write("[co-agent PR gate] no peer returned a parseable PASS/BLOCK verdict — gate could not "
                          "run; allowing the PR (fail-open). Re-run /co-agent:consensus review manually if needed.\n")
@@ -373,7 +374,7 @@ def ev_pre_pr_gate(root):
         sys.stderr.write("[co-agent PR gate] advisory — peers flagged issues but block is off:\n"
                          + "\n".join(f"- {p}: {v[:300]}" for p, v in blockers) + "\n")
         return 0
-    sys.stderr.write(f"[co-agent PR gate] ✅ consensus PASS ({usable} peer(s): {', '.join(peers)}).\n")
+    sys.stderr.write(f"[co-agent PR gate] ✅ consensus PASS ({usable} voting peer(s): {', '.join(voted)}).\n")
     return 0
 
 
