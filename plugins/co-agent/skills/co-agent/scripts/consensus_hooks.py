@@ -43,7 +43,7 @@ try:
     import co_agent_config as cac
 except Exception as _e:   # missing OR a SyntaxError/etc. in the module — degrade, but don't hide it
     cac = None
-    sys.stderr.write(f"[co-agent] could not import co_agent_config (panel config disabled): {_e}\n")
+    sys.stderr.write(f"[co-agent] could not import co_agent_config (panel config disabled): {_e!r}\n")
 
 STUCK_LIMIT = 3
 
@@ -164,6 +164,23 @@ def _git(root, *args):
         return ""
 
 
+def _git_diff(root, spec):
+    """Compute `git diff <spec>` with all external diff/textconv drivers neutralized (a repo
+    git config must not run code during this hook). Returns (ok, stdout, stderr): ok=False on a
+    git error so the caller can DISTINGUISH a failure (bad ref / merge-base error) from a
+    genuinely empty diff (which both otherwise look like "")."""
+    env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
+           "GIT_ATTR_NOSYSTEM": "1", "GIT_PAGER": "cat"}
+    try:
+        r = subprocess.run(
+            ["git", "-C", root, "-c", "core.attributesFile=/dev/null",
+             "diff", "--no-color", "--no-ext-diff", "--no-textconv", spec],
+            capture_output=True, text=True, timeout=30, env=env)
+        return (r.returncode == 0, r.stdout, r.stderr)
+    except Exception as e:
+        return (False, "", str(e))
+
+
 def _base_ref(root):
     """Best-effort PR base (trunk) to diff against. Prefers the repo trunk — NOT `@{upstream}`,
     which on a feature branch tracks origin/<feature> and would make the diff empty (silent
@@ -195,26 +212,37 @@ def _gate_config(root):
     }
 
 
+# Strong, broad credential patterns — this gate is the LAST line of defense before an external
+# fan-out, so the set must be comprehensive (not a weaker canonical fallback).
 _SECRET_RE = re.compile(
-    r"AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY|ghp_[A-Za-z0-9]{30,}|"
-    r"(?:password|secret|api[_-]?key|token)\s*[:=]\s*['\"][^'\"]{8,}",
+    r"AKIA[0-9A-Z]{16}"                                  # AWS access key id
+    r"|aws_secret_access_key\s*[:=]\s*\S{16,}"           # AWS secret access key
+    r"|-----BEGIN [A-Z ]*PRIVATE KEY"                    # PEM private key
+    r"|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}"  # GitHub PAT/OAuth/app tokens
+    r"|xox[abprs]-[A-Za-z0-9-]{10,}"                     # Slack tokens
+    r"|sk-[A-Za-z0-9]{20,}|sk-ant-[A-Za-z0-9-]{20,}"     # OpenAI / Anthropic keys
+    r"|AIza[0-9A-Za-z_\-]{30,}"                          # Google API key
+    r"|(?:password|passwd|secret|api[_-]?key|token|client[_-]?secret)\s*[:=]\s*['\"]?[^\s'\"]{8,}",
     re.I,
 )
 
 
 def _scan_secret(diff):
-    """Return a short label if the diff's ADDED lines look like they carry a secret, else ''.
-    Only scans `+` lines (new content) so an existing/removed secret-shaped string is ignored.
-    Reuses check_ai_context.SECRET_RE when importable, for one source of truth."""
-    rx = _SECRET_RE
+    """Return a short label if the diff carries a secret, else ''. Scans BOTH added (`+`) AND
+    removed (`-`) content lines — the fanned-out payload is the WHOLE diff, so a PR that
+    deletes/moves a credential exposes it on a `-` line too. Uses the UNION of the strong local
+    pattern and check_ai_context.SECRET_RE (never a weaker-only fallback)."""
+    extra = None
     try:
         import check_ai_context as cac2
-        rx = getattr(cac2, "SECRET_RE", _SECRET_RE)
+        extra = getattr(cac2, "SECRET_RE", None)
     except ImportError:
-        pass   # sibling not importable → use the local _SECRET_RE (no logging needed)
+        pass
     for ln in diff.splitlines():
-        if ln.startswith("+") and not ln.startswith("+++") and rx.search(ln):
-            return "matched a credential pattern on an added line"
+        if (ln.startswith("+") or ln.startswith("-")) and not ln.startswith(("+++", "---")):
+            if _SECRET_RE.search(ln) or (extra is not None and extra.search(ln)):
+                side = "an added" if ln.startswith("+") else "a removed"
+                return f"matched a credential pattern on {side} line"
     return ""
 
 
@@ -297,8 +325,12 @@ def ev_pre_pr_gate(root):
     # gate the same diff the PR will show; fall back to the detected trunk.
     mbase = re.search(r"(?:--base|-B)[= ]+(\S+)", cmd)
     base = ""
-    if mbase and _git(root, "rev-parse", "--verify", "--quiet", mbase.group(1)):
-        base = mbase.group(1)
+    if mbase:   # honor the PR's explicit base; try the local ref AND its remote-tracking form
+        cand = mbase.group(1)
+        for ref in (cand, f"origin/{cand}"):
+            if _git(root, "rev-parse", "--verify", "--quiet", ref):
+                base = ref
+                break
     base = base or _base_ref(root)
     if not base:
         # No base ref (shallow clone / no remote): do NOT silently `git diff HEAD` (empty for an
@@ -307,9 +339,15 @@ def ev_pre_pr_gate(root):
                          "(shallow clone / no remote?) — consensus gate SKIPPED. Run "
                          "/co-agent:consensus review manually, or `git fetch origin main`.\n")
         return 0
-    diff = _git(root, "diff", "--no-color", f"{base}...HEAD")
+    ok, diff, derr = _git_diff(root, f"{base}...HEAD")
+    if not ok:
+        # git ERROR (bad ref / merge-base failure) — distinguish from an empty diff; warn, don't
+        # silently pass (empty "" alone would look like "nothing to review").
+        sys.stderr.write(f"[co-agent PR gate] `git diff {base}...HEAD` failed — gate SKIPPED "
+                         f"(fail-open): {derr.strip()[:200]}\n")
+        return 0
     if not diff.strip():
-        return 0  # nothing to review
+        return 0  # genuinely nothing to review
     # Data boundary: secret-scan the FULL diff's added lines (catch a credential ANYWHERE in the
     # PR, even past the cap) and refuse to fan out if any is found — before truncating the payload.
     secret = _scan_secret(diff)
@@ -363,14 +401,19 @@ def ev_pre_pr_gate(root):
         # Verdict = the first line that IS a `PASS`/`BLOCK` token among the first few non-empty
         # lines (tolerates a short CLI banner) — NOT a free-text body scan, so an incidental
         # "MAJOR" in prose can't flip it. No token in the head → unparseable → fail-open.
-        verdict = None
-        for ln in [l.strip() for l in v.splitlines() if l.strip()][:8]:
+        verdict = vline = None
+        for ln in [l.rstrip().strip() for l in v.splitlines() if l.strip()][:8]:  # rstrip → CRLF-safe
             m = _VERDICT_RE.match(ln)
             if m:
-                verdict = m.group(1).upper()
+                verdict, vline = m.group(1).upper(), ln
                 break
         if verdict is None:
             continue   # unparseable verdict → don't count, don't block (fail-open)
+        # A peer that didn't receive the diff (delivery glitch, not a content problem) is told to
+        # reply `BLOCK: no diff received`. Treat that as a NON-vote (fail-open), never a real BLOCK.
+        if verdict == "BLOCK" and re.search(r"no diff received|empty/unreadable", vline, re.I):
+            sys.stderr.write(f"[co-agent PR gate] {p}: 'no diff received' → treated as non-vote (delivery issue, not content).\n")
+            continue
         voted.append(p)   # peers that returned a parseable verdict (the actual voters)
         if verdict == "BLOCK":
             blockers.append((p, v.strip()[:1200]))
@@ -401,7 +444,7 @@ def ev_pre_pr_gate(root):
                          "(below block quorum; not vetoing — review and decide):\n"
                          + "\n".join(f"- {p}: {v[:300]}" for p, v in blockers) + "\n")
         return 0
-    sys.stderr.write(f"[co-agent PR gate] ✅ consensus PASS ({usable} voting peer(s): {', '.join(voted)}).\n")
+    sys.stderr.write(f"[co-agent PR gate] [PASS] consensus PASS ({usable} voting peer(s): {', '.join(voted)}).\n")
     return 0
 
 
