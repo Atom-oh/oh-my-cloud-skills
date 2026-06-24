@@ -33,6 +33,7 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import time
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
@@ -40,8 +41,9 @@ if _HERE not in sys.path:
 import consensus_state as cs
 try:
     import co_agent_config as cac
-except Exception:
+except Exception as _e:   # missing OR a SyntaxError/etc. in the module — degrade, but don't hide it
     cac = None
+    sys.stderr.write(f"[co-agent] could not import co_agent_config (panel config disabled): {_e}\n")
 
 STUCK_LIMIT = 3
 
@@ -179,8 +181,8 @@ def _gate_config(root):
     if cac is not None:
         try:
             cfg = (cac.effective(root) or {}).get("pr_gate", {}) or {}
-        except Exception:
-            cfg = {}
+        except Exception as e:   # config unreadable — default config, but log (no silent failure)
+            sys.stderr.write(f"[co-agent PR gate] pr_gate config unreadable, using defaults: {e}\n")
     try:
         timeout = int(cfg.get("timeout", 180))     # tolerate a stray "300s"/None → default
     except (TypeError, ValueError):
@@ -319,7 +321,6 @@ def ev_pre_pr_gate(root):
         with tempfile.NamedTemporaryFile("w", suffix=".diff", delete=False, encoding="utf-8") as f:
             f.write(body)
             fpath = f.name
-        deadline = gate["timeout"] + 5
         threads = []
         for p in peers:
             t = threading.Thread(target=_review_one, args=(p, body, models.get(p), fpath, gate["timeout"], out))
@@ -327,8 +328,11 @@ def ev_pre_pr_gate(root):
             threads.append(t)
         for t in threads:
             t.start()
+        # Shared ABSOLUTE deadline: total wait is bounded to ~timeout+5, not timeout*N, even if
+        # several peer threads wedge (join takes a remaining-time duration, recomputed per call).
+        end = time.monotonic() + gate["timeout"] + 5
         for t in threads:
-            t.join(deadline)
+            t.join(max(0, end - time.monotonic()))
     finally:
         if fpath:
             try:
