@@ -16,9 +16,16 @@
   like `Gemini 3.1 Pro (High)`; shell metacharacters stay rejected. (The original
   `^[A-Za-z0-9._:/-]+$` was widened in a later change — this note supersedes it.)
 - **SUPERSEDED (post panel-review R2-A):** the implementer is restricted to sandbox CLIs
-  **`codex`/`agy` only**; codex-host default = **`agy`** (not `claude`). The Task 1 snippets
-  below show the original `codex↔claude` counterpart logic for history — the shipped
-  `implementer_ai()` rejects non-sandbox implementers and defaults codex-host to `agy`.
+  **`codex`/`agy` only**; codex-host default = **`agy`** (not `claude`). This supersedes
+  **every snippet below that still shows a non-sandbox implementer** (kept verbatim for
+  history): the Task 1 `codex↔claude` counterpart logic; the Task 2 `cmd_impl_flags`
+  `claude`/`kiro`/`gemini` branches and its `impl-flags claude --host codex` test
+  assertion (`--permission-mode acceptEdits` / `--trust-tools=read,write,grep` / `--yolo`
+  are permission grants, **not** workspace-write sandboxes, so they cannot be implementer
+  flags); and the `delegated-implement.md` `claude --permission-mode acceptEdits` example.
+  The shipped `implementer_ai()` rejects non-sandbox implementers and defaults codex-host
+  to `agy`; the shipped `cmd_impl_flags` emits write-mode flags **only** for the sandbox
+  CLIs (`codex -s workspace-write`, `agy --sandbox`) and rejects any other `ai` (exit 2).
 - The hosts are `claude` and `codex`; AIs are `kiro, claude, codex, agy, gemini` (`ALL_AIS` in `co_agent_config.py`).
 - Write-mode adapters (workspace-write sandbox) exist **only** on the harness implement path; review/decide/ADR/gate paths stay read-only/advisory.
 - The host is the **only** committer to the working branch; external AIs write only inside a worktree.
