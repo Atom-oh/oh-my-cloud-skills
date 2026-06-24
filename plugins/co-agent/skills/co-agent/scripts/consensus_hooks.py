@@ -46,30 +46,36 @@ except Exception:
 STUCK_LIMIT = 3
 
 # --- PR consensus gate ---------------------------------------------------------
-# Anchor to the command START (after optional `VAR=val ` env prefixes) so a substring like
-# `echo "gh pr create"` or `git commit -m "gh pr create"` does NOT trigger the gate.
-_PR_CMD_RE = re.compile(r"^\s*(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*gh\s+pr\s+(?:create|edit)\b")
+# Fire when `gh pr create|edit` is invoked at a COMMAND boundary — start of line, or right
+# after a shell separator (`;` `&` `|` `&&` `||` newline), allowing optional `VAR=val ` env
+# prefixes. This catches `cd x && gh pr create` (compound) while still NOT matching it inside a
+# string like `echo "gh pr create"` / `git commit -m "gh pr create"` (preceded by a quote).
+_PR_CMD_RE = re.compile(r"(?:^|[\n;&|])\s*(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*gh\s+pr\s+(?:create|edit)\b")
 _DIFF_CAP = 30 * 1024            # cap (argv-safe: well under MAX_ARG_STRLEN 128KB)
 # Verdict is read from the FIRST non-empty line ONLY (a machine-readable token), never a
 # free-text body scan — a banner/preamble or an incidental "MAJOR" in prose must not flip it.
 _VERDICT_RE = re.compile(r"^\s*(PASS|BLOCK)\b", re.I)
 
-# Review adapters (read-only), mirroring references/ai-cli-adapters.md. The full prompt+diff
-# goes BOTH on stdin and (capped) as the trailing argv token, so a CLI that reads either
-# channel still sees the diff — never a vacuous review. {M} expands to the per-peer model flag.
+# Review adapters, mirroring references/ai-cli-adapters.md. The untrusted prompt+diff is sent
+# ONLY on stdin (never argv) — so it isn't exposed via `ps` and follows the "untrusted content
+# on STDIN" convention; {I} is a short fixed instruction in argv. Each reviewer runs read-only /
+# sandboxed / non-acting so a prompt-injection in the diff can't drive tool execution:
+#   codex -s read-only · agy --sandbox · gemini -p (print, no tools) · kiro-cli --no-interactive
+#   (tool approval is denied non-interactively). {M} expands to the per-peer model flag.
 _REVIEW = {
-    "codex":    {"argv": ["codex", "exec", "-s", "read-only", "{M}", "{P}"]},
-    "agy":      {"argv": ["agy", "-p", "{P}", "--sandbox", "{M}"]},
-    "gemini":   {"argv": ["gemini", "-p", "{P}", "-o", "text", "{M}"]},
-    "kiro-cli": {"argv": ["kiro-cli", "chat", "{P}", "--v3", "--mode", "default",
+    "codex":    {"argv": ["codex", "exec", "-s", "read-only", "{M}", "{I}"]},
+    "agy":      {"argv": ["agy", "-p", "{I}", "--sandbox", "{M}"]},
+    "gemini":   {"argv": ["gemini", "-p", "{I}", "-o", "text", "{M}"]},
+    "kiro-cli": {"argv": ["kiro-cli", "chat", "{I}", "--v3", "--mode", "default",
                           "--no-interactive", "--wrap", "never", "{M}"]},
 }
 _MODEL_FLAG = {"codex": "-m", "agy": "--model", "gemini": "-m", "kiro-cli": "--model"}
+_GATE_INSTR = "Review the PR diff provided on standard input per the instructions in it."
 _GATE_PROMPT = (
-    "Adversarially review the following PR diff for a Claude Code plugin. Your reply's FIRST "
-    "line MUST be a machine-readable verdict token — EXACTLY `PASS` (no CRITICAL or MAJOR issue) "
-    "or `BLOCK: <one-line reason>`. Put any detail on later lines. Ignore nits/style. If you "
-    "cannot see a diff below, reply `BLOCK: no diff received`.\n\n=== PR DIFF ===\n"
+    "Adversarially review the PR diff (for a Claude Code plugin) that follows on this input. "
+    "Your reply's FIRST line MUST be a machine-readable verdict token — EXACTLY `PASS` (no "
+    "CRITICAL or MAJOR issue) or `BLOCK: <one-line reason>`. Detail on later lines. Ignore "
+    "nits/style. If no diff is present below, reply `BLOCK: no diff received`.\n\n=== PR DIFF ===\n"
 )
 
 
@@ -150,10 +156,16 @@ def _git(root, *args):
 
 
 def _base_ref(root):
-    """Best-effort trunk ref to diff against: origin/HEAD → origin/main → main."""
-    for ref in ("origin/HEAD", "origin/main", "main", "origin/master", "master"):
-        if _git(root, "rev-parse", "--verify", "--quiet", ref):
-            return ref.replace("origin/HEAD", _git(root, "rev-parse", "--abbrev-ref", "origin/HEAD") or "origin/main")
+    """Best-effort trunk ref to diff against. Tries the tracking upstream, then origin/HEAD,
+    then common trunk names. Returns "" if none resolve (shallow clone / no remote)."""
+    up = _git(root, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")
+    cands = [up] if up else []
+    cands += ["origin/HEAD", "origin/main", "main", "origin/master", "master"]
+    for ref in cands:
+        if ref and _git(root, "rev-parse", "--verify", "--quiet", ref):
+            if ref == "origin/HEAD":
+                return _git(root, "rev-parse", "--abbrev-ref", "origin/HEAD") or "origin/main"
+            return ref
     return ""
 
 
@@ -164,10 +176,14 @@ def _gate_config(root):
             cfg = (cac.effective(root) or {}).get("pr_gate", {}) or {}
         except Exception:
             cfg = {}
+    try:
+        timeout = int(cfg.get("timeout", 180))     # tolerate a stray "300s"/None → default
+    except (TypeError, ValueError):
+        timeout = 180
     return {
         "enabled": cfg.get("enabled", True),
         "block": cfg.get("block", True),          # block on a flagged peer (vs advisory)
-        "timeout": int(cfg.get("timeout", 180)),
+        "timeout": max(30, timeout),
     }
 
 
@@ -214,13 +230,13 @@ def _panel(root):
     return peers, models
 
 
-def _build_argv(peer, prompt_text, model):
-    """Expand the adapter template: {P} → the full prompt+diff (also sent on stdin), {M} →
-    the per-peer model flag (or dropped if no model configured)."""
+def _build_argv(peer, model):
+    """Expand the adapter template: {I} → a short fixed instruction (NOT the diff — the diff
+    goes on stdin only), {M} → the per-peer model flag (dropped if no model configured)."""
     argv = []
     for tok in _REVIEW[peer]["argv"]:
-        if tok == "{P}":
-            argv.append(prompt_text)
+        if tok == "{I}":
+            argv.append(_GATE_INSTR)
         elif tok == "{M}":
             if model and _MODEL_FLAG.get(peer):
                 argv += [_MODEL_FLAG[peer], model]
@@ -231,9 +247,9 @@ def _build_argv(peer, prompt_text, model):
 
 def _review_one(peer, prompt_text, model, timeout, out):
     try:
-        argv = _build_argv(peer, prompt_text, model)
-        # Send the prompt+diff on BOTH stdin and the trailing argv token, so a CLI that
-        # consumes either channel still sees the diff (avoids a vacuous, diff-less PASS).
+        argv = _build_argv(peer, model)
+        # Untrusted prompt+diff goes ONLY on stdin (never argv → no `ps` exposure). A reviewer
+        # that ignores stdin sees no diff and, per the prompt, replies `BLOCK: no diff received`.
         r = subprocess.run(argv, input=prompt_text, capture_output=True, text=True, timeout=timeout)
         out[peer] = (r.stdout or "")[:8000]
     except subprocess.TimeoutExpired:
@@ -253,7 +269,14 @@ def ev_pre_pr_gate(root):
     if not gate["enabled"]:
         return 0
     base = _base_ref(root)
-    diff = _git(root, "diff", "--no-color", f"{base}...HEAD") if base else _git(root, "diff", "--no-color", "HEAD")
+    if not base:
+        # No trunk ref (shallow clone / no remote): do NOT silently `git diff HEAD` (empty for
+        # an all-committed PR → silent pass). Warn instead so the bypass is never invisible.
+        sys.stderr.write("[co-agent PR gate] could not determine a base branch to diff against "
+                         "(shallow clone / no remote?) — consensus gate SKIPPED. Run "
+                         "/co-agent:consensus review manually, or `git fetch origin main`.\n")
+        return 0
+    diff = _git(root, "diff", "--no-color", f"{base}...HEAD")
     if not diff.strip():
         return 0  # nothing to review
     # Data boundary: never fan a secret-bearing diff out to third-party CLIs. Refuse + flag.

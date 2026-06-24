@@ -11,5 +11,6 @@
     "agy":    { "enabled": true, "model": null, "models": [], "context_limit": 1000000 },
     "gemini": { "enabled": true, "model": null, "models": [], "context_limit": 1000000 }
   },
-  "harness": { "implementer": null, "max_fix_rounds": null }
+  "harness": { "implementer": null, "max_fix_rounds": null },
+  "pr_gate": { "enabled": true, "block": true, "timeout": 180 }
 }

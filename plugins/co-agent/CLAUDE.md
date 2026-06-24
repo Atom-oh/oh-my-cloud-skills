@@ -67,9 +67,11 @@ co-agent
 
 - **Fail-open**: 내부 오류·전 peer 타임아웃·설치된 peer 없음 → exit 0 (게이트 버그/오프라인이
   PR을 영구 차단하지 않음; peer 없으면 안내만).
-- **데이터 경계**: 팬아웃 전 추가(`+`) 라인을 secret-scan — 크리덴셜 패턴이 보이면 3rd-party로 **전송하지 않고** 차단(유출 방지). diff는 30KB·라인 경계로 절단.
-- **Bypass / 설정**: 세션에 `export CO_AGENT_PR_GATE=off` (훅은 자기 프로세스 env를 읽으므로 `CO_AGENT_PR_GATE=off gh pr create` 같은 **인라인 prefix는 안 먹힘**), 또는 `pr_gate`(`enabled`/`block`/`timeout`) 설정.
-- **판정 계약**: peer 응답 첫 토큰 줄(`PASS` / `BLOCK: …`)만 신뢰 — 본문 free-text 스캔 안 함(배너 몇 줄은 허용). 파싱 불가 응답은 fail-open(미차단).
+- **데이터 경계**: 팬아웃 전 추가(`+`) 라인 secret-scan — 크리덴셜 패턴이 보이면 3rd-party로 **전송하지 않고** 차단(유출 방지). diff는 30KB·라인 경계로 절단, **stdin으로만** 전달(argv 미사용 → `ps` 노출 없음). reviewer는 전부 read-only/sandbox/비-acting 모드(codex `-s read-only`·agy `--sandbox`·gemini `-p`·kiro `--no-interactive`)라 diff의 prompt-injection이 툴 실행으로 이어지지 않음.
+- **명령 매칭**: `gh pr create|edit`가 명령 경계(줄 시작 또는 `;`/`&`/`|`/`&&` 뒤, `VAR=val` prefix 허용)에 올 때만 — `cd x && gh pr create`(compound)는 잡고 `echo "gh pr create"`/`git commit -m "..."`(문자열)은 무시.
+- **base 미탐 시**: trunk ref(`@{upstream}`→`origin/HEAD`→`main`…)를 못 찾으면(shallow clone/무remote) `git diff HEAD`로 조용히 통과하지 않고 **advisory 경고 후 skip**(silent bypass 방지).
+- **Bypass / 설정**: 세션에 `export CO_AGENT_PR_GATE=off` (훅은 자기 프로세스 env를 읽으므로 `CO_AGENT_PR_GATE=off gh pr create` 같은 **인라인 prefix는 안 먹힘**), 또는 `co-agent.defaults.json`/`.claude/co-agent.local.json`의 `pr_gate`(`enabled`/`block`/`timeout`).
+- **판정 계약**: peer 응답 첫 토큰 줄(`PASS` / `BLOCK: …`)만 신뢰 — 본문 free-text 스캔 안 함(배너 몇 줄 허용). 파싱 불가 응답은 fail-open(미차단).
 - 다른 Bash 명령은 즉시 통과(`gh pr create|edit`만 매칭). Codex 호스트는 Claude Code 훅을
   돌리지 않으므로 적용 안 됨(`.codex-plugin`에는 미등록).
 
