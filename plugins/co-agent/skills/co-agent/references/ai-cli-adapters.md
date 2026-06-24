@@ -51,7 +51,9 @@ TOKENS=$(( ( $(wc -c < "$CTX_FILE") + 3 ) / 4 ))
 i=0
 python3 "$CFG" pairs --host "$HOST" 2>/dev/null | while IFS=$'\t' read -r ai model; do
   i=$((i+1)); slot="$RUN/${ai}-${i}"
-  mapfile -t MFLAGS < <(python3 "$CFG" flags "$ai" --host "$HOST" 2>/dev/null || true)   # newline-delimited: a spaced model value (e.g. agy "Gemini 3.1 Pro (High)") stays one arg
+  # Pass the per-(ai,model) PAIR model so the deep profile runs EACH model (not the single
+  # configured one N times). newline-delimited: a spaced value ("Gemini 3.1 Pro (High)") stays one arg.
+  mapfile -t MFLAGS < <(python3 "$CFG" flags "$ai" --model "$model" --host "$HOST" 2>/dev/null || true)
   if ! python3 "$CFG" fits "$ai" "$TOKENS" --host "$HOST" 2>/dev/null; then
     echo "[skip] $ai/$model — context ~${TOKENS} tok > model window"; continue
   fi
@@ -117,11 +119,17 @@ python3 "$CP" status <peer>   # READY | AUTH | NO_INGEST | TIMEOUT | ERROR | ABS
 python3 "$CP" access <peer>   # plugin | raw | none
 ```
 
-- **Include only READY peers.** Skip any peer whose `status` is not `READY` (auth/ingest/
-  absent) — it would only error at call time anyway.
-- **Tier-1 routing.** A Tier-1 peer (codex with `access: plugin`) routes through its
-  installed plugin command — `/codex:review` for review, `/codex:rescue` for fix/rescue —
-  instead of the raw `codex exec` adapter.
+- **The bash fan-out uses RAW CLIs only.** The `case "$ai"` block above calls raw binaries
+  (`codex exec`, `agy -p`, …). A peer is eligible for the gate only when it has a usable raw
+  path — `access == raw` **and** `status == READY`. A peer that is `access: plugin` but has
+  **no raw CLI** is *not* gate-eligible in this fan-out (it would produce no output); treat it
+  as skipped and tell the user, so the gate never silently proceeds without that peer.
+- **Tier-1 plugin routing is NOT wired into this bash fan-out yet.** Routing a Tier-1 peer
+  (codex with `access: plugin`) through `/codex:review` // `/codex:rescue` is a documented
+  future path — the slash command must be invoked by the host agent, not from this script.
+  Until then, the gate relies on the raw path above.
+- **Include only READY (raw) peers.** Skip any peer whose `status` is not `READY` (auth/
+  ingest/absent) — it would only error at call time anyway.
 - **No READY peer → degrade to solo.** If nothing is READY, Claude answers solo and
   **says so explicitly**, then suggests `/co-agent:setup` to wire up a peer.
 - If `.claude/co-agent-panel.local.json` is absent, run `/co-agent:setup` first (or fall

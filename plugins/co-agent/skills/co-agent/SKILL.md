@@ -183,9 +183,10 @@ review-oriented core** and write it to **`AGENTS.md` only**:
 > A PostToolUse hook reminds you when `CLAUDE.md` changes so these stay in sync.
 
 ### Mode 5 — Consensus pipeline  (also **`/co-agent:consensus`**)
-Autonomous **doc → plan → implementation** with cross-family multi-model gates. **This
-version = Stage A (P0–P2)**: load-or-generate a plan and run the plan consensus gate (no
-code edits). Implementation (P3) = Stage B. Full phases: `references/consensus-pipeline.md`.
+Autonomous **doc → plan → implementation** with cross-family multi-model gates. **All
+stages are implemented** — Stage A (P0–P2: plan + plan-review gate), Stage B (P3: autonomous
+implement, **edits + local commits**), Stage C (P4 final gate + P5 report). The default
+`/co-agent:consensus <doc>` runs the full P0→P5 pipeline. Full phases: `references/consensus-pipeline.md`.
 
 Entry is conditional on the input docs:
 - **plan doc present** (writing-plans) → LOAD it (`scripts/parse_plan.py`), do NOT regenerate.
@@ -231,7 +232,7 @@ panel; auth fixes stay guidance-only.
 
 - External AIs **advise**; **the current host decides and writes the final artifact**.
 - Claude Code host: Claude is the chair. Codex host: Codex is the chair.
-- Always **attribute** notable points to the AI that made them ("Gemini flagged …").
+- Always **attribute** notable points to the AI that made them ("Agy flagged …").
 - **Surface disagreement** instead of hiding it — divergent opinions are the value.
 - If a CLI errors or is missing, skip it, note it, continue. Never block on one AI.
 

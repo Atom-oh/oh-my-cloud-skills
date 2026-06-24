@@ -65,10 +65,12 @@ into **one passing commit**. **Only when H3a actually made a red-test commit** (
 branch never carries a committed-but-red test. For a `test_required:false` task there is **no
 red-test commit**, so make a **fresh `git commit`** — never `--amend` (it would rewrite an
 unrelated prior commit). Then `worktree.py remove`. Fallback chain: counterpart → other peer → host-implement.
-**On exhausted fix loop / abort**: undo the red-test commit with
-`git revert --no-edit <red-test-sha>` — a non-destructive inverse commit that leaves nothing
-red staged or in the working tree (do **not** use `git reset --soft`, which keeps the red
-test staged, nor a bare `git reset --hard`, which could discard unrelated work) — then
+**On exhausted fix loop / abort**: **first discard the applied implementation patch**
+(scoped to the task files: `git restore --staged --worktree -- <task files>`) so the tree is
+clean, **then** undo the red-test commit with `git revert --no-edit <red-test-sha>` — a
+non-destructive inverse commit (revert refuses on a dirty tree, so restore first; do **not**
+use `git reset --soft`, which keeps the red test staged, nor a bare `git reset --hard`, which
+could discard unrelated work) — then
 `set . status needs-human`. External AIs never commit.
 
 ## H4 — Final gate

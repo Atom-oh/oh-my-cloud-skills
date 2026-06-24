@@ -364,12 +364,18 @@ def cmd_set(root, rest, host, scope="local"):
     return cmd_show(root, host)
 
 
-def cmd_flags(root, ai, host):
+def cmd_flags(root, ai, host, model_override=None):
     if ai not in panel_ais(host):
         print(f"unknown ai '{ai}' for host {host}", file=sys.stderr)
         return 2
     p = effective(root)["panel"].get(ai, {})
-    model = p.get("model")
+    # A per-(ai,model) pair override (from `pairs`, e.g. the deep profile's multi-model
+    # fan-out) takes precedence over the single configured panel model. "(default)"/empty
+    # → fall back to the configured model. Fixes deep-profile running one model N times.
+    if model_override and model_override != "(default)":
+        model = model_override
+    else:
+        model = p.get("model")
     parts = []
     if ai == "kiro-cli":
         if model:
@@ -511,7 +517,10 @@ def main():
     if cmd == "set":
         return cmd_set(root, rest, host, scope)
     if cmd == "flags":
-        return cmd_flags(root, rest[0], host) if rest else 2
+        if not rest:
+            return 2
+        mo = rest[rest.index("--model") + 1] if "--model" in rest and rest.index("--model") + 1 < len(rest) else None
+        return cmd_flags(root, rest[0], host, mo)
     if cmd == "panel":
         return cmd_panel(root, host)
     if cmd == "timeout":

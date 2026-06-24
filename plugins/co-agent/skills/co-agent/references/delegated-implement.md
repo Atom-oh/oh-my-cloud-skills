@@ -72,12 +72,15 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
    never carries a committed-but-red test. For a `test_required:false` task there is **no
    red-test commit**, so make a **fresh `git commit`** — never `--amend` (it would rewrite an
    unrelated prior commit). `worktree.py remove <wt>`.
-8. **Escalate / abort** when the fix loop is exhausted: undo the red-test commit with
-   `git revert --no-edit <red-test-sha>` — a non-destructive inverse commit that leaves
-   nothing red staged or in the working tree. Do **not** use `git reset --soft` (keeps the
-   red test staged) nor a bare `git reset --hard` (could discard unrelated work). Then
-   `consensus_state.py set . status needs-human` and stop the task. Never leave a red commit
-   on the working branch.
+8. **Escalate / abort** when the fix loop is exhausted: **first discard the applied
+   implementation patch** that step 5 put in the working tree, scoped to the task's files —
+   `git restore --staged --worktree -- <task files>` (or `git checkout -- <task files>`) —
+   so the tree is clean. **Then** undo the red-test commit with `git revert --no-edit
+   <red-test-sha>` (a non-destructive inverse commit; revert refuses on a dirty tree, which is
+   why the restore comes first). Do **not** use `git reset --soft` (keeps the red test staged)
+   nor a bare `git reset --hard` (could discard unrelated work). Then `consensus_state.py set .
+   status needs-human` and stop the task. Never leave a red commit or applied-but-failing
+   changes on the working branch.
 
 ## Host-only-commit (non-negotiable)
 
