@@ -1,7 +1,7 @@
 {
   "name": "co-agent",
   "version": "1.11.0",
-  "description": "Collaborate with other AI agents (Kiro CLI, Codex, Agy with Gemini fallback) — multi-AI code/architecture review, decision support when you're unsure, and ADR co-authoring. Claude chairs in Claude Code; Codex chairs in Codex.",
+  "description": "Collaborate with other AI agents (Kiro CLI, Codex, Antigravity) — multi-AI code/architecture review, decision support when you're unsure, and ADR co-authoring. Claude chairs and synthesizes the final answer.",
   "author": {
     "name": "atomoh"
   },
@@ -14,9 +14,7 @@
   "commands": [
     "./commands/configure.md",
     "./commands/sync-context.md",
-    "./commands/consensus.md",
-    "./commands/harness.md",
-    "./commands/setup.md"
+    "./commands/consensus.md"
   ],
   "hooks": {
     "PostToolUse": [
@@ -25,7 +23,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'FILE=\"$TOOL_INPUT_FILE_PATH\"; [ \"$(basename \"$FILE\" 2>/dev/null)\" = \"CLAUDE.md\" ] || exit 0; DIR=$(dirname \"$FILE\"); SK=\"${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts\"; OUT=$(python3 \"$SK/check_ai_context.py\" \"$DIR\" 2>/dev/null) || { if python3 \"$SK/co_agent_config.py\" autosync --root \"$DIR\" 2>/dev/null; then echo \"[co-agent] CLAUDE.md changed and AI context files are stale. Auto-sync is ON — run /co-agent:sync-context $DIR now to regenerate AGENTS.md (Codex) + the Kiro steering bridge.\"; else echo \"[co-agent] CLAUDE.md changed — AI context files are stale. Run /co-agent:sync-context to regenerate (or enable auto-sync: /co-agent:configure set autosync on).\"; echo \"$OUT\"; fi; }; exit 0'"
+            "command": "bash -c 'FILE=\"$TOOL_INPUT_FILE_PATH\"; [ \"$(basename \"$FILE\" 2>/dev/null)\" = \"CLAUDE.md\" ] || exit 0; DIR=$(dirname \"$FILE\"); SK=\"${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts\"; OUT=$(python3 \"$SK/check_ai_context.py\" \"$DIR\" 2>/dev/null) || { if python3 \"$SK/co_agent_config.py\" autosync --root \"$DIR\" 2>/dev/null; then echo \"[co-agent] CLAUDE.md changed and AI context files are stale. Auto-sync is ON — run /co-agent:sync-context $DIR now to regenerate AGENTS.md / GEMINI.md.\"; else echo \"[co-agent] CLAUDE.md changed (e.g. via /sync-docs or an edit) — AI context files (AGENTS.md/GEMINI.md) are stale. Run /co-agent:sync-context to regenerate (or enable auto-sync: /co-agent:configure set autosync on).\"; echo \"$OUT\"; fi; }; exit 0'"
           }
         ]
       },
@@ -54,7 +52,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo 'co-agent loaded. Multi-AI collaboration (Kiro/Codex/Agy, Gemini fallback): /co-agent review · decide · adr · sync-context. Tune the panel with /co-agent:configure. The current host synthesizes; uses whichever peer AI CLIs are installed.'"
+            "command": "echo 'co-agent loaded. Multi-AI collaboration (Kiro/Codex/Antigravity): /co-agent review · decide · adr · sync-context. Tune the panel with /co-agent:configure. Claude synthesizes; uses whichever AI CLIs are installed.'"
           }
         ]
       }

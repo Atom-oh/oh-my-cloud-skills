@@ -1,9 +1,8 @@
 # Consensus Pipeline (co-agent)
 
 Autonomous **doc → plan → implementation** with cross-family multi-model consensus gates.
-Borrows consensus-build's pipeline; the gates use co-agent's host-aware panel (Kiro models +
-the peer host CLI + Agy, with Gemini as legacy fallback). **All phases P0–P5 are implemented
-(Stage A: P0–P2, Stage B: P3, Stage C: P4–P5).**
+Borrows consensus-build's pipeline; the gates use co-agent's panel (Kiro models + Codex +
+Gemini). **All phases P0–P5 are implemented (Stage A: P0–P2, Stage B: P3, Stage C: P4–P5).**
 
 ## Entry — conditional on input documents
 
@@ -21,7 +20,7 @@ Detect with `scripts/consensus_state.py detect <root> <paths>` → `adr|spec|pla
   (session_id, phase, task_index, repo/branch/base/HEAD, per-doc sha, allowed_paths).
   Require a clean tree (`consensus_state.py verify`).
 - **P1** — plan doc present → `parse_plan.py <plan>` to load tasks + file set; else generate a
-  TDD+Tidy plan from the ADR/spec (current host), then parse it.
+  TDD+Tidy plan from the ADR/spec (Claude), then parse it.
 - **P2 (default-on; `--trust-plan` is the explicit escape hatch for an already-reviewed plan)**
   — plan consensus gate: fan out the plan to the multi-model panel
   (`co_agent_config.py matrix` to show cost; `pairs` for the (ai,model) set; fan-out per

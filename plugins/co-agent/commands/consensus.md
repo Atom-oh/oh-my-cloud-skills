@@ -24,13 +24,6 @@ Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"`.
 
 1. **Consent + cost**: confirm sending the doc(s) to third-party AIs; show
    `python3 "$SK/co_agent_config.py" matrix`.
-1a. **Consult readiness** (`.claude/co-agent-panel.local.json` from `/co-agent:setup`):
-   `check_panel.py fresh` (re-run `/co-agent:setup` if `stale`), then `check_panel.py
-   gate-eligible <peer>` per peer — keep only `true` (`status==READY` **and** `raw_cli`).
-   `gate-eligible`, **not** bare `status`: the fan-out calls raw CLIs only, so a plugin-only
-   peer (READY, `raw_cli:false`) yields zero output yet would falsely satisfy the gate.
-   consensus is **non-degraded**: with **no gate-eligible peer**, do **not** solo — **block**
-   and tell the user to run `/co-agent:setup`. Absent summary → run `/co-agent:setup` first.
 2. **Detect & init**: `python3 "$SK/consensus_state.py" detect . <doc...>` → if a `plan`
    doc is present, use it; else (`adr`/`spec`) you'll generate one. Then
    `python3 "$SK/consensus_state.py" init . --docs <comma paths> --base <trunk>` and
