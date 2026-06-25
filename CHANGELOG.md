@@ -13,6 +13,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0] - 2026-06-25
+
+### Added
+- **co-agent PR consensus gate** (`PreToolUse(Bash)` hook) — at `gh pr create`, fan the PR diff out to the multi-AI panel in parallel and **block the PR (exit 2) on a quorum** (default: majority of voting peers AND ≥2) flagging CRITICAL/MAJOR. **Opt-in, default off, fail-open** — any internal error / all-peer timeout / no usable peer allows the PR. Data boundary before fan-out: a hunk-aware full-diff secret-scan (AWS/GitHub/Slack/OpenAI/Anthropic/Google + quoted/unquoted env) refuses to send a diff that **adds** a secret, the peer subprocess env is sanitized of credential-looking vars per peer, and the untrusted diff never enters `argv` (stdin / temp-file channels; reviewers run read-only/sandboxed). Bypass via `CO_AGENT_PR_GATE=off` or `pr_gate.enabled=false` ([#96](https://github.com/Atom-oh/oh-my-cloud-skills/pull/96))
+- **co-agent `/co-agent:harness`** — host-designs / peer-implements / panel-reviews orchestrator: the host owns the design, the failing test, and every commit; a cross-provider peer implementer writes code only inside an isolated git worktree under a workspace-write sandbox; the consensus gate reviews and only the captured, scope-guarded worktree diff lands. Opt-in, local commits only ([#94](https://github.com/Atom-oh/oh-my-cloud-skills/pull/94))
+- **co-agent `/co-agent:setup`** — panel-readiness preflight: detect each peer's best access path (official plugin → raw CLI + install nudge → none), probe real CLI usability, and write a readiness summary (`.claude/co-agent-panel.local.json`) the review / consensus / harness flows consult before fanning out ([#94](https://github.com/Atom-oh/oh-my-cloud-skills/pull/94))
+
+### Changed
+- Bump all plugins and `marketplace.json` to 1.12.0
+
 ## [1.11.0] - 2026-06-14
 
 ### Added
@@ -252,7 +262,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add AWS Architecture Icons integration (4,224 files)
 - Add presenter view with speaker notes
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.11.0...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.0...HEAD
+[1.12.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.8.0...v1.9.0
@@ -280,6 +291,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 이 프로젝트의 모든 주요 변경 사항은 이 파일에 기록됩니다.
 이 문서는 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)를 기반으로 하며,
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 따릅니다.
+
+## [1.12.0] - 2026-06-25
+
+### Added
+- **co-agent PR 합의 게이트** (`PreToolUse(Bash)` 훅) — `gh pr create` 시점에 PR diff를 멀티-AI 패널에 병렬 팬아웃해 CRITICAL/MAJOR **정족수**(기본: 투표 peer의 과반 AND ≥2) 충족 시 **PR 차단(exit 2)**. **opt-in·기본 off·fail-open** — 내부 오류/전 peer 타임아웃/사용 가능한 peer 없음이면 PR 허용. 팬아웃 전 데이터 경계: hunk 인지 full-diff secret-scan(AWS/GitHub/Slack/OpenAI/Anthropic/Google + quoted/unquoted env)으로 시크릿을 **추가**하는 diff는 전송 거부, peer별 크리덴셜성 env 정화, untrusted diff는 `argv`에 미노출(stdin/temp-file 채널; reviewer는 read-only/sandbox 실행). `CO_AGENT_PR_GATE=off` 또는 `pr_gate.enabled=false`로 우회 ([#96](https://github.com/Atom-oh/oh-my-cloud-skills/pull/96))
+- **co-agent `/co-agent:harness`** — host 설계 / peer 구현 / 패널 리뷰 오케스트레이터: host가 설계·failing 테스트·모든 커밋을 소유하고, cross-provider peer 구현자는 격리된 git worktree(workspace-write 샌드박스) 안에서만 코드를 작성하며, consensus 게이트가 리뷰하고 캡처된 scope-guard된 worktree diff만 반영. opt-in·로컬 커밋만 ([#94](https://github.com/Atom-oh/oh-my-cloud-skills/pull/94))
+- **co-agent `/co-agent:setup`** — 패널 준비도 프리플라이트: peer별 최적 접근 경로(공식 plugin → raw CLI + 설치 안내 → none) 감지, 실사용 프로브, review/consensus/harness 흐름이 팬아웃 전 참조하는 readiness 요약(`.claude/co-agent-panel.local.json`) 기록 ([#94](https://github.com/Atom-oh/oh-my-cloud-skills/pull/94))
+
+### Changed
+- 모든 플러그인과 `marketplace.json`을 1.12.0으로 범프
 
 ## [1.11.0] - 2026-06-14
 
@@ -520,7 +541,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AWS Architecture Icons 통합 추가 (4,224개 파일)
 - 발표자 뷰 및 발표자 노트 추가
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.11.0...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.0...HEAD
+[1.12.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.8.0...v1.9.0
