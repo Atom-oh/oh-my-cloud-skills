@@ -61,6 +61,10 @@ _PR_CMD_RE = re.compile(
 # A state-changing git command before `gh pr create` in a COMPOUND means PreToolUse reviews the
 # PRE-command HEAD (the gate runs before the command), so the PR's real diff may differ.
 _PRECEDING_GIT_MUT = re.compile(r"\bgit\s+(?:commit|add|merge|rebase|cherry-pick|reset|stash\s+pop|am)\b")
+# A `cd` (at a command boundary) before `gh pr create` changes the cwd the real `gh` runs in, but
+# this hook always diffs at its OWN root — so the gated diff would be the WRONG repo/subtree.
+# Skip+advisory rather than review a mismatched scope.
+_PRECEDING_CD = re.compile(r"(?:^|[\n;&|])\s*(?:pushd|cd)\s+\S")
 _DIFF_CAP = 30 * 1024            # cap the diff sent to each peer (context-window / cost bound)
 # Verdict is read from the FIRST non-empty line ONLY (a machine-readable token), never a
 # free-text body scan — a banner/preamble or an incidental "MAJOR" in prose must not flip it.
@@ -83,6 +87,33 @@ _REVIEW = {
                           "--no-interactive", "--trust-tools=fs_read", "--wrap", "never", "{M}"]},
 }
 _MODEL_FLAG = {"codex": "-m", "agy": "--model", "gemini": "-m", "kiro-cli": "--model"}
+
+# Env vars each reviewer legitimately needs for ITS OWN auth. Everything else whose NAME looks
+# like a credential (token/secret/key/password/cloud-provider creds) is STRIPPED before the peer
+# subprocess inherits the environment — so a prompt-injected reviewer can't exfiltrate another
+# tool's credential (GH_TOKEN, AWS_*, etc.) out of `os.environ`. (Absolute-path file reads like
+# ~/.aws/credentials remain a documented residual — reviewers are read-capable; see CLAUDE.md.)
+_PEER_ENV_KEEP = {
+    "codex":    ("OPENAI_API_KEY", "CODEX_API_KEY"),
+    "agy":      ("GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENAI_API_KEY"),
+    "gemini":   ("GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENAI_API_KEY"),
+    "kiro-cli": ("KIRO_API_KEY",),
+}
+# Names that look credential-bearing. Matched against the env-var NAME (not value). Kept tight
+# enough not to strip benign desktop vars (e.g. XDG_SESSION_ID) — AWS_SESSION_TOKEN is already
+# covered by TOKEN and ^AWS_.
+_SENSITIVE_ENV_RE = re.compile(
+    r"TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|PRIVATE_KEY|API_?KEY|"
+    r"^AWS_|^GOOGLE_|^GCP_|^AZURE_|^GH_|^GITHUB_", re.I)
+
+
+def _sanitized_env(peer):
+    """A copy of os.environ with credential-looking vars removed, except the small per-peer
+    auth whitelist the reviewer CLI needs for its OWN auth. Keeps non-sensitive vars (PATH, HOME,
+    LANG, TMPDIR, …) so the CLI still runs."""
+    keep = set(_PEER_ENV_KEEP.get(peer, ()))
+    return {k: v for k, v in os.environ.items()
+            if k in keep or not _SENSITIVE_ENV_RE.search(k)}
 _GATE_INSTR = "Review the PR diff provided on standard input per the instructions in it."
 _GATE_INSTR_FILE = ("Use fs_read to read the PR diff at {F}, then review it. Your reply's FIRST "
                     "line MUST be EXACTLY `PASS` (no CRITICAL/MAJOR issue) or `BLOCK: <reason>`. "
@@ -164,8 +195,17 @@ def ev_post_tooluse(root):
 
 
 def _git(root, *args):
+    # Symmetric with _git_diff: a malicious repo runs `git` here too (rev-parse), so neutralize the
+    # same system/global/repo-local exec surfaces (fsmonitor/hooksPath/pager) rather than leaving an
+    # asymmetric hole.
+    env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
+           "GIT_ATTR_NOSYSTEM": "1", "GIT_PAGER": "cat"}
     try:
-        r = subprocess.run(["git", "-C", root, *args], capture_output=True, text=True, timeout=15)
+        r = subprocess.run(
+            ["git", "-C", root, "-c", f"core.attributesFile={os.devnull}",
+             "-c", "core.fsmonitor=", "-c", f"core.hooksPath={os.devnull}", "-c", "core.pager=cat",
+             *args],
+            capture_output=True, text=True, timeout=15, env=env)
         return r.stdout.strip() if r.returncode == 0 else ""   # non-zero = expected (ref absent)
     except Exception as e:   # a real failure (git missing / timeout) — log, don't hide (fail-open)
         sys.stderr.write(f"[co-agent PR gate] git {' '.join(args[:2])} failed (fail-open): {e}\n")
@@ -268,9 +308,12 @@ def _is_diff_header(ln):
     return bool(_DIFF_HEADER_RE.match(ln))
 
 
-# Inline allowlist (detect-secrets / gitleaks convention): a line carrying this marker is an
-# intentional fixture/example, not a real secret — skip it so a security-test PR isn't blocked.
-_ALLOWLIST_RE = re.compile(r"pragma:\s*allowlist secret|co-agent:\s*test-fixture|not-?a-?secret", re.I)
+# Inline allowlist (detect-secrets / gitleaks convention): a line carrying one of these EXPLICIT
+# markers is an intentional fixture/example, not a real secret — skip it so a security-test PR
+# isn't blocked. Deliberately NOT a loose phrase like "not a secret": this scanner is the last
+# line of defense before an external fan-out, and a free-text bypass would let a real credential
+# line (`password = "…"  # not a secret`) disarm it. Only the structured markers below count.
+_ALLOWLIST_RE = re.compile(r"pragma:\s*allowlist secret|co-agent:\s*test-fixture", re.I)
 
 
 def _scan_secret(diff):
@@ -337,6 +380,21 @@ def _panel(root):
     return peers, models
 
 
+def _flag_value(cmd, cmd_detect, alt):
+    """Find a flag (alt = e.g. '--base|-B') in the quote-BLANKED cmd_detect — so a flag NAME that
+    appears inside a quoted argument body (`--title \"switch --base to prod\"`) is NOT matched —
+    then read its value from the RAW cmd at the same offset (offsets align; blanking is
+    length-preserving) so a legitimately quoted value like `--base 'main'` survives. The flag must
+    sit at a token boundary. Returns the unquoted value, or None if absent."""
+    m = re.search(rf"(?:^|[\s;&|()])(?:{alt})[= ]", cmd_detect)
+    if not m:
+        return None
+    vm = re.match(r"'([^']*)'|\"([^\"]*)\"|(\S+)", cmd[m.end():].lstrip())
+    if not vm:
+        return None
+    return next((g for g in vm.groups() if g is not None), None)
+
+
 def _build_argv(peer, model, fpath):
     """Expand the adapter template. {I} → the fixed instruction (stdin-channel: references
     stdin; file-channel: tells the CLI to fs_read {F}). {M} → the per-peer model flag. The
@@ -361,13 +419,16 @@ def _review_one(peer, prompt_text, model, fpath, cwd, timeout, out):
         # Run with cwd = an isolated dir (NOT the repo), so a prompt-injected reviewer's
         # *relative* file reads can't reach repo files. (Absolute paths like ~/.aws remain a
         # documented residual — reviewers are read-capable; see CLAUDE.md.)
+        # Strip credential-looking env vars the peer doesn't need for its own auth, so a
+        # prompt-injected reviewer can't read another tool's token/cloud-cred out of the env.
+        penv = _sanitized_env(peer)
         if _REVIEW[peer]["channel"] == "file":
             # Kiro ignores stdin in `chat` — it reads the diff from the temp file via fs_read.
-            r = subprocess.run(argv, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+            r = subprocess.run(argv, cwd=cwd, env=penv, capture_output=True, text=True, timeout=timeout)
         else:
             # stdin channel: pipe prompt+diff (never argv → no `ps` exposure). A CLI that
             # ignores stdin sees no diff → replies `BLOCK: no diff received` per the prompt.
-            r = subprocess.run(argv, cwd=cwd, input=prompt_text, capture_output=True, text=True, timeout=timeout)
+            r = subprocess.run(argv, cwd=cwd, env=penv, input=prompt_text, capture_output=True, text=True, timeout=timeout)
         out[peer] = (r.stdout or "")[:8000]
     except subprocess.TimeoutExpired:
         out[peer] = "__TIMEOUT__"
@@ -391,6 +452,16 @@ def ev_pre_pr_gate(root):
     gate = _gate_config(root)
     if not gate["enabled"]:
         return 0
+    # A `cd`/`pushd` before `gh pr create` runs the real command in a different cwd, but this hook
+    # always diffs at its own root — so the gated diff would be the wrong repo/subtree. Skip rather
+    # than review a mismatched scope (use the quote-blanked cmd_detect so a `cd` inside a string
+    # doesn't trip it).
+    if _PRECEDING_CD.search(cmd_detect[:m.start()]):
+        _notify("[co-agent PR gate] note: a `cd`/`pushd` precedes `gh pr create` — the real command "
+                "runs in a different directory than this hook diffs, so the gated scope may not match "
+                "the PR. Consensus gate SKIPPED; run /co-agent:consensus review from the PR's directory "
+                "if needed.\n")
+        return 0
     # If a state-changing git command precedes `gh pr create` in a compound, the gate (which runs
     # BEFORE the command) reviews the pre-command HEAD — the PR's real diff may differ. Advise.
     if _PRECEDING_GIT_MUT.search(cmd[:m.start()]):
@@ -398,11 +469,11 @@ def ev_pre_pr_gate(root):
                 "compound — the gate reviews the CURRENT HEAD, so the PR's actual diff may differ. "
                 "Re-run /co-agent:consensus review after the commit if needed.\n")
     # Prefer the PR's explicit base (`gh pr create --base <ref>`) over the repo trunk, so we
-    # gate the same diff the PR will show; fall back to the detected trunk.
-    mbase = re.search(r"(?:--base|-B)[= ]+(\S+)", cmd)
+    # gate the same diff the PR will show; fall back to the detected trunk. Parse from the
+    # quote-blanked cmd_detect so a `--base` mention inside a quoted body isn't mis-parsed.
+    cand = _flag_value(cmd, cmd_detect, r"--base|-B")
     base = ""
-    if mbase:   # honor the PR's explicit base; try the local ref AND its remote-tracking form
-        cand = mbase.group(1).strip("'\"")   # strip shell quotes so `--base 'main'` resolves
+    if cand:   # honor the PR's explicit base; try the local ref AND its remote-tracking form
         for ref in (cand, f"origin/{cand}"):
             if _git(root, "rev-parse", "--verify", "--quiet", ref):
                 base = ref
@@ -417,12 +488,12 @@ def ev_pre_pr_gate(root):
     # `--head <owner:branch>` means the PR's head is NOT the current checkout — our local
     # `base...HEAD` would review the wrong diff. Skip with an advisory rather than gate a
     # mismatched scope (parsing a cross-fork head is out of scope for a local hook).
-    mhead = re.search(r"(?:--head|-H)[= ]+(\S+)", cmd)
-    if mhead:
-        head = mhead.group(1).strip("'\"").split(":")[-1]   # strip shell quotes, drop owner: prefix
+    headval = _flag_value(cmd, cmd_detect, r"--head|-H")
+    if headval:
+        head = headval.split(":")[-1]   # drop owner: prefix
         cur = _git(root, "rev-parse", "--abbrev-ref", "HEAD")
         if head and cur and head != cur:
-            _notify(f"[co-agent PR gate] --head '{mhead.group(1)}' != current branch "
+            _notify(f"[co-agent PR gate] --head '{headval}' != current branch "
                              f"'{cur}' — local diff would not match the PR; gate SKIPPED. Review "
                              "from the head branch, or run /co-agent:consensus review manually.\n")
             return 0
@@ -453,8 +524,8 @@ def ev_pre_pr_gate(root):
         # perverse ("remove the secret" is exactly what it does).
         if hard and gate["block"]:
             sys.stderr.write("[co-agent PR gate] BLOCKED — the diff appears to add/contain a secret "
-                             f"({secret}); it was NOT sent to third-party AIs. **Remove/redact the "
-                             "secret from the diff, then retry the PR.** (CO_AGENT_PR_GATE=off would "
+                             f"({secret}); it was NOT sent to third-party AIs. Remove/redact the "
+                             "secret from the diff, then retry the PR. (CO_AGENT_PR_GATE=off would "
                              "disable the whole gate, NOT a safe fix for a leak.)\n")
             return 2
         why = ("removes a committed secret (cleanup)" if not hard else "block mode is off")
