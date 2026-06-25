@@ -36,9 +36,12 @@ assert_eq "1" "$(_g "h._is_diff_header('+++ b/config.py')")"                    
 #     (added content whose text starts '++ b/' renders '+++ b/'); a REAL pre-hunk header is skipped
 assert_eq "1" "$(_g "h._scan_secret('@@ -1 +1 @@'+chr(10)+'+++ b/x AKIAABCDEFGHIJKLMNOP')[0]!=''")" "in-hunk '+++ b/' content with a secret is NOT skipped as header"  # pragma: allowlist secret
 assert_eq "0" "$(_g "h._scan_secret('diff --git a/x b/x'+chr(10)+'+++ b/x AKIAABCDEFGHIJKLMNOP')[0]!=''")" "real pre-hunk '+++ b/' header is still skipped"  # pragma: allowlist secret
-# --- secret scan: deleted-only is advisory (hard=False), added is block-worthy (hard=True)
+# --- secret scan: only ADDED lines hard-block; removed AND context are advisory (hard=False) so a
+#     pre-existing committed secret near an unrelated change can't permanently block its PR
 assert_eq "0" "$(_g "h._scan_secret('-password = \"oldsecret12345\"')[1]")"             "removed-only secret → not hard-block"  # pragma: allowlist secret
 assert_eq "1" "$(_g "h._scan_secret('+password = \"newsecret12345\"')[1]")"             "added secret → hard-block"  # pragma: allowlist secret
+assert_eq "0" "$(_g "h._scan_secret(' password = \"ctxsecret123456\"')[1]")"           "context-line secret → advisory, not hard-block"  # pragma: allowlist secret
+assert_eq "1" "$(_g "h._scan_secret(' password = \"ctxsecret123456\"')[0]!=''")"       "context-line secret still refused (not fanned out)"  # pragma: allowlist secret
 
 # --- allowlist is restricted to EXPLICIT markers (a loose "not a secret" no longer disarms it)
 assert_eq "1" "$(_g "h._scan_secret('+password = \"realhunter2secret\"  # not a secret')[0]!=''")" "scan: real secret + 'not a secret' comment still detected"  # pragma: allowlist secret
@@ -47,7 +50,15 @@ assert_eq "0" "$(_g "h._scan_secret('+password = \"fixturehunter2val\"  # pragma
 # --- cwd-changing compound (cd/pushd before gh pr create) is detected → gate skips that scope
 assert_eq "1" "$(_g "h._PRECEDING_CD.search('cd sub')")"                    "_PRECEDING_CD matches a leading cd"
 assert_eq "1" "$(_g "h._PRECEDING_CD.search('pushd /x')")"                  "_PRECEDING_CD matches pushd"
+assert_eq "1" "$(_g "h._PRECEDING_CD.search('cd ')")"                       "_PRECEDING_CD matches 'cd \"my dir\"' (blanked → 'cd ')"
+assert_eq "1" "$(_g "h._PRECEDING_CD.search('cd')")"                        "_PRECEDING_CD matches bare cd (→ home)"
 assert_eq "0" "$(_g "h._PRECEDING_CD.search('git add .')")"                 "_PRECEDING_CD does NOT match non-cd"
+assert_eq "0" "$(_g "h._PRECEDING_CD.search('cdrom_mount')")"               "_PRECEDING_CD does NOT match 'cdrom...'"
+
+# --- state-changing git before gh pr create → skip+advisory; matched on quote-blanked cmd_detect
+assert_eq "1" "$(_g "bool(h._PRECEDING_GIT_MUT.search('git commit -m x && '))")"       "_PRECEDING_GIT_MUT matches git commit"
+assert_eq "1" "$(_g "bool(h._PRECEDING_GIT_MUT.search('git add -A && '))")"            "_PRECEDING_GIT_MUT matches git add"
+assert_eq "0" "$(_g "bool(h._PRECEDING_GIT_MUT.search('git status && '))")"            "_PRECEDING_GIT_MUT does NOT match read-only git status"
 
 # --- _flag_value: parses --base/--head from the quote-BLANKED cmd, ignoring a flag NAME that only
 #     appears inside a quoted body, while preserving a legitimately quoted value (`--base 'main'`).

@@ -61,10 +61,12 @@ _PR_CMD_RE = re.compile(
 # A state-changing git command before `gh pr create` in a COMPOUND means PreToolUse reviews the
 # PRE-command HEAD (the gate runs before the command), so the PR's real diff may differ.
 _PRECEDING_GIT_MUT = re.compile(r"\bgit\s+(?:commit|add|merge|rebase|cherry-pick|reset|stash\s+pop|am)\b")
-# A `cd` (at a command boundary) before `gh pr create` changes the cwd the real `gh` runs in, but
-# this hook always diffs at its OWN root — so the gated diff would be the WRONG repo/subtree.
-# Skip+advisory rather than review a mismatched scope.
-_PRECEDING_CD = re.compile(r"(?:^|[\n;&|])\s*(?:pushd|cd)\s+\S")
+# A `cd`/`pushd` (at a command boundary) before `gh pr create` changes the cwd the real `gh` runs
+# in, but this hook always diffs at its OWN root — so the gated diff would be the WRONG
+# repo/subtree. Skip+advisory rather than review a mismatched scope. Matches `cd <arg>`, bare `cd`
+# (→ home), and a quoted arg like `cd "my dir"` (the quoted span is blanked in cmd_detect, leaving
+# `cd ` + spaces) by requiring only whitespace-or-end after the command word.
+_PRECEDING_CD = re.compile(r"(?:^|[\n;&|])\s*(?:pushd|cd)(?:\s|$)")
 _DIFF_CAP = 30 * 1024            # cap the diff sent to each peer (context-window / cost bound)
 # Verdict is read from the FIRST non-empty line ONLY (a machine-readable token), never a
 # free-text body scan — a banner/preamble or an incidental "MAJOR" in prose must not flip it.
@@ -355,12 +357,17 @@ def _scan_secret(diff):
         if _ALLOWLIST_RE.search(ln):
             continue   # explicitly marked non-secret (test fixture / example) — detect-secrets style
         if _SECRET_RE.search(ln) or (extra is not None and extra.search(ln)):
+            added = ln.startswith("+")
             removed = ln.startswith("-")
-            kind = "a removed" if removed else ("an added" if ln.startswith("+") else "a context")
+            kind = "an added" if added else ("a removed" if removed else "a context")
             if not hit:
                 hit = f"matched a credential pattern on {kind} line"
-            if not removed:
-                hard = True   # present on added/context → block-worthy
+            if added:
+                # Hard-block ONLY a secret this PR ADDS. A secret on a context (unchanged,
+                # pre-existing) or removed line must NOT hard-block an unrelated PR that merely
+                # touches nearby code — it's advisory (we still refuse to fan the diff out, but
+                # never exit 2). Mirrors the removed-only=cleanup logic.
+                hard = True
                 hit = f"matched a credential pattern on {kind} line"
     return hit, hard
 
@@ -471,22 +478,27 @@ def ev_pre_pr_gate(root):
     gate = _gate_config(root)
     if not gate["enabled"]:
         return 0
+    # Both compound checks run on the quote-blanked cmd_detect, so a `cd`/`git commit` literally
+    # inside a quoted string is ignored (offsets align — blanking is length-preserving).
+    pre = cmd_detect[:m.start()]
     # A `cd`/`pushd` before `gh pr create` runs the real command in a different cwd, but this hook
     # always diffs at its own root — so the gated diff would be the wrong repo/subtree. Skip rather
-    # than review a mismatched scope (use the quote-blanked cmd_detect so a `cd` inside a string
-    # doesn't trip it).
-    if _PRECEDING_CD.search(cmd_detect[:m.start()]):
+    # than review a mismatched scope.
+    if _PRECEDING_CD.search(pre):
         _notify("[co-agent PR gate] note: a `cd`/`pushd` precedes `gh pr create` — the real command "
                 "runs in a different directory than this hook diffs, so the gated scope may not match "
                 "the PR. Consensus gate SKIPPED; run /co-agent:consensus review from the PR's directory "
                 "if needed.\n")
         return 0
-    # If a state-changing git command precedes `gh pr create` in a compound, the gate (which runs
-    # BEFORE the command) reviews the pre-command HEAD — the PR's real diff may differ. Advise.
-    if _PRECEDING_GIT_MUT.search(cmd[:m.start()]):
-        _notify("[co-agent PR gate] note: a git state-change precedes `gh pr create` in this "
-                "compound — the gate reviews the CURRENT HEAD, so the PR's actual diff may differ. "
-                "Re-run /co-agent:consensus review after the commit if needed.\n")
+    # A state-changing git command (commit/add/merge/…) before `gh pr create` in a compound runs
+    # AFTER this PreToolUse hook, so `base...HEAD` would miss the not-yet-created commit — an
+    # INCOMPLETE diff. Skip rather than fan an incomplete diff out (consistent with the cd case).
+    if _PRECEDING_GIT_MUT.search(pre):
+        _notify("[co-agent PR gate] note: a git state-change (e.g. `git commit`) precedes "
+                "`gh pr create` — the gate runs BEFORE it, so `base...HEAD` would miss that commit "
+                "(incomplete diff). Consensus gate SKIPPED; run /co-agent:consensus review after the "
+                "commit.\n")
+        return 0
     # Prefer the PR's explicit base (`gh pr create --base <ref>`) over the repo trunk, so we
     # gate the same diff the PR will show; fall back to the detected trunk. Parse from the
     # quote-blanked cmd_detect so a `--base` mention inside a quoted body isn't mis-parsed.
@@ -547,7 +559,8 @@ def ev_pre_pr_gate(root):
                              "secret from the diff, then retry the PR. (CO_AGENT_PR_GATE=off would "
                              "disable the whole gate, NOT a safe fix for a leak.)\n")
             return 2
-        why = ("removes a committed secret (cleanup)" if not hard else "block mode is off")
+        why = ("block mode is off" if hard
+               else "the secret is on a context or removed line, not one this PR adds")
         _notify(f"[co-agent PR gate] ADVISORY — secret pattern detected ({secret}); the diff "
                          f"was NOT sent to third-party AIs and the gate was SKIPPED ({why}). "
                          "Ensure the secret is rotated/removed.\n")
@@ -555,7 +568,8 @@ def ev_pre_pr_gate(root):
     # Truncate the SENT payload on a line boundary (never mid-line / mid-UTF-8); tell the panel.
     body_diff = diff
     if len(diff) > _DIFF_CAP:
-        body_diff = diff[:_DIFF_CAP].rsplit("\n", 1)[0] + "\n[...diff truncated to the first ~30KB for the gate...]"
+        body_diff = (diff[:_DIFF_CAP].rsplit("\n", 1)[0]
+                     + f"\n[...diff truncated to the first ~{_DIFF_CAP // 1024}KB for the gate...]")
     body = _GATE_PROMPT + body_diff
     peers, models = _panel(root)
     if not peers:
