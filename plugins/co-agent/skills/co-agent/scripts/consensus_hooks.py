@@ -49,12 +49,18 @@ STUCK_LIMIT = 3
 
 # --- PR consensus gate ---------------------------------------------------------
 # Fire only on `gh pr create` (the PR-raise event) at a COMMAND boundary — start of line, or
-# right after a shell separator (`;` `&` `|` `&&` `||` newline), allowing optional `VAR=val ` env
-# prefixes. Catches `cd x && gh pr create` (compound) but NOT a string like `echo "gh pr create"`
-# / `git commit -m "gh pr create"` (preceded by a quote). `gh pr edit` is intentionally NOT
-# gated — a metadata edit needn't re-run a 2-3 min panel, and `edit <n>` would diff a possibly
-# unrelated local `base...HEAD`. Code updates land via push (not `gh pr edit`), at PR-raise time.
-_PR_CMD_RE = re.compile(r"(?:^|[\n;&|])\s*(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*gh\s+pr\s+create\b")
+# right after a shell separator (`;` `&` `|` `&&` `||` newline), allowing an optional `env ` and
+# `VAR=val ` prefixes AND flags between `gh` and `pr` (e.g. `gh -R owner/repo pr create`). Catches
+# `cd x && gh pr create` (compound) but NOT a quoted string like `echo "gh pr create"` /
+# `git commit -m "gh pr create"`. `gh pr edit` is intentionally NOT gated. KNOWN regex limits
+# (documented in CLAUDE.md): heredoc / `$(gh pr create)` / subshell are skipped (fail-open), and a
+# `; gh pr create` literally INSIDE a quoted string can over-match (harmless — reviews the user's
+# own branch diff). Not a security boundary; the data-boundary is secret-scan + read-only peers.
+_PR_CMD_RE = re.compile(
+    r"(?:^|[\n;&|])\s*(?:env\s+)?(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*gh\s+(?:\S+\s+)*?pr\s+create\b")
+# A state-changing git command before `gh pr create` in a COMPOUND means PreToolUse reviews the
+# PRE-command HEAD (the gate runs before the command), so the PR's real diff may differ.
+_PRECEDING_GIT_MUT = re.compile(r"\bgit\s+(?:commit|add|merge|rebase|cherry-pick|reset|stash\s+pop|am)\b")
 _DIFF_CAP = 30 * 1024            # cap the diff sent to each peer (context-window / cost bound)
 # Verdict is read from the FIRST non-empty line ONLY (a machine-readable token), never a
 # free-text body scan — a banner/preamble or an incidental "MAJOR" in prose must not flip it.
@@ -166,6 +172,14 @@ def _git(root, *args):
         return ""
 
 
+def _notify(msg):
+    """Emit an exit-0 advisory/skip notice on BOTH stdout and stderr. Claude Code reliably
+    surfaces hook stderr to the model only on a blocking exit (2); duplicating to stdout makes
+    advisory/skip outcomes visible too (so 'host decides' / 'gate skipped' is never silent)."""
+    sys.stderr.write(msg)
+    sys.stdout.write(msg)
+
+
 def _git_diff(root, spec):
     """Compute `git diff <spec>` with all external diff/textconv drivers neutralized (a repo
     git config must not run code during this hook). Returns (ok, stdout, stderr): ok=False on a
@@ -241,8 +255,16 @@ _SECRET_RE = re.compile(
 )
 
 
-_DIFF_META = ("diff --git", "index ", "--- ", "+++ ", "@@", "new file", "deleted file",
-              "old mode", "new mode", "similarity ", "rename ", "copy ", "Binary files")
+# Precise diff-metadata header match. NOTE: `+++ `/`--- ` must NOT be blanket-skipped — an
+# ADDED line whose content starts with `++ ` renders as `+++ …` and would be wrongly treated as
+# a header, leaking a secret on it. Real file headers are only `+++ b/…`, `--- a/…`, `/dev/null`.
+_DIFF_HEADER_RE = re.compile(
+    r"^(?:diff --git |index |@@ |new file|deleted file|old mode|new mode|similarity |rename |copy |Binary files )"
+    r"|^(?:\+\+\+|---)\s+(?:a/|b/|/dev/null|\"a/|\"b/)")
+
+
+def _is_diff_header(ln):
+    return bool(_DIFF_HEADER_RE.match(ln))
 
 
 def _scan_secret(diff):
@@ -260,8 +282,8 @@ def _scan_secret(diff):
         pass
     hit, hard = "", False
     for ln in diff.splitlines():
-        if ln.startswith(_DIFF_META):
-            continue   # diff metadata, not content
+        if _is_diff_header(ln):
+            continue   # real diff metadata header, not content (a `++ …` added line is content)
         if _SECRET_RE.search(ln) or (extra is not None and extra.search(ln)):
             removed = ln.startswith("-")
             kind = "a removed" if removed else ("an added" if ln.startswith("+") else "a context")
@@ -351,11 +373,18 @@ def ev_pre_pr_gate(root):
         return 0
     payload = _stdin_json()
     cmd = (payload.get("tool_input", {}) or {}).get("command", "")
-    if not _PR_CMD_RE.search(cmd):
+    m = _PR_CMD_RE.search(cmd)
+    if not m:
         return 0  # not a `gh pr create` — pass through
     gate = _gate_config(root)
     if not gate["enabled"]:
         return 0
+    # If a state-changing git command precedes `gh pr create` in a compound, the gate (which runs
+    # BEFORE the command) reviews the pre-command HEAD — the PR's real diff may differ. Advise.
+    if _PRECEDING_GIT_MUT.search(cmd[:m.start()]):
+        _notify("[co-agent PR gate] note: a git state-change precedes `gh pr create` in this "
+                "compound — the gate reviews the CURRENT HEAD, so the PR's actual diff may differ. "
+                "Re-run /co-agent:consensus review after the commit if needed.\n")
     # Prefer the PR's explicit base (`gh pr create --base <ref>`) over the repo trunk, so we
     # gate the same diff the PR will show; fall back to the detected trunk.
     mbase = re.search(r"(?:--base|-B)[= ]+(\S+)", cmd)
@@ -369,7 +398,7 @@ def ev_pre_pr_gate(root):
         if not base:
             # An explicit --base that doesn't resolve must NOT silently fall back to trunk (that
             # would review a different scope than the PR). Warn + skip instead.
-            sys.stderr.write(f"[co-agent PR gate] --base '{cand}' does not resolve (locally or "
+            _notify(f"[co-agent PR gate] --base '{cand}' does not resolve (locally or "
                              "origin/) — consensus gate SKIPPED rather than review a different "
                              "scope. `git fetch origin` or check the base name.\n")
             return 0
@@ -381,7 +410,7 @@ def ev_pre_pr_gate(root):
         head = mhead.group(1).split(":")[-1]
         cur = _git(root, "rev-parse", "--abbrev-ref", "HEAD")
         if head and cur and head != cur:
-            sys.stderr.write(f"[co-agent PR gate] --head '{mhead.group(1)}' != current branch "
+            _notify(f"[co-agent PR gate] --head '{mhead.group(1)}' != current branch "
                              f"'{cur}' — local diff would not match the PR; gate SKIPPED. Review "
                              "from the head branch, or run /co-agent:consensus review manually.\n")
             return 0
@@ -389,7 +418,7 @@ def ev_pre_pr_gate(root):
     if not base:
         # No base ref (shallow clone / no remote): do NOT silently `git diff HEAD` (empty for an
         # all-committed PR → silent pass). Warn instead so the bypass is never invisible.
-        sys.stderr.write("[co-agent PR gate] could not determine a base branch to diff against "
+        _notify("[co-agent PR gate] could not determine a base branch to diff against "
                          "(shallow clone / no remote?) — consensus gate SKIPPED. Run "
                          "/co-agent:consensus review manually, or `git fetch origin main`.\n")
         return 0
@@ -397,7 +426,7 @@ def ev_pre_pr_gate(root):
     if not ok:
         # git ERROR (bad ref / merge-base failure) — distinguish from an empty diff; warn, don't
         # silently pass (empty "" alone would look like "nothing to review").
-        sys.stderr.write(f"[co-agent PR gate] `git diff {base}...HEAD` failed — gate SKIPPED "
+        _notify(f"[co-agent PR gate] `git diff {base}...HEAD` failed — gate SKIPPED "
                          f"(fail-open): {derr.strip()[:200]}\n")
         return 0
     if not diff.strip():
@@ -417,7 +446,7 @@ def ev_pre_pr_gate(root):
                              "disable the whole gate, NOT a safe fix for a leak.)\n")
             return 2
         why = ("removes a committed secret (cleanup)" if not hard else "block mode is off")
-        sys.stderr.write(f"[co-agent PR gate] ADVISORY — secret pattern detected ({secret}); the diff "
+        _notify(f"[co-agent PR gate] ADVISORY — secret pattern detected ({secret}); the diff "
                          f"was NOT sent to third-party AIs and the gate was SKIPPED ({why}). "
                          "Ensure the secret is rotated/removed.\n")
         return 0
@@ -429,7 +458,7 @@ def ev_pre_pr_gate(root):
     peers, models = _panel(root)
     if not peers:
         # Can't reach consensus with no peer — degrade (advisory), never block on absence.
-        sys.stderr.write("[co-agent PR gate] no panel peer installed/enabled — skipping consensus gate "
+        _notify("[co-agent PR gate] no panel peer installed/enabled — skipping consensus gate "
                           "(install/auth a peer or run /co-agent:setup to enforce it).\n")
         return 0
     out = {}
@@ -477,7 +506,7 @@ def ev_pre_pr_gate(root):
             blockers.append((p, v.strip()[:1200]))
     usable = len(voted)
     if usable == 0:
-        sys.stderr.write("[co-agent PR gate] no peer returned a parseable PASS/BLOCK verdict — gate could not "
+        _notify("[co-agent PR gate] no peer returned a parseable PASS/BLOCK verdict — gate could not "
                          "run; allowing the PR (fail-open). Re-run /co-agent:consensus review manually if needed.\n")
         return 0
     # Chair Principle — never let ONE AI's verdict decide. Hard-block only on a QUORUM:
@@ -498,11 +527,11 @@ def ev_pre_pr_gate(root):
         sys.stderr.write("\n".join(msg) + "\n")
         return 2  # PreToolUse: exit 2 blocks the tool call and feeds stderr back to the agent
     if blockers:  # below quorum (or block off) → advisory; the host weighs it, gate does not veto
-        sys.stderr.write(f"[co-agent PR gate] ADVISORY — {n_block}/{usable} peer(s) flagged issues "
+        _notify(f"[co-agent PR gate] ADVISORY — {n_block}/{usable} peer(s) flagged issues "
                          "(below block quorum; not vetoing — review and decide):\n"
                          + "\n".join(f"- {p}: {v[:300]}" for p, v in blockers) + "\n")
         return 0
-    sys.stderr.write(f"[co-agent PR gate] [PASS] consensus PASS ({usable} voting peer(s): {', '.join(voted)}).\n")
+    _notify(f"[co-agent PR gate] [PASS] consensus PASS ({usable} voting peer(s): {', '.join(voted)}).\n")
     return 0
 
 
