@@ -32,6 +32,10 @@ assert_eq "0" "$(_g "h._scan_secret('+    api_key = config.value')[0]!=''")"    
 # --- secret scan: '++ ' added content (renders '+++ ') is NOT mistaken for a header
 assert_eq "0" "$(_g "h._is_diff_header('+++ password = \"leakedsecret12345\"')")"       "'+++ content' is not a header"  # pragma: allowlist secret
 assert_eq "1" "$(_g "h._is_diff_header('+++ b/config.py')")"                            "'+++ b/...' IS a header"
+# --- secret scan: hunk-aware — a secret on a '+++ b/...'-rendered line INSIDE a hunk is scanned
+#     (added content whose text starts '++ b/' renders '+++ b/'); a REAL pre-hunk header is skipped
+assert_eq "1" "$(_g "h._scan_secret('@@ -1 +1 @@'+chr(10)+'+++ b/x AKIAABCDEFGHIJKLMNOP')[0]!=''")" "in-hunk '+++ b/' content with a secret is NOT skipped as header"  # pragma: allowlist secret
+assert_eq "0" "$(_g "h._scan_secret('diff --git a/x b/x'+chr(10)+'+++ b/x AKIAABCDEFGHIJKLMNOP')[0]!=''")" "real pre-hunk '+++ b/' header is still skipped"  # pragma: allowlist secret
 # --- secret scan: deleted-only is advisory (hard=False), added is block-worthy (hard=True)
 assert_eq "0" "$(_g "h._scan_secret('-password = \"oldsecret12345\"')[1]")"             "removed-only secret → not hard-block"  # pragma: allowlist secret
 assert_eq "1" "$(_g "h._scan_secret('+password = \"newsecret12345\"')[1]")"             "added secret → hard-block"  # pragma: allowlist secret
@@ -72,3 +76,10 @@ e = h._sanitized_env('codex')
 print(int('GH_TOKEN' not in e and 'AWS_SECRET_ACCESS_KEY' not in e and 'OPENAI_API_KEY' in e and 'PATH' in e))
 " 2>/dev/null)
 assert_eq "1" "$_env_strip" "_sanitized_env drops GH_TOKEN/AWS_* but keeps codex OPENAI_API_KEY + PATH"
+# --- env regex: PAT/generic-KEY/PWD suffixes are caught, but PATH/PWD/KEYBOARD are preserved
+assert_eq "1" "$(_g "bool(h._SENSITIVE_ENV_RE.search('GITLAB_PAT'))")"      "env: GITLAB_PAT is sensitive"
+assert_eq "1" "$(_g "bool(h._SENSITIVE_ENV_RE.search('OPENAI_KEY'))")"      "env: OPENAI_KEY is sensitive"
+assert_eq "1" "$(_g "bool(h._SENSITIVE_ENV_RE.search('DB_PWD'))")"          "env: DB_PWD is sensitive"
+assert_eq "0" "$(_g "bool(h._SENSITIVE_ENV_RE.search('PATH'))")"            "env: PATH is NOT stripped"
+assert_eq "0" "$(_g "bool(h._SENSITIVE_ENV_RE.search('PWD'))")"             "env: bare PWD is NOT stripped"
+assert_eq "0" "$(_g "bool(h._SENSITIVE_ENV_RE.search('KEYBOARD'))")"        "env: KEYBOARD is NOT stripped"

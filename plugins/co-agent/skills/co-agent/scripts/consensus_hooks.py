@@ -99,11 +99,13 @@ _PEER_ENV_KEEP = {
     "gemini":   ("GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENAI_API_KEY"),
     "kiro-cli": ("KIRO_API_KEY",),
 }
-# Names that look credential-bearing. Matched against the env-var NAME (not value). Kept tight
-# enough not to strip benign desktop vars (e.g. XDG_SESSION_ID) — AWS_SESSION_TOKEN is already
-# covered by TOKEN and ^AWS_.
+# Names that look credential-bearing. Matched against the env-var NAME (not value). Anchored so
+# benign vars are preserved: `(?:^|_)KEY`/`(?:^|_)PAT`/`_PWD` followed by a non-letter catch
+# `OPENAI_KEY`/`GITLAB_PAT`/`DB_PWD` but NOT `PATH`, `PWD` (the cwd var), `KEYBOARD`, or `KEYRING`.
+# AWS_SESSION_TOKEN is already covered by TOKEN and ^AWS_.
 _SENSITIVE_ENV_RE = re.compile(
     r"TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|PRIVATE_KEY|API_?KEY|"
+    r"(?:^|_)KEY(?![A-Za-z])|(?:^|_)PAT(?![A-Za-z])|_PWD(?![A-Za-z])|"
     r"^AWS_|^GOOGLE_|^GCP_|^AZURE_|^GH_|^GITHUB_", re.I)
 
 
@@ -296,9 +298,10 @@ _SECRET_RE = re.compile(
 )
 
 
-# Precise diff-metadata header match. NOTE: `+++ `/`--- ` must NOT be blanket-skipped — an
-# ADDED line whose content starts with `++ ` renders as `+++ …` and would be wrongly treated as
-# a header, leaking a secret on it. Real file headers are only `+++ b/…`, `--- a/…`, `/dev/null`.
+# Precise diff-metadata header match, applied ONLY in the pre-hunk block (see _scan_secret's
+# hunk-awareness). `+++ `/`--- ` are matched only when followed by `a/`/`b/`/`/dev/null` — but
+# that alone is NOT enough, because an added line whose content starts with `++ b/…` renders as
+# `+++ b/…`; the in-hunk guard in _scan_secret is what stops that line being skipped as a header.
 _DIFF_HEADER_RE = re.compile(
     r"^(?:diff --git |index |@@ |new file|deleted file|old mode|new mode|similarity |rename |copy |Binary files )"
     r"|^(?:\+\+\+|---)\s+(?:a/|b/|/dev/null|\"a/|\"b/)")
@@ -322,7 +325,12 @@ def _scan_secret(diff):
     secret appears on an added/context line (block-worthy), hard=False if it appears ONLY on
     removed (`-`) lines (a cleanup PR removing a committed secret — refuse to fan out, but advisory
     not a hard block, since 'remove the secret' is already what it's doing). Uses the UNION of the
-    strong local pattern and check_ai_context.SECRET_RE (never a weaker-only fallback)."""
+    strong local pattern and check_ai_context.SECRET_RE (never a weaker-only fallback).
+
+    HUNK-AWARE header detection: a `+++ `/`--- ` line is a genuine FILE HEADER only in the
+    pre-hunk metadata block (before the first `@@`); once INSIDE a hunk, every +/-/space line is
+    CONTENT. This closes a bypass where an added line whose content begins `++ b/…` renders as
+    `+++ b/…` and would otherwise be skipped as a header, smuggling a secret past the scanner."""
     extra = None
     try:
         import check_ai_context as cac2
@@ -330,9 +338,20 @@ def _scan_secret(diff):
     except Exception:   # missing OR a SyntaxError in the sibling → fall back to the local pattern
         pass
     hit, hard = "", False
+    in_hunk = False
     for ln in diff.splitlines():
-        if _is_diff_header(ln):
-            continue   # real diff metadata header, not content (a `++ …` added line is content)
+        if ln.startswith("@@"):
+            in_hunk = True
+            continue           # hunk header, not content
+        if ln.startswith("diff --git "):
+            in_hunk = False
+            continue           # new file section — back to the pre-hunk metadata block
+        if not in_hunk:
+            if _is_diff_header(ln):
+                continue       # genuine pre-hunk metadata / file header (incl. real `+++ b/…`)
+        elif ln.startswith("\\"):
+            continue           # "\ No newline at end of file" marker — not content
+        # else: inside a hunk → this is content; a `+++ `/`--- ` here is added/removed text, scan it
         if _ALLOWLIST_RE.search(ln):
             continue   # explicitly marked non-secret (test fixture / example) — detect-secrets style
         if _SECRET_RE.search(ln) or (extra is not None and extra.search(ln)):
