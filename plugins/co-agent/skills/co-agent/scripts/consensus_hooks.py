@@ -390,7 +390,7 @@ def ev_pre_pr_gate(root):
     mbase = re.search(r"(?:--base|-B)[= ]+(\S+)", cmd)
     base = ""
     if mbase:   # honor the PR's explicit base; try the local ref AND its remote-tracking form
-        cand = mbase.group(1)
+        cand = mbase.group(1).strip("'\"")   # strip shell quotes so `--base 'main'` resolves
         for ref in (cand, f"origin/{cand}"):
             if _git(root, "rev-parse", "--verify", "--quiet", ref):
                 base = ref
@@ -407,7 +407,7 @@ def ev_pre_pr_gate(root):
     # mismatched scope (parsing a cross-fork head is out of scope for a local hook).
     mhead = re.search(r"(?:--head|-H)[= ]+(\S+)", cmd)
     if mhead:
-        head = mhead.group(1).split(":")[-1]
+        head = mhead.group(1).strip("'\"").split(":")[-1]   # strip shell quotes, drop owner: prefix
         cur = _git(root, "rev-parse", "--abbrev-ref", "HEAD")
         if head and cur and head != cur:
             _notify(f"[co-agent PR gate] --head '{mhead.group(1)}' != current branch "
