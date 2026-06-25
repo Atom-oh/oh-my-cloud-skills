@@ -249,8 +249,9 @@ _SECRET_RE = re.compile(
     # (identifier/call, no quote) is NOT a false match.
     r"|(?:password|passwd|secret|api[_-]?key|token|client[_-]?secret)['\"]?\s*[:=]\s*['\"][^'\"]{8,}"
     # …and an UNQUOTED high-entropy value (>=16 url-safe chars, no spaces/parens) for .env-style
-    # `API_KEY=AbC123...` — the length/charset guard keeps `api_key = get()` from matching.
-    r"|(?:api[_-]?key|aws_access_key_id|access[_-]?token|client[_-]?secret)\s*[:=]\s*[A-Za-z0-9/+_\-]{16,}\b",
+    # `API_KEY=AbC123...` — the length/charset guard keeps `secret = get()` from matching.
+    r"|(?:api[_-]?key|aws_access_key_id|access[_-]?token|client[_-]?secret|secret|passwd|password|token)"
+    r"\s*[:=]\s*[A-Za-z0-9/+_\-]{16,}\b",
     re.I,
 )
 
@@ -373,7 +374,11 @@ def ev_pre_pr_gate(root):
         return 0
     payload = _stdin_json()
     cmd = (payload.get("tool_input", {}) or {}).get("command", "")
-    m = _PR_CMD_RE.search(cmd)
+    # Blank out quoted spans (length-preserving) BEFORE matching, so a `gh pr create` literally
+    # INSIDE a string (`echo "; gh pr create"`, `rg '; gh pr create'`) doesn't trigger the gate.
+    # Offsets stay aligned with `cmd` (used below for --base/--head and the compound check).
+    cmd_detect = re.sub(r"'[^']*'|\"[^\"]*\"", lambda mm: " " * len(mm.group()), cmd)
+    m = _PR_CMD_RE.search(cmd_detect)
     if not m:
         return 0  # not a `gh pr create` — pass through
     gate = _gate_config(root)
@@ -508,6 +513,14 @@ def ev_pre_pr_gate(root):
     if usable == 0:
         _notify("[co-agent PR gate] no peer returned a parseable PASS/BLOCK verdict — gate could not "
                          "run; allowing the PR (fail-open). Re-run /co-agent:consensus review manually if needed.\n")
+        return 0
+    # Symmetric with the block quorum: a single voter is NOT a consensus (the adapter guide:
+    # "≤1 usable peer = not consensus"). In the default majority mode, usable<2 is advisory either
+    # way — a lone PASS isn't declared consensus, a lone BLOCK doesn't veto. ("any" opted into single.)
+    if gate["quorum"] != "any" and usable < 2:
+        verdicts = ", ".join(f"{p}:{'BLOCK' if any(p==bp for bp, _ in blockers) else 'PASS'}" for p in voted)
+        _notify(f"[co-agent PR gate] ADVISORY — only {usable} voting peer ({verdicts}); not a full "
+                "consensus (need ≥2). Allowing the PR — review the lone verdict and decide.\n")
         return 0
     # Chair Principle — never let ONE AI's verdict decide. Hard-block only on a QUORUM:
     # "majority" (default) needs >half of voters AND ≥2 blockers; "any" needs ≥1. Below quorum,
