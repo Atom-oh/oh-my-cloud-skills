@@ -174,8 +174,11 @@ def _git_diff(root, spec):
     env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
            "GIT_ATTR_NOSYSTEM": "1", "GIT_PAGER": "cat"}
     try:
+        # Neutralize repo-LOCAL .git/config exec surfaces too (system/global are dropped by env,
+        # but a malicious repo-local core.fsmonitor/hooksPath/pager could still run code here).
         r = subprocess.run(
-            ["git", "-C", root, "-c", "core.attributesFile=/dev/null",
+            ["git", "-C", root, "-c", f"core.attributesFile={os.devnull}",
+             "-c", "core.fsmonitor=", "-c", f"core.hooksPath={os.devnull}", "-c", "core.pager=cat",
              "diff", "--no-color", "--no-ext-diff", "--no-textconv", spec],
             capture_output=True, text=True, timeout=30, env=env)
         return (r.returncode == 0, r.stdout, r.stderr)
@@ -221,17 +224,19 @@ def _gate_config(root):
 # Strong, broad credential patterns — this gate is the LAST line of defense before an external
 # fan-out, so the set must be comprehensive (not a weaker canonical fallback).
 _SECRET_RE = re.compile(
-    r"AKIA[0-9A-Z]{16}"                                  # AWS access key id
+    r"A(?:KIA|SIA)[0-9A-Z]{16}"                          # AWS access key id (incl. ASIA temp keys)
     r"|aws_secret_access_key\s*[:=]\s*\S{16,}"           # AWS secret access key
     r"|-----BEGIN [A-Z ]*PRIVATE KEY"                    # PEM private key
     r"|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}"  # GitHub PAT/OAuth/app tokens
     r"|xox[abprs]-[A-Za-z0-9-]{10,}"                     # Slack tokens
-    r"|sk-[A-Za-z0-9]{20,}|sk-ant-[A-Za-z0-9-]{20,}"     # OpenAI / Anthropic keys
+    r"|sk-(?:proj-|ant-)?[A-Za-z0-9_-]{20,}"             # OpenAI (incl. sk-proj-) / Anthropic keys
     r"|AIza[0-9A-Za-z_\-]{30,}"                          # Google API key
-    # generic keyword=value — require a QUOTED literal value so a code assignment like
-    # `secret = _scan_secret(diff)` (an identifier/call, not a credential) is NOT a false match;
-    # unquoted real secrets are covered by the dedicated high-entropy patterns above.
-    r"|(?:password|passwd|secret|api[_-]?key|token|client[_-]?secret)['\"]?\s*[:=]\s*['\"][^'\"]{8,}",
+    # generic keyword=value, QUOTED literal — so a code assignment like `secret = _scan_secret(diff)`
+    # (identifier/call, no quote) is NOT a false match.
+    r"|(?:password|passwd|secret|api[_-]?key|token|client[_-]?secret)['\"]?\s*[:=]\s*['\"][^'\"]{8,}"
+    # …and an UNQUOTED high-entropy value (>=16 url-safe chars, no spaces/parens) for .env-style
+    # `API_KEY=AbC123...` — the length/charset guard keeps `api_key = get()` from matching.
+    r"|(?:api[_-]?key|aws_access_key_id|access[_-]?token|client[_-]?secret)\s*[:=]\s*[A-Za-z0-9/+_\-]{16,}\b",
     re.I,
 )
 
@@ -241,24 +246,31 @@ _DIFF_META = ("diff --git", "index ", "--- ", "+++ ", "@@", "new file", "deleted
 
 
 def _scan_secret(diff):
-    """Return a short label if the fanned-out diff carries a secret, else ''. Scans EVERY line
-    that will be sent — added (`+`), removed (`-`), AND context (unchanged) lines — skipping only
-    diff metadata headers. The payload is the whole diff, so a credential in a context line near
-    a change would otherwise leak unscanned. Uses the UNION of the strong local pattern and
-    check_ai_context.SECRET_RE (never a weaker-only fallback)."""
+    """Scan EVERY line that will be sent — added (`+`), removed (`-`), AND context (unchanged) —
+    skipping only diff metadata headers. Returns (label, hard): label='' if clean; hard=True if a
+    secret appears on an added/context line (block-worthy), hard=False if it appears ONLY on
+    removed (`-`) lines (a cleanup PR removing a committed secret — refuse to fan out, but advisory
+    not a hard block, since 'remove the secret' is already what it's doing). Uses the UNION of the
+    strong local pattern and check_ai_context.SECRET_RE (never a weaker-only fallback)."""
     extra = None
     try:
         import check_ai_context as cac2
         extra = getattr(cac2, "SECRET_RE", None)
-    except ImportError:
+    except Exception:   # missing OR a SyntaxError in the sibling → fall back to the local pattern
         pass
+    hit, hard = "", False
     for ln in diff.splitlines():
         if ln.startswith(_DIFF_META):
             continue   # diff metadata, not content
         if _SECRET_RE.search(ln) or (extra is not None and extra.search(ln)):
-            kind = "an added" if ln.startswith("+") else ("a removed" if ln.startswith("-") else "a context")
-            return f"matched a credential pattern on {kind} line"
-    return ""
+            removed = ln.startswith("-")
+            kind = "a removed" if removed else ("an added" if ln.startswith("+") else "a context")
+            if not hit:
+                hit = f"matched a credential pattern on {kind} line"
+            if not removed:
+                hard = True   # present on added/context → block-worthy
+                hit = f"matched a credential pattern on {kind} line"
+    return hit, hard
 
 
 def _path_panel(host):
@@ -313,21 +325,25 @@ def _build_argv(peer, model, fpath):
     return argv
 
 
-def _review_one(peer, prompt_text, model, fpath, timeout, out):
+def _review_one(peer, prompt_text, model, fpath, cwd, timeout, out):
     try:
         argv = _build_argv(peer, model, fpath)
+        # Run with cwd = an isolated dir (NOT the repo), so a prompt-injected reviewer's
+        # *relative* file reads can't reach repo files. (Absolute paths like ~/.aws remain a
+        # documented residual — reviewers are read-capable; see CLAUDE.md.)
         if _REVIEW[peer]["channel"] == "file":
             # Kiro ignores stdin in `chat` — it reads the diff from the temp file via fs_read.
-            r = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+            r = subprocess.run(argv, cwd=cwd, capture_output=True, text=True, timeout=timeout)
         else:
             # stdin channel: pipe prompt+diff (never argv → no `ps` exposure). A CLI that
             # ignores stdin sees no diff → replies `BLOCK: no diff received` per the prompt.
-            r = subprocess.run(argv, input=prompt_text, capture_output=True, text=True, timeout=timeout)
+            r = subprocess.run(argv, cwd=cwd, input=prompt_text, capture_output=True, text=True, timeout=timeout)
         out[peer] = (r.stdout or "")[:8000]
     except subprocess.TimeoutExpired:
         out[peer] = "__TIMEOUT__"
     except Exception as e:
         out[peer] = f"__ERROR__ {e}"
+        sys.stderr.write(f"[co-agent PR gate] {peer} review errored (non-vote): {e!r}\n")
 
 
 def ev_pre_pr_gate(root):
@@ -357,6 +373,18 @@ def ev_pre_pr_gate(root):
                              "origin/) — consensus gate SKIPPED rather than review a different "
                              "scope. `git fetch origin` or check the base name.\n")
             return 0
+    # `--head <owner:branch>` means the PR's head is NOT the current checkout — our local
+    # `base...HEAD` would review the wrong diff. Skip with an advisory rather than gate a
+    # mismatched scope (parsing a cross-fork head is out of scope for a local hook).
+    mhead = re.search(r"(?:--head|-H)[= ]+(\S+)", cmd)
+    if mhead:
+        head = mhead.group(1).split(":")[-1]
+        cur = _git(root, "rev-parse", "--abbrev-ref", "HEAD")
+        if head and cur and head != cur:
+            sys.stderr.write(f"[co-agent PR gate] --head '{mhead.group(1)}' != current branch "
+                             f"'{cur}' — local diff would not match the PR; gate SKIPPED. Review "
+                             "from the head branch, or run /co-agent:consensus review manually.\n")
+            return 0
     base = base or _base_ref(root)
     if not base:
         # No base ref (shallow clone / no remote): do NOT silently `git diff HEAD` (empty for an
@@ -376,20 +404,22 @@ def ev_pre_pr_gate(root):
         return 0  # genuinely nothing to review
     # Data boundary: secret-scan the FULL diff's added lines (catch a credential ANYWHERE in the
     # PR, even past the cap) and refuse to fan out if any is found — before truncating the payload.
-    secret = _scan_secret(diff)
+    secret, hard = _scan_secret(diff)
     if secret:
-        # ALWAYS refuse to fan a secret-bearing diff to third-party AIs. Whether that also HARD-
-        # BLOCKS the PR follows the same block/advisory mode as a panel verdict: block→exit 2,
-        # advisory→exit 0 with a loud warning (the diff is still never sent either way).
-        if gate["block"]:
-            sys.stderr.write("[co-agent PR gate] BLOCKED — the diff appears to contain a secret "
+        # ALWAYS refuse to fan a secret-bearing diff to third-party AIs (never sent either way).
+        # HARD-BLOCK only when it's on an added/context line AND block mode is on; a cleanup PR
+        # that only REMOVES a committed secret (hard=False) is advisory — blocking it would be
+        # perverse ("remove the secret" is exactly what it does).
+        if hard and gate["block"]:
+            sys.stderr.write("[co-agent PR gate] BLOCKED — the diff appears to add/contain a secret "
                              f"({secret}); it was NOT sent to third-party AIs. **Remove/redact the "
                              "secret from the diff, then retry the PR.** (CO_AGENT_PR_GATE=off would "
                              "disable the whole gate, NOT a safe fix for a leak.)\n")
             return 2
-        sys.stderr.write("[co-agent PR gate] ADVISORY — the diff appears to contain a secret "
-                         f"({secret}); it was NOT sent to third-party AIs and the consensus gate was "
-                         "SKIPPED (block is off). Remove/redact the secret before relying on the gate.\n")
+        why = ("removes a committed secret (cleanup)" if not hard else "block mode is off")
+        sys.stderr.write(f"[co-agent PR gate] ADVISORY — secret pattern detected ({secret}); the diff "
+                         f"was NOT sent to third-party AIs and the gate was SKIPPED ({why}). "
+                         "Ensure the secret is rotated/removed.\n")
         return 0
     # Truncate the SENT payload on a line boundary (never mid-line / mid-UTF-8); tell the panel.
     body_diff = diff
@@ -403,15 +433,15 @@ def ev_pre_pr_gate(root):
                           "(install/auth a peer or run /co-agent:setup to enforce it).\n")
         return 0
     out = {}
-    fpath = None
-    try:
-        # File-channel peers (kiro) fs_read the diff from here; deadline shared by all threads.
-        with tempfile.NamedTemporaryFile("w", suffix=".diff", delete=False, encoding="utf-8") as f:
+    # Isolated work dir = the peers' cwd (NOT the repo) so a prompt-injected reviewer's relative
+    # reads can't reach repo files; the file-channel diff lives here too.
+    with tempfile.TemporaryDirectory(prefix="coagent-prgate-") as wdir:
+        fpath = os.path.join(wdir, "pr.diff")
+        with open(fpath, "w", encoding="utf-8") as f:
             f.write(body)
-            fpath = f.name
         threads = []
         for p in peers:
-            t = threading.Thread(target=_review_one, args=(p, body, models.get(p), fpath, gate["timeout"], out))
+            t = threading.Thread(target=_review_one, args=(p, body, models.get(p), fpath, wdir, gate["timeout"], out))
             t.daemon = True   # never keep the process alive on a wedged peer thread
             threads.append(t)
         for t in threads:
@@ -421,12 +451,6 @@ def ev_pre_pr_gate(root):
         end = time.monotonic() + gate["timeout"] + 5
         for t in threads:
             t.join(max(0, end - time.monotonic()))
-    finally:
-        if fpath:
-            try:
-                os.unlink(fpath)
-            except OSError:
-                pass
     blockers, voted = [], []
     for p in peers:
         v = out.get(p, "")
