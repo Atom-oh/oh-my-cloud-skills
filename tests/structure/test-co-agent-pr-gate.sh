@@ -22,20 +22,20 @@ assert_eq "0" "$(_g "h._PR_CMD_RE.search('gh pr list')")"                    "do
 assert_eq "0" "$(_g "h._PR_CMD_RE.search('git commit -m \"gh pr create\"')")" "does NOT match gh pr create in a string"
 
 # --- secret scan: true positives (added/removed/context, quoted/unquoted, multiple key types)
-assert_eq "1" "$(_g "h._scan_secret('+key = \"sk-ant-abcdefghij1234567890\"')[0]!=''")" "scan: anthropic key (added)"
-assert_eq "1" "$(_g "h._scan_secret('+AKIAABCDEFGHIJKLMNOP')[0]!=''")"                  "scan: AWS AKIA"
-assert_eq "1" "$(_g "h._scan_secret('+ASIAABCDEFGHIJKLMNOP')[0]!=''")"                  "scan: AWS ASIA temp key"
-assert_eq "1" "$(_g "h._scan_secret('+SECRET=Abcdefghijklmnop123')[0]!=''")"            "scan: unquoted SECRET= env"
-assert_eq "1" "$(_g "h._scan_secret(' password = \"hunter2hunter2here\"')[0]!=''")"     "scan: secret on a context line"
+assert_eq "1" "$(_g "h._scan_secret('+key = \"sk-ant-abcdefghij1234567890\"')[0]!=''")" "scan: anthropic key (added)"  # pragma: allowlist secret
+assert_eq "1" "$(_g "h._scan_secret('+AKIAABCDEFGHIJKLMNOP')[0]!=''")"                  "scan: AWS AKIA"  # pragma: allowlist secret
+assert_eq "1" "$(_g "h._scan_secret('+ASIAABCDEFGHIJKLMNOP')[0]!=''")"                  "scan: AWS ASIA temp key"  # pragma: allowlist secret
+assert_eq "1" "$(_g "h._scan_secret('+SECRET=Abcdefghijklmnop123')[0]!=''")"            "scan: unquoted SECRET= env"  # pragma: allowlist secret
+assert_eq "1" "$(_g "h._scan_secret(' password = \"hunter2hunter2here\"')[0]!=''")"     "scan: secret on a context line"  # pragma: allowlist secret
 # --- secret scan: false-positive guards (code assignments must NOT match)
 assert_eq "0" "$(_g "h._scan_secret('+    secret = _scan_secret(diff)')[0]!=''")"       "no FP: secret = call()"
 assert_eq "0" "$(_g "h._scan_secret('+    api_key = config.value')[0]!=''")"            "no FP: api_key = identifier"
 # --- secret scan: '++ ' added content (renders '+++ ') is NOT mistaken for a header
-assert_eq "0" "$(_g "h._is_diff_header('+++ password = \"leakedsecret12345\"')")"       "'+++ content' is not a header"
+assert_eq "0" "$(_g "h._is_diff_header('+++ password = \"leakedsecret12345\"')")"       "'+++ content' is not a header"  # pragma: allowlist secret
 assert_eq "1" "$(_g "h._is_diff_header('+++ b/config.py')")"                            "'+++ b/...' IS a header"
 # --- secret scan: deleted-only is advisory (hard=False), added is block-worthy (hard=True)
-assert_eq "0" "$(_g "h._scan_secret('-password = \"oldsecret12345\"')[1]")"             "removed-only secret → not hard-block"
-assert_eq "1" "$(_g "h._scan_secret('+password = \"newsecret12345\"')[1]")"             "added secret → hard-block"
+assert_eq "0" "$(_g "h._scan_secret('-password = \"oldsecret12345\"')[1]")"             "removed-only secret → not hard-block"  # pragma: allowlist secret
+assert_eq "1" "$(_g "h._scan_secret('+password = \"newsecret12345\"')[1]")"             "added secret → hard-block"  # pragma: allowlist secret
 
 # --- --base shell-quote stripping (avoid a fail-open bypass on `--base 'main'`)
 _base_quote=$(python3 -c "

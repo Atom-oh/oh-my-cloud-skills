@@ -268,6 +268,11 @@ def _is_diff_header(ln):
     return bool(_DIFF_HEADER_RE.match(ln))
 
 
+# Inline allowlist (detect-secrets / gitleaks convention): a line carrying this marker is an
+# intentional fixture/example, not a real secret — skip it so a security-test PR isn't blocked.
+_ALLOWLIST_RE = re.compile(r"pragma:\s*allowlist secret|co-agent:\s*test-fixture|not-?a-?secret", re.I)
+
+
 def _scan_secret(diff):
     """Scan EVERY line that will be sent — added (`+`), removed (`-`), AND context (unchanged) —
     skipping only diff metadata headers. Returns (label, hard): label='' if clean; hard=True if a
@@ -285,6 +290,8 @@ def _scan_secret(diff):
     for ln in diff.splitlines():
         if _is_diff_header(ln):
             continue   # real diff metadata header, not content (a `++ …` added line is content)
+        if _ALLOWLIST_RE.search(ln):
+            continue   # explicitly marked non-secret (test fixture / example) — detect-secrets style
         if _SECRET_RE.search(ln) or (extra is not None and extra.search(ln)):
             removed = ln.startswith("-")
             kind = "a removed" if removed else ("an added" if ln.startswith("+") else "a context")
