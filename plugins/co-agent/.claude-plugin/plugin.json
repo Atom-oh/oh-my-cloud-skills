@@ -1,6 +1,6 @@
 {
   "name": "co-agent",
-  "version": "1.12.0",
+  "version": "1.12.1",
   "description": "Collaborate with other AI agents (Kiro CLI, Codex, Agy with Gemini fallback) — multi-AI code/architecture review, decision support when you're unsure, and ADR co-authoring. Claude chairs in Claude Code; Codex chairs in Codex.",
   "author": {
     "name": "atomoh"

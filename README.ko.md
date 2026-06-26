@@ -58,6 +58,12 @@
 
 ## 설치
 
+모든 플러그인은 Claude Code 매니페스트(`.claude-plugin/plugin.json`)와 Codex
+매니페스트(`.codex-plugin/plugin.json`)를 **모두** 제공하므로, 동일한 마켓플레이스를
+어느 호스트에서도 설치할 수 있습니다. 아래에서 사용하는 호스트를 선택하세요.
+
+### Claude Code
+
 ```bash
 # 마켓플레이스 추가
 /plugin marketplace add https://github.com/Atom-oh/oh-my-cloud-skills
@@ -95,6 +101,43 @@ claude --plugin-dir ./plugins/project-init
 # 마켓플레이스 제거
 /plugin marketplace remove oh-my-cloud-skills
 ```
+
+### Codex CLI
+
+이 저장소는 **Codex 플러그인 마켓플레이스**이기도 합니다 — 매니페스트는
+[`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json)에 있고
+(`name: oh-my-cloud-skills`), 각 플러그인의 `.codex-plugin/plugin.json`이 스킬을 Codex에
+노출합니다. 플러그인을 지원하는 최신 Codex CLI가 필요합니다.
+
+```bash
+# 이 저장소를 마켓플레이스로 등록 (GitHub 단축형, 또는 git/SSH URL)
+codex plugin marketplace add Atom-oh/oh-my-cloud-skills
+
+# 인터랙티브 플러그인 선택기에서 탐색 & 설치
+#   → "Oh My Cloud Skills" 소스로 전환한 뒤 원하는 플러그인 설치
+codex /plugins
+```
+
+로컬 개발 시에는 클론한 저장소 안에서 Codex를 실행하면 **저장소 범위(repo-scoped)**
+마켓플레이스가 자동 검색됩니다(Codex가 `$REPO_ROOT/.agents/plugins/marketplace.json`을
+읽음). 로컬 경로를 명시적으로 등록할 수도 있습니다:
+
+```bash
+# 저장소 루트에서
+codex plugin marketplace add ./
+codex /plugins
+```
+
+마켓플레이스 관리 / 제거:
+```bash
+codex plugin marketplace list                       # 등록된 마켓플레이스 목록
+codex plugin marketplace upgrade oh-my-cloud-skills # 최신 플러그인 버전 받기
+codex plugin marketplace remove oh-my-cloud-skills  # 등록 해제 (개별 제거는 `codex /plugins`)
+```
+
+> **Codex에서의 co-agent** — 호스트가 Codex이면 **Codex가 패널 의장**이 되고 Claude / Kiro
+> / Agy가 자문 peer가 됩니다(Claude 호스트 모드의 대칭). 스킬은 이를 `CO_AGENT_HOST=codex`로
+> 감지합니다. Claude Code 전용 훅(예: PR 합의 게이트)은 설계상 Codex에서는 실행되지 않습니다.
 
 ---
 

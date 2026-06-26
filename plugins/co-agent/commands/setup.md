@@ -5,7 +5,7 @@ allowed-tools: Bash(python3:*), Bash(npm:*), AskUserQuestion
 
 # co-agent: setup
 
-Let `SK="${CLAUDE_PLUGIN_ROOT:-plugins/co-agent}/skills/co-agent/scripts"`.
+Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"`.
 
 1. Run the preflight and show the table:
    ```bash

@@ -16,7 +16,7 @@ worktree** under a workspace-write sandbox. Review reuses the consensus gate.
 
 Argument: `$ARGUMENTS`
 
-Let `SK="${CLAUDE_PLUGIN_ROOT:-plugins/co-agent}/skills/co-agent/scripts"` and
+Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"` and
 `HOST="${CO_AGENT_HOST:-claude}"`.
 
 ## H0 — Detect & consent

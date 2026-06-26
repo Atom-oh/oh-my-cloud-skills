@@ -49,7 +49,7 @@ installed — degrade gracefully, never hard-fail.
 ```bash
 # Set CO_AGENT_HOST=codex when running this skill from Codex. Default host is claude.
 HOST="${CO_AGENT_HOST:-claude}"
-CFG="${CLAUDE_PLUGIN_ROOT:-plugins/co-agent}/skills/co-agent/scripts/co_agent_config.py"
+CFG="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py"
 # config `panel` lists ENABLED peers regardless of install/auth — announce only the ones
 # actually present on PATH, so we never tell the user "Panel: kiro-cli codex agy" on a box
 # where none are installed. (`/co-agent:setup` readiness, if present, is even more precise.)

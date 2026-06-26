@@ -58,6 +58,12 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 
 ## Installation
 
+Every plugin ships **both** a Claude Code manifest (`.claude-plugin/plugin.json`) and a
+Codex manifest (`.codex-plugin/plugin.json`), so the same marketplace installs on either
+host. Pick your host below.
+
+### Claude Code
+
 ```bash
 # Add the marketplace
 /plugin marketplace add https://github.com/Atom-oh/oh-my-cloud-skills
@@ -95,6 +101,44 @@ Uninstall:
 # Remove the marketplace
 /plugin marketplace remove oh-my-cloud-skills
 ```
+
+### Codex CLI
+
+This repo is also a **Codex plugin marketplace** — the manifest lives at
+[`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json) (`name: oh-my-cloud-skills`)
+and each plugin's `.codex-plugin/plugin.json` exposes its skills to Codex. Requires a recent
+Codex CLI with plugin support.
+
+```bash
+# Register this repo as a marketplace (GitHub shorthand, or a git/SSH URL)
+codex plugin marketplace add Atom-oh/oh-my-cloud-skills
+
+# Browse & install from the interactive plugin picker
+#   → switch to the "Oh My Cloud Skills" source, then install the plugins you want
+codex /plugins
+```
+
+For local development, the **repo-scoped** marketplace is auto-discovered when you run Codex
+from inside a clone (Codex reads `$REPO_ROOT/.agents/plugins/marketplace.json`). You can also
+register the local path explicitly:
+
+```bash
+# From the repo root
+codex plugin marketplace add ./
+codex /plugins
+```
+
+Manage / remove the marketplace:
+```bash
+codex plugin marketplace list                       # list registered marketplaces
+codex plugin marketplace upgrade oh-my-cloud-skills # pull the latest plugin versions
+codex plugin marketplace remove oh-my-cloud-skills  # unregister (uninstall via `codex /plugins`)
+```
+
+> **co-agent on Codex** — when the host is Codex, **Codex chairs** the panel and Claude / Kiro
+> / Agy become the advisory peers (the mirror of Claude-hosted mode). The skill detects this via
+> `CO_AGENT_HOST=codex`. The Claude Code-only hooks (e.g. the PR consensus gate) don't run under
+> Codex by design.
 
 ---
 

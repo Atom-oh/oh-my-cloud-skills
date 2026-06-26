@@ -13,6 +13,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.1] - 2026-06-26
+
+### Fixed
+- **co-agent: `/co-agent:setup` (and `/co-agent:harness`, skill Step 0) couldn't find their scripts when run from any directory other than the marketplace repo root.** They used `${CLAUDE_PLUGIN_ROOT:-plugins/co-agent}`, but Claude Code only substitutes the plain `${CLAUDE_PLUGIN_ROOT}` token (not the bash `:-default` form) and does not export `CLAUDE_PLUGIN_ROOT` into the Bash tool — so the literal reached the shell with the var unset and resolved `plugins/co-agent` against the user's cwd (`No such file or directory`). Switched all three to the plain `${CLAUDE_PLUGIN_ROOT}` form, matching `configure`/`consensus`/`sync-context`
+
+### Documentation
+- **README: Codex CLI installation** — the repo is also a Codex plugin marketplace (`.agents/plugins/marketplace.json`); document `codex plugin marketplace add` + the `codex /plugins` picker, repo-scoped auto-discovery, and that co-agent makes Codex the chair under `CO_AGENT_HOST=codex` (EN + KO)
+
+### Changed
+- Bump all plugins and `marketplace.json` to 1.12.1
+
 ## [1.12.0] - 2026-06-25
 
 ### Added
@@ -262,7 +273,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add AWS Architecture Icons integration (4,224 files)
 - Add presenter view with speaker notes
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.0...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.1...HEAD
+[1.12.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.0...v1.12.1
 [1.12.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.9.0...v1.10.0
@@ -291,6 +303,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 이 프로젝트의 모든 주요 변경 사항은 이 파일에 기록됩니다.
 이 문서는 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)를 기반으로 하며,
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 따릅니다.
+
+## [1.12.1] - 2026-06-26
+
+### Fixed
+- **co-agent: `/co-agent:setup`(및 `/co-agent:harness`, 스킬 Step 0)이 마켓플레이스 저장소 루트가 아닌 디렉터리에서 실행되면 스크립트를 찾지 못하던 문제.** `${CLAUDE_PLUGIN_ROOT:-plugins/co-agent}`를 썼으나 Claude Code는 plain `${CLAUDE_PLUGIN_ROOT}` 토큰만 치환하고(bash `:-default` 형식 미지원) `CLAUDE_PLUGIN_ROOT`를 Bash 툴에 export하지 않으므로, 리터럴이 셸에 도달해 변수 미설정 상태로 `plugins/co-agent`를 사용자 cwd 기준으로 해석(`No such file or directory`). 셋 다 plain `${CLAUDE_PLUGIN_ROOT}` 형식으로 변경(`configure`/`consensus`/`sync-context`와 일치)
+
+### Documentation
+- **README: Codex CLI 설치법** — 이 저장소는 Codex 플러그인 마켓플레이스이기도 함(`.agents/plugins/marketplace.json`); `codex plugin marketplace add` + `codex /plugins` 선택기, 저장소 범위 자동 검색, `CO_AGENT_HOST=codex`에서 Codex가 의장이 되는 점을 문서화(EN + KO)
+
+### Changed
+- 모든 플러그인과 `marketplace.json`을 1.12.1로 범프
 
 ## [1.12.0] - 2026-06-25
 
@@ -541,7 +564,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AWS Architecture Icons 통합 추가 (4,224개 파일)
 - 발표자 뷰 및 발표자 노트 추가
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.0...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.1...HEAD
+[1.12.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.0...v1.12.1
 [1.12.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.9.0...v1.10.0
