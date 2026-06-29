@@ -1,9 +1,17 @@
 # oh-my-cloud-skills
 
+<div align="center">
+
 <a href="README.md"><img src="https://img.shields.io/badge/lang-English-blue.svg" alt="English"></a>
 <a href="README.ko.md"><img src="https://img.shields.io/badge/lang-한국어-lightgrey.svg" alt="한국어"></a>
-[![version](https://img.shields.io/github/v/tag/Atom-oh/oh-my-cloud-skills?label=version&color=green)](https://github.com/Atom-oh/oh-my-cloud-skills/releases)
+
+[![version](https://img.shields.io/github/v/tag/Atom-oh/oh-my-cloud-skills?label=version&color=green)](https://github.com/Atom-oh/oh-my-cloud-skills/tags)
 [![license](https://img.shields.io/github/license/Atom-oh/oh-my-cloud-skills?color=yellow)](LICENSE)
+[![stars](https://img.shields.io/github/stars/Atom-oh/oh-my-cloud-skills?logo=github)](https://github.com/Atom-oh/oh-my-cloud-skills/stargazers)
+[![forks](https://img.shields.io/github/forks/Atom-oh/oh-my-cloud-skills?logo=github)](https://github.com/Atom-oh/oh-my-cloud-skills/network/members)
+[![docs](https://img.shields.io/github/actions/workflow/status/Atom-oh/oh-my-cloud-skills/deploy-docs.yml?branch=main&label=docs&logo=githubpages)](https://www.atomai.click/oh-my-cloud-skills/)
+
+</div>
 
 AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) — content creation and infrastructure operations.
 
