@@ -10,11 +10,19 @@ import subprocess
 import sys
 import urllib.request
 
-_REMOTE_RE = re.compile(r"github\.com[:/](?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?/?$")
+_REMOTE_RE = re.compile(
+    r"(?:^|@|//)github\.com[:/](?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?/?$")
 
 
 def parse_remote(url):
-    m = _REMOTE_RE.search(url or "")
+    # Normalize: drop a trailing slash, then a trailing .git, so
+    # "…/o/r.git/" -> "o/r" (not "o/r.git").
+    s = (url or "").strip()
+    if s.endswith("/"):
+        s = s[:-1]
+    if s.endswith(".git"):
+        s = s[:-4]
+    m = _REMOTE_RE.search(s)
     return f"{m.group('owner')}/{m.group('repo')}" if m else None
 
 

@@ -15,6 +15,9 @@ assert_eq "o/r"  "$(_fp 'https://github.com/o/r')"       "parse HTTPS remote"
 assert_eq "o/r"  "$(_fp 'https://github.com/o/r.git')"   "parse HTTPS .git remote"
 assert_eq "o/r"  "$(_fp 'ssh://git@github.com/o/r.git')" "parse ssh:// remote"
 assert_eq "NONE" "$(_fp 'https://gitlab.com/o/r')"       "non-GitHub remote -> NONE"
+assert_eq "NONE" "$(_fp 'https://notgithub.com/o/r')"          "notgithub.com is not GitHub -> NONE"
+assert_eq "NONE" "$(_fp 'https://example.com/github.com/evil/x')" "github.com in path is not the host -> NONE"
+assert_eq "o/r"  "$(_fp 'https://github.com/o/r.git/')"        "trailing slash + .git -> o/r"
 
 # --- dry-run badge emission (no network); empty dir => no pypi/ci badges
 _TMP=$(mktemp -d)
@@ -38,6 +41,7 @@ assert_contains "$_FB" '"available": false' "empty metrics -> available:false"
 # --- /generate-readme is wired to the helper and permitted to run it
 GR="plugins/project-init/commands/generate-readme.md"
 assert_grep_match "fetch_github_metrics\\.py" "$(cat "$GR")"     "generate-readme references the metrics helper"
+assert_grep_match 'CLAUDE_PLUGIN_ROOT' "$(cat "$GR")"     "generate-readme invokes the helper via CLAUDE_PLUGIN_ROOT"
 assert_grep_match "Bash\\(gh:\\*\\)"          "$(cat "$GR")"     "generate-readme allows gh"
 assert_grep_match "Bash\\(python3:\\*\\)"     "$(cat "$GR")"     "generate-readme allows python3"
 # --- the upstream-sync exclude list protects the diverged command

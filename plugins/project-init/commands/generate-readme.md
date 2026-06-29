@@ -67,8 +67,12 @@ ls .github/workflows/*.yml .github/workflows/*.yaml .gitlab-ci.yml Jenkinsfile .
 Fetch live repository metrics and a ready-to-paste centered badge block. The helper degrades
 gracefully (gh → unauthenticated HTTP → git-only) and never fails the command:
 
+Invoke the helper via the plugin-root variable (substituted at render time so the script
+resolves regardless of the target project's cwd), and pass the Step 1 target directory as
+`--dir` (default: the project root / cwd):
+
 ```bash
-python3 skills/project-scaffolder/scripts/fetch_github_metrics.py
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/scripts/fetch_github_metrics.py" --dir "<target-dir>"
 ```
 
 - If it prints a `<div align="center">…</div>` badge block, use it verbatim as the badge row in
