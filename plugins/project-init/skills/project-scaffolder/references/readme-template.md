@@ -57,6 +57,30 @@ The file starts with these elements in order:
 
 ---
 
+## Badge header (centered, self-updating)
+
+Wrap the badge block in `<div align="center">`. Always include license, version
+(`github/v/tag`), stars, and forks. Add a CI badge when a `.github/workflows/*.yml` exists, and
+PyPI version + downloads badges only when a PyPI package is detected (`pyproject.toml`/`setup.cfg`).
+Skip any badge whose data is unavailable rather than rendering a broken one. Place the EN/KO
+language toggle on its own line above the metric row. All badges are shields.io and self-updating
+(they need only `owner/repo`).
+
+```markdown
+<div align="center">
+
+<lang-toggle line>
+
+[![license](https://img.shields.io/github/license/OWNER/REPO?color=yellow)](LICENSE)
+[![version](https://img.shields.io/github/v/tag/OWNER/REPO?label=version&color=green)](https://github.com/OWNER/REPO/tags)
+[![stars](https://img.shields.io/github/stars/OWNER/REPO?logo=github)](https://github.com/OWNER/REPO/stargazers)
+[![forks](https://img.shields.io/github/forks/OWNER/REPO?logo=github)](https://github.com/OWNER/REPO/network/members)
+
+</div>
+```
+
+---
+
 ## Bilingual Structure
 
 ```markdown

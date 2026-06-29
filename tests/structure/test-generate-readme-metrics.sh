@@ -34,3 +34,12 @@ rm -rf "$_TMP"
 # --- graceful fallback: empty/unparseable metrics -> available:false, never errors
 _FB=$(echo '{}' | python3 "$FGM" --dry-run 2>/dev/null)
 assert_contains "$_FB" '"available": false' "empty metrics -> available:false"
+
+# --- /generate-readme is wired to the helper and permitted to run it
+GR="plugins/project-init/commands/generate-readme.md"
+assert_grep_match "fetch_github_metrics\\.py" "$(cat "$GR")"     "generate-readme references the metrics helper"
+assert_grep_match "Bash\\(gh:\\*\\)"          "$(cat "$GR")"     "generate-readme allows gh"
+assert_grep_match "Bash\\(python3:\\*\\)"     "$(cat "$GR")"     "generate-readme allows python3"
+# --- the upstream-sync exclude list protects the diverged command
+US="plugins/project-init/references/upstream-sync.md"
+assert_grep_match "commands/generate-readme\\.md" "$(cat "$US")" "upstream-sync excludes generate-readme.md"
