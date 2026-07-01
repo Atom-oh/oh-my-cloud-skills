@@ -1,5 +1,5 @@
 ---
-description: Distill CLAUDE.md into AGENTS.md for Codex and wire Kiro steering to CLAUDE.md
+description: Distill CLAUDE.md into AGENTS.md and wire Kiro steering to the same file (shared with Codex; Agy gets it folded into fan-out context)
 allowed-tools: Read, Write, Glob, Grep, Bash(python3:*)
 argument-hint: "[project-dir]  (defaults to the repo root / cwd)"
 ---
@@ -7,19 +7,22 @@ argument-hint: "[project-dir]  (defaults to the repo root / cwd)"
 # co-agent: sync-context
 
 Give the external AI panel project context so it reviews with the repo's own
-conventions. Keep `CLAUDE.md` canonical, distill only the Codex context file, and
-connect Kiro to the same canonical file through steering:
+conventions. Keep `CLAUDE.md` canonical, distill it once into `AGENTS.md`, and have
+**Kiro, Codex, and Agy all draw from that one distilled file** instead of each peer
+seeing a different (or no) view of the project:
 
 | AI | Reads | sync-context action |
 |----|-------|---------------------|
-| Kiro | `.kiro/steering/project-context.md` → `#[[file:CLAUDE.md]]` | create/update bridge |
+| Kiro | `.kiro/steering/project-context.md` → `#[[file:AGENTS.md]]` | create/update bridge |
 | Codex | `AGENTS.md` (~32 KiB cap) | distill + validate |
-| Agy / legacy Gemini fallback | prompt-supplied context during fan-out | no repo context file |
+| Agy | *(no repo context file — stateless print-mode)* | not this command's job; `ai-cli-adapters.md`'s fan-out prepends `AGENTS.md` to Agy's context at call time |
+| Legacy Gemini fallback | prompt-supplied context during fan-out | no repo context file (unchanged — Agy is preferred) |
 
 **DISTILL — never copy `CLAUDE.md` verbatim.** These context channels degrade on a dumped copy
-(Codex truncates at the cap, and Kiro steering should point at the canonical file instead
-of maintaining a second copy). Produce one lean, review-oriented core and write it to
-**`AGENTS.md` only**.
+(Codex truncates at the cap). Produce one lean, review-oriented core and write it to
+**`AGENTS.md` only** — Kiro's steering points at this same file rather than the full
+`CLAUDE.md`, trading Kiro's previously more-complete view for one that's *consistent*
+with what Codex and Agy see.
 
 ## Steps
 
@@ -45,8 +48,9 @@ H="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/check_ai_context.py"
    python3 "$H" <dir> --emit-marker
    ```
 4. **Write** `<dir>/AGENTS.md` as:
-   `<marker>` → `> You are Codex, an external reviewer — project context below.`
-   → the distilled core.
+   `<marker>` → `> You are an external reviewer for this repo — project context below,
+   distilled from CLAUDE.md. This file is shared verbatim by Kiro, Codex, and Agy
+   (not a per-AI copy).` → the distilled core.
    **Only overwrite a file that is missing or already carries the co-agent marker.** If a
    target exists WITHOUT the marker, it's hand-written (or Codex's `AGENTS.override.md`
    pattern) — leave it and report that you skipped it.
@@ -59,10 +63,10 @@ H="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/check_ai_context.py"
 
    # Project Context
 
-   #[[file:CLAUDE.md]]
+   #[[file:AGENTS.md]]
    ```
    If the file already exists with other hand-written content and does not already contain
-   `#[[file:CLAUDE.md]]`, leave it and report that it needs manual merge.
+   `#[[file:AGENTS.md]]`, leave it and report that it needs manual merge.
 6. **Validate**:
    ```bash
    python3 "$H" <dir>

@@ -36,13 +36,14 @@ co-agent
 
 ## AI Context Files (per-AI project docs)
 
-각 AI CLI가 리포 루트에서 자동 로드/참조하는 컨텍스트 파일. `CLAUDE.md`가 canonical source이고, co-agent는 Codex용 `AGENTS.md`만 **증류(distill)** 해 생성 — 복사 ❌.
+각 AI CLI가 리포 루트에서 자동 로드/참조하는 컨텍스트 파일. `CLAUDE.md`가 canonical source이고, co-agent는 **`AGENTS.md` 하나만 증류(distill)** 해 생성 — 복사 ❌. Kiro·Codex·Agy 모두 **이 하나의 distilled 파일을 공통 사용** (Kiro/Codex는 각자 네이티브 자동로드, Agy는 자동로드가 없어 팬아웃 시점에 컨텍스트에 fold-in).
 
 | AI | 파일 | 생성? |
 |----|------|-------|
-| Kiro | `.kiro/steering/project-context.md` → `#[[file:CLAUDE.md]]` | bridge 생성 |
+| Kiro | `.kiro/steering/project-context.md` → `#[[file:AGENTS.md]]` (Codex와 동일 파일 — `CLAUDE.md` 직참조 아님) | bridge 생성 |
 | Codex | `AGENTS.md` (~32 KiB cap) | ✅ |
-| Agy/Gemini fallback | 팬아웃 prompt context | ❌ |
+| Agy | 리포 컨텍스트 파일 없음(stateless print-mode) — 팬아웃 시 `AGENTS.md`를 CTX에 prepend | ❌ (파일 미생성, 런타임 fold-in) |
+| legacy Gemini fallback | 팬아웃 prompt context | ❌ (변경 없음, Agy 우선) |
 
 `AGENTS.md` 생성 마커(`generated-by: co-agent · claude-md-sha:`)로 staleness/수기파일 보호. `scripts/check_ai_context.py`가 검증(크기·마커·동기화·시크릿 스캔). CLAUDE.md 편집 시 PostToolUse 훅이 동기화 알림.
 
@@ -100,7 +101,7 @@ agy|gemini **택1**, host 제외) 중 enabled·설치된 것에 **병렬 팬아�
 
 ## Sync-context (`/co-agent:sync-context`)
 
-`CLAUDE.md`를 **증류**해 Codex가 읽는 `AGENTS.md`를 생성하고, Kiro는 `.kiro/steering/project-context.md`에서 `#[[file:CLAUDE.md]]`로 같은 canonical context를 참조하게 함. 생성 마커로 `AGENTS.md` staleness 추적·수기파일 보호. `CLAUDE.md` PostToolUse 훅이 drift 알림 — `autosync on`이면 Claude에게 재동기화 지시.
+`CLAUDE.md`를 **한 번만 증류**해 `AGENTS.md`를 생성 — Codex는 네이티브 자동로드, Kiro는 `.kiro/steering/project-context.md`에서 `#[[file:AGENTS.md]]`로 **같은 파일**을 참조(더 이상 `CLAUDE.md` 직참조 아님 — 패널 전체 일관성 우선), Agy는 자동로드가 없어 팬아웃 시점에 컨텍스트로 fold-in. 생성 마커로 `AGENTS.md` staleness 추적·수기파일 보호. `CLAUDE.md` PostToolUse 훅이 drift 알림 — `autosync on`이면 Claude에게 재동기화 지시.
 
 ## Chair Principle
 

@@ -1,5 +1,6 @@
-<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 07279b149e50 · generated-at: 2026-06-26 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
-> You are Codex, an external reviewer — project context below. Distilled from CLAUDE.md.
+<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 34e47e70d833 · generated-at: 2026-07-01 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
+> You are an external reviewer for this repo — project context below, distilled from
+> CLAUDE.md. This file is shared verbatim by Kiro, Codex, and Agy (not a per-AI copy).
 
 # oh-my-cloud-skills — reviewer context
 

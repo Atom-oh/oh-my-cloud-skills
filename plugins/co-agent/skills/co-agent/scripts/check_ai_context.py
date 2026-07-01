@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Validate / check staleness of co-agent-generated Codex context.
+"""Validate / check staleness of co-agent-generated AGENTS.md context.
 
-co-agent distills CLAUDE.md into a lean, review-oriented context file that Codex
-auto-loads from the repo root:
-  - AGENTS.md  → Codex CLI   (32 KiB project-doc cap; merged git-root→cwd)
-
-Kiro context sharing is handled by .kiro/steering/project-context.md referencing
-CLAUDE.md directly; it is not a distilled generated context file.
+co-agent distills CLAUDE.md ONCE into a lean, review-oriented AGENTS.md that Kiro,
+Codex, and Agy all draw from — not a per-AI copy each:
+  - AGENTS.md  → Codex CLI auto-loads it from the repo root (32 KiB project-doc cap;
+                 merged git-root→cwd). Kiro's .kiro/steering/project-context.md
+                 bridges to this SAME file via #[[file:AGENTS.md]] (not CLAUDE.md
+                 directly — see ai-cli-adapters.md for the consistency rationale).
+                 Agy has no auto-load; the fan-out folds AGENTS.md into its context
+                 at call time instead of writing a file for it.
 
 Claude (the co-agent skill) writes AGENTS.md; this script does the mechanical checks:
 staleness vs CLAUDE.md, size caps, the generated marker, and a secret scan. It is
@@ -15,6 +17,13 @@ NOT the distiller — distillation needs Claude.
 Usage:
   python3 check_ai_context.py [project_dir]          # check (exit 1 if stale/oversized/missing)
   python3 check_ai_context.py [project_dir] --emit-marker   # print the marker line to embed when generating
+  python3 check_ai_context.py [project_dir] --verify <file> # exit 0 ONLY if <file> is co-agent-generated,
+                                                              # fresh vs CLAUDE.md, within cap, and secret-free —
+                                                              # silent (no stdout), for scripted gates like the
+                                                              # Agy fan-out fold-in (unlike the default mode, a
+                                                              # MISSING or hand-written file is a fail here, not
+                                                              # a note: "safe to hand to a third-party AI" must
+                                                              # be a strict yes/no, not "nothing to report")
 
 Marker (must be on/near line 1 of a generated file):
   <!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: <sha12> · generated-at: <date> -->
@@ -39,13 +48,42 @@ def claude_sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
 
 
+def _file_problems(path, sha, cap=None):
+    """Marker + freshness + (optional) size cap + secret checks for one generated file.
+    Missing file or no marker both count as problems here — the caller decides whether
+    that's a soft note (default report) or a hard fail (--verify)."""
+    if not os.path.isfile(path):
+        return ["missing"]
+    with open(path, encoding="utf-8") as f:
+        body = f.read()
+    if not MARKER_RE.search(body):
+        return ["hand-written (no co-agent marker)"]
+    problems = []
+    if cap is not None:
+        size = len(body.encode("utf-8"))
+        if size > cap:
+            problems.append(f"{size} B > {cap} B cap — distill further (CLI will truncate)")
+    m = SHA_RE.search(body)
+    if not m:
+        problems.append("missing claude-md-sha in marker — regenerate")
+    elif m.group(1) != sha:
+        problems.append("STALE — CLAUDE.md changed since generation (run /co-agent sync-context)")
+    if SECRET_RE.search(body):
+        problems.append("possible secret/credential in generated context — remove before sharing with external AIs")
+    return problems
+
+
 def main() -> int:
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     root = args[0] if args else "."
     emit = "--emit-marker" in sys.argv[1:]
+    verify_idx = sys.argv.index("--verify") + 1 if "--verify" in sys.argv else None
+    verify_target = sys.argv[verify_idx] if verify_idx and verify_idx < len(sys.argv) else None
 
     claude_path = os.path.join(root, "CLAUDE.md")
     if not os.path.isfile(claude_path):
+        if verify_target:
+            return 1   # no CLAUDE.md → nothing was distilled → not safe to hand out
         print(f"❌ no CLAUDE.md in {root} — nothing to sync from.")
         return 2
     with open(claude_path, encoding="utf-8") as f:
@@ -57,6 +95,10 @@ def main() -> int:
         print(f"<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: {sha} · "
               f"generated-at: {today} · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->")
         return 0
+
+    if verify_target:
+        cap = MANAGED.get(verify_target)
+        return 1 if _file_problems(os.path.join(root, verify_target), sha, cap) else 0
 
     problems, notes = [], []
     for name, cap in MANAGED.items():
@@ -80,7 +122,9 @@ def main() -> int:
         if SECRET_RE.search(body):
             problems.append(f"{name}: possible secret/credential in generated context — remove before sharing with external AIs")
 
-    # Residual unmanaged files (e.g. a leftover GEMINI.md): scan for secrets if present.
+    # RESIDUAL_SCAN (unlike MANAGED) is secret-scanned only, never marker/staleness-checked:
+    # co-agent never generated these files, so there's no CLAUDE.md-sha to compare against —
+    # the only actionable risk on a residual file is a stale secret a third-party AI could load.
     for name in RESIDUAL_SCAN:
         p = os.path.join(root, name)
         if not os.path.isfile(p):

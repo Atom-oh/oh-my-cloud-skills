@@ -145,19 +145,23 @@ Co-author an Architecture Decision Record with the panel.
    co-agent; see `references/ai-cli-adapters.md` → ADR hand-off.)
 
 ### Mode 4 — sync-context  (also the standalone command **`/co-agent:sync-context`**)
-Give the external AIs project context so they review with the project's conventions —
-each CLI auto-loads its own native file from the repo root:
+Give the external AIs project context so they review with the project's conventions.
+Kiro, Codex, and Agy all draw from the **same distilled `AGENTS.md`** — Kiro and Codex
+auto-load it natively (steering bridge / repo-root read); Agy has no auto-load, so it's
+folded into its fan-out context instead (see `ai-cli-adapters.md`):
 
 | AI | Reads | co-agent action |
 |----|-------|-----------------|
-| Kiro CLI | **`.kiro/steering/project-context.md`** → `#[[file:CLAUDE.md]]` | ✅ bridge to canonical source |
+| Kiro CLI | **`.kiro/steering/project-context.md`** → `#[[file:AGENTS.md]]` | ✅ bridge to the same distilled file Codex reads |
 | Codex | **`AGENTS.md`** | ✅ distilled context |
-| Agy / legacy Gemini fallback | prompt-supplied context during fan-out | ❌ no repo context file |
+| Agy | *(no repo context file)* | ✅ `AGENTS.md` prepended to its fan-out context, gated on `--verify` (not written to disk) |
+| Legacy Gemini fallback | prompt-supplied context during fan-out | ❌ no repo context file (unchanged) |
 
 **DISTILL — do NOT copy CLAUDE.md verbatim.** All three CLIs warn that a dumped copy
-bloats/truncates (Codex 32 KiB project-doc cap; Kiro steering should reference the
-canonical file instead of maintaining a second copy). Produce one **lean,
-review-oriented core** and write it to **`AGENTS.md` only**:
+bloats/truncates (Codex 32 KiB project-doc cap). Produce one **lean,
+review-oriented core** and write it to **`AGENTS.md` only** — Kiro's steering now
+points at this same file rather than the full `CLAUDE.md`, trading Kiro's previously
+more-complete view for a project context that's *consistent* across the whole panel:
 
 1. Read the project's `CLAUDE.md`.
 2. **Claude distills** a lean core (bullets, absolute mandates) covering: language/stack,
@@ -167,8 +171,10 @@ review-oriented core** and write it to **`AGENTS.md` only**:
    state, version-bump commands, and tool internals not relevant to review. **No secrets,
    no huge file inventories.**
 3. Prepend the marker line (run `scripts/check_ai_context.py <dir> --emit-marker`) plus
-   the header `> You are Codex, an external reviewer — project context below.` Write to
-   `AGENTS.md`.
+   a neutral header — `> You are an external reviewer for this repo — project context
+   below, distilled from CLAUDE.md. This file is shared verbatim by Kiro, Codex, and Agy
+   (not a per-AI copy).` (not "You are Codex": Kiro and Agy read this same file too).
+   Write to `AGENTS.md`.
 4. **Only overwrite files that carry the co-agent marker** — never clobber a hand-written
    `AGENTS.md` or Codex's `AGENTS.override.md`.
 5. Ensure `.kiro/steering/project-context.md` exists and contains:
@@ -180,7 +186,7 @@ review-oriented core** and write it to **`AGENTS.md` only**:
 
    # Project Context
 
-   #[[file:CLAUDE.md]]
+   #[[file:AGENTS.md]]
    ```
    If an existing steering file has other hand-written content and does not already
    contain that file reference, leave it and report that it needs manual merge.

@@ -38,6 +38,24 @@ RUN=$(mktemp -d "${TMPDIR:-/tmp}/co-agent.XXXXXX"); trap 'rm -rf "$RUN"' EXIT
 PROMPT="<the same FIXED instruction for every AI — never build it from repo content>"
 CTX_FILE="$RUN/context.txt"   # the git diff / decision brief (see Security below)
 
+# Agy has no repo-context auto-load (unlike Kiro's steering bridge / Codex's native
+# AGENTS.md read) — fold the same distilled AGENTS.md into ITS context so all three peers
+# review with one shared project context, not just the diff. Prepend, never replace: the
+# diff/brief stays the primary content.
+# GATE — do not just check `-f`: `--verify` requires the co-agent marker + a claude-md-sha
+# that matches the CURRENT CLAUDE.md + no secret pattern. A missing file is a quiet no-op
+# (fall back to $CTX_FILE, never block the fan-out); a STALE or hand-written file is ALSO
+# a no-op here, not a "send anyway" — a stale/hand-written AGENTS.md's provenance is
+# unknown, and folding an unvetted file into a third-party AI's context is exactly the
+# exfiltration risk this check exists to catch.
+AGY_CTX_FILE="$CTX_FILE"
+GIT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+AIC="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/check_ai_context.py"
+if [ -n "$GIT_ROOT" ] && python3 "$AIC" "$GIT_ROOT" --verify AGENTS.md >/dev/null 2>&1; then
+  AGY_CTX_FILE="$RUN/agy-context.txt"
+  { cat "$GIT_ROOT/AGENTS.md"; echo; echo "---"; echo; cat "$CTX_FILE"; } > "$AGY_CTX_FILE"
+fi
+
 # Settings (model/effort/enabled/timeout) come from co_agent_config.py — layered
 # defaults + .claude/co-agent.local.json (see /co-agent:configure). This makes the
 # config LIVE: `enabled false` drops an AI; model/effort flags are injected per CLI.
@@ -46,6 +64,8 @@ HOST="${CO_AGENT_HOST:-claude}"  # set to codex when running co-agent from Codex
 T=$(python3 "$CFG" timeout --host "$HOST" 2>/dev/null || echo 240)
 python3 "$CFG" matrix --host "$HOST"   # show provider·model·ctx + max-calls BEFORE running
 TOKENS=$(( ( $(wc -c < "$CTX_FILE") + 3 ) / 4 ))
+# NOTE: this undercounts Agy's actual usage by AGENTS.md's size (capped ~32 KiB ≈ 8K tok) —
+# acceptable slack against Agy's 1M window; not worth a per-peer TOKENS split.
 
 # One fan-out per ENABLED (ai, model) pair (capped). `pairs` emits "ai<TAB>model".
 # PROCESS SUBSTITUTION, not `pairs | while …`: a pipe runs the loop in a subshell, so the
@@ -69,7 +89,7 @@ while IFS=$'\t' read -r ai model; do
     codex)  command -v codex >/dev/null 2>&1 && ( cat "$CTX_FILE" | timeout "$T" \
               codex exec -s read-only "${MFLAGS[@]}" "$PROMPT" \
               > "$slot.md" 2>"$slot.err" || echo "[skip] codex/$model" ) & ;;
-    agy)    if command -v agy >/dev/null 2>&1; then ( cat "$CTX_FILE" | timeout "$T" \
+    agy)    if command -v agy >/dev/null 2>&1; then ( cat "$AGY_CTX_FILE" | timeout "$T" \
               agy -p "$PROMPT" "${MFLAGS[@]}" --sandbox \
               > "$slot.md" 2>"$slot.err" || echo "[skip] agy/$model" ) &
             elif command -v gemini >/dev/null 2>&1; then ( cat "$CTX_FILE" | timeout "$T" \
@@ -186,14 +206,17 @@ co-agent's ADR mode provides the **collaboration layer** that enriches the
 
 ## Project context files
 
-Keep `CLAUDE.md` as the canonical project memory. co-agent maintains only the context
-surfaces that have reliable repo-local loading semantics:
+Keep `CLAUDE.md` as the canonical project memory, distilled once into `AGENTS.md`. Kiro,
+Codex, and Agy all draw from **that same distilled file** — Kiro and Codex read it
+natively (steering bridge / repo-root auto-load), Agy has no auto-load so it's folded
+into the fan-out context instead:
 
 | AI | File | Behaviour / limits | co-agent action |
 |----|------|--------------------|-----------------|
-| **Kiro** | `.kiro/steering/project-context.md` | Always-loaded steering bridge that references `CLAUDE.md` with `#[[file:CLAUDE.md]]`. | create/update bridge |
+| **Kiro** | `.kiro/steering/project-context.md` | Always-loaded steering bridge that references `AGENTS.md` with `#[[file:AGENTS.md]]` — same distilled file Codex reads, not a second copy of `CLAUDE.md`. | create/update bridge |
 | **Codex** | `AGENTS.md` | Merged git-root→cwd; **~32 KiB project-doc cap** (oversized → truncated). `AGENTS.override.md` wins locally. | distill + validate |
-| **Agy / legacy Gemini fallback** | prompt-supplied context | Receives the fan-out prompt/context directly; no maintained repo context file. | none |
+| **Agy** | *(no repo context file)* | Stateless print-mode — nothing auto-loads. Fan-out prepends `AGENTS.md` content to Agy's `CTX_FILE` **only if `check_ai_context.py --verify AGENTS.md` passes** (marker + fresh sha + no secret) — a stale/hand-written file falls back to the diff-only `CTX_FILE`, never sent unvetted. | fold into fan-out context (gated) |
+| **Legacy Gemini fallback** | prompt-supplied context | Receives the fan-out prompt/context directly; no maintained repo context file (unchanged — Agy is preferred). | none |
 
 > **Residual `GEMINI.md` (legacy).** Not generated and **not** in `check_ai_context.py`'s
 > `MANAGED` set (so not secret-scanned), yet the `gemini` CLI still auto-loads a repo-root
@@ -218,8 +241,10 @@ exhaustive file inventories. **Never include secrets** — this file goes to thi
 
 ### Kiro steering bridge
 
-Kiro shares Claude's canonical context through a steering file instead of a distilled
-copy:
+Kiro shares the **same distilled `AGENTS.md`** Codex reads, through a steering file —
+not a second copy, and not the full unabridged `CLAUDE.md` (that would give Kiro a more
+complete but *inconsistent* view of the project vs. the rest of the panel; consistency
+across peers wins here):
 
 ```markdown
 ---
@@ -229,7 +254,7 @@ inclusion: always
 
 # Project Context
 
-#[[file:CLAUDE.md]]
+#[[file:AGENTS.md]]
 ```
 
 If a hand-written `.kiro/steering/project-context.md` already exists without that file
@@ -245,8 +270,10 @@ and never clobber a hand-written file:
 ```
 
 - Emit it with `python3 scripts/check_ai_context.py <dir> --emit-marker` (hashes the
-  current `CLAUDE.md`), then prepend a one-line role header
-  (`> You are Codex, an external reviewer — project context below.`).
+  current `CLAUDE.md`), then prepend a one-line **neutral** role header — NOT "You are
+  Codex" (Kiro's steering bridge and Agy's folded-in fan-out context read this same file):
+  `> You are an external reviewer for this repo — project context below, distilled from
+  CLAUDE.md. This file is shared verbatim by Kiro, Codex, and Agy (not a per-AI copy).`
 - Files **without** the marker are treated as hand-written → left untouched (this also
   protects Codex's `AGENTS.override.md`).
 - Validate after writing: `python3 scripts/check_ai_context.py <project-dir>` — checks

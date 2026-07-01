@@ -11,13 +11,16 @@ assert_file_executable "$SCRIPT" "check_ai_context.py is executable"
 assert_file_exists "$CMD" "sync-context command exists"
 CMD_BODY=$(cat "$CMD" 2>/dev/null)
 assert_contains "$CMD_BODY" ".kiro/steering/project-context.md" "sync-context documents Kiro steering bridge"
-assert_grep_match "#\\[\\[file:CLAUDE\\.md\\]\\]" "$CMD_BODY" "sync-context references CLAUDE.md from Kiro steering"
+assert_grep_match "#\\[\\[file:AGENTS\\.md\\]\\]" "$CMD_BODY" "sync-context references AGENTS.md from Kiro steering (shared with Codex/Agy, not a separate CLAUDE.md copy)"
 assert_grep_no_match "GEMINI\\.md" "$CMD_BODY" "sync-context no longer targets GEMINI.md"
 assert_file_exists "$KIRO_BRIDGE" "repo Kiro steering bridge exists"
-assert_grep_match "#\\[\\[file:CLAUDE\\.md\\]\\]" "$(cat "$KIRO_BRIDGE" 2>/dev/null)" "repo Kiro steering bridge references CLAUDE.md"
+assert_grep_match "#\\[\\[file:AGENTS\\.md\\]\\]" "$(cat "$KIRO_BRIDGE" 2>/dev/null)" "repo Kiro steering bridge references AGENTS.md"
 
-# Scratch project with a minimal CLAUDE.md
+# Scratch project with a minimal CLAUDE.md. run-all.sh sources this under `set -e`, so any
+# assert/command below that returns non-zero aborts the whole test run immediately — trap
+# EXIT rather than relying on the rm -rf at the bottom of this file to ever be reached.
 CTX_DIR=$(mktemp -d "${TMPDIR:-/tmp}/coagentctx.XXXXXX")
+trap 'rm -rf "$CTX_DIR"' EXIT
 printf '# Project\nUse python3. Run tests with bash tests/run-all.sh.\n' > "$CTX_DIR/CLAUDE.md"
 
 # --emit-marker prints a marker carrying the CLAUDE.md sha
@@ -58,5 +61,3 @@ printf '# My own AGENTS.md\nNo marker here.\n' > "$CTX_DIR/AGENTS.md"
 HAND_OUT=$(python3 "$SCRIPT" "$CTX_DIR" 2>&1) && HAND_RC=0 || HAND_RC=$?
 assert_eq "0" "$HAND_RC" "hand-written AGENTS.md (no marker) → exit 0"
 assert_contains "$HAND_OUT" "hand-written" "hand-written AGENTS.md → noted, not clobbered"
-
-rm -rf "$CTX_DIR"

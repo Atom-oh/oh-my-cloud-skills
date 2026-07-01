@@ -5,4 +5,4 @@ inclusion: always
 
 # Project Context
 
-#[[file:CLAUDE.md]]
+#[[file:AGENTS.md]]
