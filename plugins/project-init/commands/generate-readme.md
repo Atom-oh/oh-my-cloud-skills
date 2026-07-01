@@ -1,6 +1,6 @@
 ---
 description: Generate or update a bilingual (English/Korean) README.md following GitHub open-source best practices
-allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(git log:*), Bash(git remote:*), Bash(git describe:*), Bash(git tag:*), Glob, Grep
+allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(git log:*), Bash(git remote:*), Bash(git describe:*), Bash(git tag:*), Bash(gh:*), Bash(python3:*), Glob, Grep
 argument-hint: "Optional: path to target directory (default: project root)"
 ---
 
@@ -61,6 +61,26 @@ ls .env.example .env.sample 2>/dev/null
 ```bash
 ls .github/workflows/*.yml .github/workflows/*.yaml .gitlab-ci.yml Jenkinsfile .circleci/config.yml 2>/dev/null
 ```
+
+## Step 2.5: Fetch Live GitHub Metrics
+
+Fetch live repository metrics and a ready-to-paste centered badge block. The helper degrades
+gracefully (gh → unauthenticated HTTP → git-only) and never fails the command:
+
+Invoke the helper via the plugin-root variable (substituted at render time so the script
+resolves regardless of the target project's cwd), and pass the Step 1 target directory as
+`--dir` (default: the project root / cwd):
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/scripts/fetch_github_metrics.py" --dir "<target-dir>"
+```
+
+- If it prints a `<div align="center">…</div>` badge block, use it verbatim as the badge row in
+  the top layout (Step 6), and read fields with `--json` to fill the Overview description/license
+  when not already known.
+- If it prints `{"available": false}` (no GitHub remote / offline / private with no `gh` auth),
+  continue with the git-only detection from Step 2 and note "metrics unavailable" in the Step 8
+  summary. Badges still render from `git remote` data and self-update once the repo is on GitHub.
 
 ## Step 3: Collect Missing Information from User
 
@@ -139,6 +159,7 @@ If README.md already exists:
 After writing README.md, verify:
 
 - [ ] Top layout has project name, badges, and bilingual description
+- [ ] Badge row is wrapped in `<div align="center">` and includes the live badges from Step 2.5 (or git-only badges if metrics were unavailable)
 - [ ] Language toggle uses HTML `<a><img></a>` with `#english` and `#korean` anchors
 - [ ] Explicit `<a id="english">` and `<a id="korean">` tags before each language heading
 - [ ] Both language sections have identical structure and information
