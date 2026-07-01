@@ -97,8 +97,12 @@ def _cmd_classify(argv):
 
 
 # Read-only adapters, mirroring references/ai-cli-adapters.md. "{P}" = prompt, "{I}" = INPUT (prompt+sentinel).
+# NOTE: the probe runs each CLI in an isolated temp dir (not a git repo). codex exec refuses to
+# run outside a trusted/git dir, so the probe — and ONLY the probe — passes --skip-git-repo-check.
+# The real fan-out runs in the repo root (a git repo) and builds its command from the skill /
+# ai-cli-adapters.md, not from this dict, so the flag stays probe-local.
 ADAPTERS = {
-    "codex":    {"argv": ["codex", "exec", "-s", "read-only", "{P}"], "channel": "stdin"},
+    "codex":    {"argv": ["codex", "exec", "-s", "read-only", "--skip-git-repo-check", "{P}"], "channel": "stdin"},
     "agy":      {"argv": ["agy", "-p", "{P}", "--sandbox"], "channel": "stdin"},
     "gemini":   {"argv": ["gemini", "-p", "{P}", "-o", "text"], "channel": "stdin"},
     "claude":   {"argv": ["claude", "-p", "{P}", "--permission-mode", "plan", "--output-format", "text"], "channel": "stdin"},
@@ -125,7 +129,12 @@ def _kill_proc(p):
             pass
 
 
-def probe(peer, timeout=20, nonce="STATIC"):
+def probe(peer, timeout=90, nonce="STATIC"):
+    # 90s, not 20s: cold-start CLIs blow far past 20s on first run — kiro auth-refresh + MCP init,
+    # codex reasoning + MCP init, and agy especially (12-24s warm but a cold model load can exceed
+    # 80s). 20s produced spurious TIMEOUTs on warm-usable peers. report() probes sequentially, and
+    # absent peers cost nothing, so the realistic ceiling is one cold peer's load, not 5×90s. A
+    # peer whose backend is mid-cold-load can still flap to TIMEOUT — re-run setup once it's warm.
     if peer not in ADAPTERS:
         return "ERROR", f"unknown peer {peer}"
     if not detect_cli(peer):
@@ -141,18 +150,35 @@ def probe(peer, timeout=20, nonce="STATIC"):
         argv = [a.replace("{I}", inp) for a in spec["argv"]]
         stdin_data = ""
     with tempfile.TemporaryDirectory() as cwd:
+        # Capture stdout/stderr to FILES, not PIPEs. Some peers refresh auth over the host fds
+        # they were launched with (kiro here runs --auth=acp-callback host-mediated refresh);
+        # replacing stdout with our own *pipe* severs that callback and the refresh hangs to the
+        # full timeout (kiro: 5s with a file, TIMEOUT with a pipe). File redirection leaves no
+        # reader on the other end and the auth path survives. stdin still uses a PIPE so we can
+        # feed the sentinel to stdin-channel peers (codex/agy); argv-channel peers (kiro) get "".
+        outp = os.path.join(cwd, ".probe_out")
+        errp = os.path.join(cwd, ".probe_err")
         p = None
         try:
-            p = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE, text=True, start_new_session=True)
-            try:
-                out, err = p.communicate(input=stdin_data, timeout=timeout)
-                timed_out = False
-            except subprocess.TimeoutExpired:
-                _kill_proc(p)
-                out, err = p.communicate()
-                timed_out = True
-            return classify(sentinel, out[:_CAP], (err or "")[:_CAP], p.returncode, timed_out)
+            with open(outp, "w") as of, open(errp, "w") as ef:
+                p = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.PIPE, stdout=of,
+                                     stderr=ef, text=True, start_new_session=True)
+                try:
+                    p.communicate(input=stdin_data, timeout=timeout)
+                    timed_out = False
+                except subprocess.TimeoutExpired:
+                    _kill_proc(p)
+                    # No pipes to drain — output is already in the files; just reap the corpse.
+                    try:
+                        p.communicate(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        pass
+                    timed_out = True
+            with open(outp, encoding="utf-8", errors="replace") as f:
+                out = f.read(_CAP)
+            with open(errp, encoding="utf-8", errors="replace") as f:
+                err = f.read(_CAP)
+            return classify(sentinel, out, err, p.returncode, timed_out)
         except FileNotFoundError:
             return "ABSENT", "command not found"
         except Exception as e:  # never hard-fail a probe
@@ -187,38 +213,48 @@ def _atomic_write_json(path, obj):
     os.replace(tmp, path)
 
 
-def report(root, plugins_root, as_json=False):
-    peers = {}
-    for peer in PEERS:
-        cli = detect_cli(peer)
-        has_plugin = detect_plugin(peer, plugins_root)
-        access, suggest = decide_access(peer, bool(cli), has_plugin)
-        # raw_cli is recorded independently of access so a peer that has BOTH the official
-        # plugin AND a raw CLI stays implementer-eligible (the implementer gate needs a raw
-        # write-mode CLI, which access=="plugin" alone would otherwise hide).
-        entry = {"access": access, "raw_cli": bool(cli)}
-        if access == "plugin":
-            entry["plugin"] = PEER_PLUGINS.get(peer)
-            if cli:
-                # also has a raw CLI → probe it so its raw usability (implementer gate) is known
-                status, reason = probe(peer)
-                entry["status"] = status
-                entry["cli_path"] = cli
-                if reason:
-                    entry["reason"] = reason
-            else:
-                entry["status"] = "READY"   # plugin-only: the plugin handles ingestion
-        elif access == "raw":
+def _peer_entry(peer, plugins_root):
+    """Build one peer's readiness entry (the probe is the slow part). Pure per-peer — safe to
+    run concurrently across peers."""
+    cli = detect_cli(peer)
+    has_plugin = detect_plugin(peer, plugins_root)
+    access, suggest = decide_access(peer, bool(cli), has_plugin)
+    # raw_cli is recorded independently of access so a peer that has BOTH the official
+    # plugin AND a raw CLI stays implementer-eligible (the implementer gate needs a raw
+    # write-mode CLI, which access=="plugin" alone would otherwise hide).
+    entry = {"access": access, "raw_cli": bool(cli)}
+    if access == "plugin":
+        entry["plugin"] = PEER_PLUGINS.get(peer)
+        if cli:
+            # also has a raw CLI → probe it so its raw usability (implementer gate) is known
             status, reason = probe(peer)
             entry["status"] = status
             entry["cli_path"] = cli
             if reason:
                 entry["reason"] = reason
-            if suggest:
-                entry["suggest_install"] = PEER_PLUGINS.get(peer)
         else:
-            entry["status"] = "ABSENT"
-        peers[peer] = entry
+            entry["status"] = "READY"   # plugin-only: the plugin handles ingestion
+    elif access == "raw":
+        status, reason = probe(peer)
+        entry["status"] = status
+        entry["cli_path"] = cli
+        if reason:
+            entry["reason"] = reason
+        if suggest:
+            entry["suggest_install"] = PEER_PLUGINS.get(peer)
+    else:
+        entry["status"] = "ABSENT"
+    return entry
+
+
+def report(root, plugins_root, as_json=False):
+    # Probe peers SEQUENTIALLY, not concurrently. Peers commonly share one model backend (e.g.
+    # codex/kiro/agy all on amazon-bedrock here); firing all probes at once throttles that backend
+    # and pushes every call past its timeout — peers that pass alone (kiro ~5s, agy ~24s) all
+    # flapped to TIMEOUT when probed in parallel. Sequential gives each probe the full backend.
+    # Absent peers return instantly (no CLI), so the realistic cost is the sum of installed peers'
+    # actual response times (~tens of seconds), not 5×timeout.
+    peers = {peer: _peer_entry(peer, plugins_root) for peer in PEERS}
     summary = {
         "schema_version": SCHEMA_VERSION,
         "generated_at": datetime.datetime.now().astimezone().isoformat(),
