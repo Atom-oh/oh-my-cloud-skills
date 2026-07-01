@@ -115,9 +115,12 @@ def verdict(findings):
 `references/ai-cli-adapters.md`의 어댑터를 그대로 사용합니다 (바이너리는 `co_agent_config.py
 binary <ai>`로 해석: `kiro`→`kiro-cli`, `antigravity`→`agy`; **bare `kiro` 호출 금지**).
 
-1. `git diff` 기반 변경 분석 → 컨텍스트(diff)를 stdin으로 전달
-2. 패널 팬아웃 (예: `cat ctx | kiro-cli chat "<리뷰 프롬프트>" --no-interactive --trust-tools=read,grep --wrap never`,
-   `codex exec -s read-only`, `agy -p … --sandbox`) — 동일 프롬프트, 병렬
+1. `git diff` 기반 변경 분석 → 컨텍스트(diff)를 임시 파일에 기록
+2. 패널 팬아웃 (예: `kiro-cli chat "<리뷰 프롬프트>\n\nRead the review context with fs_read from: <CTX_FILE>" --no-interactive --trust-tools=fs_read --wrap never`,
+   `cat ctx | codex exec -s read-only`, `cat ctx | agy -p … --sandbox`) — 동일 프롬프트, 병렬.
+   ⚠️ **Kiro는 `chat`에서 stdin을 무시**하므로 diff를 stdin으로 넘기지 않음 — 컨텍스트를 파일로
+   쓰고 짧은 프롬프트로 `fs_read`(유효한 유일한 read-only 툴명)를 지시. Codex/Agy/Gemini는
+   stdin 채널 사용. 상세: `references/ai-cli-adapters.md`.
 3. AWS Well-Architected 체크리스트 적용
 4. `check_citations.py`로 발견 검증 → 합의/이견 종합
 5. 결과 통합 → PASS/REVIEW/FAIL 종합 보고서
