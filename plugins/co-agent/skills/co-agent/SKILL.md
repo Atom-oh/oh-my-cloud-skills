@@ -85,7 +85,7 @@ Get multiple AIs to review a change, then synthesize.
    diff-only / selected files / full context — and flag if the repo is private or the diff
    may contain secrets. Skip this only when the user has already opted in this session.
 1. **Scope the context to fit model windows.** Don't pipe the whole repo. Exclude
-   generated/vendored paths (`docs/build/`, `node_modules/`, large binaries) — a bloated
+   generated/vendored paths (`doc-sites/build/`, `node_modules/`, large binaries) — a bloated
    context is the usual cause of a CLI's "tokens exceed model maximum" error. The fan-out's
    size guard will skip any AI whose window can't hold it, but a tight diff is better.
 2. Capture the diff (detect the repo's default branch — don't assume `main`):
@@ -234,6 +234,26 @@ inside an **isolated git worktree** under a workspace-write sandbox; the consens
 reviews. Opt-in, local commits only. Per-task loop, trust boundary, and fallback chain:
 **`references/delegated-implement.md`**. Implementer selection / write-mode flags:
 `co_agent_config.py implementer|impl-flags`.
+
+### Consensus vs harness — same panel, different pen
+
+Both are autonomous doc→plan→implementation pipelines gated by the same consensus panel
+(`references/consensus-mode.md`) and both commit locally only. The only real difference is
+**who writes the code**:
+
+| | `/co-agent:consensus` | `/co-agent:harness` |
+|---|---|---|
+| Writes the implementation | **The host itself** (Claude/Codex), TDD loop, on the main tree | **A cross-provider peer** (Codex or Agy) — sandboxed, **only** inside an isolated git worktree |
+| Commits | Host | Host only — the peer never commits |
+| Panel's job | Reviews the **plan** (P2) and the host's own diffs (P4) | Reviews the **peer's** diff before the host applies it |
+| Isolation needed | None — host edits the repo directly | Worktree + workspace-write sandbox + `scope_guard.py`; host applies only the captured, scope-guarded diff (`delegated-implement.md`) |
+| Default state | Plan gate on by default (`--trust-plan` skips it) | Opt-in — must be explicitly invoked |
+
+**Pick consensus** when you're fine with the host writing the code and want an independent
+multi-model check on the plan/diff before it lands. **Pick harness** when you specifically
+want a *different* model family to produce the code (genuine implementation diversity, not
+just a second reviewer) while the host stays the strict gatekeeper — write, test, commit
+authority never leaves the host either way.
 
 ### Setup — panel-readiness preflight  (the standalone command **`/co-agent:setup`**)
 Detects each peer's best access path (official plugin → raw CLI + install nudge → none),

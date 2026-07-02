@@ -10,6 +10,10 @@ Autonomous **doc → plan → implementation** with cross-family multi-model con
 **All stages are implemented** — Stage A (P0–P2: plan + plan-review gate), Stage B (P3:
 autonomous implement), Stage C (P4 final gate + P5 report). Full reference: `references/consensus-pipeline.md`.
 
+> **The host itself writes the code here** (TDD loop, main tree). Want a cross-provider peer
+> to write it instead, sandboxed in a worktree, while the host stays the gatekeeper? Use
+> `/co-agent:harness`. Side-by-side comparison: `SKILL.md` → "Consensus vs harness".
+
 Argument: `$ARGUMENTS`
 
 ## Sub-modes

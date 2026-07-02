@@ -17,10 +17,10 @@ if [ ! -f .env ] && [ -f .env.example ]; then
   echo "Created .env from .env.example"
 fi
 
-# Install docs site dependencies
-if [ -d docs ] && [ -f docs/package.json ]; then
-  echo "Installing docs dependencies..."
-  cd docs
+# Install doc-sites (Docusaurus) dependencies
+if [ -d doc-sites ] && [ -f doc-sites/package.json ]; then
+  echo "Installing doc-sites dependencies..."
+  cd doc-sites
   if command -v pnpm >/dev/null 2>&1; then
     pnpm install
   elif command -v yarn >/dev/null 2>&1; then

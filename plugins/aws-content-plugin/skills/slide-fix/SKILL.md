@@ -39,7 +39,7 @@ python3 <script_path>/remarp_to_slides.py issues <file.md> --json
 ```json
 [
   {
-    "file": "docs/static/demos/my-session/01-intro.md",
+    "file": "doc-sites/static/demos/my-session/01-intro.md",
     "block": "01-intro",
     "slide": 3,
     "title": "Architecture Overview",
@@ -84,7 +84,7 @@ python3 <script_path>/remarp_to_slides.py build <project_dir>
 사용자가 `/slide-fix`를 실행하면:
 
 ```
-1. remarp_to_slides.py issues docs/static/demos/my-session/ --json
+1. remarp_to_slides.py issues doc-sites/static/demos/my-session/ --json
    → 3개 이슈 발견
 
 2. 이슈 1: slide 3 "Architecture Overview" → "다이어그램을 추가해주세요"
@@ -99,6 +99,6 @@ python3 <script_path>/remarp_to_slides.py build <project_dir>
    → 02-deep-dive.md 슬라이드 2를 탭 UI로 재구성
    → <!-- issue: 탭으로 분리 --> 제거
 
-5. remarp_to_slides.py build docs/static/demos/my-session/
+5. remarp_to_slides.py build doc-sites/static/demos/my-session/
    → HTML 재생성 완료
 ```

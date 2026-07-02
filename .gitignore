@@ -25,10 +25,10 @@ node_modules/
 # Debug screenshots
 *.png
 # But keep demo screenshots (flat + per-demo subdirectories)
-!docs/static/img/demos/*.png
-!docs/static/img/demos/**/*.png
+!doc-sites/static/img/demos/*.png
+!doc-sites/static/img/demos/**/*.png
 # ...and demo deck assets (logos, etc.) shipped under each deck's common/
-!docs/static/demos/**/*.png
+!doc-sites/static/demos/**/*.png
 # ...and shared skill AWS icon libraries (official set + product icons like AgentCore)
 !plugins/**/icons/**/*.png
 # ...and the aws-light-fcd PPTX skill's bundled deck assets (backgrounds + AWS logo)
@@ -39,9 +39,9 @@ node_modules/
 tests/fixtures/secret-samples.txt
 
 # Docusaurus
-docs/node_modules/
-docs/build/
-docs/.docusaurus/
+doc-sites/node_modules/
+doc-sites/build/
+doc-sites/.docusaurus/
 
 # co-agent personal panel settings (model/effort/enabled/timeout overrides)
 .claude/co-agent.local.json

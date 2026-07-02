@@ -13,6 +13,8 @@ worktree** under a workspace-write sandbox. Review reuses the consensus gate.
 
 > Trust boundary, per-task loop, fallback chain, output gate: **`references/delegated-implement.md`**.
 > Review-gate mechanics: `references/consensus-mode.md`. CLI details: `references/ai-cli-adapters.md`.
+> Want the host itself to write the code instead (no peer, no worktree)? Use
+> `/co-agent:consensus`. Side-by-side comparison: `SKILL.md` → "Consensus vs harness".
 
 Argument: `$ARGUMENTS`
 
