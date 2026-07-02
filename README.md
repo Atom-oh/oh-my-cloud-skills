@@ -211,7 +211,7 @@ code --install-extension tools/remarp-vscode/remarp-vscode-0.1.0.vsix
 - **Document outline** — Slide tree view in Explorer sidebar
 - **Auto-detection** — Recognizes Remarp HTML via `<meta name="generator" content="remarp">`
 
-**Source:** `tools/remarp-vscode/` | **Docs:** [VSCode Extension Guide](docs/docs/remarp-guide/vscode-extension.md)
+**Source:** `tools/remarp-vscode/` | **Docs:** [VSCode Extension Guide](doc-sites/docs/remarp-guide/vscode-extension.md)
 
 ### VSCode extension shortcuts
 

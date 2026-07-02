@@ -210,7 +210,7 @@ code --install-extension tools/remarp-vscode/remarp-vscode-0.1.0.vsix
 - **문서 아웃라인** — Explorer 사이드바의 슬라이드 트리 뷰
 - **자동 감지** — `<meta name="generator" content="remarp">`를 통해 Remarp HTML 인식
 
-**소스:** `tools/remarp-vscode/` | **문서:** [VSCode Extension 가이드](docs/docs/remarp-guide/vscode-extension.md)
+**소스:** `tools/remarp-vscode/` | **문서:** [VSCode Extension 가이드](doc-sites/docs/remarp-guide/vscode-extension.md)
 
 ### VSCode 확장 프로그램 단축키
 

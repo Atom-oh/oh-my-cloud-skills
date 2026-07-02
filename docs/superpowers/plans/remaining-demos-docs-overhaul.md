@@ -1,7 +1,7 @@
 # Plan — Finish the demos/docs overhaul on the v1.9.0 token design system
 
 ## Goal
-The `docs/static/demos` decks showcase the plugins, so they must reflect the current
+The `doc-sites/static/demos` decks showcase the plugins, so they must reflect the current
 (v1.9.0) reactive-presentation token design system, and the Docusaurus guide docs must be
 filled out with current, screenshot-backed content. Run multi-agent consensus review at
 the gates.
@@ -24,7 +24,7 @@ the gates.
 ### A. aiops-deep-dive — migrate to the v1.9.0 token theme (the remaining demo)
 - [ ] A1. Migrate static HTML/CSS colors in the 3 aiops `.md` blocks to role tokens
   (`--accent/--info/--success/--warning/--danger` + `*-subtle`, `#fff`→`var(--on-surface)`),
-  but ONLY outside `:::script` blocks. Files: `docs/static/demos/aiops-deep-dive/0{1,2,3}-*.md`.
+  but ONLY outside `:::script` blocks. Files: `doc-sites/static/demos/aiops-deep-dive/0{1,2,3}-*.md`.
 - [ ] A2. For each `:::script` canvas slide, replace literal/var colors used in `ctx.fillStyle`/
   `strokeStyle` with values read at runtime via `getComputedStyle(document.documentElement)
   .getPropertyValue('--token')` (canvas cannot resolve CSS vars). Verify no black-blob render.
@@ -35,13 +35,13 @@ the gates.
   new theme; verify embeds resolve.
 
 ### B. Guide docs — fill thoroughly with screenshots (v1.9.0 token system)
-- [ ] B1. `docs/docs/remarp-guide/quick-start.mdx` — author a Remarp deck end to end on the
+- [ ] B1. `doc-sites/docs/remarp-guide/quick-start.mdx` — author a Remarp deck end to end on the
   token system; embed 1-2 fresh screenshots.
-- [ ] B2. `docs/docs/remarp-guide/build-cli.mdx` — validate/build/sync CLI, the rejection
+- [ ] B2. `doc-sites/docs/remarp-guide/build-cli.mdx` — validate/build/sync CLI, the rejection
   loop, and the lint rules table; show real terminal output.
-- [ ] B3. `docs/docs/remarp-guide/examples/*` — ensure each example reflects current syntax;
+- [ ] B3. `doc-sites/docs/remarp-guide/examples/*` — ensure each example reflects current syntax;
   refresh screenshots.
-- [ ] B4. `docs/docs/aws-content-plugin/skills/reactive-presentation.mdx` — document the
+- [ ] B4. `doc-sites/docs/aws-content-plugin/skills/reactive-presentation.mdx` — document the
   token design system (light default, role tokens, `.card-grid`/`.metric-card`/`.callout`/
   `.flow-h`, AWS `--pptx-*` brand-input override), with a screenshot.
 
@@ -67,7 +67,7 @@ the gates.
   bucket names, tokens, or local user paths.
 - **A1 scope**: "colors" = inline `style=`, CSS in `:::css`, SVG fill/stroke attrs, gradients,
   and chart/canvas color strings — but only OUTSIDE `:::script` (those go through A2).
-- **i18n**: if an edited guide doc has a `docs/i18n/ko` counterpart, sync it or add a
+- **i18n**: if an edited guide doc has a `doc-sites/i18n/ko` counterpart, sync it or add a
   "translation needed" note; do not silently diverge.
 
 ## Order (revised — tractable first, highest-risk last)

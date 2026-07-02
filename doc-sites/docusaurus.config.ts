@@ -46,7 +46,7 @@ const config: Config = {
         docs: {
           sidebarPath: './sidebars.ts',
           editUrl:
-            'https://github.com/Atom-oh/oh-my-cloud-skills/tree/main/docs/',
+            'https://github.com/Atom-oh/oh-my-cloud-skills/tree/main/doc-sites/',
         },
         blog: false,
         theme: {

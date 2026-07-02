@@ -1,33 +1,30 @@
-# docs/ — Documentation site (Docusaurus)
+# docs/ — Internal, Claude-facing project documentation
 
-The project's documentation & demo site. Source content lives in `docs/docs/`
-(Markdown/MDX), built into a static site under `docs/build/`.
+Documentation Claude (and contributors) read while working on this repo — decisions, ops
+runbooks, cross-cutting reference material, and superpowers-workflow specs/plans. **Not**
+the public documentation site — that's the separate Docusaurus project at `../doc-sites/`
+(published to GitHub Pages). Don't add site content here, and don't add internal docs there.
 
 ## Layout
 ```
 docs/
-├── docs/            # Authored content (per-plugin overview/installation/agents/skills, intro, remarp-guide)
-├── src/             # Docusaurus React components, CSS
-├── static/          # Static assets (demos, images)
-├── decisions/       # ADRs (ADR-NNN-*.md)
-├── runbooks/        # Operational runbooks
-├── architecture.md  # System architecture (bilingual KO/EN) — keep in sync with plugin inventory
-├── i18n/            # Translations
-└── build/, .docusaurus/, node_modules/   # generated / deps (not edited by hand)
+├── decisions/            # ADRs (ADR-NNN-*.md) — see decisions/CLAUDE.md
+├── runbooks/              # Operational runbooks — see runbooks/CLAUDE.md
+├── reference/             # Cross-cutting reference docs (e.g. review-routing.md)
+├── superpowers/           # specs/ + plans/ from the superpowers workflow — see superpowers/CLAUDE.md
+├── architecture.md        # System architecture (bilingual KO/EN) — keep in sync with plugin inventory
+├── onboarding.md          # New-contributor onboarding
+├── ci-pr-review.md        # CI multi-AI PR review — design notes
+└── ci-pr-review-runbook.md # CI multi-AI PR review — operational runbook
 ```
 
 ## Conventions
-- **Per-plugin pages** in `docs/docs/<plugin>/`: `overview.md`, `installation.md`, `agents/*.md`, `skills/*.md`. Mirror the plugin's actual agents/skills/commands.
-- `intro.md` and `architecture.md` carry **plugin counts** (agents/skills/commands) — update them when a plugin's component count changes (the `/sync-docs` skill audits this).
-- Bilingual (KO/EN) where user-facing; match the repo's no-emoji / clear-prose style.
-- Do **not** hand-edit `build/`, `.docusaurus/`, or `node_modules/`.
+- `architecture.md` carries **plugin counts** (agents/skills/commands) — update it when a
+  plugin's component count changes (the `/sync-docs` skill audits this; `doc-sites/docs/intro.md`
+  carries the same counts for the public site — keep both in sync).
+- Bilingual (KO/EN) where user-facing; no emojis; match the repo's clear-prose style.
+- Each subdirectory has its own `CLAUDE.md` with filename/section conventions — read it
+  before adding a file there (`decisions/`, `runbooks/`, `superpowers/`).
 
-## Commands
-```bash
-cd docs
-npm install
-npm run start     # local dev server
-npm run build     # static build → build/
-```
-
-> Docusaurus content is documentation *about* the plugins; the plugins themselves live in `../plugins/`. Keep this site consistent with `../CLAUDE.md` and `marketplace.json`.
+> Per-directory scaffolding commands: `/add-adr`, `/add-runbook`, `/add-reference-doc`
+> (project-init). Keep this consistent with `../CLAUDE.md`.

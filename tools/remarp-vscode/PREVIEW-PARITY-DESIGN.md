@@ -652,7 +652,7 @@ For each slide type, verify:
 | File | Purpose |
 |------|---------|
 | `tools/remarp-vscode/src/preview.ts` | Current preview renderer |
-| `docs/static/demos/common/theme.css` | Target theme CSS |
+| `doc-sites/static/demos/common/theme.css` | Target theme CSS |
 | `plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py` | Target HTML builder |
-| `docs/static/demos/common/slide-framework.js` | Navigation framework |
+| `doc-sites/static/demos/common/slide-framework.js` | Navigation framework |
 | `plugins/aws-content-plugin/skills/reactive-presentation/assets/quiz-component.js` | Quiz interactivity |
