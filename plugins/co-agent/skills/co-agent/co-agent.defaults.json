@@ -3,7 +3,7 @@
   "timeout": 240,
   "sync_on_change": false,
   "profile": "deep",
-  "consensus": { "max_calls": 12, "max_rounds": 2 },
+  "consensus": { "max_calls": 24, "max_rounds": 2 },
   "panel": {
     "kiro-cli":   { "enabled": true, "model": "auto", "models": ["claude-opus-4.8", "kimi-k2.5", "glm-5"], "context_limit": 1000000 },
     "claude": { "enabled": true, "model": null, "effort": "medium", "models": [], "context_limit": 1000000 },

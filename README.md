@@ -816,7 +816,7 @@ plugins/
 │   └── skills/
 │       └── agentcore-create/
 │
-├── co-agent/                       # Multi-AI collaboration (1 agent, 1 skill, 3 commands)
+├── co-agent/                       # Multi-AI collaboration (1 agent, 1 skill, 5 commands)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
 │   ├── agents/

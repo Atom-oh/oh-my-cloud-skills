@@ -37,7 +37,7 @@ lives here + in the root `CLAUDE.md` table):
 
 - **② Before `superpowers:finishing-a-development-branch`** — code is done but docs drift. Run
   `/sync-docs` + `/generate-changelog`; if the branch made an architectural decision, capture it
-  with `/add-adr`. (This also keeps co-agent's `AGENTS.md`/`GEMINI.md` fresh via the CLAUDE.md
+  with `/add-adr`. (This also keeps co-agent's `AGENTS.md` fresh via the CLAUDE.md
   PostToolUse autosync.) 브랜치 마무리 전 문서 동기화 단계.
 - **④ Shift-left security at `superpowers:writing-plans`** — when a plan proposes AWS/IaC changes,
   cross-check the global security mandates **at plan time** (no `0.0.0.0/0` ingress, no IAM

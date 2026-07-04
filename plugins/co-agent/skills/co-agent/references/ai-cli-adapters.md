@@ -91,7 +91,7 @@ while IFS=$'\t' read -r ai model; do
               agy -p "$PROMPT" "${MFLAGS[@]}" --sandbox \
               > "$slot.md" 2>"$slot.err" || echo "[skip] agy/$model" ) & ;;
   esac
-done < <(python3 "$CFG" pairs --host "$HOST" 2>/dev/null)
+done < <(python3 "$CFG" pairs --host "$HOST")   # keep stderr: the budget-trim warning must reach the user
 wait    # reaps the `&` jobs above — they are children of THIS shell (process substitution)
 # Synthesize from $RUN/*-*.md. Empty/errored/size-skipped = that pair skipped.
 # QUORUM GUARD: if ≤1 pair produced usable output, do NOT call it consensus —

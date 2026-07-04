@@ -269,7 +269,7 @@ Skill: `kiro-convert` — interactive workflow for plugin-to-power conversion wi
 
 Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Skill-First Build, AgentCore Convert, Deploy) with `references/` and `scripts/` subdirectories. The `opus` alias resolves to `us.anthropic.claude-opus-4-8`; modern-Opus (4.7/4.8) param contract (no `temperature`/`top_p`/`top_k`, no `thinking.type:"enabled"`+`budget_tokens`) is documented in `references/agentcore-mapping-rules.md`.
 
-### co-agent (1 agent, 1 skill, 3 commands)
+### co-agent (1 agent, 1 skill, 5 commands)
 
 | Agent | Purpose |
 |-------|---------|

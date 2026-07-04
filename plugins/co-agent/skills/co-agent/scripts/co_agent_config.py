@@ -143,12 +143,14 @@ def deep_merge(base, over):
     return out
 
 
-# Peer keys renamed in 1.10, plus `gemini` (removed entirely — Agy superseded it, ADR-010).
+# Peer keys renamed in 1.10 (kiro→kiro-cli, antigravity→agy), plus `gemini` — REMOVED
+# entirely (Agy superseded it, ADR-010), value None = "delete this key, do not rename".
 # Not read as aliases (no back-compat) — but WARN so a stale override (e.g. a user's
-# `gemini.enabled:true` from before this AI was dropped) isn't silently dropped, silently
-# losing their third reviewer with no error. `gemini` isn't a literal rename like the other
-# two, but "→ agy" is still the right hint: agy is the slot gemini used to fill.
-LEGACY_KEYS = {"kiro": "kiro-cli", "antigravity": "agy", "gemini": "agy"}
+# `gemini.enabled:true` from before this AI was dropped) isn't silently ignored, silently
+# losing their third reviewer with no error. gemini must NOT say "rename to agy": grafting
+# a stale gemini block (enabled:false, gemini-* model ids) onto agy would disable or
+# misconfigure a live AI — worse than the ignored override.
+LEGACY_KEYS = {"kiro": "kiro-cli", "antigravity": "agy", "gemini": None}
 
 
 def effective(root):
@@ -160,10 +162,18 @@ def effective(root):
                 with open(lp, encoding="utf-8") as f:
                     raw = json.load(f)
                 stale = [k for k in raw.get("panel", {}) if k in LEGACY_KEYS]
-                if stale:
-                    hint = ", ".join(f"{k}→{LEGACY_KEYS[k]}" for k in stale)
+                renames = [k for k in stale if LEGACY_KEYS[k]]
+                removed = [k for k in stale if not LEGACY_KEYS[k]]
+                if renames:
+                    hint = ", ".join(f"{k}→{LEGACY_KEYS[k]}" for k in renames)
                     print(f"⚠️  {lp}: legacy panel key(s) {hint} are NO LONGER read — "
                           f"rename them or the override is ignored.", file=sys.stderr)
+                if removed:
+                    hint = ", ".join(removed)
+                    print(f"⚠️  {lp}: panel key(s) {hint} refer to a REMOVED AI and are "
+                          f"ignored — DELETE the block (do not rename it onto another AI; "
+                          f"configure agy separately if you want the third reviewer).",
+                          file=sys.stderr)
                 cfg = deep_merge(cfg, raw)
             except (json.JSONDecodeError, OSError) as e:
                 print(f"⚠️  ignoring malformed {lp}: {e}", file=sys.stderr)
@@ -206,21 +216,43 @@ def panel_pairs(cfg, host):
     return pairs
 
 
-def cmd_pairs(root, host, phases=1):
-    cfg = effective(root)
-    cap = int(cfg.get("consensus", {}).get("max_calls", 12))
+def capped_pairs(cfg, host, phases=1):
+    """The panel pairs AFTER the per-round budget trim — the single source of truth for
+    what a gate fan-out will actually run. `phases` = fan-outs per round (hybrid = 2:
+    find + verify); the per-round budget is divided across phases so
+    rounds × phases × pairs ≤ max_calls overall. Returns
+    (pairs, configured_count, per_round_cap, floor_clamped): floor_clamped is True when
+    even one pair per phase across all rounds exceeds max_calls (rounds×phases > cap) —
+    the gate then overspends the configured budget and callers must surface that."""
+    cap = int(cfg.get("consensus", {}).get("max_calls", 24))
     rounds = int(cfg.get("consensus", {}).get("max_rounds", 2))
-    # `phases` = fan-outs per round (hybrid = 2: find + verify). Each caller must divide
-    # the per-round budget by its own phase count — pairs has no notion of "this round
-    # already spent a phase", so passing --phases 2 here caps EACH phase's fan-out at
-    # half the single-phase size, keeping rounds × phases × pairs ≤ max_calls overall.
-    per_round_cap = max(1, cap // max(1, rounds) // max(1, phases))
+    phases = max(1, phases)
+    raw_cap = cap // max(1, rounds) // phases
+    per_round_cap = max(1, raw_cap)
     pairs = panel_pairs(cfg, host)
-    if len(pairs) > per_round_cap:
-        print(f"⚠️  {len(pairs)} pairs exceeds per-round cap {per_round_cap} "
+    configured = len(pairs)
+    return pairs[:per_round_cap], configured, per_round_cap, raw_cap < 1
+
+
+def _cap_warnings(cfg, configured, per_round_cap, floor_clamped, phases):
+    cap = int(cfg.get("consensus", {}).get("max_calls", 24))
+    rounds = int(cfg.get("consensus", {}).get("max_rounds", 2))
+    if configured > per_round_cap:
+        print(f"⚠️  {configured} pairs exceeds per-round cap {per_round_cap} "
               f"(max_calls {cap} / {rounds} rounds"
               + (f" / {phases} phases" if phases > 1 else "") + ") — trimming", file=sys.stderr)
-        pairs = pairs[:per_round_cap]
+    if floor_clamped:
+        # max(1, …) floored the cap: 1 pair × rounds × phases still exceeds max_calls.
+        print(f"⚠️  max_calls {cap} cannot hold even 1 pair per phase across {rounds} rounds"
+              + (f" × {phases} phases" if phases > 1 else "")
+              + f" — the gate will spend up to {rounds * max(1, phases)} calls, EXCEEDING the "
+              f"configured budget. Raise max_calls or lower max_rounds.", file=sys.stderr)
+
+
+def cmd_pairs(root, host, phases=1):
+    cfg = effective(root)
+    pairs, configured, per_round_cap, floor_clamped = capped_pairs(cfg, host, phases)
+    _cap_warnings(cfg, configured, per_round_cap, floor_clamped, phases)
     for ai, m in pairs:
         print(f"{ai}\t{m or '(default)'}")
     return 0
@@ -229,12 +261,17 @@ def cmd_pairs(root, host, phases=1):
 def cmd_matrix(root, host, phases=1):
     cfg = effective(root)
     rounds = int(cfg.get("consensus", {}).get("max_rounds", 2))
-    pairs = panel_pairs(cfg, host)
+    # Display the CAPPED panel — what will actually run — never the untrimmed wish-list
+    # (an untrimmed display would collect consent for pairs/cost that never execute).
+    pairs, configured, per_round_cap, floor_clamped = capped_pairs(cfg, host, phases)
+    _cap_warnings(cfg, configured, per_round_cap, floor_clamped, phases)
     total = len(pairs) * rounds * max(1, phases)
     phase_note = f" × {phases} phases (find+verify)" if phases > 1 else ""
+    trim_note = (f" — {configured} configured, trimmed to {len(pairs)}/phase by max_calls"
+                 if configured > len(pairs) else "")
     print(f"co-agent panel matrix  (profile {cfg.get('profile','default')} · "
           f"host {host} · {len(pairs)} pairs × up to {rounds} rounds{phase_note} = "
-          f"{total} max calls)")
+          f"{total} max calls{trim_note})")
     print(f"  {'AI':7} {'model':22} {'ctx(tok)':>11}")
     fam = {}
     for ai, m in pairs:
@@ -493,7 +530,9 @@ def cmd_implementer(root, host):
 
 def cmd_review_mode(root):
     """Print the effective harness review-gate mode (hybrid | relay | parallel)."""
-    h = effective(root).get("harness", {})
+    # `or {}`: a local override of `"harness": null` (the null-means-unset style the
+    # defaults themselves use per-key) replaces the dict wholesale via deep_merge.
+    h = effective(root).get("harness") or {}
     mode = h.get("review_mode", "hybrid")
     if mode not in REVIEW_MODES:
         mode = "hybrid"
@@ -503,7 +542,7 @@ def cmd_review_mode(root):
 
 def cmd_parallel_tasks(root):
     """Print the effective harness implement-wave concurrency (1 = sequential)."""
-    h = effective(root).get("harness", {})
+    h = effective(root).get("harness") or {}
     try:
         n = int(h.get("parallel_tasks", 3))
     except (TypeError, ValueError):
@@ -536,7 +575,8 @@ def cmd_impl_flags(root, ai, host):
         parts += ["--sandbox"]
         if model:
             parts += ["--model", model]
-    print("\n".join(parts))   # newline-delimited so a spaced model value stays one token
+    if parts:   # same guard as cmd_flags — an empty print is a blank mapfile element
+        print("\n".join(parts))   # newline-delimited so a spaced model value stays one token
     return 0
 
 
@@ -562,8 +602,12 @@ def main():
         if argv[i] == "--phases":
             # Only consumed by `pairs`/`matrix` — fan-outs per round (hybrid gate = 2:
             # find + verify), so the per-round call budget is divided across phases.
-            if i + 1 < len(argv):
-                phases_arg = argv[i + 1]
+            # A MISSING value must hard-fail: silently defaulting to 1 would rerun the
+            # exact 2× budget overrun --phases exists to prevent (failure = more spend).
+            if i + 1 >= len(argv):
+                print("--phases requires a value", file=sys.stderr)
+                return 2
+            phases_arg = argv[i + 1]
             i += 2
             continue
         args.append(argv[i])

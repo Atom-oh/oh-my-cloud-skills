@@ -32,13 +32,19 @@ at that index, so the AI(s) with the **most** configured `models` are always the
 in the tail once the shorter queues run out. There is no separate relay-order key; `enabled`
 only drops an AI from the chain entirely, it cannot move it within the fixed order.
 
-To put the **strongest reasoner last** (so it reviews with the most accumulated context),
-give it a `models` list **at least as long as** every other enabled AI's — e.g. with the
-committed default (kiro-cli has 3 models, the counterpart peer and agy have 1 each), the
-counterpart peer is link 2 of 5, never the tail; setting `set <peer> models m1,m2,m3` to
-match kiro's count pushes it into the tail alongside kiro's last links. Trimming kiro's
-`models` down to 1 has the same effect from the other side. A single gate-eligible pair
-degenerates to one review (still valid — see Quorum).
+The tail of the chain is therefore the **last link of the strictly longest `models`
+list** (round-robin: when the shorter queues run out, only the longest queue keeps
+appending). To put the **strongest reasoner last**, give it a `models` list **strictly
+longer than** every other enabled AI's — matching lengths ties the tail to `panel_ais`
+order, which the peer loses. Two working examples against the committed default (kiro 3
+models, peer/agy 1 each; default tail = kiro's 3rd model):
+- lightweight: `set kiro-cli models claude-opus-4.8` + `set <peer> models m1,m2` →
+  4 links `[kiro, peer, agy, peer]`, tail = the peer's 2nd model;
+- full-width: `set <peer> models m1,m2,m3,m4` → 7 links, tail = the peer's 4th model.
+**Mind the per-round cap** (`max_calls / max_rounds`; relay is single-phase): the trim
+cuts the END of the interleaved list — exactly the tail links you just arranged — so keep
+total pairs ≤ the cap (default 24/2 = 12; the trim warning on stderr tells you when it
+fires). A single gate-eligible pair degenerates to one review (still valid — see Quorum).
 
 ## Multi-model relay — 다방향 검증
 
@@ -63,8 +69,10 @@ contract as `/co-agent:configure`):
 Caps still apply: `pairs` trims to `consensus.max_calls / max_rounds` round-robin across
 AIs (extra same-provider models are trimmed before a whole provider is dropped), and the
 context-size `fits` guard skips a pair whose window can't hold the accumulated chain —
-note that the chain **grows** as it relays, so late links need the largest windows
-(another reason big-window models belong at the tail). Sequential relay costs wall-clock
+note that the chain **grows** as it relays, so late links need the largest windows —
+since tail position is an emergent property of `models`-list lengths (see Ordering; there
+is no placement knob), this means **give big-window AIs the longest `models` lists**.
+Sequential relay costs wall-clock
 (sum of links, not max) — trim `models` lists rather than lowering `timeout` if a run is
 too slow.
 
@@ -127,7 +135,7 @@ while IFS=$'\t' read -r ai model; do
   if [ -s "$slot.md" ]; then
     { echo; echo "## Reviewer $i — $ai/$model"; cat "$slot.md"; } >> "$CHAIN"
   fi
-done < <(python3 "$CFG" pairs --host "$HOST" 2>/dev/null)
+done < <(python3 "$CFG" pairs --host "$HOST")   # keep stderr: the budget-trim warning must reach the user
 # The final $CHAIN holds the full relay. The host (chair) synthesizes from it — see below.
 ```
 

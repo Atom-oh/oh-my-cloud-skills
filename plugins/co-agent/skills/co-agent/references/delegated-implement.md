@@ -125,32 +125,49 @@ enforces — so two tasks that could write the same file never run in the same w
 
 **Per wave** (adapts steps 1–8 of the sequential loop):
 
-1. **Red (host).** Write the failing tests for every task in the wave that does NOT
-   declare `test_required:false`, and commit them as **one** red-test commit
+1. **Red (host).** First record the pre-wave checkpoint: `CKPT=$(git rev-parse HEAD)`
+   — step 7's abort path restores from it, so it must be taken BEFORE the red commit.
+   Then write the failing tests for every task in the wave that does NOT declare
+   `test_required:false`, and commit them as **one** red-test commit
    (`RED_MADE=true` if this commit was made; `RED_MADE=false` if every task in the wave is
    `test_required:false`, so there is nothing to commit here — same condition the
    sequential loop's step 1 already checks per task, just OR'd across the wave). One
    commit, not N: the wave is folded into passing commits by amending, and only a single
    transient red commit can be cleanly amended/reverted without rebase.
+   **Red-commit message convention (crash recovery):** the commit subject MUST start with
+   `harness: wave red tests (transient)`. `RED_MADE`/`CKPT` live only in the session's
+   shell, so this marker is the ONLY durable record that HEAD is a transient red commit —
+   **on resume** (`consensus_state.py` `phase`/`task_index` point mid-implement), check
+   `git log -1 --format=%s`: if it matches the marker, HEAD is an unfolded red commit —
+   with a clean tree, `git revert --no-edit HEAD` it and re-plan the wave from the
+   remaining tasks (never stack a new red commit on top of an orphaned one); a dirty tree
+   on top of it is the interrupted-wave state → `set . status needs-human`.
 2. **Worktrees.** `worktree.py add <wt_i> --base HEAD` per task — every worktree sees the
    whole wave's red tests.
-3. **Implement (parallel).** Snapshot main before starting (`MAIN0=$(git -C . status
-   --porcelain)`) — the host makes no changes to main while implementers run, so this is
-   the one point where an out-of-band write is unexpected. Run the implementer with
-   `impl-flags` in **each** worktree concurrently (`&` + `wait`, one background job per
-   task, capped by `parallel_tasks`). Each prompt is scoped to ITS task + files and must
+3. **Implement (parallel).** The escape check brackets **every peer execution**, not the
+   wave: snapshot main immediately before running any implementer
+   (`MAIN0=$(git -C . status --porcelain)`), and re-check right after it finishes —
+   the host makes no changes to main **while a peer is running**, so any diff across that
+   bracket is an out-of-band write (a peer escaped its worktree via `..`/absolute path —
+   the one threat capture-diff cannot see). For the initial batch: snapshot once, run the
+   implementers concurrently in their worktrees (`&` + `wait`, one background job per
+   task, capped by `parallel_tasks`), re-check after `wait` — abort the whole wave on a
+   mismatch. The same bracket applies to **every fix-round re-run in step 5**: snapshot
+   just before that peer run (the snapshot then already includes the host's own applied
+   patches, so they don't false-trip it), re-check when it finishes, abort the task on a
+   mismatch. The host's own applies between peer runs are intentional changes, never
+   compared against a stale snapshot. Each prompt is scoped to ITS task + files and must
    say: *"other failing tests in this tree belong to parallel tasks — do not touch them or
-   their files."* `scope_guard.py` drops any out-of-scope hunk regardless. After `wait`,
-   re-check main against `MAIN0` **once** — abort the whole wave if it changed (a peer
-   escaped its worktree and wrote into the main checkout out-of-band). From this point on,
-   main changes on every apply below **by design** — do not re-run this check mid-apply.
+   their files."* `scope_guard.py` drops any out-of-scope hunk regardless.
 4. **Capture + scope** per task, as in step 4 of the sequential loop.
-5. **Apply + verify (host, serial).** Apply the captured patches **one at a time** — each
-   apply is an intentional, host-driven change to main, not an anomaly to detect. After
+5. **Apply + verify (host, serial).** Apply the captured patches **one at a time**. After
    each apply, the gate is: **that task's tests pass and no previously-green test breaks**
    — full-suite green is NOT expected mid-wave (sibling tasks' red tests are still
    unimplemented). A failing task gets the bounded fix loop (`harness.max_fix_rounds`) in
-   its own worktree without blocking siblings already applied.
+   its own worktree without blocking siblings already applied — **each fix-round peer run
+   gets its own step-3 snapshot/re-check bracket** (fix rounds are peer executions too;
+   without the bracket they would be the one window where a worktree escape lands
+   undetected).
 6. **Fold (host).** When every surviving task in the wave is applied, require the **full
    suite green on main**. **Only if `RED_MADE=true`** (step 1 made a red-test commit this
    wave), `git commit --amend` onto it — one passing commit per wave (same
@@ -160,14 +177,21 @@ enforces — so two tasks that could write the same file never run in the same w
    wave was `test_required:false`), make a **fresh `git commit`** instead. `worktree.py
    remove` all.
 7. **Abort a task, keep the wave.** If one task exhausts its fix loop: restore **that
-   task's files** (implementation patch AND its red tests, if any) to their pre-wave state
-   — scoped `git restore`/`git checkout` + guarded `git clean -fd -- "${FILES[@]}"` exactly
-   as in step 8 of the sequential loop — then proceed to the fold; when `RED_MADE=true` the
-   amend rewrites the red commit to the current tree, so the aborted task's tests drop out
-   of the folded commit cleanly. Mark the task `needs-human` in state. If **every** task in
-   the wave aborts: `git revert --no-edit` the red-test commit if `RED_MADE=true`; if
-   `RED_MADE=false` there is no commit to revert — just discard the tree changes above and
-   skip the fold entirely (no commit for this wave).
+   task's files** to their pre-wave state **from `$CKPT`, never from HEAD** — HEAD is the
+   wave's red-test commit and still CONTAINS the task's red tests, so a HEAD-relative
+   `git restore`/`git checkout` would restore the failing tests instead of removing them
+   (and `git clean` skips them — they're tracked), deadlocking step 6's full-suite-green
+   precondition. Concretely, with the guarded-array discipline of the sequential loop's
+   step 8: for task files that **existed at `$CKPT`**,
+   `git restore --source="$CKPT" --staged --worktree -- "${FILES[@]}"`; for task files
+   **new since `$CKPT`** (e.g. the task's brand-new red-test files), `git rm -f --
+   "${NEW_FILES[@]}"` (they're tracked in the red commit, so `git clean` won't touch
+   them). Then proceed to the fold; when `RED_MADE=true` the amend rewrites the red commit
+   to the current tree, so the aborted task's tests genuinely drop out of the folded
+   commit. Mark the task `needs-human` in state. If **every** task in the wave aborts:
+   restore all wave files from `$CKPT` as above, then `git revert --no-edit` the red-test
+   commit if `RED_MADE=true`; if `RED_MADE=false` there is no commit to revert — just
+   discard the tree changes and skip the fold entirely (no commit for this wave).
 
 Waves inherit everything else unchanged: host is the only committer, external AIs never
 commit, `stage-result` per task, resume via `consensus_state` (`task_index` advances by
