@@ -24,8 +24,10 @@ Usage:
   co_agent_config.py set <ai> <key> <value>     # write to .claude/co-agent.local.json
   co_agent_config.py set timeout <seconds>      # global per-CLI timeout
   co_agent_config.py set autosync <on|off>      # auto-run sync-context on CLAUDE.md change
-  co_agent_config.py set harness review_mode <relay|parallel>  # harness gate: relay chain (default) vs parallel
-  co_agent_config.py review-mode                # effective harness review-gate mode (relay|parallel)
+  co_agent_config.py set harness review_mode <hybrid|relay|parallel>  # harness gate mechanics
+  co_agent_config.py review-mode                # effective harness gate mode (hybrid default)
+  co_agent_config.py set harness parallel_tasks <n>  # implement wave size (1 = sequential)
+  co_agent_config.py parallel-tasks             # effective implement concurrency (int)
   co_agent_config.py set <ai> context_limit <n> # per-AI context window (tokens)
   co_agent_config.py flags <ai>                 # CLI flag fragment for the fan-out
   co_agent_config.py panel                      # space-separated enabled AIs
@@ -76,9 +78,11 @@ def panel_ais(host):
 # auto-accept writes but do NOT confine them to the worktree, so they are NOT safe
 # delegated implementers — the trust boundary would not hold.
 SANDBOX_IMPLEMENTERS = ("codex", "agy")
-# harness review-gate mechanics: relay = sequential relay chain (references/relay-chain-gate.md),
-# parallel = independent fan-out (references/consensus-mode.md). Only /co-agent:harness reads it.
-REVIEW_MODES = ("relay", "parallel")
+# harness review-gate mechanics (only /co-agent:harness reads it):
+#   hybrid   = parallel find -> chair triage -> parallel verify (references/hybrid-gate.md; default)
+#   relay    = sequential relay chain (references/relay-chain-gate.md)
+#   parallel = one-shot independent fan-out (references/consensus-mode.md)
+REVIEW_MODES = ("hybrid", "relay", "parallel")
 
 
 def implementer_ai(cfg, host):
@@ -313,8 +317,13 @@ def cmd_set(root, rest, host, scope="local"):
                 print(f"review_mode must be one of: {', '.join(REVIEW_MODES)}", file=sys.stderr)
                 return 2
             h["review_mode"] = val
+        elif key == "parallel_tasks":
+            if not val.isdigit() or int(val) < 1:
+                print("parallel_tasks must be a positive integer (1 = sequential)", file=sys.stderr)
+                return 2
+            h["parallel_tasks"] = int(val)
         else:
-            print("harness keys: implementer, max_fix_rounds, review_mode", file=sys.stderr)
+            print("harness keys: implementer, max_fix_rounds, review_mode, parallel_tasks", file=sys.stderr)
             return 2
     else:
         if len(rest) != 3:
@@ -463,12 +472,23 @@ def cmd_implementer(root, host):
 
 
 def cmd_review_mode(root):
-    """Print the effective harness review-gate mode (relay | parallel)."""
+    """Print the effective harness review-gate mode (hybrid | relay | parallel)."""
     h = effective(root).get("harness", {})
-    mode = h.get("review_mode", "relay")
+    mode = h.get("review_mode", "hybrid")
     if mode not in REVIEW_MODES:
-        mode = "relay"
+        mode = "hybrid"
     print(mode)
+    return 0
+
+
+def cmd_parallel_tasks(root):
+    """Print the effective harness implement-wave concurrency (1 = sequential)."""
+    h = effective(root).get("harness", {})
+    try:
+        n = int(h.get("parallel_tasks", 3))
+    except (TypeError, ValueError):
+        n = 3
+    print(max(1, n))
     return 0
 
 
@@ -562,6 +582,8 @@ def main():
         return cmd_implementer(root, host)
     if cmd == "review-mode":
         return cmd_review_mode(root)
+    if cmd == "parallel-tasks":
+        return cmd_parallel_tasks(root)
     if cmd == "impl-flags":
         return cmd_impl_flags(root, rest[0], host) if rest else 2
     print(__doc__)

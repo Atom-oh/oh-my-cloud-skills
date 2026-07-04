@@ -72,7 +72,9 @@ Argument: `$ARGUMENTS`
    python3 "$H" set agy model "Gemini 3.1 Pro (High)"  # Agy tokens have spaces + parens
    python3 "$H" set kiro-cli models claude-opus-4.8,kimi-k2.5,glm-5  # multi-model list
    python3 "$H" set profile deep                # activate each AI's `models` list
-   python3 "$H" set harness review_mode parallel # harness gate: relay (default) | parallel
+   python3 "$H" set harness implementer agy     # harness implementer (codex|agy)
+   python3 "$H" set harness review_mode relay    # harness gate: hybrid (default) | relay | parallel
+   python3 "$H" set harness parallel_tasks 3     # harness implement wave size (1 = sequential)
    ```
    `context_limit` lets the fan-out **skip** an AI when the context is too large for its
    model window (the cause of "prompt tokens exceed model maximum"), instead of hard-failing
@@ -83,8 +85,8 @@ Argument: `$ARGUMENTS`
    in an AI's `models` list becomes its own `(ai, model)` fan-out/relay link — one gate pass
    verifies from each configured model's direction, capped by `consensus.max_calls`. All
    overrides ride the CLIs' real headless flags (kiro/claude/agy `--model`, codex `-m`), so
-   this works fully non-interactively; see `references/relay-chain-gate.md` → "Multi-model
-   relay" for how the harness chain orders them.
+   this works fully non-interactively; see `references/hybrid-gate.md` (default gate) and
+   `references/relay-chain-gate.md` → "Multi-model relay" for how the gates use them.
    `autosync on` makes the `CLAUDE.md` PostToolUse hook tell Claude to run
    `/co-agent:sync-context` whenever `AGENTS.md` drifts stale (opt-in; default
    off = reminder only). It refreshes `AGENTS.md` and the Kiro steering bridge;

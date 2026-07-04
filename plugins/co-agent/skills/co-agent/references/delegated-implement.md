@@ -4,9 +4,11 @@ How the **host designs, a cross-provider peer implements, and the host reviews +
 The peer writes code **only inside an isolated git worktree** under a workspace-write
 sandbox; the host owns the failing test, the verification, and every commit.
 
-> Review-gate mechanics: **relay chain** `relay-chain-gate.md` (harness default) · parallel
-> `consensus-mode.md` (`harness.review_mode`). CLI invocation details: `ai-cli-adapters.md`.
-> Implementer selection / write-mode flags: `scripts/co_agent_config.py implementer|impl-flags`.
+> Review-gate mechanics: **hybrid** `hybrid-gate.md` (harness default) · relay
+> `relay-chain-gate.md` · parallel `consensus-mode.md` (`harness.review_mode`). CLI
+> invocation details: `ai-cli-adapters.md`. Implementer selection / write-mode flags:
+> `scripts/co_agent_config.py implementer|impl-flags`; wave concurrency:
+> `co_agent_config.py parallel-tasks` (see "Parallel waves" below).
 
 ## Trust boundary
 
@@ -104,6 +106,60 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
    nor a bare `git reset --hard` (could discard unrelated work). Then `consensus_state.py set .
    status needs-human` and stop the task. Never leave a red commit or applied-but-failing
    changes on the working branch.
+
+## Parallel waves — one implementer, N concurrent task subagents
+
+The panel deliberates in numbers, but **implementation stays with ONE implementer AI**
+(`co_agent_config.py implementer`, user-selectable via `set harness implementer codex|agy`)
+— cross-AI implementation diversity belongs in the review gate, not in the diff. Throughput
+comes from running **that one implementer as parallel subagent instances**, one per task,
+each in its own worktree. `harness.parallel_tasks` (default 3; `1` = the sequential
+per-task loop above) caps how many run at once.
+
+**Wave planning.** Take the plan's task list (`parse_plan.py`) with each task's file set
+(`parse_plan.py --files` scope). Greedily group tasks into **waves** of pairwise-**disjoint**
+file sets, at most `parallel_tasks` per wave; a task whose files overlap an earlier task in
+the wave falls to the next wave. Tasks in a wave run concurrently; waves run sequentially.
+(Overlap check is on the plan's declared file scopes — the same sets `scope_guard.py`
+enforces — so two tasks that could write the same file never run in the same wave.)
+
+**Per wave** (adapts steps 1–8 of the sequential loop):
+
+1. **Red (host).** Write ALL of the wave's failing tests and commit them as **one**
+   red-test commit (skip tasks with `test_required:false`). One commit, not N: the wave is
+   folded into passing commits by amending, and only a single transient red commit can be
+   cleanly amended/reverted without rebase.
+2. **Worktrees.** `worktree.py add <wt_i> --base HEAD` per task — every worktree sees the
+   whole wave's red tests.
+3. **Implement (parallel).** Run the implementer with `impl-flags` in **each** worktree
+   concurrently (`&` + `wait`, one background job per task, capped by `parallel_tasks`).
+   Each prompt is scoped to ITS task + files and must say: *"other failing tests in this
+   tree belong to parallel tasks — do not touch them or their files."* `scope_guard.py`
+   drops any out-of-scope hunk regardless.
+4. **Capture + scope** per task, as in step 4 of the sequential loop.
+5. **Apply + verify (host, serial).** Snapshot check (`MAIN0`) as usual. Apply the captured
+   patches **one at a time**. After each apply, the gate is: **that task's tests pass and
+   no previously-green test breaks** — full-suite green is NOT expected mid-wave (sibling
+   tasks' red tests are still unimplemented). A failing task gets the bounded fix loop
+   (`harness.max_fix_rounds`) in its own worktree without blocking siblings already applied.
+6. **Fold (host).** When every surviving task in the wave is applied, require the **full
+   suite green on main**, then `git commit --amend` onto the wave's red-test commit — one
+   passing commit per wave (same no-reset/no-rebase constraint). `worktree.py remove` all.
+7. **Abort a task, keep the wave.** If one task exhausts its fix loop: restore **that
+   task's files** (implementation patch AND its red tests) to their pre-wave state —
+   scoped `git restore`/`git checkout` + guarded `git clean -fd -- "${FILES[@]}"` exactly
+   as in step 8 of the sequential loop — then proceed to the fold; the amend rewrites the
+   red commit to the current tree, so the aborted task's tests drop out of the folded
+   commit cleanly. Mark the task `needs-human` in state. If **every** task in the wave
+   aborts, revert the red-test commit (`git revert --no-edit`) as in the sequential path.
+
+Waves inherit everything else unchanged: host is the only committer, external AIs never
+commit, `stage-result` per task, resume via `consensus_state` (`task_index` advances by
+completed task, so a resumed run re-plans waves from the remaining tasks).
+
+**When NOT to parallelize.** Plans whose tasks are deliberately sequential (each builds on
+the last's code) declare overlapping file sets and will naturally serialize into 1-task
+waves — do not force-split them. If in doubt, `set harness parallel_tasks 1`.
 
 ## Host-only-commit (non-negotiable)
 

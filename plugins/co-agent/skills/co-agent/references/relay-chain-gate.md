@@ -1,12 +1,14 @@
 # Relay-Chain Gate (co-agent:harness)
 
-> **Scope:** the review gate used **inside `/co-agent:harness`** (H2 plan gate, H4 final
-> gate) when `harness.review_mode == "relay"` (the default). It replaces the **independent
-> parallel** fan-out of `references/consensus-mode.md` with a **sequential relay chain**:
-> peers review one at a time, each building on the prior peers' findings, and the host
-> (chair) synthesizes one high-confidence verdict at the end. Set `review_mode == "parallel"`
-> to fall back to the `consensus-mode.md` gate. **Only harness reads this file** —
-> `/co-agent:consensus` and the review/decide/ADR modes keep the parallel gate.
+> **Scope:** an **opt-in** review gate for `/co-agent:harness` (H2 plan gate, H4 final
+> gate) — `harness.review_mode == "relay"`. The default is the **hybrid** gate
+> (`references/hybrid-gate.md`: parallel find → chair triage → parallel verify); `parallel`
+> selects the one-shot independent fan-out (`consensus-mode.md`). Relay replaces both with
+> a **sequential chain**: peers review one at a time, each building on the prior peers'
+> findings, and the host (chair) synthesizes one high-confidence verdict at the end. Pick
+> relay when priming-driven depth matters more than wall-clock (each peer must finish
+> before the next starts). **Only harness reads `review_mode`** — `/co-agent:consensus`
+> and the review/decide/ADR modes keep the parallel gate.
 
 ## Why relay instead of parallel
 

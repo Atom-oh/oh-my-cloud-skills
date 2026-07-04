@@ -1,5 +1,5 @@
 ---
-description: Host-designs / peer-implements / panel-reviews orchestrator. The host owns the design, the failing test, and every commit; a cross-provider peer writes code only inside an isolated git worktree under a workspace-write sandbox; a sequential relay-chain gate reviews (parallel fan-out optional). Opt-in, local commits only.
+description: Host-designs / peer-implements / panel-reviews orchestrator. The host owns the design, the failing test, and every commit; ONE cross-provider implementer writes code as parallel per-task subagents in isolated git worktrees under a workspace-write sandbox; a hybrid gate reviews (parallel find → chair triage → parallel verify). Opt-in, local commits only.
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
 argument-hint: "<adr|spec|plan|task>  [--implementer codex|agy]"
 ---
@@ -9,12 +9,15 @@ argument-hint: "<adr|spec|plan|task>  [--implementer codex|agy]"
 Autonomous **design → delegated-implement → review** with cross-provider role separation.
 The **host** (Claude in Claude Code, Codex in Codex) designs, writes the failing test, and
 is the **only committer**. A **peer implementer** writes code **only inside an isolated git
-worktree** under a workspace-write sandbox. Review runs a **sequential relay-chain gate**
-by default (peers build on each other's findings for one vetted result), or the parallel
-fan-out when `harness.review_mode == "parallel"`.
+worktree** under a workspace-write sandbox. Review runs the **hybrid gate** by default —
+parallel find → chair triage (the chair keeps only meaningful findings) → parallel verify
+of the curated digest (`harness.review_mode`: `hybrid` | `relay` | `parallel`).
+Implementation stays with **one** implementer AI but fans out as **parallel per-task
+subagents** in separate worktrees (`harness.parallel_tasks`, default 3).
 
-> Trust boundary, per-task loop, fallback chain, output gate: **`references/delegated-implement.md`**.
-> Review-gate mechanics: **relay chain** `references/relay-chain-gate.md` (default) ·
+> Trust boundary, per-task loop + parallel waves, fallback chain, output gate:
+> **`references/delegated-implement.md`**. Review-gate mechanics: **hybrid**
+> `references/hybrid-gate.md` (default) · relay `references/relay-chain-gate.md` ·
 > parallel `references/consensus-mode.md`. CLI details: `references/ai-cli-adapters.md`.
 > Want the host itself to write the code instead (no peer, no worktree)? Use
 > `/co-agent:consensus`. Side-by-side comparison: `SKILL.md` → "Consensus vs harness".
@@ -28,9 +31,11 @@ Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"` and
 1. **Consent + cost**: confirm sending context to third-party AIs; show
    `python3 "$SK/co_agent_config.py" matrix --host "$HOST"`.
 2. Resolve roles: panel = `co_agent_config.py panel --host "$HOST"`; implementer =
-   `co_agent_config.py implementer --host "$HOST"`. Only **sandbox CLIs** (codex, agy) are
-   valid implementers (claude/kiro-cli have no worktree-scoped write sandbox); default is
-   claude host → codex, codex host → agy. Never equals the host. Tell the user panel + implementer.
+   `co_agent_config.py implementer --host "$HOST"` (user-selectable:
+   `set harness implementer codex|agy`). Only **sandbox CLIs** (codex, agy) are valid
+   implementers — kiro-cli stays review-panel-only (no worktree-scoped write sandbox);
+   default is claude host → codex, codex host → agy. Never equals the host. Tell the user
+   panel + implementer + wave concurrency (`co_agent_config.py parallel-tasks`).
 3. **Consult readiness** (`.claude/co-agent-panel.local.json` from `/co-agent:setup`):
    `check_panel.py fresh` (re-run `/co-agent:setup` if `stale`), then `check_panel.py
    gate-eligible <peer>` — keep for the **review panel** only peers returning `true`
@@ -52,15 +57,25 @@ regen). An **adr/spec** → generate a TDD plan (`docs/superpowers/plans/`), the
 
 ## H2 — Plan gate
 Run the review gate on the plan; iterate ≤ `consensus.max_rounds` to no CRITICAL/MAJOR.
-**Gate mechanics = `co_agent_config.py review-mode`**: `relay` (default) → the sequential
-**relay chain** (`references/relay-chain-gate.md`) — peers review one at a time, each
-building on the prior findings, so the panel converges on one vetted result in a single
-pass; `parallel` → the independent fan-out (`references/consensus-mode.md`). Record
-`…/plan-gate/result.json` via `consensus_state.py stage-result`. Unresolved → `set . status
-needs-human` and stop.
+**Gate mechanics = `co_agent_config.py review-mode`**: `hybrid` (default) → **parallel
+find → chair triage → parallel verify** (`references/hybrid-gate.md`) — the whole panel
+reviews at once, the chair keeps only the meaningful findings and sends that curated
+digest back to the panel for confirmation; `relay` → the sequential chain
+(`references/relay-chain-gate.md`); `parallel` → the one-shot independent fan-out
+(`references/consensus-mode.md`). Record `…/plan-gate/result.json` via
+`consensus_state.py stage-result`. Unresolved → `set . status needs-human` and stop.
 
-## H3 — Delegated implement (per task) — see `references/delegated-implement.md`
-Per task: host writes **and commits** the failing test (so the `--base HEAD` worktree
+## H3 — Delegated implement (parallel waves) — see `references/delegated-implement.md`
+**One implementer, N concurrent task subagents**: group tasks into waves of
+pairwise-disjoint file sets (≤ `co_agent_config.py parallel-tasks` per wave; overlapping
+tasks fall to the next wave; `parallel_tasks 1` = the sequential loop). Per wave: host
+writes **and commits** ALL the wave's failing tests as one red commit → `worktree.py add`
+per task → run the implementer **concurrently** in each worktree (`&` + `wait`) → capture
++ scope per task → apply patches serially on main (per-patch gate: that task's tests green,
+no previously-green test broken) → full suite green → **one `--amend` fold per wave**.
+Task-level abort restores that task's files before the fold and marks it `needs-human`
+without sinking the wave. Sequential per-task detail (the wave adapts steps 1–8): host
+writes **and commits** the failing test (so the `--base HEAD` worktree
 contains it) → `worktree.py add` (under a gitignored path) → run the
 implementer with `co_agent_config.py impl-flags <ai> --host "$HOST"` **inside the worktree**
 → `worktree.py capture-diff` → `scope_guard.py` (drop out-of-scope) → apply patch to main +
@@ -87,7 +102,7 @@ could discard unrelated work) — then
 
 ## H4 — Final gate
 `consensus_state.py cumulative-diff . --plan <plan> --base <trunk>` → review gate
-(same `review-mode` as H2: relay chain by default, else parallel fan-out) →
+(same `review-mode` as H2: hybrid find→triage→verify by default) →
 fix ≤ `consensus.max_rounds`, require tests green. Record `…/code-gate/result.json`.
 
 ## H5 — Report
