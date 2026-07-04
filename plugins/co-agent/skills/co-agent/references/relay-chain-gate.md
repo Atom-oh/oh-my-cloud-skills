@@ -30,6 +30,34 @@ strongest — leave it at the tail of the chain. Reorder by toggling `enabled` /
 `models` in `/co-agent:configure`; there is no separate relay-order key. A single
 gate-eligible pair degenerates to one review (still valid — see Quorum).
 
+## Multi-model relay — 다방향 검증
+
+Each chain link is an `(ai, model)` **pair**, not just an AI: with the committed `deep`
+profile, every model in an AI's `models` list becomes its own link, so **one relay pass
+verifies from as many directions as there are configured models**. Kiro's mainstay panel
+alone contributes three cross-vendor lenses (opus / kimi-k2.5 / glm-5 via the Kiro router);
+add Codex and Agy and a default relay is 5 links deep — each model confirming/refuting the
+accumulated findings from its own family's bias.
+
+All of this is **headless-safe** — every model override goes through the flags each CLI
+actually accepts non-interactively (`co_agent_config.py flags <ai> --model <m>`, the same
+contract as `/co-agent:configure`):
+
+| AI | headless model flag | multi-model via |
+|----|--------------------|-----------------|
+| kiro-cli | `--model` | `set kiro-cli models m1,m2,m3` |
+| claude (codex-host panel) | `--model` (+ `--effort`) | `set claude models …` |
+| codex | `-m` (+ `-c model_reasoning_effort`) | `set codex models …` |
+| agy | `--model` (spaced tokens OK, e.g. `Gemini 3.1 Pro (High)`) | `set agy models …` |
+
+Caps still apply: `pairs` trims to `consensus.max_calls / max_rounds` round-robin across
+AIs (extra same-provider models are trimmed before a whole provider is dropped), and the
+context-size `fits` guard skips a pair whose window can't hold the accumulated chain —
+note that the chain **grows** as it relays, so late links need the largest windows
+(another reason big-window models belong at the tail). Sequential relay costs wall-clock
+(sum of links, not max) — trim `models` lists rather than lowering `timeout` if a run is
+too slow.
+
 ## The gate (one relay round)
 
 Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"` and `CFG="$SK/co_agent_config.py"`.
@@ -67,7 +95,7 @@ while IFS=$'\t' read -r ai model; do
   fi
   # SEQUENTIAL — no `&`, no `wait`. Each peer must finish before the next starts so its
   # findings enter the chain. Same adapters as ai-cli-adapters.md (stdin for codex/claude/
-  # agy/gemini; kiro reads the ctx file via fs_read since it ignores stdin).
+  # agy; kiro reads the ctx file via fs_read since it ignores stdin).
   case "$ai" in
     kiro-cli) command -v kiro-cli >/dev/null 2>&1 && timeout "$T" \
                 kiro-cli chat "$BASE_PROMPT"$'\n\n'"Read the review context with fs_read from: $CTX" \
@@ -78,12 +106,8 @@ while IFS=$'\t' read -r ai model; do
                 --tools Read,Grep,Glob --output-format text > "$slot.md" 2>"$slot.err" || echo "[skip] claude/$model" ;;
     codex)    command -v codex >/dev/null 2>&1 && cat "$CTX" | timeout "$T" \
                 codex exec -s read-only "${MFLAGS[@]}" "$BASE_PROMPT" > "$slot.md" 2>"$slot.err" || echo "[skip] codex/$model" ;;
-    agy)      if command -v agy >/dev/null 2>&1; then cat "$CTX" | timeout "$T" \
-                agy -p "$BASE_PROMPT" "${MFLAGS[@]}" --sandbox > "$slot.md" 2>"$slot.err" || echo "[skip] agy/$model";
-              elif command -v gemini >/dev/null 2>&1; then cat "$CTX" | timeout "$T" \
-                gemini -p "$BASE_PROMPT" -o text > "$slot.md" 2>"$slot.err" || echo "[skip] gemini-fallback/$model"; fi ;;
-    gemini)   command -v gemini >/dev/null 2>&1 && cat "$CTX" | timeout "$T" \
-                gemini "${MFLAGS[@]}" -p "$BASE_PROMPT" -o text > "$slot.md" 2>"$slot.err" || echo "[skip] gemini/$model" ;;
+    agy)      command -v agy >/dev/null 2>&1 && cat "$CTX" | timeout "$T" \
+                agy -p "$BASE_PROMPT" "${MFLAGS[@]}" --sandbox > "$slot.md" 2>"$slot.err" || echo "[skip] agy/$model" ;;
   esac
   # Fold this peer's output into the chain for the NEXT peer. Skip empty/errored output.
   if [ -s "$slot.md" ]; then

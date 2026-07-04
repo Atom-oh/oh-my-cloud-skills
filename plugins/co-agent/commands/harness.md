@@ -29,7 +29,7 @@ Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"` and
    `python3 "$SK/co_agent_config.py" matrix --host "$HOST"`.
 2. Resolve roles: panel = `co_agent_config.py panel --host "$HOST"`; implementer =
    `co_agent_config.py implementer --host "$HOST"`. Only **sandbox CLIs** (codex, agy) are
-   valid implementers (claude/kiro-cli/gemini have no worktree-scoped write sandbox); default is
+   valid implementers (claude/kiro-cli have no worktree-scoped write sandbox); default is
    claude host → codex, codex host → agy. Never equals the host. Tell the user panel + implementer.
 3. **Consult readiness** (`.claude/co-agent-panel.local.json` from `/co-agent:setup`):
    `check_panel.py fresh` (re-run `/co-agent:setup` if `stale`), then `check_panel.py

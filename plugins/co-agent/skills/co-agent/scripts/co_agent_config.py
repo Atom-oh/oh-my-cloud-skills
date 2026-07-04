@@ -7,7 +7,7 @@ Layered like Claude Code's own settings:
 
 Only settings the CLIs ACCEPT HEADLESSLY are exposed (verified against the installed
 CLIs) — no dead settings:
-  - model   : Kiro/Claude/Agy `--model`, Codex/Gemini `-m`
+  - model   : Kiro/Claude/Agy `--model`, Codex `-m`
   - effort  : Codex `-c model_reasoning_effort="<v>"`, Claude `--effort`
   - enabled : panel membership (orchestration)
   - timeout : per-CLI wall-clock budget in the fan-out (orchestration)
@@ -36,17 +36,14 @@ Usage:
   co_agent_config.py fits <ai> <tokens>         # exit 0 if tokens fit the window, 1 if not
 Add --root DIR to target a repo other than the cwd.
 Add --host claude|codex or set CO_AGENT_HOST to choose the current chair.
-Set CO_AGENT_THIRD_AI=gemini to force the legacy Gemini fallback; otherwise Agy is preferred
-when installed, with Gemini used only when Agy is absent.
 """
 import sys
 import os
 import re
 import json
 import copy
-import shutil
 
-ALL_AIS = ("kiro-cli", "claude", "codex", "agy", "gemini")
+ALL_AIS = ("kiro-cli", "claude", "codex", "agy")
 HOSTS = ("claude", "codex")
 CODEX_EFFORTS = ("minimal", "low", "medium", "high")
 CLAUDE_EFFORTS = ("low", "medium", "high", "xhigh", "max")
@@ -68,26 +65,16 @@ def normalize_host(host):
     return host
 
 
-def third_ai():
-    """Return the preferred third panel member. Agy is the successor path; Gemini is
-    retained only as a legacy fallback when Agy is unavailable."""
-    forced = os.environ.get("CO_AGENT_THIRD_AI", "").strip().lower()
-    if forced in ("agy", "gemini"):
-        return forced
-    if shutil.which("agy") or not shutil.which("gemini"):
-        return "agy"
-    return "gemini"
-
-
 def panel_ais(host):
+    # Third member is always Agy — Gemini support was removed (Agy superseded it; ADR-010).
     peer = "codex" if host == "claude" else "claude"
-    return ("kiro-cli", peer, third_ai())
+    return ("kiro-cli", peer, "agy")
 
 
 # Only these CLIs enforce a worktree-scoped WRITE sandbox (codex -s workspace-write,
-# agy --sandbox). claude(--permission-mode acceptEdits), kiro-cli(--trust-tools) and
-# gemini(--yolo) auto-accept writes but do NOT confine them to the worktree, so they
-# are NOT safe delegated implementers — the trust boundary would not hold.
+# agy --sandbox). claude(--permission-mode acceptEdits) and kiro-cli(--trust-tools)
+# auto-accept writes but do NOT confine them to the worktree, so they are NOT safe
+# delegated implementers — the trust boundary would not hold.
 SANDBOX_IMPLEMENTERS = ("codex", "agy")
 # harness review-gate mechanics: relay = sequential relay chain (references/relay-chain-gate.md),
 # parallel = independent fan-out (references/consensus-mode.md). Only /co-agent:harness reads it.
@@ -420,9 +407,6 @@ def cmd_flags(root, ai, host, model_override=None):
     elif ai == "agy":
         if model:
             parts += ["--model", model]
-    elif ai == "gemini":
-        if model:
-            parts += ["-m", model]
     print("\n".join(parts))   # newline-delimited so a spaced model value stays one token
     return 0
 

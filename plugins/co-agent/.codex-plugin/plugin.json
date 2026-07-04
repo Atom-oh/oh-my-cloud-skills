@@ -1,7 +1,7 @@
 {
   "name": "co-agent",
   "version": "1.12.1",
-  "description": "Collaborate with peer AI agents such as Kiro CLI, Claude/Codex peer hosts, and Agy with Gemini fallback for multi-AI review, decision support, ADR drafting, and context synchronization",
+  "description": "Collaborate with peer AI agents such as Kiro CLI, Claude/Codex peer hosts, and Agy for multi-AI review, decision support, ADR drafting, and context synchronization",
   "author": {
     "name": "atomoh"
   },

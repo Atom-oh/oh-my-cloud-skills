@@ -1,6 +1,6 @@
 ---
 name: co-agent
-description: "Collaborate with other AI agents (Kiro CLI, the peer host CLI, and Agy with Gemini fallback) for a second opinion. Three modes — multi-AI review of code/architecture, decision support when you're unsure, and ADR co-authoring. The current host chairs and synthesizes the final answer. 멀티 AI 협업: 리뷰, 의사결정 보조, ADR 협업."
+description: "Collaborate with other AI agents (Kiro CLI, the peer host CLI, and Agy) for a second opinion. Three modes — multi-AI review of code/architecture, decision support when you're unsure, and ADR co-authoring. The current host chairs and synthesizes the final answer. 멀티 AI 협업: 리뷰, 의사결정 보조, ADR 협업."
 triggers:
   # High-precision: only fire when the user clearly wants MULTIPLE AIs / a panel.
   # Generic "code review"/"architecture review"/"decide"/"adr" are intentionally
@@ -36,8 +36,7 @@ the decision/report.
 
 - In Claude Code: Claude chairs; the peer panel is Kiro CLI, Codex, and Agy.
 - In Codex: Codex chairs; the peer panel is Kiro CLI, Claude CLI, and Agy.
-- Agy is preferred over Gemini. Use Gemini only as the legacy fallback when `agy` is
-  not installed.
+- Gemini support was removed (Agy superseded it — ADR-010); the third reviewer is Agy only.
 
 Never call the current host CLI as a panel member. Use whichever peer AI CLIs are
 installed — degrade gracefully, never hard-fail.
@@ -62,7 +61,7 @@ echo "Panel: ${PANEL:-(none — the host will answer solo and say so)}"
 ```
 
 > ⚠️ **The Kiro binary is `kiro-cli`** — always invoke `kiro-cli chat …` by that exact name.
-> Agy supersedes Gemini. Prefer `agy`; call `gemini` only when Agy is unavailable.
+> Never call the `gemini` CLI — Gemini support was removed (Agy only).
 
 Tell the user the **installed** set, not the config-enabled set. If `/co-agent:setup` wrote a
 readiness summary, prefer it (`check_panel.py status <peer>`) — it also reflects auth/ingest
@@ -122,7 +121,7 @@ When the user is unsure, bring the panel in.
    key trade-off. Be concise."* to each panel member.
 3. **The host synthesizes** a comparison table:
 
-   | Option | Kiro | Peer host | Agy/Gemini | Chair |
+   | Option | Kiro | Peer host | Agy | Chair |
    |--------|------|-----------|------------|-------|
    | A | ✅ reason | — | ✅ reason | ✅ |
 
@@ -155,7 +154,6 @@ folded into its fan-out context instead (see `ai-cli-adapters.md`):
 | Kiro CLI | **`.kiro/steering/project-context.md`** → `#[[file:AGENTS.md]]` | ✅ bridge to the same distilled file Codex reads |
 | Codex | **`AGENTS.md`** | ✅ distilled context |
 | Agy | *(no repo context file)* | ✅ `AGENTS.md` prepended to its fan-out context, gated on `--verify` (not written to disk) |
-| Legacy Gemini fallback | prompt-supplied context during fan-out | ❌ no repo context file (unchanged) |
 
 **DISTILL — do NOT copy CLAUDE.md verbatim.** All three CLIs warn that a dumped copy
 bloats/truncates (Codex 32 KiB project-doc cap). Produce one **lean,
@@ -275,7 +273,7 @@ panel; auth fixes stay guidance-only.
 
 ## References
 
-- `references/ai-cli-adapters.md` — Kiro/Claude/Codex/Agy/Gemini CLI commands, detection, fan-out pattern, fallbacks, **project-context files**
+- `references/ai-cli-adapters.md` — Kiro/Claude/Codex/Agy CLI commands, detection, fan-out pattern, fallbacks, **project-context files**
 - `references/architecture-review-framework.md` — review rubric, severity, PASS/REVIEW/FAIL
 - `references/aws-well-architected.md` — 6-pillar checklist for the review mode
 - `scripts/check_ai_context.py` — validate/staleness-check generated AGENTS.md (size cap, marker, secrets); `--emit-marker` for generation

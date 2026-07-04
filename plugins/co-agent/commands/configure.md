@@ -1,7 +1,7 @@
 ---
 description: Configure the co-agent panel — host-aware peer AI model, effort, enable/disable, and timeout
 allowed-tools: Bash(python3:*), Read
-argument-hint: "show | set <ai> <key> <value> | set timeout <seconds>  (host: claude|codex; ai: kiro-cli|claude|codex|agy|gemini)"
+argument-hint: "show | set <ai> <key> <value> | set timeout <seconds>  (host: claude|codex; ai: kiro-cli|claude|codex|agy)"
 ---
 
 # co-agent: configure
@@ -19,21 +19,20 @@ user-global file instead (repo-local still overrides user, user overrides defaul
 
 Only options the CLIs **actually accept headlessly** are exposed (no dead settings):
 
-| Setting | kiro-cli | claude | codex | agy | gemini fallback |
-|---------|------|--------|-------|-----|-----------------|
-| `model` | `--model` | `--model` | `-m` | `--model` | `-m` |
-| `effort` | — | `--effort` (`low\|medium\|high\|xhigh\|max`) | `-c model_reasoning_effort` (`minimal\|low\|medium\|high`) | — | — |
-| `enabled` (panel membership) | yes | yes | yes | yes | yes |
-| `timeout` (global, seconds) | yes | yes | yes | yes | yes |
-| `context_limit` (per-AI, tokens) | model context window — fan-out **skips** an AI whose window can't hold the context (default: Kiro/Claude/Agy/Gemini 1,000,000 · Codex 272,000) |
+| Setting | kiro-cli | claude | codex | agy |
+|---------|------|--------|-------|-----|
+| `model` | `--model` | `--model` | `-m` | `--model` |
+| `effort` | — | `--effort` (`low\|medium\|high\|xhigh\|max`) | `-c model_reasoning_effort` (`minimal\|low\|medium\|high`) | — |
+| `enabled` (panel membership) | yes | yes | yes | yes |
+| `timeout` (global, seconds) | yes | yes | yes | yes |
+| `context_limit` (per-AI, tokens) | model context window — fan-out **skips** an AI whose window can't hold the context (default: Kiro/Claude/Agy 1,000,000 · Codex 272,000) |
 | `autosync` (global, on/off) | run `/co-agent:sync-context` automatically when `CLAUDE.md` changes (opt-in; default off) |
 
 Host controls panel membership:
 
 - `--host claude` (default): Claude chairs; panel = Kiro, Codex, Agy.
 - `--host codex`: Codex chairs; panel = Kiro, Claude, Agy.
-- Agy is preferred. Gemini is used only as a legacy fallback when `agy` is not available
-  or `CO_AGENT_THIRD_AI=gemini` is set.
+- The third reviewer is always Agy — Gemini support was removed (Agy superseded it; ADR-010).
 
 The fan-out in `references/ai-cli-adapters.md` reads these via the helper, so a change
 here changes what actually runs (e.g. `enabled false` drops that AI from the panel).
@@ -71,12 +70,21 @@ Argument: `$ARGUMENTS`
    python3 "$H" set autosync on                 # auto-sync AI context on CLAUDE.md change
    python3 "$H" set codex model gpt-5.5 --scope user   # write to ~/.claude (all your repos)
    python3 "$H" set agy model "Gemini 3.1 Pro (High)"  # Agy tokens have spaces + parens
+   python3 "$H" set kiro-cli models claude-opus-4.8,kimi-k2.5,glm-5  # multi-model list
+   python3 "$H" set profile deep                # activate each AI's `models` list
+   python3 "$H" set harness review_mode parallel # harness gate: relay (default) | parallel
    ```
    `context_limit` lets the fan-out **skip** an AI when the context is too large for its
    model window (the cause of "prompt tokens exceed model maximum"), instead of hard-failing
    — e.g. Codex (~272K) is skipped on a huge diff while Kiro/Agy (~1M) still run. `model`
    values are charset-validated (letters/digits/`. _ : / - ( )` + spaces — agy tokens like
    `Gemini 3.1 Pro (High)`; shell metacharacters stay rejected) to keep the fan-out safe.
+   **Multi-model = 다방향 검증**: with `profile deep` (the committed default), every model
+   in an AI's `models` list becomes its own `(ai, model)` fan-out/relay link — one gate pass
+   verifies from each configured model's direction, capped by `consensus.max_calls`. All
+   overrides ride the CLIs' real headless flags (kiro/claude/agy `--model`, codex `-m`), so
+   this works fully non-interactively; see `references/relay-chain-gate.md` → "Multi-model
+   relay" for how the harness chain orders them.
    `autosync on` makes the `CLAUDE.md` PostToolUse hook tell Claude to run
    `/co-agent:sync-context` whenever `AGENTS.md` drifts stale (opt-in; default
    off = reminder only). It refreshes `AGENTS.md` and the Kiro steering bridge;

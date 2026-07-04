@@ -38,8 +38,8 @@ provably blocks `..`/absolute writes — which is exactly why the capture backst
 the sandbox, is load-bearing (if an audit shows a sandbox doesn't confine to cwd, drop that
 implementer from `impl-flags`).
 
-**Not eligible:** `claude --permission-mode acceptEdits`, `kiro-cli --trust-tools`, and
-`gemini --yolo` auto-accept writes but don't sandbox them to a cwd — `implementer`/`impl-flags`
+**Not eligible:** `claude --permission-mode acceptEdits` and `kiro-cli --trust-tools`
+auto-accept writes but don't sandbox them to a cwd — `implementer`/`impl-flags`
 reject them. Default: claude host → `codex`, codex host → `agy`. These write variants exist
 **only** here; review/decide/ADR/plan/code-gate paths stay advisory (`flags`, not `impl-flags`).
 
