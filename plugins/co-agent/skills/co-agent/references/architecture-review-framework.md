@@ -112,8 +112,9 @@ def verdict(findings):
 ### 패널 연동 실행 (Kiro/Codex/Antigravity)
 
 설치된 패널 CLI에 **동일한 리뷰 프롬프트를 headless로 팬아웃**합니다 — 슬래시 커맨드가 아니라
-`references/ai-cli-adapters.md`의 어댑터를 그대로 사용합니다 (바이너리는 `co_agent_config.py
-binary <ai>`로 해석: `kiro`→`kiro-cli`, `antigravity`→`agy`; **bare `kiro` 호출 금지**).
+`references/ai-cli-adapters.md`의 어댑터를 그대로 사용합니다 (`co_agent_config.py pairs`/`panel`이
+첫 컬럼에 이미 실제 바이너리명을 내보냄: `kiro-cli`/`codex`/`agy` — 별도 resolver 서브커맨드 없음;
+**bare `kiro` 호출 금지**, 반드시 `kiro-cli`).
 
 1. `git diff` 기반 변경 분석 → 컨텍스트(diff)를 임시 파일에 기록
 2. 패널 팬아웃 (예: `kiro-cli chat "<리뷰 프롬프트>\n\nRead the review context with fs_read from: <CTX_FILE>" --no-interactive --trust-tools=fs_read --wrap never`,

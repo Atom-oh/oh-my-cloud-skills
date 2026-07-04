@@ -14,9 +14,9 @@
 1. Consent + scope; print `co_agent_config.py matrix` (provider·model·ctx + max calls).
 2. One **independent** round over `(ai,model)` pairs (`co_agent_config.py pairs`; `deep`
    profile activates each AI's full model list; capped by `consensus.max_calls`, default 12).
-   ⚠️ `pairs` emits the panel **key**, not the binary — invoke via the
-   `references/ai-cli-adapters.md` fan-out (resolve `kiro`→`kiro-cli`, `antigravity`→`agy`
-   with `co_agent_config.py binary <ai>`); **never** run a bare `kiro`/`antigravity`.
+   `pairs`/`panel` already emit the real binary name in the first column (`kiro-cli`,
+   `codex`, `agy`) — invoke via the `references/ai-cli-adapters.md` fan-out directly; there
+   is no `co_agent_config.py binary <ai>` resolver subcommand.
 3. `check_citations.py` classifies findings → drop `unsupported`, flag `needs-review`.
 4. Chair synthesis: **raw agreement + evidence strength**, attribute dissent. No confidence
    weighting (contradicts the chair principle).

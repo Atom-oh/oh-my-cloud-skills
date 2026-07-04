@@ -102,7 +102,7 @@ python3 "$WT" add "$WTD" --base HEAD --root "$R6" >/dev/null 2>&1 && A=0 || A=$?
 assert_eq "0" "$A" "worktree add succeeds"
 printf 'def f():\n    return 1\n' > "$WTD/feature.py"
 printf 'TOKEN=abc\n' > "$WTD/secret.env"
-DIFF=$(python3 "$WT" capture-diff "$WTD" 2>/dev/null)
+DIFF=$(python3 "$WT" capture-diff --root "$R6" "$WTD" 2>/dev/null)
 assert_contains "$DIFF" "feature.py" "capture-diff includes the new non-ignored file"
 assert_grep_no_match "secret.env" "$DIFF" "capture-diff excludes the gitignored file"
 python3 "$WT" remove "$WTD" --root "$R6" >/dev/null 2>&1 && RM=0 || RM=$?
@@ -123,28 +123,55 @@ python3 "$WT" add "$W" --base HEAD --root "$R7" >/dev/null 2>&1
 printf 'TOKEN=abc\n' > "$W/secret.env"
 git -C "$W" add -f secret.env >/dev/null 2>&1
 printf 'def f():\n    return 1\n' > "$W/feature.py"
-DIFF=$(python3 "$WT" capture-diff "$W" 2>/dev/null) && CD=0 || CD=$?
+DIFF=$(python3 "$WT" capture-diff --root "$R7" "$W" 2>/dev/null) && CD=0 || CD=$?
 assert_grep_no_match "secret.env" "$DIFF" "capture-diff resets index — pre-staged (add -f) ignored file excluded"
 assert_contains "$DIFF" "feature.py" "capture-diff still includes the legitimate new file"
 # C: an external diff driver in the worktree must NOT execute during capture-diff
 git -C "$W" config diff.evil.command "touch $W/PWNED" >/dev/null 2>&1
 printf '*.py diff=evil\n' > "$W/.gitattributes"
-python3 "$WT" capture-diff "$W" >/dev/null 2>&1
+python3 "$WT" capture-diff --root "$R7" "$W" >/dev/null 2>&1
 assert_eq "0" "$([ -e "$W/PWNED" ] && echo 1 || echo 0)" "capture-diff uses --no-ext-diff — external diff driver did NOT execute"
 # E: a clean FILTER runs at `git add` time (not diff) — capture-diff must neutralize it too
 git -C "$W" config filter.pwn.clean "touch $W/PWNED_CLEAN; cat" >/dev/null 2>&1
 printf '*.py filter=pwn\ndata.txt filter=pwn\n' > "$W/.gitattributes"
 printf 'payload\n' > "$W/data.txt"
-python3 "$WT" capture-diff "$W" >/dev/null 2>&1
+python3 "$WT" capture-diff --root "$R7" "$W" >/dev/null 2>&1
 assert_eq "0" "$([ -e "$W/PWNED_CLEAN" ] && echo 1 || echo 0)" "capture-diff neutralizes clean filters — add-time filter did NOT execute"
 # F: a TEXTCONV driver runs at `git diff` time — --no-ext-diff does NOT block it; must neutralize
 git -C "$W" config diff.tc.textconv "touch $W/PWNED_TC; cat" >/dev/null 2>&1
 printf '*.py diff=tc\ndata.txt diff=tc\n' > "$W/.gitattributes"
-python3 "$WT" capture-diff "$W" >/dev/null 2>&1
+python3 "$WT" capture-diff --root "$R7" "$W" >/dev/null 2>&1
 assert_eq "0" "$([ -e "$W/PWNED_TC" ] && echo 1 || echo 0)" "capture-diff uses --no-textconv + neutralizers — textconv driver did NOT execute"
 # D: capture-diff on a non-git path surfaces the failure (non-zero)
-python3 "$WT" capture-diff "$R7/nope" >/dev/null 2>&1 && DF=0 || DF=$?
+python3 "$WT" capture-diff --root "$R7" "$R7/nope" >/dev/null 2>&1 && DF=0 || DF=$?
 assert_grep_no_match "^0$" "$DF" "capture-diff on a non-git path returns non-zero"
+
+# --- Review-round regression: base-marker survives a peer commit, and a peer COMMIT of an
+#     ignored file is excluded too (not just a pre-staged one — case B above) ---
+R8=$(mktemp -d "${TMPDIR:-/tmp}/coagent-harness8.XXXXXX")
+git -C "$R8" init -q
+git -C "$R8" config user.email t@t.t; git -C "$R8" config user.name t
+printf 'leak.secret\n' > "$R8/.gitignore"
+git -C "$R8" add .gitignore >/dev/null 2>&1
+git -C "$R8" commit -q -m init >/dev/null 2>&1
+W8="$R8/.wt"
+python3 "$WT" add "$W8" --base HEAD --root "$R8" >/dev/null 2>&1
+git -C "$W8" config user.email peer@t.t; git -C "$W8" config user.name peer
+printf 'topsecret\n' > "$W8/leak.secret"
+git -C "$W8" add -f leak.secret >/dev/null 2>&1
+git -C "$W8" commit -q -m "peer commit including an ignored file" >/dev/null 2>&1
+printf 'def g():\n    return 2\n' > "$W8/feature2.py"
+git -C "$W8" add feature2.py >/dev/null 2>&1
+git -C "$W8" commit -q -m "peer feature commit" >/dev/null 2>&1
+DIFF8=$(python3 "$WT" capture-diff --root "$R8" "$W8" 2>"$R8/stderr.txt")
+assert_grep_no_match "leak.secret" "$DIFF8" "capture-diff excludes an ignored file the PEER COMMITTED (not just pre-staged)"
+assert_contains "$DIFF8" "feature2.py" "capture-diff still captures a peer's committed non-ignored file"
+assert_eq "" "$(cat "$R8/stderr.txt")" "no fallback warning — the host-side base marker was found"
+# base marker must live under the MAIN repo's git-dir, never the worktree's own admin subdir
+# (which the peer can locate via `git -C <wt> rev-parse --git-dir` from inside the sandbox)
+assert_eq "0" "$(find "$R8/.git" -path '*worktrees*' -name '*.sha' 2>/dev/null | wc -l)" "no base-SHA marker under the worktree's own private admin dir"
+assert_eq "1" "$(find "$R8/.git" -maxdepth 1 -name 'co-agent-worktree-bases' -type d 2>/dev/null | wc -l)" "base-SHA marker directory lives directly under the main repo's git-dir"
+rm -rf "$R8"
 # R2-H: `--base` as the last arg with no value must not crash (graceful exit 2, no IndexError)
 ERR=$(python3 "$WT" add "$R7/.wt-x" --base 2>&1) && BR=0 || BR=$?
 assert_eq "2" "$BR" "worktree add --base with no value → graceful exit 2"

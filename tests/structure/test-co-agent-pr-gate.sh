@@ -94,3 +94,11 @@ assert_eq "1" "$(_g "bool(h._SENSITIVE_ENV_RE.search('DB_PWD'))")"          "env
 assert_eq "0" "$(_g "bool(h._SENSITIVE_ENV_RE.search('PATH'))")"            "env: PATH is NOT stripped"
 assert_eq "0" "$(_g "bool(h._SENSITIVE_ENV_RE.search('PWD'))")"             "env: bare PWD is NOT stripped"
 assert_eq "0" "$(_g "bool(h._SENSITIVE_ENV_RE.search('KEYBOARD'))")"        "env: KEYBOARD is NOT stripped"
+
+# --- verdict regex: a peer that naturally drifts to the past-tense "BLOCKED"/"PASSED" must
+#     still be counted (not silently treated as an unparseable non-vote / dropped veto)
+assert_eq "1" "$(_g "bool(h._VERDICT_RE.match('BLOCK: adds a hardcoded secret'))")"   "verdict: exact BLOCK: still matches"
+assert_eq "1" "$(_g "bool(h._VERDICT_RE.match('BLOCKED: adds a hardcoded secret'))")" "verdict: BLOCKED variant also matches"
+assert_eq "1" "$(_g "bool(h._VERDICT_RE.match('PASSED'))")"                           "verdict: PASSED variant also matches"
+assert_eq "0" "$(_g "bool(h._VERDICT_RE.match('BLOCKING something unrelated'))")"     "verdict: BLOCKING (not a verdict token) does NOT match"
+assert_eq "0" "$(_g "bool(h._VERDICT_RE.match('PASSWORD is not a verdict'))")"        "verdict: PASSWORD does NOT match"

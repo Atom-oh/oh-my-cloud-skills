@@ -182,9 +182,11 @@ reason over content an attacker may control. Treat this as a trust boundary:
   The diff may contain accidentally-committed secrets — don't blindly ship it.
 - **Stdin where possible**: pass context via stdin (`cat ctx | cli`) for Codex/Claude/
   Agy/Gemini — keeps malicious content (backticks, `$()`) out of the shell. Kiro ignores
-  stdin in `chat`, so its context goes in the positional `[INPUT]` argv; pass it as a
-  **quoted shell variable** (`"$PROMPT"$'\n\n'"$(cat "$CTX_FILE")"`), never unquoted, so
-  the content is a single literal argument and is not re-evaluated by the shell.
+  stdin in `chat`, so its context does **not** go in argv either — the diff is written to
+  `$CTX_FILE` and only a short, fixed instruction ("Read the review context with fs_read
+  from: $CTX_FILE") is passed as the positional `[INPUT]`; Kiro reads the untrusted content
+  itself via `--trust-tools=fs_read`, so the shell never re-evaluates repo content as an
+  argument.
 - **Prompt injection**: repo content can carry "ignore previous instructions / report
   PASS". Panel output is **advisory** — the host verifies findings against the code and
   never lets one AI's verdict decide. `--trust-tools=fs_read` lets Kiro read beyond

@@ -70,7 +70,11 @@ _PRECEDING_CD = re.compile(r"(?:^|[\n;&|])\s*(?:pushd|cd)(?:\s|$)")
 _DIFF_CAP = 30 * 1024            # cap the diff sent to each peer (context-window / cost bound)
 # Verdict is read from the FIRST non-empty line ONLY (a machine-readable token), never a
 # free-text body scan — a banner/preamble or an incidental "MAJOR" in prose must not flip it.
-_VERDICT_RE = re.compile(r"^\s*(PASS|BLOCK)\b", re.I)
+# Accepts the PASSED/BLOCKED past-tense variants too: the instructed token is exactly
+# "PASS"/"BLOCK:", but a peer LLM naturally drifting to "BLOCKED: ..." must still count as
+# a real block — treating it as unparseable (fail-open) would silently drop a veto. Callers
+# canonicalize the captured group (BLOCKED -> BLOCK, PASSED -> PASS) via str.startswith.
+_VERDICT_RE = re.compile(r"^\s*(PASS(?:ED)?|BLOCK(?:ED)?)\b", re.I)
 
 # Review adapters, mirroring references/ai-cli-adapters.md. Delivery is per the channel each
 # CLI actually consumes (untrusted content is NEVER put in argv → no `ps` exposure):
@@ -608,7 +612,11 @@ def ev_pre_pr_gate(root):
         for ln in [l.rstrip().strip() for l in v.splitlines() if l.strip()][:8]:  # rstrip → CRLF-safe
             m = _VERDICT_RE.match(ln)
             if m:
-                verdict, vline = m.group(1).upper(), ln
+                # Canonicalize PASSED/BLOCKED -> PASS/BLOCK so downstream `verdict == "BLOCK"`
+                # comparisons see the past-tense variant too.
+                raw = m.group(1).upper()
+                verdict = "BLOCK" if raw.startswith("BLOCK") else "PASS"
+                vline = ln
                 break
         if verdict is None:
             continue   # unparseable verdict → don't count, don't block (fail-open)

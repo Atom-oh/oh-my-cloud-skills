@@ -271,19 +271,15 @@ def cmd_cumulative_diff(root, plan_path, base):
     here = os.path.dirname(os.path.abspath(__file__))
     if here not in sys.path:
         sys.path.insert(0, here)
-    import parse_plan
+    import scope_guard  # sibling module — same allowed-file-set normalization as Stage B's
+    # scope lock. Reuse it rather than a second lstrip("./")-based implementation: that
+    # pattern silently collapses "../../src/foo.py" to "src/foo.py" (fixed once, in one
+    # place — scope_guard._norm), so this pathspec-building path picks up the fix too.
     try:
-        with open(plan_path, encoding="utf-8") as f:
-            tasks = parse_plan.parse(f.read())
+        files = scope_guard.allowed_set(plan_path)
     except (OSError, UnicodeDecodeError) as e:
         print(f"❌ cannot read plan {plan_path}: {e}", file=sys.stderr)
         return 2
-    files = []
-    for t in tasks:
-        for fp in t.get("files", []):
-            n = fp.strip().lstrip("./")
-            if n and n not in files:
-                files.append(n)
     if not files:
         print("❌ plan declares no files — nothing to diff", file=sys.stderr)
         return 2
