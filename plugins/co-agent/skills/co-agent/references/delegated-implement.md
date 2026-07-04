@@ -4,7 +4,8 @@ How the **host designs, a cross-provider peer implements, and the host reviews +
 The peer writes code **only inside an isolated git worktree** under a workspace-write
 sandbox; the host owns the failing test, the verification, and every commit.
 
-> Review-gate mechanics: `consensus-mode.md`. CLI invocation details: `ai-cli-adapters.md`.
+> Review-gate mechanics: **relay chain** `relay-chain-gate.md` (harness default) · parallel
+> `consensus-mode.md` (`harness.review_mode`). CLI invocation details: `ai-cli-adapters.md`.
 > Implementer selection / write-mode flags: `scripts/co_agent_config.py implementer|impl-flags`.
 
 ## Trust boundary

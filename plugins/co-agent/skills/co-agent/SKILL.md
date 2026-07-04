@@ -230,21 +230,25 @@ re-running reads `phase`/`task_index` from state and continues.
 ### Mode 6 — harness  (also **`/co-agent:harness`**)
 Host-designs / peer-implements / panel-reviews. The **host** designs, writes the failing
 test, and is the **only committer**; a cross-provider **peer implementer** writes code only
-inside an **isolated git worktree** under a workspace-write sandbox; the consensus gate
-reviews. Opt-in, local commits only. Per-task loop, trust boundary, and fallback chain:
-**`references/delegated-implement.md`**. Implementer selection / write-mode flags:
+inside an **isolated git worktree** under a workspace-write sandbox; a **sequential
+relay-chain gate** reviews (peers build on each other's findings for one vetted result —
+`references/relay-chain-gate.md`; set `harness.review_mode == "parallel"` for the independent
+fan-out instead). Opt-in, local commits only. Per-task loop, trust boundary, and fallback
+chain: **`references/delegated-implement.md`**. Implementer selection / write-mode flags:
 `co_agent_config.py implementer|impl-flags`.
 
 ### Consensus vs harness — same panel, different pen
 
-Both are autonomous doc→plan→implementation pipelines gated by the same consensus panel
-(`references/consensus-mode.md`) and both commit locally only. The only real difference is
-**who writes the code**:
+Both are autonomous doc→plan→implementation pipelines gated by the same panel and both
+commit locally only. Two differences: **who writes the code**, and **how the gate runs** —
+consensus uses the **parallel** fan-out (`references/consensus-mode.md`), harness defaults to
+the **sequential relay chain** (`references/relay-chain-gate.md`, `harness.review_mode`):
 
 | | `/co-agent:consensus` | `/co-agent:harness` |
 |---|---|---|
 | Writes the implementation | **The host itself** (Claude/Codex), TDD loop, on the main tree | **A cross-provider peer** (Codex or Agy) — sandboxed, **only** inside an isolated git worktree |
 | Commits | Host | Host only — the peer never commits |
+| Gate mechanics | **Parallel** independent fan-out + quorum | **Relay chain** (default) — peers build on each other, one vetted pass; `parallel` opt-out |
 | Panel's job | Reviews the **plan** (P2) and the host's own diffs (P4) | Reviews the **peer's** diff before the host applies it |
 | Isolation needed | None — host edits the repo directly | Worktree + workspace-write sandbox + `scope_guard.py`; host applies only the captured, scope-guarded diff (`delegated-implement.md`) |
 | Default state | Plan gate on by default (`--trust-plan` skips it) | Opt-in — must be explicitly invoked |
@@ -278,6 +282,7 @@ panel; auth fixes stay guidance-only.
 - `scripts/co_agent_config.py` + `co-agent.defaults.json` — panel settings (model/effort/enabled/timeout); driven by the **`/co-agent:configure`** command, overrides in `.claude/co-agent.local.json`
 - `scripts/check_citations.py` — tiered citation validation (supported/needs-review/unsupported) for all review modes
 - `references/consensus-pipeline.md` — **AUTHORITATIVE** for `/co-agent:consensus`: P0–P5 phases (Stage A implements P0–P2), entry decision table, Stage A/B/C roadmap
-- `references/consensus-mode.md` — the reusable consensus GATE mechanics (fan-out + citation validation + quorum) used by `review` and pipeline gates P2/P4
+- `references/consensus-mode.md` — the reusable consensus GATE mechanics (parallel fan-out + citation validation + quorum) used by `review` and pipeline gates P2/P4
+- `references/relay-chain-gate.md` — the **sequential relay-chain** gate used by `/co-agent:harness` (default `review_mode`): peers review one at a time, each building on the prior findings; the chair verifies + synthesizes one high-confidence result
 - `scripts/consensus_state.py` — consensus session state + input-doc detection (adr/spec/plan)
 - `scripts/parse_plan.py` — parse a writing-plans plan into tasks + the allowed file set

@@ -1,5 +1,5 @@
 ---
-description: Host-designs / peer-implements / panel-reviews orchestrator. The host owns the design, the failing test, and every commit; a cross-provider peer writes code only inside an isolated git worktree under a workspace-write sandbox; the consensus gate reviews. Opt-in, local commits only.
+description: Host-designs / peer-implements / panel-reviews orchestrator. The host owns the design, the failing test, and every commit; a cross-provider peer writes code only inside an isolated git worktree under a workspace-write sandbox; a sequential relay-chain gate reviews (parallel fan-out optional). Opt-in, local commits only.
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
 argument-hint: "<adr|spec|plan|task>  [--implementer codex|agy]"
 ---
@@ -9,10 +9,13 @@ argument-hint: "<adr|spec|plan|task>  [--implementer codex|agy]"
 Autonomous **design → delegated-implement → review** with cross-provider role separation.
 The **host** (Claude in Claude Code, Codex in Codex) designs, writes the failing test, and
 is the **only committer**. A **peer implementer** writes code **only inside an isolated git
-worktree** under a workspace-write sandbox. Review reuses the consensus gate.
+worktree** under a workspace-write sandbox. Review runs a **sequential relay-chain gate**
+by default (peers build on each other's findings for one vetted result), or the parallel
+fan-out when `harness.review_mode == "parallel"`.
 
 > Trust boundary, per-task loop, fallback chain, output gate: **`references/delegated-implement.md`**.
-> Review-gate mechanics: `references/consensus-mode.md`. CLI details: `references/ai-cli-adapters.md`.
+> Review-gate mechanics: **relay chain** `references/relay-chain-gate.md` (default) ·
+> parallel `references/consensus-mode.md`. CLI details: `references/ai-cli-adapters.md`.
 > Want the host itself to write the code instead (no peer, no worktree)? Use
 > `/co-agent:consensus`. Side-by-side comparison: `SKILL.md` → "Consensus vs harness".
 
@@ -48,10 +51,13 @@ regen). An **adr/spec** → generate a TDD plan (`docs/superpowers/plans/`), the
 `consensus_state.py init .` from the doc(s); allowed file set = `parse_plan.py <plan> --files`.
 
 ## H2 — Plan gate
-Run the consensus gate on the plan (`consensus-mode.md`); iterate ≤ `consensus.max_rounds`
-to no CRITICAL/MAJOR. Record `…/plan-gate/result.json` via `consensus_state.py stage-result`.
-Unresolved → `set . status needs-human` and stop. (Works with the current gate; benefits
-from the adversarial/escalation upgrades when present — not required.)
+Run the review gate on the plan; iterate ≤ `consensus.max_rounds` to no CRITICAL/MAJOR.
+**Gate mechanics = `co_agent_config.py review-mode`**: `relay` (default) → the sequential
+**relay chain** (`references/relay-chain-gate.md`) — peers review one at a time, each
+building on the prior findings, so the panel converges on one vetted result in a single
+pass; `parallel` → the independent fan-out (`references/consensus-mode.md`). Record
+`…/plan-gate/result.json` via `consensus_state.py stage-result`. Unresolved → `set . status
+needs-human` and stop.
 
 ## H3 — Delegated implement (per task) — see `references/delegated-implement.md`
 Per task: host writes **and commits** the failing test (so the `--base HEAD` worktree
@@ -80,7 +86,8 @@ could discard unrelated work) — then
 `set . status needs-human`. External AIs never commit.
 
 ## H4 — Final gate
-`consensus_state.py cumulative-diff . --plan <plan> --base <trunk>` → consensus gate →
+`consensus_state.py cumulative-diff . --plan <plan> --base <trunk>` → review gate
+(same `review-mode` as H2: relay chain by default, else parallel fan-out) →
 fix ≤ `consensus.max_rounds`, require tests green. Record `…/code-gate/result.json`.
 
 ## H5 — Report

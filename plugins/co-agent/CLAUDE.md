@@ -28,11 +28,11 @@ co-agent
   ├── ADR          : 대안·트레이드오프·리스크 팬아웃 → Nygard ADR 초안 → /add-adr 연동
   ├── sync-context : CLAUDE.md 증류 → AGENTS.md(Codex) 생성 + Kiro steering bridge 연결
   ├── consensus    : doc→plan→구현 자율 파이프라인 + 멀티모델 게이트 (`/co-agent:consensus`)
-  ├── harness      : host 설계 / peer 구현(격리 worktree+workspace-write) / 패널 리뷰; host가 red·커밋 소유 (`/co-agent:harness`)
+  ├── harness      : host 설계 / peer 구현(격리 worktree+workspace-write) / 패널 리뷰(기본 릴레이 체인 — peer 순차·누적, 한 번에 완주); host가 red·커밋 소유 (`/co-agent:harness`)
   └── setup        : 패널 준비도 프리플라이트 — peer별 plugin→raw→none 감지 + 실사용 프로브, 흐름이 참조하는 readiness 요약 기록 (`/co-agent:setup`)
 ```
 
-> harness 신뢰 경계·태스크 루프: `skills/co-agent/references/delegated-implement.md`. 구현자 선택/쓰기 플래그: `co_agent_config.py implementer|impl-flags`.
+> harness 신뢰 경계·태스크 루프: `skills/co-agent/references/delegated-implement.md`. 구현자 선택/쓰기 플래그: `co_agent_config.py implementer|impl-flags`. 리뷰 게이트: 기본 **릴레이 체인** `skills/co-agent/references/relay-chain-gate.md` (순차·누적), `co_agent_config.py set harness review_mode parallel`로 병렬 팬아웃 전환.
 
 ## AI Context Files (per-AI project docs)
 

@@ -24,6 +24,8 @@ Usage:
   co_agent_config.py set <ai> <key> <value>     # write to .claude/co-agent.local.json
   co_agent_config.py set timeout <seconds>      # global per-CLI timeout
   co_agent_config.py set autosync <on|off>      # auto-run sync-context on CLAUDE.md change
+  co_agent_config.py set harness review_mode <relay|parallel>  # harness gate: relay chain (default) vs parallel
+  co_agent_config.py review-mode                # effective harness review-gate mode (relay|parallel)
   co_agent_config.py set <ai> context_limit <n> # per-AI context window (tokens)
   co_agent_config.py flags <ai>                 # CLI flag fragment for the fan-out
   co_agent_config.py panel                      # space-separated enabled AIs
@@ -87,6 +89,9 @@ def panel_ais(host):
 # gemini(--yolo) auto-accept writes but do NOT confine them to the worktree, so they
 # are NOT safe delegated implementers — the trust boundary would not hold.
 SANDBOX_IMPLEMENTERS = ("codex", "agy")
+# harness review-gate mechanics: relay = sequential relay chain (references/relay-chain-gate.md),
+# parallel = independent fan-out (references/consensus-mode.md). Only /co-agent:harness reads it.
+REVIEW_MODES = ("relay", "parallel")
 
 
 def implementer_ai(cfg, host):
@@ -296,7 +301,7 @@ def cmd_set(root, rest, host, scope="local"):
         local["profile"] = rest[1]
     elif rest[0] == "harness":
         if len(rest) != 3:
-            print("usage: set harness <implementer|max_fix_rounds> <value>", file=sys.stderr)
+            print("usage: set harness <implementer|max_fix_rounds|review_mode> <value>", file=sys.stderr)
             return 2
         _, key, val = rest
         h = local.get("harness")
@@ -316,8 +321,13 @@ def cmd_set(root, rest, host, scope="local"):
                 print("max_fix_rounds must be a positive integer", file=sys.stderr)
                 return 2
             h["max_fix_rounds"] = int(val)
+        elif key == "review_mode":
+            if val not in REVIEW_MODES:
+                print(f"review_mode must be one of: {', '.join(REVIEW_MODES)}", file=sys.stderr)
+                return 2
+            h["review_mode"] = val
         else:
-            print("harness keys: implementer, max_fix_rounds", file=sys.stderr)
+            print("harness keys: implementer, max_fix_rounds, review_mode", file=sys.stderr)
             return 2
     else:
         if len(rest) != 3:
@@ -468,6 +478,16 @@ def cmd_implementer(root, host):
     return 0
 
 
+def cmd_review_mode(root):
+    """Print the effective harness review-gate mode (relay | parallel)."""
+    h = effective(root).get("harness", {})
+    mode = h.get("review_mode", "relay")
+    if mode not in REVIEW_MODES:
+        mode = "relay"
+    print(mode)
+    return 0
+
+
 def cmd_impl_flags(root, ai, host):
     """Write-mode flags for the harness implementer: a workspace-write sandbox scoped
     to the worktree, plus the AI's configured model/effort. ONLY for the implement path
@@ -556,6 +576,8 @@ def main():
         return cmd_matrix(root, host)
     if cmd == "implementer":
         return cmd_implementer(root, host)
+    if cmd == "review-mode":
+        return cmd_review_mode(root)
     if cmd == "impl-flags":
         return cmd_impl_flags(root, rest[0], host) if rest else 2
     print(__doc__)
