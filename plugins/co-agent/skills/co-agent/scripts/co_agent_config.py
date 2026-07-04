@@ -36,8 +36,13 @@ Usage:
   co_agent_config.py autosync                   # exit 0 if sync-on-change is on, 1 if off
   co_agent_config.py context-limit <ai>         # effective context window (tokens; 0 = none)
   co_agent_config.py fits <ai> <tokens>         # exit 0 if tokens fit the window, 1 if not
+  co_agent_config.py pairs [--phases N]         # (ai, model) pairs for this round (N fan-outs/round)
+  co_agent_config.py matrix [--phases N]        # pairs × rounds × phases = true max calls
 Add --root DIR to target a repo other than the cwd.
 Add --host claude|codex or set CO_AGENT_HOST to choose the current chair.
+Add --phases N to `pairs`/`matrix` when a gate fans out more than once per round (the
+hybrid gate's find+verify = 2 phases) — divides the per-round call budget across phases
+so `rounds × phases × pairs` still stays within `consensus.max_calls`. Default 1.
 """
 import sys
 import os
@@ -138,9 +143,12 @@ def deep_merge(base, over):
     return out
 
 
-# Peer keys renamed in 1.10. Not read as aliases (no back-compat) — but WARN so a stale
-# override (e.g. `kiro.enabled:false`) isn't silently dropped, re-enabling a disabled AI.
-LEGACY_KEYS = {"kiro": "kiro-cli", "antigravity": "agy"}
+# Peer keys renamed in 1.10, plus `gemini` (removed entirely — Agy superseded it, ADR-010).
+# Not read as aliases (no back-compat) — but WARN so a stale override (e.g. a user's
+# `gemini.enabled:true` from before this AI was dropped) isn't silently dropped, silently
+# losing their third reviewer with no error. `gemini` isn't a literal rename like the other
+# two, but "→ agy" is still the right hint: agy is the slot gemini used to fill.
+LEGACY_KEYS = {"kiro": "kiro-cli", "antigravity": "agy", "gemini": "agy"}
 
 
 def effective(root):
@@ -198,28 +206,35 @@ def panel_pairs(cfg, host):
     return pairs
 
 
-def cmd_pairs(root, host):
+def cmd_pairs(root, host, phases=1):
     cfg = effective(root)
     cap = int(cfg.get("consensus", {}).get("max_calls", 12))
     rounds = int(cfg.get("consensus", {}).get("max_rounds", 2))
-    per_round_cap = max(1, cap // max(1, rounds))
+    # `phases` = fan-outs per round (hybrid = 2: find + verify). Each caller must divide
+    # the per-round budget by its own phase count — pairs has no notion of "this round
+    # already spent a phase", so passing --phases 2 here caps EACH phase's fan-out at
+    # half the single-phase size, keeping rounds × phases × pairs ≤ max_calls overall.
+    per_round_cap = max(1, cap // max(1, rounds) // max(1, phases))
     pairs = panel_pairs(cfg, host)
     if len(pairs) > per_round_cap:
         print(f"⚠️  {len(pairs)} pairs exceeds per-round cap {per_round_cap} "
-              f"(max_calls {cap} / {rounds} rounds) — trimming", file=sys.stderr)
+              f"(max_calls {cap} / {rounds} rounds"
+              + (f" / {phases} phases" if phases > 1 else "") + ") — trimming", file=sys.stderr)
         pairs = pairs[:per_round_cap]
     for ai, m in pairs:
         print(f"{ai}\t{m or '(default)'}")
     return 0
 
 
-def cmd_matrix(root, host):
+def cmd_matrix(root, host, phases=1):
     cfg = effective(root)
     rounds = int(cfg.get("consensus", {}).get("max_rounds", 2))
     pairs = panel_pairs(cfg, host)
+    total = len(pairs) * rounds * max(1, phases)
+    phase_note = f" × {phases} phases (find+verify)" if phases > 1 else ""
     print(f"co-agent panel matrix  (profile {cfg.get('profile','default')} · "
-          f"host {host} · {len(pairs)} pairs × up to {rounds} rounds = "
-          f"{len(pairs)*rounds} max calls)")
+          f"host {host} · {len(pairs)} pairs × up to {rounds} rounds{phase_note} = "
+          f"{total} max calls)")
     print(f"  {'AI':7} {'model':22} {'ctx(tok)':>11}")
     fam = {}
     for ai, m in pairs:
@@ -292,7 +307,7 @@ def cmd_set(root, rest, host, scope="local"):
         local["profile"] = rest[1]
     elif rest[0] == "harness":
         if len(rest) != 3:
-            print("usage: set harness <implementer|max_fix_rounds|review_mode> <value>", file=sys.stderr)
+            print("usage: set harness <implementer|max_fix_rounds|review_mode|parallel_tasks> <value>", file=sys.stderr)
             return 2
         _, key, val = rest
         h = local.get("harness")
@@ -416,7 +431,12 @@ def cmd_flags(root, ai, host, model_override=None):
     elif ai == "agy":
         if model:
             parts += ["--model", model]
-    print("\n".join(parts))   # newline-delimited so a spaced model value stays one token
+    # Print NOTHING when there are no flags — `print("\n".join(parts))` on an empty list
+    # still emits a bare newline, and the caller's `mapfile -t MFLAGS < <(...)` turns that
+    # one blank line into a single empty-string array element, which `"${MFLAGS[@]}"` then
+    # expands into a spurious empty positional argument on the peer CLI's command line.
+    if parts:
+        print("\n".join(parts))   # newline-delimited so a spaced model value stays one token
     return 0
 
 
@@ -522,7 +542,7 @@ def cmd_impl_flags(root, ai, host):
 
 def main():
     # Parse out global flags precisely (don't drop positional args that equal the path).
-    argv, root, host_arg, scope, args, i = sys.argv[1:], os.getcwd(), None, "local", [], 0
+    argv, root, host_arg, scope, phases_arg, args, i = sys.argv[1:], os.getcwd(), None, "local", None, [], 0
     while i < len(argv):
         if argv[i] == "--root":
             if i + 1 < len(argv):
@@ -539,8 +559,22 @@ def main():
                 scope = argv[i + 1]
             i += 2
             continue
+        if argv[i] == "--phases":
+            # Only consumed by `pairs`/`matrix` — fan-outs per round (hybrid gate = 2:
+            # find + verify), so the per-round call budget is divided across phases.
+            if i + 1 < len(argv):
+                phases_arg = argv[i + 1]
+            i += 2
+            continue
         args.append(argv[i])
         i += 1
+
+    phases = 1
+    if phases_arg is not None:
+        if not phases_arg.isdigit() or int(phases_arg) < 1:
+            print("--phases must be a positive integer", file=sys.stderr)
+            return 2
+        phases = int(phases_arg)
 
     if scope not in ("user", "local"):
         print("--scope must be user|local", file=sys.stderr)
@@ -575,9 +609,9 @@ def main():
     if cmd == "fits":
         return cmd_fits(root, rest[0], rest[1], host) if len(rest) >= 2 else 2
     if cmd == "pairs":
-        return cmd_pairs(root, host)
+        return cmd_pairs(root, host, phases)
     if cmd == "matrix":
-        return cmd_matrix(root, host)
+        return cmd_matrix(root, host, phases)
     if cmd == "implementer":
         return cmd_implementer(root, host)
     if cmd == "review-mode":

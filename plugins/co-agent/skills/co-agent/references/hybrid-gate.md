@@ -31,10 +31,13 @@ phase F — the same data boundary as every fan-out.
 
 ### Phase F — find (parallel)
 
-Run the standard parallel fan-out from `ai-cli-adapters.md` verbatim: same fixed review
-prompt to every gate-eligible `(ai, model)` pair (`$CFG pairs`), `&` + `wait`, per-pair
-`timeout`/`fits` guards, capture to `$RUN/find-*.md`. Prompt asks for a severity-labeled
-findings list (CRITICAL/MAJOR/MINOR/NIT) with evidence citations.
+Run the standard parallel fan-out from `ai-cli-adapters.md` verbatim, with one difference:
+call `$CFG pairs --phases 2` (not bare `pairs`) — a hybrid round fans out **twice**
+(find + verify), so `--phases 2` halves the per-round call cap accordingly, keeping
+`rounds × 2 × pairs ≤ consensus.max_calls` overall instead of per phase. Same fixed
+review prompt to every gate-eligible pair, `&` + `wait`, per-pair `timeout`/`fits` guards,
+capture to `$RUN/find-*.md`. Prompt asks for a severity-labeled findings list
+(CRITICAL/MAJOR/MINOR/NIT) with evidence citations.
 
 ### Phase T — triage (chair, no external calls)
 
@@ -53,8 +56,9 @@ a verify round over an empty digest just invites invented findings).
 
 ### Phase V — verify (parallel)
 
-Fan the **artifact + digest** back out to the same eligible pairs (parallel again), with a
-fixed verify prompt:
+Fan the **artifact + digest** back out to the same eligible pairs (parallel again, same
+`$CFG pairs --phases 2` call as phase F — this is the second of the two phases the
+per-round cap was already divided for), with a fixed verify prompt:
 
 ```
 You are verifying a CURATED FINDINGS DIGEST against the ARTIFACT. For each numbered
@@ -90,8 +94,13 @@ response; non-responders are non-votes (never counted as CONFIRM).
 ## Cost & sizing
 
 A hybrid round costs up to **2× pairs** calls (find + verify) — the verify phase is skipped
-when triage empties the digest. `consensus.max_calls` caps `rounds × pairs` per phase as
-usual; if the matrix warns, trim `models` lists before lowering `timeout`. Multi-model
+when triage empties the digest. Both phases call `pairs`/`matrix` with **`--phases 2`**
+(see Phase F above), which divides the per-round cap by 2 phases so `rounds × 2 × pairs`
+stays within `consensus.max_calls` overall — plain `pairs` (no `--phases`) would only cap
+one phase and let a hybrid round spend up to 2× the configured budget. At H0, show
+`matrix --host "$HOST" --phases 2` (not the bare `matrix`) when `review-mode` resolves to
+`hybrid`, so the user's consent reflects the true 2-phase cost before the first call. If
+the matrix warns, trim `models` lists before lowering `timeout`. Multi-model
 diversity works exactly as in the other modes: with `profile deep`, every model in an AI's
 `models` list is its own find/verify voice (headless flags: kiro/claude/agy `--model`,
 codex `-m`).

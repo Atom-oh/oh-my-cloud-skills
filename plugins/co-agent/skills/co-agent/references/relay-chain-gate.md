@@ -25,12 +25,20 @@
 
 ## Ordering
 
-Process the gate-eligible `(ai, model)` pairs from `co_agent_config.py pairs` **in order**,
-but put the **strongest reasoner last** so it reviews with the most accumulated context.
-The counterpart peer (Codex when Claude hosts; Claude when Codex hosts) is usually the
-strongest — leave it at the tail of the chain. Reorder by toggling `enabled` / trimming
-`models` in `/co-agent:configure`; there is no separate relay-order key. A single
-gate-eligible pair degenerates to one review (still valid — see Quorum).
+Process the gate-eligible `(ai, model)` pairs from `co_agent_config.py pairs` **in order**.
+`pairs` emits a **round-robin interleave in the fixed `panel_ais` order** (kiro-cli, the
+counterpart peer, agy) — at each round index it appends whichever AI still has a model left
+at that index, so the AI(s) with the **most** configured `models` are always the ones left
+in the tail once the shorter queues run out. There is no separate relay-order key; `enabled`
+only drops an AI from the chain entirely, it cannot move it within the fixed order.
+
+To put the **strongest reasoner last** (so it reviews with the most accumulated context),
+give it a `models` list **at least as long as** every other enabled AI's — e.g. with the
+committed default (kiro-cli has 3 models, the counterpart peer and agy have 1 each), the
+counterpart peer is link 2 of 5, never the tail; setting `set <peer> models m1,m2,m3` to
+match kiro's count pushes it into the tail alongside kiro's last links. Trimming kiro's
+`models` down to 1 has the same effect from the other side. A single gate-eligible pair
+degenerates to one review (still valid — see Quorum).
 
 ## Multi-model relay — 다방향 검증
 
@@ -99,10 +107,14 @@ while IFS=$'\t' read -r ai model; do
   # findings enter the chain. Same adapters as ai-cli-adapters.md (stdin for codex/claude/
   # agy; kiro reads the ctx file via fs_read since it ignores stdin).
   case "$ai" in
+    # kiro-cli reads its input from argv, not stdin — but it still INHERITS this loop's
+    # stdin (the `pairs` process substitution) unless explicitly redirected. If kiro-cli
+    # reads/drains stdin at all while running, the next `read -r ai model` sees EOF and the
+    # chain silently truncates after this link — `< /dev/null` closes that channel.
     kiro-cli) command -v kiro-cli >/dev/null 2>&1 && timeout "$T" \
                 kiro-cli chat "$BASE_PROMPT"$'\n\n'"Read the review context with fs_read from: $CTX" \
                 "${MFLAGS[@]}" --v3 --mode default --no-interactive --trust-tools=fs_read --wrap never \
-                > "$slot.md" 2>"$slot.err" || echo "[skip] kiro-cli/$model" ;;
+                < /dev/null > "$slot.md" 2>"$slot.err" || echo "[skip] kiro-cli/$model" ;;
     claude)   command -v claude >/dev/null 2>&1 && cat "$CTX" | timeout "$T" \
                 claude -p "$BASE_PROMPT" "${MFLAGS[@]}" --permission-mode plan \
                 --tools Read,Grep,Glob --output-format text > "$slot.md" 2>"$slot.err" || echo "[skip] claude/$model" ;;

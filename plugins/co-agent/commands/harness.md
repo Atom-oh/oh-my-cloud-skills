@@ -28,8 +28,11 @@ Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"` and
 `HOST="${CO_AGENT_HOST:-claude}"`.
 
 ## H0 — Detect & consent
-1. **Consent + cost**: confirm sending context to third-party AIs; show
-   `python3 "$SK/co_agent_config.py" matrix --host "$HOST"`.
+1. **Consent + cost**: resolve `MODE=$(python3 "$SK/co_agent_config.py" review-mode)`; the
+   `hybrid` default fans out **twice** per round (find + verify), so show
+   `python3 "$SK/co_agent_config.py" matrix --host "$HOST" $([ "$MODE" = hybrid ] && echo --phases 2)`
+   — passing `--phases 2` only for hybrid keeps the displayed max-calls total accurate for
+   whichever gate mode is actually configured. Confirm sending context to third-party AIs.
 2. Resolve roles: panel = `co_agent_config.py panel --host "$HOST"`; implementer =
    `co_agent_config.py implementer --host "$HOST"` (user-selectable:
    `set harness implementer codex|agy`). Only **sandbox CLIs** (codex, agy) are valid
