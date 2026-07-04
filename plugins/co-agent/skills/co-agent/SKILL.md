@@ -1,6 +1,6 @@
 ---
 name: co-agent
-description: "Collaborate with other AI agents (Kiro CLI, the peer host CLI, and Agy) for a second opinion. Three modes — multi-AI review of code/architecture, decision support when you're unsure, and ADR co-authoring. The current host chairs and synthesizes the final answer. 멀티 AI 협업: 리뷰, 의사결정 보조, ADR 협업."
+description: "Collaborate with other AI agents (Kiro CLI, the peer host CLI, and Agy) for a second opinion. Multi-AI review of code/architecture, decision support when you're unsure, and ADR co-authoring, plus autonomous consensus/harness pipelines. The current host chairs and synthesizes the final answer. 멀티 AI 협업: 리뷰, 의사결정 보조, ADR 협업."
 triggers:
   # High-precision: only fire when the user clearly wants MULTIPLE AIs / a panel.
   # Generic "code review"/"architecture review"/"decide"/"adr" are intentionally
@@ -72,7 +72,7 @@ that `command -v` can't. If none are available, the host answers solo and says s
 > with `python3 scripts/co_agent_config.py show --host <claude|codex>`. The fan-out in
 > `ai-cli-adapters.md` derives `$PANEL` and timeout from that helper.
 
-## Three modes
+## Modes
 
 Route by intent (triggers above):
 

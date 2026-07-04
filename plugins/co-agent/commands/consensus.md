@@ -54,8 +54,11 @@ Reuses the `subagent-driven-development` pattern with the **co-agent multi-model
 the review checkpoint. Requires a clean tree; commits locally only (never push/reset/rebase).
 
 0. **Init/resume**: `consensus_state.py verify .` (clean tree); if no session, `init` it from
-   the plan; set `phase P3` and `autonomous on`. Tasks come from `parse_plan.py <plan>`;
-   allowed file set from `parse_plan.py <plan> --files` (enforced by `scope_guard.py`).
+   the plan; `consensus_state.py set . phase P3` then `consensus_state.py autonomous . on`
+   (`autonomous` is its **own** subcommand — it is NOT a `set` key; `set` only accepts
+   phase/task_index/status, so `set . autonomous on` exits 2 and the loop-gating hooks
+   never engage). Tasks come from `parse_plan.py <plan>`; allowed file set from
+   `parse_plan.py <plan> --files` (enforced by `scope_guard.py`).
 1. **Per task** (advance `consensus_state.py task-start . <i>`):
    a. **Checkpoint**: `git stash create`/tag or a WIP commit you can reset to.
    b. **Implement (TDD)**: write the failing test → minimal code → refactor. Every file you

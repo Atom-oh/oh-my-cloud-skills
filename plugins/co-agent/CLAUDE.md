@@ -16,9 +16,9 @@
 
 | Skill | Trigger | Purpose |
 |-------|---------|---------|
-| `co-agent` | "co-agent", "second opinion", "다른 AI", "AI 협업", "코드/아키텍처 리뷰", "잘 모르겠어", "의사결정", "decide", "adr" | 3-모드 멀티-AI 협업 |
+| `co-agent` | "co-agent", "second opinion", "다른 AI", "AI 협업", "코드/아키텍처 리뷰", "잘 모르겠어", "의사결정", "decide", "adr" | 멀티-AI 협업 (리뷰·의사결정·ADR·sync-context·consensus·harness·setup) |
 
-## Three Modes
+## Modes
 
 ```
 co-agent

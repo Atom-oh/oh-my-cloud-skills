@@ -77,31 +77,15 @@ per task → run the implementer **concurrently** in each worktree (`&` + `wait`
 + scope per task → apply patches serially on main (per-patch gate: that task's tests green,
 no previously-green test broken) → full suite green → **one `--amend` fold per wave**.
 Task-level abort restores that task's files before the fold and marks it `needs-human`
-without sinking the wave. Sequential per-task detail (the wave adapts steps 1–8): host
-writes **and commits** the failing test (so the `--base HEAD` worktree
-contains it) → `worktree.py add` (under a gitignored path) → run the
-implementer with `co_agent_config.py impl-flags <ai> --host "$HOST"` **inside the worktree**
-→ `worktree.py capture-diff` → `scope_guard.py` (drop out-of-scope) → apply patch to main +
-`tests/run-all.sh` **on main** → bounded fix loop (`harness.max_fix_rounds`) → `stage-result`
-→ **host commits once**: before H3a, record the pre-task checkpoint SHA
-(`CKPT=$(git rev-parse HEAD)`); on green, fold the red-test commit and the implementation
-into **one passing commit**. **Only when H3a actually made a red-test commit** (i.e. not a
-`test_required:false` task, §11/§12), `git commit --amend` onto that red-test commit (no
-`reset`/`rebase` — consistent with the "never reset/rebase autonomously" constraint) so the
-branch never carries a committed-but-red test. For a `test_required:false` task there is **no
-red-test commit**, so make a **fresh `git commit`** — never `--amend` (it would rewrite an
-unrelated prior commit). Then `worktree.py remove`. Fallback chain: counterpart → other peer → host-implement.
-**On exhausted fix loop / abort**: **first discard the applied implementation patch**
-(scoped to the task files: `git restore --staged --worktree -- <task files>`, then
-`git clean -fd -- <task files>` to remove any **new files** the patch added — scoped, never
-bare. Use a bash **array** + count guard so a whitespace-only value can't pass and spaced
-filenames don't word-split: `[ ${#FILES[@]} -gt 0 ] && git clean -fd -- "${FILES[@]}"`
-(an empty pathspec makes `git clean -fd --` wipe *all* untracked files). So the tree is clean,
-**then** undo the red-test commit with `git revert --no-edit <red-test-sha>` — a
-non-destructive inverse commit (revert refuses on a dirty tree, so restore first; do **not**
-use `git reset --soft`, which keeps the red test staged, nor a bare `git reset --hard`, which
-could discard unrelated work) — then
-`set . status needs-human`. External AIs never commit.
+without sinking the wave.
+
+The exact git mechanics — red-commit message convention + crash recovery, the per-peer-run
+`MAIN0` escape bracket (incl. fix-round re-runs), the `--amend -m` fold that rewrites the
+transient subject, and the scope-guarded abort/all-abort restore order — are authoritative
+in **`references/delegated-implement.md`** (both the sequential per-task loop and the
+parallel-wave adaptation). Do not re-derive them here; follow that file. Fallback chain:
+counterpart → other peer → host-implement. External AIs never commit; the host is the only
+committer.
 
 ## H4 — Final gate
 `consensus_state.py cumulative-diff . --plan <plan> --base <trunk>` → review gate

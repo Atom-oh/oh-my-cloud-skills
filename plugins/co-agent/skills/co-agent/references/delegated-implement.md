@@ -49,13 +49,21 @@ reject them. Default: claude host → `codex`, codex host → `agy`. These write
 
 For each plan task (`scope_guard.py` enforces the plan's file set throughout):
 
-1. **Red (host).** Host writes **and commits** the failing test on the working branch
-   (host is the only committer, so this is consistent). Committing first is **required**:
-   the worktree is created at `HEAD`, so an uncommitted red test would not exist inside it
-   and the peer would implement blind. This red-test commit is **transient** — step 7
-   squashes it into a single passing commit, and step 8 reverts it on abort, so the branch
-   never retains a committed-but-red test. (Skip the whole step if the task declares
-   `test_required:false`, e.g. a pure refactor with existing coverage.)
+1. **Red (host).** First record `CKPT=$(git rev-parse HEAD)` (step 8's abort restores from
+   it). Host then writes **and commits** the failing test on the working branch (host is the
+   only committer, so this is consistent). Committing first is **required**: the worktree is
+   created at `HEAD`, so an uncommitted red test would not exist inside it and the peer would
+   implement blind. This red-test commit is **transient** — step 7 squashes it into a single
+   passing commit, and step 8 reverts it on abort, so the branch never retains a
+   committed-but-red test. (Skip the whole step if the task declares `test_required:false`,
+   e.g. a pure refactor with existing coverage.)
+   **Red-commit message convention (crash recovery)** — same rule as the wave loop, keyed
+   per task: the subject MUST start with `harness: task <i> red test (transient)`, and
+   step 7's fold **rewrites** it to a green subject. `CKPT` is shell-only, so this marker is
+   the durable record that HEAD is an unfolded red commit. On resume, if
+   `git log -1 --format=%s` matches the marker **and** HEAD is genuinely red (`git show
+   --stat HEAD` touches only test files, or the suite still fails), `git revert --no-edit
+   HEAD` on a clean tree and redo the task; never stack a new red commit on the orphan.
 2. **Worktree.** `worktree.py add <wt> --base HEAD` — create the isolated tree at the
    red-test commit, so the peer sees the failing test. Put `<wt>` under a gitignored path
    (e.g. `.claude/co-agent-consensus/worktrees/<task>`).
@@ -78,7 +86,10 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
    (a peer that escaped its cwd and wrote into the main checkout out-of-band, which the
    captured diff would miss). Backs the trust claim with a check, not just the sandbox. Then
    apply the captured patch to the main branch; run `tests/run-all.sh` (+ project tests) **on
-   the main tree**. Red → feed the failure back and loop, bounded by `harness.max_fix_rounds`.
+   the main tree**. Red → feed the failure back and loop, bounded by `harness.max_fix_rounds`
+   — **each fix-round peer re-run gets its own snapshot/re-check bracket** (re-snapshot just
+   before that run so the host's already-applied patch doesn't false-trip it); a single
+   pre-first-run snapshot would leave every fix-round re-run as an undetected escape window.
 6. **Review gate (optional).** Per-task multi-model review is **off by default** — the H4
    cumulative gate is the review of record. Enable it only when a task warrants it.
 7. **Record + commit.** Record the pre-task checkpoint SHA before H3a's red commit
@@ -86,8 +97,11 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
    …/tasks/<i>/result.json --stage task-<i> --verdict … --green true --in-scope true
    --implementer <ai>`; then the **host is the only committer** — fold the red-test commit
    and the green implementation into **one passing commit**. **Only when step 1 made a
-   red-test commit** (not a `test_required:false` task), `git commit --amend` onto it (no
-   `reset`/`rebase` — matches the "never reset/rebase autonomously" constraint) so the branch
+   red-test commit** (not a `test_required:false` task), `git commit --amend -m "harness:
+   task <i> green"` onto it — **always an explicit `-m` that REPLACES the transient red
+   subject** (never `--amend --no-edit`, which would leave the `… red test (transient)`
+   marker on the green commit and trip step 1's recovery into reverting completed work); no
+   `reset`/`rebase` (matches the "never reset/rebase autonomously" constraint) so the branch
    never carries a committed-but-red test. For a `test_required:false` task there is **no
    red-test commit**, so make a **fresh `git commit`** — never `--amend` (it would rewrite an
    unrelated prior commit). `worktree.py remove <wt>`.
@@ -136,12 +150,17 @@ enforces — so two tasks that could write the same file never run in the same w
    transient red commit can be cleanly amended/reverted without rebase.
    **Red-commit message convention (crash recovery):** the commit subject MUST start with
    `harness: wave red tests (transient)`. `RED_MADE`/`CKPT` live only in the session's
-   shell, so this marker is the ONLY durable record that HEAD is a transient red commit —
-   **on resume** (`consensus_state.py` `phase`/`task_index` point mid-implement), check
-   `git log -1 --format=%s`: if it matches the marker, HEAD is an unfolded red commit —
-   with a clean tree, `git revert --no-edit HEAD` it and re-plan the wave from the
-   remaining tasks (never stack a new red commit on top of an orphaned one); a dirty tree
-   on top of it is the interrupted-wave state → `set . status needs-human`.
+   shell, so this marker is the ONLY durable record that HEAD is a transient red commit.
+   **Step 6's fold rewrites this subject** to a green subject, so a surviving marker
+   reliably means the commit was never folded (without the rewrite, a headless
+   `--amend --no-edit` would leave the transient marker on the *green* folded commit and
+   this recovery would revert completed work). **On resume** (`consensus_state.py`
+   `phase`/`task_index` point mid-implement), check `git log -1 --format=%s`: if it matches
+   the marker **and** HEAD is genuinely red (belt-and-braces: `git show --stat HEAD` touches
+   only test files, or re-running the suite fails), then with a clean tree
+   `git revert --no-edit HEAD` it and re-plan the wave from the remaining tasks (never stack
+   a new red commit on top of an orphaned one); a dirty tree on top of it is the
+   interrupted-wave state → `set . status needs-human`.
 2. **Worktrees.** `worktree.py add <wt_i> --base HEAD` per task — every worktree sees the
    whole wave's red tests.
 3. **Implement (parallel).** The escape check brackets **every peer execution**, not the
@@ -167,31 +186,49 @@ enforces — so two tasks that could write the same file never run in the same w
    its own worktree without blocking siblings already applied — **each fix-round peer run
    gets its own step-3 snapshot/re-check bracket** (fix rounds are peer executions too;
    without the bracket they would be the one window where a worktree escape lands
-   undetected).
+   undetected). **Run fix-round peer executions one at a time** — never two concurrently,
+   and never apply a sibling patch while any peer run is in flight — so each bracket's diff
+   attributes to exactly one peer (overlapping runs would make an escape ambiguous, and a
+   sibling apply mid-run would false-trip the bracket).
 6. **Fold (host).** When every surviving task in the wave is applied, require the **full
    suite green on main**. **Only if `RED_MADE=true`** (step 1 made a red-test commit this
-   wave), `git commit --amend` onto it — one passing commit per wave (same
-   no-reset/no-rebase constraint, and the same guard the sequential loop's step 7 applies
-   per task: never amend when there is no red commit to amend onto, or the amend silently
-   rewrites an unrelated prior commit instead). **If `RED_MADE=false`** (every task in the
-   wave was `test_required:false`), make a **fresh `git commit`** instead. `worktree.py
-   remove` all.
-7. **Abort a task, keep the wave.** If one task exhausts its fix loop: restore **that
+   wave), fold with `git commit --amend -m "harness: wave <n> green (<task ids>)"` onto it
+   — **always pass an explicit `-m` that REPLACES the transient red subject** (never
+   `--amend --no-edit`: that keeps `harness: wave red tests (transient)` on the now-green
+   commit, and step 1's recovery would then revert this completed wave on the next resume).
+   One passing commit per wave (same no-reset/no-rebase constraint, and the same guard the
+   sequential loop's step 7 applies per task: never amend when there is no red commit to
+   amend onto, or the amend silently rewrites an unrelated prior commit instead). **If
+   `RED_MADE=false`** (every task in the wave was `test_required:false`), make a **fresh
+   `git commit -m "harness: wave <n> green (<task ids>)"`** instead. `worktree.py remove` all.
+7. **Abort a task, keep the wave.** If one task exhausts its fix loop, restore **that
    task's files** to their pre-wave state **from `$CKPT`, never from HEAD** — HEAD is the
    wave's red-test commit and still CONTAINS the task's red tests, so a HEAD-relative
-   `git restore`/`git checkout` would restore the failing tests instead of removing them
-   (and `git clean` skips them — they're tracked), deadlocking step 6's full-suite-green
-   precondition. Concretely, with the guarded-array discipline of the sequential loop's
-   step 8: for task files that **existed at `$CKPT`**,
-   `git restore --source="$CKPT" --staged --worktree -- "${FILES[@]}"`; for task files
-   **new since `$CKPT`** (e.g. the task's brand-new red-test files), `git rm -f --
-   "${NEW_FILES[@]}"` (they're tracked in the red commit, so `git clean` won't touch
-   them). Then proceed to the fold; when `RED_MADE=true` the amend rewrites the red commit
-   to the current tree, so the aborted task's tests genuinely drop out of the folded
-   commit. Mark the task `needs-human` in state. If **every** task in the wave aborts:
-   restore all wave files from `$CKPT` as above, then `git revert --no-edit` the red-test
-   commit if `RED_MADE=true`; if `RED_MADE=false` there is no commit to revert — just
-   discard the tree changes and skip the fold entirely (no commit for this wave).
+   `git restore`/`git checkout` would restore the failing tests instead of removing them,
+   deadlocking step 6's full-suite-green precondition. Partition the task's files by whether
+   git tracks them **now** (both the red-test files, tracked in the red commit, and any
+   pre-existing project files the patch modified are tracked; only patch-**added** source
+   files are untracked, since the host applied that patch to the worktree without
+   committing):
+   - **tracked** (`git ls-files --error-unmatch <f>` succeeds):
+     `git restore --source="$CKPT" --staged --worktree -- "${TRACKED[@]}"`. This already
+     stages a **deletion** for any path that did not exist at `$CKPT` (e.g. the new red-test
+     files) — no separate `git rm` is needed, and mixing an untracked path into `git rm`
+     would make it fail atomically and remove nothing.
+   - **untracked** (patch-added new files): the sequential loop's step-8 guarded array —
+     `[ ${#UNTRACKED[@]} -gt 0 ] && git clean -fd -- "${UNTRACKED[@]}"` (never a bare
+     `git clean`).
+
+   Then proceed to the fold; when `RED_MADE=true` the amend rewrites the red commit to the
+   current tree, so the aborted task's tests genuinely drop out of the folded commit. Mark
+   the task `needs-human` in state. If **every** task in the wave aborts, do NOT restore
+   from `$CKPT` first — `git revert` refuses on a dirty tree, so mirror the sequential
+   loop's step 8 order: **discard the applied patches back to HEAD** (`git restore --staged
+   --worktree -- <wave files>` from HEAD + the guarded `git clean -fd` for untracked
+   patch-added files) so the tree is clean at the red HEAD, **then** `git revert --no-edit`
+   the red-test commit if `RED_MADE=true` — the revert itself removes the red tests. If
+   `RED_MADE=false` there is no commit to revert — just discard the tree changes and skip
+   the fold entirely (no commit for this wave).
 
 Waves inherit everything else unchanged: host is the only committer, external AIs never
 commit, `stage-result` per task, resume via `consensus_state` (`task_index` advances by

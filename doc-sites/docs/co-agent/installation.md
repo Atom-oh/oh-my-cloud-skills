@@ -26,11 +26,11 @@ claude --plugin-dir ./plugins/co-agent
 |----|---------------|------|
 | Kiro | `command -v kiro-cli` | 인터랙티브 로그인 **또는** `KIRO_API_KEY`로 헤드리스 인증 (둘 중 하나면 됨) |
 | Codex | `command -v codex` | `codex exec -s read-only` (read-only sandbox) |
-| Gemini | `command -v gemini` | `gemini -p … -o text` |
+| Agy | `command -v agy` | `agy -p … --sandbox` |
 
 ```bash
 # 패널 감지
-command -v kiro-cli codex gemini 2>/dev/null
+command -v kiro-cli codex agy 2>/dev/null
 ```
 
 :::tip

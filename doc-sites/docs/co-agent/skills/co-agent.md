@@ -5,7 +5,7 @@ title: "co-agent"
 
 # co-agent Skill
 
-다른 AI(Kiro CLI, Codex, Gemini)와 협업해 second opinion을 받고 **Claude가 의장으로 종합**하는 4-모드 스킬.
+다른 AI(Kiro CLI, Codex, Antigravity)와 협업해 second opinion을 받고 **Claude가 의장으로 종합**하는 멀티-AI 스킬.
 
 ## 트리거
 
@@ -25,7 +25,7 @@ PANEL=""
 # 헤드리스 인증됨. KIRO_API_KEY로 사전 게이트하지 않음(미인증이면 호출 시 에러→스킵).
 command -v kiro-cli >/dev/null 2>&1 && PANEL="$PANEL kiro-cli"
 command -v codex    >/dev/null 2>&1 && PANEL="$PANEL codex"
-command -v gemini   >/dev/null 2>&1 && PANEL="$PANEL gemini"
+command -v agy      >/dev/null 2>&1 && PANEL="$PANEL agy"
 echo "Panel: ${PANEL:-none (Claude solo)}"
 ```
 
@@ -37,7 +37,7 @@ echo "Panel: ${PANEL:-none (Claude solo)}"
 |----|------|
 | Kiro | `kiro-cli chat "<P>" --no-interactive --trust-tools=read,grep --wrap never` |
 | Codex | `codex exec -s read-only "<P>"` |
-| Gemini | `gemini -p "<P>" -o text` |
+| Agy | `agy -p "<P>" --sandbox` |
 
 패널은 **병렬 실행**(`&` + `wait`), 각자 파일로 캡처. 빈 출력/에러 = 해당 AI 스킵.
 
@@ -64,7 +64,7 @@ echo "Panel: ${PANEL:-none (Claude solo)}"
 `/co-agent:sync-context` 명령으로도 실행. 외부 AI가 프로젝트 컨벤션으로 리뷰하도록 `CLAUDE.md`를 **증류**해 각 CLI의 컨텍스트 파일 생성:
 
 1. `CLAUDE.md` 읽기 → 리뷰에 필요한 핵심만(스택·빌드/테스트 명령·금지 패턴·아키텍처 경계·리뷰 체크리스트) **증류** (그대로 복사 ❌, 시크릿 ❌).
-2. 생성 마커(`check_ai_context.py --emit-marker`)를 붙여 `AGENTS.md`(Codex)·`GEMINI.md`(Gemini)에 기록. Kiro는 `CLAUDE.md` 직접 사용.
+2. 생성 마커(`check_ai_context.py --emit-marker`)를 붙여 `AGENTS.md`에 기록 (Kiro·Codex·Agy 공용).
 3. 마커 없는 수기 파일/`AGENTS.override.md`는 건드리지 않음.
 4. `check_ai_context.py`로 검증(마커·크기 캡·staleness·시크릿 스캔).
 

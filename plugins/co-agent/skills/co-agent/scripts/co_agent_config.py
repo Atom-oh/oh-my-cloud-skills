@@ -153,27 +153,34 @@ def deep_merge(base, over):
 LEGACY_KEYS = {"kiro": "kiro-cli", "antigravity": "agy", "gemini": None}
 
 
-def effective(root):
+def effective(root, warn=False):
     # Precedence low→high: committed defaults → user scope (~/.claude) → repo-local (.claude).
+    # `warn` gates the legacy-key hygiene warnings: only the DISPLAY commands (show/matrix)
+    # pass warn=True. The plumbing commands (pairs/flags/fits/timeout/panel/review-mode/…)
+    # call effective() ~2N+ times per fan-out, so warning from each would print the same
+    # line ~9× per gate run (drowning the consent-critical budget warning) — the display
+    # commands are the one place the user actually reads, so warn there and stay silent in
+    # the loop. Malformed-config warnings are NOT gated: a broken file must always be loud.
     cfg = load_defaults()
     for lp in (user_path(), local_path(root)):
         if os.path.isfile(lp):
             try:
                 with open(lp, encoding="utf-8") as f:
                     raw = json.load(f)
-                stale = [k for k in raw.get("panel", {}) if k in LEGACY_KEYS]
-                renames = [k for k in stale if LEGACY_KEYS[k]]
-                removed = [k for k in stale if not LEGACY_KEYS[k]]
-                if renames:
-                    hint = ", ".join(f"{k}→{LEGACY_KEYS[k]}" for k in renames)
-                    print(f"⚠️  {lp}: legacy panel key(s) {hint} are NO LONGER read — "
-                          f"rename them or the override is ignored.", file=sys.stderr)
-                if removed:
-                    hint = ", ".join(removed)
-                    print(f"⚠️  {lp}: panel key(s) {hint} refer to a REMOVED AI and are "
-                          f"ignored — DELETE the block (do not rename it onto another AI; "
-                          f"configure agy separately if you want the third reviewer).",
-                          file=sys.stderr)
+                if warn:
+                    stale = [k for k in raw.get("panel", {}) if k in LEGACY_KEYS]
+                    renames = [k for k in stale if LEGACY_KEYS[k]]
+                    removed = [k for k in stale if not LEGACY_KEYS[k]]
+                    if renames:
+                        hint = ", ".join(f"{k}→{LEGACY_KEYS[k]}" for k in renames)
+                        print(f"⚠️  {lp}: legacy panel key(s) {hint} are NO LONGER read — "
+                              f"rename them or the override is ignored.", file=sys.stderr)
+                    if removed:
+                        hint = ", ".join(removed)
+                        print(f"⚠️  {lp}: panel key(s) {hint} refer to a REMOVED AI and are "
+                              f"ignored — DELETE the block (do not rename it onto another AI; "
+                              f"configure agy separately if you want the third reviewer).",
+                              file=sys.stderr)
                 cfg = deep_merge(cfg, raw)
             except (json.JSONDecodeError, OSError) as e:
                 print(f"⚠️  ignoring malformed {lp}: {e}", file=sys.stderr)
@@ -241,7 +248,9 @@ def _cap_warnings(cfg, configured, per_round_cap, floor_clamped, phases):
         print(f"⚠️  {configured} pairs exceeds per-round cap {per_round_cap} "
               f"(max_calls {cap} / {rounds} rounds"
               + (f" / {phases} phases" if phases > 1 else "") + ") — trimming", file=sys.stderr)
-    if floor_clamped:
+    # `and configured`: with an empty panel (all AIs disabled) nothing runs, so the
+    # floor-clamp "will overspend" claim would be false — only warn when pairs exist.
+    if floor_clamped and configured:
         # max(1, …) floored the cap: 1 pair × rounds × phases still exceeds max_calls.
         print(f"⚠️  max_calls {cap} cannot hold even 1 pair per phase across {rounds} rounds"
               + (f" × {phases} phases" if phases > 1 else "")
@@ -250,19 +259,23 @@ def _cap_warnings(cfg, configured, per_round_cap, floor_clamped, phases):
 
 
 def cmd_pairs(root, host, phases=1):
+    # Silent by design: `pairs` is called N times per fan-out loop. The trim/floor-clamp
+    # warnings (and the legacy-key hygiene warnings) belong to the consent display `matrix`,
+    # which every documented flow runs at H0 before the loop — re-emitting them from each
+    # `pairs` call printed the same line ~9× per gate run. The trim itself still happens.
     cfg = effective(root)
-    pairs, configured, per_round_cap, floor_clamped = capped_pairs(cfg, host, phases)
-    _cap_warnings(cfg, configured, per_round_cap, floor_clamped, phases)
+    pairs, _configured, _cap, _floor = capped_pairs(cfg, host, phases)
     for ai, m in pairs:
         print(f"{ai}\t{m or '(default)'}")
     return 0
 
 
 def cmd_matrix(root, host, phases=1):
-    cfg = effective(root)
+    cfg = effective(root, warn=True)   # the consent display — surface legacy-key warnings here
     rounds = int(cfg.get("consensus", {}).get("max_rounds", 2))
     # Display the CAPPED panel — what will actually run — never the untrimmed wish-list
     # (an untrimmed display would collect consent for pairs/cost that never execute).
+    full = panel_pairs(cfg, host)
     pairs, configured, per_round_cap, floor_clamped = capped_pairs(cfg, host, phases)
     _cap_warnings(cfg, configured, per_round_cap, floor_clamped, phases)
     total = len(pairs) * rounds * max(1, phases)
@@ -272,6 +285,11 @@ def cmd_matrix(root, host, phases=1):
     print(f"co-agent panel matrix  (profile {cfg.get('profile','default')} · "
           f"host {host} · {len(pairs)} pairs × up to {rounds} rounds{phase_note} = "
           f"{total} max calls{trim_note})")
+    # F9: name the dropped pairs so consent reflects which reviewers were cut (a bare count
+    # hides that whole providers — e.g. codex, agy — may have been trimmed out).
+    if len(full) > len(pairs):
+        dropped = ", ".join(f"{ai}/{m or '(default)'}" for ai, m in full[len(pairs):])
+        print(f"  trimmed out (won't run): {dropped}")
     print(f"  {'AI':7} {'model':22} {'ctx(tok)':>11}")
     fam = {}
     for ai, m in pairs:
@@ -294,7 +312,7 @@ def cmd_matrix(root, host, phases=1):
 
 
 def cmd_show(root, host):
-    cfg = effective(root)
+    cfg = effective(root, warn=True)   # display command — surface legacy-key warnings here
     autosync = "on" if cfg.get("sync_on_change") else "off"
     print(f"co-agent panel config  (host {host} · timeout {cfg.get('timeout')}s · autosync {autosync})")
     layers = ["defaults"]
