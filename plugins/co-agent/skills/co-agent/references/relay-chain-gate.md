@@ -43,8 +43,10 @@ models, peer/agy 1 each; default tail = kiro's 3rd model):
 - full-width: `set <peer> models m1,m2,m3,m4` → 8 links (kiro 3 + peer 4 + agy 1), tail = the peer's 4th model.
 **Mind the per-round cap** (`max_calls / max_rounds`; relay is single-phase): the trim
 cuts the END of the interleaved list — exactly the tail links you just arranged — so keep
-total pairs ≤ the cap (default 24/2 = 12; the trim warning on stderr tells you when it
-fires). A single gate-eligible pair degenerates to one review (still valid — see Quorum).
+total pairs ≤ the cap (default 24/2 = 12). The harness H0 `matrix` display names any
+trimmed-out pairs (the fan-out `pairs` calls themselves are silent), so check the H0 matrix
+to see whether your tail links survived. A single gate-eligible pair degenerates to one
+review (still valid — see Quorum).
 
 ## Multi-model relay — 다방향 검증
 
@@ -135,7 +137,7 @@ while IFS=$'\t' read -r ai model; do
   if [ -s "$slot.md" ]; then
     { echo; echo "## Reviewer $i — $ai/$model"; cat "$slot.md"; } >> "$CHAIN"
   fi
-done < <(python3 "$CFG" pairs --host "$HOST")   # keep stderr: the budget-trim warning must reach the user
+done < <(python3 "$CFG" pairs --host "$HOST")   # pairs is silent; the trim/budget warning is shown by the H0 `matrix` call above
 # The final $CHAIN holds the full relay. The host (chair) synthesizes from it — see below.
 ```
 

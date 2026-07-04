@@ -96,7 +96,12 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
    (`CKPT=$(git rev-parse HEAD)`). `consensus_state.py stage-result write
    …/tasks/<i>/result.json --stage task-<i> --verdict … --green true --in-scope true
    --implementer <ai>`; then the **host is the only committer** — fold the red-test commit
-   and the green implementation into **one passing commit**. **Only when step 1 made a
+   and the green implementation into **one passing commit**. **First STAGE the applied
+   work** — step 5's `git apply` left it unstaged/untracked and commit reads only the index,
+   so without staging the fold commits the red tree and drops the implementation (amend →
+   "green"-labelled but red; fresh commit → "nothing to commit"). Stage scoped with the
+   guarded array: `[ ${#FILES[@]} -gt 0 ] && git add -- "${FILES[@]}"` (the task's file set,
+   incl. its red test; never bare `git add -A`). Then, **only when step 1 made a
    red-test commit** (not a `test_required:false` task), `git commit --amend -m "harness:
    task <i> green"` onto it — **always an explicit `-m` that REPLACES the transient red
    subject** (never `--amend --no-edit`, which would leave the `… red test (transient)`
@@ -191,16 +196,24 @@ enforces — so two tasks that could write the same file never run in the same w
    attributes to exactly one peer (overlapping runs would make an escape ambiguous, and a
    sibling apply mid-run would false-trip the bracket).
 6. **Fold (host).** When every surviving task in the wave is applied, require the **full
-   suite green on main**. **Only if `RED_MADE=true`** (step 1 made a red-test commit this
-   wave), fold with `git commit --amend -m "harness: wave <n> green (<task ids>)"` onto it
-   — **always pass an explicit `-m` that REPLACES the transient red subject** (never
-   `--amend --no-edit`: that keeps `harness: wave red tests (transient)` on the now-green
-   commit, and step 1's recovery would then revert this completed wave on the next resume).
-   One passing commit per wave (same no-reset/no-rebase constraint, and the same guard the
-   sequential loop's step 7 applies per task: never amend when there is no red commit to
-   amend onto, or the amend silently rewrites an unrelated prior commit instead). **If
-   `RED_MADE=false`** (every task in the wave was `test_required:false`), make a **fresh
-   `git commit -m "harness: wave <n> green (<task ids>)"`** instead. `worktree.py remove` all.
+   suite green on main**. **First STAGE the applied work** — step 5 applied each captured
+   patch to the *worktree* (plain `git apply`, so the changes are unstaged/untracked), and
+   `git commit --amend`/`git commit` commit **only the index**, so without staging the fold
+   would commit the red tree and silently drop every implementation (an `--amend` produces a
+   "green"-labelled commit that is actually red; a fresh commit fatals "nothing to commit").
+   Stage the surviving wave's files **scoped** with the guarded-array discipline —
+   `[ ${#WAVE_FILES[@]} -gt 0 ] && git add -- "${WAVE_FILES[@]}"` (the plan's file set for the
+   applied tasks, incl. the red-test files so they fold in; never a bare `git add -A`). Then:
+   **Only if `RED_MADE=true`** (step 1 made a red-test commit this wave), fold with
+   `git commit --amend -m "harness: wave <n> green (<task ids>)"` onto it — **always an
+   explicit `-m` that REPLACES the transient red subject** (never `--amend --no-edit`: that
+   keeps `harness: wave red tests (transient)` on the now-green commit, and step 1's recovery
+   would then revert this completed wave on the next resume). One passing commit per wave
+   (same no-reset/no-rebase constraint, and the same guard the sequential loop's step 7
+   applies per task: never amend when there is no red commit to amend onto, or the amend
+   silently rewrites an unrelated prior commit instead). **If `RED_MADE=false`** (every task
+   in the wave was `test_required:false`), make a **fresh `git commit -m "harness: wave <n>
+   green (<task ids>)"`** instead. `worktree.py remove` all.
 7. **Abort a task, keep the wave.** If one task exhausts its fix loop, restore **that
    task's files** to their pre-wave state **from `$CKPT`, never from HEAD** — HEAD is the
    wave's red-test commit and still CONTAINS the task's red tests, so a HEAD-relative

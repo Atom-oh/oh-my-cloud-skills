@@ -258,7 +258,7 @@ def _gate_config(root):
     cfg = {}
     if cac is not None:
         try:
-            cfg = (cac.effective(root) or {}).get("pr_gate", {}) or {}
+            cfg = (cac.effective(root, warn=True) or {}).get("pr_gate", {}) or {}  # surface stale-key hygiene once (gate is a single call, not a loop)
         except Exception as e:   # config unreadable — default config, but log (no silent failure)
             sys.stderr.write(f"[co-agent PR gate] pr_gate config unreadable, using defaults: {e}\n")
     try:
