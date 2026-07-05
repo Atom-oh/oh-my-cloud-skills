@@ -135,8 +135,11 @@ for model_tag in codex "${KIRO_MODELS[@]##*:}"; do
   # `|| echo 0` 폴백을 붙이면 그 "0" 뒤에 폴백의 "0"이 또 붙어 "0\n0"이 되는 회귀가
   # 실제로 있었다(test (f)에서 잡힘). $RESP 는 run-panel.sh 시작부에 항상 만들어지므로
   # "파일 없음" 폴백 자체가 불필요 — 그냥 grep 의 stdout 을 그대로 쓴다.
-  row_count=$(grep -c "^${model_tag}/" "$RESP" 2>/dev/null)
-  if [ "$row_count" -eq 0 ]; then
+  # $RESP 가 예기치 않게 부재/비가독이면 grep 이 아무것도 못 찍어 row_count 가 빈 문자열이
+  # 되고, `[ "" -eq 0 ]` 는 (set -e 없이) 조용히 false 로 삼켜져 degraded 경고 자체가
+  # 빠진다 — 12차에서 잡은 responded.txt 부재 비대칭과 같은 부류(14차 리뷰 MINOR-1).
+  row_count="$(grep -c "^${model_tag}/" "$RESP" 2>/dev/null)"
+  if [ "${row_count:-0}" -eq 0 ]; then
     echo "::warning::model '$model_tag' produced zero responses across all ${#LENS_FILES[@]} lenses — coverage degraded" >&2
     echo "$model_tag" >> "$WORK/degraded-models.txt"
   fi
