@@ -35,6 +35,7 @@ const sidebars: SidebarsConfig = {
         'aws-content-plugin/skills/gitbook',
         'aws-content-plugin/skills/workshop-creator',
         'aws-content-plugin/skills/brochure',
+        'aws-content-plugin/skills/aws-light-fcd',
       ],
     },
     {
@@ -126,6 +127,7 @@ const sidebars: SidebarsConfig = {
     'co-agent/usage-guide',
     'co-agent/agents/co-agent',
     'co-agent/skills/co-agent',
+    'co-agent/commands/commands',
   ],
 
   projectInit: [

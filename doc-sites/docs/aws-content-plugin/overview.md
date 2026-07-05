@@ -9,7 +9,7 @@ AWS Content Plugin은 AWS 클라우드 관련 콘텐츠 제작을 위한 전문 
 
 ## 구성 요소
 
-### 에이전트 (8개)
+### 에이전트 (9개)
 
 | 에이전트 | 설명 | 출력물 |
 |----------|------|--------|
@@ -20,9 +20,10 @@ AWS Content Plugin은 AWS 클라우드 관련 콘텐츠 제작을 위한 전문 
 | `document-agent` | 마크다운 기술 문서 생성 | `.md` 문서 |
 | `gitbook-agent` | GitBook 문서화 사이트 생성 | GitBook 프로젝트 |
 | `workshop-agent` | AWS Workshop Studio 콘텐츠 생성 | Workshop 프로젝트 |
+| `brochure-agent` | 단일 페이지 반응형 마케팅 브로셔 생성 | `.html` (GitHub Pages 배포) |
 | `content-review-agent` | 모든 콘텐츠 타입의 품질 검토 | 리뷰 리포트 |
 
-### 스킬 (6개)
+### 스킬 (8개)
 
 | 스킬 | 설명 |
 |------|------|
@@ -32,6 +33,8 @@ AWS Content Plugin은 AWS 클라우드 관련 콘텐츠 제작을 위한 전문 
 | `gitbook` | GitBook 구조 가이드, 컴포넌트 패턴 |
 | `slide-fix` | Issue annotation 기반 슬라이드 수정 (`<!-- issue: -->` 읽기 → 수정 → 재빌드) |
 | `workshop-creator` | Workshop Studio 디렉티브, 템플릿, 참조 문서 |
+| `brochure` | 반응형 브로셔 디자인 시스템, 골든 예시, self-check 스크립트 |
+| `aws-light-fcd` | 네이티브 **PPTX** 덱(PptxGenJS) — AWS Light 테마, Pretendard, `reactive-presentation`의 811-아이콘 라이브러리를 `kit.icon()`으로 공유 |
 
 ## 워크플로우
 

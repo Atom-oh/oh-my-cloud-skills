@@ -29,7 +29,7 @@
       "name": "co-agent",
       "version": "1.12.1",
       "source": "./plugins/co-agent",
-      "description": "Collaborate with other AI agents (Kiro CLI, Codex, Antigravity) — multi-AI code/architecture review, decision support when unsure, and ADR co-authoring, with Claude as chair"
+      "description": "Collaborate with other AI agents (Kiro CLI, Codex, Antigravity) — multi-AI code/architecture review, decision support when unsure, ADR co-authoring, and autonomous consensus/harness implementation pipelines, with Claude as chair"
     },
     {
       "name": "agentcore-creator",

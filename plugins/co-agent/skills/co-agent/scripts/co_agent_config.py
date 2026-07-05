@@ -2,8 +2,9 @@
 """co-agent panel configuration — model / effort / enabled / timeout.
 
 Layered like Claude Code's own settings:
-  co-agent.defaults.json  (committed, next to this script's skill dir)  ← base
-  <repo>/.claude/co-agent.local.json  (gitignored)                     ← personal override
+  co-agent.defaults.json              (committed, next to this script's skill dir) ← base
+  ~/.claude/co-agent.user.json         (user scope — applies across all your repos) ← override
+  <repo>/.claude/co-agent.local.json  (gitignored, this repo only)                 ← override
 
 Only settings the CLIs ACCEPT HEADLESSLY are exposed (verified against the installed
 CLIs) — no dead settings:

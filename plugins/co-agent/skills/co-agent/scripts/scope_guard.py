@@ -11,11 +11,24 @@ Exit 0 = all in scope / list ok · 1 = at least one out of scope · 2 = usage/re
 """
 import sys
 import os
+import posixpath
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 import parse_plan  # sibling module (Stage A)
+
+
+def _norm(p):
+    """Normalize a path for scope comparison. Uses posixpath.normpath (which correctly
+    collapses interior './' and '../' segments) instead of a blind lstrip("./") — lstrip
+    strips *any* run of '.' and '/' characters, so "../../src/foo.py" was collapsing to
+    "src/foo.py" and matching a plan that never declared it. normpath leaves a genuine
+    escape (leading '..') intact so callers can detect and reject it."""
+    p = p.strip().replace("\\", "/")
+    if not p:
+        return p
+    return posixpath.normpath(p)
 
 
 def allowed_set(plan_path):
@@ -24,14 +37,10 @@ def allowed_set(plan_path):
     files = []
     for t in tasks:
         for fp in t["files"]:
-            n = fp.strip().lstrip("./")
+            n = _norm(fp)
             if n and n not in files:
                 files.append(n)
     return files
-
-
-def _norm(p):
-    return p.strip().lstrip("./").replace("\\", "/")
 
 
 def main():
@@ -61,7 +70,22 @@ def main():
 
     def in_scope(c):
         cn = _norm(c)
-        return any(cn == a or cn.endswith("/" + a) for a in allowed_norm)
+        # Fail closed on any path that still escapes upward after normalization — never
+        # fall through to the suffix match below for these ("../../src/foo.py" must not
+        # sneak in just because it happens to end with an allowed entry).
+        if cn.startswith(".."):
+            return False
+        for a in allowed_norm:
+            if cn == a:
+                return True
+            # Suffix match lets a candidate given with extra leading directories (e.g. an
+            # absolute path — an intentional, tested behavior: a candidate like
+            # "/repo/src/foo.py" must still match a plan entry "src/foo.py") match. Only
+            # applies when the allowed entry HAS a directory component — a bare filename
+            # (e.g. "Makefile") must match exactly, or "/anything/Makefile" would match too.
+            if "/" in a and cn.endswith("/" + a):
+                return True
+        return False
     out = [p for p in paths if not in_scope(p)]
     if out:
         print("❌ out of plan scope (not in the reviewed plan's file set):", file=sys.stderr)

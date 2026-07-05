@@ -50,7 +50,7 @@ co-agent
 
 | AI | Command |
 |----|---------|
-| Kiro | `kiro-cli chat "<P + CTX as the positional INPUT>" --v3 --mode default --no-interactive --trust-tools=fs_read --wrap never` (content in argv `[INPUT]`, NOT stdin) |
+| Kiro | `kiro-cli chat "<P + fs_read instruction for CTX_FILE>" --v3 --mode default --no-interactive --trust-tools=fs_read --wrap never` (only a short instruction in argv `[INPUT]` — the diff itself is a temp file Kiro reads via `fs_read`, not stdin, not argv) |
 | Codex | `codex exec -s read-only "<P>"` |
 | Agy | `agy -p "<P>" --sandbox` |
 
@@ -85,7 +85,7 @@ agy, host 제외) 중 enabled·설치된 것에 **병렬 팬아웃** → 각 pee
 
 ## Configure (`/co-agent:configure`)
 
-패널 설정을 레이어드(`co-agent.defaults.json` ← `.claude/co-agent.local.json`)로 관리. **CLI가 헤드리스로 실제 받는 것만** 노출:
+패널 설정을 레이어드(`co-agent.defaults.json` ← `~/.claude/co-agent.user.json`(유저 스코프) ← `.claude/co-agent.local.json`(레포 로컬))로 관리. **CLI가 헤드리스로 실제 받는 것만** 노출:
 
 | 설정 | kiro-cli | codex | agy |
 |------|------|-------|-----|

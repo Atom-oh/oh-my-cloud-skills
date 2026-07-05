@@ -41,6 +41,19 @@ assert_eq "0" "$CD2" "cumulative-diff with --plan + valid base → exit 0"
 # bad base ref → exit 2 (must not masquerade as an empty/passing diff)
 python3 "$ST" cumulative-diff "$G" --plan "$G/plan.md" --base no-such-ref >/dev/null 2>&1 && CD3=0 || CD3=$?
 assert_eq "2" "$CD3" "cumulative-diff with bad --base → exit 2"
+
+# --- cumulative-diff must reuse scope_guard's fixed normalization, not a second
+#     lstrip("./")-based file-list builder (that duplicate had the same traversal-
+#     collapsing bug as scope_guard.py before it was fixed — see test-co-agent-
+#     consensus-stage-b.sh) ---
+assert_grep_match "scope_guard\.allowed_set" "$(cat "$ST")" "cumulative-diff reuses scope_guard.allowed_set (no duplicate lstrip logic)"
+
+# A plan entry with a redundant leading "./" must still resolve to the right file
+# (basic sanity that routing the file list through scope_guard.allowed_set didn't
+# break the common case).
+printf '# Plan\n### Task 1: a\n**Files:**\n- Modify: `./README.md`\n- [ ] x\n' > "$G/plan2.md"
+python3 "$ST" cumulative-diff "$G" --plan "$G/plan2.md" --base HEAD >/dev/null 2>&1 && CD4=0 || CD4=$?
+assert_eq "0" "$CD4" "cumulative-diff normalizes a redundant './' plan entry the same way scope_guard does"
 rm -rf "$G"
 
 # --- resume: phase/task_index persist and round-trip ---

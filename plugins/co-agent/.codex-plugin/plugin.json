@@ -1,7 +1,7 @@
 {
   "name": "co-agent",
   "version": "1.12.1",
-  "description": "Collaborate with peer AI agents such as Kiro CLI, Claude/Codex peer hosts, and Agy for multi-AI review, decision support, ADR drafting, and context synchronization",
+  "description": "Collaborate with peer AI agents such as Kiro CLI, Claude/Codex peer hosts, and Agy for multi-AI review, decision support, ADR drafting, context synchronization, and autonomous consensus/harness implementation pipelines",
   "author": {
     "name": "atomoh"
   },
@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "Co Agent",
     "shortDescription": "Coordinate multi-AI review and decision workflows.",
-    "longDescription": "Use Codex with co-agent workflows for multi-agent code review, architecture review, decision support, ADR co-authoring, and AI context synchronization. In Codex, Codex chairs while Claude CLI, Kiro CLI, and Agy provide advisory opinions.",
+    "longDescription": "Use Codex with co-agent workflows for multi-agent code review, architecture review, decision support, ADR co-authoring, AI context synchronization, and autonomous consensus/harness implementation pipelines. In Codex, Codex chairs while Claude CLI, Kiro CLI, and Agy provide advisory opinions.",
     "developerName": "atomoh",
     "category": "Collaboration",
     "capabilities": [
