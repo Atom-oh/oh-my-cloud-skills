@@ -1,7 +1,7 @@
 name: AI Code Review
 
 # PR마다 멀티 AI 패널(Codex + Kiro x3)이 변경을 리뷰하고
-# Claude Opus 4.8 의장이 종합해 PR 코멘트로 게시한다. (AWS-Demo-Platform 검증 패턴)
+# Claude Fable 5 의장이 종합해 PR 코멘트로 게시한다. (AWS-Demo-Platform 검증 패턴)
 #   - self-hosted 러너(oh-my-cloud-skills-claude-arm)가 EKS Pod Identity(SigV4)로 Bedrock 호출
 #   - 패널 fan-out: scripts/pr-review/run-panel.sh → synthesize.sh
 #   - VERDICT: PASS|FAIL 마지막 줄 룰로 job exit code 결정 (fail-closed)
@@ -23,10 +23,10 @@ jobs:
       pull-requests: write
       contents: read
     env:
-      # 리전 통일: us-east-1 In-Region (opus-4-8 + openai.gpt-5.5 둘 다 In-Region 제공).
-      # 핵심: model id 를 In-Region 으로 — `anthropic.claude-opus-4-8` (global.* 아님).
-      # gpt-5.5(bedrock-mantle)는 In-Region 만 지원이라 전체를 In-Region 으로 맞춤. 노드 IAM(ci_runner) SigV4.
-      ANTHROPIC_MODEL: us.anthropic.claude-opus-4-8
+      # 리전 통일: us-east-1 (fable-5 US 추론 프로파일 + openai.gpt-5.5 In-Region).
+      # 핵심: model id 는 US 프로파일 — `us.anthropic.claude-fable-5` (global.* 아님).
+      # gpt-5.5(bedrock-mantle)는 In-Region 만 지원이라 전체를 us-east-1 로 맞춤. 노드 IAM(ci_runner) SigV4.
+      ANTHROPIC_MODEL: us.anthropic.claude-fable-5
       CLAUDE_CODE_USE_BEDROCK: 1
       ANTHROPIC_BEDROCK_BASE_URL: https://bedrock-runtime.us-east-1.amazonaws.com
       AWS_REGION: us-east-1
@@ -137,7 +137,7 @@ jobs:
           sed '$ { /^VERDICT:/d }' /tmp/review.md > /tmp/review-clean.md
           {
             echo "$MARKER"
-            echo "## 🤖 AI Code Review (Claude Opus 4.8 chair · Codex + Kiro panel)"
+            echo "## 🤖 AI Code Review (Claude Fable 5 chair · Codex + Kiro panel)"
             echo ""
             echo "_Panel: Claude(chair) · ${panel_responded:-solo}_"
             [ "${panel_truncated:-0}" = "1" ] && echo "_⚠️ diff truncated to first 3000 lines — review is partial._"
