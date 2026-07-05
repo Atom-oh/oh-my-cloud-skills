@@ -1,18 +1,42 @@
-# CI: Multi-AI PR Review Panel
+# CI: Multi-AI PR Review — L1 결정적 게이트 + Lens×Model 매트릭스
 
-이 repo의 PR은 self-hosted 러너(`<runner-label>`)에서 멀티 AI 패널 리뷰를 받습니다.
+이 repo의 PR은 self-hosted 러너(`<runner-label>`)에서 2단 게이트를 받습니다: **L1**(매니페스트/버전
+정합 — 결정적 스크립트, AI 호출 없음) → **L2–L5**(lens×모델 매트릭스 AI 패널 → Claude 의장 종합).
+(design: `docs/superpowers/specs/2026-07-05-pr-review-hybrid-lens-design.md`, ADR-011)
 
-## 구성
-- **패널**: Codex(`openai.gpt-5.5`) + Kiro(`claude-opus-4.8`/`kimi-k2.5`/`glm-5`). **Antigravity(`agy`)는 CI 패널 미포함** — OAuth 인터랙티브 로그인 전용이라 헤드리스 CI에서 인증 불가(ADR-010).
-- **의장**: Claude Fable 5(`us.anthropic.claude-fable-5`)가 패널 findings를 종합해 단일 리뷰 + `VERDICT: PASS|FAIL`(fail-closed) 생성. 의장 호출은 벽시계 타임아웃(`CHAIR_TIMEOUT`, 기본 120초)로 감싸며, 연결 거부/행/빈 응답 등으로 VERDICT를 못 만들면 **Claude Opus 4.8(`CHAIR_FALLBACK_MODEL`)로 1회 폴백**한다(Fable 상태 불안정 대비). 코멘트 헤더의 chair 표기는 실제 사용 모델을 반영.
-- **데이터 거주성**: 패널마다 경로가 다름 —
+## L1 — 결정적 pre-check (AI 호출 전, 비용 0)
+- `scripts/pr-review/precheck.sh` 가 PR head 파일 트리를 `git archive`로 **데이터로만** 추출(실행
+  없음) → base(신뢰) 체크아웃의 `scripts/test-plugins.py --root <추출한 트리>` 로 검증.
+- 검증 항목: `plugin.json`/`marketplace.json` JSON 유효성, dangling agent/skill/command 참조,
+  plugin.json↔marketplace.json 버전 정합.
+- **실패 시 AI 패널을 전혀 호출하지 않고** 즉시 `VERDICT: FAIL` — 결정적으로 검증 가능한 문제에
+  AI 비용을 쓰지 않는다.
+
+## L2–L5 — Lens×Model 매트릭스 (L1 통과 시에만 실행)
+- **매트릭스**: 4 모델(Codex `openai.gpt-5.5` + Kiro `claude-opus-4.8`/`kimi-k2.5`/`glm-5`) ×
+  4 lens(L2=Skill/Agent 품질, L3=보안, L4=코드 정확성, L5=문서 일관성) = **16개 독립 find
+  에이전트**, 전부 병렬(`&`+`wait`) — 벽시계 ≈ 최슬로우 셀 하나(순차합 아님). 각 셀은 자기 lens
+  하나만 리뷰(스코프 축소로 셀당 응답도 짧아짐).
+- **Antigravity(`agy`)는 매트릭스 미포함** — OAuth 인터랙티브 로그인 전용이라 헤드리스 CI에서
+  인증 불가(ADR-010).
+- **의장**: Claude Fable 5(`us.anthropic.claude-fable-5`)가 16개 셀 findings를 lens 별로 종합해
+  단일 리뷰 + `VERDICT: PASS|FAIL`(fail-closed) 생성. 의장 호출은 벽시계 타임아웃(`CHAIR_TIMEOUT`,
+  기본 **180초** — 매트릭스로 입력이 4→16 출력으로 늘어 120초에서 상향)로 감싸며, 연결 거부/행/빈
+  응답 등으로 VERDICT를 못 만들면 **Claude Opus 4.8(`CHAIR_FALLBACK_MODEL`)로 1회 폴백**한다.
+  코멘트 헤더의 chair 표기는 실제 사용 모델을 반영.
+- **데이터 거주성**: 매트릭스 멤버마다 경로가 다름 —
   - **Codex / Claude(의장)**: Amazon Bedrock **us-east-1**(gpt-5.5는 bedrock-mantle In-Region 전용, fable-5는 US 추론 프로파일), AWS 인증은 EKS Pod Identity(SigV4).
-  - **Kiro**: **외부 API-key 기반 서비스** — PR diff가 외부로 전송됨. In-Region 아님.
-  - **민감 diff 정책**: 외부 전송이 부적절한 변경은 외부 패널(Kiro)을 비활성화하고 Bedrock In-Region 패널만으로 리뷰할 것. (public 마켓플레이스라 diff는 머지 시 공개 → 현재 accepted-risk; private fork 시 강제 skip 게이트 필요 — ADR-009.)
+  - **Kiro**: **외부 API-key 기반 서비스** — PR diff가 외부로 전송됨(16셀 중 12셀이 Kiro). In-Region 아님.
+  - **민감 diff 정책**: 외부 전송이 부적절한 변경은 외부 패널(Kiro)을 비활성화하고 Bedrock In-Region
+    멤버(Codex)만으로 리뷰할 것. (public 마켓플레이스라 diff는 머지 시 공개 → 현재 accepted-risk;
+    private fork 시 강제 skip 게이트 필요 — ADR-009.)
 
 ## 파일
-- `.github/workflows/pr-review.yml` — `pull_request_target`(base-ref 체크아웃, diff는 데이터), fan-out→synthesize→게이트→코멘트 upsert
-- `scripts/pr-review/{lib,run-panel,synthesize}.sh` — 패널 병렬 실행 + 의장 종합. 실패 패널은 graceful skip. 진단 로그는 **redact(auth/provider/프롬프트/diff 단편 제거) + 길이 제한**을 기본 동작으로 함(원시 stderr를 코멘트/로그로 노출하지 않음).
+- `.github/workflows/pr-review.yml` — `pull_request_target`(base-ref 체크아웃, diff는 데이터),
+  L1 게이트→(pass 시) lens 프롬프트 생성→매트릭스 fan-out→synthesize→게이트→코멘트 upsert
+- `scripts/pr-review/precheck.sh` — L1: PR head 를 `git archive` 로 데이터 추출 후 `test-plugins.py --root` 로 결정적 검증.
+- `scripts/pr-review/{lib,run-panel,synthesize}.sh` — 매트릭스 병렬 실행(모델×lens 이중 루프) + 의장 종합. 실패 셀은 graceful skip. 진단 로그는 **redact(auth/provider/프롬프트/diff 단편 제거) + 길이 제한**을 기본 동작으로 함(원시 stderr를 코멘트/로그로 노출하지 않음).
+- `scripts/test-plugins.py --root <path>` — 매니페스트 검증기를 임의 트리에 대해 실행할 수 있게 하는 옵션(L1 전용; 기본은 이 repo 자신을 검증).
 
 ## 인증
 - Kiro: `ai-panel-keys` ExternalSecret(`<secret-path>`) → 러너 env (외부 API-key)

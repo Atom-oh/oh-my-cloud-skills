@@ -71,7 +71,20 @@ assert_grep_no_match() {
   fi
 }
 
-export -f assert_eq assert_contains assert_file_exists assert_file_executable assert_json_valid assert_bash_syntax assert_grep_match assert_grep_no_match
+# tests/pr-review/*.sh 는 assert_* 대신 경량 pass/fail() 컨벤션을 쓴다(harness 감지:
+# `declare -F pass`) — 여기서 정의해 같은 PASS/FAIL/TOTAL 카운터로 롤업시킨다. 정의하지
+# 않으면 그 파일들은 자체 폴백 pass/fail 로 출력만 하고 run-all.sh 의 최종 집계에는
+# 반영되지 않아, pr-review 회귀가 있어도 "ALL TESTS PASSED" 로 통과해버린다.
+pass() {
+  TOTAL=$((TOTAL + 1))
+  echo -e "${GREEN}ok $TOTAL - $1${NC}"; PASS=$((PASS + 1))
+}
+fail() {
+  TOTAL=$((TOTAL + 1))
+  echo -e "${RED}not ok $TOTAL - $1 (${2:-})${NC}"; FAIL=$((FAIL + 1))
+}
+
+export -f assert_eq assert_contains assert_file_exists assert_file_executable assert_json_valid assert_bash_syntax assert_grep_match assert_grep_no_match pass fail
 export PASS FAIL TOTAL RED GREEN YELLOW NC
 
 echo "TAP version 14"
@@ -80,7 +93,7 @@ echo ""
 
 # Run test files
 PATTERN="${1:-tests/**/*.sh}"
-for test_file in tests/hooks/*.sh tests/structure/*.sh; do
+for test_file in tests/hooks/*.sh tests/structure/*.sh tests/pr-review/*.sh; do
   [ -f "$test_file" ] || continue
   [ "$test_file" = "tests/run-all.sh" ] && continue
   echo "# --- $test_file ---"

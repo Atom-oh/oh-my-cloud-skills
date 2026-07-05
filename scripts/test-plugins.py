@@ -526,9 +526,11 @@ def main():
     parser = argparse.ArgumentParser(description="Validate oh-my-cloud-skills plugins")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     parser.add_argument("--plugin", "-p", help="Test only this plugin")
+    parser.add_argument("--root", help="Validate a different repo root instead of this script's "
+                         "own checkout (e.g. a PR-head tree fetched as data by pr-review's L1 gate)")
     args = parser.parse_args()
 
-    project_root = Path(__file__).parent.parent
+    project_root = Path(args.root).resolve() if args.root else Path(__file__).parent.parent
     plugins_dir = project_root / 'plugins'
 
     plugins = ["aws-content-plugin", "aws-ops-plugin", "kiro-power-converter", "co-agent", "agentcore-creator", "project-init"]
@@ -541,6 +543,8 @@ def main():
 
     print("=" * 50)
     print("  oh-my-cloud-skills Plugin Validation Suite")
+    if args.root:
+        print(f"  root: {project_root}")
     print("=" * 50)
 
     total_errors = 0
