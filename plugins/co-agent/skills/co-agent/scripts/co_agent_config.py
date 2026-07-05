@@ -28,6 +28,8 @@ Usage:
   co_agent_config.py review-mode                # effective harness gate mode (hybrid default)
   co_agent_config.py set harness parallel_tasks <n>  # implement wave size (1 = sequential)
   co_agent_config.py parallel-tasks             # effective implement concurrency (int)
+  co_agent_config.py set harness max_fix_rounds <n>  # per-task peer fix-loop bound (default 2)
+  co_agent_config.py max-fix-rounds             # effective fix-loop bound (int)
   co_agent_config.py set <ai> context_limit <n> # per-AI context window (tokens)
   co_agent_config.py flags <ai>                 # CLI flag fragment for the fan-out
   co_agent_config.py panel                      # space-separated enabled AIs
@@ -321,6 +323,12 @@ def cmd_show(root, host):
     if os.path.isfile(local_path(root)):
         layers.append(f"local:{local_path(root)}")
     print(f"  source: {' + '.join(layers)}" + ("" if len(layers) > 1 else " (no user/local override)"))
+    cons = cfg.get("consensus") or {}
+    h = cfg.get("harness") or {}
+    print(f"  profile {cfg.get('profile','default')} · consensus max_calls {cons.get('max_calls', 24)} / "
+          f"max_rounds {cons.get('max_rounds', 2)} · harness review_mode {h.get('review_mode','hybrid')} / "
+          f"implementer {h.get('implementer') or '(default)'} / parallel_tasks {h.get('parallel_tasks', 3)} / "
+          f"max_fix_rounds {h.get('max_fix_rounds') or 2}")
     print(f"  {'AI':7} {'enabled':8} {'model':18} {'ctx(tok)':>11}  effort")
     for ai in panel_ais(host):
         p = cfg["panel"].get(ai, {})
@@ -558,6 +566,17 @@ def cmd_review_mode(root):
     return 0
 
 
+def cmd_max_fix_rounds(root):
+    """Print the effective harness per-task fix-loop bound (peer retry limit)."""
+    h = effective(root).get("harness") or {}
+    try:
+        n = int(h.get("max_fix_rounds") or 2)
+    except (TypeError, ValueError):
+        n = 2
+    print(max(1, n))
+    return 0
+
+
 def cmd_parallel_tasks(root):
     """Print the effective harness implement-wave concurrency (1 = sequential)."""
     h = effective(root).get("harness") or {}
@@ -680,6 +699,8 @@ def main():
         return cmd_review_mode(root)
     if cmd == "parallel-tasks":
         return cmd_parallel_tasks(root)
+    if cmd == "max-fix-rounds":
+        return cmd_max_fix_rounds(root)
     if cmd == "impl-flags":
         return cmd_impl_flags(root, rest[0], host) if rest else 2
     print(__doc__)

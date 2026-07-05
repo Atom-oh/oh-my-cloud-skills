@@ -92,8 +92,10 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
    pre-first-run snapshot would leave every fix-round re-run as an undetected escape window.
 6. **Review gate (optional).** Per-task multi-model review is **off by default** — the H4
    cumulative gate is the review of record. Enable it only when a task warrants it.
-7. **Record + commit.** Record the pre-task checkpoint SHA before H3a's red commit
-   (`CKPT=$(git rev-parse HEAD)`). `consensus_state.py stage-result write
+7. **Record + commit.** (`$CKPT` was already recorded in step 1, BEFORE the red commit —
+   do NOT re-run `git rev-parse HEAD` here: HEAD is now the transient red commit, and
+   clobbering `$CKPT` with the red SHA would make any later CKPT-based restore re-instate
+   the failing tests.) `consensus_state.py stage-result write
    …/tasks/<i>/result.json --stage task-<i> --verdict … --green true --in-scope true
    --implementer <ai>`; then the **host is the only committer** — fold the red-test commit
    and the green implementation into **one passing commit**. **First STAGE the applied
@@ -111,10 +113,14 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
    red-test commit**, so make a **fresh `git commit`** — never `--amend` (it would rewrite an
    unrelated prior commit). `worktree.py remove <wt>`.
 8. **Escalate / abort** when the fix loop is exhausted: **first discard the applied
-   implementation patch** that step 5 put in the working tree, scoped to the task's files —
-   `git restore --staged --worktree -- <task files>` (or `git checkout -- <task files>`).
-   `restore` only reverts `HEAD`-tracked files; a patch that **added new files** leaves them
-   untracked, so also `git clean -fd -- <task files>` (scoped — **never a bare `git clean`**).
+   implementation patch** that step 5 put in the working tree, scoped to the task's files.
+   ⚠️ **Partition the pathspec by tracked-now FIRST** (`git ls-files --error-unmatch <f>`):
+   `git restore` fatals ATOMICALLY (`pathspec did not match`, restoring **nothing**) if even
+   one untracked path is in its argument list — so run
+   `git restore --staged --worktree -- "${TRACKED[@]}"` on tracked files only, and remove
+   the patch-added **untracked** files with `git clean -fd -- "${UNTRACKED[@]}"` (scoped —
+   **never a bare `git clean`**). Passing the full unpartitioned task file set would leave
+   the tree dirty and make the revert below refuse.
    ⚠️ **Guard the pathspec first**: if `<task files>` is empty, `git clean -fd --` deletes
    **every** untracked file in the tree. Use a bash **array** (not a string) and a count guard,
    so a whitespace-only value can't pass and filenames with spaces don't word-split:
@@ -203,7 +209,11 @@ enforces — so two tasks that could write the same file never run in the same w
    "green"-labelled commit that is actually red; a fresh commit fatals "nothing to commit").
    Stage the surviving wave's files **scoped** with the guarded-array discipline —
    `[ ${#WAVE_FILES[@]} -gt 0 ] && git add -- "${WAVE_FILES[@]}"` (the plan's file set for the
-   applied tasks, incl. the red-test files so they fold in; never a bare `git add -A`). Then:
+   **applied-and-surviving (non-aborted)** tasks, incl. their red-test files so they fold in;
+   never a bare `git add -A`). An aborted task's files must be EXCLUDED even though its patch
+   was applied in step 5: step 7's restore already removed them from index and worktree, and
+   `git add` on a now-nonexistent path fatals ATOMICALLY (`pathspec did not match`), staging
+   nothing — which would fold a commit without the survivors' implementations. Then:
    **Only if `RED_MADE=true`** (step 1 made a red-test commit this wave), fold with
    `git commit --amend -m "harness: wave <n> green (<task ids>)"` onto it — **always an
    explicit `-m` that REPLACES the transient red subject** (never `--amend --no-edit`: that
@@ -236,9 +246,11 @@ enforces — so two tasks that could write the same file never run in the same w
    current tree, so the aborted task's tests genuinely drop out of the folded commit. Mark
    the task `needs-human` in state. If **every** task in the wave aborts, do NOT restore
    from `$CKPT` first — `git revert` refuses on a dirty tree, so mirror the sequential
-   loop's step 8 order: **discard the applied patches back to HEAD** (`git restore --staged
-   --worktree -- <wave files>` from HEAD + the guarded `git clean -fd` for untracked
-   patch-added files) so the tree is clean at the red HEAD, **then** `git revert --no-edit`
+   loop's step 8 order: **discard the applied patches back to HEAD**, partitioned by
+   tracked-now exactly as in step 8 (`git restore --staged --worktree -- "${TRACKED[@]}"`
+   from HEAD for tracked files + the guarded `git clean -fd -- "${UNTRACKED[@]}"` for
+   untracked patch-added files — an unpartitioned pathspec makes `git restore` fatal
+   atomically and restore nothing) so the tree is clean at the red HEAD, **then** `git revert --no-edit`
    the red-test commit if `RED_MADE=true` — the revert itself removes the red tests. If
    `RED_MADE=false` there is no commit to revert — just discard the tree changes and skip
    the fold entirely (no commit for this wave).

@@ -75,6 +75,7 @@ Argument: `$ARGUMENTS`
    python3 "$H" set harness implementer agy     # harness implementer (codex|agy)
    python3 "$H" set harness review_mode relay    # harness gate: hybrid (default) | relay | parallel
    python3 "$H" set harness parallel_tasks 3     # harness implement wave size (1 = sequential)
+   python3 "$H" set harness max_fix_rounds 2     # harness per-task peer fix-loop bound
    ```
    `context_limit` lets the fan-out **skip** an AI when the context is too large for its
    model window (the cause of "prompt tokens exceed model maximum"), instead of hard-failing

@@ -1,5 +1,5 @@
 ---
-description: Distill CLAUDE.md into AGENTS.md and wire Kiro steering to the same file (shared with Codex; Agy gets it folded into fan-out context)
+description: Distill CLAUDE.md into AGENTS.md and wire Kiro steering to the same file (Codex and Agy auto-load it natively; the fan-out also folds it into Agy's context as defense-in-depth)
 allowed-tools: Read, Write, Glob, Grep, Bash(python3:*)
 argument-hint: "[project-dir]  (defaults to the repo root / cwd)"
 ---

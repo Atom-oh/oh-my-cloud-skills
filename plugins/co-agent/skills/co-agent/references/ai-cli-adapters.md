@@ -40,8 +40,11 @@ CTX_FILE="$RUN/context.txt"   # the git diff / decision brief (see Security belo
 # `agy inspect` lists it, same convention as Codex), so this fold-in is defense-in-depth,
 # not a required workaround: it guarantees the FRESHLY-DISTILLED content reaches Agy even
 # if a caller invokes it from a cwd other than the repo root (native pickup is cwd-relative
-# and would otherwise silently miss it). Prepend, never replace: the diff/brief stays the
-# primary content.
+# and would otherwise silently miss it). When run FROM the repo root Agy therefore sees
+# AGENTS.md twice (native + this prepend) — accepted: it's ~8K tok of duplication against a
+# 1M window, and de-duplicating by dropping the fold-in would silently remove the ONLY
+# context path for non-root-cwd and temp-dir invocations (e.g. the PR gate's isolation).
+# Prepend, never replace: the diff/brief stays the primary content.
 # GATE — do not just check `-f`: `--verify` requires the co-agent marker + a claude-md-sha
 # that matches the CURRENT CLAUDE.md + no secret pattern. A missing file is a quiet no-op
 # (fall back to $CTX_FILE, never block the fan-out); a STALE or hand-written file is ALSO

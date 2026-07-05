@@ -573,7 +573,11 @@ def ev_pre_pr_gate(root):
         return 0
     out = {}
     # Isolated work dir = the peers' cwd (NOT the repo) so a prompt-injected reviewer's relative
-    # reads can't reach repo files; the file-channel diff lives here too.
+    # reads can't reach repo files; the file-channel diff lives here too. DELIBERATE trade-off:
+    # this also disables every cwd-based context auto-load (Codex/Agy AGENTS.md, Agy's GEMINI.md
+    # back-compat), and the gate does not fold AGENTS.md in either — PR-gate reviewers judge the
+    # diff WITHOUT project context, by design (isolation > context here; the advisory fan-out is
+    # the context-rich review path).
     with tempfile.TemporaryDirectory(prefix="coagent-prgate-") as wdir:
         fpath = os.path.join(wdir, "pr.diff")
         with open(fpath, "w", encoding="utf-8") as f:

@@ -57,7 +57,7 @@ flowchart LR
 | **Review** | "다른 AI로 리뷰", "second opinion", "멀티 AI" | 같은 리뷰 프롬프트를 패널에 병렬 팬아웃 → Claude가 합의/이견 종합 + Well-Architected → PASS/REVIEW/FAIL |
 | **Decide** | "잘 모르겠어", "의사결정 도와", "협업해서 결정" | 결정+옵션을 패널에 질의 → 비교표(옵션×AI) → Claude 단일 추천 + 결정 트레이드오프 |
 | **ADR** | "ADR 협업" | 패널에서 대안·트레이드오프·리스크 수집 → Claude가 Nygard ADR 초안 (project-init `/add-adr` 연동) |
-| **sync-context** | `/co-agent:sync-context`, "AI 컨텍스트 동기화" | `CLAUDE.md`를 증류해 `AGENTS.md` 생성 (Codex 네이티브 로드, Kiro는 steering bridge, Agy는 팬아웃 fold-in) |
+| **sync-context** | `/co-agent:sync-context`, "AI 컨텍스트 동기화" | `CLAUDE.md`를 증류해 `AGENTS.md` 생성 (Codex·Agy 네이티브 로드, Kiro는 steering bridge; 팬아웃 시 Agy에 추가 fold-in) |
 
 ## 의장 원칙 (Chair Principle)
 
@@ -80,7 +80,7 @@ flowchart LR
 
 | 설정 | kiro | codex | agy |
 |------|------|-------|--------|
-| `model` | `--model` | `-m` | `-m` |
+| `model` | `--model` | `-m` | `--model` |
 | `effort` (`minimal\|low\|medium\|high`) | — | `-c model_reasoning_effort` | — |
 | `enabled` / `timeout` | ✅ | ✅ | ✅ |
 | `autosync` (글로벌, on/off) | `CLAUDE.md` 변경 시 `/co-agent:sync-context` 자동 실행 (옵트인, 기본 off) |
