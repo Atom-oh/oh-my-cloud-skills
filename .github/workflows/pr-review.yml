@@ -72,8 +72,14 @@ jobs:
           # setup 실패를 (조용히 넘어가 혼란스러운 precheck.sh 실패로 이어지는 대신) 즉시,
           # 명확한 에러로 멈추는 것.
           set -euo pipefail
-          mkdir -p /tmp/pr-review
-          if bash scripts/pr-review/precheck.sh "$GITHUB_WORKSPACE" "$PR_NUMBER" /tmp/pr-review \
+          # 같은 self-hosted 러너에서 다른 PR 의 잡이 겹치면(러너 풀 병렬화 시) 고정된
+          # /tmp/pr-review 경로를 공유해 서로의 상태(coverage-severe.flag, slot/, lenses/)를
+          # 밟을 수 있다 — PR 번호를 경로에 포함해 잡별로 격리(8차 리뷰 MINOR-3). GITHUB_ENV
+          # 로 내보내 이후 스텝들이 같은 경로를 그대로 쓴다.
+          WORK="/tmp/pr-review-${PR_NUMBER}"
+          echo "pr_work_dir=$WORK" >> "$GITHUB_ENV"
+          mkdir -p "$WORK"
+          if bash scripts/pr-review/precheck.sh "$GITHUB_WORKSPACE" "$PR_NUMBER" "$WORK" \
               2>&1 | tee /tmp/l1-output.txt; then
             echo "result=pass" >> "$GITHUB_OUTPUT"
           else
@@ -112,7 +118,11 @@ jobs:
           set -euo pipefail
           MAX_LINES=3000
           head -"$MAX_LINES" /tmp/pr-diff.txt > /tmp/pr-diff-truncated.txt
-          mkdir -p /tmp/pr-review/lenses
+          # 재사용되는 workdir 에서 이전 lens 구성(예: 이름 변경/제거된 lens)의 *.txt 가
+          # 남아 있으면 LENS_FILES 글롭에 그대로 잡혀 유령 매트릭스 행이 생긴다 — 매 실행
+          # 시작 시 비우고 새로 만든다(coverage-severe.flag/slot 과 같은 뿌리, 8차 리뷰 MINOR-1).
+          rm -rf "$pr_work_dir/lenses"
+          mkdir -p "$pr_work_dir/lenses"
           COMMON="Review ONLY the diff under review (provided via stdin, or inline below the
           \"--- DIFF UNDER REVIEW ---\" marker) in this Claude Code plugin marketplace repo.
           Stay inside your assigned lens below — do not comment on other lenses (other
@@ -120,7 +130,7 @@ jobs:
           CRITICAL/MAJOR/MINOR. DO NOT output a VERDICT line — that is the chair's job.
           한국어+영문 기술용어 혼용 가능."
 
-          cat <<PROMPT_EOF > /tmp/pr-review/lenses/L2.txt
+          cat <<PROMPT_EOF > "$pr_work_dir/lenses/L2.txt"
           $COMMON
 
           LENS: L2 — Skill/Agent 품질
@@ -130,7 +140,7 @@ jobs:
           - skill/command 이름 충돌.
           PROMPT_EOF
 
-          cat <<PROMPT_EOF > /tmp/pr-review/lenses/L3.txt
+          cat <<PROMPT_EOF > "$pr_work_dir/lenses/L3.txt"
           $COMMON
 
           LENS: L3 — 보안
@@ -139,7 +149,7 @@ jobs:
           - 신규/변경 스크립트의 실행권한(+x) 적정성.
           PROMPT_EOF
 
-          cat <<PROMPT_EOF > /tmp/pr-review/lenses/L4.txt
+          cat <<PROMPT_EOF > "$pr_work_dir/lenses/L4.txt"
           $COMMON
 
           LENS: L4 — 코드 정확성
@@ -147,7 +157,7 @@ jobs:
           - off-by-one, null/empty 처리, 잘못된 조건문, 에러 삼킴(swallowed exception).
           PROMPT_EOF
 
-          cat <<PROMPT_EOF > /tmp/pr-review/lenses/L5.txt
+          cat <<PROMPT_EOF > "$pr_work_dir/lenses/L5.txt"
           $COMMON
 
           LENS: L5 — 문서 일관성
@@ -156,7 +166,7 @@ jobs:
           PROMPT_EOF
 
           if [ "${total_lines:-0}" -gt "$MAX_LINES" ]; then
-            for f in /tmp/pr-review/lenses/*.txt; do
+            for f in "$pr_work_dir"/lenses/*.txt; do
               echo "WARNING: diff was ${total_lines} lines; only the first ${MAX_LINES} were reviewed." >> "$f"
             done
             echo "panel_truncated=1" >> "$GITHUB_ENV"
@@ -170,10 +180,10 @@ jobs:
           PANEL_TIMEOUT: "300"
         run: |
           set -euo pipefail
-          bash scripts/pr-review/run-panel.sh /tmp/pr-diff-truncated.txt /tmp/pr-review/lenses /tmp/pr-review
-          bash scripts/pr-review/synthesize.sh /tmp/pr-diff-truncated.txt /tmp/pr-review \
+          bash scripts/pr-review/run-panel.sh /tmp/pr-diff-truncated.txt "$pr_work_dir/lenses" "$pr_work_dir"
+          bash scripts/pr-review/synthesize.sh /tmp/pr-diff-truncated.txt "$pr_work_dir" \
             "$PR_NUMBER" "$PR_TITLE" /tmp/review.md
-          echo "panel_responded=$(tr '\n' ' ' < /tmp/pr-review/responded.txt 2>/dev/null)" >> "$GITHUB_ENV"
+          echo "panel_responded=$(tr '\n' ' ' < "$pr_work_dir/responded.txt" 2>/dev/null)" >> "$GITHUB_ENV"
 
       - name: Write L1 failure as review (skip AI panel — deterministic gate already failed)
         if: steps.l1.outputs.result == 'fail'

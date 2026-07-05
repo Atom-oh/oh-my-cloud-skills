@@ -3,8 +3,13 @@
 set -uo pipefail
 
 # slot 디렉터리 보장 — 비-ephemeral 러너에서 $WORK 가 재사용될 수 있으므로, 이전 실행의
-# 셀 파일이 남아 새 실행의 체어 입력에 섞이지 않도록 매번 비우고 새로 만든다.
-ensure_slots() { rm -rf "$1/slot"; mkdir -p "$1/slot"; }
+# 셀 파일이 남아 새 실행의 체어 입력에 섞이지 않도록 매번 비우고 새로 만든다. 유일한
+# 호출자(run-panel.sh)가 이미 $WORK 빈 문자열을 가드하지만, `rm -rf "$1/slot"`처럼
+# 파괴적 경로를 만드는 함수는 precheck.sh 의 원칙대로 자기 안에서도 가드한다.
+ensure_slots() {
+  [ -n "$1" ] || { echo "ensure_slots: \$1(workdir) must not be empty" >&2; return 1; }
+  rm -rf "$1/slot"; mkdir -p "$1/slot"
+}
 
 # 한 패널 실행 결과를 평가해 responded 에 기록.
 #   $1 slot 파일 경로, $2 패널 라벨, $3 responded 파일

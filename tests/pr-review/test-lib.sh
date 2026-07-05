@@ -86,6 +86,23 @@ OUT4="$(printf '%s\n' "$RISK_TEXT" | scrub_secrets)"
 [ "$OUT4" = "$RISK_TEXT" ] && pass "scrub_secrets does not false-positive on 'risk-...' (sk- left-boundary)" \
   || fail "scrub_secrets does not false-positive on 'risk-...' (sk- left-boundary)" "got: $OUT4"
 
+# ensure_slots() 자체의 빈 인자 가드 — 유일한 호출자(run-panel.sh)가 이미 $WORK 를
+# 가드하지만, `rm -rf "$1/slot"` 처럼 파괴적 경로를 만드는 함수는 precheck.sh 의 원칙대로
+# 자기 안에서도 가드해야 한다(8차 리뷰 MINOR-2).
+if ensure_slots "" >/tmp/ensure_slots_test.$$ 2>&1; then
+  fail "ensure_slots rejects an empty workdir argument" "returned 0 despite empty \$1"
+else
+  pass "ensure_slots rejects an empty workdir argument"
+fi
+rm -f "/tmp/ensure_slots_test.$$"
+
+GOOD_DIR=$(mktemp -d)
+ensure_slots "$GOOD_DIR" \
+  && [ -d "$GOOD_DIR/slot" ] \
+  && pass "ensure_slots still creates the slot dir for a normal workdir" \
+  || fail "ensure_slots still creates the slot dir for a normal workdir" "slot dir missing after call"
+rm -rf "$GOOD_DIR"
+
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then
   [ "$_t_fail" = 0 ] && echo "PASS: test-lib" || exit 1

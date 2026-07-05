@@ -201,6 +201,29 @@ ADR-009의 멀티-AI 패널(Codex + Kiro×3)은 리뷰어를 벤더로 다양화
   검증기 오류가 한 번에 보고되는지), `test-lib.sh`(risk-... 오탐 가드) — 전체 스위트 594
   passed(+5), 기존 무관 17건 실패는 그대로.
 
+- **9차 리뷰 수정(커밋 f4a0f57 이후, PASSED — CRITICAL/MAJOR 0건, MINOR 4건)**: 이번
+  라운드는 검토한 위험 후보 대부분이 이미 방어돼 있음을 diff로 재확인했다고 명시(`if`-감싼
+  L1 fail-closed 라우팅, `synthesize.sh`의 비최종 `&&` 리스트, `kiro_env` 서브셸 상속,
+  `realpath` fail-fast, severe flag/slot 리셋, `while … done < <(sort)` 서브셸 아님). 남은
+  MINOR 4건 중 3건을 반영: (1) `.github/workflows/pr-review.yml`의 "Build lens prompts"
+  스텝이 `/tmp/pr-review/lenses`를 `mkdir -p`만 하고 절대 비우지 않던 것 — 7차/8차에서 잡은
+  `coverage-severe.flag`/slot과 같은 뿌리(비-ephemeral 러너에서 lens 구성이 바뀌면 구버전
+  `*.txt`가 `LENS_FILES` 글롭에 잡혀 유령 매트릭스 행이 생김) — 실행 시작 시 `rm -rf` 후
+  재생성하도록 수정. (2) `ensure_slots()` 자체가 `$1` 빈 문자열을 안 가드해, 유일한
+  호출자(`run-panel.sh`)의 가드에만 의존하던 것 — `precheck.sh`의 "파괴적 경로를 만드는
+  함수는 자기 안에서도 가드" 원칙에 맞춰 함수 내부에 직접 가드 추가. (3) 같은 self-hosted
+  러너에서 다른 PR의 잡이 겹치면(러너 풀 병렬화 시) 고정된 `/tmp/pr-review` 경로를 공유해
+  서로의 상태를 밟을 수 있다는 지적 — 리뷰가 제시한 두 대안(`$RUNNER_TEMP` 전환 / PR 번호
+  포함 경로) 중 후자를 선택: L1 스텝에서 `WORK="/tmp/pr-review-${PR_NUMBER}"`를 계산해
+  `GITHUB_ENV`로 내보내고, 이후 모든 스텝이 `$pr_work_dir`을 그대로 재사용하도록 워크플로
+  전체를 정렬(단일 PR 재실행 시나리오는 여전히 script-level 리셋(coverage-severe.flag/slot/
+  lenses)이 방어, 이 변경은 서로 다른 PR 간 경로 격리를 추가). `$RUNNER_TEMP` 전면 전환은
+  `/tmp/pr-diff*.txt`/`review.md` 등 다른 파일까지 건드리는 더 큰 blast radius라 이번엔
+  보류(현재 리뷰가 지목한 것은 `/tmp/pr-review`뿐). **채택 안 함**: 테스트 PATH 누적/YAML
+  heredoc 들여쓰기는 이미 6차/8차에서 "의식적 보류"로 기록된 항목이라 재차 판단하지 않음.
+  신규 테스트: `test-lib.sh`(`ensure_slots("")` 가 실패하는지, 정상 workdir 에는 그대로
+  slot 을 만드는지) — 전체 스위트 596 passed(+2), 기존 무관 17건 실패는 그대로.
+
 ## Consequences
 
 - 커버리지가 "리뷰어 다양화"에서 "리뷰어×관점 매트릭스"로 체계화 — 사각지대 감소.
