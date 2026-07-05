@@ -30,8 +30,8 @@ claude --plugin-dir ./plugins/co-agent
 | Gemini | `command -v gemini` | Agy 미설치 시에만 쓰는 legacy fallback |
 
 ```bash
-# 패널 감지
-command -v kiro-cli codex agy 2>/dev/null
+# 패널 감지 (agy 미설치 시 gemini fallback까지 확인)
+command -v kiro-cli codex agy gemini 2>/dev/null
 ```
 
 설치 후 실제 사용 가능 여부(인증/헤드리스 usability)까지 확인하려면:

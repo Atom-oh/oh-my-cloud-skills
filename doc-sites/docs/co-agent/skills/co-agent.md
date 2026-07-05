@@ -66,7 +66,7 @@ echo "Panel: ${PANEL:-none (Claude solo)}"
 
 `/co-agent:sync-context` 명령으로도 실행. 외부 AI가 프로젝트 컨벤션으로 리뷰하도록 `CLAUDE.md`를 **한 번만 증류**해 Kiro·Codex·Agy가 공통 참조하는 `AGENTS.md`를 생성:
 
-1. `CLAUDE.md` 읽기 → 리뷰에 필요한 핵심만(스택·빌드/테스트 명령·금지 패턴·아키텍처 경계·리뷰 체크리스트) **증류** (그대로 복사 ❌, 시크릿 ❌).
+1. `CLAUDE.md` 읽기 → 리뷰에 필요한 핵심만(스택·빌드/테스트 명령·금지 패턴·아키텍처 경계·리뷰 체크리스트) **증류** (그대로 복사 안 함, 시크릿 제외).
 2. 생성 마커(`check_ai_context.py --emit-marker`)를 붙여 `AGENTS.md`에 기록. Kiro는 `.kiro/steering/project-context.md` → `#[[file:AGENTS.md]]` 브릿지로 같은 파일 참조.
 3. Agy는 자동로드가 없어 fan-out 시점에 `AGENTS.md`를 컨텍스트로 fold-in — `check_ai_context.py --verify`로 marker/freshness/secret을 통과해야만 전송(실패 시 diff-only로 조용히 fallback).
 4. 마커 없는 수기 파일/`AGENTS.override.md`는 건드리지 않음. `GEMINI.md`는 더 이상 생성하지 않음.

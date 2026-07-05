@@ -72,7 +72,7 @@ co-agent로 다른 AI(Kiro CLI · Codex · Agy)와 협업해 리뷰·의사결�
 | AI | 참조 방식 | 생성 |
 |----|-----------|------|
 | Kiro | `.kiro/steering/project-context.md` → `#[[file:AGENTS.md]]` | steering bridge |
-| Codex | `AGENTS.md` (~32 KiB 캡) 네이티브 로드 | ✅ 증류 생성 |
+| Codex | `AGENTS.md` (~32 KiB 캡) 네이티브 로드 | 증류 생성 |
 | Agy | fan-out 시점에 컨텍스트로 fold-in (검증 통과 시만) | — |
 
 - `CLAUDE.md`를 **그대로 복사하지 않고 증류** — 리뷰에 필요한 핵심만(스택·빌드/테스트 명령·금지 패턴·아키텍처 경계·체크리스트). 시크릿은 포함하지 않음
@@ -159,4 +159,4 @@ CLI가 헤드리스로 실제 받는 설정만 노출합니다.
 
 - [co-agent 개요](/docs/co-agent/overview) — 모드·판정 기준·설정 표
 - [co-agent 스킬](/docs/co-agent/skills/co-agent) — 모드별 상세 동작
-- [명령 목록](/docs/co-agent/commands) — 5개 슬래시 명령 상세
+- [명령 목록](/docs/co-agent/commands/) — 5개 슬래시 명령 상세

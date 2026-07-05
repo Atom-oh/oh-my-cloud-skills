@@ -91,7 +91,7 @@ flowchart LR
 |------|------|-------|-----|--------|
 | `model` | `--model` | `-m` | `--model` | `-m` |
 | `effort` (`minimal\|low\|medium\|high`) | — | `-c model_reasoning_effort` | — | — |
-| `enabled` / `timeout` | ✅ | ✅ | ✅ | ✅ |
+| `enabled` / `timeout` | 지원 | 지원 | 지원 | 지원 |
 | `context_limit` (토큰) | 1,000,000 | 272,000 | 1,000,000 | 1,000,000 |
 | `autosync` (글로벌, on/off) | `CLAUDE.md` 변경 시 `/co-agent:sync-context` 자동 실행 (옵트인, 기본 off) |
 
@@ -99,12 +99,12 @@ flowchart LR
 
 ## AI 컨텍스트 동기화 (`/co-agent:sync-context`)
 
-외부 AI가 프로젝트 컨벤션으로 리뷰하도록, `CLAUDE.md`를 **한 번만 증류**해 `AGENTS.md`를 생성하고 **Kiro·Codex·Agy가 이 하나의 파일을 공통 참조**합니다(각 AI별 별도 카피 ❌, `GEMINI.md`는 더 이상 생성 안 함).
+외부 AI가 프로젝트 컨벤션으로 리뷰하도록, `CLAUDE.md`를 **한 번만 증류**해 `AGENTS.md`를 생성하고 **Kiro·Codex·Agy가 이 하나의 파일을 공통 참조**합니다(각 AI별 별도 카피 없음, `GEMINI.md`는 더 이상 생성 안 함).
 
 | AI | 참조 방식 | 생성 |
 |----|-----------|------|
 | Kiro | `.kiro/steering/project-context.md` → `#[[file:AGENTS.md]]` | steering bridge 생성 |
-| Codex | `AGENTS.md` (~32 KiB 캡) 네이티브 자동로드 | ✅ 증류 생성 |
+| Codex | `AGENTS.md` (~32 KiB 캡) 네이티브 자동로드 | 증류 생성 |
 | Agy | 자동로드 없음(stateless print 모드) | fan-out 시점에 `AGENTS.md`를 컨텍스트에 fold-in (marker+freshness+secret 검증 통과해야 전송) |
 
 생성 마커(`claude-md-sha`)로 staleness를 추적하고, 마커 없는 수기 파일은 보호합니다. `CLAUDE.md` 편집 시 PostToolUse 훅이 drift를 알리며, `autosync on`이면 재동기화를 지시합니다.
