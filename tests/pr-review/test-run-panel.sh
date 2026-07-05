@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # run-panel.sh 단위 테스트 (lens×모델 매트릭스). harness(run-all.sh 가 source) + standalone
 # 모두 지원. 실제 CLI 대신 PATH 모킹으로 (a)전원응답 (b)일부skip (c)전원실패 (d)lens 없음
-# (e)Kiro env/cwd 격리 검증.
+# (e)Kiro env/cwd/HOME 격리 (f)모델 전체 skip 시 커버리지 floor 경고 검증.
 # 주의: harness 가 이 파일을 set -euo pipefail 로 source 하므로, 스크립트가 비-zero로
 # 끝나는 경로는 전부 if 로 감싼다 — bare 호출은 스위트 전체를 조기 중단시킨다.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -82,7 +82,10 @@ setup; mkfake codex 0 "codex-finding"; mkfake kiro-cli 1 ""
 if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/dev/null 2>&1; then
   fail "run-panel (b) script exits 0 even when a model fails" "exited non-zero"
 fi
-[ "$(grep -c '^codex/' "$WORK/responded.txt" 2>/dev/null || echo 0)" = 2 ] \
+# (grep -c 는 0매치여도 "0"을 찍고 exit 1 — `|| echo 0` 을 붙이면 "0\n0" 이 되는 회귀가
+# 있다(run-panel.sh 의 커버리지 floor 코드에서 실제로 잡힘). 여기 codex 는 응답하므로
+# 지금은 안 걸리지만 같은 함정을 반복하지 않도록 폴백 없이 grep 의 stdout 만 쓴다.)
+[ "$(grep -c '^codex/' "$WORK/responded.txt" 2>/dev/null)" = 2 ] \
   && pass "run-panel (b) codex responded for both lenses" || fail "run-panel (b) codex responded for both lenses" "codex cell(s) missing"
 grep -q kiro "$WORK/responded.txt" 2>/dev/null \
   && fail "run-panel (b) kiro skipped" "kiro should be absent" || pass "run-panel (b) kiro skipped"
@@ -127,6 +130,28 @@ grep -q "keep-this-kiro-key" "$DUMP" 2>/dev/null \
 grep -q "^CWD=$WORK/kiro-cwd$" "$DUMP" 2>/dev/null \
   && pass "run-panel (e) kiro runs in an isolated cwd (not \$WORK, not the repo)" \
   || fail "run-panel (e) kiro runs in an isolated cwd (not \$WORK, not the repo)" "cwd was not isolated"
+grep -q "^HOME=$WORK/kiro-cwd$" "$DUMP" 2>/dev/null \
+  && pass "run-panel (e) kiro HOME is scratched to the isolated cwd (not the real \$HOME)" \
+  || fail "run-panel (e) kiro HOME is scratched to the isolated cwd (not the real \$HOME)" "HOME was not scratched"
+
+# (f) 커버리지 floor — kiro 가 전체 lens 에서 응답 없으면(예: 무효 플래그로 조용히 붕괴)
+# degraded-models.txt 에 kiro 태그 3개가 전부 기록되고 경고가 찍혀야 한다(ADR-011 M2).
+setup; mkfake codex 0 "codex-finding"; mkfake kiro-cli 1 ""
+if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/tmp/run-panel-f.log 2>&1; then
+  fail "run-panel (f) script exits 0 even when a whole model row is empty" "exited non-zero"
+fi
+DEGRADED_SORTED="$(sort "$WORK/degraded-models.txt" 2>/dev/null | tr '\n' ',' )"
+[ "$DEGRADED_SORTED" = "kiro-glm,kiro-kimi,kiro-opus," ] \
+  && pass "run-panel (f) degraded-models.txt lists all 3 kiro tags when kiro fully fails" \
+  || fail "run-panel (f) degraded-models.txt lists all 3 kiro tags when kiro fully fails" "got: $DEGRADED_SORTED"
+grep -q "::warning::model 'kiro-opus' produced zero responses" /tmp/run-panel-f.log \
+  && pass "run-panel (f) emits a ::warning:: for the degraded model" \
+  || fail "run-panel (f) emits a ::warning:: for the degraded model" "warning line missing from stderr"
+[ -s "$WORK/degraded-models.txt" ] || true  # keep for inspection if this test is re-run manually
+grep -q "^codex$" "$WORK/degraded-models.txt" 2>/dev/null \
+  && fail "run-panel (f) codex is not falsely marked degraded" "codex responded but was listed as degraded" \
+  || pass "run-panel (f) codex is not falsely marked degraded"
+rm -f /tmp/run-panel-f.log
 
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then

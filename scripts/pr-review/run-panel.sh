@@ -50,8 +50,11 @@ try_panel() {
 # Bedrock Pod Identity 크리덴셜) 등은 전달하지 않는다. (절대경로 read 자체는 fs_read 가
 # read-capable 인 한 남는 잔여 위험 — co-agent 문서에도 동일하게 명시된 한계.)
 KIRO_CWD="$WORK/kiro-cwd"; mkdir -p "$KIRO_CWD"
+# HOME 도 격리(실제 러너 $HOME 이 아니라 $KIRO_CWD) — fs_read 의 절대경로 read 자체는 여전히
+# 잔여 위험(막을 방법 없음)이지만, "~/.aws/credentials"·"~/.codex/config.toml" 처럼 상대적
+# ~ 표기로 유도되는 케이스의 실효 표면을 줄인다(실제 크리덴셜은 이 가짜 HOME 아래 없음).
 kiro_env() {
-  env -i PATH="$PATH" HOME="$HOME" LANG="${LANG:-}" LC_ALL="${LC_ALL:-}" TMPDIR="${TMPDIR:-/tmp}" \
+  env -i PATH="$PATH" HOME="$KIRO_CWD" LANG="${LANG:-}" LC_ALL="${LC_ALL:-}" TMPDIR="${TMPDIR:-/tmp}" \
     ${KIRO_API_KEY:+KIRO_API_KEY="$KIRO_API_KEY"} "$@"
 }
 
@@ -99,6 +102,24 @@ for lens_file in "${LENS_FILES[@]}"; do
   done
 done
 echo "Panel responded ($(wc -l < "$RESP") / $(( (${#KIRO_MODELS[@]} + 1) * ${#LENS_FILES[@]} )) cells): $(tr '\n' ' ' < "$RESP")"
+
+# 커버리지 floor — 모델 하나(플래그 무효화/바이너리 부재/전면 인증 실패 등)가 lens 전부에서
+# 응답 없으면, 매트릭스가 조용히 그 모델 없이 축소된 채 VERDICT: PASS 로 이어질 수 있다
+# (예: kiro-cli 신규 플래그(`--v3 --mode default --trust-tools=fs_read`)가 이 러너에서
+# 무효면 Kiro 12셀 전부 graceful skip → 실질 4셀짜리 리뷰인데 코멘트만 봐선 눈에 안 띌 수
+# 있음). 모델별 row 가 완전히 비면 경고 + synthesize.sh 가 리뷰 본문에 명시하도록 파일로 전달.
+: > "$WORK/degraded-models.txt"
+for model_tag in codex "${KIRO_MODELS[@]##*:}"; do
+  # grep -c 는 매치가 0건이어도 "0"을 찍고 exit 1 한다(매치 없음 = grep 관점의 "실패") —
+  # `|| echo 0` 폴백을 붙이면 그 "0" 뒤에 폴백의 "0"이 또 붙어 "0\n0"이 되는 회귀가
+  # 실제로 있었다(test (f)에서 잡힘). $RESP 는 run-panel.sh 시작부에 항상 만들어지므로
+  # "파일 없음" 폴백 자체가 불필요 — 그냥 grep 의 stdout 을 그대로 쓴다.
+  row_count=$(grep -c "^${model_tag}/" "$RESP" 2>/dev/null)
+  if [ "$row_count" -eq 0 ]; then
+    echo "::warning::model '$model_tag' produced zero responses across all ${#LENS_FILES[@]} lenses — coverage degraded" >&2
+    echo "$model_tag" >> "$WORK/degraded-models.txt"
+  fi
+done
 
 # skip 원인 노출: 빈 슬롯인데 stderr 가 있으면 stderr 의 끝(실제 에러)을 로그에 찍는다.
 for e in "$SLOT"/*.err; do

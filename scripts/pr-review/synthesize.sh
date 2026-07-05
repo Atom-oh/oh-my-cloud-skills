@@ -14,10 +14,15 @@ PANEL_CELL_CAP="${PANEL_CELL_CAP:-20000}"
 PANEL=""
 for f in "$SLOT"/*.md; do
   [ -s "$f" ] || continue
+  CELL="$(head -c "$PANEL_CELL_CAP" "$f")"
+  # 실제로 잘렸으면(원본이 캡보다 크면) 체어가 절단 사실을 알도록 마커를 남긴다 — 안 그러면
+  # 잘린 CRITICAL 근거를 "이게 전부"로 오해할 수 있다. head -c 는 UTF-8 문자 경계 무관하게
+  # 바이트로 자르므로 마커 자체는 항상 ASCII로 붙여 표시가 깨지지 않게 한다.
+  [ "$(wc -c < "$f")" -gt "$PANEL_CELL_CAP" ] && CELL+=$'\n[...TRUNCATED at '"$PANEL_CELL_CAP"'B — see full output in CI logs...]'
   PANEL+="
 
 === 패널: $(basename "$f" .md) ===
-$(head -c "$PANEL_CELL_CAP" "$f")"
+$CELL"
 done
 
 # 지시문(고정, argv 로 전달 — 아래 run_chair 참조)은 diff/패널 내용을 절대 포함하지 않는다.
@@ -33,7 +38,9 @@ The diff and independent panel reviews are provided via stdin, under the
 "=== DIFF UNDER REVIEW ===" and "=== PANEL REVIEWS ===" markers respectively.
 One review per (model, lens) cell — filename = <model>-<lens>.md. Lenses:
 L2=Skill/Agent 품질, L3=보안, L4=코드 정확성, L5=문서 일관성 (L1=매니페스트/버전
-정합은 이미 결정적 스크립트로 통과했으므로 재검토 불필요 — 다시 flag 하지 말 것).
+정합 — test-plugins.py + test-codex-plugins.py 로 .claude-plugin 과 .codex-plugin/
+.agents 매니페스트 양쪽 다 이미 결정적 스크립트로 통과했으므로 재검토 불필요 —
+다시 flag 하지 말 것).
 패널: ${RESP}
 
 Synthesize ONE final review, grouped by lens (L2/L3/L4/L5):
@@ -117,6 +124,19 @@ fi
 if [ ! -s "$OUT" ]; then
   echo "리뷰 생성 실패 — $(chair_label "$PRIMARY_MODEL")·$(chair_label "$FALLBACK_MODEL") 모두 빈 응답." > "$OUT"
   echo "VERDICT: FAIL" >> "$OUT"
+fi
+
+# 커버리지 저하 가시화 — 모델 하나가 전체 lens 에서 응답 없이 조용히 빠졌으면(run-panel.sh
+# 의 degraded-models.txt), VERDICT 자체를 강제 FAIL 하진 않되(간헐적 rate-limit/일시
+# 장애로 흔하고, lens×model 매트릭스 자체가 이미 lens당 교차확인이라 완전한 맹점은 아님)
+# 리뷰 상단에 명시 배너를 남겨 "패널이 조용히 줄었는데 VERDICT: PASS만 보고 넘어가는" 것을
+# 막는다. VERDICT 는 항상 파일의 마지막 줄이어야 하므로 배너는 앞에 prepend.
+if [ -s "$WORK/degraded-models.txt" ]; then
+  DEGRADED="$(tr '\n' ',' < "$WORK/degraded-models.txt" | sed 's/,$//; s/,/, /g')"
+  { echo "⚠️ **커버리지 저하**: [$DEGRADED] 모델이 전체 lens 에서 응답 없음(플래그 무효·바이너리 부재·인증 실패 등) — 아래 리뷰는 그 모델 없이 종합됨."
+    echo ""
+    cat "$OUT"
+  } > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
 fi
 
 # 실제 사용한 의장 모델을 후속 스텝(코멘트 헤더)로 전달 — panel_responded 와 동일 패턴.

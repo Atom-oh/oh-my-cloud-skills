@@ -39,3 +39,7 @@ self-hosted 러너가 **EKS Pod Identity(SigV4)** 로 Amazon Bedrock을 호출�
 - `.github/workflows/pr-review.yml`, `scripts/pr-review/{run-panel,synthesize,lib}.sh`
 - `docs/ci-pr-review.md`, `tests/pr-review/test-run-panel.sh`
 - PR #72 (도입), #87 (Kiro diff 전달), #88 (us-east-1 통일 — 리전 페일오버 폐기)
+- **Amended by ADR-011** — L1 결정적 pre-check 추가 + lens×model 매트릭스로 패널 구조
+  재편, Kiro diff 전달을 위 "prompt 인자로 embed"에서 `fs_read` 파일 참조로 전환(+env/cwd
+  격리). ADR-009 본문의 원 결정(멀티-AI 패널 + Claude 의장 종합)은 반전되지 않아 Status는
+  유지 — 확장·정제 내역은 ADR-011 참조.
