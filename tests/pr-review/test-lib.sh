@@ -78,6 +78,14 @@ OUT3="$(printf '%s\n' "$SHORT_TOKEN" | scrub_secrets)"
 [ "$OUT3" = "$SHORT_TOKEN" ] && pass "scrub_secrets does not false-positive on a short quoted value" \
   || fail "scrub_secrets does not false-positive on a short quoted value" "got: $OUT3"
 
+# `sk-` API-key 패턴에 좌측 경계가 없으면 "risk-assessment-management-..." 같은 일반
+# 단어의 부분 문자열(risk 의 "sk-")도 20자 이상 이어지면 통째로 치환해버린다 — fail-safe
+# 방향(유출 아님)이라도 리뷰 가독성을 훼손한다(7차 리뷰 MINOR-3).
+RISK_TEXT="this is a risk-assessment-management-system review"
+OUT4="$(printf '%s\n' "$RISK_TEXT" | scrub_secrets)"
+[ "$OUT4" = "$RISK_TEXT" ] && pass "scrub_secrets does not false-positive on 'risk-...' (sk- left-boundary)" \
+  || fail "scrub_secrets does not false-positive on 'risk-...' (sk- left-boundary)" "got: $OUT4"
+
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then
   [ "$_t_fail" = 0 ] && echo "PASS: test-lib" || exit 1

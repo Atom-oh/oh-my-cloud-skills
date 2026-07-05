@@ -37,5 +37,10 @@ git -C "$BASE_DIR" archive FETCH_HEAD | tar -x -C "$TREE"
 # defense-in-depth). 검증 전에 전부 제거.
 find "$TREE" -type l -delete
 
-python3 "$BASE_DIR/scripts/test-plugins.py" --root "$TREE"
-python3 "$BASE_DIR/scripts/test-codex-plugins.py" --root "$TREE"
+# set -e 아래 첫 검증기가 실패하면 두 번째는 안 돌아 그 오류를 못 본다 — PR 작성자가
+# 첫 번째 부류를 고치고 다시 push 해야 두 번째 부류를 발견하는 왕복이 생긴다(fail-closed
+# 계약 자체는 유지됨, UX 문제). rc 로 모아서 양쪽 다 실행한 뒤 합산 종료.
+rc=0
+python3 "$BASE_DIR/scripts/test-plugins.py" --root "$TREE" || rc=1
+python3 "$BASE_DIR/scripts/test-codex-plugins.py" --root "$TREE" || rc=1
+exit "$rc"

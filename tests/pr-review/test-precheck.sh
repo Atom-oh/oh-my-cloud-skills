@@ -14,7 +14,8 @@
 # (workdir/base_repo_dir/pr_number) 가드. (실제 `git fetch origin pull/N/head` 라인 자체는
 # GitHub 원격이 필요해 오프라인 유닛테스트로 exercise 하지 않음 — 이 부분은 실제 CI
 # 실행으로만 검증됨, 알려진 커버리지 한계.) (k) 는 PR 트리의 symlink 가 검증 전에
-# 제거되는지(defense-in-depth) 확인.
+# 제거되는지(defense-in-depth), (l) 은 두 검증기가 각각 다른 오류를 낼 때 둘 다 한 번에
+# 보고되는지(순차 실행 early-exit 회귀 가드) 확인.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PR_REVIEW_DIR="$(cd "$HERE/../../scripts/pr-review" && pwd)"
 REPO_ROOT="$(cd "$HERE/../.." && pwd)"
@@ -173,6 +174,45 @@ if [ -L "$WORK/pr-tree/evil-symlink" ]; then
 else
   pass "precheck (k) symlink is removed from the extracted tree before validation"
 fi
+rm -rf "$ORIGIN" "$BASE" "$WORK" "$LOG"
+
+# (l) 두 검증기가 각각 다른 종류의 오류를 낼 때 둘 다 한 번의 L1 출력에 실려야 한다 —
+# 이전엔 `set -e` 아래 순차 실행이라 첫 검증기(test-plugins.py)가 실패하면 두 번째
+# (test-codex-plugins.py)는 안 돌아, PR 작성자가 첫 부류를 고치고 다시 push 해야 두 번째
+# 부류를 발견하는 왕복이 생겼다(7차 리뷰 MINOR-2, fail-closed 계약 자체는 유지됨).
+ORIGIN=$(mktemp -d); BASE=$(mktemp -d); WORK=$(mktemp -d); LOG=$(mktemp)
+git init -q --bare "$ORIGIN"
+git -C "$REPO_ROOT" archive HEAD | tar -x -C "$BASE"
+python3 - "$BASE/plugins/aws-ops-plugin/.claude-plugin/plugin.json" <<'PY'
+import json, sys
+p = sys.argv[1]
+d = json.load(open(p))
+d["agents"].append("./agents/does-not-exist.md")
+json.dump(d, open(p, "w"))
+PY
+python3 - "$BASE/plugins/aws-ops-plugin/.codex-plugin/plugin.json" <<'PY'
+import json, sys
+p = sys.argv[1]
+d = json.load(open(p))
+d["version"] = "not-a-semver"
+json.dump(d, open(p, "w"))
+PY
+git init -q "$BASE"
+git -C "$BASE" remote add origin "$ORIGIN"
+git -C "$BASE" add -A
+git -C "$BASE" -c user.email=t@t -c user.name=t commit -q -m pr
+git -C "$BASE" push -q origin HEAD:refs/pull/777/head
+if bash "$SCRIPT" "$BASE" 777 "$WORK" >"$LOG" 2>&1; then
+  fail "precheck (l) script exits non-zero when both validators fail" "exited 0 despite dangling ref + bad semver"
+else
+  pass "precheck (l) script exits non-zero when both validators fail"
+fi
+BOTH_OK=1
+grep -q "does-not-exist.md" "$LOG" || BOTH_OK=0
+grep -q "strict semver" "$LOG" || BOTH_OK=0
+[ "$BOTH_OK" = 1 ] \
+  && pass "precheck (l) both validators' errors appear in the same run's output (no early-exit)" \
+  || fail "precheck (l) both validators' errors appear in the same run's output (no early-exit)" "$(cat "$LOG")"
 rm -rf "$ORIGIN" "$BASE" "$WORK" "$LOG"
 
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)

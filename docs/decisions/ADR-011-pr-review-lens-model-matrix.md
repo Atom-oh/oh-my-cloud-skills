@@ -179,6 +179,28 @@ ADR-009의 멀티-AI 패널(Codex + Kiro×3)은 리뷰어를 벤더로 다양화
   `test-lib.sh`(unterminated PEM 이 경고 마커를 남기는지) — 전체 스위트 589 passed(+3),
   기존 무관 17건 실패는 그대로.
 
+- **8차 리뷰 수정(커밋 15ab50d 이후, PASSED — CRITICAL/MAJOR 0건, MINOR 5건)**: 비차단
+  하드닝/UX 지적 중 비용이 낮고 실질 이득이 있는 3건을 반영했다. (1) `ensure_slots`를
+  `rm -rf "$1/slot"`로 바꾼 직전 라운드 수정이 `precheck.sh`가 이미 지키는 "파괴적 경로가
+  생길 수 있는 인자는 가드" 원칙을 `run-panel.sh`엔 적용하지 않은 비일관 — `$WORK`가 비면
+  `rm -rf /slot`(파일시스템 루트 하위)이 되는 latent 파괴적 경로였다. `LENSES_DIR`/`WORK`
+  빈 문자열 가드를 추가(`DIFF`는 `realpath`가 빈 문자열에 이미 실패해 fail-fast 되어 있음을
+  직접 확인, 별도 가드 불필요). (2) `precheck.sh`가 `set -e` 아래 `test-plugins.py` →
+  `test-codex-plugins.py`를 순차 실행해, 첫 검증기가 실패하면 두 번째는 안 돌아 PR 작성자가
+  한 부류를 고치고 다시 push 해야 다른 부류를 발견하는 왕복이 생겼다(fail-closed 계약 자체는
+  유지 — UX 문제) — `rc=0; ... || rc=1` 로 모아 양쪽 다 실행 후 합산 종료하도록 수정.
+  (3) `scrub_secrets`의 `sk-(proj-|ant-)?...` 패턴에 좌측 단어 경계가 없어 "risk-assessment-
+  management-system" 같은 일반 문구의 부분 문자열(`risk`의 "sk-")도 20자 이상 이어지면
+  통째로 치환되던 것을 직접 재현 확인 — fail-safe 방향(유출 아님)이라도 리뷰 가독성을
+  훼손해 `(^|[^A-Za-z0-9_])` 좌측 경계를 추가, 실제 키(`sk-ant-...`/`sk-proj-...`) 탐지는
+  그대로 유지됨을 재확인. **채택 안 함**: 테스트 `setup()`이 매번 새 `$BIN`을 prepend만
+  하고 걷어내지 않는 PATH 누적 패턴 — 각 케이스가 필요한 mock을 항상 새로 만들어 최신
+  mock이 이기므로 현재 실해 없음(구 테스트 파일들도 이미 이 패턴), 불필요한 리팩터 보류.
+  워크플로 YAML heredoc 들여쓰기 잔존은 모델 동작에 무해한 cosmetic이라 보류. 신규 테스트:
+  `test-run-panel.sh` (k)(lenses_dir/workdir 빈 인자 가드), `test-precheck.sh` (l)(두
+  검증기 오류가 한 번에 보고되는지), `test-lib.sh`(risk-... 오탐 가드) — 전체 스위트 594
+  passed(+5), 기존 무관 17건 실패는 그대로.
+
 ## Consequences
 
 - 커버리지가 "리뷰어 다양화"에서 "리뷰어×관점 매트릭스"로 체계화 — 사각지대 감소.

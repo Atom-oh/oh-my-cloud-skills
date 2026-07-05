@@ -13,6 +13,12 @@ set -uo pipefail
 DIFF="$(realpath "$1" 2>/dev/null)" \
   || { echo "run-panel.sh: realpath failed to resolve diff path: $1" >&2; exit 1; }
 LENSES_DIR="$2"; WORK="$3"
+# precheck.sh 와 같은 원칙 — $WORK 가 비면 ensure_slots 의 `rm -rf "$1/slot"` 가
+# `rm -rf /slot`(파일시스템 루트 하위) 이 되는 파괴적 경로가 생긴다. $LENSES_DIR 빈 값은
+# 파괴적이진 않지만(글롭이 매치 없이 조용히 0셀로 끝남) 인자 오설정을 조용히 넘기지 않고
+# 바로 잡아내는 게 디버깅에 낫다.
+[ -n "$LENSES_DIR" ] || { echo "run-panel.sh: lenses_dir (\$2) must not be empty" >&2; exit 1; }
+[ -n "$WORK" ] || { echo "run-panel.sh: workdir (\$3) must not be empty" >&2; exit 1; }
 DIR="$(cd "$(dirname "$0")" && pwd)"; . "$DIR/lib.sh"
 ensure_slots "$WORK"
 SLOT="$WORK/slot"; RESP="$WORK/responded.txt"; : > "$RESP"
