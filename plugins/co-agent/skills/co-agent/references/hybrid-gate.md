@@ -115,7 +115,10 @@ configured profile (`deep` by default — every model in an AI's `models` list i
 finder voice; headless flags: kiro/claude/agy `--model`, codex `-m`), verify runs
 `--profile default` (one strongest model per AI). H0's `matrix --phases 2` displays the
 configured-profile cost, which is therefore an **upper bound**: the actual verify phase
-runs the same-or-fewer `default`-profile pairs. Cheap breadth where diversity pays
+runs the same-or-fewer `default`-profile pairs. (Per the Phase V note, that consent
+display is a count/cost bound, not the literal verify pair list — an AI whose single
+`model` is absent from its `models` list verifies on a pair H0 didn't itemize, same
+providers, within the displayed budget.) Cheap breadth where diversity pays
 (find), strong judgment where correctness pays (verify) — the same placement logic as
 `harness.implementer_model`/`implementer_effort` on the write path
 (`delegated-implement.md`) and the chair staying on the host's strongest tier.

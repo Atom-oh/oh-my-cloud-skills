@@ -97,7 +97,7 @@ agy, host 제외) 중 enabled·설치된 것에 **병렬 팬아웃** → 각 pee
 
 > effort는 Claude/Codex처럼 헤드리스 effort 플래그가 있는 CLI에만 노출(dead 설정 미노출). 팬아웃이 `co_agent_config.py`의 `panel`/`flags`/`timeout`/`fits`을 호출해 설정이 **실시간 반영**됨. `context_limit` 초과 AI는 하드 실패 대신 **스킵**(예: 거대 diff에서 Codex 272K 초과 → Kiro/Agy만). model 값은 charset 검증으로 팬아웃 주입 차단.
 
-**모델 티어링(역할별 배치)**: chair = 호스트 모델(`/model opusplan` 또는 chair 서브에이전트 `model: opus`) · find 패널 = `profile deep` 저비용 breadth · verify 패널 = `--profile default` 단일 최강 모델(하이브리드 게이트가 자동 적용; 패널 `effort`는 phase-split 안 되므로 verify 기준으로 유지) · implementer = `set harness implementer_model <m>` / `implementer_effort <e>`(codex 전용; **명시 설정된 `harness.implementer`에 바인딩** — 미바인딩이면 미적용, **impl-flags 쓰기 경로에만** 적용 + emit 시점 재검증). 상세: `commands/configure.md` "모델 티어링", `references/hybrid-gate.md` "Role tiering".
+**모델 티어링(역할별 배치)**: chair = 호스트 모델(`/model opusplan` 또는 chair 서브에이전트 `model: opus`) · find 패널 = `profile deep` 저비용 breadth · verify 패널 = `--profile default` 단일 최강 모델(하이브리드 게이트가 자동 적용; 패널 `effort`는 phase-split 안 되므로 verify 기준으로 유지) · implementer = `set harness implementer_model <m>` / `implementer_effort <e>`(effort는 codex implementer 전용; **implementer별 저장**(`implementer_models.<ai>`) — implementer 미설정 시 저장 거부, 전환 시 이전 엔트리는 dormant(타 CLI로 누수 불가), **impl-flags 쓰기 경로에만** 적용 + emit 시점 재검증). 상세: `commands/configure.md` "모델 티어링", `references/hybrid-gate.md` "Role tiering".
 
 ## Sync-context (`/co-agent:sync-context`)
 

@@ -76,8 +76,8 @@ Argument: `$ARGUMENTS`
    python3 "$H" set harness review_mode relay    # harness gate: hybrid (default) | relay | parallel
    python3 "$H" set harness parallel_tasks 3     # harness implement wave size (1 = sequential)
    python3 "$H" set harness max_fix_rounds 2     # harness per-task peer fix-loop bound
-   python3 "$H" set harness implementer_model gpt-5.3-codex-mini  # write-path model (explicit implementer에 바인딩)
-   python3 "$H" set harness implementer_effort low                # write-path effort (codex only; 같은 바인딩)
+   python3 "$H" set harness implementer_model gpt-5.3-codex-mini  # write-path model (implementer별 저장 — implementer 먼저 설정)
+   python3 "$H" set harness implementer_effort low                # write-path effort (implementer가 codex일 때만)
    ```
    `context_limit` lets the fan-out **skip** an AI when the context is too large for its
    model window (the cause of "prompt tokens exceed model maximum"), instead of hard-failing
@@ -118,13 +118,16 @@ Argument: `$ARGUMENTS`
   티어" 배치가 깨진다 — 패널 `effort`는 **verify에 적합한 수준**으로 두고, 쓰기 경로만
   `implementer_effort`로 낮춰라.
 - `implementer_model`/`implementer_effort`는 **impl-flags(쓰기 경로)에만** 적용되고,
-  **명시적으로 설정된 `harness.implementer`에 바인딩**된다 — 모델명에는 provider가
-  없으므로, 바인딩 없이는 호스트 전환 시 기본 폴백(claude→codex, codex→agy)을 타고
-  codex 모델이 `agy --model`로 새는 식의 오적용이 생긴다. `implementer`가 미설정이면
-  오버라이드는 적용되지 않는다(설정 시 안내 노트 출력). 리뷰/게이트 경로(`flags`)는
-  계속 패널 설정을 쓰므로, 같은 AI(codex)가 리뷰에서는 강한 모델·구현에서는 싼 모델로
-  갈라진다. `implementer_effort`는 codex 전용(agy의 헤드리스 CLI에 effort 플래그 없음 —
-  무시됨).
+  **implementer별로 저장**된다(`harness.implementer_models.<ai>` /
+  `implementer_efforts.<ai>`) — 설정 시점의 명시적 `harness.implementer`를 키로 쓰므로
+  **`implementer`를 먼저 설정해야** 하며(미설정 시 exit 2), 이후 `set harness
+  implementer <other>`로 전환해도 이전 AI의 엔트리는 **dormant로 남을 뿐 절대 다른
+  CLI의 `--model`로 새지 않는다**(전환 복귀 시 재사용; `show`가 active/dormant 표시).
+  모델명에는 provider가 없으므로 per-AI 키잉만이 폴백·명시 전환 양쪽에서 안전하다.
+  리뷰/게이트 경로(`flags`)는 계속 패널 설정을 쓰므로, 같은 AI(codex)가 리뷰에서는
+  강한 모델·구현에서는 싼 모델로 갈라진다. `implementer_effort`는 codex 전용 —
+  implementer가 agy일 때는 저장 자체를 거부한다(agy 헤드리스 CLI에 effort 플래그
+  없음).
 - `pairs`/`matrix`의 `--profile default|deep`은 호출 단위 오버라이드로, 하이브리드
   게이트가 find(deep)/verify(default)를 가르는 데 쓴다 — 설정 파일은 건드리지 않는다.
 - 근거: 발견(find)은 관점 다양성이, 검증(verify)과 의장 판단은 단일 모델의 강도가

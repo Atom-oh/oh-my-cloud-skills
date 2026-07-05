@@ -30,8 +30,8 @@ Usage:
   co_agent_config.py parallel-tasks             # effective implement concurrency (int)
   co_agent_config.py set harness max_fix_rounds <n>  # per-task peer fix-loop bound (default 2)
   co_agent_config.py max-fix-rounds             # effective fix-loop bound (int)
-  co_agent_config.py set harness implementer_model <m>   # write-path model (tiering; bound to the explicit implementer, else panel model)
-  co_agent_config.py set harness implementer_effort <e>  # write-path effort (codex only; same binding, else panel effort)
+  co_agent_config.py set harness implementer_model <m>   # write-path model, stored per implementer (requires explicit implementer; else panel model)
+  co_agent_config.py set harness implementer_effort <e>  # write-path effort (codex implementer only; same per-AI storage)
   co_agent_config.py set <ai> context_limit <n> # per-AI context window (tokens)
   co_agent_config.py flags <ai>                 # CLI flag fragment for the fan-out
   co_agent_config.py panel                      # space-separated enabled AIs
@@ -344,10 +344,14 @@ def cmd_show(root, host):
           f"max_rounds {cons.get('max_rounds', 2)} · harness review_mode {h.get('review_mode','hybrid')} / "
           f"implementer {h.get('implementer') or '(default)'} / parallel_tasks {h.get('parallel_tasks', 3)} / "
           f"max_fix_rounds {h.get('max_fix_rounds') or 2}")
-    im, ie = h.get("implementer_model"), h.get("implementer_effort")
-    if im or ie:   # tiering overrides are opt-in — only show when set
-        print(f"  implementer tiering: model {im or '(panel)'} / effort {ie or '(panel)'}  "
-              f"(write path only — impl-flags)")
+    ims = {k: v for k, v in (h.get("implementer_models") or {}).items() if v}
+    ies = {k: v for k, v in (h.get("implementer_efforts") or {}).items() if v}
+    if ims or ies:   # tiering overrides are opt-in — only show when set
+        cur = h.get("implementer")
+        for a in sorted(set(ims) | set(ies)):
+            state = "active" if a == cur else f"dormant — implementer is {cur or 'unset'}"
+            print(f"  implementer tiering [{a}]: model {ims.get(a) or '(panel)'} / "
+                  f"effort {ies.get(a) or '(panel)'}  (write path only — {state})")
     print(f"  {'AI':7} {'enabled':8} {'model':18} {'ctx(tok)':>11}  effort")
     for ai in panel_ais(host):
         p = cfg["panel"].get(ai, {})
@@ -404,35 +408,46 @@ def cmd_set(root, rest, host, scope="local"):
             else:
                 print(f"implementer must be a sandbox CLI: {', '.join(SANDBOX_IMPLEMENTERS)}", file=sys.stderr)
                 return 2
-        elif key == "implementer_model":
-            # Role-scoped tiering: overrides the panel model on the WRITE path only
-            # (impl-flags), and ONLY for the explicitly configured harness.implementer
-            # (model names don't encode a provider — unbound, the override would leak
-            # across the host-dependent default fallback). null/default clears.
+        elif key in ("implementer_model", "implementer_effort"):
+            # Role-scoped tiering, stored PER IMPLEMENTER (implementer_models.<ai> /
+            # implementer_efforts.<ai>): the write is keyed to the explicitly configured
+            # harness.implementer at set time, so a later `set harness implementer <other>`
+            # can never carry one provider's model onto another CLI's --model flag — the
+            # old entry just goes dormant (and is reused if you switch back). Model names
+            # don't encode a provider, so a flat un-keyed value could not be made safe
+            # across implementer switches. Requires an explicit implementer to key by.
+            impl = (effective(root).get("harness") or {}).get("implementer")
+            if impl is None:
+                print(f"{key} is stored per implementer — set the implementer first: "
+                      f"set harness implementer <{'|'.join(SANDBOX_IMPLEMENTERS)}>",
+                      file=sys.stderr)
+                return 2
+            store = "implementer_models" if key == "implementer_model" else "implementer_efforts"
+            slot = h.get(store)
+            if not isinstance(slot, dict):
+                slot = {}
+                h[store] = slot
             if val.lower() in ("none", "null", "default", ""):
-                h["implementer_model"] = None
-            elif MODEL_RE.fullmatch(val):
-                h["implementer_model"] = val
-                if (effective(root).get("harness") or {}).get("implementer") is None:
-                    print("note: implementer_model only applies once harness.implementer "
-                          "is explicitly set (the override is bound to that AI) — also run: "
-                          f"set harness implementer <{('|'.join(SANDBOX_IMPLEMENTERS))}>",
+                slot[impl] = None
+            elif key == "implementer_model":
+                if MODEL_RE.fullmatch(val):
+                    slot[impl] = val
+                else:
+                    print("implementer_model may contain only letters, digits, spaces, and "
+                          ". _ : / ( ) - (no shell metacharacters)", file=sys.stderr)
+                    return 2
+            else:   # implementer_effort — codex-only knob (agy has no headless effort flag)
+                if impl != "codex":
+                    print(f"implementer_effort is codex-only, but the implementer is "
+                          f"'{impl}' (its headless CLI has no effort flag) — not stored",
                           file=sys.stderr)
-            else:
-                print("implementer_model may contain only letters, digits, spaces, and "
-                      ". _ : / ( ) - (no shell metacharacters)", file=sys.stderr)
-                return 2
-        elif key == "implementer_effort":
-            # Codex-only knob (agy's headless CLI has no effort flag — impl-flags
-            # ignores it there). Validated against the codex effort values.
-            if val.lower() in ("none", "null", "default", ""):
-                h["implementer_effort"] = None
-            elif val in CODEX_EFFORTS:
-                h["implementer_effort"] = val
-            else:
-                print(f"implementer_effort must be one of: {', '.join(CODEX_EFFORTS)} "
-                      f"(codex only; agy ignores it)", file=sys.stderr)
-                return 2
+                    return 2
+                if val in CODEX_EFFORTS:
+                    slot[impl] = val
+                else:
+                    print(f"implementer_effort must be one of: {', '.join(CODEX_EFFORTS)}",
+                          file=sys.stderr)
+                    return 2
         elif key == "max_fix_rounds":
             if not val.isdigit() or int(val) < 1:
                 print("max_fix_rounds must be a positive integer", file=sys.stderr)
@@ -483,7 +498,8 @@ def cmd_set(root, rest, host, scope="local"):
             bad = [m for m in items if not MODEL_RE.fullmatch(m)]
             if bad:
                 print(f"invalid model name(s): {', '.join(bad)} "
-                      f"(letters/digits/. _ : / - only)", file=sys.stderr)
+                      f"(letters, digits, spaces, and . _ : / ( ) - only — "
+                      f"no shell metacharacters)", file=sys.stderr)
                 return 2
             slot["models"] = items
         elif key == "context_limit":
@@ -640,14 +656,14 @@ def cmd_impl_flags(root, ai, host):
     """Write-mode flags for the harness implementer: a workspace-write sandbox scoped
     to the worktree, plus the implementer's model/effort. ONLY for the implement path
     — review/gate paths use the read-only `flags` command.
-    Role-scoped tiering: `harness.implementer_model`/`implementer_effort` take precedence
-    over the panel's advisory `model`/`effort`, so the WRITE path can run a cost-efficient
-    generation model while the review panel keeps its stronger judgment models (and vice
-    versa). The overrides are BOUND to the explicitly configured `harness.implementer`:
-    they apply only when that AI is the one being flagged. Model names don't encode
-    their provider, so an unbound override would leak across the host-dependent default
-    fallback (claude-host→codex, codex-host→agy) — e.g. a codex model handed to
-    `agy --model` after a host switch. Unset implementer → overrides never apply."""
+    Role-scoped tiering: `harness.implementer_models.<ai>`/`implementer_efforts.<ai>`
+    take precedence over the panel's advisory `model`/`effort`, so the WRITE path can
+    run a cost-efficient generation model while the review panel keeps its stronger
+    judgment models. The overrides are stored PER IMPLEMENTER and looked up by the AI
+    being flagged — model names don't encode a provider, so only per-AI keying survives
+    both the host-dependent default fallback (claude-host→codex, codex-host→agy) AND an
+    explicit `set harness implementer` switch without leaking one provider's model onto
+    another CLI's --model flag. Entries for a non-current implementer stay dormant."""
     if ai == host:
         print(f"implementer '{ai}' cannot equal host '{host}'", file=sys.stderr)
         return 2
@@ -658,11 +674,8 @@ def cmd_impl_flags(root, ai, host):
     cfg = effective(root)
     p = cfg["panel"].get(ai, {})
     h = cfg.get("harness") or {}
-    if h.get("implementer") == ai:
-        model = h.get("implementer_model") or p.get("model")
-        effort = h.get("implementer_effort") or p.get("effort")
-    else:
-        model, effort = p.get("model"), p.get("effort")
+    model = (h.get("implementer_models") or {}).get(ai) or p.get("model")
+    effort = (h.get("implementer_efforts") or {}).get(ai) or p.get("effort")
     # Emit-time revalidation (defense-in-depth): set-time checks are closed, but this
     # merged value may come from a hand-edited local/user JSON and feeds a WRITE-enabled
     # sandbox argv. fullmatch (not match) so a trailing newline can't ride past `$`.
