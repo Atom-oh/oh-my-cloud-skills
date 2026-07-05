@@ -19,6 +19,11 @@ LENSES_DIR="$2"; WORK="$3"
 # 바로 잡아내는 게 디버깅에 낫다.
 [ -n "$LENSES_DIR" ] || { echo "run-panel.sh: lenses_dir (\$2) must not be empty" >&2; exit 1; }
 [ -n "$WORK" ] || { echo "run-panel.sh: workdir (\$3) must not be empty" >&2; exit 1; }
+mkdir -p "$WORK"
+# $SLOT(="$WORK/slot")는 Kiro 셀에서 `cd "$KIRO_CWD"` 이후에도 그대로 참조된다 — 호출자가
+# 상대경로 WORK를 주면 그 시점부터 깨진다. 현재 호출부(워크플로·테스트)는 전부 절대경로라
+# 실 결함은 아니었지만, DIFF 처럼 코드가 직접 보장하도록 여기서 절대화한다(13차 리뷰 MINOR-1).
+WORK="$(realpath "$WORK")"
 DIR="$(cd "$(dirname "$0")" && pwd)"; . "$DIR/lib.sh"
 ensure_slots "$WORK"
 SLOT="$WORK/slot"; RESP="$WORK/responded.txt"; : > "$RESP"

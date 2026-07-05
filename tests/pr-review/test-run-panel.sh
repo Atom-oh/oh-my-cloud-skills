@@ -4,7 +4,8 @@
 # (e)Kiro env/cwd/HOME 격리 (f)모델 3/4 탈락 시 severe 플래그 (g)모델 1/4 탈락은 warn-only
 # 유지(severe 아님) (h)skip 진단 stderr 도 scrub_secrets 적용 검증 (i)realpath 실패 시
 # fail-fast(구 폴백 회귀 가드) (j)재사용되는 \$WORK 에서 coverage-severe.flag/slot/kiro-cwd
-# 잔재가 리셋되는지(비-ephemeral 러너 상태 오염 회귀 가드) (k)lenses_dir/workdir 빈 인자 가드.
+# 잔재가 리셋되는지(비-ephemeral 러너 상태 오염 회귀 가드) (k)lenses_dir/workdir 빈 인자 가드
+# (l)상대경로 workdir 가 Kiro 셀에서도 올바르게 절대화되는지.
 # 주의: harness 가 이 파일을 set -euo pipefail 로 source 하므로, 스크립트가 비-zero로
 # 끝나는 경로는 전부 if 로 감싼다 — bare 호출은 스위트 전체를 조기 중단시킨다.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -296,6 +297,25 @@ else
   pass "run-panel (k) empty workdir arg (\$3) fails closed"
 fi
 rm -f "$LOG"
+
+# (l) 상대경로 workdir(\$3) — Kiro 셀은 try_panel 을 `cd "$KIRO_CWD"` 서브셸 안에서 부르고,
+# 그 안의 `$SLOT`(="$WORK/slot")참조는 여전히 살아있다. \$WORK 가 상대경로면 cwd 가 바뀐
+# 뒤로는 그 상대경로가 다른 곳을 가리켜 셀 출력이 엉뚱한 곳에 쓰이거나 실패한다 — 호출부
+# (워크플로·테스트)가 지금까지 전부 절대경로만 줘서 실 결함은 아니었지만, DIFF 처럼 코드가
+# 직접 절대화하도록 고쳤다(13차 리뷰 MINOR-1). 실제로 상대경로를 줘서 재현/고정한다.
+BASE=$(mktemp -d); mkdir -p "$BASE/lenses"
+echo "diff --git a b" > "$BASE/diff.txt"
+echo "review L2 only" > "$BASE/lenses/L2.txt"
+BIN=$(mktemp -d); export PATH="$BIN:$PATH"
+mkfake codex 0 "codex-finding"; mkfake_args kiro-cli 0 "kiro-finding"
+( cd "$BASE" && "$SCRIPT" "diff.txt" "lenses" "relwork" >/dev/null 2>&1 )
+if [ -s "$BASE/relwork/slot/kiro-opus-L2.md" ]; then
+  pass "run-panel (l) a relative workdir arg still resolves correctly for Kiro cells"
+else
+  fail "run-panel (l) a relative workdir arg still resolves correctly for Kiro cells" \
+    "kiro cell missing/empty under the resolved relative workdir"
+fi
+rm -rf "$BASE" "$BIN"
 
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then

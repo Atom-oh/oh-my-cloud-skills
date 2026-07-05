@@ -91,11 +91,14 @@ echo "TAP version 14"
 echo "# oh-my-cloud-skills test suite"
 echo ""
 
-# Run test files
-PATTERN="${1:-tests/**/*.sh}"
+# Run test files. Optional $1 filters by substring match against the file path (e.g.
+# `bash tests/run-all.sh hooks` runs only tests/hooks/*.sh) — PATTERN used to be defined
+# but never wired to the loop below (dead code the 13th pr-review review round caught).
+PATTERN="${1:-}"
 for test_file in tests/hooks/*.sh tests/structure/*.sh tests/pr-review/*.sh; do
   [ -f "$test_file" ] || continue
   [ "$test_file" = "tests/run-all.sh" ] && continue
+  [ -n "$PATTERN" ] && [[ "$test_file" != *"$PATTERN"* ]] && continue
   echo "# --- $test_file ---"
   source "$test_file"
   echo ""

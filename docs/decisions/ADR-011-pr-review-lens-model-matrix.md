@@ -287,6 +287,30 @@ ADR-009의 멀티-AI 패널(Codex + Kiro×3)은 리뷰어를 벤더로 다양화
   `test-synthesize.sh` (f)(responded.txt 부재 시 문서화된 폴백이 실제로 chair 프롬프트에
   도달하는지) — 전체 스위트 599 passed(+2), 기존 무관 17건 실패는 그대로.
 
+- **13차 리뷰 수정(커밋 7c8159d 이후, PASSED — CRITICAL/MAJOR 0건, MINOR 4건)**: 2건 반영.
+  (1) `run-panel.sh`의 `$SLOT`(="$WORK/slot")이 Kiro 셀의 `cd "$KIRO_CWD"` 서브셸 안에서도
+  그대로 참조되는데, `$WORK`가 상대경로면 그 리다이렉트가 `$KIRO_CWD` 기준으로 다시 풀려
+  엉뚱한 곳에 쓰인다는 지적 — 실제로 `cd "$BASE" && "$SCRIPT" diff.txt lenses relwork` 로
+  재현: 수정 전엔 Kiro 셀 출력이 `relwork/slot/...`가 아니라
+  `relwork/kiro-cwd/relwork/slot/...`(중첩된 잘못된 경로)에 쓰였다. `DIFF`와 같은 방식으로
+  `WORK="$(realpath "$WORK")"`를 빈-문자열 가드 뒤에 추가(대상이 아직 없어도 `mkdir -p
+  "$WORK"`를 먼저 해 realpath 가 항상 성공하도록 함) — 수정 전/후 모두 실행해 버그 재현과
+  수정 확인을 직접 검증. `LENSES_DIR`는 같은 처리 불필요함을 확인(그 값을 읽는
+  `cat "$lens_file"`이 아직 `cd` 전인 메인 프로세스에서 실행돼 항상 원래 cwd 기준으로
+  안전). (2) `tests/run-all.sh`의 `PATTERN="${1:-tests/**/*.sh}"`가 정의만 되고 실제 for
+  루프는 3개 디렉터리를 하드코딩해 인자를 완전히 무시하던 것 — `plugins/project-init`의
+  스캐폴딩 템플릿(`references/tests-templates.md`)이 이미 `bash tests/run-all.sh
+  [test-file-pattern]`(예: `... hooks`)을 문서화된 계약으로 명시하는데, 이 repo 자신의
+  `run-all.sh`는 그 계약을 잃어버린 상태였다 — `PATTERN`이 있으면 파일 경로에 부분 문자열
+  매칭하는 필터로 실제 연결(인자 없으면 기존과 동일하게 전체 실행, 기존 호출부 전부 무인자
+  라 회귀 없음). **채택 안 함**: `test-lib.sh`가 `lib.sh`를 source 하며 harness 셸에
+  `set -uo pipefail`을 주입하는 결합(현재 `run-all.sh`도 같은 옵션이라 무해, harness 옵션이
+  달라질 때만 문제되는 가정적 시나리오)은 반영하지 않음; ADR-011 자체의 리비전 로그 분리
+  제안은 문서 구조 결정이라 사용자 확인 대기. 신규 테스트: `test-run-panel.sh`
+  (l)(상대경로 workdir 가 Kiro 셀에서도 절대화되는지, 수정 전 버전으로 실패를 직접 재현
+  후 복원해 확인) — 전체 스위트 600 passed(+1), 기존 무관 17건 실패는 그대로(`bash
+  tests/run-all.sh hooks` 로 새 필터도 별도 확인).
+
 ## Consequences
 
 - 커버리지가 "리뷰어 다양화"에서 "리뷰어×관점 매트릭스"로 체계화 — 사각지대 감소.
