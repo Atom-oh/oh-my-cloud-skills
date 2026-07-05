@@ -9,9 +9,10 @@
 # non-zero)을 검증. (c)/(d) 는 precheck.sh 가 의존하는 핵심 로직 — "PR 트리를 실행 없이
 # 데이터로만 --root 검증" — 을 test-plugins.py 를 직접 호출해 검증. (e)/(f) 는 같은 로직을
 # test-codex-plugins.py(.codex-plugin 매니페스트 검증기 — precheck.sh 가 L1 에서 놓치고
-# 있던 것을 별도 리뷰가 잡아 추가됨)로 검증. (g) 는 precheck.sh 자신의 빈 workdir 인자
-# 가드. (실제 `git fetch origin pull/N/head` 라인 자체는 GitHub 원격이 필요해 오프라인
-# 유닛테스트로 exercise 하지 않음 — 이 부분은 실제 CI 실행으로만 검증됨, 알려진 커버리지 한계.)
+# 있던 것을 별도 리뷰가 잡아 추가됨)로 검증. (g)/(h)/(i) 는 precheck.sh 자신의 빈 인자
+# (workdir/base_repo_dir/pr_number) 가드. (실제 `git fetch origin pull/N/head` 라인 자체는
+# GitHub 원격이 필요해 오프라인 유닛테스트로 exercise 하지 않음 — 이 부분은 실제 CI
+# 실행으로만 검증됨, 알려진 커버리지 한계.)
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PR_REVIEW_DIR="$(cd "$HERE/../../scripts/pr-review" && pwd)"
 REPO_ROOT="$(cd "$HERE/../.." && pwd)"
@@ -114,6 +115,26 @@ else
   pass "precheck (g) empty workdir arg fails closed"
 fi
 rm -rf "$BASE" /tmp/precheck-test-g.log
+
+# (h)/(i) 같은 가드를 나머지 두 인자에도 defense-in-depth 로 확장(파괴적 경로는 없지만
+# 인자 오설정을 조용히 넘기지 않고 즉시 잡아냄).
+WORK=$(mktemp -d)
+if bash "$SCRIPT" "" 1 "$WORK" >/tmp/precheck-test-h.log 2>&1; then
+  fail "precheck (h) empty base_repo_dir arg fails closed" "exited 0 despite empty \$1"
+else
+  pass "precheck (h) empty base_repo_dir arg fails closed"
+fi
+rm -rf "$WORK" /tmp/precheck-test-h.log
+
+BASE=$(mktemp -d); WORK=$(mktemp -d)
+git init -q "$BASE"
+git -C "$BASE" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+if bash "$SCRIPT" "$BASE" "" "$WORK" >/tmp/precheck-test-i.log 2>&1; then
+  fail "precheck (i) empty pr_number arg fails closed" "exited 0 despite empty \$2"
+else
+  pass "precheck (i) empty pr_number arg fails closed"
+fi
+rm -rf "$BASE" "$WORK" /tmp/precheck-test-i.log
 
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then

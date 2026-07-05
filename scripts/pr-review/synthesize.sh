@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # 의장 종합. 인자: <diff> <workdir> <pr_number> <pr_title> <out review.md>
 set -euo pipefail
+DIR="$(cd "$(dirname "$0")" && pwd)"; . "$DIR/lib.sh"
 DIFF="$1"; WORK="$2"; PR_NUMBER="$3"; PR_TITLE="$4"; OUT="$5"
 SLOT="$WORK/slot"
 RESP="$(tr '\n' ',' < "$WORK/responded.txt" 2>/dev/null | sed 's/,$//')"
@@ -12,18 +13,26 @@ RESP="$(tr '\n' ',' < "$WORK/responded.txt" 2>/dev/null | sed 's/,$//')"
 # 유한하게 유지(폭주한 셀 하나가 체어 컨텍스트/처리시간을 지배하지 않도록).
 PANEL_CELL_CAP="${PANEL_CELL_CAP:-20000}"
 PANEL=""
-for f in "$SLOT"/*.md; do
+# 셀 순서를 C 로케일 바이트 정렬로 고정 — 셸 glob 순서는 로케일(LC_COLLATE)에 따라 달라질
+# 수 있어, 안 그러면 같은 셀 집합인데도 실행마다 체어 입력의 셀 순서가 바뀔 수 있다.
+while IFS= read -r f; do
   [ -s "$f" ] || continue
-  CELL="$(head -c "$PANEL_CELL_CAP" "$f")"
-  # 실제로 잘렸으면(원본이 캡보다 크면) 체어가 절단 사실을 알도록 마커를 남긴다 — 안 그러면
-  # 잘린 CRITICAL 근거를 "이게 전부"로 오해할 수 있다. head -c 는 UTF-8 문자 경계 무관하게
-  # 바이트로 자르므로 마커 자체는 항상 ASCII로 붙여 표시가 깨지지 않게 한다.
-  [ "$(wc -c < "$f")" -gt "$PANEL_CELL_CAP" ] && CELL+=$'\n[...TRUNCATED at '"$PANEL_CELL_CAP"'B — see full output in CI logs...]'
+  # 크리덴셜 스크럽(마지막 방어선) — Kiro fs_read 잔여 위험(diff 인젝션 → 절대경로 read →
+  # 셀 출력에 크리덴셜 노출 → 체어 종합 → 공개 PR 코멘트/외부 Kiro 유출) 체인을 여기서 끊는다.
+  # 절대경로 read 자체는 막지 못하므로(값이 이미 셀 출력에 나타난 뒤에만 작동) 잔여 위험은
+  # 남는다 — ADR-011. 캡 적용 전체 스크럽 후 캡을 적용해야 잘린 경계에서 패턴이 쪼개져
+  # 탐지를 피하는 걸 막고, 절단 여부도 스크럽된 길이 기준으로 정확히 판단할 수 있다.
+  SCRUBBED="$(scrub_secrets < "$f")"
+  CELL="$(printf '%s' "$SCRUBBED" | head -c "$PANEL_CELL_CAP")"
+  # 실제로 잘렸으면(스크럽된 내용이 캡보다 크면) 체어가 절단 사실을 알도록 마커를 남긴다 —
+  # 안 그러면 잘린 CRITICAL 근거를 "이게 전부"로 오해할 수 있다. head -c 는 UTF-8 문자
+  # 경계 무관하게 바이트로 자르므로 마커 자체는 항상 ASCII로 붙여 표시가 깨지지 않게 한다.
+  [ "$(printf '%s' "$SCRUBBED" | wc -c)" -gt "$PANEL_CELL_CAP" ] && CELL+=$'\n[...TRUNCATED at '"$PANEL_CELL_CAP"'B — see full output in CI logs...]'
   PANEL+="
 
 === 패널: $(basename "$f" .md) ===
 $CELL"
-done
+done < <(printf '%s\n' "$SLOT"/*.md | LC_ALL=C sort)
 
 # 지시문(고정, argv 로 전달 — 아래 run_chair 참조)은 diff/패널 내용을 절대 포함하지 않는다.
 # diff+패널은 stdin 파일로 별도 전달(§ 아래) — argv 에 실으면 Linux 의 단일 인자
@@ -82,17 +91,15 @@ PROMPT_EOF
 # TTFT(첫 토큰 지연) 임계값은 안 씀 — Fable은 adaptive thinking이 상시 on이라
 # 정상 상태에서도 첫 토큰이 늦을 수 있어 오발동하고, ConnectionRefused는 빠르게
 # 실패해 지연 기반으론 못 잡음. 대신 벽시계 타임아웃 + 결과 검증으로 판정한다.
-# 120s 는 너무 짧았다: 같은 러너 이미지/서비스어카운트를 쓰는 ttobak 에선
-# 타임아웃 없는 이전 버전 스크립트로 357줄 diff 종합에 286초가 걸렸다(정상
-# 완료). 여기선 120s cap 때문에 정상 응답 중인 Fable 도, 폴백 Opus 도 매번
-# 강제 종료되어 항상 fail-closed 됐다 — Bedrock 장애가 아니라 타임아웃 설정
-# 문제였음. 큰 diff(576줄)+4개 패널 리뷰 종합 여유를 감안해 600s 로 상향.
+#
+# CHAIR_TIMEOUT 600s 근거(#105 + 매트릭스 확장): 같은 러너 이미지/서비스어카운트를
+# 쓰는 ttobak 에서, 타임아웃 없는 구(4-패널) 버전 스크립트가 357줄 diff 종합에
+# 286초를 정상적으로 썼다. 이 repo 의 120s cap(이후 180s 검토)은 정상 응답 중인
+# Fable 도 폴백 Opus 도 매번 강제 종료시켰다 — Bedrock 장애가 아니라 타임아웃 설정
+# 문제였음(#105). 매트릭스(4→16 패널 출력)는 체어 입력이 더 커 286s 실측조차
+# 밑돎 — job timeout-minutes 50m 여유를 반영해 600s 유지.
 PRIMARY_MODEL="${ANTHROPIC_MODEL:-us.anthropic.claude-fable-5}"
 FALLBACK_MODEL="${CHAIR_FALLBACK_MODEL:-us.anthropic.claude-opus-4-8}"
-# 매트릭스 도입으로 체어 입력이 4→16 패널 출력으로 늘어 180s로 상향 검토됐으나,
-# 위 ttobak 실측(4패널·357줄 diff에서 286s)이 이미 180s를 넘는다 — 16-cell
-# 입력은 더 크므로 180s는 여전히 부족. job timeout-minutes 를 50m로 올려둔
-# 여유를 반영해 600s 유지.
 CHAIR_TIMEOUT="${CHAIR_TIMEOUT:-600}"
 
 chair_label() { case "$1" in

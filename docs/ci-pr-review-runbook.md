@@ -5,11 +5,13 @@ PR을 열면 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 L1(결정
 
 ## 정상 동작 체크
 1. **L1 실패** 시: PR 코멘트에 "L1 pre-check (매니페스트/버전 정합) 실패" 블록만 보이고 AI 패널은
-   호출되지 않음(비용 0) — 원인은 코멘트 본문의 `test-plugins.py` 출력(dangling 참조/버전 불일치/
-   JSON 오류)에 그대로 나온다.
+   호출되지 않음(비용 0) — 원인은 코멘트 본문의 `test-plugins.py`/`test-codex-plugins.py` 출력
+   (dangling 참조/버전 불일치/JSON 오류/`.codex-plugin` 매니페스트 오류)에 그대로 나온다.
 2. **L1 통과** 시: PR 코멘트의 `_Cells (model/lens):_` 줄에 `codex/L2`, `kiro-opus/L3`,
    `kiro-kimi/L4`, `kiro-glm/L5` 등 최대 16개 `<모델>/<lens>` 태그가 보이면 정상(일부 셀은
-   등급/쿼터로 간헐 skip 가능 — lens 하나가 통째로 비지는 않음, 다른 모델이 같은 lens를 커버).
+   등급/쿼터로 간헐 skip 가능). 모델 하나가 **전체 lens** 에서 응답 없으면(예: kiro-cli 플래그
+   무효화) 리뷰 상단에 "⚠️ 커버리지 저하" 배너가 뜬다(run-panel.sh 의 모델별 row 체크 —
+   lens 하나가 모든 모델에서 동시에 비는 케이스는 별도 감지 없음, 현재는 낮은 확률로 간주).
    **Antigravity(`agy`)는 매트릭스에 없음**(ADR-010 — 헤드리스 인증 불가).
 3. 마지막 줄 `VERDICT: PASS|FAIL`로 게이트 결정(fail-closed, L1 실패도 fail).
 
@@ -25,10 +27,11 @@ PR을 열면 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 L1(결정
 - AWS 인증: EKS Pod Identity(ci-runner 역할) SigV4
 
 ## L1 이 fail 로 막혔을 때
-- 코멘트에 붙은 `test-plugins.py` 출력을 그대로 읽는다 — 에러 메시지가 파일 경로/필드까지 지목함
-  (예: dangling agent 참조, plugin.json↔marketplace.json 버전 불일치).
-- 로컬 재현: `python3 scripts/test-plugins.py`(현 checkout 기준) 또는
-  `python3 scripts/test-plugins.py --root <임의 트리>`.
+- 코멘트에 붙은 `test-plugins.py`/`test-codex-plugins.py` 출력을 그대로 읽는다 — 에러 메시지가
+  파일 경로/필드까지 지목함(예: dangling agent 참조, plugin.json↔marketplace.json 버전 불일치,
+  `.codex-plugin/plugin.json` 스키마 오류).
+- 로컬 재현: `python3 scripts/test-plugins.py`와 `python3 scripts/test-codex-plugins.py`(둘 다
+  현 checkout 기준) 또는 `--root <임의 트리>`로 특정 트리를 대상.
 - L1 자체(fetch/archive)가 인프라 문제로 실패한 경우(예: `git fetch` 오류) 러너 로그의
   "L1 pre-check" 스텝 출력에 원인이 그대로 찍힘 — fail-closed 이므로 이 경우도 게이트는 FAIL.
 

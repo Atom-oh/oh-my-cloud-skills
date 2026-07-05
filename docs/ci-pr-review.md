@@ -6,9 +6,11 @@
 
 ## L1 — 결정적 pre-check (AI 호출 전, 비용 0)
 - `scripts/pr-review/precheck.sh` 가 PR head 파일 트리를 `git archive`로 **데이터로만** 추출(실행
-  없음) → base(신뢰) 체크아웃의 `scripts/test-plugins.py --root <추출한 트리>` 로 검증.
+  없음) → base(신뢰) 체크아웃의 `scripts/test-plugins.py --root <추출한 트리>` **와
+  `scripts/test-codex-plugins.py --root <추출한 트리>`** 로 검증(양쪽 다 통과해야 L1 통과).
 - 검증 항목: `plugin.json`/`marketplace.json` JSON 유효성, dangling agent/skill/command 참조,
-  plugin.json↔marketplace.json 버전 정합.
+  plugin.json↔marketplace.json 버전 정합(`test-plugins.py`) + `.codex-plugin`/`.agents` 매니페스트
+  유효성(`test-codex-plugins.py`).
 - **실패 시 AI 패널을 전혀 호출하지 않고** 즉시 `VERDICT: FAIL` — 결정적으로 검증 가능한 문제에
   AI 비용을 쓰지 않는다.
 
@@ -36,9 +38,9 @@
 ## 파일
 - `.github/workflows/pr-review.yml` — `pull_request_target`(base-ref 체크아웃, diff는 데이터),
   L1 게이트→(pass 시) lens 프롬프트 생성→매트릭스 fan-out→synthesize→게이트→코멘트 upsert
-- `scripts/pr-review/precheck.sh` — L1: PR head 를 `git archive` 로 데이터 추출 후 `test-plugins.py --root` 로 결정적 검증.
-- `scripts/pr-review/{lib,run-panel,synthesize}.sh` — 매트릭스 병렬 실행(모델×lens 이중 루프) + 의장 종합. 실패 셀은 graceful skip. 진단 로그는 **redact(auth/provider/프롬프트/diff 단편 제거) + 길이 제한**을 기본 동작으로 함(원시 stderr를 코멘트/로그로 노출하지 않음).
-- `scripts/test-plugins.py --root <path>` — 매니페스트 검증기를 임의 트리에 대해 실행할 수 있게 하는 옵션(L1 전용; 기본은 이 repo 자신을 검증).
+- `scripts/pr-review/precheck.sh` — L1: PR head 를 `git archive` 로 데이터 추출 후 `test-plugins.py --root` + `test-codex-plugins.py --root` 로 결정적 검증.
+- `scripts/pr-review/{lib,run-panel,synthesize}.sh` — 매트릭스 병렬 실행(모델×lens 이중 루프) + 의장 종합. 실패 셀은 graceful skip. 진단 로그는 **redact(auth/provider/프롬프트/diff 단편 제거) + 길이 제한**을 기본 동작으로 함(원시 stderr를 코멘트/로그로 노출하지 않음). `lib.sh` 의 `scrub_secrets()` 가 체어에 넘기기 전 각 셀 출력에서 AWS/GitHub/Slack/OpenAI·Anthropic/Google 키 포맷 + JWT(EKS Pod Identity 토큰 형태)를 정규식으로 치환(Kiro `fs_read` 잔여 유출 경로에 대한 마지막 방어선 — 절대경로 read 자체는 못 막음, ADR-011).
+- `scripts/test-plugins.py --root <path>`, `scripts/test-codex-plugins.py --root <path>` — 매니페스트 검증기를 임의 트리에 대해 실행할 수 있게 하는 옵션(L1 전용; 기본은 이 repo 자신을 검증).
 
 ## 인증
 - Kiro: `ai-panel-keys` ExternalSecret(`<secret-path>`) → 러너 env (외부 API-key)

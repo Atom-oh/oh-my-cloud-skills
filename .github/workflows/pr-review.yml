@@ -65,7 +65,11 @@ jobs:
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          set -o pipefail
+          # -e 는 안전 — 아래 유일한 명령이 if 로 감싸여 있어 그 명령 자체의 실패는 -e 를
+          # 트리거하지 않고 else 로 fail-closed 라우팅된다. -e 의 실효는 그 앞의 mkdir 같은
+          # setup 실패를 (조용히 넘어가 혼란스러운 precheck.sh 실패로 이어지는 대신) 즉시,
+          # 명확한 에러로 멈추는 것.
+          set -euo pipefail
           mkdir -p /tmp/pr-review
           if bash scripts/pr-review/precheck.sh "$GITHUB_WORKSPACE" "$PR_NUMBER" /tmp/pr-review \
               2>&1 | tee /tmp/l1-output.txt; then
@@ -212,9 +216,17 @@ jobs:
             STATUS_BADGE="**Status: PASSED** — No blocking issues found"
           fi
           sed '$ { /^VERDICT:/d }' /tmp/review.md > /tmp/review-clean.md
+          # L1 이 fail 로 막힌 경로에선 매트릭스가 전혀 안 돌았다 — 헤더가 "lens×model matrix"를
+          # 붙이면 마치 매트릭스가 실행된 것처럼 보인다("Write L1 failure as review" 스텝이
+          # 남기는 panel_responded 값으로 그 경로를 식별해 헤더를 분기).
+          if [ "${panel_responded:-}" = "(skipped — L1 pre-check failed)" ]; then
+            HEADER="## 🤖 AI Code Review (L1 결정적 pre-check — 매트릭스 미실행)"
+          else
+            HEADER="## 🤖 AI Code Review (${chair_used:-Claude Fable 5} chair · lens×model matrix)"
+          fi
           {
             echo "$MARKER"
-            echo "## 🤖 AI Code Review (${chair_used:-Claude Fable 5} chair · lens×model matrix)"
+            echo "$HEADER"
             echo ""
             echo "_Cells (model/lens): ${panel_responded:-solo}_"
             [ "${panel_truncated:-0}" = "1" ] && echo "_⚠️ diff truncated to first 3000 lines — review is partial._"

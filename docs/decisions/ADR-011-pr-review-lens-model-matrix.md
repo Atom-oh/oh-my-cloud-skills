@@ -81,6 +81,16 @@ ADR-009의 멀티-AI 패널(Codex + Kiro×3)은 리뷰어를 벤더로 다양화
   job `timeout-minutes`(50m)로 방어.
 - ADR-009의 나머지 불변식(보안: base-checkout + fork PR 미실행, 데이터 거주성: Kiro 외부 송신
   accepted-risk, fail-closed VERDICT, 코멘트 upsert marker)은 변경 없이 유지.
+- **3차 리뷰 수정(CI 자체 리뷰, 커밋 5c56d7f 이후)**: (1) 위 절대경로 read 잔여 위험에
+  belt-and-braces 한 겹 추가 — `lib.sh::scrub_secrets()`가 co-agent `_SECRET_RE`(AWS/
+  GitHub/Slack/OpenAI·Anthropic/Google + generic key=value) 패턴과 JWT(Pod Identity
+  토큰 형태) 탐지를 셀 캡 적용 *전*에 적용해, 절대경로 read로 유출된 값이 체어 stdin에
+  실제로 도달하기 전 치환한다(값이 이미 셀 출력에 나타난 뒤에만 작동 — read 자체를 막지
+  못하는 건 여전한 한계). (2) `docs/ci-pr-review.md`/runbook이 `test-codex-plugins.py`를
+  언급 안 해 L1 문서-구현이 드리프트됐던 것을 동기화. (3) L1-fail 코멘트 헤더가 매트릭스가
+  안 돈 경로에서도 "lens×model matrix"를 붙이던 mislabel 수정. (4) `precheck.sh` 세
+  인자 전부 빈 문자열 가드, L1 스텝 `set -euo pipefail` 상향, `synthesize.sh` 셀 순회를
+  `LC_ALL=C sort`로 고정(로케일 의존 순서 제거) + 스테일 주석 정리.
 
 ## Consequences
 
@@ -123,6 +133,6 @@ ADR-009의 멀티-AI 패널(Codex + Kiro×3)은 리뷰어를 벤더로 다양화
 - `.github/workflows/pr-review.yml`, `scripts/pr-review/{precheck,run-panel,synthesize,lib}.sh`,
   `scripts/test-plugins.py --root`, `scripts/test-codex-plugins.py --root`
 - `docs/ci-pr-review.md`, `docs/ci-pr-review-runbook.md`
-- `tests/pr-review/{test-run-panel,test-precheck}.sh`
+- `tests/pr-review/{test-run-panel,test-precheck,test-lib}.sh`
 - PR #103(이 재설계), #104(co-agent 모델 티어링, 무관 병렬 머지), #105(`CHAIR_TIMEOUT`
   120s→600s — 이 PR과 별개로 근본 원인 진단)
