@@ -4,7 +4,6 @@
 CO="plugins/co-agent/skills/co-agent"
 CIT="$CO/scripts/check_citations.py"
 CFG="$CO/scripts/co_agent_config.py"
-export CO_AGENT_THIRD_AI=agy
 
 assert_file_exists "$CIT" "check_citations.py exists"
 assert_file_executable "$CIT" "check_citations.py is executable"
@@ -42,4 +41,3 @@ assert_contains "$(python3 "$CFG" matrix --root "$R" 2>&1)" "same provider famil
 python3 "$CFG" set kiro-cli models "good-model;rm" --root "$R" >/dev/null 2>&1 && MB=0 || MB=$?
 assert_eq "2" "$MB" "models list rejects names with shell metacharacters"
 rm -rf "$R"
-unset CO_AGENT_THIRD_AI

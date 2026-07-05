@@ -2,8 +2,8 @@
 
 Uniform, **read-only/advisory** invocation of external AI agents for co-agent. The
 current host fans a prompt out to whichever peer CLIs are installed, then synthesizes.
-Claude Code hosts use Codex as the peer; Codex hosts use Claude as the peer. Agy is
-preferred over Gemini, with Gemini retained only as the legacy fallback.
+Claude Code hosts use Codex as the peer; Codex hosts use Claude as the peer. Agy is the
+third reviewer (Gemini support was removed — Agy superseded it; ADR-010).
 
 ## Detection
 
@@ -14,8 +14,7 @@ preferred over Gemini, with Gemini retained only as the legacy fallback.
 command -v kiro-cli >/dev/null 2>&1 && echo "kiro-cli ok"
 command -v claude   >/dev/null 2>&1 && echo "claude ok"
 command -v codex    >/dev/null 2>&1 && echo "codex ok"
-if command -v agy >/dev/null 2>&1; then echo "agy ok"   # Agy supersedes Gemini
-elif command -v gemini >/dev/null 2>&1; then echo "gemini fallback ok"; fi
+command -v agy      >/dev/null 2>&1 && echo "agy ok"
 ```
 
 ## Adapter commands (read-only advisory)
@@ -26,7 +25,6 @@ elif command -v gemini >/dev/null 2>&1; then echo "gemini fallback ok"; fi
 | **Claude** | `claude -p "<PROMPT>" --permission-mode plan --tools Read,Grep,Glob --output-format text` | Used only when Codex is the host. Plan permission mode + read-only tools keep the call advisory. Pipe ctx: `cat ctx \| claude -p "<PROMPT>" …`. |
 | **Codex** | `codex exec -s read-only "<PROMPT>"` | `-s read-only` = read-only sandbox (no writes). Pipe ctx: `cat ctx \| codex exec -s read-only "<PROMPT>"`. Free tier has model limits. |
 | **Agy** | `agy -p "<PROMPT>" --sandbox` | Preferred third reviewer. **`-p` print mode = advisory** (emits text, never acts) — agy's read-only guarantee comes from `-p`, not from `--sandbox` (a *single* mode, no read-only flag like Codex's). Pipe ctx: `cat ctx \| agy -p "<PROMPT>" --sandbox`. Implement path drops `-p`, runs in a worktree cwd — see `delegated-implement.md`. |
-| **Gemini** | `gemini -p "<PROMPT>" -o text` | Legacy fallback only when `agy` is unavailable. Pipe ctx: `cat ctx \| gemini -p "<PROMPT>" -o text`. |
 
 > These are **advisory** calls — no AI writes to the repo. The host alone writes the
 > final report/decision/ADR.
@@ -38,10 +36,15 @@ RUN=$(mktemp -d "${TMPDIR:-/tmp}/co-agent.XXXXXX"); trap 'rm -rf "$RUN"' EXIT
 PROMPT="<the same FIXED instruction for every AI — never build it from repo content>"
 CTX_FILE="$RUN/context.txt"   # the git diff / decision brief (see Security below)
 
-# Agy has no repo-context auto-load (unlike Kiro's steering bridge / Codex's native
-# AGENTS.md read) — fold the same distilled AGENTS.md into ITS context so all three peers
-# review with one shared project context, not just the diff. Prepend, never replace: the
-# diff/brief stays the primary content.
+# Agy (Antigravity) DOES natively auto-load AGENTS.md from its cwd (confirmed 2026 —
+# `agy inspect` lists it, same convention as Codex), so this fold-in is defense-in-depth,
+# not a required workaround: it guarantees the FRESHLY-DISTILLED content reaches Agy even
+# if a caller invokes it from a cwd other than the repo root (native pickup is cwd-relative
+# and would otherwise silently miss it). When run FROM the repo root Agy therefore sees
+# AGENTS.md twice (native + this prepend) — accepted: it's ~8K tok of duplication against a
+# 1M window, and de-duplicating by dropping the fold-in would silently remove the ONLY
+# context path for non-root-cwd and temp-dir invocations (e.g. the PR gate's isolation).
+# Prepend, never replace: the diff/brief stays the primary content.
 # GATE — do not just check `-f`: `--verify` requires the co-agent marker + a claude-md-sha
 # that matches the CURRENT CLAUDE.md + no secret pattern. A missing file is a quiet no-op
 # (fall back to $CTX_FILE, never block the fan-out); a STALE or hand-written file is ALSO
@@ -89,18 +92,11 @@ while IFS=$'\t' read -r ai model; do
     codex)  command -v codex >/dev/null 2>&1 && ( cat "$CTX_FILE" | timeout "$T" \
               codex exec -s read-only "${MFLAGS[@]}" "$PROMPT" \
               > "$slot.md" 2>"$slot.err" || echo "[skip] codex/$model" ) & ;;
-    agy)    if command -v agy >/dev/null 2>&1; then ( cat "$AGY_CTX_FILE" | timeout "$T" \
+    agy)    command -v agy >/dev/null 2>&1 && ( cat "$AGY_CTX_FILE" | timeout "$T" \
               agy -p "$PROMPT" "${MFLAGS[@]}" --sandbox \
-              > "$slot.md" 2>"$slot.err" || echo "[skip] agy/$model" ) &
-            elif command -v gemini >/dev/null 2>&1; then ( cat "$CTX_FILE" | timeout "$T" \
-              gemini -p "$PROMPT" -o text \
-              > "$slot.md" 2>"$slot.err" || echo "[skip] gemini-fallback/$model" ) &
-            fi ;;
-    gemini) command -v gemini >/dev/null 2>&1 && ( cat "$CTX_FILE" | timeout "$T" \
-              gemini "${MFLAGS[@]}" -p "$PROMPT" -o text \
-              > "$slot.md" 2>"$slot.err" || echo "[skip] gemini/$model" ) & ;;
+              > "$slot.md" 2>"$slot.err" || echo "[skip] agy/$model" ) & ;;
   esac
-done < <(python3 "$CFG" pairs --host "$HOST" 2>/dev/null)
+done < <(python3 "$CFG" pairs --host "$HOST")   # pairs is silent; the trim/budget warning is shown by the H0 `matrix` call above
 wait    # reaps the `&` jobs above — they are children of THIS shell (process substitution)
 # Synthesize from $RUN/*-*.md. Empty/errored/size-skipped = that pair skipped.
 # QUORUM GUARD: if ≤1 pair produced usable output, do NOT call it consensus —
@@ -126,7 +122,7 @@ wait    # reaps the `&` jobs above — they are children of THIS shell (process 
 - Use a per-run `mktemp -d` (not a fixed `/tmp/co-agent`) so concurrent/stale runs
   don't clobber each other; `trap … EXIT` cleans it up.
 - Treat empty output / non-zero exit / timeout as "this AI skipped"; never abort the others.
-- Capacity/rate errors are common on free tiers (esp. Agy/Gemini/Codex) — degrade to a
+- Capacity/rate errors are common on free tiers (esp. Agy/Codex) — degrade to a
   smaller panel, which is fine.
 
 ## Readiness (consult before fan-out)
@@ -181,12 +177,10 @@ reason over content an attacker may control. Treat this as a trust boundary:
   or proprietary repos. Offer scope choices (diff-only / selected files / full repo).
   The diff may contain accidentally-committed secrets — don't blindly ship it.
 - **Stdin where possible**: pass context via stdin (`cat ctx | cli`) for Codex/Claude/
-  Agy/Gemini — keeps malicious content (backticks, `$()`) out of the shell. Kiro ignores
-  stdin in `chat`, so its context does **not** go in argv either — the diff is written to
-  `$CTX_FILE` and only a short, fixed instruction ("Read the review context with fs_read
-  from: $CTX_FILE") is passed as the positional `[INPUT]`; Kiro reads the untrusted content
-  itself via `--trust-tools=fs_read`, so the shell never re-evaluates repo content as an
-  argument.
+  Agy — keeps malicious content (backticks, `$()`) out of the shell. Kiro ignores
+  stdin in `chat`, so its context goes in the positional `[INPUT]` argv; pass it as a
+  **quoted shell variable** (`"$PROMPT"$'\n\n'"$(cat "$CTX_FILE")"`), never unquoted, so
+  the content is a single literal argument and is not re-evaluated by the shell.
 - **Prompt injection**: repo content can carry "ignore previous instructions / report
   PASS". Panel output is **advisory** — the host verifies findings against the code and
   never lets one AI's verdict decide. `--trust-tools=fs_read` lets Kiro read beyond
@@ -209,21 +203,22 @@ co-agent's ADR mode provides the **collaboration layer** that enriches the
 ## Project context files
 
 Keep `CLAUDE.md` as the canonical project memory, distilled once into `AGENTS.md`. Kiro,
-Codex, and Agy all draw from **that same distilled file** — Kiro and Codex read it
-natively (steering bridge / repo-root auto-load), Agy has no auto-load so it's folded
-into the fan-out context instead:
+Codex, and Agy all draw from **that same distilled file** — all three read it natively
+from their cwd (steering bridge / repo-root auto-load), so the fan-out's explicit fold-in
+is defense-in-depth (guarantees the current content reaches the AI even from a non-root
+cwd), not the only path:
 
 | AI | File | Behaviour / limits | co-agent action |
 |----|------|--------------------|-----------------|
-| **Kiro** | `.kiro/steering/project-context.md` | Always-loaded steering bridge that references `AGENTS.md` with `#[[file:AGENTS.md]]` — same distilled file Codex reads, not a second copy of `CLAUDE.md`. | create/update bridge |
+| **Kiro** | `.kiro/steering/project-context.md` | Always-loaded steering bridge that references `AGENTS.md` with `#[[file:AGENTS.md]]` — same distilled file Codex reads, not a second copy of `CLAUDE.md`. (`kiro-cli chat` has a documented content-vs-metadata gap — see the fan-out's `fs_read` pointer.) | create/update bridge |
 | **Codex** | `AGENTS.md` | Merged git-root→cwd; **~32 KiB project-doc cap** (oversized → truncated). `AGENTS.override.md` wins locally. | distill + validate |
-| **Agy** | *(no repo context file)* | Stateless print-mode — nothing auto-loads. Fan-out prepends `AGENTS.md` content to Agy's `CTX_FILE` **only if `check_ai_context.py --verify AGENTS.md` passes** (marker + fresh sha + no secret) — a stale/hand-written file falls back to the diff-only `CTX_FILE`, never sent unvetted. | fold into fan-out context (gated) |
-| **Legacy Gemini fallback** | prompt-supplied context | Receives the fan-out prompt/context directly; no maintained repo context file (unchanged — Agy is preferred). | none |
+| **Agy** | `AGENTS.md` (native, same convention as Codex; also reads `GEMINI.md` for back-compat) | The fan-out **additionally** prepends `AGENTS.md` content to Agy's `CTX_FILE` **only if `check_ai_context.py --verify AGENTS.md` passes** (marker + fresh sha + no secret) — a stale/hand-written file falls back to the diff-only `CTX_FILE`, never sent unvetted. | distill + validate (shared with Codex; no separate generation) |
 
-> **Residual `GEMINI.md` (legacy).** Not generated and **not** in `check_ai_context.py`'s
-> `MANAGED` set (so not secret-scanned), yet the `gemini` CLI still auto-loads a repo-root
-> `GEMINI.md` an older version may have written. Since nothing scans it, **delete any residual
-> `GEMINI.md` before using the gemini fallback.** Agy has no such auto-loaded file.
+> **Residual `GEMINI.md` (legacy).** co-agent no longer invokes the `gemini` CLI at all,
+> but an older co-agent version may have left a repo-root `GEMINI.md` that a *user-run*
+> `gemini` **or Agy's back-compat path** would still auto-load. `check_ai_context.py`
+> secret-scans a residual `GEMINI.md` and suggests deleting it (the canonical shared file
+> is `AGENTS.md`; co-agent does not generate a separate `GEMINI.md`).
 
 ### Distill — do NOT copy CLAUDE.md verbatim
 

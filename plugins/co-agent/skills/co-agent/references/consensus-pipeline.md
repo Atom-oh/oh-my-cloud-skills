@@ -2,7 +2,7 @@
 
 Autonomous **doc → plan → implementation** with cross-family multi-model consensus gates.
 Borrows consensus-build's pipeline; the gates use co-agent's host-aware panel (Kiro models +
-the peer host CLI + Agy, with Gemini as legacy fallback). **All phases P0–P5 are implemented
+the peer host CLI + Agy). **All phases P0–P5 are implemented
 (Stage A: P0–P2, Stage B: P3, Stage C: P4–P5).**
 
 ## Entry — conditional on input documents

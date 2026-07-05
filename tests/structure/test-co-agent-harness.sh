@@ -11,7 +11,8 @@ assert_eq "codex" "$(python3 "$CFG" implementer --host claude --root "$R" 2>&1)"
 assert_eq "agy" "$(python3 "$CFG" implementer --host codex --root "$R" 2>&1)" "default implementer for codex host = agy (claude is not a sandbox CLI)"
 python3 "$CFG" set harness implementer agy --root "$R" >/dev/null 2>&1
 assert_eq "agy" "$(python3 "$CFG" implementer --host claude --root "$R" 2>&1)" "override to a sandbox CLI respected"
-# non-sandbox implementers rejected at set time (claude/kiro-cli/gemini have no worktree sandbox)
+# non-sandbox implementers rejected at set time (claude/kiro-cli have no worktree sandbox;
+# gemini isn't even a recognized AI anymore — Agy superseded it, ADR-010)
 python3 "$CFG" set harness implementer claude --root "$R" >/dev/null 2>&1 && C1=0 || C1=$?
 assert_eq "2" "$C1" "non-sandbox implementer claude rejected (exit 2)"
 python3 "$CFG" set harness implementer kiro-cli --root "$R" >/dev/null 2>&1 && C2=0 || C2=$?

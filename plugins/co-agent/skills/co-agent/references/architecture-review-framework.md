@@ -120,7 +120,7 @@ def verdict(findings):
 2. 패널 팬아웃 (예: `kiro-cli chat "<리뷰 프롬프트>\n\nRead the review context with fs_read from: <CTX_FILE>" --no-interactive --trust-tools=fs_read --wrap never`,
    `cat ctx | codex exec -s read-only`, `cat ctx | agy -p … --sandbox`) — 동일 프롬프트, 병렬.
    ⚠️ **Kiro는 `chat`에서 stdin을 무시**하므로 diff를 stdin으로 넘기지 않음 — 컨텍스트를 파일로
-   쓰고 짧은 프롬프트로 `fs_read`(유효한 유일한 read-only 툴명)를 지시. Codex/Agy/Gemini는
+   쓰고 짧은 프롬프트로 `fs_read`(유효한 유일한 read-only 툴명)를 지시. Codex/Agy는
    stdin 채널 사용. 상세: `references/ai-cli-adapters.md`.
 3. AWS Well-Architected 체크리스트 적용
 4. `check_citations.py`로 발견 검증 → 합의/이견 종합

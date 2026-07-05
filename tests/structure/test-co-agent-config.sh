@@ -4,7 +4,6 @@
 
 CFG="plugins/co-agent/skills/co-agent/scripts/co_agent_config.py"
 DEF="plugins/co-agent/skills/co-agent/co-agent.defaults.json"
-export CO_AGENT_THIRD_AI=agy
 # Isolate the user-scope layer from the real ~/.claude/co-agent.user.json for the whole
 # co-agent suite (config.sh sources first). Point it at a nonexistent path → no user layer.
 export CO_AGENT_USER_CONFIG="$(mktemp -u "${TMPDIR:-/tmp}/coagent-nouser.XXXXXX").json"
@@ -36,9 +35,12 @@ CLAUDE_FLAGS=$(python3 "$CFG" flags claude --host codex --root "$R" 2>&1 | tr '\
 assert_contains "$CLAUDE_FLAGS" "model sonnet" "claude flags include model (--model)"
 assert_contains "$CLAUDE_FLAGS" "effort max" "claude flags include effort"
 
-# Legacy fallback can still produce a Gemini panel when Agy is unavailable.
-LEGACY_PANEL=$(CO_AGENT_THIRD_AI=gemini python3 "$CFG" panel --root "$R" 2>&1)
-assert_eq "kiro-cli codex gemini" "$LEGACY_PANEL" "legacy fallback panel uses gemini when agy is unavailable"
+# Gemini support was removed (Agy superseded it — ADR-010): no env override can bring it
+# back, and it is rejected as an unknown AI everywhere the config exposes a per-AI verb.
+NO_GEMINI_FALLBACK=$(CO_AGENT_THIRD_AI=gemini python3 "$CFG" panel --root "$R" 2>&1)
+assert_eq "kiro-cli codex agy" "$NO_GEMINI_FALLBACK" "CO_AGENT_THIRD_AI is not read — panel is always agy"
+python3 "$CFG" set gemini enabled false --root "$R" >/dev/null 2>&1 && GS=0 || GS=$?
+assert_eq "2" "$GS" "gemini is rejected as an unknown ai (exit 2)"
 
 # effort is available only where the headless CLI supports it; others show n/a
 assert_contains "$SHOW" "n/a" "effort marked n/a for non-Codex"
@@ -142,5 +144,3 @@ assert_contains "$(python3 "$CFG" show --root "$RR" 2>&1 | tr '\n' ' ')" "gpt-4.
 python3 "$CFG" set codex model x --scope bogus --root "$RR" >/dev/null 2>&1 && BS=0 || BS=$?
 assert_eq "2" "$BS" "invalid --scope rejected (exit 2)"
 rm -rf "$RU" "$RR"; export CO_AGENT_USER_CONFIG="$SAVED_UC"
-
-unset CO_AGENT_THIRD_AI

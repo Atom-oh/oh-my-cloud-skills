@@ -78,21 +78,20 @@ _VERDICT_RE = re.compile(r"^\s*(PASS(?:ED)?|BLOCK(?:ED)?)\b", re.I)
 
 # Review adapters, mirroring references/ai-cli-adapters.md. Delivery is per the channel each
 # CLI actually consumes (untrusted content is NEVER put in argv → no `ps` exposure):
-#   channel "stdin" — prompt+diff piped on stdin (codex/agy/gemini).
+#   channel "stdin" — prompt+diff piped on stdin (codex/agy).
 #   channel "file"  — written to a temp file; argv tells the CLI to fs_read it. Kiro `chat`
 #                     IGNORES stdin (see ai-cli-adapters.md), so it MUST read the file.
 # Each reviewer runs read-only / sandboxed / non-acting so a diff prompt-injection can't drive
-# tool execution: codex -s read-only · agy --sandbox · gemini -p (print) · kiro --trust-tools=fs_read
+# tool execution: codex -s read-only · agy --sandbox · kiro --trust-tools=fs_read
 # (only the read-only fs_read tool auto-approved). {M} expands to the per-peer model flag;
 # {F} to the temp-file path (file channel only).
 _REVIEW = {
     "codex":    {"channel": "stdin", "argv": ["codex", "exec", "-s", "read-only", "{M}", "{I}"]},
     "agy":      {"channel": "stdin", "argv": ["agy", "-p", "{I}", "--sandbox", "{M}"]},
-    "gemini":   {"channel": "stdin", "argv": ["gemini", "-p", "{I}", "-o", "text", "{M}"]},
     "kiro-cli": {"channel": "file",  "argv": ["kiro-cli", "chat", "{I}", "--v3", "--mode", "default",
                           "--no-interactive", "--trust-tools=fs_read", "--wrap", "never", "{M}"]},
 }
-_MODEL_FLAG = {"codex": "-m", "agy": "--model", "gemini": "-m", "kiro-cli": "--model"}
+_MODEL_FLAG = {"codex": "-m", "agy": "--model", "kiro-cli": "--model"}
 
 # Env vars each reviewer legitimately needs for ITS OWN auth. Everything else whose NAME looks
 # like a credential (token/secret/key/password/cloud-provider creds) is STRIPPED before the peer
@@ -102,7 +101,6 @@ _MODEL_FLAG = {"codex": "-m", "agy": "--model", "gemini": "-m", "kiro-cli": "--m
 _PEER_ENV_KEEP = {
     "codex":    ("OPENAI_API_KEY", "CODEX_API_KEY"),
     "agy":      ("GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENAI_API_KEY"),
-    "gemini":   ("GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENAI_API_KEY"),
     "kiro-cli": ("KIRO_API_KEY",),
 }
 # Names that look credential-bearing. Matched against the env-var NAME (not value). Anchored so
@@ -264,7 +262,7 @@ def _gate_config(root):
     cfg = {}
     if cac is not None:
         try:
-            cfg = (cac.effective(root) or {}).get("pr_gate", {}) or {}
+            cfg = (cac.effective(root, warn=True) or {}).get("pr_gate", {}) or {}  # surface stale-key hygiene once (gate is a single call, not a loop)
         except Exception as e:   # config unreadable — default config, but log (no silent failure)
             sys.stderr.write(f"[co-agent PR gate] pr_gate config unreadable, using defaults: {e}\n")
     try:
@@ -377,18 +375,14 @@ def _scan_secret(diff):
 
 
 def _path_panel(host):
-    """Degraded fallback when the config module is unavailable: review CLIs on PATH. Keeps only
-    ONE of the Gemini family (agy preferred over gemini) so it isn't double-counted in quorum."""
+    """Degraded fallback when the config module is unavailable: review CLIs on PATH."""
     peers = [ai for ai in _REVIEW if ai != host and shutil.which(ai)]
-    if "agy" in peers and "gemini" in peers:
-        peers.remove("gemini")     # agy supersedes gemini — never count both
     return peers, {}
 
 
 def _panel(root):
-    """The canonical panel (`panel_ais`: kiro-cli + cross-provider peer + agy|gemini fallback —
-    so agy and gemini are never BOTH counted), filtered by config `enabled` and PATH. Never the
-    host. An explicit "all disabled" yields [] (no PATH override). Only a missing/failed config
+    """The canonical panel (`panel_ais`: kiro-cli + cross-provider peer + agy), filtered by
+    config `enabled` and PATH. Never the host. An explicit "all disabled" yields [] (no PATH override). Only a missing/failed config
     module degrades to a best-effort PATH scan."""
     host = os.environ.get("CO_AGENT_HOST", "claude")
     if cac is None:
@@ -583,7 +577,11 @@ def ev_pre_pr_gate(root):
         return 0
     out = {}
     # Isolated work dir = the peers' cwd (NOT the repo) so a prompt-injected reviewer's relative
-    # reads can't reach repo files; the file-channel diff lives here too.
+    # reads can't reach repo files; the file-channel diff lives here too. DELIBERATE trade-off:
+    # this also disables every cwd-based context auto-load (Codex/Agy AGENTS.md, Agy's GEMINI.md
+    # back-compat), and the gate does not fold AGENTS.md in either — PR-gate reviewers judge the
+    # diff WITHOUT project context, by design (isolation > context here; the advisory fan-out is
+    # the context-rich review path).
     with tempfile.TemporaryDirectory(prefix="coagent-prgate-") as wdir:
         fpath = os.path.join(wdir, "pr.diff")
         with open(fpath, "w", encoding="utf-8") as f:

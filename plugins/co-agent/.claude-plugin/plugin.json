@@ -1,7 +1,7 @@
 {
   "name": "co-agent",
   "version": "1.12.1",
-  "description": "Collaborate with other AI agents (Kiro CLI, Codex, Agy with Gemini fallback) — multi-AI code/architecture review, decision support when you're unsure, ADR co-authoring, and autonomous consensus/harness implementation pipelines. Claude chairs in Claude Code; Codex chairs in Codex.",
+  "description": "Collaborate with other AI agents (Kiro CLI, Codex, Agy) — multi-AI code/architecture review, decision support when you're unsure, ADR co-authoring, and autonomous consensus/harness implementation pipelines. Claude chairs in Claude Code; Codex chairs in Codex.",
   "author": {
     "name": "atomoh"
   },
@@ -65,7 +65,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo 'co-agent loaded. Multi-AI collaboration (Kiro/Codex/Agy, Gemini fallback): /co-agent review · decide · adr · sync-context · consensus · harness · setup. Tune the panel with /co-agent:configure. The current host synthesizes; uses whichever peer AI CLIs are installed.'"
+            "command": "echo 'co-agent loaded. Multi-AI collaboration (Kiro/Codex/Agy): /co-agent review · decide · adr · sync-context · consensus · harness · setup. Tune the panel with /co-agent:configure. The current host synthesizes; uses whichever peer AI CLIs are installed.'"
           }
         ]
       }
