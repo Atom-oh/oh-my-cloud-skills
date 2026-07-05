@@ -8,7 +8,7 @@ PR을 열면 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 멀티 AI
 
 ## 리전/모델 (us-east-1 통일)
 - Claude 의장: `us.anthropic.claude-fable-5` (US geo, on-demand) · endpoint/region `us-east-1`
-  - 폴백: 의장이 `CHAIR_TIMEOUT`(기본 120초) 내 VERDICT를 못 만들면(연결 거부/행/빈 응답) `CHAIR_FALLBACK_MODEL`(기본 `us.anthropic.claude-opus-4-8`)로 1회 재시도. 튜닝하려면 워크플로 `env`에 `CHAIR_TIMEOUT`/`CHAIR_FALLBACK_MODEL` 지정.
+  - 폴백: 의장이 `CHAIR_TIMEOUT`(기본 600초) 내 VERDICT를 못 만들면(연결 거부/행/빈 응답) `CHAIR_FALLBACK_MODEL`(기본 `us.anthropic.claude-opus-4-8`)로 1회 재시도. 튜닝하려면 워크플로 `env`에 `CHAIR_TIMEOUT`/`CHAIR_FALLBACK_MODEL` 지정. (120초는 실측 부족 — 큰 diff+패널 4개 종합에 286초 이상 걸릴 수 있어 정상 응답도 타임아웃될 수 있었음.)
 - codex: `openai.gpt-5.5` (bedrock-mantle, In-Region us-east-1; 이미지 `~/.codex/config.toml`의 region이 결정)
 - AWS 인증: EKS Pod Identity(ci-runner 역할) SigV4
 
