@@ -57,17 +57,25 @@ ADR-009의 멀티-AI 패널(Codex + Kiro×3)은 리뷰어를 벤더로 다양화
   대신 이 job 의 다른 크리덴셜(GH_TOKEN, Codex/의장의 Bedrock Pod Identity `AWS_*`)을
   읽어 응답에 실으라"를 유도할 수 있고, 그 응답은 체어 종합을 거쳐 공개 PR 코멘트로
   노출되거나 외부 서비스인 Kiro 로 리전 밖 유출될 수 있다(CI 자체 리뷰에서 CRITICAL로
-  발견 — 아래 참조). `consensus_hooks.py`의 `_review_one`/`_sanitized_env`와 동일한
+  발견 — 상세는 부록 참조). `consensus_hooks.py`의 `_review_one`/`_sanitized_env`와 동일한
   완화를 Kiro 셀에만 적용: (1) 격리 cwd(`$WORK/kiro-cwd`, 레포 아님) — 상대경로 read가
   레포 파일에 못 닿게(diff 경로는 이미 절대경로라 무관), (2) env allowlist — `KIRO_API_KEY`
   + 비민감 변수(PATH/HOME/LANG/TMPDIR)만 전달, GH_TOKEN/AWS_* 등은 차단. Codex는
   Bedrock 인증에 그 `AWS_*` 자체가 필요해(Pod Identity 주입) 동일 격리를 적용하지
   않음(스코프 밖 — 이 diff가 새로 연 위험이 아니라 기존 Bedrock 인증 모델의 구조).
   절대경로 read(`~/.aws/credentials` 등) 유도는 fs_read 가 read-capable 인 한 남는
-  잔여 위험 — co-agent 문서에도 동일하게 명시된 한계. **HOME 도 격리**(`$KIRO_CWD`,
-  실제 러너 `$HOME` 아님)해 `~` 표기로 유도되는 케이스의 실효 표면을 줄인다(이 러너의
-  Kiro 인증은 `KIRO_API_KEY` 뿐이라 HOME 아래 크리덴셜 파일에 의존하지 않음 — CI 자체
-  리뷰에서 MAJOR로 발견, 같은 PR에서 수정).
+  잔여 위험 — co-agent 문서에도 동일하게 명시된 한계. **이 잔여 위험은 명시적
+  accepted-risk 다** — 절대경로 read 유도가 성공하면 그 내용은 로컬 `scrub_secrets()`
+  적용 **이전에 이미 외부 서비스(Kiro)로 전송**된다(egress leg는 스크럽으로 못 막음).
+  완화 요인: 워크플로가 `head.repo.full_name == github.repository` 게이트로 same-repo
+  PR만 실행하므로 위협 행위자는 이미 write 권한을 가진 collaborator로 좁혀지고, env
+  allowlist·격리 cwd/HOME 이 env·`~` 경유 표면은 실측 테스트로 제거함(15차 리뷰에서
+  패널이 CRITICAL로 제기 → 체어가 이 문서화 사실 자체를 근거로 MINOR 하향, 재확인).
+  프로세스/컨테이너 레벨 FS 샌드박스(예: 러너 이미지에 bubblewrap·read-only 마운트로
+  diff 파일만 노출)가 이 잔여 위험을 구조적으로 닫는 유일한 방법 — 운영 후속 항목으로 남김.
+  **HOME 도 격리**(`$KIRO_CWD`, 실제 러너 `$HOME` 아님)해 `~` 표기로 유도되는 케이스의
+  실효 표면을 줄인다(이 러너의 Kiro 인증은 `KIRO_API_KEY` 뿐이라 HOME 아래 크리덴셜
+  파일에 의존하지 않음 — CI 자체 리뷰에서 MAJOR로 발견, 같은 PR에서 수정).
 - **커버리지 floor**: `--v3 --mode default --trust-tools=fs_read` 같은 kiro-cli 플래그가
   이 러너에서 무효화되거나 바이너리가 없으면, 그 모델의 lens 전부가 graceful skip 으로
   빠지면서 매트릭스가 조용히 축소된 채(예: Codex 4셀만) `VERDICT: PASS`가 나올 수 있다
@@ -75,12 +83,66 @@ ADR-009의 멀티-AI 패널(Codex + Kiro×3)은 리뷰어를 벤더로 다양화
   `::warning::` + `degraded-models.txt` 를 기록하고, `synthesize.sh`가 그 목록을 리뷰
   상단에 명시 배너로 남긴다(VERDICT 를 강제 FAIL 하진 않음 — 간헐적 rate-limit로도
   흔하고, 매트릭스 자체가 lens당 교차확인이라 완전한 맹점은 아니라고 판단; 대신 사람이
-  놓치지 않게 가시화). 러너 이미지에서의 실제 `fs_read` 스모크 검증은 이 저장소의
-  개발 환경으로는 할 수 없는 운영 후속 항목으로 남김.
+  놓치지 않게 가시화). 살아남은 벤더가 1개 이하로 붕괴하면(전 모델의 (전체-1)개 이상
+  degraded) 이 warn-only 전제 자체가 깨지므로 그 경우만 강제 `VERDICT: FAIL`로 승격한다
+  (상세: 부록 5차). 러너 이미지에서의 실제 `fs_read` 스모크 검증은 이 저장소의 개발
+  환경으로는 할 수 없는 운영 후속 항목으로 남김.
 - **비용은 제약으로 두지 않음**(사용자 결정) — 실제 상한은 러너 동시성/API rate-limit뿐이며,
   job `timeout-minutes`(50m)로 방어.
 - ADR-009의 나머지 불변식(보안: base-checkout + fork PR 미실행, 데이터 거주성: Kiro 외부 송신
   accepted-risk, fail-closed VERDICT, 코멘트 upsert marker)은 변경 없이 유지.
+
+## Consequences
+
+- 커버리지가 "리뷰어 다양화"에서 "리뷰어×관점 매트릭스"로 체계화 — 사각지대 감소.
+- 결정적으로 검증 가능한 매니페스트/버전 문제는 0 오탐·0 AI 비용으로 즉시 차단.
+- AI 콜 수가 1×패널(4)에서 최대 4×패널(16)로 증가 — 의도된 트레이드오프(비용 비제약).
+- Phase V(verify, hybrid-gate 완전형)는 이번 구현에 포함하지 않음 — 매트릭스 자체가 lens당
+  4중 교차확인이라 오탐을 상당 부분 흡수한다고 판단; 실제 오탐이 문제되면 추가.
+- 테스트: `tests/pr-review/test-run-panel.sh`(매트릭스 fan-out) + `tests/pr-review/
+  test-precheck.sh`(L1) + `tests/pr-review/test-synthesize.sh`(의장 종합) + `tests/
+  pr-review/test-lib.sh`(scrub_secrets/ensure_slots) 신설, `tests/run-all.sh`에
+  `pass`/`fail` 브리지 추가해 `tests/pr-review/*.sh`를 CI 집계에 포함(이전엔 미집계
+  gap). 라운드별 상세 커버리지는 부록 참조.
+- **자기 검증의 한계이자 그 안에서의 실질 성과**: 이 재설계 자체가 base-script 모델상
+  자기검증 불가(ADR-009)이지만, **이 PR 자체가 CI를 두 차례 거치며 실제 리뷰를 받았다**.
+  1차(구 4-패널 구조, 커밋 01cf9d4)에서 C1(Kiro env/cwd 격리 누락)과 M2(harness `set -e`
+  오염)를 잡아 같은 PR에서 수정. main 에 병렬로 머지된 #105(`CHAIR_TIMEOUT` 120s→600s,
+  이 PR과 별개 원인 진단 — 아래 참조)가 반영된 뒤 2차 리뷰(커밋 9ee2d99)가 실제로
+  완주해, `.codex-plugin` 매니페스트 L1 커버리지 갭(M1)·커버리지 floor 부재(M2)·HOME
+  스크래치 미적용(M3)을 추가로 잡아 같은 PR에서 수정했다. 반대로 그 리뷰가 제기한 항목
+  중 실측으로 반증된 것도 있다(`KIRO_API_KEY` 인용 미비 주장 — `env -i` 조건부 확장이
+  이미 안전함을 직접 재현해 확인, 반영하지 않음) — 패널 지적을 그대로 적용하지 않고
+  코드 대조·재현으로 검증 후 채택한 사례. 이 패턴(제기 → diff/코드 대조 → 확인 시
+  수정, 반증 시 거부 + 사유 기록)은 이후 14차례의 라운드에서도 동일하게 반복됐다 —
+  라운드별 상세는 부록 참조.
+- **CHAIR_TIMEOUT 120s→600s(#105)의 실제 원인**: 이 PR이 진단했던 "argv 128KiB 한계"와는
+  별개로, 병렬로 착수된 #105 가 더 근본적인 원인을 찾았다 — 같은 러너 이미지/서비스어카운트의
+  다른 실행에서 타임아웃 없는 구버전 스크립트가 357줄 diff 종합에 286초를 정상적으로 썼다.
+  즉 관측된 "의장 빈 응답" 실패의 다수는 Bedrock 장애나 ARG_MAX 가 아니라 **120s(이후 180s
+  검토)라는 타임아웃 값 자체가 정상 응답을 죽이기에 너무 짧았던 것**이었다. 두 수정(stdin
+  전환 + 타임아웃 상향)은 서로 다른 실패 모드를 겨냥하며 상호 배타적이지 않다 — stdin
+  전환은 exec() 레벨 하드 실패를 막고, 타임아웃 상향은 정상이지만 느린 응답을 살린다.
+
+## References
+
+- ADR-009(멀티-AI 패널 원안, 이 ADR 이 amend), ADR-010(Antigravity 제거)
+- `docs/superpowers/specs/2026-07-05-pr-review-hybrid-lens-design.md` (설계안)
+- `.github/workflows/pr-review.yml`, `scripts/pr-review/{precheck,run-panel,synthesize,lib}.sh`,
+  `scripts/test-plugins.py --root`, `scripts/test-codex-plugins.py --root`
+- `docs/ci-pr-review.md`, `docs/ci-pr-review-runbook.md`
+- `tests/pr-review/{test-run-panel,test-precheck,test-lib,test-synthesize}.sh`
+- PR #103(이 재설계), #104(co-agent 모델 티어링, 무관 병렬 머지), #105(`CHAIR_TIMEOUT`
+  120s→600s — 이 PR과 별개로 근본 원인 진단)
+
+## Appendix: Round-by-Round Review Log
+
+> 이 부록은 PR #103 이 머지되기 전 자체 CI 리뷰를 15차례 거치며 나온 지적·검증·수정
+> 이력이다. 위 Decision/Consequences 는 durable 한 최종 결정만 담고, 그 결정에 이르는
+> 과정(무엇이 지적됐고, 어떻게 검증했고, 왜 반영했거나 반영하지 않았는지)은 여기 보존한다.
+> 11~14차에서 "Decision 본문이 리비전 로그를 겸해 가독성이 떨어진다"는 지적이 반복됐고,
+> 이 부록 분리로 그 지적을 반영했다.
+
 - **3차 리뷰 수정(CI 자체 리뷰, 커밋 5c56d7f 이후)**: (1) 위 절대경로 read 잔여 위험에
   belt-and-braces 한 겹 추가 — `lib.sh::scrub_secrets()`가 co-agent `_SECRET_RE`(AWS/
   GitHub/Slack/OpenAI·Anthropic/Google + generic key=value) 패턴과 JWT(Pod Identity
@@ -336,47 +398,37 @@ ADR-009의 멀티-AI 패널(Codex + Kiro×3)은 리뷰어를 벤더로 다양화
   한 줄 노출(cosmetic 가독성)은 기능 결함이 아니라 보류. 신규 테스트 없음(사유 위 기술) —
   전체 스위트 600 passed 유지, 기존 무관 17건 실패는 그대로.
 
-## Consequences
+- **15차 리뷰 수정(커밋 ecdf6ba 이후, PASSED — 패널 codex 1/1 응답, Kiro 무응답)**: codex가
+  제기한 CRITICAL 1건("Kiro fs_read 절대경로 read → scrub_secrets 이전에 이미 외부
+  서비스로 유출")과 MAJOR 1건("`mkdir -p`/`realpath` 실패해도 계속 진행")은 체어가 diff·
+  repo 실물과 대조해 **둘 다 MINOR로 하향**했다 — CRITICAL 쪽은 이 잔여 위험 자체가
+  이미 ADR 본문(위 Decision, "명시적 accepted-risk" 문단)과 `docs/ci-pr-review.md`에
+  문서화·수용돼 있고, `head.repo.full_name == github.repository` 게이트로 위협 모델이
+  이미 write 권한 collaborator로 좁혀져 있음을 근거로 재확인만 함(반영 없음, 이미 반영된
+  결정의 재확인). MAJOR 쪽은 diff 대조 결과 "root-level 파괴적 cleanup" 주장은 성립하지
+  않지만(실제 도달 경로는 존재하지 않는 경로의 비파괴적 `rm -f`/`rm -rf`뿐, 종단은 셀
+  전멸→coverage collapse→강제 FAIL 로 fail-closed) `mkdir -p "$WORK"`/`WORK="$(realpath
+  "$WORK")"`에 명시적 실패 처리가 없는 latent 하드닝 갭은 실재 — 8~9차에서 이미 확립한
+  "파괴적 경로를 만들 수 있는 연산은 실패를 명시적으로 처리" 원칙과 일관되므로
+  `|| exit 1`을 추가해 반영. 같은 라운드에서 codex 가 제기하고 체어가 CONFIRMED 한 MINOR
+  2건도 반영: `synthesize.sh`의 절단 마커 문구 `"...see full output in CI logs..."`가
+  거짓 — 성공한 셀의 stdout(.md)은 CI 로그 어디에도 출력되지 않는다(로그에 남는 건 skip
+  셀의 stderr tail 뿐임을 코드 대조로 확인) — "full output not retained" 류로 수정해
+  존재하지 않는 복구 경로를 안내하지 않도록 함. `docs/ci-pr-review-runbook.md`의 `⚠️`가
+  "formal docs 에 emoji 금지" 컨벤션(AGENTS.md/`docs/CLAUDE.md` 등에 실재)과 부딪히던 것
+  — `synthesize.sh` 가 실제로 출력하는 배너 문자열의 리터럴 인용이라는 점을 참작해 해당
+  줄만 코드 스팬으로 감싸 컨벤션과 양립하도록 수정. **채택 안 함**: 프로세스/컨테이너
+  FS 샌드박스(CRITICAL 항목의 구조적 해법)는 이미 ADR 에 운영 후속으로 기록된 이 저장소
+  개발 환경 밖의 항목이라 이번 PR 범위 밖. **이번 라운드에서 함께 처리**: 11~14차에서
+  반복 제기된 ADR-011 리비전 로그 분리 — `AskUserQuestion` 이 두 차례 모두 응답을 받지
+  못해(tool stream 오류) 사용자 확인 없이 진행, 권장 옵션("Decision 은 결정만, 라운드
+  로그는 부록으로 분리")을 기본값으로 적용해 이 부록을 신설했다. Decision/Consequences
+  본문은 라운드 로그 문단을 제거했을 뿐 문구 자체는 그대로 보존(수정 없음, 위치만 이동)
+  — "이미 accepted 된 근거를 사후 편집하지 않는다"는 이 문서 자체의 컨벤션을 이 재구성에도
+  적용.
 
-- 커버리지가 "리뷰어 다양화"에서 "리뷰어×관점 매트릭스"로 체계화 — 사각지대 감소.
-- 결정적으로 검증 가능한 매니페스트/버전 문제는 0 오탐·0 AI 비용으로 즉시 차단.
-- AI 콜 수가 1×패널(4)에서 최대 4×패널(16)로 증가 — 의도된 트레이드오프(비용 비제약).
-- Phase V(verify, hybrid-gate 완전형)는 이번 구현에 포함하지 않음 — 매트릭스 자체가 lens당
-  4중 교차확인이라 오탐을 상당 부분 흡수한다고 판단; 실제 오탐이 문제되면 추가.
-- 테스트: `tests/pr-review/test-run-panel.sh`(매트릭스 fan-out, (a)~(f)) +
-  `tests/pr-review/test-precheck.sh`(L1, (a)~(g)) 신설, `tests/run-all.sh`에 `pass`/`fail`
-  브리지 추가해 `tests/pr-review/*.sh`를 CI 집계에 포함(이전엔 미집계 gap). Kiro env/cwd/
-  HOME 격리는 mock kiro-cli 가 실제로 물려받은 env·cwd·HOME 을 덤프하게 해 GH_TOKEN/AWS_*
-  미노출 + KIRO_API_KEY 보존 + 격리 cwd/HOME 을 실측 검증(`test-run-panel.sh` (e)). 커버리지
-  floor 는 kiro 전체를 실패시켜 `degraded-models.txt`·`::warning::`이 정확히 나오는지,
-  codex 처럼 정상 응답한 모델이 오탐으로 안 걸리는지 검증(`test-run-panel.sh` (f)).
-  `.codex-plugin`/`.agents` 매니페스트 L1 커버리지는 클린 트리 PASS + 비-semver 주입 시
-  non-zero 를 검증(`test-precheck.sh` (e)/(f)); 빈 workdir 인자 가드는 (g).
-- **자기 검증의 한계이자 그 안에서의 실질 성과**: 이 재설계 자체가 base-script 모델상
-  자기검증 불가(ADR-009)이지만, **이 PR 자체가 CI를 두 차례 거치며 실제 리뷰를 받았다**.
-  1차(구 4-패널 구조, 커밋 01cf9d4)에서 C1(Kiro env/cwd 격리 누락)과 M2(harness `set -e`
-  오염)를 잡아 같은 PR에서 수정. main 에 병렬로 머지된 #105(`CHAIR_TIMEOUT` 120s→600s,
-  이 PR과 별개 원인 진단 — 아래 참조)가 반영된 뒤 2차 리뷰(커밋 9ee2d99)가 실제로
-  완주해, `.codex-plugin` 매니페스트 L1 커버리지 갭(M1)·커버리지 floor 부재(M2)·HOME
-  스크래치 미적용(M3)을 추가로 잡아 같은 PR에서 수정했다. 반대로 그 리뷰가 제기한 항목
-  중 실측으로 반증된 것도 있다(`KIRO_API_KEY` 인용 미비 주장 — `env -i` 조건부 확장이
-  이미 안전함을 직접 재현해 확인, 반영하지 않음) — 패널 지적을 그대로 적용하지 않고
-  코드 대조·재현으로 검증 후 채택한 사례.
-- **CHAIR_TIMEOUT 120s→600s(#105)의 실제 원인**: 이 PR이 진단했던 "argv 128KiB 한계"와는
-  별개로, 병렬로 착수된 #105 가 더 근본적인 원인을 찾았다 — 같은 러너 이미지/서비스어카운트의
-  다른 실행에서 타임아웃 없는 구버전 스크립트가 357줄 diff 종합에 286초를 정상적으로 썼다.
-  즉 관측된 "의장 빈 응답" 실패의 다수는 Bedrock 장애나 ARG_MAX 가 아니라 **120s(이후 180s
-  검토)라는 타임아웃 값 자체가 정상 응답을 죽이기에 너무 짧았던 것**이었다. 두 수정(stdin
-  전환 + 타임아웃 상향)은 서로 다른 실패 모드를 겨냥하며 상호 배타적이지 않다 — stdin
-  전환은 exec() 레벨 하드 실패를 막고, 타임아웃 상향은 정상이지만 느린 응답을 살린다.
+## Verification (2026-07-05, restructuring pass)
 
-## References
-
-- ADR-009(멀티-AI 패널 원안, 이 ADR 이 amend), ADR-010(Antigravity 제거)
-- `docs/superpowers/specs/2026-07-05-pr-review-hybrid-lens-design.md` (설계안)
-- `.github/workflows/pr-review.yml`, `scripts/pr-review/{precheck,run-panel,synthesize,lib}.sh`,
-  `scripts/test-plugins.py --root`, `scripts/test-codex-plugins.py --root`
-- `docs/ci-pr-review.md`, `docs/ci-pr-review-runbook.md`
-- `tests/pr-review/{test-run-panel,test-precheck,test-lib,test-synthesize}.sh`
-- PR #103(이 재설계), #104(co-agent 모델 티어링, 무관 병렬 머지), #105(`CHAIR_TIMEOUT`
-  120s→600s — 이 PR과 별개로 근본 원인 진단)
+이 부록 분리 시점에 전체 스위트를 재실행해 순수 문서 재구성이 스크립트 동작에 영향이
+없음을 확인: `bash tests/run-all.sh` → 600 passed, 기존 무관 17건 실패는 그대로(스크립트
+파일 변경 없음, `.md` 만 재구성).

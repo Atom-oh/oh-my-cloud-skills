@@ -10,8 +10,9 @@ PR을 열면 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 L1(결정
 2. **L1 통과** 시: PR 코멘트의 `_Cells (model/lens):_` 줄에 `codex/L2`, `kiro-opus/L3`,
    `kiro-kimi/L4`, `kiro-glm/L5` 등 최대 16개 `<모델>/<lens>` 태그가 보이면 정상(일부 셀은
    등급/쿼터로 간헐 skip 가능). 모델 하나가 **전체 lens** 에서 응답 없으면(예: kiro-cli 플래그
-   무효화) 리뷰 상단에 "⚠️ 커버리지 저하" 배너가 뜬다(run-panel.sh 의 모델별 row 체크 —
-   lens 하나가 모든 모델에서 동시에 비는 케이스는 별도 감지 없음, 현재는 낮은 확률로 간주).
+   무효화) 리뷰 상단에 `⚠️ 커버리지 저하` 배너가 뜬다(synthesize.sh 가 실제로 출력하는 배너
+   문자열 그대로 — run-panel.sh 의 모델별 row 체크 결과, lens 하나가 모든 모델에서 동시에
+   비는 케이스는 별도 감지 없음, 현재는 낮은 확률로 간주).
    **Antigravity(`agy`)는 매트릭스에 없음**(ADR-010 — 헤드리스 인증 불가).
 3. 마지막 줄 `VERDICT: PASS|FAIL`로 게이트 결정(fail-closed, L1 실패도 fail).
 

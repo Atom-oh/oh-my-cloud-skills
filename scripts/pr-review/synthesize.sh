@@ -41,7 +41,11 @@ while IFS= read -r f; do
   # 실제로 잘렸으면(스크럽된 내용이 캡보다 크면) 체어가 절단 사실을 알도록 마커를 남긴다 —
   # 안 그러면 잘린 CRITICAL 근거를 "이게 전부"로 오해할 수 있다. head -c 는 UTF-8 문자
   # 경계 무관하게 바이트로 자르므로 마커 자체는 항상 ASCII로 붙여 표시가 깨지지 않게 한다.
-  [ "$SCRUBBED_LEN" -gt "$PANEL_CELL_CAP" ] && CELL+=$'\n[...TRUNCATED at '"$PANEL_CELL_CAP"'B — see full output in CI logs...]'
+  # 이전 문구는 "see full output in CI logs"라고 안내했지만 이건 거짓 복구 경로다 — 성공한
+  # 셀의 .md 는 CI 로그에 전혀 출력되지 않는다(로그에 남는 건 실패한 셀의 .err tail 뿐,
+  # scrub 이후 skip-진단 블록 참조). 존재하지 않는 곳을 보라고 안내하지 않도록 수정(15차
+  # 리뷰 MINOR-3, codex 제기 → 체어 CONFIRMED).
+  [ "$SCRUBBED_LEN" -gt "$PANEL_CELL_CAP" ] && CELL+=$'\n[...TRUNCATED at '"$PANEL_CELL_CAP"'B — full output not retained...]'
   PANEL+="
 
 === 패널: $(basename "$f" .md) ===

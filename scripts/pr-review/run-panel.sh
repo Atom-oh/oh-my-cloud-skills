@@ -19,11 +19,15 @@ LENSES_DIR="$2"; WORK="$3"
 # 바로 잡아내는 게 디버깅에 낫다.
 [ -n "$LENSES_DIR" ] || { echo "run-panel.sh: lenses_dir (\$2) must not be empty" >&2; exit 1; }
 [ -n "$WORK" ] || { echo "run-panel.sh: workdir (\$3) must not be empty" >&2; exit 1; }
-mkdir -p "$WORK"
 # $SLOT(="$WORK/slot")는 Kiro 셀에서 `cd "$KIRO_CWD"` 이후에도 그대로 참조된다 — 호출자가
 # 상대경로 WORK를 주면 그 시점부터 깨진다. 현재 호출부(워크플로·테스트)는 전부 절대경로라
 # 실 결함은 아니었지만, DIFF 처럼 코드가 직접 보장하도록 여기서 절대화한다(13차 리뷰 MINOR-1).
-WORK="$(realpath "$WORK")"
+# mkdir/realpath 실패를 `set -e` 없이 조용히 넘기면 이후 전부 빈/잘못된 $WORK 로 계속
+# 진행할 수 있다 — 8~9차에서 확립한 "파괴적 경로를 만들 수 있는 연산은 실패를 명시적으로
+# 처리" 원칙과 일관되게 두 줄 다 fail-fast(15차 리뷰 MINOR-2).
+mkdir -p "$WORK" || { echo "run-panel.sh: failed to create workdir: $WORK" >&2; exit 1; }
+WORK="$(realpath "$WORK")" \
+  || { echo "run-panel.sh: realpath failed to resolve workdir: $WORK" >&2; exit 1; }
 DIR="$(cd "$(dirname "$0")" && pwd)"; . "$DIR/lib.sh"
 ensure_slots "$WORK"
 SLOT="$WORK/slot"; RESP="$WORK/responded.txt"; : > "$RESP"
