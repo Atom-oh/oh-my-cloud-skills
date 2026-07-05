@@ -7,7 +7,7 @@ Layered like Claude Code's own settings:
 
 Only settings the CLIs ACCEPT HEADLESSLY are exposed (verified against the installed
 CLIs) — no dead settings:
-  - model   : Kiro/Claude/Agy `--model`, Codex/Gemini `-m`
+  - model   : Kiro/Claude/Agy `--model`, Codex `-m`
   - effort  : Codex `-c model_reasoning_effort="<v>"`, Claude `--effort`
   - enabled : panel membership (orchestration)
   - timeout : per-CLI wall-clock budget in the fan-out (orchestration)
@@ -24,6 +24,12 @@ Usage:
   co_agent_config.py set <ai> <key> <value>     # write to .claude/co-agent.local.json
   co_agent_config.py set timeout <seconds>      # global per-CLI timeout
   co_agent_config.py set autosync <on|off>      # auto-run sync-context on CLAUDE.md change
+  co_agent_config.py set harness review_mode <hybrid|relay|parallel>  # harness gate mechanics
+  co_agent_config.py review-mode                # effective harness gate mode (hybrid default)
+  co_agent_config.py set harness parallel_tasks <n>  # implement wave size (1 = sequential)
+  co_agent_config.py parallel-tasks             # effective implement concurrency (int)
+  co_agent_config.py set harness max_fix_rounds <n>  # per-task peer fix-loop bound (default 2)
+  co_agent_config.py max-fix-rounds             # effective fix-loop bound (int)
   co_agent_config.py set <ai> context_limit <n> # per-AI context window (tokens)
   co_agent_config.py flags <ai>                 # CLI flag fragment for the fan-out
   co_agent_config.py panel                      # space-separated enabled AIs
@@ -32,19 +38,21 @@ Usage:
   co_agent_config.py autosync                   # exit 0 if sync-on-change is on, 1 if off
   co_agent_config.py context-limit <ai>         # effective context window (tokens; 0 = none)
   co_agent_config.py fits <ai> <tokens>         # exit 0 if tokens fit the window, 1 if not
+  co_agent_config.py pairs [--phases N]         # (ai, model) pairs for this round (N fan-outs/round)
+  co_agent_config.py matrix [--phases N]        # pairs × rounds × phases = true max calls
 Add --root DIR to target a repo other than the cwd.
 Add --host claude|codex or set CO_AGENT_HOST to choose the current chair.
-Set CO_AGENT_THIRD_AI=gemini to force the legacy Gemini fallback; otherwise Agy is preferred
-when installed, with Gemini used only when Agy is absent.
+Add --phases N to `pairs`/`matrix` when a gate fans out more than once per round (the
+hybrid gate's find+verify = 2 phases) — divides the per-round call budget across phases
+so `rounds × phases × pairs` still stays within `consensus.max_calls`. Default 1.
 """
 import sys
 import os
 import re
 import json
 import copy
-import shutil
 
-ALL_AIS = ("kiro-cli", "claude", "codex", "agy", "gemini")
+ALL_AIS = ("kiro-cli", "claude", "codex", "agy")
 HOSTS = ("claude", "codex")
 CODEX_EFFORTS = ("minimal", "low", "medium", "high")
 CLAUDE_EFFORTS = ("low", "medium", "high", "xhigh", "max")
@@ -66,27 +74,22 @@ def normalize_host(host):
     return host
 
 
-def third_ai():
-    """Return the preferred third panel member. Agy is the successor path; Gemini is
-    retained only as a legacy fallback when Agy is unavailable."""
-    forced = os.environ.get("CO_AGENT_THIRD_AI", "").strip().lower()
-    if forced in ("agy", "gemini"):
-        return forced
-    if shutil.which("agy") or not shutil.which("gemini"):
-        return "agy"
-    return "gemini"
-
-
 def panel_ais(host):
+    # Third member is always Agy — Gemini support was removed (Agy superseded it; ADR-010).
     peer = "codex" if host == "claude" else "claude"
-    return ("kiro-cli", peer, third_ai())
+    return ("kiro-cli", peer, "agy")
 
 
 # Only these CLIs enforce a worktree-scoped WRITE sandbox (codex -s workspace-write,
-# agy --sandbox). claude(--permission-mode acceptEdits), kiro-cli(--trust-tools) and
-# gemini(--yolo) auto-accept writes but do NOT confine them to the worktree, so they
-# are NOT safe delegated implementers — the trust boundary would not hold.
+# agy --sandbox). claude(--permission-mode acceptEdits) and kiro-cli(--trust-tools)
+# auto-accept writes but do NOT confine them to the worktree, so they are NOT safe
+# delegated implementers — the trust boundary would not hold.
 SANDBOX_IMPLEMENTERS = ("codex", "agy")
+# harness review-gate mechanics (only /co-agent:harness reads it):
+#   hybrid   = parallel find -> chair triage -> parallel verify (references/hybrid-gate.md; default)
+#   relay    = sequential relay chain (references/relay-chain-gate.md)
+#   parallel = one-shot independent fan-out (references/consensus-mode.md)
+REVIEW_MODES = ("hybrid", "relay", "parallel")
 
 
 def implementer_ai(cfg, host):
@@ -142,24 +145,44 @@ def deep_merge(base, over):
     return out
 
 
-# Peer keys renamed in 1.10. Not read as aliases (no back-compat) — but WARN so a stale
-# override (e.g. `kiro.enabled:false`) isn't silently dropped, re-enabling a disabled AI.
-LEGACY_KEYS = {"kiro": "kiro-cli", "antigravity": "agy"}
+# Peer keys renamed in 1.10 (kiro→kiro-cli, antigravity→agy), plus `gemini` — REMOVED
+# entirely (Agy superseded it, ADR-010), value None = "delete this key, do not rename".
+# Not read as aliases (no back-compat) — but WARN so a stale override (e.g. a user's
+# `gemini.enabled:true` from before this AI was dropped) isn't silently ignored, silently
+# losing their third reviewer with no error. gemini must NOT say "rename to agy": grafting
+# a stale gemini block (enabled:false, gemini-* model ids) onto agy would disable or
+# misconfigure a live AI — worse than the ignored override.
+LEGACY_KEYS = {"kiro": "kiro-cli", "antigravity": "agy", "gemini": None}
 
 
-def effective(root):
+def effective(root, warn=False):
     # Precedence low→high: committed defaults → user scope (~/.claude) → repo-local (.claude).
+    # `warn` gates the legacy-key hygiene warnings: only the DISPLAY commands (show/matrix)
+    # pass warn=True. The plumbing commands (pairs/flags/fits/timeout/panel/review-mode/…)
+    # call effective() ~2N+ times per fan-out, so warning from each would print the same
+    # line ~9× per gate run (drowning the consent-critical budget warning) — the display
+    # commands are the one place the user actually reads, so warn there and stay silent in
+    # the loop. Malformed-config warnings are NOT gated: a broken file must always be loud.
     cfg = load_defaults()
     for lp in (user_path(), local_path(root)):
         if os.path.isfile(lp):
             try:
                 with open(lp, encoding="utf-8") as f:
                     raw = json.load(f)
-                stale = [k for k in raw.get("panel", {}) if k in LEGACY_KEYS]
-                if stale:
-                    hint = ", ".join(f"{k}→{LEGACY_KEYS[k]}" for k in stale)
-                    print(f"⚠️  {lp}: legacy panel key(s) {hint} are NO LONGER read — "
-                          f"rename them or the override is ignored.", file=sys.stderr)
+                if warn:
+                    stale = [k for k in raw.get("panel", {}) if k in LEGACY_KEYS]
+                    renames = [k for k in stale if LEGACY_KEYS[k]]
+                    removed = [k for k in stale if not LEGACY_KEYS[k]]
+                    if renames:
+                        hint = ", ".join(f"{k}→{LEGACY_KEYS[k]}" for k in renames)
+                        print(f"⚠️  {lp}: legacy panel key(s) {hint} are NO LONGER read — "
+                              f"rename them or the override is ignored.", file=sys.stderr)
+                    if removed:
+                        hint = ", ".join(removed)
+                        print(f"⚠️  {lp}: panel key(s) {hint} refer to a REMOVED AI and are "
+                              f"ignored — DELETE the block (do not rename it onto another AI; "
+                              f"configure agy separately if you want the third reviewer).",
+                              file=sys.stderr)
                 cfg = deep_merge(cfg, raw)
             except (json.JSONDecodeError, OSError) as e:
                 print(f"⚠️  ignoring malformed {lp}: {e}", file=sys.stderr)
@@ -202,28 +225,73 @@ def panel_pairs(cfg, host):
     return pairs
 
 
-def cmd_pairs(root, host):
-    cfg = effective(root)
-    cap = int(cfg.get("consensus", {}).get("max_calls", 12))
+def capped_pairs(cfg, host, phases=1):
+    """The panel pairs AFTER the per-round budget trim — the single source of truth for
+    what a gate fan-out will actually run. `phases` = fan-outs per round (hybrid = 2:
+    find + verify); the per-round budget is divided across phases so
+    rounds × phases × pairs ≤ max_calls overall. Returns
+    (pairs, configured_count, per_round_cap, floor_clamped): floor_clamped is True when
+    even one pair per phase across all rounds exceeds max_calls (rounds×phases > cap) —
+    the gate then overspends the configured budget and callers must surface that."""
+    cap = int(cfg.get("consensus", {}).get("max_calls", 24))
     rounds = int(cfg.get("consensus", {}).get("max_rounds", 2))
-    per_round_cap = max(1, cap // max(1, rounds))
+    phases = max(1, phases)
+    raw_cap = cap // max(1, rounds) // phases
+    per_round_cap = max(1, raw_cap)
     pairs = panel_pairs(cfg, host)
-    if len(pairs) > per_round_cap:
-        print(f"⚠️  {len(pairs)} pairs exceeds per-round cap {per_round_cap} "
-              f"(max_calls {cap} / {rounds} rounds) — trimming", file=sys.stderr)
-        pairs = pairs[:per_round_cap]
+    configured = len(pairs)
+    return pairs[:per_round_cap], configured, per_round_cap, raw_cap < 1
+
+
+def _cap_warnings(cfg, configured, per_round_cap, floor_clamped, phases):
+    cap = int(cfg.get("consensus", {}).get("max_calls", 24))
+    rounds = int(cfg.get("consensus", {}).get("max_rounds", 2))
+    if configured > per_round_cap:
+        print(f"⚠️  {configured} pairs exceeds per-round cap {per_round_cap} "
+              f"(max_calls {cap} / {rounds} rounds"
+              + (f" / {phases} phases" if phases > 1 else "") + ") — trimming", file=sys.stderr)
+    # `and configured`: with an empty panel (all AIs disabled) nothing runs, so the
+    # floor-clamp "will overspend" claim would be false — only warn when pairs exist.
+    if floor_clamped and configured:
+        # max(1, …) floored the cap: 1 pair × rounds × phases still exceeds max_calls.
+        print(f"⚠️  max_calls {cap} cannot hold even 1 pair per phase across {rounds} rounds"
+              + (f" × {phases} phases" if phases > 1 else "")
+              + f" — the gate will spend up to {rounds * max(1, phases)} calls, EXCEEDING the "
+              f"configured budget. Raise max_calls or lower max_rounds.", file=sys.stderr)
+
+
+def cmd_pairs(root, host, phases=1):
+    # Silent by design: `pairs` is called N times per fan-out loop. The trim/floor-clamp
+    # warnings (and the legacy-key hygiene warnings) belong to the consent display `matrix`,
+    # which every documented flow runs at H0 before the loop — re-emitting them from each
+    # `pairs` call printed the same line ~9× per gate run. The trim itself still happens.
+    cfg = effective(root)
+    pairs, _configured, _cap, _floor = capped_pairs(cfg, host, phases)
     for ai, m in pairs:
         print(f"{ai}\t{m or '(default)'}")
     return 0
 
 
-def cmd_matrix(root, host):
-    cfg = effective(root)
+def cmd_matrix(root, host, phases=1):
+    cfg = effective(root, warn=True)   # the consent display — surface legacy-key warnings here
     rounds = int(cfg.get("consensus", {}).get("max_rounds", 2))
-    pairs = panel_pairs(cfg, host)
+    # Display the CAPPED panel — what will actually run — never the untrimmed wish-list
+    # (an untrimmed display would collect consent for pairs/cost that never execute).
+    full = panel_pairs(cfg, host)
+    pairs, configured, per_round_cap, floor_clamped = capped_pairs(cfg, host, phases)
+    _cap_warnings(cfg, configured, per_round_cap, floor_clamped, phases)
+    total = len(pairs) * rounds * max(1, phases)
+    phase_note = f" × {phases} phases (find+verify)" if phases > 1 else ""
+    trim_note = (f" — {configured} configured, trimmed to {len(pairs)}/phase by max_calls"
+                 if configured > len(pairs) else "")
     print(f"co-agent panel matrix  (profile {cfg.get('profile','default')} · "
-          f"host {host} · {len(pairs)} pairs × up to {rounds} rounds = "
-          f"{len(pairs)*rounds} max calls)")
+          f"host {host} · {len(pairs)} pairs × up to {rounds} rounds{phase_note} = "
+          f"{total} max calls{trim_note})")
+    # F9: name the dropped pairs so consent reflects which reviewers were cut (a bare count
+    # hides that whole providers — e.g. codex, agy — may have been trimmed out).
+    if len(full) > len(pairs):
+        dropped = ", ".join(f"{ai}/{m or '(default)'}" for ai, m in full[len(pairs):])
+        print(f"  trimmed out (won't run): {dropped}")
     print(f"  {'AI':7} {'model':22} {'ctx(tok)':>11}")
     fam = {}
     for ai, m in pairs:
@@ -246,7 +314,7 @@ def cmd_matrix(root, host):
 
 
 def cmd_show(root, host):
-    cfg = effective(root)
+    cfg = effective(root, warn=True)   # display command — surface legacy-key warnings here
     autosync = "on" if cfg.get("sync_on_change") else "off"
     print(f"co-agent panel config  (host {host} · timeout {cfg.get('timeout')}s · autosync {autosync})")
     layers = ["defaults"]
@@ -255,6 +323,12 @@ def cmd_show(root, host):
     if os.path.isfile(local_path(root)):
         layers.append(f"local:{local_path(root)}")
     print(f"  source: {' + '.join(layers)}" + ("" if len(layers) > 1 else " (no user/local override)"))
+    cons = cfg.get("consensus") or {}
+    h = cfg.get("harness") or {}
+    print(f"  profile {cfg.get('profile','default')} · consensus max_calls {cons.get('max_calls', 24)} / "
+          f"max_rounds {cons.get('max_rounds', 2)} · harness review_mode {h.get('review_mode','hybrid')} / "
+          f"implementer {h.get('implementer') or '(default)'} / parallel_tasks {h.get('parallel_tasks', 3)} / "
+          f"max_fix_rounds {h.get('max_fix_rounds') or 2}")
     print(f"  {'AI':7} {'enabled':8} {'model':18} {'ctx(tok)':>11}  effort")
     for ai in panel_ais(host):
         p = cfg["panel"].get(ai, {})
@@ -296,7 +370,7 @@ def cmd_set(root, rest, host, scope="local"):
         local["profile"] = rest[1]
     elif rest[0] == "harness":
         if len(rest) != 3:
-            print("usage: set harness <implementer|max_fix_rounds> <value>", file=sys.stderr)
+            print("usage: set harness <implementer|max_fix_rounds|review_mode|parallel_tasks> <value>", file=sys.stderr)
             return 2
         _, key, val = rest
         h = local.get("harness")
@@ -316,8 +390,18 @@ def cmd_set(root, rest, host, scope="local"):
                 print("max_fix_rounds must be a positive integer", file=sys.stderr)
                 return 2
             h["max_fix_rounds"] = int(val)
+        elif key == "review_mode":
+            if val not in REVIEW_MODES:
+                print(f"review_mode must be one of: {', '.join(REVIEW_MODES)}", file=sys.stderr)
+                return 2
+            h["review_mode"] = val
+        elif key == "parallel_tasks":
+            if not val.isdigit() or int(val) < 1:
+                print("parallel_tasks must be a positive integer (1 = sequential)", file=sys.stderr)
+                return 2
+            h["parallel_tasks"] = int(val)
         else:
-            print("harness keys: implementer, max_fix_rounds", file=sys.stderr)
+            print("harness keys: implementer, max_fix_rounds, review_mode, parallel_tasks", file=sys.stderr)
             return 2
     else:
         if len(rest) != 3:
@@ -410,10 +494,12 @@ def cmd_flags(root, ai, host, model_override=None):
     elif ai == "agy":
         if model:
             parts += ["--model", model]
-    elif ai == "gemini":
-        if model:
-            parts += ["-m", model]
-    print("\n".join(parts))   # newline-delimited so a spaced model value stays one token
+    # Print NOTHING when there are no flags — `print("\n".join(parts))` on an empty list
+    # still emits a bare newline, and the caller's `mapfile -t MFLAGS < <(...)` turns that
+    # one blank line into a single empty-string array element, which `"${MFLAGS[@]}"` then
+    # expands into a spurious empty positional argument on the peer CLI's command line.
+    if parts:
+        print("\n".join(parts))   # newline-delimited so a spaced model value stays one token
     return 0
 
 
@@ -468,6 +554,40 @@ def cmd_implementer(root, host):
     return 0
 
 
+def cmd_review_mode(root):
+    """Print the effective harness review-gate mode (hybrid | relay | parallel)."""
+    # `or {}`: a local override of `"harness": null` (the null-means-unset style the
+    # defaults themselves use per-key) replaces the dict wholesale via deep_merge.
+    h = effective(root).get("harness") or {}
+    mode = h.get("review_mode", "hybrid")
+    if mode not in REVIEW_MODES:
+        mode = "hybrid"
+    print(mode)
+    return 0
+
+
+def cmd_max_fix_rounds(root):
+    """Print the effective harness per-task fix-loop bound (peer retry limit)."""
+    h = effective(root).get("harness") or {}
+    try:
+        n = int(h.get("max_fix_rounds") or 2)
+    except (TypeError, ValueError):
+        n = 2
+    print(max(1, n))
+    return 0
+
+
+def cmd_parallel_tasks(root):
+    """Print the effective harness implement-wave concurrency (1 = sequential)."""
+    h = effective(root).get("harness") or {}
+    try:
+        n = int(h.get("parallel_tasks", 3))
+    except (TypeError, ValueError):
+        n = 3
+    print(max(1, n))
+    return 0
+
+
 def cmd_impl_flags(root, ai, host):
     """Write-mode flags for the harness implementer: a workspace-write sandbox scoped
     to the worktree, plus the AI's configured model/effort. ONLY for the implement path
@@ -492,13 +612,14 @@ def cmd_impl_flags(root, ai, host):
         parts += ["--sandbox"]
         if model:
             parts += ["--model", model]
-    print("\n".join(parts))   # newline-delimited so a spaced model value stays one token
+    if parts:   # same guard as cmd_flags — an empty print is a blank mapfile element
+        print("\n".join(parts))   # newline-delimited so a spaced model value stays one token
     return 0
 
 
 def main():
     # Parse out global flags precisely (don't drop positional args that equal the path).
-    argv, root, host_arg, scope, args, i = sys.argv[1:], os.getcwd(), None, "local", [], 0
+    argv, root, host_arg, scope, phases_arg, args, i = sys.argv[1:], os.getcwd(), None, "local", None, [], 0
     while i < len(argv):
         if argv[i] == "--root":
             if i + 1 < len(argv):
@@ -515,8 +636,26 @@ def main():
                 scope = argv[i + 1]
             i += 2
             continue
+        if argv[i] == "--phases":
+            # Only consumed by `pairs`/`matrix` — fan-outs per round (hybrid gate = 2:
+            # find + verify), so the per-round call budget is divided across phases.
+            # A MISSING value must hard-fail: silently defaulting to 1 would rerun the
+            # exact 2× budget overrun --phases exists to prevent (failure = more spend).
+            if i + 1 >= len(argv):
+                print("--phases requires a value", file=sys.stderr)
+                return 2
+            phases_arg = argv[i + 1]
+            i += 2
+            continue
         args.append(argv[i])
         i += 1
+
+    phases = 1
+    if phases_arg is not None:
+        if not phases_arg.isdigit() or int(phases_arg) < 1:
+            print("--phases must be a positive integer", file=sys.stderr)
+            return 2
+        phases = int(phases_arg)
 
     if scope not in ("user", "local"):
         print("--scope must be user|local", file=sys.stderr)
@@ -551,11 +690,17 @@ def main():
     if cmd == "fits":
         return cmd_fits(root, rest[0], rest[1], host) if len(rest) >= 2 else 2
     if cmd == "pairs":
-        return cmd_pairs(root, host)
+        return cmd_pairs(root, host, phases)
     if cmd == "matrix":
-        return cmd_matrix(root, host)
+        return cmd_matrix(root, host, phases)
     if cmd == "implementer":
         return cmd_implementer(root, host)
+    if cmd == "review-mode":
+        return cmd_review_mode(root)
+    if cmd == "parallel-tasks":
+        return cmd_parallel_tasks(root)
+    if cmd == "max-fix-rounds":
+        return cmd_max_fix_rounds(root)
     if cmd == "impl-flags":
         return cmd_impl_flags(root, rest[0], host) if rest else 2
     print(__doc__)

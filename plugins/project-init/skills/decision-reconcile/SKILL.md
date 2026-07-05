@@ -103,19 +103,16 @@ a genuinely different model family:
 ```bash
 command -v kiro-cli >/dev/null 2>&1 && echo "kiro-cli available"   # NOTE: binary is kiro-cli, NOT kiro
 command -v codex    >/dev/null 2>&1 && echo "codex available"
-# Gemini-family slot: Antigravity (agy) supersedes the deprecated gemini CLI —
-# prefer agy, fall back to gemini only when agy is absent, skip if neither.
-if command -v agy >/dev/null 2>&1; then echo "agy available"
-elif command -v gemini >/dev/null 2>&1; then echo "gemini available (agy absent — fallback)"; fi
+command -v agy      >/dev/null 2>&1 && echo "agy available"
 ```
 
 If the **co-agent** plugin is loaded, prefer delegating this fan-out to it (it owns
 the adapters, size guards, and citation validation — `co-agent` skill, Review mode).
 Otherwise invoke directly, read-only, capturing each to a file:
 `kiro-cli chat "<prompt>" --no-interactive --trust-tools=read,grep --wrap never` ·
-`codex exec -s read-only "<prompt>"` · and for the Gemini-family slot
-`agy -p "<prompt>" --model "Gemini 3.1 Pro (High)" --sandbox` (preferred) or
-`gemini -p "<prompt>" -o text` (only when `agy` is absent).
+`codex exec -s read-only "<prompt>"` · `agy -p "<prompt>" --model "Gemini 3.1 Pro (High)" --sandbox`.
+Never call the `gemini` CLI directly — co-agent removed Gemini support entirely (Agy
+superseded it; ADR-010), and this skill's delegation path inherits that policy.
 **Degrade gracefully** — if none are installed, the Claude-only panel is complete;
 say so. Never hard-fail on a missing CLI.
 

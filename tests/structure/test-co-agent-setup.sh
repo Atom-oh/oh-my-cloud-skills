@@ -19,7 +19,7 @@ assert_eq "plugin 0" "$(ac codex 1 1)" "codex with plugin+cli → plugin (no ins
 assert_eq "plugin 0" "$(ac codex 0 1)" "codex with plugin only → plugin"
 assert_eq "raw 1"    "$(ac codex 1 0)" "codex cli-only → raw + install nudge"
 assert_eq "raw 0"    "$(ac agy 1 0)"   "agy cli-only → raw, no nudge (no official plugin)"
-assert_eq "none 0"   "$(ac gemini 0 0)" "gemini absent → none"
+assert_eq "none 0"   "$(ac kiro-cli 0 0)" "no cli, no plugin → none"
 
 # --- Task 3: probe via fake CLIs on PATH (never the real ones) ---
 SHIM=$(mktemp -d "${TMPDIR:-/tmp}/coagent-shim.XXXXXX")
@@ -35,7 +35,11 @@ ln -sf "$(command -v python3)" "$SHIM/python3"
 assert_eq "READY"     "$(PATH="$SHIM:$PATH" python3 "$CP" probe codex 2>&1)"    "probe: stdin-echo codex → READY"
 assert_eq "NO_INGEST" "$(PATH="$SHIM:$PATH" python3 "$CP" probe agy 2>&1)"      "probe: stdin-ignoring agy → NO_INGEST"
 assert_eq "READY"     "$(PATH="$SHIM:$PATH" python3 "$CP" probe kiro-cli 2>&1)" "probe: kiro-cli argv INPUT echoed → READY"
-assert_eq "ABSENT"    "$(PATH="$SHIM" python3 "$CP" probe gemini 2>&1)"         "probe: missing CLI → ABSENT"
+assert_eq "ABSENT"    "$(PATH="$SHIM" python3 "$CP" probe claude 2>&1)"         "probe: known peer, missing CLI → ABSENT"
+# Gemini support was removed (Agy superseded it — ADR-010): it is not an ADAPTERS entry at
+# all, so probing it is an unknown-peer ERROR, not ABSENT (ABSENT implies "recognized but
+# not installed", which would misrepresent gemini as still a supported peer).
+assert_eq "ERROR"     "$(PATH="$SHIM" python3 "$CP" probe gemini 2>&1)"         "probe: unsupported peer → ERROR, not ABSENT"
 rm -rf "$SHIM"
 
 # --- Task 4: report + readers (fake CLIs so probe is deterministic) ---

@@ -13,10 +13,12 @@
 ## The gate (one round)
 1. Consent + scope; print `co_agent_config.py matrix` (provider·model·ctx + max calls).
 2. One **independent** round over `(ai,model)` pairs (`co_agent_config.py pairs`; `deep`
-   profile activates each AI's full model list; capped by `consensus.max_calls`, default 12).
-   ⚠️ `pairs` emits the panel **key**, not the binary — invoke via the
-   `references/ai-cli-adapters.md` fan-out (resolve `kiro`→`kiro-cli`, `antigravity`→`agy`
-   with `co_agent_config.py binary <ai>`); **never** run a bare `kiro`/`antigravity`.
+   profile activates each AI's full model list; capped by `consensus.max_calls`, default 24 — sized so the committed deep profile's 5 pairs survive even the hybrid gate's 2-phase split, 24 // 2 rounds // 2 phases = 6 ≥ 5).
+   `pairs` emits the panel key in the first column (`kiro-cli`, `claude`, `codex`, `agy`) —
+   these ARE the binary names (the old `kiro`/`antigravity` aliases were removed), so invoke
+   each directly via the `references/ai-cli-adapters.md` fan-out `case "$ai"` block, which
+   maps every key to its exact command line. (Note the Kiro binary is `kiro-cli`, never a
+   bare `kiro`.)
 3. `check_citations.py` classifies findings → drop `unsupported`, flag `needs-review`.
 4. Chair synthesis: **raw agreement + evidence strength**, attribute dissent. No confidence
    weighting (contradicts the chair principle).
@@ -29,7 +31,7 @@ CRITICAL/MAJOR finding remains (also stop on no-progress / oscillation).
 - Default profile = one model per AI. The committed default is `deep`, which activates
   each AI's `models` list — Kiro's mainstay panel is **opus / kimi-k2.5 / glm-5**.
 - Cap: `rounds × pairs ≤ max_calls`; trim same-family (round-robin) first, then warn.
-- Same provider *family* (e.g. two Agy-routed or Gemini fallback variants) = diminishing returns; the matrix warns.
+- Same provider *family* (e.g. two Agy-routed variants) = diminishing returns; the matrix warns.
   **Kiro is the exception** — it's a cross-vendor router (Claude / Moonshot / Zhipu), so
   multiple Kiro models are genuine cross-family diversity (matrix notes it, no warning).
 - **`kimi-k2.5` is an `[Internal]` preview** in `kiro-cli --list-models`. If an account

@@ -1,5 +1,5 @@
 ---
-description: Distill CLAUDE.md into AGENTS.md and wire Kiro steering to the same file (shared with Codex; Agy gets it folded into fan-out context)
+description: Distill CLAUDE.md into AGENTS.md and wire Kiro steering to the same file (Codex and Agy auto-load it natively; the fan-out also folds it into Agy's context as defense-in-depth)
 allowed-tools: Read, Write, Glob, Grep, Bash(python3:*)
 argument-hint: "[project-dir]  (defaults to the repo root / cwd)"
 ---
@@ -15,8 +15,7 @@ seeing a different (or no) view of the project:
 |----|-------|---------------------|
 | Kiro | `.kiro/steering/project-context.md` → `#[[file:AGENTS.md]]` | create/update bridge |
 | Codex | `AGENTS.md` (~32 KiB cap) | distill + validate |
-| Agy | *(no repo context file — stateless print-mode)* | not this command's job; `ai-cli-adapters.md`'s fan-out prepends `AGENTS.md` to Agy's context at call time |
-| Legacy Gemini fallback | prompt-supplied context during fan-out | no repo context file (unchanged — Agy is preferred) |
+| Agy | `AGENTS.md` (native, same convention as Codex) | shared with Codex — no separate generation; `ai-cli-adapters.md`'s fan-out also prepends it to Agy's context at call time as defense-in-depth |
 
 **DISTILL — never copy `CLAUDE.md` verbatim.** These context channels degrade on a dumped copy
 (Codex truncates at the cap). Produce one lean, review-oriented core and write it to

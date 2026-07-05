@@ -1,6 +1,6 @@
 ---
 name: co-agent
-description: "Collaborate with other AI agents (Kiro CLI, the peer host CLI, and Agy with Gemini fallback) for a second opinion. Three modes — multi-AI review of code/architecture, decision support when you're unsure, and ADR co-authoring. The current host chairs and synthesizes the final answer. 멀티 AI 협업: 리뷰, 의사결정 보조, ADR 협업."
+description: "Collaborate with other AI agents (Kiro CLI, the peer host CLI, and Agy) for a second opinion. Multi-AI review of code/architecture, decision support when you're unsure, and ADR co-authoring, plus autonomous consensus/harness pipelines. The current host chairs and synthesizes the final answer. 멀티 AI 협업: 리뷰, 의사결정 보조, ADR 협업."
 triggers:
   # High-precision: only fire when the user clearly wants MULTIPLE AIs / a panel.
   # Generic "code review"/"architecture review"/"decide"/"adr" are intentionally
@@ -36,8 +36,7 @@ the decision/report.
 
 - In Claude Code: Claude chairs; the peer panel is Kiro CLI, Codex, and Agy.
 - In Codex: Codex chairs; the peer panel is Kiro CLI, Claude CLI, and Agy.
-- Agy is preferred over Gemini. Use Gemini only as the legacy fallback when `agy` is
-  not installed.
+- Gemini support was removed (Agy superseded it — ADR-010); the third reviewer is Agy only.
 
 Never call the current host CLI as a panel member. Use whichever peer AI CLIs are
 installed — degrade gracefully, never hard-fail.
@@ -62,7 +61,7 @@ echo "Panel: ${PANEL:-(none — the host will answer solo and say so)}"
 ```
 
 > ⚠️ **The Kiro binary is `kiro-cli`** — always invoke `kiro-cli chat …` by that exact name.
-> Agy supersedes Gemini. Prefer `agy`; call `gemini` only when Agy is unavailable.
+> Never call the `gemini` CLI — Gemini support was removed (Agy only).
 
 Tell the user the **installed** set, not the config-enabled set. If `/co-agent:setup` wrote a
 readiness summary, prefer it (`check_panel.py status <peer>`) — it also reflects auth/ingest
@@ -73,7 +72,7 @@ that `command -v` can't. If none are available, the host answers solo and says s
 > with `python3 scripts/co_agent_config.py show --host <claude|codex>`. The fan-out in
 > `ai-cli-adapters.md` derives `$PANEL` and timeout from that helper.
 
-## Three modes
+## Modes
 
 Route by intent (triggers above):
 
@@ -122,7 +121,7 @@ When the user is unsure, bring the panel in.
    key trade-off. Be concise."* to each panel member.
 3. **The host synthesizes** a comparison table:
 
-   | Option | Kiro | Peer host | Agy/Gemini | Chair |
+   | Option | Kiro | Peer host | Agy | Chair |
    |--------|------|-----------|------------|-------|
    | A | ✅ reason | — | ✅ reason | ✅ |
 
@@ -146,16 +145,15 @@ Co-author an Architecture Decision Record with the panel.
 
 ### Mode 4 — sync-context  (also the standalone command **`/co-agent:sync-context`**)
 Give the external AIs project context so they review with the project's conventions.
-Kiro, Codex, and Agy all draw from the **same distilled `AGENTS.md`** — Kiro and Codex
-auto-load it natively (steering bridge / repo-root read); Agy has no auto-load, so it's
-folded into its fan-out context instead (see `ai-cli-adapters.md`):
+Kiro, Codex, and Agy all draw from the **same distilled `AGENTS.md`** — all three
+auto-load it natively from their cwd; the fan-out **additionally** folds it into Agy's
+context as defense-in-depth (see `ai-cli-adapters.md`):
 
 | AI | Reads | co-agent action |
 |----|-------|-----------------|
 | Kiro CLI | **`.kiro/steering/project-context.md`** → `#[[file:AGENTS.md]]` | ✅ bridge to the same distilled file Codex reads |
 | Codex | **`AGENTS.md`** | ✅ distilled context |
-| Agy | *(no repo context file)* | ✅ `AGENTS.md` prepended to its fan-out context, gated on `--verify` (not written to disk) |
-| Legacy Gemini fallback | prompt-supplied context during fan-out | ❌ no repo context file (unchanged) |
+| Agy | **`AGENTS.md`** (native, same convention as Codex) | ✅ also prepended to its fan-out context, gated on `--verify` |
 
 **DISTILL — do NOT copy CLAUDE.md verbatim.** All three CLIs warn that a dumped copy
 bloats/truncates (Codex 32 KiB project-doc cap). Produce one **lean,
@@ -229,22 +227,28 @@ re-running reads `phase`/`task_index` from state and continues.
 
 ### Mode 6 — harness  (also **`/co-agent:harness`**)
 Host-designs / peer-implements / panel-reviews. The **host** designs, writes the failing
-test, and is the **only committer**; a cross-provider **peer implementer** writes code only
-inside an **isolated git worktree** under a workspace-write sandbox; the consensus gate
-reviews. Opt-in, local commits only. Per-task loop, trust boundary, and fallback chain:
-**`references/delegated-implement.md`**. Implementer selection / write-mode flags:
-`co_agent_config.py implementer|impl-flags`.
+test, and is the **only committer**; **one** cross-provider **implementer** (configure:
+`set harness implementer codex|agy`) writes code as **parallel per-task subagents**, each
+in an **isolated git worktree** under a workspace-write sandbox (`harness.parallel_tasks`,
+default 3; file-overlapping tasks auto-serialize into the next wave). The **hybrid gate**
+reviews: parallel find → chair triage (keep only meaningful findings) → parallel verify of
+the curated digest (`references/hybrid-gate.md`; `harness.review_mode` also accepts
+`relay` — sequential chain — and `parallel` — one-shot fan-out). Opt-in, local commits
+only. Waves, trust boundary, and fallback chain: **`references/delegated-implement.md`**.
+Implementer selection / write-mode flags: `co_agent_config.py implementer|impl-flags`.
 
 ### Consensus vs harness — same panel, different pen
 
-Both are autonomous doc→plan→implementation pipelines gated by the same consensus panel
-(`references/consensus-mode.md`) and both commit locally only. The only real difference is
-**who writes the code**:
+Both are autonomous doc→plan→implementation pipelines gated by the same panel and both
+commit locally only. Two differences: **who writes the code**, and **how the gate runs** —
+consensus uses the **parallel** fan-out (`references/consensus-mode.md`), harness defaults to
+the **hybrid gate** (`references/hybrid-gate.md`, `harness.review_mode`):
 
 | | `/co-agent:consensus` | `/co-agent:harness` |
 |---|---|---|
 | Writes the implementation | **The host itself** (Claude/Codex), TDD loop, on the main tree | **A cross-provider peer** (Codex or Agy) — sandboxed, **only** inside an isolated git worktree |
 | Commits | Host | Host only — the peer never commits |
+| Gate mechanics | **Parallel** independent fan-out + quorum | **Hybrid** (default) — parallel find → chair triage → parallel verify; `relay`/`parallel` opt-in |
 | Panel's job | Reviews the **plan** (P2) and the host's own diffs (P4) | Reviews the **peer's** diff before the host applies it |
 | Isolation needed | None — host edits the repo directly | Worktree + workspace-write sandbox + `scope_guard.py`; host applies only the captured, scope-guarded diff (`delegated-implement.md`) |
 | Default state | Plan gate on by default (`--trust-plan` skips it) | Opt-in — must be explicitly invoked |
@@ -271,13 +275,15 @@ panel; auth fixes stay guidance-only.
 
 ## References
 
-- `references/ai-cli-adapters.md` — Kiro/Claude/Codex/Agy/Gemini CLI commands, detection, fan-out pattern, fallbacks, **project-context files**
+- `references/ai-cli-adapters.md` — Kiro/Claude/Codex/Agy CLI commands, detection, fan-out pattern, fallbacks, **project-context files**
 - `references/architecture-review-framework.md` — review rubric, severity, PASS/REVIEW/FAIL
 - `references/aws-well-architected.md` — 6-pillar checklist for the review mode
 - `scripts/check_ai_context.py` — validate/staleness-check generated AGENTS.md (size cap, marker, secrets); `--emit-marker` for generation
 - `scripts/co_agent_config.py` + `co-agent.defaults.json` — panel settings (model/effort/enabled/timeout); driven by the **`/co-agent:configure`** command, overrides in `.claude/co-agent.local.json`
 - `scripts/check_citations.py` — tiered citation validation (supported/needs-review/unsupported) for all review modes
 - `references/consensus-pipeline.md` — **AUTHORITATIVE** for `/co-agent:consensus`: P0–P5 phases (Stage A implements P0–P2), entry decision table, Stage A/B/C roadmap
-- `references/consensus-mode.md` — the reusable consensus GATE mechanics (fan-out + citation validation + quorum) used by `review` and pipeline gates P2/P4
+- `references/consensus-mode.md` — the reusable consensus GATE mechanics (parallel fan-out + citation validation + quorum) used by `review` and pipeline gates P2/P4
+- `references/hybrid-gate.md` — the **hybrid** gate used by `/co-agent:harness` (default `review_mode`): parallel find → chair triage (keep the meaningful findings) → parallel verify of the curated digest
+- `references/relay-chain-gate.md` — the opt-in **sequential relay-chain** gate (`review_mode relay`): peers review one at a time, each building on the prior findings
 - `scripts/consensus_state.py` — consensus session state + input-doc detection (adr/spec/plan)
 - `scripts/parse_plan.py` — parse a writing-plans plan into tasks + the allowed file set

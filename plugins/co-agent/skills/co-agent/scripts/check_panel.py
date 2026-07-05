@@ -30,7 +30,7 @@ except Exception:
 
 SCHEMA_VERSION = 1
 
-PEERS = ("kiro-cli", "claude", "codex", "agy", "gemini")
+PEERS = ("kiro-cli", "claude", "codex", "agy")
 PEER_PLUGINS = {"codex": "openai/codex-plugin-cc"}   # peer → official Claude Code plugin repo
 
 
@@ -104,7 +104,6 @@ def _cmd_classify(argv):
 ADAPTERS = {
     "codex":    {"argv": ["codex", "exec", "-s", "read-only", "--skip-git-repo-check", "{P}"], "channel": "stdin"},
     "agy":      {"argv": ["agy", "-p", "{P}", "--sandbox"], "channel": "stdin"},
-    "gemini":   {"argv": ["gemini", "-p", "{P}", "-o", "text"], "channel": "stdin"},
     "claude":   {"argv": ["claude", "-p", "{P}", "--permission-mode", "plan", "--output-format", "text"], "channel": "stdin"},
     "kiro-cli": {"argv": ["kiro-cli", "chat", "{I}", "--v3", "--mode", "default",
                           "--no-interactive", "--trust-tools=fs_read", "--wrap", "never"],

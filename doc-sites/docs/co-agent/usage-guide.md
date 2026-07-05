@@ -5,14 +5,14 @@ title: "사용법 가이드"
 
 # 사용법 가이드
 
-co-agent로 다른 AI(Kiro CLI · Codex · Gemini)와 협업해 리뷰·의사결정·ADR을 진행하고, Claude가 의장으로 종합하는 방법을 안내합니다.
+co-agent로 다른 AI(Kiro CLI · Codex · Antigravity)와 협업해 리뷰·의사결정·ADR을 진행하고, Claude가 의장으로 종합하는 방법을 안내합니다.
 
 ## 빠른 시작
 
 ```
 1. 설치        →  /plugin marketplace add https://github.com/Atom-oh/oh-my-cloud-skills
                    /plugin install co-agent@oh-my-cloud-skills
-2. (선택) CLI  →  kiro-cli / codex / gemini 중 설치·인증된 것이 패널이 됨
+2. (선택) CLI  →  kiro-cli / codex / agy 중 설치·인증된 것이 패널이 됨
 3. 프롬프트    →  "이 변경 다른 AI로 리뷰해줘"  /  "잘 모르겠어, 같이 결정해줘"
 4. 결과물      →  합의/이견을 종합한 리뷰 보고서 · 의사결정표 · ADR 초안
 ```
@@ -21,11 +21,11 @@ co-agent로 다른 AI(Kiro CLI · Codex · Gemini)와 협업해 리뷰·의사�
 
 ## 패널 확인
 
-co-agent는 항상 먼저 패널을 감지합니다. 바이너리 존재만으로 감지하며(`kiro-cli`·`codex`·`gemini`), 인증되지 않은 CLI는 호출 시점에 자동으로 스킵됩니다.
+co-agent는 항상 먼저 패널을 감지합니다. 바이너리 존재만으로 감지하며(`kiro-cli`·`codex`·`agy`), 인증되지 않은 CLI는 호출 시점에 자동으로 스킵됩니다.
 
 ```
 "지금 패널 어떤 AI가 잡혀?"
-→ Panel: kiro-cli codex gemini   (설치·인증된 것만 표시)
+→ Panel: kiro-cli codex agy   (설치·인증된 것만 표시)
 ```
 
 ## 모드별 사용 예시
@@ -70,9 +70,9 @@ co-agent는 항상 먼저 패널을 감지합니다. 바이너리 존재만으�
 
 | AI | 읽는 파일 | 생성 |
 |----|-----------|------|
-| Kiro | `CLAUDE.md` 직접 | — |
+| Kiro | `.kiro/steering/project-context.md` → `#[[file:AGENTS.md]]` (Codex와 동일 파일) | bridge 생성 |
 | Codex | `AGENTS.md` (~32 KiB 캡) | ✅ |
-| Gemini | `GEMINI.md` (가볍게) | ✅ |
+| Agy | `AGENTS.md` (네이티브, Codex와 동일 컨벤션) | 별도 생성 불필요 — Codex와 공유 |
 
 - `CLAUDE.md`를 **그대로 복사하지 않고 증류** — 리뷰에 필요한 핵심만(스택·빌드/테스트 명령·금지 패턴·아키텍처 경계·체크리스트). 시크릿은 포함하지 않음
 - 생성 마커로 staleness를 추적하고, 마커 없는 수기 파일은 보호
@@ -86,7 +86,7 @@ CLI가 헤드리스로 실제 받는 설정만 노출합니다.
 /co-agent:configure set codex model gpt-5-codex
 /co-agent:configure set codex effort high            # effort는 Codex 전용
 /co-agent:configure set kiro  model claude-opus-4.8  # kiro-cli chat --list-models 참고
-/co-agent:configure set gemini enabled false         # 패널에서 제외
+/co-agent:configure set agy enabled false            # 패널에서 제외
 /co-agent:configure set timeout 300                  # CLI별 타임아웃(초)
 /co-agent:configure set autosync on                  # CLAUDE.md 변경 시 자동 sync-context
 ```
@@ -100,7 +100,7 @@ CLI가 헤드리스로 실제 받는 설정만 노출합니다.
 ## 동작 원리
 
 ```
-프롬프트 → 패널 감지 → 동일 프롬프트 병렬 팬아웃(Kiro/Codex/Gemini)
+프롬프트 → 패널 감지 → 동일 프롬프트 병렬 팬아웃(Kiro/Codex/Agy)
         → Claude 종합(합의/이견, 출처 표기) → 리뷰 보고서 / 의사결정 / ADR
 ```
 
