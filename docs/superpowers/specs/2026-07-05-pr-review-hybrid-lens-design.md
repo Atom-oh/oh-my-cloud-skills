@@ -48,7 +48,7 @@ judgment lens** 로 분리한다.
 
 | Lens | 이름 | 방식 | 검토 항목 |
 |------|------|------|-----------|
-| **L1** | Manifest 무결성 | **스크립트(결정적)** | `plugin.json`/`marketplace.json` JSON 유효성, dangling agent/skill/command 참조, 버전 정합(plugin.json↔marketplace.json↔tag) |
+| **L1** | Manifest 무결성 | **스크립트(결정적)** | `plugin.json`/`marketplace.json` JSON 유효성, dangling agent/skill/command 참조, 버전 정합(plugin.json↔marketplace.json — git tag 정합은 범위 밖: PR head 는 `git archive` 로 뽑은 `.git` 없는 트리라 `git describe` 자체가 불가) |
 | **L2** | Skill/Agent 품질 | AI | SKILL.md·agent frontmatter 존재/구조, description 트리거 정확도(모호/과장), 이름 충돌 |
 | **L3** | 보안 | AI | 하드코딩 시크릿, hook bash 안전성(파괴적 명령·미인용 변수·임의 코드 실행), 스크립트 권한 |
 | **L4** | 코드 정확성 | AI | `scripts/*.py`, `*.sh`, TS(remarp-vscode) 실제 로직 버그·엣지케이스 |
@@ -183,7 +183,7 @@ digest를 같은 패널에 재팬아웃(고정 verify 프롬프트: 각 번호 f
 
 ## 8. 열린 결정 (구현 착수 전 확정 필요)
 
-- **Q1 — lens 할당**: ✅ **결정됨** — 풀 매트릭스(lens × 모델), 16 find 에이전트(§4.1).
+- **Q1 — lens 할당**: **결정됨** — 풀 매트릭스(lens × 모델), 16 find 에이전트(§4.1).
 - **Q2 — verify의 외부 재송신**: 2단계 채택 시 Phase V가 diff+digest를 Kiro(외부)로
   **다시** 보냄. 단발 매트릭스면 해당 없음. (거주성은 공개 마켓플레이스라 accepted-risk.)
 - **Q3 — 실제 상한**: 비용 아닌 **러너 동시성/벽시계**. 16 동시 하위프로세스가 rate-limit

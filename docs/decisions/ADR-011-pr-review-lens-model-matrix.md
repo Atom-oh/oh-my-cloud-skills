@@ -45,6 +45,19 @@ ADR-009의 멀티-AI 패널(Codex + Kiro×3)은 리뷰어를 벤더로 다양화
   Kiro 셀도 diff 를 argv 에 텍스트로 embed 하지 않고 `fs_read`로 파일 경로만 참조하도록
   전환(co-agent의 `ai-cli-adapters.md`에 이미 문서화된 패턴 재사용; 이전 리비전의
   `--trust-tools=read,grep`는 무효한 플래그였다 — 실제 툴명은 `fs_read`).
+- **Kiro `fs_read` 전환의 잔여 위험을 co-agent PR 게이트와 동일하게 완화**한다. `fs_read`로
+  실제 파일 read 권한을 부여하면, 신뢰할 수 없는 PR diff 안의 프롬프트 인젝션이 "그 경로
+  대신 이 job 의 다른 크리덴셜(GH_TOKEN, Codex/의장의 Bedrock Pod Identity `AWS_*`)을
+  읽어 응답에 실으라"를 유도할 수 있고, 그 응답은 체어 종합을 거쳐 공개 PR 코멘트로
+  노출되거나 외부 서비스인 Kiro 로 리전 밖 유출될 수 있다(CI 자체 리뷰에서 CRITICAL로
+  발견 — 아래 참조). `consensus_hooks.py`의 `_review_one`/`_sanitized_env`와 동일한
+  완화를 Kiro 셀에만 적용: (1) 격리 cwd(`$WORK/kiro-cwd`, 레포 아님) — 상대경로 read가
+  레포 파일에 못 닿게(diff 경로는 이미 절대경로라 무관), (2) env allowlist — `KIRO_API_KEY`
+  + 비민감 변수(PATH/HOME/LANG/TMPDIR)만 전달, GH_TOKEN/AWS_* 등은 차단. Codex는
+  Bedrock 인증에 그 `AWS_*` 자체가 필요해(Pod Identity 주입) 동일 격리를 적용하지
+  않음(스코프 밖 — 이 diff가 새로 연 위험이 아니라 기존 Bedrock 인증 모델의 구조).
+  절대경로 read(`~/.aws/credentials` 등) 유도는 fs_read 가 read-capable 인 한 남는
+  잔여 위험 — co-agent 문서에도 동일하게 명시된 한계.
 - **비용은 제약으로 두지 않음**(사용자 결정) — 실제 상한은 러너 동시성/API rate-limit뿐이며,
   job `timeout-minutes`(50m)로 방어.
 - ADR-009의 나머지 불변식(보안: base-checkout + fork PR 미실행, 데이터 거주성: Kiro 외부 송신
@@ -59,7 +72,14 @@ ADR-009의 멀티-AI 패널(Codex + Kiro×3)은 리뷰어를 벤더로 다양화
   4중 교차확인이라 오탐을 상당 부분 흡수한다고 판단; 실제 오탐이 문제되면 추가.
 - 테스트: `tests/pr-review/test-run-panel.sh`(매트릭스 fan-out) +
   `tests/pr-review/test-precheck.sh`(L1) 신설, `tests/run-all.sh`에 `pass`/`fail` 브리지 추가해
-  `tests/pr-review/*.sh`를 CI 집계에 포함(이전엔 미집계 gap).
+  `tests/pr-review/*.sh`를 CI 집계에 포함(이전엔 미집계 gap). Kiro env/cwd 격리는 mock
+  kiro-cli 가 실제로 물려받은 env·cwd 를 덤프하게 해 GH_TOKEN/AWS_* 미노출 + KIRO_API_KEY
+  보존 + 격리 cwd 를 실측 검증(`test-run-panel.sh` (e)).
+- **자기 검증의 한계**: 이 재설계 자체가 PR #103 CI의 (구버전) 패널·의장으로부터 실제
+  리뷰를 받았고, 그 리뷰가 위 C1(Kiro env/cwd 격리 누락)과 harness `set -e` 오염
+  (`tests/pr-review/test-run-panel.sh` (a)/(b)/(c)의 미포장 스크립트 호출)을 정확히
+  잡아내 같은 PR 안에서 수정했다 — 매트릭스·L1 코드 자체는 base-script 모델상 이 PR에서
+  자기검증 불가(ADR-009)하지만, 그 코드에 대한 **리뷰 결과**는 CI를 통해 실제로 들어왔다.
 
 ## References
 

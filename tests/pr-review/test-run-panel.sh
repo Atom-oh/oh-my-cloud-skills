@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # run-panel.sh 단위 테스트 (lens×모델 매트릭스). harness(run-all.sh 가 source) + standalone
-# 모두 지원. 실제 CLI 대신 PATH 모킹으로 (a)전원응답 (b)일부skip (c)전원실패 검증.
-# 주의: harness 가 이 파일을 source 하므로 set -e/-u 나 exit 로 셸을 오염/중단하지 않는다.
+# 모두 지원. 실제 CLI 대신 PATH 모킹으로 (a)전원응답 (b)일부skip (c)전원실패 (d)lens 없음
+# (e)Kiro env/cwd 격리 검증.
+# 주의: harness 가 이 파일을 set -euo pipefail 로 source 하므로, 스크립트가 비-zero로
+# 끝나는 경로는 전부 if 로 감싼다 — bare 호출은 스위트 전체를 조기 중단시킨다.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT="$(cd "$HERE/../../scripts/pr-review" && pwd)/run-panel.sh"
 
@@ -41,7 +43,9 @@ setup() { WORK=$(mktemp -d); BIN=$(mktemp -d); export PATH="$BIN:$PATH"
 # 둘 다 검증한다.
 setup; mkfake codex 0 "codex-finding"; mkfake_args kiro-cli 0 "kiro-finding"
 DIFF_ABS="$(realpath "$WORK/diff.txt")"
-"$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/dev/null 2>&1
+if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/dev/null 2>&1; then
+  fail "run-panel (a) script exits 0 on a normal run" "exited non-zero"
+fi
 allok=1; codex_diffok=1; kiro_pathok=1; kiro_no_embedok=1; lensok=1
 for lens in L2 L3; do
   for f in "codex-$lens" "kiro-opus-$lens" "kiro-kimi-$lens" "kiro-glm-$lens"; do
@@ -72,8 +76,12 @@ done
   && pass "run-panel (a) responded=8" || fail "run-panel (a) responded=8" "responded != 8"
 
 # (b) kiro 실패(codex만 응답) — 2 lens x codex = 2 개 responded, kiro 는 전부 부재.
+# (harness 가 set -euo pipefail 로 이 파일을 source 하므로, run-panel.sh 가 언젠가 비-zero로
+# 끝나는 날이 와도 스위트 전체가 조기 중단되지 않게 항상 if 로 감싼다 — (d)와 동일 스타일.)
 setup; mkfake codex 0 "codex-finding"; mkfake kiro-cli 1 ""
-"$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/dev/null 2>&1
+if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/dev/null 2>&1; then
+  fail "run-panel (b) script exits 0 even when a model fails" "exited non-zero"
+fi
 [ "$(grep -c '^codex/' "$WORK/responded.txt" 2>/dev/null || echo 0)" = 2 ] \
   && pass "run-panel (b) codex responded for both lenses" || fail "run-panel (b) codex responded for both lenses" "codex cell(s) missing"
 grep -q kiro "$WORK/responded.txt" 2>/dev/null \
@@ -81,7 +89,9 @@ grep -q kiro "$WORK/responded.txt" 2>/dev/null \
 
 # (c) 전원 실패 → responded 비어야 함
 setup; mkfake codex 1 ""; mkfake kiro-cli 1 ""
-"$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/dev/null 2>&1
+if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/dev/null 2>&1; then
+  fail "run-panel (c) script exits 0 even when all models fail" "exited non-zero"
+fi
 { [ -f "$WORK/responded.txt" ] && [ ! -s "$WORK/responded.txt" ]; } \
   && pass "run-panel (c) responded empty" || fail "run-panel (c) responded empty" "responded not empty"
 
@@ -92,6 +102,31 @@ if "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/dev/null 2>&1; then
 else
   pass "run-panel (d) empty lenses_dir fails fast"
 fi
+
+# (e) Kiro 셀의 env 격리 — diff 안의 프롬프트 인젝션이 fs_read 를 통해 이 job 의 다른
+# 크리덴셜(GH_TOKEN, AWS_*)을 훔쳐 응답에 실어보내는 경로를 막는지 실제로 측정한다
+# (docs/decisions/ADR-011 C1). mock kiro-cli 가 자신이 실제로 물려받은 env 전체와 cwd 를
+# 그대로 슬롯에 덤프하도록 해서, 격리가 빠지면 이 테스트가 즉시 잡는다.
+setup; mkfake codex 0 "codex-finding"
+cat > "$BIN/kiro-cli" <<'EOF'
+#!/usr/bin/env bash
+echo "kiro-finding"; env; echo "CWD=$(pwd)"
+EOF
+chmod +x "$BIN/kiro-cli"
+GH_TOKEN="leak-test-gh-token" AWS_SECRET_ACCESS_KEY="leak-test-aws-secret" KIRO_API_KEY="keep-this-kiro-key" \
+  "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/dev/null 2>&1 || true
+DUMP="$WORK/slot/kiro-opus-L2.md"
+if grep -q "leak-test-gh-token" "$DUMP" 2>/dev/null || grep -q "leak-test-aws-secret" "$DUMP" 2>/dev/null; then
+  fail "run-panel (e) kiro env excludes GH_TOKEN/AWS_* credentials" "a credential leaked into the kiro subprocess env"
+else
+  pass "run-panel (e) kiro env excludes GH_TOKEN/AWS_* credentials"
+fi
+grep -q "keep-this-kiro-key" "$DUMP" 2>/dev/null \
+  && pass "run-panel (e) kiro env still carries its own KIRO_API_KEY" \
+  || fail "run-panel (e) kiro env still carries its own KIRO_API_KEY" "KIRO_API_KEY missing — auth would break"
+grep -q "^CWD=$WORK/kiro-cwd$" "$DUMP" 2>/dev/null \
+  && pass "run-panel (e) kiro runs in an isolated cwd (not \$WORK, not the repo)" \
+  || fail "run-panel (e) kiro runs in an isolated cwd (not \$WORK, not the repo)" "cwd was not isolated"
 
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then
