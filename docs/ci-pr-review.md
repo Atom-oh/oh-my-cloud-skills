@@ -4,7 +4,7 @@
 
 ## 구성
 - **패널**: Codex(`openai.gpt-5.5`) + Kiro(`claude-opus-4.8`/`kimi-k2.5`/`glm-5`). **Antigravity(`agy`)는 CI 패널 미포함** — OAuth 인터랙티브 로그인 전용이라 헤드리스 CI에서 인증 불가(ADR-010).
-- **의장**: Claude Fable 5(`us.anthropic.claude-fable-5`)가 패널 findings를 종합해 단일 리뷰 + `VERDICT: PASS|FAIL`(fail-closed) 생성. 의장 호출은 벽시계 타임아웃(`CHAIR_TIMEOUT`, 기본 120초)로 감싸며, 연결 거부/행/빈 응답 등으로 VERDICT를 못 만들면 **Claude Opus 4.8(`CHAIR_FALLBACK_MODEL`)로 1회 폴백**한다(Fable 상태 불안정 대비). 코멘트 헤더의 chair 표기는 실제 사용 모델을 반영.
+- **의장**: Claude Fable 5(`us.anthropic.claude-fable-5`)가 패널 findings를 종합해 단일 리뷰 + `VERDICT: PASS|FAIL`(fail-closed) 생성. 의장 호출은 벽시계 타임아웃(`CHAIR_TIMEOUT`, 기본 600초)로 감싸며, 연결 거부/행/빈 응답 등으로 VERDICT를 못 만들면 **Claude Opus 4.8(`CHAIR_FALLBACK_MODEL`)로 1회 폴백**한다(Fable 상태 불안정 대비). 코멘트 헤더의 chair 표기는 실제 사용 모델을 반영. (600초로 상향한 이유: 대형 diff+패널 4개 종합은 286초 이상 걸릴 수 있어, 120초 cap은 정상 응답까지 강제 종료시켜 매번 fail-closed로 이어졌다.)
 - **데이터 거주성**: 패널마다 경로가 다름 —
   - **Codex / Claude(의장)**: Amazon Bedrock **us-east-1**(gpt-5.5는 bedrock-mantle In-Region 전용, fable-5는 US 추론 프로파일), AWS 인증은 EKS Pod Identity(SigV4).
   - **Kiro**: **외부 API-key 기반 서비스** — PR diff가 외부로 전송됨. In-Region 아님.
