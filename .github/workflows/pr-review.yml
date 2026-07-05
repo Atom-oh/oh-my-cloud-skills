@@ -80,7 +80,7 @@ jobs:
           echo "pr_work_dir=$WORK" >> "$GITHUB_ENV"
           mkdir -p "$WORK"
           if bash scripts/pr-review/precheck.sh "$GITHUB_WORKSPACE" "$PR_NUMBER" "$WORK" \
-              2>&1 | tee /tmp/l1-output.txt; then
+              2>&1 | tee "$WORK/l1-output.txt"; then
             echo "result=pass" >> "$GITHUB_OUTPUT"
           else
             echo "result=fail" >> "$GITHUB_OUTPUT"
@@ -194,8 +194,8 @@ jobs:
             echo "**L1 pre-check (매니페스트/버전 정합) 실패 — AI 패널 호출 전 결정적 게이트에서 차단.**"
             echo ""
             echo '```'
-            if [ -s /tmp/l1-output.txt ]; then
-              scrub_secrets < /tmp/l1-output.txt
+            if [ -s "$pr_work_dir/l1-output.txt" ]; then
+              scrub_secrets < "$pr_work_dir/l1-output.txt"
             else
               echo "(no precheck output captured)"
             fi
@@ -270,3 +270,12 @@ jobs:
         run: |
           echo "AI Review failed: ${{ steps.gate.outputs.reason }}"
           exit 1
+
+      - name: Clean up PR-scoped workdir
+        if: always()
+        run: |
+          # PR 번호별로 격리된 워크dir(9차 리뷰 MINOR-3) 는 job 종료 후 아무도 지우지 않아
+          # 비-ephemeral 러너에서 리뷰를 받은 PR 수만큼 누적된다(재실행은 같은 경로 재사용이라
+          # 성장은 유계지만, 디스크 위생 문제) — job 이 성공/실패/취소 어느 쪽으로 끝나도 정리.
+          [ -n "${pr_work_dir:-}" ] && rm -rf "$pr_work_dir"
+          exit 0

@@ -89,12 +89,13 @@ OUT4="$(printf '%s\n' "$RISK_TEXT" | scrub_secrets)"
 # ensure_slots() 자체의 빈 인자 가드 — 유일한 호출자(run-panel.sh)가 이미 $WORK 를
 # 가드하지만, `rm -rf "$1/slot"` 처럼 파괴적 경로를 만드는 함수는 precheck.sh 의 원칙대로
 # 자기 안에서도 가드해야 한다(8차 리뷰 MINOR-2).
-if ensure_slots "" >/tmp/ensure_slots_test.$$ 2>&1; then
+ENSURE_LOG=$(mktemp)
+if ensure_slots "" >"$ENSURE_LOG" 2>&1; then
   fail "ensure_slots rejects an empty workdir argument" "returned 0 despite empty \$1"
 else
   pass "ensure_slots rejects an empty workdir argument"
 fi
-rm -f "/tmp/ensure_slots_test.$$"
+rm -f "$ENSURE_LOG"
 
 GOOD_DIR=$(mktemp -d)
 ensure_slots "$GOOD_DIR" \

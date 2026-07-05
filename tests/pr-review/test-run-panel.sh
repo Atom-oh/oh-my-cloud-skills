@@ -3,8 +3,8 @@
 # 모두 지원. 실제 CLI 대신 PATH 모킹으로 (a)전원응답 (b)일부skip (c)전원실패 (d)lens 없음
 # (e)Kiro env/cwd/HOME 격리 (f)모델 3/4 탈락 시 severe 플래그 (g)모델 1/4 탈락은 warn-only
 # 유지(severe 아님) (h)skip 진단 stderr 도 scrub_secrets 적용 검증 (i)realpath 실패 시
-# fail-fast(구 폴백 회귀 가드) (j)재사용되는 \$WORK 에서 coverage-severe.flag/slot 잔재가
-# 리셋되는지(비-ephemeral 러너 상태 오염 회귀 가드) (k)lenses_dir/workdir 빈 인자 가드.
+# fail-fast(구 폴백 회귀 가드) (j)재사용되는 \$WORK 에서 coverage-severe.flag/slot/kiro-cwd
+# 잔재가 리셋되는지(비-ephemeral 러너 상태 오염 회귀 가드) (k)lenses_dir/workdir 빈 인자 가드.
 # 주의: harness 가 이 파일을 set -euo pipefail 로 source 하므로, 스크립트가 비-zero로
 # 끝나는 경로는 전부 if 로 감싼다 — bare 호출은 스위트 전체를 조기 중단시킨다.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -263,6 +263,18 @@ fi
 [ -f "$WORK/slot/codex-L9.md" ] \
   && fail "run-panel (j) an orphaned slot file from a stale \$WORK is cleared before this run's cells are written" "orphaned file survived ensure_slots" \
   || pass "run-panel (j) an orphaned slot file from a stale \$WORK is cleared before this run's cells are written"
+
+# 같은 뿌리 원인, 세 번째 면 — Kiro 의 가짜 HOME(kiro-cwd) 도 리셋되어야 한다. 실제
+# kiro-cli 가 그 아래 캐시/세션 상태를 남기면 크리덴셜은 아니지만(보안 영향 없음)
+# 재사용되는 \$WORK 에서 실행 간 누적·전이될 수 있다(ADR-011 10차 리뷰 MINOR-2).
+mkdir -p "$WORK/kiro-cwd"
+echo "stale session state from a prior kiro-cli invocation" > "$WORK/kiro-cwd/leftover-cache"
+if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/dev/null 2>&1; then
+  fail "run-panel (j) script exits 0 with a leftover kiro-cwd file present" "exited non-zero"
+fi
+[ -f "$WORK/kiro-cwd/leftover-cache" ] \
+  && fail "run-panel (j) kiro-cwd (Kiro's fake HOME) is reset before this run instead of accumulating state" "leftover file survived" \
+  || pass "run-panel (j) kiro-cwd (Kiro's fake HOME) is reset before this run instead of accumulating state"
 
 # (k) 빈 lenses_dir(\$2)/workdir(\$3) 인자 가드 — precheck.sh 가 이미 세 인자 모두 빈
 # 문자열을 가드하는데, ensure_slots 가 `rm -rf "$1/slot"` 로 바뀐 이후 \$WORK 가 비면

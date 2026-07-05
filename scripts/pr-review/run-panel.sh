@@ -61,7 +61,10 @@ try_panel() {
 # Kiro 자기 인증(KIRO_API_KEY)과 실행에 필요한 최소 변수만, GH_TOKEN/AWS_*(Codex·의장의
 # Bedrock Pod Identity 크리덴셜) 등은 전달하지 않는다. (절대경로 read 자체는 fs_read 가
 # read-capable 인 한 남는 잔여 위험 — co-agent 문서에도 동일하게 명시된 한계.)
-KIRO_CWD="$WORK/kiro-cwd"; mkdir -p "$KIRO_CWD"
+# coverage-severe.flag/slot/lenses 와 같은 뿌리 — 비-ephemeral 러너에서 $WORK 가
+# 재사용되면 kiro-cli 가 이 가짜 HOME 아래 남긴 캐시/세션 상태가 실행 간 누적·전이될 수
+# 있다(크리덴셜은 없어 보안 영향은 아니지만 재현성 문제) — 매 실행 시작 시 리셋.
+KIRO_CWD="$WORK/kiro-cwd"; rm -rf "$KIRO_CWD"; mkdir -p "$KIRO_CWD"
 # HOME 도 격리(실제 러너 $HOME 이 아니라 $KIRO_CWD) — fs_read 의 절대경로 read 자체는 여전히
 # 잔여 위험(막을 방법 없음)이지만, "~/.aws/credentials"·"~/.codex/config.toml" 처럼 상대적
 # ~ 표기로 유도되는 케이스의 실효 표면을 줄인다(실제 크리덴셜은 이 가짜 HOME 아래 없음).

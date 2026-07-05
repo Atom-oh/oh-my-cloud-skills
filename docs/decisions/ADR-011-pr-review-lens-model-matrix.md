@@ -224,6 +224,25 @@ ADR-009의 멀티-AI 패널(Codex + Kiro×3)은 리뷰어를 벤더로 다양화
   신규 테스트: `test-lib.sh`(`ensure_slots("")` 가 실패하는지, 정상 workdir 에는 그대로
   slot 을 만드는지) — 전체 스위트 596 passed(+2), 기존 무관 17건 실패는 그대로.
 
+- **10차 리뷰 수정(커밋 75cfbab 이후, PASSED — CRITICAL/MAJOR 0건, MINOR 4건)**: 9차가
+  `/tmp/pr-review`를 PR 번호로 격리한 직후, 이번 리뷰는 **그 PR이 새로 만든** 파일 하나가
+  같은 격리를 놓쳤음을 잡았다 — 4건 모두 비용이 낮고 실질 이득이 있어 전부 반영. (1)
+  `l1-output.txt`가 여전히 고정 `/tmp/l1-output.txt`라, `$WORK`를 PR 번호로 격리한 의도와
+  불일치(러너 풀 병렬화 시 다른 PR의 L1 실패 코멘트에 이 PR의 precheck 출력이 실릴 수
+  있음) — `"$WORK/l1-output.txt"`로 옮기고 "Write L1 failure as review" 스텝도
+  `$pr_work_dir`를 참조하도록 정렬. (2) `coverage-severe.flag`/slot/lenses 는 매 실행
+  리셋되는데 `$WORK/kiro-cwd`(Kiro 가짜 HOME)는 `mkdir -p`만 해 kiro-cli 가 남기는 캐시/
+  세션 상태가 비-ephemeral 러너에서 누적·전이될 수 있었다(크리덴셜은 없어 보안 영향은
+  아니고 재현성 문제) — `KIRO_CWD` 정의 줄에 `rm -rf` 추가로 같은 뿌리를 완결. (3) PR별로
+  격리된 `/tmp/pr-review-<N>` 이 job 종료 후 정리되지 않아 PR 수만큼 디스크에 누적되는
+  위생 문제 — 워크플로 맨 끝에 `if: always()` 정리 스텝을 추가해 job 성공/실패/취소
+  어느 쪽으로 끝나도 `$pr_work_dir`를 지우도록 함(정리 자체의 실패가 리뷰 결과를 뒤집지
+  않도록 스텝 끝에 `exit 0`으로 non-fatal 처리). (4) `test-lib.sh`의 신규 `ensure_slots`
+  테스트가 4차에서 정립한 `mktemp` 컨벤션을 안 따르고 `/tmp/ensure_slots_test.$$`를 직접
+  썼던 것 — `mktemp`로 교체. 신규 테스트: `test-run-panel.sh` (j) 세 번째 하위 케이스
+  (kiro-cwd 도 재사용되는 `$WORK`에서 리셋되는지) — 전체 스위트 597 passed(+1), 기존
+  무관 17건 실패는 그대로.
+
 ## Consequences
 
 - 커버리지가 "리뷰어 다양화"에서 "리뷰어×관점 매트릭스"로 체계화 — 사각지대 감소.
