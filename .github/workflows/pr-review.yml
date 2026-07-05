@@ -20,11 +20,12 @@ jobs:
     runs-on: oh-my-cloud-skills-claude-arm
     # 방어적 상한: 개별 스텝은 timeout 래핑돼 있으나, self-hosted 러너가
     # 예기치 못한 hang 으로 장시간 점유되는 것을 막는다.
-    # L1(수초, git fetch+archive) + 매트릭스 재시도(16셀 병렬 최슬로우, ~15m) +
-    # 의장 primary 600s+폴백 600s(~20m, #105 — 120s/180s 는 정상 응답을 죽이기에 너무
-    # 짧았음) + 오버헤드(~3m) ≈ 38m. agent 로 동작할 때 툴 조합·재실행이 반복돼 벽시계가
-    # 더 길어지는 경우까지 감안해 넉넉히 50m — 여유는 여전히 충분하나 산정치 자체는
-    # 상향된 CHAIR_TIMEOUT(600s)을 반영해 갱신.
+    # L1(수초, git fetch+archive) + 매트릭스 재시도(16셀 병렬 최슬로우, ~15m — PANEL_RETRIES=3
+    # 기본값 기준; 이 env 를 올리면 이 산정 자체가 조용히 무효화되니 같이 검토할 것, 16차
+    # 리뷰 MINOR-4) + 의장 primary 600s+폴백 600s(~20m, #105 — 120s/180s 는 정상 응답을
+    # 죽이기에 너무 짧았음) + 오버헤드(~3m) ≈ 38m. agent 로 동작할 때 툴 조합·재실행이
+    # 반복돼 벽시계가 더 길어지는 경우까지 감안해 넉넉히 50m — 여유는 여전히 충분하나
+    # 산정치 자체는 상향된 CHAIR_TIMEOUT(600s)을 반영해 갱신.
     timeout-minutes: 50
     concurrency:
       group: pr-review-${{ github.event.pull_request.number }}
