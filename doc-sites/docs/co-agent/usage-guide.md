@@ -70,9 +70,9 @@ co-agent는 항상 먼저 패널을 감지합니다. 바이너리 존재만으�
 
 | AI | 읽는 파일 | 생성 |
 |----|-----------|------|
-| Kiro | `CLAUDE.md` 직접 | — |
+| Kiro | `.kiro/steering/project-context.md` → `#[[file:AGENTS.md]]` (Codex와 동일 파일) | bridge 생성 |
 | Codex | `AGENTS.md` (~32 KiB 캡) | ✅ |
-| Agy | *(리포 컨텍스트 파일 없음)* | ❌ |
+| Agy | `AGENTS.md` (네이티브, Codex와 동일 컨벤션) | 별도 생성 불필요 — Codex와 공유 |
 
 - `CLAUDE.md`를 **그대로 복사하지 않고 증류** — 리뷰에 필요한 핵심만(스택·빌드/테스트 명령·금지 패턴·아키텍처 경계·체크리스트). 시크릿은 포함하지 않음
 - 생성 마커로 staleness를 추적하고, 마커 없는 수기 파일은 보호

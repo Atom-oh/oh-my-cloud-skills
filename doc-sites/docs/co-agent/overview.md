@@ -93,9 +93,9 @@ flowchart LR
 
 | AI | 파일 | 생성 |
 |----|------|------|
-| Kiro | `CLAUDE.md` 직접 | — |
+| Kiro | `.kiro/steering/project-context.md` → `#[[file:AGENTS.md]]` (Codex와 동일 파일) | bridge 생성 |
 | Codex | `AGENTS.md` (~32 KiB 캡) | ✅ |
-| Agy | *(리포 컨텍스트 파일 없음 — 팬아웃 시 `AGENTS.md` fold-in)* | ❌ |
+| Agy | `AGENTS.md` (네이티브, Codex와 동일 컨벤션 — 팬아웃 시에도 추가로 fold-in) | 별도 생성 불필요 — Codex와 공유 |
 
 생성 마커(`claude-md-sha`)로 staleness를 추적하고, 마커 없는 수기 파일은 보호합니다. `CLAUDE.md` 편집 시 PostToolUse 훅이 drift를 알리며, `autosync on`이면 재동기화를 지시합니다.
 

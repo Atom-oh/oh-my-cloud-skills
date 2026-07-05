@@ -7,8 +7,9 @@ Codex, and Agy all draw from — not a per-AI copy each:
                  merged git-root→cwd). Kiro's .kiro/steering/project-context.md
                  bridges to this SAME file via #[[file:AGENTS.md]] (not CLAUDE.md
                  directly — see ai-cli-adapters.md for the consistency rationale).
-                 Agy has no auto-load; the fan-out folds AGENTS.md into its context
-                 at call time instead of writing a file for it.
+                 Agy also auto-loads AGENTS.md natively from its cwd (same convention
+                 as Codex); the fan-out additionally folds it into Agy's context at
+                 call time as defense-in-depth for non-root-cwd invocations.
 
 Claude (the co-agent skill) writes AGENTS.md; this script does the mechanical checks:
 staleness vs CLAUDE.md, size caps, the generated marker, and a secret scan. It is

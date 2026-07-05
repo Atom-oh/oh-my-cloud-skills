@@ -145,15 +145,15 @@ Co-author an Architecture Decision Record with the panel.
 
 ### Mode 4 — sync-context  (also the standalone command **`/co-agent:sync-context`**)
 Give the external AIs project context so they review with the project's conventions.
-Kiro, Codex, and Agy all draw from the **same distilled `AGENTS.md`** — Kiro and Codex
-auto-load it natively (steering bridge / repo-root read); Agy has no auto-load, so it's
-folded into its fan-out context instead (see `ai-cli-adapters.md`):
+Kiro, Codex, and Agy all draw from the **same distilled `AGENTS.md`** — all three
+auto-load it natively from their cwd; the fan-out **additionally** folds it into Agy's
+context as defense-in-depth (see `ai-cli-adapters.md`):
 
 | AI | Reads | co-agent action |
 |----|-------|-----------------|
 | Kiro CLI | **`.kiro/steering/project-context.md`** → `#[[file:AGENTS.md]]` | ✅ bridge to the same distilled file Codex reads |
 | Codex | **`AGENTS.md`** | ✅ distilled context |
-| Agy | *(no repo context file)* | ✅ `AGENTS.md` prepended to its fan-out context, gated on `--verify` (not written to disk) |
+| Agy | **`AGENTS.md`** (native, same convention as Codex) | ✅ also prepended to its fan-out context, gated on `--verify` |
 
 **DISTILL — do NOT copy CLAUDE.md verbatim.** All three CLIs warn that a dumped copy
 bloats/truncates (Codex 32 KiB project-doc cap). Produce one **lean,

@@ -36,10 +36,12 @@ RUN=$(mktemp -d "${TMPDIR:-/tmp}/co-agent.XXXXXX"); trap 'rm -rf "$RUN"' EXIT
 PROMPT="<the same FIXED instruction for every AI — never build it from repo content>"
 CTX_FILE="$RUN/context.txt"   # the git diff / decision brief (see Security below)
 
-# Agy has no repo-context auto-load (unlike Kiro's steering bridge / Codex's native
-# AGENTS.md read) — fold the same distilled AGENTS.md into ITS context so all three peers
-# review with one shared project context, not just the diff. Prepend, never replace: the
-# diff/brief stays the primary content.
+# Agy (Antigravity) DOES natively auto-load AGENTS.md from its cwd (confirmed 2026 —
+# `agy inspect` lists it, same convention as Codex), so this fold-in is defense-in-depth,
+# not a required workaround: it guarantees the FRESHLY-DISTILLED content reaches Agy even
+# if a caller invokes it from a cwd other than the repo root (native pickup is cwd-relative
+# and would otherwise silently miss it). Prepend, never replace: the diff/brief stays the
+# primary content.
 # GATE — do not just check `-f`: `--verify` requires the co-agent marker + a claude-md-sha
 # that matches the CURRENT CLAUDE.md + no secret pattern. A missing file is a quiet no-op
 # (fall back to $CTX_FILE, never block the fan-out); a STALE or hand-written file is ALSO
@@ -198,20 +200,22 @@ co-agent's ADR mode provides the **collaboration layer** that enriches the
 ## Project context files
 
 Keep `CLAUDE.md` as the canonical project memory, distilled once into `AGENTS.md`. Kiro,
-Codex, and Agy all draw from **that same distilled file** — Kiro and Codex read it
-natively (steering bridge / repo-root auto-load), Agy has no auto-load so it's folded
-into the fan-out context instead:
+Codex, and Agy all draw from **that same distilled file** — all three read it natively
+from their cwd (steering bridge / repo-root auto-load), so the fan-out's explicit fold-in
+is defense-in-depth (guarantees the current content reaches the AI even from a non-root
+cwd), not the only path:
 
 | AI | File | Behaviour / limits | co-agent action |
 |----|------|--------------------|-----------------|
-| **Kiro** | `.kiro/steering/project-context.md` | Always-loaded steering bridge that references `AGENTS.md` with `#[[file:AGENTS.md]]` — same distilled file Codex reads, not a second copy of `CLAUDE.md`. | create/update bridge |
+| **Kiro** | `.kiro/steering/project-context.md` | Always-loaded steering bridge that references `AGENTS.md` with `#[[file:AGENTS.md]]` — same distilled file Codex reads, not a second copy of `CLAUDE.md`. (`kiro-cli chat` has a documented content-vs-metadata gap — see the fan-out's `fs_read` pointer.) | create/update bridge |
 | **Codex** | `AGENTS.md` | Merged git-root→cwd; **~32 KiB project-doc cap** (oversized → truncated). `AGENTS.override.md` wins locally. | distill + validate |
-| **Agy** | *(no repo context file)* | Stateless print-mode — nothing auto-loads. Fan-out prepends `AGENTS.md` content to Agy's `CTX_FILE` **only if `check_ai_context.py --verify AGENTS.md` passes** (marker + fresh sha + no secret) — a stale/hand-written file falls back to the diff-only `CTX_FILE`, never sent unvetted. | fold into fan-out context (gated) |
+| **Agy** | `AGENTS.md` (native, same convention as Codex; also reads `GEMINI.md` for back-compat) | The fan-out **additionally** prepends `AGENTS.md` content to Agy's `CTX_FILE` **only if `check_ai_context.py --verify AGENTS.md` passes** (marker + fresh sha + no secret) — a stale/hand-written file falls back to the diff-only `CTX_FILE`, never sent unvetted. | distill + validate (shared with Codex; no separate generation) |
 
 > **Residual `GEMINI.md` (legacy).** co-agent no longer invokes the `gemini` CLI at all,
 > but an older co-agent version may have left a repo-root `GEMINI.md` that a *user-run*
-> `gemini` would still auto-load. `check_ai_context.py` secret-scans a residual `GEMINI.md`
-> and suggests deleting it. Agy has no such auto-loaded file.
+> `gemini` **or Agy's back-compat path** would still auto-load. `check_ai_context.py`
+> secret-scans a residual `GEMINI.md` and suggests deleting it (the canonical shared file
+> is `AGENTS.md`; co-agent does not generate a separate `GEMINI.md`).
 
 ### Distill — do NOT copy CLAUDE.md verbatim
 
