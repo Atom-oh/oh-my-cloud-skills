@@ -491,6 +491,23 @@ ADR-009의 멀티-AI 패널(Codex + Kiro×3)은 리뷰어를 벤더로 다양화
   design-tokens·accent1 관련 17건)은 매번 동일 — 이전 라운드들에서도 관측된 이 harness
   자체의 알려진 counter 플레이크이고 이 PR의 diff 와 무관.
 
+- **19차 리뷰 수정(커밋 c6ca4f2 이후, PASSED — CRITICAL/MAJOR 0건, MINOR 2건 신규 +
+  1건 기존 재확인)**: 신규 MINOR 1건을 반영. `precheck.sh`는 `git fetch`/`archive`
+  같은 **인프라** 단계가 실패해도 검증기가 한 번도 안 돈 채 `set -euo pipefail` 로 즉시
+  죽는데, 워크플로의 "Write L1 failure as review" 스텝은 그 경우도 똑같이 "매니페스트/
+  버전 정합 실패"라고 코멘트를 단다 — PR 작성자가 실제로는 무관한 자기 매니페스트를
+  의심하게 되는 오귀속 여지가 실재함을 코드 대조로 확인(fail-closed 방향 자체는 옳아
+  차단 사유는 아니었음). `test-plugins.py`가 검증기 실행 시에만 찍는 배너 문자열
+  ("Plugin Validation Suite")의 존재 여부로 두 경로를 구분해 헤더만 분기하도록 수정
+  (VERDICT: FAIL 은 두 경로 모두 동일 — 메시지만 정확해짐). 스크립트 변경이 아니라
+  워크플로 YAML 조건 분기라 pr-review 유닛테스트로는 exercise 불가 — 배너 있음/없음
+  두 입력으로 로컬 bash 시뮬레이션해 분기가 올바르게 갈리는지 확인. 신규 MINOR 1건은
+  조치 불필요로 확인: `synthesize.sh` severe 오버라이드의 `TAC_TMP="$(...)"` 가 본문
+  말미의 연속 빈 줄을 접는 것은 내용 손실 없는 순수 cosmetic — 반영하지 않음. 기존
+  MINOR(GNU coreutils/sed 전용 의존)는 12차에서 이미 "러너 Linux 고정"으로 보류된
+  항목의 재확인이라 재판정하지 않음. 전체 스위트는 스크립트 불변이라 621 total 그대로
+  유지, 기존 무관 17건 실패도 동일.
+
 ## Verification (2026-07-05, restructuring pass)
 
 이 부록 분리 시점에 전체 스위트를 재실행해 순수 문서 재구성이 스크립트 동작에 영향이
