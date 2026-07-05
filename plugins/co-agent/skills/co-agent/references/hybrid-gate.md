@@ -63,8 +63,10 @@ Fan the **artifact + digest** back out to the eligible pairs (parallel again), c
 cap was already divided for, but **tiered**: verify runs each AI's single strongest
 configured `model` (`--profile default`), not the deep breadth list. Finding things is
 a wide-and-cheap job (phase F, configured profile — `deep` by default); judging a
-curated digest is a narrow-and-strong one. Verify pairs ⊆ find pairs, so this never
-costs more than phase F. Fixed verify prompt:
+curated digest is a narrow-and-strong one. Verify's **pair count** never exceeds find's
+(default emits one pair per AI; deep emits one or more), so this phase never costs more
+than phase F — note it's a count bound, not a literal subset: an AI whose single `model`
+isn't in its `models` list verifies on a pair find didn't run. Fixed verify prompt:
 
 ```
 You are verifying a CURATED FINDINGS DIGEST against the ARTIFACT. For each numbered

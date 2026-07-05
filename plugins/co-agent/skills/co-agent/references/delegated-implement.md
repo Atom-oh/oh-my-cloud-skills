@@ -42,8 +42,14 @@ implementer from `impl-flags`).
 
 **Role tiering:** `impl-flags` resolves its model/effort from
 `harness.implementer_model`/`implementer_effort` first, falling back to the panel's
-`model`/`effort` when unset (`/co-agent:configure` → "모델 티어링"). This splits the
-WRITE path from the review path: the same CLI can implement on a cost-efficient
+`model`/`effort` (`/co-agent:configure` → "모델 티어링"). The overrides are **bound to
+the explicitly configured `harness.implementer`** — model names don't encode a
+provider, so an unbound override would ride the host-dependent default fallback
+(claude-host→codex, codex-host→agy) and hand, e.g., a codex model to `agy --model`
+after a host switch; with `implementer` unset they never apply. `impl-flags` also
+re-validates the merged model/effort at emit time (fail-closed, exit 2) since its argv
+feeds a write-enabled sandbox and the local/user JSON can be hand-edited. This splits
+the WRITE path from the review path: the same CLI can implement on a cost-efficient
 generation model while its review/gate calls (`flags`) keep the stronger judgment
 model — the hybrid gate behind it is what catches generation mistakes.
 `implementer_effort` is codex-only (agy's headless CLI has no effort flag).

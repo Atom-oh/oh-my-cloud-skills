@@ -30,8 +30,8 @@ Usage:
   co_agent_config.py parallel-tasks             # effective implement concurrency (int)
   co_agent_config.py set harness max_fix_rounds <n>  # per-task peer fix-loop bound (default 2)
   co_agent_config.py max-fix-rounds             # effective fix-loop bound (int)
-  co_agent_config.py set harness implementer_model <m>   # write-path model (tiering; falls back to panel model)
-  co_agent_config.py set harness implementer_effort <e>  # write-path effort (codex only; falls back to panel effort)
+  co_agent_config.py set harness implementer_model <m>   # write-path model (tiering; bound to the explicit implementer, else panel model)
+  co_agent_config.py set harness implementer_effort <e>  # write-path effort (codex only; same binding, else panel effort)
   co_agent_config.py set <ai> context_limit <n> # per-AI context window (tokens)
   co_agent_config.py flags <ai>                 # CLI flag fragment for the fan-out
   co_agent_config.py panel                      # space-separated enabled AIs
@@ -96,6 +96,9 @@ SANDBOX_IMPLEMENTERS = ("codex", "agy")
 #   relay    = sequential relay chain (references/relay-chain-gate.md)
 #   parallel = one-shot independent fan-out (references/consensus-mode.md)
 REVIEW_MODES = ("hybrid", "relay", "parallel")
+# Settable `set harness <key>` keys — single source for the usage/error strings below.
+HARNESS_KEYS = ("implementer", "implementer_model", "implementer_effort",
+                "max_fix_rounds", "review_mode", "parallel_tasks")
 
 
 def implementer_ai(cfg, host):
@@ -208,7 +211,7 @@ def effective_models(cfg, ai):
     raw = p.get("models", []) if (cfg.get("profile") == "deep" and p.get("models")) else [single]
     out = []
     for m in dict.fromkeys(raw):           # de-dupe, keep order
-        if m is None or MODEL_RE.match(m):
+        if m is None or MODEL_RE.fullmatch(m):
             out.append(m)
         # else: silently drop an invalid model name (defense-in-depth)
     return out or [None]                   # never return empty → fall back to CLI default
@@ -231,11 +234,13 @@ def panel_pairs(cfg, host):
     return pairs
 
 
-def capped_pairs(cfg, host, phases=1, profile=None):
+def capped_pairs(cfg, host, phases=1):
     """The panel pairs AFTER the per-round budget trim — the single source of truth for
     what a gate fan-out will actually run. `phases` = fan-outs per round (hybrid = 2:
     find + verify); the per-round budget is divided across phases so
-    rounds × phases × pairs ≤ max_calls overall. Returns
+    rounds × phases × pairs ≤ max_calls overall. A `--profile` override is applied by
+    the caller onto `cfg` BEFORE this call (one mechanism, used identically by
+    `pairs` and `matrix`). Returns
     (pairs, configured_count, per_round_cap, floor_clamped): floor_clamped is True when
     even one pair per phase across all rounds exceeds max_calls (rounds×phases > cap) —
     the gate then overspends the configured budget and callers must surface that."""
@@ -244,8 +249,6 @@ def capped_pairs(cfg, host, phases=1, profile=None):
     phases = max(1, phases)
     raw_cap = cap // max(1, rounds) // phases
     per_round_cap = max(1, raw_cap)
-    if profile:   # per-invocation tiering override (find=deep breadth / verify=default strength)
-        cfg = {**cfg, "profile": profile}
     pairs = panel_pairs(cfg, host)
     configured = len(pairs)
     return pairs[:per_round_cap], configured, per_round_cap, raw_cap < 1
@@ -274,7 +277,9 @@ def cmd_pairs(root, host, phases=1, profile=None):
     # which every documented flow runs at H0 before the loop — re-emitting them from each
     # `pairs` call printed the same line ~9× per gate run. The trim itself still happens.
     cfg = effective(root)
-    pairs, _configured, _cap, _floor = capped_pairs(cfg, host, phases, profile)
+    if profile:   # per-invocation tiering override (find=deep breadth / verify=default strength)
+        cfg = {**cfg, "profile": profile}
+    pairs, _configured, _cap, _floor = capped_pairs(cfg, host, phases)
     for ai, m in pairs:
         print(f"{ai}\t{m or '(default)'}")
     return 0
@@ -384,8 +389,7 @@ def cmd_set(root, rest, host, scope="local"):
         local["profile"] = rest[1]
     elif rest[0] == "harness":
         if len(rest) != 3:
-            print("usage: set harness <implementer|implementer_model|implementer_effort|"
-                  "max_fix_rounds|review_mode|parallel_tasks> <value>", file=sys.stderr)
+            print(f"usage: set harness <{'|'.join(HARNESS_KEYS)}> <value>", file=sys.stderr)
             return 2
         _, key, val = rest
         h = local.get("harness")
@@ -402,14 +406,21 @@ def cmd_set(root, rest, host, scope="local"):
                 return 2
         elif key == "implementer_model":
             # Role-scoped tiering: overrides the panel model on the WRITE path only
-            # (impl-flags). null/default clears → fall back to panel.<ai>.model.
+            # (impl-flags), and ONLY for the explicitly configured harness.implementer
+            # (model names don't encode a provider — unbound, the override would leak
+            # across the host-dependent default fallback). null/default clears.
             if val.lower() in ("none", "null", "default", ""):
                 h["implementer_model"] = None
-            elif MODEL_RE.match(val):
+            elif MODEL_RE.fullmatch(val):
                 h["implementer_model"] = val
+                if (effective(root).get("harness") or {}).get("implementer") is None:
+                    print("note: implementer_model only applies once harness.implementer "
+                          "is explicitly set (the override is bound to that AI) — also run: "
+                          f"set harness implementer <{('|'.join(SANDBOX_IMPLEMENTERS))}>",
+                          file=sys.stderr)
             else:
-                print("implementer_model may contain only letters, digits, and . _ : / - "
-                      "(no spaces or shell metacharacters)", file=sys.stderr)
+                print("implementer_model may contain only letters, digits, spaces, and "
+                      ". _ : / ( ) - (no shell metacharacters)", file=sys.stderr)
                 return 2
         elif key == "implementer_effort":
             # Codex-only knob (agy's headless CLI has no effort flag — impl-flags
@@ -438,8 +449,7 @@ def cmd_set(root, rest, host, scope="local"):
                 return 2
             h["parallel_tasks"] = int(val)
         else:
-            print("harness keys: implementer, implementer_model, implementer_effort, "
-                  "max_fix_rounds, review_mode, parallel_tasks", file=sys.stderr)
+            print(f"harness keys: {', '.join(HARNESS_KEYS)}", file=sys.stderr)
             return 2
     else:
         if len(rest) != 3:
@@ -460,17 +470,17 @@ def cmd_set(root, rest, host, scope="local"):
         elif key == "model":
             if val.lower() in ("null", "default", ""):
                 slot["model"] = None
-            elif MODEL_RE.match(val):
+            elif MODEL_RE.fullmatch(val):
                 slot["model"] = val
             else:
-                print("model may contain only letters, digits, and . _ : / - "
-                      "(no spaces or shell metacharacters)", file=sys.stderr)
+                print("model may contain only letters, digits, spaces, and . _ : / ( ) - "
+                      "(no shell metacharacters)", file=sys.stderr)
                 return 2
         elif key == "models":
             # Split on COMMAS only (trim surrounding whitespace) — NOT whitespace, or a
             # single spaced token like "Gemini 3.1 Pro (High)" would shatter into 4 models.
             items = [m.strip() for m in val.split(",") if m.strip()]
-            bad = [m for m in items if not MODEL_RE.match(m)]
+            bad = [m for m in items if not MODEL_RE.fullmatch(m)]
             if bad:
                 print(f"invalid model name(s): {', '.join(bad)} "
                       f"(letters/digits/. _ : / - only)", file=sys.stderr)
@@ -633,7 +643,11 @@ def cmd_impl_flags(root, ai, host):
     Role-scoped tiering: `harness.implementer_model`/`implementer_effort` take precedence
     over the panel's advisory `model`/`effort`, so the WRITE path can run a cost-efficient
     generation model while the review panel keeps its stronger judgment models (and vice
-    versa). Unset → fall back to the panel settings (previous behavior)."""
+    versa). The overrides are BOUND to the explicitly configured `harness.implementer`:
+    they apply only when that AI is the one being flagged. Model names don't encode
+    their provider, so an unbound override would leak across the host-dependent default
+    fallback (claude-host→codex, codex-host→agy) — e.g. a codex model handed to
+    `agy --model` after a host switch. Unset implementer → overrides never apply."""
     if ai == host:
         print(f"implementer '{ai}' cannot equal host '{host}'", file=sys.stderr)
         return 2
@@ -644,8 +658,22 @@ def cmd_impl_flags(root, ai, host):
     cfg = effective(root)
     p = cfg["panel"].get(ai, {})
     h = cfg.get("harness") or {}
-    model = h.get("implementer_model") or p.get("model")
-    effort = h.get("implementer_effort") or p.get("effort")
+    if h.get("implementer") == ai:
+        model = h.get("implementer_model") or p.get("model")
+        effort = h.get("implementer_effort") or p.get("effort")
+    else:
+        model, effort = p.get("model"), p.get("effort")
+    # Emit-time revalidation (defense-in-depth): set-time checks are closed, but this
+    # merged value may come from a hand-edited local/user JSON and feeds a WRITE-enabled
+    # sandbox argv. fullmatch (not match) so a trailing newline can't ride past `$`.
+    if model and not MODEL_RE.fullmatch(model):
+        print(f"impl-flags: model {model!r} fails charset validation "
+              f"(hand-edited config?) — refusing to emit write-mode flags", file=sys.stderr)
+        return 2
+    if effort and ai == "codex" and effort not in CODEX_EFFORTS:
+        print(f"impl-flags: effort {effort!r} not in {CODEX_EFFORTS} "
+              f"(hand-edited config?) — refusing to emit write-mode flags", file=sys.stderr)
+        return 2
     parts = []
     if ai == "codex":
         parts += ["-s", "workspace-write"]
