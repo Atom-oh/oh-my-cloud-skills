@@ -40,6 +40,14 @@ provably blocks `..`/absolute writes — which is exactly why the capture backst
 the sandbox, is load-bearing (if an audit shows a sandbox doesn't confine to cwd, drop that
 implementer from `impl-flags`).
 
+**Role tiering:** `impl-flags` resolves its model/effort from
+`harness.implementer_model`/`implementer_effort` first, falling back to the panel's
+`model`/`effort` when unset (`/co-agent:configure` → "모델 티어링"). This splits the
+WRITE path from the review path: the same CLI can implement on a cost-efficient
+generation model while its review/gate calls (`flags`) keep the stronger judgment
+model — the hybrid gate behind it is what catches generation mistakes.
+`implementer_effort` is codex-only (agy's headless CLI has no effort flag).
+
 **Not eligible:** `claude --permission-mode acceptEdits` and `kiro-cli --trust-tools`
 auto-accept writes but don't sandbox them to a cwd — `implementer`/`impl-flags`
 reject them. Default: claude host → `codex`, codex host → `agy`. These write variants exist

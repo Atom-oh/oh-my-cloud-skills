@@ -30,6 +30,8 @@ Usage:
   co_agent_config.py parallel-tasks             # effective implement concurrency (int)
   co_agent_config.py set harness max_fix_rounds <n>  # per-task peer fix-loop bound (default 2)
   co_agent_config.py max-fix-rounds             # effective fix-loop bound (int)
+  co_agent_config.py set harness implementer_model <m>   # write-path model (tiering; falls back to panel model)
+  co_agent_config.py set harness implementer_effort <e>  # write-path effort (codex only; falls back to panel effort)
   co_agent_config.py set <ai> context_limit <n> # per-AI context window (tokens)
   co_agent_config.py flags <ai>                 # CLI flag fragment for the fan-out
   co_agent_config.py panel                      # space-separated enabled AIs
@@ -38,13 +40,17 @@ Usage:
   co_agent_config.py autosync                   # exit 0 if sync-on-change is on, 1 if off
   co_agent_config.py context-limit <ai>         # effective context window (tokens; 0 = none)
   co_agent_config.py fits <ai> <tokens>         # exit 0 if tokens fit the window, 1 if not
-  co_agent_config.py pairs [--phases N]         # (ai, model) pairs for this round (N fan-outs/round)
-  co_agent_config.py matrix [--phases N]        # pairs × rounds × phases = true max calls
+  co_agent_config.py pairs [--phases N] [--profile default|deep]   # (ai, model) pairs for this round
+  co_agent_config.py matrix [--phases N] [--profile default|deep]  # pairs × rounds × phases = true max calls
 Add --root DIR to target a repo other than the cwd.
 Add --host claude|codex or set CO_AGENT_HOST to choose the current chair.
 Add --phases N to `pairs`/`matrix` when a gate fans out more than once per round (the
 hybrid gate's find+verify = 2 phases) — divides the per-round call budget across phases
 so `rounds × phases × pairs` still stays within `consensus.max_calls`. Default 1.
+Add --profile default|deep to override the configured profile per invocation — the model
+tiering lever: a gate can run its FIND phase wide-and-cheap (`deep`: every model in each
+AI's `models` list) and its VERIFY phase narrow-and-strong (`default`: each AI's single
+configured `model`). Omit to use the configured profile.
 """
 import sys
 import os
@@ -225,7 +231,7 @@ def panel_pairs(cfg, host):
     return pairs
 
 
-def capped_pairs(cfg, host, phases=1):
+def capped_pairs(cfg, host, phases=1, profile=None):
     """The panel pairs AFTER the per-round budget trim — the single source of truth for
     what a gate fan-out will actually run. `phases` = fan-outs per round (hybrid = 2:
     find + verify); the per-round budget is divided across phases so
@@ -238,6 +244,8 @@ def capped_pairs(cfg, host, phases=1):
     phases = max(1, phases)
     raw_cap = cap // max(1, rounds) // phases
     per_round_cap = max(1, raw_cap)
+    if profile:   # per-invocation tiering override (find=deep breadth / verify=default strength)
+        cfg = {**cfg, "profile": profile}
     pairs = panel_pairs(cfg, host)
     configured = len(pairs)
     return pairs[:per_round_cap], configured, per_round_cap, raw_cap < 1
@@ -260,23 +268,25 @@ def _cap_warnings(cfg, configured, per_round_cap, floor_clamped, phases):
               f"configured budget. Raise max_calls or lower max_rounds.", file=sys.stderr)
 
 
-def cmd_pairs(root, host, phases=1):
+def cmd_pairs(root, host, phases=1, profile=None):
     # Silent by design: `pairs` is called N times per fan-out loop. The trim/floor-clamp
     # warnings (and the legacy-key hygiene warnings) belong to the consent display `matrix`,
     # which every documented flow runs at H0 before the loop — re-emitting them from each
     # `pairs` call printed the same line ~9× per gate run. The trim itself still happens.
     cfg = effective(root)
-    pairs, _configured, _cap, _floor = capped_pairs(cfg, host, phases)
+    pairs, _configured, _cap, _floor = capped_pairs(cfg, host, phases, profile)
     for ai, m in pairs:
         print(f"{ai}\t{m or '(default)'}")
     return 0
 
 
-def cmd_matrix(root, host, phases=1):
+def cmd_matrix(root, host, phases=1, profile=None):
     cfg = effective(root, warn=True)   # the consent display — surface legacy-key warnings here
     rounds = int(cfg.get("consensus", {}).get("max_rounds", 2))
     # Display the CAPPED panel — what will actually run — never the untrimmed wish-list
     # (an untrimmed display would collect consent for pairs/cost that never execute).
+    if profile:
+        cfg = {**cfg, "profile": profile}
     full = panel_pairs(cfg, host)
     pairs, configured, per_round_cap, floor_clamped = capped_pairs(cfg, host, phases)
     _cap_warnings(cfg, configured, per_round_cap, floor_clamped, phases)
@@ -329,6 +339,10 @@ def cmd_show(root, host):
           f"max_rounds {cons.get('max_rounds', 2)} · harness review_mode {h.get('review_mode','hybrid')} / "
           f"implementer {h.get('implementer') or '(default)'} / parallel_tasks {h.get('parallel_tasks', 3)} / "
           f"max_fix_rounds {h.get('max_fix_rounds') or 2}")
+    im, ie = h.get("implementer_model"), h.get("implementer_effort")
+    if im or ie:   # tiering overrides are opt-in — only show when set
+        print(f"  implementer tiering: model {im or '(panel)'} / effort {ie or '(panel)'}  "
+              f"(write path only — impl-flags)")
     print(f"  {'AI':7} {'enabled':8} {'model':18} {'ctx(tok)':>11}  effort")
     for ai in panel_ais(host):
         p = cfg["panel"].get(ai, {})
@@ -370,7 +384,8 @@ def cmd_set(root, rest, host, scope="local"):
         local["profile"] = rest[1]
     elif rest[0] == "harness":
         if len(rest) != 3:
-            print("usage: set harness <implementer|max_fix_rounds|review_mode|parallel_tasks> <value>", file=sys.stderr)
+            print("usage: set harness <implementer|implementer_model|implementer_effort|"
+                  "max_fix_rounds|review_mode|parallel_tasks> <value>", file=sys.stderr)
             return 2
         _, key, val = rest
         h = local.get("harness")
@@ -384,6 +399,28 @@ def cmd_set(root, rest, host, scope="local"):
                 h["implementer"] = val
             else:
                 print(f"implementer must be a sandbox CLI: {', '.join(SANDBOX_IMPLEMENTERS)}", file=sys.stderr)
+                return 2
+        elif key == "implementer_model":
+            # Role-scoped tiering: overrides the panel model on the WRITE path only
+            # (impl-flags). null/default clears → fall back to panel.<ai>.model.
+            if val.lower() in ("none", "null", "default", ""):
+                h["implementer_model"] = None
+            elif MODEL_RE.match(val):
+                h["implementer_model"] = val
+            else:
+                print("implementer_model may contain only letters, digits, and . _ : / - "
+                      "(no spaces or shell metacharacters)", file=sys.stderr)
+                return 2
+        elif key == "implementer_effort":
+            # Codex-only knob (agy's headless CLI has no effort flag — impl-flags
+            # ignores it there). Validated against the codex effort values.
+            if val.lower() in ("none", "null", "default", ""):
+                h["implementer_effort"] = None
+            elif val in CODEX_EFFORTS:
+                h["implementer_effort"] = val
+            else:
+                print(f"implementer_effort must be one of: {', '.join(CODEX_EFFORTS)} "
+                      f"(codex only; agy ignores it)", file=sys.stderr)
                 return 2
         elif key == "max_fix_rounds":
             if not val.isdigit() or int(val) < 1:
@@ -401,7 +438,8 @@ def cmd_set(root, rest, host, scope="local"):
                 return 2
             h["parallel_tasks"] = int(val)
         else:
-            print("harness keys: implementer, max_fix_rounds, review_mode, parallel_tasks", file=sys.stderr)
+            print("harness keys: implementer, implementer_model, implementer_effort, "
+                  "max_fix_rounds, review_mode, parallel_tasks", file=sys.stderr)
             return 2
     else:
         if len(rest) != 3:
@@ -590,8 +628,12 @@ def cmd_parallel_tasks(root):
 
 def cmd_impl_flags(root, ai, host):
     """Write-mode flags for the harness implementer: a workspace-write sandbox scoped
-    to the worktree, plus the AI's configured model/effort. ONLY for the implement path
-    — review/gate paths use the read-only `flags` command."""
+    to the worktree, plus the implementer's model/effort. ONLY for the implement path
+    — review/gate paths use the read-only `flags` command.
+    Role-scoped tiering: `harness.implementer_model`/`implementer_effort` take precedence
+    over the panel's advisory `model`/`effort`, so the WRITE path can run a cost-efficient
+    generation model while the review panel keeps its stronger judgment models (and vice
+    versa). Unset → fall back to the panel settings (previous behavior)."""
     if ai == host:
         print(f"implementer '{ai}' cannot equal host '{host}'", file=sys.stderr)
         return 2
@@ -599,15 +641,18 @@ def cmd_impl_flags(root, ai, host):
         print(f"implementer '{ai}' has no worktree-scoped write sandbox; "
               f"use one of: {', '.join(SANDBOX_IMPLEMENTERS)}", file=sys.stderr)
         return 2
-    p = effective(root)["panel"].get(ai, {})
-    model = p.get("model")
+    cfg = effective(root)
+    p = cfg["panel"].get(ai, {})
+    h = cfg.get("harness") or {}
+    model = h.get("implementer_model") or p.get("model")
+    effort = h.get("implementer_effort") or p.get("effort")
     parts = []
     if ai == "codex":
         parts += ["-s", "workspace-write"]
         if model:
             parts += ["-m", model]
-        if p.get("effort"):
-            parts += ["-c", f'model_reasoning_effort="{p["effort"]}"']
+        if effort:
+            parts += ["-c", f'model_reasoning_effort="{effort}"']
     elif ai == "agy":
         parts += ["--sandbox"]
         if model:
@@ -619,7 +664,7 @@ def cmd_impl_flags(root, ai, host):
 
 def main():
     # Parse out global flags precisely (don't drop positional args that equal the path).
-    argv, root, host_arg, scope, phases_arg, args, i = sys.argv[1:], os.getcwd(), None, "local", None, [], 0
+    argv, root, host_arg, scope, phases_arg, profile_arg, args, i = sys.argv[1:], os.getcwd(), None, "local", None, None, [], 0
     while i < len(argv):
         if argv[i] == "--root":
             if i + 1 < len(argv):
@@ -647,6 +692,18 @@ def main():
             phases_arg = argv[i + 1]
             i += 2
             continue
+        if argv[i] == "--profile":
+            # Only consumed by `pairs`/`matrix` — per-invocation tiering override
+            # (find phase = deep breadth, verify phase = default strength). A missing
+            # or invalid value must hard-fail, not silently fall back to the config:
+            # a verify pass silently running `deep` would spend the budget the
+            # override exists to protect.
+            if i + 1 >= len(argv):
+                print("--profile requires a value (default|deep)", file=sys.stderr)
+                return 2
+            profile_arg = argv[i + 1]
+            i += 2
+            continue
         args.append(argv[i])
         i += 1
 
@@ -656,6 +713,10 @@ def main():
             print("--phases must be a positive integer", file=sys.stderr)
             return 2
         phases = int(phases_arg)
+
+    if profile_arg is not None and profile_arg not in ("default", "deep"):
+        print("--profile must be default|deep", file=sys.stderr)
+        return 2
 
     if scope not in ("user", "local"):
         print("--scope must be user|local", file=sys.stderr)
@@ -690,9 +751,9 @@ def main():
     if cmd == "fits":
         return cmd_fits(root, rest[0], rest[1], host) if len(rest) >= 2 else 2
     if cmd == "pairs":
-        return cmd_pairs(root, host, phases)
+        return cmd_pairs(root, host, phases, profile_arg)
     if cmd == "matrix":
-        return cmd_matrix(root, host, phases)
+        return cmd_matrix(root, host, phases, profile_arg)
     if cmd == "implementer":
         return cmd_implementer(root, host)
     if cmd == "review-mode":

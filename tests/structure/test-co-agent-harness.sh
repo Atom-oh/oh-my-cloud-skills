@@ -35,6 +35,30 @@ assert_eq "2" "$HRC" "impl-flags rejects ai equal to host (exit 2)"
 assert_grep_no_match "workspace-write|acceptEdits" "$(python3 "$CFG" flags codex --host claude --root "$R2" 2>&1)" "review flags stay read-only (no write sandbox)"
 rm -rf "$R2"
 
+# --- Role tiering: harness.implementer_model/effort apply to impl-flags ONLY ---
+R2T=$(mktemp -d "${TMPDIR:-/tmp}/coagent-harness2t.XXXXXX")
+python3 "$CFG" set codex model gpt-5-codex --root "$R2T" >/dev/null 2>&1     # panel (review) model
+python3 "$CFG" set harness implementer_model gpt-5.3-codex-mini --root "$R2T" >/dev/null 2>&1
+python3 "$CFG" set harness implementer_effort low --root "$R2T" >/dev/null 2>&1
+IFT=$(python3 "$CFG" impl-flags codex --host claude --root "$R2T" 2>&1)
+assert_contains "$IFT" "gpt-5.3-codex-mini" "impl-flags prefers harness.implementer_model over panel model"
+assert_contains "$IFT" 'model_reasoning_effort="low"' "impl-flags prefers harness.implementer_effort over panel effort"
+RVT=$(python3 "$CFG" flags codex --host claude --root "$R2T" 2>&1)
+assert_contains "$RVT" "gpt-5-codex" "review flags keep the panel model (tiering is write-path only)"
+assert_grep_no_match "codex-mini" "$RVT" "review flags never pick up implementer_model"
+# validation: bad values rejected at set time
+python3 "$CFG" set harness implementer_effort turbo --root "$R2T" >/dev/null 2>&1 && TE=0 || TE=$?
+assert_eq "2" "$TE" "invalid implementer_effort rejected (exit 2)"
+python3 "$CFG" set harness implementer_model "bad model;rm" --root "$R2T" >/dev/null 2>&1 && TM=0 || TM=$?
+assert_eq "2" "$TM" "implementer_model with shell metacharacters rejected (exit 2)"
+# clearing falls back to the panel settings
+python3 "$CFG" set harness implementer_model default --root "$R2T" >/dev/null 2>&1
+python3 "$CFG" set harness implementer_effort null --root "$R2T" >/dev/null 2>&1
+IFC=$(python3 "$CFG" impl-flags codex --host claude --root "$R2T" 2>&1)
+assert_grep_no_match "codex-mini" "$IFC" "cleared implementer_model falls back to panel model"
+assert_contains "$IFC" "gpt-5-codex" "fallback impl-flags carry the panel model"
+rm -rf "$R2T"
+
 # --- Task 3: needs-human status ---
 R3=$(mktemp -d "${TMPDIR:-/tmp}/coagent-harness3.XXXXXX")
 git -C "$R3" init -q

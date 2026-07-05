@@ -10,6 +10,6 @@
     "codex":  { "enabled": true, "model": null, "effort": "medium", "models": [], "context_limit": 272000 },
     "agy":    { "enabled": true, "model": null, "models": [], "context_limit": 1000000 }
   },
-  "harness": { "implementer": null, "max_fix_rounds": 2, "review_mode": "hybrid", "parallel_tasks": 3 },
+  "harness": { "implementer": null, "implementer_model": null, "implementer_effort": null, "max_fix_rounds": 2, "review_mode": "hybrid", "parallel_tasks": 3 },
   "pr_gate": { "enabled": false, "block": true, "timeout": 180, "quorum": "majority" }
 }

@@ -76,6 +76,8 @@ Argument: `$ARGUMENTS`
    python3 "$H" set harness review_mode relay    # harness gate: hybrid (default) | relay | parallel
    python3 "$H" set harness parallel_tasks 3     # harness implement wave size (1 = sequential)
    python3 "$H" set harness max_fix_rounds 2     # harness per-task peer fix-loop bound
+   python3 "$H" set harness implementer_model gpt-5.3-codex-mini  # write-path model (tiering)
+   python3 "$H" set harness implementer_effort low                # write-path effort (codex only)
    ```
    `context_limit` lets the fan-out **skip** an AI when the context is too large for its
    model window (the cause of "prompt tokens exceed model maximum"), instead of hard-failing
@@ -97,6 +99,27 @@ Argument: `$ARGUMENTS`
    that AI interactively). Do **not** invent a setting that the CLI ignores.
 4. For Kiro model values, you may enumerate valid models with
    `kiro-cli chat --list-models --format json` and show the user the choices.
+
+## 모델 티어링 (role-based model tiering)
+
+같은 모델을 모든 역할에 쓰지 않고, 역할별로 비용효율적인 모델을 배치한다 — Opusplan이
+플랜(Opus)과 실행(Sonnet)을 나누는 것과 같은 원리. 배치 지점은 4곳:
+
+| 역할 | 성격 | 레버 | 권장 |
+|------|------|------|------|
+| **Chair** (triage/synthesis/최종 판단) | 좁고 강하게 | 호스트 모델: `/model opusplan`(플랜=Opus·실행=Sonnet) 또는 chair 서브에이전트 frontmatter `model: opus` | 강한 판단 모델 유지 — 여기서 아끼면 게이트 전체가 약해짐 |
+| **Find 패널** (하이브리드 게이트 F 단계) | 넓고 싸게 | `profile deep` + 각 AI `models` 리스트에 저비용 모델(예: kiro `kimi-k2.5,glm-5`) + `set codex effort low` | 발견은 다양성이 성능 — 모델 수 > 모델 단가 |
+| **Verify 패널** (V 단계) | 좁고 강하게 | 게이트가 자동으로 `pairs --profile default` 사용 — 각 AI의 단일 `model`이 곧 verify 모델 | `model`에 각 AI의 최강 티어 지정 |
+| **Implementer** (harness 쓰기 경로) | 생성 위주 | `set harness implementer_model <m>` / `implementer_effort <e>` (미설정 시 패널 `model`/`effort` 폴백) | 저비용 생성 모델 — 리뷰 게이트가 뒤에서 잡아줌 |
+
+- `implementer_model`/`implementer_effort`는 **impl-flags(쓰기 경로)에만** 적용된다.
+  리뷰/게이트 경로(`flags`)는 계속 패널 설정을 쓰므로, 같은 AI(codex)가 리뷰에서는
+  강한 모델·구현에서는 싼 모델로 갈라진다. `implementer_effort`는 codex 전용(agy의
+  헤드리스 CLI에 effort 플래그 없음 — 무시됨).
+- `pairs`/`matrix`의 `--profile default|deep`은 호출 단위 오버라이드로, 하이브리드
+  게이트가 find(deep)/verify(default)를 가르는 데 쓴다 — 설정 파일은 건드리지 않는다.
+- 근거: 발견(find)은 관점 다양성이, 검증(verify)과 의장 판단은 단일 모델의 강도가
+  성능을 지배한다. 자세한 흐름은 `references/hybrid-gate.md` "Role tiering" 참고.
 
 Always finish by echoing the effective config (`python3 "$H" show --host "$HOST"`) so the user sees
 exactly what the panel will use.
