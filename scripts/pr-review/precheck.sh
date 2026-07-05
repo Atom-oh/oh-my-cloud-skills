@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# L1 결정적 pre-check — 매니페스트 무결성(JSON 유효성 / dangling agent·skill·command 참조 /
+# plugin.json↔marketplace.json 버전 정합 / .codex-plugin·.agents 매니페스트)을 AI 패널
+# 호출 전에 스크립트로 검증한다. 0 false-positive, AI 비용 0, 즉시 fail-closed.
+# 인자: <base_repo_dir> <pr_number> <workdir>
+#
+# 보안: pull_request_target 는 PR head 코드를 실행하지 않는다(base 체크아웃만 신뢰).
+# PR head 파일 트리는 `git archive`로 **데이터로만** 추출하며, 이 트리 안의 어떤 스크립트도
+# 실행하지 않는다 — base(신뢰) 체크아웃의 test-plugins.py/test-codex-plugins.py 가 --root 로
+# 그 경로를 파일 read/json.load 로만 읽는다. `gh pr diff` 를 데이터로만 쓰는 기존 신뢰 경계와
+# 동일하다.
+set -euo pipefail
+BASE_DIR="$1"; PR_NUMBER="$2"; WORK="$3"
+# 방어적 인자 가드 — set -u 는 "인자 누락"만 잡고 "빈 문자열 인자"는 통과시킨다. 세 인자
+# 다 defense-in-depth 로 가드: $WORK 가 비면 TREE="/pr-tree" 가 되어 rm -rf 가 의도와
+# 다른 절대경로를 지울 수 있다(실제 위험 경로). $BASE_DIR/$PR_NUMBER 가 비어도 파괴적
+# 경로는 없다(git -C "" 는 cwd 로 동작 후 fetch 실패로 fail-closed) — 그래도 인자
+# 오설정을 조용히 넘기지 않고 바로 잡아내는 게 디버깅에 낫다.
+[ -n "$BASE_DIR" ] || { echo "precheck.sh: base_repo_dir(\$1) must not be empty" >&2; exit 1; }
+[ -n "$PR_NUMBER" ] || { echo "precheck.sh: pr_number(\$2) must not be empty" >&2; exit 1; }
+[ -n "$WORK" ] || { echo "precheck.sh: workdir(\$3) must not be empty" >&2; exit 1; }
+# pr_number 는 GitHub Actions 의 pull_request.number 에서만 오므로 항상 숫자지만, 형식도
+# 검증해두면 "pull/${PR_NUMBER}/head" 에 예상 못한 문자열이 그대로 실려 fetch 에러 메시지가
+# 헷갈리게 나오는 것보다 여기서 바로, 명확하게 잡는다.
+[[ "$PR_NUMBER" =~ ^[0-9]+$ ]] || { echo "precheck.sh: pr_number(\$2) must be numeric, got: $PR_NUMBER" >&2; exit 1; }
+TREE="$WORK/pr-tree"
+
+rm -rf "$TREE"
+mkdir -p "$TREE"
+
+# base 체크아웃의 .git 을 재사용해 PR head 커밋만 얕게 fetch(트리 export 는 depth 와
+# 무관 — git archive 는 단일 커밋의 전체 트리를 내보낸다).
+git -C "$BASE_DIR" fetch --depth 1 --quiet origin "pull/${PR_NUMBER}/head"
+git -C "$BASE_DIR" archive FETCH_HEAD | tar -x -C "$TREE"
+# PR 트리는 데이터로만 취급하지만, symlink 는 tar 추출 그대로 두면 검증기가 트리 밖
+# 경로를 따라갈 여지를 남긴다(현재 검증기는 파싱 실패를 에코하지 않아 유출은 없지만
+# defense-in-depth). 검증 전에 전부 제거.
+find "$TREE" -type l -delete
+
+# 여기까지 도달했으면 git fetch/archive/tar(인프라 단계)는 모두 성공했고, 이제부터의
+# 실패는 검증기 자체(매니페스트 내용 또는 검증기 코드) 책임이다. 워크플로의 L1-fail
+# 코멘트가 인프라 실패와 매니페스트 실패를 구분하는 신호로 이 sentinel 을 쓴다 — 이전엔
+# test-plugins.py 자신의 배너 문자열 존재로 판단했는데, 그 검증기가 배너를 찍기도 전에
+# (예: argparse/Path 단계에서) 죽으면 실제로는 검증기 실패인데도 인프라 실패로 오분류될
+# 여지가 있었다(20차 리뷰 MINOR-5). sentinel 은 python3 호출보다 먼저 찍히므로 그 좁은
+# corner 도 닫는다.
+touch "$WORK/l1-validators-started"
+
+# set -e 아래 첫 검증기가 실패하면 두 번째는 안 돌아 그 오류를 못 본다 — PR 작성자가
+# 첫 번째 부류를 고치고 다시 push 해야 두 번째 부류를 발견하는 왕복이 생긴다(fail-closed
+# 계약 자체는 유지됨, UX 문제). rc 로 모아서 양쪽 다 실행한 뒤 합산 종료.
+rc=0
+python3 "$BASE_DIR/scripts/test-plugins.py" --root "$TREE" || rc=1
+python3 "$BASE_DIR/scripts/test-codex-plugins.py" --root "$TREE" || rc=1
+exit "$rc"

@@ -325,9 +325,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Validate Codex plugin support")
     parser.add_argument("--plugin", "-p", help="Validate one plugin by name")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
+    parser.add_argument("--root", help="Validate a different repo root instead of this script's "
+                         "own checkout (e.g. a PR-head tree fetched as data by pr-review's L1 gate)")
     args = parser.parse_args()
 
-    project_root = Path(__file__).parent.parent.resolve()
+    project_root = Path(args.root).resolve() if args.root else Path(__file__).parent.parent.resolve()
     validator = CodexPluginValidator(project_root, verbose=args.verbose)
     ok = validator.run(only_plugin=args.plugin)
     sys.exit(0 if ok else 1)

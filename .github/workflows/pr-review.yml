@@ -1,10 +1,12 @@
 name: AI Code Review
 
-# PR마다 멀티 AI 패널(Codex + Kiro x3)이 변경을 리뷰하고
-# Claude Fable 5 의장이 종합해 PR 코멘트로 게시한다. (AWS-Demo-Platform 검증 패턴)
+# L1(결정적 pre-check) → lens×모델 매트릭스 패널(Codex + Kiro×3, L2~L5 각 lens 독립
+# 에이전트) → Claude Fable 5 의장 종합 → PR 코멘트. (design: docs/superpowers/specs/
+# 2026-07-05-pr-review-hybrid-lens-design.md)
 #   - self-hosted 러너(oh-my-cloud-skills-claude-arm)가 EKS Pod Identity(SigV4)로 Bedrock 호출
-#   - 패널 fan-out: scripts/pr-review/run-panel.sh → synthesize.sh
-#   - VERDICT: PASS|FAIL 마지막 줄 룰로 job exit code 결정 (fail-closed)
+#   - L1: scripts/pr-review/precheck.sh — 매니페스트/버전 정합을 AI 호출 전 스크립트로 검증(0 비용)
+#   - 매트릭스 fan-out: scripts/pr-review/run-panel.sh(4모델×4lens=16셀) → synthesize.sh
+#   - VERDICT: PASS|FAIL 마지막 줄 룰로 job exit code 결정 (fail-closed, L1 실패도 즉시 fail)
 #   - <!-- oh-my-cloud-skills-pr-review --> marker 로 코멘트 upsert
 
 on:
@@ -16,6 +18,15 @@ jobs:
     name: AI Code Review
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: oh-my-cloud-skills-claude-arm
+    # 방어적 상한: 개별 스텝은 timeout 래핑돼 있으나, self-hosted 러너가
+    # 예기치 못한 hang 으로 장시간 점유되는 것을 막는다.
+    # L1(수초, git fetch+archive) + 매트릭스 재시도(16셀 병렬 최슬로우, ~15m — PANEL_RETRIES=3
+    # 기본값 기준; 이 env 를 올리면 이 산정 자체가 조용히 무효화되니 같이 검토할 것, 16차
+    # 리뷰 MINOR-4) + 의장 primary 600s+폴백 600s(~20m, #105 — 120s/180s 는 정상 응답을
+    # 죽이기에 너무 짧았음) + 오버헤드(~3m) ≈ 38m. agent 로 동작할 때 툴 조합·재실행이
+    # 반복돼 벽시계가 더 길어지는 경우까지 감안해 넉넉히 50m — 여유는 여전히 충분하나
+    # 산정치 자체는 상향된 CHAIR_TIMEOUT(600s)을 반영해 갱신.
+    timeout-minutes: 50
     concurrency:
       group: pr-review-${{ github.event.pull_request.number }}
       cancel-in-progress: true
@@ -39,23 +50,59 @@ jobs:
 
       - name: Verify CLIs present (pre-installed on runner image)
         run: |
+          set -euo pipefail
           if ! command -v claude >/dev/null 2>&1; then
             echo "::warning::claude CLI not found on runner, falling back to npm global install"
             npm install -g @anthropic-ai/claude-code
           fi
+          # claude(의장)는 필수 — 여기서 부재/불능이면 조기 실패시켜 원인을 명확히 한다.
+          # (없으면 synthesize 단계에서 fail-closed 되지만 진단이 늦어짐.)
           claude --version
           # 패널 CLI 는 actions-runner-claude 이미지에 baking 되어 있어야 한다. 부재 시 graceful skip.
           for c in codex kiro-cli; do
             command -v "$c" >/dev/null 2>&1 || echo "::warning::$c not found on runner (image needs rebuild)"
           done
 
+      - name: L1 pre-check (manifest/version integrity — deterministic, no AI call)
+        id: l1
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # -e 는 안전 — 아래 유일한 명령이 if 로 감싸여 있어 그 명령 자체의 실패는 -e 를
+          # 트리거하지 않고 else 로 fail-closed 라우팅된다. -e 의 실효는 그 앞의 mkdir 같은
+          # setup 실패를 (조용히 넘어가 혼란스러운 precheck.sh 실패로 이어지는 대신) 즉시,
+          # 명확한 에러로 멈추는 것.
+          set -euo pipefail
+          # 같은 self-hosted 러너에서 다른 PR 의 잡이 겹치면(러너 풀 병렬화 시) 고정된
+          # /tmp/pr-review 경로를 공유해 서로의 상태(coverage-severe.flag, slot/, lenses/)를
+          # 밟을 수 있다 — PR 번호를 경로에 포함해 잡별로 격리(8차 리뷰 MINOR-3). GITHUB_ENV
+          # 로 내보내 이후 스텝들이 같은 경로를 그대로 쓴다.
+          # PR 번호만으로는 부족했다 — cancel-in-progress(동시성 그룹)로 취소된 이전 run 의
+          # cleanup 스텝(`if: always()`)이, 같은 PR 의 새 run 이 방금 만든 경로를 지울 수
+          # 있다(러너 풀에 호스트가 2개 이상일 때). GITHUB_RUN_ID 를 더해 트리거(푸시)당
+          # 경로를 분리 — 단, RUN_ATTEMPT 는 넣지 않아 같은 run 의 수동 재실행("Re-run
+          # failed jobs")은 여전히 같은 경로를 재사용하고, 7~10차에서 고정한 stale-state
+          # 리셋 테스트들이 겨냥하는 시나리오(그 경우)는 그대로 유효하다(11차 리뷰 MINOR).
+          WORK="/tmp/pr-review-${PR_NUMBER}-${GITHUB_RUN_ID}"
+          echo "pr_work_dir=$WORK" >> "$GITHUB_ENV"
+          mkdir -p "$WORK"
+          if bash scripts/pr-review/precheck.sh "$GITHUB_WORKSPACE" "$PR_NUMBER" "$WORK" \
+              2>&1 | tee "$WORK/l1-output.txt"; then
+            echo "result=pass" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=fail" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Get PR diff (with marketplace-specific filters)
+        if: steps.l1.outputs.result == 'pass'
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          # 락파일/바이너리/빌드 산출물 hunk 제거 — 리뷰 surface 를 가리지 않게.
-          gh pr diff "$PR_NUMBER" > /tmp/pr-diff-raw.txt
+          # 락파일/바이너리/빌드 산출물 hunk 제거 — 리뷰 surface 를 가리지 않게. diff 산출물도
+          # $pr_work_dir 아래 둔다 — 10차 리뷰 MINOR-1(워크dir 은 PR 번호로 격리했는데 diff/
+          # review 파일이 고정 /tmp 경로라 러너 풀 병렬화 시 격리 효과가 절반만 적용되던 갭).
+          gh pr diff "$PR_NUMBER" > "$pr_work_dir/pr-diff-raw.txt"
           awk '
             /^diff --git/ {
               path = substr($3, 3)
@@ -68,52 +115,136 @@ jobs:
                      (path ~ /(^|\/)out\//)
             }
             !skip
-          ' /tmp/pr-diff-raw.txt > /tmp/pr-diff.txt
-          RAW=$(wc -l < /tmp/pr-diff-raw.txt)
-          TOTAL_LINES=$(wc -l < /tmp/pr-diff.txt)
+          ' "$pr_work_dir/pr-diff-raw.txt" > "$pr_work_dir/pr-diff.txt"
+          RAW=$(wc -l < "$pr_work_dir/pr-diff-raw.txt")
+          TOTAL_LINES=$(wc -l < "$pr_work_dir/pr-diff.txt")
           echo "total_lines=$TOTAL_LINES" >> "$GITHUB_ENV"
           echo "Diff: $TOTAL_LINES lines (raw $RAW, filtered $((RAW - TOTAL_LINES)))"
 
-      - name: Build panel prompt
+      - name: Build lens prompts (L2-L5 — each self-contained, one lens only)
+        if: steps.l1.outputs.result == 'pass'
         run: |
           set -euo pipefail
           MAX_LINES=3000
-          head -"$MAX_LINES" /tmp/pr-diff.txt > /tmp/pr-diff-truncated.txt
-          cat <<'PROMPT_EOF' > /tmp/panel-prompt.txt
-          Review the diff under review (provided via stdin, or inline below the
-          "--- DIFF UNDER REVIEW ---" marker) for bugs, security risks, logic errors,
-          and convention violations in this Claude Code plugin marketplace
-          (plugin.json/marketplace.json validity, dangling agent/skill refs,
-          SKILL.md frontmatter, hook safety, version alignment, hardcoded secrets).
-          Output concise findings grouped CRITICAL/MAJOR/MINOR.
-          DO NOT output a VERDICT line — that is the chair's job.
-          한국어+영문 기술용어 혼용 가능.
+          head -"$MAX_LINES" "$pr_work_dir/pr-diff.txt" > "$pr_work_dir/pr-diff-truncated.txt"
+          # 재사용되는 workdir 에서 이전 lens 구성(예: 이름 변경/제거된 lens)의 *.txt 가
+          # 남아 있으면 LENS_FILES 글롭에 그대로 잡혀 유령 매트릭스 행이 생긴다 — 매 실행
+          # 시작 시 비우고 새로 만든다(coverage-severe.flag/slot 과 같은 뿌리, 8차 리뷰 MINOR-1).
+          rm -rf "$pr_work_dir/lenses"
+          mkdir -p "$pr_work_dir/lenses"
+          # 이전 문구는 "stdin 또는 inline marker로 제공"이라고 말했지만 실제 lens 프롬프트
+          # 수신자 중 그 어느 쪽도 그렇게 diff 를 받지 않는다(inline marker 는 synthesize.sh
+          # 의 체어 프롬프트에만 존재 — lens 프롬프트와 무관) — Codex 는 stdin, Kiro 는 뒤에
+          # 덧붙는 fs_read 경로 지시로 받는다. 약한 모델(kimi/glm)이 "diff 가 안 왔다"고
+          # 오판할 여지가 있던 부정확한 문구를 두 실제 경로만 언급하도록 수정(14차 리뷰 MINOR-2).
+          COMMON="Review ONLY the diff under review for this PR, in this Claude Code plugin
+          marketplace repo. The diff reaches you one of two ways depending on your tool: it
+          is either piped to your stdin directly, or your instructions below tell you to read
+          it via a file-read tool from an absolute path — whichever applies to you, that IS
+          the diff under review; do not expect any other delivery format.
+          Stay inside your assigned lens below — do not comment on other lenses (other
+          agents cover those independently). Output concise findings grouped
+          CRITICAL/MAJOR/MINOR. DO NOT output a VERDICT line — that is the chair's job.
+          한국어+영문 기술용어 혼용 가능."
+
+          cat <<PROMPT_EOF > "$pr_work_dir/lenses/L2.txt"
+          $COMMON
+
+          LENS: L2 — Skill/Agent 품질
+          - 각 skill 의 SKILL.md frontmatter(name + description) 존재·정상.
+          - description 은 트리거 정확도를 좌우 — 모호하거나 과장된 트리거 문구 금지.
+          - commands/*.md, agents/*.md frontmatter 구조 일관.
+          - skill/command 이름 충돌.
           PROMPT_EOF
+
+          cat <<PROMPT_EOF > "$pr_work_dir/lenses/L3.txt"
+          $COMMON
+
+          LENS: L3 — 보안
+          - 하드코딩 시크릿/API 키(KIRO/ANTIGRAVITY/OpenAI 키, AWS 자격증명 등).
+          - hook(bash) 안전성 — 파괴적 명령, 미인용 변수, 임의 코드 실행 경로.
+          - 신규/변경 스크립트의 실행권한(+x) 적정성.
+          PROMPT_EOF
+
+          cat <<PROMPT_EOF > "$pr_work_dir/lenses/L4.txt"
+          $COMMON
+
+          LENS: L4 — 코드 정확성
+          - scripts/*.py, *.sh, TS(remarp-vscode) 등 실제 로직 버그·엣지케이스.
+          - off-by-one, null/empty 처리, 잘못된 조건문, 에러 삼킴(swallowed exception).
+          PROMPT_EOF
+
+          cat <<PROMPT_EOF > "$pr_work_dir/lenses/L5.txt"
+          $COMMON
+
+          LENS: L5 — 문서 일관성
+          - 이중 언어 문서(README.md ↔ README.ko.md) 동기화, 누락 섹션.
+          - co-agent 패널 표기 일관(Kiro/Codex/Antigravity) — 한 곳만 바꾸고 다른 목록 누락 금지.
+          PROMPT_EOF
+
           if [ "${total_lines:-0}" -gt "$MAX_LINES" ]; then
-            echo "WARNING: diff was ${total_lines} lines; only the first ${MAX_LINES} were reviewed." >> /tmp/panel-prompt.txt
+            for f in "$pr_work_dir"/lenses/*.txt; do
+              echo "WARNING: diff was ${total_lines} lines; only the first ${MAX_LINES} were reviewed." >> "$f"
+            done
             echo "panel_truncated=1" >> "$GITHUB_ENV"
           fi
 
-      - name: Run panel + synthesize (Codex + Kiro x3 -> Claude chair)
+      - name: Run panel + synthesize (lens×model matrix -> Claude chair)
+        if: steps.l1.outputs.result == 'pass'
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           PANEL_TIMEOUT: "300"
         run: |
           set -euo pipefail
-          mkdir -p /tmp/pr-review
-          bash scripts/pr-review/run-panel.sh /tmp/pr-diff-truncated.txt /tmp/panel-prompt.txt /tmp/pr-review
-          bash scripts/pr-review/synthesize.sh /tmp/pr-diff-truncated.txt /tmp/pr-review \
-            "$PR_NUMBER" "$PR_TITLE" /tmp/review.md
-          echo "panel_responded=$(tr '\n' ' ' < /tmp/pr-review/responded.txt 2>/dev/null)" >> "$GITHUB_ENV"
+          bash scripts/pr-review/run-panel.sh "$pr_work_dir/pr-diff-truncated.txt" "$pr_work_dir/lenses" "$pr_work_dir"
+          bash scripts/pr-review/synthesize.sh "$pr_work_dir/pr-diff-truncated.txt" "$pr_work_dir" \
+            "$PR_NUMBER" "$PR_TITLE" "$pr_work_dir/review.md"
+          echo "panel_responded=$(tr '\n' ' ' < "$pr_work_dir/responded.txt" 2>/dev/null)" >> "$GITHUB_ENV"
+
+      - name: Write L1 failure as review (skip AI panel — deterministic gate already failed)
+        if: steps.l1.outputs.result == 'fail'
+        run: |
+          set -euo pipefail
+          . scripts/pr-review/lib.sh
+          # precheck.sh 는 git fetch/archive(인프라) 가 실패해도 검증기 실행 전에
+          # set -euo pipefail 로 즉시 죽는다. "매니페스트/버전 정합 실패"로 뭉뚱그리면
+          # PR 작성자가 실제로는 무관한 자기 매니페스트를 의심하게 되는 오귀속이 생긴다
+          # (19차 리뷰 MINOR-1). 처음엔 test-plugins.py 자신의 배너 문자열 존재로 인프라/
+          # 매니페스트 실패를 구분했는데, 그 검증기가 배너를 찍기도 전에(예: argparse/Path
+          # 단계) 죽으면 실제로는 검증기 실패인데도 인프라로 오분류될 여지가 있었다(20차
+          # 리뷰 MINOR-5) — precheck.sh 가 python3 호출 직전에 남기는 전용 sentinel
+          # (`l1-validators-started`)로 교체해 그 좁은 corner 도 닫음(VERDICT: FAIL 은
+          # 두 경로 모두 동일, fail-closed 방향 불변).
+          if [ -f "$pr_work_dir/l1-validators-started" ]; then
+            L1_HEADER="**L1 pre-check (매니페스트/버전 정합) 실패 — AI 패널 호출 전 결정적 게이트에서 차단.**"
+          else
+            L1_HEADER="**L1 pre-check 인프라 오류로 실패 — 매니페스트 검증기가 실행되기도 전에 중단됨(예: git fetch/archive 실패). 매니페스트 문제가 아닐 가능성이 높으니 아래 원시 출력과 러너 로그를 먼저 확인하십시오.**"
+          fi
+          {
+            echo "$L1_HEADER"
+            echo ""
+            echo '```'
+            if [ -s "$pr_work_dir/l1-output.txt" ]; then
+              scrub_secrets < "$pr_work_dir/l1-output.txt"
+            else
+              echo "(no precheck output captured)"
+            fi
+            echo '```'
+            echo ""
+            echo "VERDICT: FAIL"
+          } > "$pr_work_dir/review.md"
+          echo "l1_failed=1" >> "$GITHUB_ENV"
+          echo "panel_responded=(skipped — L1 pre-check failed)" >> "$GITHUB_ENV"
+          echo "chair_used=(none — L1 pre-check)" >> "$GITHUB_ENV"
 
       - name: Check for blocking issues
         id: gate
         run: |
-          if grep -q "^VERDICT: FAIL$" /tmp/review.md; then
+          if grep -q "^VERDICT: FAIL$" "$pr_work_dir/review.md"; then
             echo "result=fail" >> "$GITHUB_OUTPUT"
             echo "reason=VERDICT: FAIL" >> "$GITHUB_OUTPUT"
-          elif grep -q "^VERDICT: PASS$" /tmp/review.md; then
+          elif grep -q "^VERDICT: PASS$" "$pr_work_dir/review.md"; then
             echo "result=pass" >> "$GITHUB_OUTPUT"
             echo "reason=No blocking issues" >> "$GITHUB_OUTPUT"
           else
@@ -134,28 +265,38 @@ jobs:
           else
             STATUS_BADGE="**Status: PASSED** — No blocking issues found"
           fi
-          sed '$ { /^VERDICT:/d }' /tmp/review.md > /tmp/review-clean.md
+          sed '$ { /^VERDICT:/d }' "$pr_work_dir/review.md" > "$pr_work_dir/review-clean.md"
+          # L1 이 fail 로 막힌 경로에선 매트릭스가 전혀 안 돌았다 — 헤더가 "lens×model matrix"를
+          # 붙이면 마치 매트릭스가 실행된 것처럼 보인다. 이전엔 panel_responded 문자열 리터럴
+          # 비교로 그 경로를 식별했는데, "Write L1 failure as review" 스텝이 남기는 전용
+          # l1_failed 플래그가 이미 있어(그 스텝 자체가 steps.l1.outputs.result == 'fail' 조건
+          # 이므로) 문자열 커플링 없이 바로 쓸 수 있다(10차 리뷰 MINOR-2).
+          if [ "${l1_failed:-0}" = "1" ]; then
+            HEADER="## 🤖 AI Code Review (L1 결정적 pre-check — 매트릭스 미실행)"
+          else
+            HEADER="## 🤖 AI Code Review (${chair_used:-Claude Fable 5} chair · lens×model matrix)"
+          fi
           {
             echo "$MARKER"
-            echo "## 🤖 AI Code Review (${chair_used:-Claude Fable 5} chair · Codex + Kiro panel)"
+            echo "$HEADER"
             echo ""
-            echo "_Panel: Claude(chair) · ${panel_responded:-solo}_"
+            echo "_Cells (model/lens): ${panel_responded:-solo}_"
             [ "${panel_truncated:-0}" = "1" ] && echo "_⚠️ diff truncated to first 3000 lines — review is partial._"
             echo ""
             echo "$STATUS_BADGE"
             echo ""
-            cat /tmp/review-clean.md
+            cat "$pr_work_dir/review-clean.md"
             echo ""
             echo "---"
             echo "_Triggered by commit \`${{ github.event.pull_request.head.sha }}\` · workflow: \`.github/workflows/pr-review.yml\`_"
-          } > /tmp/comment.md
+          } > "$pr_work_dir/comment.md"
           EXISTING=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
             --jq '.[] | select(.body | contains("<!-- oh-my-cloud-skills-pr-review -->")) | .id' 2>/dev/null | head -1)
           if [ -n "$EXISTING" ]; then
-            gh api "repos/$REPO/issues/comments/$EXISTING" -X PATCH -f body="$(cat /tmp/comment.md)" 2>/dev/null || \
-              gh pr comment "$PR_NUMBER" --body-file /tmp/comment.md
+            gh api "repos/$REPO/issues/comments/$EXISTING" -X PATCH -f body="$(cat "$pr_work_dir/comment.md")" 2>/dev/null || \
+              gh pr comment "$PR_NUMBER" --body-file "$pr_work_dir/comment.md"
           else
-            gh pr comment "$PR_NUMBER" --body-file /tmp/comment.md
+            gh pr comment "$PR_NUMBER" --body-file "$pr_work_dir/comment.md"
           fi
 
       - name: Fail if CRITICAL or MAJOR
@@ -163,3 +304,12 @@ jobs:
         run: |
           echo "AI Review failed: ${{ steps.gate.outputs.reason }}"
           exit 1
+
+      - name: Clean up PR-scoped workdir
+        if: always()
+        run: |
+          # PR 번호별로 격리된 워크dir(9차 리뷰 MINOR-3) 는 job 종료 후 아무도 지우지 않아
+          # 비-ephemeral 러너에서 리뷰를 받은 PR 수만큼 누적된다(재실행은 같은 경로 재사용이라
+          # 성장은 유계지만, 디스크 위생 문제) — job 이 성공/실패/취소 어느 쪽으로 끝나도 정리.
+          [ -n "${pr_work_dir:-}" ] && rm -rf "$pr_work_dir"
+          exit 0
