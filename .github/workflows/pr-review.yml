@@ -18,9 +18,9 @@ jobs:
     runs-on: oh-my-cloud-skills-claude-arm
     # 방어적 상한: 개별 스텝은 timeout 래핑돼 있으나, self-hosted 러너가
     # 예기치 못한 hang 으로 장시간 점유되는 것을 막는다.
-    # 최악 상한 산정: 패널 300s×3회 재시도(병렬)=~15m + 의장 primary 120s+Opus 폴백 120s=4m
-    #   + 오버헤드(checkout/npm/diff/코멘트)=~3m ≈ 22m. 재시도 겹침을 killed 없이 통과시키게 30m.
-    timeout-minutes: 30
+    # 리뷰가 agent 로 동작할 때 툴 조합·재실행이 반복돼 벽시계가 길어질 수 있어,
+    # 패널 재시도(~15m) + 의장 폴백(4m) + 오버헤드(~3m)의 최악치(~22m) 위로 넉넉히 50m.
+    timeout-minutes: 50
     concurrency:
       group: pr-review-${{ github.event.pull_request.number }}
       cancel-in-progress: true
