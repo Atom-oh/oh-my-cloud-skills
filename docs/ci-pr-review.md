@@ -1,6 +1,6 @@
 # CI: Multi-AI PR Review — L1 결정적 게이트 + Lens×Model 매트릭스
 
-이 repo의 PR은 self-hosted 러너(`<runner-label>`)에서 2단 게이트를 받습니다: **L1**(매니페스트/버전
+이 repo의 PR은 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 2단 게이트를 받습니다: **L1**(매니페스트/버전
 정합 — 결정적 스크립트, AI 호출 없음) → **L2–L5**(lens×모델 매트릭스 AI 패널 → Claude 의장 종합).
 (design: `docs/superpowers/specs/2026-07-05-pr-review-hybrid-lens-design.md`, ADR-011)
 

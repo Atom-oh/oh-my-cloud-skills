@@ -76,7 +76,13 @@ jobs:
           # /tmp/pr-review 경로를 공유해 서로의 상태(coverage-severe.flag, slot/, lenses/)를
           # 밟을 수 있다 — PR 번호를 경로에 포함해 잡별로 격리(8차 리뷰 MINOR-3). GITHUB_ENV
           # 로 내보내 이후 스텝들이 같은 경로를 그대로 쓴다.
-          WORK="/tmp/pr-review-${PR_NUMBER}"
+          # PR 번호만으로는 부족했다 — cancel-in-progress(동시성 그룹)로 취소된 이전 run 의
+          # cleanup 스텝(`if: always()`)이, 같은 PR 의 새 run 이 방금 만든 경로를 지울 수
+          # 있다(러너 풀에 호스트가 2개 이상일 때). GITHUB_RUN_ID 를 더해 트리거(푸시)당
+          # 경로를 분리 — 단, RUN_ATTEMPT 는 넣지 않아 같은 run 의 수동 재실행("Re-run
+          # failed jobs")은 여전히 같은 경로를 재사용하고, 7~10차에서 고정한 stale-state
+          # 리셋 테스트들이 겨냥하는 시나리오(그 경우)는 그대로 유효하다(11차 리뷰 MINOR).
+          WORK="/tmp/pr-review-${PR_NUMBER}-${GITHUB_RUN_ID}"
           echo "pr_work_dir=$WORK" >> "$GITHUB_ENV"
           mkdir -p "$WORK"
           if bash scripts/pr-review/precheck.sh "$GITHUB_WORKSPACE" "$PR_NUMBER" "$WORK" \

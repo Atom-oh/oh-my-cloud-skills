@@ -264,6 +264,29 @@ ADR-009의 멀티-AI 패널(Codex + Kiro×3)은 리뷰어를 벤더로 다양화
   경로)가 그대로 동작함을 확인, 전체 스위트는 597 passed 유지(스크립트 불변), 기존 무관
   17건 실패도 그대로.
 
+- **12차 리뷰 수정(커밋 f77a9e1 이후, PASSED — CRITICAL/MAJOR 0건, MINOR 4건)**: 3건 반영,
+  1건 채택 안 함. (1) `$pr_work_dir`가 PR 번호로만 격리돼, `cancel-in-progress: true`로
+  취소된 이전 run 의 `if: always()` cleanup 스텝이 같은 PR 의 새 run 이 방금 만든 경로를
+  `rm -rf` 할 수 있다는 지적(러너 풀에 호스트가 2개 이상일 때만 발생, 결과는 fail-closed→
+  재실행으로 복구되는 안전한 방향이라 발생 조건이 좁은 MINOR) — 리뷰가 제안한 대로 경로에
+  `${GITHUB_RUN_ID}`를 더해(`RUN_ATTEMPT`는 제외) 트리거(푸시)당 경로를 분리. `RUN_ATTEMPT`
+  를 안 넣은 건 의도적 — 같은 run 의 수동 "Re-run failed jobs"는 여전히 같은 경로를
+  재사용해, 7~10차에서 고정한 stale-state 리셋 테스트(coverage-severe.flag/slot/lenses/
+  kiro-cwd)가 겨냥하는 시나리오가 계속 유효하다. (2) `synthesize.sh`의
+  `RESP="$(tr ... < "$WORK/responded.txt" ...)"` 가 파일 부재 시 리다이렉트 실패로
+  command substitution 자체가 non-zero가 되어, 바로 아래 문서화된 `(none — Claude solo)`
+  폴백이 `set -e` 하에서 실행 전에 스크립트를 죽여 도달 불가능함을 직접 재현 확인(현재
+  유일한 호출자 `run-panel.sh`는 항상 `: > "$RESP"`로 파일을 먼저 만들어 실 경로는 안전 —
+  standalone 호출에서만 드러나는 latent 비대칭) — `|| true`를 붙여 폴백이 실제로 동작하도록
+  수정, 수정 전/후 모두 직접 재현해 확인. (3) `docs/ci-pr-review.md`가 러너 라벨을
+  `<runner-label>` 플레이스홀더로 남겨 실제 라벨을 쓰는 runbook과 불일치하던 것 — 그 라벨은
+  이미 `.github/workflows/pr-review.yml`의 `runs-on:`에 그대로 공개돼 있어 sanitize 사유가
+  없음을 확인, runbook과 동일하게 갱신. **채택 안 함**: `lib.sh`의 GNU sed 전용 구문
+  (`I` 플래그, `-i`) 의존은 self-hosted 러너가 Linux 로 고정돼 CI 영향이 없고 macOS 로컬
+  개발 편의 문제일 뿐이라 이번엔 보류(재작성 비용 대비 실익이 낮음). 신규 테스트:
+  `test-synthesize.sh` (f)(responded.txt 부재 시 문서화된 폴백이 실제로 chair 프롬프트에
+  도달하는지) — 전체 스위트 599 passed(+2), 기존 무관 17건 실패는 그대로.
+
 ## Consequences
 
 - 커버리지가 "리뷰어 다양화"에서 "리뷰어×관점 매트릭스"로 체계화 — 사각지대 감소.

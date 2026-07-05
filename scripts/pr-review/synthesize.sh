@@ -4,7 +4,12 @@ set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"; . "$DIR/lib.sh"
 DIFF="$1"; WORK="$2"; PR_NUMBER="$3"; PR_TITLE="$4"; OUT="$5"
 SLOT="$WORK/slot"
-RESP="$(tr '\n' ',' < "$WORK/responded.txt" 2>/dev/null | sed 's/,$//')"
+# responded.txt 부재 시 `<` 리다이렉트 실패가 파이프 전체를 non-zero 로 만들어(pipefail),
+# 이 줄이 command substitution 실패로 즉시 스크립트를 죽인다 — 바로 아래 "(none — Claude
+# solo)" 폴백이 있으나 set -e 하에서는 도달 불가(11차 리뷰). 현재 유일한 호출자
+# (run-panel.sh)가 항상 `: > "$RESP"` 로 파일을 먼저 만들어 실 호출 경로는 안전하지만,
+# 문서화된 폴백이 실제로 동작하도록 `|| true` 로 감싼다.
+RESP="$(tr '\n' ',' < "$WORK/responded.txt" 2>/dev/null | sed 's/,$//')" || true
 [ -z "$RESP" ] && RESP="(none — Claude solo)"
 
 # 패널 출력 합본. 파일명 컨벤션 = <모델>-<lens>.md (예: kiro-opus-L3.md) — 체어가

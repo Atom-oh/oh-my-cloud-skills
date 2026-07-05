@@ -114,6 +114,23 @@ grep -q "커버리지 붕괴로 강제 FAIL" "$WORK/review.md" 2>/dev/null \
   || fail "synthesize (e) severe-override banner appears in the review" "banner missing"
 rm -rf "$WORK" "$BIN"
 
+# (f) responded.txt 가 없는 caller — `< 없는파일` 리다이렉트 실패가 pipefail 하에서 command
+# substitution 을 즉시 죽여, 바로 아래의 문서화된 "(none — Claude solo)" 폴백이 set -e 하에서
+# 사실상 도달 불가능한 latent 비대칭이 있었다(현재 유일한 호출자 run-panel.sh 는 항상
+# `: > "$RESP"` 로 파일을 먼저 만들어 실 호출 경로는 안전 — 11차 리뷰).
+setup; mkclaude_pass
+rm -f "$WORK/responded.txt"
+echo "codex-finding" > "$WORK/slot/codex-L2.md"
+if bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
+  pass "synthesize (f) script exits 0 when responded.txt is missing (standalone caller)"
+else
+  fail "synthesize (f) script exits 0 when responded.txt is missing (standalone caller)" "exited non-zero"
+fi
+grep -q "none — Claude solo" "$WORK/synth-prompt.txt" 2>/dev/null \
+  && pass "synthesize (f) documented fallback text reaches the chair prompt when responded.txt is absent" \
+  || fail "synthesize (f) documented fallback text reaches the chair prompt when responded.txt is absent" "fallback missing"
+rm -rf "$WORK" "$BIN"
+
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then
   [ "$_t_fail" = 0 ] && echo "PASS: test-synthesize" || exit 1
