@@ -12,7 +12,7 @@ co-agent로 다른 AI(Kiro CLI · Codex · Agy)와 협업해 리뷰·의사결�
 ```
 1. 설치        →  /plugin marketplace add https://github.com/Atom-oh/oh-my-cloud-skills
                    /plugin install co-agent@oh-my-cloud-skills
-2. (선택) CLI  →  kiro-cli / codex / agy(또는 legacy gemini) 중 설치·인증된 것이 패널이 됨
+2. (선택) CLI  →  kiro-cli / codex / agy 중 설치·인증된 것이 패널이 됨
 3. 준비도 확인 →  /co-agent:setup   (readiness 요약 기록, 이후 흐름이 참조)
 4. 프롬프트    →  "이 변경 다른 AI로 리뷰해줘"  /  "잘 모르겠어, 같이 결정해줘"
 5. 결과물      →  합의/이견을 종합한 리뷰 보고서 · 의사결정표 · ADR 초안 · (opt-in) 자율 구현

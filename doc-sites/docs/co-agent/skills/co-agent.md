@@ -5,7 +5,7 @@ title: "co-agent"
 
 # co-agent Skill
 
-다른 AI(Kiro CLI, Codex, Agy — Gemini는 legacy fallback)와 협업해 second opinion을 받고 **Claude가 의장으로 종합**하는 7-모드 스킬.
+다른 AI(Kiro CLI, Codex, Agy)와 협업해 second opinion을 받고 **Claude가 의장으로 종합**하는 7-모드 스킬.
 
 ## 트리거
 
@@ -25,9 +25,7 @@ PANEL=""
 # 헤드리스 인증됨. KIRO_API_KEY로 사전 게이트하지 않음(미인증이면 호출 시 에러→스킵).
 command -v kiro-cli >/dev/null 2>&1 && PANEL="$PANEL kiro-cli"
 command -v codex    >/dev/null 2>&1 && PANEL="$PANEL codex"
-# Agy가 Gemini를 대체 — agy 없을 때만 legacy gemini fallback
-if command -v agy >/dev/null 2>&1; then PANEL="$PANEL agy"
-elif command -v gemini >/dev/null 2>&1; then PANEL="$PANEL gemini"; fi
+command -v agy      >/dev/null 2>&1 && PANEL="$PANEL agy"
 echo "Panel: ${PANEL:-none (Claude solo)}"
 ```
 
@@ -39,8 +37,7 @@ echo "Panel: ${PANEL:-none (Claude solo)}"
 |----|------|------|
 | Kiro | `kiro-cli chat "<P>\n\nRead the review context with fs_read from: <CTX_FILE>" --no-interactive --trust-tools=fs_read --wrap never` | `chat`은 stdin을 무시 — 컨텍스트는 임시 파일 + `fs_read` 지시로 전달 |
 | Codex | `codex exec -s read-only "<P>"` | read-only 샌드박스 |
-| Agy | `agy -p "<P>" --sandbox` | 우선 3순위 피어. `-p` print 모드가 read-only 보장 |
-| Gemini | `gemini -p "<P>" -o text` | Agy 미설치 시에만 쓰는 legacy fallback |
+| Agy | `agy -p "<P>" --sandbox` | 3순위 피어. `-p` print 모드가 read-only 보장 |
 
 패널은 **병렬 실행**(`&` + `wait`), 각자 파일로 캡처. 빈 출력/에러 = 해당 AI 스킵.
 
@@ -69,7 +66,7 @@ echo "Panel: ${PANEL:-none (Claude solo)}"
 1. `CLAUDE.md` 읽기 → 리뷰에 필요한 핵심만(스택·빌드/테스트 명령·금지 패턴·아키텍처 경계·리뷰 체크리스트) **증류** (그대로 복사 안 함, 시크릿 제외).
 2. 생성 마커(`check_ai_context.py --emit-marker`)를 붙여 `AGENTS.md`에 기록. Kiro는 `.kiro/steering/project-context.md` → `#[[file:AGENTS.md]]` 브릿지로 같은 파일 참조.
 3. Agy는 자동로드가 없어 fan-out 시점에 `AGENTS.md`를 컨텍스트로 fold-in — `check_ai_context.py --verify`로 marker/freshness/secret을 통과해야만 전송(실패 시 diff-only로 조용히 fallback).
-4. 마커 없는 수기 파일/`AGENTS.override.md`는 건드리지 않음. `GEMINI.md`는 더 이상 생성하지 않음.
+4. 마커 없는 수기 파일/`AGENTS.override.md`는 건드리지 않음.
 5. `check_ai_context.py`로 검증(마커·크기 캡·staleness·시크릿 스캔).
 
 ## 모드 5 — consensus (자율 doc→plan→구현 파이프라인)

@@ -5,7 +5,7 @@ title: "개요"
 
 # co-agent 개요
 
-co-agent는 **다른 AI 에이전트(Kiro CLI, Codex, Agy — Gemini는 legacy fallback)와 협업**해 second opinion을 받고, **Claude가 의장(chair)으로 최종 종합**하는 플러그인입니다. 7가지 모드를 제공합니다: 멀티-AI 리뷰, 의사결정 보조, ADR 협업, AI 컨텍스트 동기화, 자율 consensus 파이프라인, host-designs/peer-implements harness, 패널 준비도 preflight(setup).
+co-agent는 **다른 AI 에이전트(Kiro CLI, Codex, Agy)와 협업**해 second opinion을 받고, **Claude가 의장(chair)으로 최종 종합**하는 플러그인입니다. 7가지 모드를 제공합니다: 멀티-AI 리뷰, 의사결정 보조, ADR 협업, AI 컨텍스트 동기화, 자율 consensus 파이프라인, host-designs/peer-implements harness, 패널 준비도 preflight(setup).
 
 ## 구성 요소
 
@@ -39,14 +39,13 @@ co-agent는 **다른 AI 에이전트(Kiro CLI, Codex, Agy — Gemini는 legacy f
 |----|-----|------|
 | Kiro | `kiro-cli` | 인터랙티브 로그인 **또는** `KIRO_API_KEY`로 헤드리스 인증. `chat`은 stdin을 무시하므로 컨텍스트는 argv/`fs_read` 경로로 전달 |
 | Codex | `codex` | `codex exec -s read-only` (read-only 샌드박스) |
-| Agy | `agy` | **우선 3순위 피어** — `agy -p … --sandbox` (print 모드가 read-only 보장) |
-| Gemini | `gemini` | Agy 미설치 시에만 쓰는 legacy fallback |
+| Agy | `agy` | **3순위 피어** — `agy -p … --sandbox` (print 모드가 read-only 보장) |
 
 ## 일곱 가지 모드
 
 ```mermaid
 flowchart LR
-    A["/co-agent"] --> P["Step 0: 패널 감지<br/>(kiro-cli/codex/agy, agy 없으면 gemini)"]
+    A["/co-agent"] --> P["Step 0: 패널 감지<br/>(kiro-cli/codex/agy)"]
     P --> R["Review: diff 팬아웃 → 합의/이견 종합 → PASS/REVIEW/FAIL"]
     P --> D["Decide: 옵션 팬아웃 → 비교표 → Claude 추천"]
     P --> ADR["ADR: 대안·트레이드오프 팬아웃 → Nygard ADR 초안"]
@@ -87,19 +86,19 @@ flowchart LR
 
 패널을 레이어드 설정으로 튜닝합니다 — `co-agent.defaults.json`(커밋) ← `~/.claude/co-agent.user.json`(유저 스코프) ← `.claude/co-agent.local.json`(레포 로컬, gitignore). **CLI가 헤드리스로 실제 받는 것만** 노출합니다 (죽은 설정 없음).
 
-| 설정 | kiro-cli | codex | agy | gemini |
-|------|------|-------|-----|--------|
-| `model` | `--model` | `-m` | `--model` | `-m` |
-| `effort` (`minimal\|low\|medium\|high`) | — | `-c model_reasoning_effort` | — | — |
-| `enabled` / `timeout` | 지원 | 지원 | 지원 | 지원 |
-| `context_limit` (토큰) | 1,000,000 | 272,000 | 1,000,000 | 1,000,000 |
+| 설정 | kiro-cli | codex | agy |
+|------|------|-------|-----|
+| `model` | `--model` | `-m` | `--model` |
+| `effort` (`minimal\|low\|medium\|high`) | — | `-c model_reasoning_effort` | — |
+| `enabled` / `timeout` | 지원 | 지원 | 지원 |
+| `context_limit` (토큰) | 1,000,000 | 272,000 | 1,000,000 |
 | `autosync` (글로벌, on/off) | `CLAUDE.md` 변경 시 `/co-agent:sync-context` 자동 실행 (옵트인, 기본 off) |
 
-> `effort`는 **Codex 전용** — Kiro/Agy/Gemini는 헤드리스 effort 플래그가 없습니다. `context_limit` 초과 AI는 하드 실패 대신 스킵됩니다(예: 거대 diff에서 Codex 272K 초과 → Kiro/Agy만 실행).
+> `effort`는 **Codex 전용** — Kiro/Agy는 헤드리스 effort 플래그가 없습니다. `context_limit` 초과 AI는 하드 실패 대신 스킵됩니다(예: 거대 diff에서 Codex 272K 초과 → Kiro/Agy만 실행).
 
 ## AI 컨텍스트 동기화 (`/co-agent:sync-context`)
 
-외부 AI가 프로젝트 컨벤션으로 리뷰하도록, `CLAUDE.md`를 **한 번만 증류**해 `AGENTS.md`를 생성하고 **Kiro·Codex·Agy가 이 하나의 파일을 공통 참조**합니다(각 AI별 별도 카피 없음, `GEMINI.md`는 더 이상 생성 안 함).
+외부 AI가 프로젝트 컨벤션으로 리뷰하도록, `CLAUDE.md`를 **한 번만 증류**해 `AGENTS.md`를 생성하고 **Kiro·Codex·Agy가 이 하나의 파일을 공통 참조**합니다(각 AI별 별도 카피 없음).
 
 | AI | 참조 방식 | 생성 |
 |----|-----------|------|

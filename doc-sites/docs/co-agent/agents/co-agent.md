@@ -5,7 +5,7 @@ title: "co-agent"
 
 # co-agent Agent
 
-**외부 AI 에이전트(Kiro CLI, Codex, Agy — Gemini는 legacy fallback)로 구성된 패널의 의장**입니다. second opinion을 모아 **Claude가 최종 종합**합니다. 외부 AI는 항상 자문 역할이고, 결정·작성은 Claude가 합니다. 설치된 AI CLI만 사용하며 없으면 우아하게 단독 수행으로 강등됩니다.
+**외부 AI 에이전트(Kiro CLI, Codex, Agy)로 구성된 패널의 의장**입니다. second opinion을 모아 **Claude가 최종 종합**합니다. 외부 AI는 항상 자문 역할이고, 결정·작성은 Claude가 합니다. 설치된 AI CLI만 사용하며 없으면 우아하게 단독 수행으로 강등됩니다.
 
 ## 트리거 키워드
 
@@ -27,7 +27,7 @@ Claude가 항상 의장입니다: 각 AI의 포인트를 출처 표기하고, �
 
 ```mermaid
 graph TD
-    A[요청] --> P[Step 0: 패널 감지<br/>kiro-cli / codex / agy 중 설치된 것<br/>agy 없으면 gemini fallback]
+    A[요청] --> P[Step 0: 패널 감지<br/>kiro-cli / codex / agy 중 설치된 것]
     P --> B{의도?}
     B -->|코드/아키텍처 리뷰| R[Review: diff 팬아웃 → 종합 → PASS/REVIEW/FAIL]
     B -->|"잘 모르겠어" / 의사결정| D[Decide: 옵션 팬아웃 → 비교표 → 추천]
@@ -48,9 +48,7 @@ PANEL=""
 # 미인증 CLI는 호출 시점에 에러 → 스킵.
 command -v kiro-cli >/dev/null 2>&1 && PANEL="$PANEL kiro-cli"
 command -v codex    >/dev/null 2>&1 && PANEL="$PANEL codex"
-# Agy가 Gemini를 대체 — agy가 없을 때만 gemini fallback 사용
-if command -v agy >/dev/null 2>&1; then PANEL="$PANEL agy"
-elif command -v gemini >/dev/null 2>&1; then PANEL="$PANEL gemini"; fi
+command -v agy      >/dev/null 2>&1 && PANEL="$PANEL agy"
 echo "Panel: ${PANEL:-none (Claude solo)}"
 ```
 
@@ -73,6 +71,6 @@ echo "Panel: ${PANEL:-none (Claude solo)}"
 
 ## 참고 파일
 
-- `references/ai-cli-adapters.md` — Kiro/Claude/Codex/Agy/Gemini CLI 명령, 감지, 팬아웃, 폴백, ADR 연동
+- `references/ai-cli-adapters.md` — Kiro/Claude/Codex/Agy CLI 명령, 감지, 팬아웃, 폴백, ADR 연동
 - `references/architecture-review-framework.md` — 리뷰 루브릭, 심각도, PASS/REVIEW/FAIL
 - `references/aws-well-architected.md` — Review 모드용 6-필러 체크리스트

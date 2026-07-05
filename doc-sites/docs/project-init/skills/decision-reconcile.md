@@ -13,7 +13,7 @@ ADR은 시간이 지나며 쌓이고 서로 충돌하기 시작합니다 — 두
 
 단일 모델이 단일 프롬프트로 한 번 훑으면 **뻔한 충돌만** 잡습니다. 이 스킬은 **모델 티어를 바꾸고(opus/sonnet/haiku) 리뷰 렌즈(프롬프트 프레이밍)를 달리한** 여러 에이전트를 병렬로 돌립니다. 그 다양성이 비자명한 모순을 표면화합니다.
 
-선택적으로 외부 AI CLI(Kiro/Codex/Gemini)까지 fan-out해 **cross-family 신호**를 더합니다. 외부 CLI가 없으면 Claude 단독 패널로 graceful degrade합니다.
+선택적으로 외부 AI CLI(Kiro/Codex/Agy)까지 fan-out해 **cross-family 신호**를 더합니다. 외부 CLI가 없으면 Claude 단독 패널로 graceful degrade합니다.
 
 ## 검출하는 모순 유형
 
