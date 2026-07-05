@@ -35,6 +35,68 @@ assert_eq "2" "$HRC" "impl-flags rejects ai equal to host (exit 2)"
 assert_grep_no_match "workspace-write|acceptEdits" "$(python3 "$CFG" flags codex --host claude --root "$R2" 2>&1)" "review flags stay read-only (no write sandbox)"
 rm -rf "$R2"
 
+# --- Role tiering: implementer_models/<ai> apply to impl-flags ONLY, keyed per
+# --- implementer so no provider's model can leak onto another CLI's --model flag ---
+R2T=$(mktemp -d "${TMPDIR:-/tmp}/coagent-harness2t.XXXXXX")
+python3 "$CFG" set codex model gpt-5-codex --root "$R2T" >/dev/null 2>&1     # panel (review) model
+# per-implementer keying: storing without an explicit implementer is refused
+python3 "$CFG" set harness implementer_model gpt-5.3-codex-mini --root "$R2T" >/dev/null 2>&1 && SU=0 || SU=$?
+assert_eq "2" "$SU" "set implementer_model without an explicit implementer refused (exit 2)"
+# bind codex, set overrides → they apply to codex's write path
+python3 "$CFG" set harness implementer codex --root "$R2T" >/dev/null 2>&1
+python3 "$CFG" set harness implementer_model gpt-5.3-codex-mini --root "$R2T" >/dev/null 2>&1
+python3 "$CFG" set harness implementer_effort low --root "$R2T" >/dev/null 2>&1
+IFT=$(python3 "$CFG" impl-flags codex --host claude --root "$R2T" 2>&1)
+assert_contains "$IFT" "gpt-5.3-codex-mini" "implementer_models.codex overrides panel model (write path)"
+assert_contains "$IFT" 'model_reasoning_effort="low"' "implementer_efforts.codex overrides panel effort"
+# SWITCH-LEAK regression: an explicit implementer switch must NOT carry the codex
+# model onto agy's --model flag (the entry stays keyed to codex, dormant)
+python3 "$CFG" set harness implementer agy --root "$R2T" >/dev/null 2>&1
+IFA=$(python3 "$CFG" impl-flags agy --host claude --root "$R2T" 2>&1)
+assert_grep_no_match "codex-mini" "$IFA" "implementer switch does not leak codex model to agy (per-AI keying)"
+# effort is codex-only: storing it while the implementer is agy is refused
+python3 "$CFG" set harness implementer_effort low --root "$R2T" >/dev/null 2>&1 && AE=0 || AE=$?
+assert_eq "2" "$AE" "implementer_effort refused while implementer is agy (codex-only, exit 2)"
+# show marks the codex entry dormant while agy is the implementer
+assert_contains "$(python3 "$CFG" show --root "$R2T" 2>/dev/null)" "dormant" "show marks a non-current implementer's tiering entry dormant"
+# review flags never pick up the write-path override
+python3 "$CFG" set harness implementer codex --root "$R2T" >/dev/null 2>&1
+RVT=$(python3 "$CFG" flags codex --host claude --root "$R2T" 2>&1)
+assert_contains "$RVT" "gpt-5-codex" "review flags keep the panel model (tiering is write-path only)"
+assert_grep_no_match "codex-mini" "$RVT" "review flags never pick up implementer_models"
+# validation: bad values rejected at set time
+python3 "$CFG" set harness implementer_effort turbo --root "$R2T" >/dev/null 2>&1 && TE=0 || TE=$?
+assert_eq "2" "$TE" "invalid implementer_effort rejected (exit 2)"
+python3 "$CFG" set harness implementer_model "bad model;rm" --root "$R2T" >/dev/null 2>&1 && TM=0 || TM=$?
+assert_eq "2" "$TM" "implementer_model with shell metacharacters rejected (exit 2)"
+# emit-time revalidation: a hand-edited local.json (bypassing set) must be refused
+# fail-closed — impl-flags argv feeds a write-enabled sandbox
+python3 - "$R2T" <<'PYEOF'
+import json, sys, os
+p = os.path.join(sys.argv[1], ".claude/co-agent.local.json")
+d = json.load(open(p)); d["harness"]["implementer_models"]["codex"] = "gpt-5\n--evil"
+json.dump(d, open(p, "w"))
+PYEOF
+python3 "$CFG" impl-flags codex --host claude --root "$R2T" >/dev/null 2>&1 && EV=0 || EV=$?
+assert_eq "2" "$EV" "impl-flags re-validates model at emit time — hand-edited control-char model refused (exit 2)"
+python3 - "$R2T" <<'PYEOF'
+import json, sys, os
+p = os.path.join(sys.argv[1], ".claude/co-agent.local.json")
+d = json.load(open(p))
+d["harness"]["implementer_models"]["codex"] = "gpt-5.3-codex-mini"
+d["harness"]["implementer_efforts"]["codex"] = "turbo"
+json.dump(d, open(p, "w"))
+PYEOF
+python3 "$CFG" impl-flags codex --host claude --root "$R2T" >/dev/null 2>&1 && EE=0 || EE=$?
+assert_eq "2" "$EE" "impl-flags re-validates effort at emit time — hand-edited bad effort refused (exit 2)"
+# clearing falls back to the panel settings
+python3 "$CFG" set harness implementer_effort null --root "$R2T" >/dev/null 2>&1
+python3 "$CFG" set harness implementer_model default --root "$R2T" >/dev/null 2>&1
+IFC=$(python3 "$CFG" impl-flags codex --host claude --root "$R2T" 2>&1)
+assert_grep_no_match "codex-mini" "$IFC" "cleared implementer_models entry falls back to panel model"
+assert_contains "$IFC" "gpt-5-codex" "fallback impl-flags carry the panel model"
+rm -rf "$R2T"
+
 # --- Task 3: needs-human status ---
 R3=$(mktemp -d "${TMPDIR:-/tmp}/coagent-harness3.XXXXXX")
 git -C "$R3" init -q

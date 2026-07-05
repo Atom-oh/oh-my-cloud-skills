@@ -58,9 +58,15 @@ a verify round over an empty digest just invites invented findings).
 
 ### Phase V — verify (parallel)
 
-Fan the **artifact + digest** back out to the same eligible pairs (parallel again, same
-`$CFG pairs --phases 2` call as phase F — this is the second of the two phases the
-per-round cap was already divided for), with a fixed verify prompt:
+Fan the **artifact + digest** back out to the eligible pairs (parallel again), calling
+`$CFG pairs --phases 2 --profile default` — the second of the two phases the per-round
+cap was already divided for, but **tiered**: verify runs each AI's single strongest
+configured `model` (`--profile default`), not the deep breadth list. Finding things is
+a wide-and-cheap job (phase F, configured profile — `deep` by default); judging a
+curated digest is a narrow-and-strong one. Verify's **pair count** never exceeds find's
+(default emits one pair per AI; deep emits one or more), so this phase never costs more
+than phase F — note it's a count bound, not a literal subset: an AI whose single `model`
+isn't in its `models` list verifies on a pair find didn't run. Fixed verify prompt:
 
 ```
 You are verifying a CURATED FINDINGS DIGEST against the ARTIFACT. For each numbered
@@ -102,10 +108,20 @@ consent reflects the true 2-phase cost — `matrix` displays the same CAPPED pan
 will run, never the untrimmed wish-list. Plain `pairs` (no `--phases`) would cap only one
 phase and let a hybrid round spend up to 2× the configured budget (a missing `--phases`
 value now hard-fails for the same reason). If the trim warning fires, trim `models` lists
-before lowering `timeout`. Multi-model
-diversity works exactly as in the other modes: with `profile deep`, every model in an AI's
-`models` list is its own find/verify voice (headless flags: kiro/claude/agy `--model`,
-codex `-m`).
+before lowering `timeout`.
+
+**Role tiering.** The two phases are deliberately tiered (Phase V): find runs the
+configured profile (`deep` by default — every model in an AI's `models` list is its own
+finder voice; headless flags: kiro/claude/agy `--model`, codex `-m`), verify runs
+`--profile default` (one strongest model per AI). H0's `matrix --phases 2` displays the
+configured-profile cost, which is therefore an **upper bound**: the actual verify phase
+runs the same-or-fewer `default`-profile pairs. (Per the Phase V note, that consent
+display is a count/cost bound, not the literal verify pair list — an AI whose single
+`model` is absent from its `models` list verifies on a pair H0 didn't itemize, same
+providers, within the displayed budget.) Cheap breadth where diversity pays
+(find), strong judgment where correctness pays (verify) — the same placement logic as
+`harness.implementer_model`/`implementer_effort` on the write path
+(`delegated-implement.md`) and the chair staying on the host's strongest tier.
 
 ## Security
 

@@ -21,9 +21,11 @@
   인증 불가(ADR-010).
 - **의장**: Claude Fable 5(`us.anthropic.claude-fable-5`)가 16개 셀 findings를 lens 별로 종합해
   단일 리뷰 + `VERDICT: PASS|FAIL`(fail-closed) 생성. 의장 호출은 벽시계 타임아웃(`CHAIR_TIMEOUT`,
-  기본 **180초** — 매트릭스로 입력이 4→16 출력으로 늘어 120초에서 상향)로 감싸며, 연결 거부/행/빈
-  응답 등으로 VERDICT를 못 만들면 **Claude Opus 4.8(`CHAIR_FALLBACK_MODEL`)로 1회 폴백**한다.
-  코멘트 헤더의 chair 표기는 실제 사용 모델을 반영.
+  기본 **600초**)로 감싸며, 연결 거부/행/빈 응답 등으로 VERDICT를 못 만들면 **Claude Opus
+  4.8(`CHAIR_FALLBACK_MODEL`)로 1회 폴백**한다. 코멘트 헤더의 chair 표기는 실제 사용 모델을
+  반영. (120s → 180s → 600s: ttobak 실측상 구 4-패널 구조도 286초가 걸렸고, 매트릭스는 셀 수를
+  4→16으로 늘려 체어 입력이 더 커지므로 180s로는 부족 — job timeout-minutes 50m 여유를 반영해
+  600s로 상향.)
 - **데이터 거주성**: 매트릭스 멤버마다 경로가 다름 —
   - **Codex / Claude(의장)**: Amazon Bedrock **us-east-1**(gpt-5.5는 bedrock-mantle In-Region 전용, fable-5는 US 추론 프로파일), AWS 인증은 EKS Pod Identity(SigV4).
   - **Kiro**: **외부 API-key 기반 서비스** — PR diff가 외부로 전송됨(16셀 중 12셀이 Kiro). In-Region 아님.

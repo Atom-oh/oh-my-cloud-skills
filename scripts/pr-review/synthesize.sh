@@ -75,10 +75,18 @@ PROMPT_EOF
 # TTFT(첫 토큰 지연) 임계값은 안 씀 — Fable은 adaptive thinking이 상시 on이라
 # 정상 상태에서도 첫 토큰이 늦을 수 있어 오발동하고, ConnectionRefused는 빠르게
 # 실패해 지연 기반으론 못 잡음. 대신 벽시계 타임아웃 + 결과 검증으로 판정한다.
+# 120s 는 너무 짧았다: 같은 러너 이미지/서비스어카운트를 쓰는 ttobak 에선
+# 타임아웃 없는 이전 버전 스크립트로 357줄 diff 종합에 286초가 걸렸다(정상
+# 완료). 여기선 120s cap 때문에 정상 응답 중인 Fable 도, 폴백 Opus 도 매번
+# 강제 종료되어 항상 fail-closed 됐다 — Bedrock 장애가 아니라 타임아웃 설정
+# 문제였음. 큰 diff(576줄)+4개 패널 리뷰 종합 여유를 감안해 600s 로 상향.
 PRIMARY_MODEL="${ANTHROPIC_MODEL:-us.anthropic.claude-fable-5}"
 FALLBACK_MODEL="${CHAIR_FALLBACK_MODEL:-us.anthropic.claude-opus-4-8}"
-# 매트릭스 도입으로 체어 입력이 4→16 패널 출력으로 늘어 종합에 더 걸림 — 120s→180s.
-CHAIR_TIMEOUT="${CHAIR_TIMEOUT:-180}"
+# 매트릭스 도입으로 체어 입력이 4→16 패널 출력으로 늘어 180s로 상향 검토됐으나,
+# 위 ttobak 실측(4패널·357줄 diff에서 286s)이 이미 180s를 넘는다 — 16-cell
+# 입력은 더 크므로 180s는 여전히 부족. job timeout-minutes 를 50m로 올려둔
+# 여유를 반영해 600s 유지.
+CHAIR_TIMEOUT="${CHAIR_TIMEOUT:-600}"
 
 chair_label() { case "$1" in
   *fable-5*)  echo "Claude Fable 5" ;;

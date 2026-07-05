@@ -15,9 +15,10 @@ PR을 열면 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 L1(결정
 
 ## 리전/모델 (us-east-1 통일)
 - Claude 의장: `us.anthropic.claude-fable-5` (US geo, on-demand) · endpoint/region `us-east-1`
-  - 폴백: 의장이 `CHAIR_TIMEOUT`(기본 **180초** — 매트릭스로 입력이 늘어 120초에서 상향) 내
-    VERDICT를 못 만들면(연결 거부/행/빈 응답) `CHAIR_FALLBACK_MODEL`(기본
-    `us.anthropic.claude-opus-4-8`)로 1회 재시도. 튜닝하려면 워크플로 `env`에
+  - 폴백: 의장이 `CHAIR_TIMEOUT`(기본 **600초** — ttobak 실측상 구 4-패널 구조도 286초가 걸렸고,
+    매트릭스는 셀 수를 4→16으로 늘려 체어 입력이 더 커지므로 180초로는 부족. job timeout-minutes
+    50m 여유를 반영해 상향) 내 VERDICT를 못 만들면(연결 거부/행/빈 응답) `CHAIR_FALLBACK_MODEL`
+    (기본 `us.anthropic.claude-opus-4-8`)로 1회 재시도. 튜닝하려면 워크플로 `env`에
     `CHAIR_TIMEOUT`/`CHAIR_FALLBACK_MODEL` 지정.
 - codex: `openai.gpt-5.5` (bedrock-mantle, In-Region us-east-1; 이미지 `~/.codex/config.toml`의 region이 결정) — L2~L5 각 lens 당 1회, 총 4콜.
 - kiro-cli: `claude-opus-4.8`/`kimi-k2.5`/`glm-5` 각각 L2~L5 당 1회, 총 12콜.
