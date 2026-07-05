@@ -32,7 +32,7 @@ judgment lens** 로 분리한다.
   스크립트로 → 0 false-positive, 빠름, fail-closed.
 - AI는 **판단이 필요한 영역**(보안 추론, 코드 로직, skill description 품질, 문서 일관성)에
   집중, 벤더 다양성 유지.
-- **find→verify**로 근거 없는 지적 제거(현행에 없는 단계).
+- **체어 triage(+선택 verify)** 로 근거 없는 지적 제거(현행에 없는 단계).
 - 현행 불변식 보존: `pull_request_target` base-checkout 보안, fail-closed `VERDICT`,
   코멘트 upsert, 데이터 거주성 정책(Kiro 외부 송신), 타임아웃, 의장 폴백.
 
@@ -67,15 +67,15 @@ push하면 워크플로가 재실행되므로 **워크플로 내부 loop-until-d
 [L1 결정적 pre-check]  ── FAIL 이면 즉시 fail-closed (AI 호출 전, 비용 0)
         │ PASS
         ▼
-[Phase F] 병렬 find  ── 패널(Codex + Kiro×3)에 lens-구조 프롬프트 팬아웃
-        │              각 패널이 L2–L5 findings를 severity+lens 태그로 산출
+[Phase F] 병렬 find  ── lens×모델 매트릭스 팬아웃: 4 모델 × L2–L5 = 16 에이전트(§4.1)
+        │              각 셀은 자기 lens 하나만 리뷰, findings 를 severity 태그로 산출
         ▼
 [Phase T] 체어 triage ── Claude 의장이: 인용 검증 → diff와 대조 → dedupe(lens/file/line)
         │              → 근거 없는/중복/사소 제거 → 큐레이션 digest 작성
         │              (digest 비면 → PASS, Phase V 스킵)
         ▼
-[Phase V] 병렬 verify ── digest를 패널에 재팬아웃, 각 finding CONFIRM/REFUTE + 근거
-        │              → 의장이 종합: 다수 지지 & 의장 코드 재확인 통과분만 생존
+[Phase V] 병렬 verify ── (선택 — §4.1.1, 단발 모드에선 생략) digest를 패널에 재팬아웃,
+        │              finding별 CONFIRM/REFUTE → 다수 지지 & 의장 코드 재확인 통과분만 생존
         ▼
 [VERDICT] 생존 CRITICAL/MAJOR 있으면 FAIL, 없으면 PASS (fail-closed 유지)
         ▼
@@ -144,8 +144,8 @@ digest를 같은 패널에 재팬아웃(고정 verify 프롬프트: 각 번호 f
 
 | 파일 | 변경 |
 |------|------|
-| `.github/workflows/pr-review.yml` | L1 결정적 pre-check 스텝 추가(AI 전, FAIL 시 조기 종료). 패널 프롬프트를 lens-구조로. synthesize 호출을 F→T→V 3단계로 확장. 코멘트에 lens 그룹 렌더. |
-| `scripts/pr-review/run-panel.sh` | Phase F(기존 fan-out 재활용 + lens 프롬프트) / Phase V(digest 재팬아웃) 양쪽에서 호출되도록 파라미터화(프롬프트·입력을 인자로). |
+| `.github/workflows/pr-review.yml` | L1 결정적 pre-check 스텝 추가(AI 전, FAIL 시 조기 종료). lens별 프롬프트(L2–L5) 4종 생성. synthesize 호출을 F→T(→V 선택)로 확장. 코멘트에 lens 그룹 렌더. |
+| `scripts/pr-review/run-panel.sh` | fan-out 루프를 `모델 목록 × LENSES` 이중 루프로 확장 — 셀당 슬롯 `slot/<tag>-<lens>.md`, responded도 셀 단위 기록. Phase V 채택 시 digest 재팬아웃도 같은 스크립트를 프롬프트·입력 인자화로 재사용. |
 | `scripts/pr-review/synthesize.sh` | triage(digest 생성) + verify 종합 2역할로 분리 또는 단계 인자화. 기존 Fable→Opus 폴백·fail-closed VERDICT 로직 보존. |
 | `scripts/pr-review/precheck.sh` *(신규)* | L1 결정적 검증 — `test-plugins.py` + 버전 정합. FAIL 시 non-zero. |
 | `scripts/pr-review/lib.sh` | 공용 헬퍼 확장(slot/digest 경로). |
@@ -157,7 +157,7 @@ digest를 같은 패널에 재팬아웃(고정 verify 프롬프트: 각 번호 f
   데이터). fork PR 미실행(`head.repo.full_name == github.repository`).
 - **데이터 거주성**: Codex/Claude = Bedrock us-east-1 In-Region(Pod Identity SigV4);
   Kiro = 외부 API(diff 외부 송신). 민감 diff 시 Kiro skip 규약(ADR-009) 그대로. verify
-  단계가 diff를 **한 번 더** 외부(Kiro)로 보낸다는 점은 §7 Q2에서 확인 필요.
+  단계가 diff를 **한 번 더** 외부(Kiro)로 보낸다는 점은 §8 Q2에서 확인 필요.
 - **fail-closed**: 마지막 줄 `VERDICT: PASS|FAIL`, 없으면 FAIL. L1 pre-check FAIL도 즉시 fail.
 - **코멘트 upsert**: `<!-- oh-my-cloud-skills-pr-review -->` 마커.
 - **의장 폴백**: Fable 5 저하 시 Opus 4.8 1회 폴백.
@@ -168,12 +168,18 @@ digest를 같은 패널에 재팬아웃(고정 verify 프롬프트: 각 번호 f
 **사용자 결정: 토큰/달러 비용은 제약이 아니다.** 남는 실제 제약은 **벽시계 + 러너 동시성**뿐.
 
 - AI 콜/PR = 단발 매트릭스면 **16 find + 1 체어 종합**(2단계면 +16 verify). 비용 무시.
-- **벽시계는 병렬이라 문제 아님**: 16 find가 `&`+`wait`로 동시 실행 → 벽시계 ≈ 최슬로우
-  find(패널 timeout `T`=300s + 재시도). 매트릭스여도 순차합이 아님.
+- **벽시계는 현행보다 오히려 단축될 개연성이 높다**: 16 find가 `&`+`wait`로 동시 실행이라
+  벽시계 ≈ 최슬로우 셀 하나(순차합 아님). 게다가 셀당 스코프가 현행 "전 영역 다 봐"에서
+  **한 lens**로 좁아져 셀당 출력 생성이 짧고 빨라진다 — **최슬로우-of-16(좁은 스코프)가
+  최슬로우-of-4(전 영역 스코프)보다 빠를 가능성**이 크다. 재시도 확률도 셀당 응답이 작아
+  타임아웃(300s)에 걸릴 일이 줄어 동반 하락.
+- **상쇄 요인 2개(순 이득을 갉아먹는 방향)**: (1) 체어 입력이 4→16 출력으로 커져 종합 콜이
+  길어짐 — `CHAIR_TIMEOUT`(현행 120s) 상향 필요 가능성. 단, lens 태그가 붙은 입력은 체어의
+  dedupe/그룹핑이 쉬워 품질은 오히려 유리. (2) API rate-limit — 아래.
 - **유일한 실제 상한 = 러너 동시성 + 50분 job 타임아웃**. self-hosted 러너가 16개
-  하위프로세스를 동시에 감당해야 함(CPU/메모리·API rate-limit). rate-limit이 걸리면
-  재시도로 벽시계가 늘어 50분에 근접할 수 있음 → 관측 후 필요 시 lens를 2배치로 나누거나
-  타임아웃 상향(§8 Q3).
+  하위프로세스를 동시에 감당해야 함(CPU/메모리·API rate-limit). Kiro 행이 12셀(3 모델×4
+  lens)이라 Kiro API rate-limit이 첫 병목 후보 — 걸리면 재시도로 벽시계가 늘어남 → 관측 후
+  필요 시 lens를 2배치로 나누거나 타임아웃 상향(§8 Q3).
 
 ## 8. 열린 결정 (구현 착수 전 확정 필요)
 
@@ -188,7 +194,8 @@ digest를 같은 패널에 재팬아웃(고정 verify 프롬프트: 각 번호 f
 
 ## 9. 마이그레이션 & 호환
 
-- 단계적: (1) L1 결정적 pre-check 먼저 추가(즉시 이득, 저위험) → (2) lens-구조 프롬프트 →
-  (3) T/V 단계. 각 단계가 독립적으로 가치 있어 점진 도입 가능.
+- 단계적: (1) L1 결정적 pre-check 먼저 추가(즉시 이득, 저위험) → (2) lens×모델 매트릭스
+  fan-out + 체어 종합(단발 모드) → (3) 오탐이 문제되면 Phase V(verify) 추가. 각 단계가
+  독립적으로 가치 있어 점진 도입 가능.
 - base-script 실행 모델상 리뷰 로직 변경은 **머지 후 PR부터** 적용(자기검증 불가 — ADR-009).
 - 롤백: 스크립트/워크플로 revert로 현행 단발 fan-out 복귀.
