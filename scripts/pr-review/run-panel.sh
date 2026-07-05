@@ -10,7 +10,9 @@
 # PANEL_RETRIES 회 재시도(gpt-5.5/bedrock-mantle 등 transient 흡수). 매 시도마다 재실행.
 # 모든 셀(모델 수 × lens 수)이 병렬(&+wait) — 벽시계 ≈ 최슬로우 셀 하나, 순차합 아님.
 set -uo pipefail
-DIFF="$(realpath "$1" 2>/dev/null || echo "$1")"; LENSES_DIR="$2"; WORK="$3"
+DIFF="$(realpath "$1" 2>/dev/null)" \
+  || { echo "run-panel.sh: realpath failed to resolve diff path: $1" >&2; exit 1; }
+LENSES_DIR="$2"; WORK="$3"
 DIR="$(cd "$(dirname "$0")" && pwd)"; . "$DIR/lib.sh"
 ensure_slots "$WORK"
 SLOT="$WORK/slot"; RESP="$WORK/responded.txt"; : > "$RESP"

@@ -32,6 +32,10 @@ mkdir -p "$TREE"
 # 무관 — git archive 는 단일 커밋의 전체 트리를 내보낸다).
 git -C "$BASE_DIR" fetch --depth 1 --quiet origin "pull/${PR_NUMBER}/head"
 git -C "$BASE_DIR" archive FETCH_HEAD | tar -x -C "$TREE"
+# PR 트리는 데이터로만 취급하지만, symlink 는 tar 추출 그대로 두면 검증기가 트리 밖
+# 경로를 따라갈 여지를 남긴다(현재 검증기는 파싱 실패를 에코하지 않아 유출은 없지만
+# defense-in-depth). 검증 전에 전부 제거.
+find "$TREE" -type l -delete
 
 python3 "$BASE_DIR/scripts/test-plugins.py" --root "$TREE"
 python3 "$BASE_DIR/scripts/test-codex-plugins.py" --root "$TREE"

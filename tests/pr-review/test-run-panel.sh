@@ -2,7 +2,8 @@
 # run-panel.sh 단위 테스트 (lens×모델 매트릭스). harness(run-all.sh 가 source) + standalone
 # 모두 지원. 실제 CLI 대신 PATH 모킹으로 (a)전원응답 (b)일부skip (c)전원실패 (d)lens 없음
 # (e)Kiro env/cwd/HOME 격리 (f)모델 3/4 탈락 시 severe 플래그 (g)모델 1/4 탈락은 warn-only
-# 유지(severe 아님) (h)skip 진단 stderr 도 scrub_secrets 적용 검증.
+# 유지(severe 아님) (h)skip 진단 stderr 도 scrub_secrets 적용 검증 (i)realpath 실패 시
+# fail-fast(구 폴백 회귀 가드).
 # 주의: harness 가 이 파일을 set -euo pipefail 로 source 하므로, 스크립트가 비-zero로
 # 끝나는 경로는 전부 if 로 감싼다 — bare 호출은 스위트 전체를 조기 중단시킨다.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -215,6 +216,22 @@ fi
 grep -q "REDACTED-AWS-KEY" "$LOG" \
   && pass "run-panel (h) redaction marker present in the runner log" \
   || fail "run-panel (h) redaction marker present in the runner log" "marker missing"
+rm -f "$LOG"
+
+# (i) realpath 실패는 fail-fast — 이전엔 `|| echo "$1"` 폴백으로 상대경로가 그대로 남아
+# 격리 cwd 의 Kiro 가 diff 파일을 못 찾는 blind-review 로 조용히 흘렀다(ADR-011 6차 리뷰).
+# realpath 는 존재하지 않는 파일 자체는 통과시키므로(부모 디렉터리만 확인), 실패를
+# 재현하려면 부모 디렉터리 자체가 없는 경로를 준다.
+setup
+LOG=$(mktemp)
+if "$SCRIPT" "$WORK/no-such-dir/diff.txt" "$WORK/lenses" "$WORK" >"$LOG" 2>&1; then
+  fail "run-panel (i) a nonexistent diff path fails closed instead of falling back" "exited 0"
+else
+  pass "run-panel (i) a nonexistent diff path fails closed instead of falling back"
+fi
+grep -q "realpath failed" "$LOG" \
+  && pass "run-panel (i) failure message names the realpath cause" \
+  || fail "run-panel (i) failure message names the realpath cause" "$(cat "$LOG")"
 rm -f "$LOG"
 
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)

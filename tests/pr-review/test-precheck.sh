@@ -13,7 +13,8 @@
 # 있던 것을 별도 리뷰가 잡아 추가됨)로 검증. (g)/(h)/(i) 는 precheck.sh 자신의 빈 인자
 # (workdir/base_repo_dir/pr_number) 가드. (실제 `git fetch origin pull/N/head` 라인 자체는
 # GitHub 원격이 필요해 오프라인 유닛테스트로 exercise 하지 않음 — 이 부분은 실제 CI
-# 실행으로만 검증됨, 알려진 커버리지 한계.)
+# 실행으로만 검증됨, 알려진 커버리지 한계.) (k) 는 PR 트리의 symlink 가 검증 전에
+# 제거되는지(defense-in-depth) 확인.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PR_REVIEW_DIR="$(cd "$HERE/../../scripts/pr-review" && pwd)"
 REPO_ROOT="$(cd "$HERE/../.." && pwd)"
@@ -149,6 +150,30 @@ else
   pass "precheck (j) non-numeric pr_number arg fails closed"
 fi
 rm -rf "$BASE" "$WORK" "$LOG"
+
+# (k) symlink 하드닝 — PR 트리에 symlink 가 있어도 tar 추출 직후, 검증기 실행 전에
+# 제거되어야 한다(현재 검증기는 파싱 실패를 에코하지 않아 실질 유출은 없지만, L1 실패
+# 출력 경로와 결합될 수 있는 미래 위험에 대한 defense-in-depth — ADR-011 6차 리뷰 MINOR).
+ORIGIN=$(mktemp -d); BASE=$(mktemp -d); WORK=$(mktemp -d); LOG=$(mktemp)
+git init -q --bare "$ORIGIN"
+git -C "$REPO_ROOT" archive HEAD | tar -x -C "$BASE"
+ln -s /etc/passwd "$BASE/evil-symlink"
+git init -q "$BASE"
+git -C "$BASE" remote add origin "$ORIGIN"
+git -C "$BASE" add -A
+git -C "$BASE" -c user.email=t@t -c user.name=t commit -q -m pr
+git -C "$BASE" push -q origin HEAD:refs/pull/555/head
+if bash "$SCRIPT" "$BASE" 555 "$WORK" >"$LOG" 2>&1; then
+  pass "precheck (k) a clean tree with a symlink still passes L1"
+else
+  fail "precheck (k) a clean tree with a symlink still passes L1" "$(tail -10 "$LOG")"
+fi
+if [ -L "$WORK/pr-tree/evil-symlink" ]; then
+  fail "precheck (k) symlink is removed from the extracted tree before validation" "symlink survived extraction"
+else
+  pass "precheck (k) symlink is removed from the extracted tree before validation"
+fi
+rm -rf "$ORIGIN" "$BASE" "$WORK" "$LOG"
 
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then

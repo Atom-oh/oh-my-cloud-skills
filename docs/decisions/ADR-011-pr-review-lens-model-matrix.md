@@ -134,6 +134,29 @@ ADR-009의 멀티-AI 패널(Codex + Kiro×3)은 리뷰어를 벤더로 다양화
   `sed -z` 없이 라인 단위로만 동작하므로 `[[:space:]]`가 개행을 건너 매칭될 수 없음을
   직접 확인, 반영하지 않음.
 
+- **6차 리뷰 수정(커밋 1132c1d 이후, PASSED — CRITICAL/MAJOR 0건, MINOR만)**: 3/3 패널
+  합의로 CRITICAL·MAJOR 없음이 확정됐고(제기된 2건은 diff 대조로 MINOR 하향 — L1 실패
+  출력 미스크럽, `kiro_env` 함수-as-command 패턴), 나머지 MINOR 4건 중 비용이 낮고 실질
+  하드닝 효과가 있는 것들을 이번 라운드에 함께 반영했다: (1) `pr-review.yml`의 "Write L1
+  failure as review" 스텝이 `precheck.sh` 출력을 `scrub_secrets` 없이 그대로 PR 코멘트에
+  게시하던 것 — 현재 L1 입력엔 실질 크리덴셜 유출원이 없다는 패널 분석에 동의하지만,
+  `docs/ci-pr-review.md`의 "원시 출력 미노출" 원칙과의 불일치는 실재해 `lib.sh`를 source 해
+  `scrub_secrets`를 통과시키도록 수정. (2) `precheck.sh`의 tar 추출이 PR 트리의 symlink를
+  그대로 남기던 것 — 현재 검증기는 파싱 실패를 에코하지 않아 유출은 없지만, (1)의 경로와
+  결합될 수 있는 미래 위험에 대한 defense-in-depth로 `find "$TREE" -type l -delete` 추가.
+  (3) `run-panel.sh`의 `DIFF="$(realpath "$1" 2>/dev/null || echo "$1")"` 폴백이
+  realpath 실패 시 원본(상대)경로를 그대로 흘려 격리 cwd 의 Kiro가 diff를 못 찾는
+  blind-review로 조용히 새던 것 — fail-fast(`|| exit 1`)로 전환. 직접 재현해 realpath는
+  대상 파일이 없어도 부모 디렉터리만 존재하면 성공(exit 0)함을 확인, 부모 디렉터리 자체가
+  없는 경로로 실패를 재현한 뒤 테스트로 고정. (4) `test-plugins.py`가 `--root` 미지정
+  시에만 `.resolve()`를 빠뜨리던 비대칭을 `test-codex-plugins.py`와 맞춤(cosmetic).
+  **채택 안 함**: 패널이 "결함 아님"으로 확인한 `kiro_env` 함수-as-command 패턴은 현재
+  서브셸 상속으로 정상 동작함이 확인돼 있어 불필요한 리팩터를 하지 않음(미래 리팩터 시
+  주의사항으로만 기록); 비인용 heredoc lens 프롬프트 역시 `$COMMON` 확장이 의도된 설계라
+  변경하지 않음. 신규 테스트: `test-run-panel.sh` (i)(realpath fail-fast),
+  `test-precheck.sh` (k)(symlink 제거) — 전체 스위트 586 passed(+4), 기존 무관 17건
+  실패는 그대로.
+
 ## Consequences
 
 - 커버리지가 "리뷰어 다양화"에서 "리뷰어×관점 매트릭스"로 체계화 — 사각지대 감소.

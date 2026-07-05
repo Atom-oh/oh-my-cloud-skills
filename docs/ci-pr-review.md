@@ -12,7 +12,11 @@
   plugin.json↔marketplace.json 버전 정합(`test-plugins.py`) + `.codex-plugin`/`.agents` 매니페스트
   유효성(`test-codex-plugins.py`).
 - **실패 시 AI 패널을 전혀 호출하지 않고** 즉시 `VERDICT: FAIL` — 결정적으로 검증 가능한 문제에
-  AI 비용을 쓰지 않는다.
+  AI 비용을 쓰지 않는다. 실패 출력도 PR 코멘트에 싣기 전 `scrub_secrets()` 를 거친다
+  (`.github/workflows/pr-review.yml` "Write L1 failure as review" 스텝) — 검증기 에러 메시지
+  자체엔 크리덴셜이 없지만, 매트릭스와 같은 방어선을 일관되게 적용.
+- `precheck.sh` 는 추출한 PR 트리에서 검증 전에 symlink 를 제거한다(`find "$TREE" -type l
+  -delete`) — 검증기가 트리 밖 경로를 따라갈 여지를 없애는 defense-in-depth.
 
 ## L2–L5 — Lens×Model 매트릭스 (L1 통과 시에만 실행)
 - **매트릭스**: 4 모델(Codex `openai.gpt-5.5` + Kiro `claude-opus-4.8`/`kimi-k2.5`/`glm-5`) ×

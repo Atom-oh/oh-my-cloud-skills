@@ -530,7 +530,7 @@ def main():
                          "own checkout (e.g. a PR-head tree fetched as data by pr-review's L1 gate)")
     args = parser.parse_args()
 
-    project_root = Path(args.root).resolve() if args.root else Path(__file__).parent.parent
+    project_root = Path(args.root).resolve() if args.root else Path(__file__).parent.parent.resolve()
     plugins_dir = project_root / 'plugins'
 
     plugins = ["aws-content-plugin", "aws-ops-plugin", "kiro-power-converter", "co-agent", "agentcore-creator", "project-init"]

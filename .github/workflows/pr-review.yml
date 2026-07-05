@@ -178,11 +178,17 @@ jobs:
       - name: Write L1 failure as review (skip AI panel — deterministic gate already failed)
         if: steps.l1.outputs.result == 'fail'
         run: |
+          set -euo pipefail
+          . scripts/pr-review/lib.sh
           {
             echo "**L1 pre-check (매니페스트/버전 정합) 실패 — AI 패널 호출 전 결정적 게이트에서 차단.**"
             echo ""
             echo '```'
-            cat /tmp/l1-output.txt 2>/dev/null || echo "(no precheck output captured)"
+            if [ -s /tmp/l1-output.txt ]; then
+              scrub_secrets < /tmp/l1-output.txt
+            else
+              echo "(no precheck output captured)"
+            fi
             echo '```'
             echo ""
             echo "VERDICT: FAIL"
