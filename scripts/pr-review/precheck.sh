@@ -37,6 +37,15 @@ git -C "$BASE_DIR" archive FETCH_HEAD | tar -x -C "$TREE"
 # defense-in-depth). 검증 전에 전부 제거.
 find "$TREE" -type l -delete
 
+# 여기까지 도달했으면 git fetch/archive/tar(인프라 단계)는 모두 성공했고, 이제부터의
+# 실패는 검증기 자체(매니페스트 내용 또는 검증기 코드) 책임이다. 워크플로의 L1-fail
+# 코멘트가 인프라 실패와 매니페스트 실패를 구분하는 신호로 이 sentinel 을 쓴다 — 이전엔
+# test-plugins.py 자신의 배너 문자열 존재로 판단했는데, 그 검증기가 배너를 찍기도 전에
+# (예: argparse/Path 단계에서) 죽으면 실제로는 검증기 실패인데도 인프라 실패로 오분류될
+# 여지가 있었다(20차 리뷰 MINOR-5). sentinel 은 python3 호출보다 먼저 찍히므로 그 좁은
+# corner 도 닫는다.
+touch "$WORK/l1-validators-started"
+
 # set -e 아래 첫 검증기가 실패하면 두 번째는 안 돌아 그 오류를 못 본다 — PR 작성자가
 # 첫 번째 부류를 고치고 다시 push 해야 두 번째 부류를 발견하는 왕복이 생긴다(fail-closed
 # 계약 자체는 유지됨, UX 문제). rc 로 모아서 양쪽 다 실행한 뒤 합산 종료.

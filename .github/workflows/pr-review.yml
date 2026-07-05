@@ -208,12 +208,15 @@ jobs:
           set -euo pipefail
           . scripts/pr-review/lib.sh
           # precheck.sh 는 git fetch/archive(인프라) 가 실패해도 검증기 실행 전에
-          # set -euo pipefail 로 즉시 죽는다 — 그 경우 출력엔 test-plugins.py 가 한 번도
-          # 안 돌았다는 신호로 그 스크립트의 배너 문자열이 없다. "매니페스트/버전 정합
-          # 실패"로 뭉뚱그리면 PR 작성자가 실제로는 무관한 자기 매니페스트를 의심하게
-          # 되는 오귀속이 생긴다(19차 리뷰 MINOR-1) — 배너 부재로 두 경로를 구분해 헤더만
-          # 분기(VERDICT: FAIL 은 두 경로 모두 동일하게 유지, fail-closed 방향 불변).
-          if grep -q "Plugin Validation Suite" "$pr_work_dir/l1-output.txt" 2>/dev/null; then
+          # set -euo pipefail 로 즉시 죽는다. "매니페스트/버전 정합 실패"로 뭉뚱그리면
+          # PR 작성자가 실제로는 무관한 자기 매니페스트를 의심하게 되는 오귀속이 생긴다
+          # (19차 리뷰 MINOR-1). 처음엔 test-plugins.py 자신의 배너 문자열 존재로 인프라/
+          # 매니페스트 실패를 구분했는데, 그 검증기가 배너를 찍기도 전에(예: argparse/Path
+          # 단계) 죽으면 실제로는 검증기 실패인데도 인프라로 오분류될 여지가 있었다(20차
+          # 리뷰 MINOR-5) — precheck.sh 가 python3 호출 직전에 남기는 전용 sentinel
+          # (`l1-validators-started`)로 교체해 그 좁은 corner 도 닫음(VERDICT: FAIL 은
+          # 두 경로 모두 동일, fail-closed 방향 불변).
+          if [ -f "$pr_work_dir/l1-validators-started" ]; then
             L1_HEADER="**L1 pre-check (매니페스트/버전 정합) 실패 — AI 패널 호출 전 결정적 게이트에서 차단.**"
           else
             L1_HEADER="**L1 pre-check 인프라 오류로 실패 — 매니페스트 검증기가 실행되기도 전에 중단됨(예: git fetch/archive 실패). 매니페스트 문제가 아닐 가능성이 높으니 아래 원시 출력과 러너 로그를 먼저 확인하십시오.**"

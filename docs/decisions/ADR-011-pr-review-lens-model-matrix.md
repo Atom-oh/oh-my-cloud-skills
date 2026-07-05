@@ -508,6 +508,24 @@ ADR-009의 멀티-AI 패널(Codex + Kiro×3)은 리뷰어를 벤더로 다양화
   항목의 재확인이라 재판정하지 않음. 전체 스위트는 스크립트 불변이라 621 total 그대로
   유지, 기존 무관 17건 실패도 동일.
 
+- **20차 리뷰 수정(커밋 b006eec 이후, PASSED — CRITICAL/MAJOR 0건, MINOR 5건, 4건은
+  기지 항목 재확인)**: 신규 MINOR-5 를 반영. 19차가 도입한 "test-plugins.py 배너 문자열
+  존재로 인프라/매니페스트 실패 구분" 휴리스틱은, 그 검증기가 배너를 찍기도 전에(예:
+  argparse/`Path(args.root).resolve()` 단계) 죽으면 실제로는 검증기 실패인데도 인프라로
+  오분류될 수 있다는 지적(게이트 영향 없음 — 두 경로 다 VERDICT: FAIL, 메시지 정확도
+  이슈) — `test-plugins.py` 배너 출력 코드(`main()` 내부, argparse 다음)를 직접 대조해
+  이 corner 가 이론상 실재함을 확인. 배너 문자열에 의존하는 대신 `precheck.sh` 가
+  python3 호출 **직전**(즉 git fetch/archive/tar 인프라 단계가 전부 성공한 뒤)에
+  `touch "$WORK/l1-validators-started"` 로 전용 sentinel 을 남기고, 워크플로는 그
+  sentinel 존재 여부로 분기하도록 교체 — 검증기 자신의 print 순서와 완전히 독립적이라
+  그 corner 자체가 구조적으로 사라진다. 신규 테스트: `test-precheck.sh` (m)(fetch 실패
+  경로에선 sentinel 이 안 생기고, 검증기까지 도달하는 정상 경로에선 항상 생기는지) —
+  전체 스위트 621→624 total(+3, 신규 테스트 개수와 일치), 기존 무관 17건 실패는 그대로.
+  나머지 MINOR 4건(kiro_env 비인용 확장, GNU 전용 도구 의존, heredoc 들여쓰기, lens
+  컬럼 blind spot)은 전부 16~19차에서 이미 판정된 기지 항목의 재확인이라 재판정하지
+  않음 — 리뷰 스스로도 "부록 분리 이후 Decision 본문 동결 유지" 를 제안해 그 컨벤션을
+  그대로 따름.
+
 ## Verification (2026-07-05, restructuring pass)
 
 이 부록 분리 시점에 전체 스위트를 재실행해 순수 문서 재구성이 스크립트 동작에 영향이

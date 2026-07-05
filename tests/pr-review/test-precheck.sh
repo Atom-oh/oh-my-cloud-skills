@@ -15,7 +15,9 @@
 # GitHub 원격이 필요해 오프라인 유닛테스트로 exercise 하지 않음 — 이 부분은 실제 CI
 # 실행으로만 검증됨, 알려진 커버리지 한계.) (k) 는 PR 트리의 symlink 가 검증 전에
 # 제거되는지(defense-in-depth), (l) 은 두 검증기가 각각 다른 오류를 낼 때 둘 다 한 번에
-# 보고되는지(순차 실행 early-exit 회귀 가드) 확인.
+# 보고되는지(순차 실행 early-exit 회귀 가드), (m) 은 인프라/검증기 실패 구분용 sentinel
+# (l1-validators-started) 이 fetch 실패 경로에선 안 생기고 검증기 도달 경로에선 항상
+# 생기는지 확인.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PR_REVIEW_DIR="$(cd "$HERE/../../scripts/pr-review" && pwd)"
 REPO_ROOT="$(cd "$HERE/../.." && pwd)"
@@ -213,6 +215,38 @@ grep -q "strict semver" "$LOG" || BOTH_OK=0
 [ "$BOTH_OK" = 1 ] \
   && pass "precheck (l) both validators' errors appear in the same run's output (no early-exit)" \
   || fail "precheck (l) both validators' errors appear in the same run's output (no early-exit)" "$(cat "$LOG")"
+rm -rf "$ORIGIN" "$BASE" "$WORK" "$LOG"
+
+# (m) 인프라 실패 vs 검증기 실패 구분용 sentinel — 워크플로가 L1 실패 코멘트 헤더를
+# "인프라 오류" 대 "매니페스트/버전 정합 실패" 로 분기하는 신호다(20차 리뷰 MINOR-5,
+# test-plugins.py 자신의 배너 문자열에 의존하던 이전 방식은 그 검증기가 배너 출력 전에
+# 죽는 corner 에서 오분류될 수 있었다). git fetch(인프라)가 실패하는 경로에선 sentinel
+# 이 절대 생기면 안 되고, 검증기까지 도달하는 정상/실패 경로에선 항상 생겨야 한다.
+BASE=$(mktemp -d); WORK=$(mktemp -d); LOG=$(mktemp)
+git init -q "$BASE"
+git -C "$BASE" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+bash "$SCRIPT" "$BASE" 999999 "$WORK" >"$LOG" 2>&1 || true
+[ -f "$WORK/l1-validators-started" ] \
+  && fail "precheck (m) sentinel is not created when git fetch fails (infra failure)" "sentinel exists despite no origin remote" \
+  || pass "precheck (m) sentinel is not created when git fetch fails (infra failure)"
+rm -rf "$BASE" "$WORK" "$LOG"
+
+ORIGIN=$(mktemp -d); BASE=$(mktemp -d); WORK=$(mktemp -d); LOG=$(mktemp)
+git init -q --bare "$ORIGIN"
+git -C "$REPO_ROOT" archive HEAD | tar -x -C "$BASE"
+git init -q "$BASE"
+git -C "$BASE" remote add origin "$ORIGIN"
+git -C "$BASE" add -A
+git -C "$BASE" -c user.email=t@t -c user.name=t commit -q -m pr
+git -C "$BASE" push -q origin HEAD:refs/pull/888/head
+if bash "$SCRIPT" "$BASE" 888 "$WORK" >"$LOG" 2>&1; then
+  pass "precheck (m) script exits 0 for a clean tree (sentinel setup)"
+else
+  fail "precheck (m) script exits 0 for a clean tree (sentinel setup)" "$(tail -10 "$LOG")"
+fi
+[ -f "$WORK/l1-validators-started" ] \
+  && pass "precheck (m) sentinel is created once validators actually start running" \
+  || fail "precheck (m) sentinel is created once validators actually start running" "sentinel missing after a successful run"
 rm -rf "$ORIGIN" "$BASE" "$WORK" "$LOG"
 
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
