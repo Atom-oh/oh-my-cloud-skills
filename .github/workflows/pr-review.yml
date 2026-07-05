@@ -92,8 +92,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          # 락파일/바이너리/빌드 산출물 hunk 제거 — 리뷰 surface 를 가리지 않게.
-          gh pr diff "$PR_NUMBER" > /tmp/pr-diff-raw.txt
+          # 락파일/바이너리/빌드 산출물 hunk 제거 — 리뷰 surface 를 가리지 않게. diff 산출물도
+          # $pr_work_dir 아래 둔다 — 10차 리뷰 MINOR-1(워크dir 은 PR 번호로 격리했는데 diff/
+          # review 파일이 고정 /tmp 경로라 러너 풀 병렬화 시 격리 효과가 절반만 적용되던 갭).
+          gh pr diff "$PR_NUMBER" > "$pr_work_dir/pr-diff-raw.txt"
           awk '
             /^diff --git/ {
               path = substr($3, 3)
@@ -106,9 +108,9 @@ jobs:
                      (path ~ /(^|\/)out\//)
             }
             !skip
-          ' /tmp/pr-diff-raw.txt > /tmp/pr-diff.txt
-          RAW=$(wc -l < /tmp/pr-diff-raw.txt)
-          TOTAL_LINES=$(wc -l < /tmp/pr-diff.txt)
+          ' "$pr_work_dir/pr-diff-raw.txt" > "$pr_work_dir/pr-diff.txt"
+          RAW=$(wc -l < "$pr_work_dir/pr-diff-raw.txt")
+          TOTAL_LINES=$(wc -l < "$pr_work_dir/pr-diff.txt")
           echo "total_lines=$TOTAL_LINES" >> "$GITHUB_ENV"
           echo "Diff: $TOTAL_LINES lines (raw $RAW, filtered $((RAW - TOTAL_LINES)))"
 
@@ -117,7 +119,7 @@ jobs:
         run: |
           set -euo pipefail
           MAX_LINES=3000
-          head -"$MAX_LINES" /tmp/pr-diff.txt > /tmp/pr-diff-truncated.txt
+          head -"$MAX_LINES" "$pr_work_dir/pr-diff.txt" > "$pr_work_dir/pr-diff-truncated.txt"
           # 재사용되는 workdir 에서 이전 lens 구성(예: 이름 변경/제거된 lens)의 *.txt 가
           # 남아 있으면 LENS_FILES 글롭에 그대로 잡혀 유령 매트릭스 행이 생긴다 — 매 실행
           # 시작 시 비우고 새로 만든다(coverage-severe.flag/slot 과 같은 뿌리, 8차 리뷰 MINOR-1).
@@ -180,9 +182,9 @@ jobs:
           PANEL_TIMEOUT: "300"
         run: |
           set -euo pipefail
-          bash scripts/pr-review/run-panel.sh /tmp/pr-diff-truncated.txt "$pr_work_dir/lenses" "$pr_work_dir"
-          bash scripts/pr-review/synthesize.sh /tmp/pr-diff-truncated.txt "$pr_work_dir" \
-            "$PR_NUMBER" "$PR_TITLE" /tmp/review.md
+          bash scripts/pr-review/run-panel.sh "$pr_work_dir/pr-diff-truncated.txt" "$pr_work_dir/lenses" "$pr_work_dir"
+          bash scripts/pr-review/synthesize.sh "$pr_work_dir/pr-diff-truncated.txt" "$pr_work_dir" \
+            "$PR_NUMBER" "$PR_TITLE" "$pr_work_dir/review.md"
           echo "panel_responded=$(tr '\n' ' ' < "$pr_work_dir/responded.txt" 2>/dev/null)" >> "$GITHUB_ENV"
 
       - name: Write L1 failure as review (skip AI panel — deterministic gate already failed)
@@ -202,17 +204,18 @@ jobs:
             echo '```'
             echo ""
             echo "VERDICT: FAIL"
-          } > /tmp/review.md
+          } > "$pr_work_dir/review.md"
+          echo "l1_failed=1" >> "$GITHUB_ENV"
           echo "panel_responded=(skipped — L1 pre-check failed)" >> "$GITHUB_ENV"
           echo "chair_used=(none — L1 pre-check)" >> "$GITHUB_ENV"
 
       - name: Check for blocking issues
         id: gate
         run: |
-          if grep -q "^VERDICT: FAIL$" /tmp/review.md; then
+          if grep -q "^VERDICT: FAIL$" "$pr_work_dir/review.md"; then
             echo "result=fail" >> "$GITHUB_OUTPUT"
             echo "reason=VERDICT: FAIL" >> "$GITHUB_OUTPUT"
-          elif grep -q "^VERDICT: PASS$" /tmp/review.md; then
+          elif grep -q "^VERDICT: PASS$" "$pr_work_dir/review.md"; then
             echo "result=pass" >> "$GITHUB_OUTPUT"
             echo "reason=No blocking issues" >> "$GITHUB_OUTPUT"
           else
@@ -233,11 +236,13 @@ jobs:
           else
             STATUS_BADGE="**Status: PASSED** — No blocking issues found"
           fi
-          sed '$ { /^VERDICT:/d }' /tmp/review.md > /tmp/review-clean.md
+          sed '$ { /^VERDICT:/d }' "$pr_work_dir/review.md" > "$pr_work_dir/review-clean.md"
           # L1 이 fail 로 막힌 경로에선 매트릭스가 전혀 안 돌았다 — 헤더가 "lens×model matrix"를
-          # 붙이면 마치 매트릭스가 실행된 것처럼 보인다("Write L1 failure as review" 스텝이
-          # 남기는 panel_responded 값으로 그 경로를 식별해 헤더를 분기).
-          if [ "${panel_responded:-}" = "(skipped — L1 pre-check failed)" ]; then
+          # 붙이면 마치 매트릭스가 실행된 것처럼 보인다. 이전엔 panel_responded 문자열 리터럴
+          # 비교로 그 경로를 식별했는데, "Write L1 failure as review" 스텝이 남기는 전용
+          # l1_failed 플래그가 이미 있어(그 스텝 자체가 steps.l1.outputs.result == 'fail' 조건
+          # 이므로) 문자열 커플링 없이 바로 쓸 수 있다(10차 리뷰 MINOR-2).
+          if [ "${l1_failed:-0}" = "1" ]; then
             HEADER="## 🤖 AI Code Review (L1 결정적 pre-check — 매트릭스 미실행)"
           else
             HEADER="## 🤖 AI Code Review (${chair_used:-Claude Fable 5} chair · lens×model matrix)"
@@ -251,18 +256,18 @@ jobs:
             echo ""
             echo "$STATUS_BADGE"
             echo ""
-            cat /tmp/review-clean.md
+            cat "$pr_work_dir/review-clean.md"
             echo ""
             echo "---"
             echo "_Triggered by commit \`${{ github.event.pull_request.head.sha }}\` · workflow: \`.github/workflows/pr-review.yml\`_"
-          } > /tmp/comment.md
+          } > "$pr_work_dir/comment.md"
           EXISTING=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
             --jq '.[] | select(.body | contains("<!-- oh-my-cloud-skills-pr-review -->")) | .id' 2>/dev/null | head -1)
           if [ -n "$EXISTING" ]; then
-            gh api "repos/$REPO/issues/comments/$EXISTING" -X PATCH -f body="$(cat /tmp/comment.md)" 2>/dev/null || \
-              gh pr comment "$PR_NUMBER" --body-file /tmp/comment.md
+            gh api "repos/$REPO/issues/comments/$EXISTING" -X PATCH -f body="$(cat "$pr_work_dir/comment.md")" 2>/dev/null || \
+              gh pr comment "$PR_NUMBER" --body-file "$pr_work_dir/comment.md"
           else
-            gh pr comment "$PR_NUMBER" --body-file /tmp/comment.md
+            gh pr comment "$PR_NUMBER" --body-file "$pr_work_dir/comment.md"
           fi
 
       - name: Fail if CRITICAL or MAJOR

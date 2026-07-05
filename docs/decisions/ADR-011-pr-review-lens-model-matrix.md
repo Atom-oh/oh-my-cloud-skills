@@ -243,6 +243,27 @@ ADR-009의 멀티-AI 패널(Codex + Kiro×3)은 리뷰어를 벤더로 다양화
   (kiro-cwd 도 재사용되는 `$WORK`에서 리셋되는지) — 전체 스위트 597 passed(+1), 기존
   무관 17건 실패는 그대로.
 
+- **11차 리뷰 수정(커밋 7e1c278 이후, PASSED — CRITICAL/MAJOR 0건, MINOR 3건)**: 9차/10차가
+  `$pr_work_dir`를 PR 번호로 격리했는데, 정작 `/tmp/pr-diff*.txt`·`/tmp/review*.md`·
+  `/tmp/comment.md`는 여전히 고정 `/tmp` 경로라 격리가 "워크dir(coverage-severe.flag/slot/
+  lenses/kiro-cwd)"에만 적용되고 "diff·리뷰 본문 자체"는 러너 풀 병렬화 시 여전히 교차
+  오염될 수 있다는 지적(MINOR-1) — 9차에서 `$RUNNER_TEMP` 전면 전환은 blast radius 사유로
+  보류했지만, 이미 확립된 `$pr_work_dir` 패턴에 이 파일들을 얹는 것은 기계적이고 낮은
+  리스크라 이번엔 완결: `pr-diff-raw.txt`/`pr-diff.txt`/`pr-diff-truncated.txt`/`review.md`/
+  `review-clean.md`/`comment.md` 전부 `$pr_work_dir` 아래로 이전, 기존 cleanup 스텝
+  (`if: always()`)이 이 전체 산출물까지 자동으로 정리하게 됨(부수 효과로 디스크 위생도
+  개선). MINOR-2(L1-fail 헤더 분기가 `panel_responded` 문자열 리터럴 비교) — 이미
+  `steps.l1.outputs.result`가 존재해 전환 비용이 사실상 0이라는 리뷰 판단에 동의, "Write L1
+  failure as review" 스텝(이미 `if: steps.l1.outputs.result == 'fail'` 조건)이 전용
+  `l1_failed=1` 플래그를 `GITHUB_ENV`에 남기도록 하고 코멘트 스텝은 그 플래그만 검사하도록
+  변경 — L1 통과 경로에서는 `l1_failed`가 애초에 안 찍히므로 `${l1_failed:-0}` 폴백이
+  올바르게 "0"으로 처리됨을 로컬 시뮬레이션으로 확인. **채택 안 함**: YAML heredoc
+  들여쓰기 잔존(MINOR-3)은 6차/8차/10차에서 이미 반복 확인된 무해한 cosmetic이라 재차
+  판단하지 않음. 스크립트(run-panel.sh/synthesize.sh/lib.sh) 변경이 없어 신규 유닛테스트는
+  없음 — 워크플로 YAML 경로 치환 로직을 bash 로 로컬 시뮬레이션해 L1-fail 분기(헤더/파일
+  경로)가 그대로 동작함을 확인, 전체 스위트는 597 passed 유지(스크립트 불변), 기존 무관
+  17건 실패도 그대로.
+
 ## Consequences
 
 - 커버리지가 "리뷰어 다양화"에서 "리뷰어×관점 매트릭스"로 체계화 — 사각지대 감소.
