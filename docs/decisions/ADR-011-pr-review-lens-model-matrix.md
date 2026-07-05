@@ -91,6 +91,23 @@ ADR-009의 멀티-AI 패널(Codex + Kiro×3)은 리뷰어를 벤더로 다양화
   안 돈 경로에서도 "lens×model matrix"를 붙이던 mislabel 수정. (4) `precheck.sh` 세
   인자 전부 빈 문자열 가드, L1 스텝 `set -euo pipefail` 상향, `synthesize.sh` 셀 순회를
   `LC_ALL=C sort`로 고정(로케일 의존 순서 제거) + 스테일 주석 정리.
+- **4차 리뷰 수정(CI 자체 리뷰, 커밋 27ab2de 이후) — 이번엔 실제 크래시 버그 포함**:
+  (1) **M1 실측 확인**: `synthesize.sh`의 `printf '%s' "$SCRUBBED" | head -c "$CAP"`가
+  스크럽된 셀이 캡을 넘으면 `head`가 먼저 종료 → `printf`가 SIGPIPE(141) → `set -euo
+  pipefail`이 스크립트 전체를 죽여 `review.md`조차 안 생기는 버그였다(3차 라운드에서
+  스크럽을 파이프에 얹으며 만든 회귀; 100KB→20000B 캡으로 직접 재현해 exit 141 확인,
+  파일 경유로 바꿔 재현 안 되는 것도 확인). 파이프를 없애고 스크럽 결과를 임시파일에
+  써서 `head -c file`로 읽도록 수정 — 프로세스 간 파이프가 없으니 SIGPIPE 자체가 발생
+  불가. (2) `scrub_secrets()` 커버리지 갭 2건도 실측 확인 후 수정: unquoted `KEY=value`
+  (가장 흔한 크리덴셜 파일 형태)가 안 걸렸던 것, PEM 이 헤더 줄만 치환되고 본문(실제
+  키)이 그대로 남던 것(line-oriented sed 로는 멀티라인 블록을 못 다룸 — awk 상태기계로
+  BEGIN..END 블록 전체를 치환하도록 전환). (3) minor: 워크플로 timeout 산정 주석을
+  600s 기준으로 갱신, `precheck.sh`에 `pr_number` 숫자 형식 가드 추가, 테스트의
+  하드코딩 `/tmp/*.log` 경로를 전부 `mktemp` 로 교체(병렬 실행 간섭 제거).
+  **의식적으로 반영 안 함**: 설계 spec의 Status를 "Implemented"로 갱신하라는 제안 —
+  `docs/superpowers/CLAUDE.md` 컨벤션상 spec 은 작성 시점의 의도를 그대로 굳혀두는
+  historical 아티팩트이고 durable 한 현재 상태는 ADR(이미 Accepted)이 맡는다; spec
+  Status 를 나중 현실에 맞춰 되돌려 쓰는 건 그 컨벤션이 명시적으로 금지.
 
 ## Consequences
 
@@ -133,6 +150,6 @@ ADR-009의 멀티-AI 패널(Codex + Kiro×3)은 리뷰어를 벤더로 다양화
 - `.github/workflows/pr-review.yml`, `scripts/pr-review/{precheck,run-panel,synthesize,lib}.sh`,
   `scripts/test-plugins.py --root`, `scripts/test-codex-plugins.py --root`
 - `docs/ci-pr-review.md`, `docs/ci-pr-review-runbook.md`
-- `tests/pr-review/{test-run-panel,test-precheck,test-lib}.sh`
+- `tests/pr-review/{test-run-panel,test-precheck,test-lib,test-synthesize}.sh`
 - PR #103(이 재설계), #104(co-agent 모델 티어링, 무관 병렬 머지), #105(`CHAIR_TIMEOUT`
   120s→600s — 이 PR과 별개로 근본 원인 진단)

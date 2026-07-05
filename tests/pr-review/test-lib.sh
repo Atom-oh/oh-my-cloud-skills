@@ -38,6 +38,21 @@ check_redacted "JWT (EKS Pod Identity token format)" \
 check_redacted "generic quoted secret (double quotes)" 'api_key = "abcdefghijklmnop"' "abcdefghijklmnop"
 check_redacted "generic quoted secret (single quotes, case-insensitive)" \
   "PASSWORD = 'supersecretvalue123'" "supersecretvalue123"
+# unquoted key=value (env-file 형태 — 실제 크리덴셜 파일의 가장 흔한 모습이자, 초판
+# 구현이 놓쳤던 갭. CI 자체 리뷰에서 MAJOR로 발견, 같은 PR에서 수정 — ADR-011 M2).
+check_redacted "unquoted AWS secret access key" \
+  "AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" \
+  "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+check_redacted "unquoted generic token" "TOKEN=abcdefghijklmnop1234" "abcdefghijklmnop1234"
+
+# PEM 은 여러 줄에 걸치므로 line-oriented 스캔으로는 헤더만 잡고 본문(진짜 키)이 새는
+# 함정이 있었다 — 초판은 헤더 줄만 치환했다(같은 MAJOR 발견에 포함, 같은 PR에서 수정).
+PEM_OUT="$(printf -- '-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA1c7+9z5Cn3fJsecretbase64body\nAnotherLineOfSecretBase64Content\n-----END RSA PRIVATE KEY-----\n' | scrub_secrets)"
+if printf '%s' "$PEM_OUT" | grep -qF "secretbase64body"; then
+  fail "scrub_secrets redacts the full PEM body, not just the header" "leaked: $PEM_OUT"
+else
+  pass "scrub_secrets redacts the full PEM body, not just the header"
+fi
 
 # 오탐 방지 — 평범한 텍스트/코드 표현은 그대로 통과해야 리뷰 본문이 훼손되지 않는다.
 PLAIN="this diff adds a helper function and fixes a typo in the README"

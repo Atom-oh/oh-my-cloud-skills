@@ -19,6 +19,10 @@ BASE_DIR="$1"; PR_NUMBER="$2"; WORK="$3"
 [ -n "$BASE_DIR" ] || { echo "precheck.sh: base_repo_dir(\$1) must not be empty" >&2; exit 1; }
 [ -n "$PR_NUMBER" ] || { echo "precheck.sh: pr_number(\$2) must not be empty" >&2; exit 1; }
 [ -n "$WORK" ] || { echo "precheck.sh: workdir(\$3) must not be empty" >&2; exit 1; }
+# pr_number 는 GitHub Actions 의 pull_request.number 에서만 오므로 항상 숫자지만, 형식도
+# 검증해두면 "pull/${PR_NUMBER}/head" 에 예상 못한 문자열이 그대로 실려 fetch 에러 메시지가
+# 헷갈리게 나오는 것보다 여기서 바로, 명확하게 잡는다.
+[[ "$PR_NUMBER" =~ ^[0-9]+$ ]] || { echo "precheck.sh: pr_number(\$2) must be numeric, got: $PR_NUMBER" >&2; exit 1; }
 TREE="$WORK/pr-tree"
 
 rm -rf "$TREE"

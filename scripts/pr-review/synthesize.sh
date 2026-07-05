@@ -15,6 +15,7 @@ PANEL_CELL_CAP="${PANEL_CELL_CAP:-20000}"
 PANEL=""
 # 셀 순서를 C 로케일 바이트 정렬로 고정 — 셸 glob 순서는 로케일(LC_COLLATE)에 따라 달라질
 # 수 있어, 안 그러면 같은 셀 집합인데도 실행마다 체어 입력의 셀 순서가 바뀔 수 있다.
+SCRUB_TMP="$WORK/scrub-cell.tmp"
 while IFS= read -r f; do
   [ -s "$f" ] || continue
   # 크리덴셜 스크럽(마지막 방어선) — Kiro fs_read 잔여 위험(diff 인젝션 → 절대경로 read →
@@ -22,17 +23,26 @@ while IFS= read -r f; do
   # 절대경로 read 자체는 막지 못하므로(값이 이미 셀 출력에 나타난 뒤에만 작동) 잔여 위험은
   # 남는다 — ADR-011. 캡 적용 전체 스크럽 후 캡을 적용해야 잘린 경계에서 패턴이 쪼개져
   # 탐지를 피하는 걸 막고, 절단 여부도 스크럽된 길이 기준으로 정확히 판단할 수 있다.
-  SCRUBBED="$(scrub_secrets < "$f")"
-  CELL="$(printf '%s' "$SCRUBBED" | head -c "$PANEL_CELL_CAP")"
+  #
+  # 스크럽 결과는 파이프가 아니라 파일로 받는다 — `printf '%s' "$SCRUBBED" | head -c N`
+  # 처럼 head 가 N 바이트만 읽고 먼저 종료하면, 그보다 큰 나머지를 쓰려던 printf 가
+  # SIGPIPE(141)로 죽고 `set -euo pipefail` 이 그 비-zero 를 스크립트 전체 중단으로
+  # 전파한다 — 캡이 막으려던 "폭주 셀"에서 오히려 캡 처리 자체가 죽는 구조였다(실측 재현:
+  # 100KB 를 20000B 캡으로 파이프하면 즉시 exit 141). 파일 기반 `head -c file`은 위에서
+  # 읽어줄 프로세스가 없어 SIGPIPE 자체가 발생하지 않는다.
+  scrub_secrets < "$f" > "$SCRUB_TMP"
+  CELL="$(head -c "$PANEL_CELL_CAP" "$SCRUB_TMP")"
+  SCRUBBED_LEN="$(wc -c < "$SCRUB_TMP")"
   # 실제로 잘렸으면(스크럽된 내용이 캡보다 크면) 체어가 절단 사실을 알도록 마커를 남긴다 —
   # 안 그러면 잘린 CRITICAL 근거를 "이게 전부"로 오해할 수 있다. head -c 는 UTF-8 문자
   # 경계 무관하게 바이트로 자르므로 마커 자체는 항상 ASCII로 붙여 표시가 깨지지 않게 한다.
-  [ "$(printf '%s' "$SCRUBBED" | wc -c)" -gt "$PANEL_CELL_CAP" ] && CELL+=$'\n[...TRUNCATED at '"$PANEL_CELL_CAP"'B — see full output in CI logs...]'
+  [ "$SCRUBBED_LEN" -gt "$PANEL_CELL_CAP" ] && CELL+=$'\n[...TRUNCATED at '"$PANEL_CELL_CAP"'B — see full output in CI logs...]'
   PANEL+="
 
 === 패널: $(basename "$f" .md) ===
 $CELL"
 done < <(printf '%s\n' "$SLOT"/*.md | LC_ALL=C sort)
+rm -f "$SCRUB_TMP"
 
 # 지시문(고정, argv 로 전달 — 아래 run_chair 참조)은 diff/패널 내용을 절대 포함하지 않는다.
 # diff+패널은 stdin 파일로 별도 전달(§ 아래) — argv 에 실으면 Linux 의 단일 인자

@@ -137,21 +137,21 @@ grep -q "^HOME=$WORK/kiro-cwd$" "$DUMP" 2>/dev/null \
 # (f) 커버리지 floor — kiro 가 전체 lens 에서 응답 없으면(예: 무효 플래그로 조용히 붕괴)
 # degraded-models.txt 에 kiro 태그 3개가 전부 기록되고 경고가 찍혀야 한다(ADR-011 M2).
 setup; mkfake codex 0 "codex-finding"; mkfake kiro-cli 1 ""
-if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/tmp/run-panel-f.log 2>&1; then
+LOG=$(mktemp)
+if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >"$LOG" 2>&1; then
   fail "run-panel (f) script exits 0 even when a whole model row is empty" "exited non-zero"
 fi
 DEGRADED_SORTED="$(sort "$WORK/degraded-models.txt" 2>/dev/null | tr '\n' ',' )"
 [ "$DEGRADED_SORTED" = "kiro-glm,kiro-kimi,kiro-opus," ] \
   && pass "run-panel (f) degraded-models.txt lists all 3 kiro tags when kiro fully fails" \
   || fail "run-panel (f) degraded-models.txt lists all 3 kiro tags when kiro fully fails" "got: $DEGRADED_SORTED"
-grep -q "::warning::model 'kiro-opus' produced zero responses" /tmp/run-panel-f.log \
+grep -q "::warning::model 'kiro-opus' produced zero responses" "$LOG" \
   && pass "run-panel (f) emits a ::warning:: for the degraded model" \
   || fail "run-panel (f) emits a ::warning:: for the degraded model" "warning line missing from stderr"
-[ -s "$WORK/degraded-models.txt" ] || true  # keep for inspection if this test is re-run manually
 grep -q "^codex$" "$WORK/degraded-models.txt" 2>/dev/null \
   && fail "run-panel (f) codex is not falsely marked degraded" "codex responded but was listed as degraded" \
   || pass "run-panel (f) codex is not falsely marked degraded"
-rm -f /tmp/run-panel-f.log
+rm -f "$LOG"
 
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then
