@@ -54,10 +54,45 @@ PROMPT_EOF
 # 있어도 heredoc 가 조기 종료되지 않도록.
 printf '%s\n' "$PANEL" >> "$WORK/synth-prompt.txt"
 
-# claude 실패해도 fallback 이 돌도록 || true (set -e 우회)
-cat "$DIFF" | claude -p "$(cat "$WORK/synth-prompt.txt")" --output-format text > "$OUT" || true
+# ── 의장 종합: primary(Fable 5) 시도 → 저하 시 Opus 폴백 ──────────────────
+# Fable 상태가 나쁠 때(연결 거부/행/빈 응답)에도 리뷰가 나오도록 폴백.
+# TTFT(첫 토큰 지연) 임계값은 안 씀 — Fable은 adaptive thinking이 상시 on이라
+# 정상 상태에서도 첫 토큰이 늦을 수 있어 오발동하고, ConnectionRefused는 빠르게
+# 실패해 지연 기반으론 못 잡음. 대신 벽시계 타임아웃 + 결과 검증으로 판정한다.
+PRIMARY_MODEL="${ANTHROPIC_MODEL:-us.anthropic.claude-fable-5}"
+FALLBACK_MODEL="${CHAIR_FALLBACK_MODEL:-us.anthropic.claude-opus-4-8}"
+CHAIR_TIMEOUT="${CHAIR_TIMEOUT:-120}"
+
+chair_label() { case "$1" in
+  *fable-5*)  echo "Claude Fable 5" ;;
+  *opus-4-8*) echo "Claude Opus 4.8" ;;
+  *)          echo "$1" ;;
+esac ; }
+
+run_chair() {  # $1=model → "$OUT" 에 기록. claude 실패해도 || true 로 계속.
+  ANTHROPIC_MODEL="$1" timeout "$CHAIR_TIMEOUT" \
+    claude -p "$(cat "$WORK/synth-prompt.txt")" --output-format text \
+    < "$DIFF" > "$OUT" 2>"$WORK/chair.err" || true
+}
+
+# 저하 판정: 빈 응답 | VERDICT 라인 없음. (ConnectionRefused·타임아웃·행 모두
+# VERDICT 없는 출력으로 귀결되므로 이 두 조건이면 충분 — 에러 문자열 grep은
+# 리뷰 본문이 'connection refused' 등을 언급할 때 오탐이라 쓰지 않는다.)
+chair_degraded() { [ ! -s "$OUT" ] || ! grep -q '^VERDICT:' "$OUT"; }
+
+run_chair "$PRIMARY_MODEL"
+CHAIR_USED="$PRIMARY_MODEL"
+if chair_degraded; then
+  echo "::warning::chair '$(chair_label "$PRIMARY_MODEL")' degraded (connection/timeout/empty, ${CHAIR_TIMEOUT}s cap) — falling back to '$(chair_label "$FALLBACK_MODEL")'"
+  run_chair "$FALLBACK_MODEL"
+  CHAIR_USED="$FALLBACK_MODEL"
+fi
+
 if [ ! -s "$OUT" ]; then
-  echo "리뷰 생성 실패 — Claude CLI가 빈 응답을 반환했습니다." > "$OUT"
+  echo "리뷰 생성 실패 — $(chair_label "$PRIMARY_MODEL")·$(chair_label "$FALLBACK_MODEL") 모두 빈 응답." > "$OUT"
   echo "VERDICT: FAIL" >> "$OUT"
 fi
-echo "Synthesis: $(wc -c < "$OUT") bytes (panel: ${RESP})"
+
+# 실제 사용한 의장 모델을 후속 스텝(코멘트 헤더)로 전달 — panel_responded 와 동일 패턴.
+[ -n "${GITHUB_ENV:-}" ] && echo "chair_used=$(chair_label "$CHAIR_USED")" >> "$GITHUB_ENV"
+echo "Synthesis: $(wc -c < "$OUT") bytes (chair: $(chair_label "$CHAIR_USED"), panel: ${RESP})"
