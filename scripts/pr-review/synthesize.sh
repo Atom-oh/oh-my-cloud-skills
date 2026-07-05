@@ -174,9 +174,16 @@ fi
 # 프로즈에서 "VERDICT: ..." 로 시작하는 줄로 규칙을 설명/인용하면 그 설명 줄까지 함께
 # 삭제된다(fail 방향 훼손은 없음 — 강제 FAIL 줄은 항상 뒤에 붙지만, 정보 손실은 실재).
 # `tac | sed '0,/pat/d' | tac` 로 마지막 매치 한 줄만 지우도록 교체(17차 리뷰 MINOR-1).
+# GNU sed 의 `0,/re/d` 는 패턴이 한 번도 매치하지 않으면 범위 종료 조건이 성립하지 않아
+# EOF까지 확장되어 파일 **전체**를 지운다 — 체어가 비어있진 않지만(`[ ! -s "$OUT" ]` 가드는
+# 못 잡음) VERDICT 줄 없이 저하된 응답과 severe 붕괴가 동시에 겹치면 진단 정보가 전부
+# 사라지는 corner 였다(fail 방향은 훼손 안 됨 — 배너+강제 FAIL 줄은 항상 남음, 18차 리뷰
+# MINOR-1). 실제로 매치가 있을 때만 삭제를 수행하도록 가드.
 if [ -f "$WORK/coverage-severe.flag" ]; then
-  TAC_TMP="$(tac "$OUT" | sed '0,/^VERDICT:/d' | tac)"
-  printf '%s\n' "$TAC_TMP" > "$OUT"
+  if grep -q '^VERDICT:' "$OUT"; then
+    TAC_TMP="$(tac "$OUT" | sed '0,/^VERDICT:/d' | tac)"
+    printf '%s\n' "$TAC_TMP" > "$OUT"
+  fi
   {
     echo "🛑 **커버리지 붕괴로 강제 FAIL**: 살아남은 벤더가 1개 이하라 lens×model 매트릭스의 교차확인이 성립하지 않음 — 체어의 판정과 무관하게 fail-closed."
     echo ""

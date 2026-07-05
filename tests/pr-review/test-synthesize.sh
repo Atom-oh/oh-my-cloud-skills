@@ -24,6 +24,14 @@ echo "Summary: ok"; echo "VERDICT: PASS"
 EOF
   chmod +x "$BIN/claude"
 }
+mkclaude_no_verdict() {  # 비어있진 않지만 VERDICT 줄이 전혀 없는 저하된 응답(primary/fallback
+  # 둘 다 이 mock 을 쓰므로 [ ! -s "$OUT" ] 가드로는 못 잡는 corner 를 재현한다).
+  cat > "$BIN/claude" <<'EOF'
+#!/usr/bin/env bash
+echo "Summary: something went wrong, no verdict line here"
+EOF
+  chmod +x "$BIN/claude"
+}
 
 # (a) 회귀 가드 — 캡보다 훨씬 큰(100KB) 셀 하나가 있어도 synthesize.sh 는 죽지 않고 정상
 # 완주해야 한다. 예전 구현은 `printf | head -c` 파이프에서 head 가 캡만큼만 읽고 먼저
@@ -156,6 +164,27 @@ grep -q "이 규칙은 파일의 마지막 줄" "$WORK/review.md" 2>/dev/null \
 [ "$(tail -1 "$WORK/review.md")" = "VERDICT: FAIL" ] \
   && pass "synthesize (g) last line is still the forced VERDICT: FAIL" \
   || fail "synthesize (g) last line is still the forced VERDICT: FAIL" "got: $(tail -1 "$WORK/review.md")"
+rm -rf "$WORK" "$BIN"
+
+# (h) severe 오버라이드가 "VERDICT:" 줄이 전혀 없는 저하된 체어 응답을 만나면 안 된다 —
+# GNU sed 의 `0,/re/d` 는 패턴이 한 번도 매치하지 않으면 범위 종료 조건이 안 성립해 EOF까지
+# 확장되어 파일 전체를 지운다. primary/fallback 둘 다 비어있진 않지만 VERDICT 줄이 없는
+# 응답을 내면 `[ ! -s "$OUT" ]` 가드로는 못 잡는 corner 다(18차 리뷰 MINOR-1, 17차 수정이
+# 새로 만든 회귀).
+setup; mkclaude_no_verdict
+echo "codex-finding" > "$WORK/slot/codex-L2.md"
+echo "codex/L2" >> "$WORK/responded.txt"
+printf 'kiro-opus\nkiro-kimi\nkiro-glm\n' > "$WORK/degraded-models.txt"
+: > "$WORK/coverage-severe.flag"
+if ! bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
+  fail "synthesize (h) script exits 0 when the chair response has no VERDICT line at all" "exited non-zero"
+fi
+grep -q "something went wrong" "$WORK/review.md" 2>/dev/null \
+  && pass "synthesize (h) severe override preserves the chair's body even when it has no VERDICT line to remove" \
+  || fail "synthesize (h) severe override preserves the chair's body even when it has no VERDICT line to remove" "chair body was wiped"
+[ "$(tail -1 "$WORK/review.md")" = "VERDICT: FAIL" ] \
+  && pass "synthesize (h) last line is still the forced VERDICT: FAIL" \
+  || fail "synthesize (h) last line is still the forced VERDICT: FAIL" "got: $(tail -1 "$WORK/review.md")"
 rm -rf "$WORK" "$BIN"
 
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
