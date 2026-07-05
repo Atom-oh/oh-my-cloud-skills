@@ -156,6 +156,22 @@ if [ -s "$WORK/degraded-models.txt" ]; then
   } > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
 fi
 
+# 심각도 상향(run-panel.sh 의 coverage-severe.flag) — degraded 모델이 (전체-1)개 이상이면
+# 살아남은 벤더가 최대 1개뿐이라 "lens당 교차확인"이 성립하지 않는다. 이 경우는 경고만으로
+# 끝내지 않고 체어의 판정과 무관하게 VERDICT 를 강제 FAIL 한다(fail-closed 계약 보존).
+# VERDICT 는 파일의 마지막 줄이어야 하므로 기존 VERDICT 줄을 지우고 새로 붙인다 — 그렇지
+# 않으면 체어가 원래 PASS 라고 쓴 줄이 코멘트에 남아 BLOCKED 배지와 모순되게 보인다.
+if [ -f "$WORK/coverage-severe.flag" ]; then
+  sed -i '/^VERDICT:/d' "$OUT"
+  {
+    echo "🛑 **커버리지 붕괴로 강제 FAIL**: 살아남은 벤더가 1개 이하라 lens×model 매트릭스의 교차확인이 성립하지 않음 — 체어의 판정과 무관하게 fail-closed."
+    echo ""
+    cat "$OUT"
+    echo ""
+    echo "VERDICT: FAIL"
+  } > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
+fi
+
 # 실제 사용한 의장 모델을 후속 스텝(코멘트 헤더)로 전달 — panel_responded 와 동일 패턴.
 [ -n "${GITHUB_ENV:-}" ] && echo "chair_used=$(chair_label "$CHAIR_USED")" >> "$GITHUB_ENV"
 echo "Synthesis: $(wc -c < "$OUT") bytes (chair: $(chair_label "$CHAIR_USED"), panel: ${RESP})"

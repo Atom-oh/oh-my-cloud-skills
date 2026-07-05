@@ -108,6 +108,7 @@ echo "Panel responded ($(wc -l < "$RESP") / $(( (${#KIRO_MODELS[@]} + 1) * ${#LE
 # (예: kiro-cli 신규 플래그(`--v3 --mode default --trust-tools=fs_read`)가 이 러너에서
 # 무효면 Kiro 12셀 전부 graceful skip → 실질 4셀짜리 리뷰인데 코멘트만 봐선 눈에 안 띌 수
 # 있음). 모델별 row 가 완전히 비면 경고 + synthesize.sh 가 리뷰 본문에 명시하도록 파일로 전달.
+TOTAL_MODELS=$(( ${#KIRO_MODELS[@]} + 1 ))
 : > "$WORK/degraded-models.txt"
 for model_tag in codex "${KIRO_MODELS[@]##*:}"; do
   # grep -c 는 매치가 0건이어도 "0"을 찍고 exit 1 한다(매치 없음 = grep 관점의 "실패") —
@@ -121,11 +122,29 @@ for model_tag in codex "${KIRO_MODELS[@]##*:}"; do
   fi
 done
 
+# 심각도 상향 — degraded 모델이 (전체-1)개 이상이면 살아남은 벤더가 최대 1개뿐이라, "매트릭스
+# 자체가 lens당 교차확인"이라는 warn-only 의 전제(다른 모델이 여전히 같은 lens 를 본다)가
+# 성립하지 않는다. 이 경우만 severe 로 승격해 synthesize.sh 가 VERDICT 를 강제 FAIL 하도록
+# 신호를 남긴다(모델 1개 탈락은 여전히 warn-only 유지 — 간헐적 rate-limit 로도 흔하고, 남은
+# 3개가 각 lens 를 여전히 교차확인하므로 이 PR 도입 시 설계한 대로 사람이 배너로만 인지해도
+# 된다는 원 판단은 유효). 신규 kiro-cli 플래그가 처음 실전 투입되는 시점(3개 kiro 모델이
+# 동시에 전멸하는 경우가 바로 이 기준을 정확히 친다)이 이 케이트가 노리는 실제 사례다.
+DEGRADED_COUNT=$(wc -l < "$WORK/degraded-models.txt")
+if [ "$DEGRADED_COUNT" -ge "$((TOTAL_MODELS - 1))" ]; then
+  echo "::error::coverage collapsed to ≤1 vendor ($DEGRADED_COUNT/$TOTAL_MODELS models degraded) — forcing VERDICT: FAIL, no cross-model check remains for any lens" >&2
+  : > "$WORK/coverage-severe.flag"
+fi
+
 # skip 원인 노출: 빈 슬롯인데 stderr 가 있으면 stderr 의 끝(실제 에러)을 로그에 찍는다.
+# public repo 라 이 Actions 로그는 누구나 읽을 수 있고, Kiro fs_read 전환 이후로는 diff
+# 인젝션이 유도한 절대경로 read 결과가 stdout(셀 .md, synthesize.sh 에서 스크럽) 대신
+# stderr(에러 메시지·스택트레이스)로 새어나올 수도 있다 — 원시로 찍으면 이 경로가 스크럽
+# 없는 유출구가 된다(docs/ci-pr-review.md 가 이미 "원시 stderr 노출 안 함"이라 주장하던
+# 것과도 실제로 어긋났었다). synthesize.sh 의 셀과 동일한 scrub_secrets() 를 통과시킨다.
 for e in "$SLOT"/*.err; do
   [ -s "$e" ] || continue
   b="$(basename "$e" .err)"
   [ -s "$SLOT/$b.md" ] && continue   # 응답 성공이면 건너뜀
-  echo "--- [$b] skipped; stderr (last 25 lines) ---" >&2
-  tail -25 "$e" >&2
+  echo "--- [$b] skipped; stderr (last 25 lines, scrubbed) ---" >&2
+  tail -25 "$e" | scrub_secrets >&2
 done

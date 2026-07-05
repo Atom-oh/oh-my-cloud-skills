@@ -109,6 +109,31 @@ ADR-009의 멀티-AI 패널(Codex + Kiro×3)은 리뷰어를 벤더로 다양화
   historical 아티팩트이고 durable 한 현재 상태는 ADR(이미 Accepted)이 맡는다; spec
   Status 를 나중 현실에 맞춰 되돌려 쓰는 건 그 컨벤션이 명시적으로 금지.
 
+- **5차 리뷰 수정(커밋 14a6686 이후)**: (1) MAJOR — `run-panel.sh`의 스킵-진단 블록이
+  실패한 셀의 stderr 마지막 25줄을 `tail -25 "$e" >&2`로 스크럽 없이 그대로 public CI
+  로그에 흘렸다. `docs/ci-pr-review.md`는 "원시 stderr를 코멘트/로그로 노출하지 않음"을
+  명시하는데 실제 구현이 그 문서와 불일치했고, Kiro `fs_read` 위협모델(디프에 심어진
+  프롬프트 인젝션이 크리덴셜을 stderr로 유도)까지 겹치면 실제 유출 경로였다. 코드 확인으로
+  CONFIRMED — `tail -25 "$e" | scrub_secrets >&2`로 수정, `tail`/`scrub_secrets` 내부
+  awk·sed 모두 EOF까지 전량 소비하므로(3차/4차에서 잡은 SIGPIPE 패턴과 달리 조기 종료
+  단계가 없음) 새로운 SIGPIPE 위험은 생기지 않음을 확인. (2) MAJOR — 커버리지 floor가
+  warn-only라, 벤더 하나가 통째로(예: Kiro 3개 모델 전부가 새 플래그 조합 버그로 동시
+  실패) 죽어도 나머지 벤더 하나(Codex)만으로 매트릭스가 조용히 `VERDICT: PASS`를 낼 수
+  있어 fail-closed 계약이 약화된다는 지적 — 실측(3/4 모델 죽는 시나리오를 mock으로 재현)
+  으로 CONFIRMED. 리뷰가 제안한 "1개라도 죽으면 즉시 FAIL"은 채택하지 않음(단일 모델의
+  일시적 rate-limit까지 차단하면 그 lens는 여전히 3중 교차확인이 성립하는데도 과잉
+  차단) — 대신 `TOTAL_MODELS - 1`(살아남은 벤더 ≤1, 즉 어떤 lens에도 교차확인이 전혀
+  안 남는 경우)만 강제 FAIL 하는 중간 지점을 구현: `run-panel.sh`가
+  `coverage-severe.flag`를 쓰고, `synthesize.sh`가 그 플래그를 보면 체어가 이미 쓴
+  `VERDICT:` 줄을 `sed -i '/^VERDICT:/d'`로 지운 뒤 강제 FAIL 줄 하나만 남긴다(코멘트
+  스텝이 파일 마지막 줄만 보므로 원본 PASS 가 남아있으면 BLOCKED 배지와 모순돼 보임).
+  3/4 죽음(플래그 켜짐+체어 PASS→강제 FAIL, VERDICT 줄 1개만 남음) / 1/4 죽음(플래그
+  안 켜짐+체어 PASS 그대로 보존) 두 시나리오 모두 mock 기반으로 직접 재현 후 테스트로
+  고정(`test-run-panel.sh` (f)/(g), `test-synthesize.sh` (e)). **반증**: 같은 라운드에서
+  나온 "JWT 패턴이 개행을 넘어 인젝션될 수 있다" 주장은 실측으로 반증 — `scrub_secrets`는
+  `sed -z` 없이 라인 단위로만 동작하므로 `[[:space:]]`가 개행을 건너 매칭될 수 없음을
+  직접 확인, 반영하지 않음.
+
 ## Consequences
 
 - 커버리지가 "리뷰어 다양화"에서 "리뷰어×관점 매트릭스"로 체계화 — 사각지대 감소.

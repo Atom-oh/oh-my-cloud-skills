@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # run-panel.sh 단위 테스트 (lens×모델 매트릭스). harness(run-all.sh 가 source) + standalone
 # 모두 지원. 실제 CLI 대신 PATH 모킹으로 (a)전원응답 (b)일부skip (c)전원실패 (d)lens 없음
-# (e)Kiro env/cwd/HOME 격리 (f)모델 전체 skip 시 커버리지 floor 경고 검증.
+# (e)Kiro env/cwd/HOME 격리 (f)모델 3/4 탈락 시 severe 플래그 (g)모델 1/4 탈락은 warn-only
+# 유지(severe 아님) (h)skip 진단 stderr 도 scrub_secrets 적용 검증.
 # 주의: harness 가 이 파일을 set -euo pipefail 로 source 하므로, 스크립트가 비-zero로
 # 끝나는 경로는 전부 if 로 감싼다 — bare 호출은 스위트 전체를 조기 중단시킨다.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -151,6 +152,69 @@ grep -q "::warning::model 'kiro-opus' produced zero responses" "$LOG" \
 grep -q "^codex$" "$WORK/degraded-models.txt" 2>/dev/null \
   && fail "run-panel (f) codex is not falsely marked degraded" "codex responded but was listed as degraded" \
   || pass "run-panel (f) codex is not falsely marked degraded"
+# 3/4 모델이 탈락(살아남은 벤더 1개=codex뿐)하면 severe 플래그가 서야 한다 — synthesize.sh
+# 가 이걸 보고 VERDICT 를 강제 FAIL 한다(ADR-011 M2 대응).
+[ -f "$WORK/coverage-severe.flag" ] \
+  && pass "run-panel (f) coverage-severe.flag is set when only 1 vendor survives" \
+  || fail "run-panel (f) coverage-severe.flag is set when only 1 vendor survives" "flag missing"
+grep -q "::error::coverage collapsed" "$LOG" \
+  && pass "run-panel (f) emits a ::error:: for the severe collapse" \
+  || fail "run-panel (f) emits a ::error:: for the severe collapse" "error line missing from stderr"
+rm -f "$LOG"
+
+# (g) 1개 모델만 탈락(codex + kiro 2개 생존)하면 severe 는 아니다 — 남은 3개 벤더가 여전히
+# 서로 교차확인하므로 warn-only 유지가 맞다(fail-closed 를 과하게 좁혀 간헐적 rate-limit
+# 하나로도 매번 게이트가 막히는 것을 피함).
+setup; mkfake codex 0 "codex-finding"
+cat > "$BIN/kiro-cli" <<'EOF'
+#!/usr/bin/env bash
+prev=""
+for a in "$@"; do
+  if [ "$prev" = "--model" ] && [ "$a" = "claude-opus-4.8" ]; then exit 1; fi
+  prev="$a"
+done
+echo "kiro-finding"
+EOF
+chmod +x "$BIN/kiro-cli"
+LOG=$(mktemp)
+if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >"$LOG" 2>&1; then
+  fail "run-panel (g) script exits 0 when only one model row is empty" "exited non-zero"
+fi
+[ "$(cat "$WORK/degraded-models.txt" 2>/dev/null)" = "kiro-opus" ] \
+  && pass "run-panel (g) only kiro-opus is marked degraded" \
+  || fail "run-panel (g) only kiro-opus is marked degraded" "got: $(cat "$WORK/degraded-models.txt" 2>/dev/null)"
+[ -f "$WORK/coverage-severe.flag" ] \
+  && fail "run-panel (g) coverage-severe.flag is NOT set when 3 vendors still survive" "flag set despite only 1/4 degraded" \
+  || pass "run-panel (g) coverage-severe.flag is NOT set when 3 vendors still survive"
+rm -f "$LOG"
+
+# (h) skip 진단 블록의 stderr 덤프가 scrub_secrets 를 거치는지 — Kiro fs_read 전환 이후
+# 절대경로 read 결과가 stdout(.md, synthesize.sh 에서 스크럽) 대신 stderr 로 새는 경로에도
+# 같은 방어선이 적용돼야 한다(ADR-011 MAJOR-1, 공개 CI 로그로 원시 노출되던 갭).
+setup
+cat > "$BIN/codex" <<'EOF'
+#!/usr/bin/env bash
+echo "codex-finding"; cat
+EOF
+chmod +x "$BIN/codex"
+cat > "$BIN/kiro-cli" <<'EOF'
+#!/usr/bin/env bash
+echo "error reading file: AKIAABCDEFGHIJKLMNOP found in output" >&2
+exit 1
+EOF
+chmod +x "$BIN/kiro-cli"
+LOG=$(mktemp)
+if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >"$LOG" 2>&1; then
+  fail "run-panel (h) script exits 0 even when a cell's stderr carries a credential" "exited non-zero"
+fi
+if grep -q "AKIAABCDEFGHIJKLMNOP" "$LOG"; then
+  fail "run-panel (h) skip-diagnostic stderr dump is scrubbed" "raw AWS key leaked into the runner log"
+else
+  pass "run-panel (h) skip-diagnostic stderr dump is scrubbed"
+fi
+grep -q "REDACTED-AWS-KEY" "$LOG" \
+  && pass "run-panel (h) redaction marker present in the runner log" \
+  || fail "run-panel (h) redaction marker present in the runner log" "marker missing"
 rm -f "$LOG"
 
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)

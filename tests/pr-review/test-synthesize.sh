@@ -90,6 +90,30 @@ grep -q "커버리지 저하" "$WORK/review.md" 2>/dev/null \
   || fail "synthesize (d) VERDICT stays the last line despite the prepended banner" "got: $(tail -1 "$WORK/review.md")"
 rm -rf "$WORK" "$BIN"
 
+# (e) 커버리지 붕괴(severe) — run-panel.sh 의 coverage-severe.flag 가 있으면 체어가 PASS 라고
+# 써도 VERDICT 를 강제 FAIL 로 덮어써야 한다(살아남은 벤더가 1개뿐이라 매트릭스의 lens당
+# 교차확인이 성립하지 않음 — ADR-011 M2). 체어의 원래 PASS 줄이 코멘트에 남아 BLOCKED
+# 배지와 모순돼 보이지 않도록, 기존 VERDICT 줄은 지워지고 새 FAIL 줄만 남아야 한다.
+setup; mkclaude_pass
+echo "codex-finding" > "$WORK/slot/codex-L2.md"
+echo "codex/L2" >> "$WORK/responded.txt"
+printf 'kiro-opus\nkiro-kimi\nkiro-glm\n' > "$WORK/degraded-models.txt"
+: > "$WORK/coverage-severe.flag"
+if ! bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
+  fail "synthesize (e) script exits 0 even with coverage-severe.flag set" "exited non-zero"
+fi
+[ "$(tail -1 "$WORK/review.md")" = "VERDICT: FAIL" ] \
+  && pass "synthesize (e) coverage-severe.flag forces VERDICT: FAIL despite chair saying PASS" \
+  || fail "synthesize (e) coverage-severe.flag forces VERDICT: FAIL despite chair saying PASS" "got: $(tail -1 "$WORK/review.md")"
+[ "$(grep -c '^VERDICT:' "$WORK/review.md")" = 1 ] \
+  && pass "synthesize (e) only one VERDICT line survives (chair's original PASS is removed)" \
+  || fail "synthesize (e) only one VERDICT line survives (chair's original PASS is removed)" \
+       "$(grep '^VERDICT:' "$WORK/review.md")"
+grep -q "커버리지 붕괴로 강제 FAIL" "$WORK/review.md" 2>/dev/null \
+  && pass "synthesize (e) severe-override banner appears in the review" \
+  || fail "synthesize (e) severe-override banner appears in the review" "banner missing"
+rm -rf "$WORK" "$BIN"
+
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then
   [ "$_t_fail" = 0 ] && echo "PASS: test-synthesize" || exit 1
