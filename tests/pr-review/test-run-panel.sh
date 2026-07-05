@@ -308,7 +308,12 @@ echo "diff --git a b" > "$BASE/diff.txt"
 echo "review L2 only" > "$BASE/lenses/L2.txt"
 BIN=$(mktemp -d); export PATH="$BIN:$PATH"
 mkfake codex 0 "codex-finding"; mkfake_args kiro-cli 0 "kiro-finding"
-( cd "$BASE" && "$SCRIPT" "diff.txt" "lenses" "relwork" >/dev/null 2>&1 )
+# 이 파일 서두의 컨벤션대로 bare 비-zero 종료 경로가 harness(set -euo pipefail 로 source)를
+# 통째로 중단시키지 않도록 if 로 감싼다(17차 리뷰 MINOR-2 — 지금은 정상 종료라 실해 없지만
+# 스크립트가 비-zero로 끝나는 회귀가 생기면 진단 없이 스위트가 죽는다).
+if ! ( cd "$BASE" && "$SCRIPT" "diff.txt" "lenses" "relwork" >/dev/null 2>&1 ); then
+  fail "run-panel (l) script exits 0 for the relative-workdir run" "exited non-zero"
+fi
 if [ -s "$BASE/relwork/slot/kiro-opus-L2.md" ]; then
   pass "run-panel (l) a relative workdir arg still resolves correctly for Kiro cells"
 else

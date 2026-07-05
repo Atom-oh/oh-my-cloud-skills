@@ -131,6 +131,33 @@ grep -q "none — Claude solo" "$WORK/synth-prompt.txt" 2>/dev/null \
   || fail "synthesize (f) documented fallback text reaches the chair prompt when responded.txt is absent" "fallback missing"
 rm -rf "$WORK" "$BIN"
 
+# (g) severe 오버라이드가 체어 본문 프로즈 안의 "VERDICT:"로 시작하는 설명 줄까지 지우면
+# 안 된다 — 이전 구현은 `sed '/^VERDICT:/d'`로 파일 전체에서 그 패턴에 매치하는 모든 줄을
+# 지워, 체어가 규칙을 인용하며 "VERDICT: ..." 로 시작하는 프로즈 줄을 남기면 그 설명까지
+# 함께 사라졌다(17차 리뷰 MINOR-1). 마지막 매치 한 줄만 지우도록 고친 뒤 재현/고정한다.
+setup
+cat > "$BIN/claude" <<'EOF'
+#!/usr/bin/env bash
+echo "Summary: ok"
+echo "VERDICT: 이 규칙은 파일의 마지막 줄에 PASS 또는 FAIL 로 나타나야 합니다"
+echo "VERDICT: PASS"
+EOF
+chmod +x "$BIN/claude"
+echo "codex-finding" > "$WORK/slot/codex-L2.md"
+echo "codex/L2" >> "$WORK/responded.txt"
+printf 'kiro-opus\nkiro-kimi\nkiro-glm\n' > "$WORK/degraded-models.txt"
+: > "$WORK/coverage-severe.flag"
+if ! bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
+  fail "synthesize (g) script exits 0 with a prose line that starts with VERDICT:" "exited non-zero"
+fi
+grep -q "이 규칙은 파일의 마지막 줄" "$WORK/review.md" 2>/dev/null \
+  && pass "synthesize (g) severe override preserves an explanatory prose line that happens to start with VERDICT:" \
+  || fail "synthesize (g) severe override preserves an explanatory prose line that happens to start with VERDICT:" "explanatory line was also deleted"
+[ "$(tail -1 "$WORK/review.md")" = "VERDICT: FAIL" ] \
+  && pass "synthesize (g) last line is still the forced VERDICT: FAIL" \
+  || fail "synthesize (g) last line is still the forced VERDICT: FAIL" "got: $(tail -1 "$WORK/review.md")"
+rm -rf "$WORK" "$BIN"
+
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then
   [ "$_t_fail" = 0 ] && echo "PASS: test-synthesize" || exit 1

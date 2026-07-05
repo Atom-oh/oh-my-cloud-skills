@@ -94,6 +94,9 @@ echo ""
 # Run test files. Optional $1 filters by substring match against the file path (e.g.
 # `bash tests/run-all.sh hooks` runs only tests/hooks/*.sh) — PATTERN used to be defined
 # but never wired to the loop below (dead code the 13th pr-review review round caught).
+# Substring match, not exact — a short/generic pattern (e.g. `run-all.sh run`) can match
+# more files than intended (any path containing "run" as a substring); use a more specific
+# fragment like a directory name or full test filename stem to narrow it (17th review round).
 PATTERN="${1:-}"
 for test_file in tests/hooks/*.sh tests/structure/*.sh tests/pr-review/*.sh; do
   [ -f "$test_file" ] || continue
