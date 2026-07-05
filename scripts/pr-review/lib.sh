@@ -2,8 +2,9 @@
 # 공용 헬퍼: 슬롯 디렉터리, 스킵 로깅.
 set -uo pipefail
 
-# slot 디렉터리 보장
-ensure_slots() { mkdir -p "$1/slot"; }
+# slot 디렉터리 보장 — 비-ephemeral 러너에서 $WORK 가 재사용될 수 있으므로, 이전 실행의
+# 셀 파일이 남아 새 실행의 체어 입력에 섞이지 않도록 매번 비우고 새로 만든다.
+ensure_slots() { rm -rf "$1/slot"; mkdir -p "$1/slot"; }
 
 # 한 패널 실행 결과를 평가해 responded 에 기록.
 #   $1 slot 파일 경로, $2 패널 라벨, $3 responded 파일
@@ -34,6 +35,7 @@ scrub_secrets() {
     skip && /^-----END [A-Z ]*PRIVATE KEY-----/ { skip = 0; next }
     skip { next }
     { print }
+    END { if (skip) print "[REDACTED-UNTERMINATED-PEM-BLOCK]" }
   ' | sed -E \
     -e 's/A(KIA|SIA)[0-9A-Z]{16}/[REDACTED-AWS-KEY]/g' \
     -e 's/gh[pousr]_[A-Za-z0-9]{30,}/[REDACTED-GH-TOKEN]/g' \

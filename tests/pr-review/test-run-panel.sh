@@ -3,7 +3,8 @@
 # 모두 지원. 실제 CLI 대신 PATH 모킹으로 (a)전원응답 (b)일부skip (c)전원실패 (d)lens 없음
 # (e)Kiro env/cwd/HOME 격리 (f)모델 3/4 탈락 시 severe 플래그 (g)모델 1/4 탈락은 warn-only
 # 유지(severe 아님) (h)skip 진단 stderr 도 scrub_secrets 적용 검증 (i)realpath 실패 시
-# fail-fast(구 폴백 회귀 가드).
+# fail-fast(구 폴백 회귀 가드) (j)재사용되는 \$WORK 에서 coverage-severe.flag/slot 잔재가
+# 리셋되는지(비-ephemeral 러너 상태 오염 회귀 가드).
 # 주의: harness 가 이 파일을 set -euo pipefail 로 source 하므로, 스크립트가 비-zero로
 # 끝나는 경로는 전부 if 로 감싼다 — bare 호출은 스위트 전체를 조기 중단시킨다.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -233,6 +234,35 @@ grep -q "realpath failed" "$LOG" \
   && pass "run-panel (i) failure message names the realpath cause" \
   || fail "run-panel (i) failure message names the realpath cause" "$(cat "$LOG")"
 rm -f "$LOG"
+
+# (j) 비-ephemeral 러너에서 \$WORK 가 재사용될 수 있다 — coverage-severe.flag 는 이전 버전엔
+# responded.txt/degraded-models.txt 와 달리 실행 시작 시 리셋되지 않아, 한 번 심각 붕괴로
+# 세워지면 이후 완전히 정상인 실행까지 강제 FAIL 로 오염시켰다(ADR-011 6차 리뷰 MAJOR).
+# 같은 \$WORK 로 (severe 유발 → 정상) 두 번 연속 실행해 재현/고정한다.
+setup; mkfake codex 0 "codex-finding"; mkfake kiro-cli 1 ""
+"$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/dev/null 2>&1 || true
+if [ ! -f "$WORK/coverage-severe.flag" ]; then
+  fail "run-panel (j) setup: first run on \$WORK collapses to severe (kiro fully down)" "flag not created — check fixture"
+fi
+mkfake codex 0 "codex-finding"; mkfake_args kiro-cli 0 "kiro-finding"
+if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/dev/null 2>&1; then
+  fail "run-panel (j) script exits 0 on the reused-workdir rerun" "exited non-zero"
+fi
+[ -f "$WORK/coverage-severe.flag" ] \
+  && fail "run-panel (j) a stale coverage-severe.flag from a prior severe run does not survive a healthy rerun on the same \$WORK" "flag still present" \
+  || pass "run-panel (j) a stale coverage-severe.flag from a prior severe run does not survive a healthy rerun on the same \$WORK"
+
+# 같은 뿌리 원인 — slot 디렉터리도 재사용되는 \$WORK 에서 비워져야 한다. 이번 실행의 lens
+# 목록에 없는 orphaned 셀 파일(예: 구 lens 구성/naming 의 잔재)이 남아 있으면 synthesize.sh
+# 의 "$SLOT"/*.md glob 에 그대로 섞여 든다(ADR-011 6차 리뷰 MINOR, ensure_slots 로 수정).
+mkdir -p "$WORK/slot"
+echo "orphaned finding from a lens no longer in this run" > "$WORK/slot/codex-L9.md"
+if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/dev/null 2>&1; then
+  fail "run-panel (j) script exits 0 with an orphaned slot file present" "exited non-zero"
+fi
+[ -f "$WORK/slot/codex-L9.md" ] \
+  && fail "run-panel (j) an orphaned slot file from a stale \$WORK is cleared before this run's cells are written" "orphaned file survived ensure_slots" \
+  || pass "run-panel (j) an orphaned slot file from a stale \$WORK is cleared before this run's cells are written"
 
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then

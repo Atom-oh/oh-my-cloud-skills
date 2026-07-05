@@ -157,6 +157,28 @@ ADR-009의 멀티-AI 패널(Codex + Kiro×3)은 리뷰어를 벤더로 다양화
   `test-precheck.sh` (k)(symlink 제거) — 전체 스위트 586 passed(+4), 기존 무관 17건
   실패는 그대로.
 
+- **7차 리뷰 수정(커밋 e59c0ff 이후, BLOCKED — MAJOR 1건)**: 패널 무응답(Claude solo)으로
+  체어 단독 diff 대조였지만 지적은 CONFIRMED — `run-panel.sh`가 새로 만드는 상태 파일 중
+  `coverage-severe.flag`만 실행 시작 시 리셋되지 않았다. `responded.txt`(`: >`),
+  `degraded-models.txt`(`: >`), `pr-tree`(`rm -rf`)는 전부 매 실행 초기화되는데 이 플래그만
+  빠져, self-hosted 러너가 job 간 `/tmp`를 유지하면(현재 워크플로는 `mkdir -p`만 하고
+  정리하지 않음 — ephemeral 가정이 코드 어디에도 명시돼 있지 않음) 한 번 3/4 모델이 죽은
+  이후 완전히 정상인 후속 PR 리뷰까지 전부 "커버리지 붕괴로 강제 FAIL"이 되는 상태 오염
+  버그였다. `run-panel.sh` 시작부(`ensure_slots`/`: > "$RESP"` 옆)에 `rm -f
+  "$WORK/coverage-severe.flag"` 추가로 수정. 같은 라운드에서 지적된 MINOR도 뿌리가 같아
+  함께 반영: `ensure_slots()`가 `mkdir -p`만 해 slot 디렉터리 내 orphaned 셀 파일(예: 이전
+  실행/구 lens 구성의 잔재)이 안 지워지던 것 — `rm -rf "$1/slot"; mkdir -p "$1/slot"`로 변경.
+  또한 `scrub_secrets`의 PEM awk 상태기계가 `END` 줄이 끝내 안 나오면(잘리거나 변조된 셀
+  출력) `skip=1`이 유지돼 그 뒤 정상 finding 까지 통째로 삼키는 문제 — fail-safe 방향이라
+  유출은 아니지만, `END { if (skip) print "[REDACTED-UNTERMINATED-PEM-BLOCK]" }`를 추가해
+  "무언가 삼켜졌다"는 사실 자체는 보존하도록 수정. **채택 안 함**: L1-fail 경로를
+  `panel_responded` 문자열 리터럴 비교 대신 전용 output 변수로 바꾸라는 제안과, `run-panel.sh`
+  의 `$WORK` 상대경로 비대칭 정렬 제안은 둘 다 실제 결함이 아닌 코스메틱 하드닝이라 이번
+  라운드엔 반영하지 않음(호출부가 전부 절대경로만 써 현재 안전). 신규 테스트: `test-run-panel.sh`
+  (j)(같은 `$WORK` 로 severe→정상 재실행 시 플래그·slot 잔재 모두 사라지는지),
+  `test-lib.sh`(unterminated PEM 이 경고 마커를 남기는지) — 전체 스위트 589 passed(+3),
+  기존 무관 17건 실패는 그대로.
+
 ## Consequences
 
 - 커버리지가 "리뷰어 다양화"에서 "리뷰어×관점 매트릭스"로 체계화 — 사각지대 감소.

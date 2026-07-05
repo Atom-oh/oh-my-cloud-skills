@@ -54,6 +54,14 @@ else
   pass "scrub_secrets redacts the full PEM body, not just the header"
 fi
 
+# 잘리거나 변조돼 END 줄이 없는 PEM 블록은 awk 상태기계가 skip=1 을 유지한 채 EOF 까지
+# 나머지 출력 전체를 삼킨다(fail-safe 방향이라 유출은 아니지만, 그 뒤에 있던 정상 finding
+# 이 통째로 사라진다는 사실 자체는 남겨야 한다 — 6차 리뷰 MINOR).
+UNTERM_OUT="$(printf -- '-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBsecretbase64body\nfinding after the truncated PEM block\n' | scrub_secrets)"
+printf '%s' "$UNTERM_OUT" | grep -qF "REDACTED-UNTERMINATED-PEM-BLOCK" \
+  && pass "scrub_secrets flags an unterminated PEM block instead of silently swallowing the rest" \
+  || fail "scrub_secrets flags an unterminated PEM block instead of silently swallowing the rest" "got: $UNTERM_OUT"
+
 # 오탐 방지 — 평범한 텍스트/코드 표현은 그대로 통과해야 리뷰 본문이 훼손되지 않는다.
 PLAIN="this diff adds a helper function and fixes a typo in the README"
 OUT="$(printf '%s\n' "$PLAIN" | scrub_secrets)"
