@@ -34,25 +34,38 @@ setup() { WORK=$(mktemp -d); BIN=$(mktemp -d); export PATH="$BIN:$PATH"
   echo "review L2 only" > "$WORK/lenses/L2.txt"
   echo "review L3 only" > "$WORK/lenses/L3.txt"; }
 
-# (a) 전원 응답: 2 lens x 4 모델 = 8 셀. codex 는 stdin 으로, kiro 는 prompt 인자로 diff 수신
-# — kiro-cli 는 stdin 을 읽지 않으므로 mock 도 ARGV 만 echo 해 인자 임베드 회귀를 잡는다.
+# (a) 전원 응답: 2 lens x 4 모델 = 8 셀. codex 는 diff 를 stdin 으로 받고, kiro 는 stdin 을
+# 읽지 않으므로 argv 의 fs_read 지시문에 있는 "경로"로 diff 파일을 가리킨다(텍스트 임베드
+# 아님 — ARG_MAX/ps 노출 회피, docs/decisions/ADR-011 참조). mock 도 ARGV 만 echo 해
+# 이 경로-지시 계약과, 텍스트 임베드로의 회귀(diff 내용이 다시 argv 에 그대로 실리는 것)를
+# 둘 다 검증한다.
 setup; mkfake codex 0 "codex-finding"; mkfake_args kiro-cli 0 "kiro-finding"
+DIFF_ABS="$(realpath "$WORK/diff.txt")"
 "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/dev/null 2>&1
-allok=1; diffok=1; lensok=1
+allok=1; codex_diffok=1; kiro_pathok=1; kiro_no_embedok=1; lensok=1
 for lens in L2 L3; do
   for f in "codex-$lens" "kiro-opus-$lens" "kiro-kimi-$lens" "kiro-glm-$lens"; do
     [ -s "$WORK/slot/$f.md" ] || allok=0
-    # diff 가 실제 전달됐는지 검증: codex=stdin, kiro=prompt 인자(KIRO_PROMPT 임베드).
-    # kiro mock 은 stdin 을 무시하므로, 인자에 diff 가 임베드돼야만 통과한다(blind-review 회귀 방지).
-    grep -q "diff --git" "$WORK/slot/$f.md" 2>/dev/null || diffok=0
+  done
+  # codex: diff 는 stdin 으로 도착 — 슬롯에 diff 내용이 그대로 보여야 한다.
+  grep -q "diff --git" "$WORK/slot/codex-$lens.md" 2>/dev/null || codex_diffok=0
+  for tag in kiro-opus kiro-kimi kiro-glm; do
+    # kiro: argv 에 실제 diff 파일의 절대경로가 fs_read 지시문으로 들어가야 한다.
+    grep -qF "fs_read from: $DIFF_ABS" "$WORK/slot/$tag-$lens.md" 2>/dev/null || kiro_pathok=0
+    # kiro: diff 내용 자체가 argv 에 그대로 embed 되면 안 된다(텍스트 임베드 회귀 가드).
+    grep -q "diff --git" "$WORK/slot/$tag-$lens.md" 2>/dev/null && kiro_no_embedok=0
   done
   # kiro 셀이 자기 lens 프롬프트를 받았는지(다른 lens 프롬프트가 섞여 들어가지 않는지) 확인.
   grep -q "review $lens only" "$WORK/slot/kiro-opus-$lens.md" 2>/dev/null || lensok=0
 done
 [ "$allok" = 1 ] && pass "run-panel (a) all 8 cells filled (2 lens x 4 models)" \
   || fail "run-panel (a) all 8 cells filled (2 lens x 4 models)" "a cell is empty"
-[ "$diffok" = 1 ] && pass "run-panel (a) diff reached every cell (codex=stdin, kiro=prompt arg)" \
-  || fail "run-panel (a) diff reached every cell (codex=stdin, kiro=prompt arg)" "a cell did not receive the diff"
+[ "$codex_diffok" = 1 ] && pass "run-panel (a) codex receives diff via stdin" \
+  || fail "run-panel (a) codex receives diff via stdin" "codex cell missing diff content"
+[ "$kiro_pathok" = 1 ] && pass "run-panel (a) kiro gets fs_read path to the diff file (no argv embed)" \
+  || fail "run-panel (a) kiro gets fs_read path to the diff file (no argv embed)" "fs_read path missing from argv"
+[ "$kiro_no_embedok" = 1 ] && pass "run-panel (a) kiro argv does NOT embed diff text (ARG_MAX regression guard)" \
+  || fail "run-panel (a) kiro argv does NOT embed diff text (ARG_MAX regression guard)" "diff content leaked into argv"
 [ "$lensok" = 1 ] && pass "run-panel (a) each cell got its own lens prompt (no cross-lens leak)" \
   || fail "run-panel (a) each cell got its own lens prompt (no cross-lens leak)" "lens prompt mismatch"
 [ "$(wc -l < "$WORK/responded.txt" 2>/dev/null || echo 0)" = 8 ] \

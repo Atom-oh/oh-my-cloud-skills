@@ -3,12 +3,14 @@
 # lenses_dir 안의 각 *.txt 가 lens 하나(파일명 stem = lens 태그, 예: L2/L3/L4/L5) —
 # 그 lens 전용 리뷰 프롬프트(자체 완결형: "이 lens만 봐"). 각 lens × 각 모델이
 # 독립 에이전트 셀 하나(design: docs/superpowers/specs/2026-07-05-pr-review-hybrid-lens-design.md).
-# diff 는 각 CLI 의 stdin 으로 `< "$DIFF"` 직접 리다이렉트(파일이라 TTY 아님 → no-hang),
-# timeout 백스톱 + 비대화형 플래그로 멈춤 방지. 셀이 비면 최대 PANEL_RETRIES 회 재시도
-# (gpt-5.5/bedrock-mantle 등 transient 흡수). 매 시도마다 $DIFF 를 다시 연다.
+# diff 전달 경로는 CLI 별로 다름: Codex 는 stdin(`< "$DIFF"` 직접 리다이렉트, 파일이라
+# TTY 아님 → no-hang); Kiro 는 stdin 을 무시하므로 `fs_read`로 파일 경로를 읽게 한다
+# (아래 Kiro 셀 주석 참조) — 어느 쪽도 diff 를 argv 텍스트로 embed 하지 않는다(ARG_MAX/
+# ps 노출 방지). timeout 백스톱 + 비대화형 플래그로 멈춤 방지. 셀이 비면 최대
+# PANEL_RETRIES 회 재시도(gpt-5.5/bedrock-mantle 등 transient 흡수). 매 시도마다 재실행.
 # 모든 셀(모델 수 × lens 수)이 병렬(&+wait) — 벽시계 ≈ 최슬로우 셀 하나, 순차합 아님.
 set -uo pipefail
-DIFF="$1"; LENSES_DIR="$2"; WORK="$3"
+DIFF="$(realpath "$1" 2>/dev/null || echo "$1")"; LENSES_DIR="$2"; WORK="$3"
 DIR="$(cd "$(dirname "$0")" && pwd)"; . "$DIR/lib.sh"
 ensure_slots "$WORK"
 SLOT="$WORK/slot"; RESP="$WORK/responded.txt"; : > "$RESP"
@@ -50,20 +52,19 @@ for lens_file in "${LENS_FILES[@]}"; do
   else echo "[skip] codex/$lens (binary absent)" >&2; : > "$SLOT/codex-$lens.md"; fi
 
   # Kiro x3 셀 — model:tag 를 한 배열에서 파생(호출/집계 동기화). Kiro's non-interactive
-  # `chat` reads ONLY the prompt arg — it ignores the stdin `< "$DIFF"` redirect, so
-  # without this embed the Kiro cells review blind (fall back to scanning the whole
-  # repo). Codex DOES read the diff from stdin, and a large inline arg times it out —
-  # so we embed for Kiro only and keep Codex on stdin.
-  KIRO_PROMPT="$LENS_PROMPT
-
---- DIFF UNDER REVIEW (review THIS diff only; do not scan the wider repo) ---
-$(cat "$DIFF")"
+  # `chat` reads ONLY the prompt arg — it ignores stdin, so the diff must reach it via
+  # `fs_read` from a file path in argv, NOT embedded as text: embedding risks the
+  # single-argv 128KiB exec limit (a 3000-line diff only needs ~43B/line to exceed it)
+  # and leaks the full diff into `ps` output. Same fs_read pattern already established
+  # in plugins/co-agent/skills/co-agent/references/ai-cli-adapters.md — `--trust-tools=
+  # read,grep` (previous revision) is invalid; the real read-only tool name is `fs_read`.
+  KIRO_INSTRUCTION="$LENS_PROMPT"$'\n\n'"Read the diff under review with fs_read from: $DIFF (review THIS diff only; do not scan the wider repo)"
   for entry in "${KIRO_MODELS[@]}"; do
     m="${entry%%:*}"; tag="${entry##*:}"
     if command -v kiro-cli >/dev/null 2>&1; then
       ( try_panel "$SLOT/$tag-$lens.md" "$SLOT/$tag-$lens.err" \
-          timeout "$T" kiro-cli chat "$KIRO_PROMPT" --model "$m" \
-          --no-interactive --trust-tools=read,grep --wrap never ) &
+          timeout "$T" kiro-cli chat "$KIRO_INSTRUCTION" --model "$m" \
+          --v3 --mode default --no-interactive --trust-tools=fs_read --wrap never ) &
     else echo "[skip] $tag/$lens (binary absent)" >&2; : > "$SLOT/$tag-$lens.md"; fi
   done
 done

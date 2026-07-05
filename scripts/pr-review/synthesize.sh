@@ -8,22 +8,32 @@ RESP="$(tr '\n' ',' < "$WORK/responded.txt" 2>/dev/null | sed 's/,$//')"
 
 # 패널 출력 합본. 파일명 컨벤션 = <모델>-<lens>.md (예: kiro-opus-L3.md) — 체어가
 # 그 태그로 lens별 그룹핑/합의-이견 판정을 하도록 헤더에 그대로 노출.
+# 셀당 바이트 캡(belt-and-braces) — 매트릭스가 4→16 출력으로 늘어난 뒤에도 체어 입력을
+# 유한하게 유지(폭주한 셀 하나가 체어 컨텍스트/처리시간을 지배하지 않도록).
+PANEL_CELL_CAP="${PANEL_CELL_CAP:-20000}"
 PANEL=""
 for f in "$SLOT"/*.md; do
   [ -s "$f" ] || continue
   PANEL+="
 
 === 패널: $(basename "$f" .md) ===
-$(cat "$f")"
+$(head -c "$PANEL_CELL_CAP" "$f")"
 done
 
+# 지시문(고정, argv 로 전달 — 아래 run_chair 참조)은 diff/패널 내용을 절대 포함하지 않는다.
+# diff+패널은 stdin 파일로 별도 전달(§ 아래) — argv 에 실으면 Linux 의 단일 인자
+# 128KiB 하드 리밋(ARG_MAX 의 일부, exec 시 즉시 실패)에 걸릴 수 있다. 매트릭스 도입
+# 전(4개 출력)엔 셀당 ~31KB 는 돼야 터졌지만, 16개 출력에서는 셀당 평균 ~8KB 만 넘어도
+# 초과한다 — 리뷰가 상세할수록(=출력이 길수록) exec 자체가 실패해 "빈 응답"으로 귀결되고
+# fail-closed 로 PR이 차단되는 역설을 방지한다.
 cat > "$WORK/synth-prompt.txt" <<PROMPT_EOF
 You are the CHAIR reviewing PR #${PR_NUMBER}: ${PR_TITLE}.
 Read CLAUDE.md + AGENTS.md for project context.
-Below are independent panel reviews of the diff, one per (model, lens) cell —
-filename = <model>-<lens>.md. Lenses: L2=Skill/Agent 품질, L3=보안,
-L4=코드 정확성, L5=문서 일관성 (L1=매니페스트/버전 정합은 이미 결정적 스크립트로
-통과했으므로 재검토 불필요 — 다시 flag 하지 말 것).
+The diff and independent panel reviews are provided via stdin, under the
+"=== DIFF UNDER REVIEW ===" and "=== PANEL REVIEWS ===" markers respectively.
+One review per (model, lens) cell — filename = <model>-<lens>.md. Lenses:
+L2=Skill/Agent 품질, L3=보안, L4=코드 정확성, L5=문서 일관성 (L1=매니페스트/버전
+정합은 이미 결정적 스크립트로 통과했으므로 재검토 불필요 — 다시 flag 하지 말 것).
 패널: ${RESP}
 
 Synthesize ONE final review, grouped by lens (L2/L3/L4/L5):
@@ -48,13 +58,17 @@ IMPORTANT: 마지막 줄은 정확히 하나:
   VERDICT: PASS
   VERDICT: FAIL
 CRITICAL/MAJOR 있으면 FAIL, 아니면 PASS.
-
-=== PANEL REVIEWS ===
 PROMPT_EOF
 
-# 패널 원문(${PANEL})은 heredoc 밖에서 append: 패널 출력에 'PROMPT_EOF' 단독 라인이
-# 있어도 heredoc 가 조기 종료되지 않도록.
-printf '%s\n' "$PANEL" >> "$WORK/synth-prompt.txt"
+# stdin 페이로드: diff + 패널 리뷰. 여기는 heredoc 이 아니라 순수 파일 결합이라
+# 패널 출력 안의 임의 텍스트(예: 'PROMPT_EOF' 단독 라인)가 조기 종료를 유발할 걱정이 없다.
+{
+  echo "=== DIFF UNDER REVIEW ==="
+  cat "$DIFF"
+  echo ""
+  echo "=== PANEL REVIEWS ==="
+  printf '%s\n' "$PANEL"
+} > "$WORK/synth-stdin.txt"
 
 # ── 의장 종합: primary(Fable 5) 시도 → 저하 시 Opus 폴백 ──────────────────
 # Fable 상태가 나쁠 때(연결 거부/행/빈 응답)에도 리뷰가 나오도록 폴백.
@@ -73,9 +87,10 @@ chair_label() { case "$1" in
 esac ; }
 
 run_chair() {  # $1=model → "$OUT" 에 기록. claude 실패해도 || true 로 계속.
+  # argv(-p) 는 고정 지시문만(작고 상한 없음) — diff+패널(가변, 큼)은 stdin.
   ANTHROPIC_MODEL="$1" timeout "$CHAIR_TIMEOUT" \
     claude -p "$(cat "$WORK/synth-prompt.txt")" --output-format text \
-    < "$DIFF" > "$OUT" 2>"$WORK/chair.err" || true
+    < "$WORK/synth-stdin.txt" > "$OUT" 2>"$WORK/chair.err" || true
 }
 
 # 저하 판정: 빈 응답 | VERDICT 라인 없음. (ConnectionRefused·타임아웃·행 모두
