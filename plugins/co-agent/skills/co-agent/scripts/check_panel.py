@@ -141,7 +141,15 @@ def probe(peer, timeout=90, nonce="STATIC"):
     sentinel = f"COAGENT_PROBE_{nonce}"
     spec = ADAPTERS[peer]
     if spec["channel"] == "stdin":
-        prompt = "Read the single token provided on stdin and reply with exactly that token, nothing else."
+        # Wording matters here, not just for agy's UX — "read ... on/from stdin" phrases the
+        # instruction as an explicit read-action on stdin. agy's agent then appears to try to
+        # actually invoke a second, literal read of stdin as a tool call; that second read hits
+        # an already-fully-consumed pipe (communicate() already wrote+closed it) and hangs to the
+        # full timeout every time (reproduced 7/7, deterministic, independent of stdin content —
+        # confirmed via direct agy invocation outside this probe). Rephrasing as "the text you
+        # received via stdin" (preposition, not a read-verb object) reproduced READY 3/3 with no
+        # code change elsewhere. codex is unaffected either way (verified) — this covers both.
+        prompt = "Reply with exactly the text you received via stdin, and nothing else."
         argv = [a.replace("{P}", prompt) for a in spec["argv"]]
         stdin_data = sentinel + "\n"
     else:  # argv
