@@ -322,6 +322,30 @@ else
 fi
 rm -rf "$BASE" "$BIN"
 
+# (m) panel_config.py 로 kiro-glm 을 비활성화하면 그 셀이 전혀 생성되지 않고, 의도적
+# 비활성화가 (f)의 "장애로 인한 degraded" 와 혼동되지 않아야 한다(panel_config.py 도입 —
+# co-agent 의 co_agent_config.py 패턴을 매트릭스 멤버십에 적용).
+setup; mkfake codex 0 "codex-finding"; mkfake_args kiro-cli 0 "kiro-finding"
+CFG_ROOT=$(mktemp -d)
+python3 scripts/pr-review/panel_config.py set kiro-glm enabled false --root "$CFG_ROOT" >/dev/null 2>&1
+LOG=$(mktemp)
+if ! PR_REVIEW_CONFIG_ROOT="$CFG_ROOT" "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >"$LOG" 2>&1; then
+  fail "run-panel (m) script exits 0 with kiro-glm disabled via config" "exited non-zero"
+fi
+{ [ ! -e "$WORK/slot/kiro-glm-L2.md" ] && [ ! -e "$WORK/slot/kiro-glm-L3.md" ]; } \
+  && pass "run-panel (m) a config-disabled cell (kiro-glm) produces no slot files at all" \
+  || fail "run-panel (m) a config-disabled cell (kiro-glm) produces no slot files at all" "kiro-glm slot file exists despite being disabled"
+[ "$(wc -l < "$WORK/responded.txt" 2>/dev/null || echo 0)" = 6 ] \
+  && pass "run-panel (m) responded=6 (2 lens x 3 enabled models, not 4)" \
+  || fail "run-panel (m) responded=6 (2 lens x 3 enabled models, not 4)" "got $(wc -l < "$WORK/responded.txt" 2>/dev/null)"
+grep -q "^kiro-glm$" "$WORK/degraded-models.txt" 2>/dev/null \
+  && fail "run-panel (m) a config-disabled cell is NOT listed in degraded-models.txt" "intentional disable was flagged as degraded" \
+  || pass "run-panel (m) a config-disabled cell is NOT listed in degraded-models.txt"
+[ -f "$WORK/coverage-severe.flag" ] \
+  && fail "run-panel (m) coverage-severe.flag is NOT set from an intentional single-cell disable" "flag set despite 3/3 remaining vendors responding" \
+  || pass "run-panel (m) coverage-severe.flag is NOT set from an intentional single-cell disable"
+rm -rf "$CFG_ROOT" "$LOG"
+
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then
   [ "$_t_fail" = 0 ] && echo "PASS: test-run-panel" || exit 1

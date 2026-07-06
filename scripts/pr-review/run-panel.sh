@@ -37,7 +37,13 @@ SLOT="$WORK/slot"; RESP="$WORK/responded.txt"; : > "$RESP"
 rm -f "$WORK/coverage-severe.flag"
 T="${PANEL_TIMEOUT:-300}"
 RETRIES="${PANEL_RETRIES:-3}"
-KIRO_MODELS=("claude-opus-4.8:kiro-opus" "kimi-k2.5:kiro-kimi" "glm-5:kiro-glm")
+# 매트릭스 멤버십(어떤 셀이 참여하는가)은 하드코딩이 아니라 panel_config.py 설정에서 온다 —
+# co-agent 의 co_agent_config.py 패턴(defaults.json + gitignored local override)과 동일
+# 레이어링. 코드 수정 없이 `panel_config.py set <cell> enabled false`로 매트릭스를 줄일 수
+# 있다(민감 diff에서 외부 Kiro 를 끄는 것 등 — docs/ci-pr-review.md "민감 diff 정책").
+CFG="$DIR/panel_config.py"
+mapfile -t KIRO_MODELS < <(python3 "$CFG" kiro-cells)
+CODEX_ENABLED=0; python3 "$CFG" codex-enabled && CODEX_ENABLED=1
 
 shopt -s nullglob
 LENS_FILES=("$LENSES_DIR"/*.txt)
@@ -89,11 +95,11 @@ for lens_file in "${LENS_FILES[@]}"; do
   # Codex 셀 (Bedrock, config.toml). --skip-git-repo-check 필수. AWS_REGION 강제:
   # gpt-5.5(bedrock-mantle)는 In-Region(us-east-1) 만 지원 — 잡 region 무관하게 고정.
   # diff 는 stdin.
-  if command -v codex >/dev/null 2>&1; then
+  if [ "$CODEX_ENABLED" = 1 ] && command -v codex >/dev/null 2>&1; then
     ( try_panel "$SLOT/codex-$lens.md" "$SLOT/codex-$lens.err" \
         env AWS_REGION="${CODEX_AWS_REGION:-us-east-1}" AWS_DEFAULT_REGION="${CODEX_AWS_REGION:-us-east-1}" \
         timeout "$T" codex exec -s read-only --skip-git-repo-check "$LENS_PROMPT" ) &
-  else echo "[skip] codex/$lens (binary absent)" >&2; : > "$SLOT/codex-$lens.md"; fi
+  else echo "[skip] codex/$lens (disabled or binary absent)" >&2; : > "$SLOT/codex-$lens.md"; fi
 
   # Kiro x3 셀 — model:tag 를 한 배열에서 파생(호출/집계 동기화). Kiro's non-interactive
   # `chat` reads ONLY the prompt arg — it ignores stdin, so the diff must reach it via
@@ -117,24 +123,32 @@ done
 # 이라 헤드리스 CI 에서 인증 불가. 패널 = Codex + Kiro x3 → Claude 의장.
 wait
 
+# ALL_TAGS = 이번 실행에서 실제로 "기대되는" 모델 태그 전체(codex는 설정으로 켜져 있을
+# 때만 포함) — 설정으로 뺀 모델을 "장애"로 오인해 아래 커버리지 floor 를 오발동시키지
+# 않기 위함. 의도적 비활성화 ≠ degraded.
+ALL_TAGS=()
+[ "$CODEX_ENABLED" = 1 ] && ALL_TAGS+=(codex)
+ALL_TAGS+=("${KIRO_MODELS[@]##*:}")
+
 # 결과 집계 (KIRO_MODELS·LENS_FILES 와 동일 소스에서 태그 파생 → 하드코딩 불일치 방지)
 for lens_file in "${LENS_FILES[@]}"; do
   lens="$(basename "$lens_file" .txt)"
-  record_result "$SLOT/codex-$lens.md" "codex/$lens" "$RESP"
+  [ "$CODEX_ENABLED" = 1 ] && record_result "$SLOT/codex-$lens.md" "codex/$lens" "$RESP"
   for entry in "${KIRO_MODELS[@]}"; do
     tag="${entry##*:}"; record_result "$SLOT/$tag-$lens.md" "$tag/$lens" "$RESP"
   done
 done
-echo "Panel responded ($(wc -l < "$RESP") / $(( (${#KIRO_MODELS[@]} + 1) * ${#LENS_FILES[@]} )) cells): $(tr '\n' ' ' < "$RESP")"
+echo "Panel responded ($(wc -l < "$RESP") / $(( ${#ALL_TAGS[@]} * ${#LENS_FILES[@]} )) cells): $(tr '\n' ' ' < "$RESP")"
 
 # 커버리지 floor — 모델 하나(플래그 무효화/바이너리 부재/전면 인증 실패 등)가 lens 전부에서
 # 응답 없으면, 매트릭스가 조용히 그 모델 없이 축소된 채 VERDICT: PASS 로 이어질 수 있다
 # (예: kiro-cli 신규 플래그(`--v3 --mode default --trust-tools=fs_read`)가 이 러너에서
 # 무효면 Kiro 12셀 전부 graceful skip → 실질 4셀짜리 리뷰인데 코멘트만 봐선 눈에 안 띌 수
 # 있음). 모델별 row 가 완전히 비면 경고 + synthesize.sh 가 리뷰 본문에 명시하도록 파일로 전달.
-TOTAL_MODELS=$(( ${#KIRO_MODELS[@]} + 1 ))
+# ALL_TAGS(설정으로 활성화된 모델만) 기준이라, 설정으로 끈 모델은 이 루프에 애초에 없다.
+TOTAL_MODELS=${#ALL_TAGS[@]}
 : > "$WORK/degraded-models.txt"
-for model_tag in codex "${KIRO_MODELS[@]##*:}"; do
+for model_tag in "${ALL_TAGS[@]}"; do
   # grep -c 는 매치가 0건이어도 "0"을 찍고 exit 1 한다(매치 없음 = grep 관점의 "실패") —
   # `|| echo 0` 폴백을 붙이면 그 "0" 뒤에 폴백의 "0"이 또 붙어 "0\n0"이 되는 회귀가
   # 실제로 있었다(test (f)에서 잡힘). $RESP 는 run-panel.sh 시작부에 항상 만들어지므로

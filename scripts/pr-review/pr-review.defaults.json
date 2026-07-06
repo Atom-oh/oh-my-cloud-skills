@@ -1,0 +1,9 @@
+{
+  "_comment": "pr-review lens×model matrix defaults. Disabling a cell removes it from every lens (matrix = lens × enabled cells). See scripts/pr-review/panel_config.py.",
+  "panel": {
+    "codex":     { "enabled": true },
+    "kiro-opus": { "enabled": true, "model": "claude-opus-4.8" },
+    "kiro-kimi": { "enabled": true, "model": "kimi-k2.5" },
+    "kiro-glm":  { "enabled": true, "model": "glm-5" }
+  }
+}

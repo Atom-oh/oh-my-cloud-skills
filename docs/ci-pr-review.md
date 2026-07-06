@@ -39,6 +39,22 @@
     멤버(Codex)만으로 리뷰할 것. (public 마켓플레이스라 diff는 머지 시 공개 → 현재 accepted-risk;
     private fork 시 강제 skip 게이트 필요 — ADR-009.)
 
+## 설정 — 매트릭스 멤버십 (`scripts/pr-review/panel_config.py`)
+- 어떤 셀(codex/kiro-opus/kiro-kimi/kiro-glm)이 매트릭스에 참여하는지는
+  `scripts/pr-review/run-panel.sh` 하드코딩이 아니라 설정에서 온다 — co-agent 플러그인의
+  `co_agent_config.py`(defaults.json + gitignored local override)와 같은 레이어링을
+  `scripts/pr-review/pr-review.defaults.json`(committed) + `.claude/pr-review.local.json`
+  (gitignored, repo-local override)로 재사용. pr-review는 CI에서만 도는 레포 전용 설정이라
+  co-agent의 user-scope(`~/.claude/co-agent.user.json`) 레이어는 없음 — 2계층뿐.
+- `panel_config.py show` — effective 설정 표. `panel_config.py set <cell> enabled
+  <true|false>` — 코드 수정 없이 매트릭스에서 셀을 빼거나 넣음(예: 위 "민감 diff 정책"으로
+  Kiro 3개를 전부 끄거나, 계속 flaky한 모델 하나만 뺄 때). `panel_config.py set <cell> model
+  <name>` — kiro-\* 전용(codex는 `~/.codex/config.toml`로 고정이라 model 키 없음).
+- 매트릭스 멤버십은 설정값이지만 **lens(L2~L5) 4개는 설정이 아니라 워크플로에 고정된
+  콘텐츠** — 리뷰 관점 정의이지 on/off 튜닝 대상이 아니다.
+- 셀을 끄면 커버리지 floor 로직도 그 셀을 "기대되는 모델"에서 제외한다 — 의도적 비활성화가
+  degraded/severe 경고로 오인되지 않음(`run-panel.sh`의 `ALL_TAGS`/`CODEX_ENABLED`).
+
 ## 파일
 - `.github/workflows/pr-review.yml` — `pull_request_target`(base-ref 체크아웃, diff는 데이터),
   L1 게이트→(pass 시) lens 프롬프트 생성→매트릭스 fan-out→synthesize→게이트→코멘트 upsert

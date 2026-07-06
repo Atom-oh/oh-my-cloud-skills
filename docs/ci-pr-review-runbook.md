@@ -41,3 +41,7 @@ PR을 열면 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 L1(결정
   리전 불일치, credentials 에러 = Pod Identity 누락 등).
 - 한 모델이 통째로 빠져도(예: kiro-cli 바이너리 부재) 그 모델의 4개 lens 셀만 비고, 다른 모델이
   같은 lens 를 계속 커버 — lens 전체가 사라지는 단일 장애점은 없음.
+- 특정 모델이 바이너리 부재가 아니라 **계속 flaky**하면(간헐 응답이 아니라 지속적으로
+  degraded), 코드 수정 없이 `python3 scripts/pr-review/panel_config.py set <cell> enabled
+  false --root .` 로 매트릭스에서 빼고 재실행 — `panel_config.py show` 로 현재 매트릭스
+  멤버십 확인 (`docs/ci-pr-review.md` "설정" 절).
