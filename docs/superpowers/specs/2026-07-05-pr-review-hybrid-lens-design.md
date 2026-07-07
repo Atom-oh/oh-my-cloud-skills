@@ -1,10 +1,15 @@
 # CI PR Review — Hybrid Lens Gate 재설계
 
-**Status:** Proposed (2026-07-05) — pending user review, 구현 전 설계안
+**Status:** Historical — 구현됨(PR #103/#104, ADR-011).이 문서의 모델 로스터/플래그
+표기(예: Kiro `kimi-k2.5`, `--v3 --mode default --trust-tools=fs_read`)는 설계 당시
+스냅샷이며 이후 갱신되지 않는다. **현행 live 값은 `docs/ci-pr-review.md`/runbook·
+`scripts/pr-review/run-panel.sh`를 source of truth로 볼 것** (로스터는 ADR-012에서
+`gpt-5.5`로, `--v3`는 같은 ADR에서 제거됨).
 **Date:** 2026-07-05
 **Author:** Junseok Oh (with Claude)
 **Scope:** `.github/workflows/pr-review.yml` + `scripts/pr-review/*`
-**관련 문서:** ADR-009(현행 패널), `docs/ci-pr-review.md`, `plugins/co-agent/skills/co-agent/references/hybrid-gate.md`
+**관련 문서:** ADR-009(현행 패널), ADR-011(이 설계의 매트릭스), ADR-012(로스터 교체),
+`docs/ci-pr-review.md`, `plugins/co-agent/skills/co-agent/references/hybrid-gate.md`
 
 ## 1. Summary
 
