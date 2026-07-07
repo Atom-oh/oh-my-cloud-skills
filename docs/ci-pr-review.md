@@ -19,10 +19,13 @@
   -delete`) — 검증기가 트리 밖 경로를 따라갈 여지를 없애는 defense-in-depth.
 
 ## L2–L5 — Lens×Model 매트릭스 (L1 통과 시에만 실행)
-- **매트릭스**: 4 모델(Codex `openai.gpt-5.5` + Kiro `claude-opus-4.8`/`kimi-k2.5`/`glm-5`) ×
+- **매트릭스**: 4 모델(Codex `openai.gpt-5.5` + Kiro `claude-opus-4.8`/`gpt-5.5`/`glm-5`) ×
   4 lens(L2=Skill/Agent 품질, L3=보안, L4=코드 정확성, L5=문서 일관성) = **16개 독립 find
   에이전트**, 전부 병렬(`&`+`wait`) — 벽시계 ≈ 최슬로우 셀 하나(순차합 아님). 각 셀은 자기 lens
-  하나만 리뷰(스코프 축소로 셀당 응답도 짧아짐).
+  하나만 리뷰(스코프 축소로 셀당 응답도 짧아짐). (`kimi-k2.5` → `gpt-5.5`: 프로덕션 CI에서
+  `kiro-kimi`가 전체 lens 무응답으로 2/2회 저하됐고, PR 리뷰에서도 근거 없는 지적(할루시네이션
+  포함) 7건이 유일하게 이 모델에서만 나와 교체 — `kiro-glm`/`kiro-opus`/`codex`는 같은 조사에서
+  0건.)
 - **Antigravity(`agy`)는 매트릭스 미포함** — OAuth 인터랙티브 로그인 전용이라 헤드리스 CI에서
   인증 불가(ADR-010).
 - **의장**: Claude Fable 5(`us.anthropic.claude-fable-5`)가 16개 셀 findings를 lens 별로 종합해
