@@ -97,3 +97,99 @@ assert_eq "False" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent
 DP_OK=$(mktemp -d "${TMPDIR:-/tmp}/coagent-po.XXXXXX"); mkdir -p "$DP_OK/codex-plugin-cc"
 assert_eq "True" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_OK'))" 2>&1)" "#3: exact codex-plugin-cc dir matches"
 rm -rf "$DP_FORK" "$DP_OK"
+
+# #4: real installs name the on-disk marketplace dir after marketplace.json's own "name"
+# field ("openai-codex"), not the git repo's name ("codex-plugin-cc") -- the #3 dir-name-
+# only match silently missed this and kept prompting to (re)install an already-installed
+# plugin. detect_plugin must also recognize a marketplace.json that declares a plugin entry
+# named after the peer ("codex"), regardless of what the marketplace directory is called.
+DP_MP=$(mktemp -d "${TMPDIR:-/tmp}/coagent-pm.XXXXXX")
+mkdir -p "$DP_MP/marketplaces/openai-codex/.claude-plugin" "$DP_MP/marketplaces/openai-codex/plugins/codex"
+cat > "$DP_MP/marketplaces/openai-codex/.claude-plugin/marketplace.json" <<'EOF'
+{"name": "openai-codex", "plugins": [{"name": "codex", "source": "./plugins/codex"}]}
+EOF
+assert_eq "True" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_MP'))" 2>&1)" "#4: marketplace.json declaring a 'codex' plugin entry matches, regardless of directory name"
+# a marketplace that happens to be installed but does NOT declare a "codex" plugin entry
+# must not false-positive just because *some* marketplace.json exists under plugins_root.
+DP_MP_OTHER=$(mktemp -d "${TMPDIR:-/tmp}/coagent-pmo.XXXXXX")
+mkdir -p "$DP_MP_OTHER/marketplaces/some-other/.claude-plugin"
+cat > "$DP_MP_OTHER/marketplaces/some-other/.claude-plugin/marketplace.json" <<'EOF'
+{"name": "some-other", "plugins": [{"name": "unrelated-tool", "source": "./plugins/unrelated-tool"}]}
+EOF
+assert_eq "False" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_MP_OTHER'))" 2>&1)" "#4: an unrelated marketplace.json does NOT false-positive"
+rm -rf "$DP_MP" "$DP_MP_OTHER"
+
+# #5 (review round on PR #110): a marketplace.json declaring a "codex" entry whose "source"
+# directory does NOT exist on disk must NOT count as installed -- a bare entry name is not
+# proof of an actual install (leftover/partial metadata).
+DP_MP_NOSRC=$(mktemp -d "${TMPDIR:-/tmp}/coagent-pmns.XXXXXX")
+mkdir -p "$DP_MP_NOSRC/marketplaces/openai-codex/.claude-plugin"
+cat > "$DP_MP_NOSRC/marketplaces/openai-codex/.claude-plugin/marketplace.json" <<'EOF'
+{"name": "openai-codex", "plugins": [{"name": "codex", "source": "./plugins/codex"}]}
+EOF
+assert_eq "False" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_MP_NOSRC'))" 2>&1)" "#5: entry name match without an existing source dir does NOT count as installed"
+rm -rf "$DP_MP_NOSRC"
+
+# #6 (review round on PR #110): a marketplace.json with the right shape elsewhere on the walk
+# but a malformed one (wrong top-level type, non-dict entry) alongside it must not crash the
+# whole probe -- one bad file must not take down detection of a genuinely-installed peer.
+DP_MP_BAD=$(mktemp -d "${TMPDIR:-/tmp}/coagent-pmbad.XXXXXX")
+mkdir -p "$DP_MP_BAD/marketplaces/broken-list/.claude-plugin" "$DP_MP_BAD/marketplaces/broken-entry/.claude-plugin" "$DP_MP_BAD/marketplaces/openai-codex/.claude-plugin" "$DP_MP_BAD/marketplaces/openai-codex/plugins/codex"
+echo '["not", "a", "dict"]' > "$DP_MP_BAD/marketplaces/broken-list/.claude-plugin/marketplace.json"
+echo '{"name": "broken-entry", "plugins": ["not-a-dict-entry"]}' > "$DP_MP_BAD/marketplaces/broken-entry/.claude-plugin/marketplace.json"
+cat > "$DP_MP_BAD/marketplaces/openai-codex/.claude-plugin/marketplace.json" <<'EOF'
+{"name": "openai-codex", "plugins": [{"name": "codex", "source": "./plugins/codex"}]}
+EOF
+assert_eq "True" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_MP_BAD'))" 2>&1)" "#6: a malformed marketplace.json elsewhere in the walk does not crash detection of a real install"
+rm -rf "$DP_MP_BAD"
+
+# #7 (review round on PR #110): a "plugins" value that is a non-list scalar (e.g. a bare
+# number) must not crash -- `data.get("plugins") or []` previously let a truthy scalar like 5
+# through, and `for entry in 5` raises TypeError.
+DP_MP_SCALAR=$(mktemp -d "${TMPDIR:-/tmp}/coagent-pmscalar.XXXXXX")
+mkdir -p "$DP_MP_SCALAR/marketplaces/openai-codex/.claude-plugin"
+echo '{"name": "openai-codex", "plugins": 5}' > "$DP_MP_SCALAR/marketplaces/openai-codex/.claude-plugin/marketplace.json"
+assert_eq "False" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_MP_SCALAR'))" 2>&1)" "#7: a non-list 'plugins' scalar is skipped, not crashed on"
+rm -rf "$DP_MP_SCALAR"
+
+# #8 (review round on PR #110): a matching entry whose "source" is the object-form Claude
+# Code marketplaces legitimately use for git-hosted plugins (a dict, not a string) must not
+# crash -- os.path.join(root, <dict>) raises TypeError.
+DP_MP_OBJSRC=$(mktemp -d "${TMPDIR:-/tmp}/coagent-pmobjsrc.XXXXXX")
+mkdir -p "$DP_MP_OBJSRC/marketplaces/openai-codex/.claude-plugin"
+cat > "$DP_MP_OBJSRC/marketplaces/openai-codex/.claude-plugin/marketplace.json" <<'EOF'
+{"name": "openai-codex", "plugins": [{"name": "codex", "source": {"source": "github", "repo": "openai/codex-plugin-cc"}}]}
+EOF
+assert_eq "False" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_MP_OBJSRC'))" 2>&1)" "#8: an object-form (dict) source is skipped, not crashed on"
+rm -rf "$DP_MP_OBJSRC"
+
+# #9 (review round on PR #110): non-UTF-8 bytes in marketplace.json must not crash -- json.load's
+# internal read() raises UnicodeDecodeError (a ValueError *sibling* of json.JSONDecodeError, not
+# a subclass), which the original `except (OSError, json.JSONDecodeError)` did not catch.
+DP_MP_BADENC=$(mktemp -d "${TMPDIR:-/tmp}/coagent-pmbadenc.XXXXXX")
+mkdir -p "$DP_MP_BADENC/marketplaces/openai-codex/.claude-plugin"
+printf '\xff\xfe{"name": "openai-codex"}' > "$DP_MP_BADENC/marketplaces/openai-codex/.claude-plugin/marketplace.json"
+assert_eq "False" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_MP_BADENC'))" 2>&1)" "#9: non-UTF-8 bytes in marketplace.json are skipped, not crashed on"
+rm -rf "$DP_MP_BADENC"
+
+# #10 (review round on PR #110): an absolute-path "source" must not escape marketplace_root --
+# os.path.join(root, "/") discards root entirely and os.path.isdir("/") is trivially True, which
+# would false-positive "installed" for ANY absolute source regardless of what it points to.
+DP_MP_ABSSRC=$(mktemp -d "${TMPDIR:-/tmp}/coagent-pmabssrc.XXXXXX")
+mkdir -p "$DP_MP_ABSSRC/marketplaces/openai-codex/.claude-plugin"
+cat > "$DP_MP_ABSSRC/marketplaces/openai-codex/.claude-plugin/marketplace.json" <<'EOF'
+{"name": "openai-codex", "plugins": [{"name": "codex", "source": "/"}]}
+EOF
+assert_eq "False" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_MP_ABSSRC'))" 2>&1)" "#10: an absolute-path source escaping marketplace_root does NOT count as installed"
+rm -rf "$DP_MP_ABSSRC"
+
+# #11 (review round on PR #110): a fork or unrelated marketplace that happens to declare its own
+# "codex"-named entry (with a real, existing source dir) must NOT count as the official install --
+# entry name alone is spoofable; the marketplace's own "name" must match the known official one.
+DP_MP_FORKMP=$(mktemp -d "${TMPDIR:-/tmp}/coagent-pmforkmp.XXXXXX")
+mkdir -p "$DP_MP_FORKMP/marketplaces/some-fork/.claude-plugin" "$DP_MP_FORKMP/marketplaces/some-fork/plugins/codex"
+cat > "$DP_MP_FORKMP/marketplaces/some-fork/.claude-plugin/marketplace.json" <<'EOF'
+{"name": "some-fork", "plugins": [{"name": "codex", "source": "./plugins/codex"}]}
+EOF
+assert_eq "False" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_MP_FORKMP'))" 2>&1)" "#11: a matching entry name in an unrelated marketplace (wrong marketplace 'name') does NOT count as installed"
+rm -rf "$DP_MP_FORKMP"
