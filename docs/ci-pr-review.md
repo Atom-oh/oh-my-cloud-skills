@@ -79,11 +79,13 @@
     `actions/checkout@v4`의 기본 동작(`clean: true` → `git clean -ffdx`)이 매 run마다
     지운다. 이 워크플로가 실행되는 self-hosted 러너에 **git 워크스페이스 밖의, job 간
     유지되는 경로**가 있다면(예: 별도 마운트된 볼륨 — **이 repo의 현재 러너에서 그런 경로가
-    실제로 존재/유지되는지는 확인되지 않음**), 그 경로에 override 파일을 직접 두고
-    `PR_REVIEW_CONFIG_ROOT` 를 이 워크플로의 job `env:` 에 그 경로로 지정하면
-    `panel_config.py`(`resolve_root()`)가 그 경로를 읽는다 — 코드 지원은 이미 있음
-    (`scripts/pr-review/run-panel.sh`가 이미 이 env var 를 최우선으로 존중). 이 경로를 쓰려면
-    먼저 그 러너에 실제 영구 경로가 있는지 인프라 담당자가 확인해야 한다.
+    실제로 존재/유지되는지는 확인되지 않음**), 그 경로(예: `/persist`)를
+    `PR_REVIEW_CONFIG_ROOT` 로 이 워크플로의 job `env:` 에 지정하고, override 파일은
+    그 경로가 아니라 **`<그 경로>/.claude/pr-review.local.json`**(`panel_config.py`의
+    `local_path()`가 `<root>/.claude/pr-review.local.json`을 읽는다 — root 자체가 파일
+    경로가 아님)에 둘 것. 코드 지원은 이미 있음(`scripts/pr-review/run-panel.sh`가 이미 이
+    env var 를 최우선으로 존중). 이 경로를 쓰려면 먼저 그 러너에 실제 영구 경로가 있는지
+    인프라 담당자가 확인해야 한다.
 - 셀을 끄면 커버리지 floor 로직도 그 셀을 "기대되는 모델"에서 제외한다 — 의도적 비활성화가
   degraded/severe 경고로 오인되지 않음(`run-panel.sh`의 `ALL_TAGS`/`CODEX_ENABLED`).
 
