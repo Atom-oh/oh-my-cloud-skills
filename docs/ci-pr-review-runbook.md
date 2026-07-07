@@ -49,8 +49,11 @@ PR을 열면 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 L1(결정
 - 러너 로그의 `[<model>/<lens>] skipped; stderr` 블록에서 원인 확인(404 Engine not found = 모델/
   리전 불일치, credentials 에러 = Pod Identity 누락 등).
 - 한 모델이 통째로 빠져도(예: kiro-cli 바이너리 부재) 그 모델의 4개 lens 셀만 비고, 다른 모델이
-  같은 lens 를 계속 커버 — lens 전체가 사라지는 단일 장애점은 없음.
+  같은 lens 를 계속 커버 — lens 전체가 사라지는 단일 장애점은 없음(**기본 활성 로스터
+  기준** — "민감 diff 정책"으로 Kiro 3개를 전부 끈 codex-only 구성에선 codex 가 곧 유일한
+  벤더이므로 이 불변식이 성립하지 않음. 그 구성에서의 coverage floor 처리는 아래 및
+  `docs/ci-pr-review.md` "설정" 절 참조).
 - 특정 모델이 바이너리 부재가 아니라 **계속 flaky**하면(간헐 응답이 아니라 지속적으로
   degraded), 코드 수정 없이 `python3 scripts/pr-review/panel_config.py set <cell> enabled
-  false --root .` 로 매트릭스에서 빼고 재실행 — `panel_config.py show` 로 현재 매트릭스
-  멤버십 확인 (`docs/ci-pr-review.md` "설정" 절).
+  false --root .` 로 매트릭스에서 빼고 재실행 — `python3 scripts/pr-review/panel_config.py
+  show --root .` 로 현재 매트릭스 멤버십 확인 (`docs/ci-pr-review.md` "설정" 절).

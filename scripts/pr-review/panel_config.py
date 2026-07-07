@@ -85,15 +85,28 @@ def validate_shape(cfg):
     if not isinstance(panel, dict):
         raise AttributeError(f"'panel' must be an object, got {type(panel).__name__}")
     for cell, val in panel.items():
+        # A typo'd cell name (e.g. "kiro-gml" for "kiro-glm") or key (e.g. "enabeld" for
+        # "enabled") merges in as a brand-new, never-consulted key — every consumer reads
+        # the *correct* name, still at its default, so the override is a silent no-op. An
+        # operator who hand-edited this believing they'd disabled a cell for a sensitive
+        # diff would have that diff still sent to the "disabled" model (19th review MAJOR
+        # -- same fail-open family as the enabled/model type checks below, just one level
+        # up: catching a wrong *name* instead of a wrong *value*).
+        if cell not in ALL_CELLS:
+            raise AttributeError(f"panel.{cell} is not a known cell (expected one of {ALL_CELLS})")
         if not isinstance(val, dict):
             raise AttributeError(f"panel.{cell} must be an object, got {type(val).__name__}")
+        unknown_keys = set(val) - {"enabled", "model"}
+        if unknown_keys:
+            raise AttributeError(f"panel.{cell} has unknown key(s): {sorted(unknown_keys)}")
         if "enabled" in val and not isinstance(val["enabled"], bool):
             raise AttributeError(
                 f"panel.{cell}.enabled must be a JSON boolean, got {val['enabled']!r}"
             )
         if cell in KIRO_CELLS and val.get("enabled", True):
             model = val.get("model")
-            if not isinstance(model, str) or not model or not MODEL_RE.match(model):
+            if not isinstance(model, str) or not model or not MODEL_RE.fullmatch(model) \
+                    or model.startswith("-"):
                 raise AttributeError(f"panel.{cell}.model is missing or invalid: {model!r}")
 
 
@@ -172,7 +185,7 @@ def cmd_set(root, rest):
         if cell == "codex":
             print("codex has no model knob — it's fixed via ~/.codex/config.toml", file=sys.stderr)
             return 2
-        if not MODEL_RE.match(val):
+        if not MODEL_RE.fullmatch(val) or val.startswith("-"):
             print(f"model contains invalid characters: {val!r}", file=sys.stderr)
             return 2
         local["panel"][cell]["model"] = val
@@ -205,7 +218,13 @@ def cmd_kiro_cells(root):
         if not p.get("enabled", True):
             continue
         model = p.get("model")
-        if not model or not MODEL_RE.match(model):
+        # Unreachable under the strict=True call above -- validate_shape() already raises
+        # ConfigError for exactly this condition (missing/invalid model on an enabled kiro
+        # cell), so effective() would have exited before this loop ever runs. Kept as a
+        # defense-in-depth belt-and-suspenders: if effective() is ever called non-strict
+        # here by a future edit, this is what stands between that regression and a silent
+        # coverage-floor bypass (18th/19th review's whole point).
+        if not model or not MODEL_RE.fullmatch(model) or model.startswith("-"):
             print(f"panel_config.py: {cell}.model is missing or invalid ({model!r}) — skipping", file=sys.stderr)
             continue
         print(f"{model}:{cell}")

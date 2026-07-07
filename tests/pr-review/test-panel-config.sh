@@ -116,4 +116,22 @@ echo '{"panel": {"kiro-glm": {"model": ""}}}' > "$R6/.claude/pr-review.local.jso
 python3 "$CFG" kiro-cells --root "$R6" >/dev/null 2>&1 && RC=0 || RC=$?
 assert_eq "1" "$RC" "kiro-cells fails closed when an enabled cell's model is empty"
 
-rm -rf "$R" "$R2" "$R3" "$R4" "$R5" "$R6"
+# (m) a typo'd cell name merges in as a brand-new key that no consumer ever reads -- the
+# *correctly*-spelled cell stays at its default (still enabled), so the override is a
+# silent no-op instead of the disable the operator intended (19th review MAJOR -- same
+# fail-open family as (k)/(l), one level up: a wrong *name* instead of a wrong *value*).
+R7=$(mktemp -d "${TMPDIR:-/tmp}/prreviewcfg.XXXXXX")
+mkdir -p "$R7/.claude"
+echo '{"panel": {"kiro-gml": {"enabled": false}}}' > "$R7/.claude/pr-review.local.json"
+python3 "$CFG" kiro-cells --root "$R7" >/dev/null 2>&1 && RC=0 || RC=$?
+assert_eq "1" "$RC" "kiro-cells fails closed on a typo'd/unknown cell name"
+
+# (n2) a typo'd key within an otherwise-known cell (e.g. "enabeld" for "enabled") is the
+# same failure mode one level down -- also must fail closed.
+R8=$(mktemp -d "${TMPDIR:-/tmp}/prreviewcfg.XXXXXX")
+mkdir -p "$R8/.claude"
+echo '{"panel": {"kiro-glm": {"enabeld": false}}}' > "$R8/.claude/pr-review.local.json"
+python3 "$CFG" kiro-cells --root "$R8" >/dev/null 2>&1 && RC=0 || RC=$?
+assert_eq "1" "$RC" "kiro-cells fails closed on a typo'd/unknown key within a known cell"
+
+rm -rf "$R" "$R2" "$R3" "$R4" "$R5" "$R6" "$R7" "$R8"
