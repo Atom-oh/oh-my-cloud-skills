@@ -39,9 +39,10 @@ CRITICAL/MAJOR finding remains (also stop on no-progress / oscillation).
   collapse two of the panel's vendor-diversity slots into one family.
 - **`kimi-k2.5` was dropped** (2026-07) — it was the sole model attributed to unfounded/
   hallucinated findings across this repo's PR review history (7 dismissed claims, 0 for any
-  other panel model — see `docs/ci-pr-review.md`) and to zero-response coverage degradation
-  in CI. `minimax-m2.5` isn't flagged `[Internal]` in `kiro-cli --list-models` (unlike
-  `kimi-k2.5`), so it doesn't carry the same access-risk caveat this section used to document.
+  other panel model — see ADR-012 / `docs/ci-pr-review.md`) and to zero-response coverage
+  degradation in CI. `minimax-m2.5` isn't flagged `[Internal]` in `kiro-cli --list-models`
+  (unlike `kimi-k2.5`), so it doesn't carry the same access-risk caveat this section used to
+  document.
 
 ## Where the gate is used
 - **`/co-agent:consensus review`** — the gate, standalone, on a git diff (shipped v1.7.2).
