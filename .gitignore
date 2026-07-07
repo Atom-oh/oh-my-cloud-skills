@@ -52,6 +52,9 @@ doc-sites/.docusaurus/
 # co-agent panel-readiness summary (written by /co-agent:setup — machine-local)
 .claude/co-agent-panel.local.json
 
+# pr-review lens×model matrix membership override (enabled/model per cell)
+.claude/pr-review.local.json
+
 # scratch working dir (presentation/demo authoring — not tracked)
 work/
 

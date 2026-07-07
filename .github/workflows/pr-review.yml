@@ -5,7 +5,8 @@ name: AI Code Review
 # 2026-07-05-pr-review-hybrid-lens-design.md)
 #   - self-hosted 러너(oh-my-cloud-skills-claude-arm)가 EKS Pod Identity(SigV4)로 Bedrock 호출
 #   - L1: scripts/pr-review/precheck.sh — 매니페스트/버전 정합을 AI 호출 전 스크립트로 검증(0 비용)
-#   - 매트릭스 fan-out: scripts/pr-review/run-panel.sh(4모델×4lens=16셀) → synthesize.sh
+#   - 매트릭스 fan-out: scripts/pr-review/run-panel.sh(4모델×4lens=최대 16셀, 멤버십은
+#     panel_config.py 설정값) → synthesize.sh
 #   - VERDICT: PASS|FAIL 마지막 줄 룰로 job exit code 결정 (fail-closed, L1 실패도 즉시 fail)
 #   - <!-- oh-my-cloud-skills-pr-review --> marker 로 코멘트 upsert
 
@@ -135,8 +136,10 @@ jobs:
           # 이전 문구는 "stdin 또는 inline marker로 제공"이라고 말했지만 실제 lens 프롬프트
           # 수신자 중 그 어느 쪽도 그렇게 diff 를 받지 않는다(inline marker 는 synthesize.sh
           # 의 체어 프롬프트에만 존재 — lens 프롬프트와 무관) — Codex 는 stdin, Kiro 는 뒤에
-          # 덧붙는 fs_read 경로 지시로 받는다. 약한 모델(kimi/glm)이 "diff 가 안 왔다"고
-          # 오판할 여지가 있던 부정확한 문구를 두 실제 경로만 언급하도록 수정(14차 리뷰 MINOR-2).
+          # 덧붙는 fs_read 경로 지시로 받는다. 일부 Kiro 모델이 "diff 가 안 왔다"고 오판할
+          # 여지가 있던 부정확한 문구를 두 실제 경로만 언급하도록 수정(14차 리뷰 MINOR-2).
+          # (로스터 자체는 scripts/pr-review/pr-review.defaults.json 이 정본(panel_config.py
+          # 경유) — 특정 모델명을 여기 하드코딩하면 로스터가 바뀔 때마다 이 주석도 드리프트한다.)
           COMMON="Review ONLY the diff under review for this PR, in this Claude Code plugin
           marketplace repo. The diff reaches you one of two ways depending on your tool: it
           is either piped to your stdin directly, or your instructions below tell you to read

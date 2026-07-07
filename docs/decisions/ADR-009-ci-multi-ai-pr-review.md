@@ -21,6 +21,8 @@ self-hosted 러너가 **EKS Pod Identity(SigV4)** 로 Amazon Bedrock을 호출�
 
 - **패널 fan-out** — Codex(`openai.gpt-5.5`) + Kiro×3(`claude-opus-4.8`/`kimi-k2.5`/`glm-5`) →
   `scripts/pr-review/run-panel.sh`; **Claude Opus 4.8 의장**이 `synthesize.sh`로 종합.
+  (Kiro 로스터의 `kimi-k2.5`는 이후 ADR-012에서 `gpt-5.5`로 교체됨 — 이 문단은 원 결정의
+  historical record로 그대로 둔다. 현행 로스터/의장 모델의 live 값은 `docs/ci-pr-review.md`.)
 - **게이트** — 마지막 줄 `VERDICT: PASS|FAIL` 룰로 job exit code 결정(**fail-closed**); `<!-- oh-my-cloud-skills-pr-review -->` 마커로 코멘트 upsert.
 - **보안** — `pull_request_target`는 시크릿/쓰기 컨텍스트라 **base(신뢰) 브랜치 스크립트**를 체크아웃하고 PR 변경분은 `gh pr diff`로 데이터로만 수신(미실행). → 스크립트 수정은 **머지 후** PR부터 적용.
 - **데이터 경계 (호출 경로별로 다름)** — **Codex / Claude(의장)** 는 Amazon Bedrock **us-east-1 In-Region**(`gpt-5.5`/`opus-4-8` 모두 In-Region), EKS Pod Identity SigV4. **Kiro** 는 **외부 API-key 기반 서비스**로 PR diff가 리전 밖으로 전송됨(In-Region 아님). (ADR 보강: us-east-2 페일오버는 `gpt-5.5` 단일리전이라 폐기 — #88.)

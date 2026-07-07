@@ -52,12 +52,12 @@ if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/dev/null 2>&1; then
 fi
 allok=1; codex_diffok=1; kiro_pathok=1; kiro_no_embedok=1; lensok=1
 for lens in L2 L3; do
-  for f in "codex-$lens" "kiro-opus-$lens" "kiro-kimi-$lens" "kiro-glm-$lens"; do
+  for f in "codex-$lens" "kiro-opus-$lens" "kiro-gpt-$lens" "kiro-glm-$lens"; do
     [ -s "$WORK/slot/$f.md" ] || allok=0
   done
   # codex: diff 는 stdin 으로 도착 — 슬롯에 diff 내용이 그대로 보여야 한다.
   grep -q "diff --git" "$WORK/slot/codex-$lens.md" 2>/dev/null || codex_diffok=0
-  for tag in kiro-opus kiro-kimi kiro-glm; do
+  for tag in kiro-opus kiro-gpt kiro-glm; do
     # kiro: argv 에 실제 diff 파일의 절대경로가 fs_read 지시문으로 들어가야 한다.
     grep -qF "fs_read from: $DIFF_ABS" "$WORK/slot/$tag-$lens.md" 2>/dev/null || kiro_pathok=0
     # kiro: diff 내용 자체가 argv 에 그대로 embed 되면 안 된다(텍스트 임베드 회귀 가드).
@@ -146,7 +146,7 @@ if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >"$LOG" 2>&1; then
   fail "run-panel (f) script exits 0 even when a whole model row is empty" "exited non-zero"
 fi
 DEGRADED_SORTED="$(sort "$WORK/degraded-models.txt" 2>/dev/null | tr '\n' ',' )"
-[ "$DEGRADED_SORTED" = "kiro-glm,kiro-kimi,kiro-opus," ] \
+[ "$DEGRADED_SORTED" = "kiro-glm,kiro-gpt,kiro-opus," ] \
   && pass "run-panel (f) degraded-models.txt lists all 3 kiro tags when kiro fully fails" \
   || fail "run-panel (f) degraded-models.txt lists all 3 kiro tags when kiro fully fails" "got: $DEGRADED_SORTED"
 grep -q "::warning::model 'kiro-opus' produced zero responses" "$LOG" \
@@ -321,6 +321,120 @@ else
     "kiro cell missing/empty under the resolved relative workdir"
 fi
 rm -rf "$BASE" "$BIN"
+
+# (m) panel_config.py 로 kiro-glm 을 비활성화하면 그 셀이 전혀 생성되지 않고, 의도적
+# 비활성화가 (f)의 "장애로 인한 degraded" 와 혼동되지 않아야 한다(panel_config.py 도입 —
+# co-agent 의 co_agent_config.py 패턴을 매트릭스 멤버십에 적용).
+setup; mkfake codex 0 "codex-finding"; mkfake_args kiro-cli 0 "kiro-finding"
+CFG_ROOT=$(mktemp -d)
+python3 scripts/pr-review/panel_config.py set kiro-glm enabled false --root "$CFG_ROOT" >/dev/null 2>&1
+LOG=$(mktemp)
+if ! PR_REVIEW_CONFIG_ROOT="$CFG_ROOT" "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >"$LOG" 2>&1; then
+  fail "run-panel (m) script exits 0 with kiro-glm disabled via config" "exited non-zero"
+fi
+{ [ ! -e "$WORK/slot/kiro-glm-L2.md" ] && [ ! -e "$WORK/slot/kiro-glm-L3.md" ]; } \
+  && pass "run-panel (m) a config-disabled cell (kiro-glm) produces no slot files at all" \
+  || fail "run-panel (m) a config-disabled cell (kiro-glm) produces no slot files at all" "kiro-glm slot file exists despite being disabled"
+[ "$(wc -l < "$WORK/responded.txt" 2>/dev/null || echo 0)" = 6 ] \
+  && pass "run-panel (m) responded=6 (2 lens x 3 enabled models, not 4)" \
+  || fail "run-panel (m) responded=6 (2 lens x 3 enabled models, not 4)" "got $(wc -l < "$WORK/responded.txt" 2>/dev/null)"
+grep -q "^kiro-glm$" "$WORK/degraded-models.txt" 2>/dev/null \
+  && fail "run-panel (m) a config-disabled cell is NOT listed in degraded-models.txt" "intentional disable was flagged as degraded" \
+  || pass "run-panel (m) a config-disabled cell is NOT listed in degraded-models.txt"
+[ -f "$WORK/coverage-severe.flag" ] \
+  && fail "run-panel (m) coverage-severe.flag is NOT set from an intentional single-cell disable" "flag set despite 3/3 remaining vendors responding" \
+  || pass "run-panel (m) coverage-severe.flag is NOT set from an intentional single-cell disable"
+rm -rf "$CFG_ROOT" "$LOG"
+
+# (n) panel_config.py 가 malformed override 로 fail-closed(exit 1) 하면, run-panel.sh 도
+# 빈 로스터로 조용히 진행하지 말고 즉시 exit 1 해야 한다 — 그러지 않으면 KIRO_MODELS=()/
+# CODEX_ENABLED=0 → ALL_TAGS=() → 커버리지 floor 루프가 안 돌아 "리뷰 0건인데
+# VERDICT: PASS" 로 이어질 수 있다(17차 리뷰 MAJOR-2). 셀이 하나도 안 만들어졌는지까지
+# 확인해 "일부만 돌고 나머지 조용히 스킵"이 아니라 "아예 시작하지 않음"을 보장한다.
+setup; mkfake codex 0 "codex-finding"; mkfake_args kiro-cli 0 "kiro-finding"
+CFG_ROOT=$(mktemp -d); mkdir -p "$CFG_ROOT/.claude"
+echo "{not valid json" > "$CFG_ROOT/.claude/pr-review.local.json"
+LOG=$(mktemp)
+if PR_REVIEW_CONFIG_ROOT="$CFG_ROOT" "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >"$LOG" 2>&1; then
+  fail "run-panel (n) script exits non-zero when panel_config.py fails closed" "exited 0"
+else
+  pass "run-panel (n) script exits non-zero when panel_config.py fails closed"
+fi
+[ ! -e "$WORK/slot" ] || [ -z "$(ls -A "$WORK/slot" 2>/dev/null)" ] \
+  && pass "run-panel (n) no cells ran at all — not a partial/silent-empty panel" \
+  || fail "run-panel (n) no cells ran at all — not a partial/silent-empty panel" "slot dir has files despite config failure"
+rm -rf "$CFG_ROOT" "$LOG"
+
+# (o) docs/ci-pr-review.md 가 명시한 "민감 diff 정책"(Kiro 3개 전부 끄고 codex 단독 리뷰)
+# 유스케이스가 실제로 PASS 가능해야 한다 — TOTAL_MODELS=1 일 때 severe 임계값
+# `TOTAL_MODELS - 1`이 0이 되어, DEGRADED_COUNT=0(codex 정상 응답)이어도 옛 조건
+# `0 -ge 0`이 참이 되는 산술 버그가 있었다(18차 리뷰 MAJOR L4-1 — 이 PR이 문서화한 핵심
+# 유스케이스 그 자체를 강제 FAIL 시킴). `DEGRADED_COUNT -gt 0` 가드로 고쳤는지 확인.
+setup; mkfake codex 0 "codex-finding"; mkfake_args kiro-cli 0 "kiro-finding"
+CFG_ROOT=$(mktemp -d)
+python3 scripts/pr-review/panel_config.py set kiro-opus enabled false --root "$CFG_ROOT" >/dev/null 2>&1
+python3 scripts/pr-review/panel_config.py set kiro-gpt enabled false --root "$CFG_ROOT" >/dev/null 2>&1
+python3 scripts/pr-review/panel_config.py set kiro-glm enabled false --root "$CFG_ROOT" >/dev/null 2>&1
+LOG=$(mktemp)
+if ! PR_REVIEW_CONFIG_ROOT="$CFG_ROOT" "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >"$LOG" 2>&1; then
+  fail "run-panel (o) script exits 0 with a healthy codex-only (all Kiro disabled) roster" "exited non-zero"
+fi
+[ "$(wc -l < "$WORK/responded.txt" 2>/dev/null || echo 0)" = 2 ] \
+  && pass "run-panel (o) responded=2 (2 lens x 1 enabled model)" \
+  || fail "run-panel (o) responded=2 (2 lens x 1 enabled model)" "got $(wc -l < "$WORK/responded.txt" 2>/dev/null)"
+[ -s "$WORK/degraded-models.txt" ] \
+  && fail "run-panel (o) degraded-models.txt is empty (the one model responded)" "$(cat "$WORK/degraded-models.txt" 2>/dev/null)" \
+  || pass "run-panel (o) degraded-models.txt is empty (the one model responded)"
+[ -f "$WORK/coverage-severe.flag" ] \
+  && fail "run-panel (o) coverage-severe.flag is NOT set for a healthy single-model (codex-only) roster" "flag set despite the sole model responding normally" \
+  || pass "run-panel (o) coverage-severe.flag is NOT set for a healthy single-model (codex-only) roster"
+rm -rf "$CFG_ROOT" "$LOG"
+
+# (p) run-panel.sh 가 panel_config.py 를 --root 없이 호출하면, resolve_root() 가
+# $PR_REVIEW_CONFIG_ROOT 다음 os.getcwd() 로 폴백한다 — 스크립트 실행 cwd 가 repo root 가
+# 아니면 repo root 의 .claude/pr-review.local.json(이 파일이 "민감 diff 정책"의 Kiro
+# 비활성화 컨트롤 구현체)이 조용히 무시되고 defaults(Kiro 전부 활성)로 fail-open 된다
+# (20차 리뷰 MAJOR). repo 의 실제 .claude/pr-review.local.json 을 백업/복원해가며, repo
+# root 가 아닌 cwd + \$PR_REVIEW_CONFIG_ROOT 미설정 상태로 실행해도 그 override 가
+# 반영되는지 확인한다.
+REPO_ROOT="$(cd "$HERE/../.." && pwd)"
+REAL_LOCAL="$REPO_ROOT/.claude/pr-review.local.json"
+REAL_LOCAL_BACKUP=""
+if [ -f "$REAL_LOCAL" ]; then
+  REAL_LOCAL_BACKUP=$(mktemp)
+  cp "$REAL_LOCAL" "$REAL_LOCAL_BACKUP"
+fi
+# trap 을 backup 직후, mutate 전에 건다 — 이 사이 interrupt(CI 잡 취소 등)되면 실 repo 의
+# 보안 컨트롤 파일(민감 diff 정책 구현체)에 이 테스트의 disable-kiro-glm override 가
+# 영구히 잔존해, 이후 실행되는 모든 PR 리뷰의 커버리지가 "의도적 비활성화"로 오인돼 조용히
+# 줄어들 수 있다 — 이 repo 가 반복해서 MAJOR 로 승격해 온 바로 그 silent-coverage-shrink
+# 계열(20차 리뷰 MAJOR-2). 정상 종료 시엔 마지막에 명시적으로 `trap - EXIT INT TERM`
+# 해제 — 그러지 않으면 이 트랩이 이후(run-all.sh 가 순차 source 하는) 다른 테스트 파일이
+# 거는 EXIT 트랩을 밀어내거나, 반대로 밀려나 무력화될 수 있다.
+_restore_real_local() {
+  if [ -n "$REAL_LOCAL_BACKUP" ]; then
+    mv "$REAL_LOCAL_BACKUP" "$REAL_LOCAL"
+  else
+    rm -f "$REAL_LOCAL"
+  fi
+}
+trap _restore_real_local EXIT INT TERM
+mkdir -p "$REPO_ROOT/.claude"
+echo '{"panel": {"kiro-glm": {"enabled": false}}}' > "$REAL_LOCAL"
+setup; mkfake codex 0 "codex-finding"; mkfake_args kiro-cli 0 "kiro-finding"
+ELSEWHERE=$(mktemp -d)
+LOG=$(mktemp)
+if ! ( cd "$ELSEWHERE" && env -u PR_REVIEW_CONFIG_ROOT "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >"$LOG" 2>&1 ); then
+  fail "run-panel (p) script exits 0 when invoked from a non-repo-root cwd" "exited non-zero: $(cat "$LOG")"
+else
+  pass "run-panel (p) script exits 0 when invoked from a non-repo-root cwd"
+fi
+{ [ ! -e "$WORK/slot/kiro-glm-L2.md" ] && [ ! -e "$WORK/slot/kiro-glm-L3.md" ]; } \
+  && pass "run-panel (p) repo-root .claude/pr-review.local.json is honored even when cwd is elsewhere" \
+  || fail "run-panel (p) repo-root .claude/pr-review.local.json is honored even when cwd is elsewhere" "kiro-glm slot file exists despite the repo-root override disabling it"
+_restore_real_local
+trap - EXIT INT TERM
+rm -rf "$ELSEWHERE" "$LOG"
 
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then
