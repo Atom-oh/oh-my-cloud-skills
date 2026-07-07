@@ -70,7 +70,7 @@ Argument: `$ARGUMENTS`
    python3 "$H" set autosync on                 # auto-sync AI context on CLAUDE.md change
    python3 "$H" set codex model gpt-5.5 --scope user   # write to ~/.claude (all your repos)
    python3 "$H" set agy model "Gemini 3.1 Pro (High)"  # Agy tokens have spaces + parens
-   python3 "$H" set kiro-cli models claude-opus-4.8,kimi-k2.5,glm-5  # multi-model list
+   python3 "$H" set kiro-cli models claude-opus-4.8,minimax-m2.5,glm-5  # multi-model list
    python3 "$H" set profile deep                # activate each AI's `models` list
    python3 "$H" set harness implementer agy     # harness implementer (codex|agy)
    python3 "$H" set harness review_mode relay    # harness gate: hybrid (default) | relay | parallel
@@ -108,7 +108,7 @@ Argument: `$ARGUMENTS`
 | 역할 | 성격 | 레버 | 권장 |
 |------|------|------|------|
 | **Chair** (triage/synthesis/최종 판단) | 좁고 강하게 | 호스트 모델: `/model opusplan`(플랜=Opus·실행=Sonnet) 또는 chair 서브에이전트 frontmatter `model: opus` | 강한 판단 모델 유지 — 여기서 아끼면 게이트 전체가 약해짐 |
-| **Find 패널** (하이브리드 게이트 F 단계) | 넓고 싸게 | `profile deep` + 각 AI `models` 리스트에 저비용 모델(예: kiro `kimi-k2.5,glm-5`) | 발견은 다양성이 성능 — 모델 수 > 모델 단가 |
+| **Find 패널** (하이브리드 게이트 F 단계) | 넓고 싸게 | `profile deep` + 각 AI `models` 리스트에 저비용 모델(예: kiro `minimax-m2.5,glm-5`) | 발견은 다양성이 성능 — 모델 수 > 모델 단가 |
 | **Verify 패널** (V 단계) | 좁고 강하게 | 게이트가 자동으로 `pairs --profile default` 사용 — 각 AI의 단일 `model`이 곧 verify 모델 | `model`에 각 AI의 최강 티어 지정 |
 | **Implementer** (harness 쓰기 경로) | 생성 위주 | `set harness implementer <ai>` + `implementer_model <m>` / `implementer_effort <e>` (미설정 시 패널 `model`/`effort` 폴백) | 저비용 생성 모델 — 리뷰 게이트가 뒤에서 잡아줌 |
 

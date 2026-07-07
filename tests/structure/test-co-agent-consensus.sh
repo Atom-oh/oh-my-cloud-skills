@@ -22,7 +22,7 @@ rm -f "$CD" "$CJ"
 # --- multi-model panel ---
 R=$(mktemp -d "${TMPDIR:-/tmp}/coc.XXXXXX")
 # Set the profile explicitly so these assertions don't depend on the committed default
-# (which is `deep` — opus/kimi/glm as the mainstay Kiro panel).
+# (which is `deep` — opus/minimax/glm as the mainstay Kiro panel).
 python3 "$CFG" set profile default --root "$R" >/dev/null 2>&1
 DEF=$(python3 "$CFG" pairs --root "$R" 2>/dev/null | wc -l | tr -d ' ')
 assert_eq "3" "$DEF" "default profile → one pair per AI (3)"
@@ -42,7 +42,7 @@ python3 "$CFG" pairs --root "$R" --profile >/dev/null 2>&1 && PM=0 || PM=$?
 assert_eq "2" "$PM" "pairs --profile with missing value hard-fails (exit 2)"
 assert_contains "$(python3 "$CFG" matrix --profile default --root "$R" 2>&1)" "profile default" "matrix --profile default reports the overridden profile"
 assert_contains "$(python3 "$CFG" matrix --root "$R" 2>&1)" "max calls" "matrix prints max-calls budget"
-# Kiro's 3 models (opus/kimi/glm) are cross-vendor via the router → intended diversity,
+# Kiro's 3 models (opus/minimax/glm) are cross-vendor via the router → intended diversity,
 # NOT the same-family redundancy warning.
 assert_contains "$(python3 "$CFG" matrix --root "$R" 2>&1)" "cross-vendor" "matrix notes kiro-cli cross-vendor diversity"
 # A genuine same-family duplicate (two Agy-routed models) DOES warn.
