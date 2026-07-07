@@ -72,18 +72,29 @@ def deep_merge(base, over):
 
 
 def validate_shape(cfg):
-    """Raise AttributeError if `cfg["panel"]` (or any per-cell entry) isn't a dict —
-    deep_merge happily assigns a wrong-shape value (e.g. override == {"panel": "x"}) without
-    erroring, since that's a non-dict `v` that just gets set on a dict key; the failure only
-    shows up later, downstream, in every caller's `cfg["panel"].get(cell, {})`. Surfacing it
-    here, right after the merge, is what lets `effective(strict=True)` catch it in one place
-    instead of every consumer needing its own defensive check."""
+    """Raise AttributeError if `cfg["panel"]` (or any per-cell entry) is the wrong shape, or
+    if a value inside it is the wrong type/invalid. deep_merge happily assigns a wrong-shape
+    or wrong-type value (e.g. override == {"panel": "x"}, or {"enabled": "false"} — a JSON
+    *string*, truthy in Python, silently defeating the disable) without erroring itself; the
+    failure would otherwise only show up later, downstream, in a caller's `.get()`/truthiness
+    check. Surfacing every check here, right after the merge, is what lets
+    `effective(strict=True)` catch all of it in one place instead of every consumer needing
+    its own defensive re-check (18th review MAJOR L3-1/L4-2 — valid-JSON wrong-type values
+    were fail-open even though malformed JSON was already fail-closed)."""
     panel = cfg.get("panel")
     if not isinstance(panel, dict):
         raise AttributeError(f"'panel' must be an object, got {type(panel).__name__}")
     for cell, val in panel.items():
         if not isinstance(val, dict):
             raise AttributeError(f"panel.{cell} must be an object, got {type(val).__name__}")
+        if "enabled" in val and not isinstance(val["enabled"], bool):
+            raise AttributeError(
+                f"panel.{cell}.enabled must be a JSON boolean, got {val['enabled']!r}"
+            )
+        if cell in KIRO_CELLS and val.get("enabled", True):
+            model = val.get("model")
+            if not isinstance(model, str) or not model or not MODEL_RE.match(model):
+                raise AttributeError(f"panel.{cell}.model is missing or invalid: {model!r}")
 
 
 def effective(root, strict=False):
@@ -142,7 +153,7 @@ def cmd_set(root, rest):
             with open(lp, encoding="utf-8") as f:
                 local = json.load(f)
             if not isinstance(local, dict) or not isinstance(local.get("panel", {}), dict) \
-                    or not isinstance(local["panel"].get(cell, {}), dict):
+                    or not isinstance(local.get("panel", {}).get(cell, {}), dict):
                 raise AttributeError("top level, 'panel', and panel.<cell> must all be objects")
         except (json.JSONDecodeError, OSError, AttributeError) as e:
             # `set` is how an operator FIXES a broken override — refusing to start from
@@ -184,6 +195,11 @@ def cmd_kiro_cells(root):
         # treat the same way an intentional all-disabled config would be treated.
         print(f"panel_config.py: {e}", file=sys.stderr)
         return 1
+    except Exception as e:  # noqa: BLE001 -- anything else (e.g. defaults.json itself
+        # broken) must still fail closed here rather than propagate as an uncaught
+        # traceback that run-panel.sh's exit-code check can't distinguish from success.
+        print(f"panel_config.py: unexpected error reading config: {e}", file=sys.stderr)
+        return 1
     for cell in KIRO_CELLS:
         p = cfg["panel"].get(cell, {})
         if not p.get("enabled", True):
@@ -204,6 +220,9 @@ def cmd_codex_enabled(root):
         cfg = effective(root, strict=True)
     except ConfigError as e:
         print(f"panel_config.py: {e}", file=sys.stderr)
+        return 2
+    except Exception as e:  # noqa: BLE001 -- same reasoning as cmd_kiro_cells above.
+        print(f"panel_config.py: unexpected error reading config: {e}", file=sys.stderr)
         return 2
     return 0 if cfg["panel"].get("codex", {}).get("enabled", True) else 1
 

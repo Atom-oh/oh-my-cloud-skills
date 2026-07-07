@@ -204,7 +204,12 @@ done
 # 된다는 원 판단은 유효). 신규 kiro-cli 플래그가 처음 실전 투입되는 시점(3개 kiro 모델이
 # 동시에 전멸하는 경우가 바로 이 기준을 정확히 친다)이 이 케이트가 노리는 실제 사례다.
 DEGRADED_COUNT=$(wc -l < "$WORK/degraded-models.txt")
-if [ "$DEGRADED_COUNT" -ge "$((TOTAL_MODELS - 1))" ]; then
+# `DEGRADED_COUNT -gt 0` 가드가 반드시 먼저 필요하다 — TOTAL_MODELS=1(예: 민감 diff 정책으로
+# Kiro 3개를 전부 끄고 codex 만 남긴 config-driven 구성, docs/ci-pr-review.md "민감 diff
+# 정책")일 때 `TOTAL_MODELS - 1`은 0이 되어, DEGRADED_COUNT=0(그 하나뿐인 모델이 정상
+# 응답)이어도 `0 -ge 0`이 참이 되어 건강한 단일-모델 패널을 severe 로 오판했었다(18차 리뷰
+# MAJOR L4-1 — 이 PR이 문서화한 핵심 유스케이스 자체를 이 산술이 깨뜨림).
+if [ "$DEGRADED_COUNT" -gt 0 ] && [ "$DEGRADED_COUNT" -ge "$((TOTAL_MODELS - 1))" ]; then
   echo "::error::coverage collapsed to ≤1 vendor ($DEGRADED_COUNT/$TOTAL_MODELS models degraded) — forcing VERDICT: FAIL, no cross-model check remains for any lens" >&2
   : > "$WORK/coverage-severe.flag"
 fi

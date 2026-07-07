@@ -365,6 +365,31 @@ fi
   || fail "run-panel (n) no cells ran at all — not a partial/silent-empty panel" "slot dir has files despite config failure"
 rm -rf "$CFG_ROOT" "$LOG"
 
+# (o) docs/ci-pr-review.md 가 명시한 "민감 diff 정책"(Kiro 3개 전부 끄고 codex 단독 리뷰)
+# 유스케이스가 실제로 PASS 가능해야 한다 — TOTAL_MODELS=1 일 때 severe 임계값
+# `TOTAL_MODELS - 1`이 0이 되어, DEGRADED_COUNT=0(codex 정상 응답)이어도 옛 조건
+# `0 -ge 0`이 참이 되는 산술 버그가 있었다(18차 리뷰 MAJOR L4-1 — 이 PR이 문서화한 핵심
+# 유스케이스 그 자체를 강제 FAIL 시킴). `DEGRADED_COUNT -gt 0` 가드로 고쳤는지 확인.
+setup; mkfake codex 0 "codex-finding"; mkfake_args kiro-cli 0 "kiro-finding"
+CFG_ROOT=$(mktemp -d)
+python3 scripts/pr-review/panel_config.py set kiro-opus enabled false --root "$CFG_ROOT" >/dev/null 2>&1
+python3 scripts/pr-review/panel_config.py set kiro-gpt enabled false --root "$CFG_ROOT" >/dev/null 2>&1
+python3 scripts/pr-review/panel_config.py set kiro-glm enabled false --root "$CFG_ROOT" >/dev/null 2>&1
+LOG=$(mktemp)
+if ! PR_REVIEW_CONFIG_ROOT="$CFG_ROOT" "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >"$LOG" 2>&1; then
+  fail "run-panel (o) script exits 0 with a healthy codex-only (all Kiro disabled) roster" "exited non-zero"
+fi
+[ "$(wc -l < "$WORK/responded.txt" 2>/dev/null || echo 0)" = 2 ] \
+  && pass "run-panel (o) responded=2 (2 lens x 1 enabled model)" \
+  || fail "run-panel (o) responded=2 (2 lens x 1 enabled model)" "got $(wc -l < "$WORK/responded.txt" 2>/dev/null)"
+[ -s "$WORK/degraded-models.txt" ] \
+  && fail "run-panel (o) degraded-models.txt is empty (the one model responded)" "$(cat "$WORK/degraded-models.txt" 2>/dev/null)" \
+  || pass "run-panel (o) degraded-models.txt is empty (the one model responded)"
+[ -f "$WORK/coverage-severe.flag" ] \
+  && fail "run-panel (o) coverage-severe.flag is NOT set for a healthy single-model (codex-only) roster" "flag set despite the sole model responding normally" \
+  || pass "run-panel (o) coverage-severe.flag is NOT set for a healthy single-model (codex-only) roster"
+rm -rf "$CFG_ROOT" "$LOG"
+
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then
   [ "$_t_fail" = 0 ] && echo "PASS: test-run-panel" || exit 1

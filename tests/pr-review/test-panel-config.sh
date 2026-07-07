@@ -92,4 +92,28 @@ gpt-5.5:kiro-gpt" "$CELLS_I" "\$PR_REVIEW_CONFIG_ROOT is honored when --root is 
 python3 "$CFG" set kiro-opus model "a:b" --root "$R" >/dev/null 2>&1 && RC=0 || RC=$?
 assert_eq "2" "$RC" "set rejects a model value containing ':' (would be silently truncated by run-panel.sh's parser)"
 
-rm -rf "$R" "$R2" "$R3" "$R4"
+# (k) a hand-edited override with a JSON *string* "false" (not boolean) must fail closed,
+# not silently stay enabled -- Python treats "false" as truthy, so `p.get("enabled", True)`
+# alone would keep the cell on even though an operator wrote it believing they'd turned it
+# off (18th review MAJOR L3-1 -- this file is the documented "disable Kiro on a sensitive
+# diff" control, so a wrong-type value here is a security-relevant fail-open, not just a
+# usability papercut).
+R5=$(mktemp -d "${TMPDIR:-/tmp}/prreviewcfg.XXXXXX")
+mkdir -p "$R5/.claude"
+echo '{"panel": {"kiro-opus": {"enabled": "false"}}}' > "$R5/.claude/pr-review.local.json"
+python3 "$CFG" kiro-cells --root "$R5" >/dev/null 2>&1 && RC=0 || RC=$?
+assert_eq "1" "$RC" "kiro-cells fails closed when enabled is a JSON string instead of a boolean"
+python3 "$CFG" codex-enabled --root "$R5" >/dev/null 2>&1 && RC=0 || RC=$?
+assert_eq "2" "$RC" "codex-enabled fails closed when a cell's enabled is a JSON string instead of a boolean"
+
+# (l) a hand-edited override with an invalid model on a cell left enabled must also fail
+# closed -- cmd_kiro_cells' own per-cell check only skips-with-warning (exit 0), which
+# silently shrinks the roster without tripping the coverage floor (the exact failure mode
+# the floor exists to catch). validate_shape() promotes this to a ConfigError under strict.
+R6=$(mktemp -d "${TMPDIR:-/tmp}/prreviewcfg.XXXXXX")
+mkdir -p "$R6/.claude"
+echo '{"panel": {"kiro-glm": {"model": ""}}}' > "$R6/.claude/pr-review.local.json"
+python3 "$CFG" kiro-cells --root "$R6" >/dev/null 2>&1 && RC=0 || RC=$?
+assert_eq "1" "$RC" "kiro-cells fails closed when an enabled cell's model is empty"
+
+rm -rf "$R" "$R2" "$R3" "$R4" "$R5" "$R6"
