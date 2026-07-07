@@ -95,6 +95,17 @@ def validate_shape(cfg):
     panel = cfg.get("panel")
     if not isinstance(panel, dict):
         raise AttributeError(f"'panel' must be an object, got {type(panel).__name__}")
+    # A known cell missing entirely (e.g. its line deleted while hand-editing
+    # defaults.json -- the most natural typo for "remove one flaky model") is invisible to
+    # every check below, since they all iterate `panel.items()`. Downstream, cmd_kiro_cells
+    # sees an absent cell as `p={}` -> enabled defaults True, model=None -> its own
+    # "unreachable under strict" defense-in-depth check is what actually fires, silently
+    # shrinking the roster via warn+skip+exit 0 instead of failing closed (22nd review
+    # MAJOR -- the same silent-coverage-shrink family as every prior round, this time via
+    # a missing *entry* rather than a wrong name/value/root).
+    missing = set(ALL_CELLS) - set(panel)
+    if missing:
+        raise AttributeError(f"panel is missing known cell(s): {sorted(missing)}")
     for cell, val in panel.items():
         # A typo'd cell name (e.g. "kiro-gml" for "kiro-glm") or key (e.g. "enabeld" for
         # "enabled") merges in as a brand-new, never-consulted key — every consumer reads

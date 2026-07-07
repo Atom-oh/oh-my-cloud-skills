@@ -168,4 +168,25 @@ PR_REVIEW_DEFAULTS_PATH="$BROKEN_DEFAULTS" python3 "$CFG" show --root "$R10" >/d
 assert_eq "1" "$RC" "show also fails closed (clean message, not a raw traceback) on broken defaults.json"
 rm -rf "$BROKEN_DEFAULTS" "$R10"
 
+# (o3) a known cell missing *entirely* from defaults.json (e.g. its line deleted while
+# hand-editing to remove a flaky model -- the most natural mis-edit) is invisible to every
+# per-cell check, since they all iterate panel.items(). cmd_kiro_cells sees the absent cell
+# as p={} -> enabled defaults True, model=None -> falls into its own "unreachable under
+# strict" defense-in-depth branch, which actually fires here and silently shrinks the
+# roster via warn+skip+exit 0 instead of failing closed (22nd review MAJOR).
+MISSING_CELL_DEFAULTS=$(mktemp "${TMPDIR:-/tmp}/prreview-defaults.XXXXXX.json")
+cat > "$MISSING_CELL_DEFAULTS" <<'EOF'
+{
+  "panel": {
+    "codex":     { "enabled": true },
+    "kiro-opus": { "enabled": true, "model": "claude-opus-4.8" },
+    "kiro-gpt":  { "enabled": true, "model": "gpt-5.5" }
+  }
+}
+EOF
+R11=$(mktemp -d "${TMPDIR:-/tmp}/prreviewcfg.XXXXXX")
+PR_REVIEW_DEFAULTS_PATH="$MISSING_CELL_DEFAULTS" python3 "$CFG" kiro-cells --root "$R11" >/dev/null 2>&1 && RC=0 || RC=$?
+assert_eq "1" "$RC" "kiro-cells fails closed when a known cell (kiro-glm) is missing entirely from defaults.json"
+rm -rf "$MISSING_CELL_DEFAULTS" "$R11"
+
 rm -rf "$R" "$R2" "$R3" "$R4" "$R5" "$R6" "$R7" "$R8" "$R9"
