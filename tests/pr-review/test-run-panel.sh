@@ -390,6 +390,40 @@ fi
   || pass "run-panel (o) coverage-severe.flag is NOT set for a healthy single-model (codex-only) roster"
 rm -rf "$CFG_ROOT" "$LOG"
 
+# (p) run-panel.sh 가 panel_config.py 를 --root 없이 호출하면, resolve_root() 가
+# $PR_REVIEW_CONFIG_ROOT 다음 os.getcwd() 로 폴백한다 — 스크립트 실행 cwd 가 repo root 가
+# 아니면 repo root 의 .claude/pr-review.local.json(이 파일이 "민감 diff 정책"의 Kiro
+# 비활성화 컨트롤 구현체)이 조용히 무시되고 defaults(Kiro 전부 활성)로 fail-open 된다
+# (20차 리뷰 MAJOR). repo 의 실제 .claude/pr-review.local.json 을 백업/복원해가며, repo
+# root 가 아닌 cwd + \$PR_REVIEW_CONFIG_ROOT 미설정 상태로 실행해도 그 override 가
+# 반영되는지 확인한다.
+REPO_ROOT="$(cd "$HERE/../.." && pwd)"
+REAL_LOCAL="$REPO_ROOT/.claude/pr-review.local.json"
+REAL_LOCAL_BACKUP=""
+if [ -f "$REAL_LOCAL" ]; then
+  REAL_LOCAL_BACKUP=$(mktemp)
+  cp "$REAL_LOCAL" "$REAL_LOCAL_BACKUP"
+fi
+mkdir -p "$REPO_ROOT/.claude"
+echo '{"panel": {"kiro-glm": {"enabled": false}}}' > "$REAL_LOCAL"
+setup; mkfake codex 0 "codex-finding"; mkfake_args kiro-cli 0 "kiro-finding"
+ELSEWHERE=$(mktemp -d)
+LOG=$(mktemp)
+if ! ( cd "$ELSEWHERE" && env -u PR_REVIEW_CONFIG_ROOT "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >"$LOG" 2>&1 ); then
+  fail "run-panel (p) script exits 0 when invoked from a non-repo-root cwd" "exited non-zero: $(cat "$LOG")"
+else
+  pass "run-panel (p) script exits 0 when invoked from a non-repo-root cwd"
+fi
+{ [ ! -e "$WORK/slot/kiro-glm-L2.md" ] && [ ! -e "$WORK/slot/kiro-glm-L3.md" ]; } \
+  && pass "run-panel (p) repo-root .claude/pr-review.local.json is honored even when cwd is elsewhere" \
+  || fail "run-panel (p) repo-root .claude/pr-review.local.json is honored even when cwd is elsewhere" "kiro-glm slot file exists despite the repo-root override disabling it"
+if [ -n "$REAL_LOCAL_BACKUP" ]; then
+  mv "$REAL_LOCAL_BACKUP" "$REAL_LOCAL"
+else
+  rm -f "$REAL_LOCAL"
+fi
+rm -rf "$ELSEWHERE" "$LOG"
+
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then
   [ "$_t_fail" = 0 ] && echo "PASS: test-run-panel" || exit 1

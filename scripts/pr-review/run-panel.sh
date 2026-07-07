@@ -53,14 +53,25 @@ RETRIES="${PANEL_RETRIES:-3}"
 # 3분한다(panel_config.py 쪽 주석 참조) — 둘 다 "의도적으로 다 껐다"와 "설정을 못 읽었다"를
 # 섞지 않기 위함.
 CFG="$DIR/panel_config.py"
-if ! KIRO_CELLS_RAW="$(python3 "$CFG" kiro-cells)"; then
+# --root 를 명시한다 — panel_config.py 의 resolve_root() 는 --root 없으면
+# $PR_REVIEW_CONFIG_ROOT 다음 os.getcwd() 로 폴백하는데, $DIR(스크립트 위치)로 스크립트
+# 경로는 앵커하면서 config root 는 cwd 에 맡기는 건 비대칭이다. CI 는 항상 repo root 에서
+# 호출해 지금까지 드러나지 않았지만, 운영자가 repo root 가 아닌 곳에서 이 스크립트를 직접
+# 실행하면 `.claude/pr-review.local.json`(이 파일이 곧 "민감 diff 정책"의 Kiro 비활성화
+# 컨트롤 구현체)이 조용히 무시되고 defaults(Kiro 전부 활성)로 폴백한다 — 20차 리뷰 MAJOR,
+# (k)/(l)/(m)에서 이미 막은 wrong-value/wrong-key fail-open과 같은 계열의 wrong-root 버전.
+# `${PR_REVIEW_CONFIG_ROOT:-$DIR/../..}` 로 테스트의 env-var 격리 경로는 그대로 두고
+# (env var 가 설정돼 있으면 그 값을 --root 로 넘길 뿐 동작은 이전과 동일), 그 변수가 없을
+# 때만 fallback 을 cwd 대신 repo root(스크립트 위치에서 두 단계 위)로 고정한다.
+REPO_ROOT="${PR_REVIEW_CONFIG_ROOT:-$DIR/../..}"
+if ! KIRO_CELLS_RAW="$(python3 "$CFG" kiro-cells --root "$REPO_ROOT")"; then
   echo "run-panel.sh: panel_config.py kiro-cells failed (malformed/wrong-shape config?) — refusing to run with an unverified roster" >&2
   exit 1
 fi
 KIRO_MODELS=()
 [ -n "$KIRO_CELLS_RAW" ] && mapfile -t KIRO_MODELS <<< "$KIRO_CELLS_RAW"
 
-python3 "$CFG" codex-enabled; CODEX_RC=$?
+python3 "$CFG" codex-enabled --root "$REPO_ROOT"; CODEX_RC=$?
 case "$CODEX_RC" in
   0) CODEX_ENABLED=1 ;;
   1) CODEX_ENABLED=0 ;;
