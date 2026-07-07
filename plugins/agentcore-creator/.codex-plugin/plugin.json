@@ -1,6 +1,6 @@
 {
   "name": "agentcore-creator",
-  "version": "1.12.1",
+  "version": "1.13.0",
   "description": "Convert Claude Code plugins to Amazon Bedrock AgentCore deployable formats including Runtime agents, Gateway tools, Memory knowledge stores, and Lambda functions",
   "author": {
     "name": "atomoh"

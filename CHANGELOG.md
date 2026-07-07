@@ -13,6 +13,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.0] - 2026-07-07
+
+### Added
+- **project-init: live GitHub metrics + langgraph-style README header** for `/generate-readme` — a new stdlib-only helper detects `owner/repo` from the git remote, fetches metrics via `gh` with an unauthenticated `urllib` fallback, and renders a centered, self-updating shields.io badge header; never raises to the shell (graceful `gh` → HTTP → git-only degradation) ([#97](https://github.com/Atom-oh/oh-my-cloud-skills/pull/97))
+- **co-agent hybrid review gate + parallel implement waves** — `/co-agent:harness`'s default review mode is now `hybrid` (parallel find → chair triage → parallel verify), and the implementer runs disjoint-file task waves in parallel instead of one task at a time ([#101](https://github.com/Atom-oh/oh-my-cloud-skills/pull/101))
+- **co-agent role-based model tiering** — place cost-efficient models per role instead of one model everywhere: a strong model for the chair (triage/synthesis), cheap breadth for the find panel, each AI's strongest model for verify, and a separately configurable `implementer_model`/`implementer_effort` for the harness write path ([#104](https://github.com/Atom-oh/oh-my-cloud-skills/pull/104))
+- **co-agent: Kiro, Codex, and Agy now share one distilled `AGENTS.md`** context file instead of per-AI copies, closing drift between panel members' project context
+
+### Removed
+- **co-agent: drop the deprecated `gemini` CLI fallback** — Agy is now the sole Gemini-family panel member, completing the ADR-010 migration started in 1.11.0 ([#101](https://github.com/Atom-oh/oh-my-cloud-skills/pull/101))
+
+### Fixed
+- **co-agent: `/co-agent:setup`'s `agy` preflight probe always timed out** even though a direct `agy` call answers in 11-18s — the probe's stdin-channel prompt phrased the instruction as a read-verb ("read ... from stdin"), which made `agy` try to invoke a second, literal stdin read that hit an already-closed pipe and hung to the full timeout; rephrased as a preposition ("the text you received via stdin") ([#107](https://github.com/Atom-oh/oh-my-cloud-skills/pull/107))
+- **co-agent: `codex`'s setup probe failed outside a trusted git directory** and used too tight a timeout for cold starts — pass `--skip-git-repo-check` (probe-only) and raise the probe timeout 20s → 45s
+- **co-agent: replace the sole model attributed to hallucinated/unfounded review findings** — `kimi-k2.5` accounted for 7 dismissed panel claims across this repo's own PR history and 0 for any other model, plus repeated zero-response coverage degradation in CI; the default Kiro find panel now uses `minimax-m2.5` ([#109](https://github.com/Atom-oh/oh-my-cloud-skills/pull/109))
+- **co-agent: consensus verdict parsing dropped a real veto** when a peer drifted to `BLOCKED:`/`PASSED` instead of the exact `BLOCK:`/`PASS` — now accepts both variants
+- **co-agent: harness `capture-diff` could silently return an empty diff** once a peer committed inside its worktree (it diffed against an implicit, now-stale `HEAD`) — pins an absolute base SHA at `worktree add` time and diffs against that instead
+- **co-agent: `cumulative-diff` duplicated a path-normalization bug already fixed in `scope_guard.py`** — now reuses the same `allowed_set()` implementation instead of a second copy
+
+### Security
+- **co-agent harness: a crafted worktree diff could escape the task's scope lock** — `scope_guard.py`'s `lstrip("./")` collapsed `../../src/foo.py` to `src/foo.py`, letting an out-of-plan file slip past the allow-list; now uses `posixpath.normpath` and fails closed on any residual `..` escape
+- **co-agent harness: the worktree's base-SHA marker was readable by the sandboxed peer** via `git -C <worktree> rev-parse --git-dir`, letting it discover the scope boundary from inside the sandbox; the marker now lives host-side, under the main repo's git directory
+
+### Changed
+- Bump all plugins and `marketplace.json` to 1.13.0
+
 ## [1.12.1] - 2026-06-26
 
 ### Fixed
@@ -273,7 +299,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add AWS Architecture Icons integration (4,224 files)
 - Add presenter view with speaker notes
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.1...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.13.0...HEAD
+[1.13.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.1...v1.13.0
 [1.12.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.0...v1.12.1
 [1.12.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.10.0...v1.11.0
@@ -303,6 +330,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 이 프로젝트의 모든 주요 변경 사항은 이 파일에 기록됩니다.
 이 문서는 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)를 기반으로 하며,
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 따릅니다.
+
+## [1.13.0] - 2026-07-07
+
+### Added
+- **project-init: `/generate-readme`에 실시간 GitHub 지표 + langgraph 스타일 README 헤더 추가** — 신규 stdlib-only 헬퍼가 git remote에서 `owner/repo`를 감지하고, `gh`로 지표를 가져오되 실패 시 인증 없는 `urllib`로 폴백하며, 가운데 정렬된 자동 갱신 shields.io 배지 헤더를 렌더링. 셸로 예외를 던지지 않음(`gh` → HTTP → git-only 순 우아한 저하) ([#97](https://github.com/Atom-oh/oh-my-cloud-skills/pull/97))
+- **co-agent 하이브리드 리뷰 게이트 + 병렬 구현 웨이브 추가** — `/co-agent:harness`의 기본 리뷰 모드가 `hybrid`(병렬 find → 체어 triage → 병렬 verify)로 변경, 구현자도 순차 1태스크 대신 겹치지 않는 파일 단위 태스크 웨이브를 병렬 실행 ([#101](https://github.com/Atom-oh/oh-my-cloud-skills/pull/101))
+- **co-agent 역할별 모델 티어링 추가** — 전체에 한 모델을 쓰는 대신 역할별로 배치: 체어(triage/종합)엔 강한 모델, find 패널엔 저비용 breadth, verify엔 각 AI의 최강 모델, harness 쓰기 경로엔 별도 설정 가능한 `implementer_model`/`implementer_effort` ([#104](https://github.com/Atom-oh/oh-my-cloud-skills/pull/104))
+- **co-agent: Kiro·Codex·Agy가 이제 하나의 증류된 `AGENTS.md`를 공유** — 패널 멤버별 개별 컨텍스트 파일 대신 단일 파일로 통일해 컨텍스트 드리프트 제거
+
+### Removed
+- **co-agent: deprecated된 `gemini` CLI fallback 제거** — Agy가 이제 Gemini 계열 패널의 유일한 멤버, 1.11.0에서 시작한 ADR-010 마이그레이션 완결 ([#101](https://github.com/Atom-oh/oh-my-cloud-skills/pull/101))
+
+### Fixed
+- **co-agent: `/co-agent:setup`의 `agy` 프리플라이트 프로브가 항상 타임아웃되던 문제 수정** — `agy`를 직접 호출하면 11-18초에 응답하는데도, 프로브의 stdin 채널 프롬프트가 "read ... from stdin"처럼 읽기-동사 형태로 지시해 `agy`가 두 번째 stdin 읽기를 실제로 시도하게 만들었고, 이미 닫힌 파이프에 걸려 풀 타임아웃까지 행(hang). 전치사형("the text you received via stdin")으로 재구성 ([#107](https://github.com/Atom-oh/oh-my-cloud-skills/pull/107))
+- **co-agent: `codex`의 setup 프로브가 신뢰된 git 디렉터리 밖에서 실패하고 콜드스타트엔 타임아웃이 너무 짧던 문제 수정** — `--skip-git-repo-check`(프로브 전용) 추가, 프로브 타임아웃 20초 → 45초로 상향
+- **co-agent: 근거 없는/할루시네이션 리뷰 지적의 유일한 원인 모델 교체** — `kimi-k2.5`가 이 저장소 자체 PR 이력에서 기각된 패널 지적 7건 중 전부를 차지(다른 모델은 0건)했고 CI에서 무응답 저하도 반복됨; 기본 Kiro find 패널을 `minimax-m2.5`로 교체 ([#109](https://github.com/Atom-oh/oh-my-cloud-skills/pull/109))
+- **co-agent: consensus verdict 파싱이 실제 veto를 놓치던 문제 수정** — peer 응답이 정확한 `BLOCK:`/`PASS`가 아닌 `BLOCKED:`/`PASSED`로 흔들리면 누락됐던 것을 두 표기 모두 인식하도록 수정
+- **co-agent: harness `capture-diff`가 조용히 빈 diff를 반환하던 문제 수정** — peer가 worktree 내부에서 커밋하면 암묵적이고 이미 stale해진 `HEAD` 기준으로 diff하던 것을, `worktree add` 시점에 고정한 절대 base SHA 기준으로 diff하도록 수정
+- **co-agent: `cumulative-diff`가 `scope_guard.py`에서 이미 고친 경로 정규화 버그를 중복 보유하던 문제 수정** — 별도 구현 대신 동일한 `allowed_set()`을 재사용하도록 수정
+
+### Security
+- **co-agent harness: 조작된 worktree diff가 태스크 스코프 락을 탈출할 수 있던 취약점 수정** — `scope_guard.py`의 `lstrip("./")`가 `../../src/foo.py`를 `src/foo.py`로 붕괴시켜 계획 밖 파일이 allow-list를 통과할 수 있었음; 이제 `posixpath.normpath` 사용 + 남은 `..` 이탈 시 fail-closed
+- **co-agent harness: worktree의 base-SHA 마커를 샌드박스 내 peer가 읽을 수 있던 취약점 수정** — `git -C <worktree> rev-parse --git-dir`로 샌드박스 안에서 스코프 경계를 알아낼 수 있었음; 마커를 host 측, 메인 저장소 git 디렉터리 하위로 이동
+
+### Changed
+- 모든 플러그인과 `marketplace.json`을 1.13.0으로 범프
 
 ## [1.12.1] - 2026-06-26
 
@@ -564,7 +617,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AWS Architecture Icons 통합 추가 (4,224개 파일)
 - 발표자 뷰 및 발표자 노트 추가
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.1...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.13.0...HEAD
+[1.13.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.1...v1.13.0
 [1.12.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.0...v1.12.1
 [1.12.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.10.0...v1.11.0
