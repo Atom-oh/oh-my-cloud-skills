@@ -44,12 +44,16 @@ def detect_plugin(peer, plugins_root):
     Two independent signals, either is sufficient: (1) a directory whose exact basename
     matches the official repo's own name (e.g. "codex-plugin-cc") — the literal repo-name
     convention; (2) a `marketplace.json` under plugins_root that declares a plugin entry
-    named after the peer's own CLI name ("codex") — the convention actually observed on a
-    real install, where Claude Code names the on-disk marketplace dir after
-    marketplace.json's own "name" field ("openai-codex", not the git repo's name
-    "codex-plugin-cc") and nests the plugin itself under plugins/<plugin-name> ("codex").
-    (1) alone silently missed that genuinely-installed official plugin and kept prompting
-    to (re)install it.
+    named after the peer's own CLI name ("codex") *and* whose "source" directory actually
+    exists on disk — the convention actually observed on a real install, where Claude Code
+    names the on-disk marketplace dir after marketplace.json's own "name" field
+    ("openai-codex", not the git repo's name "codex-plugin-cc") and nests the plugin itself
+    under plugins/<plugin-name> ("codex"). (1) alone silently missed that genuinely-installed
+    official plugin and kept prompting to (re)install it; requiring the source directory to
+    exist for (2) avoids treating a bare entry name (e.g. leftover/partial metadata) as proof
+    of an actual install. Malformed marketplace.json (wrong top-level type, non-dict entries)
+    is skipped, not raised — this walk covers every marketplace under plugins_root, including
+    ones this peer doesn't own, so one bad file must not take down the whole probe.
     """
     repo = PEER_PLUGINS.get(peer)
     if not repo or not plugins_root or not os.path.isdir(plugins_root):
@@ -64,8 +68,14 @@ def detect_plugin(peer, plugins_root):
                     data = json.load(f)
             except (OSError, json.JSONDecodeError):
                 continue
-            for entry in data.get("plugins", []):
-                if entry.get("name") == peer:
+            if not isinstance(data, dict):
+                continue
+            marketplace_root = os.path.dirname(dirpath)
+            for entry in data.get("plugins") or []:
+                if not isinstance(entry, dict) or entry.get("name") != peer:
+                    continue
+                source = entry.get("source")
+                if source and os.path.isdir(os.path.join(marketplace_root, source)):
                     return True
     return False
 

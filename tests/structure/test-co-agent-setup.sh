@@ -118,3 +118,27 @@ cat > "$DP_MP_OTHER/marketplaces/some-other/.claude-plugin/marketplace.json" <<'
 EOF
 assert_eq "False" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_MP_OTHER'))" 2>&1)" "#4: an unrelated marketplace.json does NOT false-positive"
 rm -rf "$DP_MP" "$DP_MP_OTHER"
+
+# #5 (review round on PR #110): a marketplace.json declaring a "codex" entry whose "source"
+# directory does NOT exist on disk must NOT count as installed -- a bare entry name is not
+# proof of an actual install (leftover/partial metadata).
+DP_MP_NOSRC=$(mktemp -d "${TMPDIR:-/tmp}/coagent-pmns.XXXXXX")
+mkdir -p "$DP_MP_NOSRC/marketplaces/openai-codex/.claude-plugin"
+cat > "$DP_MP_NOSRC/marketplaces/openai-codex/.claude-plugin/marketplace.json" <<'EOF'
+{"name": "openai-codex", "plugins": [{"name": "codex", "source": "./plugins/codex"}]}
+EOF
+assert_eq "False" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_MP_NOSRC'))" 2>&1)" "#5: entry name match without an existing source dir does NOT count as installed"
+rm -rf "$DP_MP_NOSRC"
+
+# #6 (review round on PR #110): a marketplace.json with the right shape elsewhere on the walk
+# but a malformed one (wrong top-level type, non-dict entry) alongside it must not crash the
+# whole probe -- one bad file must not take down detection of a genuinely-installed peer.
+DP_MP_BAD=$(mktemp -d "${TMPDIR:-/tmp}/coagent-pmbad.XXXXXX")
+mkdir -p "$DP_MP_BAD/marketplaces/broken-list/.claude-plugin" "$DP_MP_BAD/marketplaces/broken-entry/.claude-plugin" "$DP_MP_BAD/marketplaces/openai-codex/.claude-plugin" "$DP_MP_BAD/marketplaces/openai-codex/plugins/codex"
+echo '["not", "a", "dict"]' > "$DP_MP_BAD/marketplaces/broken-list/.claude-plugin/marketplace.json"
+echo '{"name": "broken-entry", "plugins": ["not-a-dict-entry"]}' > "$DP_MP_BAD/marketplaces/broken-entry/.claude-plugin/marketplace.json"
+cat > "$DP_MP_BAD/marketplaces/openai-codex/.claude-plugin/marketplace.json" <<'EOF'
+{"name": "openai-codex", "plugins": [{"name": "codex", "source": "./plugins/codex"}]}
+EOF
+assert_eq "True" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_MP_BAD'))" 2>&1)" "#6: a malformed marketplace.json elsewhere in the walk does not crash detection of a real install"
+rm -rf "$DP_MP_BAD"
