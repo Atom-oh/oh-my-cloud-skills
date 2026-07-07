@@ -134,4 +134,13 @@ echo '{"panel": {"kiro-glm": {"enabeld": false}}}' > "$R8/.claude/pr-review.loca
 python3 "$CFG" kiro-cells --root "$R8" >/dev/null 2>&1 && RC=0 || RC=$?
 assert_eq "1" "$RC" "kiro-cells fails closed on a typo'd/unknown key within a known cell"
 
-rm -rf "$R" "$R2" "$R3" "$R4" "$R5" "$R6" "$R7" "$R8"
+# (n3) a typo'd *top-level* key (e.g. "panle" for "panel") is the same failure mode one
+# level up from (m) -- merges in as a brand-new key, leaving the correctly-spelled "panel"
+# untouched at its defaults, so the override is a silent no-op (20th review MAJOR-1).
+R9=$(mktemp -d "${TMPDIR:-/tmp}/prreviewcfg.XXXXXX")
+mkdir -p "$R9/.claude"
+echo '{"panle": {"kiro-opus": {"enabled": false}}}' > "$R9/.claude/pr-review.local.json"
+python3 "$CFG" kiro-cells --root "$R9" >/dev/null 2>&1 && RC=0 || RC=$?
+assert_eq "1" "$RC" "kiro-cells fails closed on a typo'd/unknown top-level key"
+
+rm -rf "$R" "$R2" "$R3" "$R4" "$R5" "$R6" "$R7" "$R8" "$R9"

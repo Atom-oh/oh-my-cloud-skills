@@ -81,6 +81,12 @@ def validate_shape(cfg):
     `effective(strict=True)` catch all of it in one place instead of every consumer needing
     its own defensive re-check (18th review MAJOR L3-1/L4-2 — valid-JSON wrong-type values
     were fail-open even though malformed JSON was already fail-closed)."""
+    # Same fail-open family as the cell/key typo checks below, one level higher: a
+    # top-level typo (e.g. "panle" for "panel") merges in as a brand-new key nobody reads,
+    # leaving the correctly-spelled "panel" untouched at its defaults (20th review MAJOR-1).
+    unknown_top = set(cfg) - {"panel"}
+    if unknown_top:
+        raise AttributeError(f"unknown top-level key(s): {sorted(unknown_top)}")
     panel = cfg.get("panel")
     if not isinstance(panel, dict):
         raise AttributeError(f"'panel' must be an object, got {type(panel).__name__}")

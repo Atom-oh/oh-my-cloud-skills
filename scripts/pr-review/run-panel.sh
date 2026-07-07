@@ -186,8 +186,9 @@ echo "Panel responded ($(wc -l < "$RESP") / $(( ${#ALL_TAGS[@]} * ${#LENS_FILES[
 # 응답 없으면, 매트릭스가 조용히 그 모델 없이 축소된 채 VERDICT: PASS 로 이어질 수 있다
 # (예: kiro-cli 플래그(`--mode default --trust-tools=fs_read`)가 이 러너에서 무효거나
 # 모델 ID 가 계정에 프로비저닝 안 되면(`--list-models` 에 나열돼도 `INVALID_MODEL_ID` 로
-# 거부될 수 있음 — `--v3` 로 라우팅하면 실제로 이렇게 재현됨) Kiro 12셀 전부 graceful skip
-# → 실질 4셀짜리 리뷰인데 코멘트만 봐선 눈에 안 띌 수 있음). 모델별 row 가 완전히 비면
+# 거부될 수 있음 — `--v3` 로 라우팅하면 실제로 이렇게 재현됨) Kiro 셀 전부(기본 활성 로스터
+# 기준 12셀) graceful skip → codex 단독(기본 기준 4셀)짜리 리뷰인데 코멘트만 봐선 눈에 안
+# 띌 수 있음). 모델별 row 가 완전히 비면
 # 경고 + synthesize.sh 가 리뷰 본문에 명시하도록 파일로 전달.
 # ALL_TAGS(설정으로 활성화된 모델만) 기준이라, 설정으로 끈 모델은 이 루프에 애초에 없다.
 TOTAL_MODELS=${#ALL_TAGS[@]}

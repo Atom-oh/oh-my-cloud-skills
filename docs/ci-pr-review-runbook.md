@@ -23,8 +23,8 @@ PR을 열면 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 L1(결정
     50m 여유를 반영해 상향) 내 VERDICT를 못 만들면(연결 거부/행/빈 응답) `CHAIR_FALLBACK_MODEL`
     (기본 `us.anthropic.claude-opus-4-8`)로 1회 재시도. 튜닝하려면 워크플로 `env`에
     `CHAIR_TIMEOUT`/`CHAIR_FALLBACK_MODEL` 지정.
-- codex: `openai.gpt-5.5` (bedrock-mantle, In-Region us-east-1; 이미지 `~/.codex/config.toml`의 region이 결정) — L2~L5 각 lens 당 1회, 총 4콜.
-- kiro-cli: `claude-opus-4.8`/`gpt-5.5`/`glm-5` 각각 L2~L5 당 1회, 총 12콜. (`kimi-k2.5`는
+- codex: `openai.gpt-5.5` (bedrock-mantle, In-Region us-east-1; 이미지 `~/.codex/config.toml`의 region이 결정) — L2~L5 각 lens 당 1회, 기본 활성 로스터 기준 총 4콜.
+- kiro-cli: `claude-opus-4.8`/`gpt-5.5`/`glm-5` 각각 L2~L5 당 1회, 기본 활성 로스터 기준 총 12콜(매트릭스 멤버십은 설정값 — `panel_config.py`, `docs/ci-pr-review.md` "설정" 절). (`kimi-k2.5`는
   프로덕션에서 커버리지 저하 2/2회 + 근거 없는 지적 7건으로 교체됨. **`--v3` 를 쓰지 않는다**
   — `kiro-cli --v3 chat ... --model gpt-5.5`는 `--list-models`엔 나열돼도 실제 호출은
   `INVALID_MODEL_ID`(HTTP 400)로 거부되는데, 이건 `gpt-5.5` 자체의 문제가 아니라 **`--v3`

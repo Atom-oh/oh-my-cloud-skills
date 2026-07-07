@@ -404,6 +404,21 @@ if [ -f "$REAL_LOCAL" ]; then
   REAL_LOCAL_BACKUP=$(mktemp)
   cp "$REAL_LOCAL" "$REAL_LOCAL_BACKUP"
 fi
+# trap 을 backup 직후, mutate 전에 건다 — 이 사이 interrupt(CI 잡 취소 등)되면 실 repo 의
+# 보안 컨트롤 파일(민감 diff 정책 구현체)에 이 테스트의 disable-kiro-glm override 가
+# 영구히 잔존해, 이후 실행되는 모든 PR 리뷰의 커버리지가 "의도적 비활성화"로 오인돼 조용히
+# 줄어들 수 있다 — 이 repo 가 반복해서 MAJOR 로 승격해 온 바로 그 silent-coverage-shrink
+# 계열(20차 리뷰 MAJOR-2). 정상 종료 시엔 마지막에 명시적으로 `trap - EXIT INT TERM`
+# 해제 — 그러지 않으면 이 트랩이 이후(run-all.sh 가 순차 source 하는) 다른 테스트 파일이
+# 거는 EXIT 트랩을 밀어내거나, 반대로 밀려나 무력화될 수 있다.
+_restore_real_local() {
+  if [ -n "$REAL_LOCAL_BACKUP" ]; then
+    mv "$REAL_LOCAL_BACKUP" "$REAL_LOCAL"
+  else
+    rm -f "$REAL_LOCAL"
+  fi
+}
+trap _restore_real_local EXIT INT TERM
 mkdir -p "$REPO_ROOT/.claude"
 echo '{"panel": {"kiro-glm": {"enabled": false}}}' > "$REAL_LOCAL"
 setup; mkfake codex 0 "codex-finding"; mkfake_args kiro-cli 0 "kiro-finding"
@@ -417,11 +432,8 @@ fi
 { [ ! -e "$WORK/slot/kiro-glm-L2.md" ] && [ ! -e "$WORK/slot/kiro-glm-L3.md" ]; } \
   && pass "run-panel (p) repo-root .claude/pr-review.local.json is honored even when cwd is elsewhere" \
   || fail "run-panel (p) repo-root .claude/pr-review.local.json is honored even when cwd is elsewhere" "kiro-glm slot file exists despite the repo-root override disabling it"
-if [ -n "$REAL_LOCAL_BACKUP" ]; then
-  mv "$REAL_LOCAL_BACKUP" "$REAL_LOCAL"
-else
-  rm -f "$REAL_LOCAL"
-fi
+_restore_real_local
+trap - EXIT INT TERM
 rm -rf "$ELSEWHERE" "$LOG"
 
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
