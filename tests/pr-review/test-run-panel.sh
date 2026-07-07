@@ -52,12 +52,12 @@ if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/dev/null 2>&1; then
 fi
 allok=1; codex_diffok=1; kiro_pathok=1; kiro_no_embedok=1; lensok=1
 for lens in L2 L3; do
-  for f in "codex-$lens" "kiro-opus-$lens" "kiro-gpt-$lens" "kiro-glm-$lens"; do
+  for f in "codex-$lens" "kiro-opus-$lens" "kiro-minimax-$lens" "kiro-glm-$lens"; do
     [ -s "$WORK/slot/$f.md" ] || allok=0
   done
   # codex: diff 는 stdin 으로 도착 — 슬롯에 diff 내용이 그대로 보여야 한다.
   grep -q "diff --git" "$WORK/slot/codex-$lens.md" 2>/dev/null || codex_diffok=0
-  for tag in kiro-opus kiro-gpt kiro-glm; do
+  for tag in kiro-opus kiro-minimax kiro-glm; do
     # kiro: argv 에 실제 diff 파일의 절대경로가 fs_read 지시문으로 들어가야 한다.
     grep -qF "fs_read from: $DIFF_ABS" "$WORK/slot/$tag-$lens.md" 2>/dev/null || kiro_pathok=0
     # kiro: diff 내용 자체가 argv 에 그대로 embed 되면 안 된다(텍스트 임베드 회귀 가드).
@@ -146,7 +146,7 @@ if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >"$LOG" 2>&1; then
   fail "run-panel (f) script exits 0 even when a whole model row is empty" "exited non-zero"
 fi
 DEGRADED_SORTED="$(sort "$WORK/degraded-models.txt" 2>/dev/null | tr '\n' ',' )"
-[ "$DEGRADED_SORTED" = "kiro-glm,kiro-gpt,kiro-opus," ] \
+[ "$DEGRADED_SORTED" = "kiro-glm,kiro-minimax,kiro-opus," ] \
   && pass "run-panel (f) degraded-models.txt lists all 3 kiro tags when kiro fully fails" \
   || fail "run-panel (f) degraded-models.txt lists all 3 kiro tags when kiro fully fails" "got: $DEGRADED_SORTED"
 grep -q "::warning::model 'kiro-opus' produced zero responses" "$LOG" \
