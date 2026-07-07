@@ -40,7 +40,9 @@ RETRIES="${PANEL_RETRIES:-3}"
 # 매트릭스 멤버십(어떤 셀이 참여하는가)은 하드코딩이 아니라 panel_config.py 설정에서 온다 —
 # co-agent 의 co_agent_config.py 패턴(defaults.json + gitignored local override)과 동일
 # 레이어링. 코드 수정 없이 `panel_config.py set <cell> enabled false`로 매트릭스를 줄일 수
-# 있다(민감 diff에서 외부 Kiro 를 끄는 것 등 — docs/ci-pr-review.md "민감 diff 정책").
+# 있다(민감 diff에서 외부 Kiro 를 끄는 것 등 — docs/ci-pr-review.md "민감 diff 정책"). 로스터
+# 자체(kiro-opus/kiro-gpt/kiro-glm)의 model 값은 pr-review.defaults.json이 정본 — main의
+# kimi-k2.5 -> gpt-5.5 교체(ADR-012)를 그 파일에 반영했다.
 CFG="$DIR/panel_config.py"
 mapfile -t KIRO_MODELS < <(python3 "$CFG" kiro-cells)
 CODEX_ENABLED=0; python3 "$CFG" codex-enabled && CODEX_ENABLED=1
@@ -114,7 +116,7 @@ for lens_file in "${LENS_FILES[@]}"; do
     if command -v kiro-cli >/dev/null 2>&1; then
       ( cd "$KIRO_CWD" && try_panel "$SLOT/$tag-$lens.md" "$SLOT/$tag-$lens.err" \
           kiro_env timeout "$T" kiro-cli chat "$KIRO_INSTRUCTION" --model "$m" \
-          --v3 --mode default --no-interactive --trust-tools=fs_read --wrap never ) &
+          --mode default --no-interactive --trust-tools=fs_read --wrap never ) &
     else echo "[skip] $tag/$lens (binary absent)" >&2; : > "$SLOT/$tag-$lens.md"; fi
   done
 done
@@ -142,9 +144,11 @@ echo "Panel responded ($(wc -l < "$RESP") / $(( ${#ALL_TAGS[@]} * ${#LENS_FILES[
 
 # 커버리지 floor — 모델 하나(플래그 무효화/바이너리 부재/전면 인증 실패 등)가 lens 전부에서
 # 응답 없으면, 매트릭스가 조용히 그 모델 없이 축소된 채 VERDICT: PASS 로 이어질 수 있다
-# (예: kiro-cli 신규 플래그(`--v3 --mode default --trust-tools=fs_read`)가 이 러너에서
-# 무효면 Kiro 12셀 전부 graceful skip → 실질 4셀짜리 리뷰인데 코멘트만 봐선 눈에 안 띌 수
-# 있음). 모델별 row 가 완전히 비면 경고 + synthesize.sh 가 리뷰 본문에 명시하도록 파일로 전달.
+# (예: kiro-cli 플래그(`--mode default --trust-tools=fs_read`)가 이 러너에서 무효거나
+# 모델 ID 가 계정에 프로비저닝 안 되면(`--list-models` 에 나열돼도 `INVALID_MODEL_ID` 로
+# 거부될 수 있음 — `--v3` 로 라우팅하면 실제로 이렇게 재현됨) Kiro 12셀 전부 graceful skip
+# → 실질 4셀짜리 리뷰인데 코멘트만 봐선 눈에 안 띌 수 있음). 모델별 row 가 완전히 비면
+# 경고 + synthesize.sh 가 리뷰 본문에 명시하도록 파일로 전달.
 # ALL_TAGS(설정으로 활성화된 모델만) 기준이라, 설정으로 끈 모델은 이 루프에 애초에 없다.
 TOTAL_MODELS=${#ALL_TAGS[@]}
 : > "$WORK/degraded-models.txt"

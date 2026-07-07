@@ -11,7 +11,7 @@ this repo's CI — there is no "current user" to have a personal layer, so this 
   pr-review.defaults.json              (committed, next to this script)      ← base
   <repo>/.claude/pr-review.local.json  (gitignored, this repo only)           ← override
 
-Cells: codex (no `model` knob — fixed via ~/.codex/config.toml) + kiro-opus/kiro-kimi/
+Cells: codex (no `model` knob — fixed via ~/.codex/config.toml) + kiro-opus/kiro-gpt/
 kiro-glm (each wraps one Kiro model). Disabling a cell removes it from every lens — the
 matrix is lens × enabled cells, not a per-lens routing table (YAGNI: nothing has asked
 for per-lens model assignment; full matrix is the current, only documented shape).
@@ -31,7 +31,7 @@ import re
 import json
 import copy
 
-KIRO_CELLS = ("kiro-opus", "kiro-kimi", "kiro-glm")   # fixed cell order — kiro-cells output order
+KIRO_CELLS = ("kiro-opus", "kiro-gpt", "kiro-glm")   # fixed cell order — kiro-cells output order
 ALL_CELLS = ("codex",) + KIRO_CELLS
 BOOL_WORDS = ("true", "false", "1", "0", "yes", "no")
 # Same charset as co_agent_config.py's MODEL_RE — Kiro model ids don't need spaces/parens,

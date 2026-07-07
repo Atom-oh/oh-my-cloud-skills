@@ -135,8 +135,10 @@ jobs:
           # 이전 문구는 "stdin 또는 inline marker로 제공"이라고 말했지만 실제 lens 프롬프트
           # 수신자 중 그 어느 쪽도 그렇게 diff 를 받지 않는다(inline marker 는 synthesize.sh
           # 의 체어 프롬프트에만 존재 — lens 프롬프트와 무관) — Codex 는 stdin, Kiro 는 뒤에
-          # 덧붙는 fs_read 경로 지시로 받는다. 약한 모델(kimi/glm)이 "diff 가 안 왔다"고
-          # 오판할 여지가 있던 부정확한 문구를 두 실제 경로만 언급하도록 수정(14차 리뷰 MINOR-2).
+          # 덧붙는 fs_read 경로 지시로 받는다. 일부 Kiro 모델이 "diff 가 안 왔다"고 오판할
+          # 여지가 있던 부정확한 문구를 두 실제 경로만 언급하도록 수정(14차 리뷰 MINOR-2).
+          # (로스터 자체는 scripts/pr-review/run-panel.sh의 KIRO_MODELS가 source of truth —
+          # 특정 모델명을 여기 하드코딩하면 로스터가 바뀔 때마다 이 주석도 드리프트한다.)
           COMMON="Review ONLY the diff under review for this PR, in this Claude Code plugin
           marketplace repo. The diff reaches you one of two ways depending on your tool: it
           is either piped to your stdin directly, or your instructions below tell you to read

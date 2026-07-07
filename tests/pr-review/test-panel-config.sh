@@ -15,7 +15,7 @@ R=$(mktemp -d "${TMPDIR:-/tmp}/prreviewcfg.XXXXXX")
 # (a) fresh --root → all 3 kiro cells + codex enabled by default
 CELLS=$(python3 "$CFG" kiro-cells --root "$R" 2>&1)
 assert_eq "claude-opus-4.8:kiro-opus
-kimi-k2.5:kiro-kimi
+gpt-5.5:kiro-gpt
 glm-5:kiro-glm" "$CELLS" "kiro-cells lists all 3 kiro cells in fixed order by default"
 python3 "$CFG" codex-enabled --root "$R" >/dev/null 2>&1 && RC=0 || RC=$?
 assert_eq "0" "$RC" "codex-enabled exits 0 by default"
@@ -24,7 +24,7 @@ assert_eq "0" "$RC" "codex-enabled exits 0 by default"
 python3 "$CFG" set kiro-glm enabled false --root "$R" >/dev/null 2>&1
 CELLS_B=$(python3 "$CFG" kiro-cells --root "$R" 2>&1)
 assert_eq "claude-opus-4.8:kiro-opus
-kimi-k2.5:kiro-kimi" "$CELLS_B" "disabling kiro-glm removes only that cell from kiro-cells"
+gpt-5.5:kiro-gpt" "$CELLS_B" "disabling kiro-glm removes only that cell from kiro-cells"
 
 # (c) disabling codex flips codex-enabled's exit code
 python3 "$CFG" set codex enabled false --root "$R" >/dev/null 2>&1
@@ -45,9 +45,9 @@ assert_eq "2" "$RC" "set codex model is rejected (codex has no model knob)"
 
 # (g) changing a kiro cell's model shows up in kiro-cells output
 R2=$(mktemp -d "${TMPDIR:-/tmp}/prreviewcfg.XXXXXX")
-python3 "$CFG" set kiro-opus model kimi-k2.5 --root "$R2" >/dev/null 2>&1
+python3 "$CFG" set kiro-opus model gpt-5.5 --root "$R2" >/dev/null 2>&1
 CELLS_G=$(python3 "$CFG" kiro-cells --root "$R2" 2>&1)
-assert_contains "$CELLS_G" "kimi-k2.5:kiro-opus" "set <cell> model updates that cell's kiro-cells entry"
+assert_contains "$CELLS_G" "gpt-5.5:kiro-opus" "set <cell> model updates that cell's kiro-cells entry"
 
 # (h) a malformed local override warns but doesn't crash — falls back to defaults
 R3=$(mktemp -d "${TMPDIR:-/tmp}/prreviewcfg.XXXXXX")
@@ -55,13 +55,13 @@ mkdir -p "$R3/.claude"
 echo "{not valid json" > "$R3/.claude/pr-review.local.json"
 CELLS_H=$(python3 "$CFG" kiro-cells --root "$R3" 2>/dev/null)
 assert_eq "claude-opus-4.8:kiro-opus
-kimi-k2.5:kiro-kimi
+gpt-5.5:kiro-gpt
 glm-5:kiro-glm" "$CELLS_H" "a malformed local override is ignored, not fatal"
 
 # (i) $PR_REVIEW_CONFIG_ROOT env is honored when --root is omitted (test-isolation parity
 # with co-agent's $CO_AGENT_USER_CONFIG) — same disabled-cell state as (b)/(c) above.
 CELLS_I=$(PR_REVIEW_CONFIG_ROOT="$R" python3 "$CFG" kiro-cells 2>&1)
 assert_eq "claude-opus-4.8:kiro-opus
-kimi-k2.5:kiro-kimi" "$CELLS_I" "\$PR_REVIEW_CONFIG_ROOT is honored when --root is omitted"
+gpt-5.5:kiro-gpt" "$CELLS_I" "\$PR_REVIEW_CONFIG_ROOT is honored when --root is omitted"
 
 rm -rf "$R" "$R2" "$R3"

@@ -8,7 +8,7 @@ PR을 열면 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 L1(결정
    호출되지 않음(비용 0) — 원인은 코멘트 본문의 `test-plugins.py`/`test-codex-plugins.py` 출력
    (dangling 참조/버전 불일치/JSON 오류/`.codex-plugin` 매니페스트 오류)에 그대로 나온다.
 2. **L1 통과** 시: PR 코멘트의 `_Cells (model/lens):_` 줄에 `codex/L2`, `kiro-opus/L3`,
-   `kiro-kimi/L4`, `kiro-glm/L5` 등 최대 16개 `<모델>/<lens>` 태그가 보이면 정상(일부 셀은
+   `kiro-gpt/L4`, `kiro-glm/L5` 등 최대 16개 `<모델>/<lens>` 태그가 보이면 정상(일부 셀은
    등급/쿼터로 간헐 skip 가능). 모델 하나가 **전체 lens** 에서 응답 없으면(예: kiro-cli 플래그
    무효화) 리뷰 상단에 `⚠️ 커버리지 저하` 배너가 뜬다(synthesize.sh 가 실제로 출력하는 배너
    문자열 그대로 — run-panel.sh 의 모델별 row 체크 결과, lens 하나가 모든 모델에서 동시에
@@ -24,7 +24,16 @@ PR을 열면 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 L1(결정
     (기본 `us.anthropic.claude-opus-4-8`)로 1회 재시도. 튜닝하려면 워크플로 `env`에
     `CHAIR_TIMEOUT`/`CHAIR_FALLBACK_MODEL` 지정.
 - codex: `openai.gpt-5.5` (bedrock-mantle, In-Region us-east-1; 이미지 `~/.codex/config.toml`의 region이 결정) — L2~L5 각 lens 당 1회, 총 4콜.
-- kiro-cli: `claude-opus-4.8`/`kimi-k2.5`/`glm-5` 각각 L2~L5 당 1회, 총 12콜.
+- kiro-cli: `claude-opus-4.8`/`gpt-5.5`/`glm-5` 각각 L2~L5 당 1회, 총 12콜. (`kimi-k2.5`는
+  프로덕션에서 커버리지 저하 2/2회 + 근거 없는 지적 7건으로 교체됨. **`--v3` 를 쓰지 않는다**
+  — `kiro-cli --v3 chat ... --model gpt-5.5`는 `--list-models`엔 나열돼도 실제 호출은
+  `INVALID_MODEL_ID`(HTTP 400)로 거부되는데, 이건 `gpt-5.5` 자체의 문제가 아니라 **`--v3`
+  플래그가 라우팅하는 별도 백엔드**의 모델 카탈로그가 더 좁아서다 — `--v3` 없는 `kiro-cli
+  chat`(나머지 플래그 `--mode default --trust-tools=fs_read --no-interactive --wrap never`
+  는 동일)으로는 gpt-5.5 포함 5개 모델 전부 정상 응답 확인됨. `--v3`는 애초에 모델 지원과
+  무관한 stdin-무시/`fs_read` tool-name 버그를 고치려고 도입됐던 것(커밋 `c5b19c7`)이라 —
+  두 버그 다 argv 전달 방식으로 이미 우회돼 있어 `--v3` 없이도 재발하지 않음. 교체 배경/근거
+  전체는 ADR-012 참조.)
 - AWS 인증: EKS Pod Identity(ci-runner 역할) SigV4
 
 ## L1 이 fail 로 막혔을 때

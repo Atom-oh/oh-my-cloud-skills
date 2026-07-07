@@ -3,7 +3,7 @@
   "panel": {
     "codex":     { "enabled": true },
     "kiro-opus": { "enabled": true, "model": "claude-opus-4.8" },
-    "kiro-kimi": { "enabled": true, "model": "kimi-k2.5" },
+    "kiro-gpt":  { "enabled": true, "model": "gpt-5.5" },
     "kiro-glm":  { "enabled": true, "model": "glm-5" }
   }
 }
