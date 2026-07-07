@@ -51,9 +51,11 @@ def detect_plugin(peer, plugins_root):
     under plugins/<plugin-name> ("codex"). (1) alone silently missed that genuinely-installed
     official plugin and kept prompting to (re)install it; requiring the source directory to
     exist for (2) avoids treating a bare entry name (e.g. leftover/partial metadata) as proof
-    of an actual install. Malformed marketplace.json (wrong top-level type, non-dict entries)
-    is skipped, not raised — this walk covers every marketplace under plugins_root, including
-    ones this peer doesn't own, so one bad file must not take down the whole probe.
+    of an actual install. Malformed marketplace.json — wrong top-level type, a non-list/scalar
+    "plugins" value, non-dict entries, or a non-string "source" (including the object-form
+    source Claude Code marketplaces legitimately use for git-hosted plugins) — is skipped, not
+    raised: this walk covers every marketplace under plugins_root, including ones this peer
+    doesn't own, so one bad or differently-shaped file must not take down the whole probe.
     """
     repo = PEER_PLUGINS.get(peer)
     if not repo or not plugins_root or not os.path.isdir(plugins_root):
@@ -71,11 +73,14 @@ def detect_plugin(peer, plugins_root):
             if not isinstance(data, dict):
                 continue
             marketplace_root = os.path.dirname(dirpath)
-            for entry in data.get("plugins") or []:
+            plugins = data.get("plugins")
+            if not isinstance(plugins, list):
+                continue
+            for entry in plugins:
                 if not isinstance(entry, dict) or entry.get("name") != peer:
                     continue
                 source = entry.get("source")
-                if source and os.path.isdir(os.path.join(marketplace_root, source)):
+                if isinstance(source, str) and source and os.path.isdir(os.path.join(marketplace_root, source)):
                     return True
     return False
 

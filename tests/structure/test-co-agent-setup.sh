@@ -142,3 +142,23 @@ cat > "$DP_MP_BAD/marketplaces/openai-codex/.claude-plugin/marketplace.json" <<'
 EOF
 assert_eq "True" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_MP_BAD'))" 2>&1)" "#6: a malformed marketplace.json elsewhere in the walk does not crash detection of a real install"
 rm -rf "$DP_MP_BAD"
+
+# #7 (review round on PR #110): a "plugins" value that is a non-list scalar (e.g. a bare
+# number) must not crash -- `data.get("plugins") or []` previously let a truthy scalar like 5
+# through, and `for entry in 5` raises TypeError.
+DP_MP_SCALAR=$(mktemp -d "${TMPDIR:-/tmp}/coagent-pmscalar.XXXXXX")
+mkdir -p "$DP_MP_SCALAR/marketplaces/openai-codex/.claude-plugin"
+echo '{"name": "openai-codex", "plugins": 5}' > "$DP_MP_SCALAR/marketplaces/openai-codex/.claude-plugin/marketplace.json"
+assert_eq "False" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_MP_SCALAR'))" 2>&1)" "#7: a non-list 'plugins' scalar is skipped, not crashed on"
+rm -rf "$DP_MP_SCALAR"
+
+# #8 (review round on PR #110): a matching entry whose "source" is the object-form Claude
+# Code marketplaces legitimately use for git-hosted plugins (a dict, not a string) must not
+# crash -- os.path.join(root, <dict>) raises TypeError.
+DP_MP_OBJSRC=$(mktemp -d "${TMPDIR:-/tmp}/coagent-pmobjsrc.XXXXXX")
+mkdir -p "$DP_MP_OBJSRC/marketplaces/openai-codex/.claude-plugin"
+cat > "$DP_MP_OBJSRC/marketplaces/openai-codex/.claude-plugin/marketplace.json" <<'EOF'
+{"name": "openai-codex", "plugins": [{"name": "codex", "source": {"source": "github", "repo": "openai/codex-plugin-cc"}}]}
+EOF
+assert_eq "False" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_MP_OBJSRC'))" 2>&1)" "#8: an object-form (dict) source is skipped, not crashed on"
+rm -rf "$DP_MP_OBJSRC"
