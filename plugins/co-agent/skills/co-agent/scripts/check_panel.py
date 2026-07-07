@@ -51,11 +51,12 @@ def detect_plugin(peer, plugins_root):
     under plugins/<plugin-name> ("codex"). (1) alone silently missed that genuinely-installed
     official plugin and kept prompting to (re)install it; requiring the source directory to
     exist for (2) avoids treating a bare entry name (e.g. leftover/partial metadata) as proof
-    of an actual install. Malformed marketplace.json — wrong top-level type, a non-list/scalar
-    "plugins" value, non-dict entries, or a non-string "source" (including the object-form
-    source Claude Code marketplaces legitimately use for git-hosted plugins) — is skipped, not
-    raised: this walk covers every marketplace under plugins_root, including ones this peer
-    doesn't own, so one bad or differently-shaped file must not take down the whole probe.
+    of an actual install. Malformed marketplace.json — invalid JSON, non-UTF-8 bytes, wrong
+    top-level type, a non-list/scalar "plugins" value, non-dict entries, or a non-string
+    "source" (including the object-form source Claude Code marketplaces legitimately use for
+    git-hosted plugins) — is skipped, not raised: this walk covers every marketplace under
+    plugins_root, including ones this peer doesn't own, so one bad or differently-shaped file
+    must not take down the whole probe.
     """
     repo = PEER_PLUGINS.get(peer)
     if not repo or not plugins_root or not os.path.isdir(plugins_root):
@@ -68,7 +69,10 @@ def detect_plugin(peer, plugins_root):
             try:
                 with open(os.path.join(dirpath, "marketplace.json"), encoding="utf-8") as f:
                     data = json.load(f)
-            except (OSError, json.JSONDecodeError):
+            except (OSError, ValueError):
+                # ValueError covers json.JSONDecodeError (a subclass) and UnicodeDecodeError,
+                # which json.load's internal read() can raise on non-UTF-8 bytes and is a
+                # ValueError *sibling*, not a JSONDecodeError -- narrower except clauses miss it.
                 continue
             if not isinstance(data, dict):
                 continue

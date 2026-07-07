@@ -162,3 +162,12 @@ cat > "$DP_MP_OBJSRC/marketplaces/openai-codex/.claude-plugin/marketplace.json" 
 EOF
 assert_eq "False" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_MP_OBJSRC'))" 2>&1)" "#8: an object-form (dict) source is skipped, not crashed on"
 rm -rf "$DP_MP_OBJSRC"
+
+# #9 (review round on PR #110): non-UTF-8 bytes in marketplace.json must not crash -- json.load's
+# internal read() raises UnicodeDecodeError (a ValueError *sibling* of json.JSONDecodeError, not
+# a subclass), which the original `except (OSError, json.JSONDecodeError)` did not catch.
+DP_MP_BADENC=$(mktemp -d "${TMPDIR:-/tmp}/coagent-pmbadenc.XXXXXX")
+mkdir -p "$DP_MP_BADENC/marketplaces/openai-codex/.claude-plugin"
+printf '\xff\xfe{"name": "openai-codex"}' > "$DP_MP_BADENC/marketplaces/openai-codex/.claude-plugin/marketplace.json"
+assert_eq "False" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_MP_BADENC'))" 2>&1)" "#9: non-UTF-8 bytes in marketplace.json are skipped, not crashed on"
+rm -rf "$DP_MP_BADENC"
