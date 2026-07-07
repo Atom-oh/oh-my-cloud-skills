@@ -86,7 +86,7 @@ rm -rf "$WORK" "$BIN"
 setup; mkclaude_pass
 echo "codex-finding" > "$WORK/slot/codex-L2.md"
 echo "codex/L2" >> "$WORK/responded.txt"
-printf 'kiro-opus\nkiro-minimax\nkiro-glm\n' > "$WORK/degraded-models.txt"
+printf 'kiro-opus\nkiro-gpt\nkiro-glm\n' > "$WORK/degraded-models.txt"
 if ! bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
   fail "synthesize (d) script exits 0 with a degraded-models.txt present" "exited non-zero"
 fi
@@ -105,7 +105,7 @@ rm -rf "$WORK" "$BIN"
 setup; mkclaude_pass
 echo "codex-finding" > "$WORK/slot/codex-L2.md"
 echo "codex/L2" >> "$WORK/responded.txt"
-printf 'kiro-opus\nkiro-minimax\nkiro-glm\n' > "$WORK/degraded-models.txt"
+printf 'kiro-opus\nkiro-gpt\nkiro-glm\n' > "$WORK/degraded-models.txt"
 : > "$WORK/coverage-severe.flag"
 if ! bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
   fail "synthesize (e) script exits 0 even with coverage-severe.flag set" "exited non-zero"
@@ -153,7 +153,7 @@ EOF
 chmod +x "$BIN/claude"
 echo "codex-finding" > "$WORK/slot/codex-L2.md"
 echo "codex/L2" >> "$WORK/responded.txt"
-printf 'kiro-opus\nkiro-minimax\nkiro-glm\n' > "$WORK/degraded-models.txt"
+printf 'kiro-opus\nkiro-gpt\nkiro-glm\n' > "$WORK/degraded-models.txt"
 : > "$WORK/coverage-severe.flag"
 if ! bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
   fail "synthesize (g) script exits 0 with a prose line that starts with VERDICT:" "exited non-zero"
@@ -174,7 +174,7 @@ rm -rf "$WORK" "$BIN"
 setup; mkclaude_no_verdict
 echo "codex-finding" > "$WORK/slot/codex-L2.md"
 echo "codex/L2" >> "$WORK/responded.txt"
-printf 'kiro-opus\nkiro-minimax\nkiro-glm\n' > "$WORK/degraded-models.txt"
+printf 'kiro-opus\nkiro-gpt\nkiro-glm\n' > "$WORK/degraded-models.txt"
 : > "$WORK/coverage-severe.flag"
 if ! bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
   fail "synthesize (h) script exits 0 when the chair response has no VERDICT line at all" "exited non-zero"

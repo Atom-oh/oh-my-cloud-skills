@@ -37,7 +37,7 @@ SLOT="$WORK/slot"; RESP="$WORK/responded.txt"; : > "$RESP"
 rm -f "$WORK/coverage-severe.flag"
 T="${PANEL_TIMEOUT:-300}"
 RETRIES="${PANEL_RETRIES:-3}"
-KIRO_MODELS=("claude-opus-4.8:kiro-opus" "minimax-m2.5:kiro-minimax" "glm-5:kiro-glm")
+KIRO_MODELS=("claude-opus-4.8:kiro-opus" "gpt-5.5:kiro-gpt" "glm-5:kiro-glm")
 
 shopt -s nullglob
 LENS_FILES=("$LENSES_DIR"/*.txt)
@@ -108,7 +108,7 @@ for lens_file in "${LENS_FILES[@]}"; do
     if command -v kiro-cli >/dev/null 2>&1; then
       ( cd "$KIRO_CWD" && try_panel "$SLOT/$tag-$lens.md" "$SLOT/$tag-$lens.err" \
           kiro_env timeout "$T" kiro-cli chat "$KIRO_INSTRUCTION" --model "$m" \
-          --v3 --mode default --no-interactive --trust-tools=fs_read --wrap never ) &
+          --mode default --no-interactive --trust-tools=fs_read --wrap never ) &
     else echo "[skip] $tag/$lens (binary absent)" >&2; : > "$SLOT/$tag-$lens.md"; fi
   done
 done
@@ -129,9 +129,11 @@ echo "Panel responded ($(wc -l < "$RESP") / $(( (${#KIRO_MODELS[@]} + 1) * ${#LE
 
 # 커버리지 floor — 모델 하나(플래그 무효화/바이너리 부재/전면 인증 실패 등)가 lens 전부에서
 # 응답 없으면, 매트릭스가 조용히 그 모델 없이 축소된 채 VERDICT: PASS 로 이어질 수 있다
-# (예: kiro-cli 신규 플래그(`--v3 --mode default --trust-tools=fs_read`)가 이 러너에서
-# 무효면 Kiro 12셀 전부 graceful skip → 실질 4셀짜리 리뷰인데 코멘트만 봐선 눈에 안 띌 수
-# 있음). 모델별 row 가 완전히 비면 경고 + synthesize.sh 가 리뷰 본문에 명시하도록 파일로 전달.
+# (예: kiro-cli 플래그(`--mode default --trust-tools=fs_read`)가 이 러너에서 무효거나
+# 모델 ID 가 계정에 프로비저닝 안 되면(`--list-models` 에 나열돼도 `INVALID_MODEL_ID` 로
+# 거부될 수 있음 — `--v3` 로 라우팅하면 실제로 이렇게 재현됨) Kiro 12셀 전부 graceful skip
+# → 실질 4셀짜리 리뷰인데 코멘트만 봐선 눈에 안 띌 수 있음). 모델별 row 가 완전히 비면
+# 경고 + synthesize.sh 가 리뷰 본문에 명시하도록 파일로 전달.
 TOTAL_MODELS=$(( ${#KIRO_MODELS[@]} + 1 ))
 : > "$WORK/degraded-models.txt"
 for model_tag in codex "${KIRO_MODELS[@]##*:}"; do
