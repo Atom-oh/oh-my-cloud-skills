@@ -97,3 +97,24 @@ assert_eq "False" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent
 DP_OK=$(mktemp -d "${TMPDIR:-/tmp}/coagent-po.XXXXXX"); mkdir -p "$DP_OK/codex-plugin-cc"
 assert_eq "True" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_OK'))" 2>&1)" "#3: exact codex-plugin-cc dir matches"
 rm -rf "$DP_FORK" "$DP_OK"
+
+# #4: real installs name the on-disk marketplace dir after marketplace.json's own "name"
+# field ("openai-codex"), not the git repo's name ("codex-plugin-cc") -- the #3 dir-name-
+# only match silently missed this and kept prompting to (re)install an already-installed
+# plugin. detect_plugin must also recognize a marketplace.json that declares a plugin entry
+# named after the peer ("codex"), regardless of what the marketplace directory is called.
+DP_MP=$(mktemp -d "${TMPDIR:-/tmp}/coagent-pm.XXXXXX")
+mkdir -p "$DP_MP/marketplaces/openai-codex/.claude-plugin" "$DP_MP/marketplaces/openai-codex/plugins/codex"
+cat > "$DP_MP/marketplaces/openai-codex/.claude-plugin/marketplace.json" <<'EOF'
+{"name": "openai-codex", "plugins": [{"name": "codex", "source": "./plugins/codex"}]}
+EOF
+assert_eq "True" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_MP'))" 2>&1)" "#4: marketplace.json declaring a 'codex' plugin entry matches, regardless of directory name"
+# a marketplace that happens to be installed but does NOT declare a "codex" plugin entry
+# must not false-positive just because *some* marketplace.json exists under plugins_root.
+DP_MP_OTHER=$(mktemp -d "${TMPDIR:-/tmp}/coagent-pmo.XXXXXX")
+mkdir -p "$DP_MP_OTHER/marketplaces/some-other/.claude-plugin"
+cat > "$DP_MP_OTHER/marketplaces/some-other/.claude-plugin/marketplace.json" <<'EOF'
+{"name": "some-other", "plugins": [{"name": "unrelated-tool", "source": "./plugins/unrelated-tool"}]}
+EOF
+assert_eq "False" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_MP_OTHER'))" 2>&1)" "#4: an unrelated marketplace.json does NOT false-positive"
+rm -rf "$DP_MP" "$DP_MP_OTHER"

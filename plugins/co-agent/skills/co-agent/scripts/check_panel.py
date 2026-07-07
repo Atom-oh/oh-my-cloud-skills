@@ -39,14 +39,34 @@ def detect_cli(peer):
 
 
 def detect_plugin(peer, plugins_root):
-    """True if the peer's official plugin appears installed under the plugin cache."""
+    """True if the peer's official plugin appears installed under the plugin cache.
+
+    Two independent signals, either is sufficient: (1) a directory whose exact basename
+    matches the official repo's own name (e.g. "codex-plugin-cc") — the literal repo-name
+    convention; (2) a `marketplace.json` under plugins_root that declares a plugin entry
+    named after the peer's own CLI name ("codex") — the convention actually observed on a
+    real install, where Claude Code names the on-disk marketplace dir after
+    marketplace.json's own "name" field ("openai-codex", not the git repo's name
+    "codex-plugin-cc") and nests the plugin itself under plugins/<plugin-name> ("codex").
+    (1) alone silently missed that genuinely-installed official plugin and kept prompting
+    to (re)install it.
+    """
     repo = PEER_PLUGINS.get(peer)
     if not repo or not plugins_root or not os.path.isdir(plugins_root):
         return False
     needle = repo.split("/")[-1]   # e.g. "codex-plugin-cc"
-    for dirpath, dirnames, _files in os.walk(plugins_root):
+    for dirpath, dirnames, filenames in os.walk(plugins_root):
         if os.path.basename(dirpath) == needle or needle in dirnames:
             return True
+        if os.path.basename(dirpath) == ".claude-plugin" and "marketplace.json" in filenames:
+            try:
+                with open(os.path.join(dirpath, "marketplace.json"), encoding="utf-8") as f:
+                    data = json.load(f)
+            except (OSError, json.JSONDecodeError):
+                continue
+            for entry in data.get("plugins", []):
+                if entry.get("name") == peer:
+                    return True
     return False
 
 
