@@ -29,16 +29,19 @@ CRITICAL/MAJOR finding remains (also stop on no-progress / oscillation).
 
 ## Multi-model rules
 - Default profile = one model per AI. The committed default is `deep`, which activates
-  each AI's `models` list — Kiro's mainstay panel is **opus / kimi-k2.5 / glm-5**.
+  each AI's `models` list — Kiro's mainstay panel is **opus / minimax-m2.5 / glm-5**.
 - Cap: `rounds × pairs ≤ max_calls`; trim same-family (round-robin) first, then warn.
 - Same provider *family* (e.g. two Agy-routed variants) = diminishing returns; the matrix warns.
-  **Kiro is the exception** — it's a cross-vendor router (Claude / Moonshot / Zhipu), so
+  **Kiro is the exception** — it's a cross-vendor router (Claude / MiniMax / Zhipu), so
   multiple Kiro models are genuine cross-family diversity (matrix notes it, no warning).
-- **`kimi-k2.5` is an `[Internal]` preview** in `kiro-cli --list-models`. If an account
-  can't access it, the fan-out *skips* that pair (Kiro drops to 2 models) — it does not
-  auto-substitute. The designated fallback is **`claude-sonnet-4.6`** (stable, 1M ctx):
-  `python3 scripts/co_agent_config.py set kiro-cli models claude-opus-4.8,claude-sonnet-4.6,glm-5`
-  (write to `.claude/co-agent.local.json` to keep it personal, or edit `co-agent.defaults.json`).
+  Note this is why `gpt-5.5` isn't the Kiro-side pick even though it replaced `kimi-k2.5` in
+  pr-review's panel — Codex already covers OpenAI here, so routing Kiro to `gpt-5.5` too would
+  collapse two of the panel's vendor-diversity slots into one family.
+- **`kimi-k2.5` was dropped** (2026-07) — it was the sole model attributed to unfounded/
+  hallucinated findings across this repo's PR review history (7 dismissed claims, 0 for any
+  other panel model — see `docs/ci-pr-review.md`) and to zero-response coverage degradation
+  in CI. `minimax-m2.5` isn't flagged `[Internal]` in `kiro-cli --list-models` (unlike
+  `kimi-k2.5`), so it doesn't carry the same access-risk caveat this section used to document.
 
 ## Where the gate is used
 - **`/co-agent:consensus review`** — the gate, standalone, on a git diff (shipped v1.7.2).

@@ -53,7 +53,7 @@ review (still valid — see Quorum).
 Each chain link is an `(ai, model)` **pair**, not just an AI: with the committed `deep`
 profile, every model in an AI's `models` list becomes its own link, so **one relay pass
 verifies from as many directions as there are configured models**. Kiro's mainstay panel
-alone contributes three cross-vendor lenses (opus / kimi-k2.5 / glm-5 via the Kiro router);
+alone contributes three cross-vendor lenses (opus / minimax-m2.5 / glm-5 via the Kiro router);
 add Codex and Agy and a default relay is 5 links deep — each model confirming/refuting the
 accumulated findings from its own family's bias.
 
