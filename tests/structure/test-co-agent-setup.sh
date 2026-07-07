@@ -171,3 +171,25 @@ mkdir -p "$DP_MP_BADENC/marketplaces/openai-codex/.claude-plugin"
 printf '\xff\xfe{"name": "openai-codex"}' > "$DP_MP_BADENC/marketplaces/openai-codex/.claude-plugin/marketplace.json"
 assert_eq "False" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_MP_BADENC'))" 2>&1)" "#9: non-UTF-8 bytes in marketplace.json are skipped, not crashed on"
 rm -rf "$DP_MP_BADENC"
+
+# #10 (review round on PR #110): an absolute-path "source" must not escape marketplace_root --
+# os.path.join(root, "/") discards root entirely and os.path.isdir("/") is trivially True, which
+# would false-positive "installed" for ANY absolute source regardless of what it points to.
+DP_MP_ABSSRC=$(mktemp -d "${TMPDIR:-/tmp}/coagent-pmabssrc.XXXXXX")
+mkdir -p "$DP_MP_ABSSRC/marketplaces/openai-codex/.claude-plugin"
+cat > "$DP_MP_ABSSRC/marketplaces/openai-codex/.claude-plugin/marketplace.json" <<'EOF'
+{"name": "openai-codex", "plugins": [{"name": "codex", "source": "/"}]}
+EOF
+assert_eq "False" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_MP_ABSSRC'))" 2>&1)" "#10: an absolute-path source escaping marketplace_root does NOT count as installed"
+rm -rf "$DP_MP_ABSSRC"
+
+# #11 (review round on PR #110): a fork or unrelated marketplace that happens to declare its own
+# "codex"-named entry (with a real, existing source dir) must NOT count as the official install --
+# entry name alone is spoofable; the marketplace's own "name" must match the known official one.
+DP_MP_FORKMP=$(mktemp -d "${TMPDIR:-/tmp}/coagent-pmforkmp.XXXXXX")
+mkdir -p "$DP_MP_FORKMP/marketplaces/some-fork/.claude-plugin" "$DP_MP_FORKMP/marketplaces/some-fork/plugins/codex"
+cat > "$DP_MP_FORKMP/marketplaces/some-fork/.claude-plugin/marketplace.json" <<'EOF'
+{"name": "some-fork", "plugins": [{"name": "codex", "source": "./plugins/codex"}]}
+EOF
+assert_eq "False" "$(python3 -c "import sys; sys.path.insert(0,'plugins/co-agent/skills/co-agent/scripts'); import check_panel; print(check_panel.detect_plugin('codex', '$DP_MP_FORKMP'))" 2>&1)" "#11: a matching entry name in an unrelated marketplace (wrong marketplace 'name') does NOT count as installed"
+rm -rf "$DP_MP_FORKMP"

@@ -32,6 +32,7 @@ SCHEMA_VERSION = 1
 
 PEERS = ("kiro-cli", "claude", "codex", "agy")
 PEER_PLUGINS = {"codex": "openai/codex-plugin-cc"}   # peer → official Claude Code plugin repo
+PEER_MARKETPLACES = {"codex": "openai-codex"}   # peer → official marketplace.json "name" field
 
 
 def detect_cli(peer):
@@ -43,20 +44,25 @@ def detect_plugin(peer, plugins_root):
 
     Two independent signals, either is sufficient: (1) a directory whose exact basename
     matches the official repo's own name (e.g. "codex-plugin-cc") — the literal repo-name
-    convention; (2) a `marketplace.json` under plugins_root that declares a plugin entry
-    named after the peer's own CLI name ("codex") *and* whose "source" directory actually
-    exists on disk — the convention actually observed on a real install, where Claude Code
-    names the on-disk marketplace dir after marketplace.json's own "name" field
-    ("openai-codex", not the git repo's name "codex-plugin-cc") and nests the plugin itself
-    under plugins/<plugin-name> ("codex"). (1) alone silently missed that genuinely-installed
-    official plugin and kept prompting to (re)install it; requiring the source directory to
-    exist for (2) avoids treating a bare entry name (e.g. leftover/partial metadata) as proof
-    of an actual install. Malformed marketplace.json — invalid JSON, non-UTF-8 bytes, wrong
-    top-level type, a non-list/scalar "plugins" value, non-dict entries, or a non-string
-    "source" (including the object-form source Claude Code marketplaces legitimately use for
-    git-hosted plugins) — is skipped, not raised: this walk covers every marketplace under
-    plugins_root, including ones this peer doesn't own, so one bad or differently-shaped file
-    must not take down the whole probe.
+    convention; (2) a `marketplace.json` under plugins_root whose own "name" field matches
+    the peer's official marketplace (`PEER_MARKETPLACES`, e.g. "openai-codex") *and* declares
+    a plugin entry named after the peer's own CLI name ("codex") *and* whose "source"
+    resolves to a real, in-tree directory — the convention actually observed on a real
+    install, where Claude Code names the on-disk marketplace dir after marketplace.json's own
+    "name" field, not the git repo's name, and nests the plugin itself under
+    plugins/<plugin-name> ("codex"). (1) alone silently missed that genuinely-installed
+    official plugin and kept prompting to (re)install it. The marketplace-identity check on
+    (2) matters because entry `name` alone is spoofable: a fork or unrelated marketplace can
+    declare its own "codex"-named entry, and without the identity check a "source" that
+    happens to exist on disk (or an absolute/`..`-escaping "source" that `os.path.join` would
+    otherwise resolve outside marketplace_root) would false-positive as the official install —
+    hence resolving via `os.path.realpath` and confirming containment under marketplace_root
+    with `os.path.commonpath` before trusting `isdir()`. Malformed marketplace.json — invalid
+    JSON, non-UTF-8 bytes, wrong top-level type, a non-list/scalar "plugins" value, non-dict
+    entries, or a non-string "source" (including the object-form source Claude Code
+    marketplaces legitimately use for git-hosted plugins) — is skipped, not raised: this walk
+    covers every marketplace under plugins_root, including ones this peer doesn't own, so one
+    bad or differently-shaped file must not take down the whole probe.
     """
     repo = PEER_PLUGINS.get(peer)
     if not repo or not plugins_root or not os.path.isdir(plugins_root):
@@ -70,13 +76,16 @@ def detect_plugin(peer, plugins_root):
                 with open(os.path.join(dirpath, "marketplace.json"), encoding="utf-8") as f:
                     data = json.load(f)
             except (OSError, ValueError):
-                # ValueError covers json.JSONDecodeError (a subclass) and UnicodeDecodeError,
-                # which json.load's internal read() can raise on non-UTF-8 bytes and is a
-                # ValueError *sibling*, not a JSONDecodeError -- narrower except clauses miss it.
+                # ValueError covers json.JSONDecodeError AND UnicodeDecodeError -- both are
+                # ValueError subclasses (the latter via UnicodeError), but NEITHER is a subclass
+                # of the other, so json.load's internal read() raising UnicodeDecodeError on
+                # non-UTF-8 bytes slips past a narrower `except (OSError, json.JSONDecodeError)`.
                 continue
             if not isinstance(data, dict):
                 continue
-            marketplace_root = os.path.dirname(dirpath)
+            if data.get("name") != PEER_MARKETPLACES.get(peer):
+                continue   # not the official marketplace — an entry named "codex" here proves nothing
+            marketplace_root = os.path.realpath(os.path.dirname(dirpath))
             plugins = data.get("plugins")
             if not isinstance(plugins, list):
                 continue
@@ -84,7 +93,13 @@ def detect_plugin(peer, plugins_root):
                 if not isinstance(entry, dict) or entry.get("name") != peer:
                     continue
                 source = entry.get("source")
-                if isinstance(source, str) and source and os.path.isdir(os.path.join(marketplace_root, source)):
+                if not (isinstance(source, str) and source):
+                    continue
+                resolved = os.path.realpath(os.path.join(marketplace_root, source))
+                # os.path.join drops marketplace_root entirely if source is absolute, and ".."
+                # can walk out of it even when relative — confirm the resolved path still lives
+                # under marketplace_root before trusting isdir() as proof of a real, in-tree install.
+                if os.path.commonpath([marketplace_root, resolved]) == marketplace_root and os.path.isdir(resolved):
                     return True
     return False
 
