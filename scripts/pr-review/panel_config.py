@@ -39,7 +39,12 @@ BOOL_WORDS = ("true", "false", "1", "0", "yes", "no")
 # model value containing `:` instead of rejecting it; excluding `:` here turns that into
 # a validation error instead of a silent data-loss bug (17th review MINOR).
 MODEL_RE = re.compile(r"^[A-Za-z0-9._/()-]+$")
-DEFAULTS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pr-review.defaults.json")
+# $PR_REVIEW_DEFAULTS_PATH is a test-only override (same purpose as $PR_REVIEW_CONFIG_ROOT)
+# -- lets tests point at a temporary broken-defaults fixture without touching the real,
+# committed pr-review.defaults.json.
+DEFAULTS_PATH = os.environ.get("PR_REVIEW_DEFAULTS_PATH") or os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "pr-review.defaults.json"
+)
 
 
 class ConfigError(Exception):
@@ -123,8 +128,21 @@ def effective(root, strict=False):
     a broken override (e.g. a JSON typo) would silently undo that security control. The
     read/kiro-cells/codex-enabled paths that run-panel.sh actually consumes use strict=True;
     show/set stay lenient (warn-and-fall-back) since they're operator-facing inspection/
-    repair tools, not the gate itself."""
+    repair tools, not the gate itself.
+
+    defaults.json itself is validated unconditionally (not gated by `strict`) — it's the
+    committed file ("경로 A" in docs/ci-pr-review.md, the only path verified to actually take
+    effect in CI, since the gitignored local override never survives a real run there). If
+    it's ever wrong-shape/wrong-type, that's a repo-integrity bug, not a runtime override
+    problem, and there's no sensible "ignore and fall back to defaults" recovery when
+    defaults itself is what's broken — every caller should fail loud (21st review MAJOR
+    L3-1: the local-override path was already fail-closed on this since round 18, but
+    defaults.json's own values were never checked at all)."""
     cfg = load_defaults()
+    try:
+        validate_shape(cfg)
+    except AttributeError as e:
+        raise ConfigError(f"{DEFAULTS_PATH}: wrong-shape/wrong-type defaults ({e})") from e
     lp = local_path(root)
     if os.path.isfile(lp):
         try:
@@ -268,10 +286,20 @@ def main(argv):
         i += 1
 
     root = resolve_root(root_arg)
-    if not rest or rest[0] == "show":
-        return cmd_show(root)
-    if rest[0] == "set":
-        return cmd_set(root, rest[1:])
+    # show/set don't call effective(strict=True) themselves (they're the lenient,
+    # operator-facing paths), but effective() now validates defaults.json unconditionally
+    # regardless of strict -- a broken *defaults* file has no sensible lenient fallback, so
+    # it still raises ConfigError. Catch it here once so show/set get the same clean
+    # message + exit 1 that kiro-cells/codex-enabled already have, instead of a raw
+    # traceback.
+    try:
+        if not rest or rest[0] == "show":
+            return cmd_show(root)
+        if rest[0] == "set":
+            return cmd_set(root, rest[1:])
+    except ConfigError as e:
+        print(f"panel_config.py: {e}", file=sys.stderr)
+        return 1
     if rest[0] == "kiro-cells":
         return cmd_kiro_cells(root)
     if rest[0] == "codex-enabled":

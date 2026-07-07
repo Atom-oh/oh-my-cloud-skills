@@ -143,4 +143,29 @@ echo '{"panle": {"kiro-opus": {"enabled": false}}}' > "$R9/.claude/pr-review.loc
 python3 "$CFG" kiro-cells --root "$R9" >/dev/null 2>&1 && RC=0 || RC=$?
 assert_eq "1" "$RC" "kiro-cells fails closed on a typo'd/unknown top-level key"
 
+# (o2) defaults.json itself (the committed "경로 A" file docs/ci-pr-review.md now documents
+# as the only verified-working way to change CI matrix membership) must be validated too --
+# effective() previously only ran validate_shape() when a *local override* was present, so a
+# wrong-type value committed straight into defaults.json (e.g. "enabled": "false" as a JSON
+# string) sailed through unvalidated on every real CI run (which never has a local override
+# -- gitignored + checkout clean). Uses $PR_REVIEW_DEFAULTS_PATH to point at a broken fixture
+# without touching the real committed file (21st review MAJOR L3-1).
+BROKEN_DEFAULTS=$(mktemp "${TMPDIR:-/tmp}/prreview-defaults.XXXXXX.json")
+cat > "$BROKEN_DEFAULTS" <<'EOF'
+{
+  "panel": {
+    "codex":     { "enabled": true },
+    "kiro-opus": { "enabled": "false" },
+    "kiro-gpt":  { "enabled": true, "model": "gpt-5.5" },
+    "kiro-glm":  { "enabled": true, "model": "glm-5" }
+  }
+}
+EOF
+R10=$(mktemp -d "${TMPDIR:-/tmp}/prreviewcfg.XXXXXX")
+PR_REVIEW_DEFAULTS_PATH="$BROKEN_DEFAULTS" python3 "$CFG" kiro-cells --root "$R10" >/dev/null 2>&1 && RC=0 || RC=$?
+assert_eq "1" "$RC" "kiro-cells fails closed when defaults.json itself has a wrong-type value (no local override present)"
+PR_REVIEW_DEFAULTS_PATH="$BROKEN_DEFAULTS" python3 "$CFG" show --root "$R10" >/dev/null 2>&1 && RC=0 || RC=$?
+assert_eq "1" "$RC" "show also fails closed (clean message, not a raw traceback) on broken defaults.json"
+rm -rf "$BROKEN_DEFAULTS" "$R10"
+
 rm -rf "$R" "$R2" "$R3" "$R4" "$R5" "$R6" "$R7" "$R8" "$R9"

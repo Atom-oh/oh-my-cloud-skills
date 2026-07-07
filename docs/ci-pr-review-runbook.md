@@ -54,13 +54,15 @@ PR을 열면 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 L1(결정
   벤더이므로 이 불변식이 성립하지 않음. 그 구성에서의 coverage floor 처리는 아래 및
   `docs/ci-pr-review.md` "설정" 절 참조).
 - 특정 모델이 바이너리 부재가 아니라 **계속 flaky**하면(간헐 응답이 아니라 지속적으로
-  degraded), **로컬 clone에서** `python3 scripts/pr-review/panel_config.py set <cell>
-  enabled false --root .` 를 실행해 `scripts/pr-review/pr-review.defaults.json` 을 직접
-  고친 뒤(이 명령은 기본적으로 gitignored 로컬 override 파일에 쓴다 — CI 워크스페이스가
-  아니라 로컬에서 확인 목적으로 쓰고, 실제 반영은 defaults.json 을 손으로 편집해) 커밋 +
-  머지 — **CI 워크스페이스에 override 파일만 두고 재실행하는 것은 동작하지 않는다**
-  (checkout 의 기본 clean 이 gitignored 파일을 매 run 지우고, 이 PR 자신의 리뷰에는
-  `pull_request_target` 의 base-ref 체크아웃 때문에 반영도 안 됨 — 자세한 제약과 예외적
-  대안은 `docs/ci-pr-review.md` "설정" 절의 "CI에서 실제로 적용되는 방법" 참조).
+  degraded), 다음 두 단계로 뺀다 — 순서를 뒤집어 읽지 말 것: (1) **로컬 preview** —
+  `python3 scripts/pr-review/panel_config.py set <cell> enabled false --root .` 를 로컬
+  clone에서 실행하면 `.claude/pr-review.local.json`(gitignored 로컬 override 파일)에 쓰여
+  `show`로 결과를 바로 확인할 수 있다 — **이 파일 자체는 CI 반영과 무관**하다. (2) **실제
+  CI 반영** — (1)에서 확인한 값을 `scripts/pr-review/pr-review.defaults.json` 에 **손으로
+  옮겨 커밋 + 머지**해야 `main` 이후의 PR부터 실제로 적용된다. **CI 워크스페이스에 (1)의
+  override 파일만 두고 재실행하는 것은 동작하지 않는다**(checkout 의 기본 clean 이
+  gitignored 파일을 매 run 지우고, 이 변경을 담은 PR 자신의 리뷰에는 `pull_request_target`
+  의 base-ref 체크아웃 때문에 반영도 안 됨 — 자세한 제약과 예외적 대안은
+  `docs/ci-pr-review.md` "설정" 절의 "CI에서 실제로 적용되는 방법" 참조).
   `python3 scripts/pr-review/panel_config.py show --root .` 로 현재(로컬) effective 설정
   확인.
