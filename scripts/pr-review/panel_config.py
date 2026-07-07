@@ -34,10 +34,16 @@ import copy
 KIRO_CELLS = ("kiro-opus", "kiro-gpt", "kiro-glm")   # fixed cell order — kiro-cells output order
 ALL_CELLS = ("codex",) + KIRO_CELLS
 BOOL_WORDS = ("true", "false", "1", "0", "yes", "no")
-# Same charset as co_agent_config.py's MODEL_RE — Kiro model ids don't need spaces/parens,
-# but reusing the identical pattern keeps the two config scripts' validation consistent.
-MODEL_RE = re.compile(r"^[A-Za-z0-9 ._:/()-]+$")
+# Same charset as co_agent_config.py's MODEL_RE, minus `:` — run-panel.sh's consumer
+# (`m="${entry%%:*}"`, first-colon split of "<model>:<tag>") would silently truncate a
+# model value containing `:` instead of rejecting it; excluding `:` here turns that into
+# a validation error instead of a silent data-loss bug (17th review MINOR).
+MODEL_RE = re.compile(r"^[A-Za-z0-9._/()-]+$")
 DEFAULTS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pr-review.defaults.json")
+
+
+class ConfigError(Exception):
+    """Local override file exists but is unreadable, invalid JSON, or the wrong shape."""
 
 
 def resolve_root(root_arg):
@@ -65,15 +71,51 @@ def deep_merge(base, over):
     return out
 
 
-def effective(root):
+def validate_shape(cfg):
+    """Raise AttributeError if `cfg["panel"]` (or any per-cell entry) isn't a dict —
+    deep_merge happily assigns a wrong-shape value (e.g. override == {"panel": "x"}) without
+    erroring, since that's a non-dict `v` that just gets set on a dict key; the failure only
+    shows up later, downstream, in every caller's `cfg["panel"].get(cell, {})`. Surfacing it
+    here, right after the merge, is what lets `effective(strict=True)` catch it in one place
+    instead of every consumer needing its own defensive check."""
+    panel = cfg.get("panel")
+    if not isinstance(panel, dict):
+        raise AttributeError(f"'panel' must be an object, got {type(panel).__name__}")
+    for cell, val in panel.items():
+        if not isinstance(val, dict):
+            raise AttributeError(f"panel.{cell} must be an object, got {type(val).__name__}")
+
+
+def effective(root, strict=False):
+    """Load defaults + local override. `strict=True` raises ConfigError instead of
+    warning-and-falling-back on a malformed/wrong-shape override — this file doubles as
+    the documented mechanism for disabling Kiro on a sensitive diff, so silently ignoring
+    a broken override (e.g. a JSON typo) would silently undo that security control. The
+    read/kiro-cells/codex-enabled paths that run-panel.sh actually consumes use strict=True;
+    show/set stay lenient (warn-and-fall-back) since they're operator-facing inspection/
+    repair tools, not the gate itself."""
     cfg = load_defaults()
     lp = local_path(root)
     if os.path.isfile(lp):
         try:
             with open(lp, encoding="utf-8") as f:
-                cfg = deep_merge(cfg, json.load(f))
+                override = json.load(f)
         except (json.JSONDecodeError, OSError) as e:
+            if strict:
+                raise ConfigError(f"{lp}: malformed override ({e})") from e
             print(f"⚠️  {lp}: malformed override ignored ({e})", file=sys.stderr)
+            return cfg
+        try:
+            cfg = deep_merge(cfg, override)
+            validate_shape(cfg)
+        except AttributeError as e:
+            # e.g. override is a top-level list (deep_merge's .items() itself fails), or
+            # override == {"panel": "x"} (deep_merge assigns it fine — non-dict `v` just
+            # overwrites the key — and it's validate_shape() that catches it here).
+            if strict:
+                raise ConfigError(f"{lp}: wrong-shape override ({e})") from e
+            print(f"⚠️  {lp}: wrong-shape override ignored ({e})", file=sys.stderr)
+            return load_defaults()
     return cfg
 
 
@@ -96,8 +138,18 @@ def cmd_set(root, rest):
     os.makedirs(os.path.dirname(lp), exist_ok=True)
     local = {}
     if os.path.isfile(lp):
-        with open(lp, encoding="utf-8") as f:
-            local = json.load(f)
+        try:
+            with open(lp, encoding="utf-8") as f:
+                local = json.load(f)
+            if not isinstance(local, dict) or not isinstance(local.get("panel", {}), dict) \
+                    or not isinstance(local["panel"].get(cell, {}), dict):
+                raise AttributeError("top level, 'panel', and panel.<cell> must all be objects")
+        except (json.JSONDecodeError, OSError, AttributeError) as e:
+            # `set` is how an operator FIXES a broken override — refusing to start from
+            # a clean slate here would leave them unable to repair it. Warn, don't crash,
+            # like effective()'s non-strict path.
+            print(f"⚠️  {lp}: unreadable/wrong-shape override replaced ({e})", file=sys.stderr)
+            local = {}
     local.setdefault("panel", {}).setdefault(cell, {})
 
     if key == "enabled":
@@ -124,7 +176,14 @@ def cmd_set(root, rest):
 
 
 def cmd_kiro_cells(root):
-    cfg = effective(root)
+    try:
+        cfg = effective(root, strict=True)
+    except ConfigError as e:
+        # Distinct from "0 kiro cells enabled" (a valid config, empty stdout, exit 0) —
+        # this is "couldn't determine the roster at all", which run-panel.sh must not
+        # treat the same way an intentional all-disabled config would be treated.
+        print(f"panel_config.py: {e}", file=sys.stderr)
+        return 1
     for cell in KIRO_CELLS:
         p = cfg["panel"].get(cell, {})
         if not p.get("enabled", True):
@@ -138,7 +197,14 @@ def cmd_kiro_cells(root):
 
 
 def cmd_codex_enabled(root):
-    cfg = effective(root)
+    # Exit codes: 0 enabled, 1 disabled, 2 config error — kept distinct so run-panel.sh
+    # can tell "codex is off on purpose" from "couldn't read the config" (same reasoning
+    # as cmd_kiro_cells's ConfigError handling above).
+    try:
+        cfg = effective(root, strict=True)
+    except ConfigError as e:
+        print(f"panel_config.py: {e}", file=sys.stderr)
+        return 2
     return 0 if cfg["panel"].get("codex", {}).get("enabled", True) else 1
 
 

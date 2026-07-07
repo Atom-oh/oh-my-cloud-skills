@@ -346,6 +346,25 @@ grep -q "^kiro-glm$" "$WORK/degraded-models.txt" 2>/dev/null \
   || pass "run-panel (m) coverage-severe.flag is NOT set from an intentional single-cell disable"
 rm -rf "$CFG_ROOT" "$LOG"
 
+# (n) panel_config.py 가 malformed override 로 fail-closed(exit 1) 하면, run-panel.sh 도
+# 빈 로스터로 조용히 진행하지 말고 즉시 exit 1 해야 한다 — 그러지 않으면 KIRO_MODELS=()/
+# CODEX_ENABLED=0 → ALL_TAGS=() → 커버리지 floor 루프가 안 돌아 "리뷰 0건인데
+# VERDICT: PASS" 로 이어질 수 있다(17차 리뷰 MAJOR-2). 셀이 하나도 안 만들어졌는지까지
+# 확인해 "일부만 돌고 나머지 조용히 스킵"이 아니라 "아예 시작하지 않음"을 보장한다.
+setup; mkfake codex 0 "codex-finding"; mkfake_args kiro-cli 0 "kiro-finding"
+CFG_ROOT=$(mktemp -d); mkdir -p "$CFG_ROOT/.claude"
+echo "{not valid json" > "$CFG_ROOT/.claude/pr-review.local.json"
+LOG=$(mktemp)
+if PR_REVIEW_CONFIG_ROOT="$CFG_ROOT" "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >"$LOG" 2>&1; then
+  fail "run-panel (n) script exits non-zero when panel_config.py fails closed" "exited 0"
+else
+  pass "run-panel (n) script exits non-zero when panel_config.py fails closed"
+fi
+[ ! -e "$WORK/slot" ] || [ -z "$(ls -A "$WORK/slot" 2>/dev/null)" ] \
+  && pass "run-panel (n) no cells ran at all — not a partial/silent-empty panel" \
+  || fail "run-panel (n) no cells ran at all — not a partial/silent-empty panel" "slot dir has files despite config failure"
+rm -rf "$CFG_ROOT" "$LOG"
+
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then
   [ "$_t_fail" = 0 ] && echo "PASS: test-run-panel" || exit 1

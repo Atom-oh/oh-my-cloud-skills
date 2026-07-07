@@ -49,14 +49,36 @@ python3 "$CFG" set kiro-opus model gpt-5.5 --root "$R2" >/dev/null 2>&1
 CELLS_G=$(python3 "$CFG" kiro-cells --root "$R2" 2>&1)
 assert_contains "$CELLS_G" "gpt-5.5:kiro-opus" "set <cell> model updates that cell's kiro-cells entry"
 
-# (h) a malformed local override warns but doesn't crash — falls back to defaults
+# (h) a malformed local override fails CLOSED on the gate paths (kiro-cells/codex-enabled)
+# that run-panel.sh actually consumes -- this file doubles as the documented mechanism for
+# disabling Kiro on a sensitive diff, so a JSON typo silently falling back to "everything
+# enabled" would silently defeat that control (17th review MAJOR-1). `show`/`set` stay
+# lenient (operator-facing repair tools), asserted separately below.
 R3=$(mktemp -d "${TMPDIR:-/tmp}/prreviewcfg.XXXXXX")
 mkdir -p "$R3/.claude"
 echo "{not valid json" > "$R3/.claude/pr-review.local.json"
-CELLS_H=$(python3 "$CFG" kiro-cells --root "$R3" 2>/dev/null)
+python3 "$CFG" kiro-cells --root "$R3" >/dev/null 2>&1 && RC=0 || RC=$?
+assert_eq "1" "$RC" "kiro-cells fails closed (exit 1) on a malformed local override"
+python3 "$CFG" codex-enabled --root "$R3" >/dev/null 2>&1 && RC=0 || RC=$?
+assert_eq "2" "$RC" "codex-enabled fails closed (exit 2, distinct from disabled=1) on a malformed local override"
+CELLS_H=$(python3 "$CFG" show --root "$R3" 2>/dev/null)
+assert_contains "$CELLS_H" "kiro-opus" "show stays lenient on a malformed override (falls back to defaults, doesn't crash)"
+
+# (h2) a wrong-shape-but-valid-JSON override (e.g. "panel" isn't an object) also fails
+# closed -- deep_merge alone wouldn't catch this (a non-dict value just overwrites the
+# key without erroring); validate_shape() is what surfaces it.
+R4=$(mktemp -d "${TMPDIR:-/tmp}/prreviewcfg.XXXXXX")
+mkdir -p "$R4/.claude"
+echo '{"panel": "not-an-object"}' > "$R4/.claude/pr-review.local.json"
+python3 "$CFG" kiro-cells --root "$R4" >/dev/null 2>&1 && RC=0 || RC=$?
+assert_eq "1" "$RC" "kiro-cells fails closed on a wrong-shape override (panel isn't an object)"
+
+# (h3) set can still repair a malformed override instead of being locked out by it
+python3 "$CFG" set kiro-glm enabled false --root "$R3" >/dev/null 2>&1 && RC=0 || RC=$?
+assert_eq "0" "$RC" "set succeeds against a malformed override (repairs it rather than refusing)"
+CELLS_H3=$(python3 "$CFG" kiro-cells --root "$R3" 2>&1)
 assert_eq "claude-opus-4.8:kiro-opus
-gpt-5.5:kiro-gpt
-glm-5:kiro-glm" "$CELLS_H" "a malformed local override is ignored, not fatal"
+gpt-5.5:kiro-gpt" "$CELLS_H3" "set's repair replaced the malformed override -- kiro-cells now succeeds"
 
 # (i) $PR_REVIEW_CONFIG_ROOT env is honored when --root is omitted (test-isolation parity
 # with co-agent's $CO_AGENT_USER_CONFIG) — same disabled-cell state as (b)/(c) above.
@@ -64,4 +86,10 @@ CELLS_I=$(PR_REVIEW_CONFIG_ROOT="$R" python3 "$CFG" kiro-cells 2>&1)
 assert_eq "claude-opus-4.8:kiro-opus
 gpt-5.5:kiro-gpt" "$CELLS_I" "\$PR_REVIEW_CONFIG_ROOT is honored when --root is omitted"
 
-rm -rf "$R" "$R2" "$R3"
+# (j) MODEL_RE rejects ':' -- run-panel.sh's consumer does a first-colon split
+# ("${entry%%:*}"), so a model value containing ':' would be silently truncated instead
+# of rejected if this regex allowed it (17th review MINOR).
+python3 "$CFG" set kiro-opus model "a:b" --root "$R" >/dev/null 2>&1 && RC=0 || RC=$?
+assert_eq "2" "$RC" "set rejects a model value containing ':' (would be silently truncated by run-panel.sh's parser)"
+
+rm -rf "$R" "$R2" "$R3" "$R4"

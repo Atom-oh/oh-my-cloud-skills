@@ -43,9 +43,43 @@ RETRIES="${PANEL_RETRIES:-3}"
 # 있다(민감 diff에서 외부 Kiro 를 끄는 것 등 — docs/ci-pr-review.md "민감 diff 정책"). 로스터
 # 자체(kiro-opus/kiro-gpt/kiro-glm)의 model 값은 pr-review.defaults.json이 정본 — main의
 # kimi-k2.5 -> gpt-5.5 교체(ADR-012)를 그 파일에 반영했다.
+# 아래 두 호출은 exit code 를 반드시 확인한다 — panel_config.py 가 malformed/wrong-shape
+# override 로 crash(비-zero exit)해도, `mapfile < <(cmd)` 는 process substitution 의 exit
+# code 를 보지 않고 빈 출력을 그대로 받아들여 KIRO_MODELS=()/CODEX_ENABLED=0 이 되고, 이는
+# 곧 ALL_TAGS=() → 커버리지 floor 루프가 통째로 안 돌아 coverage-severe.flag 없이 통과한다
+# — "리뷰 0건인데 VERDICT: PASS" 라는, floor 가 원래 잡으라고 만들어진 바로 그 실패 모드를
+# config 계층에서 재현한다(17차 리뷰 MAJOR-2). kiro-cells 는 exit 0(성공, 0개 이상의 셀)
+# vs exit 1(config 오류)만 구분하고, codex-enabled 는 0=enabled/1=disabled/≥2=config 오류로
+# 3분한다(panel_config.py 쪽 주석 참조) — 둘 다 "의도적으로 다 껐다"와 "설정을 못 읽었다"를
+# 섞지 않기 위함.
 CFG="$DIR/panel_config.py"
-mapfile -t KIRO_MODELS < <(python3 "$CFG" kiro-cells)
-CODEX_ENABLED=0; python3 "$CFG" codex-enabled && CODEX_ENABLED=1
+if ! KIRO_CELLS_RAW="$(python3 "$CFG" kiro-cells)"; then
+  echo "run-panel.sh: panel_config.py kiro-cells failed (malformed/wrong-shape config?) — refusing to run with an unverified roster" >&2
+  exit 1
+fi
+KIRO_MODELS=()
+[ -n "$KIRO_CELLS_RAW" ] && mapfile -t KIRO_MODELS <<< "$KIRO_CELLS_RAW"
+
+python3 "$CFG" codex-enabled; CODEX_RC=$?
+case "$CODEX_RC" in
+  0) CODEX_ENABLED=1 ;;
+  1) CODEX_ENABLED=0 ;;
+  *) echo "run-panel.sh: panel_config.py codex-enabled failed (exit $CODEX_RC; malformed/wrong-shape config?) — refusing to run" >&2
+     exit 1 ;;
+esac
+
+# ALL_TAGS = 이번 실행에서 실제로 "기대되는" 모델 태그 전체(codex는 설정으로 켜져 있을 때만
+# 포함) — 설정으로 뺀 모델을 "장애"로 오인해 커버리지 floor 를 오발동시키지 않기 위함.
+# 의도적 비활성화 ≠ degraded. 위의 exit-code 가드로 config crash 는 이미 걸러졌으므로,
+# 여기서 비면 "유효한 설정이 전부를 껐다"는 뜻이다 — 그래도 리뷰 자체가 무의미(0셀)해지므로
+# 하드 fail(민감 diff에서 Kiro 만 끄는 것과 전부 끄는 것은 다른 얘기, 17차 리뷰 MAJOR-2 제안).
+ALL_TAGS=()
+[ "$CODEX_ENABLED" = 1 ] && ALL_TAGS+=(codex)
+ALL_TAGS+=("${KIRO_MODELS[@]##*:}")
+if [ "${#ALL_TAGS[@]}" -eq 0 ]; then
+  echo "run-panel.sh: panel has zero enabled cells (codex + all kiro cells disabled) — refusing an empty-panel PASS" >&2
+  exit 1
+fi
 
 shopt -s nullglob
 LENS_FILES=("$LENSES_DIR"/*.txt)
@@ -125,12 +159,7 @@ done
 # 이라 헤드리스 CI 에서 인증 불가. 패널 = Codex + Kiro x3 → Claude 의장.
 wait
 
-# ALL_TAGS = 이번 실행에서 실제로 "기대되는" 모델 태그 전체(codex는 설정으로 켜져 있을
-# 때만 포함) — 설정으로 뺀 모델을 "장애"로 오인해 아래 커버리지 floor 를 오발동시키지
-# 않기 위함. 의도적 비활성화 ≠ degraded.
-ALL_TAGS=()
-[ "$CODEX_ENABLED" = 1 ] && ALL_TAGS+=(codex)
-ALL_TAGS+=("${KIRO_MODELS[@]##*:}")
+# ALL_TAGS 는 위(설정 로딩 직후)에서 이미 계산·가드됨 — 여기서 다시 만들지 않는다.
 
 # 결과 집계 (KIRO_MODELS·LENS_FILES 와 동일 소스에서 태그 파생 → 하드코딩 불일치 방지)
 for lens_file in "${LENS_FILES[@]}"; do
