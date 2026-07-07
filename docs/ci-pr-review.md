@@ -46,7 +46,10 @@
   - **Codex / Claude(의장)**: Amazon Bedrock **us-east-1**(gpt-5.5는 bedrock-mantle In-Region 전용, fable-5는 US 추론 프로파일), AWS 인증은 EKS Pod Identity(SigV4).
   - **Kiro**: **외부 API-key 기반 서비스** — PR diff가 외부로 전송됨(기본 구성 기준 16셀 중 12셀이 Kiro; 매트릭스 멤버십은 설정값이므로 실제 셀 수는 달라질 수 있음). In-Region 아님.
   - **민감 diff 정책**: 외부 전송이 부적절한 변경은 외부 패널(Kiro)을 비활성화하고 Bedrock In-Region
-    멤버(Codex)만으로 리뷰할 것. (public 마켓플레이스라 diff는 머지 시 공개 → 현재 accepted-risk;
+    멤버(Codex)만으로 리뷰할 것. **이걸 실제로 끄는 절차는 아래 "설정" 절의 "CI에서 실제로
+    적용되는 방법" 참조** — `.claude/pr-review.local.json`을 워크스페이스에 써 두는 것만으로는
+    적용되지 않는다(체크아웃이 매 run 지움 + `pull_request_target`은 base ref 체크아웃).
+    (public 마켓플레이스라 diff는 머지 시 공개 → 현재 accepted-risk;
     private fork 시 강제 skip 게이트 필요 — ADR-009.)
 
 ## 설정 — 매트릭스 멤버십 (`scripts/pr-review/panel_config.py`)
@@ -64,6 +67,23 @@
   model 키 없음). (runbook과 동일한 full-path + `--root .` 표기로 통일 — copy-paste 가능하게.)
 - 매트릭스 멤버십은 설정값이지만 **lens(L2~L5) 4개는 설정이 아니라 워크플로에 고정된
   콘텐츠** — 리뷰 관점 정의이지 on/off 튜닝 대상이 아니다.
+- **CI에서 실제로 적용되는 방법 (중요 — `.claude/pr-review.local.json`을 워크스페이스에
+  써 두는 것만으로는 절대 적용되지 않음):**
+  - **경로 A — 영구 변경(검증됨, 항상 동작)**: `scripts/pr-review/pr-review.defaults.json`을
+    직접 수정해 커밋. 이건 `main`에 머지된 **다음** PR부터 적용된다(`pull_request_target`이
+    base ref를 체크아웃하므로, 이 변경을 담은 PR 자신의 리뷰에는 적용되지 않음 — Kiro 로스터를
+    `kimi-k2.5`→`gpt-5.5`로 바꿀 때도 동일한 제약이 있었다). "계속 flaky한 모델 하나 빼기"처럼
+    지속적인 설정 변경에 적합.
+  - **경로 B — 이 PR 한 건만 임시로(untested — 러너 인프라 확인 필요)**: `.claude/pr-review.
+    local.json`은 gitignored라 커밋해도 무의미하고, 워크스페이스 안에 두면
+    `actions/checkout@v4`의 기본 동작(`clean: true` → `git clean -ffdx`)이 매 run마다
+    지운다. 이 워크플로가 실행되는 self-hosted 러너에 **git 워크스페이스 밖의, job 간
+    유지되는 경로**가 있다면(예: 별도 마운트된 볼륨 — **이 repo의 현재 러너에서 그런 경로가
+    실제로 존재/유지되는지는 확인되지 않음**), 그 경로에 override 파일을 직접 두고
+    `PR_REVIEW_CONFIG_ROOT` 를 이 워크플로의 job `env:` 에 그 경로로 지정하면
+    `panel_config.py`(`resolve_root()`)가 그 경로를 읽는다 — 코드 지원은 이미 있음
+    (`scripts/pr-review/run-panel.sh`가 이미 이 env var 를 최우선으로 존중). 이 경로를 쓰려면
+    먼저 그 러너에 실제 영구 경로가 있는지 인프라 담당자가 확인해야 한다.
 - 셀을 끄면 커버리지 floor 로직도 그 셀을 "기대되는 모델"에서 제외한다 — 의도적 비활성화가
   degraded/severe 경고로 오인되지 않음(`run-panel.sh`의 `ALL_TAGS`/`CODEX_ENABLED`).
 
