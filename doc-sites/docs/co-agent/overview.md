@@ -96,6 +96,16 @@ flowchart LR
 
 > `effort`는 **Codex 전용** — Kiro/Agy는 헤드리스 effort 플래그가 없습니다. `context_limit` 초과 AI는 하드 실패 대신 스킵됩니다(예: 거대 diff에서 Codex 272K 초과 → Kiro/Agy만 실행).
 
+### 현재 기본값 (`co-agent.defaults.json`)
+
+| AI | 단일 `model` (기본 프로필에서 사용 — 예: 하이브리드 게이트 verify 단계) | `effort` |
+|----|---------------------------------------------------------------------|----------|
+| kiro-cli | `claude-opus-4.8` | — |
+| codex | `openai.gpt-5.5` | `high` |
+| agy | `Gemini 3.1 Pro (High)` | — |
+
+커밋된 기본 프로필은 `deep`이므로, **kiro-cli의 find(발견) 단계는 `models` 리스트**(`claude-opus-4.8` / `minimax-m2.5` / `glm-5`)를 그대로 씁니다 — 위 표의 단일 `model`은 `models` 리스트가 비어 있는 codex/agy에는 즉시 적용되지만, kiro-cli는 `--profile default`로 명시 호출할 때(예: verify 단계)만 적용됩니다. `codex`의 reasoning-effort 최고 티어는 `high`입니다 — Claude 전용 `xhigh`/`max` 티어는 codex에 없습니다.
+
 ## AI 컨텍스트 동기화 (`/co-agent:sync-context`)
 
 외부 AI가 프로젝트 컨벤션으로 리뷰하도록, `CLAUDE.md`를 **한 번만 증류**해 `AGENTS.md`를 생성하고 **Kiro·Codex·Agy가 이 하나의 파일을 공통 참조**합니다(각 AI별 별도 카피 없음).
