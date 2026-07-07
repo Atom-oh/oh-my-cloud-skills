@@ -32,8 +32,8 @@ PR을 열면 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 L1(결정
   chat`(나머지 플래그 `--mode default --trust-tools=fs_read --no-interactive --wrap never`
   는 동일)으로는 gpt-5.5 포함 5개 모델 전부 정상 응답 확인됨. `--v3`는 애초에 모델 지원과
   무관한 stdin-무시/`fs_read` tool-name 버그를 고치려고 도입됐던 것(커밋 `c5b19c7`)이라 —
-  두 버그 다 argv 전달 방식으로 이미 우회돼 있어 `--v3` 없이도 재발하지 않음. 아래 "특정
-  모델이 계속 flaky" 절 참조.)
+  두 버그 다 argv 전달 방식으로 이미 우회돼 있어 `--v3` 없이도 재발하지 않음. 교체 배경/근거
+  전체는 ADR-012 참조.)
 - AWS 인증: EKS Pod Identity(ci-runner 역할) SigV4
 
 ## L1 이 fail 로 막혔을 때
