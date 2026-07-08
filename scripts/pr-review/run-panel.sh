@@ -139,8 +139,15 @@ kiro_env() {
 # GitHub 에 공개돼 있으므로 `ps` 가시성이 새로운 기밀 노출이 아니다(공식 secret 이 아님).
 KIRO_DIFF_CAP="${KIRO_DIFF_CAP:-100000}"
 KIRO_DIFF_TEXT="$(head -c "$KIRO_DIFF_CAP" "$DIFF")"
-[ "$(wc -c < "$DIFF")" -gt "$KIRO_DIFF_CAP" ] \
-  && KIRO_DIFF_TEXT+=$'\n[...TRUNCATED at '"$KIRO_DIFF_CAP"'B — full diff not sent to Kiro...]'
+# truncation 자체는 무해(대형 diff 의 의도된 트레이드오프)하지만, 신호 없이 넘어가면 Kiro
+# 12셀은 prefix 만 보고도 정상 응답으로 집계돼 이 PR 이 세운 "벤더 하나가 diff 일부만 보면
+# coverage 신호를 남긴다" 계약을 조용히 어긴다(20차 리뷰 MAJOR L4-1) — synthesize.sh 가
+# 리뷰 본문에 명시하도록 플래그 파일로 전달.
+if [ "$(wc -c < "$DIFF")" -gt "$KIRO_DIFF_CAP" ]; then
+  KIRO_DIFF_TEXT+=$'\n[...TRUNCATED at '"$KIRO_DIFF_CAP"'B — full diff not sent to Kiro...]'
+  echo "::warning::diff exceeds KIRO_DIFF_CAP (${KIRO_DIFF_CAP}B) — Kiro cells only see a truncated prefix" >&2
+  : > "$WORK/kiro-diff-truncated.flag"
+fi
 
 for lens_file in "${LENS_FILES[@]}"; do
   lens="$(basename "$lens_file" .txt)"
@@ -187,7 +194,7 @@ echo "Panel responded ($(wc -l < "$RESP") / $(( ${#ALL_TAGS[@]} * ${#LENS_FILES[
 
 # 커버리지 floor — 모델 하나(플래그 무효화/바이너리 부재/전면 인증 실패 등)가 lens 전부에서
 # 응답 없으면, 매트릭스가 조용히 그 모델 없이 축소된 채 VERDICT: PASS 로 이어질 수 있다
-# (예: kiro-cli 플래그(`--mode default --trust-tools=fs_read`)가 이 러너에서 무효거나
+# (예: kiro-cli 플래그(`--mode default --trust-tools=`)가 이 러너에서 무효거나
 # 모델 ID 가 계정에 프로비저닝 안 되면(`--list-models` 에 나열돼도 `INVALID_MODEL_ID` 로
 # 거부될 수 있음 — `--v3` 로 라우팅하면 실제로 이렇게 재현됨) Kiro 셀 전부(기본 활성 로스터
 # 기준 12셀) graceful skip → codex 단독(기본 기준 4셀)짜리 리뷰인데 코멘트만 봐선 눈에 안
@@ -224,7 +231,10 @@ if [ "$CODEX_ENABLED" = 1 ] && grep -qx "codex" "$WORK/degraded-models.txt" 2>/d
   CODEX_DEAD=1
 fi
 KIRO_TOTAL=${#KIRO_MODELS[@]}
-KIRO_DEGRADED_COUNT=$(grep -c "^kiro-" "$WORK/degraded-models.txt" 2>/dev/null || echo 0)
+# `|| echo 0` 폴백 없음 — grep -c 는 매치가 0건이어도 "0"을 stdout 에 찍고 exit 1 하므로,
+# 폴백을 붙이면 그 "0" 뒤에 폴백의 "0"이 또 붙어 "0\n0"이 된다(위 row_count 루프의 같은
+# 함정 경고를 이 신규 코드에서 재현했던 회귀 — 20차 리뷰 MINOR L4-2). 그냥 stdout 을 쓴다.
+KIRO_DEGRADED_COUNT="$(grep -c "^kiro-" "$WORK/degraded-models.txt" 2>/dev/null)"
 KIRO_ALL_DEAD=0
 [ "$KIRO_TOTAL" -gt 0 ] && [ "${KIRO_DEGRADED_COUNT:-0}" -ge "$KIRO_TOTAL" ] && KIRO_ALL_DEAD=1
 if [ "$CODEX_DEAD" = 1 ] || [ "$KIRO_ALL_DEAD" = 1 ]; then

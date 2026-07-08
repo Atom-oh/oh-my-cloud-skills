@@ -230,9 +230,9 @@ grep -q "^codex/" "$WORK/responded.txt" 2>/dev/null \
   && fail "run-panel (r) the slot is cleared to empty for a failed (non-zero exit) cell" "slot still has content" \
   || pass "run-panel (r) the slot is cleared to empty for a failed (non-zero exit) cell"
 
-# (h) skip 진단 블록의 stderr 덤프가 scrub_secrets 를 거치는지 — Kiro fs_read 전환 이후
-# 절대경로 read 결과가 stdout(.md, synthesize.sh 에서 스크럽) 대신 stderr 로 새는 경로에도
-# 같은 방어선이 적용돼야 한다(ADR-011 MAJOR-1, 공개 CI 로그로 원시 노출되던 갭).
+# (h) skip 진단 블록의 stderr 덤프가 scrub_secrets 를 거치는지 — 크리덴셜성 값이 stdout
+# (.md, synthesize.sh 에서 스크럽) 대신 stderr 로 새는 경로에도 같은 방어선이 적용돼야
+# 한다(ADR-011 MAJOR-1, 공개 CI 로그로 원시 노출되던 갭 — fs_read 관련 여부와 무관).
 setup
 cat > "$BIN/codex" <<'EOF'
 #!/usr/bin/env bash
@@ -474,6 +474,40 @@ fi
 _restore_real_local
 trap - EXIT INT TERM
 rm -rf "$ELSEWHERE" "$LOG"
+
+# (s) 20차 리뷰 MAJOR L4-1: diff 가 KIRO_DIFF_CAP 을 넘으면 Kiro 셀은 prefix 만 보는데,
+# 신호 없이 넘어가면 그 사실이 synthesize.sh 리뷰에 안 보인다 — ::warning:: + 플래그 파일로
+# 전달돼야 한다.
+setup; mkfake codex 0 "codex-finding"; mkfake_args kiro-cli 0 "kiro-finding"
+printf 'diff --git a b\n%s\n' "$(head -c 200 /dev/zero | tr '\0' 'x')" > "$WORK/diff.txt"
+LOG=$(mktemp)
+if ! KIRO_DIFF_CAP=50 "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >"$LOG" 2>&1; then
+  fail "run-panel (s) script exits 0 when the diff exceeds KIRO_DIFF_CAP" "exited non-zero"
+fi
+[ -f "$WORK/kiro-diff-truncated.flag" ] \
+  && pass "run-panel (s) kiro-diff-truncated.flag is set when the diff exceeds KIRO_DIFF_CAP" \
+  || fail "run-panel (s) kiro-diff-truncated.flag is set when the diff exceeds KIRO_DIFF_CAP" "flag missing"
+grep -q "::warning::diff exceeds KIRO_DIFF_CAP" "$LOG" \
+  && pass "run-panel (s) emits a ::warning:: for the truncation" \
+  || fail "run-panel (s) emits a ::warning:: for the truncation" "warning line missing from stderr"
+grep -q "TRUNCATED at 50B" "$WORK/slot/kiro-opus-L2.md" 2>/dev/null \
+  && pass "run-panel (s) the truncation marker reaches the Kiro cell's argv" \
+  || fail "run-panel (s) the truncation marker reaches the Kiro cell's argv" "marker missing from kiro cell"
+rm -f "$LOG"
+
+# (t) 20차 리뷰 MINOR L4-2 회귀 가드: KIRO_DEGRADED_COUNT 계산에 `|| echo 0` 폴백이 없어야
+# 한다 — 있으면 grep -c 의 no-match "0"에 폴백의 "0"이 또 붙어 "0\n0"이 되고, 뒤이은 정수
+# 비교가 "integer expression expected" 를 stderr 에 흘리는 회귀가 있었다(건강한 실행마다
+# 로그 노이즈; 이 파일보다 앞선 row_count 루프가 이미 같은 함정을 피하고 있었음).
+setup; mkfake codex 0 "codex-finding"; mkfake_args kiro-cli 0 "kiro-finding"
+LOG=$(mktemp)
+if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >"$LOG" 2>&1; then
+  fail "run-panel (t) script exits 0 on a fully healthy run" "exited non-zero"
+fi
+grep -q "integer expression expected" "$LOG" \
+  && fail "run-panel (t) no 'integer expression expected' noise on a healthy run" "$(cat "$LOG")" \
+  || pass "run-panel (t) no 'integer expression expected' noise on a healthy run"
+rm -f "$LOG"
 
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then

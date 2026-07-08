@@ -29,11 +29,19 @@ PR을 열면 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 L1(결정
   — `kiro-cli --v3 chat ... --model gpt-5.5`는 `--list-models`엔 나열돼도 실제 호출은
   `INVALID_MODEL_ID`(HTTP 400)로 거부되는데, 이건 `gpt-5.5` 자체의 문제가 아니라 **`--v3`
   플래그가 라우팅하는 별도 백엔드**의 모델 카탈로그가 더 좁아서다 — `--v3` 없는 `kiro-cli
-  chat`(나머지 플래그 `--mode default --trust-tools=fs_read --no-interactive --wrap never`
-  는 동일)으로는 gpt-5.5 포함 5개 모델 전부 정상 응답 확인됨. `--v3`는 애초에 모델 지원과
+  chat`(당시 나머지 플래그 `--mode default --trust-tools=fs_read --no-interactive --wrap
+  never` — `--trust-tools=fs_read`는 ADR-013 으로 `--trust-tools=`(툴 미부여)로 바뀜, 아래)
+  으로는 gpt-5.5 포함 5개 모델 전부 정상 응답 확인됨. `--v3`는 애초에 모델 지원과
   무관한 stdin-무시/`fs_read` tool-name 버그를 고치려고 도입됐던 것(커밋 `c5b19c7`)이라 —
   두 버그 다 argv 전달 방식으로 이미 우회돼 있어 `--v3` 없이도 재발하지 않음. 교체 배경/근거
   전체는 ADR-012 참조.)
+- **Kiro diff 전달(ADR-013)**: Kiro 셀은 `--trust-tools=fs_read`(파일 경로로 diff 참조) 대신
+  `--trust-tools=`(툴 미부여, diff 는 `KIRO_DIFF_CAP` 기본 100000B 로 capped 된 텍스트를
+  argv 에 직접 embed)를 쓴다 — untrusted diff 에 fs_read 를 신뢰하면 diff-injection 이
+  절대경로 read 를 유도해 공개 PR 코멘트로 크리덴셜이 노출될 수 있는 CRITICAL 잔여위험을
+  구조적으로 닫기 위함(claude-code-usage-dashboard PR #4 리뷰에서 발견). 디버깅 시: Kiro
+  셀이 비면 이제 `--trust-tools=` 오타/무효화가 아니라 `KIRO_DIFF_CAP` 초과로 diff 가 잘렸는지
+  `$WORK/kiro-diff-truncated.flag`(및 리뷰 본문의 "✂️ Kiro diff truncated" 배너)를 먼저 확인.
 - AWS 인증: EKS Pod Identity(ci-runner 역할) SigV4
 
 ## L1 이 fail 로 막혔을 때

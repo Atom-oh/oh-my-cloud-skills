@@ -165,6 +165,17 @@ if [ -s "$WORK/degraded-models.txt" ]; then
   } > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
 fi
 
+# Kiro diff truncation 가시화 — 대형 diff 는 run-panel.sh 의 KIRO_DIFF_CAP 을 넘으면 Kiro
+# 셀에 prefix 만 전달된다(argv 커널 한도 회피, 의도된 트레이드오프). truncation 은 VERDICT
+# 를 강제하진 않되(codex 가 여전히 전체 diff 를 봄) 신호 없이 넘기면 "Kiro 12셀이 diff 뒷부분은
+# 못 본 채 정상 응답으로 집계됐다"는 사실이 리뷰에서 안 보인다(20차 리뷰 MAJOR L4-1).
+if [ -f "$WORK/kiro-diff-truncated.flag" ]; then
+  { echo "✂️ **Kiro diff truncated**: diff 가 KIRO_DIFF_CAP 을 초과해 Kiro 셀은 앞부분만 리뷰함 — codex 는 전체 diff 를 봤으므로 뒷부분 이슈는 codex 단일 벤더 커버리지."
+    echo ""
+    cat "$OUT"
+  } > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
+fi
+
 # 심각도 상향(run-panel.sh 의 coverage-severe.flag) — degraded 모델이 (전체-1)개 이상이면
 # 살아남은 벤더가 최대 1개뿐이라 "lens당 교차확인"이 성립하지 않는다. 이 경우는 경고만으로
 # 끝내지 않고 체어의 판정과 무관하게 VERDICT 를 강제 FAIL 한다(fail-closed 계약 보존).

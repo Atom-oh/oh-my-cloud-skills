@@ -187,6 +187,24 @@ grep -q "something went wrong" "$WORK/review.md" 2>/dev/null \
   || fail "synthesize (h) last line is still the forced VERDICT: FAIL" "got: $(tail -1 "$WORK/review.md")"
 rm -rf "$WORK" "$BIN"
 
+# (i) Kiro diff truncation 배너 (20차 리뷰 MAJOR L4-1) — run-panel.sh 가 남긴
+# kiro-diff-truncated.flag 가 있으면 리뷰 상단에 배너가 붙고, VERDICT 는 강제되지 않은 채
+# 그대로 마지막 줄로 남아야 한다(truncation 은 severe 와 달리 fail-closed 대상이 아님).
+setup; mkclaude_pass
+echo "codex-finding" > "$WORK/slot/codex-L2.md"
+echo "codex/L2" >> "$WORK/responded.txt"
+: > "$WORK/kiro-diff-truncated.flag"
+if ! bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
+  fail "synthesize (i) script exits 0 with a kiro-diff-truncated.flag present" "exited non-zero"
+fi
+grep -q "Kiro diff truncated" "$WORK/review.md" 2>/dev/null \
+  && pass "synthesize (i) kiro-diff-truncated banner appears in the review" \
+  || fail "synthesize (i) kiro-diff-truncated banner appears in the review" "banner missing"
+[ "$(tail -1 "$WORK/review.md")" = "VERDICT: PASS" ] \
+  && pass "synthesize (i) VERDICT stays the last line despite the prepended banner" \
+  || fail "synthesize (i) VERDICT stays the last line despite the prepended banner" "got: $(tail -1 "$WORK/review.md")"
+rm -rf "$WORK" "$BIN"
+
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then
   [ "$_t_fail" = 0 ] && echo "PASS: test-synthesize" || exit 1

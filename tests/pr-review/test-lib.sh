@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # lib.sh 의 scrub_secrets() 단위 테스트. harness(run-all.sh 가 source) + standalone 모두
-# 지원. Kiro fs_read 잔여 위험(diff 인젝션 → 절대경로 read → 셀 출력에 크리덴셜 노출 → 체어
-# 종합 → 공개 PR 코멘트/외부 유출)의 마지막 방어선이므로, 흔한 크리덴셜 포맷이 실제로
-# 치환되는지와 평범한 텍스트가 오탐 없이 그대로 통과하는지를 직접 검증한다.
+# 지원. 셀 출력에 크리덴셜성 값이 우연히 섞여 체어 종합 → 공개 PR 코멘트로 노출되는 경로의
+# 일반적인 마지막 방어선이므로(Kiro fs_read 잔여 위험은 ADR-013 으로 구조적으로 닫힘 — 이
+# 테스트는 그 이후에도 유효한, fs_read 와 무관한 일반 크리덴셜-누출 방어), 흔한 크리덴셜
+# 포맷이 실제로 치환되는지와 평범한 텍스트가 오탐 없이 그대로 통과하는지를 직접 검증한다.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB="$(cd "$HERE/../../scripts/pr-review" && pwd)/lib.sh"
 
