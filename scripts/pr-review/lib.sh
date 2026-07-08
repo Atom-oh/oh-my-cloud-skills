@@ -11,16 +11,24 @@ ensure_slots() {
   rm -rf "$1/slot"; mkdir -p "$1/slot"
 }
 
-# 한 패널 실행 결과를 평가해 responded 에 기록.
+# 한 패널 실행 결과를 평가해 responded 에 기록. "responded" = stdout 이 비어있지 않음
+# **AND** 마지막 시도의 exit code 가 0. 예전엔 stdout 만 봤다 — 신규/무효 플래그
+# (예: `--mode`/`--trust-tools` 오타)로 CLI 가 non-zero exit 하면서도 usage/에러 텍스트를
+# stdout 에 찍으면 그 텍스트가 "응답"으로 집계되어 coverage floor/severe 게이트를 통째로
+# 우회했다(실증: 매트릭스 최초 실전 투입 시 일부 kiro 셀이 diff 를 못 받았다는 텍스트만
+# 내고도 응답 처리됨). exit code 는 try_panel 이 "$slot.rc" 사이드카 파일에 남긴다 — 파일이
+# 없으면(구버전 try_panel 호출 등) 실패로 간주해 fail-closed.
 #   $1 slot 파일 경로, $2 패널 라벨, $3 responded 파일
 record_result() {
   local slot="$1" label="$2" responded="$3"
-  if [ -s "$slot" ]; then
+  local rc; rc="$(cat "$slot.rc" 2>/dev/null || echo 1)"
+  if [ -s "$slot" ] && [ "$rc" = "0" ]; then
     echo "$label" >> "$responded"
   else
-    echo "[skip] $label" >&2
+    echo "[skip] $label (exit=$rc)" >&2
     : > "$slot"  # 빈 슬롯 보장
   fi
+  rm -f "$slot.rc"
 }
 
 # 자격증명 패턴 스크럽 — 마지막 방어선(last line of defense), 예방이 아님. Kiro 의
