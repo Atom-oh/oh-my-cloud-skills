@@ -29,10 +29,20 @@
   0건. `gpt-5.5`로 교체 시도 → `kiro-cli --v3 chat` 경유로는 `INVALID_MODEL_ID`(HTTP 400)로
   거부됨을 직접 재현(처음엔 `minimax-m2.5`로 대체) → 이후 **`--v3` 플래그 자체가 원인**임을
   발견(`--v3` 없는 `kiro-cli chat`은 gpt-5.5/kimi-k2.5/minimax-m2.5/glm-5/claude-opus-4.8
-  전부 정상 응답 — `--mode default`/`--trust-tools=fs_read`/`--no-interactive`/`--wrap never`
+  전부 정상 응답 — `--mode default`/`--trust-tools=fs_read`(당시 플래그 — ADR-013으로
+  `--trust-tools=` 로 변경, 아래)/`--no-interactive`/`--wrap never`
   는 `--v3` 유무와 무관하게 동일하게 동작함을 직접 재현 확인) → `--v3` 를 빼고 `gpt-5.5` 로
   최종 확정(codex 와 동일 모델이나 별도 harness/tool-access 경로라 리뷰 내용은 갈림). 결정
   기록: ADR-012.
+- **Kiro diff 전달: `fs_read` 경로 참조 → capped argv 직접 embed(ADR-013)** — Kiro 셀은
+  `--trust-tools=fs_read` 대신 `--trust-tools=`(툴 미부여)를 받고, diff 는
+  `KIRO_DIFF_CAP`(기본 100000B)로 캡핑해 argv 에 직접 실린다. 이유: untrusted PR diff 에
+  fs_read 를 신뢰하면 diff-injection 이 절대경로 read 를 유도할 수 있고, 그 값이 체어
+  종합을 거쳐 **공개 PR 코멘트로 노출**될 수 있다 — public repo + `pull_request_target`
+  조합에서 ADR-011 이 명시한 "accepted residual risk" 수준을 넘는다고 판단(claude-code-
+  usage-dashboard PR #4 리뷰에서 발견). 캡을 넘는 diff 는 Kiro 셀에 prefix 만 전달되며,
+  `::warning::` + `$WORK/kiro-diff-truncated.flag` 로 신호가 남고 리뷰 본문에 배너로
+  표시된다(VERDICT 를 강제하진 않음 — codex 는 전체 diff 를 계속 봄).
 - **Antigravity(`agy`)는 매트릭스 미포함** — OAuth 인터랙티브 로그인 전용이라 헤드리스 CI에서
   인증 불가(ADR-010).
 - **의장**: Claude Fable 5(`us.anthropic.claude-fable-5`)가 활성 셀 findings를 lens 별로 종합해
@@ -93,7 +103,7 @@
 - `.github/workflows/pr-review.yml` — `pull_request_target`(base-ref 체크아웃, diff는 데이터),
   L1 게이트→(pass 시) lens 프롬프트 생성→매트릭스 fan-out→synthesize→게이트→코멘트 upsert
 - `scripts/pr-review/precheck.sh` — L1: PR head 를 `git archive` 로 데이터 추출 후 `test-plugins.py --root` + `test-codex-plugins.py --root` 로 결정적 검증.
-- `scripts/pr-review/{lib,run-panel,synthesize}.sh` — 매트릭스 병렬 실행(모델×lens 이중 루프) + 의장 종합. 실패 셀은 graceful skip. 진단 로그는 **redact(auth/provider/프롬프트/diff 단편 제거) + 길이 제한**을 기본 동작으로 함(원시 stderr를 코멘트/로그로 노출하지 않음). `lib.sh` 의 `scrub_secrets()` 가 체어에 넘기기 전 각 셀 출력에서 AWS/GitHub/Slack/OpenAI·Anthropic/Google 키 포맷 + JWT(EKS Pod Identity 토큰 형태)를 정규식으로 치환(Kiro `fs_read` 잔여 유출 경로에 대한 마지막 방어선 — 절대경로 read 자체는 못 막음, ADR-011).
+- `scripts/pr-review/{lib,run-panel,synthesize}.sh` — 매트릭스 병렬 실행(모델×lens 이중 루프) + 의장 종합. 실패 셀은 graceful skip. 진단 로그는 **redact(auth/provider/프롬프트/diff 단편 제거) + 길이 제한**을 기본 동작으로 함(원시 stderr를 코멘트/로그로 노출하지 않음). `lib.sh` 의 `scrub_secrets()` 가 체어에 넘기기 전 각 셀 출력에서 AWS/GitHub/Slack/OpenAI·Anthropic/Google 키 포맷 + JWT(EKS Pod Identity 토큰 형태)를 정규식으로 치환 — 일반적인 마지막 방어선(예: 다른 경로로 우연히 크리덴셜성 값이 셀 출력에 섞여 나오는 경우)이며, Kiro `fs_read` 잔여 유출 경로는 fs_read 자체를 제거해 구조적으로 닫았다(ADR-013, ADR-011 amends).
 - `scripts/pr-review/panel_config.py`, `scripts/pr-review/pr-review.defaults.json`(committed 기본값), `.claude/pr-review.local.json`(gitignored, repo-local override) — 매트릭스 멤버십 2계층 설정. 자세한 사용법은 위 "설정" 절.
 - `scripts/test-plugins.py --root <path>`, `scripts/test-codex-plugins.py --root <path>` — 매니페스트 검증기를 임의 트리에 대해 실행할 수 있게 하는 옵션(L1 전용; 기본은 이 repo 자신을 검증).
 

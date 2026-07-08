@@ -23,10 +23,9 @@ PANEL=""
 SCRUB_TMP="$WORK/scrub-cell.tmp"
 while IFS= read -r f; do
   [ -s "$f" ] || continue
-  # 크리덴셜 스크럽(마지막 방어선) — Kiro fs_read 잔여 위험(diff 인젝션 → 절대경로 read →
-  # 셀 출력에 크리덴셜 노출 → 체어 종합 → 공개 PR 코멘트/외부 Kiro 유출) 체인을 여기서 끊는다.
-  # 절대경로 read 자체는 막지 못하므로(값이 이미 셀 출력에 나타난 뒤에만 작동) 잔여 위험은
-  # 남는다 — ADR-011. 캡 적용 전체 스크럽 후 캡을 적용해야 잘린 경계에서 패턴이 쪼개져
+  # 크리덴셜 스크럽(마지막 방어선) — Kiro fs_read 잔여 위험은 그 tool grant 자체를 제거해
+  # 구조적으로 닫혔다(ADR-013, ADR-011 amends) — 이 스크럽은 이제 일반적인 defense-in-depth다.
+  # 캡 적용 전체 스크럽 후 캡을 적용해야 잘린 경계에서 패턴이 쪼개져
   # 탐지를 피하는 걸 막고, 절단 여부도 스크럽된 길이 기준으로 정확히 판단할 수 있다.
   #
   # 스크럽 결과는 파이프가 아니라 파일로 받는다 — `printf '%s' "$SCRUBBED" | head -c N`
@@ -160,6 +159,17 @@ fi
 if [ -s "$WORK/degraded-models.txt" ]; then
   DEGRADED="$(tr '\n' ',' < "$WORK/degraded-models.txt" | sed 's/,$//; s/,/, /g')"
   { echo "⚠️ **커버리지 저하**: [$DEGRADED] 모델이 전체 lens 에서 응답 없음(플래그 무효·바이너리 부재·인증 실패 등) — 아래 리뷰는 그 모델 없이 종합됨."
+    echo ""
+    cat "$OUT"
+  } > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
+fi
+
+# Kiro diff truncation 가시화 — 대형 diff 는 run-panel.sh 의 KIRO_DIFF_CAP 을 넘으면 Kiro
+# 셀에 prefix 만 전달된다(argv 커널 한도 회피, 의도된 트레이드오프). truncation 은 VERDICT
+# 를 강제하진 않되(codex 가 여전히 전체 diff 를 봄) 신호 없이 넘기면 "Kiro 12셀이 diff 뒷부분은
+# 못 본 채 정상 응답으로 집계됐다"는 사실이 리뷰에서 안 보인다(20차 리뷰 MAJOR L4-1).
+if [ -f "$WORK/kiro-diff-truncated.flag" ]; then
+  { echo "✂️ **Kiro diff truncated**: diff 가 KIRO_DIFF_CAP 을 초과해 Kiro 셀은 앞부분만 리뷰함 — codex 는 전체 diff 를 봤으므로 뒷부분 이슈는 codex 단일 벤더 커버리지."
     echo ""
     cat "$OUT"
   } > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"

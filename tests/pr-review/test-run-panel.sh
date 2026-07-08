@@ -41,16 +41,16 @@ setup() { WORK=$(mktemp -d); BIN=$(mktemp -d); export PATH="$BIN:$PATH"
   echo "review L3 only" > "$WORK/lenses/L3.txt"; }
 
 # (a) 전원 응답: 2 lens x 4 모델 = 8 셀. codex 는 diff 를 stdin 으로 받고, kiro 는 stdin 을
-# 읽지 않으므로 argv 의 fs_read 지시문에 있는 "경로"로 diff 파일을 가리킨다(텍스트 임베드
-# 아님 — ARG_MAX/ps 노출 회피, docs/decisions/ADR-011 참조). mock 도 ARGV 만 echo 해
-# 이 경로-지시 계약과, 텍스트 임베드로의 회귀(diff 내용이 다시 argv 에 그대로 실리는 것)를
-# 둘 다 검증한다.
+# 읽지 않으므로 diff 텍스트 자체를 (capped) argv 에 직접 embed 받는다 — fs_read 는 부여하지
+# 않는다(19차 리뷰 CRITICAL: fs_read + untrusted diff = 절대경로 read 유도 후 공개 PR 코멘트/
+# 외부 서비스로 exfiltration 가능. 이 diff 는 어차피 public repo 의 공개 PR diff 라 argv
+# 임베드의 ps 노출은 새로운 기밀 노출이 아님). mock 도 ARGV 를 echo 해 diff 내용이 실제로
+# 실리는지, 그리고 `--trust-tools=fs_read`가 더 이상 전달되지 않는지 둘 다 검증한다.
 setup; mkfake codex 0 "codex-finding"; mkfake_args kiro-cli 0 "kiro-finding"
-DIFF_ABS="$(realpath "$WORK/diff.txt")"
 if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/dev/null 2>&1; then
   fail "run-panel (a) script exits 0 on a normal run" "exited non-zero"
 fi
-allok=1; codex_diffok=1; kiro_pathok=1; kiro_no_embedok=1; lensok=1
+allok=1; codex_diffok=1; kiro_embedok=1; kiro_no_fsreadok=1; lensok=1
 for lens in L2 L3; do
   for f in "codex-$lens" "kiro-opus-$lens" "kiro-gpt-$lens" "kiro-glm-$lens"; do
     [ -s "$WORK/slot/$f.md" ] || allok=0
@@ -58,10 +58,10 @@ for lens in L2 L3; do
   # codex: diff 는 stdin 으로 도착 — 슬롯에 diff 내용이 그대로 보여야 한다.
   grep -q "diff --git" "$WORK/slot/codex-$lens.md" 2>/dev/null || codex_diffok=0
   for tag in kiro-opus kiro-gpt kiro-glm; do
-    # kiro: argv 에 실제 diff 파일의 절대경로가 fs_read 지시문으로 들어가야 한다.
-    grep -qF "fs_read from: $DIFF_ABS" "$WORK/slot/$tag-$lens.md" 2>/dev/null || kiro_pathok=0
-    # kiro: diff 내용 자체가 argv 에 그대로 embed 되면 안 된다(텍스트 임베드 회귀 가드).
-    grep -q "diff --git" "$WORK/slot/$tag-$lens.md" 2>/dev/null && kiro_no_embedok=0
+    # kiro: diff 내용 자체가 argv 에 embed 돼야 한다(더 이상 경로 참조가 아님).
+    grep -q "diff --git" "$WORK/slot/$tag-$lens.md" 2>/dev/null || kiro_embedok=0
+    # kiro: fs_read 툴을 더 이상 부여받지 않아야 한다(CRITICAL 수정 회귀 가드).
+    grep -q "fs_read" "$WORK/slot/$tag-$lens.md" 2>/dev/null && kiro_no_fsreadok=0
   done
   # kiro 셀이 자기 lens 프롬프트를 받았는지(다른 lens 프롬프트가 섞여 들어가지 않는지) 확인.
   grep -q "review $lens only" "$WORK/slot/kiro-opus-$lens.md" 2>/dev/null || lensok=0
@@ -70,10 +70,10 @@ done
   || fail "run-panel (a) all 8 cells filled (2 lens x 4 models)" "a cell is empty"
 [ "$codex_diffok" = 1 ] && pass "run-panel (a) codex receives diff via stdin" \
   || fail "run-panel (a) codex receives diff via stdin" "codex cell missing diff content"
-[ "$kiro_pathok" = 1 ] && pass "run-panel (a) kiro gets fs_read path to the diff file (no argv embed)" \
-  || fail "run-panel (a) kiro gets fs_read path to the diff file (no argv embed)" "fs_read path missing from argv"
-[ "$kiro_no_embedok" = 1 ] && pass "run-panel (a) kiro argv does NOT embed diff text (ARG_MAX regression guard)" \
-  || fail "run-panel (a) kiro argv does NOT embed diff text (ARG_MAX regression guard)" "diff content leaked into argv"
+[ "$kiro_embedok" = 1 ] && pass "run-panel (a) kiro gets the diff embedded directly in argv (capped, no fs_read)" \
+  || fail "run-panel (a) kiro gets the diff embedded directly in argv (capped, no fs_read)" "diff content missing from argv"
+[ "$kiro_no_fsreadok" = 1 ] && pass "run-panel (a) kiro is NOT granted fs_read (CRITICAL fix regression guard)" \
+  || fail "run-panel (a) kiro is NOT granted fs_read (CRITICAL fix regression guard)" "fs_read still present in argv"
 [ "$lensok" = 1 ] && pass "run-panel (a) each cell got its own lens prompt (no cross-lens leak)" \
   || fail "run-panel (a) each cell got its own lens prompt (no cross-lens leak)" "lens prompt mismatch"
 [ "$(wc -l < "$WORK/responded.txt" 2>/dev/null || echo 0)" = 8 ] \
@@ -191,9 +191,48 @@ fi
   || pass "run-panel (g) coverage-severe.flag is NOT set when 3 vendors still survive"
 rm -f "$LOG"
 
-# (h) skip 진단 블록의 stderr 덤프가 scrub_secrets 를 거치는지 — Kiro fs_read 전환 이후
-# 절대경로 read 결과가 stdout(.md, synthesize.sh 에서 스크럽) 대신 stderr 로 새는 경로에도
-# 같은 방어선이 적용돼야 한다(ADR-011 MAJOR-1, 공개 CI 로그로 원시 노출되던 갭).
+# (q) 19차 리뷰 MAJOR-3: codex 단독 탈락(전체 4모델 중 1개)은 raw-count 기준으론 "1 >= 3"이
+# 거짓이라 옛 산술에서 severe 가 안 걸렸지만, 남는 벤더는 kiro 하나뿐이라 "≤1 vendor" 계약
+# 위반이다 — codex 가 죽으면 kiro 생존 개수와 무관하게 severe 여야 한다.
+setup; mkfake codex 1 ""; mkfake_args kiro-cli 0 "kiro-finding"
+LOG=$(mktemp)
+if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >"$LOG" 2>&1; then
+  fail "run-panel (q) script exits 0 when only codex is dead" "exited non-zero"
+fi
+[ "$(cat "$WORK/degraded-models.txt" 2>/dev/null)" = "codex" ] \
+  && pass "run-panel (q) only codex is marked degraded" \
+  || fail "run-panel (q) only codex is marked degraded" "got: $(cat "$WORK/degraded-models.txt" 2>/dev/null)"
+[ -f "$WORK/coverage-severe.flag" ] \
+  && pass "run-panel (q) coverage-severe.flag IS set when codex alone dies (kiro-only vendor left)" \
+  || fail "run-panel (q) coverage-severe.flag IS set when codex alone dies (kiro-only vendor left)" "flag missing despite codex vendor fully gone"
+rm -f "$LOG"
+
+# (r) 19차 리뷰 MAJOR-2: record_result 는 exit status 도 봐야 한다 — non-zero exit 인데
+# stdout 이 비어있지 않으면(예: usage/에러 텍스트) "응답함"으로 잘못 집계되던 버그.
+setup
+cat > "$BIN/codex" <<'EOF'
+#!/usr/bin/env bash
+echo "looks-like-a-finding-but-the-command-actually-failed"
+exit 3
+EOF
+chmod +x "$BIN/codex"
+mkfake_args kiro-cli 0 "kiro-finding"
+if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/dev/null 2>&1; then
+  fail "run-panel (r) script exits 0 when codex exits non-zero with non-empty stdout" "exited non-zero"
+fi
+grep -qx "codex" "$WORK/degraded-models.txt" 2>/dev/null \
+  && pass "run-panel (r) a non-zero exit with non-empty stdout is NOT counted as responded" \
+  || fail "run-panel (r) a non-zero exit with non-empty stdout is NOT counted as responded" "codex missing from degraded-models.txt — non-zero exit was miscounted as a response"
+grep -q "^codex/" "$WORK/responded.txt" 2>/dev/null \
+  && fail "run-panel (r) codex is NOT listed in responded.txt despite the non-zero exit" "codex appeared in responded.txt" \
+  || pass "run-panel (r) codex is NOT listed in responded.txt despite the non-zero exit"
+[ -s "$WORK/slot/codex-L2.md" ] \
+  && fail "run-panel (r) the slot is cleared to empty for a failed (non-zero exit) cell" "slot still has content" \
+  || pass "run-panel (r) the slot is cleared to empty for a failed (non-zero exit) cell"
+
+# (h) skip 진단 블록의 stderr 덤프가 scrub_secrets 를 거치는지 — 크리덴셜성 값이 stdout
+# (.md, synthesize.sh 에서 스크럽) 대신 stderr 로 새는 경로에도 같은 방어선이 적용돼야
+# 한다(ADR-011 MAJOR-1, 공개 CI 로그로 원시 노출되던 갭 — fs_read 관련 여부와 무관).
 setup
 cat > "$BIN/codex" <<'EOF'
 #!/usr/bin/env bash
@@ -435,6 +474,40 @@ fi
 _restore_real_local
 trap - EXIT INT TERM
 rm -rf "$ELSEWHERE" "$LOG"
+
+# (s) 20차 리뷰 MAJOR L4-1: diff 가 KIRO_DIFF_CAP 을 넘으면 Kiro 셀은 prefix 만 보는데,
+# 신호 없이 넘어가면 그 사실이 synthesize.sh 리뷰에 안 보인다 — ::warning:: + 플래그 파일로
+# 전달돼야 한다.
+setup; mkfake codex 0 "codex-finding"; mkfake_args kiro-cli 0 "kiro-finding"
+printf 'diff --git a b\n%s\n' "$(head -c 200 /dev/zero | tr '\0' 'x')" > "$WORK/diff.txt"
+LOG=$(mktemp)
+if ! KIRO_DIFF_CAP=50 "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >"$LOG" 2>&1; then
+  fail "run-panel (s) script exits 0 when the diff exceeds KIRO_DIFF_CAP" "exited non-zero"
+fi
+[ -f "$WORK/kiro-diff-truncated.flag" ] \
+  && pass "run-panel (s) kiro-diff-truncated.flag is set when the diff exceeds KIRO_DIFF_CAP" \
+  || fail "run-panel (s) kiro-diff-truncated.flag is set when the diff exceeds KIRO_DIFF_CAP" "flag missing"
+grep -q "::warning::diff exceeds KIRO_DIFF_CAP" "$LOG" \
+  && pass "run-panel (s) emits a ::warning:: for the truncation" \
+  || fail "run-panel (s) emits a ::warning:: for the truncation" "warning line missing from stderr"
+grep -q "TRUNCATED at 50B" "$WORK/slot/kiro-opus-L2.md" 2>/dev/null \
+  && pass "run-panel (s) the truncation marker reaches the Kiro cell's argv" \
+  || fail "run-panel (s) the truncation marker reaches the Kiro cell's argv" "marker missing from kiro cell"
+rm -f "$LOG"
+
+# (t) 20차 리뷰 MINOR L4-2 회귀 가드: KIRO_DEGRADED_COUNT 계산에 `|| echo 0` 폴백이 없어야
+# 한다 — 있으면 grep -c 의 no-match "0"에 폴백의 "0"이 또 붙어 "0\n0"이 되고, 뒤이은 정수
+# 비교가 "integer expression expected" 를 stderr 에 흘리는 회귀가 있었다(건강한 실행마다
+# 로그 노이즈; 이 파일보다 앞선 row_count 루프가 이미 같은 함정을 피하고 있었음).
+setup; mkfake codex 0 "codex-finding"; mkfake_args kiro-cli 0 "kiro-finding"
+LOG=$(mktemp)
+if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >"$LOG" 2>&1; then
+  fail "run-panel (t) script exits 0 on a fully healthy run" "exited non-zero"
+fi
+grep -q "integer expression expected" "$LOG" \
+  && fail "run-panel (t) no 'integer expression expected' noise on a healthy run" "$(cat "$LOG")" \
+  || pass "run-panel (t) no 'integer expression expected' noise on a healthy run"
+rm -f "$LOG"
 
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then

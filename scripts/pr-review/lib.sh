@@ -11,22 +11,30 @@ ensure_slots() {
   rm -rf "$1/slot"; mkdir -p "$1/slot"
 }
 
-# 한 패널 실행 결과를 평가해 responded 에 기록.
+# 한 패널 실행 결과를 평가해 responded 에 기록. "responded" = stdout 이 비어있지 않음
+# **AND** 마지막 시도의 exit code 가 0. 예전엔 stdout 만 봤다 — 신규/무효 플래그
+# (예: `--mode`/`--trust-tools` 오타)로 CLI 가 non-zero exit 하면서도 usage/에러 텍스트를
+# stdout 에 찍으면 그 텍스트가 "응답"으로 집계되어 coverage floor/severe 게이트를 통째로
+# 우회했다(실증: 매트릭스 최초 실전 투입 시 일부 kiro 셀이 diff 를 못 받았다는 텍스트만
+# 내고도 응답 처리됨). exit code 는 try_panel 이 "$slot.rc" 사이드카 파일에 남긴다 — 파일이
+# 없으면(구버전 try_panel 호출 등) 실패로 간주해 fail-closed.
 #   $1 slot 파일 경로, $2 패널 라벨, $3 responded 파일
 record_result() {
   local slot="$1" label="$2" responded="$3"
-  if [ -s "$slot" ]; then
+  local rc; rc="$(cat "$slot.rc" 2>/dev/null || echo 1)"
+  if [ -s "$slot" ] && [ "$rc" = "0" ]; then
     echo "$label" >> "$responded"
   else
-    echo "[skip] $label" >&2
+    echo "[skip] $label (exit=$rc)" >&2
     : > "$slot"  # 빈 슬롯 보장
   fi
+  rm -f "$slot.rc"
 }
 
-# 자격증명 패턴 스크럽 — 마지막 방어선(last line of defense), 예방이 아님. Kiro 의
-# fs_read 잔여 위험(diff 인젝션 → 절대경로 read → 셀 출력에 크리덴셜 노출 → 체어 종합 →
-# 공개 PR 코멘트/외부 Kiro 서비스 유출) 체인을 끊기 위해, 셀 출력을 체어에 넘기기 전에
-# 흔한 크리덴셜 포맷을 정규식으로 치환한다. 패턴은 co-agent 의
+# 자격증명 패턴 스크럽 — 마지막 방어선(last line of defense), 예방이 아님. Kiro fs_read
+# 잔여 위험은 그 tool grant 자체를 제거해 구조적으로 닫혔다(ADR-013) — 이 스크럽은 이제
+# 일반적인 defense-in-depth(다른 경로로 우연히 크리덴셜성 값이 셀 출력에 섞여 나오는 경우)
+# 이며, 셀 출력을 체어에 넘기기 전에 흔한 크리덴셜 포맷을 정규식으로 치환한다. 패턴은 co-agent 의
 # `consensus_hooks.py::_SECRET_RE`(AWS/GitHub/Slack/OpenAI·Anthropic/Google + generic
 # key=value)를 재사용하고, EKS Pod Identity 토큰(고정 경로 파일의 값 자체가 JWT 포맷)
 # 탐지를 추가했다. 절대경로 read 자체를 막지는 못하므로(스크럽은 값이 셀 출력에 실제로
