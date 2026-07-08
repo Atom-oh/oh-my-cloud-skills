@@ -33,8 +33,10 @@ ensure_slots "$WORK"
 SLOT="$WORK/slot"; RESP="$WORK/responded.txt"; : > "$RESP"
 # 비-ephemeral 러너에서 $WORK 가 재사용되면 이전 실행이 남긴 severe 플래그가 그대로
 # 살아남아, 이번엔 4모델 모두 정상 응답해도 synthesize.sh 가 강제 FAIL 하게 된다 —
-# responded.txt/degraded-models.txt 처럼 매 실행 시작 시 리셋.
-rm -f "$WORK/coverage-severe.flag"
+# responded.txt/degraded-models.txt 처럼 매 실행 시작 시 리셋. kiro-diff-truncated.flag 도
+# 같은 이유로 함께 리셋 — 없으면 이전 실행의 stale flag 가 이번(truncation 없는) 리뷰에
+# 허위 배너를 붙일 수 있다(20차 리뷰 MINOR).
+rm -f "$WORK/coverage-severe.flag" "$WORK/kiro-diff-truncated.flag"
 T="${PANEL_TIMEOUT:-300}"
 RETRIES="${PANEL_RETRIES:-3}"
 # 매트릭스 멤버십(어떤 셀이 참여하는가)은 하드코딩이 아니라 panel_config.py 설정에서 온다 —
@@ -137,6 +139,10 @@ kiro_env() {
 # 여기선 실질적 트레이드오프가 아니다: (1) 이미 존재하는 PANEL_CELL_CAP 캡핑 관례를 그대로
 # diff 입력에도 적용해 한도 아래로 자름, (2) 이 diff 는 public repo 의 PR diff 라 이미
 # GitHub 에 공개돼 있으므로 `ps` 가시성이 새로운 기밀 노출이 아니다(공식 secret 이 아님).
+# `--trust-tools=`(빈 값)이 "무툴"임은 추정이나 라이브 재현만이 아니라 kiro-cli 자신의
+# 공식 문서(`kiro-cli chat --help`): "trust no tools: '--trust-tools='" — 그대로 인용되는
+# 예시 문구다(버전: `kiro-cli 2.11.1`, 라이브 재현으로도 재확인 — 주입된 "read /etc/passwd"
+# 지시가 거부됨). 향후 kiro-cli 가 이 시맨틱을 바꾸면 이 fail-closed 가정도 재검증 필요.
 KIRO_DIFF_CAP="${KIRO_DIFF_CAP:-100000}"
 KIRO_DIFF_TEXT="$(head -c "$KIRO_DIFF_CAP" "$DIFF")"
 # truncation 자체는 무해(대형 diff 의 의도된 트레이드오프)하지만, 신호 없이 넘어가면 Kiro

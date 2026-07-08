@@ -31,10 +31,10 @@ record_result() {
   rm -f "$slot.rc"
 }
 
-# 자격증명 패턴 스크럽 — 마지막 방어선(last line of defense), 예방이 아님. Kiro 의
-# fs_read 잔여 위험(diff 인젝션 → 절대경로 read → 셀 출력에 크리덴셜 노출 → 체어 종합 →
-# 공개 PR 코멘트/외부 Kiro 서비스 유출) 체인을 끊기 위해, 셀 출력을 체어에 넘기기 전에
-# 흔한 크리덴셜 포맷을 정규식으로 치환한다. 패턴은 co-agent 의
+# 자격증명 패턴 스크럽 — 마지막 방어선(last line of defense), 예방이 아님. Kiro fs_read
+# 잔여 위험은 그 tool grant 자체를 제거해 구조적으로 닫혔다(ADR-013) — 이 스크럽은 이제
+# 일반적인 defense-in-depth(다른 경로로 우연히 크리덴셜성 값이 셀 출력에 섞여 나오는 경우)
+# 이며, 셀 출력을 체어에 넘기기 전에 흔한 크리덴셜 포맷을 정규식으로 치환한다. 패턴은 co-agent 의
 # `consensus_hooks.py::_SECRET_RE`(AWS/GitHub/Slack/OpenAI·Anthropic/Google + generic
 # key=value)를 재사용하고, EKS Pod Identity 토큰(고정 경로 파일의 값 자체가 JWT 포맷)
 # 탐지를 추가했다. 절대경로 read 자체를 막지는 못하므로(스크럽은 값이 셀 출력에 실제로
