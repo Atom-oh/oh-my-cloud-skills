@@ -131,12 +131,21 @@ fi
 grep -q "keep-this-kiro-key" "$DUMP" 2>/dev/null \
   && pass "run-panel (e) kiro env still carries its own KIRO_API_KEY" \
   || fail "run-panel (e) kiro env still carries its own KIRO_API_KEY" "KIRO_API_KEY missing — auth would break"
-grep -q "^CWD=$WORK/kiro-cwd$" "$DUMP" 2>/dev/null \
-  && pass "run-panel (e) kiro runs in an isolated cwd (not \$WORK, not the repo)" \
-  || fail "run-panel (e) kiro runs in an isolated cwd (not \$WORK, not the repo)" "cwd was not isolated"
-grep -q "^HOME=$WORK/kiro-cwd$" "$DUMP" 2>/dev/null \
-  && pass "run-panel (e) kiro HOME is scratched to the isolated cwd (not the real \$HOME)" \
-  || fail "run-panel (e) kiro HOME is scratched to the isolated cwd (not the real \$HOME)" "HOME was not scratched"
+grep -q "^CWD=$WORK/kiro-cwd/kiro-opus-L2$" "$DUMP" 2>/dev/null \
+  && pass "run-panel (e) kiro runs in a per-cell isolated cwd (not \$WORK, not the repo, not shared with other cells)" \
+  || fail "run-panel (e) kiro runs in a per-cell isolated cwd (not \$WORK, not the repo, not shared with other cells)" "cwd was not per-cell isolated"
+grep -q "^HOME=$WORK/kiro-cwd/kiro-opus-L2$" "$DUMP" 2>/dev/null \
+  && pass "run-panel (e) kiro HOME is scratched to the per-cell isolated cwd (not the real \$HOME, not shared)" \
+  || fail "run-panel (e) kiro HOME is scratched to the per-cell isolated cwd (not the real \$HOME, not shared)" "HOME was not per-cell scratched"
+# 다른 셀(kiro-gpt-L2)은 다른 cwd/HOME 을 받아야 한다 — 매트릭스의 모든 kiro 셀이 동시(&)
+# 실행되므로, 셀 간 cwd/HOME 공유는 kiro-cli 의 세션/캐시 상태 경합을 일으킬 수 있다(회귀
+# 이력: cc-on-bedrock PR#107 등 4개 리포 리뷰가 교차 합의로 잡은 MAJOR — 원래 15차 리뷰 M2
+# 의 근거였다가 fs_read 제거 리팩토링에서 소리 없이 빠졌었다).
+DUMP2="$WORK/slot/kiro-gpt-L2.md"
+CWD1="$(grep '^CWD=' "$DUMP" 2>/dev/null)"; CWD2="$(grep '^CWD=' "$DUMP2" 2>/dev/null)"
+[ -n "$CWD1" ] && [ -n "$CWD2" ] && [ "$CWD1" != "$CWD2" ] \
+  && pass "run-panel (e) two kiro cells (kiro-opus-L2, kiro-gpt-L2) do NOT share a cwd/HOME" \
+  || fail "run-panel (e) two kiro cells (kiro-opus-L2, kiro-gpt-L2) do NOT share a cwd/HOME" "got matching or missing CWD: '$CWD1' vs '$CWD2'"
 
 # (f) 커버리지 floor — kiro 가 전체 lens 에서 응답 없으면(예: 무효 플래그로 조용히 붕괴)
 # degraded-models.txt 에 kiro 태그 3개가 전부 기록되고 경고가 찍혀야 한다(ADR-011 M2).
