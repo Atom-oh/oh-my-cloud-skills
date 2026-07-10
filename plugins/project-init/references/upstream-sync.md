@@ -11,7 +11,8 @@
 git clone --depth 1 https://github.com/whchoi98/project-init.git /tmp/project-init-upstream
 diff -rq /tmp/project-init-upstream/plugins/project-init/ plugins/project-init/ \
   --exclude=plugin.json --exclude=CLAUDE.md --exclude=SKILL.md --exclude=readme-template.md \
-  --exclude=doc-sync-checker.md --exclude=generate-readme.md --exclude=claude-md-template.md
+  --exclude=doc-sync-checker.md --exclude=generate-readme.md --exclude=claude-md-template.md \
+  --exclude=agents-templates.md --exclude=skills-templates.md
 
 # Upstream에서 업데이트 가져오기 — 로컬 분기 파일은 반드시 제외 (blanket rsync는 로컬 커스터마이징/4.8 수정/모델 티어를 덮어씀)
 rsync -av \
@@ -21,6 +22,8 @@ rsync -av \
   --exclude='skills/project-scaffolder/SKILL.md' \
   --exclude='skills/project-scaffolder/references/readme-template.md' \
   --exclude='skills/project-scaffolder/references/claude-md-template.md' \
+  --exclude='skills/project-scaffolder/references/agents-templates.md' \
+  --exclude='skills/project-scaffolder/references/skills-templates.md' \
   --exclude='commands/generate-readme.md' \
   /tmp/project-init-upstream/plugins/project-init/ plugins/project-init/
 ```
@@ -28,7 +31,12 @@ rsync -av \
 **로컬 분기 파일 (동기화 제외 대상):**
 - `.claude-plugin/plugin.json` — agents/skills/commands 배열 + version 보강
 - `CLAUDE.md` — 로컬 Upstream/version 섹션 보유
-- `skills/project-scaffolder/SKILL.md` — 로컬 전용 `writing-style-guide.md` 참조 라인
+- `skills/project-scaffolder/SKILL.md` — 로컬 전용 `writing-style-guide.md` 참조 라인 +
+  신형 모델 정렬(CLAUDE.md "몇 화면" 크기 가이드, 모듈 CLAUDE.md 블랭킷→조건부 생성)
+- `skills/project-scaffolder/references/agents-templates.md` /
+  `references/skills-templates.md` — 코드리뷰 recall 가이드 정렬(4.7+/Sonnet 5는
+  "고신뢰만 보고" 지시를 문자 그대로 따라 recall이 떨어짐 — 발견은 전부 보고,
+  75+ 임계는 상세도·verdict에만 적용; 공식 마이그레이션 가이드 권고). upstream 반영 권장.
 - `skills/project-scaffolder/references/readme-template.md` — 로컬 `--`, upstream `—`
 - `skills/project-scaffolder/references/claude-md-template.md` — 신형 모델(4.6+) 가이드 정렬:
   생성기용 작성 규칙 프리앰블(항상-로드 컨텍스트 세금 최소화, 강압 어휘·예시 패딩 금지,
