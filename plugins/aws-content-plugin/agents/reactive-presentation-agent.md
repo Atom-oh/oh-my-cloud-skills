@@ -26,7 +26,9 @@ A specialized agent for creating interactive HTML slideshow presentations using 
 3. **빌드 명령 필수**: `remarp_to_slides.py build`를 반드시 실행하여 HTML을 생성합니다. 수동으로 HTML을 작성하거나 converter를 우회하지 않습니다.
 4. **팀 워크플로우**: 60분 이상 프레젠테이션 또는 3+ 블록은 CLAUDE.md의 Multi-Phase Pipeline을 참조하여 팀 기반 병렬 실행을 고려합니다.
 5. **병렬 실행**: 3+ 블록 프레젠테이션은 `_presentation.remarp.md` 작성 후 블록별 병렬 Remarp 작성을 시도합니다.
-6. **AWS 아이콘 필수**: AWS 서비스를 언급하는 슬라이드에는 반드시 해당 서비스 아이콘을 포함합니다.
+6. **AWS 공식 아이콘**: AWS 서비스를 시각적으로 표현하는 슬라이드(아키텍처·서비스 소개·구성도)는
+   번들 공식 아이콘을 사용합니다 — 임의로 그린 대체 그림 금지. 서비스명이 텍스트로만 스치는
+   슬라이드(아젠다·코드·비교표)에는 강제하지 않습니다(플러그인 CLAUDE.md "AWS Icons" 규칙과 동일).
    Canvas DSL `icon` 요소, `@img` 디렉티브, 또는 HTML `<img>` 태그를 사용합니다.
    아이콘 참조: `references/aws-icons-guide.md`. 서비스명 → 파일명 매핑: `references/remarp-format-guide.md` → "Canvas DSL Icon Specification".
 
@@ -48,8 +50,10 @@ A specialized agent for creating interactive HTML slideshow presentations using 
 
 ### Phase 1: Planning + Theme Setup (병렬)
 
-Ask the user (순서대로):
-1. **Topic & audience** (REQUIRED — 반드시 질문) — "발표 주제와 대상 청중(기술 수준/역할)을 알려주세요."
+Ask the user (순서대로). **이미 답이 주어진 항목(사용자 브리프·기존 문서·이전 대화)은
+재질문하지 않고 반영한 값을 확인만 합니다** — REQUIRED는 "답 없이는 진행하지 않는다"는
+뜻이지 "무조건 다시 물어본다"가 아닙니다:
+1. **Topic & audience** (REQUIRED) — "발표 주제와 대상 청중(기술 수준/역할)을 알려주세요."
    - 주제: technical depth, pain points, learning objectives
    - 청중: 예) "클라우드 엔지니어 (중급)", "개발자 (입문)", "CTO/아키텍트"
    - → frontmatter `audience` 필드에 저장
@@ -79,8 +83,9 @@ Ask the user (순서대로):
    - → frontmatter `theme.logo` 에 저장
    - "skip" → 로고 미포함
    - PPTX 테마에서 추출된 경우 → `auto` 사용 제안
-10. **Quiz inclusion** (REQUIRED — 반드시 질문, 건너뛰기 금지) — "각 블록 끝에 복습 퀴즈를 포함할까요? (yes/no)"
-   - 이 질문은 **절대 건너뛰지 않습니다**. 기본값은 없으며 사용자의 명시적 선택이 필요합니다.
+10. **Quiz inclusion** (REQUIRED) — "각 블록 끝에 복습 퀴즈를 포함할까요? (yes/no)"
+   - **기본값이 없는 항목**입니다 — 브리프에 명시가 없으면 물어서 명시적 선택을 받습니다
+     (임의로 정하고 진행하지 않음).
    - "yes" → 각 블록 끝에 Quiz 슬라이드 (3-4문항) 포함
    - "no" → 퀴즈 미포함. Block summary는 Key Takeaways 슬라이드로 대체
 
