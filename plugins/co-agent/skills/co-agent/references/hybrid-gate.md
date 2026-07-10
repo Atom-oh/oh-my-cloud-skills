@@ -123,10 +123,14 @@ configured-profile cost, which is therefore an **upper bound**: the actual verif
 runs the same-or-fewer `default`-profile pairs. (Per the Phase V note, that consent
 display is a count/cost bound, not the literal verify pair list — an AI whose single
 `model` is absent from its `models` list verifies on a pair H0 didn't itemize, same
-providers, within the displayed budget.) Cheap breadth where diversity pays
+providers, within the displayed budget.) Wide breadth where diversity pays
 (find), strong judgment where correctness pays (verify) — the same placement logic as
 `harness.implementer_model`/`implementer_effort` on the write path
 (`delegated-implement.md`) and the chair staying on the host's strongest tier.
+Under the default flat-rate cost model (configure.md "모델 티어링" → 비용 모델
+전제) the two-phase split buys wall-clock, quota headroom, and triage signal-to-noise
+rather than dollars — the verify-never-costs-more-than-find bound is then a cap on
+quota and latency, not spend.
 
 ## Security
 

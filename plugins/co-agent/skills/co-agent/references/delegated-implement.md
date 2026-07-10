@@ -51,9 +51,13 @@ without handing, e.g., a codex model to `agy --model`; a non-current implementer
 entry stays dormant (and is reused on switch-back). `impl-flags` also re-validates the
 merged model/effort at emit time (fail-closed, exit 2) since its argv feeds a
 write-enabled sandbox and the local/user JSON can be hand-edited. This splits the
-WRITE path from the review path: the same CLI can implement on a cost-efficient
-generation model while its review/gate calls (`flags`) keep the stronger judgment
-model — the hybrid gate behind it is what catches generation mistakes.
+WRITE path from the review path: the same CLI can implement on a different
+generation model than its review/gate calls (`flags`) use. Which direction to
+split depends on the cost model (configure.md "모델 티어링" → 비용 모델 전제):
+on a flat-rate subscription CLI (the default assumption) point `implementer_model`
+at that CLI's **strongest** generation model — fewer fix rounds is pure wall-clock
+savings; only on metered API keys drop to a cost-efficient model and let the
+hybrid gate behind it catch the generation mistakes.
 `implementer_effort` is codex-only (storing it while the implementer is agy is
 refused — agy's headless CLI has no effort flag).
 

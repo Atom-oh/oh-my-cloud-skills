@@ -36,6 +36,15 @@ All under `<root>/.claude/co-agent-consensus/` (gitignored, session-local):
 Current config for comparison: `python3 "$SK/co_agent_config.py" show` (and
 `implementer`, `parallel-tasks`, `review-mode`).
 
+## Optimization target — cost model assumption
+
+Panel CLIs and the host run on **flat-rate subscriptions by default** (configure.md
+"모델 티어링" → 비용 모델 전제): marginal token cost ≈ 0. Optimize for **wall-clock**
+(`stage_wall.tsv` is the longitudinal record for exactly this), **fix/gate rounds**,
+and **peer quota/timeout pressure** — never propose downgrading a model to "save
+tokens" unless the user states they are on metered API keys. A proposal that trades
+rounds for cheaper calls is a regression under this model.
+
 ## Signal → proposal map
 
 Evidence first: never propose from a hunch — cite the rows/records behind every
@@ -43,10 +52,10 @@ recommendation.
 
 | Signal in records | Proposal to surface |
 |-------------------|---------------------|
-| One implementer's tasks repeatedly need `rounds` near `max_fix_rounds` | `set harness implementer <other>` or a stronger `set harness implementer_model <m>` (write path only — review tier untouched) |
+| One implementer's tasks repeatedly need `rounds` near `max_fix_rounds` | `set harness implementer <other>` or a stronger `set harness implementer_model <m>` (write path only — review tier untouched; under flat-rate this is free wall-clock) |
 | Tasks aborted `in_scope=false` / scope_guard drops recur | plan quality issue, not config — recommend tighter per-task file sets at H1, not a knob change |
 | Waves consistently collapse to 1 task (overlapping file sets) | `set harness parallel_tasks 1` — the plan is inherently sequential; stop paying wave-planning overhead |
-| Plan gates pass round 1 with empty digests, repeatedly | note the find panel rarely finds anything on plans — consider trimming the `deep` models list (cheaper find phase); hybrid already skips verify on empty digests |
+| Plan gates pass round 1 with empty digests, repeatedly | note the find panel rarely finds anything on plans — trim `deep` models that never produce surviving findings (less quota/timeout exposure and triage noise, not a dollar saving); hybrid already skips verify on empty digests |
 | Code gates need multiple rounds every run | keep `hybrid` (its false-positive suppression is earning its 2×); flag the recurring finding *category* so H1 designs can pre-empt it |
 | Peer timeouts / `fits` skips recur for one AI | `set <ai> timeout <s>` up, or trim that AI's `models` list; chronic → `set <ai> enabled false` |
 
@@ -61,8 +70,8 @@ recommendation.
 
 1. **Observations** — each with its evidence (file + rows/fields).
 2. **Proposals** — exact `/co-agent:configure set …` commands, each with the
-   signal it addresses and the expected effect (fewer fix-rounds, cheaper find
-   phase, less wall-clock). Or "no proposal — insufficient data (n=<k>)".
+   signal it addresses and the expected effect (fewer fix-rounds, less wall-clock,
+   quota/timeout relief). Or "no proposal — insufficient data (n=<k>)".
 3. Anything that looks like a plan/process problem rather than a settings
    problem, said plainly — don't disguise it as a knob.
 
