@@ -269,11 +269,13 @@ Skill: `kiro-convert` — interactive workflow for plugin-to-power conversion wi
 
 Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Skill-First Build, AgentCore Convert, Deploy) with `references/` and `scripts/` subdirectories. The `opus` alias resolves to `us.anthropic.claude-opus-4-8`; modern-Opus (4.7/4.8) param contract (no `temperature`/`top_p`/`top_k`, no `thinking.type:"enabled"`+`budget_tokens`) is documented in `references/agentcore-mapping-rules.md`.
 
-### co-agent (1 agent, 1 skill, 5 commands)
+### co-agent (3 agents, 1 skill, 5 commands)
 
 | Agent | Purpose |
 |-------|---------|
 | `co-agent` | Multi-AI panel chair — fans review/decision/ADR prompts to Kiro/Codex/Antigravity CLIs and synthesizes |
+| `gate-chair` | Hybrid-gate chair judgment isolated on `model: opus` — Phase T triage + verify round-close verdicts; makes zero external calls (fan-out/consent/cost stay with the host), for hosts running a cheaper tier |
+| `harness-analyst` | Hill-climbing analyst (advisory-only, `model: sonnet`) — mines accumulated `.claude/co-agent-consensus/` run records (`stage_wall.tsv`, task/gate `result.json`) into proposed `/co-agent:configure set` commands; never writes config, observations-only below 3 recorded runs |
 
 Skill: `co-agent` — 4 modes: **Review** (multi-AI code/arch review + Well-Architected), **Decide** (decision support when unsure), **ADR** (co-author ADRs), **sync-context** (distill `CLAUDE.md` → `AGENTS.md` once; Kiro, Codex, and Agy all share that one distilled file — Kiro via `.kiro/steering/project-context.md` → `#[[file:AGENTS.md]]`, Codex and Agy both read `AGENTS.md` natively from their cwd — the fan-out additionally folds it into Agy's context as defense-in-depth for non-root-cwd runs). Fans the same prompt to whichever AI CLIs are installed — Kiro (`kiro-cli chat --no-interactive`; auth via login or `KIRO_API_KEY`), Codex (`codex exec -s read-only`), Agy (`agy -p --sandbox`; Gemini support removed — ADR-010) — in parallel, then **Claude synthesizes** (consensus vs. dissent). Degrades gracefully; if no CLI is present, Claude answers solo. Adapters: `references/ai-cli-adapters.md`.
 

@@ -43,6 +43,11 @@ gate-eligible pair, `&` + `wait`, per-pair `timeout`/`fits` guards, capture to
 
 ### Phase T — triage (chair, no external calls)
 
+> A host on a cheaper tier should delegate this phase (and the round-close verdict
+> after phase V) to the **`gate-chair` subagent** (`agents/gate-chair.md`,
+> `model: opus`) — same procedure, judgment isolated on a strong model, still zero
+> external calls. An opus host can keep it inline.
+
 1. `check_citations.py` over all find-phase findings → drop `unsupported`, flag
    `needs-review`.
 2. Verify every surviving finding **against the actual artifact** — agreement across pairs
