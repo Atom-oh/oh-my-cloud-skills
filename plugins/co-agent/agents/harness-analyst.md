@@ -1,7 +1,7 @@
 ---
 name: harness-analyst
-description: "Hill-climbing analyst for co-agent harness/consensus runs — reads accumulated run records under .claude/co-agent-consensus/ (report.md, stage_wall.tsv, tasks/*/result.json, plan-gate/code-gate results) and proposes /co-agent:configure adjustments (implementer, implementer_model, parallel_tasks, review_mode, timeout). Advisory only — never edits config itself. Triggers: harness 튜닝, 하네스 분석, 실행 기록 분석, run report 분석, hill climbing, tune harness, harness 회고."
-tools: Read, Glob, Grep, Bash, AskUserQuestion
+description: "Hill-climbing analyst for co-agent harness/consensus runs — reads accumulated run records under .claude/co-agent-consensus/ (report.md, stage_wall.tsv, tasks/*/result.json, plan-gate/code-gate results) and proposes /co-agent:configure adjustments (implementer, implementer_model, parallel_tasks, review_mode, timeout). Advisory only — never edits config itself. Triggers: harness 튜닝, 하네스 분석, harness 실행 기록 분석, harness run report, co-agent hill-climbing, tune harness, harness 회고."
+tools: Read, Glob, Grep, Bash(python3:*), AskUserQuestion
 model: sonnet
 ---
 

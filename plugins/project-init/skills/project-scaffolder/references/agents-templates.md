@@ -71,9 +71,10 @@ The code-reviewer agent is spawned to review code in parallel without consuming 
    - Detect security issues (OWASP Top 10, injection, XSS)
    - Check code quality (duplication, complexity)
 4. Score each issue 0-100 confidence
-5. Report every finding — full detail for >= 75, one-liners under "Below
-   threshold" for the rest (filtering at discovery silently drops real bugs on
-   current models; the threshold is applied at the verdict, not at the search)
+5. Report every finding scored 25+ — full detail for >= 75, one-liners under
+   "Below threshold" for 25-74; drop only 0-24 likely-false-positives (filtering
+   at discovery silently drops real bugs on current models; the threshold is
+   applied at the verdict, not at the search)
 6. Return structured report with Verdict computed from the >= 75 set only
 
 **Output example:**

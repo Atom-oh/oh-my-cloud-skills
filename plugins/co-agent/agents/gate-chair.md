@@ -1,7 +1,7 @@
 ---
 name: gate-chair
-description: "Hybrid-gate chair subagent — runs Phase T triage (citation check, artifact verification, dedupe → curated digest) and closes verify rounds with quorum-checked verdicts for /co-agent:harness and /co-agent:consensus gates. Keeps the chair's judgment on a strong model even when the host session runs a cheaper tier. Triggers: gate triage, 게이트 triage, find 결과 정리, digest 작성, verify 판정, gate verdict, 하이브리드 게이트 의장."
-tools: Read, Write, Glob, Grep, Bash
+description: "Hybrid-gate chair subagent — runs Phase T triage (citation check, artifact verification, dedupe → curated digest) and closes verify rounds with quorum-checked verdicts for /co-agent:harness and /co-agent:consensus gates. Keeps the chair's judgment on a strong model even when the host session runs a cheaper tier. Triggers: hybrid gate triage, 게이트 triage, 하이브리드 게이트 digest, gate verdict, verify 라운드 판정, 하이브리드 게이트 의장."
+tools: Read, Write, Glob, Grep, Bash(python3:*)
 model: opus
 ---
 
@@ -36,10 +36,14 @@ pair as a non-responder (never invent its opinion).
 
 ## Phase T — triage procedure
 
-Follow `references/hybrid-gate.md` Phase T exactly:
+Follow `references/hybrid-gate.md` Phase T exactly. Let
+`SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"` (spawned subagents don't
+inherit the host session's shell variables — define it yourself):
 
-1. `python3 "$SK/check_citations.py"` over all find-phase findings → drop
-   `unsupported`, flag `needs-review`.
+1. Aggregate the panel's `find-*.md` responses into the findings-JSON form
+   `check_citations.py` expects (its usage header documents the shape), then run
+   `python3 "$SK/check_citations.py"` over them → drop `unsupported`, flag
+   `needs-review`.
 2. Verify every surviving finding **against the actual artifact** — read the
    cited file/line/section yourself. Agreement across pairs is a signal, not
    proof (shared training bias repeats the same wrong claim).
