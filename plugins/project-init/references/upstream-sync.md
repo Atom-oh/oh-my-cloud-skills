@@ -11,7 +11,7 @@
 git clone --depth 1 https://github.com/whchoi98/project-init.git /tmp/project-init-upstream
 diff -rq /tmp/project-init-upstream/plugins/project-init/ plugins/project-init/ \
   --exclude=plugin.json --exclude=CLAUDE.md --exclude=SKILL.md --exclude=readme-template.md \
-  --exclude=doc-sync-checker.md --exclude=generate-readme.md
+  --exclude=doc-sync-checker.md --exclude=generate-readme.md --exclude=claude-md-template.md
 
 # Upstream에서 업데이트 가져오기 — 로컬 분기 파일은 반드시 제외 (blanket rsync는 로컬 커스터마이징/4.8 수정/모델 티어를 덮어씀)
 rsync -av \
@@ -20,6 +20,7 @@ rsync -av \
   --exclude='agents/doc-sync-checker.md' \
   --exclude='skills/project-scaffolder/SKILL.md' \
   --exclude='skills/project-scaffolder/references/readme-template.md' \
+  --exclude='skills/project-scaffolder/references/claude-md-template.md' \
   --exclude='commands/generate-readme.md' \
   /tmp/project-init-upstream/plugins/project-init/ plugins/project-init/
 ```
@@ -29,6 +30,11 @@ rsync -av \
 - `CLAUDE.md` — 로컬 Upstream/version 섹션 보유
 - `skills/project-scaffolder/SKILL.md` — 로컬 전용 `writing-style-guide.md` 참조 라인
 - `skills/project-scaffolder/references/readme-template.md` — 로컬 `--`, upstream `—`
+- `skills/project-scaffolder/references/claude-md-template.md` — 신형 모델(4.6+) 가이드 정렬:
+  생성기용 작성 규칙 프리앰블(항상-로드 컨텍스트 세금 최소화, 강압 어휘·예시 패딩 금지,
+  코드가 보여주는 것 서술 금지), Auto-Sync Rules를 단계 리스트에서 트리거→액션 표로 압축,
+  모듈 CLAUDE.md를 블랭킷 필수에서 "비자명한 규칙이 있을 때만" 조건부 생성으로 완화.
+  upstream 반영 권장.
 - `commands/generate-readme.md` — 로컬 전용 GitHub-metrics fetch 단계(Step 2.5) + `Bash(gh:*)`/`Bash(python3:*)` 추가. upstream에는 없는 라이브 배지 기능이라 제외.
 - `skills/pr-autofix/**`, `commands/pr-autofix.md` — 로컬 전용(upstream 없음). 모델 ID Opus 4.8 로컬 고정
 - `skills/decision-reconcile/**` — 로컬 전용(upstream 없음). ADR 모순 검출·번복 ADR 초안. 멀티 에이전트 패널(Claude 모델 티어 + 선택적 co-agent CLI)
