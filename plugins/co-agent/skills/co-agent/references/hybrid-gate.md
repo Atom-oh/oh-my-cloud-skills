@@ -50,8 +50,11 @@ gate-eligible pair, `&` + `wait`, per-pair `timeout`/`fits` guards, capture to
 > too** — Claude Code agent files can't be spawned there; the chair judgment simply
 > runs in the host session following this same procedure.
 
-1. `check_citations.py` over all find-phase findings → drop `unsupported`, flag
-   `needs-review`.
+1. `check_citations.py` over all find-phase findings **when the artifact is a
+   diff** (H4) → drop `unsupported`, flag `needs-review`. A plan doc (H2) is not
+   a unified diff — the script would classify every finding `unsupported` and
+   empty the digest into a false pass; for plan artifacts do the citation check
+   manually in step 2 (a finding's quoted text/section must exist in the plan).
 2. Verify every surviving finding **against the actual artifact** — agreement across pairs
    is a signal, not proof (shared training bias repeats the same wrong artifact).
 3. Dedupe (same file/line/claim), then keep what is **meaningful**: all CRITICAL/MAJOR

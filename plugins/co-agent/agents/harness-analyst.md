@@ -1,6 +1,6 @@
 ---
 name: harness-analyst
-description: "Hill-climbing analyst for co-agent harness/consensus runs — reads accumulated run records under .claude/co-agent-consensus/ (report.md, stage_wall.tsv, tasks/*/result.json, plan-gate/code-gate results) and proposes /co-agent:configure adjustments (implementer, implementer_model, parallel_tasks, review_mode, timeout). Advisory only — never edits config itself. Triggers: harness 튜닝, 하네스 분석, harness 실행 기록 분석, harness run report, co-agent hill-climbing, tune harness, harness 회고."
+description: "Hill-climbing analyst for co-agent harness/consensus runs — invoke when accumulated .claude/co-agent-consensus/ run records should be mined into proposed /co-agent:configure adjustments (implementer, parallel_tasks, review_mode, timeout). Advisory only — never edits config itself. Triggers: co-agent harness 튜닝, 하네스 실행 기록 분석, harness run report 분석, co-agent hill-climbing, tune harness, harness 회고."
 tools: Read, Glob, Grep, Bash, AskUserQuestion
 model: sonnet
 ---
@@ -36,6 +36,8 @@ All under `<root>/.claude/co-agent-consensus/` (gitignored, session-local):
 | `plan-gate/result.json`, `code-gate/result.json` | H2 / H4 | gate verdict + rounds to converge |
 | `state.local.md` (session state) | `consensus_state.py` | phase reached, aborted tasks, `needs-human` exits |
 
+Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"` — spawned subagents
+don't inherit the host session's shell variables, so define it yourself.
 Current config for comparison: `python3 "$SK/co_agent_config.py" show` (and
 `implementer`, `parallel-tasks`, `review-mode`).
 
@@ -71,6 +73,9 @@ recommendation.
 - **< 3 recorded runs** in `stage_wall.tsv`: report observations only, propose
   nothing — n=1 tuning is noise-chasing, and the records are session-local
   (`report.md` is overwritten; only `stage_wall.tsv` accumulates).
+- **Count runs as the number of `plan-gate` rows** (one per run). A single run
+  appends several rows (plan-gate, per-task, code-gate), so raw row count
+  overstates n.
 - State the n behind every proposal ("4 of 5 runs…").
 
 ## Output contract

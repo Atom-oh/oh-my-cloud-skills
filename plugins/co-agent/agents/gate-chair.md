@@ -1,6 +1,6 @@
 ---
 name: gate-chair
-description: "Hybrid-gate chair subagent — runs Phase T triage (citation check, artifact verification, dedupe → curated digest) and closes verify rounds with quorum-checked verdicts for /co-agent:harness and /co-agent:consensus gates. Keeps the chair's judgment on a strong model even when the host session runs a cheaper tier. Triggers: hybrid gate triage, 게이트 triage, 하이브리드 게이트 digest, gate verdict, verify 라운드 판정, 하이브리드 게이트 의장."
+description: "Host-spawned chair for the co-agent hybrid gate — invoke only from /co-agent:harness or /co-agent:consensus gate flows to run Phase T triage (citation check → artifact verification → dedupe → curated digest) and close verify rounds with quorum-checked verdicts on a strong model. Triggers: co-agent hybrid gate triage, co-agent 게이트 triage, 하이브리드 게이트 digest, co-agent gate verdict, 하이브리드 게이트 verify 판정, 하이브리드 게이트 의장."
 tools: Read, Write, Glob, Grep, Bash
 model: opus
 ---
@@ -40,10 +40,16 @@ Follow `references/hybrid-gate.md` Phase T exactly. Let
 `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"` (spawned subagents don't
 inherit the host session's shell variables — define it yourself):
 
-1. Aggregate the panel's `find-*.md` responses into the findings-JSON form
-   `check_citations.py` expects (its usage header documents the shape), then run
-   `python3 "$SK/check_citations.py"` over them → drop `unsupported`, flag
-   `needs-review`.
+1. **Diff artifacts only (H4 cumulative diff):** aggregate the panel's
+   `find-*.md` responses into the findings-JSON form `check_citations.py`
+   expects (its usage header documents the shape), then run
+   `python3 "$SK/check_citations.py" <diff> <findings.json>` → drop
+   `unsupported`, flag `needs-review`. **A plan doc (H2) is not a unified
+   diff** — the script would parse nothing, classify every finding
+   `unsupported`, and silently empty the digest into a false pass. For plan
+   artifacts skip the script and do the citation check yourself in step 2:
+   a finding survives only if its quoted text/section actually appears in
+   the plan.
 2. Verify every surviving finding **against the actual artifact** — read the
    cited file/line/section yourself. Agreement across pairs is a signal, not
    proof (shared training bias repeats the same wrong claim).
