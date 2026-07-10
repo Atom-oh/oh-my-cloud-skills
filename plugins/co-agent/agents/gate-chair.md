@@ -1,7 +1,7 @@
 ---
 name: gate-chair
 description: "Hybrid-gate chair subagent — runs Phase T triage (citation check, artifact verification, dedupe → curated digest) and closes verify rounds with quorum-checked verdicts for /co-agent:harness and /co-agent:consensus gates. Keeps the chair's judgment on a strong model even when the host session runs a cheaper tier. Triggers: hybrid gate triage, 게이트 triage, 하이브리드 게이트 digest, gate verdict, verify 라운드 판정, 하이브리드 게이트 의장."
-tools: Read, Write, Glob, Grep, Bash(python3:*)
+tools: Read, Write, Glob, Grep, Bash
 model: opus
 ---
 
@@ -79,7 +79,10 @@ Final message to the host, in order:
 
 ## Non-negotiables
 
-- **No external AI calls, no commits, no config writes** — judgment only.
+- **No external AI calls, no commits, no config writes** — judgment only. Bash
+  here means the plugin's python3 scripts (`check_citations.py`), nothing else —
+  the frontmatter `tools` field can't scope commands (bare names only; command-level
+  limits require PreToolUse hooks), so this line is the contract.
 - Chair Principle: no single AI's opinion decides a finding's fate; your own
   artifact check is the tiebreaker, and every kept finding cites evidence.
 - Never soften a verdict to avoid another round — an unresolved CRITICAL/MAJOR

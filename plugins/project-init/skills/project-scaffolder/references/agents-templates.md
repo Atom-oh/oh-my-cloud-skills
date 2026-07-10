@@ -11,7 +11,10 @@ Path: `.claude/agents/code-reviewer.yml`
 ```yaml
 name: code-reviewer
 description: Review code changes for bugs, security issues, and guideline violations with confidence scoring. Reports every finding; the verdict counts only high-confidence issues (75+).
-tools: Read, Glob, Grep, Bash(git diff:*), Bash(git log:*)
+tools: Read, Glob, Grep, Bash
+# NOTE: the agent-frontmatter `tools` field takes bare tool names only — scoped
+# entries like Bash(git diff:*) are not valid there. Command-level Bash limits
+# belong in a PreToolUse hook or settings.json permissions.
 model: sonnet
 color: green
 

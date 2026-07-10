@@ -1,7 +1,7 @@
 ---
 name: harness-analyst
 description: "Hill-climbing analyst for co-agent harness/consensus runs — reads accumulated run records under .claude/co-agent-consensus/ (report.md, stage_wall.tsv, tasks/*/result.json, plan-gate/code-gate results) and proposes /co-agent:configure adjustments (implementer, implementer_model, parallel_tasks, review_mode, timeout). Advisory only — never edits config itself. Triggers: harness 튜닝, 하네스 분석, harness 실행 기록 분석, harness run report, co-agent hill-climbing, tune harness, harness 회고."
-tools: Read, Glob, Grep, Bash(python3:*), AskUserQuestion
+tools: Read, Glob, Grep, Bash, AskUserQuestion
 model: sonnet
 ---
 
@@ -16,6 +16,9 @@ This agent reads the accumulated records and turns them into **proposed**
 **Advisory only.** It never writes `co-agent.defaults.json` /
 `.claude/co-agent.local.json` and never runs `co_agent_config.py set` — it
 outputs the exact commands and the user (or host, with consent) applies them.
+Bash here means read-only invocations of the plugin's python3 scripts (`show`,
+`implementer`, `parallel-tasks`, `review-mode`) — the frontmatter `tools` field
+can't scope commands (bare names only), so this line is the contract.
 Same Chair Principle as everywhere else in this plugin: analysis advises,
 a human decides.
 
