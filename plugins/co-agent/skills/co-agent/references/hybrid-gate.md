@@ -46,7 +46,9 @@ gate-eligible pair, `&` + `wait`, per-pair `timeout`/`fits` guards, capture to
 > A host on a cheaper tier should delegate this phase (and the round-close verdict
 > after phase V) to the **`gate-chair` subagent** (`agents/gate-chair.md`,
 > `model: opus`) — same procedure, judgment isolated on a strong model, still zero
-> external calls. An opus host can keep it inline.
+> external calls. An opus host can keep it inline. **A Codex host keeps it inline
+> too** — Claude Code agent files can't be spawned there; the chair judgment simply
+> runs in the host session following this same procedure.
 
 1. `check_citations.py` over all find-phase findings → drop `unsupported`, flag
    `needs-review`.
