@@ -12,7 +12,8 @@ git clone --depth 1 https://github.com/whchoi98/project-init.git /tmp/project-in
 diff -rq /tmp/project-init-upstream/plugins/project-init/ plugins/project-init/ \
   --exclude=plugin.json --exclude=CLAUDE.md --exclude=SKILL.md --exclude=readme-template.md \
   --exclude=doc-sync-checker.md --exclude=generate-readme.md --exclude=claude-md-template.md \
-  --exclude=agents-templates.md --exclude=skills-templates.md
+  --exclude=agents-templates.md --exclude=skills-templates.md \
+  --exclude=add-adr.md --exclude=generate-changelog.md --exclude=sync-docs.md
 
 # Upstream에서 업데이트 가져오기 — 로컬 분기 파일은 반드시 제외 (blanket rsync는 로컬 커스터마이징/4.8 수정/모델 티어를 덮어씀)
 rsync -av \
@@ -25,6 +26,9 @@ rsync -av \
   --exclude='skills/project-scaffolder/references/agents-templates.md' \
   --exclude='skills/project-scaffolder/references/skills-templates.md' \
   --exclude='commands/generate-readme.md' \
+  --exclude='commands/add-adr.md' \
+  --exclude='commands/generate-changelog.md' \
+  --exclude='commands/sync-docs.md' \
   /tmp/project-init-upstream/plugins/project-init/ plugins/project-init/
 ```
 
@@ -44,6 +48,10 @@ rsync -av \
   모듈 CLAUDE.md를 블랭킷 필수에서 "비자명한 규칙이 있을 때만" 조건부 생성으로 완화.
   upstream 반영 권장.
 - `commands/generate-readme.md` — 로컬 전용 GitHub-metrics fetch 단계(Step 2.5) + `Bash(gh:*)`/`Bash(python3:*)` 추가. upstream에는 없는 라이브 배지 기능이라 제외.
+- `commands/add-adr.md` / `commands/generate-changelog.md` / `commands/sync-docs.md` —
+  description frontmatter에 로컬 전용 superpowers 라이프사이클 라우팅 힌트
+  (`superpowers:finishing-a-development-branch`) 추가. 2026-07 동기화 점검에서 미등록
+  분기로 발견되어 등록 — rsync 시 이 힌트가 소실되면 루트 CLAUDE.md 라우팅 표와 어긋남.
 - `skills/pr-autofix/**`, `commands/pr-autofix.md` — 로컬 전용(upstream 없음). 모델 ID Opus 4.8 로컬 고정
 - `skills/decision-reconcile/**` — 로컬 전용(upstream 없음). ADR 모순 검출·번복 ADR 초안. 멀티 에이전트 패널(Claude 모델 티어 + 선택적 co-agent CLI)
 - `agents/doc-sync-checker.md` — 모델 티어 로컬 `sonnet`(upstream `opus`). 기계적 doc 비교/채점이라 opus 과도 + `/sync-docs`마다 호출 비용. upstream 반영 권장. **tools**: read-only Bash 스코핑 `Bash(find:*), Bash(git log:*), Bash(ls:*), Bash(wc:*)`. upstream은 `wc` 누락(본문 `wc -l`가 채점에 쓰임) — 로컬은 `Bash(wc:*)` 추가, upstream에도 권장
