@@ -3,6 +3,12 @@
 > project-init은 upstream 플러그인에서 분기. **동기화할 때만** 이 문서를 참조하세요
 > (CLAUDE.md는 출처 요약만 보유).
 
+> **유지 정책 (2026-07 결정): 분기는 origin(이 레포)에서만 유지한다 — upstream으로
+> PR을 보내지 않는다.** 아래 분기 목록의 "upstream 반영 권장" 표시는 upstream
+> 관리자가 원하면 가져갈 수 있다는 기록일 뿐, 우리 쪽 작업 항목이 아니다.
+> 동기화는 단방향(pull-only): upstream 변경 확인 → 제외 목록 적용 rsync.
+> 마지막 점검: 2026-07-10, upstream HEAD `d43806e` — 가져올 변경 없음.
+
 - **Source**: `git@github.com:whchoi98/project-init.git` (path: `plugins/project-init/`) · **Author**: whchoi98
 - **Sync 정렬**: 마켓플레이스 추가 시 version 2.0.0 → 마켓플레이스 통일 버전으로 정렬, plugin.json에 agents/skills/commands 배열 보강
 
