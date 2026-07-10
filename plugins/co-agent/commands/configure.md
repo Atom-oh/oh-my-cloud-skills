@@ -132,13 +132,18 @@ Argument: `$ARGUMENTS`
   게이트가 find(deep)/verify(default)를 가르는 데 쓴다 — 설정 파일은 건드리지 않는다.
 - 근거: 발견(find)은 관점 다양성이, 검증(verify)과 의장 판단은 단일 모델의 강도가
   성능을 지배한다. 자세한 흐름은 `references/hybrid-gate.md` "Role tiering" 참고.
-- **비용 모델 전제**: 패널 CLI들과 호스트(Claude Code)는 **구독제(flat-rate)가 기본
-  가정** — 한계 토큰 비용 ≈ 0. 따라서 티어링의 목적은 달러 절감이 아니라 **(1)
-  wall-clock**(강한 생성 모델 = 적은 fix 라운드), **(2) rate-limit 쿼터**(구독제의
-  실제 희소 자원 — 사용량 윈도우), **(3) 체어 triage 노이즈**(finder를 넓힐수록
-  digest 품질 관리 필요)다. find 패널의 "저비용 모델" 리스트도 단가가 아니라
-  "쿼터 부담 없이 다양성을 늘리는 추가 관점"으로 읽어라. 종량제 API 키로 peer를
-  돌리는 환경에서만 위 표의 비용 절감 해석이 복원된다.
+- **비용 모델 전제 — 글로벌이 아니라 peer별 속성**: 구독제(flat-rate) CLI는 한계
+  토큰 비용 ≈ 0이므로 티어링의 목적이 달러 절감이 아니라 **(1) wall-clock**(강한
+  생성 모델 = 적은 fix 라운드), **(2) rate-limit 쿼터**(구독제의 실제 희소 자원 —
+  사용량 윈도우), **(3) 체어 triage 노이즈**(finder를 넓힐수록 digest 품질 관리
+  필요)가 된다. Claude Code 호스트의 기본 패널(kiro/codex/agy)은 구독제 가정이
+  대체로 성립하지만, **호스트가 바뀌면 뒤집힌다**: Codex 호스트에서는 Claude가
+  peer로 들어오고(`claude -p`, adapters 참조), headless 호출이 API 키 과금이면
+  그 peer는 **종량제**다 — 그 peer에 한해 위 표의 비용 절감 해석(find 저비용
+  모델, 다운티어)이 복원되고, 특히 하이브리드 게이트의 2-phase(find+verify)가
+  라운드당 2회 과금됨을 유의하라. peer별 `billing flat|metered` 설정 키는 아직
+  없다(개선 후보) — 현재는 per-AI `model`/`models` 리스트를 그 peer의 과금
+  방식에 맞춰 수동 조정하는 것이 레버다.
 
 Always finish by echoing the effective config (`python3 "$H" show --host "$HOST"`) so the user sees
 exactly what the panel will use.

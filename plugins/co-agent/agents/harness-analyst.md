@@ -38,12 +38,16 @@ Current config for comparison: `python3 "$SK/co_agent_config.py" show` (and
 
 ## Optimization target — cost model assumption
 
-Panel CLIs and the host run on **flat-rate subscriptions by default** (configure.md
-"모델 티어링" → 비용 모델 전제): marginal token cost ≈ 0. Optimize for **wall-clock**
+The cost model is a **per-peer attribute**, not global (configure.md "모델 티어링" →
+비용 모델 전제). Flat-rate subscription peers (the usual Claude-Code-host panel:
+kiro/codex/agy) have marginal token cost ≈ 0 — for them optimize **wall-clock**
 (`stage_wall.tsv` is the longitudinal record for exactly this), **fix/gate rounds**,
-and **peer quota/timeout pressure** — never propose downgrading a model to "save
-tokens" unless the user states they are on metered API keys. A proposal that trades
-rounds for cheaper calls is a regression under this model.
+and **quota/timeout pressure**, and never propose a model downgrade to "save tokens"
+(trading rounds for cheaper calls is a regression). But a **metered peer** — e.g. on
+a Codex host, the `claude` peer billed per token via API key — flips locally: for
+that peer alone, token-saving proposals (narrower `models` in find, a cheaper find
+tier, fewer phases) are legitimate and should name the peer and cite its call volume
+from the records. Ask the user which peers are metered if it isn't evident.
 
 ## Signal → proposal map
 
