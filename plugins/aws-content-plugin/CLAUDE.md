@@ -73,8 +73,10 @@ brochure-agent → gather product facts → (architecture-diagram → SVG) → s
 
 ## Quality Gate (필수 — Mandatory)
 
-> **규칙: 모든 콘텐츠는 배포/완료 선언 전에 반드시 content-review-agent를 통과해야 합니다.**
-> 이 규칙은 생략할 수 없으며, 리뷰 없이 콘텐츠 완성을 선언하는 것은 금지됩니다.
+> **규칙: 산출물(deliverable)은 배포/완료 선언 전에 content-review-agent를 통과한다.**
+> 대상은 신규 아티팩트와 실질 개정. 오탈자·한 줄 수정 같은 사소한 손질은 게이트
+> 재통과 없이 반영하되, 완료/배포를 선언하는 시점에는 그 산출물의 유효한 PASS
+> 리뷰가 존재해야 한다.
 
 ### Auto-Trigger Conditions
 
@@ -145,8 +147,10 @@ AWS Architecture Icons are located in `skills/reactive-presentation/assets/aws-i
 - `Resource-Icons_07312025/` — Resource-level icons (22 categories)
 - `others/` — Third-party icons (LangChain, Grafana, etc.)
 
-> **규칙**: AWS 서비스를 설명하는 프레젠테이션 슬라이드에는 반드시 해당 서비스 아이콘을 포함합니다.
-> 아이콘 미사용 시 content-review-agent에서 감점됩니다.
+> **규칙**: AWS 서비스를 시각적으로 표현하는 슬라이드(아키텍처·서비스 소개·구성도)는
+> 이 번들의 **공식 아이콘**을 사용한다 — 임의로 그린 대체 그림 금지. 서비스명이
+> 텍스트로만 스치는 슬라이드(아젠다·코드·비교표)에는 아이콘을 강제하지 않는다.
+> 공식 아이콘 미사용은 content-review-agent에서 감점된다.
 
 ---
 

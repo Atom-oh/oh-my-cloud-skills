@@ -51,6 +51,11 @@ If no PR is found, stop and inform the user.
 
 ### 2. Poll for review feedback
 
+> **If the session has PR-activity subscription** (Claude Code web/remote:
+> `subscribe_pr_activity`), subscribe and react to delivered events instead of
+> sleep-polling — events wake the session. The polling loop below is the
+> fallback for local CLI sessions without webhooks.
+
 Poll every 60 seconds until reviews appear or timeout (10 minutes). Check both sources on each poll:
 
 **AI Review:**
@@ -135,11 +140,12 @@ fi
 
 ```bash
 git add <changed-files>
-git commit -m "fix: address review feedback (iteration N/3)
-
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+git commit -m "fix: address review feedback (iteration N/3)"
 git push
 ```
+
+(No `Co-Authored-By` trailer — the scaffolded `commit-msg` hook strips those
+lines anyway, and a hardcoded model name in a template goes stale.)
 
 ### 6. Repeat or stop
 

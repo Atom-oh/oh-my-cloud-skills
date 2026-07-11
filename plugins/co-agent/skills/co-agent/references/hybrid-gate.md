@@ -43,8 +43,18 @@ gate-eligible pair, `&` + `wait`, per-pair `timeout`/`fits` guards, capture to
 
 ### Phase T — triage (chair, no external calls)
 
-1. `check_citations.py` over all find-phase findings → drop `unsupported`, flag
-   `needs-review`.
+> A host on a cheaper tier should delegate this phase (and the round-close verdict
+> after phase V) to the **`gate-chair` subagent** (`agents/gate-chair.md`,
+> `model: opus`) — same procedure, judgment isolated on a strong model, still zero
+> external calls. An opus host can keep it inline. **A Codex host keeps it inline
+> too** — Claude Code agent files can't be spawned there; the chair judgment simply
+> runs in the host session following this same procedure.
+
+1. `check_citations.py` over all find-phase findings **when the artifact is a
+   diff** (H4) → drop `unsupported`, flag `needs-review`. A plan doc (H2) is not
+   a unified diff — the script would classify every finding `unsupported` and
+   empty the digest into a false pass; for plan artifacts do the citation check
+   manually in step 2 (a finding's quoted text/section must exist in the plan).
 2. Verify every surviving finding **against the actual artifact** — agreement across pairs
    is a signal, not proof (shared training bias repeats the same wrong artifact).
 3. Dedupe (same file/line/claim), then keep what is **meaningful**: all CRITICAL/MAJOR
@@ -118,10 +128,14 @@ configured-profile cost, which is therefore an **upper bound**: the actual verif
 runs the same-or-fewer `default`-profile pairs. (Per the Phase V note, that consent
 display is a count/cost bound, not the literal verify pair list — an AI whose single
 `model` is absent from its `models` list verifies on a pair H0 didn't itemize, same
-providers, within the displayed budget.) Cheap breadth where diversity pays
+providers, within the displayed budget.) Wide breadth where diversity pays
 (find), strong judgment where correctness pays (verify) — the same placement logic as
 `harness.implementer_model`/`implementer_effort` on the write path
 (`delegated-implement.md`) and the chair staying on the host's strongest tier.
+Under the default flat-rate cost model (configure.md "모델 티어링" → 비용 모델
+전제) the two-phase split buys wall-clock, quota headroom, and triage signal-to-noise
+rather than dollars — the verify-never-costs-more-than-find bound is then a cap on
+quota and latency, not spend.
 
 ## Security
 

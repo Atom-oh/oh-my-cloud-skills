@@ -107,10 +107,10 @@ Argument: `$ARGUMENTS`
 
 | 역할 | 성격 | 레버 | 권장 |
 |------|------|------|------|
-| **Chair** (triage/synthesis/최종 판단) | 좁고 강하게 | 호스트 모델: `/model opusplan`(플랜=Opus·실행=Sonnet) 또는 chair 서브에이전트 frontmatter `model: opus` | 강한 판단 모델 유지 — 여기서 아끼면 게이트 전체가 약해짐 |
+| **Chair** (triage/synthesis/최종 판단) | 좁고 강하게 | 호스트 모델: `/model opusplan`(플랜=Opus·실행=Sonnet) 또는 `gate-chair` 서브에이전트(`agents/gate-chair.md`, `model: opus`) 스폰 | 강한 판단 모델 유지 — 여기서 아끼면 게이트 전체가 약해짐 |
 | **Find 패널** (하이브리드 게이트 F 단계) | 넓고 싸게 | `profile deep` + 각 AI `models` 리스트에 저비용 모델(예: kiro `minimax-m2.5,glm-5`) | 발견은 다양성이 성능 — 모델 수 > 모델 단가 |
 | **Verify 패널** (V 단계) | 좁고 강하게 | 게이트가 자동으로 `pairs --profile default` 사용 — 각 AI의 단일 `model`이 곧 verify 모델 | `model`에 각 AI의 최강 티어 지정 |
-| **Implementer** (harness 쓰기 경로) | 생성 위주 | `set harness implementer <ai>` + `implementer_model <m>` / `implementer_effort <e>` (미설정 시 패널 `model`/`effort` 폴백) | 저비용 생성 모델 — 리뷰 게이트가 뒤에서 잡아줌 |
+| **Implementer** (harness 쓰기 경로) | 생성 위주 | `set harness implementer <ai>` + `implementer_model <m>` / `implementer_effort <e>` (미설정 시 패널 `model`/`effort` 폴백) | 구독제 CLI(기본 가정)면 **그 CLI의 최강 생성 모델** — fix 라운드 감소가 곧 wall-clock 절약. 종량제일 때만 저비용 모델로 낮추고 리뷰 게이트를 백스톱으로 |
 
 - **주의 — `effort`는 phase-split되지 않는다**: 패널 `effort`(codex)는 find와 verify
   **양쪽**의 리뷰 호출에 동일하게 적용된다(`--profile`은 모델 쌍만 가른다). 그러므로
@@ -132,6 +132,18 @@ Argument: `$ARGUMENTS`
   게이트가 find(deep)/verify(default)를 가르는 데 쓴다 — 설정 파일은 건드리지 않는다.
 - 근거: 발견(find)은 관점 다양성이, 검증(verify)과 의장 판단은 단일 모델의 강도가
   성능을 지배한다. 자세한 흐름은 `references/hybrid-gate.md` "Role tiering" 참고.
+- **비용 모델 전제 — 글로벌이 아니라 peer별 속성**: 구독제(flat-rate) CLI는 한계
+  토큰 비용 ≈ 0이므로 티어링의 목적이 달러 절감이 아니라 **(1) wall-clock**(강한
+  생성 모델 = 적은 fix 라운드), **(2) rate-limit 쿼터**(구독제의 실제 희소 자원 —
+  사용량 윈도우), **(3) 체어 triage 노이즈**(finder를 넓힐수록 digest 품질 관리
+  필요)가 된다. Claude Code 호스트의 기본 패널(kiro/codex/agy)은 구독제 가정이
+  대체로 성립하지만, **호스트가 바뀌면 뒤집힌다**: Codex 호스트에서는 Claude가
+  peer로 들어오고(`claude -p`, adapters 참조), headless 호출이 API 키 과금이면
+  그 peer는 **종량제**다 — 그 peer에 한해 위 표의 비용 절감 해석(find 저비용
+  모델, 다운티어)이 복원되고, 특히 하이브리드 게이트의 2-phase(find+verify)가
+  라운드당 2회 과금됨을 유의하라. peer별 `billing flat|metered` 설정 키는 아직
+  없다(개선 후보) — 현재는 per-AI `model`/`models` 리스트를 그 peer의 과금
+  방식에 맞춰 수동 조정하는 것이 레버다.
 
 Always finish by echoing the effective config (`python3 "$H" show --host "$HOST"`) so the user sees
 exactly what the panel will use.

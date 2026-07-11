@@ -6,7 +6,9 @@
     "name": "atomoh"
   },
   "agents": [
-    "./agents/co-agent.md"
+    "./agents/co-agent.md",
+    "./agents/gate-chair.md",
+    "./agents/harness-analyst.md"
   ],
   "skills": [
     "./skills/co-agent"

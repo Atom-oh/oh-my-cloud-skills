@@ -4,16 +4,39 @@ Use this template when creating the root `CLAUDE.md` for a new project.
 
 Replace placeholders (`<!-- ... -->`) with actual project information.
 
+## Writing rules (for the generator — do NOT copy this section into the output)
+
+`CLAUDE.md` is loaded into **every session** — and consumed by peer AIs too
+(co-agent distills it into `AGENTS.md`) — so every line is a recurring context
+tax. Modern Claude models (4.6+) follow instructions literally and need far
+less scaffolding than the generations this format grew up with. When filling
+the template:
+
+- **Facts the model can't infer, not narration.** Record constraints, commands,
+  and conventions. Never describe what the code already shows — the model will
+  read the code.
+- **Context, not commands.** State the constraint plainly ("API responses are
+  snake_case"). Skip coercive framing (`CRITICAL`, `MUST`, `반드시`) and
+  step-by-step lists where a goal plus a constraint suffices — current models
+  over-trigger on both.
+- **No example padding.** Few-shot examples in an always-loaded file cost every
+  session and add little for current models.
+- **Compact forms.** One-liners and tables over prose. When a section outgrows
+  a screen, move the detail to `docs/` and link it — `CLAUDE.md` is the index,
+  not the manual.
+- **Right-sized.** The root file should fit in a few screens. If it can't,
+  that's a signal to extract, not to compress the wording into fragments.
+
 ---
 
 ```markdown
 # Project Context
 
 ## Overview
-<!-- Project name and brief description -->
+<!-- Project name and one-paragraph description — what it is and who it's for -->
 
 ## Tech Stack
-<!-- List languages, frameworks, libraries, and tools -->
+<!-- Languages, frameworks, key libraries — one line each, versions only if pinned -->
 
 ## Project Structure
 \```
@@ -26,54 +49,49 @@ src/            - Application source code
 \```
 
 ## Conventions
-<!-- Coding conventions, naming rules, etc. -->
+<!-- Only conventions the code doesn't make obvious: naming, error handling, commit style -->
 
 ## Key Commands
-<!-- Build, test, deploy commands -->
+<!-- Build, test, deploy — the exact commands, one line each -->
 
 ---
 
 ## Auto-Sync Rules
 
-Rules below are applied automatically after Plan mode exit and on major code changes.
+Applied after Plan mode exit and on major code changes.
 
-### Post-Plan Mode Actions
-After exiting Plan mode (`/plan`), before starting implementation:
-
-1. **Architecture decision made** -> Update `docs/architecture.md`
-2. **Technical choice/trade-off made** -> Create `docs/decisions/ADR-NNN-title.md`
-3. **New module added** -> Create `CLAUDE.md` in that module directory
-4. **Operational procedure defined** -> Create runbook in `docs/runbooks/`
-5. **Changes needed in this file** -> Update relevant sections above
-
-### Code Change Sync Rules
-- New directory under `src/` -> Must create `CLAUDE.md` alongside
-- API endpoint added/changed -> Update `src/api/CLAUDE.md`
-- DB schema/model changed -> Update `src/persistence/CLAUDE.md`
-- Infrastructure changed -> Update `docs/architecture.md` Infrastructure section
-
-### ADR Numbering
-Find the highest number in `docs/decisions/ADR-*.md` and increment by 1.
-Format: `ADR-NNN-concise-title.md`
+| Trigger | Action |
+|---------|--------|
+| Architecture decision made (plan exit) | Update `docs/architecture.md` |
+| Technical choice / trade-off made (plan exit) | Create `docs/decisions/ADR-NNN-title.md` — NNN = highest existing + 1 |
+| Operational procedure defined | Create runbook in `docs/runbooks/` |
+| New module with non-obvious rules or context | Create `CLAUDE.md` in that module directory |
+| API endpoint added/changed | Update `src/api/CLAUDE.md` |
+| DB schema/model changed | Update `src/persistence/CLAUDE.md` |
+| Infrastructure changed | Update `docs/architecture.md` (Infrastructure section) |
+| Sections above drift from reality | Update this file |
 ```
 
 ---
 
 ## Module CLAUDE.md Template
 
-Use this for `src/<module>/CLAUDE.md` files:
+Use this for `src/<module>/CLAUDE.md` files. Create one **only when the module
+has rules or context the code doesn't show** — a module file that would merely
+restate the directory name is context tax with no payload; skip pure
+pass-through directories.
 
 ```markdown
 # <Module Name> Module
 
 ## Role
-<!-- Module responsibilities and scope -->
+<!-- One or two sentences: responsibility and boundary -->
 
 ## Key Files
-<!-- List important files in this module -->
+<!-- Only files whose purpose isn't obvious from their name -->
 
 ## Rules
-<!-- Module-specific rules and conventions -->
+<!-- Module-specific constraints the code doesn't enforce by itself -->
 ```
 
 ## API Module CLAUDE.md
@@ -82,13 +100,13 @@ Use this for `src/<module>/CLAUDE.md` files:
 # API Module
 
 ## Role
-<!-- API layer responsibilities and scope -->
+<!-- API layer responsibility and boundary -->
 
 ## Endpoints
-<!-- List major API endpoints -->
+<!-- Major endpoints — path and one-line purpose -->
 
 ## Rules
-<!-- API-specific rules and conventions -->
+<!-- API-specific constraints: auth, versioning, response shape -->
 ```
 
 ## Persistence Module CLAUDE.md
@@ -97,11 +115,11 @@ Use this for `src/<module>/CLAUDE.md` files:
 # Persistence Module
 
 ## Role
-<!-- Data persistence layer responsibilities and scope -->
+<!-- Data persistence layer responsibility and boundary -->
 
 ## Data Model
-<!-- Key entities and relationships -->
+<!-- Key entities and relationships — names and links, not full schemas -->
 
 ## Rules
-<!-- Persistence-specific rules and conventions -->
+<!-- Persistence-specific constraints: migrations, transactions, access patterns -->
 ```

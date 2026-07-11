@@ -6,11 +6,13 @@
 
 ---
 
-## Agent
+## Agents
 
 | Agent | Purpose |
 |-------|---------|
 | `co-agent` | 멀티-AI 패널 의장 — 리뷰/의사결정/ADR을 외부 AI에 팬아웃하고 Claude가 종합 |
+| `gate-chair` | 하이브리드 게이트의 의장 판단 격리(`model: opus`) — Phase T triage(인용 검증→아티팩트 대조→dedupe→digest) + verify 라운드 종결 판정. **팬아웃 없음** — 외부 호출·동의·비용은 호스트 소유, 이 에이전트는 판단만 (호스트가 저비용 티어일 때 스폰; opus 호스트는 인라인 triage 가능) |
+| `harness-analyst` | hill-climbing 분석가(advisory-only, `model: sonnet`) — `.claude/co-agent-consensus/` 누적 기록(`stage_wall.tsv`·`tasks/*/result.json`·게이트 result)을 읽어 `/co-agent:configure set` 제안 생성. **설정을 직접 쓰지 않음**; 기록 <3회(`plan-gate` 행 기준)면 제안 없이 관찰만 |
 
 ## Skill
 
