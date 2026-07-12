@@ -823,7 +823,9 @@ plugins/
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
 │   ├── agents/
-│   │   └── co-agent.md
+│   │   ├── co-agent.md
+│   │   ├── gate-chair.md
+│   │   └── harness-analyst.md
 │   ├── commands/                   # configure, sync-context, consensus, harness, setup
 │   └── skills/
 │       └── co-agent/
@@ -841,7 +843,9 @@ plugins/
     │   ├── add-runbook.md
     │   ├── generate-readme.md
     │   ├── generate-changelog.md
-    │   └── health-check.md
+    │   ├── health-check.md
+    │   ├── pr-autofix.md
+    │   └── add-reference-doc.md
     └── skills/
         ├── project-scaffolder/
         ├── pr-autofix/
