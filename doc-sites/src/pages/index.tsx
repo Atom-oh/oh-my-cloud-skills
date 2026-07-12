@@ -9,17 +9,31 @@ import styles from './index.module.css';
 
 const plugins = [
   {
+    title: 'co-agent',
+    description: 'Kiro/Codex/Agy와 협업해 코드/아키텍처 리뷰, 의사결정 보조, ADR 작성을 진행합니다. 자율 doc→plan→구현 consensus 파이프라인과 harness 오케스트레이터도 지원합니다.',
+    agents: 3,
+    skills: 1,
+    link: '/docs/co-agent/overview',
+  },
+  {
+    title: 'project-init',
+    description: '프로젝트 구조 스캐폴딩, 문서 동기화, PR 리뷰 피드백 자동 수정, ADR 모순 검토를 지원합니다.',
+    agents: 1,
+    skills: 3,
+    link: '/docs/project-init/overview',
+  },
+  {
     title: 'aws-content-plugin',
-    description: '프레젠테이션, 아키텍처 다이어그램, 애니메이션 다이어그램, 문서, GitBook, 워크샵 콘텐츠를 생성합니다.',
-    agents: 7,
-    skills: 5,
+    description: '프레젠테이션(웹+네이티브 PPTX), 아키텍처 다이어그램, 애니메이션 다이어그램, 문서, GitBook, 워크샵, 브로셔 콘텐츠를 생성합니다.',
+    agents: 9,
+    skills: 8,
     link: '/docs/aws-content-plugin/overview',
   },
   {
     title: 'aws-ops-plugin',
-    description: 'EKS 클러스터 관리, 네트워크 진단, IAM/RBAC, 옵저버빌리티, 스토리지, 데이터베이스, 비용 최적화를 지원합니다.',
-    agents: 8,
-    skills: 5,
+    description: 'EKS 클러스터 관리, 네트워크 진단, IAM/RBAC, 옵저버빌리티, 스토리지, 데이터베이스, 비용 최적화, Well-Architected 리뷰를 지원합니다.',
+    agents: 10,
+    skills: 6,
     link: '/docs/aws-ops-plugin/overview',
   },
   {
@@ -28,6 +42,13 @@ const plugins = [
     agents: 1,
     skills: 1,
     link: '/docs/kiro-power-converter/overview',
+  },
+  {
+    title: 'agentcore-creator',
+    description: 'Claude Code 플러그인을 Bedrock AgentCore(Runtime, Gateway, Memory)로 배포합니다. 5단계 워크플로우와 Strands Agent 프레임워크를 사용합니다.',
+    agents: 1,
+    skills: 1,
+    link: '/docs/agentcore-creator/overview',
   },
 ];
 

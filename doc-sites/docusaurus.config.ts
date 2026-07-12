@@ -77,6 +77,18 @@ const config: Config = {
         },
         {
           type: 'docSidebar',
+          sidebarId: 'coAgent',
+          position: 'left',
+          label: 'co-agent',
+        },
+        {
+          type: 'docSidebar',
+          sidebarId: 'projectInit',
+          position: 'left',
+          label: 'project-init',
+        },
+        {
+          type: 'docSidebar',
           sidebarId: 'awsContent',
           position: 'left',
           label: 'aws-content-plugin',
@@ -98,18 +110,6 @@ const config: Config = {
           sidebarId: 'agentcoreCreator',
           position: 'left',
           label: 'agentcore-creator',
-        },
-        {
-          type: 'docSidebar',
-          sidebarId: 'coAgent',
-          position: 'left',
-          label: 'co-agent',
-        },
-        {
-          type: 'docSidebar',
-          sidebarId: 'projectInit',
-          position: 'left',
-          label: 'project-init',
         },
         {
           type: 'docSidebar',

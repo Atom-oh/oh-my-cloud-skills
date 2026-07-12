@@ -12,12 +12,12 @@ title: 시작하기
 
 | 플러그인 | 설명 | Agents | Skills |
 |----------|------|--------|--------|
+| [co-agent](/docs/co-agent/overview) | 멀티-AI 협업 (Kiro/Codex/Agy) — 리뷰·의사결정·ADR·컨텍스트 동기화·consensus·harness 파이프라인, 5개 명령 | 3 | 1 |
+| [project-init](/docs/project-init/overview) | 프로젝트 스캐폴딩, 문서 동기화, ADR 모순 검토, 10개 명령 | 1 | 3 |
 | [aws-content-plugin](/docs/aws-content-plugin/overview) | 프레젠테이션(웹+네이티브 PPTX), 다이어그램, 문서, GitBook, 워크샵, 브로셔 | 9 | 8 |
 | [aws-ops-plugin](/docs/aws-ops-plugin/overview) | EKS, 네트워크, IAM, 옵저버빌리티, 스토리지, DB, 비용, Well-Architected | 10 | 6 |
 | [kiro-power-converter](/docs/kiro-power-converter/overview) | Claude Code 플러그인 → Kiro Power 변환 | 1 | 1 |
 | [agentcore-creator](/docs/agentcore-creator/overview) | Claude Code 플러그인 → Bedrock AgentCore 배포 | 1 | 1 |
-| [co-agent](/docs/co-agent/overview) | 멀티-AI 협업 (Kiro/Codex/Agy) — 리뷰·의사결정·ADR·컨텍스트 동기화·consensus·harness 파이프라인, 5개 명령 | 3 | 1 |
-| [project-init](/docs/project-init/overview) | 프로젝트 스캐폴딩, 문서 동기화, ADR 모순 검토, 10개 명령 | 1 | 3 |
 
 ## 설치 방법
 
