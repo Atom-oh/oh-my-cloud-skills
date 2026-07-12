@@ -54,6 +54,8 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 *Multi-AI Collaboration (co-agent):*
 - **6 modes** — multi-AI review, decision support, ADR co-authoring, `sync-context` (distill `CLAUDE.md` -> `AGENTS.md`), an autonomous doc->plan->implementation **consensus** pipeline, and a host-designs/peer-implements/panel-reviews **harness** orchestrator
 - **Panel of installed CLIs** — fan the same prompt to Kiro/Codex/Antigravity (`agy`) in parallel; Claude chairs and synthesizes consensus vs. dissent (degrades gracefully if none installed) — skipped if `agy` isn't installed. (Gemini CLI support was removed; Antigravity supersedes it — ADR-010.)
+  - **`gate-chair`** — triages the hybrid gate's panel findings (citation check -> verification -> dedupe) and closes verify rounds with a quorum-checked verdict.
+  - **`harness-analyst`** — advisory, retrospective: mines past harness run records to propose `/co-agent:configure` tuning (implementer, parallel_tasks, review_mode, timeout); never edits config itself.
 - **`/co-agent:configure`** — tune per-AI model, Codex effort, enable/disable, timeout, and `autosync` (regenerate AI context on `CLAUDE.md` change)
 
 *Project Scaffolding (project-init):*
