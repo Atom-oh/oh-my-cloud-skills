@@ -37,9 +37,10 @@ routing — per-plugin `CLAUDE.md` holds the detail. Design: `docs/superpowers/s
 claude --plugin-dir ./plugins/aws-content-plugin
 claude --plugin-dir ./plugins/aws-ops-plugin
 
-# Validate plugin manifests
-python3 -c "import json; d=json.load(open('plugins/aws-content-plugin/.claude-plugin/plugin.json')); print(f'content: {len(d[\"agents\"])} agents, {len(d[\"skills\"])} skills')"
-python3 -c "import json; d=json.load(open('plugins/aws-ops-plugin/.claude-plugin/plugin.json')); print(f'ops: {len(d[\"agents\"])} agents, {len(d[\"skills\"])} skills')"
+# Validate plugin manifests (all 6 plugins)
+for f in plugins/*/.claude-plugin/plugin.json; do
+  python3 -c "import json; d=json.load(open('$f')); name='$f'.split('/')[1]; print(f'{name}: {len(d[\"agents\"])} agents, {len(d[\"skills\"])} skills')"
+done
 
 # Verify all plugin.json references resolve to existing files
 cd plugins/aws-ops-plugin && python3 -c "
@@ -139,16 +140,17 @@ All plugins share a single version tracked in their `plugin.json` → `"version"
 - **Git tag format**: `v{version}` (e.g., `v1.1.0`) — created on the release commit
 - **Release process**: bump `"version"` in all `plugin.json` files + `marketplace.json` → commit → `git tag v{version}` → push with `--tags`
 - **Validation**: `git describe --tags` should match all `plugin.json` and `marketplace.json` versions
+- Each plugin also carries a `.codex-plugin/plugin.json` alongside its `.claude-plugin/plugin.json`
+  (Codex-format manifest, kept version-synced with its Claude counterpart) — not covered by the
+  snippet below, which validates the Claude manifests + marketplace + tag.
 
 ```bash
-# Verify version consistency
-V=$(python3 -c "import json; print(json.load(open('plugins/aws-content-plugin/.claude-plugin/plugin.json'))['version'])")
-V2=$(python3 -c "import json; print(json.load(open('plugins/aws-ops-plugin/.claude-plugin/plugin.json'))['version'])")
-V3=$(python3 -c "import json; print(json.load(open('plugins/kiro-power-converter/.claude-plugin/plugin.json'))['version'])")
+# Verify version consistency across all 6 plugins' .claude-plugin/plugin.json
+VS=$(for f in plugins/*/.claude-plugin/plugin.json; do python3 -c "import json; print(json.load(open('$f'))['version'])"; done | sort -u)
 MV=$(python3 -c "import json; vs=set(p['version'] for p in json.load(open('.claude-plugin/marketplace.json'))['plugins']); print(vs.pop() if len(vs)==1 else 'MISMATCH')")
 TAG=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
-echo "content=$V ops=$V2 converter=$V3 marketplace=$MV tag=$TAG"
-[ "$V" = "$V2" ] && [ "$V" = "$V3" ] && [ "$V" = "$MV" ] && [ "$V" = "$TAG" ] && echo "OK: all match" || echo "MISMATCH"
+echo "plugins=$VS marketplace=$MV tag=$TAG"
+[ "$(echo "$VS" | wc -l)" = "1" ] && [ "$VS" = "$MV" ] && [ "$VS" = "$TAG" ] && echo "OK: all match" || echo "MISMATCH"
 ```
 
 ## Key Conventions
