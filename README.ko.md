@@ -572,7 +572,7 @@ python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_
 
 ### 변환 결과 예시
 
-`aws-ops-plugin` (에이전트 9개, 스킬 5개, MCP 서버 5개) 변환 결과:
+`aws-ops-plugin` (에이전트 10개, 스킬 6개, MCP 서버 5개) 변환 결과:
 
 ```
 aws-ops-power/
@@ -587,12 +587,15 @@ aws-ops-power/
     ├── storage-agent.md
     ├── database-agent.md
     ├── cost-agent.md
+    ├── analytics-agent.md
     ├── ops-coordinator-agent.md  # description에 "(Advanced reasoning)" 추가
+    ├── wellarchitected-agent.md
     ├── ops-troubleshoot.md       # 트리거가 병합된 스킬
     ├── ops-health-check.md
     ├── ops-network-diagnosis.md
     ├── ops-observability.md
     ├── ops-security-audit.md
+    ├── ops-wellarchitected-review.md
     └── ref-*.md                  # 15개 레퍼런스 파일 (manual inclusion)
 ```
 

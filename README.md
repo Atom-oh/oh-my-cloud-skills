@@ -573,7 +573,7 @@ python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_
 
 ### Example Output
 
-Converting `aws-ops-plugin` (9 agents, 5 skills, 5 MCP servers) produces:
+Converting `aws-ops-plugin` (10 agents, 6 skills, 5 MCP servers) produces:
 
 ```
 aws-ops-power/
@@ -588,12 +588,15 @@ aws-ops-power/
     ├── storage-agent.md
     ├── database-agent.md
     ├── cost-agent.md
+    ├── analytics-agent.md
     ├── ops-coordinator-agent.md  # "(Advanced reasoning)" in description
+    ├── wellarchitected-agent.md
     ├── ops-troubleshoot.md       # Skill with triggers merged
     ├── ops-health-check.md
     ├── ops-network-diagnosis.md
     ├── ops-observability.md
     ├── ops-security-audit.md
+    ├── ops-wellarchitected-review.md
     └── ref-*.md                  # 15 reference files (manual inclusion)
 ```
 
