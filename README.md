@@ -575,12 +575,12 @@ python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_
 
 ### Example Output
 
-Converting `aws-ops-plugin` (10 agents, 6 skills, 5 MCP servers) produces:
+Converting `aws-ops-plugin` (10 agents, 6 skills, 2 MCP servers) produces:
 
 ```
 aws-ops-power/
 ├── POWER.md                      # Manifest with ~96 aggregated keywords
-├── mcp.json                      # 5 AWS MCP servers (type field removed)
+├── mcp.json                      # 2 AWS MCP servers (type field removed)
 └── steering/
     ├── routing.md                # Always-loaded routing context
     ├── eks-agent.md              # Auto-activated agent steering files

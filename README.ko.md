@@ -574,12 +574,12 @@ python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_
 
 ### 변환 결과 예시
 
-`aws-ops-plugin` (에이전트 10개, 스킬 6개, MCP 서버 5개) 변환 결과:
+`aws-ops-plugin` (에이전트 10개, 스킬 6개, MCP 서버 2개) 변환 결과:
 
 ```
 aws-ops-power/
 ├── POWER.md                      # 약 96개 키워드가 집계된 매니페스트
-├── mcp.json                      # 5개 AWS MCP 서버 (type 필드 제거됨)
+├── mcp.json                      # 2개 AWS MCP 서버 (type 필드 제거됨)
 └── steering/
     ├── routing.md                # 항상 로드되는 라우팅 컨텍스트
     ├── eks-agent.md              # 자동 활성화 에이전트 steering 파일
