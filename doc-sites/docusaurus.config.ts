@@ -11,7 +11,7 @@ const config: Config = {
     v4: true,
   },
 
-  url: 'https://atom-oh.github.io',
+  url: 'https://www.atomai.click',
   baseUrl: '/oh-my-cloud-skills/',
 
   organizationName: 'Atom-oh',
