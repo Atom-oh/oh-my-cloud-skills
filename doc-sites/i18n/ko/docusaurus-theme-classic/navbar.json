@@ -23,6 +23,18 @@
     "message": "Kiro 변환기",
     "description": "Navbar item with label kiro-power-converter"
   },
+  "item.label.agentcore-creator": {
+    "message": "AgentCore 배포",
+    "description": "Navbar item with label agentcore-creator"
+  },
+  "item.label.co-agent": {
+    "message": "co-agent",
+    "description": "Navbar item with label co-agent"
+  },
+  "item.label.project-init": {
+    "message": "프로젝트 초기화",
+    "description": "Navbar item with label project-init"
+  },
   "item.label.Remarp Guide": {
     "message": "Remarp 가이드",
     "description": "Navbar item with label Remarp Guide"

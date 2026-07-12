@@ -88,31 +88,28 @@ const config: Config = {
           label: 'aws-ops-plugin',
         },
         {
-          type: 'dropdown',
-          label: 'More Plugins',
+          type: 'docSidebar',
+          sidebarId: 'kiroConverter',
           position: 'left',
-          items: [
-            {
-              type: 'docSidebar',
-              sidebarId: 'kiroConverter',
-              label: 'kiro-power-converter',
-            },
-            {
-              type: 'docSidebar',
-              sidebarId: 'agentcoreCreator',
-              label: 'agentcore-creator',
-            },
-            {
-              type: 'docSidebar',
-              sidebarId: 'coAgent',
-              label: 'co-agent',
-            },
-            {
-              type: 'docSidebar',
-              sidebarId: 'projectInit',
-              label: 'project-init',
-            },
-          ],
+          label: 'kiro-power-converter',
+        },
+        {
+          type: 'docSidebar',
+          sidebarId: 'agentcoreCreator',
+          position: 'left',
+          label: 'agentcore-creator',
+        },
+        {
+          type: 'docSidebar',
+          sidebarId: 'coAgent',
+          position: 'left',
+          label: 'co-agent',
+        },
+        {
+          type: 'docSidebar',
+          sidebarId: 'projectInit',
+          position: 'left',
+          label: 'project-init',
         },
         {
           type: 'docSidebar',
