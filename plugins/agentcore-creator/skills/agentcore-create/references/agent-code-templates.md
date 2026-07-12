@@ -262,13 +262,18 @@ if __name__ == "__main__":
 
 ## Requirements by Template
 
+Version floors below are verified against PyPI as of 2026-07-12 (`strands-agents` 1.47.0,
+`strands-agents-tools` 0.8.3, `bedrock-agentcore` 1.18.0, `boto3` 1.43.46) — kept in sync
+with `scripts/convert_plugin_to_agentcore.py`'s requirements.txt generation. These are
+floors, not pins; re-verify before relying on them months out.
+
 | Template | Dependencies | Use Case |
 |----------|-------------|----------|
-| Strands + AgentCore (basic) | `strands-agents>=0.1.0`, `bedrock-agentcore>=0.1.0`, `boto3>=1.34.0` | AgentCore deployment |
-| Strands + AgentCore (tools) | `strands-agents>=0.1.0`, `strands-agents-tools>=0.1.0`, `bedrock-agentcore>=0.1.0`, `boto3>=1.34.0` | AgentCore with tools |
-| Strands + AgentCore (memory) | `strands-agents>=0.1.0`, `bedrock-agentcore>=0.1.0`, `boto3>=1.34.0` | AgentCore with STM/LTM |
-| Strands local test | `strands-agents>=0.1.0`, `boto3>=1.34.0` | Local development |
-| Raw Python local test | `boto3>=1.34.0` | Minimal local testing |
+| Strands + AgentCore (basic) | `strands-agents>=1.0.0`, `bedrock-agentcore>=1.0.0`, `boto3>=1.40.0` | AgentCore deployment |
+| Strands + AgentCore (tools) | `strands-agents>=1.0.0`, `strands-agents-tools>=0.8.0`, `bedrock-agentcore>=1.0.0`, `boto3>=1.40.0` | AgentCore with tools |
+| Strands + AgentCore (memory) | `strands-agents>=1.0.0`, `bedrock-agentcore>=1.0.0`, `boto3>=1.40.0` | AgentCore with STM/LTM |
+| Strands local test | `strands-agents>=1.0.0`, `boto3>=1.40.0` | Local development |
+| Raw Python local test | `boto3>=1.40.0` | Minimal local testing |
 
 ## Recommended Inference Defaults
 
@@ -277,18 +282,19 @@ These defaults are applied by the conversion script and templates. Tune per use 
 | Parameter | Default | Tuning Notes |
 |-----------|---------|--------------|
 | `max_tokens` | 16000 | Use 64000 for long outputs (requires streaming). Truncation forces retries — don't lowball. |
-| `thinking` | omitted | For reasoning-heavy tasks on Opus 4.6/4.7/4.8, enable `{"type": "adaptive"}` |
-| `temperature` / `top_p` / `top_k` | NOT SET | Removed on Opus 4.7/4.8 (400 error). Use prompting for variance instead. |
-| `effort` (Opus 4.5+, Sonnet 4.6) | not set | `xhigh` for coding/agentic, `high` for intelligence-sensitive, `medium` for balanced |
+| `thinking` | `{"type": "adaptive"}` on effort-capable models, omitted otherwise | Emitted by the generator for Opus 4.7/4.8, Sonnet 4.6, and Fable 5 (see `EFFORT_CAPABLE_MODELS` in the script) |
+| `temperature` / `top_p` / `top_k` | NOT SET | Removed on Opus 4.7/4.8 and Fable 5 (400 error). Use prompting for variance instead. |
+| `effort` (Opus 4.5+, Sonnet 4.6, Fable 5) | `"high"` by default, tunable | `xhigh` for coding/agentic, `high` for intelligence-sensitive, `medium` for balanced. **Actually emitted by the generator** (`output_config.effort`), not just documented — see `generate_agent_code()`. |
 
-### Modern Opus (4.7 / 4.8) Specific Defaults
+### Modern Opus (4.7 / 4.8) and Fable 5 Specific Defaults
 
-When `{{bedrock_model_id}}` resolves to `us.anthropic.claude-opus-4-8` (the `opus` alias default) or `...-opus-4-7`:
+When `{{bedrock_model_id}}` resolves to `us.anthropic.claude-opus-4-8` (the `opus` alias default), `...-opus-4-7`, or `us.anthropic.claude-fable-5`:
 - Do NOT set `temperature`, `top_p`, `top_k` → 400 error
 - Do NOT use `thinking: {"type": "enabled", "budget_tokens": N}` → 400 error
-- Use `thinking: {"type": "adaptive"}` for reasoning control
-- To surface thinking content: add `thinking: {"type": "adaptive", "display": "summarized"}` (default is `"omitted"`)
+- Use `thinking: {"type": "adaptive"}` for reasoning control — on Fable 5 this is the *only* mode (`"disabled"` is unsupported, unlike Opus)
+- To surface thinking content: add `thinking: {"type": "adaptive", "display": "summarized"}` (default is `"omitted"`; Fable 5 never returns raw CoT regardless)
 - Re-baseline `max_tokens` with `count_tokens()` — do not reuse 4.6-calibrated estimates
+- **Fable 5 only**: check `stop_reason == "refusal"` after invocation — it comes back as HTTP 200, not an error, so a bare status check will treat a refusal as success. Also: Bedrock requires opting into 30-day data retention (`provider_data_sharing`) before Fable 5 can be invoked at all — flag this during design if the target org has a no-retention policy.
 
 See `references/agentcore-mapping-rules.md` → Model-Specific Compatibility Notes for full breaking-change details.
 

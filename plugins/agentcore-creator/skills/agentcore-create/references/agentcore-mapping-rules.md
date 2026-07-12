@@ -11,7 +11,7 @@ Field-by-field conversion rules for transforming Claude Code plugin components i
 | `name` | Agent name | Preserve as-is; validate against AgentCore naming rules (alphanumeric + hyphens, 1-128 chars) |
 | `description` | Agent description | Preserve; strip trigger keyword list (moved to routing config) |
 | `tools` | Tool permissions | Map to AgentCore tool list: `Read`/`Glob`/`Grep` -> knowledge retrieval, `Bash` -> code execution, `Write`/`Edit` -> file operations |
-| `model` | Bedrock model ID | `sonnet` -> `us.anthropic.claude-sonnet-4-6`, `opus` -> `us.anthropic.claude-opus-4-8`, `haiku` -> `us.anthropic.claude-haiku-4-5` (keep in sync with `MODEL_MAP` in `scripts/convert_plugin_to_agentcore.py`) |
+| `model` | Bedrock model ID | `sonnet` -> `us.anthropic.claude-sonnet-4-6`, `opus` -> `us.anthropic.claude-opus-4-8`, `haiku` -> `us.anthropic.claude-haiku-4-5`, `fable` -> `us.anthropic.claude-fable-5` (keep in sync with `MODEL_MAP` in `scripts/convert_plugin_to_agentcore.py`) |
 | `skills` | System prompt sections | Each referenced skill's SKILL.md body merged into system prompt |
 | `mcpServers` | Gateway targets | Each server becomes a Gateway target definition |
 
@@ -106,9 +106,14 @@ Reference documents are loaded into AgentCore Memory LTM as initial knowledge:
 | MCP Server Pattern | Gateway Target Type | Rationale |
 |--------------------|--------------------|-----------| 
 | stdio command (uvx, npx) | LAMBDA | Wrap as Lambda function |
-| HTTP/SSE endpoint | MCP_SERVER | Direct MCP proxy |
-| REST API | OPENAPI | OpenAPI spec integration |
+| HTTP/SSE endpoint | MCP_SERVER | Direct MCP proxy (now stateful — sessions, elicitation, sampling, progress/logging notifications, GA 2026) |
+| REST API | OPENAPI | OpenAPI spec integration; 3LO OAuth reached GA in 2026 for targets that need it |
 | AWS service call | SMITHY | AWS service model |
+| Plain HTTP endpoint, no MCP framing | HTTP passthrough | New 2026 target type — for backends that don't speak MCP at all |
+| Another AgentCore Runtime agent | Runtime target | New 2026 target type — for agent-to-agent tool calls without a Lambda hop |
+| A model/inference provider as a "tool" | Inference connector/provider target | New 2026 target type |
+
+Gateway can also front a **Managed Knowledge Base** (GA 2026: S3/SharePoint/Confluence/Drive/OneDrive/Web Crawler connectors) and a managed **Web Search** tool (GA 2026, zero data egress) — both are Gateway-side configuration, not something this converter needs to generate code for. Point the user at these instead of hand-rolling equivalent tooling when the plugin being converted has a "search the web" or "search our docs" skill.
 
 ## Hooks Gap Analysis Rules
 
@@ -180,6 +185,15 @@ Opus 4.8 is the current most-capable Opus and is what the `opus` alias resolves 
 
 > Confirm the exact Bedrock inference-profile ID and any 4.8-specific output ceiling against the current AWS Bedrock model catalog before pinning in production. 4.6/4.7 remain valid IDs for deployments that must stay pinned.
 
+### Fable 5 (`us.anthropic.claude-fable-5`, also `anthropic.claude-fable-5` / `global.anthropic.claude-fable-5`)
+
+Fable 5 extends the Opus 4.8 adaptive-thinking pattern but with real behavioral and deployment differences the converter/generated code must account for:
+
+- **Adaptive thinking is the only mode** — `thinking.type: "disabled"` is not supported at all (unlike Opus, which allows disabling thinking). Always emit `thinking.type: "adaptive"`.
+- **Raw chain-of-thought is never returned** — only `thinking.display: "summarized"` or the default `"omitted"`; there is no "full" display option to request.
+- **Refusals return `stop_reason: "refusal"` as an HTTP 200**, not an error status. Generated code that only checks HTTP status for failure will silently treat a refusal as success — explicitly check `result.stop_reason == "refusal"` and handle it (e.g. via a `fallbacks` model chain) rather than assuming any 200 response is usable.
+- **CRITICAL deployment gotcha**: Bedrock requires explicitly opting into 30-day data retention (`provider_data_sharing`) before Fable 5 can be invoked at all on Bedrock — there is no zero-retention option for this model. If the user has an organizational policy against data retention, Fable 5 is not deployable via Bedrock and the converter should surface this during Phase 2 (Design) model selection, not fail silently at deploy time.
+
 ### Opus 4.7 (`us.anthropic.claude-opus-4-7`)
 
 When generating code that will use Opus 4.7, the following are **removed and will 400 if sent**:
@@ -203,9 +217,27 @@ No `effort` parameter support — only Opus 4.5+ and Sonnet 4.6 accept it.
 
 ### Generated Code Checklist
 
-When `MODEL_MAP` resolves to a modern Opus model (4.7 or 4.8), the converter should:
+When `MODEL_MAP` resolves to a modern Opus model (4.7 or 4.8) or Fable 5, the converter should:
 1. Not emit `temperature=`, `top_p=`, `top_k=` parameters in BedrockModel construction
 2. Not emit `thinking={"type": "enabled", "budget_tokens": N}` — use `{"type": "adaptive"}` if thinking needed
 3. Allow generous `max_tokens` for output (modern Opus supports large outputs with streaming — confirm the ceiling for the pinned model)
+4. **Emit `additional_request_fields={"output_config": {"effort": "..."}}`** on Opus 4.5+/Sonnet 4.6+/Fable targets, not just document it — this was previously documented here but never actually wired into `generate_agent_code()`; see the script's `MODEL_MAP`/`SUPPORTS_EFFORT` handling
+5. On Fable 5 specifically, add a `stop_reason == "refusal"` check after invocation (see Fable 5 section above) — treat it as a distinct outcome, not a generic success
 
 For full migration details, see [Model Migration Guide](https://platform.claude.com/docs/en/about-claude/models/migration-guide).
+
+## New AgentCore Primitives (2026) — Beyond This Converter's Code-Gen Scope
+
+These reached GA across 2026 and are genuinely new capabilities, but this converter does not generate code for them — the exact configuration API is still evolving too fast to safely hard-code into a template without risking stale/wrong generated code. Instead, **surface them as options during Phase 2 (Design) or Phase 4 (Convert) when relevant to what's being converted**, and point the user at `search_agentcore_docs`/`fetch_agentcore_doc` (or current AWS docs) for exact syntax at conversion time:
+
+| Primitive | What it is | When to mention it |
+|-----------|------------|---------------------|
+| **AgentCore Harness** | A no-orchestration-code alternative to Runtime+Strands: `CreateHarness`/`InvokeHarness`, built-in memory, multi-model via LiteLLM + Bedrock Mantle (unlocks non-Anthropic models like GPT-5.5 on Bedrock), skills catalog, evaluations/optimization, Step Functions integration, export-to-Strands-code | Phase 2, as a lower-effort alternative when the agent being converted doesn't need custom orchestration logic |
+| **AgentCore Policy** | Governs which tools an agent may call and under what conditions (natural-language or policy-as-code), enforced at the Gateway layer; Guardrails-integrated | Phase 4, when the source plugin's `tools`/`allowed-tools` restrictions should carry through to a hard runtime enforcement, not just a system-prompt instruction |
+| **AgentCore Payments** | x402/USDC micropayments via `PaymentManager`/`PaymentConnector`, `agentcore add payment-manager\|payment-connector`, an `AgentCorePaymentsPlugin` for Strands | Only if the source plugin has any pay-per-use / metering concept |
+| **AgentCore Evaluations** | 13 built-in evaluators + Ground Truth + custom Lambda evaluators; also Batch Evaluations, A/B Testing, User Simulation, Failure Insights | Phase 5 (Verification) — mention as an optional step beyond `agentcore invoke`/`status`, especially for agents with defined success criteria from Phase 1 |
+| **Managed Knowledge Base** | Native RAG via Gateway (S3/SharePoint/Confluence/Drive/OneDrive/Web Crawler connectors) | Phase 2/4, as an alternative to this converter's hand-rolled LTM chunking (`memory-chunking-strategy.md`) when the source references are large/structured documents rather than short skill-reference files |
+| **CDK L2 constructs** (`aws-bedrockagentcore`, stable in `aws-cdk-lib` since mid-2026; the Policy submodule is still alpha) | An IaC alternative to the `agentcore` CLI | Phase 5, for users who manage the rest of their infra in CDK and want AgentCore resources in the same stack |
+| **CLI additions** (`agentcore add`, `agentcore dev` local inspector UI, `logs`/`traces`, resource import) | Newer subcommands beyond `configure/deploy/invoke/status/destroy` | Phase 5, `agentcore dev` especially for local iteration before a real deploy |
+
+Also note: Runtime itself gained interactive shells, BYO filesystem (S3 Files/EFS), managed session storage, the AG-UI protocol, bidirectional WebSocket streaming, and a 5x quota increase (25→200 TPS) across 2026 — none of these require converter changes, but they're worth knowing when a user asks "can AgentCore Runtime do X" during Phase 1/2.

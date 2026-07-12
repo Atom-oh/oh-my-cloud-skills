@@ -73,9 +73,11 @@ async def invoke(payload, context):
     model = BedrockModel(
         model_id="<bedrock-model-id>",
         region_name="<region>",
-        max_tokens=16000,  # 4.7/4.8 compatible default; stream for >16K outputs
-        # For Opus 4.6/4.7/4.8: enable adaptive thinking when reasoning is needed
-        # additional_request_fields={"thinking": {"type": "adaptive"}},
+        max_tokens=16000,  # 4.7/4.8/Fable-5 compatible default; stream for >16K outputs
+        # Emitted (not commented out) when the model is effort-capable
+        # (Opus 4.7/4.8, Sonnet 4.6, Fable 5) -- see EFFORT_CAPABLE_MODELS
+        # in scripts/convert_plugin_to_agentcore.py:
+        additional_request_fields={"thinking": {"type": "adaptive"}, "output_config": {"effort": "high"}},
     )
 
     agent = Agent(
@@ -91,15 +93,19 @@ if __name__ == "__main__":
     app.run()
 ```
 
-> **모던 Opus(4.7/4.8) 호환 주의사항**: Opus 4.7과 4.8은 `temperature`/`top_p`/`top_k`와 `thinking.type: "enabled"` (with `budget_tokens`)를 거부합니다 (400 에러). `opus` 별칭은 현재 4.8로 매핑됩니다. 위 템플릿은 이를 모두 회피하며, adaptive thinking은 주석 처리되어 있어 필요시 활성화할 수 있습니다. 자세한 내용: `references/agentcore-mapping-rules.md` → Model-Specific Compatibility Notes.
+> **모던 Opus(4.7/4.8)·Fable 5 호환 주의사항**: Opus 4.7/4.8과 Fable 5는 `temperature`/`top_p`/`top_k`와 `thinking.type: "enabled"` (with `budget_tokens`)를 거부합니다 (400 에러). `opus` 별칭은 현재 4.8로 매핑되고, `fable` 별칭은 Fable 5로 매핑됩니다. 위 템플릿은 이를 모두 회피하며, effort 지원 모델에는 adaptive thinking + effort가 실제로 켜져서 생성됩니다(주석이 아님). Fable 5는 `stop_reason == "refusal"`이 HTTP 200으로 오므로 별도 체크가 필요하고, Bedrock에서 호출 전 30일 데이터 보존(`provider_data_sharing`) 옵트인이 필수입니다(무보존 옵션 없음). 자세한 내용: `references/agentcore-mapping-rules.md` → Model-Specific Compatibility Notes.
 
 ### agents/requirements.txt
 
+버전 하한은 PyPI 2026-07-12 기준 확인됨(`strands-agents` 1.47.0, `strands-agents-tools` 0.8.3,
+`bedrock-agentcore` 1.18.0, `boto3` 1.43.46) — 이전 0.1.0/1.34.0은 각 패키지의 GA 이전
+스캐폴딩 시절 placeholder였음. 고정 버전이 아니라 하한이므로 시간이 지나면 재확인할 것.
+
 ```
-strands-agents>=0.1.0
-strands-agents-tools>=0.1.0
-bedrock-agentcore>=0.1.0
-boto3>=1.34.0
+strands-agents>=1.0.0
+strands-agents-tools>=0.8.0
+bedrock-agentcore>=1.0.0
+boto3>=1.40.0
 ```
 
 ## System Prompt Format

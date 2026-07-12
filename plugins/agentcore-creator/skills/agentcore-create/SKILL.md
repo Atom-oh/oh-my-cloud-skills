@@ -150,8 +150,11 @@ Based on the approved concept, design the agent's components:
 | Most production workloads (balanced) | `us.anthropic.claude-sonnet-4-6` | Best speed/intelligence balance. Supports adaptive thinking. |
 | High-volume simple tasks | `us.anthropic.claude-haiku-4-5` | Fastest, lowest cost. No `effort` parameter support. |
 | Complex reasoning with cost flexibility | `us.anthropic.claude-opus-4-8` | When correctness matters more than latency |
+| Multi-day autonomous/large-migration work | `us.anthropic.claude-fable-5` | Only when Fable 5's edge over Opus 4.8 actually shows on that scale. Requires opting into 30-day Bedrock data retention first — ask about org data policy before recommending it. |
 
-> **Note on modern Opus (4.7/4.8) deployment**: Generated code must NOT include `temperature`, `top_p`, `top_k`, or `thinking.type: "enabled"` with `budget_tokens` — these return 400 errors on Opus 4.7 and 4.8. Use `thinking.type: "adaptive"` for reasoning depth control. 4.6/4.7 remain valid for pinned deployments. See `references/agentcore-mapping-rules.md` → Model-Specific Compatibility Notes.
+> **Note on modern Opus (4.7/4.8) and Fable 5 deployment**: Generated code must NOT include `temperature`, `top_p`, `top_k`, or `thinking.type: "enabled"` with `budget_tokens` — these return 400 errors on Opus 4.7/4.8 and Fable 5. Use `thinking.type: "adaptive"` for reasoning depth control (on Fable 5 it's the *only* mode). 4.6/4.7 remain valid for pinned deployments. See `references/agentcore-mapping-rules.md` → Model-Specific Compatibility Notes.
+
+> **AgentCore Harness alternative**: for an agent with no custom orchestration logic, AgentCore Harness (`CreateHarness`/`InvokeHarness`) skips Runtime+Strands entirely — built-in memory, multi-model via Bedrock Mantle, skills catalog, evaluations. Worth surfacing as a lower-effort option here before committing to the Strands code-gen path in Phase 4. See `references/agentcore-mapping-rules.md` → New AgentCore Primitives.
 
 **Skill definition** — Propose the SKILL.md structure:
 - Trigger phrases (Korean + English)
@@ -430,12 +433,15 @@ Confirm each step with the user before executing.
 ```bash
 agentcore status        # Check deployment status
 agentcore invoke        # Test with sample prompt
+agentcore dev           # Optional: local inspector UI for faster iteration
 ```
 
 Test each component:
 - Runtime: invoke agent, verify response quality
 - Memory: query knowledge store, verify retrieval
 - Gateway: test tool endpoint, verify integration
+
+If Phase 1 captured concrete success criteria, mention **AgentCore Evaluations** (built-in evaluators, Ground Truth, custom Lambda evaluators) as an optional step beyond a manual `invoke` smoke test — see `references/agentcore-mapping-rules.md` → New AgentCore Primitives for what's available and when it's worth the setup cost.
 
 ### 5.2 Deployment Summary
 
