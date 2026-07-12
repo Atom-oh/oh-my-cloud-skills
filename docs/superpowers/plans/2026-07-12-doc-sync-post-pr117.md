@@ -14,7 +14,7 @@ pure prose/text edits with no code-logic change.
 **Files:**
 - Modify: `CLAUDE.md`
 
-- [ ] The original audit read "**Local-only** (not in upstream)" as "not committed to this
+- [x] The original audit read "**Local-only** (not in upstream)" as "not committed to this
   repo's git" and proposed deleting it — that premise is **wrong**, caught by the P2 gate.
   `plugins/project-init/references/upstream-sync.md` establishes that `project-init` is
   forked from an external `whchoi98/project-init` upstream, and `decision-reconcile` is
@@ -29,7 +29,7 @@ pure prose/text edits with no code-logic change.
 - Modify: `README.md`
 - Modify: `README.ko.md`
 
-- [ ] Update the co-agent skill description from "4 modes: Review, Decide, ADR,
+- [x] Update the co-agent skill description from "4 modes: Review, Decide, ADR,
   sync-context" to reflect the actual 6-mode structure in
   `plugins/co-agent/skills/co-agent/SKILL.md` (adds Mode 5 Consensus, Mode 6 harness).
   P2 gate caught that `README.md:55` ("**4 modes**") and `README.ko.md:55` ("**4가지
@@ -41,7 +41,7 @@ pure prose/text edits with no code-logic change.
 - Modify: `README.md`
 - Modify: `README.ko.md`
 
-- [ ] Change "Converting `aws-ops-plugin` (9 agents, 5 skills, 5 MCP servers)" /
+- [x] Change "Converting `aws-ops-plugin` (9 agents, 5 skills, 5 MCP servers)" /
   "(에이전트 9개, 스킬 5개, MCP 서버 5개)" to 10 agents, 6 skills (the "5 MCP servers"
   in this line describes the *converted output's* aggregate mcp.json, which already sums
   the 2 bundled + 3 deploy-on-aws servers correctly — leave that number as-is; only the
@@ -57,7 +57,7 @@ pure prose/text edits with no code-logic change.
 **Files:**
 - Modify: `CLAUDE.md`
 
-- [ ] The "Versioning" section's validation snippet only checks 3 of 6 plugins
+- [x] The "Versioning" section's validation snippet only checks 3 of 6 plugins
   (content/ops/converter). Generalize it to loop over `plugins/*/.claude-plugin/plugin.json`
   so it covers agentcore-creator, co-agent, and project-init too. P2 gate noted this repo
   *also* maintains a parallel `.codex-plugin/plugin.json` per plugin (all currently
@@ -70,7 +70,7 @@ pure prose/text edits with no code-logic change.
 **Files:**
 - Modify: `CLAUDE.md`
 
-- [ ] The "Development Commands" manifest validation example only covers 2 of 6 plugins.
+- [x] The "Development Commands" manifest validation example only covers 2 of 6 plugins.
   Apply the same loop-over-`plugins/*/` pattern as Task 4.
 
 ### Task 6: Fix the co-agent/project-init file tree in README (both languages)
@@ -79,7 +79,7 @@ pure prose/text edits with no code-logic change.
 - Modify: `README.md`
 - Modify: `README.ko.md`
 
-- [ ] The co-agent tree header says "3 agents" but only lists `co-agent.md` — add
+- [x] The co-agent tree header says "3 agents" but only lists `co-agent.md` — add
   `gate-chair.md` and `harness-analyst.md`. The project-init commands list is missing
   `pr-autofix.md` and `add-reference-doc.md` (lists 8 of 10). Fix both trees in both
   language files.
@@ -90,7 +90,7 @@ pure prose/text edits with no code-logic change.
 - Modify: `README.md`
 - Modify: `README.ko.md`
 
-- [ ] Add one bullet each for the `gate-chair` and `harness-analyst` agents, as sub-bullets
+- [x] Add one bullet each for the `gate-chair` and `harness-analyst` agents, as sub-bullets
   directly under the existing "Panel of installed CLIs" bullet in the co-agent feature
   block (*Multi-AI Collaboration (co-agent):* section) — P2 gate (codex + kimi-k2.5,
   independently) flagged the original "add one line each" instruction as underspecified
