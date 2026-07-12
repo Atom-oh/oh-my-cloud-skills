@@ -599,7 +599,7 @@ aws-ops-power/
     ├── ops-observability.md
     ├── ops-security-audit.md
     ├── ops-wellarchitected-review.md
-    └── ref-*.md                  # 15 reference files (manual inclusion)
+    └── ref-*.md                  # 22 reference files (manual inclusion)
 ```
 
 ### Edge Cases

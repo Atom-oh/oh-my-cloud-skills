@@ -598,7 +598,7 @@ aws-ops-power/
     ├── ops-observability.md
     ├── ops-security-audit.md
     ├── ops-wellarchitected-review.md
-    └── ref-*.md                  # 15개 레퍼런스 파일 (manual inclusion)
+    └── ref-*.md                  # 22개 레퍼런스 파일 (manual inclusion)
 ```
 
 ### 엣지 케이스
