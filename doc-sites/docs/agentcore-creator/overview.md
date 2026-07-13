@@ -44,10 +44,10 @@ flowchart LR
 | Phase | 이름 | 설명 |
 |-------|------|------|
 | 1 | Discovery | 에이전트 요구사항 브레인스토밍 (목적, 사용자, 도구, 지식) |
-| 2 | Design | 컴포넌트 블루프린트 설계 (스킬, 레퍼런스, 메모리, 게이트웨이) |
+| 2 | Design | 컴포넌트 블루프린트 설계 (스킬, 레퍼런스, 메모리, 게이트웨이, Bedrock 모델 선택 — Opus/Sonnet/Haiku/Fable 5) |
 | 3 | Skill-First Build | Claude Code 플러그인으로 먼저 빌드하여 로컬 테스트 |
 | 4 | AgentCore Convert | `convert_plugin_to_agentcore.py`로 AgentCore 포맷 변환 |
-| 5 | Deploy & Verify | `agentcore configure/deploy/invoke` CLI로 배포 및 검증 |
+| 5 | Deploy & Verify | `agentcore configure/deploy/invoke` CLI로 배포 및 검증(선택: AgentCore Evaluations) |
 
 ## AgentCore 구성 요소
 
@@ -55,7 +55,7 @@ flowchart LR
 |------|------|
 | Runtime | `@app.entrypoint` 래퍼가 포함된 Strands Agent Python 코드 |
 | Memory | STM (단기 이벤트) + LTM (장기 시맨틱) 메모리 전략 |
-| Gateway | MCP 서버를 Lambda, OpenAPI, Smithy 타겟으로 매핑 |
+| Gateway | MCP 서버를 Lambda, OpenAPI, Smithy 타겟으로 매핑(HTTP passthrough, Runtime 타겟 등 확장된 타겟 타입도 지원) |
 | Tools | AgentCore Tool 포맷으로 변환된 도구 정의 |
 
 ## Auto-Invocation 키워드

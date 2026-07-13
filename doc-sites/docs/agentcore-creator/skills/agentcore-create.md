@@ -24,9 +24,10 @@ AgentCore 변환 및 배포를 위한 5-Phase 워크플로우 스킬입니다.
 
 | 문서 | 설명 |
 |------|------|
-| `agentcore-format-guide.md` | AgentCore Runtime, Gateway, Memory 포맷 스펙 |
-| `strands-agent-guide.md` | Strands Agent 프레임워크 가이드 |
-| `conversion-rules.md` | 플러그인 → AgentCore 변환 규칙 |
+| `agentcore-format-reference.md` | AgentCore Runtime, Gateway, Memory 포맷 스펙 |
+| `agent-code-templates.md` | Strands Agent 코드 템플릿 (모델별 inference 기본값 포함) |
+| `agentcore-mapping-rules.md` | 플러그인 → AgentCore 변환 규칙, 모델별 호환성 노트 |
+| `memory-chunking-strategy.md` | STM/LTM 메모리 청킹 전략 |
 
 ## 워크플로우
 
@@ -41,6 +42,8 @@ Discovery 결과를 바탕으로 컴포넌트 블루프린트를 설계합니다
 - 레퍼런스 문서 구조
 - 메모리 전략 (STM/LTM)
 - 게이트웨이 타겟 매핑
+- Bedrock 모델 선택(Opus/Sonnet/Haiku/Fable 5 중 용도에 맞게) — 커스텀 오케스트레이션이
+  불필요하면 Runtime+Strands 대신 AgentCore Harness도 대안으로 제안
 
 ### Phase 3: Skill-First Build
 
@@ -61,3 +64,6 @@ agentcore deploy       # AgentCore Runtime 배포
 agentcore invoke       # 테스트 호출
 agentcore status       # 배포 상태 확인
 ```
+
+Phase 1에서 구체적 성공 기준을 잡았다면, 수동 `invoke` 확인 외에 AgentCore
+Evaluations(내장 평가자/Ground Truth/커스텀 Lambda 평가자)도 선택적으로 제안합니다.
