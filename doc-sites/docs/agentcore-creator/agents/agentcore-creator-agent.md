@@ -23,6 +23,7 @@ title: "AgentCore Creator Agent"
 6. **STM/LTM Memory** — 단기 이벤트 + 장기 시맨틱 메모리 전략 설계
 7. **Gateway Configuration** — MCP 서버를 AgentCore Gateway 타겟으로 매핑
 8. **CLI Deployment** — `agentcore configure/deploy/invoke/status/destroy` CLI 배포
+9. **모델 인지** — Opus/Sonnet/Haiku/Fable 5별 Bedrock 파라미터 계약을 반영해 코드 생성(예: `effort`/adaptive thinking); 커스텀 오케스트레이션이 불필요하면 AgentCore Harness도 대안으로 제안
 
 ## 사용 예시
 
