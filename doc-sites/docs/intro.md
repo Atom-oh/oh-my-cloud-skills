@@ -28,12 +28,12 @@ title: 시작하기
 /plugin marketplace add https://github.com/Atom-oh/oh-my-cloud-skills
 
 # 플러그인 설치
+/plugin install co-agent@oh-my-cloud-skills
+/plugin install project-init@oh-my-cloud-skills
 /plugin install aws-content-plugin@oh-my-cloud-skills
 /plugin install aws-ops-plugin@oh-my-cloud-skills
 /plugin install kiro-power-converter@oh-my-cloud-skills
 /plugin install agentcore-creator@oh-my-cloud-skills
-/plugin install co-agent@oh-my-cloud-skills
-/plugin install project-init@oh-my-cloud-skills
 ```
 
 ### 로컬에서 직접 로드
@@ -43,12 +43,12 @@ title: 시작하기
 git clone https://github.com/Atom-oh/oh-my-cloud-skills.git
 
 # 플러그인 디렉토리를 직접 지정하여 로드
+claude --plugin-dir ./oh-my-cloud-skills/plugins/co-agent
+claude --plugin-dir ./oh-my-cloud-skills/plugins/project-init
 claude --plugin-dir ./oh-my-cloud-skills/plugins/aws-content-plugin
 claude --plugin-dir ./oh-my-cloud-skills/plugins/aws-ops-plugin
 claude --plugin-dir ./oh-my-cloud-skills/plugins/kiro-power-converter
 claude --plugin-dir ./oh-my-cloud-skills/plugins/agentcore-creator
-claude --plugin-dir ./oh-my-cloud-skills/plugins/co-agent
-claude --plugin-dir ./oh-my-cloud-skills/plugins/project-init
 ```
 
 ## 플러그인 구조
@@ -96,10 +96,10 @@ plugins/<plugin-name>/
 
 ## 다음 단계
 
+- [co-agent 개요](/docs/co-agent/overview) — 멀티-AI 협업 플러그인 (리뷰·의사결정·ADR·컨텍스트 동기화 + `/co-agent:configure`)
+- [project-init 개요](/docs/project-init/overview) — 프로젝트 스캐폴딩 플러그인
 - [aws-content-plugin 개요](/docs/aws-content-plugin/overview) — 콘텐츠 생성 플러그인
 - [aws-ops-plugin 개요](/docs/aws-ops-plugin/overview) — 인프라 운영 플러그인
 - [kiro-power-converter 개요](/docs/kiro-power-converter/overview) — Kiro Power 변환 플러그인
 - [agentcore-creator 개요](/docs/agentcore-creator/overview) — Bedrock AgentCore 배포 플러그인
-- [co-agent 개요](/docs/co-agent/overview) — 멀티-AI 협업 플러그인 (리뷰·의사결정·ADR·컨텍스트 동기화 + `/co-agent:configure`)
-- [project-init 개요](/docs/project-init/overview) — 프로젝트 스캐폴딩 플러그인
 - [Remarp Guide](/docs/remarp-guide/introduction) — 차세대 프레젠테이션 마크다운 포맷

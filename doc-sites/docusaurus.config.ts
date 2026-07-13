@@ -134,12 +134,12 @@ const config: Config = {
         {
           title: 'Plugins',
           items: [
+            {label: 'co-agent', to: '/docs/co-agent/overview'},
+            {label: 'project-init', to: '/docs/project-init/overview'},
             {label: 'aws-content-plugin', to: '/docs/aws-content-plugin/overview'},
             {label: 'aws-ops-plugin', to: '/docs/aws-ops-plugin/overview'},
             {label: 'kiro-power-converter', to: '/docs/kiro-power-converter/overview'},
             {label: 'agentcore-creator', to: '/docs/agentcore-creator/overview'},
-            {label: 'co-agent', to: '/docs/co-agent/overview'},
-            {label: 'project-init', to: '/docs/project-init/overview'},
           ],
         },
         {
