@@ -11,7 +11,7 @@ framework), readable on mobile, tablet, and PC, hosted publicly on GitHub Pages.
 
 A profile page is a **personal front door**, not a product pitch: sidebar identity
 (photo, name, links), about, experience timeline, skills, and a real project showcase
-with working Live + GitHub links.
+with working GitHub + Live links (and an optional per-repo Demo link, asked from the user).
 
 ## Trigger Keywords
 

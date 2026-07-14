@@ -32,6 +32,21 @@
         "Self-contained: CSS remains inlined in <style> (no build step introduced)",
         "Well-formed: section & style tags balanced"
       ]
+    },
+    {
+      "id": 2,
+      "name": "gh-derived-portfolio-ko",
+      "prompt": "내 개인 GitHub Pages 프로필 페이지를 만들어줘. GitHub 사용자명은 <user>야. 이름/직함/거주지는 알려줄게. 프로젝트 섹션은 내 GitHub repo들 중에서 알아서 골라서 채워줘. 경력은 내 LinkedIn(URL)을 참고해서 채울 수 있으면 채워줘.",
+      "expected_output": "A profile page whose project cards are curated from the user's real repos via gh (Pages-enabled repos first, each with a Live + GitHub link pair), with the selection rationale surfaced to the user; experience appears only if verifiably sourced (LinkedIn fetch/search or user-given facts) — never invented.",
+      "files": [],
+      "assertions": [
+        "Project cards name only real public repos of the given user (gh-verifiable)",
+        "Pages-enabled (hasPages) repos are the showcased candidates; each shows a Live + GitHub link pair",
+        "Project selection is confirmed with (or stated to) the user, not silently exhaustive",
+        "No fabricated experience entries when LinkedIn is unfetchable",
+        "Responsive viewport meta + mobile breakpoint present",
+        "Self-contained: CSS inlined in <style> (no build step)"
+      ]
     }
   ]
 }

@@ -13,7 +13,7 @@ main      — two-column grid: sidebar (~280px) | content (flexible)
     experience  — reverse-chronological timeline (dot + connecting line)
     skills      — category groups of tag chips
     featured    — talks / posts as small cards (optional — omit if none)
-    projects    — grouped project cards, each with Live + GitHub link pair
+    projects    — grouped project cards, each with GitHub + Live links (+ optional Demo)
 footer    — copyright + link recap
 ```
 
@@ -89,7 +89,7 @@ Each entry: period (small, muted) → role + company (bold, accent on company na
 
 ## 5. Project cards
 
-Group related projects under a category label; each card gets a label (type: Docs/Ops/Framework/…), title, one-line description, and a **Live + GitHub link pair** — never ship a project card with a dead or missing link:
+Group related projects under a category label; each card gets a label (type: Docs/Ops/Framework/…), title, one-line description, and **up to three links — GitHub + Live (Pages) + optional Demo** (a separate demo site, only when the user says one exists) — never ship a project card with a dead or missing link:
 
 ```css
 .featured-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }

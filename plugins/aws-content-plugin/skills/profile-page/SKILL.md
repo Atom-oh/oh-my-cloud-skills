@@ -45,7 +45,7 @@ Never fabricate job titles, dates, employers, talks, or project descriptions.
    `gh repo list <user> --visibility public --limit 50 --json name,description,url,homepageUrl,hasPages`.
    **Prioritize repos with `hasPages: true` as showcase candidates** — they come with a working Live + GitHub link pair (Live = `homepageUrl`, or the repo's Pages URL). Repos without Pages get a GitHub link only, and only if the user wants them included.
 2b. **LinkedIn (optional input)**: if the user gives a LinkedIn profile URL, try `WebFetch` on it for experience/title/education, and fall back to a `WebSearch` for the person's name + LinkedIn when the fetch hits LinkedIn's auth wall (it usually does for unauthenticated requests). Treat whatever you retrieve as *candidate* facts — show them to the user for confirmation before publishing, and if nothing verifiable comes back, say so and collect experience from the user instead. Never pad the experience section with search-result guesses.
-3. **Confirm the selection and ask what's missing** with `AskUserQuestion` — which of the candidate projects to feature (never silently include every repo), plus any gaps: name, title/role, location, 3–6 experience entries (company, period, one-line description), and skill categories.
+3. **Confirm the selection and ask what's missing** with `AskUserQuestion` — which of the candidate projects to feature (never silently include every repo), and **per selected repo, whether a separate demo site exists** (a project card carries up to three links — GitHub, Live (Pages), Demo — and Demo can't be derived from the repo, so it must come from the user; omit it rather than guessing). Then any remaining gaps: name, title/role, location, 3–6 experience entries (company, period, one-line description), and skill categories.
 
 Capture:
 - **Identity**: name, title, org, location, avatar image, contact/social links (GitHub, LinkedIn, etc.).
@@ -53,7 +53,7 @@ Capture:
 - **Experience**: reverse-chronological entries — period, role, company, one-line description each.
 - **Skills**: grouped by category (e.g. Cloud, Languages, Tools) — real, current skills only.
 - **Featured work** (optional): talks, blog posts, notable mentions — each with a link.
-- **Projects**: name, one-line description, Live URL + GitHub URL pair — verify both resolve before listing.
+- **Projects**: name, one-line description, up to three links — GitHub URL + Live (Pages) URL + optional Demo URL (user-supplied, per repo) — verify every listed link resolves before shipping.
 
 ### Phase 2 — Commit to a design direction
 
@@ -74,7 +74,7 @@ about       — 1-2 short paragraphs
 experience  — reverse-chronological timeline
 skills      — grouped tag chips
 featured    — talks / blog posts (optional)
-projects    — grouped project cards, each with Live + GitHub links
+projects    — grouped project cards, each with GitHub + Live (Pages) links and an optional Demo link
 footer      — copyright + links
 ```
 
