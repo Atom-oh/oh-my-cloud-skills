@@ -22,7 +22,7 @@
     {
       "id": 1,
       "name": "portfolio-refresh-en",
-      "prompt": "I already have an index.html on my GitHub Pages user site (attached below) — can you refresh it to add a new project 'edge-cache-cli' (GitHub: github.com/jdoe/edge-cache-cli, Live: jdoe.dev/edge-cache-cli) to the Projects section, without changing anything else?",
+      "prompt": "I already have an index.html on my GitHub Pages user site (provided as an input file) — can you refresh it to add a new project 'edge-cache-cli' (GitHub: github.com/jdoe/edge-cache-cli, Live: jdoe.dev/edge-cache-cli) to the Projects section, without changing anything else?",
       "expected_output": "The existing profile page HTML with the new project card added to the Projects section, preserving all other existing content, styling, and files (e.g. analytics scripts, CNAME) untouched.",
       "files": [],
       "assertions": [
@@ -41,7 +41,7 @@
       "files": [],
       "assertions": [
         "Project cards name only real public repos of the given user (gh-verifiable)",
-        "Pages-enabled (hasPages) repos are the showcased candidates; each shows a Live + GitHub link pair",
+        "Pages-enabled (has_pages) repos are the showcased candidates; each shows a Live + GitHub link pair",
         "Project selection is confirmed with (or stated to) the user, not silently exhaustive",
         "No fabricated experience entries when LinkedIn is unfetchable",
         "Responsive viewport meta + mobile breakpoint present",

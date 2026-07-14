@@ -15,7 +15,7 @@ with working GitHub + Live links (and an optional per-repo Demo link, asked from
 
 ## Trigger Keywords
 
-- "profile page", "portfolio", "developer portfolio", "about me page"
+- "profile page", "portfolio", "developer portfolio", "about me page", "resume/CV page"
 - "프로필 페이지", "포트폴리오", "자기소개 페이지", "프로젝트 소개 페이지"
 
 ## When this applies (and when it doesn't)
@@ -36,7 +36,7 @@ gather facts (reuse existing page / GitHub / user confirmation) → write self-c
 
 | Phase | What happens |
 |-------|--------------|
-| 1. Gather facts | Preflight: confirm the target public GitHub Pages repo + `gh auth status`. Reuse an existing profile page if one exists; derive from GitHub via `gh` (**Pages-enabled repos are the primary showcase candidates**); optionally pull experience from a user-provided LinkedIn URL (WebFetch → WebSearch fallback, user-confirmed); confirm the project selection with the user. **Never fabricate** roles, dates, or projects. |
+| 1. Gather facts | Preflight: confirm the target public GitHub Pages repo + `gh auth status`. Reuse an existing profile page if one exists; derive from GitHub via `gh` (**Pages-enabled repos are the primary showcase candidates**); optionally pull experience from a user-provided LinkedIn URL (WebFetch, user-confirmed candidate facts; expect the auth wall and fall back to asking); confirm the project selection with the user. **Never fabricate** roles, dates, or projects. |
 | 2. Design | Read `references/profile-design.md`; reuse the person's existing aesthetic if any. |
 | 3. Write HTML | One self-contained `.html` — sidebar + about + experience + skills + projects. |
 | 4. Self-check + review | Reuses the `brochure` skill's `check_brochure.py` → `content-review-agent` (≥85). |

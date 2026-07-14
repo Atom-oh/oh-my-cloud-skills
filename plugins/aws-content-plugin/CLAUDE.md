@@ -142,8 +142,8 @@ gather facts (기존 페이지/GitHub/사용자 확인) → self-contained respo
 | `slide-fix` | Issue annotation-based slide repair (reads `<!-- issue: -->`, fixes, rebuilds) |
 | `workshop-creator` | Workshop Studio directives, templates, references |
 | `brochure` | Responsive brochure design system, golden example, self-check script |
-| `aws-light-fcd` | Native **PPTX** decks (PptxGenJS) — AWS Light theme, Pretendard, 11 layout builders + arch-diagram kit; shares the 811-icon library via `kit.icon()` |
 | `profile-page` | Personal profile / developer portfolio page design system — sidebar+timeline+project-card spine; reuses `brochure`'s self-check script |
+| `aws-light-fcd` | Native **PPTX** decks (PptxGenJS) — AWS Light theme, Pretendard, 11 layout builders + arch-diagram kit; shares the 811-icon library via `kit.icon()` |
 
 ---
 
