@@ -24,7 +24,8 @@
     "./skills/workshop-creator",
     "./skills/slide-fix",
     "./skills/brochure",
-    "./skills/aws-light-fcd"
+    "./skills/aws-light-fcd",
+    "./skills/profile-page"
   ],
   "hooks": {
     "PostToolUse": [

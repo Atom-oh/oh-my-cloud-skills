@@ -16,7 +16,7 @@ oh-my-cloud-skills는 Claude Code용 플러그인 마켓플레이스로, AWS 클
 
 | 컴포넌트 | 역할 | 주요 기술 |
 |----------|------|----------|
-| aws-content-plugin | 콘텐츠 생성 (9 agents, 8 skills) | Python, HTML/CSS/JS, Draw.io |
+| aws-content-plugin | 콘텐츠 생성 (9 agents, 9 skills) | Python, HTML/CSS/JS, Draw.io |
 | aws-ops-plugin | 인프라 운영 (10 agents, 6 skills) | MCP servers, AWS CLI |
 | kiro-power-converter | 플러그인 → Kiro Power 변환 | YAML/JSON 변환 |
 | co-agent | 멀티-AI 협업 — 리뷰/의사결정/ADR/컨텍스트 동기화 (3 agents, 1 skill, 5 commands) | Kiro/Codex/Antigravity CLI |
@@ -124,7 +124,7 @@ oh-my-cloud-skills is a Claude Code plugin marketplace providing 6 plugins for A
 
 | Component | Role | Tech |
 |-----------|------|------|
-| aws-content-plugin | Content creation (9 agents, 8 skills) | Python, HTML/CSS/JS, Draw.io |
+| aws-content-plugin | Content creation (9 agents, 9 skills) | Python, HTML/CSS/JS, Draw.io |
 | aws-ops-plugin | Infrastructure ops (10 agents, 6 skills) | MCP servers, AWS CLI |
 | kiro-power-converter | Plugin → Kiro Power conversion | YAML/JSON transform |
 | co-agent | Multi-AI collaboration — review/decide/ADR/sync-context (3 agents, 1 skill, 5 commands) | Kiro/Codex/Antigravity CLI |
