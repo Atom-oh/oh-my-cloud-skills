@@ -9,6 +9,8 @@ allowed-tools:
   - Glob
   - Grep
   - AskUserQuestion
+  - WebFetch
+  - WebSearch
 ---
 
 # Profile Page
@@ -42,6 +44,7 @@ Never fabricate job titles, dates, employers, talks, or project descriptions.
 2. **Derive from GitHub** (needs `gh`): `gh api users/<user>` (bio, location, links) and
    `gh repo list <user> --visibility public --limit 50 --json name,description,url,homepageUrl,hasPages`.
    **Prioritize repos with `hasPages: true` as showcase candidates** — they come with a working Live + GitHub link pair (Live = `homepageUrl`, or the repo's Pages URL). Repos without Pages get a GitHub link only, and only if the user wants them included.
+2b. **LinkedIn (optional input)**: if the user gives a LinkedIn profile URL, try `WebFetch` on it for experience/title/education, and fall back to a `WebSearch` for the person's name + LinkedIn when the fetch hits LinkedIn's auth wall (it usually does for unauthenticated requests). Treat whatever you retrieve as *candidate* facts — show them to the user for confirmation before publishing, and if nothing verifiable comes back, say so and collect experience from the user instead. Never pad the experience section with search-result guesses.
 3. **Confirm the selection and ask what's missing** with `AskUserQuestion` — which of the candidate projects to feature (never silently include every repo), plus any gaps: name, title/role, location, 3–6 experience entries (company, period, one-line description), and skill categories.
 
 Capture:
