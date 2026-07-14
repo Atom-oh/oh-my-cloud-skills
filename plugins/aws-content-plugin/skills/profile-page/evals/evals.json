@@ -22,9 +22,11 @@
     {
       "id": 1,
       "name": "portfolio-refresh-en",
-      "prompt": "I already have an index.html on my GitHub Pages user site (provided as an input file) — can you refresh it to add a new project 'edge-cache-cli' (GitHub: github.com/jdoe/edge-cache-cli, Live: jdoe.dev/edge-cache-cli) to the Projects section, without changing anything else?",
+      "prompt": "I already have an index.html on my GitHub Pages user site — a copy is provided at evals/fixtures/existing-profile.html (relative to this skill). Copy it to your working directory as index.html, then refresh it to add a new project 'edge-cache-cli' (GitHub: github.com/jdoe/edge-cache-cli, Live: jdoe.dev/edge-cache-cli, description: \"single-binary CLI to purge and warm CDN edge caches\") to the Projects section, without changing anything else.",
       "expected_output": "The existing profile page HTML with the new project card added to the Projects section, preserving all other existing content, styling, and files (e.g. analytics scripts, CNAME) untouched.",
-      "files": [],
+      "files": [
+        "fixtures/existing-profile.html"
+      ],
       "assertions": [
         "Existing sections (about, experience, skills) remain unchanged in content",
         "New project card for edge-cache-cli added with both Live and GitHub links",
@@ -36,8 +38,8 @@
     {
       "id": 2,
       "name": "gh-derived-portfolio-ko",
-      "prompt": "내 개인 GitHub Pages 프로필 페이지를 만들어줘. GitHub 사용자명은 <user>야. 이름/직함/거주지는 알려줄게. 프로젝트 섹션은 내 GitHub repo들 중에서 알아서 골라서 채워줘. 경력은 내 LinkedIn(URL)을 참고해서 채울 수 있으면 채워줘.",
-      "expected_output": "A profile page whose project cards are curated from the user's real repos via gh (Pages-enabled repos first, each with a Live + GitHub link pair), with the selection rationale surfaced to the user; experience appears only if verifiably sourced (LinkedIn fetch/search or user-given facts) — never invented.",
+      "prompt": "내 개인 GitHub Pages 프로필 페이지를 만들어줘. GitHub 사용자명은 Atom-oh야. 이름/직함/거주지는 물어보면 알려줄게. 프로젝트 섹션은 내 GitHub repo들 중에서 알아서 골라서 채워줘. 경력은 내 LinkedIn URL을 주면 참고해서 채울 수 있으면 채워줘.",
+      "expected_output": "A profile page whose project cards are curated from the user's real repos via gh (Pages-enabled repos first, each with a Live + GitHub link pair), with the selection rationale surfaced to the user; experience appears only if verifiably sourced (a LinkedIn fetch or user-given facts) — never invented.",
       "files": [],
       "assertions": [
         "Project cards name only real public repos of the given user (gh-verifiable)",

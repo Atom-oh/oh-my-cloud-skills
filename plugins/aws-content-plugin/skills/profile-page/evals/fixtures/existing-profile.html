@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jane Doe | Platform Engineer</title>
+  <meta name="description" content="Platform engineer. Kubernetes, CDN, edge computing.">
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXAMPLE123"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)};gtag('js',new Date());gtag('config','G-EXAMPLE123');</script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0d1117; --card: #161b22; --text: #e6edf3;
+      --text-secondary: #8b949e; --accent: #58a6ff; --border: #30363d;
+    }
+    body { font-family: -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+    a { color: var(--accent); text-decoration: none; }
+    a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .main { display: grid; grid-template-columns: 280px 1fr; max-width: 1100px; margin: 0 auto; gap: 3rem; padding: 2.5rem 2rem; }
+    .sidebar { position: sticky; top: 20px; align-self: start; }
+    .sidebar-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 2rem 1.5rem; text-align: center; }
+    .section { margin-bottom: 3rem; }
+    .section-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.25rem; border-bottom: 2px solid var(--border); }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; margin-bottom: 1rem; }
+    .project-links { margin-top: 0.75rem; display: flex; gap: 1rem; font-size: 0.85rem; font-weight: 600; }
+    @media (max-width: 768px) { .main { grid-template-columns: 1fr; padding: 1.5rem 1rem; } .sidebar { position: static; } }
+  </style>
+</head>
+<body>
+  <div class="main">
+    <aside class="sidebar">
+      <div class="sidebar-card">
+        <h1>Jane Doe</h1>
+        <p style="color: var(--accent); font-weight: 600;">Platform Engineer</p>
+        <p style="color: var(--text-secondary);">Portland, OR</p>
+        <p style="margin-top: 1rem;"><a href="https://github.com/jdoe">github.com/jdoe</a></p>
+      </div>
+    </aside>
+    <main class="content">
+      <section class="section">
+        <h2 class="section-title">About</h2>
+        <p style="color: var(--text-secondary);">Platform engineer focused on Kubernetes, CDN infrastructure, and edge computing. I like small tools that do one thing well.</p>
+      </section>
+      <section class="section">
+        <h2 class="section-title">Experience</h2>
+        <div class="card">
+          <div style="color: var(--text-secondary); font-size: 0.85rem;">2021 — Present</div>
+          <div style="font-weight: 600;">EdgeWorks Inc · Platform Engineer</div>
+          <div style="color: var(--text-secondary); font-size: 0.9rem;">CDN control plane, multi-region Kubernetes.</div>
+        </div>
+        <div class="card">
+          <div style="color: var(--text-secondary); font-size: 0.85rem;">2018 — 2021</div>
+          <div style="font-weight: 600;">HostCo · SRE</div>
+          <div style="color: var(--text-secondary); font-size: 0.9rem;">On-call, observability, incident tooling.</div>
+        </div>
+      </section>
+      <section class="section">
+        <h2 class="section-title">Skills</h2>
+        <p style="color: var(--text-secondary);">Kubernetes · Go · Terraform · Varnish · Prometheus</p>
+      </section>
+      <section class="section">
+        <h2 class="section-title">Projects</h2>
+        <div class="card">
+          <div style="font-weight: 600;">k8s-drain-helper</div>
+          <div style="color: var(--text-secondary); font-size: 0.9rem;">Safer node drains with PDB-aware batching.</div>
+          <div class="project-links">
+            <a href="https://jdoe.dev/k8s-drain-helper">Live →</a>
+            <a href="https://github.com/jdoe/k8s-drain-helper">GitHub →</a>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <footer style="border-top: 1px solid var(--border); text-align: center; padding: 2rem; color: var(--text-secondary); font-size: 0.8rem;">
+    <p>© 2026 Jane Doe.</p>
+  </footer>
+</body>
+</html>

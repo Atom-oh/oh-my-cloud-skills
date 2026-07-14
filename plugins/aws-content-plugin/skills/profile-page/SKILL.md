@@ -1,6 +1,6 @@
 ---
 name: profile-page
-description: "Create a single-page, responsive personal profile / developer portfolio page as one self-contained HTML file — sidebar (photo, name, links) + about + experience timeline + skills + featured work + project showcase — deployed publicly via GitHub Pages. Use whenever the user wants a personal profile page, developer portfolio, 'about me' page, resume/CV page, '프로필 페이지', '포트폴리오', '자기소개 페이지', '프로젝트 소개 페이지', or wants to showcase themselves and their projects on the web. Not for a product/solution marketing page (use brochure), slide decks (use reactive-presentation), or multi-page docs sites (use gitbook)."
+description: "Create a single-page, responsive personal profile / developer portfolio page as one self-contained HTML file — sidebar (photo, name, links) + about + experience timeline + skills + featured work + project showcase — deployed publicly via GitHub Pages. Use whenever the user wants a personal profile page, developer portfolio, 'about me' page, resume/CV page, '프로필 페이지', '포트폴리오', '자기소개 페이지', '개인 프로젝트 소개 페이지', or wants to showcase themselves and their projects on the web. Not for a product/solution marketing page (use brochure), slide decks (use reactive-presentation), or multi-page docs sites (use gitbook)."
 allowed-tools:
   - Read
   - Write
@@ -41,10 +41,10 @@ Never fabricate job titles, dates, employers, talks, or project descriptions.
 0. **Preflight — target repo + `gh` CLI**: the page ships to a **public GitHub Pages repo** (typically `<user>.github.io`). Confirm which repo is the target with `AskUserQuestion` if the user didn't say, and check `gh auth status`. With `gh` available, most facts below can be derived automatically; without it, everything must come from an existing page and the user — say so up front rather than degrading silently.
 1. **Reuse first**: if the target repo already has a profile page (e.g. an existing `index.html` on a GitHub Pages user/org site), read it and treat its content as the source of truth to refresh, not replace blindly — carry over real links, dates, and descriptions unless the user says otherwise.
 2. **Derive from GitHub** (needs `gh`): validate the username first (`^[A-Za-z0-9-]{1,39}$`) before interpolating it into any command, then `gh api users/<user>` (bio, location, links) and
-   `gh api "users/<user>/repos?per_page=100&type=owner" --jq '.[] | select(.fork|not) | {name, description, html_url, homepage, has_pages}'`
+   `gh api --paginate "users/<user>/repos?per_page=100&type=owner" --jq '.[] | select(.fork|not) | {name, description, html_url, homepage, has_pages}'`
    (`gh repo list --json` has no Pages field — `has_pages` only exists on the REST repo object, so go through `gh api`; the jq also drops forks, which are not the person's own work).
    **Prioritize repos with `has_pages: true` as showcase candidates** — they come with a working Live + GitHub link pair (Live = `homepage`, or the repo's Pages URL). Repos without Pages get a GitHub link only, and only if the user wants them included.
-2b. **LinkedIn (optional input)**: if the user gives a LinkedIn profile URL, try `WebFetch` on it for experience/title/education — expect LinkedIn's auth wall on unauthenticated requests (it usually blocks). Treat anything you do retrieve as *candidate* facts — show them to the user for confirmation before publishing — and when nothing verifiable comes back, say so and collect experience from the user instead (a single verifiable current role plus a "full history on LinkedIn" link is an honest fallback). Never pad the experience section with guesses.
+2b. **LinkedIn (optional input)**: if the user gives a LinkedIn profile URL (fetch `https://` URLs only — reject other schemes), try `WebFetch` on it for experience/title/education — expect LinkedIn's auth wall on unauthenticated requests (it usually blocks). Treat anything you do retrieve as *candidate* facts — show them to the user for confirmation before publishing — and when nothing verifiable comes back, say so and collect experience from the user instead (a single verifiable current role plus a "full history on LinkedIn" link is an honest fallback). Never pad the experience section with guesses.
 3. **Confirm the selection and ask what's missing** with `AskUserQuestion` — which of the candidate projects to feature (never silently include every repo), and **per selected repo, whether a separate demo site exists** (a project card carries up to three links — GitHub, Live (Pages), Demo — and Demo can't be derived from the repo, so it must come from the user; omit it rather than guessing). Then any remaining gaps: name, title/role, location, 3–6 experience entries (company, period, one-line description), and skill categories.
 
 Capture:
@@ -86,10 +86,10 @@ Accessibility basics are not optional: viewport meta, `:focus-visible` on links,
 
 ### Phase 4 — Self-check, then quality-gate
 
-The brochure skill's structural checker is generic enough to reuse as-is — it checks tag balance, viewport meta, mobile breakpoint, `:focus-visible`, `prefers-reduced-motion`, and that local asset references (avatar image, etc.) actually resolve:
+Reuse the brochure skill's structural checker — it checks tag balance, viewport meta, the mobile breakpoint, `:focus-visible`, `prefers-reduced-motion`, and that local asset references (avatar image, etc.) actually resolve. Pass `--mobile-breakpoint 768`: the checker's default (640) is the brochure design system's breakpoint, while this skill's design spec stacks the sidebar at 768px — without the flag a spec-compliant profile page would fail the gate:
 
 ```bash
-python3 {skill-dir}/../brochure/scripts/check_brochure.py <profile.html>
+python3 {skill-dir}/../brochure/scripts/check_brochure.py <profile.html> --mobile-breakpoint 768
 ```
 
 Then invoke **content-review-agent** (`review content at <path>`). A score **≥ 85** is required before deploy — it catches inflated/fabricated claims, dead links, contradictions, and PII that shouldn't be public (private emails, phone numbers).
