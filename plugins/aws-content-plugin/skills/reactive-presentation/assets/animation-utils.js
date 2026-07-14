@@ -3,24 +3,63 @@
  */
 
 /* ── Color Helpers ── */
+/* Canvas colors follow the active CSS theme (light default / .theme-dark /
+   PPTX override) instead of assuming the historical dark palette. Values are
+   resolved from the deck's computed custom properties; the literals below are
+   only fallbacks for headless/partial contexts. */
+function _cssColor(name, fallback) {
+  try {
+    var root = document.querySelector('.slide-deck') || document.documentElement;
+    var v = getComputedStyle(root).getPropertyValue(name).trim();
+    return v || fallback;
+  } catch (e) { return fallback; }
+}
+
 const Colors = {
-  bg:        '#0f1117',
-  bgSecond:  '#1a1d2e',
-  surface:   '#282d45',
-  border:    '#2d3250',
-  accent:    '#6c5ce7',
-  accentLt:  '#a29bfe',
-  green:     '#00b894',
-  yellow:    '#fdcb6e',
-  red:       '#e17055',
-  blue:      '#74b9ff',
-  cyan:      '#00cec9',
-  pink:      '#fd79a8',
-  orange:    '#f39c12',
-  textPri:   '#e8eaf0',
-  textSec:   '#9ba1b8',
-  textMuted: '#6b7194',
+  bg:        '#eaedee',
+  bgSecond:  '#f2f3f3',
+  surface:   '#f2f3f3',
+  border:    '#d0d7dc',
+  accent:    '#ec7211',
+  accentLt:  '#ec7211',
+  green:     '#037f0c',
+  yellow:    '#8a5b00',
+  red:       '#d91515',
+  blue:      '#0972d3',
+  cyan:      '#0891b2',
+  pink:      '#d13d73',
+  orange:    '#ec7211',
+  textPri:   '#0f141a',
+  textSec:   '#414d5c',
+  textMuted: '#7d8998',
 };
+
+/** Re-resolve Colors from the live CSS theme (call after theme switches). */
+function refreshThemeColors() {
+  Colors.bg        = _cssColor('--bg-primary',     Colors.bg);
+  Colors.bgSecond  = _cssColor('--bg-secondary',   Colors.bgSecond);
+  Colors.surface   = _cssColor('--surface',        Colors.surface);
+  Colors.border    = _cssColor('--border',         Colors.border);
+  Colors.accent    = _cssColor('--accent',         Colors.accent);
+  Colors.accentLt  = _cssColor('--accent-light',   Colors.accentLt);
+  Colors.green     = _cssColor('--green',          Colors.green);
+  Colors.yellow    = _cssColor('--yellow',         Colors.yellow);
+  Colors.red       = _cssColor('--red',            Colors.red);
+  Colors.blue      = _cssColor('--blue',           Colors.blue);
+  Colors.cyan      = _cssColor('--cyan',           Colors.cyan);
+  Colors.pink      = _cssColor('--pink',           Colors.pink);
+  Colors.orange    = _cssColor('--orange',         Colors.orange);
+  Colors.textPri   = _cssColor('--text-primary',   Colors.textPri);
+  Colors.textSec   = _cssColor('--text-secondary', Colors.textSec);
+  Colors.textMuted = _cssColor('--text-muted',     Colors.textMuted);
+}
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', refreshThemeColors);
+  } else {
+    refreshThemeColors();
+  }
+}
 
 // Merge PPTX theme colors if available
 if (window.__remarpTheme && window.__remarpTheme.colors) {
@@ -35,6 +74,14 @@ if (window.__remarpTheme && window.__remarpTheme.colors) {
   if (tc.lt1) Colors.pptxLt1 = tc.lt1;
   if (tc.dk2) Colors.pptxDk2 = tc.dk2;
   if (tc.lt2) Colors.pptxLt2 = tc.lt2;
+}
+
+/** #rrggbb → rgba(r,g,b,alpha); passes non-hex values through unchanged. */
+function withAlpha(color, alpha) {
+  var m = /^#([0-9a-f]{6})$/i.exec(String(color).trim());
+  if (!m) return color;
+  var n = parseInt(m[1], 16);
+  return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + alpha + ')';
 }
 
 /** Resolve color reference - supports 'theme-accent1' style refs */
@@ -298,7 +345,7 @@ class ParticleSystem {
     this.particles.forEach(p => {
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(108, 92, 231, ${p.alpha})`;
+      ctx.fillStyle = withAlpha(Colors.accent, p.alpha);
       ctx.fill();
     });
   }

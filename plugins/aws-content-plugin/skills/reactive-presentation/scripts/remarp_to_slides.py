@@ -3680,6 +3680,13 @@ class RemarpHTMLGenerator:
             _dark_flag = str(_dark_raw).strip().lower() in ('true', '1', 'yes', 'dark')
         deck_theme_class = ' theme-dark' if (_mode == 'dark' or _dark_flag) else ''
 
+        # Theme preset: `theme.preset: paper` → deck root gets `preset-paper`
+        # (opt-in looks defined in theme.css; unknown names pass through as a
+        # class so a deck-local stylesheet can define its own preset scope).
+        _preset = str(theme_cfg.get('preset', '') or config.get('preset', '')).strip().lower()
+        if _preset and re.match(r'^[a-z][a-z0-9-]*$', _preset):
+            deck_theme_class += f' preset-{_preset}'
+
         # Optional dark-slide logo (white/light logo shown on theme-dark slides).
         logo_dark = config.get('logoDark', '') or theme_cfg.get('logoDark', '')
         logo_js = f"logoSrc: '{logo_src}'," if logo_src else ''
@@ -3694,11 +3701,13 @@ class RemarpHTMLGenerator:
                 f'<script>\n{js}\n</script>' for js in canvas_scripts
             )
 
-        # Mermaid CDN injection
+        # Mermaid CDN injection — diagram theme follows the deck theme
+        # (light default was unreadable with the old hardcoded 'dark').
         mermaid_script = ''
         if config.get('_has_mermaid'):
-            mermaid_script = '''<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
-<script>mermaid.initialize({startOnLoad:true, theme:'dark'});</script>'''
+            mermaid_theme = 'dark' if 'theme-dark' in deck_theme_class else 'neutral'
+            mermaid_script = f'''<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({{startOnLoad:true, theme:'{mermaid_theme}'}});</script>'''
 
         # Theme config injection (use same fallback logic as logo/footer above)
         theme_js = ''

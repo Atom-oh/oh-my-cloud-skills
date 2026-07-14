@@ -5,7 +5,7 @@
  */
 const ExportUtils = {
   JSZIP_CDN: 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
-  PPTXGEN_CDN: 'https://cdn.jsdelivr.net/gh/gitbrent/PptxGenJS@3.12.0/dist/pptxgen.bundle.js',
+  PPTXGEN_CDN: 'https://cdn.jsdelivr.net/npm/pptxgenjs@4.0.1/dist/pptxgen.bundle.js',
   HTML2CANVAS_CDN: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
 
   /** Escape HTML special characters to prevent XSS in generated markup */
@@ -47,7 +47,7 @@ const ExportUtils = {
 
   COMMON_FILES: [
     'design-tokens.css', 'theme.css', 'theme-override.css', 'slide-framework.js',
-    'presenter-view.js', 'animation-utils.js', 'quiz-component.js',
+    'slide-renderer.js', 'presenter-view.js', 'animation-utils.js', 'quiz-component.js',
     'export-utils.js'
   ],
 
@@ -344,11 +344,18 @@ const ExportUtils = {
       document.body.appendChild(iframe);
 
       iframe.onload = function() {
-        // Wait for images and fonts to load
+        // Wait for webfonts, then give scripts time to execute (canvas rendering, etc.)
         var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-        var checkReady = function() {
-          // Give scripts time to execute (canvas rendering, etc.)
+        var settle = function() {
           setTimeout(function() { resolve({ doc: iframeDoc, iframe: iframe }); }, 800);
+        };
+        var checkReady = function() {
+          var fonts = iframeDoc.fonts;
+          if (fonts && fonts.ready && fonts.ready.then) {
+            fonts.ready.then(settle, settle);
+          } else {
+            settle();
+          }
         };
 
         if (iframeDoc.readyState === 'complete') {
@@ -404,6 +411,33 @@ const ExportUtils = {
   },
 
   /**
+   * Read the block's presenter notes from inside its iframe.
+   * `presenterNotes` is a top-level `const` in the built HTML, so it is not a
+   * window property; a script injected INTO the iframe shares the global
+   * lexical scope and can copy it onto window for us.
+   * Returns an object keyed by 1-based slide number (values may contain HTML).
+   */
+  _extractNotesFromIframe: function(iframeDoc) {
+    try {
+      var s = iframeDoc.createElement('script');
+      s.textContent = 'try { window.__exportNotes = presenterNotes; } catch (e) { window.__exportNotes = {}; }';
+      iframeDoc.body.appendChild(s);
+      s.remove();
+      var win = iframeDoc.defaultView;
+      return (win && win.__exportNotes) || {};
+    } catch (e) {
+      return {};
+    }
+  },
+
+  /** Strip HTML tags from a notes string for PPTX speaker notes */
+  _htmlToPlainText: function(html) {
+    var div = document.createElement('div');
+    div.innerHTML = String(html).replace(/<br\s*\/?>/gi, '\n');
+    return (div.textContent || '').trim();
+  },
+
+  /**
    * Extract theme info from a block HTML for PPTX metadata.
    * Reads __remarpTheme and CSS custom properties.
    */
@@ -452,13 +486,13 @@ const ExportUtils = {
    * Capture a single slide element as a base64 PNG using html2canvas.
    * The html2canvas library must be loaded in the PARENT window.
    */
-  _captureSlide: async function(slideEl, iframeWindow) {
+  _captureSlide: async function(slideEl, iframeWindow, scale) {
     // html2canvas is loaded in the parent window; we need to pass the element
     // html2canvas can work cross-frame if same-origin
     var canvas = await html2canvas(slideEl, {
       width: 1920,
       height: 1080,
-      scale: 1,
+      scale: scale || 2,
       useCORS: true,
       allowTaint: true,
       backgroundColor: null,
@@ -513,6 +547,9 @@ const ExportUtils = {
         var iframeDoc = result.doc;
         var iframe = result.iframe;
 
+        // Presenter notes → PPTX speaker notes (keyed by 1-based slide number)
+        var blockNotes = this._extractNotesFromIframe(iframeDoc);
+
         // Complete all animations (fragments visible, canvas at final step)
         this._completeAllAnimations(iframeDoc);
 
@@ -537,7 +574,7 @@ const ExportUtils = {
           var slideHeading = slideEl.querySelector('h1, h2');
 
           try {
-            var dataUrl = await self._captureSlide(slideEl, iframe.contentWindow);
+            var dataUrl = await self._captureSlide(slideEl, iframe.contentWindow, options.scale);
 
             pptxSlide.addImage({
               data: dataUrl,
@@ -545,9 +582,15 @@ const ExportUtils = {
               w: '100%', h: '100%'
             });
 
-            // Add heading text as slide notes (for searchability)
-            if (slideHeading) {
-              pptxSlide.addNotes(slideHeading.textContent.trim());
+            // Speaker notes: presenter notes first, heading as fallback/prefix
+            var noteHtml = blockNotes[j + 1] || blockNotes[String(j + 1)] || '';
+            var noteText = noteHtml ? self._htmlToPlainText(noteHtml) : '';
+            var headingText = slideHeading ? slideHeading.textContent.trim() : '';
+            var combined = headingText && noteText
+              ? headingText + '\n\n' + noteText
+              : (noteText || headingText);
+            if (combined) {
+              pptxSlide.addNotes(combined);
             }
           } catch (captureErr) {
             console.warn('Capture failed for slide ' + totalSlides + ', using text fallback:', captureErr);
@@ -557,7 +600,7 @@ const ExportUtils = {
                 x: 0.5, y: 0.5, w: '90%', fontSize: 24, color: 'FFFFFF', bold: true
               });
             }
-            pptxSlide.background = { color: '1a1d2e' };
+            pptxSlide.background = { color: '0F1B2A' };
           }
         }
 

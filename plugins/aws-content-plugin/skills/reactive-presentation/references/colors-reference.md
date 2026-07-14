@@ -6,7 +6,14 @@ Reactive-presentation 색상은 **하드코딩 hex가 아니라 시맨틱 역할
 light/dark 테마 전환과 PPTX 브랜드 추출(Phase 1)에 자동으로 적응합니다.
 
 > **테마 기본값**: light가 기본입니다. dark로 되돌리려면 덱 루트 요소에 `class="… theme-dark"`를
-> 지정하세요. 토큰을 쓰면 같은 마크업이 양쪽 테마에서 올바른 대비로 렌더링됩니다.
+> 지정하세요 (frontmatter `theme: { mode: dark }`). 토큰을 쓰면 같은 마크업이 양쪽 테마에서
+> 올바른 대비로 렌더링됩니다.
+>
+> **팔레트 아이덴티티**: 기본 테마는 AWS 자체 디자인 언어에 근거합니다 — 라이트는 콘솔 그레이
+> 캔버스(`#eaedee`) + 화이트 카드 + Squid Ink 텍스트(`#0f141a`) + Smile Orange 액센트(`#ec7211`) +
+> Cloudscape 블루 텍스트 액센트(`#0972d3`); 다크는 squid-ink night(`#0f1b2a` 계열) + `#ff9900`.
+> 구(舊) 웜 페이퍼 룩은 `theme: { preset: paper }`로 옵트인합니다. 배경/선정 원칙:
+> [design-direction.md](design-direction.md).
 
 ---
 
@@ -67,6 +74,8 @@ light/dark 테마 전환과 PPTX 브랜드 추출(Phase 1)에 자동으로 적�
 | Radius | `--radius-sm` / `--radius-md` / `--radius-lg` / `--radius-pill` | `border-radius` |
 | Type scale | `--text-xs`…`--text-4xl` | `font-size` |
 | Type role | `--leading-tight/normal/relaxed`, `--weight-regular/medium/semibold/bold` | line-height, weight |
+| Tracking | `--tracking-tight/normal/wide` | 디스플레이 제목(tight), eyebrow/라벨(wide) |
+| Typeface | `--font-display` / `--font-main` / `--font-mono` | h1·h2 디스플레이, 본문, 데이터/코드 |
 | Shadow | `--shadow-1/2/3`, `--shadow-glow` | `box-shadow` |
 | Motion | `--duration-fast/normal/slow` | transition/animation |
 | Z ladder | `--z-base/nav/overlay/modal/toast` | `z-index` |

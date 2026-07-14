@@ -16,27 +16,78 @@
    @imports design-tokens.css at the top). A zero-specificity :where(html)
    here would LOSE to those :root placeholders and the deck would not be light.
    The legacy base vars (--bg-primary/--text-primary/etc.) are mapped onto the
-   semantic roles below so the base chrome follows the active theme. */
+   semantic roles below so the base chrome follows the active theme.
+
+   Palette identity — grounded in AWS's own design language (Cloudscape /
+   Squid Ink #232F3E / Smile Orange), NOT a generic template look: cool
+   console-grey canvas with white cards, deep squid-ink text, Smile-orange
+   accent reserved for emphasis, Cloudscape blue for interactive/heading
+   accents. An extracted PPTX brand (--pptx-*) always takes precedence. */
 :root, .theme-light {
-  /* Warm "paper + ink" neutrals (ref: design-system colors.css) — softer and
-     less clinical than cool blue-greys (the old "too bright" feel). Cards
-     (surface-1) still route through brand --pptx-lt1; surface-2/3 are warm
-     paper-muted / ink so an extracted PPTX theme keeps its brand accent while
-     the canvas stays warm. */
+  --surface-1:var(--pptx-lt1, #ffffff); --surface-2:#f2f3f3; --surface-3:#e3e7ea;
+  --on-surface:var(--pptx-dk2, #0f141a); --on-surface-muted:#5f6b7a;
+  /* --accent routes through the brand token --pptx-accent1; AWS console
+     orange is the fallback so non-branded decks read unmistakably "AWS". */
+  --accent:var(--pptx-accent1, #ec7211); --accent-subtle:rgba(236,114,17,.10); --accent-on:#ffffff;
+  --info:#0972d3; --info-subtle:rgba(9,114,211,.10); --info-on:#fff;
+  --success:#037f0c; --success-subtle:rgba(3,127,12,.10); --success-on:#fff;
+  --warning:#8a5b00; --warning-subtle:rgba(180,120,9,.12); --warning-on:#fff;
+  --danger:#d91515; --danger-subtle:rgba(217,21,21,.10); --danger-on:#fff;
+
+  /* Legacy base vars mapped onto the LIGHT roles. Page = cool console-grey
+     canvas (#eaedee — a FIXED value, clearly not white, so white cards
+     elevate above it). Borders/muted text are squid-ink greys. */
+  --bg-primary:   #eaedee;
+  --bg-secondary: var(--surface-2);
+  --bg-tertiary:  var(--surface-3);
+  --bg-card:      var(--surface-1);
+  --surface:      var(--surface-2);
+  --border:       #d0d7dc;
+  --text-primary:   var(--on-surface);
+  --text-secondary: #414d5c;
+  --text-muted:     #7d8998;
+  --text-accent:  #0972d3;
+  --border-focus: #0972d3;
+  --cyan: #0891b2;
+  --pink: #d13d73;
+}
+/* Dark = "squid-ink night": Cloudscape dark surfaces with Smile-orange accent.
+   (Existing decks keep their previously copied common/ CSS, so this refresh
+   only affects newly built/copied decks.) */
+.theme-dark { --surface-1:var(--pptx-dk2, #0f1b2a); --surface-2:#16212f; --surface-3:#1e2c3c;
+  --on-surface:var(--pptx-lt1, #e9ebed); --on-surface-muted:#8d99a8;
+  --accent:var(--pptx-accent1, #ff9900); --accent-subtle:rgba(255,153,0,.14); --accent-on:#16191f;
+  --info:#539fe5; --info-subtle:rgba(83,159,229,.15); --info-on:#0f1b2a;
+  --success:#44b556; --success-subtle:rgba(68,181,86,.15); --success-on:#0f1b2a;
+  --warning:#ffcf40; --warning-subtle:rgba(255,207,64,.14); --warning-on:#231b00;
+  --danger:#ff6161; --danger-subtle:rgba(255,97,97,.14); --danger-on:#2a0606;
+
+  /* Legacy base vars — squid-ink dark values. */
+  --bg-primary:   #0f1b2a;
+  --bg-secondary: #16212f;
+  --bg-tertiary:  #1e2c3c;
+  --bg-card:      #182534;
+  --surface:      #22344a;
+  --border:       #2e425a;
+  --text-primary:   #e9ebed;
+  --text-secondary: #9fb0c1;
+  --text-muted:     #6c7f93;
+  --text-accent:  #539fe5;
+  --border-focus: #539fe5;
+  --cyan: #00cec9;
+  --pink: #fd79a8;
+}
+
+/* Opt-in preset: the previous warm "paper + ink" look, kept for decks that
+   deliberately choose it (frontmatter `theme.preset: paper`). */
+.preset-paper, .preset-paper .theme-light {
   --surface-1:var(--pptx-lt1, #ffffff); --surface-2:#f3f1eb; --surface-3:#edebe4;
   --on-surface:var(--pptx-dk2, #1f1e1d); --on-surface-muted:#5f5a4d;
-  /* --accent routes through the brand token --pptx-accent1; the design-system
-     Claude-orange is the fallback so non-extracted decks pick up brand warmth. */
   --accent:var(--pptx-accent1, #d97757); --accent-subtle:rgba(217,119,87,.12); --accent-on:#ffffff;
   --info:#2563eb; --info-subtle:rgba(37,99,235,.12); --info-on:#fff;
   --success:#10b981; --success-subtle:rgba(16,185,129,.12); --success-on:#fff;
   --warning:#b45309; --warning-subtle:rgba(180,83,9,.12); --warning-on:#fff;
   --danger:#f43f5e; --danger-subtle:rgba(244,63,94,.12); --danger-on:#fff;
-
-  /* Legacy base vars mapped onto the LIGHT roles. Page = warm off-white canvas
-     (#ece9e0 — a FIXED value, clearly not white, so white cards elevate above it;
-     NOT the brightest brand token, which used to wash the whole slide near-white).
-     Borders/muted text are warm ink, never blue-grey. */
   --bg-primary:   #ece9e0;
   --bg-secondary: var(--surface-2);
   --bg-tertiary:  var(--surface-3);
@@ -46,54 +97,41 @@
   --text-primary:   var(--on-surface);
   --text-secondary: var(--on-surface-muted);
   --text-muted:     #8a8474;
-}
-.theme-dark { --surface-1:var(--pptx-dk2, #0f1117); --surface-2:#1a1d2e; --surface-3:#232740;
-  --on-surface:var(--pptx-lt1, #e8eaf0); --on-surface-muted:#9ba1b8;
-  --accent:var(--pptx-accent1, #a29bfe); --accent-subtle:rgba(162,155,254,.18); --accent-on:#0f1117;
-  --info:#74b9ff; --info-subtle:rgba(116,185,255,.15); --info-on:#0f1117;
-  --success:#00b894; --success-subtle:rgba(0,184,148,.15); --success-on:#0f1117;
-  --warning:#fdcb6e; --warning-subtle:rgba(253,203,110,.15); --warning-on:#0f1117;
-  --danger:#e17055; --danger-subtle:rgba(225,112,85,.15); --danger-on:#0f1117;
-
-  /* Legacy base vars — ORIGINAL dark values so today's dark look is exact. */
-  --bg-primary:   #0f1117;
-  --bg-secondary: #1a1d2e;
-  --bg-tertiary:  #232740;
-  --bg-card:      #1e2235;
-  --surface:      #282d45;
-  --border:       #2d3250;
-  --text-primary:   #e8eaf0;
-  --text-secondary: #9ba1b8;
-  --text-muted:     #6b7194;
+  --text-accent:  #b8560b;
+  --border-focus: #b8560b;
 }
 
 /* --- Reset & Base --- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* Palette — base chrome vars (bg, surface, border, text) are now
-     theme-scoped in `:root, .theme-light` and `.theme-dark` above so they
-     follow the active theme. Only theme-agnostic helpers remain here. */
-  --border-focus:  #5b6abf;
-  --text-accent:   #7b8cff;
+  /* Palette — base chrome vars (bg, surface, border, text, --text-accent,
+     --border-focus) are theme-scoped in `:root, .theme-light` and
+     `.theme-dark` above so they follow the active theme. Only theme-agnostic
+     helpers remain here. */
 
   /* --accent is theme-scoped (see :root,.theme-light / .theme-dark above) */
   --accent-light:  var(--accent);
   --accent-glow:   var(--accent-subtle);
 
-  --green:  #00b894;
-  --green-bg: rgba(0, 184, 148, .15);
-  --yellow: #fdcb6e;
-  --yellow-bg: rgba(253, 203, 110, .15);
-  --red:    #e17055;
-  --red-bg: rgba(225, 112, 85, .15);
-  --blue:   #74b9ff;
-  --blue-bg: rgba(116, 185, 255, .15);
-  --orange: #f39c12;
-  --cyan:   #00cec9;
-  --pink:   #fd79a8;
+  /* Legacy palette aliases — routed through the role tokens so canvas
+     drawings and old markup adapt to the active theme instead of assuming
+     the historical dark palette. cyan/pink stay distinct hues (canvas
+     diagrams rely on them being distinguishable from blue/red). */
+  --green:  var(--success);
+  --green-bg: var(--success-subtle);
+  --yellow: var(--warning);
+  --yellow-bg: var(--warning-subtle);
+  --red:    var(--danger);
+  --red-bg: var(--danger-subtle);
+  --blue:   var(--info);
+  --blue-bg: var(--info-subtle);
+  --orange: var(--accent);
 
-  /* Typography */
+  /* Typography — display face carries the deck's personality on Latin
+     headings; Korean glyphs fall back to Pretendard, which tolerates the
+     tightened tracking. */
+  --font-display: 'Space Grotesk', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-main: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 
@@ -119,6 +157,7 @@
 /* --- Font Loading --- */
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap');
 
 html {
   /* Viewport-scaled root font: ~24px at 1080p, ~48px at 4K, scales proportionally */
@@ -182,13 +221,17 @@ body {
 
 /* --- Typography --- */
 .slide h1 {
+  font-family: var(--font-display);
   font-size: var(--text-3xl); font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
   color: var(--text-primary);
   margin-top: 0; margin-bottom: var(--space-1);
   line-height: var(--leading-tight);
 }
 .slide h2 {
+  font-family: var(--font-display);
   font-size: var(--text-2xl); font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
   color: var(--text-primary);
   margin-top: var(--space-3); margin-bottom: var(--space-2);
 }
@@ -196,6 +239,19 @@ body {
   font-size: var(--text-lg); font-weight: var(--weight-semibold);
   color: var(--text-accent);
   margin-top: var(--space-3); margin-bottom: var(--space-1);
+}
+/* Eyebrow — small structural label above a heading (mono, spread, accent).
+   Use for section numbers/module labels ONLY where order/category carries
+   real information; it encodes structure, it does not decorate. */
+.eyebrow {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: var(--space-1);
 }
 /* First heading in a container should not have extra top margin */
 .slide-body > h1:first-child,
@@ -213,8 +269,22 @@ body {
 }
 
 /* --- Layout Helpers --- */
+/* Signature element: the "beam rule" — a short accent gradient hairline under
+   every slide header. One consistent, quiet mark that brands the whole deck;
+   everything else stays disciplined. */
 .slide-header {
   margin-bottom: 1rem;
+  padding-bottom: var(--space-2);
+  position: relative;
+}
+.slide-header::after {
+  content: '';
+  position: absolute;
+  left: 0; bottom: 0;
+  width: var(--space-8);
+  height: 3px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--accent), var(--accent-subtle));
 }
 .slide-body {
   flex: 1;
@@ -286,7 +356,7 @@ body {
 .btn-primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--accent-on);
 }
 .btn-primary:hover {
   background: var(--accent-light);
@@ -317,7 +387,7 @@ body {
 }
 .tab-btn.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-on);
 }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
@@ -585,13 +655,13 @@ body {
 .timeline-step.active .timeline-dot {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--accent-on);
   box-shadow: 0 0 12px var(--accent-glow);
 }
 .timeline-step.done .timeline-dot {
   background: var(--green);
   border-color: var(--green);
-  color: #fff;
+  color: var(--success-on);
 }
 .timeline-label {
   margin-top: var(--space-1);
@@ -647,19 +717,19 @@ body {
   transition: all 0.3s ease;
 }
 .agenda-step.active .agenda-dot {
-  background: var(--accent, #6c5ce7);
-  border-color: var(--accent, #6c5ce7);
-  color: #fff;
-  box-shadow: 0 0 20px var(--accent-glow, rgba(108, 92, 231, 0.3));
+  background: var(--accent, #ec7211);
+  border-color: var(--accent, #ec7211);
+  color: var(--accent-on, #fff);
+  box-shadow: 0 0 20px var(--accent-glow, rgba(236, 114, 17, 0.3));
 }
 .agenda-step.done .agenda-dot {
-  background: var(--accent, #6c5ce7);
-  border-color: var(--accent, #6c5ce7);
-  color: #fff;
+  background: var(--accent, #ec7211);
+  border-color: var(--accent, #ec7211);
+  color: var(--accent-on, #fff);
   opacity: 0.5;
 }
 .agenda-connector.done {
-  background: var(--accent, #6c5ce7);
+  background: var(--accent, #ec7211);
   opacity: 0.5;
 }
 .agenda-step.break .agenda-dot {
@@ -695,10 +765,10 @@ body {
 
 /* --- Steps (agenda/process) --- */
 .steps-container {
-  --step-color: var(--accent, #6c5ce7);
+  --step-color: var(--accent, #ec7211);
   --step-size: 3rem;
   --step-font-size: 1.1rem;
-  --step-connector-color: rgba(255,255,255,0.2);
+  --step-connector-color: var(--border);
   display: flex; align-items: flex-start; justify-content: center;
   gap: 0; width: 100%; padding: 2rem 1rem;
 }
@@ -731,7 +801,7 @@ body {
 .step-desc { font-size: 0.85rem; opacity: 0.8; margin-top: 0.25rem; }
 
 .step-item.done .step-marker { background: var(--step-color); opacity: 0.6; }
-.step-item.active .step-marker { box-shadow: 0 0 0 4px rgba(108, 92, 231, 0.3); transform: scale(1.1); }
+.step-item.active .step-marker { box-shadow: 0 0 0 4px var(--accent-subtle); transform: scale(1.1); }
 
 /* --- Slider --- */
 .slider-container {
@@ -804,10 +874,9 @@ input[type="range"]::-webkit-slider-thumb {
 }
 .title-slide h1 {
   font-size: 3rem;
-  background: linear-gradient(135deg, var(--accent-light), var(--cyan));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-family: var(--font-display);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
   margin-bottom: var(--space-3);
 }
 .title-slide .subtitle {
@@ -853,7 +922,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 .compare-btn.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-on);
 }
 
 .compare-content {
@@ -1200,7 +1269,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 .fragment.highlight.visible {
   opacity: 1;
-  background-color: rgba(108, 92, 231, 0.3);
+  background-color: var(--accent-subtle);
 }
 
 /* highlight-red */
@@ -1788,7 +1857,7 @@ body.sidebar-visible .slide-deck {
 .mode-selector { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
 .mode-btn { padding: 10px 20px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-tertiary); color: var(--text-secondary); font-family: var(--font-main); font-size: .9rem; cursor: pointer; transition: all var(--transition-fast); }
 .mode-btn:hover { border-color: var(--accent); }
-.mode-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.mode-btn.active { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
 .mode-content { display: none; }
 .mode-content.active { display: block; }
 
