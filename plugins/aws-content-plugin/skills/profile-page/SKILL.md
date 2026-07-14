@@ -10,7 +10,6 @@ allowed-tools:
   - Grep
   - AskUserQuestion
   - WebFetch
-  - WebSearch
 ---
 
 # Profile Page
