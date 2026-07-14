@@ -36,7 +36,7 @@ gather facts (reuse existing page / GitHub / user confirmation) → write self-c
 
 | Phase | What happens |
 |-------|--------------|
-| 1. Gather facts | Reuse an existing profile page if one exists, derive from GitHub, or ask. **Never fabricate** roles, dates, or projects. |
+| 1. Gather facts | Preflight: confirm the target public GitHub Pages repo + `gh auth status`. Reuse an existing profile page if one exists; derive from GitHub via `gh` (**Pages-enabled repos are the primary showcase candidates**); confirm the project selection with the user. **Never fabricate** roles, dates, or projects. |
 | 2. Design | Read `references/profile-design.md`; reuse the person's existing aesthetic if any. |
 | 3. Write HTML | One self-contained `.html` — sidebar + about + experience + skills + projects. |
 | 4. Self-check + review | Reuses the `brochure` skill's `check_brochure.py` → `content-review-agent` (≥85). |

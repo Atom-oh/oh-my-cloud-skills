@@ -37,9 +37,12 @@ gather facts (reuse existing page / repo / user input) → write self-contained 
 
 Never fabricate job titles, dates, employers, talks, or project descriptions.
 
+0. **Preflight — target repo + `gh` CLI**: the page ships to a **public GitHub Pages repo** (typically `<user>.github.io`). Confirm which repo is the target with `AskUserQuestion` if the user didn't say, and check `gh auth status`. With `gh` available, most facts below can be derived automatically; without it, everything must come from an existing page and the user — say so up front rather than degrading silently.
 1. **Reuse first**: if the target repo already has a profile page (e.g. an existing `index.html` on a GitHub Pages user/org site), read it and treat its content as the source of truth to refresh, not replace blindly — carry over real links, dates, and descriptions unless the user says otherwise.
-2. **Derive from GitHub**, if a username is given and `gh`/network access is available: `gh api users/<user>` (bio, location, links) and `gh repo list <user> --limit 30` (candidate projects — verify each is real and still public before listing it).
-3. **Ask what's missing** with `AskUserQuestion` — name, title/role, location, 3–6 experience entries (company, period, one-line description), skill categories, and which projects to feature (name, one-line description, live URL, repo URL).
+2. **Derive from GitHub** (needs `gh`): `gh api users/<user>` (bio, location, links) and
+   `gh repo list <user> --visibility public --limit 50 --json name,description,url,homepageUrl,hasPages`.
+   **Prioritize repos with `hasPages: true` as showcase candidates** — they come with a working Live + GitHub link pair (Live = `homepageUrl`, or the repo's Pages URL). Repos without Pages get a GitHub link only, and only if the user wants them included.
+3. **Confirm the selection and ask what's missing** with `AskUserQuestion` — which of the candidate projects to feature (never silently include every repo), plus any gaps: name, title/role, location, 3–6 experience entries (company, period, one-line description), and skill categories.
 
 Capture:
 - **Identity**: name, title, org, location, avatar image, contact/social links (GitHub, LinkedIn, etc.).
@@ -106,6 +109,7 @@ A profile page must be **publicly reachable**. The typical target is the person'
 
 - Inventing job titles, dates, or project descriptions instead of asking.
 - Listing a project whose Live or GitHub link is actually dead.
+- Dumping every public repo into the projects section instead of curating Pages-enabled candidates with the user.
 - Replacing an existing page's whole aesthetic without being asked, when only a content refresh was requested.
 - Dropping existing analytics/ads/SEO files (CNAME, robots.txt, sitemap.xml) while refreshing content.
 - Hiding the sidebar entirely on mobile instead of stacking it above the content.
