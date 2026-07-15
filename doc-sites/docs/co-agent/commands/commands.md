@@ -20,7 +20,7 @@ title: "명령 목록"
 /co-agent:configure set timeout 300                   # CLI별 타임아웃(초)
 /co-agent:configure set codex context_limit 400000    # 모델 컨텍스트 윈도 조정
 /co-agent:configure set autosync on                   # CLAUDE.md 변경 시 자동 sync-context
-/co-agent:configure set codex model gpt-5.5 --scope user  # 모든 레포에 적용
+/co-agent:configure set codex model gpt-5.6-sol --scope user  # 모든 레포에 적용
 ```
 
 CLI가 헤드리스로 실제 받는 옵션만 노출합니다(죽은 설정 없음): `model`, `effort`(Codex 전용), `enabled`, `timeout`, `context_limit`, 글로벌 `autosync`. `--host codex`로 호스트가 Codex일 때의 패널 구성(Kiro/Claude/Agy)도 설정할 수 있습니다.

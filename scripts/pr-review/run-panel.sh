@@ -7,7 +7,7 @@
 # TTY 아님 → no-hang); Kiro 는 stdin 을 무시하므로 size-capped argv 텍스트로 직접 embed
 # 한다(툴 미부여 — 아래 KIRO_DIFF_TEXT 주석 참조; fs_read 부여는 19차 리뷰 CRITICAL로
 # 제거됨). timeout 백스톱 + 비대화형 플래그로 멈춤 방지. 셀이 비면 최대
-# PANEL_RETRIES 회 재시도(gpt-5.5/bedrock-mantle 등 transient 흡수). 매 시도마다 재실행.
+# PANEL_RETRIES 회 재시도(gpt-5.6-sol/bedrock-mantle 등 transient 흡수). 매 시도마다 재실행.
 # 모든 셀(모델 수 × lens 수)이 병렬(&+wait) — 벽시계 ≈ 최슬로우 셀 하나, 순차합 아님.
 set -uo pipefail
 DIFF="$(realpath "$1" 2>/dev/null)" \
@@ -44,7 +44,7 @@ RETRIES="${PANEL_RETRIES:-3}"
 # 레이어링. 코드 수정 없이 `panel_config.py set <cell> enabled false`로 매트릭스를 줄일 수
 # 있다(민감 diff에서 외부 Kiro 를 끄는 것 등 — docs/ci-pr-review.md "민감 diff 정책"). 로스터
 # 자체(kiro-opus/kiro-gpt/kiro-glm)의 model 값은 pr-review.defaults.json이 정본 — main의
-# kimi-k2.5 -> gpt-5.5 교체(ADR-012)를 그 파일에 반영했다.
+# kimi-k2.5 -> gpt-5.5 교체(ADR-012)를 그 파일에 반영했다. gpt-5.5 -> gpt-5.6-terra 교체(ADR-014).
 # 아래 두 호출은 exit code 를 반드시 확인한다 — panel_config.py 가 malformed/wrong-shape
 # override 로 crash(비-zero exit)해도, `mapfile < <(cmd)` 는 process substitution 의 exit
 # code 를 보지 않고 빈 출력을 그대로 받아들여 KIRO_MODELS=()/CODEX_ENABLED=0 이 되고, 이는
@@ -166,7 +166,7 @@ for lens_file in "${LENS_FILES[@]}"; do
   LENS_PROMPT="$(cat "$lens_file")"
 
   # Codex 셀 (Bedrock, config.toml). --skip-git-repo-check 필수. AWS_REGION 강제:
-  # gpt-5.5(bedrock-mantle)는 In-Region(us-east-1) 만 지원 — 잡 region 무관하게 고정.
+  # gpt-5.6-sol(bedrock-mantle)는 In-Region(us-east-1) 만 지원 — 잡 region 무관하게 고정.
   # diff 는 stdin.
   if [ "$CODEX_ENABLED" = 1 ] && command -v codex >/dev/null 2>&1; then
     ( try_panel "$SLOT/codex-$lens.md" "$SLOT/codex-$lens.err" \

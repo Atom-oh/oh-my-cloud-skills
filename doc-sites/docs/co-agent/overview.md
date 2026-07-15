@@ -101,7 +101,7 @@ flowchart LR
 | AI | 단일 `model` (기본 프로필에서 사용 — 예: 하이브리드 게이트 verify 단계) | `effort` |
 |----|---------------------------------------------------------------------|----------|
 | kiro-cli | `claude-opus-4.8` | — |
-| codex | `openai.gpt-5.5` | `high` |
+| codex | `openai.gpt-5.6-sol` | `high` |
 | agy | `Gemini 3.1 Pro (High)` | — |
 
 커밋된 기본 프로필은 `deep`이므로, **kiro-cli의 find(발견) 단계는 `models` 리스트**(`claude-opus-4.8` / `minimax-m2.5` / `glm-5`)를 그대로 씁니다 — 위 표의 단일 `model`은 `models` 리스트가 비어 있는 codex/agy에는 즉시 적용되지만, kiro-cli는 `--profile default`로 명시 호출할 때(예: verify 단계)만 적용됩니다. `codex`의 reasoning-effort 최고 티어는 `high`입니다 — Claude 전용 `xhigh`/`max` 티어는 codex에 없습니다.

@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **pr-review + co-agent: `gpt-5.5` deprecated, bump to `gpt-5.6` variants** — the pr-review CI panel's `kiro-gpt` cell moves to `gpt-5.6-terra`; co-agent's default `codex` panel model moves to `openai.gpt-5.6-sol` (ADR-014)
 - **co-agent: update default panel models** — kiro-cli's single `model` (used under `profile: default`, e.g. the hybrid gate's verify phase) is now `claude-opus-4.8`; codex is now `openai.gpt-5.5` at `effort: high`; agy is now `Gemini 3.1 Pro (High)` ([#112](https://github.com/Atom-oh/oh-my-cloud-skills/pull/112))
 
 ### Fixed
@@ -342,6 +343,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **pr-review + co-agent: `gpt-5.5` deprecation 대응 `gpt-5.6` 계열로 교체** — pr-review CI 패널의 `kiro-gpt` 셀은 `gpt-5.6-terra`로, co-agent의 기본 `codex` 패널 모델은 `openai.gpt-5.6-sol`로 변경 (ADR-014)
 - **co-agent: 패널 기본 모델 갱신** — kiro-cli의 단일 `model`(`profile: default`, 예: 하이브리드 게이트 verify 단계에서 사용)이 `claude-opus-4.8`로, codex가 `openai.gpt-5.5`(`effort: high`)로, agy가 `Gemini 3.1 Pro (High)`로 변경 ([#112](https://github.com/Atom-oh/oh-my-cloud-skills/pull/112))
 
 ### Fixed
