@@ -47,7 +47,7 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 - **Zero dependencies** — Python 3.8+ standard library only
 
 *AgentCore Deployment (agentcore-creator):*
-- **Bedrock AgentCore** — Convert Claude Code plugins to AgentCore Runtime, Gateway, Memory
+- **Bedrock AgentCore** — Convert Claude Code plugins to AgentCore harness (config-only, skills attach unchanged) or Runtime, Gateway, Memory
 - **5-phase workflow** — Discovery, Design, Skill-First Build, Convert, Deploy
 - **Strands Agent framework** — Generates deployable Python agents with BedrockModel
 
@@ -649,7 +649,7 @@ aws-ops-power/
 | Agent | Plugin | Example Prompt | Output |
 |-------|--------|----------------|--------|
 | `kiro-converter-agent` | kiro-power-converter | "Convert aws-ops-plugin to Kiro" | Kiro Power directory |
-| `agentcore-creator-agent` | agentcore-creator | "Deploy agent to AgentCore" | Strands Agent + deploy script |
+| `agentcore-creator-agent` | agentcore-creator | "Deploy agent to AgentCore" | Harness config or Strands Agent + deploy script |
 | `co-agent` | co-agent | "second opinion" / "help me decide" / "co-author ADR" | Multi-AI review / decision / ADR |
 | `doc-sync-checker` | project-init | "/sync-docs" | Doc quality scores |
 
@@ -687,7 +687,7 @@ All agents activate automatically when Claude detects matching keywords in your 
 | Skill | Provides |
 |-------|----------|
 | `kiro-convert` | Plugin-to-Kiro-Power conversion workflow |
-| `agentcore-create` | 5-phase AgentCore design, build, convert, deploy workflow |
+| `agentcore-create` | 5-phase AgentCore design, build, convert, deploy workflow (harness or Runtime target) |
 | `co-agent` | Multi-AI collaboration (Kiro/Codex/Antigravity — `agy`) — review, decision support, ADR co-authoring, and `sync-context`; Claude chairs. Commands: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus`, `/co-agent:harness`, `/co-agent:setup` |
 | `project-scaffolder` | Claude Code project structure patterns and conventions |
 | `pr-autofix` | Poll AI + human PR review feedback and auto-fix issues (max 3 iterations) |
@@ -735,7 +735,7 @@ Well-Architected:   wellarchitected-agent  -->  6-pillar scoring  -->  AS-IS/TO-
 
 ```
 Kiro conversion:   plugin source  -->  kiro-converter-agent  -->  Kiro Power directory  -->  install/export
-AgentCore deploy:  discovery  -->  design  -->  skill-first build  -->  AgentCore convert  -->  deploy
+AgentCore deploy:  discovery  -->  design (harness vs Runtime)  -->  skill-first build  -->  AgentCore convert  -->  deploy
 Co-agent collab:     prompt  -->  fan-out to Kiro/Codex/Antigravity(agy)  -->  Claude synthesizes  -->  review / decision / ADR / sync-context
 Doc sync:          /sync-docs  -->  doc-sync-checker  -->  quality scores  -->  update docs
 ```

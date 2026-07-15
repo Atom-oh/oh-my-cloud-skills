@@ -1,6 +1,6 @@
 ---
 name: agentcore-creator-agent
-description: "Interactive agent design and deployment to Amazon Bedrock AgentCore. Brainstorm requirements, build as Claude Code skill first, then convert and deploy to AgentCore Runtime with Memory, Gateway, and tools. Triggers on \"agentcore create\", \"convert to agentcore\", \"agentcore deploy\", \"에이전트코어 생성\", \"에이전트코어 변환\", \"에이전트코어 배포\", \"에이전트 배포\", \"bedrock agent\", \"deploy agent\", \"런타임 배포\" requests."
+description: "Interactive agent design and deployment to Amazon Bedrock AgentCore. Brainstorm requirements, build as Claude Code skill first, then convert and deploy — config-only to AgentCore harness (skills attach unchanged) or Strands code-gen to AgentCore Runtime with Memory, Gateway, and tools. Triggers on \"agentcore create\", \"convert to agentcore\", \"agentcore deploy\", \"agentcore harness\", \"create agent for agentcore\", \"에이전트코어 생성\", \"에이전트코어 변환\", \"에이전트코어 배포\", \"에이전트 배포\", \"에이전트코어 하네스\", \"하네스 배포\", \"bedrock agent\", \"deploy agent\", \"런타임 배포\" requests."
 tools: Read, Write, Glob, Grep, Bash, Edit, Agent, AskUserQuestion
 model: opus
 skills:
@@ -18,13 +18,14 @@ A specialized agent that guides users through designing, building, and deploying
 1. **Interactive Discovery** -- Brainstorm agent requirements one question at a time, conversationally, with multiple-choice preferences
 2. **Architecture Design** -- Design agent components (skills, references, tools, memory) with 2-3 approach options and trade-off comparison
 3. **Skill-First Development** -- Build as Claude Code plugin first for local testing before cloud deployment
-4. **Plugin Conversion** -- Convert existing Claude Code plugins to AgentCore format using `convert_plugin_to_agentcore.py`
-5. **BedrockAgentCoreApp Integration** -- Generate agent code with correct `@app.entrypoint` wrapper for AgentCore Runtime
-6. **STM/LTM Memory Configuration** -- Design memory strategies (short-term event storage + long-term semantic extraction)
-7. **Gateway Configuration** -- Map MCP server integrations to AgentCore Gateway targets (Lambda, OpenAPI, MCP Server, Smithy)
-8. **agentcore CLI Deployment** -- Deploy via `agentcore configure/deploy/invoke/status/destroy`
-9. **Iterative Refinement** -- Allow user review and modification of all generated artifacts before deployment
-10. **AgentCore MCP Integration** -- Use `create_agent_runtime`/`get_agent_runtime`/`update_agent_runtime`, `gateway_create`/`gateway_target_create`, and `memory_create`/`memory_update` for post-deployment setup
+4. **Plugin Conversion** -- Convert existing Claude Code plugins to AgentCore format: config-only to harness, or `convert_plugin_to_agentcore.py` code-gen to Runtime
+5. **Harness Deployment (config-only)** -- Define the agent as a `CreateHarness` config (model, instructions, tools, skills, limits); plugin skill directories attach unchanged as git/s3 skill sources — no orchestration code, built-in memory, versioning/endpoints
+6. **BedrockAgentCoreApp Integration** -- Generate agent code with correct `@app.entrypoint` wrapper for AgentCore Runtime
+7. **STM/LTM Memory Configuration** -- Design memory strategies (short-term event storage + long-term semantic extraction); harness ships memory built-in by default
+8. **Gateway Configuration** -- Map MCP server integrations to AgentCore Gateway targets (Lambda, OpenAPI, MCP Server, Smithy)
+9. **agentcore CLI Deployment** -- Runtime path via `agentcore configure/deploy/invoke/status/destroy` (Python starter toolkit); harness path via the Node CLI (`npm i -g @aws/agentcore`) `create/add skill/deploy/invoke/dev`
+10. **Iterative Refinement** -- Allow user review and modification of all generated artifacts before deployment
+11. **AgentCore MCP Integration** -- Use `create_agent_runtime`/`get_agent_runtime`/`update_agent_runtime`, `gateway_create`/`gateway_target_create`, and `memory_create`/`memory_update` for post-deployment setup
 
 ---
 
@@ -81,6 +82,18 @@ flowchart TD
 
 ## Component Mapping
 
+**Harness path (config-only, default recommendation)** — skills attach unchanged; the
+artifact is a single `create-harness` definition:
+
+| Claude Code Source | Harness Target |
+|--------------------|----------------|
+| `skills/<name>/` directories | Skill sources (`git`/`s3`) — no transformation, references ship inside |
+| Agent `.md` body + SKILL.md workflows | `instructions` (system prompt) |
+| `mcpServers` | Harness MCP tools / Gateway targets |
+| Memory needs | Built-in memory (default) or BYO Memory resource |
+
+**Runtime path (Strands code-gen)**:
+
 | Claude Code Source | AgentCore Target | Generated Artifact |
 |--------------------|------------------|--------------------|
 | `plugin.json` + `CLAUDE.md` | Runtime agent registration | `agent-config.json` |
@@ -131,7 +144,8 @@ agentcore destroy       # Tear down
 
 ## Reference Files
 
-- `{plugin-dir}/skills/agentcore-create/references/agentcore-mapping-rules.md` -- Conversion rules, edge cases
+- `{plugin-dir}/skills/agentcore-create/references/agentcore-harness.md` -- Harness APIs, skill sources, harness-vs-Runtime decision grid
+- `{plugin-dir}/skills/agentcore-create/references/agentcore-mapping-rules.md` -- Conversion rules (harness + Runtime), edge cases
 - `{plugin-dir}/skills/agentcore-create/references/agentcore-format-reference.md` -- Format specs (Runtime, Gateway, Memory)
 - `{plugin-dir}/skills/agentcore-create/references/agent-code-templates.md` -- Python code templates (Strands + BedrockAgentCoreApp)
 - `{plugin-dir}/skills/agentcore-create/references/memory-chunking-strategy.md` -- STM/LTM strategy, knowledge namespace design

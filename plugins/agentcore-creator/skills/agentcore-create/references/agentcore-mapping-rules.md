@@ -2,6 +2,36 @@
 
 Field-by-field conversion rules for transforming Claude Code plugin components into Amazon Bedrock AgentCore deployable formats.
 
+Two conversion paths exist since harness GA (2026-06): **Harness** (config-only — see the
+Harness Conversion section below and `agentcore-harness.md`) and **Runtime** (Strands
+code-gen — everything else in this file). The Agent/Skill/Reference/MCP sections below
+describe the Runtime path unless noted; the system-prompt merge rules are shared by both.
+
+## Harness Conversion (config-only path)
+
+Harness skills use the same SKILL.md standard as Claude Code, so most plugin components map
+without transformation:
+
+| Claude Code Source | Harness Target | Transformation |
+|--------------------|----------------|----------------|
+| `skills/<name>/` directory (SKILL.md + references/ + scripts/) | Skill source: `{"git": {"url", "path"}}` or `{"s3": {"uri"}}` | **None** — attach the directory as-is; references ship inside the skill (no Memory chunking) |
+| Agent `.md` body + SKILL.md workflows | `instructions` (system prompt) | Same merge rules as the Runtime path (Body Mapping / SKILL.md Body below) |
+| `model` frontmatter | Harness model config | Same `MODEL_MAP` aliases; omitting model defaults the harness to Claude Sonnet 4.6 on Bedrock |
+| `mcpServers` | Harness MCP tools or Gateway targets | Remote MCP endpoints attach directly; stdio servers still need Gateway/Lambda (see Gateway Target Type Selection) |
+| `tools` (Bash, Read/Write, web) | Built-in tool toggles | Shell + `file_operations` built-in; browser / code interpreter are config toggles |
+| `tools`/`allowed-tools` restrictions | AgentCore Policy | Optional hard enforcement at the Gateway layer instead of prompt-only |
+| Memory needs | Built-in memory (default) or BYO Memory resource | STM/LTM ship enabled by default — only design namespaces when bringing your own |
+| `hooks` in plugin.json | Gap analysis document | Same rules as Runtime (Hooks Gap Analysis below); harness has no hook equivalent |
+| `plugin.json` name/version | `harnessName` + tags | Validate against AgentCore naming rules |
+
+What forces the Runtime path instead: custom orchestration (graph/workflow), a specific
+framework, hook-like runtime behavior, bidirectional streaming, inline client-side tools —
+or a failed harness eligibility gate (no fetchable git/S3 source for the skills, or skills
+that reach outside their own directory — `../`, `${CLAUDE_PLUGIN_ROOT}`, sibling-skill
+assets — and can't be vendored). Full grid and the git-source pinning/supply-chain caveats:
+`agentcore-harness.md` → "Harness vs. Runtime — Decision Grid" / "Security and
+compatibility caveats".
+
 ## Agent Conversion
 
 ### Frontmatter Mapping
@@ -226,18 +256,36 @@ When `MODEL_MAP` resolves to a modern Opus model (4.7 or 4.8) or Fable 5, the co
 
 For full migration details, see [Model Migration Guide](https://platform.claude.com/docs/en/about-claude/models/migration-guide).
 
-## New AgentCore Primitives (2026) — Beyond This Converter's Code-Gen Scope
+## New AgentCore Primitives (2026)
 
-These reached GA across 2026 and are genuinely new capabilities, but this converter does not generate code for them — the exact configuration API is still evolving too fast to safely hard-code into a template without risking stale/wrong generated code. Instead, **surface them as options during Phase 2 (Design) or Phase 4 (Convert) when relevant to what's being converted**, and point the user at `search_agentcore_docs`/`fetch_agentcore_doc` (or current AWS docs) for exact syntax at conversion time:
+**AgentCore Harness graduated out of this list** — it reached GA on 2026-06-17 and is now a
+first-class conversion target with its own mapping section (Harness Conversion above) and
+reference (`agentcore-harness.md`). GA added built-in memory by default, more providers via
+LiteLLM + Bedrock Mantle (GPT-5.5/5.4 on Bedrock), the AWS-curated skills catalog with
+one-toggle setup, versioning/endpoints, Step Functions integration, BYO filesystem (S3
+Files/EFS), and export-to-Strands.
+
+The rest reached GA/preview across 2026 but this converter does not generate code for them —
+the exact configuration API is still evolving too fast to safely hard-code into a template.
+Instead, **surface them as options during Phase 2 (Design) or Phase 4 (Convert) when relevant
+to what's being converted**, and point the user at `search_agentcore_docs`/`fetch_agentcore_doc`
+(or current AWS docs) for exact syntax at conversion time:
 
 | Primitive | What it is | When to mention it |
 |-----------|------------|---------------------|
-| **AgentCore Harness** | A no-orchestration-code alternative to Runtime+Strands: `CreateHarness`/`InvokeHarness`, built-in memory, multi-model via LiteLLM + Bedrock Mantle (unlocks non-Anthropic models like GPT-5.5 on Bedrock), skills catalog, evaluations/optimization, Step Functions integration, export-to-Strands-code | Phase 2, as a lower-effort alternative when the agent being converted doesn't need custom orchestration logic |
-| **AgentCore Policy** | Governs which tools an agent may call and under what conditions (natural-language or policy-as-code), enforced at the Gateway layer; Guardrails-integrated | Phase 4, when the source plugin's `tools`/`allowed-tools` restrictions should carry through to a hard runtime enforcement, not just a system-prompt instruction |
-| **AgentCore Payments** | x402/USDC micropayments via `PaymentManager`/`PaymentConnector`, `agentcore add payment-manager\|payment-connector`, an `AgentCorePaymentsPlugin` for Strands | Only if the source plugin has any pay-per-use / metering concept |
-| **AgentCore Evaluations** | 13 built-in evaluators + Ground Truth + custom Lambda evaluators; also Batch Evaluations, A/B Testing, User Simulation, Failure Insights | Phase 5 (Verification) — mention as an optional step beyond `agentcore invoke`/`status`, especially for agents with defined success criteria from Phase 1 |
-| **Managed Knowledge Base** | Native RAG via Gateway (S3/SharePoint/Confluence/Drive/OneDrive/Web Crawler connectors) | Phase 2/4, as an alternative to this converter's hand-rolled LTM chunking (`memory-chunking-strategy.md`) when the source references are large/structured documents rather than short skill-reference files |
-| **CDK L2 constructs** (`aws-bedrockagentcore`, stable in `aws-cdk-lib` since mid-2026; the Policy submodule is still alpha) | An IaC alternative to the `agentcore` CLI | Phase 5, for users who manage the rest of their infra in CDK and want AgentCore resources in the same stack |
-| **CLI additions** (`agentcore add`, `agentcore dev` local inspector UI, `logs`/`traces`, resource import) | Newer subcommands beyond `configure/deploy/invoke/status/destroy` | Phase 5, `agentcore dev` especially for local iteration before a real deploy |
+| **AgentCore Policy** (GA 2026-03; Bedrock Guardrails integration GA 2026-06) | Governs which tools an agent may call and under what conditions (natural-language or Cedar policy-as-code), enforced at the Gateway layer — outside the agent's reasoning loop; Guardrails screens tool outputs and gateway-target inputs for prompt injection / harmful content / sensitive data | Phase 4, when the source plugin's `tools`/`allowed-tools` restrictions should carry through to a hard runtime enforcement, not just a system-prompt instruction |
+| **AgentCore Payments** (preview; CLI v0.19+) | x402/USDC micropayments via `PaymentManager`/`PaymentConnector`, `agentcore add payment-manager\|payment-connector`, an `AgentCorePaymentsPlugin` for Strands | Only if the source plugin has any pay-per-use / metering concept |
+| **AgentCore Evaluations** (GA 2026-03-31) + performance loop (Recommendations / Batch Evaluations / A/B Testing GA 2026-06; User Simulation preview, Failure Insights preview) | 13 built-in evaluators + Ground Truth + custom Lambda evaluators; recommendations mine production traces into prompt/tool-description improvements; batch eval + A/B validate them — works wherever the agent runs (AgentCore, Lambda, EKS, non-AWS) | Phase 5 (Verification) — mention as an optional step beyond `agentcore invoke`/`status`, especially for agents with defined success criteria from Phase 1 |
+| **Managed Knowledge Base** (GA 2026-06) | Native RAG via Gateway — six connectors (S3/SharePoint/Confluence/Google Drive/OneDrive/Web Crawler), hybrid search, text/video/audio/image | Phase 2/4, as an alternative to this converter's hand-rolled LTM chunking (`memory-chunking-strategy.md`) when the source references are large/structured documents rather than short skill-reference files |
+| **Web Search tool** (GA 2026-06) | Managed web grounding as a built-in Gateway MCP connector, zero data egress | Phase 4, instead of hand-rolling search tooling when the plugin has a "search the web" skill |
+| **CDK L2 constructs** (`aws-bedrockagentcore`, stable in `aws-cdk-lib` since 2026-05; the Policy submodule is still alpha) | An IaC alternative to the `agentcore` CLI | Phase 5, for users who manage the rest of their infra in CDK and want AgentCore resources in the same stack |
+| **CLI additions** (`agentcore add`, `agentcore dev` local Agent Inspector, `logs`/`traces`, resource import, `export`; v0.19 adds payments) | Newer subcommands beyond `configure/deploy/invoke/status/destroy` | Phase 5, `agentcore dev` especially for local iteration before a real deploy |
 
-Also note: Runtime itself gained interactive shells, BYO filesystem (S3 Files/EFS), managed session storage, the AG-UI protocol, bidirectional WebSocket streaming, and a 5x quota increase (25→200 TPS) across 2026 — none of these require converter changes, but they're worth knowing when a user asks "can AgentCore Runtime do X" during Phase 1/2.
+Also note (2026 Runtime/platform changes — no converter changes needed, but useful when a
+user asks "can AgentCore do X" during Phase 1/2): interactive shells (up to 10 concurrent
+terminal sessions per runtime session), BYO filesystem (S3 Files/EFS), managed session
+storage, the AG-UI protocol, bidirectional WebSocket streaming, Node.js + Python 3.14 direct
+code deploy, VPC egress for Identity/Gateway/Runtime, gateway MCP sessions with elicitation/
+sampling/progress streaming, quota increases (InvokeAgentRuntime 25→200 TPS, active sessions
+up to 5,000 in IAD/PDX), the `ActiveSessionCount` CloudWatch metric, SOC 1/2/3 + ISO + CSA
+STAR compliance, and GovCloud (US-West) availability.

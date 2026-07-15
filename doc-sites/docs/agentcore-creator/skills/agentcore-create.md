@@ -10,7 +10,7 @@ AgentCore 변환 및 배포를 위한 5-Phase 워크플로우 스킬입니다.
 ## 트리거
 
 - `/agentcore-create`
-- "convert to agentcore", "에이전트코어 생성"
+- "convert to agentcore", "create agent for agentcore", "에이전트코어 생성", "agentcore harness", "에이전트코어 하네스", "하네스 배포"
 
 ## 제공 리소스
 
@@ -24,10 +24,11 @@ AgentCore 변환 및 배포를 위한 5-Phase 워크플로우 스킬입니다.
 
 | 문서 | 설명 |
 |------|------|
+| `agentcore-harness.md` | Harness API·스킬 소스·모델(Mantle/LiteLLM)·harness-vs-Runtime 결정 그리드 |
 | `agentcore-format-reference.md` | AgentCore Runtime, Gateway, Memory 포맷 스펙 |
 | `agent-code-templates.md` | Strands Agent 코드 템플릿 (모델별 inference 기본값 포함) |
-| `agentcore-mapping-rules.md` | 플러그인 → AgentCore 변환 규칙, 모델별 호환성 노트 |
-| `memory-chunking-strategy.md` | STM/LTM 메모리 청킹 전략 |
+| `agentcore-mapping-rules.md` | 플러그인 → AgentCore 변환 규칙 (harness + Runtime), 모델별 호환성 노트 |
+| `memory-chunking-strategy.md` | STM/LTM 메모리 청킹 전략 (Runtime 경로) |
 
 ## 워크플로우
 
@@ -42,8 +43,9 @@ Discovery 결과를 바탕으로 컴포넌트 블루프린트를 설계합니다
 - 레퍼런스 문서 구조
 - 메모리 전략 (STM/LTM)
 - 게이트웨이 타겟 매핑
-- Bedrock 모델 선택(Opus/Sonnet/Haiku/Fable 5 중 용도에 맞게) — 커스텀 오케스트레이션이
-  불필요하면 Runtime+Strands 대신 AgentCore Harness도 대안으로 제안
+- Bedrock 모델 선택(Opus/Sonnet/Haiku/Fable 5 중 용도에 맞게)
+- **배포 타깃 결정**: 기본 권장은 AgentCore harness(설정만, 2026-06 GA) — 커스텀
+  오케스트레이션·프레임워크·hooks·bidirectional streaming이 필요할 때만 Runtime 코드 생성
 
 ### Phase 3: Skill-First Build
 
@@ -51,12 +53,30 @@ Claude Code 플러그인으로 먼저 빌드하여 로컬에서 테스트합니�
 
 ### Phase 4: AgentCore Convert
 
-`convert_plugin_to_agentcore.py`를 실행하여 플러그인을 AgentCore 포맷으로 변환합니다:
+**Path A — Harness (설정만)**: 코드 생성 없이 harness 정의를 만듭니다.
+- skills/ 디렉토리 → git/s3 스킬 소스로 **무변환 attach** (SKILL.md 표준 동일)
+- 에이전트 본문 + SKILL.md 워크플로우 → instructions(시스템 프롬프트)
+- MCP 서버 → harness MCP tools / Gateway 타겟
+
+**Path B — Runtime (코드 생성)**: `convert_plugin_to_agentcore.py`를 실행합니다.
 - SKILL.md → `@app.entrypoint` Python 코드
 - CLAUDE.md → 시스템 프롬프트
 - MCP 서버 → Gateway 타겟
 
 ### Phase 5: Deploy & Verify
+
+Harness 경로 (Node CLI):
+
+```bash
+npm install -g @aws/agentcore
+agentcore create --name <agent> --model-provider bedrock
+agentcore add skill --harness <agent> --git <repo-url> --git-path <skill-subdir>
+agentcore deploy
+SESSION_ID="$(uuidgen)"   # 하이픈 포함 표준 UUID(36자) — 33자 이상 요구
+agentcore invoke --harness <agent> --session-id "$SESSION_ID" "smoke test"
+```
+
+Runtime 경로 (Python starter toolkit):
 
 ```bash
 agentcore configure    # 설정 초기화
@@ -66,4 +86,5 @@ agentcore status       # 배포 상태 확인
 ```
 
 Phase 1에서 구체적 성공 기준을 잡았다면, 수동 `invoke` 확인 외에 AgentCore
-Evaluations(내장 평가자/Ground Truth/커스텀 Lambda 평가자)도 선택적으로 제안합니다.
+Evaluations(내장 평가자/Ground Truth/커스텀 Lambda 평가자, GA)와 Recommendations/배치
+평가/A-B 테스트도 선택적으로 제안합니다.
