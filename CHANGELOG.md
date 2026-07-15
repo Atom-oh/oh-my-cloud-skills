@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-07-15
+
+### Added
+- **aws-content-plugin: new `profile-page` skill** — builds a personal profile / developer-portfolio page as one self-contained responsive HTML (sidebar identity + experience timeline + project cards with GitHub / Live / optional per-repo Demo links); curates projects from the user's GitHub via `gh` with Pages-enabled repos first, takes an optional LinkedIn URL (WebFetch, user-confirmed candidate facts, never fabricated), and reuses brochure's `check_brochure.py` self-check — now parameterized with `--mobile-breakpoint` ([#119](https://github.com/Atom-oh/oh-my-cloud-skills/pull/119))
+
 ### Changed
 - **co-agent: update default panel models** — kiro-cli's single `model` (used under `profile: default`, e.g. the hybrid gate's verify phase) is now `claude-opus-4.8`; codex is now `openai.gpt-5.5` at `effort: high`; agy is now `Gemini 3.1 Pro (High)` ([#112](https://github.com/Atom-oh/oh-my-cloud-skills/pull/112))
 
@@ -307,7 +312,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add AWS Architecture Icons integration (4,224 files)
 - Add presenter view with speaker notes
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.13.0...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.14.0...HEAD
+[1.14.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.1...v1.13.0
 [1.12.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.0...v1.12.1
 [1.12.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.11.0...v1.12.0
@@ -340,6 +346,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 따릅니다.
 
 ## [Unreleased]
+
+## [1.14.0] - 2026-07-15
+
+### Added
+- **aws-content-plugin: 신규 `profile-page` 스킬 추가** — 개인 프로필/개발자 포트폴리오 페이지를 자기완결형 반응형 HTML 한 장으로 생성(사이드바 아이덴티티 + 경력 타임라인 + GitHub/Live/repo별 선택 Demo 링크의 프로젝트 카드); `gh`로 사용자의 GitHub에서 프로젝트를 큐레이션(Pages 활성 repo 우선)하고, 선택적 LinkedIn URL 입력(WebFetch, 사용자 확인 후보 사실만, 지어내지 않음)을 받으며, brochure의 `check_brochure.py` self-check를 재사용 — `--mobile-breakpoint` 파라미터화 ([#119](https://github.com/Atom-oh/oh-my-cloud-skills/pull/119))
 
 ### Changed
 - **co-agent: 패널 기본 모델 갱신** — kiro-cli의 단일 `model`(`profile: default`, 예: 하이브리드 게이트 verify 단계에서 사용)이 `claude-opus-4.8`로, codex가 `openai.gpt-5.5`(`effort: high`)로, agy가 `Gemini 3.1 Pro (High)`로 변경 ([#112](https://github.com/Atom-oh/oh-my-cloud-skills/pull/112))
@@ -633,7 +644,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AWS Architecture Icons 통합 추가 (4,224개 파일)
 - 발표자 뷰 및 발표자 노트 추가
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.13.0...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.14.0...HEAD
+[1.14.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.1...v1.13.0
 [1.12.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.0...v1.12.1
 [1.12.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.11.0...v1.12.0

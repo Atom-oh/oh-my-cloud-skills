@@ -9,37 +9,37 @@
   "plugins": [
     {
       "name": "aws-content-plugin",
-      "version": "1.13.0",
+      "version": "1.14.0",
       "source": "./plugins/aws-content-plugin",
       "description": "AWS cloud content creation — presentations, architecture diagrams, animated diagrams, documents, GitBook sites, workshops, and brochures"
     },
     {
       "name": "aws-ops-plugin",
-      "version": "1.13.0",
+      "version": "1.14.0",
       "source": "./plugins/aws-ops-plugin",
       "description": "AWS/EKS infrastructure operations — troubleshooting, networking, IAM, observability, storage, database, and cost optimization"
     },
     {
       "name": "kiro-power-converter",
-      "version": "1.13.0",
+      "version": "1.14.0",
       "source": "./plugins/kiro-power-converter",
       "description": "Convert Claude Code plugins to Kiro Power format — supports GitHub URL, local path, marketplace name, and individual skill conversion"
     },
     {
       "name": "co-agent",
-      "version": "1.13.0",
+      "version": "1.14.0",
       "source": "./plugins/co-agent",
       "description": "Collaborate with other AI agents (Kiro CLI, Codex, Antigravity) — multi-AI code/architecture review, decision support when unsure, ADR co-authoring, and autonomous consensus/harness implementation pipelines, with Claude as chair"
     },
     {
       "name": "agentcore-creator",
-      "version": "1.13.0",
+      "version": "1.14.0",
       "source": "./plugins/agentcore-creator",
       "description": "Convert Claude Code plugins to Amazon Bedrock AgentCore deployable formats — Runtime agents, Gateway tools, Memory knowledge stores, Lambda functions"
     },
     {
       "name": "project-init",
-      "version": "1.13.0",
+      "version": "1.14.0",
       "source": "./plugins/project-init",
       "description": "Initialize and maintain Claude Code project structures with adaptive project detection, CLAUDE.md quality scoring, and auto-sync documentation workflows"
     }
