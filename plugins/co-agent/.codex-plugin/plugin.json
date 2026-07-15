@@ -1,6 +1,6 @@
 {
   "name": "co-agent",
-  "version": "1.14.0",
+  "version": "1.14.1",
   "description": "Collaborate with peer AI agents such as Kiro CLI, Claude/Codex peer hosts, and Agy for multi-AI review, decision support, ADR drafting, context synchronization, and autonomous consensus/harness implementation pipelines",
   "author": {
     "name": "atomoh"

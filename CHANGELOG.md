@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.14.1] - 2026-07-15
+
+### Changed
+- **aws-content-plugin: rename the `profile-page` skill to `gh-home`** — the skill targets the GitHub Pages user-site home, so the name now says so; also adds a usage-guide section with explicit prerequisites (public Pages repo, authenticated `gh` CLI; optional LinkedIn URL and per-repo Demo URLs)
+
 ## [1.14.0] - 2026-07-15
 
 ### Added
@@ -313,7 +318,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add AWS Architecture Icons integration (4,224 files)
 - Add presenter view with speaker notes
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.14.0...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.14.1...HEAD
+[1.14.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.14.0...v1.14.1
 [1.14.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.1...v1.13.0
 [1.12.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.0...v1.12.1
@@ -347,6 +353,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 따릅니다.
 
 ## [Unreleased]
+
+## [1.14.1] - 2026-07-15
+
+### Changed
+- **aws-content-plugin: `profile-page` 스킬을 `gh-home`으로 이름 변경** — GitHub Pages 유저 사이트 메인(홈)을 만드는 스킬이므로 이름에 대상을 반영; 사용법 가이드에 준비물(public Pages repo, 로그인된 `gh` CLI, 선택: LinkedIn URL·repo별 Demo URL)을 명시한 섹션도 추가
 
 ## [1.14.0] - 2026-07-15
 
@@ -646,7 +657,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AWS Architecture Icons 통합 추가 (4,224개 파일)
 - 발표자 뷰 및 발표자 노트 추가
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.14.0...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.14.1...HEAD
+[1.14.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.14.0...v1.14.1
 [1.14.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.1...v1.13.0
 [1.12.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.0...v1.12.1
