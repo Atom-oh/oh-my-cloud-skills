@@ -218,7 +218,7 @@ Source: `tools/remarp-vscode/` | Entry: `src/extension.ts` | Preview: `src/previ
 
 ## Plugin Inventory
 
-### aws-content-plugin (9 agents, 8 skills)
+### aws-content-plugin (9 agents, 9 skills)
 
 | Agent | Creates |
 |-------|---------|
@@ -233,10 +233,12 @@ Source: `tools/remarp-vscode/` | Entry: `src/extension.ts` | Preview: `src/previ
 | `content-review-agent` | Quality gate for all content types |
 
 Content skills: `reactive-presentation`, `architecture-diagram`, `animated-diagram`,
-`gitbook`, `workshop-creator`, `slide-fix`, `brochure`, and **`aws-light-fcd`** — the
-native **PPTX** skill (PptxGenJS, AWS Light theme, Pretendard). The presentation-agent
-dispatcher routes PPTX requests to `aws-light-fcd`; it shares the official 811-icon
-library with `reactive-presentation` via `kit.icon()` (referenced in place, not duplicated).
+`gitbook`, `workshop-creator`, `slide-fix`, `brochure`, `profile-page`, and
+**`aws-light-fcd`** — the native **PPTX** skill (PptxGenJS, AWS Light theme, Pretendard).
+The presentation-agent dispatcher routes PPTX requests to `aws-light-fcd`; it shares the
+official 811-icon library with `reactive-presentation` via `kit.icon()` (referenced in
+place, not duplicated). `profile-page` is a personal profile/portfolio page analog of
+`brochure` (person, not product) and reuses its self-check script.
 
 ### aws-ops-plugin (10 agents, 6 skills)
 

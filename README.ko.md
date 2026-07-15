@@ -759,7 +759,7 @@ co-agent 협업:   프롬프트  -->  Kiro/Codex/Antigravity(agy) 팬아웃  -->
 
 ```
 plugins/
-├── aws-content-plugin/                # 콘텐츠 제작 (9 에이전트, 8 스킬)
+├── aws-content-plugin/                # 콘텐츠 제작 (9 에이전트, 9 스킬)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
 │   ├── agents/                        # 9 에이전트
@@ -772,7 +772,7 @@ plugins/
 │   │   ├── workshop-agent.md          # AWS Workshop Studio 콘텐츠
 │   │   ├── brochure-agent.md          # 단일 페이지 반응형 브로셔
 │   │   └── content-review-agent.md    # 통합 품질 검토
-│   └── skills/                        # 8 스킬
+│   └── skills/                        # 9 스킬
 │       ├── reactive-presentation/     # 프레젠테이션 프레임워크 + AWS 아이콘
 │       ├── architecture-diagram/      # Draw.io 템플릿 및 패턴
 │       ├── animated-diagram/          # SMIL 애니메이션 가이드 및 템플릿
@@ -780,6 +780,7 @@ plugins/
 │       ├── workshop-creator/          # Workshop Studio 지시문 및 템플릿
 │       ├── slide-fix/                 # 슬라이드 이슈 어노테이션 처리
 │       ├── brochure/                  # 반응형 브로셔 디자인 시스템
+│       ├── profile-page/              # 개인 프로필/포트폴리오 페이지 디자인 시스템
 │       └── aws-light-fcd/             # 네이티브 PPTX 덱 (PptxGenJS, AWS 라이트 테마)
 │
 ├── aws-ops-plugin/                    # 인프라 운영 (10 에이전트, 6 스킬)

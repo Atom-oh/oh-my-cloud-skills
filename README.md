@@ -760,7 +760,7 @@ All content passes through `content-review-agent` which scores on a 100-point sc
 
 ```
 plugins/
-├── aws-content-plugin/                # Content creation (9 agents, 8 skills)
+├── aws-content-plugin/                # Content creation (9 agents, 9 skills)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
 │   ├── agents/                        # 9 agents
@@ -773,7 +773,7 @@ plugins/
 │   │   ├── workshop-agent.md          # AWS Workshop Studio content
 │   │   ├── brochure-agent.md          # Single-page responsive brochure
 │   │   └── content-review-agent.md    # Cross-cutting quality review
-│   └── skills/                        # 8 skills
+│   └── skills/                        # 9 skills
 │       ├── reactive-presentation/     # Presentation framework + AWS icons
 │       ├── architecture-diagram/      # Draw.io templates & patterns
 │       ├── animated-diagram/          # SMIL animation guide & templates
@@ -781,6 +781,7 @@ plugins/
 │       ├── workshop-creator/          # Workshop Studio directives & templates
 │       ├── slide-fix/                 # Slide issue annotation processing
 │       ├── brochure/                  # Responsive brochure design system
+│       ├── profile-page/              # Personal profile / portfolio page design system
 │       └── aws-light-fcd/             # Native PPTX decks (PptxGenJS, AWS Light theme)
 │
 ├── aws-ops-plugin/                    # Infrastructure operations (10 agents, 6 skills)

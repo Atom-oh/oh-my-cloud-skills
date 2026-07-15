@@ -1,0 +1,54 @@
+{
+  "skill_name": "profile-page",
+  "evals": [
+    {
+      "id": 0,
+      "name": "developer-portfolio-ko",
+      "prompt": "제 개인 GitHub Pages용 프로필 페이지를 만들어줘. 이름은 김민수, 클라우드 엔지니어, 서울 거주. 경력은 A사(2022-현재, DevOps Engineer), B사(2020-2022, Backend Engineer) 두 곳. 스킬은 AWS, Kubernetes, Terraform, Python. 프로젝트는 'my-terraform-modules'(GitHub: github.com/minsu/my-terraform-modules, Live: minsu.github.io/my-terraform-modules) 하나만 있어. GitHub과 LinkedIn 링크도 넣어줘. 모바일에서도 잘 보여야 해.",
+      "expected_output": "A single self-contained responsive HTML profile page (mobile/desktop) with a sidebar (avatar/name/title/links), about, experience timeline, skills tags, and a project card with Live + GitHub links, using only the facts provided.",
+      "files": [],
+      "assertions": [
+        "Responsive viewport meta present (width=device-width)",
+        "Mobile breakpoint present (@media max-width:768px or similar)",
+        "Keyboard :focus-visible styles present (accessibility)",
+        "Sidebar/identity block with name and title present",
+        "Experience timeline with the two given companies present",
+        "Project card includes both a Live link and a GitHub link",
+        "Self-contained: CSS inlined in <style> (no build step)",
+        "Well-formed: section & style tags balanced",
+        "No fabricated companies, dates, or projects beyond what was given"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "portfolio-refresh-en",
+      "prompt": "I already have an index.html on my GitHub Pages user site — a copy is provided at evals/fixtures/existing-profile.html (relative to this skill). Copy it to your working directory as index.html, then refresh it to add a new project 'edge-cache-cli' (GitHub: github.com/jdoe/edge-cache-cli, Live: jdoe.dev/edge-cache-cli, description: \"single-binary CLI to purge and warm CDN edge caches\") to the Projects section, without changing anything else.",
+      "expected_output": "The existing profile page HTML with the new project card added to the Projects section, preserving all other existing content, styling, and files (e.g. analytics scripts, CNAME) untouched.",
+      "files": [
+        "fixtures/existing-profile.html"
+      ],
+      "assertions": [
+        "Existing sections (about, experience, skills) remain unchanged in content",
+        "New project card for edge-cache-cli added with both Live and GitHub links",
+        "No unrelated analytics/ads/tracking script removed",
+        "Self-contained: CSS remains inlined in <style> (no build step introduced)",
+        "Well-formed: section & style tags balanced"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "gh-derived-portfolio-ko",
+      "prompt": "내 개인 GitHub Pages 프로필 페이지를 만들어줘. GitHub 사용자명은 Atom-oh야. 이름/직함/거주지는 물어보면 알려줄게. 프로젝트 섹션은 내 GitHub repo들 중에서 알아서 골라서 채워줘. 경력은 내 LinkedIn URL을 주면 참고해서 채울 수 있으면 채워줘.",
+      "expected_output": "A profile page whose project cards are curated from the user's real repos via gh (Pages-enabled repos first, each with a Live + GitHub link pair), with the selection rationale surfaced to the user; experience appears only if verifiably sourced (a LinkedIn fetch or user-given facts) — never invented.",
+      "files": [],
+      "assertions": [
+        "Project cards name only real public repos of the given user (gh-verifiable)",
+        "Pages-enabled (has_pages) repos are the showcased candidates; each shows a Live + GitHub link pair",
+        "Project selection is confirmed with (or stated to) the user, not silently exhaustive",
+        "No fabricated experience entries when LinkedIn is unfetchable",
+        "Responsive viewport meta + mobile breakpoint present",
+        "Self-contained: CSS inlined in <style> (no build step)"
+      ]
+    }
+  ]
+}

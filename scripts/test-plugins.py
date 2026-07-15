@@ -11,7 +11,7 @@ from typing import Dict, List, Any, Optional, Tuple
 # Valid constants
 VALID_MODELS = {"haiku", "sonnet", "opus", "fable"}  # fable = Fable 5, a valid model alias
 VALID_TOOLS = {"Read", "Write", "Edit", "Glob", "Grep", "Bash", "AskUserQuestion",
-               "Agent", "Skill", "WebFetch", "NotebookEdit"}
+               "Agent", "Skill", "WebFetch", "WebSearch", "NotebookEdit"}
 VALID_HOOK_EVENTS = {"SessionStart", "PreToolUse", "PostToolUse", "PostToolUseFailure",
                      "UserPromptSubmit", "Stop", "Notification", "SubagentStart",
                      "SubagentStop", "PermissionRequest", "SessionEnd", "PreCompact"}

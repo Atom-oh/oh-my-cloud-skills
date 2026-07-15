@@ -52,6 +52,13 @@ brochure-agent → gather product facts → (architecture-diagram → SVG) → s
 ```
 > 단일 자기완결 HTML(모바일/태블릿/PC 반응형). 아키텍처는 `architecture-diagram`으로 만들어 SVG로 임베드하고 카피와 같은 이야기를 유지. **공개 호스팅은 GitHub Pages** — 인증 엣지(Cognito Lambda@Edge 등) 뒤 도메인엔 공개 우회 경로가 없으면 올릴 수 없음.
 
+### Profile Page Workflow
+```
+gather facts (기존 페이지/GitHub/사용자 확인) → self-contained responsive HTML (sidebar+about+experience+skills+projects)
+  → check_brochure.py (brochure 스킬과 공유) → content-review-agent (≥85) → GitHub Pages (public)
+```
+> 개인 프로필/포트폴리오 페이지(제품/솔루션이 아닌 사람이 주제) — brochure와 구분. 경력/프로젝트는 절대 지어내지 않고 기존 페이지·GitHub·사용자 확인으로만 채움. 기존 `index.html`이 있으면 **덮어쓰기 전 확인**, CNAME/robots.txt/analytics 스크립트 등 무관 파일은 보존.
+
 ---
 
 ## Team Workflow Patterns (병렬 오케스트레이션)
@@ -90,6 +97,7 @@ brochure-agent → gather product facts → (architecture-diagram → SVG) → s
 | GitBook 페이지 완성 | GitBook 프로젝트 구조 작성 완료 | `review content at [프로젝트경로]` |
 | Workshop 콘텐츠 완성 | Workshop 모듈 콘텐츠 작성 완료 | `review content at [프로젝트경로]` |
 | 브로셔 완성 | 브로셔 `.html` 작성 완료 | `review content at [파일경로]` |
+| 프로필 페이지 완성 | 프로필 페이지 `.html` 작성 완료 | `review content at [파일경로]` |
 
 ### Review Loop
 
@@ -134,6 +142,7 @@ brochure-agent → gather product facts → (architecture-diagram → SVG) → s
 | `slide-fix` | Issue annotation-based slide repair (reads `<!-- issue: -->`, fixes, rebuilds) |
 | `workshop-creator` | Workshop Studio directives, templates, references |
 | `brochure` | Responsive brochure design system, golden example, self-check script |
+| `profile-page` | Personal profile / developer portfolio page design system — sidebar+timeline+project-card spine; reuses `brochure`'s self-check script |
 | `aws-light-fcd` | Native **PPTX** decks (PptxGenJS) — AWS Light theme, Pretendard, 11 layout builders + arch-diagram kit; shares the 811-icon library via `kit.icon()` |
 
 ---
