@@ -781,7 +781,7 @@ plugins/
 │       ├── workshop-creator/          # Workshop Studio directives & templates
 │       ├── slide-fix/                 # Slide issue annotation processing
 │       ├── brochure/                  # Responsive brochure design system
-│       ├── profile-page/              # Personal profile / portfolio page design system
+│       ├── gh-home/                   # Personal profile / portfolio page (gh-pages home)
 │       └── aws-light-fcd/             # Native PPTX decks (PptxGenJS, AWS Light theme)
 │
 ├── aws-ops-plugin/                    # Infrastructure operations (10 agents, 6 skills)

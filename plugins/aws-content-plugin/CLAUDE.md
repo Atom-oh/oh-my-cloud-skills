@@ -52,7 +52,7 @@ brochure-agent → gather product facts → (architecture-diagram → SVG) → s
 ```
 > 단일 자기완결 HTML(모바일/태블릿/PC 반응형). 아키텍처는 `architecture-diagram`으로 만들어 SVG로 임베드하고 카피와 같은 이야기를 유지. **공개 호스팅은 GitHub Pages** — 인증 엣지(Cognito Lambda@Edge 등) 뒤 도메인엔 공개 우회 경로가 없으면 올릴 수 없음.
 
-### Profile Page Workflow
+### Profile Page (gh-home) Workflow
 ```
 gather facts (기존 페이지/GitHub/사용자 확인) → self-contained responsive HTML (sidebar+about+experience+skills+projects)
   → check_brochure.py (brochure 스킬과 공유) → content-review-agent (≥85) → GitHub Pages (public)
@@ -142,7 +142,7 @@ gather facts (기존 페이지/GitHub/사용자 확인) → self-contained respo
 | `slide-fix` | Issue annotation-based slide repair (reads `<!-- issue: -->`, fixes, rebuilds) |
 | `workshop-creator` | Workshop Studio directives, templates, references |
 | `brochure` | Responsive brochure design system, golden example, self-check script |
-| `profile-page` | Personal profile / developer portfolio page design system — sidebar+timeline+project-card spine; reuses `brochure`'s self-check script |
+| `gh-home` | Personal profile / developer portfolio page design system — sidebar+timeline+project-card spine; reuses `brochure`'s self-check script |
 | `aws-light-fcd` | Native **PPTX** decks (PptxGenJS) — AWS Light theme, Pretendard, 11 layout builders + arch-diagram kit; shares the 811-icon library via `kit.icon()` |
 
 ---

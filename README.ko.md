@@ -780,7 +780,7 @@ plugins/
 │       ├── workshop-creator/          # Workshop Studio 지시문 및 템플릿
 │       ├── slide-fix/                 # 슬라이드 이슈 어노테이션 처리
 │       ├── brochure/                  # 반응형 브로셔 디자인 시스템
-│       ├── profile-page/              # 개인 프로필/포트폴리오 페이지 디자인 시스템
+│       ├── gh-home/                   # 개인 프로필/포트폴리오 페이지 (gh-pages 홈)
 │       └── aws-light-fcd/             # 네이티브 PPTX 덱 (PptxGenJS, AWS 라이트 테마)
 │
 ├── aws-ops-plugin/                    # 인프라 운영 (10 에이전트, 6 스킬)

@@ -35,7 +35,7 @@ const sidebars: SidebarsConfig = {
         'aws-content-plugin/skills/gitbook',
         'aws-content-plugin/skills/workshop-creator',
         'aws-content-plugin/skills/brochure',
-        'aws-content-plugin/skills/profile-page',
+        'aws-content-plugin/skills/gh-home',
         'aws-content-plugin/skills/aws-light-fcd',
       ],
     },

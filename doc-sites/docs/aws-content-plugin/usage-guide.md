@@ -32,6 +32,7 @@ AWS Content Plugin으로 프레젠테이션, 다이어그램, 문서를 만드�
 | "문서 작성", "write report", "technical report" | `document-agent` | Markdown 문서 |
 | "gitbook", "documentation site" | `gitbook-agent` | GitBook 프로젝트 |
 | "workshop", "hands-on guide", "랩 작성" | `workshop-agent` | Workshop Studio 콘텐츠 |
+| "프로필 페이지", "포트폴리오", "gh-home", "gh-pages 홈" | `gh-home` 스킬 | 개인 프로필 HTML (GitHub Pages) |
 | "review content", "quality check" | `content-review-agent` | 리뷰 리포트 |
 
 :::tip 한국어/영어 혼용
@@ -307,6 +308,38 @@ EKS 핸즈온 워크샵 만들어줘, 3개 모듈 구성
 ```
 
 Workshop Studio 형식의 콘텐츠를 생성합니다 (디렉티브, 다국어 지원, CloudFormation 인프라).
+
+---
+
+## 프로필 페이지 만들기 (gh-home)
+
+GitHub Pages 유저 사이트(`<user>.github.io`)의 메인에 올릴 개인 프로필/포트폴리오 페이지를 자기완결형 HTML 한 장으로 만듭니다 — 사이드바(사진/이름/링크) + About + 경력 타임라인 + 스킬 + 프로젝트 쇼케이스.
+
+### 준비물
+
+| 준비물 | 필수 여부 | 용도 |
+|--------|----------|------|
+| **public GitHub Pages repo** (보통 `<user>.github.io`) | 필수 | 배포 대상 — 스킬이 시작 시 확인 |
+| **`gh` CLI (로그인 상태)** | 필수 | 프로필/repo 자동 파생 — `gh auth status`로 확인. 없으면 기존 페이지 + 사용자 입력만으로 진행 |
+| **LinkedIn 프로필 URL** | 선택 | 경력 자동 채움 시도 (비로그인 fetch는 대개 차단되므로 실패 시 직접 질문으로 폴백 — 지어내지 않음) |
+| **repo별 Demo URL** | 선택 | 프로젝트 카드는 GitHub + Live(Pages) + Demo 3링크 지원 — Demo는 repo에서 파생 불가라 스킬이 물어봄 |
+
+### 프롬프트 예시
+
+```
+내 gh-pages 메인 프로필 페이지 만들어줘. GitHub 사용자명은 <user>야.
+경력은 LinkedIn(URL) 참고하고, 프로젝트는 내 repo에서 알아서 골라줘.
+```
+
+### 워크플로우
+
+1. 대상 repo + `gh` 확인 → 기존 `index.html`이 있으면 재사용(source of truth)
+2. `gh`로 repo 파생 — **Pages 활성 repo 우선** 큐레이션, 포크 제외, 최종 선정은 사용자 확인
+3. 자기완결형 반응형 HTML 작성 (모바일에서 사이드바 상단 스택)
+4. self-check(`check_brochure.py --mobile-breakpoint 768`) → `content-review-agent` ≥85
+5. gh-pages repo 커밋/푸시 — 기존 페이지 덮어쓰기 전 확인, CNAME/robots.txt/analytics 보존
+
+**출력:** `index.html` 1개 (인라인 CSS, 빌드 스텝 없음) → 라이브 URL 200 검증
 
 ---
 

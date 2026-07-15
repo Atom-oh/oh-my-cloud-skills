@@ -1,9 +1,9 @@
 ---
 sidebar_position: 7
-title: "Profile Page"
+title: "GH Home (Profile Page)"
 ---
 
-# Profile Page Skill
+# gh-home Skill — 개인 프로필 페이지
 
 Build a **single-page, responsive personal profile / developer portfolio** as a
 **self-contained HTML file** (one HTML entry with CSS inlined — no build step, no
@@ -22,7 +22,7 @@ with working GitHub + Live links (and an optional per-repo Demo link, asked from
 
 | Need | Use |
 |------|-----|
-| Personal "about me" / portfolio / project showcase page | **profile-page** (this skill) |
+| Personal "about me" / portfolio / project showcase page | **gh-home** (this skill) |
 | Product/solution marketing landing page | `brochure` |
 | Slide decks / talks / training | `reactive-presentation` |
 | Multi-page documentation sites | `gitbook` |

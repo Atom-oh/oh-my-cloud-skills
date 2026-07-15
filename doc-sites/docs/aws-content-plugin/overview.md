@@ -34,7 +34,7 @@ AWS Content Plugin은 AWS 클라우드 관련 콘텐츠 제작을 위한 전문 
 | `slide-fix` | Issue annotation 기반 슬라이드 수정 (`<!-- issue: -->` 읽기 → 수정 → 재빌드) |
 | `workshop-creator` | Workshop Studio 디렉티브, 템플릿, 참조 문서 |
 | `brochure` | 반응형 브로셔 디자인 시스템, 골든 예시, self-check 스크립트 |
-| `profile-page` | 개인 프로필/포트폴리오 페이지 디자인 시스템 — `brochure`의 self-check 스크립트 재사용 |
+| `gh-home` | 개인 프로필/포트폴리오 페이지 디자인 시스템 — `brochure`의 self-check 스크립트 재사용 |
 | `aws-light-fcd` | 네이티브 **PPTX** 덱(PptxGenJS) — AWS Light 테마, Pretendard, `reactive-presentation`의 811-아이콘 라이브러리를 `kit.icon()`으로 공유 |
 
 ## 워크플로우

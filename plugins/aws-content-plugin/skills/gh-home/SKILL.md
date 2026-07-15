@@ -1,6 +1,6 @@
 ---
-name: profile-page
-description: "Create a single-page, responsive personal profile / developer portfolio page as one self-contained HTML file — sidebar (photo, name, links) + about + experience timeline + skills + featured work + project showcase — deployed publicly via GitHub Pages. Use whenever the user wants a personal profile page, developer portfolio, 'about me' page, resume/CV page, '프로필 페이지', '포트폴리오', '자기소개 페이지', '개인 프로젝트 소개 페이지', or wants to showcase themselves and their projects on the web. Not for a product/solution marketing page (use brochure), slide decks (use reactive-presentation), or multi-page docs sites (use gitbook)."
+name: gh-home
+description: "Create a single-page, responsive personal profile / developer portfolio page as one self-contained HTML file — sidebar (photo, name, links) + about + experience timeline + skills + featured work + project showcase — deployed publicly via GitHub Pages. Use whenever the user wants their GitHub Pages user-site home ('gh-home', 'gh-pages 홈/메인'), a personal profile page, developer portfolio, 'about me' page, resume/CV page, '프로필 페이지', '포트폴리오', '자기소개 페이지', '개인 프로젝트 소개 페이지', or wants to showcase themselves and their projects on the web. Not for a product/solution marketing page (use brochure), slide decks (use reactive-presentation), or multi-page docs sites (use gitbook)."
 allowed-tools:
   - Read
   - Write
@@ -16,7 +16,7 @@ allowed-tools:
 
 Build a **single-page, responsive personal profile / developer portfolio** as a **self-contained HTML page** (one HTML entry file with CSS inlined — no build step, no framework) — readable on mobile, tablet, and PC — that introduces a person, their experience, their skills, and their projects. Designed to be hosted **publicly** (GitHub Pages).
 
-> **Path variable**: `{skill-dir}` in this document = `{plugin-dir}/skills/profile-page` in agent documents.
+> **Path variable**: `{skill-dir}` in this document = `{plugin-dir}/skills/gh-home` in agent documents.
 
 A profile page is **a personal front door**, not a product pitch and not a slide deck. A visitor should grasp *who this person is and what they've built* in a few seconds of scanning the sidebar, then be able to scroll through experience, skills, and real projects with working links.
 
