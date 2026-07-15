@@ -15,7 +15,7 @@ R=$(mktemp -d "${TMPDIR:-/tmp}/prreviewcfg.XXXXXX")
 # (a) fresh --root → all 3 kiro cells + codex enabled by default
 CELLS=$(python3 "$CFG" kiro-cells --root "$R" 2>&1)
 assert_eq "claude-opus-4.8:kiro-opus
-gpt-5.5:kiro-gpt
+gpt-5.6-terra:kiro-gpt
 glm-5:kiro-glm" "$CELLS" "kiro-cells lists all 3 kiro cells in fixed order by default"
 python3 "$CFG" codex-enabled --root "$R" >/dev/null 2>&1 && RC=0 || RC=$?
 assert_eq "0" "$RC" "codex-enabled exits 0 by default"
@@ -24,7 +24,7 @@ assert_eq "0" "$RC" "codex-enabled exits 0 by default"
 python3 "$CFG" set kiro-glm enabled false --root "$R" >/dev/null 2>&1
 CELLS_B=$(python3 "$CFG" kiro-cells --root "$R" 2>&1)
 assert_eq "claude-opus-4.8:kiro-opus
-gpt-5.5:kiro-gpt" "$CELLS_B" "disabling kiro-glm removes only that cell from kiro-cells"
+gpt-5.6-terra:kiro-gpt" "$CELLS_B" "disabling kiro-glm removes only that cell from kiro-cells"
 
 # (c) disabling codex flips codex-enabled's exit code
 python3 "$CFG" set codex enabled false --root "$R" >/dev/null 2>&1
@@ -78,13 +78,13 @@ python3 "$CFG" set kiro-glm enabled false --root "$R3" >/dev/null 2>&1 && RC=0 |
 assert_eq "0" "$RC" "set succeeds against a malformed override (repairs it rather than refusing)"
 CELLS_H3=$(python3 "$CFG" kiro-cells --root "$R3" 2>&1)
 assert_eq "claude-opus-4.8:kiro-opus
-gpt-5.5:kiro-gpt" "$CELLS_H3" "set's repair replaced the malformed override -- kiro-cells now succeeds"
+gpt-5.6-terra:kiro-gpt" "$CELLS_H3" "set's repair replaced the malformed override -- kiro-cells now succeeds"
 
 # (i) $PR_REVIEW_CONFIG_ROOT env is honored when --root is omitted (test-isolation parity
 # with co-agent's $CO_AGENT_USER_CONFIG) — same disabled-cell state as (b)/(c) above.
 CELLS_I=$(PR_REVIEW_CONFIG_ROOT="$R" python3 "$CFG" kiro-cells 2>&1)
 assert_eq "claude-opus-4.8:kiro-opus
-gpt-5.5:kiro-gpt" "$CELLS_I" "\$PR_REVIEW_CONFIG_ROOT is honored when --root is omitted"
+gpt-5.6-terra:kiro-gpt" "$CELLS_I" "\$PR_REVIEW_CONFIG_ROOT is honored when --root is omitted"
 
 # (j) MODEL_RE rejects ':' -- run-panel.sh's consumer does a first-colon split
 # ("${entry%%:*}"), so a model value containing ':' would be silently truncated instead

@@ -19,7 +19,7 @@
   -delete`) — 검증기가 트리 밖 경로를 따라갈 여지를 없애는 defense-in-depth.
 
 ## L2–L5 — Lens×Model 매트릭스 (L1 통과 시에만 실행)
-- **매트릭스**: 4 모델(Codex `openai.gpt-5.5` + Kiro `claude-opus-4.8`/`gpt-5.5`/`glm-5`) ×
+- **매트릭스**: 4 모델(Codex `openai.gpt-5.6-sol` + Kiro `claude-opus-4.8`/`gpt-5.6-terra`/`glm-5`) ×
   4 lens(L2=Skill/Agent 품질, L3=보안, L4=코드 정확성, L5=문서 일관성) = **최대 16개 독립 find
   에이전트(기본 구성 기준 — 매트릭스 멤버십은 설정값, 아래 "설정" 절 참조)**, 전부 병렬(`&`+`wait`)
   — 벽시계 ≈ 최슬로우 셀 하나(순차합 아님). 각 셀은 자기 lens
@@ -53,7 +53,7 @@
   4→16으로 늘려 체어 입력이 더 커지므로 180s로는 부족 — job timeout-minutes 50m 여유를 반영해
   600s로 상향.)
 - **데이터 거주성**: 매트릭스 멤버마다 경로가 다름 —
-  - **Codex / Claude(의장)**: Amazon Bedrock **us-east-1**(gpt-5.5는 bedrock-mantle In-Region 전용, fable-5는 US 추론 프로파일), AWS 인증은 EKS Pod Identity(SigV4).
+  - **Codex / Claude(의장)**: Amazon Bedrock **us-east-1**(openai.gpt-5.6-sol은 bedrock-mantle In-Region 전용, fable-5는 US 추론 프로파일), AWS 인증은 EKS Pod Identity(SigV4).
   - **Kiro**: **외부 API-key 기반 서비스** — PR diff가 외부로 전송됨(기본 구성 기준 16셀 중 12셀이 Kiro; 매트릭스 멤버십은 설정값이므로 실제 셀 수는 달라질 수 있음). In-Region 아님.
   - **민감 diff 정책**: 외부 전송이 부적절한 변경은 외부 패널(Kiro)을 비활성화하고 Bedrock In-Region
     멤버(Codex)만으로 리뷰할 것. **이걸 실제로 끄는 절차는 아래 "설정" 절의 "CI에서 실제로

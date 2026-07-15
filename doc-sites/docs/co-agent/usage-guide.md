@@ -132,7 +132,7 @@ CLI가 헤드리스로 실제 받는 설정만 노출합니다.
 /co-agent:configure set agy enabled false            # 패널에서 제외
 /co-agent:configure set timeout 300                  # CLI별 타임아웃(초)
 /co-agent:configure set autosync on                  # CLAUDE.md 변경 시 자동 sync-context
-/co-agent:configure set codex model gpt-5.5 --scope user  # 모든 레포에 적용
+/co-agent:configure set codex model openai.gpt-5.6-sol --scope user  # 모든 레포에 적용
 ```
 
 설정은 `co-agent.defaults.json`(커밋) ← `~/.claude/co-agent.user.json`(유저) ← `.claude/co-agent.local.json`(레포 로컬, gitignore) 레이어로 병합되며, 팬아웃이 실시간으로 읽습니다.

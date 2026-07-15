@@ -34,8 +34,8 @@ CRITICAL/MAJOR finding remains (also stop on no-progress / oscillation).
 - Same provider *family* (e.g. two Agy-routed variants) = diminishing returns; the matrix warns.
   **Kiro is the exception** — it's a cross-vendor router (Claude / MiniMax / Zhipu), so
   multiple Kiro models are genuine cross-family diversity (matrix notes it, no warning).
-  Note this is why `gpt-5.5` isn't the Kiro-side pick even though it replaced `kimi-k2.5` in
-  pr-review's panel — Codex already covers OpenAI here, so routing Kiro to `gpt-5.5` too would
+  Note this is why `gpt-5.6-terra` isn't the Kiro-side pick even though it replaced `kimi-k2.5` in
+  pr-review's panel — Codex already covers OpenAI here, so routing Kiro to `gpt-5.6-terra` too would
   collapse two of the panel's vendor-diversity slots into one family.
 - **`kimi-k2.5` was dropped** (2026-07) — it was the sole model attributed to unfounded/
   hallucinated findings across this repo's PR review history (7 dismissed claims, 0 for any
