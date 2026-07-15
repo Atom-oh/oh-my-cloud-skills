@@ -68,7 +68,7 @@ Argument: `$ARGUMENTS`
    python3 "$H" set timeout 300                 # global per-CLI timeout (s)
    python3 "$H" set codex context_limit 400000  # raise/lower a model's context window
    python3 "$H" set autosync on                 # auto-sync AI context on CLAUDE.md change
-   python3 "$H" set codex model gpt-5.6-sol --scope user   # write to ~/.claude (all your repos)
+   python3 "$H" set codex model openai.gpt-5.6-sol --scope user   # write to ~/.claude (all your repos)
    python3 "$H" set agy model "Gemini 3.1 Pro (High)"  # Agy tokens have spaces + parens
    python3 "$H" set kiro-cli models claude-opus-4.8,minimax-m2.5,glm-5  # multi-model list
    python3 "$H" set profile deep                # activate each AI's `models` list

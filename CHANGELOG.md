@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **pr-review + co-agent: `gpt-5.5` deprecated, bump to `gpt-5.6` variants** — the pr-review CI panel's `kiro-gpt` cell moves to `gpt-5.6-terra`; co-agent's default `codex` panel model moves to `openai.gpt-5.6-sol` (ADR-014)
-- **co-agent: update default panel models** — kiro-cli's single `model` (used under `profile: default`, e.g. the hybrid gate's verify phase) is now `claude-opus-4.8`; codex is now `openai.gpt-5.5` at `effort: high`; agy is now `Gemini 3.1 Pro (High)` ([#112](https://github.com/Atom-oh/oh-my-cloud-skills/pull/112))
+- **co-agent: update default panel models** — kiro-cli's single `model` (used under `profile: default`, e.g. the hybrid gate's verify phase) is now `claude-opus-4.8`; codex is now `openai.gpt-5.5` (superseded by ADR-014 above, `openai.gpt-5.6-sol`) at `effort: high`; agy is now `Gemini 3.1 Pro (High)` ([#112](https://github.com/Atom-oh/oh-my-cloud-skills/pull/112))
 
 ### Fixed
 - **co-agent: `/co-agent:setup` kept suggesting to install an already-installed official `codex` plugin** — `detect_plugin()` only matched a marketplace directory's basename against the peer's own git repo name, but Claude Code's installer names the on-disk marketplace directory after `marketplace.json`'s own `"name"` field instead; added a second signal that verifies both the marketplace's identity and that the matched entry's `source` resolves to a real, in-tree directory ([#110](https://github.com/Atom-oh/oh-my-cloud-skills/pull/110))
@@ -344,7 +344,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **pr-review + co-agent: `gpt-5.5` deprecation 대응 `gpt-5.6` 계열로 교체** — pr-review CI 패널의 `kiro-gpt` 셀은 `gpt-5.6-terra`로, co-agent의 기본 `codex` 패널 모델은 `openai.gpt-5.6-sol`로 변경 (ADR-014)
-- **co-agent: 패널 기본 모델 갱신** — kiro-cli의 단일 `model`(`profile: default`, 예: 하이브리드 게이트 verify 단계에서 사용)이 `claude-opus-4.8`로, codex가 `openai.gpt-5.5`(`effort: high`)로, agy가 `Gemini 3.1 Pro (High)`로 변경 ([#112](https://github.com/Atom-oh/oh-my-cloud-skills/pull/112))
+- **co-agent: 패널 기본 모델 갱신** — kiro-cli의 단일 `model`(`profile: default`, 예: 하이브리드 게이트 verify 단계에서 사용)이 `claude-opus-4.8`로, codex가 `openai.gpt-5.5`(위 ADR-014로 `openai.gpt-5.6-sol`로 대체됨)(`effort: high`)로, agy가 `Gemini 3.1 Pro (High)`로 변경 ([#112](https://github.com/Atom-oh/oh-my-cloud-skills/pull/112))
 
 ### Fixed
 - **co-agent: `/co-agent:setup`이 이미 설치된 공식 `codex` 플러그인에도 계속 설치를 권하던 문제 수정** — `detect_plugin()`이 marketplace 디렉터리 basename을 peer의 git repo 이름과만 비교했으나, 실제 Claude Code 설치기는 marketplace 디렉터리를 `marketplace.json`의 `"name"` 필드로 명명함; marketplace 신원과 매칭된 entry의 `source`가 실제 in-tree 디렉터리로 해석되는지를 함께 확인하는 두 번째 신호를 추가 ([#110](https://github.com/Atom-oh/oh-my-cloud-skills/pull/110))
