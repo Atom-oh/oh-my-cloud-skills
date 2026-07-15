@@ -1,12 +1,14 @@
 ---
 name: agentcore-create
-description: "Interactive agent design and deployment to Amazon Bedrock AgentCore. Brainstorm agent requirements, build as Claude Code skill first, then convert and deploy to AgentCore Runtime with Memory, Gateway, and tools."
+description: "Interactive agent design and deployment to Amazon Bedrock AgentCore. Brainstorm agent requirements, build as Claude Code skill first, then convert and deploy — config-only to AgentCore harness (skills attach unchanged) or code-gen to AgentCore Runtime with Memory, Gateway, and tools."
 argument-hint: "[agent description or 'convert <plugin-path>']"
 triggers:
   - "agentcore create"
   - "convert to agentcore"
   - "agentcore deploy"
+  - "agentcore harness"
   - "create agent for agentcore"
+  - "하네스 배포"
   - "에이전트코어 생성"
   - "에이전트코어 변환"
   - "에이전트코어 배포"
@@ -94,7 +96,7 @@ Ask questions **one at a time**, in natural conversation. Prefer multiple-choice
    e) No special knowledge needed"
 
 6. **Deployment target**: "Where should this agent run?
-   a) AgentCore Runtime (cloud-hosted, always-on)
+   a) AgentCore (cloud-hosted — harness config or Runtime code; we pick in Phase 2)
    b) Claude Code skill first, then AgentCore later
    c) Both — build skill first, then deploy
    d) Not sure yet"
@@ -154,7 +156,14 @@ Based on the approved concept, design the agent's components:
 
 > **Note on modern Opus (4.7/4.8) and Fable 5 deployment**: Generated code must NOT include `temperature`, `top_p`, `top_k`, or `thinking.type: "enabled"` with `budget_tokens` — these return 400 errors on Opus 4.7/4.8 and Fable 5. Use `thinking.type: "adaptive"` for reasoning depth control (on Fable 5 it's the *only* mode). 4.6/4.7 remain valid for pinned deployments. See `references/agentcore-mapping-rules.md` → Model-Specific Compatibility Notes.
 
-> **AgentCore Harness alternative**: for an agent with no custom orchestration logic, AgentCore Harness (`CreateHarness`/`InvokeHarness`) skips Runtime+Strands entirely — built-in memory, multi-model via Bedrock Mantle, skills catalog, evaluations. Worth surfacing as a lower-effort option here before committing to the Strands code-gen path in Phase 4. See `references/agentcore-mapping-rules.md` → New AgentCore Primitives.
+**Deployment target decision (harness vs. Runtime)** — decide this here, before Phase 4, because it changes what Phase 4 produces:
+
+| Target | What it is | Choose when |
+|---|---|---|
+| **AgentCore harness** (default recommendation, GA 2026-06) | Managed orchestration loop — `CreateHarness`/`InvokeHarness`, no code, no container. Skills attach unchanged (same SKILL.md standard), built-in memory, multi-model (Bedrock/OpenAI/Gemini/LiteLLM + Bedrock Mantle), versioning/endpoints, Step Functions | The agent is model + instructions + tools + skills — i.e. almost every plugin conversion |
+| **AgentCore Runtime** (Strands code-gen) | You own the loop: generated Strands + `BedrockAgentCoreApp` code in a container | Custom orchestration (graph/workflow), a specific framework, hook-like Pre/PostToolUse behavior, bidirectional streaming, or inline client-side tools |
+
+Full decision grid and escape hatch (`agentcore export` harness → Strands code): `references/agentcore-harness.md`.
 
 **Skill definition** — Propose the SKILL.md structure:
 - Trigger phrases (Korean + English)
@@ -305,20 +314,34 @@ Plugin: <name> (v<version>)
 
 ### 4.2 Conversion Options
 
-Ask the user for preferences (multiple choice):
+Ask the user for preferences (multiple choice). **Target** comes first — it decides which
+of the two 4.3 paths runs (recommend harness unless the Phase 2 decision table said otherwise):
 
 ```
 Conversion options:
+  Target:    a) Harness (config-only, recommended)  b) Runtime (Strands code-gen)
   Scope:     a) All agents  b) Single agent  c) Specific skill
-  Memory:    a) Enable STM/LTM  b) Disable
+  Memory:    a) Enable (harness: built-in by default)  b) Disable / BYO
   Gateway:   a) Enable (for MCP/tool integrations)  b) Disable
   Region:    <default: us-east-1>
-  Output:    <default: ./agentcore-output>
+  Output:    <default: ./agentcore-output>   (Runtime path only)
 ```
 
 ### 4.3 Run Conversion
 
-Execute the conversion script:
+**Path A — Harness (config-only).** No script. Generate the harness definition inline per
+`references/agentcore-harness.md` and the "Harness Conversion" section of
+`references/agentcore-mapping-rules.md`:
+
+1. **Instructions**: merge agent `.md` body (+ SKILL.md workflows) into the system prompt
+   using the same rules as the Runtime path.
+2. **Skills**: attach each plugin skill directory unchanged as a `git` source (public repo)
+   or `s3` source (private) — reference docs ship inside the skill, so no Memory chunking.
+3. **Tools**: map `mcpServers` to harness MCP tools or Gateway targets; built-in shell,
+   file operations, browser, and code interpreter are config toggles.
+4. Present the resulting `create-harness` command (or `agentcore` CLI flow) for review.
+
+**Path B — Runtime (Strands code-gen).** Execute the conversion script:
 
 ```bash
 python3 {skill-dir}/scripts/convert_plugin_to_agentcore.py \
@@ -331,7 +354,13 @@ python3 {skill-dir}/scripts/convert_plugin_to_agentcore.py \
 
 ### 4.4 Artifact Review
 
-Present generated artifacts for review:
+Present generated artifacts for review.
+
+**Harness path (A)** — the artifact is the harness definition itself: the merged
+instructions, the skill source list, tool config, and limits. Review it as a single
+`create-harness` payload before deploying.
+
+**Runtime path (B)** — review each generated file:
 
 **Agent code** (`agents/<name>.py`):
 - Must use `BedrockAgentCoreApp` wrapper with `@app.entrypoint`
@@ -390,7 +419,23 @@ Allow the user to review and request modifications to any generated artifact. Co
 
 ### 4.6 Deployment
 
-Deploy using `agentcore` CLI (from `bedrock-agentcore-starter-toolkit`). Each step requires user confirmation.
+Each step requires user confirmation.
+
+**Path A — Harness.** Uses the Node-based AgentCore CLI (`npm install -g @aws/agentcore`,
+Node.js 20+) or raw AWS CLI — full flow in `references/agentcore-harness.md`:
+
+```bash
+agentcore create --name <agent> --model-provider bedrock
+agentcore add skill --harness <agent> --git <repo-url> --git-path <skill-subdir>   # per skill
+agentcore deploy
+```
+
+Or without the CLI: `aws bedrock-agentcore-control create-harness --harness-name <agent>
+--execution-role-arn <role-arn> --skills '<sources>'`, then poll `get-harness` until
+`"status": "READY"`. Memory is built-in by default; Gateway/Policy attach via config when
+the plugin had MCP servers or tool restrictions.
+
+**Path B — Runtime.** Uses the Python `agentcore` CLI (from `bedrock-agentcore-starter-toolkit`).
 
 **Step 1: Prerequisites check**
 ```bash
@@ -436,12 +481,17 @@ agentcore invoke        # Test with sample prompt
 agentcore dev           # Optional: local inspector UI for faster iteration
 ```
 
+Harness path: poll `get-harness` until `"status": "READY"`, then smoke-test with
+`invoke_harness` (note: `runtimeSessionId` must be ≥33 chars — use a UUID) and confirm the
+skills loaded (a bad git/s3 source fails the invocation with a descriptive error, never
+silently). Reuse the session ID once to verify built-in memory persists across invocations.
+
 Test each component:
 - Runtime: invoke agent, verify response quality
 - Memory: query knowledge store, verify retrieval
 - Gateway: test tool endpoint, verify integration
 
-If Phase 1 captured concrete success criteria, mention **AgentCore Evaluations** (built-in evaluators, Ground Truth, custom Lambda evaluators) as an optional step beyond a manual `invoke` smoke test — see `references/agentcore-mapping-rules.md` → New AgentCore Primitives for what's available and when it's worth the setup cost.
+If Phase 1 captured concrete success criteria, mention **AgentCore Evaluations** (GA — 13 built-in evaluators, Ground Truth, custom Lambda evaluators, batch evaluations, A/B testing) as an optional step beyond a manual `invoke` smoke test, and **Recommendations/Failure Insights** for continuous improvement on production traffic — see `references/agentcore-mapping-rules.md` → New AgentCore Primitives for what's available and when it's worth the setup cost.
 
 ### 5.2 Deployment Summary
 
@@ -478,12 +528,13 @@ Provide guidance on:
 
 ## Reference Files
 
-- `references/agentcore-mapping-rules.md` — Field-by-field conversion rules, edge cases, hooks gap analysis
+- `references/agentcore-harness.md` — Harness deep-dive: APIs, skill sources, models (Mantle/LiteLLM), memory/filesystem, versioning, CLI flow, harness-vs-Runtime decision grid
+- `references/agentcore-mapping-rules.md` — Field-by-field conversion rules (harness + Runtime), edge cases, hooks gap analysis
 - `references/agentcore-format-reference.md` — AgentCore format specs (Runtime, Gateway, Memory, Lambda)
 - `references/agent-code-templates.md` — Python agent code templates (Strands + BedrockAgentCoreApp)
-- `references/memory-chunking-strategy.md` — Memory STM/LTM strategy, knowledge namespace design
+- `references/memory-chunking-strategy.md` — Memory STM/LTM strategy, knowledge namespace design (Runtime path)
 
-## Conversion Script
+## Conversion Script (Runtime path)
 
 ```bash
 python3 {skill-dir}/scripts/convert_plugin_to_agentcore.py \

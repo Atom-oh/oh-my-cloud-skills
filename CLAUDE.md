@@ -8,7 +8,7 @@ A Claude Code plugin marketplace containing six plugins for AWS cloud work:
 - **aws-content-plugin** — Content creation (presentations, diagrams, docs, workshops)
 - **aws-ops-plugin** — Infrastructure operations & troubleshooting (EKS, networking, IAM, observability)
 - **kiro-power-converter** — Convert Claude Code plugins to Kiro IDE Power format
-- **agentcore-creator** — Convert Claude Code plugins to Bedrock AgentCore
+- **agentcore-creator** — Convert Claude Code plugins to Bedrock AgentCore (harness or Runtime)
 - **co-agent** — Multi-AI collaboration (Kiro CLI, Codex, Antigravity): review, decision support, ADR co-authoring; Claude chairs
 - **project-init** — Project scaffolding and documentation management
 
@@ -269,9 +269,9 @@ Skill: `kiro-convert` — interactive workflow for plugin-to-power conversion wi
 
 | Agent | Purpose |
 |-------|---------|
-| `agentcore-creator-agent` | Converts Claude Code plugins to Bedrock AgentCore (Runtime, Gateway, Memory, Lambda) |
+| `agentcore-creator-agent` | Converts Claude Code plugins to Bedrock AgentCore — config-only to **harness** (GA 2026-06: skills attach unchanged as git/s3 SKILL.md sources, `CreateHarness`/`InvokeHarness`) or Strands code-gen to Runtime (Gateway, Memory, Lambda) |
 
-Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Skill-First Build, AgentCore Convert, Deploy) with `references/` and `scripts/` subdirectories. The `opus` alias resolves to `us.anthropic.claude-opus-4-8`; modern-Opus (4.7/4.8) param contract (no `temperature`/`top_p`/`top_k`, no `thinking.type:"enabled"`+`budget_tokens`) is documented in `references/agentcore-mapping-rules.md`.
+Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Skill-First Build, AgentCore Convert, Deploy) with `references/` and `scripts/` subdirectories. Phase 2 decides the deploy target (harness-vs-Runtime grid in `references/agentcore-harness.md`); Phase 4 is dual-path (A: harness config, B: Runtime code-gen). The `opus` alias resolves to `us.anthropic.claude-opus-4-8`; modern-Opus (4.7/4.8) param contract (no `temperature`/`top_p`/`top_k`, no `thinking.type:"enabled"`+`budget_tokens`) is documented in `references/agentcore-mapping-rules.md`.
 
 ### co-agent (3 agents, 1 skill, 5 commands)
 
@@ -314,7 +314,7 @@ Content:   presentation-agent (dispatcher) → reactive-presentation-agent → c
 Ops:       User issue → auto-routed agent → Diagnose → Resolve → Verify
            Incident → ops-coordinator → specialist agents (7) → aggregate → root cause → fix
 
-AgentCore: Plugin source → analyze → map to AgentCore → generate artifacts → user refinement → deploy via AWS CLI → verify
+AgentCore: Plugin source → analyze → harness-vs-Runtime decision → A: harness config (skills attach as-is) | B: generate Strands artifacts → user refinement → deploy via CLI → verify
 
 Co-agent:  /co-agent → detect panel (Kiro/Codex/Antigravity) → fan-out prompt → Claude synthesizes → Review report / Decision / ADR
 ```

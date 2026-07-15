@@ -47,7 +47,7 @@
 - **제로 의존성** — Python 3.8+ 표준 라이브러리만 사용
 
 *AgentCore 배포 (agentcore-creator):*
-- **Bedrock AgentCore** — Claude Code 플러그인을 AgentCore Runtime, Gateway, Memory로 변환
+- **Bedrock AgentCore** — Claude Code 플러그인을 AgentCore harness(설정만, 스킬 무변환 attach) 또는 Runtime, Gateway, Memory로 변환
 - **5단계 워크플로우** — 발견, 설계, 스킬 우선 빌드, 변환, 배포
 - **Strands Agent 프레임워크** — BedrockModel을 사용한 배포 가능한 Python 에이전트 생성
 
@@ -648,7 +648,7 @@ aws-ops-power/
 | 에이전트 | 플러그인 | 예시 프롬프트 | 출력 |
 |---------|---------|-------------|------|
 | `kiro-converter-agent` | kiro-power-converter | "aws-ops-plugin을 Kiro로 변환" | Kiro Power 디렉토리 |
-| `agentcore-creator-agent` | agentcore-creator | "에이전트를 AgentCore에 배포" | Strands Agent + 배포 스크립트 |
+| `agentcore-creator-agent` | agentcore-creator | "에이전트를 AgentCore에 배포" | Harness 설정 또는 Strands Agent + 배포 스크립트 |
 | `co-agent` | co-agent | "second opinion" / "help me decide" / "ADR 협업" | 멀티-AI 리뷰 / 의사결정 / ADR |
 | `doc-sync-checker` | project-init | "/sync-docs" | 문서 품질 점수 |
 
@@ -686,7 +686,7 @@ aws-ops-power/
 | 스킬 | 제공 내용 |
 |------|----------|
 | `kiro-convert` | 플러그인-to-Kiro-Power 변환 워크플로우 |
-| `agentcore-create` | 5단계 AgentCore 설계, 빌드, 변환, 배포 워크플로우 |
+| `agentcore-create` | 5단계 AgentCore 설계, 빌드, 변환, 배포 워크플로우 (harness 또는 Runtime 타깃) |
 | `co-agent` | 멀티-AI 협업 (Kiro/Codex/Antigravity — `agy`) — 리뷰, 의사결정 보조, ADR 협업, `sync-context`; Claude가 의장. 명령: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus`, `/co-agent:harness`, `/co-agent:setup` |
 | `project-scaffolder` | Claude Code 프로젝트 구조 패턴 및 컨벤션 |
 | `pr-autofix` | AI + 사람 PR 리뷰 피드백 polling 후 이슈 자동 수정 (최대 3회 반복) |
@@ -734,7 +734,7 @@ Well-Architected: wellarchitected-agent  -->  6-pillar 스코어링  -->  AS-IS/
 
 ```
 Kiro 변환:        플러그인 소스  -->  kiro-converter-agent  -->  Kiro Power 디렉토리  -->  설치/내보내기
-AgentCore 배포:   발견  -->  설계  -->  스킬 우선 빌드  -->  AgentCore 변환  -->  배포
+AgentCore 배포:   발견  -->  설계 (harness vs Runtime)  -->  스킬 우선 빌드  -->  AgentCore 변환  -->  배포
 co-agent 협업:   프롬프트  -->  Kiro/Codex/Antigravity(agy) 팬아웃  -->  Claude 종합  -->  리뷰 / 의사결정 / ADR / 컨텍스트 동기화
 문서 동기화:      /sync-docs  -->  doc-sync-checker  -->  품질 점수  -->  문서 업데이트
 ```

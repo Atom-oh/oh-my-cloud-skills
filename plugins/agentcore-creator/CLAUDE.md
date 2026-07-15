@@ -1,6 +1,6 @@
 # AgentCore Creator -- Claude Code Configuration
 
-Interactive agent design and deployment to Amazon Bedrock AgentCore. Brainstorm requirements, build as Claude Code skill first, then convert and deploy with Memory, Gateway, and tools.
+Interactive agent design and deployment to Amazon Bedrock AgentCore. Brainstorm requirements, build as Claude Code skill first, then convert and deploy — config-only to AgentCore harness (skills attach unchanged) or Strands code-gen to Runtime with Memory, Gateway, and tools.
 
 **Prerequisites**: `bedrock-agentcore-mcp-server` MCP server configured.
 
@@ -26,9 +26,11 @@ Interactive agent design and deployment to Amazon Bedrock AgentCore. Brainstorm 
 /agentcore-create
   │
   ├─ [No args] → Phase 1: Discovery (brainstorming Q&A)
-  │                → Phase 2: Agent Design (component blueprint)
+  │                → Phase 2: Agent Design (component blueprint + harness-vs-Runtime decision)
   │                → Phase 3: Skill-First Build (Claude Code plugin)
   │                → Phase 4: AgentCore Conversion
+  │                │     ├─ Path A: Harness (config-only — CreateHarness, skills attach as git/s3)
+  │                │     └─ Path B: Runtime (Strands code-gen via convert script)
   │                → Phase 5: Verification
   │
   └─ [convert <path>] → Phase 4: Direct Conversion → Phase 5: Verification
@@ -44,4 +46,5 @@ Interactive agent design and deployment to Amazon Bedrock AgentCore. Brainstorm 
 | 에이전트 배포 | deploy agent |
 | 베드락 에이전트 | bedrock agent |
 | 런타임 배포 | runtime deploy |
+| 하네스 배포 | agentcore harness |
 | 에이전트코어 | agentcore |

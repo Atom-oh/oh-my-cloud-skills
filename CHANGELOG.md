@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **agentcore-creator: AgentCore harness as a first-class conversion target** — new `references/agentcore-harness.md` (harness APIs, four skill sources with exact payloads, models via LiteLLM/Bedrock Mantle, memory/filesystem, versioning/endpoints, Step Functions, harness-vs-Runtime decision grid); Phase 2 gains a deploy-target decision gate and Phase 4 becomes dual-path — Path A attaches plugin skills unchanged as git/s3 SKILL.md sources into a `CreateHarness` config (no code-gen), Path B keeps the existing Strands/Runtime script
+
+### Changed
+- **agentcore-creator: refresh 2026 AgentCore feature coverage** — mapping-rules now records GA statuses (harness GA 2026-06-17, Evaluations GA 2026-03 + Recommendations/Batch Eval/A-B GA 2026-06, Policy GA 2026-03 + Bedrock Guardrails 2026-06, Managed Knowledge Base GA, Web Search GA, CDK L2 stable, CLI v0.19) and a new Harness Conversion mapping table; agent/skill/doc-site pages and marketplace descriptions updated to match
+
 ## [1.14.1] - 2026-07-15
 
 ### Changed
@@ -353,6 +359,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 따릅니다.
 
 ## [Unreleased]
+
+### Added
+- **agentcore-creator: AgentCore harness를 1급 변환 타깃으로 추가** — 신규 `references/agentcore-harness.md`(harness API, 4가지 스킬 소스 정확한 페이로드, LiteLLM/Bedrock Mantle 모델, 메모리/파일시스템, 버저닝/엔드포인트, Step Functions, harness-vs-Runtime 결정 그리드); Phase 2에 배포 타깃 결정 게이트, Phase 4는 이중 경로 — Path A는 플러그인 스킬을 git/s3 SKILL.md 소스로 무변환 attach하는 `CreateHarness` 설정(코드 생성 없음), Path B는 기존 Strands/Runtime 스크립트 유지
+
+### Changed
+- **agentcore-creator: 2026 AgentCore 기능 커버리지 갱신** — mapping-rules에 GA 상태 기록(harness GA 2026-06-17, Evaluations GA 2026-03 + Recommendations/배치 평가/A-B GA 2026-06, Policy GA 2026-03 + Bedrock Guardrails 2026-06, Managed Knowledge Base GA, Web Search GA, CDK L2 stable, CLI v0.19) 및 Harness Conversion 매핑 표 신설; 에이전트/스킬/doc-site 페이지와 마켓플레이스 설명 동기화
 
 ## [1.14.1] - 2026-07-15
 
