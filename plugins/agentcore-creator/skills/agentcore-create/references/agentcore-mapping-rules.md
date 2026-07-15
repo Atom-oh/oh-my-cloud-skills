@@ -25,8 +25,12 @@ without transformation:
 | `plugin.json` name/version | `harnessName` + tags | Validate against AgentCore naming rules |
 
 What forces the Runtime path instead: custom orchestration (graph/workflow), a specific
-framework, hook-like runtime behavior, bidirectional streaming, inline client-side tools.
-Full grid: `agentcore-harness.md` → "Harness vs. Runtime — Decision Grid".
+framework, hook-like runtime behavior, bidirectional streaming, inline client-side tools —
+or a failed harness eligibility gate (no fetchable git/S3 source for the skills, or skills
+that reach outside their own directory — `../`, `${CLAUDE_PLUGIN_ROOT}`, sibling-skill
+assets — and can't be vendored). Full grid and the git-source pinning/supply-chain caveats:
+`agentcore-harness.md` → "Harness vs. Runtime — Decision Grid" / "Security and
+compatibility caveats".
 
 ## Agent Conversion
 

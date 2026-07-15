@@ -8,6 +8,7 @@ triggers:
   - "agentcore deploy"
   - "agentcore harness"
   - "create agent for agentcore"
+  - "에이전트코어 하네스"
   - "하네스 배포"
   - "에이전트코어 생성"
   - "에이전트코어 변환"
@@ -314,8 +315,24 @@ Plugin: <name> (v<version>)
 
 ### 4.2 Conversion Options
 
-Ask the user for preferences (multiple choice). **Target** comes first — it decides which
-of the two 4.3 paths runs (recommend harness unless the Phase 2 decision table said otherwise):
+**Harness eligibility gate — run BEFORE asking for a target.** The harness path's
+"skills attach unchanged" premise has two hard preconditions; check them first and only
+recommend harness when both hold (otherwise recommend Runtime, or fix the blocker first):
+
+1. **Fetchable source**: harness skills load from git (HTTPS repo URL) or S3 only. A
+   local-only plugin has nothing to attach — ask for the repo URL, or offer to upload the
+   skill directories to an S3 bucket the execution role can read.
+2. **Self-contained skills**: sparse checkout fetches each skill subdir alone. Grep the
+   skills for out-of-directory reach — `../` paths, `${CLAUDE_PLUGIN_ROOT}`, references to
+   sibling skills' files/assets. Hits mean the skill breaks when attached alone: vendor the
+   shared files into the skill directory, or take the Runtime path.
+
+Security note to surface with the recommendation: git sources are unpinned and re-fetched
+per session (see `references/agentcore-harness.md` → Security and compatibility caveats) —
+for production, prefer S3 or a frozen release repo.
+
+Then ask the user for preferences (multiple choice). **Target** comes first — it decides
+which of the two 4.3 paths runs (recommend harness only when the gate above passed):
 
 ```
 Conversion options:
@@ -337,6 +354,8 @@ Conversion options:
    using the same rules as the Runtime path.
 2. **Skills**: attach each plugin skill directory unchanged as a `git` source (public repo)
    or `s3` source (private) — reference docs ship inside the skill, so no Memory chunking.
+   (The 4.2 eligibility gate already verified a fetchable source exists and each skill is
+   self-contained.)
 3. **Tools**: map `mcpServers` to harness MCP tools or Gateway targets; built-in shell,
    file operations, browser, and code interpreter are config toggles.
 4. Present the resulting `create-harness` command (or `agentcore` CLI flow) for review.
@@ -422,7 +441,10 @@ Allow the user to review and request modifications to any generated artifact. Co
 Each step requires user confirmation.
 
 **Path A — Harness.** Uses the Node-based AgentCore CLI (`npm install -g @aws/agentcore`,
-Node.js 20+) or raw AWS CLI — full flow in `references/agentcore-harness.md`:
+Node.js 20+) or raw AWS CLI — full flow in `references/agentcore-harness.md`.
+**Caution**: the Node CLI and the Python starter toolkit (Path B) both install a binary
+named `agentcore` — if both are present, disambiguate with `npx @aws/agentcore <cmd>` (or
+`which agentcore` first) so harness commands don't hit the Runtime CLI:
 
 ```bash
 agentcore create --name <agent> --model-provider bedrock

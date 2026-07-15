@@ -54,7 +54,8 @@ aws bedrock-agentcore-control create-harness \
   --harness-name "MyHarness" \
   --execution-role-arn "arn:aws:iam::<account>:role/MyHarnessRole"
 
-# Poll until "status": "READY", note the arn
+# create-harness returns harnessId (name + generated suffix) and arn — use those below
+# Poll until "status": "READY"
 aws bedrock-agentcore-control get-harness --harness-id "MyHarness-XyZ123"
 ```
 
@@ -129,6 +130,25 @@ agentcore deploy
 All four source types can coexist in one payload. AWS-skill paths must be relative (no
 leading `/` or `..`); a glob matching nothing fails the invocation with a descriptive error.
 
+### Security and compatibility caveats (read before attaching)
+
+- **Git sources are unpinned.** The `git` payload has no commit/tag field, and skills are
+  re-fetched on every new session — the deployed agent tracks the repo's current default
+  branch, so an upstream change lands in production sessions without redeploy (skill
+  markdown *and* `scripts/` run with the execution role's permissions). For production,
+  prefer an **S3 source** (immutable, versioned, gated by the execution role) or a dedicated
+  frozen release repo you control; review skill contents at attach time; for private repos,
+  scope the PAT in AgentCore Identity to read-only on that one repo.
+- **Sparse checkout fetches only the skill subdir.** A skill that reaches outside its own
+  directory — `../` paths, `${CLAUDE_PLUGIN_ROOT}`, assets shared from a sibling skill
+  (e.g. this repo's `aws-light-fcd` referencing `reactive-presentation`'s icon library
+  in place) — breaks when attached alone. Vendor the shared files into the skill directory
+  first, or use the Runtime path. Scan for this before recommending harness (see the
+  Phase 4.2 eligibility gate in SKILL.md).
+- **A fetchable source is required.** A local-only plugin (no public/private repo, no S3
+  bucket) has nothing the harness can fetch — push it to a repo or upload the skill
+  directories to S3 before the harness path is viable.
+
 ## Models and Instructions
 
 - Providers: Amazon Bedrock (default), OpenAI, Google Gemini, or any LiteLLM-compatible
@@ -168,15 +188,25 @@ leading `/` or `..`); a glob matching nothing fails the invocation with a descri
 ## AgentCore CLI Flow (npm toolchain)
 
 The harness path uses the Node-based AgentCore CLI (distinct from the Python
-`bedrock-agentcore-starter-toolkit` used by the Runtime code path):
+`bedrock-agentcore-starter-toolkit` used by the Runtime code path).
+
+> **Executable-name collision**: both toolchains install a binary named `agentcore`. If the
+> Python starter toolkit is also installed (or a venv is active), an unqualified `agentcore`
+> may resolve to the wrong CLI and harness commands will fail confusingly. Disambiguate:
+> run the Node CLI as `npx @aws/agentcore <cmd>`, or check `which agentcore` first and keep
+> the Python one venv-scoped. Pin the install (`npm install -g @aws/agentcore@<version>`)
+> for reproducible tooling.
 
 ```bash
-npm install -g @aws/agentcore        # Node.js 20+
+npm install -g @aws/agentcore        # Node.js 20+; pin @<version> in CI
 
 agentcore create --name myagent --model-provider bedrock   # or bare `agentcore create` for the TUI wizard
 agentcore add skill --harness myagent --git <url> --git-path <subdir>
 agentcore deploy
-agentcore invoke --harness myagent --session-id "$(uuidgen)" "smoke test prompt"
+
+SESSION_ID="$(uuidgen)"              # standard hyphenated UUID (36 chars — the >=33-char rule needs the hyphens)
+agentcore invoke --harness myagent --session-id "$SESSION_ID" "smoke test prompt"
+agentcore invoke --harness myagent --session-id "$SESSION_ID" "follow-up"   # SAME id → verifies memory/session persistence
 agentcore dev                        # local dev server + browser Agent Inspector
 agentcore status
 ```

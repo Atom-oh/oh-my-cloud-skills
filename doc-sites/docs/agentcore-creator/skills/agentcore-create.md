@@ -10,7 +10,7 @@ AgentCore 변환 및 배포를 위한 5-Phase 워크플로우 스킬입니다.
 ## 트리거
 
 - `/agentcore-create`
-- "convert to agentcore", "에이전트코어 생성", "agentcore harness", "하네스 배포"
+- "convert to agentcore", "create agent for agentcore", "에이전트코어 생성", "agentcore harness", "에이전트코어 하네스", "하네스 배포"
 
 ## 제공 리소스
 
@@ -72,7 +72,8 @@ npm install -g @aws/agentcore
 agentcore create --name <agent> --model-provider bedrock
 agentcore add skill --harness <agent> --git <repo-url> --git-path <skill-subdir>
 agentcore deploy
-agentcore invoke --harness <agent> --session-id "$(uuidgen)" "smoke test"
+SESSION_ID="$(uuidgen)"   # 하이픈 포함 표준 UUID(36자) — 33자 이상 요구
+agentcore invoke --harness <agent> --session-id "$SESSION_ID" "smoke test"
 ```
 
 Runtime 경로 (Python starter toolkit):

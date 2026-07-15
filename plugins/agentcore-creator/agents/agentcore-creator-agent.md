@@ -1,6 +1,6 @@
 ---
 name: agentcore-creator-agent
-description: "Interactive agent design and deployment to Amazon Bedrock AgentCore. Brainstorm requirements, build as Claude Code skill first, then convert and deploy — config-only to AgentCore harness (skills attach unchanged) or Strands code-gen to AgentCore Runtime with Memory, Gateway, and tools. Triggers on \"agentcore create\", \"convert to agentcore\", \"agentcore deploy\", \"agentcore harness\", \"에이전트코어 생성\", \"에이전트코어 변환\", \"에이전트코어 배포\", \"에이전트 배포\", \"하네스 배포\", \"bedrock agent\", \"deploy agent\", \"런타임 배포\" requests."
+description: "Interactive agent design and deployment to Amazon Bedrock AgentCore. Brainstorm requirements, build as Claude Code skill first, then convert and deploy — config-only to AgentCore harness (skills attach unchanged) or Strands code-gen to AgentCore Runtime with Memory, Gateway, and tools. Triggers on \"agentcore create\", \"convert to agentcore\", \"agentcore deploy\", \"agentcore harness\", \"create agent for agentcore\", \"에이전트코어 생성\", \"에이전트코어 변환\", \"에이전트코어 배포\", \"에이전트 배포\", \"에이전트코어 하네스\", \"하네스 배포\", \"bedrock agent\", \"deploy agent\", \"런타임 배포\" requests."
 tools: Read, Write, Glob, Grep, Bash, Edit, Agent, AskUserQuestion
 model: opus
 skills:
