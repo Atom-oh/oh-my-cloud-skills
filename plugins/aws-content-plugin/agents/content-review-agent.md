@@ -241,7 +241,8 @@ HTML 파일을 브라우저에서 열어 테스트하려면:
 
 Deduction rules:
 - **Per-category deductions floor at that category's points** — a category can reach 0
-  but never goes negative (e.g. Icon: -3 missing + -5 null ref caps at the category's 5).
+  but never goes negative (e.g. Layout is 8 points at -2 per error: 5 errors would be
+  -10, clamped to -8; Icon: -3 missing + -5 null ref = -8, clamped to the category's 5).
 - **Exception — Canvas Complexity Gate**: its deductions (-15/-5/-3, see category 6)
   subtract from the **total score directly**, not from the 2-point Content-Type Quality
   category; the 8+-box CRITICAL case additionally counts as 1 Critical for the verdict.
@@ -292,14 +293,26 @@ rule covers every combination, so two runs on the same artifact always agree:
 | Critical count | 0 | — (no middle band) | ≥1 |
 | Warning count | ≤3 | 4-10 | >10 |
 
-Examples: score 90 + 5 Warnings → REVIEW (warning band). Score 90 + 1 Critical → FAIL
-(critical band). Score 78 + 2 Warnings → REVIEW (score band).
+**What counts toward the Critical count** (exhaustive — a finding raises the count only
+if it is one of these):
+- Critical-tier sensitive data (AWS keys, passwords — PII severity table Critical row)
+- Severe hallucination (non-existent AWS service/feature)
+- Legal risk (copyright infringement)
+- Canvas Complexity Gate 8+-box violation (category 6)
+- JS console error / network 404 during Visual Testing (JS 콘솔 에러 정책)
+
+Examples: score 90/100 + 5 Warnings → REVIEW (warning band). Score 90/100 + 1 Critical
+→ FAIL (critical band). Score 78/100 + 2 Warnings → REVIEW (score band; on the 90-point
+scale 78 would be PASS — always state which scale applies in the report).
 
 ### Automatic FAIL
-- Critical-tier sensitive data exposure (AWS keys, passwords — the Critical row of the
-  PII severity table; High/Medium tiers deduct points but do not auto-fail)
+The following are shortcuts, **not** a separate rule: each is a Critical finding (see
+the list above), so the critical band already yields FAIL — they are called out so the
+review can stop early and say why:
+- Critical-tier sensitive data exposure (High/Medium tiers deduct points but do not auto-fail)
 - Severe hallucination (non-existent services)
 - Legal risk (copyright infringement)
+- JS console error during Visual Testing
 
 ---
 

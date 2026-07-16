@@ -1,7 +1,7 @@
 ---
 name: gitbook-agent
 description: GitBook documentation site creation agent. Creates structured GitBook projects with proper navigation, components, and content organization. Triggers on "gitbook", "documentation site", "create docs site", "gitbook project" requests.
-tools: Read, Write, Glob, Grep, Agent, AskUserQuestion
+tools: Read, Write, Glob, Grep, Bash, Agent, AskUserQuestion
 model: sonnet
 skills:
   - gitbook
@@ -274,7 +274,9 @@ Generate using architecture-diagram-agent, export PNG at 2x scale.
 
 ### Animated SVG (Dynamic Diagrams)
 ```markdown
-<!-- Embed as iframe for animation support (path relative to the page — assets live in .gitbook/assets/) -->
+<!-- Embed as iframe for animation support. Assets live in .gitbook/assets/; the path is
+     relative to the PAGE, so adjust the number of ../ to the page's depth
+     (root page: .gitbook/assets/…, chapter page: ../.gitbook/assets/…) -->
 <iframe src="../.gitbook/assets/traffic-flow.html" width="100%" height="500" frameborder="0"></iframe>
 ```
 Generate using animated-diagram-agent.

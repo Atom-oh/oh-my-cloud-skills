@@ -139,7 +139,8 @@ echo "root: ./" > .gitbook.yaml
 touch README.md SUMMARY.md
 mkdir -p getting-started guides reference resources .gitbook/assets
 
-# Create chapter index files
+# Create chapter index files (resources/ is intentionally excluded — it is a flat
+# appendix without a README index, matching the canonical structure above)
 for dir in getting-started guides reference; do
   echo "# ${dir^}" > "$dir/README.md"
 done
