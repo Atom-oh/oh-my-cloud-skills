@@ -747,11 +747,15 @@ co-agent 협업:   프롬프트  -->  Kiro/Codex/Antigravity(agy) 팬아웃  -->
 
 모든 콘텐츠는 `content-review-agent`를 통해 레이아웃, 용어, 언어, 접근성, 구조적 완성도를 기준으로 100점 척도로 평가됩니다.
 
-| 판정 | 점수 | 조건 | 결과 |
-|------|------|------|------|
-| **PASS** | >= 85 | Critical 0, Warning <= 3 | 배포 승인 |
-| **REVIEW** | 70-84 | Critical 0, Warning 4-10 | 수정 후 재검토 |
-| **FAIL** | < 70 | Critical >= 1 또는 Warning > 10 | 진행 불가 |
+점수·Critical 수·Warning 수는 독립된 밴드이며, 판정은 셋 중 **최악**을 따릅니다
+(FAIL > REVIEW > PASS). Visual Testing이 면제되는 비-HTML 콘텐츠는 90점 만점으로
+환산합니다: PASS >= 77 / REVIEW 63-76 / FAIL < 63.
+
+| 밴드 | PASS | REVIEW | FAIL |
+|------|------|--------|------|
+| 점수 (100점 만점) | >= 85 | 70-84 | < 70 |
+| Critical 수 | 0 | — | >= 1 |
+| Warning 수 | <= 3 | 4-10 | > 10 |
 
 ---
 

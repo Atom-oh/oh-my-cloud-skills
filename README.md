@@ -748,11 +748,15 @@ Diagrams can be embedded into presentations, documents, or GitBook pages as part
 
 All content passes through `content-review-agent` which scores on a 100-point scale across layout, terminology, language, accessibility, and structural completeness.
 
-| Verdict | Score | Condition | Result |
-|---------|-------|-----------|--------|
-| **PASS** | >= 85 | Critical 0, Warning <= 3 | Approved for deployment |
-| **REVIEW** | 70-84 | Critical 0, Warning 4-10 | Fix issues and re-review |
-| **FAIL** | < 70 | Critical >= 1 or Warning > 10 | Cannot proceed |
+Score, Critical count, and Warning count are independent bands — the verdict is the
+**worst of the three** (FAIL > REVIEW > PASS). When Visual Testing is exempt (non-HTML
+content), the score bands convert to the 90-point scale: PASS >= 77 / REVIEW 63-76 / FAIL < 63.
+
+| Band | PASS | REVIEW | FAIL |
+|------|------|--------|------|
+| Score (of 100) | >= 85 | 70-84 | < 70 |
+| Critical count | 0 | — | >= 1 |
+| Warning count | <= 3 | 4-10 | > 10 |
 
 ---
 

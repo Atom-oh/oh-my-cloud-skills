@@ -5,6 +5,7 @@ model: sonnet
 allowed-tools:
   - Read
   - Write
+  - Bash
 ---
 
 # GitBook Skill
@@ -37,7 +38,7 @@ Create structured GitBook documentation sites with proper navigation, components
 ### Phase 3: Write Content
 1. Write content pages using GitBook components
 2. Add code blocks, hints, tabs as needed
-3. Embed diagrams and images in `assets/`
+3. Embed diagrams and images in `.gitbook/assets/`
 4. Create cross-links between related pages
 
 ### Phase 4: Quality Review
@@ -55,9 +56,10 @@ docs/
 ├── .gitbook.yaml           # GitBook configuration
 ├── SUMMARY.md              # Navigation structure (required)
 ├── README.md               # Landing page
-├── assets/                 # Images, diagrams, files
-│   ├── architecture.png
-│   └── workflow.drawio
+├── .gitbook/
+│   └── assets/             # Images, diagrams, files (agent와 동일 규약)
+│       ├── architecture.png
+│       └── workflow.drawio
 ├── getting-started/        # Chapter directory
 │   ├── README.md           # Chapter index
 │   ├── installation.md
@@ -66,10 +68,13 @@ docs/
 │   ├── README.md
 │   ├── basic-usage.md
 │   └── advanced-config.md
-└── reference/
-    ├── README.md
-    ├── api.md
-    └── cli.md
+├── reference/
+│   ├── README.md
+│   ├── api.md
+│   └── cli.md
+└── resources/
+    ├── faq.md
+    └── troubleshooting.md
 ```
 
 ---
@@ -132,9 +137,10 @@ echo "root: ./" > .gitbook.yaml
 
 # Create minimal structure
 touch README.md SUMMARY.md
-mkdir -p getting-started guides reference assets
+mkdir -p getting-started guides reference resources .gitbook/assets
 
-# Create chapter index files
+# Create chapter index files (resources/ is intentionally excluded — it is a flat
+# appendix without a README index, matching the canonical structure above)
 for dir in getting-started guides reference; do
   echo "# ${dir^}" > "$dir/README.md"
 done
@@ -162,7 +168,7 @@ find . -name "*.md" | head -20
 콘텐츠 완성 후 배포/완료 선언 전에 반드시:
 1. content-review-agent 호출 → `review content at [프로젝트경로]`
 2. FAIL/REVIEW 판정 시 수정 후 재리뷰 (최대 3회)
-3. PASS (≥85점) 획득 후에만 완료 선언
+3. PASS 획득 후에만 완료 선언 — 기준 ≥85/100; 렌더링된 HTML 없이 markdown 소스만 리뷰해 Visual Testing이 면제된 경우 ≥77/90 환산 기준
 
 > ⚠️ 이 단계를 건너뛰고 완료를 선언하는 것은 금지됩니다.
 
