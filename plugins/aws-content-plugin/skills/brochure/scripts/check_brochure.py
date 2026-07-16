@@ -66,6 +66,11 @@ def main():
             continue
         need(os.path.isfile(os.path.join(base, ref)), f"local asset exists: {ref}")
 
+    # --- every <img> has non-empty alt text ---
+    imgs = re.findall(r"<img\b[^>]*>", html, re.I)
+    no_alt = [tag for tag in imgs if not re.search(r'alt="[^"]+"', tag)]
+    need(not no_alt, f"all <img> have non-empty alt text ({len(no_alt)}/{len(imgs)} missing)")
+
     # --- contrast smell test: muted text token must not be the too-light ink-400 ---
     if re.search(r"--text-3\s*:\s*var\(--ink-400\)", html) or re.search(r"--text-3\s*:\s*#8[aA]8474", html):
         warns.append("muted text token (--text-3) is ~3.2:1 on paper — fails WCAG AA; darken to ~#6B665A")

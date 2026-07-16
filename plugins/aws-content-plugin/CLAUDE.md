@@ -11,10 +11,10 @@ A unified plugin for AWS cloud content creation: presentations, architecture dia
 # Web/HTML (interactive):
 presentation-agent (dispatcher) → reactive-presentation-agent → validate (rejection loop) → build → content-review-agent → Deploy (GitHub Pages)
 # Native PowerPoint (.pptx):
-presentation-agent (dispatcher) → aws-light-fcd skill (PptxGenJS, AWS Light theme) → QA render → embed_fonts.py → .pptx
+presentation-agent (dispatcher) → aws-light-fcd skill (PptxGenJS, AWS Light theme) → check_pptx.py (거절 루프, ≥80) → embed_fonts.py → content-review-agent → .pptx
 ```
 > **필수**: Remarp 작성 후 `remarp_to_slides.py validate`로 거절 루프 실행. CRITICAL 이슈 0건이어야 빌드 진행.
-> **PPTX 분기**: "pptx/파워포인트/ppt" 키워드 또는 사용자가 PPTX 선택 시 디스패처가 `aws-light-fcd` 스킬로 라우팅. python-pptx 직접 작성 금지 — 스킬을 호출.
+> **PPTX 분기**: "pptx/파워포인트/ppt" 키워드 또는 사용자가 PPTX 선택 시 디스패처가 `aws-light-fcd` 스킬로 라우팅. python-pptx 직접 작성 금지 — 스킬을 호출. **필수**: `check_pptx.py` 점수 ≥80(거절 루프)이어야 embed_fonts.py로 진행.
 
 ### Architecture Diagram Workflow
 ```
@@ -47,10 +47,11 @@ workshop-agent → content-review-agent → Workshop Studio content
 
 ### Brochure Workflow
 ```
-brochure-agent → gather product facts → (architecture-diagram → SVG) → self-contained responsive HTML
-  → check_brochure.py → content-review-agent (≥85) → GitHub Pages (public, verify no-auth 200)
+brochure-agent → gather product facts → (Playwright UI 캡처) → (architecture-diagram → SVG)
+  → self-contained responsive HTML → check_brochure.py → content-review-agent (≥85)
+  → GitHub Pages (public, verify no-auth 200)
 ```
-> 단일 자기완결 HTML(모바일/태블릿/PC 반응형). 아키텍처는 `architecture-diagram`으로 만들어 SVG로 임베드하고 카피와 같은 이야기를 유지. **공개 호스팅은 GitHub Pages** — 인증 엣지(Cognito Lambda@Edge 등) 뒤 도메인엔 공개 우회 경로가 없으면 올릴 수 없음.
+> 단일 자기완결 HTML(모바일/태블릿/PC 반응형). **웹 UI가 있는 제품은 스크린샷 섹션(4–6장) 필수** — Playwright MCP로 캡처, URL/실행법 모르면 확인 요청. 아키텍처는 `architecture-diagram`으로 만들어 SVG로 임베드하고 카피와 같은 이야기를 유지. **공개 호스팅은 GitHub Pages** — 인증 엣지(Cognito Lambda@Edge 등) 뒤 도메인엔 공개 우회 경로가 없으면 올릴 수 없음.
 
 ### Profile Page (gh-home) Workflow
 ```
@@ -98,6 +99,7 @@ gather facts (기존 페이지/GitHub/사용자 확인) → self-contained respo
 | Workshop 콘텐츠 완성 | Workshop 모듈 콘텐츠 작성 완료 | `review content at [프로젝트경로]` |
 | 브로셔 완성 | 브로셔 `.html` 작성 완료 | `review content at [파일경로]` |
 | 프로필 페이지 완성 | 프로필 페이지 `.html` 작성 완료 | `review content at [파일경로]` |
+| PPTX 덱 완성 | `.pptx` 작성 완료 (check_pptx.py ≥80 통과 후) | `review content at [파일경로]` |
 
 ### Review Loop
 

@@ -3,6 +3,15 @@
 // require alongside deck_kit.js:
 //   const kit = require("./deck_kit.js");
 //   const arch = require("./arch_kit.js");
+//
+// PREFERRED — declarative auto-layout (no coordinates from the caller):
+//   arch.archFlow(kit, pres, { title, pageNum, columns: [...], arrows: "auto" });
+//
+// Primitives — for the topologies archFlow's column model doesn't fit
+// (Transit Gateway mesh, non-linear flows). Manual coordinate placement is the
+// exception path, not the default — an LLM hand-placing pixel coordinates is the
+// #1 cause of amateur-looking output (see the architecture-diagram skill's
+// design-tokens.md, which archFlow's constants below are aligned with):
 //   const s = arch.archSlide(kit, pres, { title, pageNum });
 //   arch.groupBox(kit, pres, s, x,y,w,h, "스토리지");
 //   arch.svc(kit, pres, s, cx, y, "ecr", "Amazon ECR");
@@ -15,6 +24,7 @@ const React = require("react");
 const ReactDOMServer = require("react-dom/server");
 const sharp = require("sharp");
 const fs = require("fs");
+const path = require("path");
 
 // Render a react-icons component to a base64 PNG (for agenda tiles etc.)
 //   const data = await renderFiIcon(require("react-icons/fi").FiZap, "#3B82F6");
@@ -38,15 +48,45 @@ function groupBox(kit, pres, s, x, y, w, h, label) {
   if (label) s.addText(label, { x, y: y - 0.04, w, h: 0.5, fontFace: kit.FONT, fontSize: 12, bold: true, color: kit.C.body, align: "center", valign: "top" });
 }
 
+// Curated bundled icon names (assets/icons/aws/*.png) — used to build "did you mean"
+// suggestions when a typo'd name falls through to the shared library and misses there too.
+function _curatedNames(kit) {
+  const dir = path.join(kit.ASSETS, "icons", "aws");
+  try { return fs.readdirSync(dir).filter(f => f.endsWith(".png")).map(f => f.slice(0, -4)); }
+  catch { return []; }
+}
+
 // AWS service icon (centered on cx) + caption below.
 // `iconName` may be a curated bundled name ("ecr", "eks", "s3") OR any key from the
 // shared library ("Amazon-EKS", "AWS-Lambda"); the curated PNG wins when present,
-// otherwise it resolves from the shared reactive-presentation icon set.
+// otherwise it resolves from the shared reactive-presentation icon set. A typo'd name
+// that matches neither throws with near-match suggestions instead of a bare crash.
 function svc(kit, pres, s, cx, y, iconName, label, iconSz = 0.62) {
   const curated = kit.awsIcon(iconName);
-  const iconPath = fs.existsSync(curated) ? curated : kit.icon(iconName);
+  let iconPath;
+  if (fs.existsSync(curated)) {
+    iconPath = curated;
+  } else {
+    try {
+      iconPath = kit.icon(iconName);
+    } catch (e) {
+      const names = _curatedNames(kit);
+      const needle = iconName.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const near = names.filter(n => n.toLowerCase().replace(/[^a-z0-9]/g, "").includes(needle) ||
+        needle.includes(n.toLowerCase().replace(/[^a-z0-9]/g, "")));
+      const hint = near.length ? ` Did you mean: ${near.join(", ")}?` : "";
+      throw new Error(`arch.svc: unknown icon '${iconName}' (checked curated aws/ set and the ` +
+        `shared 811-icon library).${hint} See references/icons.md.`);
+    }
+  }
   s.addImage({ path: iconPath, x: cx - iconSz / 2, y, w: iconSz, h: iconSz });
   s.addText(label, { x: cx - 0.9, y: y + iconSz + 0.04, w: 1.8, h: 0.5, fontFace: kit.FONT, fontSize: 10.5, color: kit.C.body, align: "center", valign: "top", lineSpacingMultiple: 1.0 });
+}
+
+// small labeled chip (oval + text) — endpoints (users/agents/programs), never emoji.
+function chip(kit, pres, s, x, y, label, d = 0.2) {
+  s.addShape(pres.shapes.OVAL, { x, y, w: d, h: d, fill: { color: kit.C.blueTint }, line: { color: kit.C.blue, width: 1 } });
+  s.addText(label, { x: x + d + 0.08, y: y - (0.34 - d) / 2, w: 1.05, h: 0.34, fontFace: kit.FONT, fontSize: 11, color: kit.C.body, align: "left", valign: "middle", margin: 0 });
 }
 
 // horizontal arrow
@@ -67,9 +107,94 @@ function archSlide(kit, pres, opts) {
   const s = pres.addSlide();
   kit.applyBg(s, opts.bg || "plain");
   kit.addHeader(pres, s, opts.title, opts.subtitle);
-  // footer added by caller after content, OR here if pageNum given
-  s._archPage = opts.pageNum;
+  if (opts.pageNum != null) kit.addFooter(pres, s, opts.pageNum);
   return s;
 }
 
-module.exports = { renderIcon, stepMarker, groupBox, svc, arrow, stepLegend, archSlide };
+// ════════════════════════════════════════════════════════════════
+// archFlow — declarative column-flow architecture diagram (PREFERRED).
+// The caller declares WHAT (columns of icons/chips, optional group labels,
+// a legend) and archFlow computes WHERE. No coordinates from the caller —
+// see the module header for why (design-tokens.md rationale, shared with
+// the architecture-diagram skill).
+//
+//   arch.archFlow(kit, pres, {
+//     title, subtitle, pageNum, bg,
+//     columns: [
+//       { items: [{ icon:"model_registry", label:"모델 레지스트리", step:3 }] },
+//       { label:"스토리지", items: [{icon:"efs",label:"Amazon EFS"},{icon:"s3",label:"Amazon S3"}] },
+//       { items: [{ chip:"사용자" }, { chip:"에이전트" }] },
+//     ],
+//     arrows: "auto",              // adjacent columns, left-to-right; or [[0,1],[1,2]]
+//     legend: ["1단계 설명", "2단계 설명", ...],   // reserves the right rail, step:N -> legend[N-1]
+//   });
+//
+// Returns { s, cols } — cols[i] = { x, y, w, h, items:[{cx,cy}] } — the computed
+// geometry, so callers can drop in extra primitives for the irregular 10% of a
+// diagram that doesn't fit the column model (escape hatch, not the common case).
+// ════════════════════════════════════════════════════════════════
+const ITEM_CELL = 1.05;    // icon (0.62) + caption band, stacked vertically
+const CHIP_CELL = 0.45;
+const COL_GAP = 0.9;       // horizontal gap between columns (arrow room)
+const GROUP_PAD_TOP = 0.42;
+const GROUP_PAD = 0.2;
+
+function archFlow(kit, pres, opts) {
+  const s = archSlide(kit, pres, { title: opts.title, subtitle: opts.subtitle, bg: opts.bg });
+  const columns = opts.columns || [];
+  const n = columns.length;
+  const hasLegend = !!(opts.legend && opts.legend.length);
+
+  const x0 = kit.PAD;
+  const x1 = hasLegend ? 11.2 : kit.W - kit.PAD;
+  const y0 = opts.subtitle ? 1.95 : 1.55;
+  const y1 = 6.8;
+  const slotW = (x1 - x0 - COL_GAP * Math.max(0, n - 1)) / Math.max(1, n);
+
+  const cols = columns.map((col, i) => {
+    const cx = x0 + i * (slotW + COL_GAP);
+    const items = col.items || [];
+    const cellH = items.map(it => (it.chip != null ? CHIP_CELL : ITEM_CELL));
+    const stackH = cellH.reduce((a, b) => a + b, 0);
+    const grouped = !!col.label;
+    const boxH = stackH + (grouped ? GROUP_PAD_TOP + GROUP_PAD : 0);
+    const boxY = y0 + (y1 - y0 - boxH) / 2;
+    if (grouped) groupBox(kit, pres, s, cx, boxY, slotW, boxH, col.label);
+
+    let itemY = boxY + (grouped ? GROUP_PAD_TOP : 0);
+    const placed = items.map((it, k) => {
+      const h = cellH[k];
+      const icx = cx + slotW / 2;
+      const icy = itemY + h / 2;
+      if (it.chip != null) {
+        chip(kit, pres, s, icx - 0.5, itemY + (h - CHIP_CELL) / 2, it.chip);
+      } else {
+        svc(kit, pres, s, icx, itemY, it.icon, it.label, it.iconSz);
+      }
+      if (it.step != null) stepMarker(kit, pres, s, icx + 0.14, itemY - 0.1, it.step);
+      itemY += h;
+      return { cx: icx, cy: icy };
+    });
+    return { x: cx, y: boxY, w: slotW, h: boxH, items: placed };
+  });
+
+  // arrows: "auto" connects adjacent columns at the mean vertical center of both
+  // stacks; an explicit [[i,j],...] list connects arbitrary column pairs.
+  const pairs = opts.arrows === "auto"
+    ? cols.slice(0, -1).map((_, i) => [i, i + 1])
+    : (opts.arrows || []);
+  pairs.forEach(([i, j]) => {
+    if (!cols[i] || !cols[j]) return;
+    const midY = ((cols[i].y + cols[i].h / 2) + (cols[j].y + cols[j].h / 2)) / 2;
+    const fromX = cols[i].x + cols[i].w + 0.12;
+    const toX = cols[j].x - 0.12;
+    if (toX > fromX) arrow(kit, pres, s, fromX, midY, toX - fromX);
+  });
+
+  if (hasLegend) stepLegend(kit, pres, s, opts.legend);
+  if (opts.pageNum != null) kit.addFooter(pres, s, opts.pageNum);
+  if (opts.notes) s.addNotes(opts.notes);
+  return { s, cols };
+}
+
+module.exports = { renderIcon, stepMarker, groupBox, svc, chip, arrow, stepLegend, archSlide, archFlow };

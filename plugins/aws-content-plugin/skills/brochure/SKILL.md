@@ -28,7 +28,8 @@ A brochure is **persuasion + clarity**, not a slide deck and not a docs site. It
 ## Workflow
 
 ```
-brochure-agent → gather product facts → (architecture-diagram skill → SVG) → write self-contained HTML
+brochure-agent → gather product facts → (Playwright screenshots, if a web UI exists)
+  → (architecture-diagram skill → SVG) → write self-contained HTML
   → self-check script → content-review-agent (≥85) → deploy to GitHub Pages (public)
 ```
 
@@ -56,6 +57,25 @@ Read **`references/design-system.md`** before writing CSS — it has the token s
 
 Most solution brochures benefit from an architecture visual. Produce it with the **`architecture-diagram`** skill (it validates layout + uses official AWS icons), export to **SVG**, and place it beside the brochure HTML. You'll embed it as a responsive `<img>` in Phase 4. Keep the diagram and the brochure copy telling the **same story** — same component names, same counts — so they don't contradict each other.
 
+### Phase 3.5 — Capture product screenshots (required when the product has a web UI)
+
+A brochure that only describes a UI in prose reads as unfinished when the product actually
+has one to show. If the product has a running web UI (a local dev server, a deployed
+staging/prod URL, or one the user can start), capture it:
+
+1. Use the Playwright MCP tools: `browser_navigate` to the product, `browser_resize` to a
+   consistent desktop viewport (e.g. 1600×900) so every capture is uniform, then
+   `browser_take_screenshot` for 4–6 representative screens — one per core use case
+   (overview/dashboard, the flagship feature, a couple of secondary views), not every screen.
+2. If you don't have a URL or don't know how to run the product locally, ask with
+   `AskUserQuestion` rather than guessing or skipping silently. Only omit this phase — and
+   say so explicitly — if the user confirms no UI exists or none is reachable (a CLI tool, a
+   library, an API-only service).
+3. Save each capture next to the brochure HTML under `screenshots/`, referenced with a
+   relative path, `loading="lazy"`, a descriptive `alt` (what the screen shows, not just a
+   filename), and a `<figcaption>` naming the screen. Resize/optimize each to roughly
+   ≤100KB (e.g. via PIL) — a brochure shouldn't ship megabytes of unoptimized PNGs.
+
 ### Phase 4 — Write the self-contained HTML
 
 One `.html` file. Inline the CSS in a `<style>` block; you may load distinctive fonts from a CDN but **always provide a system-font fallback** so the page still reads if the CDN is blocked. No build step, no framework.
@@ -67,12 +87,18 @@ nav (sticky, minimal anchors + one CTA)
 hero        — eyebrow · headline (the core message) · subcopy · proof-metric chips · primary CTA
 value       — a short problem framing, then 3 value pillars
 features    — 6–10 feature cards
+shots       — 4–6 product screenshots in a grid, each with a caption (required if the
+              product has a web UI — see Phase 3.5; omit the section entirely otherwise)
 [spec]      — optional table (tiers, tools, gateways, pricing…)
 architecture— embedded SVG diagram (responsive; see design-system.md for the mobile-vertical rotation)
 trust       — security posture / tech stack
 cta         — closing call to action (centered)
 footer
 ```
+
+While you're in the `<head>`, add basic social-share metadata (`og:title`, `og:description`;
+`og:image` too if you have a hosted preview image) — cheap to include, and it's what makes
+a shared brochure link preview well in Slack/Discord/etc.
 
 **Responsive is the whole job — design mobile-first and verify all three tiers:**
 - **Mobile (~375px)**: single column; tables become stacked cards (never just hide the meaningful column); a wide architecture SVG is **rotated 90° to fill the vertical screen** (technique in `references/design-system.md`).
@@ -89,7 +115,7 @@ Run the bundled checker, fix what it flags, then pass the mandatory content revi
 python3 {skill-dir}/scripts/check_brochure.py <brochure.html>
 ```
 
-It verifies tag balance, that the responsive/accessibility primitives are present (focus-visible, skip-link, reduced-motion, viewport meta, breakpoints), that referenced local assets (the SVG) exist, and flags low-contrast muted-text tokens on a light background. It's a fast structural gate, not a substitute for looking at the page.
+It verifies tag balance, that the responsive/accessibility primitives are present (focus-visible, skip-link, reduced-motion, viewport meta, breakpoints), that every `<img>` has non-empty alt text, that referenced local assets (screenshots, the SVG) exist, and flags low-contrast muted-text tokens on a light background. It's a fast structural gate, not a substitute for looking at the page.
 
 Then invoke **content-review-agent** (`review content at <path>`). A score **≥ 85** is required before deploy — it catches hallucinated services, inflated counts, contradictions between copy and diagram, PII (account IDs, internal CIDRs/IPs — strip them from a public brochure), and readability/accessibility issues.
 
@@ -107,7 +133,7 @@ Relative asset links (`./awsops-arch.svg`) survive any base path; absolute `/` l
 ## Bundled resources
 
 - **`references/design-system.md`** — design tokens, type pairings, responsive breakpoints, the mobile architecture-rotation CSS, the accessibility checklist, and the CSS gotchas. **Read before writing CSS.**
-- **`assets/example-brochure/`** — a complete golden-reference brochure (HTML + architecture SVG) to calibrate quality. Adapt; don't ship verbatim.
+- **`assets/example-brochure/`** — a complete golden-reference brochure (HTML + a `screenshots/` grid + architecture SVG) to calibrate quality. Adapt; don't ship verbatim.
 - **`scripts/check_brochure.py`** — structural + responsive + accessibility self-check (Phase 5).
 
 ## Anti-patterns (these make a brochure feel cheap)
@@ -116,5 +142,6 @@ Relative asset links (`./awsops-arch.svg`) survive any base path; absolute `/` l
 - Inflated or unverified numbers — a wrong tool count loses the engineer immediately.
 - A wide architecture diagram left tiny and unreadable on mobile — rotate it.
 - Hiding the meaningful table column on mobile instead of restacking it.
+- Describing a real product UI in prose only, with no screenshots — if it exists and is reachable, show it.
 - Baking volatile facts (version labels, dated counts) into hero copy — they age badly; keep them in a footer or omit.
 - Deploying behind an auth edge and wondering why no one can see it.

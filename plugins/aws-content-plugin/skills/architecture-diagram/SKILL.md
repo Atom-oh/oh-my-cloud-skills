@@ -1,6 +1,6 @@
 ---
 name: architecture-diagram
-description: AWS 아키텍처 다이어그램을 draw.io MCP로 생성. 사용자가 "아키텍처 다이어그램 그려줘", "AWS 구성도 만들어줘", "인프라 다이어그램", "시스템 아키텍처", "클라우드 아키텍처"를 요청할 때 활성화.
+description: AWS 아키텍처 다이어그램을 YAML 스펙 생성기(layout_aws.py)로 생성 — draw.io MCP는 선택적 대화형 편집용. 사용자가 "아키텍처 다이어그램 그려줘", "AWS 구성도 만들어줘", "인프라 다이어그램", "시스템 아키텍처", "클라우드 아키텍처"를 요청할 때 활성화.
 model: sonnet
 allowed-tools:
   - Read
@@ -117,19 +117,10 @@ PPT 삽입용 다이어그램은 **캔버스 크기 설정이 필수**입니다.
 
 ---
 
-## 색상 가이드 (AWS 공식)
+## 색상 가이드
 
-| 용도 | 색상 코드 | 설명 |
-|------|-----------|------|
-| AWS Cloud | #232F3E | 다크 네이비 (배경) |
-| Region | #147EBA | 블루 |
-| VPC | #248814 | 그린 |
-| Public Subnet | #E7F4E8 | 라이트 그린 |
-| Private Subnet | #E6F2F8 | 라이트 블루 |
-| Security Group | #DF3312 | 레드 (보더) |
-| 화살표 | #545B64 | 그레이 |
-| Direct Connect | #F58536 | 오렌지 |
-| PrivateLink | #5A30B5 | 퍼플 |
+> **정본은 `references/design-tokens.md`** — 컨테이너 색상/아이콘 크기/엣지/폰트/간격 전부
+> 그 파일이 SINGLE SOURCE. 여기서 값을 다시 적지 않음(재기술은 곧 drift).
 
 ---
 
@@ -303,15 +294,13 @@ drawio -x -f svg -o output.svg input.drawio
 
 ---
 
-## Quality Review (필수)
+## Quality Review (배포/완료 선언 전 필수)
 
-다이어그램 완성 후 배포/완료 선언 전에 **반드시**:
+대상은 신규 다이어그램과 실질 개정 — 오탈자·한 줄 수정 같은 사소한 손질은 재리뷰 없이 반영.
 
 1. content-review-agent 호출 → `review content at [파일경로]`
 2. FAIL/REVIEW 판정 시 수정 후 재리뷰 (최대 3회)
 3. PASS (≥85점) 획득 후에만 완료 선언
-
-> 이 단계를 건너뛰고 완료를 선언하는 것은 금지됩니다.
 
 ---
 

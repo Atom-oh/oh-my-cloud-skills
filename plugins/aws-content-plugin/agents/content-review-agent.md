@@ -23,7 +23,8 @@ A comprehensive review agent for all content types produced by the aws-content-p
 | Markdown Documents | document-agent | Structure, content, references |
 | GitBook Pages | gitbook-agent | Navigation, components, cross-refs |
 | Workshop Content | workshop-agent | Directives, structure, bilingual consistency |
-| Brochure (HTML) | brochure-agent | Responsive tiers (mobile/tablet/PC), CTA presence, copy↔diagram consistency, relative asset links, accessibility, PII (account IDs / internal CIDRs/IPs) |
+| Brochure (HTML) | brochure-agent | Responsive tiers (mobile/tablet/PC), CTA presence, copy↔diagram consistency, product-UI screenshots present when the product has a web UI (alt text + captions), relative asset links, accessibility, PII (account IDs / internal CIDRs/IPs) |
+| PPTX Decks (native) | presentation-agent → aws-light-fcd skill | `check_pptx.py` score ≥80 (text overflow/overlap, off-canvas, footer, page-number sanity, Pretendard-only, no placeholder text) + official AWS/AgentCore icons |
 
 ---
 
@@ -226,6 +227,7 @@ HTML 파일을 브라우저에서 열어 테스트하려면:
 | Markdown 문서 | 해당 없음 (텍스트만 검사) |
 | Draw.io 다이어그램 | 해당 없음 (XML 구조만 검사) |
 | Workshop | 해당 없음 (Workshop Studio 문법만 검사) |
+| PPTX 덱 | 해당 없음 (`check_pptx.py` 프로그램적 검사만 — Step 2 참조) |
 
 ### JS 콘솔 에러 정책
 
@@ -389,6 +391,7 @@ Find review target files using Glob tool.
 - **HTML Presentations**: Check framework init, Canvas setup, quiz attributes
 - **GitBook**: Verify SUMMARY.md, component syntax, navigation
 - **Workshop**: Check directives, front matter, bilingual pairs
+- **PPTX Decks**: run `python3 plugins/aws-content-plugin/skills/aws-light-fcd/scripts/check_pptx.py <deck.pptx> --json` and read its `score`/`findings`. Score <80, or any `[geometry]` finding (text overflow, overlap, off-canvas), is Critical; `[design]` findings (missing footer, page-number regression, non-Pretendard font, placeholder text) are Warning unless they recur across most slides.
 
 ### Step 3: Visual Testing (HTML 콘텐츠만)
 

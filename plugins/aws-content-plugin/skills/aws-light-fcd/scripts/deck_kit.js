@@ -9,8 +9,8 @@
 //   ...
 //   await pres.writeFile({ fileName: "out.pptx" });
 //
-// Then run scripts/finalize.py to inject any text gradients (none by default)
-// and you're done. Icons & backgrounds live under assets/.
+// Then run scripts/check_pptx.py to QA (score >= 80) and scripts/embed_fonts.py to
+// finish. Icons & backgrounds live under assets/.
 // ════════════════════════════════════════════════════════════════
 const pptxgen = require("pptxgenjs");
 const path = require("path");
@@ -49,6 +49,26 @@ function newDeck() {
 
 function mkShadow() {
   return { type: "outer", color: "9AA0B0", blur: 10, offset: 3, angle: 90, opacity: 0.18 };
+}
+
+// Cap an array to a builder's supported item count, warning instead of silently
+// dropping the rest — a builder that just does opts.items.slice(0,6) hides overflow
+// from the caller until someone notices a missing item in the rendered deck.
+function cap(arr, n, what) {
+  if (arr.length > n) {
+    console.warn(`[deck_kit] ${what}: got ${arr.length} items, this layout shows only ${n} — split into another slide if the rest matters.`);
+  }
+  return arr.slice(0, n);
+}
+
+// CJK-aware text width estimate, in inches, at font size `fs` (pt). Used to center a
+// text run against a fixed-width neighbor (e.g. an icon) without a real text-metrics
+// pass. Same per-character factors as check_pptx.py's est_w_pt — keep them in sync if
+// either changes (CJK glyphs are ~1em wide; Latin/digits/punctuation ~0.55em).
+function estTextW(text, fs) {
+  let w = 0;
+  for (const ch of text) w += fs * (ch.codePointAt(0) > 0x2E80 ? 1.0 : 0.55);
+  return w / 72;
 }
 
 const agentcoreIcon = (n) => path.join(ASSETS, "icons", "agentcore", n + ".png");
@@ -194,7 +214,7 @@ function agenda(pres, opts) {
     x: PAD - 0.02, y: 0.62, w: 11, h: 0.85, fontFace: FONT, fontSize: 38, bold: true,
     color: C.ink, charSpacing: -1, align: "left", valign: "top",
   });
-  const items = opts.items.slice(0, 6); // 2-col, up to 6
+  const items = cap(opts.items, 6, "agenda"); // 2-col, up to 6
   const colX = [PAD, 7.05];
   const colW = 5.3;
   const rows = Math.ceil(items.length / 2);
@@ -233,7 +253,7 @@ function agentcoreCards(pres, opts) {
   // centered icon+title group
   const titleText = opts.headerTitle;
   const titleFs = 28;
-  const estW = (titleText.length * titleFs * 0.50) / 72;
+  const estW = estTextW(titleText, titleFs);
   const iconW = 0.62, iconGap = 0.18;
   const groupW = iconW + iconGap + estW;
   const groupX = (W - groupW) / 2;
@@ -241,7 +261,7 @@ function agentcoreCards(pres, opts) {
   s.addText(titleText, { x: groupX + iconW + iconGap, y: 0.5, w: estW + 0.6, h: 0.62, fontFace: FONT, fontSize: titleFs, bold: true, color: C.ink, charSpacing: -0.8, align: "left", valign: "middle", margin: 0 });
   if (opts.subtitle) s.addText(opts.subtitle, { x: PAD, y: 1.42, w: 11.5, h: 0.5, fontFace: FONT, fontSize: 14, color: C.muted, align: "center", valign: "top" });
 
-  const cards = opts.cards.slice(0, 3);
+  const cards = cap(opts.cards, 3, "agentcoreCards");
   const cardW = 3.62, gap = 0.42;
   const totalW = cardW * cards.length + gap * (cards.length - 1);
   const startX = (W - totalW) / 2;
@@ -267,7 +287,7 @@ function bigStat(pres, opts) {
   const s = pres.addSlide();
   applyBg(s, opts.bg || "glow");
   addHeader(pres, s, opts.title);
-  const stats = opts.stats.slice(0, 4);
+  const stats = cap(opts.stats, 4, "bigStat");
   const n = stats.length;
   const colW = (n <= 2) ? 5.2 : 3.5;
   const gap = (n <= 2) ? 1.6 : 0.4;
@@ -329,7 +349,7 @@ function pipeline(pres, opts) {
   const s = pres.addSlide();
   applyBg(s, opts.bg || "plain");
   addHeader(pres, s, opts.title, opts.subtitle);
-  const steps = opts.steps.slice(0, 4);
+  const steps = cap(opts.steps, 4, "pipeline");
   const n = steps.length;
   const cardW = n <= 3 ? 3.3 : 2.7;
   const gap = (W - 2 * PAD - cardW * n) / (n - 1);
@@ -360,7 +380,7 @@ function whyWhat(pres, opts) {
   const whyY = 2.0, whyH = 1.45;
   s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: PAD, y: whyY, w: W - 2 * PAD, h: whyH, rectRadius: 0.1, fill: { color: C.purpleTint }, line: { type: "none" } });
   s.addText("WHY", { x: PAD + 0.3, y: whyY + 0.16, w: 2, h: 0.35, fontFace: FONT, fontSize: 14, bold: true, color: C.purple, align: "left", valign: "top", charSpacing: 1 });
-  const why = opts.why.slice(0, 3);
+  const why = cap(opts.why, 3, "whyWhat.why");
   const wcolW = (W - 2 * PAD - 0.6) / 3;
   why.forEach((it, i) => {
     const x = PAD + 0.3 + i * wcolW;
@@ -381,7 +401,7 @@ function whyWhat(pres, opts) {
   s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: PAD, y: whatPanelY, w: W - 2 * PAD, h: whatPanelH, rectRadius: 0.1, fill: { color: C.grayTint }, line: { type: "none" } });
   s.addText("WHAT", { x: PAD + 0.3, y: whatPanelY + 0.16, w: 2, h: 0.35, fontFace: FONT, fontSize: 14, bold: true, color: C.purple, align: "left", valign: "top", charSpacing: 1 });
 
-  const what = opts.what.slice(0, 3);
+  const what = cap(opts.what, 3, "whyWhat.what");
   const ccolW = (W - 2 * PAD - 0.6 - 0.4) / 3;
   what.forEach((c, i) => {
     const x = PAD + 0.2 + i * (ccolW + 0.3);
@@ -521,7 +541,7 @@ function closing(pres, opts = {}) {
 module.exports = {
   pptxgen, newDeck, FONT, W, H, PAD, C, COPYRIGHT,
   ASSETS, LOGO, LOGO_AR, BG_COVER, BG_GLOW, GRAD_PILL,
-  agentcoreIcon, awsIcon, toolIcon, icon, hasIcon, RP_ICONS, mkShadow,
+  agentcoreIcon, awsIcon, toolIcon, icon, hasIcon, RP_ICONS, mkShadow, cap, estTextW,
   addFooter, addHeader, applyBg,
   cover, agenda, agentcoreCards, bigStat, titleWithVisual,
   pipeline, whyWhat, chartWithCallout, chipGrid,

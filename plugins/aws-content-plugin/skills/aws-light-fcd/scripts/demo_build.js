@@ -27,13 +27,13 @@ const { FiZap, FiSearch, FiGitBranch, FiShield } = require("react-icons/fi");
 
   // 2.5) SECTION DIVIDER
   kit.sectionDivider(pres, {
-    pageNum: 5, num: "01", title: "무엇이 새로워졌나",
+    pageNum: 3, num: "01", title: "무엇이 새로워졌나",
     kicker: "두 모델의 정식 출시와 오픈 웨이트의 의미",
   });
 
   // 3) BIG STAT
   kit.bigStat(pres, {
-    pageNum: 3, title: "AI 에이전트, 이미 현실이 되었습니다", bg: "glow",
+    pageNum: 4, title: "AI 에이전트, 이미 현실이 되었습니다", bg: "glow",
     stats: [
       { num: "80%", lines: [{ t: "의 고객 서비스 이슈를" }, { t: "에이전틱 AI가 자율적으로 해결", blue: true }, { t: "2029년까지 운영비용 30% 절감" }], source: "Gartner, CXToday 2026" },
       { num: "51%", lines: [{ t: "의 기업이 이미" }, { t: "AI 에이전트를 프로덕션에 배포", blue: true }, { t: "85%가 2026년 말까지 도입 계획" }], source: "Ringly.io; NVIDIA State of AI 2026" },
@@ -42,7 +42,7 @@ const { FiZap, FiSearch, FiGitBranch, FiShield } = require("react-icons/fi");
 
   // 4) AGENTCORE 3-CARD
   kit.agentcoreCards(pres, {
-    pageNum: 4, headerIcon: "agentcore", headerTitle: "Amazon Bedrock AgentCore",
+    pageNum: 5, headerIcon: "agentcore", headerTitle: "Amazon Bedrock AgentCore",
     subtitle: "어떤 프레임워크와 모델로도 고성능 에이전트를 안전하게, 대규모로 구축·배포·운영",
     cards: [
       { title: "가치 실현 시간 단축", icon: "runtime", desc: "인프라와 운영 부담 없이\n강력한 AI 에이전트를 구축" },
@@ -51,52 +51,48 @@ const { FiZap, FiSearch, FiGitBranch, FiShield } = require("react-icons/fi");
     ],
   });
 
-  // 5) ARCHITECTURE DIAGRAM
-  const s = arch.archSlide(kit, pres, { pageNum: 19, title: "자동 확장 기능을 갖춘 추론 아키텍처" });
-  arch.svc(kit, pres, s, 1.35, 2.65, "model_registry", "모델 레지스트리");
-  arch.groupBox(kit, pres, s, 2.35, 1.75, 1.9, 1.5, "컨테이너 레지스트리");
-  arch.svc(kit, pres, s, 3.3, 2.05, "ecr", "Amazon ECR");
-  arch.groupBox(kit, pres, s, 2.35, 3.5, 1.9, 3.2, "스토리지");
-  arch.svc(kit, pres, s, 3.3, 3.82, "efs", "Amazon EFS");
-  arch.svc(kit, pres, s, 3.3, 4.9, "s3", "Amazon S3");
-  arch.svc(kit, pres, s, 3.3, 5.95, "fsx", "Amazon FSx", 0.48);
-  s.addText("GPU", { x: 5.0, y: 1.85, w: 1.6, h: 0.3, fontFace: kit.FONT, fontSize: 12, bold: true, color: kit.C.body, align: "center" });
-  s.addImage({ path: kit.awsIcon("gpu"), x: 5.35, y: 2.2, w: 0.9, h: 0.9 });
-  s.addImage({ path: kit.awsIcon("gpu"), x: 5.35, y: 3.55, w: 0.9, h: 0.9 });
-  s.addText("• • •", { x: 5.35, y: 3.18, w: 0.9, h: 0.25, fontFace: kit.FONT, fontSize: 14, color: kit.C.muted, align: "center", valign: "middle" });
-  arch.groupBox(kit, pres, s, 4.95, 4.7, 2.3, 1.5, "추론 엔진");
-  s.addImage({ path: kit.toolIcon("ray"), x: 5.35, y: 5.3, w: 0.42, h: 0.42 });
-  s.addText("Ray", { x: 5.8, y: 5.3, w: 0.7, h: 0.42, fontFace: kit.FONT, fontSize: 14, bold: true, color: kit.C.ink, align: "left", valign: "middle", margin: 0 });
-  s.addImage({ path: kit.toolIcon("vllm"), x: 6.35, y: 5.42, w: 0.62, h: 0.2 });
-  arch.groupBox(kit, pres, s, 7.7, 1.95, 1.95, 3.0, "서빙");
-  arch.svc(kit, pres, s, 8.67, 2.3, "api_gateway", "API Gateway");
-  arch.svc(kit, pres, s, 8.67, 3.7, "load_balancer", "Elastic Load\nBalancing", 0.55);
-  const ep = [["사용자", 2.35], ["에이전트", 3.15], ["프로그램", 3.95]];
-  ep.forEach(([t, y]) => {
-    s.addShape(pres.shapes.OVAL, { x: 10.0, y, w: 0.2, h: 0.2, fill: { color: kit.C.blueTint }, line: { color: kit.C.blue, width: 1 } });
-    s.addText(t, { x: 10.28, y: y - 0.07, w: 1.05, h: 0.34, fontFace: kit.FONT, fontSize: 11, color: kit.C.body, align: "left", valign: "middle", margin: 0 });
+  // 5) ARCHITECTURE DIAGRAM — declarative archFlow (preferred): columns only, no
+  // hand-placed coordinates. GPU/추론 엔진 stages use raw primitives via the returned
+  // geometry, since a mid-flow fan-out (2 GPU boxes + a Ray/vLLM pair) doesn't fit the
+  // single-item-per-slot column model — the documented escape hatch, not the default.
+  const { s, cols } = arch.archFlow(kit, pres, {
+    pageNum: 6, title: "자동 확장 기능을 갖춘 추론 아키텍처",
+    columns: [
+      { items: [{ icon: "model_registry", label: "모델 레지스트리", step: 3 }] },
+      { label: "컨테이너 레지스트리", items: [{ icon: "ecr", label: "Amazon ECR", step: 2 }] },
+      { label: "스토리지", items: [
+        { icon: "efs", label: "Amazon EFS", step: 4 },
+        { icon: "s3", label: "Amazon S3" },
+        { icon: "fsx", label: "Amazon FSx", iconSz: 0.48 },
+      ] },
+      { items: [] },  // GPU/추론 엔진 fan-out drawn manually below via cols[3]'s geometry
+      { label: "서빙", items: [
+        { icon: "api_gateway", label: "API Gateway", step: 6 },
+        { icon: "load_balancer", label: "Elastic Load\nBalancing", iconSz: 0.55 },
+      ] },
+      { items: [{ chip: "사용자" }, { chip: "에이전트" }, { chip: "프로그램" }] },
+    ],
+    arrows: [[1, 2], [2, 3], [3, 4], [4, 5]],
+    legend: ["컴퓨팅 프로비저닝", "컨테이너 실행", "모델 다운로드", "GPU 메모리 로드", "GPU 자동 확장", "엔드포인트 노출", "상호작용", "모니터링"],
   });
-  arch.groupBox(kit, pres, s, 7.7, 5.3, 1.95, 1.3, "모니터링");
-  arch.svc(kit, pres, s, 8.67, 5.55, "cloudwatch", "CloudWatch", 0.5);
-  arch.arrow(kit, pres, s, 4.25, 2.65, 1.0);
-  arch.arrow(kit, pres, s, 4.25, 4.0, 1.0);
-  arch.arrow(kit, pres, s, 6.3, 2.65, 1.3);
-  arch.arrow(kit, pres, s, 6.3, 4.0, 1.3);
-  arch.arrow(kit, pres, s, 9.7, 2.46, 0.25);
-  arch.stepMarker(kit, pres, s, 4.45, 1.7, 1);
-  arch.stepMarker(kit, pres, s, 3.65, 2.05, 2);
-  arch.stepMarker(kit, pres, s, 1.95, 2.7, 3);
-  arch.stepMarker(kit, pres, s, 3.65, 3.85, 4);
-  arch.stepMarker(kit, pres, s, 5.1, 3.18, 5);
-  arch.stepMarker(kit, pres, s, 6.55, 2.5, 6);
-  arch.stepMarker(kit, pres, s, 9.72, 2.3, 7);
-  arch.stepMarker(kit, pres, s, 7.5, 5.2, 8);
-  arch.stepLegend(kit, pres, s, ["컴퓨팅 프로비저닝", "컨테이너 실행", "모델 다운로드", "GPU 메모리 로드", "GPU 자동 확장", "엔드포인트 노출", "상호작용", "모니터링"]);
-  kit.addFooter(pres, s, 19);
+  const gpuCol = cols[3];
+  s.addText("GPU", { x: gpuCol.x, y: gpuCol.y - 0.15, w: gpuCol.w, h: 0.3, fontFace: kit.FONT, fontSize: 12, bold: true, color: kit.C.body, align: "center" });
+  s.addImage({ path: kit.awsIcon("gpu"), x: gpuCol.x + gpuCol.w / 2 - 0.45, y: gpuCol.y + 0.25, w: 0.9, h: 0.9 });
+  s.addImage({ path: kit.awsIcon("gpu"), x: gpuCol.x + gpuCol.w / 2 - 0.45, y: gpuCol.y + 1.6, w: 0.9, h: 0.9 });
+  s.addText("• • •", { x: gpuCol.x + gpuCol.w / 2 - 0.45, y: gpuCol.y + 1.23, w: 0.9, h: 0.25, fontFace: kit.FONT, fontSize: 14, color: kit.C.muted, align: "center", valign: "middle" });
+  arch.groupBox(kit, pres, s, gpuCol.x, gpuCol.y + 2.55, gpuCol.w, 1.5, "추론 엔진");
+  s.addImage({ path: kit.toolIcon("ray"), x: gpuCol.x + 0.4, y: gpuCol.y + 3.15, w: 0.42, h: 0.42 });
+  s.addText("Ray", { x: gpuCol.x + 0.85, y: gpuCol.y + 3.15, w: 0.7, h: 0.42, fontFace: kit.FONT, fontSize: 14, bold: true, color: kit.C.ink, align: "left", valign: "middle", margin: 0 });
+  s.addImage({ path: kit.toolIcon("vllm"), x: gpuCol.x + 1.4, y: gpuCol.y + 3.27, w: 0.62, h: 0.2 });
+  arch.stepMarker(kit, pres, s, gpuCol.x + gpuCol.w / 2 + 0.14, gpuCol.y + 0.15, 5);
+  arch.groupBox(kit, pres, s, cols[4].x, cols[4].y + cols[4].h + 0.15, cols[4].w, 1.3, "모니터링");
+  arch.svc(kit, pres, s, cols[4].x + cols[4].w / 2, cols[4].y + cols[4].h + 0.4, "cloudwatch", "CloudWatch", 0.5);
+  arch.stepMarker(kit, pres, s, cols[5].items[0].cx - 0.9, cols[5].items[0].cy - 0.35, 7);
+  arch.stepMarker(kit, pres, s, cols[4].x + cols[4].w / 2 + 0.14, cols[4].y + cols[4].h + 0.05, 8);
 
   // 6) TITLE + VISUAL  (EKS slide-21 style responsibility diagram)
   kit.titleWithVisual(pres, {
-    pageNum: 21,
+    pageNum: 7,
     title: "GPU 지원 EKS\n클러스터 생성 옵션 1",
     caption: "자체 관리형 애드온을 사용하는 EKS",
     draw: (pres, s2, r) => {
@@ -132,7 +128,7 @@ const { FiZap, FiSearch, FiGitBranch, FiShield } = require("react-icons/fi");
 
   // 7) PIPELINE
   kit.pipeline(pres, {
-    pageNum: 14, title: "Bedrock 시작, 세 단계",
+    pageNum: 8, title: "Bedrock 시작, 세 단계",
     steps: [
       { n: 1, title: "모델 액세스 요청", desc: "콘솔 '모델 액세스'에서\n두 OpenAI 모델 액세스 요청" },
       { n: 2, title: "플레이그라운드 평가", desc: "Chat/Test에서 카테고리를\nOpenAI로 선택해 테스트" },
@@ -142,7 +138,7 @@ const { FiZap, FiSearch, FiGitBranch, FiShield } = require("react-icons/fi");
 
   // 8) WHY / WHAT
   kit.whyWhat(pres, {
-    pageNum: 31, title: "신규 콘솔, 왜 나왔고 무엇이 다른가",
+    pageNum: 9, title: "신규 콘솔, 왜 나왔고 무엇이 다른가",
     subtitle: "생성형 AI 모델 환경 변화에 맞춰, 표준 호환 API와 프로젝트 중심 워크플로 제공",
     why: [
       { dot: kit.C.magenta, t: "모델 생태계의 확장", d: "GPT·Claude·오픈웨이트 등\n멀티 프로바이더 시대" },
@@ -158,7 +154,7 @@ const { FiZap, FiSearch, FiGitBranch, FiShield } = require("react-icons/fi");
 
   // 9) CHART WITH CALLOUT
   kit.chartWithCallout(pres, {
-    pageNum: 23, title: "추론 비용, 1년 만에 급감", subtitle: "동일 워크로드 기준 월간 추론 비용 추이 (상대값)",
+    pageNum: 10, title: "추론 비용, 1년 만에 급감", subtitle: "동일 워크로드 기준 월간 추론 비용 추이 (상대값)",
     chartType: "bar", chartColors: [kit.C.gradBlue], maxVal: 110,
     series: [{ name: "추론 비용", labels: ["2025 Q1", "Q2", "Q3", "Q4", "2026 Q1"], values: [100, 78, 55, 38, 24] }],
     callout: { big: "76%", lines: [{ t: "5분기 만에 추론 비용 " }, { t: "76% 절감", blue: true }, { t: ". 같은 예산으로 더 많은 추론 처리." }] },
@@ -166,7 +162,7 @@ const { FiZap, FiSearch, FiGitBranch, FiShield } = require("react-icons/fi");
 
   // 10) CHIP GRID (EKS-23 style)
   kit.chipGrid(pres, {
-    pageNum: 23, title: "광범위하고 심층적인 가속 컴퓨팅 포트폴리오",
+    pageNum: 11, title: "광범위하고 심층적인 가속 컴퓨팅 포트폴리오",
     leftLabel: "GPU 및 AWS ML 가속기",
     vendorBoxes: [
       { name: "NVIDIA", color: "76B900", items: "H200, H100, A100, L4, L40S, A10G, T4" },
@@ -179,7 +175,7 @@ const { FiZap, FiSearch, FiGitBranch, FiShield } = require("react-icons/fi");
   });
 
   // 11) CLOSING (always last)
-  kit.closing(pres, { pageNum: 32 });
+  kit.closing(pres, { pageNum: 12 });
 
   await pres.writeFile({ fileName: "kit_demo.pptx" });
   console.log("written kit_demo.pptx");
