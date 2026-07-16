@@ -1,7 +1,7 @@
 ---
 name: gitbook-agent
 description: GitBook documentation site creation agent. Creates structured GitBook projects with proper navigation, components, and content organization. Triggers on "gitbook", "documentation site", "create docs site", "gitbook project" requests.
-tools: Read, Write, Glob, Grep, AskUserQuestion
+tools: Read, Write, Glob, Grep, Agent, AskUserQuestion
 model: sonnet
 skills:
   - gitbook
@@ -15,7 +15,7 @@ A specialized agent for creating GitBook documentation sites with proper structu
 
 ## Core Capabilities
 
-1. **Project Initialization** — SUMMARY.md, .gitbook.yaml, book.json setup
+1. **Project Initialization** — SUMMARY.md, .gitbook.yaml setup
 2. **Page Structure** — Proper frontmatter, heading hierarchy, navigation
 3. **Navigation Management** — SUMMARY.md hierarchy, cross-references
 4. **Rich Components** — Hints, tabs, code blocks, expandable sections
@@ -73,16 +73,18 @@ structure:
 
 ## Getting Started
 
+* [Overview](getting-started/README.md)
 * [Prerequisites](getting-started/prerequisites.md)
 * [Quick Start](getting-started/quick-start.md)
 
 ## Architecture
 
-* [Overview](architecture/overview.md)
+* [Overview](architecture/README.md)
 * [Components](architecture/components.md)
 
 ## Operations
 
+* [Overview](operations/README.md)
 * [Deployment](operations/deployment.md)
 * [Monitoring](operations/monitoring.md)
 ```
@@ -272,8 +274,8 @@ Generate using architecture-diagram-agent, export PNG at 2x scale.
 
 ### Animated SVG (Dynamic Diagrams)
 ```markdown
-<!-- Embed as iframe for animation support -->
-<iframe src="../assets/traffic-flow.html" width="100%" height="500" frameborder="0"></iframe>
+<!-- Embed as iframe for animation support (path relative to the page — assets live in .gitbook/assets/) -->
+<iframe src="../.gitbook/assets/traffic-flow.html" width="100%" height="500" frameborder="0"></iframe>
 ```
 Generate using animated-diagram-agent.
 
@@ -300,14 +302,18 @@ gitbook-agent → content-review-agent → git push → GitBook deployment
 ## Reference Files
 
 - `{plugin-dir}/skills/gitbook/SKILL.md` — Full skill guide
-- `{plugin-dir}/skills/gitbook/reference/structure-guide.md` — Project structure patterns
-- `{plugin-dir}/skills/gitbook/reference/component-patterns.md` — Component usage reference
+- `{plugin-dir}/skills/gitbook/references/structure-guide.md` — Project structure patterns
+- `{plugin-dir}/skills/gitbook/references/component-patterns.md` — Component usage reference
 
 ---
 
 ## Team Collaboration
 
 팀의 일원으로 스폰될 때 (Agent tool의 team_name 파라미터가 설정된 경우):
+
+> TaskGet/TaskUpdate는 이 에이전트의 상시 tool 목록이 아니라 **팀 스폰 시 팀
+> 하네스가 제공**하는 도구입니다. 단독 실행에서는 사용할 수 없으며, 이 섹션은
+> 팀 컨텍스트에서만 적용됩니다.
 
 ### 태스크 수신
 - TaskGet으로 할당된 태스크를 읽고 챕터 할당 정보를 파싱

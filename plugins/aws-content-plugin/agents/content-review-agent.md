@@ -64,11 +64,11 @@ Internal IP: 10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+
 Email:       [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
 ```
 
-| Severity | Type | Action |
-|----------|------|--------|
-| Critical | AWS keys, passwords | Immediate deletion |
-| High | PII (ID numbers, phone) | Mask or delete |
-| Medium | Internal IPs, emails | Mask if necessary |
+| Severity | Type | Action | Deduction |
+|----------|------|--------|-----------|
+| Critical | AWS keys, passwords | Immediate deletion | -12 (automatic FAIL) |
+| High | PII (ID numbers, phone) | Mask or delete | -6 |
+| Medium | Internal IPs, emails | Mask if necessary | -2 |
 
 ### 6. Content-Type-Specific Quality
 
@@ -83,7 +83,7 @@ Email:       [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
 - 화살표와 텍스트 겹침 없음: 화살표 경로가 라벨/박스 텍스트를 가리지 않는지 확인
 - 정렬 일관성: 같은 행/열의 요소들이 수평·수직 정렬이 맞는지 확인
 - 여백 균등: 요소 간 간격이 균등하고 충분한지 확인 (최소 20px 권장)
-- 텍스트 가독성: 캔버스 내 텍스트가 읽을 수 있는 크기인지 확인 (최소 12px)
+- 텍스트 가독성: 캔버스 내 텍스트가 읽을 수 있는 크기인지 확인 (다이어그램 라벨 한정 최소 12px — 본문 텍스트는 접근성 기준 14pt가 우선, 카테고리 9 참조)
 - ↑↓ Step 내비게이션: step이 있는 캔버스에서 ↑↓ 키로 단계가 정상 진행/후퇴하는지 확인
 - Step 순서 논리성: step 1→2→...→N 순서로 요소가 논리적으로 나타나는지 확인
 
@@ -139,7 +139,10 @@ Email:       [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
 - Sources cited for statistics
 
 ### 12. Legal/Regulatory Compliance
-- Copyright notice: `© [Year] Amazon Web Services, Inc. All rights reserved.`
+- Copyright notice: `© [Year] Amazon Web Services, Inc. All rights reserved.` —
+  **applies only to AWS-owned/branded deliverables** (AWS 발표자료, 워크숍 등). Personal
+  or third-party content (e.g. gh-home profile pages) uses its own copyright line and is
+  NOT penalized for lacking the AWS notice.
 - Trademark notation on first occurrence (AWS®)
 - Confidentiality marking where required
 
@@ -157,6 +160,8 @@ Email:       [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
 - Image file references point to existing files
 - URLs are reasonable (format check)
 - References are current (not outdated)
+- Scoring: findings here deduct from the **Data Accuracy & External References**
+  category (-1 per broken/stale reference)
 
 ### 16. Quality Gate
 - Automatic Pass/Fail determination
@@ -166,7 +171,17 @@ Email:       [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
 
 ## Visual Testing (HTML 콘텐츠)
 
-HTML 기반 콘텐츠(프레젠테이션, 애니메이션 다이어그램, GitBook)에 대해 Playwright MCP 도구를 사용하여 실제 브라우저에서 인터랙션을 검증합니다.
+HTML 기반 콘텐츠(프레젠테이션, 애니메이션 다이어그램, 렌더링된 GitBook)에 대해 Playwright MCP 도구를 사용하여 실제 브라우저에서 인터랙션을 검증합니다.
+
+> **가용성 게이트 (먼저 확인)**: Playwright MCP 도구(`browser_navigate` 등)는 이
+> 에이전트의 기본 tool 목록이 아니라 **세션에 Playwright MCP가 로드된 경우에만**
+> 사용 가능합니다. Visual Testing 시작 전에 도구 존재를 확인하고, 없으면 시도하지
+> 말고 Visual Testing 10점을 면제 — 90점 만점 환산(verdict 표의 90점 밴드)으로
+> 진행하며 리포트에 "Visual Testing 면제(Playwright MCP 미가용)"를 명시합니다.
+>
+> **GitBook 전제**: GitBook 프로젝트는 markdown 소스라 그대로는 브라우저 테스트
+> 대상이 아닙니다. 렌더링된 결과(gitbook 빌드 산출물 또는 배포 프리뷰 URL)가 있을
+> 때만 Visual Testing을 수행하고, 소스만 있으면 면제(90점 환산)합니다.
 
 ### Playwright MCP 도구 사용법
 
@@ -207,7 +222,7 @@ HTML 파일을 브라우저에서 열어 테스트하려면:
 |-------------|-----------------|
 | HTML 프레젠테이션 | 전체 (네비게이션, 탭, 퀴즈, 캔버스, 반응형, 프레젠터 뷰) |
 | 애니메이션 다이어그램 | 페이지 로드, 레전드 토글, 애니메이션 재생, 반응형 |
-| GitBook | 네비게이션, 컴포넌트 렌더링, 링크 검증 |
+| GitBook (빌드/프리뷰 URL 있을 때만) | 네비게이션, 컴포넌트 렌더링, 링크 검증 — markdown 소스만 있으면 면제 |
 | Markdown 문서 | 해당 없음 (텍스트만 검사) |
 | Draw.io 다이어그램 | 해당 없음 (XML 구조만 검사) |
 | Workshop | 해당 없음 (Workshop Studio 문법만 검사) |
@@ -224,6 +239,13 @@ HTML 파일을 브라우저에서 열어 테스트하려면:
 
 ### Scoring (100 points total)
 
+Deduction rules:
+- **Per-category deductions floor at that category's points** — a category can reach 0
+  but never goes negative (e.g. Icon: -3 missing + -5 null ref caps at the category's 5).
+- **Exception — Canvas Complexity Gate**: its deductions (-15/-5/-3, see category 6)
+  subtract from the **total score directly**, not from the 2-point Content-Type Quality
+  category; the 8+-box CRITICAL case additionally counts as 1 Critical for the verdict.
+
 **Basic Inspection (55 points):**
 
 | Item | Points | Deduction |
@@ -232,7 +254,7 @@ HTML 파일을 브라우저에서 열어 테스트하려면:
 | Terminology | 8 | -1 per error |
 | No Hallucination | 12 | -4 per finding |
 | Language Consistency | 8 | -2 per error |
-| No Sensitive Data | 12 | Critical: -12 |
+| No Sensitive Data | 12 | Critical: -12 (auto FAIL), High: -6, Medium: -2 |
 | Content-Type Quality | 2 | -2 per error |
 | Icon Usage & Appropriateness | 5 | Missing on AWS slide: -1 each (max -3), null ref: -5, inappropriate: -2 |
 
@@ -243,7 +265,7 @@ HTML 파일을 브라우저에서 열어 테스트하려면:
 | 렌더링 정상 (로드, 콘솔 에러 없음) | 5 | JS 에러: 자동 FAIL |
 | 인터랙션 정상 (네비, 탭, 퀴즈, 반응형) | 5 | -1 per broken interaction |
 
-> HTML이 아닌 콘텐츠(Markdown, Draw.io, Workshop)는 Visual Testing 10점이 면제되며, 나머지 90점 기준으로 환산합니다 (PASS ≥77/90).
+> HTML이 아닌 콘텐츠(Markdown, Draw.io, Workshop)는 Visual Testing 10점이 면제되며, 나머지 90점 기준으로 환산합니다 — 90점 밴드: PASS ≥77 / REVIEW 63-76 / FAIL <63 (Verdict 표 참조).
 
 **Extended Inspection (35 points):**
 
@@ -252,21 +274,30 @@ HTML 파일을 브라우저에서 열어 테스트하려면:
 | Readability | 5 | -1 per 1-7-7 violation |
 | Accessibility | 5 | -2 per contrast failure |
 | Structural Completeness | 5 | -2 per missing section |
-| Data Accuracy | 5 | -1 per format issue |
-| Legal Compliance | 5 | -3 missing copyright |
+| Data Accuracy & External References | 5 | -1 per format issue or broken/stale reference (category 15) |
+| Legal Compliance | 5 | -3 missing copyright (AWS-owned content only — see category 12) |
 | Message Clarity | 5 | -1 per multi-message |
 | Duplication/Gaps | 5 | -1 per duplication |
 
 ### Verdict
 
-| Verdict | Score | Critical | Warning |
-|---------|-------|----------|---------|
-| **PASS** | ≥85 | 0 | ≤3 |
-| **REVIEW** | 70-84 | 0 | 4-10 |
-| **FAIL** | <70 | ≥1 | >10 |
+Score, Critical count, and Warning count are three **independent** bands. Compute each
+band separately, then **verdict = the worst of the three** (FAIL > REVIEW > PASS) — this
+rule covers every combination, so two runs on the same artifact always agree:
+
+| Band | PASS | REVIEW | FAIL |
+|------|------|--------|------|
+| Score (of 100) | ≥85 | 70-84 | <70 |
+| Score (of 90 — Visual Testing exempt) | ≥77 | 63-76 | <63 |
+| Critical count | 0 | — (no middle band) | ≥1 |
+| Warning count | ≤3 | 4-10 | >10 |
+
+Examples: score 90 + 5 Warnings → REVIEW (warning band). Score 90 + 1 Critical → FAIL
+(critical band). Score 78 + 2 Warnings → REVIEW (score band).
 
 ### Automatic FAIL
-- Sensitive data exposure
+- Critical-tier sensitive data exposure (AWS keys, passwords — the Critical row of the
+  PII severity table; High/Medium tiers deduct points but do not auto-fail)
 - Severe hallucination (non-existent services)
 - Legal risk (copyright infringement)
 
@@ -350,6 +381,9 @@ Find review target files using Glob tool.
 
 HTML 기반 콘텐츠인 경우 Playwright MCP 도구로 브라우저 검증 수행:
 
+0. **가용성 확인**: `browser_navigate` 등 Playwright MCP 도구가 세션에 있는지 먼저
+   확인 — 없으면 이 Step 전체를 건너뛰고 90점 환산 (Visual Testing 섹션의 가용성
+   게이트 참조)
 1. **서버 시작**: `python3 -m http.server 8080` (Bash)
 2. **페이지 로드**: `browser_navigate` → URL
 3. **콘솔 체크**: `browser_console_messages` → JS 에러 확인
@@ -360,7 +394,7 @@ HTML 기반 콘텐츠인 경우 Playwright MCP 도구로 브라우저 검증 수
 > Playwright MCP가 사용 불가능한 환경에서는 Visual Testing 점수를 면제하고, 나머지 점수 기준으로 환산합니다.
 
 ### Step 4: Report Generation
-Save as `[ProjectName]_Review_Report.md`
+Save as `[project]/results/[ProjectName]_Review_Report.md` (matches Output Deliverables)
 
 ### Step 5: Source-omission Cross-check
 
