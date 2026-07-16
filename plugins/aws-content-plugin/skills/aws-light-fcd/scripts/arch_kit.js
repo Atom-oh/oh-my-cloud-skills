@@ -20,15 +20,18 @@
 //   arch.stepLegend(kit, pres, s, ["...","..."]);
 // All coords in inches on a 13.333 x 7.5 canvas.
 // ════════════════════════════════════════════════════════════════
-const React = require("react");
-const ReactDOMServer = require("react-dom/server");
-const sharp = require("sharp");
 const fs = require("fs");
 const path = require("path");
 
 // Render a react-icons component to a base64 PNG (for agenda tiles etc.)
 //   const data = await renderFiIcon(require("react-icons/fi").FiZap, "#3B82F6");
+// react/react-dom/sharp are lazy-required here (not at module load) so the rest of the
+// kit — the layout math in archFlow, the primitives — loads and is testable without the
+// image-render deps installed.
 async function renderIcon(IconComponent, hexColor, size = 256) {
+  const React = require("react");
+  const ReactDOMServer = require("react-dom/server");
+  const sharp = require("sharp");
   const svg = ReactDOMServer.renderToStaticMarkup(
     React.createElement(IconComponent, { color: hexColor, size: String(size) })
   );
@@ -61,7 +64,9 @@ function _curatedNames(kit) {
 // shared library ("Amazon-EKS", "AWS-Lambda"); the curated PNG wins when present,
 // otherwise it resolves from the shared reactive-presentation icon set. A typo'd name
 // that matches neither throws with near-match suggestions instead of a bare crash.
-function svc(kit, pres, s, cx, y, iconName, label, iconSz = 0.62) {
+// `capW` caps the caption text-box width so it never bleeds past a narrow column;
+// defaults to 1.8" (roomy) but archFlow passes its computed slotW for tight layouts.
+function svc(kit, pres, s, cx, y, iconName, label, iconSz = 0.62, capW = 1.8) {
   const curated = kit.awsIcon(iconName);
   let iconPath;
   if (fs.existsSync(curated)) {
@@ -79,8 +84,9 @@ function svc(kit, pres, s, cx, y, iconName, label, iconSz = 0.62) {
         `shared 811-icon library).${hint} See references/icons.md.`);
     }
   }
+  const cw = Math.min(1.8, capW);
   s.addImage({ path: iconPath, x: cx - iconSz / 2, y, w: iconSz, h: iconSz });
-  s.addText(label, { x: cx - 0.9, y: y + iconSz + 0.04, w: 1.8, h: 0.5, fontFace: kit.FONT, fontSize: 10.5, color: kit.C.body, align: "center", valign: "top", lineSpacingMultiple: 1.0 });
+  s.addText(label, { x: cx - cw / 2, y: y + iconSz + 0.04, w: cw, h: 0.5, fontFace: kit.FONT, fontSize: 10.5, color: kit.C.body, align: "center", valign: "top", lineSpacingMultiple: 1.0 });
 }
 
 // small labeled chip (oval + text) — endpoints (users/agents/programs), never emoji.
@@ -157,8 +163,12 @@ function archFlow(kit, pres, opts) {
     const cellH = items.map(it => (it.chip != null ? CHIP_CELL : ITEM_CELL));
     const stackH = cellH.reduce((a, b) => a + b, 0);
     const grouped = !!col.label;
-    const boxH = stackH + (grouped ? GROUP_PAD_TOP + GROUP_PAD : 0);
-    const boxY = y0 + (y1 - y0 - boxH) / 2;
+    // An empty column (items: []) is a reserved slot the caller fills via the returned
+    // geometry (e.g. demo's GPU fan-out). It spans the FULL region — collapsing it to
+    // h=0 at mid-region put callers' anchored content off-canvas. Non-empty columns
+    // size to their stack and center vertically.
+    const boxH = items.length ? stackH + (grouped ? GROUP_PAD_TOP + GROUP_PAD : 0) : (y1 - y0);
+    const boxY = items.length ? y0 + (y1 - y0 - boxH) / 2 : y0;
     if (grouped) groupBox(kit, pres, s, cx, boxY, slotW, boxH, col.label);
 
     let itemY = boxY + (grouped ? GROUP_PAD_TOP : 0);
@@ -169,7 +179,7 @@ function archFlow(kit, pres, opts) {
       if (it.chip != null) {
         chip(kit, pres, s, icx - 0.5, itemY + (h - CHIP_CELL) / 2, it.chip);
       } else {
-        svc(kit, pres, s, icx, itemY, it.icon, it.label, it.iconSz);
+        svc(kit, pres, s, icx, itemY, it.icon, it.label, it.iconSz, slotW);
       }
       if (it.step != null) stepMarker(kit, pres, s, icx + 0.14, itemY - 0.1, it.step);
       itemY += h;

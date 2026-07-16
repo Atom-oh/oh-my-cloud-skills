@@ -63,8 +63,8 @@ function cap(arr, n, what) {
 
 // CJK-aware text width estimate, in inches, at font size `fs` (pt). Used to center a
 // text run against a fixed-width neighbor (e.g. an icon) without a real text-metrics
-// pass. Same per-character factors as check_pptx.py's est_w_pt — keep them in sync if
-// either changes (CJK glyphs are ~1em wide; Latin/digits/punctuation ~0.55em).
+// pass. Same per-character factors as check_pptx.py's _wrap_lines — keep them in sync
+// if either changes (CJK glyphs are ~1em wide; Latin/digits/punctuation ~0.55em).
 function estTextW(text, fs) {
   let w = 0;
   for (const ch of text) w += fs * (ch.codePointAt(0) > 0x2E80 ? 1.0 : 0.55);

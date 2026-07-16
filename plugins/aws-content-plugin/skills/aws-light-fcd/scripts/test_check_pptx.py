@@ -98,12 +98,12 @@ def _bad_deck():
 
 def test_good_deck_passes():
     r = check_pptx.analyze(_good_deck())
-    assert r["score"] >= 80, f"good deck scored {r['score']}: {r['findings']}"
+    assert check_pptx.gate_pass(r, 80), f"good deck scored {r['score']}: {r['findings']}"
 
 
 def test_bad_deck_fails():
     r = check_pptx.analyze(_bad_deck())
-    assert r["score"] < 80, f"bad deck scored {r['score']} (expected < 80)"
+    assert not check_pptx.gate_pass(r, 80), f"bad deck passed the gate: {r['findings']}"
     joined = " ".join(r["findings"])
     assert "overflow" in joined, r["findings"]
     assert "overlapping" in joined, r["findings"]
@@ -116,6 +116,48 @@ def test_bad_deck_fails():
 def test_offcanvas_detected():
     r = check_pptx.analyze(_bad_deck())
     assert any("outside the slide canvas" in f for f in r["findings"]), r["findings"]
+
+
+def test_geometry_finding_fails_gate_despite_high_score():
+    # one small off-canvas shape -> score stays high (>=80) but the gate must still fail
+    prs = _blank_prs()
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    _add_text(s, 0.92, 0.6, 11, 0.8, "제목", size=30)
+    _add_footer(s, 2)
+    _add_text(s, 13.2, 0.2, 1.5, 0.4, "off", size=12)  # off-canvas -> -5 geometry
+    r = check_pptx.analyze(prs)
+    assert r["score"] >= 80, f"expected high score, got {r['score']}"
+    assert r["geometry_findings"] >= 1
+    assert not check_pptx.gate_pass(r, 80), "geometry finding must fail the gate regardless of score"
+
+
+def test_body_mention_does_not_satisfy_footer():
+    # 'Amazon Web Services' in body text (not the footer band) must NOT count as a footer
+    prs = _blank_prs()
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    _add_text(s, 0.92, 1.6, 11, 1.0, "Amazon Web Services는 클라우드입니다.", size=14)
+    r = check_pptx.analyze(prs)
+    assert any("footer" in f for f in r["findings"]), r["findings"]
+
+
+def test_no_page_numbers_flagged():
+    prs = _blank_prs()
+    for _ in range(2):
+        s = prs.slides.add_slide(prs.slide_layouts[6])
+        _add_text(s, 0.92, 1.0, 11, 3.0, "본문", size=14)
+        # footer copyright but NO page number
+        tb = s.shapes.add_textbox(Inches(0.92), Inches(7.06), Inches(8), Inches(0.3))
+        tb.text_frame.text = "© 2026, Amazon Web Services, Inc. All rights reserved."
+    r = check_pptx.analyze(prs)
+    assert any("no footer page numbers" in f for f in r["findings"]), r["findings"]
+
+
+def test_threshold_noninteger_exits_2():
+    import subprocess
+    p = subprocess.run([sys.executable, os.path.join(HERE, "check_pptx.py"),
+                        os.path.join(ASSETS, "logo", "aws_logo.png"), "--threshold", "abc"],
+                       capture_output=True, text=True)
+    assert p.returncode == 2, f"expected exit 2 on bad threshold, got {p.returncode}: {p.stdout}{p.stderr}"
 
 
 # --- standalone runner (mirrors test_layout_aws.py) ---

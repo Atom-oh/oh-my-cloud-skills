@@ -57,23 +57,34 @@ Read **`references/design-system.md`** before writing CSS — it has the token s
 
 Most solution brochures benefit from an architecture visual. Produce it with the **`architecture-diagram`** skill (it validates layout + uses official AWS icons), export to **SVG**, and place it beside the brochure HTML. You'll embed it as a responsive `<img>` in Phase 4. Keep the diagram and the brochure copy telling the **same story** — same component names, same counts — so they don't contradict each other.
 
-### Phase 3.5 — Capture product screenshots (required when the product has a web UI)
+### Phase 3.5 — Capture product screenshots (required when the product has a reachable web UI)
 
 A brochure that only describes a UI in prose reads as unfinished when the product actually
-has one to show. If the product has a running web UI (a local dev server, a deployed
-staging/prod URL, or one the user can start), capture it:
+has one to show. **Skip this phase only when the product has no reachable web UI** — either
+it has none at all (a CLI tool, a library, an API-only service) or none you can reach and the
+user can't provide captures. That one condition is the skip rule everywhere (agent rule 9
+says the same); when you skip, say so explicitly.
 
-1. Use the Playwright MCP tools: `browser_navigate` to the product, `browser_resize` to a
+1. **Availability gate first.** The `browser_*` capture tools come from the **Playwright MCP
+   server**, which is only present if the session loaded it — it is not in this skill's
+   default toolset. If those tools aren't available, don't stall: ask the user (with
+   `AskUserQuestion`) to either enable Playwright MCP or hand you screenshot files directly,
+   and proceed with what they provide.
+2. **Capture.** With Playwright MCP: `browser_navigate` to the product, `browser_resize` to a
    consistent desktop viewport (e.g. 1600×900) so every capture is uniform, then
    `browser_take_screenshot` for 4–6 representative screens — one per core use case
    (overview/dashboard, the flagship feature, a couple of secondary views), not every screen.
-2. If you don't have a URL or don't know how to run the product locally, ask with
-   `AskUserQuestion` rather than guessing or skipping silently. Only omit this phase — and
-   say so explicitly — if the user confirms no UI exists or none is reachable (a CLI tool, a
-   library, an API-only service).
-3. Save each capture next to the brochure HTML under `screenshots/`, referenced with a
-   relative path, `loading="lazy"`, a descriptive `alt` (what the screen shows, not just a
-   filename), and a `<figcaption>` naming the screen. Resize/optimize each to roughly
+   If you have neither the tools nor user-provided images and no URL to reach, ask with
+   `AskUserQuestion` rather than guessing or skipping silently.
+3. **Use a sanitized/demo account, and redact before publishing.** A screenshot of a *live*
+   console can bake sensitive data into pixels — account IDs, ARNs, session/token URL
+   params, internal hostnames/CIDRs, customer names/data — that the text-based PII scan
+   **cannot** see. Prefer a demo/sandbox account with fake data; before the deck goes public,
+   **eyeball every screenshot** and blur/crop/retake anything real. This is a manual gate:
+   the checker and content-review-agent scan text, not image contents.
+4. **Embed.** Save each capture next to the brochure HTML under `screenshots/`, referenced
+   with a relative path, `loading="lazy"`, a descriptive `alt` (what the screen shows, not
+   just a filename), and a `<figcaption>` naming the screen. Resize/optimize each to roughly
    ≤100KB (e.g. via PIL) — a brochure shouldn't ship megabytes of unoptimized PNGs.
 
 ### Phase 4 — Write the self-contained HTML

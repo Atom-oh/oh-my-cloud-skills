@@ -1,6 +1,6 @@
 ---
 name: architecture-diagram
-description: AWS 아키텍처 다이어그램을 YAML 스펙 생성기(layout_aws.py)로 생성 — draw.io MCP는 선택적 대화형 편집용. 사용자가 "아키텍처 다이어그램 그려줘", "AWS 구성도 만들어줘", "인프라 다이어그램", "시스템 아키텍처", "클라우드 아키텍처"를 요청할 때 활성화.
+description: AWS 아키텍처 다이어그램(draw.io/.drawio → PNG·SVG)을 생성. 사용자가 "아키텍처 다이어그램 그려줘", "AWS 구성도 만들어줘", "인프라 다이어그램", "시스템 아키텍처", "클라우드 아키텍처", 또는 draw.io/비표준 손그림 다이어그램을 요청할 때 활성화. 표준 패턴은 YAML 스펙 생성기(layout_aws.py)로 좌표 없이 생성하고, 비정형 도형은 손으로 .drawio를 작성하는 두 경로를 지원 — draw.io MCP는 선택적 대화형 편집용.
 model: sonnet
 allowed-tools:
   - Read

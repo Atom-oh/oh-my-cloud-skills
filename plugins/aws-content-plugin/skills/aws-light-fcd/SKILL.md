@@ -34,16 +34,19 @@ typography, white canvas, near-black ink, and a single signature gradient
 4. **Write a build script** that `require("./scripts/deck_kit.js")` (and
    `arch_kit.js` if drawing diagrams), calls the layout builders, then
    `await pres.writeFile(...)`. Run it with `NODE_PATH=$(npm root -g) node build.js`.
-5. **QA (필수 — 거절 루프)**: `python3 scripts/check_pptx.py your_deck.pptx` — fix every
-   finding and rerun until the score is ≥80 (exit 0). This is a deterministic check
-   (text overflow, overlap, off-canvas, missing footer, page-number sanity, font
-   consistency, placeholder text) — treat it like `remarp_to_slides.py validate`'s
-   rejection loop, not an optional pass. If `soffice` is installed
+5. **QA (필수 — 거절 루프)**: `python3 scripts/check_pptx.py "$DECK"` — fix every
+   finding and rerun until it passes. **The gate is `score ≥80` AND zero `[geometry]`
+   findings** (a geometry defect — overflow/overlap/off-canvas — never passes, no matter
+   the score, because content-review-agent treats it as Critical). This is a
+   deterministic check (text overflow, overlap, off-canvas, missing footer, page-number
+   sanity, font consistency, placeholder text) — treat it like `remarp_to_slides.py
+   validate`'s rejection loop, not an optional pass. If `soffice` is installed
    (`command -v soffice`), you can additionally render to PDF→JPG for a visual spot
-   check (`soffice --headless --convert-to pdf your_deck.pptx && pdftoppm -jpeg -r 130
-   your_deck.pdf preview`) — optional, since check_pptx.py already catches the common
-   failure modes programmatically.
-6. **Embed fonts** — run `python scripts/embed_fonts.py your_deck.pptx` so the deck
+   check (`soffice --headless --convert-to pdf "$DECK" && pdftoppm -jpeg -r 130
+   "${DECK%.pptx}.pdf" preview`) — optional, since check_pptx.py already catches the
+   common failure modes programmatically. (Quote the path — `"$DECK"` — so a filename
+   with spaces doesn't word-split.)
+6. **Embed fonts** — run `python scripts/embed_fonts.py "$DECK"` so the deck
    carries Pretendard and renders identically everywhere.
 7. **Deliver** — leave the `.pptx` in the working/output directory and report its
    absolute path. Per the plugin's Quality Gate, a completed deck then goes through

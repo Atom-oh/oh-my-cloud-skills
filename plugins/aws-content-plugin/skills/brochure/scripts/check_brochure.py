@@ -71,6 +71,13 @@ def main():
     no_alt = [tag for tag in imgs if not re.search(r'alt="[^"]+"', tag)]
     need(not no_alt, f"all <img> have non-empty alt text ({len(no_alt)}/{len(imgs)} missing)")
 
+    # --- raster screenshots present -> remind about image-baked PII (text scan can't see it) ---
+    raster = [t for t in imgs if re.search(r'src="[^"]+\.(?:png|jpe?g|webp)"', t, re.I)]
+    if raster:
+        warns.append(f"{len(raster)} raster image(s) present — eyeball each for baked-in "
+                     f"account IDs / ARNs / tokens / internal URLs before publishing "
+                     f"(text PII scan can't inspect pixels)")
+
     # --- contrast smell test: muted text token must not be the too-light ink-400 ---
     if re.search(r"--text-3\s*:\s*var\(--ink-400\)", html) or re.search(r"--text-3\s*:\s*#8[aA]8474", html):
         warns.append("muted text token (--text-3) is ~3.2:1 on paper — fails WCAG AA; darken to ~#6B665A")

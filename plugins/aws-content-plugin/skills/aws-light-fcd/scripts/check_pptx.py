@@ -18,15 +18,24 @@ families:
   - placeholder text      (TODO/TBD/lorem/??? left behind by a half-finished build)
 
 It prints a deck SCORE (0-100, with a geometry/design breakdown) and exits non-zero
-below the threshold, so it can be used as a hard pre-delivery gate — the PPTX
+when the gate fails, so it can be used as a hard pre-delivery gate — the PPTX
 equivalent of the "convert to PDF and eyeball it" step, but automatable and exact.
+
+THE GATE: pass = score >= threshold AND zero GEOMETRY findings. Geometry findings are
+never scored away — a 95-point deck with one overflowing text box still fails, because
+content-review-agent treats any geometry finding as Critical (same rule, one place).
+Design findings only lower the score.
+
+Trust boundary: this parses untrusted OOXML via python-pptx/lxml — treat decks from
+outside the kit as untrusted input and run it in your normal sandbox, not with
+elevated privileges.
 
 Usage:
     python3 check_pptx.py <file.pptx>                 # score + findings
     python3 check_pptx.py <file.pptx> --threshold 85   # custom gate (default 80)
     python3 check_pptx.py <file.pptx> --json           # machine-readable
 
-Exit 0 = passes the gate. 1 = below threshold (fix before delivery). 2 = usage/read error.
+Exit 0 = passes the gate. 1 = gate failed (fix before delivery). 2 = usage/read error.
 """
 import re
 import sys
@@ -57,8 +66,10 @@ def _iter_shapes(shapes):
     group's own child-coordinate space, not the slide's — correctly re-projecting them
     needs the group's transform/scale math. This kit (deck_kit.js/arch_kit.js) never
     emits native PPTX groups (it composes with plain addShape/addText/addImage calls),
-    so we don't do that projection; a GROUP shape is checked as its own bbox only, and
-    its children are skipped for geometry checks (documented limitation, not a bug)."""
+    so we don't do that projection; a GROUP shape is checked as its own bbox only and
+    its children are skipped by ALL checks (geometry, font, footer, placeholder).
+    analyze() surfaces a per-deck note when groups are present so externally-built
+    decks don't silently pass with uninspected grouped content."""
     for sh in shapes:
         try:
             st = sh.shape_type
@@ -183,11 +194,19 @@ def _check_overlap(shapes, slide_area_sqin):
     return n
 
 
-def _check_offcanvas(shapes, sw_in, sh_in):
+def _check_offcanvas(shapes, sw_in, sh_in, slide_area_sqin):
     n = 0
     for sh in shapes:
         box = _bbox_in(sh)
         if not box:
+            continue
+        # full-bleed background images may deliberately bleed past the canvas edge —
+        # exempt them here for the same reason _kind() exempts them from overlap.
+        try:
+            is_pic = sh.shape_type == MSO_SHAPE_TYPE.PICTURE
+        except (ValueError, NotImplementedError):
+            is_pic = False
+        if is_pic and (box[2] * box[3]) / slide_area_sqin > BG_AREA_RATIO:
             continue
         x, y, w, h = box
         if (x < -CANVAS_TOL_IN or y < -CANVAS_TOL_IN or
@@ -196,8 +215,17 @@ def _check_offcanvas(shapes, sw_in, sh_in):
     return n
 
 
-def _slide_text(shapes):
-    return " ".join(sh.text_frame.text for sh in shapes if _has_text(sh))
+def _footer_text(shapes):
+    """Text from shapes whose box sits in the footer band only — a body paragraph that
+    merely mentions 'Amazon Web Services' must not satisfy the footer check."""
+    parts = []
+    for sh in shapes:
+        if not _has_text(sh):
+            continue
+        box = _bbox_in(sh)
+        if box and box[1] > FOOTER_BAND_IN:
+            parts.append(sh.text_frame.text)
+    return " ".join(parts)
 
 
 def analyze(prs):
@@ -209,7 +237,9 @@ def analyze(prs):
 
     findings = []   # geometry: (weight, message)
     design = []     # design: (weight, message)
+    notes = []      # non-scoring caveats (e.g. GROUP coverage limitation)
     total_shapes = 0
+    group_slides = []
     page_nums = []          # (slide_index, int_value) in slide order
     missing_footer = []
     bad_font_count = 0
@@ -219,6 +249,13 @@ def analyze(prs):
     for si, slide in enumerate(prs.slides):
         shapes = list(_iter_shapes(slide.shapes))
         total_shapes += len(shapes)
+        for sh in shapes:
+            try:
+                if sh.shape_type == MSO_SHAPE_TYPE.GROUP:
+                    group_slides.append(si + 1)
+                    break
+            except (ValueError, NotImplementedError):
+                pass
 
         n_overflow, ex = _check_overflow(shapes)
         if n_overflow:
@@ -231,13 +268,12 @@ def analyze(prs):
             findings.append((min(20, 5 * n_overlap),
                               f"slide {si + 1}: {n_overlap} pair(s) of overlapping picture(s)/text box(es)"))
 
-        n_off = _check_offcanvas(shapes, sw_in, sh_in)
+        n_off = _check_offcanvas(shapes, sw_in, sh_in, slide_area)
         if n_off:
             findings.append((min(15, 5 * n_off),
                               f"slide {si + 1}: {n_off} shape(s) fall outside the slide canvas"))
 
-        text_all = _slide_text(shapes).lower()
-        if COPYRIGHT_MARK not in text_all:
+        if COPYRIGHT_MARK not in _footer_text(shapes).lower():
             missing_footer.append(si + 1)
 
         for sh in shapes:
@@ -270,6 +306,16 @@ def analyze(prs):
         design.append((min(12, 3 * len(bad_seq)),
                         f"{len(bad_seq)} page-number regression(s)/duplicate(s) — e.g. slide "
                         f"{shown[0]} shows {shown[2]} after {shown[1]} (page numbers must strictly increase)"))
+    elif not page_nums and len(prs.slides) > 1:
+        # a deck with no footer page numbers at all must not pass the sequence check by
+        # vacuous truth — every content slide should carry one (cover excepted)
+        design.append((6, "no footer page numbers found on any slide — content slides "
+                          "should carry a page number in the footer"))
+
+    if group_slides:
+        notes.append(f"note: {len(group_slides)} slide(s) contain native GROUP shapes "
+                     f"(slides {group_slides}) — group children are NOT inspected "
+                     f"(coordinate re-projection unsupported); review those slides manually")
 
     if bad_font_count:
         design.append((min(10, 2 * bad_font_count),
@@ -291,8 +337,17 @@ def analyze(prs):
         "score": score,
         "subscores": {"geometry": max(0, 100 - geom_loss), "design": max(0, 100 - design_loss)},
         "counts": {"slides": len(prs.slides), "shapes": total_shapes},
+        "geometry_findings": len(findings),
         "findings": [f"[geometry] {m}" for _, m in findings] + [f"[design] {m}" for _, m in design],
+        "notes": notes,
     }
+
+
+def gate_pass(result, threshold):
+    """The one gate rule (docstring: 'THE GATE'). Content-review-agent treats any
+    geometry finding as Critical, so the skill-side gate must agree — score alone
+    can't buy back an overflow/overlap/off-canvas defect."""
+    return result["score"] >= threshold and result["geometry_findings"] == 0
 
 
 def main():
@@ -304,7 +359,10 @@ def main():
     threshold = DEFAULT_THRESHOLD
     if "--threshold" in args:
         i = args.index("--threshold")
-        threshold = int(args[i + 1]) if i + 1 < len(args) else DEFAULT_THRESHOLD
+        if i + 1 >= len(args) or not args[i + 1].isdigit():
+            print("usage: check_pptx.py <file.pptx> [--threshold N] [--json]  (N = integer 0-100)")
+            return 2
+        threshold = int(args[i + 1])
     as_json = "--json" in args
 
     try:
@@ -314,24 +372,28 @@ def main():
         return 2
 
     result = analyze(prs)
+    ok = gate_pass(result, threshold)
 
     if as_json:
         result["threshold"] = threshold
-        result["pass"] = result["score"] >= threshold
+        result["pass"] = ok
         print(_json.dumps(result, ensure_ascii=False, indent=2))
-        return 0 if result["pass"] else 1
+        return 0 if ok else 1
 
     c = result["counts"]
     sub = result.get("subscores", {})
-    ok = result["score"] >= threshold
     mark = "✅" if ok else "❌"
     breakdown = f" [geometry {sub['geometry']} · design {sub['design']}]" if sub else ""
-    print(f"{mark} {path}: deck score {result['score']}/100 (gate {threshold}){breakdown} "
+    print(f"{mark} {path}: deck score {result['score']}/100 (gate {threshold} + geometry clean){breakdown} "
           f"— slides={c['slides']} shapes={c['shapes']}")
     for m in result["findings"]:
         print(f"   • {m}")
+    for m in result["notes"]:
+        print(f"   ⚠ {m}")
     if not ok:
-        print("   → Below the QA gate. Fix [geometry] (text overflow, overlap, off-canvas) "
+        why = ("geometry findings present (any geometry finding fails the gate regardless of score)"
+               if result["geometry_findings"] else "score below threshold")
+        print(f"   → QA gate failed: {why}. Fix [geometry] (text overflow, overlap, off-canvas) "
               "and [design] (footer, page numbers, Pretendard-only, no placeholder text) "
               "before delivering.")
     return 0 if ok else 1

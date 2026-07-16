@@ -28,9 +28,9 @@ A brochure is **persuasion + clarity for a dual audience**: a decision-maker gra
 4. **접근성 필수**: skip-link, `:focus-visible`, `prefers-reduced-motion`(SVG SMIL 포함), WCAG-AA 대비, 장식 SVG `aria-hidden`. `design-system.md` 체크리스트 준수.
 5. **디자인 디렉션 필수**: 제네릭 템플릿(보라 그라데이션 등) 금지 — 의도된 에디토리얼 방향 하나를 정해 정밀 실행. `assets/example-brochure/`로 품질 기준 calibrate.
 6. **다이어그램 일관성**: 아키텍처 다이어그램은 `architecture-diagram` 스킬로 생성(SVG export 후 임베드). **브로셔 카피와 다이어그램이 같은 이야기**(동일 컴포넌트·수치)를 하도록 유지.
-7. **품질 게이트 필수**: 배포 전 `scripts/check_brochure.py` 통과 + **content-review-agent ≥ 85**. PII(계정 ID·내부 CIDR/IP)는 공개 전 제거.
+7. **품질 게이트 필수**: 배포 전 `scripts/check_brochure.py` 통과 + **content-review-agent ≥ 85**. 텍스트 PII(계정 ID·내부 CIDR/IP)는 공개 전 제거. **스크린샷 이미지 안의 민감정보는 텍스트 스캔으로 못 잡으므로**(계정 ID·ARN·세션/토큰 URL·내부 hostname·고객 데이터가 픽셀로 박힘) 공개 전 **모든 스크린샷을 육안 검수**해 블러/크롭/재촬영한다 — 가능하면 처음부터 데모/샌드박스 계정으로 캡처.
 8. **공개 배포 함정**: 제품 도메인이 인증 엣지(CloudFront+Cognito Lambda@Edge 등 전 경로 게이트) 뒤에 있으면 공개 브로셔를 호스팅할 수 **없습니다**. 공개 호스트는 **GitHub Pages** — 배포 후 인증 없이 200 응답하는지 검증.
-9. **스크린샷 필수(웹 UI가 있는 제품)**: 제품에 실행 중인 웹 UI가 있으면 Playwright MCP로 핵심 화면 4–6장을 캡처해 `shots` 섹션으로 임베드합니다. URL이나 실행 방법을 모르면 `AskUserQuestion`으로 확인하세요 — 짐작하거나 조용히 생략하지 않습니다. UI가 없는 제품(CLI·라이브러리 등)만 이 단계를 건너뛰고, 건너뛴다면 그 사실을 명시합니다.
+9. **스크린샷(도달 가능한 웹 UI가 있는 제품 필수)**: 제품에 도달 가능한 웹 UI가 있으면 Playwright MCP로 핵심 화면 4–6장을 캡처해 `shots` 섹션으로 임베드합니다. `browser_*` 도구는 **Playwright MCP가 세션에 로드된 경우에만** 쓸 수 있으므로, 없으면 `AskUserQuestion`으로 (a) Playwright MCP 활성화 또는 (b) 사용자가 스크린샷 파일 직접 제공을 요청하고 받은 것으로 진행합니다 — 짐작하거나 조용히 생략하지 않습니다. **도달 가능한 웹 UI가 없을 때만**(UI 자체가 없거나(CLI·라이브러리) 도달 불가하고 사용자도 제공 불가) 이 단계를 건너뛰고, 건너뛰면 그 사실을 명시합니다. 캡처는 원칙 7의 이미지 민감정보 검수를 거칩니다.
 
 ---
 

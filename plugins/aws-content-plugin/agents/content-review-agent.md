@@ -23,7 +23,7 @@ A comprehensive review agent for all content types produced by the aws-content-p
 | Markdown Documents | document-agent | Structure, content, references |
 | GitBook Pages | gitbook-agent | Navigation, components, cross-refs |
 | Workshop Content | workshop-agent | Directives, structure, bilingual consistency |
-| Brochure (HTML) | brochure-agent | Responsive tiers (mobile/tablet/PC), CTA presence, copy↔diagram consistency, product-UI screenshots present when the product has a web UI (alt text + captions), relative asset links, accessibility, PII (account IDs / internal CIDRs/IPs) |
+| Brochure (HTML) | brochure-agent | Responsive tiers (mobile/tablet/PC), CTA presence, copy↔diagram consistency, product-UI screenshots present when the product has a web UI (alt text + captions; flag that raster screenshots need a manual eyeball for baked-in account IDs/ARNs/tokens/internal URLs — text PII scan can't see pixels), relative asset links, accessibility, PII (account IDs / internal CIDRs/IPs) |
 | PPTX Decks (native) | presentation-agent → aws-light-fcd skill | `check_pptx.py` score ≥80 (text overflow/overlap, off-canvas, footer, page-number sanity, Pretendard-only, no placeholder text) + official AWS/AgentCore icons |
 
 ---
@@ -268,7 +268,7 @@ Deduction rules:
 | 렌더링 정상 (로드, 콘솔 에러 없음) | 5 | JS 에러: 자동 FAIL |
 | 인터랙션 정상 (네비, 탭, 퀴즈, 반응형) | 5 | -1 per broken interaction |
 
-> HTML이 아닌 콘텐츠(Markdown, Draw.io, Workshop)는 Visual Testing 10점이 면제되며, 나머지 90점 기준으로 환산합니다 — 90점 밴드: PASS ≥77 / REVIEW 63-76 / FAIL <63 (Verdict 표 참조).
+> HTML이 아닌 콘텐츠(Markdown, Draw.io, Workshop, PPTX)는 Visual Testing 10점이 면제되며, 나머지 90점 기준으로 환산합니다 — 90점 밴드: PASS ≥77 / REVIEW 63-76 / FAIL <63 (Verdict 표 참조).
 
 **Extended Inspection (35 points):**
 
