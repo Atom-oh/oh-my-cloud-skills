@@ -2519,7 +2519,7 @@ class RemarpHTMLGenerator:
         elif is_gradient:
             bg_style = f"background:{pptx_bg}"
         else:
-            bg_style = "background:linear-gradient(135deg, #1a1f35 0%, #0d1117 50%, #161b2e 100%)"
+            bg_style = "background:linear-gradient(135deg, #16212f 0%, #0f1b2a 55%, #14243a 100%)"
 
         if pptx_bg:
             # §0a — PPTX-style cover with absolute positioning
@@ -2554,9 +2554,9 @@ class RemarpHTMLGenerator:
             subtitle_html = f'<p style="position:absolute; left:5%; top:60%; font-size:1.3rem; color:rgba(255,255,255,0.7); width:60%; margin:0;">{subtitle}</p>' if subtitle else ''
 
             return f'''<div class="slide" style="{bg_style}; padding:0; overflow:hidden;">
-  <div style="position:absolute; top:-20%; right:-10%; width:60%; height:80%; background:radial-gradient(ellipse, rgba(108,92,231,0.15) 0%, transparent 70%); pointer-events:none;"></div>
-  <div style="position:absolute; left:5%; top:42%; width:80px; height:3px; background:linear-gradient(90deg, #6c5ce7, #a29bfe); border-radius:2px;"></div>
-  <h1 style="position:absolute; left:5%; top:45%; font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:60%; margin:0;">{title}</h1>
+  <div style="position:absolute; top:-20%; right:-10%; width:60%; height:80%; background:radial-gradient(ellipse, rgba(255,153,0,0.10) 0%, transparent 70%); pointer-events:none;"></div>
+  <div style="position:absolute; left:5%; top:42%; width:80px; height:3px; background:linear-gradient(90deg, var(--accent, #ff9900), rgba(255,153,0,0.25)); border-radius:2px;"></div>
+  <h1 style="position:absolute; left:5%; top:45%; font-family:var(--font-display); letter-spacing:var(--tracking-tight, -0.02em); font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:60%; margin:0;">{title}</h1>
   {subtitle_html}
   {speaker_html}
 </div>'''
@@ -3161,9 +3161,10 @@ class RemarpHTMLGenerator:
             elif line.startswith('### '):
                 _flush_step()
                 current_step_title = line[4:].strip()
-            elif current_step_title is not None:
-                current_step_desc_lines.append(line)
             elif re.match(r'^\d+\.\s', line):
+                # Numbered items always start a NEW step — this check must run
+                # before the description-collector below, or every item after
+                # the first gets swallowed into step 1's description.
                 _flush_step()
                 step_text = re.sub(r'^\d+\.\s+', '', line)
                 # Support "**Title** — description" format
@@ -3173,6 +3174,8 @@ class RemarpHTMLGenerator:
                     current_step_desc_lines = [bold_match.group(2)] if bold_match.group(2) else []
                 else:
                     steps.append({'title': step_text, 'desc': ''})
+            elif current_step_title is not None:
+                current_step_desc_lines.append(line)
 
         _flush_step()
 
@@ -3577,7 +3580,7 @@ class RemarpHTMLGenerator:
 
         return f'''<div class="slide">
   <div class="center-content" style="height:100%; gap:1.5rem;">
-    <h1 style="font-size:3rem; background:linear-gradient(135deg, var(--accent-light), var(--cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">Thank You</h1>
+    <h1 style="font-family:var(--font-display); letter-spacing:var(--tracking-tight, -0.02em); font-size:3rem; color:var(--text-primary);">Thank You</h1>
     <p style="color:var(--text-secondary); font-size:1.1rem;">{message}</p>
     {congrats}
     <div style="display:flex; gap:1rem; margin-top:1.5rem;">
