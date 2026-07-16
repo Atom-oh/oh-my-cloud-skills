@@ -113,7 +113,7 @@ fastest way to learn the API.
 | `kit.sectionDivider(pres, o)` | Chapter-transition slide (full gradient bg) | `num, title, kicker` |
 | `kit.closing(pres, o)` | "Thank you." closing (full gradient bg) | `text` (default "Thank you.") |
 | `arch.archFlow(kit, pres, o)` | AWS architecture diagram — declarative, auto-layout (preferred) | `columns:[{label?, items:[{icon\|chip,label,step?}]}], arrows, legend` |
-| `arch.*` primitives | Irregular topologies only | see `arch_kit.js` + demo |
+| `arch.*` primitives (`groupBox`, `svc`, `chip`, `stepMarker`, `arrow`, `stepLegend`) | Irregular topologies only | see `arch_kit.js` + demo |
 
 Full option details and more layout patterns: **`references/layouts.md`**.
 

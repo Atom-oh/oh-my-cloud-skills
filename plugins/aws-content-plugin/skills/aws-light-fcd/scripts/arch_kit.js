@@ -139,7 +139,7 @@ function archSlide(kit, pres, opts) {
 // geometry, so callers can drop in extra primitives for the irregular 10% of a
 // diagram that doesn't fit the column model (escape hatch, not the common case).
 // ════════════════════════════════════════════════════════════════
-const ITEM_CELL = 1.05;    // icon (0.62) + caption band, stacked vertically
+const ITEM_CELL = 1.2;     // icon (0.62) + gap (0.04) + caption box (0.5) = 1.16, +slack
 const CHIP_CELL = 0.45;
 const COL_GAP = 0.9;       // horizontal gap between columns (arrow room)
 const GROUP_PAD_TOP = 0.42;

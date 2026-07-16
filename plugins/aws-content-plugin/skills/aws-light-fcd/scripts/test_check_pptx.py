@@ -149,7 +149,29 @@ def test_no_page_numbers_flagged():
         tb = s.shapes.add_textbox(Inches(0.92), Inches(7.06), Inches(8), Inches(0.3))
         tb.text_frame.text = "© 2026, Amazon Web Services, Inc. All rights reserved."
     r = check_pptx.analyze(prs)
-    assert any("no footer page numbers" in f for f in r["findings"]), r["findings"]
+    assert any("no page number" in f for f in r["findings"]), r["findings"]
+
+
+def test_caption_on_icon_overlap_detected():
+    # a text box sitting on top of a picture (the defect a too-short cell height makes)
+    # must be caught even though the two shapes are different kinds
+    prs = _blank_prs()
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    s.shapes.add_picture(LOGO, Inches(3.0), Inches(2.0), width=Inches(0.62), height=Inches(0.62))
+    _add_text(s, 3.0, 2.0, 1.5, 0.5, "겹치는 캡션", size=11)  # same top-left as the icon
+    _add_footer(s, 2)
+    r = check_pptx.analyze(prs)
+    assert any("overlapping" in f for f in r["findings"]), r["findings"]
+
+
+def test_soft_break_counts_as_line():
+    # "\n" in a small box should push the wrapped height over the box -> overflow
+    prs = _blank_prs()
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    _add_text(s, 1.0, 1.0, 3.0, 0.4, "Elastic Load\nBalancing\n세 번째 줄\n네 번째 줄", size=18)
+    _add_footer(s, 2)
+    r = check_pptx.analyze(prs)
+    assert any("overflow" in f for f in r["findings"]), r["findings"]
 
 
 def test_threshold_noninteger_exits_2():

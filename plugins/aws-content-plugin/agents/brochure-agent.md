@@ -1,6 +1,6 @@
 ---
 name: brochure-agent
-description: Single-page responsive online brochure (landing page) creation agent for AWS solutions and products. Triggers on "brochure", "online brochure", "landing page", "marketing one-pager", "product overview page", "solution showcase", "브로셔", "브로셔 만들어", "온라인 브로셔", "랜딩 페이지", "소개 페이지" requests, or whenever the user wants to present a cloud product's value and architecture on a single public web page. Produces one self-contained, responsive (mobile/tablet/PC) HTML file with an editorial design, product screenshots (when a web UI exists), an embedded architecture diagram, and a public GitHub Pages deploy. Not for slide decks (reactive-presentation-agent) or multi-page docs sites (gitbook-agent).
+description: Single-page responsive online brochure (landing page) creation agent for AWS solutions and products. Triggers on "brochure", "online brochure", "landing page", "marketing one-pager", "product overview page", "solution showcase", "브로셔", "브로셔 만들어", "온라인 브로셔", "랜딩 페이지", "소개 페이지" requests, or whenever the user wants to present a cloud product's value and architecture on a single public web page. Produces one self-contained, responsive (mobile/tablet/PC) HTML file with an editorial design, product screenshots (when the product has a reachable web UI), an embedded architecture diagram, and a public GitHub Pages deploy. Not for slide decks (reactive-presentation-agent) or multi-page docs sites (gitbook-agent).
 tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
 model: sonnet
 skills:

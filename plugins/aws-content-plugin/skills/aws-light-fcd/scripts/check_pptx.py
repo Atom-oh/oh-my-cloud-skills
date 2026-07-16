@@ -106,23 +106,28 @@ def _kind(sh, slide_area_sqin):
 
 
 def _wrap_lines(text, fs_pt, budget_pt):
-    """Character-by-character wrap estimate. # ponytail: word-wrap (not char-wrap) would
-    be more accurate for space-delimited English, but this deck is Korean-first (no
-    spaces to break on) — char-wrap is the simpler estimator that works for both.
-    Upgrade to real word-wrap if false positives show up on English-heavy decks."""
+    """Estimated line count. Hard breaks first (python-pptx returns '\\v' for <a:br>,
+    which is what PptxGenJS emits for a '\\n' in text), then character-by-character wrap
+    of each segment. # ponytail: word-wrap (not char-wrap) would be more accurate for
+    space-delimited English, but this deck is Korean-first (no spaces to break on) —
+    char-wrap is the simpler estimator that works for both. Upgrade to real word-wrap if
+    false positives show up on English-heavy decks."""
     if not text:
         return 1
-    lines, cur = 1, 0.0
-    for ch in text:
-        # CJK glyphs are ~1em wide; Latin/digits/punctuation average ~0.55em (same
-        # factor used by deck_kit.js's estTextW, so the two stay in sync).
-        cw = fs_pt * (1.0 if ord(ch) > 0x2E80 else 0.55)
-        if cur + cw > budget_pt and cur > 0:
-            lines += 1
-            cur = cw
-        else:
-            cur += cw
-    return lines
+    total = 0
+    for seg in re.split(r"[\n\v]", text):
+        total += 1  # each hard-break segment is at least one line
+        cur = 0.0
+        for ch in seg:
+            # CJK glyphs are ~1em wide; Latin/digits/punctuation average ~0.55em (same
+            # factor used by deck_kit.js's estTextW, so the two stay in sync).
+            cw = fs_pt * (1.0 if ord(ch) > 0x2E80 else 0.55)
+            if cur + cw > budget_pt and cur > 0:
+                total += 1
+                cur = cw
+            else:
+                cur += cw
+    return total
 
 
 def _para_font_pt(para):
@@ -187,8 +192,10 @@ def _check_overlap(shapes, slide_area_sqin):
     for i in range(len(boxes)):
         for j in range(i + 1, len(boxes)):
             (ka, ba), (kb, bb) = boxes[i], boxes[j]
-            if ka != kb:
-                continue  # only compare like-with-like (plan: picture x picture, text x text)
+            # picture x picture, text x text, AND picture x text — a caption sitting on
+            # top of an icon (the exact defect a too-short cell height produces) is a
+            # picture x text overlap, so we must not skip mixed kinds. Full-bleed
+            # backgrounds are already excluded upstream by _kind().
             if _overlap_ratio(ba, bb) > OVERLAP_AREA_RATIO:
                 n += 1
     return n
@@ -242,6 +249,7 @@ def analyze(prs):
     group_slides = []
     page_nums = []          # (slide_index, int_value) in slide order
     missing_footer = []
+    missing_pagenum = []    # content slides (have footer) lacking a page number
     bad_font_count = 0
     small_font_count = 0
     placeholder_count = 0
@@ -273,15 +281,18 @@ def analyze(prs):
             findings.append((min(15, 5 * n_off),
                               f"slide {si + 1}: {n_off} shape(s) fall outside the slide canvas"))
 
-        if COPYRIGHT_MARK not in _footer_text(shapes).lower():
+        has_footer = COPYRIGHT_MARK in _footer_text(shapes).lower()
+        if not has_footer:
             missing_footer.append(si + 1)
 
+        slide_has_pagenum = False
         for sh in shapes:
             if not getattr(sh, "has_text_frame", False):
                 continue
             t = sh.text_frame.text.strip()
             if t.isdigit() and _bbox_in(sh) and _bbox_in(sh)[1] > FOOTER_BAND_IN:
                 page_nums.append((si, int(t)))
+                slide_has_pagenum = True
             if PLACEHOLDER_RE.search(sh.text_frame.text):
                 placeholder_count += 1
             for para in sh.text_frame.paragraphs:
@@ -290,6 +301,12 @@ def analyze(prs):
                         bad_font_count += 1
                     if r.font.size and r.font.size.pt < 8:
                         small_font_count += 1
+
+        # a slide carrying a footer copyright is a content slide — it should also carry a
+        # page number (cover/dividers may legitimately have neither). Catches the case
+        # where SOME slides are numbered but others silently aren't.
+        if has_footer and not slide_has_pagenum:
+            missing_pagenum.append(si + 1)
 
     if missing_footer:
         design.append((min(12, 3 * len(missing_footer)),
@@ -306,11 +323,10 @@ def analyze(prs):
         design.append((min(12, 3 * len(bad_seq)),
                         f"{len(bad_seq)} page-number regression(s)/duplicate(s) — e.g. slide "
                         f"{shown[0]} shows {shown[2]} after {shown[1]} (page numbers must strictly increase)"))
-    elif not page_nums and len(prs.slides) > 1:
-        # a deck with no footer page numbers at all must not pass the sequence check by
-        # vacuous truth — every content slide should carry one (cover excepted)
-        design.append((6, "no footer page numbers found on any slide — content slides "
-                          "should carry a page number in the footer"))
+    if missing_pagenum:
+        design.append((min(8, 2 * len(missing_pagenum)),
+                        f"{len(missing_pagenum)} content slide(s) with a footer but no page number "
+                        f"(slides {missing_pagenum}) — every numbered content slide should carry one"))
 
     if group_slides:
         notes.append(f"note: {len(group_slides)} slide(s) contain native GROUP shapes "
@@ -359,7 +375,7 @@ def main():
     threshold = DEFAULT_THRESHOLD
     if "--threshold" in args:
         i = args.index("--threshold")
-        if i + 1 >= len(args) or not args[i + 1].isdigit():
+        if i + 1 >= len(args) or not args[i + 1].isdigit() or not (0 <= int(args[i + 1]) <= 100):
             print("usage: check_pptx.py <file.pptx> [--threshold N] [--json]  (N = integer 0-100)")
             return 2
         threshold = int(args[i + 1])

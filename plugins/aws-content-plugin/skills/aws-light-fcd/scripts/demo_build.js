@@ -75,16 +75,22 @@ const { FiZap, FiSearch, FiGitBranch, FiShield } = require("react-icons/fi");
     arrows: [[1, 2], [2, 3], [3, 4], [4, 5]],
     legend: ["컴퓨팅 프로비저닝", "컨테이너 실행", "모델 다운로드", "GPU 메모리 로드", "GPU 자동 확장", "엔드포인트 노출", "상호작용", "모니터링"],
   });
+  // GPU fan-out drawn by hand off the reserved column's geometry. Everything is anchored
+  // within gpuCol.w (the computed slot width) so nothing bleeds into the serving column —
+  // the tool icons stack vertically rather than sitting side-by-side, since the slot is
+  // narrow (~0.96" at 6 columns + legend). This is the escape-hatch pattern done right.
   const gpuCol = cols[3];
+  const gcx = gpuCol.x + gpuCol.w / 2;              // column center
+  const gpuSz = Math.min(0.9, gpuCol.w);            // GPU icon never wider than the slot
   s.addText("GPU", { x: gpuCol.x, y: gpuCol.y - 0.15, w: gpuCol.w, h: 0.3, fontFace: kit.FONT, fontSize: 12, bold: true, color: kit.C.body, align: "center" });
-  s.addImage({ path: kit.awsIcon("gpu"), x: gpuCol.x + gpuCol.w / 2 - 0.45, y: gpuCol.y + 0.25, w: 0.9, h: 0.9 });
-  s.addImage({ path: kit.awsIcon("gpu"), x: gpuCol.x + gpuCol.w / 2 - 0.45, y: gpuCol.y + 1.6, w: 0.9, h: 0.9 });
-  s.addText("• • •", { x: gpuCol.x + gpuCol.w / 2 - 0.45, y: gpuCol.y + 1.23, w: 0.9, h: 0.25, fontFace: kit.FONT, fontSize: 14, color: kit.C.muted, align: "center", valign: "middle" });
+  s.addImage({ path: kit.awsIcon("gpu"), x: gcx - gpuSz / 2, y: gpuCol.y + 0.25, w: gpuSz, h: gpuSz });
+  s.addImage({ path: kit.awsIcon("gpu"), x: gcx - gpuSz / 2, y: gpuCol.y + 1.6, w: gpuSz, h: gpuSz });
+  s.addText("• • •", { x: gcx - gpuSz / 2, y: gpuCol.y + 1.23, w: gpuSz, h: 0.25, fontFace: kit.FONT, fontSize: 14, color: kit.C.muted, align: "center", valign: "middle" });
   arch.groupBox(kit, pres, s, gpuCol.x, gpuCol.y + 2.55, gpuCol.w, 1.5, "추론 엔진");
-  s.addImage({ path: kit.toolIcon("ray"), x: gpuCol.x + 0.4, y: gpuCol.y + 3.15, w: 0.42, h: 0.42 });
-  s.addText("Ray", { x: gpuCol.x + 0.85, y: gpuCol.y + 3.15, w: 0.7, h: 0.42, fontFace: kit.FONT, fontSize: 14, bold: true, color: kit.C.ink, align: "left", valign: "middle", margin: 0 });
-  s.addImage({ path: kit.toolIcon("vllm"), x: gpuCol.x + 1.4, y: gpuCol.y + 3.27, w: 0.62, h: 0.2 });
-  arch.stepMarker(kit, pres, s, gpuCol.x + gpuCol.w / 2 + 0.14, gpuCol.y + 0.15, 5);
+  s.addImage({ path: kit.toolIcon("ray"), x: gcx - 0.18, y: gpuCol.y + 3.02, w: 0.36, h: 0.36 });
+  s.addText("Ray", { x: gpuCol.x, y: gpuCol.y + 3.38, w: gpuCol.w, h: 0.24, fontFace: kit.FONT, fontSize: 11, bold: true, color: kit.C.ink, align: "center", valign: "middle", margin: 0 });
+  s.addImage({ path: kit.toolIcon("vllm"), x: gcx - 0.3, y: gpuCol.y + 3.66, w: 0.6, h: 0.19 });
+  arch.stepMarker(kit, pres, s, gcx + 0.14, gpuCol.y + 0.15, 5);
   arch.groupBox(kit, pres, s, cols[4].x, cols[4].y + cols[4].h + 0.15, cols[4].w, 1.3, "모니터링");
   arch.svc(kit, pres, s, cols[4].x + cols[4].w / 2, cols[4].y + cols[4].h + 0.4, "cloudwatch", "CloudWatch", 0.5);
   arch.stepMarker(kit, pres, s, cols[5].items[0].cx - 0.9, cols[5].items[0].cy - 0.35, 7);

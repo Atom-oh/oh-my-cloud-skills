@@ -1,6 +1,6 @@
 ---
 name: content-review-agent
-description: Cross-cutting content quality review agent. Reviews presentations, diagrams, documents, GitBook pages, and workshop content. Inspects layout, terminology, hallucination, language, PII/sensitive data, readability, accessibility, and structural completeness. Triggers on "review content", "quality check", "review document", "review presentation", "review workshop" requests. The non-code-artifact analog of superpowers:requesting-code-review — route here to review slides/diagrams/docs/gitbook/workshop artifacts.
+description: Cross-cutting content quality review agent. Reviews presentations (HTML and native PPTX), diagrams, documents, GitBook pages, brochures, and workshop content. Inspects layout, terminology, hallucination, language, PII/sensitive data, readability, accessibility, and structural completeness. Triggers on "review content", "quality check", "review document", "review presentation", "review workshop" requests. The non-code-artifact analog of superpowers:requesting-code-review — route here to review slides/diagrams/docs/gitbook/workshop artifacts.
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 model: opus
 maxTurns: 50
@@ -188,9 +188,9 @@ HTML 기반 콘텐츠(프레젠테이션, 애니메이션 다이어그램, 렌�
 
 HTML 파일을 브라우저에서 열어 테스트하려면:
 
-1. **파일 서빙**: Bash로 로컬 HTTP 서버 시작
+1. **파일 서빙**: Bash로 로컬 HTTP 서버 시작 (전 인터페이스 노출 금지 — loopback + 대상 디렉터리로 한정)
    ```bash
-   cd [프로젝트경로] && python3 -m http.server 8080 &
+   python3 -m http.server 8080 --bind 127.0.0.1 --directory [프로젝트경로] &
    ```
 
 2. **브라우저 열기**: `browser_navigate` → `http://localhost:8080/[파일경로]`
@@ -302,6 +302,8 @@ if it is one of these):
 - Legal risk (copyright infringement)
 - Canvas Complexity Gate 8+-box violation (category 6)
 - JS console error / network 404 during Visual Testing (JS 콘솔 에러 정책)
+- PPTX: `check_pptx.py` score <80, or any `[geometry]` finding (text overflow, overlap,
+  off-canvas) — see the PPTX bullet in Step 2
 
 Examples: score 90/100 + 5 Warnings → REVIEW (warning band). Score 90/100 + 1 Critical
 → FAIL (critical band). Score 78/100 + 2 Warnings → REVIEW (score band; on the 90-point
@@ -400,7 +402,7 @@ HTML 기반 콘텐츠인 경우 Playwright MCP 도구로 브라우저 검증 수
 0. **가용성 확인**: `browser_navigate` 등 Playwright MCP 도구가 세션에 있는지 먼저
    확인 — 없으면 이 Step 전체를 건너뛰고 90점 환산 (Visual Testing 섹션의 가용성
    게이트 참조)
-1. **서버 시작**: `python3 -m http.server 8080` (Bash)
+1. **서버 시작**: `python3 -m http.server 8080 --bind 127.0.0.1 --directory [프로젝트경로]` (Bash)
 2. **페이지 로드**: `browser_navigate` → URL
 3. **콘솔 체크**: `browser_console_messages` → JS 에러 확인
 4. **인터랙션 테스트**: 콘텐츠 타입별 체크리스트 실행

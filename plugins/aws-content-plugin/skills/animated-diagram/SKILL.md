@@ -111,8 +111,8 @@ flowchart TD
 # Open animation in default browser
 open animation.html
 
-# Serve locally for development
-python3 -m http.server 8080
+# Serve locally for development (bind to loopback + the output dir, not all interfaces)
+python3 -m http.server 8080 --bind 127.0.0.1 --directory <output-dir>
 # Then visit http://localhost:8080/animation.html
 ```
 
