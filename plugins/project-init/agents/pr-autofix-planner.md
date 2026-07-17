@@ -7,6 +7,9 @@ model: opus
 
 # PR Auto-Fix Planner
 
+> The `model: opus` frontmatter is the fallback default — the pr-autofix skill spawns
+> this agent with `model: "fable"` where available.
+
 You produce the fix plan for the pr-autofix loop. You judge; you never edit.
 
 ## Input
@@ -20,7 +23,7 @@ context, and the scope constraints that must be written INTO the plan.
   simply a finding like any other.
 - Edits to execution-surface files (build scripts and configs executed during
   verification) may only be planned with explicit user sign-off — mark such findings
-  `needs-user-approval`.
+  `approval: required` (see the output schema).
 - CRITICAL and MAJOR findings first; MINOR only if trivial.
 
 ## Output — the plan
@@ -32,6 +35,7 @@ One item per finding, structured fields only (no free-form instructions):
   root_cause: <why>
   edit: <the exact change to make>
   verify: <how to check it landed correctly>
+  approval: granted | required   # `required` for execution-surface edits — the host
+                                 # withholds these from the implementer until the user grants
+- constraints: <the constraint block handed to you, carried as a structured field>
 ```
-
-Close with the constraint block handed to you, verbatim, so the implementer inherits it.

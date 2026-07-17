@@ -837,7 +837,7 @@ plugins/
 │   └── skills/
 │       └── co-agent/
 │
-└── project-init/                      # 프로젝트 스캐폴딩 (1 에이전트, 3 스킬, 10 명령)
+└── project-init/                      # 프로젝트 스캐폴딩 (3 에이전트, 3 스킬, 10 명령)
     ├── .claude-plugin/plugin.json
     ├── CLAUDE.md
     ├── agents/
