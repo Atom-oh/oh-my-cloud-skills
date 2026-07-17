@@ -175,7 +175,7 @@ IMPL_WT="$WT_DIR/wt"
 # let the implementer's Read/Edit escape the checkout DURING the run — the post-run scan
 # in 4c only protects the capture, not the run itself.
 while IFS= read -r -d '' l; do
-  case "$(realpath "$l")" in "$IMPL_WT"/*) ;; *) echo "STOP: symlink escapes worktree: $l"; exit 1;; esac
+  case "$(realpath -m "$l")" in "$(realpath -m "$IMPL_WT")"/*) ;; *) echo "STOP: symlink escapes worktree: $l"; exit 1;; esac
 done < <(find "$IMPL_WT" -type l -print0)
 : > "$RUN_DIR/ok.setup"                                              # sentinel: later stages require this file
 ```
@@ -209,11 +209,14 @@ set -euo pipefail
 gitwt() { git -c core.hooksPath=/dev/null -C "$WT_DIR/wt" "$@"; }    # re-declare per Bash call — functions don't survive
 # Gitfile integrity: the worktree's .git is an implementer-writable plain file — if it
 # was repointed, every gitwt capture below would read a DIFFERENT repository:
-[ "$(gitwt rev-parse --path-format=absolute --git-common-dir)" = "$HOST_ROOT/.git" ] || { echo "STOP: worktree gitfile tampered"; exit 1; }
+HOST_GCD=$(git -C "$HOST_ROOT" rev-parse --path-format=absolute --git-common-dir)
+[ "$(gitwt rev-parse --path-format=absolute --git-common-dir)" = "$HOST_GCD" ] || { echo "STOP: worktree gitfile tampered"; exit 1; }
+# compare to the HOST's own common dir, not a hardcoded .git — the host checkout itself
+# may be a linked worktree or submodule
 # Symlink-escape gate: a PR-planted (or implementer-created) symlink pointing outside the
 # worktree would let later edits/reads escape checkout isolation — refuse to proceed.
 while IFS= read -r -d '' l; do
-  case "$(realpath "$l")" in "$IMPL_WT"/*) ;; *) echo "STOP: symlink escapes worktree: $l"; exit 1;; esac
+  case "$(realpath -m "$l")" in "$(realpath -m "$IMPL_WT")"/*) ;; *) echo "STOP: symlink escapes worktree: $l"; exit 1;; esac
 done < <(find "$IMPL_WT" -type l -print0)
 gitwt add -N .                                                       # intent-to-add: new files become diff-visible
 gitwt diff --binary --no-ext-diff --no-textconv "$BASE_SHA" > "$RUN_DIR/full.1.patch"
@@ -251,15 +254,16 @@ set -euo pipefail
 # mis-handled (numstat C-quotes specials and renders renames as {old => new}):
 git -C "$HOST_ROOT" apply --numstat "$RUN_DIR/approved.patch" | cut -f3- > "$RUN_DIR/landed.files"
 [ -s "$RUN_DIR/landed.files" ] || { echo "STOP: approved patch names no files"; exit 1; }
-grep -q '^"\|=>' "$RUN_DIR/landed.files" && { echo "STOP: exotic/renamed path in patch — refuse"; exit 1; }
+grep -qE '^"|=>' "$RUN_DIR/landed.files" && { echo "STOP: exotic/renamed path in patch — refuse"; exit 1; }
 # Cleanliness gate AS CODE (per file — `git status`/`git diff` do NOT support
 # --pathspec-from-file; only add/commit/checkout-family do):
 while IFS= read -r f; do
-  [ -z "$(git -C "$HOST_ROOT" status --porcelain -- "$f")" ] || { echo "STOP: locally modified: $f"; exit 1; }
+  [ -z "$(git -C "$HOST_ROOT" --literal-pathspecs status --porcelain -- "$f")" ] || { echo "STOP: locally modified: $f"; exit 1; }
 done < "$RUN_DIR/landed.files"
+git -C "$HOST_ROOT" --literal-pathspecs status --porcelain > "$RUN_DIR/host.status.before"   # whole-tree baseline for the verify block
 git -C "$HOST_ROOT" apply --check "$RUN_DIR/approved.patch"          # atomic pre-flight
 git -C "$HOST_ROOT" apply "$RUN_DIR/approved.patch"
-git -C "$HOST_ROOT" add -N --pathspec-from-file="$RUN_DIR/landed.files"   # new files become diff-visible on the host too
+git -C "$HOST_ROOT" --literal-pathspecs add -N --pathspec-from-file="$RUN_DIR/landed.files"   # new files become diff-visible on the host too
 : > "$RUN_DIR/ok.landed"
 ```
 
@@ -276,6 +280,11 @@ while IFS= read -r f; do
   # Revert ONLY if the file still holds exactly the approved landed content ($CLEAN_WT is
   # that content by construction). A mismatch means the user edited it during the build
   # window — their edit is not ours to destroy: leave the file, report, and stop.
+  [ -n "${CLEAN_WT:-}" ] || { echo "STOP: no reference worktree — cannot verify safe rollback"; exit 1; }
+  if [ ! -e "$HOST_ROOT/$f" ] && [ ! -e "$CLEAN_WT/$f" ]; then
+    GITH checkout "$BASE_SHA" -- "$f" 2>/dev/null || true   # approved DELETION: absent on both sides — restore the base file
+    continue
+  fi
   if ! cmp -s -- "$HOST_ROOT/$f" "$CLEAN_WT/$f" 2>/dev/null; then
     echo "SKIP (user-modified since landing — left untouched): $f"; FAILED_ROLLBACK=1; continue
   fi
@@ -302,8 +311,34 @@ done < "$RUN_DIR/landed.files"
   `CLEAN_DIR=$(mktemp -d "${TMPDIR:-/tmp}/pr-autofix-clean.XXXXXX")`; `CLEAN_WT="$CLEAN_DIR/wt"`, then
   `git -c core.hooksPath=/dev/null worktree add --detach "$CLEAN_WT" "$BASE_SHA"`,
   `git -c core.hooksPath=/dev/null -C "$CLEAN_WT" apply "$RUN_DIR/approved.patch"`, and
-  it is the equality reference AND the clean-room build host. When the build AND the
-  equality check pass, write the sentinel Step 5 requires: `: > "$RUN_DIR/ok.build"`.
+  it is the equality reference AND the clean-room build host.
+- **Verify block (build → equality → sentinel, one guarded unit)** — the generic build
+  check in Step 4 sets `BUILD_OK` but exits 0 either way; the sentinel is written HERE
+  and only here:
+
+```bash
+set -euo pipefail
+[ -f "$RUN_DIR/ok.landed" ] || exit 1
+# 1) run the standard build check (Step 4 block) — in $CLEAN_WT when the host tree is
+#    dirty — and carry its result into this shell:
+[ "${BUILD_OK:-0}" = 1 ] || { echo "STOP: build failed — rollback per the block above"; exit 1; }
+# 2) whole-tree containment: the build must not have changed tracked files outside the
+#    landed set (codegen/formatters produce companion output the plan never approved):
+git -C "$HOST_ROOT" --literal-pathspecs status --porcelain > "$RUN_DIR/host.status.after"
+if ! diff -q "$RUN_DIR/host.status.before" "$RUN_DIR/host.status.after" >/dev/null; then
+  diff "$RUN_DIR/host.status.before" "$RUN_DIR/host.status.after" | grep '^[<>]' | grep -vFf "$RUN_DIR/landed.files" \
+    && { echo "STOP: build touched files outside the landed set"; exit 1; }
+fi
+# 3) per-file equality vs the reference worktree (capture flags), then the sentinel:
+git -c core.hooksPath=/dev/null -C "$CLEAN_WT" add -N .
+: > "$RUN_DIR/host.final.diff"; : > "$RUN_DIR/ref.final.diff"
+while IFS= read -r f; do
+  git -C "$HOST_ROOT" --literal-pathspecs diff --binary --no-ext-diff --no-textconv "$BASE_SHA" -- "$f" >> "$RUN_DIR/host.final.diff"
+  git -c core.hooksPath=/dev/null -C "$CLEAN_WT" --literal-pathspecs diff --binary --no-ext-diff --no-textconv "$BASE_SHA" -- "$f" >> "$RUN_DIR/ref.final.diff"
+done < "$RUN_DIR/landed.files"
+diff -q "$RUN_DIR/host.final.diff" "$RUN_DIR/ref.final.diff" >/dev/null || { echo "STOP: drift from approved delta"; exit 1; }
+: > "$RUN_DIR/ok.build"
+```
 - **Build check comes BEFORE cleanup**: run the build verification (below) while
   `$RUN_DIR` still exists. If the host tree is dirty beyond the landed files, the user's
   uncommitted changes can pollute the result (false pass or false fail) — build in
@@ -379,16 +414,9 @@ set -euo pipefail
 [ -f "$RUN_DIR/ok.build" ] || exit 1                                 # build+equality stage must have passed
 [ "$(git -C "$HOST_ROOT" rev-parse HEAD)" = "$BASE_SHA" ] || { echo "STOP: base moved since landing"; exit 1; }
 [ "$(git -C "$HOST_ROOT" symbolic-ref -q HEAD || echo detached)" = "$BASE_REF" ] || { echo "STOP: branch switched"; exit 1; }
-# Equality RE-verified as code, with the SAME flags as capture (plain diff would let a
-# PR-planted .gitattributes textconv normalize real drift into a false pass). Per-file —
-# `git diff` has no --pathspec-from-file; file-list order keeps both sides comparable:
-git -c core.hooksPath=/dev/null -C "$CLEAN_WT" add -N .              # reference must see new files too
-: > "$RUN_DIR/host.final.diff"; : > "$RUN_DIR/ref.final.diff"
-while IFS= read -r f; do
-  git -C "$HOST_ROOT" diff --binary --no-ext-diff --no-textconv "$BASE_SHA" -- "$f" >> "$RUN_DIR/host.final.diff"
-  git -c core.hooksPath=/dev/null -C "$CLEAN_WT" diff --binary --no-ext-diff --no-textconv "$BASE_SHA" -- "$f" >> "$RUN_DIR/ref.final.diff"
-done < "$RUN_DIR/landed.files"
-diff -q "$RUN_DIR/host.final.diff" "$RUN_DIR/ref.final.diff" >/dev/null || { echo "STOP: landed content drifted from approved delta"; exit 1; }
+# (equality was verified by the 4c verify block that wrote ok.build; re-run that block's
+#  equality loop here verbatim if meaningful time passed since — cheap, and the SHA/ref
+#  checks alone don't see content edits)
 HOOKS_DIR=$(git -C "$HOST_ROOT" rev-parse --path-format=absolute --git-path hooks)
 if [ -d "$HOOKS_DIR" ]; then
   SHAPIPE() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; }
