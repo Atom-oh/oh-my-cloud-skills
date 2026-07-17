@@ -95,8 +95,8 @@ const { FiZap, FiSearch, FiGitBranch, FiShield } = require("react-icons/fi");
   // 모니터링 group below the serving column. Compact: label + icon + inline caption
   // (no stacked svc caption) so the whole group fits between the serving stack (~5.5")
   // and the footer band (7.06") without colliding with either.
-  const monY = 5.6;
-  arch.groupBox(kit, pres, s, cols[4].x, monY, cols[4].w, 1.1, "모니터링");
+  const monY = 5.85;
+  arch.groupBox(kit, pres, s, cols[4].x, monY, cols[4].w, 1.05, "모니터링");
   const mcx = cols[4].x + cols[4].w / 2;
   s.addImage({ path: kit.awsIcon("cloudwatch"), x: mcx - 0.25, y: monY + 0.55, w: 0.5, h: 0.5 });
   arch.stepMarker(kit, pres, s, cols[5].items[0].cx - 0.9, cols[5].items[0].cy - 0.35, 7);

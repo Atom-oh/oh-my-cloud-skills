@@ -96,7 +96,7 @@ function svc(kit, pres, s, cx, y, iconName, label, iconSz = 0.62, capW = 1.8) {
 // `maxW` caps the total footprint (oval + gap + text) so the label never bleeds into a
 // neighboring column or the legend rail; archFlow passes its computed slotW.
 function chip(kit, pres, s, x, y, label, d = 0.2, maxW = 1.33) {
-  const textW = Math.min(1.05, maxW - d - 0.08);
+  const textW = Math.max(0.3, Math.min(1.05, maxW - d - 0.08));
   s.addShape(pres.shapes.OVAL, { x, y, w: d, h: d, fill: { color: kit.C.blueTint }, line: { color: kit.C.blue, width: 1 } });
   s.addText(label, { x: x + d + 0.08, y: y - (0.34 - d) / 2, w: textW, h: 0.34, fontFace: kit.FONT, fontSize: 11, color: kit.C.body, align: "left", valign: "middle", margin: 0 });
 }
@@ -165,6 +165,24 @@ function archFlow(kit, pres, opts) {
   const y0 = opts.subtitle ? 1.95 : 1.55;
   const y1 = 6.8;
   const slotW = (x1 - x0 - COL_GAP * Math.max(0, n - 1)) / Math.max(1, n);
+
+  // Fail loudly instead of emitting a broken diagram that only check_pptx catches later.
+  const MIN_SLOT = 0.7;
+  if (slotW < MIN_SLOT) {
+    throw new Error(`arch.archFlow: ${n} columns leave only ${slotW.toFixed(2)}" per column ` +
+      `(min ${MIN_SLOT}"). Use fewer columns, split across slides, or drop the legend.`);
+  }
+  const capacity = y1 - y0;
+  columns.forEach((col, i) => {
+    const items = col.items || [];
+    const stackH = items.reduce((a, it) => a + (it.chip != null ? CHIP_CELL : ITEM_CELL), 0);
+    const need = stackH + (col.label ? GROUP_PAD_TOP + GROUP_PAD : 0);
+    if (items.length && need > capacity) {
+      throw new Error(`arch.archFlow: column ${i} needs ${need.toFixed(2)}" for ${items.length} ` +
+        `items but only ${capacity.toFixed(2)}" is available. Use fewer items per column ` +
+        `or split across slides.`);
+    }
+  });
 
   const cols = columns.map((col, i) => {
     const cx = x0 + i * (slotW + COL_GAP);

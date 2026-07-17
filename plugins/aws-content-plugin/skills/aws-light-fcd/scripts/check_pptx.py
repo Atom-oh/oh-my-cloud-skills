@@ -356,9 +356,15 @@ def analyze(prs):
                         f"(slides {missing_pagenum}) — every numbered content slide should carry one"))
 
     if group_slides:
-        notes.append(f"note: {len(group_slides)} slide(s) contain native GROUP shapes "
-                     f"(slides {group_slides}) — group children are NOT inspected "
-                     f"(coordinate re-projection unsupported); review those slides manually")
+        # GROUP children can't be re-projected into slide coordinates, so every geometry
+        # and design check is blind to them. Rather than silently pass a deck whose
+        # grouped content may be broken, this is a blocking geometry finding: it fails the
+        # gate and forces a manual look (the kit itself never emits groups, so kit-built
+        # decks never hit this — it guards the external-deck path content-review uses).
+        findings.append((min(15, 5 * len(group_slides)),
+                         f"{len(group_slides)} slide(s) contain native GROUP shapes "
+                         f"(slides {group_slides}) whose children can't be inspected — "
+                         f"ungroup them or review those slides by hand before shipping"))
 
     if bad_font_count:
         design.append((min(10, 2 * bad_font_count),

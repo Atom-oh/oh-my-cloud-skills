@@ -186,6 +186,20 @@ def test_soft_break_counts_as_line():
     assert any("overflow" in f for f in r["findings"]), r["findings"]
 
 
+def test_group_shapes_fail_gate():
+    # native GROUP children can't be inspected, so a grouped deck must fail the gate
+    # (forces manual review) rather than silently passing with geometry_findings=0
+    prs = _blank_prs()
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    _add_footer(s, 2)
+    gs = s.shapes.add_group_shape()
+    gs.shapes.add_textbox(Inches(1), Inches(1), Inches(2), Inches(0.5)).text_frame.text = "in group"
+    r = check_pptx.analyze(prs)
+    assert r["geometry_findings"] >= 1, r["findings"]
+    assert not check_pptx.gate_pass(r, 80), "grouped deck must fail the gate"
+    assert any("GROUP" in f for f in r["findings"]), r["findings"]
+
+
 def test_threshold_noninteger_exits_2():
     import subprocess
     p = subprocess.run([sys.executable, os.path.join(HERE, "check_pptx.py"),
