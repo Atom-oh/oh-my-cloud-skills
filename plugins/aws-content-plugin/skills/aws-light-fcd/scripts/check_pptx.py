@@ -88,6 +88,18 @@ def _has_text(sh):
     return bool(getattr(sh, "has_text_frame", False) and sh.text_frame.text.strip())
 
 
+def _text_frames(sh):
+    """Yield every text frame a shape carries — its own, plus each cell of a table
+    (GraphicFrame). Without the table branch, table-cell overflow/placeholder/font all
+    slip past the checks (a whole content class invisible to the gate)."""
+    if getattr(sh, "has_text_frame", False):
+        yield sh.text_frame
+    if getattr(sh, "has_table", False):
+        for row in sh.table.rows:
+            for cell in row.cells:
+                yield cell.text_frame
+
+
 def _kind(sh, slide_area_sqin):
     try:
         st = sh.shape_type
@@ -320,20 +332,21 @@ def analyze(prs):
 
         slide_has_pagenum = False
         for sh in shapes:
-            if not getattr(sh, "has_text_frame", False):
-                continue
-            t = sh.text_frame.text.strip()
-            if t.isdigit() and _bbox_in(sh) and _bbox_in(sh)[1] > FOOTER_BAND_IN:
-                page_nums.append((si, int(t)))
-                slide_has_pagenum = True
-            if PLACEHOLDER_RE.search(sh.text_frame.text):
-                placeholder_count += 1
-            for para in sh.text_frame.paragraphs:
-                for r in para.runs:
-                    if r.font.name and r.font.name != FONT_NAME:
-                        bad_font_count += 1
-                    if r.font.size and r.font.size.pt < 8:
-                        small_font_count += 1
+            if getattr(sh, "has_text_frame", False):
+                t = sh.text_frame.text.strip()
+                if t.isdigit() and _bbox_in(sh) and _bbox_in(sh)[1] > FOOTER_BAND_IN:
+                    page_nums.append((si, int(t)))
+                    slide_has_pagenum = True
+            # placeholder/font/min-size scan covers table cells too (via _text_frames)
+            for tf in _text_frames(sh):
+                if PLACEHOLDER_RE.search(tf.text):
+                    placeholder_count += 1
+                for para in tf.paragraphs:
+                    for r in para.runs:
+                        if r.font.name and r.font.name != FONT_NAME:
+                            bad_font_count += 1
+                        if r.font.size and r.font.size.pt < 8:
+                            small_font_count += 1
 
         # a slide carrying a footer copyright is a content slide — it should also carry a
         # page number. The cover (slide 1) conventionally has the copyright but no number,
@@ -384,6 +397,11 @@ def analyze(prs):
         design.append((min(10, 5 * placeholder_count),
                         f"{placeholder_count} run(s) contain placeholder text (TODO/TBD/lorem/???) "
                         f"— unfinished content left in the deck"))
+
+    # an empty deck (no slides, or slides with no content) must not sail through with a
+    # perfect score — treat it as a blocking geometry finding, not a pass
+    if len(prs.slides) == 0 or total_shapes == 0:
+        findings.append((100, "deck has no slides/content — nothing to ship"))
 
     geom_loss = sum(w for w, _ in findings)
     design_loss = sum(w for w, _ in design)

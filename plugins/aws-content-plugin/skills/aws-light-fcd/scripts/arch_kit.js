@@ -147,8 +147,17 @@ function archSlide(kit, pres, opts) {
 // geometry, so callers can drop in extra primitives for the irregular 10% of a
 // diagram that doesn't fit the column model (escape hatch, not the common case).
 // ════════════════════════════════════════════════════════════════
-const ITEM_CELL = 1.2;     // icon (0.62) + gap (0.04) + caption box (0.5) = 1.16, +slack
+const CAPTION_H = 0.54;    // svc caption box height
+const ICON_GAP = 0.04;     // gap between icon and caption
+const CELL_PAD = 0.04;     // slack below the caption before the next item
 const CHIP_CELL = 0.45;
+// vertical space one item needs, derived from ITS icon size (a bigger iconSz needs a
+// taller cell) — not a flat constant that a large icon would silently overflow.
+function itemCellH(it) {
+  if (it.chip != null) return CHIP_CELL;
+  const iconSz = it.iconSz || 0.62;
+  return iconSz + ICON_GAP + CAPTION_H + CELL_PAD;
+}
 const COL_GAP = 0.6;       // horizontal gap between columns (arrow room). Kept modest so
                            // columns stay wide enough for a 2-line group label to fit.
 const GROUP_PAD_TOP = 0.62; // room for a 2-line centered group label above the content
@@ -160,13 +169,21 @@ function archFlow(kit, pres, opts) {
   const n = columns.length;
   const hasLegend = !!(opts.legend && opts.legend.length);
 
-  // step numbers must map 1:1 onto legend entries — an orphan marker (step > legend.length)
-  // points at nothing. Catch it here rather than shipping a confusing diagram.
+  // Every step archFlow places must point at a real legend row: an integer in
+  // 1..legend.length, used at most once. (We don't require the step set to COVER the whole
+  // legend — callers legitimately add more markers by hand via arch.stepMarker off the
+  // returned geometry, e.g. the demo's GPU/monitoring stages.)
   if (hasLegend) {
-    const maxStep = Math.max(0, ...columns.flatMap(c => (c.items || []).map(it => it.step || 0)));
-    if (maxStep > opts.legend.length) {
-      throw new Error(`arch.archFlow: step ${maxStep} has no legend entry (legend has ${opts.legend.length}). ` +
-        `Add legend entries or renumber the steps.`);
+    const steps = columns.flatMap(c => (c.items || [])
+      .map(it => it.step).filter(v => v != null));
+    for (const v of steps) {
+      if (!Number.isInteger(v) || v < 1 || v > opts.legend.length) {
+        throw new Error(`arch.archFlow: step ${v} is not a valid legend index (legend has ` +
+          `${opts.legend.length} entries; steps must be integers in 1..${opts.legend.length}).`);
+      }
+    }
+    if (new Set(steps).size !== steps.length) {
+      throw new Error(`arch.archFlow: duplicate step number(s) in columns — each step value must be used once.`);
     }
   }
 
@@ -185,7 +202,7 @@ function archFlow(kit, pres, opts) {
   const capacity = y1 - y0;
   columns.forEach((col, i) => {
     const items = col.items || [];
-    const stackH = items.reduce((a, it) => a + (it.chip != null ? CHIP_CELL : ITEM_CELL), 0);
+    const stackH = items.reduce((a, it) => a + itemCellH(it), 0);
     const need = stackH + (col.label ? GROUP_PAD_TOP + GROUP_PAD : 0);
     if (items.length && need > capacity) {
       throw new Error(`arch.archFlow: column ${i} needs ${need.toFixed(2)}" for ${items.length} ` +
@@ -197,7 +214,7 @@ function archFlow(kit, pres, opts) {
   const cols = columns.map((col, i) => {
     const cx = x0 + i * (slotW + COL_GAP);
     const items = col.items || [];
-    const cellH = items.map(it => (it.chip != null ? CHIP_CELL : ITEM_CELL));
+    const cellH = items.map(itemCellH);
     const stackH = cellH.reduce((a, b) => a + b, 0);
     const grouped = !!col.label;
     // An empty column (items: []) is a reserved slot the caller fills via the returned

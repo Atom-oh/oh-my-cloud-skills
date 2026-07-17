@@ -221,6 +221,24 @@ def test_group_shapes_fail_gate():
     assert any("GROUP" in f for f in r["findings"]), r["findings"]
 
 
+def test_table_cell_placeholder_detected():
+    # placeholder text inside a table cell must be caught (tables were invisible before)
+    prs = _blank_prs()
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    _add_footer(s, 2)
+    gf = s.shapes.add_table(2, 2, Inches(1), Inches(1), Inches(6), Inches(2))
+    gf.table.cell(0, 0).text = "TODO: fill this cell"
+    r = check_pptx.analyze(prs)
+    assert any("placeholder" in f for f in r["findings"]), r["findings"]
+
+
+def test_empty_deck_fails_gate():
+    prs = _blank_prs()  # zero slides
+    r = check_pptx.analyze(prs)
+    assert not check_pptx.gate_pass(r, 80), "empty deck must fail the gate"
+    assert any("no slides" in f for f in r["findings"]), r["findings"]
+
+
 def test_threshold_noninteger_exits_2():
     import subprocess
     p = subprocess.run([sys.executable, os.path.join(HERE, "check_pptx.py"),
