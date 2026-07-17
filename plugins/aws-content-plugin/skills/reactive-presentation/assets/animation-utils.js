@@ -34,7 +34,10 @@ const Colors = {
   textMuted: '#7d8998',
 };
 
-/** Re-resolve Colors from the live CSS theme (call after theme switches). */
+/** Re-resolve Colors from the live CSS theme (call after theme switches).
+ *  Dispatches 'remarp:theme-colors' on document so canvas code can redraw
+ *  with the new palette (already-painted static canvases do not repaint
+ *  on their own). */
 function refreshThemeColors() {
   Colors.bg        = _cssColor('--bg-primary',     Colors.bg);
   Colors.bgSecond  = _cssColor('--bg-secondary',   Colors.bgSecond);
@@ -52,12 +55,19 @@ function refreshThemeColors() {
   Colors.textPri   = _cssColor('--text-primary',   Colors.textPri);
   Colors.textSec   = _cssColor('--text-secondary', Colors.textSec);
   Colors.textMuted = _cssColor('--text-muted',     Colors.textMuted);
+  if (typeof document !== 'undefined' && typeof CustomEvent === 'function') {
+    document.dispatchEvent(new CustomEvent('remarp:theme-colors', { detail: Colors }));
+  }
 }
 if (typeof document !== 'undefined') {
+  // Resolve immediately: this runs AFTER the __remarpTheme merge above (same
+  // script, fixed order) and head stylesheets are loaded before body-end
+  // scripts execute, so canvas setup code that runs next sees themed values.
+  refreshThemeColors();
+  // Re-resolve once the DOM is complete, covering the <head>-included case
+  // where the deck root (.slide-deck) did not exist yet on first resolve.
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', refreshThemeColors);
-  } else {
-    refreshThemeColors();
+    document.addEventListener('DOMContentLoaded', function () { refreshThemeColors(); });
   }
 }
 

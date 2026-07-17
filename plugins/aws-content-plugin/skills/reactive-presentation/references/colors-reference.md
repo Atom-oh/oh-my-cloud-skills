@@ -10,8 +10,9 @@ light/dark 테마 전환과 PPTX 브랜드 추출(Phase 1)에 자동으로 적�
 > 올바른 대비로 렌더링됩니다.
 >
 > **팔레트 아이덴티티**: 기본 테마는 AWS 자체 디자인 언어에 근거합니다 — 라이트는 콘솔 그레이
-> 캔버스(`#eaedee`) + 화이트 카드 + Squid Ink 텍스트(`#0f141a`) + Smile Orange 액센트(`#ec7211`) +
-> Cloudscape 블루 텍스트 액센트(`#0972d3`); 다크는 squid-ink night(`#0f1b2a` 계열) + `#ff9900`.
+> 캔버스(`#eaedee`) + 화이트 카드 + Squid Ink 계열 텍스트(`#0f141a`, 브랜드 기준색 Squid Ink는
+> `#232F3E`) + Smile Orange 액센트(`#ec7211`) + Cloudscape 블루 텍스트 액센트(`#0972d3`);
+> 다크는 squid-ink night(`#0f1b2a` 계열) + `#ff9900`.
 > 구(舊) 웜 페이퍼 룩은 `theme: { preset: paper }`로 옵트인합니다. 배경/선정 원칙:
 > [design-direction.md](design-direction.md).
 

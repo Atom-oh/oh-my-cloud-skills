@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
-Export a built reactive-presentation project to native .pptx.
+Export a built reactive-presentation project to a screenshot-based .pptx
+(one full-bleed image per slide — NOT an editable/native deck; for editable
+PPTX use the aws-light-fcd skill).
 
 Renders each slide headlessly (Playwright/Chromium), captures a pixel-exact
 screenshot with all fragments revealed and canvas step animations completed,
-and assembles a 16:9 PowerPoint (python-pptx) with speaker notes carried over
+and assembles a PowerPoint (python-pptx) with speaker notes carried over
 from the deck's presenter notes.
 
 This is the reliable, scriptable counterpart to the in-browser
-`ExportUtils.exportPPTX()` button (html2canvas): native browser rendering
+`ExportUtils.exportPPTX()` button (html2canvas): real browser rendering
 means fonts, canvas drawings, shadows, and gradients survive intact.
 
 Usage:
@@ -61,11 +63,9 @@ def _serve(root: Path):
     """Serve project dir on a free localhost port (file:// breaks fetch/CORS)."""
     handler = functools.partial(_QuietHandler, directory=str(root))
 
-    with socket.socket() as s:
-        s.bind(('127.0.0.1', 0))
-        port = s.getsockname()[1]
-
-    httpd = http.server.ThreadingHTTPServer(('127.0.0.1', port), handler)
+    # Bind port 0 directly on the server socket — no probe/rebind race.
+    httpd = http.server.ThreadingHTTPServer(('127.0.0.1', 0), handler)
+    port = httpd.server_address[1]
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
     return httpd, f"http://127.0.0.1:{port}"
@@ -101,7 +101,8 @@ _PREPARE_JS = """
 
   document.querySelectorAll('.slide').forEach(slide => {
     if (typeof slide.__canvasStep === 'function') {
-      const max = parseInt(slide.dataset.canvasMaxStep || '30', 10);
+      const parsed = parseInt(slide.dataset.canvasMaxStep || '30', 10);
+      const max = Number.isFinite(parsed) ? parsed : 30;
       for (let s = 0; s < max; s++) {
         if (slide.__canvasStep('next') === false) break;
       }
