@@ -109,20 +109,18 @@
 /* --- Reset & Base --- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-:root {
-  /* Palette — base chrome vars (bg, surface, border, text, --text-accent,
-     --border-focus) are theme-scoped in `:root, .theme-light` and
-     `.theme-dark` above so they follow the active theme. Only theme-agnostic
-     helpers remain here. */
-
-  /* --accent is theme-scoped (see :root,.theme-light / .theme-dark above) */
+/* Legacy palette aliases — routed through the role tokens so canvas drawings
+   and old markup adapt to the active theme. IMPORTANT: var() substitution in
+   a custom property is resolved at computed-value time ON THE DECLARING
+   ELEMENT and the RESOLVED value inherits — declaring these only on :root
+   would freeze them to the light values for the whole document. Every theme
+   scope must therefore re-declare the aliases so `.theme-dark`/`.preset-paper`
+   re-substitute them against their own role tokens. cyan/pink stay distinct
+   per-scope hues (canvas diagrams rely on them differing from blue/red). */
+:root, .theme-light, .theme-dark, .preset-paper, .preset-paper .theme-light {
   --accent-light:  var(--accent);
   --accent-glow:   var(--accent-subtle);
-
-  /* Legacy palette aliases — routed through the role tokens so canvas
-     drawings and old markup adapt to the active theme instead of assuming
-     the historical dark palette. cyan/pink stay distinct hues (canvas
-     diagrams rely on them being distinguishable from blue/red). */
+  --shadow-glow:   0 0 20px var(--accent-subtle);
   --green:  var(--success);
   --green-bg: var(--success-subtle);
   --yellow: var(--warning);
@@ -132,6 +130,14 @@
   --blue:   var(--info);
   --blue-bg: var(--info-subtle);
   --orange: var(--accent);
+}
+
+:root {
+  /* Palette — base chrome vars (bg, surface, border, text, --text-accent,
+     --border-focus) are theme-scoped in `:root, .theme-light` and
+     `.theme-dark` above so they follow the active theme; legacy aliases are
+     re-declared per theme scope (see block above). Only theme-agnostic
+     helpers remain here. */
 
   /* Typography — display face carries the deck's personality on Latin
      headings; Korean glyphs fall back to Pretendard, which tolerates the

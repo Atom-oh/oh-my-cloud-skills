@@ -30,10 +30,10 @@ import http.server
 import os
 import re
 import shutil
-import socket
 import sys
 import tempfile
 import threading
+import urllib.parse
 from pathlib import Path
 
 
@@ -115,6 +115,19 @@ _PREPARE_JS = """
     }
   });
 
+  // Hand-authored canvases may register via deck.registerSlideAction()
+  // instead of slide.__canvasStep — advance those to their final step too.
+  try {
+    if (typeof deck !== 'undefined' && deck && deck.slideActions) {
+      Object.values(deck.slideActions).forEach(h => {
+        if (!h || typeof h.down !== 'function') return;
+        for (let s = 0; s < 60; s++) {
+          if (h.down() === false) break;
+        }
+      });
+    }
+  } catch (e) { /* best effort */ }
+
   return document.querySelectorAll('.slide-deck .slide').length;
 }
 """
@@ -153,8 +166,11 @@ _MEDIA_READY_JS = """
   const imgs = Array.from(el.querySelectorAll('img'));
   const iframes = Array.from(el.querySelectorAll('iframe'));
   return imgs.every(i => i.complete) && iframes.every(f => {
-    try { return !!f.contentDocument && f.contentDocument.readyState === 'complete'; }
-    catch (e) { return true; }
+    try {
+      const doc = f.contentDocument;
+      if (!doc) return true;  // cross-origin returns null — cannot inspect, assume ready
+      return doc.readyState === 'complete';
+    } catch (e) { return true; }
   });
 }
 """
@@ -208,11 +224,14 @@ def export(project_dir: Path, out_path: Path, blocks, width: int, height: int, s
             )
 
             for block in blocks:
-                page.goto(f"{base_url}/{block}", wait_until='networkidle')
+                page.goto(f"{base_url}/{urllib.parse.quote(block)}", wait_until='networkidle')
                 page.evaluate("() => document.fonts.ready.then(() => true)")
                 page.wait_for_timeout(600)  # let canvas setup scripts settle
 
                 slide_count = page.evaluate(_PREPARE_JS)
+                if not slide_count:
+                    print(f"  (warn) no slides found in {block} — skipping")
+                    continue
                 notes = page.evaluate(_NOTES_JS) or {}
                 if not notes:
                     print(f"  (warn) no presenter notes found in {block}")

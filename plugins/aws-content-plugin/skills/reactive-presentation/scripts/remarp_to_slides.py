@@ -4990,8 +4990,11 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
             # Validate against the SAME category dir the build copies from —
             # a filename that only exists in another category still fails at
             # copy time, so a global-set check would be a false negative.
+            # (ICON_NAME_MAP is audited to resolve fully within services/.)
             category = cat_match.group(1) if cat_match else 'services'
-            bundled = _bundled_icon_filenames(category) or _bundled_icon_filenames()
+            bundled = _bundled_icon_filenames(category)
+            if not bundled:
+                continue  # unknown/empty category — nothing to validate against
             filename = os.path.basename(src) if src else ICON_NAME_MAP.get(label, f'Arch_{label}_48.svg')
             if filename not in bundled:
                 # Match against aliases AND filename stems (a long official

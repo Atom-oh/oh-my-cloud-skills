@@ -1,6 +1,6 @@
 ---
 name: reactive-presentation
-description: "Create interactive HTML presentation slideshows with Canvas animations, quizzes, light/dark themes, keyboard navigation, and screenshot-based PPTX export (editable/native PPTX is the aws-light-fcd skill). Deploy to GitHub Pages. Use when user asks to: create slides, build a presentation, make a slideshow, training slides, interactive presentation, Canvas animation slides, export web slides to PowerPoint images, or mentions 'reactive presentation'. Supports PPTX template theming and Remarp markdown content authoring. Supports multi-block training sessions (30min-3hr), technical deep-dives, and workshop content."
+description: "Create interactive HTML presentation slideshows with Canvas animations, quizzes, light/dark themes, keyboard navigation, and screenshot-based PPTX export (editable/native PPTX is the aws-light-fcd skill). Deploy to GitHub Pages. Use when user asks to: create interactive/web slides, build an HTML presentation, make a web slideshow, training slides, Canvas animation slides, export web slides to PowerPoint images, or mentions 'reactive presentation'. Supports PPTX template theming and Remarp markdown content authoring. Supports multi-block training sessions (30min-3hr), technical deep-dives, and workshop content."
 allowed-tools:
   - Read
   - Write
@@ -108,7 +108,7 @@ python3 {skill-dir}/scripts/remarp_to_slides.py issues {repo}/{slug}/ [--json]  
 "PPT/PPTX로 내보내기" 요청 시 두 경로:
 ```bash
 # 권장 (headless, 픽셀 정확 — Playwright 네이티브 렌더링 + 스피커 노트 포함)
-pip install playwright python-pptx && playwright install chromium   # 1회
+pip install 'playwright>=1.40' 'python-pptx>=1.0' && playwright install chromium   # 1회
 python3 {skill-dir}/scripts/export_pptx.py {repo}/{slug}/ -o {slug}.pptx
 ```
 - 브라우저 경로(도구 설치 불필요): `toc.html`의 **Export PPTX** 버튼(`ExportUtils.exportPPTX`, html2canvas+PptxGenJS CDN — 품질은 headless 경로가 우수).
