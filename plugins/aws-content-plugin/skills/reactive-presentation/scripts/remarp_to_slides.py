@@ -159,7 +159,9 @@ def _bundled_icon_filenames(category: str = '') -> set:
             cache[cat] = names
             cache[''] |= names
         _bundled_icon_filenames._cache = cache
-    return cache.get(category, cache[''])
+    # Unknown category → empty set, so callers skip validation instead of
+    # falling back to the union (which the copy step does not use).
+    return cache.get(category or '', set())
 
 
 class SlideType(Enum):

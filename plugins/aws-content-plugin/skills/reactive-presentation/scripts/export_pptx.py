@@ -4,6 +4,9 @@ Export a built reactive-presentation project to a screenshot-based .pptx
 (one full-bleed image per slide — NOT an editable/native deck; for editable
 PPTX use the aws-light-fcd skill).
 
+Trust boundary: run this only on decks YOU built with this skill — the
+project's HTML/JS executes in the headless browser during capture.
+
 Renders each slide headlessly (Playwright/Chromium), captures a pixel-exact
 screenshot with all fragments revealed and canvas step animations completed,
 and assembles a PowerPoint (python-pptx) with speaker notes carried over
@@ -100,8 +103,14 @@ _PREPARE_JS = """
   document.body.classList.remove('sidebar-visible');
 
   // Lazy iframes inside display:none slides never load before capture —
-  // force eager loading so @type: iframe slides don't export blank.
-  document.querySelectorAll('iframe[loading="lazy"]').forEach(f => { f.loading = 'eager'; });
+  // force eager loading so @type: iframe slides don't export blank. A load
+  // flag is recorded so _MEDIA_READY_JS can wait even for cross-origin
+  // frames (whose contentDocument is null and can't be inspected).
+  document.querySelectorAll('iframe[loading="lazy"]').forEach(f => {
+    f.dataset.exportLazy = '1';
+    f.addEventListener('load', () => { f.dataset.exportLoaded = '1'; }, { once: true });
+    f.loading = 'eager';
+  });
 
   document.querySelectorAll('.fragment').forEach(el => el.classList.add('visible'));
 
@@ -147,11 +156,20 @@ _SHOW_SLIDE_JS = """
       el.style.display = 'none';
     }
   });
-  // We bypass SlideFramework.showSlide(), so update the pagination number
-  // ourselves — otherwise every capture bakes in a stale "1 / N".
+  // We bypass SlideFramework.showSlide(), so replicate its per-slide chrome
+  // updates: pagination number, and footer/logo visibility + dark-logo swap
+  // (updateFooterVisibility hides the framework footer/logo on slides with
+  // an <img> and swaps logoDarkSrc on dark slides — without this, slide 0's
+  // state is baked into every capture).
   const num = document.querySelector('.slide-number');
   if (num) num.textContent = (idx + 1) + ' / ' + slides.length;
   const el = slides[idx];
+  try {
+    if (typeof deck !== 'undefined' && deck &&
+        typeof deck.updateFooterVisibility === 'function' && el) {
+      deck.updateFooterVisibility(el);
+    }
+  } catch (e) { /* best effort */ }
   const h = el ? el.querySelector('h1, h2, h3') : null;
   return h ? h.textContent.trim() : '';
 }
@@ -166,9 +184,12 @@ _MEDIA_READY_JS = """
   const imgs = Array.from(el.querySelectorAll('img'));
   const iframes = Array.from(el.querySelectorAll('iframe'));
   return imgs.every(i => i.complete) && iframes.every(f => {
+    // Frames we forced from lazy→eager must fire their load event first —
+    // this also covers cross-origin frames, which expose no readyState.
+    if (f.dataset.exportLazy === '1' && f.dataset.exportLoaded !== '1') return false;
     try {
       const doc = f.contentDocument;
-      if (!doc) return true;  // cross-origin returns null — cannot inspect, assume ready
+      if (!doc) return true;  // cross-origin, already loaded before prepare
       return doc.readyState === 'complete';
     } catch (e) { return true; }
   });
@@ -291,6 +312,10 @@ def export(project_dir: Path, out_path: Path, blocks, width: int, height: int, s
     finally:
         httpd.shutdown()
         shutil.rmtree(tmpdir, ignore_errors=True)
+
+    if total == 0:
+        _die("no slides were captured — nothing to export "
+             "(are the block files built remarp HTML?)")
 
     prs.save(str(out_path))
     print(f"\nOK: {total} slides → {out_path}")

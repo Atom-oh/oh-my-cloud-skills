@@ -113,6 +113,7 @@ python3 {skill-dir}/scripts/export_pptx.py {repo}/{slug}/ -o {slug}.pptx
 ```
 - 브라우저 경로(도구 설치 불필요): `toc.html`의 **Export PPTX** 버튼(`ExportUtils.exportPPTX`, html2canvas+PptxGenJS CDN — 품질은 headless 경로가 우수).
 - 각 슬라이드는 fragment 전체 공개 + Canvas 최종 step 상태로 캡처되고, `:::notes`가 PPTX 스피커 노트로 들어감.
+- 신뢰 경계: **직접 빌드한 덱만** export (캡처 중 덱의 HTML/JS가 headless 브라우저에서 실행됨).
 - **네이티브(편집 가능한) PPTX가 필요하면** 이 스킬이 아니라 `aws-light-fcd` 스킬로 라우팅 (presentation-agent 디스패처 규칙).
 
 ### Phase 9 — Deploy

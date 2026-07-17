@@ -6,6 +6,8 @@
 const ExportUtils = {
   JSZIP_CDN: 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
   PPTXGEN_CDN: 'https://cdn.jsdelivr.net/npm/pptxgenjs@4.0.1/dist/pptxgen.bundle.js',
+  // SRI for the pinned pptxgenjs bundle (sha384 of the npm-published file)
+  PPTXGEN_SRI: 'sha384-qb0Xhi7LLYpvW1HCK6oMrmDLSY9sy7vwm6ZlV6KjtrlL9yg30+YN4neTwnmX+Kp8',
   HTML2CANVAS_CDN: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
 
   /** Escape HTML special characters to prevent XSS in generated markup */
@@ -309,12 +311,14 @@ const ExportUtils = {
     });
   },
 
-  /** Lazy-load PptxGenJS from CDN */
+  /** Lazy-load PptxGenJS from CDN (SRI-pinned) */
   loadPptxGen: function() {
     if (window.PptxGenJS) return Promise.resolve();
     return new Promise(function(resolve, reject) {
       var script = document.createElement('script');
       script.src = ExportUtils.PPTXGEN_CDN;
+      script.integrity = ExportUtils.PPTXGEN_SRI;
+      script.crossOrigin = 'anonymous';
       script.onload = resolve;
       script.onerror = function() { reject(new Error('Failed to load PptxGenJS from CDN')); };
       document.head.appendChild(script);

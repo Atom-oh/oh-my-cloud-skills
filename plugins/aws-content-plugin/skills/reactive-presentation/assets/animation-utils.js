@@ -91,6 +91,8 @@ if (typeof document !== 'undefined') {
  *  anything else (named colors, etc.) passes through unchanged. */
 function withAlpha(color, alpha) {
   var c = String(color).trim();
+  var m8 = /^#([0-9a-f]{6})[0-9a-f]{2}$/i.exec(c);
+  if (m8) c = '#' + m8[1];  // #rrggbbaa → drop embedded alpha, ours wins
   var m3 = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(c);
   if (m3) c = '#' + m3[1] + m3[1] + m3[2] + m3[2] + m3[3] + m3[3];
   var m6 = /^#([0-9a-f]{6})$/i.exec(c);
