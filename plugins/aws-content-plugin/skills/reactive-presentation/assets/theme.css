@@ -297,6 +297,10 @@ body {
 .columns > * { flex: 1; }
 .col-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
 .col-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-3); }
+/* Vertically center a sparse grid in the remaining slide height. Auto
+   margins collapse to 0 when the grid overflows, so dense decks still
+   scroll from the top instead of clipping. */
+.slide-body > .grid-vcenter { margin-top: auto; margin-bottom: auto; }
 .center-content {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
@@ -658,10 +662,13 @@ body {
   color: var(--accent-on);
   box-shadow: 0 0 12px var(--accent-glow);
 }
+/* done = subdued accent (same single-hue progress language as .agenda-step.done)
+   — green made "done" the dominant color on a finished timeline */
 .timeline-step.done .timeline-dot {
-  background: var(--green);
-  border-color: var(--green);
-  color: var(--success-on);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-on);
+  opacity: .55;
 }
 .timeline-label {
   margin-top: var(--space-1);
@@ -677,7 +684,7 @@ body {
   position: relative;
   top: -16px;
 }
-.timeline-connector.done { background: var(--green); }
+.timeline-connector.done { background: var(--accent); opacity: .5; }
 .timeline-desc {
   font-size: .7rem;
   color: var(--text-muted);

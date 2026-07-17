@@ -123,6 +123,26 @@ ICON_NAME_MAP = {
 }
 
 
+def _bundled_icon_filenames() -> set:
+    """Every icon filename shipped in the skill bundle (cached after first walk).
+
+    Used by validation to fail loudly on canvas icon names that resolve to a
+    file that does not exist (otherwise they silently render as bare labels).
+    Empty set when no icon bundle is present (validation then skips the rule).
+    """
+    cached = getattr(_bundled_icon_filenames, '_cache', None)
+    if cached is not None:
+        return cached
+    skill_dir = Path(__file__).parent.parent
+    names: set = set()
+    for base in (skill_dir / 'icons', skill_dir / 'assets' / 'aws-icons'):
+        if base.is_dir():
+            names.update(p.name for p in base.rglob('*')
+                         if p.suffix.lower() in ('.svg', '.png'))
+    _bundled_icon_filenames._cache = names
+    return names
+
+
 class SlideType(Enum):
     """Supported slide types."""
     COVER = 'cover'
@@ -3537,10 +3557,12 @@ class RemarpHTMLGenerator:
 
         header_html = f'<div class="slide-header" data-remarp-id="s{slide.index}-header"><h2>{heading}</h2></div>' if heading else ''
 
+        # grid-vcenter: sparse card rows center in the remaining slide height
+        # instead of hugging the header (auto margins collapse to 0 on overflow)
         return f'''<div class="slide">
   {header_html}
   <div class="slide-body" data-remarp-id="s{slide.index}-body">
-    <div class="col-{columns}">
+    <div class="col-{columns} grid-vcenter">
       {chr(10).join("      " + c for c in cards_html)}
     </div>
   </div>
@@ -4925,6 +4947,39 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
             add('WARNING', 'OFF_SCALE',
                 'Off-scale spacing value (not on the 8px / 4px-step scale) in :::html/:::css block',
                 'Use var(--space-*) (8px scale) instead of an arbitrary px/rem value')
+
+    # --- Rule: Canvas icon names must resolve to a bundled icon file ---
+    # An unknown name silently renders as a floating text label (no icon, arrows
+    # pointing at empty space), so fail loudly at validate time instead.
+    bundled = _bundled_icon_filenames()
+    if bundled:
+        import difflib
+        for elem in slide.canvas_elements:
+            if elem.element_type != 'icon':
+                continue
+            label = str(elem.params.get('label', ''))
+            src = str(elem.params.get('src', ''))
+            # Only bare service names are resolvable against the bundle;
+            # explicit paths (contain '/' or '.') are the author's own files.
+            if '/' in label or '.' in label:
+                continue
+            filename = os.path.basename(src) if src else ICON_NAME_MAP.get(label, f'Arch_{label}_48.svg')
+            if filename not in bundled:
+                # Match against aliases AND filename stems (a long official
+                # service name is closer to the stem than to its short alias).
+                stem_to_alias = {
+                    re.sub(r'^Arch_|_48|\.svg$', '', fname): alias
+                    for alias, fname in ICON_NAME_MAP.items()
+                }
+                pool = list(ICON_NAME_MAP.keys()) + list(stem_to_alias.keys())
+                close = difflib.get_close_matches(label, pool, n=3, cutoff=0.4)
+                aliases = list(dict.fromkeys(stem_to_alias.get(c, c) for c in close))
+                hint = (f"Use one of: {', '.join(aliases)}" if aliases
+                        else 'See ICON_NAME_MAP aliases in remarp_to_slides.py or pass an explicit icon path')
+                add('CRITICAL', 'UNKNOWN_ICON',
+                    f'Canvas icon "{label}" resolves to {filename}, which is not in the bundled AWS icon set '
+                    f'— it will render as a floating label with no icon',
+                    hint)
 
     return findings
 
