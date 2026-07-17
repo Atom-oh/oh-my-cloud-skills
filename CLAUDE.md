@@ -116,6 +116,12 @@ Each `SKILL.md` has frontmatter with `name`, `description`, and `triggers` (keyw
 - `awsdocs` (stdio/uvx) — Official AWS documentation search
 - `awsapi` (stdio/uvx) — Direct AWS API calls
 
+`aws-content-plugin` bundles 1 MCP server:
+- `playwright` (stdio/npx `@playwright/mcp`) — browser automation for content-review-agent's
+  Visual Testing, brochure-agent's product-screenshot capture, and reactive-presentation-agent;
+  those three agents opt in via frontmatter `mcpServers: [playwright]` (an explicit `tools:`
+  allowlist alone doesn't inherit session MCP tools)
+
 The remaining 3 servers are provided by the `deploy-on-aws` plugin (available when both plugins are loaded):
 - `awsknowledge` (HTTP) — Architecture recommendations
 - `awspricing` (stdio/uvx) — Pricing data

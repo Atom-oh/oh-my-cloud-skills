@@ -6,6 +6,8 @@ model: sonnet
 skills:
   - brochure
   - architecture-diagram
+mcpServers:
+  - playwright
 ---
 
 # Brochure Agent

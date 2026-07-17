@@ -4,6 +4,8 @@ description: Cross-cutting content quality review agent. Reviews presentations (
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 model: opus
 maxTurns: 50
+mcpServers:
+  - playwright
 ---
 
 # Content Review Agent
@@ -174,14 +176,13 @@ Email:       [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
 
 HTML 기반 콘텐츠(프레젠테이션, 애니메이션 다이어그램, 브로셔/프로필 페이지, 렌더링된 GitBook)에 대해 Playwright MCP 도구를 사용하여 실제 브라우저에서 인터랙션을 검증합니다.
 
-> **가용성 게이트 (먼저 확인)**: Playwright MCP 도구(`browser_navigate` 등)는 이
-> 에이전트의 `tools:` allowlist에 없으므로, 이 에이전트가 **단독 서브에이전트로
-> 스폰되면 상속되지 않습니다**. Visual Testing이 실제로 필요하면 (a) 이 에이전트를
-> `tools:` 생략으로 실행해 세션 도구를 상속받거나, (b) 호스트가 Playwright 단계를
-> 직접 수행하도록 위임합니다. 실행 시점에 `browser_*` 도구 존재를 확인하고, 없으면
-> 시도하지 말고 Visual Testing 10점을 면제 — 90점 만점 환산(verdict 표의 90점
-> 밴드)으로 진행하며 리포트에 "Visual Testing 면제(Playwright MCP 미가용)"를
-> 명시합니다.
+> **가용성 게이트 (먼저 확인)**: Playwright MCP 서버는 이 에이전트의 frontmatter
+> `mcpServers: [playwright]`로 선언되어 플러그인이 직접 기동합니다(`npx
+> @playwright/mcp`). 따라서 정상 환경에선 `browser_*` 도구가 사용 가능하지만,
+> npx/브라우저 의존성이 없는 오프라인·미설치 환경에선 기동에 실패할 수 있습니다.
+> Visual Testing 시작 전에 `browser_*` 도구 존재를 확인하고, 없으면 시도하지 말고
+> Visual Testing 10점을 면제 — 90점 만점 환산(verdict 표의 90점 밴드)으로 진행하며
+> 리포트에 "Visual Testing 면제(Playwright MCP 미가용)"를 명시합니다.
 >
 > **GitBook 전제**: GitBook 프로젝트는 markdown 소스라 그대로는 브라우저 테스트
 > 대상이 아닙니다. 렌더링된 결과(gitbook 빌드 산출물 또는 배포 프리뷰 URL)가 있을
