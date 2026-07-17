@@ -59,18 +59,6 @@ function refreshThemeColors() {
     document.dispatchEvent(new CustomEvent('remarp:theme-colors', { detail: Colors }));
   }
 }
-if (typeof document !== 'undefined') {
-  // Resolve immediately: this runs AFTER the __remarpTheme merge above (same
-  // script, fixed order) and head stylesheets are loaded before body-end
-  // scripts execute, so canvas setup code that runs next sees themed values.
-  refreshThemeColors();
-  // Re-resolve once the DOM is complete, covering the <head>-included case
-  // where the deck root (.slide-deck) did not exist yet on first resolve.
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { refreshThemeColors(); });
-  }
-}
-
 // Merge PPTX theme colors if available
 if (window.__remarpTheme && window.__remarpTheme.colors) {
   const tc = window.__remarpTheme.colors;
@@ -84,6 +72,19 @@ if (window.__remarpTheme && window.__remarpTheme.colors) {
   if (tc.lt1) Colors.pptxLt1 = tc.lt1;
   if (tc.dk2) Colors.pptxDk2 = tc.dk2;
   if (tc.lt2) Colors.pptxLt2 = tc.lt2;
+}
+
+if (typeof document !== 'undefined') {
+  // Resolve immediately, AFTER the __remarpTheme merge above so the first
+  // 'remarp:theme-colors' event already carries the pptx* keys. Head
+  // stylesheets are loaded before body-end scripts execute, so canvas setup
+  // code that runs next sees themed values.
+  refreshThemeColors();
+  // Re-resolve once the DOM is complete, covering the <head>-included case
+  // where the deck root (.slide-deck) did not exist yet on first resolve.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { refreshThemeColors(); });
+  }
 }
 
 /** Color + alpha → rgba(). Handles #rgb, #rrggbb, and rgb()/rgba() inputs;

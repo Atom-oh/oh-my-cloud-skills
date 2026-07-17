@@ -99,6 +99,10 @@ _PREPARE_JS = """
   document.head.appendChild(style);
   document.body.classList.remove('sidebar-visible');
 
+  // Lazy iframes inside display:none slides never load before capture —
+  // force eager loading so @type: iframe slides don't export blank.
+  document.querySelectorAll('iframe[loading="lazy"]').forEach(f => { f.loading = 'eager'; });
+
   document.querySelectorAll('.fragment').forEach(el => el.classList.add('visible'));
 
   document.querySelectorAll('.slide').forEach(slide => {
@@ -140,6 +144,21 @@ _SHOW_SLIDE_JS = """
 }
 """
 
+# Media inside the ACTIVE slide (images, iframes) must finish loading before
+# capture; cross-origin iframes can't be inspected and are assumed ready.
+_MEDIA_READY_JS = """
+() => {
+  const el = document.querySelector('.slide-deck .slide.active');
+  if (!el) return true;
+  const imgs = Array.from(el.querySelectorAll('img'));
+  const iframes = Array.from(el.querySelectorAll('iframe'));
+  return imgs.every(i => i.complete) && iframes.every(f => {
+    try { return !!f.contentDocument && f.contentDocument.readyState === 'complete'; }
+    catch (e) { return true; }
+  });
+}
+"""
+
 # presenterNotes is a top-level `const` in the built HTML; code evaluated in
 # the page's global scope (like the DevTools console) can still read it.
 _NOTES_JS = """
@@ -171,11 +190,9 @@ def export(project_dir: Path, out_path: Path, blocks, width: int, height: int, s
     tmpdir = Path(tempfile.mkdtemp(prefix='remarp-pptx-'))
 
     prs = Presentation()
-    # Slide size follows the capture viewport's aspect ratio (7.5in height is
-    # the PowerPoint constant; 16:9 → 13.333in, 4:3 → 10in).
     prs.slide_height = Inches(7.5)
-    prs.slide_width = Inches(round(7.5 * width / height, 3))
     blank = prs.slide_layouts[6]
+    slide_size_set = False
 
     total = 0
     try:
@@ -202,8 +219,33 @@ def export(project_dir: Path, out_path: Path, blocks, width: int, height: int, s
                 page.wait_for_timeout(300)  # canvas redraw after step advance
 
                 deck = page.locator('.slide-deck')
+
+                # PPTX slide size must match what is actually captured: the
+                # deck enforces ITS OWN aspect ratio via CSS max-width/height,
+                # so a 4:3 viewport still captures a 16:9 deck (and vice
+                # versa). Deriving the size from the viewport would stretch
+                # the image — derive it from the deck's real bounding box.
+                if not slide_size_set:
+                    box = deck.bounding_box()
+                    if box and box['width'] and box['height']:
+                        deck_ratio = box['width'] / box['height']
+                        if abs(deck_ratio - width / height) > 0.01:
+                            print(f"  (warn) viewport {width}x{height} does not match the "
+                                  f"deck's own aspect ratio ({deck_ratio:.3f}) — "
+                                  f"slide size follows the deck")
+                        prs.slide_width = Inches(round(7.5 * deck_ratio, 3))
+                    else:
+                        prs.slide_width = Inches(round(7.5 * width / height, 3))
+                    slide_size_set = True
+
                 for i in range(slide_count):
                     title = page.evaluate(_SHOW_SLIDE_JS, i)
+                    # Media inside the now-visible slide (images, formerly
+                    # lazy iframes) must finish loading before capture.
+                    try:
+                        page.wait_for_function(_MEDIA_READY_JS, timeout=5000)
+                    except Exception:
+                        print(f"  (warn) media still loading on slide {i + 1} of {block} — capturing anyway")
                     page.wait_for_timeout(80)
 
                     img = tmpdir / f"{Path(block).stem}-{i + 1:03d}.png"

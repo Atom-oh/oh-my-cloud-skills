@@ -426,6 +426,7 @@ const ExportUtils = {
       var win = iframeDoc.defaultView;
       return (win && win.__exportNotes) || {};
     } catch (e) {
+      console.warn('Presenter notes extraction failed — exporting without speaker notes:', e);
       return {};
     }
   },
