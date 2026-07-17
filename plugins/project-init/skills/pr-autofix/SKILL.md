@@ -168,7 +168,7 @@ cp "$RUN_DIR/full.1.patch" "$RUN_DIR/approved.patch"              # landing patc
 Check the delta against the plan in both directions, then land only what passed:
 - **Unplanned hunks** → strip them from `approved.patch` (hunk-granular — a file mixing
   approved and unplanned hunks is never landed whole; if surgical stripping is unclear,
-  re-run the implementer for that file instead). `full.patch` stays untouched. New files
+  re-run the implementer for that file instead). `full.1.patch` stays untouched. New files
   ride the same patch (the intent-to-add diff includes them), so approval, the
   never-overwrite guard, and recovery all follow one mechanism.
 - **Each plan item must appear in the delta** — a missing edit means the implementer
@@ -181,7 +181,11 @@ Check the delta against the plan in both directions, then land only what passed:
   the user's tree — `git status --porcelain -- <those paths>` must be empty. If not,
   STOP and report: landing onto a locally-modified file would sweep the user's edits
   into the Step 5 commit even when `git apply` succeeds.
-- **Land**: `git -C "$(git rev-parse --show-toplevel)" apply "$RUN_DIR/approved.patch"`.
+- **Land**: first guard against a moved base — `[ "$(git -C "$HOST_ROOT" rev-parse HEAD)" = "$BASE_SHA" ]`
+  must hold (the user may have committed or switched branches mid-run; a stale patch on a
+  different revision → STOP and report; `$BASE_SHA` is recoverable from the worktree's
+  detached HEAD: `git -C "$IMPL_WT" rev-parse HEAD`). Then
+  `git -C "$HOST_ROOT" apply "$RUN_DIR/approved.patch"`.
   Any conflict (including a new-file path that already exists) → STOP and tell the user —
   never overwrite their changes.
 - **Build check comes BEFORE cleanup**: run the build verification (below) while
