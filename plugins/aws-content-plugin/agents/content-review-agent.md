@@ -1,9 +1,11 @@
 ---
 name: content-review-agent
-description: Cross-cutting content quality review agent. Reviews presentations, diagrams, documents, GitBook pages, and workshop content. Inspects layout, terminology, hallucination, language, PII/sensitive data, readability, accessibility, and structural completeness. Triggers on "review content", "quality check", "review document", "review presentation", "review workshop" requests. The non-code-artifact analog of superpowers:requesting-code-review — route here to review slides/diagrams/docs/gitbook/workshop artifacts.
+description: Cross-cutting content quality review agent. Reviews presentations (HTML and native PPTX), diagrams, documents, GitBook pages, brochures, and workshop content. Inspects layout, terminology, hallucination, language, PII/sensitive data, readability, accessibility, and structural completeness. Triggers on "review content", "quality check", "review document", "review presentation", "review deck", "review PPTX", "review brochure", "review workshop" requests. The non-code-artifact analog of superpowers:requesting-code-review — route here to review slides (HTML or native PPTX), diagrams, docs, gitbook, brochures, and workshop artifacts.
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 model: opus
 maxTurns: 50
+mcpServers:
+  - playwright
 ---
 
 # Content Review Agent
@@ -23,7 +25,8 @@ A comprehensive review agent for all content types produced by the aws-content-p
 | Markdown Documents | document-agent | Structure, content, references |
 | GitBook Pages | gitbook-agent | Navigation, components, cross-refs |
 | Workshop Content | workshop-agent | Directives, structure, bilingual consistency |
-| Brochure (HTML) | brochure-agent | Responsive tiers (mobile/tablet/PC), CTA presence, copy↔diagram consistency, relative asset links, accessibility, PII (account IDs / internal CIDRs/IPs) |
+| Brochure (HTML) | brochure-agent | Responsive tiers (mobile/tablet/PC), CTA presence, copy↔diagram consistency, product-UI screenshots present when the product has a **reachable** web UI or the user supplied captures (alt text + captions; flag that raster screenshots need a manual eyeball for baked-in account IDs/ARNs/tokens/internal URLs — text PII scan can't see pixels). Do **not** dock a brochure for missing screenshots when the product has no reachable UI and none were provided (matches brochure-agent rule 9). Also: relative asset links, accessibility, PII (account IDs / internal CIDRs/IPs) |
+| PPTX Decks (native) | presentation-agent → aws-light-fcd skill | `check_pptx.py` score ≥80 (text overflow/overlap, off-canvas, footer, page-number sanity, Pretendard-only, no placeholder text) + official AWS/AgentCore icons |
 
 ---
 
@@ -171,13 +174,15 @@ Email:       [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
 
 ## Visual Testing (HTML 콘텐츠)
 
-HTML 기반 콘텐츠(프레젠테이션, 애니메이션 다이어그램, 렌더링된 GitBook)에 대해 Playwright MCP 도구를 사용하여 실제 브라우저에서 인터랙션을 검증합니다.
+HTML 기반 콘텐츠(프레젠테이션, 애니메이션 다이어그램, 브로셔/프로필 페이지, 렌더링된 GitBook)에 대해 Playwright MCP 도구를 사용하여 실제 브라우저에서 인터랙션을 검증합니다.
 
-> **가용성 게이트 (먼저 확인)**: Playwright MCP 도구(`browser_navigate` 등)는 이
-> 에이전트의 기본 tool 목록이 아니라 **세션에 Playwright MCP가 로드된 경우에만**
-> 사용 가능합니다. Visual Testing 시작 전에 도구 존재를 확인하고, 없으면 시도하지
-> 말고 Visual Testing 10점을 면제 — 90점 만점 환산(verdict 표의 90점 밴드)으로
-> 진행하며 리포트에 "Visual Testing 면제(Playwright MCP 미가용)"를 명시합니다.
+> **가용성 게이트 (먼저 확인)**: Playwright MCP 서버는 이 에이전트의 frontmatter
+> `mcpServers: [playwright]`로 선언되어 플러그인이 직접 기동합니다(`npx
+> @playwright/mcp`). 따라서 정상 환경에선 `browser_*` 도구가 사용 가능하지만,
+> npx/브라우저 의존성이 없는 오프라인·미설치 환경에선 기동에 실패할 수 있습니다.
+> Visual Testing 시작 전에 `browser_*` 도구 존재를 확인하고, 없으면 시도하지 말고
+> Visual Testing 10점을 면제 — 90점 만점 환산(verdict 표의 90점 밴드)으로 진행하며
+> 리포트에 "Visual Testing 면제(Playwright MCP 미가용)"를 명시합니다.
 >
 > **GitBook 전제**: GitBook 프로젝트는 markdown 소스라 그대로는 브라우저 테스트
 > 대상이 아닙니다. 렌더링된 결과(gitbook 빌드 산출물 또는 배포 프리뷰 URL)가 있을
@@ -187,9 +192,9 @@ HTML 기반 콘텐츠(프레젠테이션, 애니메이션 다이어그램, 렌�
 
 HTML 파일을 브라우저에서 열어 테스트하려면:
 
-1. **파일 서빙**: Bash로 로컬 HTTP 서버 시작
+1. **파일 서빙**: Bash로 로컬 HTTP 서버 시작 (전 인터페이스 노출 금지 — loopback + 대상 디렉터리로 한정)
    ```bash
-   cd [프로젝트경로] && python3 -m http.server 8080 &
+   python3 -m http.server 8080 --bind 127.0.0.1 --directory "[프로젝트경로]" &
    ```
 
 2. **브라우저 열기**: `browser_navigate` → `http://localhost:8080/[파일경로]`
@@ -222,10 +227,12 @@ HTML 파일을 브라우저에서 열어 테스트하려면:
 |-------------|-----------------|
 | HTML 프레젠테이션 | 전체 (네비게이션, 탭, 퀴즈, 캔버스, 반응형, 프레젠터 뷰) |
 | 애니메이션 다이어그램 | 페이지 로드, 레전드 토글, 애니메이션 재생, 반응형 |
+| Brochure / 프로필 페이지 (HTML) | 전체 (반응형 3-tier 375/768/1280 스크린샷, CTA·앵커 동작, 콘솔 에러). Playwright MCP 미가용 시 면제→90점 환산 |
 | GitBook (빌드/프리뷰 URL 있을 때만) | 네비게이션, 컴포넌트 렌더링, 링크 검증 — markdown 소스만 있으면 면제 |
 | Markdown 문서 | 해당 없음 (텍스트만 검사) |
 | Draw.io 다이어그램 | 해당 없음 (XML 구조만 검사) |
 | Workshop | 해당 없음 (Workshop Studio 문법만 검사) |
+| PPTX 덱 | 해당 없음 (`check_pptx.py` 프로그램적 검사만 — Step 2 참조) |
 
 ### JS 콘솔 에러 정책
 
@@ -266,7 +273,7 @@ Deduction rules:
 | 렌더링 정상 (로드, 콘솔 에러 없음) | 5 | JS 에러: 자동 FAIL |
 | 인터랙션 정상 (네비, 탭, 퀴즈, 반응형) | 5 | -1 per broken interaction |
 
-> HTML이 아닌 콘텐츠(Markdown, Draw.io, Workshop)는 Visual Testing 10점이 면제되며, 나머지 90점 기준으로 환산합니다 — 90점 밴드: PASS ≥77 / REVIEW 63-76 / FAIL <63 (Verdict 표 참조).
+> HTML이 아닌 콘텐츠(Markdown, Draw.io, Workshop, PPTX)는 Visual Testing 10점이 면제되며, 나머지 90점 기준으로 환산합니다 — 90점 밴드: PASS ≥77 / REVIEW 63-76 / FAIL <63 (Verdict 표 참조).
 
 **Extended Inspection (35 points):**
 
@@ -300,6 +307,8 @@ if it is one of these):
 - Legal risk (copyright infringement)
 - Canvas Complexity Gate 8+-box violation (category 6)
 - JS console error / network 404 during Visual Testing (JS 콘솔 에러 정책)
+- PPTX: `check_pptx.py` score <80, or any `[geometry]` finding (text overflow, overlap,
+  off-canvas) — see the PPTX bullet in Step 2
 
 Examples: score 90/100 + 5 Warnings → REVIEW (warning band). Score 90/100 + 1 Critical
 → FAIL (critical band). Score 78/100 + 2 Warnings → REVIEW (score band; on the 90-point
@@ -389,6 +398,7 @@ Find review target files using Glob tool.
 - **HTML Presentations**: Check framework init, Canvas setup, quiz attributes
 - **GitBook**: Verify SUMMARY.md, component syntax, navigation
 - **Workshop**: Check directives, front matter, bilingual pairs
+- **PPTX Decks**: run `python3 plugins/aws-content-plugin/skills/aws-light-fcd/scripts/check_pptx.py <deck.pptx> --json` and read its `score`/`findings`. Score <80, or any `[geometry]` finding (text overflow, overlap, off-canvas), is Critical; `[design]` findings (missing footer, page-number regression, non-Pretendard font, placeholder text) are Warning unless they recur across most slides.
 
 ### Step 3: Visual Testing (HTML 콘텐츠만)
 
@@ -397,7 +407,7 @@ HTML 기반 콘텐츠인 경우 Playwright MCP 도구로 브라우저 검증 수
 0. **가용성 확인**: `browser_navigate` 등 Playwright MCP 도구가 세션에 있는지 먼저
    확인 — 없으면 이 Step 전체를 건너뛰고 90점 환산 (Visual Testing 섹션의 가용성
    게이트 참조)
-1. **서버 시작**: `python3 -m http.server 8080` (Bash)
+1. **서버 시작**: `python3 -m http.server 8080 --bind 127.0.0.1 --directory "[프로젝트경로]"` (Bash)
 2. **페이지 로드**: `browser_navigate` → URL
 3. **콘솔 체크**: `browser_console_messages` → JS 에러 확인
 4. **인터랙션 테스트**: 콘텐츠 타입별 체크리스트 실행
