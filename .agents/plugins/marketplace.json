@@ -75,6 +75,18 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Project Setup"
+    },
+    {
+      "name": "kiro",
+      "source": {
+        "source": "local",
+        "path": "./plugins/kiro"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Collaboration"
     }
   ]
 }

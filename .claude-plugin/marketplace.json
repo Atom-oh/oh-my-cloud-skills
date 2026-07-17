@@ -42,6 +42,12 @@
       "version": "1.14.1",
       "source": "./plugins/project-init",
       "description": "Initialize and maintain Claude Code project structures with adaptive project detection, CLAUDE.md quality scoring, and auto-sync documentation workflows"
+    },
+    {
+      "name": "kiro",
+      "version": "1.14.1",
+      "source": "./plugins/kiro",
+      "description": "Cost-savings delegation — Claude plans and verifies, Kiro CLI implements and reviews on its own flat-rate subscription credits, inside an isolated git worktree with a scope-guarded diff and a pre-commit review gate"
     }
   ]
 }

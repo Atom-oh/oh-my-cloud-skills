@@ -1,0 +1,43 @@
+{
+  "name": "kiro",
+  "version": "1.14.1",
+  "description": "Claude plans, Kiro implements and reviews — a cost-savings delegation plugin. Claude designs specs and verifies results while Kiro CLI (subscription credits) writes the code inside an isolated worktree and reviews diffs before every commit.",
+  "author": {
+    "name": "atomoh"
+  },
+  "agents": [
+    "./agents/kiro-delegate-agent.md"
+  ],
+  "skills": [
+    "./skills/kiro-delegate"
+  ],
+  "commands": [
+    "./commands/delegate.md",
+    "./commands/review.md",
+    "./commands/setup.md",
+    "./commands/configure.md"
+  ],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-commit-review.sh\""
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'kiro loaded. Claude plans + verifies, Kiro CLI implements + reviews (cost savings): /kiro:delegate · review · setup · configure. Run /kiro:setup first to detect kiro-cli and pick models.'"
+          }
+        ]
+      }
+    ]
+  }
+}

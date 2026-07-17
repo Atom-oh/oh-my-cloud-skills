@@ -1,0 +1,25 @@
+{
+  "name": "kiro",
+  "version": "1.14.1",
+  "description": "Claude/Codex plans and verifies, Kiro CLI implements and reviews on subscription credits — a cost-savings delegation workflow using an isolated git worktree and scope-guarded diffs",
+  "author": {
+    "name": "atomoh"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Kiro Delegate",
+    "shortDescription": "Delegate implementation and review to Kiro CLI to save tokens.",
+    "longDescription": "Plan with Codex, hand off implementation tasks to Kiro CLI (flat-rate subscription credits) inside an isolated git worktree, verify with tests, and gate every commit behind a Kiro-run review. Falls back to the host writing the code when Kiro's fix-loop is exhausted.",
+    "developerName": "atomoh",
+    "category": "Collaboration",
+    "capabilities": [
+      "Skills",
+      "Shell",
+      "Review"
+    ],
+    "defaultPrompt": [
+      "Delegate this implementation to Kiro.",
+      "Review my staged changes with Kiro before I commit."
+    ]
+  }
+}

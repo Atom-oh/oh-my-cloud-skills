@@ -4,13 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A Claude Code plugin marketplace containing six plugins for AWS cloud work:
+A Claude Code plugin marketplace containing seven plugins for AWS cloud work:
 - **aws-content-plugin** — Content creation (presentations, diagrams, docs, workshops)
 - **aws-ops-plugin** — Infrastructure operations & troubleshooting (EKS, networking, IAM, observability)
 - **kiro-power-converter** — Convert Claude Code plugins to Kiro IDE Power format
 - **agentcore-creator** — Convert Claude Code plugins to Bedrock AgentCore (harness or Runtime)
 - **co-agent** — Multi-AI collaboration (Kiro CLI, Codex, Antigravity): review, decision support, ADR co-authoring; Claude chairs
 - **project-init** — Project scaffolding and documentation management
+- **kiro** — Cost-savings delegation: Claude plans and verifies, Kiro CLI implements and reviews on its own subscription credits inside an isolated git worktree
 
 All plugins are installed via `/plugin marketplace add` or loaded locally with `--plugin-dir`.
 
@@ -37,7 +38,7 @@ routing — per-plugin `CLAUDE.md` holds the detail. Design: `docs/superpowers/s
 claude --plugin-dir ./plugins/aws-content-plugin
 claude --plugin-dir ./plugins/aws-ops-plugin
 
-# Validate plugin manifests (all 6 plugins)
+# Validate plugin manifests (all 7 plugins)
 for f in plugins/*/.claude-plugin/plugin.json; do
   python3 -c "import json; d=json.load(open('$f')); name='$f'.split('/')[1]; print(f'{name}: {len(d[\"agents\"])} agents, {len(d[\"skills\"])} skills')"
 done
@@ -145,7 +146,7 @@ All plugins share a single version tracked in their `plugin.json` → `"version"
   snippet below, which validates the Claude manifests + marketplace + tag.
 
 ```bash
-# Verify version consistency across all 6 plugins' .claude-plugin/plugin.json
+# Verify version consistency across all 7 plugins' .claude-plugin/plugin.json
 VS=$(for f in plugins/*/.claude-plugin/plugin.json; do python3 -c "import json; print(json.load(open('$f'))['version'])"; done | sort -u)
 MV=$(python3 -c "import json; vs=set(p['version'] for p in json.load(open('.claude-plugin/marketplace.json'))['plugins']); print(vs.pop() if len(vs)==1 else 'MISMATCH')")
 TAG=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
@@ -295,6 +296,24 @@ Skills: `project-scaffolder` — Claude Code project structure patterns and conv
 
 Commands: `/init-project`, `/sync-docs`, `/add-adr`, `/add-module`, `/add-runbook`, `/generate-readme`, `/generate-changelog`, `/health-check`, `/pr-autofix`, `/add-reference-doc`
 
+### kiro (1 agent, 1 skill, 4 commands)
+
+| Agent | Purpose |
+|-------|---------|
+| `kiro-delegate-agent` | Plans + verifies; hands implementation tasks to Kiro CLI inside an isolated git worktree; falls back to writing the code itself when Kiro's fix loop is exhausted |
+
+Skill: `kiro-delegate` — cost-savings delegation to Kiro CLI (subscription credits), not a
+second opinion (that's `co-agent`). Reuses co-agent's `worktree.py`/`scope_guard.py`/
+`parse_plan.py` verbatim — the isolation/scoping mechanics are identical, only the
+implementer CLI differs; co-agent's own harness refuses Kiro as an implementer
+(`SANDBOX_IMPLEMENTERS = codex, agy` — no cwd-confined write sandbox), and this plugin's
+worktree+capture+scope_guard path is what makes delegating to it safe anyway.
+
+Commands: `/kiro:setup` (probe + model list + `.kiro/agents/*.json` generation),
+`/kiro:delegate`, `/kiro:review`, `/kiro:configure`. A `PreToolUse(Bash)` hook runs a
+Kiro-powered review before every `git commit` (fail-open; blocks only on `critical`
+findings by default) — `/kiro:configure set review on_commit off` to disable.
+
 ## Workflows
 
 ```
@@ -317,6 +336,10 @@ Ops:       User issue → auto-routed agent → Diagnose → Resolve → Verify
 AgentCore: Plugin source → analyze → harness-vs-Runtime decision → A: harness config (skills attach as-is) | B: generate Strands artifacts → user refinement → deploy via CLI → verify
 
 Co-agent:  /co-agent → detect panel (Kiro/Codex/Antigravity) → fan-out prompt → Claude synthesizes → Review report / Decision / ADR
+
+kiro:      /kiro:setup → probe kiro-cli, list models, write .kiro/agents/*.json
+           /kiro:delegate → Claude plans (Kiro spec) → per task: worktree → Kiro implements → capture-diff → scope_guard → Claude applies+tests → bounded retry → Claude fallback → commit → delegation-rate report
+           git commit → PreToolUse hook → Kiro review (fail-open, blocks only on `critical`)
 ```
 
 ## Auto-Sync Rules
