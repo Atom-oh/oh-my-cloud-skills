@@ -108,7 +108,15 @@ function arrow(kit, pres, s, x, y, w) {
 
 // far-right numbered step legend. Text width is clamped to the canvas right edge
 // (W - PAD margin would waste the rail; 0.05 keeps it just inside 13.333).
+// Rows must stay above the footer band (6.8") — same fail-loud contract as the
+// column capacity guard: too many rows throws instead of silently bleeding.
 function stepLegend(kit, pres, s, steps, lx = 11.45, lyTop = 1.55, lrow = 0.6) {
+  const lastBottom = lyTop + (steps.length - 1) * lrow + 0.36;
+  if (lastBottom > 6.8) {
+    const maxRows = Math.floor((6.8 - 0.36 - lyTop) / lrow) + 1;
+    throw new Error(`arch.stepLegend: ${steps.length} rows from y=${lyTop} reach ${lastBottom.toFixed(2)}" ` +
+      `(footer band starts at 6.8"). Max ${maxRows} rows at this position — shorten the legend or split the slide.`);
+  }
   const textW = kit.W - 0.05 - (lx + 0.38);
   steps.forEach((t, i) => {
     stepMarker(kit, pres, s, lx, lyTop + i * lrow, i + 1, 0.28);
@@ -250,7 +258,9 @@ function archFlow(kit, pres, opts) {
       } else {
         svc(kit, pres, s, icx, itemY, it.icon, it.label, it.iconSz, slotW);
       }
-      if (it.step != null) stepMarker(kit, pres, s, icx + 0.14, itemY - 0.1, it.step);
+      // anchor the step marker at the item's actual visual anchor: icon corner for svc
+      // items, the oval for chips (icx would float the badge over the chip's label text)
+      if (it.step != null) stepMarker(kit, pres, s, itemCx + 0.14, itemY - 0.1, it.step);
       itemY += h;
       return { cx: itemCx, cy };
     });
@@ -293,7 +303,7 @@ function archFlow(kit, pres, opts) {
     arrow(kit, pres, s, fromX, midY, toX - fromX);
   });
 
-  if (hasLegend) stepLegend(kit, pres, s, opts.legend);
+  if (hasLegend) stepLegend(kit, pres, s, opts.legend, 11.45, y0);  // y0 tracks the subtitle offset
   if (opts.pageNum != null) kit.addFooter(pres, s, opts.pageNum);
   if (opts.notes) s.addNotes(opts.notes);
   return { s, cols };

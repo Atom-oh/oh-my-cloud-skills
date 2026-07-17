@@ -243,6 +243,20 @@ def test_table_cell_overflow_detected():
     assert any("overflow" in f for f in r["findings"]), r["findings"]
 
 
+def test_merged_header_cell_no_false_overflow():
+    # a header merged across 3 columns must be measured at its full spanned width —
+    # naive per-position iteration re-checked it at single-column size (false overflow)
+    prs = _blank_prs()
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    _add_footer(s, 2)
+    gf = s.shapes.add_table(2, 3, Inches(1), Inches(1), Inches(9), Inches(1.6))
+    origin = gf.table.cell(0, 0)
+    origin.merge(gf.table.cell(0, 2))
+    origin.text = "가속 컴퓨팅 포트폴리오 — GPU 및 AWS ML 가속기 헤더"  # fits 9", not 3"
+    r = check_pptx.analyze(prs)
+    assert not any("overflow" in f for f in r["findings"]), r["findings"]
+
+
 def test_empty_deck_fails_gate():
     prs = _blank_prs()  # zero slides
     r = check_pptx.analyze(prs)

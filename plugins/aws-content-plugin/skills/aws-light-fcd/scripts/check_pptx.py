@@ -171,15 +171,24 @@ def _tf_overflows(tf, w_in, h_in):
 
 
 def _table_cell_dims(sh):
-    """Yield (text_frame, w_in, h_in) for each table cell, using the table's column
-    widths and row heights. Merged cells are approximated by their origin cell's own
-    column/row extent (good enough for an overflow estimate)."""
+    """Yield (text_frame, w_in, h_in) once per real cell. row.cells returns the SAME
+    origin cell at every spanned grid position of a merge, so naive iteration would
+    re-check a merged header once per spanned column at single-cell size — a guaranteed
+    overflow false positive, and this gate hard-fails on any geometry finding. Merge
+    origins get their full spanned extent; spanned positions are skipped."""
     tbl = sh.table
     col_w = [c.width / EMU_PER_IN for c in tbl.columns]
     row_h = [r.height / EMU_PER_IN for r in tbl.rows]
     for ri, row in enumerate(tbl.rows):
         for ci, cell in enumerate(row.cells):
-            yield cell.text_frame, col_w[ci], row_h[ri]
+            if cell.is_spanned:
+                continue
+            if cell.is_merge_origin:
+                w = sum(col_w[ci:ci + cell.span_width])
+                h = sum(row_h[ri:ri + cell.span_height])
+            else:
+                w, h = col_w[ci], row_h[ri]
+            yield cell.text_frame, w, h
 
 
 def _check_overflow(shapes):

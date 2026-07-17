@@ -130,7 +130,7 @@ python3 {skill-dir}/scripts/check_brochure.py <brochure.html>
 
 It verifies tag balance, that the responsive/accessibility primitives are present (focus-visible, skip-link, reduced-motion, viewport meta, breakpoints), that every `<img>` has non-empty alt text, that referenced local assets (screenshots, the SVG) exist, and flags low-contrast muted-text tokens on a light background. It's a fast structural gate, not a substitute for looking at the page.
 
-Then invoke **content-review-agent** (`review content at <path>`). A score **≥ 85** is required before deploy — it catches hallucinated services, inflated counts, contradictions between copy and diagram, PII (account IDs, internal CIDRs/IPs — strip them from a public brochure), and readability/accessibility issues.
+Then invoke **content-review-agent** (`review content at <path>`). A PASS on the applicable scale is required before deploy — normally **≥ 85/100**; if the reviewer can't run Playwright visual tests, it converts to the 90-point scale (PASS ≥ 77 — see the reviewer's Verdict table). It catches hallucinated services, inflated counts, contradictions between copy and diagram, PII (account IDs, internal CIDRs/IPs — strip them from a public brochure), and readability/accessibility issues.
 
 ### Phase 6 — Deploy publicly (GitHub Pages)
 
