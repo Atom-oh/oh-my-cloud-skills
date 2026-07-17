@@ -319,7 +319,7 @@ git push origin main
 
 기업 PowerPoint 템플릿이 있으면 `.pptx` 파일을 제공하세요. 에이전트가 색상, 폰트, 로고를 추출하여 CSS 오버라이드로 변환합니다. 추출된 브랜드가 내장 AWS 라이트/다크 테마보다 항상 우선 적용됩니다.
 
-### PPTX export
+### PPTX 내보내기
 
 빌드된 덱은 headless 익스포터(`python3 <skill>/scripts/export_pptx.py <빌드-디렉터리>`) 또는 생성된 `toc.html`의 **Export PPTX** 버튼으로 스크린샷 기반 `.pptx`(슬라이드당 풀블리드 이미지 1장, 스피커 노트 포함)로 내보낼 수 있습니다. 편집 가능한 네이티브 PowerPoint가 필요하면 `aws-light-fcd` 스킬을 사용하세요.
 

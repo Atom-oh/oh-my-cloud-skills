@@ -100,7 +100,7 @@ function withAlpha(color, alpha) {
     var n = parseInt(m6[1], 16);
     return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + alpha + ')';
   }
-  var mrgb = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(c);
+  var mrgb = /^rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)/i.exec(c);
   if (mrgb) return 'rgba(' + mrgb[1] + ',' + mrgb[2] + ',' + mrgb[3] + ',' + alpha + ')';
   return color;
 }

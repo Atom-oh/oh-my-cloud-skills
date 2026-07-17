@@ -4,11 +4,14 @@
  * Include in TOC index.html pages: <script src="../common/export-utils.js"></script>
  */
 const ExportUtils = {
-  JSZIP_CDN: 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
+  // All export libs load from jsDelivr's npm mirror (serves the published
+  // npm files verbatim) with SRI pinned to the sha384 of each npm artifact.
+  JSZIP_CDN: 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js',
+  JSZIP_SRI: 'sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG',
   PPTXGEN_CDN: 'https://cdn.jsdelivr.net/npm/pptxgenjs@4.0.1/dist/pptxgen.bundle.js',
-  // SRI for the pinned pptxgenjs bundle (sha384 of the npm-published file)
   PPTXGEN_SRI: 'sha384-qb0Xhi7LLYpvW1HCK6oMrmDLSY9sy7vwm6ZlV6KjtrlL9yg30+YN4neTwnmX+Kp8',
-  HTML2CANVAS_CDN: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+  HTML2CANVAS_CDN: 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
+  HTML2CANVAS_SRI: 'sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H',
 
   /** Escape HTML special characters to prevent XSS in generated markup */
   _escapeHTML: function(str) {
@@ -299,42 +302,35 @@ const ExportUtils = {
     }
   },
 
-  /** Lazy-load JSZip from CDN */
-  loadJSZip: function() {
-    if (window.JSZip) return Promise.resolve();
+  /** Load a script from CDN with SRI + crossOrigin (fail-secure on mismatch) */
+  _loadScript: function(src, integrity, name) {
     return new Promise(function(resolve, reject) {
       var script = document.createElement('script');
-      script.src = ExportUtils.JSZIP_CDN;
+      script.src = src;
+      script.integrity = integrity;
+      script.crossOrigin = 'anonymous';
       script.onload = resolve;
-      script.onerror = function() { reject(new Error('Failed to load JSZip from CDN')); };
+      script.onerror = function() { reject(new Error('Failed to load ' + name + ' from CDN')); };
       document.head.appendChild(script);
     });
+  },
+
+  /** Lazy-load JSZip from CDN (SRI-pinned) */
+  loadJSZip: function() {
+    if (window.JSZip) return Promise.resolve();
+    return this._loadScript(ExportUtils.JSZIP_CDN, ExportUtils.JSZIP_SRI, 'JSZip');
   },
 
   /** Lazy-load PptxGenJS from CDN (SRI-pinned) */
   loadPptxGen: function() {
     if (window.PptxGenJS) return Promise.resolve();
-    return new Promise(function(resolve, reject) {
-      var script = document.createElement('script');
-      script.src = ExportUtils.PPTXGEN_CDN;
-      script.integrity = ExportUtils.PPTXGEN_SRI;
-      script.crossOrigin = 'anonymous';
-      script.onload = resolve;
-      script.onerror = function() { reject(new Error('Failed to load PptxGenJS from CDN')); };
-      document.head.appendChild(script);
-    });
+    return this._loadScript(ExportUtils.PPTXGEN_CDN, ExportUtils.PPTXGEN_SRI, 'PptxGenJS');
   },
 
-  /** Lazy-load html2canvas from CDN */
+  /** Lazy-load html2canvas from CDN (SRI-pinned) */
   loadHtml2Canvas: function() {
     if (window.html2canvas) return Promise.resolve();
-    return new Promise(function(resolve, reject) {
-      var script = document.createElement('script');
-      script.src = ExportUtils.HTML2CANVAS_CDN;
-      script.onload = resolve;
-      script.onerror = function() { reject(new Error('Failed to load html2canvas from CDN')); };
-      document.head.appendChild(script);
-    });
+    return this._loadScript(ExportUtils.HTML2CANVAS_CDN, ExportUtils.HTML2CANVAS_SRI, 'html2canvas');
   },
 
   /**

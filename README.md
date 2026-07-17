@@ -318,7 +318,7 @@ No build step is required — the HTML files are served directly.
 
 ### PPTX theme extraction
 
-If you have a corporate PowerPoint template, provide the `.pptx` file and the agent extracts colors, fonts, and logos into CSS overrides — the extracted brand takes precedence over the built-in AWS light/dark themes automatically.
+If you have a corporate PowerPoint template, provide the `.pptx` file and the agent extracts colors, fonts, and logos into CSS overrides — the extracted brand always takes precedence over the built-in AWS light/dark themes.
 
 ### PPTX export
 

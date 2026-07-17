@@ -108,6 +108,14 @@ _PREPARE_JS = """
   // frames (whose contentDocument is null and can't be inspected).
   document.querySelectorAll('iframe[loading="lazy"]').forEach(f => {
     f.dataset.exportLazy = '1';
+    // A lazy frame that was already visible may have loaded before this runs
+    // — the load event won't re-fire, so detect it now (same-origin only).
+    try {
+      const doc = f.contentDocument;
+      if (doc && doc.readyState === 'complete' && doc.location.href !== 'about:blank') {
+        f.dataset.exportLoaded = '1';
+      }
+    } catch (e) { /* cross-origin: leave to the load event */ }
     f.addEventListener('load', () => { f.dataset.exportLoaded = '1'; }, { once: true });
     f.loading = 'eager';
   });
@@ -337,6 +345,12 @@ def main():
     project_dir = Path(args.project_dir).resolve()
     if not project_dir.is_dir():
         _die(f"not a directory: {project_dir}")
+    if args.width <= 0 or args.height <= 0:
+        _die("--width/--height must be positive")
+    if not (project_dir / 'common').is_dir():
+        print("  (warn) no common/ directory inside the project dir — built decks "
+              "are self-contained (build copies common/ into the output dir); "
+              "point this script at the BUILT deck directory or assets will 404")
 
     blocks = args.blocks or _discover_blocks(project_dir)
     if not blocks:
