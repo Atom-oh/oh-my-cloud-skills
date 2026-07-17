@@ -653,6 +653,8 @@ aws-ops-power/
 | `doc-sync-checker` | project-init | "/sync-docs" | 문서 품질 점수 |
 | `pr-autofix-planner` / `pr-autofix-implementer` | project-init | (pr-autofix 스킬이 스폰) | 수정 계획 / 계획 적용된 worktree 편집 |
 
+> `pr-autofix-planner` / `pr-autofix-implementer`는 스킬 전용 스폰 — 키워드 자동 활성화 대상이 아닙니다.
+
 모든 에이전트는 Claude가 프롬프트에서 일치하는 키워드를 감지하면 자동으로 활성화됩니다.
 
 ---

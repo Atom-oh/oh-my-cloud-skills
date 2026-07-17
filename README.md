@@ -654,6 +654,8 @@ aws-ops-power/
 | `doc-sync-checker` | project-init | "/sync-docs" | Doc quality scores |
 | `pr-autofix-planner` / `pr-autofix-implementer` | project-init | (spawned by the pr-autofix skill) | Fix plan / plan-applied worktree edits |
 
+> `pr-autofix-planner` / `pr-autofix-implementer` are skill-spawned only — they do not auto-activate on keywords.
+
 All agents activate automatically when Claude detects matching keywords in your prompt.
 
 ---
