@@ -141,17 +141,17 @@ mechanical, not just remembered: every snippet starts with `set -euo pipefail`, 
 stage's LAST command writes a sentinel (`: > "$RUN_DIR/ok.captured"`, `ok.landed`,
 `ok.build`), and each stage's FIRST command requires the previous one
 (`[ -f "$RUN_DIR/ok.landed" ] || exit 1`) — a skipped or failed stage physically blocks
-the next. Six values
+the next. These values
 must survive across tool calls — record them in your running notes at 4b time and
 re-export them in every later Bash call: `RUN_DIR`, `WT_DIR`, `IMPL_WT`, `HOST_ROOT`,
-`BASE_SHA`, `BASE_REF` plus `CLEAN_WT` and `HOOKS_SNAP`. Each is also re-derivable if
+`BASE_SHA`, `BASE_REF` plus `CLEAN_DIR`/`CLEAN_WT` and `HOOKS_SNAP` — carry the whole list, not a remembered count. Each is also re-derivable if
 notes are lost: `BASE_SHA` from the worktree's detached HEAD, `HOST_ROOT` via
 `git rev-parse --show-toplevel` from your original checkout, `BASE_REF` only from notes —
 if it is gone and HEAD's ref is ambiguous, STOP rather than guess.)
 
 ```bash
 set -euo pipefail
-RUN_DIR=$(mktemp -d "${TMPDIR:-/tmp}/pr-autofix.XXXXXX")             # private (0700): host-trusted artifacts (patches)
+RUN_DIR=$(mktemp -d "${TMPDIR:-/tmp}/pr-autofix.XXXXXX")             # 0700 vs OTHER users; the implementer is the SAME uid — secrecy of this path, not the mode, is what keeps it out of reach
 WT_DIR=$(mktemp -d "${TMPDIR:-/tmp}/pr-autofix-wt.XXXXXX")           # separate dir: the only path the implementer is told
 HOST_ROOT=$(git rev-parse --show-toplevel)                           # pin once — landing never depends on CWD
 BASE_SHA=$(git rev-parse HEAD)                                       # pin once — delta base survives anything
@@ -160,11 +160,13 @@ HOOKS_DIR=$(git -C "$HOST_ROOT" rev-parse --path-format=absolute --git-path hook
 [ -n "$HOOKS_DIR" ] || exit 1                                        # fail-closed: never snapshot "nothing"
 # resolve via git, NOT "$HOST_ROOT/.git/hooks" — in a linked worktree .git is a gitfile
 # and a naive find would silently hash empty input, neutralizing the check
-HOOKS_SNAP=$( (cd "$HOOKS_DIR" 2>/dev/null && find . \( -type f -o -type l \) -exec sha256sum {} + | sort | sha256sum | cut -d" " -f1) || echo absent )
+if [ -d "$HOOKS_DIR" ]; then
+  HOOKS_SNAP=$(cd "$HOOKS_DIR" && find . \( -type f -o -type l \) -exec sha256sum {} + | sort | sha256sum | cut -d" " -f1)
+else HOOKS_SNAP=absent; fi   # find failure aborts (set -e) — never silently degrade to a constant
 gitwt() { git -c core.hooksPath=/dev/null -C "$WT_DIR/wt" "$@"; }    # EVERY git call in the worktree goes through this —
                                                                      # post-checkout fires even on file checkouts (flag=0),
                                                                      # so a single unguarded call reopens the PR-hook vector
-git -c core.hooksPath=/dev/null worktree add --detach "$WT_DIR/wt" "$BASE_SHA"
+git -C "$HOST_ROOT" -c core.hooksPath=/dev/null worktree add --detach "$WT_DIR/wt" "$BASE_SHA"
 IMPL_WT="$WT_DIR/wt"
 : > "$RUN_DIR/ok.setup"                                              # sentinel: later stages require this file
 ```
@@ -196,6 +198,11 @@ the full record in place; it is the recovery source):
 set -euo pipefail
 [ -f "$RUN_DIR/ok.setup" ] || exit 1                                 # previous stage must have succeeded
 gitwt() { git -c core.hooksPath=/dev/null -C "$WT_DIR/wt" "$@"; }    # re-declare per Bash call — functions don't survive
+# Symlink-escape gate: a PR-planted (or implementer-created) symlink pointing outside the
+# worktree would let later edits/reads escape checkout isolation — refuse to proceed.
+while IFS= read -r -d '' l; do
+  case "$(realpath "$l")" in "$IMPL_WT"/*) ;; *) echo "STOP: symlink escapes worktree: $l"; exit 1;; esac
+done < <(find "$IMPL_WT" -type l -print0)
 gitwt add -N .                                                       # intent-to-add: new files become diff-visible
 gitwt diff --binary --no-ext-diff --no-textconv "$BASE_SHA" > "$RUN_DIR/full.1.patch"
 [ -s "$RUN_DIR/full.1.patch" ] || { echo "STOP: empty capture — implementer produced no delta"; exit 1; }
@@ -228,6 +235,14 @@ set -euo pipefail
 [ -f "$RUN_DIR/ok.captured" ] || exit 1
 [ "$(git -C "$HOST_ROOT" rev-parse HEAD)" = "$BASE_SHA" ] || { echo "STOP: base moved"; exit 1; }
 [ "$(git -C "$HOST_ROOT" symbolic-ref -q HEAD || echo detached)" = "$BASE_REF" ] || { echo "STOP: branch switched"; exit 1; }
+# Mechanical file list (NUL-safe by construction — no shell substitution of names):
+git -C "$HOST_ROOT" apply --numstat "$RUN_DIR/approved.patch" | cut -f3- > "$RUN_DIR/landed.files"
+[ -s "$RUN_DIR/landed.files" ] || { echo "STOP: approved patch names no files"; exit 1; }
+# Cleanliness gate AS CODE: every target file must be clean in the user's tree — apply
+# --check passes non-overlapping local edits, and the later pathspec commit records whole
+# working-tree file contents, which would sweep those edits in.
+git -C "$HOST_ROOT" status --porcelain --pathspec-from-file="$RUN_DIR/landed.files" > "$RUN_DIR/dirty.check"
+[ -s "$RUN_DIR/dirty.check" ] && { echo "STOP: target files locally modified:"; cat "$RUN_DIR/dirty.check"; exit 1; }
 git -C "$HOST_ROOT" apply --check "$RUN_DIR/approved.patch"          # atomic pre-flight
 git -C "$HOST_ROOT" apply "$RUN_DIR/approved.patch"
 : > "$RUN_DIR/ok.landed"
@@ -244,7 +259,7 @@ git -C "$HOST_ROOT" apply "$RUN_DIR/approved.patch"
   (never run destructive git — reset/clean — on the implementer's worktree: it was
   subagent-writable, and a swapped symlink would aim those commands at your real
   checkout):
-  `CLEAN_WT=$(mktemp -d "${TMPDIR:-/tmp}/pr-autofix-clean.XXXXXX")/wt`, then
+  `CLEAN_DIR=$(mktemp -d "${TMPDIR:-/tmp}/pr-autofix-clean.XXXXXX")`; `CLEAN_WT="$CLEAN_DIR/wt"`, then
   `git -c core.hooksPath=/dev/null worktree add --detach "$CLEAN_WT" "$BASE_SHA"`,
   `git -c core.hooksPath=/dev/null -C "$CLEAN_WT" apply "$RUN_DIR/approved.patch"`, and
   it is the equality reference AND the clean-room build host. When the build AND the
@@ -255,8 +270,8 @@ git -C "$HOST_ROOT" apply "$RUN_DIR/approved.patch"
   `$CLEAN_WT` in that case; report which mode was used. After the build, verify the landed result equals the
   approved delta — compare **regenerated diffs, not patch files byte-wise** (hunk
   stripping perturbs offsets/index lines, so `approved.patch` itself is not a stable
-  reference): `git -C "$HOST_ROOT" diff "$BASE_SHA" -- <landed paths>` must match
-  `git -c core.hooksPath=/dev/null -C "$CLEAN_WT" diff "$BASE_SHA"`. ANY drift, including
+  reference): `git -C "$HOST_ROOT" diff --binary --no-ext-diff --no-textconv "$BASE_SHA" --pathspec-from-file="$RUN_DIR/landed.files"` must match
+  the same-flagged diff from `$CLEAN_WT`. ANY drift, including
   'explainable' formatter/codegen output, either goes back through approval (strong-tier
   review) or is reverted; nothing outside the approved delta is committed on the strength
   of being explainable.
@@ -274,8 +289,7 @@ git -C "$HOST_ROOT" apply "$RUN_DIR/approved.patch"
   guard first — `[ -n "$RUN_DIR" ] && [ -n "$WT_DIR" ] && [ ! -L "$IMPL_WT" ]` (an
   unset variable must not turn `rm -rf` on the wrong path; a symlinked worktree means the
   implementer deviated → STOP, do not remove). Then
-  `git worktree remove --force "$IMPL_WT"; rm -rf -- "$RUN_DIR" "$WT_DIR"` (`;` not `&&` —
-  a worktree-remove failure must not leak `$RUN_DIR`); same guarded removal (`[ -n ]`, `[ ! -L ]`) for `$CLEAN_WT`. On a STOP/failure path,
+  `git -C "$HOST_ROOT" worktree remove --force "$IMPL_WT" || true; rm -rf -- "$RUN_DIR" "$WT_DIR" "$CLEAN_DIR"` (the `|| true` matters — under `set -e` a remove failure would end the shell before the `rm` and leak everything); same guarded removal (`[ -n ]`, `[ ! -L ]`) for `$CLEAN_WT`. On a STOP/failure path,
   capture a recovery patch FIRST if none exists yet (the worktree may hold the only copy
   of the implementer's work), then remove the worktree but KEEP `$RUN_DIR` (patches) and
   tell the user its path — it is their inspection/recovery evidence.
@@ -323,19 +337,26 @@ set -euo pipefail
 [ -f "$RUN_DIR/ok.build" ] || exit 1                                 # build+equality stage must have passed
 [ "$(git -C "$HOST_ROOT" rev-parse HEAD)" = "$BASE_SHA" ] || { echo "STOP: base moved since landing"; exit 1; }
 [ "$(git -C "$HOST_ROOT" symbolic-ref -q HEAD || echo detached)" = "$BASE_REF" ] || { echo "STOP: branch switched"; exit 1; }
+# Equality RE-verified as code, with the SAME flags as capture (plain diff would let a
+# PR-planted .gitattributes textconv normalize real drift into a false pass):
+git -C "$HOST_ROOT" diff --binary --no-ext-diff --no-textconv "$BASE_SHA" --pathspec-from-file="$RUN_DIR/landed.files" > "$RUN_DIR/host.final.diff"
+git -c core.hooksPath=/dev/null -C "$CLEAN_WT" diff --binary --no-ext-diff --no-textconv "$BASE_SHA" > "$RUN_DIR/ref.final.diff"
+diff -q "$RUN_DIR/host.final.diff" "$RUN_DIR/ref.final.diff" >/dev/null || { echo "STOP: landed content drifted from approved delta"; exit 1; }
 HOOKS_DIR=$(git -C "$HOST_ROOT" rev-parse --path-format=absolute --git-path hooks)
-NOW_SNAP=$( (cd "$HOOKS_DIR" 2>/dev/null && find . \( -type f -o -type l \) -exec sha256sum {} + | sort | sha256sum | cut -d" " -f1) || echo absent )
+if [ -d "$HOOKS_DIR" ]; then
+  NOW_SNAP=$(cd "$HOOKS_DIR" && find . \( -type f -o -type l \) -exec sha256sum {} + | sort | sha256sum | cut -d" " -f1)
+else NOW_SNAP=absent; fi
 [ "$NOW_SNAP" = "$HOOKS_SNAP" ] || { echo "STOP: git hooks changed during the run"; exit 1; }
 HOOKS_FLAG=""
 git -C "$HOST_ROOT" config core.hooksPath >/dev/null 2>&1 && HOOKS_FLAG="-c core.hooksPath=/dev/null"
 
-# Stage and commit ONLY the files 4c landed. The pathspec commit is load-bearing: a bare
-# `git commit` would also include anything the USER had staged beforehand — the
-# cleanliness gate only checks the landed paths, not the whole index.
+# Stage and commit ONLY the files 4c landed — mechanically, from the same NUL-safe list
+# the gates used (no hand-assembled filename arguments). The pathspec commit is
+# load-bearing: a bare `git commit` would also include anything the USER had staged.
 # --literal-pathspecs: a PR-planted filename starting with ':' is pathspec magic that
 # can silently widen the add/commit scope. Pass the list quoted / NUL-safe, same as 4c.
-git -C "$HOST_ROOT" --literal-pathspecs add -- <files-landed-in-4c>
-git -C "$HOST_ROOT" --literal-pathspecs $HOOKS_FLAG commit -m "fix: address review feedback (iteration N/3)" -- <files-landed-in-4c>   # $HOOKS_FLAG unquoted on purpose
+git -C "$HOST_ROOT" --literal-pathspecs add --pathspec-from-file="$RUN_DIR/landed.files"
+git -C "$HOST_ROOT" --literal-pathspecs $HOOKS_FLAG commit -m "fix: address review feedback (iteration N/3)" --pathspec-from-file="$RUN_DIR/landed.files"   # $HOOKS_FLAG unquoted on purpose
 git -C "$HOST_ROOT" $HOOKS_FLAG push
 ```
 
