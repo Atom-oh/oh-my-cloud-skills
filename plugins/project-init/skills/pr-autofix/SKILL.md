@@ -110,7 +110,7 @@ judgment-heavy part — misread findings, wrong root cause, scope creep. A stron
 
 **4a. Fix plan — Fable or Opus.** If the host session is already running Fable/Opus,
 write the plan inline. Otherwise spawn a planning subagent with a strong-model override
-(Agent tool `model: "opus"`; use `"fable"` where available). The plan covers, per finding:
+(Agent tool `model: "opus"`; use `"fable"` where available). Give the planner a read-only tool allowlist (Read/Grep/Glob) — it judges, it does not edit. The plan covers, per finding:
 `file:line` → root cause → the exact edit → how to verify it. The scope constraints below
 are written INTO the plan so the implementer inherits them.
 
@@ -144,7 +144,8 @@ IMPL_WT="$RUN_DIR/wt"
 #  If a previous run died early, `git worktree prune` clears leftovers.)
 ```
 
-Spawn the implementer subagent (Agent tool `model: "sonnet"`) with the plan and the
+Spawn the implementer subagent (Agent tool `model: "sonnet"`, tool allowlist limited
+to file editing — no network/web tools) with the plan and the
 worktree path: work ONLY inside `$IMPL_WT`, apply exactly the planned edits, no
 refactoring beyond them, **edit files only — no git state commands** (no commit/stash/
 checkout/reset; a moved HEAD would silently erase the delta), return the changed-file list. The plan carries only structured
@@ -232,12 +233,21 @@ fi
 ### 5. Commit and push
 
 ```bash
+# Guard the hook surface the same way 4b does for worktree add: a hooksPath pointing at
+# TRACKED content (e.g. husky's .husky/) is PR-controllable — disable it; the default
+# untracked .git/hooks is user-owned and stays active (this repo's commit-msg relies on it).
+HOOKS_FLAG=""
+HP=$(git config core.hooksPath || true)
+if [ -n "$HP" ] && git ls-files --error-unmatch -- "$HP" >/dev/null 2>&1; then
+  HOOKS_FLAG="-c core.hooksPath=/dev/null"
+fi
+
 # Stage and commit ONLY the files 4c landed. The pathspec commit is load-bearing: a bare
 # `git commit` would also include anything the USER had staged beforehand — the
 # cleanliness gate only checks the landed paths, not the whole index.
 git add -- <files-landed-in-4c>
-git commit -m "fix: address review feedback (iteration N/3)" -- <files-landed-in-4c>
-git push
+git $HOOKS_FLAG commit -m "fix: address review feedback (iteration N/3)" -- <files-landed-in-4c>   # $HOOKS_FLAG unquoted on purpose
+git $HOOKS_FLAG push
 ```
 
 (No `Co-Authored-By` trailer — the scaffolded `commit-msg` hook strips those
