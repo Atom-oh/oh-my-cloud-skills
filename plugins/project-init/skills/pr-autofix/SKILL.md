@@ -110,7 +110,7 @@ judgment-heavy part — misread findings, wrong root cause, scope creep. A stron
 
 **4a. Fix plan — Fable or Opus.** If the host session is already running Fable/Opus,
 write the plan inline. Otherwise spawn a planning subagent with a strong-model override
-(Agent tool `model: "opus"`; use `"fable"` where available). Instruct the planner to work read-only (Read/Grep/Glob — it judges, it does not edit); this is a prompt-level constraint, not an enforced sandbox — the landing gates below are what actually hold. The plan covers, per finding:
+(Agent tool: prefer `model: "fable"`, fall back to `model: "opus"`). Instruct the planner to work read-only (Read/Grep/Glob — it judges, it does not edit); this is a prompt-level constraint, not an enforced sandbox — the landing gates below are what actually hold. The plan covers, per finding:
 `file:line` → root cause → the exact edit → how to verify it. The scope constraints below
 are written INTO the plan so the implementer inherits them.
 
@@ -131,8 +131,12 @@ remain the real guard. Residual surface on the HOST side: the build check and St
 `git commit`/`git push` run in your tree, where repo-configured hooks execute — if the
 repo sets a **tracked** `core.hooksPath` (PR-controllable), run those with
 `-c core.hooksPath=/dev/null` too; local untracked `.git/hooks` are user-owned and stay
-active by design. State that must survive across tool calls is exactly one path,
-recorded in your running notes.)
+active by design. Four values must survive across tool
+calls — record them in your running notes at 4b time and re-export them in every later
+Bash call: `RUN_DIR`, `HOST_ROOT`, `BASE_SHA`, `BASE_REF`. Each is also re-derivable if
+notes are lost: `BASE_SHA` from the worktree's detached HEAD, `HOST_ROOT` via
+`git rev-parse --show-toplevel` from your original checkout, `BASE_REF` only from notes —
+if it is gone and HEAD's ref is ambiguous, STOP rather than guess.)
 
 ```bash
 RUN_DIR=$(mktemp -d "${TMPDIR:-/tmp}/pr-autofix.XXXXXX") || exit 1   # private (0700): worktree AND patches live inside
@@ -147,7 +151,9 @@ IMPL_WT="$RUN_DIR/wt"
 
 Spawn the implementer subagent (Agent tool `model: "sonnet"`; instruct it to use file-editing
 tools only, no network/web — prompt-level, not enforced; the delta verification in 4c is
-the real gate) with the plan and the
+the gate for what LANDS — it cannot see runtime side-effects of the implementer run
+itself, e.g. reading or transmitting data, which remain covered only by the prompt
+constraints and the absence of network tools in the instruction) with the plan and the
 worktree path: work ONLY inside `$IMPL_WT`, apply exactly the planned edits, no
 refactoring beyond them, **edit files only — no git state commands** (no commit/stash/
 checkout/reset; a moved HEAD would silently erase the delta), return the changed-file list. The plan carries only structured
@@ -169,7 +175,7 @@ the full record in place; it is the recovery source):
 ```bash
 git -C "$IMPL_WT" add -N . || exit 1                              # intent-to-add: new files become diff-visible
                                                                   # (a silent failure here = new files silently missing from the patch)
-git -C "$IMPL_WT" diff --binary "$BASE_SHA" > "$RUN_DIR/full.1.patch" || exit 1   # capture generation 1 — immutable once written
+git -C "$IMPL_WT" diff --binary --no-ext-diff --no-textconv "$BASE_SHA" > "$RUN_DIR/full.1.patch" || exit 1   # capture generation 1 — immutable once written
 cp "$RUN_DIR/full.1.patch" "$RUN_DIR/approved.patch" || exit 1    # landing patch — edits happen HERE only
 ```
 
@@ -202,7 +208,11 @@ Check the delta against the plan in both directions, then land only what passed:
   Any conflict (including a new-file path that already exists) → STOP and tell the user —
   never overwrite their changes.
 - **Build check comes BEFORE cleanup**: run the build verification (below) while
-  `$RUN_DIR` still exists. After the build, re-compare the landed files' diff against
+  `$RUN_DIR` still exists. If the host tree is dirty beyond the landed files, the user's
+  uncommitted changes can pollute the result (false pass or false fail) — prefer the
+  clean-room check in that case: reset the worktree to `$BASE_SHA`
+  (`git -C "$IMPL_WT" checkout "$BASE_SHA" -- .`), apply `approved.patch` there, and
+  build in the worktree; report which mode was used. After the build, re-compare the landed files' diff against
   `approved.patch` — build tooling (formatters, codegen) may have mutated them;
   unexplained drift → investigate before committing.
 - **Companion-edit guard**: if the landed subset fails the build because a dropped hunk
@@ -221,7 +231,8 @@ Check the delta against the plan in both directions, then land only what passed:
 **Constraints (these go into the plan in 4a and bind the implementer in 4b):**
 - **Execution-surface files need explicit user approval**: edits to files the host will
   execute during verification (`package.json` scripts, `Makefile`, `build.rs`,
-  `*.gradle`, CI-adjacent tooling configs) may be legitimate review fixes, but they turn
+  `*.gradle`, `pyproject.toml`, `Cargo.toml`, `CMakeLists.txt`, CI-adjacent tooling
+  configs — an illustrative list, not exhaustive: anything executed during the build counts) may be legitimate review fixes, but they turn
   the build check into arbitrary code execution — plan them only with the user's
   explicit sign-off, never autonomously.
 - Do NOT refactor beyond what the reviews ask
