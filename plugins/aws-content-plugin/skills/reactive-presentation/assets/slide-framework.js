@@ -357,6 +357,8 @@ class SlideFramework {
     const hint = document.createElement('div');
     hint.className = 'nav-hint';
     hint.textContent = '← → Space  |  F: Fullscreen  |  P: Presenter  |  O: Overview';
+    // Footer occupies the same bottom-left corner — lift the hint above it
+    if (this.footer) hint.style.bottom = '2.2rem';
     (this.getDeck() || document.body).appendChild(hint);
     this.navHint = hint;
     // Fade out after 5s

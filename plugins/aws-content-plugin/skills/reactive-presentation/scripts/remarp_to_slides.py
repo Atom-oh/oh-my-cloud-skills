@@ -58,7 +58,10 @@ ICON_NAME_MAP = {
     'Redshift': 'Arch_Amazon-Redshift_48.svg',
     'Neptune': 'Arch_Amazon-Neptune_48.svg',
     # --- Networking ---
-    'VPC': 'Virtual-private-cloud-VPC_32.svg',
+    # Service icon (services category) — the group icon
+    # Virtual-private-cloud-VPC_32.svg lives in groups/ and is not copyable
+    # from the services path bare labels resolve to.
+    'VPC': 'Arch_Amazon-Virtual-Private-Cloud_48.svg',
     'CloudFront': 'Arch_Amazon-CloudFront_48.svg',
     'Route53': 'Arch_Amazon-Route-53_48.svg',
     'ALB': 'Arch_Elastic-Load-Balancing_48.svg',
@@ -121,6 +124,44 @@ ICON_NAME_MAP = {
     'Amplify': 'Arch_AWS-Amplify_48.svg',
     'AppConfig': 'Arch_AWS-AppConfig_48.svg',
 }
+
+
+def _bundled_icon_filenames(category: str = '') -> set:
+    """Icon filenames shipped in the skill bundle, per category (cached).
+
+    Categories mirror the ./common/aws-icons/<category>/ output layout that
+    _copy_referenced_icons copies from (services/groups/categories/resources/
+    others). Pass '' for the union of all categories. Used by validation to
+    fail loudly on canvas icon names that resolve to a file that does not
+    exist in the category it will be copied from (otherwise they silently
+    render as bare labels). Empty set when no icon bundle is present.
+    """
+    cache = getattr(_bundled_icon_filenames, '_cache', None)
+    if cache is None:
+        skill_dir = Path(__file__).parent.parent
+        icons_root = skill_dir / 'icons'
+        if not icons_root.is_dir():
+            icons_root = skill_dir / 'assets' / 'aws-icons'
+        category_dirs = {
+            'services': 'Architecture-Service-Icons_07312025',
+            'groups': 'Architecture-Group-Icons_07312025',
+            'categories': 'Category-Icons_07312025',
+            'resources': 'Resource-Icons_07312025',
+            'others': 'others',
+        }
+        cache = {'': set()}
+        for cat, subdir in category_dirs.items():
+            base = icons_root / subdir
+            names = set()
+            if base.is_dir():
+                names = {p.name for p in base.rglob('*')
+                         if p.suffix.lower() in ('.svg', '.png')}
+            cache[cat] = names
+            cache[''] |= names
+        _bundled_icon_filenames._cache = cache
+    # Unknown category → empty set, so callers skip validation instead of
+    # falling back to the union (which the copy step does not use).
+    return cache.get(category or '', set())
 
 
 class SlideType(Enum):
@@ -2519,7 +2560,7 @@ class RemarpHTMLGenerator:
         elif is_gradient:
             bg_style = f"background:{pptx_bg}"
         else:
-            bg_style = "background:linear-gradient(135deg, #1a1f35 0%, #0d1117 50%, #161b2e 100%)"
+            bg_style = "background:linear-gradient(135deg, #16212f 0%, #0f1b2a 55%, #14243a 100%)"
 
         if pptx_bg:
             # §0a — PPTX-style cover with absolute positioning
@@ -2554,9 +2595,9 @@ class RemarpHTMLGenerator:
             subtitle_html = f'<p style="position:absolute; left:5%; top:60%; font-size:1.3rem; color:rgba(255,255,255,0.7); width:60%; margin:0;">{subtitle}</p>' if subtitle else ''
 
             return f'''<div class="slide" style="{bg_style}; padding:0; overflow:hidden;">
-  <div style="position:absolute; top:-20%; right:-10%; width:60%; height:80%; background:radial-gradient(ellipse, rgba(108,92,231,0.15) 0%, transparent 70%); pointer-events:none;"></div>
-  <div style="position:absolute; left:5%; top:42%; width:80px; height:3px; background:linear-gradient(90deg, #6c5ce7, #a29bfe); border-radius:2px;"></div>
-  <h1 style="position:absolute; left:5%; top:45%; font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:60%; margin:0;">{title}</h1>
+  <div style="position:absolute; top:-20%; right:-10%; width:60%; height:80%; background:radial-gradient(ellipse, rgba(255,153,0,0.10) 0%, transparent 70%); pointer-events:none;"></div>
+  <div style="position:absolute; left:5%; top:42%; width:80px; height:3px; background:linear-gradient(90deg, var(--accent, #ff9900), rgba(255,153,0,0.25)); border-radius:2px;"></div>
+  <h1 style="position:absolute; left:5%; top:45%; font-family:var(--font-display); letter-spacing:var(--tracking-tight, -0.02em); font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:60%; margin:0;">{title}</h1>
   {subtitle_html}
   {speaker_html}
 </div>'''
@@ -3161,9 +3202,10 @@ class RemarpHTMLGenerator:
             elif line.startswith('### '):
                 _flush_step()
                 current_step_title = line[4:].strip()
-            elif current_step_title is not None:
-                current_step_desc_lines.append(line)
             elif re.match(r'^\d+\.\s', line):
+                # Numbered items always start a NEW step — this check must run
+                # before the description-collector below, or every item after
+                # the first gets swallowed into step 1's description.
                 _flush_step()
                 step_text = re.sub(r'^\d+\.\s+', '', line)
                 # Support "**Title** — description" format
@@ -3173,6 +3215,8 @@ class RemarpHTMLGenerator:
                     current_step_desc_lines = [bold_match.group(2)] if bold_match.group(2) else []
                 else:
                     steps.append({'title': step_text, 'desc': ''})
+            elif current_step_title is not None:
+                current_step_desc_lines.append(line)
 
         _flush_step()
 
@@ -3534,10 +3578,12 @@ class RemarpHTMLGenerator:
 
         header_html = f'<div class="slide-header" data-remarp-id="s{slide.index}-header"><h2>{heading}</h2></div>' if heading else ''
 
+        # grid-vcenter: sparse card rows center in the remaining slide height
+        # instead of hugging the header (auto margins collapse to 0 on overflow)
         return f'''<div class="slide">
   {header_html}
   <div class="slide-body" data-remarp-id="s{slide.index}-body">
-    <div class="col-{columns}">
+    <div class="col-{columns} grid-vcenter">
       {chr(10).join("      " + c for c in cards_html)}
     </div>
   </div>
@@ -3577,7 +3623,7 @@ class RemarpHTMLGenerator:
 
         return f'''<div class="slide">
   <div class="center-content" style="height:100%; gap:1.5rem;">
-    <h1 style="font-size:3rem; background:linear-gradient(135deg, var(--accent-light), var(--cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">Thank You</h1>
+    <h1 style="font-family:var(--font-display); letter-spacing:var(--tracking-tight, -0.02em); font-size:3rem; color:var(--text-primary);">Thank You</h1>
     <p style="color:var(--text-secondary); font-size:1.1rem;">{message}</p>
     {congrats}
     <div style="display:flex; gap:1rem; margin-top:1.5rem;">
@@ -3680,6 +3726,13 @@ class RemarpHTMLGenerator:
             _dark_flag = str(_dark_raw).strip().lower() in ('true', '1', 'yes', 'dark')
         deck_theme_class = ' theme-dark' if (_mode == 'dark' or _dark_flag) else ''
 
+        # Theme preset: `theme.preset: paper` → deck root gets `preset-paper`
+        # (opt-in looks defined in theme.css; unknown names pass through as a
+        # class so a deck-local stylesheet can define its own preset scope).
+        _preset = str(theme_cfg.get('preset', '') or config.get('preset', '')).strip().lower()
+        if _preset and re.match(r'^[a-z][a-z0-9-]*$', _preset):
+            deck_theme_class += f' preset-{_preset}'
+
         # Optional dark-slide logo (white/light logo shown on theme-dark slides).
         logo_dark = config.get('logoDark', '') or theme_cfg.get('logoDark', '')
         logo_js = f"logoSrc: '{logo_src}'," if logo_src else ''
@@ -3694,11 +3747,13 @@ class RemarpHTMLGenerator:
                 f'<script>\n{js}\n</script>' for js in canvas_scripts
             )
 
-        # Mermaid CDN injection
+        # Mermaid CDN injection — diagram theme follows the deck theme
+        # (light default was unreadable with the old hardcoded 'dark').
         mermaid_script = ''
         if config.get('_has_mermaid'):
-            mermaid_script = '''<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
-<script>mermaid.initialize({startOnLoad:true, theme:'dark'});</script>'''
+            mermaid_theme = 'dark' if 'theme-dark' in deck_theme_class else 'neutral'
+            mermaid_script = f'''<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({{startOnLoad:true, theme:'{mermaid_theme}'}});</script>'''
 
         # Theme config injection (use same fallback logic as logo/footer above)
         theme_js = ''
@@ -4913,6 +4968,52 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
             add('WARNING', 'OFF_SCALE',
                 'Off-scale spacing value (not on the 8px / 4px-step scale) in :::html/:::css block',
                 'Use var(--space-*) (8px scale) instead of an arbitrary px/rem value')
+
+    # --- Rule: Canvas icon names must resolve to a bundled icon file ---
+    # An unknown name silently renders as a floating text label (no icon, arrows
+    # pointing at empty space), so fail loudly at validate time instead.
+    if _bundled_icon_filenames():
+        import difflib
+        for elem in slide.canvas_elements:
+            if elem.element_type != 'icon':
+                continue
+            label = str(elem.params.get('label', ''))
+            src = str(elem.params.get('src', ''))
+            if not label and not src:
+                continue  # nothing to resolve — parser produced no reference
+            # Only bundle-resolved srcs are checkable; bare labels resolve to
+            # ./common/aws-icons/ at parse time. Author-provided paths/URLs
+            # (anything else) are the author's own files — skip them.
+            if '/' in label or '.' in label:
+                continue
+            cat_match = re.match(r'\./common/aws-icons/([\w-]+)/', src)
+            if src and not cat_match:
+                continue
+            # Validate against the SAME category dir the build copies from —
+            # a filename that only exists in another category still fails at
+            # copy time, so a global-set check would be a false negative.
+            # (ICON_NAME_MAP is audited to resolve fully within services/.)
+            category = cat_match.group(1) if cat_match else 'services'
+            bundled = _bundled_icon_filenames(category)
+            if not bundled:
+                continue  # unknown/empty category — nothing to validate against
+            filename = os.path.basename(src) if src else ICON_NAME_MAP.get(label, f'Arch_{label}_48.svg')
+            if filename not in bundled:
+                # Match against aliases AND filename stems (a long official
+                # service name is closer to the stem than to its short alias).
+                stem_to_alias = {
+                    re.sub(r'^Arch_|_48|\.svg$', '', fname): alias
+                    for alias, fname in ICON_NAME_MAP.items()
+                }
+                pool = list(ICON_NAME_MAP.keys()) + list(stem_to_alias.keys())
+                close = difflib.get_close_matches(label, pool, n=3, cutoff=0.4)
+                aliases = list(dict.fromkeys(stem_to_alias.get(c, c) for c in close))
+                hint = (f"Use one of: {', '.join(aliases)}" if aliases
+                        else 'See ICON_NAME_MAP aliases in remarp_to_slides.py or pass an explicit icon path')
+                add('CRITICAL', 'UNKNOWN_ICON',
+                    f'Canvas icon "{label}" resolves to {filename}, which is not in the bundled AWS icon set '
+                    f'— it will render as a floating label with no icon',
+                    hint)
 
     return findings
 
