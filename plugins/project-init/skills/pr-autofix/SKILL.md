@@ -161,13 +161,20 @@ HOOKS_DIR=$(git -C "$HOST_ROOT" rev-parse --path-format=absolute --git-path hook
 # resolve via git, NOT "$HOST_ROOT/.git/hooks" — in a linked worktree .git is a gitfile
 # and a naive find would silently hash empty input, neutralizing the check
 if [ -d "$HOOKS_DIR" ]; then
-  HOOKS_SNAP=$(cd "$HOOKS_DIR" && find . \( -type f -o -type l \) -exec sha256sum {} + | sort | sha256sum | cut -d" " -f1)
+  SHAPIPE() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; }   # macOS has no sha256sum
+  HOOKS_SNAP=$(cd "$HOOKS_DIR" && find . \( -type f -o -type l \) -print0 | sort -z | xargs -0 cat | SHAPIPE | cut -d" " -f1)
 else HOOKS_SNAP=absent; fi   # find failure aborts (set -e) — never silently degrade to a constant
 gitwt() { git -c core.hooksPath=/dev/null -C "$WT_DIR/wt" "$@"; }    # EVERY git call in the worktree goes through this —
                                                                      # post-checkout fires even on file checkouts (flag=0),
                                                                      # so a single unguarded call reopens the PR-hook vector
 git -C "$HOST_ROOT" -c core.hooksPath=/dev/null worktree add --detach "$WT_DIR/wt" "$BASE_SHA"
 IMPL_WT="$WT_DIR/wt"
+# Pre-scan BEFORE the implementer runs: a symlink already committed on the branch would
+# let the implementer's Read/Edit escape the checkout DURING the run — the post-run scan
+# in 4c only protects the capture, not the run itself.
+while IFS= read -r -d '' l; do
+  case "$(realpath "$l")" in "$IMPL_WT"/*) ;; *) echo "STOP: symlink escapes worktree: $l"; exit 1;; esac
+done < <(find "$IMPL_WT" -type l -print0)
 : > "$RUN_DIR/ok.setup"                                              # sentinel: later stages require this file
 ```
 
@@ -198,6 +205,9 @@ the full record in place; it is the recovery source):
 set -euo pipefail
 [ -f "$RUN_DIR/ok.setup" ] || exit 1                                 # previous stage must have succeeded
 gitwt() { git -c core.hooksPath=/dev/null -C "$WT_DIR/wt" "$@"; }    # re-declare per Bash call — functions don't survive
+# Gitfile integrity: the worktree's .git is an implementer-writable plain file — if it
+# was repointed, every gitwt capture below would read a DIFFERENT repository:
+[ "$(gitwt rev-parse --path-format=absolute --git-common-dir)" = "$HOST_ROOT/.git" ] || { echo "STOP: worktree gitfile tampered"; exit 1; }
 # Symlink-escape gate: a PR-planted (or implementer-created) symlink pointing outside the
 # worktree would let later edits/reads escape checkout isolation — refuse to proceed.
 while IFS= read -r -d '' l; do
@@ -235,17 +245,34 @@ set -euo pipefail
 [ -f "$RUN_DIR/ok.captured" ] || exit 1
 [ "$(git -C "$HOST_ROOT" rev-parse HEAD)" = "$BASE_SHA" ] || { echo "STOP: base moved"; exit 1; }
 [ "$(git -C "$HOST_ROOT" symbolic-ref -q HEAD || echo detached)" = "$BASE_REF" ] || { echo "STOP: branch switched"; exit 1; }
-# Mechanical file list (NUL-safe by construction — no shell substitution of names):
+# Mechanical file list — LF-delimited; exotic names are rejected up-front rather than
+# mis-handled (numstat C-quotes specials and renders renames as {old => new}):
 git -C "$HOST_ROOT" apply --numstat "$RUN_DIR/approved.patch" | cut -f3- > "$RUN_DIR/landed.files"
 [ -s "$RUN_DIR/landed.files" ] || { echo "STOP: approved patch names no files"; exit 1; }
-# Cleanliness gate AS CODE: every target file must be clean in the user's tree — apply
-# --check passes non-overlapping local edits, and the later pathspec commit records whole
-# working-tree file contents, which would sweep those edits in.
-git -C "$HOST_ROOT" status --porcelain --pathspec-from-file="$RUN_DIR/landed.files" > "$RUN_DIR/dirty.check"
-[ -s "$RUN_DIR/dirty.check" ] && { echo "STOP: target files locally modified:"; cat "$RUN_DIR/dirty.check"; exit 1; }
+grep -q '^"\|=>' "$RUN_DIR/landed.files" && { echo "STOP: exotic/renamed path in patch — refuse"; exit 1; }
+# Cleanliness gate AS CODE (per file — `git status`/`git diff` do NOT support
+# --pathspec-from-file; only add/commit/checkout-family do):
+while IFS= read -r f; do
+  [ -z "$(git -C "$HOST_ROOT" status --porcelain -- "$f")" ] || { echo "STOP: locally modified: $f"; exit 1; }
+done < "$RUN_DIR/landed.files"
 git -C "$HOST_ROOT" apply --check "$RUN_DIR/approved.patch"          # atomic pre-flight
 git -C "$HOST_ROOT" apply "$RUN_DIR/approved.patch"
+git -C "$HOST_ROOT" add -N --pathspec-from-file="$RUN_DIR/landed.files"   # new files become diff-visible on the host too
 : > "$RUN_DIR/ok.landed"
+```
+
+**Rollback on any later STOP** (build failure, drift, hook mismatch): the landed delta
+must not squat in the user's tree — the cleanliness gate proved these paths had no user
+content, so reverting exactly them is safe:
+
+```bash
+while IFS= read -r f; do
+  if git -C "$HOST_ROOT" cat-file -e "$BASE_SHA:$f" 2>/dev/null; then
+    git -C "$HOST_ROOT" checkout "$BASE_SHA" -- "$f"
+  else
+    git -C "$HOST_ROOT" rm -q --cached -- "$f" 2>/dev/null || true; rm -f -- "$HOST_ROOT/$f"
+  fi
+done < "$RUN_DIR/landed.files"
 ```
  **Repeat the same SHA+ref check AND the
   regenerated-diff equality check immediately before Step 5's commit** — the build can
@@ -338,13 +365,19 @@ set -euo pipefail
 [ "$(git -C "$HOST_ROOT" rev-parse HEAD)" = "$BASE_SHA" ] || { echo "STOP: base moved since landing"; exit 1; }
 [ "$(git -C "$HOST_ROOT" symbolic-ref -q HEAD || echo detached)" = "$BASE_REF" ] || { echo "STOP: branch switched"; exit 1; }
 # Equality RE-verified as code, with the SAME flags as capture (plain diff would let a
-# PR-planted .gitattributes textconv normalize real drift into a false pass):
-git -C "$HOST_ROOT" diff --binary --no-ext-diff --no-textconv "$BASE_SHA" --pathspec-from-file="$RUN_DIR/landed.files" > "$RUN_DIR/host.final.diff"
-git -c core.hooksPath=/dev/null -C "$CLEAN_WT" diff --binary --no-ext-diff --no-textconv "$BASE_SHA" > "$RUN_DIR/ref.final.diff"
+# PR-planted .gitattributes textconv normalize real drift into a false pass). Per-file —
+# `git diff` has no --pathspec-from-file; file-list order keeps both sides comparable:
+git -c core.hooksPath=/dev/null -C "$CLEAN_WT" add -N .              # reference must see new files too
+: > "$RUN_DIR/host.final.diff"; : > "$RUN_DIR/ref.final.diff"
+while IFS= read -r f; do
+  git -C "$HOST_ROOT" diff --binary --no-ext-diff --no-textconv "$BASE_SHA" -- "$f" >> "$RUN_DIR/host.final.diff"
+  git -c core.hooksPath=/dev/null -C "$CLEAN_WT" diff --binary --no-ext-diff --no-textconv "$BASE_SHA" -- "$f" >> "$RUN_DIR/ref.final.diff"
+done < "$RUN_DIR/landed.files"
 diff -q "$RUN_DIR/host.final.diff" "$RUN_DIR/ref.final.diff" >/dev/null || { echo "STOP: landed content drifted from approved delta"; exit 1; }
 HOOKS_DIR=$(git -C "$HOST_ROOT" rev-parse --path-format=absolute --git-path hooks)
 if [ -d "$HOOKS_DIR" ]; then
-  NOW_SNAP=$(cd "$HOOKS_DIR" && find . \( -type f -o -type l \) -exec sha256sum {} + | sort | sha256sum | cut -d" " -f1)
+  SHAPIPE() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; }
+  NOW_SNAP=$(cd "$HOOKS_DIR" && find . \( -type f -o -type l \) -print0 | sort -z | xargs -0 cat | SHAPIPE | cut -d" " -f1)
 else NOW_SNAP=absent; fi
 [ "$NOW_SNAP" = "$HOOKS_SNAP" ] || { echo "STOP: git hooks changed during the run"; exit 1; }
 HOOKS_FLAG=""
