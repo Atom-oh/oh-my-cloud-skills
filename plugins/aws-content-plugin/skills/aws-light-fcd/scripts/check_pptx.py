@@ -59,6 +59,7 @@ CANVAS_TOL_IN = 0.02
 FONT_NAME = "Pretendard"
 COPYRIGHT_MARK = "amazon web services"
 FOOTER_BAND_IN = 6.5             # y-position past which text is "in the footer row"
+_PAGENUM_RE = re.compile(r"^[0-9]+$")
 PLACEHOLDER_RE = re.compile(r"\bTODO\b|\bTBD\b|lorem ipsum|\bXXX\b|placeholder|\?{3}", re.I)
 
 
@@ -110,6 +111,8 @@ def _kind(sh, slide_area_sqin):
         if box and (box[2] * box[3]) / slide_area_sqin > BG_AREA_RATIO:
             return None  # full-bleed background image, not "content" for overlap purposes
         return "picture"
+    if getattr(sh, "has_table", False):
+        return "table"   # a table's footprint should not collide with other content
     if _has_text(sh):
         return "text"
     return None
@@ -359,7 +362,9 @@ def analyze(prs):
         for sh in shapes:
             if getattr(sh, "has_text_frame", False):
                 t = sh.text_frame.text.strip()
-                if t.isdigit() and _bbox_in(sh) and _bbox_in(sh)[1] > FOOTER_BAND_IN:
+                # ASCII digits only: str.isdigit() is True for '②'/'²' etc. but int()
+                # would then raise — a QA gate must never crash on an external deck.
+                if _PAGENUM_RE.match(t) and _bbox_in(sh) and _bbox_in(sh)[1] > FOOTER_BAND_IN:
                     page_nums.append((si, int(t)))
                     slide_has_pagenum = True
             # placeholder/font/min-size scan covers table cells too (via _text_frames)

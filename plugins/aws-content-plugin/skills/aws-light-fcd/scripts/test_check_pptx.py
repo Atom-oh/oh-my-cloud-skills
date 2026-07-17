@@ -257,6 +257,26 @@ def test_merged_header_cell_no_false_overflow():
     assert not any("overflow" in f for f in r["findings"]), r["findings"]
 
 
+def test_circled_digit_footer_no_crash():
+    prs = _blank_prs()
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    _add_text(s, 0.92, 1.0, 11, 3.0, "본문", size=14)
+    tb = s.shapes.add_textbox(Inches(12.5), Inches(7.06), Inches(0.4), Inches(0.3))
+    tb.text_frame.text = "\u2461"  # circled digit two: isdigit() True, int() would crash
+    r = check_pptx.analyze(prs)  # must not raise
+    assert isinstance(r["score"], int), r
+
+
+def test_table_overlap_detected():
+    prs = _blank_prs()
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    _add_footer(s, 2)
+    s.shapes.add_table(2, 2, Inches(2), Inches(2), Inches(4), Inches(2))
+    s.shapes.add_picture(LOGO, Inches(3), Inches(2.5), width=Inches(2), height=Inches(1.2))
+    r = check_pptx.analyze(prs)
+    assert any("overlapping" in f for f in r["findings"]), r["findings"]
+
+
 def test_empty_deck_fails_gate():
     prs = _blank_prs()  # zero slides
     r = check_pptx.analyze(prs)
