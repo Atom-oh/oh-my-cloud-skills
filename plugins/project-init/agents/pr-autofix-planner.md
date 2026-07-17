@@ -1,6 +1,6 @@
 ---
 name: pr-autofix-planner
-description: "Read-only fix planner for the pr-autofix skill. Reads PR review findings and the repository, produces a structured fix plan (file:line, root cause, exact edit, verification per finding). Spawned by the pr-autofix skill with a strong model (prefer fable, fall back to opus) — not intended for direct invocation."
+description: "Internal worker — spawned only by the pr-autofix skill; do not select for user prompts. Read-only analysis stage of that skill's loop."
 tools: Read, Grep, Glob
 model: opus
 ---

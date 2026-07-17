@@ -162,7 +162,9 @@ HOOKS_DIR=$(git -C "$HOST_ROOT" rev-parse --path-format=absolute --git-path hook
 # and a naive find would silently hash empty input, neutralizing the check
 if [ -d "$HOOKS_DIR" ]; then
   SHAPIPE() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; }   # macOS has no sha256sum
-  HOOKS_SNAP=$(cd "$HOOKS_DIR" && find . \( -type f -o -type l \) -print0 | sort -z | xargs -0 cat | SHAPIPE | cut -d" " -f1)
+  HOOKS_SNAP=$(cd "$HOOKS_DIR" && { find . \( -type f -o -type l \) -print0 | sort -z | xargs -0 ls -ld; find . \( -type f -o -type l \) -print0 | sort -z | xargs -0 cat; } | SHAPIPE | cut -d" " -f1)
+  # ls -ld frames names/modes/symlink targets; cat frames content — rename or chmod with
+  # identical bytes no longer slips the gate
 else HOOKS_SNAP=absent; fi   # find failure aborts (set -e) — never silently degrade to a constant
 gitwt() { git -c core.hooksPath=/dev/null -C "$WT_DIR/wt" "$@"; }    # EVERY git call in the worktree goes through this —
                                                                      # post-checkout fires even on file checkouts (flag=0),
@@ -266,13 +268,24 @@ must not squat in the user's tree — the cleanliness gate proved these paths ha
 content, so reverting exactly them is safe:
 
 ```bash
+set -euo pipefail
+GITH() { git -C "$HOST_ROOT" -c core.hooksPath=/dev/null --literal-pathspecs "$@"; }
+# ^ rollback checkouts fire post-checkout like any file checkout — the same hook guard
+#   that protects every other git call applies here too
 while IFS= read -r f; do
-  if git -C "$HOST_ROOT" cat-file -e "$BASE_SHA:$f" 2>/dev/null; then
-    git -C "$HOST_ROOT" checkout "$BASE_SHA" -- "$f"
+  # Revert ONLY if the file still holds exactly the approved landed content ($CLEAN_WT is
+  # that content by construction). A mismatch means the user edited it during the build
+  # window — their edit is not ours to destroy: leave the file, report, and stop.
+  if ! cmp -s -- "$HOST_ROOT/$f" "$CLEAN_WT/$f" 2>/dev/null; then
+    echo "SKIP (user-modified since landing — left untouched): $f"; FAILED_ROLLBACK=1; continue
+  fi
+  if GITH cat-file -e "$BASE_SHA:$f" 2>/dev/null; then
+    GITH checkout "$BASE_SHA" -- "$f"
   else
-    git -C "$HOST_ROOT" rm -q --cached -- "$f" 2>/dev/null || true; rm -f -- "$HOST_ROOT/$f"
+    GITH rm -q --cached -- "$f" 2>/dev/null || true; rm -f -- "$HOST_ROOT/$f"
   fi
 done < "$RUN_DIR/landed.files"
+[ "${FAILED_ROLLBACK:-0}" = 0 ] || { echo "STOP: partial rollback — user-modified files listed above were preserved"; exit 1; }
 ```
  **Repeat the same SHA+ref check AND the
   regenerated-diff equality check immediately before Step 5's commit** — the build can
@@ -297,8 +310,10 @@ done < "$RUN_DIR/landed.files"
   `$CLEAN_WT` in that case; report which mode was used. After the build, verify the landed result equals the
   approved delta — compare **regenerated diffs, not patch files byte-wise** (hunk
   stripping perturbs offsets/index lines, so `approved.patch` itself is not a stable
-  reference): `git -C "$HOST_ROOT" diff --binary --no-ext-diff --no-textconv "$BASE_SHA" --pathspec-from-file="$RUN_DIR/landed.files"` must match
-  the same-flagged diff from `$CLEAN_WT`. ANY drift, including
+  reference): the host-side and `$CLEAN_WT`-side diffs must match — generated per file from
+  `landed.files` with the capture flags (`--binary --no-ext-diff --no-textconv`), exactly
+  as the Step 5 block does (`git diff` has no `--pathspec-from-file`; only the
+  add/commit/checkout family takes it). ANY drift, including
   'explainable' formatter/codegen output, either goes back through approval (strong-tier
   review) or is reverted; nothing outside the approved delta is committed on the strength
   of being explainable.
@@ -313,7 +328,7 @@ done < "$RUN_DIR/landed.files"
   track every approved landing or the final check fails on its own companion. If the same finding needs this
   twice, escalate to the user.
 - **Cleanup**: after the build passes and the commit is made,
-  guard first — `[ -n "$RUN_DIR" ] && [ -n "$WT_DIR" ] && [ ! -L "$IMPL_WT" ]` (an
+  guard first — `[ -n "$RUN_DIR" ] && [ -n "$WT_DIR" ] && [ -n "${CLEAN_DIR:-}" ] && [ ! -L "$IMPL_WT" ]` (an
   unset variable must not turn `rm -rf` on the wrong path; a symlinked worktree means the
   implementer deviated → STOP, do not remove). Then
   `git -C "$HOST_ROOT" worktree remove --force "$IMPL_WT" || true; rm -rf -- "$RUN_DIR" "$WT_DIR" "$CLEAN_DIR"` (the `|| true` matters — under `set -e` a remove failure would end the shell before the `rm` and leak everything); same guarded removal (`[ -n ]`, `[ ! -L ]`) for `$CLEAN_WT`. On a STOP/failure path,
@@ -377,7 +392,7 @@ diff -q "$RUN_DIR/host.final.diff" "$RUN_DIR/ref.final.diff" >/dev/null || { ech
 HOOKS_DIR=$(git -C "$HOST_ROOT" rev-parse --path-format=absolute --git-path hooks)
 if [ -d "$HOOKS_DIR" ]; then
   SHAPIPE() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; }
-  NOW_SNAP=$(cd "$HOOKS_DIR" && find . \( -type f -o -type l \) -print0 | sort -z | xargs -0 cat | SHAPIPE | cut -d" " -f1)
+  NOW_SNAP=$(cd "$HOOKS_DIR" && { find . \( -type f -o -type l \) -print0 | sort -z | xargs -0 ls -ld; find . \( -type f -o -type l \) -print0 | sort -z | xargs -0 cat; } | SHAPIPE | cut -d" " -f1)
 else NOW_SNAP=absent; fi
 [ "$NOW_SNAP" = "$HOOKS_SNAP" ] || { echo "STOP: git hooks changed during the run"; exit 1; }
 HOOKS_FLAG=""
