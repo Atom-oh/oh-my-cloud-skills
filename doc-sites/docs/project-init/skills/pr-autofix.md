@@ -16,6 +16,11 @@ PR 리뷰 피드백(AI + 사람)을 자동으로 읽고 코드를 수정하는 �
 
 두 모드 모두 같은 수정-커밋-push 루프를 탑니다. AI/사람 리뷰가 동시에 있으면 둘 다 읽고 통합 수정합니다.
 
+**모델 티어링**: 수정 **계획**(finding별 root cause·정확한 수정·검증 방법)은 Fable/Opus에서
+수립하고(호스트가 이미 Fable/Opus면 인라인, 아니면 강한 모델 서브에이전트), **구현**은 그
+계획을 그대로 적용하는 sonnet 서브에이전트에 위임합니다 — 판단은 상위 티어, 기계적 적용은
+sonnet(CRITICAL → MAJOR → MINOR 우선순위는 계획 단계에서 반영).
+
 ## 워크플로우
 
 ```mermaid
@@ -24,8 +29,9 @@ flowchart TD
     B --> C[리뷰 polling<br/>60s 간격, 최대 10분]
     C --> D{AI + 사람<br/>리뷰 확인}
     D -->|모두 PASS| E[완료]
-    D -->|이슈 발견| F[CRITICAL → MAJOR → MINOR<br/>순서로 수정]
-    F --> G[빌드 검증]
+    D -->|이슈 발견| F[수정 계획 수립<br/>Fable/Opus]
+    F --> F2[계획대로 구현<br/>sonnet 서브에이전트]
+    F2 --> G[빌드 검증]
     G --> H[커밋 & push]
     H --> I{반복 < 3?}
     I -->|Yes| C

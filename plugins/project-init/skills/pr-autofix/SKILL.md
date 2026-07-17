@@ -101,21 +101,32 @@ Evaluate each review source:
 - Both PASS (or SKIP) → done, inform user
 - Either BLOCKED → proceed to fix
 
-### 4. Fix issues (if BLOCKED)
+### 4. Fix issues (if BLOCKED) — plan on a strong model, implement on sonnet
 
-Read all blocking feedback and the current diff. Fix issues from both sources:
+Read all blocking feedback and the current diff, then split the work by model tier.
+Why: running the whole fix loop on a mid-tier model produces frequent errors in the
+judgment-heavy part — misread findings, wrong root cause, scope creep. A strong-tier
+**plan** makes the remaining work mechanical, which sonnet applies reliably and cheaply.
 
-**From AI Review:**
-- Parse the review comment body for issue descriptions
-- Focus on **CRITICAL** and **MAJOR** issues first
-- Fix **MINOR** issues if trivial
+**4a. Fix plan — Fable or Opus.** If the host session is already running Fable/Opus,
+write the plan inline. Otherwise spawn a planning subagent with a strong-model override
+(Agent tool `model: "opus"`; use `"fable"` where available). The plan covers, per finding:
+`file:line` → root cause → the exact edit → how to verify it. The scope constraints below
+are written INTO the plan so the implementer inherits them.
 
-**From Human Review:**
-- Read the review body text (high-level feedback)
-- Read inline comments (`path`, `line`, `body`) for specific code feedback
-- Address each comment in the referenced file and line
+Feed the plan from both sources:
+- **AI Review**: parse the review comment body; **CRITICAL** and **MAJOR** first, **MINOR** only if trivial
+- **Human Review**: the review body (high-level) + inline comments (`path`, `line`, `body`) per referenced location
 
-**Constraints:**
+**4b. Implement — sonnet.** Spawn an implementer subagent (Agent tool `model: "sonnet"`)
+with the plan verbatim: apply exactly the planned edits, no refactoring beyond them,
+return the changed-file list. Findings touching disjoint files may run as parallel
+implementers.
+
+**4c. Host verification.** Diff-check the result against the plan — anything outside the
+plan's scope is reverted — then run the build check below before committing.
+
+**Constraints (these go into the plan in 4a and bind the implementer in 4b):**
 - Do NOT refactor beyond what the reviews ask
 - Do NOT modify CI/CD workflow files (`.github/workflows/*`)
 - Verify the fix compiles/builds before committing:
