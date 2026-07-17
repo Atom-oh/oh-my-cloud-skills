@@ -128,10 +128,10 @@ isolation: the implementer's edits land in a separate directory, so your uncommi
 changes are not in its working path. (This is not a security sandbox — the subagent
 still shares your filesystem permissions and environment; the plan constraints below
 remain the real guard. Residual surface on the HOST side: the build check and Step 5's
-`git commit`/`git push` run in your tree, where repo-configured hooks execute — if the
-repo sets a **tracked** `core.hooksPath` (PR-controllable), run those with
-`-c core.hooksPath=/dev/null` too; local untracked `.git/hooks` are user-owned and stay
-active by design. Four values must survive across tool
+`git commit`/`git push` run in your tree, where repo-configured hooks execute — any configured
+`core.hooksPath` is disabled for those too (tracked-ness proves nothing — husky v9's
+untracked wrappers exec tracked files); the default untracked `.git/hooks` has no
+hooksPath configured and stays active by design. Four values must survive across tool
 calls — record them in your running notes at 4b time and re-export them in every later
 Bash call: `RUN_DIR`, `HOST_ROOT`, `BASE_SHA`, `BASE_REF`. Each is also re-derivable if
 notes are lost: `BASE_SHA` from the worktree's detached HEAD, `HOST_ROOT` via
@@ -139,14 +139,21 @@ notes are lost: `BASE_SHA` from the worktree's detached HEAD, `HOST_ROOT` via
 if it is gone and HEAD's ref is ambiguous, STOP rather than guess.)
 
 ```bash
-RUN_DIR=$(mktemp -d "${TMPDIR:-/tmp}/pr-autofix.XXXXXX") || exit 1   # private (0700): worktree AND patches live inside
+RUN_DIR=$(mktemp -d "${TMPDIR:-/tmp}/pr-autofix.XXXXXX") || exit 1   # private (0700): host-trusted artifacts (patches)
+WT_DIR=$(mktemp -d "${TMPDIR:-/tmp}/pr-autofix-wt.XXXXXX") || exit 1 # separate dir: the only path the implementer is told
 HOST_ROOT=$(git rev-parse --show-toplevel) || exit 1                 # pin once — landing never depends on CWD
 BASE_SHA=$(git rev-parse HEAD) || exit 1                             # pin once — delta base survives anything
 BASE_REF=$(git symbolic-ref -q HEAD || echo detached)                # pin the branch too — same SHA on another branch is still a moved base
-git -c core.hooksPath=/dev/null worktree add --detach "$RUN_DIR/wt" "$BASE_SHA" || exit 1
-IMPL_WT="$RUN_DIR/wt"
-# (hooksPath override: don't let a PR-controlled post-checkout hook run here.
-#  If a previous run died early, `git worktree prune` clears leftovers.)
+gitwt() { git -c core.hooksPath=/dev/null -C "$WT_DIR/wt" "$@"; }    # EVERY git call in the worktree goes through this —
+                                                                     # post-checkout fires even on file checkouts (flag=0),
+                                                                     # so a single unguarded call reopens the PR-hook vector
+git -c core.hooksPath=/dev/null worktree add --detach "$WT_DIR/wt" "$BASE_SHA" || exit 1
+IMPL_WT="$WT_DIR/wt"
+# Patches live in $RUN_DIR, NOT under the worktree parent — the implementer never learns
+# $RUN_DIR, so a deviating subagent can't pre-place symlinks where the host writes its
+# "immutable" records (not a hard boundary — same UID — but it kills the accidental and
+# low-effort paths). Re-declare gitwt() in every later Bash call (functions don't survive).
+# If a previous run died early, `git worktree prune` clears leftovers.
 ```
 
 Spawn the implementer subagent (Agent tool `model: "sonnet"`; instruct it to use file-editing
@@ -173,9 +180,9 @@ first — new files included — then derive a separate approved patch from it (
 the full record in place; it is the recovery source):
 
 ```bash
-git -C "$IMPL_WT" add -N . || exit 1                              # intent-to-add: new files become diff-visible
+gitwt add -N . || exit 1                              # intent-to-add: new files become diff-visible
                                                                   # (a silent failure here = new files silently missing from the patch)
-git -C "$IMPL_WT" diff --binary --no-ext-diff --no-textconv "$BASE_SHA" > "$RUN_DIR/full.1.patch" || exit 1   # capture generation 1 — immutable once written
+gitwt diff --binary --no-ext-diff --no-textconv "$BASE_SHA" > "$RUN_DIR/full.1.patch" || exit 1   # capture generation 1 — immutable once written
 cp "$RUN_DIR/full.1.patch" "$RUN_DIR/approved.patch" || exit 1    # landing patch — edits happen HERE only
 ```
 
@@ -201,7 +208,7 @@ Check the delta against the plan in both directions, then land only what passed:
   `[ "$(git -C "$HOST_ROOT" symbolic-ref -q HEAD || echo detached)" = "$BASE_REF" ]`
   (SHA alone passes a switch to another branch pointing at the same commit). On mismatch
   → STOP and report. `$BASE_SHA` is recoverable from the worktree's detached HEAD:
-  `git -C "$IMPL_WT" rev-parse HEAD`. Run `git -C "$HOST_ROOT" apply --check` first, then
+  `gitwt rev-parse HEAD`. Run `git -C "$HOST_ROOT" apply --check` first, then
   `git -C "$HOST_ROOT" apply "$RUN_DIR/approved.patch"`. **Repeat the same SHA+ref check
   immediately before Step 5's commit** — the build can take minutes, and this loop runs
   unattended.
@@ -210,20 +217,27 @@ Check the delta against the plan in both directions, then land only what passed:
 - **Build check comes BEFORE cleanup**: run the build verification (below) while
   `$RUN_DIR` still exists. If the host tree is dirty beyond the landed files, the user's
   uncommitted changes can pollute the result (false pass or false fail) — prefer the
-  clean-room check in that case: reset the worktree to `$BASE_SHA`
-  (`git -C "$IMPL_WT" checkout "$BASE_SHA" -- .`), apply `approved.patch` there, and
-  build in the worktree; report which mode was used. After the build, re-compare the landed files' diff against
-  `approved.patch` — build tooling (formatters, codegen) may have mutated them;
-  unexplained drift → investigate before committing.
+  clean-room check in that case: AFTER the capture generations exist, hard-restore the
+  worktree — `gitwt reset --hard "$BASE_SHA" && gitwt clean -fdx` (checkout `-- .` is not
+  enough: it leaves untracked leftovers that make new-file hunks fail with "already
+  exists", and `clean -fdx` also sweeps ignored artifacts — `.env`, caches — that bypass
+  every patch-based gate) — then `gitwt apply "$RUN_DIR/approved.patch"` and build in the
+  worktree; report which mode was used. After the build, the landed files' diff must equal
+  `approved.patch` **exactly** before committing — ANY drift, including 'explainable'
+  formatter/codegen output, either goes back through approval (strong-tier review, then
+  append to the approved patch) or is reverted; nothing outside the approved patch is
+  committed on the strength of being explainable.
 - **Companion-edit guard**: if the landed subset fails the build because a dropped hunk
   was a required companion change (e.g. an import), that hunk does NOT get a free pass —
   it was rejected once, so it re-enters the gate: the strong-tier planner re-approves it
   line by line (an import and a malicious change can share one hunk), the cleanliness
-  gate re-runs for every path it touches, and only then is it landed from the latest
-  immutable `full.N.patch`, noted in the commit message. If the same finding needs this
+  gate re-runs for every path it touches, and only then landed — as a FRESH patch generated
+  against the current host tree (replaying it from `full.N.patch` fails on context: that
+  patch's hunks assume `$BASE_SHA`, but the approved subset already landed), noted in the
+  commit message. If the same finding needs this
   twice, escalate to the user.
 - **Cleanup**: after the build passes and the commit is made,
-  `git worktree remove --force "$IMPL_WT"; rm -rf -- "$RUN_DIR"` (`;` not `&&` — a worktree-remove failure must not leak `$RUN_DIR`). On a STOP/failure path,
+  `git worktree remove --force "$IMPL_WT"; rm -rf -- "$RUN_DIR" "$WT_DIR"` (`;` not `&&` — a worktree-remove failure must not leak `$RUN_DIR`). On a STOP/failure path,
   capture a recovery patch FIRST if none exists yet (the worktree may hold the only copy
   of the implementer's work), then remove the worktree but KEEP `$RUN_DIR` (patches) and
   tell the user its path — it is their inspection/recovery evidence.
@@ -270,8 +284,10 @@ git config core.hooksPath >/dev/null 2>&1 && HOOKS_FLAG="-c core.hooksPath=/dev/
 # Stage and commit ONLY the files 4c landed. The pathspec commit is load-bearing: a bare
 # `git commit` would also include anything the USER had staged beforehand — the
 # cleanliness gate only checks the landed paths, not the whole index.
-git add -- <files-landed-in-4c>
-git $HOOKS_FLAG commit -m "fix: address review feedback (iteration N/3)" -- <files-landed-in-4c>   # $HOOKS_FLAG unquoted on purpose
+# --literal-pathspecs: a PR-planted filename starting with ':' is pathspec magic that
+# can silently widen the add/commit scope. Pass the list quoted / NUL-safe, same as 4c.
+git --literal-pathspecs add -- <files-landed-in-4c>
+git --literal-pathspecs $HOOKS_FLAG commit -m "fix: address review feedback (iteration N/3)" -- <files-landed-in-4c>   # $HOOKS_FLAG unquoted on purpose
 git $HOOKS_FLAG push
 ```
 
