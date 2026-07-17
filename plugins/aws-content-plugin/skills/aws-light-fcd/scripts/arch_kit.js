@@ -169,20 +169,25 @@ function archFlow(kit, pres, opts) {
   const n = columns.length;
   const hasLegend = !!(opts.legend && opts.legend.length);
 
-  // Every step archFlow places must point at a real legend row: an integer in
-  // 1..legend.length, used at most once. (We don't require the step set to COVER the whole
-  // legend — callers legitimately add more markers by hand via arch.stepMarker off the
-  // returned geometry, e.g. the demo's GPU/monitoring stages.)
+  const declaredSteps = columns.flatMap(c => (c.items || [])
+    .map(it => it.step).filter(v => v != null));
+  // A step marker with no legend would render an unexplained numbered badge — reject the
+  // combination (fail-loud, matching the other archFlow guards).
+  if (declaredSteps.length && !hasLegend) {
+    throw new Error(`arch.archFlow: ${declaredSteps.length} item(s) set a 'step' but no 'legend' ` +
+      `was given — a step marker with no legend row is an unexplained badge. Add a legend or drop the steps.`);
+  }
+  // Every step must point at a real legend row: integer in 1..legend.length, used at most
+  // once. (Not required to COVER the whole legend — callers add markers by hand via
+  // arch.stepMarker off the returned geometry, e.g. the demo's GPU/monitoring stages.)
   if (hasLegend) {
-    const steps = columns.flatMap(c => (c.items || [])
-      .map(it => it.step).filter(v => v != null));
-    for (const v of steps) {
+    for (const v of declaredSteps) {
       if (!Number.isInteger(v) || v < 1 || v > opts.legend.length) {
         throw new Error(`arch.archFlow: step ${v} is not a valid legend index (legend has ` +
           `${opts.legend.length} entries; steps must be integers in 1..${opts.legend.length}).`);
       }
     }
-    if (new Set(steps).size !== steps.length) {
+    if (new Set(declaredSteps).size !== declaredSteps.length) {
       throw new Error(`arch.archFlow: duplicate step number(s) in columns — each step value must be used once.`);
     }
   }
@@ -249,16 +254,31 @@ function archFlow(kit, pres, opts) {
   });
 
   // arrows: "auto" connects adjacent columns at the mean vertical center of both
-  // stacks; an explicit [[i,j],...] list connects arbitrary column pairs.
-  const pairs = opts.arrows === "auto"
-    ? cols.slice(0, -1).map((_, i) => [i, i + 1])
-    : (opts.arrows || []);
+  // stacks; an explicit [[i,j],...] list connects arbitrary column pairs. Bad input
+  // throws (fail-loud, matching the step/slot/capacity guards) — a silently dropped
+  // arrow is worse than an error because check_pptx can't detect a missing connector.
+  let pairs;
+  if (opts.arrows === "auto") {
+    pairs = cols.slice(0, -1).map((_, i) => [i, i + 1]);
+  } else if (opts.arrows == null) {
+    pairs = [];
+  } else if (Array.isArray(opts.arrows)) {
+    pairs = opts.arrows;
+  } else {
+    throw new Error(`arch.archFlow: 'arrows' must be "auto" or an array of [from,to] pairs — got ${JSON.stringify(opts.arrows)}.`);
+  }
   pairs.forEach(([i, j]) => {
-    if (!cols[i] || !cols[j]) return;
+    if (!cols[i] || !cols[j]) {
+      throw new Error(`arch.archFlow: arrow [${i},${j}] references a column that doesn't exist (${n} columns).`);
+    }
     const midY = ((cols[i].y + cols[i].h / 2) + (cols[j].y + cols[j].h / 2)) / 2;
     const fromX = cols[i].x + cols[i].w + 0.12;
     const toX = cols[j].x - 0.12;
-    if (toX > fromX) arrow(kit, pres, s, fromX, midY, toX - fromX);
+    if (toX <= fromX) {
+      throw new Error(`arch.archFlow: arrow [${i},${j}] runs right-to-left or between adjacent columns ` +
+        `with no gap — arrows must point left→right toward a later column.`);
+    }
+    arrow(kit, pres, s, fromX, midY, toX - fromX);
   });
 
   if (hasLegend) stepLegend(kit, pres, s, opts.legend);

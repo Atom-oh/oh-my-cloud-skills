@@ -232,6 +232,17 @@ def test_table_cell_placeholder_detected():
     assert any("placeholder" in f for f in r["findings"]), r["findings"]
 
 
+def test_table_cell_overflow_detected():
+    # a tiny table cell crammed with text must flag as overflow (geometry finding)
+    prs = _blank_prs()
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    _add_footer(s, 2)
+    gf = s.shapes.add_table(1, 1, Inches(1), Inches(1), Inches(1.2), Inches(0.3))
+    gf.table.cell(0, 0).text = "\n".join(f"line {i}" for i in range(12))
+    r = check_pptx.analyze(prs)
+    assert any("overflow" in f for f in r["findings"]), r["findings"]
+
+
 def test_empty_deck_fails_gate():
     prs = _blank_prs()  # zero slides
     r = check_pptx.analyze(prs)

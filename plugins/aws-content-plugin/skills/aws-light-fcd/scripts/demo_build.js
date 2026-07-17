@@ -91,7 +91,8 @@ const { FiZap, FiSearch, FiGitBranch, FiShield } = require("react-icons/fi");
   s.addImage({ path: kit.toolIcon("ray"), x: gcx - 0.18, y: gpuCol.y + 3.3, w: 0.36, h: 0.36 });
   s.addText("Ray", { x: gpuCol.x, y: gpuCol.y + 3.66, w: gpuCol.w, h: 0.24, fontFace: kit.FONT, fontSize: 11, bold: true, color: kit.C.ink, align: "center", valign: "middle", margin: 0 });
   s.addImage({ path: kit.toolIcon("vllm"), x: gcx - 0.3, y: gpuCol.y + 3.94, w: 0.6, h: 0.19 });
-  arch.stepMarker(kit, pres, s, gcx + 0.14, gpuCol.y + 0.15, 5);
+  arch.stepMarker(kit, pres, s, gcx + 0.14, gpuCol.y + 0.15, 1);   // 1 컴퓨팅 프로비저닝 (GPU)
+  arch.stepMarker(kit, pres, s, gcx - 0.48, gpuCol.y + 1.6, 5);    // 5 GPU 자동 확장
   // 모니터링 group below the serving column. Compact: label + icon + inline caption
   // (no stacked svc caption) so the whole group fits between the serving stack (~5.5")
   // and the footer band (7.06") without colliding with either.

@@ -150,35 +150,51 @@ def _para_font_pt(para):
     return DEFAULT_FONT_PT
 
 
+def _tf_overflows(tf, w_in, h_in):
+    """Does this text frame's estimated wrapped height exceed its box (w_in x h_in)?"""
+    if not tf.text.strip() or w_in <= 0 or h_in <= 0:
+        return False
+    ml = (tf.margin_left if tf.margin_left is not None else DEFAULT_MARGIN_LR_EMU) / EMU_PER_IN
+    mr = (tf.margin_right if tf.margin_right is not None else DEFAULT_MARGIN_LR_EMU) / EMU_PER_IN
+    mt = (tf.margin_top if tf.margin_top is not None else DEFAULT_MARGIN_TB_EMU) / EMU_PER_IN
+    mb = (tf.margin_bottom if tf.margin_bottom is not None else DEFAULT_MARGIN_TB_EMU) / EMU_PER_IN
+    budget_pt = max(1.0, (w_in - ml - mr) * 72)
+    total_h_pt = 0.0
+    for para in tf.paragraphs:
+        fs = _para_font_pt(para)
+        lines = _wrap_lines(para.text, fs, budget_pt)
+        # leading (LINE_HEIGHT_MULT) applies BETWEEN lines; the last line has no trailing
+        # leading — otherwise every single-line big number (96pt stat in 1.5") false-positives
+        total_h_pt += (lines - 1) * fs * LINE_HEIGHT_MULT + fs
+    avail_pt = max(1.0, (h_in - mt - mb) * 72)
+    return total_h_pt > avail_pt * OVERFLOW_TOL
+
+
+def _table_cell_dims(sh):
+    """Yield (text_frame, w_in, h_in) for each table cell, using the table's column
+    widths and row heights. Merged cells are approximated by their origin cell's own
+    column/row extent (good enough for an overflow estimate)."""
+    tbl = sh.table
+    col_w = [c.width / EMU_PER_IN for c in tbl.columns]
+    row_h = [r.height / EMU_PER_IN for r in tbl.rows]
+    for ri, row in enumerate(tbl.rows):
+        for ci, cell in enumerate(row.cells):
+            yield cell.text_frame, col_w[ci], row_h[ri]
+
+
 def _check_overflow(shapes):
     n, example = 0, None
     for sh in shapes:
-        if not getattr(sh, "has_text_frame", False):
-            continue
-        tf = sh.text_frame
-        if not tf.text.strip():
-            continue
-        box = _bbox_in(sh)
-        if not box or box[2] <= 0 or box[3] <= 0:
-            continue
-        _, _, w_in, h_in = box
-        ml = (tf.margin_left if tf.margin_left is not None else DEFAULT_MARGIN_LR_EMU) / EMU_PER_IN
-        mr = (tf.margin_right if tf.margin_right is not None else DEFAULT_MARGIN_LR_EMU) / EMU_PER_IN
-        mt = (tf.margin_top if tf.margin_top is not None else DEFAULT_MARGIN_TB_EMU) / EMU_PER_IN
-        mb = (tf.margin_bottom if tf.margin_bottom is not None else DEFAULT_MARGIN_TB_EMU) / EMU_PER_IN
-        budget_pt = max(1.0, (w_in - ml - mr) * 72)
-        total_h_pt = 0.0
-        for para in tf.paragraphs:
-            fs = _para_font_pt(para)
-            lines = _wrap_lines(para.text, fs, budget_pt)
-            # leading (LINE_HEIGHT_MULT) applies BETWEEN lines; the last line has no
-            # trailing leading — otherwise every single-line big number (96pt stat in a
-            # 1.5" box) false-positives
-            total_h_pt += (lines - 1) * fs * LINE_HEIGHT_MULT + fs
-        avail_pt = max(1.0, (h_in - mt - mb) * 72)
-        if total_h_pt > avail_pt * OVERFLOW_TOL:
-            n += 1
-            example = example or (sh.name or f"shape#{sh.shape_id}")
+        if getattr(sh, "has_text_frame", False):
+            box = _bbox_in(sh)
+            if box and _tf_overflows(sh.text_frame, box[2], box[3]):
+                n += 1
+                example = example or (sh.name or f"shape#{sh.shape_id}")
+        if getattr(sh, "has_table", False):
+            for tf, w_in, h_in in _table_cell_dims(sh):
+                if _tf_overflows(tf, w_in, h_in):
+                    n += 1
+                    example = example or f"table cell in {sh.name}"
     return n, example
 
 
