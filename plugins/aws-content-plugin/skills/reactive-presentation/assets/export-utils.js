@@ -430,15 +430,15 @@ const ExportUtils = {
     }
   },
 
-  /** Strip HTML tags from a notes string for PPTX speaker notes.
-   *  DOMParser never executes scripts or loads resources (unlike assigning
-   *  innerHTML, where e.g. <img onerror> fires even on a detached node). */
-  _htmlToPlainText: function(html) {
-    var normalized = String(html)
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<\/(?:p|li|div|ul|ol|h[1-6]|tr)>/gi, '\n');
-    var doc = new DOMParser().parseFromString(normalized, 'text/html');
-    return (doc.body.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+  /** Presenter notes → PPTX speaker-notes text.
+   *  presenterNotes carries the RAW :::notes markdown (plus [timing]/cue
+   *  markers) — it is not HTML, so no tag stripping/parsing: that would eat
+   *  real content like `List<T>`. Only normalize whitespace. */
+  _notesToPlainText: function(text) {
+    return String(text)
+      .replace(/\r\n?/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
   },
 
   /**
@@ -587,8 +587,8 @@ const ExportUtils = {
             });
 
             // Speaker notes: presenter notes first, heading as fallback/prefix
-            var noteHtml = blockNotes[j + 1] || blockNotes[String(j + 1)] || '';
-            var noteText = noteHtml ? self._htmlToPlainText(noteHtml) : '';
+            var noteRaw = blockNotes[j + 1] || blockNotes[String(j + 1)] || '';
+            var noteText = noteRaw ? self._notesToPlainText(noteRaw) : '';
             var headingText = slideHeading ? slideHeading.textContent.trim() : '';
             var combined = headingText && noteText
               ? headingText + '\n\n' + noteText

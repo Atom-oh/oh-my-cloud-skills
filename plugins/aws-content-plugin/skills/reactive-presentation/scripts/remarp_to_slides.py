@@ -58,7 +58,10 @@ ICON_NAME_MAP = {
     'Redshift': 'Arch_Amazon-Redshift_48.svg',
     'Neptune': 'Arch_Amazon-Neptune_48.svg',
     # --- Networking ---
-    'VPC': 'Virtual-private-cloud-VPC_32.svg',
+    # Service icon (services category) — the group icon
+    # Virtual-private-cloud-VPC_32.svg lives in groups/ and is not copyable
+    # from the services path bare labels resolve to.
+    'VPC': 'Arch_Amazon-Virtual-Private-Cloud_48.svg',
     'CloudFront': 'Arch_Amazon-CloudFront_48.svg',
     'Route53': 'Arch_Amazon-Route-53_48.svg',
     'ALB': 'Arch_Elastic-Load-Balancing_48.svg',
@@ -123,24 +126,40 @@ ICON_NAME_MAP = {
 }
 
 
-def _bundled_icon_filenames() -> set:
-    """Every icon filename shipped in the skill bundle (cached after first walk).
+def _bundled_icon_filenames(category: str = '') -> set:
+    """Icon filenames shipped in the skill bundle, per category (cached).
 
-    Used by validation to fail loudly on canvas icon names that resolve to a
-    file that does not exist (otherwise they silently render as bare labels).
-    Empty set when no icon bundle is present (validation then skips the rule).
+    Categories mirror the ./common/aws-icons/<category>/ output layout that
+    _copy_referenced_icons copies from (services/groups/categories/resources/
+    others). Pass '' for the union of all categories. Used by validation to
+    fail loudly on canvas icon names that resolve to a file that does not
+    exist in the category it will be copied from (otherwise they silently
+    render as bare labels). Empty set when no icon bundle is present.
     """
-    cached = getattr(_bundled_icon_filenames, '_cache', None)
-    if cached is not None:
-        return cached
-    skill_dir = Path(__file__).parent.parent
-    names: set = set()
-    for base in (skill_dir / 'icons', skill_dir / 'assets' / 'aws-icons'):
-        if base.is_dir():
-            names.update(p.name for p in base.rglob('*')
-                         if p.suffix.lower() in ('.svg', '.png'))
-    _bundled_icon_filenames._cache = names
-    return names
+    cache = getattr(_bundled_icon_filenames, '_cache', None)
+    if cache is None:
+        skill_dir = Path(__file__).parent.parent
+        icons_root = skill_dir / 'icons'
+        if not icons_root.is_dir():
+            icons_root = skill_dir / 'assets' / 'aws-icons'
+        category_dirs = {
+            'services': 'Architecture-Service-Icons_07312025',
+            'groups': 'Architecture-Group-Icons_07312025',
+            'categories': 'Category-Icons_07312025',
+            'resources': 'Resource-Icons_07312025',
+            'others': 'others',
+        }
+        cache = {'': set()}
+        for cat, subdir in category_dirs.items():
+            base = icons_root / subdir
+            names = set()
+            if base.is_dir():
+                names = {p.name for p in base.rglob('*')
+                         if p.suffix.lower() in ('.svg', '.png')}
+            cache[cat] = names
+            cache[''] |= names
+        _bundled_icon_filenames._cache = cache
+    return cache.get(category, cache[''])
 
 
 class SlideType(Enum):
@@ -4951,21 +4970,28 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
     # --- Rule: Canvas icon names must resolve to a bundled icon file ---
     # An unknown name silently renders as a floating text label (no icon, arrows
     # pointing at empty space), so fail loudly at validate time instead.
-    bundled = _bundled_icon_filenames()
-    if bundled:
+    if _bundled_icon_filenames():
         import difflib
         for elem in slide.canvas_elements:
             if elem.element_type != 'icon':
                 continue
             label = str(elem.params.get('label', ''))
             src = str(elem.params.get('src', ''))
+            if not label and not src:
+                continue  # nothing to resolve — parser produced no reference
             # Only bundle-resolved srcs are checkable; bare labels resolve to
             # ./common/aws-icons/ at parse time. Author-provided paths/URLs
             # (anything else) are the author's own files — skip them.
             if '/' in label or '.' in label:
                 continue
-            if src and not src.startswith('./common/aws-icons/'):
+            cat_match = re.match(r'\./common/aws-icons/([\w-]+)/', src)
+            if src and not cat_match:
                 continue
+            # Validate against the SAME category dir the build copies from —
+            # a filename that only exists in another category still fails at
+            # copy time, so a global-set check would be a false negative.
+            category = cat_match.group(1) if cat_match else 'services'
+            bundled = _bundled_icon_filenames(category) or _bundled_icon_filenames()
             filename = os.path.basename(src) if src else ICON_NAME_MAP.get(label, f'Arch_{label}_48.svg')
             if filename not in bundled:
                 # Match against aliases AND filename stems (a long official

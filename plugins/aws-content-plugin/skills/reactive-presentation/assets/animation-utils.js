@@ -86,12 +86,20 @@ if (window.__remarpTheme && window.__remarpTheme.colors) {
   if (tc.lt2) Colors.pptxLt2 = tc.lt2;
 }
 
-/** #rrggbb → rgba(r,g,b,alpha); passes non-hex values through unchanged. */
+/** Color + alpha → rgba(). Handles #rgb, #rrggbb, and rgb()/rgba() inputs;
+ *  anything else (named colors, etc.) passes through unchanged. */
 function withAlpha(color, alpha) {
-  var m = /^#([0-9a-f]{6})$/i.exec(String(color).trim());
-  if (!m) return color;
-  var n = parseInt(m[1], 16);
-  return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + alpha + ')';
+  var c = String(color).trim();
+  var m3 = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(c);
+  if (m3) c = '#' + m3[1] + m3[1] + m3[2] + m3[2] + m3[3] + m3[3];
+  var m6 = /^#([0-9a-f]{6})$/i.exec(c);
+  if (m6) {
+    var n = parseInt(m6[1], 16);
+    return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + alpha + ')';
+  }
+  var mrgb = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(c);
+  if (mrgb) return 'rgba(' + mrgb[1] + ',' + mrgb[2] + ',' + mrgb[3] + ',' + alpha + ')';
+  return color;
 }
 
 /** Resolve color reference - supports 'theme-accent1' style refs */

@@ -20,13 +20,12 @@ Usage:
     <project-dir>  Built output dir (contains index.html / NN-block.html + common/)
 
 Dependencies:
-    pip install playwright python-pptx   (+ `playwright install chromium`,
+    pip install 'playwright>=1.40' 'python-pptx>=1.0'   (+ `playwright install chromium`,
     or set PLAYWRIGHT_BROWSERS_PATH / CHROMIUM_PATH to an existing Chromium)
 """
 
 import argparse
 import functools
-import html as html_lib
 import http.server
 import os
 import re
@@ -87,22 +86,25 @@ def _discover_blocks(project_dir: Path):
 
 
 # Runs inside the page: freeze motion, reveal fragments, finish canvas steps,
-# hide navigation chrome that has no meaning on a static slide.
+# hide navigation chrome that has no meaning on a static slide. The sidebar
+# must also go: when visible it shrinks .slide-deck to calc(100vw - 220px),
+# so a 1920px viewport would capture a ~1700px deck.
 _PREPARE_JS = """
 () => {
   const style = document.createElement('style');
   style.textContent = `
     *, *::before, *::after { transition: none !important; animation: none !important; }
-    .progress-bar, .slide-counter, .nav-hint, .canvas-controls { display: none !important; }
+    .progress-bar, .slide-counter, .nav-hint, .canvas-controls, .slide-sidebar { display: none !important; }
   `;
   document.head.appendChild(style);
+  document.body.classList.remove('sidebar-visible');
 
   document.querySelectorAll('.fragment').forEach(el => el.classList.add('visible'));
 
   document.querySelectorAll('.slide').forEach(slide => {
     if (typeof slide.__canvasStep === 'function') {
-      const parsed = parseInt(slide.dataset.canvasMaxStep || '30', 10);
-      const max = Number.isFinite(parsed) ? parsed : 30;
+      const parsed = parseInt(slide.dataset.canvasMaxStep || '60', 10);
+      const max = Number.isFinite(parsed) ? parsed : 60;
       for (let s = 0; s < max; s++) {
         if (slide.__canvasStep('next') === false) break;
       }
@@ -115,7 +117,8 @@ _PREPARE_JS = """
 
 _SHOW_SLIDE_JS = """
 (idx) => {
-  document.querySelectorAll('.slide-deck .slide').forEach((el, i) => {
+  const slides = document.querySelectorAll('.slide-deck .slide');
+  slides.forEach((el, i) => {
     el.classList.remove('entering', 'leaving');
     if (i === idx) {
       el.classList.add('active');
@@ -127,7 +130,11 @@ _SHOW_SLIDE_JS = """
       el.style.display = 'none';
     }
   });
-  const el = document.querySelectorAll('.slide-deck .slide')[idx];
+  // We bypass SlideFramework.showSlide(), so update the pagination number
+  // ourselves — otherwise every capture bakes in a stale "1 / N".
+  const num = document.querySelector('.slide-number');
+  if (num) num.textContent = (idx + 1) + ' / ' + slides.length;
+  const el = slides[idx];
   const h = el ? el.querySelector('h1, h2, h3') : null;
   return h ? h.textContent.trim() : '';
 }
@@ -143,12 +150,14 @@ _NOTES_JS = """
 """
 
 
-def _strip_html(text: str) -> str:
-    """HTML notes → plain text, preserving block boundaries as newlines."""
-    text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
-    text = re.sub(r'</(?:p|li|div|ul|ol|h[1-6]|tr)>', '\n', text, flags=re.IGNORECASE)
-    text = re.sub(r'<[^>]+>', '', text)
-    text = html_lib.unescape(text)
+def _notes_to_text(text: str) -> str:
+    """Presenter notes → PPTX notes text.
+
+    presenterNotes carries the RAW :::notes markdown (plus [timing]/cue
+    markers) — it is not HTML, so no tag stripping: a generic <[^>]+> pass
+    would eat real content like `List<T>`. Only normalize whitespace.
+    """
+    text = str(text).replace('\r\n', '\n').replace('\r', '\n')
     text = re.sub(r'\n{3,}', '\n\n', text)
     return text.strip()
 
@@ -188,6 +197,8 @@ def export(project_dir: Path, out_path: Path, blocks, width: int, height: int, s
 
                 slide_count = page.evaluate(_PREPARE_JS)
                 notes = page.evaluate(_NOTES_JS) or {}
+                if not notes:
+                    print(f"  (warn) no presenter notes found in {block}")
                 page.wait_for_timeout(300)  # canvas redraw after step advance
 
                 deck = page.locator('.slide-deck')
@@ -203,7 +214,7 @@ def export(project_dir: Path, out_path: Path, blocks, width: int, height: int, s
                         str(img), 0, 0, prs.slide_width, prs.slide_height)
 
                     note = notes.get(str(i + 1)) or notes.get(i + 1) or ''
-                    note_text = _strip_html(str(note))
+                    note_text = _notes_to_text(note)
                     if title and note_text:
                         note_text = f"{title}\n\n{note_text}"
                     elif title:

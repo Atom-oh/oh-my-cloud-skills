@@ -101,7 +101,7 @@ python3 {skill-dir}/scripts/remarp_to_slides.py issues {repo}/{slug}/ [--json]  
 ### Phase 8 — Verify
 블록별 점검: 슬라이드 수 일치 · `SlideFramework` 옵션(footer/logoSrc/presenterNotes) · 모든 Canvas ID에 `setupCanvas()` · quiz `data-quiz`/`data-correct` · `../common/` 상대경로 · **theme-override.css 링크됨(PPTX 추출 시)** · 언어 · 첫 슬라이드=Session Cover(§0a/§0b, `.title-slide` 아님) · 마지막=Thank You(목차 링크).
 
-> **Screenshot 검증 (필수)**: Playwright MCP로 **FHD 1920×1080**(주 해상도) + **4K 3840×2160**에서 모든 인터랙티브/Canvas 슬라이드 캡처. 확인: 텍스트 가독성·캔버스 비율·오버플로우 없음·컨트롤 표시. 인터랙션(탭/슬라이더/버튼) 후 캡처. **Canvas step 슬라이드는 ArrowDown/Up으로 전체 step 순회하며 각 step 캡처**(겹침·정렬·가독성). N(노트)·F(풀스크린) 스케일링 확인.
+> **Screenshot 검증 (필수)**: Playwright MCP로 **FHD 1920×1080**(주 해상도) + **4K 3840×2160**에서 모든 인터랙티브/Canvas 슬라이드 캡처. 확인: 텍스트 가독성·캔버스 비율·오버플로우 없음·컨트롤 표시. 인터랙션(탭/슬라이더/버튼) 후 캡처. **Canvas step 슬라이드는 ArrowDown/Up으로 전체 step 순회하며 각 step 캡처**(겹침·정렬·가독성). N(노트)·F(풀스크린) 스케일링 확인. 캡처 검토 시 **디자인 자기비평: [references/design-direction.md](references/design-direction.md) §6 절제 체크리스트** 적용.
 > 스케일링: 고정 1920×1080 디자인 캔버스 + `transform: scale(min(vw/1920, vh/1080))` → FHD/4K 픽셀 일관.
 
 ### Phase 8.5 — PPTX Export (요청 시)
