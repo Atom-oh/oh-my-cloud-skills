@@ -54,6 +54,7 @@ LINE_HEIGHT_MULT = 1.25          # matches this kit's typical lineSpacingMultipl
 OVERFLOW_TOL = 1.10              # 10% slack before an overflow counts
 OVERLAP_AREA_RATIO = 0.15        # intersection > 15% of the smaller shape -> flag
 BG_AREA_RATIO = 0.80             # a picture covering >80% of the slide is a background, not content
+BADGE_MAX_IN = 0.40              # text box <= this in both dims = badge/marker (may overlay a picture)
 CANVAS_TOL_IN = 0.02
 FONT_NAME = "Pretendard"
 COPYRIGHT_MARK = "amazon web services"
@@ -108,10 +109,10 @@ def _kind(sh, slide_area_sqin):
 def _wrap_lines(text, fs_pt, budget_pt):
     """Estimated line count. Hard breaks first (python-pptx returns '\\v' for <a:br>,
     which is what PptxGenJS emits for a '\\n' in text), then character-by-character wrap
-    of each segment. # ponytail: word-wrap (not char-wrap) would be more accurate for
-    space-delimited English, but this deck is Korean-first (no spaces to break on) —
-    char-wrap is the simpler estimator that works for both. Upgrade to real word-wrap if
-    false positives show up on English-heavy decks."""
+    of each segment. Deliberate simplification: word-wrap (not char-wrap) would be more
+    accurate for space-delimited English, but this deck is Korean-first (no spaces to
+    break on) — char-wrap is the simpler estimator that works for both. Upgrade to real
+    word-wrap if false positives show up on English-heavy decks."""
     if not text:
         return 1
     total = 0
@@ -179,6 +180,14 @@ def _overlap_ratio(a, b):
     return inter / smaller if smaller > 0 else 0.0
 
 
+def _is_badge(kind, box):
+    """A small text box (<= BADGE_MAX_IN in both dimensions) is a badge/marker — e.g.
+    arch_kit's numbered stepMarker circles, which sit ON icons by design. Exempting
+    them from picture x text overlap keeps the intended-overlay pattern legal while
+    still catching real caption-on-icon collisions (captions are wide, not square)."""
+    return kind == "text" and box[2] <= BADGE_MAX_IN and box[3] <= BADGE_MAX_IN
+
+
 def _check_overlap(shapes, slide_area_sqin):
     boxes = []
     for sh in shapes:
@@ -195,7 +204,10 @@ def _check_overlap(shapes, slide_area_sqin):
             # picture x picture, text x text, AND picture x text — a caption sitting on
             # top of an icon (the exact defect a too-short cell height produces) is a
             # picture x text overlap, so we must not skip mixed kinds. Full-bleed
-            # backgrounds are already excluded upstream by _kind().
+            # backgrounds are already excluded upstream by _kind(). Small badge-sized
+            # text boxes over a picture are exempt (step markers overlay icons by design).
+            if ka != kb and (_is_badge(ka, ba) or _is_badge(kb, bb)):
+                continue
             if _overlap_ratio(ba, bb) > OVERLAP_AREA_RATIO:
                 n += 1
     return n

@@ -164,6 +164,18 @@ def test_caption_on_icon_overlap_detected():
     assert any("overlapping" in f for f in r["findings"]), r["findings"]
 
 
+def test_step_marker_on_icon_not_flagged():
+    # arch_kit's stepMarker is a 0.34" numbered badge intentionally overlaying an icon
+    # corner — badge-sized text boxes must be exempt from picture x text overlap
+    prs = _blank_prs()
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    s.shapes.add_picture(LOGO, Inches(3.0), Inches(2.0), width=Inches(0.62), height=Inches(0.62))
+    _add_text(s, 3.14, 1.9, 0.34, 0.34, "5", size=12)  # marker on the icon's top-right
+    _add_footer(s, 2)
+    r = check_pptx.analyze(prs)
+    assert not any("overlapping" in f for f in r["findings"]), r["findings"]
+
+
 def test_soft_break_counts_as_line():
     # "\n" in a small box should push the wrapped height over the box -> overflow
     prs = _blank_prs()

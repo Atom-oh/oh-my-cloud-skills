@@ -47,7 +47,7 @@ A brochure is **persuasion + clarity for a dual audience**: a decision-maker gra
 
 ## Workflow
 
-Follow the six phases in **`{plugin-dir}/skills/brochure/SKILL.md`**:
+Follow the seven phases in **`{plugin-dir}/skills/brochure/SKILL.md`** (numbered 1–6 there, with screenshots as Phase 3.5):
 
 1. **Gather facts** — read the source; verify metrics; ask if missing.
 2. **Design direction** — commit to one aesthetic; read `references/design-system.md` before writing CSS.
@@ -63,7 +63,7 @@ A brochure is a single self-contained artifact, so the default is **sequential, 
 
 ## References
 
-- `{plugin-dir}/skills/brochure/SKILL.md` — the six-phase workflow.
+- `{plugin-dir}/skills/brochure/SKILL.md` — the seven-phase workflow (Phases 1–6 + 3.5).
 - `{plugin-dir}/skills/brochure/references/design-system.md` — tokens, type pairing, responsive + mobile-rotate, accessibility, CSS gotchas. **Read before writing CSS.**
 - `{plugin-dir}/skills/brochure/assets/example-brochure/` — golden-reference brochure (adapt, don't copy verbatim).
 - `{plugin-dir}/skills/brochure/scripts/check_brochure.py` — structural/responsive/a11y self-check.

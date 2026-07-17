@@ -451,7 +451,7 @@ Choose Interactive (JS) when:
 대상은 신규 애니메이션 다이어그램과 실질 개정 — 오탈자·한 줄 수정 같은 사소한 손질은 재리뷰 없이 반영.
 1. content-review-agent 호출 → `review content at [파일경로]`
 2. FAIL/REVIEW 판정 시 수정 후 재리뷰 (최대 3회)
-3. PASS (≥85점) 획득 후에만 완료 선언
+3. 해당 스케일 기준 PASS 판정 획득 후에만 완료 선언 (100점 만점: ≥85 / 비-HTML 90점 환산: ≥77 — content-review-agent의 Verdict 표 참조)
 
 ---
 

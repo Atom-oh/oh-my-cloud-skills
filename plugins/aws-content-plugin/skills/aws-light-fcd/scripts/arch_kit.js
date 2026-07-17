@@ -67,6 +67,9 @@ function _curatedNames(kit) {
 // `capW` caps the caption text-box width so it never bleeds past a narrow column;
 // defaults to 1.8" (roomy) but archFlow passes its computed slotW for tight layouts.
 function svc(kit, pres, s, cx, y, iconName, label, iconSz = 0.62, capW = 1.8) {
+  if (typeof iconName !== "string" || !iconName) {
+    throw new Error(`arch.svc: item needs an 'icon' name (or use {chip: "..."} for endpoints) — got ${JSON.stringify(iconName)} for label '${label}'.`);
+  }
   const curated = kit.awsIcon(iconName);
   let iconPath;
   if (fs.existsSync(curated)) {
