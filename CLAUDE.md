@@ -308,7 +308,8 @@ Content:   presentation-agent (dispatcher) → reactive-presentation-agent → c
                                           → aws-light-fcd skill (native .pptx) → QA render → embed_fonts.py
            Remarp HTML ↔ .remarp.md (bidirectional visual editing via VSCode extension)
            PPTX theme:  .pptx → extract_pptx_theme.py → theme-manifest.json + theme-override.css
-           PPTX export: index.html → html2canvas iframe capture → PptxGenJS → .pptx download
+           PPTX export: export_pptx.py (headless Playwright capture + python-pptx, speaker notes 포함) → .pptx
+                        (브라우저 폴백: toc.html Export PPTX 버튼 → html2canvas + PptxGenJS)
            PPTX native: aws-light-fcd → deck_kit.js/arch_kit.js (PptxGenJS) → kit.icon() shares reactive-presentation 811-icon lib
            architecture-diagram-agent → layout_aws.py (YAML spec → .drawio, standard patterns) → validate+lint → PNG
                                        → hand-authored .drawio (non-standard shapes) → PNG
