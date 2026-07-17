@@ -19,7 +19,7 @@ Execute the `pr-autofix` skill. The skill handles the full workflow:
 1. Identify the PR from the current branch
 2. Poll for AI review comments (`<!-- bedrock-pr-review -->`) and human review status (`CHANGES_REQUESTED`)
 3. If all reviews pass → done
-4. If any review is blocking → read issues, plan fixes on Fable/Opus, implement the plan with a sonnet subagent, verify build, commit, push
+4. If any review is blocking → read issues, plan fixes on Fable/Opus, implement the plan with sonnet subagents (parallel on disjoint files), verify build, commit, push
 5. Repeat up to 3 times
 
 Key constraints:

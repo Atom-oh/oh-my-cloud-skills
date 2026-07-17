@@ -31,7 +31,8 @@ flowchart TD
     D -->|모두 PASS| E[완료]
     D -->|이슈 발견| F[수정 계획 수립<br/>Fable/Opus]
     F --> F2[계획대로 구현<br/>sonnet 서브에이전트]
-    F2 --> G[빌드 검증]
+    F2 --> V[계획 대비 delta 대조<br/>host — baseline 밖 변경 보호]
+    V --> G[빌드 검증]
     G --> H[커밋 & push]
     H --> I{반복 < 3?}
     I -->|Yes| C
