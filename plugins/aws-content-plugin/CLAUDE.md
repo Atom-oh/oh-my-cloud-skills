@@ -47,7 +47,7 @@ workshop-agent → content-review-agent → Workshop Studio content
 
 ### Brochure Workflow
 ```
-brochure-agent → gather product facts → (Playwright UI 캡처) → (architecture-diagram → SVG)
+brochure-agent → gather product facts → (architecture-diagram → SVG) → (Playwright UI 캡처)
   → self-contained responsive HTML → check_brochure.py → content-review-agent (≥85)
   → GitHub Pages (public, verify no-auth 200)
 ```
@@ -99,7 +99,7 @@ gather facts (기존 페이지/GitHub/사용자 확인) → self-contained respo
 | Workshop 콘텐츠 완성 | Workshop 모듈 콘텐츠 작성 완료 | `review content at [프로젝트경로]` |
 | 브로셔 완성 | 브로셔 `.html` 작성 완료 | `review content at [파일경로]` |
 | 프로필 페이지 완성 | 프로필 페이지 `.html` 작성 완료 | `review content at [파일경로]` |
-| PPTX 덱 완성 | `.pptx` 작성 완료 (check_pptx.py ≥80 통과 후) | `review content at [파일경로]` |
+| PPTX 덱 완성 | `.pptx` 작성 완료 (check_pptx.py 게이트 통과 + embed_fonts.py 실행 후) | `review content at [파일경로]` |
 
 ### Review Loop
 

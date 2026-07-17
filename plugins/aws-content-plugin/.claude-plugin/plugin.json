@@ -31,7 +31,7 @@
     "playwright": {
       "command": "npx",
       "args": [
-        "@playwright/mcp@latest"
+        "@playwright/mcp@0.0.78"
       ],
       "type": "stdio",
       "timeout": 120000

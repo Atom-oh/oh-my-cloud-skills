@@ -235,6 +235,7 @@ function archFlow(kit, pres, opts) {
       const h = cellH[k];
       const icx = cx + slotW / 2;
       let cy = itemY + h / 2;
+      let itemCx = icx;
       if (it.chip != null) {
         // anchor the oval inside the column (never left of cx) and let its label fill the
         // rest of the slot width — keeps the whole chip within [cx, cx+slotW].
@@ -242,13 +243,16 @@ function archFlow(kit, pres, opts) {
         const ovalX = cx + 0.06;
         const ovalY = itemY + (h - ovalD) / 2;
         chip(kit, pres, s, ovalX, ovalY, it.chip, ovalD, slotW - 0.06);
-        cy = ovalY + ovalD / 2;   // return the oval's visual center, not the cell center
+        // the documented contract is "the item's {cx,cy} center" — for a chip that's the
+        // oval's visual center, not the slot center (which lands on the label text)
+        itemCx = ovalX + ovalD / 2;
+        cy = ovalY + ovalD / 2;
       } else {
         svc(kit, pres, s, icx, itemY, it.icon, it.label, it.iconSz, slotW);
       }
       if (it.step != null) stepMarker(kit, pres, s, icx + 0.14, itemY - 0.1, it.step);
       itemY += h;
-      return { cx: icx, cy };
+      return { cx: itemCx, cy };
     });
     return { x: cx, y: boxY, w: slotW, h: boxH, items: placed };
   });
@@ -271,12 +275,20 @@ function archFlow(kit, pres, opts) {
     if (!cols[i] || !cols[j]) {
       throw new Error(`arch.archFlow: arrow [${i},${j}] references a column that doesn't exist (${n} columns).`);
     }
+    if (j !== i + 1) {
+      // a straight horizontal line between non-adjacent columns would cut right through
+      // the content of every column in between (and check_pptx doesn't inspect LINE
+      // shapes, so nothing downstream would catch it). Reject rather than draw it wrong;
+      // route long hops manually via the returned cols[] geometry if truly needed.
+      throw new Error(`arch.archFlow: arrow [${i},${j}] spans non-adjacent columns — a straight ` +
+        `connector would cross the columns in between. Chain adjacent pairs ([${i},${i + 1}], …) ` +
+        `or draw a routed connector by hand using the returned cols[] geometry.`);
+    }
     const midY = ((cols[i].y + cols[i].h / 2) + (cols[j].y + cols[j].h / 2)) / 2;
     const fromX = cols[i].x + cols[i].w + 0.12;
     const toX = cols[j].x - 0.12;
     if (toX <= fromX) {
-      throw new Error(`arch.archFlow: arrow [${i},${j}] runs right-to-left or between adjacent columns ` +
-        `with no gap — arrows must point left→right toward a later column.`);
+      throw new Error(`arch.archFlow: arrow [${i},${j}] leaves no horizontal gap to draw in.`);
     }
     arrow(kit, pres, s, fromX, midY, toX - fromX);
   });

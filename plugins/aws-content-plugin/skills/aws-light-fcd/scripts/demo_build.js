@@ -100,7 +100,9 @@ const { FiZap, FiSearch, FiGitBranch, FiShield } = require("react-icons/fi");
   arch.groupBox(kit, pres, s, cols[4].x, monY, cols[4].w, 1.05, "모니터링");
   const mcx = cols[4].x + cols[4].w / 2;
   s.addImage({ path: kit.awsIcon("cloudwatch"), x: mcx - 0.25, y: monY + 0.55, w: 0.5, h: 0.5 });
-  arch.stepMarker(kit, pres, s, cols[5].items[0].cx - 0.9, cols[5].items[0].cy - 0.35, 7);
+  // cols[5].items[0].cx is the first chip's oval center (the documented contract), so a
+  // small fixed offset places the marker just left of the oval — no hard-coded guesswork
+  arch.stepMarker(kit, pres, s, cols[5].items[0].cx - 0.55, cols[5].items[0].cy - 0.35, 7);
   arch.stepMarker(kit, pres, s, mcx + 0.14, monY + 0.05, 8);
 
   // 6) TITLE + VISUAL  (EKS slide-21 style responsibility diagram)

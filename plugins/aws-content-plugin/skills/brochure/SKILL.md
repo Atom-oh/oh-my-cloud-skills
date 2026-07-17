@@ -28,8 +28,8 @@ A brochure is **persuasion + clarity**, not a slide deck and not a docs site. It
 ## Workflow
 
 ```
-brochure-agent → gather product facts → (Playwright screenshots, if a web UI exists)
-  → (architecture-diagram skill → SVG) → write self-contained HTML
+brochure-agent → gather product facts → (architecture-diagram skill → SVG)
+  → (Playwright screenshots, if a reachable web UI exists) → write self-contained HTML
   → self-check script → content-review-agent (≥85) → deploy to GitHub Pages (public)
 ```
 
