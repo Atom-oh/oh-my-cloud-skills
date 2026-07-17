@@ -87,7 +87,7 @@ function svc(kit, pres, s, cx, y, iconName, label, iconSz = 0.62, capW = 1.8) {
         `shared 811-icon library).${hint} See references/icons.md.`);
     }
   }
-  const cw = Math.min(1.8, capW);
+  const cw = capW;   // caller-supplied width (default 1.8"); archFlow passes its slotW
   s.addImage({ path: iconPath, x: cx - iconSz / 2, y, w: iconSz, h: iconSz });
   s.addText(label, { x: cx - cw / 2, y: y + iconSz + 0.04, w: cw, h: 0.54, fontFace: kit.FONT, fontSize: 10.5, color: kit.C.body, align: "center", valign: "top", lineSpacingMultiple: 1.0, margin: 0 });
 }
@@ -160,6 +160,16 @@ function archFlow(kit, pres, opts) {
   const n = columns.length;
   const hasLegend = !!(opts.legend && opts.legend.length);
 
+  // step numbers must map 1:1 onto legend entries — an orphan marker (step > legend.length)
+  // points at nothing. Catch it here rather than shipping a confusing diagram.
+  if (hasLegend) {
+    const maxStep = Math.max(0, ...columns.flatMap(c => (c.items || []).map(it => it.step || 0)));
+    if (maxStep > opts.legend.length) {
+      throw new Error(`arch.archFlow: step ${maxStep} has no legend entry (legend has ${opts.legend.length}). ` +
+        `Add legend entries or renumber the steps.`);
+    }
+  }
+
   const x0 = kit.PAD;
   const x1 = hasLegend ? 11.2 : kit.W - kit.PAD;
   const y0 = opts.subtitle ? 1.95 : 1.55;
@@ -202,16 +212,21 @@ function archFlow(kit, pres, opts) {
     const placed = items.map((it, k) => {
       const h = cellH[k];
       const icx = cx + slotW / 2;
-      const icy = itemY + h / 2;
+      let cy = itemY + h / 2;
       if (it.chip != null) {
-        // cap the chip footprint at the column's right edge (oval starts at icx-0.5)
-        chip(kit, pres, s, icx - 0.5, itemY + (h - CHIP_CELL) / 2, it.chip, 0.2, slotW / 2 + 0.5);
+        // anchor the oval inside the column (never left of cx) and let its label fill the
+        // rest of the slot width — keeps the whole chip within [cx, cx+slotW].
+        const ovalD = 0.2;
+        const ovalX = cx + 0.06;
+        const ovalY = itemY + (h - ovalD) / 2;
+        chip(kit, pres, s, ovalX, ovalY, it.chip, ovalD, slotW - 0.06);
+        cy = ovalY + ovalD / 2;   // return the oval's visual center, not the cell center
       } else {
         svc(kit, pres, s, icx, itemY, it.icon, it.label, it.iconSz, slotW);
       }
       if (it.step != null) stepMarker(kit, pres, s, icx + 0.14, itemY - 0.1, it.step);
       itemY += h;
-      return { cx: icx, cy: icy };
+      return { cx: icx, cy };
     });
     return { x: cx, y: boxY, w: slotW, h: boxH, items: placed };
   });

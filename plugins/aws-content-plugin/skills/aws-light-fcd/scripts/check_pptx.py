@@ -69,8 +69,9 @@ def _iter_shapes(shapes):
     emits native PPTX groups (it composes with plain addShape/addText/addImage calls),
     so we don't do that projection; a GROUP shape is checked as its own bbox only and
     its children are skipped by ALL checks (geometry, font, footer, placeholder).
-    analyze() surfaces a per-deck note when groups are present so externally-built
-    decks don't silently pass with uninspected grouped content."""
+    Because that would let a grouped external deck pass with nothing inspected, analyze()
+    turns GROUP presence into a blocking geometry finding (fails the gate, forces a manual
+    review) rather than a silent pass."""
     for sh in shapes:
         yield sh
         # GROUP children intentionally not recursed into (see docstring) — the group's
@@ -234,15 +235,20 @@ def _check_offcanvas(shapes, sw_in, sh_in, slide_area_sqin):
         box = _bbox_in(sh)
         if not box:
             continue
-        # full-bleed background images may deliberately bleed past the canvas edge —
-        # exempt them here for the same reason _kind() exempts them from overlap.
+        x, y, w, h = box
+        # A full-bleed background image may deliberately bleed past the edge — but only
+        # exempt it if it actually COVERS the canvas (on-canvas intersection > 80% of the
+        # slide). A large image parked entirely off-canvas is still a defect: area alone
+        # would have waved it through.
         try:
             is_pic = sh.shape_type == MSO_SHAPE_TYPE.PICTURE
         except (ValueError, NotImplementedError):
             is_pic = False
-        if is_pic and (box[2] * box[3]) / slide_area_sqin > BG_AREA_RATIO:
-            continue
-        x, y, w, h = box
+        if is_pic:
+            ix = max(0.0, min(x + w, sw_in) - max(x, 0.0))
+            iy = max(0.0, min(y + h, sh_in) - max(y, 0.0))
+            if (ix * iy) / slide_area_sqin > BG_AREA_RATIO:
+                continue
         if (x < -CANVAS_TOL_IN or y < -CANVAS_TOL_IN or
                 x + w > sw_in + CANVAS_TOL_IN or y + h > sh_in + CANVAS_TOL_IN):
             n += 1

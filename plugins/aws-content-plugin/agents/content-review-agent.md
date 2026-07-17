@@ -23,7 +23,7 @@ A comprehensive review agent for all content types produced by the aws-content-p
 | Markdown Documents | document-agent | Structure, content, references |
 | GitBook Pages | gitbook-agent | Navigation, components, cross-refs |
 | Workshop Content | workshop-agent | Directives, structure, bilingual consistency |
-| Brochure (HTML) | brochure-agent | Responsive tiers (mobile/tablet/PC), CTA presence, copy↔diagram consistency, product-UI screenshots present when the product has a web UI (alt text + captions; flag that raster screenshots need a manual eyeball for baked-in account IDs/ARNs/tokens/internal URLs — text PII scan can't see pixels), relative asset links, accessibility, PII (account IDs / internal CIDRs/IPs) |
+| Brochure (HTML) | brochure-agent | Responsive tiers (mobile/tablet/PC), CTA presence, copy↔diagram consistency, product-UI screenshots present when the product has a **reachable** web UI or the user supplied captures (alt text + captions; flag that raster screenshots need a manual eyeball for baked-in account IDs/ARNs/tokens/internal URLs — text PII scan can't see pixels). Do **not** dock a brochure for missing screenshots when the product has no reachable UI and none were provided (matches brochure-agent rule 9). Also: relative asset links, accessibility, PII (account IDs / internal CIDRs/IPs) |
 | PPTX Decks (native) | presentation-agent → aws-light-fcd skill | `check_pptx.py` score ≥80 (text overflow/overlap, off-canvas, footer, page-number sanity, Pretendard-only, no placeholder text) + official AWS/AgentCore icons |
 
 ---
@@ -172,7 +172,7 @@ Email:       [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
 
 ## Visual Testing (HTML 콘텐츠)
 
-HTML 기반 콘텐츠(프레젠테이션, 애니메이션 다이어그램, 렌더링된 GitBook)에 대해 Playwright MCP 도구를 사용하여 실제 브라우저에서 인터랙션을 검증합니다.
+HTML 기반 콘텐츠(프레젠테이션, 애니메이션 다이어그램, 브로셔/프로필 페이지, 렌더링된 GitBook)에 대해 Playwright MCP 도구를 사용하여 실제 브라우저에서 인터랙션을 검증합니다.
 
 > **가용성 게이트 (먼저 확인)**: Playwright MCP 도구(`browser_navigate` 등)는 이
 > 에이전트의 기본 tool 목록이 아니라 **세션에 Playwright MCP가 로드된 경우에만**
@@ -223,6 +223,7 @@ HTML 파일을 브라우저에서 열어 테스트하려면:
 |-------------|-----------------|
 | HTML 프레젠테이션 | 전체 (네비게이션, 탭, 퀴즈, 캔버스, 반응형, 프레젠터 뷰) |
 | 애니메이션 다이어그램 | 페이지 로드, 레전드 토글, 애니메이션 재생, 반응형 |
+| Brochure / 프로필 페이지 (HTML) | 전체 (반응형 3-tier 375/768/1280 스크린샷, CTA·앵커 동작, 콘솔 에러). Playwright MCP 미가용 시 면제→90점 환산 |
 | GitBook (빌드/프리뷰 URL 있을 때만) | 네비게이션, 컴포넌트 렌더링, 링크 검증 — markdown 소스만 있으면 면제 |
 | Markdown 문서 | 해당 없음 (텍스트만 검사) |
 | Draw.io 다이어그램 | 해당 없음 (XML 구조만 검사) |

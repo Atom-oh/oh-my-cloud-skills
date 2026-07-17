@@ -11,10 +11,10 @@ A unified plugin for AWS cloud content creation: presentations, architecture dia
 # Web/HTML (interactive):
 presentation-agent (dispatcher) → reactive-presentation-agent → validate (rejection loop) → build → content-review-agent → Deploy (GitHub Pages)
 # Native PowerPoint (.pptx):
-presentation-agent (dispatcher) → aws-light-fcd skill (PptxGenJS, AWS Light theme) → check_pptx.py (거절 루프, ≥80) → embed_fonts.py → content-review-agent → .pptx
+presentation-agent (dispatcher) → aws-light-fcd skill (PptxGenJS, AWS Light theme) → check_pptx.py (거절 루프, ≥80 AND geometry 0건) → embed_fonts.py → content-review-agent → .pptx
 ```
 > **필수**: Remarp 작성 후 `remarp_to_slides.py validate`로 거절 루프 실행. CRITICAL 이슈 0건이어야 빌드 진행.
-> **PPTX 분기**: "pptx/파워포인트/ppt" 키워드 또는 사용자가 PPTX 선택 시 디스패처가 `aws-light-fcd` 스킬로 라우팅. python-pptx 직접 작성 금지 — 스킬을 호출. **필수**: `check_pptx.py` 점수 ≥80(거절 루프)이어야 embed_fonts.py로 진행.
+> **PPTX 분기**: "pptx/파워포인트/ppt" 키워드 또는 사용자가 PPTX 선택 시 디스패처가 `aws-light-fcd` 스킬로 라우팅. python-pptx 직접 작성 금지 — 스킬을 호출. **필수**: `check_pptx.py`가 점수 ≥80 **그리고** `[geometry]` finding 0건이어야(거절 루프) embed_fonts.py로 진행 — geometry 결함은 점수와 무관하게 게이트 실패.
 
 ### Architecture Diagram Workflow
 ```

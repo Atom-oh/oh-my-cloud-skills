@@ -186,6 +186,27 @@ def test_soft_break_counts_as_line():
     assert any("overflow" in f for f in r["findings"]), r["findings"]
 
 
+def test_large_image_fully_offcanvas_flagged():
+    # a big picture (>80% of slide area) placed entirely off-canvas must still flag —
+    # the background exemption is coverage-based, not area-based
+    prs = _blank_prs()
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    _add_footer(s, 2)
+    s.shapes.add_picture(LOGO, Inches(14.0), Inches(1.0), width=Inches(12.0), height=Inches(6.0))
+    r = check_pptx.analyze(prs)
+    assert any("outside the slide canvas" in f for f in r["findings"]), r["findings"]
+
+
+def test_full_bleed_background_exempt():
+    # a picture that actually covers the canvas (bleeding slightly past edges) is exempt
+    prs = _blank_prs()
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    _add_footer(s, 2)
+    s.shapes.add_picture(LOGO, Inches(-0.2), Inches(-0.2), width=Inches(13.7), height=Inches(7.9))
+    r = check_pptx.analyze(prs)
+    assert not any("outside the slide canvas" in f for f in r["findings"]), r["findings"]
+
+
 def test_group_shapes_fail_gate():
     # native GROUP children can't be inspected, so a grouped deck must fail the gate
     # (forces manual review) rather than silently passing with geometry_findings=0
