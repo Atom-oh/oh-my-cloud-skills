@@ -110,7 +110,7 @@ judgment-heavy part — misread findings, wrong root cause, scope creep. A stron
 
 **4a. Fix plan — Fable or Opus.** If the host session is already running Fable/Opus,
 write the plan inline. Otherwise spawn a planning subagent with a strong-model override
-(Agent tool `model: "opus"`; use `"fable"` where available). Give the planner a read-only tool allowlist (Read/Grep/Glob) — it judges, it does not edit. The plan covers, per finding:
+(Agent tool `model: "opus"`; use `"fable"` where available). Instruct the planner to work read-only (Read/Grep/Glob — it judges, it does not edit); this is a prompt-level constraint, not an enforced sandbox — the landing gates below are what actually hold. The plan covers, per finding:
 `file:line` → root cause → the exact edit → how to verify it. The scope constraints below
 are written INTO the plan so the implementer inherits them.
 
@@ -138,14 +138,16 @@ recorded in your running notes.)
 RUN_DIR=$(mktemp -d "${TMPDIR:-/tmp}/pr-autofix.XXXXXX") || exit 1   # private (0700): worktree AND patches live inside
 HOST_ROOT=$(git rev-parse --show-toplevel) || exit 1                 # pin once — landing never depends on CWD
 BASE_SHA=$(git rev-parse HEAD) || exit 1                             # pin once — delta base survives anything
+BASE_REF=$(git symbolic-ref -q HEAD || echo detached)                # pin the branch too — same SHA on another branch is still a moved base
 git -c core.hooksPath=/dev/null worktree add --detach "$RUN_DIR/wt" "$BASE_SHA" || exit 1
 IMPL_WT="$RUN_DIR/wt"
 # (hooksPath override: don't let a PR-controlled post-checkout hook run here.
 #  If a previous run died early, `git worktree prune` clears leftovers.)
 ```
 
-Spawn the implementer subagent (Agent tool `model: "sonnet"`, tool allowlist limited
-to file editing — no network/web tools) with the plan and the
+Spawn the implementer subagent (Agent tool `model: "sonnet"`; instruct it to use file-editing
+tools only, no network/web — prompt-level, not enforced; the delta verification in 4c is
+the real gate) with the plan and the
 worktree path: work ONLY inside `$IMPL_WT`, apply exactly the planned edits, no
 refactoring beyond them, **edit files only — no git state commands** (no commit/stash/
 checkout/reset; a moved HEAD would silently erase the delta), return the changed-file list. The plan carries only structured
@@ -177,7 +179,7 @@ Check the delta against the plan in both directions, then land only what passed:
   re-run the implementer for that file instead). `full.1.patch` stays untouched. New files
   ride the same patch (the intent-to-add diff includes them), so approval, the
   never-overwrite guard, and recovery all follow one mechanism.
-- **Each plan item must appear in the delta** — a missing edit means the implementer
+- **Each plan item must appear in the delta** (an empty delta passes every `|| exit 1` — this bidirectional check is the only thing that catches a no-op run) — a missing edit means the implementer
   dropped a finding: re-run that implementer in the same worktree (or apply inline),
   then capture a **new generation** (`full.2.patch`, `full.3.patch`, …) and regenerate
   `approved.patch` from the latest one before re-verifying. Each capture is immutable
@@ -188,11 +190,15 @@ Check the delta against the plan in both directions, then land only what passed:
   NUL-safe — this gate is load-bearing, and an unquoted space would make it false-clean). If not,
   STOP and report: landing onto a locally-modified file would sweep the user's edits
   into the Step 5 commit even when `git apply` succeeds.
-- **Land**: first guard against a moved base — `[ "$(git -C "$HOST_ROOT" rev-parse HEAD)" = "$BASE_SHA" ]`
-  must hold (the user may have committed or switched branches mid-run; a stale patch on a
-  different revision → STOP and report; `$BASE_SHA` is recoverable from the worktree's
-  detached HEAD: `git -C "$IMPL_WT" rev-parse HEAD`). Then
-  `git -C "$HOST_ROOT" apply "$RUN_DIR/approved.patch"`.
+- **Land**: first guard against a moved base — BOTH must hold:
+  `[ "$(git -C "$HOST_ROOT" rev-parse HEAD)" = "$BASE_SHA" ]` and
+  `[ "$(git -C "$HOST_ROOT" symbolic-ref -q HEAD || echo detached)" = "$BASE_REF" ]`
+  (SHA alone passes a switch to another branch pointing at the same commit). On mismatch
+  → STOP and report. `$BASE_SHA` is recoverable from the worktree's detached HEAD:
+  `git -C "$IMPL_WT" rev-parse HEAD`. Run `git -C "$HOST_ROOT" apply --check` first, then
+  `git -C "$HOST_ROOT" apply "$RUN_DIR/approved.patch"`. **Repeat the same SHA+ref check
+  immediately before Step 5's commit** — the build can take minutes, and this loop runs
+  unattended.
   Any conflict (including a new-file path that already exists) → STOP and tell the user —
   never overwrite their changes.
 - **Build check comes BEFORE cleanup**: run the build verification (below) while
@@ -200,16 +206,24 @@ Check the delta against the plan in both directions, then land only what passed:
   `approved.patch` — build tooling (formatters, codegen) may have mutated them;
   unexplained drift → investigate before committing.
 - **Companion-edit guard**: if the landed subset fails the build because a dropped hunk
-  was a required companion change (e.g. an import), land that hunk from the latest immutable
-  `full.N.patch` and note it in the commit message; if the same finding needs this twice,
-  escalate to the user.
+  was a required companion change (e.g. an import), that hunk does NOT get a free pass —
+  it was rejected once, so it re-enters the gate: the strong-tier planner re-approves it
+  line by line (an import and a malicious change can share one hunk), the cleanliness
+  gate re-runs for every path it touches, and only then is it landed from the latest
+  immutable `full.N.patch`, noted in the commit message. If the same finding needs this
+  twice, escalate to the user.
 - **Cleanup**: after the build passes and the commit is made,
-  `git worktree remove --force "$IMPL_WT" && rm -rf -- "$RUN_DIR"`. On a STOP/failure path,
+  `git worktree remove --force "$IMPL_WT"; rm -rf -- "$RUN_DIR"` (`;` not `&&` — a worktree-remove failure must not leak `$RUN_DIR`). On a STOP/failure path,
   capture a recovery patch FIRST if none exists yet (the worktree may hold the only copy
   of the implementer's work), then remove the worktree but KEEP `$RUN_DIR` (patches) and
   tell the user its path — it is their inspection/recovery evidence.
 
 **Constraints (these go into the plan in 4a and bind the implementer in 4b):**
+- **Execution-surface files need explicit user approval**: edits to files the host will
+  execute during verification (`package.json` scripts, `Makefile`, `build.rs`,
+  `*.gradle`, CI-adjacent tooling configs) may be legitimate review fixes, but they turn
+  the build check into arbitrary code execution — plan them only with the user's
+  explicit sign-off, never autonomously.
 - Do NOT refactor beyond what the reviews ask
 - Do NOT modify CI/CD workflow files (`.github/workflows/*`)
 - Verify the fix compiles/builds before committing:
@@ -233,14 +247,14 @@ fi
 ### 5. Commit and push
 
 ```bash
-# Guard the hook surface the same way 4b does for worktree add: a hooksPath pointing at
-# TRACKED content (e.g. husky's .husky/) is PR-controllable — disable it; the default
-# untracked .git/hooks is user-owned and stays active (this repo's commit-msg relies on it).
+# Guard the hook surface: a configured core.hooksPath is PR-influenceable even when the
+# configured path itself is untracked (husky v9 sets .husky/_ — gitignored wrappers that
+# exec TRACKED .husky/* files), so tracked-ness of the path proves nothing. In this
+# automated flow, disable any configured hooksPath unconditionally; the default untracked
+# .git/hooks has no hooksPath configured and therefore stays active (this repo's
+# commit-msg hook relies on that).
 HOOKS_FLAG=""
-HP=$(git config core.hooksPath || true)
-if [ -n "$HP" ] && git ls-files --error-unmatch -- "$HP" >/dev/null 2>&1; then
-  HOOKS_FLAG="-c core.hooksPath=/dev/null"
-fi
+git config core.hooksPath >/dev/null 2>&1 && HOOKS_FLAG="-c core.hooksPath=/dev/null"
 
 # Stage and commit ONLY the files 4c landed. The pathspec commit is load-bearing: a bare
 # `git commit` would also include anything the USER had staged beforehand — the
