@@ -430,11 +430,15 @@ const ExportUtils = {
     }
   },
 
-  /** Strip HTML tags from a notes string for PPTX speaker notes */
+  /** Strip HTML tags from a notes string for PPTX speaker notes.
+   *  DOMParser never executes scripts or loads resources (unlike assigning
+   *  innerHTML, where e.g. <img onerror> fires even on a detached node). */
   _htmlToPlainText: function(html) {
-    var div = document.createElement('div');
-    div.innerHTML = String(html).replace(/<br\s*\/?>/gi, '\n');
-    return (div.textContent || '').trim();
+    var normalized = String(html)
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/(?:p|li|div|ul|ol|h[1-6]|tr)>/gi, '\n');
+    var doc = new DOMParser().parseFromString(normalized, 'text/html');
+    return (doc.body.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
   },
 
   /**

@@ -23,11 +23,12 @@ Dependencies:
 """
 
 import argparse
-import contextlib
 import functools
+import html as html_lib
 import http.server
 import os
 import re
+import shutil
 import socket
 import sys
 import tempfile
@@ -142,8 +143,12 @@ _NOTES_JS = """
 
 
 def _strip_html(text: str) -> str:
-    text = re.sub(r'<br\s*/?>', '\n', text)
+    """HTML notes → plain text, preserving block boundaries as newlines."""
+    text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
+    text = re.sub(r'</(?:p|li|div|ul|ol|h[1-6]|tr)>', '\n', text, flags=re.IGNORECASE)
     text = re.sub(r'<[^>]+>', '', text)
+    text = html_lib.unescape(text)
+    text = re.sub(r'\n{3,}', '\n\n', text)
     return text.strip()
 
 
@@ -156,8 +161,10 @@ def export(project_dir: Path, out_path: Path, blocks, width: int, height: int, s
     tmpdir = Path(tempfile.mkdtemp(prefix='remarp-pptx-'))
 
     prs = Presentation()
-    prs.slide_width = Inches(13.333)
+    # Slide size follows the capture viewport's aspect ratio (7.5in height is
+    # the PowerPoint constant; 16:9 → 13.333in, 4:3 → 10in).
     prs.slide_height = Inches(7.5)
+    prs.slide_width = Inches(round(7.5 * width / height, 3))
     blank = prs.slide_layouts[6]
 
     total = 0
@@ -210,6 +217,7 @@ def export(project_dir: Path, out_path: Path, blocks, width: int, height: int, s
             browser.close()
     finally:
         httpd.shutdown()
+        shutil.rmtree(tmpdir, ignore_errors=True)
 
     prs.save(str(out_path))
     print(f"\nOK: {total} slides → {out_path}")

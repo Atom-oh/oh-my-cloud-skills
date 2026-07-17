@@ -4959,9 +4959,12 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
                 continue
             label = str(elem.params.get('label', ''))
             src = str(elem.params.get('src', ''))
-            # Only bare service names are resolvable against the bundle;
-            # explicit paths (contain '/' or '.') are the author's own files.
+            # Only bundle-resolved srcs are checkable; bare labels resolve to
+            # ./common/aws-icons/ at parse time. Author-provided paths/URLs
+            # (anything else) are the author's own files — skip them.
             if '/' in label or '.' in label:
+                continue
+            if src and not src.startswith('./common/aws-icons/'):
                 continue
             filename = os.path.basename(src) if src else ICON_NAME_MAP.get(label, f'Arch_{label}_48.svg')
             if filename not in bundled:
