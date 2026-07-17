@@ -72,13 +72,9 @@ def _iter_shapes(shapes):
     analyze() surfaces a per-deck note when groups are present so externally-built
     decks don't silently pass with uninspected grouped content."""
     for sh in shapes:
-        try:
-            st = sh.shape_type
-        except (ValueError, NotImplementedError):
-            st = None
         yield sh
-        if st == MSO_SHAPE_TYPE.GROUP:
-            continue  # bbox already yielded above; skip child re-projection (see docstring)
+        # GROUP children intentionally not recursed into (see docstring) — the group's
+        # own bbox was just yielded and analyze() emits a per-deck note when groups exist.
 
 
 def _bbox_in(sh):
@@ -132,9 +128,10 @@ def _wrap_lines(text, fs_pt, budget_pt):
 
 
 def _para_font_pt(para):
-    for r in para.runs:
-        if r.font.size:
-            return r.font.size.pt
+    # largest run in the paragraph — mixed-size runs overflow at the biggest glyph
+    sizes = [r.font.size.pt for r in para.runs if r.font.size]
+    if sizes:
+        return max(sizes)
     if para.font.size:
         return para.font.size.pt
     return DEFAULT_FONT_PT
@@ -160,7 +157,11 @@ def _check_overflow(shapes):
         total_h_pt = 0.0
         for para in tf.paragraphs:
             fs = _para_font_pt(para)
-            total_h_pt += _wrap_lines(para.text, fs, budget_pt) * fs * LINE_HEIGHT_MULT
+            lines = _wrap_lines(para.text, fs, budget_pt)
+            # leading (LINE_HEIGHT_MULT) applies BETWEEN lines; the last line has no
+            # trailing leading — otherwise every single-line big number (96pt stat in a
+            # 1.5" box) false-positives
+            total_h_pt += (lines - 1) * fs * LINE_HEIGHT_MULT + fs
         avail_pt = max(1.0, (h_in - mt - mb) * 72)
         if total_h_pt > avail_pt * OVERFLOW_TOL:
             n += 1
@@ -182,10 +183,20 @@ def _overlap_ratio(a, b):
 
 def _is_badge(kind, box):
     """A small text box (<= BADGE_MAX_IN in both dimensions) is a badge/marker — e.g.
-    arch_kit's numbered stepMarker circles, which sit ON icons by design. Exempting
-    them from picture x text overlap keeps the intended-overlay pattern legal while
-    still catching real caption-on-icon collisions (captions are wide, not square)."""
+    arch_kit's numbered stepMarker circles, which sit ON icons/labels by design.
+    Exempting badges from overlap keeps the intended-overlay pattern legal while still
+    catching real caption-on-icon collisions (captions are wide, not square)."""
     return kind == "text" and box[2] <= BADGE_MAX_IN and box[3] <= BADGE_MAX_IN
+
+
+def _iou(a, b):
+    ax, ay, aw, ah = a
+    bx, by, bw, bh = b
+    ix = max(0.0, min(ax + aw, bx + bw) - max(ax, bx))
+    iy = max(0.0, min(ay + ah, by + bh) - max(ay, by))
+    inter = ix * iy
+    union = aw * ah + bw * bh - inter
+    return inter / union if union > 0 else 0.0
 
 
 def _check_overlap(shapes, slide_area_sqin):
@@ -201,12 +212,16 @@ def _check_overlap(shapes, slide_area_sqin):
     for i in range(len(boxes)):
         for j in range(i + 1, len(boxes)):
             (ka, ba), (kb, bb) = boxes[i], boxes[j]
-            # picture x picture, text x text, AND picture x text — a caption sitting on
-            # top of an icon (the exact defect a too-short cell height produces) is a
-            # picture x text overlap, so we must not skip mixed kinds. Full-bleed
-            # backgrounds are already excluded upstream by _kind(). Small badge-sized
-            # text boxes over a picture are exempt (step markers overlay icons by design).
-            if ka != kb and (_is_badge(ka, ba) or _is_badge(kb, bb)):
+            # Two intended-overlay patterns are exempt:
+            # 1. badge-sized text markers (stepMarker numbers) overlaying anything;
+            # 2. a text label congruent with a picture (IoU >= 0.8) — a pill header /
+            #    labeled shape, where the text is deliberately drawn ON the image.
+            # Everything else counts: picture x picture, text x text, and the
+            # partial picture x text collision a too-short cell height produces.
+            # Full-bleed backgrounds are already excluded upstream by _kind().
+            if _is_badge(ka, ba) or _is_badge(kb, bb):
+                continue
+            if ka != kb and _iou(ba, bb) >= 0.8:
                 continue
             if _overlap_ratio(ba, bb) > OVERLAP_AREA_RATIO:
                 n += 1
@@ -315,9 +330,9 @@ def analyze(prs):
                         small_font_count += 1
 
         # a slide carrying a footer copyright is a content slide — it should also carry a
-        # page number (cover/dividers may legitimately have neither). Catches the case
-        # where SOME slides are numbered but others silently aren't.
-        if has_footer and not slide_has_pagenum:
+        # page number. The cover (slide 1) conventionally has the copyright but no number,
+        # so it's exempt. Catches the case where SOME slides are numbered but others aren't.
+        if has_footer and not slide_has_pagenum and si > 0:
             missing_pagenum.append(si + 1)
 
     if missing_footer:

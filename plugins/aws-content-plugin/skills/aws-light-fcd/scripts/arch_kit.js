@@ -48,7 +48,7 @@ function stepMarker(kit, pres, s, x, y, n, d = 0.34) {
 // dashed group container with centered top label
 function groupBox(kit, pres, s, x, y, w, h, label) {
   s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w, h, rectRadius: 0.08, fill: { type: "none" }, line: { color: kit.C.hairline, width: 1, dashType: "dash" } });
-  if (label) s.addText(label, { x, y: y - 0.04, w, h: 0.5, fontFace: kit.FONT, fontSize: 12, bold: true, color: kit.C.body, align: "center", valign: "top" });
+  if (label) s.addText(label, { x, y: y - 0.04, w, h: 0.6, fontFace: kit.FONT, fontSize: 12, bold: true, color: kit.C.body, align: "center", valign: "top" });
 }
 
 // Curated bundled icon names (assets/icons/aws/*.png) — used to build "did you mean"
@@ -89,13 +89,16 @@ function svc(kit, pres, s, cx, y, iconName, label, iconSz = 0.62, capW = 1.8) {
   }
   const cw = Math.min(1.8, capW);
   s.addImage({ path: iconPath, x: cx - iconSz / 2, y, w: iconSz, h: iconSz });
-  s.addText(label, { x: cx - cw / 2, y: y + iconSz + 0.04, w: cw, h: 0.5, fontFace: kit.FONT, fontSize: 10.5, color: kit.C.body, align: "center", valign: "top", lineSpacingMultiple: 1.0 });
+  s.addText(label, { x: cx - cw / 2, y: y + iconSz + 0.04, w: cw, h: 0.54, fontFace: kit.FONT, fontSize: 10.5, color: kit.C.body, align: "center", valign: "top", lineSpacingMultiple: 1.0, margin: 0 });
 }
 
 // small labeled chip (oval + text) — endpoints (users/agents/programs), never emoji.
-function chip(kit, pres, s, x, y, label, d = 0.2) {
+// `maxW` caps the total footprint (oval + gap + text) so the label never bleeds into a
+// neighboring column or the legend rail; archFlow passes its computed slotW.
+function chip(kit, pres, s, x, y, label, d = 0.2, maxW = 1.33) {
+  const textW = Math.min(1.05, maxW - d - 0.08);
   s.addShape(pres.shapes.OVAL, { x, y, w: d, h: d, fill: { color: kit.C.blueTint }, line: { color: kit.C.blue, width: 1 } });
-  s.addText(label, { x: x + d + 0.08, y: y - (0.34 - d) / 2, w: 1.05, h: 0.34, fontFace: kit.FONT, fontSize: 11, color: kit.C.body, align: "left", valign: "middle", margin: 0 });
+  s.addText(label, { x: x + d + 0.08, y: y - (0.34 - d) / 2, w: textW, h: 0.34, fontFace: kit.FONT, fontSize: 11, color: kit.C.body, align: "left", valign: "middle", margin: 0 });
 }
 
 // horizontal arrow
@@ -103,11 +106,13 @@ function arrow(kit, pres, s, x, y, w) {
   s.addShape(pres.shapes.LINE, { x, y, w, h: 0, line: { color: kit.C.muted, width: 1.5, endArrowType: "triangle" } });
 }
 
-// far-right numbered step legend
+// far-right numbered step legend. Text width is clamped to the canvas right edge
+// (W - PAD margin would waste the rail; 0.05 keeps it just inside 13.333).
 function stepLegend(kit, pres, s, steps, lx = 11.45, lyTop = 1.55, lrow = 0.6) {
+  const textW = kit.W - 0.05 - (lx + 0.38);
   steps.forEach((t, i) => {
     stepMarker(kit, pres, s, lx, lyTop + i * lrow, i + 1, 0.28);
-    s.addText(t, { x: lx + 0.38, y: lyTop + i * lrow - 0.04, w: 1.55, h: 0.36, fontFace: kit.FONT, fontSize: 10.5, color: kit.C.body, align: "left", valign: "middle", margin: 0 });
+    s.addText(t, { x: lx + 0.38, y: lyTop + i * lrow - 0.04, w: textW, h: 0.36, fontFace: kit.FONT, fontSize: 10.5, color: kit.C.body, align: "left", valign: "middle", margin: 0 });
   });
 }
 
@@ -144,8 +149,9 @@ function archSlide(kit, pres, opts) {
 // ════════════════════════════════════════════════════════════════
 const ITEM_CELL = 1.2;     // icon (0.62) + gap (0.04) + caption box (0.5) = 1.16, +slack
 const CHIP_CELL = 0.45;
-const COL_GAP = 0.9;       // horizontal gap between columns (arrow room)
-const GROUP_PAD_TOP = 0.42;
+const COL_GAP = 0.6;       // horizontal gap between columns (arrow room). Kept modest so
+                           // columns stay wide enough for a 2-line group label to fit.
+const GROUP_PAD_TOP = 0.62; // room for a 2-line centered group label above the content
 const GROUP_PAD = 0.2;
 
 function archFlow(kit, pres, opts) {
@@ -180,7 +186,8 @@ function archFlow(kit, pres, opts) {
       const icx = cx + slotW / 2;
       const icy = itemY + h / 2;
       if (it.chip != null) {
-        chip(kit, pres, s, icx - 0.5, itemY + (h - CHIP_CELL) / 2, it.chip);
+        // cap the chip footprint at the column's right edge (oval starts at icx-0.5)
+        chip(kit, pres, s, icx - 0.5, itemY + (h - CHIP_CELL) / 2, it.chip, 0.2, slotW / 2 + 0.5);
       } else {
         svc(kit, pres, s, icx, itemY, it.icon, it.label, it.iconSz, slotW);
       }

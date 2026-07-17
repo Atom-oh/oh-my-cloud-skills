@@ -85,16 +85,22 @@ const { FiZap, FiSearch, FiGitBranch, FiShield } = require("react-icons/fi");
   s.addText("GPU", { x: gpuCol.x, y: gpuCol.y - 0.15, w: gpuCol.w, h: 0.3, fontFace: kit.FONT, fontSize: 12, bold: true, color: kit.C.body, align: "center" });
   s.addImage({ path: kit.awsIcon("gpu"), x: gcx - gpuSz / 2, y: gpuCol.y + 0.25, w: gpuSz, h: gpuSz });
   s.addImage({ path: kit.awsIcon("gpu"), x: gcx - gpuSz / 2, y: gpuCol.y + 1.6, w: gpuSz, h: gpuSz });
-  s.addText("• • •", { x: gcx - gpuSz / 2, y: gpuCol.y + 1.23, w: gpuSz, h: 0.25, fontFace: kit.FONT, fontSize: 14, color: kit.C.muted, align: "center", valign: "middle" });
-  arch.groupBox(kit, pres, s, gpuCol.x, gpuCol.y + 2.55, gpuCol.w, 1.5, "추론 엔진");
-  s.addImage({ path: kit.toolIcon("ray"), x: gcx - 0.18, y: gpuCol.y + 3.02, w: 0.36, h: 0.36 });
-  s.addText("Ray", { x: gpuCol.x, y: gpuCol.y + 3.38, w: gpuCol.w, h: 0.24, fontFace: kit.FONT, fontSize: 11, bold: true, color: kit.C.ink, align: "center", valign: "middle", margin: 0 });
-  s.addImage({ path: kit.toolIcon("vllm"), x: gcx - 0.3, y: gpuCol.y + 3.66, w: 0.6, h: 0.19 });
+  s.addText("• • •", { x: gcx - gpuSz / 2, y: gpuCol.y + 1.2, w: gpuSz, h: 0.32, fontFace: kit.FONT, fontSize: 14, color: kit.C.muted, align: "center", valign: "middle", margin: 0 });
+  // 추론 엔진 group: label occupies the top ~0.6", so the tool icons start below it
+  arch.groupBox(kit, pres, s, gpuCol.x, gpuCol.y + 2.65, gpuCol.w, 1.55, "추론 엔진");
+  s.addImage({ path: kit.toolIcon("ray"), x: gcx - 0.18, y: gpuCol.y + 3.3, w: 0.36, h: 0.36 });
+  s.addText("Ray", { x: gpuCol.x, y: gpuCol.y + 3.66, w: gpuCol.w, h: 0.24, fontFace: kit.FONT, fontSize: 11, bold: true, color: kit.C.ink, align: "center", valign: "middle", margin: 0 });
+  s.addImage({ path: kit.toolIcon("vllm"), x: gcx - 0.3, y: gpuCol.y + 3.94, w: 0.6, h: 0.19 });
   arch.stepMarker(kit, pres, s, gcx + 0.14, gpuCol.y + 0.15, 5);
-  arch.groupBox(kit, pres, s, cols[4].x, cols[4].y + cols[4].h + 0.15, cols[4].w, 1.3, "모니터링");
-  arch.svc(kit, pres, s, cols[4].x + cols[4].w / 2, cols[4].y + cols[4].h + 0.4, "cloudwatch", "CloudWatch", 0.5);
+  // 모니터링 group below the serving column. Compact: label + icon + inline caption
+  // (no stacked svc caption) so the whole group fits between the serving stack (~5.5")
+  // and the footer band (7.06") without colliding with either.
+  const monY = 5.6;
+  arch.groupBox(kit, pres, s, cols[4].x, monY, cols[4].w, 1.1, "모니터링");
+  const mcx = cols[4].x + cols[4].w / 2;
+  s.addImage({ path: kit.awsIcon("cloudwatch"), x: mcx - 0.25, y: monY + 0.55, w: 0.5, h: 0.5 });
   arch.stepMarker(kit, pres, s, cols[5].items[0].cx - 0.9, cols[5].items[0].cy - 0.35, 7);
-  arch.stepMarker(kit, pres, s, cols[4].x + cols[4].w / 2 + 0.14, cols[4].y + cols[4].h + 0.05, 8);
+  arch.stepMarker(kit, pres, s, mcx + 0.14, monY + 0.05, 8);
 
   // 6) TITLE + VISUAL  (EKS slide-21 style responsibility diagram)
   kit.titleWithVisual(pres, {

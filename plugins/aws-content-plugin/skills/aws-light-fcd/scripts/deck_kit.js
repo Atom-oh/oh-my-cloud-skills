@@ -508,12 +508,12 @@ function sectionDivider(pres, opts) {
     });
   }
   s.addText(opts.title, {
-    x: PAD - 0.02, y: 2.95, w: 11, h: 1.4, fontFace: FONT, fontSize: 50, bold: true,
+    x: PAD - 0.02, y: 2.95, w: 11, h: 1.1, fontFace: FONT, fontSize: 50, bold: true,
     color: "FFFFFF", charSpacing: -1, align: "left", valign: "top",
   });
   if (opts.kicker) {
     s.addText(opts.kicker, {
-      x: PAD, y: 4.25, w: 10.5, h: 0.6, fontFace: FONT, fontSize: 18,
+      x: PAD, y: 4.35, w: 10.5, h: 0.6, fontFace: FONT, fontSize: 18,
       color: "FFFFFF", align: "left", valign: "top", transparency: 12,
     });
   }

@@ -47,15 +47,15 @@ A brochure is **persuasion + clarity for a dual audience**: a decision-maker gra
 
 ## Workflow
 
-Follow the seven phases in **`{plugin-dir}/skills/brochure/SKILL.md`** (numbered 1–6 there, with screenshots as Phase 3.5):
+Follow the seven phases in **`{plugin-dir}/skills/brochure/SKILL.md`** — same numbering as there (screenshots are Phase 3.5):
 
-1. **Gather facts** — read the source; verify metrics; ask if missing.
-2. **Design direction** — commit to one aesthetic; read `references/design-system.md` before writing CSS.
-3. **Product screenshots** — if the product has a web UI, capture 4–6 core screens via Playwright (ask for a URL/run instructions if you don't have them); skip only for UI-less products.
-4. **Architecture diagram** — produce via `architecture-diagram` skill → SVG.
-5. **Write self-contained HTML** — nav · hero · value · features · shots · [spec] · architecture · trust · CTA · footer; mobile-first responsive.
-6. **Self-check + quality gate** — `scripts/check_brochure.py` then content-review-agent (≥85).
-7. **Deploy** — GitHub Pages; verify public 200 and that screenshots/SVG/links resolve.
+- **Phase 1 — Gather facts**: read the source; verify metrics; ask if missing.
+- **Phase 2 — Design direction**: commit to one aesthetic; read `references/design-system.md` before writing CSS.
+- **Phase 3 — Architecture diagram**: produce via `architecture-diagram` skill → SVG.
+- **Phase 3.5 — Product screenshots**: capture 4–6 core screens via Playwright MCP. Skip **only when the product has no reachable web UI** — none exists (CLI/library) or none you can reach and the user can't provide captures (rule 9 — the one canonical skip condition).
+- **Phase 4 — Write self-contained HTML**: nav · hero · value · features · shots · [spec] · architecture · trust · CTA · footer; mobile-first responsive.
+- **Phase 5 — Self-check + quality gate**: `scripts/check_brochure.py` then content-review-agent (≥85).
+- **Phase 6 — Deploy**: GitHub Pages; verify public 200 and that screenshots/SVG/links resolve.
 
 ## Team Workflow
 
