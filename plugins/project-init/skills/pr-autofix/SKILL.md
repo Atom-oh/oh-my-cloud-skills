@@ -127,7 +127,11 @@ your working tree. Give it a disposable git worktree instead — a **checkout-le
 isolation: the implementer's edits land in a separate directory, so your uncommitted
 changes are not in its working path. (This is not a security sandbox — the subagent
 still shares your filesystem permissions and environment; the plan constraints below
-remain the real guard. State that must survive across tool calls is exactly one path,
+remain the real guard. Residual surface on the HOST side: the build check and Step 5's
+`git commit`/`git push` run in your tree, where repo-configured hooks execute — if the
+repo sets a **tracked** `core.hooksPath` (PR-controllable), run those with
+`-c core.hooksPath=/dev/null` too; local untracked `.git/hooks` are user-owned and stay
+active by design. State that must survive across tool calls is exactly one path,
 recorded in your running notes.)
 
 ```bash
@@ -160,9 +164,10 @@ first — new files included — then derive a separate approved patch from it (
 the full record in place; it is the recovery source):
 
 ```bash
-git -C "$IMPL_WT" add -N .                                        # intent-to-add: new files become diff-visible
+git -C "$IMPL_WT" add -N . || exit 1                              # intent-to-add: new files become diff-visible
+                                                                  # (a silent failure here = new files silently missing from the patch)
 git -C "$IMPL_WT" diff --binary "$BASE_SHA" > "$RUN_DIR/full.1.patch" || exit 1   # capture generation 1 — immutable once written
-cp "$RUN_DIR/full.1.patch" "$RUN_DIR/approved.patch"              # landing patch — edits happen HERE only
+cp "$RUN_DIR/full.1.patch" "$RUN_DIR/approved.patch" || exit 1    # landing patch — edits happen HERE only
 ```
 
 Check the delta against the plan in both directions, then land only what passed:
@@ -178,7 +183,8 @@ Check the delta against the plan in both directions, then land only what passed:
   once written — re-runs create a new file, never edit an existing capture in place
   (otherwise the re-run's edits silently miss the landing patch).
 - **Pre-landing cleanliness gate**: every file `approved.patch` touches must be clean in
-  the user's tree — `git status --porcelain -- <those paths>` must be empty. If not,
+  the user's tree — `git status --porcelain -- <those paths>` must be empty (pass the file list quoted /
+  NUL-safe — this gate is load-bearing, and an unquoted space would make it false-clean). If not,
   STOP and report: landing onto a locally-modified file would sweep the user's edits
   into the Step 5 commit even when `git apply` succeeds.
 - **Land**: first guard against a moved base — `[ "$(git -C "$HOST_ROOT" rev-parse HEAD)" = "$BASE_SHA" ]`
@@ -198,8 +204,9 @@ Check the delta against the plan in both directions, then land only what passed:
   escalate to the user.
 - **Cleanup**: after the build passes and the commit is made,
   `git worktree remove --force "$IMPL_WT" && rm -rf -- "$RUN_DIR"`. On a STOP/failure path,
-  still remove the worktree but KEEP `$RUN_DIR` (patches) and tell the user its path —
-  it is their inspection/recovery evidence.
+  capture a recovery patch FIRST if none exists yet (the worktree may hold the only copy
+  of the implementer's work), then remove the worktree but KEEP `$RUN_DIR` (patches) and
+  tell the user its path — it is their inspection/recovery evidence.
 
 **Constraints (these go into the plan in 4a and bind the implementer in 4b):**
 - Do NOT refactor beyond what the reviews ask
