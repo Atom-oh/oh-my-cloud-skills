@@ -248,6 +248,7 @@ Check the delta against the plan in both directions, then land only what passed:
 ```bash
 set -euo pipefail
 [ -f "$RUN_DIR/ok.captured" ] || exit 1
+[ -n "${CLEAN_WT:-}" ] && [ -d "$CLEAN_WT" ] || { echo "STOP: create the reference worktree (CLEAN_WT) BEFORE landing — rollback depends on it"; exit 1; }
 [ "$(git -C "$HOST_ROOT" rev-parse HEAD)" = "$BASE_SHA" ] || { echo "STOP: base moved"; exit 1; }
 [ "$(git -C "$HOST_ROOT" symbolic-ref -q HEAD || echo detached)" = "$BASE_REF" ] || { echo "STOP: branch switched"; exit 1; }
 # Mechanical file list — LF-delimited; exotic names are rejected up-front rather than
@@ -257,7 +258,7 @@ git -C "$HOST_ROOT" apply --numstat "$RUN_DIR/approved.patch" | cut -f3- > "$RUN
 grep -qE '^"|=>' "$RUN_DIR/landed.files" && { echo "STOP: exotic/renamed path in patch — refuse"; exit 1; }
 # Cleanliness gate AS CODE (per file — `git status`/`git diff` do NOT support
 # --pathspec-from-file; only add/commit/checkout-family do):
-while IFS= read -r f; do
+while IFS= read -r f || [ -n "$f" ]; do
   [ -z "$(git -C "$HOST_ROOT" --literal-pathspecs status --porcelain -- "$f")" ] || { echo "STOP: locally modified: $f"; exit 1; }
 done < "$RUN_DIR/landed.files"
 git -C "$HOST_ROOT" --literal-pathspecs status --porcelain > "$RUN_DIR/host.status.before"   # whole-tree baseline for the verify block
@@ -276,7 +277,7 @@ set -euo pipefail
 GITH() { git -C "$HOST_ROOT" -c core.hooksPath=/dev/null --literal-pathspecs "$@"; }
 # ^ rollback checkouts fire post-checkout like any file checkout — the same hook guard
 #   that protects every other git call applies here too
-while IFS= read -r f; do
+while IFS= read -r f || [ -n "$f" ]; do
   # Revert ONLY if the file still holds exactly the approved landed content ($CLEAN_WT is
   # that content by construction). A mismatch means the user edited it during the build
   # window — their edit is not ours to destroy: leave the file, report, and stop.
@@ -289,7 +290,7 @@ while IFS= read -r f; do
     echo "SKIP (user-modified since landing — left untouched): $f"; FAILED_ROLLBACK=1; continue
   fi
   if GITH cat-file -e "$BASE_SHA:$f" 2>/dev/null; then
-    GITH checkout "$BASE_SHA" -- "$f"
+    GITH checkout "$BASE_SHA" -- "$f" || { echo "STOP: restore failed: $f"; exit 1; }
   else
     GITH rm -q --cached -- "$f" 2>/dev/null || true; rm -f -- "$HOST_ROOT/$f"
   fi
@@ -319,20 +320,24 @@ done < "$RUN_DIR/landed.files"
 ```bash
 set -euo pipefail
 [ -f "$RUN_DIR/ok.landed" ] || exit 1
-# 1) run the standard build check (Step 4 block) — in $CLEAN_WT when the host tree is
-#    dirty — and carry its result into this shell:
+# 1) PASTE the standard build check (Step 4 block) HERE, in THIS shell — BUILD_OK is a
+#    shell variable and does not survive across tool calls, so build and verify must
+#    share one invocation. Build in $CLEAN_WT when the host tree is dirty.
 [ "${BUILD_OK:-0}" = 1 ] || { echo "STOP: build failed — rollback per the block above"; exit 1; }
 # 2) whole-tree containment: the build must not have changed tracked files outside the
-#    landed set (codegen/formatters produce companion output the plan never approved):
+#    landed set. Capture grep's no-match with `|| true` (under pipefail the old
+#    diff|grep|grep chain ALWAYS carried diff's exit 1 and the guard never fired), and
+#    match whole paths exactly (substring matching let a/b.js hide a/b.js.map):
 git -C "$HOST_ROOT" --literal-pathspecs status --porcelain > "$RUN_DIR/host.status.after"
-if ! diff -q "$RUN_DIR/host.status.before" "$RUN_DIR/host.status.after" >/dev/null; then
-  diff "$RUN_DIR/host.status.before" "$RUN_DIR/host.status.after" | grep '^[<>]' | grep -vFf "$RUN_DIR/landed.files" \
-    && { echo "STOP: build touched files outside the landed set"; exit 1; }
+CHANGED=$(diff "$RUN_DIR/host.status.before" "$RUN_DIR/host.status.after" | grep '^[<>]' || true)
+if [ -n "$CHANGED" ]; then
+  BAD=$(printf '%s\n' "$CHANGED" | sed 's/^[<>] ...//' | grep -vFxf "$RUN_DIR/landed.files" || true)
+  [ -z "$BAD" ] || { echo "STOP: build touched files outside the landed set:"; printf '%s\n' "$BAD"; exit 1; }
 fi
 # 3) per-file equality vs the reference worktree (capture flags), then the sentinel:
 git -c core.hooksPath=/dev/null -C "$CLEAN_WT" add -N .
 : > "$RUN_DIR/host.final.diff"; : > "$RUN_DIR/ref.final.diff"
-while IFS= read -r f; do
+while IFS= read -r f || [ -n "$f" ]; do
   git -C "$HOST_ROOT" --literal-pathspecs diff --binary --no-ext-diff --no-textconv "$BASE_SHA" -- "$f" >> "$RUN_DIR/host.final.diff"
   git -c core.hooksPath=/dev/null -C "$CLEAN_WT" --literal-pathspecs diff --binary --no-ext-diff --no-textconv "$BASE_SHA" -- "$f" >> "$RUN_DIR/ref.final.diff"
 done < "$RUN_DIR/landed.files"
@@ -414,9 +419,14 @@ set -euo pipefail
 [ -f "$RUN_DIR/ok.build" ] || exit 1                                 # build+equality stage must have passed
 [ "$(git -C "$HOST_ROOT" rev-parse HEAD)" = "$BASE_SHA" ] || { echo "STOP: base moved since landing"; exit 1; }
 [ "$(git -C "$HOST_ROOT" symbolic-ref -q HEAD || echo detached)" = "$BASE_REF" ] || { echo "STOP: branch switched"; exit 1; }
-# (equality was verified by the 4c verify block that wrote ok.build; re-run that block's
-#  equality loop here verbatim if meaningful time passed since — cheap, and the SHA/ref
-#  checks alone don't see content edits)
+# Equality re-verified UNCONDITIONALLY — the SHA/ref checks can't see content edits a
+# user made to landed files while the build ran:
+: > "$RUN_DIR/host.final2.diff"; : > "$RUN_DIR/ref.final2.diff"
+while IFS= read -r f || [ -n "$f" ]; do
+  git -C "$HOST_ROOT" --literal-pathspecs diff --binary --no-ext-diff --no-textconv "$BASE_SHA" -- "$f" >> "$RUN_DIR/host.final2.diff"
+  git -c core.hooksPath=/dev/null -C "$CLEAN_WT" --literal-pathspecs diff --binary --no-ext-diff --no-textconv "$BASE_SHA" -- "$f" >> "$RUN_DIR/ref.final2.diff"
+done < "$RUN_DIR/landed.files"
+diff -q "$RUN_DIR/host.final2.diff" "$RUN_DIR/ref.final2.diff" >/dev/null || { echo "STOP: landed files changed since verification"; exit 1; }
 HOOKS_DIR=$(git -C "$HOST_ROOT" rev-parse --path-format=absolute --git-path hooks)
 if [ -d "$HOOKS_DIR" ]; then
   SHAPIPE() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; }
