@@ -652,6 +652,7 @@ aws-ops-power/
 | `agentcore-creator-agent` | agentcore-creator | "Deploy agent to AgentCore" | Harness config or Strands Agent + deploy script |
 | `co-agent` | co-agent | "second opinion" / "help me decide" / "co-author ADR" | Multi-AI review / decision / ADR |
 | `doc-sync-checker` | project-init | "/sync-docs" | Doc quality scores |
+| `pr-autofix-planner` / `pr-autofix-implementer` | project-init | (spawned by the pr-autofix skill) | Fix plan / plan-applied worktree edits |
 
 All agents activate automatically when Claude detects matching keywords in your prompt.
 
@@ -837,11 +838,13 @@ plugins/
 │   └── skills/
 │       └── co-agent/
 │
-└── project-init/                      # Project scaffolding (1 agent, 3 skills, 10 commands)
+└── project-init/                      # Project scaffolding (3 agents, 3 skills, 10 commands)
     ├── .claude-plugin/plugin.json
     ├── CLAUDE.md
     ├── agents/
-    │   └── doc-sync-checker.md
+    │   ├── doc-sync-checker.md
+    │   ├── pr-autofix-planner.md
+    │   └── pr-autofix-implementer.md
     ├── commands/                       # 10 slash commands
     │   ├── init-project.md
     │   ├── sync-docs.md

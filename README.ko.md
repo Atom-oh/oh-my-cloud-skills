@@ -651,6 +651,7 @@ aws-ops-power/
 | `agentcore-creator-agent` | agentcore-creator | "에이전트를 AgentCore에 배포" | Harness 설정 또는 Strands Agent + 배포 스크립트 |
 | `co-agent` | co-agent | "second opinion" / "help me decide" / "ADR 협업" | 멀티-AI 리뷰 / 의사결정 / ADR |
 | `doc-sync-checker` | project-init | "/sync-docs" | 문서 품질 점수 |
+| `pr-autofix-planner` / `pr-autofix-implementer` | project-init | (pr-autofix 스킬이 스폰) | 수정 계획 / 계획 적용된 worktree 편집 |
 
 모든 에이전트는 Claude가 프롬프트에서 일치하는 키워드를 감지하면 자동으로 활성화됩니다.
 
@@ -840,7 +841,9 @@ plugins/
     ├── .claude-plugin/plugin.json
     ├── CLAUDE.md
     ├── agents/
-    │   └── doc-sync-checker.md
+    │   ├── doc-sync-checker.md
+    │   ├── pr-autofix-planner.md
+    │   └── pr-autofix-implementer.md
     ├── commands/                       # 10개 슬래시 명령
     │   ├── init-project.md
     │   ├── sync-docs.md

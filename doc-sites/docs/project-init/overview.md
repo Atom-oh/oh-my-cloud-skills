@@ -14,6 +14,8 @@ Project Init는 Claude Code 프로젝트 구조 초기화, 문서 품질 스코�
 | 에이전트 | 설명 | 출력물 |
 |----------|------|--------|
 | `doc-sync-checker` | 문서 동기화 분석, 품질 스코어링, 누락 문서 감지 | 품질 점수 보고서 |
+| `pr-autofix-planner` | pr-autofix 수정 계획 (read-only 강제, fable/opus) | 구조화된 수정 계획 |
+| `pr-autofix-implementer` | pr-autofix 계획 적용 (편집 도구만 강제, sonnet) | worktree 내 파일 편집 |
 
 ### 스킬 (3개)
 

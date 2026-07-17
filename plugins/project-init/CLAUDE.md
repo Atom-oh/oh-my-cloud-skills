@@ -16,6 +16,8 @@ Core plugin providing project structure initialization, documentation quality sc
 - `commands/health-check.md` - Project validation
 - `commands/pr-autofix.md` - PR review feedback auto-fix (AI + human review polling)
 - `agents/doc-sync-checker.md` - Documentation sync analysis agent
+- `agents/pr-autofix-planner.md` - pr-autofix fix planner (enforced read-only tools; fable/opus)
+- `agents/pr-autofix-implementer.md` - pr-autofix plan implementer (enforced edit-only tools; sonnet)
 - `skills/project-scaffolder/SKILL.md` - Scaffolding skill definition
 - `skills/project-scaffolder/references/` - 12 template files for code generation (includes shared writing-style-guide)
 - `skills/pr-autofix/SKILL.md` - PR auto-fix skill (AI review + human review loop)

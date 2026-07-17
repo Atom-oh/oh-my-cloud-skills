@@ -109,8 +109,10 @@ judgment-heavy part — misread findings, wrong root cause, scope creep. A stron
 **plan** makes the remaining work mechanical, which sonnet applies reliably and cheaply.
 
 **4a. Fix plan — Fable or Opus.** If the host session is already running Fable/Opus,
-write the plan inline. Otherwise spawn a planning subagent with a strong-model override
-(Agent tool: prefer `model: "fable"`, fall back to `model: "opus"`). Instruct the planner to work read-only (Read/Grep/Glob — it judges, it does not edit); this is a prompt-level constraint, not an enforced sandbox — the landing gates below are what actually hold. The plan covers, per finding:
+write the plan inline. Otherwise spawn the bundled **`pr-autofix-planner`** agent (Agent tool
+`agentType: "project-init:pr-autofix-planner"`; prefer `model: "fable"`, fall back to
+`"opus"`). Its `tools:` frontmatter enforces read-only (Read/Grep/Glob) — the planner
+structurally cannot edit. The plan covers, per finding:
 `file:line` → root cause → the exact edit → how to verify it. The scope constraints below
 are written INTO the plan so the implementer inherits them.
 
@@ -131,9 +133,13 @@ remain the real guard. Residual surface on the HOST side: the build check and St
 `git commit`/`git push` run in your tree, where repo-configured hooks execute — any configured
 `core.hooksPath` is disabled for those too (tracked-ness proves nothing — husky v9's
 untracked wrappers exec tracked files); the default untracked `.git/hooks` has no
-hooksPath configured and stays active by design. Four values must survive across tool
-calls — record them in your running notes at 4b time and re-export them in every later
-Bash call: `RUN_DIR`, `HOST_ROOT`, `BASE_SHA`, `BASE_REF`. Each is also re-derivable if
+hooksPath configured and stays active by design. **Fail-closed rule**: each bash snippet
+runs in its own tool call, so an `exit 1` only ends that shell — it does not stop YOU.
+Any non-zero exit, or an empty/truncated artifact (`[ -s "$RUN_DIR/full.1.patch" ]`),
+aborts the whole iteration: stop, report, never continue past a failed guard. Six values
+must survive across tool calls — record them in your running notes at 4b time and
+re-export them in every later Bash call: `RUN_DIR`, `WT_DIR`, `IMPL_WT`, `HOST_ROOT`,
+`BASE_SHA`, `BASE_REF` (+ `CLEAN_WT` when clean-room mode is used). Each is also re-derivable if
 notes are lost: `BASE_SHA` from the worktree's detached HEAD, `HOST_ROOT` via
 `git rev-parse --show-toplevel` from your original checkout, `BASE_REF` only from notes —
 if it is gone and HEAD's ref is ambiguous, STOP rather than guess.)
@@ -156,12 +162,12 @@ IMPL_WT="$WT_DIR/wt"
 # If a previous run died early, `git worktree prune` clears leftovers.
 ```
 
-Spawn the implementer subagent (Agent tool `model: "sonnet"`; instruct it to use file-editing
-tools only, no network/web — prompt-level, not enforced; the delta verification in 4c is
-the gate for what LANDS — it cannot see runtime side-effects of the implementer run
-itself, e.g. reading or transmitting data, which remain covered only by the prompt
-constraints and the absence of network tools in the instruction) with the plan and the
-worktree path: work ONLY inside `$IMPL_WT`, apply exactly the planned edits, no
+Spawn the bundled **`pr-autofix-implementer`** agent (Agent tool
+`agentType: "project-init:pr-autofix-implementer"`, `model: "sonnet"`) with the plan and
+the worktree path. Its `tools:` frontmatter enforces edit-only (Read/Write/Edit/Grep/
+Glob) — no Bash, no network — so the runtime side-effect surface (reading/transmitting
+data during the run) is structurally narrowed, not just prompted away. The delta
+verification in 4c remains the gate for what LANDS. Instruct it to: work ONLY inside `$IMPL_WT`, apply exactly the planned edits, no
 refactoring beyond them, **edit files only — no git state commands** (no commit/stash/
 checkout/reset; a moved HEAD would silently erase the delta), return the changed-file list. The plan carries only structured
 fields (`file:line` / root cause / exact edit / verification) — the implementer must
@@ -217,16 +223,22 @@ Check the delta against the plan in both directions, then land only what passed:
 - **Build check comes BEFORE cleanup**: run the build verification (below) while
   `$RUN_DIR` still exists. If the host tree is dirty beyond the landed files, the user's
   uncommitted changes can pollute the result (false pass or false fail) — prefer the
-  clean-room check in that case: AFTER the capture generations exist, hard-restore the
-  worktree — `gitwt reset --hard "$BASE_SHA" && gitwt clean -fdx` (checkout `-- .` is not
-  enough: it leaves untracked leftovers that make new-file hunks fail with "already
-  exists", and `clean -fdx` also sweeps ignored artifacts — `.env`, caches — that bypass
-  every patch-based gate) — then `gitwt apply "$RUN_DIR/approved.patch"` and build in the
-  worktree; report which mode was used. After the build, the landed files' diff must equal
-  `approved.patch` **exactly** before committing — ANY drift, including 'explainable'
-  formatter/codegen output, either goes back through approval (strong-tier review, then
-  append to the approved patch) or is reverted; nothing outside the approved patch is
-  committed on the strength of being explainable.
+  clean-room check in that case — in a **fresh worktree the implementer never touched**
+  (never run destructive git — reset/clean — on the implementer's worktree: it was
+  subagent-writable, and a swapped symlink would aim those commands at your real
+  checkout):
+  `CLEAN_WT=$(mktemp -d "${TMPDIR:-/tmp}/pr-autofix-clean.XXXXXX")/wt`, then
+  `git -c core.hooksPath=/dev/null worktree add --detach "$CLEAN_WT" "$BASE_SHA"`,
+  `git -c core.hooksPath=/dev/null -C "$CLEAN_WT" apply "$RUN_DIR/approved.patch"`, and
+  build there; report which mode was used. This worktree doubles as the **normalized
+  equality reference** below. After the build, verify the landed result equals the
+  approved delta — compare **regenerated diffs, not patch files byte-wise** (hunk
+  stripping perturbs offsets/index lines, so `approved.patch` itself is not a stable
+  reference): `git -C "$HOST_ROOT" diff "$BASE_SHA" -- <landed paths>` must match
+  `git -c core.hooksPath=/dev/null -C "$CLEAN_WT" diff "$BASE_SHA"`. ANY drift, including
+  'explainable' formatter/codegen output, either goes back through approval (strong-tier
+  review) or is reverted; nothing outside the approved delta is committed on the strength
+  of being explainable.
 - **Companion-edit guard**: if the landed subset fails the build because a dropped hunk
   was a required companion change (e.g. an import), that hunk does NOT get a free pass —
   it was rejected once, so it re-enters the gate: the strong-tier planner re-approves it
@@ -237,7 +249,11 @@ Check the delta against the plan in both directions, then land only what passed:
   commit message. If the same finding needs this
   twice, escalate to the user.
 - **Cleanup**: after the build passes and the commit is made,
-  `git worktree remove --force "$IMPL_WT"; rm -rf -- "$RUN_DIR" "$WT_DIR"` (`;` not `&&` — a worktree-remove failure must not leak `$RUN_DIR`). On a STOP/failure path,
+  guard first — `[ -n "$RUN_DIR" ] && [ -n "$WT_DIR" ] && [ ! -L "$IMPL_WT" ]` (an
+  unset variable must not turn `rm -rf` on the wrong path; a symlinked worktree means the
+  implementer deviated → STOP, do not remove). Then
+  `git worktree remove --force "$IMPL_WT"; rm -rf -- "$RUN_DIR" "$WT_DIR"` (`;` not `&&` —
+  a worktree-remove failure must not leak `$RUN_DIR`); same for `$CLEAN_WT` if created. On a STOP/failure path,
   capture a recovery patch FIRST if none exists yet (the worktree may hold the only copy
   of the implementer's work), then remove the worktree but KEEP `$RUN_DIR` (patches) and
   tell the user its path — it is their inspection/recovery evidence.
@@ -279,16 +295,16 @@ fi
 # .git/hooks has no hooksPath configured and therefore stays active (this repo's
 # commit-msg hook relies on that).
 HOOKS_FLAG=""
-git config core.hooksPath >/dev/null 2>&1 && HOOKS_FLAG="-c core.hooksPath=/dev/null"
+git -C "$HOST_ROOT" config core.hooksPath >/dev/null 2>&1 && HOOKS_FLAG="-c core.hooksPath=/dev/null"
 
 # Stage and commit ONLY the files 4c landed. The pathspec commit is load-bearing: a bare
 # `git commit` would also include anything the USER had staged beforehand — the
 # cleanliness gate only checks the landed paths, not the whole index.
 # --literal-pathspecs: a PR-planted filename starting with ':' is pathspec magic that
 # can silently widen the add/commit scope. Pass the list quoted / NUL-safe, same as 4c.
-git --literal-pathspecs add -- <files-landed-in-4c>
-git --literal-pathspecs $HOOKS_FLAG commit -m "fix: address review feedback (iteration N/3)" -- <files-landed-in-4c>   # $HOOKS_FLAG unquoted on purpose
-git $HOOKS_FLAG push
+git -C "$HOST_ROOT" --literal-pathspecs add -- <files-landed-in-4c>
+git -C "$HOST_ROOT" --literal-pathspecs $HOOKS_FLAG commit -m "fix: address review feedback (iteration N/3)" -- <files-landed-in-4c>   # $HOOKS_FLAG unquoted on purpose
+git -C "$HOST_ROOT" $HOOKS_FLAG push
 ```
 
 (No `Co-Authored-By` trailer — the scaffolded `commit-msg` hook strips those
