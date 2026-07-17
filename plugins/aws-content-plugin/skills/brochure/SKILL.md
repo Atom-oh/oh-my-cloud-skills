@@ -66,10 +66,12 @@ user can't provide captures. That one condition is the skip rule everywhere (age
 says the same); when you skip, say so explicitly.
 
 1. **Availability gate first.** The `browser_*` capture tools come from the **Playwright MCP
-   server**, which is only present if the session loaded it — it is not in this skill's
-   default toolset. If those tools aren't available, don't stall: ask the user (with
-   `AskUserQuestion`) to either enable Playwright MCP or hand you screenshot files directly,
-   and proceed with what they provide.
+   server** and are not in this skill's default toolset — and note that if brochure-agent
+   is spawned as a standalone subagent, its `tools:` allowlist won't inherit them at all.
+   So they're available only when the host runs with Playwright loaded and the tools are in
+   scope. If they aren't available, don't stall: ask the user (with `AskUserQuestion`) to
+   either run with Playwright MCP or hand you screenshot files directly, and proceed with
+   what they provide.
 2. **Capture.** With Playwright MCP: `browser_navigate` to the product, `browser_resize` to a
    consistent desktop viewport (e.g. 1600×900) so every capture is uniform, then
    `browser_take_screenshot` for 4–6 representative screens — one per core use case
