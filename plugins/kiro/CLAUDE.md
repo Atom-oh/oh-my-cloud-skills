@@ -14,6 +14,22 @@ never set up is not).
 
 ---
 
+## Routing rule (this file is always loaded — this is what makes `default_delegate` fire)
+
+The skill/agent triggers below only match requests that **name Kiro explicitly** ("kiro
+로 구현", "delegate to kiro", …). A generic implementation request ("이 함수 구현해줘",
+"add a retry to this function") never contains those words, so `default_delegate` being
+on would otherwise never actually route anything — the toggle would be dead. Since this
+`CLAUDE.md` is loaded into context on every turn (unlike the agent/skill files, which are
+only read after routing already happened), it is the one place that can make the toggle
+real: **before starting any non-trivial implementation task, check**
+`python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_config.py" default-delegate`
+(exit 0 = on). If it's on, route the request through `kiro-delegate-agent` /
+`/kiro:delegate` even without a Kiro-specific trigger phrase — falling back to
+implementing it directly per the agent's own fallback rule whenever Kiro is unavailable
+or exhausts its fix loop. If it's off (the default), only route on an explicit
+Kiro-naming trigger as usual.
+
 ## Agents
 
 | Agent | Purpose |
@@ -24,7 +40,7 @@ never set up is not).
 
 | Skill | Trigger | Purpose |
 |-------|---------|---------|
-| `kiro-delegate` | "kiro한테 시켜", "kiro로 구현", "delegate to kiro", "kiro 위임", "kiro가 리뷰", "kiro credits" | Cost-savings implementation + review delegation to Kiro CLI |
+| `kiro-delegate` | "kiro한테 시켜", "kiro로 구현", "kiro한테 위임", "kiro 위임", "delegate to kiro", "kiro implement", "kiro가 구현", "kiro가 리뷰", "kiro review" | Cost-savings implementation + review delegation to Kiro CLI |
 
 ## Commands
 
@@ -38,11 +54,33 @@ never set up is not).
 ## Trust boundary (why Kiro can write here when co-agent's harness refuses it)
 
 Kiro has no cwd-confined write sandbox, so co-agent's harness excludes it as an
-implementer (`SANDBOX_IMPLEMENTERS = codex, agy`). This plugin makes it safe anyway: Kiro
-only ever runs with cwd = a throwaway git worktree; the host applies **only** what
-`worktree.py capture-diff` captured from inside that worktree, after `scope_guard.py`
-drops anything outside the current task's declared file set. Kiro never commits — Claude
-is the only committer. Detail: `skills/kiro-delegate/references/kiro-headless.md`.
+implementer (`SANDBOX_IMPLEMENTERS = codex, agy`). This limits what "safe" means here:
+capture-diff + scope_guard guarantee that **only a change that lands inside the
+worktree, and inside the plan's declared file set, can ever reach the main tree** — that
+part is enforced. `scope_guard.py` (verbatim from co-agent) checks against the **union of
+every task's declared files in the plan**, not the single task currently running, so it
+does not by itself stop Task A's implementer run from touching a file Task B declared —
+per-task isolation during a wave comes from running one task's implementer at a time
+per file set, not from `scope_guard.py`. It also does **not** constrain what Kiro does
+inside the worktree with `execute_bash` — an auto-approved shell command there can still
+read/exfiltrate host-reachable secrets or destroy files outside the worktree; nothing in
+this pipeline's layers stops that class of host-side side effect (see "Trust decision"
+below). Kiro never commits — Claude is the only committer. Detail:
+`skills/kiro-delegate/references/kiro-headless.md`.
+
+### Trust decision (read before enabling default-delegate)
+
+"Safe" in this plugin is scoped narrowly: **changes that reach the main tree** are
+guaranteed to come only from inside the assigned worktree and only within the plan's
+declared file set. Running Kiro with `execute_bash` auto-approved is a **separate trust
+decision** you are making in the Kiro CLI itself — no worktree, no capture-diff, and no
+`scope_guard.py` constrains what an auto-approved shell command can do to the rest of
+the host while it runs (read credentials, delete files outside the worktree, make
+network calls). If you are not comfortable extending that trust to `kiro-cli`, either
+don't enable `execute_bash` in `.kiro/agents/kiro-implementer.json` (accepting that some
+tasks Kiro would otherwise finish will need Claude fallback instead), or run it inside
+an OS-level sandbox/container you control. `/kiro:setup` surfaces this decision once,
+before writing the implementer agent file.
 
 ## Pre-commit review (PreToolUse hook)
 
@@ -71,11 +109,16 @@ scoped to this plugin's single peer.
 
 ## Auto-Invocation Keywords
 
+Same canonical set as the skill's `triggers:` frontmatter and description (kept
+identical across both — see the note in `skills/kiro-delegate/SKILL.md`):
+
 | 한국어 | English |
 |--------|---------|
 | kiro한테 시켜 | delegate to kiro |
 | kiro로 구현 | kiro implement |
-| kiro 위임 | delegate to kiro |
+| kiro한테 위임 | — |
+| kiro 위임 | — |
+| kiro가 구현 | — |
 | kiro가 리뷰 | kiro review |
 
 ## Workflow

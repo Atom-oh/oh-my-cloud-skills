@@ -33,7 +33,7 @@ Common examples:
 | `set delegate parallel_tasks <n>` | Max concurrent tasks per wave (default 3; `1` = sequential) |
 | `set delegate max_fix_rounds <n>` | Retries before falling back to Claude implementing the task (default 2) |
 | `set review on_commit off` | Disable the automatic pre-commit review hook |
-| `set review block <critical\|any\|none>` | Which finding severities block the commit (default `critical`) |
+| `set review block <critical\|warning\|none>` | Which finding severities block the commit — `warning` blocks warning+critical, `suggestion` never blocks under any level (default `critical`) |
 | `set review timeout <seconds>` / `set delegate timeout <seconds>` | Per-call wall-clock budget |
 
 Settings are layered: `kiro.defaults.json` (committed) ← `.claude/kiro.local.json`

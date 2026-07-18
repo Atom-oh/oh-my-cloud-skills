@@ -1,6 +1,6 @@
 ---
 name: kiro-delegate-agent
-description: "Cost-savings delegation orchestrator — plans with Claude, hands implementation off to Kiro CLI running on flat-rate subscription credits inside an isolated git worktree, verifies with tests, and falls back to writing the code itself when Kiro's fix loop is exhausted. Triggers on 'kiro한테 시켜', 'kiro로 구현', 'delegate to kiro', 'kiro 위임', 'kiro credits', 'kiro가 구현' requests, or /kiro:delegate."
+description: "Cost-savings delegation orchestrator — plans with Claude, hands implementation off to Kiro CLI running on flat-rate subscription credits inside an isolated git worktree, verifies with tests, and falls back to writing the code itself when Kiro's fix loop is exhausted. Triggers on 'kiro한테 시켜', 'kiro로 구현', 'kiro한테 위임', 'kiro 위임', 'delegate to kiro', 'kiro implement', 'kiro가 구현', 'kiro가 리뷰', 'kiro review' requests, or /kiro:delegate."
 tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
 model: opus
 ---
@@ -24,16 +24,31 @@ orchestrators (co-agent's `gate-chair`, harness).
 Kiro has **no cwd-confined write sandbox** — `kiro-cli`'s `--trust-tools` auto-accepts
 tool calls but doesn't sandbox them to a directory the way Codex's `-s workspace-write`
 or Agy's `--sandbox` do. That's why co-agent's harness refuses Kiro as an implementer
-outright. This plugin makes delegating to Kiro safe anyway by making the **worktree
-isolation + capture + scope_guard** path load-bearing:
+outright. This plugin narrows what it claims to guarantee, rather than treating the
+worktree as a full sandbox it isn't:
 
 1. Kiro runs with cwd = an isolated git worktree, never the main checkout.
 2. Only what `worktree.py capture-diff` captures **from inside that worktree** can ever
    reach the main tree — anything Kiro wrote outside it (via `..`, absolute paths) is
-   simply never seen.
+   simply never seen. **This is the actual guarantee**: changes to the main tree.
 3. Every captured path must pass `scope_guard.py --plan <tasks.md>` before the host
-   applies it — a path outside the current task's declared file set is dropped.
+   applies it — a path outside the **plan's whole declared file set** (the union across
+   all tasks, not just the one currently running — `scope_guard.py`, verbatim from
+   co-agent, has no per-task filter) is dropped. Two tasks in the same wave still can't
+   collide on files because wave-planning only ever groups pairwise-**disjoint** file
+   sets into one wave in the first place (`references/spec-format.md` → "Wave
+   planning") — `scope_guard.py` is not what enforces that boundary.
 4. Claude is the only actor that ever runs `git commit` on the main branch.
+
+**What this does NOT cover: `execute_bash` inside the worktree.** If the
+`kiro-implementer` custom agent is trusted with `execute_bash` (as `/kiro:setup`'s
+default template is), an auto-approved shell command Kiro runs can affect the host
+outside the worktree entirely — read a credential file, delete something, make a
+network call — and nothing in steps 1-4 stops it, because those steps only govern what
+reaches the *main git tree*, not what a shell command running as your user can touch.
+Enabling `execute_bash` for the implementer is a separate trust decision about
+`kiro-cli` itself, made once at `/kiro:setup` time — don't restate it as "safe" without
+that qualifier when explaining this to a user.
 
 Full detail: `skills/kiro-delegate/references/kiro-headless.md` → "Trust boundary".
 **Never** run Kiro with cwd = the repo root in write mode — that removes the one

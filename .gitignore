@@ -55,8 +55,9 @@ doc-sites/.docusaurus/
 # pr-review lens×model matrix membership override (enabled/model per cell)
 .claude/pr-review.local.json
 
-# kiro plugin personal settings (model/effort/toggle overrides) + delegate worktrees
+# kiro plugin personal settings (model/effort/toggle overrides)
 .claude/kiro.local.json
+# kiro plugin delegate worktrees (implement-loop scratch space)
 .claude/kiro-delegate/
 
 # scratch working dir (presentation/demo authoring — not tracked)

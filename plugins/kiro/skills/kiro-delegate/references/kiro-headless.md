@@ -59,15 +59,16 @@ Same argv/stdin rules as implement, but `--trust-tools=fs_read` only (or the
 reviewer must never be able to write. `kiro_review.py` is the concrete implementation
 (diff → temp file → `fs_read` instruction → JSON findings contract).
 
-## Trust boundary (mirrors co-agent's delegated-implement.md)
+## Trust boundary (mirrors co-agent's delegated-implement.md) — and its actual limits
 
-The **hard guarantee is the host applies only the worktree's captured, scope-guarded
-diff** — not `--trust-tools` and not the custom agent's `allowedTools`. Kiro has **no
-cwd-confined write sandbox** (unlike Codex's `-s workspace-write` or Agy's `--sandbox`),
-which is exactly why co-agent's `co_agent_config.py` refuses it as a harness implementer
-(`SANDBOX_IMPLEMENTERS = ("codex", "agy")`). This plugin exists specifically to make Kiro
-safe to delegate to anyway, by making the **worktree isolation + capture + scope_guard**
-path load-bearing instead of relying on a write sandbox that doesn't exist for this CLI:
+The **hard guarantee is narrow: the host applies only the worktree's captured,
+scope-guarded diff to the main git tree** — not `--trust-tools`, not the custom agent's
+`allowedTools`, and not a claim that Kiro is sandboxed in any general sense. Kiro has
+**no cwd-confined write sandbox** (unlike Codex's `-s workspace-write` or Agy's
+`--sandbox`), which is exactly why co-agent's `co_agent_config.py` refuses it as a
+harness implementer (`SANDBOX_IMPLEMENTERS = ("codex", "agy")`). This plugin makes
+delegating to Kiro anyway acceptable **for changes that reach the main tree**, by making
+the **worktree isolation + capture + scope_guard** path load-bearing for that one thing:
 
 1. `worktree.py add <wt> --base HEAD` — Kiro only ever sees `<wt>` as its cwd.
 2. Kiro implements inside `<wt>` (it may write anywhere it can reach — `..`, absolute
@@ -76,13 +77,45 @@ path load-bearing instead of relying on a write sandbox that doesn't exist for t
    against the recorded base SHA. Anything Kiro wrote outside `<wt>` is invisible here —
    it was never captured, so it can never reach the main tree.
 4. Every captured path must pass `scope_guard.py --plan <tasks.md-derived plan>` — a path
-   outside the task's declared file set is dropped.
+   outside the **plan's whole declared file set** (the union across every task, not the
+   single task currently running — this script has no per-task filter, verbatim from
+   co-agent) is dropped. It cannot by itself stop one task's run from touching a file
+   another task in the same wave declared; that separation instead comes from
+   wave-planning only ever batching pairwise-**disjoint** file sets into one wave.
 5. The host applies **only** the captured, scope-guarded patch to the main tree and runs
    tests there — never inside the worktree.
 6. The `kiro-implementer` custom agent's `preToolUse` hook (written by
    `kiro_setup.py write-agents`) additionally refuses an `fs_write` whose path is absolute
    or contains `..`, as defense-in-depth on top of 1-5 — it narrows the blast radius
    *before* capture, but 3-5 remain the actual guarantee even if a write slips past it.
+
+**What 1-6 do NOT cover: `execute_bash`.** All of the above governs `fs_write` and the
+main tree only. `.kiro/agents/kiro-implementer.json`'s default template also grants
+`execute_bash`, and Kiro auto-approves it (`--trust-tools`/`allowedTools`) — a shell
+command it runs is **not confined to the worktree at the process level**. It can read
+files anywhere the OS user can read (credentials, SSH keys), delete files outside the
+worktree, or make outbound network calls, and none of steps 1-6 will see or stop it
+because they only ever look at the git diff *afterward*. This is not a gap this plugin
+can close with more worktree/capture/scope_guard machinery — those layers are about what
+lands in the repo, not what a shell command can do to the host while it runs. Treat
+enabling `execute_bash` for the implementer as an explicit trust decision about
+`kiro-cli` (same category of trust as running any other agentic CLI with shell access
+locally) — `/kiro:setup` asks about this once before writing the agent file. If you want
+implement tasks that don't need shell access at all, drop `execute_bash` from
+`.kiro/agents/kiro-implementer.json`'s `tools`/`allowedTools` after setup; some tasks
+Kiro would otherwise finish will then fall back to Claude instead.
+
+**Reviewer `fs_read` is not path-restricted either.** `kiro-reviewer.json` grants only
+`fs_read` (no `fs_write`/`execute_bash`), but that tool is not scoped to the diff file
+`kiro_review.py` points it at — a diff can contain attacker-influenced content (this is
+someone's staged code change), and a prompt-injection payload in it could instruct the
+reviewer to `fs_read` an unrelated absolute path (e.g. `~/.aws/credentials`) and include
+its contents in the review response, which is sent to Kiro's backend. `_sanitized_env()`
+strips credential-shaped environment variables from the reviewer's process env, but that
+protects only `os.environ` — it does nothing for the filesystem. Do not run
+`/kiro:review` (or rely on the pre-commit hook) against a diff you don't trust the
+author of on a machine where `fs_read` could reach something sensitive; there is
+currently no filesystem allowlist enforcing "only the diff file" at the tool layer.
 
 ## Model tiering
 

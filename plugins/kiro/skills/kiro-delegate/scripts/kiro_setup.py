@@ -3,9 +3,23 @@
 two `.kiro/agents/*.json` custom agents the delegate/review paths invoke headlessly.
 
 Usage:
-  kiro_setup.py probe [--timeout N]                  # READY | AUTH | TIMEOUT | ERROR | ABSENT
+  kiro_setup.py probe [--timeout N]                  # READY | AUTH | NO_INGEST | TIMEOUT | ERROR | ABSENT
   kiro_setup.py list-models                          # one model id per line (best-effort)
   kiro_setup.py write-agents [--root DIR] [--force]  # write .kiro/agents/kiro-{implementer,reviewer}.json
+
+probe() statuses:
+  READY      — kiro-cli echoed the sentinel; usable headlessly.
+  AUTH       — an auth-required message was detected; run `kiro-cli` interactively to
+               log in, or set KIRO_API_KEY, then re-probe.
+  NO_INGEST  — kiro-cli exited 0 but did NOT echo the sentinel back (it ran, but its
+               input channel wasn't actually consumed the way the probe expects — e.g.
+               a CLI build/flag combination that silently drops the argv prompt). Treat
+               the same as not-yet-usable; report it to the user rather than assuming
+               READY from a zero exit code alone.
+  TIMEOUT    — the probe exceeded its timeout (cold-start CLIs can be slow on first call
+               — retrying once is reasonable before treating this as a real failure).
+  ERROR      — kiro-cli exited non-zero for a reason other than AUTH.
+  ABSENT     — kiro-cli is not on PATH.
 """
 import sys
 import os
@@ -101,21 +115,37 @@ def list_models():
     if not shutil.which("kiro-cli"):
         print("kiro-cli not found on PATH", file=sys.stderr)
         return 2
-    try:
-        r = subprocess.run(["kiro-cli", "chat", "--list-models", "--format", "json"],
-                            capture_output=True, text=True, timeout=30)
-    except (subprocess.TimeoutExpired, OSError) as e:
-        print(f"could not list models: {e}", file=sys.stderr)
-        return 2
+    argv = ["kiro-cli", "chat", "--list-models", "--format", "json"]
+    with tempfile.TemporaryDirectory() as cwd:
+        outp, errp = os.path.join(cwd, ".out"), os.path.join(cwd, ".err")
+        try:
+            # Capture to FILES, not PIPEs — same reason as probe()/kiro_review.py:
+            # kiro-cli's acp-callback auth refresh happens over the host fds it was
+            # launched with, and a PIPE severs that, hanging this call to the full
+            # timeout even when authenticated. A prior version of this function used
+            # capture_output=True (a PIPE) and reintroduced exactly that bug.
+            with open(outp, "w") as of, open(errp, "w") as ef:
+                r = subprocess.run(argv, cwd=cwd, stdin=subprocess.DEVNULL, stdout=of,
+                                    stderr=ef, timeout=30)
+            with open(outp, encoding="utf-8", errors="replace") as f:
+                out = f.read()
+            with open(errp, encoding="utf-8", errors="replace") as f:
+                err = f.read()
+        except subprocess.TimeoutExpired:
+            print("could not list models: kiro-cli --list-models timed out", file=sys.stderr)
+            return 2
+        except OSError as e:
+            print(f"could not list models: {e}", file=sys.stderr)
+            return 2
     if r.returncode != 0:
-        print(f"kiro-cli --list-models exited {r.returncode}: {r.stderr.strip()[:300]}", file=sys.stderr)
+        print(f"kiro-cli --list-models exited {r.returncode}: {err.strip()[:300]}", file=sys.stderr)
         return 2
     try:
-        data = json.loads(r.stdout)
+        data = json.loads(out)
     except json.JSONDecodeError:
         # Not every kiro-cli build supports --format json for this flag — fall back to
         # printing raw stdout so the caller (a human running /kiro:setup) can still read it.
-        print(r.stdout)
+        print(out)
         return 0
     ids = []
     if isinstance(data, list):
@@ -159,6 +189,9 @@ def main():
     root = "."
     if "--root" in argv:
         i = argv.index("--root")
+        if i + 1 >= len(argv):
+            print("--root requires a value", file=sys.stderr)
+            return 2
         root = argv[i + 1]
         del argv[i:i + 2]
     if not argv:
@@ -166,7 +199,14 @@ def main():
         return 2
     cmd = argv[0]
     if cmd == "probe":
-        timeout = int(argv[argv.index("--timeout") + 1]) if "--timeout" in argv else 90
+        if "--timeout" in argv:
+            i = argv.index("--timeout")
+            if i + 1 >= len(argv) or not argv[i + 1].isdigit():
+                print("--timeout requires a positive integer value", file=sys.stderr)
+                return 2
+            timeout = int(argv[i + 1])
+        else:
+            timeout = 90
         status, reason = probe(timeout)
         print(status + (f"\t{reason}" if reason else ""))
         return 0

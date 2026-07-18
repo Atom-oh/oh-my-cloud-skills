@@ -7,15 +7,19 @@ allowed-tools: Bash(python3:*), AskUserQuestion
 
 Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts"`.
 
-1. Detect and probe:
+1. Detect and probe (`kiro_setup.py probe` already checks PATH presence itself — no
+   separate `command -v` call needed, and one avoids a permission prompt this command's
+   `Bash(python3:*)` allowed-tools scope wouldn't auto-approve):
    ```bash
-   command -v kiro-cli >/dev/null 2>&1 && echo "kiro-cli found" || echo "kiro-cli NOT found"
    python3 "$SK/kiro_setup.py" probe
    ```
    If `ABSENT`: tell the user to install Kiro CLI (`https://kiro.dev`) and stop here —
    nothing else in this command can proceed without it.
    If `AUTH`: tell them to run `kiro-cli` interactively to log in, or set `KIRO_API_KEY`,
    then re-run `/kiro:setup`.
+   If `NO_INGEST`: kiro-cli ran but didn't echo the probe's sentinel back — report this
+   as "kiro-cli responded but couldn't be verified usable" and offer to retry once before
+   treating it as a real problem (some CLI builds behave this way transiently).
    If `TIMEOUT`/`ERROR`: report the reason and offer to retry once (cold-start CLIs can be
    slow on the first call).
 

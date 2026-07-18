@@ -59,7 +59,12 @@ Rules that matter (the parser is regex-based, not lenient):
   every edit Kiro makes for it. This is the single most common authoring mistake — always
   backtick every path.
 - Every file Kiro is expected to touch for a task MUST appear in that task's `**Files:**`
-  block. `scope_guard.py` drops any hunk outside the union of a task's declared paths.
+  block. `scope_guard.py` checks against the **plan-wide union of every task's declared
+  paths** (it has no per-task filter — verbatim copy of co-agent's script), so it alone
+  cannot stop Task A's implementer run from touching a path Task B declared. Per-task
+  isolation instead comes from wave-planning only ever grouping tasks with
+  pairwise-**disjoint** file sets into the same wave (see "Wave planning" below) — write
+  tasks with non-overlapping file sets whenever they're meant to run independently.
 - Steps are plain `- [ ]` checkboxes; `/kiro:delegate` checks them off as tasks complete
   (mirrors Kiro IDE's own task-list UI, so the file stays meaningful if a user opens it
   there).

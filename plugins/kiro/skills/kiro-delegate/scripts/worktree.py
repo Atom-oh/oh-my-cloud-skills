@@ -169,7 +169,10 @@ def main():
         ig = git(wt, "ls-files", "--cached", "-i", "--exclude-standard", env=_CLEAN_ENV)
         ignored = [p for p in ig.stdout.splitlines() if p]
         if ignored:
-            git(wt, "reset", "-q", base_ref, "--", *ignored, env=_CLEAN_ENV)
+            unstage = git(wt, "reset", "-q", base_ref, "--", *ignored, env=_CLEAN_ENV)
+            if unstage.returncode != 0:   # never emit a diff that may still carry an ignored file
+                sys.stderr.write(unstage.stderr)
+                return unstage.returncode
         # --no-ext-diff blocks external diff *command* drivers; --no-textconv blocks textconv
         # (NOT covered by --no-ext-diff); attributesFile=/dev/null + clean env + neutralizers
         # drop all remaining config/attribute influence.

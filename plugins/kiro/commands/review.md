@@ -15,8 +15,9 @@ Run the review against staged changes (default) or the paths given in `$ARGUMENT
 python3 "$SK/kiro_review.py" --staged --root .
 ```
 
-Or, if the user gave specific paths in `$ARGUMENTS`, pass them through instead of
-`--staged`:
+Or, if the user gave specific paths in `$ARGUMENTS`, pass them through. This reviews the
+**full working-tree diff** for those paths (staged + unstaged) — not staged-only — so an
+in-progress edit that hasn't been `git add`ed yet is still reviewable:
 
 ```bash
 python3 "$SK/kiro_review.py" --root . -- $ARGUMENTS

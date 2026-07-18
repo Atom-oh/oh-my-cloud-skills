@@ -16,7 +16,7 @@ Usage:
   kiro_config.py set review on_commit <on|off>
   kiro_config.py set review model <m>              # reviewer model (usually the strongest one)
   kiro_config.py set review timeout <seconds>
-  kiro_config.py set review block <critical|any|none>
+  kiro_config.py set review block <critical|warning|none>
   kiro_config.py default-delegate                  # exit 0 if on, 1 if off
   kiro_config.py review-on-commit                   # exit 0 if on, 1 if off
   kiro_config.py delegate-model                     # print effective delegate model (or empty)
@@ -34,7 +34,10 @@ import copy
 # element (never shell-interpolated), so spaces/parens are safe; shell metacharacters
 # (; | & $ ` " ' < > \ * ? etc.) stay rejected — this feeds a subprocess argv.
 MODEL_RE = re.compile(r"^[A-Za-z0-9 ._:/()-]+$")
-BLOCK_LEVELS = ("critical", "any", "none")
+# "warning" blocks warning+critical findings (there is no severity below "suggestion" to
+# additionally include, so this is the actual ceiling — named for what it blocks, not
+# "any", which would misleadingly imply suggestions block too).
+BLOCK_LEVELS = ("critical", "warning", "none")
 DEFAULTS_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                              "kiro.defaults.json")
 
@@ -104,8 +107,16 @@ def cmd_set(root, rest):
     lp = local_path(root)
     local = {}
     if os.path.isfile(lp):
-        with open(lp, encoding="utf-8") as f:
-            local = json.load(f)
+        try:
+            with open(lp, encoding="utf-8") as f:
+                local = json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            # A settings tool that can't recover from its own malformed settings file is
+            # a dead end for the user trying to use it to fix that file — don't raise a
+            # raw traceback; report it and start from an empty override so `set` still
+            # succeeds (the malformed file is overwritten with a now-valid one).
+            print(f"⚠️  {lp} is malformed ({e}) — starting from an empty override", file=sys.stderr)
+            local = {}
 
     if not rest:
         print("usage: set default_delegate <on|off>  |  set <delegate|review> <key> <value>", file=sys.stderr)
@@ -166,6 +177,9 @@ def main():
     root = "."
     if "--root" in argv:
         i = argv.index("--root")
+        if i + 1 >= len(argv):
+            print("--root requires a value", file=sys.stderr)
+            return 2
         root = argv[i + 1]
         del argv[i:i + 2]
     if not argv:

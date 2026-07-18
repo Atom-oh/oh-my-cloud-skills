@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """Kiro-run code review — used by the pre-commit hook and `/kiro:review`.
 
-Sends a diff (staged changes by default) to `kiro-cli` on the plugin's configured
-review model (meant to be Kiro's strongest/newest model — see `/kiro:setup`) and asks
-for severity-tagged findings. Blocks (exit 2) only on `critical` findings by default
-(`review.block` in kiro.defaults.json / .claude/kiro.local.json — kiro_config.py).
+Sends a diff to `kiro-cli` on the plugin's configured review model (meant to be Kiro's
+strongest/newest model — see `/kiro:setup`) and asks for severity-tagged findings.
+Blocks (exit 2) only on `critical` findings by default (`review.block` in
+kiro.defaults.json / .claude/kiro.local.json — kiro_config.py).
 
 Usage:
-  kiro_review.py [--staged | --diff <file> | <path>...] [--root DIR]
+  kiro_review.py --staged [--root DIR]           # staged changes only (git diff --cached)
+  kiro_review.py --diff <file> [--root DIR]      # a pre-computed diff file
+  kiro_review.py [<path>...] [--root DIR]        # working-tree changes (staged + unstaged),
+                                                  # scoped to the given paths if any
 Exit: 0 = clean or fail-open (advisory-only findings printed, if any)
       2 = blocked — findings at/above the configured block level
 """
@@ -25,9 +28,10 @@ if _HERE not in sys.path:
 import kiro_config as kc
 
 SEVERITY_ORDER = {"critical": 3, "warning": 2, "suggestion": 1}
-# Only the block level's own tier and above should ever block. "any" blocks
-# warning+critical; "none" never blocks (review stays advisory-only).
-BLOCK_FLOOR = {"critical": 3, "any": 2, "none": 99}
+# Only the block level's own tier and above should ever block. "warning" blocks
+# warning+critical (there is no lower tier to additionally include — "suggestion"
+# never blocks under any level); "none" never blocks (review stays advisory-only).
+BLOCK_FLOOR = {"critical": 3, "warning": 2, "none": 99}
 
 _DIFF_CAP = 60 * 1024   # cap the diff sent to the reviewer (context-window / cost bound)
 
@@ -56,12 +60,16 @@ _PROMPT_INSTR = (
 )
 
 
-def _git_diff_cached(root, paths):
+def _git_diff(root, paths, cached):
+    """`cached=True` → staged changes only (`git diff --cached`, what the pre-commit hook
+    reviews). `cached=False` → the full working-tree diff (staged + unstaged), the mode
+    `/kiro:review <path>...` uses so an in-progress, not-yet-staged edit is still
+    reviewable — a bare `--cached` here would silently show "no staged changes" for it."""
     env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
            "GIT_ATTR_NOSYSTEM": "1", "GIT_PAGER": "cat"}
     args = ["git", "-C", root, "-c", f"core.attributesFile={os.devnull}",
             "-c", "core.fsmonitor=", "-c", f"core.hooksPath={os.devnull}", "-c", "core.pager=cat",
-            "diff", "--cached", "--no-color", "--no-ext-diff", "--no-textconv"]
+            "diff"] + (["--cached"] if cached else ["HEAD"]) + ["--no-color", "--no-ext-diff", "--no-textconv"]
     if paths:
         args += ["--"] + list(paths)
     r = subprocess.run(args, capture_output=True, text=True, timeout=30, env=env)
@@ -83,10 +91,14 @@ def _extract_json_array(text):
 
 
 def run_review(root, diff, model, timeout):
-    """Returns (findings|None, error|None). findings=None + error set means the
-    review could not run or its output was unparseable — callers must fail-open."""
+    """Returns (findings|None, error|None, truncated). findings=None + error set means
+    the review could not run or its output was unparseable — callers must fail-open.
+    truncated=True means the diff exceeded _DIFF_CAP and everything past that point was
+    NOT reviewed — the caller must warn about this (this gate is advisory, not a
+    guarantee of full coverage; a silent truncation would look like a clean full review
+    when part of the diff was never actually seen by the reviewer)."""
     if not shutil.which("kiro-cli"):
-        return None, "kiro-cli not found on PATH"
+        return None, "kiro-cli not found on PATH", False
     body = diff
     truncated = False
     if len(diff) > _DIFF_CAP:
@@ -118,14 +130,14 @@ def run_review(root, diff, model, timeout):
             with open(errp, encoding="utf-8", errors="replace") as f:
                 err = f.read()
         except subprocess.TimeoutExpired:
-            return None, f"kiro-cli review timed out after {timeout}s"
+            return None, f"kiro-cli review timed out after {timeout}s", truncated
         except OSError as e:
-            return None, f"could not run kiro-cli: {e}"
+            return None, f"could not run kiro-cli: {e}", truncated
         if r.returncode != 0:
-            return None, f"kiro-cli exited {r.returncode}: {err.strip()[:300] or out.strip()[:300]}"
+            return None, f"kiro-cli exited {r.returncode}: {err.strip()[:300] or out.strip()[:300]}", truncated
         findings = _extract_json_array(out)
         if findings is None:
-            return None, "kiro-cli did not return a parseable JSON findings array"
+            return None, "kiro-cli did not return a parseable JSON findings array", truncated
         # Defense-in-depth: coerce/validate shape so a malformed entry can't crash a caller.
         clean = []
         for f in findings:
@@ -136,7 +148,7 @@ def run_review(root, diff, model, timeout):
                 sev = "suggestion"
             clean.append({"severity": sev, "file": str(f.get("file", "")),
                           "line": f.get("line"), "issue": str(f.get("issue", ""))})
-        return clean, None
+        return clean, None, truncated
 
 
 def main():
@@ -144,15 +156,24 @@ def main():
     root = "."
     if "--root" in argv:
         i = argv.index("--root")
+        if i + 1 >= len(argv):
+            print("--root requires a value", file=sys.stderr)
+            return 2
         root = argv[i + 1]
         del argv[i:i + 2]
     diff_file = None
     if "--diff" in argv:
         i = argv.index("--diff")
+        if i + 1 >= len(argv):
+            print("--diff requires a value", file=sys.stderr)
+            return 2
         diff_file = argv[i + 1]
         del argv[i:i + 2]
-    if "--staged" in argv:
+    staged = "--staged" in argv
+    if staged:
         argv.remove("--staged")
+    if "--" in argv:
+        argv.remove("--")
     paths = [a for a in argv if not a.startswith("--")]
 
     cfg = kc.effective(root)
@@ -161,10 +182,13 @@ def main():
         with open(diff_file, encoding="utf-8") as f:
             diff = f.read()
     else:
-        diff = _git_diff_cached(root, paths)
+        # --staged (or no paths at all, e.g. the hook's default call) reviews staged
+        # changes only; explicit paths review the full working-tree diff (staged +
+        # unstaged) for those paths, so an in-progress unstaged edit is reviewable too.
+        diff = _git_diff(root, paths, cached=staged or not paths)
 
     if not diff.strip():
-        print("kiro review: no staged changes to review")
+        print("kiro review: no changes to review")
         return 0
 
     rcfg = cfg.get("review", {})
@@ -172,7 +196,13 @@ def main():
     timeout = int(rcfg.get("timeout", 120))
     block_level = rcfg.get("block", "critical")
 
-    findings, err = run_review(root, diff, model, timeout)
+    findings, err, truncated = run_review(root, diff, model, timeout)
+    if truncated:
+        # This gate is advisory, not a coverage guarantee — a silent truncation would
+        # look identical to "the whole diff was reviewed and came back clean/blocked".
+        print(f"⚠️  kiro review: diff exceeds {_DIFF_CAP // 1024}KB — only the first "
+              f"~{_DIFF_CAP // 1024}KB was sent to the reviewer; the rest of this diff "
+              f"was NOT reviewed", file=sys.stderr)
     if err is not None:
         # Fail-open: a broken/absent/unauthenticated reviewer must never block a commit.
         print(f"⚠️  kiro review skipped (fail-open): {err}", file=sys.stderr)

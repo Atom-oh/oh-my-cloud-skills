@@ -47,8 +47,8 @@ assert_eq "gpt-5.3-codex-mini" "$(python3 "$CFG" delegate-model --root "$R" 2>&1
 python3 "$CFG" set review model "gpt-5.6-sol" --root "$R" >/dev/null 2>&1
 assert_eq "gpt-5.6-sol" "$(python3 "$CFG" review-model --root "$R" 2>&1)" "review model set/read roundtrip"
 assert_eq "critical" "$(python3 "$CFG" block --root "$R" 2>&1)" "review block defaults to critical"
-python3 "$CFG" set review block any --root "$R" >/dev/null 2>&1
-assert_eq "any" "$(python3 "$CFG" block --root "$R" 2>&1)" "review block set/read roundtrip"
+python3 "$CFG" set review block warning --root "$R" >/dev/null 2>&1
+assert_eq "warning" "$(python3 "$CFG" block --root "$R" 2>&1)" "review block set/read roundtrip"
 python3 "$CFG" set review block bogus --root "$R" >/dev/null 2>&1 && BC=0 || BC=$?
 assert_eq "2" "$BC" "invalid review block value rejected (exit 2)"
 python3 "$CFG" set delegate model "bad;rm -rf" --root "$R" >/dev/null 2>&1 && MC=0 || MC=$?
@@ -78,7 +78,7 @@ R3=$(mktemp -d "${TMPDIR:-/tmp}/kiro-review2.XXXXXX")
 printf '' > "$R3/empty.diff"
 OUT3=$(python3 "$REVIEW" --diff "$R3/empty.diff" --root "$R3" 2>&1) && RC3=0 || RC3=$?
 assert_eq "0" "$RC3" "review on an empty diff exits 0"
-assert_contains "$OUT3" "no staged changes" "review on an empty diff reports nothing to review"
+assert_contains "$OUT3" "no changes to review" "review on an empty diff reports nothing to review"
 rm -rf "$R3"
 
 # --- kiro_setup.py: absent kiro-cli reports ABSENT, not a crash ---
