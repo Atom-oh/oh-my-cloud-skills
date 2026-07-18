@@ -1,6 +1,6 @@
 ---
 name: pr-autofix-planner
-description: "Internal worker — spawned only by the pr-autofix skill; do not select for user prompts. Read-only analysis stage of that skill's loop."
+description: "Do not select for user prompts under any keyword — internal stage that only functions when its parent skill (project-init) supplies prepared inputs; useless and inert when invoked directly."
 tools: Read, Grep, Glob
 model: opus
 ---

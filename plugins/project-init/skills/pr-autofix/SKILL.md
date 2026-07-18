@@ -219,10 +219,18 @@ fi
 
 ```bash
 bash "$LD" commit "$RUN" "fix: address review feedback (iteration N/3)"
+bash "$LD" push "$RUN"               # separate + idempotent: a transient push failure
+                                     # never strands the commit (retry this stage alone)
 bash "$LD" cleanup "$RUN"            # add --keep to preserve patches for inspection
 ```
 
-The commit stage re-checks everything itself — base SHA and branch unchanged, git hooks
+If the repo has a configured `core.hooksPath`, the commit stage STOPs and asks — it may
+be husky-style (PR-influenceable) or the org's legitimate secret-scan/signing hooks, and
+bypassing is the USER's call: re-run with `--bypass-hookspath-approved` only after they
+approve. If the host tree had unrelated local changes, the build must have run in the
+reference worktree (`verify … --built-in ref`) — the script enforces this.
+
+The commit stage (push excluded — see above) re-checks everything itself — base SHA and branch unchanged, git hooks
 byte-identical to the setup snapshot, landed content still equal to the approved delta
 (a user edit during the build window stops the commit) — and stages exactly the landed
 files via pathspec, so nothing the user had staged rides along. A configured

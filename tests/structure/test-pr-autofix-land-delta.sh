@@ -31,8 +31,14 @@ assert_file_exists "$RUN/ok.landed" "land writes its sentinel"
 assert_eq "x=2" "$(cat "$FIX/src/app.py")" "approved edit landed on the host"
 ( cd "$FIX" && bash "$LD_ABS" verify "$RUN" --build-ok 1 ) >/dev/null 2>&1 || true
 assert_file_exists "$RUN/ok.build" "verify writes ok.build"
-( cd "$FIX" && bash "$LD_ABS" commit "$RUN" "test: landed" ) >/dev/null 2>&1 || true   # push fails (no remote) — commit itself is what we assert
-assert_eq "test: landed" "$(cd "$FIX" && git log -1 --format=%s)" "pathspec commit landed (push fails silently — no remote)"
+RC=0; ( cd "$FIX" && bash "$LD_ABS" commit "$RUN" "test: landed" ) >/dev/null 2>&1 || RC=$?
+assert_eq "0" "$RC" "commit stage succeeds without pushing"
+assert_file_exists "$RUN/ok.committed" "commit writes its sentinel"
+assert_eq "test: landed" "$(cd "$FIX" && git log -1 --format=%s)" "pathspec commit landed"
+RC=0; ( cd "$FIX" && bash "$LD_ABS" push "$RUN" ) >/dev/null 2>&1 || RC=$?
+[ "$RC" -ne 0 ] && PUSH_FAILED=yes || PUSH_FAILED=no
+assert_eq "yes" "$PUSH_FAILED" "push stage fails with no remote (commit preserved, retryable)"
+assert_eq "test: landed" "$(cd "$FIX" && git log -1 --format=%s)" "commit survives the failed push"
 ( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" ) >/dev/null 2>&1 || true
 rm -rf "$FIX"
 
@@ -69,6 +75,18 @@ assert_eq "1" "$RC" "execution-surface edit blocked without approval flag"
 assert_contains "$ERR" "execution-surface" "denylist gate names the class"
 RC=0; ( cd "$FIX" && bash "$LD_ABS" land "$RUN" --allow-exec-surface ) >/dev/null 2>&1 || RC=$?
 assert_eq "0" "$RC" "explicit --allow-exec-surface (user-granted) lands"
+( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" ) >/dev/null 2>&1 || true; rm -rf "$FIX"
+
+# --- denylist class coverage: *.gradle.kts / vite.config.ts are execution surface ---
+FIX=$(_ld_fixture)
+( cd "$FIX" && echo 'x' > build.gradle.kts && git add -A && git commit -qm g ) >/dev/null
+RUN=$( cd "$FIX" && bash "$LD_ABS" setup ) || true
+IMPL_WT=$(sed -n 's/^IMPL_WT=//p' "$RUN/state" | head -1)
+echo 'evil' > "$IMPL_WT/build.gradle.kts"
+( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) >/dev/null 2>&1 || true
+cp "$RUN/full.1.patch" "$RUN/approved.patch"; ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1 || true
+RC=0; ( cd "$FIX" && bash "$LD_ABS" land "$RUN" ) >/dev/null 2>&1 || RC=$?
+assert_eq "1" "$RC" "gradle.kts blocked as execution surface"
 ( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" ) >/dev/null 2>&1 || true; rm -rf "$FIX"
 
 # --- containment guard: build touching files outside the landed set fails verify ---

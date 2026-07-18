@@ -24,12 +24,15 @@ SHAPIPE() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum
 # Execution-surface denylist: files the host executes during build/commit. Edits to these
 # require --allow-exec-surface (user-granted). Hook dirs are included — a hook that execs
 # a tracked file runs landed code at commit time.
-EXEC_SURFACE_RE='^(\.github/|\.husky/|\.git)|(^|/)(package\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|Cargo\.toml|.*\.gradle)$'
+# Class-based, not filename-enumerated: anything plausibly executed during build/verify/
+# commit. Broad on purpose — a false positive costs one --allow-exec-surface approval,
+# a false negative is arbitrary code execution on the host.
+EXEC_SURFACE_RE='^(\.github/|\.husky/|\.git|\.ci/|ci/|scripts?/)|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|\.pre-commit-config\.ya?ml)$|\.(gradle|gradle\.kts)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
 
 state() { # state <run> get KEY | state <run> set KEY VALUE
   local run=$1 op=$2 key=$3
   case "$op" in
-    get) sed -n "s/^$key=//p" "$run/state" | head -1 ;;
+    get) sed -n "s/^$key=//p" "$run/state" | tail -1 ;;   # last write wins — state appends
     set) printf '%s=%s\n' "$key" "${4:?}" >> "$run/state" ;;
   esac
 }
@@ -98,6 +101,7 @@ cmd_capture() {
   GITWT "$run" diff --binary --no-ext-diff --no-textconv "$(state "$run" get BASE_SHA)" > "$run/full.$n.patch"
   [ -s "$run/full.$n.patch" ] || die "empty capture — implementer produced no delta"
   state "$run" set LATEST_FULL "full.$n.patch"
+  rm -f "$run/ok.approved"          # a new capture invalidates any earlier approval
   : > "$run/ok.captured"
   echo "$run/full.$n.patch"
 }
@@ -160,34 +164,55 @@ _equality() { # _equality <run> <host.out> <ref.out>
 }
 
 cmd_verify() {
-  local run=$1 buildok=${3:?usage: verify <run> --build-ok 0|1} changed bad
-  [ "$2" = "--build-ok" ] || die "usage: verify <run> --build-ok 0|1"
+  local run=$1 buildok=${3:?usage: verify <run> --build-ok 0|1 [--built-in host|ref]} builtin=${5:-host} changed bad
+  [ "$2" = "--build-ok" ] || die "usage: verify <run> --build-ok 0|1 [--built-in host|ref]"
   [ -f "$run/ok.landed" ] || die "land stage missing"
+  # A build on a dirty host tree can overwrite the user's pre-existing modified files
+  # WITHOUT changing their porcelain status line — containment can't see that. So a
+  # dirty tree (beyond the landed set) mandates building in the reference worktree:
+  if [ "$builtin" = host ] && sed 's/^...//' "$run/host.status.before" | grep -vFxf "$run/landed.files" | grep -q .; then
+    die "host tree has unrelated local changes — build in the reference worktree and pass --built-in ref"
+  fi
   [ "$buildok" = 1 ] || die "build failed — run rollback"
   GITH "$run" status --porcelain > "$run/host.status.after"
   changed=$(diff "$run/host.status.before" "$run/host.status.after" | grep '^[<>]' || true)
   if [ -n "$changed" ]; then
     bad=$(printf '%s\n' "$changed" | sed 's/^[<>] ...//' | grep -vFxf "$run/landed.files" || true)
-    [ -z "$bad" ] || die "build touched files outside the landed set: $(printf '%s ' $bad)"
+    [ -z "$bad" ] || die "build touched files outside the landed set: $(printf '%s ' "$bad")"
   fi
   _equality "$run" "$run/host.final.diff" "$run/ref.final.diff" || die "drift from approved delta"
   : > "$run/ok.build"
 }
 
 cmd_commit() {
-  local run=$1 msg=$2 host flags=""
+  local run=$1 msg=$2 host flags=""   # $3: --bypass-hookspath-approved (user-granted)
   [ -f "$run/ok.build" ] || die "verify stage missing"
   host=$(state "$run" get HOST_ROOT)
   [ "$(git -C "$host" rev-parse HEAD)" = "$(state "$run" get BASE_SHA)" ] || die "base moved since landing"
   [ "$(git -C "$host" symbolic-ref -q HEAD || echo detached)" = "$(state "$run" get BASE_REF)" ] || die "branch switched"
   [ "$(hooks_snap "$host")" = "$(state "$run" get HOOKS_SNAP)" ] || die "git hooks changed during the run"
   _equality "$run" "$run/host.final2.diff" "$run/ref.final2.diff" || die "landed files changed since verification"
-  git -C "$host" config core.hooksPath >/dev/null 2>&1 && flags="-c core.hooksPath=/dev/null"
-  # configured hooksPath (husky-style) is PR-influenceable even when untracked (v9 wrappers
-  # exec tracked files) — disable unconditionally; default untracked .git/hooks stays active.
+  if git -C "$host" config core.hooksPath >/dev/null 2>&1; then
+    # A configured hooksPath (husky-style) is PR-influenceable — but it may also be the
+    # org's legitimate secret-scan/signing hooks. Bypassing is a USER decision, not ours:
+    [ "${3:-}" = "--bypass-hookspath-approved" ] || die "core.hooksPath is configured — ask the user: bypass it (--bypass-hookspath-approved) or abort"
+    flags="-c core.hooksPath=/dev/null"
+  fi
   git -C "$host" --literal-pathspecs add --pathspec-from-file="$run/landed.files"
   git -C "$host" --literal-pathspecs $flags commit -m "$msg" --pathspec-from-file="$run/landed.files"
+  state "$run" set COMMIT_SHA "$(git -C "$host" rev-parse HEAD)"
+  state "$run" set HOOKS_FLAGS "${flags:-none}"
+  : > "$run/ok.committed"
+}
+
+cmd_push() { # separate, idempotent — a transient push failure must not strand the commit
+  local run=$1 host sha flags
+  [ -f "$run/ok.committed" ] || die "commit stage missing"
+  host=$(state "$run" get HOST_ROOT); sha=$(state "$run" get COMMIT_SHA)
+  [ "$(git -C "$host" rev-parse HEAD)" = "$sha" ] || die "HEAD moved since commit — refusing to push"
+  flags=$(state "$run" get HOOKS_FLAGS); [ "$flags" = none ] && flags=""
   git -C "$host" $flags push
+  : > "$run/ok.pushed"
 }
 
 cmd_rollback() {
@@ -216,6 +241,8 @@ cmd_cleanup() {
   local run=$1 keep=${2:-} host wt refwt
   host=$(state "$run" get HOST_ROOT); wt=$(state "$run" get IMPL_WT); refwt=$(state "$run" get REF_WT)
   [ -n "$run" ] && [ -n "$wt" ] || die "state incomplete — refusing cleanup"
+  case "$(state "$run" get WT_DIR)" in "${TMPDIR:-/tmp}"/pr-autofix-wt.*) ;; *) die "WT_DIR outside expected temp prefix — state tampered; not removing";; esac
+  case "$(state "$run" get REF_DIR)" in "${TMPDIR:-/tmp}"/pr-autofix-ref.*) ;; *) die "REF_DIR outside expected temp prefix — state tampered; not removing";; esac
   [ ! -L "$wt" ] || die "worktree is a symlink — implementer deviated; not removing"
   git -C "$host" worktree remove --force "$wt" 2>/dev/null || true
   git -C "$host" worktree remove --force "$refwt" 2>/dev/null || true
@@ -229,9 +256,10 @@ case "${1:-}" in
   approve) cmd_approve "${2:?run dir}" ;;
   check-plan-paths) cmd_check_plan_paths "${2:?run dir}" ;;
   land) cmd_land "${2:?run dir}" "${3:-}" ;;
-  verify) cmd_verify "${2:?run dir}" "${3:-}" "${4:-}" ;;
-  commit) cmd_commit "${2:?run dir}" "${3:?message}" ;;
+  verify) cmd_verify "${2:?run dir}" "${3:-}" "${4:-}" "${5:-}" "${6:-}" ;;
+  commit) cmd_commit "${2:?run dir}" "${3:?message}" "${4:-}" ;;
+  push) cmd_push "${2:?run dir}" ;;
   rollback) cmd_rollback "${2:?run dir}" ;;
   cleanup) cmd_cleanup "${2:?run dir}" "${3:-}" ;;
-  *) echo "usage: land_delta.sh setup|capture|approve|check-plan-paths|land|verify|commit|rollback|cleanup ..." >&2; exit 2 ;;
+  *) echo "usage: land_delta.sh setup|capture|approve|check-plan-paths|land|verify|commit|push|rollback|cleanup ..." >&2; exit 2 ;;
 esac

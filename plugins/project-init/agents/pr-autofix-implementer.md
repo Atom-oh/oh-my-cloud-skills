@@ -1,6 +1,6 @@
 ---
 name: pr-autofix-implementer
-description: "Internal worker — spawned only by the pr-autofix skill; do not select for user prompts. Edit-only application stage of that skill's loop (tool set restricted by frontmatter; path confinement is instruction-level)."
+description: "Do not select for user prompts under any keyword — internal stage that returns blocked unless its parent skill (project-init) supplies a prepared workspace path; useless and inert when invoked directly."
 tools: Read, Write, Edit, Grep, Glob
 model: sonnet
 ---
