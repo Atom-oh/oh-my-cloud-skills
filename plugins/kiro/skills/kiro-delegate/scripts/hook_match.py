@@ -17,8 +17,18 @@ import json
 
 # Blank out quoted spans (length-preserving) before matching, so a `git commit` literally
 # inside a string (`echo "git commit"`) doesn't trigger. Mirrors co-agent's PR-gate
-# convention in consensus_hooks.py.
+# convention in consensus_hooks.py. Filled with a non-space placeholder ('x'), NOT
+# spaces: a space-filled quoted arg (e.g. `-C "my repo"` -> `-C           `) leaves
+# nothing for `-C\s+\S+` to match except whatever real token follows — which can be
+# `commit` itself, consumed as -C's argument, leaving no `commit` for the trailing
+# `\s+commit\b` to match and silently missing the whole invocation. A same-length run
+# of 'x' keeps the quoted span as exactly one \S+ token, so it satisfies the flag's
+# argument slot without leaking into the tokens after it.
 _QUOTE_RE = re.compile(r"'[^']*'|\"[^\"]*\"")
+
+
+def _blank_quotes(cmd):
+    return _QUOTE_RE.sub(lambda m: "x" * len(m.group()), cmd)
 
 # Match at a shell command boundary (start of line, or after ; & | && ||), tolerating:
 #   - `env `/`VAR=val ` prefixes
@@ -29,7 +39,10 @@ _GIT_COMMIT_RE = re.compile(
     r"(?:^|[\n;&|])\s*(?:env\s+)?(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*(?:command\s+)?"
     r"(?:\S*/)?git\b"
     r"(?:\s+(?:-C\s+\S+|-c\s+\S+|--\S+))*"
-    r"\s+commit\b"
+    # \b alone lets `commit` match as a PREFIX of `commit-tree`/`commit-graph` (neither
+    # is the commit-creating subcommand this hook targets) — require the char after
+    # "commit" to be whitespace/end/a shell separator, not a hyphen continuing the word.
+    r"\s+commit(?=$|[\s;&|\n])"
 )
 
 
@@ -38,11 +51,22 @@ def command_from_payload(raw):
         data = json.loads(raw) if raw.strip() else {}
     except (json.JSONDecodeError, ValueError):
         data = {}
-    return (data.get("tool_input") or {}).get("command", "")
+    if not isinstance(data, dict):
+        return ""
+    tool_input = data.get("tool_input")
+    # `"tool_input": "foo"` (a string) is truthy, so a bare `.get("tool_input") or {}`
+    # would call .get("command") on a str and raise AttributeError — this hook then
+    # fails closed (main()'s "if not matched -> exit 0" never runs; the caller's
+    # `if ! python3 hook_match.py; then exit 0` DOES catch a non-zero/traceback exit
+    # and still fail-opens the commit, but a clean type check is cheaper than relying
+    # on that fallback and avoids a stderr traceback on a merely-malformed payload).
+    if not isinstance(tool_input, dict):
+        return ""
+    return tool_input.get("command", "")
 
 
 def is_git_commit(cmd):
-    detect = _QUOTE_RE.sub(lambda m: " " * len(m.group()), cmd)
+    detect = _blank_quotes(cmd)
     return bool(_GIT_COMMIT_RE.search(detect))
 
 

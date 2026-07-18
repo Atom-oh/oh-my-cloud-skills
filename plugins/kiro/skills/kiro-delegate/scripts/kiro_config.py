@@ -58,6 +58,14 @@ def deep_merge(base, over):
     for k, v in over.items():
         if isinstance(v, dict) and isinstance(out.get(k), dict):
             out[k] = deep_merge(out[k], v)
+        elif v is None and isinstance(out.get(k), dict):
+            # A hand-edited local override like `{"review": null}` must not replace a
+            # section dict with None — every reader below assumes cfg["review"] is a
+            # dict and calls .get() on it without a None-check. Treat an explicit null
+            # for a section as "no override for this section" (keep the base), not
+            # "wipe it to None" — that keeps this function's contract (every section key
+            # in the returned dict is always a dict) intact for hand-edited files too.
+            continue
         else:
             out[k] = v
     return out
@@ -69,7 +77,17 @@ def effective(root):
     if os.path.isfile(lp):
         try:
             with open(lp, encoding="utf-8") as f:
-                cfg = deep_merge(cfg, json.load(f))
+                raw = json.load(f)
+            if not isinstance(raw, dict):
+                # Valid JSON but the wrong shape (a list/string/number/null at the top
+                # level, or `null` for a nested section like "review") — deep_merge's
+                # `.items()` would raise AttributeError on this. A settings file that
+                # crashes every tool that reads it (including the one meant to fix it)
+                # is worse than ignoring it once and reporting why.
+                print(f"⚠️  ignoring malformed {lp}: expected a JSON object at the top "
+                      f"level, got {type(raw).__name__}", file=sys.stderr)
+            else:
+                cfg = deep_merge(cfg, raw)
         except (json.JSONDecodeError, OSError) as e:
             print(f"⚠️  ignoring malformed {lp}: {e}", file=sys.stderr)
     return cfg
@@ -134,6 +152,18 @@ def cmd_set(root, rest):
         return 2
 
     section, key, val = rest
+    # A key only means something in its own section — `set review parallel_tasks 5`
+    # would otherwise silently write into review.parallel_tasks, a key
+    # kiro_config.py/kiro_review.py never read from that section (only from
+    # delegate.parallel_tasks), so the setting would look accepted but never apply.
+    valid_keys = {
+        "delegate": {"model", "parallel_tasks", "max_fix_rounds", "timeout"},
+        "review": {"model", "timeout", "on_commit", "block"},
+    }
+    if key not in valid_keys[section]:
+        print(f"unknown key '{key}' for section '{section}' (valid: "
+              f"{', '.join(sorted(valid_keys[section]))})", file=sys.stderr)
+        return 2
     slot = local.setdefault(section, {})
 
     if key == "model":
@@ -155,19 +185,16 @@ def cmd_set(root, rest):
             print("timeout must be a positive integer (seconds)", file=sys.stderr)
             return 2
         slot[key] = int(val)
-    elif key == "on_commit" and section == "review":
+    elif key == "on_commit":
         if val.lower() not in ("on", "off", "true", "false", "1", "0", "yes", "no"):
             print("usage: set review on_commit <on|off>", file=sys.stderr)
             return 2
         slot["on_commit"] = _bool(val)
-    elif key == "block" and section == "review":
+    elif key == "block":
         if val not in BLOCK_LEVELS:
             print(f"block must be one of: {', '.join(BLOCK_LEVELS)}", file=sys.stderr)
             return 2
         slot["block"] = val
-    else:
-        print(f"unknown key '{key}' for section '{section}'", file=sys.stderr)
-        return 2
 
     return _write(root, local)
 

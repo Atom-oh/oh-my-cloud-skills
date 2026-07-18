@@ -41,6 +41,13 @@ work, not because a second opinion is wanted.
 > agent (`agents/kiro-delegate-agent.md`) carries the authoritative step-by-step pipeline
 > — this file routes intent and covers the commands.
 
+**Routing within this skill's trigger set is NOT one path.** "kiro review"/"kiro가
+리뷰" route to the **read-only** `/kiro:review` command (`kiro_review.py`) — never to
+`kiro-delegate-agent`, which is a write-capable orchestrator that plans, implements, and
+**commits**. `kiro-delegate-agent.md`'s own description explicitly excludes the review
+triggers for this reason. Every other trigger in the list above ("kiro한테 시켜", "kiro
+로 구현", "delegate to kiro", …) routes to `kiro-delegate-agent` / `/kiro:delegate`.
+
 ## What "safe" means here — and what it doesn't (co-agent can't allow this at all)
 
 `co-agent:harness` refuses Kiro as an implementer (`SANDBOX_IMPLEMENTERS = codex, agy`
@@ -66,16 +73,21 @@ before enabling `default_delegate`. Kiro never commits.
 | `/kiro:review [paths...]` | Run the same Kiro-powered review the pre-commit hook runs, on demand (default: staged changes) |
 | `/kiro:configure` | Inspect/change `default_delegate`, delegate/review models, `parallel_tasks`, `max_fix_rounds`, `review.on_commit`, `review.block` |
 
-## Pre-commit review (automatic)
+## Pre-commit review (opt-in)
 
-When `review.on_commit` is on (default), a `PreToolUse(Bash)` hook runs before every
-`git commit`: it sends the staged diff to Kiro on the configured **review model**
-(meant to be Kiro's strongest/newest — `/kiro:setup` helps you pick one, e.g.
-`gpt-5.6-sol`) and blocks the commit (exit 2) only on `critical` findings by default
-(`review.block`: `critical` | `warning` | `none`). It **fails open** — a missing/timed-out/
-unauthenticated Kiro never blocks a commit; the review is skipped and a warning is
-printed instead. Bypass a single commit with `KIRO_REVIEW=off`, or turn it off
-persistently with `/kiro:configure set review on_commit off`.
+`review.on_commit` is **off by default** — the reviewer's `fs_read` tool isn't scoped
+to just the diff file, so a prompt-injection payload in an untrusted staged diff could
+direct it to read an unrelated absolute path and leak it into the review response sent
+to Kiro's backend. Turn it on (`/kiro:setup`, or `/kiro:configure set review on_commit
+on`) only for diffs you trust the authorship of — typically your own commits. Once on, a
+`PreToolUse(Bash)` hook runs before every `git commit`: it sends the staged diff to Kiro
+on the configured **review model** (meant to be Kiro's strongest/newest —
+`/kiro:setup` helps you pick one, e.g. `gpt-5.6-sol`) and blocks the commit (exit 2) only
+on `critical` findings by default (`review.block`: `critical` | `warning` | `none`). It
+**fails open** — a missing/timed-out/unauthenticated Kiro never blocks a commit; the
+review is skipped and a warning is printed instead. Bypass a single commit with
+`KIRO_REVIEW=off`, or turn it off persistently with `/kiro:configure set review
+on_commit off`.
 
 ## Delegate vs. review — different models, on purpose
 

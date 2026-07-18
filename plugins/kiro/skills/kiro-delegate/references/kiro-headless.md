@@ -26,7 +26,7 @@ caller.
 
 ```bash
 kiro-cli chat "<TASK PROMPT>" --mode default --no-interactive \
-  --trust-tools=fs_read,fs_write,execute_bash --wrap never \
+  --trust-tools=fs_read,fs_write --wrap never \
   [--model <m>] [--agent kiro-implementer]
 ```
 
@@ -37,8 +37,11 @@ kiro-cli chat "<TASK PROMPT>" --mode default --no-interactive \
 - **`--agent kiro-implementer`** (once `/kiro:setup` has written
   `.kiro/agents/kiro-implementer.json`) scopes the run to that custom agent's
   `tools`/`allowedTools`/hooks instead of the ad-hoc `--trust-tools` flag — prefer it once
-  set up; `--trust-tools=fs_read,fs_write,execute_bash` is the fallback when it hasn't
-  been written yet.
+  set up; `--trust-tools=fs_read,fs_write` is the fallback when it hasn't been written
+  yet. **`execute_bash` is NOT in either default** — it's off unless `/kiro:setup`'s
+  explicit trust-decision question was answered yes (`kiro_setup.py write-agents
+  --enable-bash`); a task needing a shell command falls back to Claude implementing it
+  directly rather than silently granting shell access.
 - **cwd MUST be the task's worktree** (`worktree.py add <wt> --base HEAD`), never the main
   checkout — this is the actual isolation boundary. See "Trust boundary" below.
 - **`--v3` narrows the model catalog** and can reject some model ids
@@ -90,20 +93,21 @@ the **worktree isolation + capture + scope_guard** path load-bearing for that on
    *before* capture, but 3-5 remain the actual guarantee even if a write slips past it.
 
 **What 1-6 do NOT cover: `execute_bash`.** All of the above governs `fs_write` and the
-main tree only. `.kiro/agents/kiro-implementer.json`'s default template also grants
-`execute_bash`, and Kiro auto-approves it (`--trust-tools`/`allowedTools`) — a shell
-command it runs is **not confined to the worktree at the process level**. It can read
-files anywhere the OS user can read (credentials, SSH keys), delete files outside the
-worktree, or make outbound network calls, and none of steps 1-6 will see or stop it
-because they only ever look at the git diff *afterward*. This is not a gap this plugin
-can close with more worktree/capture/scope_guard machinery — those layers are about what
-lands in the repo, not what a shell command can do to the host while it runs. Treat
-enabling `execute_bash` for the implementer as an explicit trust decision about
-`kiro-cli` (same category of trust as running any other agentic CLI with shell access
-locally) — `/kiro:setup` asks about this once before writing the agent file. If you want
-implement tasks that don't need shell access at all, drop `execute_bash` from
-`.kiro/agents/kiro-implementer.json`'s `tools`/`allowedTools` after setup; some tasks
-Kiro would otherwise finish will then fall back to Claude instead.
+main tree only. `execute_bash` is **off by default** in
+`.kiro/agents/kiro-implementer.json` (`kiro_setup.py write-agents`) — `/kiro:setup`
+explicitly asks (`AskUserQuestion`) before ever granting it, and only writes it into the
+agent file if the user opts in (`--enable-bash`). If granted, Kiro auto-approves it
+(`--trust-tools`/`allowedTools`) and a shell command it runs is **not confined to the
+worktree at the process level**: it can read files anywhere the OS user can read
+(credentials, SSH keys), delete files outside the worktree, or make outbound network
+calls, and none of steps 1-6 will see or stop it because they only ever look at the git
+diff *afterward*. This is not a gap this plugin can close with more
+worktree/capture/scope_guard machinery — those layers are about what lands in the repo,
+not what a shell command can do to the host while it runs. Granting `execute_bash` is an
+explicit trust decision about `kiro-cli` (same category of trust as running any other
+agentic CLI with shell access locally); without it, some tasks Kiro would otherwise
+finish (ones that genuinely need a shell command) fall back to Claude implementing them
+directly instead.
 
 **Reviewer `fs_read` is not path-restricted either.** `kiro-reviewer.json` grants only
 `fs_read` (no `fs_write`/`execute_bash`), but that tool is not scoped to the diff file

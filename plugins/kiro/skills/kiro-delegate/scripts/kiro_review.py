@@ -60,20 +60,67 @@ _PROMPT_INSTR = (
 )
 
 
+def _git_env():
+    return {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_ATTR_NOSYSTEM": "1", "GIT_PAGER": "cat"}
+
+
+def _untracked_files(root, paths):
+    """Untracked (never-`git add`ed) files, optionally scoped to `paths`. `git diff HEAD`
+    never shows these — HEAD has no entry for them at all — so the working-tree review
+    mode must fetch them separately or a brand-new file silently reviews as empty."""
+    args = ["git", "-C", root, "ls-files", "--others", "--exclude-standard"]
+    if paths:
+        args += ["--"] + list(paths)
+    r = subprocess.run(args, capture_output=True, text=True, timeout=30, env=_git_env())
+    return [p for p in r.stdout.splitlines() if p] if r.returncode == 0 else []
+
+
 def _git_diff(root, paths, cached):
     """`cached=True` → staged changes only (`git diff --cached`, what the pre-commit hook
-    reviews). `cached=False` → the full working-tree diff (staged + unstaged), the mode
-    `/kiro:review <path>...` uses so an in-progress, not-yet-staged edit is still
-    reviewable — a bare `--cached` here would silently show "no staged changes" for it."""
-    env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
-           "GIT_ATTR_NOSYSTEM": "1", "GIT_PAGER": "cat"}
+    reviews) — untracked files are never staged, so they're correctly absent here.
+    `cached=False` → the full working-tree diff (staged + unstaged) `/kiro:review
+    <path>...` uses, PLUS any untracked file among `paths` (or all untracked files when
+    `paths` is empty) via `git diff --no-index` against /dev/null — `git diff HEAD` alone
+    shows nothing for a file HEAD never had, which would silently review a brand-new
+    file as empty/unchanged.
+
+    Returns (diff_text, error|None). A real git failure (bad ref, git missing, timeout)
+    returns error set so the caller can distinguish "git broke" (fail-open, don't claim
+    a clean review) from "genuinely no changes" (both would otherwise just look like an
+    empty diff)."""
+    env = _git_env()
     args = ["git", "-C", root, "-c", f"core.attributesFile={os.devnull}",
             "-c", "core.fsmonitor=", "-c", f"core.hooksPath={os.devnull}", "-c", "core.pager=cat",
             "diff"] + (["--cached"] if cached else ["HEAD"]) + ["--no-color", "--no-ext-diff", "--no-textconv"]
     if paths:
         args += ["--"] + list(paths)
-    r = subprocess.run(args, capture_output=True, text=True, timeout=30, env=env)
-    return r.stdout if r.returncode == 0 else ""
+    try:
+        r = subprocess.run(args, capture_output=True, text=True, timeout=30, env=env)
+    except subprocess.TimeoutExpired:
+        return "", "git diff timed out after 30s"
+    except OSError as e:
+        return "", f"could not run git: {e}"
+    if r.returncode != 0:
+        return "", f"git diff exited {r.returncode}: {r.stderr.strip()[:300]}"
+    tracked_diff = r.stdout
+    if cached:
+        return tracked_diff, None
+    untracked_diff = ""
+    for p in _untracked_files(root, paths):
+        # --no-index diffs two paths outside git's index tracking; it EXITS 1 when the
+        # files differ (the normal/expected case here, not an error) and only >1 on a
+        # real usage error, so don't gate on returncode the way tracked-diff calls do.
+        try:
+            ur = subprocess.run(
+                ["git", "-C", root, "diff", "--no-color", "--no-ext-diff", "--no-textconv",
+                 "--no-index", "--", os.devnull, p],
+                capture_output=True, text=True, timeout=30, env=env)
+        except (subprocess.TimeoutExpired, OSError):
+            continue   # best-effort for the untracked-file pass; the tracked diff above already succeeded
+        if ur.returncode <= 1:
+            untracked_diff += ur.stdout
+    return tracked_diff + untracked_diff, None
 
 
 def _extract_json_array(text):
@@ -179,22 +226,39 @@ def main():
     cfg = kc.effective(root)
 
     if diff_file:
-        with open(diff_file, encoding="utf-8") as f:
-            diff = f.read()
+        try:
+            with open(diff_file, encoding="utf-8") as f:
+                diff = f.read()
+        except OSError as e:
+            # Fail-open: this gate must never crash a caller (the hook, /kiro:review)
+            # just because the diff file it was pointed at doesn't exist / isn't readable.
+            print(f"⚠️  kiro review skipped (fail-open): could not read --diff file: {e}",
+                  file=sys.stderr)
+            return 0
     else:
         # --staged (or no paths at all, e.g. the hook's default call) reviews staged
         # changes only; explicit paths review the full working-tree diff (staged +
         # unstaged) for those paths, so an in-progress unstaged edit is reviewable too.
-        diff = _git_diff(root, paths, cached=staged or not paths)
+        diff, diff_err = _git_diff(root, paths, cached=staged or not paths)
+        if diff_err is not None:
+            print(f"⚠️  kiro review skipped (fail-open): {diff_err}", file=sys.stderr)
+            return 0
 
     if not diff.strip():
         print("kiro review: no changes to review")
         return 0
 
-    rcfg = cfg.get("review", {})
+    rcfg = cfg.get("review") or {}   # `or {}`: a hand-edited config could set this key
+                                     # to a non-dict; never let a settings-file typo
+                                     # crash the fail-open gate it's supposed to protect
     model = rcfg.get("model")
-    timeout = int(rcfg.get("timeout", 120))
-    block_level = rcfg.get("block", "critical")
+    try:
+        timeout = int(rcfg.get("timeout", 120))
+    except (TypeError, ValueError):
+        print(f"⚠️  kiro review: review.timeout {rcfg.get('timeout')!r} is not a valid "
+              f"integer — using the default (120s)", file=sys.stderr)
+        timeout = 120
+    block_level = rcfg.get("block") or "critical"
 
     findings, err, truncated = run_review(root, diff, model, timeout)
     if truncated:

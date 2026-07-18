@@ -1,7 +1,7 @@
 {
   "name": "kiro",
   "version": "1.14.1",
-  "description": "Claude plans, Kiro implements and reviews — a cost-savings delegation plugin. Claude designs specs and verifies results while Kiro CLI (subscription credits) writes the code inside an isolated worktree and reviews diffs before every commit.",
+  "description": "Claude plans, Kiro implements and reviews — a cost-savings delegation plugin. Claude designs specs and verifies results while Kiro CLI (subscription credits) writes the code inside an isolated worktree and can optionally review diffs before commit.",
   "author": {
     "name": "atomoh"
   },

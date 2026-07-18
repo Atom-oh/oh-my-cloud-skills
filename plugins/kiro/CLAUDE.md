@@ -85,11 +85,17 @@ before writing the implementer agent file.
 ## Pre-commit review (PreToolUse hook)
 
 `hooks/pre-commit-review.sh` matches `git commit` at a command boundary and runs
-`kiro_review.py --staged` before it. **Fails open** on any internal error, missing/
-unauthenticated `kiro-cli`, or `review.on_commit=false` — a broken reviewer must never
-wedge a commit. Blocks (exit 2) only on findings at/above `review.block` (default
-`critical`). Bypass one commit with `KIRO_REVIEW=off`; disable persistently via
-`/kiro:configure set review on_commit off`.
+`kiro_review.py --staged` before it — **opt-in, off by default**
+(`review.on_commit=false`), because the reviewer's `fs_read` tool is not restricted to
+the diff file it's pointed at: a prompt-injection payload in an untrusted staged diff
+could direct it to read an unrelated absolute path (e.g. `~/.aws/credentials`) and
+surface its contents in the review response, which is sent to Kiro's backend. Enable it
+only for diffs you trust the authorship of (typically: your own commits), via
+`/kiro:setup` (which explains this before asking) or
+`/kiro:configure set review on_commit on`. **Fails open** on any internal error or
+missing/unauthenticated `kiro-cli` — a broken reviewer must never wedge a commit. Blocks
+(exit 2) only on findings at/above `review.block` (default `critical`). Bypass one
+commit with `KIRO_REVIEW=off`.
 
 ## Model tiering
 

@@ -32,7 +32,8 @@ Common examples:
 | `set review model <m>` | Reviewer model — keep this Kiro's strongest/newest, even if the delegate model is lighter |
 | `set delegate parallel_tasks <n>` | Max concurrent tasks per wave (default 3; `1` = sequential) |
 | `set delegate max_fix_rounds <n>` | Retries before falling back to Claude implementing the task (default 2) |
-| `set review on_commit off` | Disable the automatic pre-commit review hook |
+| `set review on_commit on` | Enable the pre-commit review hook (off by default — the reviewer's `fs_read` isn't scoped to just the diff file; only enable for diffs you trust the authorship of, typically your own commits) |
+| `set review on_commit off` | Disable it again |
 | `set review block <critical\|warning\|none>` | Which finding severities block the commit — `warning` blocks warning+critical, `suggestion` never blocks under any level (default `critical`) |
 | `set review timeout <seconds>` / `set delegate timeout <seconds>` | Per-call wall-clock budget |
 

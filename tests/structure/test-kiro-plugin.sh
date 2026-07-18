@@ -21,6 +21,37 @@ assert_file_exists "$HOOK" "pre-commit-review.sh exists"
 assert_file_executable "$HOOK" "pre-commit-review.sh is executable"
 assert_bash_syntax "$HOOK" "pre-commit-review.sh valid syntax"
 
+# --- hook_match.py: command-boundary matching (unit-style, via a small Python harness) ---
+HM="$SK/hook_match.py"
+assert_file_exists "$HM" "hook_match.py exists"
+assert_file_executable "$HM" "hook_match.py is executable"
+HM_OUT=$(python3 -c "
+import sys
+sys.path.insert(0, '$SK')
+import hook_match as hm
+cases = [
+    ('git commit -m test', True),
+    ('git -C \"my repo\" commit -m x', True),          # quoted -C argument (regression)
+    ('/usr/bin/git commit -m x', True),
+    ('command git commit -m x', True),
+    ('echo \"git commit\"', False),                    # quoted-string false positive
+    ('git commit-tree HEAD', False),                    # commit-tree/-graph are not commit-creating
+    ('git commit-graph write', False),
+    ('ls -la', False),
+]
+ok = all(hm.is_git_commit(cmd) == expect for cmd, expect in cases)
+print('MATCH_CASES_OK' if ok else 'MATCH_CASES_FAIL')
+payload_cases = [
+    ('{\"tool_input\":\"a string\"}', ''),               # non-dict tool_input must not crash
+    ('[1,2,3]', ''),                                     # non-dict top level must not crash
+    ('{\"tool_input\":{\"command\":\"git commit -m x\"}}', 'git commit -m x'),
+]
+ok2 = all(hm.command_from_payload(raw) == expect for raw, expect in payload_cases)
+print('PAYLOAD_CASES_OK' if ok2 else 'PAYLOAD_CASES_FAIL')
+" 2>&1)
+assert_contains "$HM_OUT" "MATCH_CASES_OK" "hook_match.py matches git-commit incl. quoted -C, bare path, command-builtin bypasses"
+assert_contains "$HM_OUT" "PAYLOAD_CASES_OK" "hook_match.py's command_from_payload never crashes on a non-dict tool_input/payload"
+
 for f in "$CFG" "$REVIEW" "$SETUP" "$WT" "$SG" "$PP"; do
   assert_file_exists "$f" "$(basename "$f") exists"
   assert_file_executable "$f" "$(basename "$f") is executable"
@@ -57,7 +88,26 @@ python3 "$CFG" set delegate parallel_tasks 0 --root "$R" >/dev/null 2>&1 && PC=0
 assert_eq "2" "$PC" "parallel_tasks below 1 rejected (exit 2)"
 assert_eq "3" "$(python3 "$CFG" parallel-tasks --root "$R" 2>&1)" "parallel_tasks defaults to 3"
 assert_eq "2" "$(python3 "$CFG" max-fix-rounds --root "$R" 2>&1)" "max_fix_rounds defaults to 2"
+python3 "$CFG" set review parallel_tasks 5 --root "$R" >/dev/null 2>&1 && XC=0 || XC=$?
+assert_eq "2" "$XC" "cross-section key (review parallel_tasks) rejected — that key only means something under delegate (exit 2)"
+python3 "$CFG" set delegate on_commit on --root "$R" >/dev/null 2>&1 && XC2=0 || XC2=$?
+assert_eq "2" "$XC2" "cross-section key (delegate on_commit) rejected (exit 2)"
 rm -rf "$R"
+
+# --- kiro_config.py: malformed/wrong-shape local config must not crash (fail-open contract) ---
+RM=$(mktemp -d "${TMPDIR:-/tmp}/kiro-cfg-malformed.XXXXXX")
+mkdir -p "$RM/.claude"
+python3 -c "import json; json.dump([1,2,3], open('$RM/.claude/kiro.local.json','w'))"
+OUT=$(python3 "$CFG" show --root "$RM" 2>&1) && RC=0 || RC=$?
+assert_eq "0" "$RC" "show survives a non-object top-level local config (list)"
+assert_contains "$OUT" "malformed" "show reports the non-object config as malformed"
+python3 -c "import json; json.dump({'review': None}, open('$RM/.claude/kiro.local.json','w'))"
+python3 "$CFG" show --root "$RM" >/dev/null 2>&1 && RC2=0 || RC2=$?
+assert_eq "0" "$RC2" "show survives an explicit null review section"
+python3 -c "import json; json.dump({'review': {'timeout': 'bad'}}, open('$RM/.claude/kiro.local.json','w'))"
+python3 "$CFG" show --root "$RM" >/dev/null 2>&1 && RC3=0 || RC3=$?
+assert_eq "0" "$RC3" "show survives a wrong-type review.timeout"
+rm -rf "$RM"
 
 # --- kiro_review.py: block-level gating on a canned diff (no real kiro-cli call) ---
 R2=$(mktemp -d "${TMPDIR:-/tmp}/kiro-review.XXXXXX")
@@ -71,6 +121,14 @@ NOKIRO_PATH=$(IFS=:; for d in $PATH; do [ -x "$d/kiro-cli" ] || printf '%s:' "$d
 OUT=$(PATH="${NOKIRO_PATH%:}" python3 "$REVIEW" --diff "$DIFFFILE" --root "$R2" 2>&1) && RC=0 || RC=$?
 assert_eq "0" "$RC" "review fails OPEN (exit 0) when kiro-cli is not on PATH"
 assert_contains "$OUT" "skipped" "review reports the fail-open reason"
+
+# A wrong-type review.timeout in local config must not crash the review — it's the
+# fail-open gate's own config, and a malformed setting still has to degrade gracefully.
+mkdir -p "$R2/.claude"
+python3 -c "import json; json.dump({'review': {'timeout': 'bad'}}, open('$R2/.claude/kiro.local.json','w'))"
+OUTBT=$(PATH="${NOKIRO_PATH%:}" python3 "$REVIEW" --diff "$DIFFFILE" --root "$R2" 2>&1) && RCBT=0 || RCBT=$?
+assert_eq "0" "$RCBT" "review survives a wrong-type review.timeout (fail-open, exit 0)"
+assert_contains "$OUTBT" "not a valid integer" "review reports the bad timeout value"
 rm -rf "$R2"
 
 # Empty diff short-circuits cleanly regardless of kiro-cli availability
@@ -80,6 +138,40 @@ OUT3=$(python3 "$REVIEW" --diff "$R3/empty.diff" --root "$R3" 2>&1) && RC3=0 || 
 assert_eq "0" "$RC3" "review on an empty diff exits 0"
 assert_contains "$OUT3" "no changes to review" "review on an empty diff reports nothing to review"
 rm -rf "$R3"
+
+# --- kiro_review.py: a missing --diff file must fail OPEN, not crash with a traceback ---
+R3M=$(mktemp -d "${TMPDIR:-/tmp}/kiro-review-missingdiff.XXXXXX")
+OUT3M=$(python3 "$REVIEW" --diff "$R3M/nope.diff" --root "$R3M" 2>&1) && RC3M=0 || RC3M=$?
+assert_eq "0" "$RC3M" "review fails OPEN when --diff points at a missing file (exit 0)"
+assert_contains "$OUT3M" "skipped" "review reports the missing --diff file as a fail-open reason"
+rm -rf "$R3M"
+
+# --- kiro_review.py: a git failure (not just an empty diff) must fail OPEN with a
+#     distinct message — not silently look like "no changes to review" ---
+R3E=$(mktemp -d "${TMPDIR:-/tmp}/kiro-review-badgit.XXXXXX")
+# no `git init` here — HEAD doesn't exist, so `git diff HEAD` is a real git error, not
+# a genuinely-empty diff; the two must not both print "no changes to review".
+OUT3E=$(python3 "$REVIEW" --root "$R3E" 2>&1) && RC3E=0 || RC3E=$?
+assert_eq "0" "$RC3E" "review fails OPEN on a git error (exit 0)"
+assert_contains "$OUT3E" "skipped" "review reports a real git failure distinctly from an empty diff"
+rm -rf "$R3E"
+
+# --- kiro_review.py: /kiro:review <path> mode must see an untracked (never `git add`ed)
+#     file, not just staged+unstaged changes to already-tracked files ---
+R3U=$(mktemp -d "${TMPDIR:-/tmp}/kiro-review-untracked.XXXXXX")
+git -C "$R3U" init -q
+git -C "$R3U" config user.email t@t.t; git -C "$R3U" config user.name t
+git -C "$R3U" commit -q --allow-empty -m init
+printf 'def f():\n    return 1\n' > "$R3U/new_file.py"
+python3 -c "
+import sys
+sys.path.insert(0, 'plugins/kiro/skills/kiro-delegate/scripts')
+import kiro_review as kr
+d, err = kr._git_diff('$R3U', [], cached=False)
+print('UNTRACKED_DIFF_OK' if err is None and 'new_file.py' in d and 'return 1' in d else 'UNTRACKED_DIFF_MISSING')
+" > "$R3U/probe.out" 2>&1
+assert_contains "$(cat "$R3U/probe.out")" "UNTRACKED_DIFF_OK" "working-tree diff mode includes an untracked new file (not silently empty)"
+rm -rf "$R3U"
 
 # --- kiro_setup.py: absent kiro-cli reports ABSENT, not a crash ---
 R4=$(mktemp -d "${TMPDIR:-/tmp}/kiro-setup.XXXXXX")
@@ -96,6 +188,10 @@ assert_json_valid "$IMPL" "kiro-implementer.json is valid JSON"
 assert_json_valid "$REV" "kiro-reviewer.json is valid JSON"
 assert_grep_no_match "fs_write" "$(python3 -c "import json;print(json.load(open('$REV'))['tools'])")" "kiro-reviewer has no fs_write tool (read-only)"
 assert_contains "$(python3 -c "import json;print(json.load(open('$IMPL'))['tools'])")" "fs_write" "kiro-implementer has fs_write tool"
+assert_grep_no_match "execute_bash" "$(python3 -c "import json;print(json.load(open('$IMPL'))['tools'])")" "kiro-implementer has NO execute_bash by default (explicit opt-in required)"
+python3 "$SETUP" write-agents --root "$R4" --force --enable-bash >/dev/null 2>&1
+assert_contains "$(python3 -c "import json;print(json.load(open('$IMPL'))['tools'])")" "execute_bash" "--enable-bash grants execute_bash when explicitly requested"
+python3 "$SETUP" write-agents --root "$R4" --force >/dev/null 2>&1   # reset to the default (no-bash) for the tests below
 # re-run without --force must not clobber (idempotent skip)
 python3 -c "import json; json.dump({'name':'hand-edited'}, open('$IMPL','w'))"
 python3 "$SETUP" write-agents --root "$R4" >/dev/null 2>&1

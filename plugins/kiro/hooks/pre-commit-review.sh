@@ -5,8 +5,10 @@
 # security control: it matches on regex over the literal Bash tool_input text, so a
 # sufficiently indirect invocation (heredoc, `$(...)`, a shell function/alias, a
 # git-commit-via-editor-script) can bypass it — same class of limitation co-agent's own
-# `gh pr create` PreToolUse gate documents. Fails OPEN on any internal error, missing/
-# unauthenticated kiro-cli, or `review.on_commit=false` — a broken reviewer must never
+# `gh pr create` PreToolUse gate documents. OPT-IN — `review.on_commit` defaults to
+# false (the reviewer's fs_read isn't scoped to just the diff file, so this should only
+# be turned on for diffs you trust the authorship of; see /kiro:setup). Fails OPEN on
+# any internal error or missing/unauthenticated kiro-cli — a broken reviewer must never
 # wedge commits.
 set -euo pipefail
 

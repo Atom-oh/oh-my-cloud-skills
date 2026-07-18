@@ -41,25 +41,44 @@ Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts"`.
    python3 "$SK/kiro_config.py" set delegate model "<chosen delegate model>"   # or skip to keep CLI default
    ```
 
-3. Write the custom agents Kiro uses in headless mode:
-   ```bash
-   python3 "$SK/kiro_setup.py" write-agents
-   ```
-   These live at `.kiro/agents/kiro-implementer.json` (fs_read/fs_write/execute_bash,
-   worktree-write-only via a preToolUse hook) and `.kiro/agents/kiro-reviewer.json`
-   (fs_read only). Re-run with `--force` if the user wants to regenerate them.
+3. **Trust decision — ask before granting shell access (`AskUserQuestion`, mandatory,
+   never default this on silently):** worktree isolation + capture-diff + scope_guard
+   only guarantee what reaches the main git tree; they do nothing to confine a shell
+   command's host-side side effects (reading credentials, deleting files outside the
+   worktree, network calls) while it runs. Explain this plainly, then ask:
+   - **No shell access (Recommended to start)** — the implementer gets `fs_read`/
+     `fs_write` only. Some tasks that genuinely need a shell command (installing a
+     dependency, running a generator script) will fall back to Claude implementing them
+     directly instead of Kiro.
+   - **Grant `execute_bash`** — the implementer can run shell commands, auto-approved,
+     with the host-side risk above. Only choose this if you're comfortable extending that
+     trust to `kiro-cli` the same way you would to any other agentic CLI with shell
+     access on this machine.
 
-4. Ask (`AskUserQuestion`) whether to turn on **default delegation** — routing
+4. Write the custom agents Kiro uses in headless mode, per the answer to step 3:
+   ```bash
+   python3 "$SK/kiro_setup.py" write-agents [--enable-bash]
+   ```
+   These live at `.kiro/agents/kiro-implementer.json` (fs_read/fs_write, plus
+   execute_bash only if granted in step 3; worktree-write-only via a preToolUse hook)
+   and `.kiro/agents/kiro-reviewer.json` (fs_read only). Re-run with `--force` if the
+   user wants to regenerate them (e.g. after changing the step 3 answer).
+
+5. Ask (`AskUserQuestion`) whether to turn on **default delegation** — routing
    implementation work to Kiro automatically without a trigger phrase:
    - **Off (Recommended to start)** — delegate only when explicitly asked
      (`/kiro:delegate` or a trigger phrase).
    - **On** — `python3 "$SK/kiro_config.py" set default_delegate on`
-   And whether to keep the **pre-commit review hook** on (default is on):
-   - **On (Recommended)** — review every `git commit`'s staged diff, block on `critical`
-     findings only.
+   And whether to keep the **pre-commit review hook** on (default is on) — note that
+   this hook sends staged diff CONTENT to a `fs_read`-capable reviewer with no path
+   restriction beyond the diff file itself, so an untrusted diff (e.g. reviewing a
+   contributor's PR branch) could in principle prompt-inject the reviewer into reading
+   an unrelated file; mention this plainly, not just the block-severity behavior:
+   - **On (Recommended for your own commits)** — review every `git commit`'s staged
+     diff, block on `critical` findings only.
    - **Off** — `python3 "$SK/kiro_config.py" set review on_commit off`
 
-5. Show the final effective config:
+6. Show the final effective config:
    ```bash
    python3 "$SK/kiro_config.py" show
    ```

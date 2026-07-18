@@ -5,7 +5,10 @@ two `.kiro/agents/*.json` custom agents the delegate/review paths invoke headles
 Usage:
   kiro_setup.py probe [--timeout N]                  # READY | AUTH | NO_INGEST | TIMEOUT | ERROR | ABSENT
   kiro_setup.py list-models                          # one model id per line (best-effort)
-  kiro_setup.py write-agents [--root DIR] [--force]  # write .kiro/agents/kiro-{implementer,reviewer}.json
+  kiro_setup.py write-agents [--root DIR] [--force] [--enable-bash]
+                                                      # write .kiro/agents/kiro-{implementer,reviewer}.json
+                                                      # --enable-bash grants the implementer execute_bash
+                                                      # (off by default — see _implementer_agent's docstring)
 
 probe() statuses:
   READY      — kiro-cli echoed the sentinel; usable headlessly.
@@ -34,7 +37,15 @@ _AUTH_RE = re.compile(
     r"token expired|expired token|please (log|sign) in|run .*login|\b401\b|\b403\b|"
     r"unauthorized|forbidden", re.I)
 
-_IMPLEMENTER_AGENT = {
+def _implementer_agent(enable_bash):
+    """`enable_bash` grants execute_bash — OFF by default. worktree/capture-diff/
+    scope_guard only guarantee what reaches the main git tree; they do nothing about a
+    shell command's host-side side effects (reading credentials, deleting files outside
+    the worktree, network calls) while it runs. Granting execute_bash is a separate trust
+    decision about kiro-cli itself, made explicitly via `/kiro:setup`'s AskUserQuestion —
+    never silently defaulted on."""
+    tools = ["fs_read", "fs_write"] + (["execute_bash"] if enable_bash else [])
+    return {
     "name": "kiro-implementer",
     "description": "Implements tasks handed off by the /kiro:delegate pipeline, inside a "
                     "throwaway git worktree the host controls.",
@@ -43,8 +54,8 @@ _IMPLEMENTER_AGENT = {
               "fs_read). Make the minimal change that satisfies the task. Do not touch "
               "files outside the task's declared file set. Do not run git commit — the "
               "host commits after review.",
-    "tools": ["fs_read", "fs_write", "execute_bash"],
-    "allowedTools": ["fs_read", "fs_write", "execute_bash"],
+    "tools": tools,
+    "allowedTools": tools,
     "hooks": {
         "preToolUse": [
             {
@@ -65,7 +76,8 @@ _IMPLEMENTER_AGENT = {
             }
         ]
     }
-}
+    }
+
 
 _REVIEWER_AGENT = {
     "name": "kiro-reviewer",
@@ -165,11 +177,11 @@ def list_models():
     return 0
 
 
-def write_agents(root, force=False):
+def write_agents(root, force=False, enable_bash=False):
     d = os.path.join(root, ".kiro", "agents")
     os.makedirs(d, exist_ok=True)
     written = []
-    for name, spec in (("kiro-implementer.json", _IMPLEMENTER_AGENT),
+    for name, spec in (("kiro-implementer.json", _implementer_agent(enable_bash)),
                         ("kiro-reviewer.json", _REVIEWER_AGENT)):
         p = os.path.join(d, name)
         if os.path.isfile(p) and not force:
@@ -213,7 +225,7 @@ def main():
     if cmd == "list-models":
         return list_models()
     if cmd == "write-agents":
-        return write_agents(root, force="--force" in argv)
+        return write_agents(root, force="--force" in argv, enable_bash="--enable-bash" in argv)
     print(__doc__)
     return 2
 
