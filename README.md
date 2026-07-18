@@ -656,7 +656,7 @@ aws-ops-power/
 
 > `pr-autofix-planner` / `pr-autofix-implementer` are meant to be spawned by the pr-autofix skill; their descriptions discourage (but cannot hard-block) direct auto-selection.
 
-All agents activate automatically when Claude detects matching keywords in your prompt.
+All agents (except the internal pr-autofix workers above) activate automatically when Claude detects matching keywords in your prompt.
 
 ---
 

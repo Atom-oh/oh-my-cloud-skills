@@ -655,7 +655,7 @@ aws-ops-power/
 
 > `pr-autofix-planner` / `pr-autofix-implementer`는 pr-autofix 스킬이 스폰하는 용도입니다 — description이 직접 자동 선택을 억제하지만 하드 차단은 아닙니다.
 
-모든 에이전트는 Claude가 프롬프트에서 일치하는 키워드를 감지하면 자동으로 활성화됩니다.
+모든 에이전트는(위 pr-autofix 내부 워커 제외) Claude가 프롬프트에서 일치하는 키워드를 감지하면 자동으로 활성화됩니다.
 
 ---
 

@@ -22,6 +22,7 @@ Core plugin providing project structure initialization, documentation quality sc
 - `skills/project-scaffolder/references/` - 12 template files for code generation (includes shared writing-style-guide)
 - `skills/pr-autofix/SKILL.md` - PR auto-fix skill (AI review + human review loop)
 - `skills/pr-autofix/references/pr-review-workflow.yml` - Reference CI workflow for AI code review
+- `skills/pr-autofix/scripts/land_delta.sh` - Stage-gated worktree landing pipeline (unit-tested in `tests/structure/test-pr-autofix-land-delta.sh`)
 - `skills/decision-reconcile/SKILL.md` - ADR contradiction detection + superseding-ADR drafting (diverse multi-agent panel)
 - `skills/decision-reconcile/scripts/collect_adrs.py` - Parse `docs/decisions/ADR-*.md` → JSON + deterministic inconsistency pre-checks
 - `skills/decision-reconcile/references/contradiction-taxonomy.md` - C1–C6 contradiction categories, per-agent review lenses, severity, resolution patterns

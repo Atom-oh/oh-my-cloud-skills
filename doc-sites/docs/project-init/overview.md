@@ -17,6 +17,8 @@ Project Init는 Claude Code 프로젝트 구조 초기화, 문서 품질 스코�
 | `pr-autofix-planner` | pr-autofix 수정 계획 (read-only 강제, fable/opus) | 구조화된 수정 계획 |
 | `pr-autofix-implementer` | pr-autofix 계획 적용 (편집 도구만 강제, sonnet) | worktree 내 파일 편집 |
 
+> `pr-autofix-planner`/`pr-autofix-implementer`는 pr-autofix 스킬 내부 워커로, 키워드 자동 호출 대상이 아닙니다(디스크립션으로 억제).
+
 ### 스킬 (3개)
 
 | 스킬 | 설명 |
