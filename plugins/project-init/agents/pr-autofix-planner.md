@@ -1,6 +1,6 @@
 ---
 name: pr-autofix-planner
-description: "Do not select for user prompts under any keyword — internal stage that only functions when its parent pr-autofix skill (project-init plugin) supplies prepared inputs; refuses direct invocation (returns blocked without prepared inputs)."
+description: "Internal pipeline stage of a project-init plugin skill. Refuses to run without the prepared inputs that skill supplies — direct selection returns blocked. Never choose this agent for a user request."
 tools: Read, Grep, Glob
 model: opus
 ---

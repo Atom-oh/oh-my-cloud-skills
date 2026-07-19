@@ -159,6 +159,24 @@ RC=0; ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1 || RC=$?
 assert_eq "1" "$RC" "new executable file rejected at approve"
 ( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true; rm -rf "$FIX"
 
+# --- rollback resets the reference worktree: a fresh land afterwards succeeds ---
+FIX=$(_ld_fixture)
+read -r RUN SIG <<<"$( cd "$FIX" && bash "$LD_ABS" setup )" || true
+IMPL_WT=$(sed -n 's/^IMPL_WT=//p' "$RUN/state" | head -1)
+echo 'x=2' > "$IMPL_WT/src/app.py"
+( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) >/dev/null 2>&1 || true
+cp "$RUN/full.1.patch" "$RUN/approved.patch"; ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1 || true
+( cd "$FIX" && bash "$LD_ABS" land "$RUN" ) >/dev/null 2>&1 || true
+( cd "$FIX" && bash "$LD_ABS" rollback "$RUN" ) >/dev/null 2>&1 || true
+echo 'x=9' > "$IMPL_WT/src/app.py"
+( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) >/dev/null 2>&1 || true
+cp "$RUN/$(sed -n 's/^LATEST_FULL=//p' "$RUN/state" | tail -1)" "$RUN/approved.patch"
+( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1 || true
+RC=0; ( cd "$FIX" && bash "$LD_ABS" land "$RUN" ) >/dev/null 2>&1 || RC=$?
+assert_eq "0" "$RC" "re-land after rollback succeeds (reference worktree was reset)"
+assert_eq "x=9" "$(cat "$FIX/src/app.py")" "second-generation edit landed"
+( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true; rm -rf "$FIX"
+
 # --- symlink escape gate at setup ---
 FIX=$(_ld_fixture)
 ( cd "$FIX" && ln -s /etc/passwd escape.link && git add -A && git commit -qm link ) >/dev/null

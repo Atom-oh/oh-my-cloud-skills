@@ -1,6 +1,6 @@
 ---
 name: pr-autofix-implementer
-description: "Do not select for user prompts under any keyword — internal stage that returns blocked unless its parent pr-autofix skill (project-init plugin) supplies a prepared workspace path; refuses direct invocation (returns blocked without a workspace path)."
+description: "Internal pipeline stage of a project-init plugin skill. Refuses to run without the prepared working directory that skill supplies — direct selection returns blocked. Never choose this agent for a user request."
 tools: Read, Write, Edit, Grep, Glob
 model: sonnet
 ---

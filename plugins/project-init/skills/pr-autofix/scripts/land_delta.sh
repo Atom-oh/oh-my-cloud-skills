@@ -27,7 +27,7 @@ SHAPIPE() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum
 # Class-based, not filename-enumerated: anything plausibly executed during build/verify/
 # commit. Broad on purpose — a false positive costs one --allow-exec-surface approval,
 # a false negative is arbitrary code execution on the host.
-EXEC_SURFACE_RE='(^|/)(\.github|\.husky|\.git[a-z]*|\.ci|ci|bin|scripts?|tests?|hooks?)/|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|justfile|Justfile|Taskfile\.ya?ml|BUILD(\.bazel)?|WORKSPACE|Dockerfile[^/]*|\.envrc|sitecustomize\.py|\.gitattributes|\.gitmodules|\.pre-commit-config\.ya?ml|gulpfile\.[a-z]+|Gruntfile\.[a-z]+|\.eslintrc[^/]*|\.babelrc[^/]*)$|\.(gradle|gradle\.kts|sh|bash|zsh)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
+EXEC_SURFACE_RE='(^|/)(\.github|\.husky|\.git[a-z]*|\.ci|ci|\.circleci|bin|scripts?|tests?|hooks?)/|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|justfile|Justfile|Taskfile\.ya?ml|\.gitlab-ci\.ya?ml|Jenkinsfile[^/]*|azure-pipelines\.ya?ml|bitbucket-pipelines\.ya?ml|gradlew(\.bat)?|mvnw(\.cmd)?|configure|autogen\.sh|BUILD(\.bazel)?|WORKSPACE|Dockerfile[^/]*|\.envrc|sitecustomize\.py|\.gitattributes|\.gitmodules|\.pre-commit-config\.ya?ml|gulpfile\.[a-z]+|Gruntfile\.[a-z]+|\.eslintrc[^/]*|\.babelrc[^/]*)$|\.(gradle|gradle\.kts|sh|bash|zsh)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
 
 state() { # state <run> get KEY | state <run> set KEY VALUE
   local run=$1 op=$2 key=$3
@@ -116,7 +116,7 @@ cmd_capture() {
   GITWT "$run" diff --binary --no-ext-diff --no-textconv "$(state "$run" get BASE_SHA)" > "$run/full.$n.patch"
   [ -s "$run/full.$n.patch" ] || die "empty capture — implementer produced no delta"
   state "$run" set LATEST_FULL "full.$n.patch"
-  rm -f "$run/ok.approved" "$run/ok.landed" "$run/ok.build" "$run/ok.committed"   # a new capture invalidates EVERY downstream stage
+  rm -f "$run/ok.approved" "$run/ok.landed" "$run/ok.build" "$run/ok.committed" "$run/approved.patch"   # a new capture invalidates EVERY downstream stage — INCLUDING a stale approved.patch from an older generation
   : > "$run/ok.captured"
   echo "$run/full.$n.patch"
 }
@@ -219,7 +219,7 @@ cmd_verify() {
 }
 
 cmd_commit() {
-  local run=$1 msg=$2 host flags=""   # $3: --bypass-hookspath-approved (user-granted)
+  local run=$1 msg=$2 host; local -a flags=()   # $3: --bypass-hookspath-approved (user-granted)
   [ -f "$run/ok.build" ] || die "verify stage missing"
   host=$(state "$run" get HOST_ROOT)
   [ "$(git -C "$host" rev-parse HEAD)" = "$(state "$run" get BASE_SHA)" ] || die "base moved since landing"
@@ -231,12 +231,12 @@ cmd_commit() {
     # A configured hooksPath (husky-style) is PR-influenceable — but it may also be the
     # org's legitimate secret-scan/signing hooks. Bypassing is a USER decision, not ours:
     [ "${3:-}" = "--bypass-hookspath-approved" ] || die "core.hooksPath is configured — ask the user: bypass it (--bypass-hookspath-approved) or abort"
-    flags="-c core.hooksPath=/dev/null"
+    flags=(-c core.hooksPath=/dev/null)
   fi
   git -C "$host" --literal-pathspecs add --pathspec-from-file="$run/landed.files"
-  git -C "$host" --literal-pathspecs $flags commit -m "$msg" --pathspec-from-file="$run/landed.files"
+  git -C "$host" --literal-pathspecs "${flags[@]}" commit -m "$msg" --pathspec-from-file="$run/landed.files"
   state "$run" set COMMIT_SHA "$(git -C "$host" rev-parse HEAD)"
-  state "$run" set HOOKS_FLAGS "${flags:-none}"
+  state "$run" set HOOKS_FLAGS "${flags[*]:-none}"
   : > "$run/ok.committed"
 }
 
@@ -245,14 +245,16 @@ cmd_push() { # separate, idempotent — a transient push failure must not strand
   [ -f "$run/ok.committed" ] || die "commit stage missing"
   host=$(state "$run" get HOST_ROOT); sha=$(state "$run" get COMMIT_SHA)
   [ "$(git -C "$host" rev-parse HEAD)" = "$sha" ] || die "HEAD moved since commit — refusing to push"
-  flags=$(state "$run" get HOOKS_FLAGS); [ "$flags" = none ] && flags=""
-  git -C "$host" $flags push
+  local -a pf=(); [ "$(state "$run" get HOOKS_FLAGS)" != none ] && pf=(-c core.hooksPath=/dev/null)
+  git -C "$host" "${pf[@]}" push
   : > "$run/ok.pushed"
 }
 
 cmd_rollback() {
   local run=$1 host ref base f failed=0
   host=$(state "$run" get HOST_ROOT); ref=$(state "$run" get REF_WT); base=$(state "$run" get BASE_SHA)
+  [ "$(git -C "$host" rev-parse HEAD)" = "$base" ] || die "HEAD is not the landing base — a rollback here would target the wrong revision"
+  [ "$(git -C "$host" symbolic-ref -q HEAD || echo detached)" = "$(state "$run" get BASE_REF)" ] || die "branch switched — refusing rollback"
   [ -d "$ref" ] || die "no reference worktree — cannot verify safe rollback"
   while IFS= read -r f || [ -n "$f" ]; do
     if [ ! -e "$host/$f" ] && [ ! -e "$ref/$f" ]; then     # approved DELETION — restore the base file
@@ -269,6 +271,11 @@ cmd_rollback() {
       rm -f -- "$host/$f" || die "delete failed: $f"
     fi
   done < "$run/landed.files"
+  # Reset the reference worktree too (it held the approved state) — otherwise the next
+  # land()'s GITREF apply hits already-applied content and re-landing is impossible:
+  GITREF "$run" reset --hard "$base" >/dev/null
+  GITREF "$run" clean -fdx >/dev/null
+  rm -f "$run/ref.status.before"
   [ "$failed" = 0 ] || die "partial rollback — user-modified files above were preserved"
 }
 
