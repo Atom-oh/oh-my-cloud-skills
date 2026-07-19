@@ -21,9 +21,10 @@ set -euo pipefail
 
 die() { echo "STOP: $*" >&2; exit 1; }
 _canon() { (cd "$1" 2>/dev/null && pwd -P); }   # portable dir canonicalization (realpath -e is GNU-only)
-_verify_self() { # $1 = script sha the HOST recorded in its notes at 4b — a tampered script
-                 # computes valid-looking signatures for everything else, so every
-                 # destructive/final stage re-verifies itself against the host-held value
+_verify_self() { # $1 = script sha the HOST recorded at 4b. SECONDARY control only — a
+                 # tampered script runs before it can self-check, so the PRIMARY control
+                 # is the host re-hashing this file itself before every destructive call
+                 # (SKILL.md 4b); this in-script check catches accidental drift
   [ -n "${1:-}" ] || die "missing --script-sha (value the host recorded at setup)"
   [ "$(SHAPIPE < "$0" | cut -d' ' -f1)" = "$1" ] || die "land_delta.sh does not match the setup-recorded hash — script tampered"
 }
@@ -35,7 +36,7 @@ SHAPIPE() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum
 # Class-based, not filename-enumerated: anything plausibly executed during build/verify/
 # commit. Broad on purpose — a false positive costs one --allow-exec-surface approval,
 # a false negative is arbitrary code execution on the host.
-EXEC_SURFACE_RE='(^|/)(\.github|\.husky|\.git[a-z]*|\.ci|ci|\.circleci|bin|scripts?|tests?|hooks?)/|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|justfile|Justfile|Taskfile\.ya?ml|\.gitlab-ci\.ya?ml|Jenkinsfile[^/]*|azure-pipelines\.ya?ml|bitbucket-pipelines\.ya?ml|gradlew(\.bat)?|mvnw(\.cmd)?|configure|autogen\.sh|BUILD(\.bazel)?|WORKSPACE|Dockerfile[^/]*|\.envrc|sitecustomize\.py|\.gitattributes|\.gitmodules|\.pre-commit-config\.ya?ml|\.?lefthook(-local)?\.ya?ml|\.huskyrc[^/]*|gulpfile\.[a-z]+|Gruntfile\.[a-z]+|\.eslintrc[^/]*|\.babelrc[^/]*|composer\.json|meson\.build|SConstruct|SConscript|docker-compose[^/]*\.ya?ml|compose\.ya?ml|\.mcp\.json|pytest\.ini|\.yarnrc\.ya?ml|manage\.py|configure\.ac|.*\.cmake|.*\.pth)$|(^|/)\.yarn/|(^|/)\.claude/settings[^/]*\.json$|\.(gradle|gradle\.kts|sh|bash|zsh|ps1|psm1)$|(^|/)\.[a-z0-9_-]+rc\.(js|cjs|mjs|ts)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
+EXEC_SURFACE_RE='(^|/)(\.github|\.husky|\.git[a-z]*|\.ci|ci|\.circleci|bin|scripts?|tests?|hooks?)/|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|justfile|Justfile|Taskfile\.ya?ml|\.gitlab-ci\.ya?ml|Jenkinsfile[^/]*|azure-pipelines\.ya?ml|bitbucket-pipelines\.ya?ml|gradlew(\.bat)?|mvnw(\.cmd)?|configure|autogen\.sh|BUILD(\.bazel)?|WORKSPACE|Dockerfile[^/]*|\.envrc|sitecustomize\.py|\.gitattributes|\.gitmodules|\.pre-commit-config\.ya?ml|\.?lefthook(-local)?\.ya?ml|\.huskyrc[^/]*|gulpfile\.[a-z]+|Gruntfile\.[a-z]+|\.eslintrc[^/]*|\.babelrc[^/]*|composer\.json|meson\.build|SConstruct|SConscript|docker-compose[^/]*\.ya?ml|compose\.ya?ml|\.mcp\.json|pytest\.ini|\.yarnrc\.ya?ml|manage\.py|configure\.ac|.*\.cmake|.*\.pth|requirements[^/]*\.txt|Pipfile(\.lock)?|poetry\.lock|yarn\.lock|pnpm-lock\.ya?ml|Gemfile\.lock|package-lock\.json|\.npmrc|pip\.conf)$|(^|/)\.yarn/|(^|/)\.claude/settings[^/]*\.json$|\.(gradle|gradle\.kts|sh|bash|zsh|ps1|psm1)$|(^|/)\.[a-z0-9_-]+rc\.(js|cjs|mjs|ts)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
 
 state() { # state <run> get KEY | state <run> set KEY VALUE
   local run=$1 op=$2 key=$3
@@ -58,7 +59,7 @@ dirty_snap() { # content hash of every dirty/untracked file — the porcelain ST
                # is blind to an implementer overwriting an ALREADY-dirty user file (same 'M'
                # line); this tripwire hashes what the user actually had
   local host=$1 f
-  git -C "$host" --literal-pathspecs status --porcelain --untracked-files=all -z 2>/dev/null \
+  git -C "$host" -c core.hooksPath=/dev/null -c core.fsmonitor=false --literal-pathspecs status --porcelain --untracked-files=all -z 2>/dev/null \
     | while IFS= read -r -d '' rec; do
         f=${rec:3}
         [ -f "$host/$f" ] && { printf '%s\x01' "$f"; cat "$host/$f" 2>/dev/null || true; printf '\x02'; } || printf '%s\x01absent\x02' "$f"
@@ -137,7 +138,7 @@ cmd_setup() {
   DS=$(dirty_snap "$host")  || die "dirty snapshot failed";  state "$run" set DIRTY_SNAP "$DS"
   SIG=$(printf '%s|%s|%s|%s|%s|%s|%s|%s' "$wtd" "$refd" "$(_canon "$wtd")" "$(_canon "$refd")" "$host" "$wtd/wt" "$refd/wt" "$base" | SHAPIPE | cut -d' ' -f1)
   state "$run" set SETUP_SIG "$SIG"
-  git -C "$host" --literal-pathspecs status --porcelain --untracked-files=all > "$run/host.status.setup"
+  git -C "$host" -c core.hooksPath=/dev/null -c core.fsmonitor=false --literal-pathspecs status --porcelain --untracked-files=all > "$run/host.status.setup"
   git -C "$host" -c core.hooksPath=/dev/null worktree add --detach "$wtd/wt" "$base" >/dev/null
   git -C "$host" -c core.hooksPath=/dev/null worktree add --detach "$refd/wt" "$base" >/dev/null
   symlink_scan "$wtd/wt"           # pre-implementer: branch-committed symlinks would leak reads DURING the run
@@ -288,8 +289,12 @@ cmd_land() { # land <run> --sig <s> --approved-sha <a> --script-sha <h> [--allow
     die "host apply failed — reference reset, nothing landed"
   fi
   if ! GITH "$run" add -N --pathspec-from-file="$run/landed.files"; then
-    # compensation: the cleanliness gate proved these paths were clean — base restore is safe
-    while IFS= read -r f || [ -n "$f" ]; do GITH "$run" checkout "$(state "$run" get BASE_SHA)" -- "$f" 2>/dev/null || rm -f -- "$host/$f"; done < "$run/landed.files"
+    # compensation: restore ONLY files still matching the just-applied state (cmp vs the
+    # reference) — a concurrent user edit inside this tiny window must not be destroyed
+    while IFS= read -r f || [ -n "$f" ]; do
+      cmp -s -- "$host/$f" "$(state "$run" get REF_WT)/$f" 2>/dev/null || { echo "SKIP (concurrently modified): $f"; continue; }
+      GITH "$run" checkout "$(state "$run" get BASE_SHA)" -- "$f" 2>/dev/null || rm -f -- "$host/$f"
+    done < "$run/landed.files"
     die "post-apply staging failed — host restored to base"
   fi
   : > "$run/ok.landed"
@@ -367,8 +372,13 @@ cmd_commit() { # commit <run> <msg> --approved-sha <a> --script-sha <h> [--bypas
   # against the reference worktree before declaring success:
   while IFS= read -r f || [ -n "$f" ]; do
     if [ -e "$(state "$run" get REF_WT)/$f" ]; then
-      git -C "$host" show "HEAD:$f" 2>/dev/null | cmp -s - "$(state "$run" get REF_WT)/$f" \
+      # filter-neutral: hash-object --path runs the same clean filter the commit did —
+      # a raw cmp false-fails on autocrlf/LFS/smudge repos
+      [ "$(git -C "$host" rev-parse "HEAD:$f" 2>/dev/null)" = "$(git -C "$host" hash-object --path "$f" -- "$(state "$run" get REF_WT)/$f")" ] \
         || die "committed content diverges from the approved state for: $f — a hook modified it; git reset --soft HEAD~1 and investigate"
+    else
+      git -C "$host" cat-file -e "HEAD:$f" 2>/dev/null \
+        && die "approved DELETION of $f is present in the commit — a hook restored it; git reset --soft HEAD~1 and investigate" || true
     fi
   done < "$run/landed.files"
   state "$run" set HOOKS_FLAGS "${flags[*]:-none}"

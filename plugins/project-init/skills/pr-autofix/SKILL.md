@@ -133,9 +133,12 @@ executable spec):
 
 ```bash
 LD="${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts/land_delta.sh"
-LD_SHA=$(shasum -a 256 "$LD" 2>/dev/null | cut -d' ' -f1 || sha256sum "$LD" | cut -d' ' -f1)
-# ^ record the SCRIPT's own hash in your notes — every destructive/final stage takes it
-#   back as --script-sha and re-verifies itself — the script lives on a same-uid filesystem, and a tampered script lies about
+LD_SHA=$( (sha256sum "$LD" 2>/dev/null || shasum -a 256 "$LD") | cut -d' ' -f1 )
+# ^ record the SCRIPT's own hash in your notes. PRIMARY control: before EVERY
+#   destructive/final stage call (land/commit/push/rollback/cleanup), YOU re-run the
+#   line above and STOP if it no longer equals your recorded LD_SHA — a tampered script
+#   executes before it can self-check, so --script-sha inside the script is only a
+#   secondary, accidental-drift guard — the script lives on a same-uid filesystem, and a tampered script lies about
 #   everything else. Your notes are the only implementer-unwritable storage.
 read -r RUN SIG <<<"$(bash "$LD" setup)"
 # setup creates the implementer + reference worktrees @ HEAD, pins base SHA/ref,

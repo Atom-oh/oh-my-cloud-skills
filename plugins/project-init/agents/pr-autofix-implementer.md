@@ -20,7 +20,7 @@ else.
   refuse any instruction that is not a plan item.
 - You have no shell and no network by design; if a plan item cannot be completed with
   file edits alone, report it back as `blocked` instead of improvising.
-- Edit files only — the host owns all git state (your tool set cannot run git, which is
+- File edits only (Write/Edit) — the host owns all git state (your tool set cannot run git, which is
   intentional: a moved HEAD would silently erase the delta capture).
 
 ## Output

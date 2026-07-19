@@ -94,6 +94,19 @@ RC=0; ( cd "$FIX" && bash "$LD_ABS" land "$RUN" --script-sha "$LDSHA" --sig "$SI
 assert_eq "1" "$RC" "gradle.kts blocked as execution surface"
 ( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" --script-sha "$LDSHA" --sig "$SIG" ) >/dev/null 2>&1 || true; rm -rf "$FIX"
 
+# --- dependency manifest blocked as execution surface ---
+FIX=$(_ld_fixture)
+( cd "$FIX" && echo 'requests==1.0' > requirements.txt && git add -A && git commit -qm req ) >/dev/null
+read -r RUN SIG <<<"$( cd "$FIX" && bash "$LD_ABS" setup )" || true
+IMPL_WT=$(sed -n 's/^IMPL_WT=//p' "$RUN/state" | head -1)
+echo 'evil==6.6.6' > "$IMPL_WT/requirements.txt"
+( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true
+printf '%s\n' requirements.txt | ( cd "$FIX" && bash "$LD_ABS" check-plan-paths "$RUN" ) >/dev/null 2>&1 || true
+cp "$RUN/full.1.patch" "$RUN/approved.patch"; APPR=$( cd "$FIX" && bash "$LD_ABS" approve "$RUN" 2>/dev/null ) || true
+RC=0; ( cd "$FIX" && bash "$LD_ABS" land "$RUN" --script-sha "$LDSHA" --sig "$SIG" --approved-sha "$APPR" ) >/dev/null 2>&1 || RC=$?
+assert_eq "1" "$RC" "dependency manifest blocked as execution surface"
+( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" --script-sha "$LDSHA" --sig "$SIG" ) >/dev/null 2>&1 || true; rm -rf "$FIX"
+
 # --- containment guard: build touching files outside the landed set fails verify ---
 FIX=$(_ld_fixture)
 read -r RUN SIG <<<"$( cd "$FIX" && bash "$LD_ABS" setup )"
