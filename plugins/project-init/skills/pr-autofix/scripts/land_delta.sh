@@ -13,7 +13,8 @@
 #   check-plan-paths <run>         validate plan paths from stdin (relative, no .., in-worktree)
 #   land <run> [--allow-exec-surface]   denylist+cleanliness gates, apply, baseline snapshots
 #   verify <run> --build-ok 0|1    containment + equality vs reference, writes ok.build
-#   commit <run> <message>         final guards + hooks integrity + pathspec commit + push
+#   commit <run> <msg> --approved-sha <sha>   final guards + hooks/config integrity + pathspec commit
+#   push <run>                     idempotent push (separate stage — retryable)
 #   rollback <run>                 revert landed paths, preserving user edits
 #   cleanup <run> [--keep]         remove worktrees (+ artifacts unless --keep)
 set -euo pipefail
@@ -28,7 +29,7 @@ SHAPIPE() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum
 # Class-based, not filename-enumerated: anything plausibly executed during build/verify/
 # commit. Broad on purpose — a false positive costs one --allow-exec-surface approval,
 # a false negative is arbitrary code execution on the host.
-EXEC_SURFACE_RE='(^|/)(\.github|\.husky|\.git[a-z]*|\.ci|ci|\.circleci|bin|scripts?|tests?|hooks?)/|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|justfile|Justfile|Taskfile\.ya?ml|\.gitlab-ci\.ya?ml|Jenkinsfile[^/]*|azure-pipelines\.ya?ml|bitbucket-pipelines\.ya?ml|gradlew(\.bat)?|mvnw(\.cmd)?|configure|autogen\.sh|BUILD(\.bazel)?|WORKSPACE|Dockerfile[^/]*|\.envrc|sitecustomize\.py|\.gitattributes|\.gitmodules|\.pre-commit-config\.ya?ml|\.?lefthook(-local)?\.ya?ml|\.huskyrc[^/]*|gulpfile\.[a-z]+|Gruntfile\.[a-z]+|\.eslintrc[^/]*|\.babelrc[^/]*|composer\.json|meson\.build|SConstruct|SConscript|docker-compose[^/]*\.ya?ml|compose\.ya?ml)$|\.(gradle|gradle\.kts|sh|bash|zsh|ps1|psm1)$|(^|/)\.[a-z0-9_-]+rc\.(js|cjs|mjs|ts)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
+EXEC_SURFACE_RE='(^|/)(\.github|\.husky|\.git[a-z]*|\.ci|ci|\.circleci|bin|scripts?|tests?|hooks?)/|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|justfile|Justfile|Taskfile\.ya?ml|\.gitlab-ci\.ya?ml|Jenkinsfile[^/]*|azure-pipelines\.ya?ml|bitbucket-pipelines\.ya?ml|gradlew(\.bat)?|mvnw(\.cmd)?|configure|autogen\.sh|BUILD(\.bazel)?|WORKSPACE|Dockerfile[^/]*|\.envrc|sitecustomize\.py|\.gitattributes|\.gitmodules|\.pre-commit-config\.ya?ml|\.?lefthook(-local)?\.ya?ml|\.huskyrc[^/]*|gulpfile\.[a-z]+|Gruntfile\.[a-z]+|\.eslintrc[^/]*|\.babelrc[^/]*|composer\.json|meson\.build|SConstruct|SConscript|docker-compose[^/]*\.ya?ml|compose\.ya?ml|\.mcp\.json)$|(^|/)\.claude/settings[^/]*\.json$|\.(gradle|gradle\.kts|sh|bash|zsh|ps1|psm1)$|(^|/)\.[a-z0-9_-]+rc\.(js|cjs|mjs|ts)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
 
 state() { # state <run> get KEY | state <run> set KEY VALUE
   local run=$1 op=$2 key=$3
@@ -51,7 +52,7 @@ dirty_snap() { # content hash of every dirty/untracked file — the porcelain ST
                # is blind to an implementer overwriting an ALREADY-dirty user file (same 'M'
                # line); this tripwire hashes what the user actually had
   local host=$1 f
-  git -C "$host" --literal-pathspecs status --porcelain -z 2>/dev/null \
+  git -C "$host" --literal-pathspecs status --porcelain --untracked-files=all -z 2>/dev/null \
     | while IFS= read -r -d '' rec; do
         f=${rec:3}
         [ -f "$host/$f" ] && { printf '%s\x01' "$f"; cat "$host/$f" 2>/dev/null || true; printf '\x02'; } || printf '%s\x01absent\x02' "$f"
@@ -125,12 +126,12 @@ cmd_setup() {
   state "$run" set WT_DIR "$wtd";    state "$run" set REF_DIR "$refd"
   state "$run" set CANON_WT_DIR "$(_canon "$wtd")"; state "$run" set CANON_REF_DIR "$(_canon "$refd")"
   state "$run" set IMPL_WT "$wtd/wt"; state "$run" set REF_WT "$refd/wt"
-  state "$run" set HOOKS_SNAP "$(hooks_snap "$host")"
-  state "$run" set CONFIG_SNAP "$(config_snap "$host")"
-  state "$run" set DIRTY_SNAP "$(dirty_snap "$host")"
+  HS=$(hooks_snap "$host") || die "hooks snapshot failed";  state "$run" set HOOKS_SNAP "$HS"
+  CS=$(config_snap "$host") || die "config snapshot failed"; state "$run" set CONFIG_SNAP "$CS"
+  DS=$(dirty_snap "$host")  || die "dirty snapshot failed";  state "$run" set DIRTY_SNAP "$DS"
   SIG=$(printf '%s|%s|%s|%s|%s|%s|%s|%s' "$wtd" "$refd" "$(_canon "$wtd")" "$(_canon "$refd")" "$host" "$wtd/wt" "$refd/wt" "$base" | SHAPIPE | cut -d' ' -f1)
   state "$run" set SETUP_SIG "$SIG"
-  git -C "$host" --literal-pathspecs status --porcelain > "$run/host.status.setup"
+  git -C "$host" --literal-pathspecs status --porcelain --untracked-files=all > "$run/host.status.setup"
   git -C "$host" -c core.hooksPath=/dev/null worktree add --detach "$wtd/wt" "$base" >/dev/null
   git -C "$host" -c core.hooksPath=/dev/null worktree add --detach "$refd/wt" "$base" >/dev/null
   symlink_scan "$wtd/wt"           # pre-implementer: branch-committed symlinks would leak reads DURING the run
@@ -148,7 +149,7 @@ cmd_capture() { # capture <run> --sig <setup-sig>
   gitwt_verify "$run"; symlink_scan "$(state "$run" get IMPL_WT)"
   [ "$(config_snap "$(state "$run" get HOST_ROOT)")" = "$(state "$run" get CONFIG_SNAP)" ] || die "shared git config changed during implementation"
   [ "$(dirty_snap "$(state "$run" get HOST_ROOT)")" = "$(state "$run" get DIRTY_SNAP)" ] || die "the user's uncommitted files changed during implementation (out-of-worktree write?) — inspect before proceeding"
-  GITH "$run" status --porcelain > "$run/host.status.capture"
+  GITH "$run" status --porcelain --untracked-files=all > "$run/host.status.capture"
   diff -q "$run/host.status.setup" "$run/host.status.capture" >/dev/null \
     || die "host tree changed during implementation (out-of-worktree writes or concurrent edits) — inspect before proceeding"
   GITWT "$run" add -N .
@@ -196,6 +197,7 @@ cmd_approve() { # host has already copied+edited approved.patch from the latest 
   _hunk_hashes "$run/approved.patch" | sort > "$run/approved.hunks"
   MANIFEST="$run/$(state "$run" get LATEST_FULL | sed 's/\.patch$/.hunks/')"
   [ -z "$(comm -23 "$run/approved.hunks" "$MANIFEST")" ] || die "approved.patch contains hunks not present in the latest capture generation"
+  [ -f "$run/ok.plan" ] || die "check-plan-paths stage missing — the plan gate is not optional"
   if [ -f "$run/plan.files" ]; then   # plan conformance — approved files must be planned files
     GITH "$run" apply --numstat "$run/approved.patch" | cut -f3- | sort -u > "$run/approved.files.tmp"
     EXTRA=$(comm -23 "$run/approved.files.tmp" "$run/plan.files"); rm -f "$run/approved.files.tmp"
@@ -228,6 +230,7 @@ cmd_check_plan_paths() { # paths on stdin, one per line — pre-spawn gate
   done
   [ "$n" -gt 0 ] || die "no plan paths on stdin — fail closed"
   sort -u "$run/plan.files.tmp" > "$run/plan.files"; rm -f "$run/plan.files.tmp"
+  : > "$run/ok.plan"
   echo ok
 }
 
@@ -237,6 +240,7 @@ cmd_land() { # land <run> --sig <setup-sig> --approved-sha <sha-from-approve> [-
   [ "$(_state_sig "$run")" = "$3" ] || die "state signature mismatch — refusing land"
   [ "${4:-}" = "--approved-sha" ] && [ -n "${5:-}" ] || die "land requires --approved-sha <value printed by approve>"
   [ "${6:-}" = "--allow-exec-surface" ] && allow="--allow-exec-surface"
+  [ -f "$run/ok.plan" ] || die "check-plan-paths stage missing — the plan gate is not optional"
   [ -f "$run/ok.approved" ] || die "approve stage missing"
   # verify against the HOST-supplied hash, not state — state and approved.patch live in the
   # same implementer-reachable tmp; the host's notes are the one unwritable place:
@@ -266,8 +270,8 @@ cmd_land() { # land <run> --sig <setup-sig> --approved-sha <sha-from-approve> [-
   GITH "$run" apply --check "$run/approved.patch"  # non-mutating pre-flight FIRST — both sides still pristine on failure
   GITREF "$run" apply "$run/approved.patch"        # reference next — disposable
   GITREF "$run" add -N .
-  GITREF "$run" status --porcelain > "$run/ref.status.before"   # ref-side containment baseline (ref builds)
-  GITH "$run" status --porcelain > "$run/host.status.before"
+  GITREF "$run" status --porcelain --untracked-files=all > "$run/ref.status.before"   # ref-side containment baseline (ref builds)
+  GITH "$run" status --porcelain --untracked-files=all > "$run/host.status.before"
   if ! GITH "$run" apply "$run/approved.patch"; then   # host LAST (atomic); if the check→apply race loses,
     GITREF "$run" reset --hard "$(state "$run" get BASE_SHA)" >/dev/null; GITREF "$run" clean -fdx >/dev/null
     die "host apply failed — reference reset, nothing landed"
@@ -307,14 +311,14 @@ cmd_verify() {
   if [ "$builtin" = host ] && sed 's/^...//' "$run/host.status.before" | grep -vFxf "$run/landed.files" | grep -q .; then
     die "host tree has unrelated local changes — build in the reference worktree and pass --built-in ref"
   fi
-  GITH "$run" status --porcelain > "$run/host.status.after"
+  GITH "$run" status --porcelain --untracked-files=all > "$run/host.status.after"
   changed=$(diff "$run/host.status.before" "$run/host.status.after" | grep '^[<>]' || true)
   if [ -n "$changed" ]; then
     bad=$(printf '%s\n' "$changed" | sed 's/^[<>] ...//' | grep -vFxf "$run/landed.files" || true)
     [ -z "$bad" ] || die "build touched files outside the landed set: $(printf '%s ' "$bad")"
   fi
   if [ "$builtin" = ref ]; then                    # ref build gets the same containment rule
-    GITREF "$run" status --porcelain > "$run/ref.status.after"
+    GITREF "$run" status --porcelain --untracked-files=all > "$run/ref.status.after"
     changed=$(diff "$run/ref.status.before" "$run/ref.status.after" | grep '^[<>]' || true)
     [ -z "$changed" ] || die "reference-worktree build touched files beyond the approved state: $(printf '%s ' "$changed")"
   fi

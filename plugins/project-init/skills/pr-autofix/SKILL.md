@@ -146,8 +146,10 @@ read -r RUN SIG <<<"$(bash "$LD" setup)"
 IMPL_WT=$(sed -n 's/^IMPL_WT=//p' "$RUN/state" | head -1)
 ```
 
-Validate the plan's paths before spawning (`bash "$LD" check-plan-paths "$RUN"` with the
-plan's file paths on stdin — absolute paths and `..` traversal are refused), then pass
+Validate the plan's paths before spawning — MANDATORY, not advisory: `bash "$LD"
+check-plan-paths "$RUN"` with the plan's file paths on stdin (absolute paths and `..`
+traversal are refused; approve and land refuse to run without this stage's sentinel, and
+approve enforces approved-files ⊆ plan-files), then pass
 only items with `approval: granted` AND `disposition: actionable` to the implementer;
 `approval: required` items wait for the user, `report-only` findings never reach it.
 
@@ -171,7 +173,8 @@ plan inline.)
    A file mixing approved and unplanned hunks is never landed whole — strip or re-run
    the implementer for that file. Then `APPROVED_SHA=$(bash "$LD" approve "$RUN")` — record it in your notes and pass it
    to land/commit; it is the tamper-evidence for the patch (rejects symlink/
-   mode-change hunks outright — those need explicit user approval). Also check the
+   mode-change hunks outright — the pipeline has no approval path for them; apply such
+   changes manually outside the loop). Also check the
    reverse direction: every actionable plan item must appear in the patch; a missing
    one means the implementer dropped a finding — re-run it, capture again, re-approve.
 3. **Land**: `bash "$LD" land "$RUN" --sig "$SIG" --approved-sha "$APPROVED_SHA"` — refuses execution-surface files
