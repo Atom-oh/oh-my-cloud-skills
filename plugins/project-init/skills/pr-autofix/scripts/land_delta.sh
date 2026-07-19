@@ -21,6 +21,21 @@ set -euo pipefail
 
 die() { echo "STOP: $*" >&2; exit 1; }
 _canon() { (cd "$1" 2>/dev/null && pwd -P); }   # portable dir canonicalization (realpath -e is GNU-only)
+_verify_ref() { # $1=run $2=landed-sha from host notes — the reference worktree is the
+                # equality baseline; prove it (and the hash record) unchanged since landing.
+                # Both-sides contamination (host AND ref mutated identically) fails here.
+  local run=$1 want=$2 f h
+  [ -n "$want" ] || die "missing --landed-sha (value land printed)"
+  [ "$(SHAPIPE < "$run/ref.landed.hashes" | cut -d' ' -f1)" = "$want" ] || die "ref.landed.hashes tampered"
+  while read -r f h; do
+    if [ "$h" = absent ]; then
+      [ ! -e "$(state "$run" get REF_WT)/$f" ] || die "reference worktree diverged from landed state: $f"
+    else
+      [ "$(git -C "$(state "$run" get HOST_ROOT)" hash-object -- "$(state "$run" get REF_WT)/$f" 2>/dev/null)" = "$h" ] || die "reference worktree diverged from landed state: $f"
+    fi
+  done < "$run/ref.landed.hashes"
+}
+
 _verify_self() { # $1 = script sha the HOST recorded at 4b. SECONDARY control only — a
                  # tampered script runs before it can self-check, so the PRIMARY control
                  # is the host re-hashing this file itself before every destructive call
@@ -93,8 +108,8 @@ hooks_snap() { # hooks_snap <host_root> — portable: no xargs -r / sort -z (bot
 symlink_scan() { # symlink_scan <worktree> — fail-closed (find status checked explicitly)
   local wt=$1 links rp base
   base=$(cd "$wt" && pwd -P)
-  links=$(mktemp); find "$wt" -type l -print > "$links" || die "symlink scan failed"
-  while IFS= read -r l || [ -n "$l" ]; do
+  links=$(mktemp); find "$wt" -type l -print0 > "$links" || die "symlink scan failed"
+  while IFS= read -r -d '' l; do
     rp=$(realpath "$l" 2>/dev/null) || rp=""          # unresolvable/dangling = fail-closed
     case "$rp" in "$base"/*) ;; *) rm -f "$links"; die "symlink escapes worktree (or dangling): $l";; esac
   done < "$links"
@@ -236,6 +251,7 @@ cmd_check_plan_paths() { # paths on stdin, one per line — pre-spawn gate
   : > "$run/plan.files.tmp"                       # truncate — appends must not survive a previous invocation
   local n=0
   while IFS= read -r p || [ -n "$p" ]; do
+    p=$(printf '%s' "$p" | sed 's/:[0-9][0-9]*$//')   # plan items carry file:LINE — store the path only
     n=$((n+1))
     [ -n "$p" ] && [ "$p" != "." ] || die "empty plan path"
     case "/$p/" in
@@ -315,7 +331,19 @@ cmd_land() { # land <run> --sig <s> --approved-sha <a> --script-sha <h> [--allow
     done < "$run/landed.files"
     die "post-apply staging failed — host restored to base"
   fi
+  rm -f "$run/ok.build" "$run/ok.committed"       # a fresh landing invalidates any earlier verify/commit
+  # Record the landed state's per-file identity — the reference worktree is the equality
+  # baseline later, so its integrity must be provable, not assumed:
+  : > "$run/ref.landed.hashes"
+  while IFS= read -r f || [ -n "$f" ]; do
+    if [ -e "$(state "$run" get REF_WT)/$f" ]; then
+      printf '%s %s\n' "$f" "$(git -C "$host" hash-object -- "$(state "$run" get REF_WT)/$f")" >> "$run/ref.landed.hashes"
+    else
+      printf '%s absent\n' "$f" >> "$run/ref.landed.hashes"
+    fi
+  done < "$run/landed.files"
   : > "$run/ok.landed"
+  SHAPIPE < "$run/ref.landed.hashes" | cut -d' ' -f1              # echoed: host records as LANDED_SHA
 }
 
 _equality() { # _equality <run> <host.out> <ref.out>
@@ -329,13 +357,15 @@ _equality() { # _equality <run> <host.out> <ref.out>
   diff -q "$hostf" "$reff" >/dev/null
 }
 
-cmd_verify() { # verify <run> --build-ok 0|1 --script-sha <h> [--built-in host|ref]
-  local run=$1 buildok="" builtin=host ssha="" changed bad
+cmd_verify() { # verify <run> --build-ok 0|1 --script-sha <h> --landed-sha <l> [--built-in host|ref]
+  local run=$1 buildok="" builtin=host ssha="" lsha="" changed bad
   shift
   while [ $# -gt 0 ]; do case "$1" in
     --build-ok) buildok=${2:-}; shift 2;; --script-sha) ssha=${2:-}; shift 2;;
+    --landed-sha) lsha=${2:-}; shift 2;;
     --built-in) builtin=${2:-}; shift 2;; "") shift;; *) die "unknown verify arg: $1";; esac; done
   _verify_self "$ssha"
+  _verify_ref "$run" "${lsha:-}"
   case "$buildok" in 0|1) ;; *) die "--build-ok takes 0 or 1, got: ${buildok:-<missing>}";; esac
   case "$builtin" in host|ref) ;; *) die "--built-in takes host|ref, got: $builtin";; esac
   [ -f "$run/ok.landed" ] || die "land stage missing"
@@ -363,12 +393,14 @@ cmd_verify() { # verify <run> --build-ok 0|1 --script-sha <h> [--built-in host|r
 }
 
 cmd_commit() { # commit <run> <msg> --approved-sha <a> --script-sha <h> [--bypass-hookspath-approved]
-  local run=$1 msg=$2 host aprv="" ssha="" bypass=""; local -a flags=()
+  local run=$1 msg=$2 host aprv="" ssha="" bypass="" lsha=""; local -a flags=()
   shift 2
   while [ $# -gt 0 ]; do case "$1" in
     --approved-sha) aprv=${2:-}; shift 2;; --script-sha) ssha=${2:-}; shift 2;;
+    --landed-sha) lsha=${2:-}; shift 2;;
     --bypass-hookspath-approved) bypass=yes; shift;; "") shift;; *) die "unknown commit arg: $1";; esac; done
   _verify_self "$ssha"
+  _verify_ref "$run" "${lsha:-}"
   [ -f "$run/ok.build" ] || die "verify stage missing"
   host=$(state "$run" get HOST_ROOT)
   [ "$(git -C "$host" rev-parse HEAD)" = "$(state "$run" get BASE_SHA)" ] || die "base moved since landing"
@@ -466,7 +498,9 @@ cmd_rollback() { # rollback <run> --sig <s> --script-sha <h> — destructive; sa
   # land()'s GITREF apply hits already-applied content and re-landing is impossible:
   GITREF "$run" reset --hard "$base" >/dev/null
   GITREF "$run" clean -fdx >/dev/null
-  rm -f "$run/ref.status.before"
+  rm -f "$run/ref.status.before" "$run/ok.landed" "$run/ok.build" "$run/ok.committed" "$run/ref.landed.hashes"
+  # ^ a rollback invalidates every landing-dependent sentinel — otherwise
+  #   rollback -> re-land -> commit could skip verify on last round's ok.build
   [ "$failed" = 0 ] || die "partial rollback — user-modified files above were preserved"
 }
 

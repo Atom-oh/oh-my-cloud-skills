@@ -28,12 +28,12 @@ assert_file_exists "$RUN/full.1.patch" "capture writes generation 1"
 cp "$RUN/full.1.patch" "$RUN/approved.patch"
 APPR=$( cd "$FIX" && bash "$LD_ABS" approve "$RUN" 2>/dev/null ) || true
 assert_file_exists "$RUN/ok.approved" "approve writes its sentinel"
-( cd "$FIX" && bash "$LD_ABS" land "$RUN" --script-sha "$LDSHA" --sig "$SIG" --approved-sha "$APPR" ) >/dev/null 2>&1 || true
+LANDED=$( cd "$FIX" && bash "$LD_ABS" land "$RUN" --script-sha "$LDSHA" --sig "$SIG" --approved-sha "$APPR" 2>/dev/null | tail -1 ) || true
 assert_file_exists "$RUN/ok.landed" "land writes its sentinel"
 assert_eq "x=2" "$(cat "$FIX/src/app.py")" "approved edit landed on the host"
-( cd "$FIX" && bash "$LD_ABS" verify "$RUN" --build-ok 1 --script-sha "$LDSHA" ) >/dev/null 2>&1 || true
+( cd "$FIX" && bash "$LD_ABS" verify "$RUN" --build-ok 1 --script-sha "$LDSHA" --landed-sha "$LANDED" ) >/dev/null 2>&1 || true
 assert_file_exists "$RUN/ok.build" "verify writes ok.build"
-RC=0; ( cd "$FIX" && bash "$LD_ABS" commit "$RUN" "test: landed" --script-sha "$LDSHA" --approved-sha "$APPR" ) >/dev/null 2>&1 || RC=$?
+RC=0; ( cd "$FIX" && bash "$LD_ABS" commit "$RUN" "test: landed" --script-sha "$LDSHA" --approved-sha "$APPR" --landed-sha "$LANDED" ) >/dev/null 2>&1 || RC=$?
 assert_eq "0" "$RC" "commit stage succeeds without pushing"
 assert_file_exists "$RUN/ok.committed" "commit writes its sentinel"
 assert_eq "test: landed" "$(cd "$FIX" && git log -1 --format=%s)" "pathspec commit landed"
@@ -117,9 +117,9 @@ echo 'x=2' > "$IMPL_WT/src/app.py"
 ( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --script-sha "$LDSHA" --sig "$SIG" ) >/dev/null || true
 printf '%s\n' src/app.py a.txt package.json build.gradle.kts installer .github/workflows/ci.yml | ( cd "$FIX" && bash "$LD_ABS" check-plan-paths "$RUN" ) >/dev/null 2>&1 || true
 cp "$RUN/full.1.patch" "$RUN/approved.patch"; APPR=$( cd "$FIX" && bash "$LD_ABS" approve "$RUN" 2>/dev/null ) || true
-( cd "$FIX" && bash "$LD_ABS" land "$RUN" --script-sha "$LDSHA" --sig "$SIG" --approved-sha "$APPR" ) >/dev/null 2>&1 || true
+LANDED=$( cd "$FIX" && bash "$LD_ABS" land "$RUN" --script-sha "$LDSHA" --sig "$SIG" --approved-sha "$APPR" 2>/dev/null | tail -1 ) || true
 echo 'generated' > "$FIX/a.txt"                          # simulated build side-effect outside landed set
-RC=0; ERR=$( cd "$FIX" && bash "$LD_ABS" verify "$RUN" --build-ok 1 --script-sha "$LDSHA" 2>&1 ) || RC=$?
+RC=0; ERR=$( cd "$FIX" && bash "$LD_ABS" verify "$RUN" --build-ok 1 --script-sha "$LDSHA" --landed-sha "$LANDED" 2>&1 ) || RC=$?
 assert_eq "1" "$RC" "containment guard fires on out-of-set build side effects"
 assert_contains "$ERR" "outside the landed set" "containment guard names the violation"
 ( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" --script-sha "$LDSHA" --sig "$SIG" ) >/dev/null 2>&1 || true; rm -rf "$FIX"
@@ -132,7 +132,7 @@ echo 'x=2' > "$IMPL_WT/src/app.py"; echo 'world' > "$IMPL_WT/a.txt"
 ( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --script-sha "$LDSHA" --sig "$SIG" ) >/dev/null || true
 printf '%s\n' src/app.py a.txt package.json build.gradle.kts installer .github/workflows/ci.yml | ( cd "$FIX" && bash "$LD_ABS" check-plan-paths "$RUN" ) >/dev/null 2>&1 || true
 cp "$RUN/full.1.patch" "$RUN/approved.patch"; APPR=$( cd "$FIX" && bash "$LD_ABS" approve "$RUN" 2>/dev/null ) || true
-( cd "$FIX" && bash "$LD_ABS" land "$RUN" --script-sha "$LDSHA" --sig "$SIG" --approved-sha "$APPR" ) >/dev/null 2>&1 || true
+LANDED=$( cd "$FIX" && bash "$LD_ABS" land "$RUN" --script-sha "$LDSHA" --sig "$SIG" --approved-sha "$APPR" 2>/dev/null | tail -1 ) || true
 assert_file_exists "$RUN/ok.landed" "prerequisites healthy before rollback test"
 echo 'precious user edit' > "$FIX/a.txt"                 # user edits a landed file during the build window
 RC=0; OUT=$( cd "$FIX" && bash "$LD_ABS" rollback "$RUN" --script-sha "$LDSHA" --sig "$SIG" 2>&1 ) || RC=$?
@@ -149,13 +149,13 @@ echo 'x=2' > "$IMPL_WT/src/app.py"
 ( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --script-sha "$LDSHA" --sig "$SIG" ) >/dev/null 2>&1 || true
 printf '%s\n' src/app.py a.txt package.json build.gradle.kts installer .github/workflows/ci.yml | ( cd "$FIX" && bash "$LD_ABS" check-plan-paths "$RUN" ) >/dev/null 2>&1 || true
 cp "$RUN/full.1.patch" "$RUN/approved.patch"; APPR=$( cd "$FIX" && bash "$LD_ABS" approve "$RUN" 2>/dev/null ) || true
-( cd "$FIX" && bash "$LD_ABS" land "$RUN" --script-sha "$LDSHA" --sig "$SIG" --approved-sha "$APPR" ) >/dev/null 2>&1 || true
-( cd "$FIX" && bash "$LD_ABS" verify "$RUN" --build-ok 1 --script-sha "$LDSHA" ) >/dev/null 2>&1 || true
+LANDED=$( cd "$FIX" && bash "$LD_ABS" land "$RUN" --script-sha "$LDSHA" --sig "$SIG" --approved-sha "$APPR" 2>/dev/null | tail -1 ) || true
+( cd "$FIX" && bash "$LD_ABS" verify "$RUN" --build-ok 1 --script-sha "$LDSHA" --landed-sha "$LANDED" ) >/dev/null 2>&1 || true
 ( cd "$FIX" && bash "$LD_ABS" rollback "$RUN" --script-sha "$LDSHA" --sig "$SIG" ) >/dev/null 2>&1 || true   # host back to base
 echo 'x=3' > "$IMPL_WT/src/app.py"
 ( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --script-sha "$LDSHA" --sig "$SIG" ) >/dev/null 2>&1 || true    # generation 2
 assert_file_exists "$RUN/full.2.patch" "re-capture after rollback produces generation 2"
-RC=0; ( cd "$FIX" && bash "$LD_ABS" commit "$RUN" "stale" --script-sha "$LDSHA" --approved-sha "$APPR" ) >/dev/null 2>&1 || RC=$?
+RC=0; ( cd "$FIX" && bash "$LD_ABS" commit "$RUN" "stale" --script-sha "$LDSHA" --approved-sha "$APPR" --landed-sha "$LANDED" ) >/dev/null 2>&1 || RC=$?
 [ "$RC" -ne 0 ] && BLOCKED=yes || BLOCKED=no
 assert_eq "yes" "$BLOCKED" "re-capture invalidates stale ok.build (commit blocked)"
 ( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" --script-sha "$LDSHA" --sig "$SIG" ) >/dev/null 2>&1 || true; rm -rf "$FIX"
@@ -193,13 +193,13 @@ echo 'x=2' > "$IMPL_WT/src/app.py"
 ( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --script-sha "$LDSHA" --sig "$SIG" ) >/dev/null 2>&1 || true
 printf '%s\n' src/app.py a.txt package.json build.gradle.kts installer .github/workflows/ci.yml | ( cd "$FIX" && bash "$LD_ABS" check-plan-paths "$RUN" ) >/dev/null 2>&1 || true
 cp "$RUN/full.1.patch" "$RUN/approved.patch"; APPR=$( cd "$FIX" && bash "$LD_ABS" approve "$RUN" 2>/dev/null ) || true
-( cd "$FIX" && bash "$LD_ABS" land "$RUN" --script-sha "$LDSHA" --sig "$SIG" --approved-sha "$APPR" ) >/dev/null 2>&1 || true
+LANDED=$( cd "$FIX" && bash "$LD_ABS" land "$RUN" --script-sha "$LDSHA" --sig "$SIG" --approved-sha "$APPR" 2>/dev/null | tail -1 ) || true
 ( cd "$FIX" && bash "$LD_ABS" rollback "$RUN" --script-sha "$LDSHA" --sig "$SIG" ) >/dev/null 2>&1 || true
 echo 'x=9' > "$IMPL_WT/src/app.py"
 ( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --script-sha "$LDSHA" --sig "$SIG" ) >/dev/null 2>&1 || true
 cp "$RUN/$(sed -n 's/^LATEST_FULL=//p' "$RUN/state" | tail -1)" "$RUN/approved.patch"
 APPR=$( cd "$FIX" && bash "$LD_ABS" approve "$RUN" 2>/dev/null ) || true
-RC=0; ( cd "$FIX" && bash "$LD_ABS" land "$RUN" --script-sha "$LDSHA" --sig "$SIG" --approved-sha "$APPR" ) >/dev/null 2>&1 || RC=$?
+RC=0; LANDED=$( cd "$FIX" && bash "$LD_ABS" land "$RUN" --script-sha "$LDSHA" --sig "$SIG" --approved-sha "$APPR" 2>/dev/null | tail -1 ) || RC=$?
 assert_eq "0" "$RC" "re-land after rollback succeeds (reference worktree was reset)"
 assert_eq "x=9" "$(cat "$FIX/src/app.py")" "second-generation edit landed"
 ( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" --script-sha "$LDSHA" --sig "$SIG" ) >/dev/null 2>&1 || true; rm -rf "$FIX"
@@ -224,12 +224,12 @@ echo 'x=2' > "$IMPL_WT/src/app.py"
 ( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --script-sha "$LDSHA" --sig "$SIG" ) >/dev/null 2>&1 || true
 printf '%s\n' src/app.py a.txt package.json build.gradle.kts installer .github/workflows/ci.yml | ( cd "$FIX" && bash "$LD_ABS" check-plan-paths "$RUN" ) >/dev/null 2>&1 || true
 cp "$RUN/full.1.patch" "$RUN/approved.patch"; APPR=$( cd "$FIX" && bash "$LD_ABS" approve "$RUN" 2>/dev/null ) || true
-( cd "$FIX" && bash "$LD_ABS" land "$RUN" --script-sha "$LDSHA" --sig "$SIG" --approved-sha "$APPR" ) >/dev/null 2>&1 || true
-( cd "$FIX" && bash "$LD_ABS" verify "$RUN" --build-ok 1 --script-sha "$LDSHA" ) >/dev/null 2>&1 || true
+LANDED=$( cd "$FIX" && bash "$LD_ABS" land "$RUN" --script-sha "$LDSHA" --sig "$SIG" --approved-sha "$APPR" 2>/dev/null | tail -1 ) || true
+( cd "$FIX" && bash "$LD_ABS" verify "$RUN" --build-ok 1 --script-sha "$LDSHA" --landed-sha "$LANDED" ) >/dev/null 2>&1 || true
 assert_file_exists "$RUN/ok.build" "prerequisites healthy before hook tamper"
 printf '#!/bin/sh\nexit 1\n' > "$FIX/.git/hooks/pre-commit"          # same size, content changed
 touch -r "$RUN/ok.setup" "$FIX/.git/hooks/pre-commit" 2>/dev/null || true
-RC=0; ( cd "$FIX" && bash "$LD_ABS" commit "$RUN" "tampered" --script-sha "$LDSHA" --approved-sha "$APPR" ) >/dev/null 2>&1 || RC=$?
+RC=0; ( cd "$FIX" && bash "$LD_ABS" commit "$RUN" "tampered" --script-sha "$LDSHA" --approved-sha "$APPR" --landed-sha "$LANDED" ) >/dev/null 2>&1 || RC=$?
 [ "$RC" -ne 0 ] && HOOKBLOCK=yes || HOOKBLOCK=no
 assert_eq "yes" "$HOOKBLOCK" "content-tampered hook blocks commit (hash covers content, not just metadata)"
 ( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" --script-sha "$LDSHA" --sig "$SIG" ) >/dev/null 2>&1 || true; rm -rf "$FIX"

@@ -159,11 +159,14 @@ IMPL_WT=$(sed -n 's/^IMPL_WT=//p' "$RUN/state" | head -1)
 ```
 
 Validate the plan's paths before spawning — MANDATORY, not advisory: `bash "$LD"
-check-plan-paths "$RUN"` with the plan's file paths on stdin (absolute paths and `..`
-traversal are refused; approve and land refuse to run without this stage's sentinel, and
+check-plan-paths "$RUN"` with the plan's file paths on stdin — PATHS ONLY, strip any `:line` suffix from the
+schema's `file:` field; the gate also strips trailing `:digits` defensively (absolute
+paths and `..` traversal are refused; approve and land refuse to run without this stage's sentinel, and
 approve enforces approved-files ⊆ plan-files), then pass
 only items with `approval: granted` AND `disposition: actionable` to the implementer;
-`approval: required` items wait for the user, `report-only` findings never reach it.
+`approval: required` items wait for the user — when the user grants one, flip it to
+`approval: granted` in the plan and run it through the SAME loop (implementer →
+capture → approve → land); a grant is a plan edit, not a gate bypass, `report-only` findings never reach it.
 
 Spawn the bundled **`pr-autofix-implementer`** agent (Agent tool
 `subagent_type: "project-init:pr-autofix-implementer"`, `model: "sonnet"`) with the plan
@@ -189,13 +192,13 @@ plan inline.)
    changes manually outside the loop). Also check the
    reverse direction: every actionable plan item must appear in the patch; a missing
    one means the implementer dropped a finding — re-run it, capture again, re-approve.
-3. **Land**: `bash "$LD" land "$RUN" --script-sha "$LD_SHA" --sig "$SIG" --approved-sha "$APPROVED_SHA"` — refuses execution-surface files
+3. **Land**: `LANDED_SHA=$(bash "$LD" land "$RUN" --script-sha "$LD_SHA" --sig "$SIG" --approved-sha "$APPROVED_SHA")` — record `LANDED_SHA` in your notes (it proves the reference baseline unchanged later) — refuses execution-surface files
    (build scripts/configs, hook dirs; pass `--allow-exec-surface` ONLY after explicit
    user approval), refuses targets with local modifications (never sweep user edits),
    applies atomically, and mirrors the approved state into the reference worktree.
 4. **Build**: run the standard build check (below). If the host tree is dirty beyond the
    landed files, build in the reference worktree instead and say so in the report.
-5. **Verify**: `bash "$LD" verify "$RUN" --build-ok <0|1> --script-sha "$LD_SHA"` — fails if the build touched
+5. **Verify**: `bash "$LD" verify "$RUN" --build-ok <0|1> --script-sha "$LD_SHA" --landed-sha "$LANDED_SHA"` — fails if the build touched
    tracked files outside the landed set (codegen/formatter companions are never
    auto-committed; re-approve or revert them) and if the landed content drifted from the
    approved delta (byte-for-byte, capture flags).
@@ -243,7 +246,7 @@ fi
 ### 5. Commit and push
 
 ```bash
-bash "$LD" commit "$RUN" "fix: address review feedback (iteration N/3)" --script-sha "$LD_SHA" --approved-sha "$APPROVED_SHA"
+bash "$LD" commit "$RUN" "fix: address review feedback (iteration N/3)" --script-sha "$LD_SHA" --approved-sha "$APPROVED_SHA" --landed-sha "$LANDED_SHA"
 bash "$LD" push "$RUN" --script-sha "$LD_SHA"               # separate + idempotent: a transient push failure
                                      # never strands the commit (retry this stage alone)
 bash "$LD" cleanup "$RUN" --script-sha "$LD_SHA" --sig "$SIG"   # add --keep to preserve patches for inspection
