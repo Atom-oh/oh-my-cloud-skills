@@ -27,7 +27,7 @@ SHAPIPE() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum
 # Class-based, not filename-enumerated: anything plausibly executed during build/verify/
 # commit. Broad on purpose — a false positive costs one --allow-exec-surface approval,
 # a false negative is arbitrary code execution on the host.
-EXEC_SURFACE_RE='(^|/)(\.github|\.husky|\.git[a-z]*|\.ci|ci|scripts?|tests?|hooks?)/|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|justfile|Justfile|Taskfile\.ya?ml|BUILD(\.bazel)?|WORKSPACE|Dockerfile[^/]*|\.envrc|sitecustomize\.py|\.gitattributes|\.gitmodules|\.pre-commit-config\.ya?ml|gulpfile\.[a-z]+|Gruntfile\.[a-z]+|\.eslintrc[^/]*|\.babelrc[^/]*)$|\.(gradle|gradle\.kts)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
+EXEC_SURFACE_RE='(^|/)(\.github|\.husky|\.git[a-z]*|\.ci|ci|bin|scripts?|tests?|hooks?)/|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|justfile|Justfile|Taskfile\.ya?ml|BUILD(\.bazel)?|WORKSPACE|Dockerfile[^/]*|\.envrc|sitecustomize\.py|\.gitattributes|\.gitmodules|\.pre-commit-config\.ya?ml|gulpfile\.[a-z]+|Gruntfile\.[a-z]+|\.eslintrc[^/]*|\.babelrc[^/]*)$|\.(gradle|gradle\.kts|sh|bash|zsh)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
 
 state() { # state <run> get KEY | state <run> set KEY VALUE
   local run=$1 op=$2 key=$3
@@ -75,6 +75,12 @@ GITREF() { local run=$1; shift; git -C "$(state "$run" get REF_WT)" -c core.hook
 cmd_setup() {
   local run wtd refd host base ref
   host=$(git rev-parse --show-toplevel) || die "not in a git repo"
+  _setup_fail() { # a mid-setup die must not leak worktrees the caller never learned about
+    git -C "$host" worktree remove --force "$wtd/wt" 2>/dev/null || true
+    git -C "$host" worktree remove --force "$refd/wt" 2>/dev/null || true
+    rm -rf -- "${run:-}" "${wtd:-}" "${refd:-}"
+  }
+  trap _setup_fail EXIT
   base=$(git -C "$host" rev-parse HEAD)
   ref=$(git -C "$host" symbolic-ref -q HEAD || echo detached)
   run=$(mktemp -d "${TMPDIR:-/tmp}/pr-autofix.XXXXXX")
@@ -86,23 +92,31 @@ cmd_setup() {
   state "$run" set CANON_WT_DIR "$(realpath "$wtd")"; state "$run" set CANON_REF_DIR "$(realpath "$refd")"
   state "$run" set IMPL_WT "$wtd/wt"; state "$run" set REF_WT "$refd/wt"
   state "$run" set HOOKS_SNAP "$(hooks_snap "$host")"
+  SIG=$(printf '%s|%s|%s|%s' "$wtd" "$refd" "$(realpath "$wtd")" "$(realpath "$refd")" | SHAPIPE | cut -d' ' -f1)
+  state "$run" set SETUP_SIG "$SIG"
+  git -C "$host" --literal-pathspecs status --porcelain > "$run/host.status.setup"
   git -C "$host" -c core.hooksPath=/dev/null worktree add --detach "$wtd/wt" "$base" >/dev/null
   git -C "$host" -c core.hooksPath=/dev/null worktree add --detach "$refd/wt" "$base" >/dev/null
   symlink_scan "$wtd/wt"           # pre-implementer: branch-committed symlinks would leak reads DURING the run
   : > "$run/ok.setup"
-  echo "$run"                       # host records this ONE path; everything else lives in state
+  trap - EXIT
+  echo "$run $SIG"                  # host records BOTH in its notes: the run path and the
+                                    # cleanup signature (its own trust root — see cmd_cleanup)
 }
 
 cmd_capture() {
   local run=$1 n
   [ -f "$run/ok.setup" ] || die "setup stage missing"
   gitwt_verify "$run"; symlink_scan "$(state "$run" get IMPL_WT)"
+  GITH "$run" status --porcelain > "$run/host.status.capture"
+  diff -q "$run/host.status.setup" "$run/host.status.capture" >/dev/null \
+    || die "host tree changed during implementation (out-of-worktree writes or concurrent edits) — inspect before proceeding"
   GITWT "$run" add -N .
   n=1; while [ -e "$run/full.$n.patch" ]; do n=$((n+1)); done   # generations are immutable — re-runs append
   GITWT "$run" diff --binary --no-ext-diff --no-textconv "$(state "$run" get BASE_SHA)" > "$run/full.$n.patch"
   [ -s "$run/full.$n.patch" ] || die "empty capture — implementer produced no delta"
   state "$run" set LATEST_FULL "full.$n.patch"
-  rm -f "$run/ok.approved"          # a new capture invalidates any earlier approval
+  rm -f "$run/ok.approved" "$run/ok.landed" "$run/ok.build" "$run/ok.committed"   # a new capture invalidates EVERY downstream stage
   : > "$run/ok.captured"
   echo "$run/full.$n.patch"
 }
@@ -112,8 +126,8 @@ cmd_approve() { # host has already copied+edited approved.patch from the latest 
   [ -f "$run/ok.captured" ] || die "capture stage missing"
   [ -s "$run/approved.patch" ] || die "approved.patch missing/empty — copy it from $(state "$run" get LATEST_FULL) and strip unplanned hunks first"
   grep -q '^diff --git' "$run/approved.patch" || die "approved.patch is not a git patch"
-  grep -qE '^(new file mode 120000|old mode|new mode)|^index [0-9a-f]+\.\.[0-9a-f]+ 120000' "$run/approved.patch" \
-    && die "approved.patch contains symlink/mode-change hunks (incl. existing-symlink target changes) — always unplanned unless the user explicitly approved"
+  grep -qE '^(new file mode 1[02]0[07][0-9][0-9]|old mode|new mode)|^index [0-9a-f]+\.\.[0-9a-f]+ 120000' "$run/approved.patch" \
+    && die "approved.patch contains symlink/executable/mode-change hunks (incl. existing-symlink target changes and new +x files) — always unplanned unless the user explicitly approved"
   state "$run" set APPROVED_SHA "$(SHAPIPE < "$run/approved.patch" | cut -d' ' -f1)"   # hash-bind: land/commit re-verify
   : > "$run/ok.approved"
 }
@@ -139,6 +153,9 @@ cmd_land() {
   GITH "$run" apply --numstat "$run/approved.patch" | cut -f3- > "$run/landed.files"
   [ -s "$run/landed.files" ] || die "approved patch names no files"
   grep -qE '^"|=>' "$run/landed.files" && die "exotic/renamed path in patch — refuse"
+  # CI workflow files are denied UNCONDITIONALLY — no flag opens them (the review CI must
+  # never be modifiable by the loop it gates):
+  ! grep -qE '^\.github/workflows/' "$run/landed.files" || die "refusing to land .github/workflows changes — hard deny, no override"
   # Execution-surface gate — CODE, not prose (build/commit execute these files):
   if grep -qE "$EXEC_SURFACE_RE" "$run/landed.files" && [ "$allow" != "--allow-exec-surface" ]; then
     die "execution-surface files in the landing set (user approval + --allow-exec-surface required): $(grep -E "$EXEC_SURFACE_RE" "$run/landed.files" | tr '\n' ' ')"
@@ -255,8 +272,15 @@ cmd_rollback() {
   [ "$failed" = 0 ] || die "partial rollback — user-modified files above were preserved"
 }
 
-cmd_cleanup() {
-  local run=$1 keep=${2:-} host wt refwt
+cmd_cleanup() { # cleanup <run> --sig <setup-sig> [--keep] — sig comes from the HOST's own notes,
+                # the one place the implementer cannot write; it re-derives from current state
+                # values, so tampering ANY path key breaks it (state self-consistency proves nothing)
+  local run=$1 sig="" keep="" host wt refwt
+  shift
+  while [ $# -gt 0 ]; do case "$1" in --sig) sig=$2; shift 2;; --keep) keep=--keep; shift;; *) die "unknown cleanup arg: $1";; esac; done
+  [ -n "$sig" ] || die "cleanup requires --sig <value printed by setup>"
+  [ "$(printf '%s|%s|%s|%s' "$(state "$run" get WT_DIR)" "$(state "$run" get REF_DIR)" "$(state "$run" get CANON_WT_DIR)" "$(state "$run" get CANON_REF_DIR)" | SHAPIPE | cut -d' ' -f1)" = "$sig" ] \
+    || die "state signature mismatch — path keys tampered; not removing anything"
   host=$(state "$run" get HOST_ROOT); wt=$(state "$run" get IMPL_WT); refwt=$(state "$run" get REF_WT)
   [ -n "$run" ] && [ -n "$wt" ] || die "state incomplete — refusing cleanup"
   # Exact canonical-path equality, not glob (case '*' matches '/' and '..' — a tampered
@@ -280,6 +304,6 @@ case "${1:-}" in
   commit) cmd_commit "${2:?run dir}" "${3:?message}" "${4:-}" ;;
   push) cmd_push "${2:?run dir}" ;;
   rollback) cmd_rollback "${2:?run dir}" ;;
-  cleanup) cmd_cleanup "${2:?run dir}" "${3:-}" ;;
+  cleanup) cmd_cleanup "${2:?run dir}" "${@:3}" ;;
   *) echo "usage: land_delta.sh setup|capture|approve|check-plan-paths|land|verify|commit|push|rollback|cleanup ..." >&2; exit 2 ;;
 esac

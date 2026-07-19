@@ -132,10 +132,12 @@ executable spec):
 
 ```bash
 LD="{skill-dir}/scripts/land_delta.sh"
-RUN=$(bash "$LD" setup)      # creates the implementer + reference worktrees @ HEAD,
-                             # pins base SHA/ref, snapshots git hooks, scans for
-                             # escaping symlinks. Record $RUN in your notes — it is the
-                             # ONLY value you carry between tool calls.
+read -r RUN SIG <<<"$(bash "$LD" setup)"
+# setup creates the implementer + reference worktrees @ HEAD, pins base SHA/ref,
+# snapshots git hooks and host status, scans for escaping symlinks. Record BOTH values
+# in your notes: $RUN (the run directory) and $SIG (the cleanup signature — your notes
+# are the one place the implementer cannot write, which is exactly why cleanup demands
+# the signature back before it will rm -rf anything).
 IMPL_WT=$(sed -n 's/^IMPL_WT=//p' "$RUN/state" | head -1)
 ```
 
@@ -221,7 +223,7 @@ fi
 bash "$LD" commit "$RUN" "fix: address review feedback (iteration N/3)"
 bash "$LD" push "$RUN"               # separate + idempotent: a transient push failure
                                      # never strands the commit (retry this stage alone)
-bash "$LD" cleanup "$RUN"            # add --keep to preserve patches for inspection
+bash "$LD" cleanup "$RUN" --sig "$SIG"   # add --keep to preserve patches for inspection
 ```
 
 If the repo has a configured `core.hooksPath`, the commit stage STOPs and asks — it may
