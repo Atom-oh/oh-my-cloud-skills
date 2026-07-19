@@ -178,7 +178,7 @@ plan inline.)
    tracked files outside the landed set (codegen/formatter companions are never
    auto-committed; re-approve or revert them) and if the landed content drifted from the
    approved delta (byte-for-byte, capture flags).
-6. **On ANY failure after landing**: `bash "$LD" rollback "$RUN"` — restores exactly the
+6. **On ANY failure after landing**: `bash "$LD" rollback "$RUN" --sig "$SIG"` — restores exactly the
    landed paths; a file the user modified in the meantime is preserved and reported,
    never overwritten. Then either fix (companion edits go BACK through approval — a
    once-rejected hunk gets no free pass; twice → escalate to the user) or abort the

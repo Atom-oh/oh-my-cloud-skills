@@ -112,7 +112,7 @@ echo 'x=2' > "$IMPL_WT/src/app.py"; echo 'world' > "$IMPL_WT/a.txt"
 cp "$RUN/full.1.patch" "$RUN/approved.patch"; ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1
 ( cd "$FIX" && bash "$LD_ABS" land "$RUN" ) >/dev/null 2>&1 || true
 echo 'precious user edit' > "$FIX/a.txt"                 # user edits a landed file during the build window
-RC=0; OUT=$( cd "$FIX" && bash "$LD_ABS" rollback "$RUN" 2>&1 ) || RC=$?
+RC=0; OUT=$( cd "$FIX" && bash "$LD_ABS" rollback "$RUN" --sig "$SIG" 2>&1 ) || RC=$?
 assert_eq "1" "$RC" "rollback reports partial (user-modified file present)"
 assert_eq "x=1" "$(cat "$FIX/src/app.py")" "pristine landed file reverted to base"
 assert_eq "precious user edit" "$(cat "$FIX/a.txt")" "user-modified file preserved, not reverted"
@@ -127,7 +127,7 @@ echo 'x=2' > "$IMPL_WT/src/app.py"
 cp "$RUN/full.1.patch" "$RUN/approved.patch"; ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1 || true
 ( cd "$FIX" && bash "$LD_ABS" land "$RUN" ) >/dev/null 2>&1 || true
 ( cd "$FIX" && bash "$LD_ABS" verify "$RUN" --build-ok 1 ) >/dev/null 2>&1 || true
-( cd "$FIX" && bash "$LD_ABS" rollback "$RUN" ) >/dev/null 2>&1 || true   # host back to base
+( cd "$FIX" && bash "$LD_ABS" rollback "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true   # host back to base
 echo 'x=3' > "$IMPL_WT/src/app.py"
 ( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) >/dev/null 2>&1 || true    # generation 2
 assert_file_exists "$RUN/full.2.patch" "re-capture after rollback produces generation 2"
@@ -167,7 +167,7 @@ echo 'x=2' > "$IMPL_WT/src/app.py"
 ( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) >/dev/null 2>&1 || true
 cp "$RUN/full.1.patch" "$RUN/approved.patch"; ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1 || true
 ( cd "$FIX" && bash "$LD_ABS" land "$RUN" ) >/dev/null 2>&1 || true
-( cd "$FIX" && bash "$LD_ABS" rollback "$RUN" ) >/dev/null 2>&1 || true
+( cd "$FIX" && bash "$LD_ABS" rollback "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true
 echo 'x=9' > "$IMPL_WT/src/app.py"
 ( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) >/dev/null 2>&1 || true
 cp "$RUN/$(sed -n 's/^LATEST_FULL=//p' "$RUN/state" | tail -1)" "$RUN/approved.patch"

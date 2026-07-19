@@ -37,6 +37,15 @@ state() { # state <run> get KEY | state <run> set KEY VALUE
   esac
 }
 
+_state_sig() { # recompute the setup signature from CURRENT state values — any tamper breaks it
+  local run=$1
+  printf '%s|%s|%s|%s|%s|%s|%s|%s' \
+    "$(state "$run" get WT_DIR)" "$(state "$run" get REF_DIR)" \
+    "$(state "$run" get CANON_WT_DIR)" "$(state "$run" get CANON_REF_DIR)" \
+    "$(state "$run" get HOST_ROOT)" "$(state "$run" get IMPL_WT)" \
+    "$(state "$run" get REF_WT)" "$(state "$run" get BASE_SHA)" | SHAPIPE | cut -d' ' -f1
+}
+
 hooks_snap() { # hooks_snap <host_root>
   local dir
   dir=$(git -C "$1" rev-parse --path-format=absolute --git-path hooks)
@@ -92,7 +101,7 @@ cmd_setup() {
   state "$run" set CANON_WT_DIR "$(realpath "$wtd")"; state "$run" set CANON_REF_DIR "$(realpath "$refd")"
   state "$run" set IMPL_WT "$wtd/wt"; state "$run" set REF_WT "$refd/wt"
   state "$run" set HOOKS_SNAP "$(hooks_snap "$host")"
-  SIG=$(printf '%s|%s|%s|%s' "$wtd" "$refd" "$(realpath "$wtd")" "$(realpath "$refd")" | SHAPIPE | cut -d' ' -f1)
+  SIG=$(printf '%s|%s|%s|%s|%s|%s|%s|%s' "$wtd" "$refd" "$(realpath "$wtd")" "$(realpath "$refd")" "$host" "$wtd/wt" "$refd/wt" "$base" | SHAPIPE | cut -d' ' -f1)
   state "$run" set SETUP_SIG "$SIG"
   git -C "$host" --literal-pathspecs status --porcelain > "$run/host.status.setup"
   git -C "$host" -c core.hooksPath=/dev/null worktree add --detach "$wtd/wt" "$base" >/dev/null
@@ -116,9 +125,19 @@ cmd_capture() {
   GITWT "$run" diff --binary --no-ext-diff --no-textconv "$(state "$run" get BASE_SHA)" > "$run/full.$n.patch"
   [ -s "$run/full.$n.patch" ] || die "empty capture — implementer produced no delta"
   state "$run" set LATEST_FULL "full.$n.patch"
+  _hunk_hashes "$run/full.$n.patch" | sort > "$run/full.$n.hunks"   # manifest for approve's subset check
   rm -f "$run/ok.approved" "$run/ok.landed" "$run/ok.build" "$run/ok.committed" "$run/approved.patch"   # a new capture invalidates EVERY downstream stage — INCLUDING a stale approved.patch from an older generation
   : > "$run/ok.captured"
   echo "$run/full.$n.patch"
+}
+
+_hunk_hashes() { # normalize hunks (strip @@ offsets), hash one per line — subset comparison unit
+  awk '
+    /^diff --git /{file=$0; hunk=""; inh=0; next}
+    /^@@/{ if (inh && hunk!="") print hunk; sub(/@@[^@]*@@/,"@@ @@"); hunk=file"|"$0; inh=1; next }
+    inh { hunk=hunk"\n"$0 }
+    END{ if (inh && hunk!="") print hunk }
+  ' "$1" | while IFS= read -r h; do printf '%s' "$h" | SHAPIPE | cut -d' ' -f1; done
 }
 
 cmd_approve() { # host has already copied+edited approved.patch from the latest generation
@@ -128,6 +147,11 @@ cmd_approve() { # host has already copied+edited approved.patch from the latest 
   grep -q '^diff --git' "$run/approved.patch" || die "approved.patch is not a git patch"
   grep -qE '^(new file mode 1[02]0[07][0-9][0-9]|old mode|new mode)|^index [0-9a-f]+\.\.[0-9a-f]+ 120000' "$run/approved.patch" \
     && die "approved.patch contains symlink/executable/mode-change hunks (incl. existing-symlink target changes and new +x files) — always unplanned unless the user explicitly approved"
+  # Subset check — every approved hunk must exist verbatim in the latest generation
+  # (stripping whole hunks is allowed; editing or adding hunks is not):
+  _hunk_hashes "$run/approved.patch" | sort > "$run/approved.hunks"
+  MANIFEST="$run/$(state "$run" get LATEST_FULL | sed 's/\.patch$/.hunks/')"
+  [ -z "$(comm -23 "$run/approved.hunks" "$MANIFEST")" ] || die "approved.patch contains hunks not present in the latest capture generation"
   state "$run" set APPROVED_SHA "$(SHAPIPE < "$run/approved.patch" | cut -d' ' -f1)"   # hash-bind: land/commit re-verify
   : > "$run/ok.approved"
 }
@@ -162,17 +186,24 @@ cmd_land() {
   fi
   while IFS= read -r f || [ -n "$f" ]; do
     [ -z "$(GITH "$run" status --porcelain -- "$f")" ] || die "target file locally modified: $f"
+    case "$(GITH "$run" ls-tree "$(state "$run" get BASE_SHA)" -- "$f" | awk '{print $1}')" in
+      100755|120000) [ "$allow" = "--allow-exec-surface" ] || die "existing executable/symlink at base mode needs --allow-exec-surface: $f";;
+    esac
   done < "$run/landed.files"
-  GITH "$run" status --porcelain > "$run/host.status.before"
-  GITH "$run" apply --check "$run/approved.patch"
-  GITH "$run" apply "$run/approved.patch"
-  GITH "$run" add -N --pathspec-from-file="$run/landed.files"
-  while IFS= read -r f || [ -n "$f" ]; do          # a landed path must never BE a symlink on the host
+  while IFS= read -r f || [ -n "$f" ]; do          # PRE-apply: no landed path may already be a symlink
     [ ! -L "$host/$f" ] || die "landed path is a symlink on the host: $f"
   done < "$run/landed.files"
-  GITREF "$run" apply "$run/approved.patch"       # reference worktree tracks the approved state (rollback + equality baseline)
+  GITREF "$run" apply "$run/approved.patch"       # reference FIRST — disposable, its failure costs nothing
   GITREF "$run" add -N .
   GITREF "$run" status --porcelain > "$run/ref.status.before"   # ref-side containment baseline (ref builds)
+  GITH "$run" status --porcelain > "$run/host.status.before"
+  GITH "$run" apply --check "$run/approved.patch"
+  GITH "$run" apply "$run/approved.patch"          # host LAST — the only irreversible step (git apply is atomic)
+  if ! GITH "$run" add -N --pathspec-from-file="$run/landed.files"; then
+    # compensation: the cleanliness gate proved these paths were clean — base restore is safe
+    while IFS= read -r f || [ -n "$f" ]; do GITH "$run" checkout "$(state "$run" get BASE_SHA)" -- "$f" 2>/dev/null || rm -f -- "$host/$f"; done < "$run/landed.files"
+    die "post-apply staging failed — host restored to base"
+  fi
   : > "$run/ok.landed"
 }
 
@@ -234,7 +265,7 @@ cmd_commit() {
     flags=(-c core.hooksPath=/dev/null)
   fi
   git -C "$host" --literal-pathspecs add --pathspec-from-file="$run/landed.files"
-  git -C "$host" --literal-pathspecs "${flags[@]}" commit -m "$msg" --pathspec-from-file="$run/landed.files"
+  git -C "$host" --literal-pathspecs ${flags[@]+"${flags[@]}"} commit -m "$msg" --pathspec-from-file="$run/landed.files"   # ${arr[@]+...}: empty-array expansion aborts under set -u on macOS bash 3.2
   state "$run" set COMMIT_SHA "$(git -C "$host" rev-parse HEAD)"
   state "$run" set HOOKS_FLAGS "${flags[*]:-none}"
   : > "$run/ok.committed"
@@ -246,12 +277,14 @@ cmd_push() { # separate, idempotent — a transient push failure must not strand
   host=$(state "$run" get HOST_ROOT); sha=$(state "$run" get COMMIT_SHA)
   [ "$(git -C "$host" rev-parse HEAD)" = "$sha" ] || die "HEAD moved since commit — refusing to push"
   local -a pf=(); [ "$(state "$run" get HOOKS_FLAGS)" != none ] && pf=(-c core.hooksPath=/dev/null)
-  git -C "$host" "${pf[@]}" push
+  git -C "$host" ${pf[@]+"${pf[@]}"} push
   : > "$run/ok.pushed"
 }
 
-cmd_rollback() {
+cmd_rollback() { # rollback <run> --sig <setup-sig> — destructive; same trust root as cleanup
   local run=$1 host ref base f failed=0
+  [ "${2:-}" = "--sig" ] && [ -n "${3:-}" ] || die "rollback requires --sig <value printed by setup>"
+  [ "$(_state_sig "$run")" = "$3" ] || die "state signature mismatch — refusing rollback"
   host=$(state "$run" get HOST_ROOT); ref=$(state "$run" get REF_WT); base=$(state "$run" get BASE_SHA)
   [ "$(git -C "$host" rev-parse HEAD)" = "$base" ] || die "HEAD is not the landing base — a rollback here would target the wrong revision"
   [ "$(git -C "$host" symbolic-ref -q HEAD || echo detached)" = "$(state "$run" get BASE_REF)" ] || die "branch switched — refusing rollback"
@@ -286,8 +319,7 @@ cmd_cleanup() { # cleanup <run> --sig <setup-sig> [--keep] — sig comes from th
   shift
   while [ $# -gt 0 ]; do case "$1" in --sig) sig=$2; shift 2;; --keep) keep=--keep; shift;; *) die "unknown cleanup arg: $1";; esac; done
   [ -n "$sig" ] || die "cleanup requires --sig <value printed by setup>"
-  [ "$(printf '%s|%s|%s|%s' "$(state "$run" get WT_DIR)" "$(state "$run" get REF_DIR)" "$(state "$run" get CANON_WT_DIR)" "$(state "$run" get CANON_REF_DIR)" | SHAPIPE | cut -d' ' -f1)" = "$sig" ] \
-    || die "state signature mismatch — path keys tampered; not removing anything"
+  [ "$(_state_sig "$run")" = "$sig" ] || die "state signature mismatch — path keys tampered; not removing anything"
   host=$(state "$run" get HOST_ROOT); wt=$(state "$run" get IMPL_WT); refwt=$(state "$run" get REF_WT)
   [ -n "$run" ] && [ -n "$wt" ] || die "state incomplete — refusing cleanup"
   # Exact canonical-path equality, not glob (case '*' matches '/' and '..' — a tampered
@@ -310,7 +342,7 @@ case "${1:-}" in
   verify) cmd_verify "${2:?run dir}" "${3:-}" "${4:-}" "${5:-}" "${6:-}" ;;
   commit) cmd_commit "${2:?run dir}" "${3:?message}" "${4:-}" ;;
   push) cmd_push "${2:?run dir}" ;;
-  rollback) cmd_rollback "${2:?run dir}" ;;
+  rollback) cmd_rollback "${2:?run dir}" "${3:-}" "${4:-}" ;;
   cleanup) cmd_cleanup "${2:?run dir}" "${@:3}" ;;
   *) echo "usage: land_delta.sh setup|capture|approve|check-plan-paths|land|verify|commit|push|rollback|cleanup ..." >&2; exit 2 ;;
 esac
