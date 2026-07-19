@@ -1,6 +1,6 @@
 ---
 name: kiro-delegate-agent
-description: "Cost-savings delegation orchestrator — plans with Claude, hands implementation off to Kiro CLI running on flat-rate subscription credits inside an isolated git worktree, verifies with tests, and falls back to writing the code itself when Kiro's fix loop is exhausted. Triggers on 'kiro한테 시켜', 'kiro로 구현', 'kiro한테 위임', 'kiro 위임', 'delegate to kiro', 'kiro implement', 'kiro가 구현' requests, or /kiro:delegate. NOT for 'kiro가 리뷰'/'kiro review' — that's the read-only /kiro:review command, not this write-capable pipeline."
+description: "Cost-savings delegation orchestrator — plans with Claude, hands implementation off to Kiro CLI running on flat-rate subscription credits inside an isolated git worktree, verifies with tests, and falls back to writing the code itself when Kiro's fix loop is exhausted. Triggers on 'kiro한테 시켜서 구현', 'kiro로 구현', 'kiro한테 구현 위임', 'delegate implementation to kiro', 'kiro implement this' requests, or /kiro:delegate. NOT for review — read-only diff review is the separate /kiro:review command, which never loads this write-capable pipeline."
 tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
 model: opus
 ---
@@ -58,13 +58,16 @@ guarantee this whole plugin depends on.
 ## Pipeline (`/kiro:delegate`)
 
 0. **Preflight (required, not optional).**
-   - `.kiro/agents/kiro-implementer.json` MUST exist before step 3 runs. Without it,
-     the only way to invoke Kiro headlessly is the ad-hoc `--trust-tools=fs_read,fs_write`
-     fallback, which carries NO `preToolUse` write-guard hook (that hook is defined *in*
-     the custom agent file — see `references/kiro-headless.md` → "Trust boundary" step
-     6). If the file is missing, run `kiro_setup.py write-agents` first (same thing
-     `/kiro:setup` does) — never silently fall through to the unguarded invocation just
-     because setup was skipped.
+   - `.kiro/agents/kiro-implementer.json` MUST exist AND be plugin-generated before step
+     3 runs. Run `kiro_setup.py verify-agents` (exit 0 ok · 1 tampered · 2 missing): on
+     `missing`, run `kiro_setup.py write-agents` first (same thing `/kiro:setup` does) —
+     never fall through to the ad-hoc `--trust-tools=fs_read,fs_write` invocation, which
+     carries NO `preToolUse` write-guard hook (that hook is defined *in* the custom agent
+     file — see `references/kiro-headless.md` → "Trust boundary" step 6). On `tampered`
+     (the file exists but doesn't match a plugin-generated shape), do NOT run it — the
+     pipeline copies it into a worktree and runs `--agent kiro-implementer`, whose
+     `preToolUse.runCommand` is a host command that executes; regenerate with
+     `write-agents --force` (or ask the user) instead of trusting a hand-edited hook.
    - **Clean-tree check on the plan's whole declared file set, before any task
      starts.** `git status --porcelain -- <every file the plan's tasks declare>` MUST be
      empty. Step 5's fallback restore/clean is scoped to a task's files and has no way
@@ -93,6 +96,16 @@ guarantee this whole plugin depends on.
      - `mkdir -p <wt>/.kiro/agents && cp .kiro/agents/kiro-implementer.json
        <wt>/.kiro/agents/` — so `--agent kiro-implementer` resolves inside the worktree
        regardless of whether kiro-cli looks in cwd or walks upward from it.
+     - **Exclude that copied file from capture in a way that does NOT depend on the
+       consumer repo's `.gitignore`.** `worktree.py capture-diff` runs `git add -A`,
+       which respects the worktree's own `.git/info/exclude` in ADDITION to any tracked
+       `.gitignore`. Append `.kiro/agents/kiro-implementer.json` to the worktree's
+       exclude file — `printf '%s\n' '.kiro/agents/kiro-implementer.json' >>
+       "$(git -C <wt> rev-parse --git-path info/exclude)"` — right after the copy. This
+       repo happens to gitignore `.kiro/agents/`, but a repo where the plugin is
+       *installed* may not, and without this the copy would be captured, fail
+       `scope_guard.py` (a path not in the plan), and its exit-1 would drop the whole
+       otherwise-valid patch.
      - Point Kiro at the spec files by **absolute path** (`$(pwd)/.kiro/specs/<name>/…`
        from the main checkout, not a path relative to `<wt>`) in the task prompt, so
        `fs_read` can reach them from inside `<wt>` even though they're outside it.
@@ -104,8 +117,9 @@ guarantee this whole plugin depends on.
      Adapter detail: `references/kiro-headless.md`.
    - `worktree.py capture-diff <wt>` → patch. Every path through
      `scope_guard.py --plan <tasks.md>` — drop out-of-scope hunks. (The copied
-     `.kiro/agents/kiro-implementer.json` inside `<wt>` is itself gitignored/untracked
-     and so is naturally excluded from the capture — nothing extra needed there.)
+     `.kiro/agents/kiro-implementer.json` is excluded via the worktree's
+     `.git/info/exclude` entry added above, so `git add -A` never stages it — this holds
+     even in a consumer repo that doesn't gitignore `.kiro/agents/`.)
    - Apply the captured, scoped patch to the main tree. Run the project's tests.
 4. **Verify + bounded retry.** Test failure → feed the failure back to Kiro and retry,
    bounded by `delegate.max_fix_rounds` (default 2; `kiro_config.py max-fix-rounds`).

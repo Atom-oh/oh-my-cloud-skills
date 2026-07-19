@@ -9,6 +9,9 @@ Usage:
                                                       # write .kiro/agents/kiro-{implementer,reviewer}.json
                                                       # --enable-bash grants the implementer execute_bash
                                                       # (off by default — see _implementer_agent's docstring)
+  kiro_setup.py verify-agents [--root DIR]            # confirm kiro-implementer.json is plugin-generated
+                                                      # (not tampered) before the pipeline runs its hook;
+                                                      # exit 0 ok · 1 mismatch/tampered · 2 missing
 
 probe() statuses:
   READY      — kiro-cli echoed the sentinel; usable headlessly.
@@ -196,6 +199,40 @@ def write_agents(root, force=False, enable_bash=False):
     return 0
 
 
+def verify_agents(root):
+    """Confirm .kiro/agents/kiro-implementer.json is one this plugin would have written,
+    not a hand-edited/tampered file — the delegate pipeline copies it into a worktree and
+    runs Kiro with `--agent kiro-implementer`, and its `preToolUse.runCommand` hook is a
+    host command that executes, so a tampered hook is a host-command-execution vector.
+    A file that only DIFFERS by a legitimate config choice (execute_bash on vs off) is
+    fine; anything else (unexpected tools, a preToolUse.runCommand that isn't the plugin's
+    known-good guard, wrong name) is rejected so the caller can regenerate it with
+    `write-agents --force` rather than trust it.
+
+    Exit 0 = matches a plugin-generated shape (bash on or off). 1 = mismatch/tampered.
+    2 = file missing (caller should run write-agents)."""
+    p = os.path.join(root, ".kiro", "agents", "kiro-implementer.json")
+    if not os.path.isfile(p):
+        print(f"missing: {p} — run `kiro_setup.py write-agents` first", file=sys.stderr)
+        return 2
+    try:
+        with open(p, encoding="utf-8") as f:
+            got = json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"unreadable/invalid {p}: {e} — regenerate with write-agents --force", file=sys.stderr)
+        return 1
+    # Compare against BOTH legitimate shapes (execute_bash off / on). Comparing the whole
+    # dict (incl. the preToolUse hook command) means a tampered hook can't slip through.
+    if any(got == _implementer_agent(b) for b in (False, True)):
+        print(f"ok: {p} matches a plugin-generated kiro-implementer agent")
+        return 0
+    print(f"❌ {p} does not match a plugin-generated kiro-implementer agent "
+          f"(tampered or hand-edited?) — regenerate with `kiro_setup.py write-agents "
+          f"--force` before delegating; the pipeline runs this agent's preToolUse hook",
+          file=sys.stderr)
+    return 1
+
+
 def main():
     argv = sys.argv[1:]
     root = "."
@@ -226,6 +263,8 @@ def main():
         return list_models()
     if cmd == "write-agents":
         return write_agents(root, force="--force" in argv, enable_bash="--enable-bash" in argv)
+    if cmd == "verify-agents":
+        return verify_agents(root)
     print(__doc__)
     return 2
 

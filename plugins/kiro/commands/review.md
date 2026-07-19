@@ -15,12 +15,16 @@ Run the review against staged changes (default) or the paths given in `$ARGUMENT
 python3 "$SK/kiro_review.py" --staged --root .
 ```
 
-Or, if the user gave specific paths in `$ARGUMENTS`, pass them through. This reviews the
-**full working-tree diff** for those paths (staged + unstaged) — not staged-only — so an
-in-progress edit that hasn't been `git add`ed yet is still reviewable:
+Or, if the user gave specific paths, pass each path as its **own quoted argv token**
+after `--` — never splice the raw `$ARGUMENTS` string in unquoted (it can carry shell
+metacharacters that the shell would re-interpret before `kiro_review.py` sees them).
+This reviews the **full working-tree diff** for those paths (staged + unstaged) — not
+staged-only — so an in-progress edit that hasn't been `git add`ed yet is still
+reviewable:
 
 ```bash
-python3 "$SK/kiro_review.py" --root . -- $ARGUMENTS
+# one quoted token per path the user named — e.g. two files:
+python3 "$SK/kiro_review.py" --root . -- "src/foo.py" "src/bar.py"
 ```
 
 This runs even if `review.on_commit` is off (that setting only gates the automatic

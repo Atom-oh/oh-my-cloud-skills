@@ -40,7 +40,7 @@ Kiro-naming trigger as usual.
 
 | Skill | Trigger | Purpose |
 |-------|---------|---------|
-| `kiro-delegate` | "kiro한테 시켜", "kiro로 구현", "kiro한테 위임", "kiro 위임", "delegate to kiro", "kiro implement", "kiro가 구현", "kiro가 리뷰", "kiro review" | Cost-savings implementation + review delegation to Kiro CLI |
+| `kiro-delegate` | "kiro한테 시켜서 구현", "kiro로 구현", "kiro한테 구현 위임", "delegate implementation to kiro", "kiro implement this" | Cost-savings **implementation** delegation to Kiro CLI (write-capable; review is the separate `/kiro:review` command) |
 
 ## Commands
 
@@ -116,16 +116,15 @@ scoped to this plugin's single peer.
 ## Auto-Invocation Keywords
 
 Same canonical set as the skill's `triggers:` frontmatter and description (kept
-identical across both — see the note in `skills/kiro-delegate/SKILL.md`):
+identical across all three — see the note in `skills/kiro-delegate/SKILL.md`). All are
+explicit **implementation**-delegation phrasings; review is the separate `/kiro:review`
+command and has no auto-invocation trigger (it never loads this write-capable skill):
 
 | 한국어 | English |
 |--------|---------|
-| kiro한테 시켜 | delegate to kiro |
-| kiro로 구현 | kiro implement |
-| kiro한테 위임 | — |
-| kiro 위임 | — |
-| kiro가 구현 | — |
-| kiro가 리뷰 | kiro review |
+| kiro한테 시켜서 구현 | delegate implementation to kiro |
+| kiro로 구현 | kiro implement this |
+| kiro한테 구현 위임 | — |
 
 ## Workflow
 

@@ -139,6 +139,21 @@ def cmd_set(root, rest):
             # succeeds (the malformed file is overwritten with a now-valid one).
             print(f"⚠️  {lp} is malformed ({e}) — starting from an empty override", file=sys.stderr)
             local = {}
+    # Valid JSON but the wrong SHAPE is the other way this crashes: a top-level `[]`/
+    # `"foo"` makes `local["default_delegate"] = …` raise (list/str item assignment),
+    # and a section like `{"review": "foo"}` makes `local.setdefault("review", {})`
+    # return the string, so `slot["model"] = …` raises. effective() already guards its
+    # read path this way; cmd_set is the WRITE path and the one a user runs specifically
+    # to fix a broken file, so it must not itself crash on that file's contents.
+    if not isinstance(local, dict):
+        print(f"⚠️  {lp} is not a JSON object (got {type(local).__name__}) — starting "
+              f"from an empty override", file=sys.stderr)
+        local = {}
+    for section in ("delegate", "review", "panel"):
+        if section in local and not isinstance(local[section], dict):
+            print(f"⚠️  {lp}: '{section}' is not an object (got "
+                  f"{type(local[section]).__name__}) — resetting that section", file=sys.stderr)
+            del local[section]
 
     if not rest:
         print("usage: set default_delegate <on|off>  |  set <delegate|review> <key> <value>", file=sys.stderr)

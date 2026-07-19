@@ -1,25 +1,22 @@
 ---
 name: kiro-delegate
-description: "Claude plans and verifies, Kiro CLI implements and reviews on its own flat-rate subscription credits — a cost-savings delegation workflow, not a second opinion (see co-agent for that). Kiro implements inside an isolated git worktree; only the captured, scope-guarded diff ever reaches the main tree. Triggers on 'kiro한테 시켜', 'kiro로 구현', 'kiro한테 위임', 'kiro 위임', 'delegate to kiro', 'kiro implement', 'kiro가 구현' (all → /kiro:delegate, write-capable), and 'kiro가 리뷰'/'kiro review' (→ /kiro:review ONLY, read-only — never the write-capable delegate pipeline below)."
+description: "Claude plans and verifies, Kiro CLI implements on its own flat-rate subscription credits — a cost-savings implementation-delegation workflow, not a second opinion (see co-agent for that). Kiro implements inside an isolated git worktree; only the captured, scope-guarded diff ever reaches the main tree. Triggers on 'kiro한테 시켜서 구현', 'kiro로 구현', 'kiro한테 구현 위임', 'delegate implementation to kiro', 'kiro implement this'. For read-only review of a diff, use the /kiro:review command instead — this skill is write-capable (it commits) and deliberately does NOT own review triggers."
 triggers:
-  # Canonical trigger set — kept identical (same wording, same order) across this
-  # frontmatter, this file's own description above, agents/kiro-delegate-agent.md's
-  # description, and CLAUDE.md's Skill/Auto-Invocation tables — EXCEPT
-  # agents/kiro-delegate-agent.md intentionally drops the two review triggers below
-  # (that agent is write-capable: plan → implement → commit; it must never be reached
-  # by a review-only request). Deliberately excludes informational phrasings like
-  # "kiro credits" or "비용 절감 kiro" — those read as a question about the plugin, not
-  # a request to act, and routing them into a write-capable pipeline would be a
-  # false-positive activation.
-  - "kiro한테 시켜"        # → /kiro:delegate (write)
-  - "kiro로 구현"          # → /kiro:delegate (write)
-  - "kiro한테 위임"        # → /kiro:delegate (write)
-  - "kiro 위임"            # → /kiro:delegate (write)
-  - "delegate to kiro"     # → /kiro:delegate (write)
-  - "kiro implement"       # → /kiro:delegate (write)
-  - "kiro가 구현"          # → /kiro:delegate (write)
-  - "kiro가 리뷰"          # → /kiro:review ONLY (read-only) — NOT kiro-delegate-agent
-  - "kiro review"          # → /kiro:review ONLY (read-only) — NOT kiro-delegate-agent
+  # This skill is WRITE-CAPABLE (allowed-tools below include Write/Edit/Bash; the
+  # pipeline plans → implements → commits). Its trigger set therefore contains ONLY
+  # explicit implementation-delegation phrasings — never a review phrasing, because a
+  # trigger match loads this skill (and its write tools). Read-only review has its own
+  # entry point, the `/kiro:review` command, which needs no skill trigger to be
+  # reachable; routing "review" here would be a write-capable activation for a
+  # read-only request. Also excludes informational phrasings ("kiro credits", "비용
+  # 절감 kiro") — those are questions about the plugin, not requests to act. This set is
+  # kept identical to agents/kiro-delegate-agent.md's description and CLAUDE.md's
+  # Skill/Auto-Invocation tables.
+  - "kiro한테 시켜서 구현"
+  - "kiro로 구현"
+  - "kiro한테 구현 위임"
+  - "delegate implementation to kiro"
+  - "kiro implement this"
 allowed-tools:
   - Read
   - Write
@@ -44,12 +41,14 @@ work, not because a second opinion is wanted.
 > agent (`agents/kiro-delegate-agent.md`) carries the authoritative step-by-step pipeline
 > — this file routes intent and covers the commands.
 
-**Routing within this skill's trigger set is NOT one path.** "kiro review"/"kiro가
-리뷰" route to the **read-only** `/kiro:review` command (`kiro_review.py`) — never to
-`kiro-delegate-agent`, which is a write-capable orchestrator that plans, implements, and
-**commits**. `kiro-delegate-agent.md`'s own description explicitly excludes the review
-triggers for this reason. Every other trigger in the list above ("kiro한테 시켜", "kiro
-로 구현", "delegate to kiro", …) routes to `kiro-delegate-agent` / `/kiro:delegate`.
+**This skill covers implementation delegation only; review is a separate command.**
+This skill (and `kiro-delegate-agent`) is write-capable — it plans, implements, and
+**commits** — so its triggers are all explicit *implementation*-delegation phrasings.
+Read-only review of a diff is the **`/kiro:review`** command (`kiro_review.py`), a
+distinct entry point that never loads this write-capable skill. That separation is
+structural (the review triggers are simply not in this skill's `triggers:` set), not a
+prose convention — so a "review this with kiro" request can't accidentally activate the
+implement-and-commit pipeline.
 
 ## What "safe" means here — and what it doesn't (co-agent can't allow this at all)
 

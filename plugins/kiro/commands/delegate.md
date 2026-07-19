@@ -25,15 +25,18 @@ Before starting:
 1. If `python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_setup.py" probe`
    does not report `READY`, tell the user to run `/kiro:setup` first — don't attempt the
    worktree/implement steps against an unusable CLI.
-2. **Require `.kiro/agents/kiro-implementer.json` to exist before implementing anything.**
-   Without it, the implementer falls back to an ad-hoc `--trust-tools=fs_read,fs_write`
-   invocation that has NO `preToolUse` write-guard (the custom agent file is what
-   carries that hook — see `references/kiro-headless.md` → "Trust boundary" step 6). If
-   the file is missing, run
-   `python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_setup.py" write-agents`
-   first (this is exactly what `/kiro:setup` does — running it here just means the user
-   skipped setup and went straight to delegate) — never silently fall through to the
-   unguarded ad-hoc invocation.
+2. **Require a plugin-generated `.kiro/agents/kiro-implementer.json` before implementing
+   anything** — run
+   `python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_setup.py" verify-agents`:
+   - exit 2 (missing): run `... kiro_setup.py write-agents` first (what `/kiro:setup`
+     does). Without the file, the implementer falls back to an ad-hoc
+     `--trust-tools=fs_read,fs_write` invocation with NO `preToolUse` write-guard (the
+     custom agent file carries that hook — `references/kiro-headless.md` → "Trust
+     boundary" step 6). Never fall through to that.
+   - exit 1 (tampered / hand-edited): do NOT run it — the pipeline copies it into a
+     worktree and runs its `preToolUse.runCommand` hook (a host command). Regenerate
+     with `... kiro_setup.py write-agents --force`, or ask the user, before delegating.
+   - exit 0: proceed.
 3. **Require a clean tree on the plan's declared file set before implementing anything**
    (`git status --porcelain -- <files>`). If Kiro's fix loop is later exhausted for a
    task, the fallback restores/cleans that task's files — which cannot tell "Kiro's own

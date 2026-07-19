@@ -15,12 +15,22 @@ With no arguments, show the effective config:
 python3 "$SK/kiro_config.py" show
 ```
 
-Otherwise forward `$ARGUMENTS` to `kiro_config.py` (it validates and reports errors on
-exit 2):
+Otherwise forward the arguments to `kiro_config.py` (it validates each value and reports
+errors on exit 2). Pass each argument as its **own quoted argv token** — e.g.
+`python3 "$SK/kiro_config.py" set review model "gpt-5.6-sol"` — never splice the raw
+`$ARGUMENTS` string into the command line unquoted. `$ARGUMENTS` can contain shell
+metacharacters (`;`, `$(...)`, backticks, newlines); pasting it unquoted would let the
+shell re-interpret them **before** `kiro_config.py` ever validates the value. Split the
+user's request into the intended `set <section> <key> <value>` (or `show`) tokens
+yourself and quote each one:
 
 ```bash
-python3 "$SK/kiro_config.py" $ARGUMENTS
+# example — substitute the actual section/key/value the user asked for, each quoted:
+python3 "$SK/kiro_config.py" set review model "gpt-5.6-sol"
 ```
+
+If the request doesn't map cleanly to a known `set`/`show` form, ask the user to
+clarify rather than forwarding an unparsed string.
 
 Common examples:
 

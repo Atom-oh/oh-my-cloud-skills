@@ -84,8 +84,21 @@ def is_git_commit(cmd):
 #     may differ from the full staged diff kiro_review.py reviews
 #   -C <dir> pointing elsewhere              -> the real commit target may not even be
 #     this repo's staged diff
-_COMMIT_ARGS_RE = re.compile(r"\bcommit(?=$|[\s;&|\n])(?P<rest>[^\n;&|]*)")
-_WIDENS_SCOPE_RE = re.compile(r"(?:^|\s)(?:-a\b|--all\b|-p\b|--patch\b|--interactive\b)")
+# Capture the `git ... commit` invocation as (before-commit args, after-commit args), so
+# a `-C <dir>` that sits BEFORE the `commit` subcommand (`git -C /elsewhere commit`) is
+# seen too — looking only at post-`commit` argv would miss it.
+_COMMIT_ARGS_RE = re.compile(
+    r"\bgit\b(?P<before>(?:\s+(?:-C\s+\S+|-c\s+\S+|--\S+|--\S+\s+\S+))*)"
+    r"\s+commit(?=$|[\s;&|\n])(?P<rest>[^\n;&|]*)")
+# `-a`/`--all`/`-p`/`--interactive` widen scope to tracked-but-unstaged changes. Match
+# `-a` even inside a bundled short-flag cluster (`-am`, `-va`) — `-a\b` alone missed
+# those (the `\b` after `-a` fails when another flag letter follows). `[A-Za-z]*a` after
+# a single leading `-` (not `--`) catches the cluster without matching long flags.
+_WIDENS_SCOPE_RE = re.compile(
+    r"(?:^|\s)(?:-[A-Za-z]*a[A-Za-z]*\b|--all\b|-[A-Za-z]*p[A-Za-z]*\b|--patch\b|--interactive\b)")
+# A `-C <dir>` before `commit` redirects the commit to another repo, so `--staged` here
+# reviews the wrong tree.
+_PRE_C_RE = re.compile(r"(?:^|\s)-C\s+\S")
 # A bare trailing token that isn't a flag/flag-value is a pathspec. This is a coarse
 # heuristic (doesn't fully parse git's grammar), which is fine for an ADVISORY signal —
 # false negatives just mean no warning, never a wrong block (this hook never blocks).
@@ -97,7 +110,9 @@ def is_scope_mismatch(cmd):
     m = _COMMIT_ARGS_RE.search(detect)
     if not m:
         return False
-    rest = m.group("rest")
+    before, rest = m.group("before"), m.group("rest")
+    if _PRE_C_RE.search(before):
+        return True
     if _WIDENS_SCOPE_RE.search(rest):
         return True
     # Strip recognized value-taking flags and their values before pathspec-sniffing,
