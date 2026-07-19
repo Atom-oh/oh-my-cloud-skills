@@ -27,7 +27,7 @@ SHAPIPE() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum
 # Class-based, not filename-enumerated: anything plausibly executed during build/verify/
 # commit. Broad on purpose — a false positive costs one --allow-exec-surface approval,
 # a false negative is arbitrary code execution on the host.
-EXEC_SURFACE_RE='^(\.github/|\.husky/|\.git|\.ci/|ci/|scripts?/)|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|\.pre-commit-config\.ya?ml)$|\.(gradle|gradle\.kts)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
+EXEC_SURFACE_RE='(^|/)(\.github|\.husky|\.git[a-z]*|\.ci|ci|scripts?|tests?|hooks?)/|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|justfile|Justfile|Taskfile\.ya?ml|BUILD(\.bazel)?|WORKSPACE|Dockerfile[^/]*|\.envrc|sitecustomize\.py|\.gitattributes|\.gitmodules|\.pre-commit-config\.ya?ml|gulpfile\.[a-z]+|Gruntfile\.[a-z]+|\.eslintrc[^/]*|\.babelrc[^/]*)$|\.(gradle|gradle\.kts)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
 
 state() { # state <run> get KEY | state <run> set KEY VALUE
   local run=$1 op=$2 key=$3
@@ -83,6 +83,7 @@ cmd_setup() {
   : > "$run/state"
   state "$run" set HOST_ROOT "$host"; state "$run" set BASE_SHA "$base"; state "$run" set BASE_REF "$ref"
   state "$run" set WT_DIR "$wtd";    state "$run" set REF_DIR "$refd"
+  state "$run" set CANON_WT_DIR "$(realpath "$wtd")"; state "$run" set CANON_REF_DIR "$(realpath "$refd")"
   state "$run" set IMPL_WT "$wtd/wt"; state "$run" set REF_WT "$refd/wt"
   state "$run" set HOOKS_SNAP "$(hooks_snap "$host")"
   git -C "$host" -c core.hooksPath=/dev/null worktree add --detach "$wtd/wt" "$base" >/dev/null
@@ -111,8 +112,9 @@ cmd_approve() { # host has already copied+edited approved.patch from the latest 
   [ -f "$run/ok.captured" ] || die "capture stage missing"
   [ -s "$run/approved.patch" ] || die "approved.patch missing/empty — copy it from $(state "$run" get LATEST_FULL) and strip unplanned hunks first"
   grep -q '^diff --git' "$run/approved.patch" || die "approved.patch is not a git patch"
-  grep -qE '^new file mode 120000|^old mode|^new mode' "$run/approved.patch" \
-    && die "approved.patch contains symlink/mode-change hunks — always unplanned unless the user explicitly approved"
+  grep -qE '^(new file mode 120000|old mode|new mode)|^index [0-9a-f]+\.\.[0-9a-f]+ 120000' "$run/approved.patch" \
+    && die "approved.patch contains symlink/mode-change hunks (incl. existing-symlink target changes) — always unplanned unless the user explicitly approved"
+  state "$run" set APPROVED_SHA "$(SHAPIPE < "$run/approved.patch" | cut -d' ' -f1)"   # hash-bind: land/commit re-verify
   : > "$run/ok.approved"
 }
 
@@ -130,6 +132,7 @@ cmd_check_plan_paths() { # paths on stdin, one per line — pre-spawn gate
 cmd_land() {
   local run=$1 allow=${2:-} host f
   [ -f "$run/ok.approved" ] || die "approve stage missing"
+  [ "$(SHAPIPE < "$run/approved.patch" | cut -d' ' -f1)" = "$(state "$run" get APPROVED_SHA)" ] || die "approved.patch changed since approval"
   host=$(state "$run" get HOST_ROOT)
   [ "$(git -C "$host" rev-parse HEAD)" = "$(state "$run" get BASE_SHA)" ] || die "base moved"
   [ "$(git -C "$host" symbolic-ref -q HEAD || echo detached)" = "$(state "$run" get BASE_REF)" ] || die "branch switched"
@@ -147,8 +150,12 @@ cmd_land() {
   GITH "$run" apply --check "$run/approved.patch"
   GITH "$run" apply "$run/approved.patch"
   GITH "$run" add -N --pathspec-from-file="$run/landed.files"
+  while IFS= read -r f || [ -n "$f" ]; do          # a landed path must never BE a symlink on the host
+    [ ! -L "$host/$f" ] || die "landed path is a symlink on the host: $f"
+  done < "$run/landed.files"
   GITREF "$run" apply "$run/approved.patch"       # reference worktree tracks the approved state (rollback + equality baseline)
   GITREF "$run" add -N .
+  GITREF "$run" status --porcelain > "$run/ref.status.before"   # ref-side containment baseline (ref builds)
   : > "$run/ok.landed"
 }
 
@@ -164,8 +171,13 @@ _equality() { # _equality <run> <host.out> <ref.out>
 }
 
 cmd_verify() {
-  local run=$1 buildok=${3:?usage: verify <run> --build-ok 0|1 [--built-in host|ref]} builtin=${5:-host} changed bad
+  local run=$1 buildok=${3:?usage: verify <run> --build-ok 0|1 [--built-in host|ref]} builtin=host changed bad
   [ "$2" = "--build-ok" ] || die "usage: verify <run> --build-ok 0|1 [--built-in host|ref]"
+  case "$buildok" in 0|1) ;; *) die "--build-ok takes 0 or 1, got: $buildok";; esac
+  if [ -n "${4:-}" ]; then
+    [ "$4" = "--built-in" ] || die "unknown argument: $4"
+    case "${5:-}" in host|ref) builtin=$5 ;; *) die "--built-in takes host|ref, got: ${5:-<empty>}";; esac
+  fi
   [ -f "$run/ok.landed" ] || die "land stage missing"
   # A build on a dirty host tree can overwrite the user's pre-existing modified files
   # WITHOUT changing their porcelain status line — containment can't see that. So a
@@ -180,6 +192,11 @@ cmd_verify() {
     bad=$(printf '%s\n' "$changed" | sed 's/^[<>] ...//' | grep -vFxf "$run/landed.files" || true)
     [ -z "$bad" ] || die "build touched files outside the landed set: $(printf '%s ' "$bad")"
   fi
+  if [ "$builtin" = ref ]; then                    # ref build gets the same containment rule
+    GITREF "$run" status --porcelain > "$run/ref.status.after"
+    changed=$(diff "$run/ref.status.before" "$run/ref.status.after" | grep '^[<>]' || true)
+    [ -z "$changed" ] || die "reference-worktree build touched files beyond the approved state: $(printf '%s ' "$changed")"
+  fi
   _equality "$run" "$run/host.final.diff" "$run/ref.final.diff" || die "drift from approved delta"
   : > "$run/ok.build"
 }
@@ -191,6 +208,7 @@ cmd_commit() {
   [ "$(git -C "$host" rev-parse HEAD)" = "$(state "$run" get BASE_SHA)" ] || die "base moved since landing"
   [ "$(git -C "$host" symbolic-ref -q HEAD || echo detached)" = "$(state "$run" get BASE_REF)" ] || die "branch switched"
   [ "$(hooks_snap "$host")" = "$(state "$run" get HOOKS_SNAP)" ] || die "git hooks changed during the run"
+  [ "$(SHAPIPE < "$run/approved.patch" | cut -d' ' -f1)" = "$(state "$run" get APPROVED_SHA)" ] || die "approved.patch changed since approval"
   _equality "$run" "$run/host.final2.diff" "$run/ref.final2.diff" || die "landed files changed since verification"
   if git -C "$host" config core.hooksPath >/dev/null 2>&1; then
     # A configured hooksPath (husky-style) is PR-influenceable — but it may also be the
@@ -241,8 +259,10 @@ cmd_cleanup() {
   local run=$1 keep=${2:-} host wt refwt
   host=$(state "$run" get HOST_ROOT); wt=$(state "$run" get IMPL_WT); refwt=$(state "$run" get REF_WT)
   [ -n "$run" ] && [ -n "$wt" ] || die "state incomplete — refusing cleanup"
-  case "$(state "$run" get WT_DIR)" in "${TMPDIR:-/tmp}"/pr-autofix-wt.*) ;; *) die "WT_DIR outside expected temp prefix — state tampered; not removing";; esac
-  case "$(state "$run" get REF_DIR)" in "${TMPDIR:-/tmp}"/pr-autofix-ref.*) ;; *) die "REF_DIR outside expected temp prefix — state tampered; not removing";; esac
+  # Exact canonical-path equality, not glob (case '*' matches '/' and '..' — a tampered
+  # state value like prefix/../../home would pass a prefix glob):
+  [ "$(realpath -e "$(state "$run" get WT_DIR)" 2>/dev/null)" = "$(state "$run" get CANON_WT_DIR)" ] || die "WT_DIR does not match setup-recorded path — state tampered; not removing"
+  [ "$(realpath -e "$(state "$run" get REF_DIR)" 2>/dev/null)" = "$(state "$run" get CANON_REF_DIR)" ] || die "REF_DIR does not match setup-recorded path — state tampered; not removing"
   [ ! -L "$wt" ] || die "worktree is a symlink — implementer deviated; not removing"
   git -C "$host" worktree remove --force "$wt" 2>/dev/null || true
   git -C "$host" worktree remove --force "$refwt" 2>/dev/null || true

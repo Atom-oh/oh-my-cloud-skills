@@ -1,6 +1,6 @@
 ---
 name: pr-autofix-implementer
-description: "Do not select for user prompts under any keyword — internal stage that returns blocked unless its parent skill (project-init) supplies a prepared workspace path; useless and inert when invoked directly."
+description: "Do not select for user prompts under any keyword — internal stage that returns blocked unless its parent pr-autofix skill (project-init plugin) supplies a prepared workspace path; not functional when invoked directly."
 tools: Read, Write, Edit, Grep, Glob
 model: sonnet
 ---
