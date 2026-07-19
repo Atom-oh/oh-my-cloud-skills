@@ -172,7 +172,7 @@ Each presentation is a set of standalone HTML files with a shared framework:
 your-repo/
 ├── index.html                      # Hub page linking all presentations
 ├── common/                         # Shared framework (copied once)
-│   ├── theme.css                   # Dark theme, Pretendard font, 16:9 layout
+│   ├── theme.css                   # AWS light theme (squid-ink dark opt-in), Pretendard/Space Grotesk, 16:9
 │   ├── slide-framework.js          # Keyboard/touch nav, progress bar, hash routing
 │   ├── presenter-view.js           # Presenter view with draggable splitters
 │   ├── animation-utils.js          # Canvas primitives, AnimationLoop, easing
@@ -292,7 +292,7 @@ Before generating content, Claude asks 8 planning questions to tailor the presen
 | 3 | Blocks | 20-35 min per block with 5 min breaks between blocks | Auto-split based on duration |
 | 4 | Target repo | GitHub repo for deployment | `~/reactive_presentation/` |
 | 5 | Language | Korean or English (technical terms always in English) | Korean |
-| 6 | PPTX/PDF source | Corporate `.pptx`/`.pdf` for theme extraction or full conversion | None (dark theme) |
+| 6 | PPTX/PDF source | Corporate `.pptx`/`.pdf` for theme extraction or full conversion | None (AWS light theme; `theme: { mode: dark }` for squid-ink dark, `theme: { preset: paper }` for the legacy warm look) |
 | 7 | Speaker info | Name and affiliation for the cover slide (stored for reuse) | — |
 | 8 | Quiz inclusion | Whether to include quiz slides for knowledge checks | Yes |
 
@@ -326,7 +326,11 @@ No build step is required — the HTML files are served directly.
 
 ### PPTX theme extraction
 
-If you have a corporate PowerPoint template, provide the `.pptx` file and the agent extracts colors, fonts, and logos into CSS overrides — applying your brand to the dark theme framework automatically.
+If you have a corporate PowerPoint template, provide the `.pptx` file and the agent extracts colors, fonts, and logos into CSS overrides — the extracted brand always takes precedence over the built-in AWS light/dark themes.
+
+### PPTX export
+
+Built decks export to a screenshot-based `.pptx` (one full-bleed image per slide, speaker notes included) via the headless exporter — `python3 <skill>/scripts/export_pptx.py <built-dir>` — or the **Export PPTX** button on the generated `toc.html`. For an editable/native PowerPoint deck, use the `aws-light-fcd` skill instead.
 
 ---
 

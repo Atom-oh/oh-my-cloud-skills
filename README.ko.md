@@ -171,7 +171,7 @@ codex plugin marketplace remove oh-my-cloud-skills  # 등록 해제 (개별 제�
 your-repo/
 ├── index.html                      # 모든 프레젠테이션을 연결하는 허브 페이지
 ├── common/                         # 공유 프레임워크 (한 번만 복사)
-│   ├── theme.css                   # 다크 테마, Pretendard 폰트, 16:9 레이아웃
+│   ├── theme.css                   # AWS 라이트 테마(squid-ink 다크 옵트인), Pretendard/Space Grotesk, 16:9
 │   ├── slide-framework.js          # 키보드/터치 내비게이션, 진행 바, 해시 라우팅
 │   ├── presenter-view.js           # 드래그 가능한 스플리터가 있는 발표자 뷰
 │   ├── animation-utils.js          # Canvas 프리미티브, AnimationLoop, easing
@@ -291,7 +291,7 @@ code --install-extension tools/remarp-vscode/remarp-vscode-0.1.0.vsix
 | 3 | 블록 | 블록당 20-35분, 블록 사이 5분 휴식 | 시간 기반 자동 분할 |
 | 4 | 대상 저장소 | 배포용 GitHub 저장소 | `~/reactive_presentation/` |
 | 5 | 언어 | 한국어 또는 영어 (기술 용어는 항상 영어) | 한국어 |
-| 6 | PPTX/PDF 소스 | 기업 `.pptx`/`.pdf` 테마 추출 또는 전체 변환 | 없음 (다크 테마) |
+| 6 | PPTX/PDF 소스 | 기업 `.pptx`/`.pdf` 테마 추출 또는 전체 변환 | 없음 (AWS 라이트 테마; `theme: { mode: dark }`=squid-ink 다크, `theme: { preset: paper }`=구 웜 룩) |
 | 7 | 발표자 정보 | 커버 슬라이드용 이름 및 소속 (재사용을 위해 저장) | — |
 | 8 | 퀴즈 포함 여부 | 학습 확인을 위한 퀴즈 슬라이드 포함 여부 | 예 |
 
@@ -325,7 +325,11 @@ git push origin main
 
 ### PPTX 테마 추출
 
-기업 PowerPoint 템플릿이 있으면 `.pptx` 파일을 제공하세요. 에이전트가 색상, 폰트, 로고를 추출하여 CSS 오버라이드로 변환합니다. 다크 테마 프레임워크에 기업 브랜딩이 자동으로 적용됩니다.
+기업 PowerPoint 템플릿이 있으면 `.pptx` 파일을 제공하세요. 에이전트가 색상, 폰트, 로고를 추출하여 CSS 오버라이드로 변환합니다. 추출된 브랜드가 내장 AWS 라이트/다크 테마보다 항상 우선 적용됩니다.
+
+### PPTX 내보내기
+
+빌드된 덱은 headless 익스포터(`python3 <skill>/scripts/export_pptx.py <빌드-디렉터리>`) 또는 생성된 `toc.html`의 **Export PPTX** 버튼으로 스크린샷 기반 `.pptx`(슬라이드당 풀블리드 이미지 1장, 스피커 노트 포함)로 내보낼 수 있습니다. 편집 가능한 네이티브 PowerPoint가 필요하면 `aws-light-fcd` 스킬을 사용하세요.
 
 ---
 

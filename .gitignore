@@ -34,6 +34,8 @@ node_modules/
 # ...and the aws-light-fcd PPTX skill's bundled deck assets (backgrounds + AWS logo)
 !plugins/aws-content-plugin/skills/aws-light-fcd/assets/backgrounds/*.png
 !plugins/aws-content-plugin/skills/aws-light-fcd/assets/logo/*.png
+# ...and the brochure skill's golden-example product screenshots
+!plugins/aws-content-plugin/skills/brochure/assets/example-brochure/screenshots/*.png
 
 # Test fixtures with fake secrets (triggers GitHub Push Protection)
 tests/fixtures/secret-samples.txt

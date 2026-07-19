@@ -5,6 +5,7 @@ model: sonnet
 allowed-tools:
   - Read
   - Write
+  - Bash
 ---
 
 # Animated Diagram Skill
@@ -110,19 +111,17 @@ flowchart TD
 # Open animation in default browser
 open animation.html
 
-# Serve locally for development
-python3 -m http.server 8080
+# Serve locally for development (bind to loopback + the output dir, not all interfaces)
+python3 -m http.server 8080 --bind 127.0.0.1 --directory "<output-dir>"
 # Then visit http://localhost:8080/animation.html
 ```
 
-## Quality Review (필수 — 생략 불가)
+## Quality Review (배포/완료 선언 전 필수)
 
-콘텐츠 완성 후 배포/완료 선언 전에 반드시:
+대상은 신규 애니메이션 다이어그램과 실질 개정 — 오탈자·한 줄 수정 같은 사소한 손질은 재리뷰 없이 반영.
 1. content-review-agent 호출 → `review content at [파일경로]`
 2. FAIL/REVIEW 판정 시 수정 후 재리뷰 (최대 3회)
-3. PASS (≥85점) 획득 후에만 완료 선언
-
-> ⚠️ 이 단계를 건너뛰고 완료를 선언하는 것은 금지됩니다.
+3. 해당 스케일 기준 PASS 판정 획득 후에만 완료 선언 (100점 만점: ≥85 / 비-HTML 90점 환산: ≥77 — content-review-agent의 Verdict 표 참조)
 
 ## Diagram Types
 

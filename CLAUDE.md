@@ -117,6 +117,12 @@ Each `SKILL.md` has frontmatter with `name`, `description`, and `triggers` (keyw
 - `awsdocs` (stdio/uvx) — Official AWS documentation search
 - `awsapi` (stdio/uvx) — Direct AWS API calls
 
+`aws-content-plugin` bundles 1 MCP server:
+- `playwright` (stdio/npx `@playwright/mcp@0.0.78`, version-pinned) — browser automation for content-review-agent's
+  Visual Testing, brochure-agent's product-screenshot capture, and reactive-presentation-agent;
+  those three agents opt in via frontmatter `mcpServers: [playwright]` (an explicit `tools:`
+  allowlist alone doesn't inherit session MCP tools)
+
 The remaining 3 servers are provided by the `deploy-on-aws` plugin (available when both plugins are loaded):
 - `awsknowledge` (HTTP) — Architecture recommendations
 - `awspricing` (stdio/uvx) — Pricing data
@@ -323,7 +329,8 @@ Content:   presentation-agent (dispatcher) → reactive-presentation-agent → c
                                           → aws-light-fcd skill (native .pptx) → QA render → embed_fonts.py
            Remarp HTML ↔ .remarp.md (bidirectional visual editing via VSCode extension)
            PPTX theme:  .pptx → extract_pptx_theme.py → theme-manifest.json + theme-override.css
-           PPTX export: index.html → html2canvas iframe capture → PptxGenJS → .pptx download
+           PPTX export: export_pptx.py (headless Playwright capture + python-pptx, speaker notes 포함) → .pptx
+                        (브라우저 폴백: toc.html Export PPTX 버튼 → html2canvas + PptxGenJS)
            PPTX native: aws-light-fcd → deck_kit.js/arch_kit.js (PptxGenJS) → kit.icon() shares reactive-presentation 811-icon lib
            architecture-diagram-agent → layout_aws.py (YAML spec → .drawio, standard patterns) → validate+lint → PNG
                                        → hand-authored .drawio (non-standard shapes) → PNG

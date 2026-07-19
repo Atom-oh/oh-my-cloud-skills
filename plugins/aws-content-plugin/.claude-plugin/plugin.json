@@ -27,6 +27,17 @@
     "./skills/gh-home",
     "./skills/aws-light-fcd"
   ],
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@0.0.78"
+      ],
+      "type": "stdio",
+      "timeout": 120000
+    }
+  },
   "hooks": {
     "PostToolUse": [
       {

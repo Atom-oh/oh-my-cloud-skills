@@ -24,7 +24,7 @@ The **kiro** plugin is a cost-savings delegation workflow, distinct from co-agen
 ## Architectural boundaries
 - Each plugin: `.claude-plugin/plugin.json` (manifest: `agents[]`, `skills[]`, `commands[]`, `hooks`, `mcpServers`) + `.codex-plugin/plugin.json` (Codex interface manifest) + `CLAUDE.md` (routing) + `agents/*.md` + `skills/<name>/{SKILL.md,references/,scripts/}`.
 - **Every path in plugin.json must resolve to a real file** (test-plugins.py / test-codex-plugins.py enforce).
-- Content plugin → artifacts (HTML/.drawio/.md/.pptx) → **content-review-agent quality gate (≥85)** before "done". Native PPTX is the `aws-light-fcd` skill (PptxGenJS); it references `reactive-presentation`'s 811-icon library in place via `kit.icon()` — don't duplicate icon assets.
+- Content plugin → artifacts (HTML/.drawio/.md/.pptx) → **content-review-agent quality gate (≥85)** before "done". Native (editable) PPTX is the `aws-light-fcd` skill (PptxGenJS); `reactive-presentation` additionally exports built web decks to screenshot-based PPTX (`scripts/export_pptx.py`, headless Playwright + python-pptx). `aws-light-fcd` references `reactive-presentation`'s 811-icon library in place via `kit.icon()` — don't duplicate icon assets.
 - Ops plugin → diagnoses (commands-first runbooks). co-agent → chairs a multi-AI panel (Kiro/Codex/Antigravity — `agy`; no Gemini CLI support, removed per ADR-010), the host synthesizes (Codex chairs when `CO_AGENT_HOST=codex`).
 - A single shared **version** across all `plugin.json` (both `.claude-plugin` and `.codex-plugin`) + both marketplaces + git tag `v{version}` — they must match.
 

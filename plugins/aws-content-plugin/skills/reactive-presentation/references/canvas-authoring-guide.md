@@ -3,7 +3,13 @@
 > **MANDATORY**: read this before writing any `:::canvas` block. The grammar is
 > strict (variants silently fail to parse) and the coordinate formula is required —
 > LLM spatial reasoning is weak, so place boxes by formula, not by "imagination".
-> The `validate` command (rejection loop) backstops overlaps (`CANVAS_OVERLAP`).
+> The `validate` command (rejection loop) backstops overlaps (`CANVAS_OVERLAP`)
+> and unknown icon names (`UNKNOWN_ICON` — bare service names must be
+> ICON_NAME_MAP aliases like `EKS`, or pass an explicit file path).
+>
+> **테마 제약**: canvas 색상(`Colors`)은 덱 루트 테마 기준으로 해석된다.
+> 덱 테마와 다른 `@theme` 슬라이드(예: 라이트 덱 안의 `@theme: dark`)에는
+> canvas를 두지 말 것 — 대비가 깨진다.
 
 ## Canvas DSL 문법 (필수 준수)
 
