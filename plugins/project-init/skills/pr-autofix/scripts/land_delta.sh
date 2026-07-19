@@ -28,7 +28,7 @@ SHAPIPE() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum
 # Class-based, not filename-enumerated: anything plausibly executed during build/verify/
 # commit. Broad on purpose — a false positive costs one --allow-exec-surface approval,
 # a false negative is arbitrary code execution on the host.
-EXEC_SURFACE_RE='(^|/)(\.github|\.husky|\.git[a-z]*|\.ci|ci|\.circleci|bin|scripts?|tests?|hooks?)/|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|justfile|Justfile|Taskfile\.ya?ml|\.gitlab-ci\.ya?ml|Jenkinsfile[^/]*|azure-pipelines\.ya?ml|bitbucket-pipelines\.ya?ml|gradlew(\.bat)?|mvnw(\.cmd)?|configure|autogen\.sh|BUILD(\.bazel)?|WORKSPACE|Dockerfile[^/]*|\.envrc|sitecustomize\.py|\.gitattributes|\.gitmodules|\.pre-commit-config\.ya?ml|gulpfile\.[a-z]+|Gruntfile\.[a-z]+|\.eslintrc[^/]*|\.babelrc[^/]*|composer\.json|meson\.build|SConstruct|SConscript)$|\.(gradle|gradle\.kts|sh|bash|zsh|ps1|psm1)$|(^|/)\.[a-z0-9_-]+rc\.(js|cjs|mjs|ts)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
+EXEC_SURFACE_RE='(^|/)(\.github|\.husky|\.git[a-z]*|\.ci|ci|\.circleci|bin|scripts?|tests?|hooks?)/|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|justfile|Justfile|Taskfile\.ya?ml|\.gitlab-ci\.ya?ml|Jenkinsfile[^/]*|azure-pipelines\.ya?ml|bitbucket-pipelines\.ya?ml|gradlew(\.bat)?|mvnw(\.cmd)?|configure|autogen\.sh|BUILD(\.bazel)?|WORKSPACE|Dockerfile[^/]*|\.envrc|sitecustomize\.py|\.gitattributes|\.gitmodules|\.pre-commit-config\.ya?ml|\.?lefthook(-local)?\.ya?ml|\.huskyrc[^/]*|gulpfile\.[a-z]+|Gruntfile\.[a-z]+|\.eslintrc[^/]*|\.babelrc[^/]*|composer\.json|meson\.build|SConstruct|SConscript)$|\.(gradle|gradle\.kts|sh|bash|zsh|ps1|psm1)$|(^|/)\.[a-z0-9_-]+rc\.(js|cjs|mjs|ts)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
 
 state() { # state <run> get KEY | state <run> set KEY VALUE
   local run=$1 op=$2 key=$3
@@ -45,6 +45,17 @@ _state_sig() { # recompute the setup signature from CURRENT state values — any
     "$(state "$run" get CANON_WT_DIR)" "$(state "$run" get CANON_REF_DIR)" \
     "$(state "$run" get HOST_ROOT)" "$(state "$run" get IMPL_WT)" \
     "$(state "$run" get REF_WT)" "$(state "$run" get BASE_SHA)" | SHAPIPE | cut -d' ' -f1
+}
+
+dirty_snap() { # content hash of every dirty/untracked file — the porcelain STRING comparison
+               # is blind to an implementer overwriting an ALREADY-dirty user file (same 'M'
+               # line); this tripwire hashes what the user actually had
+  local host=$1 f
+  git -C "$host" --literal-pathspecs status --porcelain -z 2>/dev/null \
+    | while IFS= read -r -d '' rec; do
+        f=${rec:3}
+        [ -f "$host/$f" ] && { printf '%s\x01' "$f"; cat "$host/$f" 2>/dev/null || true; printf '\x02'; } || printf '%s\x01absent\x02' "$f"
+      done | SHAPIPE | cut -d' ' -f1
 }
 
 config_snap() { # a planted core.sshCommand/credential.helper would execute at push — and it
@@ -116,6 +127,7 @@ cmd_setup() {
   state "$run" set IMPL_WT "$wtd/wt"; state "$run" set REF_WT "$refd/wt"
   state "$run" set HOOKS_SNAP "$(hooks_snap "$host")"
   state "$run" set CONFIG_SNAP "$(config_snap "$host")"
+  state "$run" set DIRTY_SNAP "$(dirty_snap "$host")"
   SIG=$(printf '%s|%s|%s|%s|%s|%s|%s|%s' "$wtd" "$refd" "$(_canon "$wtd")" "$(_canon "$refd")" "$host" "$wtd/wt" "$refd/wt" "$base" | SHAPIPE | cut -d' ' -f1)
   state "$run" set SETUP_SIG "$SIG"
   git -C "$host" --literal-pathspecs status --porcelain > "$run/host.status.setup"
@@ -135,6 +147,7 @@ cmd_capture() { # capture <run> --sig <setup-sig>
   [ -f "$run/ok.setup" ] || die "setup stage missing"
   gitwt_verify "$run"; symlink_scan "$(state "$run" get IMPL_WT)"
   [ "$(config_snap "$(state "$run" get HOST_ROOT)")" = "$(state "$run" get CONFIG_SNAP)" ] || die "shared git config changed during implementation"
+  [ "$(dirty_snap "$(state "$run" get HOST_ROOT)")" = "$(state "$run" get DIRTY_SNAP)" ] || die "the user's uncommitted files changed during implementation (out-of-worktree write?) — inspect before proceeding"
   GITH "$run" status --porcelain > "$run/host.status.capture"
   diff -q "$run/host.status.setup" "$run/host.status.capture" >/dev/null \
     || die "host tree changed during implementation (out-of-worktree writes or concurrent edits) — inspect before proceeding"
@@ -177,12 +190,17 @@ cmd_approve() { # host has already copied+edited approved.patch from the latest 
   [ -s "$run/approved.patch" ] || die "approved.patch missing/empty — copy it from $(state "$run" get LATEST_FULL) and strip unplanned hunks first"
   grep -q '^diff --git' "$run/approved.patch" || die "approved.patch is not a git patch"
   grep -qE '^(new file mode 1[02]0[07][0-9][0-9]|old mode|new mode)|^index [0-9a-f]+\.\.[0-9a-f]+ 120000' "$run/approved.patch" \
-    && die "approved.patch contains symlink/executable/mode-change hunks (incl. existing-symlink target changes and new +x files) — always unplanned unless the user explicitly approved"
+    && die "approved.patch contains symlink/executable/mode-change hunks (incl. existing-symlink target changes and new +x files) — this pipeline has no approval path for them; apply such changes manually outside the loop"
   # Subset check — every approved hunk must exist verbatim in the latest generation
   # (stripping whole hunks is allowed; editing or adding hunks is not):
   _hunk_hashes "$run/approved.patch" | sort > "$run/approved.hunks"
   MANIFEST="$run/$(state "$run" get LATEST_FULL | sed 's/\.patch$/.hunks/')"
   [ -z "$(comm -23 "$run/approved.hunks" "$MANIFEST")" ] || die "approved.patch contains hunks not present in the latest capture generation"
+  if [ -f "$run/plan.files" ]; then   # plan conformance — approved files must be planned files
+    GITH "$run" apply --numstat "$run/approved.patch" | cut -f3- | sort -u > "$run/approved.files.tmp"
+    EXTRA=$(comm -23 "$run/approved.files.tmp" "$run/plan.files"); rm -f "$run/approved.files.tmp"
+    [ -z "$EXTRA" ] || die "approved.patch touches files the plan never named: $EXTRA"
+  fi
   _opaque_chunks "$run/approved.patch" | sort > "$run/approved.opaque"
   OPAQUE="$run/$(state "$run" get LATEST_FULL | sed 's/\.patch$/.opaque/')"
   [ -z "$(comm -23 "$run/approved.opaque" "$OPAQUE")" ] || die "approved.patch contains binary/meta-only file sections not present verbatim in the latest capture"
@@ -202,8 +220,10 @@ cmd_check_plan_paths() { # paths on stdin, one per line — pre-spawn gate
       //*) die "plan path is absolute: $p" ;;
       */../*) die "plan path traverses: $p" ;;   # component-anchored — schema..v2.json is fine
     esac
+    printf '%s\n' "$p" >> "$run/plan.files.tmp"
   done
   [ "$n" -gt 0 ] || die "no plan paths on stdin — fail closed"
+  sort -u "$run/plan.files.tmp" > "$run/plan.files"; rm -f "$run/plan.files.tmp"
   echo ok
 }
 
@@ -273,13 +293,13 @@ cmd_verify() {
     case "${5:-}" in host|ref) builtin=$5 ;; *) die "--built-in takes host|ref, got: ${5:-<empty>}";; esac
   fi
   [ -f "$run/ok.landed" ] || die "land stage missing"
+  [ "$buildok" = 1 ] || die "build failed — run rollback"
   # A build on a dirty host tree can overwrite the user's pre-existing modified files
   # WITHOUT changing their porcelain status line — containment can't see that. So a
   # dirty tree (beyond the landed set) mandates building in the reference worktree:
   if [ "$builtin" = host ] && sed 's/^...//' "$run/host.status.before" | grep -vFxf "$run/landed.files" | grep -q .; then
     die "host tree has unrelated local changes — build in the reference worktree and pass --built-in ref"
   fi
-  [ "$buildok" = 1 ] || die "build failed — run rollback"
   GITH "$run" status --porcelain > "$run/host.status.after"
   changed=$(diff "$run/host.status.before" "$run/host.status.after" | grep '^[<>]' || true)
   if [ -n "$changed" ]; then
@@ -356,6 +376,7 @@ cmd_rollback() { # rollback <run> --sig <setup-sig> — destructive; same trust 
       GITH "$run" checkout "$base" -- "$f" || die "restore failed: $f"
     else
       GITH "$run" rm -q --cached -- "$f" 2>/dev/null || true
+      [ ! -L "$host/$f" ] || { echo "SKIP (path became a symlink — left untouched): $f"; failed=1; continue; }
       rm -f -- "$host/$f" || die "delete failed: $f"
     fi
   done < "$run/landed.files"
