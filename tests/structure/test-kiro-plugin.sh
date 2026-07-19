@@ -88,7 +88,9 @@ print('STALE_INDEX_OK' if ok2 else 'STALE_INDEX_FAIL')
 assert_contains "$SM_OUT" "SCOPE_MISMATCH_OK" "hook_match.py's scope-mismatch detects -a/-am/--all/pathspec and a preceding -C, not a plain '-m' commit, --amend, -c config, or --fixup/-C refs"
 assert_contains "$SM_OUT" "STALE_INDEX_OK" "hook_match.py's stale-index detects a preceding git add/rm/mv/stash in the same invocation"
 
-# --- pre-commit-review.sh end-to-end: scope-mismatch warning fires when review is on ---
+# --- pre-commit-review.sh end-to-end: a scope-mismatch commit SKIPS the review
+#     (fail-open) instead of judging the wrong diff — its exit 2 could otherwise block
+#     an unrelated commit, and a PASS would falsely imply the real content was reviewed ---
 RH=$(mktemp -d "${TMPDIR:-/tmp}/kiro-hook-e2e.XXXXXX")
 git -C "$RH" init -q
 git -C "$RH" config user.email t@t.t; git -C "$RH" config user.name t
@@ -98,8 +100,13 @@ python3 -c "import json; json.dump({'review': {'on_commit': True}}, open('$RH/.c
 HOOK_OUT=$(cd "$RH" && CLAUDE_PLUGIN_ROOT="$OLDPWD/plugins/kiro" bash -c '
   echo "{\"tool_input\":{\"command\":\"git commit -a -m test\"}}" | bash "$CLAUDE_PLUGIN_ROOT/hooks/pre-commit-review.sh"
 ' 2>&1) && HOOK_RC=0 || HOOK_RC=$?
-assert_eq "0" "$HOOK_RC" "hook stays fail-open (exit 0) even with the scope-mismatch warning"
-assert_contains "$HOOK_OUT" "may cover more than staged changes" "hook prints the scope-mismatch warning for a -a commit when review is enabled"
+assert_eq "0" "$HOOK_RC" "hook fail-opens (exit 0) on a scope-mismatch commit"
+assert_contains "$HOOK_OUT" "SKIPPED" "hook SKIPS (not just warns) when the reviewed diff would differ from the committed one"
+HOOK_OUT2=$(cd "$RH" && CLAUDE_PLUGIN_ROOT="$OLDPWD/plugins/kiro" bash -c '
+  echo "{\"tool_input\":{\"command\":\"git add x && git commit -m test\"}}" | bash "$CLAUDE_PLUGIN_ROOT/hooks/pre-commit-review.sh"
+' 2>&1) && HOOK_RC2=0 || HOOK_RC2=$?
+assert_eq "0" "$HOOK_RC2" "hook fail-opens (exit 0) on a stale-index commit"
+assert_contains "$HOOK_OUT2" "SKIPPED" "hook SKIPS on a stale-index (add && commit) invocation"
 rm -rf "$RH"
 
 for f in "$CFG" "$REVIEW" "$SETUP" "$WT" "$SG" "$PP"; do

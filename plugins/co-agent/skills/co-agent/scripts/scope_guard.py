@@ -58,15 +58,20 @@ def main():
         print(f"❌ cannot read plan {plan}: {e}", file=sys.stderr)
         return 2
 
-    if "--list" in args:
-        print("\n".join(allowed))
-        return 0
-
     # Only `--plan <value>` is a real option here; every other arg is a candidate path.
     # A candidate that itself starts with `--` (e.g. a file literally named "--foo.py",
     # or an option-lookalike) must be REJECTED as out-of-scope, not silently dropped from
     # the checked set — dropping it would let such a path bypass the gate entirely.
     rest = [a for a in args if a != "--plan" and a != plan]
+
+    # `--list` is list-mode ONLY when it's the sole remaining argument. A bare
+    # `"--list" in args` checked before candidate validation let a candidate path
+    # literally named "--list" flip the whole invocation into list mode and exit 0 —
+    # skipping the scope check for EVERY other candidate in the same call (a real gate
+    # bypass, not just an odd filename: exit 0 is read as "all in scope").
+    if rest == ["--list"]:
+        print("\n".join(allowed))
+        return 0
     dashed = [a for a in rest if a.startswith("--")]
     paths = [a for a in rest if not a.startswith("--")]
     if not paths and not dashed:

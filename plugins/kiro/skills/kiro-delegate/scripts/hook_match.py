@@ -46,11 +46,14 @@ def _blank_quotes(cmd):
 #   - `env `/`VAR=val ` prefixes
 #   - a `command ` builtin prefix (bypasses a shell function/alias named `git`)
 #   - an absolute/relative path to the git binary (`/usr/bin/git`, `./git`)
-#   - global git flags between `git` and `commit` (`-C <dir>`, `-c key=val`, `--no-pager`, …)
+#   - global git flags between `git` and `commit`: `-C <dir>`, `-c key=val`,
+#     `--flag=value`, AND separate-value long options (`--git-dir foo`,
+#     `--work-tree foo`, `--namespace foo` — without the value alternative, a
+#     `git --git-dir foo commit` silently failed to match and the hook no-op'd)
 _GIT_COMMIT_RE = re.compile(
     r"(?:^|[\n;&|])\s*(?:env\s+)?(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*(?:command\s+)?"
     r"(?:\S*/)?git\b"
-    r"(?:\s+(?:-C\s+\S+|-c\s+\S+|--\S+))*"
+    r"(?:\s+(?:-C\s+\S+|-c\s+\S+|--[A-Za-z-]+=\S+|--[A-Za-z-]+(?:\s+(?!commit(?:$|[\s;&|]))\S+)?))*"
     # \b alone lets `commit` match as a PREFIX of `commit-tree`/`commit-graph` (neither
     # is the commit-creating subcommand this hook targets) — require the char after
     # "commit" to be whitespace/end/a shell separator, not a hyphen continuing the word.

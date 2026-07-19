@@ -231,9 +231,15 @@ def main():
     staged = "--staged" in argv
     if staged:
         argv.remove("--staged")
+    # Everything after a `--` separator is a PATH, verbatim — even one that starts with
+    # "--" (a file literally named "--notes.md"). A blanket startswith("--") filter over
+    # the whole argv silently dropped such a path, making the review fall back to the
+    # full staged diff instead of the file the user named.
     if "--" in argv:
-        argv.remove("--")
-    paths = [a for a in argv if not a.startswith("--")]
+        sep = argv.index("--")
+        paths = [a for a in argv[:sep] if not a.startswith("--")] + argv[sep + 1:]
+    else:
+        paths = [a for a in argv if not a.startswith("--")]
 
     cfg = kc.effective(root)
 

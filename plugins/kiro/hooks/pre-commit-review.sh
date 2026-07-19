@@ -42,23 +42,28 @@ if ! python3 "$SK/kiro_config.py" review-on-commit --root "$ROOT" >/dev/null 2>&
   exit 0
 fi
 
-# Advisory-only: `--staged` always reviews staged changes, but `-a`/`--all`, an explicit
-# pathspec, or `-C <dir>` on the actual commit invocation mean the diff that gets
-# COMMITTED can differ from what was reviewed. This never blocks — it just tells the
-# user the review they're about to see may not cover everything the commit will do.
+# SKIP (fail-open), don't just warn, when the reviewed diff would not match what this
+# invocation actually commits — reviewing the WRONG diff isn't merely incomplete, its
+# exit 2 could BLOCK a commit based on unrelated staged content (e.g. `git -C ../other
+# commit` gated on THIS repo's staged diff), and a PASS would falsely imply the real
+# commit content was reviewed. Two mismatch classes:
+#   scope-mismatch — `-a`/`--all`, an explicit pathspec, or `-C <dir>`: the commit
+#     covers more/other content than `git diff --cached` here shows.
+#   stale-index    — `git add/rm/mv/stash && git commit ...`: the index mutation runs
+#     AFTER this PreToolUse hook, so the staged diff below predates it.
 if python3 "$SK/hook_match.py" scope-mismatch < "$PAYLOAD_FILE"; then
-  echo "⚠️  kiro review: this commit invocation may cover more than staged changes" \
-       "(-a/--all, a pathspec, or -C elsewhere) — the review below only covers" \
-       "'git diff --cached', which may differ from what actually gets committed." >&2
+  echo "⚠️  kiro review SKIPPED (fail-open): this commit invocation may cover more than" \
+       "staged changes (-a/--all, a pathspec, or -C elsewhere), so reviewing" \
+       "'git diff --cached' here would judge a DIFFERENT diff than what gets committed" \
+       "— and could wrongly block it. Run /kiro:review on the right scope if needed." >&2
+  exit 0
 fi
-
-# Advisory-only: `git add X && git commit ...` runs the add AFTER this PreToolUse hook,
-# so the staged diff reviewed below is the PRE-add index — new stagings are unreviewed
-# and stale staged leftovers may be reviewed instead. Warn; never block.
 if python3 "$SK/hook_match.py" stale-index < "$PAYLOAD_FILE"; then
-  echo "⚠️  kiro review: an index-mutating git command (add/rm/mv/stash) precedes this" \
-       "commit in the same invocation and runs AFTER this hook — the staged diff" \
-       "reviewed below predates it and may not match what actually gets committed." >&2
+  echo "⚠️  kiro review SKIPPED (fail-open): an index-mutating git command (add/rm/mv/" \
+       "stash) precedes this commit in the same invocation and runs AFTER this hook —" \
+       "the staged diff available now predates it. Stage first, then commit in a" \
+       "separate command to get a pre-commit review, or run /kiro:review afterwards." >&2
+  exit 0
 fi
 
 python3 "$SK/kiro_review.py" --staged --root "$ROOT" 1>&2

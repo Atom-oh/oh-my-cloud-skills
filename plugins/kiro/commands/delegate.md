@@ -20,22 +20,26 @@ Invoke `kiro-delegate-agent` to run the full pipeline for this request:
 4. **Commit** (host only) + tick off `tasks.md` + report the delegation rate (tasks Kiro
    finished vs. tasks Claude took over).
 
-Before starting:
+Before starting (let `ROOT="$(git rev-parse --show-toplevel)"` — every root-sensitive
+call below passes `--root "$ROOT"`, same rule as configure/setup/review: these scripts
+default their root to the cwd, and a subdirectory invocation without `--root` would
+read/write `.kiro/agents/` and the config from the wrong place):
 
 1. If `python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_setup.py" probe`
    does not report `READY`, tell the user to run `/kiro:setup` first — don't attempt the
    worktree/implement steps against an unusable CLI.
 2. **Require a plugin-generated `.kiro/agents/kiro-implementer.json` before implementing
    anything** — run
-   `python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_setup.py" verify-agents`:
-   - exit 2 (missing): run `... kiro_setup.py write-agents` first (what `/kiro:setup`
-     does). Without the file, the implementer falls back to an ad-hoc
+   `python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_setup.py" verify-agents --root "$ROOT"`:
+   - exit 2 (missing): run `... kiro_setup.py write-agents --root "$ROOT"` first (what
+     `/kiro:setup` does). Without the file, the implementer falls back to an ad-hoc
      `--trust-tools=fs_read,fs_write` invocation with NO `preToolUse` write-guard (the
      custom agent file carries that hook — `references/kiro-headless.md` → "Trust
      boundary" step 6). Never fall through to that.
    - exit 1 (tampered / hand-edited): do NOT run it — the pipeline copies it into a
      worktree and runs its `preToolUse.runCommand` hook (a host command). Regenerate
-     with `... kiro_setup.py write-agents --force`, or ask the user, before delegating.
+     with `... kiro_setup.py write-agents --force --root "$ROOT"`, or ask the user,
+     before delegating.
    - exit 0: proceed.
 3. **Require a clean tree on the plan's declared file set before implementing anything**
    (`git status --porcelain -- <files>`). If Kiro's fix loop is later exhausted for a

@@ -34,8 +34,12 @@ def parse(text):
         body = text[start:end]
         files = []
         for fm in FILE_RE.finditer(body):
-            # a Files entry may carry a line range like path:123-145 — keep just the path
-            files.append(fm.group(1).split(":")[0].strip())
+            # a Files entry may carry a line range like path:123-145 — strip ONLY a
+            # trailing :N or :N-M suffix, never split on every colon: a blanket
+            # split(":")[0] truncated any path that legitimately contains a colon
+            # (e.g. "docs/a:b.md" → "docs/a"), silently shrinking the allowed set and
+            # making scope_guard reject the real file.
+            files.append(re.sub(r":\d+(?:-\d+)?$", "", fm.group(1)).strip())
         tasks.append({
             "n": int(m.group(1)),
             "title": m.group(2).strip(),

@@ -23,8 +23,9 @@ on would otherwise never actually route anything — the toggle would be dead. S
 `CLAUDE.md` is loaded into context on every turn (unlike the agent/skill files, which are
 only read after routing already happened), it is the one place that can make the toggle
 real: **before starting any non-trivial implementation task, check**
-`python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_config.py" default-delegate`
-(exit 0 = on). If it's on, route the request through `kiro-delegate-agent` /
+`python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_config.py" default-delegate --root "$(git rev-parse --show-toplevel)"`
+(exit 0 = on; `--root` because the config lives at the repo root and the script defaults
+its root to the cwd). If it's on, route the request through `kiro-delegate-agent` /
 `/kiro:delegate` even without a Kiro-specific trigger phrase — falling back to
 implementing it directly per the agent's own fallback rule whenever Kiro is unavailable
 or exhausts its fix loop. If it's off (the default), only route on an explicit

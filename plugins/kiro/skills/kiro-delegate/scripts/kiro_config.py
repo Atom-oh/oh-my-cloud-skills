@@ -75,6 +75,19 @@ def deep_merge(base, over):
     return out
 
 
+def _as_bool(v, default=False):
+    """Coerce a config toggle to bool. `set` writes real booleans, but a hand-edited
+    file can hold the STRING "false"/"off" — which is truthy in Python, so a bare
+    `if cfg.get("default_delegate")` would treat "false" as ON (deceptive: `show`
+    renders it looking like false). Only bool True / the literal true-strings count as
+    on; anything else (incl. "false", "off", 0, None, garbage) is the default."""
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, str):
+        return v.strip().lower() in ("true", "on", "1", "yes")
+    return default
+
+
 def effective(root):
     cfg = load_defaults()
     lp = local_path(root)
@@ -103,10 +116,10 @@ def cmd_show(root):
     source = "defaults" + (f" + local:{lp}" if os.path.isfile(lp) else " (no local override)")
     d, r = cfg.get("delegate", {}), cfg.get("review", {})
     print(f"kiro plugin config  (source: {source})")
-    print(f"  default_delegate {cfg.get('default_delegate', False)}")
+    print(f"  default_delegate {_as_bool(cfg.get('default_delegate'))}")
     print(f"  delegate: model {d.get('model') or '(default)'} · parallel_tasks {d.get('parallel_tasks', 3)} "
           f"· max_fix_rounds {d.get('max_fix_rounds', 2)} · timeout {d.get('timeout', 240)}s")
-    print(f"  review:   on_commit {r.get('on_commit', False)} · model {r.get('model') or '(default)'} "
+    print(f"  review:   on_commit {_as_bool(r.get('on_commit'))} · model {r.get('model') or '(default)'} "
           f"· timeout {r.get('timeout', 120)}s · block {r.get('block', 'critical')}")
     return 0
 
@@ -238,9 +251,9 @@ def main():
     if cmd == "set":
         return cmd_set(root, rest)
     if cmd == "default-delegate":
-        return 0 if effective(root).get("default_delegate") else 1
+        return 0 if _as_bool(effective(root).get("default_delegate")) else 1
     if cmd == "review-on-commit":
-        return 0 if effective(root).get("review", {}).get("on_commit", False) else 1
+        return 0 if _as_bool(effective(root).get("review", {}).get("on_commit")) else 1
     if cmd == "delegate-model":
         cfg = effective(root)
         print(cfg.get("delegate", {}).get("model") or "")
