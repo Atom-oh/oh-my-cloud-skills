@@ -21,6 +21,12 @@ set -euo pipefail
 
 die() { echo "STOP: $*" >&2; exit 1; }
 _canon() { (cd "$1" 2>/dev/null && pwd -P); }   # portable dir canonicalization (realpath -e is GNU-only)
+_verify_self() { # $1 = script sha the HOST recorded in its notes at 4b — a tampered script
+                 # computes valid-looking signatures for everything else, so every
+                 # destructive/final stage re-verifies itself against the host-held value
+  [ -n "${1:-}" ] || die "missing --script-sha (value the host recorded at setup)"
+  [ "$(SHAPIPE < "$0" | cut -d' ' -f1)" = "$1" ] || die "land_delta.sh does not match the setup-recorded hash — script tampered"
+}
 SHAPIPE() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; }
 
 # Execution-surface denylist: files the host executes during build/commit. Edits to these
@@ -29,7 +35,7 @@ SHAPIPE() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum
 # Class-based, not filename-enumerated: anything plausibly executed during build/verify/
 # commit. Broad on purpose — a false positive costs one --allow-exec-surface approval,
 # a false negative is arbitrary code execution on the host.
-EXEC_SURFACE_RE='(^|/)(\.github|\.husky|\.git[a-z]*|\.ci|ci|\.circleci|bin|scripts?|tests?|hooks?)/|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|justfile|Justfile|Taskfile\.ya?ml|\.gitlab-ci\.ya?ml|Jenkinsfile[^/]*|azure-pipelines\.ya?ml|bitbucket-pipelines\.ya?ml|gradlew(\.bat)?|mvnw(\.cmd)?|configure|autogen\.sh|BUILD(\.bazel)?|WORKSPACE|Dockerfile[^/]*|\.envrc|sitecustomize\.py|\.gitattributes|\.gitmodules|\.pre-commit-config\.ya?ml|\.?lefthook(-local)?\.ya?ml|\.huskyrc[^/]*|gulpfile\.[a-z]+|Gruntfile\.[a-z]+|\.eslintrc[^/]*|\.babelrc[^/]*|composer\.json|meson\.build|SConstruct|SConscript|docker-compose[^/]*\.ya?ml|compose\.ya?ml|\.mcp\.json)$|(^|/)\.claude/settings[^/]*\.json$|\.(gradle|gradle\.kts|sh|bash|zsh|ps1|psm1)$|(^|/)\.[a-z0-9_-]+rc\.(js|cjs|mjs|ts)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
+EXEC_SURFACE_RE='(^|/)(\.github|\.husky|\.git[a-z]*|\.ci|ci|\.circleci|bin|scripts?|tests?|hooks?)/|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|justfile|Justfile|Taskfile\.ya?ml|\.gitlab-ci\.ya?ml|Jenkinsfile[^/]*|azure-pipelines\.ya?ml|bitbucket-pipelines\.ya?ml|gradlew(\.bat)?|mvnw(\.cmd)?|configure|autogen\.sh|BUILD(\.bazel)?|WORKSPACE|Dockerfile[^/]*|\.envrc|sitecustomize\.py|\.gitattributes|\.gitmodules|\.pre-commit-config\.ya?ml|\.?lefthook(-local)?\.ya?ml|\.huskyrc[^/]*|gulpfile\.[a-z]+|Gruntfile\.[a-z]+|\.eslintrc[^/]*|\.babelrc[^/]*|composer\.json|meson\.build|SConstruct|SConscript|docker-compose[^/]*\.ya?ml|compose\.ya?ml|\.mcp\.json|pytest\.ini|\.yarnrc\.ya?ml|manage\.py|configure\.ac|.*\.cmake|.*\.pth)$|(^|/)\.yarn/|(^|/)\.claude/settings[^/]*\.json$|\.(gradle|gradle\.kts|sh|bash|zsh|ps1|psm1)$|(^|/)\.[a-z0-9_-]+rc\.(js|cjs|mjs|ts)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
 
 state() { # state <run> get KEY | state <run> set KEY VALUE
   local run=$1 op=$2 key=$3
@@ -234,17 +240,22 @@ cmd_check_plan_paths() { # paths on stdin, one per line — pre-spawn gate
   echo ok
 }
 
-cmd_land() { # land <run> --sig <setup-sig> --approved-sha <sha-from-approve> [--allow-exec-surface]
-  local run=$1 host f allow=""
-  [ "${2:-}" = "--sig" ] && [ -n "${3:-}" ] || die "land requires --sig <value printed by setup>"
-  [ "$(_state_sig "$run")" = "$3" ] || die "state signature mismatch — refusing land"
-  [ "${4:-}" = "--approved-sha" ] && [ -n "${5:-}" ] || die "land requires --approved-sha <value printed by approve>"
-  [ "${6:-}" = "--allow-exec-surface" ] && allow="--allow-exec-surface"
+cmd_land() { # land <run> --sig <s> --approved-sha <a> --script-sha <h> [--allow-exec-surface]
+  local run=$1 host f allow="" sigv="" aprv="" ssha=""
+  shift
+  while [ $# -gt 0 ]; do case "$1" in
+    --sig) sigv=${2:-}; shift 2;; --approved-sha) aprv=${2:-}; shift 2;;
+    --script-sha) ssha=${2:-}; shift 2;; --allow-exec-surface) allow=--allow-exec-surface; shift;;
+    "") shift;; *) die "unknown land arg: $1";; esac; done
+  _verify_self "$ssha"
+  [ -n "$sigv" ] || die "land requires --sig <value printed by setup>"
+  [ "$(_state_sig "$run")" = "$sigv" ] || die "state signature mismatch — refusing land"
+  [ -n "$aprv" ] || die "land requires --approved-sha <value printed by approve>"
   [ -f "$run/ok.plan" ] || die "check-plan-paths stage missing — the plan gate is not optional"
   [ -f "$run/ok.approved" ] || die "approve stage missing"
   # verify against the HOST-supplied hash, not state — state and approved.patch live in the
   # same implementer-reachable tmp; the host's notes are the one unwritable place:
-  [ "$(SHAPIPE < "$run/approved.patch" | cut -d' ' -f1)" = "$5" ] || die "approved.patch does not match the hash approve printed — tampered since approval"
+  [ "$(SHAPIPE < "$run/approved.patch" | cut -d' ' -f1)" = "$aprv" ] || die "approved.patch does not match the hash approve printed — tampered since approval"
   host=$(state "$run" get HOST_ROOT)
   [ "$(git -C "$host" rev-parse HEAD)" = "$(state "$run" get BASE_SHA)" ] || die "base moved"
   [ "$(git -C "$host" symbolic-ref -q HEAD || echo detached)" = "$(state "$run" get BASE_REF)" ] || die "branch switched"
@@ -304,6 +315,7 @@ cmd_verify() {
     case "${5:-}" in host|ref) builtin=$5 ;; *) die "--built-in takes host|ref, got: ${5:-<empty>}";; esac
   fi
   [ -f "$run/ok.landed" ] || die "land stage missing"
+  rm -f "$run/ok.build"                            # a failed re-verify must not leave last round's sentinel
   [ "$buildok" = 1 ] || die "build failed — run rollback"
   # A build on a dirty host tree can overwrite the user's pre-existing modified files
   # WITHOUT changing their porcelain status line — containment can't see that. So a
@@ -326,21 +338,26 @@ cmd_verify() {
   : > "$run/ok.build"
 }
 
-cmd_commit() {
-  local run=$1 msg=$2 host; local -a flags=()   # commit <run> <msg> --approved-sha <sha> [--bypass-hookspath-approved]
+cmd_commit() { # commit <run> <msg> --approved-sha <a> --script-sha <h> [--bypass-hookspath-approved]
+  local run=$1 msg=$2 host aprv="" ssha="" bypass=""; local -a flags=()
+  shift 2
+  while [ $# -gt 0 ]; do case "$1" in
+    --approved-sha) aprv=${2:-}; shift 2;; --script-sha) ssha=${2:-}; shift 2;;
+    --bypass-hookspath-approved) bypass=yes; shift;; "") shift;; *) die "unknown commit arg: $1";; esac; done
+  _verify_self "$ssha"
   [ -f "$run/ok.build" ] || die "verify stage missing"
   host=$(state "$run" get HOST_ROOT)
   [ "$(git -C "$host" rev-parse HEAD)" = "$(state "$run" get BASE_SHA)" ] || die "base moved since landing"
   [ "$(git -C "$host" symbolic-ref -q HEAD || echo detached)" = "$(state "$run" get BASE_REF)" ] || die "branch switched"
   [ "$(hooks_snap "$host")" = "$(state "$run" get HOOKS_SNAP)" ] || die "git hooks changed during the run"
   [ "$(config_snap "$host")" = "$(state "$run" get CONFIG_SNAP)" ] || die "git config/remotes changed during the run"
-  [ "${3:-}" = "--approved-sha" ] && [ -n "${4:-}" ] || die "commit requires --approved-sha <value printed by approve>"
-  [ "$(SHAPIPE < "$run/approved.patch" | cut -d' ' -f1)" = "$4" ] || die "approved.patch does not match the approved hash — tampered"
+  [ -n "$aprv" ] || die "commit requires --approved-sha <value printed by approve>"
+  [ "$(SHAPIPE < "$run/approved.patch" | cut -d' ' -f1)" = "$aprv" ] || die "approved.patch does not match the approved hash — tampered"
   _equality "$run" "$run/host.final2.diff" "$run/ref.final2.diff" || die "landed files changed since verification"
   if git -C "$host" config core.hooksPath >/dev/null 2>&1; then
     # A configured hooksPath (husky-style) is PR-influenceable — but it may also be the
     # org's legitimate secret-scan/signing hooks. Bypassing is a USER decision, not ours:
-    [ "${5:-}" = "--bypass-hookspath-approved" ] || die "core.hooksPath is configured — ask the user: bypass it (--bypass-hookspath-approved) or abort"
+    [ "$bypass" = yes ] || die "core.hooksPath is configured — ask the user: bypass it (--bypass-hookspath-approved) or abort"
     flags=(-c core.hooksPath=/dev/null)
   fi
   git -C "$host" --literal-pathspecs ${flags[@]+"${flags[@]}"} add --pathspec-from-file="$run/landed.files"
@@ -358,8 +375,10 @@ cmd_commit() {
   : > "$run/ok.committed"
 }
 
-cmd_push() { # separate, idempotent — a transient push failure must not strand the commit
-  local run=$1 host sha flags
+cmd_push() { # push <run> --script-sha <h> — separate, idempotent
+  local run=$1 host sha flags ssha=""
+  [ "${2:-}" = "--script-sha" ] && ssha=${3:-}
+  _verify_self "$ssha"
   [ -f "$run/ok.committed" ] || die "commit stage missing"
   host=$(state "$run" get HOST_ROOT); sha=$(state "$run" get COMMIT_SHA)
   [ "$(git -C "$host" rev-parse HEAD)" = "$sha" ] || die "HEAD moved since commit — refusing to push"
@@ -371,12 +390,25 @@ cmd_push() { # separate, idempotent — a transient push failure must not strand
   : > "$run/ok.pushed"
 }
 
-cmd_rollback() { # rollback <run> --sig <setup-sig> — destructive; same trust root as cleanup
-  local run=$1 host ref base f failed=0 hostmeta refmeta
-  [ "${2:-}" = "--sig" ] && [ -n "${3:-}" ] || die "rollback requires --sig <value printed by setup>"
-  [ "$(_state_sig "$run")" = "$3" ] || die "state signature mismatch — refusing rollback"
+cmd_rollback() { # rollback <run> --sig <s> --script-sha <h> — destructive; same trust roots as cleanup
+  local run=$1 host ref base f failed=0 hostmeta refmeta sigv="" ssha=""
+  shift
+  while [ $# -gt 0 ]; do case "$1" in
+    --sig) sigv=${2:-}; shift 2;; --script-sha) ssha=${2:-}; shift 2;; "") shift;; *) die "unknown rollback arg: $1";; esac; done
+  _verify_self "$ssha"
+  [ -n "$sigv" ] || die "rollback requires --sig <value printed by setup>"
+  [ "$(_state_sig "$run")" = "$sigv" ] || die "state signature mismatch — refusing rollback"
   host=$(state "$run" get HOST_ROOT); ref=$(state "$run" get REF_WT); base=$(state "$run" get BASE_SHA)
-  [ "$(git -C "$host" rev-parse HEAD)" = "$base" ] || die "HEAD is not the landing base — a rollback here would target the wrong revision"
+  if [ "$(git -C "$host" rev-parse HEAD)" != "$base" ]; then
+    # One recoverable case: HEAD is OUR commit (recorded sha, parent == base) that
+    # post-commit verification rejected — soft-reset it away, then roll back the files.
+    if [ "$(git -C "$host" rev-parse HEAD)" = "$(state "$run" get COMMIT_SHA)" ] \
+       && [ "$(git -C "$host" rev-parse HEAD~1 2>/dev/null)" = "$base" ]; then
+      git -C "$host" -c core.hooksPath=/dev/null reset --soft "$base"
+    else
+      die "HEAD is not the landing base — a rollback here would target the wrong revision"
+    fi
+  fi
   [ "$(git -C "$host" symbolic-ref -q HEAD || echo detached)" = "$(state "$run" get BASE_REF)" ] || die "branch switched — refusing rollback"
   [ -d "$ref" ] || die "no reference worktree — cannot verify safe rollback"
   while IFS= read -r f || [ -n "$f" ]; do
@@ -414,7 +446,9 @@ cmd_cleanup() { # cleanup <run> --sig <setup-sig> [--keep] — sig comes from th
                 # values, so tampering ANY path key breaks it (state self-consistency proves nothing)
   local run=$1 sig="" keep="" host wt refwt
   shift
-  while [ $# -gt 0 ]; do case "$1" in --sig) sig=$2; shift 2;; --keep) keep=--keep; shift;; *) die "unknown cleanup arg: $1";; esac; done
+  local ssha=""
+  while [ $# -gt 0 ]; do case "$1" in --sig) sig=$2; shift 2;; --script-sha) ssha=${2:-}; shift 2;; --keep) keep=--keep; shift;; "") shift;; *) die "unknown cleanup arg: $1";; esac; done
+  _verify_self "$ssha"
   [ -n "$sig" ] || die "cleanup requires --sig <value printed by setup>"
   [ "$(_state_sig "$run")" = "$sig" ] || die "state signature mismatch — path keys tampered; not removing anything"
   host=$(state "$run" get HOST_ROOT); wt=$(state "$run" get IMPL_WT); refwt=$(state "$run" get REF_WT)
@@ -435,11 +469,11 @@ case "${1:-}" in
   capture) cmd_capture "${2:?run dir}" "${3:-}" "${4:-}" ;;
   approve) cmd_approve "${2:?run dir}" ;;
   check-plan-paths) cmd_check_plan_paths "${2:?run dir}" ;;
-  land) cmd_land "${2:?run dir}" "${3:-}" "${4:-}" "${5:-}" "${6:-}" "${7:-}" ;;
+  land) cmd_land "${2:?run dir}" "${@:3}" ;;
   verify) cmd_verify "${2:?run dir}" "${3:-}" "${4:-}" "${5:-}" "${6:-}" ;;
-  commit) cmd_commit "${2:?run dir}" "${3:?message}" "${4:-}" "${5:-}" "${6:-}" ;;
-  push) cmd_push "${2:?run dir}" ;;
-  rollback) cmd_rollback "${2:?run dir}" "${3:-}" "${4:-}" ;;
+  commit) cmd_commit "${2:?run dir}" "${3:?message}" "${@:4}" ;;
+  push) cmd_push "${2:?run dir}" "${3:-}" "${4:-}" ;;
+  rollback) cmd_rollback "${2:?run dir}" "${@:3}" ;;
   cleanup) cmd_cleanup "${2:?run dir}" "${@:3}" ;;
   *) echo "usage: land_delta.sh setup|capture|approve|check-plan-paths|land|verify|commit|push|rollback|cleanup ..." >&2; exit 2 ;;
 esac

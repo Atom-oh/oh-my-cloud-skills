@@ -134,8 +134,8 @@ executable spec):
 ```bash
 LD="${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts/land_delta.sh"
 LD_SHA=$(shasum -a 256 "$LD" 2>/dev/null | cut -d' ' -f1 || sha256sum "$LD" | cut -d' ' -f1)
-# ^ record the SCRIPT's own hash in your notes and re-check it before EVERY later stage
-#   call — the script lives on a same-uid filesystem, and a tampered script lies about
+# ^ record the SCRIPT's own hash in your notes — every destructive/final stage takes it
+#   back as --script-sha and re-verifies itself — the script lives on a same-uid filesystem, and a tampered script lies about
 #   everything else. Your notes are the only implementer-unwritable storage.
 read -r RUN SIG <<<"$(bash "$LD" setup)"
 # setup creates the implementer + reference worktrees @ HEAD, pins base SHA/ref,
@@ -177,7 +177,7 @@ plan inline.)
    changes manually outside the loop). Also check the
    reverse direction: every actionable plan item must appear in the patch; a missing
    one means the implementer dropped a finding — re-run it, capture again, re-approve.
-3. **Land**: `bash "$LD" land "$RUN" --sig "$SIG" --approved-sha "$APPROVED_SHA"` — refuses execution-surface files
+3. **Land**: `bash "$LD" land "$RUN" --script-sha "$LD_SHA" --sig "$SIG" --approved-sha "$APPROVED_SHA"` — refuses execution-surface files
    (build scripts/configs, hook dirs; pass `--allow-exec-surface` ONLY after explicit
    user approval), refuses targets with local modifications (never sweep user edits),
    applies atomically, and mirrors the approved state into the reference worktree.
@@ -187,7 +187,7 @@ plan inline.)
    tracked files outside the landed set (codegen/formatter companions are never
    auto-committed; re-approve or revert them) and if the landed content drifted from the
    approved delta (byte-for-byte, capture flags).
-6. **On ANY failure after landing**: `bash "$LD" rollback "$RUN" --sig "$SIG"` — restores exactly the
+6. **On ANY failure after landing**: `bash "$LD" rollback "$RUN" --script-sha "$LD_SHA" --sig "$SIG"` — restores exactly the
    landed paths; a file the user modified in the meantime is preserved and reported,
    never overwritten. Then either fix (companion edits go BACK through approval — a
    once-rejected hunk gets no free pass; twice → escalate to the user) or abort the
@@ -231,10 +231,10 @@ fi
 ### 5. Commit and push
 
 ```bash
-bash "$LD" commit "$RUN" "fix: address review feedback (iteration N/3)" --approved-sha "$APPROVED_SHA"
-bash "$LD" push "$RUN"               # separate + idempotent: a transient push failure
+bash "$LD" commit "$RUN" "fix: address review feedback (iteration N/3)" --script-sha "$LD_SHA" --approved-sha "$APPROVED_SHA"
+bash "$LD" push "$RUN" --script-sha "$LD_SHA"               # separate + idempotent: a transient push failure
                                      # never strands the commit (retry this stage alone)
-bash "$LD" cleanup "$RUN" --sig "$SIG"   # add --keep to preserve patches for inspection
+bash "$LD" cleanup "$RUN" --script-sha "$LD_SHA" --sig "$SIG"   # add --keep to preserve patches for inspection
 ```
 
 If the repo has a configured `core.hooksPath`, the commit stage STOPs and asks — it may
