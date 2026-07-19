@@ -133,6 +133,10 @@ executable spec):
 
 ```bash
 LD="${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts/land_delta.sh"
+LD_SHA=$(shasum -a 256 "$LD" 2>/dev/null | cut -d' ' -f1 || sha256sum "$LD" | cut -d' ' -f1)
+# ^ record the SCRIPT's own hash in your notes and re-check it before EVERY later stage
+#   call — the script lives on a same-uid filesystem, and a tampered script lies about
+#   everything else. Your notes are the only implementer-unwritable storage.
 read -r RUN SIG <<<"$(bash "$LD" setup)"
 # setup creates the implementer + reference worktrees @ HEAD, pins base SHA/ref,
 # snapshots git hooks and host status, scans for escaping symlinks. Record BOTH values
@@ -165,11 +169,12 @@ plan inline.)
 2. **Approve** (the judgment step — yours): copy the latest generation to
    `$RUN/approved.patch` and strip every hunk the plan does not name (whole hunks only).
    A file mixing approved and unplanned hunks is never landed whole — strip or re-run
-   the implementer for that file. Then `bash "$LD" approve "$RUN"` (rejects symlink/
+   the implementer for that file. Then `APPROVED_SHA=$(bash "$LD" approve "$RUN")` — record it in your notes and pass it
+   to land/commit; it is the tamper-evidence for the patch (rejects symlink/
    mode-change hunks outright — those need explicit user approval). Also check the
    reverse direction: every actionable plan item must appear in the patch; a missing
    one means the implementer dropped a finding — re-run it, capture again, re-approve.
-3. **Land**: `bash "$LD" land "$RUN" --sig "$SIG"` — refuses execution-surface files
+3. **Land**: `bash "$LD" land "$RUN" --sig "$SIG" --approved-sha "$APPROVED_SHA"` — refuses execution-surface files
    (build scripts/configs, hook dirs; pass `--allow-exec-surface` ONLY after explicit
    user approval), refuses targets with local modifications (never sweep user edits),
    applies atomically, and mirrors the approved state into the reference worktree.
@@ -223,7 +228,7 @@ fi
 ### 5. Commit and push
 
 ```bash
-bash "$LD" commit "$RUN" "fix: address review feedback (iteration N/3)"
+bash "$LD" commit "$RUN" "fix: address review feedback (iteration N/3)" --approved-sha "$APPROVED_SHA"
 bash "$LD" push "$RUN"               # separate + idempotent: a transient push failure
                                      # never strands the commit (retry this stage alone)
 bash "$LD" cleanup "$RUN" --sig "$SIG"   # add --keep to preserve patches for inspection

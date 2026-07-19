@@ -28,7 +28,7 @@ SHAPIPE() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum
 # Class-based, not filename-enumerated: anything plausibly executed during build/verify/
 # commit. Broad on purpose — a false positive costs one --allow-exec-surface approval,
 # a false negative is arbitrary code execution on the host.
-EXEC_SURFACE_RE='(^|/)(\.github|\.husky|\.git[a-z]*|\.ci|ci|\.circleci|bin|scripts?|tests?|hooks?)/|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|justfile|Justfile|Taskfile\.ya?ml|\.gitlab-ci\.ya?ml|Jenkinsfile[^/]*|azure-pipelines\.ya?ml|bitbucket-pipelines\.ya?ml|gradlew(\.bat)?|mvnw(\.cmd)?|configure|autogen\.sh|BUILD(\.bazel)?|WORKSPACE|Dockerfile[^/]*|\.envrc|sitecustomize\.py|\.gitattributes|\.gitmodules|\.pre-commit-config\.ya?ml|\.?lefthook(-local)?\.ya?ml|\.huskyrc[^/]*|gulpfile\.[a-z]+|Gruntfile\.[a-z]+|\.eslintrc[^/]*|\.babelrc[^/]*|composer\.json|meson\.build|SConstruct|SConscript)$|\.(gradle|gradle\.kts|sh|bash|zsh|ps1|psm1)$|(^|/)\.[a-z0-9_-]+rc\.(js|cjs|mjs|ts)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
+EXEC_SURFACE_RE='(^|/)(\.github|\.husky|\.git[a-z]*|\.ci|ci|\.circleci|bin|scripts?|tests?|hooks?)/|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|justfile|Justfile|Taskfile\.ya?ml|\.gitlab-ci\.ya?ml|Jenkinsfile[^/]*|azure-pipelines\.ya?ml|bitbucket-pipelines\.ya?ml|gradlew(\.bat)?|mvnw(\.cmd)?|configure|autogen\.sh|BUILD(\.bazel)?|WORKSPACE|Dockerfile[^/]*|\.envrc|sitecustomize\.py|\.gitattributes|\.gitmodules|\.pre-commit-config\.ya?ml|\.?lefthook(-local)?\.ya?ml|\.huskyrc[^/]*|gulpfile\.[a-z]+|Gruntfile\.[a-z]+|\.eslintrc[^/]*|\.babelrc[^/]*|composer\.json|meson\.build|SConstruct|SConscript|docker-compose[^/]*\.ya?ml|compose\.ya?ml)$|\.(gradle|gradle\.kts|sh|bash|zsh|ps1|psm1)$|(^|/)\.[a-z0-9_-]+rc\.(js|cjs|mjs|ts)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
 
 state() { # state <run> get KEY | state <run> set KEY VALUE
   local run=$1 op=$2 key=$3
@@ -204,14 +204,18 @@ cmd_approve() { # host has already copied+edited approved.patch from the latest 
   _opaque_chunks "$run/approved.patch" | sort > "$run/approved.opaque"
   OPAQUE="$run/$(state "$run" get LATEST_FULL | sed 's/\.patch$/.opaque/')"
   [ -z "$(comm -23 "$run/approved.opaque" "$OPAQUE")" ] || die "approved.patch contains binary/meta-only file sections not present verbatim in the latest capture"
-  state "$run" set APPROVED_SHA "$(SHAPIPE < "$run/approved.patch" | cut -d' ' -f1)"   # hash-bind: land/commit re-verify
+  APPROVED_SHA=$(SHAPIPE < "$run/approved.patch" | cut -d' ' -f1)
+  state "$run" set APPROVED_SHA "$APPROVED_SHA"   # convenience copy — the TRUST copy is the one echoed below
   rm -f "$run/ok.landed" "$run/ok.build" "$run/ok.committed"   # a re-approval invalidates every later stage
   : > "$run/ok.approved"
+  echo "$APPROVED_SHA"                            # host records this in its notes (implementer-unwritable)
+                                                  # and passes it back to land/commit as --approved-sha
 }
 
 cmd_check_plan_paths() { # paths on stdin, one per line — pre-spawn gate
   local run=$1 p
   [ -f "$run/ok.setup" ] || die "setup stage missing"
+  : > "$run/plan.files.tmp"                       # truncate — appends must not survive a previous invocation
   local n=0
   while IFS= read -r p || [ -n "$p" ]; do
     n=$((n+1))
@@ -227,13 +231,16 @@ cmd_check_plan_paths() { # paths on stdin, one per line — pre-spawn gate
   echo ok
 }
 
-cmd_land() { # land <run> --sig <setup-sig> [--allow-exec-surface]
+cmd_land() { # land <run> --sig <setup-sig> --approved-sha <sha-from-approve> [--allow-exec-surface]
   local run=$1 host f allow=""
   [ "${2:-}" = "--sig" ] && [ -n "${3:-}" ] || die "land requires --sig <value printed by setup>"
   [ "$(_state_sig "$run")" = "$3" ] || die "state signature mismatch — refusing land"
-  [ "${4:-}" = "--allow-exec-surface" ] && allow="--allow-exec-surface"
+  [ "${4:-}" = "--approved-sha" ] && [ -n "${5:-}" ] || die "land requires --approved-sha <value printed by approve>"
+  [ "${6:-}" = "--allow-exec-surface" ] && allow="--allow-exec-surface"
   [ -f "$run/ok.approved" ] || die "approve stage missing"
-  [ "$(SHAPIPE < "$run/approved.patch" | cut -d' ' -f1)" = "$(state "$run" get APPROVED_SHA)" ] || die "approved.patch changed since approval"
+  # verify against the HOST-supplied hash, not state — state and approved.patch live in the
+  # same implementer-reachable tmp; the host's notes are the one unwritable place:
+  [ "$(SHAPIPE < "$run/approved.patch" | cut -d' ' -f1)" = "$5" ] || die "approved.patch does not match the hash approve printed — tampered since approval"
   host=$(state "$run" get HOST_ROOT)
   [ "$(git -C "$host" rev-parse HEAD)" = "$(state "$run" get BASE_SHA)" ] || die "base moved"
   [ "$(git -C "$host" symbolic-ref -q HEAD || echo detached)" = "$(state "$run" get BASE_REF)" ] || die "branch switched"
@@ -316,24 +323,33 @@ cmd_verify() {
 }
 
 cmd_commit() {
-  local run=$1 msg=$2 host; local -a flags=()   # $3: --bypass-hookspath-approved (user-granted)
+  local run=$1 msg=$2 host; local -a flags=()   # commit <run> <msg> --approved-sha <sha> [--bypass-hookspath-approved]
   [ -f "$run/ok.build" ] || die "verify stage missing"
   host=$(state "$run" get HOST_ROOT)
   [ "$(git -C "$host" rev-parse HEAD)" = "$(state "$run" get BASE_SHA)" ] || die "base moved since landing"
   [ "$(git -C "$host" symbolic-ref -q HEAD || echo detached)" = "$(state "$run" get BASE_REF)" ] || die "branch switched"
   [ "$(hooks_snap "$host")" = "$(state "$run" get HOOKS_SNAP)" ] || die "git hooks changed during the run"
   [ "$(config_snap "$host")" = "$(state "$run" get CONFIG_SNAP)" ] || die "git config/remotes changed during the run"
-  [ "$(SHAPIPE < "$run/approved.patch" | cut -d' ' -f1)" = "$(state "$run" get APPROVED_SHA)" ] || die "approved.patch changed since approval"
+  [ "${3:-}" = "--approved-sha" ] && [ -n "${4:-}" ] || die "commit requires --approved-sha <value printed by approve>"
+  [ "$(SHAPIPE < "$run/approved.patch" | cut -d' ' -f1)" = "$4" ] || die "approved.patch does not match the approved hash — tampered"
   _equality "$run" "$run/host.final2.diff" "$run/ref.final2.diff" || die "landed files changed since verification"
   if git -C "$host" config core.hooksPath >/dev/null 2>&1; then
     # A configured hooksPath (husky-style) is PR-influenceable — but it may also be the
     # org's legitimate secret-scan/signing hooks. Bypassing is a USER decision, not ours:
-    [ "${3:-}" = "--bypass-hookspath-approved" ] || die "core.hooksPath is configured — ask the user: bypass it (--bypass-hookspath-approved) or abort"
+    [ "${5:-}" = "--bypass-hookspath-approved" ] || die "core.hooksPath is configured — ask the user: bypass it (--bypass-hookspath-approved) or abort"
     flags=(-c core.hooksPath=/dev/null)
   fi
   git -C "$host" --literal-pathspecs ${flags[@]+"${flags[@]}"} add --pathspec-from-file="$run/landed.files"
   git -C "$host" --literal-pathspecs ${flags[@]+"${flags[@]}"} commit -m "$msg" --pathspec-from-file="$run/landed.files"   # ${arr[@]+...}: empty-array expansion aborts under set -u on macOS bash 3.2
   state "$run" set COMMIT_SHA "$(git -C "$host" rev-parse HEAD)"
+  # A hook that ran during commit could have mutated content — verify the COMMITTED blobs
+  # against the reference worktree before declaring success:
+  while IFS= read -r f || [ -n "$f" ]; do
+    if [ -e "$(state "$run" get REF_WT)/$f" ]; then
+      git -C "$host" show "HEAD:$f" 2>/dev/null | cmp -s - "$(state "$run" get REF_WT)/$f" \
+        || die "committed content diverges from the approved state for: $f — a hook modified it; git reset --soft HEAD~1 and investigate"
+    fi
+  done < "$run/landed.files"
   state "$run" set HOOKS_FLAGS "${flags[*]:-none}"
   : > "$run/ok.committed"
 }
@@ -361,6 +377,7 @@ cmd_rollback() { # rollback <run> --sig <setup-sig> — destructive; same trust 
   [ -d "$ref" ] || die "no reference worktree — cannot verify safe rollback"
   while IFS= read -r f || [ -n "$f" ]; do
     if [ ! -e "$host/$f" ] && [ ! -e "$ref/$f" ]; then     # approved DELETION — restore the base file
+      [ ! -L "$host/$f" ] || { echo "SKIP (dangling symlink at path — user artifact, left untouched): $f"; failed=1; continue; }
       GITH "$run" checkout "$base" -- "$f" || die "restore failed: $f"
       continue
     fi
@@ -414,9 +431,9 @@ case "${1:-}" in
   capture) cmd_capture "${2:?run dir}" "${3:-}" "${4:-}" ;;
   approve) cmd_approve "${2:?run dir}" ;;
   check-plan-paths) cmd_check_plan_paths "${2:?run dir}" ;;
-  land) cmd_land "${2:?run dir}" "${3:-}" "${4:-}" "${5:-}" ;;
+  land) cmd_land "${2:?run dir}" "${3:-}" "${4:-}" "${5:-}" "${6:-}" "${7:-}" ;;
   verify) cmd_verify "${2:?run dir}" "${3:-}" "${4:-}" "${5:-}" "${6:-}" ;;
-  commit) cmd_commit "${2:?run dir}" "${3:?message}" "${4:-}" ;;
+  commit) cmd_commit "${2:?run dir}" "${3:?message}" "${4:-}" "${5:-}" "${6:-}" ;;
   push) cmd_push "${2:?run dir}" ;;
   rollback) cmd_rollback "${2:?run dir}" "${3:-}" "${4:-}" ;;
   cleanup) cmd_cleanup "${2:?run dir}" "${@:3}" ;;
