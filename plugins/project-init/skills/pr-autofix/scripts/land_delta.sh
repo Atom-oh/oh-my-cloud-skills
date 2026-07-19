@@ -19,6 +19,7 @@
 set -euo pipefail
 
 die() { echo "STOP: $*" >&2; exit 1; }
+_canon() { (cd "$1" 2>/dev/null && pwd -P); }   # portable dir canonicalization (realpath -e is GNU-only)
 SHAPIPE() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; }
 
 # Execution-surface denylist: files the host executes during build/commit. Edits to these
@@ -52,15 +53,22 @@ config_snap() { # a planted core.sshCommand/credential.helper would execute at p
   git -C "$1" config --list 2>/dev/null | sort | SHAPIPE | cut -d' ' -f1
 }
 
-hooks_snap() { # hooks_snap <host_root>
-  local dir
+hooks_snap() { # hooks_snap <host_root> — portable: no xargs -r / sort -z (both GNU-only;
+               # on BSD/macOS the old form failed into 2>/dev/null and the gate silently
+               # compared empty hashes on BOTH sides = no-op security)
+  local dir list
   dir=$(git -C "$1" rev-parse --path-format=absolute --git-path hooks)
   [ -n "$dir" ] || die "cannot resolve hooks dir"
-  if [ -d "$dir" ]; then
-    ( cd "$dir" && { find . \( -type f -o -type l \) -print0 | sort -z | xargs -0 -r ls -ld 2>/dev/null
-                     find . \( -type f -o -type l \) -print0 | sort -z | xargs -0 -r cat 2>/dev/null
-                   } | SHAPIPE | cut -d' ' -f1 )
-  else echo absent; fi
+  [ -d "$dir" ] || { echo absent; return 0; }
+  (
+    cd "$dir" || exit 1
+    list=$(find . \( -type f -o -type l \) | LC_ALL=C sort)
+    [ -n "$list" ] || { echo empty; exit 0; }
+    {
+      printf '%s\n' "$list" | while IFS= read -r f; do ls -ld "$f"; done
+      printf '%s\n' "$list" | while IFS= read -r f; do cat "$f" 2>/dev/null || true; done
+    } | SHAPIPE | cut -d' ' -f1
+  )
 }
 
 symlink_scan() { # symlink_scan <worktree> — fail-closed (find status checked explicitly)
@@ -104,11 +112,11 @@ cmd_setup() {
   : > "$run/state"
   state "$run" set HOST_ROOT "$host"; state "$run" set BASE_SHA "$base"; state "$run" set BASE_REF "$ref"
   state "$run" set WT_DIR "$wtd";    state "$run" set REF_DIR "$refd"
-  state "$run" set CANON_WT_DIR "$(realpath "$wtd")"; state "$run" set CANON_REF_DIR "$(realpath "$refd")"
+  state "$run" set CANON_WT_DIR "$(_canon "$wtd")"; state "$run" set CANON_REF_DIR "$(_canon "$refd")"
   state "$run" set IMPL_WT "$wtd/wt"; state "$run" set REF_WT "$refd/wt"
   state "$run" set HOOKS_SNAP "$(hooks_snap "$host")"
   state "$run" set CONFIG_SNAP "$(config_snap "$host")"
-  SIG=$(printf '%s|%s|%s|%s|%s|%s|%s|%s' "$wtd" "$refd" "$(realpath "$wtd")" "$(realpath "$refd")" "$host" "$wtd/wt" "$refd/wt" "$base" | SHAPIPE | cut -d' ' -f1)
+  SIG=$(printf '%s|%s|%s|%s|%s|%s|%s|%s' "$wtd" "$refd" "$(_canon "$wtd")" "$(_canon "$refd")" "$host" "$wtd/wt" "$refd/wt" "$base" | SHAPIPE | cut -d' ' -f1)
   state "$run" set SETUP_SIG "$SIG"
   git -C "$host" --literal-pathspecs status --porcelain > "$run/host.status.setup"
   git -C "$host" -c core.hooksPath=/dev/null worktree add --detach "$wtd/wt" "$base" >/dev/null
@@ -120,8 +128,10 @@ cmd_setup() {
                                     # cleanup signature (its own trust root — see cmd_cleanup)
 }
 
-cmd_capture() {
+cmd_capture() { # capture <run> --sig <setup-sig>
   local run=$1 n
+  [ "${2:-}" = "--sig" ] && [ -n "${3:-}" ] || die "capture requires --sig <value printed by setup>"
+  [ "$(_state_sig "$run")" = "$3" ] || die "state signature mismatch — refusing capture"
   [ -f "$run/ok.setup" ] || die "setup stage missing"
   gitwt_verify "$run"; symlink_scan "$(state "$run" get IMPL_WT)"
   [ "$(config_snap "$(state "$run" get HOST_ROOT)")" = "$(state "$run" get CONFIG_SNAP)" ] || die "shared git config changed during implementation"
@@ -197,8 +207,11 @@ cmd_check_plan_paths() { # paths on stdin, one per line — pre-spawn gate
   echo ok
 }
 
-cmd_land() {
-  local run=$1 allow=${2:-} host f
+cmd_land() { # land <run> --sig <setup-sig> [--allow-exec-surface]
+  local run=$1 host f allow=""
+  [ "${2:-}" = "--sig" ] && [ -n "${3:-}" ] || die "land requires --sig <value printed by setup>"
+  [ "$(_state_sig "$run")" = "$3" ] || die "state signature mismatch — refusing land"
+  [ "${4:-}" = "--allow-exec-surface" ] && allow="--allow-exec-surface"
   [ -f "$run/ok.approved" ] || die "approve stage missing"
   [ "$(SHAPIPE < "$run/approved.patch" | cut -d' ' -f1)" = "$(state "$run" get APPROVED_SHA)" ] || die "approved.patch changed since approval"
   host=$(state "$run" get HOST_ROOT)
@@ -312,13 +325,14 @@ cmd_push() { # separate, idempotent — a transient push failure must not strand
   [ "$(git -C "$host" rev-parse HEAD)" = "$sha" ] || die "HEAD moved since commit — refusing to push"
   [ "$(git -C "$host" symbolic-ref -q HEAD || echo detached)" = "$(state "$run" get BASE_REF)" ] || die "branch switched since setup — refusing to push"
   [ "$(config_snap "$host")" = "$(state "$run" get CONFIG_SNAP)" ] || die "git config/remotes changed since setup — refusing to push"
+  [ "$(hooks_snap "$host")" = "$(state "$run" get HOOKS_SNAP)" ] || die "git hooks changed — refusing to push (pre-push would execute them)"
   local -a pf=(); [ "$(state "$run" get HOOKS_FLAGS)" != none ] && pf=(-c core.hooksPath=/dev/null)
   git -C "$host" ${pf[@]+"${pf[@]}"} push
   : > "$run/ok.pushed"
 }
 
 cmd_rollback() { # rollback <run> --sig <setup-sig> — destructive; same trust root as cleanup
-  local run=$1 host ref base f failed=0
+  local run=$1 host ref base f failed=0 hostmeta refmeta
   [ "${2:-}" = "--sig" ] && [ -n "${3:-}" ] || die "rollback requires --sig <value printed by setup>"
   [ "$(_state_sig "$run")" = "$3" ] || die "state signature mismatch — refusing rollback"
   host=$(state "$run" get HOST_ROOT); ref=$(state "$run" get REF_WT); base=$(state "$run" get BASE_SHA)
@@ -332,6 +346,11 @@ cmd_rollback() { # rollback <run> --sig <setup-sig> — destructive; same trust 
     fi
     if ! cmp -s -- "$host/$f" "$ref/$f" 2>/dev/null; then
       echo "SKIP (user-modified since landing — left untouched): $f"; failed=1; continue
+    fi
+    hostmeta=$([ -L "$host/$f" ] && echo L || ls -ld -- "$host/$f" 2>/dev/null | cut -d' ' -f1)
+    refmeta=$([ -L "$ref/$f" ] && echo L || ls -ld -- "$ref/$f" 2>/dev/null | cut -d' ' -f1)
+    if [ "$hostmeta" != "$refmeta" ]; then   # same bytes, different type/mode = user chmod/symlink swap
+      echo "SKIP (type/mode changed by user — left untouched): $f"; failed=1; continue
     fi
     if GITH "$run" cat-file -e "$base:$f" 2>/dev/null; then
       GITH "$run" checkout "$base" -- "$f" || die "restore failed: $f"
@@ -360,8 +379,8 @@ cmd_cleanup() { # cleanup <run> --sig <setup-sig> [--keep] — sig comes from th
   [ -n "$run" ] && [ -n "$wt" ] || die "state incomplete — refusing cleanup"
   # Exact canonical-path equality, not glob (case '*' matches '/' and '..' — a tampered
   # state value like prefix/../../home would pass a prefix glob):
-  [ "$(realpath -e "$(state "$run" get WT_DIR)" 2>/dev/null)" = "$(state "$run" get CANON_WT_DIR)" ] || die "WT_DIR does not match setup-recorded path — state tampered; not removing"
-  [ "$(realpath -e "$(state "$run" get REF_DIR)" 2>/dev/null)" = "$(state "$run" get CANON_REF_DIR)" ] || die "REF_DIR does not match setup-recorded path — state tampered; not removing"
+  [ "$(_canon "$(state "$run" get WT_DIR)")" = "$(state "$run" get CANON_WT_DIR)" ] || die "WT_DIR does not match setup-recorded path — state tampered; not removing"
+  [ "$(_canon "$(state "$run" get REF_DIR)")" = "$(state "$run" get CANON_REF_DIR)" ] || die "REF_DIR does not match setup-recorded path — state tampered; not removing"
   [ ! -L "$wt" ] || die "worktree is a symlink — implementer deviated; not removing"
   git -C "$host" worktree remove --force "$wt" 2>/dev/null || true
   git -C "$host" worktree remove --force "$refwt" 2>/dev/null || true
@@ -371,10 +390,10 @@ cmd_cleanup() { # cleanup <run> --sig <setup-sig> [--keep] — sig comes from th
 
 case "${1:-}" in
   setup) cmd_setup ;;
-  capture) cmd_capture "${2:?run dir}" ;;
+  capture) cmd_capture "${2:?run dir}" "${3:-}" "${4:-}" ;;
   approve) cmd_approve "${2:?run dir}" ;;
   check-plan-paths) cmd_check_plan_paths "${2:?run dir}" ;;
-  land) cmd_land "${2:?run dir}" "${3:-}" ;;
+  land) cmd_land "${2:?run dir}" "${3:-}" "${4:-}" "${5:-}" ;;
   verify) cmd_verify "${2:?run dir}" "${3:-}" "${4:-}" "${5:-}" "${6:-}" ;;
   commit) cmd_commit "${2:?run dir}" "${3:?message}" "${4:-}" ;;
   push) cmd_push "${2:?run dir}" ;;

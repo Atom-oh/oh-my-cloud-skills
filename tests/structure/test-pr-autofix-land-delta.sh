@@ -21,12 +21,12 @@ read -r RUN SIG <<<"$( cd "$FIX" && bash "$LD_ABS" setup )" || true
 assert_file_exists "$RUN/ok.setup" "setup writes its sentinel"
 IMPL_WT=$(sed -n 's/^IMPL_WT=//p' "$RUN/state" | head -1)
 echo 'x=2' > "$IMPL_WT/src/app.py"                       # implementer edit (worktree only)
-OUT=$( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) || true
+OUT=$( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --sig "$SIG" ) || true
 assert_file_exists "$RUN/full.1.patch" "capture writes generation 1"
 cp "$RUN/full.1.patch" "$RUN/approved.patch"
 ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1 || true
 assert_file_exists "$RUN/ok.approved" "approve writes its sentinel"
-( cd "$FIX" && bash "$LD_ABS" land "$RUN" ) >/dev/null 2>&1 || true
+( cd "$FIX" && bash "$LD_ABS" land "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true
 assert_file_exists "$RUN/ok.landed" "land writes its sentinel"
 assert_eq "x=2" "$(cat "$FIX/src/app.py")" "approved edit landed on the host"
 ( cd "$FIX" && bash "$LD_ABS" verify "$RUN" --build-ok 1 ) >/dev/null 2>&1 || true
@@ -45,7 +45,7 @@ rm -rf "$FIX"
 # --- stage gating: land without approve must fail ---
 FIX=$(_ld_fixture)
 read -r RUN SIG <<<"$( cd "$FIX" && bash "$LD_ABS" setup )"
-RC=0; ( cd "$FIX" && bash "$LD_ABS" land "$RUN" ) >/dev/null 2>&1 || RC=$?
+RC=0; ( cd "$FIX" && bash "$LD_ABS" land "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || RC=$?
 assert_eq "1" "$RC" "land without approve stage is blocked"
 ( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true; rm -rf "$FIX"
 
@@ -54,10 +54,10 @@ FIX=$(_ld_fixture)
 read -r RUN SIG <<<"$( cd "$FIX" && bash "$LD_ABS" setup )"
 IMPL_WT=$(sed -n 's/^IMPL_WT=//p' "$RUN/state" | head -1)
 echo 'x=2' > "$IMPL_WT/src/app.py"
-( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) >/dev/null || true
+( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --sig "$SIG" ) >/dev/null || true
 cp "$RUN/full.1.patch" "$RUN/approved.patch"; ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1
 echo 'user-edit' >> "$FIX/src/app.py"                    # user's uncommitted edit on the target
-RC=0; ERR=$( cd "$FIX" && bash "$LD_ABS" land "$RUN" 2>&1 ) || RC=$?
+RC=0; ERR=$( cd "$FIX" && bash "$LD_ABS" land "$RUN" --sig "$SIG" 2>&1 ) || RC=$?
 assert_eq "1" "$RC" "dirty target file blocks landing"
 assert_contains "$ERR" "locally modified" "cleanliness gate names the reason"
 ( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true; rm -rf "$FIX"
@@ -68,12 +68,12 @@ FIX=$(_ld_fixture)
 read -r RUN SIG <<<"$( cd "$FIX" && bash "$LD_ABS" setup )"
 IMPL_WT=$(sed -n 's/^IMPL_WT=//p' "$RUN/state" | head -1)
 echo '{"scripts":{"build":"evil"}}' > "$IMPL_WT/package.json"
-( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) >/dev/null || true
+( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --sig "$SIG" ) >/dev/null || true
 cp "$RUN/full.1.patch" "$RUN/approved.patch"; ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1
-RC=0; ERR=$( cd "$FIX" && bash "$LD_ABS" land "$RUN" 2>&1 ) || RC=$?
+RC=0; ERR=$( cd "$FIX" && bash "$LD_ABS" land "$RUN" --sig "$SIG" 2>&1 ) || RC=$?
 assert_eq "1" "$RC" "execution-surface edit blocked without approval flag"
 assert_contains "$ERR" "execution-surface" "denylist gate names the class"
-RC=0; ( cd "$FIX" && bash "$LD_ABS" land "$RUN" --allow-exec-surface ) >/dev/null 2>&1 || RC=$?
+RC=0; ( cd "$FIX" && bash "$LD_ABS" land "$RUN" --sig "$SIG" --allow-exec-surface ) >/dev/null 2>&1 || RC=$?
 assert_eq "0" "$RC" "explicit --allow-exec-surface (user-granted) lands"
 ( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true; rm -rf "$FIX"
 
@@ -83,9 +83,9 @@ FIX=$(_ld_fixture)
 read -r RUN SIG <<<"$( cd "$FIX" && bash "$LD_ABS" setup )" || true
 IMPL_WT=$(sed -n 's/^IMPL_WT=//p' "$RUN/state" | head -1)
 echo 'evil' > "$IMPL_WT/build.gradle.kts"
-( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) >/dev/null 2>&1 || true
+( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true
 cp "$RUN/full.1.patch" "$RUN/approved.patch"; ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1 || true
-RC=0; ( cd "$FIX" && bash "$LD_ABS" land "$RUN" ) >/dev/null 2>&1 || RC=$?
+RC=0; ( cd "$FIX" && bash "$LD_ABS" land "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || RC=$?
 assert_eq "1" "$RC" "gradle.kts blocked as execution surface"
 ( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true; rm -rf "$FIX"
 
@@ -94,9 +94,9 @@ FIX=$(_ld_fixture)
 read -r RUN SIG <<<"$( cd "$FIX" && bash "$LD_ABS" setup )"
 IMPL_WT=$(sed -n 's/^IMPL_WT=//p' "$RUN/state" | head -1)
 echo 'x=2' > "$IMPL_WT/src/app.py"
-( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) >/dev/null || true
+( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --sig "$SIG" ) >/dev/null || true
 cp "$RUN/full.1.patch" "$RUN/approved.patch"; ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1
-( cd "$FIX" && bash "$LD_ABS" land "$RUN" ) >/dev/null 2>&1 || true
+( cd "$FIX" && bash "$LD_ABS" land "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true
 echo 'generated' > "$FIX/a.txt"                          # simulated build side-effect outside landed set
 RC=0; ERR=$( cd "$FIX" && bash "$LD_ABS" verify "$RUN" --build-ok 1 2>&1 ) || RC=$?
 assert_eq "1" "$RC" "containment guard fires on out-of-set build side effects"
@@ -108,9 +108,9 @@ FIX=$(_ld_fixture)
 read -r RUN SIG <<<"$( cd "$FIX" && bash "$LD_ABS" setup )"
 IMPL_WT=$(sed -n 's/^IMPL_WT=//p' "$RUN/state" | head -1)
 echo 'x=2' > "$IMPL_WT/src/app.py"; echo 'world' > "$IMPL_WT/a.txt"
-( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) >/dev/null || true
+( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --sig "$SIG" ) >/dev/null || true
 cp "$RUN/full.1.patch" "$RUN/approved.patch"; ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1
-( cd "$FIX" && bash "$LD_ABS" land "$RUN" ) >/dev/null 2>&1 || true
+( cd "$FIX" && bash "$LD_ABS" land "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true
 assert_file_exists "$RUN/ok.landed" "prerequisites healthy before rollback test"
 echo 'precious user edit' > "$FIX/a.txt"                 # user edits a landed file during the build window
 RC=0; OUT=$( cd "$FIX" && bash "$LD_ABS" rollback "$RUN" --sig "$SIG" 2>&1 ) || RC=$?
@@ -124,13 +124,13 @@ FIX=$(_ld_fixture)
 read -r RUN SIG <<<"$( cd "$FIX" && bash "$LD_ABS" setup )" || true
 IMPL_WT=$(sed -n 's/^IMPL_WT=//p' "$RUN/state" | head -1)
 echo 'x=2' > "$IMPL_WT/src/app.py"
-( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) >/dev/null 2>&1 || true
+( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true
 cp "$RUN/full.1.patch" "$RUN/approved.patch"; ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1 || true
-( cd "$FIX" && bash "$LD_ABS" land "$RUN" ) >/dev/null 2>&1 || true
+( cd "$FIX" && bash "$LD_ABS" land "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true
 ( cd "$FIX" && bash "$LD_ABS" verify "$RUN" --build-ok 1 ) >/dev/null 2>&1 || true
 ( cd "$FIX" && bash "$LD_ABS" rollback "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true   # host back to base
 echo 'x=3' > "$IMPL_WT/src/app.py"
-( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) >/dev/null 2>&1 || true    # generation 2
+( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true    # generation 2
 assert_file_exists "$RUN/full.2.patch" "re-capture after rollback produces generation 2"
 RC=0; ( cd "$FIX" && bash "$LD_ABS" commit "$RUN" "stale" ) >/dev/null 2>&1 || RC=$?
 [ "$RC" -ne 0 ] && BLOCKED=yes || BLOCKED=no
@@ -143,9 +143,9 @@ FIX=$(_ld_fixture)
 read -r RUN SIG <<<"$( cd "$FIX" && bash "$LD_ABS" setup )" || true
 IMPL_WT=$(sed -n 's/^IMPL_WT=//p' "$RUN/state" | head -1)
 echo 'on: [push, evil]' > "$IMPL_WT/.github/workflows/ci.yml"
-( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) >/dev/null 2>&1 || true
+( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true
 cp "$RUN/full.1.patch" "$RUN/approved.patch"; ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1 || true
-RC=0; ( cd "$FIX" && bash "$LD_ABS" land "$RUN" --allow-exec-surface ) >/dev/null 2>&1 || RC=$?
+RC=0; ( cd "$FIX" && bash "$LD_ABS" land "$RUN" --sig "$SIG" --allow-exec-surface ) >/dev/null 2>&1 || RC=$?
 assert_eq "1" "$RC" "workflow edits hard-denied even with --allow-exec-surface"
 ( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true; rm -rf "$FIX"
 
@@ -154,7 +154,7 @@ FIX=$(_ld_fixture)
 read -r RUN SIG <<<"$( cd "$FIX" && bash "$LD_ABS" setup )" || true
 IMPL_WT=$(sed -n 's/^IMPL_WT=//p' "$RUN/state" | head -1)
 printf '#!/bin/sh\necho hi\n' > "$IMPL_WT/installer"; chmod +x "$IMPL_WT/installer"
-( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) >/dev/null 2>&1 || true
+( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true
 cp "$RUN/full.1.patch" "$RUN/approved.patch"
 RC=0; ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1 || RC=$?
 assert_eq "1" "$RC" "new executable file rejected at approve"
@@ -165,15 +165,15 @@ FIX=$(_ld_fixture)
 read -r RUN SIG <<<"$( cd "$FIX" && bash "$LD_ABS" setup )" || true
 IMPL_WT=$(sed -n 's/^IMPL_WT=//p' "$RUN/state" | head -1)
 echo 'x=2' > "$IMPL_WT/src/app.py"
-( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) >/dev/null 2>&1 || true
+( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true
 cp "$RUN/full.1.patch" "$RUN/approved.patch"; ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1 || true
-( cd "$FIX" && bash "$LD_ABS" land "$RUN" ) >/dev/null 2>&1 || true
+( cd "$FIX" && bash "$LD_ABS" land "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true
 ( cd "$FIX" && bash "$LD_ABS" rollback "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true
 echo 'x=9' > "$IMPL_WT/src/app.py"
-( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) >/dev/null 2>&1 || true
+( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true
 cp "$RUN/$(sed -n 's/^LATEST_FULL=//p' "$RUN/state" | tail -1)" "$RUN/approved.patch"
 ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1 || true
-RC=0; ( cd "$FIX" && bash "$LD_ABS" land "$RUN" ) >/dev/null 2>&1 || RC=$?
+RC=0; ( cd "$FIX" && bash "$LD_ABS" land "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || RC=$?
 assert_eq "0" "$RC" "re-land after rollback succeeds (reference worktree was reset)"
 assert_eq "x=9" "$(cat "$FIX/src/app.py")" "second-generation edit landed"
 ( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true; rm -rf "$FIX"
@@ -183,7 +183,7 @@ FIX=$(_ld_fixture)
 read -r RUN SIG <<<"$( cd "$FIX" && bash "$LD_ABS" setup )" || true
 IMPL_WT=$(sed -n 's/^IMPL_WT=//p' "$RUN/state" | head -1)
 echo 'x=2' > "$IMPL_WT/src/app.py"
-( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) >/dev/null 2>&1 || true
+( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true
 sed 's/x=2/x=666/' "$RUN/full.1.patch" > "$RUN/approved.patch"      # edited hunk = not a subset
 RC=0; ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1 || RC=$?
 assert_eq "1" "$RC" "edited hunk fails the subset check at approve"
@@ -195,9 +195,9 @@ mkdir -p "$FIX/.git/hooks"; printf '#!/bin/sh\nexit 0\n' > "$FIX/.git/hooks/pre-
 read -r RUN SIG <<<"$( cd "$FIX" && bash "$LD_ABS" setup )" || true
 IMPL_WT=$(sed -n 's/^IMPL_WT=//p' "$RUN/state" | head -1)
 echo 'x=2' > "$IMPL_WT/src/app.py"
-( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) >/dev/null 2>&1 || true
+( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true
 cp "$RUN/full.1.patch" "$RUN/approved.patch"; ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1 || true
-( cd "$FIX" && bash "$LD_ABS" land "$RUN" ) >/dev/null 2>&1 || true
+( cd "$FIX" && bash "$LD_ABS" land "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true
 ( cd "$FIX" && bash "$LD_ABS" verify "$RUN" --build-ok 1 ) >/dev/null 2>&1 || true
 assert_file_exists "$RUN/ok.build" "prerequisites healthy before hook tamper"
 printf '#!/bin/sh\nexit 1\n' > "$FIX/.git/hooks/pre-commit"          # same size, content changed
