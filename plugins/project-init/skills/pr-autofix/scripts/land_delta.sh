@@ -27,7 +27,11 @@ _verify_ref() { # $1=run $2=landed-sha from host notes — the reference worktre
   local run=$1 want=$2 f h
   [ -n "$want" ] || die "missing --landed-sha (value land printed)"
   [ "$(SHAPIPE < "$run/ref.landed.hashes" | cut -d' ' -f1)" = "$want" ] || die "ref.landed.hashes tampered"
-  while read -r f h; do
+  : > "$run/landed.files.trusted"    # derived from the HOST-BOUND record — later stages use THIS,
+                                     # never the mutable landed.files (post-gate append bypassed the denylists)
+  while IFS= read -r line || [ -n "$line" ]; do
+    h=${line##* }; f=${line% *}      # hash is the LAST field — paths may contain spaces
+    printf '%s\n' "$f" >> "$run/landed.files.trusted"
     if [ "$h" = absent ]; then
       [ ! -e "$(state "$run" get REF_WT)/$f" ] || die "reference worktree diverged from landed state: $f"
     else
@@ -123,6 +127,9 @@ gitwt_verify() { # gitwt_verify <run> — worktree gitfile integrity (common dir
   [ "$(git -C "$wt" rev-parse --path-format=absolute --git-common-dir)" = "$gcd" ] || die "worktree gitfile tampered (common dir)"
   gd=$(git -C "$wt" rev-parse --path-format=absolute --absolute-git-dir)
   case "$gd" in "$gcd"/worktrees/*) ;; *) die "worktree gitfile tampered (git dir: $gd)";; esac
+  # worktree-local config (extensions.worktreeConfig) could define filter.*.clean that
+  # GITWT diff would EXECUTE during capture — require it empty:
+  [ -z "$(git -C "$wt" config --worktree --list 2>/dev/null || true)" ] || die "worktree-local git config present — refusing (filter execution vector)"
 }
 
 GITH() { local run=$1; shift; git -C "$(state "$run" get HOST_ROOT)" -c core.hooksPath=/dev/null -c core.fsmonitor=false --literal-pathspecs "$@"; }
@@ -237,7 +244,7 @@ cmd_approve() { # host has already copied+edited approved.patch from the latest 
   _opaque_chunks "$run/approved.patch" | sort > "$run/approved.opaque"
   OPAQUE="$run/$(state "$run" get LATEST_FULL | sed 's/\.patch$/.opaque/')"
   [ -z "$(comm -23 "$run/approved.opaque" "$OPAQUE")" ] || die "approved.patch contains binary/meta-only file sections not present verbatim in the latest capture"
-  APPROVED_SHA=$(SHAPIPE < "$run/approved.patch" | cut -d' ' -f1)
+  APPROVED_SHA=$(cat "$run/approved.patch" "$run/plan.files" | SHAPIPE | cut -d' ' -f1)   # covers the PLAN list too — post-spawn plan.files tampering breaks the hash
   state "$run" set APPROVED_SHA "$APPROVED_SHA"   # convenience copy — the TRUST copy is the one echoed below
   rm -f "$run/ok.landed" "$run/ok.build" "$run/ok.committed"   # a re-approval invalidates every later stage
   : > "$run/ok.approved"
@@ -281,7 +288,7 @@ cmd_land() { # land <run> --sig <s> --approved-sha <a> --script-sha <h> [--allow
   [ -f "$run/ok.approved" ] || die "approve stage missing"
   # verify against the HOST-supplied hash, not state — state and approved.patch live in the
   # same implementer-reachable tmp; the host's notes are the one unwritable place:
-  [ "$(SHAPIPE < "$run/approved.patch" | cut -d' ' -f1)" = "$aprv" ] || die "approved.patch does not match the hash approve printed — tampered since approval"
+  [ "$(cat "$run/approved.patch" "$run/plan.files" | SHAPIPE | cut -d' ' -f1)" = "$aprv" ] || die "approved.patch/plan.files do not match the hash approve printed — tampered since approval"
   host=$(state "$run" get HOST_ROOT)
   [ "$(git -C "$host" rev-parse HEAD)" = "$(state "$run" get BASE_SHA)" ] || die "base moved"
   [ "$(git -C "$host" symbolic-ref -q HEAD || echo detached)" = "$(state "$run" get BASE_REF)" ] || die "branch switched"
@@ -292,8 +299,9 @@ cmd_land() { # land <run> --sig <s> --approved-sha <a> --script-sha <h> [--allow
   # never be modifiable by the loop it gates):
   ! grep -qE '^\.github/workflows/' "$run/landed.files" || die "refusing to land .github/workflows changes — hard deny, no override"
   # Execution-surface gate — CODE, not prose (build/commit execute these files):
-  if grep -qE "$EXEC_SURFACE_RE" "$run/landed.files" && [ "$allow" != "--allow-exec-surface" ]; then
-    die "execution-surface files in the landing set (user approval + --allow-exec-surface required): $(grep -E "$EXEC_SURFACE_RE" "$run/landed.files" | tr '\n' ' ')"
+  if grep -qE "$EXEC_SURFACE_RE" "$run/landed.files"; then
+    [ "$allow" = "--allow-exec-surface" ] || die "execution-surface files in the landing set (user approval + --allow-exec-surface required): $(grep -E "$EXEC_SURFACE_RE" "$run/landed.files" | tr '\n' ' ')"
+    : > "$run/ok.execsurface-approved"   # commit re-checks the trusted list against this marker
   fi
   while IFS= read -r f || [ -n "$f" ]; do
     [ -z "$(GITH "$run" status --porcelain -- "$f")" ] || die "target file locally modified: $f"
@@ -346,14 +354,15 @@ cmd_land() { # land <run> --sig <s> --approved-sha <a> --script-sha <h> [--allow
   SHAPIPE < "$run/ref.landed.hashes" | cut -d' ' -f1              # echoed: host records as LANDED_SHA
 }
 
-_equality() { # _equality <run> <host.out> <ref.out>
-  local run=$1 hostf=$2 reff=$3 f base
+_equality() { # _equality <run> <host.out> <ref.out> — uses the TRUSTED list (see _verify_ref)
+  local run=$1 hostf=$2 reff=$3 f base list
   base=$(state "$run" get BASE_SHA)
+  list="$run/landed.files.trusted"; [ -f "$list" ] || list="$run/landed.files"
   : > "$hostf"; : > "$reff"
   while IFS= read -r f || [ -n "$f" ]; do
     GITH "$run" diff --binary --no-ext-diff --no-textconv "$base" -- "$f" >> "$hostf"
     GITREF "$run" diff --binary --no-ext-diff --no-textconv "$base" -- "$f" >> "$reff"
-  done < "$run/landed.files"
+  done < "$list"
   diff -q "$hostf" "$reff" >/dev/null
 }
 
@@ -408,7 +417,7 @@ cmd_commit() { # commit <run> <msg> --approved-sha <a> --script-sha <h> [--bypas
   [ "$(hooks_snap "$host")" = "$(state "$run" get HOOKS_SNAP)" ] || die "git hooks changed during the run"
   [ "$(config_snap "$host")" = "$(state "$run" get CONFIG_SNAP)" ] || die "git config/remotes changed during the run"
   [ -n "$aprv" ] || die "commit requires --approved-sha <value printed by approve>"
-  [ "$(SHAPIPE < "$run/approved.patch" | cut -d' ' -f1)" = "$aprv" ] || die "approved.patch does not match the approved hash — tampered"
+  [ "$(cat "$run/approved.patch" "$run/plan.files" | SHAPIPE | cut -d' ' -f1)" = "$aprv" ] || die "approved.patch/plan.files do not match the approved hash — tampered"
   _equality "$run" "$run/host.final2.diff" "$run/ref.final2.diff" || die "landed files changed since verification"
   if git -C "$host" config core.hooksPath >/dev/null 2>&1; then
     # A configured hooksPath (husky-style) is PR-influenceable — but it may also be the
@@ -416,8 +425,14 @@ cmd_commit() { # commit <run> <msg> --approved-sha <a> --script-sha <h> [--bypas
     [ "$bypass" = yes ] || die "core.hooksPath is configured — ask the user: bypass it (--bypass-hookspath-approved) or abort"
     flags=(-c core.hooksPath=/dev/null)
   fi
-  git -C "$host" --literal-pathspecs ${flags[@]+"${flags[@]}"} add --pathspec-from-file="$run/landed.files"
-  git -C "$host" --literal-pathspecs ${flags[@]+"${flags[@]}"} commit -m "$msg" --pathspec-from-file="$run/landed.files"   # ${arr[@]+...}: empty-array expansion aborts under set -u on macOS bash 3.2
+  # Re-apply the hard denies over the TRUSTED list — land checked them, but landed.files
+  # was mutable between stages; the trusted list derives from the host-bound record:
+  ! grep -qE '^\.github/workflows/' "$run/landed.files.trusted" || die "workflow path in landing set at commit time — hard deny"
+  if grep -qE "$EXEC_SURFACE_RE" "$run/landed.files.trusted" && [ ! -f "$run/ok.execsurface-approved" ]; then
+    die "execution-surface path in landing set at commit time without recorded approval"
+  fi
+  git -C "$host" --literal-pathspecs ${flags[@]+"${flags[@]}"} add --pathspec-from-file="$run/landed.files.trusted"
+  git -C "$host" --literal-pathspecs ${flags[@]+"${flags[@]}"} commit -m "$msg" --pathspec-from-file="$run/landed.files.trusted"   # ${arr[@]+...}: empty-array expansion aborts under set -u on macOS bash 3.2
   state "$run" set COMMIT_SHA "$(git -C "$host" rev-parse HEAD)"
   # A hook that ran during commit could have mutated content — verify the COMMITTED blobs
   # against the reference worktree before declaring success:
@@ -431,7 +446,7 @@ cmd_commit() { # commit <run> <msg> --approved-sha <a> --script-sha <h> [--bypas
       git -C "$host" cat-file -e "HEAD:$f" 2>/dev/null \
         && die "approved DELETION of $f is present in the commit — a hook restored it; git reset --soft HEAD~1 and investigate" || true
     fi
-  done < "$run/landed.files"
+  done < "$run/landed.files.trusted"
   state "$run" set HOOKS_FLAGS "${flags[*]:-none}"
   : > "$run/ok.committed"
 }
@@ -460,6 +475,8 @@ cmd_rollback() { # rollback <run> --sig <s> --script-sha <h> — destructive; sa
   [ -n "$sigv" ] || die "rollback requires --sig <value printed by setup>"
   [ "$(_state_sig "$run")" = "$sigv" ] || die "state signature mismatch — refusing rollback"
   host=$(state "$run" get HOST_ROOT); ref=$(state "$run" get REF_WT); base=$(state "$run" get BASE_SHA)
+  [ "$(git -C "$host" symbolic-ref -q HEAD || echo detached)" = "$(state "$run" get BASE_REF)" ] || die "branch switched — refusing rollback"
+  # ^ branch check FIRST — the soft-reset below moves whatever branch is checked out
   if [ "$(git -C "$host" rev-parse HEAD)" != "$base" ]; then
     # One recoverable case: HEAD is OUR commit (recorded sha, parent == base) that
     # post-commit verification rejected — soft-reset it away, then roll back the files.
@@ -470,7 +487,6 @@ cmd_rollback() { # rollback <run> --sig <s> --script-sha <h> — destructive; sa
       die "HEAD is not the landing base — a rollback here would target the wrong revision"
     fi
   fi
-  [ "$(git -C "$host" symbolic-ref -q HEAD || echo detached)" = "$(state "$run" get BASE_REF)" ] || die "branch switched — refusing rollback"
   [ -d "$ref" ] || die "no reference worktree — cannot verify safe rollback"
   while IFS= read -r f || [ -n "$f" ]; do
     if [ ! -e "$host/$f" ] && [ ! -e "$ref/$f" ]; then     # approved DELETION — restore the base file
