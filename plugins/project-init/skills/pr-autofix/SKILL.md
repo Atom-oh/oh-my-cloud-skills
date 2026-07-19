@@ -108,6 +108,12 @@ Why: running the whole fix loop on a mid-tier model produces frequent errors in 
 judgment-heavy part — misread findings, wrong root cause, scope creep. A strong-tier
 **plan** makes the remaining work mechanical, which sonnet applies reliably and cheaply.
 
+**Plan schema (canonical — BOTH the inline path and the planner agent produce exactly
+this; the 4b filter depends on these fields):** per finding —
+`finding` (one-line + severity) / `file:line` / `root_cause` / `edit` (exact change) /
+`verify` / `approval: granted|required` / `disposition: actionable|report-only`, plus a
+top-level `constraints` block that rides every hand-off.
+
 **4a. Fix plan — Fable or Opus.** If the host session is already running Fable/Opus,
 write the plan inline. Otherwise spawn the bundled **`pr-autofix-planner`** agent (Agent tool
 `subagent_type: "project-init:pr-autofix-planner"`; prefer `model: "fable"`, fall back to
@@ -138,7 +144,10 @@ LD_SHA=$( (sha256sum "$LD" 2>/dev/null || shasum -a 256 "$LD") | cut -d' ' -f1 )
 #   destructive/final stage call (land/commit/push/rollback/cleanup), YOU re-run the
 #   line above and STOP if it no longer equals your recorded LD_SHA — a tampered script
 #   executes before it can self-check, so --script-sha inside the script is only a
-#   secondary, accidental-drift guard — the script lives on a same-uid filesystem, and a tampered script lies about
+#   secondary, accidental-drift guard. This host-side re-hash covers EVERY stage call
+#   including capture and verify — and the residual surface stays real: an injected
+#   implementer can write anywhere this uid can, including $RUN and the plugin dir;
+#   the hash discipline is what turns that into a detected STOP instead of silent bypass — the script lives on a same-uid filesystem, and a tampered script lies about
 #   everything else. Your notes are the only implementer-unwritable storage.
 read -r RUN SIG <<<"$(bash "$LD" setup)"
 # setup creates the implementer + reference worktrees @ HEAD, pins base SHA/ref,
@@ -168,7 +177,7 @@ plan inline.)
 
 **4c. Verify and land — every gate is executable, staged, and tested:**
 
-1. **Capture**: `bash "$LD" capture "$RUN" --sig "$SIG"` — verifies the worktree gitfile wasn't
+1. **Capture**: `bash "$LD" capture "$RUN" --script-sha "$LD_SHA" --sig "$SIG"` — verifies the worktree gitfile wasn't
    repointed, re-scans symlinks, and writes an immutable `full.N.patch` generation
    (re-runs append a new generation, never edit an old one).
 2. **Approve** (the judgment step — yours): copy the latest generation to
@@ -186,7 +195,7 @@ plan inline.)
    applies atomically, and mirrors the approved state into the reference worktree.
 4. **Build**: run the standard build check (below). If the host tree is dirty beyond the
    landed files, build in the reference worktree instead and say so in the report.
-5. **Verify**: `bash "$LD" verify "$RUN" --build-ok <0|1>` — fails if the build touched
+5. **Verify**: `bash "$LD" verify "$RUN" --build-ok <0|1> --script-sha "$LD_SHA"` — fails if the build touched
    tracked files outside the landed set (codegen/formatter companions are never
    auto-committed; re-approve or revert them) and if the landed content drifted from the
    approved delta (byte-for-byte, capture flags).

@@ -36,7 +36,7 @@ SHAPIPE() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum
 # Class-based, not filename-enumerated: anything plausibly executed during build/verify/
 # commit. Broad on purpose — a false positive costs one --allow-exec-surface approval,
 # a false negative is arbitrary code execution on the host.
-EXEC_SURFACE_RE='(^|/)(\.github|\.husky|\.git[a-z]*|\.ci|ci|\.circleci|bin|scripts?|tests?|hooks?)/|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|justfile|Justfile|Taskfile\.ya?ml|\.gitlab-ci\.ya?ml|Jenkinsfile[^/]*|azure-pipelines\.ya?ml|bitbucket-pipelines\.ya?ml|gradlew(\.bat)?|mvnw(\.cmd)?|configure|autogen\.sh|BUILD(\.bazel)?|WORKSPACE|Dockerfile[^/]*|\.envrc|sitecustomize\.py|\.gitattributes|\.gitmodules|\.pre-commit-config\.ya?ml|\.?lefthook(-local)?\.ya?ml|\.huskyrc[^/]*|gulpfile\.[a-z]+|Gruntfile\.[a-z]+|\.eslintrc[^/]*|\.babelrc[^/]*|composer\.json|meson\.build|SConstruct|SConscript|docker-compose[^/]*\.ya?ml|compose\.ya?ml|\.mcp\.json|pytest\.ini|\.yarnrc\.ya?ml|manage\.py|configure\.ac|.*\.cmake|.*\.pth|requirements[^/]*\.txt|Pipfile(\.lock)?|poetry\.lock|yarn\.lock|pnpm-lock\.ya?ml|Gemfile\.lock|package-lock\.json|\.npmrc|pip\.conf)$|(^|/)\.yarn/|(^|/)\.claude/settings[^/]*\.json$|\.(gradle|gradle\.kts|sh|bash|zsh|ps1|psm1)$|(^|/)\.[a-z0-9_-]+rc\.(js|cjs|mjs|ts)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
+EXEC_SURFACE_RE='(^|/)(\.github|\.husky|\.git[a-z]*|\.ci|ci|\.circleci|\.cargo|\.yarn|bin|scripts?|tests?|hooks?)/|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|justfile|Justfile|Taskfile\.ya?ml|\.gitlab-ci\.ya?ml|Jenkinsfile[^/]*|azure-pipelines\.ya?ml|bitbucket-pipelines\.ya?ml|gradlew(\.bat)?|mvnw(\.cmd)?|configure|autogen\.sh|BUILD(\.bazel)?|WORKSPACE|Dockerfile[^/]*|\.envrc|sitecustomize\.py|\.gitattributes|\.gitmodules|\.pre-commit-config\.ya?ml|\.?lefthook(-local)?\.ya?ml|\.huskyrc[^/]*|gulpfile\.[a-z]+|Gruntfile\.[a-z]+|\.eslintrc[^/]*|\.babelrc[^/]*|composer\.json|meson\.build|SConstruct|SConscript|docker-compose[^/]*\.ya?ml|compose\.ya?ml|\.mcp\.json|pytest\.ini|\.yarnrc\.ya?ml|manage\.py|configure\.ac|.*\.cmake|.*\.pth|requirements[^/]*\.txt|Pipfile(\.lock)?|poetry\.lock|yarn\.lock|pnpm-lock\.ya?ml|Gemfile\.lock|Cargo\.lock|package-lock\.json|\.npmrc|pip\.conf)$|(^|/)\.yarn/|(^|/)\.claude/settings[^/]*\.json$|\.(gradle|gradle\.kts|sh|bash|zsh|ps1|psm1)$|(^|/)\.[a-z0-9_-]+rc\.(js|cjs|mjs|ts)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
 
 state() { # state <run> get KEY | state <run> set KEY VALUE
   local run=$1 op=$2 key=$3
@@ -148,10 +148,14 @@ cmd_setup() {
                                     # cleanup signature (its own trust root — see cmd_cleanup)
 }
 
-cmd_capture() { # capture <run> --sig <setup-sig>
-  local run=$1 n
-  [ "${2:-}" = "--sig" ] && [ -n "${3:-}" ] || die "capture requires --sig <value printed by setup>"
-  [ "$(_state_sig "$run")" = "$3" ] || die "state signature mismatch — refusing capture"
+cmd_capture() { # capture <run> --sig <s> --script-sha <h>
+  local run=$1 n sigv="" ssha=""
+  shift
+  while [ $# -gt 0 ]; do case "$1" in
+    --sig) sigv=${2:-}; shift 2;; --script-sha) ssha=${2:-}; shift 2;; "") shift;; *) die "unknown capture arg: $1";; esac; done
+  _verify_self "$ssha"
+  [ -n "$sigv" ] || die "capture requires --sig <value printed by setup>"
+  [ "$(_state_sig "$run")" = "$sigv" ] || die "state signature mismatch — refusing capture"
   [ -f "$run/ok.setup" ] || die "setup stage missing"
   gitwt_verify "$run"; symlink_scan "$(state "$run" get IMPL_WT)"
   [ "$(config_snap "$(state "$run" get HOST_ROOT)")" = "$(state "$run" get CONFIG_SNAP)" ] || die "shared git config changed during implementation"
@@ -159,6 +163,11 @@ cmd_capture() { # capture <run> --sig <setup-sig>
   GITH "$run" status --porcelain --untracked-files=all > "$run/host.status.capture"
   diff -q "$run/host.status.setup" "$run/host.status.capture" >/dev/null \
     || die "host tree changed during implementation (out-of-worktree writes or concurrent edits) — inspect before proceeding"
+  if [ -f "$run/plan.files" ]; then   # a gitignored planned file would silently vanish from the patch
+    while IFS= read -r f || [ -n "$f" ]; do
+      GITWT "$run" check-ignore -q "$f" 2>/dev/null && die "planned file is gitignored and would be silently dropped: $f"
+    done < "$run/plan.files"
+  fi
   GITWT "$run" add -N .
   n=1; while [ -e "$run/full.$n.patch" ]; do n=$((n+1)); done   # generations are immutable — re-runs append
   GITWT "$run" diff --binary --no-ext-diff --no-textconv "$(state "$run" get BASE_SHA)" > "$run/full.$n.patch"
@@ -292,8 +301,17 @@ cmd_land() { # land <run> --sig <s> --approved-sha <a> --script-sha <h> [--allow
     # compensation: restore ONLY files still matching the just-applied state (cmp vs the
     # reference) — a concurrent user edit inside this tiny window must not be destroyed
     while IFS= read -r f || [ -n "$f" ]; do
+      if [ ! -e "$host/$f" ] && [ ! -e "$(state "$run" get REF_WT)/$f" ]; then
+        # approved DELETION applied to both sides — restore the base file exactly
+        GITH "$run" checkout "$(state "$run" get BASE_SHA)" -- "$f" || die "compensation restore failed: $f — resolve manually"
+        continue
+      fi
       cmp -s -- "$host/$f" "$(state "$run" get REF_WT)/$f" 2>/dev/null || { echo "SKIP (concurrently modified): $f"; continue; }
-      GITH "$run" checkout "$(state "$run" get BASE_SHA)" -- "$f" 2>/dev/null || rm -f -- "$host/$f"
+      if GITH "$run" cat-file -e "$(state "$run" get BASE_SHA):$f" 2>/dev/null; then
+        GITH "$run" checkout "$(state "$run" get BASE_SHA)" -- "$f" || die "compensation restore failed: $f — resolve manually"
+      else
+        rm -f -- "$host/$f"    # file did not exist at base — removing the just-applied copy IS the restore
+      fi
     done < "$run/landed.files"
     die "post-apply staging failed — host restored to base"
   fi
@@ -311,14 +329,15 @@ _equality() { # _equality <run> <host.out> <ref.out>
   diff -q "$hostf" "$reff" >/dev/null
 }
 
-cmd_verify() {
-  local run=$1 buildok=${3:?usage: verify <run> --build-ok 0|1 [--built-in host|ref]} builtin=host changed bad
-  [ "$2" = "--build-ok" ] || die "usage: verify <run> --build-ok 0|1 [--built-in host|ref]"
-  case "$buildok" in 0|1) ;; *) die "--build-ok takes 0 or 1, got: $buildok";; esac
-  if [ -n "${4:-}" ]; then
-    [ "$4" = "--built-in" ] || die "unknown argument: $4"
-    case "${5:-}" in host|ref) builtin=$5 ;; *) die "--built-in takes host|ref, got: ${5:-<empty>}";; esac
-  fi
+cmd_verify() { # verify <run> --build-ok 0|1 --script-sha <h> [--built-in host|ref]
+  local run=$1 buildok="" builtin=host ssha="" changed bad
+  shift
+  while [ $# -gt 0 ]; do case "$1" in
+    --build-ok) buildok=${2:-}; shift 2;; --script-sha) ssha=${2:-}; shift 2;;
+    --built-in) builtin=${2:-}; shift 2;; "") shift;; *) die "unknown verify arg: $1";; esac; done
+  _verify_self "$ssha"
+  case "$buildok" in 0|1) ;; *) die "--build-ok takes 0 or 1, got: ${buildok:-<missing>}";; esac
+  case "$builtin" in host|ref) ;; *) die "--built-in takes host|ref, got: $builtin";; esac
   [ -f "$run/ok.landed" ] || die "land stage missing"
   rm -f "$run/ok.build"                            # a failed re-verify must not leave last round's sentinel
   [ "$buildok" = 1 ] || die "build failed — run rollback"
@@ -476,11 +495,11 @@ cmd_cleanup() { # cleanup <run> --sig <setup-sig> [--keep] — sig comes from th
 
 case "${1:-}" in
   setup) cmd_setup ;;
-  capture) cmd_capture "${2:?run dir}" "${3:-}" "${4:-}" ;;
+  capture) cmd_capture "${2:?run dir}" "${@:3}" ;;
   approve) cmd_approve "${2:?run dir}" ;;
   check-plan-paths) cmd_check_plan_paths "${2:?run dir}" ;;
   land) cmd_land "${2:?run dir}" "${@:3}" ;;
-  verify) cmd_verify "${2:?run dir}" "${3:-}" "${4:-}" "${5:-}" "${6:-}" ;;
+  verify) cmd_verify "${2:?run dir}" "${@:3}" ;;
   commit) cmd_commit "${2:?run dir}" "${3:?message}" "${@:4}" ;;
   push) cmd_push "${2:?run dir}" "${3:-}" "${4:-}" ;;
   rollback) cmd_rollback "${2:?run dir}" "${@:3}" ;;
