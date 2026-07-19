@@ -111,6 +111,7 @@ echo 'x=2' > "$IMPL_WT/src/app.py"; echo 'world' > "$IMPL_WT/a.txt"
 ( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) >/dev/null || true
 cp "$RUN/full.1.patch" "$RUN/approved.patch"; ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1
 ( cd "$FIX" && bash "$LD_ABS" land "$RUN" ) >/dev/null 2>&1 || true
+assert_file_exists "$RUN/ok.landed" "prerequisites healthy before rollback test"
 echo 'precious user edit' > "$FIX/a.txt"                 # user edits a landed file during the build window
 RC=0; OUT=$( cd "$FIX" && bash "$LD_ABS" rollback "$RUN" --sig "$SIG" 2>&1 ) || RC=$?
 assert_eq "1" "$RC" "rollback reports partial (user-modified file present)"
@@ -186,6 +187,24 @@ echo 'x=2' > "$IMPL_WT/src/app.py"
 sed 's/x=2/x=666/' "$RUN/full.1.patch" > "$RUN/approved.patch"      # edited hunk = not a subset
 RC=0; ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1 || RC=$?
 assert_eq "1" "$RC" "edited hunk fails the subset check at approve"
+( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true; rm -rf "$FIX"
+
+# --- hooks content tampering (same size/mtime) blocks commit ---
+FIX=$(_ld_fixture)
+mkdir -p "$FIX/.git/hooks"; printf '#!/bin/sh\nexit 0\n' > "$FIX/.git/hooks/pre-commit"; chmod +x "$FIX/.git/hooks/pre-commit"
+read -r RUN SIG <<<"$( cd "$FIX" && bash "$LD_ABS" setup )" || true
+IMPL_WT=$(sed -n 's/^IMPL_WT=//p' "$RUN/state" | head -1)
+echo 'x=2' > "$IMPL_WT/src/app.py"
+( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) >/dev/null 2>&1 || true
+cp "$RUN/full.1.patch" "$RUN/approved.patch"; ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1 || true
+( cd "$FIX" && bash "$LD_ABS" land "$RUN" ) >/dev/null 2>&1 || true
+( cd "$FIX" && bash "$LD_ABS" verify "$RUN" --build-ok 1 ) >/dev/null 2>&1 || true
+assert_file_exists "$RUN/ok.build" "prerequisites healthy before hook tamper"
+printf '#!/bin/sh\nexit 1\n' > "$FIX/.git/hooks/pre-commit"          # same size, content changed
+touch -r "$RUN/ok.setup" "$FIX/.git/hooks/pre-commit" 2>/dev/null || true
+RC=0; ( cd "$FIX" && bash "$LD_ABS" commit "$RUN" "tampered" ) >/dev/null 2>&1 || RC=$?
+[ "$RC" -ne 0 ] && HOOKBLOCK=yes || HOOKBLOCK=no
+assert_eq "yes" "$HOOKBLOCK" "content-tampered hook blocks commit (hash covers content, not just metadata)"
 ( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true; rm -rf "$FIX"
 
 # --- symlink escape gate at setup ---

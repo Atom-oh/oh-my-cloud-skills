@@ -46,9 +46,10 @@ _state_sig() { # recompute the setup signature from CURRENT state values — any
     "$(state "$run" get REF_WT)" "$(state "$run" get BASE_SHA)" | SHAPIPE | cut -d' ' -f1
 }
 
-config_snap() { # shared .git config + remotes are implementer-writable (same uid) — a planted
-                # core.sshCommand/credential.helper would execute at push. Snapshot & re-verify.
-  git -C "$1" config --list --local 2>/dev/null | sort | SHAPIPE | cut -d' ' -f1
+config_snap() { # a planted core.sshCommand/credential.helper would execute at push — and it
+                # can live in ANY scope reachable by the same uid (local, worktree, global).
+                # Snapshot the EFFECTIVE config, not just --local, and re-verify before use.
+  git -C "$1" config --list 2>/dev/null | sort | SHAPIPE | cut -d' ' -f1
 }
 
 hooks_snap() { # hooks_snap <host_root>
@@ -57,7 +58,7 @@ hooks_snap() { # hooks_snap <host_root>
   [ -n "$dir" ] || die "cannot resolve hooks dir"
   if [ -d "$dir" ]; then
     ( cd "$dir" && { find . \( -type f -o -type l \) -print0 | sort -z | xargs -0 -r ls -ld 2>/dev/null
-                     find . \( -type f -o -type l \) -print0 | sort -z | xargs -0 -r cat < /dev/null 2>/dev/null
+                     find . \( -type f -o -type l \) -print0 | sort -z | xargs -0 -r cat 2>/dev/null
                    } | SHAPIPE | cut -d' ' -f1 )
   else echo absent; fi
 }
@@ -183,13 +184,16 @@ cmd_approve() { # host has already copied+edited approved.patch from the latest 
 cmd_check_plan_paths() { # paths on stdin, one per line — pre-spawn gate
   local run=$1 p
   [ -f "$run/ok.setup" ] || die "setup stage missing"
+  local n=0
   while IFS= read -r p || [ -n "$p" ]; do
+    n=$((n+1))
     [ -n "$p" ] && [ "$p" != "." ] || die "empty plan path"
     case "/$p/" in
       //*) die "plan path is absolute: $p" ;;
       */../*) die "plan path traverses: $p" ;;   # component-anchored — schema..v2.json is fine
     esac
   done
+  [ "$n" -gt 0 ] || die "no plan paths on stdin — fail closed"
   echo ok
 }
 
@@ -306,6 +310,7 @@ cmd_push() { # separate, idempotent — a transient push failure must not strand
   [ -f "$run/ok.committed" ] || die "commit stage missing"
   host=$(state "$run" get HOST_ROOT); sha=$(state "$run" get COMMIT_SHA)
   [ "$(git -C "$host" rev-parse HEAD)" = "$sha" ] || die "HEAD moved since commit — refusing to push"
+  [ "$(git -C "$host" symbolic-ref -q HEAD || echo detached)" = "$(state "$run" get BASE_REF)" ] || die "branch switched since setup — refusing to push"
   [ "$(config_snap "$host")" = "$(state "$run" get CONFIG_SNAP)" ] || die "git config/remotes changed since setup — refusing to push"
   local -a pf=(); [ "$(state "$run" get HOOKS_FLAGS)" != none ] && pf=(-c core.hooksPath=/dev/null)
   git -C "$host" ${pf[@]+"${pf[@]}"} push
