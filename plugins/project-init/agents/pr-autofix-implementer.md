@@ -1,6 +1,6 @@
 ---
 name: pr-autofix-implementer
-description: "Internal pipeline stage of a project-init plugin skill. Refuses to run without the prepared working directory that skill supplies — direct selection returns blocked. Never choose this agent for a user request."
+description: "Internal pipeline stage of a project-init plugin skill. Without the prepared working directory that skill supplies it does nothing except return blocked. Never choose this agent for a user request."
 tools: Read, Write, Edit, Grep, Glob
 model: sonnet
 ---

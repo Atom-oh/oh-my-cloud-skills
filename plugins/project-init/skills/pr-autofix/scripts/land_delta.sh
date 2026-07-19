@@ -77,9 +77,9 @@ gitwt_verify() { # gitwt_verify <run> — worktree gitfile integrity (common dir
   case "$gd" in "$gcd"/worktrees/*) ;; *) die "worktree gitfile tampered (git dir: $gd)";; esac
 }
 
-GITH() { local run=$1; shift; git -C "$(state "$run" get HOST_ROOT)" -c core.hooksPath=/dev/null --literal-pathspecs "$@"; }
-GITWT() { local run=$1; shift; git -C "$(state "$run" get IMPL_WT)" -c core.hooksPath=/dev/null --literal-pathspecs "$@"; }
-GITREF() { local run=$1; shift; git -C "$(state "$run" get REF_WT)" -c core.hooksPath=/dev/null --literal-pathspecs "$@"; }
+GITH() { local run=$1; shift; git -C "$(state "$run" get HOST_ROOT)" -c core.hooksPath=/dev/null -c core.fsmonitor=false --literal-pathspecs "$@"; }
+GITWT() { local run=$1; shift; git -C "$(state "$run" get IMPL_WT)" -c core.hooksPath=/dev/null -c core.fsmonitor=false --literal-pathspecs "$@"; }
+GITREF() { local run=$1; shift; git -C "$(state "$run" get REF_WT)" -c core.hooksPath=/dev/null -c core.fsmonitor=false --literal-pathspecs "$@"; }
 
 cmd_setup() {
   local run wtd refd host base ref
@@ -131,12 +131,13 @@ cmd_capture() {
   echo "$run/full.$n.patch"
 }
 
-_hunk_hashes() { # normalize hunks (strip @@ offsets), hash one per line — subset comparison unit
+_hunk_hashes() { # one PHYSICAL line per hunk (newlines -> \x01), offsets stripped, then hashed
   awk '
-    /^diff --git /{file=$0; hunk=""; inh=0; next}
-    /^@@/{ if (inh && hunk!="") print hunk; sub(/@@[^@]*@@/,"@@ @@"); hunk=file"|"$0; inh=1; next }
-    inh { hunk=hunk"\n"$0 }
-    END{ if (inh && hunk!="") print hunk }
+    function flush() { if (inh && hunk != "") print hunk; hunk=""; inh=0 }
+    /^diff --git /{ flush(); file=$0; next }
+    /^@@/{ flush(); line=$0; sub(/@@[^@]*@@/, "@@ @@", line); hunk=file "\x01" line; inh=1; next }
+    inh { hunk = hunk "\x01" $0 }
+    END { flush() }
   ' "$1" | while IFS= read -r h; do printf '%s' "$h" | SHAPIPE | cut -d' ' -f1; done
 }
 
@@ -153,6 +154,7 @@ cmd_approve() { # host has already copied+edited approved.patch from the latest 
   MANIFEST="$run/$(state "$run" get LATEST_FULL | sed 's/\.patch$/.hunks/')"
   [ -z "$(comm -23 "$run/approved.hunks" "$MANIFEST")" ] || die "approved.patch contains hunks not present in the latest capture generation"
   state "$run" set APPROVED_SHA "$(SHAPIPE < "$run/approved.patch" | cut -d' ' -f1)"   # hash-bind: land/commit re-verify
+  rm -f "$run/ok.landed" "$run/ok.build" "$run/ok.committed"   # a re-approval invalidates every later stage
   : > "$run/ok.approved"
 }
 
@@ -193,12 +195,15 @@ cmd_land() {
   while IFS= read -r f || [ -n "$f" ]; do          # PRE-apply: no landed path may already be a symlink
     [ ! -L "$host/$f" ] || die "landed path is a symlink on the host: $f"
   done < "$run/landed.files"
-  GITREF "$run" apply "$run/approved.patch"       # reference FIRST — disposable, its failure costs nothing
+  GITH "$run" apply --check "$run/approved.patch"  # non-mutating pre-flight FIRST — both sides still pristine on failure
+  GITREF "$run" apply "$run/approved.patch"        # reference next — disposable
   GITREF "$run" add -N .
   GITREF "$run" status --porcelain > "$run/ref.status.before"   # ref-side containment baseline (ref builds)
   GITH "$run" status --porcelain > "$run/host.status.before"
-  GITH "$run" apply --check "$run/approved.patch"
-  GITH "$run" apply "$run/approved.patch"          # host LAST — the only irreversible step (git apply is atomic)
+  if ! GITH "$run" apply "$run/approved.patch"; then   # host LAST (atomic); if the check→apply race loses,
+    GITREF "$run" reset --hard "$(state "$run" get BASE_SHA)" >/dev/null; GITREF "$run" clean -fdx >/dev/null
+    die "host apply failed — reference reset, nothing landed"
+  fi
   if ! GITH "$run" add -N --pathspec-from-file="$run/landed.files"; then
     # compensation: the cleanliness gate proved these paths were clean — base restore is safe
     while IFS= read -r f || [ -n "$f" ]; do GITH "$run" checkout "$(state "$run" get BASE_SHA)" -- "$f" 2>/dev/null || rm -f -- "$host/$f"; done < "$run/landed.files"

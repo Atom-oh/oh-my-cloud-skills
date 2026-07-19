@@ -177,6 +177,17 @@ assert_eq "0" "$RC" "re-land after rollback succeeds (reference worktree was res
 assert_eq "x=9" "$(cat "$FIX/src/app.py")" "second-generation edit landed"
 ( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true; rm -rf "$FIX"
 
+# --- tampered approved.patch hunk rejected by the subset check ---
+FIX=$(_ld_fixture)
+read -r RUN SIG <<<"$( cd "$FIX" && bash "$LD_ABS" setup )" || true
+IMPL_WT=$(sed -n 's/^IMPL_WT=//p' "$RUN/state" | head -1)
+echo 'x=2' > "$IMPL_WT/src/app.py"
+( cd "$FIX" && bash "$LD_ABS" capture "$RUN" ) >/dev/null 2>&1 || true
+sed 's/x=2/x=666/' "$RUN/full.1.patch" > "$RUN/approved.patch"      # edited hunk = not a subset
+RC=0; ( cd "$FIX" && bash "$LD_ABS" approve "$RUN" ) >/dev/null 2>&1 || RC=$?
+assert_eq "1" "$RC" "edited hunk fails the subset check at approve"
+( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" --sig "$SIG" ) >/dev/null 2>&1 || true; rm -rf "$FIX"
+
 # --- symlink escape gate at setup ---
 FIX=$(_ld_fixture)
 ( cd "$FIX" && ln -s /etc/passwd escape.link && git add -A && git commit -qm link ) >/dev/null
