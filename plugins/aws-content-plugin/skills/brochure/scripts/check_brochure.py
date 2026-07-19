@@ -70,6 +70,11 @@ def main():
     if re.search(r"--text-3\s*:\s*var\(--ink-400\)", html) or re.search(r"--text-3\s*:\s*#8[aA]8474", html):
         warns.append("muted text token (--text-3) is ~3.2:1 on paper — fails WCAG AA; darken to ~#6B665A")
 
+    # --- full-width text capped to half-width: .sec-head spans the content column, so a
+    #     ch cap there strips it to ~half and forces needless wraps (design-system §2). ---
+    if re.search(r"\.sec-head\s*\{[^}]*max-width\s*:\s*\d+ch", html):
+        warns.append(".sec-head has a max-width:NNch cap — it spans the full column, so this halves the text width and forces line breaks; use max-width:none + text-wrap:pretty")
+
     # --- self-contained-ish: CSS is inlined ---
     need("<style" in html, "inlined <style> (self-contained)", hard=False)
 
