@@ -19,7 +19,7 @@ Define these on `:root` and reference them everywhere — a single token set is 
 
   --bg:var(--paper); --surface:var(--white); --sunken:var(--paper-muted);
   --text:var(--ink-800); --text-2:var(--ink-500);
-  --text-3:#6B665A;   /* muted text — NOT ink-400; see contrast note §5 */
+  --text-3:#6B665A;   /* muted text — NOT ink-400; see contrast note §6 */
   --line:var(--ink-100); --line-2:var(--ink-200);
 
   --shadow-card:0 1px 2px rgba(31,30,29,.04), 0 8px 28px rgba(31,30,29,.06);
@@ -55,7 +55,7 @@ Centered content column; section spine stacks vertically. Breakpoints:
 
 | Tier | Width | Grid behavior |
 |------|-------|---------------|
-| Mobile | ≤ 640px | 1 column; tables → stacked cards; arch SVG rotated (see §4) |
+| Mobile | ≤ 640px | 1 column; tables → stacked cards; arch SVG rotated (see §5) |
 | Tablet | 641–1024px | 2-column grids |
 | PC | ≥ 1025px | full multi-column (3–4 col card grids) |
 
@@ -78,7 +78,26 @@ Centered content column; section spine stacks vertically. Breakpoints:
 }
 ```
 
-## 4. Embedding the architecture diagram (the mobile-vertical trick)
+## 4. Screenshot grid (`#shots`)
+
+When the product has a web UI (Phase 3.5 of SKILL.md), lay the captures out as a card grid —
+3 columns on PC, 2 on tablet, 1 on mobile; the first shot can span 2 columns (`.wide`) to lead
+with the flagship screen. See the golden example's `#shots` section for a working copy.
+
+```css
+.shots{display:grid; grid-template-columns:repeat(3,1fr); gap:18px}
+.shot.wide{grid-column:span 2}
+@media (max-width:1024px){ .shots{grid-template-columns:repeat(2,1fr)} .shot.wide{grid-column:span 2} }
+@media (max-width:640px){ .shots{grid-template-columns:1fr} .shot.wide{grid-column:span 1} }
+.shot img{display:block;width:100%;border-radius:12px;border:1px solid var(--line)}
+.shot figcaption{margin-top:8px;font-size:13px;color:var(--text-2)}
+```
+
+Each `<figure class="shot">` wraps one `<img loading="lazy" alt="...">` + a `<figcaption>`
+naming the screen. `alt` describes what's shown (not the filename) — `check_brochure.py`
+hard-fails on any `<img>` missing non-empty alt text.
+
+## 5. Embedding the architecture diagram (the mobile-vertical trick)
 
 Embed the exported SVG as a responsive `<img>`. On wide screens it fits the column; on mobile a landscape diagram becomes unreadably small — **rotate it 90° to fill the vertical screen**. A single exported SVG can't reflow, so rotation is the right call.
 
@@ -101,7 +120,7 @@ Embed the exported SVG as a responsive `<img>`. On wide screens it fits the colu
 ```
 Replace `<W>`/`<H>` with the SVG's `width`/`height` (read them from the SVG's `viewBox`/`width` attrs). The math makes the rotated landscape exactly fill the mobile content width.
 
-## 5. Accessibility (cheap up front, expensive to retrofit)
+## 6. Accessibility (cheap up front, expensive to retrofit)
 
 - **Skip link** to main content: a visually-hidden `<a class="skip-link" href="#main">` that appears on `:focus`.
 - **Focus-visible** on every interactive element — paper backgrounds make default focus rings faint:
@@ -116,14 +135,14 @@ Replace `<W>`/`<H>` with the SVG's `width`/`height` (read them from the SVG's `v
 - **Decorative SVG** gets `aria-hidden="true" focusable="false"`; meaningful diagrams get a real `alt`/`aria-label`. Tables get a `<caption>` (can be `.sr-only`).
 - Tap targets ≥ 40px; on mobile let primary buttons go full-width.
 
-## 6. CSS gotchas that bite every time
+## 7. CSS gotchas that bite every time
 
 - **Utility-class margin trap (silent de-centering).** If a section carries two classes — a centering utility (`.wrap{margin:0 auto}`) and a spacing class (`.cta{margin:40px 0 0}`) — and the spacing class is declared *later*, its `margin` shorthand resets left/right to `0` and the block jams to the left. Fix: use `margin:40px auto 0` (keep `auto`), or set only `margin-top`. Equal-specificity selectors → source order wins.
 - **`text-align:center` doesn't center fixed-width children** — give centered headings/paragraphs `margin:0 auto` (and a `max-width` for nice line length).
 - **`box-sizing:border-box` globally** (`*{box-sizing:border-box}`) or padded full-width elements overflow.
 - **Scroll-reveal that starts at `opacity:0`** will leave content invisible if the IntersectionObserver/JS doesn't run — ensure a no-JS/`prefers-reduced-motion` fallback sets it visible.
 
-## 7. Content integrity
+## 8. Content integrity
 
 - Verify every metric against the source; an inflated count is the fastest way to lose a technical reader.
 - Keep the brochure copy and the embedded diagram telling the **same** story (same names/counts) — contradictions read as carelessness.

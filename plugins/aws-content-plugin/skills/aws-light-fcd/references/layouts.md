@@ -104,9 +104,38 @@ Supports 2 or 3 cards (auto-centers). The gradient comes from
 
 ## 5. AWS Architecture Diagram — `arch_kit.js`
 
-Built from primitives, not a single builder, so you control the topology. Pattern:
-group boxes (dashed) → service icons inside → numbered step markers at connection
-points → arrows between stages → a right-side numbered step legend.
+**Preferred: `arch.archFlow`** — declarative, auto-layout. You describe columns of
+services/groups/chips left→right; the kit computes positions on the 13.333×7.5 canvas.
+No hand-placed coordinates — same rationale as the architecture-diagram skill's spec
+generator (an LLM placing pixel coordinates by hand is the #1 cause of amateur output).
+
+```js
+const { s, cols } = arch.archFlow(kit, pres, {
+  pageNum: 6, title: "자동 확장 추론 아키텍처",
+  columns: [
+    { items: [{ icon: "model_registry", label: "모델 레지스트리", step: 3 }] },
+    { label: "스토리지", items: [
+      { icon: "efs", label: "Amazon EFS" }, { icon: "s3", label: "Amazon S3" },
+    ] },
+    { items: [{ chip: "사용자" }, { chip: "에이전트" }] },
+  ],
+  arrows: "auto",                       // adjacent columns; or explicit [[0,1],[1,2]]
+  legend: ["1단계 설명", "2단계 설명", ...],  // right rail, step N -> legend[N-1]
+});
+```
+
+- `columns[i].label` wraps that column in a dashed group box (omit for a bare column).
+- `columns[i].items[k]` is either `{icon, label, step?, iconSz?}` (service icon +
+  caption, via `arch.svc`) or `{chip: "text"}` (endpoint chip, via `arch.chip`) —
+  never emoji for endpoints.
+- `cols` (the return value) gives you each column's computed `{x,y,w,h}` and each
+  item's `{cx,cy}` center — use it to anchor any extra hand-drawn elements (a mid-flow
+  fan-out, an annotation) without picking coordinates from scratch. See
+  `scripts/demo_build.js` (slide 5/6) for the inference-architecture example, including
+  a GPU/추론 엔진 fan-out anchored off `cols[3]`.
+
+**Primitives — for irregular topologies only** (mesh, non-linear flows the column
+model doesn't fit):
 
 ```js
 const s = arch.archSlide(kit, pres, { pageNum: 19, title: "자동 확장 추론 아키텍처" });
@@ -116,22 +145,20 @@ arch.svc(kit, pres, s, cx, y, "ecr", "Amazon ECR");        // icon centered on c
 arch.stepMarker(kit, pres, s, x, y, 1);                    // magenta numbered circle
 arch.arrow(kit, pres, s, x, y, w);                         // horizontal arrow, w = length
 arch.stepLegend(kit, pres, s, ["1단계 설명", "2단계 ...", ...]); // far-right numbered list
-
-kit.addFooter(pres, s, 19);                                // add footer manually for arch slides
 ```
+`archSlide` adds the footer itself when `pageNum` is given — no manual `addFooter` call.
 
-Guidelines:
+Guidelines (both paths):
 - Lay out left→right as a flow: sources (registry/storage) → compute (GPU) →
   serving → endpoints. Group related services in dashed `groupBox`es with a top label.
 - Use `stepMarker` numbers that correspond 1:1 with `stepLegend` entries on the right.
-- Endpoints (users / agents / programs): small labeled chips, **never emoji**.
 - Keep service captions inside their group box; give the box enough height
-  (≈1.05" per stacked icon+caption).
+  (≈1.05" per stacked icon+caption — `archFlow` does this automatically).
 - For "progressive build" slides (reveal one stage at a time), render the full diagram
   then fade non-active elements by using `C.hairline`/tints instead of full colors —
   duplicate the slide and recolor per step.
-
-See `scripts/demo_build.js` (slide 5) for the complete inference-architecture example.
+- Run `scripts/check_pptx.py` after building — it catches overflow/overlap/off-canvas
+  issues in diagram slides the same as any other layout.
 
 ---
 

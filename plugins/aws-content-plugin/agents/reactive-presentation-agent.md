@@ -5,6 +5,8 @@ tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 model: sonnet
 skills:
   - reactive-presentation
+mcpServers:
+  - playwright
 ---
 
 # Reactive Presentation Agent
