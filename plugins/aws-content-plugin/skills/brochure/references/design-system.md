@@ -47,6 +47,8 @@ Load via CDN (`fonts.googleapis.com` for Fraunces/JetBrains; jsDelivr for Preten
 
 Use **tabular numerals** wherever numbers line up: `font-variant-numeric:tabular-nums lining-nums`. Headline sizing with `clamp()` so it scales across tiers: `font-size:clamp(34px,5.4vw,60px)`.
 
+**Line length vs. full-width text.** Cap measure (`max-width:NNch`) only on text in a *narrow* column — centered CTA copy, or a hero column that sits beside a figure — at ~50–65ch. **Never cap a block that spans the full content column** (section subheads, standalone lead paragraphs): a 62ch cap on a ~1072px column strips the text to ~half width and forces needless line breaks. Let those blocks use the full width (`max-width:none`). Add `text-wrap:pretty` to body/lead paragraphs (removes orphan words) and `text-wrap:balance` to headings (even multi-line splits). This is the most common reason a generated brochure looks half-empty on desktop.
+
 ## 3. Layout & responsive (mobile-first, 3 tiers)
 
 Centered content column; section spine stacks vertically. Breakpoints:
