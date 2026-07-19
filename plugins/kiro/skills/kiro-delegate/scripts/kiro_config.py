@@ -58,13 +58,17 @@ def deep_merge(base, over):
     for k, v in over.items():
         if isinstance(v, dict) and isinstance(out.get(k), dict):
             out[k] = deep_merge(out[k], v)
-        elif v is None and isinstance(out.get(k), dict):
-            # A hand-edited local override like `{"review": null}` must not replace a
-            # section dict with None — every reader below assumes cfg["review"] is a
-            # dict and calls .get() on it without a None-check. Treat an explicit null
-            # for a section as "no override for this section" (keep the base), not
-            # "wipe it to None" — that keeps this function's contract (every section key
-            # in the returned dict is always a dict) intact for hand-edited files too.
+        elif not isinstance(v, dict) and isinstance(out.get(k), dict):
+            # A hand-edited local override where a section key (e.g. "review") is
+            # anything other than an object — null, a list, a string, a number — must
+            # not replace that section dict. Every reader below assumes cfg["review"]/
+            # cfg["delegate"] is always a dict and calls .get() on it with no type
+            # check; letting a wrong-shape override through crashes cmd_show,
+            # review-on-commit, and every other reader, not just the one that produced
+            # the malformed value. Keep the base section (treat the override as "no
+            # override for this section"), not "replace it with garbage" — this keeps
+            # this function's contract (every section key is always a dict) intact for
+            # any hand-edited file, not just an explicit `null`.
             continue
         else:
             out[k] = v
@@ -102,7 +106,7 @@ def cmd_show(root):
     print(f"  default_delegate {cfg.get('default_delegate', False)}")
     print(f"  delegate: model {d.get('model') or '(default)'} · parallel_tasks {d.get('parallel_tasks', 3)} "
           f"· max_fix_rounds {d.get('max_fix_rounds', 2)} · timeout {d.get('timeout', 240)}s")
-    print(f"  review:   on_commit {r.get('on_commit', True)} · model {r.get('model') or '(default)'} "
+    print(f"  review:   on_commit {r.get('on_commit', False)} · model {r.get('model') or '(default)'} "
           f"· timeout {r.get('timeout', 120)}s · block {r.get('block', 'critical')}")
     return 0
 
@@ -221,7 +225,7 @@ def main():
     if cmd == "default-delegate":
         return 0 if effective(root).get("default_delegate") else 1
     if cmd == "review-on-commit":
-        return 0 if effective(root).get("review", {}).get("on_commit", True) else 1
+        return 0 if effective(root).get("review", {}).get("on_commit", False) else 1
     if cmd == "delegate-model":
         cfg = effective(root)
         print(cfg.get("delegate", {}).get("model") or "")

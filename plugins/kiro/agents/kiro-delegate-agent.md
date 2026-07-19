@@ -57,6 +57,22 @@ guarantee this whole plugin depends on.
 
 ## Pipeline (`/kiro:delegate`)
 
+0. **Preflight (required, not optional).**
+   - `.kiro/agents/kiro-implementer.json` MUST exist before step 3 runs. Without it,
+     the only way to invoke Kiro headlessly is the ad-hoc `--trust-tools=fs_read,fs_write`
+     fallback, which carries NO `preToolUse` write-guard hook (that hook is defined *in*
+     the custom agent file — see `references/kiro-headless.md` → "Trust boundary" step
+     6). If the file is missing, run `kiro_setup.py write-agents` first (same thing
+     `/kiro:setup` does) — never silently fall through to the unguarded invocation just
+     because setup was skipped.
+   - **Clean-tree check on the plan's whole declared file set, before any task
+     starts.** `git status --porcelain -- <every file the plan's tasks declare>` MUST be
+     empty. Step 5's fallback restore/clean is scoped to a task's files and has no way
+     to distinguish "this is Kiro's half-finished patch, safe to discard" from "the user
+     had uncommitted work on this exact file before delegation started" — it would
+     discard both. If any declared file is dirty, stop and tell the user to commit or
+     stash it first (or exclude that file from the plan); never start implementing
+     against a file the fallback might later restore over pre-existing user work.
 1. **Plan.** Read the user's request, decompose it, write a Kiro-native spec to
    `.kiro/specs/<name>/{requirements,design,tasks}.md` — format and task-file-scoping
    rules: `skills/kiro-delegate/references/spec-format.md`. Every task's `**Files:**`
@@ -66,15 +82,30 @@ guarantee this whole plugin depends on.
    (`parse_plan.py`), capped by `delegate.parallel_tasks` (default 3;
    `kiro_config.py parallel-tasks`).
 3. **Execute, per task (or per wave, in parallel):**
-   - `worktree.py add <wt> --base HEAD`
-   - Run Kiro inside `<wt>`: `kiro-cli chat "<task prompt + pointer to the spec files>"
-     --no-interactive --trust-tools=fs_read,fs_write --wrap never
-     [--model <delegate.model>] [--agent kiro-implementer]` — cwd **must** be `<wt>`.
-     `--agent kiro-implementer` (once written) carries whatever `execute_bash` grant the
-     user chose at `/kiro:setup`; the ad-hoc `--trust-tools` fallback above never
-     includes it. Adapter detail: `references/kiro-headless.md`.
+   - `worktree.py add <wt> --base HEAD` — checks out `HEAD`, so `<wt>` contains only
+     **committed** files. `.kiro/agents/kiro-implementer.json` and `.kiro/specs/<name>/`
+     are almost always uncommitted (freshly written this run) and so will NOT exist
+     inside `<wt>` even though they exist in the main checkout — this is the same class
+     of gotcha co-agent's harness solves for its red-test commit
+     (`references/delegated-implement.md` step 2: "an uncommitted red test would not
+     exist inside it"). Handle it the same way, without requiring a commit here (specs
+     aren't meant to be committed pre-review):
+     - `mkdir -p <wt>/.kiro/agents && cp .kiro/agents/kiro-implementer.json
+       <wt>/.kiro/agents/` — so `--agent kiro-implementer` resolves inside the worktree
+       regardless of whether kiro-cli looks in cwd or walks upward from it.
+     - Point Kiro at the spec files by **absolute path** (`$(pwd)/.kiro/specs/<name>/…`
+       from the main checkout, not a path relative to `<wt>`) in the task prompt, so
+       `fs_read` can reach them from inside `<wt>` even though they're outside it.
+   - Run Kiro inside `<wt>`: `kiro-cli chat "<task prompt + absolute pointer to the spec
+     files>" --no-interactive --wrap never --agent kiro-implementer
+     [--model <delegate.model>]` — cwd **must** be `<wt>`. `--agent kiro-implementer`
+     carries the write-guard hook and whatever `execute_bash` grant the user chose at
+     `/kiro:setup`; per step 0, this is the only invocation form this pipeline uses.
+     Adapter detail: `references/kiro-headless.md`.
    - `worktree.py capture-diff <wt>` → patch. Every path through
-     `scope_guard.py --plan <tasks.md>` — drop out-of-scope hunks.
+     `scope_guard.py --plan <tasks.md>` — drop out-of-scope hunks. (The copied
+     `.kiro/agents/kiro-implementer.json` inside `<wt>` is itself gitignored/untracked
+     and so is naturally excluded from the capture — nothing extra needed there.)
    - Apply the captured, scoped patch to the main tree. Run the project's tests.
 4. **Verify + bounded retry.** Test failure → feed the failure back to Kiro and retry,
    bounded by `delegate.max_fix_rounds` (default 2; `kiro_config.py max-fix-rounds`).

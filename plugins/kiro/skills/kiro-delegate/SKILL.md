@@ -1,22 +1,25 @@
 ---
 name: kiro-delegate
-description: "Claude plans and verifies, Kiro CLI implements and reviews on its own flat-rate subscription credits — a cost-savings delegation workflow, not a second opinion (see co-agent for that). Kiro implements inside an isolated git worktree; only the captured, scope-guarded diff ever reaches the main tree. Triggers on 'kiro한테 시켜', 'kiro로 구현', 'kiro한테 위임', 'kiro 위임', 'delegate to kiro', 'kiro implement', 'kiro가 구현', 'kiro가 리뷰', 'kiro review'."
+description: "Claude plans and verifies, Kiro CLI implements and reviews on its own flat-rate subscription credits — a cost-savings delegation workflow, not a second opinion (see co-agent for that). Kiro implements inside an isolated git worktree; only the captured, scope-guarded diff ever reaches the main tree. Triggers on 'kiro한테 시켜', 'kiro로 구현', 'kiro한테 위임', 'kiro 위임', 'delegate to kiro', 'kiro implement', 'kiro가 구현' (all → /kiro:delegate, write-capable), and 'kiro가 리뷰'/'kiro review' (→ /kiro:review ONLY, read-only — never the write-capable delegate pipeline below)."
 triggers:
   # Canonical trigger set — kept identical (same wording, same order) across this
-  # frontmatter, this file's own description below, agents/kiro-delegate-agent.md's
-  # description, and CLAUDE.md's Skill/Auto-Invocation tables. Deliberately excludes
-  # informational phrasings like "kiro credits" or "비용 절감 kiro" — those read as a
-  # question about the plugin, not a request to act, and routing them into a
-  # write-capable delegation pipeline would be a false-positive activation.
-  - "kiro한테 시켜"
-  - "kiro로 구현"
-  - "kiro한테 위임"
-  - "kiro 위임"
-  - "delegate to kiro"
-  - "kiro implement"
-  - "kiro가 구현"
-  - "kiro가 리뷰"
-  - "kiro review"
+  # frontmatter, this file's own description above, agents/kiro-delegate-agent.md's
+  # description, and CLAUDE.md's Skill/Auto-Invocation tables — EXCEPT
+  # agents/kiro-delegate-agent.md intentionally drops the two review triggers below
+  # (that agent is write-capable: plan → implement → commit; it must never be reached
+  # by a review-only request). Deliberately excludes informational phrasings like
+  # "kiro credits" or "비용 절감 kiro" — those read as a question about the plugin, not
+  # a request to act, and routing them into a write-capable pipeline would be a
+  # false-positive activation.
+  - "kiro한테 시켜"        # → /kiro:delegate (write)
+  - "kiro로 구현"          # → /kiro:delegate (write)
+  - "kiro한테 위임"        # → /kiro:delegate (write)
+  - "kiro 위임"            # → /kiro:delegate (write)
+  - "delegate to kiro"     # → /kiro:delegate (write)
+  - "kiro implement"       # → /kiro:delegate (write)
+  - "kiro가 구현"          # → /kiro:delegate (write)
+  - "kiro가 리뷰"          # → /kiro:review ONLY (read-only) — NOT kiro-delegate-agent
+  - "kiro review"          # → /kiro:review ONLY (read-only) — NOT kiro-delegate-agent
 allowed-tools:
   - Read
   - Write

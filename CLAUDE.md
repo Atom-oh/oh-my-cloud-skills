@@ -310,9 +310,11 @@ implementer CLI differs; co-agent's own harness refuses Kiro as an implementer
 worktree+capture+scope_guard path is what makes delegating to it safe anyway.
 
 Commands: `/kiro:setup` (probe + model list + `.kiro/agents/*.json` generation),
-`/kiro:delegate`, `/kiro:review`, `/kiro:configure`. A `PreToolUse(Bash)` hook runs a
-Kiro-powered review before every `git commit` (fail-open; blocks only on `critical`
-findings by default) — `/kiro:configure set review on_commit off` to disable.
+`/kiro:delegate`, `/kiro:review`, `/kiro:configure`. A `PreToolUse(Bash)` hook can run a
+Kiro-powered review before `git commit` (fail-open; blocks only on `critical` findings
+by default) — **off by default** (the reviewer's `fs_read` isn't scoped to just the diff
+file, so only enable for diffs you trust the authorship of); `/kiro:configure set review
+on_commit on` to enable.
 
 ## Workflows
 
@@ -339,7 +341,7 @@ Co-agent:  /co-agent → detect panel (Kiro/Codex/Antigravity) → fan-out promp
 
 kiro:      /kiro:setup → probe kiro-cli, list models, write .kiro/agents/*.json
            /kiro:delegate → Claude plans (Kiro spec) → per task: worktree → Kiro implements → capture-diff → scope_guard → Claude applies+tests → bounded retry → Claude fallback → commit → delegation-rate report
-           git commit → PreToolUse hook → Kiro review (fail-open, blocks only on `critical`)
+           git commit → PreToolUse hook (opt-in, off by default) → Kiro review (fail-open, blocks only on `critical`)
 ```
 
 ## Auto-Sync Rules

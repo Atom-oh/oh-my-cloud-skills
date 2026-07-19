@@ -69,14 +69,16 @@ Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts"`.
    - **Off (Recommended to start)** — delegate only when explicitly asked
      (`/kiro:delegate` or a trigger phrase).
    - **On** — `python3 "$SK/kiro_config.py" set default_delegate on`
-   And whether to keep the **pre-commit review hook** on (default is on) — note that
-   this hook sends staged diff CONTENT to a `fs_read`-capable reviewer with no path
+   And whether to turn on the **pre-commit review hook** (**off by default**) — note
+   that this hook sends staged diff CONTENT to a `fs_read`-capable reviewer with no path
    restriction beyond the diff file itself, so an untrusted diff (e.g. reviewing a
    contributor's PR branch) could in principle prompt-inject the reviewer into reading
    an unrelated file; mention this plainly, not just the block-severity behavior:
-   - **On (Recommended for your own commits)** — review every `git commit`'s staged
-     diff, block on `critical` findings only.
-   - **Off** — `python3 "$SK/kiro_config.py" set review on_commit off`
+   - **Off (Recommended to start)** — no automatic review; use `/kiro:review` on demand
+     when you do want one.
+   - **On (only for diffs you trust the authorship of — typically your own commits)** —
+     `python3 "$SK/kiro_config.py" set review on_commit on`; review every `git commit`'s
+     staged diff, block on `critical` findings only.
 
 6. Show the final effective config:
    ```bash

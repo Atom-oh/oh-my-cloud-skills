@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "Kiro Delegate",
     "shortDescription": "Delegate implementation and review to Kiro CLI to save tokens.",
-    "longDescription": "Plan with Codex, hand off implementation tasks to Kiro CLI (flat-rate subscription credits) inside an isolated git worktree, verify with tests, and gate every commit behind a Kiro-run review. Falls back to the host writing the code when Kiro's fix-loop is exhausted.",
+    "longDescription": "Plan with Codex, hand off implementation tasks to Kiro CLI (flat-rate subscription credits) inside an isolated git worktree, verify with tests, and optionally gate commits behind a Kiro-run review (opt-in). Falls back to the host writing the code when Kiro's fix-loop is exhausted.",
     "developerName": "atomoh",
     "category": "Collaboration",
     "capabilities": [

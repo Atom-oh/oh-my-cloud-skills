@@ -8,8 +8,14 @@ commit. Reads the hook's JSON payload from stdin once and exits 0 iff the comman
 `git commit` invocation at a shell command boundary.
 
 Usage:
-  hook_match.py git-commit   # stdin = the hook's JSON payload
-Exit: 0 = matched (a git-commit invocation is present) · 1 = no match
+  hook_match.py git-commit         # stdin = the hook's JSON payload
+                                    # exit 0 = a git-commit invocation is present, 1 = no match
+  hook_match.py scope-mismatch      # stdin = the hook's JSON payload
+                                    # exit 0 = the git-commit invocation may cover MORE than
+                                    #   staged changes (`-a`/`--all`, a pathspec, or `-C <dir>`
+                                    #   pointing elsewhere) — `kiro_review.py --staged` would
+                                    #   review a DIFFERENT diff than what actually gets
+                                    #   committed. exit 1 = no mismatch signal detected.
 """
 import sys
 import re
@@ -70,12 +76,46 @@ def is_git_commit(cmd):
     return bool(_GIT_COMMIT_RE.search(detect))
 
 
+# After matching `git ... commit`, everything up to the next command boundary (or end
+# of string) is `commit`'s own argv — look there for a flag/pathspec that widens or
+# redirects the commit beyond `--staged`'s scope:
+#   -a / --all / --interactive / --patch   -> commits tracked-but-UNSTAGED changes too
+#   a trailing pathspec (`git commit path/to/file`)  -> commits ONLY that path, which
+#     may differ from the full staged diff kiro_review.py reviews
+#   -C <dir> pointing elsewhere              -> the real commit target may not even be
+#     this repo's staged diff
+_COMMIT_ARGS_RE = re.compile(r"\bcommit(?=$|[\s;&|\n])(?P<rest>[^\n;&|]*)")
+_WIDENS_SCOPE_RE = re.compile(r"(?:^|\s)(?:-a\b|--all\b|-p\b|--patch\b|--interactive\b)")
+# A bare trailing token that isn't a flag/flag-value is a pathspec. This is a coarse
+# heuristic (doesn't fully parse git's grammar), which is fine for an ADVISORY signal —
+# false negatives just mean no warning, never a wrong block (this hook never blocks).
+_PATHSPEC_RE = re.compile(r"(?:^|\s)(?!-)(?!--)\S+")
+
+
+def is_scope_mismatch(cmd):
+    detect = _blank_quotes(cmd)
+    m = _COMMIT_ARGS_RE.search(detect)
+    if not m:
+        return False
+    rest = m.group("rest")
+    if _WIDENS_SCOPE_RE.search(rest):
+        return True
+    # Strip recognized value-taking flags and their values before pathspec-sniffing,
+    # so `-m "message text"` (blanked to `-m xxxxxxxxxxxx`) doesn't look like a pathspec.
+    stripped = re.sub(r"(?:^|\s)(?:-m|--message|--author|--date)\s+\S+", " ", rest)
+    stripped = re.sub(r"(?:^|\s)-[A-Za-z]+", " ", stripped)          # short flags, no value
+    stripped = re.sub(r"(?:^|\s)--[A-Za-z-]+(?:=\S+)?", " ", stripped)  # long flags
+    return bool(_PATHSPEC_RE.search(stripped))
+
+
 def main():
-    if len(sys.argv) < 2 or sys.argv[1] != "git-commit":
+    if len(sys.argv) < 2 or sys.argv[1] not in ("git-commit", "scope-mismatch"):
         print(__doc__)
         return 2
     raw = sys.stdin.read()
     cmd = command_from_payload(raw)
+    if sys.argv[1] == "scope-mismatch":
+        return 0 if is_scope_mismatch(cmd) else 1
     return 0 if is_git_commit(cmd) else 1
 
 

@@ -25,23 +25,28 @@ caller.
 ## Implement (write-mode)
 
 ```bash
-kiro-cli chat "<TASK PROMPT>" --mode default --no-interactive \
-  --trust-tools=fs_read,fs_write --wrap never \
-  [--model <m>] [--agent kiro-implementer]
+kiro-cli chat "<TASK PROMPT>" --mode default --no-interactive --wrap never \
+  --agent kiro-implementer [--model <m>]
 ```
+
+**`--agent kiro-implementer` is REQUIRED, not preferred.** `/kiro:delegate`'s preflight
+(`agents/kiro-delegate-agent.md` step 0) refuses to implement anything until
+`.kiro/agents/kiro-implementer.json` exists — running `kiro_setup.py write-agents`
+first if it's missing. This is because the custom agent file is what carries the
+`preToolUse` write-guard hook (step 6 below); there is no equivalent hook available via
+a plain `--trust-tools=...` flag. An older draft of this plugin allowed
+`--trust-tools=fs_read,fs_write` as a fallback when the agent file hadn't been written
+yet — that fallback has NO write-guard and is no longer used by this pipeline; if you
+see it in an older note, treat the agent-file requirement above as authoritative.
 
 - **Prompt is a positional argv `[INPUT]`** — Kiro ignores stdin in `chat`. For anything
   beyond a one-line prompt, don't embed large context in argv (`ps` exposure + `ARG_MAX`);
   point Kiro at the spec files with a short instruction and let it `fs_read` them itself
-  (it already has the tool via `--trust-tools`/the custom agent's `allowedTools`).
-- **`--agent kiro-implementer`** (once `/kiro:setup` has written
-  `.kiro/agents/kiro-implementer.json`) scopes the run to that custom agent's
-  `tools`/`allowedTools`/hooks instead of the ad-hoc `--trust-tools` flag — prefer it once
-  set up; `--trust-tools=fs_read,fs_write` is the fallback when it hasn't been written
-  yet. **`execute_bash` is NOT in either default** — it's off unless `/kiro:setup`'s
-  explicit trust-decision question was answered yes (`kiro_setup.py write-agents
-  --enable-bash`); a task needing a shell command falls back to Claude implementing it
-  directly rather than silently granting shell access.
+  (it already has the tool via the custom agent's `allowedTools`).
+- **`execute_bash` is NOT in the implementer's default tool set** — it's off unless
+  `/kiro:setup`'s explicit trust-decision question was answered yes (`kiro_setup.py
+  write-agents --enable-bash`); a task needing a shell command falls back to Claude
+  implementing it directly rather than silently granting shell access.
 - **cwd MUST be the task's worktree** (`worktree.py add <wt> --base HEAD`), never the main
   checkout — this is the actual isolation boundary. See "Trust boundary" below.
 - **`--v3` narrows the model catalog** and can reject some model ids

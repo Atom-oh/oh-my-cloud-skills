@@ -52,6 +52,38 @@ print('PAYLOAD_CASES_OK' if ok2 else 'PAYLOAD_CASES_FAIL')
 assert_contains "$HM_OUT" "MATCH_CASES_OK" "hook_match.py matches git-commit incl. quoted -C, bare path, command-builtin bypasses"
 assert_contains "$HM_OUT" "PAYLOAD_CASES_OK" "hook_match.py's command_from_payload never crashes on a non-dict tool_input/payload"
 
+SM_OUT=$(python3 -c "
+import sys
+sys.path.insert(0, '$SK')
+import hook_match as hm
+cases = [
+    ('git commit -m \"msg\"', False),
+    ('git commit -a -m \"msg\"', True),
+    ('git commit --all -m \"msg\"', True),
+    ('git commit src/foo.py', True),
+    ('git commit -m \"msg\" src/foo.py', True),
+    ('git commit --amend -m \"msg\"', False),
+    ('git commit -m \"fix: something\"', False),
+]
+ok = all(hm.is_scope_mismatch(cmd) == expect for cmd, expect in cases)
+print('SCOPE_MISMATCH_OK' if ok else 'SCOPE_MISMATCH_FAIL')
+" 2>&1)
+assert_contains "$SM_OUT" "SCOPE_MISMATCH_OK" "hook_match.py's scope-mismatch detects -a/--all/pathspec, not a plain '-m' commit or --amend"
+
+# --- pre-commit-review.sh end-to-end: scope-mismatch warning fires when review is on ---
+RH=$(mktemp -d "${TMPDIR:-/tmp}/kiro-hook-e2e.XXXXXX")
+git -C "$RH" init -q
+git -C "$RH" config user.email t@t.t; git -C "$RH" config user.name t
+git -C "$RH" commit -q --allow-empty -m init
+mkdir -p "$RH/.claude"
+python3 -c "import json; json.dump({'review': {'on_commit': True}}, open('$RH/.claude/kiro.local.json','w'))"
+HOOK_OUT=$(cd "$RH" && CLAUDE_PLUGIN_ROOT="$OLDPWD/plugins/kiro" bash -c '
+  echo "{\"tool_input\":{\"command\":\"git commit -a -m test\"}}" | bash "$CLAUDE_PLUGIN_ROOT/hooks/pre-commit-review.sh"
+' 2>&1) && HOOK_RC=0 || HOOK_RC=$?
+assert_eq "0" "$HOOK_RC" "hook stays fail-open (exit 0) even with the scope-mismatch warning"
+assert_contains "$HOOK_OUT" "may cover more than staged changes" "hook prints the scope-mismatch warning for a -a commit when review is enabled"
+rm -rf "$RH"
+
 for f in "$CFG" "$REVIEW" "$SETUP" "$WT" "$SG" "$PP"; do
   assert_file_exists "$f" "$(basename "$f") exists"
   assert_file_executable "$f" "$(basename "$f") is executable"
@@ -71,6 +103,7 @@ done
 # --- kiro_config.py: layered settings ---
 R=$(mktemp -d "${TMPDIR:-/tmp}/kiro-cfg.XXXXXX")
 assert_eq "1" "$(python3 "$CFG" default-delegate --root "$R" >/dev/null 2>&1; echo $?)" "default_delegate is off by default (exit 1)"
+assert_eq "1" "$(python3 "$CFG" review-on-commit --root "$R" >/dev/null 2>&1; echo $?)" "review-on-commit is off by default (exit 1) — security-motivated default, code-level fallback must agree with kiro.defaults.json, not just docs"
 python3 "$CFG" set default_delegate on --root "$R" >/dev/null 2>&1
 assert_eq "0" "$(python3 "$CFG" default-delegate --root "$R" >/dev/null 2>&1; echo $?)" "set default_delegate on takes effect"
 python3 "$CFG" set delegate model "gpt-5.3-codex-mini" --root "$R" >/dev/null 2>&1
@@ -107,6 +140,16 @@ assert_eq "0" "$RC2" "show survives an explicit null review section"
 python3 -c "import json; json.dump({'review': {'timeout': 'bad'}}, open('$RM/.claude/kiro.local.json','w'))"
 python3 "$CFG" show --root "$RM" >/dev/null 2>&1 && RC3=0 || RC3=$?
 assert_eq "0" "$RC3" "show survives a wrong-type review.timeout"
+# non-dict SECTION values (not just null) must not crash either — deep_merge's earlier
+# fix only special-cased None; a list/string section value hit the same AttributeError.
+python3 -c "import json; json.dump({'review': []}, open('$RM/.claude/kiro.local.json','w'))"
+python3 "$CFG" show --root "$RM" >/dev/null 2>&1 && RC4=0 || RC4=$?
+assert_eq "0" "$RC4" "show survives a list-valued review section"
+python3 "$CFG" review-on-commit --root "$RM" >/dev/null 2>&1 && RC4B=0 || RC4B=$?
+assert_eq "1" "$RC4B" "review-on-commit survives a list-valued review section (falls back to off)"
+python3 -c "import json; json.dump({'delegate': 'bad'}, open('$RM/.claude/kiro.local.json','w'))"
+python3 "$CFG" show --root "$RM" >/dev/null 2>&1 && RC5=0 || RC5=$?
+assert_eq "0" "$RC5" "show survives a string-valued delegate section"
 rm -rf "$RM"
 
 # --- kiro_review.py: block-level gating on a canned diff (no real kiro-cli call) ---
