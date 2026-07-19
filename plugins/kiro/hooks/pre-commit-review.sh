@@ -52,5 +52,14 @@ if python3 "$SK/hook_match.py" scope-mismatch < "$PAYLOAD_FILE"; then
        "'git diff --cached', which may differ from what actually gets committed." >&2
 fi
 
+# Advisory-only: `git add X && git commit ...` runs the add AFTER this PreToolUse hook,
+# so the staged diff reviewed below is the PRE-add index — new stagings are unreviewed
+# and stale staged leftovers may be reviewed instead. Warn; never block.
+if python3 "$SK/hook_match.py" stale-index < "$PAYLOAD_FILE"; then
+  echo "⚠️  kiro review: an index-mutating git command (add/rm/mv/stash) precedes this" \
+       "commit in the same invocation and runs AFTER this hook — the staged diff" \
+       "reviewed below predates it and may not match what actually gets committed." >&2
+fi
+
 python3 "$SK/kiro_review.py" --staged --root "$ROOT" 1>&2
 exit $?

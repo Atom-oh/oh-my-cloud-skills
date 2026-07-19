@@ -313,7 +313,9 @@ second opinion (that's `co-agent`). Reuses co-agent's `worktree.py`/`scope_guard
 `parse_plan.py` verbatim — the isolation/scoping mechanics are identical, only the
 implementer CLI differs; co-agent's own harness refuses Kiro as an implementer
 (`SANDBOX_IMPLEMENTERS = codex, agy` — no cwd-confined write sandbox), and this plugin's
-worktree+capture+scope_guard path is what makes delegating to it safe anyway.
+worktree+capture+scope_guard path is what makes delegating to it safe **for changes
+reaching the main tree** (host-side side effects of a granted `execute_bash` are a
+separate trust decision — `plugins/kiro/CLAUDE.md` → "Trust decision").
 
 Commands: `/kiro:setup` (probe + model list + `.kiro/agents/*.json` generation),
 `/kiro:delegate`, `/kiro:review`, `/kiro:configure`. A `PreToolUse(Bash)` hook can run a

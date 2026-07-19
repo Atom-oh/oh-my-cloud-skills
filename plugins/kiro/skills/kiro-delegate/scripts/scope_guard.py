@@ -62,10 +62,22 @@ def main():
         print("\n".join(allowed))
         return 0
 
-    paths = [a for a in args if a != "--plan" and a != plan and not a.startswith("--")]
-    if not paths:
+    # Only `--plan <value>` is a real option here; every other arg is a candidate path.
+    # A candidate that itself starts with `--` (e.g. a file literally named "--foo.py",
+    # or an option-lookalike) must be REJECTED as out-of-scope, not silently dropped from
+    # the checked set — dropping it would let such a path bypass the gate entirely.
+    rest = [a for a in args if a != "--plan" and a != plan]
+    dashed = [a for a in rest if a.startswith("--")]
+    paths = [a for a in rest if not a.startswith("--")]
+    if not paths and not dashed:
         print("no candidate paths given", file=sys.stderr)
         return 2
+    if dashed:
+        print("❌ out of plan scope (option-like paths are rejected, not scope-checked):",
+              file=sys.stderr)
+        for p in dashed:
+            print(f"   • {p}", file=sys.stderr)
+        return 1
     allowed_norm = {_norm(a) for a in allowed}
 
     def in_scope(c):
@@ -75,15 +87,19 @@ def main():
         # sneak in just because it happens to end with an allowed entry).
         if cn.startswith(".."):
             return False
+        # The suffix match below exists ONLY so an ABSOLUTE candidate (e.g. git handing us
+        # "/repo/src/foo.py") still matches a relative plan entry "src/foo.py". A RELATIVE
+        # candidate must match exactly — otherwise "attacker/src/foo.py" would pass just
+        # because it ends with an allowed "src/foo.py", letting a worktree-generated path
+        # outside the plan's declared set through (the exact guarantee this gate makes).
+        is_abs = c.strip().replace("\\", "/").startswith("/")
         for a in allowed_norm:
             if cn == a:
                 return True
-            # Suffix match lets a candidate given with extra leading directories (e.g. an
-            # absolute path — an intentional, tested behavior: a candidate like
-            # "/repo/src/foo.py" must still match a plan entry "src/foo.py") match. Only
-            # applies when the allowed entry HAS a directory component — a bare filename
-            # (e.g. "Makefile") must match exactly, or "/anything/Makefile" would match too.
-            if "/" in a and cn.endswith("/" + a):
+            # Absolute-candidate-only suffix match. Only when the allowed entry HAS a
+            # directory component — a bare filename (e.g. "Makefile") must match exactly,
+            # or "/anything/Makefile" would match too.
+            if is_abs and "/" in a and cn.endswith("/" + a):
                 return True
         return False
     out = [p for p in paths if not in_scope(p)]

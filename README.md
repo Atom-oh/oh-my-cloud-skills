@@ -664,7 +664,7 @@ aws-ops-power/
 | `agentcore-creator-agent` | agentcore-creator | "Deploy agent to AgentCore" | Harness config or Strands Agent + deploy script |
 | `co-agent` | co-agent | "second opinion" / "help me decide" / "co-author ADR" | Multi-AI review / decision / ADR |
 | `doc-sync-checker` | project-init | "/sync-docs" | Doc quality scores |
-| `kiro-delegate-agent` | kiro | "delegate to kiro" / "kiro로 구현" | Kiro-implemented change, verified + committed by Claude |
+| `kiro-delegate-agent` | kiro | "delegate implementation to kiro" / "kiro로 구현" | Kiro-implemented change, verified + committed by Claude |
 
 All agents activate automatically when Claude detects matching keywords in your prompt.
 

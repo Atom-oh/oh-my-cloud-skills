@@ -9,7 +9,7 @@ $ARGUMENTS
 
 Invoke `kiro-delegate-agent` to run the full pipeline for this request:
 
-1. **Plan** — write `.kiro/specs/<name>/{requirements,design,tasks.md}` per
+1. **Plan** — write `.kiro/specs/<name>/{requirements,design,tasks}.md` per
    `skills/kiro-delegate/references/spec-format.md`. Keep tasks' `**Files:**` blocks
    complete and backtick-wrapped.
 2. **Wave-plan + execute** — per task (or per disjoint-file wave, up to

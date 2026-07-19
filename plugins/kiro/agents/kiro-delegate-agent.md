@@ -83,7 +83,13 @@ guarantee this whole plugin depends on.
    own work later.
 2. **Wave-plan.** Group tasks into waves of pairwise-disjoint file sets
    (`parse_plan.py`), capped by `delegate.parallel_tasks` (default 3;
-   `kiro_config.py parallel-tasks`).
+   `kiro_config.py parallel-tasks`). **Commit each wave before starting the next**
+   (step 6 runs per wave, not once at the very end). Every worktree is created
+   `--base HEAD`, so a later wave's worktree only sees earlier waves' work if that work
+   is committed to `HEAD` first. Disjoint file sets keep waves from *colliding*, but a
+   later task that semantically depends on an earlier wave's code (calls a function it
+   added) would be implemented against a `HEAD` that lacks it unless the earlier wave was
+   committed. Per-wave commit closes that gap; don't defer all commits to the end.
 3. **Execute, per task (or per wave, in parallel):**
    - `worktree.py add <wt> --base HEAD` — checks out `HEAD`, so `<wt>` contains only
      **committed** files. `.kiro/agents/kiro-implementer.json` and `.kiro/specs/<name>/`
@@ -123,14 +129,23 @@ guarantee this whole plugin depends on.
    - Apply the captured, scoped patch to the main tree. Run the project's tests.
 4. **Verify + bounded retry.** Test failure → feed the failure back to Kiro and retry,
    bounded by `delegate.max_fix_rounds` (default 2; `kiro_config.py max-fix-rounds`).
+   **Before re-applying a retry's captured diff, undo the previous attempt's applied
+   patch on the main tree first** — `worktree.py capture-diff` re-diffs the worktree
+   against its recorded base SHA, so each retry produces the *cumulative* change, and
+   applying that on top of the already-applied first attempt would double-apply / conflict.
+   Restore the task's files to their pre-task state (scoped `git restore`/`git clean`,
+   the same discipline as step 5) between the failed apply and the next apply, so exactly
+   one attempt's worth of change is ever on the main tree at a time.
 5. **Fallback.** Fix-loop exhausted → **Claude implements that task itself** (discard
    Kiro's half-finished patch for it first — same restore discipline as co-agent's
    harness step 8: partition by tracked-vs-untracked, `git restore`/`git clean` scoped to
    the task's files, never a bare `git clean`/`git reset`). Continue the pipeline; don't
    let one stuck task block the rest.
-6. **Commit + report.** Claude commits (Kiro never commits). Tick off `tasks.md`
-   checkboxes for completed tasks. Report delegation rate: tasks Kiro completed vs. tasks
-   Claude had to take over, so the cost-savings effect is visible, not assumed.
+6. **Commit (per wave) + report.** Claude commits each completed wave before the next
+   wave starts (Kiro never commits) — see step 2's per-wave-commit rule. Tick off
+   `tasks.md` checkboxes for completed tasks. At the end, report the delegation rate:
+   tasks Kiro completed vs. tasks Claude had to take over, so the cost-savings effect is
+   visible, not assumed.
 7. **Clean up.** `worktree.py remove <wt>` for every worktree used.
 
 ## Default-delegate mode

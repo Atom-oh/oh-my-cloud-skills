@@ -68,11 +68,25 @@ cases = [
     ('git -c foo=bar commit -m x', False),             # -c config != -C, no scope change
     ('git commit --amend -m \"msg\"', False),
     ('git commit -m \"fix: patch this\"', False),       # 'patch'/'a' in message must not trip
+    ('git commit --fixup abc123', False),               # message-reuse REF args are not pathspecs
+    ('git commit -C HEAD~1', False),
+    ('git commit --squash abc123', False),
 ]
 ok = all(hm.is_scope_mismatch(cmd) == expect for cmd, expect in cases)
 print('SCOPE_MISMATCH_OK' if ok else 'SCOPE_MISMATCH_FAIL')
+stale_cases = [
+    ('git add X && git commit -m x', True),
+    ('git rm old.py; git commit -m x', True),
+    ('git stash pop && git commit -m x', True),
+    ('git commit -m x', False),
+    ('git commit -m x && git add later.py', False),    # add AFTER commit — not stale
+    ('echo \"git add\" && git commit -m x', False),     # quoted — not a real add
+]
+ok2 = all(hm.is_stale_index(cmd) == expect for cmd, expect in stale_cases)
+print('STALE_INDEX_OK' if ok2 else 'STALE_INDEX_FAIL')
 " 2>&1)
-assert_contains "$SM_OUT" "SCOPE_MISMATCH_OK" "hook_match.py's scope-mismatch detects -a/-am/--all/pathspec and a preceding -C, not a plain '-m' commit, --amend, or -c config"
+assert_contains "$SM_OUT" "SCOPE_MISMATCH_OK" "hook_match.py's scope-mismatch detects -a/-am/--all/pathspec and a preceding -C, not a plain '-m' commit, --amend, -c config, or --fixup/-C refs"
+assert_contains "$SM_OUT" "STALE_INDEX_OK" "hook_match.py's stale-index detects a preceding git add/rm/mv/stash in the same invocation"
 
 # --- pre-commit-review.sh end-to-end: scope-mismatch warning fires when review is on ---
 RH=$(mktemp -d "${TMPDIR:-/tmp}/kiro-hook-e2e.XXXXXX")
@@ -301,6 +315,15 @@ python3 "$SG" --plan "$R6/tasks.md" src/helper.py >/dev/null 2>&1 && SGIN=0 || S
 assert_eq "0" "$SGIN" "scope_guard.py accepts a path declared in tasks.md"
 python3 "$SG" --plan "$R6/tasks.md" src/unrelated.py >/dev/null 2>&1 && SGOUT=0 || SGOUT=$?
 assert_eq "1" "$SGOUT" "scope_guard.py rejects a path NOT declared in tasks.md"
+# a RELATIVE candidate with extra leading dirs must NOT pass via suffix match (bypass fix)
+python3 "$SG" --plan "$R6/tasks.md" attacker/src/helper.py >/dev/null 2>&1 && SGREL=0 || SGREL=$?
+assert_eq "1" "$SGREL" "scope_guard.py rejects a relative path that only suffix-matches a plan entry (no leading-dir bypass)"
+# an ABSOLUTE candidate still suffix-matches (git may hand an absolute path) — preserved
+python3 "$SG" --plan "$R6/tasks.md" /repo/src/helper.py >/dev/null 2>&1 && SGABS=0 || SGABS=$?
+assert_eq "0" "$SGABS" "scope_guard.py still accepts an absolute candidate matching a relative plan entry"
+# an option-like candidate ('--foo') must be rejected, not silently dropped from the check
+python3 "$SG" --plan "$R6/tasks.md" --evil.py >/dev/null 2>&1 && SGDASH=0 || SGDASH=$?
+assert_eq "1" "$SGDASH" "scope_guard.py rejects an option-like path instead of skipping it"
 rm -rf "$R6"
 
 # --- spec-format reference documents the backtick pitfall (single most common authoring bug) ---

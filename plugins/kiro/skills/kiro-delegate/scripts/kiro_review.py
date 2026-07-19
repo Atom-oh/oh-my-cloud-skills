@@ -68,12 +68,24 @@ def _git_env():
 def _untracked_files(root, paths):
     """Untracked (never-`git add`ed) files, optionally scoped to `paths`. `git diff HEAD`
     never shows these — HEAD has no entry for them at all — so the working-tree review
-    mode must fetch them separately or a brand-new file silently reviews as empty."""
+    mode must fetch them separately or a brand-new file silently reviews as empty.
+    Best-effort: on a git failure/timeout, warn and return [] (the tracked-diff pass has
+    already succeeded by the time this runs — a traceback here would kill a review that
+    was otherwise fine, violating the fail-open contract)."""
     args = ["git", "-C", root, "ls-files", "--others", "--exclude-standard"]
     if paths:
         args += ["--"] + list(paths)
-    r = subprocess.run(args, capture_output=True, text=True, timeout=30, env=_git_env())
-    return [p for p in r.stdout.splitlines() if p] if r.returncode == 0 else []
+    try:
+        r = subprocess.run(args, capture_output=True, text=True, timeout=30, env=_git_env())
+    except (subprocess.TimeoutExpired, OSError) as e:
+        print(f"⚠️  kiro review: could not list untracked files ({e}) — untracked files "
+              f"in this review scope were NOT reviewed", file=sys.stderr)
+        return []
+    if r.returncode != 0:
+        print(f"⚠️  kiro review: git ls-files exited {r.returncode} — untracked files "
+              f"in this review scope were NOT reviewed", file=sys.stderr)
+        return []
+    return [p for p in r.stdout.splitlines() if p]
 
 
 def _git_diff(root, paths, cached):

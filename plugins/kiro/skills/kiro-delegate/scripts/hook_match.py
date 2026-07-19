@@ -16,6 +16,12 @@ Usage:
                                     #   pointing elsewhere) — `kiro_review.py --staged` would
                                     #   review a DIFFERENT diff than what actually gets
                                     #   committed. exit 1 = no mismatch signal detected.
+  hook_match.py stale-index         # stdin = the hook's JSON payload
+                                    # exit 0 = an index-mutating git command (`add`/`rm`/`mv`/
+                                    #   `stash`) precedes the commit in this SAME invocation
+                                    #   (e.g. `git add X && git commit ...`) — it runs AFTER
+                                    #   this PreToolUse hook, so the reviewed staged diff is
+                                    #   STALE relative to what will be committed. exit 1 = none.
 """
 import sys
 import re
@@ -117,20 +123,45 @@ def is_scope_mismatch(cmd):
         return True
     # Strip recognized value-taking flags and their values before pathspec-sniffing,
     # so `-m "message text"` (blanked to `-m xxxxxxxxxxxx`) doesn't look like a pathspec.
-    stripped = re.sub(r"(?:^|\s)(?:-m|--message|--author|--date)\s+\S+", " ", rest)
+    # Includes commit's message-reuse flags whose value is a REF, not a path (`-C HEAD~1`,
+    # `-c HEAD`, `--fixup abc123`, `--squash abc123`) — without these, every fixup/reuse
+    # commit would emit a spurious scope-mismatch warning on the ref argument.
+    stripped = re.sub(r"(?:^|\s)(?:-m|--message|--author|--date|-C|-c|--fixup|--squash|"
+                      r"--reuse-message|--reedit-message)\s+\S+", " ", rest)
     stripped = re.sub(r"(?:^|\s)-[A-Za-z]+", " ", stripped)          # short flags, no value
     stripped = re.sub(r"(?:^|\s)--[A-Za-z-]+(?:=\S+)?", " ", stripped)  # long flags
     return bool(_PATHSPEC_RE.search(stripped))
 
 
+# A `git add`/`git rm`/`git mv` EARLIER in the same Bash invocation (e.g. the very common
+# `git add X && git commit -m ...`) runs AFTER this PreToolUse hook fires — so the hook
+# reviews the PRE-add index, not the index the commit will actually snapshot. Detect it
+# so the hook can warn (advisory, never block) that the reviewed diff is stale.
+_PRECEDING_INDEX_MUT_RE = re.compile(
+    r"(?:^|[\n;&|])\s*(?:env\s+)?(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*(?:command\s+)?"
+    r"(?:\S*/)?git\b(?:\s+(?:-C\s+\S+|-c\s+\S+|--\S+))*\s+(?:add|rm|mv|stash)\b")
+
+
+def is_stale_index(cmd):
+    """True iff an index-mutating git command precedes the git-commit in this SAME
+    invocation — the staged diff this hook reviews will differ from what gets committed."""
+    detect = _blank_quotes(cmd)
+    m = _GIT_COMMIT_RE.search(detect)
+    if not m:
+        return False
+    return bool(_PRECEDING_INDEX_MUT_RE.search(detect[:m.start() + 1]))
+
+
 def main():
-    if len(sys.argv) < 2 or sys.argv[1] not in ("git-commit", "scope-mismatch"):
+    if len(sys.argv) < 2 or sys.argv[1] not in ("git-commit", "scope-mismatch", "stale-index"):
         print(__doc__)
         return 2
     raw = sys.stdin.read()
     cmd = command_from_payload(raw)
     if sys.argv[1] == "scope-mismatch":
         return 0 if is_scope_mismatch(cmd) else 1
+    if sys.argv[1] == "stale-index":
+        return 0 if is_stale_index(cmd) else 1
     return 0 if is_git_commit(cmd) else 1
 
 

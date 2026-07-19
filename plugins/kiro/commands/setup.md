@@ -5,7 +5,13 @@ allowed-tools: Bash(python3:*), AskUserQuestion
 
 # kiro: setup
 
-Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts"`.
+Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts"` and
+`ROOT="$(git rev-parse --show-toplevel)"`. **Every `kiro_config.py` / `write-agents`
+call below passes `--root "$ROOT"`** — these scripts default their root to the cwd, but
+`.claude/kiro.local.json` and `.kiro/agents/` live at the repo root and the pre-commit
+hook / delegate pipeline read them from there. Run from a subdirectory without `--root`
+and the settings/agents land in `<subdir>/...`, which nothing else reads — a toggle the
+user just turned on would silently not apply.
 
 1. Detect and probe (`kiro_setup.py probe` already checks PATH presence itself — no
    separate `command -v` call needed, and one avoids a permission prompt this command's
@@ -37,8 +43,8 @@ Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts"`.
      to reason about here, unlike a metered API).
    Save with:
    ```bash
-   python3 "$SK/kiro_config.py" set review model "<chosen review model>"
-   python3 "$SK/kiro_config.py" set delegate model "<chosen delegate model>"   # or skip to keep CLI default
+   python3 "$SK/kiro_config.py" set review model "<chosen review model>" --root "$ROOT"
+   python3 "$SK/kiro_config.py" set delegate model "<chosen delegate model>" --root "$ROOT"   # or skip to keep CLI default
    ```
 
 3. **Trust decision — ask before granting shell access (`AskUserQuestion`, mandatory,
@@ -57,7 +63,7 @@ Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts"`.
 
 4. Write the custom agents Kiro uses in headless mode, per the answer to step 3:
    ```bash
-   python3 "$SK/kiro_setup.py" write-agents [--enable-bash]
+   python3 "$SK/kiro_setup.py" write-agents --root "$ROOT" [--enable-bash]
    ```
    These live at `.kiro/agents/kiro-implementer.json` (fs_read/fs_write, plus
    execute_bash only if granted in step 3; worktree-write-only via a preToolUse hook)
@@ -68,7 +74,7 @@ Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts"`.
    implementation work to Kiro automatically without a trigger phrase:
    - **Off (Recommended to start)** — delegate only when explicitly asked
      (`/kiro:delegate` or a trigger phrase).
-   - **On** — `python3 "$SK/kiro_config.py" set default_delegate on`
+   - **On** — `python3 "$SK/kiro_config.py" set default_delegate on --root "$ROOT"`
    And whether to turn on the **pre-commit review hook** (**off by default**) — note
    that this hook sends staged diff CONTENT to a `fs_read`-capable reviewer with no path
    restriction beyond the diff file itself, so an untrusted diff (e.g. reviewing a
@@ -77,10 +83,10 @@ Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts"`.
    - **Off (Recommended to start)** — no automatic review; use `/kiro:review` on demand
      when you do want one.
    - **On (only for diffs you trust the authorship of — typically your own commits)** —
-     `python3 "$SK/kiro_config.py" set review on_commit on`; review every `git commit`'s
+     `python3 "$SK/kiro_config.py" set review on_commit on --root "$ROOT"`; review every `git commit`'s
      staged diff, block on `critical` findings only.
 
 6. Show the final effective config:
    ```bash
-   python3 "$SK/kiro_config.py" show
+   python3 "$SK/kiro_config.py" show --root "$ROOT"
    ```
