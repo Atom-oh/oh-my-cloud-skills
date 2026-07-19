@@ -27,7 +27,7 @@ SHAPIPE() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum
 # Class-based, not filename-enumerated: anything plausibly executed during build/verify/
 # commit. Broad on purpose — a false positive costs one --allow-exec-surface approval,
 # a false negative is arbitrary code execution on the host.
-EXEC_SURFACE_RE='(^|/)(\.github|\.husky|\.git[a-z]*|\.ci|ci|\.circleci|bin|scripts?|tests?|hooks?)/|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|justfile|Justfile|Taskfile\.ya?ml|\.gitlab-ci\.ya?ml|Jenkinsfile[^/]*|azure-pipelines\.ya?ml|bitbucket-pipelines\.ya?ml|gradlew(\.bat)?|mvnw(\.cmd)?|configure|autogen\.sh|BUILD(\.bazel)?|WORKSPACE|Dockerfile[^/]*|\.envrc|sitecustomize\.py|\.gitattributes|\.gitmodules|\.pre-commit-config\.ya?ml|gulpfile\.[a-z]+|Gruntfile\.[a-z]+|\.eslintrc[^/]*|\.babelrc[^/]*)$|\.(gradle|gradle\.kts|sh|bash|zsh)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
+EXEC_SURFACE_RE='(^|/)(\.github|\.husky|\.git[a-z]*|\.ci|ci|\.circleci|bin|scripts?|tests?|hooks?)/|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|justfile|Justfile|Taskfile\.ya?ml|\.gitlab-ci\.ya?ml|Jenkinsfile[^/]*|azure-pipelines\.ya?ml|bitbucket-pipelines\.ya?ml|gradlew(\.bat)?|mvnw(\.cmd)?|configure|autogen\.sh|BUILD(\.bazel)?|WORKSPACE|Dockerfile[^/]*|\.envrc|sitecustomize\.py|\.gitattributes|\.gitmodules|\.pre-commit-config\.ya?ml|gulpfile\.[a-z]+|Gruntfile\.[a-z]+|\.eslintrc[^/]*|\.babelrc[^/]*|composer\.json|meson\.build|SConstruct|SConscript)$|\.(gradle|gradle\.kts|sh|bash|zsh|ps1|psm1)$|(^|/)\.[a-z0-9_-]+rc\.(js|cjs|mjs|ts)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
 
 state() { # state <run> get KEY | state <run> set KEY VALUE
   local run=$1 op=$2 key=$3
@@ -46,13 +46,18 @@ _state_sig() { # recompute the setup signature from CURRENT state values — any
     "$(state "$run" get REF_WT)" "$(state "$run" get BASE_SHA)" | SHAPIPE | cut -d' ' -f1
 }
 
+config_snap() { # shared .git config + remotes are implementer-writable (same uid) — a planted
+                # core.sshCommand/credential.helper would execute at push. Snapshot & re-verify.
+  git -C "$1" config --list --local 2>/dev/null | sort | SHAPIPE | cut -d' ' -f1
+}
+
 hooks_snap() { # hooks_snap <host_root>
   local dir
   dir=$(git -C "$1" rev-parse --path-format=absolute --git-path hooks)
   [ -n "$dir" ] || die "cannot resolve hooks dir"
   if [ -d "$dir" ]; then
-    ( cd "$dir" && { find . \( -type f -o -type l \) -print0 | sort -z | xargs -0 ls -ld 2>/dev/null
-                     find . \( -type f -o -type l \) -print0 | sort -z | xargs -0 cat 2>/dev/null
+    ( cd "$dir" && { find . \( -type f -o -type l \) -print0 | sort -z | xargs -0 -r ls -ld 2>/dev/null
+                     find . \( -type f -o -type l \) -print0 | sort -z | xargs -0 -r cat < /dev/null 2>/dev/null
                    } | SHAPIPE | cut -d' ' -f1 )
   else echo absent; fi
 }
@@ -101,6 +106,7 @@ cmd_setup() {
   state "$run" set CANON_WT_DIR "$(realpath "$wtd")"; state "$run" set CANON_REF_DIR "$(realpath "$refd")"
   state "$run" set IMPL_WT "$wtd/wt"; state "$run" set REF_WT "$refd/wt"
   state "$run" set HOOKS_SNAP "$(hooks_snap "$host")"
+  state "$run" set CONFIG_SNAP "$(config_snap "$host")"
   SIG=$(printf '%s|%s|%s|%s|%s|%s|%s|%s' "$wtd" "$refd" "$(realpath "$wtd")" "$(realpath "$refd")" "$host" "$wtd/wt" "$refd/wt" "$base" | SHAPIPE | cut -d' ' -f1)
   state "$run" set SETUP_SIG "$SIG"
   git -C "$host" --literal-pathspecs status --porcelain > "$run/host.status.setup"
@@ -117,6 +123,7 @@ cmd_capture() {
   local run=$1 n
   [ -f "$run/ok.setup" ] || die "setup stage missing"
   gitwt_verify "$run"; symlink_scan "$(state "$run" get IMPL_WT)"
+  [ "$(config_snap "$(state "$run" get HOST_ROOT)")" = "$(state "$run" get CONFIG_SNAP)" ] || die "shared git config changed during implementation"
   GITH "$run" status --porcelain > "$run/host.status.capture"
   diff -q "$run/host.status.setup" "$run/host.status.capture" >/dev/null \
     || die "host tree changed during implementation (out-of-worktree writes or concurrent edits) — inspect before proceeding"
@@ -126,6 +133,7 @@ cmd_capture() {
   [ -s "$run/full.$n.patch" ] || die "empty capture — implementer produced no delta"
   state "$run" set LATEST_FULL "full.$n.patch"
   _hunk_hashes "$run/full.$n.patch" | sort > "$run/full.$n.hunks"   # manifest for approve's subset check
+  _opaque_chunks "$run/full.$n.patch" | sort > "$run/full.$n.opaque" # binary/meta-only file sections (whole-chunk unit)
   rm -f "$run/ok.approved" "$run/ok.landed" "$run/ok.build" "$run/ok.committed" "$run/approved.patch"   # a new capture invalidates EVERY downstream stage — INCLUDING a stale approved.patch from an older generation
   : > "$run/ok.captured"
   echo "$run/full.$n.patch"
@@ -141,6 +149,17 @@ _hunk_hashes() { # one PHYSICAL line per hunk (newlines -> \x01), offsets stripp
   ' "$1" | while IFS= read -r h; do printf '%s' "$h" | SHAPIPE | cut -d' ' -f1; done
 }
 
+_opaque_chunks() { # per-FILE sections with no text hunks (binary patches, empty adds/deletes,
+                   # pure meta) — these can't be hunk-subset-checked, so they must match whole
+  awk '
+    function flush() { if (chunk != "" && !hastext) print chunk; chunk=""; hastext=0 }
+    /^diff --git /{ flush(); chunk=$0; next }
+    /^@@/{ hastext=1 }
+    chunk != "" { chunk = chunk "\x01" $0 }
+    END { flush() }
+  ' "$1" | while IFS= read -r c; do printf '%s' "$c" | SHAPIPE | cut -d' ' -f1; done
+}
+
 cmd_approve() { # host has already copied+edited approved.patch from the latest generation
   local run=$1
   [ -f "$run/ok.captured" ] || die "capture stage missing"
@@ -153,6 +172,9 @@ cmd_approve() { # host has already copied+edited approved.patch from the latest 
   _hunk_hashes "$run/approved.patch" | sort > "$run/approved.hunks"
   MANIFEST="$run/$(state "$run" get LATEST_FULL | sed 's/\.patch$/.hunks/')"
   [ -z "$(comm -23 "$run/approved.hunks" "$MANIFEST")" ] || die "approved.patch contains hunks not present in the latest capture generation"
+  _opaque_chunks "$run/approved.patch" | sort > "$run/approved.opaque"
+  OPAQUE="$run/$(state "$run" get LATEST_FULL | sed 's/\.patch$/.opaque/')"
+  [ -z "$(comm -23 "$run/approved.opaque" "$OPAQUE")" ] || die "approved.patch contains binary/meta-only file sections not present verbatim in the latest capture"
   state "$run" set APPROVED_SHA "$(SHAPIPE < "$run/approved.patch" | cut -d' ' -f1)"   # hash-bind: land/commit re-verify
   rm -f "$run/ok.landed" "$run/ok.build" "$run/ok.committed"   # a re-approval invalidates every later stage
   : > "$run/ok.approved"
@@ -160,10 +182,12 @@ cmd_approve() { # host has already copied+edited approved.patch from the latest 
 
 cmd_check_plan_paths() { # paths on stdin, one per line — pre-spawn gate
   local run=$1 p
+  [ -f "$run/ok.setup" ] || die "setup stage missing"
   while IFS= read -r p || [ -n "$p" ]; do
-    case "$p" in
-      /*) die "plan path is absolute: $p" ;;
-      *..*) die "plan path traverses: $p" ;;
+    [ -n "$p" ] && [ "$p" != "." ] || die "empty plan path"
+    case "/$p/" in
+      //*) die "plan path is absolute: $p" ;;
+      */../*) die "plan path traverses: $p" ;;   # component-anchored — schema..v2.json is fine
     esac
   done
   echo ok
@@ -261,6 +285,7 @@ cmd_commit() {
   [ "$(git -C "$host" rev-parse HEAD)" = "$(state "$run" get BASE_SHA)" ] || die "base moved since landing"
   [ "$(git -C "$host" symbolic-ref -q HEAD || echo detached)" = "$(state "$run" get BASE_REF)" ] || die "branch switched"
   [ "$(hooks_snap "$host")" = "$(state "$run" get HOOKS_SNAP)" ] || die "git hooks changed during the run"
+  [ "$(config_snap "$host")" = "$(state "$run" get CONFIG_SNAP)" ] || die "git config/remotes changed during the run"
   [ "$(SHAPIPE < "$run/approved.patch" | cut -d' ' -f1)" = "$(state "$run" get APPROVED_SHA)" ] || die "approved.patch changed since approval"
   _equality "$run" "$run/host.final2.diff" "$run/ref.final2.diff" || die "landed files changed since verification"
   if git -C "$host" config core.hooksPath >/dev/null 2>&1; then
@@ -269,7 +294,7 @@ cmd_commit() {
     [ "${3:-}" = "--bypass-hookspath-approved" ] || die "core.hooksPath is configured — ask the user: bypass it (--bypass-hookspath-approved) or abort"
     flags=(-c core.hooksPath=/dev/null)
   fi
-  git -C "$host" --literal-pathspecs add --pathspec-from-file="$run/landed.files"
+  git -C "$host" --literal-pathspecs ${flags[@]+"${flags[@]}"} add --pathspec-from-file="$run/landed.files"
   git -C "$host" --literal-pathspecs ${flags[@]+"${flags[@]}"} commit -m "$msg" --pathspec-from-file="$run/landed.files"   # ${arr[@]+...}: empty-array expansion aborts under set -u on macOS bash 3.2
   state "$run" set COMMIT_SHA "$(git -C "$host" rev-parse HEAD)"
   state "$run" set HOOKS_FLAGS "${flags[*]:-none}"
@@ -281,6 +306,7 @@ cmd_push() { # separate, idempotent — a transient push failure must not strand
   [ -f "$run/ok.committed" ] || die "commit stage missing"
   host=$(state "$run" get HOST_ROOT); sha=$(state "$run" get COMMIT_SHA)
   [ "$(git -C "$host" rev-parse HEAD)" = "$sha" ] || die "HEAD moved since commit — refusing to push"
+  [ "$(config_snap "$host")" = "$(state "$run" get CONFIG_SNAP)" ] || die "git config/remotes changed since setup — refusing to push"
   local -a pf=(); [ "$(state "$run" get HOOKS_FLAGS)" != none ] && pf=(-c core.hooksPath=/dev/null)
   git -C "$host" ${pf[@]+"${pf[@]}"} push
   : > "$run/ok.pushed"
