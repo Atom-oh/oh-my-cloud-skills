@@ -101,8 +101,16 @@ def _untracked_files(root, paths):
     mode must fetch them separately or a brand-new file silently reviews as empty.
     Best-effort: on a git failure/timeout, warn and return [] (the tracked-diff pass has
     already succeeded by the time this runs — a traceback here would kill a review that
-    was otherwise fine, violating the fail-open contract)."""
-    args = ["git", "-C", root, "ls-files", "--others", "--exclude-standard"]
+    was otherwise fine, violating the fail-open contract).
+
+    `-z` (NUL-terminated, unquoted output), NOT plain `splitlines()`: without it, git
+    C-quotes any filename containing a non-ASCII byte, newline, or backslash in its
+    human-readable output (e.g. `café.py` -> `"caf\\303\\251.py"`), and `splitlines()`
+    parsing never un-quotes that — the "path" this function returns is then the quoted
+    LITERAL string, which doesn't exist on disk, so the `--no-index` diff for it fails
+    and the caller drops it silently (no warning). `-z` disables quoting entirely, so
+    entries come back exactly as they exist on disk."""
+    args = ["git", "-C", root, "ls-files", "--others", "--exclude-standard", "-z"]
     if paths:
         args += ["--"] + list(paths)
     try:
@@ -115,7 +123,7 @@ def _untracked_files(root, paths):
         print(f"⚠️  kiro review: git ls-files exited {r.returncode} — untracked files "
               f"in this review scope were NOT reviewed", file=sys.stderr)
         return []
-    return [p for p in r.stdout.splitlines() if p]
+    return [p for p in r.stdout.split("\0") if p]
 
 
 def _git_diff(root, paths, cached):

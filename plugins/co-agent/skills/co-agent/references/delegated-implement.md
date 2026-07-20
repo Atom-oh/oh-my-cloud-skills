@@ -138,15 +138,22 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
    ⚠️ **Partition the pathspec by tracked-now FIRST** (`git ls-files --error-unmatch <f>`):
    `git restore` fatals ATOMICALLY (`pathspec did not match`, restoring **nothing**) if even
    one untracked path is in its argument list — so run
-   `git restore --staged --worktree -- "${TRACKED[@]}"` on tracked files only, and remove
-   the patch-added **untracked** files with `git clean -fd -- "${UNTRACKED[@]}"` (scoped —
-   **never a bare `git clean`**). Passing the full unpartitioned task file set would leave
-   the tree dirty and make the revert below refuse.
+   `git --literal-pathspecs restore --staged --worktree -- "${TRACKED[@]}"` on tracked
+   files only, and remove the patch-added **untracked** files with
+   `git --literal-pathspecs clean -fd -- "${UNTRACKED[@]}"` (scoped — **never a bare
+   `git clean`**). Passing the full unpartitioned task file set would leave the tree
+   dirty and make the revert below refuse. **`--literal-pathspecs` on every restore/clean
+   call in this section, not just this one**: plan file entries are ordinary strings a
+   plain `--` only ends OPTION parsing with, not git's own pathspec MAGIC syntax
+   (`:(glob)`, `:(top)`, …) — an entry containing that syntax could widen a
+   restore/clean's scope past the intended file set and destroy unrelated work; the flag
+   forces every pathspec argument to be treated as a literal path, magic syntax and all.
    ⚠️ **Guard the pathspec first**: if `<task files>` is empty, `git clean -fd --` deletes
    **every** untracked file in the tree. Use a bash **array** (not a string) and a count guard,
    so a whitespace-only value can't pass and filenames with spaces don't word-split:
-   `[ ${#FILES[@]} -gt 0 ] && git clean -fd -- "${FILES[@]}"` — build `FILES=(...)` from the
-   plan's task set, never an unquoted glob that can expand to nothing. The tree is then clean. **Then** undo the red-test commit with `git revert --no-edit
+   `[ ${#FILES[@]} -gt 0 ] && git --literal-pathspecs clean -fd -- "${FILES[@]}"` — build
+   `FILES=(...)` from the plan's task set, never an unquoted glob that can expand to
+   nothing. The tree is then clean. **Then** undo the red-test commit with `git revert --no-edit
    <red-test-sha>` (a non-destructive inverse commit; revert refuses on a dirty tree, which is
    why the restore comes first). Do **not** use `git reset --soft` (keeps the red test staged)
    nor a bare `git reset --hard` (could discard unrelated work). Then `consensus_state.py set .
@@ -255,22 +262,26 @@ enforces — so two tasks that could write the same file never run in the same w
    files are untracked, since the host applied that patch to the worktree without
    committing):
    - **tracked** (`git ls-files --error-unmatch <f>` succeeds):
-     `git restore --source="$CKPT" --staged --worktree -- "${TRACKED[@]}"`. This already
-     stages a **deletion** for any path that did not exist at `$CKPT` (e.g. the new red-test
-     files) — no separate `git rm` is needed, and mixing an untracked path into `git rm`
-     would make it fail atomically and remove nothing.
+     `git --literal-pathspecs restore --source="$CKPT" --staged --worktree -- "${TRACKED[@]}"`.
+     This already stages a **deletion** for any path that did not exist at `$CKPT` (e.g.
+     the new red-test files) — no separate `git rm` is needed, and mixing an untracked
+     path into `git rm` would make it fail atomically and remove nothing.
    - **untracked** (patch-added new files): the sequential loop's step-8 guarded array —
-     `[ ${#UNTRACKED[@]} -gt 0 ] && git clean -fd -- "${UNTRACKED[@]}"` (never a bare
-     `git clean`).
+     `[ ${#UNTRACKED[@]} -gt 0 ] && git --literal-pathspecs clean -fd -- "${UNTRACKED[@]}"`
+     (never a bare `git clean`). `--literal-pathspecs` here too, same reason as step 8:
+     a plan-declared path containing git pathspec magic syntax must not widen this
+     destructive call's scope.
 
    Then proceed to the fold; when `RED_MADE=true` the amend rewrites the red commit to the
    current tree, so the aborted task's tests genuinely drop out of the folded commit. Mark
    the task `needs-human` in state. If **every** task in the wave aborts, do NOT restore
    from `$CKPT` first — `git revert` refuses on a dirty tree, so mirror the sequential
    loop's step 8 order: **discard the applied patches back to HEAD**, partitioned by
-   tracked-now exactly as in step 8 (`git restore --staged --worktree -- "${TRACKED[@]}"`
-   from HEAD for tracked files + the guarded `git clean -fd -- "${UNTRACKED[@]}"` for
-   untracked patch-added files — an unpartitioned pathspec makes `git restore` fatal
+   tracked-now exactly as in step 8
+   (`git --literal-pathspecs restore --staged --worktree -- "${TRACKED[@]}"` from HEAD
+   for tracked files + the guarded
+   `git --literal-pathspecs clean -fd -- "${UNTRACKED[@]}"` for untracked patch-added
+   files — an unpartitioned pathspec makes `git restore` fatal
    atomically and restore nothing) so the tree is clean at the red HEAD, **then** `git revert --no-edit`
    the red-test commit if `RED_MADE=true` — the revert itself removes the red tests. If
    `RED_MADE=false` there is no commit to revert — just discard the tree changes and skip

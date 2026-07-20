@@ -96,9 +96,23 @@ stale_cases = [
 ]
 ok2 = all(hm.is_stale_index(cmd) == expect for cmd, expect in stale_cases)
 print('STALE_INDEX_OK' if ok2 else 'STALE_INDEX_FAIL')
+# round-11 fix: a compound with TWO separate git-commit invocations must be flagged —
+# this hook only ever reviews ONE upfront staged-diff snapshot, so a second commit's
+# own content (staged by an add that runs AFTER the first commit) was silently never
+# reviewed at all, with no warning.
+multi_cases = [
+    ('git commit -m x && git add y && git commit -m z', True),
+    ('git commit -m one; git commit --amend -m two', True),
+    ('git commit -m x', False),
+    ('git commit -m x && git add y', False),               # only one commit
+    ('echo \"git commit -m x\" && git commit -m x', False),  # quoted first one — not real
+]
+ok3 = all(hm.is_multi_commit(cmd) == expect for cmd, expect in multi_cases)
+print('MULTI_COMMIT_OK' if ok3 else f'MULTI_COMMIT_FAIL {[c for c, e in multi_cases if hm.is_multi_commit(c) != e]}')
 " 2>&1)
 assert_contains "$SM_OUT" "SCOPE_MISMATCH_OK" "hook_match.py's scope-mismatch detects -a/-am/--all/pathspec and a preceding -C, not a plain '-m' commit, --amend, -c config, or --fixup/-C refs"
 assert_contains "$SM_OUT" "STALE_INDEX_OK" "hook_match.py's stale-index detects a preceding git add/rm/mv/stash in the same invocation"
+assert_contains "$SM_OUT" "MULTI_COMMIT_OK" "hook_match.py's multi-commit detects more than one git-commit invocation in the same command"
 
 # --- pre-commit-review.sh end-to-end: a scope-mismatch commit SKIPS the review
 #     (fail-open) instead of judging the wrong diff — its exit 2 could otherwise block
@@ -119,6 +133,14 @@ HOOK_OUT2=$(cd "$RH" && CLAUDE_PLUGIN_ROOT="$OLDPWD/plugins/kiro" bash -c '
 ' 2>&1) && HOOK_RC2=0 || HOOK_RC2=$?
 assert_eq "0" "$HOOK_RC2" "hook fail-opens (exit 0) on a stale-index commit"
 assert_contains "$HOOK_OUT2" "SKIPPED" "hook SKIPS on a stale-index (add && commit) invocation"
+# --- round-11 fix: a compound with TWO commits SKIPS too — this hook only ever reviews
+# ONE upfront staged-diff snapshot, so the second commit's own content would never be
+# reviewed at all if the hook silently proceeded on the first-match alone. ---
+HOOK_OUT3=$(cd "$RH" && CLAUDE_PLUGIN_ROOT="$OLDPWD/plugins/kiro" bash -c '
+  echo "{\"tool_input\":{\"command\":\"git commit -m one && git add y && git commit -m two\"}}" | bash "$CLAUDE_PLUGIN_ROOT/hooks/pre-commit-review.sh"
+' 2>&1) && HOOK_RC3=0 || HOOK_RC3=$?
+assert_eq "0" "$HOOK_RC3" "hook fail-opens (exit 0) on a multi-commit invocation"
+assert_contains "$HOOK_OUT3" "SKIPPED" "hook SKIPS on a compound with more than one git commit"
 rm -rf "$RH"
 
 for f in "$CFG" "$REVIEW" "$SETUP" "$WT" "$SG" "$PP"; do
@@ -337,6 +359,29 @@ print('UNTRACKED_DIFF_OK' if err is None and 'new_file.py' in d and 'return 1' i
 " > "$R3U/probe.out" 2>&1
 assert_contains "$(cat "$R3U/probe.out")" "UNTRACKED_DIFF_OK" "working-tree diff mode includes an untracked new file (not silently empty)"
 rm -rf "$R3U"
+
+# --- round-11 fix: _untracked_files() must use `-z` (unquoted, NUL-separated), not plain
+# `git ls-files --others` + splitlines() — without -z, git C-quotes a filename containing
+# a non-ASCII byte (e.g. "café.py" -> "\"caf\\303\\251.py\""), splitlines() never
+# un-quotes it, the returned "path" doesn't exist on disk, and the subsequent --no-index
+# diff for it fails — silently dropping that untracked file from review coverage. ---
+R3N=$(mktemp -d "${TMPDIR:-/tmp}/kiro-review-nonascii.XXXXXX")
+git -C "$R3N" init -q
+git -C "$R3N" config user.email t@t.t; git -C "$R3N" config user.name t
+git -C "$R3N" commit -q --allow-empty -m init
+printf 'def cafe():\n    return "espresso"\n' > "$R3N/café.py"
+NONASCII_OUT=$(python3 -c "
+import sys
+sys.path.insert(0, 'plugins/kiro/skills/kiro-delegate/scripts')
+import kiro_review as kr
+files = kr._untracked_files('$R3N', [])
+listed_ok = files == ['café.py']
+d, err = kr._git_diff('$R3N', [], cached=False)
+diff_ok = err is None and 'espresso' in d
+print('NONASCII_OK' if listed_ok and diff_ok else f'NONASCII_FAIL files={files!r} err={err!r} diff_has_content={\"espresso\" in d if err is None else None}')
+" 2>&1)
+assert_contains "$NONASCII_OUT" "NONASCII_OK" "_untracked_files lists a non-ASCII filename unquoted, and its content survives into the working-tree diff (not silently dropped)"
+rm -rf "$R3N"
 
 # --- kiro_review.py main(): a candidate path named AFTER '--' that happens to look like
 #     a flag (e.g. a file literally named "--staged") must be treated as a literal path,
@@ -590,6 +635,15 @@ assert_contains "$(cat "$REF")" "backtick" "spec-format.md documents the backtic
 # --- CLAUDE.md documents the trust boundary consistently with co-agent's stance on kiro ---
 assert_contains "$(cat plugins/kiro/CLAUDE.md)" "no cwd-confined write sandbox" "kiro plugin CLAUDE.md documents why co-agent refuses Kiro as an implementer"
 assert_contains "$(cat plugins/co-agent/skills/co-agent/scripts/co_agent_config.py)" 'SANDBOX_IMPLEMENTERS = ("codex", "agy")' "co-agent still excludes kiro-cli from SANDBOX_IMPLEMENTERS (consistency check)"
+
+# --- round-11 fix: the destructive restore/clean fallback commands must use
+# --literal-pathspecs — a `--` only ends OPTION parsing, not git's own pathspec MAGIC
+# syntax (:(glob), :(top), ...); a plan-declared path containing that syntax could widen
+# a restore/clean's scope past the intended file set and destroy unrelated work. ---
+DELEG_IMPL="$(cat plugins/co-agent/skills/co-agent/references/delegated-implement.md)"
+LP_COUNT=$(printf '%s' "$DELEG_IMPL" | grep -o -- "--literal-pathspecs" | wc -l | tr -d ' ')
+assert_eq "0" "$([ "$LP_COUNT" -ge 8 ] && echo 0 || echo 1)" "delegated-implement.md's restore/clean fallback commands all carry --literal-pathspecs (found $LP_COUNT, need >=8 across step 8's restore/clean, the guarded clean, the abort-a-task restore/clean, and the abort-every-task restore/clean)"
+assert_contains "$(cat plugins/kiro/agents/kiro-delegate-agent.md)" "literal-pathspecs" "kiro-delegate-agent.md's own restore/clean mentions carry --literal-pathspecs too"
 
 # --- round-9 fix regression: configure.md's on_commit description must NOT contradict
 #     every other doc (README x2, CLAUDE.md, setup.md, review.md, SKILL.md) and the

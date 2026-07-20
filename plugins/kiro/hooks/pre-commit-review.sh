@@ -52,14 +52,20 @@ fi
 # invocation actually commits — reviewing the WRONG diff isn't merely incomplete, its
 # exit 2 could BLOCK a commit based on unrelated staged content (e.g. `git -C ../other
 # commit` gated on THIS repo's staged diff), and a PASS would falsely imply the real
-# commit content was reviewed. Two mismatch classes:
-#   scope-mismatch — `-a`/`--all`, an explicit pathspec, or `-C <dir>`: the commit
-#     covers more/other content than `git diff --cached` here shows.
+# commit content was reviewed. Three mismatch classes:
+#   scope-mismatch — `-a`/`--all`, an explicit pathspec, `-C`/`--git-dir`/`--work-tree`
+#     (space or `=` form), a `GIT_DIR=`/`GIT_WORK_TREE=` env prefix, or a preceding
+#     `cd`/`pushd`: the commit covers more/other content, or targets a different
+#     repo/tree entirely, than `git diff --cached` here shows.
 #   stale-index    — `git add/rm/mv/stash && git commit ...`: the index mutation runs
 #     AFTER this PreToolUse hook, so the staged diff below predates it.
+#   multi-commit   — `git commit ... && git add ... && git commit ...`: this hook fires
+#     ONCE and reviews ONE upfront diff snapshot, so a second commit's own content
+#     (staged by an add that itself runs AFTER the first commit) is never reviewed.
 if python3 "$SK/hook_match.py" scope-mismatch < "$PAYLOAD_FILE"; then
   echo "⚠️  kiro review SKIPPED (fail-open): this commit invocation may cover more than" \
-       "staged changes (-a/--all, a pathspec, or -C elsewhere), so reviewing" \
+       "staged changes (-a/--all, a pathspec, -C/--git-dir/--work-tree, a GIT_DIR=/" \
+       "GIT_WORK_TREE= prefix, or a preceding cd/pushd), so reviewing" \
        "'git diff --cached' here would judge a DIFFERENT diff than what gets committed" \
        "— and could wrongly block it. Run /kiro:review on the right scope if needed." >&2
   exit 0
@@ -69,6 +75,14 @@ if python3 "$SK/hook_match.py" stale-index < "$PAYLOAD_FILE"; then
        "stash) precedes this commit in the same invocation and runs AFTER this hook —" \
        "the staged diff available now predates it. Stage first, then commit in a" \
        "separate command to get a pre-commit review, or run /kiro:review afterwards." >&2
+  exit 0
+fi
+if python3 "$SK/hook_match.py" multi-commit < "$PAYLOAD_FILE"; then
+  echo "⚠️  kiro review SKIPPED (fail-open): this invocation contains MORE THAN ONE" \
+       "git commit — this hook reviews a single upfront staged-diff snapshot, so a" \
+       "second commit's own content (staged after the first commit runs) would never" \
+       "be reviewed at all. Split into separate commit invocations, or run" \
+       "/kiro:review on each staged state as you go." >&2
   exit 0
 fi
 

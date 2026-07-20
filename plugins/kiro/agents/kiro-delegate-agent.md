@@ -106,15 +106,29 @@ guarantee this whole plugin depends on.
      (`references/delegated-implement.md` step 2: "an uncommitted red test would not
      exist inside it"). Handle it the same way, without requiring a commit here (specs
      aren't meant to be committed pre-review):
-     - **Before either `mkdir -p`/`cp` below, refuse a planted symlink.** `<wt>` is a
-       fresh checkout of `HEAD` — if the repo's `HEAD` tracks `.kiro` (or `.kiro/agents`,
-       `.kiro/specs`) as a symlink pointing outside the worktree (a hostile repo, or a
-       stale leftover from something else), `mkdir -p`/`cp` would silently write through
-       it to an arbitrary host path, and this happens **before Kiro is ever invoked** —
-       host-side, not something the implementer's own guards can catch. Check with
-       `[ -L "<wt>/.kiro" ] && echo REFUSE` (and the same for `.kiro/agents`,
-       `.kiro/specs` once created) before proceeding; if any check reports a symlink,
-       stop and tell the user rather than following it.
+     - **Before ANY `mkdir -p`/`cp` below, refuse a planted symlink at every path
+       component involved — checked all at once, upfront, never "once created."**
+       `<wt>` is a fresh checkout of `HEAD` — if the repo's `HEAD` tracks `.kiro` as a
+       real directory but `.kiro/agents` or `.kiro/specs` UNDER it as a symlink pointing
+       outside the worktree (a hostile repo, or a stale leftover), `mkdir -p
+       <wt>/.kiro/agents` (or `.../specs/<name>`) follows that already-existing symlink
+       and creates the rest of the path THROUGH it — the write escape happens at the
+       `mkdir -p` call itself, before any check that runs only "once created" would
+       ever fire. There is no safe order that checks agents/specs AFTER `.kiro` but
+       BEFORE their own `mkdir -p` — check every component in the same pass, before the
+       first `mkdir -p` of this step runs at all:
+       ```bash
+       for p in "<wt>/.kiro" "<wt>/.kiro/agents" "<wt>/.kiro/specs"; do
+         [ -L "$p" ] && { echo "REFUSE: $p is a symlink — stop, do not mkdir/cp through it"; }
+       done
+       ```
+       A component that doesn't exist yet simply isn't a symlink (`-L` is false),
+       which is exactly the harmless case — `mkdir -p` will create it fresh as a real
+       directory. If any check reports a symlink, stop and tell the user; don't
+       silently follow it. **Also re-verify with `realpath` immediately after each
+       `mkdir -p`** (defense-in-depth against a TOCTOU race between the check above and
+       the mkdir) — `[ "$(cd "<wt>/.kiro/agents" && pwd -P)" = "$(cd "<wt>" && pwd -P)/.kiro/agents" ]`
+       must hold before the `cp` that follows it.
      - `mkdir -p <wt>/.kiro/agents && cp .kiro/agents/kiro-implementer.json
        <wt>/.kiro/agents/` — so `--agent kiro-implementer` resolves inside the worktree
        regardless of whether kiro-cli looks in cwd or walks upward from it.
@@ -158,13 +172,17 @@ guarantee this whole plugin depends on.
    patch on the main tree first** — `worktree.py capture-diff` re-diffs the worktree
    against its recorded base SHA, so each retry produces the *cumulative* change, and
    applying that on top of the already-applied first attempt would double-apply / conflict.
-   Restore the task's files to their pre-task state (scoped `git restore`/`git clean`,
-   the same discipline as step 5) between the failed apply and the next apply, so exactly
-   one attempt's worth of change is ever on the main tree at a time.
+   Restore the task's files to their pre-task state (scoped `git --literal-pathspecs
+   restore`/`git --literal-pathspecs clean`, the same discipline as step 5) between the
+   failed apply and the next apply, so exactly one attempt's worth of change is ever on
+   the main tree at a time.
 5. **Fallback.** Fix-loop exhausted → **Claude implements that task itself** (discard
    Kiro's half-finished patch for it first — same restore discipline as co-agent's
-   harness step 8: partition by tracked-vs-untracked, `git restore`/`git clean` scoped to
-   the task's files, never a bare `git clean`/`git reset`). Continue the pipeline; don't
+   harness step 8: partition by tracked-vs-untracked, `git --literal-pathspecs
+   restore`/`git --literal-pathspecs clean` scoped to the task's files, never a bare
+   `git clean`/`git reset`. The `--literal-pathspecs` flag matters here too — a
+   plan-declared path containing git pathspec magic syntax must not widen this
+   destructive call past the task's actual file set.). Continue the pipeline; don't
    let one stuck task block the rest.
 6. **Commit (per wave) + report.** Claude commits each completed wave before the next
    wave starts (Kiro never commits) — see step 2's per-wave-commit rule. Tick off

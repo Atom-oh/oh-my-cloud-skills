@@ -22,6 +22,13 @@ Usage:
                                     #   (e.g. `git add X && git commit ...`) — it runs AFTER
                                     #   this PreToolUse hook, so the reviewed staged diff is
                                     #   STALE relative to what will be committed. exit 1 = none.
+  hook_match.py multi-commit        # stdin = the hook's JSON payload
+                                    # exit 0 = MORE THAN ONE `git ... commit` invocation is
+                                    #   present in this SAME command (e.g. `git commit -m x &&
+                                    #   git add y && git commit -m z`) — this hook only ever
+                                    #   reviews ONE upfront snapshot of the staged diff, so a
+                                    #   second commit's own content is never reviewed at all.
+                                    #   exit 1 = only one commit invocation (or none).
 """
 import sys
 import re
@@ -180,8 +187,22 @@ def is_stale_index(cmd):
     return bool(_PRECEDING_INDEX_MUT_RE.search(detect[:m.start() + 1]))
 
 
+def is_multi_commit(cmd):
+    """True iff the command contains MORE THAN ONE separate `git ... commit` invocation
+    (e.g. `git commit -m x && git add y && git commit -m z`). This hook's PreToolUse
+    fires ONCE, before ANY of a compound command runs, and reviews a single upfront
+    snapshot of the staged diff (`--staged`). A second commit's own content — staged by
+    a `git add` that itself runs AFTER the first commit, inside this same invocation —
+    was never captured by that one snapshot and would otherwise be silently
+    under-reviewed with no warning at all (unlike a `git add` BEFORE the first commit,
+    which `is_stale_index` already catches)."""
+    detect = _blank_quotes(cmd)
+    return len(_GIT_COMMIT_RE.findall(detect)) >= 2
+
+
 def main():
-    if len(sys.argv) < 2 or sys.argv[1] not in ("git-commit", "scope-mismatch", "stale-index"):
+    if len(sys.argv) < 2 or sys.argv[1] not in (
+            "git-commit", "scope-mismatch", "stale-index", "multi-commit"):
         print(__doc__)
         return 2
     raw = sys.stdin.read()
@@ -190,6 +211,8 @@ def main():
         return 0 if is_scope_mismatch(cmd) else 1
     if sys.argv[1] == "stale-index":
         return 0 if is_stale_index(cmd) else 1
+    if sys.argv[1] == "multi-commit":
+        return 0 if is_multi_commit(cmd) else 1
     return 0 if is_git_commit(cmd) else 1
 
 
