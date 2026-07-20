@@ -7,7 +7,9 @@
     "email": "whchoi98@gmail.com"
   },
   "agents": [
-    "./agents/doc-sync-checker.md"
+    "./agents/doc-sync-checker.md",
+    "./agents/pr-autofix-planner.md",
+    "./agents/pr-autofix-implementer.md"
   ],
   "skills": [
     "./skills/project-scaffolder",

@@ -655,8 +655,11 @@ aws-ops-power/
 | `agentcore-creator-agent` | agentcore-creator | "에이전트를 AgentCore에 배포" | Harness 설정 또는 Strands Agent + 배포 스크립트 |
 | `co-agent` | co-agent | "second opinion" / "help me decide" / "ADR 협업" | 멀티-AI 리뷰 / 의사결정 / ADR |
 | `doc-sync-checker` | project-init | "/sync-docs" | 문서 품질 점수 |
+| `pr-autofix-planner` / `pr-autofix-implementer` | project-init | (pr-autofix 스킬이 스폰) | 수정 계획 / 계획 적용된 worktree 편집 |
 
-모든 에이전트는 Claude가 프롬프트에서 일치하는 키워드를 감지하면 자동으로 활성화됩니다.
+> `pr-autofix-planner` / `pr-autofix-implementer`는 pr-autofix 스킬이 스폰하는 용도입니다 — description이 직접 자동 선택을 억제하지만 하드 차단은 아닙니다.
+
+모든 에이전트는(위 pr-autofix 내부 워커 제외) Claude가 프롬프트에서 일치하는 키워드를 감지하면 자동으로 활성화됩니다.
 
 ---
 
@@ -693,7 +696,7 @@ aws-ops-power/
 | `agentcore-create` | 5단계 AgentCore 설계, 빌드, 변환, 배포 워크플로우 (harness 또는 Runtime 타깃) |
 | `co-agent` | 멀티-AI 협업 (Kiro/Codex/Antigravity — `agy`) — 리뷰, 의사결정 보조, ADR 협업, `sync-context`; Claude가 의장. 명령: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus`, `/co-agent:harness`, `/co-agent:setup` |
 | `project-scaffolder` | Claude Code 프로젝트 구조 패턴 및 컨벤션 |
-| `pr-autofix` | AI + 사람 PR 리뷰 피드백 polling 후 이슈 자동 수정 (최대 3회 반복) |
+| `pr-autofix` | AI + 사람 PR 리뷰 피드백 polling 후 이슈 자동 수정 (최대 3회 반복; 계획은 Fable/Opus, 구현은 sonnet 서브에이전트) |
 | `decision-reconcile` | 누적 ADR 간 모순(및 ADR vs 현실 drift)을 다양성 멀티 에이전트 패널(Claude 모델 티어 + 선택적 Kiro/Codex/Antigravity, 렌즈 1개씩)로 검출 후 번복 ADR 초안 작성 |
 
 ### Project Init 명령
@@ -840,11 +843,13 @@ plugins/
 │   └── skills/
 │       └── co-agent/
 │
-└── project-init/                      # 프로젝트 스캐폴딩 (1 에이전트, 3 스킬, 10 명령)
+└── project-init/                      # 프로젝트 스캐폴딩 (3 에이전트, 3 스킬, 10 명령)
     ├── .claude-plugin/plugin.json
     ├── CLAUDE.md
     ├── agents/
-    │   └── doc-sync-checker.md
+    │   ├── doc-sync-checker.md
+    │   ├── pr-autofix-planner.md
+    │   └── pr-autofix-implementer.md
     ├── commands/                       # 10개 슬래시 명령
     │   ├── init-project.md
     │   ├── sync-docs.md
