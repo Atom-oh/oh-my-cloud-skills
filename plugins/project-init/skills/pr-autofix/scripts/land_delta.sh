@@ -55,7 +55,7 @@ SHAPIPE() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum
 # Class-based, not filename-enumerated: anything plausibly executed during build/verify/
 # commit. Broad on purpose — a false positive costs one --allow-exec-surface approval,
 # a false negative is arbitrary code execution on the host.
-EXEC_SURFACE_RE='(^|/)(\.github|\.husky|\.git[a-z]*|\.ci|ci|\.circleci|\.cargo|\.yarn|bin|scripts?|tests?|hooks?)/|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|justfile|Justfile|Taskfile\.ya?ml|\.gitlab-ci\.ya?ml|Jenkinsfile[^/]*|azure-pipelines\.ya?ml|bitbucket-pipelines\.ya?ml|gradlew(\.bat)?|mvnw(\.cmd)?|configure|autogen\.sh|BUILD(\.bazel)?|WORKSPACE|Dockerfile[^/]*|\.envrc|sitecustomize\.py|\.gitattributes|\.gitmodules|\.pre-commit-config\.ya?ml|\.?lefthook(-local)?\.ya?ml|\.huskyrc[^/]*|gulpfile\.[a-z]+|Gruntfile\.[a-z]+|\.eslintrc[^/]*|\.babelrc[^/]*|composer\.json|meson\.build|SConstruct|SConscript|docker-compose[^/]*\.ya?ml|compose\.ya?ml|\.mcp\.json|pytest\.ini|\.yarnrc\.ya?ml|manage\.py|configure\.ac|.*\.cmake|.*\.pth|requirements[^/]*\.txt|Pipfile(\.lock)?|poetry\.lock|yarn\.lock|pnpm-lock\.ya?ml|Gemfile\.lock|Cargo\.lock|package-lock\.json|\.npmrc|pip\.conf)$|(^|/)\.yarn/|(^|/)\.claude/settings[^/]*\.json$|\.(gradle|gradle\.kts|sh|bash|zsh|ps1|psm1)$|(^|/)\.[a-z0-9_-]+rc\.(js|cjs|mjs|ts)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
+EXEC_SURFACE_RE='(^|/)(\.github|\.husky|\.git[a-z]*|\.ci|ci|\.circleci|\.cargo|\.yarn|bin|scripts?|tests?|hooks?)/|(^|/)(package\.json|package-lock\.json|Makefile|makefile|GNUmakefile|CMakeLists\.txt|build\.rs|pyproject\.toml|setup\.(py|cfg)|conftest\.py|noxfile\.py|tox\.ini|Cargo\.toml|pom\.xml|build\.xml|Rakefile|Gemfile|justfile|Justfile|Taskfile\.ya?ml|\.gitlab-ci\.ya?ml|Jenkinsfile[^/]*|azure-pipelines\.ya?ml|bitbucket-pipelines\.ya?ml|gradlew(\.bat)?|mvnw(\.cmd)?|configure|autogen\.sh|BUILD(\.bazel)?|WORKSPACE|Dockerfile[^/]*|\.envrc|sitecustomize\.py|\.gitattributes|\.gitmodules|\.pre-commit-config\.ya?ml|\.?lefthook(-local)?\.ya?ml|\.huskyrc[^/]*|gulpfile\.[a-z]+|Gruntfile\.[a-z]+|\.eslintrc[^/]*|\.babelrc[^/]*|composer\.json|meson\.build|SConstruct|SConscript|docker-compose[^/]*\.ya?ml|compose\.ya?ml|\.mcp\.json|pytest\.ini|\.yarnrc\.ya?ml|manage\.py|configure\.ac|.*\.cmake|.*\.pth|requirements[^/]*\.txt|Pipfile(\.lock)?|poetry\.lock|yarn\.lock|pnpm-lock\.ya?ml|Gemfile\.lock|Cargo\.lock|package-lock\.json|\.npmrc|pip\.conf)$|(^|/)\.yarn/|(^|/)\.claude/|(^|/)(CLAUDE|AGENTS)\.md$|\.(gradle|gradle\.kts|sh|bash|zsh|ps1|psm1)$|(^|/)\.[a-z0-9_-]+rc\.(js|cjs|mjs|ts)$|(^|/)[^/]*\.config\.(js|cjs|mjs|ts)$'
 
 state() { # state <run> get KEY | state <run> set KEY VALUE
   local run=$1 op=$2 key=$3
@@ -67,11 +67,12 @@ state() { # state <run> get KEY | state <run> set KEY VALUE
 
 _state_sig() { # recompute the setup signature from CURRENT state values — any tamper breaks it
   local run=$1
-  printf '%s|%s|%s|%s|%s|%s|%s|%s' \
+  printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s' \
     "$(state "$run" get WT_DIR)" "$(state "$run" get REF_DIR)" \
     "$(state "$run" get CANON_WT_DIR)" "$(state "$run" get CANON_REF_DIR)" \
     "$(state "$run" get HOST_ROOT)" "$(state "$run" get IMPL_WT)" \
-    "$(state "$run" get REF_WT)" "$(state "$run" get BASE_SHA)" | SHAPIPE | cut -d' ' -f1
+    "$(state "$run" get REF_WT)" "$(state "$run" get BASE_SHA)" \
+    "$(state "$run" get HOOKS_SNAP)" "$(state "$run" get CONFIG_SNAP)" "$(state "$run" get DIRTY_SNAP)" | SHAPIPE | cut -d' ' -f1
 }
 
 dirty_snap() { # content hash of every dirty/untracked file — the porcelain STRING comparison
@@ -158,7 +159,7 @@ cmd_setup() {
   HS=$(hooks_snap "$host") || die "hooks snapshot failed";  state "$run" set HOOKS_SNAP "$HS"
   CS=$(config_snap "$host") || die "config snapshot failed"; state "$run" set CONFIG_SNAP "$CS"
   DS=$(dirty_snap "$host")  || die "dirty snapshot failed";  state "$run" set DIRTY_SNAP "$DS"
-  SIG=$(printf '%s|%s|%s|%s|%s|%s|%s|%s' "$wtd" "$refd" "$(_canon "$wtd")" "$(_canon "$refd")" "$host" "$wtd/wt" "$refd/wt" "$base" | SHAPIPE | cut -d' ' -f1)
+  SIG=$(printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s' "$wtd" "$refd" "$(_canon "$wtd")" "$(_canon "$refd")" "$host" "$wtd/wt" "$refd/wt" "$base" "$HS" "$CS" "$DS" | SHAPIPE | cut -d' ' -f1)
   state "$run" set SETUP_SIG "$SIG"
   git -C "$host" -c core.hooksPath=/dev/null -c core.fsmonitor=false --literal-pathspecs status --porcelain --untracked-files=all > "$run/host.status.setup"
   git -C "$host" -c core.hooksPath=/dev/null worktree add --detach "$wtd/wt" "$base" >/dev/null
@@ -237,7 +238,7 @@ cmd_approve() { # host has already copied+edited approved.patch from the latest 
   [ -z "$(comm -23 "$run/approved.hunks" "$MANIFEST")" ] || die "approved.patch contains hunks not present in the latest capture generation"
   [ -f "$run/ok.plan" ] || die "check-plan-paths stage missing — the plan gate is not optional"
   if [ -f "$run/plan.files" ]; then   # plan conformance — approved files must be planned files
-    GITH "$run" apply --numstat "$run/approved.patch" | cut -f3- | sort -u > "$run/approved.files.tmp"
+    git -C "$(state "$run" get HOST_ROOT)" -c core.quotePath=false -c core.hooksPath=/dev/null -c core.fsmonitor=false --literal-pathspecs apply --numstat "$run/approved.patch" | cut -f3- | sort -u > "$run/approved.files.tmp"
     EXTRA=$(comm -23 "$run/approved.files.tmp" "$run/plan.files"); rm -f "$run/approved.files.tmp"
     [ -z "$EXTRA" ] || die "approved.patch touches files the plan never named: $EXTRA"
   fi
@@ -292,7 +293,9 @@ cmd_land() { # land <run> --sig <s> --approved-sha <a> --script-sha <h> [--allow
   host=$(state "$run" get HOST_ROOT)
   [ "$(git -C "$host" rev-parse HEAD)" = "$(state "$run" get BASE_SHA)" ] || die "base moved"
   [ "$(git -C "$host" symbolic-ref -q HEAD || echo detached)" = "$(state "$run" get BASE_REF)" ] || die "branch switched"
-  GITH "$run" apply --numstat "$run/approved.patch" | cut -f3- > "$run/landed.files"
+  git -C "$host" -c core.quotePath=false -c core.hooksPath=/dev/null -c core.fsmonitor=false --literal-pathspecs apply --numstat "$run/approved.patch" | cut -f3- > "$run/landed.files"
+  # quotePath=false: non-ASCII (e.g. Korean) filenames arrive raw instead of C-quoted —
+  # the exotic-path guard below otherwise refused every such legitimate path
   [ -s "$run/landed.files" ] || die "approved patch names no files"
   grep -qE '^"|=>' "$run/landed.files" && die "exotic/renamed path in patch — refuse"
   # CI workflow files are denied UNCONDITIONALLY — no flag opens them (the review CI must
@@ -466,11 +469,12 @@ cmd_push() { # push <run> --script-sha <h> — separate, idempotent
   : > "$run/ok.pushed"
 }
 
-cmd_rollback() { # rollback <run> --sig <s> --script-sha <h> — destructive; same trust roots as cleanup
-  local run=$1 host ref base f failed=0 hostmeta refmeta sigv="" ssha=""
+cmd_rollback() { # rollback <run> --sig <s> --script-sha <h> --landed-sha <l> — destructive
+  local run=$1 host ref base f failed=0 hostmeta refmeta sigv="" ssha="" lsha=""
   shift
   while [ $# -gt 0 ]; do case "$1" in
-    --sig) sigv=${2:-}; shift 2;; --script-sha) ssha=${2:-}; shift 2;; "") shift;; *) die "unknown rollback arg: $1";; esac; done
+    --sig) sigv=${2:-}; shift 2;; --script-sha) ssha=${2:-}; shift 2;;
+    --landed-sha) lsha=${2:-}; shift 2;; "") shift;; *) die "unknown rollback arg: $1";; esac; done
   _verify_self "$ssha"
   [ -n "$sigv" ] || die "rollback requires --sig <value printed by setup>"
   [ "$(_state_sig "$run")" = "$sigv" ] || die "state signature mismatch — refusing rollback"
@@ -488,6 +492,11 @@ cmd_rollback() { # rollback <run> --sig <s> --script-sha <h> — destructive; sa
     fi
   fi
   [ -d "$ref" ] || die "no reference worktree — cannot verify safe rollback"
+  # derive the TRUSTED file list (rollback previously walked the mutable landed.files —
+  # a tampered list could aim restores at arbitrary tracked paths):
+  [ -f "$run/ref.landed.hashes" ] && [ -n "$lsha" ] || die "rollback requires --landed-sha (value land printed)"
+  [ "$(SHAPIPE < "$run/ref.landed.hashes" | cut -d' ' -f1)" = "$lsha" ] || die "ref.landed.hashes tampered — refusing rollback"
+  sed 's/ [^ ]*$//' "$run/ref.landed.hashes" > "$run/rollback.files"
   while IFS= read -r f || [ -n "$f" ]; do
     if [ ! -e "$host/$f" ] && [ ! -e "$ref/$f" ]; then     # approved DELETION — restore the base file
       [ ! -L "$host/$f" ] || { echo "SKIP (dangling symlink at path — user artifact, left untouched): $f"; failed=1; continue; }
@@ -509,7 +518,7 @@ cmd_rollback() { # rollback <run> --sig <s> --script-sha <h> — destructive; sa
       [ ! -L "$host/$f" ] || { echo "SKIP (path became a symlink — left untouched): $f"; failed=1; continue; }
       rm -f -- "$host/$f" || die "delete failed: $f"
     fi
-  done < "$run/landed.files"
+  done < "$run/rollback.files"
   # Reset the reference worktree too (it held the approved state) — otherwise the next
   # land()'s GITREF apply hits already-applied content and re-landing is impossible:
   GITREF "$run" reset --hard "$base" >/dev/null

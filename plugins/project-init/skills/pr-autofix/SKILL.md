@@ -147,7 +147,7 @@ LD_SHA=$( (sha256sum "$LD" 2>/dev/null || shasum -a 256 "$LD") | cut -d' ' -f1 )
 #   secondary, accidental-drift guard. This host-side re-hash covers EVERY stage call
 #   including capture and verify — and the residual surface stays real: an injected
 #   implementer can write anywhere this uid can, including $RUN and the plugin dir;
-#   the hash discipline is what turns that into a detected STOP instead of silent bypass — the script lives on a same-uid filesystem, and a tampered script lies about
+#   the hash discipline detects tampering of the pipeline's OWN artifacts; writes outside the repo (e.g. $HOME) and gitignored paths remain undetectable at this layer — documented residual — the script lives on a same-uid filesystem, and a tampered script lies about
 #   everything else. Your notes are the only implementer-unwritable storage.
 read -r RUN SIG <<<"$(bash "$LD" setup)"
 # setup creates the implementer + reference worktrees @ HEAD, pins base SHA/ref,
@@ -202,7 +202,7 @@ plan inline.)
    tracked files outside the landed set (codegen/formatter companions are never
    auto-committed; re-approve or revert them) and if the landed content drifted from the
    approved delta (byte-for-byte, capture flags).
-6. **On ANY failure after landing**: `bash "$LD" rollback "$RUN" --script-sha "$LD_SHA" --sig "$SIG"` — restores exactly the
+6. **On ANY failure after landing**: `bash "$LD" rollback "$RUN" --script-sha "$LD_SHA" --sig "$SIG" --landed-sha "$LANDED_SHA"` — restores exactly the
    landed paths; a file the user modified in the meantime is preserved and reported,
    never overwritten. Then either fix (companion edits go BACK through approval — a
    once-rejected hunk gets no free pass; twice → escalate to the user) or abort the

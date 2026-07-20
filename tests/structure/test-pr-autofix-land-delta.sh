@@ -135,7 +135,7 @@ cp "$RUN/full.1.patch" "$RUN/approved.patch"; APPR=$( cd "$FIX" && bash "$LD_ABS
 LANDED=$( cd "$FIX" && bash "$LD_ABS" land "$RUN" --script-sha "$LDSHA" --sig "$SIG" --approved-sha "$APPR" 2>/dev/null | tail -1 ) || true
 assert_file_exists "$RUN/ok.landed" "prerequisites healthy before rollback test"
 echo 'precious user edit' > "$FIX/a.txt"                 # user edits a landed file during the build window
-RC=0; OUT=$( cd "$FIX" && bash "$LD_ABS" rollback "$RUN" --script-sha "$LDSHA" --sig "$SIG" 2>&1 ) || RC=$?
+RC=0; OUT=$( cd "$FIX" && bash "$LD_ABS" rollback "$RUN" --script-sha "$LDSHA" --sig "$SIG" --landed-sha "$LANDED" 2>&1 ) || RC=$?
 assert_eq "1" "$RC" "rollback reports partial (user-modified file present)"
 assert_eq "x=1" "$(cat "$FIX/src/app.py")" "pristine landed file reverted to base"
 assert_eq "precious user edit" "$(cat "$FIX/a.txt")" "user-modified file preserved, not reverted"
@@ -151,7 +151,7 @@ printf '%s\n' src/app.py a.txt package.json build.gradle.kts installer .github/w
 cp "$RUN/full.1.patch" "$RUN/approved.patch"; APPR=$( cd "$FIX" && bash "$LD_ABS" approve "$RUN" 2>/dev/null ) || true
 LANDED=$( cd "$FIX" && bash "$LD_ABS" land "$RUN" --script-sha "$LDSHA" --sig "$SIG" --approved-sha "$APPR" 2>/dev/null | tail -1 ) || true
 ( cd "$FIX" && bash "$LD_ABS" verify "$RUN" --build-ok 1 --script-sha "$LDSHA" --landed-sha "$LANDED" ) >/dev/null 2>&1 || true
-( cd "$FIX" && bash "$LD_ABS" rollback "$RUN" --script-sha "$LDSHA" --sig "$SIG" ) >/dev/null 2>&1 || true   # host back to base
+( cd "$FIX" && bash "$LD_ABS" rollback "$RUN" --script-sha "$LDSHA" --sig "$SIG" --landed-sha "$LANDED" ) >/dev/null 2>&1 || true   # host back to base
 echo 'x=3' > "$IMPL_WT/src/app.py"
 ( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --script-sha "$LDSHA" --sig "$SIG" ) >/dev/null 2>&1 || true    # generation 2
 assert_file_exists "$RUN/full.2.patch" "re-capture after rollback produces generation 2"
@@ -194,7 +194,7 @@ echo 'x=2' > "$IMPL_WT/src/app.py"
 printf '%s\n' src/app.py a.txt package.json build.gradle.kts installer .github/workflows/ci.yml | ( cd "$FIX" && bash "$LD_ABS" check-plan-paths "$RUN" ) >/dev/null 2>&1 || true
 cp "$RUN/full.1.patch" "$RUN/approved.patch"; APPR=$( cd "$FIX" && bash "$LD_ABS" approve "$RUN" 2>/dev/null ) || true
 LANDED=$( cd "$FIX" && bash "$LD_ABS" land "$RUN" --script-sha "$LDSHA" --sig "$SIG" --approved-sha "$APPR" 2>/dev/null | tail -1 ) || true
-( cd "$FIX" && bash "$LD_ABS" rollback "$RUN" --script-sha "$LDSHA" --sig "$SIG" ) >/dev/null 2>&1 || true
+( cd "$FIX" && bash "$LD_ABS" rollback "$RUN" --script-sha "$LDSHA" --sig "$SIG" --landed-sha "$LANDED" ) >/dev/null 2>&1 || true
 echo 'x=9' > "$IMPL_WT/src/app.py"
 ( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --script-sha "$LDSHA" --sig "$SIG" ) >/dev/null 2>&1 || true
 cp "$RUN/$(sed -n 's/^LATEST_FULL=//p' "$RUN/state" | tail -1)" "$RUN/approved.patch"
