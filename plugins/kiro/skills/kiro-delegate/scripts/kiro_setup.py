@@ -262,10 +262,28 @@ def _escapes_root(path, root):
     filesystem; a plain `open(path, "w")` would then truncate/overwrite whatever that
     resolves to. `os.path.realpath` resolves symlinks in the EXISTING portion of the
     path and leaves a not-yet-created trailing component untouched, so this still
-    catches a symlinked ancestor even before the target file itself exists."""
+    catches a symlinked ancestor even before the target file itself exists.
+
+    NOTE: this only catches an escape to OUTSIDE `root` — it does NOT catch an ancestor
+    symlink that redirects somewhere ELSE INSIDE `root` (e.g. `.kiro` symlinked to
+    `src/`), which still passes this check and then gets past `write_agents`'s
+    `O_NOFOLLOW` too (O_NOFOLLOW only ever protects the FINAL path component per POSIX
+    semantics — an ancestor symlink is followed like any other directory).
+    `_resolves_through_symlink` below is the complete check; this function is kept only
+    for its more specific error message on the truly-escaping case."""
     real_root = os.path.realpath(root)
     real_path = os.path.realpath(path)
     return not (real_path == real_root or real_path.startswith(real_root + os.sep))
+
+
+def _resolves_through_symlink(path):
+    """True if resolving `path` involves ANY symlink anywhere in the chain — whether it
+    redirects outside `root` (`_escapes_root` already catches that case) or to a
+    DIFFERENT location still inside `root`. A plugin-generated agent file a fresh
+    `write-agents` run creates never involves a symlink at all, so ANY symlink in the
+    chain is inherently suspicious here — fail closed regardless of where it ultimately
+    points."""
+    return os.path.realpath(path) != os.path.normpath(path)
 
 
 def write_agents(root, force=False, enable_bash=False):
@@ -275,6 +293,12 @@ def write_agents(root, force=False, enable_bash=False):
               f"symlinked .kiro/) resolves outside the repo root {root} — this looks "
               f"like a symlink-through-write escape, not a normal checkout. "
               f"Remove/replace it before running write-agents again.", file=sys.stderr)
+        return 2
+    if _resolves_through_symlink(d):
+        print(f"❌ refusing to write to {d}: a symlink somewhere in its path redirects "
+              f"it elsewhere (even if that's still inside the repo root) — writing "
+              f"here would land in the wrong place. Remove/replace it before running "
+              f"write-agents again.", file=sys.stderr)
         return 2
     os.makedirs(d, exist_ok=True)
     written = []
@@ -292,6 +316,12 @@ def write_agents(root, force=False, enable_bash=False):
                   f"{root} — this looks like a symlink-through-write escape, not a "
                   f"normal checkout. Remove/replace it before running write-agents "
                   f"again.", file=sys.stderr)
+            return 2
+        if _resolves_through_symlink(p):
+            print(f"❌ refusing to write {p}: a symlink somewhere in its path "
+                  f"redirects it elsewhere (even if that's still inside the repo "
+                  f"root) — writing here would land in the wrong place. "
+                  f"Remove/replace it before running write-agents again.", file=sys.stderr)
             return 2
         if os.path.isfile(p) and not force:
             print(f"skip (exists): {p} — pass --force to overwrite")

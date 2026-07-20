@@ -279,6 +279,31 @@ assert_eq "2" "$SETUPSYM2" "kiro_setup.py write-agents --force refuses an in-roo
 assert_eq "important agent-slot content" "$(cat "$RSYM2/.kiro/important-agent.txt")" "kiro_setup.py write-agents did not truncate the in-root symlink target"
 rm -rf "$RSYM2"
 
+# --- round-16 fix: an ANCESTOR directory symlinked to ANOTHER location still INSIDE
+# root (not escaping root, and the final component isn't itself a symlink) sailed past
+# both _escapes_root (only checks escape-to-outside) and O_NOFOLLOW (only ever protects
+# the FINAL path component per POSIX semantics — never an ancestor). E.g. .claude
+# symlinked to src/ makes .claude/kiro.local.json resolve to src/kiro.local.json — still
+# "inside root" — and a plain O_TRUNC open of that resolved (non-symlink) file would
+# truncate a real, unrelated tracked file. ---
+RANC=$(mktemp -d "${TMPDIR:-/tmp}/kiro-ancestor-symlink.XXXXXX")
+mkdir -p "$RANC/src"
+printf 'important source content\n' > "$RANC/src/kiro.local.json"
+ln -s src "$RANC/.claude"
+python3 "$CFG" set default_delegate on --root "$RANC" >/dev/null 2>&1 && ANCSYM=0 || ANCSYM=$?
+assert_eq "2" "$ANCSYM" "kiro_config.py set refuses an ancestor symlink (.claude -> src/) that redirects INSIDE root, not just an out-of-root escape or a symlinked leaf"
+assert_eq "important source content" "$(cat "$RANC/src/kiro.local.json")" "kiro_config.py set did not truncate the file the ancestor symlink actually resolves to"
+rm -rf "$RANC"
+RANC2=$(mktemp -d "${TMPDIR:-/tmp}/kiro-ancestor-symlink2.XXXXXX")
+mkdir -p "$RANC2/src"
+printf 'important agent content\n' > "$RANC2/src/kiro-implementer.json"
+mkdir -p "$RANC2/.kiro"
+ln -s ../src "$RANC2/.kiro/agents"
+python3 "$SETUP" write-agents --root "$RANC2" >/dev/null 2>&1 && ANCSYM2=0 || ANCSYM2=$?
+assert_eq "2" "$ANCSYM2" "kiro_setup.py write-agents refuses an ancestor symlink (.kiro/agents -> src/) that redirects INSIDE root"
+assert_eq "important agent content" "$(cat "$RANC2/src/kiro-implementer.json")" "kiro_setup.py write-agents did not truncate the file the ancestor symlink actually resolves to"
+rm -rf "$RANC2"
+
 # --- round-14 fix: .claude/kiro.local.json is meant to be a personal, gitignored
 # override — a malicious consumer repo could commit it anyway with
 # default_delegate/review.on_commit set to true, silently opting an installing user's
@@ -323,6 +348,23 @@ ALIAS_OUT=$(python3 "$CFG" review-on-commit --root "$RALIAS" 2>&1) && ALIAS_RC=0
 assert_eq "1" "$ALIAS_RC" "review-on-commit falls back to OFF when .claude is a tracked symlink alias, even though git ls-files on the literal .claude/kiro.local.json path alone would say 'not tracked'"
 assert_contains "$ALIAS_OUT" "tracked by git" "the symlink-alias fallback also prints the tracked/symlink warning"
 rm -rf "$RALIAS"
+
+# --- round-16 fix: _is_tracked_by_git's fail-direction on an actual check FAILURE
+# (git binary missing/timeout, not just "genuinely not tracked") must fail toward
+# DISTRUST (True = strip consent keys), not toward trust — an unverifiable
+# tracked-status must never be read as "so it's fine to honor this file's
+# on_commit/default_delegate values". ---
+FAILDIR_OUT=$(python3 -c "
+import sys
+sys.path.insert(0, 'plugins/kiro/skills/kiro-delegate/scripts')
+import kiro_config as kc
+import subprocess
+def broken_run(*a, **kw):
+    raise OSError('git not found')
+subprocess.run = broken_run
+print('FAILDIR_OK' if kc._is_tracked_by_git('/tmp', '.claude/kiro.local.json') is True else 'FAILDIR_FAIL')
+" 2>&1)
+assert_contains "$FAILDIR_OUT" "FAILDIR_OK" "_is_tracked_by_git fails toward True (distrust) when the git check itself fails, not toward False (trust)"
 
 # --- round-13 fix: os.O_NOFOLLOW doesn't exist on Windows Python — referencing it
 # unconditionally raises AttributeError (not an OSError, so `except OSError` doesn't
@@ -735,6 +777,37 @@ argv = captured['argv']
 print('LP_OK' if '--literal-pathspecs' in argv else f'LP_FAIL {argv!r}')
 " 2>&1)
 assert_contains "$WT_LP_OUT" "LP_OK" "worktree.py's git() helper includes --literal-pathspecs on every call"
+
+# --- round-16 fix: capture-diff's `ls-files --cached -i --exclude-standard` call (which
+# finds tracked-but-ignored files that need unstaging before the diff) had its
+# returncode unchecked, unlike the `reset` call right after it — if ls-files itself
+# fails, `ignored` silently becomes [], the unstage step is skipped, and a
+# tracked-but-ignored file could leak into the emitted diff ("never emit a diff that may
+# still carry an ignored file" — the very invariant this code exists to uphold). Mock
+# the ls-files call to fail and confirm capture-diff propagates the failure instead of
+# silently proceeding as if nothing were ignored. ---
+WT_LSFAIL_OUT=$(python3 -c "
+import sys, types, tempfile, subprocess, os
+sys.path.insert(0, 'plugins/kiro/skills/kiro-delegate/scripts')
+import worktree as wt
+import unittest.mock as mock
+real_git = wt.git
+def fake_git(cwd, *args, env=None):
+    if args and args[0] == 'ls-files':
+        return types.SimpleNamespace(returncode=1, stdout='', stderr='simulated ls-files failure')
+    return real_git(cwd, *args, env=env)
+d = tempfile.mkdtemp()
+subprocess.run(['git', 'init', '-q'], cwd=d)
+subprocess.run(['git', 'config', 'user.email', 't@t.t'], cwd=d)
+subprocess.run(['git', 'config', 'user.name', 't'], cwd=d)
+subprocess.run(['git', 'commit', '-q', '--allow-empty', '-m', 'init'], cwd=d)
+open(os.path.join(d, 'feature.py'), 'w').write('x=1')
+with mock.patch.object(wt, 'git', side_effect=fake_git):
+    sys.argv = ['worktree.py', 'capture-diff', d]
+    rc = wt.main()
+print('LSFAIL_OK' if rc != 0 else f'LSFAIL_FAIL rc={rc!r}')
+" 2>&1)
+assert_contains "$WT_LSFAIL_OUT" "LSFAIL_OK" "worktree.py capture-diff propagates an ls-files failure (non-zero exit) instead of silently treating it as 'nothing is ignored'"
 
 # scope_guard against a tasks.md-shaped plan (backtick-wrapped Files: block)
 R6=$(mktemp -d "${TMPDIR:-/tmp}/kiro-sg.XXXXXX")

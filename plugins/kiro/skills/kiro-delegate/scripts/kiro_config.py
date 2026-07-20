@@ -56,10 +56,33 @@ def _escapes_root(path, root):
     that resolves to. `os.path.realpath` resolves symlinks in the EXISTING portion of
     the path and leaves a not-yet-created trailing component (the usual case for a
     first-time write) untouched, so this still catches a symlinked ancestor even before
-    the target file itself exists."""
+    the target file itself exists.
+
+    NOTE: this only catches an escape to OUTSIDE `root` — it does NOT catch an ancestor
+    symlink that redirects somewhere ELSE INSIDE `root` (e.g. `.claude` symlinked to
+    `src/`), which still passes this check (the resolved path still starts with
+    `real_root`) and then gets past the write path's `O_NOFOLLOW` too (O_NOFOLLOW only
+    ever protects the FINAL path component per POSIX semantics — an ancestor symlink is
+    followed like any other directory). `_resolves_through_symlink` below is the
+    complete check; this function is kept only for its more specific error message on
+    the truly-escaping case."""
     real_root = os.path.realpath(root)
     real_path = os.path.realpath(path)
     return not (real_path == real_root or real_path.startswith(real_root + os.sep))
+
+
+def _resolves_through_symlink(path):
+    """True if resolving `path` involves ANY symlink anywhere in the chain — whether it
+    redirects outside `root` (`_escapes_root` already catches that case) or to a
+    DIFFERENT location still inside `root` (e.g. `.claude` symlinked to `src/`, so
+    `.claude/kiro.local.json` resolves to `src/kiro.local.json` — still "inside root",
+    so `_escapes_root` alone misses it, and `O_NOFOLLOW` on the final `open()` call
+    doesn't help either since POSIX only applies O_NOFOLLOW to the FINAL path
+    component, never an ancestor directory). A genuine personal override file a user
+    creates directly with an editor never involves a symlink at all, so ANY symlink in
+    the chain is inherently suspicious for this file — fail closed regardless of where
+    it ultimately points."""
+    return os.path.realpath(path) != os.path.normpath(path)
 
 
 def load_defaults():
@@ -70,17 +93,21 @@ def load_defaults():
 
 
 def _is_tracked_by_git(root, relpath):
-    """True iff `relpath` (relative to `root`) is tracked by git in that repo.
-    Best-effort — any failure (not a git repo, git missing, timeout) returns False,
-    which is the SAFE direction here: the only thing a True result does is REDUCE trust
-    in the local config's consent-relevant keys, so a false negative just falls back to
-    the pre-existing (already-reviewed) behavior, never a new hole."""
+    """True iff `relpath` (relative to `root`) is tracked by git in that repo — OR the
+    check itself failed (not a git repo, git missing, timeout). The only caller of this
+    is a consent gate (`_consent_config_untrustworthy`): a True result makes it distrust
+    the local config's consent-relevant keys, so failing toward True here is the safe
+    direction — an unverifiable tracked-status must not be read as "so it's fine to
+    trust this file's on_commit/default_delegate values." (An earlier version returned
+    False on failure, reasoning that reducing trust was always the safe outcome of a
+    True result — true in general, but backwards for THIS specific check, where False
+    IS what tells the caller to trust the file.)"""
     try:
         r = subprocess.run(["git", "-C", root, "ls-files", "--error-unmatch", "--", relpath],
                             capture_output=True, text=True, timeout=10)
         return r.returncode == 0
     except (subprocess.TimeoutExpired, OSError):
-        return False
+        return True
 
 
 def _consent_config_untrustworthy(root, lp):
@@ -216,6 +243,13 @@ def _write(root, cfg):
               f".claude/) resolves outside the repo root {root} — this looks like a "
               f"symlink-through-write escape, not a normal checkout. Remove/replace it "
               f"before running `set` again.", file=sys.stderr)
+        return 2
+    if _resolves_through_symlink(lp):
+        print(f"❌ refusing to write {lp}: a symlink somewhere in its path (e.g. a "
+              f"symlinked .claude/ pointing to another location INSIDE this repo) "
+              f"redirects it elsewhere — writing here would truncate whatever real "
+              f"file it actually resolves to. Remove/replace it before running `set` "
+              f"again.", file=sys.stderr)
         return 2
     os.makedirs(os.path.dirname(lp), exist_ok=True)
     data = json.dumps(cfg, indent=2) + "\n"

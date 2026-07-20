@@ -175,6 +175,9 @@ def main():
         # when base_ref never had it (git's `reset <commit> -- <path>` behavior for a path
         # absent from <commit>), so it can never appear in the base_ref-relative diff.
         ig = git(wt, "ls-files", "--cached", "-i", "--exclude-standard", env=_CLEAN_ENV)
+        if ig.returncode != 0:   # never silently treat "the check failed" as "nothing is ignored"
+            sys.stderr.write(ig.stderr)
+            return ig.returncode
         ignored = [p for p in ig.stdout.splitlines() if p]
         if ignored:
             unstage = git(wt, "reset", "-q", base_ref, "--", *ignored, env=_CLEAN_ENV)
