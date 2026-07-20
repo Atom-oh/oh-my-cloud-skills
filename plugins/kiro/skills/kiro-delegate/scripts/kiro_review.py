@@ -10,7 +10,9 @@ Usage:
   kiro_review.py --staged [--root DIR] [--allow-unguarded]
                                                   # staged changes only (git diff --cached)
   kiro_review.py --diff <file> [--root DIR] [--allow-unguarded]
-                                                  # a pre-computed diff file
+                                                  # a pre-computed diff file — MUST resolve
+                                                  # inside --root; a path outside it is
+                                                  # refused (fail-open skip), never read
   kiro_review.py [<path>...] [--root DIR] [--allow-unguarded] [-- <path>...]
                                                   # working-tree changes (staged + unstaged),
                                                   # scoped to the given paths if any
@@ -350,6 +352,20 @@ def main():
     cfg = kc.effective(root)
 
     if diff_file:
+        # Repo-root containment: every OTHER mode this script has (--staged, bare paths)
+        # only ever reads content from inside `root` — a git diff is inherently scoped
+        # to a repo. `--diff <file>` had no such relationship, so it could be pointed at
+        # ANY host path (credentials, another project's source) and its content would
+        # be sent to Kiro's backend with no repo-scoping check at all. Refuse (fail-open
+        # skip, matching this script's existing "never crash, never silently send" style
+        # for a missing/unreadable file) rather than reading and forwarding it.
+        real_root = os.path.realpath(root)
+        real_diff = os.path.realpath(diff_file)
+        if not (real_diff == real_root or real_diff.startswith(real_root + os.sep)):
+            print(f"⚠️  kiro review skipped (fail-open): --diff file {diff_file!r} "
+                  f"resolves outside the repo root {root} — refusing to read and send "
+                  f"an arbitrary host path's content to Kiro's backend.", file=sys.stderr)
+            return 0
         try:
             with open(diff_file, encoding="utf-8") as f:
                 diff = f.read()

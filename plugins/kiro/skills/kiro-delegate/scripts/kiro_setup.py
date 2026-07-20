@@ -31,6 +31,7 @@ import sys
 import os
 import re
 import json
+import errno
 import shutil
 import subprocess
 import tempfile
@@ -52,8 +53,18 @@ _AUTH_RE = re.compile(
 # it's embedded in the generated .kiro/agents JSON. Shared verbatim across both tool
 # types (the check only inspects tool_input.path, which every fs_* tool call carries) and
 # both agents (implementer, reviewer) — one path-confinement guard, four call sites.
+#
+# `python3 -I` (isolated mode), NOT bare `python3 -c`: this guard RUNS with cwd = the
+# worktree — a checkout of HEAD in a repo this plugin's own threat model treats as
+# untrusted (that's the whole reason capture-diff/scope_guard/these guards exist).
+# Bare `python3 -c` puts cwd at sys.path[0], so a malicious `json.py` or `os.py`
+# committed at the worktree root would be imported INSTEAD OF the real stdlib module by
+# this guard's own `import json,sys,os` — arbitrary code execution as the host user,
+# from the very mechanism meant to confine what Kiro can touch. `-I` drops cwd/the
+# script's directory from sys.path (and ignores PYTHONPATH/PYTHONSTARTUP), closing that
+# import-hijack path entirely; it changes nothing else about this one-liner's behavior.
 _GUARD_CMD = (
-    "python3 -c \"import json,sys,os; d=json.load(sys.stdin); "
+    "python3 -I -c \"import json,sys,os; d=json.load(sys.stdin); "
     "p=(d.get('tool_input') or {}).get('path',''); "
     "wt=os.path.realpath(os.getcwd()); "
     "t=os.path.realpath(p if os.path.isabs(p) else os.path.join(wt,p)); "
@@ -285,7 +296,23 @@ def write_agents(root, force=False, enable_bash=False):
         if os.path.isfile(p) and not force:
             print(f"skip (exists): {p} — pass --force to overwrite")
             continue
-        with open(p, "w", encoding="utf-8") as f:
+        # O_NOFOLLOW: refuse if `p` is itself a symlink, even one pointing to another
+        # file INSIDE the repo root (e.g. a tracked source file) — the `_escapes_root`
+        # check above only catches an escape to OUTSIDE root. This matters specifically
+        # on a `--force` re-run: without it, `open(p, "w")` would silently truncate
+        # whatever the symlink actually points at instead of writing a fresh agent
+        # file. Race-free vs. a separate os.path.islink() check + open() call.
+        try:
+            fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o644)
+        except OSError as e:
+            if e.errno == errno.ELOOP:
+                print(f"❌ refusing to write {p}: it is itself a symlink — writing "
+                      f"through it would truncate whatever it points at instead of "
+                      f"writing a fresh agent file. Remove it and re-run.",
+                      file=sys.stderr)
+                return 2
+            raise
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(spec, f, indent=2)
             f.write("\n")
         written.append(p)

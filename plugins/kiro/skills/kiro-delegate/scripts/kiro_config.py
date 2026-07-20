@@ -29,6 +29,7 @@ import os
 import re
 import json
 import copy
+import errno
 import subprocess
 
 # Same charset as co-agent's MODEL_RE: the value is always passed as a single argv
@@ -152,9 +153,26 @@ def _write(root, cfg):
               f"before running `set` again.", file=sys.stderr)
         return 2
     os.makedirs(os.path.dirname(lp), exist_ok=True)
-    with open(lp, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, indent=2)
-        f.write("\n")
+    data = json.dumps(cfg, indent=2) + "\n"
+    # O_NOFOLLOW: refuse if `lp` itself is a symlink, even one that points to another
+    # file INSIDE the repo root (e.g. a tracked source file) — `_escapes_root` above
+    # only catches an escape to OUTSIDE root; a symlink that stays inside it still
+    # isn't `.claude/kiro.local.json`, and a plain `open(lp, "w")` would silently
+    # truncate whatever it actually points at. This is also race-free (unlike an
+    # `os.path.islink()` check followed by a separate `open()` call, which leaves a
+    # TOCTOU window): the kernel atomically fails the open if the final component
+    # resolves to a symlink.
+    try:
+        fd = os.open(lp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o644)
+    except OSError as e:
+        if e.errno == errno.ELOOP:
+            print(f"❌ refusing to write {lp}: it is itself a symlink — writing through "
+                  f"it would truncate whatever it points at instead of creating a "
+                  f"normal settings file. Remove it and re-run.", file=sys.stderr)
+            return 2
+        raise
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(data)
     print(f"✅ wrote {lp}")
     return cmd_show(root)
 

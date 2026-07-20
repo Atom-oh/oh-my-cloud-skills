@@ -79,6 +79,10 @@ cases = [
     ('cd ../other && git commit -m x', True),
     ('pushd ../other && git commit -m x', True),
     ('echo \"cd elsewhere\" && git commit -m x', False),  # quoted — not a real cd
+    # round-10 fix: the '=' form (git accepts both --flag value and --flag=value) was
+    # missed by the space-only regex
+    ('git --git-dir=/elsewhere/.git commit -m x', True),
+    ('git --work-tree=/elsewhere commit -m x', True),
 ]
 ok = all(hm.is_scope_mismatch(cmd) == expect for cmd, expect in cases)
 print('SCOPE_MISMATCH_OK' if ok else f'SCOPE_MISMATCH_FAIL {[c for c, e in cases if hm.is_scope_mismatch(c) != e]}')
@@ -181,6 +185,28 @@ assert_eq "2" "$SETUPSYM" "kiro_setup.py write-agents refuses to write through a
 assert_grep_no_match "kiro-implementer\|kiro-reviewer" "$(ls "$OUTSIDE")" "kiro_setup.py write-agents did not write agent files into the symlink escape target"
 rm -rf "$RSYM" "$OUTSIDE"
 
+# --- round-10 fix: refuse a symlink whose target stays INSIDE the repo root too — the
+# above test only covers escaping OUTSIDE root (_escapes_root); a leaf file symlink to
+# ANOTHER TRACKED FILE in the same repo (e.g. .claude/kiro.local.json -> src/foo.py)
+# resolves as "inside root" and would sail past that check, but open(path,"w") would
+# still truncate the wrong file. O_NOFOLLOW must refuse this regardless of target. ---
+RSYM2=$(mktemp -d "${TMPDIR:-/tmp}/kiro-symlink-inroot.XXXXXX")
+git -C "$RSYM2" init -q
+mkdir -p "$RSYM2/.claude"
+printf 'important source content\n' > "$RSYM2/important.txt"
+rm -f "$RSYM2/.claude/kiro.local.json"
+ln -s "../important.txt" "$RSYM2/.claude/kiro.local.json"
+python3 "$CFG" set default_delegate on --root "$RSYM2" >/dev/null 2>&1 && CFGSYM2=0 || CFGSYM2=$?
+assert_eq "2" "$CFGSYM2" "kiro_config.py set refuses an in-root symlink leaf (.claude/kiro.local.json -> important.txt), not just an out-of-root escape"
+assert_eq "important source content" "$(cat "$RSYM2/important.txt")" "kiro_config.py set did not truncate the in-root symlink target"
+mkdir -p "$RSYM2/.kiro/agents"
+printf 'important agent-slot content\n' > "$RSYM2/.kiro/important-agent.txt"
+ln -s "../important-agent.txt" "$RSYM2/.kiro/agents/kiro-implementer.json"
+python3 "$SETUP" write-agents --root "$RSYM2" --force >/dev/null 2>&1 && SETUPSYM2=0 || SETUPSYM2=$?
+assert_eq "2" "$SETUPSYM2" "kiro_setup.py write-agents --force refuses an in-root symlink leaf (kiro-implementer.json -> important-agent.txt)"
+assert_eq "important agent-slot content" "$(cat "$RSYM2/.kiro/important-agent.txt")" "kiro_setup.py write-agents did not truncate the in-root symlink target"
+rm -rf "$RSYM2"
+
 # --- kiro_config.py / kiro_setup.py / kiro_review.py: --root self-defaults to the repo
 # root (via `git rev-parse --show-toplevel` run as a python3 subprocess) when omitted —
 # this is what lets commands/{configure,review,setup}.md drop their own `git rev-parse`
@@ -271,6 +297,19 @@ OUT3M=$(python3 "$REVIEW" --diff "$R3M/nope.diff" --root "$R3M" 2>&1) && RC3M=0 
 assert_eq "0" "$RC3M" "review fails OPEN when --diff points at a missing file (exit 0)"
 assert_contains "$OUT3M" "skipped" "review reports the missing --diff file as a fail-open reason"
 rm -rf "$R3M"
+
+# --- round-10 fix: --diff must not read an arbitrary HOST path outside the repo root —
+# every other mode (--staged, bare paths) only ever reads content from inside `root`;
+# --diff had no such containment, so it could be pointed at e.g. a host credentials
+# file and send its content to Kiro's backend. Fail-open SKIP (never send) instead. ---
+R3O=$(mktemp -d "${TMPDIR:-/tmp}/kiro-review-diffroot.XXXXXX")
+OUTSIDE_DIFF=$(mktemp -d "${TMPDIR:-/tmp}/kiro-review-diffoutside.XXXXXX")
+printf 'AKIAABCDEFGHIJKLMNOP\n' > "$OUTSIDE_DIFF/host-secret.diff"
+OUT3O=$(python3 "$REVIEW" --diff "$OUTSIDE_DIFF/host-secret.diff" --root "$R3O" 2>&1) && RC3O=0 || RC3O=$?
+assert_eq "0" "$RC3O" "review fails OPEN (exit 0) when --diff points outside the repo root"
+assert_contains "$OUT3O" "skipped" "review reports the out-of-root --diff path as a fail-open reason"
+assert_grep_no_match "AKIAABCDEFGHIJKLMNOP" "$OUT3O" "the out-of-root file's CONTENT never appears in output (never read, never sent anywhere)"
+rm -rf "$R3O" "$OUTSIDE_DIFF"
 
 # --- kiro_review.py: a git failure (not just an empty diff) must fail OPEN with a
 #     distinct message — not silently look like "no changes to review" ---
@@ -411,6 +450,33 @@ oks = [run('.kiro/specs/x/tasks.md') == 0, run('/etc/passwd') == 2, run('../x.md
 print('READ_GUARD_OK' if all(oks) else f'READ_GUARD_FAIL {oks}')
 " 2>&1)
 assert_contains "$READ_GUARD_OUT" "READ_GUARD_OK" "fs_read guard allows in-worktree reads, refuses absolute/dotdot escapes"
+# --- round-10 CRITICAL fix: the guard command must run isolated (`python3 -I`), not a
+# bare `python3 -c` — otherwise a malicious json.py/os.py PLANTED AT THE WORKTREE ROOT
+# (this guard's own cwd, a checkout of a repo this plugin's threat model treats as
+# untrusted) gets imported INSTEAD OF the real stdlib module by the guard's own
+# `import json,sys,os`, executing as the host user. Prove the fix by actually running
+# the FULL raw command string (shell=True, exactly how a preToolUse runCommand hook
+# would invoke it) with a malicious json.py sitting in cwd, and confirming it never ran. ---
+FS_WRITE_CMD="$(python3 -c "import json;print(json.load(open('$IMPL'))['hooks']['preToolUse'][0]['hooks'][0]['command'])")"
+assert_contains "$FS_WRITE_CMD" "python3 -I -c" "kiro-implementer's fs_write guard runs isolated (python3 -I), not a bare python3 -c vulnerable to a cwd-planted json.py/os.py"
+FS_READ_CMD="$(python3 -c "import json;print(json.load(open('$IMPL'))['hooks']['preToolUse'][1]['hooks'][0]['command'])")"
+assert_contains "$FS_READ_CMD" "python3 -I -c" "kiro-implementer's fs_read guard runs isolated (python3 -I)"
+REVIEWER_READ_CMD="$(python3 -c "import json;print(json.load(open('$REV'))['hooks']['preToolUse'][0]['hooks'][0]['command'])")"
+assert_contains "$REVIEWER_READ_CMD" "python3 -I -c" "kiro-reviewer's fs_read guard runs isolated (python3 -I)"
+RCE_OUT=$(python3 -c "
+import json, os, subprocess, tempfile
+impl = json.load(open('$IMPL'))
+cmd = impl['hooks']['preToolUse'][0]['hooks'][0]['command']
+wt = tempfile.mkdtemp()
+marker = os.path.join(wt, 'PWNED')
+with open(os.path.join(wt, 'json.py'), 'w') as f:
+    f.write(f'open({marker!r}, \"w\").close()\n')
+r = subprocess.run(cmd, shell=True, input=json.dumps({'tool_input': {'path': 'src/foo.py'}}),
+                   capture_output=True, text=True, cwd=wt)
+pwned = os.path.isfile(marker)
+print('RCE_CLOSED' if r.returncode == 0 and not pwned else f'RCE_OPEN rc={r.returncode} pwned={pwned} stderr={r.stderr!r}')
+" 2>&1)
+assert_contains "$RCE_OUT" "RCE_CLOSED" "the guard's own import is NOT hijackable by a malicious json.py planted at its cwd (the worktree) — proves -I actually closes the RCE, not just present in the string"
 assert_contains "$(python3 -c "import json;print(json.load(open('$IMPL'))['tools'])")" "fs_write" "kiro-implementer has fs_write tool"
 assert_grep_no_match "execute_bash" "$(python3 -c "import json;print(json.load(open('$IMPL'))['tools'])")" "kiro-implementer has NO execute_bash by default (explicit opt-in required)"
 python3 "$SETUP" write-agents --root "$R4" --force --enable-bash >/dev/null 2>&1
@@ -490,6 +556,31 @@ SGLISTOUT=$(python3 "$SG" --plan "$R6/tasks.md" --list 2>&1) && SGLISTRC=0 || SG
 assert_eq "0" "$SGLISTRC" "scope_guard.py --list (no separator, no other args) still works as the list-mode flag"
 assert_contains "$SGLISTOUT" "src/helper.py" "scope_guard.py --list prints the allowed set"
 rm -rf "$R6"
+
+# --- round-10 fix: a declared path that merely STARTS WITH two literal dots (without
+# being a "../" traversal at all) must not be over-rejected by a blind
+# cn.startswith("..") check — "..foo" and "..generated/config.json" are ordinary
+# filenames, not escapes; only "..", or a "../"-prefixed remainder, is a real escape. ---
+R7=$(mktemp -d "${TMPDIR:-/tmp}/kiro-sg-dots.XXXXXX")
+cat > "$R7/tasks.md" <<'EOF'
+## Task 1: add oddly-named files
+
+**Files:**
+- Create: `..foo`
+- Modify: `..generated/config.json`
+
+- [ ] write them
+EOF
+python3 "$SG" --plan "$R7/tasks.md" -- "..foo" >/dev/null 2>&1 && SGDOT1=0 || SGDOT1=$?
+assert_eq "0" "$SGDOT1" "scope_guard.py accepts a declared path that starts with '..' but isn't a traversal (..foo)"
+python3 "$SG" --plan "$R7/tasks.md" -- "..generated/config.json" >/dev/null 2>&1 && SGDOT2=0 || SGDOT2=$?
+assert_eq "0" "$SGDOT2" "scope_guard.py accepts a declared path that starts with '..' but isn't a traversal (..generated/config.json)"
+# a REAL traversal must still be rejected — the fix must not have widened the escape hatch
+python3 "$SG" --plan "$R7/tasks.md" -- "../escape.py" >/dev/null 2>&1 && SGDOT3=0 || SGDOT3=$?
+assert_eq "1" "$SGDOT3" "scope_guard.py still rejects a genuine ../ traversal after the ..foo fix"
+python3 "$SG" --plan "$R7/tasks.md" -- ".." >/dev/null 2>&1 && SGDOT4=0 || SGDOT4=$?
+assert_eq "1" "$SGDOT4" "scope_guard.py still rejects a bare '..' candidate after the ..foo fix"
+rm -rf "$R7"
 
 # --- spec-format reference documents the backtick pitfall (single most common authoring bug) ---
 REF="plugins/kiro/skills/kiro-delegate/references/spec-format.md"

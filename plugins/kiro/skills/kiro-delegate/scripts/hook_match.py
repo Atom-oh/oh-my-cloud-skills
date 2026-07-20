@@ -108,9 +108,11 @@ _WIDENS_SCOPE_RE = re.compile(
 # A `-C <dir>` before `commit` redirects the commit to another repo, so `--staged` here
 # reviews the wrong tree.
 _PRE_C_RE = re.compile(r"(?:^|\s)-C\s+\S")
-# `--git-dir <dir>` / `--work-tree <dir>` are the other two ways `git` redirects to a
-# different repo/tree than the cwd's — same class of mismatch as `-C`.
-_PRE_GIT_DIR_RE = re.compile(r"(?:^|\s)--(?:git-dir|work-tree)\s+\S")
+# `--git-dir <dir>` / `--work-tree <dir>` (space form) OR `--git-dir=<dir>` /
+# `--work-tree=<dir>` (`=`-attached form — git accepts both) are the other two ways
+# `git` redirects to a different repo/tree than the cwd's — same class of mismatch as
+# `-C`. Missing the `=` form let `git --git-dir=/x commit` slip past this check.
+_PRE_GIT_DIR_RE = re.compile(r"(?:^|\s)--(?:git-dir|work-tree)(?:\s+\S|=\S)")
 # `GIT_DIR=`/`GIT_WORK_TREE=` as an env-var PREFIX on the same invocation (rather than a
 # `-C`/`--git-dir` flag) redirects just as effectively — `GIT_DIR=/elsewhere git commit`.
 # Checked against the FULL `_GIT_COMMIT_RE` match text (which already captures any

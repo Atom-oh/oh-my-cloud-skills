@@ -104,8 +104,13 @@ def main():
         cn = _norm(c)
         # Fail closed on any path that still escapes upward after normalization — never
         # fall through to the suffix match below for these ("../../src/foo.py" must not
-        # sneak in just because it happens to end with an allowed entry).
-        if cn.startswith(".."):
+        # sneak in just because it happens to end with an allowed entry). Checked by
+        # SEGMENT (`cn == ".."` or a `"../"`-prefixed remainder), not a blind
+        # `cn.startswith("..")` — the blind form also rejected a perfectly valid
+        # relative path that merely STARTS WITH two literal dots without being a
+        # traversal at all, e.g. "..foo" or "..generated/config.json" (neither is `..`
+        # nor `../something`; normpath leaves both untouched as ordinary names).
+        if cn == ".." or cn.startswith("../"):
             return False
         # The suffix match below exists ONLY so an ABSOLUTE candidate (e.g. git handing us
         # "/repo/src/foo.py") still matches a relative plan entry "src/foo.py". A RELATIVE
