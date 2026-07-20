@@ -302,8 +302,13 @@ def write_agents(root, force=False, enable_bash=False):
         # on a `--force` re-run: without it, `open(p, "w")` would silently truncate
         # whatever the symlink actually points at instead of writing a fresh agent
         # file. Race-free vs. a separate os.path.islink() check + open() call.
+        # `getattr` — `os.O_NOFOLLOW` doesn't exist on Windows Python, so referencing it
+        # unconditionally raises AttributeError (not caught by `except OSError` below)
+        # before `os.open` is even called, crashing every write-agents call on that
+        # platform; `0` degrades to a plain open there (no symlink protection on
+        # Windows, a known platform gap).
         try:
-            fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o644)
+            fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0), 0o644)
         except OSError as e:
             if e.errno == errno.ELOOP:
                 print(f"❌ refusing to write {p}: it is itself a symlink — writing "

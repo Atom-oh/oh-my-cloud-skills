@@ -168,13 +168,22 @@ def is_scope_mismatch(cmd):
     return bool(_PATHSPEC_RE.search(stripped))
 
 
-# A `git add`/`git rm`/`git mv` EARLIER in the same Bash invocation (e.g. the very common
-# `git add X && git commit -m ...`) runs AFTER this PreToolUse hook fires — so the hook
-# reviews the PRE-add index, not the index the commit will actually snapshot. Detect it
-# so the hook can warn (advisory, never block) that the reviewed diff is stale.
+# A `git add`/`git rm`/`git mv`/`git stash`/`git restore`/`git reset`/`git apply`
+# EARLIER in the same Bash invocation (e.g. the very common `git add X && git commit
+# -m ...`) runs AFTER this PreToolUse hook fires — so the hook reviews the index BEFORE
+# that mutation, not the index the commit will actually snapshot. Detect it so the hook
+# can warn (advisory, never block) that the reviewed diff is stale. `restore`/`reset`/
+# `apply` added alongside the original `add|rm|mv|stash` set: `git restore --staged`,
+# `git reset` (bare or with a ref — it moves the index to match, not just HEAD), and
+# `git apply --cached`/`--index` all mutate the index too (`git restore <path>` with no
+# `--staged` only touches the working tree, not the index, but matching the bare
+# subcommand name anyway is a deliberate over-approximation — the coarse-heuristic
+# philosophy this whole file already follows: an occasional extra advisory SKIP is
+# harmless, a missed one is the actual defect this fixes).
 _PRECEDING_INDEX_MUT_RE = re.compile(
     r"(?:^|[\n;&|])\s*(?:env\s+)?(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*(?:command\s+)?"
-    r"(?:\S*/)?git\b(?:\s+(?:-C\s+\S+|-c\s+\S+|--\S+))*\s+(?:add|rm|mv|stash)\b")
+    r"(?:\S*/)?git\b(?:\s+(?:-C\s+\S+|-c\s+\S+|--\S+))*"
+    r"\s+(?:add|rm|mv|stash|restore|reset|apply)\b")
 
 
 def is_stale_index(cmd):

@@ -95,7 +95,17 @@ guarantee this whole plugin depends on.
    `.kiro/specs/<name>/{requirements,design,tasks}.md` — format and task-file-scoping
    rules: `skills/kiro-delegate/references/spec-format.md`. Every task's `**Files:**`
    block must be complete and backtick-wrapped, or `scope_guard.py` will reject Kiro's
-   own work later.
+   own work later. **Generate `<name>` yourself as a plain slug matching
+   `[A-Za-z0-9_-]+`** (e.g. `add-retry-logic`) — never derive it from raw user/repo text
+   verbatim. `<name>` gets interpolated into shell commands throughout step 3 (`mkdir
+   -p .../specs/<name>`, the `.git/info/exclude` `printf` line, the symlink-check
+   loop) and into the fixed kiro-cli instruction sentence's file-pointer content —
+   unlike the task BODY (which step 3 now writes to a file and never puts in argv),
+   `<name>` itself has no equivalent file-based protection, so a value containing a
+   space, `;`, `$(...)`, backtick, or `..` would be interpreted by the shell or escape
+   the intended directory. Validate it against that pattern before using it anywhere in
+   step 3; if the natural name for a request doesn't fit, slugify it (lowercase,
+   hyphens for spaces/punctuation) rather than relaxing the pattern.
 2. **Wave-plan.** Group tasks into waves of pairwise-disjoint file sets
    (`parse_plan.py`), capped by `delegate.parallel_tasks` (default 3;
    `kiro_config.py parallel-tasks`). **Commit each wave before starting the next**
@@ -105,7 +115,13 @@ guarantee this whole plugin depends on.
    later task that semantically depends on an earlier wave's code (calls a function it
    added) would be implemented against a `HEAD` that lacks it unless the earlier wave was
    committed. Per-wave commit closes that gap; don't defer all commits to the end.
-3. **Execute, per task (or per wave, in parallel):**
+3. **Execute, per task (or per wave, in parallel):** every `<wt>`/`<name>` below is a
+   placeholder for the REAL worktree path and the REAL spec slug chosen in step 1 —
+   when constructing the actual Bash commands, double-quote every path built from them
+   (`"$wt/.kiro/specs/$name"`, not a bare/unquoted substitution) so a value that somehow
+   still contains whitespace or a shell metacharacter doesn't get re-split or
+   re-interpreted; `<name>`'s own slug validation from step 1 is the primary defense,
+   quoting here is defense-in-depth on top of it.
    - `worktree.py add <wt> --base HEAD` — checks out `HEAD`, so `<wt>` contains only
      **committed** files. `.kiro/agents/kiro-implementer.json` and `.kiro/specs/<name>/`
      are almost always uncommitted (freshly written this run) and so will NOT exist
@@ -114,20 +130,24 @@ guarantee this whole plugin depends on.
      (`references/delegated-implement.md` step 2: "an uncommitted red test would not
      exist inside it"). Handle it the same way, without requiring a commit here (specs
      aren't meant to be committed pre-review):
-     - **Before ANY `mkdir -p`/`cp` below, refuse a planted symlink at every path
-       component involved — checked all at once, upfront, never "once created."**
-       `<wt>` is a fresh checkout of `HEAD` — if the repo's `HEAD` tracks `.kiro` as a
-       real directory but `.kiro/agents` or `.kiro/specs` UNDER it as a symlink pointing
-       outside the worktree (a hostile repo, or a stale leftover), `mkdir -p
-       <wt>/.kiro/agents` (or `.../specs/<name>`) follows that already-existing symlink
-       and creates the rest of the path THROUGH it — the write escape happens at the
-       `mkdir -p` call itself, before any check that runs only "once created" would
-       ever fire. There is no safe order that checks agents/specs AFTER `.kiro` but
-       BEFORE their own `mkdir -p` — check every component in the same pass, before the
-       first `mkdir -p` of this step runs at all:
+     - **Before ANY `mkdir -p`/`cp`/redirect below, refuse a planted symlink at EVERY
+       path component AND every leaf write target involved — checked all at once,
+       upfront, never "once created."** `<wt>` is a fresh checkout of `HEAD` — if the
+       repo's `HEAD` tracks any of these as a symlink pointing outside the worktree (a
+       hostile repo, or a stale leftover), the `mkdir -p`/`cp`/redirect that follows
+       writes through it. This is not limited to the three PARENT directories
+       (`.kiro`, `.kiro/agents`, `.kiro/specs`) — the actual write targets are the LEAF
+       paths this step creates: `.kiro/specs/<name>` (the dynamic per-task leaf
+       directory `mkdir -p` creates), `.kiro/agents/kiro-implementer.json` (the file
+       `cp` writes), and `.kiro/task-prompt.md` (the file the next bullet writes). A
+       check that only covers the three parent directories and skips these leaves
+       misses exactly the paths that get written to. Check every one of them, by name,
+       in the same upfront pass:
        ```bash
-       for p in "<wt>/.kiro" "<wt>/.kiro/agents" "<wt>/.kiro/specs"; do
-         [ -L "$p" ] && { echo "REFUSE: $p is a symlink — stop, do not mkdir/cp through it" >&2; exit 1; }
+       for p in "<wt>/.kiro" "<wt>/.kiro/agents" "<wt>/.kiro/specs" \
+                "<wt>/.kiro/specs/<name>" "<wt>/.kiro/agents/kiro-implementer.json" \
+                "<wt>/.kiro/task-prompt.md"; do
+         [ -L "$p" ] && { echo "REFUSE: $p is a symlink — stop, do not mkdir/cp/write through it" >&2; exit 1; }
        done
        ```
        **The `exit 1` is not optional decoration — run this loop as its own Bash tool

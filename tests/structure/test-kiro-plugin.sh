@@ -93,9 +93,14 @@ stale_cases = [
     ('git commit -m x', False),
     ('git commit -m x && git add later.py', False),    # add AFTER commit — not stale
     ('echo \"git add\" && git commit -m x', False),     # quoted — not a real add
+    # round-13 fix: restore --staged / reset / apply --cached also mutate the index —
+    # a subsequent commit sees a different index than what this hook reviewed
+    ('git restore --staged x && git commit -m x', True),
+    ('git reset HEAD~1 && git commit -m x', True),
+    ('git apply --cached patch.diff && git commit -m x', True),
 ]
 ok2 = all(hm.is_stale_index(cmd) == expect for cmd, expect in stale_cases)
-print('STALE_INDEX_OK' if ok2 else 'STALE_INDEX_FAIL')
+print('STALE_INDEX_OK' if ok2 else f'STALE_INDEX_FAIL {[c for c, e in stale_cases if hm.is_stale_index(c) != e]}')
 # round-11 fix: a compound with TWO separate git-commit invocations must be flagged —
 # this hook only ever reviews ONE upfront staged-diff snapshot, so a second commit's
 # own content (staged by an add that runs AFTER the first commit) was silently never
@@ -228,6 +233,36 @@ python3 "$SETUP" write-agents --root "$RSYM2" --force >/dev/null 2>&1 && SETUPSY
 assert_eq "2" "$SETUPSYM2" "kiro_setup.py write-agents --force refuses an in-root symlink leaf (kiro-implementer.json -> important-agent.txt)"
 assert_eq "important agent-slot content" "$(cat "$RSYM2/.kiro/important-agent.txt")" "kiro_setup.py write-agents did not truncate the in-root symlink target"
 rm -rf "$RSYM2"
+
+# --- round-13 fix: os.O_NOFOLLOW doesn't exist on Windows Python — referencing it
+# unconditionally raises AttributeError (not an OSError, so `except OSError` doesn't
+# catch it) before os.open is even called, crashing every `set`/write-agents call on
+# that platform. Simulate the attribute's absence and confirm a normal (non-symlink)
+# write still succeeds instead of raising. ---
+R_NOFOLLOW=$(mktemp -d "${TMPDIR:-/tmp}/kiro-no-o-nofollow.XXXXXX")
+NOFOLLOW_OUT=$(python3 -c "
+import sys, os
+sys.path.insert(0, 'plugins/kiro/skills/kiro-delegate/scripts')
+if hasattr(os, 'O_NOFOLLOW'):
+    del os.O_NOFOLLOW
+import kiro_config as kc
+rc = kc._write('$R_NOFOLLOW', {'default_delegate': False})
+print('NOFOLLOW_ABSENT_OK' if rc == 0 else f'NOFOLLOW_ABSENT_FAIL rc={rc!r}')
+" 2>&1)
+assert_contains "$NOFOLLOW_OUT" "NOFOLLOW_ABSENT_OK" "kiro_config.py._write survives os.O_NOFOLLOW being absent (Windows) instead of crashing with AttributeError"
+rm -rf "$R_NOFOLLOW"
+R_NOFOLLOW2=$(mktemp -d "${TMPDIR:-/tmp}/kiro-no-o-nofollow2.XXXXXX")
+NOFOLLOW_OUT2=$(python3 -c "
+import sys, os
+sys.path.insert(0, 'plugins/kiro/skills/kiro-delegate/scripts')
+if hasattr(os, 'O_NOFOLLOW'):
+    del os.O_NOFOLLOW
+import kiro_setup as ks
+rc = ks.write_agents('$R_NOFOLLOW2')
+print('NOFOLLOW_ABSENT_OK' if rc == 0 else f'NOFOLLOW_ABSENT_FAIL rc={rc!r}')
+" 2>&1)
+assert_contains "$NOFOLLOW_OUT2" "NOFOLLOW_ABSENT_OK" "kiro_setup.py.write_agents survives os.O_NOFOLLOW being absent (Windows) instead of crashing with AttributeError"
+rm -rf "$R_NOFOLLOW2"
 
 # --- kiro_config.py / kiro_setup.py / kiro_review.py: --root self-defaults to the repo
 # root (via `git rev-parse --show-toplevel` run as a python3 subprocess) when omitted —
@@ -694,6 +729,29 @@ bash -c "$(printf '%s' "$SNIPPET" | sed "s|<wt>|$RSYMWT|g")" >/dev/null 2>&1 || 
 assert_eq "1" "$SNIPPET_RC" "running the doc's actual symlink-check snippet against a planted symlink exits 1 (halts), not 0"
 assert_grep_no_match "kiro-implementer\|kiro-reviewer" "$(ls "$OUTSIDE_WT" 2>/dev/null)" "the snippet exiting before mkdir/cp means nothing was ever written into the symlink target"
 rm -rf "$RSYMWT" "$OUTSIDE_WT"
+
+# --- round-13 fix: the symlink check must cover the LEAF write targets too, not just
+# the three parent directories — a symlink planted at .kiro/agents/kiro-implementer.json
+# itself (parents stay real directories) is exactly the gap round 12's fix missed. Also
+# confirm the snippet's candidate list literally names all three new leaves. ---
+assert_contains "$SNIPPET" ".kiro/specs/<name>" "the symlink-check snippet also checks the dynamic spec leaf directory (.kiro/specs/<name>)"
+assert_contains "$SNIPPET" ".kiro/agents/kiro-implementer.json" "the symlink-check snippet also checks the implementer-agent leaf FILE, not just its parent directory"
+assert_contains "$SNIPPET" ".kiro/task-prompt.md" "the symlink-check snippet also checks the task-prompt leaf FILE"
+RSYMLEAF=$(mktemp -d "${TMPDIR:-/tmp}/kiro-symlink-leaf.XXXXXX")
+OUTSIDE_LEAF=$(mktemp -d "${TMPDIR:-/tmp}/kiro-symlink-leaf-outside.XXXXXX")
+mkdir -p "$RSYMLEAF/.kiro/agents"   # parents are REAL directories, not symlinks
+ln -s "$OUTSIDE_LEAF/evil.json" "$RSYMLEAF/.kiro/agents/kiro-implementer.json"
+SNIPPET_LEAF_RC=0
+bash -c "$(printf '%s' "$SNIPPET" | sed "s|<wt>|$RSYMLEAF|g; s|<name>|whatever|g")" >/dev/null 2>&1 || SNIPPET_LEAF_RC=$?
+assert_eq "1" "$SNIPPET_LEAF_RC" "the symlink-check snippet exits 1 when only a LEAF FILE is a symlink and its parent directories are real (the exact gap round 12's fix missed)"
+rm -rf "$RSYMLEAF" "$OUTSIDE_LEAF"
+
+# --- round-13 fix: the spec <name> must be documented as a validated slug, not raw
+# user/repo text interpolated into shell commands (mkdir/cp/printf/kiro-cli prompt) with
+# no allowlist or quoting discipline — unlike the task BODY, which round 12 moved out of
+# argv entirely, <name> had no equivalent protection. ---
+assert_contains "$AGENT_MD" '\[A-Za-z0-9_-\]+' "kiro-delegate-agent.md mandates <name> be validated as an [A-Za-z0-9_-]+ slug before use"
+assert_contains "$AGENT_MD" "double-quote every path built from them" "kiro-delegate-agent.md documents quoting discipline for <wt>/<name> substitutions in step 3"
 
 # --- round-12 fix: the kiro-cli chat invocation must be a FIXED instruction string that
 # points at .kiro/task-prompt.md via fs_read — never task/spec content interpolated

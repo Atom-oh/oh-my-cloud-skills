@@ -161,9 +161,14 @@ def _write(root, cfg):
     # truncate whatever it actually points at. This is also race-free (unlike an
     # `os.path.islink()` check followed by a separate `open()` call, which leaves a
     # TOCTOU window): the kernel atomically fails the open if the final component
-    # resolves to a symlink.
+    # resolves to a symlink. `getattr` — `os.O_NOFOLLOW` doesn't exist on Windows
+    # Python, so referencing it unconditionally raises AttributeError (not caught by
+    # `except OSError` below) before `os.open` is even called, crashing every `set`
+    # call on that platform; `0` degrades to a plain open there (no symlink protection
+    # on Windows, a known platform gap — the exit-2 escape-to-outside-root check above
+    # still applies everywhere).
     try:
-        fd = os.open(lp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o644)
+        fd = os.open(lp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0), 0o644)
     except OSError as e:
         if e.errno == errno.ELOOP:
             print(f"❌ refusing to write {lp}: it is itself a symlink — writing through "
