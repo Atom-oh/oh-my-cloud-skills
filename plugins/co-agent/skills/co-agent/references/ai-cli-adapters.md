@@ -98,6 +98,9 @@ while IFS=$'\t' read -r ai model; do
   esac
 done < <(python3 "$CFG" pairs --host "$HOST")   # pairs is silent; the trim/budget warning is shown by the H0 `matrix` call above
 wait    # reaps the `&` jobs above — they are children of THIS shell (process substitution)
+# timeout kills kiro-cli but its node child (acp-server.js) reparents to init and leaks
+# ~200MB+ each — reap immediately (the Stop hook is the backstop, this is the source).
+bash "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/reap_kiro_orphans.sh"
 # Synthesize from $RUN/*-*.md. Empty/errored/size-skipped = that pair skipped.
 # QUORUM GUARD: if ≤1 pair produced usable output, do NOT call it consensus —
 # report as single-opinion review and say so.

@@ -64,6 +64,11 @@
 - **자동 동기화 워크플로우** — 코드 변경에 따라 문서를 동기화 유지
 - **ADR 모순 검토** — `decision-reconcile`가 다양성 멀티 에이전트 패널로 충돌하는 ADR(및 ADR vs 현실 drift)을 찾아 번복 ADR 초안 작성
 
+*비용 절감 위임 (kiro):*
+- **Claude가 계획, Kiro가 구현** — Claude가 Kiro 네이티브 spec을 작성하고 결과를 검증하는 동안, Kiro CLI가 자체 정액 구독 크레딧으로 실제 코드를 작성 — 격리된 git worktree 안에서, scope-guard로 검증된 diff만 적용
+- **커밋 전 리뷰 게이트 (opt-in)** — `git commit` 전에 `PreToolUse` 훅이 Kiro 기반 리뷰를 실행할 수 있음, 기본값으로 `critical` 발견 사항에만 차단(인프라 문제 발생 시 fail-open); staged diff 내용이 Kiro 백엔드로 전송되므로 기본값은 off(리뷰어의 읽기는 격리된 diff 디렉터리로 툴 레이어에서 제한됨)
+- **`/kiro:setup`** — kiro-cli를 감지하고 사용 가능 여부를 프로브, 모델 목록을 조회하고 파이프라인이 사용할 `.kiro/agents/*.json` 커스텀 에이전트를 작성
+
 ---
 
 ## 설치
@@ -85,6 +90,7 @@
 /plugin install agentcore-creator@oh-my-cloud-skills
 /plugin install co-agent@oh-my-cloud-skills
 /plugin install project-init@oh-my-cloud-skills
+/plugin install kiro@oh-my-cloud-skills
 ```
 
 로컬 개발용:
@@ -96,6 +102,7 @@ claude --plugin-dir ./plugins/kiro-power-converter
 claude --plugin-dir ./plugins/agentcore-creator
 claude --plugin-dir ./plugins/co-agent
 claude --plugin-dir ./plugins/project-init
+claude --plugin-dir ./plugins/kiro
 ```
 
 제거:
@@ -107,6 +114,7 @@ claude --plugin-dir ./plugins/project-init
 /plugin uninstall agentcore-creator@oh-my-cloud-skills
 /plugin uninstall co-agent@oh-my-cloud-skills
 /plugin uninstall project-init@oh-my-cloud-skills
+/plugin uninstall kiro@oh-my-cloud-skills
 
 # 마켓플레이스 제거
 /plugin marketplace remove oh-my-cloud-skills
@@ -655,6 +663,7 @@ aws-ops-power/
 | `agentcore-creator-agent` | agentcore-creator | "에이전트를 AgentCore에 배포" | Harness 설정 또는 Strands Agent + 배포 스크립트 |
 | `co-agent` | co-agent | "second opinion" / "help me decide" / "ADR 협업" | 멀티-AI 리뷰 / 의사결정 / ADR |
 | `doc-sync-checker` | project-init | "/sync-docs" | 문서 품질 점수 |
+| `kiro-delegate-agent` | kiro | "delegate implementation to kiro" / "kiro로 구현" | Kiro가 구현하고 Claude가 검증·커밋한 변경 사항 |
 | `pr-autofix-planner` / `pr-autofix-implementer` | project-init | (pr-autofix 스킬이 스폰) | 수정 계획 / 계획 적용된 worktree 편집 |
 
 > `pr-autofix-planner` / `pr-autofix-implementer`는 pr-autofix 스킬이 스폰하는 용도입니다 — description이 직접 자동 선택을 억제하지만 하드 차단은 아닙니다.
@@ -698,6 +707,7 @@ aws-ops-power/
 | `project-scaffolder` | Claude Code 프로젝트 구조 패턴 및 컨벤션 |
 | `pr-autofix` | AI + 사람 PR 리뷰 피드백 polling 후 이슈 자동 수정 (최대 3회 반복; 계획은 Fable/Opus, 구현은 sonnet 서브에이전트) |
 | `decision-reconcile` | 누적 ADR 간 모순(및 ADR vs 현실 drift)을 다양성 멀티 에이전트 패널(Claude 모델 티어 + 선택적 Kiro/Codex/Antigravity, 렌즈 1개씩)로 검출 후 번복 ADR 초안 작성 |
+| `kiro-delegate` | Kiro CLI(구독 크레딧)로의 비용 절감 구현+리뷰 위임 — worktree로 격리된 구현 루프, scope-guard된 diff, 커밋 전 리뷰 게이트. 명령: `/kiro:setup`, `/kiro:delegate`, `/kiro:review`, `/kiro:configure` |
 
 ### Project Init 명령
 
@@ -843,26 +853,41 @@ plugins/
 │   └── skills/
 │       └── co-agent/
 │
-└── project-init/                      # 프로젝트 스캐폴딩 (3 에이전트, 3 스킬, 10 명령)
+├── project-init/                      # 프로젝트 스캐폴딩 (3 에이전트, 3 스킬, 10 명령)
+│   ├── .claude-plugin/plugin.json
+│   ├── CLAUDE.md
+│   ├── agents/
+│   │   ├── doc-sync-checker.md
+│   │   ├── pr-autofix-planner.md
+│   │   └── pr-autofix-implementer.md
+│   ├── commands/                       # 10개 슬래시 명령
+│   │   ├── init-project.md
+│   │   ├── sync-docs.md
+│   │   ├── add-adr.md
+│   │   ├── add-module.md
+│   │   ├── add-runbook.md
+│   │   ├── generate-readme.md
+│   │   ├── generate-changelog.md
+│   │   ├── health-check.md
+│   │   ├── pr-autofix.md
+│   │   └── add-reference-doc.md
+│   └── skills/
+│       ├── project-scaffolder/
+│       ├── pr-autofix/
+│       └── decision-reconcile/
+│
+└── kiro/                              # 비용 절감 위임 (1 에이전트, 1 스킬, 4 명령)
     ├── .claude-plugin/plugin.json
     ├── CLAUDE.md
     ├── agents/
-    │   ├── doc-sync-checker.md
-    │   ├── pr-autofix-planner.md
-    │   └── pr-autofix-implementer.md
-    ├── commands/                       # 10개 슬래시 명령
-    │   ├── init-project.md
-    │   ├── sync-docs.md
-    │   ├── add-adr.md
-    │   ├── add-module.md
-    │   ├── add-runbook.md
-    │   ├── generate-readme.md
-    │   ├── generate-changelog.md
-    │   ├── health-check.md
-    │   ├── pr-autofix.md
-    │   └── add-reference-doc.md
+    │   └── kiro-delegate-agent.md
+    ├── commands/
+    │   ├── setup.md
+    │   ├── delegate.md
+    │   ├── review.md
+    │   └── configure.md
+    ├── hooks/
+    │   └── pre-commit-review.sh
     └── skills/
-        ├── project-scaffolder/
-        ├── pr-autofix/
-        └── decision-reconcile/
+        └── kiro-delegate/
 ```

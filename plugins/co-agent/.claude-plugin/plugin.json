@@ -58,6 +58,10 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/consensus_hooks.py\" stop --root . 2>/dev/null"
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/reap_kiro_orphans.sh\""
           }
         ]
       }
@@ -65,6 +69,10 @@
     "SessionStart": [
       {
         "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/reap_kiro_orphans.sh\""
+          },
           {
             "type": "command",
             "command": "echo 'co-agent loaded. Multi-AI collaboration (Kiro/Codex/Agy): /co-agent review · decide · adr · sync-context · consensus · harness · setup. Tune the panel with /co-agent:configure. The current host synthesizes; uses whichever peer AI CLIs are installed.'"

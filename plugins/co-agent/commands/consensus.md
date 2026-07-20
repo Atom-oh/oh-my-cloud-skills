@@ -62,7 +62,8 @@ the review checkpoint. Requires a clean tree; commits locally only (never push/r
 1. **Per task** (advance `consensus_state.py task-start . <i>`):
    a. **Checkpoint**: `git stash create`/tag or a WIP commit you can reset to.
    b. **Implement (TDD)**: write the failing test → minimal code → refactor. Every file you
-      touch MUST pass `scope_guard.py --plan <plan> <path>` (else stop — out of scope).
+      touch MUST pass `scope_guard.py --plan <plan> -- <path>` (else stop — out of
+      scope; candidate paths go after a literal `--` — see the script's own `--help`).
    c. **Security veto**: reject any change violating the AWS mandates (0.0.0.0/0, Principal:"*",
       secrets in env, …) before applying.
    d. **Test gate**: `bash tests/run-all.sh` (+ project tests) MUST pass; on failure, revert to

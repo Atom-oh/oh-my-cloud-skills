@@ -1,10 +1,12 @@
-<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 08aaadd554cb · generated-at: 2026-07-05 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
+<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 4932f40ff36b · generated-at: 2026-07-18 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
 > You are an external reviewer for this repo — project context below, distilled from
 > CLAUDE.md. This file is shared verbatim by Kiro, Codex, and Agy (not a per-AI copy).
 
 # oh-my-cloud-skills — reviewer context
 
-A **Claude Code _and_ Codex plugin marketplace**: 6 plugins (aws-content, aws-ops, kiro-power-converter, agentcore-creator, co-agent, project-init). Not a runtime app — the deliverables are plugin definitions (Markdown agents/skills/commands) plus Python/Bash/Node helper scripts. Each plugin ships **both** `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`; the root has `.claude-plugin/marketplace.json` (Claude) and `.agents/plugins/marketplace.json` (Codex).
+A **Claude Code _and_ Codex plugin marketplace**: 7 plugins (aws-content, aws-ops, kiro-power-converter, agentcore-creator, co-agent, project-init, kiro). Not a runtime app — the deliverables are plugin definitions (Markdown agents/skills/commands) plus Python/Bash/Node helper scripts. Each plugin ships **both** `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`; the root has `.claude-plugin/marketplace.json` (Claude) and `.agents/plugins/marketplace.json` (Codex).
+
+The **kiro** plugin is a cost-savings delegation workflow, distinct from co-agent (multi-AI perspective diversity): Claude plans/verifies, Kiro CLI implements + reviews on its own subscription credits inside an isolated git worktree — only the captured, `scope_guard.py`-checked diff reaches the main tree (`worktree.py`/`scope_guard.py`/`parse_plan.py` copied verbatim from co-agent). Its "safe" claim is scoped narrowly to changes reaching the main tree; it does not sandbox `execute_bash` inside the worktree, which is a separate trust decision about `kiro-cli` itself (see `plugins/kiro/CLAUDE.md` → "Trust decision" when reviewing anything that touches `.kiro/agents/kiro-implementer.json`).
 
 ## Stack
 - **Python 3** (stdlib-first; `defusedxml` for XML), **Bash**, **Node.js** (PptxGenJS deck scripts), **Markdown** (agents/skills/commands), JSON manifests. Docs site = Docusaurus (`docs/`).
@@ -12,7 +14,7 @@ A **Claude Code _and_ Codex plugin marketplace**: 6 plugins (aws-content, aws-op
 
 ## Build / test / lint (run from repo root)
 - `bash tests/run-all.sh` — TAP test suite (hooks, secret-scan regex, plugin structure). Must be **0 failed**.
-- `python3 scripts/test-plugins.py` — validates all 6 plugins' Claude manifests + agent/skill/command refs + version consistency. Must PASS.
+- `python3 scripts/test-plugins.py` — validates all 7 plugins' Claude manifests + agent/skill/command refs + version consistency. Must PASS.
 - `python3 scripts/test-codex-plugins.py` — validates the `.codex-plugin/plugin.json` manifests + `.agents/plugins/marketplace.json`. Must PASS.
 - `python3 scripts/eval-skills.py` — skill quality/structure/token eval.
 - Diagram skill gates (before exporting a `.drawio`): `validate_drawio.py` (XML/truncation) → `lint_layout.py` (layout score ≥80) → optional `snap_grid.py` (grid align).

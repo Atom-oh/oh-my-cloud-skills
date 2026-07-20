@@ -64,6 +64,11 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 - **Auto-sync workflows** — Keep documentation in sync with code changes
 - **ADR contradiction review** — `decision-reconcile` finds conflicting ADRs (and ADR-vs-reality drift) with a diverse multi-agent panel and drafts a superseding ADR
 
+*Cost-Savings Delegation (kiro):*
+- **Claude plans, Kiro implements** — Claude writes a Kiro-native spec and verifies results; Kiro CLI writes the actual code on its own flat-rate subscription credits, inside an isolated git worktree with a scope-guarded diff
+- **Pre-commit review gate (opt-in)** — a `PreToolUse` hook can run a Kiro-powered review before `git commit`, blocking only on `critical` findings by default (fails open on any infra problem); off by default since the staged diff content is sent to Kiro's backend (the reviewer's reads are tool-layer-confined to the isolated diff dir)
+- **`/kiro:setup`** — detect kiro-cli, probe usability, list models, and write the `.kiro/agents/*.json` custom agents the pipeline uses
+
 ---
 
 ## Installation
@@ -85,6 +90,7 @@ host. Pick your host below.
 /plugin install agentcore-creator@oh-my-cloud-skills
 /plugin install co-agent@oh-my-cloud-skills
 /plugin install project-init@oh-my-cloud-skills
+/plugin install kiro@oh-my-cloud-skills
 ```
 
 For local development:
@@ -96,6 +102,7 @@ claude --plugin-dir ./plugins/kiro-power-converter
 claude --plugin-dir ./plugins/agentcore-creator
 claude --plugin-dir ./plugins/co-agent
 claude --plugin-dir ./plugins/project-init
+claude --plugin-dir ./plugins/kiro
 ```
 
 Uninstall:
@@ -107,6 +114,7 @@ Uninstall:
 /plugin uninstall agentcore-creator@oh-my-cloud-skills
 /plugin uninstall co-agent@oh-my-cloud-skills
 /plugin uninstall project-init@oh-my-cloud-skills
+/plugin uninstall kiro@oh-my-cloud-skills
 
 # Remove the marketplace
 /plugin marketplace remove oh-my-cloud-skills
@@ -656,6 +664,7 @@ aws-ops-power/
 | `agentcore-creator-agent` | agentcore-creator | "Deploy agent to AgentCore" | Harness config or Strands Agent + deploy script |
 | `co-agent` | co-agent | "second opinion" / "help me decide" / "co-author ADR" | Multi-AI review / decision / ADR |
 | `doc-sync-checker` | project-init | "/sync-docs" | Doc quality scores |
+| `kiro-delegate-agent` | kiro | "delegate implementation to kiro" / "kiro로 구현" | Kiro-implemented change, verified + committed by Claude |
 | `pr-autofix-planner` / `pr-autofix-implementer` | project-init | (spawned by the pr-autofix skill) | Fix plan / plan-applied worktree edits |
 
 > `pr-autofix-planner` / `pr-autofix-implementer` are meant to be spawned by the pr-autofix skill; their descriptions discourage (but cannot hard-block) direct auto-selection.
@@ -699,6 +708,7 @@ All agents (except the internal pr-autofix workers above) activate automatically
 | `project-scaffolder` | Claude Code project structure patterns and conventions |
 | `pr-autofix` | Poll AI + human PR review feedback and auto-fix issues (max 3 iterations; plan on Fable/Opus, implement via sonnet subagents) |
 | `decision-reconcile` | Detect contradictions across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (varied Claude model tiers + optional Kiro/Codex/Antigravity, one review lens each), then draft a superseding ADR |
+| `kiro-delegate` | Cost-savings implementation + review delegation to Kiro CLI (subscription credits) — worktree-isolated implement loop, scope-guarded diff, pre-commit review gate. Commands: `/kiro:setup`, `/kiro:delegate`, `/kiro:review`, `/kiro:configure` |
 
 ### Project Init Commands
 
@@ -844,26 +854,41 @@ plugins/
 │   └── skills/
 │       └── co-agent/
 │
-└── project-init/                      # Project scaffolding (3 agents, 3 skills, 10 commands)
+├── project-init/                      # Project scaffolding (3 agents, 3 skills, 10 commands)
+│   ├── .claude-plugin/plugin.json
+│   ├── CLAUDE.md
+│   ├── agents/
+│   │   ├── doc-sync-checker.md
+│   │   ├── pr-autofix-planner.md
+│   │   └── pr-autofix-implementer.md
+│   ├── commands/                       # 10 slash commands
+│   │   ├── init-project.md
+│   │   ├── sync-docs.md
+│   │   ├── add-adr.md
+│   │   ├── add-module.md
+│   │   ├── add-runbook.md
+│   │   ├── generate-readme.md
+│   │   ├── generate-changelog.md
+│   │   ├── health-check.md
+│   │   ├── pr-autofix.md
+│   │   └── add-reference-doc.md
+│   └── skills/
+│       ├── project-scaffolder/
+│       ├── pr-autofix/
+│       └── decision-reconcile/
+│
+└── kiro/                              # Cost-savings delegation (1 agent, 1 skill, 4 commands)
     ├── .claude-plugin/plugin.json
     ├── CLAUDE.md
     ├── agents/
-    │   ├── doc-sync-checker.md
-    │   ├── pr-autofix-planner.md
-    │   └── pr-autofix-implementer.md
-    ├── commands/                       # 10 slash commands
-    │   ├── init-project.md
-    │   ├── sync-docs.md
-    │   ├── add-adr.md
-    │   ├── add-module.md
-    │   ├── add-runbook.md
-    │   ├── generate-readme.md
-    │   ├── generate-changelog.md
-    │   ├── health-check.md
-    │   ├── pr-autofix.md
-    │   └── add-reference-doc.md
+    │   └── kiro-delegate-agent.md
+    ├── commands/
+    │   ├── setup.md
+    │   ├── delegate.md
+    │   ├── review.md
+    │   └── configure.md
+    ├── hooks/
+    │   └── pre-commit-review.sh
     └── skills/
-        ├── project-scaffolder/
-        ├── pr-autofix/
-        └── decision-reconcile/
+        └── kiro-delegate/
 ```

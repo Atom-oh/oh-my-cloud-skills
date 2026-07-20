@@ -57,6 +57,18 @@ doc-sites/.docusaurus/
 # pr-review lens×model matrix membership override (enabled/model per cell)
 .claude/pr-review.local.json
 
+# kiro plugin personal settings (model/effort/toggle overrides)
+.claude/kiro.local.json
+# kiro plugin delegate worktrees (implement-loop scratch space)
+.claude/kiro-delegate/
+# kiro plugin custom agents (personal setup artifact, not a codebase artifact — written
+# by /kiro:setup; also copied into each delegate worktree, so untracking it here is what
+# lets worktree.py capture-diff's `git add -A` naturally skip that copy)
+.kiro/agents/
+# kiro plugin specs (working scratch space for /kiro:delegate; not meant to be committed
+# pre-review — a user who wants to keep one can force-add it)
+.kiro/specs/
+
 # scratch working dir (presentation/demo authoring — not tracked)
 work/
 

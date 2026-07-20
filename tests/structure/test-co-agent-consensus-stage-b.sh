@@ -13,9 +13,9 @@ assert_file_exists "$HK" "consensus_hooks.py exists"
 # --- scope_guard ---
 P=$(mktemp "${TMPDIR:-/tmp}/sgplan.XXXXXX.md")
 printf '### Task 1: a\n**Files:**\n- Create: `src/a.py`\n- Test: `tests/a.sh`\n- [ ] x\n' > "$P"
-python3 "$SG" --plan "$P" src/a.py >/dev/null 2>&1 && IN=0 || IN=$?
+python3 "$SG" --plan "$P" -- src/a.py >/dev/null 2>&1 && IN=0 || IN=$?
 assert_eq "0" "$IN" "scope_guard: in-scope path allowed"
-python3 "$SG" --plan "$P" src/evil.py >/dev/null 2>&1 && OUT=0 || OUT=$?
+python3 "$SG" --plan "$P" -- src/evil.py >/dev/null 2>&1 && OUT=0 || OUT=$?
 assert_eq "1" "$OUT" "scope_guard: out-of-scope path rejected"
 assert_contains "$(python3 "$SG" --plan "$P" --list 2>&1)" "src/a.py" "scope_guard --list shows allowed set"
 rm -f "$P"
@@ -61,9 +61,9 @@ assert_eq "0" "$rc" "stop hook never hard-fails on malformed tasks"
 # --- Fix 2 regression: scope_guard matches absolute candidate against plan-relative entry ---
 P2=$(mktemp "${TMPDIR:-/tmp}/sgplan2.XXXXXX.md")
 printf '### Task 1: a\n**Files:**\n- Create: `src/a.py`\n- Test: `tests/a.sh`\n- [ ] x\n' > "$P2"
-python3 "$SG" --plan "$P2" /abs/prefix/src/a.py >/dev/null 2>&1 && AIN=0 || AIN=$?
+python3 "$SG" --plan "$P2" -- /abs/prefix/src/a.py >/dev/null 2>&1 && AIN=0 || AIN=$?
 assert_eq "0" "$AIN" "scope_guard: absolute in-scope path allowed"
-python3 "$SG" --plan "$P2" /abs/prefix/src/evil.py >/dev/null 2>&1 && AOUT=0 || AOUT=$?
+python3 "$SG" --plan "$P2" -- /abs/prefix/src/evil.py >/dev/null 2>&1 && AOUT=0 || AOUT=$?
 assert_eq "1" "$AOUT" "scope_guard: absolute out-of-scope path rejected"
 rm -f "$P2"
 
