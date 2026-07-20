@@ -366,6 +366,7 @@ Documentation stays in sync via hooks and skills:
 | File edit on README.md | PostToolUse hook | Auto-prompts Korean translation to README.ko.md |
 | `git commit` (Bash) | `secret-scan.sh` (PreToolUse) | Blocks commits containing API keys, tokens, passwords |
 | Session start | `session-context.sh` (SessionStart) | Loads project type, version, branch, uncommitted file count |
+| Session start / turn end (Stop) | `reap_kiro_orphans.sh` (co-agent) | Kills orphaned (ppid=1) kiro `acp-server` processes leaked by headless `timeout` kills |
 | `remarp_to_slides.py` run | PreToolUse inline hook | Verifies common/ assets (theme.css, JS) exist before build |
 | Commit creation | `.git/hooks/commit-msg` | Strips Co-Authored-By lines from commit messages |
 | Manual | `/sync-docs` skill | Full documentation sync with quality scoring |
