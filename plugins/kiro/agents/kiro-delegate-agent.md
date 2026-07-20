@@ -103,7 +103,18 @@ preflight verified against `$ROOT`. Every `.kiro/…` path in this pipeline is
      discard both. If any declared file is dirty, stop and tell the user to commit or
      stash it first (or exclude that file from the plan); never start implementing
      against a file the fallback might later restore over pre-existing user work.
-1. **Plan.** Read the user's request, decompose it, write a Kiro-native spec to
+1. **Plan.** Read the user's request, decompose it. **Before writing anything, refuse a
+   planted symlink at `$ROOT/.kiro` and `$ROOT/.kiro/specs`** — the same class of check
+   step 3 runs for the worktree side, but for the MAIN CHECKOUT: a hostile repo could
+   track `.kiro`/`.kiro/specs` as a symlink pointing outside `$ROOT`, and writing the
+   spec there would escape the repo entirely, on the HOST side, before any worktree
+   isolation is even involved:
+   ```bash
+   for p in "$ROOT/.kiro" "$ROOT/.kiro/specs"; do
+     [ -L "$p" ] && { echo "REFUSE: $p is a symlink — stop, do not write the spec through it" >&2; exit 1; }
+   done
+   ```
+   Only once that passes, write a Kiro-native spec to
    `"$ROOT/.kiro/specs/<name>/"{requirements,design,tasks}.md` — format and task-file-scoping
    rules: `skills/kiro-delegate/references/spec-format.md`. Every task's `**Files:**`
    block must be complete and backtick-wrapped, or `scope_guard.py` will reject Kiro's
@@ -198,6 +209,28 @@ preflight verified against `$ROOT`. Every `.kiro/…` path in this pipeline is
        worktree/`execute_bash` boundary entirely. `references/kiro-headless.md` →
        "Implement (write-mode)" has the full rationale (mirrors `kiro_review.py`'s
        already-safe pattern for untrusted diff content).
+     - **Before copying anything, check none of the three support paths is ALREADY
+       TRACKED in the worktree — `.gitignore`/exclude has NO EFFECT on a path git
+       already tracks.** `ignore`-style rules (including `.git/info/exclude`, added
+       below) only ever suppress adding an UNTRACKED path; they do nothing to stop
+       `git add -A` from re-staging a MODIFICATION to a path git already tracks. If a
+       consumer repo happens to already track something at
+       `.kiro/agents/kiro-implementer.json`, `.kiro/specs/<name>/…`, or
+       `.kiro/task-prompt.md` (unusual, but not impossible), our copy overwrites the
+       tracked content, `git add -A` stages that as a modification regardless of the
+       exclude entry below, `scope_guard.py` rejects it (not in the plan), and the
+       exit-1 drops the whole otherwise-valid patch — **every single task**, silently,
+       since nothing about this failure mode is task-specific:
+         ```bash
+         for p in "agents/kiro-implementer.json" "specs/<name>" "task-prompt.md"; do
+           git -C <wt> ls-files --error-unmatch ".kiro/$p" >/dev/null 2>&1 && \
+             { echo "ABORT: .kiro/$p is already tracked in this repo — delegation cannot safely copy support files there. Rename the plugin's conventions or ask the user to stop tracking that path." >&2; exit 1; }
+         done
+         exit 0
+         ```
+       This is a distinct check from the earlier symlink-refusal loop (which guards
+       against a hostile ancestor directory) — this one guards against the leaf path
+       itself being a normal, already-tracked file with unrelated content.
      - **Exclude all three copies from capture in a way that does NOT depend on the
        consumer repo's `.gitignore`.** `worktree.py capture-diff` runs `git add -A`,
        which respects the worktree's own `.git/info/exclude` in ADDITION to any tracked
@@ -207,7 +240,10 @@ preflight verified against `$ROOT`. Every `.kiro/…` path in this pipeline is
        right after the copies. This repo happens to gitignore `.kiro/agents/` and
        `.kiro/specs/`, but a repo where the plugin is *installed* may not, and without
        this the copies would be captured, fail `scope_guard.py` (paths not in the
-       plan), and their exit-1 would drop the whole otherwise-valid patch.
+       plan), and their exit-1 would drop the whole otherwise-valid patch. (The
+       already-tracked check above is what actually protects against a TRACKED path;
+       this exclude entry is what protects against an UNTRACKED-but-not-gitignored
+       one — two different gaps, two different mechanisms.)
    - Run Kiro inside `<wt>`: `kiro-cli chat "Read .kiro/task-prompt.md via fs_read — it
      has your task and any spec file pointers — then implement exactly what it
      describes. Do not touch files outside the task's declared file set."

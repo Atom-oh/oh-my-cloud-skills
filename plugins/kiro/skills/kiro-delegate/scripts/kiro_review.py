@@ -451,8 +451,10 @@ def main():
         for f in blocking:
             print(_fmt(f), file=sys.stderr)
         print("Fix the finding(s) above, then retry the commit. To bypass this run, "
-              "`export KIRO_REVIEW=off`, or turn it off persistently with "
-              "`/kiro:configure set review on_commit off`.", file=sys.stderr)
+              "prefix the commit itself: `KIRO_REVIEW=off git commit ...` (the hook "
+              "recognizes this inline; a separately-exported KIRO_REVIEW won't reach "
+              "it), or turn it off persistently with `/kiro:configure set review "
+              "on_commit off`.", file=sys.stderr)
         return 2
 
     print(f"✅ kiro review: {len(advisory)} advisory finding(s), nothing blocking")

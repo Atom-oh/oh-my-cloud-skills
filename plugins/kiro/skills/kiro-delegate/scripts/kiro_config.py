@@ -83,6 +83,24 @@ def _is_tracked_by_git(root, relpath):
         return False
 
 
+def _consent_config_untrustworthy(root, lp):
+    """True iff the consent-gating keys in `lp` should NOT be trusted: either the
+    literal path `.claude/kiro.local.json` is tracked by git, OR resolving `lp` involves
+    a symlink anywhere in the chain. The symlink check closes an alias bypass of the
+    tracked-path check alone: a malicious repo can track `.claude` itself as a symlink
+    to e.g. `settings/`, then track `settings/kiro.local.json` (with
+    `review.on_commit: true`) — `git ls-files -- .claude/kiro.local.json` reports "not
+    tracked" (the index has no entry for that literal string; it only has
+    `settings/kiro.local.json`), even though `open()` transparently follows the symlink
+    and reads the tracked file's content. A genuine personal override a user creates
+    directly with an editor never involves a symlink at all, so ANY symlink in the
+    resolution chain is itself suspicious here — fail closed regardless of whether the
+    literal name happens to be tracked."""
+    if _is_tracked_by_git(root, os.path.join(".claude", "kiro.local.json")):
+        return True
+    return os.path.realpath(lp) != os.path.normpath(lp)
+
+
 def _strip_consent_keys(raw, root, lp):
     """`.claude/kiro.local.json` is meant to be a personal, gitignored override — its
     own name and this repo's `.gitignore` both say so. Nothing stops a malicious
@@ -91,11 +109,12 @@ def _strip_consent_keys(raw, root, lp):
     (registered at plugin-load time, no per-commit prompt) would send staged diff
     content to Kiro's backend, and implementation work would auto-route to Kiro —
     neither of which the user themselves opted into. If `raw` (the local override) is
-    tracked by git, drop these two consent-gating keys from it before merging, so they
+    tracked by git (or reached via a symlink alias — see `_consent_config_untrustworthy`),
+    drop these two consent-gating keys from it before merging, so they
     fall back to `kiro.defaults.json`'s shipped values (both off) regardless of what a
     committed file claims. Every OTHER key (models, timeouts, block level) still applies
     from a tracked file — those aren't a consent bypass, just configuration."""
-    if not _is_tracked_by_git(root, os.path.join(".claude", "kiro.local.json")):
+    if not _consent_config_untrustworthy(root, lp):
         return raw
     stripped = copy.deepcopy(raw)
     dropped = []
@@ -106,11 +125,12 @@ def _strip_consent_keys(raw, root, lp):
         del stripped["review"]["on_commit"]
         dropped.append("review.on_commit")
     if dropped:
-        print(f"⚠️  {lp} is tracked by git in this repo — a personal override file "
-              f"should never be committed. Ignoring its {', '.join(dropped)} value(s) "
-              f"and falling back to the shipped default (off) for consent-gating "
-              f"settings; a committed file must not be able to silently opt this repo's "
-              f"users into diff egress or auto-delegation.", file=sys.stderr)
+        print(f"⚠️  {lp} is tracked by git in this repo (directly, or reached through a "
+              f"symlinked ancestor/alias) — a personal override file should never be "
+              f"committed. Ignoring its {', '.join(dropped)} value(s) and falling back "
+              f"to the shipped default (off) for consent-gating settings; a committed "
+              f"file must not be able to silently opt this repo's users into diff "
+              f"egress or auto-delegation.", file=sys.stderr)
     return stripped
 
 

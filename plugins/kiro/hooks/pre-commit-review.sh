@@ -44,6 +44,16 @@ if ! python3 "$SK/hook_match.py" git-commit < "$PAYLOAD_FILE"; then
   exit 0
 fi
 
+# `KIRO_REVIEW=off` as an INLINE prefix on this same commit invocation (e.g.
+# `KIRO_REVIEW=off git commit -m x`) never becomes real environment for THIS hook
+# process — the check above (`${KIRO_REVIEW:-}`) only ever sees a value exported in a
+# shell session BEFORE this Bash tool call, which is not how most users would reach for
+# a "bypass THIS ONE commit" escape hatch. Recognize the inline form directly in the
+# payload text instead, so the documented UX actually works.
+if python3 "$SK/hook_match.py" bypass < "$PAYLOAD_FILE"; then
+  exit 0
+fi
+
 if ! python3 "$SK/kiro_config.py" review-on-commit --root "$ROOT" >/dev/null 2>&1; then
   exit 0
 fi

@@ -94,9 +94,12 @@ on the configured **review model** (meant to be Kiro's strongest/newest —
 `/kiro:setup` helps you pick one, e.g. `gpt-5.6-sol`) and blocks the commit (exit 2) only
 on `critical` findings by default (`review.block`: `critical` | `warning` | `none`). It
 **fails open** — a missing/timed-out/unauthenticated Kiro never blocks a commit; the
-review is skipped and a warning is printed instead. Bypass a single commit with
-`KIRO_REVIEW=off`, or turn it off persistently with `/kiro:configure set review
-on_commit off`.
+review is skipped and a warning is printed instead. Bypass a single commit with an
+**inline** `KIRO_REVIEW=off git commit ...` prefix — the hook recognizes this literal
+prefix in the command text itself (not the hook process's own environment, which a
+same-line assignment never reaches; a separately-`export`ed value from a prior command
+also won't help, since shell state doesn't persist between Bash tool calls) — or turn
+it off persistently with `/kiro:configure set review on_commit off`.
 
 ## Delegate vs. review — different models, on purpose
 

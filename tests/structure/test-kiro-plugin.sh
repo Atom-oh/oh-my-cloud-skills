@@ -52,6 +52,29 @@ print('PAYLOAD_CASES_OK' if ok2 else 'PAYLOAD_CASES_FAIL')
 assert_contains "$HM_OUT" "MATCH_CASES_OK" "hook_match.py matches git-commit incl. quoted -C, bare path, command-builtin bypasses"
 assert_contains "$HM_OUT" "PAYLOAD_CASES_OK" "hook_match.py's command_from_payload never crashes on a non-dict tool_input/payload"
 
+# --- round-15 fix: two false-positive-BLOCK cases — an embedded `git commit` substring
+# inside an escaped-quote string, or inside a heredoc body, must NOT be mistaken for a
+# real invocation. Before the fix, either would run the review against whatever's
+# currently staged and, if it has a critical finding, WRONGLY BLOCK a command that was
+# never actually a commit — the file's own stated philosophy is that false negatives
+# are fine but a wrong block never is. Single-quoted python -c to sidestep nested-quote
+# escaping across bash/python layers. ---
+HM_OUT2=$(python3 -c '
+import sys
+sys.path.insert(0, "'"$SK"'")
+import hook_match as hm
+escaped_quote_cmd = "echo \"text \\\"; git commit -m x\""
+heredoc_cmd = "cat <<'"'"'EOF'"'"' > f\nsome text\ngit commit example\nEOF\necho done"
+heredoc_then_real = "cat <<'"'"'EOF'"'"' > f\nsome text\nEOF\ngit commit -m x"
+oks = [
+    hm.is_git_commit(escaped_quote_cmd) == False,
+    hm.is_git_commit(heredoc_cmd) == False,
+    hm.is_git_commit(heredoc_then_real) == True,   # a REAL commit after a heredoc must still match
+]
+print("ESCAPE_HEREDOC_OK" if all(oks) else f"ESCAPE_HEREDOC_FAIL {oks}")
+' 2>&1)
+assert_contains "$HM_OUT2" "ESCAPE_HEREDOC_OK" "hook_match.py does not mistake an escaped-quote or heredoc-embedded 'git commit' substring for a real invocation, and still matches a genuine commit after a heredoc"
+
 SM_OUT=$(python3 -c "
 import sys
 sys.path.insert(0, '$SK')
@@ -114,10 +137,23 @@ multi_cases = [
 ]
 ok3 = all(hm.is_multi_commit(cmd) == expect for cmd, expect in multi_cases)
 print('MULTI_COMMIT_OK' if ok3 else f'MULTI_COMMIT_FAIL {[c for c, e in multi_cases if hm.is_multi_commit(c) != e]}')
+# round-15 fix: KIRO_REVIEW=off as an INLINE prefix on the commit's own invocation must
+# be recognized in the payload TEXT — the hook process's own env never sees a same-line
+# assignment from the command it's inspecting.
+bypass_cases = [
+    ('KIRO_REVIEW=off git commit -m x', True),
+    ('FOO=bar KIRO_REVIEW=off git commit -m x', True),
+    ('git commit -m x', False),
+    ('echo \"KIRO_REVIEW=off\" && git commit -m x', False),  # quoted — not a real prefix
+    ('KIRO_REVIEW=on git commit -m x', False),               # wrong value
+]
+ok4 = all(hm.is_bypassed(cmd) == expect for cmd, expect in bypass_cases)
+print('BYPASS_OK' if ok4 else f'BYPASS_FAIL {[c for c, e in bypass_cases if hm.is_bypassed(c) != e]}')
 " 2>&1)
 assert_contains "$SM_OUT" "SCOPE_MISMATCH_OK" "hook_match.py's scope-mismatch detects -a/-am/--all/pathspec and a preceding -C, not a plain '-m' commit, --amend, -c config, or --fixup/-C refs"
 assert_contains "$SM_OUT" "STALE_INDEX_OK" "hook_match.py's stale-index detects a preceding git add/rm/mv/stash in the same invocation"
 assert_contains "$SM_OUT" "MULTI_COMMIT_OK" "hook_match.py's multi-commit detects more than one git-commit invocation in the same command"
+assert_contains "$SM_OUT" "BYPASS_OK" "hook_match.py's bypass recognizes an inline KIRO_REVIEW=off prefix on the commit's own invocation"
 
 # --- pre-commit-review.sh end-to-end: a scope-mismatch commit SKIPS the review
 #     (fail-open) instead of judging the wrong diff — its exit 2 could otherwise block
@@ -146,6 +182,15 @@ HOOK_OUT3=$(cd "$RH" && CLAUDE_PLUGIN_ROOT="$OLDPWD/plugins/kiro" bash -c '
 ' 2>&1) && HOOK_RC3=0 || HOOK_RC3=$?
 assert_eq "0" "$HOOK_RC3" "hook fail-opens (exit 0) on a multi-commit invocation"
 assert_contains "$HOOK_OUT3" "SKIPPED" "hook SKIPS on a compound with more than one git commit"
+# --- round-15 fix: an INLINE KIRO_REVIEW=off prefix on an otherwise-normal, unambiguous
+# commit (no scope-mismatch/stale-index/multi-commit signal to explain a skip) must
+# still exit 0 — and do so via the NEW bypass check itself (silently, before reaching
+# any of the other warned-skip paths), proving the inline form is actually honored. ---
+HOOK_OUT4=$(cd "$RH" && CLAUDE_PLUGIN_ROOT="$OLDPWD/plugins/kiro" bash -c '
+  echo "{\"tool_input\":{\"command\":\"KIRO_REVIEW=off git commit -m test\"}}" | bash "$CLAUDE_PLUGIN_ROOT/hooks/pre-commit-review.sh"
+' 2>&1) && HOOK_RC4=0 || HOOK_RC4=$?
+assert_eq "0" "$HOOK_RC4" "hook exits 0 on an inline KIRO_REVIEW=off-prefixed commit"
+assert_eq "" "$HOOK_OUT4" "the inline-bypass exit is silent (no SKIPPED warning) — it short-circuits before any of the other diagnostic-skip paths, proving the NEW bypass check (not a coincidental other skip) is what fired"
 rm -rf "$RH"
 
 for f in "$CFG" "$REVIEW" "$SETUP" "$WT" "$SG" "$PP"; do
@@ -258,6 +303,26 @@ assert_eq "1" "$CONSENT_DELEGATE_RC" "default_delegate ALSO falls back to OFF on
 CONSENT_MODEL=$(python3 "$CFG" review-model --root "$RCONSENT" 2>/dev/null)
 assert_eq "gpt-5.6-sol" "$CONSENT_MODEL" "non-consent settings (review.model) from the SAME tracked file still apply — only the two consent-gating keys are stripped"
 rm -rf "$RCONSENT"
+
+# --- round-15 fix: a malicious repo can bypass the round-14 tracked-config check via a
+# symlink ALIAS — track .claude itself as a symlink to e.g. settings/, then track
+# settings/kiro.local.json (with on_commit:true). git ls-files -- .claude/kiro.local.json
+# reports "not tracked" (the index has no entry for that literal string), even though
+# open() transparently follows the symlink and reads the tracked file's content. Confirm
+# the consent keys are STILL stripped in this case (checked via realpath resolution, not
+# just the literal path's tracked status). ---
+RALIAS=$(mktemp -d "${TMPDIR:-/tmp}/kiro-consent-alias.XXXXXX")
+git -C "$RALIAS" init -q
+git -C "$RALIAS" config user.email t@t.t; git -C "$RALIAS" config user.name t
+mkdir -p "$RALIAS/settings"
+python3 -c "import json; json.dump({'review': {'on_commit': True}}, open('$RALIAS/settings/kiro.local.json','w'))"
+ln -s settings "$RALIAS/.claude"
+git -C "$RALIAS" add settings/kiro.local.json .claude
+git -C "$RALIAS" commit -q -m "malicious repo tracks .claude as a symlink alias"
+ALIAS_OUT=$(python3 "$CFG" review-on-commit --root "$RALIAS" 2>&1) && ALIAS_RC=0 || ALIAS_RC=$?
+assert_eq "1" "$ALIAS_RC" "review-on-commit falls back to OFF when .claude is a tracked symlink alias, even though git ls-files on the literal .claude/kiro.local.json path alone would say 'not tracked'"
+assert_contains "$ALIAS_OUT" "tracked by git" "the symlink-alias fallback also prints the tracked/symlink warning"
+rm -rf "$RALIAS"
 
 # --- round-13 fix: os.O_NOFOLLOW doesn't exist on Windows Python — referencing it
 # unconditionally raises AttributeError (not an OSError, so `except OSError` doesn't
@@ -793,6 +858,49 @@ SNIPPET_LEAF_RC=0
 bash -c "$(printf '%s' "$SNIPPET" | sed "s|<wt>|$RSYMLEAF|g; s|<name>|whatever|g")" >/dev/null 2>&1 || SNIPPET_LEAF_RC=$?
 assert_eq "1" "$SNIPPET_LEAF_RC" "the symlink-check snippet exits 1 when only a LEAF FILE is a symlink and its parent directories are real (the exact gap round 12's fix missed)"
 rm -rf "$RSYMLEAF" "$OUTSIDE_LEAF"
+
+# --- round-15 fix: step 1 (main checkout side, spec writing) must ALSO refuse a planted
+# symlink at $ROOT/.kiro and $ROOT/.kiro/specs — step 3's worktree-side loop alone leaves
+# a host-side escape open on the main-checkout write path, before any worktree isolation
+# is even involved. Extract that step's OWN code fence (3-space indent, distinct from
+# step 3's 7-space-indented one) and run it for real against a planted symlink. ---
+SNIPPET_ROOT=$(printf '%s\n' "$AGENT_MD" | sed -n '/^   ```bash$/,/^   ```$/p' | sed '1d;$d')
+assert_contains "$SNIPPET_ROOT" "exit 1" "kiro-delegate-agent.md's step-1 (root-side) symlink-refusal code fence contains an actual exit"
+RROOTSYM=$(mktemp -d "${TMPDIR:-/tmp}/kiro-root-symlink.XXXXXX")
+OUTSIDE_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/kiro-root-symlink-outside.XXXXXX")
+ln -s "$OUTSIDE_ROOT" "$RROOTSYM/.kiro"
+SNIPPET_ROOT_RC=0
+bash -c "$(printf '%s' "$SNIPPET_ROOT" | sed "s|\$ROOT|$RROOTSYM|g")" >/dev/null 2>&1 || SNIPPET_ROOT_RC=$?
+assert_eq "1" "$SNIPPET_ROOT_RC" "step 1's root-side symlink-check snippet exits 1 when \$ROOT/.kiro is a planted symlink"
+rm -rf "$RROOTSYM" "$OUTSIDE_ROOT"
+
+# --- round-15 fix: .git/info/exclude has no effect on a path git ALREADY TRACKS — only
+# on untracked ones. If a consumer repo already tracks something at
+# .kiro/agents/kiro-implementer.json, .kiro/specs/<name>/, or .kiro/task-prompt.md, the
+# copy-in would silently fail scope_guard and drop the WHOLE patch, every single task.
+# kiro-delegate-agent.md's step 3 now has its own already-tracked check (distinct
+# 9-space-indented code fence, separate from the 7-space symlink-check one) — extract
+# and run it for real: must ABORT (exit 1) when a support path is already tracked, and
+# pass clean (exit 0) otherwise. ---
+SNIPPET_TRACKED=$(printf '%s\n' "$AGENT_MD" | sed -n '/^         ```bash$/,/^         ```$/p' | sed '1d;$d')
+assert_contains "$SNIPPET_TRACKED" "ls-files --error-unmatch" "kiro-delegate-agent.md's already-tracked check uses git ls-files --error-unmatch"
+RTRACKED=$(mktemp -d "${TMPDIR:-/tmp}/kiro-tracked-support.XXXXXX")
+git -C "$RTRACKED" init -q
+git -C "$RTRACKED" config user.email t@t.t; git -C "$RTRACKED" config user.name t
+mkdir -p "$RTRACKED/.kiro/agents"
+printf '{}' > "$RTRACKED/.kiro/agents/kiro-implementer.json"
+git -C "$RTRACKED" add .kiro/agents/kiro-implementer.json
+git -C "$RTRACKED" commit -q -m "repo already tracks a plugin-reserved support path"
+TRACKED_OUT=$(bash -c "$(printf '%s' "$SNIPPET_TRACKED" | sed "s|<wt>|$RTRACKED|g")" 2>&1) && TRACKED_RC=0 || TRACKED_RC=$?
+assert_eq "1" "$TRACKED_RC" "the already-tracked check aborts (exit 1) when kiro-implementer.json is already tracked in the worktree"
+assert_contains "$TRACKED_OUT" "ABORT" "the abort prints an actionable reason naming the already-tracked path"
+rm -rf "$RTRACKED"
+RCLEANWT=$(mktemp -d "${TMPDIR:-/tmp}/kiro-clean-support.XXXXXX")
+git -C "$RCLEANWT" init -q
+CLEAN_RC=0
+bash -c "$(printf '%s' "$SNIPPET_TRACKED" | sed "s|<wt>|$RCLEANWT|g")" >/dev/null 2>&1 || CLEAN_RC=$?
+assert_eq "0" "$CLEAN_RC" "the already-tracked check passes clean (exit 0) when none of the three support paths is tracked — a real bug: the check's own loop leaves a stray non-zero exit status from the LAST non-matching git ls-files call unless an explicit trailing exit 0 overrides it"
+rm -rf "$RCLEANWT"
 
 # --- round-13 fix: the spec <name> must be documented as a validated slug, not raw
 # user/repo text interpolated into shell commands (mkdir/cp/printf/kiro-cli prompt) with

@@ -106,8 +106,13 @@ explicit, pre-confirmed `--allow-unguarded` (gated behind an `AskUserQuestion` i
 hook via `/kiro:setup` (which explains this before asking) or `/kiro:configure set review
 on_commit on`. **Fails open** on any internal error or missing/unauthenticated
 `kiro-cli` — a broken reviewer must never wedge a commit. Blocks (exit 2) only on
-findings at/above `review.block` (default `critical`). Bypass one commit with
-`KIRO_REVIEW=off`.
+findings at/above `review.block` (default `critical`). Bypass one commit with an
+**inline** `KIRO_REVIEW=off git commit ...` prefix — `hook_match.py`'s `bypass` check
+recognizes this literal prefix in the command text itself; the hook process's OWN
+environment (what a bare `${KIRO_REVIEW:-}` check would see) never receives a same-line
+assignment from the command it's inspecting, and Bash tool calls don't persist shell
+state between each other either, so `export`ing it in a prior command doesn't work as a
+per-commit bypass.
 
 **`review.on_commit`/`default_delegate` from a *tracked* `.claude/kiro.local.json` are
 ignored.** That file is meant to be a personal, gitignored override (its own name and

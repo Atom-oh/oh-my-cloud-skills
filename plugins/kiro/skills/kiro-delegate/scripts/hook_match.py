@@ -29,6 +29,11 @@ Usage:
                                     #   reviews ONE upfront snapshot of the staged diff, so a
                                     #   second commit's own content is never reviewed at all.
                                     #   exit 1 = only one commit invocation (or none).
+  hook_match.py bypass              # stdin = the hook's JSON payload
+                                    # exit 0 = a `KIRO_REVIEW=off` env-var prefix is part
+                                    #   of this SAME command's own git-commit invocation
+                                    #   (e.g. `KIRO_REVIEW=off git commit -m x`) — honor it
+                                    #   as an explicit skip signal. exit 1 = not present.
 """
 import sys
 import re
@@ -43,11 +48,43 @@ import json
 # `\s+commit\b` to match and silently missing the whole invocation. A same-length run
 # of 'x' keeps the quoted span as exactly one \S+ token, so it satisfies the flag's
 # argument slot without leaking into the tokens after it.
-_QUOTE_RE = re.compile(r"'[^']*'|\"[^\"]*\"")
+#
+# `(?:\\.|[^"\\])*` inside the double-quoted alternative, NOT a bare `[^"]*`: a
+# backslash-escaped quote (`\"`) inside a double-quoted string is a LITERAL quote
+# character in bash, not the end of the string (`"text \"; git commit ..."` is one
+# argument to whatever it's quoting, containing a literal `"` partway through) — a bare
+# `[^"]*` stops at that escaped quote as if it were real, ending the blanked span early
+# and leaving `; git commit ...` OUTSIDE any quote from this regex's point of view, so
+# the review runs against a command that was never actually a commit. `\\.` consumes
+# any backslash-escaped character (the quote included) as part of the string instead.
+# Single-quoted strings don't need this: bash never interprets backslash escapes inside
+# '...', so `[^']*` alone is already correct there.
+_QUOTE_RE = re.compile(r"'[^']*'|\"(?:\\.|[^\"\\])*\"")
+
+# Blank out heredoc BODIES (length-preserving, same convention as quotes) before quote
+# blanking runs — a `git commit` appearing inside one (`cat <<'EOF' > f\n... git commit
+# ...\nEOF`) is inert data the shell never interprets as a command, but the boundary
+# regexes below don't know that and would otherwise match it as a real invocation; if
+# the CURRENTLY staged diff happens to have a critical finding, that false match would
+# then WRONGLY BLOCK a command that was never actually a commit — this hook's own
+# stated philosophy is that false negatives are fine (an extra skip/warn) but a wrong
+# block never is. Must run BEFORE `_blank_quotes`: a heredoc body is arbitrary text that
+# can easily contain an odd number of quote characters, which would otherwise confuse
+# quote-blanking into matching across the heredoc boundary into unrelated text.
+# Approximates common heredoc forms (`<<WORD`, `<<-WORD`, `<<'WORD'`, `<<"WORD"`) via the
+# terminator line (the word alone, optionally indented for `<<-`) — not a full shell
+# parser, so unusual quoting inside the delimiter itself can still slip through; that's
+# a false NEGATIVE (falls through to normal matching), never a wrong block.
+_HEREDOC_RE = re.compile(
+    r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1[^\n]*\n(?:.*\n)*?[ \t]*\2(?=[ \t]*(?:\n|$))")
+
+
+def _blank_heredocs(cmd):
+    return _HEREDOC_RE.sub(lambda m: "x" * len(m.group()), cmd)
 
 
 def _blank_quotes(cmd):
-    return _QUOTE_RE.sub(lambda m: "x" * len(m.group()), cmd)
+    return _QUOTE_RE.sub(lambda m: "x" * len(m.group()), _blank_heredocs(cmd))
 
 # Match at a shell command boundary (start of line, or after ; & | && ||), tolerating:
 #   - `env `/`VAR=val ` prefixes
@@ -209,9 +246,35 @@ def is_multi_commit(cmd):
     return len(_GIT_COMMIT_RE.findall(detect)) >= 2
 
 
+_BYPASS_ENV_RE = re.compile(r"\bKIRO_REVIEW=off\b")
+
+
+def is_bypassed(cmd):
+    """True iff a `KIRO_REVIEW=off` env-var assignment appears as part of the SAME
+    git-commit invocation's own prefix (e.g. `KIRO_REVIEW=off git commit -m x`).
+
+    Why this has to be parsed out of the command TEXT rather than relying on the hook
+    script's own inherited environment: this PreToolUse hook runs as a SEPARATE process
+    from whatever the Bash tool eventually executes. An inline `KIRO_REVIEW=off git
+    commit ...` prefix is only ever real environment for the `git commit` subprocess
+    IF the hook lets it run — it is never environment for the hook SCRIPT's own process,
+    which only ever receives the command as a JSON payload string to pattern-match, not
+    something it executes itself. So `if [ "${KIRO_REVIEW:-}" = "off" ]` in the hook
+    script (checking its OWN env) can only ever see a `KIRO_REVIEW` that was exported in
+    a shell session BEFORE this Bash tool call — never the inline form most users would
+    reach for when told to "bypass a single commit with KIRO_REVIEW=off". This function
+    makes that inline form actually work by recognizing it in the payload text itself:
+    `_GIT_COMMIT_RE`'s own env-prefix grammar already captures any `VAR=val` sequence
+    immediately before `git`, so `KIRO_REVIEW=off` shows up inside its match whenever
+    it's used as documented."""
+    detect = _blank_quotes(cmd)
+    m = _GIT_COMMIT_RE.search(detect)
+    return bool(m and _BYPASS_ENV_RE.search(m.group()))
+
+
 def main():
     if len(sys.argv) < 2 or sys.argv[1] not in (
-            "git-commit", "scope-mismatch", "stale-index", "multi-commit"):
+            "git-commit", "scope-mismatch", "stale-index", "multi-commit", "bypass"):
         print(__doc__)
         return 2
     raw = sys.stdin.read()
@@ -222,6 +285,8 @@ def main():
         return 0 if is_stale_index(cmd) else 1
     if sys.argv[1] == "multi-commit":
         return 0 if is_multi_commit(cmd) else 1
+    if sys.argv[1] == "bypass":
+        return 0 if is_bypassed(cmd) else 1
     return 0 if is_git_commit(cmd) else 1
 
 
