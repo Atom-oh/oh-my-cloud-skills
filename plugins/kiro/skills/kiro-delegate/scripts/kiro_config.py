@@ -81,8 +81,20 @@ def _resolves_through_symlink(path):
     component, never an ancestor directory). A genuine personal override file a user
     creates directly with an editor never involves a symlink at all, so ANY symlink in
     the chain is inherently suspicious for this file — fail closed regardless of where
-    it ultimately points."""
-    return os.path.realpath(path) != os.path.normpath(path)
+    it ultimately points.
+
+    Compares against `os.path.abspath(path)`, NOT `os.path.normpath(path)`: `realpath`
+    always returns an ABSOLUTE path (resolved against cwd), but `normpath` on a
+    RELATIVE input (e.g. `root="."`, the `_default_root()` fallback outside a git repo,
+    or an explicit relative `--root`) stays relative — so `realpath(path) !=
+    normpath(path)` was True for EVERY relative-root call regardless of any actual
+    symlink, making every `set`/consent-check call fail closed unconditionally in that
+    context (a real functional break, not just an overly-conservative edge case).
+    `abspath` makes the path absolute via the SAME cwd basis `realpath` uses, without
+    resolving symlinks — so the two sides are only ever unequal when a symlink is
+    genuinely involved, independent of whether `path` itself was given relative or
+    absolute."""
+    return os.path.realpath(path) != os.path.abspath(path)
 
 
 def load_defaults():
@@ -94,20 +106,46 @@ def load_defaults():
 
 def _is_tracked_by_git(root, relpath):
     """True iff `relpath` (relative to `root`) is tracked by git in that repo — OR the
-    check itself failed (not a git repo, git missing, timeout). The only caller of this
-    is a consent gate (`_consent_config_untrustworthy`): a True result makes it distrust
-    the local config's consent-relevant keys, so failing toward True here is the safe
-    direction — an unverifiable tracked-status must not be read as "so it's fine to
-    trust this file's on_commit/default_delegate values." (An earlier version returned
-    False on failure, reasoning that reducing trust was always the safe outcome of a
-    True result — true in general, but backwards for THIS specific check, where False
-    IS what tells the caller to trust the file.)"""
+    check itself failed to cleanly determine that (git missing, timeout, a real git
+    error against an existing repo — corrupted index, permissions, etc.). The only
+    caller of this is a consent gate (`_consent_config_untrustworthy`): a True result
+    makes it distrust the local config's consent-relevant keys, so failing toward True
+    here is the safe direction — an unverifiable tracked-status must not be read as "so
+    it's fine to trust this file's on_commit/default_delegate values."
+
+    Exception: `root` not being a git repository AT ALL returns False (trusted), not
+    True — there is no possibility of "a malicious repo committed this file" without a
+    repository to commit it in, so treating that case as untrustworthy would just break
+    every legitimate non-git use of this plugin's config for no security benefit (a
+    real regression a prior version of this function/`_resolves_through_symlink`
+    caused together — `_default_root()` falls back to `root="."` outside a git repo,
+    a real, supported code path, not just an edge case).
+
+    Once we know a repo genuinely exists, `git ls-files --error-unmatch` has exactly
+    THREE meaningful outcomes: exit 0 (tracked), exit 1 (cleanly determined NOT
+    tracked — the only case that returns False), and anything else (a real git error
+    against an existing repo — corrupted index, permissions, etc.). An earlier version
+    collapsed exit 1 and every other non-zero code into the same
+    `return r.returncode == 0` → False, so a git-level fatal error was silently read as
+    "not tracked" → trusted, exactly the failure mode this function's own docstring
+    said it avoided."""
+    try:
+        repo_check = subprocess.run(["git", "-C", root, "rev-parse", "--is-inside-work-tree"],
+                                     capture_output=True, text=True, timeout=10)
+    except (subprocess.TimeoutExpired, OSError):
+        return True
+    if repo_check.returncode != 0:
+        return False
     try:
         r = subprocess.run(["git", "-C", root, "ls-files", "--error-unmatch", "--", relpath],
                             capture_output=True, text=True, timeout=10)
-        return r.returncode == 0
     except (subprocess.TimeoutExpired, OSError):
         return True
+    if r.returncode == 0:
+        return True
+    if r.returncode == 1:
+        return False
+    return True
 
 
 def _consent_config_untrustworthy(root, lp):
@@ -125,7 +163,7 @@ def _consent_config_untrustworthy(root, lp):
     literal name happens to be tracked."""
     if _is_tracked_by_git(root, os.path.join(".claude", "kiro.local.json")):
         return True
-    return os.path.realpath(lp) != os.path.normpath(lp)
+    return _resolves_through_symlink(lp)
 
 
 def _strip_consent_keys(raw, root, lp):

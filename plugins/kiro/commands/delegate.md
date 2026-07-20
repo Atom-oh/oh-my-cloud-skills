@@ -1,13 +1,17 @@
 ---
 description: Plan the requested change as a Kiro-native spec, then delegate implementation tasks to Kiro CLI inside isolated worktrees, verifying and committing on the host side. Falls back to writing the code directly when a task's fix loop is exhausted.
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, AskUserQuestion
 ---
 
 # kiro: delegate
 
 $ARGUMENTS
 
-Invoke `kiro-delegate-agent` to run the full pipeline for this request:
+Invoke `kiro-delegate-agent` (via the `Agent` tool) to run the full pipeline for this
+request — its authoritative step-by-step pipeline (preflight, the `$ROOT`-anchoring
+discipline, symlink-refusal loops, per-wave commits) is what actually governs
+execution; the numbered steps below are this command's own summary/entry point, not a
+substitute for loading that agent.
 
 1. **Plan** — write `"$ROOT/.kiro/specs/<name>/"{requirements,design,tasks}.md` (never a
    cwd-relative `.kiro/specs/…` — see the `$ROOT` note below) per

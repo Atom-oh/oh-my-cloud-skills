@@ -103,32 +103,40 @@ preflight verified against `$ROOT`. Every `.kiro/…` path in this pipeline is
      discard both. If any declared file is dirty, stop and tell the user to commit or
      stash it first (or exclude that file from the plan); never start implementing
      against a file the fallback might later restore over pre-existing user work.
-1. **Plan.** Read the user's request, decompose it. **Before writing anything, refuse a
-   planted symlink at `$ROOT/.kiro` and `$ROOT/.kiro/specs`** — the same class of check
-   step 3 runs for the worktree side, but for the MAIN CHECKOUT: a hostile repo could
-   track `.kiro`/`.kiro/specs` as a symlink pointing outside `$ROOT`, and writing the
-   spec there would escape the repo entirely, on the HOST side, before any worktree
-   isolation is even involved:
+1. **Plan.** Read the user's request, decompose it, and **generate `<name>` yourself as
+   a plain slug matching `[A-Za-z0-9_-]+`** (e.g. `add-retry-logic`) BEFORE the check
+   below, since the leaf paths it checks are built from it — never derive `<name>` from
+   raw user/repo text verbatim. `<name>` gets interpolated into shell commands
+   throughout step 3 (`mkdir -p .../specs/<name>`, the `.git/info/exclude` `printf`
+   line, the symlink-check loop) and into the fixed kiro-cli instruction sentence's
+   file-pointer content — unlike the task BODY (which step 3 now writes to a file and
+   never puts in argv), `<name>` itself has no equivalent file-based protection, so a
+   value containing a space, `;`, `$(...)`, backtick, or `..` would be interpreted by
+   the shell or escape the intended directory. Validate it against that pattern before
+   using it anywhere; if the natural name for a request doesn't fit, slugify it
+   (lowercase, hyphens for spaces/punctuation) rather than relaxing the pattern.
+   **Before writing anything, refuse a planted symlink at every path component AND
+   leaf involved — same standard as step 3's worktree-side loop, not just the two
+   parent directories.** A hostile repo could track `.kiro`/`.kiro/specs` (or the
+   specific `<name>` leaf directory, or one of the three spec files under it) as a
+   symlink pointing outside `$ROOT`, and writing there would escape the repo entirely,
+   on the HOST side, before any worktree isolation is even involved — parent-only
+   coverage here would repeat exactly the gap step 3's OWN fix (round 13) closed for
+   the worktree side:
    ```bash
-   for p in "$ROOT/.kiro" "$ROOT/.kiro/specs"; do
+   for p in "$ROOT/.kiro" "$ROOT/.kiro/specs" "$ROOT/.kiro/specs/<name>" \
+            "$ROOT/.kiro/specs/<name>/requirements.md" \
+            "$ROOT/.kiro/specs/<name>/design.md" \
+            "$ROOT/.kiro/specs/<name>/tasks.md"; do
      [ -L "$p" ] && { echo "REFUSE: $p is a symlink — stop, do not write the spec through it" >&2; exit 1; }
    done
+   exit 0
    ```
-   Only once that passes, write a Kiro-native spec to
-   `"$ROOT/.kiro/specs/<name>/"{requirements,design,tasks}.md` — format and task-file-scoping
-   rules: `skills/kiro-delegate/references/spec-format.md`. Every task's `**Files:**`
-   block must be complete and backtick-wrapped, or `scope_guard.py` will reject Kiro's
-   own work later. **Generate `<name>` yourself as a plain slug matching
-   `[A-Za-z0-9_-]+`** (e.g. `add-retry-logic`) — never derive it from raw user/repo text
-   verbatim. `<name>` gets interpolated into shell commands throughout step 3 (`mkdir
-   -p .../specs/<name>`, the `.git/info/exclude` `printf` line, the symlink-check
-   loop) and into the fixed kiro-cli instruction sentence's file-pointer content —
-   unlike the task BODY (which step 3 now writes to a file and never puts in argv),
-   `<name>` itself has no equivalent file-based protection, so a value containing a
-   space, `;`, `$(...)`, backtick, or `..` would be interpreted by the shell or escape
-   the intended directory. Validate it against that pattern before using it anywhere in
-   step 3; if the natural name for a request doesn't fit, slugify it (lowercase,
-   hyphens for spaces/punctuation) rather than relaxing the pattern.
+   Only once that passes, write the spec to
+   `"$ROOT/.kiro/specs/<name>/"{requirements,design,tasks}.md` — format and
+   task-file-scoping rules: `skills/kiro-delegate/references/spec-format.md`. Every
+   task's `**Files:**` block must be complete and backtick-wrapped, or `scope_guard.py`
+   will reject Kiro's own work later.
 2. **Wave-plan.** Group tasks into waves of pairwise-disjoint file sets
    (`parse_plan.py`), capped by `delegate.parallel_tasks` (default 3;
    `kiro_config.py parallel-tasks`). **Commit each wave before starting the next**
@@ -172,9 +180,16 @@ preflight verified against `$ROOT`. Every `.kiro/…` path in this pipeline is
                 "<wt>/.kiro/task-prompt.md"; do
          [ -L "$p" ] && { echo "REFUSE: $p is a symlink — stop, do not mkdir/cp/write through it" >&2; exit 1; }
        done
+       exit 0
        ```
-       **The `exit 1` is not optional decoration — run this loop as its own Bash tool
-       call and check its exit code before issuing the `mkdir -p`/`cp` commands below.**
+       **Both the `exit 1` AND the trailing `exit 0` are not optional decoration — run
+       this loop as its own Bash tool call and check its exit code before issuing the
+       `mkdir -p`/`cp` commands below.** Without the trailing `exit 0`, the CLEAN case
+       (nothing planted, every check legitimately passes) leaves the shell's exit code
+       as whatever the LAST loop iteration's `[ -L "$p" ]` test itself returned — which
+       is 1 (false: "not a symlink") for a normal, safe worktree, indistinguishable
+       from the loop's own `exit 1` refusal. A caller checking "exit 0 = proceed" would
+       then treat every legitimate task as if a symlink had been found.
        An earlier draft of this check only `echo`ed the refusal with no `exit`, which
        meant the loop printed a warning and then let the very `mkdir -p`/`cp` it was
        supposed to block run anyway — a check that never actually stops anything is not

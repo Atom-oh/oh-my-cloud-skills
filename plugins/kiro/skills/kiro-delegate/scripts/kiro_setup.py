@@ -282,8 +282,17 @@ def _resolves_through_symlink(path):
     DIFFERENT location still inside `root`. A plugin-generated agent file a fresh
     `write-agents` run creates never involves a symlink at all, so ANY symlink in the
     chain is inherently suspicious here — fail closed regardless of where it ultimately
-    points."""
-    return os.path.realpath(path) != os.path.normpath(path)
+    points.
+
+    Compares against `os.path.abspath(path)`, NOT `os.path.normpath(path)`: `realpath`
+    always returns an ABSOLUTE path, but `normpath` on a RELATIVE input (e.g.
+    `root="."`, the `_default_root()` fallback outside a git repo) stays relative — so
+    `realpath(path) != normpath(path)` was True for every relative-root call regardless
+    of any actual symlink, making `write-agents` fail unconditionally in that context.
+    `abspath` makes the path absolute via the SAME cwd basis `realpath` uses, without
+    resolving symlinks, so the comparison is correct regardless of whether `path` was
+    given relative or absolute."""
+    return os.path.realpath(path) != os.path.abspath(path)
 
 
 def write_agents(root, force=False, enable_bash=False):

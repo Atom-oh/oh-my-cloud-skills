@@ -366,6 +366,60 @@ print('FAILDIR_OK' if kc._is_tracked_by_git('/tmp', '.claude/kiro.local.json') i
 " 2>&1)
 assert_contains "$FAILDIR_OUT" "FAILDIR_OK" "_is_tracked_by_git fails toward True (distrust) when the git check itself fails, not toward False (trust)"
 
+# --- round-17 fix: _resolves_through_symlink compared realpath (always absolute)
+# against normpath (stays relative for a relative input) — a real bug, not just
+# overly-conservative: with root="." (the _default_root() fallback outside a git repo,
+# or an explicit relative --root), this was True for EVERY call regardless of any
+# actual symlink, breaking `set` unconditionally (exit 2, refused) and always stripping
+# consent keys in that context. Also closes a stray inline duplicate of the SAME old
+# buggy comparison left behind in _consent_config_untrustworthy when
+# _resolves_through_symlink was factored out as its own function (round 16) — the
+# duplicate never got updated to call the shared helper, so it kept the bug even after
+# the helper itself was fixed. Confirm: a normal relative root with NO symlinks
+# involved must resolve as trustworthy AND writable. ---
+REPO_ABS="$(pwd)"
+RELROOT_OUT=$(D=$(mktemp -d) && cd "$D" && python3 -c "
+import sys
+sys.path.insert(0, '$REPO_ABS/plugins/kiro/skills/kiro-delegate/scripts')
+import kiro_config as kc
+root = '.'
+lp = kc.local_path(root)
+resolves = kc._resolves_through_symlink(lp)
+untrustworthy = kc._consent_config_untrustworthy(root, lp)
+print('RELROOT_OK' if resolves is False and untrustworthy is False else f'RELROOT_FAIL resolves={resolves!r} untrustworthy={untrustworthy!r}')
+" 2>&1; cd "$REPO_ABS"; rm -rf "$D")
+assert_contains "$RELROOT_OUT" "RELROOT_OK" "a relative root (\".\") with no symlinks involved is NOT flagged as resolving through a symlink, and consent keys are NOT stripped"
+RELROOT_SET_OUT=$(D=$(mktemp -d) && cd "$D" && python3 "$REPO_ABS/$CFG" set default_delegate on --root . 2>&1; echo "RC=$?"; cd "$REPO_ABS"; rm -rf "$D")
+assert_contains "$RELROOT_SET_OUT" "RC=0" "kiro_config.py set actually succeeds with a relative root (\".\") when nothing is symlinked — it was unconditionally refused (exit 2) before this fix"
+
+# --- round-17 fix: _is_tracked_by_git collapsed EVERY non-zero git exit code into
+# "not tracked" (trusted) — including a genuine git error against an EXISTING repo
+# (corrupted index, permissions, etc.), not just the "not a git repository at all"
+# case (which correctly stays trusted — no repo means no possibility of a malicious
+# committed file). Only exit 1 ("cleanly not tracked") should mean trusted; any other
+# non-zero exit from an existing repo must fail toward distrust. Simulate a genuine
+# git-ls-files error (returncode 128, e.g. corrupted repo) inside an ACTUAL git repo
+# and confirm it's treated as untrustworthy, distinct from the non-git-repo case
+# above (which must stay trusted). ---
+GITERR_OUT=$(python3 -c "
+import sys, tempfile, subprocess
+sys.path.insert(0, 'plugins/kiro/skills/kiro-delegate/scripts')
+import kiro_config as kc
+d = tempfile.mkdtemp()
+subprocess.run(['git', 'init', '-q'], cwd=d)
+real_run = kc.subprocess.run
+def fake_run(argv, **kw):
+    if 'ls-files' in argv:
+        import types
+        return types.SimpleNamespace(returncode=128, stdout='', stderr='fatal: simulated corrupted index')
+    return real_run(argv, **kw)
+kc.subprocess.run = fake_run
+result = kc._is_tracked_by_git(d, '.claude/kiro.local.json')
+kc.subprocess.run = real_run
+print('GITERR_OK' if result is True else f'GITERR_FAIL {result!r}')
+" 2>&1)
+assert_contains "$GITERR_OUT" "GITERR_OK" "_is_tracked_by_git treats a genuine git error (e.g. exit 128 from a corrupted repo) as untrustworthy, distinct from the 'no git repository at all' case which stays trusted"
+
 # --- round-13 fix: os.O_NOFOLLOW doesn't exist on Windows Python — referencing it
 # unconditionally raises AttributeError (not an OSError, so `except OSError` doesn't
 # catch it) before os.open is even called, crashing every `set`/write-agents call on
@@ -946,6 +1000,39 @@ SNIPPET_ROOT_RC=0
 bash -c "$(printf '%s' "$SNIPPET_ROOT" | sed "s|\$ROOT|$RROOTSYM|g")" >/dev/null 2>&1 || SNIPPET_ROOT_RC=$?
 assert_eq "1" "$SNIPPET_ROOT_RC" "step 1's root-side symlink-check snippet exits 1 when \$ROOT/.kiro is a planted symlink"
 rm -rf "$RROOTSYM" "$OUTSIDE_ROOT"
+# round-17 fix: step 1's check must ALSO exit 0 cleanly when nothing is planted — a
+# missing trailing `exit 0` would leak the last loop iteration's own [ -L ... ] test
+# result (1, "not a symlink") as the whole script's exit code, making every legitimate,
+# symlink-free task look like a refusal.
+RROOTCLEAN=$(mktemp -d "${TMPDIR:-/tmp}/kiro-root-clean.XXXXXX")
+SNIPPET_ROOT_CLEAN_RC=0
+bash -c "$(printf '%s' "$SNIPPET_ROOT" | sed "s|\$ROOT|$RROOTCLEAN|g; s|<name>|somename|g")" >/dev/null 2>&1 || SNIPPET_ROOT_CLEAN_RC=$?
+assert_eq "0" "$SNIPPET_ROOT_CLEAN_RC" "step 1's root-side symlink-check snippet exits 0 (proceed) when nothing is planted — not a stray non-zero leaked from the loop's own last comparison"
+rm -rf "$RROOTCLEAN"
+# round-17 fix: step 1's check must cover the LEAF spec dir/files too, not just the two
+# parent directories — matching the standard step 3's own leaf coverage (round 13) set.
+assert_contains "$SNIPPET_ROOT" '.kiro/specs/<name>"' "step 1's symlink check also covers the <name> leaf directory"
+assert_contains "$SNIPPET_ROOT" "requirements.md" "step 1's symlink check also covers the requirements.md leaf file"
+assert_contains "$SNIPPET_ROOT" "tasks.md" "step 1's symlink check also covers the tasks.md leaf file"
+RROOTLEAF=$(mktemp -d "${TMPDIR:-/tmp}/kiro-root-leaf.XXXXXX")
+OUTSIDE_ROOTLEAF=$(mktemp -d "${TMPDIR:-/tmp}/kiro-root-leaf-outside.XXXXXX")
+mkdir -p "$RROOTLEAF/.kiro/specs/somename"   # parents are REAL, only the leaf FILE is a symlink
+ln -s "$OUTSIDE_ROOTLEAF/evil.md" "$RROOTLEAF/.kiro/specs/somename/tasks.md"
+SNIPPET_ROOT_LEAF_RC=0
+bash -c "$(printf '%s' "$SNIPPET_ROOT" | sed "s|\$ROOT|$RROOTLEAF|g; s|<name>|somename|g")" >/dev/null 2>&1 || SNIPPET_ROOT_LEAF_RC=$?
+assert_eq "1" "$SNIPPET_ROOT_LEAF_RC" "step 1's symlink check exits 1 when only the tasks.md LEAF is a symlink and its parent directories are real"
+rm -rf "$RROOTLEAF" "$OUTSIDE_ROOTLEAF"
+# round-17 fix (caught during verification, not in the original review): step 3's
+# WORKTREE-side loop (round 12/13) had the SAME missing-trailing-`exit 0` bug — every
+# prior test for it only ever exercised the "symlink present" branch, never the clean
+# case, so this latent bug went uncaught until now.
+SNIPPET7=$(printf '%s\n' "$AGENT_MD" | sed -n '/^       ```bash$/,/^       ```$/p' | sed '1d;$d')
+assert_contains "$SNIPPET7" "exit 0" "kiro-delegate-agent.md's step-3 (worktree-side) symlink-refusal code fence contains a trailing exit 0 for the clean case"
+RWTCLEAN=$(mktemp -d "${TMPDIR:-/tmp}/kiro-wt-clean.XXXXXX")
+SNIPPET7_CLEAN_RC=0
+bash -c "$(printf '%s' "$SNIPPET7" | sed "s|<wt>|$RWTCLEAN|g; s|<name>|somename|g")" >/dev/null 2>&1 || SNIPPET7_CLEAN_RC=$?
+assert_eq "0" "$SNIPPET7_CLEAN_RC" "step 3's worktree-side symlink-check snippet exits 0 (proceed) when nothing is planted"
+rm -rf "$RWTCLEAN"
 
 # --- round-15 fix: .git/info/exclude has no effect on a path git ALREADY TRACKS — only
 # on untracked ones. If a consumer repo already tracks something at
@@ -992,6 +1079,14 @@ assert_contains "$AGENT_MD" 'cp "$ROOT/.kiro/specs/<name>"' "kiro-delegate-agent
 DELEGATE_MD="$(cat plugins/kiro/commands/delegate.md)"
 assert_contains "$DELEGATE_MD" '"$ROOT/.kiro/specs/<name>' "delegate.md's spec-write path is \$ROOT-anchored, not cwd-relative"
 assert_contains "$DELEGATE_MD" 'git -C "$ROOT" --literal-pathspecs status' "delegate.md's clean-tree check is anchored to \$ROOT via -C"
+
+# --- round-17 fix: delegate.md's body says "Invoke kiro-delegate-agent" but its
+# frontmatter allowed-tools didn't include Agent/Task — matching this repo's own
+# convention (project-init's pr-autofix.md, which also spawns a subagent, explicitly
+# lists Agent). Without it, the authoritative agent pipeline (preflight, symlink
+# checks, $ROOT discipline) might never actually load. ---
+DELEGATE_FRONTMATTER="$(sed -n '/^allowed-tools:/p' plugins/kiro/commands/delegate.md)"
+assert_contains "$DELEGATE_FRONTMATTER" "Agent" "delegate.md's allowed-tools includes Agent, matching this repo's convention for commands that spawn a subagent"
 
 # --- round-12 fix: the kiro-cli chat invocation must be a FIXED instruction string that
 # points at .kiro/task-prompt.md via fs_read — never task/spec content interpolated
