@@ -246,7 +246,18 @@ def is_multi_commit(cmd):
     return len(_GIT_COMMIT_RE.findall(detect)) >= 2
 
 
-_BYPASS_ENV_RE = re.compile(r"\bKIRO_REVIEW=off\b")
+# `(?:^|[\s;&|])` anchor, not a bare `\b`: `\b` matches at any word/non-word boundary,
+# so `NOTE=KIRO_REVIEW=off git commit` — where `KIRO_REVIEW=off` is merely the VALUE of
+# a DIFFERENT env var, not its own assignment — also matched (the `=` before the K is a
+# non-word char, satisfying `\b`). A real bypass assignment is its own token: it can
+# only start at the beginning of the match region, after whitespace, or directly after
+# a shell separator (`echo hi;KIRO_REVIEW=off git commit` — the `_GIT_COMMIT_RE` match
+# region includes the boundary char, with no space required after it). `=` is
+# deliberately NOT in the anchor class — that's exactly what re-admits the
+# other-var's-value false positive. The consequence there was only an unintended review
+# SKIP (fail-open, safe direction), but the documented bypass should mean exactly what
+# it says.
+_BYPASS_ENV_RE = re.compile(r"(?:^|[\s;&|])KIRO_REVIEW=off\b")
 
 
 def is_bypassed(cmd):

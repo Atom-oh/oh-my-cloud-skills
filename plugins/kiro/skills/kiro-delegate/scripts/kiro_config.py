@@ -234,6 +234,29 @@ def _as_bool(v, default=False):
     return default
 
 
+def _as_int(v, default, key):
+    """Coerce a numeric config leaf to a positive int, warning + falling back to
+    `default` on anything else. `set` validates before writing, but `effective()`
+    merges a HAND-EDITED local file whose leaves it never type-checks — valid JSON like
+    `{"delegate": {"timeout": "abc"}}` (or null, a list, a float string) reached the
+    accessor commands as-is, and a bare `int(...)` on it raised an uncaught
+    TypeError/ValueError traceback instead of the graceful degradation every other
+    malformed-config path in this file already provides. Same philosophy as `_as_bool`:
+    a settings file must never crash the tool that reads it."""
+    if isinstance(v, bool):   # bool is an int subclass — True would coerce to 1 silently
+        print(f"⚠️  {key} is a boolean ({v!r}), not a number — using the default "
+              f"({default})", file=sys.stderr)
+        return default
+    if isinstance(v, int) and v > 0:
+        return v
+    if isinstance(v, str) and v.strip().isdigit() and int(v.strip()) > 0:
+        return int(v.strip())
+    if v is not None:
+        print(f"⚠️  {key} value {v!r} is not a positive integer — using the default "
+              f"({default})", file=sys.stderr)
+    return default
+
+
 def effective(root):
     cfg = load_defaults()
     lp = local_path(root)
@@ -461,16 +484,16 @@ def main():
         print(cfg.get("review", {}).get("model") or "")
         return 0
     if cmd == "delegate-timeout":
-        print(int(effective(root).get("delegate", {}).get("timeout", 240)))
+        print(_as_int(effective(root).get("delegate", {}).get("timeout"), 240, "delegate.timeout"))
         return 0
     if cmd == "review-timeout":
-        print(int(effective(root).get("review", {}).get("timeout", 120)))
+        print(_as_int(effective(root).get("review", {}).get("timeout"), 120, "review.timeout"))
         return 0
     if cmd == "max-fix-rounds":
-        print(int(effective(root).get("delegate", {}).get("max_fix_rounds", 2)))
+        print(_as_int(effective(root).get("delegate", {}).get("max_fix_rounds"), 2, "delegate.max_fix_rounds"))
         return 0
     if cmd == "parallel-tasks":
-        print(int(effective(root).get("delegate", {}).get("parallel_tasks", 3)))
+        print(_as_int(effective(root).get("delegate", {}).get("parallel_tasks"), 3, "delegate.parallel_tasks"))
         return 0
     if cmd == "block":
         print(effective(root).get("review", {}).get("block", "critical"))

@@ -146,6 +146,10 @@ bypass_cases = [
     ('git commit -m x', False),
     ('echo \"KIRO_REVIEW=off\" && git commit -m x', False),  # quoted — not a real prefix
     ('KIRO_REVIEW=on git commit -m x', False),               # wrong value
+    # round-18 fix: the substring inside ANOTHER var's value is NOT a real assignment
+    ('NOTE=KIRO_REVIEW=off git commit -m x', False),
+    # ...but a real assignment right after a shell separator (no space) still is
+    ('echo hi;KIRO_REVIEW=off git commit -m x', True),
 ]
 ok4 = all(hm.is_bypassed(cmd) == expect for cmd, expect in bypass_cases)
 print('BYPASS_OK' if ok4 else f'BYPASS_FAIL {[c for c, e in bypass_cases if hm.is_bypassed(c) != e]}')
@@ -235,6 +239,26 @@ assert_eq "2" "$XC" "cross-section key (review parallel_tasks) rejected — that
 python3 "$CFG" set delegate on_commit on --root "$R" >/dev/null 2>&1 && XC2=0 || XC2=$?
 assert_eq "2" "$XC2" "cross-section key (delegate on_commit) rejected (exit 2)"
 rm -rf "$R"
+
+# --- round-18 (final) fix: the numeric accessor commands (delegate-timeout /
+# review-timeout / max-fix-rounds / parallel-tasks) called int() on merged config
+# leaves with no type validation — `set` validates before writing, but a HAND-EDITED
+# local file with valid JSON of the wrong type ({"delegate":{"timeout":"abc"}}, null,
+# a boolean) reached the accessor as-is and raised an uncaught traceback instead of
+# the graceful warn-and-fall-back every other malformed-config path already has. ---
+RINT=$(mktemp -d "${TMPDIR:-/tmp}/kiro-int-leaf.XXXXXX")
+mkdir -p "$RINT/.claude"
+python3 -c "import json; json.dump({'delegate': {'timeout': 'abc', 'parallel_tasks': None, 'max_fix_rounds': True}}, open('$RINT/.claude/kiro.local.json','w'))"
+INT_OUT=$(python3 "$CFG" delegate-timeout --root "$RINT" 2>/dev/null) && INT_RC=0 || INT_RC=$?
+assert_eq "0" "$INT_RC" "delegate-timeout survives a hand-edited string value ('abc') without a traceback (exit 0)"
+assert_eq "240" "$INT_OUT" "delegate-timeout falls back to the default (240) for the malformed value"
+INT_OUT2=$(python3 "$CFG" max-fix-rounds --root "$RINT" 2>/dev/null) && INT_RC2=0 || INT_RC2=$?
+assert_eq "0" "$INT_RC2" "max-fix-rounds survives a hand-edited boolean value without a traceback"
+assert_eq "2" "$INT_OUT2" "max-fix-rounds falls back to the default (2) — a boolean must NOT silently coerce to 1 via int()"
+INT_OUT3=$(python3 "$CFG" parallel-tasks --root "$RINT" 2>/dev/null) && INT_RC3=0 || INT_RC3=$?
+assert_eq "0" "$INT_RC3" "parallel-tasks survives a hand-edited null value without a traceback"
+assert_eq "3" "$INT_OUT3" "parallel-tasks falls back to the default (3) for null"
+rm -rf "$RINT"
 
 # --- kiro_config.py / kiro_setup.py: refuse a symlink-through-write escape. An
 # untrusted repo can check out `.claude` (or `.kiro/agents`) as a symlink pointing
@@ -947,6 +971,35 @@ for f in $SG_MENTIONS; do
   grep -q -- '--plan.*-- <path>\|--plan.*--$' "$f" || SG_STALE="$SG_STALE $f"
 done
 assert_eq "" "$SG_STALE" "every live doc showing a scope_guard.py --plan invocation also shows the required -- separator (no stale bare-path syntax)"
+
+# --- round-18 (final) completeness sweep: the round-12 check above only covers *.md.
+# scope_guard.py's `--` contract change is a breaking CLI change to a script SHARED
+# with co-agent's already-shipped consensus/harness flows, so ALSO lock in that:
+# (a) no script/workflow file anywhere invokes scope_guard.py via its CLI at all
+#     outside tests (the only non-test script usage is consensus_state.py's LIBRARY
+#     import of allowed_set(), a function API the argv contract doesn't touch), and
+# (b) that library usage still resolves — allowed_set stays importable and callable
+#     with its original single-argument signature. ---
+SG_SCRIPT_CALLS=$(grep -rln 'scope_guard\.py' --include="*.py" --include="*.sh" --include="*.yml" --include="*.yaml" plugins/ .github/ scripts/ 2>/dev/null \
+  | grep -v 'scripts/scope_guard\.py$' || true)
+SG_SCRIPT_BAD=""
+for f in $SG_SCRIPT_CALLS; do
+  # a comment MENTIONING the filename is fine; an actual CLI invocation (python3 ... or
+  # a bare executable call with --plan) is what the breaking change could strand
+  grep -qE 'python3[^#]*scope_guard\.py|scope_guard\.py["'"'"' ]+--plan' "$f" && SG_SCRIPT_BAD="$SG_SCRIPT_BAD $f"
+done
+assert_eq "" "$SG_SCRIPT_BAD" "no non-test script/workflow file invokes scope_guard.py via its CLI — the -- contract change cannot strand a code caller (the only script usage is consensus_state.py's library import)"
+SG_LIB_OUT=$(python3 -c "
+import sys, tempfile, os
+sys.path.insert(0, 'plugins/co-agent/skills/co-agent/scripts')
+import scope_guard
+p = tempfile.mktemp(suffix='.md')
+open(p, 'w').write('## Task 1: x\n**Files:**\n- Create: \`src/a.py\`\n- [ ] x\n')
+files = scope_guard.allowed_set(p)
+os.unlink(p)
+print('SG_LIB_OK' if files == ['src/a.py'] else f'SG_LIB_FAIL {files!r}')
+" 2>&1)
+assert_contains "$SG_LIB_OUT" "SG_LIB_OK" "scope_guard.allowed_set() keeps its original single-argument library signature that consensus_state.py imports (unaffected by the CLI's -- contract)"
 
 # --- CLAUDE.md documents the trust boundary consistently with co-agent's stance on kiro ---
 assert_contains "$(cat plugins/kiro/CLAUDE.md)" "no cwd-confined write sandbox" "kiro plugin CLAUDE.md documents why co-agent refuses Kiro as an implementer"
