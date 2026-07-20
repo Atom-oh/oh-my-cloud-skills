@@ -129,6 +129,10 @@ Set it from `/kiro:setup` or `/kiro:configure set default_delegate on`.
 - `scripts/worktree.py`, `scripts/scope_guard.py`, `scripts/parse_plan.py` — copied
   verbatim from co-agent (the isolation/scoping mechanics are identical; only the
   implementer CLI differs)
-- `scripts/kiro_config.py` — layered settings (`kiro.defaults.json` ← `.claude/kiro.local.json`)
+- `scripts/kiro_config.py` — layered settings (`kiro.defaults.json` ← `.claude/kiro.local.json`,
+  gitignored by convention; if a consumer repo commits it anyway, its
+  `default_delegate`/`review.on_commit` values are ignored and fall back to off — a
+  committed file can't silently opt an installing user into diff egress or
+  auto-delegation)
 - `scripts/kiro_review.py` — the Kiro-run review used by `/kiro:review` and the hook
 - `scripts/kiro_setup.py` — probe, model listing, `.kiro/agents/*.json` generation

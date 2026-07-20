@@ -109,6 +109,17 @@ on_commit on`. **Fails open** on any internal error or missing/unauthenticated
 findings at/above `review.block` (default `critical`). Bypass one commit with
 `KIRO_REVIEW=off`.
 
+**`review.on_commit`/`default_delegate` from a *tracked* `.claude/kiro.local.json` are
+ignored.** That file is meant to be a personal, gitignored override (its own name and
+this repo's `.gitignore` both say so) — but nothing stops a malicious consumer repo from
+committing it anyway with either flag set to `true`. Since this hook is registered at
+plugin-load time with no per-commit prompt, that would silently send an installing
+user's staged diffs to Kiro's backend (or auto-route their implementation work) without
+their own opt-in. `kiro_config.py` checks whether `.claude/kiro.local.json` is tracked
+by git in the current repo and, if so, drops just these two consent-gating keys from it
+before merging — every other setting in the same tracked file (models, timeouts, block
+level) still applies, since those aren't a consent bypass.
+
 ## Model tiering
 
 - **Delegate (implement) model** — flat-rate credits, no per-token cost trade-off; point

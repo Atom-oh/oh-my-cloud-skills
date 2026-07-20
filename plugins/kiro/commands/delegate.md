@@ -9,7 +9,8 @@ $ARGUMENTS
 
 Invoke `kiro-delegate-agent` to run the full pipeline for this request:
 
-1. **Plan** — write `.kiro/specs/<name>/{requirements,design,tasks}.md` per
+1. **Plan** — write `"$ROOT/.kiro/specs/<name>/"{requirements,design,tasks}.md` (never a
+   cwd-relative `.kiro/specs/…` — see the `$ROOT` note below) per
    `skills/kiro-delegate/references/spec-format.md`. Keep tasks' `**Files:**` blocks
    complete and backtick-wrapped.
 2. **Wave-plan + execute** — per task (or per disjoint-file wave, up to
@@ -23,7 +24,14 @@ Invoke `kiro-delegate-agent` to run the full pipeline for this request:
 Before starting (let `ROOT="$(git rev-parse --show-toplevel)"` — every root-sensitive
 call below passes `--root "$ROOT"`, same rule as configure/setup/review: these scripts
 default their root to the cwd, and a subdirectory invocation without `--root` would
-read/write `.kiro/agents/` and the config from the wrong place):
+read/write `.kiro/agents/` and the config from the wrong place). **`$ROOT` applies to
+every plain `.kiro/…` path too, not just the scripts' own `--root` flag** — the agent's
+own pipeline (step 1's spec, step 3's `cp` sources, the clean-tree `git status` below)
+must anchor every `.kiro/…` reference to `"$ROOT/.kiro/…"`, or a subdirectory invocation
+would read/write specs and copy files from the wrong location while `verify-agents
+--root "$ROOT"` above still correctly checked the real one — a silent divergence, not a
+hard failure, which makes it worse (see `agents/kiro-delegate-agent.md`'s `$ROOT` note
+at the top of its "Pipeline" section for the full rationale):
 
 1. If `python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_setup.py" probe`
    does not report `READY`, tell the user to run `/kiro:setup` first — don't attempt the
@@ -42,8 +50,10 @@ read/write `.kiro/agents/` and the config from the wrong place):
      before delegating.
    - exit 0: proceed.
 3. **Require a clean tree on the plan's declared file set before implementing anything**
-   (`git --literal-pathspecs status --porcelain -- <files>` — same flag as the
-   restore/clean fallback, so a pathspec is interpreted identically by both). If Kiro's
+   (`git -C "$ROOT" --literal-pathspecs status --porcelain -- <files>` — `-C "$ROOT"` so
+   this reads the real repo root regardless of cwd; `--literal-pathspecs` is the same
+   flag as the restore/clean fallback, so a pathspec is interpreted identically by
+   both). If Kiro's
    fix loop is later exhausted for a
    task, the fallback restores/cleans that task's files — which cannot tell "Kiro's own
    half-finished patch" apart from "the user's pre-existing uncommitted edit" to the

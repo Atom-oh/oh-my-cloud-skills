@@ -109,8 +109,14 @@ def _untracked_files(root, paths):
     parsing never un-quotes that — the "path" this function returns is then the quoted
     LITERAL string, which doesn't exist on disk, so the `--no-index` diff for it fails
     and the caller drops it silently (no warning). `-z` disables quoting entirely, so
-    entries come back exactly as they exist on disk."""
-    args = ["git", "-C", root, "ls-files", "--others", "--exclude-standard", "-z"]
+    entries come back exactly as they exist on disk. `--literal-pathspecs` too: `paths`
+    can come from `$ARGUMENTS` (`/kiro:review <paths>`, untrusted/user-provided) — a
+    `--` ends option parsing but does not disable git's own pathspec MAGIC syntax
+    (`:(glob)`, `:(top)`, …); without this flag a magic entry could widen the scanned
+    scope past what the user actually named, and its content ends up in what this
+    review sends to Kiro's backend. Same fix `worktree.py` got a blanket version of."""
+    args = ["git", "-C", root, "--literal-pathspecs", "ls-files", "--others",
+            "--exclude-standard", "-z"]
     if paths:
         args += ["--"] + list(paths)
     try:
@@ -138,9 +144,11 @@ def _git_diff(root, paths, cached):
     Returns (diff_text, error|None). A real git failure (bad ref, git missing, timeout)
     returns error set so the caller can distinguish "git broke" (fail-open, don't claim
     a clean review) from "genuinely no changes" (both would otherwise just look like an
-    empty diff)."""
+    empty diff). `--literal-pathspecs`: same reason as `_untracked_files` — `paths` can
+    be user-provided (`/kiro:review <paths>`), and a pathspec-magic entry would
+    otherwise widen the diffed scope past what was actually asked for."""
     env = _git_env()
-    args = ["git", "-C", root, "-c", f"core.attributesFile={os.devnull}",
+    args = ["git", "-C", root, "--literal-pathspecs", "-c", f"core.attributesFile={os.devnull}",
             "-c", "core.fsmonitor=", "-c", f"core.hooksPath={os.devnull}", "-c", "core.pager=cat",
             "diff"] + (["--cached"] if cached else ["HEAD"]) + ["--no-color", "--no-ext-diff", "--no-textconv"]
     if paths:
@@ -163,8 +171,8 @@ def _git_diff(root, paths, cached):
         # real usage error, so don't gate on returncode the way tracked-diff calls do.
         try:
             ur = subprocess.run(
-                ["git", "-C", root, "diff", "--no-color", "--no-ext-diff", "--no-textconv",
-                 "--no-index", "--", os.devnull, p],
+                ["git", "-C", root, "--literal-pathspecs", "diff", "--no-color",
+                 "--no-ext-diff", "--no-textconv", "--no-index", "--", os.devnull, p],
                 capture_output=True, text=True, timeout=30, env=env)
         except (subprocess.TimeoutExpired, OSError):
             continue   # best-effort for the untracked-file pass; the tracked diff above already succeeded

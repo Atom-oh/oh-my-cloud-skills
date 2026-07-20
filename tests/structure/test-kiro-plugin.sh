@@ -234,6 +234,31 @@ assert_eq "2" "$SETUPSYM2" "kiro_setup.py write-agents --force refuses an in-roo
 assert_eq "important agent-slot content" "$(cat "$RSYM2/.kiro/important-agent.txt")" "kiro_setup.py write-agents did not truncate the in-root symlink target"
 rm -rf "$RSYM2"
 
+# --- round-14 fix: .claude/kiro.local.json is meant to be a personal, gitignored
+# override — a malicious consumer repo could commit it anyway with
+# default_delegate/review.on_commit set to true, silently opting an installing user's
+# commits into diff egress / auto-delegation with no consent. Once the file is tracked
+# by git, those two consent-gating keys must fall back to the shipped default (off)
+# regardless of what the committed file claims. ---
+RCONSENT=$(mktemp -d "${TMPDIR:-/tmp}/kiro-consent.XXXXXX")
+git -C "$RCONSENT" init -q
+git -C "$RCONSENT" config user.email t@t.t; git -C "$RCONSENT" config user.name t
+mkdir -p "$RCONSENT/.claude"
+python3 -c "import json; json.dump({'default_delegate': True, 'review': {'on_commit': True, 'model': 'gpt-5.6-sol'}}, open('$RCONSENT/.claude/kiro.local.json','w'))"
+python3 "$CFG" review-on-commit --root "$RCONSENT" >/dev/null 2>&1 && CONSENT_UNTRACKED_RC=0 || CONSENT_UNTRACKED_RC=$?
+assert_eq "0" "$CONSENT_UNTRACKED_RC" "review-on-commit reads true from an UNTRACKED local.json (normal per-developer override, no attack)"
+git -C "$RCONSENT" add .claude/kiro.local.json
+git -C "$RCONSENT" commit -q -m "malicious repo commits its own local override"
+CONSENT_TRACKED_OUT=$(python3 "$CFG" review-on-commit --root "$RCONSENT" 2>&1) && CONSENT_TRACKED_RC=0 || CONSENT_TRACKED_RC=$?
+assert_eq "1" "$CONSENT_TRACKED_RC" "review-on-commit falls back to OFF once .claude/kiro.local.json is tracked by git, even though the tracked file says true"
+assert_contains "$CONSENT_TRACKED_OUT" "tracked by git" "the fallback prints a warning naming the reason (tracked config file)"
+CONSENT_DELEGATE_RC=0
+python3 "$CFG" default-delegate --root "$RCONSENT" >/dev/null 2>&1 || CONSENT_DELEGATE_RC=$?
+assert_eq "1" "$CONSENT_DELEGATE_RC" "default_delegate ALSO falls back to OFF once the file is tracked (both consent-gating keys stripped, not just on_commit)"
+CONSENT_MODEL=$(python3 "$CFG" review-model --root "$RCONSENT" 2>/dev/null)
+assert_eq "gpt-5.6-sol" "$CONSENT_MODEL" "non-consent settings (review.model) from the SAME tracked file still apply — only the two consent-gating keys are stripped"
+rm -rf "$RCONSENT"
+
 # --- round-13 fix: os.O_NOFOLLOW doesn't exist on Windows Python — referencing it
 # unconditionally raises AttributeError (not an OSError, so `except OSError` doesn't
 # catch it) before os.open is even called, crashing every `set`/write-agents call on
@@ -394,6 +419,29 @@ print('UNTRACKED_DIFF_OK' if err is None and 'new_file.py' in d and 'return 1' i
 " > "$R3U/probe.out" 2>&1
 assert_contains "$(cat "$R3U/probe.out")" "UNTRACKED_DIFF_OK" "working-tree diff mode includes an untracked new file (not silently empty)"
 rm -rf "$R3U"
+
+# --- round-14 fix: kiro_review.py's git calls must carry --literal-pathspecs — /kiro:review
+# <paths> takes paths from $ARGUMENTS (untrusted/user input), and a pathspec-magic value
+# in there could widen the diffed scope past what was actually asked for, sending more
+# content to Kiro's backend than intended. worktree.py got a blanket fix for this same
+# class in round 12; kiro_review.py's own git calls were missed. ---
+LP_REVIEW_OUT=$(python3 -c "
+import sys
+sys.path.insert(0, 'plugins/kiro/skills/kiro-delegate/scripts')
+import kiro_review as kr
+import unittest.mock as mock
+captured = []
+real_run = kr.subprocess.run
+def spy(argv, **kw):
+    captured.append(argv)
+    return real_run(argv, **kw)
+with mock.patch.object(kr.subprocess, 'run', side_effect=spy):
+    kr._untracked_files('.', [])
+    kr._git_diff('.', [], cached=True)
+missing = [argv for argv in captured if '--literal-pathspecs' not in argv]
+print('LP_OK' if not missing else f'LP_FAIL {missing!r}')
+" 2>&1)
+assert_contains "$LP_REVIEW_OUT" "LP_OK" "kiro_review.py's _untracked_files and _git_diff both include --literal-pathspecs in their git argv"
 
 # --- round-11 fix: _untracked_files() must use `-z` (unquoted, NUL-separated), not plain
 # `git ls-files --others` + splitlines() — without -z, git C-quotes a filename containing
@@ -752,6 +800,17 @@ rm -rf "$RSYMLEAF" "$OUTSIDE_LEAF"
 # argv entirely, <name> had no equivalent protection. ---
 assert_contains "$AGENT_MD" '\[A-Za-z0-9_-\]+' "kiro-delegate-agent.md mandates <name> be validated as an [A-Za-z0-9_-]+ slug before use"
 assert_contains "$AGENT_MD" "double-quote every path built from them" "kiro-delegate-agent.md documents quoting discipline for <wt>/<name> substitutions in step 3"
+
+# --- round-14 fix: every .kiro/... reference in the pipeline (spec write, cp SOURCE
+# paths, clean-tree check) must be anchored to "$ROOT/.kiro/..." — a bare cwd-relative
+# .kiro/... would silently diverge from what preflight's verify-agents --root "$ROOT"
+# already checked, if this pipeline ever runs from a subdirectory. ---
+assert_contains "$AGENT_MD" '"$ROOT/.kiro/agents/kiro-implementer.json"' "kiro-delegate-agent.md's preflight check is anchored to \$ROOT, not a bare .kiro/ path"
+assert_contains "$AGENT_MD" 'cp "$ROOT/.kiro/agents/kiro-implementer.json"' "kiro-delegate-agent.md's cp SOURCE for the implementer agent is \$ROOT-anchored"
+assert_contains "$AGENT_MD" 'cp "$ROOT/.kiro/specs/<name>"' "kiro-delegate-agent.md's cp SOURCE for the spec files is \$ROOT-anchored"
+DELEGATE_MD="$(cat plugins/kiro/commands/delegate.md)"
+assert_contains "$DELEGATE_MD" '"$ROOT/.kiro/specs/<name>' "delegate.md's spec-write path is \$ROOT-anchored, not cwd-relative"
+assert_contains "$DELEGATE_MD" 'git -C "$ROOT" --literal-pathspecs status' "delegate.md's clean-tree check is anchored to \$ROOT via -C"
 
 # --- round-12 fix: the kiro-cli chat invocation must be a FIXED instruction string that
 # points at .kiro/task-prompt.md via fs_read — never task/spec content interpolated

@@ -65,9 +65,21 @@ guarantee this whole plugin depends on.
 
 ## Pipeline (`/kiro:delegate`)
 
+**`$ROOT` is `git rev-parse --show-toplevel`, resolved ONCE at the start and used for
+EVERY `.kiro/…` reference below — never a bare `.kiro/…` relative to whatever the Bash
+tool's cwd happens to be.** `commands/delegate.md`'s preflight already anchors
+`kiro_setup.py verify-agents`/`kiro_config.py` calls to `--root "$ROOT"`; if the rest of
+this pipeline (spec writing in step 1, the `cp` source paths and clean-tree check in
+steps 0/3) instead used cwd-relative `.kiro/…` while running from a subdirectory, the
+spec would get written to `<subdir>/.kiro/specs/…` and the `cp` in step 3 would read
+from (or fail to find) that same wrong location — silently diverging from what
+preflight verified against `$ROOT`. Every `.kiro/…` path in this pipeline is
+`"$ROOT/.kiro/…"`, full stop.
+
 0. **Preflight (required, not optional).**
-   - `.kiro/agents/kiro-implementer.json` MUST exist AND be plugin-generated before step
-     3 runs. Run `kiro_setup.py verify-agents` (exit 0 ok · 1 tampered · 2 missing): on
+   - `"$ROOT/.kiro/agents/kiro-implementer.json"` MUST exist AND be plugin-generated
+     before step 3 runs. Run `kiro_setup.py verify-agents --root "$ROOT"` (exit 0 ok · 1
+     tampered · 2 missing): on
      `missing`, run `kiro_setup.py write-agents` first (same thing `/kiro:setup` does) —
      never fall through to the ad-hoc `--trust-tools=fs_read,fs_write` invocation, which
      carries NO `preToolUse` write-guard hook (that hook is defined *in* the custom agent
@@ -77,8 +89,8 @@ guarantee this whole plugin depends on.
      `preToolUse.runCommand` is a host command that executes; regenerate with
      `write-agents --force` (or ask the user) instead of trusting a hand-edited hook.
    - **Clean-tree check on the plan's whole declared file set, before any task
-     starts.** `git --literal-pathspecs status --porcelain -- <every file the plan's
-     tasks declare>` MUST be empty. **`--literal-pathspecs` here too** — this check
+     starts.** `git -C "$ROOT" --literal-pathspecs status --porcelain -- <every file the
+     plan's tasks declare>` MUST be empty. **`--literal-pathspecs` here too** — this check
      exists specifically to catch dirty files BEFORE the fallback's literal
      restore/clean runs (step 4/5, `references/delegated-implement.md` step 8); without
      the flag here, a plan entry containing git pathspec magic syntax could make this
@@ -92,7 +104,7 @@ guarantee this whole plugin depends on.
      stash it first (or exclude that file from the plan); never start implementing
      against a file the fallback might later restore over pre-existing user work.
 1. **Plan.** Read the user's request, decompose it, write a Kiro-native spec to
-   `.kiro/specs/<name>/{requirements,design,tasks}.md` — format and task-file-scoping
+   `"$ROOT/.kiro/specs/<name>/"{requirements,design,tasks}.md` — format and task-file-scoping
    rules: `skills/kiro-delegate/references/spec-format.md`. Every task's `**Files:**`
    block must be complete and backtick-wrapped, or `scope_guard.py` will reject Kiro's
    own work later. **Generate `<name>` yourself as a plain slug matching
@@ -162,11 +174,14 @@ guarantee this whole plugin depends on.
        `mkdir -p`** (defense-in-depth against a TOCTOU race between the check above and
        the mkdir) — `[ "$(cd "<wt>/.kiro/agents" && pwd -P)" = "$(cd "<wt>" && pwd -P)/.kiro/agents" ]`
        must hold before the `cp` that follows it.
-     - `mkdir -p <wt>/.kiro/agents && cp .kiro/agents/kiro-implementer.json
-       <wt>/.kiro/agents/` — so `--agent kiro-implementer` resolves inside the worktree
-       regardless of whether kiro-cli looks in cwd or walks upward from it.
-     - `mkdir -p <wt>/.kiro/specs/<name> && cp .kiro/specs/<name>/*.md
-       <wt>/.kiro/specs/<name>/` — copy the spec **into** the worktree too. The
+     - `mkdir -p <wt>/.kiro/agents && cp "$ROOT/.kiro/agents/kiro-implementer.json"
+       <wt>/.kiro/agents/` — the SOURCE is `$ROOT`-anchored, not cwd-relative (see the
+       `$ROOT` note at the top of this section) — so `--agent kiro-implementer` resolves
+       inside the worktree regardless of whether kiro-cli looks in cwd or walks upward
+       from it, AND regardless of what directory this Bash tool call's cwd happens to be.
+     - `mkdir -p <wt>/.kiro/specs/<name> && cp "$ROOT/.kiro/specs/<name>"/*.md
+       <wt>/.kiro/specs/<name>/` — copy the spec **into** the worktree too, again from
+       the `$ROOT`-anchored source. The
        implementer's `fs_read` is now cwd-confined by a realpath preToolUse guard (same
        one `fs_write` carries — see "Trust boundary" step 3 below), so it can no longer
        reach an absolute path outside `<wt>`; the spec has to be inside the worktree for

@@ -69,6 +69,51 @@ def load_defaults():
     return d
 
 
+def _is_tracked_by_git(root, relpath):
+    """True iff `relpath` (relative to `root`) is tracked by git in that repo.
+    Best-effort — any failure (not a git repo, git missing, timeout) returns False,
+    which is the SAFE direction here: the only thing a True result does is REDUCE trust
+    in the local config's consent-relevant keys, so a false negative just falls back to
+    the pre-existing (already-reviewed) behavior, never a new hole."""
+    try:
+        r = subprocess.run(["git", "-C", root, "ls-files", "--error-unmatch", "--", relpath],
+                            capture_output=True, text=True, timeout=10)
+        return r.returncode == 0
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+
+
+def _strip_consent_keys(raw, root, lp):
+    """`.claude/kiro.local.json` is meant to be a personal, gitignored override — its
+    own name and this repo's `.gitignore` both say so. Nothing stops a malicious
+    consumer repo from committing it anyway with `default_delegate`/`review.on_commit`
+    set to true: if an installing user then commits in THAT repo, the pre-commit hook
+    (registered at plugin-load time, no per-commit prompt) would send staged diff
+    content to Kiro's backend, and implementation work would auto-route to Kiro —
+    neither of which the user themselves opted into. If `raw` (the local override) is
+    tracked by git, drop these two consent-gating keys from it before merging, so they
+    fall back to `kiro.defaults.json`'s shipped values (both off) regardless of what a
+    committed file claims. Every OTHER key (models, timeouts, block level) still applies
+    from a tracked file — those aren't a consent bypass, just configuration."""
+    if not _is_tracked_by_git(root, os.path.join(".claude", "kiro.local.json")):
+        return raw
+    stripped = copy.deepcopy(raw)
+    dropped = []
+    if "default_delegate" in stripped:
+        del stripped["default_delegate"]
+        dropped.append("default_delegate")
+    if isinstance(stripped.get("review"), dict) and "on_commit" in stripped["review"]:
+        del stripped["review"]["on_commit"]
+        dropped.append("review.on_commit")
+    if dropped:
+        print(f"⚠️  {lp} is tracked by git in this repo — a personal override file "
+              f"should never be committed. Ignoring its {', '.join(dropped)} value(s) "
+              f"and falling back to the shipped default (off) for consent-gating "
+              f"settings; a committed file must not be able to silently opt this repo's "
+              f"users into diff egress or auto-delegation.", file=sys.stderr)
+    return stripped
+
+
 def deep_merge(base, over):
     out = copy.deepcopy(base)
     for k, v in over.items():
@@ -120,7 +165,7 @@ def effective(root):
                 print(f"⚠️  ignoring malformed {lp}: expected a JSON object at the top "
                       f"level, got {type(raw).__name__}", file=sys.stderr)
             else:
-                cfg = deep_merge(cfg, raw)
+                cfg = deep_merge(cfg, _strip_consent_keys(raw, root, lp))
         except (json.JSONDecodeError, OSError) as e:
             print(f"⚠️  ignoring malformed {lp}: {e}", file=sys.stderr)
     return cfg
