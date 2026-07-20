@@ -42,7 +42,9 @@ read/write `.kiro/agents/` and the config from the wrong place):
      before delegating.
    - exit 0: proceed.
 3. **Require a clean tree on the plan's declared file set before implementing anything**
-   (`git status --porcelain -- <files>`). If Kiro's fix loop is later exhausted for a
+   (`git --literal-pathspecs status --porcelain -- <files>` — same flag as the
+   restore/clean fallback, so a pathspec is interpreted identically by both). If Kiro's
+   fix loop is later exhausted for a
    task, the fallback restores/cleans that task's files — which cannot tell "Kiro's own
    half-finished patch" apart from "the user's pre-existing uncommitted edit" to the
    same file. Checking this before any task starts, not after a fallback is triggered,

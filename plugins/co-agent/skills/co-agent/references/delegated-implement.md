@@ -18,7 +18,9 @@ peer could in principle write via `..`/absolute paths; that never reaches the ma
 because the host never copies the peer's filesystem. `worktree.py capture-diff` runs
 `git add -A` (respects `.gitignore`) **inside the worktree** then `git diff --cached`, so
 **only files changed within the worktree** are captured; out-of-worktree writes are invisible.
-Each captured path must pass `scope_guard.py --plan <plan>` (out-of-scope hunks dropped), and
+Each captured path must pass `scope_guard.py --plan <plan> -- <path>...` (candidate
+paths go after a literal `--`; `scope_guard.py --help` for why) — out-of-scope hunks
+are dropped — and
 the host applies the result and **runs the tests on the main tree** — never trusting a test
 run inside the worktree. Capture-scoped-to-worktree + scope_guard + host-applies-only-that is
 the load-bearing guarantee; the sandbox is defense-in-depth.
@@ -101,7 +103,8 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
    code); **block** only when **no gate-eligible peer** remains for the review panel, since
    then the multi-model gate can't run — tell the user to run `/co-agent:setup`. Never silently block.
 4. **Capture + scope.** `worktree.py capture-diff <wt>` → patch; every path must pass
-   `scope_guard.py --plan <plan>`. Out-of-scope hunks are dropped and fed back.
+   `scope_guard.py --plan <plan> -- <path>...` (candidates go after a literal `--`).
+   Out-of-scope hunks are dropped and fed back.
 5. **Apply + verify (host).** Snapshot the main tree before the peer runs
    (`MAIN0=$(git -C . status --porcelain)`) and re-check after — **abort if it changed**
    (a peer that escaped its cwd and wrote into the main checkout out-of-band, which the

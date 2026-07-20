@@ -28,7 +28,15 @@ _CLEAN_ENV = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.
 
 
 def git(cwd, *args, env=None):
-    return subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, env=env)
+    # --literal-pathspecs, unconditionally: every pathspec this script ever passes is an
+    # exact/generated filename (from `ls-files`, a caller's own list, etc.), never a
+    # glob a human typed — so there is no legitimate use of git's pathspec MAGIC syntax
+    # (`:(glob)`, `:(top)`, …) here, only risk. Without this, a repo-derived filename
+    # that happens to start with `:(` would be interpreted as magic instead of a literal
+    # path by any pathspec-taking subcommand (`reset -- <files>`, `add`, `diff`, …),
+    # potentially widening a destructive call (`reset`) past the intended file set.
+    return subprocess.run(["git", "-C", cwd, "--literal-pathspecs", *args],
+                           capture_output=True, text=True, env=env)
 
 
 # `capture-diff` must survive the peer committing inside the worktree (workspace-write

@@ -31,7 +31,8 @@ worktree as a full sandbox it isn't:
 2. Only what `worktree.py capture-diff` captures **from inside that worktree** can ever
    reach the main tree — anything Kiro wrote outside it (via `..`, absolute paths) is
    simply never seen. **This is the actual guarantee**: changes to the main tree.
-3. Every captured path must pass `scope_guard.py --plan <tasks.md>` before the host
+3. Every captured path must pass `scope_guard.py --plan <tasks.md> -- <path>...`
+   (candidates go after a literal `--`) before the host
    applies it — a path outside the **plan's whole declared file set** (the union across
    all tasks, not just the one currently running — `scope_guard.py`, verbatim from
    co-agent, has no per-task filter) is dropped. Two tasks in the same wave still can't
@@ -76,8 +77,15 @@ guarantee this whole plugin depends on.
      `preToolUse.runCommand` is a host command that executes; regenerate with
      `write-agents --force` (or ask the user) instead of trusting a hand-edited hook.
    - **Clean-tree check on the plan's whole declared file set, before any task
-     starts.** `git status --porcelain -- <every file the plan's tasks declare>` MUST be
-     empty. Step 5's fallback restore/clean is scoped to a task's files and has no way
+     starts.** `git --literal-pathspecs status --porcelain -- <every file the plan's
+     tasks declare>` MUST be empty. **`--literal-pathspecs` here too** — this check
+     exists specifically to catch dirty files BEFORE the fallback's literal
+     restore/clean runs (step 4/5, `references/delegated-implement.md` step 8); without
+     the flag here, a plan entry containing git pathspec magic syntax could make this
+     `status` call miss a dirty file that the later LITERAL restore/clean then legitimately
+     doesn't recognize as declared-scope either — the two calls must interpret every
+     pathspec the same way, or the check this step exists for doesn't actually hold.
+     Step 5's fallback restore/clean is scoped to a task's files and has no way
      to distinguish "this is Kiro's half-finished patch, safe to discard" from "the user
      had uncommitted work on this exact file before delegation started" — it would
      discard both. If any declared file is dirty, stop and tell the user to commit or
@@ -119,13 +127,18 @@ guarantee this whole plugin depends on.
        first `mkdir -p` of this step runs at all:
        ```bash
        for p in "<wt>/.kiro" "<wt>/.kiro/agents" "<wt>/.kiro/specs"; do
-         [ -L "$p" ] && { echo "REFUSE: $p is a symlink — stop, do not mkdir/cp through it"; }
+         [ -L "$p" ] && { echo "REFUSE: $p is a symlink — stop, do not mkdir/cp through it" >&2; exit 1; }
        done
        ```
-       A component that doesn't exist yet simply isn't a symlink (`-L` is false),
-       which is exactly the harmless case — `mkdir -p` will create it fresh as a real
-       directory. If any check reports a symlink, stop and tell the user; don't
-       silently follow it. **Also re-verify with `realpath` immediately after each
+       **The `exit 1` is not optional decoration — run this loop as its own Bash tool
+       call and check its exit code before issuing the `mkdir -p`/`cp` commands below.**
+       An earlier draft of this check only `echo`ed the refusal with no `exit`, which
+       meant the loop printed a warning and then let the very `mkdir -p`/`cp` it was
+       supposed to block run anyway — a check that never actually stops anything is not
+       a check. A component that doesn't exist yet simply isn't a symlink (`-L` is
+       false), which is exactly the harmless case — `mkdir -p` will create it fresh as a
+       real directory, and the loop exits 0. If it exits 1, stop and tell the user; don't
+       proceed to mkdir/cp regardless. **Also re-verify with `realpath` immediately after each
        `mkdir -p`** (defense-in-depth against a TOCTOU race between the check above and
        the mkdir) — `[ "$(cd "<wt>/.kiro/agents" && pwd -P)" = "$(cd "<wt>" && pwd -P)/.kiro/agents" ]`
        must hold before the `cp` that follows it.
@@ -138,33 +151,44 @@ guarantee this whole plugin depends on.
        one `fs_write` carries — see "Trust boundary" step 3 below), so it can no longer
        reach an absolute path outside `<wt>`; the spec has to be inside the worktree for
        `fs_read` to see it at all.
-     - **Exclude both copies from capture in a way that does NOT depend on the consumer
-       repo's `.gitignore`.** `worktree.py capture-diff` runs `git add -A`, which
-       respects the worktree's own `.git/info/exclude` in ADDITION to any tracked
-       `.gitignore`. Append both paths to the worktree's exclude file —
-       `printf '%s\n' '.kiro/agents/kiro-implementer.json' '.kiro/specs/<name>/' >>
-       "$(git -C <wt> rev-parse --git-path info/exclude)"` — right after the copies.
-       This repo happens to gitignore `.kiro/agents/` and `.kiro/specs/`, but a repo
-       where the plugin is *installed* may not, and without this the copies would be
-       captured, fail `scope_guard.py` (paths not in the plan), and their exit-1 would
-       drop the whole otherwise-valid patch.
-     - Point Kiro at the spec files by a path **relative to `<wt>`**
-       (`.kiro/specs/<name>/…`, resolved against the implementer's cwd) in the task
-       prompt — never an absolute path from the main checkout; the read guard would
-       refuse it.
-   - Run Kiro inside `<wt>`: `kiro-cli chat "<task prompt + relative pointer to the spec
-     files>" --no-interactive --wrap never --agent kiro-implementer
-     [--model <delegate.model>]` — cwd **must** be `<wt>`. `--agent kiro-implementer`
-     carries the read/write-guard hooks and whatever `execute_bash` grant the user chose
-     at `/kiro:setup`; per step 0, this is the only invocation form this pipeline uses.
-     Adapter detail: `references/kiro-headless.md`.
+     - **Write the task prompt to `<wt>/.kiro/task-prompt.md` — never pass task/spec
+       content directly in the `kiro-cli chat` argv.** Put the actual task description
+       (what step 1 wrote for this task) plus a relative pointer to the spec files
+       (`.kiro/specs/<name>/…`) into that file's content. This is the same reason the
+       spec files themselves get copied in rather than read absolute: task descriptions
+       are derived from the user's request and this run's own plan/spec content, which
+       this pipeline doesn't fully control against a hostile/consumer repo — putting any
+       of that text directly into a shell-interpolated argv string risks a `$(...)`/
+       backtick/quote in it executing on the HOST before Kiro ever runs, bypassing the
+       worktree/`execute_bash` boundary entirely. `references/kiro-headless.md` →
+       "Implement (write-mode)" has the full rationale (mirrors `kiro_review.py`'s
+       already-safe pattern for untrusted diff content).
+     - **Exclude all three copies from capture in a way that does NOT depend on the
+       consumer repo's `.gitignore`.** `worktree.py capture-diff` runs `git add -A`,
+       which respects the worktree's own `.git/info/exclude` in ADDITION to any tracked
+       `.gitignore`. Append all three paths to the worktree's exclude file —
+       `printf '%s\n' '.kiro/agents/kiro-implementer.json' '.kiro/specs/<name>/'
+       '.kiro/task-prompt.md' >> "$(git -C <wt> rev-parse --git-path info/exclude)"` —
+       right after the copies. This repo happens to gitignore `.kiro/agents/` and
+       `.kiro/specs/`, but a repo where the plugin is *installed* may not, and without
+       this the copies would be captured, fail `scope_guard.py` (paths not in the
+       plan), and their exit-1 would drop the whole otherwise-valid patch.
+   - Run Kiro inside `<wt>`: `kiro-cli chat "Read .kiro/task-prompt.md via fs_read — it
+     has your task and any spec file pointers — then implement exactly what it
+     describes. Do not touch files outside the task's declared file set."
+     --no-interactive --wrap never --agent kiro-implementer [--model <delegate.model>]`
+     — this exact sentence, unchanged across every task; **cwd MUST be `<wt>`**.
+     `--agent kiro-implementer` carries the read/write-guard hooks and whatever
+     `execute_bash` grant the user chose at `/kiro:setup`; per step 0, this is the only
+     invocation form this pipeline uses. Adapter detail: `references/kiro-headless.md`.
    - `worktree.py capture-diff <wt>` → patch. Every path through
      `scope_guard.py --plan <tasks.md> -- <path>...` — candidates go after a literal
      `--` (required; a bare `--list` with no separator is the only thing recognized
-     before it) — drop out-of-scope hunks. (The copied
-     `.kiro/agents/kiro-implementer.json` is excluded via the worktree's
-     `.git/info/exclude` entry added above, so `git add -A` never stages it — this holds
-     even in a consumer repo that doesn't gitignore `.kiro/agents/`.)
+     before it) — drop out-of-scope hunks. (All three copied files —
+     `.kiro/agents/kiro-implementer.json`, `.kiro/specs/<name>/`,
+     `.kiro/task-prompt.md` — are excluded via the worktree's `.git/info/exclude`
+     entries added above, so `git add -A` never stages any of them — this holds even in
+     a consumer repo that doesn't gitignore `.kiro/`.)
    - Apply the captured, scoped patch to the main tree. Run the project's tests.
 4. **Verify + bounded retry.** Test failure → feed the failure back to Kiro and retry,
    bounded by `delegate.max_fix_rounds` (default 2; `kiro_config.py max-fix-rounds`).

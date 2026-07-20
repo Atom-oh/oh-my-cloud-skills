@@ -565,6 +565,29 @@ assert_contains "$DIFF" "feature.py" "kiro plugin's worktree.py capture-diff wor
 python3 "$WT" remove "$WTD" --root "$R5" >/dev/null 2>&1
 rm -rf "$R5"
 
+# --- round-12 fix: worktree.py's shared git() helper must pass --literal-pathspecs on
+# EVERY invocation — every pathspec this script ever passes is an exact/generated
+# filename, never a human-typed glob, so there's no legitimate use of git pathspec MAGIC
+# syntax here, only risk (a repo-derived filename starting with e.g. ":(" would
+# otherwise be interpreted as magic instead of literal by a pathspec-taking subcommand
+# like `reset -- <files>`, potentially widening that destructive call). ---
+WT_LP_OUT=$(python3 -c "
+import sys
+sys.path.insert(0, 'plugins/kiro/skills/kiro-delegate/scripts')
+import worktree as wt
+import unittest.mock as mock
+captured = {}
+real_run = wt.subprocess.run
+def spy(argv, **kw):
+    captured['argv'] = argv
+    return real_run(argv, **kw)
+with mock.patch.object(wt.subprocess, 'run', side_effect=spy):
+    wt.git('.', 'status')
+argv = captured['argv']
+print('LP_OK' if '--literal-pathspecs' in argv else f'LP_FAIL {argv!r}')
+" 2>&1)
+assert_contains "$WT_LP_OUT" "LP_OK" "worktree.py's git() helper includes --literal-pathspecs on every call"
+
 # scope_guard against a tasks.md-shaped plan (backtick-wrapped Files: block)
 R6=$(mktemp -d "${TMPDIR:-/tmp}/kiro-sg.XXXXXX")
 cat > "$R6/tasks.md" <<'EOF'
@@ -632,9 +655,56 @@ REF="plugins/kiro/skills/kiro-delegate/references/spec-format.md"
 assert_file_exists "$REF" "spec-format.md exists"
 assert_contains "$(cat "$REF")" "backtick" "spec-format.md documents the backtick-wrapped path requirement"
 
+# --- round-12 fix: every LIVE doc that shows a scope_guard.py --plan invocation must show
+# it with the `--` separator (required since round 8's gate-bypass fix) — a doc that
+# still shows a bare `--plan <plan>` with no `--` mention risks an agent following it
+# constructing an old-style, now-usage-error (exit 2) call, which reads as "out of
+# scope, stop" and could block normal work. Excludes docs/superpowers/plans|specs/ —
+# frozen historical records of what was true when a stage shipped, not living
+# references kept in sync. ---
+SG_MENTIONS=$(grep -rln 'scope_guard\.py --plan' --include="*.md" . 2>/dev/null \
+  | grep -v '\.git/' | grep -v 'docs/superpowers/plans/' | grep -v 'docs/superpowers/specs/')
+SG_STALE=""
+for f in $SG_MENTIONS; do
+  # a live doc's --plan mention must have '--' (the separator) somewhere nearby (same
+  # file) documenting the requirement — coarse repo-wide check, not per-line, since the
+  # separator mention may be a few words after --plan on the same line or wrapped
+  grep -q -- '--plan.*-- <path>\|--plan.*--$' "$f" || SG_STALE="$SG_STALE $f"
+done
+assert_eq "" "$SG_STALE" "every live doc showing a scope_guard.py --plan invocation also shows the required -- separator (no stale bare-path syntax)"
+
 # --- CLAUDE.md documents the trust boundary consistently with co-agent's stance on kiro ---
 assert_contains "$(cat plugins/kiro/CLAUDE.md)" "no cwd-confined write sandbox" "kiro plugin CLAUDE.md documents why co-agent refuses Kiro as an implementer"
 assert_contains "$(cat plugins/co-agent/skills/co-agent/scripts/co_agent_config.py)" 'SANDBOX_IMPLEMENTERS = ("codex", "agy")' "co-agent still excludes kiro-cli from SANDBOX_IMPLEMENTERS (consistency check)"
+
+# --- round-12 fix: kiro-delegate-agent.md's own symlink-refusal example must actually
+# `exit` on finding a symlink, not just `echo` a warning and let the caller's mkdir/cp
+# proceed anyway — a check that never stops anything isn't a check. Extract the exact
+# code fence from the doc and run it for real against a directory containing a planted
+# symlink component, confirming it exits non-zero and that mkdir/cp never ran. ---
+AGENT_MD="$(cat plugins/kiro/agents/kiro-delegate-agent.md)"
+SNIPPET=$(printf '%s\n' "$AGENT_MD" | sed -n '/^       ```bash$/,/^       ```$/p' | sed '1d;$d')
+assert_contains "$SNIPPET" "exit 1" "kiro-delegate-agent.md's symlink-refusal code fence contains an actual exit, not just echo"
+RSYMWT=$(mktemp -d "${TMPDIR:-/tmp}/kiro-symlink-wt.XXXXXX")
+OUTSIDE_WT=$(mktemp -d "${TMPDIR:-/tmp}/kiro-symlink-wt-outside.XXXXXX")
+mkdir -p "$RSYMWT/.kiro"
+ln -s "$OUTSIDE_WT" "$RSYMWT/.kiro/agents"
+SNIPPET_RC=0
+bash -c "$(printf '%s' "$SNIPPET" | sed "s|<wt>|$RSYMWT|g")" >/dev/null 2>&1 || SNIPPET_RC=$?
+assert_eq "1" "$SNIPPET_RC" "running the doc's actual symlink-check snippet against a planted symlink exits 1 (halts), not 0"
+assert_grep_no_match "kiro-implementer\|kiro-reviewer" "$(ls "$OUTSIDE_WT" 2>/dev/null)" "the snippet exiting before mkdir/cp means nothing was ever written into the symlink target"
+rm -rf "$RSYMWT" "$OUTSIDE_WT"
+
+# --- round-12 fix: the kiro-cli chat invocation must be a FIXED instruction string that
+# points at .kiro/task-prompt.md via fs_read — never task/spec content interpolated
+# directly into the shell command line (a $(...) / backtick / quote in that content
+# would execute on the HOST before kiro-cli ever runs). Guard against regressing to the
+# live-invocation form `kiro-cli chat "<TASK PROMPT>"` / `<task prompt` in either doc
+# (the "earlier draft" rationale text mentioning it as history is fine and excluded). ---
+KHM="$(cat plugins/kiro/skills/kiro-delegate/references/kiro-headless.md)"
+assert_contains "$KHM" "task-prompt.md" "kiro-headless.md documents the task-prompt.md fs_read pattern"
+assert_contains "$AGENT_MD" "task-prompt.md" "kiro-delegate-agent.md writes the task prompt to task-prompt.md instead of interpolating it into argv"
+assert_grep_no_match 'kiro-cli chat "<task prompt' "$AGENT_MD" "kiro-delegate-agent.md's live invocation no longer shows task content interpolated into the kiro-cli chat argv"
 
 # --- round-11 fix: the destructive restore/clean fallback commands must use
 # --literal-pathspecs — a `--` only ends OPTION parsing, not git's own pathspec MAGIC
@@ -644,6 +714,11 @@ DELEG_IMPL="$(cat plugins/co-agent/skills/co-agent/references/delegated-implemen
 LP_COUNT=$(printf '%s' "$DELEG_IMPL" | grep -o -- "--literal-pathspecs" | wc -l | tr -d ' ')
 assert_eq "0" "$([ "$LP_COUNT" -ge 8 ] && echo 0 || echo 1)" "delegated-implement.md's restore/clean fallback commands all carry --literal-pathspecs (found $LP_COUNT, need >=8 across step 8's restore/clean, the guarded clean, the abort-a-task restore/clean, and the abort-every-task restore/clean)"
 assert_contains "$(cat plugins/kiro/agents/kiro-delegate-agent.md)" "literal-pathspecs" "kiro-delegate-agent.md's own restore/clean mentions carry --literal-pathspecs too"
+# round-12: the clean-tree check (git status) must ALSO carry the flag — it exists to
+# catch dirty files before the literal restore/clean runs, so both must interpret every
+# pathspec the same way, or the check doesn't actually hold.
+assert_contains "$(cat plugins/kiro/agents/kiro-delegate-agent.md)" "literal-pathspecs status" "kiro-delegate-agent.md's clean-tree check (git status) carries --literal-pathspecs, matching the restore/clean fallback"
+assert_contains "$(cat plugins/kiro/commands/delegate.md)" "literal-pathspecs" "delegate.md's clean-tree check carries --literal-pathspecs too"
 
 # --- round-9 fix regression: configure.md's on_commit description must NOT contradict
 #     every other doc (README x2, CLAUDE.md, setup.md, review.md, SKILL.md) and the

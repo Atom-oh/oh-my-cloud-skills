@@ -25,9 +25,26 @@ caller.
 ## Implement (write-mode)
 
 ```bash
-kiro-cli chat "<TASK PROMPT>" --mode default --no-interactive --wrap never \
+kiro-cli chat "Read .kiro/task-prompt.md via fs_read — it has your task and any spec \
+file pointers — then implement exactly what it describes. Do not touch files outside \
+the task's declared file set." --mode default --no-interactive --wrap never \
   --agent kiro-implementer [--model <m>]
 ```
+
+**The task prompt argument above is a FIXED STRING, not per-task interpolated text —
+this is deliberate, not a simplification.** An earlier draft put the actual task
+description directly in this argv position (`kiro-cli chat "<TASK PROMPT>"`), built by
+substituting task/spec-derived text into a shell double-quoted string. That text can
+include content this pipeline doesn't fully control (spec/plan content, or anything
+folded into the task description while decomposing a request against a hostile/consumer
+repo) — a `$(...)`, backtick, or unescaped `"` inside it would be interpreted by the
+HOST shell that runs this command **before `kiro-cli` ever sees it**, executing as
+whatever permissions ran the command — completely outside the worktree/`execute_bash`
+restrictions this plugin's trust boundary depends on. Writing the real task content to
+`.kiro/task-prompt.md` and letting the implementer `fs_read` it (exactly the pattern
+`kiro_review.py`'s `_PROMPT_INSTR` already uses for untrusted diff content) means the
+shell command line never contains anything but this one fixed sentence, for every task,
+every time — nothing to inject into.
 
 **`--agent kiro-implementer` is REQUIRED, not preferred.** `/kiro:delegate`'s preflight
 (`agents/kiro-delegate-agent.md` step 0) refuses to implement anything until
@@ -39,12 +56,14 @@ a plain `--trust-tools=...` flag. An older draft of this plugin allowed
 yet — that fallback has NO write-guard and is no longer used by this pipeline; if you
 see it in an older note, treat the agent-file requirement above as authoritative.
 
-- **Prompt is a positional argv `[INPUT]`** — Kiro ignores stdin in `chat`. For anything
-  beyond a one-line prompt, don't embed large context in argv (`ps` exposure + `ARG_MAX`);
-  point Kiro at the spec files (copied into the worktree, path **relative to `<wt>`** —
-  the implementer's `fs_read` is cwd-confined, see "Trust boundary" below) with a short
-  instruction and let it `fs_read` them itself (it already has the tool via the custom
-  agent's `allowedTools`).
+- **Prompt is a positional argv `[INPUT]`** — Kiro ignores stdin in `chat`. Never embed
+  task/spec-derived text directly in this argv position (`ps` exposure + `ARG_MAX`, and —
+  the load-bearing reason — shell metacharacter injection on the host, see the fixed-string
+  rationale above); write it to `.kiro/task-prompt.md` **inside the worktree** instead and
+  point Kiro at it (path **relative to `<wt>`** — the implementer's `fs_read` is
+  cwd-confined, see "Trust boundary" below) with the one fixed instruction sentence, letting
+  it `fs_read` the file itself (it already has the tool via the custom agent's
+  `allowedTools`). Same for the spec files.
 - **`execute_bash` is NOT in the implementer's default tool set** — it's off unless
   `/kiro:setup`'s explicit trust-decision question was answered yes (`kiro_setup.py
   write-agents --enable-bash`); a task needing a shell command falls back to Claude
@@ -86,7 +105,8 @@ the **worktree isolation + capture + scope_guard** path load-bearing for that on
 3. `worktree.py capture-diff <wt>` stages `git add -A` **inside `<wt>` only**, then diffs
    against the recorded base SHA. Anything Kiro wrote outside `<wt>` is invisible here —
    it was never captured, so it can never reach the main tree.
-4. Every captured path must pass `scope_guard.py --plan <tasks.md-derived plan>` — a path
+4. Every captured path must pass `scope_guard.py --plan <tasks.md-derived plan> --
+   <path>...` (candidates go after a literal `--`) — a path
    outside the **plan's whole declared file set** (the union across every task, not the
    single task currently running — this script has no per-task filter, verbatim from
    co-agent) is dropped. It cannot by itself stop one task's run from touching a file
