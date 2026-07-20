@@ -212,15 +212,12 @@ infrastructure:
 
 ### requiredResources (선택)
 
-특별 리소스 요청 (예: GPU 인스턴스)
+표준 계정 한도를 넘는 특별 리소스 요청 (예: GPU 인스턴스). **콘텐츠당 1개의 서비스만 선언 가능** — 현재 허용 서비스는 `sagemaker`와 `guardduty`뿐이며, 타입/수량이 허용 목록과 정확히 일치해야 한다. 상세: `references/event-quotas-guide.md`
 
 ```yaml
   requiredResources:
     sagemaker:
       - type: endpoint/ml.g5.12xlarge
-        quantity: 1
-    ec2:
-      - type: p3.2xlarge
         quantity: 1
 ```
 

@@ -345,6 +345,11 @@ workshop-agent → content-review-agent (필수) → Workshop Studio deployment
 - `{plugin-dir}/skills/workshop-creator/references/contentspec-complete.md` — Full contentspec.yaml schema, Magic Variables
 - `{plugin-dir}/skills/workshop-creator/references/central-account-guide.md` — Central account concepts, Client API, lifecycle notifications
 - `{plugin-dir}/skills/workshop-creator/references/event-params-guide.md` — params vs CFN parameters vs Magic Variables, userOverridable, Outputs
+- `{plugin-dir}/skills/workshop-creator/references/workshop-assets-guide.md` — Repository/S3 Assets, asset scanning, Asset Static URLs, EC2 keypair
+- `{plugin-dir}/skills/workshop-creator/references/event-quotas-guide.md` — Account quotas, Grants, Required Resources, event cost, ODCRs
+- `{plugin-dir}/skills/workshop-creator/references/event-operations-guide.md` — Participant survey, page organization/routing, Autostart, fraud prevention, Opportunity ID
+- `{plugin-dir}/skills/workshop-creator/references/supported-services-guide.md` — Supported/unsupported services, GPU/instance limits, Marketplace & Bedrock support
+- `{plugin-dir}/skills/workshop-creator/references/platform-features-guide.md` — MCP Server, Atlas Agent, Content Quality Program
 - `{plugin-dir}/skills/workshop-creator/references/` — Directive syntax, front matter, CloudFormation patterns (remaining files)
 
 ---

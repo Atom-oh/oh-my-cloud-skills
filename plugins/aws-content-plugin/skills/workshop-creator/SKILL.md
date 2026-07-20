@@ -230,7 +230,7 @@ cfn_nag_scan --input-path static/workshop.yaml
 5. 모듈별 콘텐츠 작성 — 단계별 hands-on
 6. 이미지/스크린샷 추가
 7. `cfn-lint` / `cfn_nag` 검증
-8. `workshop-review-agent`로 콘텐츠 검토
+8. `content-review-agent`로 콘텐츠 검토
 
 ---
 
@@ -274,3 +274,8 @@ cfn_nag_scan --input-path static/workshop.yaml
 | `references/cloudformation-reference.md` | CloudFormation 인프라 패턴 |
 | `references/central-account-guide.md` | 중앙 계정 (centralAccountInfrastructure, 데이터 흐름, 라이프사이클) |
 | `references/event-params-guide.md` | 이벤트 파라미터 / 변수 주입 (params, userOverridable, Magic Variables, Outputs) |
+| `references/workshop-assets-guide.md` | 에셋 관리 (Repository/S3 Assets, 스캔, ASU, EC2 키페어) |
+| `references/event-quotas-guide.md` | 계정 할당량, Grant, Required Resources, 비용, ODCR |
+| `references/event-operations-guide.md` | 참가자 서베이, 콘텐츠 파일 구조, Autostart, 사기 방지, Opportunity ID |
+| `references/platform-features-guide.md` | MCP Server, Atlas Agent, Content Quality Program |
+| `references/supported-services-guide.md` | 지원/미지원 서비스, GPU/인스턴스 제약, Marketplace/Bedrock 지원 범위 |
