@@ -48,7 +48,8 @@ def main():
     if "--plan" not in args:
         print(__doc__)
         return 2
-    plan = args[args.index("--plan") + 1] if args.index("--plan") + 1 < len(args) else None
+    plan_flag = args.index("--plan")
+    plan = args[plan_flag + 1] if plan_flag + 1 < len(args) else None
     if not plan:
         print("--plan requires a path", file=sys.stderr)
         return 2
@@ -59,10 +60,12 @@ def main():
         return 2
 
     # Only `--plan <value>` is a real option here; every other arg is a candidate path.
-    # A candidate that itself starts with `--` (e.g. a file literally named "--foo.py",
-    # or an option-lookalike) must be REJECTED as out-of-scope, not silently dropped from
-    # the checked set — dropping it would let such a path bypass the gate entirely.
-    rest = [a for a in args if a != "--plan" and a != plan]
+    # Remove exactly the two tokens `--plan <value>` BY POSITION, not by value — a
+    # value-based filter (`a != plan`) also dropped any CANDIDATE whose path happened to
+    # equal the plan path, silently excluding it from the scope check. A candidate that
+    # itself starts with `--` (e.g. a file literally named "--foo.py") must be REJECTED
+    # as out-of-scope, not silently dropped — dropping it would bypass the gate entirely.
+    rest = [a for i, a in enumerate(args) if i not in (plan_flag, plan_flag + 1)]
 
     # `--list` is list-mode ONLY when it's the sole remaining argument. A bare
     # `"--list" in args` checked before candidate validation let a candidate path

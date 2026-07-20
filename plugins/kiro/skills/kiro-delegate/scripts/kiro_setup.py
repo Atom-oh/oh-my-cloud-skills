@@ -40,6 +40,25 @@ _AUTH_RE = re.compile(
     r"token expired|expired token|please (log|sign) in|run .*login|\b401\b|\b403\b|"
     r"unauthorized|forbidden", re.I)
 
+# The fs_write preToolUse guard, realpath-based. Resolves the candidate path against the
+# hook's cwd (the worktree — kiro-cli runs the hook where the agent runs), follows
+# symlinks via os.path.realpath, and refuses (exit 2) any write whose RESOLVED location
+# falls outside the resolved cwd. This closes the two bypasses a naive
+# startswith('/')/'..'-in-parts string check leaves open: a symlink inside the worktree
+# that points outside it (the path string looks relative and clean, the write lands
+# elsewhere), and Windows drive/UNC absolute paths (no leading '/'). For a not-yet-
+# existing file, realpath resolves the existing ancestry, so a write THROUGH an
+# out-pointing symlinked directory is still caught. Kept as a single -c one-liner
+# because it's embedded in the generated .kiro/agents JSON.
+_WRITE_GUARD_CMD = (
+    "python3 -c \"import json,sys,os; d=json.load(sys.stdin); "
+    "p=(d.get('tool_input') or {}).get('path',''); "
+    "wt=os.path.realpath(os.getcwd()); "
+    "t=os.path.realpath(p if os.path.isabs(p) else os.path.join(wt,p)); "
+    "sys.exit(0 if t==wt or t.startswith(wt+os.sep) else 2)\""
+)
+
+
 def _implementer_agent(enable_bash):
     """`enable_bash` grants execute_bash — OFF by default. worktree/capture-diff/
     scope_guard only guarantee what reaches the main git tree; they do nothing about a
@@ -68,12 +87,17 @@ def _implementer_agent(enable_bash):
                         "type": "runCommand",
                         # Defense-in-depth on top of the host's worktree.py capture-diff +
                         # scope_guard.py (the load-bearing guarantee — see
-                        # references/kiro-headless.md): refuse a write outside the cwd the
-                        # implementer was launched in (the worktree). `..`/absolute-path
-                        # escapes still can't reach the main tree since the host only ever
-                        # applies the CAPTURED, scope-guarded diff — this hook just narrows
-                        # the blast radius earlier.
-                        "command": "python3 -c \"import json,sys,os; d=json.load(sys.stdin); p=(d.get('tool_input') or {}).get('path',''); sys.exit(2 if (p.startswith('/') or '..' in p.split(os.sep)) else 0)\""
+                        # references/kiro-headless.md): refuse a write that RESOLVES
+                        # outside the cwd the implementer was launched in (the worktree).
+                        # realpath-based, not string-based: a plain startswith('/')/'..'
+                        # check misses (a) a symlink inside the worktree pointing out of
+                        # it — the write path LOOKS relative but lands outside — and
+                        # (b) Windows drive/UNC absolute paths, which isabs() catches but
+                        # a '/'-prefix check doesn't. Escapes that slip past this still
+                        # can't reach the main tree (the host only ever applies the
+                        # CAPTURED, scope-guarded diff) — this hook just narrows the
+                        # blast radius earlier.
+                        "command": _WRITE_GUARD_CMD
                     }
                 ]
             }
@@ -82,15 +106,45 @@ def _implementer_agent(enable_bash):
     }
 
 
+# fs_read guard for the REVIEWER: same realpath containment as the implementer's
+# fs_write guard, applied to reads. kiro_review.py runs the reviewer with cwd = an
+# isolated temp dir containing ONLY the diff file, so confining fs_read to the resolved
+# cwd is exactly the "expose only the diff" allowlist: a prompt-injection payload in an
+# untrusted diff that tells the reviewer to fs_read ~/.aws/credentials (or any absolute
+# path / ../ escape / symlink out) gets exit 2 at the TOOL layer instead of relying on
+# prose cautions. This is the technical mitigation for the standing /kiro:review path,
+# which review.on_commit=false never protected.
+_READ_GUARD_CMD = (
+    "python3 -c \"import json,sys,os; d=json.load(sys.stdin); "
+    "p=(d.get('tool_input') or {}).get('path',''); "
+    "wt=os.path.realpath(os.getcwd()); "
+    "t=os.path.realpath(p if os.path.isabs(p) else os.path.join(wt,p)); "
+    "sys.exit(0 if t==wt or t.startswith(wt+os.sep) else 2)\""
+)
+
 _REVIEWER_AGENT = {
     "name": "kiro-reviewer",
     "description": "Reviews a diff for the /kiro:review command and the pre-commit hook. "
-                    "Read-only — never writes.",
+                    "Read-only — never writes; reads only within its launch directory "
+                    "(the isolated temp dir holding the diff).",
     "prompt": "You are a strict but fair code reviewer. Read the diff you're pointed to "
               "with fs_read and report findings as instructed in the prompt. Never modify "
-              "any file.",
+              "any file. You can only read files inside your working directory.",
     "tools": ["fs_read"],
-    "allowedTools": ["fs_read"]
+    "allowedTools": ["fs_read"],
+    "hooks": {
+        "preToolUse": [
+            {
+                "matcher": "fs_read",
+                "hooks": [
+                    {
+                        "type": "runCommand",
+                        "command": _READ_GUARD_CMD
+                    }
+                ]
+            }
+        ]
+    }
 }
 
 

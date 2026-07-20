@@ -6,10 +6,12 @@
 # sufficiently indirect invocation (heredoc, `$(...)`, a shell function/alias, a
 # git-commit-via-editor-script) can bypass it — same class of limitation co-agent's own
 # `gh pr create` PreToolUse gate documents. OPT-IN — `review.on_commit` defaults to
-# false (the reviewer's fs_read isn't scoped to just the diff file, so this should only
-# be turned on for diffs you trust the authorship of; see /kiro:setup). Fails OPEN on
-# any internal error or missing/unauthenticated kiro-cli — a broken reviewer must never
-# wedge commits.
+# false: the staged diff CONTENT is sent to Kiro's backend, and while the plugin-written
+# kiro-reviewer agent carries a tool-layer fs_read guard (reads confined to the isolated
+# diff dir), that guard falls back to an unguarded invocation if the agent file is
+# missing/tampered — so enabling stays a deliberate choice (see /kiro:setup). Fails OPEN
+# on any internal error or missing/unauthenticated kiro-cli — a broken reviewer must
+# never wedge commits.
 set -euo pipefail
 
 if [ "${KIRO_REVIEW:-}" = "off" ]; then

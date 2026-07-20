@@ -264,6 +264,26 @@ assert_file_exists "$REV" "write-agents creates kiro-reviewer.json"
 assert_json_valid "$IMPL" "kiro-implementer.json is valid JSON"
 assert_json_valid "$REV" "kiro-reviewer.json is valid JSON"
 assert_grep_no_match "fs_write" "$(python3 -c "import json;print(json.load(open('$REV'))['tools'])")" "kiro-reviewer has no fs_write tool (read-only)"
+assert_contains "$(python3 -c "import json;print(json.load(open('$REV'))['hooks']['preToolUse'][0]['hooks'][0]['command'])")" "realpath" "kiro-reviewer carries a realpath fs_read guard (cwd-confined reads)"
+assert_contains "$(python3 -c "import json;print(json.load(open('$IMPL'))['hooks']['preToolUse'][0]['hooks'][0]['command'])")" "realpath" "kiro-implementer's fs_write guard is realpath-based (symlink/Windows-abs safe)"
+# The write guard itself: relative-inside allowed; absolute/dotdot/symlink escapes refused
+GUARD_OUT=$(python3 -c "
+import json, os, subprocess, sys, tempfile
+impl = json.load(open('$IMPL'))
+cmd = impl['hooks']['preToolUse'][0]['hooks'][0]['command']
+# strip the leading 'python3 -c ' and unquote — run the embedded snippet directly
+code = cmd.split('-c ', 1)[1].strip('\"')
+wt = tempfile.mkdtemp(); out = tempfile.mkdtemp()
+os.symlink(out, os.path.join(wt, 'link_out'))
+def run(path):
+    r = subprocess.run([sys.executable, '-c', code], input=json.dumps({'tool_input': {'path': path}}),
+                       capture_output=True, text=True, cwd=wt)
+    return r.returncode
+oks = [run('src/foo.py') == 0, run('/etc/passwd') == 2, run('../x.py') == 2,
+       run('link_out/x.py') == 2, run('new_dir/new.py') == 0]
+print('GUARD_OK' if all(oks) else f'GUARD_FAIL {oks}')
+" 2>&1)
+assert_contains "$GUARD_OUT" "GUARD_OK" "fs_write guard allows in-worktree writes, refuses absolute/dotdot/symlink escapes"
 assert_contains "$(python3 -c "import json;print(json.load(open('$IMPL'))['tools'])")" "fs_write" "kiro-implementer has fs_write tool"
 assert_grep_no_match "execute_bash" "$(python3 -c "import json;print(json.load(open('$IMPL'))['tools'])")" "kiro-implementer has NO execute_bash by default (explicit opt-in required)"
 python3 "$SETUP" write-agents --root "$R4" --force --enable-bash >/dev/null 2>&1

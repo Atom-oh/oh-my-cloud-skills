@@ -66,7 +66,7 @@
 
 *비용 절감 위임 (kiro):*
 - **Claude가 계획, Kiro가 구현** — Claude가 Kiro 네이티브 spec을 작성하고 결과를 검증하는 동안, Kiro CLI가 자체 정액 구독 크레딧으로 실제 코드를 작성 — 격리된 git worktree 안에서, scope-guard로 검증된 diff만 적용
-- **커밋 전 리뷰 게이트 (opt-in)** — `git commit` 전에 `PreToolUse` 훅이 Kiro 기반 리뷰를 실행할 수 있음, 기본값으로 `critical` 발견 사항에만 차단(인프라 문제 발생 시 fail-open); 리뷰어의 `fs_read`가 diff 파일로만 스코프되지 않아 기본값은 off
+- **커밋 전 리뷰 게이트 (opt-in)** — `git commit` 전에 `PreToolUse` 훅이 Kiro 기반 리뷰를 실행할 수 있음, 기본값으로 `critical` 발견 사항에만 차단(인프라 문제 발생 시 fail-open); staged diff 내용이 Kiro 백엔드로 전송되므로 기본값은 off(리뷰어의 읽기는 격리된 diff 디렉터리로 툴 레이어에서 제한됨)
 - **`/kiro:setup`** — kiro-cli를 감지하고 사용 가능 여부를 프로브, 모델 목록을 조회하고 파이프라인이 사용할 `.kiro/agents/*.json` 커스텀 에이전트를 작성
 
 ---

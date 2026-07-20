@@ -27,6 +27,23 @@ if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 import kiro_config as kc
 
+
+def _reviewer_agent_ok(path):
+    """True iff the reviewer agent file exists AND matches the plugin-generated shape.
+    Same rationale as kiro_setup.verify_agents for the implementer: the agent file's
+    preToolUse.runCommand is a host command kiro-cli executes, so a tampered file must
+    not be copied into the review cwd and run — fall back to the (announced) ad-hoc
+    invocation instead of trusting it. Imported lazily so a broken sibling module can't
+    take down the fail-open review path."""
+    if not os.path.isfile(path):
+        return False
+    try:
+        import kiro_setup
+        with open(path, encoding="utf-8") as f:
+            return json.load(f) == kiro_setup._REVIEWER_AGENT
+    except Exception:
+        return False
+
 SEVERITY_ORDER = {"critical": 3, "warning": 2, "suggestion": 1}
 # Only the block level's own tier and above should ever block. "warning" blocks
 # warning+critical (there is no lower tier to additionally include — "suggestion"
@@ -170,7 +187,33 @@ def run_review(root, diff, model, timeout):
             if truncated:
                 f.write(f"\n[...diff truncated to the first ~{_DIFF_CAP // 1024}KB for review...]\n")
         argv = ["kiro-cli", "chat", _PROMPT_INSTR.format(F=fpath), "--mode", "default",
-                "--no-interactive", "--trust-tools=fs_read", "--wrap", "never"]
+                "--no-interactive", "--wrap", "never"]
+        # Prefer the kiro-reviewer custom agent (written by kiro_setup.py write-agents):
+        # it carries a preToolUse fs_read guard that confines reads to the launch cwd —
+        # and this subprocess's cwd is the isolated temp dir holding ONLY the diff, so
+        # the guard is precisely "the reviewer can read the diff and nothing else". That
+        # is the tool-layer mitigation for prompt-injection exfiltration (an untrusted
+        # diff directing the reviewer to fs_read ~/.aws/credentials); prose cautions
+        # alone don't restrain an injected model. Fall back to the unguarded ad-hoc
+        # --trust-tools form only when setup hasn't written the agent yet — the review
+        # gate is advisory/fail-open by contract, so refusing to run entirely would be
+        # worse, but the fallback is announced so it's never a silent downgrade.
+        reviewer_agent = os.path.join(root, ".kiro", "agents", "kiro-reviewer.json")
+        if _reviewer_agent_ok(reviewer_agent):
+            # Copy the agent file into the temp cwd so `--agent kiro-reviewer` resolves
+            # there regardless of whether kiro-cli looks in cwd or walks upward — the
+            # same uncommitted-file gotcha the delegate pipeline handles for the
+            # implementer agent in its worktrees.
+            agents_dir = os.path.join(wdir, ".kiro", "agents")
+            os.makedirs(agents_dir, exist_ok=True)
+            shutil.copy(reviewer_agent, os.path.join(agents_dir, "kiro-reviewer.json"))
+            argv += ["--agent", "kiro-reviewer"]
+        else:
+            print("⚠️  kiro review: .kiro/agents/kiro-reviewer.json missing or not "
+                  "plugin-generated — running with ad-hoc --trust-tools=fs_read (NO "
+                  "read-scope guard). Run /kiro:setup (write-agents --force if tampered) "
+                  "to generate the guarded reviewer agent.", file=sys.stderr)
+            argv += ["--trust-tools=fs_read"]
         if model:
             argv += ["--model", model]
         else:

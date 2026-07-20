@@ -320,9 +320,10 @@ separate trust decision — `plugins/kiro/CLAUDE.md` → "Trust decision").
 Commands: `/kiro:setup` (probe + model list + `.kiro/agents/*.json` generation),
 `/kiro:delegate`, `/kiro:review`, `/kiro:configure`. A `PreToolUse(Bash)` hook can run a
 Kiro-powered review before `git commit` (fail-open; blocks only on `critical` findings
-by default) — **off by default** (the reviewer's `fs_read` isn't scoped to just the diff
-file, so only enable for diffs you trust the authorship of); `/kiro:configure set review
-on_commit on` to enable.
+by default) — **off by default** (the staged diff content is sent to Kiro's backend; a
+tool-layer `fs_read` guard confines the reviewer's reads to the isolated diff dir, with
+authorship trust as defense-in-depth); `/kiro:configure set review on_commit on` to
+enable.
 
 ## Workflows
 

@@ -77,11 +77,14 @@ before enabling `default_delegate`. Kiro never commits.
 
 ## Pre-commit review (opt-in)
 
-`review.on_commit` is **off by default** — the reviewer's `fs_read` tool isn't scoped
-to just the diff file, so a prompt-injection payload in an untrusted staged diff could
-direct it to read an unrelated absolute path and leak it into the review response sent
-to Kiro's backend. Turn it on (`/kiro:setup`, or `/kiro:configure set review on_commit
-on`) only for diffs you trust the authorship of — typically your own commits. Once on, a
+`review.on_commit` is **off by default** — the staged diff CONTENT is sent to Kiro's
+backend, so enabling is a deliberate choice. The plugin-written `kiro-reviewer` agent
+carries a tool-layer `preToolUse` guard that confines `fs_read` to the isolated temp
+dir holding only the diff (a prompt-injection payload in an untrusted diff can't make
+it read an unrelated path); if that agent file is missing or tampered, `kiro_review.py`
+falls back to an unguarded invocation with a loud warning — treat authorship trust as
+defense-in-depth on top of the guard. Turn it on via `/kiro:setup` or
+`/kiro:configure set review on_commit on`. Once on, a
 `PreToolUse(Bash)` hook runs before every `git commit`: it sends the staged diff to Kiro
 on the configured **review model** (meant to be Kiro's strongest/newest —
 `/kiro:setup` helps you pick one, e.g. `gpt-5.6-sol`) and blocks the commit (exit 2) only

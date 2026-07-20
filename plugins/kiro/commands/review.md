@@ -12,14 +12,16 @@ Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts"` and
 review reads the repo-root `.claude/kiro.local.json` regardless of the cwd, same as the
 pre-commit hook does.
 
-**Before running, tell the user this one-line caution (every invocation, not just the
-first):** the Kiro reviewer reads the diff via `fs_read`, which is not path-restricted —
-a prompt-injection payload inside an untrusted diff could direct it to read an unrelated
-file and include it in the response sent to Kiro's backend. Only review diffs whose
-authorship you trust (typically your own changes). This matters here specifically
-because `/kiro:review` is always available even while the automatic hook's
-`review.on_commit` is off — the off-default protects the automatic path, not this
-manual one.
+**Reviewer read-scoping:** when the plugin-generated `kiro-reviewer` agent exists
+(`/kiro:setup` writes it), its `preToolUse` hook confines `fs_read` to the isolated
+temp dir holding only the diff — a prompt-injection payload in an untrusted diff that
+tries to read an unrelated file (e.g. credentials) is refused at the tool layer.
+`kiro_review.py` verifies the agent file is untampered before using it; if it's missing
+or fails verification, the review falls back to an **unguarded** ad-hoc invocation and
+prints a loud warning — in that fallback state, only review diffs whose authorship you
+trust, and run `/kiro:setup` to restore the guard. Mention the fallback warning to the
+user if it appears; treating authorship trust as defense-in-depth on top of the guard
+is still good practice either way.
 
 Run the review against staged changes (default) or the paths given in `$ARGUMENTS`:
 

@@ -93,9 +93,12 @@ the **worktree isolation + capture + scope_guard** path load-bearing for that on
 5. The host applies **only** the captured, scope-guarded patch to the main tree and runs
    tests there — never inside the worktree.
 6. The `kiro-implementer` custom agent's `preToolUse` hook (written by
-   `kiro_setup.py write-agents`) additionally refuses an `fs_write` whose path is absolute
-   or contains `..`, as defense-in-depth on top of 1-5 — it narrows the blast radius
-   *before* capture, but 3-5 remain the actual guarantee even if a write slips past it.
+   `kiro_setup.py write-agents`) additionally refuses an `fs_write` whose path
+   **resolves** (via `os.path.realpath` — so a symlink inside the worktree that points
+   outside it is followed and caught, and Windows drive/UNC absolute paths are handled
+   by `isabs`) outside the launch cwd (the worktree), as defense-in-depth on top of 1-5
+   — it narrows the blast radius *before* capture, but 3-5 remain the actual guarantee
+   even if a write slips past it.
 
 **What 1-6 do NOT cover: `execute_bash`.** All of the above governs `fs_write` and the
 main tree only. `execute_bash` is **off by default** in
@@ -114,17 +117,21 @@ agentic CLI with shell access locally); without it, some tasks Kiro would otherw
 finish (ones that genuinely need a shell command) fall back to Claude implementing them
 directly instead.
 
-**Reviewer `fs_read` is not path-restricted either.** `kiro-reviewer.json` grants only
-`fs_read` (no `fs_write`/`execute_bash`), but that tool is not scoped to the diff file
-`kiro_review.py` points it at — a diff can contain attacker-influenced content (this is
-someone's staged code change), and a prompt-injection payload in it could instruct the
-reviewer to `fs_read` an unrelated absolute path (e.g. `~/.aws/credentials`) and include
-its contents in the review response, which is sent to Kiro's backend. `_sanitized_env()`
-strips credential-shaped environment variables from the reviewer's process env, but that
-protects only `os.environ` — it does nothing for the filesystem. Do not run
-`/kiro:review` (or rely on the pre-commit hook) against a diff you don't trust the
-author of on a machine where `fs_read` could reach something sensitive; there is
-currently no filesystem allowlist enforcing "only the diff file" at the tool layer.
+**Reviewer `fs_read` is cwd-confined via the same guard.** `kiro-reviewer.json` grants
+only `fs_read` (no `fs_write`/`execute_bash`), and carries a `preToolUse` hook applying
+the same realpath containment to READS: `kiro_review.py` runs the reviewer with cwd = an
+isolated temp dir containing only the diff file, so "reads confined to cwd" is exactly
+"the reviewer can read the diff and nothing else". A prompt-injection payload in an
+untrusted diff that tells the reviewer to `fs_read ~/.aws/credentials` (or any absolute
+path, `../` escape, or symlink out) is refused at the tool layer (exit 2), not just
+discouraged in prose. Residual caveats, still worth knowing: (a) the guard only applies
+when the plugin-generated `kiro-reviewer.json` exists and is untampered —
+`kiro_review.py` verifies its shape before using it and otherwise falls back, with a
+loud warning, to an unguarded ad-hoc `--trust-tools=fs_read` invocation (run
+`/kiro:setup` to fix that state); (b) the guard is a kiro-cli hook, so it presumes
+kiro-cli honors `preToolUse` exit-2 blocking; (c) `_sanitized_env()` additionally strips
+credential-shaped env vars from the reviewer's process env. Treat authorship trust as
+defense-in-depth on top of the guard, not the other way around.
 
 ## Model tiering
 

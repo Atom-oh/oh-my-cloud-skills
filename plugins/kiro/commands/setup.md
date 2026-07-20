@@ -76,10 +76,12 @@ user just turned on would silently not apply.
      (`/kiro:delegate` or a trigger phrase).
    - **On** — `python3 "$SK/kiro_config.py" set default_delegate on --root "$ROOT"`
    And whether to turn on the **pre-commit review hook** (**off by default**) — note
-   that this hook sends staged diff CONTENT to a `fs_read`-capable reviewer with no path
-   restriction beyond the diff file itself, so an untrusted diff (e.g. reviewing a
-   contributor's PR branch) could in principle prompt-inject the reviewer into reading
-   an unrelated file; mention this plainly, not just the block-severity behavior:
+   that this hook sends staged diff CONTENT to Kiro's backend. The `kiro-reviewer`
+   agent written in step 4 carries a tool-layer `fs_read` guard confining reads to the
+   isolated diff dir (a prompt-injecting untrusted diff can't make it read an unrelated
+   file); still mention that the diff content itself leaves the machine, and that the
+   guard depends on the step-4 agent file staying in place (a missing/tampered file
+   falls back to an unguarded invocation with a loud warning):
    - **Off (Recommended to start)** — no automatic review; use `/kiro:review` on demand
      when you do want one.
    - **On (only for diffs you trust the authorship of — typically your own commits)** —

@@ -66,7 +66,7 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 
 *Cost-Savings Delegation (kiro):*
 - **Claude plans, Kiro implements** — Claude writes a Kiro-native spec and verifies results; Kiro CLI writes the actual code on its own flat-rate subscription credits, inside an isolated git worktree with a scope-guarded diff
-- **Pre-commit review gate (opt-in)** — a `PreToolUse` hook can run a Kiro-powered review before `git commit`, blocking only on `critical` findings by default (fails open on any infra problem); off by default since the reviewer's `fs_read` isn't scoped to just the diff
+- **Pre-commit review gate (opt-in)** — a `PreToolUse` hook can run a Kiro-powered review before `git commit`, blocking only on `critical` findings by default (fails open on any infra problem); off by default since the staged diff content is sent to Kiro's backend (the reviewer's reads are tool-layer-confined to the isolated diff dir)
 - **`/kiro:setup`** — detect kiro-cli, probe usability, list models, and write the `.kiro/agents/*.json` custom agents the pipeline uses
 
 ---
