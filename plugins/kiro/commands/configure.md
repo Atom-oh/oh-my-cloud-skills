@@ -7,32 +7,32 @@ allowed-tools: Bash(python3:*)
 
 $ARGUMENTS
 
-Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts"` and
-`ROOT="$(git rev-parse --show-toplevel)"` — **always pass `--root "$ROOT"`**.
-`kiro_config.py` defaults its root to the cwd, but `.claude/kiro.local.json` lives at the
-repo root and the pre-commit hook reads it from there (`git rev-parse --show-toplevel`).
-Running this command from a subdirectory without `--root` would write the setting to
-`<subdir>/.claude/kiro.local.json`, which nothing else reads — e.g. `set review
-on_commit on` would look accepted while the hook silently keeps reading off.
+Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts"`. `kiro_config.py` resolves
+the repo root itself (`git rev-parse --show-toplevel`, run as a python3 subprocess — not
+a `Bash` tool call, so it stays inside this command's `Bash(python3:*)` allowed-tools
+scope) whenever `--root` is omitted, so `.claude/kiro.local.json` — which lives at the
+repo root, and which the pre-commit hook also reads from there — gets written/read
+correctly even when this command runs from a subdirectory. Pass `--root` explicitly
+only if you need to point at a DIFFERENT repo than the cwd's.
 
 With no arguments, show the effective config:
 
 ```bash
-python3 "$SK/kiro_config.py" show --root "$ROOT"
+python3 "$SK/kiro_config.py" show
 ```
 
 Otherwise forward the arguments to `kiro_config.py` (it validates each value and reports
 errors on exit 2). Pass each argument as its **own quoted argv token** — e.g.
-`python3 "$SK/kiro_config.py" set review model "gpt-5.6-sol" --root "$ROOT"` — never
-splice the raw `$ARGUMENTS` string into the command line unquoted. `$ARGUMENTS` can
-contain shell metacharacters (`;`, `$(...)`, backticks, newlines); pasting it unquoted
-would let the shell re-interpret them **before** `kiro_config.py` ever validates the
-value. Split the user's request into the intended `set <section> <key> <value>` (or
-`show`) tokens yourself and quote each one:
+`python3 "$SK/kiro_config.py" set review model "gpt-5.6-sol"` — never splice the raw
+`$ARGUMENTS` string into the command line unquoted. `$ARGUMENTS` can contain shell
+metacharacters (`;`, `$(...)`, backticks, newlines); pasting it unquoted would let the
+shell re-interpret them **before** `kiro_config.py` ever validates the value. Split the
+user's request into the intended `set <section> <key> <value>` (or `show`) tokens
+yourself and quote each one:
 
 ```bash
 # example — substitute the actual section/key/value the user asked for, each quoted:
-python3 "$SK/kiro_config.py" set review model "gpt-5.6-sol" --root "$ROOT"
+python3 "$SK/kiro_config.py" set review model "gpt-5.6-sol"
 ```
 
 If the request doesn't map cleanly to a known `set`/`show` form, ask the user to

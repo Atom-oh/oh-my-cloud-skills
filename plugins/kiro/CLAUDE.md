@@ -23,9 +23,10 @@ on would otherwise never actually route anything — the toggle would be dead. S
 `CLAUDE.md` is loaded into context on every turn (unlike the agent/skill files, which are
 only read after routing already happened), it is the one place that can make the toggle
 real: **before starting any non-trivial implementation task, check**
-`python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_config.py" default-delegate --root "$(git rev-parse --show-toplevel)"`
-(exit 0 = on; `--root` because the config lives at the repo root and the script defaults
-its root to the cwd). If it's on, route the request through `kiro-delegate-agent` /
+`python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_config.py" default-delegate`
+(exit 0 = on; the config lives at the repo root and the script resolves that root itself
+via `git rev-parse --show-toplevel` when `--root` is omitted, regardless of cwd). If it's
+on, route the request through `kiro-delegate-agent` /
 `/kiro:delegate` even without a Kiro-specific trigger phrase — falling back to
 implementing it directly per the agent's own fallback rule whenever Kiro is unavailable
 or exhausts its fix loop. If it's off (the default), only route on an explicit
@@ -62,7 +63,10 @@ part is enforced. `scope_guard.py` (verbatim from co-agent) checks against the *
 every task's declared files in the plan**, not the single task currently running, so it
 does not by itself stop Task A's implementer run from touching a file Task B declared —
 per-task isolation during a wave comes from running one task's implementer at a time
-per file set, not from `scope_guard.py`. It also does **not** constrain what Kiro does
+per file set, not from `scope_guard.py`. The `kiro-implementer` agent also carries a
+realpath-based `preToolUse` guard on both `fs_write` and `fs_read`, confining both to the
+worktree — the spec files are copied into the worktree (not read via an absolute path
+from outside it) specifically so this holds. None of that constrains what Kiro does
 inside the worktree with `execute_bash` — an auto-approved shell command there can still
 read/exfiltrate host-reachable secrets or destroy files outside the worktree; nothing in
 this pipeline's layers stops that class of host-side side effect (see "Trust decision"
@@ -86,17 +90,22 @@ before writing the implementer agent file.
 ## Pre-commit review (PreToolUse hook)
 
 `hooks/pre-commit-review.sh` matches `git commit` at a command boundary and runs
-`kiro_review.py --staged` before it — **opt-in, off by default**
-(`review.on_commit=false`), because the reviewer's `fs_read` tool is not restricted to
-the diff file it's pointed at: a prompt-injection payload in an untrusted staged diff
-could direct it to read an unrelated absolute path (e.g. `~/.aws/credentials`) and
-surface its contents in the review response, which is sent to Kiro's backend. Enable it
-only for diffs you trust the authorship of (typically: your own commits), via
-`/kiro:setup` (which explains this before asking) or
-`/kiro:configure set review on_commit on`. **Fails open** on any internal error or
-missing/unauthenticated `kiro-cli` — a broken reviewer must never wedge a commit. Blocks
-(exit 2) only on findings at/above `review.block` (default `critical`). Bypass one
-commit with `KIRO_REVIEW=off`.
+`kiro_review.py --staged --require-guard` before it — **opt-in, off by default**
+(`review.on_commit=false`), because the staged diff CONTENT is sent to Kiro's backend.
+The plugin-written `kiro-reviewer` agent carries a tool-layer `preToolUse` hook that
+confines `fs_read` to the isolated temp dir holding only the diff, so a prompt-injection
+payload in an untrusted staged diff can't direct it to read an unrelated absolute path
+(e.g. `~/.aws/credentials`) — that guard is what makes running this automatically (no
+human reviewing the diff first) tolerable. `--require-guard` means this automatic path
+**fails open and SKIPS the review entirely** if that agent file is missing or tampered,
+rather than falling back to an unguarded invocation (the manual `/kiro:review` command,
+which never passes `--require-guard`, keeps the announced unguarded fallback — a human
+is present there to see the warning and judge authorship trust). Enable via
+`/kiro:setup` (which explains this before asking) or `/kiro:configure set review
+on_commit on`. **Fails open** on any internal error or missing/unauthenticated
+`kiro-cli` — a broken reviewer must never wedge a commit. Blocks (exit 2) only on
+findings at/above `review.block` (default `critical`). Bypass one commit with
+`KIRO_REVIEW=off`.
 
 ## Model tiering
 

@@ -40,17 +40,19 @@ _AUTH_RE = re.compile(
     r"token expired|expired token|please (log|sign) in|run .*login|\b401\b|\b403\b|"
     r"unauthorized|forbidden", re.I)
 
-# The fs_write preToolUse guard, realpath-based. Resolves the candidate path against the
-# hook's cwd (the worktree — kiro-cli runs the hook where the agent runs), follows
-# symlinks via os.path.realpath, and refuses (exit 2) any write whose RESOLVED location
-# falls outside the resolved cwd. This closes the two bypasses a naive
+# The fs_read/fs_write preToolUse guard, realpath-based. Resolves the candidate path
+# against the hook's cwd (the worktree — kiro-cli runs the hook where the agent runs),
+# follows symlinks via os.path.realpath, and refuses (exit 2) any read/write whose
+# RESOLVED location falls outside the resolved cwd. This closes the two bypasses a naive
 # startswith('/')/'..'-in-parts string check leaves open: a symlink inside the worktree
-# that points outside it (the path string looks relative and clean, the write lands
+# that points outside it (the path string looks relative and clean, the read/write lands
 # elsewhere), and Windows drive/UNC absolute paths (no leading '/'). For a not-yet-
 # existing file, realpath resolves the existing ancestry, so a write THROUGH an
-# out-pointing symlinked directory is still caught. Kept as a single -c one-liner
-# because it's embedded in the generated .kiro/agents JSON.
-_WRITE_GUARD_CMD = (
+# out-pointing symlinked directory is still caught. Kept as a single -c one-liner because
+# it's embedded in the generated .kiro/agents JSON. Shared verbatim across both tool
+# types (the check only inspects tool_input.path, which every fs_* tool call carries) and
+# both agents (implementer, reviewer) — one path-confinement guard, four call sites.
+_GUARD_CMD = (
     "python3 -c \"import json,sys,os; d=json.load(sys.stdin); "
     "p=(d.get('tool_input') or {}).get('path',''); "
     "wt=os.path.realpath(os.getcwd()); "
@@ -97,7 +99,24 @@ def _implementer_agent(enable_bash):
                         # can't reach the main tree (the host only ever applies the
                         # CAPTURED, scope-guarded diff) — this hook just narrows the
                         # blast radius earlier.
-                        "command": _WRITE_GUARD_CMD
+                        "command": _GUARD_CMD
+                    }
+                ]
+            },
+            {
+                "matcher": "fs_read",
+                "hooks": [
+                    {
+                        "type": "runCommand",
+                        # Same realpath containment, applied to reads. Without this, a
+                        # prompt-injection payload reachable from the task prompt or spec
+                        # content could direct the implementer to fs_read an absolute
+                        # path outside the worktree (credentials, SSH keys) and have its
+                        # contents surface in Kiro's response — a confidentiality leak
+                        # that execute_bash-off does nothing to prevent. The pipeline
+                        # copies spec files INTO the worktree specifically so the
+                        # implementer never needs an out-of-worktree absolute read.
+                        "command": _GUARD_CMD
                     }
                 ]
             }
@@ -106,22 +125,13 @@ def _implementer_agent(enable_bash):
     }
 
 
-# fs_read guard for the REVIEWER: same realpath containment as the implementer's
-# fs_write guard, applied to reads. kiro_review.py runs the reviewer with cwd = an
-# isolated temp dir containing ONLY the diff file, so confining fs_read to the resolved
-# cwd is exactly the "expose only the diff" allowlist: a prompt-injection payload in an
-# untrusted diff that tells the reviewer to fs_read ~/.aws/credentials (or any absolute
-# path / ../ escape / symlink out) gets exit 2 at the TOOL layer instead of relying on
-# prose cautions. This is the technical mitigation for the standing /kiro:review path,
-# which review.on_commit=false never protected.
-_READ_GUARD_CMD = (
-    "python3 -c \"import json,sys,os; d=json.load(sys.stdin); "
-    "p=(d.get('tool_input') or {}).get('path',''); "
-    "wt=os.path.realpath(os.getcwd()); "
-    "t=os.path.realpath(p if os.path.isabs(p) else os.path.join(wt,p)); "
-    "sys.exit(0 if t==wt or t.startswith(wt+os.sep) else 2)\""
-)
-
+# Reviewer's fs_read guard: the same _GUARD_CMD above, applied to reads. kiro_review.py
+# runs the reviewer with cwd = an isolated temp dir containing ONLY the diff file, so
+# confining fs_read to the resolved cwd is exactly the "expose only the diff" allowlist:
+# a prompt-injection payload in an untrusted diff that tells the reviewer to fs_read
+# ~/.aws/credentials (or any absolute path / ../ escape / symlink out) gets exit 2 at the
+# TOOL layer instead of relying on prose cautions. This is the technical mitigation for
+# the standing /kiro:review path, which review.on_commit=false never protected.
 _REVIEWER_AGENT = {
     "name": "kiro-reviewer",
     "description": "Reviews a diff for the /kiro:review command and the pre-commit hook. "
@@ -139,7 +149,7 @@ _REVIEWER_AGENT = {
                 "hooks": [
                     {
                         "type": "runCommand",
-                        "command": _READ_GUARD_CMD
+                        "command": _GUARD_CMD
                     }
                 ]
             }
@@ -287,9 +297,26 @@ def verify_agents(root):
     return 1
 
 
+def _default_root():
+    """Best-effort repo root when the caller didn't pass --root. Shells out to `git
+    rev-parse --show-toplevel` as a subprocess of THIS already-permitted python3
+    process — not a new top-level Bash tool call — so command prose never needs its own
+    `git rev-parse` invocation (and the permission prompt that would trigger under an
+    `allowed-tools: Bash(python3:*)`-scoped command) just to resolve --root. Falls back
+    to '.' outside a git repo, or if git itself is missing/times out."""
+    try:
+        r = subprocess.run(["git", "rev-parse", "--show-toplevel"],
+                            capture_output=True, text=True, timeout=10)
+        if r.returncode == 0:
+            return r.stdout.strip() or "."
+    except (subprocess.TimeoutExpired, OSError):
+        pass
+    return "."
+
+
 def main():
     argv = sys.argv[1:]
-    root = "."
+    root = _default_root()
     if "--root" in argv:
         i = argv.index("--root")
         if i + 1 >= len(argv):

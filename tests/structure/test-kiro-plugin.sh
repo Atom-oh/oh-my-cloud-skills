@@ -152,6 +152,26 @@ python3 "$CFG" set delegate on_commit on --root "$R" >/dev/null 2>&1 && XC2=0 ||
 assert_eq "2" "$XC2" "cross-section key (delegate on_commit) rejected (exit 2)"
 rm -rf "$R"
 
+# --- kiro_config.py / kiro_setup.py / kiro_review.py: --root self-defaults to the repo
+# root (via `git rev-parse --show-toplevel` run as a python3 subprocess) when omitted —
+# this is what lets commands/{configure,review,setup}.md drop their own `git rev-parse`
+# shell-out, which their `allowed-tools: Bash(python3:*)` frontmatter never covered. Run
+# from a SUBDIRECTORY without --root and confirm settings/agents still land at the repo
+# root, not under the subdirectory. ---
+CFG_ABS="$(pwd)/$CFG"
+SETUP_ABS="$(pwd)/$SETUP"
+RD=$(mktemp -d "${TMPDIR:-/tmp}/kiro-defroot.XXXXXX")
+git -C "$RD" init -q
+git -C "$RD" config user.email t@t.t; git -C "$RD" config user.name t
+git -C "$RD" commit -q --allow-empty -m init
+mkdir -p "$RD/sub/deeper"
+(cd "$RD/sub/deeper" && python3 "$CFG_ABS" set default_delegate on >/dev/null 2>&1)
+assert_file_exists "$RD/.claude/kiro.local.json" "kiro_config.py without --root, run from a subdirectory, still writes at the git repo root"
+assert_eq "0" "$(cd "$RD/sub/deeper" && python3 "$CFG_ABS" default-delegate >/dev/null 2>&1; echo $?)" "kiro_config.py without --root, run from a subdirectory, reads back the repo-root setting"
+(cd "$RD/sub/deeper" && python3 "$SETUP_ABS" write-agents >/dev/null 2>&1)
+assert_file_exists "$RD/.kiro/agents/kiro-implementer.json" "kiro_setup.py write-agents without --root, run from a subdirectory, still writes at the git repo root"
+rm -rf "$RD"
+
 # --- kiro_config.py: malformed/wrong-shape local config must not crash (fail-open contract) ---
 RM=$(mktemp -d "${TMPDIR:-/tmp}/kiro-cfg-malformed.XXXXXX")
 mkdir -p "$RM/.claude"
@@ -250,6 +270,43 @@ print('UNTRACKED_DIFF_OK' if err is None and 'new_file.py' in d and 'return 1' i
 assert_contains "$(cat "$R3U/probe.out")" "UNTRACKED_DIFF_OK" "working-tree diff mode includes an untracked new file (not silently empty)"
 rm -rf "$R3U"
 
+# --- kiro_review.py run_review(): --require-guard (the automatic hook's setting) must
+#     SKIP the review — never invoke kiro-cli at all — when the reviewer agent is
+#     missing, instead of falling back to an unguarded invocation. The manual path
+#     (require_guard=False) must still fall back and DO invoke it. A fake kiro-cli on
+#     PATH writes a marker if it's ever actually run, so we can tell the two apart
+#     without a real CLI. ---
+RG=$(mktemp -d "${TMPDIR:-/tmp}/kiro-require-guard.XXXXXX")
+mkdir -p "$RG/bin"
+cat > "$RG/bin/kiro-cli" <<'EOF'
+#!/usr/bin/env bash
+touch "$KIRO_CLI_RAN_MARKER"
+echo '[]'
+EOF
+chmod +x "$RG/bin/kiro-cli"
+# require_guard=True, no .kiro/agents/kiro-reviewer.json at all: must skip, marker absent
+RG_SKIP=$(env PATH="$RG/bin:$PATH" KIRO_CLI_RAN_MARKER="$RG/ran-skip" python3 -c "
+import sys
+sys.path.insert(0, 'plugins/kiro/skills/kiro-delegate/scripts')
+import kiro_review as kr
+findings, err, truncated = kr.run_review('$RG', 'diff --git a/f b/f\n+x\n', None, 30, require_guard=True)
+print('SKIPPED' if findings is None and err and 'skip' in err.lower() else f'NOT_SKIPPED {findings!r} {err!r}')
+" 2>&1)
+assert_contains "$RG_SKIP" "SKIPPED" "run_review(require_guard=True) fails open and reports a skip when the reviewer agent is missing"
+assert_eq "0" "$([ -f "$RG/ran-skip" ] && echo 1 || echo 0)" "run_review(require_guard=True) does NOT invoke kiro-cli when skipping (marker absent)"
+# require_guard=False (manual /kiro:review path), same missing agent: must fall back and
+# actually invoke kiro-cli (marker present)
+RG_FALLBACK=$(env PATH="$RG/bin:$PATH" KIRO_CLI_RAN_MARKER="$RG/ran-fallback" python3 -c "
+import sys
+sys.path.insert(0, 'plugins/kiro/skills/kiro-delegate/scripts')
+import kiro_review as kr
+findings, err, truncated = kr.run_review('$RG', 'diff --git a/f b/f\n+x\n', None, 30, require_guard=False)
+print('RAN' if findings == [] and err is None else f'DID_NOT_RUN {findings!r} {err!r}')
+" 2>&1)
+assert_contains "$RG_FALLBACK" "RAN" "run_review(require_guard=False) falls back to the unguarded invocation and actually reviews"
+assert_eq "1" "$([ -f "$RG/ran-fallback" ] && echo 1 || echo 0)" "run_review(require_guard=False) DOES invoke kiro-cli (marker present) — confirms the fallback actually ran, not just returned RAN by coincidence"
+rm -rf "$RG"
+
 # --- kiro_setup.py: absent kiro-cli reports ABSENT, not a crash ---
 R4=$(mktemp -d "${TMPDIR:-/tmp}/kiro-setup.XXXXXX")
 PROBE=$(PATH="${NOKIRO_PATH%:}" python3 "$SETUP" probe 2>&1)
@@ -266,6 +323,8 @@ assert_json_valid "$REV" "kiro-reviewer.json is valid JSON"
 assert_grep_no_match "fs_write" "$(python3 -c "import json;print(json.load(open('$REV'))['tools'])")" "kiro-reviewer has no fs_write tool (read-only)"
 assert_contains "$(python3 -c "import json;print(json.load(open('$REV'))['hooks']['preToolUse'][0]['hooks'][0]['command'])")" "realpath" "kiro-reviewer carries a realpath fs_read guard (cwd-confined reads)"
 assert_contains "$(python3 -c "import json;print(json.load(open('$IMPL'))['hooks']['preToolUse'][0]['hooks'][0]['command'])")" "realpath" "kiro-implementer's fs_write guard is realpath-based (symlink/Windows-abs safe)"
+assert_eq "fs_read" "$(python3 -c "import json;print(json.load(open('$IMPL'))['hooks']['preToolUse'][1]['matcher'])")" "kiro-implementer's SECOND preToolUse hook matches fs_read (not just fs_write)"
+assert_contains "$(python3 -c "import json;print(json.load(open('$IMPL'))['hooks']['preToolUse'][1]['hooks'][0]['command'])")" "realpath" "kiro-implementer's fs_read guard is realpath-based (cwd-confined reads, same as fs_write)"
 # The write guard itself: relative-inside allowed; absolute/dotdot/symlink escapes refused
 GUARD_OUT=$(python3 -c "
 import json, os, subprocess, sys, tempfile
@@ -284,6 +343,23 @@ oks = [run('src/foo.py') == 0, run('/etc/passwd') == 2, run('../x.py') == 2,
 print('GUARD_OK' if all(oks) else f'GUARD_FAIL {oks}')
 " 2>&1)
 assert_contains "$GUARD_OUT" "GUARD_OK" "fs_write guard allows in-worktree writes, refuses absolute/dotdot/symlink escapes"
+# The read guard: same realpath containment, applied to the fs_read matcher — a
+# prompt-injection payload directing the implementer to fs_read an out-of-worktree
+# absolute path (e.g. ~/.aws/credentials) must be refused at the tool layer.
+READ_GUARD_OUT=$(python3 -c "
+import json, os, subprocess, sys, tempfile
+impl = json.load(open('$IMPL'))
+cmd = impl['hooks']['preToolUse'][1]['hooks'][0]['command']
+code = cmd.split('-c ', 1)[1].strip('\"')
+wt = tempfile.mkdtemp()
+def run(path):
+    r = subprocess.run([sys.executable, '-c', code], input=json.dumps({'tool_input': {'path': path}}),
+                       capture_output=True, text=True, cwd=wt)
+    return r.returncode
+oks = [run('.kiro/specs/x/tasks.md') == 0, run('/etc/passwd') == 2, run('../x.md') == 2]
+print('READ_GUARD_OK' if all(oks) else f'READ_GUARD_FAIL {oks}')
+" 2>&1)
+assert_contains "$READ_GUARD_OUT" "READ_GUARD_OK" "fs_read guard allows in-worktree reads, refuses absolute/dotdot escapes"
 assert_contains "$(python3 -c "import json;print(json.load(open('$IMPL'))['tools'])")" "fs_write" "kiro-implementer has fs_write tool"
 assert_grep_no_match "execute_bash" "$(python3 -c "import json;print(json.load(open('$IMPL'))['tools'])")" "kiro-implementer has NO execute_bash by default (explicit opt-in required)"
 python3 "$SETUP" write-agents --root "$R4" --force --enable-bash >/dev/null 2>&1
@@ -338,19 +414,30 @@ cat > "$R6/tasks.md" <<'EOF'
 
 - [ ] write the helper
 EOF
-python3 "$SG" --plan "$R6/tasks.md" src/helper.py >/dev/null 2>&1 && SGIN=0 || SGIN=$?
+python3 "$SG" --plan "$R6/tasks.md" -- src/helper.py >/dev/null 2>&1 && SGIN=0 || SGIN=$?
 assert_eq "0" "$SGIN" "scope_guard.py accepts a path declared in tasks.md"
-python3 "$SG" --plan "$R6/tasks.md" src/unrelated.py >/dev/null 2>&1 && SGOUT=0 || SGOUT=$?
+python3 "$SG" --plan "$R6/tasks.md" -- src/unrelated.py >/dev/null 2>&1 && SGOUT=0 || SGOUT=$?
 assert_eq "1" "$SGOUT" "scope_guard.py rejects a path NOT declared in tasks.md"
 # a RELATIVE candidate with extra leading dirs must NOT pass via suffix match (bypass fix)
-python3 "$SG" --plan "$R6/tasks.md" attacker/src/helper.py >/dev/null 2>&1 && SGREL=0 || SGREL=$?
+python3 "$SG" --plan "$R6/tasks.md" -- attacker/src/helper.py >/dev/null 2>&1 && SGREL=0 || SGREL=$?
 assert_eq "1" "$SGREL" "scope_guard.py rejects a relative path that only suffix-matches a plan entry (no leading-dir bypass)"
 # an ABSOLUTE candidate still suffix-matches (git may hand an absolute path) — preserved
-python3 "$SG" --plan "$R6/tasks.md" /repo/src/helper.py >/dev/null 2>&1 && SGABS=0 || SGABS=$?
+python3 "$SG" --plan "$R6/tasks.md" -- /repo/src/helper.py >/dev/null 2>&1 && SGABS=0 || SGABS=$?
 assert_eq "0" "$SGABS" "scope_guard.py still accepts an absolute candidate matching a relative plan entry"
-# an option-like candidate ('--foo') must be rejected, not silently dropped from the check
-python3 "$SG" --plan "$R6/tasks.md" --evil.py >/dev/null 2>&1 && SGDASH=0 || SGDASH=$?
-assert_eq "1" "$SGDASH" "scope_guard.py rejects an option-like path instead of skipping it"
+# a candidate with no `--` separator at all is a usage error (exit 2), not a silent guess
+python3 "$SG" --plan "$R6/tasks.md" --evil.py >/dev/null 2>&1 && SGNOSEP=0 || SGNOSEP=$?
+assert_eq "2" "$SGNOSEP" "scope_guard.py rejects a candidate given without a '--' separator (exit 2 usage error)"
+# THE ROUND-8 FIX: a SOLE candidate literally named "--list" (fully plausible from an
+# attacker-controlled worktree diff) must be scope-checked like any other path, never
+# silently treated as the --list flag (the old bug: `rest == ["--list"]` short-circuited
+# to list-mode + exit 0 before any dashed/path classification ran, regardless of whether
+# "--list" was actually declared in the plan).
+python3 "$SG" --plan "$R6/tasks.md" -- --list >/dev/null 2>&1 && SGLISTNAME=0 || SGLISTNAME=$?
+assert_eq "1" "$SGLISTNAME" "scope_guard.py rejects a sole candidate literally named --list (not declared in the plan) instead of silently list-moding to exit 0"
+# and the reverse: --list with NO separator still means list mode (unambiguous, no path given)
+SGLISTOUT=$(python3 "$SG" --plan "$R6/tasks.md" --list 2>&1) && SGLISTRC=0 || SGLISTRC=$?
+assert_eq "0" "$SGLISTRC" "scope_guard.py --list (no separator, no other args) still works as the list-mode flag"
+assert_contains "$SGLISTOUT" "src/helper.py" "scope_guard.py --list prints the allowed set"
 rm -rf "$R6"
 
 # --- spec-format reference documents the backtick pitfall (single most common authoring bug) ---

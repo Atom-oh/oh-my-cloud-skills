@@ -29,6 +29,7 @@ import os
 import re
 import json
 import copy
+import subprocess
 
 # Same charset as co-agent's MODEL_RE: the value is always passed as a single argv
 # element (never shell-interpolated), so spaces/parens are safe; shell metacharacters
@@ -231,9 +232,26 @@ def cmd_set(root, rest):
     return _write(root, local)
 
 
+def _default_root():
+    """Best-effort repo root when the caller didn't pass --root. Shells out to `git
+    rev-parse --show-toplevel` as a subprocess of THIS already-permitted python3
+    process — not a new top-level Bash tool call — so command prose never needs its own
+    `git rev-parse` invocation (and the permission prompt that would trigger under an
+    `allowed-tools: Bash(python3:*)`-scoped command) just to resolve --root. Falls back
+    to '.' outside a git repo, or if git itself is missing/times out."""
+    try:
+        r = subprocess.run(["git", "rev-parse", "--show-toplevel"],
+                            capture_output=True, text=True, timeout=10)
+        if r.returncode == 0:
+            return r.stdout.strip() or "."
+    except (subprocess.TimeoutExpired, OSError):
+        pass
+    return "."
+
+
 def main():
     argv = sys.argv[1:]
-    root = "."
+    root = _default_root()
     if "--root" in argv:
         i = argv.index("--root")
         if i + 1 >= len(argv):

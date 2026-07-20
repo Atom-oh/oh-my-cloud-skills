@@ -8,10 +8,14 @@
 # `gh pr create` PreToolUse gate documents. OPT-IN — `review.on_commit` defaults to
 # false: the staged diff CONTENT is sent to Kiro's backend, and while the plugin-written
 # kiro-reviewer agent carries a tool-layer fs_read guard (reads confined to the isolated
-# diff dir), that guard falls back to an unguarded invocation if the agent file is
-# missing/tampered — so enabling stays a deliberate choice (see /kiro:setup). Fails OPEN
-# on any internal error or missing/unauthenticated kiro-cli — a broken reviewer must
-# never wedge commits.
+# diff dir), so enabling stays a deliberate choice (see /kiro:setup). `--require-guard`
+# below means this automatic path fails OPEN and SKIPS the review entirely if that agent
+# file is missing/tampered, instead of falling back to an unguarded invocation — no human
+# is watching this run to notice a printed warning before an untrusted diff goes through
+# an unconfined fs_read (the manual /kiro:review command keeps the announced unguarded
+# fallback, since a human is present to judge authorship trust there). Fails OPEN on any
+# internal error or missing/unauthenticated kiro-cli — a broken reviewer must never wedge
+# commits.
 set -euo pipefail
 
 if [ "${KIRO_REVIEW:-}" = "off" ]; then
@@ -68,5 +72,5 @@ if python3 "$SK/hook_match.py" stale-index < "$PAYLOAD_FILE"; then
   exit 0
 fi
 
-python3 "$SK/kiro_review.py" --staged --root "$ROOT" 1>&2
+python3 "$SK/kiro_review.py" --staged --root "$ROOT" --require-guard 1>&2
 exit $?

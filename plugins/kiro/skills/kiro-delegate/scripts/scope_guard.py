@@ -5,9 +5,15 @@ Test paths, via parse_plan). Used before any autonomous edit so the loop can't s
 beyond the reviewed plan.
 
 Usage:
-  scope_guard.py --plan <plan.md> <path>...   # exit 0 if ALL paths in scope, else 1
-  scope_guard.py --plan <plan.md> --list      # print the allowed file set
+  scope_guard.py --plan <plan.md> -- <path>...   # exit 0 if ALL paths in scope, else 1
+  scope_guard.py --plan <plan.md> --list         # print the allowed file set
 Exit 0 = all in scope / list ok · 1 = at least one out of scope · 2 = usage/read error.
+
+Candidate paths MUST follow a literal `--` separator — this is what makes `--list`
+(with no separator) unambiguous even when a real candidate happens to be named
+"--list" (or anything else starting with "--"): such a candidate can only ever appear
+AFTER `--`, so it can never be mistaken for the list flag. A call with no `--` and no
+recognized flag is a usage error (exit 2), not a silent guess.
 """
 import sys
 import os
@@ -59,33 +65,39 @@ def main():
         print(f"❌ cannot read plan {plan}: {e}", file=sys.stderr)
         return 2
 
-    # Only `--plan <value>` is a real option here; every other arg is a candidate path.
+    # Only `--plan <value>` is a real option here; every other arg is either the `--list`
+    # flag, a literal `--` separator, or (only after that separator) a candidate path.
     # Remove exactly the two tokens `--plan <value>` BY POSITION, not by value — a
     # value-based filter (`a != plan`) also dropped any CANDIDATE whose path happened to
-    # equal the plan path, silently excluding it from the scope check. A candidate that
-    # itself starts with `--` (e.g. a file literally named "--foo.py") must be REJECTED
-    # as out-of-scope, not silently dropped — dropping it would bypass the gate entirely.
+    # equal the plan path, silently excluding it from the scope check.
     rest = [a for i, a in enumerate(args) if i not in (plan_flag, plan_flag + 1)]
 
-    # `--list` is list-mode ONLY when it's the sole remaining argument. A bare
-    # `"--list" in args` checked before candidate validation let a candidate path
-    # literally named "--list" flip the whole invocation into list mode and exit 0 —
-    # skipping the scope check for EVERY other candidate in the same call (a real gate
-    # bypass, not just an odd filename: exit 0 is read as "all in scope").
-    if rest == ["--list"]:
+    # Candidates only ever come from AFTER a literal `--`. This is the fix for a real
+    # gate bypass: the old contract treated a bare `rest == ["--list"]` as list-mode
+    # unconditionally, so a SOLE candidate literally named "--list" (fully plausible —
+    # an attacker-controlled worktree diff can contain any filename it likes) silently
+    # printed the allowed set and exited 0, which callers read as "all in scope",
+    # skipping the check entirely for that candidate. Requiring `--` makes `--list`
+    # (with no separator) unambiguous: a real candidate named "--list" can only appear
+    # after `--`, never before, so it is always scope-checked like any other path —
+    # never mistaken for the flag.
+    if "--" in rest:
+        sep = rest.index("--")
+        opts, candidates = rest[:sep], rest[sep + 1:]
+    else:
+        opts, candidates = rest, None
+
+    if opts == ["--list"] and candidates is None:
         print("\n".join(allowed))
         return 0
-    dashed = [a for a in rest if a.startswith("--")]
-    paths = [a for a in rest if not a.startswith("--")]
-    if not paths and not dashed:
+    if opts or candidates is None:
+        print("❌ usage: pass candidate paths after a '--' separator (or use --list "
+              "alone) — see --help", file=sys.stderr)
+        return 2
+    if not candidates:
         print("no candidate paths given", file=sys.stderr)
         return 2
-    if dashed:
-        print("❌ out of plan scope (option-like paths are rejected, not scope-checked):",
-              file=sys.stderr)
-        for p in dashed:
-            print(f"   • {p}", file=sys.stderr)
-        return 1
+    paths = candidates
     allowed_norm = {_norm(a) for a in allowed}
 
     def in_scope(c):

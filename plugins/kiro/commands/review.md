@@ -7,10 +7,12 @@ allowed-tools: Bash(python3:*)
 
 $ARGUMENTS
 
-Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts"` and
-`ROOT="$(git rev-parse --show-toplevel)"` — pass `--root "$ROOT"` (not `.`) so the
-review reads the repo-root `.claude/kiro.local.json` regardless of the cwd, same as the
-pre-commit hook does.
+Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts"`. `kiro_review.py` resolves
+the repo root itself (`git rev-parse --show-toplevel`, run as a python3 subprocess — not
+a `Bash` tool call, so it stays inside this command's `Bash(python3:*)` allowed-tools
+scope) whenever `--root` is omitted, so it reads the repo-root `.claude/kiro.local.json`
+regardless of the cwd, same as the pre-commit hook does. Pass `--root` explicitly only
+if you need to point at a DIFFERENT repo than the cwd's.
 
 **Reviewer read-scoping:** when the plugin-generated `kiro-reviewer` agent exists
 (`/kiro:setup` writes it), its `preToolUse` hook confines `fs_read` to the isolated
@@ -26,7 +28,7 @@ is still good practice either way.
 Run the review against staged changes (default) or the paths given in `$ARGUMENTS`:
 
 ```bash
-python3 "$SK/kiro_review.py" --staged --root "$ROOT"
+python3 "$SK/kiro_review.py" --staged
 ```
 
 Or, if the user gave specific paths, pass each path as its **own quoted argv token**
@@ -38,7 +40,7 @@ reviewable:
 
 ```bash
 # one quoted token per path the user named — e.g. two files:
-python3 "$SK/kiro_review.py" --root "$ROOT" -- "src/foo.py" "src/bar.py"
+python3 "$SK/kiro_review.py" -- "src/foo.py" "src/bar.py"
 ```
 
 This runs even if `review.on_commit` is off (that setting only gates the automatic

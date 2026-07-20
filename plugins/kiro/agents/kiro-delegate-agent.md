@@ -40,16 +40,23 @@ worktree as a full sandbox it isn't:
    planning") — `scope_guard.py` is not what enforces that boundary.
 4. Claude is the only actor that ever runs `git commit` on the main branch.
 
+`kiro-implementer`'s custom agent file also carries a `preToolUse` hook on **both**
+`fs_write` and `fs_read` (realpath-based, cwd-confined to the worktree — defense-in-depth
+on top of 1-4, same guard the reviewer carries) — step 3 below copies the spec files
+*into* the worktree specifically so the implementer never needs an absolute path outside
+it to read them.
+
 **What this does NOT cover: `execute_bash` inside the worktree.** `execute_bash` is
 **off by default** for `kiro-implementer` — `/kiro:setup` only writes it into the agent
 file if the user explicitly opts in (`AskUserQuestion`, `kiro_setup.py write-agents
 --enable-bash`). If granted, an auto-approved shell command Kiro runs can affect the
 host outside the worktree entirely — read a credential file, delete something, make a
-network call — and nothing in steps 1-4 stops it, because those steps only govern what
-reaches the *main git tree*, not what a shell command running as your user can touch.
-Never restate this as "safe" without that qualifier when explaining it to a user; a
-task that genuinely needs a shell command falls back to Claude implementing it directly
-when `execute_bash` isn't granted.
+network call — and nothing in steps 1-4 (or the fs_read/fs_write hooks above) stops it,
+because those only govern `fs_read`/`fs_write` tool calls and what reaches the *main git
+tree*, not what a shell command running as your user can touch. Never restate this as
+"safe" without that qualifier when explaining it to a user; a task that genuinely needs
+a shell command falls back to Claude implementing it directly when `execute_bash` isn't
+granted.
 
 Full detail: `skills/kiro-delegate/references/kiro-headless.md` → "Trust boundary".
 **Never** run Kiro with cwd = the repo root in write mode — that removes the one
@@ -102,27 +109,36 @@ guarantee this whole plugin depends on.
      - `mkdir -p <wt>/.kiro/agents && cp .kiro/agents/kiro-implementer.json
        <wt>/.kiro/agents/` — so `--agent kiro-implementer` resolves inside the worktree
        regardless of whether kiro-cli looks in cwd or walks upward from it.
-     - **Exclude that copied file from capture in a way that does NOT depend on the
-       consumer repo's `.gitignore`.** `worktree.py capture-diff` runs `git add -A`,
-       which respects the worktree's own `.git/info/exclude` in ADDITION to any tracked
-       `.gitignore`. Append `.kiro/agents/kiro-implementer.json` to the worktree's
-       exclude file — `printf '%s\n' '.kiro/agents/kiro-implementer.json' >>
-       "$(git -C <wt> rev-parse --git-path info/exclude)"` — right after the copy. This
-       repo happens to gitignore `.kiro/agents/`, but a repo where the plugin is
-       *installed* may not, and without this the copy would be captured, fail
-       `scope_guard.py` (a path not in the plan), and its exit-1 would drop the whole
-       otherwise-valid patch.
-     - Point Kiro at the spec files by **absolute path** (`$(pwd)/.kiro/specs/<name>/…`
-       from the main checkout, not a path relative to `<wt>`) in the task prompt, so
-       `fs_read` can reach them from inside `<wt>` even though they're outside it.
-   - Run Kiro inside `<wt>`: `kiro-cli chat "<task prompt + absolute pointer to the spec
+     - `mkdir -p <wt>/.kiro/specs/<name> && cp .kiro/specs/<name>/*.md
+       <wt>/.kiro/specs/<name>/` — copy the spec **into** the worktree too. The
+       implementer's `fs_read` is now cwd-confined by a realpath preToolUse guard (same
+       one `fs_write` carries — see "Trust boundary" step 3 below), so it can no longer
+       reach an absolute path outside `<wt>`; the spec has to be inside the worktree for
+       `fs_read` to see it at all.
+     - **Exclude both copies from capture in a way that does NOT depend on the consumer
+       repo's `.gitignore`.** `worktree.py capture-diff` runs `git add -A`, which
+       respects the worktree's own `.git/info/exclude` in ADDITION to any tracked
+       `.gitignore`. Append both paths to the worktree's exclude file —
+       `printf '%s\n' '.kiro/agents/kiro-implementer.json' '.kiro/specs/<name>/' >>
+       "$(git -C <wt> rev-parse --git-path info/exclude)"` — right after the copies.
+       This repo happens to gitignore `.kiro/agents/` and `.kiro/specs/`, but a repo
+       where the plugin is *installed* may not, and without this the copies would be
+       captured, fail `scope_guard.py` (paths not in the plan), and their exit-1 would
+       drop the whole otherwise-valid patch.
+     - Point Kiro at the spec files by a path **relative to `<wt>`**
+       (`.kiro/specs/<name>/…`, resolved against the implementer's cwd) in the task
+       prompt — never an absolute path from the main checkout; the read guard would
+       refuse it.
+   - Run Kiro inside `<wt>`: `kiro-cli chat "<task prompt + relative pointer to the spec
      files>" --no-interactive --wrap never --agent kiro-implementer
      [--model <delegate.model>]` — cwd **must** be `<wt>`. `--agent kiro-implementer`
-     carries the write-guard hook and whatever `execute_bash` grant the user chose at
-     `/kiro:setup`; per step 0, this is the only invocation form this pipeline uses.
+     carries the read/write-guard hooks and whatever `execute_bash` grant the user chose
+     at `/kiro:setup`; per step 0, this is the only invocation form this pipeline uses.
      Adapter detail: `references/kiro-headless.md`.
    - `worktree.py capture-diff <wt>` → patch. Every path through
-     `scope_guard.py --plan <tasks.md>` — drop out-of-scope hunks. (The copied
+     `scope_guard.py --plan <tasks.md> -- <path>...` — candidates go after a literal
+     `--` (required; a bare `--list` with no separator is the only thing recognized
+     before it) — drop out-of-scope hunks. (The copied
      `.kiro/agents/kiro-implementer.json` is excluded via the worktree's
      `.git/info/exclude` entry added above, so `git add -A` never stages it — this holds
      even in a consumer repo that doesn't gitignore `.kiro/agents/`.)

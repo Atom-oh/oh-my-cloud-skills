@@ -81,9 +81,12 @@ before enabling `default_delegate`. Kiro never commits.
 backend, so enabling is a deliberate choice. The plugin-written `kiro-reviewer` agent
 carries a tool-layer `preToolUse` guard that confines `fs_read` to the isolated temp
 dir holding only the diff (a prompt-injection payload in an untrusted diff can't make
-it read an unrelated path); if that agent file is missing or tampered, `kiro_review.py`
-falls back to an unguarded invocation with a loud warning — treat authorship trust as
-defense-in-depth on top of the guard. Turn it on via `/kiro:setup` or
+it read an unrelated path); if that agent file is missing or tampered, this automatic
+path (`kiro_review.py --require-guard`) **fails open and skips the review entirely**
+rather than falling back unguarded — no human is watching to notice a warning before an
+untrusted diff hits an unconfined `fs_read`. (The manual `/kiro:review` command keeps
+the announced unguarded fallback, since a human is present to judge authorship trust.)
+Turn it on via `/kiro:setup` or
 `/kiro:configure set review on_commit on`. Once on, a
 `PreToolUse(Bash)` hook runs before every `git commit`: it sends the staged diff to Kiro
 on the configured **review model** (meant to be Kiro's strongest/newest —

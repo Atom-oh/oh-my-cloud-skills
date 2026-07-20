@@ -41,8 +41,10 @@ see it in an older note, treat the agent-file requirement above as authoritative
 
 - **Prompt is a positional argv `[INPUT]`** — Kiro ignores stdin in `chat`. For anything
   beyond a one-line prompt, don't embed large context in argv (`ps` exposure + `ARG_MAX`);
-  point Kiro at the spec files with a short instruction and let it `fs_read` them itself
-  (it already has the tool via the custom agent's `allowedTools`).
+  point Kiro at the spec files (copied into the worktree, path **relative to `<wt>`** —
+  the implementer's `fs_read` is cwd-confined, see "Trust boundary" below) with a short
+  instruction and let it `fs_read` them itself (it already has the tool via the custom
+  agent's `allowedTools`).
 - **`execute_bash` is NOT in the implementer's default tool set** — it's off unless
   `/kiro:setup`'s explicit trust-decision question was answered yes (`kiro_setup.py
   write-agents --enable-bash`); a task needing a shell command falls back to Claude
@@ -92,30 +94,36 @@ the **worktree isolation + capture + scope_guard** path load-bearing for that on
    wave-planning only ever batching pairwise-**disjoint** file sets into one wave.
 5. The host applies **only** the captured, scope-guarded patch to the main tree and runs
    tests there — never inside the worktree.
-6. The `kiro-implementer` custom agent's `preToolUse` hook (written by
-   `kiro_setup.py write-agents`) additionally refuses an `fs_write` whose path
-   **resolves** (via `os.path.realpath` — so a symlink inside the worktree that points
-   outside it is followed and caught, and Windows drive/UNC absolute paths are handled
-   by `isabs`) outside the launch cwd (the worktree), as defense-in-depth on top of 1-5
-   — it narrows the blast radius *before* capture, but 3-5 remain the actual guarantee
-   even if a write slips past it.
+6. The `kiro-implementer` custom agent's `preToolUse` hooks (written by
+   `kiro_setup.py write-agents`) additionally refuse an `fs_write` **or `fs_read`** whose
+   path **resolves** (via `os.path.realpath` — so a symlink inside the worktree that
+   points outside it is followed and caught, and Windows drive/UNC absolute paths are
+   handled by `isabs`) outside the launch cwd (the worktree), as defense-in-depth on top
+   of 1-5 — it narrows the blast radius *before* capture (for writes) and closes a
+   confidentiality leak (for reads: a prompt-injection payload reachable from the task
+   prompt or spec content can no longer direct the implementer to `fs_read` an
+   out-of-worktree absolute path like `~/.aws/credentials` and surface its contents in
+   Kiro's response). The pipeline copies the spec files *into* the worktree
+   (`agents/kiro-delegate-agent.md` step 3) specifically so the implementer never needs
+   an absolute read outside it. 3-5 remain the actual guarantee for what reaches the
+   main tree even if a write slips past the hook.
 
-**What 1-6 do NOT cover: `execute_bash`.** All of the above governs `fs_write` and the
-main tree only. `execute_bash` is **off by default** in
+**What 1-6 do NOT cover: `execute_bash`.** All of the above governs `fs_write`/`fs_read`
+and the main tree only. `execute_bash` is **off by default** in
 `.kiro/agents/kiro-implementer.json` (`kiro_setup.py write-agents`) — `/kiro:setup`
 explicitly asks (`AskUserQuestion`) before ever granting it, and only writes it into the
 agent file if the user opts in (`--enable-bash`). If granted, Kiro auto-approves it
 (`--trust-tools`/`allowedTools`) and a shell command it runs is **not confined to the
 worktree at the process level**: it can read files anywhere the OS user can read
 (credentials, SSH keys), delete files outside the worktree, or make outbound network
-calls, and none of steps 1-6 will see or stop it because they only ever look at the git
-diff *afterward*. This is not a gap this plugin can close with more
-worktree/capture/scope_guard machinery — those layers are about what lands in the repo,
-not what a shell command can do to the host while it runs. Granting `execute_bash` is an
-explicit trust decision about `kiro-cli` (same category of trust as running any other
-agentic CLI with shell access locally); without it, some tasks Kiro would otherwise
-finish (ones that genuinely need a shell command) fall back to Claude implementing them
-directly instead.
+calls, and none of steps 1-6 will see or stop it because they only ever look at
+`fs_read`/`fs_write` tool calls and the git diff *afterward* — a shell command bypasses
+both. This is not a gap this plugin can close with more worktree/capture/scope_guard
+machinery — those layers are about what lands in the repo, not what a shell command can
+do to the host while it runs. Granting `execute_bash` is an explicit trust decision
+about `kiro-cli` (same category of trust as running any other agentic CLI with shell
+access locally); without it, some tasks Kiro would otherwise finish (ones that genuinely
+need a shell command) fall back to Claude implementing them directly instead.
 
 **Reviewer `fs_read` is cwd-confined via the same guard.** `kiro-reviewer.json` grants
 only `fs_read` (no `fs_write`/`execute_bash`), and carries a `preToolUse` hook applying
@@ -126,12 +134,16 @@ untrusted diff that tells the reviewer to `fs_read ~/.aws/credentials` (or any a
 path, `../` escape, or symlink out) is refused at the tool layer (exit 2), not just
 discouraged in prose. Residual caveats, still worth knowing: (a) the guard only applies
 when the plugin-generated `kiro-reviewer.json` exists and is untampered —
-`kiro_review.py` verifies its shape before using it and otherwise falls back, with a
-loud warning, to an unguarded ad-hoc `--trust-tools=fs_read` invocation (run
-`/kiro:setup` to fix that state); (b) the guard is a kiro-cli hook, so it presumes
-kiro-cli honors `preToolUse` exit-2 blocking; (c) `_sanitized_env()` additionally strips
-credential-shaped env vars from the reviewer's process env. Treat authorship trust as
-defense-in-depth on top of the guard, not the other way around.
+`kiro_review.py` verifies its shape before using it; the **automatic** pre-commit hook
+passes `--require-guard`, so if verification fails it fails open and **skips** the
+review entirely rather than falling back unguarded (run `/kiro:setup` to fix that
+state), while the **manual** `/kiro:review` command (no `--require-guard`) still falls
+back, with a loud warning, to an unguarded ad-hoc `--trust-tools=fs_read` invocation —
+a human is present there to see the warning and judge authorship trust; (b) the guard is
+a kiro-cli hook, so it presumes kiro-cli honors `preToolUse` exit-2 blocking; (c)
+`_sanitized_env()` additionally strips credential-shaped env vars from the reviewer's
+process env. Treat authorship trust as defense-in-depth on top of the guard, not the
+other way around.
 
 ## Model tiering
 
