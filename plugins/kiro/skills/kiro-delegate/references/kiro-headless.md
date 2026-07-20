@@ -134,16 +134,18 @@ untrusted diff that tells the reviewer to `fs_read ~/.aws/credentials` (or any a
 path, `../` escape, or symlink out) is refused at the tool layer (exit 2), not just
 discouraged in prose. Residual caveats, still worth knowing: (a) the guard only applies
 when the plugin-generated `kiro-reviewer.json` exists and is untampered —
-`kiro_review.py` verifies its shape before using it; the **automatic** pre-commit hook
-passes `--require-guard`, so if verification fails it fails open and **skips** the
-review entirely rather than falling back unguarded (run `/kiro:setup` to fix that
-state), while the **manual** `/kiro:review` command (no `--require-guard`) still falls
-back, with a loud warning, to an unguarded ad-hoc `--trust-tools=fs_read` invocation —
-a human is present there to see the warning and judge authorship trust; (b) the guard is
-a kiro-cli hook, so it presumes kiro-cli honors `preToolUse` exit-2 blocking; (c)
-`_sanitized_env()` additionally strips credential-shaped env vars from the reviewer's
-process env. Treat authorship trust as defense-in-depth on top of the guard, not the
-other way around.
+`kiro_review.py` verifies its shape before using it; if verification fails, the DEFAULT
+(no flag needed) is to fail open and **skip** the review entirely rather than falling
+back unguarded — this is the same for the automatic pre-commit hook AND the manual
+`/kiro:review` command (run `/kiro:setup` to fix that state). A prior version of this
+plugin let the manual path fall back unguarded automatically, with only a printed
+warning; that warning arrived right before the unguarded call ran, so it was never a
+real chance to object — `/kiro:review` now requires an explicit `--allow-unguarded`,
+which `commands/review.md` only passes after asking the user first via
+`AskUserQuestion`; (b) the guard is a kiro-cli hook, so it presumes kiro-cli honors
+`preToolUse` exit-2 blocking; (c) `_sanitized_env()` additionally strips
+credential-shaped env vars from the reviewer's process env. Treat authorship trust as
+defense-in-depth on top of the guard, not the other way around.
 
 ## Model tiering
 

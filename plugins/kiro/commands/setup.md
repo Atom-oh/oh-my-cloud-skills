@@ -81,9 +81,10 @@ below unless you want to target a DIFFERENT repo than the cwd's.
    agent written in step 4 carries a tool-layer `fs_read` guard confining reads to the
    isolated diff dir (a prompt-injecting untrusted diff can't make it read an unrelated
    file); still mention that the diff content itself leaves the machine, and that the
-   guard depends on the step-4 agent file staying in place (this automatic path fails
-   open and SKIPS the review entirely if that file goes missing/tampered — it does not
-   fall back to an unguarded invocation, unlike the manual `/kiro:review` command):
+   guard depends on the step-4 agent file staying in place (this and the manual
+   `/kiro:review` command both fail open and SKIP the review entirely by default if
+   that file goes missing/tampered — neither falls back to an unguarded invocation
+   without an explicit, pre-confirmed opt-in):
    - **Off (Recommended to start)** — no automatic review; use `/kiro:review` on demand
      when you do want one.
    - **On (only for diffs you trust the authorship of — typically your own commits)** —

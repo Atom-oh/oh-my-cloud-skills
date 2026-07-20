@@ -106,6 +106,15 @@ guarantee this whole plugin depends on.
      (`references/delegated-implement.md` step 2: "an uncommitted red test would not
      exist inside it"). Handle it the same way, without requiring a commit here (specs
      aren't meant to be committed pre-review):
+     - **Before either `mkdir -p`/`cp` below, refuse a planted symlink.** `<wt>` is a
+       fresh checkout of `HEAD` — if the repo's `HEAD` tracks `.kiro` (or `.kiro/agents`,
+       `.kiro/specs`) as a symlink pointing outside the worktree (a hostile repo, or a
+       stale leftover from something else), `mkdir -p`/`cp` would silently write through
+       it to an arbitrary host path, and this happens **before Kiro is ever invoked** —
+       host-side, not something the implementer's own guards can catch. Check with
+       `[ -L "<wt>/.kiro" ] && echo REFUSE` (and the same for `.kiro/agents`,
+       `.kiro/specs` once created) before proceeding; if any check reports a symlink,
+       stop and tell the user rather than following it.
      - `mkdir -p <wt>/.kiro/agents && cp .kiro/agents/kiro-implementer.json
        <wt>/.kiro/agents/` — so `--agent kiro-implementer` resolves inside the worktree
        regardless of whether kiro-cli looks in cwd or walks upward from it.

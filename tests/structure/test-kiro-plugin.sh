@@ -71,9 +71,17 @@ cases = [
     ('git commit --fixup abc123', False),               # message-reuse REF args are not pathspecs
     ('git commit -C HEAD~1', False),
     ('git commit --squash abc123', False),
+    # round-9 fix: GIT_DIR=/--git-dir/--work-tree/cd all redirect the commit to a
+    # different repo/tree than this hook's own cwd would diff — same mismatch class as -C
+    ('GIT_DIR=/elsewhere git commit -m x', True),
+    ('git --git-dir /elsewhere/.git commit -m x', True),
+    ('git --work-tree /elsewhere commit -m x', True),
+    ('cd ../other && git commit -m x', True),
+    ('pushd ../other && git commit -m x', True),
+    ('echo \"cd elsewhere\" && git commit -m x', False),  # quoted — not a real cd
 ]
 ok = all(hm.is_scope_mismatch(cmd) == expect for cmd, expect in cases)
-print('SCOPE_MISMATCH_OK' if ok else 'SCOPE_MISMATCH_FAIL')
+print('SCOPE_MISMATCH_OK' if ok else f'SCOPE_MISMATCH_FAIL {[c for c, e in cases if hm.is_scope_mismatch(c) != e]}')
 stale_cases = [
     ('git add X && git commit -m x', True),
     ('git rm old.py; git commit -m x', True),
@@ -151,6 +159,27 @@ assert_eq "2" "$XC" "cross-section key (review parallel_tasks) rejected — that
 python3 "$CFG" set delegate on_commit on --root "$R" >/dev/null 2>&1 && XC2=0 || XC2=$?
 assert_eq "2" "$XC2" "cross-section key (delegate on_commit) rejected (exit 2)"
 rm -rf "$R"
+
+# --- kiro_config.py / kiro_setup.py: refuse a symlink-through-write escape. An
+# untrusted repo can check out `.claude` (or `.kiro/agents`) as a symlink pointing
+# anywhere on the filesystem; a plain open(path, "w") would truncate/overwrite whatever
+# that resolves to. Plant the symlink OUTSIDE the "repo root" and confirm `set` /
+# `write-agents` refuse to write through it (exit 2), and that the escape target is
+# untouched. ---
+RSYM=$(mktemp -d "${TMPDIR:-/tmp}/kiro-symlink.XXXXXX")
+OUTSIDE=$(mktemp -d "${TMPDIR:-/tmp}/kiro-symlink-outside.XXXXXX")
+printf 'do-not-touch\n' > "$OUTSIDE/escape-target.json"
+ln -s "$OUTSIDE" "$RSYM/.claude"
+python3 "$CFG" set default_delegate on --root "$RSYM" >/dev/null 2>&1 && CFGSYM=0 || CFGSYM=$?
+assert_eq "2" "$CFGSYM" "kiro_config.py set refuses to write through a symlinked .claude/ (exit 2)"
+assert_eq "do-not-touch" "$(cat "$OUTSIDE/escape-target.json")" "kiro_config.py set did not touch the symlink escape target"
+rm -f "$RSYM/.claude"
+mkdir -p "$RSYM/.kiro"
+ln -s "$OUTSIDE" "$RSYM/.kiro/agents"
+python3 "$SETUP" write-agents --root "$RSYM" >/dev/null 2>&1 && SETUPSYM=0 || SETUPSYM=$?
+assert_eq "2" "$SETUPSYM" "kiro_setup.py write-agents refuses to write through a symlinked .kiro/agents/ (exit 2)"
+assert_grep_no_match "kiro-implementer\|kiro-reviewer" "$(ls "$OUTSIDE")" "kiro_setup.py write-agents did not write agent files into the symlink escape target"
+rm -rf "$RSYM" "$OUTSIDE"
 
 # --- kiro_config.py / kiro_setup.py / kiro_review.py: --root self-defaults to the repo
 # root (via `git rev-parse --show-toplevel` run as a python3 subprocess) when omitted —
@@ -270,13 +299,34 @@ print('UNTRACKED_DIFF_OK' if err is None and 'new_file.py' in d and 'return 1' i
 assert_contains "$(cat "$R3U/probe.out")" "UNTRACKED_DIFF_OK" "working-tree diff mode includes an untracked new file (not silently empty)"
 rm -rf "$R3U"
 
-# --- kiro_review.py run_review(): --require-guard (the automatic hook's setting) must
-#     SKIP the review — never invoke kiro-cli at all — when the reviewer agent is
-#     missing, instead of falling back to an unguarded invocation. The manual path
-#     (require_guard=False) must still fall back and DO invoke it. A fake kiro-cli on
-#     PATH writes a marker if it's ever actually run, so we can tell the two apart
-#     without a real CLI. ---
-RG=$(mktemp -d "${TMPDIR:-/tmp}/kiro-require-guard.XXXXXX")
+# --- kiro_review.py main(): a candidate path named AFTER '--' that happens to look like
+#     a flag (e.g. a file literally named "--staged") must be treated as a literal path,
+#     not stripped by the --staged/--root/etc. flag scan. Distinguish the two outcomes by
+#     diff EMPTINESS: with the bug, "--staged" gets removed as if it were the flag,
+#     leaving zero paths — cached=True (nothing else staged) → "no changes to review".
+#     With the fix, it survives as a real path → a non-empty working-tree diff for that
+#     untracked file is found → kiro-cli-absent fail-open ("skipped") fires instead. ---
+R3D=$(mktemp -d "${TMPDIR:-/tmp}/kiro-review-dashpath.XXXXXX")
+git -C "$R3D" init -q
+git -C "$R3D" config user.email t@t.t; git -C "$R3D" config user.name t
+git -C "$R3D" commit -q --allow-empty -m init
+printf 'dashed file content\n' > "$R3D/--staged"
+OUT3D=$(PATH="${NOKIRO_PATH%:}" python3 "$REVIEW" --root "$R3D" -- --staged 2>&1) && RC3D=0 || RC3D=$?
+assert_eq "0" "$RC3D" "review with a dash-named path after -- exits 0 (fail-open path, kiro-cli absent)"
+assert_contains "$OUT3D" "skipped" "a candidate path literally named --staged (after --) is found as a real diff, not silently dropped to an empty staged-cache review"
+assert_grep_no_match "no changes to review" "$OUT3D" "the dash-named path must NOT be misread as the --staged flag (which would leave zero paths and report nothing to review)"
+rm -rf "$R3D"
+
+# --- kiro_review.py run_review(): the DEFAULT (allow_unguarded=False) must SKIP the
+#     review — never invoke kiro-cli at all — when the reviewer agent is missing,
+#     for BOTH the automatic hook and the manual /kiro:review path (round-9 fix: a
+#     warning printed right before an already-unguarded call runs is not a real chance
+#     to object to it, so the manual path no longer defaults to running unguarded).
+#     Only an explicit allow_unguarded=True (commands/review.md gates this behind an
+#     AskUserQuestion confirmation) falls back and actually invokes kiro-cli. A fake
+#     kiro-cli on PATH writes a marker if it's ever actually run, so we can tell the
+#     two apart without a real CLI. ---
+RG=$(mktemp -d "${TMPDIR:-/tmp}/kiro-allow-unguarded.XXXXXX")
 mkdir -p "$RG/bin"
 cat > "$RG/bin/kiro-cli" <<'EOF'
 #!/usr/bin/env bash
@@ -284,27 +334,28 @@ touch "$KIRO_CLI_RAN_MARKER"
 echo '[]'
 EOF
 chmod +x "$RG/bin/kiro-cli"
-# require_guard=True, no .kiro/agents/kiro-reviewer.json at all: must skip, marker absent
+# default (allow_unguarded=False), no .kiro/agents/kiro-reviewer.json at all: must skip,
+# marker absent
 RG_SKIP=$(env PATH="$RG/bin:$PATH" KIRO_CLI_RAN_MARKER="$RG/ran-skip" python3 -c "
 import sys
 sys.path.insert(0, 'plugins/kiro/skills/kiro-delegate/scripts')
 import kiro_review as kr
-findings, err, truncated = kr.run_review('$RG', 'diff --git a/f b/f\n+x\n', None, 30, require_guard=True)
+findings, err, truncated = kr.run_review('$RG', 'diff --git a/f b/f\n+x\n', None, 30)
 print('SKIPPED' if findings is None and err and 'skip' in err.lower() else f'NOT_SKIPPED {findings!r} {err!r}')
 " 2>&1)
-assert_contains "$RG_SKIP" "SKIPPED" "run_review(require_guard=True) fails open and reports a skip when the reviewer agent is missing"
-assert_eq "0" "$([ -f "$RG/ran-skip" ] && echo 1 || echo 0)" "run_review(require_guard=True) does NOT invoke kiro-cli when skipping (marker absent)"
-# require_guard=False (manual /kiro:review path), same missing agent: must fall back and
-# actually invoke kiro-cli (marker present)
+assert_contains "$RG_SKIP" "SKIPPED" "run_review() default fails open and reports a skip when the reviewer agent is missing"
+assert_eq "0" "$([ -f "$RG/ran-skip" ] && echo 1 || echo 0)" "run_review() default does NOT invoke kiro-cli when skipping (marker absent)"
+# allow_unguarded=True (only after an explicit, pre-confirmed opt-in), same missing
+# agent: must fall back and actually invoke kiro-cli (marker present)
 RG_FALLBACK=$(env PATH="$RG/bin:$PATH" KIRO_CLI_RAN_MARKER="$RG/ran-fallback" python3 -c "
 import sys
 sys.path.insert(0, 'plugins/kiro/skills/kiro-delegate/scripts')
 import kiro_review as kr
-findings, err, truncated = kr.run_review('$RG', 'diff --git a/f b/f\n+x\n', None, 30, require_guard=False)
+findings, err, truncated = kr.run_review('$RG', 'diff --git a/f b/f\n+x\n', None, 30, allow_unguarded=True)
 print('RAN' if findings == [] and err is None else f'DID_NOT_RUN {findings!r} {err!r}')
 " 2>&1)
-assert_contains "$RG_FALLBACK" "RAN" "run_review(require_guard=False) falls back to the unguarded invocation and actually reviews"
-assert_eq "1" "$([ -f "$RG/ran-fallback" ] && echo 1 || echo 0)" "run_review(require_guard=False) DOES invoke kiro-cli (marker present) — confirms the fallback actually ran, not just returned RAN by coincidence"
+assert_contains "$RG_FALLBACK" "RAN" "run_review(allow_unguarded=True) falls back to the unguarded invocation and actually reviews"
+assert_eq "1" "$([ -f "$RG/ran-fallback" ] && echo 1 || echo 0)" "run_review(allow_unguarded=True) DOES invoke kiro-cli (marker present) — confirms the fallback actually ran, not just returned RAN by coincidence"
 rm -rf "$RG"
 
 # --- kiro_setup.py: absent kiro-cli reports ABSENT, not a crash ---
@@ -448,3 +499,11 @@ assert_contains "$(cat "$REF")" "backtick" "spec-format.md documents the backtic
 # --- CLAUDE.md documents the trust boundary consistently with co-agent's stance on kiro ---
 assert_contains "$(cat plugins/kiro/CLAUDE.md)" "no cwd-confined write sandbox" "kiro plugin CLAUDE.md documents why co-agent refuses Kiro as an implementer"
 assert_contains "$(cat plugins/co-agent/skills/co-agent/scripts/co_agent_config.py)" 'SANDBOX_IMPLEMENTERS = ("codex", "agy")' "co-agent still excludes kiro-cli from SANDBOX_IMPLEMENTERS (consistency check)"
+
+# --- round-9 fix regression: configure.md's on_commit description must NOT contradict
+#     every other doc (README x2, CLAUDE.md, setup.md, review.md, SKILL.md) and the
+#     actual generated reviewer agent, all of which say fs_read IS confined to the
+#     isolated diff dir by a tool-layer guard. The stale line claimed the opposite. ---
+CFGMD="$(cat plugins/kiro/commands/configure.md)"
+assert_grep_no_match "isn't scoped to just the diff file\|not scoped to just the diff" "$CFGMD" "configure.md no longer claims the reviewer's fs_read is unscoped (contradicted every other doc)"
+assert_contains "$CFGMD" "confined to the isolated diff dir" "configure.md's on_commit row matches the rest of the docs: fs_read is confined by the guard"

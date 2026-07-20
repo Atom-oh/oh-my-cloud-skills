@@ -47,6 +47,20 @@ def local_path(root):
     return os.path.join(root, ".claude", "kiro.local.json")
 
 
+def _escapes_root(path, root):
+    """True if `path` — or any existing ancestor directory in it, e.g. a tracked
+    `.claude` symlink — resolves outside `root`. An untrusted repo can check out
+    `.claude/kiro.local.json` (or its parent directory) as a symlink pointing anywhere
+    on the filesystem; a plain `open(path, "w")` would then truncate/overwrite whatever
+    that resolves to. `os.path.realpath` resolves symlinks in the EXISTING portion of
+    the path and leaves a not-yet-created trailing component (the usual case for a
+    first-time write) untouched, so this still catches a symlinked ancestor even before
+    the target file itself exists."""
+    real_root = os.path.realpath(root)
+    real_path = os.path.realpath(path)
+    return not (real_path == real_root or real_path.startswith(real_root + os.sep))
+
+
 def load_defaults():
     with open(DEFAULTS_PATH, encoding="utf-8") as f:
         d = json.load(f)
@@ -131,6 +145,12 @@ def _bool(val):
 
 def _write(root, cfg):
     lp = local_path(root)
+    if _escapes_root(lp, root):
+        print(f"❌ refusing to write {lp}: it (or a parent directory, e.g. a symlinked "
+              f".claude/) resolves outside the repo root {root} — this looks like a "
+              f"symlink-through-write escape, not a normal checkout. Remove/replace it "
+              f"before running `set` again.", file=sys.stderr)
+        return 2
     os.makedirs(os.path.dirname(lp), exist_ok=True)
     with open(lp, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2)

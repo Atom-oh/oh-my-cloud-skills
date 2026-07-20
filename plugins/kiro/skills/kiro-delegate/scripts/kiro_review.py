@@ -7,19 +7,20 @@ Blocks (exit 2) only on `critical` findings by default (`review.block` in
 kiro.defaults.json / .claude/kiro.local.json — kiro_config.py).
 
 Usage:
-  kiro_review.py --staged [--root DIR] [--require-guard]
+  kiro_review.py --staged [--root DIR] [--allow-unguarded]
                                                   # staged changes only (git diff --cached)
-  kiro_review.py --diff <file> [--root DIR] [--require-guard]
+  kiro_review.py --diff <file> [--root DIR] [--allow-unguarded]
                                                   # a pre-computed diff file
-  kiro_review.py [<path>...] [--root DIR] [--require-guard]
+  kiro_review.py [<path>...] [--root DIR] [--allow-unguarded] [-- <path>...]
                                                   # working-tree changes (staged + unstaged),
                                                   # scoped to the given paths if any
-  --require-guard   Fail-open SKIP the review entirely if the plugin-generated
-                     kiro-reviewer agent is missing/tampered, instead of falling back to
-                     an unguarded ad-hoc invocation. Passed by the AUTOMATIC pre-commit
-                     hook (which reviews untrusted staged diffs with no human in the
-                     loop to notice a printed warning); the unguarded fallback stays
-                     available only for the explicit manual `/kiro:review` invocation.
+  --allow-unguarded   By default (both the automatic pre-commit hook and manual
+                       /kiro:review), a missing/tampered kiro-reviewer agent means this
+                       SKIPS the review, fail-open — never a silent unguarded fallback.
+                       Pass this flag ONLY after a human has already confirmed they want
+                       to proceed anyway (see commands/review.md), never as a default —
+                       a warning printed right before an already-unguarded call runs is
+                       not a real chance to decide against it.
 
 Exit: 0 = clean or fail-open (advisory-only findings printed, if any)
       2 = blocked — findings at/above the configured block level
@@ -176,7 +177,7 @@ def _extract_json_array(text):
     return data if isinstance(data, list) else None
 
 
-def run_review(root, diff, model, timeout, require_guard=False):
+def run_review(root, diff, model, timeout, allow_unguarded=False):
     """Returns (findings|None, error|None, truncated). findings=None + error set means
     the review could not run or its output was unparseable — callers must fail-open.
     truncated=True means the diff exceeded _DIFF_CAP and everything past that point was
@@ -184,13 +185,18 @@ def run_review(root, diff, model, timeout, require_guard=False):
     guarantee of full coverage; a silent truncation would look like a clean full review
     when part of the diff was never actually seen by the reviewer).
 
-    `require_guard=True` (the automatic pre-commit hook's setting): if the
-    plugin-generated kiro-reviewer agent is missing or tampered, fail-open and SKIP the
-    review entirely rather than falling back to an unguarded ad-hoc invocation — an
-    untrusted staged diff run through an unconfined `fs_read` with no human present to
-    notice the printed warning is worse than not reviewing it. The manual /kiro:review
-    path (require_guard=False, the default) keeps the announced unguarded fallback,
-    since a human is right there to see the warning and judge authorship trust."""
+    Default (`allow_unguarded=False`, both the automatic hook and the manual
+    /kiro:review's default): if the plugin-generated kiro-reviewer agent is missing or
+    tampered, fail-open and SKIP the review entirely rather than falling back to an
+    unguarded ad-hoc invocation. This used to differ by caller (hook: skip, manual: warn
+    then proceed unguarded in the SAME call) — but the manual path's warning printed to
+    stderr right before the unguarded call ran, so a human reading it only ever learns
+    the guard was missing AFTER the untrusted diff was already sent unconfined; a
+    warning that arrives after the fact isn't a chance to decide against the very thing
+    it warns about. `allow_unguarded=True` is now an explicit, separate opt-in a caller
+    passes only once a human has already been asked and confirmed BEFORE this call
+    starts (see commands/review.md) — never inferred from "a human is technically
+    present"."""
     if not shutil.which("kiro-cli"):
         return None, "kiro-cli not found on PATH", False
     body = diff
@@ -226,19 +232,22 @@ def run_review(root, diff, model, timeout, require_guard=False):
             os.makedirs(agents_dir, exist_ok=True)
             shutil.copy(reviewer_agent, os.path.join(agents_dir, "kiro-reviewer.json"))
             argv += ["--agent", "kiro-reviewer"]
-        elif require_guard:
-            # The automatic hook's setting: no human is watching this run to notice a
-            # printed warning before an untrusted diff gets sent through an unconfined
-            # fs_read — skip the review rather than run it unguarded.
+        elif not allow_unguarded:
+            # Safe default for BOTH callers: skip rather than run an untrusted diff
+            # through an unconfined fs_read. A caller that wants to proceed anyway must
+            # pass allow_unguarded=True, and must have gotten a human's confirmation
+            # BEFORE calling this — not after, from a warning this function prints.
             return None, ("kiro-reviewer agent missing or not plugin-generated — "
-                           "skipping the automatic review rather than running it "
-                           "unguarded. Run /kiro:setup (write-agents --force if "
-                           "tampered) to restore it."), truncated
+                           "skipping the review rather than running it unguarded. Run "
+                           "/kiro:setup (write-agents --force if tampered) to restore "
+                           "it, or re-run with --allow-unguarded after confirming you "
+                           "trust this diff's authorship."), truncated
         else:
             print("⚠️  kiro review: .kiro/agents/kiro-reviewer.json missing or not "
                   "plugin-generated — running with ad-hoc --trust-tools=fs_read (NO "
-                  "read-scope guard). Run /kiro:setup (write-agents --force if tampered) "
-                  "to generate the guarded reviewer agent.", file=sys.stderr)
+                  "read-scope guard), as explicitly confirmed. Run /kiro:setup "
+                  "(write-agents --force if tampered) to restore the guard.",
+                  file=sys.stderr)
             argv += ["--trust-tools=fs_read"]
         if model:
             argv += ["--model", model]
@@ -298,37 +307,45 @@ def _default_root():
 
 def main():
     argv = sys.argv[1:]
-    root = _default_root()
-    if "--root" in argv:
-        i = argv.index("--root")
-        if i + 1 >= len(argv):
-            print("--root requires a value", file=sys.stderr)
-            return 2
-        root = argv[i + 1]
-        del argv[i:i + 2]
-    diff_file = None
-    if "--diff" in argv:
-        i = argv.index("--diff")
-        if i + 1 >= len(argv):
-            print("--diff requires a value", file=sys.stderr)
-            return 2
-        diff_file = argv[i + 1]
-        del argv[i:i + 2]
-    staged = "--staged" in argv
-    if staged:
-        argv.remove("--staged")
-    require_guard = "--require-guard" in argv
-    if require_guard:
-        argv.remove("--require-guard")
-    # Everything after a `--` separator is a PATH, verbatim — even one that starts with
-    # "--" (a file literally named "--notes.md"). A blanket startswith("--") filter over
-    # the whole argv silently dropped such a path, making the review fall back to the
-    # full staged diff instead of the file the user named.
+    # Split on `--` FIRST, before any flag is recognized/consumed — flags are only ever
+    # looked for in the region BEFORE the separator. Recognizing `--root`/`--diff`/
+    # `--staged`/etc. against the FULL argv (as a prior version of this function did)
+    # meant a real candidate path named e.g. "--staged" appearing AFTER `--` still got
+    # stripped as if it were the flag, contradicting the very guarantee the `--`
+    # separator exists to make ("everything after `--` is a path, verbatim").
     if "--" in argv:
         sep = argv.index("--")
-        paths = [a for a in argv[:sep] if not a.startswith("--")] + argv[sep + 1:]
+        opts, literal_paths = argv[:sep], argv[sep + 1:]
     else:
-        paths = [a for a in argv if not a.startswith("--")]
+        opts, literal_paths = argv, []
+
+    root = _default_root()
+    if "--root" in opts:
+        i = opts.index("--root")
+        if i + 1 >= len(opts):
+            print("--root requires a value", file=sys.stderr)
+            return 2
+        root = opts[i + 1]
+        del opts[i:i + 2]
+    diff_file = None
+    if "--diff" in opts:
+        i = opts.index("--diff")
+        if i + 1 >= len(opts):
+            print("--diff requires a value", file=sys.stderr)
+            return 2
+        diff_file = opts[i + 1]
+        del opts[i:i + 2]
+    staged = "--staged" in opts
+    if staged:
+        opts.remove("--staged")
+    allow_unguarded = "--allow-unguarded" in opts
+    if allow_unguarded:
+        opts.remove("--allow-unguarded")
+    # Any leftover token before `--` that isn't a recognized flag is ALSO treated as a
+    # path (backward compat: bare filenames never required the separator) — only a
+    # token starting with "--" is filtered out here, since that region is genuinely
+    # option-shaped; a candidate named "--foo" must go after `--` to be seen as a path.
+    paths = [a for a in opts if not a.startswith("--")] + literal_paths
 
     cfg = kc.effective(root)
 
@@ -367,7 +384,7 @@ def main():
         timeout = 120
     block_level = rcfg.get("block") or "critical"
 
-    findings, err, truncated = run_review(root, diff, model, timeout, require_guard=require_guard)
+    findings, err, truncated = run_review(root, diff, model, timeout, allow_unguarded=allow_unguarded)
     if truncated:
         # This gate is advisory, not a coverage guarantee — a silent truncation would
         # look identical to "the whole diff was reviewed and came back clean/blocked".

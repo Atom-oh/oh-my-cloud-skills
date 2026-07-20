@@ -108,6 +108,20 @@ _WIDENS_SCOPE_RE = re.compile(
 # A `-C <dir>` before `commit` redirects the commit to another repo, so `--staged` here
 # reviews the wrong tree.
 _PRE_C_RE = re.compile(r"(?:^|\s)-C\s+\S")
+# `--git-dir <dir>` / `--work-tree <dir>` are the other two ways `git` redirects to a
+# different repo/tree than the cwd's — same class of mismatch as `-C`.
+_PRE_GIT_DIR_RE = re.compile(r"(?:^|\s)--(?:git-dir|work-tree)\s+\S")
+# `GIT_DIR=`/`GIT_WORK_TREE=` as an env-var PREFIX on the same invocation (rather than a
+# `-C`/`--git-dir` flag) redirects just as effectively — `GIT_DIR=/elsewhere git commit`.
+# Checked against the FULL `_GIT_COMMIT_RE` match text (which already captures any
+# `VAR=val` prefix segment), not the whole command, so an unrelated `GIT_DIR=` earlier
+# in a long compound command isn't mistaken for this invocation's own prefix.
+_GIT_ENV_REDIRECT_RE = re.compile(r"\bGIT_(?:DIR|WORK_TREE)=\S")
+# A `cd`/`pushd` earlier in the SAME invocation changes the shell's cwd before `git
+# commit` runs there — this hook always diffs its OWN root, so a commit that actually
+# lands in a different directory (`cd ../other && git commit`) would otherwise be
+# judged against the wrong repo's staged diff.
+_PRECEDING_CD_RE = re.compile(r"(?:^|[\n;&|])\s*(?:pushd|cd)\b")
 # A bare trailing token that isn't a flag/flag-value is a pathspec. This is a coarse
 # heuristic (doesn't fully parse git's grammar), which is fine for an ADVISORY signal —
 # false negatives just mean no warning, never a wrong block (this hook never blocks).
@@ -120,8 +134,17 @@ def is_scope_mismatch(cmd):
     if not m:
         return False
     before, rest = m.group("before"), m.group("rest")
-    if _PRE_C_RE.search(before):
+    if _PRE_C_RE.search(before) or _PRE_GIT_DIR_RE.search(before):
         return True
+    gm = _GIT_COMMIT_RE.search(detect)
+    if gm:
+        if _GIT_ENV_REDIRECT_RE.search(gm.group()):
+            return True
+        # Same slicing convention as is_stale_index(): only the text BEFORE this
+        # git-commit invocation's own boundary character, so a `cd` inside an earlier,
+        # already-separate command doesn't leak into this one's mismatch check.
+        if _PRECEDING_CD_RE.search(detect[:gm.start() + 1]):
+            return True
     if _WIDENS_SCOPE_RE.search(rest):
         return True
     # Strip recognized value-taking flags and their values before pathspec-sniffing,

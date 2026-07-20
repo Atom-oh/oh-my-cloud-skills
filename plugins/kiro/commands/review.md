@@ -1,6 +1,6 @@
 ---
 description: Run the same Kiro-powered review the pre-commit hook runs, on demand — against staged changes by default, or specific paths.
-allowed-tools: Bash(python3:*)
+allowed-tools: Bash(python3:*), AskUserQuestion
 ---
 
 # kiro: review
@@ -18,12 +18,16 @@ if you need to point at a DIFFERENT repo than the cwd's.
 (`/kiro:setup` writes it), its `preToolUse` hook confines `fs_read` to the isolated
 temp dir holding only the diff — a prompt-injection payload in an untrusted diff that
 tries to read an unrelated file (e.g. credentials) is refused at the tool layer.
-`kiro_review.py` verifies the agent file is untampered before using it; if it's missing
-or fails verification, the review falls back to an **unguarded** ad-hoc invocation and
-prints a loud warning — in that fallback state, only review diffs whose authorship you
-trust, and run `/kiro:setup` to restore the guard. Mention the fallback warning to the
-user if it appears; treating authorship trust as defense-in-depth on top of the guard
-is still good practice either way.
+`kiro_review.py` verifies the agent file is untampered before using it; **if it's
+missing or fails verification, the DEFAULT is to SKIP the review entirely (fail-open) —
+never a silent unguarded fallback.** A warning printed right before an already-unguarded
+call runs is not a real chance for anyone to object to it, so this command no longer
+runs one that way. If the skip happens, tell the user and offer `/kiro:setup` as the fix;
+only if they explicitly want to review anyway despite no guard (rare — e.g. urgent,
+authorship already trusted, `/kiro:setup` isn't convenient right now) use
+`AskUserQuestion` to confirm **before** running anything, then re-run with
+`--allow-unguarded`. Never pass `--allow-unguarded` without that confirmation happening
+first.
 
 Run the review against staged changes (default) or the paths given in `$ARGUMENTS`:
 
@@ -47,3 +51,11 @@ This runs even if `review.on_commit` is off (that setting only gates the automat
 pre-commit hook, not a manual `/kiro:review`). Report the findings as printed — advisory
 findings are informational; a `critical` finding (or whatever `review.block` is set to)
 means `git commit` would currently be blocked by the hook until it's fixed.
+
+If the run reported a skip (missing/tampered reviewer agent) and the user, after being
+told, explicitly asks to review anyway:
+
+```bash
+# only after AskUserQuestion confirmation — never pass this speculatively
+python3 "$SK/kiro_review.py" --staged --allow-unguarded
+```

@@ -244,13 +244,44 @@ def list_models():
     return 0
 
 
+def _escapes_root(path, root):
+    """True if `path` — or any existing ancestor directory in it, e.g. a tracked
+    `.kiro/agents` symlink — resolves outside `root`. An untrusted repo can check out
+    `.kiro/agents` (or `.kiro` itself) as a symlink pointing anywhere on the
+    filesystem; a plain `open(path, "w")` would then truncate/overwrite whatever that
+    resolves to. `os.path.realpath` resolves symlinks in the EXISTING portion of the
+    path and leaves a not-yet-created trailing component untouched, so this still
+    catches a symlinked ancestor even before the target file itself exists."""
+    real_root = os.path.realpath(root)
+    real_path = os.path.realpath(path)
+    return not (real_path == real_root or real_path.startswith(real_root + os.sep))
+
+
 def write_agents(root, force=False, enable_bash=False):
     d = os.path.join(root, ".kiro", "agents")
+    if _escapes_root(d, root):
+        print(f"❌ refusing to write to {d}: it (or a parent directory, e.g. a "
+              f"symlinked .kiro/) resolves outside the repo root {root} — this looks "
+              f"like a symlink-through-write escape, not a normal checkout. "
+              f"Remove/replace it before running write-agents again.", file=sys.stderr)
+        return 2
     os.makedirs(d, exist_ok=True)
     written = []
     for name, spec in (("kiro-implementer.json", _implementer_agent(enable_bash)),
                         ("kiro-reviewer.json", _REVIEWER_AGENT)):
         p = os.path.join(d, name)
+        # Re-check the FULL per-file path, not just `d` above — `os.makedirs(d,
+        # exist_ok=True)` is a no-op if `d` already exists (symlink or not), and an
+        # untrusted repo could instead plant just this one FILE as a symlink while `d`
+        # stays a real directory. realpath(p) resolves the whole path in one call, so
+        # this also re-catches a symlinked `d` — it's a superset of the check above,
+        # kept for the fast, single up-front error message in the common case.
+        if _escapes_root(p, root):
+            print(f"❌ refusing to write {p}: it resolves outside the repo root "
+                  f"{root} — this looks like a symlink-through-write escape, not a "
+                  f"normal checkout. Remove/replace it before running write-agents "
+                  f"again.", file=sys.stderr)
+            return 2
         if os.path.isfile(p) and not force:
             print(f"skip (exists): {p} — pass --force to overwrite")
             continue

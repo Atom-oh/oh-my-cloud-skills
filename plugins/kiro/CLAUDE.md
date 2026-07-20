@@ -90,18 +90,20 @@ before writing the implementer agent file.
 ## Pre-commit review (PreToolUse hook)
 
 `hooks/pre-commit-review.sh` matches `git commit` at a command boundary and runs
-`kiro_review.py --staged --require-guard` before it — **opt-in, off by default**
+`kiro_review.py --staged` before it — **opt-in, off by default**
 (`review.on_commit=false`), because the staged diff CONTENT is sent to Kiro's backend.
 The plugin-written `kiro-reviewer` agent carries a tool-layer `preToolUse` hook that
 confines `fs_read` to the isolated temp dir holding only the diff, so a prompt-injection
 payload in an untrusted staged diff can't direct it to read an unrelated absolute path
 (e.g. `~/.aws/credentials`) — that guard is what makes running this automatically (no
-human reviewing the diff first) tolerable. `--require-guard` means this automatic path
-**fails open and SKIPS the review entirely** if that agent file is missing or tampered,
-rather than falling back to an unguarded invocation (the manual `/kiro:review` command,
-which never passes `--require-guard`, keeps the announced unguarded fallback — a human
-is present there to see the warning and judge authorship trust). Enable via
-`/kiro:setup` (which explains this before asking) or `/kiro:configure set review
+human reviewing the diff first) tolerable. `kiro_review.py`'s DEFAULT (no extra flag
+needed) **fails open and SKIPS the review entirely** if that agent file is missing or
+tampered, rather than falling back to an unguarded invocation — this holds for the
+automatic hook AND the manual `/kiro:review` command alike, since a warning printed
+right before an already-unguarded call runs isn't a real chance to object to it. Only an
+explicit, pre-confirmed `--allow-unguarded` (gated behind an `AskUserQuestion` in
+`commands/review.md`) overrides the skip, and only for the manual command. Enable the
+hook via `/kiro:setup` (which explains this before asking) or `/kiro:configure set review
 on_commit on`. **Fails open** on any internal error or missing/unauthenticated
 `kiro-cli` — a broken reviewer must never wedge a commit. Blocks (exit 2) only on
 findings at/above `review.block` (default `critical`). Bypass one commit with
