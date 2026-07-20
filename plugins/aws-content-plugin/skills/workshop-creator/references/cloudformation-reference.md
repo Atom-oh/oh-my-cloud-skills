@@ -17,7 +17,7 @@ workshop-name/
 ```yaml
 awsAccountConfig:
   accountSources:
-    - WorkshopStudio
+    - workshop_studio
   regionConfiguration:
     deployableRegions:
       optional:
@@ -55,7 +55,8 @@ Use these variables in CloudFormation templates and IAM policies:
 | `{{.AssetsBucketPrefix}}` | Assets bucket prefix | S3 path construction |
 | `{{.TeamID}}` | Unique team identifier | Resource naming |
 | `{{.AccountId}}` | AWS account ID | ARN construction |
-| `{{.AWSRegion}}` | Deployed AWS region | Region-specific resources |
+
+> Region is **not** an official magic variable — use CloudFormation's own pseudo parameter (`!Ref AWS::Region`) as shown below. Full magic variable list (team + central): `references/contentspec-complete.md`. For a shared/central account backing this stack, see `references/central-account-guide.md`.
 
 ## CloudFormation Template Structure
 

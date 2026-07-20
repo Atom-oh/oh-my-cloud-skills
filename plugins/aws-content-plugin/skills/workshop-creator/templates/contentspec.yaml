@@ -17,8 +17,30 @@ awsAccountConfig:
       recommended:
         - ap-northeast-2
         - us-east-1
-      all:
-        - ap-northeast-2
-        - us-east-1
+      optional:
         - us-west-2
         - eu-west-1
+
+# [선택] 마크다운 콘텐츠에서 :param 디렉티브로 참조할 자유 형식 변수
+# 상세: references/event-params-guide.md
+# params:
+#   clusterName: workshop-cluster
+
+# [선택] CloudFormation 인프라 프로비저닝
+# infrastructure:
+#   cloudformationTemplates:
+#     - templateLocation: static/cfn/workshop-stack.yaml
+#       label: Workshop Infra
+#       participantVisibleStackOutputs:
+#         - WorkshopUrl
+#       parameters:
+#         - templateParameter: ClusterName
+#           defaultValue: workshop-cluster
+#           userOverridable: true
+
+# [선택] 팀과 분리된 공유 계정 (게이미피케이션, 공유 리소스 등)
+# 상세: references/central-account-guide.md
+# centralAccountInfrastructure:
+#   cloudformationTemplates:
+#     - templateLocation: static/cfn/central-stack.yaml
+#       label: Central Account Stack
