@@ -206,10 +206,25 @@ cfn_nag_scan --input-path static/workshop.yaml
 
 ---
 
+## Event Params & Central Account
+
+인프라에 값을 주입하거나 팀 간 공유 상태가 필요할 때 참조.
+
+| 계층/기능 | 정의 위치 | 용도 |
+|-----------|-----------|------|
+| `params` | `contentspec.yaml` 최상위 | 마크다운 콘텐츠 텍스트 변수 (`:param` 디렉티브) |
+| CFN `parameters` + `userOverridable` | `infrastructure.cloudformationTemplates[]` | 이벤트 운영자가 오버라이드 가능한 인프라 값 |
+| Magic Variables | 자동 주입 | TeamID, ParticipantRoleArn 등 Workshop Studio 계산 값 |
+| `centralAccountInfrastructure` | `contentspec.yaml` 최상위 (선택) | 팀과 분리된 공유 계정 — 공유 리소스/게이미피케이션이 필요할 때만 |
+
+상세: `references/event-params-guide.md` (변수 주입 3계층), `references/central-account-guide.md` (중앙 계정)
+
+---
+
 ## Workflow
 
 1. `/workshop-creator init my-workshop` — 프로젝트 초기화
-2. `contentspec.yaml` 설정 — 리전, IAM, 파라미터
+2. `contentspec.yaml` 설정 — 리전, IAM, 파라미터, (필요 시) 이벤트 오버라이드/중앙 계정
 3. CloudFormation 템플릿 작성 — `static/workshop.yaml`
 4. Homepage 작성 — Mermaid 다이어그램 포함
 5. 모듈별 콘텐츠 작성 — 단계별 hands-on
@@ -257,3 +272,5 @@ cfn_nag_scan --input-path static/workshop.yaml
 | `references/infrastructure-guide.md` | Contentspec.yaml, Magic Variables, CloudFormation |
 | `references/contentspec-complete.md` | contentspec.yaml 전체 설정 |
 | `references/cloudformation-reference.md` | CloudFormation 인프라 패턴 |
+| `references/central-account-guide.md` | 중앙 계정 (centralAccountInfrastructure, 데이터 흐름, 라이프사이클) |
+| `references/event-params-guide.md` | 이벤트 파라미터 / 변수 주입 (params, userOverridable, Magic Variables, Outputs) |

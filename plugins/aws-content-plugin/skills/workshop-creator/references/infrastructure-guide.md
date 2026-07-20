@@ -33,7 +33,7 @@ params:
 
 awsAccountConfig:
   accountSources:
-    - WorkshopStudio
+    - workshop_studio
   regionConfiguration:
     deployableRegions:
       optional:
@@ -64,11 +64,12 @@ infrastructure:
 |---------|---------|
 | `version` | Always `2.0` for current Workshop Studio |
 | `localeCodes` | Supported languages (en-US, ko-KR, etc.) |
-| `params` | Workshop metadata displayed on landing page |
+| `params` | Free-form content variables, referenced via `:param` — see `references/event-params-guide.md` |
 | `awsAccountConfig` | Account provisioning and IAM configuration |
 | `infrastructure` | CloudFormation template references |
+| `centralAccountInfrastructure` | Optional shared account — see `references/central-account-guide.md` |
 
-See `reference/contentspec-complete.md` for all available options.
+See `references/contentspec-complete.md` for all available options.
 
 ---
 
@@ -83,7 +84,8 @@ Use these variables in CloudFormation templates and IAM policies:
 | `{{.AssetsBucketPrefix}}` | Assets bucket prefix | S3 key construction |
 | `{{.TeamID}}` | Unique team identifier | Resource naming |
 | `{{.AccountId}}` | AWS account ID | ARN construction |
-| `{{.AWSRegion}}` | Deployed AWS region | Regional resources |
+
+> Region is **not** an official magic variable — use CloudFormation's own pseudo parameter (`!Ref AWS::Region` / `${AWS::Region}`) instead. Full magic variable list (team + central): `references/contentspec-complete.md`.
 
 ### Usage in IAM Policy
 
@@ -211,4 +213,4 @@ cfn_nag_scan --input-path static/workshop.yaml
 4. **Use Step Functions** for long-running bootstrap tasks (>15 min)
 5. **Tag all resources** with workshop name for cost tracking
 
-See `reference/cloudformation-reference.md` for detailed patterns.
+See `references/cloudformation-reference.md` for detailed patterns.

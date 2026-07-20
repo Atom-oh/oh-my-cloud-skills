@@ -151,8 +151,10 @@ Click the :image[settings icon]{src="/static/img/settings-icon.png" width=24 hei
 
 ### Launch Stack Button
 
+`{{.AWSRegion}}` is not an official Workshop Studio magic variable (see `references/event-params-guide.md`) — a Launch Stack link should point at the same region the content is deployed to, which is already fixed by `deployableRegions` at build time, so the region segment can be a literal or omitted (the console defaults to the caller's current region):
+
 ```markdown
-[:image[Launch CloudFormation Stack]{src="/static/img/launch-stack.png" width=144 height=27 disableZoom=true}](https://console.aws.amazon.com/cloudformation/home?region={{.AWSRegion}}#/stacks/create/review?templateURL=https://s3.amazonaws.com/{{.AssetsBucketName}}/template.yaml)
+[:image[Launch CloudFormation Stack]{src="/static/img/launch-stack.png" width=144 height=27 disableZoom=true}](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://s3.amazonaws.com/{{.AssetsBucketName}}/template.yaml)
 ```
 
 ## Asset Management Notes

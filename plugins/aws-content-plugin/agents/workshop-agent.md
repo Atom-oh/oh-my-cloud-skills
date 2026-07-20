@@ -239,6 +239,8 @@ defaultLocaleCode: en-US
 localeCodes:
   - en-US
   - ko-KR
+params:
+  workshopTitle: "My Workshop"
 awsAccountConfig:
   accountSources:
     - workshop_studio
@@ -246,15 +248,34 @@ infrastructure:
   cloudformationTemplates:
     - templateLocation: static/workshop.yaml
       label: Workshop Infrastructure
+      participantVisibleStackOutputs:
+        - WorkshopUrl
+      parameters:
+        - templateParameter: ClusterName
+          defaultValue: workshop-cluster
+          userOverridable: true
 ```
 
 ### CloudFormation Best Practices
-- Use `!Ref AWS::Region` instead of hardcoded regions
+- Use `!Ref AWS::Region` instead of hardcoded regions (there is no `{{.AWSRegion}}` magic variable)
 - Use `!Ref AWS::AccountId` instead of hardcoded account IDs
 - Use `${AWS::Partition}` for partition-aware ARNs
 - SSM Parameter Store for AMI IDs
 - Encryption enabled for EBS volumes
 - Least privilege IAM policies
+
+### Central Account (선택)
+
+팀 계정과 분리된 공유 계정이 필요할 때만(공유 대시보드, 부하 생성, 진행도 검증 등) `centralAccountInfrastructure`를 정의한다 — 이벤트당 1개, 계정 할당량을 추가로 소비한다. 팀보다 먼저 배포되며, 실패 시 어떤 팀도 프로비저닝되지 않는다. 팀 계정과의 상호작용은 중앙 계정 내부에서만 호출 가능한 Central Account Client API(SigV4)로 이루어진다. 상세: `{plugin-dir}/skills/workshop-creator/references/central-account-guide.md`
+
+### Event Parameter Injection
+
+값을 주입하는 3계층을 구분해서 사용한다:
+1. `params` — 마크다운 콘텐츠 텍스트 변수 (`:param{key="..."}`), CloudFormation과 무관
+2. `infrastructure.cloudformationTemplates[].parameters[]` — CFN 파라미터. `userOverridable: true`를 붙여야 이벤트 운영자가 이벤트별로 값을 오버라이드할 수 있다 (붙이지 않으면 `defaultValue`로 고정)
+3. Magic Variables (`{{.ParticipantRoleArn}}` 등) — Workshop Studio가 자동 계산해 `defaultValue`에 주입
+
+참가자에게 스택 Output을 보여줘야 하면 `participantVisibleStackOutputs`(선별) 또는 `participantAllStackOutputsVisible: true`(전체, 기본값 false)를 사용한다. 상세: `{plugin-dir}/skills/workshop-creator/references/event-params-guide.md`
 
 ---
 
@@ -293,7 +314,7 @@ infrastructure:
 
 1. **Requirements** — Topic, audience, duration, modules, languages
 2. **Structure** — Module breakdown, sections, diagrams, duration per section
-3. **Infrastructure** — CloudFormation template, IAM policy (if needed)
+3. **Infrastructure** — CloudFormation template, IAM policy, central account 필요 여부, 운영자 오버라이드가 필요한 파라미터 결정 (if needed)
 4. **Content** — Create pages with directives, Mermaid diagrams, verification steps
 5. **Quality Review (필수)** — content-review-agent 호출 필수. PASS (≥85점) 획득 전 완료 선언 금지
 
@@ -321,7 +342,10 @@ workshop-agent → content-review-agent (필수) → Workshop Studio deployment
 ## Reference Files
 
 - `{plugin-dir}/skills/workshop-creator/SKILL.md` — Full skill guide
-- `{plugin-dir}/skills/workshop-creator/reference/` — Directive syntax, front matter, CloudFormation patterns
+- `{plugin-dir}/skills/workshop-creator/references/contentspec-complete.md` — Full contentspec.yaml schema, Magic Variables
+- `{plugin-dir}/skills/workshop-creator/references/central-account-guide.md` — Central account concepts, Client API, lifecycle notifications
+- `{plugin-dir}/skills/workshop-creator/references/event-params-guide.md` — params vs CFN parameters vs Magic Variables, userOverridable, Outputs
+- `{plugin-dir}/skills/workshop-creator/references/` — Directive syntax, front matter, CloudFormation patterns (remaining files)
 
 ---
 

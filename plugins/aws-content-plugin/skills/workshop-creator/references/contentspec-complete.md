@@ -53,19 +53,29 @@ localeCodes:
 
 ### params (선택)
 
-워크샵 내에서 참조할 수 있는 파라미터
+워크샵 내에서 참조할 수 있는 파라미터. **자유 형식 YAML 딕셔너리**로, 스칼라/중첩 객체/배열을 모두 허용하며 고정 스키마가 없다. CloudFormation과는 무관하며 콘텐츠 텍스트 전용이다.
 
 ```yaml
 params:
   clusterName: my-eks-cluster
   region: ap-northeast-2
   nodeCount: 3
+  contact:
+    name: John Doe
+  levels:
+    - 100
+    - 200
 ```
 
-마크다운에서 사용:
+마크다운에서 사용 (점 표기로 중첩 키, 대괄호/점 표기로 배열 인덱스 접근):
 ```markdown
 클러스터 이름: :param{key="clusterName"}
+담당자: :param{key=contact.name}
+난이도: :param{key=levels[0]}
+없는 값 대체: :param{key=missingKey defaultValue="N/A"}
 ```
+
+상세(운영자 오버라이드·CFN 파라미터와의 구분): `references/event-params-guide.md`
 
 ### additionalLinks (선택)
 
@@ -180,6 +190,9 @@ infrastructure:
       tags:
         - key: Environment
           value: Workshop
+      # [선택] 참가자에게 노출할 Output (기본값: 비노출)
+      participantVisibleStackOutputs:
+        - VpcId
       parameters:
         - templateParameter: VPCCidr
           defaultValue: "10.0.0.0/16"
@@ -191,7 +204,11 @@ infrastructure:
       parameters:
         - templateParameter: ClusterName
           defaultValue: workshop-cluster
+          # [선택] true면 이벤트 운영자가 이벤트별로 이 값을 오버라이드할 수 있음
+          userOverridable: true
 ```
+
+파라미터의 `userOverridable`, Output 노출 규칙(`participantVisibleStackOutputs` / `participantAllStackOutputsVisible`)에 대한 상세 설명과 운영자 관점 사용법: `references/event-params-guide.md`
 
 ### requiredResources (선택)
 
@@ -211,19 +228,31 @@ infrastructure:
 
 ## centralAccountInfrastructure (선택)
 
-중앙 계정 인프라 설정
+이벤트당 최대 1개, 팀 계정과 분리된 공유 계정("중앙 계정") 인프라 설정. `infrastructure`와 동일한 필드 구조를 공유하며, 대상이 팀이 아닌 중앙 계정이라는 점만 다르다. 최대 5개 템플릿까지 정의 가능. 워크샵에 공유 리소스/게이미피케이션이 필요할 때만 정의한다.
 
 ```yaml
 centralAccountInfrastructure:
   cloudformationTemplates:
     - templateLocation: static/cfn/central-stack.yaml
       label: Central Account Stack
+      tags:
+        - key: Environment
+          value: Workshop
+      # [선택] 참가자에게 노출할 Output만 지정
+      participantVisibleStackOutputs:
+        - LeaderboardUrl
+      # [선택] 모든 Output/Export 노출 (기본값 false)
+      participantAllStackOutputsVisible: false
       parameters:
         - templateParameter: NotificationBusArn
           defaultValue: "{{.NotificationBusArn}}"
         - templateParameter: WSEventsAPIEndpoint
           defaultValue: "{{.WSEventsAPIEndpoint}}"
+        - templateParameter: WksEventsRegion
+          defaultValue: "{{.WSEventsAPIRegion}}"
 ```
+
+개념(언제 쓰는지), Central Account Client API, NotificationBus 라이프사이클 알림, 배포 순서 상세: `references/central-account-guide.md`
 
 ---
 
