@@ -84,9 +84,9 @@
     padding:6px 13px; border-radius:99px; margin-bottom:24px}
   .eyebrow .dot{width:7px; height:7px; border-radius:99px; background:var(--brand); animation:pulse 2.4s infinite}
   @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(217,119,87,.45)}70%{box-shadow:0 0 0 9px rgba(217,119,87,0)}100%{box-shadow:0 0 0 0 rgba(217,119,87,0)}}
-  h1.hero-title{font-weight:800; font-size:clamp(34px,5.2vw,58px); line-height:1.06; letter-spacing:-.035em; margin:0 0 20px}
+  h1.hero-title{font-weight:800; font-size:clamp(34px,5.2vw,58px); line-height:1.06; letter-spacing:-.035em; margin:0 0 20px; text-wrap:balance}
   h1.hero-title em{font-family:var(--serif); font-style:italic; font-weight:500; color:var(--brand-ink)}
-  .hero-sub{font-size:clamp(16px,1.6vw,18.5px); color:var(--text-2); max-width:40ch; margin:0 0 28px}
+  .hero-sub{font-size:clamp(16px,1.6vw,18.5px); color:var(--text-2); max-width:52ch; margin:0 0 28px; text-wrap:pretty}
   .hero-actions{display:flex; flex-wrap:wrap; gap:14px; align-items:center}
   .btn{font-weight:600; font-size:15px; padding:13px 22px; border-radius:99px; cursor:pointer;
     border:1px solid transparent; transition:transform .2s, box-shadow .2s, background .2s, border-color .2s}
@@ -110,12 +110,12 @@
 
   /* section heads */
   .sec{padding:76px 0}
-  .sec-head{max-width:62ch; margin-bottom:42px}
+  .sec-head{max-width:none; margin-bottom:42px}
   .kicker{font-family:var(--mono); font-size:12.5px; letter-spacing:.08em; text-transform:uppercase;
     color:var(--brand-ink); margin-bottom:14px}
-  h2{font-weight:800; font-size:clamp(26px,3.4vw,38px); letter-spacing:-.03em; line-height:1.12; margin:0 0 16px}
+  h2{font-weight:800; font-size:clamp(26px,3.4vw,38px); letter-spacing:-.03em; line-height:1.12; margin:0 0 16px; text-wrap:balance}
   h2 em{font-family:var(--serif); font-style:italic; font-weight:500; color:var(--brand-ink)}
-  .sec-head p{font-size:17px; color:var(--text-2); margin:0}
+  .sec-head p{font-size:17px; color:var(--text-2); margin:0; text-wrap:pretty}
 
   /* pillars */
   .pillars{display:grid; grid-template-columns:repeat(3,1fr); gap:20px}
@@ -214,7 +214,7 @@
     background:radial-gradient(600px 300px at 50% -10%, rgba(217,119,87,.28), transparent 70%)}
   .cta-box h2{color:var(--paper); position:relative; max-width:22ch; margin:0 auto 16px}
   .cta-box h2 em{color:var(--acc-300)}
-  .cta-box p{color:var(--ink-200); max-width:50ch; margin:0 auto 28px; position:relative}
+  .cta-box p{color:var(--ink-200); max-width:50ch; margin:0 auto 28px; position:relative; text-wrap:pretty}
   .cta-box .hero-actions{justify-content:center; position:relative}
   .cta-box .btn-ghost{background:transparent; color:var(--paper); border-color:rgba(247,246,242,.25)}
   .cta-box .btn-ghost:hover{border-color:var(--paper)}
