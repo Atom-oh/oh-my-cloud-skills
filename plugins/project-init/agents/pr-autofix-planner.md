@@ -3,6 +3,7 @@ name: pr-autofix-planner
 description: "Internal pipeline stage (read-only analysis) of a project-init plugin skill. Without the prepared inputs that skill supplies it does nothing except return blocked. Never choose this agent for a user request."
 tools: Read, Grep, Glob
 model: opus
+effort: xhigh
 ---
 
 # PR Auto-Fix Planner

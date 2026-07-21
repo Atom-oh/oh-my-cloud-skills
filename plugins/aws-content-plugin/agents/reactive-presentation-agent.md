@@ -2,7 +2,8 @@
 name: reactive-presentation-agent
 description: Web-based interactive HTML slideshow creation agent using reactive-presentation framework (Remarp). Triggers on "reactive presentation", "remarp", "web presentation", "interactive presentation", "web slides", "HTML slides", "인터랙티브 프레젠테이션", "웹 프레젠테이션", "리마프" requests. Creates Remarp markdown content, generates HTML slideshows with Canvas animations, fragment animations, quizzes, and keyboard navigation. Supports PPTX/PDF theme extraction for corporate branding.
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
-model: sonnet
+model: opus
+effort: high
 skills:
   - reactive-presentation
 mcpServers:

@@ -3,6 +3,7 @@ name: presentation-agent
 description: Presentation format dispatcher. Routes to reactive-presentation-agent for web/HTML slides, or to the aws-light-fcd skill for native PowerPoint (.pptx) decks. Triggers on "create presentation", "create slides", "make slideshow", "프레젠테이션 만들어", "슬라이드 만들어", "발표 자료".
 tools: AskUserQuestion
 model: sonnet
+effort: low
 ---
 
 # Presentation Agent (Dispatcher)

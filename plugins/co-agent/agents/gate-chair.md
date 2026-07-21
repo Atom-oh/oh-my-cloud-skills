@@ -3,6 +3,7 @@ name: gate-chair
 description: "Host-spawned chair for the co-agent hybrid gate — invoke only from /co-agent:harness or /co-agent:consensus gate flows to run Phase T triage (citation check → artifact verification → dedupe → curated digest) and close verify rounds with quorum-checked verdicts on a strong model. Triggers: co-agent hybrid gate triage, co-agent 게이트 triage, 하이브리드 게이트 digest, co-agent gate verdict, 하이브리드 게이트 verify 판정, 하이브리드 게이트 의장."
 tools: Read, Write, Glob, Grep, Bash
 model: opus
+effort: xhigh
 ---
 
 # gate-chair

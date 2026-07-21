@@ -3,6 +3,7 @@ name: gitbook-agent
 description: GitBook documentation site creation agent. Creates structured GitBook projects with proper navigation, components, and content organization. Triggers on "gitbook", "documentation site", "create docs site", "gitbook project" requests.
 tools: Read, Write, Glob, Grep, Bash, Agent, AskUserQuestion
 model: sonnet
+effort: medium
 skills:
   - gitbook
 ---

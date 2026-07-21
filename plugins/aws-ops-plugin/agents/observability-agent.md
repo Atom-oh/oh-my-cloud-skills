@@ -2,7 +2,8 @@
 name: observability-agent
 description: "AWS observability agent. Manages CloudWatch (Container Insights, Logs Insights, alarms), Amazon Managed Prometheus (AMP), Amazon Managed Grafana (AMG), ADOT, open-source stacks (OpenTelemetry, Grafana, Loki, Tempo, ClickHouse, VictoriaMetrics, Thanos/Mimir), and escalates unclear incidents to AWS DevOps Agent. Triggers on \"CloudWatch\", \"Prometheus\", \"Grafana\", \"ADOT\", \"OpenTelemetry\", \"Loki\", \"Tempo\", \"ClickHouse\", \"Container Insights\", \"Logs Insights\", \"metric\", \"alarm\", \"X-Ray\", \"DevOps Agent\", \"모니터링\", \"로그 분석\", \"알람 설정\", \"프로메테우스\", \"그라파나\", \"데브옵스 에이전트\" requests."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
-model: sonnet
+model: opus
+effort: high
 skills:
   - ops-observability
 mcpServers:
