@@ -117,6 +117,10 @@ gather facts (기존 페이지/GitHub/사용자 확인) → self-contained respo
 | **REVIEW** | Critical 0, Warning 4-10, Score 70-84 | Fix and re-review |
 | **FAIL** | Critical ≥1 or Warning >10 or Score <70 | Cannot proceed |
 
+> Visual Testing 면제 콘텐츠(Markdown, Draw.io, Workshop, PPTX, Playwright 미가용)는
+> **90점 만점** 스케일로 판정: PASS ≥77 / REVIEW 63-76 / FAIL <63. 리뷰 리포트가
+> 어느 스케일인지 명시하므로, 90점 스케일의 77점 PASS를 "85 미달"로 오판하지 말 것.
+
 ---
 
 ## Agents

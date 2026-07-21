@@ -25,7 +25,7 @@ routing — per-plugin `CLAUDE.md` holds the detail. Design: `docs/superpowers/s
 |-------------------|----------|-----------|--------|
 | `systematic-debugging` | AWS/EKS symptom (NotReady, IP 고갈, AccessDenied, PVC, throttling) | `aws-ops`: `ops-troubleshoot` or matched domain agent (eks/network/iam/storage/database) | ✅ active |
 | `finishing-a-development-branch` | branch done, docs may be stale | `project-init`: `/sync-docs` + `/generate-changelog` (+ `/add-adr` if a decision was made) | ✅ active |
-| `requesting-code-review` | non-code artifact (slides/diagram/doc/gitbook) or IaC | `aws-content`: `content-review-agent`; IaC → `aws-ops`: `wellarchitected-agent` + `ops-security-audit`. **Read `docs/reference/review-routing.md` for gate precedence on mixed changesets.** | ✅ active |
+| `requesting-code-review` | non-code artifact (slides/PPTX deck/diagram/doc/gitbook/brochure/workshop) or IaC | `aws-content`: `content-review-agent`; IaC → `aws-ops`: `wellarchitected-agent` + `ops-security-audit`. **Read `docs/reference/review-routing.md` for gate precedence on mixed changesets.** | ✅ active |
 | `writing-plans` | plan proposes AWS/IaC change | shift-left AWS security pre-check (`aws-ops`: `ops-security-audit` / mandate check: no 0.0.0.0/0, IAM `*`, secrets-in-env) before implement | ✅ active |
 
 > co-agent is already wired separately: `co-agent:consensus` reuses `superpowers:subagent-driven-development` + writing-plans output, gated by the multi-AI panel.
@@ -163,7 +163,7 @@ echo "plugins=$VS marketplace=$MV tag=$TAG"
 ## Key Conventions
 
 - Content plugin agents produce artifacts (HTML, .drawio, .md); ops plugin agents produce diagnoses with commands
-- Content goes through `content-review-agent` quality gate (100-point scale: PASS ≥85, REVIEW 70-84, FAIL <70)
+- Content goes through `content-review-agent` quality gate (100-point scale: PASS ≥85, REVIEW 70-84, FAIL <70; Visual-Testing-exempt content is judged on a 90-point scale: PASS ≥77)
 - Ops plugin reference files are commands-first, with Mermaid decision trees and error→solution tables
 - Korean/English bilingual keywords in all auto-invocation rules
 - AWS icons are packaged in `aws-content-plugin/skills/reactive-presentation/assets/aws-icons.zip` (4 icon sets: Service, Group, Category, Resource)

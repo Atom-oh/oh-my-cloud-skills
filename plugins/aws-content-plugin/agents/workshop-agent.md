@@ -3,6 +3,7 @@ name: workshop-agent
 description: AWS Workshop Studio content creation agent. Creates workshop content with proper structure, directives, multi-language support, Mermaid diagrams, and CloudFormation infrastructure. Triggers on "workshop", "lab content", "hands-on guide", "workshop create", "module content" requests.
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 model: sonnet
+effort: high
 skills:
   - workshop-creator
 ---
@@ -316,7 +317,7 @@ infrastructure:
 2. **Structure** — Module breakdown, sections, diagrams, duration per section
 3. **Infrastructure** — CloudFormation template, IAM policy, central account 필요 여부, 운영자 오버라이드가 필요한 파라미터 결정 (if needed)
 4. **Content** — Create pages with directives, Mermaid diagrams, verification steps
-5. **Quality Review (필수)** — content-review-agent 호출 필수. PASS (≥85점) 획득 전 완료 선언 금지
+5. **Quality Review (필수)** — content-review-agent 호출 필수. PASS 획득 전 완료 선언 금지 (Workshop은 Visual-Testing 면제 → 90점 스케일 PASS ≥77 — 플러그인 `CLAUDE.md` Verdict 표 참조)
 
 ---
 
@@ -325,7 +326,7 @@ infrastructure:
 콘텐츠 완성 후 배포/완료 선언 전에 반드시:
 1. content-review-agent 호출 → `review content at [프로젝트경로]`
 2. FAIL/REVIEW 판정 시 수정 후 재리뷰 (최대 3회)
-3. PASS (≥85점) 획득 후에만 완료 선언
+3. PASS 획득 후에만 완료 선언 (Workshop은 90점 면제 스케일: PASS ≥77 / REVIEW 63-76 / FAIL <63)
 
 > ⚠️ 이 단계를 건너뛰고 완료를 선언하는 것은 금지됩니다.
 
