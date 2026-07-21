@@ -644,7 +644,7 @@ User: "Create an EKS basics workshop"
 
 After content completion:
 1. Call `content-review-agent`
-2. Achieve PASS (85+ score) before completion
+2. Achieve PASS before completion (Workshop is Visual-Testing-exempt → 90-point scale, PASS ≥77)
 
 :::warning Required
 Skipping this step and deploying is prohibited.
