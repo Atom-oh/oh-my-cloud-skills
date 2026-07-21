@@ -97,7 +97,10 @@ cost-efficiency data (2026-07, supersedes PR #62's sonnet-worker rule): `opus`+`
 for judgment/synthesis gates where the verdict is the product, `opus`+`high` for
 multi-step diagnosis/build workers (opus HIGH beats sonnet HIGH on both score and cost —
 sonnet burns 2x+ agent steps), `sonnet`+`medium` for single-artifact writers,
-`sonnet`+`low` for pure dispatch/scan.
+`sonnet`+`low` for pure dispatch/scan. One documented exception outside this 4-tier
+grid: `pr-autofix-implementer` runs `sonnet`+`high` by design (predates the DeepSWE
+tiering pass) — its role is edit-only mechanical application of an already-approved
+plan, deliberately kept off `opus` to keep the planner/implementer cost split intact.
 
 ```yaml
 ---

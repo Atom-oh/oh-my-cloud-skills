@@ -305,6 +305,7 @@ def write_agents(root, force=False, enable_bash=False):
         return 2
     os.makedirs(d, exist_ok=True)
     written = []
+    skip_bad = []
     for name, spec in (("kiro-implementer.json", _implementer_agent(enable_bash)),
                         ("kiro-reviewer.json", _REVIEWER_AGENT)):
         p = os.path.join(d, name)
@@ -327,6 +328,13 @@ def write_agents(root, force=False, enable_bash=False):
                   f"Remove/replace it before running write-agents again.", file=sys.stderr)
             return 2
         if os.path.isfile(p) and not force:
+            # Still validate an existing file we're skipping — a PRIOR write-agents run
+            # that hit a validation failure (e.g. kiro-cli was mid-upgrade and timed
+            # out) already left a bad file on disk; without this, the natural recovery
+            # move (re-run write-agents WITHOUT --force after seeing the earlier ❌)
+            # reports "skip (exists)" and exit 0, reproducing exactly the silent-bad-
+            # config problem this validation exists to catch.
+            skip_bad.extend(p2 for p2 in [p] if not _validate_agent_file(p2))
             print(f"skip (exists): {p} — pass --force to overwrite")
             continue
         # O_NOFOLLOW: refuse if `p` is itself a symlink, even one pointing to another
@@ -358,7 +366,13 @@ def write_agents(root, force=False, enable_bash=False):
     for p in written:
         status = "⚠️  INVALID (see above)" if p in bad else "ok"
         print(f"wrote {p} — {status}")
+    bad += skip_bad
     if bad:
+        # A file already on disk (skip_bad) failed re-validation too — same message,
+        # since the fix is identical either way: regenerate with --force.
+        for p in skip_bad:
+            print(f"⚠️  {p} — INVALID (existing file failed re-validation; --force to "
+                  f"regenerate)", file=sys.stderr)
         print(f"❌ {len(bad)} agent file(s) failed `kiro-cli agent validate` — kiro-cli "
               f"would silently fall back to its default agent for these (no auto-approval "
               f"in headless mode, so every fs_write/fs_read/execute_bash call gets "
@@ -369,18 +383,32 @@ def write_agents(root, force=False, enable_bash=False):
 
 def _validate_agent_file(path):
     """`kiro-cli agent validate` prints an error to stderr on an invalid config but
-    still EXITS 0 — the exit code can't be trusted, only the presence of an error
-    message on stderr can. Returns True if kiro-cli is absent (fail-open: this is a
-    write-time sanity check, not a hard requirement for kiro-cli to be installed on
-    the machine running write-agents) or the file validates clean."""
+    still EXITS 0 — the exit code can't be trusted as a SUCCESS signal, only the
+    presence of an error message on stderr can.
+
+    Fail-open (return True) ONLY when kiro-cli is absent from PATH entirely — this is
+    a write-time sanity check, not a hard requirement that kiro-cli be installed on
+    the machine running write-agents. Once kiro-cli IS on PATH, every other outcome
+    (non-zero exit, timeout, OSError launching it, or an error message on stderr) is
+    fail-CLOSED: this function's entire purpose is to stop a bad config from being
+    treated as fine, so an inconclusive check must not report success — a transient
+    kiro-cli hiccup is exactly the kind of ambiguity that should surface as an error
+    for a human to look at, not be silently waved through as a passing validation."""
     if not shutil.which("kiro-cli"):
         return True
     try:
         r = subprocess.run(["kiro-cli", "agent", "validate", "--path", path],
                             capture_output=True, text=True, timeout=20)
-    except (OSError, subprocess.TimeoutExpired):
-        return True
-    if "error" in r.stderr.lower():
+    except (OSError, subprocess.TimeoutExpired) as e:
+        print(f"❌ could not run `kiro-cli agent validate` on {path} ({e}) — "
+              f"treating as a validation failure since kiro-cli is on PATH but this "
+              f"invocation could not confirm the file is valid", file=sys.stderr)
+        return False
+    if r.returncode != 0:
+        print(f"❌ `kiro-cli agent validate` exited {r.returncode} on {path}:\n"
+              f"{(r.stderr or r.stdout or '').strip()}", file=sys.stderr)
+        return False
+    if r.stderr and "error" in r.stderr.lower():
         print(f"❌ kiro-cli rejects {path}:\n{r.stderr.strip()}", file=sys.stderr)
         return False
     return True
