@@ -63,7 +63,7 @@ AWS Keys:    (AKIA|ABIA|ACCA|ASIA)[A-Z0-9]{16}
 API Keys:    (api[_-]?key|apikey)\s*[:=]\s*['"]?[A-Za-z0-9_-]{20,}
 Passwords:   (password|passwd|pwd)\s*[:=]\s*['"]?[^\s'"]+
 Tokens:      (bearer|token|auth)\s*[:=]\s*['"]?[A-Za-z0-9_.-]+
-Internal IP: 10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+
+Internal IP: 10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|192\.168\.\d+\.\d+
 Email:       [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
 ```
 
@@ -72,6 +72,10 @@ Email:       [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
 | Critical | AWS keys, passwords | Immediate deletion | -12 (automatic FAIL) |
 | High | PII (ID numbers, phone) | Mask or delete | -6 |
 | Medium | Internal IPs, emails | Mask if necessary | -2 |
+
+예외 (감점 제외):
+- **의도된 공개 연락처 이메일** — gh-home 프로필 페이지·브로셔의 contact 섹션 등, 작성자가 공개를 의도한 이메일 (카테고리 12의 gh-home 저작권 예외와 같은 원리)
+- **명백한 placeholder** — `<YOUR_TOKEN>`, `YOUR_*`, `xxx`, `example.com` 계열의 예시 값 (문서의 예시 코드가 토큰/패스워드 패턴에 걸리는 false-positive 방지)
 
 ### 6. Content-Type-Specific Quality
 
@@ -196,12 +200,13 @@ HTML 파일을 브라우저에서 열어 테스트하려면:
    ```bash
    python3 -m http.server 8080 --bind 127.0.0.1 --directory "[프로젝트경로]" &
    ```
+   8080이 이미 사용 중이면(`Address already in use`) 8081 등 다른 포트로 재시도하고 이후 URL에 그 포트를 사용
 
 2. **브라우저 열기**: `browser_navigate` → `http://localhost:8080/[파일경로]`
 
 3. **인터랙션 테스트**: 아래 체크리스트에 따라 Playwright MCP 도구 사용
 
-4. **서버 정리**: 테스트 완료 후 HTTP 서버 종료
+4. **서버 정리**: 테스트 완료 후 HTTP 서버 종료 — 중간에 테스트가 실패/중단되어도 반드시 종료 (고아 프로세스 방지)
 
 ### Visual Testing 체크리스트
 
