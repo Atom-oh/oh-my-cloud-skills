@@ -91,17 +91,21 @@ plugins/<plugin-name>/
 
 ### Agent File Format
 
-Every agent `.md` file has YAML frontmatter with four core fields (some agents add
-optional `skills`/`color`/`mcpServers`). `model` tiers are quality-first (per PR #62):
-`opus` for judgment/synthesis gates and high-stakes orchestration/IAM, `sonnet` for
-generation/diagnosis workers.
+Every agent `.md` file has YAML frontmatter with five core fields (some agents add
+optional `skills`/`color`/`mcpServers`). `model`/`effort` tiers follow the DeepSWE v1.1
+cost-efficiency data (2026-07, supersedes PR #62's sonnet-worker rule): `opus`+`xhigh`
+for judgment/synthesis gates where the verdict is the product, `opus`+`high` for
+multi-step diagnosis/build workers (opus HIGH beats sonnet HIGH on both score and cost —
+sonnet burns 2x+ agent steps), `sonnet`+`medium` for single-artifact writers,
+`sonnet`+`low` for pure dispatch/scan.
 
 ```yaml
 ---
 name: eks-agent
 description: "Description with trigger keywords."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
-model: sonnet
+model: opus
+effort: high
 ---
 ```
 
