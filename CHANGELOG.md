@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **kiro: new cost-savings delegation plugin (7th plugin)** — Claude plans and verifies; Kiro CLI implements and reviews on its own flat-rate subscription credits inside an isolated git worktree, so token-expensive work moves off this session's budget. Not a second opinion (that's `co-agent`) — purely cost. Commands: `/kiro:setup`, `/kiro:delegate`, `/kiro:review`, `/kiro:configure`; reuses co-agent's `worktree.py`/`scope_guard.py`/`parse_plan.py` verbatim, with an opt-in (off by default) `PreToolUse(Bash)` pre-commit review gate
 - **agentcore-creator: AgentCore harness as a first-class conversion target** — new `references/agentcore-harness.md` (harness APIs, four skill sources with exact payloads, models via LiteLLM/Bedrock Mantle, memory/filesystem, versioning/endpoints, Step Functions, harness-vs-Runtime decision grid); Phase 2 gains a deploy-target decision gate and Phase 4 becomes dual-path — Path A attaches plugin skills unchanged as git/s3 SKILL.md sources into a `CreateHarness` config (no code-gen), Path B keeps the existing Strands/Runtime script
 
 ### Changed
@@ -367,6 +368,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **kiro: 신규 비용절감 위임 플러그인 (7번째 플러그인)** — Claude가 계획·검증하고, Kiro CLI가 격리된 git worktree 안에서 자체 정액제 구독 크레딧으로 구현·리뷰하여 토큰 비용이 큰 작업을 이 세션 예산 밖으로 이동. second opinion이 아니라(그건 `co-agent`) 순수 비용 절감 목적. 커맨드: `/kiro:setup`, `/kiro:delegate`, `/kiro:review`, `/kiro:configure`; co-agent의 `worktree.py`/`scope_guard.py`/`parse_plan.py`를 그대로 재사용하고, opt-in(기본 off) `PreToolUse(Bash)` pre-commit 리뷰 게이트 포함
 - **agentcore-creator: AgentCore harness를 1급 변환 타깃으로 추가** — 신규 `references/agentcore-harness.md`(harness API, 4가지 스킬 소스 정확한 페이로드, LiteLLM/Bedrock Mantle 모델, 메모리/파일시스템, 버저닝/엔드포인트, Step Functions, harness-vs-Runtime 결정 그리드); Phase 2에 배포 타깃 결정 게이트, Phase 4는 이중 경로 — Path A는 플러그인 스킬을 git/s3 SKILL.md 소스로 무변환 attach하는 `CreateHarness` 설정(코드 생성 없음), Path B는 기존 Strands/Runtime 스크립트 유지
 
 ### Changed
