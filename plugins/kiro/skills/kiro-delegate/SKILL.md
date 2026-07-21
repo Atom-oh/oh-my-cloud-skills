@@ -75,6 +75,13 @@ before enabling `default_delegate`. Kiro never commits.
 | `/kiro:review [paths...]` | Run the same Kiro-powered review the pre-commit hook runs, on demand (default: staged changes) |
 | `/kiro:configure` | Inspect/change `default_delegate`, delegate/review models, `parallel_tasks`, `max_fix_rounds`, `review.on_commit`, `review.block` |
 
+**Split before delegating, never hand Kiro a multi-layer task in one shot** — a task
+spanning model+repository+service+handler+routes+tests routinely exceeds
+`delegate.timeout` (default 240s) and dies mid-write with nothing captured, which looks
+like Kiro is broken but is actually a sizing problem. Decomposition rules and the
+model→repository→service→handler→routes→tests ordering:
+`references/spec-format.md` → "Task sizing".
+
 ## Pre-commit review (opt-in)
 
 `review.on_commit` is **off by default** — the staged diff CONTENT is sent to Kiro's

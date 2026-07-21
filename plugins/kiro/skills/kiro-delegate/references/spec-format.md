@@ -69,6 +69,28 @@ Rules that matter (the parser is regex-based, not lenient):
   (mirrors Kiro IDE's own task-list UI, so the file stays meaningful if a user opens it
   there).
 
+## Task sizing — split BEFORE delegating, not after a timeout
+
+Decomposition is the orchestrator's (Claude's) job, not Kiro's — never hand Kiro one task
+that spans multiple layers and let it figure out the breakdown internally. A single
+`kiro-cli chat` call runs against `delegate.timeout` (default 240s; `kiro_config.py
+delegate-timeout`); a task whose prompt reads like "implement the whole backend (model +
+repository + service + handler + routes + tests)" routinely exceeds that window and the
+call dies mid-write with no partial diff captured — this is indistinguishable from Kiro
+being broken, but the actual cause is a task that was too big to hand off as one unit.
+
+Rules:
+- **One task = one layer/component** (one model, one repository, one handler — not
+  "the backend"), sized to finish inside `delegate.timeout` in a single Kiro call.
+- Keep each task's `**Files:**` block small (roughly ≤5 files) — a task that needs more
+  files than that is usually multiple tasks wearing one heading.
+- When a request is inherently multi-layer, decompose it into ordered tasks that mirror
+  the dependency chain (model → repository → service → handler → routes → tests) and let
+  wave-planning (below) serialize the tasks that depend on each other's output — do not
+  fold the chain into a single task hoping Kiro paces itself.
+- If a task keeps timing out even after splitting, split it again before retrying — a
+  timeout is a sizing signal, not something to fix by raising `delegate.timeout` first.
+
 ## Wave planning (parallel tasks)
 
 `/kiro:delegate` groups tasks into **waves** of pairwise-disjoint file sets (same
