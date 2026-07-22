@@ -26,7 +26,7 @@ Workshop Studio 콘솔에 내장된 **미리보기(preview) 단계** AI 대화�
 
 게시된 Workshop Studio 콘텐츠의 품질 기준을 유지하고 우수 콘텐츠를 홍보하기 위한 프로그램 (과거 ImmersionDay·Content Champion 프로그램을 통합). TFC(Tech Field Community)가 콘텐츠를 검토·큐레이션하며, 향후 GenAI 기반 품질 스캐너 통합이 예정되어 있다.
 
-> 이 플러그인의 `content-review-agent` 품질 게이트(≥85점)는 CQP가 요구하는 "높은 품질 기준"과 방향이 같다 — CQP에 콘텐츠를 등록하기 전에 `content-review-agent` PASS를 먼저 통과시켜 두면 검토 과정에서 유리하다.
+> 이 플러그인의 `content-review-agent` 품질 게이트(Workshop은 Visual-Testing 면제 → 90점 스케일 PASS ≥77)는 CQP가 요구하는 "높은 품질 기준"과 방향이 같다 — CQP에 콘텐츠를 등록하기 전에 `content-review-agent` PASS를 먼저 통과시켜 두면 검토 과정에서 유리하다.
 
 ---
 

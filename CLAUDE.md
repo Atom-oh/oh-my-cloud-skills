@@ -91,17 +91,26 @@ plugins/<plugin-name>/
 
 ### Agent File Format
 
-Every agent `.md` file has YAML frontmatter with four core fields (some agents add
-optional `skills`/`color`/`mcpServers`). `model` tiers are quality-first (per PR #62):
-`opus` for judgment/synthesis gates and high-stakes orchestration/IAM, `sonnet` for
-generation/diagnosis workers.
+Every agent `.md` file has YAML frontmatter with five core fields (some agents add
+optional `skills`/`color`/`mcpServers`). `model`/`effort` tiers follow the DeepSWE v1.1
+cost-efficiency data (2026-07, supersedes PR #62's sonnet-worker rule): `opus`+`xhigh`
+for judgment/synthesis gates where the verdict is the product, `opus`+`high` for
+multi-step diagnosis/build workers (opus HIGH beats sonnet HIGH on both score and cost —
+sonnet burns 2x+ agent steps), `sonnet`+`medium` for single-artifact writers,
+`sonnet`+`low` for pure dispatch/scan. One documented exception outside this 4-tier
+grid: `pr-autofix-implementer` runs `opus`+`medium` by design — its role is edit-only
+mechanical application of an already-approved plan, so `xhigh`/`high` reasoning depth
+buys nothing, but opus's multi-file edit reliability still cuts fix-loop iterations
+more than a cost-optimal `sonnet` tier would (a plan-approved edit needing a second
+pass costs a full extra review-poll cycle in that skill, not just one subagent call).
 
 ```yaml
 ---
 name: eks-agent
 description: "Description with trigger keywords."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
-model: sonnet
+model: opus
+effort: high
 ---
 ```
 
@@ -298,9 +307,9 @@ Commands: `/co-agent:configure` — tune the panel (per-AI `model`, Codex `effor
 |-------|---------|
 | `doc-sync-checker` | Documentation sync analysis, quality scoring, missing doc detection |
 | `pr-autofix-planner` | Read-only fix planner for pr-autofix (enforced Read/Grep/Glob; fable/opus) |
-| `pr-autofix-implementer` | Edit-only plan implementer for pr-autofix (enforced Read/Write/Edit/Grep/Glob — no Bash/network; sonnet) |
+| `pr-autofix-implementer` | Edit-only plan implementer for pr-autofix (enforced Read/Write/Edit/Grep/Glob — no Bash/network; opus [medium effort]) |
 
-Skills: `project-scaffolder` — Claude Code project structure patterns and conventions. `pr-autofix` — PR review feedback auto-fix (AI + human review polling, max 3 iterations; fix planning on Fable/Opus, implementation delegated to sonnet subagents in a disposable worktree — only the plan-approved delta lands). `decision-reconcile` — ADR contradiction detection across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (varied Claude model tiers + optional co-agent CLIs, one review lens each), then drafts a superseding ADR to reverse/reconcile the decision. **Local to this fork** — not present in the whchoi98/project-init upstream source (see `plugins/project-init/references/upstream-sync.md`). Triggers: 의사결정 번복, ADR 모순, reconcile ADRs.
+Skills: `project-scaffolder` — Claude Code project structure patterns and conventions. `pr-autofix` — PR review feedback auto-fix (AI + human review polling, max 5 iterations; fix planning on Fable/Opus, implementation delegated to opus [medium effort] subagents in a disposable worktree — only the plan-approved delta lands). `decision-reconcile` — ADR contradiction detection across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (varied Claude model tiers + optional co-agent CLIs, one review lens each), then drafts a superseding ADR to reverse/reconcile the decision. **Local to this fork** — not present in the whchoi98/project-init upstream source (see `plugins/project-init/references/upstream-sync.md`). Triggers: 의사결정 번복, ADR 모순, reconcile ADRs.
 
 Commands: `/init-project`, `/sync-docs`, `/add-adr`, `/add-module`, `/add-runbook`, `/generate-readme`, `/generate-changelog`, `/health-check`, `/pr-autofix`, `/add-reference-doc`
 

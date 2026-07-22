@@ -3,6 +3,7 @@ name: iam-agent
 description: "AWS IAM and Kubernetes RBAC troubleshooting agent. Manages IRSA, Pod Identity, aws-auth ConfigMap, RBAC roles, and permission policies. Triggers on \"IRSA\", \"Pod Identity\", \"RBAC\", \"aws-auth\", \"IAM role\", \"permission denied\", \"AccessDenied\", \"권한 오류\", \"인증 실패\" requests."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 model: opus
+effort: xhigh
 skills:
   - ops-security-audit
 mcpServers:

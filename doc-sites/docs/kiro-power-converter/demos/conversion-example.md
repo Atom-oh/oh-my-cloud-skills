@@ -132,7 +132,8 @@ inclusion: always
 name: eks-agent
 description: "EKS cluster operations. Triggers on \"eks\", \"EKS 클러스터\" requests."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
-model: sonnet
+model: opus
+effort: high
 ---
 
 # EKS Agent

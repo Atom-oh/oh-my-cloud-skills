@@ -14,7 +14,7 @@ AWS 솔루션·제품을 위한 **단일 페이지 반응형 온라인 브로셔
 | 항목 | 값 |
 |------|-----|
 | **도구** | Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion |
-| **모델** | sonnet |
+| **모델** | opus (effort: high) |
 | **연동 스킬** | `brochure`, `architecture-diagram` |
 | **출력물** | 자기완결 `.html` (CSS 인라인) + 아키텍처 `.svg` |
 

@@ -3,6 +3,7 @@ name: co-agent
 description: "Collaborate with other AI agents (Kiro CLI, Codex, and Agy) for a second opinion, with Claude as chair in Claude Code. Multi-AI code/architecture review, decision support when the user is unsure, ADR co-authoring, and context sync — plus autonomous consensus/harness pipelines. Triggers on multi-AI intent only — \"co-agent\", \"second opinion\", \"다른 AI\", \"다른 AI로 리뷰\", \"AI 협업\", \"AI 패널\", \"멀티 AI\", \"잘 모르겠어\" (decision help), \"ADR 협업\" — NOT on bare \"code review\"/\"decide\"/\"adr\" (use /co-agent for those)."
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 model: opus
+effort: xhigh
 skills:
   - co-agent
 ---

@@ -145,6 +145,21 @@ Reference documents are loaded into AgentCore Memory LTM as initial knowledge:
 
 Gateway can also front a **Managed Knowledge Base** (GA 2026: S3/SharePoint/Confluence/Drive/OneDrive/Web Crawler connectors) and a managed **Web Search** tool (GA 2026, zero data egress) — both are Gateway-side configuration, not something this converter needs to generate code for. Point the user at these instead of hand-rolling equivalent tooling when the plugin being converted has a "search the web" or "search our docs" skill.
 
+**Security hardening (Phase 4/5 mention, not code-gen):** AWS WAF for Gateway is GA
+(2026-06-29) — associate a Web ACL at the Gateway level for IP-based access control,
+rate-based rules, and AWS Managed Rule Groups; one association covers every downstream
+target. For a **Runtime target** specifically, also enforce that the Runtime only accepts
+traffic through the gateway (GA 2026-06) — mechanism depends on the runtime's inbound auth:
+- **IAM (SigV4) runtimes**: attach a resource-based policy to the Runtime that `Allow`s the
+  gateway's execution role as `Principal`, plus an explicit `Deny` for every other principal
+  keyed on `ArnNotEquals: aws:PrincipalArn`. Then separately harden the **gateway execution
+  role's own trust policy** with `aws:SourceArn`/`aws:SourceAccount` conditions so only your
+  gateway can assume that role (confused-deputy prevention) — easy to skip, and the step that
+  actually closes the loop.
+- **OAuth (JWT) runtimes**: set `allowedWorkloadConfiguration` on the runtime's
+  `customJWTAuthorizer` (`hostingEnvironments` with the gateway's ARN, and/or
+  `workloadIdentities` with the gateway's workload-identity name).
+
 ## Hooks Gap Analysis Rules
 
 | Hook Event | Hook Type | AgentCore Handling |
@@ -286,6 +301,14 @@ user asks "can AgentCore do X" during Phase 1/2): interactive shells (up to 10 c
 terminal sessions per runtime session), BYO filesystem (S3 Files/EFS), managed session
 storage, the AG-UI protocol, bidirectional WebSocket streaming, Node.js + Python 3.14 direct
 code deploy, VPC egress for Identity/Gateway/Runtime, gateway MCP sessions with elicitation/
-sampling/progress streaming, quota increases (InvokeAgentRuntime 25→200 TPS, active sessions
-up to 5,000 in IAD/PDX), the `ActiveSessionCount` CloudWatch metric, SOC 1/2/3 + ISO + CSA
-STAR compliance, and GovCloud (US-West) availability.
+sampling/progress streaming, an **invocation-rate** quota increase (InvokeAgentRuntime
+25→200 TPS per agent/account) plus a separate, different **new-session-creation-rate**
+increase (container deployments 100→400 TPM per endpoint; direct code deployments unchanged
+at 25 TPS per endpoint — don't conflate the two, they measure different things), active
+sessions up to 5,000 in IAD/PDX (2,500 elsewhere), the `ActiveSessionCount` CloudWatch metric,
+**unified span destination** (July 2026: set `UNIFIED_TRACES_DESTINATION_ENABLED=true` on a
+Runtime agent to route its spans to its own per-agent CloudWatch log group
+`/aws/bedrock-agentcore/runtimes/<agent_id>-<endpoint_name>` instead of the shared `aws/spans`
+group; agents created after 2026-07-20 default to the per-agent group; requires CloudWatch
+Transaction Search, `logs:PutResourcePolicy` on the execution role, and ADOT ≥0.18.0), SOC
+1/2/3 + ISO + CSA STAR compliance, and GovCloud (US-West) availability.

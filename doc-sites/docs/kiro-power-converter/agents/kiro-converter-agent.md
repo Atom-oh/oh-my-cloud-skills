@@ -16,7 +16,7 @@ Claude Code 플러그인을 Kiro Power 포맷으로 변환하는 전문 에이�
 | 항목 | 값 |
 |------|-----|
 | 이름 | `kiro-converter-agent` |
-| 모델 | sonnet |
+| 모델 | sonnet (effort: medium) |
 | 도구 | Read, Write, Glob, Grep, Bash, AskUserQuestion |
 
 ## 트리거 키워드

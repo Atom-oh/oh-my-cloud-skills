@@ -29,16 +29,23 @@ Activated by the following keywords:
 
 | Reference Doc | Description |
 |---------------|-------------|
+| `front-matter.md` | Front Matter attributes |
 | `alert-reference.md` | Alert directive details |
 | `code-reference.md` | Code directive details (40+ languages) |
 | `tabs-reference.md` | Tabs directive details |
 | `image-reference.md` | Image directive details |
-| `front-matter.md` | Front Matter attributes |
 | `directives-complete.md` | Complete directive list |
-| `contentspec-complete.md` | Full contentspec.yaml configuration |
-| `infrastructure-guide.md` | Contentspec.yaml, Magic Variables, CloudFormation |
-| `cloudformation-reference.md` | CloudFormation infrastructure template guide |
 | `workshop-templates.md` | Content templates (Homepage, Module, Lab) |
+| `infrastructure-guide.md` | Contentspec.yaml, Magic Variables, CloudFormation |
+| `contentspec-complete.md` | Full contentspec.yaml configuration |
+| `cloudformation-reference.md` | CloudFormation infrastructure patterns |
+| `central-account-guide.md` | Central account (centralAccountInfrastructure, data flow, lifecycle) |
+| `event-params-guide.md` | Event params / variable injection (params, userOverridable, Magic Variables, Outputs) |
+| `workshop-assets-guide.md` | Asset management (Repository/S3 Assets, scanning, ASU, EC2 key pairs) |
+| `event-quotas-guide.md` | Account quotas, Grant, Required Resources, cost, ODCR |
+| `event-operations-guide.md` | Participant surveys, content file structure, Autostart, fraud prevention, Opportunity ID |
+| `platform-features-guide.md` | MCP Server, Atlas Agent, Content Quality Program |
+| `supported-services-guide.md` | Supported/unsupported services, GPU/instance limits, Marketplace/Bedrock scope |
 
 ---
 
@@ -455,6 +462,21 @@ Ebs:
 
 ---
 
+## Event Params & Central Account
+
+Reference when injecting values into infrastructure or when teams need shared state.
+
+| Layer / feature | Defined in | Purpose |
+|-----------------|-----------|---------|
+| `params` | top level of `contentspec.yaml` | Markdown content text variables (`:param` directive) |
+| CFN `parameters` + `userOverridable` | `infrastructure.cloudformationTemplates[]` | Infra values the event operator can override |
+| Magic Variables | auto-injected | Workshop Studio-computed values (TeamID, ParticipantRoleArn, …) |
+| `centralAccountInfrastructure` | top level of `contentspec.yaml` (optional) | Shared account separate from teams — only when shared resources / gamification are needed |
+
+Details: `event-params-guide.md` (3-layer variable injection), `central-account-guide.md` (central account).
+
+---
+
 ## Workshop Templates
 
 ### Homepage Template
@@ -644,7 +666,7 @@ User: "Create an EKS basics workshop"
 
 After content completion:
 1. Call `content-review-agent`
-2. Achieve PASS (85+ score) before completion
+2. Achieve PASS before completion (Workshop is Visual-Testing-exempt → 90-point scale, PASS ≥77)
 
 :::warning Required
 Skipping this step and deploying is prohibited.

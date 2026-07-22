@@ -36,7 +36,7 @@
           },
           {
             "type": "command",
-            "command": "bash .claude/hooks/check-doc-sync.sh",
+            "command": "bash -c 'f=$(jq -r \".tool_input.file_path // .tool_response.filePath // empty\"); bash .claude/hooks/check-doc-sync.sh \"$f\"'",
             "statusMessage": "Checking doc sync..."
           }
         ]

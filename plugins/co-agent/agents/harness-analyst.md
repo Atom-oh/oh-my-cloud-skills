@@ -3,6 +3,7 @@ name: harness-analyst
 description: "Hill-climbing analyst for co-agent harness/consensus runs — invoke when accumulated .claude/co-agent-consensus/ run records should be mined into proposed /co-agent:configure adjustments (implementer, parallel_tasks, review_mode, timeout). Advisory only — never edits config itself. Triggers: co-agent harness 튜닝, 하네스 실행 기록 분석, harness run report 분석, co-agent hill-climbing, tune harness, harness 회고."
 tools: Read, Glob, Grep, Bash, AskUserQuestion
 model: sonnet
+effort: medium
 ---
 
 # harness-analyst

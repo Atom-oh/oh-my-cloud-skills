@@ -36,6 +36,11 @@ import shutil
 import subprocess
 import tempfile
 
+_VALIDATE_TIMEOUT = 20  # seconds — `kiro-cli agent validate` on a small local JSON file
+                        # should be near-instant; not exposed as a user setting (unlike
+                        # delegate/review timeouts) since this is a write-time sanity
+                        # check, not a long-running headless invocation.
+
 _AUTH_RE = re.compile(
     r"not logged in|unauthenticated|invalid credentials|access denied|"
     r"token expired|expired token|please (log|sign) in|run .*login|\b401\b|\b403\b|"
@@ -91,45 +96,43 @@ def _implementer_agent(enable_bash):
               "host commits after review.",
     "tools": tools,
     "allowedTools": tools,
+    # kiro-cli's agent-config hook schema is FLAT per preToolUse entry
+    # ({"matcher", "command"}) — NOT Claude Code's nested {"matcher", "hooks":
+    # [{"type","command"}]} shape. The nested shape validates as a no-op in older
+    # kiro-cli releases but kiro-cli 2.11.1's `agent validate` rejects it ("missing
+    # field `command`") and kiro-cli silently falls back to its default agent, which
+    # has no auto-approval in headless mode — every fs_write/fs_read/execute_bash call
+    # then gets rejected with "no user to approve". Confirmed against the installed
+    # kiro-cli via `kiro-cli agent validate`: flat validates clean, nested doesn't.
     "hooks": {
         "preToolUse": [
             {
                 "matcher": "fs_write",
-                "hooks": [
-                    {
-                        "type": "runCommand",
-                        # Defense-in-depth on top of the host's worktree.py capture-diff +
-                        # scope_guard.py (the load-bearing guarantee — see
-                        # references/kiro-headless.md): refuse a write that RESOLVES
-                        # outside the cwd the implementer was launched in (the worktree).
-                        # realpath-based, not string-based: a plain startswith('/')/'..'
-                        # check misses (a) a symlink inside the worktree pointing out of
-                        # it — the write path LOOKS relative but lands outside — and
-                        # (b) Windows drive/UNC absolute paths, which isabs() catches but
-                        # a '/'-prefix check doesn't. Escapes that slip past this still
-                        # can't reach the main tree (the host only ever applies the
-                        # CAPTURED, scope-guarded diff) — this hook just narrows the
-                        # blast radius earlier.
-                        "command": _GUARD_CMD
-                    }
-                ]
+                # Defense-in-depth on top of the host's worktree.py capture-diff +
+                # scope_guard.py (the load-bearing guarantee — see
+                # references/kiro-headless.md): refuse a write that RESOLVES
+                # outside the cwd the implementer was launched in (the worktree).
+                # realpath-based, not string-based: a plain startswith('/')/'..'
+                # check misses (a) a symlink inside the worktree pointing out of
+                # it — the write path LOOKS relative but lands outside — and
+                # (b) Windows drive/UNC absolute paths, which isabs() catches but
+                # a '/'-prefix check doesn't. Escapes that slip past this still
+                # can't reach the main tree (the host only ever applies the
+                # CAPTURED, scope-guarded diff) — this hook just narrows the
+                # blast radius earlier.
+                "command": _GUARD_CMD
             },
             {
                 "matcher": "fs_read",
-                "hooks": [
-                    {
-                        "type": "runCommand",
-                        # Same realpath containment, applied to reads. Without this, a
-                        # prompt-injection payload reachable from the task prompt or spec
-                        # content could direct the implementer to fs_read an absolute
-                        # path outside the worktree (credentials, SSH keys) and have its
-                        # contents surface in Kiro's response — a confidentiality leak
-                        # that execute_bash-off does nothing to prevent. The pipeline
-                        # copies spec files INTO the worktree specifically so the
-                        # implementer never needs an out-of-worktree absolute read.
-                        "command": _GUARD_CMD
-                    }
-                ]
+                # Same realpath containment, applied to reads. Without this, a
+                # prompt-injection payload reachable from the task prompt or spec
+                # content could direct the implementer to fs_read an absolute
+                # path outside the worktree (credentials, SSH keys) and have its
+                # contents surface in Kiro's response — a confidentiality leak
+                # that execute_bash-off does nothing to prevent. The pipeline
+                # copies spec files INTO the worktree specifically so the
+                # implementer never needs an out-of-worktree absolute read.
+                "command": _GUARD_CMD
             }
         ]
     }
@@ -153,16 +156,12 @@ _REVIEWER_AGENT = {
               "any file. You can only read files inside your working directory.",
     "tools": ["fs_read"],
     "allowedTools": ["fs_read"],
+    # Flat preToolUse shape — see the note above _implementer_agent's hooks block.
     "hooks": {
         "preToolUse": [
             {
                 "matcher": "fs_read",
-                "hooks": [
-                    {
-                        "type": "runCommand",
-                        "command": _GUARD_CMD
-                    }
-                ]
+                "command": _GUARD_CMD
             }
         ]
     }
@@ -311,6 +310,7 @@ def write_agents(root, force=False, enable_bash=False):
         return 2
     os.makedirs(d, exist_ok=True)
     written = []
+    skip_bad = []
     for name, spec in (("kiro-implementer.json", _implementer_agent(enable_bash)),
                         ("kiro-reviewer.json", _REVIEWER_AGENT)):
         p = os.path.join(d, name)
@@ -333,6 +333,14 @@ def write_agents(root, force=False, enable_bash=False):
                   f"Remove/replace it before running write-agents again.", file=sys.stderr)
             return 2
         if os.path.isfile(p) and not force:
+            # Still validate an existing file we're skipping — a PRIOR write-agents run
+            # that hit a validation failure (e.g. kiro-cli was mid-upgrade and timed
+            # out) already left a bad file on disk; without this, the natural recovery
+            # move (re-run write-agents WITHOUT --force after seeing the earlier ❌)
+            # reports "skip (exists)" and exit 0, reproducing exactly the silent-bad-
+            # config problem this validation exists to catch.
+            if not _validate_agent_file(p):
+                skip_bad.append(p)
             print(f"skip (exists): {p} — pass --force to overwrite")
             continue
         # O_NOFOLLOW: refuse if `p` is itself a symlink, even one pointing to another
@@ -360,9 +368,83 @@ def write_agents(root, force=False, enable_bash=False):
             json.dump(spec, f, indent=2)
             f.write("\n")
         written.append(p)
+    bad = [p for p in written if not _validate_agent_file(p)]
     for p in written:
-        print(f"wrote {p}")
+        status = "⚠️  INVALID (see above)" if p in bad else "ok"
+        print(f"wrote {p} — {status}")
+    bad += skip_bad
+    if bad:
+        # A file already on disk (skip_bad) failed re-validation too — same message,
+        # since the fix is identical either way: regenerate with --force.
+        for p in skip_bad:
+            print(f"⚠️  {p} — INVALID (existing file failed re-validation; --force to "
+                  f"regenerate)", file=sys.stderr)
+        print(f"❌ {len(bad)} agent file(s) failed `kiro-cli agent validate` — kiro-cli "
+              f"would silently fall back to its default agent for these (no auto-approval "
+              f"in headless mode, so every fs_write/fs_read/execute_bash call gets "
+              f"rejected). Fix the generator and re-run with --force.", file=sys.stderr)
+        return 1
     return 0
+
+
+def _validate_agent_file(path):
+    """`kiro-cli agent validate` prints an error to stderr on an invalid config but
+    still EXITS 0 — the exit code can't be trusted as a SUCCESS signal, only the
+    presence of an error message on stderr can.
+
+    Fail-open (return True) ONLY when kiro-cli is absent from PATH entirely — this is
+    a write-time sanity check, not a hard requirement that kiro-cli be installed on
+    the machine running write-agents. Once kiro-cli IS on PATH, every other outcome
+    (non-zero exit, timeout, OSError launching it, or an error message on stderr) is
+    fail-CLOSED: this function's entire purpose is to stop a bad config from being
+    treated as fine, so an inconclusive check must not report success — a transient
+    kiro-cli hiccup is exactly the kind of ambiguity that should surface as an error
+    for a human to look at, not be silently waved through as a passing validation."""
+    if not shutil.which("kiro-cli"):
+        return True
+    try:
+        r = subprocess.run(["kiro-cli", "agent", "validate", "--path", path],
+                            capture_output=True, text=True, timeout=_VALIDATE_TIMEOUT)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        print(f"❌ could not run `kiro-cli agent validate` on {path} ({e}) — "
+              f"treating as a validation failure since kiro-cli is on PATH but this "
+              f"invocation could not confirm the file is valid", file=sys.stderr)
+        return False
+    if r.returncode != 0:
+        detail = ((r.stderr or '') + (r.stdout or '')).strip()
+        print(f"❌ `kiro-cli agent validate` exited {r.returncode} on {path}:\n{detail}",
+              file=sys.stderr)
+        return False
+    # Check BOTH streams, same as the returncode!=0 branch above — a future kiro-cli
+    # build that prints its validation error to stdout instead of stderr (while still
+    # exiting 0, the exact "can't trust the exit code" behavior this function exists
+    # to work around) would sail past a stderr-only check, silently reintroducing the
+    # bug this whole validation was added to catch.
+    #
+    # kiro-cli 2.11.1 has no machine-readable (--json) validate output, so this can't
+    # be a structured check. A confirmed-clean file produces EMPTY stdout and stderr
+    # (verified against the installed binary); a confirmed-invalid one produces a
+    # non-empty message ("Error: ... invalid: missing field `command` ..."). Treating
+    # "any output at all" as failure — rather than matching a specific substring like
+    # "error" — is the more conservative signal: it can't be defeated by a future
+    # kiro-cli release rewording/relocalizing the error text (still non-empty output),
+    # and a genuinely silent success can never look like a failure.
+    #
+    # Known trade-off, accepted: a future kiro-cli that prints ANY non-error text on
+    # an otherwise-valid file (a deprecation notice, a one-line success banner) would
+    # make this function report a false failure and hard-block write-agents/setup for
+    # a config that actually works. Against the installed 2.11.1 this doesn't happen
+    # (verified: clean file -> empty stdout+stderr), and a false failure here is loud
+    # and local (write-agents exits non-zero, nothing silently proceeds on a bad
+    # config) rather than the silent pass-through this whole check exists to prevent
+    # — so the trade favors this direction. If a future kiro-cli release needs it,
+    # narrow this back to a substring/pattern match on the known error shapes
+    # ("missing field", "invalid") instead of reverting to exit-code trust.
+    combined = f"{r.stderr or ''}{r.stdout or ''}"
+    if combined.strip():
+        print(f"❌ kiro-cli rejects {path}:\n{combined.strip()}", file=sys.stderr)
+        return False
+    return True
 
 
 def verify_agents(root):
@@ -375,8 +457,9 @@ def verify_agents(root):
     known-good guard, wrong name) is rejected so the caller can regenerate it with
     `write-agents --force` rather than trust it.
 
-    Exit 0 = matches a plugin-generated shape (bash on or off). 1 = mismatch/tampered.
-    2 = file missing (caller should run write-agents)."""
+    Exit 0 = matches a plugin-generated shape (bash on or off) AND kiro-cli accepts it.
+    1 = mismatch/tampered/rejected-by-kiro-cli. 2 = file missing (caller should run
+    write-agents)."""
     p = os.path.join(root, ".kiro", "agents", "kiro-implementer.json")
     if not os.path.isfile(p):
         print(f"missing: {p} — run `kiro_setup.py write-agents` first", file=sys.stderr)
@@ -389,14 +472,27 @@ def verify_agents(root):
         return 1
     # Compare against BOTH legitimate shapes (execute_bash off / on). Comparing the whole
     # dict (incl. the preToolUse hook command) means a tampered hook can't slip through.
-    if any(got == _implementer_agent(b) for b in (False, True)):
-        print(f"ok: {p} matches a plugin-generated kiro-implementer agent")
-        return 0
-    print(f"❌ {p} does not match a plugin-generated kiro-implementer agent "
-          f"(tampered or hand-edited?) — regenerate with `kiro_setup.py write-agents "
-          f"--force` before delegating; the pipeline runs this agent's preToolUse hook",
-          file=sys.stderr)
-    return 1
+    if not any(got == _implementer_agent(b) for b in (False, True)):
+        print(f"❌ {p} does not match a plugin-generated kiro-implementer agent "
+              f"(tampered or hand-edited?) — regenerate with `kiro_setup.py write-agents "
+              f"--force` before delegating; the pipeline runs this agent's preToolUse hook",
+              file=sys.stderr)
+        return 1
+    # Shape match alone isn't enough: `write_agents` can write a file THAT IS the
+    # generator's exact output and still have kiro-cli reject it (this function's
+    # caller — the delegate pipeline — is exactly what write_agents's own validation
+    # failure warns about). Since the on-disk content is then byte-identical to
+    # `_implementer_agent()`, the dict-equality check above alone would pass a file
+    # write_agents itself already flagged as invalid — re-run the same validation this
+    # function's caller ultimately relies on, so verify-agents is the one checkpoint
+    # that catches this regardless of how the file got onto disk.
+    if not _validate_agent_file(p):
+        print(f"❌ {p} matches the plugin-generated shape but kiro-cli rejects it — "
+              f"regenerate with `kiro_setup.py write-agents --force` and confirm it "
+              f"validates clean before delegating.", file=sys.stderr)
+        return 1
+    print(f"ok: {p} matches a plugin-generated kiro-implementer agent")
+    return 0
 
 
 def _default_root():

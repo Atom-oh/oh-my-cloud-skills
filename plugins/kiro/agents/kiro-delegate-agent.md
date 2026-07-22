@@ -3,6 +3,7 @@ name: kiro-delegate-agent
 description: "Cost-savings delegation orchestrator — plans with Claude, hands implementation off to Kiro CLI running on flat-rate subscription credits inside an isolated git worktree, verifies with tests, and falls back to writing the code itself when Kiro's fix loop is exhausted. Triggers on 'kiro한테 시켜서 구현', 'kiro로 구현', 'kiro한테 구현 위임', 'delegate implementation to kiro', 'kiro implement this' requests, or /kiro:delegate. NOT for review — read-only diff review is the separate /kiro:review command, which never loads this write-capable pipeline."
 tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
 model: opus
+effort: xhigh
 ---
 
 # kiro-delegate-agent
