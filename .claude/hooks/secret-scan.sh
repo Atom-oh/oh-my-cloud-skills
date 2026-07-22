@@ -13,17 +13,29 @@
 # inherit the grep -P fail-closed block below even when nothing is being
 # committed. $TOOL_INPUT_COMMAND is the same env var the remarp build-check
 # PreToolUse hook in this repo's settings.json already reads for this purpose.
+#
+# Deliberately loose: `git\b.*\bcommit\b` anywhere in the string, not an
+# option-token whitelist. A tighter regex like `git[[:space:]]+([a-z-]+[[:space:]]+)*commit`
+# looks precise but is fail-open by construction — it silently never matches
+# (and never scans) `git -C /path commit` (a `C` flag), `git -c k=v commit`
+# (`.`/`=`), or `--git-dir=... commit` (`/`,`=`), since [a-z-] can't consume
+# any of those tokens. Over-matching here only costs an extra scan (safe
+# direction); under-matching skips the scan entirely (unsafe). Prefer broad.
 CMD="${TOOL_INPUT_COMMAND:-}"
-[[ "$CMD" =~ git[[:space:]]+([a-z-]+[[:space:]]+)*commit ]] || exit 0
+[[ "$CMD" =~ git.*commit ]] || exit 0
 
 # A single Bash call can stage AND commit in one shot (`git add -A && git
-# commit`, `git commit -a`/`-am`/`--all`). PreToolUse fires BEFORE the command
-# runs, so at that instant the index is still whatever it was before this
-# call's own `add`/`-a` executes — scanning only the current index would miss
-# a secret that this very command is about to stage. When the command shows
-# that shape, also scan the working tree (tracked-modified + untracked) in
-# addition to the index.
-if [[ "$CMD" =~ git[[:space:]]+add ]] || [[ "$CMD" =~ commit[[:space:]]+.*-[a-zA-Z]*a ]] || [[ "$CMD" =~ --all ]]; then
+# commit`, `git commit -a`/`-am`/`--all`, `git commit --only/--include <path>`).
+# PreToolUse fires BEFORE the command runs, so at that instant the index is
+# still whatever it was before this call's own `add`/`-a`/`--only` executes —
+# scanning only the current index would miss a secret this very command is
+# about to stage. When the command shows that shape, also scan the working
+# tree (tracked-modified + untracked) in addition to the index. As above,
+# broad detection is intentional: the cost of a false match here is one extra
+# scan pass, not a missed secret.
+if [[ "$CMD" =~ git[[:space:]]+add ]] || [[ "$CMD" =~ --all ]] || \
+   [[ "$CMD" =~ --only ]] || [[ "$CMD" =~ --include ]] || \
+   [[ "$CMD" =~ commit[[:space:]]+.*-[a-zA-Z]*a ]]; then
     SCAN_WORKING_TREE=1
 else
     SCAN_WORKING_TREE=0
@@ -75,6 +87,11 @@ PATTERNS=(
 # `[[ "$file" == $pattern ]]` matches the whole staged path
 # (e.g. ".claude/hooks/secret-scan.sh") and a bare-name/broad glob would
 # also exempt any unrelated file that happens to share that name elsewhere.
+# Known tradeoff: skipping .env.example entirely (rather than scanning it too)
+# means a real secret accidentally pasted into that template file is never
+# caught by this hook — .env.example is meant to hold placeholders, not values,
+# so treat this as a documentation/review responsibility, not a gap to patch
+# here by trying to distinguish "looks like a placeholder" from "looks real".
 SKIP_FILES=('.env.example' '.claude/hooks/secret-scan.sh' 'package-lock.json' 'yarn.lock')
 
 is_skipped() {

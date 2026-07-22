@@ -80,7 +80,7 @@ KIRO_REVIEW=off git commit -m "..."
 | `set delegate parallel_tasks <n>` | 웨이브당 최대 동시 태스크 수 (`1` = 순차) | 3 |
 | `set delegate max_fix_rounds <n>` | Claude 폴백 전 재시도 횟수 | 2 |
 | `set review on_commit on\|off` | pre-commit 리뷰 훅 활성화 | off |
-| `set review block critical\|warning\|none` | 커밋을 막는 최소 심각도 (`warning`은 warning+critical 차단, `suggestion`은 어느 레벨에서도 차단 안 함) | critical |
+| `set review block critical\|warning\|none` | 커밋을 막는 최소 심각도 — `critical`은 critical만, `warning`은 warning+critical, `none`은 어느 레벨에서도 차단 안 함(가장 낮은 심각도인 suggestion 아래로는 더 낮출 게 없어 `none`이 실질적 하한) | critical |
 | `set review timeout <s>` / `set delegate timeout <s>` | 호출당 wall-clock 예산(초) | 240 |
 
 ```bash
