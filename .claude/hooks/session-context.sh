@@ -6,7 +6,12 @@ echo "=== Project Context ==="
 
 # Project type detection
 if [ -f "package.json" ]; then
-    NAME=$(python3 -c "import json; print(json.load(open('package.json')).get('name',''))" 2>/dev/null)
+    # `-I` (isolated mode): a bare `python3 -c` puts cwd on sys.path[0], so a
+    # committed `json.py` at the repo root would shadow the stdlib `json`
+    # module this line imports — arbitrary code execution at every session
+    # start. `-I` drops cwd/PYTHONPATH from the import path (same guard this
+    # repo's own kiro_setup.py `_GUARD_CMD` already uses, for the same reason).
+    NAME=$(python3 -I -c "import json; print(json.load(open('package.json')).get('name',''))" 2>/dev/null)
     echo "Project: $NAME (Node.js)"
 elif [ -f "pyproject.toml" ]; then
     echo "Project: $(basename "$(pwd)") (Python)"

@@ -6,6 +6,17 @@
 FILE_PATH="${1:-}"
 [ -z "$FILE_PATH" ] && exit 0
 
+# Claude Code's tool_input.file_path is an ABSOLUTE path — every match below
+# is against a repo-root-relative prefix (e.g. "plugins/*"), so an absolute
+# path would never match and this whole hook would be a silent no-op.
+# Normalize before matching.
+ROOT_DIR="$(git rev-parse --show-toplevel 2>/dev/null)"
+if [ -n "$ROOT_DIR" ]; then
+    case "$FILE_PATH" in
+        "$ROOT_DIR"/*) FILE_PATH="${FILE_PATH#"$ROOT_DIR"/}" ;;
+    esac
+fi
+
 # Detect source root directories (adapt per project)
 # Default: src/, app/, lib/  |  Plugin projects: plugins/
 SOURCE_ROOTS="src app lib plugins"
