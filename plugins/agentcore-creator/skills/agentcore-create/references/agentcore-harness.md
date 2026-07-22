@@ -138,7 +138,12 @@ leading `/` or `..`); a glob matching nothing fails the invocation with a descri
   markdown *and* `scripts/` run with the execution role's permissions). For production,
   prefer an **S3 source** (immutable, versioned, gated by the execution role) or a dedicated
   frozen release repo you control; review skill contents at attach time; for private repos,
-  scope the PAT in AgentCore Identity to read-only on that one repo.
+  scope the PAT in AgentCore Identity to read-only on that one repo. AgentCore Identity
+  Credential Providers can reference an *existing* Secrets Manager secret ARN directly (GA
+  2026-06) instead of creating a new secret through Identity — keeps the PAT under your own
+  Secrets Manager governance (custom CMKs, rotation, tagging). The execution role still needs
+  `secretsmanager:GetSecretValue` on that secret's resource policy, plus `kms:Decrypt` if it's
+  encrypted with a customer-managed key.
 - **Sparse checkout fetches only the skill subdir.** A skill that reaches outside its own
   directory — `../` paths, `${CLAUDE_PLUGIN_ROOT}`, assets shared from a sibling skill
   (e.g. this repo's `aws-light-fcd` referencing `reactive-presentation`'s icon library
