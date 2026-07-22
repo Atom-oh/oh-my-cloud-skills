@@ -144,7 +144,12 @@ leading `/` or `..`); a glob matching nothing fails the invocation with a descri
   Secrets Manager governance (custom CMKs, rotation, tagging). Grant the **AgentCore Identity
   service principal** (not the agent's execution role) `secretsmanager:GetSecretValue` via a
   resource policy on the secret, plus `kms:Decrypt` on the key if it's customer-managed —
-  Identity itself retrieves the secret at runtime, not the agent's own role.
+  Identity itself retrieves the secret at runtime, not the agent's own role. Scope that
+  resource policy with `aws:SourceAccount` (and `aws:SourceArn` where the calling
+  workload's ARN is known) so another account's AgentCore Identity can't invoke the same
+  service principal to read your secret — the same confused-deputy condition
+  `agentcore-mapping-rules.md`'s gateway trust-policy hardening applies, just on the
+  secret's resource policy instead of a role trust policy.
 - **Sparse checkout fetches only the skill subdir.** A skill that reaches outside its own
   directory — `../` paths, `${CLAUDE_PLUGIN_ROOT}`, assets shared from a sibling skill
   (e.g. this repo's `aws-light-fcd` referencing `reactive-presentation`'s icon library

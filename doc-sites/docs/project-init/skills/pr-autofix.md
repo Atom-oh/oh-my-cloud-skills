@@ -34,7 +34,7 @@ flowchart TD
     C --> D{AI + 사람<br/>리뷰 확인}
     D -->|모두 PASS| E[완료]
     D -->|이슈 발견| F[수정 계획 수립<br/>Fable/Opus]
-    F --> F2[격리 worktree에서 구현<br/>opus [medium effort] 서브에이전트]
+    F --> F2["격리 worktree에서 구현<br/>opus (medium effort) 서브에이전트"]
     F2 --> V[worktree diff를 계획과 대조<br/>host — 승인분만 반영]
     V --> G[빌드 검증]
     G --> H[커밋 & push]

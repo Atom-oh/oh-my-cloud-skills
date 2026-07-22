@@ -6,8 +6,15 @@
 WEBHOOK_URL="${CLAUDE_NOTIFY_WEBHOOK:-}"
 [ -z "$WEBHOOK_URL" ] && exit 0
 
-EVENT="${1:-unknown}"
-MESSAGE="${2:-Claude Code event occurred}"
+# Claude Code delivers the Notification hook's payload as JSON on stdin, not
+# as $1/$2 — this script's settings.json wiring calls it with no arguments at
+# all, so reading positional args here always produced the fallback text
+# regardless of the real event. Parse stdin instead.
+HOOK_JSON="$(cat)"
+EVENT="$(printf '%s' "$HOOK_JSON" | jq -r '.hook_event_name // "unknown"' 2>/dev/null)"
+MESSAGE="$(printf '%s' "$HOOK_JSON" | jq -r '.message // "Claude Code event occurred"' 2>/dev/null)"
+[ -z "$EVENT" ] && EVENT="unknown"
+[ -z "$MESSAGE" ] && MESSAGE="Claude Code event occurred"
 
 # Build payload with jq -n --arg so EVENT/MESSAGE/branch (which can contain
 # quotes, backslashes, or newlines — e.g. a commit message passed as MESSAGE)
@@ -20,7 +27,8 @@ PAYLOAD=$(jq -n \
     --arg project "$PROJECT" --arg branch "$BRANCH" --arg ts "$TIMESTAMP" \
     '{text: "[\($event)] \($message)", project: $project, branch: $branch, timestamp: $ts}')
 
-# Send notification (non-blocking)
-curl -s -X POST "$WEBHOOK_URL" \
+# Send notification (non-blocking, bounded so a hung webhook can't leave a
+# process dangling past the hook's own lifetime)
+curl -s --connect-timeout 5 --max-time 10 -X POST "$WEBHOOK_URL" \
     -H "Content-Type: application/json" \
     -d "$PAYLOAD" > /dev/null 2>&1 &

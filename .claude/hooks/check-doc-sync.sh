@@ -26,11 +26,16 @@ for ROOT in $SOURCE_ROOTS; do
         DIR=$(dirname "$FILE_PATH")
         FOUND_CLAUDE=false
         CHECK_DIR="$DIR"
-        while [ "$CHECK_DIR" != "$ROOT" ] && [ "$CHECK_DIR" != "." ]; do
+        # Check CHECK_DIR itself before deciding to stop, so a CLAUDE.md
+        # placed at the source root (e.g. "plugins/CLAUDE.md") still counts —
+        # stopping the walk BEFORE checking $ROOT would miss root-level
+        # coverage and warn even when it exists.
+        while true; do
             if [ -f "$CHECK_DIR/CLAUDE.md" ]; then
                 FOUND_CLAUDE=true
                 break
             fi
+            [ "$CHECK_DIR" = "$ROOT" ] && break
             CHECK_DIR=$(dirname "$CHECK_DIR")
         done
         if ! $FOUND_CLAUDE && [ "$DIR" != "$ROOT" ]; then
