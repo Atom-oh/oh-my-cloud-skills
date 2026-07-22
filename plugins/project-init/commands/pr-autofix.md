@@ -1,5 +1,5 @@
 ---
-description: Poll for PR review feedback (AI + human) and auto-fix issues (max 3 iterations)
+description: Poll for PR review feedback (AI + human) and auto-fix issues (max 5 iterations)
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
 ---
 
@@ -19,8 +19,8 @@ Execute the `pr-autofix` skill. The skill handles the full workflow:
 1. Identify the PR from the current branch
 2. Poll for AI review comments (`<!-- bedrock-pr-review -->`) and human review status (`CHANGES_REQUESTED`)
 3. If all reviews pass → done
-4. If any review is blocking → read issues, plan fixes on Fable/Opus, implement the plan with sonnet subagents in an isolated git worktree (parallel only when file sets are strictly disjoint), land only the plan-approved delta, verify build, commit, push
-5. Repeat up to 3 times
+4. If any review is blocking → read issues, plan fixes on Fable/Opus, implement the plan with opus (medium effort) subagents in an isolated git worktree (parallel only when file sets are strictly disjoint), land only the plan-approved delta, verify build, commit, push
+5. Repeat up to 5 times
 
 Key constraints:
 - Never modify `.github/workflows/*` files

@@ -706,7 +706,7 @@ All agents (except the internal pr-autofix workers above) activate automatically
 | `agentcore-create` | 5-phase AgentCore design, build, convert, deploy workflow (harness or Runtime target) |
 | `co-agent` | Multi-AI collaboration (Kiro/Codex/Antigravity — `agy`) — review, decision support, ADR co-authoring, and `sync-context`; Claude chairs. Commands: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus`, `/co-agent:harness`, `/co-agent:setup` |
 | `project-scaffolder` | Claude Code project structure patterns and conventions |
-| `pr-autofix` | Poll AI + human PR review feedback and auto-fix issues (max 3 iterations; plan on Fable/Opus, implement via sonnet subagents) |
+| `pr-autofix` | Poll AI + human PR review feedback and auto-fix issues (max 5 iterations; plan on Fable/Opus, implement via opus [medium effort] subagents) |
 | `decision-reconcile` | Detect contradictions across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (varied Claude model tiers + optional Kiro/Codex/Antigravity, one review lens each), then draft a superseding ADR |
 | `kiro-delegate` | Cost-savings implementation + review delegation to Kiro CLI (subscription credits) — worktree-isolated implement loop, scope-guarded diff, pre-commit review gate. Commands: `/kiro:setup`, `/kiro:delegate`, `/kiro:review`, `/kiro:configure` |
 

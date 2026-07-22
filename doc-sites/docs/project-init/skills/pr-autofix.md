@@ -5,7 +5,7 @@ title: "pr-autofix"
 
 # pr-autofix Skill
 
-PR 리뷰 피드백(AI + 사람)을 자동으로 읽고 코드를 수정하는 스킬입니다. 최대 3회 반복합니다.
+PR 리뷰 피드백(AI + 사람)을 자동으로 읽고 코드를 수정하는 스킬입니다. 최대 5회 반복합니다.
 
 ## 리뷰 소스
 
@@ -18,8 +18,9 @@ PR 리뷰 피드백(AI + 사람)을 자동으로 읽고 코드를 수정하는 �
 
 **모델 티어링 + worktree 격리**: 수정 **계획**(finding별 root cause·정확한 수정·검증 방법)은 Fable/Opus에서
 수립하고(호스트가 이미 Fable/Opus면 인라인, 아니면 강한 모델 서브에이전트), **구현**은 그
-계획을 그대로 적용하는 sonnet 서브에이전트에 위임합니다 — 판단은 상위 티어, 기계적 적용은
-sonnet(CRITICAL → MAJOR → MINOR 우선순위는 계획 단계에서 반영). 구현은 **일회용 git
+계획을 그대로 적용하는 opus(medium effort) 서브에이전트에 위임합니다 — 판단은 상위 티어, 기계적 적용은
+opus medium(CRITICAL → MAJOR → MINOR 우선순위는 계획 단계에서 반영; opus는 멀티파일 수정 신뢰도가
+높아 sonnet보다 fix-loop 반복 횟수를 줄여줌). 구현은 **일회용 git
 worktree**에서 수행되어 사용자의 미커밋 변경이 작업 경로 밖에 있으며(checkout 수준
 격리 — 보안 샌드박스는 아님), host가 worktree
 diff를 계획과 대조해 승인된 변경만 브랜치에 반영합니다.
@@ -33,11 +34,11 @@ flowchart TD
     C --> D{AI + 사람<br/>리뷰 확인}
     D -->|모두 PASS| E[완료]
     D -->|이슈 발견| F[수정 계획 수립<br/>Fable/Opus]
-    F --> F2[격리 worktree에서 구현<br/>sonnet 서브에이전트]
+    F --> F2[격리 worktree에서 구현<br/>opus medium 서브에이전트]
     F2 --> V[worktree diff를 계획과 대조<br/>host — 승인분만 반영]
     V --> G[빌드 검증]
     G --> H[커밋 & push]
-    H --> I{반복 < 3?}
+    H --> I{반복 < 5?}
     I -->|Yes| C
     I -->|No| J[수동 리뷰 요청]
 ```
@@ -56,7 +57,7 @@ flowchart TD
 - `.github/workflows/*` 파일 수정 금지
 - 리뷰에서 언급된 이슈만 수정 (추가 리팩토링 금지)
 - 빌드 검증 후에만 커밋
-- 최대 3회 반복 후 사용자에게 수동 리뷰 요청
+- 최대 5회 반복 후 사용자에게 수동 리뷰 요청
 
 ## 레퍼런스
 
