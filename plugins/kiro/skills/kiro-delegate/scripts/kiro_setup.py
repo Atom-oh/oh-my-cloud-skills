@@ -411,8 +411,9 @@ def _validate_agent_file(path):
               f"invocation could not confirm the file is valid", file=sys.stderr)
         return False
     if r.returncode != 0:
-        print(f"❌ `kiro-cli agent validate` exited {r.returncode} on {path}:\n"
-              f"{(r.stderr or r.stdout or '').strip()}", file=sys.stderr)
+        detail = ((r.stderr or '') + (r.stdout or '')).strip()
+        print(f"❌ `kiro-cli agent validate` exited {r.returncode} on {path}:\n{detail}",
+              file=sys.stderr)
         return False
     # Check BOTH streams, same as the returncode!=0 branch above — a future kiro-cli
     # build that prints its validation error to stdout instead of stderr (while still
@@ -427,10 +428,18 @@ def _validate_agent_file(path):
     # "any output at all" as failure — rather than matching a specific substring like
     # "error" — is the more conservative signal: it can't be defeated by a future
     # kiro-cli release rewording/relocalizing the error text (still non-empty output),
-    # and a genuinely silent success can never look like a failure. The narrower
-    # substring check below is kept only as defense-in-depth for a hypothetical
-    # future kiro-cli that emits some other non-error text (e.g. a deprecation
-    # notice) on an otherwise-valid file.
+    # and a genuinely silent success can never look like a failure.
+    #
+    # Known trade-off, accepted: a future kiro-cli that prints ANY non-error text on
+    # an otherwise-valid file (a deprecation notice, a one-line success banner) would
+    # make this function report a false failure and hard-block write-agents/setup for
+    # a config that actually works. Against the installed 2.11.1 this doesn't happen
+    # (verified: clean file -> empty stdout+stderr), and a false failure here is loud
+    # and local (write-agents exits non-zero, nothing silently proceeds on a bad
+    # config) rather than the silent pass-through this whole check exists to prevent
+    # — so the trade favors this direction. If a future kiro-cli release needs it,
+    # narrow this back to a substring/pattern match on the known error shapes
+    # ("missing field", "invalid") instead of reverting to exit-code trust.
     combined = f"{r.stderr or ''}{r.stdout or ''}"
     if combined.strip():
         print(f"❌ kiro-cli rejects {path}:\n{combined.strip()}", file=sys.stderr)
@@ -448,8 +457,9 @@ def verify_agents(root):
     known-good guard, wrong name) is rejected so the caller can regenerate it with
     `write-agents --force` rather than trust it.
 
-    Exit 0 = matches a plugin-generated shape (bash on or off). 1 = mismatch/tampered.
-    2 = file missing (caller should run write-agents)."""
+    Exit 0 = matches a plugin-generated shape (bash on or off) AND kiro-cli accepts it.
+    1 = mismatch/tampered/rejected-by-kiro-cli. 2 = file missing (caller should run
+    write-agents)."""
     p = os.path.join(root, ".kiro", "agents", "kiro-implementer.json")
     if not os.path.isfile(p):
         print(f"missing: {p} — run `kiro_setup.py write-agents` first", file=sys.stderr)
@@ -462,14 +472,27 @@ def verify_agents(root):
         return 1
     # Compare against BOTH legitimate shapes (execute_bash off / on). Comparing the whole
     # dict (incl. the preToolUse hook command) means a tampered hook can't slip through.
-    if any(got == _implementer_agent(b) for b in (False, True)):
-        print(f"ok: {p} matches a plugin-generated kiro-implementer agent")
-        return 0
-    print(f"❌ {p} does not match a plugin-generated kiro-implementer agent "
-          f"(tampered or hand-edited?) — regenerate with `kiro_setup.py write-agents "
-          f"--force` before delegating; the pipeline runs this agent's preToolUse hook",
-          file=sys.stderr)
-    return 1
+    if not any(got == _implementer_agent(b) for b in (False, True)):
+        print(f"❌ {p} does not match a plugin-generated kiro-implementer agent "
+              f"(tampered or hand-edited?) — regenerate with `kiro_setup.py write-agents "
+              f"--force` before delegating; the pipeline runs this agent's preToolUse hook",
+              file=sys.stderr)
+        return 1
+    # Shape match alone isn't enough: `write_agents` can write a file THAT IS the
+    # generator's exact output and still have kiro-cli reject it (this function's
+    # caller — the delegate pipeline — is exactly what write_agents's own validation
+    # failure warns about). Since the on-disk content is then byte-identical to
+    # `_implementer_agent()`, the dict-equality check above alone would pass a file
+    # write_agents itself already flagged as invalid — re-run the same validation this
+    # function's caller ultimately relies on, so verify-agents is the one checkpoint
+    # that catches this regardless of how the file got onto disk.
+    if not _validate_agent_file(p):
+        print(f"❌ {p} matches the plugin-generated shape but kiro-cli rejects it — "
+              f"regenerate with `kiro_setup.py write-agents --force` and confirm it "
+              f"validates clean before delegating.", file=sys.stderr)
+        return 1
+    print(f"ok: {p} matches a plugin-generated kiro-implementer agent")
+    return 0
 
 
 def _default_root():

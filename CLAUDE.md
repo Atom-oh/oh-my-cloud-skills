@@ -307,7 +307,7 @@ Commands: `/co-agent:configure` — tune the panel (per-AI `model`, Codex `effor
 |-------|---------|
 | `doc-sync-checker` | Documentation sync analysis, quality scoring, missing doc detection |
 | `pr-autofix-planner` | Read-only fix planner for pr-autofix (enforced Read/Grep/Glob; fable/opus) |
-| `pr-autofix-implementer` | Edit-only plan implementer for pr-autofix (enforced Read/Write/Edit/Grep/Glob — no Bash/network; opus, effort: medium) |
+| `pr-autofix-implementer` | Edit-only plan implementer for pr-autofix (enforced Read/Write/Edit/Grep/Glob — no Bash/network; opus [medium effort]) |
 
 Skills: `project-scaffolder` — Claude Code project structure patterns and conventions. `pr-autofix` — PR review feedback auto-fix (AI + human review polling, max 5 iterations; fix planning on Fable/Opus, implementation delegated to opus [medium effort] subagents in a disposable worktree — only the plan-approved delta lands). `decision-reconcile` — ADR contradiction detection across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (varied Claude model tiers + optional co-agent CLIs, one review lens each), then drafts a superseding ADR to reverse/reconcile the decision. **Local to this fork** — not present in the whchoi98/project-init upstream source (see `plugins/project-init/references/upstream-sync.md`). Triggers: 의사결정 번복, ADR 모순, reconcile ADRs.
 

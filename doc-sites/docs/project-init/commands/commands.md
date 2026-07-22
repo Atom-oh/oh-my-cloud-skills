@@ -110,7 +110,7 @@ PR 생성 후 AI 리뷰와 사람 리뷰 피드백을 자동으로 읽고 코드
 2. AI 리뷰 코멘트(`<!-- bedrock-pr-review -->`)와 사람 리뷰(`CHANGES_REQUESTED`) 동시 polling
 3. 이슈 발견 시 CRITICAL → MAJOR → MINOR 순으로 수정
 4. 빌드 검증 후 커밋 & push
-5. 3회 반복 후에도 통과 못하면 사용자에게 수동 리뷰 요청
+5. 5회 반복 후에도 통과 못하면 사용자에게 수동 리뷰 요청
 
 **제약:**
 - `.github/workflows/*` 파일 수정 금지
