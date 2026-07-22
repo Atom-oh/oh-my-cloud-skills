@@ -91,21 +91,32 @@ CMD="$(printf '%s' "$HOOK_JSON" | jq -r '.tool_input.command // empty' 2>/dev/nu
 # string by a match position) does the search; falls back to the
 # untruncated $CMD (safe — just re-exposes the class of false-positive this
 # exists to avoid) if python3 isn't available.
+# NOTE on the "commit" search below: a bare `r"commit"` matches that text as
+# a SUBSTRING of any other word — `pre-commit run && git -C /other commit`
+# would bind to the "commit" inside "pre-commit" instead of the real
+# subcommand, truncating there and losing "-C /other" the same way the
+# earlier per-statement fix was meant to prevent. Requiring whitespace (or
+# start/end of string) on both sides — not just a regex word boundary, which
+# a hyphen also satisfies and wouldn't exclude "pre-commit" — is what
+# actually distinguishes the standalone token "commit" from a substring
+# inside "pre-commit" or "committed.txt".
 CMD_SIG="$CMD"
 if command -v python3 >/dev/null 2>&1; then
     py_out="$(printf '%s' "$CMD" | python3 -I -c '
 import sys, re
 s = sys.stdin.read()
-m = re.search(r"commit", s)
+m = re.search(r"(?:^|\s)(commit)(?:\s|$)", s)
 if not m:
     sys.stdout.write(s)
 else:
-    prefix = s[:m.start()]
+    cut = m.start(1)  # the "commit" token itself, excluding the whitespace/
+                       # start-of-string the outer pattern also matched
+    prefix = s[:cut]
     sep = None
     for sm in re.finditer(r"&&|\|\||;|\||\n", prefix):
         sep = sm
     start = sep.end() if sep else 0
-    sys.stdout.write(s[start:m.start()])
+    sys.stdout.write(s[start:cut])
 ' 2>/dev/null)"
     [ $? -eq 0 ] && CMD_SIG="$py_out"
 fi
@@ -133,7 +144,16 @@ fi
 # noted at the top of this file: a `cd other-repo && git commit` this hook's
 # own cwd doesn't already reflect can still scan the wrong repo.
 GIT_C=()
-WORK_DIR="."
+# `git diff`/`git ls-files` always print paths relative to the repo ROOT,
+# even when this hook's own cwd is a subdirectory of it — so anchoring
+# WORK_DIR to a bare "." and joining it with those root-relative paths
+# breaks (double-prefixes the subdirectory) the moment cwd isn't already
+# the root. Anchor to the actual root unconditionally, not only when -C
+# resolves one; if that lookup itself fails, this hook isn't even inside a
+# git repo, matching the "not a git repository" case scan_list_from already
+# fails closed on.
+WORK_DIR="$(command git rev-parse --show-toplevel 2>/dev/null)"
+[ -z "$WORK_DIR" ] && WORK_DIR="."
 c_count=$(grep -o -- '-C\b' <<<"$CMD_SIG" 2>/dev/null | wc -l)
 if [[ "$CMD_SIG" =~ --git-dir(=|[[:space:]]) ]] || [[ "$CMD_SIG" =~ --work-tree(=|[[:space:]]) ]] || \
    [[ "$CMD_SIG" =~ GIT_DIR= ]] || [[ "$CMD_SIG" =~ GIT_WORK_TREE= ]] || [[ "$CMD_SIG" =~ GIT_INDEX_FILE= ]] || \

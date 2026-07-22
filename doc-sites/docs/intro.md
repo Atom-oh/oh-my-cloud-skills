@@ -12,7 +12,7 @@ title: 시작하기
 
 | 플러그인 | 설명 | Agents | Skills |
 |----------|------|--------|--------|
-| [co-agent](/docs/co-agent/overview) | 멀티-AI 협업 (Kiro/Codex/Agy) — 리뷰·의사결정·ADR·컨텍스트 동기화·consensus·harness 파이프라인, 5개 명령 | 3 | 1 |
+| [co-agent](/docs/co-agent/overview) | 멀티-AI 협업 (Kiro/Codex/Antigravity) — 리뷰·의사결정·ADR·컨텍스트 동기화·consensus·harness 파이프라인, 5개 명령 | 3 | 1 |
 | [kiro](/docs/kiro/overview) | 비용 절감 구현 위임 — Claude가 계획·검증, Kiro CLI가 구독 크레딧으로 구현·리뷰, 4개 명령 | 1 | 1 |
 | [project-init](/docs/project-init/overview) | 프로젝트 스캐폴딩, 문서 동기화, ADR 모순 검토, 10개 명령 | 3 | 3 |
 | [aws-content-plugin](/docs/aws-content-plugin/overview) | 프레젠테이션(웹+네이티브 PPTX), 다이어그램, 문서, GitBook, 워크샵, 브로셔, 프로필 페이지 | 9 | 9 |
