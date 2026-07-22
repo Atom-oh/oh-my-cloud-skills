@@ -62,61 +62,47 @@ CMD="$(printf '%s' "$HOOK_JSON" | jq -r '.tool_input.command // empty' 2>/dev/nu
 [[ "$CMD" =~ git.*commit ]] || exit 0
 
 # The repo-selector detection below (-C, --git-dir, --work-tree, GIT_DIR=,
-# GIT_WORK_TREE=, GIT_INDEX_FILE=) must only look at git's GLOBAL options for
-# the STATEMENT that actually runs commit — not at anything after "commit"
-# itself (the subcommand's own argument space: its own message, its own
-# `-C <commit>` meaning "reuse this other commit's message"), and not at an
-# EARLIER, unrelated statement in the same compound command either. Getting
-# this boundary right has taken three attempts, each closing one gap and
-# opening another:
-#   - v1 stripped the quoted -m argument textually; a heredoc-built message
-#     containing its own embedded quote defeated the strip and left
-#     flag-shaped prose exposed to the checks below.
-#   - v2 truncated at the command's FIRST -m/--message token instead; wrong
-#     when an EARLIER, unrelated command in the same compound statement also
-#     uses -m for something else (`python -m pytest && git -C ../other
-#     commit -m x` truncated at "python -m", hiding the real "-C ../other").
-#   - v3 cut at the position where "commit" begins, with no left boundary;
-#     wrong the OTHER direction when an EARLIER, unrelated `git` invocation
-#     in the same compound statement has ITS OWN -C for something else
-#     (`git -C /other status && git commit -m x` kept "-C /other status &&
-#     git " as the prefix, attributing the `status` call's -C to the commit
-#     that actually runs in the CURRENT repo, and scanning /other instead).
-# The actual fix needs BOTH boundaries: find where "commit" begins, then
-# walk back only to the nearest preceding statement separator (&&, ||, ;, |,
-# or a newline) — that span is exactly the one statement containing the
-# commit, so an earlier statement's own flags (of any kind, on any command)
-# can't leak in, and the message text after "commit" still can't either,
-# regardless of how it's quoted. python3 -I (not jq, which can't slice a
-# string by a match position) does the search; falls back to the
-# untruncated $CMD (safe — just re-exposes the class of false-positive this
-# exists to avoid) if python3 isn't available.
-# NOTE on the "commit" search below: a bare `r"commit"` matches that text as
-# a SUBSTRING of any other word — `pre-commit run && git -C /other commit`
-# would bind to the "commit" inside "pre-commit" instead of the real
-# subcommand, truncating there and losing "-C /other" the same way the
-# earlier per-statement fix was meant to prevent. Requiring whitespace (or
-# start/end of string) on both sides — not just a regex word boundary, which
-# a hyphen also satisfies and wouldn't exclude "pre-commit" — is what
-# actually distinguishes the standalone token "commit" from a substring
-# inside "pre-commit" or "committed.txt".
+# GIT_WORK_TREE=, GIT_INDEX_FILE=) must only look at git's GLOBAL options
+# from the ONE statement that actually invokes `git ... commit` — not at
+# anything after "commit" itself (the subcommand's own argument space: its
+# own message, its own `-C <commit>` meaning "reuse this other commit's
+# message"), not at an earlier, unrelated statement in the same compound
+# command, and not at a standalone "commit" that isn't a git invocation at
+# all. Splitting on shell statement separators (&&, ||, ;, |, newline) FIRST
+# and then finding the first statement that contains both a standalone
+# "git" word and a standalone "commit" word gets all of this right at once:
+#   - within that one statement, "commit" can only mean the subcommand
+#     (nothing else in a statement shaped like `git <opts> commit <args>`
+#     would independently satisfy "standalone git" + "standalone commit"),
+#     so cutting the statement at "commit" reliably yields just git's own
+#     global-option space — including from a heredoc-built message with its
+#     own embedded quote, which defeated an earlier textual-stripping
+#     attempt at solving this the same way.
+#   - an earlier statement's own flags (`python -m pytest &&`, `git -C
+#     /other status &&`) never enter the picture, because they're in a
+#     DIFFERENT statement.
+#   - "commit" appearing only as a substring of another word (`pre-commit`,
+#     `committed.txt`) or as a bare argument to an unrelated command (`echo
+#     commit`) doesn't make that statement match at all, since neither
+#     satisfies "standalone commit" in the first case, and "echo commit" has
+#     no standalone "git" word to pair it with in the second — so the search
+#     correctly moves on to the next statement instead of matching there.
+# python3 -I (not jq, which can't slice a string by a match position) does
+# this; falls back to the untruncated $CMD (safe — just re-exposes the
+# class of false-positive this exists to avoid) if python3 isn't available.
 CMD_SIG="$CMD"
 if command -v python3 >/dev/null 2>&1; then
     py_out="$(printf '%s' "$CMD" | python3 -I -c '
 import sys, re
 s = sys.stdin.read()
-m = re.search(r"(?:^|\s)(commit)(?:\s|$)", s)
-if not m:
-    sys.stdout.write(s)
-else:
-    cut = m.start(1)  # the "commit" token itself, excluding the whitespace/
-                       # start-of-string the outer pattern also matched
-    prefix = s[:cut]
-    sep = None
-    for sm in re.finditer(r"&&|\|\||;|\||\n", prefix):
-        sep = sm
-    start = sep.end() if sep else 0
-    sys.stdout.write(s[start:cut])
+parts = re.split(r"&&|\|\||;|\||\n", s)
+result = s
+for stmt in parts:
+    if re.search(r"(?:^|\s)git(?:\s|$)", stmt) and re.search(r"(?:^|\s)commit(?:\s|$)", stmt):
+        m = re.search(r"(?:^|\s)(commit)(?:\s|$)", stmt)
+        result = stmt[:m.start(1)]
+        break
+sys.stdout.write(result)
 ' 2>/dev/null)"
     [ $? -eq 0 ] && CMD_SIG="$py_out"
 fi
@@ -153,12 +139,38 @@ GIT_C=()
 # git repo, matching the "not a git repository" case scan_list_from already
 # fails closed on.
 WORK_DIR="$(command git rev-parse --show-toplevel 2>/dev/null)"
-[ -z "$WORK_DIR" ] && WORK_DIR="."
 c_count=$(grep -o -- '-C\b' <<<"$CMD_SIG" 2>/dev/null | wc -l)
-if [[ "$CMD_SIG" =~ --git-dir(=|[[:space:]]) ]] || [[ "$CMD_SIG" =~ --work-tree(=|[[:space:]]) ]] || \
-   [[ "$CMD_SIG" =~ GIT_DIR= ]] || [[ "$CMD_SIG" =~ GIT_WORK_TREE= ]] || [[ "$CMD_SIG" =~ GIT_INDEX_FILE= ]] || \
-   [ "${c_count:-0}" -gt 1 ]; then
-    block "command redirects git's target repo in a form this hook doesn't verify (--git-dir/--work-tree/GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE/multiple -C). Run the commit as its own 'git -C <repo> commit ...' call, or from that repo's own directory, so this hook can confirm what it's scanning."
+HAS_REDIRECT=0
+[[ "$CMD_SIG" =~ (^|[[:space:]])-C[[:space:]]+([^[:space:]]+) ]] && HAS_REDIRECT=1
+[[ "$CMD_SIG" =~ --git-dir(=|[[:space:]]) ]] && HAS_REDIRECT=1
+[[ "$CMD_SIG" =~ --work-tree(=|[[:space:]]) ]] && HAS_REDIRECT=1
+[[ "$CMD_SIG" =~ GIT_DIR= ]] && HAS_REDIRECT=1
+[[ "$CMD_SIG" =~ GIT_WORK_TREE= ]] && HAS_REDIRECT=1
+[[ "$CMD_SIG" =~ GIT_INDEX_FILE= ]] && HAS_REDIRECT=1
+[[ "$CMD_SIG" =~ (-c|--config)[[:space:]]+core\.worktree= ]] && HAS_REDIRECT=1
+
+# If this hook's own cwd isn't inside a git repository at all, AND the
+# command doesn't try to point git at one either, there is nothing here yet
+# for this hook to verify — no repo means no index, no working tree, no
+# secrets that could leak. The command will either `git init` first (a
+# later, real commit will be scanned normally once a repo exists) or simply
+# fail on its own, since git itself refuses to commit outside a repo.
+# Blocking a command shaped like `git init && git add . && git commit`
+# purely because a repo doesn't exist yet (the enumeration calls below
+# would otherwise fail and this hook's own "can't verify = fail closed"
+# rule would block it) is friction with no security benefit — unlike an
+# enumeration failure inside an EXISTING repo (permissions, corruption),
+# which stays fail-closed exactly as before.
+if [ -z "$WORK_DIR" ] && [ "$HAS_REDIRECT" -eq 0 ]; then
+    exit 0
+fi
+[ -z "$WORK_DIR" ] && WORK_DIR="."
+
+if [ "${c_count:-0}" -gt 1 ] || [[ "$CMD_SIG" =~ --git-dir(=|[[:space:]]) ]] || \
+   [[ "$CMD_SIG" =~ --work-tree(=|[[:space:]]) ]] || [[ "$CMD_SIG" =~ GIT_DIR= ]] || \
+   [[ "$CMD_SIG" =~ GIT_WORK_TREE= ]] || [[ "$CMD_SIG" =~ GIT_INDEX_FILE= ]] || \
+   [[ "$CMD_SIG" =~ (-c|--config)[[:space:]]+core\.worktree= ]]; then
+    block "command redirects git's target repo in a form this hook doesn't verify (--git-dir/--work-tree/GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE/core.worktree/multiple -C). Run the commit as its own 'git -C <repo> commit ...' call, or from that repo's own directory, so this hook can confirm what it's scanning."
 fi
 if [[ "$CMD_SIG" =~ (^|[[:space:]])-C[[:space:]]+([^[:space:]]+) ]]; then
     raw_target="${BASH_REMATCH[2]}"
@@ -190,7 +202,15 @@ fi
 # Matching the context inline (no lookbehind) works for boolean detection
 # since we only need grep -q, not the matched substring. -i (case-insensitive)
 # below covers e.g. `Password=`/`API_KEY=` env-var-style assignments too.
-PATTERNS=(
+#
+# Split into two confidence tiers: HIGH_CONFIDENCE_PATTERNS are fixed-prefix
+# service-key formats (a real AKIA/sk-ant-/ghp_ value is essentially never a
+# placeholder) — these are the ones still worth checking even in a file
+# that's SUPPOSED to hold only placeholders. GENERIC_PATTERNS (bare
+# password=/secret=/api_key= assignments) are exactly the shapes a
+# placeholder itself commonly takes (`API_KEY=your-key-here`), so applying
+# them to a template file would be mostly false positives.
+HIGH_CONFIDENCE_PATTERNS=(
     'AKIA[0-9A-Z]{16}'                                    # AWS Access Key ID
     'ASIA[0-9A-Z]{16}'                                    # AWS temporary/STS Access Key ID
     'aws_secret_access_key\s{0,5}[=:]\s{0,5}[A-Za-z0-9/+=]{40}' # AWS Secret Key (context-aware)
@@ -207,23 +227,26 @@ PATTERNS=(
     'AIza[A-Za-z0-9_-]{35}'                               # Google API Key
     'ya29\.[A-Za-z0-9_-]{50,}'                            # Google OAuth Token
     'DefaultEndpointsProtocol=https;Account'              # Azure Connection String
+)
+GENERIC_PATTERNS=(
     'kiro_api_key\s*[:=]\s*["\x27]?[^\s"\x27]{8,}'        # Kiro API Key
     'antigravity_api_key\s*[:=]\s*["\x27]?[^\s"\x27]{8,}' # Antigravity API Key
     'password\s*[:=]\s*["\x27]?[^\s"\x27]{8,}'            # Password assignments
     'secret\s*[:=]\s*["\x27]?[^\s"\x27]{8,}'              # Secret assignments
     'api[_-]?key\s*[:=]\s*["\x27]?[^\s"\x27]{8,}'         # API key assignments
 )
+PATTERNS=("${HIGH_CONFIDENCE_PATTERNS[@]}" "${GENERIC_PATTERNS[@]}")
 
 # Files to skip — the exact path (not a bare filename), since
 # `[[ "$file" == $pattern ]]` matches the whole staged path
 # (e.g. ".claude/hooks/secret-scan.sh") and a bare-name/broad glob would
 # also exempt any unrelated file that happens to share that name elsewhere.
-# Known tradeoff: skipping .env.example entirely (rather than scanning it too)
-# means a real secret accidentally pasted into that template file is never
-# caught by this hook — .env.example is meant to hold placeholders, not values,
-# so treat this as a documentation/review responsibility, not a gap to patch
-# here by trying to distinguish "looks like a placeholder" from "looks real".
-SKIP_FILES=('.env.example' '.claude/hooks/secret-scan.sh' 'package-lock.json' 'yarn.lock')
+# .env.example is handled separately below (HIGH_CONFIDENCE_PATTERNS only,
+# not skipped outright) — it's meant to hold placeholders, so the generic
+# assignment patterns would mostly flag the placeholders themselves, but a
+# real, fixed-prefix service key pasted in by mistake is still worth
+# catching there.
+SKIP_FILES=('.claude/hooks/secret-scan.sh' 'package-lock.json' 'yarn.lock')
 
 is_skipped() {
     local f="$1" s
@@ -234,8 +257,12 @@ is_skipped() {
 }
 
 scan_content() {
-    local file="$1" content="$2" regex
-    for regex in "${PATTERNS[@]}"; do
+    local file="$1" content="$2" regex patterns_ref
+    case "$file" in
+        *.env.example) patterns_ref="HIGH_CONFIDENCE_PATTERNS[@]" ;;
+        *) patterns_ref="PATTERNS[@]" ;;
+    esac
+    for regex in "${!patterns_ref}"; do
         if printf '%s' "$content" | grep -qPi "$regex" 2>/dev/null; then
             echo "[secret-scan] Potential secret found in $file (pattern: ${regex:0:30}...)"
             SECRETS_FOUND=1
