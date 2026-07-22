@@ -194,26 +194,43 @@ def mask(text):
     return "".join(out2)
 
 masked = mask(s)
+# A boundary is whitespace, start/end of string, OR a shell control
+# character (&, |, ;, (, )) that can sit directly against a word with no
+# space at all — `git init&&git commit`, `(git commit -m a) && (...)`. A
+# plain \s-only boundary treats "init" in the first example, and "git" in
+# the second, as NOT standalone (no space touches them), silently failing
+# to recognize either.
+B = r"(?:[\s&|;()]|^|$)"
 seps = [sp.span() for sp in re.finditer(r"&&|\|\||;|\||\n", masked)]
 starts = [0] + [e for (_, e) in seps]
 ends = [st for (st, _) in seps] + [len(masked)]
 matches = []
 for (a, b) in zip(starts, ends):
     stmt = masked[a:b]
-    if re.search(r"(?:^|\s)git(?:\s|$)", stmt) and re.search(r"(?:^|\s)commit(?:\s|$)", stmt):
+    if re.search(B + "git" + B, stmt) and re.search(B + "commit" + B, stmt):
         matches.append((a, b))
 if len(matches) > 1:
     sys.exit(3)  # more than one separate commit invocation — see bash side
 elif matches:
     a, b = matches[0]
-    m = re.search(r"(?:^|\s)(commit)(?:\s|$)", masked[a:b])
+    m = re.search(B + "(commit)" + B, masked[a:b])
     sys.stdout.write(s[a:a + m.start(1)])  # slice the ORIGINAL text
 else:
-    sys.stdout.write(s)
+    # No statement anywhere in the command actually invokes git with commit
+    # as a standalone subcommand — the top-level gate matched only because
+    # "commit" appears as a substring somewhere (a read-only `git log
+    # --grep commit`, a comment, prose). Signal "not really a commit" so
+    # the bash side skips scanning entirely, instead of falling through
+    # with an empty CMD_SIG that would still run the full scan below and
+    # could block an unrelated command over a pre-existing, unrelated
+    # secret sitting in the working tree.
+    sys.exit(4)
 ' 2>/dev/null)"
     py_rc=$?
     if [ "$py_rc" -eq 3 ]; then
         block "command contains more than one separate 'git ... commit' invocation — this hook resolves and scans only one repo-selector target, so a second commit's own -C (or lack of one) is never independently verified. Run each commit as its own Bash call."
+    elif [ "$py_rc" -eq 4 ]; then
+        exit 0
     elif [ "$py_rc" -eq 0 ]; then
         CMD_SIG="$py_out"
     fi
@@ -281,7 +298,7 @@ HAS_REDIRECT=0
 # already sitting in the directory when it's freshly `git init`-ed and
 # committed in one shot must not go out unscanned.
 if [ -z "$WORK_DIR" ]; then
-    if [[ "$CMD" =~ (^|[[:space:]])init([[:space:]]|$) ]]; then
+    if [[ "$CMD" =~ (^|[[:space:]\&\|\;\(\)])init([[:space:]\&\|\;\(\)]|$) ]]; then
         block "command both initializes a repository and commits in the same call — this hook has no index yet to scan whatever files already exist in this directory before they're committed. Run 'git init' as its own Bash call first, then commit separately once a repository (and therefore a scannable index) exists."
     fi
     if [ "$HAS_REDIRECT" -eq 0 ]; then
@@ -373,16 +390,17 @@ GENERIC_PATTERNS=(
 )
 PATTERNS=("${HIGH_CONFIDENCE_PATTERNS[@]}" "${PROJECT_KEY_PATTERNS[@]}" "${GENERIC_PATTERNS[@]}")
 
-# Files to skip — the exact path (not a bare filename), since
-# `[[ "$file" == $pattern ]]` matches the whole staged path
-# (e.g. ".claude/hooks/secret-scan.sh") and a bare-name/broad glob would
-# also exempt any unrelated file that happens to share that name elsewhere.
-# .env.example is handled separately below (HIGH_CONFIDENCE_PATTERNS only,
-# not skipped outright) — it's meant to hold placeholders, so the generic
-# assignment patterns would mostly flag the placeholders themselves, but a
-# real, fixed-prefix service key pasted in by mistake is still worth
-# catching there.
-SKIP_FILES=('.claude/hooks/secret-scan.sh' 'package-lock.json' 'yarn.lock')
+# Fully skipped — the exact path, since `[[ "$file" == $pattern ]]` matches
+# the whole staged path and a bare filename would also exempt any unrelated
+# file sharing that name elsewhere. Only this script's own file is a TRUE
+# full skip: its source contains every detection pattern above as a literal
+# string, so scanning it against its own patterns risks self-matching.
+# package-lock.json/yarn.lock are NOT fully skipped (below) — a private
+# registry's resolved URL can carry an embedded credential
+# (`https://user:token@...`), which HIGH_CONFIDENCE_PATTERNS can still catch;
+# only the noisy GENERIC_PATTERNS (password=/secret=/api_key=, which a
+# lockfile has no legitimate reason to contain anyway) are skipped for them.
+SKIP_FILES=('.claude/hooks/secret-scan.sh')
 
 is_skipped() {
     local f="$1" s
@@ -395,7 +413,7 @@ is_skipped() {
 scan_content() {
     local file="$1" content="$2" regex
     case "$file" in
-        *.env.example)
+        *.env.example|*package-lock.json|*yarn.lock)
             for regex in "${HIGH_CONFIDENCE_PATTERNS[@]}" "${PROJECT_KEY_PATTERNS[@]}"; do
                 if printf '%s' "$content" | grep -qPi "$regex" 2>/dev/null; then
                     echo "[secret-scan] Potential secret found in $file (pattern: ${regex:0:30}...)"
@@ -481,8 +499,9 @@ scan_list_from "untracked files" git ls-files -z --others --exclude-standard
 # token) so `git -C . add -f` still counts — over-matching here only costs
 # an extra scan.
 has_add=0; has_force=0
-[[ "$CMD" =~ (^|[[:space:]])add([[:space:]]|$) ]] && has_add=1
-{ [[ "$CMD" =~ [[:space:]]-[a-zA-Z]*f[a-zA-Z]*([[:space:]]|$) ]] || [[ "$CMD" =~ --force([[:space:]]|$) ]]; } && has_force=1
+[[ "$CMD" =~ (^|[[:space:]\&\|\;\(\)])add([[:space:]\&\|\;\(\)]|$) ]] && has_add=1
+{ [[ "$CMD" =~ [[:space:]\&\|\;\(\)]-[a-zA-Z]*f[a-zA-Z]*([[:space:]\&\|\;\(\)]|$) ]] || \
+  [[ "$CMD" =~ --force([[:space:]\&\|\;\(\)]|$) ]]; } && has_force=1
 if [ "$has_add" -eq 1 ] && [ "$has_force" -eq 1 ]; then
     scan_list_from "force-added ignored files" git ls-files -z --others -i --exclude-standard
 fi
