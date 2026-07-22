@@ -87,6 +87,24 @@ CMD="$(printf '%s' "$HOOK_JSON" | jq -r '.tool_input.command // empty' 2>/dev/nu
 #     satisfies "standalone commit" in the first case, and "echo commit" has
 #     no standalone "git" word to pair it with in the second — so the search
 #     correctly moves on to the next statement instead of matching there.
+# If MORE THAN ONE statement matches, this hook resolves and scans only ONE
+# repo-selector target no matter which statement is picked — a second,
+# separate `git ... commit` in the same compound command would have its own
+# -C (or lack of one) silently never checked. Fail closed on that shape
+# instead of guessing which one to trust.
+#
+# One wrinkle "split on newline too" runs into: a newline is only a REAL
+# statement separator OUTSIDE a heredoc — inside one (`-m "$(cat <<'EOF'
+# ... EOF)"`, exactly how this project's own commit messages are built).
+# every line is DATA, not a new statement, and this project's messages
+# routinely mention "git commit" as a prose example within that data. Split
+# on newline naively and that example line independently satisfies
+# "standalone git" + "standalone commit", counting as a second match and
+# fail-closing on every such commit. Masking heredoc bodies (blanking each
+# line between an opening `<<[-~]DELIM` and the line that closes it) before
+# splitting removes exactly the content that caused that false match,
+# without touching the real invocation line the heredoc's `<<` marker
+# itself appears on.
 # python3 -I (not jq, which can't slice a string by a match position) does
 # this; falls back to the untruncated $CMD (safe — just re-exposes the
 # class of false-positive this exists to avoid) if python3 isn't available.
@@ -95,16 +113,43 @@ if command -v python3 >/dev/null 2>&1; then
     py_out="$(printf '%s' "$CMD" | python3 -I -c '
 import sys, re
 s = sys.stdin.read()
-parts = re.split(r"&&|\|\||;|\||\n", s)
-result = s
-for stmt in parts:
-    if re.search(r"(?:^|\s)git(?:\s|$)", stmt) and re.search(r"(?:^|\s)commit(?:\s|$)", stmt):
-        m = re.search(r"(?:^|\s)(commit)(?:\s|$)", stmt)
-        result = stmt[:m.start(1)]
-        break
-sys.stdout.write(result)
+
+def mask_heredocs(text):
+    lines = text.split("\n")
+    delim = None
+    out = []
+    for line in lines:
+        if delim is not None:
+            if line.strip() == delim:
+                out.append(line)
+                delim = None
+            else:
+                out.append("")
+            continue
+        out.append(line)
+        m = re.search(r"<<-?~?\s*([\x27\"]?)(\w+)\1", line)
+        if m:
+            delim = m.group(2)
+    return "\n".join(out)
+
+masked = mask_heredocs(s)
+parts = re.split(r"&&|\|\||;|\||\n", masked)
+matches = [stmt for stmt in parts
+           if re.search(r"(?:^|\s)git(?:\s|$)", stmt) and re.search(r"(?:^|\s)commit(?:\s|$)", stmt)]
+if len(matches) > 1:
+    sys.exit(3)  # more than one separate commit invocation — see bash side
+elif matches:
+    m = re.search(r"(?:^|\s)(commit)(?:\s|$)", matches[0])
+    sys.stdout.write(matches[0][:m.start(1)])
+else:
+    sys.stdout.write(s)
 ' 2>/dev/null)"
-    [ $? -eq 0 ] && CMD_SIG="$py_out"
+    py_rc=$?
+    if [ "$py_rc" -eq 3 ]; then
+        block "command contains more than one separate 'git ... commit' invocation — this hook resolves and scans only one repo-selector target, so a second commit's own -C (or lack of one) is never independently verified. Run each commit as its own Bash call."
+    elif [ "$py_rc" -eq 0 ]; then
+        CMD_SIG="$py_out"
+    fi
 fi
 
 # Repo-selector resolution. `-C <path>` (as a GLOBAL option, in $CMD_SIG —
@@ -213,7 +258,7 @@ fi
 HIGH_CONFIDENCE_PATTERNS=(
     'AKIA[0-9A-Z]{16}'                                    # AWS Access Key ID
     'ASIA[0-9A-Z]{16}'                                    # AWS temporary/STS Access Key ID
-    'aws_secret_access_key\s{0,5}[=:]\s{0,5}[A-Za-z0-9/+=]{40}' # AWS Secret Key (context-aware)
+    'aws_secret_access_key\s{0,5}[=:]\s{0,5}["\x27]?[A-Za-z0-9/+=]{40}' # AWS Secret Key (context-aware; optional quote before the value — a bare `[=:]` with no quote allowance misses the common `KEY="value"` .env style entirely)
     'sk-proj-[A-Za-z0-9_-]{20,}'                          # OpenAI API Key (project format)
     'sk-[A-Za-z0-9]{20}T3BlbkFJ[A-Za-z0-9]{20}'           # OpenAI API Key (legacy format)
     'sk-ant-[A-Za-z0-9-]{90,}'                            # Anthropic API Key
