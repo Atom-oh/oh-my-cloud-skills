@@ -9,6 +9,12 @@ case "$WEBHOOK_URL" in
     https://*) ;;
     *) echo "[notify] CLAUDE_NOTIFY_WEBHOOK must be https://, refusing to send." >&2; exit 0 ;;
 esac
+# Without jq, every step below (parsing stdin, building the payload) fails
+# silently and would end up POSTing an empty/malformed body with no error —
+# fail loudly-but-non-blocking instead (a missing notifier must never affect
+# the tool call it's attached to; see also kiro_review.py's fail-open
+# convention for the same "missing tool ≠ block the caller" reasoning).
+command -v jq >/dev/null 2>&1 || { echo "[notify] jq not found, skipping." >&2; exit 0; }
 
 # Claude Code delivers the Notification hook's payload as JSON on stdin, not
 # as $1/$2 — this script's settings.json wiring calls it with no arguments at

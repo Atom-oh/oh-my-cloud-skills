@@ -16,6 +16,12 @@ if [ -n "$ROOT_DIR" ]; then
         "$ROOT_DIR"/*) FILE_PATH="${FILE_PATH#"$ROOT_DIR"/}" ;;
     esac
 fi
+# Every check below (the CLAUDE.md walk, the docs/decisions and docs/runbooks
+# `find` calls) reads FILE_PATH-derived and hardcoded relative paths straight
+# off the filesystem — correct only if cwd happens to equal the repo root.
+# $RD anchors them to $ROOT_DIR instead, same as the FILE_PATH normalization
+# just above; empty (cwd-relative, previous behavior) if not in a git repo.
+RD="${ROOT_DIR:+$ROOT_DIR/}"
 
 # Detect source root directories (adapt per project)
 # Default: src/, app/, lib/  |  Plugin projects: plugins/
@@ -31,7 +37,7 @@ for ROOT in $SOURCE_ROOTS; do
         # stopping the walk BEFORE checking $ROOT would miss root-level
         # coverage and warn even when it exists.
         while true; do
-            if [ -f "$CHECK_DIR/CLAUDE.md" ]; then
+            if [ -f "$RD$CHECK_DIR/CLAUDE.md" ]; then
                 FOUND_CLAUDE=true
                 break
             fi
@@ -51,7 +57,7 @@ for ROOT in $SOURCE_ROOTS; do
     [[ "$FILE_PATH" == ${ROOT}/* ]] && IS_SOURCE=true && break
 done
 if $IS_SOURCE || [[ "$FILE_PATH" == docs/architecture.md ]]; then
-    ADR_COUNT=$(find docs/decisions -type f -name 'ADR-*.md' -not -name '.template.md' 2>/dev/null | wc -l)
+    ADR_COUNT=$(find "${RD}docs/decisions" -type f -name 'ADR-*.md' -not -name '.template.md' 2>/dev/null | wc -l)
     if [ "$ADR_COUNT" -eq 0 ]; then
         echo "[doc-sync] No ADRs found. Record architectural decisions."
     fi
@@ -59,7 +65,7 @@ fi
 
 # Alert if no runbooks exist when infrastructure files change
 if [[ "$FILE_PATH" == Dockerfile* ]] || [[ "$FILE_PATH" == *terraform* ]] || [[ "$FILE_PATH" == *cdk* ]] || [[ "$FILE_PATH" == template.yaml ]]; then
-    RUNBOOK_COUNT=$(find docs/runbooks -type f -name '*.md' -not -name '.template.md' 2>/dev/null | wc -l)
+    RUNBOOK_COUNT=$(find "${RD}docs/runbooks" -type f -name '*.md' -not -name '.template.md' 2>/dev/null | wc -l)
     if [ "$RUNBOOK_COUNT" -eq 0 ]; then
         echo "[doc-sync] No runbooks found. Create operational runbooks for deployment/recovery."
     fi

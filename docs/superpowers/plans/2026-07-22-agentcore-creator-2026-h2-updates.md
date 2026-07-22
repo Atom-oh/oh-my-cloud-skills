@@ -51,6 +51,16 @@ the summary release notes) before accepting or dismissing:
   (no code changed, doc-only edit, N/A); glm-5's note to also check `.codex-plugin/plugin.json`
   (unaffected — version isn't changing).
 
+## Correction (found during PR #130 review, after implementation)
+
+Task 3's bullet above says the **execution role** needs `secretsmanager:GetSecretValue` —
+that was imprecise in the plan itself, not a later drift. The implemented text in
+`agentcore-harness.md` correctly grants that permission to the **AgentCore Identity service
+principal** instead (Identity retrieves the secret at runtime on the agent's behalf; the
+execution role itself doesn't call `secretsmanager:GetSecretValue`). Recorded here per this
+directory's "don't retro-edit — the plan is a historical artifact" convention, rather than
+rewriting Task 3's original wording above.
+
 ## Global Constraints
 
 - Research context: a web-search pass against

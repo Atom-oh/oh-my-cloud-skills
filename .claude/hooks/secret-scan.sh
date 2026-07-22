@@ -14,7 +14,7 @@
 # committed. $TOOL_INPUT_COMMAND is the same env var the remarp build-check
 # PreToolUse hook in this repo's settings.json already reads for this purpose.
 #
-# Deliberately loose: `git\b.*\bcommit\b` anywhere in the string, not an
+# Deliberately loose: `git.*commit` anywhere in the string, not an
 # option-token whitelist. A tighter regex like `git[[:space:]]+([a-z-]+[[:space:]]+)*commit`
 # looks precise but is fail-open by construction — it silently never matches
 # (and never scans) `git -C /path commit` (a `C` flag), `git -c k=v commit`
@@ -24,22 +24,21 @@
 CMD="${TOOL_INPUT_COMMAND:-}"
 [[ "$CMD" =~ git.*commit ]] || exit 0
 
-# A single Bash call can stage AND commit in one shot (`git add -A && git
-# commit`, `git commit -a`/`-am`/`--all`, `git commit --only/--include <path>`).
-# PreToolUse fires BEFORE the command runs, so at that instant the index is
-# still whatever it was before this call's own `add`/`-a`/`--only` executes —
-# scanning only the current index would miss a secret this very command is
-# about to stage. When the command shows that shape, also scan the working
-# tree (tracked-modified + untracked) in addition to the index. As above,
-# broad detection is intentional: the cost of a false match here is one extra
-# scan pass, not a missed secret.
-if [[ "$CMD" =~ git[[:space:]]+add ]] || [[ "$CMD" =~ --all ]] || \
-   [[ "$CMD" =~ --only ]] || [[ "$CMD" =~ --include ]] || \
-   [[ "$CMD" =~ commit[[:space:]]+.*-[a-zA-Z]*a ]]; then
-    SCAN_WORKING_TREE=1
-else
-    SCAN_WORKING_TREE=0
+# `-C <path>` runs git against a DIFFERENT repo than this hook's own cwd — if
+# every `git diff/show/status` call below stayed anchored to cwd, a `git -C
+# /other/repo commit` would match the gate above but scan the wrong repo
+# entirely. Extract it and pass the same `-C` to every git call. (Doesn't
+# cover --git-dir=/--work-tree=; -C is what was specifically observed.)
+GIT_C=()
+WORK_DIR="."
+if [[ "$CMD" =~ (^|[[:space:]])-C[[:space:]]+([^[:space:]]+) ]]; then
+    target="${BASH_REMATCH[2]}"
+    if [ -d "$target" ]; then
+        GIT_C=(-C "$target")
+        WORK_DIR="$target"
+    fi
 fi
+git() { command git "${GIT_C[@]}" "$@"; }
 
 SECRETS_FOUND=0
 
@@ -112,33 +111,44 @@ scan_content() {
     done
 }
 
-# Staged (index) content — `--diff-filter=ACMR` includes renames: a rename
-# that also modifies content (`R` with a similarity < 100%) still shows up
-# here; a plain ACM filter drops pure renames entirely.
+# Staged (index) content — `--diff-filter=ACMRT` includes renames (a rename
+# that also modifies content still shows up here) and typechanges (e.g. a
+# symlink replaced by a regular file carrying a secret).
 while IFS= read -r -d '' file; do
     is_skipped "$file" && continue
     content=$(git show ":$file" 2>/dev/null) || continue
     scan_content "$file" "$content"
-done < <(git diff --cached -z --name-only --diff-filter=ACMR 2>/dev/null)
+done < <(git diff --cached -z --name-only --diff-filter=ACMRT 2>/dev/null)
 
-if [ "$SCAN_WORKING_TREE" -eq 1 ]; then
-    # Tracked, modified-but-not-yet-staged files (`-a`/`-am`/`--all` would
-    # stage these as part of this same commit).
-    while IFS= read -r -d '' file; do
-        is_skipped "$file" && continue
-        [ -f "$file" ] || continue
-        scan_content "$file" "$(cat "$file" 2>/dev/null)"
-    done < <(git diff -z --name-only --diff-filter=ACMR 2>/dev/null)
+# Always also scan the working tree + untracked files, not just the index.
+# PreToolUse fires BEFORE the command runs, so at the instant this scan
+# happens the index reflects the state *before* whatever this same command is
+# about to do — `git add -A && git commit`, `-a`/`-am`/`--all`, `--only`/
+# `--include <path>`, a bare pathspec commit (`git commit -m msg file.txt`),
+# or short flags (`-i`/`-o`) all stage/commit working-tree content that a
+# staged-only scan would never see. Rather than maintain a flag-token
+# whitelist for "does this commit form touch the working tree" (which is how
+# the previous two rounds' gaps kept recurring — `-C`, `--only`, pathspec,
+# `-i`/`-o` were each missed one at a time), always scan both: the cost of
+# scanning working-tree/untracked content on a commit that turns out to be
+# `git commit` with nothing further is one extra (cheap) pass, not a bypass.
+while IFS= read -r -d '' file; do
+    is_skipped "$file" && continue
+    [ -f "$WORK_DIR/$file" ] || continue
+    scan_content "$file" "$(cat "$WORK_DIR/$file" 2>/dev/null)"
+done < <(git diff -z --name-only --diff-filter=ACMRT 2>/dev/null)
 
-    # Untracked files not covered by .gitignore (`git add .`/`-A` would stage
-    # these as part of this same commit).
-    while IFS= read -r -d '' file; do
-        is_skipped "$file" && continue
-        [ -f "$file" ] || continue
-        scan_content "$file" "$(cat "$file" 2>/dev/null)"
-    done < <(git status --porcelain -z --untracked-files=all 2>/dev/null | \
-              awk 'BEGIN{RS="\0"} /^\?\? /{printf "%s\0", substr($0,4)}')
-fi
+# Untracked, non-ignored files. `git ls-files -z` is NUL-delimited by git
+# itself, unlike piping `git status --porcelain -z` through `awk
+# 'BEGIN{RS="\0"}'` — mawk (Debian/Ubuntu default) and BSD awk (macOS) don't
+# reliably support NUL record separators, so that pipeline could silently
+# produce nothing on those systems: a fail-open with no error, in the one
+# code path that exists specifically to catch a newly-added secret file.
+while IFS= read -r -d '' file; do
+    is_skipped "$file" && continue
+    [ -f "$WORK_DIR/$file" ] || continue
+    scan_content "$file" "$(cat "$WORK_DIR/$file" 2>/dev/null)"
+done < <(git ls-files -z --others --exclude-standard 2>/dev/null)
 
 if [ "$SECRETS_FOUND" -eq 1 ]; then
     echo ""
