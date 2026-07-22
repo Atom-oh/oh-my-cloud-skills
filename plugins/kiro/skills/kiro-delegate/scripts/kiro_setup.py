@@ -36,6 +36,11 @@ import shutil
 import subprocess
 import tempfile
 
+_VALIDATE_TIMEOUT = 20  # seconds — `kiro-cli agent validate` on a small local JSON file
+                        # should be near-instant; not exposed as a user setting (unlike
+                        # delegate/review timeouts) since this is a write-time sanity
+                        # check, not a long-running headless invocation.
+
 _AUTH_RE = re.compile(
     r"not logged in|unauthenticated|invalid credentials|access denied|"
     r"token expired|expired token|please (log|sign) in|run .*login|\b401\b|\b403\b|"
@@ -334,7 +339,8 @@ def write_agents(root, force=False, enable_bash=False):
             # move (re-run write-agents WITHOUT --force after seeing the earlier ❌)
             # reports "skip (exists)" and exit 0, reproducing exactly the silent-bad-
             # config problem this validation exists to catch.
-            skip_bad.extend(p2 for p2 in [p] if not _validate_agent_file(p2))
+            if not _validate_agent_file(p):
+                skip_bad.append(p)
             print(f"skip (exists): {p} — pass --force to overwrite")
             continue
         # O_NOFOLLOW: refuse if `p` is itself a symlink, even one pointing to another
@@ -398,7 +404,7 @@ def _validate_agent_file(path):
         return True
     try:
         r = subprocess.run(["kiro-cli", "agent", "validate", "--path", path],
-                            capture_output=True, text=True, timeout=20)
+                            capture_output=True, text=True, timeout=_VALIDATE_TIMEOUT)
     except (OSError, subprocess.TimeoutExpired) as e:
         print(f"❌ could not run `kiro-cli agent validate` on {path} ({e}) — "
               f"treating as a validation failure since kiro-cli is on PATH but this "
@@ -408,8 +414,26 @@ def _validate_agent_file(path):
         print(f"❌ `kiro-cli agent validate` exited {r.returncode} on {path}:\n"
               f"{(r.stderr or r.stdout or '').strip()}", file=sys.stderr)
         return False
-    if r.stderr and "error" in r.stderr.lower():
-        print(f"❌ kiro-cli rejects {path}:\n{r.stderr.strip()}", file=sys.stderr)
+    # Check BOTH streams, same as the returncode!=0 branch above — a future kiro-cli
+    # build that prints its validation error to stdout instead of stderr (while still
+    # exiting 0, the exact "can't trust the exit code" behavior this function exists
+    # to work around) would sail past a stderr-only check, silently reintroducing the
+    # bug this whole validation was added to catch.
+    #
+    # kiro-cli 2.11.1 has no machine-readable (--json) validate output, so this can't
+    # be a structured check. A confirmed-clean file produces EMPTY stdout and stderr
+    # (verified against the installed binary); a confirmed-invalid one produces a
+    # non-empty message ("Error: ... invalid: missing field `command` ..."). Treating
+    # "any output at all" as failure — rather than matching a specific substring like
+    # "error" — is the more conservative signal: it can't be defeated by a future
+    # kiro-cli release rewording/relocalizing the error text (still non-empty output),
+    # and a genuinely silent success can never look like a failure. The narrower
+    # substring check below is kept only as defense-in-depth for a hypothetical
+    # future kiro-cli that emits some other non-error text (e.g. a deprecation
+    # notice) on an otherwise-valid file.
+    combined = f"{r.stderr or ''}{r.stdout or ''}"
+    if combined.strip():
+        print(f"❌ kiro-cli rejects {path}:\n{combined.strip()}", file=sys.stderr)
         return False
     return True
 
