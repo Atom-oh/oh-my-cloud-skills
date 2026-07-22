@@ -33,8 +33,21 @@ block() {
 # is ever scanned) with no error at all. jq is already a hard dependency of
 # notify.sh and the check-doc-sync.sh wiring in this same settings.json, so
 # treat its absence here the same way the grep -P probe below treats a
-# missing PCRE-capable grep: fail closed rather than silently do nothing.
-command -v jq >/dev/null 2>&1 || block "jq is required to read the command being run and is not installed — cannot verify whether this is a commit, refusing to proceed. Install jq."
+# missing PCRE-capable grep: fail closed rather than silently do nothing —
+# BUT only for a command that could plausibly be a commit. This hook's
+# matcher is "Bash" with no command filter, so blocking unconditionally on
+# missing jq (checked before knowing what the command even is) would block
+# EVERY Bash call on a jq-less host — ls, git status, a recovery command —
+# not just commit attempts. Without jq to properly parse the JSON, fall
+# back to a plain substring check on the raw stdin text: if it doesn't even
+# mention "commit" anywhere, this can't be a commit-shaped command (JSON
+# string-escaping never hides a plain ASCII word), so let it through
+# without needing jq at all; only block when it might be.
+HOOK_JSON="$(cat 2>/dev/null)"
+if ! command -v jq >/dev/null 2>&1; then
+    printf '%s%s' "$HOOK_JSON" "${TOOL_INPUT_COMMAND:-}" | grep -qi commit || exit 0
+    block "jq is required to verify whether this command is a commit and is not installed. Install jq."
+fi
 
 # Only act on commands that actually commit — this hook's matcher is "Bash"
 # with no command filter, so without this gate every unrelated Bash call
@@ -48,7 +61,6 @@ command -v jq >/dev/null 2>&1 || block "jq is required to read the command being
 # against the real harness confirmed that env var is EMPTY on every actual
 # PreToolUse invocation — it has never once fired. stdin JSON is the only
 # delivery mechanism confirmed to work.
-HOOK_JSON="$(cat 2>/dev/null)"
 CMD="$(printf '%s' "$HOOK_JSON" | jq -r '.tool_input.command // empty' 2>/dev/null)"
 [ -z "$CMD" ] && CMD="${TOOL_INPUT_COMMAND:-}"
 
@@ -118,9 +130,19 @@ CMD="$(printf '%s' "$HOOK_JSON" | jq -r '.tool_input.command // empty' 2>/dev/nu
 # (unmasked) text for the actual result, so quoting is never lost from
 # what gets returned either.
 # python3 -I (not jq, which can't slice a string by a match position) does
-# this; falls back to the untruncated $CMD (safe — just re-exposes the
-# class of false-positive this exists to avoid) if python3 isn't available.
-CMD_SIG="$CMD"
+# this. Falling back to the untruncated $CMD when python3 isn't available
+# was tried and reverted — that re-exposed exactly the false-positive this
+# whole design exists to avoid: the repo-selector checks below would then
+# run against the ENTIRE command, including an ordinary commit message that
+# happens to mention "GIT_DIR=" or "-C " as prose (this project's own
+# commit messages routinely do, describing fixes like this one). Falling
+# back to an EMPTY string instead means the repo-selector checks find
+# nothing and simply don't fire — on a python3-less host, an actual -C/
+# --git-dir redirect goes unresolved rather than false-blocking an ordinary
+# commit's message text, the same accepted tradeoff already documented for
+# the `cd other-repo` residual gap above (unverified rather than
+# incorrectly verified).
+CMD_SIG=""
 if command -v python3 >/dev/null 2>&1; then
     py_out="$(printf '%s' "$CMD" | python3 -I -c '
 import sys, re
