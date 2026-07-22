@@ -62,38 +62,50 @@ CMD="$(printf '%s' "$HOOK_JSON" | jq -r '.tool_input.command // empty' 2>/dev/nu
 [[ "$CMD" =~ git.*commit ]] || exit 0
 
 # The repo-selector detection below (-C, --git-dir, --work-tree, GIT_DIR=,
-# GIT_INDEX_FILE=) must only look at git's GLOBAL options — the ones that can
-# appear before the subcommand — not at anything after "commit" itself,
-# which is the subcommand's OWN argument space (its own message, its own
-# `-C <commit>` meaning "reuse this other commit's message", etc.). Get this
-# boundary right by construction instead of trying to strip/whitelist
-# specific flags one at a time, which is how the last two rounds each
-# introduced a different bug:
+# GIT_WORK_TREE=, GIT_INDEX_FILE=) must only look at git's GLOBAL options for
+# the STATEMENT that actually runs commit — not at anything after "commit"
+# itself (the subcommand's own argument space: its own message, its own
+# `-C <commit>` meaning "reuse this other commit's message"), and not at an
+# EARLIER, unrelated statement in the same compound command either. Getting
+# this boundary right has taken three attempts, each closing one gap and
+# opening another:
 #   - v1 stripped the quoted -m argument textually; a heredoc-built message
 #     containing its own embedded quote defeated the strip and left
 #     flag-shaped prose exposed to the checks below.
-#   - v2 truncated at the command's FIRST -m/--message token instead; that
-#     is wrong when an EARLIER, unrelated command in the same compound
-#     statement also uses -m for something else (`python -m pytest && git
-#     -C ../other commit -m x` truncates at "python -m", hiding the real
-#     "-C ../other" from every check below and scanning the wrong repo).
-# Cutting the string at the position where the word "commit" itself begins
-# sidesteps both: everything before that position is exactly git's own
-# global-option space (wherever the real "-m" ends up, it's always after
-# "commit", so it's never in this prefix regardless of quoting), and nothing
-# after "commit" — including a `commit -C <ref>` reuse-message flag, which
-# is unrelated to the global `-C <path>` repo-selector despite sharing a
-# letter — is ever considered a repo-selector candidate. python3 -I (not
-# jq, which can't slice a string by a match position) does the search;
-# falls back to the untruncated $CMD (safe — just re-exposes the class of
-# false-positive this exists to avoid) if python3 isn't available.
+#   - v2 truncated at the command's FIRST -m/--message token instead; wrong
+#     when an EARLIER, unrelated command in the same compound statement also
+#     uses -m for something else (`python -m pytest && git -C ../other
+#     commit -m x` truncated at "python -m", hiding the real "-C ../other").
+#   - v3 cut at the position where "commit" begins, with no left boundary;
+#     wrong the OTHER direction when an EARLIER, unrelated `git` invocation
+#     in the same compound statement has ITS OWN -C for something else
+#     (`git -C /other status && git commit -m x` kept "-C /other status &&
+#     git " as the prefix, attributing the `status` call's -C to the commit
+#     that actually runs in the CURRENT repo, and scanning /other instead).
+# The actual fix needs BOTH boundaries: find where "commit" begins, then
+# walk back only to the nearest preceding statement separator (&&, ||, ;, |,
+# or a newline) — that span is exactly the one statement containing the
+# commit, so an earlier statement's own flags (of any kind, on any command)
+# can't leak in, and the message text after "commit" still can't either,
+# regardless of how it's quoted. python3 -I (not jq, which can't slice a
+# string by a match position) does the search; falls back to the
+# untruncated $CMD (safe — just re-exposes the class of false-positive this
+# exists to avoid) if python3 isn't available.
 CMD_SIG="$CMD"
 if command -v python3 >/dev/null 2>&1; then
     py_out="$(printf '%s' "$CMD" | python3 -I -c '
 import sys, re
 s = sys.stdin.read()
-m = re.search(r"git.*?(commit)", s, re.DOTALL)
-sys.stdout.write(s[:m.start(1)] if m else s)
+m = re.search(r"commit", s)
+if not m:
+    sys.stdout.write(s)
+else:
+    prefix = s[:m.start()]
+    sep = None
+    for sm in re.finditer(r"&&|\|\||;|\||\n", prefix):
+        sep = sm
+    start = sep.end() if sep else 0
+    sys.stdout.write(s[start:m.start()])
 ' 2>/dev/null)"
     [ $? -eq 0 ] && CMD_SIG="$py_out"
 fi
@@ -105,8 +117,9 @@ fi
 #
 # Other redirection forms in $CMD_SIG fail closed rather than being resolved:
 # --git-dir/--work-tree (either `=value` or a separate ` value` token),
-# GIT_DIR=/GIT_INDEX_FILE= environment assignments, and more than one -C.
-# These are rare enough in practice that fail-closed is the right tradeoff.
+# GIT_DIR=/GIT_WORK_TREE=/GIT_INDEX_FILE= environment assignments, and more
+# than one -C. These are rare enough in practice that fail-closed is the
+# right tradeoff.
 #
 # An EARLIER, UNRELATED `cd` anywhere in the same multi-statement command is
 # handled differently — NOT resolved and NOT fail-closed. Claude Code very
@@ -123,8 +136,9 @@ GIT_C=()
 WORK_DIR="."
 c_count=$(grep -o -- '-C\b' <<<"$CMD_SIG" 2>/dev/null | wc -l)
 if [[ "$CMD_SIG" =~ --git-dir(=|[[:space:]]) ]] || [[ "$CMD_SIG" =~ --work-tree(=|[[:space:]]) ]] || \
-   [[ "$CMD_SIG" =~ GIT_DIR= ]] || [[ "$CMD_SIG" =~ GIT_INDEX_FILE= ]] || [ "${c_count:-0}" -gt 1 ]; then
-    block "command redirects git's target repo in a form this hook doesn't verify (--git-dir/--work-tree/GIT_DIR/GIT_INDEX_FILE/multiple -C). Run the commit as its own 'git -C <repo> commit ...' call, or from that repo's own directory, so this hook can confirm what it's scanning."
+   [[ "$CMD_SIG" =~ GIT_DIR= ]] || [[ "$CMD_SIG" =~ GIT_WORK_TREE= ]] || [[ "$CMD_SIG" =~ GIT_INDEX_FILE= ]] || \
+   [ "${c_count:-0}" -gt 1 ]; then
+    block "command redirects git's target repo in a form this hook doesn't verify (--git-dir/--work-tree/GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE/multiple -C). Run the commit as its own 'git -C <repo> commit ...' call, or from that repo's own directory, so this hook can confirm what it's scanning."
 fi
 if [[ "$CMD_SIG" =~ (^|[[:space:]])-C[[:space:]]+([^[:space:]]+) ]]; then
     raw_target="${BASH_REMATCH[2]}"
