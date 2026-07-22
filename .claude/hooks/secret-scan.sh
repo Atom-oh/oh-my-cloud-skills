@@ -21,16 +21,33 @@
 # (see the repo-selector section below for why fail-closed on any `cd` isn't
 # the right tradeoff here).
 
+block() {
+    echo "[secret-scan] BLOCKED: $1" >&2
+    exit 2
+}
+
+# jq is required to read the command from stdin JSON (below) — without it,
+# CMD falls back to $TOOL_INPUT_COMMAND, which is confirmed EMPTY on every
+# real invocation (see the note below), so a missing jq would silently
+# disable this entire gate (CMD stays empty, the gate never matches, nothing
+# is ever scanned) with no error at all. jq is already a hard dependency of
+# notify.sh and the check-doc-sync.sh wiring in this same settings.json, so
+# treat its absence here the same way the grep -P probe below treats a
+# missing PCRE-capable grep: fail closed rather than silently do nothing.
+command -v jq >/dev/null 2>&1 || block "jq is required to read the command being run and is not installed — cannot verify whether this is a commit, refusing to proceed. Install jq."
+
 # Only act on commands that actually commit — this hook's matcher is "Bash"
 # with no command filter, so without this gate every unrelated Bash call
 # (ls, git status, a restore) pays the cost of this script. Read the command
-# from stdin JSON (`.tool_input.command`) first — the same delivery mechanism
+# from stdin JSON (`.tool_input.command`) — the same delivery mechanism
 # already proven working by notify.sh (`.message`) and the check-doc-sync.sh
-# wiring in settings.json (`.tool_input.file_path`) elsewhere in this repo —
-# falling back to $TOOL_INPUT_COMMAND (what the pre-existing remarp PreToolUse
-# hook in settings.json reads) only if stdin didn't yield anything. Trusting
-# only the env var, with no stdin fallback, was a single point of failure: if
-# it's ever unset the gate silently never matches and never scans anything.
+# wiring in settings.json (`.tool_input.file_path`) elsewhere in this repo.
+# $TOOL_INPUT_COMMAND (what the pre-existing remarp PreToolUse hook in
+# settings.json reads, and what every round of this hook trusted until now)
+# is kept as a fallback for defense-in-depth, but instrumenting this script
+# against the real harness confirmed that env var is EMPTY on every actual
+# PreToolUse invocation — it has never once fired. stdin JSON is the only
+# delivery mechanism confirmed to work.
 HOOK_JSON="$(cat 2>/dev/null)"
 CMD="$(printf '%s' "$HOOK_JSON" | jq -r '.tool_input.command // empty' 2>/dev/null)"
 [ -z "$CMD" ] && CMD="${TOOL_INPUT_COMMAND:-}"
@@ -44,52 +61,58 @@ CMD="$(printf '%s' "$HOOK_JSON" | jq -r '.tool_input.command // empty' 2>/dev/nu
 # direction); under-matching skips the scan entirely (unsafe). Prefer broad.
 [[ "$CMD" =~ git.*commit ]] || exit 0
 
-block() {
-    echo "[secret-scan] BLOCKED: $1" >&2
-    exit 2
-}
-
-# The repo-selector detection below (--git-dir=, --work-tree=, GIT_DIR=,
-# multiple -C) matches substrings anywhere in $CMD — including inside a
-# quoted commit MESSAGE, which routinely mentions these exact tokens as
-# prose (this very script's own commit messages describe the fixes it
-# makes). Truncate at the first -m/--message token rather than trying to
-# strip its quoted argument: a heredoc-built message (`-m "$(cat <<'EOF' ...
-# EOF)"`) can itself contain a literal `"`, which stops a naive
-# `"[^"]*"` strip early and leaves the rest of the message text exposed to
-# the checks below — exactly the case that broke this the first time it was
-# tried. Cutting at -m/--message instead needs no quote-nesting logic at
-# all: git's own global options (-C, --git-dir, --work-tree) can ONLY appear
-# BEFORE the subcommand and ITS OWN flags, so nothing before the first
-# -m/--message can be message content, whatever quoting it uses. The actual
-# scanning logic below never uses $CMD_SIG, only $CMD, so this has no effect
-# on what gets scanned for secrets, only on what's allowed to force a
-# fail-closed block on repo-selector ambiguity. Falls back to the untruncated
-# $CMD (safe, just re-exposed to the false-positive this exists to avoid) if
-# python3 isn't available.
+# The repo-selector detection below (-C, --git-dir, --work-tree, GIT_DIR=,
+# GIT_INDEX_FILE=) must only look at git's GLOBAL options — the ones that can
+# appear before the subcommand — not at anything after "commit" itself,
+# which is the subcommand's OWN argument space (its own message, its own
+# `-C <commit>` meaning "reuse this other commit's message", etc.). Get this
+# boundary right by construction instead of trying to strip/whitelist
+# specific flags one at a time, which is how the last two rounds each
+# introduced a different bug:
+#   - v1 stripped the quoted -m argument textually; a heredoc-built message
+#     containing its own embedded quote defeated the strip and left
+#     flag-shaped prose exposed to the checks below.
+#   - v2 truncated at the command's FIRST -m/--message token instead; that
+#     is wrong when an EARLIER, unrelated command in the same compound
+#     statement also uses -m for something else (`python -m pytest && git
+#     -C ../other commit -m x` truncates at "python -m", hiding the real
+#     "-C ../other" from every check below and scanning the wrong repo).
+# Cutting the string at the position where the word "commit" itself begins
+# sidesteps both: everything before that position is exactly git's own
+# global-option space (wherever the real "-m" ends up, it's always after
+# "commit", so it's never in this prefix regardless of quoting), and nothing
+# after "commit" — including a `commit -C <ref>` reuse-message flag, which
+# is unrelated to the global `-C <path>` repo-selector despite sharing a
+# letter — is ever considered a repo-selector candidate. python3 -I (not
+# jq, which can't slice a string by a match position) does the search;
+# falls back to the untruncated $CMD (safe — just re-exposes the class of
+# false-positive this exists to avoid) if python3 isn't available.
 CMD_SIG="$CMD"
 if command -v python3 >/dev/null 2>&1; then
     py_out="$(printf '%s' "$CMD" | python3 -I -c '
 import sys, re
 s = sys.stdin.read()
-m = re.search(r"(^|\s)(-m|--message)(\s|=|$)", s)
-sys.stdout.write(s[:m.start()] if m else s)
+m = re.search(r"git.*?(commit)", s, re.DOTALL)
+sys.stdout.write(s[:m.start(1)] if m else s)
 ' 2>/dev/null)"
     [ $? -eq 0 ] && CMD_SIG="$py_out"
 fi
 
-# Repo-selector resolution. `-C <path>` runs git against a DIFFERENT repo
-# than this hook's own cwd — every git call below must follow it, or a
-# `git -C /other/repo commit` matches the gate but scans the wrong repo.
+# Repo-selector resolution. `-C <path>` (as a GLOBAL option, in $CMD_SIG —
+# see above) runs git against a DIFFERENT repo than this hook's own cwd —
+# every git call below must follow it, or a `git -C /other/repo commit`
+# matches the gate but scans the wrong repo.
 #
-# A few other redirection forms are deliberately NOT resolved and NOT
-# fail-closed: `--git-dir=`/`--work-tree=`/`GIT_DIR=` are rare enough in
-# practice that fail-closed is the right tradeoff for them (see below), but
-# an EARLIER, UNRELATED `cd` anywhere in the same multi-statement command is
-# not — Claude Code very routinely writes commands shaped like
-# `cd <dir>; <unrelated work>; ...; git commit ...` (including this very
-# script's own test suite), where "commit" only shows up much later, often
-# in a completely unrelated string. Fail-closed on any `cd` token, however
+# Other redirection forms in $CMD_SIG fail closed rather than being resolved:
+# --git-dir/--work-tree (either `=value` or a separate ` value` token),
+# GIT_DIR=/GIT_INDEX_FILE= environment assignments, and more than one -C.
+# These are rare enough in practice that fail-closed is the right tradeoff.
+#
+# An EARLIER, UNRELATED `cd` anywhere in the same multi-statement command is
+# handled differently — NOT resolved and NOT fail-closed. Claude Code very
+# routinely writes commands shaped like `cd <dir>; <unrelated work>; ...;
+# git commit ...` (including this very script's own test suite), where
+# "commit" only shows up much later. Fail-closed on any `cd` token, however
 # broad-in-principle-only, actual-in-practice blocked the overwhelming
 # majority of ordinary multi-step Bash calls, not just the narrow "committed
 # in a different repo than the session's own cwd" case it was meant to catch.
@@ -99,9 +122,9 @@ fi
 GIT_C=()
 WORK_DIR="."
 c_count=$(grep -o -- '-C\b' <<<"$CMD_SIG" 2>/dev/null | wc -l)
-if [[ "$CMD_SIG" =~ --git-dir= ]] || [[ "$CMD_SIG" =~ --work-tree= ]] || [[ "$CMD_SIG" =~ GIT_DIR= ]] || \
-   [ "${c_count:-0}" -gt 1 ]; then
-    block "command redirects git's target repo in a form this hook doesn't verify (--git-dir/--work-tree/GIT_DIR/multiple -C). Run the commit as its own 'git -C <repo> commit ...' call, or from that repo's own directory, so this hook can confirm what it's scanning."
+if [[ "$CMD_SIG" =~ --git-dir(=|[[:space:]]) ]] || [[ "$CMD_SIG" =~ --work-tree(=|[[:space:]]) ]] || \
+   [[ "$CMD_SIG" =~ GIT_DIR= ]] || [[ "$CMD_SIG" =~ GIT_INDEX_FILE= ]] || [ "${c_count:-0}" -gt 1 ]; then
+    block "command redirects git's target repo in a form this hook doesn't verify (--git-dir/--work-tree/GIT_DIR/GIT_INDEX_FILE/multiple -C). Run the commit as its own 'git -C <repo> commit ...' call, or from that repo's own directory, so this hook can confirm what it's scanning."
 fi
 if [[ "$CMD_SIG" =~ (^|[[:space:]])-C[[:space:]]+([^[:space:]]+) ]]; then
     raw_target="${BASH_REMATCH[2]}"
@@ -209,7 +232,9 @@ scan_list_from() {
                 ;;
             *)
                 [ -f "$WORK_DIR/$file" ] || continue
-                scan_content "$file" "$(cat "$WORK_DIR/$file" 2>/dev/null)"
+                local content
+                content="$(cat "$WORK_DIR/$file" 2>/dev/null)" || block "could not read '$file' to scan it."
+                scan_content "$file" "$content"
                 ;;
         esac
     done < "$TMP_LIST"
@@ -241,14 +266,20 @@ scan_list_from "working-tree changes" git diff -z --name-only --diff-filter=ACMR
 # produce nothing on those systems: a fail-open with no error.
 scan_list_from "untracked files" git ls-files -z --others --exclude-standard
 
-# `git add -f`/`--force` overrides .gitignore, so a command shaped that way
-# can stage (and this commit can then commit) a file the scan above
-# deliberately excludes as ignored. Only check this narrower, ignored-only
-# list when the command actually shows -f/--force alongside add — it can be
-# large in a repo with big ignored trees (node_modules, build/), so it's not
-# worth always paying for.
-if [[ "$CMD" =~ git[[:space:]]+add ]] && \
-   [[ "$CMD" =~ ([[:space:]]-f([[:space:]]|$))|(--force([[:space:]]|$)) ]]; then
+# `git add -f`/`--force` (including combined short flags like `-Af`, and
+# with global options like `-C .` between `git` and `add`) overrides
+# .gitignore, so a command shaped that way can stage (and this commit can
+# then commit) a file the scan above deliberately excludes as ignored. Only
+# check this narrower, ignored-only list when the command actually shows
+# add+force together — it can be large in a repo with big ignored trees
+# (node_modules, build/), so it's not worth always paying for. `add` and the
+# force flag are checked independently (not `git[[:space:]]+add` as one
+# token) so `git -C . add -f` still counts — over-matching here only costs
+# an extra scan.
+has_add=0; has_force=0
+[[ "$CMD" =~ (^|[[:space:]])add([[:space:]]|$) ]] && has_add=1
+{ [[ "$CMD" =~ [[:space:]]-[a-zA-Z]*f[a-zA-Z]*([[:space:]]|$) ]] || [[ "$CMD" =~ --force([[:space:]]|$) ]]; } && has_force=1
+if [ "$has_add" -eq 1 ] && [ "$has_force" -eq 1 ]; then
     scan_list_from "force-added ignored files" git ls-files -z --others -i --exclude-standard
 fi
 

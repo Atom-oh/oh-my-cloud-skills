@@ -46,8 +46,13 @@ PAYLOAD=$(jq -n \
 # `-X POST "$WEBHOOK_URL"` argument. A 600-permission temp file holds both,
 # removed by the SAME backgrounded subshell that uses it — not an EXIT trap,
 # which would race the removal against the still-running backgrounded curl.
-if [[ "$WEBHOOK_URL" == *'"'* ]]; then
-    echo "[notify] CLAUDE_NOTIFY_WEBHOOK contains a double-quote, refusing to send." >&2
+# Reject a double-quote (would close the `url = "..."` value early) AND a
+# CR/LF (would terminate that config line early) — either one lets whatever
+# follows in the value become a NEW curl config directive instead of part of
+# the URL (e.g. injecting its own `data = ` line), the same class of config
+# injection the double-quote check alone was meant to close but didn't fully.
+if [[ "$WEBHOOK_URL" == *'"'* ]] || [[ "$WEBHOOK_URL" == *$'\n'* ]] || [[ "$WEBHOOK_URL" == *$'\r'* ]]; then
+    echo "[notify] CLAUDE_NOTIFY_WEBHOOK contains a double-quote or newline, refusing to send." >&2
     exit 0
 fi
 CURL_CONF="$(mktemp)"
