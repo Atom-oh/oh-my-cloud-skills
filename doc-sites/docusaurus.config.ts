@@ -87,6 +87,12 @@ const config: Config = {
         },
         {
           type: 'docSidebar',
+          sidebarId: 'kiro',
+          position: 'left',
+          label: 'kiro',
+        },
+        {
+          type: 'docSidebar',
           sidebarId: 'projectInit',
           position: 'left',
           label: 'project-init',

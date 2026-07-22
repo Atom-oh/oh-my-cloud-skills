@@ -6,13 +6,14 @@ title: 시작하기
 
 # oh-my-cloud-skills 시작하기
 
-**oh-my-cloud-skills**는 AWS 클라우드 작업을 위한 [Claude Code](https://claude.ai/code) 플러그인 마켓플레이스입니다. 6개의 플러그인이 총 27개의 AI 에이전트와 21개의 스킬을 제공합니다.
+**oh-my-cloud-skills**는 AWS 클라우드 작업을 위한 [Claude Code](https://claude.ai/code) 플러그인 마켓플레이스입니다. 7개의 플러그인이 총 28개의 AI 에이전트와 22개의 스킬을 제공합니다.
 
 ## 플러그인 목록
 
 | 플러그인 | 설명 | Agents | Skills |
 |----------|------|--------|--------|
 | [co-agent](/docs/co-agent/overview) | 멀티-AI 협업 (Kiro/Codex/Agy) — 리뷰·의사결정·ADR·컨텍스트 동기화·consensus·harness 파이프라인, 5개 명령 | 3 | 1 |
+| [kiro](/docs/kiro/overview) | 비용 절감 구현 위임 — Claude가 계획·검증, Kiro CLI가 구독 크레딧으로 구현·리뷰, 4개 명령 | 1 | 1 |
 | [project-init](/docs/project-init/overview) | 프로젝트 스캐폴딩, 문서 동기화, ADR 모순 검토, 10개 명령 | 3 | 3 |
 | [aws-content-plugin](/docs/aws-content-plugin/overview) | 프레젠테이션(웹+네이티브 PPTX), 다이어그램, 문서, GitBook, 워크샵, 브로셔, 프로필 페이지 | 9 | 9 |
 | [aws-ops-plugin](/docs/aws-ops-plugin/overview) | EKS, 네트워크, IAM, 옵저버빌리티, 스토리지, DB, 비용, Well-Architected | 10 | 6 |
@@ -29,6 +30,7 @@ title: 시작하기
 
 # 플러그인 설치
 /plugin install co-agent@oh-my-cloud-skills
+/plugin install kiro@oh-my-cloud-skills
 /plugin install project-init@oh-my-cloud-skills
 /plugin install aws-content-plugin@oh-my-cloud-skills
 /plugin install aws-ops-plugin@oh-my-cloud-skills
@@ -44,6 +46,7 @@ git clone https://github.com/Atom-oh/oh-my-cloud-skills.git
 
 # 플러그인 디렉토리를 직접 지정하여 로드
 claude --plugin-dir ./oh-my-cloud-skills/plugins/co-agent
+claude --plugin-dir ./oh-my-cloud-skills/plugins/kiro
 claude --plugin-dir ./oh-my-cloud-skills/plugins/project-init
 claude --plugin-dir ./oh-my-cloud-skills/plugins/aws-content-plugin
 claude --plugin-dir ./oh-my-cloud-skills/plugins/aws-ops-plugin
@@ -97,6 +100,7 @@ plugins/<plugin-name>/
 ## 다음 단계
 
 - [co-agent 개요](/docs/co-agent/overview) — 멀티-AI 협업 플러그인 (리뷰·의사결정·ADR·컨텍스트 동기화 + `/co-agent:configure`)
+- [kiro 개요](/docs/kiro/overview) — 비용 절감 구현 위임 플러그인 (Claude 계획·검증 + Kiro CLI 구현·리뷰)
 - [project-init 개요](/docs/project-init/overview) — 프로젝트 스캐폴딩 플러그인
 - [aws-content-plugin 개요](/docs/aws-content-plugin/overview) — 콘텐츠 생성 플러그인
 - [aws-ops-plugin 개요](/docs/aws-ops-plugin/overview) — 인프라 운영 플러그인

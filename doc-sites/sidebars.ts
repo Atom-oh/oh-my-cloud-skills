@@ -131,6 +131,15 @@ const sidebars: SidebarsConfig = {
     'co-agent/commands/commands',
   ],
 
+  kiro: [
+    'kiro/overview',
+    'kiro/installation',
+    'kiro/usage-guide',
+    'kiro/agents/kiro-delegate-agent',
+    'kiro/skills/kiro-delegate',
+    'kiro/commands/commands',
+  ],
+
   projectInit: [
     'project-init/overview',
     'project-init/installation',
