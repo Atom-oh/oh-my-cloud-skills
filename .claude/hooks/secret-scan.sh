@@ -93,18 +93,30 @@ CMD="$(printf '%s' "$HOOK_JSON" | jq -r '.tool_input.command // empty' 2>/dev/nu
 # -C (or lack of one) silently never checked. Fail closed on that shape
 # instead of guessing which one to trust.
 #
-# One wrinkle "split on newline too" runs into: a newline is only a REAL
-# statement separator OUTSIDE a heredoc — inside one (`-m "$(cat <<'EOF'
-# ... EOF)"`, exactly how this project's own commit messages are built).
-# every line is DATA, not a new statement, and this project's messages
-# routinely mention "git commit" as a prose example within that data. Split
-# on newline naively and that example line independently satisfies
-# "standalone git" + "standalone commit", counting as a second match and
-# fail-closing on every such commit. Masking heredoc bodies (blanking each
-# line between an opening `<<[-~]DELIM` and the line that closes it) before
-# splitting removes exactly the content that caused that false match,
-# without touching the real invocation line the heredoc's `<<` marker
-# itself appears on.
+# Two things a naive split runs into, both closed by MASKING (replacing
+# characters with same-length placeholders, so every position lines up with
+# the ORIGINAL string) rather than by removing/stripping text:
+#   - A newline is only a REAL statement separator OUTSIDE a heredoc —
+#     inside one (`-m "$(cat <<'EOF' ... EOF)"`, exactly how this project's
+#     own commit messages are built), every line is DATA, not a new
+#     statement, and this project's messages routinely mention "git commit"
+#     as a prose example within that data. Split on newline naively and
+#     that example line independently satisfies "standalone git" +
+#     "standalone commit", counting as a second match and fail-closing on
+#     every such commit.
+#   - A quoted string can contain the word "commit" as data too, and NOT
+#     just inside a heredoc — `NOTE=' commit ' git -C /other commit -m x`
+#     has a REAL invocation with its own -C, but the word "commit" inside
+#     the single-quoted string comes first in the string, so an unmasked
+#     search finds that fake occurrence and cuts there, losing "-C /other"
+#     the same way a heredoc's prose example would.
+# Masking heredoc bodies and quoted-string interiors before searching
+# removes exactly the content that causes both false matches, without
+# touching the real invocation characters around them — and because
+# masking preserves length/position instead of deleting anything, the
+# match position found in the MASKED text is used to slice the ORIGINAL
+# (unmasked) text for the actual result, so quoting is never lost from
+# what gets returned either.
 # python3 -I (not jq, which can't slice a string by a match position) does
 # this; falls back to the untruncated $CMD (safe — just re-exposes the
 # class of false-positive this exists to avoid) if python3 isn't available.
@@ -114,33 +126,66 @@ if command -v python3 >/dev/null 2>&1; then
 import sys, re
 s = sys.stdin.read()
 
-def mask_heredocs(text):
-    lines = text.split("\n")
+def mask(text):
+    # Pass 1: blank heredoc body lines (same length, using "x" filler).
+    line_spans = []
+    pos = 0
+    for line in text.split("\n"):
+        line_spans.append((pos, pos + len(line)))
+        pos += len(line) + 1
+    out = list(text)
     delim = None
-    out = []
-    for line in lines:
+    for (a, b) in line_spans:
+        line = text[a:b]
         if delim is not None:
             if line.strip() == delim:
-                out.append(line)
                 delim = None
             else:
-                out.append("")
+                for j in range(a, b):
+                    out[j] = "x"
             continue
-        out.append(line)
         m = re.search(r"<<-?~?\s*([\x27\"]?)(\w+)\1", line)
         if m:
             delim = m.group(2)
-    return "\n".join(out)
+    s1 = "".join(out)
+    # Pass 2: blank the INTERIOR of single- and double-quoted strings
+    # (quote characters themselves stay, so the block below can still
+    # detect and reject a quoted -C argument same as before).
+    out2 = list(s1)
+    i, n = 0, len(s1)
+    while i < n:
+        c = s1[i]
+        if c == "\x27":
+            j = i + 1
+            while j < n and s1[j] != "\x27":
+                out2[j] = "x"
+                j += 1
+            i = j + 1
+        elif c == "\"":
+            j = i + 1
+            while j < n and s1[j] != "\"":
+                out2[j] = "x"
+                j += 1
+            i = j + 1
+        else:
+            i += 1
+    return "".join(out2)
 
-masked = mask_heredocs(s)
-parts = re.split(r"&&|\|\||;|\||\n", masked)
-matches = [stmt for stmt in parts
-           if re.search(r"(?:^|\s)git(?:\s|$)", stmt) and re.search(r"(?:^|\s)commit(?:\s|$)", stmt)]
+masked = mask(s)
+seps = [sp.span() for sp in re.finditer(r"&&|\|\||;|\||\n", masked)]
+starts = [0] + [e for (_, e) in seps]
+ends = [st for (st, _) in seps] + [len(masked)]
+matches = []
+for (a, b) in zip(starts, ends):
+    stmt = masked[a:b]
+    if re.search(r"(?:^|\s)git(?:\s|$)", stmt) and re.search(r"(?:^|\s)commit(?:\s|$)", stmt):
+        matches.append((a, b))
 if len(matches) > 1:
     sys.exit(3)  # more than one separate commit invocation — see bash side
 elif matches:
-    m = re.search(r"(?:^|\s)(commit)(?:\s|$)", matches[0])
-    sys.stdout.write(matches[0][:m.start(1)])
+    a, b = matches[0]
+    m = re.search(r"(?:^|\s)(commit)(?:\s|$)", masked[a:b])
+    sys.stdout.write(s[a:a + m.start(1)])  # slice the ORIGINAL text
 else:
     sys.stdout.write(s)
 ' 2>/dev/null)"
@@ -186,7 +231,7 @@ GIT_C=()
 WORK_DIR="$(command git rev-parse --show-toplevel 2>/dev/null)"
 c_count=$(grep -o -- '-C\b' <<<"$CMD_SIG" 2>/dev/null | wc -l)
 HAS_REDIRECT=0
-[[ "$CMD_SIG" =~ (^|[[:space:]])-C[[:space:]]+([^[:space:]]+) ]] && HAS_REDIRECT=1
+[[ "$CMD_SIG" =~ (^|[[:space:]])-C[[:space:]]*([^[:space:]]+) ]] && HAS_REDIRECT=1
 [[ "$CMD_SIG" =~ --git-dir(=|[[:space:]]) ]] && HAS_REDIRECT=1
 [[ "$CMD_SIG" =~ --work-tree(=|[[:space:]]) ]] && HAS_REDIRECT=1
 [[ "$CMD_SIG" =~ GIT_DIR= ]] && HAS_REDIRECT=1
@@ -194,20 +239,32 @@ HAS_REDIRECT=0
 [[ "$CMD_SIG" =~ GIT_INDEX_FILE= ]] && HAS_REDIRECT=1
 [[ "$CMD_SIG" =~ (-c|--config)[[:space:]]+core\.worktree= ]] && HAS_REDIRECT=1
 
-# If this hook's own cwd isn't inside a git repository at all, AND the
-# command doesn't try to point git at one either, there is nothing here yet
-# for this hook to verify — no repo means no index, no working tree, no
-# secrets that could leak. The command will either `git init` first (a
-# later, real commit will be scanned normally once a repo exists) or simply
-# fail on its own, since git itself refuses to commit outside a repo.
-# Blocking a command shaped like `git init && git add . && git commit`
-# purely because a repo doesn't exist yet (the enumeration calls below
-# would otherwise fail and this hook's own "can't verify = fail closed"
-# rule would block it) is friction with no security benefit — unlike an
-# enumeration failure inside an EXISTING repo (permissions, corruption),
-# which stays fail-closed exactly as before.
-if [ -z "$WORK_DIR" ] && [ "$HAS_REDIRECT" -eq 0 ]; then
-    exit 0
+# If this hook's own cwd isn't inside a git repository at all, the command
+# doesn't try to point git at one either, and the command does NOT itself
+# create one (no standalone "init" word), there is nothing here yet for
+# this hook to verify — no repo means no index, no working tree, no secrets
+# that could leak, and a bare `git commit` fails on its own outside a repo
+# regardless of what this hook does. Blocking that specific shape purely
+# because a repo doesn't exist yet would be friction with no security
+# benefit.
+#
+# `git init && git add . && git commit` in the SAME call is a different,
+# genuinely dangerous shape this reasoning does NOT cover: init creates the
+# repo and the rest of that same call can commit it immediately, with
+# whatever files already happen to sit in this directory — this hook's
+# enumeration calls have no index yet to consult at the instant it runs, so
+# there is no way to scan those files before they're committed. Rather than
+# letting that whole compound command through unscanned (which is exactly
+# what "no repo → exit 0" would do), fail closed on it: a real secret
+# already sitting in the directory when it's freshly `git init`-ed and
+# committed in one shot must not go out unscanned.
+if [ -z "$WORK_DIR" ]; then
+    if [[ "$CMD" =~ (^|[[:space:]])init([[:space:]]|$) ]]; then
+        block "command both initializes a repository and commits in the same call — this hook has no index yet to scan whatever files already exist in this directory before they're committed. Run 'git init' as its own Bash call first, then commit separately once a repository (and therefore a scannable index) exists."
+    fi
+    if [ "$HAS_REDIRECT" -eq 0 ]; then
+        exit 0
+    fi
 fi
 [ -z "$WORK_DIR" ] && WORK_DIR="."
 
@@ -217,7 +274,7 @@ if [ "${c_count:-0}" -gt 1 ] || [[ "$CMD_SIG" =~ --git-dir(=|[[:space:]]) ]] || 
    [[ "$CMD_SIG" =~ (-c|--config)[[:space:]]+core\.worktree= ]]; then
     block "command redirects git's target repo in a form this hook doesn't verify (--git-dir/--work-tree/GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE/core.worktree/multiple -C). Run the commit as its own 'git -C <repo> commit ...' call, or from that repo's own directory, so this hook can confirm what it's scanning."
 fi
-if [[ "$CMD_SIG" =~ (^|[[:space:]])-C[[:space:]]+([^[:space:]]+) ]]; then
+if [[ "$CMD_SIG" =~ (^|[[:space:]])-C[[:space:]]*([^[:space:]]+) ]]; then
     raw_target="${BASH_REMATCH[2]}"
     case "$raw_target" in
         *\"*|*\'*) block "could not reliably parse the -C argument (quoted path) in: $CMD" ;;
@@ -273,14 +330,26 @@ HIGH_CONFIDENCE_PATTERNS=(
     'ya29\.[A-Za-z0-9_-]{50,}'                            # Google OAuth Token
     'DefaultEndpointsProtocol=https;Account'              # Azure Connection String
 )
-GENERIC_PATTERNS=(
+# This repo's own review checklist for this class of hook names Kiro and
+# Antigravity keys explicitly by service — worth checking even in the
+# template file, unlike the fully generic password=/secret=/api_key=
+# assignments below (which are exactly the shape a PLACEHOLDER commonly
+# takes, e.g. `API_KEY=your-key-here`, so applying them to a file meant to
+# hold placeholders would be mostly false positives). These two have no
+# fixed-format value to anchor on the way AKIA/sk-ant-/ghp_ do, so they
+# still carry some of that same placeholder-matching risk — but it's a
+# service-specific variable name, not a generic one, so the blast radius
+# is far narrower.
+PROJECT_KEY_PATTERNS=(
     'kiro_api_key\s*[:=]\s*["\x27]?[^\s"\x27]{8,}'        # Kiro API Key
     'antigravity_api_key\s*[:=]\s*["\x27]?[^\s"\x27]{8,}' # Antigravity API Key
+)
+GENERIC_PATTERNS=(
     'password\s*[:=]\s*["\x27]?[^\s"\x27]{8,}'            # Password assignments
     'secret\s*[:=]\s*["\x27]?[^\s"\x27]{8,}'              # Secret assignments
     'api[_-]?key\s*[:=]\s*["\x27]?[^\s"\x27]{8,}'         # API key assignments
 )
-PATTERNS=("${HIGH_CONFIDENCE_PATTERNS[@]}" "${GENERIC_PATTERNS[@]}")
+PATTERNS=("${HIGH_CONFIDENCE_PATTERNS[@]}" "${PROJECT_KEY_PATTERNS[@]}" "${GENERIC_PATTERNS[@]}")
 
 # Files to skip — the exact path (not a bare filename), since
 # `[[ "$file" == $pattern ]]` matches the whole staged path
@@ -302,12 +371,19 @@ is_skipped() {
 }
 
 scan_content() {
-    local file="$1" content="$2" regex patterns_ref
+    local file="$1" content="$2" regex
     case "$file" in
-        *.env.example) patterns_ref="HIGH_CONFIDENCE_PATTERNS[@]" ;;
-        *) patterns_ref="PATTERNS[@]" ;;
+        *.env.example)
+            for regex in "${HIGH_CONFIDENCE_PATTERNS[@]}" "${PROJECT_KEY_PATTERNS[@]}"; do
+                if printf '%s' "$content" | grep -qPi "$regex" 2>/dev/null; then
+                    echo "[secret-scan] Potential secret found in $file (pattern: ${regex:0:30}...)"
+                    SECRETS_FOUND=1
+                fi
+            done
+            return
+            ;;
     esac
-    for regex in "${!patterns_ref}"; do
+    for regex in "${PATTERNS[@]}"; do
         if printf '%s' "$content" | grep -qPi "$regex" 2>/dev/null; then
             echo "[secret-scan] Potential secret found in $file (pattern: ${regex:0:30}...)"
             SECRETS_FOUND=1
