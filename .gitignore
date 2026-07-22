@@ -9,6 +9,7 @@
 # Claude Code
 .claude/*
 !.claude/settings.json
+!.claude/hooks/
 
 # Playwright MCP
 .playwright-mcp/
