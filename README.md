@@ -68,6 +68,7 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 - **Claude plans, Kiro implements** — Claude writes a Kiro-native spec and verifies results; Kiro CLI writes the actual code on its own flat-rate subscription credits, inside an isolated git worktree with a scope-guarded diff
 - **Pre-commit review gate (opt-in)** — a `PreToolUse` hook can run a Kiro-powered review before `git commit`, blocking only on `critical` findings by default (fails open on any infra problem); off by default since the staged diff content is sent to Kiro's backend (the reviewer's reads are tool-layer-confined to the isolated diff dir)
 - **`/kiro:setup`** — detect kiro-cli, probe usability, list models, and write the `.kiro/agents/*.json` custom agents the pipeline uses
+- **Web search delegation (opt-in)** — sessions without a `WebSearch` tool (Claude Code on Bedrock) can route web searches through kiro-cli's native `web_search`; only the query text leaves the machine, and the search agent is search-only (no filesystem/shell)
 
 ---
 
@@ -708,7 +709,7 @@ All agents (except the internal pr-autofix workers above) activate automatically
 | `project-scaffolder` | Claude Code project structure patterns and conventions |
 | `pr-autofix` | Poll AI + human PR review feedback and auto-fix issues (max 5 iterations; plan on Fable/Opus, implement via opus [medium effort] subagents) |
 | `decision-reconcile` | Detect contradictions across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (varied Claude model tiers + optional Kiro/Codex/Antigravity, one review lens each), then draft a superseding ADR |
-| `kiro-delegate` | Cost-savings implementation + review delegation to Kiro CLI (subscription credits) — worktree-isolated implement loop, scope-guarded diff, pre-commit review gate. Commands: `/kiro:setup`, `/kiro:delegate`, `/kiro:review`, `/kiro:configure` |
+| `kiro-delegate` | Cost-savings implementation + review delegation to Kiro CLI (subscription credits) — worktree-isolated implement loop, scope-guarded diff, pre-commit review gate, and opt-in web search delegation for WebSearch-less sessions (Claude Code on Bedrock). Commands: `/kiro:setup`, `/kiro:delegate`, `/kiro:review`, `/kiro:configure` |
 
 ### Project Init Commands
 

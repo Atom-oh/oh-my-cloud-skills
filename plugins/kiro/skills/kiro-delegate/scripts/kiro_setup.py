@@ -168,6 +168,30 @@ _REVIEWER_AGENT = {
 }
 
 
+# Web-search delegation agent: lets a Claude Code session WITHOUT the WebSearch tool
+# (e.g. Claude Code on Bedrock) route one-shot web searches through kiro-cli's native
+# web_search tool. Search-only — no fs_read/fs_write/execute_bash, so unlike the two
+# agents above there is nothing to path-confine and no preToolUse guard is needed; the
+# entire risk surface is "the query text goes to Kiro's backend", which is the point
+# of the feature and is consented to via /kiro:setup's websearch question. The file is
+# always written by write_agents (harmless when the feature is off — routing is gated
+# by kiro_config.py's websearch.enabled, not by this file's existence), and
+# kiro_websearch.py refuses to run unless the on-disk file matches this dict exactly
+# (same tamper defense as kiro_review.py's _reviewer_agent_ok — a hand-edited file
+# that quietly adds execute_bash must not be trusted).
+_WEBSEARCH_AGENT = {
+    "name": "kiro-websearch",
+    "description": "Answers one-shot web search queries for the kiro plugin's "
+                    "websearch delegation path. Search-only — no filesystem, no shell.",
+    "prompt": "You are a web research assistant. Use web_search to answer the query "
+              "you are given, then reply with a concise summary of findings followed "
+              "by a list of source URLs. Never use any tool other than web_search.",
+    "tools": ["web_search"],
+    "allowedTools": ["web_search"],
+    "hooks": {}
+}
+
+
 def probe(timeout=90):
     if not shutil.which("kiro-cli"):
         return "ABSENT", "command not found"
@@ -312,7 +336,8 @@ def write_agents(root, force=False, enable_bash=False):
     written = []
     skip_bad = []
     for name, spec in (("kiro-implementer.json", _implementer_agent(enable_bash)),
-                        ("kiro-reviewer.json", _REVIEWER_AGENT)):
+                        ("kiro-reviewer.json", _REVIEWER_AGENT),
+                        ("kiro-websearch.json", _WEBSEARCH_AGENT)):
         p = os.path.join(d, name)
         # Re-check the FULL per-file path, not just `d` above — `os.makedirs(d,
         # exist_ok=True)` is a no-op if `d` already exists (symlink or not), and an

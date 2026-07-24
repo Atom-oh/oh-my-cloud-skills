@@ -223,6 +223,12 @@ python3 "$CFG" set delegate model "gpt-5.3-codex-mini" --root "$R" >/dev/null 2>
 assert_eq "gpt-5.3-codex-mini" "$(python3 "$CFG" delegate-model --root "$R" 2>&1)" "delegate model set/read roundtrip"
 python3 "$CFG" set review model "gpt-5.6-sol" --root "$R" >/dev/null 2>&1
 assert_eq "gpt-5.6-sol" "$(python3 "$CFG" review-model --root "$R" 2>&1)" "review model set/read roundtrip"
+assert_eq "1" "$(python3 "$CFG" websearch-enabled --root "$R" >/dev/null 2>&1; echo $?)" "websearch is off by default (exit 1) — query egress to Kiro's backend is opt-in"
+python3 "$CFG" set websearch enabled on --root "$R" >/dev/null 2>&1
+assert_eq "0" "$(python3 "$CFG" websearch-enabled --root "$R" >/dev/null 2>&1; echo $?)" "set websearch enabled on takes effect"
+python3 "$CFG" set websearch enabled off --root "$R" >/dev/null 2>&1
+assert_eq "1" "$(python3 "$CFG" websearch-enabled --root "$R" >/dev/null 2>&1; echo $?)" "set websearch enabled off takes effect"
+assert_eq "60" "$(python3 "$CFG" websearch-timeout --root "$R" 2>&1)" "websearch timeout defaults to 60s"
 assert_eq "critical" "$(python3 "$CFG" block --root "$R" 2>&1)" "review block defaults to critical"
 python3 "$CFG" set review block warning --root "$R" >/dev/null 2>&1
 assert_eq "warning" "$(python3 "$CFG" block --root "$R" 2>&1)" "review block set/read roundtrip"
@@ -338,7 +344,7 @@ RCONSENT=$(mktemp -d "${TMPDIR:-/tmp}/kiro-consent.XXXXXX")
 git -C "$RCONSENT" init -q
 git -C "$RCONSENT" config user.email t@t.t; git -C "$RCONSENT" config user.name t
 mkdir -p "$RCONSENT/.claude"
-python3 -c "import json; json.dump({'default_delegate': True, 'review': {'on_commit': True, 'model': 'gpt-5.6-sol'}}, open('$RCONSENT/.claude/kiro.local.json','w'))"
+python3 -c "import json; json.dump({'default_delegate': True, 'review': {'on_commit': True, 'model': 'gpt-5.6-sol'}, 'websearch': {'enabled': True}}, open('$RCONSENT/.claude/kiro.local.json','w'))"
 python3 "$CFG" review-on-commit --root "$RCONSENT" >/dev/null 2>&1 && CONSENT_UNTRACKED_RC=0 || CONSENT_UNTRACKED_RC=$?
 assert_eq "0" "$CONSENT_UNTRACKED_RC" "review-on-commit reads true from an UNTRACKED local.json (normal per-developer override, no attack)"
 git -C "$RCONSENT" add .claude/kiro.local.json
@@ -349,8 +355,11 @@ assert_contains "$CONSENT_TRACKED_OUT" "tracked by git" "the fallback prints a w
 CONSENT_DELEGATE_RC=0
 python3 "$CFG" default-delegate --root "$RCONSENT" >/dev/null 2>&1 || CONSENT_DELEGATE_RC=$?
 assert_eq "1" "$CONSENT_DELEGATE_RC" "default_delegate ALSO falls back to OFF once the file is tracked (both consent-gating keys stripped, not just on_commit)"
+CONSENT_WS_RC=0
+python3 "$CFG" websearch-enabled --root "$RCONSENT" >/dev/null 2>&1 || CONSENT_WS_RC=$?
+assert_eq "1" "$CONSENT_WS_RC" "websearch.enabled ALSO falls back to OFF once the file is tracked — a committed enabled:true must not silently opt users into query egress"
 CONSENT_MODEL=$(python3 "$CFG" review-model --root "$RCONSENT" 2>/dev/null)
-assert_eq "gpt-5.6-sol" "$CONSENT_MODEL" "non-consent settings (review.model) from the SAME tracked file still apply — only the two consent-gating keys are stripped"
+assert_eq "gpt-5.6-sol" "$CONSENT_MODEL" "non-consent settings (review.model) from the SAME tracked file still apply — only the consent-gating keys are stripped"
 rm -rf "$RCONSENT"
 
 # --- round-15 fix: a malicious repo can bypass the round-14 tracked-config check via a
@@ -571,11 +580,15 @@ rm -rf "$R3M"
 # file and send its content to Kiro's backend. Fail-open SKIP (never send) instead. ---
 R3O=$(mktemp -d "${TMPDIR:-/tmp}/kiro-review-diffroot.XXXXXX")
 OUTSIDE_DIFF=$(mktemp -d "${TMPDIR:-/tmp}/kiro-review-diffoutside.XXXXXX")
-printf 'AKIAABCDEFGHIJKLMNOP\n' > "$OUTSIDE_DIFF/host-secret.diff"
+# Marker deliberately does NOT match the AKIA[0-9A-Z]{16} secret pattern (the `_`
+# breaks the character class) — the assertion only needs a unique string to prove
+# the content never leaks, and a realistic-looking key here trips the repo's own
+# .claude/hooks/secret-scan.sh on every commit that stages this file.
+printf 'AKIA_MARKER_NEVER_LEAKED\n' > "$OUTSIDE_DIFF/host-secret.diff"
 OUT3O=$(python3 "$REVIEW" --diff "$OUTSIDE_DIFF/host-secret.diff" --root "$R3O" 2>&1) && RC3O=0 || RC3O=$?
 assert_eq "0" "$RC3O" "review fails OPEN (exit 0) when --diff points outside the repo root"
 assert_contains "$OUT3O" "skipped" "review reports the out-of-root --diff path as a fail-open reason"
-assert_grep_no_match "AKIAABCDEFGHIJKLMNOP" "$OUT3O" "the out-of-root file's CONTENT never appears in output (never read, never sent anywhere)"
+assert_grep_no_match "AKIA_MARKER_NEVER_LEAKED" "$OUT3O" "the out-of-root file's CONTENT never appears in output (never read, never sent anywhere)"
 rm -rf "$R3O" "$OUTSIDE_DIFF"
 
 # --- kiro_review.py: a git failure (not just an empty diff) must fail OPEN with a
@@ -719,11 +732,17 @@ assert_contains "$PROBE" "ABSENT" "kiro_setup.py probe reports ABSENT when kiro-
 python3 "$SETUP" write-agents --root "$R4" >/dev/null 2>&1
 IMPL="$R4/.kiro/agents/kiro-implementer.json"
 REV="$R4/.kiro/agents/kiro-reviewer.json"
+WS="$R4/.kiro/agents/kiro-websearch.json"
 assert_file_exists "$IMPL" "write-agents creates kiro-implementer.json"
 assert_file_exists "$REV" "write-agents creates kiro-reviewer.json"
+assert_file_exists "$WS" "write-agents creates kiro-websearch.json"
 assert_json_valid "$IMPL" "kiro-implementer.json is valid JSON"
 assert_json_valid "$REV" "kiro-reviewer.json is valid JSON"
+assert_json_valid "$WS" "kiro-websearch.json is valid JSON"
 assert_grep_no_match "fs_write" "$(python3 -c "import json;print(json.load(open('$REV'))['tools'])")" "kiro-reviewer has no fs_write tool (read-only)"
+# The websearch agent's whole safety story is "web_search only": no filesystem, no
+# shell — a search delegate must never gain write/exec surface.
+assert_eq "['web_search']" "$(python3 -c "import json;print(json.load(open('$WS'))['tools'])")" "kiro-websearch has web_search as its ONLY tool (no fs_read/fs_write/execute_bash)"
 # kiro-cli's agent hook schema is FLAT per preToolUse entry ({"matcher","command"}) —
 # NOT Claude Code's nested {"matcher","hooks":[{"type","command"}]} shape; kiro-cli
 # 2.11.1 rejects the nested shape ("missing field `command`") and silently falls back
@@ -820,6 +839,38 @@ assert_eq "1" "$VA1" "verify-agents rejects a tampered preToolUse hook (exit 1) 
 rm -f "$IMPL"
 python3 "$SETUP" verify-agents --root "$R4" >/dev/null 2>&1 && VA2=0 || VA2=$?
 assert_eq "2" "$VA2" "verify-agents reports missing implementer (exit 2)"
+
+# --- kiro_websearch.py: disabled-by-default and tamper fail-closed (no kiro-cli needed:
+#     both refusals happen before any CLI invocation) ---
+WSPY="$SK/kiro_websearch.py"
+assert_file_exists "$WSPY" "kiro_websearch.py exists"
+WS_OFF_OUT=$(python3 "$WSPY" "test query" --root "$R4" 2>&1) && WS_OFF_RC=0 || WS_OFF_RC=$?
+assert_eq "2" "$WS_OFF_RC" "kiro_websearch refuses when websearch.enabled is off (exit 2)"
+assert_contains "$WS_OFF_OUT" "disabled" "kiro_websearch's refusal names the disabled setting"
+python3 "$CFG" set websearch enabled on --root "$R4" >/dev/null 2>&1
+python3 -c "
+import json
+p='$R4/.kiro/agents/kiro-websearch.json'
+d=json.load(open(p))
+d['tools'].append('execute_bash')
+json.dump(d, open(p,'w'))
+"
+WS_TAMPER_OUT=$(python3 "$WSPY" "test query" --root "$R4" 2>&1) && WS_TAMPER_RC=0 || WS_TAMPER_RC=$?
+assert_eq "2" "$WS_TAMPER_RC" "kiro_websearch fail-closed refuses a tampered agent file (execute_bash added) — never falls back unguarded"
+assert_contains "$WS_TAMPER_OUT" "not plugin-generated" "kiro_websearch's tamper refusal explains why"
+# Tamper refusal must hold with kiro-cli ABSENT too (CI has no kiro-cli): the agent
+# tamper check runs BEFORE the PATH check — fail-closed is about the file's
+# trustworthiness, not the CLI's availability.
+WS_QF=$(mktemp "${TMPDIR:-/tmp}/kiro-ws-query.XXXXXX")
+printf 'query with $(dangerous) `backticks` and an\nEOF\nline\n' > "$WS_QF"
+WS_QF_OUT=$(python3 "$WSPY" --query-file "$WS_QF" --root "$R4" 2>&1) && WS_QF_RC=0 || WS_QF_RC=$?
+assert_eq "2" "$WS_QF_RC" "--query-file mode reaches the same tamper refusal (query content with shell metachars/heredoc-terminator is inert — file read, no shell parse)"
+assert_contains "$WS_QF_OUT" "not plugin-generated" "--query-file tamper refusal explains why"
+printf 'nul\x00byte' > "$WS_QF"
+WS_NUL_OUT=$(python3 "$WSPY" --query-file "$WS_QF" --root "$R4" 2>&1) && WS_NUL_RC=0 || WS_NUL_RC=$?
+assert_eq "2" "$WS_NUL_RC" "a NUL byte in the query is refused with a clean exit (not a subprocess ValueError traceback)"
+assert_contains "$WS_NUL_OUT" "NUL" "the NUL refusal names the reason"
+rm -f "$WS_QF"
 rm -rf "$R4"
 
 # --- worktree + scope_guard reused verbatim: sanity smoke test (full coverage lives

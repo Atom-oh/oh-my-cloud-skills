@@ -1,5 +1,5 @@
 ---
-description: Inspect or change kiro plugin settings — default_delegate, delegate/review models, parallel_tasks, max_fix_rounds, review.on_commit, review.block.
+description: Inspect or change kiro plugin settings — default_delegate, delegate/review/websearch models, parallel_tasks, max_fix_rounds, review.on_commit, review.block, websearch.enabled.
 allowed-tools: Bash(python3:*)
 ---
 
@@ -52,6 +52,9 @@ Common examples:
 | `set review on_commit off` | Disable it again |
 | `set review block <critical\|warning\|none>` | Which finding severities block the commit — `warning` blocks warning+critical, `suggestion` never blocks under any level (default `critical`) |
 | `set review timeout <seconds>` / `set delegate timeout <seconds>` | Per-call wall-clock budget |
+| `set websearch enabled on` | Delegate web searches to kiro-cli's `web_search` when this session has no WebSearch tool (e.g. Claude Code on Bedrock) — only the query text is sent to Kiro's backend; the `kiro-websearch` agent is search-only (no filesystem/shell) |
+| `set websearch enabled off` | Disable it (WebSearch-less sessions just skip web searches, saying so) |
+| `set websearch model <m>` / `set websearch timeout <seconds>` | Search model (default: CLI-routed) and per-search budget (default 60s) |
 
 Settings are layered: `kiro.defaults.json` (committed) ← `.claude/kiro.local.json`
 (gitignored, this repo only) — `set` always writes the local override.

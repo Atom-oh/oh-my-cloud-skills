@@ -1,0 +1,219 @@
+#!/usr/bin/env python3
+"""Delegate a one-shot web search to kiro-cli's native `web_search` tool.
+
+Why this exists: Claude Code on Bedrock has no WebSearch tool. Kiro CLI does — so a
+session that needs a web lookup can route it through the already-set-up kiro peer
+(`/kiro:setup` writes the `kiro-websearch` agent and asks for the opt-in). The routing
+rule lives in `plugins/kiro/CLAUDE.md`; this script is the whole mechanism.
+
+Usage:
+  kiro_websearch.py --query-file <path> [--root DIR]        # canonical (routing rule)
+  echo "<query>" | kiro_websearch.py --stdin [--root DIR]   # pipe-friendly
+  kiro_websearch.py "<query>" [--root DIR]                  # direct human use
+
+Exit codes: 0 = results printed to stdout · 2 = feature disabled / not set up /
+agent file tampered · 1 = kiro-cli invocation failed (timeout, non-zero exit, empty).
+
+Security notes:
+- `--query-file` is the canonical mode for agent-driven calls (the CLAUDE.md routing
+  rule): the agent writes the query to a temp file with its file-write tool (no shell
+  involved at any point) and the command line stays a FIXED string, so query text
+  derived from untrusted context (fetched pages, file content) containing
+  `$(...)`/backticks/quotes — or even a line that would terminate a heredoc — has no
+  shell to inject into, ever. This is the same reasoning that moved the delegate
+  pipeline's task prompts into a task-prompt FILE (references/kiro-headless.md); a
+  heredoc-fed `--stdin` is NOT equivalent (a query containing the delimiter line
+  terminates the heredoc early and the remainder executes as shell). `--stdin` remains
+  for pipe use and the positional form for direct human use, where the human
+  shell-quoted the query themselves. Inside this process, all modes are identical:
+  the query is forwarded via subprocess list-argv, so no shell parses it downstream.
+- The agent file must match the plugin-generated `_WEBSEARCH_AGENT` exactly (same
+  tamper defense as kiro_review.py's `_reviewer_agent_ok`): the search agent's whole
+  safety story is "web_search only — no fs_read/fs_write/execute_bash", and a
+  hand-edited file that quietly adds tools must not be trusted. Fail-closed: refuse,
+  never fall back to an unguarded invocation.
+- Env is scrubbed with kiro_review's `_sanitized_env` before the call — same
+  credential-name filter, keeps only KIRO_API_KEY of the sensitive set.
+"""
+import sys
+import os
+import json
+import shutil
+import tempfile
+import subprocess
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+import kiro_config as kc
+from kiro_review import _sanitized_env
+
+
+def _websearch_agent_ok(path):
+    """True iff the on-disk kiro-websearch agent file is exactly the plugin-generated
+    shape. Imported lazily so a broken sibling module can't take this path down."""
+    if not os.path.isfile(path):
+        return False
+    try:
+        import kiro_setup
+        with open(path, encoding="utf-8") as f:
+            return json.load(f) == kiro_setup._WEBSEARCH_AGENT
+    except Exception:
+        return False
+
+
+def run_search(root, query):
+    cfg = kc.effective(root)
+    w = cfg.get("websearch") or {}
+    # _as_bool, not raw truthiness — kiro_config.py's websearch-enabled subcommand and
+    # cmd_show both judge this key via _as_bool, so a hand-edited local JSON holding
+    # the STRING "false" reads as disabled everywhere the user can inspect it; raw
+    # truthiness here would treat that same value as ON and egress queries from a
+    # config the user believes is opted out.
+    if not kc._as_bool(w.get("enabled")):
+        print("kiro websearch is disabled — enable it with "
+              "`kiro_config.py set websearch enabled on` (or re-run /kiro:setup).",
+              file=sys.stderr)
+        return 2
+    # Tamper check BEFORE the kiro-cli presence check: a tampered agent file must be
+    # rejected regardless of whether kiro-cli happens to be installed — fail-closed is
+    # about the file's trustworthiness, not the CLI's availability (and a PATH check
+    # first would mask the tamper refusal on hosts without kiro-cli, e.g. CI).
+    agent_file = os.path.join(root, ".kiro", "agents", "kiro-websearch.json")
+    if not _websearch_agent_ok(agent_file):
+        # Fail-closed, no unguarded fallback: a tampered agent file could have added
+        # execute_bash/fs_write, and --trust-tools=web_search as a fallback would still
+        # run whatever agent the file declares. Regenerating is cheap; trusting isn't.
+        print("❌ .kiro/agents/kiro-websearch.json is missing or not plugin-generated — "
+              "refusing to run. Regenerate with `kiro_setup.py write-agents --force` "
+              "(or /kiro:setup).", file=sys.stderr)
+        return 2
+    if not shutil.which("kiro-cli"):
+        print("kiro-cli not found on PATH — run /kiro:setup first.", file=sys.stderr)
+        return 2
+
+    timeout = kc._as_int(w.get("timeout"), 60, "websearch.timeout")
+    model = w.get("model")
+    if model is not None and not isinstance(model, str):
+        # A hand-edited local JSON could hold any type here; a non-string would raise
+        # an uncaught TypeError inside subprocess argv construction. Same clean-refusal
+        # treatment as every other config-shape problem in this plugin.
+        print(f"❌ websearch.model must be a string (got {type(model).__name__}) — "
+              f"fix .claude/kiro.local.json or `kiro_config.py set websearch model "
+              f"<m>`.", file=sys.stderr)
+        return 2
+    with tempfile.TemporaryDirectory(prefix="kiro-websearch-") as wdir:
+        # Serialize the VERIFIED dict directly rather than copying the file: the
+        # _websearch_agent_ok check above read the file once, and a copy here would
+        # re-read it — a (narrow) TOCTOU window where the on-disk file could be swapped
+        # between check and copy. Serializing kiro_setup._WEBSEARCH_AGENT itself means
+        # what runs is exactly what was verified, by construction. (Placed in the temp
+        # cwd so `--agent kiro-websearch` resolves there — same uncommitted-file gotcha
+        # kiro_review.py handles for the reviewer.)
+        import kiro_setup
+        agents_dir = os.path.join(wdir, ".kiro", "agents")
+        os.makedirs(agents_dir, exist_ok=True)
+        with open(os.path.join(agents_dir, "kiro-websearch.json"), "w",
+                  encoding="utf-8") as f:
+            json.dump(kiro_setup._WEBSEARCH_AGENT, f, indent=2)
+        argv = ["kiro-cli", "chat",
+                f"Search the web to answer this query, then reply with a concise "
+                f"summary of findings followed by a list of source URLs:\n\n{query}",
+                "--mode", "default", "--no-interactive", "--wrap", "never",
+                "--agent", "kiro-websearch"]
+        if model:
+            argv += ["--model", model]
+        # Deliberately NO `--v3` on the no-model path, diverging from kiro_review.py's
+        # convention: measured against the installed kiro-cli 2.11.1, the SAME
+        # web-search prompt through the SAME kiro-websearch agent ran web_search fine
+        # without --v3 ("Found 10 search results") but got the search BLOCKED with
+        # --v3 ("I wasn't able to perform a live web search") — the v3 catalog's
+        # default routing evidently lands on a model/profile without web_search
+        # access. The reviewer convention exists for fs_read-only review calls where
+        # either catalog works; here the whole feature depends on the tool being
+        # available, so the empirical result wins.
+        # Capture to FILES, not PIPEs — a pipe severs kiro-cli's auth-refresh callback
+        # and the call hangs to the full timeout (references/kiro-headless.md).
+        outp, errp = os.path.join(wdir, ".out"), os.path.join(wdir, ".err")
+        try:
+            with open(outp, "w") as of, open(errp, "w") as ef:
+                r = subprocess.run(argv, cwd=wdir, env=_sanitized_env(),
+                                    stdin=subprocess.DEVNULL, stdout=of, stderr=ef,
+                                    timeout=timeout)
+            with open(outp, encoding="utf-8", errors="replace") as f:
+                out = f.read()
+            with open(errp, encoding="utf-8", errors="replace") as f:
+                err = f.read()
+        except subprocess.TimeoutExpired:
+            print(f"❌ kiro websearch timed out after {timeout}s "
+                  f"(`kiro_config.py set websearch timeout <s>` to raise).", file=sys.stderr)
+            return 1
+        except OSError as e:
+            print(f"❌ could not run kiro-cli: {e}", file=sys.stderr)
+            return 1
+    if r.returncode != 0:
+        print(f"❌ kiro-cli exited {r.returncode}: "
+              f"{(err.strip() or out.strip())[:300]}", file=sys.stderr)
+        return 1
+    if not out.strip():
+        print("❌ kiro websearch returned no output.", file=sys.stderr)
+        return 1
+    print(out.strip())
+    return 0
+
+
+def main():
+    argv = sys.argv[1:]
+    root = None
+    if "--root" in argv:
+        i = argv.index("--root")
+        if i + 1 >= len(argv):
+            print("--root requires a value", file=sys.stderr)
+            return 2
+        root = argv[i + 1]
+        del argv[i:i + 2]
+    if root is None:
+        root = kc._default_root()
+    # --query-file is the CANONICAL calling mode (what the CLAUDE.md routing rule
+    # uses): the agent writes the query with its file-write tool and the shell command
+    # line stays fixed — no interpolation, no heredoc (whose delimiter a hostile query
+    # line could terminate early), nothing for untrusted query text to inject into.
+    # --stdin serves pipe use; the positional-argv form serves direct human use, where
+    # the human typed (and shell-quoted) the query themselves. Python-side handling is
+    # identical for all three — subprocess list-argv means no shell parses the query
+    # downstream of this process either.
+    query = None
+    if len(argv) == 2 and argv[0] == "--query-file":
+        try:
+            with open(argv[1], encoding="utf-8", errors="replace") as f:
+                query = f.read()
+        except OSError as e:
+            print(f"could not read --query-file: {e}", file=sys.stderr)
+            return 2
+        if not query.strip():
+            print("empty --query-file", file=sys.stderr)
+            return 2
+    elif argv == ["--stdin"]:
+        query = sys.stdin.read()
+        if not query.strip():
+            print("no query on stdin", file=sys.stderr)
+            return 2
+    elif len(argv) == 1 and argv[0].strip() and not argv[0].startswith("--"):
+        # A `--`-prefixed sole token is a mistyped/incomplete OPTION (e.g. a bare
+        # `--query-file` with the path forgotten), not a search query — letting it
+        # fall through here would egress the literal option string as a query.
+        query = argv[0]
+    else:
+        print(__doc__)
+        return 2
+    # A NUL byte can't be passed through argv (subprocess raises ValueError with a
+    # traceback); reject it here with a clean exit instead — it's never a legitimate
+    # part of a search query.
+    if "\x00" in query:
+        print("query contains a NUL byte — refusing", file=sys.stderr)
+        return 2
+    return run_search(root, query.strip())
+
+
+if __name__ == "__main__":
+    sys.exit(main())

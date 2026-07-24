@@ -17,8 +17,15 @@ Usage:
   kiro_config.py set review model <m>              # reviewer model (usually the strongest one)
   kiro_config.py set review timeout <seconds>
   kiro_config.py set review block <critical|warning|none>
+  kiro_config.py set websearch enabled <on|off>    # delegate web searches to kiro-cli's
+                                                    # web_search (for WebSearch-less hosts,
+                                                    # e.g. Claude Code on Bedrock)
+  kiro_config.py set websearch model <m>
+  kiro_config.py set websearch timeout <seconds>
   kiro_config.py default-delegate                  # exit 0 if on, 1 if off
   kiro_config.py review-on-commit                   # exit 0 if on, 1 if off
+  kiro_config.py websearch-enabled                  # exit 0 if on, 1 if off
+  kiro_config.py websearch-model / websearch-timeout
   kiro_config.py delegate-model                     # print effective delegate model (or empty)
   kiro_config.py review-model                       # print effective review model (or empty)
   kiro_config.py delegate-timeout / review-timeout / max-fix-rounds / parallel-tasks / block
@@ -176,9 +183,16 @@ def _strip_consent_keys(raw, root, lp):
     neither of which the user themselves opted into. If `raw` (the local override) is
     tracked by git (or reached via a symlink alias — see `_consent_config_untrustworthy`),
     drop these two consent-gating keys from it before merging, so they
-    fall back to `kiro.defaults.json`'s shipped values (both off) regardless of what a
+    fall back to `kiro.defaults.json`'s shipped values (all off) regardless of what a
     committed file claims. Every OTHER key (models, timeouts, block level) still applies
-    from a tracked file — those aren't a consent bypass, just configuration."""
+    from a tracked file — those aren't a consent bypass, just configuration.
+
+    `websearch.enabled` is in the drop list too: the egress risk is lower than
+    on_commit's (a query is text Claude composes at call time, not a wholesale staged
+    diff), but "lower" isn't "none" — a search query can carry repo- or session-derived
+    context, and the always-loaded routing rule means a committed `enabled: true` would
+    silently opt an installing user's session into query egress without their own
+    /kiro:setup consent. Same class of bypass, same treatment."""
     if not _consent_config_untrustworthy(root, lp):
         return raw
     stripped = copy.deepcopy(raw)
@@ -189,12 +203,15 @@ def _strip_consent_keys(raw, root, lp):
     if isinstance(stripped.get("review"), dict) and "on_commit" in stripped["review"]:
         del stripped["review"]["on_commit"]
         dropped.append("review.on_commit")
+    if isinstance(stripped.get("websearch"), dict) and "enabled" in stripped["websearch"]:
+        del stripped["websearch"]["enabled"]
+        dropped.append("websearch.enabled")
     if dropped:
         print(f"⚠️  {lp} is tracked by git in this repo (directly, or reached through a "
               f"symlinked ancestor/alias) — a personal override file should never be "
               f"committed. Ignoring its {', '.join(dropped)} value(s) and falling back "
               f"to the shipped default (off) for consent-gating settings; a committed "
-              f"file must not be able to silently opt this repo's users into diff "
+              f"file must not be able to silently opt this repo's users into diff/query "
               f"egress or auto-delegation.", file=sys.stderr)
     return stripped
 
@@ -290,6 +307,9 @@ def cmd_show(root):
           f"· max_fix_rounds {d.get('max_fix_rounds', 2)} · timeout {d.get('timeout', 240)}s")
     print(f"  review:   on_commit {_as_bool(r.get('on_commit'))} · model {r.get('model') or '(default)'} "
           f"· timeout {r.get('timeout', 120)}s · block {r.get('block', 'critical')}")
+    w = cfg.get("websearch", {})
+    print(f"  websearch: enabled {_as_bool(w.get('enabled'))} · model {w.get('model') or '(default)'} "
+          f"· timeout {w.get('timeout', 60)}s")
     return 0
 
 
@@ -366,7 +386,7 @@ def cmd_set(root, rest):
         print(f"⚠️  {lp} is not a JSON object (got {type(local).__name__}) — starting "
               f"from an empty override", file=sys.stderr)
         local = {}
-    for section in ("delegate", "review", "panel"):
+    for section in ("delegate", "review", "websearch", "panel"):
         if section in local and not isinstance(local[section], dict):
             print(f"⚠️  {lp}: '{section}' is not an object (got "
                   f"{type(local[section]).__name__}) — resetting that section", file=sys.stderr)
@@ -383,8 +403,8 @@ def cmd_set(root, rest):
         local["default_delegate"] = _bool(rest[1])
         return _write(root, local)
 
-    if rest[0] not in ("delegate", "review") or len(rest) != 3:
-        print("usage: set <delegate|review> <key> <value>  |  set default_delegate <on|off>", file=sys.stderr)
+    if rest[0] not in ("delegate", "review", "websearch") or len(rest) != 3:
+        print("usage: set <delegate|review|websearch> <key> <value>  |  set default_delegate <on|off>", file=sys.stderr)
         return 2
 
     section, key, val = rest
@@ -395,6 +415,7 @@ def cmd_set(root, rest):
     valid_keys = {
         "delegate": {"model", "parallel_tasks", "max_fix_rounds", "timeout"},
         "review": {"model", "timeout", "on_commit", "block"},
+        "websearch": {"enabled", "model", "timeout"},
     }
     if key not in valid_keys[section]:
         print(f"unknown key '{key}' for section '{section}' (valid: "
@@ -421,11 +442,11 @@ def cmd_set(root, rest):
             print("timeout must be a positive integer (seconds)", file=sys.stderr)
             return 2
         slot[key] = int(val)
-    elif key == "on_commit":
+    elif key in ("on_commit", "enabled"):
         if val.lower() not in ("on", "off", "true", "false", "1", "0", "yes", "no"):
-            print("usage: set review on_commit <on|off>", file=sys.stderr)
+            print(f"usage: set {section} {key} <on|off>", file=sys.stderr)
             return 2
-        slot["on_commit"] = _bool(val)
+        slot[key] = _bool(val)
     elif key == "block":
         if val not in BLOCK_LEVELS:
             print(f"block must be one of: {', '.join(BLOCK_LEVELS)}", file=sys.stderr)
@@ -475,6 +496,14 @@ def main():
         return 0 if _as_bool(effective(root).get("default_delegate")) else 1
     if cmd == "review-on-commit":
         return 0 if _as_bool(effective(root).get("review", {}).get("on_commit")) else 1
+    if cmd == "websearch-enabled":
+        return 0 if _as_bool(effective(root).get("websearch", {}).get("enabled")) else 1
+    if cmd == "websearch-model":
+        print(effective(root).get("websearch", {}).get("model") or "")
+        return 0
+    if cmd == "websearch-timeout":
+        print(_as_int(effective(root).get("websearch", {}).get("timeout"), 60, "websearch.timeout"))
+        return 0
     if cmd == "delegate-model":
         cfg = effective(root)
         print(cfg.get("delegate", {}).get("model") or "")

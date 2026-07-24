@@ -334,7 +334,12 @@ Kiro-powered review before `git commit` (fail-open; blocks only on `critical` fi
 by default) — **off by default** (the staged diff content is sent to Kiro's backend; a
 tool-layer `fs_read` guard confines the reviewer's reads to the isolated diff dir, with
 authorship trust as defense-in-depth); `/kiro:configure set review on_commit on` to
-enable.
+enable. **Web search delegation** (off by default; `/kiro:setup` asks, or
+`set websearch enabled on`): sessions without a `WebSearch` tool (Claude Code on
+Bedrock) route web searches through kiro-cli's native `web_search` via
+`kiro_websearch.py` — the query text is the only egress; the `kiro-websearch` agent is
+search-only (no filesystem/shell) and the script fail-closed refuses a tampered agent
+file.
 
 ## Workflows
 
@@ -363,6 +368,7 @@ Co-agent:  /co-agent → detect panel (Kiro/Codex/Antigravity) → fan-out promp
 kiro:      /kiro:setup → probe kiro-cli, list models, write .kiro/agents/*.json
            /kiro:delegate → Claude plans (Kiro spec) → per task: worktree → Kiro implements → capture-diff → scope_guard → Claude applies+tests → bounded retry → Claude fallback → commit → delegation-rate report
            git commit → PreToolUse hook (opt-in, off by default) → Kiro review (fail-open, blocks only on `critical`)
+           web search needed + no WebSearch tool (Bedrock) → kiro_websearch.py --query-file (opt-in) → summary + source URLs
 ```
 
 ## Auto-Sync Rules

@@ -32,6 +32,35 @@ implementing it directly per the agent's own fallback rule whenever Kiro is unav
 or exhausts its fix loop. If it's off (the default), only route on an explicit
 Kiro-naming trigger as usual.
 
+## Web search routing (for WebSearch-less sessions — e.g. Claude Code on Bedrock)
+
+Same always-loaded rationale as above: when the task **explicitly needs current or
+external information** (the user asks for latest versions/releases/news, a time-
+sensitive fact needs verifying, or a URL's live content matters — not ordinary
+explanation or reasoning that training knowledge covers) and this session has **no
+`WebSearch` tool** (the common case on Bedrock), check
+`python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_config.py" websearch-enabled`
+(exit 0 = on). If on, delegate the search to kiro-cli's native `web_search` tool —
+**always via `--query-file`**: first Write the query text to a **per-invocation unique**
+temp file with the Write tool (e.g. `/tmp/kiro-ws-query-<something unique per call>.txt`
+— never a fixed shared path, which a concurrent session or prior call could clobber or
+pre-plant; and NOT via shell echo/heredoc — a query derived from untrusted context could
+carry `$(...)`/backticks, or a line that terminates a heredoc early and executes the
+rest; writing with the file tool involves no shell at any point), then run the command
+with that one path as the only variable part, and delete the temp file afterwards:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_websearch.py" --query-file /tmp/kiro-ws-query-<unique>.txt && rm -f /tmp/kiro-ws-query-<unique>.txt
+```
+
+Cite the source URLs from its output when using the results. If it's off, kiro-cli is
+unavailable, or the call fails, proceed without a web search and tell the user that's
+why. Never route here when the session HAS a WebSearch tool — the native tool is
+strictly better (no query egress to a second backend, no extra hop). The query text is
+the only thing sent to Kiro's backend; the `kiro-websearch` agent is search-only
+(no `fs_read`/`fs_write`/`execute_bash`), and `kiro_websearch.py` refuses to run against
+a tampered agent file (fail-closed, same defense as `/kiro:review`).
+
 ## Agents
 
 | Agent | Purpose |
@@ -48,7 +77,7 @@ Kiro-naming trigger as usual.
 
 | Command | Purpose |
 |---------|---------|
-| `/kiro:setup` | Detect + probe kiro-cli, list models, write `.kiro/agents/*.json`, toggle default-delegate / review-on-commit |
+| `/kiro:setup` | Detect + probe kiro-cli, list models, write `.kiro/agents/*.json`, toggle default-delegate / review-on-commit / websearch |
 | `/kiro:delegate <request>` | Run the full plan → delegate → verify → commit pipeline |
 | `/kiro:review [paths]` | On-demand Kiro review (same engine as the pre-commit hook) |
 | `/kiro:configure` | Inspect/change settings |
@@ -164,4 +193,5 @@ command and has no auto-invocation trigger (it never loads this write-capable sk
                 → Claude commits → delegation-rate report
 git commit      → PreToolUse hook → kiro_review.py (fail-open, blocks only on `critical`)
 /kiro:review    → same review engine, on demand
+web search needed + no WebSearch tool (Bedrock) → kiro_websearch.py --query-file (opt-in) → summary + source URLs
 ```

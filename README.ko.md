@@ -68,6 +68,7 @@
 - **Claude가 계획, Kiro가 구현** — Claude가 Kiro 네이티브 spec을 작성하고 결과를 검증하는 동안, Kiro CLI가 자체 정액 구독 크레딧으로 실제 코드를 작성 — 격리된 git worktree 안에서, scope-guard로 검증된 diff만 적용
 - **커밋 전 리뷰 게이트 (opt-in)** — `git commit` 전에 `PreToolUse` 훅이 Kiro 기반 리뷰를 실행할 수 있음, 기본값으로 `critical` 발견 사항에만 차단(인프라 문제 발생 시 fail-open); staged diff 내용이 Kiro 백엔드로 전송되므로 기본값은 off(리뷰어의 읽기는 격리된 diff 디렉터리로 툴 레이어에서 제한됨)
 - **`/kiro:setup`** — kiro-cli를 감지하고 사용 가능 여부를 프로브, 모델 목록을 조회하고 파이프라인이 사용할 `.kiro/agents/*.json` 커스텀 에이전트를 작성
+- **웹 검색 위임 (opt-in)** — `WebSearch` 도구가 없는 세션(Claude Code on Bedrock)이 kiro-cli의 네이티브 `web_search`로 웹 검색을 라우팅; 쿼리 텍스트만 외부로 나가며, 검색 에이전트는 검색 전용(파일시스템/셸 없음)
 
 ---
 
@@ -707,7 +708,7 @@ aws-ops-power/
 | `project-scaffolder` | Claude Code 프로젝트 구조 패턴 및 컨벤션 |
 | `pr-autofix` | AI + 사람 PR 리뷰 피드백 polling 후 이슈 자동 수정 (최대 5회 반복; 계획은 Fable/Opus, 구현은 opus [medium effort] 서브에이전트) |
 | `decision-reconcile` | 누적 ADR 간 모순(및 ADR vs 현실 drift)을 다양성 멀티 에이전트 패널(Claude 모델 티어 + 선택적 Kiro/Codex/Antigravity, 렌즈 1개씩)로 검출 후 번복 ADR 초안 작성 |
-| `kiro-delegate` | Kiro CLI(구독 크레딧)로의 비용 절감 구현+리뷰 위임 — worktree로 격리된 구현 루프, scope-guard된 diff, 커밋 전 리뷰 게이트. 명령: `/kiro:setup`, `/kiro:delegate`, `/kiro:review`, `/kiro:configure` |
+| `kiro-delegate` | Kiro CLI(구독 크레딧)로의 비용 절감 구현+리뷰 위임 — worktree로 격리된 구현 루프, scope-guard된 diff, 커밋 전 리뷰 게이트, WebSearch 도구가 없는 세션(Claude Code on Bedrock)을 위한 opt-in 웹 검색 위임. 명령: `/kiro:setup`, `/kiro:delegate`, `/kiro:review`, `/kiro:configure` |
 
 ### Project Init 명령
 
