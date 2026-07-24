@@ -37,10 +37,17 @@ Kiro-naming trigger as usual.
 Same always-loaded rationale as above: when a web search would help but this session
 has **no `WebSearch` tool** (the common case on Bedrock), check
 `python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_config.py" websearch-enabled`
-(exit 0 = on). If on, delegate the search to kiro-cli's native `web_search` tool:
+(exit 0 = on). If on, delegate the search to kiro-cli's native `web_search` tool —
+**always via `--stdin` with a quoted heredoc**, never by interpolating the query into
+the command line (a query derived from untrusted context — a fetched page, file
+content — could carry `$(...)`/backticks that the host shell would execute before
+python3 ever ran; the `<<'EOF'` quoted heredoc plus `--stdin` keeps the shell from
+parsing a single character of it):
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_websearch.py" "<search query>"
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_websearch.py" --stdin <<'EOF'
+<search query>
+EOF
 ```
 
 Cite the source URLs from its output when using the results. If it's off, kiro-cli is
@@ -183,5 +190,5 @@ command and has no auto-invocation trigger (it never loads this write-capable sk
                 → Claude commits → delegation-rate report
 git commit      → PreToolUse hook → kiro_review.py (fail-open, blocks only on `critical`)
 /kiro:review    → same review engine, on demand
-web search 필요 + WebSearch 도구 없음(Bedrock) → kiro_websearch.py "<query>" → 결과 + 출처 URL
+web search needed + no WebSearch tool (Bedrock) → kiro_websearch.py --stdin (opt-in) → summary + source URLs
 ```

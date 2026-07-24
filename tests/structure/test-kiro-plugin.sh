@@ -344,7 +344,7 @@ RCONSENT=$(mktemp -d "${TMPDIR:-/tmp}/kiro-consent.XXXXXX")
 git -C "$RCONSENT" init -q
 git -C "$RCONSENT" config user.email t@t.t; git -C "$RCONSENT" config user.name t
 mkdir -p "$RCONSENT/.claude"
-python3 -c "import json; json.dump({'default_delegate': True, 'review': {'on_commit': True, 'model': 'gpt-5.6-sol'}}, open('$RCONSENT/.claude/kiro.local.json','w'))"
+python3 -c "import json; json.dump({'default_delegate': True, 'review': {'on_commit': True, 'model': 'gpt-5.6-sol'}, 'websearch': {'enabled': True}}, open('$RCONSENT/.claude/kiro.local.json','w'))"
 python3 "$CFG" review-on-commit --root "$RCONSENT" >/dev/null 2>&1 && CONSENT_UNTRACKED_RC=0 || CONSENT_UNTRACKED_RC=$?
 assert_eq "0" "$CONSENT_UNTRACKED_RC" "review-on-commit reads true from an UNTRACKED local.json (normal per-developer override, no attack)"
 git -C "$RCONSENT" add .claude/kiro.local.json
@@ -355,8 +355,11 @@ assert_contains "$CONSENT_TRACKED_OUT" "tracked by git" "the fallback prints a w
 CONSENT_DELEGATE_RC=0
 python3 "$CFG" default-delegate --root "$RCONSENT" >/dev/null 2>&1 || CONSENT_DELEGATE_RC=$?
 assert_eq "1" "$CONSENT_DELEGATE_RC" "default_delegate ALSO falls back to OFF once the file is tracked (both consent-gating keys stripped, not just on_commit)"
+CONSENT_WS_RC=0
+python3 "$CFG" websearch-enabled --root "$RCONSENT" >/dev/null 2>&1 || CONSENT_WS_RC=$?
+assert_eq "1" "$CONSENT_WS_RC" "websearch.enabled ALSO falls back to OFF once the file is tracked — a committed enabled:true must not silently opt users into query egress"
 CONSENT_MODEL=$(python3 "$CFG" review-model --root "$RCONSENT" 2>/dev/null)
-assert_eq "gpt-5.6-sol" "$CONSENT_MODEL" "non-consent settings (review.model) from the SAME tracked file still apply — only the two consent-gating keys are stripped"
+assert_eq "gpt-5.6-sol" "$CONSENT_MODEL" "non-consent settings (review.model) from the SAME tracked file still apply — only the consent-gating keys are stripped"
 rm -rf "$RCONSENT"
 
 # --- round-15 fix: a malicious repo can bypass the round-14 tracked-config check via a

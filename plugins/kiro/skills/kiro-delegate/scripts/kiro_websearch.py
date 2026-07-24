@@ -7,20 +7,21 @@ session that needs a web lookup can route it through the already-set-up kiro pee
 rule lives in `plugins/kiro/CLAUDE.md`; this script is the whole mechanism.
 
 Usage:
-  kiro_websearch.py "<query>" [--root DIR]
+  echo "<query>" | kiro_websearch.py --stdin [--root DIR]   # canonical (routing rule)
+  kiro_websearch.py "<query>" [--root DIR]                  # direct human use
 
 Exit codes: 0 = results printed to stdout · 2 = feature disabled / not set up /
 agent file tampered · 1 = kiro-cli invocation failed (timeout, non-zero exit, empty).
 
 Security notes:
-- Passing the query in argv is safe HERE, unlike the delegate pipeline's task prompts
-  (which go through a task-prompt FILE — see references/kiro-headless.md): that rule
-  exists because the delegate pipeline builds its command inside shell prose where
-  task/spec-derived text would be interpolated into a double-quoted shell string and
-  `$(...)`/backticks would execute on the HOST before kiro-cli ever ran. This script
-  receives the query as a Python argv element and forwards it via subprocess list-argv
-  — no shell ever parses it, so there is nothing to inject into. (The CALLER's shell
-  quoting of the query is the caller's usual responsibility, same as any argv.)
+- `--stdin` is the canonical mode for agent-driven calls (the CLAUDE.md routing rule):
+  the query never rides the caller's shell command line, so query text derived from
+  untrusted context (fetched pages, file content) containing `$(...)`/backticks/quotes
+  has no shell to inject into — the same reasoning that moved the delegate pipeline's
+  task prompts into a task-prompt FILE (references/kiro-headless.md). The positional
+  form remains for direct human use where the human shell-quoted the query themselves.
+  Inside this process, both modes are identical: the query is forwarded via subprocess
+  list-argv, so no shell parses it downstream either.
 - The agent file must match the plugin-generated `_WEBSEARCH_AGENT` exactly (same
   tamper defense as kiro_review.py's `_reviewer_agent_ok`): the search agent's whole
   safety story is "web_search only — no fs_read/fs_write/execute_bash", and a
@@ -59,14 +60,20 @@ def _websearch_agent_ok(path):
 def run_search(root, query):
     cfg = kc.effective(root)
     w = cfg.get("websearch") or {}
-    if not w.get("enabled"):
+    # _as_bool, not raw truthiness — kiro_config.py's websearch-enabled subcommand and
+    # cmd_show both judge this key via _as_bool, so a hand-edited local JSON holding
+    # the STRING "false" reads as disabled everywhere the user can inspect it; raw
+    # truthiness here would treat that same value as ON and egress queries from a
+    # config the user believes is opted out.
+    if not kc._as_bool(w.get("enabled")):
         print("kiro websearch is disabled — enable it with "
               "`kiro_config.py set websearch enabled on` (or re-run /kiro:setup).",
               file=sys.stderr)
         return 2
-    if not shutil.which("kiro-cli"):
-        print("kiro-cli not found on PATH — run /kiro:setup first.", file=sys.stderr)
-        return 2
+    # Tamper check BEFORE the kiro-cli presence check: a tampered agent file must be
+    # rejected regardless of whether kiro-cli happens to be installed — fail-closed is
+    # about the file's trustworthiness, not the CLI's availability (and a PATH check
+    # first would mask the tamper refusal on hosts without kiro-cli, e.g. CI).
     agent_file = os.path.join(root, ".kiro", "agents", "kiro-websearch.json")
     if not _websearch_agent_ok(agent_file):
         # Fail-closed, no unguarded fallback: a tampered agent file could have added
@@ -75,6 +82,9 @@ def run_search(root, query):
         print("❌ .kiro/agents/kiro-websearch.json is missing or not plugin-generated — "
               "refusing to run. Regenerate with `kiro_setup.py write-agents --force` "
               "(or /kiro:setup).", file=sys.stderr)
+        return 2
+    if not shutil.which("kiro-cli"):
+        print("kiro-cli not found on PATH — run /kiro:setup first.", file=sys.stderr)
         return 2
 
     timeout = kc._as_int(w.get("timeout"), 60, "websearch.timeout")
@@ -132,11 +142,25 @@ def main():
             return 2
         root = argv[i + 1]
         del argv[i:i + 2]
+    if root is None:
+        root = kc._default_root()
+    # --stdin is the CANONICAL calling mode (what the CLAUDE.md routing rule uses):
+    # the query never appears on the caller's shell command line, so a query derived
+    # from untrusted context (a fetched page, file content) containing $(...) or
+    # backticks has nothing to inject into — the host shell only ever parses the
+    # fixed `... kiro_websearch.py --stdin` string. The positional-argv form is kept
+    # for direct human use, where the human typed (and shell-quoted) the query
+    # themselves. Python-side handling is identical either way — subprocess list-argv
+    # means no shell parses the query downstream of this process.
+    if argv == ["--stdin"]:
+        query = sys.stdin.read()
+        if not query.strip():
+            print("no query on stdin", file=sys.stderr)
+            return 2
+        return run_search(root, query.strip())
     if len(argv) != 1 or not argv[0].strip():
         print(__doc__)
         return 2
-    if root is None:
-        root = kc._default_root()
     return run_search(root, argv[0])
 
 

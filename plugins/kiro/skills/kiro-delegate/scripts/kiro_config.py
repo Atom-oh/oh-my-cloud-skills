@@ -183,17 +183,16 @@ def _strip_consent_keys(raw, root, lp):
     neither of which the user themselves opted into. If `raw` (the local override) is
     tracked by git (or reached via a symlink alias — see `_consent_config_untrustworthy`),
     drop these two consent-gating keys from it before merging, so they
-    fall back to `kiro.defaults.json`'s shipped values (both off) regardless of what a
+    fall back to `kiro.defaults.json`'s shipped values (all off) regardless of what a
     committed file claims. Every OTHER key (models, timeouts, block level) still applies
     from a tracked file — those aren't a consent bypass, just configuration.
 
-    `websearch.enabled` is deliberately NOT in this drop list: unlike on_commit (which
-    silently egresses staged diff content the user never composed for Kiro) or
-    default_delegate (which auto-routes work), a websearch call only ever sends a query
-    string Claude actively composes at that moment — a consumer repo committing
-    `websearch.enabled: true` gains nothing it could exploit, so treating it as a
-    consent-gating key would add tracked-file friction with no threat it defends
-    against."""
+    `websearch.enabled` is in the drop list too: the egress risk is lower than
+    on_commit's (a query is text Claude composes at call time, not a wholesale staged
+    diff), but "lower" isn't "none" — a search query can carry repo- or session-derived
+    context, and the always-loaded routing rule means a committed `enabled: true` would
+    silently opt an installing user's session into query egress without their own
+    /kiro:setup consent. Same class of bypass, same treatment."""
     if not _consent_config_untrustworthy(root, lp):
         return raw
     stripped = copy.deepcopy(raw)
@@ -204,12 +203,15 @@ def _strip_consent_keys(raw, root, lp):
     if isinstance(stripped.get("review"), dict) and "on_commit" in stripped["review"]:
         del stripped["review"]["on_commit"]
         dropped.append("review.on_commit")
+    if isinstance(stripped.get("websearch"), dict) and "enabled" in stripped["websearch"]:
+        del stripped["websearch"]["enabled"]
+        dropped.append("websearch.enabled")
     if dropped:
         print(f"⚠️  {lp} is tracked by git in this repo (directly, or reached through a "
               f"symlinked ancestor/alias) — a personal override file should never be "
               f"committed. Ignoring its {', '.join(dropped)} value(s) and falling back "
               f"to the shipped default (off) for consent-gating settings; a committed "
-              f"file must not be able to silently opt this repo's users into diff "
+              f"file must not be able to silently opt this repo's users into diff/query "
               f"egress or auto-delegation.", file=sys.stderr)
     return stripped
 
@@ -384,7 +386,7 @@ def cmd_set(root, rest):
         print(f"⚠️  {lp} is not a JSON object (got {type(local).__name__}) — starting "
               f"from an empty override", file=sys.stderr)
         local = {}
-    for section in ("delegate", "review", "panel"):
+    for section in ("delegate", "review", "websearch", "panel"):
         if section in local and not isinstance(local[section], dict):
             print(f"⚠️  {lp}: '{section}' is not an object (got "
                   f"{type(local[section]).__name__}) — resetting that section", file=sys.stderr)
