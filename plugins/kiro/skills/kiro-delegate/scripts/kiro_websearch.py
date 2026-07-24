@@ -94,12 +94,28 @@ def run_search(root, query):
 
     timeout = kc._as_int(w.get("timeout"), 60, "websearch.timeout")
     model = w.get("model")
+    if model is not None and not isinstance(model, str):
+        # A hand-edited local JSON could hold any type here; a non-string would raise
+        # an uncaught TypeError inside subprocess argv construction. Same clean-refusal
+        # treatment as every other config-shape problem in this plugin.
+        print(f"❌ websearch.model must be a string (got {type(model).__name__}) — "
+              f"fix .claude/kiro.local.json or `kiro_config.py set websearch model "
+              f"<m>`.", file=sys.stderr)
+        return 2
     with tempfile.TemporaryDirectory(prefix="kiro-websearch-") as wdir:
-        # Copy the agent file into the temp cwd so `--agent kiro-websearch` resolves
-        # there — same uncommitted-file gotcha kiro_review.py handles for the reviewer.
+        # Serialize the VERIFIED dict directly rather than copying the file: the
+        # _websearch_agent_ok check above read the file once, and a copy here would
+        # re-read it — a (narrow) TOCTOU window where the on-disk file could be swapped
+        # between check and copy. Serializing kiro_setup._WEBSEARCH_AGENT itself means
+        # what runs is exactly what was verified, by construction. (Placed in the temp
+        # cwd so `--agent kiro-websearch` resolves there — same uncommitted-file gotcha
+        # kiro_review.py handles for the reviewer.)
+        import kiro_setup
         agents_dir = os.path.join(wdir, ".kiro", "agents")
         os.makedirs(agents_dir, exist_ok=True)
-        shutil.copy(agent_file, os.path.join(agents_dir, "kiro-websearch.json"))
+        with open(os.path.join(agents_dir, "kiro-websearch.json"), "w",
+                  encoding="utf-8") as f:
+            json.dump(kiro_setup._WEBSEARCH_AGENT, f, indent=2)
         argv = ["kiro-cli", "chat",
                 f"Search the web to answer this query, then reply with a concise "
                 f"summary of findings followed by a list of source URLs:\n\n{query}",
@@ -107,6 +123,15 @@ def run_search(root, query):
                 "--agent", "kiro-websearch"]
         if model:
             argv += ["--model", model]
+        # Deliberately NO `--v3` on the no-model path, diverging from kiro_review.py's
+        # convention: measured against the installed kiro-cli 2.11.1, the SAME
+        # web-search prompt through the SAME kiro-websearch agent ran web_search fine
+        # without --v3 ("Found 10 search results") but got the search BLOCKED with
+        # --v3 ("I wasn't able to perform a live web search") — the v3 catalog's
+        # default routing evidently lands on a model/profile without web_search
+        # access. The reviewer convention exists for fs_read-only review calls where
+        # either catalog works; here the whole feature depends on the tool being
+        # available, so the empirical result wins.
         # Capture to FILES, not PIPEs — a pipe severs kiro-cli's auth-refresh callback
         # and the call hangs to the full timeout (references/kiro-headless.md).
         outp, errp = os.path.join(wdir, ".out"), os.path.join(wdir, ".err")
@@ -173,7 +198,10 @@ def main():
         if not query.strip():
             print("no query on stdin", file=sys.stderr)
             return 2
-    elif len(argv) == 1 and argv[0].strip():
+    elif len(argv) == 1 and argv[0].strip() and not argv[0].startswith("--"):
+        # A `--`-prefixed sole token is a mistyped/incomplete OPTION (e.g. a bare
+        # `--query-file` with the path forgotten), not a search query — letting it
+        # fall through here would egress the literal option string as a query.
         query = argv[0]
     else:
         print(__doc__)

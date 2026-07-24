@@ -41,13 +41,16 @@ explanation or reasoning that training knowledge covers) and this session has **
 `WebSearch` tool** (the common case on Bedrock), check
 `python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_config.py" websearch-enabled`
 (exit 0 = on). If on, delegate the search to kiro-cli's native `web_search` tool —
-**always via `--query-file`**: first Write the query text to a temp file with the Write
-tool (NOT via shell echo/heredoc — a query derived from untrusted context could carry
-`$(...)`/backticks, or a line that terminates a heredoc early and executes the rest;
-writing with the file tool involves no shell at any point), then run the FIXED command:
+**always via `--query-file`**: first Write the query text to a **per-invocation unique**
+temp file with the Write tool (e.g. `/tmp/kiro-ws-query-<something unique per call>.txt`
+— never a fixed shared path, which a concurrent session or prior call could clobber or
+pre-plant; and NOT via shell echo/heredoc — a query derived from untrusted context could
+carry `$(...)`/backticks, or a line that terminates a heredoc early and executes the
+rest; writing with the file tool involves no shell at any point), then run the command
+with that one path as the only variable part, and delete the temp file afterwards:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_websearch.py" --query-file /tmp/kiro-ws-query.txt
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_websearch.py" --query-file /tmp/kiro-ws-query-<unique>.txt && rm -f /tmp/kiro-ws-query-<unique>.txt
 ```
 
 Cite the source URLs from its output when using the results. If it's off, kiro-cli is
