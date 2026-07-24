@@ -1,5 +1,5 @@
 ---
-description: Detect kiro-cli, probe real usability, list available models, write the .kiro/agents/*.json custom agents delegate/review use, and set default_delegate / review.on_commit.
+description: Detect kiro-cli, probe real usability, list available models, write the .kiro/agents/*.json custom agents delegate/review/websearch use, and set default_delegate / review.on_commit / websearch.enabled.
 allowed-tools: Bash(python3:*), AskUserQuestion
 ---
 
@@ -67,8 +67,10 @@ below unless you want to target a DIFFERENT repo than the cwd's.
    python3 "$SK/kiro_setup.py" write-agents [--enable-bash]
    ```
    These live at `.kiro/agents/kiro-implementer.json` (fs_read/fs_write, plus
-   execute_bash only if granted in step 3; worktree-write-only via a preToolUse hook)
-   and `.kiro/agents/kiro-reviewer.json` (fs_read only). Re-run with `--force` if the
+   execute_bash only if granted in step 3; worktree-write-only via a preToolUse hook),
+   `.kiro/agents/kiro-reviewer.json` (fs_read only), and
+   `.kiro/agents/kiro-websearch.json` (web_search only — no filesystem, no shell; used
+   only if web search delegation is enabled in step 6). Re-run with `--force` if the
    user wants to regenerate them (e.g. after changing the step 3 answer).
 
 5. Ask (`AskUserQuestion`) whether to turn on **default delegation** — routing
@@ -91,7 +93,20 @@ below unless you want to target a DIFFERENT repo than the cwd's.
      `python3 "$SK/kiro_config.py" set review on_commit on`; review every `git commit`'s
      staged diff, block on `critical` findings only.
 
-6. Show the final effective config:
+6. Ask (`AskUserQuestion`) whether to enable **web search delegation** — routing web
+   searches through kiro-cli's native `web_search` tool when this Claude Code session
+   has no `WebSearch` tool of its own (the common case on Bedrock). Mention plainly
+   that each search sends the QUERY TEXT to Kiro's backend — nothing else leaves the
+   machine (the `kiro-websearch` agent written in step 4 is search-only: no
+   `fs_read`/`fs_write`/`execute_bash`, and `kiro_websearch.py` refuses to run if that
+   agent file is tampered with).
+   - **On (Recommended for Bedrock users)** — Claude Code on Bedrock has no WebSearch
+     tool; this closes that gap.
+     `python3 "$SK/kiro_config.py" set websearch enabled on`
+   - **Off** — web searches stay unavailable in WebSearch-less sessions; Claude will
+     say so instead of searching.
+
+7. Show the final effective config:
    ```bash
    python3 "$SK/kiro_config.py" show
    ```

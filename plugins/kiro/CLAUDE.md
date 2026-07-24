@@ -32,6 +32,25 @@ implementing it directly per the agent's own fallback rule whenever Kiro is unav
 or exhausts its fix loop. If it's off (the default), only route on an explicit
 Kiro-naming trigger as usual.
 
+## Web search routing (for WebSearch-less sessions — e.g. Claude Code on Bedrock)
+
+Same always-loaded rationale as above: when a web search would help but this session
+has **no `WebSearch` tool** (the common case on Bedrock), check
+`python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_config.py" websearch-enabled`
+(exit 0 = on). If on, delegate the search to kiro-cli's native `web_search` tool:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_websearch.py" "<search query>"
+```
+
+Cite the source URLs from its output when using the results. If it's off, kiro-cli is
+unavailable, or the call fails, proceed without a web search and tell the user that's
+why. Never route here when the session HAS a WebSearch tool — the native tool is
+strictly better (no query egress to a second backend, no extra hop). The query text is
+the only thing sent to Kiro's backend; the `kiro-websearch` agent is search-only
+(no `fs_read`/`fs_write`/`execute_bash`), and `kiro_websearch.py` refuses to run against
+a tampered agent file (fail-closed, same defense as `/kiro:review`).
+
 ## Agents
 
 | Agent | Purpose |
@@ -48,7 +67,7 @@ Kiro-naming trigger as usual.
 
 | Command | Purpose |
 |---------|---------|
-| `/kiro:setup` | Detect + probe kiro-cli, list models, write `.kiro/agents/*.json`, toggle default-delegate / review-on-commit |
+| `/kiro:setup` | Detect + probe kiro-cli, list models, write `.kiro/agents/*.json`, toggle default-delegate / review-on-commit / websearch |
 | `/kiro:delegate <request>` | Run the full plan → delegate → verify → commit pipeline |
 | `/kiro:review [paths]` | On-demand Kiro review (same engine as the pre-commit hook) |
 | `/kiro:configure` | Inspect/change settings |
@@ -164,4 +183,5 @@ command and has no auto-invocation trigger (it never loads this write-capable sk
                 → Claude commits → delegation-rate report
 git commit      → PreToolUse hook → kiro_review.py (fail-open, blocks only on `critical`)
 /kiro:review    → same review engine, on demand
+web search 필요 + WebSearch 도구 없음(Bedrock) → kiro_websearch.py "<query>" → 결과 + 출처 URL
 ```
