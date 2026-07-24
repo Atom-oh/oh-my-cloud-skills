@@ -7,21 +7,26 @@ session that needs a web lookup can route it through the already-set-up kiro pee
 rule lives in `plugins/kiro/CLAUDE.md`; this script is the whole mechanism.
 
 Usage:
-  echo "<query>" | kiro_websearch.py --stdin [--root DIR]   # canonical (routing rule)
+  kiro_websearch.py --query-file <path> [--root DIR]        # canonical (routing rule)
+  echo "<query>" | kiro_websearch.py --stdin [--root DIR]   # pipe-friendly
   kiro_websearch.py "<query>" [--root DIR]                  # direct human use
 
 Exit codes: 0 = results printed to stdout · 2 = feature disabled / not set up /
 agent file tampered · 1 = kiro-cli invocation failed (timeout, non-zero exit, empty).
 
 Security notes:
-- `--stdin` is the canonical mode for agent-driven calls (the CLAUDE.md routing rule):
-  the query never rides the caller's shell command line, so query text derived from
-  untrusted context (fetched pages, file content) containing `$(...)`/backticks/quotes
-  has no shell to inject into — the same reasoning that moved the delegate pipeline's
-  task prompts into a task-prompt FILE (references/kiro-headless.md). The positional
-  form remains for direct human use where the human shell-quoted the query themselves.
-  Inside this process, both modes are identical: the query is forwarded via subprocess
-  list-argv, so no shell parses it downstream either.
+- `--query-file` is the canonical mode for agent-driven calls (the CLAUDE.md routing
+  rule): the agent writes the query to a temp file with its file-write tool (no shell
+  involved at any point) and the command line stays a FIXED string, so query text
+  derived from untrusted context (fetched pages, file content) containing
+  `$(...)`/backticks/quotes — or even a line that would terminate a heredoc — has no
+  shell to inject into, ever. This is the same reasoning that moved the delegate
+  pipeline's task prompts into a task-prompt FILE (references/kiro-headless.md); a
+  heredoc-fed `--stdin` is NOT equivalent (a query containing the delimiter line
+  terminates the heredoc early and the remainder executes as shell). `--stdin` remains
+  for pipe use and the positional form for direct human use, where the human
+  shell-quoted the query themselves. Inside this process, all modes are identical:
+  the query is forwarded via subprocess list-argv, so no shell parses it downstream.
 - The agent file must match the plugin-generated `_WEBSEARCH_AGENT` exactly (same
   tamper defense as kiro_review.py's `_reviewer_agent_ok`): the search agent's whole
   safety story is "web_search only — no fs_read/fs_write/execute_bash", and a
@@ -144,24 +149,42 @@ def main():
         del argv[i:i + 2]
     if root is None:
         root = kc._default_root()
-    # --stdin is the CANONICAL calling mode (what the CLAUDE.md routing rule uses):
-    # the query never appears on the caller's shell command line, so a query derived
-    # from untrusted context (a fetched page, file content) containing $(...) or
-    # backticks has nothing to inject into — the host shell only ever parses the
-    # fixed `... kiro_websearch.py --stdin` string. The positional-argv form is kept
-    # for direct human use, where the human typed (and shell-quoted) the query
-    # themselves. Python-side handling is identical either way — subprocess list-argv
-    # means no shell parses the query downstream of this process.
-    if argv == ["--stdin"]:
+    # --query-file is the CANONICAL calling mode (what the CLAUDE.md routing rule
+    # uses): the agent writes the query with its file-write tool and the shell command
+    # line stays fixed — no interpolation, no heredoc (whose delimiter a hostile query
+    # line could terminate early), nothing for untrusted query text to inject into.
+    # --stdin serves pipe use; the positional-argv form serves direct human use, where
+    # the human typed (and shell-quoted) the query themselves. Python-side handling is
+    # identical for all three — subprocess list-argv means no shell parses the query
+    # downstream of this process either.
+    query = None
+    if len(argv) == 2 and argv[0] == "--query-file":
+        try:
+            with open(argv[1], encoding="utf-8", errors="replace") as f:
+                query = f.read()
+        except OSError as e:
+            print(f"could not read --query-file: {e}", file=sys.stderr)
+            return 2
+        if not query.strip():
+            print("empty --query-file", file=sys.stderr)
+            return 2
+    elif argv == ["--stdin"]:
         query = sys.stdin.read()
         if not query.strip():
             print("no query on stdin", file=sys.stderr)
             return 2
-        return run_search(root, query.strip())
-    if len(argv) != 1 or not argv[0].strip():
+    elif len(argv) == 1 and argv[0].strip():
+        query = argv[0]
+    else:
         print(__doc__)
         return 2
-    return run_search(root, argv[0])
+    # A NUL byte can't be passed through argv (subprocess raises ValueError with a
+    # traceback); reject it here with a clean exit instead — it's never a legitimate
+    # part of a search query.
+    if "\x00" in query:
+        print("query contains a NUL byte — refusing", file=sys.stderr)
+        return 2
+    return run_search(root, query.strip())
 
 
 if __name__ == "__main__":

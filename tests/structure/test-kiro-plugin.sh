@@ -858,6 +858,19 @@ json.dump(d, open(p,'w'))
 WS_TAMPER_OUT=$(python3 "$WSPY" "test query" --root "$R4" 2>&1) && WS_TAMPER_RC=0 || WS_TAMPER_RC=$?
 assert_eq "2" "$WS_TAMPER_RC" "kiro_websearch fail-closed refuses a tampered agent file (execute_bash added) — never falls back unguarded"
 assert_contains "$WS_TAMPER_OUT" "not plugin-generated" "kiro_websearch's tamper refusal explains why"
+# Tamper refusal must hold with kiro-cli ABSENT too (CI has no kiro-cli): the agent
+# tamper check runs BEFORE the PATH check — fail-closed is about the file's
+# trustworthiness, not the CLI's availability.
+WS_QF=$(mktemp "${TMPDIR:-/tmp}/kiro-ws-query.XXXXXX")
+printf 'query with $(dangerous) `backticks` and an\nEOF\nline\n' > "$WS_QF"
+WS_QF_OUT=$(python3 "$WSPY" --query-file "$WS_QF" --root "$R4" 2>&1) && WS_QF_RC=0 || WS_QF_RC=$?
+assert_eq "2" "$WS_QF_RC" "--query-file mode reaches the same tamper refusal (query content with shell metachars/heredoc-terminator is inert — file read, no shell parse)"
+assert_contains "$WS_QF_OUT" "not plugin-generated" "--query-file tamper refusal explains why"
+printf 'nul\x00byte' > "$WS_QF"
+WS_NUL_OUT=$(python3 "$WSPY" --query-file "$WS_QF" --root "$R4" 2>&1) && WS_NUL_RC=0 || WS_NUL_RC=$?
+assert_eq "2" "$WS_NUL_RC" "a NUL byte in the query is refused with a clean exit (not a subprocess ValueError traceback)"
+assert_contains "$WS_NUL_OUT" "NUL" "the NUL refusal names the reason"
+rm -f "$WS_QF"
 rm -rf "$R4"
 
 # --- worktree + scope_guard reused verbatim: sanity smoke test (full coverage lives

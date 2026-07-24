@@ -368,7 +368,7 @@ Co-agent:  /co-agent → detect panel (Kiro/Codex/Antigravity) → fan-out promp
 kiro:      /kiro:setup → probe kiro-cli, list models, write .kiro/agents/*.json
            /kiro:delegate → Claude plans (Kiro spec) → per task: worktree → Kiro implements → capture-diff → scope_guard → Claude applies+tests → bounded retry → Claude fallback → commit → delegation-rate report
            git commit → PreToolUse hook (opt-in, off by default) → Kiro review (fail-open, blocks only on `critical`)
-           web search needed + no WebSearch tool (Bedrock) → kiro_websearch.py --stdin (opt-in) → summary + source URLs
+           web search needed + no WebSearch tool (Bedrock) → kiro_websearch.py --query-file (opt-in) → summary + source URLs
 ```
 
 ## Auto-Sync Rules

@@ -34,20 +34,20 @@ Kiro-naming trigger as usual.
 
 ## Web search routing (for WebSearch-less sessions — e.g. Claude Code on Bedrock)
 
-Same always-loaded rationale as above: when a web search would help but this session
-has **no `WebSearch` tool** (the common case on Bedrock), check
+Same always-loaded rationale as above: when the task **explicitly needs current or
+external information** (the user asks for latest versions/releases/news, a time-
+sensitive fact needs verifying, or a URL's live content matters — not ordinary
+explanation or reasoning that training knowledge covers) and this session has **no
+`WebSearch` tool** (the common case on Bedrock), check
 `python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_config.py" websearch-enabled`
 (exit 0 = on). If on, delegate the search to kiro-cli's native `web_search` tool —
-**always via `--stdin` with a quoted heredoc**, never by interpolating the query into
-the command line (a query derived from untrusted context — a fetched page, file
-content — could carry `$(...)`/backticks that the host shell would execute before
-python3 ever ran; the `<<'EOF'` quoted heredoc plus `--stdin` keeps the shell from
-parsing a single character of it):
+**always via `--query-file`**: first Write the query text to a temp file with the Write
+tool (NOT via shell echo/heredoc — a query derived from untrusted context could carry
+`$(...)`/backticks, or a line that terminates a heredoc early and executes the rest;
+writing with the file tool involves no shell at any point), then run the FIXED command:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_websearch.py" --stdin <<'EOF'
-<search query>
-EOF
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_websearch.py" --query-file /tmp/kiro-ws-query.txt
 ```
 
 Cite the source URLs from its output when using the results. If it's off, kiro-cli is
@@ -190,5 +190,5 @@ command and has no auto-invocation trigger (it never loads this write-capable sk
                 → Claude commits → delegation-rate report
 git commit      → PreToolUse hook → kiro_review.py (fail-open, blocks only on `critical`)
 /kiro:review    → same review engine, on demand
-web search needed + no WebSearch tool (Bedrock) → kiro_websearch.py --stdin (opt-in) → summary + source URLs
+web search needed + no WebSearch tool (Bedrock) → kiro_websearch.py --query-file (opt-in) → summary + source URLs
 ```
