@@ -205,12 +205,17 @@ B = r"(?:[\s&|;()<>]|^|$)"
 # statement separator) — listed before the bare-word alternatives below so
 # `&&` still consumes both characters at once, same ordering as `||`/`|`.
 # The bare-`&` alternative excludes fd-duplication forms (`2>&1`, `&>file`,
-# `1>&2`) via lookaround — those `&` characters are part of a redirect
-# token, not a statement separator, and splitting on them tears a single
-# commit statement in two (defeating standalone-word detection) or merges
-# what should be two independently-verified commits into one (defeating
-# the multi-commit fail-closed check just below).
-seps = [sp.span() for sp in re.finditer(r"&&|\|\||;|\||\n|(?<![0-9<>])&(?![&>])", masked)]
+# `1>&2`) via lookaround alone -- `<`/`>` immediately next to the `&` is
+# what marks those as redirect tokens rather than a statement separator
+# (`2>&1`: `&` preceded by `>`; `&>file`: `&` followed by `>`), never a
+# bare digit by itself. An earlier version of this lookbehind also excluded
+# a digit immediately before `&`, reasoning it might be part of a redirect
+# -- but a real background-job `&` routinely follows ordinary digit-ending
+# text too (`git commit -m msg1 & git -C /other commit -m y`), and
+# excluding it there silently merged two separate commits back into one
+# statement, defeating the multi-commit fail-closed check just below
+# (matches=1 instead of 2) and losing the second commit own `-C`.
+seps = [sp.span() for sp in re.finditer(r"&&|\|\||;|\||\n|(?<![<>])&(?![&>])", masked)]
 starts = [0] + [e for (_, e) in seps]
 ends = [st for (st, _) in seps] + [len(masked)]
 matches = []
@@ -233,36 +238,42 @@ else:
     #       --grep=commit`), never its own word. Safe to skip scanning
     #       entirely (exit 4, unchanged from before). Checked with
     #       `--flag=commit`, not a bare `(?<!=)` character check -- the
-    #       latter also (wrongly) classified `git -c alias.c=commit c -m x`
-    #       as non-commit, when that IS a real commit invoked through a
-    #       git alias.
+    #       latter also (wrongly) classified a commit invoked through a git
+    #       alias definition as non-commit. Residual gap this still cannot
+    #       close: a command that invokes an ALREADY-defined alias by its
+    #       short name (`git c --trailer=commit -m x`, where some earlier,
+    #       separate `git config alias.c commit` made "c" mean "commit")
+    #       has no literal standalone "commit" word anywhere in THIS
+    #       command at all, so nothing here can ever recognize it -- same
+    #       class of undecidable-from-static-text limitation as the `cd
+    #       other-repo` gap documented near the top of this file, not
+    #       something a smarter regex can close.
     #   (b) a REAL commit this parser failed to recognize as standalone --
-    #       quoted (`git "commit" -m x`), reached through variable/alias
-    #       indirection (`GIT=git; "$GIT" commit -m x`, the alias example
-    #       above), etc. Treating this the same as (a) would skip the real
-    #       secret scan below for an actual commit -- fail-open, not
-    #       fail-closed. For (b), CMD_SIG cannot be trusted in either
-    #       direction: writing the full original text back risks the
-    #       commit-message-prose false block this design exists to avoid;
-    #       blanking it risks silently losing a real -C/--git-dir selector
-    #       and scanning the wrong repo instead of the intended target. So
-    #       split on whether the raw text even looks like it names a
-    #       selector: if it does, which repo is actually meant cannot be
-    #       told apart, so fail closed instead of guessing (exit 5); only
-    #       when there is no selector hint at all is an empty CMD_SIG (scan
-    #       this hook own cwd, unconditionally, below) safe (exit 6).
-    flagval_commits = len(re.findall(r"--[A-Za-z][A-Za-z-]*=commit\b", s))
+    #       quoted (`git "commit" -m x`), reached through variable
+    #       indirection (`GIT=git; "$GIT" commit -m x`), etc. Treating this
+    #       the same as (a) would skip the real secret scan below for an
+    #       actual commit -- fail-open, not fail-closed. For (b), CMD_SIG
+    #       cannot be trusted in either direction: writing the full
+    #       original text back risks the commit-message-prose false block
+    #       this design exists to avoid; blanking it risks silently losing
+    #       a real -C/--git-dir selector and scanning the wrong repo
+    #       instead of the intended target. So split on whether the raw
+    #       text even looks like it names a selector: if it does, which
+    #       repo is actually meant cannot be told apart, so fail closed
+    #       instead of guessing (exit 5) -- checked against raw `s`, not
+    #       masked, because masked blanks a selector that is itself quoted
+    #       (`git "-C" /other "commit" -m x` is valid and really does pass
+    #       -C to git); a command that reaches this branch is already
+    #       atypical, so the friction of an occasional prose "-C" mention
+    #       triggering it is an accepted tradeoff against silently missing
+    #       a real one. Only when there is no selector hint at all is an
+    #       empty CMD_SIG (scan this hook own cwd, unconditionally, below)
+    #       safe (exit 6).
+    flagval_commits = len(re.findall(r"--[A-Za-z][A-Za-z-]*=[\"\x27]?commit\b", s))
     total_commits = len(re.findall(r"\bcommit\b", s))
     if total_commits > 0 and total_commits == flagval_commits:
         sys.exit(4)
-    # Search MASKED text for the selector hint, not raw `s` -- `s` still
-    # contains the full, unblanked commit message (e.g. `-m "...text..."`),
-    # and commit messages in this project routinely describe fixes like
-    # this one by mentioning "-C" as prose. Searching raw `s` would fail
-    # closed on that prose instead of on an actual redirect, exactly the
-    # false-positive class the masking design exists to avoid elsewhere in
-    # this file.
-    elif re.search(r"-C\b|--git-dir|--work-tree|GIT_DIR=|GIT_WORK_TREE=|GIT_INDEX_FILE=|core\.worktree=", masked):
+    elif re.search(r"-C\b|--git-dir|--work-tree|GIT_DIR=|GIT_WORK_TREE=|GIT_INDEX_FILE=|core\.worktree=", s):
         sys.exit(5)
     else:
         sys.exit(6)
