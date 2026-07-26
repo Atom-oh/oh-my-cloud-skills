@@ -216,7 +216,21 @@ B = r"(?:[\s&|;()<>`]|^|$)"
 # excluding it there silently merged two separate commits back into one
 # statement, defeating the multi-commit fail-closed check just below
 # (matches=1 instead of 2) and losing the second commit own `-C`.
-seps = [sp.span() for sp in re.finditer(r"&&|\|\||;|\||\n|(?<![<>])&(?![&>])", masked)]
+# `$(` also splits, even with no shell operator between two instances --
+# `echo $(git -C /a commit -m x) $(git -C /b commit -m y)` has no &&/;/|
+# anywhere (both substitutions are just space-separated ARGUMENTS to
+# `echo`), so without this, `(` merely being in `B` let both occurrences
+# get counted as ONE unsplit statement -- matches=1 instead of 2, so the
+# multi-commit fail-closed check below never fired and the second `-C`
+# was silently never verified. A bare `(` (no `$`) is deliberately NOT a
+# split point here: `(cmd1) (cmd2)` with no operator between them is not
+# valid shell syntax to begin with, so that ambiguity cannot arise; the
+# existing `(git commit -m a) && (...)` case already has an explicit `&&`
+# splitting it. A `$(` that is itself inside a quoted string or heredoc
+# body (how this project own multi-line commit messages are built) is
+# already invisible here -- it was replaced with "x" placeholders by the
+# masking pass above, long before this split runs.
+seps = [sp.span() for sp in re.finditer(r"&&|\|\||;|\||\n|(?<![<>])&(?![&>])|\$\(", masked)]
 starts = [0] + [e for (_, e) in seps]
 ends = [st for (st, _) in seps] + [len(masked)]
 matches = []
@@ -284,7 +298,12 @@ else:
     # pre-existing secret already sitting in the working tree) -- accepted
     # again, same as the top-level gate comment above: over-scanning only
     # costs friction, under-scanning misses a real secret.
-    if re.search(r"-C\b|--git-dir|--work-tree|GIT_DIR=|GIT_WORK_TREE=|GIT_INDEX_FILE=|core\.worktree=", s):
+    # `-C` needs a boundary BEFORE it, not a `\b` word-boundary AFTER it --
+    # global -C accepts a concatenated target with no space (`-C/other`,
+    # `-Cother`), same as the bash-side extraction regex below handles;
+    # `-C\b` requires a non-word character right after the "C", which a
+    # concatenated target never has, silently missing that whole form.
+    if re.search(r"(?:^|[\s&|;()<>`])-C|--git-dir|--work-tree|GIT_DIR=|GIT_WORK_TREE=|GIT_INDEX_FILE=|core\.worktree=", s):
         sys.exit(5)
     flagval_commits = len(re.findall(r"--[A-Za-z][A-Za-z-]*=[\"\x27]?commit\b", s))
     total_commits = len(re.findall(r"\bcommit\b", s))
@@ -375,8 +394,13 @@ HAS_REDIRECT=0
 # what "no repo → exit 0" would do), fail closed on it: a real secret
 # already sitting in the directory when it's freshly `git init`-ed and
 # committed in one shot must not go out unscanned.
+# This boundary character class, and the two below it (has_add/has_force),
+# must stay a superset of the Python `B` class above (`[\s&|;()<>` + backtick]`)
+# -- this one additionally carries quote characters, since a bare-word
+# check on raw $CMD has no prior masking pass to already neutralize a
+# quoted "init"/"add"/"-f".
 if [ -z "$WORK_DIR" ]; then
-    if [[ "$CMD" =~ (^|[[:space:]\&\|\;\(\)\<\>])init([[:space:]\&\|\;\(\)\<\>]|$) ]]; then
+    if [[ "$CMD" =~ (^|[[:space:]\&\|\;\(\)\<\>\`\"\'])init([[:space:]\&\|\;\(\)\<\>\`\"\']|$) ]]; then
         block "command both initializes a repository and commits in the same call — this hook has no index yet to scan whatever files already exist in this directory before they're committed. Run 'git init' as its own Bash call first, then commit separately once a repository (and therefore a scannable index) exists."
     fi
     if [ "$HAS_REDIRECT" -eq 0 ]; then
@@ -582,9 +606,9 @@ scan_list_from "untracked files" git ls-files -z --others --exclude-standard
 # token) so `git -C . add -f` still counts — over-matching here only costs
 # an extra scan.
 has_add=0; has_force=0
-[[ "$CMD" =~ (^|[[:space:]\&\|\;\(\)\<\>])add([[:space:]\&\|\;\(\)\<\>]|$) ]] && has_add=1
-{ [[ "$CMD" =~ [[:space:]\&\|\;\(\)\<\>]-[a-zA-Z]*f[a-zA-Z]*([[:space:]\&\|\;\(\)\<\>]|$) ]] || \
-  [[ "$CMD" =~ --force([[:space:]\&\|\;\(\)\<\>]|$) ]]; } && has_force=1
+[[ "$CMD" =~ (^|[[:space:]\&\|\;\(\)\<\>\`\"\'])add([[:space:]\&\|\;\(\)\<\>\`\"\']|$) ]] && has_add=1
+{ [[ "$CMD" =~ [[:space:]\&\|\;\(\)\<\>\`\"\']-[a-zA-Z]*f[a-zA-Z]*([[:space:]\&\|\;\(\)\<\>\`\"\']|$) ]] || \
+  [[ "$CMD" =~ --force([[:space:]\&\|\;\(\)\<\>\`\"\']|$) ]]; } && has_force=1
 if [ "$has_add" -eq 1 ] && [ "$has_force" -eq 1 ]; then
     scan_list_from "force-added ignored files" git ls-files -z --others -i --exclude-standard
 fi
