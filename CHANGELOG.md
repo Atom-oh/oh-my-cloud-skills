@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.15.0] - 2026-07-24
+
 ### Added
 - **kiro: web search delegation for WebSearch-less sessions (Claude Code on Bedrock)** — kiro-cli has a native `web_search` tool; sessions without a `WebSearch` tool can now opt in (`/kiro:setup` asks, or `/kiro:configure set websearch enabled on`) to route web searches through it via the new `kiro_websearch.py`. The generated `kiro-websearch` agent is search-only (`web_search` is its ONLY tool — no fs_read/fs_write/execute_bash, so no preToolUse path guard is even needed), the script fail-closed refuses a tampered agent file (same defense as `/kiro:review`), only the query text ever leaves the machine, and the always-loaded routing rule in `plugins/kiro/CLAUDE.md` never fires when the session has its own WebSearch tool. Off by default; `websearch.enabled` is a consent-gated key in tracked-config stripping alongside `default_delegate`/`review.on_commit` — a repo committing `.claude/kiro.local.json` with `enabled: true` cannot silently opt an installing user's session into query egress. The routing rule instructs Claude to write the query to a per-invocation temp file with its file-write tool (no shell involved) and run a fixed `--query-file` command, so query text derived from untrusted context never touches the host shell at all — not even as heredoc input, whose delimiter line a hostile query could terminate early
 - **kiro: new cost-savings delegation plugin (7th plugin)** — Claude plans and verifies; Kiro CLI implements and reviews on its own flat-rate subscription credits inside an isolated git worktree, so token-expensive work moves off this session's budget. Not a second opinion (that's `co-agent`) — purely cost. Commands: `/kiro:setup`, `/kiro:delegate`, `/kiro:review`, `/kiro:configure`; reuses co-agent's `worktree.py`/`scope_guard.py`/`parse_plan.py` verbatim, with an opt-in (off by default) `PreToolUse(Bash)` pre-commit review gate
@@ -333,7 +335,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add AWS Architecture Icons integration (4,224 files)
 - Add presenter view with speaker notes
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.14.1...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.15.0...HEAD
+[1.15.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.14.1...v1.15.0
 [1.14.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.14.0...v1.14.1
 [1.14.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.1...v1.13.0
@@ -368,6 +371,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 따릅니다.
 
 ## [Unreleased]
+
+## [1.15.0] - 2026-07-24
 
 ### Added
 - **kiro: WebSearch 도구가 없는 세션(Claude Code on Bedrock)을 위한 웹 검색 위임** — kiro-cli의 네이티브 `web_search` 툴을 활용, `WebSearch` 도구가 없는 세션이 opt-in(`/kiro:setup`이 질문, 또는 `/kiro:configure set websearch enabled on`)으로 신규 `kiro_websearch.py`를 통해 웹 검색을 라우팅. 생성되는 `kiro-websearch` 에이전트는 검색 전용(`web_search`가 유일한 툴 — fs_read/fs_write/execute_bash 없음, 파일 접근이 없어 preToolUse 경로 가드도 불필요), 스크립트는 변조된 에이전트 파일을 fail-closed로 거부(`/kiro:review`와 동일한 방어), 외부로 나가는 것은 쿼리 텍스트뿐이며, `plugins/kiro/CLAUDE.md`의 상시 로드 라우팅 규칙은 세션에 자체 WebSearch 도구가 있으면 절대 발동하지 않음. 기본 off; `websearch.enabled`는 `default_delegate`/`review.on_commit`과 함께 tracked-config 스트리핑의 consent-gate 키로 처리 — `.claude/kiro.local.json`을 `enabled: true`로 커밋한 리포가 설치 사용자의 세션을 몰래 쿼리 egress에 opt-in시킬 수 없음. 라우팅 규칙은 쿼리를 파일 쓰기 도구로 호출별 temp 파일에 기록한 뒤 고정된 `--query-file` 커맨드를 실행하도록 지시 — 신뢰할 수 없는 컨텍스트에서 파생된 쿼리 텍스트가 호스트 셸에 전혀 닿지 않음(적대적 쿼리가 구분자 라인으로 조기 종료시킬 수 있는 heredoc 입력조차 사용하지 않음)
@@ -687,7 +692,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AWS Architecture Icons 통합 추가 (4,224개 파일)
 - 발표자 뷰 및 발표자 노트 추가
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.14.1...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.15.0...HEAD
+[1.15.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.14.1...v1.15.0
 [1.14.1]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.14.0...v1.14.1
 [1.14.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.12.1...v1.13.0

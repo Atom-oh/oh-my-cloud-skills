@@ -25,10 +25,13 @@ kiro-cli를 감지하고 실사용 여부를 프로브한 뒤, 모델을 선택�
 3. **신뢰 결정** — `execute_bash`를 구현자에게 허용할지 명시적으로 확인
    (기본: 허용 안 함)
 4. **에이전트 파일 작성** — `.kiro/agents/kiro-implementer.json`,
-   `.kiro/agents/kiro-reviewer.json`
+   `.kiro/agents/kiro-reviewer.json`, `.kiro/agents/kiro-websearch.json`
 5. **default delegation 여부** 확인 (기본 off)
 6. **pre-commit 리뷰 훅 여부** 확인 (기본 off — staged diff 내용이 Kiro
    백엔드로 전송됨을 먼저 설명)
+7. **웹 검색 위임 여부** 확인 (기본 off — Bedrock처럼 `WebSearch` 도구가 없는
+   세션에서 kiro-cli의 `web_search`로 검색을 위임; 쿼리 텍스트가 Kiro 백엔드로
+   전송됨을 먼저 설명, Bedrock 사용자에게 권장)
 
 ## /kiro:delegate
 
@@ -80,7 +83,10 @@ kiro 플러그인 설정을 조회/변경합니다. 설정은 `kiro.defaults.jso
 /kiro:configure set review on_commit on           # 기본 off
 /kiro:configure set review block warning          # 기본 critical
 /kiro:configure set delegate timeout 300          # 기본 240초
+/kiro:configure set websearch enabled on          # 기본 off — WebSearch 없는 세션(Bedrock)용
+/kiro:configure set websearch model <m>           # 기본: CLI 라우팅
+/kiro:configure set websearch timeout 90          # 기본 60초
 ```
 
-`review.on_commit`/`default_delegate`는 동의 게이팅 설정이라, 커밋된
+`review.on_commit`/`default_delegate`/`websearch.enabled`는 동의 게이팅 설정이라, 커밋된
 `.claude/kiro.local.json`에 값이 있어도 무시되고 셸 기본값(off)이 적용됩니다.

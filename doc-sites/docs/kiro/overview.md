@@ -28,7 +28,7 @@ kiro는 **비용 절감을 위한 구현 위임** 플러그인입니다. Claude�
 
 | 명령 | 설명 |
 |------|------|
-| `/kiro:setup` | kiro-cli 감지 + 실사용 프로브, 모델 목록, `.kiro/agents/*.json` 생성, default_delegate/review.on_commit 토글 |
+| `/kiro:setup` | kiro-cli 감지 + 실사용 프로브, 모델 목록, `.kiro/agents/*.json` 생성, default_delegate/review.on_commit/websearch 토글 |
 | `/kiro:delegate <요청>` | 계획 → 위임 → 검증 → 커밋 전체 파이프라인 실행 |
 | `/kiro:review [경로]` | 온디맨드 Kiro 리뷰 (pre-commit 훅과 동일 엔진) |
 | `/kiro:configure` | 설정 조회/변경 |
@@ -59,6 +59,25 @@ git worktree 안에서 구현만 담당합니다. Kiro가 태스크를 못 끝�
 per-token 비용 트레이드오프가 없으므로 태스크를 제대로 끝내는 모델이면 무엇이든
 괜찮고, **리뷰 모델**은 구현 모델이 가벼워도 항상 Kiro의 최신/최강 모델로 유지하는 것을
 권장합니다 — 리뷰가 구현 결과물의 안전망이기 때문입니다.
+
+## 웹 검색 위임 (Bedrock 사용자용, opt-in)
+
+Claude Code on Bedrock에는 `WebSearch` 도구가 없습니다. kiro-cli에는 네이티브
+`web_search` 툴이 있으므로, `WebSearch`가 없는 세션이 웹 검색을 Kiro로 위임할 수
+있습니다 — `/kiro:setup`이 활성화 여부를 묻고(기본 off), 켜면 검색이 필요한 시점에
+`kiro_websearch.py`가 검색을 수행해 요약 + 출처 URL을 반환합니다.
+
+- **검색 전용 에이전트**: `.kiro/agents/kiro-websearch.json`은 `web_search`가 유일한
+  툴입니다 — 파일시스템/셸 접근 없음. 변조된 에이전트 파일은 스크립트가 fail-closed로
+  거부합니다(`/kiro:review`와 동일한 방어).
+- **외부로 나가는 것은 쿼리 텍스트뿐**이며, 쿼리는 파일 쓰기 도구로 호출별 temp 파일에
+  기록된 뒤 고정된 `--query-file` 커맨드로 전달됩니다 — 호스트 셸이 쿼리를 파싱하는
+  일이 없습니다.
+- **consent-gate**: `websearch.enabled`는 `default_delegate`/`review.on_commit`과 같은
+  tracked-config 스트리핑 대상입니다 — 리포가 `.claude/kiro.local.json`을 커밋해도
+  설치 사용자를 몰래 opt-in시킬 수 없습니다.
+- 세션에 자체 `WebSearch` 도구가 있으면 이 경로는 절대 발동하지 않습니다(네이티브가
+  항상 우선).
 
 ## 신뢰 경계 (co-agent가 Kiro를 구현자로 거부하는 이유)
 
