@@ -195,12 +195,13 @@ def mask(text):
 
 masked = mask(s)
 # A boundary is whitespace, start/end of string, OR a shell control
-# character (&, |, ;, (, ), <, >) that can sit directly against a word with
-# no space at all — `git init&&git commit`, `(git commit -m a) && (...)`,
-# `git commit>/dev/null`. A plain \s-only boundary treats "init" in the
-# first example, "git" in the second, and "commit" in the third as NOT
-# standalone (no space touches them), silently failing to recognize any.
-B = r"(?:[\s&|;()<>]|^|$)"
+# character (&, |, ;, (, ), <, >, `) that can sit directly against a word
+# with no space at all — `git init&&git commit`, `(git commit -m a) && (...)`,
+# `git commit>/dev/null`, `` `git commit` ``. A plain \s-only boundary
+# treats "init" in the first example, "git" in the second, "commit" in the
+# third, and both words in the fourth as NOT standalone (no space touches
+# them), silently failing to recognize any.
+B = r"(?:[\s&|;()<>`]|^|$)"
 # `&` must split same as `&&` (a single background-job `&` is also a
 # statement separator) — listed before the bare-word alternatives below so
 # `&&` still consumes both characters at once, same ordering as `||`/`|`.
@@ -231,12 +232,30 @@ elif matches:
     sys.stdout.write(s[a:a + m.start(1)])  # slice the ORIGINAL text
 else:
     # No statement anywhere in the command has a standalone "git" AND a
-    # standalone "commit" word. Two different reasons land here, and they
-    # must NOT be treated the same:
+    # standalone "commit" word. The FIRST question -- checked before
+    # anything else -- is whether the raw text even looks like it names a
+    # repo-selector (-C/--git-dir/--work-tree/GIT_DIR=/...). If it does,
+    # which repo is actually meant cannot be told apart from text alone, so
+    # this fails closed (exit 5) no matter what else is true about the
+    # command -- specifically, checked BEFORE the non-commit classification
+    # below, not after: a command can hide its own literal "commit" word
+    # from a text-based check (quote-splicing like `com''mit`, a variable
+    # holding the pieces) while a REAL, literal "-C /somewhere" still sits
+    # in the raw text plainly readable, and letting the (mis-classified as
+    # "not a commit") case win in that situation would drop the scan
+    # entirely instead of failing closed on the selector it can plainly
+    # see. Checked against raw `s`, not masked, because masked blanks a
+    # selector that is itself quoted (`git "-C" /other "commit" -m x` is
+    # valid and really does pass -C to git); a command that reaches this
+    # branch is already atypical, so the friction of an occasional prose
+    # "-C" mention triggering it is an accepted tradeoff against silently
+    # missing a real one.
+    #
+    # Only once there is no selector hint at all does it matter whether
+    # this command is:
     #   (a) genuinely not a commit -- every "commit" in the raw text is
     #       specifically a long-option flag value (`git log
-    #       --grep=commit`), never its own word. Safe to skip scanning
-    #       entirely (exit 4, unchanged from before). Checked with
+    #       --grep=commit`), never its own word (exit 4). Checked with
     #       `--flag=commit`, not a bare `(?<!=)` character check -- the
     #       latter also (wrongly) classified a commit invoked through a git
     #       alias definition as non-commit. Residual gap this still cannot
@@ -246,45 +265,47 @@ else:
     #       has no literal standalone "commit" word anywhere in THIS
     #       command at all, so nothing here can ever recognize it -- same
     #       class of undecidable-from-static-text limitation as the `cd
-    #       other-repo` gap documented near the top of this file, not
-    #       something a smarter regex can close.
+    #       other-repo` gap documented near the top of this file.
     #   (b) a REAL commit this parser failed to recognize as standalone --
     #       quoted (`git "commit" -m x`), reached through variable
-    #       indirection (`GIT=git; "$GIT" commit -m x`), etc. Treating this
-    #       the same as (a) would skip the real secret scan below for an
-    #       actual commit -- fail-open, not fail-closed. For (b), CMD_SIG
-    #       cannot be trusted in either direction: writing the full
-    #       original text back risks the commit-message-prose false block
-    #       this design exists to avoid; blanking it risks silently losing
-    #       a real -C/--git-dir selector and scanning the wrong repo
-    #       instead of the intended target. So split on whether the raw
-    #       text even looks like it names a selector: if it does, which
-    #       repo is actually meant cannot be told apart, so fail closed
-    #       instead of guessing (exit 5) -- checked against raw `s`, not
-    #       masked, because masked blanks a selector that is itself quoted
-    #       (`git "-C" /other "commit" -m x` is valid and really does pass
-    #       -C to git); a command that reaches this branch is already
-    #       atypical, so the friction of an occasional prose "-C" mention
-    #       triggering it is an accepted tradeoff against silently missing
-    #       a real one. Only when there is no selector hint at all is an
-    #       empty CMD_SIG (scan this hook own cwd, unconditionally, below)
-    #       safe (exit 6).
+    #       indirection (`GIT=git; "$GIT" commit -m x`), etc. (exit 6).
+    # Bash treats (a) and (b) identically once there is no selector hint --
+    # CMD_SIG="" and fall through to the unconditional scan below, rather
+    # than skipping the hook outright. An earlier version of (a) skipped
+    # the entire hook (bash `exit 0`) on the reasoning that a confirmed
+    # non-commit needs no commit-secret scan -- true on its own, but it
+    # also skipped this hook OTHER, independent checks that do not
+    # depend on this being a commit at all (the force-add-bypasses-
+    # .gitignore detection further below), for a command that also force-
+    # adds a file alongside an unrelated, non-commit "commit" mention
+    # (`git add -f .env && git log --grep=commit`). Falling through here
+    # costs the friction round 18 was trying to remove (a confirmed
+    # non-commit command can once again fail closed over an unrelated,
+    # pre-existing secret already sitting in the working tree) -- accepted
+    # again, same as the top-level gate comment above: over-scanning only
+    # costs friction, under-scanning misses a real secret.
+    if re.search(r"-C\b|--git-dir|--work-tree|GIT_DIR=|GIT_WORK_TREE=|GIT_INDEX_FILE=|core\.worktree=", s):
+        sys.exit(5)
     flagval_commits = len(re.findall(r"--[A-Za-z][A-Za-z-]*=[\"\x27]?commit\b", s))
     total_commits = len(re.findall(r"\bcommit\b", s))
     if total_commits > 0 and total_commits == flagval_commits:
         sys.exit(4)
-    elif re.search(r"-C\b|--git-dir|--work-tree|GIT_DIR=|GIT_WORK_TREE=|GIT_INDEX_FILE=|core\.worktree=", s):
-        sys.exit(5)
     else:
         sys.exit(6)
 ' 2>/dev/null)"
     py_rc=$?
     if [ "$py_rc" -eq 3 ]; then
         block "command contains more than one separate 'git ... commit' invocation — this hook resolves and scans only one repo-selector target, so a second commit's own -C (or lack of one) is never independently verified. Run each commit as its own Bash call."
-    elif [ "$py_rc" -eq 4 ]; then
-        exit 0
     elif [ "$py_rc" -eq 5 ]; then
         block "command may redirect git's target repo (-C/--git-dir/--work-tree/GIT_DIR=/GIT_WORK_TREE=/GIT_INDEX_FILE=/core.worktree=) but this hook could not isolate a single, unambiguous 'git ... commit' statement to verify it against (quoting, or variable/alias indirection). Run the commit as its own plain 'git -C <repo> commit ...' Bash call so this hook can confirm what it's scanning."
+    elif [ "$py_rc" -eq 4 ]; then
+        # Confirmed non-commit (every "commit" in the text is a flag
+        # value) -- no commit-secret scan needed, but NOT a bash `exit 0`:
+        # this hook's other, commit-independent checks (force-add-bypasses-
+        # .gitignore, further below) must still run for a command that also
+        # does something like `git add -f .env` alongside the non-commit
+        # "commit" mention. Fall through with no resolved repo-selector.
+        CMD_SIG=""
     elif [ "$py_rc" -eq 6 ]; then
         echo "[secret-scan] could not isolate a single git-commit statement (quoting or variable/alias indirection) and no repo-selector token was found in the raw command — scanning this hook's own cwd" >&2
         CMD_SIG=""
