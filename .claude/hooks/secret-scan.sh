@@ -230,7 +230,17 @@ B = r"(?:[\s&|;()<>`]|^|$)"
 # body (how this project own multi-line commit messages are built) is
 # already invisible here -- it was replaced with "x" placeholders by the
 # masking pass above, long before this split runs.
-seps = [sp.span() for sp in re.finditer(r"&&|\|\||;|\||\n|(?<![<>])&(?![&>])|\$\(", masked)]
+#
+# The same "no operator, just whitespace between two invocations" gap
+# applies identically to a backtick substitution and process substitution
+# (`<(`/`>(`) -- `` echo `git -C /a commit -m x` `git -C /b commit -m y` ``
+# and `cat <(git -C /a commit ...) <(git -C /b commit ...)` are both single
+# unsplit statements today for the exact same reason `$(...)  $(...)` was.
+# A bare backtick has no "open" vs "close" distinction a regex can tell
+# apart, but splitting on EVERY backtick occurrence still gets a single
+# substitution right (both halves land on either side of an empty middle
+# segment) and correctly separates two side-by-side ones.
+seps = [sp.span() for sp in re.finditer(r"&&|\|\||;|\||\n|(?<![<>])&(?![&>])|\$\(|`|<\(|>\(", masked)]
 starts = [0] + [e for (_, e) in seps]
 ends = [st for (st, _) in seps] + [len(masked)]
 matches = []
@@ -302,8 +312,14 @@ else:
     # global -C accepts a concatenated target with no space (`-C/other`,
     # `-Cother`), same as the bash-side extraction regex below handles;
     # `-C\b` requires a non-word character right after the "C", which a
-    # concatenated target never has, silently missing that whole form.
-    if re.search(r"(?:^|[\s&|;()<>`])-C|--git-dir|--work-tree|GIT_DIR=|GIT_WORK_TREE=|GIT_INDEX_FILE=|core\.worktree=", s):
+    # concatenated target never has, silently missing that whole form. The
+    # boundary class here also carries quote characters -- `git "-C" /other
+    # "commit" -m x` is exactly the shape this whole exit-5 branch exists
+    # for (quoting hid the standalone "commit" word from the match above),
+    # and the quote sitting directly before "-C" is itself the boundary
+    # that needs recognizing, or the very case motivating this check slips
+    # through it.
+    if re.search(r"(?:^|[\s&|;()<>`\"\x27])-C|--git-dir|--work-tree|GIT_DIR=|GIT_WORK_TREE=|GIT_INDEX_FILE=|core\.worktree=", s):
         sys.exit(5)
     flagval_commits = len(re.findall(r"--[A-Za-z][A-Za-z-]*=[\"\x27]?commit\b", s))
     total_commits = len(re.findall(r"\bcommit\b", s))
@@ -330,6 +346,14 @@ else:
         CMD_SIG=""
     elif [ "$py_rc" -eq 0 ]; then
         CMD_SIG="$py_out"
+    else
+        # python3 crashed or was killed (rc 1/2, or anything else this
+        # chain doesn't name) -- CMD_SIG is already "" from its
+        # initialization above, so this isn't a silent fail-open (the
+        # unconditional scan below still runs against this hook's own
+        # cwd), but unlike the exit-6 case there was no warning at all.
+        # Same diagnostic, so this path is visible too.
+        echo "[secret-scan] command parser exited unexpectedly (rc=$py_rc) — scanning this hook's own cwd" >&2
     fi
 fi
 
@@ -374,6 +398,14 @@ HAS_REDIRECT=0
 [[ "$CMD_SIG" =~ GIT_WORK_TREE= ]] && HAS_REDIRECT=1
 [[ "$CMD_SIG" =~ GIT_INDEX_FILE= ]] && HAS_REDIRECT=1
 [[ "$CMD_SIG" =~ (-c|--config)[[:space:]]+core\.worktree= ]] && HAS_REDIRECT=1
+# `-C` immediately preceded by a quote character (`git "-C" /other commit`)
+# is real to git once the shell strips the quote, but the extraction above
+# only recognizes a plain-whitespace boundary before "-C" and silently
+# fails to see this form at all -- fail closed on it explicitly rather than
+# letting HAS_REDIRECT stay 0 and this hook fall through to scanning its
+# own cwd while the actual commit goes to a repo it never even looked at.
+QUOTED_C_ADJACENT=0
+[[ "$CMD_SIG" =~ [\"\']-C ]] && QUOTED_C_ADJACENT=1 && HAS_REDIRECT=1
 
 # If this hook's own cwd isn't inside a git repository at all, the command
 # doesn't try to point git at one either, and the command does NOT itself
@@ -409,11 +441,12 @@ if [ -z "$WORK_DIR" ]; then
 fi
 [ -z "$WORK_DIR" ] && WORK_DIR="."
 
-if [ "${c_count:-0}" -gt 1 ] || [[ "$CMD_SIG" =~ --git-dir(=|[[:space:]]) ]] || \
+if [ "${c_count:-0}" -gt 1 ] || [ "$QUOTED_C_ADJACENT" -eq 1 ] || \
+   [[ "$CMD_SIG" =~ --git-dir(=|[[:space:]]) ]] || \
    [[ "$CMD_SIG" =~ --work-tree(=|[[:space:]]) ]] || [[ "$CMD_SIG" =~ GIT_DIR= ]] || \
    [[ "$CMD_SIG" =~ GIT_WORK_TREE= ]] || [[ "$CMD_SIG" =~ GIT_INDEX_FILE= ]] || \
    [[ "$CMD_SIG" =~ (-c|--config)[[:space:]]+core\.worktree= ]]; then
-    block "command redirects git's target repo in a form this hook doesn't verify (--git-dir/--work-tree/GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE/core.worktree/multiple -C). Run the commit as its own 'git -C <repo> commit ...' call, or from that repo's own directory, so this hook can confirm what it's scanning."
+    block "command redirects git's target repo in a form this hook doesn't verify (--git-dir/--work-tree/GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE/core.worktree/multiple -C/quote-adjacent -C). Run the commit as its own 'git -C <repo> commit ...' call, or from that repo's own directory, so this hook can confirm what it's scanning."
 fi
 if [[ "$CMD_SIG" =~ (^|[[:space:]])-C[[:space:]]*([^[:space:]]+) ]]; then
     raw_target="${BASH_REMATCH[2]}"
@@ -605,6 +638,14 @@ scan_list_from "untracked files" git ls-files -z --others --exclude-standard
 # force flag are checked independently (not `git[[:space:]]+add` as one
 # token) so `git -C . add -f` still counts — over-matching here only costs
 # an extra scan.
+# Residual, documented gap in these two checks (same class as the `cd
+# other-repo` and alias gaps noted elsewhere in this file): they match
+# against raw $CMD with no masking pass, so a quote-split flag
+# (`-''f`, `a''dd`) that bash still executes as `-f`/`add` is invisible to
+# `[a-zA-Z]*` here the same way it is to the Python side's literal-word
+# checks. Undecidable from this kind of text-only matching without porting
+# this check onto the already-masked Python text, which would need a new
+# exit code and CMD_SIG-style channel back to bash -- not done here.
 has_add=0; has_force=0
 [[ "$CMD" =~ (^|[[:space:]\&\|\;\(\)\<\>\`\"\'])add([[:space:]\&\|\;\(\)\<\>\`\"\']|$) ]] && has_add=1
 { [[ "$CMD" =~ [[:space:]\&\|\;\(\)\<\>\`\"\']-[a-zA-Z]*f[a-zA-Z]*([[:space:]\&\|\;\(\)\<\>\`\"\']|$) ]] || \
