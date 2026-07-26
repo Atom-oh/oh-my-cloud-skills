@@ -201,7 +201,10 @@ masked = mask(s)
 # the second, as NOT standalone (no space touches them), silently failing
 # to recognize either.
 B = r"(?:[\s&|;()]|^|$)"
-seps = [sp.span() for sp in re.finditer(r"&&|\|\||;|\||\n", masked)]
+# `&` must split same as `&&` (a single background-job `&` is also a
+# statement separator) — listed before the bare-word alternatives below so
+# `&&` still consumes both characters at once, same ordering as `||`/`|`.
+seps = [sp.span() for sp in re.finditer(r"&&|&|\|\||;|\||\n", masked)]
 starts = [0] + [e for (_, e) in seps]
 ends = [st for (st, _) in seps] + [len(masked)]
 matches = []
@@ -216,15 +219,30 @@ elif matches:
     m = re.search(B + "(commit)" + B, masked[a:b])
     sys.stdout.write(s[a:a + m.start(1)])  # slice the ORIGINAL text
 else:
-    # No statement anywhere in the command actually invokes git with commit
-    # as a standalone subcommand — the top-level gate matched only because
-    # "commit" appears as a substring somewhere (a read-only `git log
-    # --grep commit`, a comment, prose). Signal "not really a commit" so
-    # the bash side skips scanning entirely, instead of falling through
-    # with an empty CMD_SIG that would still run the full scan below and
-    # could block an unrelated command over a pre-existing, unrelated
-    # secret sitting in the working tree.
-    sys.exit(4)
+    # No statement anywhere in the command has a standalone "git" AND a
+    # standalone "commit" word. Two different reasons land here, and they
+    # must NOT be treated the same:
+    #   (a) genuinely not a commit -- "commit" only appears as a flag
+    #       VALUE (`git log --grep=commit`), never as its own word. Safe to
+    #       skip scanning entirely (exit 4, unchanged from before).
+    #   (b) a REAL commit this parser failed to recognize as standalone --
+    #       quoted (`git "commit" -m x`), no space before a shell
+    #       metacharacter (`git commit>/dev/null`, `` `git commit` ``), or
+    #       reached through variable indirection (`GIT=git; "$GIT" commit
+    #       -m x`). Treating this the same as (a) would skip the real
+    #       secret scan below for an actual commit -- fail-open, not
+    #       fail-closed. Only exit 4 when EVERY "commit" in the ORIGINAL
+    #       text is immediately preceded by "=" (the one confirmed
+    #       flag-value shape); otherwise fall through with an empty
+    #       CMD_SIG (case (b) ambiguity resolves toward "scan it", not
+    #       toward "skip it" -- the same empty-string tradeoff already used
+    #       for the python3-missing fallback above) so the unconditional
+    #       staged/working-tree/untracked scan further down still runs.
+    if re.search(r"(?<!=)commit", s) is None:
+        sys.exit(4)
+    else:
+        sys.stderr.write("[secret-scan] could not isolate a single git-commit statement (quoting/redirect/indirection) — scanning without a resolved repo-selector\n")
+        sys.stdout.write("")
 ' 2>/dev/null)"
     py_rc=$?
     if [ "$py_rc" -eq 3 ]; then
@@ -396,10 +414,12 @@ PATTERNS=("${HIGH_CONFIDENCE_PATTERNS[@]}" "${PROJECT_KEY_PATTERNS[@]}" "${GENER
 # full skip: its source contains every detection pattern above as a literal
 # string, so scanning it against its own patterns risks self-matching.
 # package-lock.json/yarn.lock are NOT fully skipped (below) — a private
-# registry's resolved URL can carry an embedded credential
-# (`https://user:token@...`), which HIGH_CONFIDENCE_PATTERNS can still catch;
-# only the noisy GENERIC_PATTERNS (password=/secret=/api_key=, which a
-# lockfile has no legitimate reason to contain anyway) are skipped for them.
+# registry's resolved URL can still carry a fixed-prefix token
+# (ghp_/sk-.../AKIA...) that HIGH_CONFIDENCE_PATTERNS catches regardless of
+# surrounding URL syntax (an opaque, non-fixed-format credential embedded as
+# `https://user:token@...` is NOT covered by any pattern here); only the
+# noisy GENERIC_PATTERNS (password=/secret=/api_key=, which a lockfile has
+# no legitimate reason to contain anyway) are skipped for them.
 SKIP_FILES=('.claude/hooks/secret-scan.sh')
 
 is_skipped() {
@@ -413,7 +433,10 @@ is_skipped() {
 scan_content() {
     local file="$1" content="$2" regex
     case "$file" in
-        *.env.example|*package-lock.json|*yarn.lock)
+        # Anchored to the basename boundary (`*/name` or bare `name`, not a
+        # bare `*name` suffix glob) — `*package-lock.json` would also match
+        # an unrelated `credentials-package-lock.json`.
+        *.env.example|package-lock.json|*/package-lock.json|yarn.lock|*/yarn.lock)
             for regex in "${HIGH_CONFIDENCE_PATTERNS[@]}" "${PROJECT_KEY_PATTERNS[@]}"; do
                 if printf '%s' "$content" | grep -qPi "$regex" 2>/dev/null; then
                     echo "[secret-scan] Potential secret found in $file (pattern: ${regex:0:30}...)"
