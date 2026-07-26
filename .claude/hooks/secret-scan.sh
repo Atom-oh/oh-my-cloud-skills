@@ -194,28 +194,166 @@ def mask(text):
     return "".join(out2)
 
 masked = mask(s)
-seps = [sp.span() for sp in re.finditer(r"&&|\|\||;|\||\n", masked)]
+# A boundary is whitespace, start/end of string, OR a shell control
+# character (&, |, ;, (, ), <, >, `) that can sit directly against a word
+# with no space at all — `git init&&git commit`, `(git commit -m a) && (...)`,
+# `git commit>/dev/null`, `` `git commit` ``. A plain \s-only boundary
+# treats "init" in the first example, "git" in the second, "commit" in the
+# third, and both words in the fourth as NOT standalone (no space touches
+# them), silently failing to recognize any.
+B = r"(?:[\s&|;()<>`]|^|$)"
+# `&` must split same as `&&` (a single background-job `&` is also a
+# statement separator) — listed before the bare-word alternatives below so
+# `&&` still consumes both characters at once, same ordering as `||`/`|`.
+# The bare-`&` alternative excludes fd-duplication forms (`2>&1`, `&>file`,
+# `1>&2`) via lookaround alone -- `<`/`>` immediately next to the `&` is
+# what marks those as redirect tokens rather than a statement separator
+# (`2>&1`: `&` preceded by `>`; `&>file`: `&` followed by `>`), never a
+# bare digit by itself. An earlier version of this lookbehind also excluded
+# a digit immediately before `&`, reasoning it might be part of a redirect
+# -- but a real background-job `&` routinely follows ordinary digit-ending
+# text too (`git commit -m msg1 & git -C /other commit -m y`), and
+# excluding it there silently merged two separate commits back into one
+# statement, defeating the multi-commit fail-closed check just below
+# (matches=1 instead of 2) and losing the second commit own `-C`.
+# `$(` also splits, even with no shell operator between two instances --
+# `echo $(git -C /a commit -m x) $(git -C /b commit -m y)` has no &&/;/|
+# anywhere (both substitutions are just space-separated ARGUMENTS to
+# `echo`), so without this, `(` merely being in `B` let both occurrences
+# get counted as ONE unsplit statement -- matches=1 instead of 2, so the
+# multi-commit fail-closed check below never fired and the second `-C`
+# was silently never verified. A bare `(` (no `$`) is deliberately NOT a
+# split point here: `(cmd1) (cmd2)` with no operator between them is not
+# valid shell syntax to begin with, so that ambiguity cannot arise; the
+# existing `(git commit -m a) && (...)` case already has an explicit `&&`
+# splitting it. A `$(` that is itself inside a quoted string or heredoc
+# body (how this project own multi-line commit messages are built) is
+# already invisible here -- it was replaced with "x" placeholders by the
+# masking pass above, long before this split runs.
+#
+# The same "no operator, just whitespace between two invocations" gap
+# applies identically to a backtick substitution and process substitution
+# (`<(`/`>(`) -- `` echo `git -C /a commit -m x` `git -C /b commit -m y` ``
+# and `cat <(git -C /a commit ...) <(git -C /b commit ...)` are both single
+# unsplit statements today for the exact same reason `$(...)  $(...)` was.
+# A bare backtick has no "open" vs "close" distinction a regex can tell
+# apart, but splitting on EVERY backtick occurrence still gets a single
+# substitution right (both halves land on either side of an empty middle
+# segment) and correctly separates two side-by-side ones.
+seps = [sp.span() for sp in re.finditer(r"&&|\|\||;|\||\n|(?<![<>])&(?![&>])|\$\(|`|<\(|>\(", masked)]
 starts = [0] + [e for (_, e) in seps]
 ends = [st for (st, _) in seps] + [len(masked)]
 matches = []
 for (a, b) in zip(starts, ends):
     stmt = masked[a:b]
-    if re.search(r"(?:^|\s)git(?:\s|$)", stmt) and re.search(r"(?:^|\s)commit(?:\s|$)", stmt):
+    if re.search(B + "git" + B, stmt) and re.search(B + "commit" + B, stmt):
         matches.append((a, b))
 if len(matches) > 1:
     sys.exit(3)  # more than one separate commit invocation — see bash side
 elif matches:
     a, b = matches[0]
-    m = re.search(r"(?:^|\s)(commit)(?:\s|$)", masked[a:b])
+    m = re.search(B + "(commit)" + B, masked[a:b])
     sys.stdout.write(s[a:a + m.start(1)])  # slice the ORIGINAL text
 else:
-    sys.stdout.write(s)
+    # No statement anywhere in the command has a standalone "git" AND a
+    # standalone "commit" word. The FIRST question -- checked before
+    # anything else -- is whether the raw text even looks like it names a
+    # repo-selector (-C/--git-dir/--work-tree/GIT_DIR=/...). If it does,
+    # which repo is actually meant cannot be told apart from text alone, so
+    # this fails closed (exit 5) no matter what else is true about the
+    # command -- specifically, checked BEFORE the non-commit classification
+    # below, not after: a command can hide its own literal "commit" word
+    # from a text-based check (quote-splicing like `com''mit`, a variable
+    # holding the pieces) while a REAL, literal "-C /somewhere" still sits
+    # in the raw text plainly readable, and letting the (mis-classified as
+    # "not a commit") case win in that situation would drop the scan
+    # entirely instead of failing closed on the selector it can plainly
+    # see. Checked against raw `s`, not masked, because masked blanks a
+    # selector that is itself quoted (`git "-C" /other "commit" -m x` is
+    # valid and really does pass -C to git); a command that reaches this
+    # branch is already atypical, so the friction of an occasional prose
+    # "-C" mention triggering it is an accepted tradeoff against silently
+    # missing a real one.
+    #
+    # Only once there is no selector hint at all does it matter whether
+    # this command is:
+    #   (a) genuinely not a commit -- every "commit" in the raw text is
+    #       specifically a long-option flag value (`git log
+    #       --grep=commit`), never its own word (exit 4). Checked with
+    #       `--flag=commit`, not a bare `(?<!=)` character check -- the
+    #       latter also (wrongly) classified a commit invoked through a git
+    #       alias definition as non-commit. Residual gap this still cannot
+    #       close: a command that invokes an ALREADY-defined alias by its
+    #       short name (`git c --trailer=commit -m x`, where some earlier,
+    #       separate `git config alias.c commit` made "c" mean "commit")
+    #       has no literal standalone "commit" word anywhere in THIS
+    #       command at all, so nothing here can ever recognize it -- same
+    #       class of undecidable-from-static-text limitation as the `cd
+    #       other-repo` gap documented near the top of this file.
+    #   (b) a REAL commit this parser failed to recognize as standalone --
+    #       quoted (`git "commit" -m x`), reached through variable
+    #       indirection (`GIT=git; "$GIT" commit -m x`), etc. (exit 6).
+    # Bash treats (a) and (b) identically once there is no selector hint --
+    # CMD_SIG="" and fall through to the unconditional scan below, rather
+    # than skipping the hook outright. An earlier version of (a) skipped
+    # the entire hook (bash `exit 0`) on the reasoning that a confirmed
+    # non-commit needs no commit-secret scan -- true on its own, but it
+    # also skipped this hook OTHER, independent checks that do not
+    # depend on this being a commit at all (the force-add-bypasses-
+    # .gitignore detection further below), for a command that also force-
+    # adds a file alongside an unrelated, non-commit "commit" mention
+    # (`git add -f .env && git log --grep=commit`). Falling through here
+    # costs the friction round 18 was trying to remove (a confirmed
+    # non-commit command can once again fail closed over an unrelated,
+    # pre-existing secret already sitting in the working tree) -- accepted
+    # again, same as the top-level gate comment above: over-scanning only
+    # costs friction, under-scanning misses a real secret.
+    # `-C` needs a boundary BEFORE it, not a `\b` word-boundary AFTER it --
+    # global -C accepts a concatenated target with no space (`-C/other`,
+    # `-Cother`), same as the bash-side extraction regex below handles;
+    # `-C\b` requires a non-word character right after the "C", which a
+    # concatenated target never has, silently missing that whole form. The
+    # boundary class here also carries quote characters -- `git "-C" /other
+    # "commit" -m x` is exactly the shape this whole exit-5 branch exists
+    # for (quoting hid the standalone "commit" word from the match above),
+    # and the quote sitting directly before "-C" is itself the boundary
+    # that needs recognizing, or the very case motivating this check slips
+    # through it.
+    if re.search(r"(?:^|[\s&|;()<>`\"\x27])-C|--git-dir|--work-tree|GIT_DIR=|GIT_WORK_TREE=|GIT_INDEX_FILE=|core\.worktree=", s):
+        sys.exit(5)
+    flagval_commits = len(re.findall(r"--[A-Za-z][A-Za-z-]*=[\"\x27]?commit\b", s))
+    total_commits = len(re.findall(r"\bcommit\b", s))
+    if total_commits > 0 and total_commits == flagval_commits:
+        sys.exit(4)
+    else:
+        sys.exit(6)
 ' 2>/dev/null)"
     py_rc=$?
     if [ "$py_rc" -eq 3 ]; then
         block "command contains more than one separate 'git ... commit' invocation — this hook resolves and scans only one repo-selector target, so a second commit's own -C (or lack of one) is never independently verified. Run each commit as its own Bash call."
+    elif [ "$py_rc" -eq 5 ]; then
+        block "command may redirect git's target repo (-C/--git-dir/--work-tree/GIT_DIR=/GIT_WORK_TREE=/GIT_INDEX_FILE=/core.worktree=) but this hook could not isolate a single, unambiguous 'git ... commit' statement to verify it against (quoting, or variable/alias indirection). Run the commit as its own plain 'git -C <repo> commit ...' Bash call so this hook can confirm what it's scanning."
+    elif [ "$py_rc" -eq 4 ]; then
+        # Confirmed non-commit (every "commit" in the text is a flag
+        # value) -- no commit-secret scan needed, but NOT a bash `exit 0`:
+        # this hook's other, commit-independent checks (force-add-bypasses-
+        # .gitignore, further below) must still run for a command that also
+        # does something like `git add -f .env` alongside the non-commit
+        # "commit" mention. Fall through with no resolved repo-selector.
+        CMD_SIG=""
+    elif [ "$py_rc" -eq 6 ]; then
+        echo "[secret-scan] could not isolate a single git-commit statement (quoting or variable/alias indirection) and no repo-selector token was found in the raw command — scanning this hook's own cwd" >&2
+        CMD_SIG=""
     elif [ "$py_rc" -eq 0 ]; then
         CMD_SIG="$py_out"
+    else
+        # python3 crashed or was killed (rc 1/2, or anything else this
+        # chain doesn't name) -- CMD_SIG is already "" from its
+        # initialization above, so this isn't a silent fail-open (the
+        # unconditional scan below still runs against this hook's own
+        # cwd), but unlike the exit-6 case there was no warning at all.
+        # Same diagnostic, so this path is visible too.
+        echo "[secret-scan] command parser exited unexpectedly (rc=$py_rc) — scanning this hook's own cwd" >&2
     fi
 fi
 
@@ -260,6 +398,14 @@ HAS_REDIRECT=0
 [[ "$CMD_SIG" =~ GIT_WORK_TREE= ]] && HAS_REDIRECT=1
 [[ "$CMD_SIG" =~ GIT_INDEX_FILE= ]] && HAS_REDIRECT=1
 [[ "$CMD_SIG" =~ (-c|--config)[[:space:]]+core\.worktree= ]] && HAS_REDIRECT=1
+# `-C` immediately preceded by a quote character (`git "-C" /other commit`)
+# is real to git once the shell strips the quote, but the extraction above
+# only recognizes a plain-whitespace boundary before "-C" and silently
+# fails to see this form at all -- fail closed on it explicitly rather than
+# letting HAS_REDIRECT stay 0 and this hook fall through to scanning its
+# own cwd while the actual commit goes to a repo it never even looked at.
+QUOTED_C_ADJACENT=0
+[[ "$CMD_SIG" =~ [\"\']-C ]] && QUOTED_C_ADJACENT=1 && HAS_REDIRECT=1
 
 # If this hook's own cwd isn't inside a git repository at all, the command
 # doesn't try to point git at one either, and the command does NOT itself
@@ -280,8 +426,13 @@ HAS_REDIRECT=0
 # what "no repo → exit 0" would do), fail closed on it: a real secret
 # already sitting in the directory when it's freshly `git init`-ed and
 # committed in one shot must not go out unscanned.
+# This boundary character class, and the two below it (has_add/has_force),
+# must stay a superset of the Python `B` class above (`[\s&|;()<>` + backtick]`)
+# -- this one additionally carries quote characters, since a bare-word
+# check on raw $CMD has no prior masking pass to already neutralize a
+# quoted "init"/"add"/"-f".
 if [ -z "$WORK_DIR" ]; then
-    if [[ "$CMD" =~ (^|[[:space:]])init([[:space:]]|$) ]]; then
+    if [[ "$CMD" =~ (^|[[:space:]\&\|\;\(\)\<\>\`\"\'])init([[:space:]\&\|\;\(\)\<\>\`\"\']|$) ]]; then
         block "command both initializes a repository and commits in the same call — this hook has no index yet to scan whatever files already exist in this directory before they're committed. Run 'git init' as its own Bash call first, then commit separately once a repository (and therefore a scannable index) exists."
     fi
     if [ "$HAS_REDIRECT" -eq 0 ]; then
@@ -290,11 +441,12 @@ if [ -z "$WORK_DIR" ]; then
 fi
 [ -z "$WORK_DIR" ] && WORK_DIR="."
 
-if [ "${c_count:-0}" -gt 1 ] || [[ "$CMD_SIG" =~ --git-dir(=|[[:space:]]) ]] || \
+if [ "${c_count:-0}" -gt 1 ] || [ "$QUOTED_C_ADJACENT" -eq 1 ] || \
+   [[ "$CMD_SIG" =~ --git-dir(=|[[:space:]]) ]] || \
    [[ "$CMD_SIG" =~ --work-tree(=|[[:space:]]) ]] || [[ "$CMD_SIG" =~ GIT_DIR= ]] || \
    [[ "$CMD_SIG" =~ GIT_WORK_TREE= ]] || [[ "$CMD_SIG" =~ GIT_INDEX_FILE= ]] || \
    [[ "$CMD_SIG" =~ (-c|--config)[[:space:]]+core\.worktree= ]]; then
-    block "command redirects git's target repo in a form this hook doesn't verify (--git-dir/--work-tree/GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE/core.worktree/multiple -C). Run the commit as its own 'git -C <repo> commit ...' call, or from that repo's own directory, so this hook can confirm what it's scanning."
+    block "command redirects git's target repo in a form this hook doesn't verify (--git-dir/--work-tree/GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE/core.worktree/multiple -C/quote-adjacent -C). Run the commit as its own 'git -C <repo> commit ...' call, or from that repo's own directory, so this hook can confirm what it's scanning."
 fi
 if [[ "$CMD_SIG" =~ (^|[[:space:]])-C[[:space:]]*([^[:space:]]+) ]]; then
     raw_target="${BASH_REMATCH[2]}"
@@ -373,16 +525,19 @@ GENERIC_PATTERNS=(
 )
 PATTERNS=("${HIGH_CONFIDENCE_PATTERNS[@]}" "${PROJECT_KEY_PATTERNS[@]}" "${GENERIC_PATTERNS[@]}")
 
-# Files to skip — the exact path (not a bare filename), since
-# `[[ "$file" == $pattern ]]` matches the whole staged path
-# (e.g. ".claude/hooks/secret-scan.sh") and a bare-name/broad glob would
-# also exempt any unrelated file that happens to share that name elsewhere.
-# .env.example is handled separately below (HIGH_CONFIDENCE_PATTERNS only,
-# not skipped outright) — it's meant to hold placeholders, so the generic
-# assignment patterns would mostly flag the placeholders themselves, but a
-# real, fixed-prefix service key pasted in by mistake is still worth
-# catching there.
-SKIP_FILES=('.claude/hooks/secret-scan.sh' 'package-lock.json' 'yarn.lock')
+# Fully skipped — the exact path, since `[[ "$file" == $pattern ]]` matches
+# the whole staged path and a bare filename would also exempt any unrelated
+# file sharing that name elsewhere. Only this script's own file is a TRUE
+# full skip: its source contains every detection pattern above as a literal
+# string, so scanning it against its own patterns risks self-matching.
+# package-lock.json/yarn.lock are NOT fully skipped (below) — a private
+# registry's resolved URL can still carry a fixed-prefix token
+# (ghp_/sk-.../AKIA...) that HIGH_CONFIDENCE_PATTERNS catches regardless of
+# surrounding URL syntax (an opaque, non-fixed-format credential embedded as
+# `https://user:token@...` is NOT covered by any pattern here); only the
+# noisy GENERIC_PATTERNS (password=/secret=/api_key=, which a lockfile has
+# no legitimate reason to contain anyway) are skipped for them.
+SKIP_FILES=('.claude/hooks/secret-scan.sh')
 
 is_skipped() {
     local f="$1" s
@@ -395,7 +550,10 @@ is_skipped() {
 scan_content() {
     local file="$1" content="$2" regex
     case "$file" in
-        *.env.example)
+        # Anchored to the basename boundary (`*/name` or bare `name`, not a
+        # bare `*name` suffix glob) — `*package-lock.json` would also match
+        # an unrelated `credentials-package-lock.json`.
+        *.env.example|package-lock.json|*/package-lock.json|yarn.lock|*/yarn.lock)
             for regex in "${HIGH_CONFIDENCE_PATTERNS[@]}" "${PROJECT_KEY_PATTERNS[@]}"; do
                 if printf '%s' "$content" | grep -qPi "$regex" 2>/dev/null; then
                     echo "[secret-scan] Potential secret found in $file (pattern: ${regex:0:30}...)"
@@ -480,9 +638,18 @@ scan_list_from "untracked files" git ls-files -z --others --exclude-standard
 # force flag are checked independently (not `git[[:space:]]+add` as one
 # token) so `git -C . add -f` still counts — over-matching here only costs
 # an extra scan.
+# Residual, documented gap in these two checks (same class as the `cd
+# other-repo` and alias gaps noted elsewhere in this file): they match
+# against raw $CMD with no masking pass, so a quote-split flag
+# (`-''f`, `a''dd`) that bash still executes as `-f`/`add` is invisible to
+# `[a-zA-Z]*` here the same way it is to the Python side's literal-word
+# checks. Undecidable from this kind of text-only matching without porting
+# this check onto the already-masked Python text, which would need a new
+# exit code and CMD_SIG-style channel back to bash -- not done here.
 has_add=0; has_force=0
-[[ "$CMD" =~ (^|[[:space:]])add([[:space:]]|$) ]] && has_add=1
-{ [[ "$CMD" =~ [[:space:]]-[a-zA-Z]*f[a-zA-Z]*([[:space:]]|$) ]] || [[ "$CMD" =~ --force([[:space:]]|$) ]]; } && has_force=1
+[[ "$CMD" =~ (^|[[:space:]\&\|\;\(\)\<\>\`\"\'])add([[:space:]\&\|\;\(\)\<\>\`\"\']|$) ]] && has_add=1
+{ [[ "$CMD" =~ [[:space:]\&\|\;\(\)\<\>\`\"\']-[a-zA-Z]*f[a-zA-Z]*([[:space:]\&\|\;\(\)\<\>\`\"\']|$) ]] || \
+  [[ "$CMD" =~ --force([[:space:]\&\|\;\(\)\<\>\`\"\']|$) ]]; } && has_force=1
 if [ "$has_add" -eq 1 ] && [ "$has_force" -eq 1 ]; then
     scan_list_from "force-added ignored files" git ls-files -z --others -i --exclude-standard
 fi
