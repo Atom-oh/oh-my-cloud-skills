@@ -98,31 +98,33 @@ agents that accumulate cross-session knowledge: ops domain agents + coordinator 
 wellarchitected (project — environment facts, incident patterns), content-review &
 gate-chair & harness-analyst (project — recurring findings, past verdicts/proposals),
 co-agent & kiro-delegate (user — peer-CLI behavior is machine-wide, not per-project)). `model`/`effort` tiers follow the DeepSWE v1.1
-cost-efficiency data (2026-07, supersedes PR #62's sonnet-worker rule). **Every agent that
-sets `effort:` runs `model: opus`; the tier is expressed through `effort` alone** — the
-DeepSWE data showed opus at a *lower* effort beating sonnet at a higher one on both score
-and cost, because sonnet burns 2x+ agent steps to reach the same place and each extra step
-is a full context re-read. So there is one model and four efforts:
+cost-efficiency data (2026-07, supersedes PR #62's sonnet-worker rule). **Above the
+dispatch/scan floor there is one model — `opus` — and the tier is expressed through
+`effort` alone** — the DeepSWE data showed opus at a *lower* effort beating sonnet at a
+higher one on both score and cost, because sonnet burns 2x+ agent steps to reach the same
+place and each extra step is a full context re-read. The floor is the only `sonnet`
+survivor, and it is a row in the same table, not a footnote to it:
 
-| `effort` | Role | Examples |
-|----------|------|----------|
-| `xhigh` | judgment/synthesis gates where the verdict is the product | `content-review-agent`, `ops-coordinator-agent`, `gate-chair`, `wellarchitected-agent` |
-| `high` | multi-step diagnosis / build workers | ops domain agents, `architecture-diagram-agent`, `workshop-agent` |
-| `medium` | mechanical application of an already-approved plan | `pr-autofix-implementer` (only) |
-| `low` | single-artifact writers, analysis with a narrow output | `document-agent`, `gitbook-agent`, `cost-agent`, `kiro-converter-agent`, `harness-analyst` |
+| Tier | Role | Examples |
+|------|------|----------|
+| `opus`+`xhigh` | judgment/synthesis gates where the verdict is the product | `content-review-agent`, `ops-coordinator-agent`, `gate-chair`, `wellarchitected-agent` |
+| `opus`+`high` | multi-step diagnosis / build workers | ops domain agents, `architecture-diagram-agent`, `workshop-agent` |
+| `opus`+`medium` | mechanical application of an already-approved plan | `pr-autofix-implementer` (only) |
+| `opus`+`low` | single-artifact writers, analysis with a narrow output | `document-agent`, `gitbook-agent`, `cost-agent`, `kiro-converter-agent`, `harness-analyst` |
+| `sonnet`+`low` | pure dispatch/scan — routes to another agent or mechanically diffs files | `presentation-agent`, `doc-sync-checker` |
 
-`pr-autofix-implementer` is the sole `medium`: it applies an already-approved plan, so
-deeper reasoning buys nothing, but its multi-file edit reliability has to hold — a
+`pr-autofix-implementer` is the sole `opus`+`medium`: it applies an already-approved plan,
+so deeper reasoning buys nothing, but its multi-file edit reliability has to hold — a
 plan-approved edit needing a second pass costs a whole extra review-poll cycle in that
 skill, not just one subagent call.
 
-**The one place `sonnet` still belongs is pure dispatch/scan** — an agent that routes to
-another agent or mechanically diffs files, where there is no judgment to deepen and opus
-buys nothing at any effort: `presentation-agent` (format dispatcher, `AskUserQuestion`
-only) and `doc-sync-checker` (`/sync-docs` file comparison, called on every run) stay
-`sonnet`+`low`. Everywhere else the former `sonnet` tiers moved to `opus`+`low` — same rung
-of the cost ladder, since the DeepSWE win came from fewer agent steps rather than a cheaper
-per-token rate.
+The `sonnet`+`low` floor exists because those two agents have no judgment to deepen, so
+opus buys nothing at any effort: `presentation-agent` is a format dispatcher whose only
+tool is `AskUserQuestion`, and `doc-sync-checker` mechanically diffs files on every
+`/sync-docs` run. Everywhere else the former `sonnet` tiers moved to `opus`+`low` — same
+rung of the cost ladder, since the DeepSWE win came from fewer agent steps rather than a
+cheaper per-token rate. Write tiers as `` `model` ``+`` `effort` `` (e.g. `opus`+`low`)
+wherever they're referenced, here and in per-plugin docs.
 
 ```yaml
 ---
