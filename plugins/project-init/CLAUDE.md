@@ -29,7 +29,7 @@ Core plugin providing project structure initialization, documentation quality sc
 
 ## Upstream
 - **Source**: `git@github.com:whchoi98/project-init.git` · **Author**: whchoi98 · 마켓플레이스 통일 버전으로 정렬.
-- 로컬 분기 파일(plugin.json·CLAUDE.md·doc-sync-checker[sonnet 티어]·pr-autofix·decision-reconcile 등)은 rsync 동기화에서 **반드시 제외**.
+- 로컬 분기 파일(plugin.json·CLAUDE.md·doc-sync-checker[sonnet+low 티어]·pr-autofix·decision-reconcile 등)은 rsync 동기화에서 **반드시 제외**.
 
 > **동기화 명령·제외 목록·로컬 분기 사유 상세**: **`references/upstream-sync.md`** — upstream sync 수행 시 참조.
 
