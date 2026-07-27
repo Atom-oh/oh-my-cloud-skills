@@ -1,7 +1,6 @@
 ---
 name: slide-fix
 description: "Remarp 슬라이드 이슈 어노테이션(<!-- issue: -->)을 읽고 수정 반영. Triggers: /slide-fix, issue 반영, slide fix, 이슈 수정, 슬라이드 이슈, fix slide issues, apply issue annotations"
-model: sonnet
 allowed-tools:
   - Read
   - Edit

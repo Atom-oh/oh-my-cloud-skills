@@ -1,7 +1,6 @@
 ---
 name: gitbook
 description: "Create GitBook documentation sites with proper structure, navigation, and rich components. Use when creating documentation sites, technical guides, or knowledge bases with GitBook."
-model: sonnet
 allowed-tools:
   - Read
   - Write

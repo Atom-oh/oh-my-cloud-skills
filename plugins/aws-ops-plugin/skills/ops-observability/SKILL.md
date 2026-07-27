@@ -1,23 +1,6 @@
 ---
 name: ops-observability
-description: "AWS/EKS observability setup and analysis: CloudWatch, Prometheus, open-source stack (OpenTelemetry, Grafana, Loki, Tempo, ClickHouse), and AWS DevOps Agent incident escalation"
-triggers:
-  - "monitoring"
-  - "모니터링"
-  - "로그 분석"
-  - "알람"
-  - "observability"
-  - "logs insights"
-  - "opentelemetry"
-  - "otel"
-  - "grafana"
-  - "clickhouse"
-  - "오픈소스 모니터링"
-  - "distributed tracing"
-  - "devops agent"
-  - "데브옵스 에이전트"
-  - "incident investigation"
-model: sonnet
+description: "AWS/EKS observability setup and analysis: CloudWatch, Logs Insights, Prometheus, the open-source stack (OpenTelemetry/OTel, Grafana, Loki, Tempo, ClickHouse, VictoriaMetrics), distributed tracing, and AWS DevOps Agent incident escalation. Use when the user asks about monitoring, observability, log analysis, alarms, or incident investigation — '모니터링', '로그 분석', '알람', '오픈소스 모니터링', '데브옵스 에이전트'."
 allowed-tools:
   - Bash
   - Read

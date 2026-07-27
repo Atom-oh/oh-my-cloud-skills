@@ -1,19 +1,6 @@
 ---
 name: ops-security-audit
-description: "AWS/EKS security audit: IAM, network security, compliance checks, plus AWS Security Agent (design/code review, on-demand penetration testing). The mandatory security leg of superpowers:requesting-code-review for IaC/AWS changes — enforces the repo's global AWS security mandates (no 0.0.0.0/0 ingress; no IAM Principal:\"*\" or Resource:\"*\" without Condition; no Lambda AuthType:NONE; no secrets in env; S3 Block Public Access on; no ALB bypassing CloudFront) — and a shift-left security pre-check during superpowers:writing-plans."
-triggers:
-  - "security audit"
-  - "보안 점검"
-  - "compliance"
-  - "security review"
-  - "보안 감사"
-  - "security agent"
-  - "시큐리티 에이전트"
-  - "penetration testing"
-  - "pentest"
-  - "code security review"
-  - "취약점 점검"
-model: sonnet
+description: "AWS/EKS security audit: IAM, network security, compliance checks, plus AWS Security Agent (design/code review, on-demand penetration testing). The mandatory security leg of superpowers:requesting-code-review for IaC/AWS changes — enforces the repo's global AWS security mandates (no 0.0.0.0/0 ingress; no IAM Principal:\"*\" or Resource:\"*\" without Condition; no Lambda AuthType:NONE; no secrets in env; S3 Block Public Access on; no ALB bypassing CloudFront) — and a shift-left security pre-check during superpowers:writing-plans. Use when the user asks for a security audit, security review, code security review, compliance check, penetration testing/pentest, or mentions the AWS Security Agent — '보안 점검', '보안 감사', '취약점 점검', '시큐리티 에이전트'."
 allowed-tools:
   - Bash
   - Read

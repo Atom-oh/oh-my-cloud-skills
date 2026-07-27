@@ -17,6 +17,15 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 
 
+# Agent Skills spec (https://agentskills.io/specification) allows exactly six
+# frontmatter fields; `user-invocable`/`disable-model-invocation` are Claude Code
+# extensions used by official skills. Anything else is inert at runtime.
+SPEC_FRONTMATTER_KEYS = {
+    'name', 'description', 'license', 'compatibility', 'metadata', 'allowed-tools',
+    'user-invocable', 'disable-model-invocation',
+}
+
+
 def parse_frontmatter(filepath: Path) -> Tuple[Dict[str, Any], str]:
     """Parse YAML frontmatter from a markdown file. Returns (dict, body)."""
     content = filepath.read_text(encoding='utf-8')
@@ -233,17 +242,19 @@ class SkillEval:
         else:
             self.log(dim, '+0 missing name or description in frontmatter')
 
-        # model + allowed-tools present: 3pts
-        has_model = bool(self.frontmatter.get('model'))
-        has_tools = bool(self.frontmatter.get('allowed-tools'))
-        if has_model and has_tools:
+        # allowed-tools present + no non-spec keys: 3pts
+        # Non-spec frontmatter keys are silently ignored by the runtime, so a
+        # `triggers:`/`model:` block is inert — worst case its keywords never reach
+        # the selection surface. Scoring must not reward them.
+        unknown = sorted(set(self.frontmatter) - SPEC_FRONTMATTER_KEYS)
+        if unknown:
+            self.log(dim, f'+0 non-spec frontmatter keys (inert, ignored at runtime): {unknown}')
+        elif self.frontmatter.get('allowed-tools'):
             pts += 3
-            self.log(dim, '+3 model and allowed-tools present')
-        elif has_model or has_tools:
-            pts += 1
-            self.log(dim, '+1 only model or allowed-tools present')
+            self.log(dim, '+3 spec-conformant frontmatter with allowed-tools')
         else:
-            self.log(dim, '+0 missing model and allowed-tools')
+            pts += 1
+            self.log(dim, '+1 spec-conformant frontmatter, no allowed-tools')
 
         # >=3 markdown sections with headers: 4pts
         sections = count_sections(self.body)
