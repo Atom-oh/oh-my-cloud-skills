@@ -60,7 +60,7 @@ rsync -av \
   분기로 발견되어 등록 — rsync 시 이 힌트가 소실되면 루트 CLAUDE.md 라우팅 표와 어긋남.
 - `skills/pr-autofix/**`, `commands/pr-autofix.md` — 로컬 전용(upstream 없음). 모델 ID Opus 4.8 로컬 고정
 - `skills/decision-reconcile/**` — 로컬 전용(upstream 없음). ADR 모순 검출·번복 ADR 초안. 멀티 에이전트 패널(Claude 모델 티어 + 선택적 co-agent CLI)
-- `agents/doc-sync-checker.md` — 모델 티어 로컬 `sonnet`(upstream `opus`). 기계적 doc 비교/채점이라 opus 과도 + `/sync-docs`마다 호출 비용. upstream 반영 권장. **tools**: bare `Bash`
+- `agents/doc-sync-checker.md` — 모델 티어 로컬 `sonnet`+`low`(upstream `opus`). 기계적 doc 비교/채점이라 판단 깊이를 늘릴 여지가 없고 `/sync-docs`마다 호출됨 — 루트 `CLAUDE.md` 티어 표의 `sonnet`+`low`(pure dispatch/scan) 행에 해당. upstream 반영 권장. **tools**: bare `Bash`
   (agent frontmatter의 `tools` 필드는 bare 툴명만 유효 — `Bash(find:*)` 같은 스코프드
   표기는 지원되지 않으며, 명령 수준 제한은 PreToolUse 훅/settings 권한 소관. 과거 이
   항목이 스코프드 표기를 로컬 상태로 기술했으나 실제 파일과 불일치해 2026-07 정정)

@@ -98,16 +98,33 @@ agents that accumulate cross-session knowledge: ops domain agents + coordinator 
 wellarchitected (project — environment facts, incident patterns), content-review &
 gate-chair & harness-analyst (project — recurring findings, past verdicts/proposals),
 co-agent & kiro-delegate (user — peer-CLI behavior is machine-wide, not per-project)). `model`/`effort` tiers follow the DeepSWE v1.1
-cost-efficiency data (2026-07, supersedes PR #62's sonnet-worker rule): `opus`+`xhigh`
-for judgment/synthesis gates where the verdict is the product, `opus`+`high` for
-multi-step diagnosis/build workers (opus HIGH beats sonnet HIGH on both score and cost —
-sonnet burns 2x+ agent steps), `sonnet`+`medium` for single-artifact writers,
-`sonnet`+`low` for pure dispatch/scan. One documented exception outside this 4-tier
-grid: `pr-autofix-implementer` runs `opus`+`medium` by design — its role is edit-only
-mechanical application of an already-approved plan, so `xhigh`/`high` reasoning depth
-buys nothing, but opus's multi-file edit reliability still cuts fix-loop iterations
-more than a cost-optimal `sonnet` tier would (a plan-approved edit needing a second
-pass costs a full extra review-poll cycle in that skill, not just one subagent call).
+cost-efficiency data (2026-07, supersedes PR #62's sonnet-worker rule). **Above the
+dispatch/scan floor there is one model — `opus` — and the tier is expressed through
+`effort` alone** — the DeepSWE data showed opus at a *lower* effort beating sonnet at a
+higher one on both score and cost, because sonnet burns 2x+ agent steps to reach the same
+place and each extra step is a full context re-read. The floor is the only `sonnet`
+survivor, and it is a row in the same table, not a footnote to it:
+
+| Tier | Role | Examples |
+|------|------|----------|
+| `opus`+`xhigh` | judgment/synthesis gates where the verdict is the product | `content-review-agent`, `ops-coordinator-agent`, `gate-chair`, `wellarchitected-agent` |
+| `opus`+`high` | multi-step diagnosis / build workers | ops domain agents, `architecture-diagram-agent`, `workshop-agent` |
+| `opus`+`medium` | mechanical application of an already-approved plan | `pr-autofix-implementer` (only) |
+| `opus`+`low` | single-artifact writers, analysis with a narrow output | `document-agent`, `gitbook-agent`, `cost-agent`, `kiro-converter-agent`, `harness-analyst` |
+| `sonnet`+`low` | pure dispatch/scan — routes to another agent or mechanically diffs files | `presentation-agent`, `doc-sync-checker` |
+
+`pr-autofix-implementer` is the sole `opus`+`medium`: it applies an already-approved plan,
+so deeper reasoning buys nothing, but its multi-file edit reliability has to hold — a
+plan-approved edit needing a second pass costs a whole extra review-poll cycle in that
+skill, not just one subagent call.
+
+The `sonnet`+`low` floor exists because those two agents have no judgment to deepen, so
+opus buys nothing at any effort: `presentation-agent` is a format dispatcher whose only
+tool is `AskUserQuestion`, and `doc-sync-checker` mechanically diffs files on every
+`/sync-docs` run. Everywhere else the former `sonnet` tiers moved to `opus`+`low` — same
+rung of the cost ladder, since the DeepSWE win came from fewer agent steps rather than a
+cheaper per-token rate. Write tiers as `` `model` ``+`` `effort` `` (e.g. `opus`+`low`)
+wherever they're referenced, here and in per-plugin docs.
 
 ```yaml
 ---
@@ -308,8 +325,8 @@ Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Sk
 | Agent | Purpose |
 |-------|---------|
 | `co-agent` | Multi-AI panel chair — fans review/decision/ADR prompts to Kiro/Codex/Antigravity CLIs and synthesizes |
-| `gate-chair` | Hybrid-gate chair judgment isolated on `model: opus` — Phase T triage + verify round-close verdicts; makes zero external calls (fan-out/consent/cost stay with the host), for hosts running a cheaper tier |
-| `harness-analyst` | Hill-climbing analyst (advisory-only, `model: sonnet`) — mines accumulated `.claude/co-agent-consensus/` run records (`stage_wall.tsv`, task/gate `result.json`) into proposed `/co-agent:configure set` commands; never writes config, observations-only below 3 recorded runs |
+| `gate-chair` | Hybrid-gate chair judgment isolated on its own `opus`+`xhigh` subagent — Phase T triage + verify round-close verdicts; makes zero external calls (fan-out/consent/cost stay with the host), for hosts running a cheaper tier |
+| `harness-analyst` | Hill-climbing analyst (advisory-only, `opus`+`low`) — mines accumulated `.claude/co-agent-consensus/` run records (`stage_wall.tsv`, task/gate `result.json`) into proposed `/co-agent:configure set` commands; never writes config, observations-only below 3 recorded runs |
 
 Skill: `co-agent` — 6 modes: **Review** (multi-AI code/arch review + Well-Architected), **Decide** (decision support when unsure), **ADR** (co-author ADRs), **sync-context** (distill `CLAUDE.md` → `AGENTS.md` once; Kiro, Codex, and Agy all share that one distilled file — Kiro via `.kiro/steering/project-context.md` → `#[[file:AGENTS.md]]`, Codex and Agy both read `AGENTS.md` natively from their cwd — the fan-out additionally folds it into Agy's context as defense-in-depth for non-root-cwd runs), **Consensus** (autonomous doc→plan→implementation pipeline gated by the multi-model panel, `/co-agent:consensus`), and **harness** (host-designs / peer-implements / panel-reviews orchestrator, `/co-agent:harness`). Fans the same prompt to whichever AI CLIs are installed — Kiro (`kiro-cli chat --no-interactive`; auth via login or `KIRO_API_KEY`), Codex (`codex exec -s read-only`), Agy (`agy -p --sandbox`; Gemini support removed — ADR-010) — in parallel, then **Claude synthesizes** (consensus vs. dissent). Degrades gracefully; if no CLI is present, Claude answers solo. Adapters: `references/ai-cli-adapters.md`.
 
