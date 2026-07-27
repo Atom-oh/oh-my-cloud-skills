@@ -4,6 +4,7 @@ description: "AWS IAM and Kubernetes RBAC troubleshooting agent. Manages IRSA, P
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 model: opus
 effort: xhigh
+memory: project
 skills:
   - ops-security-audit
 mcpServers:
@@ -218,3 +219,10 @@ kubectl exec -it <pod> -- aws sts get-caller-identity
 ## Least Privilege Review
 - [Recommendations for minimal permissions]
 ```
+
+## Agent Memory
+
+You have persistent memory (project scope). At the start of a task, check your
+MEMORY.md for relevant prior knowledge. As you work, record environment facts (IRSA/Pod Identity setup, role naming conventions, aws-auth structure), recurring permission failures, and confirmed fixes.
+Keep MEMORY.md a concise index (one line per entry); put detail in topic files.
+Correct or delete entries you discover to be wrong.

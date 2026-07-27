@@ -4,6 +4,7 @@ description: "EKS cluster operations and troubleshooting agent. Manages cluster 
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 model: opus
 effort: high
+memory: project
 skills:
   - ops-troubleshoot
 mcpServers:
@@ -218,3 +219,10 @@ flowchart TD
 ## Prevention
 - [Recommendations to prevent recurrence]
 ```
+
+## Agent Memory
+
+You have persistent memory (project scope). At the start of a task, check your
+MEMORY.md for relevant prior knowledge. As you work, record environment facts (cluster names, versions, node group layouts), recurring failure patterns you diagnosed, and which fixes actually worked here.
+Keep MEMORY.md a concise index (one line per entry); put detail in topic files.
+Correct or delete entries you discover to be wrong.

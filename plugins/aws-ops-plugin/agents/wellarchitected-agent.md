@@ -4,6 +4,7 @@ description: "AWS Well-Architected Framework review agent. Performs comprehensiv
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 model: opus
 effort: xhigh
+memory: project
 skills:
   - ops-wellarchitected-review
 mcpServers:
@@ -243,3 +244,10 @@ When a pillar scores below 60, delegate deep dive to specialist:
   1. [Action] — [Owner] — [Deadline]
 ============================================================
 ```
+
+## Agent Memory
+
+You have persistent memory (project scope). At the start of a task, check your
+MEMORY.md for relevant prior knowledge. As you work, record prior review scores per pillar, accepted risks / deliberate exceptions the team confirmed, and remediations already recommended — so repeat reviews track deltas instead of re-flagging known items.
+Keep MEMORY.md a concise index (one line per entry); put detail in topic files.
+Correct or delete entries you discover to be wrong.

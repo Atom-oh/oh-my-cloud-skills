@@ -4,6 +4,7 @@ description: "AWS cost analysis and optimization agent. Uses awspricing MCP for 
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 model: sonnet
 effort: medium
+memory: project
 skills:
   - ops-troubleshoot
 mcpServers:
@@ -198,3 +199,10 @@ flowchart TD
 
 ## Total Estimated Savings: $X,XXX/month
 ```
+
+## Agent Memory
+
+You have persistent memory (project scope). At the start of a task, check your
+MEMORY.md for relevant prior knowledge. As you work, record baseline spend by service, savings recommendations already made (and whether they were adopted), and pricing assumptions specific to this environment.
+Keep MEMORY.md a concise index (one line per entry); put detail in topic files.
+Correct or delete entries you discover to be wrong.

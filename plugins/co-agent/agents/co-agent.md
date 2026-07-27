@@ -4,6 +4,7 @@ description: "Collaborate with other AI agents (Kiro CLI, Codex, and Agy) for a 
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 model: opus
 effort: xhigh
+memory: user
 skills:
   - co-agent
 ---
@@ -93,3 +94,10 @@ or errored output means that AI skipped this run — note it and continue.
 - `references/ai-cli-adapters.md` — Kiro/Claude/Codex/Agy CLI commands, detection, fan-out, fallbacks, ADR hand-off
 - `references/architecture-review-framework.md` — review rubric, severity, PASS/REVIEW/FAIL
 - `references/aws-well-architected.md` — 6-pillar checklist for review mode
+
+## Agent Memory
+
+You have persistent memory (user scope). At the start of a task, check your
+MEMORY.md for relevant prior knowledge. As you work, record each peer CLI's observed strengths, weaknesses, and quirks (Kiro/Codex/Agy) — which kinds of questions each answers well, common failure modes, and prompt phrasings that work — so future panels weight and phrase fan-outs better.
+Keep MEMORY.md a concise index (one line per entry); put detail in topic files.
+Correct or delete entries you discover to be wrong.

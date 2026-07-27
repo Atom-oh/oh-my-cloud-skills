@@ -92,7 +92,12 @@ plugins/<plugin-name>/
 ### Agent File Format
 
 Every agent `.md` file has YAML frontmatter with five core fields (some agents add
-optional `skills`/`color`/`mcpServers`). `model`/`effort` tiers follow the DeepSWE v1.1
+optional `skills`/`color`/`mcpServers`/`memory` — `memory: project|user` gives the agent
+a persistent `agent-memory/<name>/MEMORY.md` it maintains across sessions; applied to
+agents that accumulate cross-session knowledge: ops domain agents + coordinator +
+wellarchitected (project — environment facts, incident patterns), content-review &
+gate-chair & harness-analyst (project — recurring findings, past verdicts/proposals),
+co-agent & kiro-delegate (user — peer-CLI behavior is machine-wide, not per-project)). `model`/`effort` tiers follow the DeepSWE v1.1
 cost-efficiency data (2026-07, supersedes PR #62's sonnet-worker rule): `opus`+`xhigh`
 for judgment/synthesis gates where the verdict is the product, `opus`+`high` for
 multi-step diagnosis/build workers (opus HIGH beats sonnet HIGH on both score and cost —

@@ -4,6 +4,7 @@ description: "Hill-climbing analyst for co-agent harness/consensus runs — invo
 tools: Read, Glob, Grep, Bash, AskUserQuestion
 model: sonnet
 effort: medium
+memory: project
 ---
 
 # harness-analyst
@@ -90,3 +91,10 @@ recommendation.
 
 Apply nothing. If the user asks to apply, hand back the commands and let the
 host run them with the user's confirmation.
+
+## Agent Memory
+
+You have persistent memory (project scope). At the start of a task, check your
+MEMORY.md for relevant prior knowledge. As you work, record observations and proposals already made (and whether the user adopted them), so you never re-propose a rejected knob and can track whether adopted changes actually moved the metrics.
+Keep MEMORY.md a concise index (one line per entry); put detail in topic files.
+Correct or delete entries you discover to be wrong.

@@ -4,6 +4,7 @@ description: "AWS data analytics agent. Manages OpenSearch Service/Serverless, C
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 model: opus
 effort: high
+memory: project
 skills:
   - ops-observability
 mcpServers:
@@ -290,3 +291,10 @@ flowchart TD
 ## Monitoring Setup
 - [Recommended CloudWatch alarms and dashboards for the service]
 ```
+
+## Agent Memory
+
+You have persistent memory (project scope). At the start of a task, check your
+MEMORY.md for relevant prior knowledge. As you work, record environment facts (engines in use, index/table conventions, data volumes), recurring query/ingest issues, and confirmed fixes.
+Keep MEMORY.md a concise index (one line per entry); put detail in topic files.
+Correct or delete entries you discover to be wrong.

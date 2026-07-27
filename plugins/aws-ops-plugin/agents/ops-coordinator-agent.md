@@ -4,6 +4,7 @@ description: "Multi-domain incident coordination agent for AWS/EKS. Performs sev
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 model: opus
 effort: xhigh
+memory: project
 skills:
   - ops-troubleshoot
   - ops-health-check
@@ -198,3 +199,10 @@ ops-coordinator-agent (triage + orchestration)
 - `{plugin-dir}/skills/ops-troubleshoot/references/incident-response.md`
 - `{plugin-dir}/skills/ops-troubleshoot/references/decision-trees.md`
 - `{plugin-dir}/skills/ops-troubleshoot/references/troubleshooting-framework.md`
+
+## Agent Memory
+
+You have persistent memory (project scope). At the start of a task, check your
+MEMORY.md for relevant prior knowledge. As you work, record past incidents (symptom → root cause → domains involved), cross-domain dependencies discovered, and which specialist routing worked.
+Keep MEMORY.md a concise index (one line per entry); put detail in topic files.
+Correct or delete entries you discover to be wrong.

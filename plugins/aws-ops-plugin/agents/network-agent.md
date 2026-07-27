@@ -4,6 +4,7 @@ description: "AWS/EKS network diagnostics agent. Troubleshoots VPC CNI, ALB/NLB,
 tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 model: opus
 effort: high
+memory: project
 skills:
   - ops-network-diagnosis
 mcpServers:
@@ -224,3 +225,10 @@ flowchart TD
 [Commands to verify connectivity]
 ```
 ```
+
+## Agent Memory
+
+You have persistent memory (project scope). At the start of a task, check your
+MEMORY.md for relevant prior knowledge. As you work, record environment facts (VPC/subnet layout, CNI config, LB setups), recurring network failure patterns, and confirmed root causes.
+Keep MEMORY.md a concise index (one line per entry); put detail in topic files.
+Correct or delete entries you discover to be wrong.
