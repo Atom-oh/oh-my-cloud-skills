@@ -1,14 +1,6 @@
 ---
 name: kiro-convert
-description: "Convert Claude Code plugins to Kiro Power format. Supports GitHub URL, local path, marketplace name, and individual skill conversion."
-triggers:
-  - "convert to kiro"
-  - "kiro power"
-  - "kiro convert"
-  - "키로 변환"
-  - "키로 파워"
-  - "claude to kiro"
-model: sonnet
+description: "Convert Claude Code plugins to Kiro Power format — hooks, skills, steering files, and MCP config. Supports GitHub URL, local path, marketplace name, and individual skill conversion. Use when the user wants to convert to Kiro ('kiro convert'), build a Kiro Power, or port Claude Code assets to Kiro IDE — '키로 변환', '키로 파워', '키로 설치', 'claude to kiro'."
 allowed-tools:
   - Read
   - Write
