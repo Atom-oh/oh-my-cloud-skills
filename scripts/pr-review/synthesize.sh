@@ -128,24 +128,34 @@ esac ; }
 
 run_chair() {  # $1=model → "$OUT" 에 기록(scrub 통과). claude 실패해도 || true 로 계속.
   # argv(-p) 는 고정 지시문만(작고 상한 없음) — diff+패널(가변, 큼)은 stdin.
-  # --allowedTools: 이 repo 는 plugins/·hooks 가 많은 플러그인 개발 repo라, 툴 제한 없이
-  # 돌리면 의장이 종합 대신 탐색(plugin/skill 트리 read·grep)으로 흘러 CHAIR_TIMEOUT 600s
-  # 전체를 태우고 빈손으로 죽을 수 있다. 종합에 실제로 필요한 툴만 허용해 상한을 예측
-  # 가능하게 만든다(다른 pr-review 리포와 동일 패턴).
+  # --allowedTools: 쓰기 툴(Edit/Write)과 임의 Bash 를 허용 목록에서 빼둔다. 과장하지 않고
+  # 적자면(PR#140 리뷰 L2 MINOR) — 이 플래그는 `Read Grep Glob` 을 허용하므로 "plugin/skill
+  # 트리 탐색으로 600s 를 태우는" 경로 자체는 막지 못한다. 그건 CHAIR_TIMEOUT 이 맡는다.
+  # 또한 하드 샌드박스가 아니다: 실측(claude 2.1.220) 결과 settings 의 permissions.allow 등
+  # 다른 허용 소스가 있으면 목록 밖 툴(Bash)도 실행됐다 — 즉 최소권한 '선언'이지 강제 격리가
+  # 아니다. gh 조회 권한은 제거했다: 의장에게 필요한 diff·패널 출력은 이미 stdin 으로 전부
+  # 넘어가므로 불필요한 권한이었다(같은 리뷰 L3 MINOR).
   ANTHROPIC_MODEL="$1" timeout "$CHAIR_TIMEOUT" \
     claude -p "$(cat "$WORK/synth-prompt.txt")" --output-format text \
-    --allowedTools "Read Grep Glob Bash(gh pr diff:*) Bash(gh pr view:*)" \
+    --allowedTools "Read Grep Glob" \
     < "$WORK/synth-stdin.txt" 2>"$WORK/chair.err" | scrub_secrets > "$OUT" || true
 }
 
-# 유효 판정은 **게이트(pr-review.yml)와 정확히 같은 기준**이어야 한다.
-# 이전 `grep -q '^VERDICT:'` 는 게이트보다 느슨해서, 의장이 `VERDICT: FAIL (3 MAJOR)` 처럼
-# 뒤에 텍스트가 붙은 줄이나 본문 인용으로 VERDICT 를 두 번 쓰면 여기선 "정상"으로 통과하고
-# 게이트는 `^VERDICT: (PASS|FAIL)$` 정확매칭에서 걸러 "No VERDICT line found — fail-closed"
-# 로 job 을 죽였다 — **fallback 기회를 쓰지 않고** 하드 fail 하는 validator/gate 불일치
-# (2026-07-28 run 30329238234·30330125952 실측: 의장이 8.8KB/10.2KB 리뷰를 냈는데도 게이트가
-# 거부, fallback 미시도). 게이트와 동일하게 "마지막 non-empty 줄이 정확히 VERDICT: PASS|FAIL"
-# + "VERDICT 줄이 정확히 1개"를 요구해, 어긋나면 fallback 모델이 다시 시도하게 한다.
+# 유효 판정 = **게이트(pr-review.yml:248-256)가 수용하는 형식의 strict subset**. 게이트와
+# "정확히 동일"이 아니다(PR#140 리뷰 L4 MAJOR — 4/4 모델 수렴, 정확한 지적):
+#   게이트: 파일 어디든 `^VERDICT: FAIL$` 있으면 fail, 아니면 `^VERDICT: PASS$` 있으면 pass,
+#           둘 다 없으면 fail-closed.
+#   여기:   위에 더해 "마지막 non-empty 줄"이어야 하고 `^VERDICT:` 줄이 정확히 1개여야 한다.
+# 즉 line-start 중복 VERDICT나 VERDICT가 마지막 줄이 아닌 출력은 게이트라면 FAIL로 수용하지만
+# 여기선 invalid로 보고 fallback을 태운다 — 의도된 강화다(프로토콜 강제: 애매한 verdict는
+# 재추첨보다 다른 모델의 명확한 답을 받는 쪽이 안전). 반대 방향의 느슨함은 없으므로
+# "게이트는 거부하는데 여기선 통과" 하는 조합은 존재하지 않는다.
+#
+# 이전 `grep -q '^VERDICT:'` 는 게이트보다 **느슨**해서 정확히 그 위험한 조합을 만들었다:
+# 의장이 `VERDICT: FAIL (3 MAJOR)` 처럼 뒤에 텍스트를 붙이면 여기선 "정상" 통과 → fallback
+# 미시도 → 게이트가 `No VERDICT line found — fail-closed` 로 job 사살(2026-07-28 run
+# 30329238234·30330125952 실측: 8.8KB/10.2KB 리뷰를 냈는데도 폐기). 그 경로를 없애는 것이
+# 이 함수의 목적이다.
 chair_valid() {
   [ -s "$OUT" ] || return 1
   local last verdict_count
@@ -160,9 +170,13 @@ CHAIR_USED="$PRIMARY_MODEL"
 if ! chair_valid && [ "$FALLBACK_MODEL" != "$PRIMARY_MODEL" ]; then
   # stderr 발췌를 남긴다 — 이게 없어서 "Execution error"(16 bytes) 로만 죽는 실패
   # (2026-07-28 run 30330913993·30334795862·30337824131, 두 모델 모두 600s 소진)의 원인을
-  # 로그로 전혀 추적할 수 없었다. scrub_secrets 통과 필수: claude CLI 에러에 credential/env
-  # 가 섞이면 public Actions 로그로 그대로 새는 경로다.
-  CHAIR_ERR_EXCERPT="$(head -c 500 "$WORK/chair.err" 2>/dev/null | scrub_secrets)"
+  # 로그로 전혀 추적할 수 없었다.
+  # 파이프 순서 주의: **scrub 먼저, 자르기 나중**이다. `head -c 500 | scrub_secrets` 로 하면
+  # 500바이트 경계에 걸린 시크릿이 반쪽만 남아 scrub 정규식(전체 패턴 매칭)을 비껴가고, 그
+  # 조각이 `::warning` 으로 public Actions 로그에 그대로 나간다(PR#140 리뷰 L3 MAJOR).
+  # `tr '\n\r'` 는 개행 정규화 — 발췌에 개행이 남으면 annotation 이 끊기고 뒤 줄이 workflow
+  # command(`::add-mask::` 등)로 재해석될 수 있다.
+  CHAIR_ERR_EXCERPT="$(scrub_secrets < "$WORK/chair.err" 2>/dev/null | tr '\n\r' '  ' | head -c 500)"
   echo "::warning::chair '$(chair_label "$PRIMARY_MODEL")' degraded (connection/timeout/empty/no-verdict, ${CHAIR_TIMEOUT}s cap): $CHAIR_ERR_EXCERPT — falling back to '$(chair_label "$FALLBACK_MODEL")'"
   run_chair "$FALLBACK_MODEL"
   if chair_valid; then
@@ -171,7 +185,7 @@ if ! chair_valid && [ "$FALLBACK_MODEL" != "$PRIMARY_MODEL" ]; then
 fi
 
 if ! chair_valid; then
-  CHAIR_ERR_EXCERPT="$(head -c 500 "$WORK/chair.err" 2>/dev/null | scrub_secrets)"
+  CHAIR_ERR_EXCERPT="$(scrub_secrets < "$WORK/chair.err" 2>/dev/null | tr '\n\r' '  ' | head -c 500)"
   echo "::error::chair 양쪽 모두 유효한 응답을 내지 못했다 (마지막 stderr: $CHAIR_ERR_EXCERPT)" >&2
   echo "리뷰 생성 실패 — $(chair_label "$PRIMARY_MODEL")·$(chair_label "$FALLBACK_MODEL") 모두 유효한 응답(빈 응답 또는 VERDICT 형식 불일치)을 반환하지 않음." > "$OUT"
   echo "VERDICT: FAIL" >> "$OUT"
