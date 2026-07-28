@@ -1,7 +1,9 @@
 ---
 name: project-scaffolder
 description: Understand and apply Claude Code project structure patterns. Use when user asks about project organization, wants to add new modules, or needs guidance on where to place files in a Claude Code project.
-tools: Read, Glob
+allowed-tools:
+  - Read
+  - Glob
 user-invocable: false
 ---
 

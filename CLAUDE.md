@@ -143,7 +143,16 @@ The body contains: Core Capabilities, Diagnostic Commands, Decision Tree (Mermai
 
 ### Skill File Format
 
-Each `SKILL.md` has frontmatter with `name`, `description`, and `triggers` (keyword list). The `references/` subdirectory holds distilled operational knowledge extracted from source docs.
+Each `SKILL.md` has frontmatter limited to the six fields the Agent Skills spec
+(`https://agentskills.io/specification`) defines — `name`, `description`, `license`,
+`compatibility`, `metadata`, `allowed-tools` — plus the Claude Code extensions
+`user-invocable` / `disable-model-invocation`. Any other key (`triggers:`, `model:`,
+`invocation:`, `argument-hint:`, `tools:`) is **inert**: the runtime ignores it silently.
+**Trigger keywords therefore belong in `description`**, which is the sole selection
+surface — a `triggers:` list strands its keywords where nothing reads them (this bit 11
+skills; see `docs/reference/skill-review-2026-07.md`). `scripts/eval-skills.py` enforces
+the allowed-key set in its Structure dimension. The `references/` subdirectory holds
+distilled operational knowledge extracted from source docs.
 
 ### MCP Configuration
 

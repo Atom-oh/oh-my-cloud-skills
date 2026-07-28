@@ -1,17 +1,6 @@
 ---
 name: ops-wellarchitected-review
-description: "AWS Well-Architected Framework 6-pillar infrastructure review with 100-point scoring, severity-rated findings, and AS-IS to TO-BE transformation roadmap"
-triggers:
-  - "well-architected"
-  - "WAF review"
-  - "well architected review"
-  - "pillar review"
-  - "인프라 진단"
-  - "아키텍처 리뷰"
-  - "심층 진단"
-  - "WAF 점검"
-  - "인프라 점수"
-model: sonnet
+description: "AWS Well-Architected Framework 6-pillar infrastructure review with 100-point scoring, severity-rated findings, and AS-IS to TO-BE transformation roadmap. Use when the user asks for a well-architected review, WAF review, pillar review, or an architecture/infrastructure assessment with a score — '인프라 진단', '아키텍처 리뷰', '심층 진단', 'WAF 점검', '인프라 점수'."
 allowed-tools:
   - Bash
   - Read

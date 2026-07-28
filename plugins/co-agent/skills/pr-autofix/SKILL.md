@@ -1,11 +1,6 @@
 ---
 name: pr-autofix
-description: After creating a PR, poll for AI and human review feedback, auto-fix issues, and push (loop bound from /co-agent:configure, default 5)
-triggers:
-  - "pr autofix"
-  - "pr review fix"
-  - "PR 자동 수정"
-  - "리뷰 피드백 수정"
+description: "After creating a PR, poll for AI and human review feedback, auto-fix the issues, and push (loop bound from /co-agent:configure set pr_autofix max_iterations, default 5). Use when the user wants PR review feedback applied automatically, asks to fix review comments, or wants the PR loop driven to green — 'pr autofix', 'pr review fix', 'PR 자동 수정', '리뷰 피드백 수정', '리뷰 코멘트 반영'."
 ---
 
 # PR Auto-Fix Skill

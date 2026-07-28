@@ -14,7 +14,7 @@ R=$(mktemp -d "${TMPDIR:-/tmp}/prreviewcfg.XXXXXX")
 
 # (a) fresh --root → all 3 kiro cells + codex enabled by default
 CELLS=$(python3 "$CFG" kiro-cells --root "$R" 2>&1)
-assert_eq "claude-opus-4.8:kiro-opus
+assert_eq "claude-opus-5:kiro-opus
 gpt-5.6-terra:kiro-gpt
 glm-5:kiro-glm" "$CELLS" "kiro-cells lists all 3 kiro cells in fixed order by default"
 python3 "$CFG" codex-enabled --root "$R" >/dev/null 2>&1 && RC=0 || RC=$?
@@ -23,7 +23,7 @@ assert_eq "0" "$RC" "codex-enabled exits 0 by default"
 # (b) disabling a kiro cell removes it from kiro-cells (and only that one)
 python3 "$CFG" set kiro-glm enabled false --root "$R" >/dev/null 2>&1
 CELLS_B=$(python3 "$CFG" kiro-cells --root "$R" 2>&1)
-assert_eq "claude-opus-4.8:kiro-opus
+assert_eq "claude-opus-5:kiro-opus
 gpt-5.6-terra:kiro-gpt" "$CELLS_B" "disabling kiro-glm removes only that cell from kiro-cells"
 
 # (c) disabling codex flips codex-enabled's exit code
@@ -77,13 +77,13 @@ assert_eq "1" "$RC" "kiro-cells fails closed on a wrong-shape override (panel is
 python3 "$CFG" set kiro-glm enabled false --root "$R3" >/dev/null 2>&1 && RC=0 || RC=$?
 assert_eq "0" "$RC" "set succeeds against a malformed override (repairs it rather than refusing)"
 CELLS_H3=$(python3 "$CFG" kiro-cells --root "$R3" 2>&1)
-assert_eq "claude-opus-4.8:kiro-opus
+assert_eq "claude-opus-5:kiro-opus
 gpt-5.6-terra:kiro-gpt" "$CELLS_H3" "set's repair replaced the malformed override -- kiro-cells now succeeds"
 
 # (i) $PR_REVIEW_CONFIG_ROOT env is honored when --root is omitted (test-isolation parity
 # with co-agent's $CO_AGENT_USER_CONFIG) — same disabled-cell state as (b)/(c) above.
 CELLS_I=$(PR_REVIEW_CONFIG_ROOT="$R" python3 "$CFG" kiro-cells 2>&1)
-assert_eq "claude-opus-4.8:kiro-opus
+assert_eq "claude-opus-5:kiro-opus
 gpt-5.6-terra:kiro-gpt" "$CELLS_I" "\$PR_REVIEW_CONFIG_ROOT is honored when --root is omitted"
 
 # (j) MODEL_RE rejects ':' -- run-panel.sh's consumer does a first-colon split
@@ -179,7 +179,7 @@ cat > "$MISSING_CELL_DEFAULTS" <<'EOF'
 {
   "panel": {
     "codex":     { "enabled": true },
-    "kiro-opus": { "enabled": true, "model": "claude-opus-4.8" },
+    "kiro-opus": { "enabled": true, "model": "claude-opus-5" },
     "kiro-gpt":  { "enabled": true, "model": "gpt-5.5" }
   }
 }

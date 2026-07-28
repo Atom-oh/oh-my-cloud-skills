@@ -1,13 +1,6 @@
 ---
 name: ops-health-check
-description: "Comprehensive AWS/EKS infrastructure health assessment"
-triggers:
-  - "health check"
-  - "상태 점검"
-  - "헬스체크"
-  - "cluster health"
-  - "인프라 점검"
-model: sonnet
+description: "Comprehensive AWS/EKS infrastructure health assessment across cluster, nodes, workloads, networking, storage, and security. Use when the user asks for a health check, cluster health, or infrastructure assessment — '상태 점검', '헬스체크', '인프라 점검' — or wants an overall read on whether a cluster is healthy rather than a specific failure diagnosed (a concrete symptom routes to ops-troubleshoot instead)."
 allowed-tools:
   - Bash
   - Read

@@ -19,14 +19,16 @@ assert_file_exists "$SP_OPS_TS" "ops-troubleshoot SKILL.md exists"
 assert_contains "$(cat "$SP_OPS_TS")" "systematic-debugging" \
   "① ops-troubleshoot SKILL.md references superpowers:systematic-debugging"
 
-# Structural fallback: the explicit triggers: block (not just the prose description) must carry
-# the systematic-debugging + KO trigger, so skill selection has a hard trigger, not only prose.
-# Extract the triggers: block (from `triggers:` to the next top-level YAML key).
-SP_TRIGGERS="$(awk '/^triggers:/{f=1;next} f&&/^[a-zA-Z]/{f=0} f{print}' "$SP_OPS_TS")"
-assert_contains "$SP_TRIGGERS" "systematic-debugging" \
-  "① ops-troubleshoot triggers: block includes systematic-debugging"
-assert_contains "$SP_TRIGGERS" "디버깅" \
-  "① ops-troubleshoot triggers: block includes Korean trigger (디버깅)"
+# The routing keywords must live in `description:` — the ONE field skill selection actually
+# reads. A `triggers:` block used to carry them, but it is inert frontmatter Claude Code
+# never consumes, and #135 stripped it repo-wide and folded the keywords into `description`
+# instead. So assert against the description line, not a block whose absence is now correct:
+# checking `triggers:` here would pass only while the dead key was still present.
+SP_DESC="$(awk '/^description:/{print; exit}' "$SP_OPS_TS")"
+assert_contains "$SP_DESC" "systematic-debugging" \
+  "① ops-troubleshoot description carries the systematic-debugging routing keyword"
+assert_contains "$SP_DESC" "디버깅" \
+  "① ops-troubleshoot description carries the Korean trigger (디버깅)"
 
 # aws-ops CLAUDE.md routing note names the superpowers skill + all 5 domain agents.
 # Scope the domain-agent check to the handoff SECTION so it can't trivially pass on the

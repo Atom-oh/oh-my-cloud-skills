@@ -1,24 +1,6 @@
 ---
 name: co-agent
-description: "Collaborate with other AI agents (Kiro CLI, the peer host CLI, and Agy) for a second opinion. Multi-AI review of code/architecture, decision support when you're unsure, and ADR co-authoring, plus autonomous consensus/harness pipelines. The current host chairs and synthesizes the final answer. 멀티 AI 협업: 리뷰, 의사결정 보조, ADR 협업."
-triggers:
-  # High-precision: only fire when the user clearly wants MULTIPLE AIs / a panel.
-  # Generic "code review"/"architecture review"/"decide"/"adr" are intentionally
-  # NOT triggers — they collide with code-review/arch-review/pr-review skills and
-  # over-fire. Use /co-agent explicitly for those, or the multi-AI phrasings below.
-  - "co-agent"
-  - "second opinion"
-  - "다른 ai"
-  - "다른 ai한테"
-  - "다른 ai로 리뷰"
-  - "ai 협업"
-  - "ai 패널"
-  - "멀티 ai"
-  - "multi-ai review"
-  - "잘 모르겠어"        # decision support (user requirement: ask the panel when unsure)
-  - "의사결정 도와"
-  - "adr 협업"
-  - "협업해서 결정"
+description: "Collaborate with other AI agents (Kiro CLI, the peer host CLI, and Agy) for a second opinion. Multi-AI review of code/architecture, decision support when you're unsure, and ADR co-authoring, plus autonomous consensus/harness pipelines. The current host chairs and synthesizes the final answer. Use ONLY on multi-AI intent — 'co-agent', 'second opinion', 'multi-AI review', '다른 AI', '다른 AI로 리뷰', 'AI 협업', 'AI 패널', '멀티 AI', 'ADR 협업', or decision-support phrasings like '잘 모르겠어', '의사결정 도와', '협업해서 결정'. Bare 'code review'/'architecture review'/'decide'/'adr' are deliberately NOT triggers (they collide with the code-review/arch-review/pr-review skills) — use /co-agent explicitly for those. 멀티 AI 협업: 리뷰, 의사결정 보조, ADR 협업."
 allowed-tools:
   - Bash
   - Read

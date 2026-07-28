@@ -1,8 +1,6 @@
 ---
 name: workshop-creator
-description: AWS Workshop Studio 프로젝트 구조 생성 및 콘텐츠 작성 스킬. "워크샵 만들어", "workshop init", "랩 작성" 요청 시 활성화
-invocation: /workshop-creator
-model: sonnet
+description: "Create AWS Workshop Studio projects and content — directory structure, module/lab pages, Workshop Studio directives, multi-language (ko/en) content, Mermaid diagrams, and CloudFormation infra. Use when the user wants to build a workshop, hands-on lab, or lab guide, add a module or lab to an existing workshop, or translate workshop content — '워크샵 만들어', 'workshop init', '랩 작성', '모듈 추가', '핸즈온 랩'."
 allowed-tools:
   - Read
   - Write

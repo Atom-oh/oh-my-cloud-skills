@@ -1,24 +1,6 @@
 ---
 name: agentcore-create
-description: "Interactive agent design and deployment to Amazon Bedrock AgentCore. Brainstorm agent requirements, build as Claude Code skill first, then convert and deploy — config-only to AgentCore harness (skills attach unchanged) or code-gen to AgentCore Runtime with Memory, Gateway, and tools."
-argument-hint: "[agent description or 'convert <plugin-path>']"
-triggers:
-  - "agentcore create"
-  - "convert to agentcore"
-  - "agentcore deploy"
-  - "agentcore harness"
-  - "create agent for agentcore"
-  - "에이전트코어 하네스"
-  - "하네스 배포"
-  - "에이전트코어 생성"
-  - "에이전트코어 변환"
-  - "에이전트코어 배포"
-  - "에이전트 배포"
-  - "bedrock agent"
-  - "deploy agent"
-  - "베드락 에이전트"
-  - "런타임 배포"
-model: opus
+description: "Interactive agent design and deployment to Amazon Bedrock AgentCore. Brainstorm agent requirements, build as Claude Code skill first, then convert and deploy — config-only to AgentCore harness (skills attach unchanged) or code-gen to AgentCore Runtime with Memory, Gateway, and tools. Use when the user wants to create, convert, or deploy an agent to AgentCore — 'agentcore create', 'convert to agentcore', 'agentcore deploy', 'agentcore harness', 'bedrock agent', 'deploy agent', '에이전트코어 생성', '에이전트코어 변환', '에이전트코어 배포', '에이전트코어 하네스', '하네스 배포', '에이전트 배포', '베드락 에이전트', '런타임 배포'. Invoke as /agentcore-create, optionally with an agent description or 'convert <plugin-path>'."
 allowed-tools:
   - Read
   - Write

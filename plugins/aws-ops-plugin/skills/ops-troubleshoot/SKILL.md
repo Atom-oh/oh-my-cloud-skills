@@ -1,15 +1,6 @@
 ---
 name: ops-troubleshoot
-description: "Systematic AWS/EKS troubleshooting workflow: 5-minute triage → investigation → resolution → postmortem. The AWS/EKS domain arm of superpowers:systematic-debugging — invoke when a debugging symptom is cloud-infra-shaped."
-triggers:
-  - "troubleshoot"
-  - "debug"
-  - "systematic-debugging"
-  - "장애"
-  - "디버깅"
-  - "문제 해결"
-  - "incident"
-model: sonnet
+description: "Systematic AWS/EKS troubleshooting workflow: 5-minute triage → investigation → resolution → postmortem. The AWS/EKS domain arm of superpowers:systematic-debugging — invoke when a debugging symptom is cloud-infra-shaped. Use when the user reports an incident or asks to troubleshoot or debug cloud infrastructure — '장애', '디버깅', '문제 해결' — or when a symptom spans multiple domains and needs triage before a specialist agent takes it."
 allowed-tools:
   - Bash
   - Read
