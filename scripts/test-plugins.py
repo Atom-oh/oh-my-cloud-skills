@@ -19,10 +19,8 @@ VALID_HOOK_TYPES = {"command", "prompt", "agent"}
 
 # Plugins mirrored byte-identically from an upstream fork source, whose plugin.json is
 # kept verbatim and therefore declares no agents/skills arrays. ONLY these may fall back
-# to on-disk discovery — see test_manifest(). The mirror procedure lives in project-init's
-# own upstream-sync reference (plugins/project-init/references/upstream-sync.md today; the
-# mirroring change relocates it under docs/reference/ and is what makes the manifest
-# verbatim — this tree still carries the older "augment plugin.json" policy).
+# to on-disk discovery — see test_manifest(). Mirror procedure and rationale:
+# docs/reference/project-init-upstream-sync.md
 # Keep in sync with CLAUDE_ONLY in test-codex-plugins.py (same plugin, other surface).
 MIRRORED_PLUGINS = {"project-init"}
 
