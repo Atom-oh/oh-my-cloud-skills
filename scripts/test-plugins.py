@@ -150,12 +150,28 @@ class PluginTestSuite:
             return
 
         # Required fields
-        for field in ['name', 'version', 'agents', 'skills']:
+        for field in ['name', 'version']:
             if field not in self.manifest:
                 self.error(f"Missing required field '{field}' in plugin.json")
 
         if not self.manifest:
             return
+
+        # An upstream-mirrored plugin (project-init) carries the fork source's manifest
+        # verbatim, which lists no agents/skills — Claude Code discovers those by
+        # convention. Fall back to on-disk discovery so their frontmatter still gets
+        # validated instead of silently skipped.
+        for field, pattern in (('agents', 'agents/*.md'), ('skills', 'skills/*/SKILL.md')):
+            if field in self.manifest:
+                continue
+            found = sorted(self.plugin_dir.glob(pattern))
+            if not found:
+                continue
+            self.manifest[field] = [
+                './' + str((f.parent if field == 'skills' else f).relative_to(self.plugin_dir))
+                for f in found
+            ]
+            self.log(f"{field} not declared in plugin.json — discovered {len(found)} on disk")
 
         # Validate agent paths
         agents = self.manifest.get('agents', [])
@@ -285,7 +301,8 @@ class PluginTestSuite:
             # Optional tools validation
             tools_str = frontmatter.get('tools', '')
             if tools_str:
-                tools = [t.strip() for t in tools_str.split(',')]
+                # Strip any Bash(cmd:*)-style scope suffix before checking the tool name
+                tools = [re.sub(r'\(.*\)$', '', t.strip()) for t in tools_str.split(',')]
                 for tool in tools:
                     if tool and tool not in VALID_TOOLS:
                         self.error(f"Agent {agent_path}: invalid tool '{tool}' (valid: {VALID_TOOLS})")

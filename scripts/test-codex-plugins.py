@@ -67,14 +67,21 @@ class CodexPluginValidator:
         return payload
 
     def discover_plugins(self) -> list[str]:
+        """Plugins exposed on the Codex surface — those carrying a `.codex-plugin` manifest.
+
+        A Claude-only plugin is not an error: `project-init` is mirrored verbatim from its
+        upstream fork source, which ships no Codex manifest, so it is deliberately absent
+        from the Codex marketplace too. Report it as a warning so a genuinely forgotten
+        manifest is still visible.
+        """
         names = {
             path.parent.parent.name
-            for path in self.plugins_dir.glob("*/.claude-plugin/plugin.json")
-        }
-        names.update(
-            path.parent.parent.name
             for path in self.plugins_dir.glob("*/.codex-plugin/plugin.json")
-        )
+        }
+        for path in self.plugins_dir.glob("*/.claude-plugin/plugin.json"):
+            name = path.parent.parent.name
+            if name not in names:
+                self.warn(f"{name}: no .codex-plugin manifest — not exposed to Codex")
         return sorted(names)
 
     def validate_manifest(self, plugin_name: str) -> None:
