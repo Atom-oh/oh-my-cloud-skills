@@ -17,6 +17,64 @@ VALID_HOOK_EVENTS = {"SessionStart", "PreToolUse", "PostToolUse", "PostToolUseFa
                      "SubagentStop", "PermissionRequest", "SessionEnd", "PreCompact"}
 VALID_HOOK_TYPES = {"command", "prompt", "agent"}
 
+# Plugins mirrored byte-identically from an upstream fork source, whose plugin.json is
+# kept verbatim and therefore declares no agents/skills arrays. ONLY these may fall back
+# to on-disk discovery — see test_manifest(). The mirror procedure lives in project-init's
+# own upstream-sync reference (plugins/project-init/references/upstream-sync.md today; the
+# mirroring change relocates it under docs/reference/ and is what makes the manifest
+# verbatim — this tree still carries the older "augment plugin.json" policy).
+# Keep in sync with CLAUDE_ONLY in test-codex-plugins.py (same plugin, other surface).
+MIRRORED_PLUGINS = {"project-init"}
+
+# Files under agents/ that are documentation, not agent definitions — discovery must not
+# hand them to the frontmatter validator.
+NON_AGENT_FILES = {"README.md", "CLAUDE.md"}
+
+# Tools whose `tools:` entry may carry a `(scope)` suffix. Upstream's mirrored
+# doc-sync-checker ships `tools: Read, Glob, Grep, Bash(find:*), Bash(git log:*),
+# Bash(ls:*)` (arriving with the mirroring in #138 — the copy in THIS tree still declares
+# a bare `Bash`), so the parser has to accept the form. Whether Claude Code actually
+# honors a scope in a subagent's `tools:` — as opposed to a command's `allowed-tools`,
+# where the syntax is documented — is NOT established, so a scoped Bash gets a warning
+# rather than being silently blessed as a narrowing that may not exist at runtime.
+SCOPED_TOOLS = {"Bash"}
+# A scope item that grants everything is a lie regardless of enforcement. `:*` counts: the
+# syntax is `Bash(<prefix>:*)`, so an EMPTY prefix matches every command just like `*`.
+UNRESTRICTED_SCOPE_ITEMS = {"*", "*:*", ":*"}
+
+
+def _split_tools(tools_str: str) -> Tuple[List[str], bool]:
+    """Split a `tools:` string on commas OUTSIDE a scope suffix's parens.
+
+    `Bash(git add:*, git commit:*)` is ONE declaration; a plain `split(',')` would break it
+    in half and report both pieces as invalid tools.
+
+    Returns (declarations, balanced). `balanced` is False for any unmatched paren in either
+    direction — an earlier version clamped the depth at 0, which made a stray closing paren
+    (`Bash(a))`) split identically to the balanced form and then slip past the caller's
+    greedy `(.*)` fullmatch as scope `a)`."""
+    parts: List[str] = []
+    cur = ""
+    depth = 0
+    balanced = True
+    for ch in tools_str:
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth < 0:
+                balanced = False
+                depth = 0        # keep splitting sanely; the caller reports the error
+        if ch == "," and depth == 0:
+            parts.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    parts.append(cur)
+    if depth != 0:
+        balanced = False
+    return [p.strip() for p in parts if p.strip()], balanced
+
 
 class PluginTestSuite:
     """Test suite for validating a single plugin."""
@@ -150,12 +208,61 @@ class PluginTestSuite:
             return
 
         # Required fields
-        for field in ['name', 'version', 'agents', 'skills']:
+        for field in ['name', 'version']:
             if field not in self.manifest:
                 self.error(f"Missing required field '{field}' in plugin.json")
 
         if not self.manifest:
             return
+
+        # `agents`/`skills` stay REQUIRED for every plugin except an upstream mirror.
+        # A mirror (project-init) carries the fork source's manifest verbatim, which
+        # lists neither — Claude Code discovers them by convention — so fall back to
+        # on-disk discovery there, and only there, so their frontmatter still gets
+        # validated instead of silently skipped. Keeping the exception an allowlist is
+        # deliberate: a blanket relaxation would let a typo'd `skills/` directory or an
+        # accidentally deleted field pass with 0 discovered files and 0 diagnostics in
+        # any of the other plugins.
+        for field, pattern in (('agents', 'agents/*.md'), ('skills', 'skills/*/SKILL.md')):
+            if self.manifest.get(field):
+                continue
+            if self.plugin_name not in MIRRORED_PLUGINS:
+                # Absent is an error; present-but-empty is a deliberate "this plugin has
+                # none of these" (a skills-only or commands-only plugin) and was accepted
+                # before this check existed — reporting it as *missing* would be false.
+                if field not in self.manifest:
+                    self.error(f"Missing required field '{field}' in plugin.json")
+                continue
+            # For a mirror, an explicit `agents: []` from upstream means "nothing
+            # declared" too, so it falls through to discovery rather than being trusted.
+            declared_empty = field in self.manifest   # BEFORE the injection below
+            found = [f for f in sorted(self.plugin_dir.glob(pattern))
+                     if not (field == 'agents' and f.name in NON_AGENT_FILES)]
+            if not found:
+                # Neither declared nor on disk: for a mirror this is the one case where
+                # discovery can't tell "deliberately empty" from "wrong directory name",
+                # so say so instead of passing silently.
+                self.error(f"'{field}' not declared in plugin.json and no {pattern} "
+                           f"found on disk — nothing was validated for this field")
+                continue
+            if field == 'skills':
+                # The declared path errors on a skill dir with no SKILL.md
+                # ("SKILL.md not found", below). Discovery globs SKILL.md itself, so it
+                # would simply not see that dir — restore the check explicitly.
+                for d in sorted(p for p in self.plugin_dir.glob('skills/*') if p.is_dir()):
+                    if not (d / 'SKILL.md').exists():
+                        self.error(f"Skill directory has no SKILL.md: "
+                                   f"{d.relative_to(self.plugin_dir).as_posix()}")
+            # Injected into the manifest on purpose: every path/frontmatter check below
+            # reads it from there, and the log line beneath records that this field came
+            # from disk rather than from the file.
+            self.manifest[field] = [
+                './' + (f.parent if field == 'skills' else f)
+                .relative_to(self.plugin_dir).as_posix()
+                for f in found
+            ]
+            how = "declared empty" if declared_empty else "not declared"
+            self.log(f"{field} {how} in plugin.json — discovered {len(found)} on disk")
 
         # Validate agent paths
         agents = self.manifest.get('agents', [])
@@ -285,10 +392,61 @@ class PluginTestSuite:
             # Optional tools validation
             tools_str = frontmatter.get('tools', '')
             if tools_str:
-                tools = [t.strip() for t in tools_str.split(',')]
-                for tool in tools:
-                    if tool and tool not in VALID_TOOLS:
+                # `tools:` is normally a comma string, but the frontmatter parser returns a
+                # LIST for the block form. Joining keeps both shapes on one path — the old
+                # `tools_str.split(',')` raised AttributeError on the list form.
+                if isinstance(tools_str, list):
+                    tools_str = ','.join(str(t) for t in tools_str)
+                decls, balanced = _split_tools(tools_str)
+                if not decls:
+                    # Non-empty but nothing parsed out of it (`tools: ","`) — every piece
+                    # was blank, which would otherwise pass with no diagnostic at all.
+                    self.error(f"Agent {agent_path}: 'tools' is set but declares no tool: "
+                               f"{tools_str!r}")
+                if not balanced:
+                    self.error(f"Agent {agent_path}: unbalanced parentheses in 'tools' — "
+                               f"{tools_str!r}")
+                for decl in decls:
+                    # `[^()]*` not `.*`: a greedy scope group swallows a stray closing
+                    # paren and calls the result well-formed.
+                    m = re.fullmatch(r'([A-Za-z][A-Za-z0-9_]*)(?:\(([^()]*)\))?', decl)
+                    if not m:
+                        self.error(f"Agent {agent_path}: malformed tool declaration "
+                                   f"'{decl}' (expected `Tool` or `Bash(<scope>)`)")
+                        continue
+                    tool, scope = m.group(1), m.group(2)
+                    if tool not in VALID_TOOLS:
                         self.error(f"Agent {agent_path}: invalid tool '{tool}' (valid: {VALID_TOOLS})")
+                    elif scope is not None:
+                        if tool not in SCOPED_TOOLS:
+                            self.error(f"Agent {agent_path}: tool '{tool}' does not take a "
+                                       f"scope suffix (only {sorted(SCOPED_TOOLS)} do): '{decl}'")
+                            continue
+                        # A scope is a COMMA LIST, so check each item: one `*` entry in
+                        # `Bash(git log:*, *)` grants everything while the declaration
+                        # still looks narrowed. That's an error, not a warning — warnings
+                        # never reach the exit code, and this is the case where the
+                        # declaration actively misrepresents the grant.
+                        items = [i.strip() for i in scope.split(',')]
+                        # An empty item is a syntax slip (`Bash(git log:*, )`), not a
+                        # widened grant — reporting it as "grants everything" would be
+                        # false even though both deserve to fail.
+                        if any(i == '' for i in items):
+                            self.error(f"Agent {agent_path}: '{decl}' has an empty scope "
+                                       f"item (stray or trailing comma)")
+                            continue
+                        wide = [i for i in items if i in UNRESTRICTED_SCOPE_ITEMS]
+                        if wide:
+                            self.error(f"Agent {agent_path}: '{decl}' has an unrestricted "
+                                       f"scope item ({', '.join(repr(w) for w in wide)}) — "
+                                       f"grants the same as a bare '{tool}' while reading "
+                                       f"as narrowed")
+                        else:
+                            # See SCOPED_TOOLS: the narrowing is documented for a command's
+                            # `allowed-tools`, not verified for a subagent's `tools:`.
+                            self.warn(f"Agent {agent_path}: '{decl}' — a scope suffix in an "
+                                      f"agent's 'tools' is not verified to be enforced at "
+                                      f"runtime; treat it as a full '{tool}' grant")
 
     def _get_skill_names(self) -> set:
         """Extract skill directory names from manifest."""

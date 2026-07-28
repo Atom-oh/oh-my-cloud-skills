@@ -30,6 +30,12 @@ ALLOWED_MANIFEST_FIELDS = {
     "license",
     "keywords",
 }
+# Plugins deliberately absent from the Codex surface — an upstream mirror whose manifest
+# set is kept verbatim (procedure: project-init's own upstream-sync reference). Everything else
+# missing a .codex-plugin manifest is an error, not a warning. Keep in sync with
+# MIRRORED_PLUGINS in test-plugins.py (same plugin, other surface).
+CLAUDE_ONLY = {"project-init"}
+
 ALLOWED_INSTALL_POLICIES = {"NOT_AVAILABLE", "AVAILABLE", "INSTALLED_BY_DEFAULT"}
 ALLOWED_AUTH_POLICIES = {"ON_INSTALL", "ON_USE"}
 
@@ -67,14 +73,26 @@ class CodexPluginValidator:
         return payload
 
     def discover_plugins(self) -> list[str]:
+        """Plugins exposed on the Codex surface — those carrying a `.codex-plugin` manifest.
+
+        A missing Codex manifest is an ERROR for every plugin except those in
+        `CLAUDE_ONLY`: `project-init` is mirrored verbatim from its upstream fork source,
+        which ships no Codex manifest, so it is deliberately absent from the Codex
+        marketplace and skipped silently (a standing warning on a known-correct state is
+        noise that buries a real one). Anywhere else, a `.codex-plugin/plugin.json` that
+        goes missing means the plugin silently dropped off the Codex marketplace — the
+        suite has to fail, not warn, since warnings don't reach the exit code.
+        """
         names = {
             path.parent.parent.name
-            for path in self.plugins_dir.glob("*/.claude-plugin/plugin.json")
-        }
-        names.update(
-            path.parent.parent.name
             for path in self.plugins_dir.glob("*/.codex-plugin/plugin.json")
-        )
+        }
+        for path in self.plugins_dir.glob("*/.claude-plugin/plugin.json"):
+            name = path.parent.parent.name
+            if name in names or name in CLAUDE_ONLY:
+                continue
+            self.error(f"{name}: no .codex-plugin manifest — not exposed to Codex "
+                       f"(add one, or list it in CLAUDE_ONLY if that's deliberate)")
         return sorted(names)
 
     def validate_manifest(self, plugin_name: str) -> None:
@@ -225,8 +243,28 @@ class CodexPluginValidator:
                 self.error("marketplace: plugin entry name is required")
                 continue
             seen.add(name)
-            if name not in expected:
-                self.warn(f"marketplace: entry {name} has no matching plugin directory")
+            if name in CLAUDE_ONLY:
+                # A CLAUDE_ONLY plugin is deliberately off the Codex surface, so a
+                # marketplace entry for it is either stale or premature. Neither of the
+                # other checks catches it: `expected` never contains it (so "missing
+                # entry" can't fire) and its plugins/ directory does exist (so the
+                # source-path check passes). Error only once the manifest is actually
+                # gone — while it still ships one, the entry is merely early, and the
+                # pairing is meant to land in a single commit.
+                if (self.plugins_dir / name / ".codex-plugin" / "plugin.json").is_file():
+                    self.warn(f"marketplace: entry {name} is listed as Claude-only "
+                              f"(CLAUDE_ONLY) but still ships a .codex-plugin manifest — "
+                              f"remove both together")
+                else:
+                    self.error(f"marketplace: entry {name} is deliberately Claude-only "
+                               f"(CLAUDE_ONLY) and ships no .codex-plugin manifest — "
+                               f"remove it from the Codex marketplace")
+            elif name not in expected:
+                # `expected` is the Codex surface (plugins with a .codex-plugin manifest),
+                # not "directories that exist" — so say which one is actually absent. The
+                # directory usually IS there; the manifest is what's missing, and
+                # discover_plugins() has already errored about it.
+                self.warn(f"marketplace: entry {name} has no .codex-plugin manifest")
 
             source = entry.get("source")
             expected_path = f"./plugins/{name}"
