@@ -19,8 +19,10 @@ VALID_HOOK_TYPES = {"command", "prompt", "agent"}
 
 # Plugins mirrored byte-identically from an upstream fork source, whose plugin.json is
 # kept verbatim and therefore declares no agents/skills arrays. ONLY these may fall back
-# to on-disk discovery — see test_manifest(). Mirror procedure:
-# plugins/project-init/references/upstream-sync.md
+# to on-disk discovery — see test_manifest(). The mirror procedure lives in project-init's
+# own upstream-sync reference (plugins/project-init/references/upstream-sync.md today; the
+# mirroring change relocates it under docs/reference/ and is what makes the manifest
+# verbatim — this tree still carries the older "augment plugin.json" policy).
 # Keep in sync with CLAUDE_ONLY in test-codex-plugins.py (same plugin, other surface).
 MIRRORED_PLUGINS = {"project-init"}
 
@@ -36,8 +38,9 @@ NON_AGENT_FILES = {"README.md", "CLAUDE.md"}
 # where the syntax is documented — is NOT established, so a scoped Bash gets a warning
 # rather than being silently blessed as a narrowing that may not exist at runtime.
 SCOPED_TOOLS = {"Bash"}
-# A scope item that grants everything (`*`, `*:*`) is a lie regardless of enforcement.
-UNRESTRICTED_SCOPE_ITEMS = {"", "*", "*:*"}
+# A scope item that grants everything is a lie regardless of enforcement. `:*` counts: the
+# syntax is `Bash(<prefix>:*)`, so an EMPTY prefix matches every command just like `*`.
+UNRESTRICTED_SCOPE_ITEMS = {"*", "*:*", ":*"}
 
 
 def _split_tools(tools_str: str) -> Tuple[List[str], bool]:
@@ -221,13 +224,18 @@ class PluginTestSuite:
         # accidentally deleted field pass with 0 discovered files and 0 diagnostics in
         # any of the other plugins.
         for field, pattern in (('agents', 'agents/*.md'), ('skills', 'skills/*/SKILL.md')):
-            # `.get() or` (not `in`): an explicit empty `agents: []` from upstream means
-            # "nothing declared" too, and must still fall through to discovery.
             if self.manifest.get(field):
                 continue
             if self.plugin_name not in MIRRORED_PLUGINS:
-                self.error(f"Missing required field '{field}' in plugin.json")
+                # Absent is an error; present-but-empty is a deliberate "this plugin has
+                # none of these" (a skills-only or commands-only plugin) and was accepted
+                # before this check existed — reporting it as *missing* would be false.
+                if field not in self.manifest:
+                    self.error(f"Missing required field '{field}' in plugin.json")
                 continue
+            # For a mirror, an explicit `agents: []` from upstream means "nothing
+            # declared" too, so it falls through to discovery rather than being trusted.
+            declared_empty = field in self.manifest   # BEFORE the injection below
             found = [f for f in sorted(self.plugin_dir.glob(pattern))
                      if not (field == 'agents' and f.name in NON_AGENT_FILES)]
             if not found:
@@ -253,7 +261,8 @@ class PluginTestSuite:
                 .relative_to(self.plugin_dir).as_posix()
                 for f in found
             ]
-            self.log(f"{field} not declared in plugin.json — discovered {len(found)} on disk")
+            how = "declared empty" if declared_empty else "not declared"
+            self.log(f"{field} {how} in plugin.json — discovered {len(found)} on disk")
 
         # Validate agent paths
         agents = self.manifest.get('agents', [])
@@ -389,6 +398,11 @@ class PluginTestSuite:
                 if isinstance(tools_str, list):
                     tools_str = ','.join(str(t) for t in tools_str)
                 decls, balanced = _split_tools(tools_str)
+                if not decls:
+                    # Non-empty but nothing parsed out of it (`tools: ","`) — every piece
+                    # was blank, which would otherwise pass with no diagnostic at all.
+                    self.error(f"Agent {agent_path}: 'tools' is set but declares no tool: "
+                               f"{tools_str!r}")
                 if not balanced:
                     self.error(f"Agent {agent_path}: unbalanced parentheses in 'tools' — "
                                f"{tools_str!r}")
@@ -414,6 +428,13 @@ class PluginTestSuite:
                         # never reach the exit code, and this is the case where the
                         # declaration actively misrepresents the grant.
                         items = [i.strip() for i in scope.split(',')]
+                        # An empty item is a syntax slip (`Bash(git log:*, )`), not a
+                        # widened grant — reporting it as "grants everything" would be
+                        # false even though both deserve to fail.
+                        if any(i == '' for i in items):
+                            self.error(f"Agent {agent_path}: '{decl}' has an empty scope "
+                                       f"item (stray or trailing comma)")
+                            continue
                         wide = [i for i in items if i in UNRESTRICTED_SCOPE_ITEMS]
                         if wide:
                             self.error(f"Agent {agent_path}: '{decl}' has an unrestricted "

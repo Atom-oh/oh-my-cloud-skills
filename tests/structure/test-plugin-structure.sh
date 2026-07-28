@@ -57,6 +57,12 @@ NONMIRROR_OUT="$(python3 scripts/test-plugins.py --root "$VAL_TMP" 2>&1 || true)
 assert_contains "$NONMIRROR_OUT" "Missing required field 'agents'" "an ordinary plugin without an agents field is still an ERROR (the fallback is allowlist-scoped, not blanket)"
 assert_contains "$NONMIRROR_OUT" "Missing required field 'skills'" "an ordinary plugin without a skills field is still an ERROR"
 
+# Present-but-empty is not "missing": a skills-only plugin may declare `agents: []`, and
+# that was accepted before the required-field check moved into the discovery loop.
+printf '{"name":"kiro","version":"1.0.0","agents":[],"skills":[]}' > "$VAL_TMP/plugins/kiro/.claude-plugin/plugin.json"
+EMPTY_OUT="$(python3 scripts/test-plugins.py --root "$VAL_TMP" 2>&1 || true)"
+assert_grep_no_match "Missing required field" "$EMPTY_OUT" "an explicit empty agents/skills array on an ordinary plugin is not reported as a MISSING field"
+
 mv "$VAL_TMP/plugins/kiro" "$VAL_TMP/plugins/project-init"
 printf '{"name":"project-init","version":"1.0.0"}' > "$VAL_TMP/plugins/project-init/.claude-plugin/plugin.json"
 MIRROR_OUT="$(python3 scripts/test-plugins.py --root "$VAL_TMP" 2>&1 || true)"
@@ -71,13 +77,31 @@ printf '%s' '{"name":"oh-my-cloud-skills","interface":{"displayName":"x"},"plugi
 STALE_OUT="$(python3 scripts/test-codex-plugins.py --root "$VAL_TMP" 2>&1 || true)"
 assert_contains "$STALE_OUT" "deliberately Claude-only" "a stale Codex marketplace entry for a CLAUDE_ONLY plugin is an ERROR"
 
+# `Bash(:*)` — empty prefix, matches every command — must be an ERROR, not the softer
+# "not verified at runtime" warning, and an empty scope item must say so rather than
+# claiming the grant was widened.
+mkdir -p "$VAL_TMP/plugins/project-init/agents"
+printf '%s\n' '---' 'name: a' 'description: d' 'tools: Read, Bash(:*)' '---' 'body' > "$VAL_TMP/plugins/project-init/agents/a.md"
+mkdir -p "$VAL_TMP/plugins/project-init/skills/s"
+printf '%s\n' '---' 'name: s' 'description: d' '---' 'body' > "$VAL_TMP/plugins/project-init/skills/s/SKILL.md"
+WIDE_OUT="$(python3 scripts/test-plugins.py --root "$VAL_TMP" 2>&1 || true)"
+assert_contains "$WIDE_OUT" "unrestricted scope item" "Bash(:\*) is an ERROR — an empty prefix grants every command while reading as narrowed"
+
+printf '%s\n' '---' 'name: a' 'description: d' 'tools: Read, Bash(git log:*, )' '---' 'body' > "$VAL_TMP/plugins/project-init/agents/a.md"
+EMPTY_ITEM_OUT="$(python3 scripts/test-plugins.py --root "$VAL_TMP" 2>&1 || true)"
+assert_contains "$EMPTY_ITEM_OUT" "empty scope item" "a trailing comma inside a scope is reported as a syntax slip, not as a widened grant"
+
+printf '%s\n' '---' 'name: a' 'description: d' 'tools: ","' '---' 'body' > "$VAL_TMP/plugins/project-init/agents/a.md"
+NO_DECL_OUT="$(python3 scripts/test-plugins.py --root "$VAL_TMP" 2>&1 || true)"
+assert_contains "$NO_DECL_OUT" "declares no tool" "a non-empty tools value that parses to nothing is reported instead of passing silently"
+
 TOOLS_OUT="$(python3 tests/structure/_tool_decl_probe.py 2>&1 || true)"
 assert_contains "$TOOLS_OUT" "SPLIT \['Read', 'Bash(git add:\*, git commit:\*)', 'Grep'\]" "_split_tools keeps a comma INSIDE a Bash scope in one declaration instead of splitting it into two invalid tools"
 assert_contains "$TOOLS_OUT" "BALANCED True" "a balanced scope suffix parses"
 assert_contains "$TOOLS_OUT" "EXTRA_CLOSE False" "a stray CLOSING paren is reported unbalanced (the earlier depth clamp let it split identically to the valid form and slip past the fullmatch)"
 assert_contains "$TOOLS_OUT" "EXTRA_OPEN False" "an unclosed paren is reported unbalanced"
 assert_contains "$TOOLS_OUT" "SCOPED_TOOLS \['Bash'\]" "only Bash may carry a scope suffix — a scope on any other tool is an error, not silently stripped"
-assert_contains "$TOOLS_OUT" "WIDE \['', '\*', '\*:\*'\]" "wildcard scope items are enumerated so one '*' entry in a comma list is caught, not just a wholly-'*' scope"
+assert_contains "$TOOLS_OUT" "WIDE \['\*', '\*:\*', ':\*'\]" "wildcard scope items are enumerated — including ':*', whose EMPTY prefix matches every command — so one wide entry in a comma list is caught, not just a wholly-'*' scope"
 assert_contains "$TOOLS_OUT" "MIRRORED \['project-init'\]" "the mirror exception is a named allowlist"
 rm -rf "$VAL_TMP"
 trap - EXIT

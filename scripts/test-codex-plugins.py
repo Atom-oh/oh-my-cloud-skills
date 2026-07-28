@@ -31,7 +31,7 @@ ALLOWED_MANIFEST_FIELDS = {
     "keywords",
 }
 # Plugins deliberately absent from the Codex surface — an upstream mirror whose manifest
-# set is kept verbatim (plugins/project-init/references/upstream-sync.md). Everything else
+# set is kept verbatim (procedure: project-init's own upstream-sync reference). Everything else
 # missing a .codex-plugin manifest is an error, not a warning. Keep in sync with
 # MIRRORED_PLUGINS in test-plugins.py (same plugin, other surface).
 CLAUDE_ONLY = {"project-init"}
@@ -260,7 +260,11 @@ class CodexPluginValidator:
                                f"(CLAUDE_ONLY) and ships no .codex-plugin manifest — "
                                f"remove it from the Codex marketplace")
             elif name not in expected:
-                self.warn(f"marketplace: entry {name} has no matching plugin directory")
+                # `expected` is the Codex surface (plugins with a .codex-plugin manifest),
+                # not "directories that exist" — so say which one is actually absent. The
+                # directory usually IS there; the manifest is what's missing, and
+                # discover_plugins() has already errored about it.
+                self.warn(f"marketplace: entry {name} has no .codex-plugin manifest")
 
             source = entry.get("source")
             expected_path = f"./plugins/{name}"
