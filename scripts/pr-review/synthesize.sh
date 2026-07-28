@@ -131,13 +131,16 @@ run_chair() {  # $1=model → "$OUT" 에 기록(scrub 통과). claude 실패해�
   # --allowedTools: 쓰기 툴(Edit/Write)과 임의 Bash 를 허용 목록에서 빼둔다. 과장하지 않고
   # 적자면(PR#140 리뷰 L2 MINOR) — 이 플래그는 `Read Grep Glob` 을 허용하므로 "plugin/skill
   # 트리 탐색으로 600s 를 태우는" 경로 자체는 막지 못한다. 그건 CHAIR_TIMEOUT 이 맡는다.
-  # 또한 하드 샌드박스가 아니다: 실측(claude 2.1.220) 결과 settings 의 permissions.allow 등
-  # 다른 허용 소스가 있으면 목록 밖 툴(Bash)도 실행됐다 — 즉 최소권한 '선언'이지 강제 격리가
-  # 아니다. gh 조회 권한은 제거했다: 의장에게 필요한 diff·패널 출력은 이미 stdin 으로 전부
+  # allow 목록만으로는 강제가 안 된다: 실측(claude 2.1.220) 결과 settings 의
+  # permissions.allow 등 다른 허용 소스가 있으면 목록 밖 툴(Bash)도 그대로 실행됐다. deny 가
+  # allow 를 이기므로 --disallowedTools 를 병기해 실제로 막는다(같은 실측에서 이쪽은 DENIED
+  # 확인). chair 의 stdin 은 PR 작성자가 통제하는 텍스트 = prompt injection 표면이고 실행
+  # 환경은 CI 이므로, 선언만 두고 넘기지 않는다(PR#140 리뷰 L3 MAJOR). gh 조회 권한은 제거했다: 의장에게 필요한 diff·패널 출력은 이미 stdin 으로 전부
   # 넘어가므로 불필요한 권한이었다(같은 리뷰 L3 MINOR).
   ANTHROPIC_MODEL="$1" timeout "$CHAIR_TIMEOUT" \
     claude -p "$(cat "$WORK/synth-prompt.txt")" --output-format text \
     --allowedTools "Read Grep Glob" \
+    --disallowedTools "Bash Write Edit NotebookEdit WebFetch WebSearch Task" \
     < "$WORK/synth-stdin.txt" 2>"$WORK/chair.err" | scrub_secrets > "$OUT" || true
 }
 
@@ -171,12 +174,9 @@ if ! chair_valid && [ "$FALLBACK_MODEL" != "$PRIMARY_MODEL" ]; then
   # stderr 발췌를 남긴다 — 이게 없어서 "Execution error"(16 bytes) 로만 죽는 실패
   # (2026-07-28 run 30330913993·30334795862·30337824131, 두 모델 모두 600s 소진)의 원인을
   # 로그로 전혀 추적할 수 없었다.
-  # 파이프 순서 주의: **scrub 먼저, 자르기 나중**이다. `head -c 500 | scrub_secrets` 로 하면
-  # 500바이트 경계에 걸린 시크릿이 반쪽만 남아 scrub 정규식(전체 패턴 매칭)을 비껴가고, 그
-  # 조각이 `::warning` 으로 public Actions 로그에 그대로 나간다(PR#140 리뷰 L3 MAJOR).
-  # `tr '\n\r'` 는 개행 정규화 — 발췌에 개행이 남으면 annotation 이 끊기고 뒤 줄이 workflow
-  # command(`::add-mask::` 등)로 재해석될 수 있다.
-  CHAIR_ERR_EXCERPT="$(scrub_secrets < "$WORK/chair.err" 2>/dev/null | tr '\n\r' '  ' | head -c 500)"
+  # 발췌 파이프라인(scrub -> 파일 -> 캡 -> 개행 정규화)의 순서 근거는 lib.sh 의
+  # chair_err_excerpt 주석 참조 — 파이프로 캡을 씌우면 SIGPIPE 로 이 스크립트가 죽는다.
+  CHAIR_ERR_EXCERPT="$(chair_err_excerpt "$WORK/chair.err")"
   echo "::warning::chair '$(chair_label "$PRIMARY_MODEL")' degraded (connection/timeout/empty/no-verdict, ${CHAIR_TIMEOUT}s cap): $CHAIR_ERR_EXCERPT — falling back to '$(chair_label "$FALLBACK_MODEL")'"
   run_chair "$FALLBACK_MODEL"
   if chair_valid; then
@@ -185,7 +185,7 @@ if ! chair_valid && [ "$FALLBACK_MODEL" != "$PRIMARY_MODEL" ]; then
 fi
 
 if ! chair_valid; then
-  CHAIR_ERR_EXCERPT="$(scrub_secrets < "$WORK/chair.err" 2>/dev/null | tr '\n\r' '  ' | head -c 500)"
+  CHAIR_ERR_EXCERPT="$(chair_err_excerpt "$WORK/chair.err")"
   echo "::error::chair 양쪽 모두 유효한 응답을 내지 못했다 (마지막 stderr: $CHAIR_ERR_EXCERPT)" >&2
   echo "리뷰 생성 실패 — $(chair_label "$PRIMARY_MODEL")·$(chair_label "$FALLBACK_MODEL") 모두 유효한 응답(빈 응답 또는 VERDICT 형식 불일치)을 반환하지 않음." > "$OUT"
   echo "VERDICT: FAIL" >> "$OUT"

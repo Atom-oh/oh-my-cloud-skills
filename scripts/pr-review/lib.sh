@@ -39,6 +39,26 @@ record_result() {
 # key=value)를 재사용하고, EKS Pod Identity 토큰(고정 경로 파일의 값 자체가 JWT 포맷)
 # 탐지를 추가했다. 절대경로 read 자체를 막지는 못하므로(스크럽은 값이 셀 출력에 실제로
 # 나타난 *뒤*에만 작동) 잔여 위험은 그대로 남는다 — ADR-011 명시.
+# 의장 stderr 발췌 — synthesize.sh 의 두 호출 지점이 공유하는 단일 구현(사본 금지).
+# 순서가 전부 의도적이다:
+#   ① scrub 먼저, 캡 나중 — 먼저 자르면 경계에 걸친 시크릿이 반쪽만 남아 scrub 정규식을
+#      비껴가고 그 조각이 public Actions 로그로 나간다(PR#140 리뷰 L3 MAJOR).
+#   ② scrub 결과는 파이프가 아니라 **파일**로 받는다 — `scrub_secrets < f | head -c N` 은
+#      head 가 N 바이트만 읽고 종료할 때 상류가 SIGPIPE(141)로 죽고 `set -euo pipefail` 이
+#      그걸 스크립트 전체 중단으로 전파한다(실측 재현: 270KB stderr → exit 141, PR#140
+#      리뷰 L4 MAJOR). 이 파일은 위 패널 셀 캡(scrub_secrets < f > tmp; head -c N tmp)이
+#      같은 이유로 이미 파일 기반이며, 그 교훈을 여기서도 그대로 쓴다.
+#   ③ 개행 정규화는 마지막 — 발췌에 개행이 남으면 ::warning:: annotation 이 끊기고 뒤 줄이
+#      workflow command(`::add-mask::` 등)로 재해석될 수 있다.
+chair_err_excerpt() {  # $1=stderr 파일, $2=캡 바이트(기본 500)
+  local f="$1" cap="${2:-500}" tmp
+  [ -f "$f" ] || return 0
+  tmp="$(mktemp)"
+  scrub_secrets < "$f" > "$tmp"
+  head -c "$cap" "$tmp" | tr '\n\r' '  '
+  rm -f "$tmp"
+}
+
 scrub_secrets() {
   # PEM 은 여러 줄에 걸치므로 line-oriented sed 로는 본문을 못 지운다(헤더 줄만 매칭)
   # — awk 상태기계로 BEGIN..END 블록 전체를 마커 한 줄로 치환(첫 스테이지, 구조적 스크럽).

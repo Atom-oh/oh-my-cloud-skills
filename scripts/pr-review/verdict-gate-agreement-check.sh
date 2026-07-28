@@ -4,9 +4,11 @@
 #
 # 검사 2종:
 #   A. chair_valid vs 게이트(pr-review.yml) 판정 — 어떤 출력이 fallback 을 타는지 고정
-#   B. stderr 발췌 파이프 순서 — scrub 먼저/자르기 나중이 500바이트 경계 시크릿을 막는지
+#   B. stderr 발췌(lib.sh chair_err_excerpt) — scrub 먼저/자르기 나중이 경계 시크릿을 막는지
+#   C. stderr 발췌가 대용량 stderr 에서 SIGPIPE 로 죽지 않는지 (set -euo pipefail 아래)
 #
-# NOTE: 아래 chair_valid/gate_result 는 **복사본**이다(synthesize.sh 를 source 하면 스크립트
+# NOTE: B/C 는 lib.sh 의 chair_err_excerpt **실물**을 호출한다(사본 아님).
+# 아래 chair_valid/gate_result 는 **복사본**이다(synthesize.sh 를 source 하면 스크립트
 # 본체가 실행돼버린다). source of truth 는 각각 synthesize.sh 와 .github/workflows/pr-review.yml
 # 이며, 그쪽을 고치면 여기도 함께 고쳐야 한다.
 set -uo pipefail
@@ -61,18 +63,18 @@ check_verdict "duplicate line-start verdict" invalid fail       $'VERDICT: PASS\
 check_verdict "inline verdict mention"       valid   fail       $'see VERDICT: PASS above\n\nVERDICT: FAIL\n'
 # 역방향(게이트 거부 + chair_valid 통과)은 이 표에 존재하지 않는다 = 위험한 조합 없음
 
-echo "B. stderr 발췌: scrub -> truncate 순서"
+echo "B. stderr 발췌: scrub -> truncate 순서 (lib.sh chair_err_excerpt 실물 호출)"
 # 500바이트 경계에 시크릿이 걸치도록 배치. 자르기를 먼저 하면 반쪽 토큰이 scrub 을 비껴간다.
 SECRET="ghp_$(printf 'A%.0s' $(seq 1 36))"
 ERR_FILE="$(mktemp)"
 printf '%*s' 490 '' | tr ' ' 'x' > "$ERR_FILE"       # 490 바이트 패딩
 printf 'boom %s tail\n' "$SECRET" >> "$ERR_FILE"     # 시크릿이 500 바이트 경계를 가로지름
 
-GOOD="$(scrub_secrets < "$ERR_FILE" | tr '\n\r' '  ' | head -c 500)"   # 이 PR 의 순서
-BAD="$(head -c 500 "$ERR_FILE" | scrub_secrets | tr '\n\r' '  ')"      # 이전 순서
+GOOD="$(chair_err_excerpt "$ERR_FILE")"                            # 실제 구현
+BAD="$(head -c 500 "$ERR_FILE" | scrub_secrets | tr '\n\r' '  ')" # 옛 순서(반례 데모)
 
 case "$GOOD" in
-  *ghp_A*) fail "scrub -> truncate 인데도 시크릿 조각이 남았다: ...${GOOD: -60}" ;;
+  *ghp_A*) fail "chair_err_excerpt 출력에 시크릿 조각이 남았다: ...${GOOD: -60}" ;;
   *)       echo "  [ok] scrub -> truncate: 시크릿 잔재 없음" ;;
 esac
 case "$BAD" in
@@ -83,6 +85,23 @@ case "$GOOD" in
   *$'\n'*) fail "발췌에 개행이 남아 annotation 이 깨질 수 있다" ;;
   *)       echo "  [ok] 개행 정규화됨" ;;
 esac
+[ -n "$GOOD" ] || fail "발췌가 비었다 — 캡/스크럽이 내용을 통째로 날렸다"
 rm -f "$ERR_FILE"
+
+echo "C. 대용량 stderr: SIGPIPE 로 죽지 않는지"
+# 파이프 버퍼(64KB)를 훨씬 넘는 stderr. `scrub_secrets < f | head -c 500` 로 짜면 여기서
+# 상류가 SIGPIPE(141) 로 죽고 set -euo pipefail 이 스크립트를 중단시킨다(실측 재현됨).
+# 발화 조건(대량 stderr)이 이 발췌가 존재하는 이유인 600s 타임아웃 시나리오와 정확히 겹친다.
+BIG_ERR="$(mktemp)"
+head -c 200000 /dev/urandom | base64 > "$BIG_ERR"   # ~270KB
+BIG_OUT="$(mktemp)"
+if ( set -euo pipefail; . "$DIR/lib.sh"; chair_err_excerpt "$BIG_ERR" > "$BIG_OUT" ); then
+  echo "  [ok] 270KB stderr 에서도 생존 (발췌 $(wc -c < "$BIG_OUT") bytes)"
+  [ "$(wc -c < "$BIG_OUT")" -le 501 ] || fail "캡이 적용되지 않았다: $(wc -c < "$BIG_OUT") bytes"
+else
+  rc=$?
+  fail "대용량 stderr 에서 chair_err_excerpt 가 죽었다 (exit $rc — 141 이면 SIGPIPE)"
+fi
+rm -f "$BIG_ERR" "$BIG_OUT"
 
 if [ "$FAILED" = 0 ]; then echo "PASS"; else echo "FAILED" >&2; exit 1; fi
