@@ -383,6 +383,11 @@ class PluginTestSuite:
             # Optional tools validation
             tools_str = frontmatter.get('tools', '')
             if tools_str:
+                # `tools:` is normally a comma string, but the frontmatter parser returns a
+                # LIST for the block form. Joining keeps both shapes on one path — the old
+                # `tools_str.split(',')` raised AttributeError on the list form.
+                if isinstance(tools_str, list):
+                    tools_str = ','.join(str(t) for t in tools_str)
                 decls, balanced = _split_tools(tools_str)
                 if not balanced:
                     self.error(f"Agent {agent_path}: unbalanced parentheses in 'tools' — "
