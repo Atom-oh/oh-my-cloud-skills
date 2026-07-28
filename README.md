@@ -724,6 +724,7 @@ All agents (except the internal pr-autofix workers above) activate automatically
 | `/generate-readme` | Generate bilingual README.md |
 | `/generate-changelog` | Generate bilingual CHANGELOG.md |
 | `/health-check` | Validate project setup |
+| `/add-reference-doc` | Add an external reference doc under docs/reference/ |
 
 ---
 

@@ -724,6 +724,7 @@ aws-ops-power/
 | `/generate-readme` | 이중 언어 README.md 생성 |
 | `/generate-changelog` | 이중 언어 CHANGELOG.md 생성 |
 | `/health-check` | 프로젝트 설정 검증 |
+| `/add-reference-doc` | 외부 참조 문서를 docs/reference/ 에 추가 |
 
 ---
 
