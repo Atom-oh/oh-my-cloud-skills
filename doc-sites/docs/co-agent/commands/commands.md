@@ -71,3 +71,23 @@ CLI가 헤드리스로 실제 받는 옵션만 노출합니다(죽은 설정 없
 ```
 
 결과(READY / AUTH / NO_INGEST / TIMEOUT / ERROR / ABSENT)를 `.claude/co-agent-panel.local.json`에 기록합니다. review/decide/adr은 이 결과가 없어도 solo로 강등되지만, **`/co-agent:consensus`·`/co-agent:harness`는 gate-eligible peer(`status==READY` **and** raw CLI 보유)가 0이면 이 명령을 먼저 실행하도록 안내**합니다. 인증 문제는 가이드만 제공하며 자동으로 로그인을 시도하지 않습니다.
+
+## /co-agent:pr-autofix
+
+PR 생성 후 AI 리뷰와 사람 리뷰 피드백을 자동으로 읽고 코드를 수정합니다. 반복 상한은 `/co-agent:configure set pr_autofix max_iterations <n>` 설정값(기본 5)입니다.
+
+```bash
+/co-agent:pr-autofix
+```
+
+**워크플로우:**
+1. 현재 브랜치의 PR을 자동 감지
+2. AI 리뷰 코멘트(`<!-- bedrock-pr-review -->`)와 사람 리뷰(`CHANGES_REQUESTED`) 동시 polling
+3. 이슈 발견 시 CRITICAL → MAJOR → MINOR 순으로 수정
+4. 빌드 검증 후 커밋 & push
+5. 설정된 반복 상한에 도달해도 통과 못하면 사용자에게 수동 리뷰 요청
+
+**제약:**
+- `.github/workflows/*` 파일 수정 금지
+- 리뷰에서 언급된 이슈만 수정 (추가 리팩토링 금지)
+- AI 리뷰를 사용하려면 프로젝트에 `pr-review.yml` CI 워크플로우 설정 필요

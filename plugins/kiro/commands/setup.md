@@ -93,6 +93,23 @@ below unless you want to target a DIFFERENT repo than the cwd's.
      `python3 "$SK/kiro_config.py" set review on_commit on`; review every `git commit`'s
      staged diff, block on `critical` findings only.
 
+   And whether to turn on the **pre-push lens gate** (**off by default**, a separate
+   opt-in from the pre-commit hook) — a 3-lens pass (correctness/security/scope, run
+   in parallel) over the commit range about to be pushed, sent to Kiro's backend
+   THREE times per push instead of once. Before asking, best-effort check whether
+   co-agent's own `push_gate` is already on for this repo (`python3
+   "${CLAUDE_PLUGIN_ROOT}/../co-agent/skills/co-agent/scripts/co_agent_config.py" show
+   --root . 2>/dev/null | grep push_gate` — co-agent may not be installed; ignore a
+   failure silently) and mention it in the option description if so ("co-agent's own
+   push gate is already on for this repo — turning this on too means every push runs
+   both"):
+   - **Off (Recommended to start)** — no automatic push review; use
+     `/kiro:review --range --lenses correctness,security,scope` on demand.
+   - **On** — `python3 "$SK/kiro_config.py" set review on_push on`; blocks on
+     `critical` (plain BLOCKED) or a `warning`-only set at/above `review.push_block`
+     (default `warning`, framed as CHAIR JUDGMENT REQUIRED — the finding is read from
+     stderr and judged, not auto-vetoed).
+
 6. Ask (`AskUserQuestion`) whether to enable **web search delegation** — routing web
    searches through kiro-cli's native `web_search` tool when this Claude Code session
    has no `WebSearch` tool of its own (the common case on Bedrock). Mention plainly

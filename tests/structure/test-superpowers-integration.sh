@@ -49,16 +49,16 @@ assert_contains "$SP_ROOT_BODY" "ops-troubleshoot" \
 
 # --- ② finishing-a-development-branch ↔ project-init doc sync ---
 
-SP_SYNC="plugins/project-init/commands/sync-docs.md"
-SP_CHLOG="plugins/project-init/commands/generate-changelog.md"
-SP_PI_MD="plugins/project-init/CLAUDE.md"
-
-assert_contains "$(cat "$SP_SYNC")" "finishing-a-development-branch" \
-  "② sync-docs.md references superpowers:finishing-a-development-branch"
-assert_contains "$(cat "$SP_CHLOG")" "finishing-a-development-branch" \
-  "② generate-changelog.md references superpowers:finishing-a-development-branch"
-assert_contains "$(cat "$SP_PI_MD")" "finishing-a-development-branch" \
-  "② project-init CLAUDE.md has the finish-branch doc-sync routing note"
+# project-init is mirrored byte-for-byte from its upstream fork source (only `version` is
+# local — docs/reference/project-init-upstream-sync.md), so the routing note CANNOT live in
+# its own files: an in-plugin hint would be wiped by the next sync. The root CLAUDE.md
+# routing table is the whole integration for this phase, and it is always in context.
+assert_grep_no_match "superpowers" "$(cat plugins/project-init/CLAUDE.md)" \
+  "② project-init stays upstream-clean — no local superpowers hint to be lost on sync"
+assert_contains "$SP_ROOT_BODY" "/sync-docs" \
+  "② root routing table routes finish-branch to project-init /sync-docs"
+assert_contains "$SP_ROOT_BODY" "/generate-changelog" \
+  "② root routing table routes finish-branch to project-init /generate-changelog"
 
 # --- ③ requesting-code-review ↔ non-code review gates ---
 
@@ -85,8 +85,9 @@ assert_contains "$(cat "$SP_WAA")" "writing-plans" \
   "④ wellarchitected-agent can run as a writing-plans shift-left pre-check"
 assert_contains "$(cat "$SP_SECAUDIT")" "writing-plans" \
   "④ ops-security-audit can run as a writing-plans shift-left pre-check"
-assert_contains "$(cat "$SP_PI_MD")" "writing-plans" \
-  "④ project-init CLAUDE.md has the plan-time security pre-check note"
+# ④'s project-init leg is likewise root-CLAUDE.md-only (see ② above).
+assert_contains "$SP_ROOT_BODY" "writing-plans" \
+  "④ root routing table carries the plan-time AWS security pre-check row"
 
 # --- root routing table: ②③④ flipped from planned → active ---
 # Extract the routing table rows and assert no "planned" status remains on ②③④.

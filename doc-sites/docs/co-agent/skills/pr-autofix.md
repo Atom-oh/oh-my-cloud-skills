@@ -5,7 +5,7 @@ title: "pr-autofix"
 
 # pr-autofix Skill
 
-PR 리뷰 피드백(AI + 사람)을 자동으로 읽고 코드를 수정하는 스킬입니다. 최대 5회 반복합니다.
+PR 리뷰 피드백(AI + 사람)을 자동으로 읽고 코드를 수정하는 스킬입니다. 반복 상한은 `/co-agent:configure set pr_autofix max_iterations <n>` 설정값(기본 5)입니다.
 
 ## 리뷰 소스
 
@@ -57,7 +57,7 @@ flowchart TD
 - `.github/workflows/*` 파일 수정 금지
 - 리뷰에서 언급된 이슈만 수정 (추가 리팩토링 금지)
 - 빌드 검증 후에만 커밋
-- 최대 5회 반복 후 사용자에게 수동 리뷰 요청
+- 설정된 반복 상한(`pr_autofix.max_iterations`, 기본 5) 도달 후 사용자에게 수동 리뷰 요청
 
 ## 레퍼런스
 
@@ -66,7 +66,7 @@ flowchart TD
 AI 리뷰를 사용하려면 프로젝트에 GitHub Actions 워크플로우가 필요합니다. `references/pr-review-workflow.yml`을 `.github/workflows/`에 복사하여 사용합니다.
 
 ```bash
-cp plugins/project-init/skills/pr-autofix/references/pr-review-workflow.yml \
+cp plugins/co-agent/skills/pr-autofix/references/pr-review-workflow.yml \
    .github/workflows/pr-review.yml
 ```
 

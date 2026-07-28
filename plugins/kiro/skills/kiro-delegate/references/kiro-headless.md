@@ -28,8 +28,23 @@ caller.
 kiro-cli chat "Read .kiro/task-prompt.md via fs_read — it has your task and any spec \
 file pointers — then implement exactly what it describes. Do not touch files outside \
 the task's declared file set." --mode default --no-interactive --wrap never \
-  --agent kiro-implementer [--model <m>]
+  --require-mcp-startup --agent kiro-implementer [--effort low] [--model <m>]
 ```
+
+`--effort` is `delegate.effort` (`kiro_config.py delegate-effort`, default **`low`** — the
+plan is already written, so applying it is mechanical; omit the flag when the accessor
+prints nothing). `--require-mcp-startup` turns a silently-dead MCP server into **exit 3**
+up front instead of a task that runs without a tool it was planned around and then fails
+the tests for an unrelated-looking reason — treat exit 3 as infrastructure failure, not a
+fix-round-worthy task failure.
+
+**Fix rounds resume, they don't restart.** After the first call, record the session with
+`kiro_run.py session-id <wt>` and re-run round 2 as
+`kiro-cli chat "<the same fixed sentence>" --resume-id <id> …`, having rewritten
+`<wt>/.kiro/task-prompt.md` to hold **only the failing test output**. The session already
+has the task, the spec, and Kiro's own first attempt; re-sending them costs a full context
+re-read and invites redoing finished work. No id found (exit 1) → fall back to a fresh
+call carrying task + failure. Details: `agents/kiro-delegate-agent.md` steps 3-4.
 
 **The task prompt argument above is a FIXED STRING, not per-task interpolated text —
 this is deliberate, not a simplification.** An earlier draft put the actual task
@@ -75,12 +90,73 @@ see it in an older note, treat the agent-file requirement above as authoritative
   Drop `--v3` whenever an explicit `--model` is set; only use `--v3`+no-model for the
   CLI's own default routing.
 
+## The real headless flag surface (measured on kiro-cli 2.11.1, 2026-07)
+
+**Read this before assuming a lever doesn't exist.** The public headless blog post lists
+only four flags (`--no-interactive`, `--trust-all-tools`, `--trust-tools`,
+`--require-mcp-startup`), and an earlier version of this section repeated that list as if
+it were exhaustive — which is why this plugin shipped for a while without `--effort` or
+fix-round resumption, both of which were available the whole time. `kiro-cli chat --help`
+is the authoritative source; re-run it after a CLI upgrade rather than trusting prose:
+
+| Flag | Used here |
+|------|-----------|
+| `--effort low\|medium\|high\|xhigh\|max` | `delegate.effort` (default `low`) / `review.effort` (default `high`) — `kiro_config.py delegate-effort\|review-effort` |
+| `--resume-id <SESSION_ID>` (also `-r`, `--resume-picker`) | fix-round chaining — `kiro_run.py session-id <wt>` |
+| `-l/--list-sessions` + `-f json\|json-pretty` | how `session-id` finds that id (grouped by `cwd`, so a per-task worktree identifies its session unambiguously) |
+| `--list-models --format json` | `kiro_setup.py list-models` |
+| `--require-mcp-startup` (exit **3**) | delegate invocation — a silently-dead MCP server fails fast instead of failing the tests later for an unrelated-looking reason |
+| `--mode default\|spec`, `--wrap never`, `--agent`, `--model` | already in use throughout |
+
+`-d/--delete-session`, `--session-source v1\|v2`, `--agent-engine`, `--v3` also exist;
+`--v3` narrows the model catalog (see the `INVALID_MODEL_ID` note above).
+
+### What is genuinely missing: turn-level event streaming
+
+There is **no `--output-format stream-json`** equivalent — a `chat` turn's output is the
+same human-readable text a terminal user sees (`--format json` applies to the
+`--list-models`/`--list-sessions` **list** flags, not to a turn). Upstream requests:
+`--output-format json` + `--progress-file <path>` NDJSON (kiro#5423) and headless
+session-id/credit JSON (kiro#9066). Note the narrower claim than before: `--resume-id`,
+`--effort` and session JSON all exist today — only the live event stream doesn't, and
+kiro#9066's session-id ask is already worked around by reading the session store.
+
+The credit figure from that same wish-list is likewise scrapeable rather than absent:
+kiro-cli prints a `Credits: <n>` turn footer into the log the caller already redirects, so
+`kiro_run.py credits <log>...` sums it for the delegation-rate report — best-effort, and
+the report omits the line rather than guessing if the footer format changes.
+
+## Watching a run
+
+What *is* available today is that text, live. Since every caller here already redirects
+stdout to a **file** (mandatory, see the auth-callback warning above), tailing that file
+turns a blind wait into visible progress with no protocol support at all:
+
+- **`/kiro:review`** — pass `--progress`: `kiro_review.py` tails kiro's stdout to its own
+  stderr line-by-line, prefixed `[kiro:<lens>]` (so the 3 parallel lenses stay
+  distinguishable), ANSI stripped, plus a 15s "still running, Ns elapsed" heartbeat. Run
+  it in a **background** Bash and poll — a foreground Bash call shows nothing until it
+  returns, which is exactly the wait being fixed. The hooks deliberately don't pass it:
+  their stderr only reaches anyone after the call has already finished.
+- **Implement (delegate)** — Claude runs `kiro-cli` directly, so do the same thing by
+  hand: redirect to a log **outside `<wt>`** and launch it in the background, then
+  `tail -n 20` that log between polls.
+
+  ```bash
+  kiro-cli chat "<the fixed instruction sentence>" --mode default --no-interactive \
+    --wrap never --agent kiro-implementer > /tmp/kiro-delegate-<task>.log 2>&1
+  ```
+
+  Outside `<wt>` because anything written inside it lands in `capture-diff`'s scope; and
+  **`> file`, never `| tee`** — a pipe severs the auth callback and hangs the call to the
+  full timeout, which is the failure this whole section is meant to avoid.
+
 ## Review (read-only)
 
 ```bash
 kiro-cli chat "<instruction to fs_read the diff file and report findings>" \
   --mode default --no-interactive --trust-tools=fs_read --wrap never \
-  [--model <m>] [--agent kiro-reviewer]
+  [--effort high] [--model <m>] [--agent kiro-reviewer]
 ```
 
 Same argv/stdin rules as implement, but `--trust-tools=fs_read` only (or the
@@ -167,13 +243,23 @@ which `commands/review.md` only passes after asking the user first via
 credential-shaped env vars from the reviewer's process env. Treat authorship trust as
 defense-in-depth on top of the guard, not the other way around.
 
-## Model tiering
+## Model + effort tiering
 
 - **Delegate (implementer) model** — `delegate.model` in `kiro.local.json`. Kiro is a
   flat-rate subscription CLI, so unlike a metered peer, there's no per-token cost to
   weigh — point it at whichever model actually finishes tasks correctly; fewer fix-rounds
   is pure wall-clock savings, same reasoning as co-agent's `implementer_model` guidance.
+- **Delegate effort** — `delegate.effort`, default **`low`**. Claude has already written
+  the spec and the per-task file set; the implementer is applying an approved plan, and
+  the DeepSWE-style observation that deeper reasoning buys nothing on a mechanical
+  application applies here the same way it does to this repo's own
+  `pr-autofix-implementer` tier. Raise it if a specific repo's tasks keep exhausting the
+  fix loop — that's a wall-clock signal, not a cost one.
 - **Review model** — `review.model`, meant to be Kiro's **strongest/newest** available
   model (the user's own example: `gpt-5.6-sol`). `/kiro:setup` runs
   `kiro-cli chat --list-models --format json` and helps pick one.
+- **Review effort** — `review.effort`, default **`high`**, deliberately the opposite end
+  of the ladder from delegate: this call's blocking verdict *is* its product, and a missed
+  critical finding costs more than the extra reasoning. Applies to the single-pass commit
+  gate and to each of the 3 parallel push lenses alike.
 - List available models: `kiro_setup.py list-models`.

@@ -73,7 +73,7 @@ before enabling `default_delegate`. Kiro never commits.
 | `/kiro:setup` | Detect `kiro-cli`, probe real usability, list available models, write `.kiro/agents/{kiro-implementer,kiro-reviewer}.json`, set `default_delegate`/`review.on_commit` |
 | `/kiro:delegate <request>` | Plan → spec → Kiro implements per task → Claude verifies + commits → delegation-rate report |
 | `/kiro:review [paths...]` | Run the same Kiro-powered review the pre-commit hook runs, on demand (default: staged changes) |
-| `/kiro:configure` | Inspect/change `default_delegate`, delegate/review models, `parallel_tasks`, `max_fix_rounds`, `review.on_commit`, `review.block` |
+| `/kiro:configure` | Inspect/change `default_delegate`, delegate/review models + `effort` (kiro-cli `--effort`; delegate `low`, review `high`), `parallel_tasks`, `max_fix_rounds`, `review.on_commit`, `review.on_push`, `review.block`, `review.push_block` |
 
 **Split before delegating, never hand Kiro a multi-layer task in one shot** — a task
 spanning model+repository+service+handler+routes+tests routinely exceeds
@@ -108,6 +108,33 @@ same-line assignment never reaches; a separately-`export`ed value from a prior c
 also won't help, since shell state doesn't persist between Bash tool calls) — or turn
 it off persistently with `/kiro:configure set review on_commit off`.
 
+## Pre-push lens gate (opt-in)
+
+`review.on_push` is a **separate** opt-in from `review.on_commit` — off by default, same
+external-diff-egress rationale, but a different mechanic: instead of one unrestricted
+pass, it fans the commit range about to be pushed (`@{upstream}..HEAD`, falling back to
+the trunk merge-base) out across **three narrowed lenses** (correctness, security,
+scope — `kiro_review.py`'s `_LENSES`), run in parallel as three separate `kiro-cli`
+calls. A reviewer told to look for everything tends to under-weight any one dimension;
+three narrow passes catch more than one broad pass. Same guard/fail-open contract as
+the commit hook (tamper-verified `kiro-reviewer` agent, `fs_read` confined to the
+isolated diff dir, skip rather than fall back unguarded). Turn it on via `/kiro:setup`
+or `/kiro:configure set review on_push on` — the CLI warns (but still writes) if
+co-agent's own `push_gate` is ALSO on for this repo, since both firing means every push
+runs two independent review rounds.
+
+Blocking uses `review.push_block` (default **`warning`** — one tier stricter than the
+commit gate's `critical`, since this is the last checkpoint before content leaves the
+machine) against the SAME `BLOCK_FLOOR` mechanism the commit path uses, but the
+stderr framing differs by what's in the blocking set: any **critical** finding is a
+plain `BLOCKED` (fix it, no bypass suggested); a **warning-only** set (no critical) is
+framed as `CHAIR JUDGMENT REQUIRED` — a hook has no way to call Claude directly, so
+exit 2 + this stderr text is how the verdict reaches whoever's chairing; read each
+finding against the actual change and decide, then either fix it or bypass with an
+inline `KIRO_REVIEW=off git push ...` prefix (same text-recognition mechanism as the
+commit hook's bypass, generalized in `hook_match.py` to `git push` too). Run the same
+3-lens pass manually with `/kiro:review` (see `commands/review.md`).
+
 ## Delegate vs. review — different models, on purpose
 
 - **Delegate (implement) model** — `delegate.model`. Flat-rate CLI, so no per-token cost
@@ -141,8 +168,10 @@ Set it from `/kiro:setup` or `/kiro:configure set default_delegate on`.
   implementer CLI differs)
 - `scripts/kiro_config.py` — layered settings (`kiro.defaults.json` ← `.claude/kiro.local.json`,
   gitignored by convention; if a consumer repo commits it anyway, its
-  `default_delegate`/`review.on_commit` values are ignored and fall back to off — a
-  committed file can't silently opt an installing user into diff egress or
-  auto-delegation)
+  `default_delegate`/`review.on_commit`/`review.on_push` values are ignored and fall
+  back to off — a committed file can't silently opt an installing user into diff
+  egress or auto-delegation)
 - `scripts/kiro_review.py` — the Kiro-run review used by `/kiro:review` and the hook
 - `scripts/kiro_setup.py` — probe, model listing, `.kiro/agents/*.json` generation
+- `scripts/kiro_run.py` — per-run telemetry: `session-id <wt>` for `--resume-id`
+  fix-round chaining, `credits <log>...` for the delegation report

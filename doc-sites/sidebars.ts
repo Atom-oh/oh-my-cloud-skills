@@ -128,6 +128,8 @@ const sidebars: SidebarsConfig = {
     'co-agent/usage-guide',
     'co-agent/agents/co-agent',
     'co-agent/skills/co-agent',
+    'co-agent/skills/pr-autofix',
+    'co-agent/skills/decision-reconcile',
     'co-agent/commands/commands',
   ],
 
@@ -145,8 +147,6 @@ const sidebars: SidebarsConfig = {
     'project-init/installation',
     'project-init/agents/doc-sync-checker',
     'project-init/skills/project-scaffolder',
-    'project-init/skills/pr-autofix',
-    'project-init/skills/decision-reconcile',
     'project-init/commands/commands',
   ],
 

@@ -40,17 +40,13 @@ By default, review unstaged changes from `git diff`. The user may specify differ
 ## Confidence Scoring
 
 Rate each issue 0-100:
-- **0-24**: Likely false positive or pre-existing issue. Drop.
-- **25-49**: Might be real but possibly a nitpick. One-liner under "Below threshold".
-- **50-74**: Real but minor. One-liner under "Below threshold".
-- **75-89**: Verified real issue, important. Full detail with fix suggestion.
-- **90-100**: Confirmed critical issue. Full detail with fix suggestion.
+- **0-24**: Likely false positive or pre-existing issue. Do not report.
+- **25-49**: Might be real but possibly a nitpick. Do not report.
+- **50-74**: Real issue but minor. Report only if critical.
+- **75-89**: Verified real issue, important. Report with fix suggestion.
+- **90-100**: Confirmed critical issue. Must report.
 
-**Report every finding scored 25+; the confidence threshold decides how much
-detail it gets and whether it counts toward the verdict (75+), not whether it
-appears.** Silently dropping uncertain findings loses real bugs — current models
-follow "only report high-severity" literally, so filtering belongs at the
-verdict, not at discovery.
+**Only report issues with confidence >= 75.**
 
 ## Output Format
 

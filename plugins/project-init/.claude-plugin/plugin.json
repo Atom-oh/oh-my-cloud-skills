@@ -1,31 +1,9 @@
 {
   "name": "project-init",
-  "version": "1.15.0",
   "description": "Initialize and maintain Claude Code project structures with adaptive project detection, CLAUDE.md quality scoring, and auto-sync documentation workflows",
+  "version": "1.15.0",
   "author": {
     "name": "whchoi98",
     "email": "whchoi98@gmail.com"
-  },
-  "agents": [
-    "./agents/doc-sync-checker.md",
-    "./agents/pr-autofix-planner.md",
-    "./agents/pr-autofix-implementer.md"
-  ],
-  "skills": [
-    "./skills/project-scaffolder",
-    "./skills/pr-autofix",
-    "./skills/decision-reconcile"
-  ],
-  "commands": [
-    "./commands/init-project.md",
-    "./commands/sync-docs.md",
-    "./commands/add-adr.md",
-    "./commands/add-module.md",
-    "./commands/add-runbook.md",
-    "./commands/generate-readme.md",
-    "./commands/generate-changelog.md",
-    "./commands/health-check.md",
-    "./commands/pr-autofix.md",
-    "./commands/add-reference-doc.md"
-  ]
+  }
 }

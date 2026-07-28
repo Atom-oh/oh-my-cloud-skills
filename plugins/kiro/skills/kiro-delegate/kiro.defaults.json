@@ -1,7 +1,7 @@
 {
   "_comment": "kiro plugin defaults. default_delegate: route implementation work to Kiro CLI by default (no trigger phrase needed) — falls back to Claude when Kiro is unavailable or exhausts its fix loop. See /kiro:configure.",
   "default_delegate": false,
-  "delegate": { "model": null, "parallel_tasks": 3, "max_fix_rounds": 2, "timeout": 240 },
-  "review": { "on_commit": false, "model": null, "timeout": 120, "block": "critical" },
+  "delegate": { "model": null, "effort": "low", "parallel_tasks": 3, "max_fix_rounds": 2, "timeout": 240 },
+  "review": { "on_commit": false, "model": null, "effort": "high", "timeout": 120, "block": "critical", "on_push": false, "push_block": "warning" },
   "websearch": { "enabled": false, "model": null, "timeout": 60 }
 }

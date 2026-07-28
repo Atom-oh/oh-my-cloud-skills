@@ -9,25 +9,24 @@ Project Init는 Claude Code 프로젝트 구조 초기화, 문서 품질 스코�
 
 ## 구성 요소
 
-### 에이전트 (3개)
+> 이 플러그인은 upstream(`whchoi98/project-init`)의 **미러**입니다 — 로컬 델타는
+> 마켓플레이스 통일 `version` 하나뿐입니다. 이전에 여기 있던 `pr-autofix`(에이전트 2개 +
+> 스킬 + 명령)와 `decision-reconcile`은 **co-agent 플러그인으로 이전**했습니다(둘 다
+> 멀티-모델 패널을 사용).
+
+### 에이전트 (1개)
 
 | 에이전트 | 설명 | 출력물 |
 |----------|------|--------|
 | `doc-sync-checker` | 문서 동기화 분석, 품질 스코어링, 누락 문서 감지 | 품질 점수 보고서 |
-| `pr-autofix-planner` | pr-autofix 수정 계획 (read-only 강제, fable/opus) | 구조화된 수정 계획 |
-| `pr-autofix-implementer` | pr-autofix 계획 적용 (편집 도구만 강제, opus [medium effort]) | worktree 내 파일 편집 |
 
-> `pr-autofix-planner`/`pr-autofix-implementer`는 pr-autofix 스킬 내부 워커로, 키워드 자동 호출을 디스크립션으로 억제합니다(하드 차단은 아니며, 준비된 입력 없이 호출되면 blocked를 반환).
-
-### 스킬 (3개)
+### 스킬 (1개)
 
 | 스킬 | 설명 |
 |------|------|
 | `project-scaffolder` | Claude Code 프로젝트 구조 패턴 및 컨벤션 |
-| `pr-autofix` | PR 리뷰 피드백 자동 수정 (AI + 사람 리뷰 polling, 최대 5회 반복) |
-| `decision-reconcile` | 누적 ADR 간 모순·ADR vs 현실 drift를 다양성 멀티 에이전트 패널(Claude 모델 티어 ± 외부 CLI)로 검출, 번복 ADR 초안 작성 |
 
-### 명령 (10개)
+### 명령 (9개)
 
 | 명령 | 설명 |
 |------|------|
@@ -40,7 +39,6 @@ Project Init는 Claude Code 프로젝트 구조 초기화, 문서 품질 스코�
 | `/generate-readme` | 이중 언어 README.md 생성/업데이트 |
 | `/generate-changelog` | 이중 언어 CHANGELOG.md 생성/업데이트 |
 | `/health-check` | 프로젝트 설정 검증 (200점 척도) |
-| `/pr-autofix` | PR 리뷰 피드백(AI + 사람) 자동 수정 (최대 5회) |
 
 ## 워크플로우
 

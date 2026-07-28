@@ -1228,3 +1228,144 @@ assert_contains "$(cat plugins/kiro/commands/delegate.md)" "literal-pathspecs" "
 CFGMD="$(cat plugins/kiro/commands/configure.md)"
 assert_grep_no_match "isn't scoped to just the diff file\|not scoped to just the diff" "$CFGMD" "configure.md no longer claims the reviewer's fs_read is unscoped (contradicted every other doc)"
 assert_contains "$CFGMD" "confined to the isolated diff dir" "configure.md's on_commit row matches the rest of the docs: fs_read is confined by the guard"
+
+# --- --progress: kiro-cli headless has no stream-json equivalent, so the review path
+# tails kiro's own stdout capture FILE (never a pipe — that severs the acp-callback auth
+# refresh) to stderr while the call runs. Behavioral check of _run_streamed: lines appear
+# with the lens prefix and ANSI stripped, a clean exit returns its code, a non-zero exit
+# is preserved (so the fail-open message still reports it), and hitting the timeout kills
+# the process and returns None (the sentinel the timeout branch keys on). ---
+STREAM_OUT="$(python3 - <<'PY' 2>&1
+import sys, os, tempfile
+sys.path.insert(0, "plugins/kiro/skills/kiro-delegate/scripts")
+import kiro_review as kr
+d = tempfile.mkdtemp()
+o, e = os.path.join(d, ".out"), os.path.join(d, ".err")
+src = "import time\nfor i in range(3):\n print('\\x1b[32mstep %d\\x1b[0m' % i, flush=True); time.sleep(0.2)\n"
+print("RC", kr._run_streamed([sys.executable, "-c", src], d, os.environ.copy(), o, e, 20,
+                             echo_tag="correctness"))
+print("TIMEOUT_RC", kr._run_streamed([sys.executable, "-c", "import time; time.sleep(30)"],
+                                     d, os.environ.copy(), o, e, 1))
+print("FAIL_RC", kr._run_streamed([sys.executable, "-c", "raise SystemExit(3)"],
+                                  d, os.environ.copy(), o, e, 10))
+PY
+)"
+assert_contains "$STREAM_OUT" "\[kiro:correctness\] step 0" "_run_streamed echoes kiro's output live with the lens prefix"
+assert_grep_no_match $'\x1b\\[32m' "$STREAM_OUT" "_run_streamed strips ANSI escapes from the streamed lines"
+assert_contains "$STREAM_OUT" "RC 0" "_run_streamed returns the exit code on a clean run"
+assert_contains "$STREAM_OUT" "TIMEOUT_RC None" "_run_streamed returns None (not an exception) when the timeout kills the call"
+assert_contains "$STREAM_OUT" "FAIL_RC 3" "_run_streamed preserves a non-zero exit code"
+assert_contains "$(cat plugins/kiro/skills/kiro-delegate/scripts/kiro_review.py)" "[-]-progress" "kiro_review.py accepts --progress"
+
+# --- `--effort` tiering (kiro-cli 2.11.1 `chat --effort`): delegate low / review high.
+# The blog's four-flag headless list omitted this, which is why the plugin shipped
+# without it for a while — so assert both the config plumbing and that the flag actually
+# reaches the review argv. ---
+RE=$(mktemp -d "${TMPDIR:-/tmp}/kiro-effort.XXXXXX")
+assert_eq "low" "$(python3 "$CFG" delegate-effort --root "$RE" 2>&1)" "delegate effort defaults to low (applying an already-approved plan is mechanical)"
+assert_eq "high" "$(python3 "$CFG" review-effort --root "$RE" 2>&1)" "review effort defaults to high (the blocking verdict IS the product)"
+python3 "$CFG" set delegate effort xhigh --root "$RE" >/dev/null 2>&1
+assert_eq "xhigh" "$(python3 "$CFG" delegate-effort --root "$RE" 2>&1)" "set delegate effort roundtrip"
+python3 "$CFG" set review effort bogus --root "$RE" >/dev/null 2>&1 && EFB=0 || EFB=$?
+assert_eq "2" "$EFB" "set review effort rejects a value outside low|medium|high|xhigh|max (exit 2)"
+python3 "$CFG" set delegate effort default --root "$RE" >/dev/null 2>&1
+assert_eq "" "$(python3 "$CFG" delegate-effort --root "$RE" 2>&1)" "set delegate effort default prints nothing — the caller omits --effort and lets kiro-cli pick"
+# a hand-edited garbage value must degrade to "omit the flag", never break delegation
+printf '{"delegate":{"effort":7},"review":{"effort":"ultra"}}' > "$RE/.claude/kiro.local.json" 2>/dev/null || { mkdir -p "$RE/.claude"; printf '{"delegate":{"effort":7},"review":{"effort":"ultra"}}' > "$RE/.claude/kiro.local.json"; }
+EFD=$(python3 "$CFG" delegate-effort --root "$RE" 2>&1); EFD_RC=$?
+assert_eq "0" "$EFD_RC" "a hand-edited non-string effort doesn't crash the accessor"
+assert_eq "" "$EFD" "a hand-edited non-string effort coerces to '' (omit the flag), not passed through to kiro-cli"
+assert_eq "" "$(python3 "$CFG" review-effort --root "$RE" 2>&1)" "an unknown effort level coerces to '' too"
+assert_contains "$(python3 "$CFG" show --root "$RE" 2>&1)" "effort" "config show surfaces the effective effort"
+rm -rf "$RE"
+
+# --effort actually reaches the kiro-cli argv (config value → flag). Fake kiro-cli dumps
+# its own argv; allow_unguarded=True is the only path that runs without a written agent.
+REA=$(mktemp -d "${TMPDIR:-/tmp}/kiro-effort-argv.XXXXXX")
+mkdir -p "$REA/bin"
+cat > "$REA/bin/kiro-cli" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$@" > "$KIRO_ARGV_DUMP"
+echo '[]'
+EOF
+chmod +x "$REA/bin/kiro-cli"
+env PATH="$REA/bin:$PATH" KIRO_ARGV_DUMP="$REA/argv" python3 -c "
+import sys
+sys.path.insert(0, 'plugins/kiro/skills/kiro-delegate/scripts')
+import kiro_review as kr
+kr.run_review('$REA', 'diff --git a/f b/f\n+x\n', None, 30, allow_unguarded=True, effort='high')
+" >/dev/null 2>&1
+ARGV_DUMP=$(cat "$REA/argv" 2>/dev/null)
+assert_contains "$ARGV_DUMP" "[-]-effort" "run_review(effort=...) passes --effort to kiro-cli"
+assert_contains "$ARGV_DUMP" "high" "run_review passes the configured effort VALUE, not a hardcoded one"
+env PATH="$REA/bin:$PATH" KIRO_ARGV_DUMP="$REA/argv2" python3 -c "
+import sys
+sys.path.insert(0, 'plugins/kiro/skills/kiro-delegate/scripts')
+import kiro_review as kr
+kr.run_review('$REA', 'diff --git a/f b/f\n+x\n', None, 30, allow_unguarded=True)
+" >/dev/null 2>&1
+assert_grep_no_match "[-]-effort" "$(cat "$REA/argv2" 2>/dev/null)" "run_review omits --effort entirely when no effort is configured (no empty-string flag)"
+rm -rf "$REA"
+
+# --- kiro_run.py: the two things a finished kiro-cli call won't hand back structurally.
+# session-id reads the `--list-sessions --format json` store (grouped by cwd, so a
+# per-task worktree identifies its session unambiguously) so a fix round can
+# `--resume-id` the SAME conversation instead of re-sending the whole task. ---
+RUN="$SK/kiro_run.py"
+assert_file_exists "$RUN" "kiro_run.py exists"
+assert_file_executable "$RUN" "kiro_run.py is executable"
+assert_eq "0" "$(python3 -m py_compile "$RUN" 2>&1 >/dev/null; echo $?)" "kiro_run.py compiles"
+RR=$(mktemp -d "${TMPDIR:-/tmp}/kiro-run.XXXXXX")
+mkdir -p "$RR/bin" "$RR/wt"
+cat > "$RR/bin/kiro-cli" <<'EOF'
+#!/usr/bin/env bash
+cat "$KIRO_SESSIONS_JSON"
+EOF
+chmod +x "$RR/bin/kiro-cli"
+python3 - "$RR" <<'PY'
+import json, os, sys
+d = sys.argv[1]
+wt = os.path.realpath(os.path.join(d, "wt"))
+json.dump([
+    {"cwd": "/somewhere/else", "sessions": [{"sessionId": "wrong-cwd", "updatedAt": "2026-07-27T23:00:00Z"}]},
+    {"cwd": wt, "sessions": [
+        {"sessionId": "older", "updatedAt": "2026-07-27T10:00:00Z"},
+        {"sessionId": "newest", "updatedAt": "2026-07-27T12:00:00Z"},
+        {"sessionId": "no-timestamp"},
+    ]},
+], open(os.path.join(d, "sessions.json"), "w"))
+json.dump([{"cwd": "/only/other/repo", "sessions": [{"sessionId": "x", "updatedAt": "2026-07-27T12:00:00Z"}]}],
+          open(os.path.join(d, "sessions-mismatch.json"), "w"))
+PY
+SID=$(env PATH="$RR/bin:$PATH" KIRO_SESSIONS_JSON="$RR/sessions.json" python3 "$RUN" session-id "$RR/wt" 2>&1) && SID_RC=0 || SID_RC=$?
+assert_eq "0" "$SID_RC" "kiro_run.py session-id exits 0 when the worktree's cwd group has a session"
+assert_eq "newest" "$SID" "session-id picks the newest updatedAt for THIS cwd (not list order, and not another cwd's session)"
+SIDM=$(env PATH="$RR/bin:$PATH" KIRO_SESSIONS_JSON="$RR/sessions-mismatch.json" python3 "$RUN" session-id "$RR/wt" 2>&1) && SIDM_RC=0 || SIDM_RC=$?
+assert_eq "1" "$SIDM_RC" "session-id exits 1 when no session group matches the worktree cwd (caller starts a fresh conversation, never fails the task)"
+assert_eq "" "$SIDM" "session-id prints nothing on the no-match path — a garbage id must never reach --resume-id"
+assert_eq "1" "$(PATH="${NOKIRO_PATH%:}" python3 "$RUN" session-id "$RR/wt" >/dev/null 2>&1; echo $?)" "session-id exits 1 (not a crash) when kiro-cli is absent"
+# credits: sum the `Credits: <n>` turn footers out of the logs the caller already
+# redirects (kiro colorizes them even into a file, so ANSI must be stripped first)
+printf 'blah\n\033[36m\xe2\x96\xb8 Credits: 0.27 \xe2\x80\xa2 Time: 3s\033[0m\nmore\n\xe2\x96\xb8 Credits: 1.5 \xe2\x80\xa2 Time: 9s\n' > "$RR/a.log"
+printf 'no footer here\n' > "$RR/b.log"
+CR=$(python3 "$RUN" credits "$RR/a.log" "$RR/b.log" 2>&1) && CR_RC=0 || CR_RC=$?
+assert_eq "0" "$CR_RC" "kiro_run.py credits exits 0 when at least one footer parsed"
+assert_eq "1.77" "$CR" "credits sums every ANSI-colorized Credits: footer across the given logs"
+CRN=$(python3 "$RUN" credits "$RR/b.log" "$RR/missing.log" 2>&1) && CRN_RC=0 || CRN_RC=$?
+assert_eq "1" "$CRN_RC" "credits exits 1 when no footer is present (report omits the line rather than guessing)"
+assert_eq "" "$CRN" "credits prints nothing when it found no figure — best-effort telemetry, never a wrong number"
+assert_eq "2" "$(python3 "$RUN" 2>/dev/null >/dev/null; echo $?)" "kiro_run.py with no subcommand exits 2 with usage"
+rm -rf "$RR"
+
+# --- docs: the stale four-flag claim must be gone, and the levers the plugin now uses
+# documented against the MEASURED surface (this is the doc bug that hid --effort and
+# --resume-id from this plugin for months). ---
+KHM_TXT="$(cat plugins/kiro/skills/kiro-delegate/references/kiro-headless.md)"
+assert_contains "$KHM_TXT" "resume-id" "kiro-headless.md documents --resume-id fix-round chaining"
+assert_contains "$KHM_TXT" "require-mcp-startup" "kiro-headless.md documents --require-mcp-startup (exit 3)"
+assert_contains "$KHM_TXT" "turn-level event streaming" "kiro-headless.md narrows the missing-feature claim to turn-level event streaming"
+assert_grep_no_match "there is no .stream-json. — verified" "$KHM_TXT" "kiro-headless.md's old blanket 'no stream-json' section title is gone"
+assert_contains "$(cat plugins/kiro/agents/kiro-delegate-agent.md)" "resume-id" "kiro-delegate-agent.md's fix round resumes the same session instead of restarting"
+assert_contains "$(cat plugins/kiro/agents/kiro-delegate-agent.md)" "kiro_run.py" "kiro-delegate-agent.md wires kiro_run.py (session id + credits)"
+assert_contains "$(cat plugins/kiro/commands/configure.md)" "set delegate effort" "configure.md documents set delegate effort"
+assert_contains "$(cat plugins/kiro/commands/configure.md)" "set review effort" "configure.md documents set review effort"

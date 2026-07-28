@@ -70,19 +70,6 @@
       "version": "1.15.0"
     },
     {
-      "name": "project-init",
-      "source": {
-        "source": "local",
-        "path": "./plugins/project-init"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Project Setup",
-      "version": "1.15.0"
-    },
-    {
       "name": "kiro",
       "source": {
         "source": "local",

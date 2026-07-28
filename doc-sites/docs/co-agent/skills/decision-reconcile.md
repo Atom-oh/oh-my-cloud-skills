@@ -80,10 +80,10 @@ flowchart TD
 
 ```bash
 # 사람용 요약
-python3 plugins/project-init/skills/decision-reconcile/scripts/collect_adrs.py --summary docs/decisions
+python3 plugins/co-agent/skills/decision-reconcile/scripts/collect_adrs.py --summary docs/decisions
 
 # 패널 입력용 JSON
-python3 plugins/project-init/skills/decision-reconcile/scripts/collect_adrs.py docs/decisions
+python3 plugins/co-agent/skills/decision-reconcile/scripts/collect_adrs.py docs/decisions
 ```
 
 결정론적 사전검사가 잡는 것: 상태가 Superseded인데 링크 없음 · 존재하지 않는 superseding ADR 지목 · 비-Accepted ADR로 번복 표기 · ADR 번호 중복 · 미지의 상태값.

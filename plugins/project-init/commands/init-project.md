@@ -209,8 +209,8 @@ Generate `docs/architecture.md` following the Architecture Document template wit
 3. **Components by Layer**: Group into Ingestion/Storage/Processing/Query/Presentation/Observability/Security layers. Only include layers that apply.
    - **For existing projects**: Read source directories, IaC files (terraform/, cdk/), Dockerfiles, and dependency files to auto-detect components
    - **For new projects**: Use user input from Plan mode or interactive questions
-4. **Full Architecture Diagram**: ASCII box diagram using `┌─┐│└─┘▶▼` characters showing all components and data flow
-5. **Data Flow Summary**: One-line arrow chain showing the critical path
+4. **Full Architecture Diagram**: Mermaid flowchart (`flowchart TB`) with one `subgraph` per layer, showing all components and data flow
+5. **Data Flow Summary**: Mermaid `flowchart LR` chain showing the critical path
 6. **Infrastructure Tables**: If IaC files (terraform/, cdk/, cloudformation/) are detected, list modules/constructs in a table
 7. **Key Design Decisions**: List architectural choices with WHY explanations (from Plan mode context if available)
 8. **Operations**: Cross-reference to runbooks in `docs/runbooks/`

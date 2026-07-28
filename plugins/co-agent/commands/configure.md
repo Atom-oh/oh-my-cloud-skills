@@ -78,6 +78,10 @@ Argument: `$ARGUMENTS`
    python3 "$H" set harness max_fix_rounds 2     # harness per-task peer fix-loop bound
    python3 "$H" set harness implementer_model gpt-5.3-codex-mini  # write-path model (implementer별 저장 — implementer 먼저 설정)
    python3 "$H" set harness implementer_effort low                # write-path effort (implementer가 codex일 때만)
+   python3 "$H" set pr_autofix max_iterations 5  # /co-agent:pr-autofix review-fix-push 루프 상한
+   python3 "$H" set push_gate enabled on         # 3-lens pre-push gate (correctness/security/scope) — 활성화 = 외부 송신 동의
+   python3 "$H" set push_gate block off          # advisory-only (차단하지 않고 findings만 출력)
+   python3 "$H" set push_gate timeout 180        # 라운드 공유 타임아웃(초)
    ```
    `context_limit` lets the fan-out **skip** an AI when the context is too large for its
    model window (the cause of "prompt tokens exceed model maximum"), instead of hard-failing
@@ -90,6 +94,23 @@ Argument: `$ARGUMENTS`
    overrides ride the CLIs' real headless flags (kiro/claude/agy `--model`, codex `-m`), so
    this works fully non-interactively; see `references/hybrid-gate.md` (default gate) and
    `references/relay-chain-gate.md` → "Multi-model relay" for how the gates use them.
+   `pr_autofix max_iterations` bounds the `/co-agent:pr-autofix` review→fix→push loop
+   (positive int, default 5). It is a config knob rather than a skill constant because the
+   right number depends on how noisy the repo's review CI is — a slow reviewer wants fewer
+   rounds, a chatty linter more. The skill reads it once at start via
+   `co_agent_config.py pr-autofix-iterations`.
+   `push_gate enabled on` turns on the `git push` PreToolUse gate
+   (`consensus_hooks.py pre-push-gate`) — unlike `pr_gate` (hand-edited in the JSON
+   file directly, no `set` path), `push_gate` is `set`-able because this is where the
+   user is meant to opt in. It round-robins THREE LENSES (correctness/security/scope,
+   not the panel's usual identical-prompt diversity) across gate-eligible peers, so
+   the call count stays fixed at 3 regardless of panel size. 2+ lenses flagging an
+   issue is a hard BLOCK; exactly 1 is framed as "CHAIR JUDGMENT REQUIRED" (a hook
+   can't call Claude directly — this is how the verdict reaches whoever's chairing).
+   Enabling is consent to external fan-out, same as `pr_gate` — and if kiro's own
+   `review.on_push` is ALSO on for this repo, `set push_gate enabled on` warns that
+   both gates firing means every push runs two independent review rounds (not
+   recommended, not blocked). Detail: `CLAUDE.md` "Pre-push Lens Gate".
    `autosync on` makes the `CLAUDE.md` PostToolUse hook tell Claude to run
    `/co-agent:sync-context` whenever `AGENTS.md` drifts stale (opt-in; default
    off = reminder only). It refreshes `AGENTS.md` and the Kiro steering bridge;

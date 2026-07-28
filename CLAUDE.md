@@ -38,9 +38,11 @@ routing — per-plugin `CLAUDE.md` holds the detail. Design: `docs/superpowers/s
 claude --plugin-dir ./plugins/aws-content-plugin
 claude --plugin-dir ./plugins/aws-ops-plugin
 
-# Validate plugin manifests (all 7 plugins)
+# Validate plugin manifests (all 7 plugins).
+# project-init is an upstream mirror whose manifest declares no agents/skills arrays
+# (Claude Code discovers them by convention), hence the .get() defaults.
 for f in plugins/*/.claude-plugin/plugin.json; do
-  python3 -c "import json; d=json.load(open('$f')); name='$f'.split('/')[1]; print(f'{name}: {len(d[\"agents\"])} agents, {len(d[\"skills\"])} skills')"
+  python3 -c "import json; d=json.load(open('$f')); name='$f'.split('/')[1]; print(f'{name}: {len(d.get(\"agents\", []))} agents, {len(d.get(\"skills\", []))} skills')"
 done
 
 # Verify all plugin.json references resolve to existing files
@@ -111,17 +113,18 @@ survivor, and it is a row in the same table, not a footnote to it:
 | `opus`+`high` | multi-step diagnosis / build workers | ops domain agents, `architecture-diagram-agent`, `workshop-agent` |
 | `opus`+`medium` | mechanical application of an already-approved plan | `pr-autofix-implementer` (only) |
 | `opus`+`low` | single-artifact writers, analysis with a narrow output | `document-agent`, `gitbook-agent`, `cost-agent`, `kiro-converter-agent`, `harness-analyst` |
-| `sonnet`+`low` | pure dispatch/scan — routes to another agent or mechanically diffs files | `presentation-agent`, `doc-sync-checker` |
+| `sonnet`+`low` | pure dispatch/scan — routes to another agent | `presentation-agent` (only) |
 
 `pr-autofix-implementer` is the sole `opus`+`medium`: it applies an already-approved plan,
 so deeper reasoning buys nothing, but its multi-file edit reliability has to hold — a
 plan-approved edit needing a second pass costs a whole extra review-poll cycle in that
 skill, not just one subagent call.
 
-The `sonnet`+`low` floor exists because those two agents have no judgment to deepen, so
-opus buys nothing at any effort: `presentation-agent` is a format dispatcher whose only
-tool is `AskUserQuestion`, and `doc-sync-checker` mechanically diffs files on every
-`/sync-docs` run. Everywhere else the former `sonnet` tiers moved to `opus`+`low` — same
+The `sonnet`+`low` floor exists because that agent has no judgment to deepen, so opus buys
+nothing at any effort: `presentation-agent` is a format dispatcher whose only tool is
+`AskUserQuestion`. `doc-sync-checker` (project-init) is outside this table entirely — that
+plugin is an upstream mirror, so its bare `model: opus` with no `effort` is the fork
+source's value and stays untouched. Everywhere else the former `sonnet` tiers moved to `opus`+`low` — same
 rung of the cost ladder, since the DeepSWE win came from fewer agent steps rather than a
 cheaper per-token rate. Write tiers as `` `model` ``+`` `effort` `` (e.g. `opus`+`low`)
 wherever they're referenced, here and in per-plugin docs.
@@ -311,29 +314,41 @@ Skill: `kiro-convert` — interactive workflow for plugin-to-power conversion wi
 
 Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Skill-First Build, AgentCore Convert, Deploy) with `references/` and `scripts/` subdirectories. Phase 2 decides the deploy target (harness-vs-Runtime grid in `references/agentcore-harness.md`); Phase 4 is dual-path (A: harness config, B: Runtime code-gen). The `opus` alias resolves to `us.anthropic.claude-opus-4-8`; modern-Opus (4.7/4.8) param contract (no `temperature`/`top_p`/`top_k`, no `thinking.type:"enabled"`+`budget_tokens`) is documented in `references/agentcore-mapping-rules.md`.
 
-### co-agent (3 agents, 1 skill, 5 commands)
+### co-agent (5 agents, 3 skills, 6 commands)
 
 | Agent | Purpose |
 |-------|---------|
 | `co-agent` | Multi-AI panel chair — fans review/decision/ADR prompts to Kiro/Codex/Antigravity CLIs and synthesizes |
 | `gate-chair` | Hybrid-gate chair judgment isolated on its own `opus`+`xhigh` subagent — Phase T triage + verify round-close verdicts; makes zero external calls (fan-out/consent/cost stay with the host), for hosts running a cheaper tier |
 | `harness-analyst` | Hill-climbing analyst (advisory-only, `opus`+`low`) — mines accumulated `.claude/co-agent-consensus/` run records (`stage_wall.tsv`, task/gate `result.json`) into proposed `/co-agent:configure set` commands; never writes config, observations-only below 3 recorded runs |
+| `pr-autofix-planner` | Read-only fix planner for pr-autofix (enforced Read/Grep/Glob; fable/opus) |
+| `pr-autofix-implementer` | Edit-only plan implementer for pr-autofix (enforced Read/Write/Edit/Grep/Glob — no Bash/network; opus [medium effort]) |
 
 Skill: `co-agent` — 6 modes: **Review** (multi-AI code/arch review + Well-Architected), **Decide** (decision support when unsure), **ADR** (co-author ADRs), **sync-context** (distill `CLAUDE.md` → `AGENTS.md` once; Kiro, Codex, and Agy all share that one distilled file — Kiro via `.kiro/steering/project-context.md` → `#[[file:AGENTS.md]]`, Codex and Agy both read `AGENTS.md` natively from their cwd — the fan-out additionally folds it into Agy's context as defense-in-depth for non-root-cwd runs), **Consensus** (autonomous doc→plan→implementation pipeline gated by the multi-model panel, `/co-agent:consensus`), and **harness** (host-designs / peer-implements / panel-reviews orchestrator, `/co-agent:harness`). Fans the same prompt to whichever AI CLIs are installed — Kiro (`kiro-cli chat --no-interactive`; auth via login or `KIRO_API_KEY`), Codex (`codex exec -s read-only`), Agy (`agy -p --sandbox`; Gemini support removed — ADR-010) — in parallel, then **Claude synthesizes** (consensus vs. dissent). Degrades gracefully; if no CLI is present, Claude answers solo. Adapters: `references/ai-cli-adapters.md`.
 
-Commands: `/co-agent:configure` — tune the panel (per-AI `model`, Codex `effort`, `enabled`, `timeout`, `autosync` opt-in, and **role-based model tiering**: chair on the host's strong tier; hybrid-gate find phase wide-and-cheap on the configured `profile deep` breadth vs. verify phase on each AI's single strongest `model` via `pairs --profile default`; write-path-only `set harness implementer_model`/`implementer_effort` stored per implementer (keyed by the explicitly-set `harness.implementer`, so no cross-CLI model leak on switch) that `impl-flags` prefers over the panel settings — see `commands/configure.md` "모델 티어링"). `/co-agent:sync-context` — distill `CLAUDE.md` → `AGENTS.md` and wire the Kiro steering bridge to that same `AGENTS.md` (Mode 4 surfaced as a standalone command). Layered config: `co-agent.defaults.json` (committed) ← `.claude/co-agent.local.json` (gitignored). Only headless-settable options are exposed (effort is Codex-only); the fan-out reads `co_agent_config.py` so settings are live. The `CLAUDE.md` PostToolUse hook reminds when `AGENTS.md` drifts stale, and — if `autosync on` — tells Claude to re-run sync-context. Scripts: `check_ai_context.py` (context-file validator), `co_agent_config.py` (panel settings). `/co-agent:consensus` — autonomous doc→plan→implementation pipeline gated by the multi-model panel (Stage A plan gate · Stage B implement · Stage C final gate + report; resumable). `/co-agent:harness` — host-designs / peer-implements (isolated git worktree + workspace-write sandbox) / panel-reviews orchestrator; the host owns the failing test and every commit, and lands only the peer's captured, scope-guarded worktree diff so out-of-worktree writes never reach the main tree; reviews via the **hybrid gate** by default (parallel find → chair triage → parallel verify of the curated digest — `references/hybrid-gate.md`; `set harness review_mode hybrid|relay|parallel`), and implements with **one configured implementer fanned out as parallel per-task subagents** in disjoint-file waves (`set harness implementer codex|agy`, `set harness parallel_tasks`, default 3) (`references/delegated-implement.md`; `co_agent_config.py implementer|impl-flags`, `worktree.py`). `/co-agent:setup` — panel-readiness preflight: detects each peer (`plugin`→`raw`→`none`) and probes real usability, then writes a readiness summary (`.claude/co-agent-panel.local.json`) the other flows consult before fanning out (`check_panel.py`).
+Also in co-agent (moved out of project-init, which is now an upstream mirror — `docs/reference/project-init-upstream-sync.md`): `pr-autofix` — PR review feedback auto-fix (AI + human review polling; loop bound is the `pr_autofix.max_iterations` setting, default 5 — `/co-agent:configure set pr_autofix max_iterations <n>`, read by the skill via `co_agent_config.py pr-autofix-iterations`; fix planning on Fable/Opus, implementation delegated to opus [medium effort] subagents in a disposable worktree — only the plan-approved delta lands), and `decision-reconcile` — ADR contradiction detection across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (varied Claude model tiers + optional co-agent CLIs, one review lens each), then drafts a superseding ADR to reverse/reconcile the decision. Triggers: 의사결정 번복, ADR 모순, reconcile ADRs.
 
-### project-init (3 agents, 3 skills, 10 commands)
+Commands: `/co-agent:configure` — tune the panel (per-AI `model`, Codex `effort`, `enabled`, `timeout`, `autosync` opt-in, and **role-based model tiering**: chair on the host's strong tier; hybrid-gate find phase wide-and-cheap on the configured `profile deep` breadth vs. verify phase on each AI's single strongest `model` via `pairs --profile default`; write-path-only `set harness implementer_model`/`implementer_effort` stored per implementer (keyed by the explicitly-set `harness.implementer`, so no cross-CLI model leak on switch) that `impl-flags` prefers over the panel settings — see `commands/configure.md` "모델 티어링"). `/co-agent:sync-context` — distill `CLAUDE.md` → `AGENTS.md` and wire the Kiro steering bridge to that same `AGENTS.md` (Mode 4 surfaced as a standalone command). Layered config: `co-agent.defaults.json` (committed) ← `.claude/co-agent.local.json` (gitignored). Only headless-settable options are exposed (effort is Codex-only); the fan-out reads `co_agent_config.py` so settings are live. The `CLAUDE.md` PostToolUse hook reminds when `AGENTS.md` drifts stale, and — if `autosync on` — tells Claude to re-run sync-context. Scripts: `check_ai_context.py` (context-file validator), `co_agent_config.py` (panel settings). `/co-agent:consensus` — autonomous doc→plan→implementation pipeline gated by the multi-model panel (Stage A plan gate · Stage B implement · Stage C final gate + report; resumable). `/co-agent:harness` — host-designs / peer-implements (isolated git worktree + workspace-write sandbox) / panel-reviews orchestrator; the host owns the failing test and every commit, and lands only the peer's captured, scope-guarded worktree diff so out-of-worktree writes never reach the main tree; reviews via the **hybrid gate** by default (parallel find → chair triage → parallel verify of the curated digest — `references/hybrid-gate.md`; `set harness review_mode hybrid|relay|parallel`), and implements with **one configured implementer fanned out as parallel per-task subagents** in disjoint-file waves (`set harness implementer codex|agy`, `set harness parallel_tasks`, default 3) (`references/delegated-implement.md`; `co_agent_config.py implementer|impl-flags`, `worktree.py`). `/co-agent:pr-autofix` — the pr-autofix loop as a command. `/co-agent:setup` — panel-readiness preflight: detects each peer (`plugin`→`raw`→`none`) and probes real usability, then writes a readiness summary (`.claude/co-agent-panel.local.json`) the other flows consult before fanning out (`check_panel.py`).
+
+### project-init (1 agent, 1 skill, 9 commands) — upstream mirror
 
 | Agent | Purpose |
 |-------|---------|
 | `doc-sync-checker` | Documentation sync analysis, quality scoring, missing doc detection |
-| `pr-autofix-planner` | Read-only fix planner for pr-autofix (enforced Read/Grep/Glob; fable/opus) |
-| `pr-autofix-implementer` | Edit-only plan implementer for pr-autofix (enforced Read/Write/Edit/Grep/Glob — no Bash/network; opus [medium effort]) |
 
-Skills: `project-scaffolder` — Claude Code project structure patterns and conventions. `pr-autofix` — PR review feedback auto-fix (AI + human review polling, max 5 iterations; fix planning on Fable/Opus, implementation delegated to opus [medium effort] subagents in a disposable worktree — only the plan-approved delta lands). `decision-reconcile` — ADR contradiction detection across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (varied Claude model tiers + optional co-agent CLIs, one review lens each), then drafts a superseding ADR to reverse/reconcile the decision. **Local to this fork** — not present in the whchoi98/project-init upstream source (see `plugins/project-init/references/upstream-sync.md`). Triggers: 의사결정 번복, ADR 모순, reconcile ADRs.
+Skill: `project-scaffolder` — Claude Code project structure patterns and conventions.
 
-Commands: `/init-project`, `/sync-docs`, `/add-adr`, `/add-module`, `/add-runbook`, `/generate-readme`, `/generate-changelog`, `/health-check`, `/pr-autofix`, `/add-reference-doc`
+Commands: `/init-project`, `/sync-docs`, `/add-adr`, `/add-module`, `/add-runbook`, `/generate-readme`, `/generate-changelog`, `/health-check`, `/add-reference-doc`
+
+**This plugin is a byte-identical mirror of `whchoi98/project-init`** — the only local delta
+is `version` in `.claude-plugin/plugin.json` (marketplace-uniform). Never edit it in place:
+the next sync wipes the change. Local features that used to live here moved to co-agent
+(`pr-autofix`, `decision-reconcile`) or to the root routing table (superpowers hints). It
+also carries no `.codex-plugin/plugin.json`, so it is absent from the Codex marketplace
+(`scripts/test-codex-plugins.py` reports that as a warning, not an error), and its manifest
+declares no `agents`/`skills` arrays — `scripts/test-plugins.py` discovers them on disk so
+the frontmatter is still validated. Sync procedure and rationale:
+`docs/reference/project-init-upstream-sync.md`.
 
 ### kiro (1 agent, 1 skill, 4 commands)
 
@@ -356,7 +371,13 @@ Kiro-powered review before `git commit` (fail-open; blocks only on `critical` fi
 by default) — **off by default** (the staged diff content is sent to Kiro's backend; a
 tool-layer `fs_read` guard confines the reviewer's reads to the isolated diff dir, with
 authorship trust as defense-in-depth); `/kiro:configure set review on_commit on` to
-enable. **Web search delegation** (off by default; `/kiro:setup` asks, or
+enable. A **second, separate** `PreToolUse(Bash)` hook can run a **3-lens**
+(correctness/security/scope, in parallel) review before `git push`, over the commit
+range about to be pushed — also off by default (`review.on_push`); blocks on `critical`
+(plain BLOCKED) or a `warning`-only set at/above `review.push_block` (default
+`warning`, framed as CHAIR JUDGMENT REQUIRED since a hook can't call Claude directly —
+the agent reads the finding from stderr and judges); warns (but still enables) if
+co-agent's own `push_gate` is also on. **Web search delegation** (off by default; `/kiro:setup` asks, or
 `set websearch enabled on`): sessions without a `WebSearch` tool (Claude Code on
 Bedrock) route web searches through kiro-cli's native `web_search` via
 `kiro_websearch.py` — the query text is the only egress; the `kiro-websearch` agent is
@@ -386,10 +407,13 @@ Ops:       User issue → auto-routed agent → Diagnose → Resolve → Verify
 AgentCore: Plugin source → analyze → harness-vs-Runtime decision → A: harness config (skills attach as-is) | B: generate Strands artifacts → user refinement → deploy via CLI → verify
 
 Co-agent:  /co-agent → detect panel (Kiro/Codex/Antigravity) → fan-out prompt → Claude synthesizes → Review report / Decision / ADR
+           gh pr create → PreToolUse hook (opt-in) → same-prompt panel fan-out → quorum BLOCK/PASS
+           git push → PreToolUse hook (opt-in) → 3-lens (correctness/security/scope) round-robin fan-out → 2+ BLOCK / 1 BLOCK (chair judgment) / 0 (pass)
 
 kiro:      /kiro:setup → probe kiro-cli, list models, write .kiro/agents/*.json
            /kiro:delegate → Claude plans (Kiro spec) → per task: worktree → Kiro implements → capture-diff → scope_guard → Claude applies+tests → bounded retry → Claude fallback → commit → delegation-rate report
            git commit → PreToolUse hook (opt-in, off by default) → Kiro review (fail-open, blocks only on `critical`)
+           git push → PreToolUse hook (opt-in, off by default) → 3-lens Kiro review (fail-open; `critical` BLOCKED, `warning`-only chair judgment)
            web search needed + no WebSearch tool (Bedrock) → kiro_websearch.py --query-file (opt-in) → summary + source URLs
 ```
 
@@ -402,6 +426,8 @@ Documentation stays in sync via hooks and skills:
 | File edit (Write/Edit) | `check-doc-sync.sh` (PostToolUse) | Walks parent dirs for missing CLAUDE.md, warns if absent |
 | File edit on README.md | PostToolUse hook | Auto-prompts Korean translation to README.ko.md |
 | `git commit` (Bash) | `secret-scan.sh` (PreToolUse) | Blocks commits containing API keys, tokens, passwords |
+| `git commit` (Bash) | `pre-commit-review.sh` (kiro, PreToolUse, opt-in) | Kiro-run review of the staged diff; fail-open, blocks only on `critical` |
+| `git push` (Bash) | `pre-push-review.sh` (kiro, PreToolUse, opt-in) / `consensus_hooks.py pre-push-gate` (co-agent, PreToolUse, opt-in) | 3-lens (correctness/security/scope) review of the range about to be pushed; fail-open; `critical`/2+-lens BLOCKED, `warning`/1-lens CHAIR JUDGMENT REQUIRED |
 | Session start | `session-context.sh` (SessionStart) | Loads project type, version, branch, uncommitted file count |
 | Session start / turn end (Stop) | `reap_kiro_orphans.sh` (co-agent) | Kills orphaned (ppid=1) kiro `acp-server` processes leaked by headless `timeout` kills |
 | `remarp_to_slides.py` run | PreToolUse inline hook | Verifies common/ assets (theme.css, JS) exist before build |

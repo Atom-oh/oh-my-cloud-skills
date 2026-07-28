@@ -1,5 +1,5 @@
 ---
-description: Poll for PR review feedback (AI + human) and auto-fix issues (max 5 iterations)
+description: Poll for PR review feedback (AI + human) and auto-fix issues (loop bound from /co-agent:configure, default 5)
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
 ---
 
@@ -20,7 +20,7 @@ Execute the `pr-autofix` skill. The skill handles the full workflow:
 2. Poll for AI review comments (`<!-- bedrock-pr-review -->`) and human review status (`CHANGES_REQUESTED`)
 3. If all reviews pass → done
 4. If any review is blocking → read issues, plan fixes on Fable/Opus, implement the plan with opus [medium effort] subagents in an isolated git worktree (parallel only when file sets are strictly disjoint), land only the plan-approved delta, verify build, commit, push
-5. Repeat up to 5 times
+5. Repeat up to `$MAX_ITER` times — the skill resolves it via `co_agent_config.py pr-autofix-iterations` (tune: `/co-agent:configure set pr_autofix max_iterations <n>`, default 5)
 
 Key constraints:
 - Never modify `.github/workflows/*` files

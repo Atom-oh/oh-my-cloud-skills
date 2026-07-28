@@ -1,6 +1,6 @@
 ---
 name: pr-autofix
-description: After creating a PR, poll for AI and human review feedback, auto-fix issues, and push (max 5 iterations)
+description: After creating a PR, poll for AI and human review feedback, auto-fix issues, and push (loop bound from /co-agent:configure, default 5)
 triggers:
   - "pr autofix"
   - "pr review fix"
@@ -10,7 +10,17 @@ triggers:
 
 # PR Auto-Fix Skill
 
-After you create a PR (via `gh pr create`), automatically wait for review feedback — from AI Code Review CI and/or human reviewers — then read the feedback, fix issues, and push. Repeat up to 5 times until all reviews pass.
+After you create a PR (via `gh pr create`), automatically wait for review feedback — from AI Code Review CI and/or human reviewers — then read the feedback, fix issues, and push. Repeat up to `MAX_ITER` times until all reviews pass.
+
+**Resolve the loop bound FIRST** — it is a co-agent panel setting, not a constant, so a
+long-running review loop can be widened or tightened per repo without editing this skill:
+
+```bash
+MAX_ITER=$(python3 "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py" pr-autofix-iterations)
+```
+
+Tune it with `/co-agent:configure set pr_autofix max_iterations <n>` (default 5). Every
+`5` below is `$MAX_ITER`.
 
 ## When to use
 
@@ -33,7 +43,7 @@ Both sources must pass for the PR to be considered approved. If either is blocki
 ```
 PR created → poll for reviews → ALL PASS? → done
                                → ANY BLOCKED? → read issues → fix code → commit & push → repeat
-                               → 5 iterations? → stop, notify user
+                               → $MAX_ITER iterations? → stop, notify user
 ```
 
 ## Steps
@@ -124,7 +134,7 @@ top-level `constraints` block that rides every hand-off.
 
 **4a. Fix plan — Fable or Opus.** If the host session is already running Fable/Opus,
 write the plan inline. Otherwise spawn the bundled **`pr-autofix-planner`** agent (Agent tool
-`subagent_type: "project-init:pr-autofix-planner"`; prefer `model: "fable"`, fall back to
+`subagent_type: "co-agent:pr-autofix-planner"`; prefer `model: "fable"`, fall back to
 `"opus"`). Its `tools:` frontmatter enforces read-only (Read/Grep/Glob) — the planner
 structurally cannot edit. The plan covers, per finding:
 `file:line` → root cause → the exact edit → how to verify it. The scope constraints below
@@ -177,7 +187,7 @@ only items with `approval: granted` AND `disposition: actionable` to the impleme
 capture → approve → land); a grant is a plan edit, not a gate bypass, `report-only` findings never reach it.
 
 Spawn the bundled **`pr-autofix-implementer`** agent (Agent tool
-`subagent_type: "project-init:pr-autofix-implementer"` — the agent's own frontmatter
+`subagent_type: "co-agent:pr-autofix-implementer"` — the agent's own frontmatter
 already pins `model: opus` / `effort: medium`; the Agent tool call itself takes no
 `effort` parameter) with the plan and `$IMPL_WT`. Its `tools:` frontmatter enforces edit-only (no Bash, no network); path
 confinement is instruction-level — the landing gates below are what hold. Parallel
@@ -255,7 +265,7 @@ fi
 ### 5. Commit and push
 
 ```bash
-bash "$LD" commit "$RUN" "fix: address review feedback (iteration N/5)" --script-sha "$LD_SHA" --approved-sha "$APPROVED_SHA" --landed-sha "$LANDED_SHA"
+bash "$LD" commit "$RUN" "fix: address review feedback (iteration N/$MAX_ITER)" --script-sha "$LD_SHA" --approved-sha "$APPROVED_SHA" --landed-sha "$LANDED_SHA"
 bash "$LD" push "$RUN" --script-sha "$LD_SHA"               # separate + idempotent: a transient push failure
                                      # never strands the commit (retry this stage alone)
 bash "$LD" cleanup "$RUN" --script-sha "$LD_SHA" --sig "$SIG"   # add --keep to preserve patches for inspection
@@ -280,8 +290,8 @@ lines anyway, and a hardcoded model name in a template goes stale.)
 
 ### 6. Repeat or stop
 
-- If iteration < 5: go back to step 2 (poll for new review after push)
-- If iteration == 5 and still BLOCKED: stop and tell the user that manual review is needed
+- If iteration < `$MAX_ITER`: go back to step 2 (poll for new review after push)
+- If iteration == `$MAX_ITER` and still BLOCKED: stop and tell the user that manual review is needed
 - Track iteration count by counting commits with message prefix `fix: address review feedback`
 
 ```bash
@@ -290,7 +300,7 @@ ITERATION=$(git log --oneline --grep="fix: address review feedback" origin/main.
 
 ## Important constraints
 
-- **Max 5 iterations** — after 5 failed attempts, stop unconditionally
+- **Max `$MAX_ITER` iterations** (`/co-agent:configure set pr_autofix max_iterations`, default 5) — after that many failed attempts, stop unconditionally
 - **Never modify workflow files** — the review CI itself must not be changed during autofix
 - **Scope discipline** — only fix what the reviews mention, nothing else
 - **Build verification** — always verify the code compiles before committing

@@ -2,7 +2,7 @@
 # Unit tests for the pr-autofix landing pipeline (land_delta.sh).
 # Sourced by tests/run-all.sh — uses its assert_* helpers; never calls exit.
 
-LD="plugins/project-init/skills/pr-autofix/scripts/land_delta.sh"
+LD="plugins/co-agent/skills/pr-autofix/scripts/land_delta.sh"
 LD_ABS="$(pwd)/$LD"
 
 assert_file_executable "$LD" "land_delta.sh is executable"

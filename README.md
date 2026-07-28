@@ -666,7 +666,7 @@ aws-ops-power/
 | `co-agent` | co-agent | "second opinion" / "help me decide" / "co-author ADR" | Multi-AI review / decision / ADR |
 | `doc-sync-checker` | project-init | "/sync-docs" | Doc quality scores |
 | `kiro-delegate-agent` | kiro | "delegate implementation to kiro" / "kiro로 구현" | Kiro-implemented change, verified + committed by Claude |
-| `pr-autofix-planner` / `pr-autofix-implementer` | project-init | (spawned by the pr-autofix skill) | Fix plan / plan-applied worktree edits |
+| `pr-autofix-planner` / `pr-autofix-implementer` | co-agent | (spawned by the pr-autofix skill) | Fix plan / plan-applied worktree edits |
 
 > `pr-autofix-planner` / `pr-autofix-implementer` are meant to be spawned by the pr-autofix skill; their descriptions discourage (but cannot hard-block) direct auto-selection.
 
@@ -705,10 +705,10 @@ All agents (except the internal pr-autofix workers above) activate automatically
 |-------|----------|
 | `kiro-convert` | Plugin-to-Kiro-Power conversion workflow |
 | `agentcore-create` | 5-phase AgentCore design, build, convert, deploy workflow (harness or Runtime target) |
-| `co-agent` | Multi-AI collaboration (Kiro/Codex/Antigravity — `agy`) — review, decision support, ADR co-authoring, and `sync-context`; Claude chairs. Commands: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus`, `/co-agent:harness`, `/co-agent:setup` |
+| `co-agent` | Multi-AI collaboration (Kiro/Codex/Antigravity — `agy`) — review, decision support, ADR co-authoring, and `sync-context`; Claude chairs. Commands: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus`, `/co-agent:harness`, `/co-agent:setup`, `/co-agent:pr-autofix` |
 | `project-scaffolder` | Claude Code project structure patterns and conventions |
-| `pr-autofix` | Poll AI + human PR review feedback and auto-fix issues (max 5 iterations; plan on Fable/Opus, implement via opus [medium effort] subagents) |
-| `decision-reconcile` | Detect contradictions across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (varied Claude model tiers + optional Kiro/Codex/Antigravity, one review lens each), then draft a superseding ADR |
+| `pr-autofix` | Poll AI + human PR review feedback and auto-fix issues (co-agent; loop bound via `/co-agent:configure set pr_autofix max_iterations`, default 5; plan on Fable/Opus, implement via opus [medium effort] subagents) |
+| `decision-reconcile` | (co-agent) Detect contradictions across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (varied Claude model tiers + optional Kiro/Codex/Antigravity, one review lens each), then draft a superseding ADR |
 | `kiro-delegate` | Cost-savings implementation + review delegation to Kiro CLI (subscription credits) — worktree-isolated implement loop, scope-guarded diff, pre-commit review gate, and opt-in web search delegation for WebSearch-less sessions (Claude Code on Bedrock). Commands: `/kiro:setup`, `/kiro:delegate`, `/kiro:review`, `/kiro:configure` |
 
 ### Project Init Commands
@@ -844,25 +844,27 @@ plugins/
 │   └── skills/
 │       └── agentcore-create/
 │
-├── co-agent/                       # Multi-AI collaboration (3 agents, 1 skill, 5 commands)
+├── co-agent/                       # Multi-AI collaboration (5 agents, 3 skills, 6 commands)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
 │   ├── agents/
 │   │   ├── co-agent.md
 │   │   ├── gate-chair.md
-│   │   └── harness-analyst.md
-│   ├── commands/                   # configure, sync-context, consensus, harness, setup
+│   │   ├── harness-analyst.md
+│   │   ├── pr-autofix-planner.md
+│   │   └── pr-autofix-implementer.md
+│   ├── commands/                   # configure, sync-context, consensus, harness, setup, pr-autofix
 │   └── skills/
-│       └── co-agent/
+│       ├── co-agent/
+│       ├── pr-autofix/
+│       └── decision-reconcile/
 │
-├── project-init/                      # Project scaffolding (3 agents, 3 skills, 10 commands)
+├── project-init/                      # Project scaffolding (1 agent, 1 skill, 9 commands) — upstream mirror
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
 │   ├── agents/
-│   │   ├── doc-sync-checker.md
-│   │   ├── pr-autofix-planner.md
-│   │   └── pr-autofix-implementer.md
-│   ├── commands/                       # 10 slash commands
+│   │   └── doc-sync-checker.md
+│   ├── commands/                       # 9 slash commands
 │   │   ├── init-project.md
 │   │   ├── sync-docs.md
 │   │   ├── add-adr.md
@@ -871,12 +873,9 @@ plugins/
 │   │   ├── generate-readme.md
 │   │   ├── generate-changelog.md
 │   │   ├── health-check.md
-│   │   ├── pr-autofix.md
 │   │   └── add-reference-doc.md
 │   └── skills/
-│       ├── project-scaffolder/
-│       ├── pr-autofix/
-│       └── decision-reconcile/
+│       └── project-scaffolder/
 │
 └── kiro/                              # Cost-savings delegation (1 agent, 1 skill, 4 commands)
     ├── .claude-plugin/plugin.json

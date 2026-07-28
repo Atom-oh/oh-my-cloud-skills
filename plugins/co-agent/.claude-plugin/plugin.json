@@ -8,17 +8,22 @@
   "agents": [
     "./agents/co-agent.md",
     "./agents/gate-chair.md",
-    "./agents/harness-analyst.md"
+    "./agents/harness-analyst.md",
+    "./agents/pr-autofix-planner.md",
+    "./agents/pr-autofix-implementer.md"
   ],
   "skills": [
-    "./skills/co-agent"
+    "./skills/co-agent",
+    "./skills/pr-autofix",
+    "./skills/decision-reconcile"
   ],
   "commands": [
     "./commands/configure.md",
     "./commands/sync-context.md",
     "./commands/consensus.md",
     "./commands/harness.md",
-    "./commands/setup.md"
+    "./commands/setup.md",
+    "./commands/pr-autofix.md"
   ],
   "hooks": {
     "PreToolUse": [
@@ -28,6 +33,10 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/consensus_hooks.py\" pre-pr-gate --root ."
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/consensus_hooks.py\" pre-push-gate --root ."
           }
         ]
       }

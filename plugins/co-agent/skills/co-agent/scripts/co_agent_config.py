@@ -33,6 +33,13 @@ Usage:
   co_agent_config.py max-fix-rounds             # effective fix-loop bound (int)
   co_agent_config.py set harness implementer_model <m>   # write-path model, stored per implementer (requires explicit implementer; else panel model)
   co_agent_config.py set harness implementer_effort <e>  # write-path effort (codex implementer only; same per-AI storage)
+  co_agent_config.py set pr_autofix max_iterations <n>   # /co-agent:pr-autofix loop bound
+  co_agent_config.py pr-autofix-iterations       # effective pr-autofix loop bound (int)
+  co_agent_config.py set push_gate enabled <on|off>  # 3-lens pre-push gate (correctness/
+                                                      # security/scope) — consensus_hooks.py
+                                                      # pre-push-gate; enabling = consent
+  co_agent_config.py set push_gate block <on|off>    # hard-block vs advisory-only (default on)
+  co_agent_config.py set push_gate timeout <seconds>
   co_agent_config.py set <ai> context_limit <n> # per-AI context window (tokens)
   co_agent_config.py flags <ai>                 # CLI flag fragment for the fan-out
   co_agent_config.py panel                      # space-separated enabled AIs
@@ -58,6 +65,7 @@ import os
 import re
 import json
 import copy
+import subprocess
 
 ALL_AIS = ("kiro-cli", "claude", "codex", "agy")
 HOSTS = ("claude", "codex")
@@ -165,6 +173,81 @@ def deep_merge(base, over):
 LEGACY_KEYS = {"kiro": "kiro-cli", "antigravity": "agy", "gemini": None}
 
 
+def _resolves_through_symlink(path):
+    """True if resolving `path` involves ANY symlink anywhere in the chain — ported
+    verbatim from kiro's kiro_config.py (same repo, same class of risk: a malicious
+    repo could track `.claude` as a symlink alias to dodge a literal-path tracked-file
+    check alone). `os.path.abspath`, not `os.path.normpath`, so a relative `root="."`
+    doesn't spuriously fail-closed on every call regardless of any real symlink."""
+    return os.path.realpath(path) != os.path.abspath(path)
+
+
+def _is_tracked_by_git(root, relpath):
+    """True iff `relpath` (relative to `root`) is tracked by git in that repo — OR the
+    check itself failed to cleanly determine that (git missing, timeout, a real git
+    error). Failing toward True is the safe direction for a consent gate: an
+    unverifiable tracked-status must not be read as "so it's fine to trust this file's
+    pr_gate/push_gate.enabled values." `root` not being a git repo at all returns False
+    (trusted) — there's no "a malicious repo committed this" without a repo to commit
+    it in. Ported verbatim from kiro_config.py."""
+    try:
+        repo_check = subprocess.run(["git", "-C", root, "rev-parse", "--is-inside-work-tree"],
+                                     capture_output=True, text=True, timeout=10)
+    except (subprocess.TimeoutExpired, OSError):
+        return True
+    if repo_check.returncode != 0:
+        return False
+    try:
+        r = subprocess.run(["git", "-C", root, "ls-files", "--error-unmatch", "--", relpath],
+                            capture_output=True, text=True, timeout=10)
+    except (subprocess.TimeoutExpired, OSError):
+        return True
+    if r.returncode == 0:
+        return True
+    if r.returncode == 1:
+        return False
+    return True
+
+
+def _consent_config_untrustworthy(root, lp):
+    """True iff `.claude/co-agent.local.json`'s consent-gating keys should NOT be
+    trusted: the literal path is tracked by git, OR resolving `lp` involves a symlink
+    anywhere in the chain (closes the alias bypass of the literal-path check alone —
+    same rationale as kiro_config.py's identically-named function)."""
+    if _is_tracked_by_git(root, os.path.join(".claude", "co-agent.local.json")):
+        return True
+    return _resolves_through_symlink(lp)
+
+
+def _strip_consent_keys(raw, root, lp):
+    """`.claude/co-agent.local.json` is meant to be a personal, gitignored override —
+    but co-agent had no equivalent of kiro_config.py's tracked-file guard until now:
+    `pr_gate.enabled`/`push_gate.enabled` are consent-gating (enabling either sends
+    diff content to third-party AI CLIs with NO per-call prompt, registered at
+    plugin-load time), so a malicious consumer repo could commit this file with either
+    set to `true` and an installing user's `gh pr create`/`git push` diffs would fan
+    out without their own opt-in. If `raw` is tracked (or reached via a symlink alias),
+    drop just these two keys before merging — they fall back to
+    `co-agent.defaults.json`'s shipped value (off). Every other key (model, timeout,
+    quorum, block) still applies from a tracked file — those aren't a consent bypass."""
+    if not _consent_config_untrustworthy(root, lp):
+        return raw
+    stripped = copy.deepcopy(raw)
+    dropped = []
+    for section in ("pr_gate", "push_gate"):
+        if isinstance(stripped.get(section), dict) and "enabled" in stripped[section]:
+            del stripped[section]["enabled"]
+            dropped.append(f"{section}.enabled")
+    if dropped:
+        print(f"⚠️  {lp} is tracked by git in this repo (directly, or reached through a "
+              f"symlinked ancestor/alias) — a personal override file should never be "
+              f"committed. Ignoring its {', '.join(dropped)} value(s) and falling back "
+              f"to the shipped default (off) for consent-gating settings; a committed "
+              f"file must not be able to silently opt this repo's users into external "
+              f"diff egress.", file=sys.stderr)
+    return stripped
+
+
 def effective(root, warn=False):
     # Precedence low→high: committed defaults → user scope (~/.claude) → repo-local (.claude).
     # `warn` gates the legacy-key hygiene warnings: only the DISPLAY commands (show/matrix)
@@ -174,7 +257,8 @@ def effective(root, warn=False):
     # commands are the one place the user actually reads, so warn there and stay silent in
     # the loop. Malformed-config warnings are NOT gated: a broken file must always be loud.
     cfg = load_defaults()
-    for lp in (user_path(), local_path(root)):
+    lclp = local_path(root)
+    for lp in (user_path(), lclp):
         if os.path.isfile(lp):
             try:
                 with open(lp, encoding="utf-8") as f:
@@ -193,6 +277,11 @@ def effective(root, warn=False):
                               f"ignored — DELETE the block (do not rename it onto another AI; "
                               f"configure agy separately if you want the third reviewer).",
                               file=sys.stderr)
+                # Only the repo-LOCAL file is a consent-bypass vector — a malicious repo
+                # can commit `.claude/co-agent.local.json`, but never the user's own
+                # `~/.claude/co-agent.user.json` (outside the repo, not repo-trackable).
+                if lp == lclp:
+                    raw = _strip_consent_keys(raw, root, lp)
                 cfg = deep_merge(cfg, raw)
             except (json.JSONDecodeError, OSError) as e:
                 print(f"⚠️  ignoring malformed {lp}: {e}", file=sys.stderr)
@@ -345,6 +434,11 @@ def cmd_show(root, host):
           f"max_rounds {cons.get('max_rounds', 2)} · harness review_mode {h.get('review_mode','hybrid')} / "
           f"implementer {h.get('implementer') or '(default)'} / parallel_tasks {h.get('parallel_tasks', 3)} / "
           f"max_fix_rounds {h.get('max_fix_rounds') or 2}")
+    pa = cfg.get("pr_autofix") or {}
+    print(f"  pr_autofix: max_iterations {pa.get('max_iterations', 5)} (review-fix-push cycles)")
+    pg = cfg.get("push_gate") or {}
+    print(f"  push_gate: enabled {bool(pg.get('enabled', False))} · block {bool(pg.get('block', True))} "
+          f"· timeout {pg.get('timeout', 180)}s (3-lens pre-push gate: correctness/security/scope)")
     ims = {k: v for k, v in (h.get("implementer_models") or {}).items() if v}
     ies = {k: v for k, v in (h.get("implementer_efforts") or {}).items() if v}
     if ims or ies:   # tiering overrides are opt-in — only show when set
@@ -362,6 +456,34 @@ def cmd_show(root, host):
         effort = p.get("effort", "—") if effort_values(ai) else "n/a"
         print(f"  {ai:7} {str(p.get('enabled', True)):8} {model:18} {ctxs:>11}  {effort}")
     return 0
+
+
+def _warn_if_kiro_push_review_on(root):
+    """Advisory only — never blocks the `set`. Mirror of kiro_config.py's own
+    `_warn_if_co_agent_push_gate_on`: if kiro's `review.on_push` is ALSO on, enabling
+    this plugin's `push_gate` means every `git push` runs BOTH gates. Reads the JSON
+    directly (no import of kiro's own config module — that plugin may not be
+    installed; this is a best-effort cross-plugin nicety, not a hard dependency)."""
+    try:
+        lp = os.path.join(root, ".claude", "kiro.local.json")
+        defaults_path = os.path.join(root, "plugins", "kiro", "skills", "kiro-delegate",
+                                      "kiro.defaults.json")
+        on = None
+        for p in (defaults_path, lp):   # local override, read second, wins if present
+            if os.path.isfile(p):
+                with open(p, encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict) and isinstance(data.get("review"), dict):
+                    if "on_push" in data["review"]:
+                        on = data["review"]["on_push"]
+        if on:
+            print("⚠️  kiro's review.on_push is ALSO enabled (.claude/kiro.local.json or "
+                  "its defaults) — turning both push gates on means every `git push` runs "
+                  "TWO independent review fan-outs (double the external calls, double the "
+                  "wait) for the same push. Not recommended; consider leaving only one on.",
+                  file=sys.stderr)
+    except (OSError, json.JSONDecodeError, TypeError):
+        pass   # best-effort nicety — never let this check itself break `set`
 
 
 def cmd_set(root, rest, host, scope="local"):
@@ -466,6 +588,52 @@ def cmd_set(root, rest, host, scope="local"):
             h["parallel_tasks"] = int(val)
         else:
             print(f"harness keys: {', '.join(HARNESS_KEYS)}", file=sys.stderr)
+            return 2
+    elif rest[0] == "pr_autofix":
+        if len(rest) != 3 or rest[1] != "max_iterations":
+            print("usage: set pr_autofix max_iterations <positive integer>", file=sys.stderr)
+            return 2
+        if not rest[2].isdigit() or int(rest[2]) < 1:
+            print("max_iterations must be a positive integer", file=sys.stderr)
+            return 2
+        pa = local.get("pr_autofix")
+        if not isinstance(pa, dict):
+            pa = {}
+            local["pr_autofix"] = pa
+        pa["max_iterations"] = int(rest[2])
+    elif rest[0] == "push_gate":
+        if len(rest) != 3:
+            print("usage: set push_gate <enabled|block|timeout> <value>", file=sys.stderr)
+            return 2
+        _, key, val = rest
+        pg = local.get("push_gate")
+        if not isinstance(pg, dict):
+            pg = {}
+            local["push_gate"] = pg
+        if key == "enabled":
+            if val.lower() not in ("on", "off", "true", "false", "1", "0", "yes", "no"):
+                print("usage: set push_gate enabled <on|off>", file=sys.stderr)
+                return 2
+            pg["enabled"] = val.lower() in ("on", "true", "1", "yes")
+            if pg["enabled"]:
+                # Enabling IS the consent to external fan-out (same principle as
+                # pr_gate) — but this is also the one setting a sibling plugin
+                # (kiro) can turn on for the SAME event, so warn if it already is:
+                # every `git push` would then run BOTH gates (double the external
+                # calls, double the wait) for identical content.
+                _warn_if_kiro_push_review_on(root)
+        elif key == "block":
+            if val.lower() not in ("on", "off", "true", "false", "1", "0", "yes", "no"):
+                print("usage: set push_gate block <on|off>", file=sys.stderr)
+                return 2
+            pg["block"] = val.lower() in ("on", "true", "1", "yes")
+        elif key == "timeout":
+            if not val.isdigit() or int(val) <= 0:
+                print("timeout must be a positive integer (seconds)", file=sys.stderr)
+                return 2
+            pg["timeout"] = int(val)
+        else:
+            print("push_gate keys: enabled, block, timeout", file=sys.stderr)
             return 2
     else:
         if len(rest) != 3:
@@ -653,6 +821,17 @@ def cmd_parallel_tasks(root):
     return 0
 
 
+def cmd_pr_autofix_iterations(root):
+    """Print the effective /co-agent:pr-autofix loop bound (review-fix-push cycles)."""
+    pa = effective(root).get("pr_autofix") or {}
+    try:
+        n = int(pa.get("max_iterations", 5))
+    except (TypeError, ValueError):
+        n = 5
+    print(max(1, n))
+    return 0
+
+
 def cmd_impl_flags(root, ai, host):
     """Write-mode flags for the harness implementer: a workspace-write sandbox scoped
     to the worktree, plus the implementer's model/effort. ONLY for the implement path
@@ -802,6 +981,8 @@ def main():
         return cmd_review_mode(root)
     if cmd == "parallel-tasks":
         return cmd_parallel_tasks(root)
+    if cmd == "pr-autofix-iterations":
+        return cmd_pr_autofix_iterations(root)
     if cmd == "max-fix-rounds":
         return cmd_max_fix_rounds(root)
     if cmd == "impl-flags":

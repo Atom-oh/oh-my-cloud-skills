@@ -16,6 +16,27 @@ Usage:
   kiro_review.py [<path>...] [--root DIR] [--allow-unguarded] [-- <path>...]
                                                   # working-tree changes (staged + unstaged),
                                                   # scoped to the given paths if any
+  kiro_review.py --range --lenses L1,L2,... [--root DIR] [--allow-unguarded]
+                                                  # pre-push gate: diffs the commit range
+                                                  # about to be pushed (@{upstream}..HEAD,
+                                                  # falling back to the trunk merge-base)
+                                                  # through one kiro-cli call PER LENS run
+                                                  # in parallel (see _LENSES / run_review_
+                                                  # lenses); findings are merged and the
+                                                  # exit-2 message is framed as BLOCKED
+                                                  # (a critical finding) or CHAIR JUDGMENT
+                                                  # REQUIRED (warning-only, no critical) —
+                                                  # never plain "blocked the commit" text,
+                                                  # since this call reviews a PUSH.
+  --progress          Tail kiro-cli's own stdout to stderr line-by-line while it runs
+                       (prefixed `[kiro:<lens>]`), plus a 15s "still running" heartbeat,
+                       instead of a blind wait for the whole `review.timeout`. kiro-cli
+                       has no stream-json mode; this streams the human-readable output it
+                       already writes (see _run_streamed). Meant for calls a human or
+                       Claude is WATCHING — run it in a background Bash and poll. The
+                       hooks deliberately don't pass it: their stderr only surfaces after
+                       the call returns, so streaming buys nothing there.
+
   --allow-unguarded   By default (both the automatic pre-commit hook and manual
                        /kiro:review), a missing/tampered kiro-reviewer agent means this
                        SKIPS the review, fail-open — never a silent unguarded fallback.
@@ -34,11 +55,64 @@ import json
 import shutil
 import subprocess
 import tempfile
+import threading
+import time
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 import kiro_config as kc
+
+
+_ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
+
+
+def _run_streamed(argv, cwd, env, outp, errp, timeout, echo_tag=None):
+    """Run kiro-cli with stdout/stderr on FILES (never pipes — see the auth-callback note
+    in run_review) and, when `echo_tag` is set, tail the stdout file to our own stderr
+    line-by-line while it runs.
+
+    kiro-cli headless has no `--output-format stream-json` equivalent — turn-level event
+    streaming is the one thing genuinely missing (`--format json` applies to the
+    `--list-models`/`--list-sessions` list flags, not to a `chat` turn) — so the stream we
+    can offer is the human-readable stdout it already writes, tailed from the capture
+    file. Reading the file instead of a pipe is what keeps the auth callback intact.
+
+    Returns the exit code, or None if the timeout was hit (process killed)."""
+    prefix = f"[kiro:{echo_tag}] " if echo_tag else ""
+    with open(outp, "w") as of, open(errp, "w") as ef:
+        p = subprocess.Popen(argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
+                             stdout=of, stderr=ef)
+        start = time.monotonic()
+        end = start + timeout
+        buf = ""
+        last_out = start
+        # Held open across iterations: at EOF read() returns "" and a later read()
+        # picks up newly appended bytes from the same offset.
+        with open(outp, encoding="utf-8", errors="replace") as tail:
+            while True:
+                chunk = tail.read() if echo_tag else ""
+                if chunk:
+                    buf += chunk
+                    while "\n" in buf:
+                        line, buf = buf.split("\n", 1)
+                        line = _ANSI.sub("", line).strip()
+                        if line:
+                            print(prefix + line[:300], file=sys.stderr, flush=True)
+                    last_out = time.monotonic()
+                rc = p.poll()
+                if rc is not None:
+                    return rc
+                now = time.monotonic()
+                if now >= end:
+                    p.kill()
+                    p.wait()
+                    return None
+                if echo_tag and now - last_out > 15:
+                    print(f"{prefix}… running, {int(now - start)}s elapsed "
+                          f"(timeout {timeout}s)", file=sys.stderr, flush=True)
+                    last_out = now
+                time.sleep(0.4)
 
 
 def _reviewer_agent_ok(path):
@@ -81,13 +155,37 @@ def _sanitized_env():
 
 _PROMPT_INSTR = (
     "Use fs_read to read the diff at {F}, then review it as a strict but fair code "
-    "reviewer. Reply with ONLY a JSON array (no prose, no code fences) of findings: "
+    "reviewer.{LENS} Reply with ONLY a JSON array (no prose, no code fences) of findings: "
     '[{{"severity":"critical|warning|suggestion","file":"<path>","line":<int or null>,'
     '"issue":"<one-line description>"}}]. "critical" = bug, security issue, or data '
     "loss risk; \"warning\" = real but non-blocking concern; \"suggestion\" = style/nit. "
     "If there is nothing to flag, reply with an empty array []. If the file is empty "
     "or unreadable, reply with []."
 )
+
+# Lens prompts for the pre-push gate (kiro_review.py --range --lenses ...): each lens
+# runs as a SEPARATE kiro-cli call, told to judge the SAME diff through only one
+# perspective — a reviewer instructed to look for everything tends to under-weight any
+# one dimension; three narrow passes catch more than one broad pass (co-agent's own
+# gate docs make the same trade-off for its multi-AI panel, just on a different axis —
+# there it's (ai, model) diversity with an IDENTICAL prompt; here it's prompt diversity
+# on a SINGLE peer, since kiro-cli is the only reviewer this plugin has).
+_LENSES = {
+    "correctness": (" Focus ONLY on the CORRECTNESS lens for this pass: logic bugs, "
+                     "missed edge cases, incorrect or missing error handling, and "
+                     "reintroduced regressions. Do not flag security, scope, or style "
+                     "concerns in this pass — other passes cover those."),
+    "security": (" Focus ONLY on the SECURITY lens for this pass: injection, secrets, "
+                 "authentication/authorization and trust-boundary issues, and AWS "
+                 "security mandate violations (0.0.0.0/0 ingress, IAM \"*\" actions or "
+                 "resources, secrets in plaintext env vars). Do not flag correctness, "
+                 "scope, or style concerns in this pass — other passes cover those."),
+    "scope": (" Focus ONLY on the SCOPE lens for this pass: changes that drift from "
+              "what the commit message(s) or branch intent implies, unrelated edits "
+              "bundled in, leftover debug code, and documentation that should have "
+              "been updated but wasn't. Do not flag correctness, security, or style "
+              "concerns in this pass — other passes cover those."),
+}
 
 
 def _git_env():
@@ -181,9 +279,22 @@ def _git_diff(root, paths, cached):
     return tracked_diff + untracked_diff, None
 
 
+# CSI escape sequences (`\x1b[38;5;141m`, `\x1b[0m`, `\x1b[?25l`, …) plus the other
+# two-char escape forms. kiro-cli colorizes its tool-use banner EVEN WHEN stdout is a
+# redirected file (which is exactly how run_review captures it — a pipe would sever the
+# CLI's auth callback, see the comment there), and `--wrap never` doesn't disable color.
+# Those escapes each contain a literal `[`, so the naive `text.find("[")` below used to
+# land INSIDE `\x1b[38;5;141m` in the "Reading file:" banner rather than on the findings
+# array, making json.loads fail on the whole span — every review silently returned
+# "did not return a parseable JSON findings array" and fail-opened. Strip the escapes
+# first so bracket-scanning only ever sees real content.
+_ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b[@-Z\\-_]")
+
+
 def _extract_json_array(text):
-    """Findings must be a JSON array; tolerate a stray code fence or banner line
-    around it (LLM output isn't always exactly the bare array)."""
+    """Findings must be a JSON array; tolerate a stray code fence, ANSI-colored banner
+    line, or preamble around it (LLM/CLI output isn't always exactly the bare array)."""
+    text = _ANSI_RE.sub("", text)
     start = text.find("[")
     end = text.rfind("]")
     if start == -1 or end == -1 or end < start:
@@ -195,7 +306,8 @@ def _extract_json_array(text):
     return data if isinstance(data, list) else None
 
 
-def run_review(root, diff, model, timeout, allow_unguarded=False):
+def run_review(root, diff, model, timeout, allow_unguarded=False, lens=None, progress=False,
+               effort=None):
     """Returns (findings|None, error|None, truncated). findings=None + error set means
     the review could not run or its output was unparseable — callers must fail-open.
     truncated=True means the diff exceeded _DIFF_CAP and everything past that point was
@@ -214,7 +326,17 @@ def run_review(root, diff, model, timeout, allow_unguarded=False):
     it warns about. `allow_unguarded=True` is now an explicit, separate opt-in a caller
     passes only once a human has already been asked and confirmed BEFORE this call
     starts (see commands/review.md) — never inferred from "a human is technically
-    present"."""
+    present".
+
+    `lens`: one of _LENSES' keys, or None for the unrestricted single-pass prompt (the
+    commit-hook / plain /kiro:review path). Narrows the reviewer's attention to one
+    dimension per call — see run_review_lenses() for the multi-call fan-out that uses
+    this on the pre-push path.
+
+    `effort`: kiro-cli `--effort` value (`review.effort`, default `high`) or falsy to omit
+    the flag. Deliberately the HIGH end of the ladder while the delegate path runs `low`:
+    this call's blocking verdict IS its product, and a missed critical finding costs more
+    than the extra reasoning."""
     if not shutil.which("kiro-cli"):
         return None, "kiro-cli not found on PATH", False
     body = diff
@@ -228,7 +350,8 @@ def run_review(root, diff, model, timeout, allow_unguarded=False):
             f.write(body)
             if truncated:
                 f.write(f"\n[...diff truncated to the first ~{_DIFF_CAP // 1024}KB for review...]\n")
-        argv = ["kiro-cli", "chat", _PROMPT_INSTR.format(F=fpath), "--mode", "default",
+        lens_text = _LENSES.get(lens, "") if lens else ""
+        argv = ["kiro-cli", "chat", _PROMPT_INSTR.format(F=fpath, LENS=lens_text), "--mode", "default",
                 "--no-interactive", "--wrap", "never"]
         # Prefer the kiro-reviewer custom agent (written by kiro_setup.py write-agents):
         # it carries a preToolUse fs_read guard that confines reads to the launch cwd —
@@ -267,6 +390,8 @@ def run_review(root, diff, model, timeout, allow_unguarded=False):
                   "(write-agents --force if tampered) to restore the guard.",
                   file=sys.stderr)
             argv += ["--trust-tools=fs_read"]
+        if effort:
+            argv += ["--effort", effort]
         if model:
             argv += ["--model", model]
         else:
@@ -277,19 +402,18 @@ def run_review(root, diff, model, timeout, allow_unguarded=False):
         # hanging the call to the full timeout (see co-agent's check_panel.py probe()).
         outp, errp = os.path.join(wdir, ".out"), os.path.join(wdir, ".err")
         try:
-            with open(outp, "w") as of, open(errp, "w") as ef:
-                r = subprocess.run(argv, cwd=wdir, env=_sanitized_env(), stdin=subprocess.DEVNULL,
-                                    stdout=of, stderr=ef, timeout=timeout)
+            rc = _run_streamed(argv, wdir, _sanitized_env(), outp, errp, timeout,
+                               echo_tag=(lens or "review") if progress else None)
             with open(outp, encoding="utf-8", errors="replace") as f:
                 out = f.read()
             with open(errp, encoding="utf-8", errors="replace") as f:
                 err = f.read()
-        except subprocess.TimeoutExpired:
-            return None, f"kiro-cli review timed out after {timeout}s", truncated
         except OSError as e:
             return None, f"could not run kiro-cli: {e}", truncated
-        if r.returncode != 0:
-            return None, f"kiro-cli exited {r.returncode}: {err.strip()[:300] or out.strip()[:300]}", truncated
+        if rc is None:
+            return None, f"kiro-cli review timed out after {timeout}s", truncated
+        if rc != 0:
+            return None, f"kiro-cli exited {rc}: {err.strip()[:300] or out.strip()[:300]}", truncated
         findings = _extract_json_array(out)
         if findings is None:
             return None, "kiro-cli did not return a parseable JSON findings array", truncated
@@ -304,6 +428,114 @@ def run_review(root, diff, model, timeout, allow_unguarded=False):
             clean.append({"severity": sev, "file": str(f.get("file", "")),
                           "line": f.get("line"), "issue": str(f.get("issue", ""))})
         return clean, None, truncated
+
+
+def run_review_lenses(root, diff, model, timeout, lenses, allow_unguarded=False, progress=False,
+                      effort=None):
+    """Fan `run_review` out across `lenses` (each a key of _LENSES) IN PARALLEL — one
+    kiro-cli call per lens, run in a thread, joined against a SHARED absolute deadline
+    (`timeout + 5`, not `timeout * len(lenses)`) so a single wedged lens can't multiply
+    the wait. Same pattern as co-agent's consensus_hooks.py PR-gate fan-out
+    (threading.Thread + a shared monotonic end time), applied here to lenses on ONE
+    peer instead of multiple peers — kiro-cli is the only reviewer this plugin has, so
+    the diversity axis is the prompt, not the CLI.
+
+    Returns (merged_findings, errors, truncated):
+      merged_findings — findings deduped by (file, line): the HIGHEST severity any lens
+        raised for that location wins, and each finding carries a "lenses" list of every
+        lens that flagged it (sorted, for stable output).
+      errors — {lens: error_string} for any lens whose call failed or never returned
+        within the shared deadline — a partial run must never look like a full one.
+      truncated — True if ANY lens's diff was truncated (each lens sees the same diff,
+        so if one truncates, they all would)."""
+    out = {}
+
+    def _one(lens):
+        out[lens] = run_review(root, diff, model, timeout, allow_unguarded=allow_unguarded,
+                               lens=lens, progress=progress, effort=effort)
+
+    threads = [threading.Thread(target=_one, args=(lens,), daemon=True) for lens in lenses]
+    for t in threads:
+        t.start()
+    end = time.monotonic() + timeout + 5
+    for t in threads:
+        t.join(max(0, end - time.monotonic()))
+
+    errors = {}
+    truncated = False
+    merged = {}   # (file, line) -> finding dict, "lenses" a set until the final pass below
+    for lens in lenses:
+        result = out.get(lens)
+        if result is None:
+            errors[lens] = f"{lens} lens did not return within the shared {timeout + 5}s deadline"
+            continue
+        findings, err, trunc = result
+        truncated = truncated or trunc
+        if err is not None:
+            errors[lens] = err
+            continue
+        for f in (findings or []):
+            key = (f["file"], f["line"])
+            existing = merged.get(key)
+            if existing is None:
+                merged[key] = {**f, "lenses": {lens}}
+            else:
+                if SEVERITY_ORDER.get(f["severity"], 0) > SEVERITY_ORDER.get(existing["severity"], 0):
+                    existing["severity"] = f["severity"]
+                    existing["issue"] = f["issue"]
+                existing["lenses"].add(lens)
+    merged_list = [{**f, "lenses": sorted(f["lenses"])} for f in merged.values()]
+    return merged_list, errors, truncated
+
+
+# The pre-push gate reviews the commit RANGE about to be pushed, not a single diff-
+# against-HEAD snapshot — a push can carry several commits, and the reviewer needs to
+# see all of them, not just the latest.
+def _resolve_push_range(root):
+    """Ref range for the commits about to be pushed: prefer the branch's configured
+    upstream (`@{upstream}..HEAD`, the range that reflects EXACTLY what `git push` with
+    no arguments would send); fall back to the merge-base with a detected trunk
+    (origin/HEAD, then origin/main, origin/master, main, master, in that order) when no
+    upstream is configured — e.g. the first push of a brand-new branch. Returns
+    (range_str, None) on success, or (None, error) when nothing resolves; the caller
+    must fail-open rather than guess a range that could silently review the wrong (or
+    an empty) diff."""
+    env = _git_env()
+
+    def _verify(ref):
+        try:
+            r = subprocess.run(["git", "-C", root, "--literal-pathspecs", "rev-parse",
+                                 "--verify", "--quiet", ref],
+                                capture_output=True, text=True, timeout=15, env=env)
+        except (subprocess.TimeoutExpired, OSError):
+            return False
+        return r.returncode == 0
+
+    if _verify("@{upstream}"):
+        return "@{upstream}..HEAD", None
+    for trunk_ref in ("origin/HEAD", "origin/main", "origin/master", "main", "master"):
+        if _verify(trunk_ref):
+            return f"{trunk_ref}..HEAD", None
+    return None, ("no upstream configured for this branch, and none of origin/HEAD, "
+                   "origin/main, origin/master, main, master resolve to diff against")
+
+
+def _range_diff(root, range_str):
+    """`git diff <range_str>` with the same hardening flags _git_diff uses (no local
+    git config / hooks / pager interference, literal pathspecs)."""
+    env = _git_env()
+    args = ["git", "-C", root, "--literal-pathspecs", "-c", f"core.attributesFile={os.devnull}",
+            "-c", "core.fsmonitor=", "-c", f"core.hooksPath={os.devnull}", "-c", "core.pager=cat",
+            "diff", range_str, "--no-color", "--no-ext-diff", "--no-textconv"]
+    try:
+        r = subprocess.run(args, capture_output=True, text=True, timeout=30, env=env)
+    except subprocess.TimeoutExpired:
+        return "", "git diff timed out after 30s"
+    except OSError as e:
+        return "", f"could not run git: {e}"
+    if r.returncode != 0:
+        return "", f"git diff {range_str} exited {r.returncode}: {r.stderr.strip()[:300]}"
+    return r.stdout, None
 
 
 def _default_root():
@@ -359,6 +591,31 @@ def main():
     allow_unguarded = "--allow-unguarded" in opts
     if allow_unguarded:
         opts.remove("--allow-unguarded")
+    range_mode = "--range" in opts
+    if range_mode:
+        opts.remove("--range")
+    progress = "--progress" in opts
+    if progress:
+        opts.remove("--progress")
+    lenses = None
+    if "--lenses" in opts:
+        i = opts.index("--lenses")
+        if i + 1 >= len(opts):
+            print("--lenses requires a comma-separated value", file=sys.stderr)
+            return 2
+        lenses = [l.strip() for l in opts[i + 1].split(",") if l.strip()]
+        del opts[i:i + 2]
+        bad = [l for l in lenses if l not in _LENSES]
+        if bad:
+            print(f"unknown lens(es) {', '.join(bad)} (valid: {', '.join(_LENSES)})",
+                  file=sys.stderr)
+            return 2
+    if lenses and not range_mode:
+        # Lenses are the push-gate's diversity axis; nothing else needs them, and a
+        # bare-diff call reviewed with a NARROWED single-lens prompt would silently
+        # under-cover the commit path (whose contract is "one unrestricted pass").
+        print("--lenses requires --range", file=sys.stderr)
+        return 2
     # Any leftover token before `--` that isn't a recognized flag is ALSO treated as a
     # path (backward compat: bare filenames never required the separator) — only a
     # token starting with "--" is filtered out here, since that region is genuinely
@@ -367,7 +624,18 @@ def main():
 
     cfg = kc.effective(root)
 
-    if diff_file:
+    if range_mode:
+        # Pre-push gate: diff the commit RANGE about to be pushed, not a single
+        # against-HEAD snapshot — a push can carry several commits.
+        range_str, range_err = _resolve_push_range(root)
+        if range_err is not None:
+            print(f"⚠️  kiro review skipped (fail-open): {range_err}", file=sys.stderr)
+            return 0
+        diff, diff_err = _range_diff(root, range_str)
+        if diff_err is not None:
+            print(f"⚠️  kiro review skipped (fail-open): {diff_err}", file=sys.stderr)
+            return 0
+    elif diff_file:
         # Repo-root containment: every OTHER mode this script has (--staged, bare paths)
         # only ever reads content from inside `root` — a git diff is inherently scoped
         # to a repo. `--diff <file>` had no such relationship, so it could be pointed at
@@ -408,15 +676,45 @@ def main():
                                      # to a non-dict; never let a settings-file typo
                                      # crash the fail-open gate it's supposed to protect
     model = rcfg.get("model")
+    # `kc._effort` coerces a hand-edited value (unknown string, null, a number) to "" =
+    # omit the flag, rather than passing garbage to `--effort` and failing the whole call.
+    effort = kc._effort(rcfg.get("effort"))
     try:
         timeout = int(rcfg.get("timeout", 120))
     except (TypeError, ValueError):
         print(f"⚠️  kiro review: review.timeout {rcfg.get('timeout')!r} is not a valid "
               f"integer — using the default (120s)", file=sys.stderr)
         timeout = 120
-    block_level = rcfg.get("block") or "critical"
+    # push_block is a SEPARATE key from block (default "warning", not "critical") — a
+    # push carries more commits than a single one and this is the LAST checkpoint
+    # before the content leaves the machine, so the default floor is deliberately one
+    # tier stricter than the commit gate's.
+    block_level = (rcfg.get("push_block") or "warning") if range_mode else (rcfg.get("block") or "critical")
 
-    findings, err, truncated = run_review(root, diff, model, timeout, allow_unguarded=allow_unguarded)
+    if lenses:
+        findings, lens_errors, truncated = run_review_lenses(
+            root, diff, model, timeout, lenses, allow_unguarded=allow_unguarded,
+            progress=progress, effort=effort)
+        if lens_errors:
+            detail = "; ".join(f"{l}: {e}" for l, e in lens_errors.items())
+            all_failed = len(lens_errors) == len(lenses)
+            # Don't claim "PARTIAL coverage from the remaining lens(es)" when NONE
+            # remain — that reads as "some of the push was reviewed" when nothing was.
+            tail = ("no lens completed, so NOTHING in this push was reviewed"
+                    if all_failed else
+                    "coverage from the remaining lens(es) is PARTIAL, not a full push review")
+            print(f"⚠️  kiro review: {len(lens_errors)}/{len(lenses)} lens(es) did not "
+                  f"complete ({detail}) — {tail}", file=sys.stderr)
+            if all_failed:
+                # Every lens failed — same fail-open contract as the single-call path.
+                print("⚠️  kiro review skipped (fail-open): all lenses failed", file=sys.stderr)
+                return 0
+        err = None
+    else:
+        findings, err, truncated = run_review(root, diff, model, timeout,
+                                              allow_unguarded=allow_unguarded, progress=progress,
+                                              effort=effort)
+
     if truncated:
         # This gate is advisory, not a coverage guarantee — a silent truncation would
         # look identical to "the whole diff was reviewed and came back clean/blocked".
@@ -438,12 +736,42 @@ def main():
 
     def _fmt(f):
         loc = f"{f['file']}:{f['line']}" if f.get("line") else f["file"] or "(unknown location)"
-        return f"  [{f['severity'].upper()}] {loc} — {f['issue']}"
+        tag = f"[{'/'.join(l.upper() for l in f['lenses'])}] " if f.get("lenses") else ""
+        return f"  {tag}[{f['severity'].upper()}] {loc} — {f['issue']}"
 
     if advisory:
         print(f"kiro review — {len(advisory)} advisory finding(s):", file=sys.stderr)
         for f in advisory:
             print(_fmt(f), file=sys.stderr)
+
+    if blocking and range_mode:
+        # Two message framings, per the plan's severity table: a CRITICAL finding is a
+        # plain block (fix it, no bypass suggested); a WARNING-only set (push_block's
+        # default lets warnings reach this floor too) is framed as a judgment call for
+        # whoever reads this stderr next — Claude, since a hook has no other way to
+        # hand a verdict to the chair — not an automatic veto.
+        has_critical = any(f["severity"] == "critical" for f in blocking)
+        if has_critical:
+            print(f"❌ kiro review BLOCKED the push — {len(blocking)} finding(s) at/above "
+                  f"'{block_level}':", file=sys.stderr)
+        else:
+            print(f"🪑 kiro review — CHAIR JUDGMENT REQUIRED before this push — "
+                  f"{len(blocking)} warning-level finding(s) (no critical):", file=sys.stderr)
+        for f in blocking:
+            print(_fmt(f), file=sys.stderr)
+        if has_critical:
+            print("Fix the finding(s) above, then retry the push. To bypass this run, "
+                  "prefix the push itself: `KIRO_REVIEW=off git push ...` (the hook "
+                  "recognizes this inline; a separately-exported KIRO_REVIEW won't reach "
+                  "it), or turn it off persistently with `/kiro:configure set review "
+                  "on_push off`.", file=sys.stderr)
+        else:
+            print("No critical finding here — this is a CHAIR judgment call, not an "
+                  "automatic block. Read each finding above against the actual change; "
+                  "if it's acceptable for this push, re-run with the bypass prefix "
+                  "(`KIRO_REVIEW=off git push ...`, recognized inline by the hook). If "
+                  "not, fix it and retry.", file=sys.stderr)
+        return 2
 
     if blocking:
         print(f"❌ kiro review BLOCKED the commit — {len(blocking)} finding(s) at/above "

@@ -1,5 +1,5 @@
 ---
-description: Create a new Architecture Decision Record with auto-numbering — capture a decision when finishing a dev branch (superpowers:finishing-a-development-branch) if the work made one
+description: Create a new Architecture Decision Record with auto-numbering
 allowed-tools: Read, Write, Edit, Bash(mkdir:*), Bash(ls:*), Bash(find:*), Glob, Grep
 argument-hint: ADR title (e.g. "use-postgresql", "adopt-rest-api", "switch-to-typescript")
 ---

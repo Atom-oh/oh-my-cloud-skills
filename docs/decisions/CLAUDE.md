@@ -17,7 +17,7 @@ edit a decision's rationale after acceptance — supersede it with a new ADR ins
 ## Superseding / reconciling
 When a newer decision reverses an older one: set the old ADR's Status to
 `Superseded by ADR-NNN`, and the new ADR's Context cites the superseded number + the
-conflicting quote. The `decision-reconcile` skill (project-init) detects contradictions
+conflicting quote. The `decision-reconcile` skill (co-agent) detects contradictions
 across accumulated ADRs and drafts the superseding ADR.
 
 > Keep ADRs decision-scoped — operational how-to belongs in `../runbooks/`, and living
