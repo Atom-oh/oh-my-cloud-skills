@@ -116,7 +116,7 @@ oh-my-cloud-skills는 Claude Code용 플러그인 마켓플레이스로, AWS 클
 
 ## System Overview
 
-oh-my-cloud-skills is a Claude Code plugin marketplace providing 6 plugins for AWS cloud content creation (presentations, diagrams, docs, workshops), infrastructure operations/troubleshooting, and developer tooling.
+oh-my-cloud-skills is a Claude Code plugin marketplace providing 7 plugins for AWS cloud content creation (presentations, diagrams, docs, workshops), infrastructure operations/troubleshooting, and developer tooling.
 
 ## Component Structure
 

@@ -47,7 +47,7 @@ if ! python3 "$SK/kiro_config.py" review-on-push --root "$ROOT" >/dev/null 2>&1;
 fi
 
 # SKIP (fail-open) when the push invocation may not correspond to the range this hook
-# would diff (@{upstream}..HEAD, or the trunk merge-base) — see hook_match.py's
+# would diff (@{upstream}...HEAD, or the trunk merge-base) — see hook_match.py's
 # push-scope-mismatch docstring for the exact mismatch classes (repo/tree redirect, a
 # preceding cd/pushd, a preceding git commit in the same invocation whose content the
 # diff would miss, or --delete with nothing to review).

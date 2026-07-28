@@ -710,7 +710,7 @@ aws-ops-power/
 | `project-scaffolder` | Claude Code 프로젝트 구조 패턴 및 컨벤션 |
 | `pr-autofix` | AI + 사람 PR 리뷰 피드백 polling 후 이슈 자동 수정 (co-agent; 루프 상한은 `/co-agent:configure set pr_autofix max_iterations`, 기본 5회; 계획은 Fable/Opus, 구현은 opus [medium effort] 서브에이전트) |
 | `decision-reconcile` | (co-agent) 누적 ADR 간 모순(및 ADR vs 현실 drift)을 다양성 멀티 에이전트 패널(Claude 모델 티어 + 선택적 Kiro/Codex/Antigravity, 렌즈 1개씩)로 검출 후 번복 ADR 초안 작성 |
-| `kiro-delegate` | Kiro CLI(구독 크레딧)로의 비용 절감 구현+리뷰 위임 — worktree로 격리된 구현 루프, scope-guard된 diff, 커밋 전 리뷰 게이트, WebSearch 도구가 없는 세션(Claude Code on Bedrock)을 위한 opt-in 웹 검색 위임. 명령: `/kiro:setup`, `/kiro:delegate`, `/kiro:review`, `/kiro:configure` |
+| `kiro-delegate` | Kiro CLI(구독 크레딧)로의 비용 절감 구현+리뷰 위임 — worktree로 격리된 구현 루프, scope-guard된 diff, opt-in 커밋 전·3-렌즈 푸시 전 리뷰 게이트(둘 다 기본 off — 활성화가 곧 Kiro 백엔드로의 diff 송신 동의), WebSearch 도구가 없는 세션(Claude Code on Bedrock)을 위한 opt-in 웹 검색 위임. 명령: `/kiro:setup`, `/kiro:delegate`, `/kiro:review`, `/kiro:configure` |
 
 ### Project Init 명령
 

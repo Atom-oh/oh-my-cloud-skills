@@ -103,7 +103,7 @@ it off persistently with `/kiro:configure set review on_commit off`.
 
 `review.on_push` is a **separate** opt-in from `review.on_commit` — off by default, same
 external-diff-egress rationale, but a different mechanic: instead of one unrestricted
-pass, it fans the commit range about to be pushed (`@{upstream}..HEAD`, falling back to
+pass, it fans the commit range about to be pushed (`@{upstream}...HEAD`, falling back to
 the trunk merge-base) out across **three narrowed lenses** (correctness, security,
 scope — `kiro_review.py`'s `_LENSES`), run in parallel as three separate `kiro-cli`
 calls. A reviewer told to look for everything tends to under-weight any one dimension;

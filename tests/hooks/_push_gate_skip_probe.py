@@ -29,10 +29,29 @@ def classify(cmd):
     rest = re.split(r"[;&|\n]", detect[m.end():], 1)[0]
     if ch._PUSH_DELETE_RE.search(rest):
         return "skip:delete"
+    if ch._PUSH_MULTIREF_RE.search(rest) or ch._push_has_explicit_refspec(rest):
+        return "skip:refspec"
     return "GATED"
+
+
+def kiro_classify(cmd):
+    """kiro's equivalent predicate — the two gates must agree on every case."""
+    _hspec = importlib.util.spec_from_file_location(
+        "hm", os.path.join(_ROOT, "plugins", "kiro", "skills", "kiro-delegate", "scripts",
+                           "hook_match.py"))
+    hm = importlib.util.module_from_spec(_hspec)
+    _hspec.loader.exec_module(hm)
+    return "skip" if hm.is_push_scope_mismatch(cmd) else "GATED"
 
 
 if __name__ == "__main__":
     import sys
-    for cmd in sys.argv[1:]:
-        print(classify(cmd))
+    args = sys.argv[1:]
+    both = args and args[0] == "--both"
+    for cmd in (args[1:] if both else args):
+        c = classify(cmd)
+        if both:
+            # normalize: any skip reason is a skip, so the two gates are comparable
+            print(f"{'skip' if c.startswith('skip') else c} {kiro_classify(cmd)}")
+        else:
+            print(c)

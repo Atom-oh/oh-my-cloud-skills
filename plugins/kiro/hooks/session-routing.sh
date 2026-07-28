@@ -46,10 +46,16 @@ if python3 "$SK/kiro_config.py" websearch-enabled >/dev/null 2>&1; then
 [kiro] websearch.enabled is ON for this repo. If this session has NO `WebSearch` tool
 (the common case on Bedrock) and a task genuinely needs current/external information,
 route the search through kiro-cli's native web_search: Write the query to a
-per-invocation-unique temp file, then run
-`python3 "$CLAUDE_PLUGIN_ROOT/skills/kiro-delegate/scripts/kiro_websearch.py" --query-file <that path>`
-and delete the file after. Never use it when a native WebSearch tool IS available.
+per-invocation-unique temp file, then run the command below with that path, and delete
+the file afterwards. Never use it when a native WebSearch tool IS available.
 ROUTING
+  # Printed separately, with the path RESOLVED at hook time. Inside the quoted heredoc
+  # above, `$CLAUDE_PLUGIN_ROOT` would reach the host verbatim — and that variable does
+  # not exist in the ordinary Bash tool calls the host makes later, so the one command
+  # this routing block exists to hand over would fail in every consumer repo. Left as
+  # its own `echo` rather than unquoting the heredoc: the text is full of backticks,
+  # which an unquoted heredoc would run as command substitution.
+  echo "  \`python3 \"$SK/kiro_websearch.py\" --query-file <that path>\`"
 fi
 
 exit 0

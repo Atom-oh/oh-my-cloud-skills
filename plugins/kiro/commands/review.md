@@ -62,7 +62,7 @@ findings are informational; a `critical` finding (or whatever `review.block` is 
 means `git commit` would currently be blocked by the hook until it's fixed.
 
 To run the same 3-lens pass the pre-push hook runs (correctness/security/scope, in
-parallel, over the commit range about to be pushed — `@{upstream}..HEAD`, falling back
+parallel, over the commit range about to be pushed — `@{upstream}...HEAD`, falling back
 to the trunk merge-base), on demand:
 
 ```bash

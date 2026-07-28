@@ -92,6 +92,42 @@ _PRECEDING_CD = re.compile(r"(?:^|[\n;&|])\s*(?:pushd|cd)(?:\s|$)")
 _PUSH_REDIRECT_RE = re.compile(
     r"(?:^|\s)-C\s+\S|(?:^|\s)--(?:git-dir|work-tree)(?:\s+\S|=\S)|\bGIT_(?:DIR|WORK_TREE)=\S")
 _PUSH_DELETE_RE = re.compile(r"(?:^|\s)(?:--delete\b|-d\b)")
+# A push whose CONTENT is not "the current branch vs its upstream" cannot be judged by
+# the range these gates compute. `--all`/`--tags`/`--mirror` send many refs; an explicit
+# positional refspec (`origin other-branch`, `origin src:dst`) sends a ref that may have
+# no relation to HEAD. A lone remote (`git push origin`) is fine — that pushes the current
+# branch per push.default — and so is naming HEAD or the current branch explicitly, but
+# the hook cannot know the branch name from the payload text alone, so any second
+# positional is treated as out of scope. SKIP + advisory, never a guess.
+_PUSH_MULTIREF_RE = re.compile(r"(?:^|\s)--(?:all|tags|mirror)\b")
+
+def _push_has_explicit_refspec(rest):
+    """True iff `rest` (the argv text after `push`, this invocation only) names a SECOND
+    positional — i.e. a refspec beyond the remote. Flags and their values are skipped;
+    `HEAD` alone is accepted since it always means the current branch."""
+    toks = rest.split()
+    positionals = []
+    skip_next = False
+    for t in toks:
+        if skip_next:
+            skip_next = False
+            continue
+        if t.startswith("-"):
+            # `--repo <name>`, `-o <opt>`, `--receive-pack <p>` take a separate value;
+            # `--flag=value` does not. Treat any non-`=` long/short flag as possibly
+            # value-taking: over-skipping one token can only lose a positional, which
+            # fails toward reviewing (the safe direction) rather than skipping.
+            if "=" not in t and t not in ("--all", "--tags", "--mirror", "--force", "-f",
+                                          "--dry-run", "-n", "--verbose", "-v", "--quiet",
+                                          "-q", "--atomic", "--porcelain", "--progress",
+                                          "--set-upstream", "-u", "--no-verify", "--tags",
+                                          "--follow-tags", "--thin", "--no-thin", "--prune",
+                                          "--delete", "-d", "--ipv4", "-4", "--ipv6", "-6"):
+                skip_next = True
+            continue
+        positionals.append(t)
+    return len(positionals) >= 2 and positionals[1] not in ("HEAD",)
+
 
 # `git push` — the pre-push gate's own boundary matcher. Same tolerance/limits as
 # `_PR_CMD_RE` (env/VAR= prefix, global git flags between `git` and `push`, quote-
@@ -650,6 +686,12 @@ def ev_pre_push_gate(root):
     if _PUSH_DELETE_RE.search(rest):
         _notify("[co-agent push gate] note: a ref-deletion push has no content to review — "
                 "gate SKIPPED.\n")
+        return 0
+    if _PUSH_MULTIREF_RE.search(rest) or _push_has_explicit_refspec(rest):
+        _notify("[co-agent push gate] note: this push sends refs the gate's range does not "
+                "describe (--all/--tags/--mirror, or an explicit refspec) — reviewing the "
+                "current branch's diff would judge the wrong commits. Gate SKIPPED; run "
+                "/co-agent:review on the range you are actually pushing.\n")
         return 0
 
     range_str, range_err = _resolve_push_range(root)

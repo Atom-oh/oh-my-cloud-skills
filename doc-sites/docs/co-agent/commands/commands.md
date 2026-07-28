@@ -8,6 +8,23 @@ title: "명령 목록"
 5개의 슬래시 명령으로 패널 설정, AI 컨텍스트 동기화, 자율 구현 파이프라인, 패널 준비도 확인을 지원합니다.
 
 ## /co-agent:configure
+### push_gate · pr_autofix (설정 추가분)
+
+```bash
+/co-agent:configure set push_gate enabled on     # 기본 off — 푸시 전 3-렌즈 패널 리뷰
+/co-agent:configure set push_gate block warning  # BLOCK 판정 임계
+/co-agent:configure set push_gate timeout 300
+/co-agent:configure set pr_autofix max_iterations 5   # pr-autofix 루프 상한 (기본 5)
+```
+
+`push_gate.enabled`는 **동의 게이팅** 설정입니다 — 켜는 순간 푸시될 diff가 패널 AI CLI로
+전송되므로 기본값은 off이고, 커밋된 `.claude/co-agent.local.json`의 값은 무시됩니다
+(`pr_gate.enabled`도 동일). 판정은 **BLOCK한 렌즈 수** 기준입니다: 2개 이상이면 BLOCKED,
+정확히 1개면 CHAIR JUDGMENT REQUIRED. 게이트가 서술할 수 없는 푸시 형태
+(`--all`/`--tags`/`--mirror`, 명시적 refspec, 다른 repo/워크트리 리다이렉트, ref 삭제,
+선행 `cd`/`git commit`)는 fail-open으로 SKIP되며, kiro의 `review.on_push`와 같은 스킵
+규칙을 공유합니다. 한 번만 우회할 때는 인라인 `CO_AGENT_PUSH_GATE=off git push ...`.
+
 
 호스트 인지형 멀티-AI 패널을 설정합니다. 설정은 `co-agent.defaults.json`(커밋) ← `~/.claude/co-agent.user.json`(유저 스코프) ← `.claude/co-agent.local.json`(레포 로컬, gitignore) 레이어로 병합됩니다.
 

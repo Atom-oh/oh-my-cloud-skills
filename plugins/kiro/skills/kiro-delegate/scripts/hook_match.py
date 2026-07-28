@@ -283,7 +283,7 @@ def is_multi_commit(cmd):
 # --- git push --------------------------------------------------------------------
 # `-C <dir>` / `--git-dir`/`--work-tree` (space or `=` form) before `push` redirect
 # the push to another repo/tree — the pre-push hook always diffs its OWN root
-# (`@{upstream}..HEAD` or the trunk merge-base there), so reviewing that diff for a
+# (`@{upstream}...HEAD` or the trunk merge-base there), so reviewing that diff for a
 # push that actually targets a DIFFERENT repo would judge the wrong content
 # entirely. Reuse the exact same detector regexes the commit-side mismatch check
 # already uses — the redirect mechanics are identical for any git subcommand.
@@ -293,11 +293,46 @@ _PUSH_ARGS_RE = re.compile(
 # `--delete`/`-d` (and its `:branch` refspec shorthand) removes a remote ref — there
 # is no local content being pushed, so there is nothing meaningful to diff/review.
 _PUSH_DELETE_RE = re.compile(r"(?:^|\s)(?:--delete\b|-d\b)")
+# A push whose CONTENT is not "the current branch vs its upstream" cannot be judged by
+# the range these gates compute. `--all`/`--tags`/`--mirror` send many refs; an explicit
+# positional refspec (`origin other-branch`, `origin src:dst`) sends a ref that may have
+# no relation to HEAD. A lone remote (`git push origin`) is fine — that pushes the current
+# branch per push.default — and so is naming HEAD or the current branch explicitly, but
+# the hook cannot know the branch name from the payload text alone, so any second
+# positional is treated as out of scope. SKIP + advisory, never a guess.
+_PUSH_MULTIREF_RE = re.compile(r"(?:^|\s)--(?:all|tags|mirror)\b")
+
+def _push_has_explicit_refspec(rest):
+    """True iff `rest` (the argv text after `push`, this invocation only) names a SECOND
+    positional — i.e. a refspec beyond the remote. Flags and their values are skipped;
+    `HEAD` alone is accepted since it always means the current branch."""
+    toks = rest.split()
+    positionals = []
+    skip_next = False
+    for t in toks:
+        if skip_next:
+            skip_next = False
+            continue
+        if t.startswith("-"):
+            # `--repo <name>`, `-o <opt>`, `--receive-pack <p>` take a separate value;
+            # `--flag=value` does not. Treat any non-`=` long/short flag as possibly
+            # value-taking: over-skipping one token can only lose a positional, which
+            # fails toward reviewing (the safe direction) rather than skipping.
+            if "=" not in t and t not in ("--all", "--tags", "--mirror", "--force", "-f",
+                                          "--dry-run", "-n", "--verbose", "-v", "--quiet",
+                                          "-q", "--atomic", "--porcelain", "--progress",
+                                          "--set-upstream", "-u", "--no-verify", "--tags",
+                                          "--follow-tags", "--thin", "--no-thin", "--prune",
+                                          "--delete", "-d", "--ipv4", "-4", "--ipv6", "-6"):
+                skip_next = True
+            continue
+        positionals.append(t)
+    return len(positionals) >= 2 and positionals[1] not in ("HEAD",)
 
 
 def is_push_scope_mismatch(cmd):
     """True iff the push invocation may not correspond to the diff the pre-push hook
-    would compute (`@{upstream}..HEAD`, falling back to the trunk merge-base):
+    would compute (`@{upstream}...HEAD`, falling back to the trunk merge-base):
       - `-C`/`--git-dir`/`--work-tree` (flag or `GIT_DIR=`/`GIT_WORK_TREE=` env
         prefix) redirects to a different repo/tree than this hook's own root.
       - a `cd`/`pushd` earlier in the SAME invocation changes the shell's cwd before
@@ -307,13 +342,19 @@ def is_push_scope_mismatch(cmd):
         diff computed now is missing that not-yet-created commit, which is exactly
         the content about to be pushed. Stale-HEAD analog of the commit-side
         `is_stale_index` check.
-      - `--delete`/`-d`: nothing to review (a ref deletion, not new content)."""
+      - `--delete`/`-d`: nothing to review (a ref deletion, not new content).
+      - `--all`/`--tags`/`--mirror`, or an explicit refspec positional (`git push origin
+        other-branch`): the content pushed is not what `@{upstream}...HEAD` describes, so
+        the computed diff would judge the wrong commits — unreviewed content could pass,
+        or an unrelated diff could block."""
     detect = _blank_quotes(cmd)
     m = _PUSH_ARGS_RE.search(detect)
     if not m:
         return False
     before, rest = m.group("before"), m.group("rest")
     if _PRE_C_RE.search(before) or _PRE_GIT_DIR_RE.search(before):
+        return True
+    if _PUSH_MULTIREF_RE.search(rest) or _push_has_explicit_refspec(rest):
         return True
     if _PUSH_DELETE_RE.search(rest):
         return True

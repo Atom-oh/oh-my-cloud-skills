@@ -138,7 +138,7 @@ before writing the implementer agent file.
 correctness,security,scope` pass before it — **opt-in, off by default**
 (`review.on_push=false`), a separate consent key from `review.on_commit` since it's a
 different mechanic: instead of one unrestricted pass over the staged diff, it diffs
-the commit RANGE about to be pushed (`@{upstream}..HEAD`, falling back to the trunk
+the commit RANGE about to be pushed (`@{upstream}...HEAD`, falling back to the trunk
 merge-base) and runs THREE narrowed kiro-cli calls in parallel — one per lens — instead
 of one broad call. Same guard/fail-open contract as the commit hook (tamper-verified
 `kiro-reviewer` agent confines `fs_read` to the isolated diff dir per call; missing/

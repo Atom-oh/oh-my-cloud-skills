@@ -195,12 +195,27 @@ assert_json_valid "plugins/kiro/skills/kiro-delegate/kiro.defaults.json" "kiro.d
 # reviewed its OWN root for a push aimed at another repo, and blocked a ref deletion on
 # the unrelated diff of unpushed local commits. ---
 _pgs() { python3 tests/hooks/_push_gate_skip_probe.py "$1"; }
+# `--both` prints "<co-agent> <kiro>" — the two hooks intercept the same event, so a push
+# neither can describe must be skipped by BOTH or the stricter one just moves the problem.
+_pgb() { python3 tests/hooks/_push_gate_skip_probe.py --both "$1"; }
 assert_eq "GATED" "$(_pgs 'git push')" "push gate: a plain push is still gated"
 assert_eq "GATED" "$(_pgs 'git push -u origin HEAD')" "push gate: flags do not change the classification"
 assert_eq "skip:redirect" "$(_pgs 'git -C /other/repo push')" "push gate: a repo redirect is SKIPPED, not reviewed against the wrong root"
 assert_eq "skip:redirect" "$(_pgs 'GIT_WORK_TREE=/elsewhere git push')" "push gate: an env-prefix work-tree redirect is SKIPPED too"
 assert_eq "skip:delete" "$(_pgs 'git push origin --delete oldbranch')" "push gate: a ref deletion has no content to review"
 assert_eq "GATED" "$(_pgs 'git push && rm --delete-after x')" "push gate: a --delete belonging to a LATER command does not suppress this push's review"
+
+# A push whose content is not "current branch vs upstream" cannot be judged by the range
+# either gate computes — reviewing it anyway lets unreviewed content pass or hard-blocks on
+# an unrelated diff. Both gates must skip it, and must still review an ordinary push.
+assert_eq "GATED GATED" "$(_pgb 'git push')" "refspec: a bare push is reviewed by both gates"
+assert_eq "GATED GATED" "$(_pgb 'git push origin')" "refspec: a lone remote still means the current branch"
+assert_eq "GATED GATED" "$(_pgb 'git push -u origin HEAD')" "refspec: HEAD names the current branch"
+assert_eq "skip skip" "$(_pgb 'git push origin other-branch')" "refspec: an explicit branch refspec is skipped by BOTH gates"
+assert_eq "skip skip" "$(_pgb 'git push origin src:dst')" "refspec: a src:dst refspec is skipped by both"
+assert_eq "skip skip" "$(_pgb 'git push --all')" "refspec: --all sends refs the computed range does not describe"
+assert_eq "skip skip" "$(_pgb 'git push --tags')" "refspec: --tags likewise"
+assert_eq "skip skip" "$(_pgb 'git push --mirror origin')" "refspec: --mirror likewise"
 
 assert_json_valid "plugins/co-agent/skills/co-agent/co-agent.defaults.json" "co-agent.defaults.json is valid JSON after adding push_gate"
 

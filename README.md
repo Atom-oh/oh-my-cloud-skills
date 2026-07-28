@@ -710,7 +710,7 @@ All agents (except the internal pr-autofix workers above) activate automatically
 | `project-scaffolder` | Claude Code project structure patterns and conventions |
 | `pr-autofix` | Poll AI + human PR review feedback and auto-fix issues (co-agent; loop bound via `/co-agent:configure set pr_autofix max_iterations`, default 5; plan on Fable/Opus, implement via opus [medium effort] subagents) |
 | `decision-reconcile` | (co-agent) Detect contradictions across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (varied Claude model tiers + optional Kiro/Codex/Antigravity, one review lens each), then draft a superseding ADR |
-| `kiro-delegate` | Cost-savings implementation + review delegation to Kiro CLI (subscription credits) — worktree-isolated implement loop, scope-guarded diff, pre-commit review gate, and opt-in web search delegation for WebSearch-less sessions (Claude Code on Bedrock). Commands: `/kiro:setup`, `/kiro:delegate`, `/kiro:review`, `/kiro:configure` |
+| `kiro-delegate` | Cost-savings implementation + review delegation to Kiro CLI (subscription credits) — worktree-isolated implement loop, scope-guarded diff, opt-in pre-commit and 3-lens pre-push review gates (both off by default — enabling one sends diff content to Kiro's backend), and opt-in web search delegation for WebSearch-less sessions (Claude Code on Bedrock). Commands: `/kiro:setup`, `/kiro:delegate`, `/kiro:review`, `/kiro:configure` |
 
 ### Project Init Commands
 
