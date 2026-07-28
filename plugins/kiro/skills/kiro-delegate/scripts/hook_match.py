@@ -29,7 +29,9 @@ Usage:
                                     #   reviews ONE upfront snapshot of the staged diff, so a
                                     #   second commit's own content is never reviewed at all.
                                     #   exit 1 = only one commit invocation (or none).
-  hook_match.py bypass              # stdin = the hook's JSON payload
+  hook_match.py bypass commit|push  # stdin = the hook's JSON payload; the subcommand
+                                    # whose OWN inline KIRO_REVIEW=off prefix counts
+                                    # (never the other one's — see main())
                                     # exit 0 = a `KIRO_REVIEW=off` env-var prefix is part
                                     #   of this SAME command's own git-commit OR git-push
                                     #   invocation (e.g. `KIRO_REVIEW=off git commit -m x`,
@@ -394,12 +396,21 @@ def main():
     if mode == "push-scope-mismatch":
         return 0 if is_push_scope_mismatch(cmd) else 1
     if mode == "bypass":
-        # `bypass` is shared by both hooks — a git-push invocation only ever carries
-        # the KIRO_REVIEW=off prefix on ITS OWN `git push`, never on an unrelated
-        # `git commit` elsewhere in the same payload, so checking both subcommand
-        # matchers here (rather than needing a separate "push-bypass" mode) is safe:
-        # each is scoped to its own `_GIT_*_RE.search(...).group()` text.
-        return 0 if (is_bypassed(cmd) or is_push_bypassed(cmd)) else 1
+        # Which subcommand's bypass is being asked about MUST be explicit. An earlier
+        # version OR'd both matchers on the theory that a payload only ever carries the
+        # prefix on the subcommand it belongs to — false for a compound command:
+        # `KIRO_REVIEW=off git push && git commit -m x` would have satisfied the
+        # COMMIT hook's bypass check via the push prefix, silently skipping a review
+        # nobody consented to skip. (The reverse direction is masked by
+        # `push-scope-mismatch`, which skips a payload containing a preceding commit;
+        # the commit direction had no such masking.) A caller that omits the argument
+        # gets a usage error, which every caller treats as "not bypassed" — the safe
+        # direction: the review runs.
+        which = sys.argv[2] if len(sys.argv) > 2 else None
+        if which not in ("commit", "push"):
+            print(__doc__)
+            return 2
+        return 0 if (is_bypassed(cmd) if which == "commit" else is_push_bypassed(cmd)) else 1
     return 0 if is_git_commit(cmd) else 1
 
 

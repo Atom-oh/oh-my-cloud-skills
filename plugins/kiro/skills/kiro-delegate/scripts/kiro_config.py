@@ -94,7 +94,7 @@ def _escapes_root(path, root):
     return not (real_path == real_root or real_path.startswith(real_root + os.sep))
 
 
-def _resolves_through_symlink(path):
+def _resolves_through_symlink(path, root=None):
     """True if resolving `path` involves ANY symlink anywhere in the chain — whether it
     redirects outside `root` (`_escapes_root` already catches that case) or to a
     DIFFERENT location still inside `root` (e.g. `.claude` symlinked to `src/`, so
@@ -116,8 +116,21 @@ def _resolves_through_symlink(path):
     `abspath` makes the path absolute via the SAME cwd basis `realpath` uses, without
     resolving symlinks — so the two sides are only ever unequal when a symlink is
     genuinely involved, independent of whether `path` itself was given relative or
-    absolute."""
-    return os.path.realpath(path) != os.path.abspath(path)
+    absolute.
+
+    Pass `root` whenever it is known. Ancestors ABOVE the repo root are then normalized
+    on BOTH sides (realpath of the root, plus the repo-relative remainder), so a symlink
+    that has nothing to do with this file — `/tmp` -> `/private/tmp` on macOS, a
+    symlinked `$HOME`, a repo reached through a linked worktree — stops reading as an
+    alias bypass. Without that, this returned True for EVERY call on such a machine, so
+    the consent keys were stripped unconditionally and a gate the user explicitly turned
+    on was silently off, under a warning that claimed the file was tracked by git."""
+    real = os.path.realpath(path)
+    if root is None:
+        return real != os.path.abspath(path)
+    ap, ar = os.path.abspath(path), os.path.abspath(root)
+    rel = os.path.relpath(ap, ar)
+    return real != os.path.normpath(os.path.join(os.path.realpath(ar), rel))
 
 
 def load_defaults():
@@ -186,7 +199,7 @@ def _consent_config_untrustworthy(root, lp):
     literal name happens to be tracked."""
     if _is_tracked_by_git(root, os.path.join(".claude", "kiro.local.json")):
         return True
-    return _resolves_through_symlink(lp)
+    return _resolves_through_symlink(lp, root)
 
 
 def _strip_consent_keys(raw, root, lp):
@@ -364,7 +377,7 @@ def _write(root, cfg):
               f"symlink-through-write escape, not a normal checkout. Remove/replace it "
               f"before running `set` again.", file=sys.stderr)
         return 2
-    if _resolves_through_symlink(lp):
+    if _resolves_through_symlink(lp, root):
         print(f"❌ refusing to write {lp}: a symlink somewhere in its path (e.g. a "
               f"symlinked .claude/ pointing to another location INSIDE this repo) "
               f"redirects it elsewhere — writing here would truncate whatever real "

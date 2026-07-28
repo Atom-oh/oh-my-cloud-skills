@@ -26,9 +26,14 @@ Events:
                          a different message — a hook can't call Claude directly, so this is
                          how the verdict reaches the chair for a human-in-the-loop call).
                          Fails OPEN on any internal error, unresolvable push range, or no
-                         usable peer. Bypass: inline `CO_AGENT_PUSH_GATE=off git push ...`
-                         prefix (recognized in the payload text, not env — see
-                         `_PUSH_BYPASS_ENV_RE`), or config `push_gate.enabled=false`.
+                         usable peer. Bypass, in the order checked: an exported
+                         `CO_AGENT_PUSH_GATE=off` in the hook's OWN environment disables
+                         the gate for the whole session (same convention as the PR gate);
+                         an inline `CO_AGENT_PUSH_GATE=off git push ...` prefix bypasses
+                         just that invocation and is recognized in the payload TEXT, since
+                         an inline assignment never reaches this process's environment
+                         (`_PUSH_BYPASS_ENV_RE`); or config `push_gate.enabled=false`
+                         turns it off persistently.
 
 Usage (bash hook pipes the hook JSON on stdin):
   consensus_hooks.py stop --root .
@@ -79,6 +84,14 @@ _PRECEDING_GIT_MUT = re.compile(r"\bgit\s+(?:commit|add|merge|rebase|cherry-pick
 # (→ home), and a quoted arg like `cd "my dir"` (the quoted span is blanked in cmd_detect, leaving
 # `cd ` + spaces) by requiring only whitespace-or-end after the command word.
 _PRECEDING_CD = re.compile(r"(?:^|[\n;&|])\s*(?:pushd|cd)(?:\s|$)")
+# Two more skip classes, ported from kiro's hook_match.is_push_scope_mismatch so both
+# hooks intercepting `git push` agree on what they cannot review. Without them this gate
+# reviewed ITS OWN root's diff for a push redirected at another repo, and blocked a ref
+# DELETION on the unrelated diff of unpushed local commits. Two hooks on one event with
+# different skip rules is a bug surface by itself.
+_PUSH_REDIRECT_RE = re.compile(
+    r"(?:^|\s)-C\s+\S|(?:^|\s)--(?:git-dir|work-tree)(?:\s+\S|=\S)|\bGIT_(?:DIR|WORK_TREE)=\S")
+_PUSH_DELETE_RE = re.compile(r"(?:^|\s)(?:--delete\b|-d\b)")
 
 # `git push` — the pre-push gate's own boundary matcher. Same tolerance/limits as
 # `_PR_CMD_RE` (env/VAR= prefix, global git flags between `git` and `push`, quote-
@@ -577,16 +590,19 @@ def _review_one_push(peer, lens, prompt_text, model, fpath, cwd, timeout, out):
 
 def _resolve_push_range(root):
     """Ref range for the commits about to be pushed — prefer the branch's configured
-    upstream (`@{upstream}..HEAD`, exactly what a bare `git push` would send); fall
+    upstream (`@{upstream}...HEAD`, exactly what a bare `git push` would send); fall
     back to the trunk ref `_base_ref` detects (origin/HEAD, origin/main, main,
     origin/master, master) when no upstream is configured (first push of a new
     branch). Returns (range_str, None) on success, (None, error) when neither
     resolves — the caller must fail-open rather than guess a range."""
     if _git(root, "rev-parse", "--verify", "--quiet", "@{upstream}"):
-        return "@{upstream}..HEAD", None
+        # THREE dots — see the same fix in kiro's kiro_review._resolve_push_range:
+        # two-dot ignores the merge base, so a branch behind trunk reviews trunk-only
+        # commits as deletions this push supposedly makes.
+        return "@{upstream}...HEAD", None
     base = _base_ref(root)
     if base:
-        return f"{base}..HEAD", None
+        return f"{base}...HEAD", None
     return None, ("no upstream configured for this branch, and no origin/HEAD, "
                    "origin/main, main, origin/master, master found to diff against")
 
@@ -622,6 +638,18 @@ def ev_pre_push_gate(root):
                 "`git push` — the gate runs BEFORE it, so the diffed range would miss that "
                 "commit (incomplete diff). Gate SKIPPED; run /co-agent:review after the "
                 "commit.\n")
+        return 0
+    if _PUSH_REDIRECT_RE.search(m.group()):
+        _notify("[co-agent push gate] note: this push redirects at another repository or "
+                "work tree, but the gate only ever diffs its own root — it would review the "
+                "WRONG repository. Gate SKIPPED.\n")
+        return 0
+    # Bounded to THIS invocation: everything up to the next shell separator, so a
+    # `--delete` belonging to some later command cannot suppress this push's review.
+    rest = re.split(r"[;&|\n]", cmd_detect[m.end():], 1)[0]
+    if _PUSH_DELETE_RE.search(rest):
+        _notify("[co-agent push gate] note: a ref-deletion push has no content to review — "
+                "gate SKIPPED.\n")
         return 0
 
     range_str, range_err = _resolve_push_range(root)

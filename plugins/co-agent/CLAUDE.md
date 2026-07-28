@@ -106,6 +106,13 @@ PR 게이트의 peer당 1콜과 같은 비용 프로파일) → 각 lens가 독�
   `CO_AGENT_PUSH_GATE=off git push ...`로 bypass, 아니면 고쳐서 재시도.
 - **0개** → `exit 0` PASS.
 
+- **리뷰할 수 없는 push는 SKIP(fail-open)** — kiro의 `push-scope-mismatch`와 **같은 4개
+  클래스**를 쓴다(두 훅이 같은 이벤트를 가로채므로 스킵 규칙이 갈리면 그 자체가 버그 표면):
+  선행 `cd`/`pushd`, 같은 invocation의 선행 `git commit` 류 상태 변경, **다른 repo/워크트리로
+  리다이렉트**(`-C` · `--git-dir` · `--work-tree` · `GIT_DIR=` 계열 — 게이트는 언제나 자기
+  root만 diff하므로 엉뚱한 저장소를 리뷰하게 된다), **ref 삭제 push**(리뷰할 내용이 없음).
+  뒤 두 개는 co-agent 쪽에 빠져 있던 것을 이식했다. `--delete`는 **이 invocation 범위**
+  에서만 인식한다 — 뒤따르는 다른 명령의 플래그가 이 push의 리뷰를 없애지 못한다.
 - **동의(consent)**: `push_gate.enabled=false`가 기본 — 활성화가 곧 외부 송신 동의.
   `co_agent_config.py`에 처음으로 **tracked-file consent 스트리핑**이 추가됨(kiro의
   `_strip_consent_keys`와 동일 로직): `.claude/co-agent.local.json`이 이 repo에 커밋돼

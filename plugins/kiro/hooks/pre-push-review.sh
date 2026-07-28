@@ -38,7 +38,7 @@ fi
 # Same inline-bypass rationale as pre-commit-review.sh: `KIRO_REVIEW=off git push ...`
 # is only ever real environment for the eventual `git push` subprocess, never for this
 # hook's own process — recognized directly in the payload text instead.
-if python3 "$SK/hook_match.py" bypass < "$PAYLOAD_FILE"; then
+if python3 "$SK/hook_match.py" bypass push < "$PAYLOAD_FILE"; then
   exit 0
 fi
 

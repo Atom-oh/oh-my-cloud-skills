@@ -18,7 +18,7 @@ Usage:
                                                   # scoped to the given paths if any
   kiro_review.py --range --lenses L1,L2,... [--root DIR] [--allow-unguarded]
                                                   # pre-push gate: diffs the commit range
-                                                  # about to be pushed (@{upstream}..HEAD,
+                                                  # about to be pushed (@{upstream}...HEAD,
                                                   # falling back to the trunk merge-base)
                                                   # through one kiro-cli call PER LENS run
                                                   # in parallel (see _LENSES / run_review_
@@ -451,8 +451,15 @@ def run_review_lenses(root, diff, model, timeout, lenses, allow_unguarded=False,
     out = {}
 
     def _one(lens):
-        out[lens] = run_review(root, diff, model, timeout, allow_unguarded=allow_unguarded,
-                               lens=lens, progress=progress, effort=effort)
+        # try/except, not bare: an exception here leaves out[lens] unset, and the join
+        # loop below reports THAT as "did not return within the shared deadline" — a
+        # schema/parse bug would masquerade as a timeout while every finding from the
+        # lens was silently dropped. Record the real reason instead.
+        try:
+            out[lens] = run_review(root, diff, model, timeout, allow_unguarded=allow_unguarded,
+                                   lens=lens, progress=progress, effort=effort)
+        except Exception as e:            # advisory gate — must degrade, never crash
+            out[lens] = (None, f"{lens} lens raised {type(e).__name__}: {e}", False)
 
     threads = [threading.Thread(target=_one, args=(lens,), daemon=True) for lens in lenses]
     for t in threads:
@@ -475,7 +482,7 @@ def run_review_lenses(root, diff, model, timeout, lenses, allow_unguarded=False,
             errors[lens] = err
             continue
         for f in (findings or []):
-            key = (f["file"], f["line"])
+            key = (f["file"], f.get("line"))
             existing = merged.get(key)
             if existing is None:
                 merged[key] = {**f, "lenses": {lens}}
@@ -493,7 +500,7 @@ def run_review_lenses(root, diff, model, timeout, lenses, allow_unguarded=False,
 # see all of them, not just the latest.
 def _resolve_push_range(root):
     """Ref range for the commits about to be pushed: prefer the branch's configured
-    upstream (`@{upstream}..HEAD`, the range that reflects EXACTLY what `git push` with
+    upstream (`@{upstream}...HEAD`, the range that reflects EXACTLY what `git push` with
     no arguments would send); fall back to the merge-base with a detected trunk
     (origin/HEAD, then origin/main, origin/master, main, master, in that order) when no
     upstream is configured — e.g. the first push of a brand-new branch. Returns
@@ -512,10 +519,16 @@ def _resolve_push_range(root):
         return r.returncode == 0
 
     if _verify("@{upstream}"):
-        return "@{upstream}..HEAD", None
+        # THREE dots: `git diff A..B` ignores the merge base, so every commit that
+        # exists only on the upstream/trunk side shows up as a DELETION in the diff —
+        # a branch merely behind trunk (the first push of a new branch is exactly this)
+        # would have unrelated trunk code reviewed as "code this push removes", and
+        # three lenses can raise real-looking blocking findings on it. `A...B` diffs
+        # against the merge base, which is what this function's docstring promises.
+        return "@{upstream}...HEAD", None
     for trunk_ref in ("origin/HEAD", "origin/main", "origin/master", "main", "master"):
         if _verify(trunk_ref):
-            return f"{trunk_ref}..HEAD", None
+            return f"{trunk_ref}...HEAD", None
     return None, ("no upstream configured for this branch, and none of origin/HEAD, "
                    "origin/main, origin/master, main, master resolve to diff against")
 

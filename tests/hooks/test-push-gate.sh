@@ -13,8 +13,11 @@ _payload() {
 }
 
 _hm() {
-  # _hm <mode> <command>  →  exit code of hook_match.py <mode> on that command's payload
-  _payload "$2" | python3 "$HM" "$1" >/dev/null 2>&1
+  # _hm <mode...> <command>  →  exit code of hook_match.py <mode...> on that command's
+  # payload. Variadic because `bypass` takes the subcommand as a second argv word.
+  local _cmd="${@: -1}"
+  local _modes=("${@:1:$#-1}")
+  _payload "$_cmd" | python3 "$HM" "${_modes[@]}" >/dev/null 2>&1
   echo $?
 }
 
@@ -31,10 +34,15 @@ assert_eq "1" "$(_hm git-push 'echo "git push"')" "git-push: quoted string, not 
 assert_eq "1" "$(_hm git-push 'git push-notes')" "git-push: 'push-notes' is not the push subcommand"
 assert_eq "1" "$(_hm git-push 'git commit -m "git push"')" "git-push: mention inside a commit message"
 
-# --- bypass: shared mode, must recognize BOTH commit and push inline prefixes ---
-assert_eq "0" "$(_hm bypass 'KIRO_REVIEW=off git push')" "bypass: inline prefix on git push"
-assert_eq "0" "$(_hm bypass 'KIRO_REVIEW=off git commit -m x')" "bypass: inline prefix on git commit (unchanged)"
-assert_eq "1" "$(_hm bypass 'NOTE=KIRO_REVIEW=off git push')" "bypass: value of a DIFFERENT var must not match"
+# --- bypass: the subcommand is EXPLICIT. Sharing one OR'd mode let a prefix on one
+# subcommand of a compound command skip the OTHER hook's review — consent for a push
+# is not consent for a commit riding along in the same invocation. ---
+assert_eq "0" "$(_hm bypass push 'KIRO_REVIEW=off git push')" "bypass push: inline prefix on git push"
+assert_eq "0" "$(_hm bypass commit 'KIRO_REVIEW=off git commit -m x')" "bypass commit: inline prefix on git commit"
+assert_eq "1" "$(_hm bypass push 'NOTE=KIRO_REVIEW=off git push')" "bypass: value of a DIFFERENT var must not match"
+assert_eq "1" "$(_hm bypass commit 'KIRO_REVIEW=off git push && git commit -m x')" "bypass commit: a prefix on the PUSH does not bypass the commit review"
+assert_eq "1" "$(_hm bypass push 'KIRO_REVIEW=off git commit -m x && git push')" "bypass push: a prefix on the COMMIT does not bypass the push review"
+assert_eq "2" "$(_hm bypass 'KIRO_REVIEW=off git push')" "bypass with no subcommand is a usage error (callers treat non-zero as 'not bypassed' — the review runs)"
 
 # --- push-scope-mismatch: true positives ---
 assert_eq "0" "$(_hm push-scope-mismatch 'cd ../other && git push')" "push-scope-mismatch: preceding cd"
@@ -182,16 +190,30 @@ assert_file_executable "plugins/kiro/hooks/pre-push-review.sh" "pre-push-review.
 assert_bash_syntax "plugins/kiro/hooks/pre-push-review.sh" "pre-push-review.sh has valid bash syntax"
 
 assert_json_valid "plugins/kiro/skills/kiro-delegate/kiro.defaults.json" "kiro.defaults.json is valid JSON after adding on_push/push_block"
+# --- co-agent push gate: the skip classes ported from kiro's push-scope-mismatch, so the
+# two hooks on this one event agree on what they cannot review. Before this, the gate
+# reviewed its OWN root for a push aimed at another repo, and blocked a ref deletion on
+# the unrelated diff of unpushed local commits. ---
+_pgs() { python3 tests/hooks/_push_gate_skip_probe.py "$1"; }
+assert_eq "GATED" "$(_pgs 'git push')" "push gate: a plain push is still gated"
+assert_eq "GATED" "$(_pgs 'git push -u origin HEAD')" "push gate: flags do not change the classification"
+assert_eq "skip:redirect" "$(_pgs 'git -C /other/repo push')" "push gate: a repo redirect is SKIPPED, not reviewed against the wrong root"
+assert_eq "skip:redirect" "$(_pgs 'GIT_WORK_TREE=/elsewhere git push')" "push gate: an env-prefix work-tree redirect is SKIPPED too"
+assert_eq "skip:delete" "$(_pgs 'git push origin --delete oldbranch')" "push gate: a ref deletion has no content to review"
+assert_eq "GATED" "$(_pgs 'git push && rm --delete-after x')" "push gate: a --delete belonging to a LATER command does not suppress this push's review"
+
 assert_json_valid "plugins/co-agent/skills/co-agent/co-agent.defaults.json" "co-agent.defaults.json is valid JSON after adding push_gate"
 
 if python3 -c "import py_compile" 2>/dev/null; then
-  python3 -m py_compile \
+  # `if python3 ...; then`, NOT `python3 ...` followed by `[ $? -eq 0 ]`: this file is
+  # SOURCED by run-all.sh under `set -e`, so a bare failing command aborts the whole
+  # suite — the fail branch below was unreachable and every later test silently skipped.
+  if python3 -m py_compile \
     plugins/kiro/skills/kiro-delegate/scripts/hook_match.py \
     plugins/kiro/skills/kiro-delegate/scripts/kiro_review.py \
     plugins/kiro/skills/kiro-delegate/scripts/kiro_config.py \
     plugins/co-agent/skills/co-agent/scripts/consensus_hooks.py \
-    plugins/co-agent/skills/co-agent/scripts/co_agent_config.py 2>/tmp/push-gate-pycompile.err
-  if [ $? -eq 0 ]; then
+    plugins/co-agent/skills/co-agent/scripts/co_agent_config.py 2>/tmp/push-gate-pycompile.err; then
     pass "all push-gate-touched scripts compile cleanly"
   else
     fail "all push-gate-touched scripts compile cleanly" "$(cat /tmp/push-gate-pycompile.err)"

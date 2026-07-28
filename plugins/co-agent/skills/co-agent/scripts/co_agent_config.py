@@ -173,13 +173,24 @@ def deep_merge(base, over):
 LEGACY_KEYS = {"kiro": "kiro-cli", "antigravity": "agy", "gemini": None}
 
 
-def _resolves_through_symlink(path):
+def _resolves_through_symlink(path, root=None):
     """True if resolving `path` involves ANY symlink anywhere in the chain — ported
     verbatim from kiro's kiro_config.py (same repo, same class of risk: a malicious
     repo could track `.claude` as a symlink alias to dodge a literal-path tracked-file
     check alone). `os.path.abspath`, not `os.path.normpath`, so a relative `root="."`
-    doesn't spuriously fail-closed on every call regardless of any real symlink."""
-    return os.path.realpath(path) != os.path.abspath(path)
+    doesn't spuriously fail-closed on every call regardless of any real symlink.
+
+    `root`, when given, normalizes ancestors ABOVE the repo root on both sides, so an
+    unrelated symlink there (`/tmp` -> `/private/tmp`, a symlinked `$HOME`, a linked
+    worktree) no longer reads as an alias bypass — that made this True for every call on
+    such a machine, silently stripping consent keys a user had deliberately set. Same
+    fix applied to kiro_config.py's identical function."""
+    real = os.path.realpath(path)
+    if root is None:
+        return real != os.path.abspath(path)
+    ap, ar = os.path.abspath(path), os.path.abspath(root)
+    rel = os.path.relpath(ap, ar)
+    return real != os.path.normpath(os.path.join(os.path.realpath(ar), rel))
 
 
 def _is_tracked_by_git(root, relpath):
@@ -216,7 +227,7 @@ def _consent_config_untrustworthy(root, lp):
     same rationale as kiro_config.py's identically-named function)."""
     if _is_tracked_by_git(root, os.path.join(".claude", "co-agent.local.json")):
         return True
-    return _resolves_through_symlink(lp)
+    return _resolves_through_symlink(lp, root)
 
 
 def _strip_consent_keys(raw, root, lp):

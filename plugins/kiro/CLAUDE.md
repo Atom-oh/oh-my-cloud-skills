@@ -153,8 +153,9 @@ JUDGMENT REQUIRED` — a hook cannot call Claude directly, so exit 2 + this stde
 IS the mechanism by which the verdict reaches whoever is chairing the session; they
 read each finding against the actual change and either fix it or bypass with an inline
 `KIRO_REVIEW=off git push ...` prefix (same recognized-in-payload-text mechanism as the
-commit hook's bypass — `hook_match.py`'s `bypass` mode now checks both `git commit` and
-`git push` invocations). `hook_match.py`'s `push-scope-mismatch` mode skips (fail-open,
+commit hook's bypass — `hook_match.py`'s `bypass` mode takes the subcommand explicitly,
+`bypass push` here and `bypass commit` in the commit hook, so a prefix on one subcommand
+of a compound command can never bypass the other hook's review). `hook_match.py`'s `push-scope-mismatch` mode skips (fail-open,
 advisory) the same mismatch classes the commit hook's `scope-mismatch` catches, adapted
 for push: a repo/tree redirect, a preceding `cd`/`pushd`, a preceding `git commit` in
 the same invocation whose content the diffed range would miss, or `--delete` (nothing
@@ -184,8 +185,10 @@ hook via `/kiro:setup` (which explains this before asking) or `/kiro:configure s
 on_commit on`. **Fails open** on any internal error or missing/unauthenticated
 `kiro-cli` — a broken reviewer must never wedge a commit. Blocks (exit 2) only on
 findings at/above `review.block` (default `critical`). Bypass one commit with an
-**inline** `KIRO_REVIEW=off git commit ...` prefix — `hook_match.py`'s `bypass` check
-recognizes this literal prefix in the command text itself; the hook process's OWN
+**inline** `KIRO_REVIEW=off git commit ...` prefix — `hook_match.py`'s `bypass commit`
+check recognizes this literal prefix on the `git commit` invocation itself (a prefix on a
+`git push` elsewhere in the same compound command does NOT count — consent for one
+subcommand isn't consent for another); the hook process's OWN
 environment (what a bare `${KIRO_REVIEW:-}` check would see) never receives a same-line
 assignment from the command it's inspecting, and Bash tool calls don't persist shell
 state between each other either, so `export`ing it in a prior command doesn't work as a
