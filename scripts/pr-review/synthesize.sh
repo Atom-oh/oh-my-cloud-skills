@@ -117,12 +117,12 @@ PROMPT_EOF
 # 문제였음(#105). 매트릭스(4→16 패널 출력)는 체어 입력이 더 커 286s 실측조차
 # 밑돎 — job timeout-minutes 50m 여유를 반영해 600s 유지.
 PRIMARY_MODEL="${ANTHROPIC_MODEL:-us.anthropic.claude-fable-5}"
-FALLBACK_MODEL="${CHAIR_FALLBACK_MODEL:-us.anthropic.claude-opus-4-8}"
+FALLBACK_MODEL="${CHAIR_FALLBACK_MODEL:-us.anthropic.claude-opus-5}"
 CHAIR_TIMEOUT="${CHAIR_TIMEOUT:-600}"
 
 chair_label() { case "$1" in
   *fable-5*)  echo "Claude Fable 5" ;;
-  *opus-4-8*) echo "Claude Opus 4.8" ;;
+  *opus-5*)   echo "Claude Opus 5" ;;
   *)          echo "$1" ;;
 esac ; }
 
