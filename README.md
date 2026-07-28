@@ -74,9 +74,10 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 
 ## Installation
 
-Every plugin ships **both** a Claude Code manifest (`.claude-plugin/plugin.json`) and a
-Codex manifest (`.codex-plugin/plugin.json`), so the same marketplace installs on either
-host. Pick your host below.
+Every plugin ships a Claude Code manifest (`.claude-plugin/plugin.json`), and all but one
+also ship a Codex manifest (`.codex-plugin/plugin.json`), so the same marketplace installs
+on either host. The exception is `project-init`, an upstream mirror whose manifest set is
+kept verbatim — it is Claude Code only. Pick your host below.
 
 ### Claude Code
 
@@ -125,7 +126,7 @@ Uninstall:
 
 This repo is also a **Codex plugin marketplace** — the manifest lives at
 [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json) (`name: oh-my-cloud-skills`)
-and each plugin's `.codex-plugin/plugin.json` exposes its skills to Codex. Requires a recent
+and each listed plugin's `.codex-plugin/plugin.json` exposes its skills to Codex. Requires a recent
 Codex CLI with plugin support.
 
 ```bash

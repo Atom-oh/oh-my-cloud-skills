@@ -74,9 +74,11 @@
 
 ## 설치
 
-모든 플러그인은 Claude Code 매니페스트(`.claude-plugin/plugin.json`)와 Codex
-매니페스트(`.codex-plugin/plugin.json`)를 **모두** 제공하므로, 동일한 마켓플레이스를
-어느 호스트에서도 설치할 수 있습니다. 아래에서 사용하는 호스트를 선택하세요.
+모든 플러그인은 Claude Code 매니페스트(`.claude-plugin/plugin.json`)를 제공하고, 하나를
+제외한 전부가 Codex 매니페스트(`.codex-plugin/plugin.json`)도 함께 제공하므로 동일한
+마켓플레이스를 어느 호스트에서도 설치할 수 있습니다. 예외는 `project-init` — upstream
+미러라 매니페스트 구성을 그대로 유지하므로 Claude Code 전용입니다. 아래에서 사용하는
+호스트를 선택하세요.
 
 ### Claude Code
 
@@ -125,7 +127,7 @@ claude --plugin-dir ./plugins/kiro
 
 이 저장소는 **Codex 플러그인 마켓플레이스**이기도 합니다 — 매니페스트는
 [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json)에 있고
-(`name: oh-my-cloud-skills`), 각 플러그인의 `.codex-plugin/plugin.json`이 스킬을 Codex에
+(`name: oh-my-cloud-skills`), 등록된 각 플러그인의 `.codex-plugin/plugin.json`이 스킬을 Codex에
 노출합니다. 플러그인을 지원하는 최신 Codex CLI가 필요합니다.
 
 ```bash
