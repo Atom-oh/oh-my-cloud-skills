@@ -128,26 +128,52 @@ esac ; }
 
 run_chair() {  # $1=model → "$OUT" 에 기록(scrub 통과). claude 실패해도 || true 로 계속.
   # argv(-p) 는 고정 지시문만(작고 상한 없음) — diff+패널(가변, 큼)은 stdin.
+  # --allowedTools: 이 repo 는 plugins/·hooks 가 많은 플러그인 개발 repo라, 툴 제한 없이
+  # 돌리면 의장이 종합 대신 탐색(plugin/skill 트리 read·grep)으로 흘러 CHAIR_TIMEOUT 600s
+  # 전체를 태우고 빈손으로 죽을 수 있다. 종합에 실제로 필요한 툴만 허용해 상한을 예측
+  # 가능하게 만든다(다른 pr-review 리포와 동일 패턴).
   ANTHROPIC_MODEL="$1" timeout "$CHAIR_TIMEOUT" \
     claude -p "$(cat "$WORK/synth-prompt.txt")" --output-format text \
+    --allowedTools "Read Grep Glob Bash(gh pr diff:*) Bash(gh pr view:*)" \
     < "$WORK/synth-stdin.txt" 2>"$WORK/chair.err" | scrub_secrets > "$OUT" || true
 }
 
-# 저하 판정: 빈 응답 | VERDICT 라인 없음. (ConnectionRefused·타임아웃·행 모두
-# VERDICT 없는 출력으로 귀결되므로 이 두 조건이면 충분 — 에러 문자열 grep은
-# 리뷰 본문이 'connection refused' 등을 언급할 때 오탐이라 쓰지 않는다.)
-chair_degraded() { [ ! -s "$OUT" ] || ! grep -q '^VERDICT:' "$OUT"; }
+# 유효 판정은 **게이트(pr-review.yml)와 정확히 같은 기준**이어야 한다.
+# 이전 `grep -q '^VERDICT:'` 는 게이트보다 느슨해서, 의장이 `VERDICT: FAIL (3 MAJOR)` 처럼
+# 뒤에 텍스트가 붙은 줄이나 본문 인용으로 VERDICT 를 두 번 쓰면 여기선 "정상"으로 통과하고
+# 게이트는 `^VERDICT: (PASS|FAIL)$` 정확매칭에서 걸러 "No VERDICT line found — fail-closed"
+# 로 job 을 죽였다 — **fallback 기회를 쓰지 않고** 하드 fail 하는 validator/gate 불일치
+# (2026-07-28 run 30329238234·30330125952 실측: 의장이 8.8KB/10.2KB 리뷰를 냈는데도 게이트가
+# 거부, fallback 미시도). 게이트와 동일하게 "마지막 non-empty 줄이 정확히 VERDICT: PASS|FAIL"
+# + "VERDICT 줄이 정확히 1개"를 요구해, 어긋나면 fallback 모델이 다시 시도하게 한다.
+chair_valid() {
+  [ -s "$OUT" ] || return 1
+  local last verdict_count
+  last="$(awk 'NF{last=$0} END{print last}' "$OUT")"
+  verdict_count="$(grep -c '^VERDICT:' "$OUT" || true)"
+  [[ "$last" =~ ^VERDICT:\ (PASS|FAIL)$ ]] && [ "$verdict_count" = "1" ]
+}
 
 run_chair "$PRIMARY_MODEL"
 CHAIR_USED="$PRIMARY_MODEL"
-if chair_degraded; then
-  echo "::warning::chair '$(chair_label "$PRIMARY_MODEL")' degraded (connection/timeout/empty, ${CHAIR_TIMEOUT}s cap) — falling back to '$(chair_label "$FALLBACK_MODEL")'"
+# PRIMARY/FALLBACK 이 같은 모델로 resolve 되면 재시도는 동일 호출의 반복이라 무의미 — skip.
+if ! chair_valid && [ "$FALLBACK_MODEL" != "$PRIMARY_MODEL" ]; then
+  # stderr 발췌를 남긴다 — 이게 없어서 "Execution error"(16 bytes) 로만 죽는 실패
+  # (2026-07-28 run 30330913993·30334795862·30337824131, 두 모델 모두 600s 소진)의 원인을
+  # 로그로 전혀 추적할 수 없었다. scrub_secrets 통과 필수: claude CLI 에러에 credential/env
+  # 가 섞이면 public Actions 로그로 그대로 새는 경로다.
+  CHAIR_ERR_EXCERPT="$(head -c 500 "$WORK/chair.err" 2>/dev/null | scrub_secrets)"
+  echo "::warning::chair '$(chair_label "$PRIMARY_MODEL")' degraded (connection/timeout/empty/no-verdict, ${CHAIR_TIMEOUT}s cap): $CHAIR_ERR_EXCERPT — falling back to '$(chair_label "$FALLBACK_MODEL")'"
   run_chair "$FALLBACK_MODEL"
-  CHAIR_USED="$FALLBACK_MODEL"
+  if chair_valid; then
+    CHAIR_USED="$FALLBACK_MODEL"
+  fi
 fi
 
-if [ ! -s "$OUT" ]; then
-  echo "리뷰 생성 실패 — $(chair_label "$PRIMARY_MODEL")·$(chair_label "$FALLBACK_MODEL") 모두 빈 응답." > "$OUT"
+if ! chair_valid; then
+  CHAIR_ERR_EXCERPT="$(head -c 500 "$WORK/chair.err" 2>/dev/null | scrub_secrets)"
+  echo "::error::chair 양쪽 모두 유효한 응답을 내지 못했다 (마지막 stderr: $CHAIR_ERR_EXCERPT)" >&2
+  echo "리뷰 생성 실패 — $(chair_label "$PRIMARY_MODEL")·$(chair_label "$FALLBACK_MODEL") 모두 유효한 응답(빈 응답 또는 VERDICT 형식 불일치)을 반환하지 않음." > "$OUT"
   echo "VERDICT: FAIL" >> "$OUT"
 fi
 
