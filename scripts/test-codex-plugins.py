@@ -30,6 +30,11 @@ ALLOWED_MANIFEST_FIELDS = {
     "license",
     "keywords",
 }
+# Plugins deliberately absent from the Codex surface — an upstream mirror whose manifest
+# set is kept verbatim (docs/reference/project-init-upstream-sync.md). Everything else
+# missing a .codex-plugin manifest is an error, not a warning.
+CLAUDE_ONLY = {"project-init"}
+
 ALLOWED_INSTALL_POLICIES = {"NOT_AVAILABLE", "AVAILABLE", "INSTALLED_BY_DEFAULT"}
 ALLOWED_AUTH_POLICIES = {"ON_INSTALL", "ON_USE"}
 
@@ -69,10 +74,13 @@ class CodexPluginValidator:
     def discover_plugins(self) -> list[str]:
         """Plugins exposed on the Codex surface — those carrying a `.codex-plugin` manifest.
 
-        A Claude-only plugin is not an error: `project-init` is mirrored verbatim from its
-        upstream fork source, which ships no Codex manifest, so it is deliberately absent
-        from the Codex marketplace too. Report it as a warning so a genuinely forgotten
-        manifest is still visible.
+        A missing Codex manifest is an ERROR for every plugin except those in
+        `CLAUDE_ONLY`: `project-init` is mirrored verbatim from its upstream fork source,
+        which ships no Codex manifest, so it is deliberately absent from the Codex
+        marketplace and skipped silently (a standing warning on a known-correct state is
+        noise that buries a real one). Anywhere else, a `.codex-plugin/plugin.json` that
+        goes missing means the plugin silently dropped off the Codex marketplace — the
+        suite has to fail, not warn, since warnings don't reach the exit code.
         """
         names = {
             path.parent.parent.name
@@ -80,8 +88,10 @@ class CodexPluginValidator:
         }
         for path in self.plugins_dir.glob("*/.claude-plugin/plugin.json"):
             name = path.parent.parent.name
-            if name not in names:
-                self.warn(f"{name}: no .codex-plugin manifest — not exposed to Codex")
+            if name in names or name in CLAUDE_ONLY:
+                continue
+            self.error(f"{name}: no .codex-plugin manifest — not exposed to Codex "
+                       f"(add one, or list it in CLAUDE_ONLY if that's deliberate)")
         return sorted(names)
 
     def validate_manifest(self, plugin_name: str) -> None:

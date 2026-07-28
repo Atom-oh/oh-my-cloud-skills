@@ -17,6 +17,37 @@ VALID_HOOK_EVENTS = {"SessionStart", "PreToolUse", "PostToolUse", "PostToolUseFa
                      "SubagentStop", "PermissionRequest", "SessionEnd", "PreCompact"}
 VALID_HOOK_TYPES = {"command", "prompt", "agent"}
 
+# Plugins mirrored byte-identically from an upstream fork source, whose plugin.json is
+# kept verbatim and therefore declares no agents/skills arrays. ONLY these may fall back
+# to on-disk discovery — see test_manifest(). docs/reference/project-init-upstream-sync.md
+MIRRORED_PLUGINS = {"project-init"}
+
+# Tools whose `tools:` entry may carry a `(scope)` suffix narrowing what it can run.
+SCOPED_TOOLS = {"Bash"}
+
+
+def _split_tools(tools_str: str) -> List[str]:
+    """Split a `tools:` string on commas OUTSIDE a scope suffix's parens.
+
+    `Bash(git add:*, git commit:*)` is ONE declaration; a plain `split(',')` would break it
+    in half and report both pieces as invalid tools. Unbalanced parens are left for the
+    caller's fullmatch to reject rather than being silently repaired here."""
+    parts: List[str] = []
+    cur = ""
+    depth = 0
+    for ch in tools_str:
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth = max(0, depth - 1)
+        if ch == "," and depth == 0:
+            parts.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    parts.append(cur)
+    return [p.strip() for p in parts if p.strip()]
+
 
 class PluginTestSuite:
     """Test suite for validating a single plugin."""
@@ -30,6 +61,7 @@ class PluginTestSuite:
         self.manifest: Optional[Dict[str, Any]] = None
         self.agent_count = 0
         self.skill_count = 0
+        self.discovered: set = set()   # manifest fields filled in from disk, not the file
 
     def log(self, msg: str):
         """Print verbose output."""
@@ -157,20 +189,47 @@ class PluginTestSuite:
         if not self.manifest:
             return
 
-        # An upstream-mirrored plugin (project-init) carries the fork source's manifest
-        # verbatim, which lists no agents/skills — Claude Code discovers those by
-        # convention. Fall back to on-disk discovery so their frontmatter still gets
-        # validated instead of silently skipped.
+        # `agents`/`skills` stay REQUIRED for every plugin except an upstream mirror.
+        # A mirror (project-init) carries the fork source's manifest verbatim, which
+        # lists neither — Claude Code discovers them by convention — so fall back to
+        # on-disk discovery there, and only there, so their frontmatter still gets
+        # validated instead of silently skipped. Keeping the exception an allowlist is
+        # deliberate: a blanket relaxation would let a typo'd `skills/` directory or an
+        # accidentally deleted field pass with 0 discovered files and 0 diagnostics in
+        # any of the other plugins.
         for field, pattern in (('agents', 'agents/*.md'), ('skills', 'skills/*/SKILL.md')):
-            if field in self.manifest:
+            # `.get() or` (not `in`): an explicit empty `agents: []` from upstream means
+            # "nothing declared" too, and must still fall through to discovery.
+            if self.manifest.get(field):
+                continue
+            if self.plugin_name not in MIRRORED_PLUGINS:
+                self.error(f"Missing required field '{field}' in plugin.json")
                 continue
             found = sorted(self.plugin_dir.glob(pattern))
             if not found:
+                # Neither declared nor on disk: for a mirror this is the one case where
+                # discovery can't tell "deliberately empty" from "wrong directory name",
+                # so say so instead of passing silently.
+                self.error(f"'{field}' not declared in plugin.json and no {pattern} "
+                           f"found on disk — nothing was validated for this field")
                 continue
+            if field == 'skills':
+                # The declared path errors on a skill dir with no SKILL.md
+                # ("SKILL.md not found", below). Discovery globs SKILL.md itself, so it
+                # would simply not see that dir — restore the check explicitly.
+                for d in sorted(p for p in self.plugin_dir.glob('skills/*') if p.is_dir()):
+                    if not (d / 'SKILL.md').exists():
+                        self.error(f"Skill directory has no SKILL.md: "
+                                   f"{d.relative_to(self.plugin_dir).as_posix()}")
+            # Injected into the manifest on purpose: every path/frontmatter check below
+            # reads it from there, and `self.discovered` records which fields came from
+            # disk rather than from the file.
             self.manifest[field] = [
-                './' + str((f.parent if field == 'skills' else f).relative_to(self.plugin_dir))
+                './' + (f.parent if field == 'skills' else f)
+                .relative_to(self.plugin_dir).as_posix()
                 for f in found
             ]
+            self.discovered.add(field)
             self.log(f"{field} not declared in plugin.json — discovered {len(found)} on disk")
 
         # Validate agent paths
@@ -301,11 +360,27 @@ class PluginTestSuite:
             # Optional tools validation
             tools_str = frontmatter.get('tools', '')
             if tools_str:
-                # Strip any Bash(cmd:*)-style scope suffix before checking the tool name
-                tools = [re.sub(r'\(.*\)$', '', t.strip()) for t in tools_str.split(',')]
-                for tool in tools:
-                    if tool and tool not in VALID_TOOLS:
+                for decl in _split_tools(tools_str):
+                    m = re.fullmatch(r'([A-Za-z][A-Za-z0-9_]*)(?:\((.*)\))?', decl)
+                    if not m:
+                        self.error(f"Agent {agent_path}: malformed tool declaration "
+                                   f"'{decl}' (expected `Tool` or `Bash(<scope>)`)")
+                        continue
+                    tool, scope = m.group(1), m.group(2)
+                    if tool not in VALID_TOOLS:
                         self.error(f"Agent {agent_path}: invalid tool '{tool}' (valid: {VALID_TOOLS})")
+                    elif scope is not None:
+                        # A scope suffix narrows Bash to specific commands
+                        # (`Bash(git log:*)`, as project-init's mirrored doc-sync-checker
+                        # uses). It's meaningless on any other tool, and an empty or
+                        # wildcard-only scope grants everything while LOOKING narrowed —
+                        # this is a lint gate, so say so in both cases.
+                        if tool not in SCOPED_TOOLS:
+                            self.error(f"Agent {agent_path}: tool '{tool}' does not take a "
+                                       f"scope suffix (only {sorted(SCOPED_TOOLS)} do): '{decl}'")
+                        elif scope.strip() in ('', '*'):
+                            self.warn(f"Agent {agent_path}: '{decl}' scope is unrestricted — "
+                                      f"same grant as a bare '{tool}'")
 
     def _get_skill_names(self) -> set:
         """Extract skill directory names from manifest."""

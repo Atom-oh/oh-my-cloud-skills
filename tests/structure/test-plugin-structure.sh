@@ -41,3 +41,37 @@ else
   echo -e "${RED}not ok $TOTAL - codex plugin validation passes${NC}"; FAIL=$((FAIL + 1))
   cat /tmp/oh-my-cloud-codex-plugin-test.out
 fi
+
+# --- PR #139 review: the agents/skills manifest relaxation must stay scoped to the
+# upstream mirror (MIRRORED_PLUGINS), and the Bash scope suffix must be validated rather
+# than stripped unchecked. Three independent panel models flagged the blanket versions of
+# both. Behavioral, against synthetic trees — the plugin name list is hardcoded in the
+# validator, so the fixtures reuse real names (kiro = ordinary, project-init = mirror). ---
+VAL_TMP="$(mktemp -d)"
+mkdir -p "$VAL_TMP/plugins/kiro/.claude-plugin" "$VAL_TMP/.claude-plugin"
+printf '{"name":"kiro","version":"1.0.0"}' > "$VAL_TMP/plugins/kiro/.claude-plugin/plugin.json"
+printf '{"plugins":[]}' > "$VAL_TMP/.claude-plugin/marketplace.json"
+NONMIRROR_OUT="$(python3 scripts/test-plugins.py --root "$VAL_TMP" 2>&1 || true)"
+assert_contains "$NONMIRROR_OUT" "Missing required field 'agents'" "an ordinary plugin without an agents field is still an ERROR (relaxation is allowlist-scoped, not blanket)"
+assert_contains "$NONMIRROR_OUT" "Missing required field 'skills'" "an ordinary plugin without a skills field is still an ERROR"
+
+mv "$VAL_TMP/plugins/kiro" "$VAL_TMP/plugins/project-init"
+printf '{"name":"project-init","version":"1.0.0"}' > "$VAL_TMP/plugins/project-init/.claude-plugin/plugin.json"
+MIRROR_OUT="$(python3 scripts/test-plugins.py --root "$VAL_TMP" 2>&1 || true)"
+assert_contains "$MIRROR_OUT" "not declared in plugin.json and no agents/\*.md found on disk" "a mirror with neither a declared field nor any file on disk errors instead of passing silently"
+rm -rf "$VAL_TMP"
+
+TOOLS_OUT="$(python3 - <<'PY' 2>&1
+import sys
+sys.path.insert(0, "scripts")
+import importlib.util
+spec = importlib.util.spec_from_file_location("tp", "scripts/test-plugins.py")
+tp = importlib.util.module_from_spec(spec); spec.loader.exec_module(tp)
+print("SPLIT", tp._split_tools("Read, Bash(git add:*, git commit:*), Grep"))
+print("SCOPED_TOOLS", sorted(tp.SCOPED_TOOLS))
+print("MIRRORED", sorted(tp.MIRRORED_PLUGINS))
+PY
+)"
+assert_contains "$TOOLS_OUT" "SPLIT \['Read', 'Bash(git add:\*, git commit:\*)', 'Grep'\]" "_split_tools keeps a comma INSIDE a Bash scope in one declaration instead of splitting it into two invalid tools"
+assert_contains "$TOOLS_OUT" "SCOPED_TOOLS \['Bash'\]" "only Bash may carry a scope suffix — a scope on any other tool is an error, not silently stripped"
+assert_contains "$TOOLS_OUT" "MIRRORED \['project-init'\]" "the mirror exception is a named allowlist"
