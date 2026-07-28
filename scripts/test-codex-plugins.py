@@ -31,8 +31,9 @@ ALLOWED_MANIFEST_FIELDS = {
     "keywords",
 }
 # Plugins deliberately absent from the Codex surface — an upstream mirror whose manifest
-# set is kept verbatim (docs/reference/project-init-upstream-sync.md). Everything else
-# missing a .codex-plugin manifest is an error, not a warning.
+# set is kept verbatim (plugins/project-init/references/upstream-sync.md). Everything else
+# missing a .codex-plugin manifest is an error, not a warning. Keep in sync with
+# MIRRORED_PLUGINS in test-plugins.py (same plugin, other surface).
 CLAUDE_ONLY = {"project-init"}
 
 ALLOWED_INSTALL_POLICIES = {"NOT_AVAILABLE", "AVAILABLE", "INSTALLED_BY_DEFAULT"}
@@ -242,7 +243,23 @@ class CodexPluginValidator:
                 self.error("marketplace: plugin entry name is required")
                 continue
             seen.add(name)
-            if name not in expected:
+            if name in CLAUDE_ONLY:
+                # A CLAUDE_ONLY plugin is deliberately off the Codex surface, so a
+                # marketplace entry for it is either stale or premature. Neither of the
+                # other checks catches it: `expected` never contains it (so "missing
+                # entry" can't fire) and its plugins/ directory does exist (so the
+                # source-path check passes). Error only once the manifest is actually
+                # gone — while it still ships one, the entry is merely early, and the
+                # pairing is meant to land in a single commit.
+                if (self.plugins_dir / name / ".codex-plugin" / "plugin.json").is_file():
+                    self.warn(f"marketplace: entry {name} is listed as Claude-only "
+                              f"(CLAUDE_ONLY) but still ships a .codex-plugin manifest — "
+                              f"remove both together")
+                else:
+                    self.error(f"marketplace: entry {name} is deliberately Claude-only "
+                               f"(CLAUDE_ONLY) and ships no .codex-plugin manifest — "
+                               f"remove it from the Codex marketplace")
+            elif name not in expected:
                 self.warn(f"marketplace: entry {name} has no matching plugin directory")
 
             source = entry.get("source")
