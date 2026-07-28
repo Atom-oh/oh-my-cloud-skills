@@ -128,26 +128,66 @@ esac ; }
 
 run_chair() {  # $1=model → "$OUT" 에 기록(scrub 통과). claude 실패해도 || true 로 계속.
   # argv(-p) 는 고정 지시문만(작고 상한 없음) — diff+패널(가변, 큼)은 stdin.
+  # --allowedTools: 쓰기 툴(Edit/Write)과 임의 Bash 를 허용 목록에서 빼둔다. 과장하지 않고
+  # 적자면(PR#140 리뷰 L2 MINOR) — 이 플래그는 `Read Grep Glob` 을 허용하므로 "plugin/skill
+  # 트리 탐색으로 600s 를 태우는" 경로 자체는 막지 못한다. 그건 CHAIR_TIMEOUT 이 맡는다.
+  # allow 목록만으로는 강제가 안 된다: 실측(claude 2.1.220) 결과 settings 의
+  # permissions.allow 등 다른 허용 소스가 있으면 목록 밖 툴(Bash)도 그대로 실행됐다. deny 가
+  # allow 를 이기므로 --disallowedTools 를 병기해 실제로 막는다(같은 실측에서 이쪽은 DENIED
+  # 확인). chair 의 stdin 은 PR 작성자가 통제하는 텍스트 = prompt injection 표면이고 실행
+  # 환경은 CI 이므로, 선언만 두고 넘기지 않는다(PR#140 리뷰 L3 MAJOR). gh 조회 권한은 제거했다: 의장에게 필요한 diff·패널 출력은 이미 stdin 으로 전부
+  # 넘어가므로 불필요한 권한이었다(같은 리뷰 L3 MINOR).
   ANTHROPIC_MODEL="$1" timeout "$CHAIR_TIMEOUT" \
     claude -p "$(cat "$WORK/synth-prompt.txt")" --output-format text \
+    --allowedTools "Read Grep Glob" \
+    --disallowedTools "Bash Write Edit NotebookEdit WebFetch WebSearch Task" \
     < "$WORK/synth-stdin.txt" 2>"$WORK/chair.err" | scrub_secrets > "$OUT" || true
 }
 
-# 저하 판정: 빈 응답 | VERDICT 라인 없음. (ConnectionRefused·타임아웃·행 모두
-# VERDICT 없는 출력으로 귀결되므로 이 두 조건이면 충분 — 에러 문자열 grep은
-# 리뷰 본문이 'connection refused' 등을 언급할 때 오탐이라 쓰지 않는다.)
-chair_degraded() { [ ! -s "$OUT" ] || ! grep -q '^VERDICT:' "$OUT"; }
+# 유효 판정 = **게이트(pr-review.yml:248-256)가 수용하는 형식의 strict subset**. 게이트와
+# "정확히 동일"이 아니다(PR#140 리뷰 L4 MAJOR — 4/4 모델 수렴, 정확한 지적):
+#   게이트: 파일 어디든 `^VERDICT: FAIL$` 있으면 fail, 아니면 `^VERDICT: PASS$` 있으면 pass,
+#           둘 다 없으면 fail-closed.
+#   여기:   위에 더해 "마지막 non-empty 줄"이어야 하고 `^VERDICT:` 줄이 정확히 1개여야 한다.
+# 즉 line-start 중복 VERDICT나 VERDICT가 마지막 줄이 아닌 출력은 게이트라면 FAIL로 수용하지만
+# 여기선 invalid로 보고 fallback을 태운다 — 의도된 강화다(프로토콜 강제: 애매한 verdict는
+# 재추첨보다 다른 모델의 명확한 답을 받는 쪽이 안전). 반대 방향의 느슨함은 없으므로
+# "게이트는 거부하는데 여기선 통과" 하는 조합은 존재하지 않는다.
+#
+# 이전 `grep -q '^VERDICT:'` 는 게이트보다 **느슨**해서 정확히 그 위험한 조합을 만들었다:
+# 의장이 `VERDICT: FAIL (3 MAJOR)` 처럼 뒤에 텍스트를 붙이면 여기선 "정상" 통과 → fallback
+# 미시도 → 게이트가 `No VERDICT line found — fail-closed` 로 job 사살(2026-07-28 run
+# 30329238234·30330125952 실측: 8.8KB/10.2KB 리뷰를 냈는데도 폐기). 그 경로를 없애는 것이
+# 이 함수의 목적이다.
+chair_valid() {
+  [ -s "$OUT" ] || return 1
+  local last verdict_count
+  last="$(awk 'NF{last=$0} END{print last}' "$OUT")"
+  verdict_count="$(grep -c '^VERDICT:' "$OUT" || true)"
+  [[ "$last" =~ ^VERDICT:\ (PASS|FAIL)$ ]] && [ "$verdict_count" = "1" ]
+}
 
 run_chair "$PRIMARY_MODEL"
 CHAIR_USED="$PRIMARY_MODEL"
-if chair_degraded; then
-  echo "::warning::chair '$(chair_label "$PRIMARY_MODEL")' degraded (connection/timeout/empty, ${CHAIR_TIMEOUT}s cap) — falling back to '$(chair_label "$FALLBACK_MODEL")'"
+# PRIMARY/FALLBACK 이 같은 모델로 resolve 되면 재시도는 동일 호출의 반복이라 무의미 — skip.
+if ! chair_valid && [ "$FALLBACK_MODEL" != "$PRIMARY_MODEL" ]; then
+  # stderr 발췌를 남긴다 — 이게 없어서 "Execution error"(16 bytes) 로만 죽는 실패
+  # (2026-07-28 run 30330913993·30334795862·30337824131, 두 모델 모두 600s 소진)의 원인을
+  # 로그로 전혀 추적할 수 없었다.
+  # 발췌 파이프라인(scrub -> 파일 -> 캡 -> 개행 정규화)의 순서 근거는 lib.sh 의
+  # chair_err_excerpt 주석 참조 — 파이프로 캡을 씌우면 SIGPIPE 로 이 스크립트가 죽는다.
+  CHAIR_ERR_EXCERPT="$(chair_err_excerpt "$WORK/chair.err")"
+  echo "::warning::chair '$(chair_label "$PRIMARY_MODEL")' degraded (connection/timeout/empty/no-verdict, ${CHAIR_TIMEOUT}s cap): $CHAIR_ERR_EXCERPT — falling back to '$(chair_label "$FALLBACK_MODEL")'"
   run_chair "$FALLBACK_MODEL"
-  CHAIR_USED="$FALLBACK_MODEL"
+  if chair_valid; then
+    CHAIR_USED="$FALLBACK_MODEL"
+  fi
 fi
 
-if [ ! -s "$OUT" ]; then
-  echo "리뷰 생성 실패 — $(chair_label "$PRIMARY_MODEL")·$(chair_label "$FALLBACK_MODEL") 모두 빈 응답." > "$OUT"
+if ! chair_valid; then
+  CHAIR_ERR_EXCERPT="$(chair_err_excerpt "$WORK/chair.err")"
+  echo "::error::chair 양쪽 모두 유효한 응답을 내지 못했다 (마지막 stderr: $CHAIR_ERR_EXCERPT)" >&2
+  echo "리뷰 생성 실패 — $(chair_label "$PRIMARY_MODEL")·$(chair_label "$FALLBACK_MODEL") 모두 유효한 응답(빈 응답 또는 VERDICT 형식 불일치)을 반환하지 않음." > "$OUT"
   echo "VERDICT: FAIL" >> "$OUT"
 fi
 
