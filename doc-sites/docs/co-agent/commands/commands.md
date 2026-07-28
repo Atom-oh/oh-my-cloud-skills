@@ -8,6 +8,23 @@ title: "명령 목록"
 5개의 슬래시 명령으로 패널 설정, AI 컨텍스트 동기화, 자율 구현 파이프라인, 패널 준비도 확인을 지원합니다.
 
 ## /co-agent:configure
+### push_gate · pr_autofix (설정 추가분)
+
+```bash
+/co-agent:configure set push_gate enabled on     # 기본 off — 푸시 전 3-렌즈 패널 리뷰
+/co-agent:configure set push_gate block warning  # BLOCK 판정 임계
+/co-agent:configure set push_gate timeout 300
+/co-agent:configure set pr_autofix max_iterations 5   # pr-autofix 루프 상한 (기본 5)
+```
+
+`push_gate.enabled`는 **동의 게이팅** 설정입니다 — 켜는 순간 푸시될 diff가 패널 AI CLI로
+전송되므로 기본값은 off이고, 커밋된 `.claude/co-agent.local.json`의 값은 무시됩니다
+(`pr_gate.enabled`도 동일). 판정은 **BLOCK한 렌즈 수** 기준입니다: 2개 이상이면 BLOCKED,
+정확히 1개면 CHAIR JUDGMENT REQUIRED. 게이트가 서술할 수 없는 푸시 형태
+(`--all`/`--tags`/`--mirror`, 명시적 refspec, 다른 repo/워크트리 리다이렉트, ref 삭제,
+선행 `cd`/`git commit`)는 fail-open으로 SKIP되며, kiro의 `review.on_push`와 같은 스킵
+규칙을 공유합니다. 한 번만 우회할 때는 인라인 `CO_AGENT_PUSH_GATE=off git push ...`.
+
 
 호스트 인지형 멀티-AI 패널을 설정합니다. 설정은 `co-agent.defaults.json`(커밋) ← `~/.claude/co-agent.user.json`(유저 스코프) ← `.claude/co-agent.local.json`(레포 로컬, gitignore) 레이어로 병합됩니다.
 
@@ -71,3 +88,23 @@ CLI가 헤드리스로 실제 받는 옵션만 노출합니다(죽은 설정 없
 ```
 
 결과(READY / AUTH / NO_INGEST / TIMEOUT / ERROR / ABSENT)를 `.claude/co-agent-panel.local.json`에 기록합니다. review/decide/adr은 이 결과가 없어도 solo로 강등되지만, **`/co-agent:consensus`·`/co-agent:harness`는 gate-eligible peer(`status==READY` **and** raw CLI 보유)가 0이면 이 명령을 먼저 실행하도록 안내**합니다. 인증 문제는 가이드만 제공하며 자동으로 로그인을 시도하지 않습니다.
+
+## /co-agent:pr-autofix
+
+PR 생성 후 AI 리뷰와 사람 리뷰 피드백을 자동으로 읽고 코드를 수정합니다. 반복 상한은 `/co-agent:configure set pr_autofix max_iterations <n>` 설정값(기본 5)입니다.
+
+```bash
+/co-agent:pr-autofix
+```
+
+**워크플로우:**
+1. 현재 브랜치의 PR을 자동 감지
+2. AI 리뷰 코멘트(`<!-- bedrock-pr-review -->`)와 사람 리뷰(`CHANGES_REQUESTED`) 동시 polling
+3. 이슈 발견 시 CRITICAL → MAJOR → MINOR 순으로 수정
+4. 빌드 검증 후 커밋 & push
+5. 설정된 반복 상한에 도달해도 통과 못하면 사용자에게 수동 리뷰 요청
+
+**제약:**
+- `.github/workflows/*` 파일 수정 금지
+- 리뷰에서 언급된 이슈만 수정 (추가 리팩토링 금지)
+- AI 리뷰를 사용하려면 프로젝트에 `pr-review.yml` CI 워크플로우 설정 필요

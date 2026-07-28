@@ -102,12 +102,45 @@ This applies to all document types: README, CHANGELOG, architecture, ADR, runboo
 
 ---
 
+## Diagram Rules
+
+All architecture flows and diagrams use **Mermaid flowchart** inside fenced ```mermaid code blocks. ASCII box diagrams (`┌─┐│└─┘▶▼` characters) are not used. GitHub renders Mermaid natively, diagrams stay diff-reviewable, and they are easy to regenerate from code during doc sync.
+
+### Direction and Structure
+
+- **Layered architecture diagrams**: `flowchart TB` with one `subgraph` per architectural layer
+- **Data flow / critical path**: `flowchart LR` as a single left-to-right chain
+- Group related components with `subgraph <id>[<Layer Name>]`; keep one component per node
+- Use node shapes meaningfully: `[Component]` for services/processes, `[(Store)]` for databases/storage, `([Entry Point])` for external entry points
+
+### Labels and Bilingual Handling
+
+- Node and edge labels stay in English in both language sections; only surrounding prose is translated
+- Diagrams are duplicated identically in the English and Korean sections (same rule as code blocks and tables)
+- No emojis in diagrams (general prohibition applies)
+
+### Example
+
+```mermaid
+flowchart TB
+  subgraph ingestion[Ingestion Layer]
+    A([API Gateway]) --> B[Lambda Handler]
+  end
+  subgraph storage[Storage Layer]
+    C[(S3)]
+  end
+  B --> C
+```
+
+---
+
 ## Bilingual Sync Validation
 
 After generating or updating any bilingual document, verify:
 
 - [ ] Both language sections have identical structure and section order
 - [ ] All code blocks, tables, and diagrams appear in both sections
+- [ ] Architecture flows use Mermaid flowchart (```mermaid blocks), identical in both sections
 - [ ] Language toggle uses HTML `<a><img></a>` with `#english` and `#korean` anchors
 - [ ] Explicit `<a id="english">` and `<a id="korean">` tags are placed before each language heading
 - [ ] No untranslated descriptive text in either section

@@ -37,6 +37,6 @@ Gemini-family 슬롯의 우선순위를 **`agy` → `gemini` → 스킵**으로 
 ## References
 
 - `plugins/co-agent/CLAUDE.md`, `plugins/co-agent/skills/co-agent/references/ai-cli-adapters.md`
-- `plugins/project-init/skills/decision-reconcile/SKILL.md` (probe/invoke 우선순위)
+- `plugins/co-agent/skills/decision-reconcile/SKILL.md` (probe/invoke 우선순위)
 - README.md / README.ko.md / `docs/architecture.md` 패널 표기
 - PR #69 (antigravity 패널 도입), #83 (agy→gemini precedence 문서 정정)

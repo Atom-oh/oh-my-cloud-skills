@@ -1,6 +1,6 @@
 ---
 name: pr-autofix-implementer
-description: "Internal pipeline stage (edit-only application) of a project-init plugin skill. Without the prepared working directory that skill supplies it does nothing except return blocked. Never choose this agent for a user request."
+description: "Internal pipeline stage (edit-only application) of a co-agent plugin skill. Without the prepared working directory that skill supplies it does nothing except return blocked. Never choose this agent for a user request."
 tools: Read, Write, Edit, Grep, Glob
 model: opus
 effort: medium

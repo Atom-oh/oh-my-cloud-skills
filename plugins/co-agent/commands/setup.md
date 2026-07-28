@@ -27,3 +27,15 @@ Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"`.
    one place):** **review / decide / ADR** degrade to **solo** (say so); **consensus / harness**
    are **non-degraded** — with no gate-eligible peer they **block** and tell the user to run
    `/co-agent:setup` (or install/auth a raw peer), never silently solo.
+6. If at least one peer is gate-eligible, offer the pre-push lens gate ONCE via
+   `AskUserQuestion` (skip this step entirely if none are — there's nothing to fan out
+   to): a 3-lens review (correctness/security/scope) that runs before every `git push`
+   and can block it. First check whether kiro's `review.on_push` is already on for
+   this repo (`python3 "${CLAUDE_PLUGIN_ROOT}/../kiro/skills/kiro-delegate/scripts/
+   kiro_config.py" review-on-push --root .` — best-effort, kiro may not be installed;
+   ignore a failure silently) — if it is, put that fact in the option description
+   ("kiro's own pre-push gate is already on for this repo; turning this on too means
+   every push runs both — not recommended") rather than refusing the option. Options:
+   `Enable it (Recommended)` → `python3 "$SK/co_agent_config.py" set push_gate enabled on`;
+   `Skip for now` → leave it off (this plugin's default). Never enable it without this
+   explicit ask — enabling is consent to external diff fan-out on every push.

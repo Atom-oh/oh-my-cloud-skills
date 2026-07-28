@@ -10,13 +10,23 @@ Usage:
   kiro_config.py show                              # effective merged config (table)
   kiro_config.py set default_delegate <on|off>
   kiro_config.py set delegate model <m>             # implementer model (or "default"/"null" to clear)
+  kiro_config.py set delegate effort <low|medium|high|xhigh|max>
+                                                    # kiro-cli `--effort`; default low —
+                                                    # the plan is already written, applying
+                                                    # it is mechanical
   kiro_config.py set delegate parallel_tasks <n>
   kiro_config.py set delegate max_fix_rounds <n>
   kiro_config.py set delegate timeout <seconds>
   kiro_config.py set review on_commit <on|off>
   kiro_config.py set review model <m>              # reviewer model (usually the strongest one)
+  kiro_config.py set review effort <low|medium|high|xhigh|max>
+                                                    # default high — the blocking verdict IS
+                                                    # the product here, unlike delegate
   kiro_config.py set review timeout <seconds>
   kiro_config.py set review block <critical|warning|none>
+  kiro_config.py set review on_push <on|off>       # 3-lens pre-push gate (correctness/
+                                                    # security/scope) — see pre-push-review.sh
+  kiro_config.py set review push_block <critical|warning|none>   # default: warning
   kiro_config.py set websearch enabled <on|off>    # delegate web searches to kiro-cli's
                                                     # web_search (for WebSearch-less hosts,
                                                     # e.g. Claude Code on Bedrock)
@@ -24,10 +34,12 @@ Usage:
   kiro_config.py set websearch timeout <seconds>
   kiro_config.py default-delegate                  # exit 0 if on, 1 if off
   kiro_config.py review-on-commit                   # exit 0 if on, 1 if off
+  kiro_config.py review-on-push                     # exit 0 if on, 1 if off
   kiro_config.py websearch-enabled                  # exit 0 if on, 1 if off
   kiro_config.py websearch-model / websearch-timeout
   kiro_config.py delegate-model                     # print effective delegate model (or empty)
   kiro_config.py review-model                       # print effective review model (or empty)
+  kiro_config.py delegate-effort / review-effort    # print effective --effort value
   kiro_config.py delegate-timeout / review-timeout / max-fix-rounds / parallel-tasks / block
 Add --root DIR to target a repo other than the cwd.
 """
@@ -47,6 +59,10 @@ MODEL_RE = re.compile(r"^[A-Za-z0-9 ._:/()-]+$")
 # additionally include, so this is the actual ceiling — named for what it blocks, not
 # "any", which would misleadingly imply suggestions block too).
 BLOCK_LEVELS = ("critical", "warning", "none")
+# `kiro-cli chat --effort` (verified against 2.11.1 `--help`: "Initial effort level (e.g.
+# low, medium, high, xhigh, max)"). Same ladder Claude Code's own `effort` uses, so the
+# repo's tiering vocabulary carries over unchanged.
+EFFORT_LEVELS = ("low", "medium", "high", "xhigh", "max")
 DEFAULTS_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                              "kiro.defaults.json")
 
@@ -78,7 +94,7 @@ def _escapes_root(path, root):
     return not (real_path == real_root or real_path.startswith(real_root + os.sep))
 
 
-def _resolves_through_symlink(path):
+def _resolves_through_symlink(path, root=None):
     """True if resolving `path` involves ANY symlink anywhere in the chain — whether it
     redirects outside `root` (`_escapes_root` already catches that case) or to a
     DIFFERENT location still inside `root` (e.g. `.claude` symlinked to `src/`, so
@@ -100,8 +116,21 @@ def _resolves_through_symlink(path):
     `abspath` makes the path absolute via the SAME cwd basis `realpath` uses, without
     resolving symlinks — so the two sides are only ever unequal when a symlink is
     genuinely involved, independent of whether `path` itself was given relative or
-    absolute."""
-    return os.path.realpath(path) != os.path.abspath(path)
+    absolute.
+
+    Pass `root` whenever it is known. Ancestors ABOVE the repo root are then normalized
+    on BOTH sides (realpath of the root, plus the repo-relative remainder), so a symlink
+    that has nothing to do with this file — `/tmp` -> `/private/tmp` on macOS, a
+    symlinked `$HOME`, a repo reached through a linked worktree — stops reading as an
+    alias bypass. Without that, this returned True for EVERY call on such a machine, so
+    the consent keys were stripped unconditionally and a gate the user explicitly turned
+    on was silently off, under a warning that claimed the file was tracked by git."""
+    real = os.path.realpath(path)
+    if root is None:
+        return real != os.path.abspath(path)
+    ap, ar = os.path.abspath(path), os.path.abspath(root)
+    rel = os.path.relpath(ap, ar)
+    return real != os.path.normpath(os.path.join(os.path.realpath(ar), rel))
 
 
 def load_defaults():
@@ -170,7 +199,7 @@ def _consent_config_untrustworthy(root, lp):
     literal name happens to be tracked."""
     if _is_tracked_by_git(root, os.path.join(".claude", "kiro.local.json")):
         return True
-    return _resolves_through_symlink(lp)
+    return _resolves_through_symlink(lp, root)
 
 
 def _strip_consent_keys(raw, root, lp):
@@ -182,10 +211,14 @@ def _strip_consent_keys(raw, root, lp):
     content to Kiro's backend, and implementation work would auto-route to Kiro —
     neither of which the user themselves opted into. If `raw` (the local override) is
     tracked by git (or reached via a symlink alias — see `_consent_config_untrustworthy`),
-    drop these two consent-gating keys from it before merging, so they
+    drop these consent-gating keys from it before merging, so they
     fall back to `kiro.defaults.json`'s shipped values (all off) regardless of what a
     committed file claims. Every OTHER key (models, timeouts, block level) still applies
     from a tracked file — those aren't a consent bypass, just configuration.
+
+    `review.on_push` is in the drop list for the same reason as `on_commit`: it gates
+    the pre-push hook, which sends the push range's diff to Kiro's backend THREE times
+    (once per lens) with no per-push prompt either.
 
     `websearch.enabled` is in the drop list too: the egress risk is lower than
     on_commit's (a query is text Claude composes at call time, not a wholesale staged
@@ -203,6 +236,9 @@ def _strip_consent_keys(raw, root, lp):
     if isinstance(stripped.get("review"), dict) and "on_commit" in stripped["review"]:
         del stripped["review"]["on_commit"]
         dropped.append("review.on_commit")
+    if isinstance(stripped.get("review"), dict) and "on_push" in stripped["review"]:
+        del stripped["review"]["on_push"]
+        dropped.append("review.on_push")
     if isinstance(stripped.get("websearch"), dict) and "enabled" in stripped["websearch"]:
         del stripped["websearch"]["enabled"]
         dropped.append("websearch.enabled")
@@ -274,6 +310,18 @@ def _as_int(v, default, key):
     return default
 
 
+def _effort(v):
+    """Coerce a config effort leaf to a valid `--effort` value, or "" meaning "omit the
+    flag". Same reason as `_as_bool`/`_as_int`: `effective()` merges a HAND-EDITED local
+    file it never type-checks, and an unknown value passed straight through to
+    `kiro-cli --effort` would fail the whole call — a settings typo must degrade to the
+    CLI's own default, not break delegation. Silent (no warning): unlike a bad timeout,
+    the visible `show` output already reveals `(default)`."""
+    if isinstance(v, str) and v.strip().lower() in EFFORT_LEVELS:
+        return v.strip().lower()
+    return ""
+
+
 def effective(root):
     cfg = load_defaults()
     lp = local_path(root)
@@ -303,10 +351,14 @@ def cmd_show(root):
     d, r = cfg.get("delegate", {}), cfg.get("review", {})
     print(f"kiro plugin config  (source: {source})")
     print(f"  default_delegate {_as_bool(cfg.get('default_delegate'))}")
-    print(f"  delegate: model {d.get('model') or '(default)'} · parallel_tasks {d.get('parallel_tasks', 3)} "
+    print(f"  delegate: model {d.get('model') or '(default)'} · effort {_effort(d.get('effort')) or '(default)'} "
+          f"· parallel_tasks {d.get('parallel_tasks', 3)} "
           f"· max_fix_rounds {d.get('max_fix_rounds', 2)} · timeout {d.get('timeout', 240)}s")
     print(f"  review:   on_commit {_as_bool(r.get('on_commit'))} · model {r.get('model') or '(default)'} "
+          f"· effort {_effort(r.get('effort')) or '(default)'} "
           f"· timeout {r.get('timeout', 120)}s · block {r.get('block', 'critical')}")
+    print(f"  review:   on_push {_as_bool(r.get('on_push'))} · push_block {r.get('push_block', 'warning')} "
+          f"(3-lens pre-push gate: correctness/security/scope)")
     w = cfg.get("websearch", {})
     print(f"  websearch: enabled {_as_bool(w.get('enabled'))} · model {w.get('model') or '(default)'} "
           f"· timeout {w.get('timeout', 60)}s")
@@ -325,7 +377,7 @@ def _write(root, cfg):
               f"symlink-through-write escape, not a normal checkout. Remove/replace it "
               f"before running `set` again.", file=sys.stderr)
         return 2
-    if _resolves_through_symlink(lp):
+    if _resolves_through_symlink(lp, root):
         print(f"❌ refusing to write {lp}: a symlink somewhere in its path (e.g. a "
               f"symlinked .claude/ pointing to another location INSIDE this repo) "
               f"redirects it elsewhere — writing here would truncate whatever real "
@@ -413,8 +465,8 @@ def cmd_set(root, rest):
     # kiro_config.py/kiro_review.py never read from that section (only from
     # delegate.parallel_tasks), so the setting would look accepted but never apply.
     valid_keys = {
-        "delegate": {"model", "parallel_tasks", "max_fix_rounds", "timeout"},
-        "review": {"model", "timeout", "on_commit", "block"},
+        "delegate": {"model", "effort", "parallel_tasks", "max_fix_rounds", "timeout"},
+        "review": {"model", "effort", "timeout", "on_commit", "block", "on_push", "push_block"},
         "websearch": {"enabled", "model", "timeout"},
     }
     if key not in valid_keys[section]:
@@ -432,6 +484,15 @@ def cmd_set(root, rest):
             print("model may contain only letters, digits, spaces, and . _ : / ( ) - "
                   "(no shell metacharacters)", file=sys.stderr)
             return 2
+    elif key == "effort":
+        if val.lower() in ("null", "default", ""):
+            slot["effort"] = None      # omit --effort entirely, let kiro-cli pick
+        elif val.lower() in EFFORT_LEVELS:
+            slot["effort"] = val.lower()
+        else:
+            print(f"effort must be one of: {', '.join(EFFORT_LEVELS)} (or "
+                  f"'default' to omit the flag)", file=sys.stderr)
+            return 2
     elif key in ("parallel_tasks", "max_fix_rounds"):
         if not val.isdigit() or int(val) < 1:
             print(f"{key} must be a positive integer", file=sys.stderr)
@@ -442,18 +503,50 @@ def cmd_set(root, rest):
             print("timeout must be a positive integer (seconds)", file=sys.stderr)
             return 2
         slot[key] = int(val)
-    elif key in ("on_commit", "enabled"):
+    elif key in ("on_commit", "on_push", "enabled"):
         if val.lower() not in ("on", "off", "true", "false", "1", "0", "yes", "no"):
             print(f"usage: set {section} {key} <on|off>", file=sys.stderr)
             return 2
         slot[key] = _bool(val)
-    elif key == "block":
+        if key == "on_push" and slot[key]:
+            _warn_if_co_agent_push_gate_on(root)
+    elif key in ("block", "push_block"):
         if val not in BLOCK_LEVELS:
-            print(f"block must be one of: {', '.join(BLOCK_LEVELS)}", file=sys.stderr)
+            print(f"{key} must be one of: {', '.join(BLOCK_LEVELS)}", file=sys.stderr)
             return 2
-        slot["block"] = val
+        slot[key] = val
 
     return _write(root, local)
+
+
+def _warn_if_co_agent_push_gate_on(root):
+    """Advisory only — never blocks the `set`. If co-agent's own pre-push consensus
+    gate (`push_gate.enabled` in .claude/co-agent.local.json, or its shipped default)
+    is ALSO on, enabling this plugin's `review.on_push` means every push runs BOTH
+    gates: double the external fan-out calls and double the wait for the exact same
+    push. Read the JSON directly (no import of co-agent's own config module — that
+    plugin may not even be installed, and this is a best-effort cross-plugin nicety,
+    not a hard dependency)."""
+    try:
+        lp = os.path.join(root, ".claude", "co-agent.local.json")
+        defaults_path = os.path.join(root, "plugins", "co-agent", "skills", "co-agent",
+                                      "co-agent.defaults.json")
+        enabled = None
+        for p in (defaults_path, lp):   # local override, read second, wins if present
+            if os.path.isfile(p):
+                with open(p, encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict) and isinstance(data.get("push_gate"), dict):
+                    if "enabled" in data["push_gate"]:
+                        enabled = data["push_gate"]["enabled"]
+        if enabled:
+            print("⚠️  co-agent's push_gate is ALSO enabled (.claude/co-agent.local.json "
+                  "or its defaults) — turning both push gates on means every `git push` "
+                  "runs TWO independent review fan-outs (double the external calls, "
+                  "double the wait) for the same push. Not recommended; consider "
+                  "leaving only one on.", file=sys.stderr)
+    except (OSError, json.JSONDecodeError, TypeError):
+        pass   # best-effort nicety — never let this check itself break `set`
 
 
 def _default_root():
@@ -496,6 +589,8 @@ def main():
         return 0 if _as_bool(effective(root).get("default_delegate")) else 1
     if cmd == "review-on-commit":
         return 0 if _as_bool(effective(root).get("review", {}).get("on_commit")) else 1
+    if cmd == "review-on-push":
+        return 0 if _as_bool(effective(root).get("review", {}).get("on_push")) else 1
     if cmd == "websearch-enabled":
         return 0 if _as_bool(effective(root).get("websearch", {}).get("enabled")) else 1
     if cmd == "websearch-model":
@@ -511,6 +606,12 @@ def main():
     if cmd == "review-model":
         cfg = effective(root)
         print(cfg.get("review", {}).get("model") or "")
+        return 0
+    if cmd == "delegate-effort":
+        print(_effort(effective(root).get("delegate", {}).get("effort")))
+        return 0
+    if cmd == "review-effort":
+        print(_effort(effective(root).get("review", {}).get("effort")))
         return 0
     if cmd == "delegate-timeout":
         print(_as_int(effective(root).get("delegate", {}).get("timeout"), 240, "delegate.timeout"))

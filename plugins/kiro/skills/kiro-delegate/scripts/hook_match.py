@@ -29,11 +29,25 @@ Usage:
                                     #   reviews ONE upfront snapshot of the staged diff, so a
                                     #   second commit's own content is never reviewed at all.
                                     #   exit 1 = only one commit invocation (or none).
-  hook_match.py bypass              # stdin = the hook's JSON payload
+  hook_match.py bypass commit|push  # stdin = the hook's JSON payload; the subcommand
+                                    # whose OWN inline KIRO_REVIEW=off prefix counts
+                                    # (never the other one's — see main())
                                     # exit 0 = a `KIRO_REVIEW=off` env-var prefix is part
-                                    #   of this SAME command's own git-commit invocation
-                                    #   (e.g. `KIRO_REVIEW=off git commit -m x`) — honor it
-                                    #   as an explicit skip signal. exit 1 = not present.
+                                    #   of this SAME command's own git-commit OR git-push
+                                    #   invocation (e.g. `KIRO_REVIEW=off git commit -m x`,
+                                    #   `KIRO_REVIEW=off git push`) — honor it as an
+                                    #   explicit skip signal. exit 1 = not present.
+  hook_match.py git-push            # stdin = the hook's JSON payload — used by
+                                    # pre-push-review.sh. exit 0 = a `git push`
+                                    # invocation is present, 1 = no match.
+  hook_match.py push-scope-mismatch # stdin = the hook's JSON payload
+                                    # exit 0 = the git-push invocation may not correspond
+                                    #   to the diff the pre-push hook would compute
+                                    #   (`-C`/`--git-dir`/`--work-tree`/`GIT_DIR=`
+                                    #   redirect, a preceding `cd`/`pushd`, a preceding
+                                    #   `git commit` in the same invocation whose content
+                                    #   the diff would miss, or `--delete`/`-d` — nothing
+                                    #   to review). exit 1 = no mismatch signal detected.
 """
 import sys
 import re
@@ -90,19 +104,34 @@ def _blank_quotes(cmd):
 #   - `env `/`VAR=val ` prefixes
 #   - a `command ` builtin prefix (bypasses a shell function/alias named `git`)
 #   - an absolute/relative path to the git binary (`/usr/bin/git`, `./git`)
-#   - global git flags between `git` and `commit`: `-C <dir>`, `-c key=val`,
+#   - global git flags between `git` and the subcommand: `-C <dir>`, `-c key=val`,
 #     `--flag=value`, AND separate-value long options (`--git-dir foo`,
 #     `--work-tree foo`, `--namespace foo` — without the value alternative, a
 #     `git --git-dir foo commit` silently failed to match and the hook no-op'd)
-_GIT_COMMIT_RE = re.compile(
-    r"(?:^|[\n;&|])\s*(?:env\s+)?(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*(?:command\s+)?"
-    r"(?:\S*/)?git\b"
-    r"(?:\s+(?:-C\s+\S+|-c\s+\S+|--[A-Za-z-]+=\S+|--[A-Za-z-]+(?:\s+(?!commit(?:$|[\s;&|]))\S+)?))*"
-    # \b alone lets `commit` match as a PREFIX of `commit-tree`/`commit-graph` (neither
-    # is the commit-creating subcommand this hook targets) — require the char after
-    # "commit" to be whitespace/end/a shell separator, not a hyphen continuing the word.
-    r"\s+commit(?=$|[\s;&|\n])"
-)
+#
+# Factored into a template (shared by the commit and push matchers below — same
+# tolerance rules apply to both) rather than two independent literal regexes, so a
+# future fix to the flag-tolerance grammar can't accidentally apply to only one
+# subcommand. `subcmd` must be a literal word (never attacker-controlled) — it is
+# spliced into the pattern text as-is.
+def _git_subcmd_re(subcmd):
+    return re.compile(
+        r"(?:^|[\n;&|])\s*(?:env\s+)?(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*(?:command\s+)?"
+        r"(?:\S*/)?git\b"
+        r"(?:\s+(?:-C\s+\S+|-c\s+\S+|--[A-Za-z-]+=\S+|--[A-Za-z-]+(?:\s+(?!"
+        + subcmd + r"(?:$|[\s;&|]))\S+)?))*"
+        # \b alone would let the subcommand match as a PREFIX of a longer subcommand
+        # name (e.g. `commit` inside `commit-tree`/`commit-graph`) — require the char
+        # after it to be whitespace/end/a shell separator, not a hyphen continuing the
+        # word. `push` has no such longer sibling today, but the guard costs nothing.
+        r"\s+" + subcmd + r"(?=$|[\s;&|\n])"
+    )
+
+
+_GIT_COMMIT_RE = _git_subcmd_re("commit")
+# `git push` — the pre-push-review.sh hook's own boundary matcher. Same tolerance
+# rules as commit (env prefixes, `-C`/`-c`/`--flag value`, a path to the git binary).
+_GIT_PUSH_RE = _git_subcmd_re("push")
 
 
 def command_from_payload(raw):
@@ -127,6 +156,11 @@ def command_from_payload(raw):
 def is_git_commit(cmd):
     detect = _blank_quotes(cmd)
     return bool(_GIT_COMMIT_RE.search(detect))
+
+
+def is_git_push(cmd):
+    detect = _blank_quotes(cmd)
+    return bool(_GIT_PUSH_RE.search(detect))
 
 
 # After matching `git ... commit`, everything up to the next command boundary (or end
@@ -246,6 +280,106 @@ def is_multi_commit(cmd):
     return len(_GIT_COMMIT_RE.findall(detect)) >= 2
 
 
+# --- git push --------------------------------------------------------------------
+# `-C <dir>` / `--git-dir`/`--work-tree` (space or `=` form) before `push` redirect
+# the push to another repo/tree — the pre-push hook always diffs its OWN root
+# (`@{upstream}...HEAD` or the trunk merge-base there), so reviewing that diff for a
+# push that actually targets a DIFFERENT repo would judge the wrong content
+# entirely. Reuse the exact same detector regexes the commit-side mismatch check
+# already uses — the redirect mechanics are identical for any git subcommand.
+_PUSH_ARGS_RE = re.compile(
+    r"\bgit\b(?P<before>(?:\s+(?:-C\s+\S+|-c\s+\S+|--\S+|--\S+\s+\S+))*)"
+    r"\s+push(?=$|[\s;&|\n])(?P<rest>[^\n;&|]*)")
+# `--delete`/`-d` (and its `:branch` refspec shorthand) removes a remote ref — there
+# is no local content being pushed, so there is nothing meaningful to diff/review.
+_PUSH_DELETE_RE = re.compile(r"(?:^|\s)(?:--delete\b|-d\b)")
+# A push whose CONTENT is not "the current branch vs its upstream" cannot be judged by
+# the range these gates compute. `--all`/`--tags`/`--mirror` send many refs; an explicit
+# positional refspec (`origin other-branch`, `origin src:dst`) sends a ref that may have
+# no relation to HEAD. A lone remote (`git push origin`) is fine — that pushes the current
+# branch per push.default — and so is naming HEAD or the current branch explicitly, but
+# the hook cannot know the branch name from the payload text alone, so any second
+# positional is treated as out of scope. SKIP + advisory, never a guess.
+_PUSH_MULTIREF_RE = re.compile(r"(?:^|\s)--(?:all|tags|mirror)\b")
+
+def _push_has_explicit_refspec(rest):
+    """True iff `rest` (the argv text after `push`, this invocation only) names a SECOND
+    positional — i.e. a refspec beyond the remote. Flags and their values are skipped;
+    `HEAD` alone is accepted since it always means the current branch."""
+    toks = rest.split()
+    positionals = []
+    skip_next = False
+    for t in toks:
+        if skip_next:
+            skip_next = False
+            continue
+        if t.startswith("-"):
+            # `--repo <name>`, `-o <opt>`, `--receive-pack <p>` take a separate value;
+            # `--flag=value` does not. Treat any non-`=` long/short flag as possibly
+            # value-taking: over-skipping one token can only lose a positional, which
+            # fails toward reviewing (the safe direction) rather than skipping.
+            if "=" not in t and t not in ("--all", "--tags", "--mirror", "--force", "-f",
+                                          "--dry-run", "-n", "--verbose", "-v", "--quiet",
+                                          "-q", "--atomic", "--porcelain", "--progress",
+                                          "--set-upstream", "-u", "--no-verify", "--tags",
+                                          "--follow-tags", "--thin", "--no-thin", "--prune",
+                                          "--delete", "-d", "--ipv4", "-4", "--ipv6", "-6"):
+                skip_next = True
+            continue
+        positionals.append(t)
+    return len(positionals) >= 2 and positionals[1] not in ("HEAD",)
+
+
+def is_push_scope_mismatch(cmd):
+    """True iff the push invocation may not correspond to the diff the pre-push hook
+    would compute (`@{upstream}...HEAD`, falling back to the trunk merge-base):
+      - `-C`/`--git-dir`/`--work-tree` (flag or `GIT_DIR=`/`GIT_WORK_TREE=` env
+        prefix) redirects to a different repo/tree than this hook's own root.
+      - a `cd`/`pushd` earlier in the SAME invocation changes the shell's cwd before
+        `git push` runs there, same class of redirect.
+      - a `git commit` earlier in the SAME invocation runs AFTER this PreToolUse
+        hook fires (it fires once, before ANY of a compound command executes) — the
+        diff computed now is missing that not-yet-created commit, which is exactly
+        the content about to be pushed. Stale-HEAD analog of the commit-side
+        `is_stale_index` check.
+      - `--delete`/`-d`: nothing to review (a ref deletion, not new content).
+      - `--all`/`--tags`/`--mirror`, or an explicit refspec positional (`git push origin
+        other-branch`): the content pushed is not what `@{upstream}...HEAD` describes, so
+        the computed diff would judge the wrong commits — unreviewed content could pass,
+        or an unrelated diff could block."""
+    detect = _blank_quotes(cmd)
+    m = _PUSH_ARGS_RE.search(detect)
+    if not m:
+        return False
+    before, rest = m.group("before"), m.group("rest")
+    if _PRE_C_RE.search(before) or _PRE_GIT_DIR_RE.search(before):
+        return True
+    if _PUSH_MULTIREF_RE.search(rest) or _push_has_explicit_refspec(rest):
+        return True
+    if _PUSH_DELETE_RE.search(rest):
+        return True
+    gm = _GIT_PUSH_RE.search(detect)
+    if gm:
+        if _GIT_ENV_REDIRECT_RE.search(gm.group()):
+            return True
+        # Same slicing convention as is_stale_index(): only the text BEFORE this
+        # git-push invocation's own boundary character.
+        pre = detect[:gm.start() + 1]
+        if _PRECEDING_CD_RE.search(pre):
+            return True
+        if _GIT_COMMIT_RE.search(pre):
+            return True
+    return False
+
+
+def is_push_bypassed(cmd):
+    """Same rationale as is_bypassed() (below), for `git push` — an inline
+    `KIRO_REVIEW=off git push ...` prefix as part of THIS SAME invocation."""
+    detect = _blank_quotes(cmd)
+    m = _GIT_PUSH_RE.search(detect)
+    return bool(m and _BYPASS_ENV_RE.search(m.group()))
+
+
 # `(?:^|[\s;&|])` anchor, not a bare `\b`: `\b` matches at any word/non-word boundary,
 # so `NOTE=KIRO_REVIEW=off git commit` — where `KIRO_REVIEW=off` is merely the VALUE of
 # a DIFFERENT env var, not its own assignment — also matched (the `=` before the K is a
@@ -285,19 +419,39 @@ def is_bypassed(cmd):
 
 def main():
     if len(sys.argv) < 2 or sys.argv[1] not in (
-            "git-commit", "scope-mismatch", "stale-index", "multi-commit", "bypass"):
+            "git-commit", "scope-mismatch", "stale-index", "multi-commit", "bypass",
+            "git-push", "push-scope-mismatch"):
         print(__doc__)
         return 2
     raw = sys.stdin.read()
     cmd = command_from_payload(raw)
-    if sys.argv[1] == "scope-mismatch":
+    mode = sys.argv[1]
+    if mode == "scope-mismatch":
         return 0 if is_scope_mismatch(cmd) else 1
-    if sys.argv[1] == "stale-index":
+    if mode == "stale-index":
         return 0 if is_stale_index(cmd) else 1
-    if sys.argv[1] == "multi-commit":
+    if mode == "multi-commit":
         return 0 if is_multi_commit(cmd) else 1
-    if sys.argv[1] == "bypass":
-        return 0 if is_bypassed(cmd) else 1
+    if mode == "git-push":
+        return 0 if is_git_push(cmd) else 1
+    if mode == "push-scope-mismatch":
+        return 0 if is_push_scope_mismatch(cmd) else 1
+    if mode == "bypass":
+        # Which subcommand's bypass is being asked about MUST be explicit. An earlier
+        # version OR'd both matchers on the theory that a payload only ever carries the
+        # prefix on the subcommand it belongs to — false for a compound command:
+        # `KIRO_REVIEW=off git push && git commit -m x` would have satisfied the
+        # COMMIT hook's bypass check via the push prefix, silently skipping a review
+        # nobody consented to skip. (The reverse direction is masked by
+        # `push-scope-mismatch`, which skips a payload containing a preceding commit;
+        # the commit direction had no such masking.) A caller that omits the argument
+        # gets a usage error, which every caller treats as "not bypassed" — the safe
+        # direction: the review runs.
+        which = sys.argv[2] if len(sys.argv) > 2 else None
+        if which not in ("commit", "push"):
+            print(__doc__)
+            return 2
+        return 0 if (is_bypassed(cmd) if which == "commit" else is_push_bypassed(cmd)) else 1
     return 0 if is_git_commit(cmd) else 1
 
 

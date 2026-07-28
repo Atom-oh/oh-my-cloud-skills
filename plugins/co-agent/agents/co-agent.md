@@ -83,7 +83,7 @@ or errored output means that AI skipped this run — note it and continue.
 
 | 상황 | 연계 | 역할 분담 |
 |------|------|-----------|
-| 코드/PR 리뷰 | `project-init:pr-autofix` | co-agent가 멀티-AI 리뷰, pr-autofix가 피드백 반영 |
+| 코드/PR 리뷰 | `co-agent:pr-autofix` | co-agent가 멀티-AI 리뷰, pr-autofix가 피드백 반영 |
 | 설계 의사결정 | `project-init:/add-adr` | co-agent가 패널 협업 + ADR 초안, add-adr이 번호 부여/저장 |
 | AWS 인프라 변경 | `aws-ops-plugin` 에이전트 | co-agent가 다중 AI 설계 검증, ops가 실행 진단 |
 

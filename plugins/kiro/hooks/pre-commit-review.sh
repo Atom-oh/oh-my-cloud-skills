@@ -50,7 +50,7 @@ fi
 # shell session BEFORE this Bash tool call, which is not how most users would reach for
 # a "bypass THIS ONE commit" escape hatch. Recognize the inline form directly in the
 # payload text instead, so the documented UX actually works.
-if python3 "$SK/hook_match.py" bypass < "$PAYLOAD_FILE"; then
+if python3 "$SK/hook_match.py" bypass commit < "$PAYLOAD_FILE"; then
   exit 0
 fi
 

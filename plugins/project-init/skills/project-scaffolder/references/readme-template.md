@@ -57,30 +57,6 @@ The file starts with these elements in order:
 
 ---
 
-## Badge header (centered, self-updating)
-
-Wrap the badge block in `<div align="center">`. Always include license, version
-(`github/v/tag`), stars, and forks. Add a CI badge when a `.github/workflows/*.yml` exists, and
-PyPI version + downloads badges only when a PyPI package is detected (`pyproject.toml`/`setup.cfg`).
-Skip any badge whose data is unavailable rather than rendering a broken one. Place the EN/KO
-language toggle on its own line above the metric row. All badges are shields.io and self-updating
-(they need only `owner/repo`).
-
-```markdown
-<div align="center">
-
-<lang-toggle line>
-
-[![license](https://img.shields.io/github/license/OWNER/REPO?color=yellow)](LICENSE)
-[![version](https://img.shields.io/github/v/tag/OWNER/REPO?label=version&color=green)](https://github.com/OWNER/REPO/tags)
-[![stars](https://img.shields.io/github/stars/OWNER/REPO?logo=github)](https://github.com/OWNER/REPO/stargazers)
-[![forks](https://img.shields.io/github/forks/OWNER/REPO?logo=github)](https://github.com/OWNER/REPO/network/members)
-
-</div>
-```
-
----
-
 ## Bilingual Structure
 
 ```markdown
@@ -125,16 +101,17 @@ Apply the following sections in order within each language block. Omit optional 
 |-------|----------------|----------------|-----------|
 | 1 | ## Overview | ## 개요 | Required |
 | 2 | ## Features | ## 주요 기능 | Required |
-| 3 | ## Prerequisites | ## 사전 요구 사항 | Required |
-| 4 | ## Installation | ## 설치 방법 | Required |
-| 5 | ## Usage | ## 사용법 | Required |
-| 6 | ## Configuration | ## 환경 설정 | When env vars exist |
-| 7 | ## Project Structure | ## 프로젝트 구조 | Recommended |
-| 8 | ## Testing | ## 테스트 | When tests exist |
-| 9 | ## API Documentation | ## API 문서 | When API exists |
-| 10 | ## Contributing | ## 기여 방법 | Required |
-| 11 | ## License | ## 라이선스 | Required |
-| 12 | ## Contact | ## 연락처 | Required |
+| 3 | ## Architecture | ## 아키텍처 | Recommended |
+| 4 | ## Prerequisites | ## 사전 요구 사항 | Required |
+| 5 | ## Installation | ## 설치 방법 | Required |
+| 6 | ## Usage | ## 사용법 | Required |
+| 7 | ## Configuration | ## 환경 설정 | When env vars exist |
+| 8 | ## Project Structure | ## 프로젝트 구조 | Recommended |
+| 9 | ## Testing | ## 테스트 | When tests exist |
+| 10 | ## API Documentation | ## API 문서 | When API exists |
+| 11 | ## Contributing | ## 기여 방법 | Required |
+| 12 | ## License | ## 라이선스 | Required |
+| 13 | ## Contact | ## 연락처 | Required |
 
 ---
 
@@ -147,9 +124,21 @@ Apply the following sections in order within each language block. Omit optional 
 - Korean: 경어체 (~합니다)
 
 ### Features / 주요 기능
-- Format: `- **Feature name** -- Description`
+- Format: `- **Feature name** — Description` (use em-dash `—` between name and description)
 - List 3-5 key features
 - Be specific about what each feature does, not vague marketing language
+
+### Architecture / 아키텍처
+- Show the critical architecture flow as a Mermaid flowchart in a fenced ```mermaid block (see writing-style-guide.md Diagram Rules)
+- Use `flowchart LR` for a simple critical path; use `flowchart TB` with `subgraph` per layer if layers matter
+- Keep it concise (roughly 5-10 nodes); this is a summary, not the full diagram
+- Link to `docs/architecture.md` for the full architecture document if it exists
+- The diagram is identical in both language sections; node labels stay in English
+
+```mermaid
+flowchart LR
+  Client --> API[API Gateway] --> Handler[Lambda Handler] --> Store[(S3)]
+```
 
 ### Prerequisites / 사전 요구 사항
 - List required runtimes, tools, and minimum versions

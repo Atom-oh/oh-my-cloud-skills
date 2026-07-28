@@ -1,5 +1,5 @@
 ---
-description: Synchronize all project documentation with current code state — the doc-sync step when finishing a dev branch (superpowers:finishing-a-development-branch)
+description: Synchronize all project documentation with current code state
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(find:*), Bash(git log:*), Bash(git tag:*), Bash(git describe:*), Bash(git remote:*), Bash(ls:*), Agent
 ---
 
@@ -120,8 +120,8 @@ Read `docs/architecture.md` and update all sections:
 
 - **System Overview** - Reflect current system design and tech stack
 - **Components (by Layer)** - Add new components, remove deleted ones. Organize by architectural layers (Ingestion, Storage, Processing, Query, Presentation, Observability, Security, AI/ML). Detect layers from source directories and IaC files.
-- **Full Architecture Diagram** - Regenerate ASCII box diagram if components changed. Use `┌─┐│└─┘▶▼` characters. Verify all components in the diagram still exist in code.
-- **Data Flow Summary** - Update the arrow-chain flow if data path changed
+- **Full Architecture Diagram** - Regenerate the Mermaid flowchart (`flowchart TB`, one `subgraph` per layer) if components changed. Verify all components in the diagram still exist in code. If the document still uses a legacy ASCII box diagram, replace it with a Mermaid flowchart.
+- **Data Flow Summary** - Update the Mermaid `flowchart LR` critical-path chain if data path changed
 - **Infrastructure Tables** - If IaC files exist (terraform/, cdk/), update module/construct tables
 - **Key Design Decisions** - Add new decisions from recent ADRs, flag decisions that may be outdated
 - **Operations** - Update runbook cross-references

@@ -82,11 +82,24 @@ kiro 플러그인 설정을 조회/변경합니다. 설정은 `kiro.defaults.jso
 /kiro:configure set delegate max_fix_rounds 3     # 기본 2
 /kiro:configure set review on_commit on           # 기본 off
 /kiro:configure set review block warning          # 기본 critical
+/kiro:configure set review on_push on             # 기본 off — 푸시 전 3-렌즈 리뷰
+/kiro:configure set review push_block critical    # 기본 warning (커밋 게이트보다 한 단계 엄격)
+/kiro:configure set delegate effort medium        # 기본 low, default=플래그 생략
+/kiro:configure set review effort xhigh           # 기본 high
 /kiro:configure set delegate timeout 300          # 기본 240초
 /kiro:configure set websearch enabled on          # 기본 off — WebSearch 없는 세션(Bedrock)용
 /kiro:configure set websearch model <m>           # 기본: CLI 라우팅
 /kiro:configure set websearch timeout 90          # 기본 60초
 ```
 
-`review.on_commit`/`default_delegate`/`websearch.enabled`는 동의 게이팅 설정이라, 커밋된
-`.claude/kiro.local.json`에 값이 있어도 무시되고 셸 기본값(off)이 적용됩니다.
+`review.on_commit`/`review.on_push`/`default_delegate`/`websearch.enabled`는 동의 게이팅
+설정이라, 커밋된 `.claude/kiro.local.json`에 값이 있어도 무시되고 기본값(off)이 적용됩니다 —
+활성화가 곧 diff(또는 검색어) 외부 송신 동의이므로, 설치한 사용자 본인만 켤 수 있습니다.
+
+`review.on_push`를 켜면 `git push` 전에 correctness/security/scope 3개 렌즈가 **병렬**로
+푸시될 커밋 범위(`@{upstream}...HEAD`, merge base 기준)를 리뷰합니다. `critical`은 BLOCKED,
+`warning`만 있으면 CHAIR JUDGMENT REQUIRED로 프레이밍되며(훅은 Claude를 직접 호출할 수 없으므로
+stderr가 판정 전달 경로), 한 번만 우회할 때는 `KIRO_REVIEW=off git push ...`처럼 **인라인**으로
+붙입니다. 게이트가 서술할 수 없는 푸시(`--all`/`--tags`/`--mirror`, 명시적 refspec, 다른
+repo/워크트리 리다이렉트, ref 삭제, 선행 `cd`/`git commit`)는 fail-open으로 SKIP됩니다.
+co-agent의 `push_gate`도 켜져 있으면 매 푸시마다 독립 리뷰 2회가 돈다는 경고가 출력됩니다.

@@ -19,10 +19,23 @@ never set up is not).
 The skill/agent triggers below only match requests that **name Kiro explicitly** ("kiro
 로 구현", "delegate to kiro", …). A generic implementation request ("이 함수 구현해줘",
 "add a retry to this function") never contains those words, so `default_delegate` being
-on would otherwise never actually route anything — the toggle would be dead. Since this
-`CLAUDE.md` is loaded into context on every turn (unlike the agent/skill files, which are
-only read after routing already happened), it is the one place that can make the toggle
-real: **before starting any non-trivial implementation task, check**
+on would otherwise never actually route anything — the toggle would be dead.
+
+**The mechanism that makes it real is `hooks/session-routing.sh` (SessionStart), NOT this
+file.** An earlier version of this section claimed *"this `CLAUDE.md` is loaded into
+context on every turn, so it is the one place that can make the toggle real"* — that was
+**wrong, and it silently killed the feature**: a *plugin's* `CLAUDE.md` is never injected
+into the session context (only the **project's own** `CLAUDE.md` files are). So on every
+repo where kiro is installed as a plugin, `default_delegate: true` changed nothing and
+the host kept implementing everything itself, with no error to explain why. The one
+plugin-side channel whose output does land in context is a SessionStart hook, so the rule
+is emitted from there; this file is only in context when someone is working **on** this
+plugin (as a nested project file), which is exactly why the bug stayed invisible for so
+long. Keep the two in sync — the hook carries the operative instruction, this section the
+rationale.
+
+The rule the hook emits, and the one to follow: **before starting any non-trivial
+implementation task, check**
 `python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts/kiro_config.py" default-delegate`
 (exit 0 = on; the config lives at the repo root and the script resolves that root itself
 via `git rev-parse --show-toplevel` when `--root` is omitted, regardless of cwd). If it's
@@ -34,8 +47,9 @@ Kiro-naming trigger as usual.
 
 ## Web search routing (for WebSearch-less sessions — e.g. Claude Code on Bedrock)
 
-Same always-loaded rationale as above: when the task **explicitly needs current or
-external information** (the user asks for latest versions/releases/news, a time-
+Emitted by the same `hooks/session-routing.sh` (SessionStart), for the same reason as
+above — this file alone would never reach a consuming repo's context: when the task
+**explicitly needs current or external information** (the user asks for latest versions/releases/news, a time-
 sensitive fact needs verifying, or a URL's live content matters — not ordinary
 explanation or reasoning that training knowledge covers) and this session has **no
 `WebSearch` tool** (the common case on Bedrock), check
@@ -77,9 +91,9 @@ a tampered agent file (fail-closed, same defense as `/kiro:review`).
 
 | Command | Purpose |
 |---------|---------|
-| `/kiro:setup` | Detect + probe kiro-cli, list models, write `.kiro/agents/*.json`, toggle default-delegate / review-on-commit / websearch |
+| `/kiro:setup` | Detect + probe kiro-cli, list models, write `.kiro/agents/*.json`, toggle default-delegate / review-on-commit / review-on-push / websearch |
 | `/kiro:delegate <request>` | Run the full plan → delegate → verify → commit pipeline |
-| `/kiro:review [paths]` | On-demand Kiro review (same engine as the pre-commit hook) |
+| `/kiro:review [paths]` | On-demand Kiro review — staged/working-tree diff (same engine as the pre-commit hook), or `--range --lenses ...` (same engine as the pre-push hook) |
 | `/kiro:configure` | Inspect/change settings |
 
 ## Trust boundary (why Kiro can write here when co-agent's harness refuses it)
@@ -116,6 +130,41 @@ tasks Kiro would otherwise finish will need Claude fallback instead), or run it 
 an OS-level sandbox/container you control. `/kiro:setup` surfaces this decision once,
 before writing the implementer agent file.
 
+## Pre-push lens gate (PreToolUse hook)
+
+`hooks/pre-push-review.sh` matches `git push` at a command boundary (`hook_match.py`'s
+`git-push` mode — the same tolerance grammar as `git-commit`, factored into
+`_git_subcmd_re`) and runs a **3-lens** `kiro_review.py --range --lenses
+correctness,security,scope` pass before it — **opt-in, off by default**
+(`review.on_push=false`), a separate consent key from `review.on_commit` since it's a
+different mechanic: instead of one unrestricted pass over the staged diff, it diffs
+the commit RANGE about to be pushed (`@{upstream}...HEAD`, falling back to the trunk
+merge-base) and runs THREE narrowed kiro-cli calls in parallel — one per lens — instead
+of one broad call. Same guard/fail-open contract as the commit hook (tamper-verified
+`kiro-reviewer` agent confines `fs_read` to the isolated diff dir per call; missing/
+tampered → skip, never unguarded fallback). Blocking uses `review.push_block` (default
+**`warning`**, one tier stricter than the commit gate's `critical` — this is the last
+checkpoint before content leaves the machine) against findings merged across all three
+lenses (same `(file, line)` dedupe as a single pass, keeping the highest severity and
+tagging which lens(es) raised it). The stderr framing depends on WHAT'S blocking, not
+just whether anything is: a **critical** finding is a plain `BLOCKED` (fix and retry,
+no bypass suggested); a **warning-only** set (no critical) is framed as `CHAIR
+JUDGMENT REQUIRED` — a hook cannot call Claude directly, so exit 2 + this stderr text
+IS the mechanism by which the verdict reaches whoever is chairing the session; they
+read each finding against the actual change and either fix it or bypass with an inline
+`KIRO_REVIEW=off git push ...` prefix (same recognized-in-payload-text mechanism as the
+commit hook's bypass — `hook_match.py`'s `bypass` mode takes the subcommand explicitly,
+`bypass push` here and `bypass commit` in the commit hook, so a prefix on one subcommand
+of a compound command can never bypass the other hook's review). `hook_match.py`'s `push-scope-mismatch` mode skips (fail-open,
+advisory) the same mismatch classes the commit hook's `scope-mismatch` catches, adapted
+for push: a repo/tree redirect, a preceding `cd`/`pushd`, a preceding `git commit` in
+the same invocation whose content the diffed range would miss, or `--delete` (nothing
+to review). Enable via `/kiro:setup` or `/kiro:configure set review on_push on` — this
+warns (but still writes) if co-agent's own `push_gate` is ALSO on for this repo, since
+both firing means every push runs two independent review rounds. Run the same 3-lens
+pass on demand with `/kiro:review --range --lenses correctness,security,scope` (or via
+the `/kiro:review` command, which surfaces this usage).
+
 ## Pre-commit review (PreToolUse hook)
 
 `hooks/pre-commit-review.sh` matches `git commit` at a command boundary and runs
@@ -136,39 +185,53 @@ hook via `/kiro:setup` (which explains this before asking) or `/kiro:configure s
 on_commit on`. **Fails open** on any internal error or missing/unauthenticated
 `kiro-cli` — a broken reviewer must never wedge a commit. Blocks (exit 2) only on
 findings at/above `review.block` (default `critical`). Bypass one commit with an
-**inline** `KIRO_REVIEW=off git commit ...` prefix — `hook_match.py`'s `bypass` check
-recognizes this literal prefix in the command text itself; the hook process's OWN
+**inline** `KIRO_REVIEW=off git commit ...` prefix — `hook_match.py`'s `bypass commit`
+check recognizes this literal prefix on the `git commit` invocation itself (a prefix on a
+`git push` elsewhere in the same compound command does NOT count — consent for one
+subcommand isn't consent for another); the hook process's OWN
 environment (what a bare `${KIRO_REVIEW:-}` check would see) never receives a same-line
 assignment from the command it's inspecting, and Bash tool calls don't persist shell
 state between each other either, so `export`ing it in a prior command doesn't work as a
 per-commit bypass.
 
-**`review.on_commit`/`default_delegate` from a *tracked* `.claude/kiro.local.json` are
-ignored.** That file is meant to be a personal, gitignored override (its own name and
-this repo's `.gitignore` both say so) — but nothing stops a malicious consumer repo from
-committing it anyway with either flag set to `true`. Since this hook is registered at
-plugin-load time with no per-commit prompt, that would silently send an installing
-user's staged diffs to Kiro's backend (or auto-route their implementation work) without
-their own opt-in. `kiro_config.py` checks whether `.claude/kiro.local.json` is tracked
-by git in the current repo and, if so, drops just these two consent-gating keys from it
-before merging — every other setting in the same tracked file (models, timeouts, block
-level) still applies, since those aren't a consent bypass.
+**`review.on_commit`/`review.on_push`/`default_delegate` from a *tracked*
+`.claude/kiro.local.json` are ignored.** That file is meant to be a personal, gitignored
+override (its own name and this repo's `.gitignore` both say so) — but nothing stops a
+malicious consumer repo from committing it anyway with any of these flags set to
+`true`. Since both hooks are registered at plugin-load time with no per-call prompt,
+that would silently send an installing user's staged diffs (or push ranges, three times
+over) to Kiro's backend (or auto-route their implementation work) without their own
+opt-in. `kiro_config.py` checks whether `.claude/kiro.local.json` is tracked by git in
+the current repo and, if so, drops just these consent-gating keys from it before
+merging — every other setting in the same tracked file (models, timeouts, block level)
+still applies, since those aren't a consent bypass.
 
-## Model tiering
+## Model + effort tiering
 
-- **Delegate (implement) model** — flat-rate credits, no per-token cost trade-off; point
-  it at whatever model finishes tasks correctly.
-- **Review model** — deliberately kept at Kiro's strongest/newest available model (e.g.
-  `gpt-5.6-sol`), even when the delegate model is lighter — the review is the safety net
-  behind the implementer's output.
+- **Delegate (implement)** — `delegate.model` + `delegate.effort` (kiro-cli `--effort`,
+  default **`low`**). Flat-rate credits mean no per-token cost trade-off, so point the
+  model at whatever finishes tasks correctly; effort stays low because Claude already
+  wrote the spec and the file set — the implementer is applying an approved plan, the same
+  reasoning behind this repo's `pr-autofix-implementer` tier. Raise it only if a repo's
+  tasks keep exhausting the fix loop (a wall-clock signal, not a cost one).
+- **Review** — `review.model` deliberately kept at Kiro's strongest/newest available model
+  (e.g. `gpt-5.6-sol`) even when the delegate model is lighter, with
+  `review.effort` default **`high`** — the opposite end of the ladder on purpose, since
+  the blocking verdict IS this call's product. Applies to the commit pass and to each of
+  the 3 parallel push lenses.
+- Both are `/kiro:configure set <delegate|review> effort <low|medium|high|xhigh|max>`
+  (`default` omits the flag). Measured flag surface: `references/kiro-headless.md` → "The
+  real headless flag surface".
 
 ## Scripts reused from co-agent (unmodified)
 
 `skills/kiro-delegate/scripts/worktree.py`, `scope_guard.py`, `parse_plan.py` are copied
 verbatim from `plugins/co-agent/skills/co-agent/scripts/` — the isolation/scoping
 mechanics (worktree capture, plan-scoped file allowlist) are identical; only the
-implementer CLI differs. `kiro_config.py`/`kiro_review.py`/`kiro_setup.py` are new,
-scoped to this plugin's single peer.
+implementer CLI differs. `kiro_config.py`/`kiro_review.py`/`kiro_setup.py`/`kiro_run.py`
+are new, scoped to this plugin's single peer (`kiro_run.py` = per-run telemetry:
+`session-id <wt>` for `--resume-id` fix-round chaining, `credits <log>...` for the
+delegation report).
 
 ## Auto-Invocation Keywords
 
@@ -191,7 +254,9 @@ command and has no auto-invocation trigger (it never loads this write-capable sk
                 → per task: worktree → Kiro implements → capture-diff → scope_guard
                 → Claude applies + tests → bounded retry → Claude fallback if exhausted
                 → Claude commits → delegation-rate report
-git commit      → PreToolUse hook → kiro_review.py (fail-open, blocks only on `critical`)
-/kiro:review    → same review engine, on demand
+git commit      → PreToolUse hook → kiro_review.py --staged (fail-open, blocks only on `critical`)
+git push        → PreToolUse hook → kiro_review.py --range --lenses correctness,security,scope
+                → (fail-open; `critical` = BLOCKED, `warning`-only = CHAIR JUDGMENT REQUIRED)
+/kiro:review    → same review engines, on demand ([paths] or --range --lenses ...)
 web search needed + no WebSearch tool (Bedrock) → kiro_websearch.py --query-file (opt-in) → summary + source URLs
 ```

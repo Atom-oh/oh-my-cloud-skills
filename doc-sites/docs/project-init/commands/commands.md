@@ -96,23 +96,3 @@ git 태그와 커밋 히스토리를 분석하여 변경사항을 자동 분류�
 ```
 
 유효 레이어(enum): `infrastructure`, `data`, `api`, `iac`, `frontend`, `ui`, `security`, `agent-llm`. `/init-project`의 Step 4.5(레이어 자동 감지)와 `/sync-docs`의 Phase 1.5(참조 문서 검증)가 이 기능과 연동됩니다.
-
-## /pr-autofix
-
-PR 생성 후 AI 리뷰와 사람 리뷰 피드백을 자동으로 읽고 코드를 수정합니다. 최대 5회 반복합니다.
-
-```bash
-/pr-autofix
-```
-
-**워크플로우:**
-1. 현재 브랜치의 PR을 자동 감지
-2. AI 리뷰 코멘트(`<!-- bedrock-pr-review -->`)와 사람 리뷰(`CHANGES_REQUESTED`) 동시 polling
-3. 이슈 발견 시 CRITICAL → MAJOR → MINOR 순으로 수정
-4. 빌드 검증 후 커밋 & push
-5. 5회 반복 후에도 통과 못하면 사용자에게 수동 리뷰 요청
-
-**제약:**
-- `.github/workflows/*` 파일 수정 금지
-- 리뷰에서 언급된 이슈만 수정 (추가 리팩토링 금지)
-- AI 리뷰를 사용하려면 프로젝트에 `pr-review.yml` CI 워크플로우 설정 필요

@@ -11,5 +11,7 @@
     "agy":    { "enabled": true, "model": "Gemini 3.1 Pro (High)", "models": [], "context_limit": 1000000 }
   },
   "harness": { "implementer": null, "implementer_models": {}, "implementer_efforts": {}, "max_fix_rounds": 2, "review_mode": "hybrid", "parallel_tasks": 3 },
-  "pr_gate": { "enabled": false, "block": true, "timeout": 180, "quorum": "majority" }
+  "pr_autofix": { "max_iterations": 5 },
+  "pr_gate": { "enabled": false, "block": true, "timeout": 180, "quorum": "majority" },
+  "push_gate": { "enabled": false, "block": true, "timeout": 180 }
 }

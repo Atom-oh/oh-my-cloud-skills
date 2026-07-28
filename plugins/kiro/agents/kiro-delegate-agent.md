@@ -264,11 +264,33 @@ preflight verified against `$ROOT`. Every `.kiro/…` path in this pipeline is
    - Run Kiro inside `<wt>`: `kiro-cli chat "Read .kiro/task-prompt.md via fs_read — it
      has your task and any spec file pointers — then implement exactly what it
      describes. Do not touch files outside the task's declared file set."
-     --no-interactive --wrap never --agent kiro-implementer [--model <delegate.model>]`
+     --no-interactive --wrap never --require-mcp-startup --agent kiro-implementer
+     [--effort <delegate.effort>] [--model <delegate.model>]`
      — this exact sentence, unchanged across every task; **cwd MUST be `<wt>`**.
+     `--effort` comes from `kiro_config.py delegate-effort` (default `low` — the plan is
+     already written, so applying it is mechanical; the reasoning tier that matters is
+     `review.effort`, which defaults to `high`); **omit the flag entirely when that
+     command prints nothing**, don't pass an empty value. `--require-mcp-startup` makes a
+     silently-dead MCP server **exit 3** instead of letting the task run without a tool it
+     was planned around and fail the tests for an unrelated-looking reason — treat exit 3
+     as an infrastructure failure (report it and fall back to Claude per step 5), not as a
+     fix-round-worthy task failure.
      `--agent kiro-implementer` carries the read/write-guard hooks and whatever
      `execute_bash` grant the user chose at `/kiro:setup`; per step 0, this is the only
      invocation form this pipeline uses. Adapter detail: `references/kiro-headless.md`.
+     **Launch it in a BACKGROUND Bash with stdout+stderr redirected to a log outside
+     `<wt>`** (`> /tmp/kiro-delegate-<task>.log 2>&1`, never `| tee` — a pipe severs
+     kiro's auth callback and hangs the call to the full `delegate.timeout`), then
+     `tail -n 20` that log between polls and relay what Kiro is doing. A foreground call
+     shows nothing for up to 240s per task; kiro-cli has no `stream-json` mode, so this
+     tail IS the progress stream (see kiro-headless.md "Watching a run"). Outside `<wt>`
+     so the log can never enter `capture-diff`'s scope.
+   - **Record the session id right after the call returns**, before the worktree is
+     touched further: `python3 .../kiro_run.py session-id <wt>` prints the newest
+     `sessionId` kiro-cli stored for that cwd (exit 1 = none found). Keep it with the
+     task's state — step 4 resumes it. Each task has its own worktree, so cwd identifies
+     the session unambiguously; kiro-cli exposes no session id in its headless output
+     (upstream kiro#9066), and this reads the `--list-sessions --format json` store instead.
    - `worktree.py capture-diff <wt>` → patch. Every path through
      `scope_guard.py --plan <tasks.md> -- <path>...` — candidates go after a literal
      `--` (required; a bare `--list` with no separator is the only thing recognized
@@ -280,6 +302,14 @@ preflight verified against `$ROOT`. Every `.kiro/…` path in this pipeline is
    - Apply the captured, scoped patch to the main tree. Run the project's tests.
 4. **Verify + bounded retry.** Test failure → feed the failure back to Kiro and retry,
    bounded by `delegate.max_fix_rounds` (default 2; `kiro_config.py max-fix-rounds`).
+   **Resume the same conversation instead of starting a new one**: overwrite
+   `<wt>/.kiro/task-prompt.md` with **only the new information** (the failing test's
+   output, trimmed) and re-run with `--resume-id <the id recorded in step 3>` plus the
+   same fixed instruction sentence. Kiro already has the task, the spec, and its own
+   first attempt in that session's history, so re-sending them costs a full re-read for
+   nothing and invites it to redo work it already did. If step 3's `session-id` found no
+   id (exit 1), fall back to a fresh call whose prompt file carries the task **and** the
+   failure — a missing session id is never a reason to fail the task.
    **Before re-applying a retry's captured diff, undo the previous attempt's applied
    patch on the main tree first** — `worktree.py capture-diff` re-diffs the worktree
    against its recorded base SHA, so each retry produces the *cumulative* change, and
@@ -300,7 +330,12 @@ preflight verified against `$ROOT`. Every `.kiro/…` path in this pipeline is
    wave starts (Kiro never commits) — see step 2's per-wave-commit rule. Tick off
    `tasks.md` checkboxes for completed tasks. At the end, report the delegation rate:
    tasks Kiro completed vs. tasks Claude had to take over, so the cost-savings effect is
-   visible, not assumed.
+   visible, not assumed. Add the **credits Kiro actually spent** —
+   `python3 .../kiro_run.py credits /tmp/kiro-delegate-*.log` sums the `Credits: <n>`
+   figures from the logs step 3 already redirected (all rounds of all tasks, since each
+   round appends its own footer). **Best-effort by contract**: exit 1 = the footer format
+   changed or no log was readable, so omit the line entirely rather than reporting a
+   figure that might be wrong or partial.
 7. **Clean up.** `worktree.py remove <wt>` for every worktree used.
 
 ## Default-delegate mode
@@ -326,7 +361,8 @@ is exhausted. Toggle: `/kiro:configure set default_delegate on|off` (also settab
 - `skills/kiro-delegate/references/spec-format.md` — spec file structure, `tasks.md`
   format `scope_guard.py`/`parse_plan.py` require
 - `skills/kiro-delegate/scripts/` — `worktree.py`, `scope_guard.py`, `parse_plan.py`
-  (copied from co-agent, unmodified), `kiro_config.py`, `kiro_review.py`, `kiro_setup.py`
+  (copied from co-agent, unmodified), `kiro_config.py`, `kiro_review.py`, `kiro_setup.py`,
+  `kiro_run.py` (per-run telemetry: `session-id` for `--resume-id`, `credits` for the report)
 
 ## Agent Memory
 

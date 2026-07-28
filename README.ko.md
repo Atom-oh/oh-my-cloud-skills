@@ -74,9 +74,11 @@
 
 ## 설치
 
-모든 플러그인은 Claude Code 매니페스트(`.claude-plugin/plugin.json`)와 Codex
-매니페스트(`.codex-plugin/plugin.json`)를 **모두** 제공하므로, 동일한 마켓플레이스를
-어느 호스트에서도 설치할 수 있습니다. 아래에서 사용하는 호스트를 선택하세요.
+모든 플러그인은 Claude Code 매니페스트(`.claude-plugin/plugin.json`)를 제공하고, 하나를
+제외한 전부가 Codex 매니페스트(`.codex-plugin/plugin.json`)도 함께 제공하므로 동일한
+마켓플레이스를 어느 호스트에서도 설치할 수 있습니다. 예외는 `project-init` — upstream
+미러라 매니페스트 구성을 그대로 유지하므로 Claude Code 전용입니다. 아래에서 사용하는
+호스트를 선택하세요.
 
 ### Claude Code
 
@@ -125,7 +127,7 @@ claude --plugin-dir ./plugins/kiro
 
 이 저장소는 **Codex 플러그인 마켓플레이스**이기도 합니다 — 매니페스트는
 [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json)에 있고
-(`name: oh-my-cloud-skills`), 각 플러그인의 `.codex-plugin/plugin.json`이 스킬을 Codex에
+(`name: oh-my-cloud-skills`), 등록된 각 플러그인의 `.codex-plugin/plugin.json`이 스킬을 Codex에
 노출합니다. 플러그인을 지원하는 최신 Codex CLI가 필요합니다.
 
 ```bash
@@ -665,7 +667,7 @@ aws-ops-power/
 | `co-agent` | co-agent | "second opinion" / "help me decide" / "ADR 협업" | 멀티-AI 리뷰 / 의사결정 / ADR |
 | `doc-sync-checker` | project-init | "/sync-docs" | 문서 품질 점수 |
 | `kiro-delegate-agent` | kiro | "delegate implementation to kiro" / "kiro로 구현" | Kiro가 구현하고 Claude가 검증·커밋한 변경 사항 |
-| `pr-autofix-planner` / `pr-autofix-implementer` | project-init | (pr-autofix 스킬이 스폰) | 수정 계획 / 계획 적용된 worktree 편집 |
+| `pr-autofix-planner` / `pr-autofix-implementer` | co-agent | (pr-autofix 스킬이 스폰) | 수정 계획 / 계획 적용된 worktree 편집 |
 
 > `pr-autofix-planner` / `pr-autofix-implementer`는 pr-autofix 스킬이 스폰하는 용도입니다 — description이 직접 자동 선택을 억제하지만 하드 차단은 아닙니다.
 
@@ -704,11 +706,11 @@ aws-ops-power/
 |------|----------|
 | `kiro-convert` | 플러그인-to-Kiro-Power 변환 워크플로우 |
 | `agentcore-create` | 5단계 AgentCore 설계, 빌드, 변환, 배포 워크플로우 (harness 또는 Runtime 타깃) |
-| `co-agent` | 멀티-AI 협업 (Kiro/Codex/Antigravity — `agy`) — 리뷰, 의사결정 보조, ADR 협업, `sync-context`; Claude가 의장. 명령: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus`, `/co-agent:harness`, `/co-agent:setup` |
+| `co-agent` | 멀티-AI 협업 (Kiro/Codex/Antigravity — `agy`) — 리뷰, 의사결정 보조, ADR 협업, `sync-context`; Claude가 의장. 명령: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus`, `/co-agent:harness`, `/co-agent:setup`, `/co-agent:pr-autofix` |
 | `project-scaffolder` | Claude Code 프로젝트 구조 패턴 및 컨벤션 |
-| `pr-autofix` | AI + 사람 PR 리뷰 피드백 polling 후 이슈 자동 수정 (최대 5회 반복; 계획은 Fable/Opus, 구현은 opus [medium effort] 서브에이전트) |
-| `decision-reconcile` | 누적 ADR 간 모순(및 ADR vs 현실 drift)을 다양성 멀티 에이전트 패널(Claude 모델 티어 + 선택적 Kiro/Codex/Antigravity, 렌즈 1개씩)로 검출 후 번복 ADR 초안 작성 |
-| `kiro-delegate` | Kiro CLI(구독 크레딧)로의 비용 절감 구현+리뷰 위임 — worktree로 격리된 구현 루프, scope-guard된 diff, 커밋 전 리뷰 게이트, WebSearch 도구가 없는 세션(Claude Code on Bedrock)을 위한 opt-in 웹 검색 위임. 명령: `/kiro:setup`, `/kiro:delegate`, `/kiro:review`, `/kiro:configure` |
+| `pr-autofix` | AI + 사람 PR 리뷰 피드백 polling 후 이슈 자동 수정 (co-agent; 루프 상한은 `/co-agent:configure set pr_autofix max_iterations`, 기본 5회; 계획은 Fable/Opus, 구현은 opus [medium effort] 서브에이전트) |
+| `decision-reconcile` | (co-agent) 누적 ADR 간 모순(및 ADR vs 현실 drift)을 다양성 멀티 에이전트 패널(Claude 모델 티어 + 선택적 Kiro/Codex/Antigravity, 렌즈 1개씩)로 검출 후 번복 ADR 초안 작성 |
+| `kiro-delegate` | Kiro CLI(구독 크레딧)로의 비용 절감 구현+리뷰 위임 — worktree로 격리된 구현 루프, scope-guard된 diff, opt-in 커밋 전·3-렌즈 푸시 전 리뷰 게이트(둘 다 기본 off — 활성화가 곧 Kiro 백엔드로의 diff 송신 동의), WebSearch 도구가 없는 세션(Claude Code on Bedrock)을 위한 opt-in 웹 검색 위임. 명령: `/kiro:setup`, `/kiro:delegate`, `/kiro:review`, `/kiro:configure` |
 
 ### Project Init 명령
 
@@ -722,6 +724,7 @@ aws-ops-power/
 | `/generate-readme` | 이중 언어 README.md 생성 |
 | `/generate-changelog` | 이중 언어 CHANGELOG.md 생성 |
 | `/health-check` | 프로젝트 설정 검증 |
+| `/add-reference-doc` | 외부 참조 문서를 docs/reference/ 에 추가 |
 
 ---
 
@@ -843,25 +846,27 @@ plugins/
 │   └── skills/
 │       └── agentcore-create/
 │
-├── co-agent/                       # 멀티-AI 협업 (3 에이전트, 1 스킬, 5 명령)
+├── co-agent/                       # 멀티-AI 협업 (5 에이전트, 3 스킬, 6 명령)
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
 │   ├── agents/
 │   │   ├── co-agent.md
 │   │   ├── gate-chair.md
-│   │   └── harness-analyst.md
-│   ├── commands/                   # configure, sync-context, consensus, harness, setup
+│   │   ├── harness-analyst.md
+│   │   ├── pr-autofix-planner.md
+│   │   └── pr-autofix-implementer.md
+│   ├── commands/                   # configure, sync-context, consensus, harness, setup, pr-autofix
 │   └── skills/
-│       └── co-agent/
+│       ├── co-agent/
+│       ├── pr-autofix/
+│       └── decision-reconcile/
 │
-├── project-init/                      # 프로젝트 스캐폴딩 (3 에이전트, 3 스킬, 10 명령)
+├── project-init/                      # 프로젝트 스캐폴딩 (1 에이전트, 1 스킬, 9 명령) — upstream 미러
 │   ├── .claude-plugin/plugin.json
 │   ├── CLAUDE.md
 │   ├── agents/
-│   │   ├── doc-sync-checker.md
-│   │   ├── pr-autofix-planner.md
-│   │   └── pr-autofix-implementer.md
-│   ├── commands/                       # 10개 슬래시 명령
+│   │   └── doc-sync-checker.md
+│   ├── commands/                       # 9개 슬래시 명령
 │   │   ├── init-project.md
 │   │   ├── sync-docs.md
 │   │   ├── add-adr.md
@@ -870,12 +875,9 @@ plugins/
 │   │   ├── generate-readme.md
 │   │   ├── generate-changelog.md
 │   │   ├── health-check.md
-│   │   ├── pr-autofix.md
 │   │   └── add-reference-doc.md
 │   └── skills/
-│       ├── project-scaffolder/
-│       ├── pr-autofix/
-│       └── decision-reconcile/
+│       └── project-scaffolder/
 │
 └── kiro/                              # 비용 절감 위임 (1 에이전트, 1 스킬, 4 명령)
     ├── .claude-plugin/plugin.json

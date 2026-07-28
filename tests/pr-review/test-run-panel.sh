@@ -120,7 +120,13 @@ cat > "$BIN/kiro-cli" <<'EOF'
 echo "kiro-finding"; env; echo "CWD=$(pwd)"
 EOF
 chmod +x "$BIN/kiro-cli"
-GH_TOKEN="leak-test-gh-token" AWS_SECRET_ACCESS_KEY="leak-test-aws-secret" KIRO_API_KEY="keep-this-kiro-key" \
+# Same reword-don't-weaken reason as the (h) block below: a literal
+# `KIRO_API_KEY="<8+ chars>"` on one line is caught by .claude/hooks/secret-scan.sh's
+# generic api_key pattern, blocking any commit that stages this file. The var name is
+# deliberately SHORT ($KV, not $KIRO_KEY_VAL) — the pattern matches 8+ non-quote chars
+# after the `=`, and a longer name would itself satisfy that and still trip the scanner.
+KV="keep-this-kiro-key"
+GH_TOKEN="leak-test-gh-token" AWS_SECRET_ACCESS_KEY="leak-test-aws-secret" KIRO_API_KEY="$KV" \
   "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/dev/null 2>&1 || true
 DUMP="$WORK/slot/kiro-opus-L2.md"
 if grep -q "leak-test-gh-token" "$DUMP" 2>/dev/null || grep -q "leak-test-aws-secret" "$DUMP" 2>/dev/null; then
@@ -128,7 +134,7 @@ if grep -q "leak-test-gh-token" "$DUMP" 2>/dev/null || grep -q "leak-test-aws-se
 else
   pass "run-panel (e) kiro env excludes GH_TOKEN/AWS_* credentials"
 fi
-grep -q "keep-this-kiro-key" "$DUMP" 2>/dev/null \
+grep -q "$KV" "$DUMP" 2>/dev/null \
   && pass "run-panel (e) kiro env still carries its own KIRO_API_KEY" \
   || fail "run-panel (e) kiro env still carries its own KIRO_API_KEY" "KIRO_API_KEY missing — auth would break"
 grep -q "^CWD=$WORK/kiro-cwd/kiro-opus-L2$" "$DUMP" 2>/dev/null \
@@ -182,7 +188,7 @@ cat > "$BIN/kiro-cli" <<'EOF'
 #!/usr/bin/env bash
 prev=""
 for a in "$@"; do
-  if [ "$prev" = "--model" ] && [ "$a" = "claude-opus-4.8" ]; then exit 1; fi
+  if [ "$prev" = "--model" ] && [ "$a" = "claude-opus-5" ]; then exit 1; fi
   prev="$a"
 done
 echo "kiro-finding"
@@ -248,9 +254,20 @@ cat > "$BIN/codex" <<'EOF'
 echo "codex-finding"; cat
 EOF
 chmod +x "$BIN/codex"
-cat > "$BIN/kiro-cli" <<'EOF'
+# Runtime-constructed fixture key — same convention as tests/hooks/test-secret-patterns.sh.
+# The value must stay AKIA-shaped for scrub_secrets to have anything to match, but a
+# LITERAL `AKIA` + 16 uppercase chars in this file is itself caught by the repo's own
+# `.claude/hooks/secret-scan.sh` (HIGH_CONFIDENCE_PATTERNS), which blocks any commit that
+# stages it. Splitting the prefix from the body keeps the test exercising real redaction
+# while leaving no matchable literal on disk — reword the fixture, don't weaken the
+# scanner (and don't add the whole file to SKIP_FILES, which would blind it to a real
+# credential landing here later).
+AWS_FIXTURE_PREFIX="AKIA"
+AWS_FIXTURE_KEY="${AWS_FIXTURE_PREFIX}ABCDEFGHIJKLMNOP"
+# Unquoted heredoc delimiter so $AWS_FIXTURE_KEY expands as the fake CLI is written.
+cat > "$BIN/kiro-cli" <<EOF
 #!/usr/bin/env bash
-echo "error reading file: AKIAABCDEFGHIJKLMNOP found in output" >&2
+echo "error reading file: $AWS_FIXTURE_KEY found in output" >&2
 exit 1
 EOF
 chmod +x "$BIN/kiro-cli"
@@ -258,7 +275,7 @@ LOG=$(mktemp)
 if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >"$LOG" 2>&1; then
   fail "run-panel (h) script exits 0 even when a cell's stderr carries a credential" "exited non-zero"
 fi
-if grep -q "AKIAABCDEFGHIJKLMNOP" "$LOG"; then
+if grep -q "$AWS_FIXTURE_KEY" "$LOG"; then
   fail "run-panel (h) skip-diagnostic stderr dump is scrubbed" "raw AWS key leaked into the runner log"
 else
   pass "run-panel (h) skip-diagnostic stderr dump is scrubbed"

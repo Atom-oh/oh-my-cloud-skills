@@ -31,7 +31,7 @@ ALLOWED_MANIFEST_FIELDS = {
     "keywords",
 }
 # Plugins deliberately absent from the Codex surface — an upstream mirror whose manifest
-# set is kept verbatim (procedure: project-init's own upstream-sync reference). Everything else
+# set is kept verbatim (docs/reference/project-init-upstream-sync.md). Everything else
 # missing a .codex-plugin manifest is an error, not a warning. Keep in sync with
 # MIRRORED_PLUGINS in test-plugins.py (same plugin, other surface).
 CLAUDE_ONLY = {"project-init"}

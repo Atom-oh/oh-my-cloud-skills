@@ -10,11 +10,8 @@ Path: `.claude/agents/code-reviewer.yml`
 
 ```yaml
 name: code-reviewer
-description: Review code changes for bugs, security issues, and guideline violations with confidence scoring. Reports every finding; the verdict counts only high-confidence issues (75+).
-tools: Read, Glob, Grep, Bash
-# NOTE: the agent-frontmatter `tools` field takes bare tool names only — scoped
-# entries like Bash(git diff:*) are not valid there. Command-level Bash limits
-# belong in a PreToolUse hook or settings.json permissions.
+description: Review code changes for bugs, security issues, and guideline violations with confidence-based filtering. Reports only high-confidence issues (75+).
+tools: Read, Glob, Grep, Bash(git diff:*), Bash(git log:*)
 model: sonnet
 color: green
 
@@ -40,9 +37,6 @@ color: green
 # ```
 #
 # <!-- Repeat for each issue with confidence >= 75 -->
-#
-# ### Below threshold (not counted in verdict)
-# - <one line each: title (confidence NN) — `path:line`>
 #
 # ### Summary
 # | Severity | Count |
@@ -74,11 +68,8 @@ The code-reviewer agent is spawned to review code in parallel without consuming 
    - Detect security issues (OWASP Top 10, injection, XSS)
    - Check code quality (duplication, complexity)
 4. Score each issue 0-100 confidence
-5. Report every finding scored 25+ — full detail for >= 75, one-liners under
-   "Below threshold" for 25-74; drop only 0-24 likely-false-positives (filtering
-   at discovery silently drops real bugs on current models; the threshold is
-   applied at the verdict, not at the search)
-6. Return structured report with Verdict computed from the >= 75 set only
+5. Filter to only issues >= 75 confidence
+6. Return structured report with Verdict
 
 **Output example:**
 ```

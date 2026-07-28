@@ -19,14 +19,16 @@ assert_file_exists "$SP_OPS_TS" "ops-troubleshoot SKILL.md exists"
 assert_contains "$(cat "$SP_OPS_TS")" "systematic-debugging" \
   "① ops-troubleshoot SKILL.md references superpowers:systematic-debugging"
 
-# Structural fallback: the explicit triggers: block (not just the prose description) must carry
-# the systematic-debugging + KO trigger, so skill selection has a hard trigger, not only prose.
-# Extract the triggers: block (from `triggers:` to the next top-level YAML key).
-SP_TRIGGERS="$(awk '/^triggers:/{f=1;next} f&&/^[a-zA-Z]/{f=0} f{print}' "$SP_OPS_TS")"
-assert_contains "$SP_TRIGGERS" "systematic-debugging" \
-  "① ops-troubleshoot triggers: block includes systematic-debugging"
-assert_contains "$SP_TRIGGERS" "디버깅" \
-  "① ops-troubleshoot triggers: block includes Korean trigger (디버깅)"
+# The routing keywords must live in `description:` — the ONE field skill selection actually
+# reads. A `triggers:` block used to carry them, but it is inert frontmatter Claude Code
+# never consumes, and #135 stripped it repo-wide and folded the keywords into `description`
+# instead. So assert against the description line, not a block whose absence is now correct:
+# checking `triggers:` here would pass only while the dead key was still present.
+SP_DESC="$(awk '/^description:/{print; exit}' "$SP_OPS_TS")"
+assert_contains "$SP_DESC" "systematic-debugging" \
+  "① ops-troubleshoot description carries the systematic-debugging routing keyword"
+assert_contains "$SP_DESC" "디버깅" \
+  "① ops-troubleshoot description carries the Korean trigger (디버깅)"
 
 # aws-ops CLAUDE.md routing note names the superpowers skill + all 5 domain agents.
 # Scope the domain-agent check to the handoff SECTION so it can't trivially pass on the
@@ -49,16 +51,16 @@ assert_contains "$SP_ROOT_BODY" "ops-troubleshoot" \
 
 # --- ② finishing-a-development-branch ↔ project-init doc sync ---
 
-SP_SYNC="plugins/project-init/commands/sync-docs.md"
-SP_CHLOG="plugins/project-init/commands/generate-changelog.md"
-SP_PI_MD="plugins/project-init/CLAUDE.md"
-
-assert_contains "$(cat "$SP_SYNC")" "finishing-a-development-branch" \
-  "② sync-docs.md references superpowers:finishing-a-development-branch"
-assert_contains "$(cat "$SP_CHLOG")" "finishing-a-development-branch" \
-  "② generate-changelog.md references superpowers:finishing-a-development-branch"
-assert_contains "$(cat "$SP_PI_MD")" "finishing-a-development-branch" \
-  "② project-init CLAUDE.md has the finish-branch doc-sync routing note"
+# project-init is mirrored byte-for-byte from its upstream fork source (only `version` is
+# local — docs/reference/project-init-upstream-sync.md), so the routing note CANNOT live in
+# its own files: an in-plugin hint would be wiped by the next sync. The root CLAUDE.md
+# routing table is the whole integration for this phase, and it is always in context.
+assert_grep_no_match "superpowers" "$(cat plugins/project-init/CLAUDE.md)" \
+  "② project-init stays upstream-clean — no local superpowers hint to be lost on sync"
+assert_contains "$SP_ROOT_BODY" "/sync-docs" \
+  "② root routing table routes finish-branch to project-init /sync-docs"
+assert_contains "$SP_ROOT_BODY" "/generate-changelog" \
+  "② root routing table routes finish-branch to project-init /generate-changelog"
 
 # --- ③ requesting-code-review ↔ non-code review gates ---
 
@@ -85,8 +87,9 @@ assert_contains "$(cat "$SP_WAA")" "writing-plans" \
   "④ wellarchitected-agent can run as a writing-plans shift-left pre-check"
 assert_contains "$(cat "$SP_SECAUDIT")" "writing-plans" \
   "④ ops-security-audit can run as a writing-plans shift-left pre-check"
-assert_contains "$(cat "$SP_PI_MD")" "writing-plans" \
-  "④ project-init CLAUDE.md has the plan-time security pre-check note"
+# ④'s project-init leg is likewise root-CLAUDE.md-only (see ② above).
+assert_contains "$SP_ROOT_BODY" "writing-plans" \
+  "④ root routing table carries the plan-time AWS security pre-check row"
 
 # --- root routing table: ②③④ flipped from planned → active ---
 # Extract the routing table rows and assert no "planned" status remains on ②③④.

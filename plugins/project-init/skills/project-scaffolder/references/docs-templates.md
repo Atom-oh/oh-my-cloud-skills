@@ -8,7 +8,7 @@ Templates for `docs/` files.
 
 Path: `docs/architecture.md`
 
-This template generates a production-grade bilingual architecture document with ASCII diagrams, layer-based component descriptions, and infrastructure tables.
+This template generates a production-grade bilingual architecture document with Mermaid flowchart diagrams, layer-based component descriptions, and infrastructure tables.
 
 ### Generation Rules
 
@@ -16,8 +16,8 @@ When generating `docs/architecture.md`, Claude should:
 
 1. **Detect** the project's actual components, tech stack, and directory layout
 2. **Organize** components into architectural layers (see Layer Categories below)
-3. **Draw** an ASCII box diagram showing component connections using `┌─┐│└─┘▶▼` characters
-4. **Create** a one-line Data Flow Summary with arrows
+3. **Draw** a Mermaid flowchart (`flowchart TB`) showing component connections, with one `subgraph` per layer
+4. **Create** a Data Flow Summary as a Mermaid `flowchart LR` chain showing the critical path
 5. **List** infrastructure resources in tables if IaC files are detected
 6. **Record** key design decisions explaining WHY, not just WHAT
 7. **Include** both Korean and English sections with identical content
@@ -52,14 +52,14 @@ When generating `docs/architecture.md`, Claude should:
 
 ## Full Architecture Diagram
 
-<!-- ASCII box diagram using ┌─┐│└─┘▶▼ characters -->
-<!-- Group related components in labeled boxes -->
-<!-- Show data flow direction with arrows -->
+<!-- Mermaid flowchart TB with one subgraph per layer -->
+<!-- Group related components in labeled subgraphs -->
+<!-- Show data flow direction with arrows (-->) -->
 
 ## Data Flow Summary
 
-<!-- One-line arrow flow showing the critical path -->
-<!-- Example: SDK -> API GW -> Lambda -> Firehose -> S3 -> Athena -> Dashboard -->
+<!-- Mermaid flowchart LR showing the critical path -->
+<!-- Example: SDK --> APIGW --> Lambda --> Firehose --> S3 --> Athena --> Dashboard -->
 
 ## Infrastructure
 
@@ -107,51 +107,41 @@ Organize components into these standard layers (use only the layers that apply):
 | Security Layer | Auth and protection | WAF, IAM, Cognito, secrets management |
 | AI/ML Layer | Intelligence | Bedrock, SageMaker, agent systems |
 
-### ASCII Diagram Style Guide
+### Mermaid Flowchart Style Guide
 
-Use Unicode box-drawing characters for professional diagrams:
+Use Mermaid flowchart inside a fenced ```mermaid code block (GitHub renders it natively):
 
-```
-┌─────────────────────────────────────────────┐
-│                 Layer Name                   │
-│                                             │
-│  ┌──────────┐    ┌──────────┐               │
-│  │Component │───▶│Component │               │
-│  │  A       │    │  B       │               │
-│  └──────────┘    └────┬─────┘               │
-│                       │                     │
-└───────────────────────┼─────────────────────┘
-                        ▼
-┌─────────────────────────────────────────────┐
-│                 Next Layer                   │
-│  ┌──────────┐                               │
-│  │Component │                               │
-│  │  C       │                               │
-│  └──────────┘                               │
-└─────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+  subgraph layer_a[Layer Name]
+    A[Component A] --> B[Component B]
+  end
+  subgraph layer_b[Next Layer]
+    C[Component C]
+  end
+  B --> C
 ```
 
 Rules:
-- Each layer gets its own labeled box
-- Components within a layer are nested boxes
-- Arrows (`───▶`, `▼`) show data flow direction
-- Include key details inside component boxes (ports, protocols, formats)
-- Maximum width: ~80 characters for readability
+- Use `flowchart TB` for the full architecture diagram
+- Each layer gets its own `subgraph <id>[<Layer Name>]`
+- One component per node; arrows (`-->`) show data flow direction
+- Use node shapes meaningfully: `[Component]` for services/processes, `[(Store)]` for databases/storage, `([Entry Point])` for external entry points
+- Include key details in node labels where they matter (ports, protocols, formats)
+- Node and edge labels stay in English in both language sections; the diagram is duplicated identically (see writing-style-guide.md Diagram Rules)
 
 ### Data Flow Summary Style
 
-Use a single-line arrow chain showing the critical path:
+Use a Mermaid `flowchart LR` chain showing the critical path:
 
-```
-Client -> WAF -> API GW -> Auth -> Handler -> Queue -> Storage
-                                                          |
-                                     ┌────────────────────┘
-                                     ▼
-                                  Catalog <- Scheduler
-                                     |
-                        ┌────────────┼────────────┐
-                        ▼            ▼            ▼
-                    Dashboard   Monitoring     Agent
+```mermaid
+flowchart LR
+  Client --> WAF --> APIGW[API GW] --> Auth --> Handler --> Queue --> Storage[(Storage)]
+  Storage --> Catalog
+  Scheduler --> Catalog
+  Catalog --> Dashboard
+  Catalog --> Monitoring
+  Catalog --> Agent
 ```
 
 ### Key Design Decisions Style

@@ -19,9 +19,9 @@ oh-my-cloud-skills는 Claude Code용 플러그인 마켓플레이스로, AWS 클
 | aws-content-plugin | 콘텐츠 생성 (9 agents, 9 skills) | Python, HTML/CSS/JS, Draw.io |
 | aws-ops-plugin | 인프라 운영 (10 agents, 6 skills) | MCP servers, AWS CLI |
 | kiro-power-converter | 플러그인 → Kiro Power 변환 | YAML/JSON 변환 |
-| co-agent | 멀티-AI 협업 — 리뷰/의사결정/ADR/컨텍스트 동기화 (3 agents, 1 skill, 5 commands) | Kiro/Codex/Antigravity CLI |
+| co-agent | 멀티-AI 협업 — 리뷰/의사결정/ADR/컨텍스트 동기화 (5 agents, 3 skills, 6 commands) | Kiro/Codex/Antigravity CLI |
 | agentcore-creator | Claude Code → Bedrock AgentCore 변환 (1 agent, 1 skill) | AWS CLI, Python |
-| project-init | 프로젝트 초기화 및 문서 관리 (3 agents, 3 skills, 10 commands) | Bash, Markdown |
+| project-init | 프로젝트 초기화 및 문서 관리 (1 agent, 1 skill, 9 commands, upstream mirror) | Bash, Markdown |
 
 ### 도구 레이어
 
@@ -116,7 +116,7 @@ oh-my-cloud-skills는 Claude Code용 플러그인 마켓플레이스로, AWS 클
 
 ## System Overview
 
-oh-my-cloud-skills is a Claude Code plugin marketplace providing 6 plugins for AWS cloud content creation (presentations, diagrams, docs, workshops), infrastructure operations/troubleshooting, and developer tooling.
+oh-my-cloud-skills is a Claude Code plugin marketplace providing 7 plugins for AWS cloud content creation (presentations, diagrams, docs, workshops), infrastructure operations/troubleshooting, and developer tooling.
 
 ## Component Structure
 
@@ -127,9 +127,9 @@ oh-my-cloud-skills is a Claude Code plugin marketplace providing 6 plugins for A
 | aws-content-plugin | Content creation (9 agents, 9 skills) | Python, HTML/CSS/JS, Draw.io |
 | aws-ops-plugin | Infrastructure ops (10 agents, 6 skills) | MCP servers, AWS CLI |
 | kiro-power-converter | Plugin → Kiro Power conversion | YAML/JSON transform |
-| co-agent | Multi-AI collaboration — review/decide/ADR/sync-context (3 agents, 1 skill, 5 commands) | Kiro/Codex/Antigravity CLI |
+| co-agent | Multi-AI collaboration — review/decide/ADR/sync-context (5 agents, 3 skills, 6 commands) | Kiro/Codex/Antigravity CLI |
 | agentcore-creator | Claude Code → Bedrock AgentCore conversion (1 agent, 1 skill) | AWS CLI, Python |
-| project-init | Project scaffolding & doc management (3 agents, 3 skills, 10 commands) | Bash, Markdown |
+| project-init | Project scaffolding & doc management (1 agent, 1 skill, 9 commands, upstream mirror) | Bash, Markdown |
 
 ### Tool Layer
 

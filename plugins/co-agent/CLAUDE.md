@@ -13,12 +13,16 @@
 | `co-agent` | 멀티-AI 패널 의장 — 리뷰/의사결정/ADR을 외부 AI에 팬아웃하고 Claude가 종합 |
 | `gate-chair` | 하이브리드 게이트의 의장 판단 격리(`opus`+`xhigh` 서브에이전트) — Phase T triage(인용 검증→아티팩트 대조→dedupe→digest) + verify 라운드 종결 판정. **팬아웃 없음** — 외부 호출·동의·비용은 호스트 소유, 이 에이전트는 판단만 (호스트가 저비용 티어일 때 스폰; opus 호스트는 인라인 triage 가능) |
 | `harness-analyst` | hill-climbing 분석가(advisory-only, `opus`+`low`) — `.claude/co-agent-consensus/` 누적 기록(`stage_wall.tsv`·`tasks/*/result.json`·게이트 result)을 읽어 `/co-agent:configure set` 제안 생성. **설정을 직접 쓰지 않음**; 기록 <3회(`plan-gate` 행 기준)면 제안 없이 관찰만 |
+| `pr-autofix-planner` | `/co-agent:pr-autofix`의 read-only 수정 플래너(`opus`+`xhigh`, Read/Grep/Glob 강제) — 리뷰 finding을 기계적으로 적용 가능한 플랜으로 환산 |
+| `pr-autofix-implementer` | 플랜 적용 전용 구현자(`opus`+`medium`, Read/Write/Edit/Grep/Glob — Bash·네트워크 없음) — 승인된 델타만 격리 worktree에 씀 |
 
-## Skill
+## Skills
 
 | Skill | Trigger | Purpose |
 |-------|---------|---------|
 | `co-agent` | "co-agent", "second opinion", "다른 AI", "AI 협업", "코드/아키텍처 리뷰", "잘 모르겠어", "의사결정", "decide", "adr" | 멀티-AI 협업 (리뷰·의사결정·ADR·sync-context·consensus·harness·setup) |
+| `pr-autofix` | "pr autofix", "PR 자동 수정", "리뷰 피드백 수정" | PR 생성 후 AI/사람 리뷰를 폴링 → 플랜(Fable/Opus) → 격리 worktree 구현 → 승인 델타만 랜딩 → 커밋·푸시를 루프 (`/co-agent:pr-autofix`; 루프 상한은 `set pr_autofix max_iterations`, 기본 5) |
+| `decision-reconcile` | "의사결정 번복", "ADR 모순", "reconcile ADRs" | 누적 ADR 간 모순·현실 드리프트를 다양한 리뷰 렌즈(Claude 티어 + 선택적 peer CLI) 패널로 탐지하고 superseding ADR 초안 작성 |
 
 ## Modes
 
@@ -85,6 +89,51 @@ agy, host 제외) 중 enabled·설치된 것에 **병렬 팬아웃** → 각 pee
 - 다른 Bash 명령은 즉시 통과(`gh pr create`만 매칭). Codex 호스트는 Claude Code 훅을
   돌리지 않으므로 적용 안 됨(`.codex-plugin`에는 미등록).
 
+## Pre-push Lens Gate (PreToolUse hook)
+
+`git push`(로컬 → 원격, PR보다 앞선 시점)에 **3-lens 게이트**를 거침(**opt-in — 기본 off**).
+`plugin.json`의 같은 `PreToolUse(Bash)` 훅 배열에 `consensus_hooks.py pre-push-gate`가 PR
+게이트와 나란히 추가됨 → push될 range(`@{upstream}..HEAD`, 없으면 trunk merge-base)를 diff
+→ **동일 프롬프트가 아니라 3개 lens**(correctness/security/scope — `_PUSH_LENSES`)를
+gate-eligible peer에 **round-robin으로 배정**(peer 수와 무관하게 호출 수는 항상 3 —
+PR 게이트의 peer당 1콜과 같은 비용 프로파일) → 각 lens가 독립적으로 `PASS`/`BLOCK` 응답 →
+**BLOCK한 lens 수**로 판정(PR 게이트의 peer quorum과 다른 축):
+
+- **2개 이상 lens가 BLOCK** → `exit 2` **BLOCKED** — 고치고 재시도, bypass 권하지 않음.
+- **정확히 1개 lens만 BLOCK** → `exit 2` **CHAIR JUDGMENT REQUIRED** — 훅은 Claude를 직접
+  호출할 수 없으므로, exit 2 + 이 stderr 텍스트가 곧 판정을 체어에게 전달하는 유일한
+  경로. 호스트(Claude)가 finding을 실제 변경과 대조해 판단하고, 수용 가능하면
+  `CO_AGENT_PUSH_GATE=off git push ...`로 bypass, 아니면 고쳐서 재시도.
+- **0개** → `exit 0` PASS.
+
+- **리뷰할 수 없는 push는 SKIP(fail-open)** — kiro의 `push-scope-mismatch`와 **같은 4개
+  클래스**를 쓴다(두 훅이 같은 이벤트를 가로채므로 스킵 규칙이 갈리면 그 자체가 버그 표면):
+  선행 `cd`/`pushd`, 같은 invocation의 선행 `git commit` 류 상태 변경, **다른 repo/워크트리로
+  리다이렉트**(`-C` · `--git-dir` · `--work-tree` · `GIT_DIR=` 계열 — 게이트는 언제나 자기
+  root만 diff하므로 엉뚱한 저장소를 리뷰하게 된다), **ref 삭제 push**(리뷰할 내용이 없음).
+  뒤 두 개는 co-agent 쪽에 빠져 있던 것을 이식했다. `--delete`는 **이 invocation 범위**
+  에서만 인식한다 — 뒤따르는 다른 명령의 플래그가 이 push의 리뷰를 없애지 못한다.
+- **동의(consent)**: `push_gate.enabled=false`가 기본 — 활성화가 곧 외부 송신 동의.
+  `co_agent_config.py`에 처음으로 **tracked-file consent 스트리핑**이 추가됨(kiro의
+  `_strip_consent_keys`와 동일 로직): `.claude/co-agent.local.json`이 이 repo에 커밋돼
+  있거나 심볼릭링크 alias로 우회되면, `pr_gate.enabled`/`push_gate.enabled` 두 키만
+  무시하고 나머지 설정(model/timeout/block/quorum)은 그대로 적용.
+- **`/co-agent:configure set push_gate enabled|block|timeout <값>`으로 켬** —
+  `pr_gate`(config 파일 직접 편집만 가능)와 달리 `push_gate`는 `set` 경로가 있음. 켤 때
+  kiro의 `review.on_push`가 이미 켜져 있으면 "두 게이트 동시 실행은 비용·대기 2배" 경고
+  출력(그래도 씀 — 거부 아님). 반대 방향(kiro `set review on_push on`)도 co-agent
+  `push_gate`를 확인해 대칭 경고.
+- **Bypass**: 인라인 `CO_AGENT_PUSH_GATE=off git push ...` — PR 게이트의 `os.environ`
+  방식(`CO_AGENT_PR_GATE=off`)과 달리, push 게이트는 **payload 텍스트에서** 이 prefix를
+  인식(`_PUSH_BYPASS_ENV_RE`) — CHAIR JUDGMENT를 받아들이고 실제로 push하려면 인라인
+  bypass가 반드시 동작해야 하기 때문(세션 export만으로는 인라인 prefix가 안 먹히는 PR
+  게이트의 한계를 여기서는 반복하지 않음).
+- **Fail-open / secret-scan / read-only peer / 명령 매칭**: PR 게이트와 동일한 계약 —
+  `_scan_secret`(추가/삭제/context 전송 라인 스캔), read-only/sandbox peer, 명령 경계
+  매칭(`_GIT_PUSH_CMD_RE`, `git push`가 문자열 내부/heredoc/subshell에 있으면 스킵),
+  선행 `cd`/`pushd`나 state-changing `git commit`이 같은 invocation에 있으면 skip+advisory
+  (diff가 잘못된 scope/불완전할 수 있음).
+
 ## Configure (`/co-agent:configure`)
 
 패널 설정을 레이어드(`co-agent.defaults.json` ← `~/.claude/co-agent.user.json`(유저 스코프) ← `.claude/co-agent.local.json`(레포 로컬))로 관리. **CLI가 헤드리스로 실제 받는 것만** 노출:
@@ -96,6 +145,7 @@ agy, host 제외) 중 enabled·설치된 것에 **병렬 팬아웃** → 각 pee
 | enabled / timeout | yes | yes | yes |
 | context_limit (토큰) | 1,000,000 | 272,000 | 1,000,000 |
 | autosync (global) | `set autosync on` → CLAUDE.md 변경 시 `/co-agent:sync-context` 자동 실행 (옵트인, 기본 off) |
+| pr_autofix (global) | `set pr_autofix max_iterations <n>` → `/co-agent:pr-autofix` 루프 상한(기본 5). 스킬이 `co_agent_config.py pr-autofix-iterations`로 읽음 |
 
 > effort는 Claude/Codex처럼 헤드리스 effort 플래그가 있는 CLI에만 노출(dead 설정 미노출). 팬아웃이 `co_agent_config.py`의 `panel`/`flags`/`timeout`/`fits`을 호출해 설정이 **실시간 반영**됨. `context_limit` 초과 AI는 하드 실패 대신 **스킵**(예: 거대 diff에서 Codex 272K 초과 → Kiro/Agy만). model 값은 charset 검증으로 팬아웃 주입 차단.
 

@@ -9,19 +9,27 @@ co-agent는 **다른 AI 에이전트(Kiro CLI, Codex, Agy)와 협업**해 second
 
 ## 구성 요소
 
-### 에이전트 (1개)
+### 에이전트 (5개)
 
 | 에이전트 | 설명 | 출력물 |
 |----------|------|--------|
 | `co-agent` | 멀티-AI 패널 의장 — 리뷰/의사결정/ADR/consensus/harness 프롬프트를 외부 AI에 팬아웃하고 Claude가 종합 | 리뷰 보고서 / 의사결정표 / ADR / 구현 diff / readiness 요약 |
+| `gate-chair` | 하이브리드 게이트 의장 판단 격리(`opus`+`xhigh`) — Phase T triage + verify 라운드 종결 판정 (외부 호출 없음) | curated digest / 라운드 판정 |
+| `harness-analyst` | 하네스 실행 기록 분석(advisory-only, `opus`+`low`) — 누적 run record → `/co-agent:configure set` 제안 | 튜닝 제안 |
+| `pr-autofix-planner` | pr-autofix 수정 계획 (read-only 강제, fable/opus) | 구조화된 수정 계획 |
+| `pr-autofix-implementer` | pr-autofix 계획 적용 (편집 도구만 강제, `opus`+`medium`) | worktree 내 파일 편집 |
 
-### 스킬 (1개)
+> `pr-autofix-planner`/`pr-autofix-implementer`는 pr-autofix 스킬 내부 워커로, 키워드 자동 호출을 디스크립션으로 억제합니다(하드 차단은 아니며, 준비된 입력 없이 호출되면 blocked를 반환).
+
+### 스킬 (3개)
 
 | 스킬 | 설명 |
 |------|------|
 | `co-agent` | 7-모드 멀티-AI 협업 (review · decide · adr · sync-context · consensus · harness · setup) |
+| `pr-autofix` | PR 리뷰 피드백 자동 수정 (AI + 사람 리뷰 polling; 반복 상한은 `set pr_autofix max_iterations`, 기본 5) |
+| `decision-reconcile` | 누적 ADR 간 모순·ADR vs 현실 drift를 다양성 멀티 에이전트 패널로 검출, 번복 ADR 초안 작성 |
 
-### 명령 (5개)
+### 명령 (6개)
 
 | 명령 | 설명 |
 |------|------|
@@ -30,6 +38,7 @@ co-agent는 **다른 AI 에이전트(Kiro CLI, Codex, Agy)와 협업**해 second
 | `/co-agent:consensus` | 자율 doc→plan→구현 파이프라인, 멀티모델 합의 게이트 (Stage A/B/C) |
 | `/co-agent:harness` | host-designs / peer-implements(격리 worktree) / panel-reviews 오케스트레이터 |
 | `/co-agent:setup` | 패널 준비도 preflight — peer별 접근경로 감지 + 실사용 프로브, readiness 요약 기록 |
+| `/co-agent:pr-autofix` | PR 리뷰 피드백(AI + 사람) 폴링 → 계획 → 격리 worktree 구현 → 커밋·푸시 루프 |
 
 ## 사전 요구사항 (선택적 — 있는 것만 사용)
 

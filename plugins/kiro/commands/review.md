@@ -32,8 +32,17 @@ first.
 Run the review against staged changes (default) or the paths given in `$ARGUMENTS`:
 
 ```bash
-python3 "$SK/kiro_review.py" --staged
+python3 "$SK/kiro_review.py" --staged --progress
 ```
+
+**Always pass `--progress` here, and run the command in a BACKGROUND Bash**, polling its
+output. kiro-cli has no `stream-json`-style machine-readable stream (verified 2026-07 —
+see `references/kiro-headless.md` "Watching a run"), so `--progress` tails kiro's own
+human-readable output to stderr as it arrives, prefixed `[kiro:<lens>]`, with a 15s
+"still running" heartbeat. Foreground, nothing appears until the whole call returns
+(up to `review.timeout`, ×3 lenses in `--range` mode) — that blind wait is the only
+reason to omit the flag, and there isn't one for an interactive command. Report progress
+lines only as progress; the **findings** are what the final output prints.
 
 Or, if the user gave specific paths, pass each path as its **own quoted argv token**
 after `--` — never splice the raw `$ARGUMENTS` string in unquoted (it can carry shell
@@ -44,13 +53,26 @@ reviewable:
 
 ```bash
 # one quoted token per path the user named — e.g. two files:
-python3 "$SK/kiro_review.py" -- "src/foo.py" "src/bar.py"
+python3 "$SK/kiro_review.py" --progress -- "src/foo.py" "src/bar.py"
 ```
 
 This runs even if `review.on_commit` is off (that setting only gates the automatic
 pre-commit hook, not a manual `/kiro:review`). Report the findings as printed — advisory
 findings are informational; a `critical` finding (or whatever `review.block` is set to)
 means `git commit` would currently be blocked by the hook until it's fixed.
+
+To run the same 3-lens pass the pre-push hook runs (correctness/security/scope, in
+parallel, over the commit range about to be pushed — `@{upstream}...HEAD`, falling back
+to the trunk merge-base), on demand:
+
+```bash
+python3 "$SK/kiro_review.py" --range --lenses correctness,security,scope --progress
+```
+
+This works even if `review.on_push` is off. A `critical` finding is framed as
+`BLOCKED`; a `warning`-only set (no critical) is framed as `CHAIR JUDGMENT REQUIRED` —
+read each finding against the actual change and judge whether it's acceptable for this
+push before deciding to proceed.
 
 If the run reported a skip (missing/tampered reviewer agent) and the user, after being
 told, explicitly asks to review anyway:

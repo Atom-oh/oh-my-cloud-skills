@@ -65,8 +65,7 @@ project-root/
 ### CLAUDE.md Hierarchy
 - **Root CLAUDE.md**: Project-wide context (overview, tech stack, conventions, commands)
 - **Module CLAUDE.md**: Module-specific context (role, key files, rules)
-- Every CLAUDE.md is loaded into every session — aim for a few screens, extracting
-  detail to `docs/` with a link; 500+ lines is a hard smell (anti-pattern table below)
+- Keep each CLAUDE.md concise and under 500 lines - it's part of the prompt context
 
 ### Auto-Sync Mechanisms
 1. **CLAUDE.md Auto-Sync Rules**: Embedded in root CLAUDE.md, triggered after Plan mode
@@ -87,9 +86,7 @@ project-root/
 | MCP | `.mcp.json` | External tool connections |
 
 ### When to Create New Module CLAUDE.md
-- Create one when the directory carries rules or context the code doesn't show
-  (constraints, gotchas, module-specific conventions) — skip pure pass-through
-  directories; a file that restates the directory name is context tax without payload
+- Any new directory under the source root (src/, app/, lib/, etc.) should have a `CLAUDE.md`
 - Use `/add-module <path>` to create directory + CLAUDE.md + update architecture docs in one step
 - Document: module role, key files, dependencies, and module-specific rules
 
@@ -147,8 +144,7 @@ When applying this structure to existing projects:
 - Detect language/framework from dependency files (package.json, pyproject.toml, go.mod, etc.)
 - Use existing source directories instead of creating src/api/ and src/persistence/
 - Auto-fill Tech Stack, Commands, and Conventions from detected build system
-- Create module CLAUDE.md for source directories with non-obvious rules
-  (same bar as "When to Create New Module CLAUDE.md" above)
+- Create module CLAUDE.md for each existing source directory
 
 ## Reference Files
 
@@ -164,4 +160,3 @@ For detailed templates, see:
 - [references/tests-templates.md](references/tests-templates.md) - Test framework and harness validation templates
 - [references/readme-template.md](references/readme-template.md) - Bilingual README.md generation rules and section structure
 - [references/changelog-template.md](references/changelog-template.md) - Bilingual CHANGELOG.md generation rules following Keep a Changelog
-- [references/writing-style-guide.md](references/writing-style-guide.md) - Bilingual writing style guide
