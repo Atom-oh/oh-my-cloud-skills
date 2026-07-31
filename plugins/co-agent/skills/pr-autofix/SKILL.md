@@ -79,7 +79,7 @@ MARKER=$(python3 "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.
 # override, the actual CI verdict.
 AI_REVIEW_FILTER='[ .[] | select(.user.login == "github-actions[bot]") |
                      select(if $m == "" then (.body | test("<!--\\s*[a-z0-9-]*pr-review\\s*-->"))
-                            else (.body | contains($m)) end) ] | last | {updated_at, body}'
+                            else (.body | contains($m)) end) ] | last | select(. != null) | {updated_at, body}'
 gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" | jq --arg m "$MARKER" "$AI_REVIEW_FILTER"
 ```
 
