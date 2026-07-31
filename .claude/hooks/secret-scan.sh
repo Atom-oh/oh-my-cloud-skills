@@ -554,7 +554,10 @@ PR_REVIEW_TEST_FIXTURE_LITERALS=(
     'sk-proj-abcdefghijklmnopqrstuvwxyz'
     'AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ1234'
     'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'
-    'abcdefghijklmnop'
+    # Full contextual clause, not the bare 16-char value — a bare 'abcdefghijklmnop'
+    # is generic enough to plausibly appear as a substring of a real base64/hex
+    # secret pasted in later, which this literal-strip would then silently eat.
+    'api_key = "abcdefghijklmnop"'
     'supersecretvalue123'
     'get_secret()'
 )
