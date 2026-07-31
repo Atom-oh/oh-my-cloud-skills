@@ -35,6 +35,8 @@ Usage:
   co_agent_config.py set harness implementer_effort <e>  # write-path effort (codex implementer only; same per-AI storage)
   co_agent_config.py set pr_autofix max_iterations <n>   # /co-agent:pr-autofix loop bound
   co_agent_config.py pr-autofix-iterations       # effective pr-autofix loop bound (int)
+  co_agent_config.py set pr_autofix review_marker <s>    # AI review comment marker ("" = auto)
+  co_agent_config.py pr-autofix-marker           # effective marker (empty = regex auto-detect)
   co_agent_config.py set push_gate enabled <on|off>  # 3-lens pre-push gate (correctness/
                                                       # security/scope) — consensus_hooks.py
                                                       # pre-push-gate; enabling = consent
@@ -446,7 +448,11 @@ def cmd_show(root, host):
           f"implementer {h.get('implementer') or '(default)'} / parallel_tasks {h.get('parallel_tasks', 3)} / "
           f"max_fix_rounds {h.get('max_fix_rounds') or 2}")
     pa = cfg.get("pr_autofix") or {}
-    print(f"  pr_autofix: max_iterations {pa.get('max_iterations', 5)} (review-fix-push cycles)")
+    marker = pa.get("review_marker", "")
+    if not isinstance(marker, str):
+        marker = ""
+    print(f"  pr_autofix: max_iterations {pa.get('max_iterations', 5)} (review-fix-push cycles) "
+          f"· review_marker {marker or '(auto-detect)'}")
     pg = cfg.get("push_gate") or {}
     print(f"  push_gate: enabled {bool(pg.get('enabled', False))} · block {bool(pg.get('block', True))} "
           f"· timeout {pg.get('timeout', 180)}s (3-lens pre-push gate: correctness/security/scope)")
@@ -601,17 +607,31 @@ def cmd_set(root, rest, host, scope="local"):
             print(f"harness keys: {', '.join(HARNESS_KEYS)}", file=sys.stderr)
             return 2
     elif rest[0] == "pr_autofix":
-        if len(rest) != 3 or rest[1] != "max_iterations":
-            print("usage: set pr_autofix max_iterations <positive integer>", file=sys.stderr)
-            return 2
-        if not rest[2].isdigit() or int(rest[2]) < 1:
-            print("max_iterations must be a positive integer", file=sys.stderr)
+        if len(rest) != 3 or rest[1] not in ("max_iterations", "review_marker"):
+            print("usage: set pr_autofix max_iterations <positive integer>  |  "
+                  "set pr_autofix review_marker <string>", file=sys.stderr)
             return 2
         pa = local.get("pr_autofix")
         if not isinstance(pa, dict):
             pa = {}
             local["pr_autofix"] = pa
-        pa["max_iterations"] = int(rest[2])
+        if rest[1] == "max_iterations":
+            if not rest[2].isdigit() or int(rest[2]) < 1:
+                print("max_iterations must be a positive integer", file=sys.stderr)
+                return 2
+            pa["max_iterations"] = int(rest[2])
+        else:   # review_marker — input validation (trust boundary): this value flows
+            # into shell/jq contexts downstream, and its source file
+            # (.claude/co-agent.local.json) may be committed by an adversarial repo
+            # (the tracked-file consent stripping above already acknowledges that risk).
+            # An empty string IS valid — it reverts to regex auto-detect.
+            if "\n" in rest[2] or "\r" in rest[2]:
+                print("review_marker must not contain newlines", file=sys.stderr)
+                return 2
+            if len(rest[2]) > 200:
+                print("review_marker must be at most 200 characters", file=sys.stderr)
+                return 2
+            pa["review_marker"] = rest[2]
     elif rest[0] == "push_gate":
         if len(rest) != 3:
             print("usage: set push_gate <enabled|block|timeout> <value>", file=sys.stderr)
@@ -843,6 +863,17 @@ def cmd_pr_autofix_iterations(root):
     return 0
 
 
+def cmd_pr_autofix_marker(root):
+    """Print the effective pr-autofix AI-review comment marker. Empty (the default)
+    prints a blank line — the caller interprets "" as "regex auto-detect"."""
+    pa = effective(root).get("pr_autofix") or {}
+    marker = pa.get("review_marker", "")
+    if not isinstance(marker, str):
+        marker = ""
+    print(marker)
+    return 0
+
+
 def cmd_impl_flags(root, ai, host):
     """Write-mode flags for the harness implementer: a workspace-write sandbox scoped
     to the worktree, plus the implementer's model/effort. ONLY for the implement path
@@ -994,6 +1025,8 @@ def main():
         return cmd_parallel_tasks(root)
     if cmd == "pr-autofix-iterations":
         return cmd_pr_autofix_iterations(root)
+    if cmd == "pr-autofix-marker":
+        return cmd_pr_autofix_marker(root)
     if cmd == "max-fix-rounds":
         return cmd_max_fix_rounds(root)
     if cmd == "impl-flags":
