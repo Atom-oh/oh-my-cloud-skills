@@ -69,8 +69,11 @@ L2=Skill/Agent 품질, L3=보안, L4=코드 정확성, L5=문서 일관성 (L1=�
 .agents 매니페스트 양쪽 다 이미 결정적 스크립트로 통과했으므로 재검토 불필요 —
 다시 flag 하지 말 것).
 패널: ${RESP}
-프로젝트 리뷰 메모리 = docs/pr-review/review-memory.md — 존재하면 Read 로 직접 읽어라
-(경로만 준다 — 내용은 이 프롬프트에 인라인되지 않는다).
+프로젝트 리뷰 메모리 = docs/pr-review/review-memory.md. 이 파일이 아직 없는 것은 정상
+상태다(예: 이 파일을 처음 추가하는 PR 자체를 리뷰하는 경우) — Read 를 딱 한 번만 시도하고,
+파일이 없거나 그 Read 가 실패하면 즉시 포기하고 그 사실을 재확인하거나 재시도하지 말고 바로
+다음 단계로 진행하라. 존재할 때만 내용을 참고한다(경로만 준다 — 내용은 이 프롬프트에
+인라인되지 않는다).
 
 Synthesize ONE final review, grouped by lens (L2/L3/L4/L5):
 1. **Summary** (2-3 sentences in Korean)
