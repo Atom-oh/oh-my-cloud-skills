@@ -110,3 +110,5 @@
 ## 인증
 - Kiro: `ai-panel-keys` ExternalSecret(`<secret-path>`) → 러너 env (외부 API-key)
 - Codex/Claude: EKS Pod Identity(`<ci-runner-role>`, Bedrock) SigV4 — Pod Identity Association 필요
+
+<!-- pr-review control-test: trivial no-op diff to isolate whether the chair loop is diff-content-specific to PR #141, or reproduces on any PR. Safe to delete/close. -->
