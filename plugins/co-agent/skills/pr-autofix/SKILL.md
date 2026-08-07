@@ -125,7 +125,18 @@ Evaluate each review source:
 
 **Combined verdict:**
 - Both PASS (or SKIP) → done, inform user
-- Either BLOCKED → proceed to fix
+- Either BLOCKED → **check the bound BEFORE starting another fix pass**, not only at
+  the end in §6 — a resumed/re-entered run must not spend one more full fix→commit→push
+  cycle past `$MAX_ITER` just because the after-the-fact check in §6 is the only one:
+
+```bash
+if [ "$ITERATION" -ge "$MAX_ITER" ]; then
+  echo "Already at $ITERATION/$MAX_ITER fix commits — stopping without another pass; manual review needed."
+  exit 0   # or your harness's equivalent "stop, report to user" action
+fi
+```
+
+  Only then proceed to step 4 (fix).
 
 ### 4. Fix issues (if BLOCKED) — plan on a strong model, implement on opus [medium effort]
 
@@ -321,11 +332,15 @@ immediately after — never written via `co_agent_config.py set`, so
 ```bash
 if [ "$ITERATION_NOW" -gt 5 ]; then
   export CO_AGENT_GATE_MODEL_OVERRIDE_KIRO_CLI="claude-opus-5"   # or the resolved rung
+  export CO_AGENT_GATE_MODEL_OVERRIDE_CODEX="openai.gpt-5.6-sol"  # rung 1 — set explicitly,
+  # never rely on it happening to match the configured panel default; a future config
+  # change must not silently disable this escalation.
   export CO_AGENT_GATE_CODEX_EFFORT_OVERRIDE="xhigh"
 fi
 ```
 
-Unset both (`unset CO_AGENT_GATE_MODEL_OVERRIDE_KIRO_CLI CO_AGENT_GATE_CODEX_EFFORT_OVERRIDE`)
+Unset all three
+(`unset CO_AGENT_GATE_MODEL_OVERRIDE_KIRO_CLI CO_AGENT_GATE_MODEL_OVERRIDE_CODEX CO_AGENT_GATE_CODEX_EFFORT_OVERRIDE`)
 immediately after §5b's call — these must not leak into a later, non-escalated pass.
 
 ### 5b. Escalation gate (iteration > 3) — lens review before push
@@ -344,8 +359,15 @@ HOOK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/consensus_hooks.py"
 if [ ! -f "$HOOK" ]; then
   echo "pre-push lens gate script not found at $HOOK — skipping §5b, reporting this, pushing without it"
   GATE_RC=0; GATE_OUT=""
+# `if CMD; then GATE_RC=0; else GATE_RC=$?; fi` (not `GATE_OUT=$(...); GATE_RC=$?`) is
+# deliberate: under `set -e` (in effect if this snippet runs inside a stricter caller
+# script), a bare failing command substitution aborts the shell right there, before the
+# next line ever assigns $?, silently skipping the intended re-plan handling below. An
+# `if` condition is exempt from `set -e` by POSIX design, so this form is correct either
+# way — with or without `set -e` in the surrounding shell.
+elif GATE_OUT=$(echo '{"tool_input":{"command":"git push"}}' | python3 "$HOOK" pre-push-gate --root . 2>&1); then
+  GATE_RC=0
 else
-  GATE_OUT=$(echo '{"tool_input":{"command":"git push"}}' | python3 "$HOOK" pre-push-gate --root . 2>&1)
   GATE_RC=$?
 fi
 ```
