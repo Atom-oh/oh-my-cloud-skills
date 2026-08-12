@@ -23,8 +23,6 @@ A brochure is **persuasion + clarity for a dual audience**: a decision-maker gra
 
 ## Mandatory Rules
 
-> **이 규칙은 예외 없이 항상 적용됩니다.**
-
 1. **사실 우선**: 작성 전 제품 사실(핵심 메시지·지표·기능·아키텍처)을 소스(repo/README/사용자)에서 확보합니다. **지표·기능 수·서비스명을 지어내지 않습니다** — 부풀린 숫자는 기술 독자의 신뢰를 즉시 잃습니다. 누락 시 `AskUserQuestion`으로 확인.
 2. **자기완결 HTML**: 단일 `.html` 파일, CSS는 `<style>`에 인라인. 폰트 CDN은 허용하되 **반드시 system 폰트 폴백**을 둡니다. 빌드 도구·프레임워크 금지.
 3. **3-tier 반응형 필수**: 모바일(~375px)·태블릿(~768px)·PC(~1280px) 모두 검증. 모바일에서 표는 카드로 재배치(의미 열 숨김 금지), 가로 아키텍처 SVG는 90° 회전(세로). `references/design-system.md` 참조.

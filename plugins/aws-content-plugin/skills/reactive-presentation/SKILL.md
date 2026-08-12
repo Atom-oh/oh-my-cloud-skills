@@ -26,17 +26,15 @@ python3 {skill-dir}/scripts/extract_pptx_theme.py <pptx_path> -o {repo}/common/p
 생성물: `theme-manifest.json`(colors/fonts/logos/footer/layout) · `theme-override.css` · `images/`. 매니페스트 매핑 → `_presentation.md`: `slide_size.aspect_ratio`→`ratio`, `footer_text`→`theme.footer`, `logos[0]`→`theme.logo`. `theme-override.css`를 `common/`에 복사. 상세: [references/pptx-theme-guide.md](references/pptx-theme-guide.md). (AWS 아이콘은 build가 참조분만 자동 복사 — 수동 추출 불필요.)
 
 ### Phase 2 — Content Authoring
-**플래닝 질문** (planning 시 확인, 빠진 것만 질문):
+**플래닝** (브리프·기존 문서·MEMORY.md가 답한 것은 재질문하지 않고, 빠진 것만 질문):
 - Topic & audience / Duration(블록당 20-35분 + 5분 휴식) / Target repo(기본 `~/reactive_presentation/`) / Language(KO·EN, 기술용어는 영어) / Aspect ratio(기본 16:9)
-- **Design refs** (REQUIRED, skippable): "참고 디자인(PPTX/PDF/이미지/기존 프레젠테이션 경로)이 있나요? (또는 skip)" → 제공 시 브랜딩+레이아웃 추출(`.pptx`=Phase 1, `.pdf`/이미지=시각 레이아웃 참고). 기존 프레젠테이션은 `~/oh-my-skill-tester/`도 자동 탐색해 목록 제시. skip 시 CSS-only cover + 기본 theme + **`_presentation.md`에 footer/logo 수동 설정 필수**.
+- **Design refs**: 참고 디자인(PPTX/PDF/이미지/기존 프레젠테이션 경로) 유무 확인 → 제공 시 브랜딩+레이아웃 추출(`.pptx`=Phase 1, `.pdf`/이미지=시각 레이아웃 참고). 기존 프레젠테이션은 `~/oh-my-skill-tester/`도 자동 탐색해 목록 제시. 없으면 CSS-only cover + 기본 theme + **`_presentation.md`에 footer/logo 수동 설정 필수**.
+- Frontmatter required 필드 수집: `speaker`{name,title,company} (MEMORY.md에 저장·재사용, 생략 가능), `level`(100~400), `quiz`(true/false — 합리적 기본값이 없으니 브리프에 없으면 확인; 미포함 시 Key Takeaways로 대체), `duration`(blocks 합과 일치)
 
-**디자인 플랜 (필수 — 작성 전 2-pass)**: [references/design-direction.md](references/design-direction.md)를
-읽고 Subject/Palette/Type/Signature 플랜을 세운 뒤 anti-default 자기비평을 통과하고 작성 시작.
+**디자인 플랜 (작성 전 2-pass)**: [references/design-direction.md](references/design-direction.md)를
+읽고 Subject/Palette/Type/Signature 플랜을 세운 뒤 anti-default 자기비평(§3 Pass 2)을 거쳐 작성 시작.
 테마 선택: 기본(AWS 콘솔 라이트) · `theme: { mode: dark }`(squid-ink night) ·
 `theme: { preset: paper }`(구 웜 룩, 의도적 선택 시만) · PPTX 추출(항상 우선).
-- **Speaker** (skippable): 이름·직함·소속 → frontmatter `speaker`{name,title,company} (MEMORY.md에 저장·재사용)
-- **Level** (REQUIRED): 100/200/300/400 → frontmatter `level`
-- **Quiz** (skippable): 블록 끝 복습 퀴즈? → frontmatter `quiz`(true/false). 미포함 시 Key Takeaways로 대체. 전체 시간 → `duration`(blocks 합과 일치)
 
 **프로젝트 구조** (멀티파일): `_presentation.md`(글로벌 theme/footer/logo/blocks) + `NN-block.md`(remarp:true) + `animations/`(Canvas JS).
 
@@ -48,9 +46,9 @@ python3 {skill-dir}/scripts/extract_pptx_theme.py <pptx_path> -o {repo}/common/p
 
 **Remarp 핵심**: `remarp: true` frontmatter · `@type`/`@layout`/`@transition`/`@theme` 디렉티브 · `{.click}`·`:::click` 프래그먼트 · `:::notes` 스피커 노트 · `:::canvas` DSL · `::: left`/`::: right` 컬럼. 전체 문법: [references/remarp-format-guide.md](references/remarp-format-guide.md).
 
-> **스피커 노트 (필수)**: 모든 슬라이드에 `:::notes` — 150자+ (권장 300~500), `{timing}`/`{cue}` 마커 + `[요약]`(3~5 불릿) + 구어체 스크립트. 누락/무구조 시 `MISSING_NOTES`/`NOTE_STRUCTURE` 경고. 스키마: remarp-format-guide.md "Structured Note Schema".
+> **스피커 노트**: 모든 슬라이드에 `:::notes` — 발표자가 노트만 보고 그 슬라이드를 발표할 수 있는 분량과 구조 (`{timing}`/`{cue}` 마커 + `[요약]` 불릿 + 구어체 스크립트). 누락/무구조는 validate가 `MISSING_NOTES`/`NOTE_STRUCTURE`로 잡음. 스키마: remarp-format-guide.md "Structured Note Schema".
 
-> ⚠️ **Interactive-First**: 3+ 하위항목→탭 · 4+ 나열→grid 카드(불릿 금지) · 5+ 박스→`:::html`+`:::css`(canvas 금지) · `:::html`은 3+ 동위요소면 `fragment fade-up`로 reactive. 원칙·탭 템플릿·색상 토큰: **authoring-rules.md §4**.
+> ⚠️ **Interactive-First**: 정보가 많은 슬라이드일수록 인터랙티브 패턴(탭·grid 카드·fragment)으로 — 불릿 나열은 읽히지 않는다. 임계값·탭 템플릿·색상 토큰의 canon: **authoring-rules.md §4·§5** (validate가 `INTERACTIVE_FIRST`/`CANVAS_COMPLEXITY`로 backstop).
 
 **대안 포맷** (명시 요청 시만): slides.json(런타임 렌더, slide-patterns.md "JSON Authoring Mode") · Marp(레거시, marp-format-guide.md).
 
@@ -94,9 +92,8 @@ python3 {skill-dir}/scripts/remarp_to_slides.py issues {repo}/{slug}/ [--json]  
 ```
 (빌드가 생성하는 `toc.html`에는 블록별/전체 PDF·ZIP·PPTX 버튼이 이미 포함됨.)
 
-### Phase 7 — Quality Review (필수 — 생략 불가)
-1. content-review-agent 호출 → `review content at [경로]` · 2. FAIL/REVIEW 시 수정 후 재리뷰(최대 3회) · 3. **PASS(≥85점) 후에만 완료 선언**.
-> ⚠️ 이 단계를 건너뛰고 배포 금지.
+### Phase 7 — Quality Review
+배포/완료 선언 전 `review content at [경로]`로 content-review-agent PASS — plugin CLAUDE.md의 Quality Gate 규칙.
 
 ### Phase 8 — Verify
 블록별 점검: 슬라이드 수 일치 · `SlideFramework` 옵션(footer/logoSrc/presenterNotes) · 모든 Canvas ID에 `setupCanvas()` · quiz `data-quiz`/`data-correct` · `../common/` 상대경로 · **theme-override.css 링크됨(PPTX 추출 시)** · 언어 · 첫 슬라이드=Session Cover(§0a/§0b, `.title-slide` 아님) · 마지막=Thank You(목차 링크).
@@ -127,12 +124,9 @@ GitHub Pages: Settings → Pages → main / root.
 - `:::canvas`를 쓰기 전 반드시 **[references/canvas-authoring-guide.md](references/canvas-authoring-guide.md)** (DSL 문법, 필수 좌표 공식, fragment 순서). `validate`가 CANVAS_OVERLAP backstop.
 - 뷰어 단축키(←→ Space ↑↓ F N P O S B Esc 1-9): [references/keyboard-shortcuts.md](references/keyboard-shortcuts.md).
 
-## Quality Assurance (사실 검증 — YAML/config 인용 시)
-- **Canvas 비례 스케일**: 모든 Canvas는 `ResizeObserver` + `BASE_W/BASE_H` + `ctx.scale(scale*dpr, scale*dpr)` 패턴 필수 (FHD/4K 대응). `setupCanvas()` 단독 금지 (px max-width 고정됨). slide-patterns.md §5.
-- **Karpenter v1**: `expireAfter`는 `spec.template.spec` (NOT `spec.disruption`). 메트릭은 `_total` 접미사. (karpenter.sh 확인)
-- **Grafana Loki**: derivedFields는 `regex` (NOT `matcherRegex`).
-- **GitBook 앵커**: 한글 제목은 한글 슬러그 (`## 1. 관측성` → `#1-관측성`, 숫자 뒤 점 제거, 공백→하이픈).
-- **K8s**: `topologySpreadConstraints`는 `labelSelector` 필요. VPA `Auto`는 deprecated (→ `Recreate`).
+## Quality Assurance
+- **Canvas 비례 스케일 (프레임워크 계약)**: 모든 Canvas는 `ResizeObserver` + `BASE_W/BASE_H` + `ctx.scale(scale*dpr, scale*dpr)` 패턴 필수 (FHD/4K 대응). `setupCanvas()` 단독 금지 (px max-width 고정됨). slide-patterns.md §5.
+- **사실 검증**: YAML/config/API를 인용하는 슬라이드는 공식 문서로 확인한 값만 싣는다 — 기술 덱에서 잘못된 설정 키 하나가 발표 전체의 신뢰를 깎는다.
 
 ## Resources
 **assets/** (→ `common/`): design-tokens.css · theme.css · theme-override-template.css · slide-framework.js · slide-renderer.js · presenter-view.js · animation-utils.js · quiz-component.js · export-utils.js

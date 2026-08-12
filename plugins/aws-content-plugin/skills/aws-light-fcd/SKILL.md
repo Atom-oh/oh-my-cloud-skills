@@ -34,18 +34,12 @@ typography, white canvas, near-black ink, and a single signature gradient
 4. **Write a build script** that `require("./scripts/deck_kit.js")` (and
    `arch_kit.js` if drawing diagrams), calls the layout builders, then
    `await pres.writeFile(...)`. Run it with `NODE_PATH=$(npm root -g) node build.js`.
-5. **QA (필수 — 거절 루프)**: `python3 scripts/check_pptx.py "$DECK"` — fix every
-   finding and rerun until it passes. **The gate is `score ≥80` AND zero `[geometry]`
-   findings** (a geometry defect — overflow/overlap/off-canvas — never passes, no matter
-   the score, because content-review-agent treats it as Critical). This is a
-   deterministic check (text overflow, overlap, off-canvas, missing footer, page-number
-   sanity, font consistency, placeholder text) — treat it like `remarp_to_slides.py
-   validate`'s rejection loop, not an optional pass. If `soffice` is installed
-   (`command -v soffice`), you can additionally render to PDF→JPG for a visual spot
-   check (`soffice --headless --convert-to pdf "$DECK" && pdftoppm -jpeg -r 130
-   "${DECK%.pptx}.pdf" preview`) — optional, since check_pptx.py already catches the
-   common failure modes programmatically. (Quote the path — `"$DECK"` — so a filename
-   with spaces doesn't word-split.)
+5. **QA (거절 루프)**: `python3 scripts/check_pptx.py "$DECK"` — fix every finding and
+   rerun until it passes. **The gate is `score ≥80` AND zero `[geometry]` findings**
+   (a geometry defect — overflow/overlap/off-canvas — never passes, no matter the
+   score, because content-review-agent treats it as Critical). Optional visual spot
+   check if `soffice` is installed: `soffice --headless --convert-to pdf "$DECK" &&
+   pdftoppm -jpeg -r 130 "${DECK%.pptx}.pdf" preview`.
 6. **Embed fonts** — run `python scripts/embed_fonts.py "$DECK"` so the deck
    carries Pretendard and renders identically everywhere.
 7. **Deliver** — leave the `.pptx` in the working/output directory and report its
@@ -56,7 +50,7 @@ A complete working example lives in `scripts/demo_build.js` — read it first; i
 exercises every layout builder, including the declarative `arch.archFlow`, and is the
 fastest way to learn the API.
 
-## Core rules (NON-NEGOTIABLE)
+## Core rules (디자인 시스템 계약)
 
 1. **Font: Pretendard only.** No fallbacks. (Preview renders via a substitute font,
    so trust the layout, not the exact glyph widths in the JPG. See font note below.)
@@ -69,11 +63,9 @@ fastest way to learn the API.
 4. **Footer on every content slide**: copyright (left) + small AWS logo + page number
    (right). Cover gets the big bottom-right logo and **no** small footer logo.
    `addFooter(pres, s, pageNum)` handles this; cover uses the built-in `cover()`.
-5. **Agenda lists content chapters ONLY.** Never auto-insert "다음 단계 / PoC / 워크샵
-   제안 / 감사합니다"-type closing items into the agenda. A closing slide may exist at
-   the end of the deck (use `kit.closing`), but it does not belong in the table of contents.
-   Section dividers (`kit.sectionDivider`) and the closing use a full-gradient background
-   with a white footer — that's handled by the builders, don't override it.
+5. **Agenda lists content chapters only** — "다음 단계 / 감사합니다"류 closing 항목은
+   목차가 아니라 덱 끝의 closing 슬라이드(`kit.closing`)에 속한다. Section divider와
+   closing의 full-gradient 배경 + 흰 푸터는 빌더가 처리하므로 오버라이드하지 않는다.
 6. **Background is white by default.** Use the subtle top-right glow (`bg: "glow"`)
    only on slides that deserve emphasis (e.g. big-stat, section openers) — not everywhere.
 7. **AgentCore content → AgentCore icons.** When a slide is about AgentCore or its

@@ -44,8 +44,8 @@ Never fabricate job titles, dates, employers, talks, or project descriptions.
    `gh api --paginate "users/<user>/repos?per_page=100&type=owner" --jq '.[] | select(.fork|not) | {name, description, html_url, homepage, has_pages}'`
    (`gh repo list --json` has no Pages field — `has_pages` only exists on the REST repo object, so go through `gh api`; the jq also drops forks, which are not the person's own work).
    **Prioritize repos with `has_pages: true` as showcase candidates** — they come with a working Live + GitHub link pair (Live = `homepage`, or the repo's Pages URL). Repos without Pages get a GitHub link only, and only if the user wants them included.
-2b. **LinkedIn (optional input)**: if the user gives a LinkedIn profile URL (fetch `https://` URLs only — reject other schemes), try `WebFetch` on it for experience/title/education — expect LinkedIn's auth wall on unauthenticated requests (it usually blocks). Treat anything you do retrieve as *candidate* facts — show them to the user for confirmation before publishing — and when nothing verifiable comes back, say so and collect experience from the user instead (a single verifiable current role plus a "full history on LinkedIn" link is an honest fallback). Never pad the experience section with guesses.
-3. **Confirm the selection and ask what's missing** with `AskUserQuestion` — which of the candidate projects to feature (never silently include every repo), and **per selected repo, whether a separate demo site exists** (a project card carries up to three links — GitHub, Live (Pages), Demo — and Demo can't be derived from the repo, so it must come from the user; omit it rather than guessing). Then any remaining gaps: name, title/role, location, 3–6 experience entries (company, period, one-line description), and skill categories.
+2b. **LinkedIn (optional input)**: if the user gives a LinkedIn profile URL (fetch `https://` URLs only — reject other schemes), try `WebFetch` on it for experience/title/education — expect LinkedIn's auth wall on unauthenticated requests (it usually blocks). Treat anything you do retrieve as *candidate* facts — show them to the user for confirmation before publishing — and when nothing verifiable comes back, say so and collect experience from the user instead (a single verifiable current role plus a "full history on LinkedIn" link is an honest fallback).
+3. **Confirm the selection and ask what's missing** with `AskUserQuestion` — which of the candidate projects to feature (never silently include every repo), and **per selected repo, whether a separate demo site exists** (a project card carries up to three links — GitHub, Live (Pages), Demo — and Demo can't be derived from the repo, so it must come from the user; omit it rather than guessing). Then any remaining gaps: name, title/role, location, experience entries (company, period, one-line description), and skill categories.
 
 Capture:
 - **Identity**: name, title, org, location, avatar image, contact/social links (GitHub, LinkedIn, etc.).
@@ -110,9 +110,5 @@ A profile page must be **publicly reachable**. The typical target is the person'
 
 ## Anti-patterns
 
-- Inventing job titles, dates, or project descriptions instead of asking.
-- Listing a project whose Live or GitHub link is actually dead.
-- Dumping every public repo into the projects section instead of curating Pages-enabled candidates with the user.
+- Listing a project whose Live or GitHub link is actually dead — verify every link before shipping.
 - Replacing an existing page's whole aesthetic without being asked, when only a content refresh was requested.
-- Dropping existing analytics/ads/SEO files (CNAME, robots.txt, sitemap.xml) while refreshing content.
-- Hiding the sidebar entirely on mobile instead of stacking it above the content.

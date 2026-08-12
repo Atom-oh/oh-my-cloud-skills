@@ -22,29 +22,10 @@ Create structured GitBook documentation sites with proper navigation, components
 
 ## Workflow
 
-### Phase 1: Plan Structure
-1. Define documentation scope and audience
-2. Outline chapters and sections (max 3 levels deep)
-3. Identify content types per section (guides, references, tutorials)
-4. Plan cross-references and navigation flow
-
-### Phase 2: Create Project
-1. Initialize git repository
-2. Create `.gitbook.yaml` configuration
-3. Create `SUMMARY.md` navigation file
-4. Set up chapter directories with `README.md` index pages
-
-### Phase 3: Write Content
-1. Write content pages using GitBook components
-2. Add code blocks, hints, tabs as needed
-3. Embed diagrams and images in `.gitbook/assets/`
-4. Create cross-links between related pages
-
-### Phase 4: Quality Review
-1. Run `content-review-agent` on project root
-2. Fix issues flagged (broken links, formatting, consistency)
-3. Re-review until PASS (≥85 score)
-4. Push to GitBook-connected repository
+1. **Plan** — 범위·청중 정의, 챕터/섹션 아웃라인 (어떤 페이지든 목차에서 몇 클릭이면 닿을 만큼 얕게), cross-reference 흐름
+2. **Create Project** — git init, `.gitbook.yaml`, `SUMMARY.md`, 챕터 디렉토리 + `README.md` 인덱스
+3. **Write Content** — GitBook 컴포넌트로 페이지 작성, 다이어그램은 `.gitbook/assets/`, 관련 페이지 간 cross-link
+4. **Quality Review** — content-review-agent PASS 후 GitBook 연결 repo에 push (아래 Quality Review)
 
 ---
 
@@ -162,14 +143,9 @@ find . -name "*.md" | head -20
 | Step-by-step guide | Numbered list + code blocks | Installation, deployment |
 | Troubleshooting | `<details>` expandable | Error → Solution pairs |
 
-## Quality Review (필수 — 생략 불가)
+## Quality Review
 
-콘텐츠 완성 후 배포/완료 선언 전에 반드시:
-1. content-review-agent 호출 → `review content at [프로젝트경로]`
-2. FAIL/REVIEW 판정 시 수정 후 재리뷰 (최대 3회)
-3. PASS 획득 후에만 완료 선언 — 기준 ≥85/100; 렌더링된 HTML 없이 markdown 소스만 리뷰해 Visual Testing이 면제된 경우 ≥77/90 환산 기준
-
-> ⚠️ 이 단계를 건너뛰고 완료를 선언하는 것은 금지됩니다.
+배포/완료 선언 전 `review content at [프로젝트경로]`로 content-review-agent PASS — plugin CLAUDE.md의 Quality Gate 규칙 (markdown 소스만 리뷰해 Visual Testing이 면제되면 90점 스케일).
 
 ## References
 

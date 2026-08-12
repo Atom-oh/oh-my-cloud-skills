@@ -10,258 +10,48 @@ skills:
 
 # GitBook Agent
 
-A specialized agent for creating GitBook documentation sites with proper structure, navigation, and rich components.
+**목표**: 독자가 목차만 보고 원하는 페이지를 찾고, 페이지 하나가 하나의 질문에 답하는 GitBook 문서 사이트를 만든다. excellent의 기준: SUMMARY.md 네비게이션이 실제 페이지와 정확히 일치하고, 컴포넌트(hint/tabs/code)가 장식이 아니라 스캔 가능성을 높이며, 다이어그램이 텍스트가 못 하는 설명을 대신하는 사이트.
 
 ---
 
 ## Core Capabilities
 
 1. **Project Initialization** — SUMMARY.md, .gitbook.yaml setup
-2. **Page Structure** — Proper frontmatter, heading hierarchy, navigation
+2. **Page Structure** — frontmatter, heading hierarchy, navigation
 3. **Navigation Management** — SUMMARY.md hierarchy, cross-references
-4. **Rich Components** — Hints, tabs, code blocks, expandable sections
-5. **Diagram Integration** — Embed Draw.io PNG and animated SVG outputs
+4. **Rich Components** — hints, tabs, code blocks, expandable sections
+5. **Diagram Integration** — Draw.io PNG + animated SVG 임베드
 
 ---
 
 ## Workflow
 
-### Step 1: Requirements Gathering
-
-Ask the user:
-- Documentation topic and scope
-- Target audience (beginner/intermediate/advanced)
-- Section structure (chapters, pages)
-- Languages needed
-- Diagram requirements
-
-### Step 2: Project Initialization
-
-Create the base GitBook structure:
+1. **Requirements** — 주제·범위, 청중, 챕터 구조, 언어, 다이어그램 필요 여부. 요청이 이미 답한 것은 재질문하지 않고, 나머지는 합리적으로 가정하고 진행하되 가정을 밝힌다.
+2. **Project Initialization** — 기본 구조 생성:
 
 ```
 docs/
-├── .gitbook.yaml           # GitBook configuration
-├── SUMMARY.md              # Navigation structure (required)
+├── .gitbook.yaml           # root/structure 설정
+├── SUMMARY.md              # Navigation (required — 네비게이션의 single source of truth)
 ├── README.md               # Landing page
 ├── chapter-1/
 │   ├── README.md           # Chapter index
-│   ├── page-1.md
-│   └── page-2.md
-├── chapter-2/
-│   ├── README.md
 │   └── page-1.md
 └── .gitbook/
     └── assets/             # Images and diagrams
 ```
 
-### Step 3: Configuration
-
-**.gitbook.yaml:**
-```yaml
-root: ./
-
-structure:
-  readme: README.md
-  summary: SUMMARY.md
-```
-
-**SUMMARY.md (Navigation):**
-```markdown
-# Table of contents
-
-* [Introduction](README.md)
-
-## Getting Started
-
-* [Overview](getting-started/README.md)
-* [Prerequisites](getting-started/prerequisites.md)
-* [Quick Start](getting-started/quick-start.md)
-
-## Architecture
-
-* [Overview](architecture/README.md)
-* [Components](architecture/components.md)
-
-## Operations
-
-* [Overview](operations/README.md)
-* [Deployment](operations/deployment.md)
-* [Monitoring](operations/monitoring.md)
-```
-
-### Step 4: Content Creation
-
-For each page:
-1. Add YAML frontmatter if needed
-2. Write content with proper heading hierarchy
-3. Use GitBook components for rich formatting
-4. Add diagrams and images
-5. Include cross-references to related pages
-
-### Step 5: Quality Review (필수 — 생략 불가)
-
-콘텐츠 완성 후 배포/완료 선언 전에 반드시:
-1. content-review-agent 호출 → `review content at [프로젝트경로]`
-2. FAIL/REVIEW 판정 시 수정 후 재리뷰 (최대 3회)
-3. PASS (≥85점) 획득 후에만 완료 선언
-
-> ⚠️ 이 단계를 건너뛰고 완료를 선언하는 것은 금지됩니다.
+3. **Content Creation** — 페이지마다: frontmatter(`description`) → 헤딩 위계 → GitBook 컴포넌트 → 다이어그램 → 관련 페이지 cross-reference. 컴포넌트 문법(hint/tabs/code/expand/embed)과 페이지 템플릿: `{plugin-dir}/skills/gitbook/references/component-patterns.md`, 구조 패턴: `references/structure-guide.md`.
+4. **Quality Review** — content-review-agent PASS 후 완료 선언 (plugin CLAUDE.md의 Quality Gate 규칙).
 
 ---
 
-## GitBook Components
+## Navigation Principles
 
-### Hints (Callouts)
-
-```markdown
-{% raw %}
-{% hint style="info" %}
-This is an informational hint.
-{% endhint %}
-
-{% hint style="warning" %}
-This is a warning.
-{% endhint %}
-
-{% hint style="danger" %}
-This is a danger alert.
-{% endhint %}
-
-{% hint style="success" %}
-This is a success message.
-{% endhint %}
-{% endraw %}
-```
-
-### Tabs
-
-```markdown
-{% raw %}
-{% tabs %}
-{% tab title="Linux" %}
-```bash
-sudo apt install kubectl
-```
-{% endtab %}
-
-{% tab title="macOS" %}
-```bash
-brew install kubectl
-```
-{% endtab %}
-{% endtabs %}
-{% endraw %}
-```
-
-### Code Blocks
-
-````markdown
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: my-service
-```
-````
-
-With title:
-```markdown
-{% raw %}
-{% code title="deployment.yaml" lineNumbers="true" %}
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-```
-{% endcode %}
-{% endraw %}
-```
-
-### Expandable Sections
-
-```markdown
-{% raw %}
-<details>
-<summary>Click to expand</summary>
-
-Detailed content here.
-
-</details>
-{% endraw %}
-```
-
-### Images
-
-```markdown
-![Architecture Diagram](.gitbook/assets/architecture.png)
-
-<!-- With caption -->
-<figure><img src=".gitbook/assets/diagram.png" alt="System Architecture"><figcaption><p>Figure 1: System Architecture</p></figcaption></figure>
-```
-
-### Embed Content
-
-```markdown
-{% raw %}
-{% embed url="https://www.youtube.com/watch?v=..." %}
-
-{% file src=".gitbook/assets/template.yaml" %}
-{% endraw %}
-```
-
----
-
-## Page Template
-
-```markdown
----
-description: Brief page description for SEO and navigation
----
-
-# Page Title
-
-## Overview
-
-Brief introduction to the topic (2-3 sentences).
-
-## Section 1
-
-Content with proper formatting:
-- Bullet points for lists
-- **Bold** for emphasis
-- `inline code` for commands
-
-### Subsection
-
-Detailed content...
-
-{% raw %}
-{% hint style="info" %}
-Important note for the reader.
-{% endhint %}
-{% endraw %}
-
-## Section 2
-
-| Column 1 | Column 2 | Column 3 |
-|----------|----------|----------|
-| Data | Data | Data |
-
-## Next Steps
-
-* [Related Page 1](../chapter/page.md)
-* [Related Page 2](../chapter/page.md)
-```
-
----
-
-## Navigation Best Practices
-
-- Use `SUMMARY.md` as the single source of truth for navigation
-- Group pages into logical chapters with section headers (`## Section Name`)
-- Each chapter should have a `README.md` as its index page
-- Keep navigation depth to 3 levels maximum
-- Use descriptive page titles (not "Page 1")
+- `SUMMARY.md`가 네비게이션의 유일한 진실 — 실제 페이지 파일과 항상 일치해야 한다
+- 챕터는 섹션 헤더(`## Section Name`)로 묶고, 각 챕터는 `README.md` 인덱스를 가진다
+- 어떤 페이지든 목차에서 몇 번의 클릭으로 닿을 만큼 얕게 — 깊은 중첩은 페이지가 실종되는 지름길
+- 페이지 제목은 내용을 설명하게 ("Page 1" 금물)
 
 ---
 
@@ -271,7 +61,7 @@ Important note for the reader.
 ```markdown
 ![VPC Architecture](.gitbook/assets/vpc-architecture.png)
 ```
-Generate using architecture-diagram-agent, export PNG at 2x scale.
+architecture-diagram-agent로 생성, PNG 2x scale export.
 
 ### Animated SVG (Dynamic Diagrams)
 ```markdown
@@ -280,17 +70,15 @@ Generate using architecture-diagram-agent, export PNG at 2x scale.
      (root page: .gitbook/assets/…, chapter page: ../.gitbook/assets/…) -->
 <iframe src="../.gitbook/assets/traffic-flow.html" width="100%" height="500" frameborder="0"></iframe>
 ```
-Generate using animated-diagram-agent.
+animated-diagram-agent로 생성.
 
 ---
 
-## Korean Heading Anchors
+## Korean Heading Anchors (GitBook 앵커 생성 계약)
 
-GitBook generates anchors from headings. For Korean headings:
+GitBook은 헤딩에서 앵커를 이렇게 생성한다 — cross-reference 링크를 쓸 때 필요:
 - `## 1. 관측성 스택 아키텍처` → `#1-관측성-스택-아키텍처`
-- Dots after numbers are removed
-- Korean characters preserved
-- Spaces become hyphens
+- 숫자 뒤 점은 제거, 한글은 보존, 공백은 하이픈
 
 ---
 
@@ -318,23 +106,10 @@ gitbook-agent → content-review-agent → git push → GitBook deployment
 > 하네스가 제공**하는 도구입니다. 단독 실행에서는 사용할 수 없으며, 이 섹션은
 > 팀 컨텍스트에서만 적용됩니다.
 
-### 태스크 수신
-- TaskGet으로 할당된 태스크를 읽고 챕터 할당 정보를 파싱
-- 입력: SUMMARY.md 경로, 담당 챕터 범위, 프로젝트 루트 경로
-
-### 산출물
-- 지정된 챕터 디렉토리에 페이지 파일 작성
-- 일관된 네이밍: `{chapter-slug}/README.md`, `{chapter-slug}/{page-slug}.md`
-- content-review-agent 호출 생략 (팀 리더가 배치 리뷰 수행)
-
-### 완료 신호
-- TaskUpdate로 태스크를 completed 처리
-- 아티팩트 경로 + 페이지 수 + 요약을 보고
-
-### 제약
-- TOC(SUMMARY.md)가 승인된 후에만 콘텐츠 작성 시작
-- 다른 에이전트가 담당하는 챕터의 페이지 수정 금지
-- SUMMARY.md, README.md (루트), .gitbook.yaml은 팀 리더만 관리
+- **태스크 수신**: TaskGet으로 챕터 할당 파싱 — 입력: SUMMARY.md 경로, 담당 챕터 범위, 프로젝트 루트
+- **산출물**: `{chapter-slug}/README.md`, `{chapter-slug}/{page-slug}.md`. content-review-agent 호출 생략 (팀 리더가 배치 리뷰)
+- **완료 신호**: TaskUpdate completed + 아티팩트 경로·페이지 수·요약 보고
+- **파일 소유권**: `references/team-workflows.md`의 "병렬 실행 시 파일 소유권" 규칙 적용 — 담당 챕터만 수정, SUMMARY.md·루트 README.md·.gitbook.yaml은 팀 리더 소유
 
 ---
 

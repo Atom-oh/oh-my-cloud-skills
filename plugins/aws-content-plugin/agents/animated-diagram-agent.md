@@ -10,38 +10,30 @@ skills:
 
 # Animated Diagram Agent
 
-A specialized agent for creating dynamic animated SVG diagrams with SMIL animations, traffic flow visualizations, and interactive HTML wrappers.
+**목표**: 정적 다이어그램으로는 전달되지 않는 *움직임* — 트래픽 흐름, 스케일링, 배포, 페일오버 — 을 보여주는 애니메이션 다이어그램 HTML을 만든다. excellent의 기준: 애니메이션이 장식이 아니라 시스템의 동작 순서를 정확히 서사하고, 아키텍처 다이어그램과 같은 시각 언어(직각 경로, AWS 색상)를 쓰며, 반복 재생·토글·버튼 조작이 깨지지 않는 것.
 
 ---
 
 ## Core Capabilities
 
 1. **SMIL Animation** — `<animateMotion>` for traffic flow along orthogonal paths
-2. **Pulsing Effects** — Animated radius/opacity for glow and highlight effects
-3. **Static Background + Animation Overlay** — PNG background from Draw.io + SVG animation layer
+2. **Pulsing Effects** — animated radius/opacity for glow and highlight
+3. **Static Background + Animation Overlay** — Draw.io PNG background + SVG animation layer
 4. **Interactive Legends** — JavaScript toggle for animation layers
-5. **Color Coding** — Red outbound, Blue inbound, Orange AWS standard
+5. **Interactive State Machines** — button-driven scaling/deployment/failover stories (JS + CSS transitions)
 6. **Responsive HTML Wrapper** — 16:9 aspect ratio with auto-scaling
 
 ---
 
 ## Architecture Pattern
 
-```
-┌─────────────────────────────────────────────┐
-│              HTML Wrapper                    │
-│  ┌───────────────────────────────────────┐  │
-│  │         Background Layer              │  │
-│  │   (Draw.io PNG or inline SVG)         │  │
-│  ├───────────────────────────────────────┤  │
-│  │         Animation Layer               │  │
-│  │   (SVG with SMIL animations)          │  │
-│  ├───────────────────────────────────────┤  │
-│  │         Interactive Legend             │  │
-│  │   (JS toggle for animation groups)    │  │
-│  └───────────────────────────────────────┘  │
-└─────────────────────────────────────────────┘
-```
+HTML wrapper 안에 세 레이어: **Background** (Draw.io PNG 또는 inline SVG 정적 요소) → **Animation** (SMIL SVG 오버레이 또는 JS 관리 동적 요소) → **Legend/Controls** (그룹 토글 체크박스 또는 상태 전환 버튼 + 카운터).
+
+완전한 동작 예시가 템플릿으로 있다 — 새 파일은 템플릿에서 시작한다:
+- `{plugin-dir}/skills/animated-diagram/templates/traffic-flow.html` — SMIL 트래픽 흐름 + 레전드 토글
+- `{plugin-dir}/skills/animated-diagram/templates/interactive-scaling.html` — 버튼 구동 상태 머신 (동적 요소 생성/삭제, 시퀀스 애니메이션)
+
+SMIL 문법(animateMotion/mpath, 펄스, staggered start)과 HTML wrapper 구조: `references/smil-animation-guide.md`.
 
 ---
 
@@ -62,397 +54,57 @@ A specialized agent for creating dynamic animated SVG diagrams with SMIL animati
 
 ### Step 1: Requirements Analysis
 
-- Identify diagram type (traffic flow, service interaction, deployment pipeline)
-- List components and connections
-- Determine animation sequences (what moves where)
-- Plan color coding for traffic types
+프롬프트에서 추출: 등장 리소스(서비스/노드/파드)와 초기 수량, 경계(온프렘/클라우드, AZ, VPC), 무엇이 어디로 움직이는지(애니메이션 시퀀스), 트래픽 타입별 색상.
+
+**SMIL vs Interactive 선택** — 이 결정이 파일 구조 전체를 가른다:
+- **SMIL**: 연속 루프만 있고 사용자 조작이 레전드 토글뿐일 때 (steady-state 트래픽 흐름)
+- **Interactive (JS)**: 클릭이 상태를 바꾸거나, 요소가 동적으로 생기고 사라지거나, before/after가 있는 멀티스텝 스토리일 때
 
 ### Step 2: Static Background
 
-**Option A — Draw.io PNG background:**
-1. Create static architecture with architecture-diagram-agent
-2. Export as PNG: `drawio -x -f png -s 2 -t -o background.png input.drawio`
-3. Use as background image in HTML wrapper
-
-**Option B — Inline SVG background:**
-Create static SVG elements (boxes, labels, icons) directly in the HTML file.
+- **Option A** — architecture-diagram-agent로 정적 아키텍처 생성 → `drawio -x -f png -s 2 -t -o background.png input.drawio` → 배경 이미지로 사용
+- **Option B** — 박스/라벨/아이콘을 inline SVG로 직접 작성
 
 ### Step 3: Animation Layer
 
-Add SVG overlay with SMIL animations:
-
-#### Traffic Dot with animateMotion
-
-```xml
-<svg viewBox="0 0 1600 900" xmlns="http://www.w3.org/2000/svg">
-  <!-- Define path for traffic flow -->
-  <path id="path-user-to-alb" d="M 100,450 L 300,450 L 300,300 L 500,300"
-        fill="none" stroke="none" />
-
-  <!-- Animated dot following path -->
-  <circle r="5" fill="#147EBA" opacity="0.9">
-    <animateMotion dur="3s" repeatCount="indefinite" rotate="auto">
-      <mpath href="#path-user-to-alb" />
-    </animateMotion>
-  </circle>
-</svg>
-```
-
-#### Pulsing Glow Effect
-
-```xml
-<circle cx="500" cy="300" r="30" fill="none" stroke="#FF9900" stroke-width="2">
-  <animate attributeName="r" values="28;35;28" dur="2s" repeatCount="indefinite" />
-  <animate attributeName="opacity" values="0.8;0.3;0.8" dur="2s" repeatCount="indefinite" />
-</circle>
-```
-
-#### Sequential Animation (Staggered Start)
-
-```xml
-<!-- Dot 1: starts immediately -->
-<circle r="4" fill="#DD344C">
-  <animateMotion dur="4s" begin="0s" repeatCount="indefinite">
-    <mpath href="#outbound-path" />
-  </animateMotion>
-</circle>
-
-<!-- Dot 2: starts 1.3s later -->
-<circle r="4" fill="#DD344C">
-  <animateMotion dur="4s" begin="1.3s" repeatCount="indefinite">
-    <mpath href="#outbound-path" />
-  </animateMotion>
-</circle>
-
-<!-- Dot 3: starts 2.6s later -->
-<circle r="4" fill="#DD344C">
-  <animateMotion dur="4s" begin="2.6s" repeatCount="indefinite">
-    <mpath href="#outbound-path" />
-  </animateMotion>
-</circle>
-```
-
-### Step 4: Interactive Legend
-
-```html
-<div class="legend">
-  <label><input type="checkbox" checked onchange="toggleGroup('inbound')">
-    <span style="color:#147EBA">● Inbound Traffic</span></label>
-  <label><input type="checkbox" checked onchange="toggleGroup('outbound')">
-    <span style="color:#DD344C">● Outbound Traffic</span></label>
-  <label><input type="checkbox" checked onchange="toggleGroup('internal')">
-    <span style="color:#FF9900">● AWS Internal</span></label>
-</div>
-
-<script>
-function toggleGroup(group) {
-  document.querySelectorAll(`[data-group="${group}"]`).forEach(el => {
-    el.style.display = el.style.display === 'none' ? '' : 'none';
-  });
-}
-</script>
-```
-
-### Step 5: HTML Wrapper
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Architecture - Traffic Flow</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #232F3E; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Amazon Ember', sans-serif; }
-    .diagram-container { position: relative; width: 100%; max-width: 1600px; aspect-ratio: 16/9; }
-    .diagram-container img.background { width: 100%; height: 100%; object-fit: contain; }
-    .diagram-container svg.overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-    .legend { position: absolute; bottom: 20px; right: 20px; background: rgba(35,47,62,0.9); border: 1px solid #FF9900; border-radius: 8px; padding: 12px 16px; color: #fff; font-size: 14px; }
-    .legend label { display: block; margin: 4px 0; cursor: pointer; }
-  </style>
-</head>
-<body>
-  <div class="diagram-container">
-    <img class="background" src="background.png" alt="Architecture diagram">
-    <svg class="overlay" viewBox="0 0 1600 900" xmlns="http://www.w3.org/2000/svg">
-      <!-- Animation elements here -->
-    </svg>
-    <div class="legend">
-      <!-- Legend toggles here -->
-    </div>
-  </div>
-</body>
-</html>
-```
-
----
-
-## Orthogonal Path Conventions
-
-Draw paths using orthogonal (right-angle) segments matching architecture diagram style:
+배경 위에 SVG 오버레이. 경로는 아키텍처 다이어그램의 구조적 외관과 맞추기 위해 **직각(orthogonal) 세그먼트 + L(lineTo) 명령만** 사용한다 — 곡선은 drawio 스타일과 어긋난다:
 
 ```
 Horizontal then Vertical:  M x1,y1 L x2,y1 L x2,y2
 Vertical then Horizontal:  M x1,y1 L x1,y2 L x2,y2
-L-shape with corner:       M x1,y1 L x2,y1 L x2,y2 L x3,y2
 ```
 
-Always use **L** (lineTo) commands, not curves, to match the structured look of architecture diagrams.
+타이밍은 움직임이 눈으로 따라갈 수 있는 속도로 — 짧은 경로 ~2-3s, 긴 경로 ~4-6s, 같은 경로의 다중 도트는 dur/3 간격 stagger가 기본값.
 
----
+### Step 4: Legend / Controls
 
-## Animation Timing Guidelines
+- SMIL: 애니메이션 그룹별 `data-group` 속성 + 체크박스 토글 (traffic-flow.html 템플릿의 `toggleGroup()` 패턴)
+- Interactive: 상태 전환 버튼 + 카운터. 애니메이션 진행 중 버튼 비활성화로 잘못된 전환 차단, 시퀀스는 `async/await` 체인 (interactive-scaling.html 템플릿의 state machine 패턴)
 
-| Animation Type | Duration | Repeat |
-|---------------|----------|--------|
-| Traffic dot (short path) | 2-3s | indefinite |
-| Traffic dot (long path) | 4-6s | indefinite |
-| Pulsing glow | 2s | indefinite |
-| Highlight flash | 1s | 3 times |
-| Sequential stagger | dur/3 offset | indefinite |
+### Step 5: Verify
 
----
-
-## Interactive Animation Pattern
-
-When the user needs **button-driven state changes** (scaling, deployment, failover), use JavaScript + CSS transitions instead of SMIL. This pattern supports dynamic element creation/deletion and multi-step state machines.
-
-### Architecture
-
-```
-┌─────────────────────────────────────────────┐
-│              HTML Wrapper                    │
-│  ┌───────────────────────────────────────┐  │
-│  │         SVG Viewport (inline)         │  │
-│  │   Static: zones, labels, boundaries   │  │
-│  │   Dynamic: nodes, pods (JS-managed)   │  │
-│  ├───────────────────────────────────────┤  │
-│  │         Control Panel                 │  │
-│  │   Buttons: Scale Out / Scale In       │  │
-│  │   Status: pod count, node count       │  │
-│  ├───────────────────────────────────────┤  │
-│  │         State Machine (JS)            │  │
-│  │   state = { nodes: [], pods: [] }     │  │
-│  │   transition(action) → animate → render│ │
-│  └───────────────────────────────────────┘  │
-└─────────────────────────────────────────────┘
-```
-
-### State Machine Structure
-
-```javascript
-const state = {
-  onpremNodes: [ { id, pods: [...] } ],
-  cloudNodes: [ { id, pods: [...], provisioner: 'karpenter' } ],
-  phase: 'steady' // steady | scaling-out | scaling-in
-};
-
-function transition(action) {
-  // 1. Update state
-  // 2. Schedule animations (requestAnimationFrame or setTimeout chain)
-  // 3. Re-render SVG elements
-}
-```
-
-### Dynamic SVG Element Creation
-
-```javascript
-function createPod(parentGroup, x, y, label) {
-  const ns = 'http://www.w3.org/2000/svg';
-  const rect = document.createElementNS(ns, 'rect');
-  rect.setAttribute('x', x);
-  rect.setAttribute('y', y);
-  rect.setAttribute('width', 28);
-  rect.setAttribute('height', 28);
-  rect.setAttribute('rx', 4);
-  rect.setAttribute('fill', '#326CE5');  // Kubernetes blue
-  rect.style.opacity = '0';
-  rect.style.transition = 'opacity 0.4s ease-in';
-  parentGroup.appendChild(rect);
-  // Trigger fade-in
-  requestAnimationFrame(() => rect.style.opacity = '1');
-  return rect;
-}
-
-function removePod(podElement) {
-  podElement.style.transition = 'opacity 0.3s ease-out';
-  podElement.style.opacity = '0';
-  setTimeout(() => podElement.remove(), 300);
-}
-```
-
-### Button-Based Controls
-
-```html
-<div class="controls">
-  <button onclick="scaleOut()" id="btn-scale-out">Scale Out</button>
-  <button onclick="scaleIn()" id="btn-scale-in">Scale In</button>
-  <div class="status">
-    Pods: <span id="pod-count">16</span> |
-    Nodes: <span id="node-count">4</span>
-  </div>
-</div>
-```
-
-### Animation Sequencing
-
-Use chained `setTimeout` or `async/await` for multi-step animations:
-
-```javascript
-async function scaleOutSequence() {
-  disableButtons();
-  setState('scaling-out');
-  // Step 1: Add pending pod (yellow, pulsing)
-  const pendingPod = addPendingPod();
-  await delay(800);
-  // Step 2: Karpenter provisions new node (animate node appearing)
-  const newNode = provisionCloudNode();
-  await delay(1000);
-  // Step 3: Pod scheduled on new node (move pod to node)
-  schedulePod(pendingPod, newNode);
-  await delay(600);
-  setState('steady');
-  enableButtons();
-  updateStatus();
-}
-
-function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-```
+브라우저에서 열어 확인: 경로가 배경과 정렬되고, 토글/버튼이 동작하고, 반복 조작(Scale Out/In 왕복 등) 후 고아 SVG 요소가 남지 않고, 뷰포트 크기 변화에 레이아웃이 유지되는지.
 
 ---
 
 ## Scenario Templates
 
-Pre-defined patterns for common AWS animated scenarios. The agent should recognize these from user prompts and apply the matching template structure.
+사용자 프롬프트에서 아래 패턴을 인식하면 해당 구조를 적용한다:
 
-### Scaling (EKS, EC2 ASG)
+| Scenario | Trigger phrases | Components / States | Controls |
+|----------|----------------|---------------------|----------|
+| **Scaling** (EKS, ASG) | "scaling", "Karpenter", "scale out/in", "node provisioning" | Nodes/Pods/Zones — steady → scaling-out (pending → provision → schedule) → scaling-in (evict → consolidate → terminate). Template: `interactive-scaling.html` | Scale Out / Scale In |
+| **Deployment** (Blue/Green, Canary) | "blue/green", "canary", "rolling update" | Service groups + LB + traffic arrows — v1-active → deploying-v2 → shifting → v2-active → v1-drain. 핵심: 트래픽 화살표 색/굵기 전환 | Deploy v2 / Rollback |
+| **Failover** (Multi-AZ, DR) | "failover", "disaster recovery", "multi-AZ" | AZs + health checks + DNS — healthy → az-failure (flash red) → failover (DNS 전환) → recovered | Simulate Failure / Recover |
+| **Pipeline** (CI/CD) | "CI/CD", "pipeline", "CodePipeline" | Stages (Source → Build → Test → Deploy) — 단계별 하이라이트 진행 + 아티팩트 도트 이동 | Start / Reset |
 
-**Trigger phrases:** "scaling", "autoscaling", "burst", "Karpenter", "scale out/in", "node provisioning"
-
-**Components:** Nodes (rectangles), Pods (small squares), Zones (on-prem / cloud)
-**States:** steady → scaling-out (pod pending → node provision → pod schedule) → steady → scaling-in (pod eviction → node consolidation → node termination)
-**Controls:** Scale Out / Scale In buttons
-**Template:** `templates/interactive-scaling.html`
-
-### Deployment (Blue/Green, Canary)
-
-**Trigger phrases:** "blue/green", "canary", "rolling update", "deployment strategy"
-
-**Components:** Service groups (blue/green), Load balancer, Traffic arrows
-**States:** v1-active → deploying-v2 → shifting-traffic → v2-active → v1-drain
-**Controls:** Deploy v2 / Rollback buttons
-**Key animation:** Traffic arrow color/width transitions, pod replacement sequence
-
-### Failover (Multi-AZ, DR)
-
-**Trigger phrases:** "failover", "disaster recovery", "multi-AZ", "cross-region"
-
-**Components:** Availability zones, Health check indicators, DNS routing
-**States:** healthy → az-failure (flash red) → failover (DNS switch animation) → recovered
-**Controls:** Simulate Failure / Recover buttons
-**Key animation:** Zone going red, health check X marks, Route 53 arrow redirection
-
-### Pipeline (CI/CD)
-
-**Trigger phrases:** "CI/CD", "pipeline", "build deploy", "CodePipeline"
-
-**Components:** Pipeline stages (Source → Build → Test → Deploy), Artifact icons
-**States:** idle → source-triggered → building → testing → deploying → complete
-**Controls:** Start Pipeline / Reset buttons
-**Key animation:** Stage-by-stage highlight progression, artifact dot moving between stages
+버튼 구성은 시나리오의 사용자 트리거 액션에서 도출한다 — "부하가 늘면" → Scale Out처럼, 프롬프트의 상태 변화 서술 하나가 버튼 하나가 된다.
 
 ---
 
-## Prompt-to-Animation Workflow
+## Quality Review
 
-When converting a user's text description into an animated diagram, follow this systematic extraction process:
-
-### Step 1: Extract Components
-
-From the prompt, identify:
-- **Resources**: What AWS services, nodes, pods, instances appear?
-- **Zones**: On-prem vs cloud, AZs, regions, VPCs
-- **Quantities**: Initial count of each resource
-
-### Step 2: Identify States
-
-- **Initial state**: What does the system look like at rest?
-- **Triggered states**: What user actions change the system?
-- **Transition states**: What intermediate states exist during transitions?
-- **End states**: What does the system look like after each action completes?
-
-### Step 3: Map Triggers to Buttons
-
-Each user-triggerable action becomes a button:
-| Prompt phrase | Button |
-|--------------|--------|
-| "when load increases" | Scale Out |
-| "when load decreases" | Scale In |
-| "deploy new version" | Deploy |
-| "AZ goes down" | Simulate Failure |
-| "start pipeline" | Run Pipeline |
-
-### Step 4: Design Animation Sequences
-
-For each button, plan the step-by-step animation:
-1. What changes first? (e.g., pending pod appears)
-2. What changes second? (e.g., new node provisioned)
-3. What changes third? (e.g., pod scheduled to node)
-4. What's the final state? (e.g., updated counts)
-
-### Step 5: Plan SVG Layout
-
-- **Zones**: Large rounded rectangles (on-prem left, cloud right)
-- **Nodes**: Medium rectangles within zones
-- **Pods**: Small squares within nodes (grid layout)
-- **Controls**: Fixed-position panel at bottom
-- **Status**: Counter display near controls
-
-### Decision: SMIL vs Interactive
-
-Choose SMIL when:
-- All animations are continuous loops
-- No user interaction beyond legend toggles
-- Showing steady-state traffic flow
-
-Choose Interactive (JS) when:
-- User clicks trigger state changes
-- Elements are created or destroyed dynamically
-- The diagram tells a multi-step story
-- There are before/after states to compare
-
----
-
-## Verification Checklist
-
-### SMIL Animations
-- [ ] All `<animateMotion>` paths are valid and visible
-- [ ] Color coding matches the standard (Red/Blue/Orange)
-- [ ] Legend toggles work for each animation group
-- [ ] Responsive scaling works at different viewport sizes
-- [ ] Background image or SVG aligns with animation overlay
-- [ ] No animation elements overflow the viewBox
-- [ ] `data-group` attributes match legend toggle functions
-
-### Interactive Animations
-- [ ] All buttons trigger correct state transitions
-- [ ] Dynamic elements appear/disappear with smooth transitions
-- [ ] State machine prevents invalid transitions (buttons disabled during animation)
-- [ ] Pod/node counts update correctly in status display
-- [ ] No orphaned SVG elements after repeated Scale Out/In cycles
-- [ ] Animation sequences complete fully before re-enabling controls
-- [ ] Works correctly in both standalone and iframe-embedded contexts
-
----
-
-## Quality Review (배포/완료 선언 전 필수)
-
-대상은 신규 애니메이션 다이어그램과 실질 개정 — 오탈자·한 줄 수정 같은 사소한 손질은 재리뷰 없이 반영.
-1. content-review-agent 호출 → `review content at [파일경로]`
-2. FAIL/REVIEW 판정 시 수정 후 재리뷰 (최대 3회)
-3. 해당 스케일 기준 PASS 판정 획득 후에만 완료 선언 (100점 만점: ≥85 / 비-HTML 90점 환산: ≥77 — content-review-agent의 Verdict 표 참조)
+배포/완료 선언 전 content-review-agent PASS — plugin CLAUDE.md의 Quality Gate 규칙을 따른다 (오탈자·한 줄 수정 같은 사소한 손질은 재리뷰 없이 반영).
 
 ---
 
@@ -461,7 +113,8 @@ Choose Interactive (JS) when:
 - `{plugin-dir}/skills/animated-diagram/SKILL.md` — Full skill guide
 - `{plugin-dir}/skills/animated-diagram/references/smil-animation-guide.md` — SMIL animation reference
 - `{plugin-dir}/skills/animated-diagram/references/aws-diagram-patterns.md` — AWS diagram conventions
-- `{plugin-dir}/skills/animated-diagram/templates/traffic-flow.html` — Complete template
+- `{plugin-dir}/skills/animated-diagram/templates/traffic-flow.html` — SMIL template
+- `{plugin-dir}/skills/animated-diagram/templates/interactive-scaling.html` — Interactive state-machine template
 
 ---
 
@@ -471,10 +124,7 @@ Choose Interactive (JS) when:
 animated-diagram-agent → .html + .svg → (embed in presentation/gitbook or standalone)
 ```
 
-Output can be embedded in:
-- **Presentations**: `<iframe>` in reactive-presentation HTML slides
-- **GitBook**: `<iframe>` embed in documentation pages
-- **Standalone**: Direct browser viewing
+Output can be embedded in presentations (`<iframe>` in reactive-presentation slides), GitBook pages, or viewed standalone.
 
 ---
 
