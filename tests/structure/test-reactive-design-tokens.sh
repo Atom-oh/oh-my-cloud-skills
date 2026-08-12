@@ -57,6 +57,21 @@ assert_grep_match "(:root, ?\.theme-light)[^}]*--bg-primary" "$TC4FLAT" "light s
 # callout role variant bound to semantic role after primitive
 assert_grep_match "\.callout\.callout-info[^}]*var\(--info" "$TC4FLAT" "callout-info bound to --info role token"
 
+# --- HTML-first: framework-contract.md must cover every design token ---
+# The contract doc replaces the compiler as the thing Claude authors against;
+# a token missing from it is a correctness bug, not cosmetic drift.
+FC="$(cat "$RP/references/framework-contract.md" 2>/dev/null || true)"
+assert_file_exists "$RP/references/framework-contract.md" "framework-contract.md exists"
+MISSING_TOKENS=""
+while IFS= read -r tok; do
+  case "$tok" in --surface-1|--surface-2|--surface-3) continue;; esac  # covered by --surface-1/2/3 shorthand
+  printf '%s' "$FC" | grep -qF -- "$tok" || MISSING_TOKENS="$MISSING_TOKENS $tok"
+done < <(grep -o -- '--[a-z][a-z0-9-]*' "$DT" | sort -u)
+assert_eq "" "$MISSING_TOKENS" "every design-tokens.css token appears in framework-contract.md (missing:$MISSING_TOKENS)"
+assert_contains "$FC" "--surface-1/2/3" "contract documents surface scale"
+assert_contains "$FC" "new SlideFramework" "contract documents SlideFramework constructor"
+assert_contains "$FC" 'template class="notes"' "contract documents template-notes"
+
 # --- P4 regression: the new design-tokens.css MUST ship with generated/exported decks ---
 # (theme.css @imports it; if it isn't copied, every --space/--text/--radius token breaks)
 REMARP="$(cat "$RP/scripts/remarp_to_slides.py" 2>/dev/null || true)"
