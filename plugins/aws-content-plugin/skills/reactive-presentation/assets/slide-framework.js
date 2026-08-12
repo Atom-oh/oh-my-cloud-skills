@@ -42,6 +42,21 @@ class SlideFramework {
         this.keyMappings = window.__remarpKeys;
       }
 
+      // Harvest <template class="notes"> speaker notes from slide DOM.
+      // Must run BEFORE createSidebar() clones slide innerHTML (a cloned
+      // <template> is inert but would double-count if harvested later).
+      // An explicit presenterNotes option always wins over the DOM.
+      this.slides.forEach((slide, idx) => {
+        const key = idx + 1;
+        if (this.presenterNotes[key] !== undefined) return;
+        const tpl = slide.querySelector('template.notes');
+        if (!tpl) return;
+        const text = tpl.content.textContent.trim();
+        if (!text) return;
+        const timing = tpl.dataset.timing || null;
+        this.presenterNotes[key] = timing ? { text: text, timing: timing } : text;
+      });
+
       // Read theme config
       if (window.__remarpTheme) {
         if (!this.footer && window.__remarpTheme.footer) this.footer = window.__remarpTheme.footer;
