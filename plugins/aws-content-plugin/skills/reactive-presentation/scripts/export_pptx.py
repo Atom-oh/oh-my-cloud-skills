@@ -83,7 +83,10 @@ def _discover_blocks(project_dir: Path):
         if f.name in ('toc.html', 'index.html'):
             continue
         text = f.read_text(encoding='utf-8', errors='ignore')
-        if 'name="generator" content="remarp"' in text:
+        # Compiler-built decks carry the generator meta; hand-authored decks
+        # are recognized by the framework constructor call instead.
+        if ('name="generator" content="remarp"' in text
+                or 'new SlideFramework(' in text):
             blocks.append(f.name)
     return blocks
 
@@ -204,12 +207,17 @@ _MEDIA_READY_JS = """
 }
 """
 
-# presenterNotes is a top-level `const` in the built HTML; code evaluated in
-# the page's global scope (like the DevTools console) can still read it.
+# presenterNotes is a top-level `const` in compiler-built HTML; hand-authored
+# decks may instead carry <template class="notes"> per slide, which
+# slide-framework.js harvests into deck.presenterNotes — fall back to that.
 _NOTES_JS = """
 () => {
-  try { return typeof presenterNotes !== 'undefined' ? presenterNotes : {}; }
-  catch (e) { return {}; }
+  try { if (typeof presenterNotes !== 'undefined') return presenterNotes; } catch (e) {}
+  try {
+    if (typeof deck !== 'undefined' && deck && deck.presenterNotes &&
+        Object.keys(deck.presenterNotes).length) return deck.presenterNotes;
+  } catch (e) {}
+  return {};
 }
 """
 
@@ -221,6 +229,11 @@ def _notes_to_text(text: str) -> str:
     markers) — it is not HTML, so no tag stripping: a generic <[^>]+> pass
     would eat real content like `List<T>`. Only normalize whitespace.
     """
+    if isinstance(text, dict):
+        # template-notes harvest form: { text, timing } — keep the timing marker.
+        timing = text.get('timing')
+        body = text.get('text') or text.get('notes') or ''
+        text = f"{{timing: {timing}}}\n{body}" if timing else body
     text = str(text).replace('\r\n', '\n').replace('\r', '\n')
     text = re.sub(r'\n{3,}', '\n\n', text)
     return text.strip()
