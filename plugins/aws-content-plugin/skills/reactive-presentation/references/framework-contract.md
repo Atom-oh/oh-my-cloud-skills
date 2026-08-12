@@ -167,8 +167,11 @@ initCompareToggles`):
   let step = 0; const MAX_STEP = 3;
   function draw() {
     const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.parentElement.getBoundingClientRect();
-    const scale = Math.min(rect.width / BASE_W, rect.height / BASE_H);
+    // 반드시 clientWidth/Height (레이아웃 px) — getBoundingClientRect()는
+    // transform 반영 시각 px라 덱 스케일과 이중 적용되어 캔버스가 넘친다.
+    const pw = canvas.parentElement.clientWidth;
+    const ph = canvas.parentElement.clientHeight;
+    const scale = Math.min(pw / BASE_W, ph / BASE_H);
     canvas.width = BASE_W * scale * dpr; canvas.height = BASE_H * scale * dpr;
     canvas.style.width = BASE_W * scale + 'px'; canvas.style.height = BASE_H * scale + 'px';
     ctx.setTransform(1,0,0,1,0,0); ctx.scale(scale * dpr, scale * dpr);

@@ -170,20 +170,38 @@ _MEASURE_JS = r"""
   }
 
   // --- LOW_CONTRAST ---
-  const lum = (rgb) => {
+  const parseColor = (rgb) => {
     const m = rgb.match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/);
     if (!m) return null;
-    if (m[4] !== undefined && parseFloat(m[4]) === 0) return null; // transparent
-    const f = (v) => { v = parseFloat(v) / 255;
-      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
-    return 0.2126 * f(m[1]) + 0.7152 * f(m[2]) + 0.0722 * f(m[3]);
+    return { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] };
   };
+  const lumOf = (c) => {
+    const f = (v) => { v /= 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b);
+  };
+  const lum = (rgb) => {
+    const c = parseColor(rgb);
+    return c && c.a > 0 ? lumOf(c) : null;
+  };
+  // Effective background: composite semi-transparent layers over ancestors
+  // (a 10% tint over a dark surface is dark, not the tint's own hue).
   const effBg = (el) => {
+    const layers = [];
     for (let n = el; n; n = n.parentElement) {
-      const l = lum(getComputedStyle(n).backgroundColor);
-      if (l !== null) return l;
+      const c = parseColor(getComputedStyle(n).backgroundColor);
+      if (c && c.a > 0) {
+        layers.push(c);
+        if (c.a >= 1) break;
+      }
     }
-    return 1; // page default light
+    let base = { r: 255, g: 255, b: 255 }; // page default light
+    for (const c of layers.reverse()) {
+      base = { r: c.r * c.a + base.r * (1 - c.a),
+               g: c.g * c.a + base.g * (1 - c.a),
+               b: c.b * c.a + base.b * (1 - c.a) };
+    }
+    return lumOf(base);
   };
   const seenContrast = new Set();
   for (const el of els) {
@@ -197,7 +215,10 @@ _MEASURE_JS = r"""
     const bg = effBg(el);
     const ratio = (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05);
     const px = parseFloat(cs.fontSize);
-    const threshold = px >= 24 ? 3.0 : 4.5;
+    // WCAG large text: >= 24px, or bold >= 18.66px (14pt)
+    const bold = parseInt(cs.fontWeight, 10) >= 600;
+    const large = px >= 24 || (bold && px >= 18.66);
+    const threshold = large ? 3.0 : 4.5;
     if (ratio < threshold) {
       const key = sel(el) + '|' + Math.round(ratio * 10);
       if (!seenContrast.has(key)) {
