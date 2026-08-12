@@ -168,8 +168,12 @@
 /* --- Font Loading: see @import block at the top of this file --- */
 
 html {
-  /* Viewport-scaled root font: ~24px at 1080p, ~48px at 4K, scales proportionally */
-  font-size: clamp(14px, 2.2vh, 52px);
+  /* Fixed design-canvas root font. The deck is a fixed 1920x1080 canvas
+     scaled as a whole via transform (see .slide-deck) — type must NOT
+     track the viewport independently, or a width-constrained window
+     shrinks the deck box while the text stays big (the old vh-clamp bug:
+     "폭에 의해 비율이 조정되지만 컨텐츠가 줄어들지 않음"). */
+  font-size: 24px;
 }
 body {
   width: 100%; height: 100%;
@@ -184,15 +188,29 @@ body {
   justify-content: center;
 }
 
-/* --- Slide Container (aspect ratio enforced via CSS variables) --- */
+/* --- Slide Container: fixed design canvas, scaled as one unit ---
+   1080px tall, width from the ratio vars (16:9 → 1920px). slide-framework.js
+   computes --deck-scale = min(availW/deckW, availH/deckH) on resize /
+   fullscreen / sidebar toggle, so ALL content (type, px coordinates,
+   canvases) shrinks proportionally with the box. Absolute px inside slides
+   is safe — the canvas scales as a whole. */
 .slide-deck {
-  width: 100vw; height: 100vh;
-  max-width: calc(100vh * var(--slide-ratio-w) / var(--slide-ratio-h));
-  max-height: calc(100vw * var(--slide-ratio-h) / var(--slide-ratio-w));
+  height: 1080px;
+  width: calc(1080px * var(--slide-ratio-w) / var(--slide-ratio-h));
+  flex: none;
   margin: auto;
+  transform: scale(var(--deck-scale, 1));
+  transform-origin: center center;
   position: relative;
   overflow: hidden;
   background: var(--bg-primary);
+}
+/* Oversized flex item still centers visually: body is flex with centered
+   axes; equal overflow is clipped on both sides until the transform shrinks
+   the box into view. */
+body {
+  justify-content: center;
+  align-items: center;
 }
 
 .slide {
@@ -1116,6 +1134,8 @@ input[type="range"]::-webkit-slider-thumb {
 @media print {
   .slide { page-break-after: always; position: relative; display: flex !important; opacity: 1 !important; }
   .progress-bar, .slide-counter, .nav-hint, .slide-logo, .slide-footer, .slide-number, .slide-ref { display: none; }
+  /* Print flows pages, not a scaled canvas */
+  .slide-deck { transform: none !important; width: 100% !important; height: auto !important; }
 }
 
 /* === Export Toolbar === */
@@ -1665,12 +1685,11 @@ body.sidebar-visible {
   justify-content: center;
 }
 
+/* Sidebar shifts the usable area right by 220px: keep the fixed canvas,
+   move its visual center by half the sidebar width. slide-framework.js
+   subtracts the 220px from availW when computing --deck-scale. */
 body.sidebar-visible .slide-deck {
-  width: calc(100vw - 220px);
-  max-width: calc(100vh * var(--slide-ratio-w) / var(--slide-ratio-h));
-  max-height: calc((100vw - 220px) * var(--slide-ratio-h) / var(--slide-ratio-w));
-  margin-left: 220px;
-  margin-right: auto;
+  transform: translateX(110px) scale(var(--deck-scale, 1));
 }
 
 /* Sidebar thumbnails */
@@ -1733,7 +1752,12 @@ body.sidebar-visible .slide-deck {
   overflow: auto !important;
 }
 
+/* Overview is a scrolling grid, not a scaled canvas. The overview class
+   lands ON the deck itself (see SlideFramework.toggleOverview), so match
+   both forms. */
+.slide-deck.overview-mode,
 .overview-mode .slide-deck {
+  transform: none !important;
   display: grid !important;
   grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
