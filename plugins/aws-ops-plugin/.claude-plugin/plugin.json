@@ -56,7 +56,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'if echo \"$TOOL_OUTPUT\" | grep -qi \"error\\|denied\\|forbidden\\|throttl\"; then echo \"AWS error pattern detected in output. Consider capturing for incident context.\"; fi'"
+            "command": "bash -c 'if echo \"$TOOL_OUTPUT\" | grep -qE \"AccessDenied|UnauthorizedOperation|Throttling|RequestLimitExceeded|ExpiredToken|ValidationError|ResourceNotFoundException|(An error occurred)\"; then echo \"AWS error pattern detected in output. Consider capturing for incident context.\"; fi'"
           }
         ]
       }
