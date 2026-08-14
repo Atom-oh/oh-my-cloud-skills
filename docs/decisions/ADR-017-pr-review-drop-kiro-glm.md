@@ -1,4 +1,4 @@
-# ADR-015: PR-Review — Disable `kiro-glm` (`glm-5`) in the Panel Roster
+# ADR-017: PR-Review — Disable `kiro-glm` (`glm-5`) in the Panel Roster
 
 ## Status
 
@@ -91,8 +91,9 @@ issues those ADRs addressed.
 - `glm-5` remains available to any operator who wants it back: `python3
   scripts/pr-review/panel_config.py set kiro-glm enabled true --root .` (or a committed
   edit to `pr-review.defaults.json`, per `docs/ci-pr-review.md`'s "경로 A") re-enables it
-  without any code change, since the cell definition (`model: glm-5` having been removed
-  from the disabled entry) needs restoring alongside `enabled: true`.
+  with that one command, no code change — the disabled entry keeps `model: glm-5` (only
+  `enabled` flips to `false`), so `validate_shape()`'s enabled-cell model check never
+  trips on re-enable.
 
 ## References
 

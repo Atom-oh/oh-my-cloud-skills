@@ -34,7 +34,7 @@
   는 `--v3` 유무와 무관하게 동일하게 동작함을 직접 재현 확인) → `--v3` 를 빼고 `gpt-5.5` 로
   최종 확정(codex 와 동일 모델이나 별도 harness/tool-access 경로라 리뷰 내용은 갈림). 결정
   기록: ADR-012. (`kiro-glm`/`glm-5`는 이후 false-positive rate 로 인해 기본 비활성화 —
-  AWS-Demo-Platform ADR-015 선례, 이 repo의 kiro-glm 드롭 ADR 참조.)
+  AWS-Demo-Platform ADR-015 선례, 이 repo의 ADR-017 참조.)
 - **Kiro diff 전달: `fs_read` 경로 참조 → capped argv 직접 embed(ADR-013)** — Kiro 셀은
   `--trust-tools=fs_read` 대신 `--trust-tools=`(툴 미부여)를 받고, diff 는
   `KIRO_DIFF_CAP`(기본 100000B)로 캡핑해 argv 에 직접 실린다. 이유: untrusted PR diff 에
@@ -64,7 +64,7 @@
     private fork 시 강제 skip 게이트 필요 — ADR-009.)
 
 ## 설정 — 매트릭스 멤버십 (`scripts/pr-review/panel_config.py`)
-- 어떤 셀(codex/kiro-opus/kiro-gpt, kiro-glm은 false-positive rate로 기본 비활성 — 아래 참조)이 매트릭스에 참여하는지는
+- 어떤 셀(codex/kiro-opus/kiro-gpt, kiro-glm은 false-positive rate로 기본 비활성 — ADR-017 참조)이 매트릭스에 참여하는지는
   `scripts/pr-review/run-panel.sh` 하드코딩이 아니라 설정에서 온다 — co-agent 플러그인의
   `co_agent_config.py`(defaults.json + gitignored local override)와 같은 레이어링을
   `scripts/pr-review/pr-review.defaults.json`(committed) + `.claude/pr-review.local.json`

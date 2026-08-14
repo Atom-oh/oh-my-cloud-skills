@@ -121,6 +121,18 @@ echo '{"panel": {"kiro-glm": {"enabled": true, "model": ""}}}' > "$R6/.claude/pr
 python3 "$CFG" kiro-cells --root "$R6" >/dev/null 2>&1 && RC=0 || RC=$?
 assert_eq "1" "$RC" "kiro-cells fails closed when an enabled cell's model is empty"
 
+# (l2) the documented one-command re-enable path (`set kiro-glm enabled true`, no model
+# override) must actually work -- this is exactly the regression a bare `{"enabled":
+# false}` disabled-default (no model key) would cause: an operator flips enabled back on,
+# defaults.json has no model to merge in, validate_shape() raises ConfigError, and
+# kiro-cells fails closed for the WHOLE roster, not just kiro-glm. Guards that
+# pr-review.defaults.json keeps `model: glm-5` on the disabled entry.
+R6B=$(mktemp -d "${TMPDIR:-/tmp}/prreviewcfg.XXXXXX")
+python3 "$CFG" set kiro-glm enabled true --root "$R6B" >/dev/null 2>&1
+CELLS_R6B=$(python3 "$CFG" kiro-cells --root "$R6B" 2>&1); RC=$?
+assert_eq "0" "$RC" "the documented one-command re-enable (set kiro-glm enabled true) does not fail closed"
+assert_contains "$CELLS_R6B" "glm-5:kiro-glm" "the documented one-command re-enable actually restores the kiro-glm cell"
+
 # (m) a typo'd cell name merges in as a brand-new key that no consumer ever reads -- the
 # *correctly*-spelled cell stays at its default (still enabled), so the override is a
 # silent no-op instead of the disable the operator intended (19th review MAJOR -- same
