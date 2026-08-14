@@ -32,7 +32,8 @@ CRITICAL/MAJOR finding remains (also stop on no-progress / oscillation).
   each AI's `models` list — Kiro's mainstay panel is **opus / minimax-m2.5**.
 - Cap: `rounds × pairs ≤ max_calls`; trim same-family (round-robin) first, then warn.
 - Same provider *family* (e.g. two Agy-routed variants) = diminishing returns; the matrix warns.
-  **Kiro is the exception** — it's a cross-vendor router (Claude / MiniMax / Zhipu), so
+  **Kiro is the exception** — it's a cross-vendor router (Claude / MiniMax; the router
+  also supports Zhipu, but glm-5 isn't in the default roster here), so
   multiple Kiro models are genuine cross-family diversity (matrix notes it, no warning).
   Note this is why `gpt-5.6-terra` isn't the Kiro-side pick even though it replaced `kimi-k2.5` in
   pr-review's panel — Codex already covers OpenAI here, so routing Kiro to `gpt-5.6-terra` too would

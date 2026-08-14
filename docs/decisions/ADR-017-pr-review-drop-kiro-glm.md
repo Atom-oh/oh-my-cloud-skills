@@ -37,8 +37,12 @@ issues those ADRs addressed.
   unverified roster," failing the whole panel closed rather than just dropping one cell.
   `KIRO_CELLS = ("kiro-opus", "kiro-gpt", "kiro-glm")` at `panel_config.py:34` — the
   known-cell allowlist — is unchanged; `kiro-glm` stays a valid, just-disabled, cell name.
-- Effective roster: `codex` + `kiro-opus` + `kiro-gpt` (2 Kiro cells, not 3) × 4 lenses
-  (L2–L5) = 12 cells (was 16), of which 8 are Kiro calls (was 12).
+- Effective roster: `codex` + `kiro-opus` + `kiro-gpt` (2 Kiro cells, not 3) — under
+  ADR-016's collapsed single-lens (`FULL.txt`) panel design, that's **3 cells total**
+  (was 4), of which **2 are Kiro calls** (was 3). (Predates ADR-016's own merge; this
+  ADR's roster-drop content and ADR-016's lens-collapse are independent decisions that
+  happened to land in overlapping PRs — the arithmetic above is the post-ADR-016
+  reality, not this ADR's original figure.)
 - Tests updated to match the new default (`enabled: false`) rather than the old default
   (`enabled: true`): `tests/pr-review/test-panel-config.sh` case (a)'s exact-string
   roster assertion now expects the 2-cell default; case (b) — the "disabling a cell"
@@ -57,12 +61,15 @@ issues those ADRs addressed.
   already-disabled `kiro-glm` there is redundant but harmless, not incorrect.
   `tests/pr-review/test-synthesize.sh`'s hand-written `degraded-models.txt` fixtures are
   independent of the live config and were left unchanged.
-- Docs updated to the new cell/call counts and roster list: `docs/ci-pr-review.md` (matrix
-  description, 16→12 max cells, Kiro-call count in the data-residency section, roster
-  list in "설정") and `docs/ci-pr-review-runbook.md` (cell-tag example, 16→12 max tags,
-  Kiro call count 12→8). `.github/workflows/pr-review.yml` has no `strategy:`/`matrix:`
-  block and no stale cell-count prose to fix — the fan-out lives entirely in the scripts
-  this ADR's config change already covers.
+- Docs updated to the new cell/call counts and roster list: `docs/ci-pr-review.md` (panel
+  description, max cell count, Kiro-call count in the data-residency section, roster
+  list in "설정") and `docs/ci-pr-review-runbook.md` (cell-tag example, max tag count,
+  Kiro call count). These figures now read against ADR-016's post-merge single-lens
+  design (3 cells total / 2 Kiro calls), not this ADR's original lens×model figures
+  (12 cells / 8 Kiro calls) — see the Decision bullet above.
+  `.github/workflows/pr-review.yml` has no `strategy:`/`matrix:` block and no stale
+  cell-count prose to fix — the fan-out lives entirely in the scripts this ADR's config
+  change already covers.
 - Scope: **this repo only**. Sibling repos running the same ported CI design
   (`AWS-Demo-Platform`, `ai-trader-web`, `aws-fsi-demo`, `awsops`, `cc-on-bedrock`,
   `claude-code-usage-dashboard`, `multi-region-architecture`, `nfm-dashboard`,
