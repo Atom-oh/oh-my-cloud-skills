@@ -4,11 +4,7 @@ Source: `tools/remarp-vscode/` | Entry: `src/extension.ts` | Preview: `src/previ
 
 Extracted from the root `CLAUDE.md` (2026-08 token diet): this detail is only needed when
 working on the extension itself — read it when working in `tools/remarp-vscode/`.
-
-## Development
-
-Build/package commands are canonical in `tools/remarp-vscode/CLAUDE.md` (the extension's
-own context file) — not duplicated here.
+Build/package commands are canonical in `tools/remarp-vscode/CLAUDE.md`, not here.
 
 ## File Detection
 

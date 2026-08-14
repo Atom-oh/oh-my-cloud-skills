@@ -56,7 +56,8 @@ for s in d['skills']:
 print('All references OK')
 "
 
-# Remarp VSCode Extension development: see docs/reference/remarp-vscode-extension.md
+# Remarp VSCode Extension build/package: see tools/remarp-vscode/CLAUDE.md (canonical);
+# extension detail: docs/reference/remarp-vscode-extension.md
 
 # Evaluate skills (quality, structure, token usage)
 python3 scripts/eval-skills.py

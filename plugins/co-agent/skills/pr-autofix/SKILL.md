@@ -162,9 +162,10 @@ Non-negotiables (the contract elaborates each — reading it is not optional):
 
   Record `$RUN` / `$SIG` / `$APPROVED_SHA` / `$LANDED_SHA` in your notes — the one
   storage the implementer cannot write.
-- Only plan-named findings with `approval: granted` AND `disposition: actionable` reach
-  the implementer; execution-surface edits carry `approval: required`, and
-  `.github/workflows/*` is never touched.
+- `check-plan-paths` runs before the implementer is spawned — approve and land refuse
+  to run without its sentinel; only plan-named findings with `approval: granted` AND
+  `disposition: actionable` reach the implementer; execution-surface edits carry
+  `approval: required`, and `.github/workflows/*` is never touched.
 - Implement via the bundled **`pr-autofix-implementer`** agent (Agent tool
   `subagent_type: "co-agent:pr-autofix-implementer"`; frontmatter pins
   `model: opus` / `effort: medium`) in the isolated worktree `$IMPL_WT`; parallel

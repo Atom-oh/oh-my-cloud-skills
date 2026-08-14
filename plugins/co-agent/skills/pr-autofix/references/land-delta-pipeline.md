@@ -92,7 +92,9 @@ subagent unspawnable → tell the user, plan inline.)
 iteration — stop, report, never continue past a failed gate, never reach for raw git to
 "unblock" a STOP.
 
-## Constraints (written into the plan in 4a; the implementer and the gates inherit them)
+## Constraints
+
+Written into the plan in 4a; the implementer and the gates inherit them.
 
 - Execution-surface edits (`package.json` scripts, `Makefile`, `Cargo.toml`,
   `pyproject.toml`, `*.gradle`, `CMakeLists.txt`, hook dirs, CI configs — anything
@@ -114,7 +116,7 @@ iteration — stop, report, never continue past a failed gate, never reach for r
 # read errors to fix them — and failure is recorded so the agent does NOT commit.
 BUILD_OK=1
 [ -f go.mod ]       && { go build ./...                   || BUILD_OK=0; }
-[ -f package.json ] && { npm run build || npx tsc --noEmit || BUILD_OK=0; }
+[ -f package.json ] && { npm run build || npx --no-install tsc --noEmit || BUILD_OK=0; }
 if [ -f pyproject.toml ]; then
   # DELIBERATE behavior change vs. the pre-extraction snippet (which checked only
   # modified tracked files): landed NEW .py files are untracked until the commit
@@ -122,10 +124,12 @@ if [ -f pyproject.toml ]; then
   # `ls-files -o` adds untracked new. A stray unrelated scratch .py can only gate
   # here if the host tree was clean apart from the landed files — otherwise the
   # dirty-tree rule above already moved this build into the reference worktree.
-  # -z/-0 keeps odd filenames intact.
-  { git diff HEAD --name-only -z --diff-filter=AM -- '*.py';
-    git ls-files -o --exclude-standard -z -- '*.py'; } \
-    | xargs -0 -r python3 -m py_compile                   || BUILD_OK=0
+  # NUL-delimited via a list file: -z/-0 keeps odd filenames intact, [ -s ] guards
+  # the empty case portably (no GNU-only `xargs -r`), && surfaces git failures.
+  { git diff HEAD --name-only -z --diff-filter=AM -- '*.py' &&
+    git ls-files -o --exclude-standard --full-name -z -- '*.py'; } \
+    > "$RUN/py.zlist"                                     || BUILD_OK=0
+  [ -s "$RUN/py.zlist" ] && { xargs -0 python3 -m py_compile < "$RUN/py.zlist" || BUILD_OK=0; }
 fi
 [ -f Cargo.toml ]   && { cargo check                      || BUILD_OK=0; }
 [ "$BUILD_OK" = 1 ] || echo "BUILD FAILED — read the errors above, fix them, and do NOT commit until the build passes."
