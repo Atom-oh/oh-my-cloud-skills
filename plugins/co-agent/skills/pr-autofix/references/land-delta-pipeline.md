@@ -116,8 +116,13 @@ BUILD_OK=1
 [ -f go.mod ]       && { go build ./...                   || BUILD_OK=0; }
 [ -f package.json ] && { npm run build || npx tsc --noEmit || BUILD_OK=0; }
 if [ -f pyproject.toml ]; then
-  # git diff HEAD sees modified AND staged-new .py; ls-files -o adds untracked new
-  # ones (plain `git diff` shows neither). -z/-0 keeps odd filenames intact.
+  # DELIBERATE behavior change vs. the pre-extraction snippet (which checked only
+  # modified tracked files): landed NEW .py files are untracked until the commit
+  # stage, so they are scanned too — `git diff HEAD` sees modified + staged-new,
+  # `ls-files -o` adds untracked new. A stray unrelated scratch .py can only gate
+  # here if the host tree was clean apart from the landed files — otherwise the
+  # dirty-tree rule above already moved this build into the reference worktree.
+  # -z/-0 keeps odd filenames intact.
   { git diff HEAD --name-only -z --diff-filter=AM -- '*.py';
     git ls-files -o --exclude-standard -z -- '*.py'; } \
     | xargs -0 -r python3 -m py_compile                   || BUILD_OK=0

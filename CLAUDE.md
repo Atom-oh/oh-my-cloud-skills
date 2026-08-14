@@ -218,7 +218,8 @@ Preview: `src/preview.ts`. Two preview modes (Markdown slide parsing / Remarp HT
 load), issue-annotation system (`<!-- issue: -->` → `/slide-fix`), and a visual edit mode
 with `:::css` / `:::canvas` writeback. **Working on the extension? Read
 `docs/reference/remarp-vscode-extension.md` first** — file detection rules, preview/sidebar
-behavior, key-file map, and build/package commands live there, not here.
+behavior, and key-file map live there, not here; build/package commands are canonical in
+`tools/remarp-vscode/CLAUDE.md`.
 
 ## Plugin Inventory
 
@@ -287,7 +288,7 @@ Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Sk
 | `pr-autofix-planner` | Read-only fix planner for pr-autofix (enforced Read/Grep/Glob; fable/opus) |
 | `pr-autofix-implementer` | Edit-only plan implementer for pr-autofix (enforced Read/Write/Edit/Grep/Glob — no Bash/network; opus [medium effort]) |
 
-Skill: `co-agent` — 6 modes: **Review**, **Decide**, **ADR**, **sync-context** (distill `CLAUDE.md` → `AGENTS.md` once; Kiro/Codex/Antigravity (`agy`) all share that one distilled file), **Consensus** (`/co-agent:consensus`), **harness** (`/co-agent:harness`). Fans the same prompt to whichever AI CLIs are installed — Kiro/Codex/Antigravity (`agy`; Gemini removed — ADR-010) — in parallel, then **Claude synthesizes**. Degrades gracefully to solo when no CLI is present. Adapters: `references/ai-cli-adapters.md`.
+Skill: `co-agent` — 6 modes: **Review** (multi-AI diff/arch review), **Decide** (decision support with comparison table), **ADR** (co-authored decision records), **sync-context** (distill `CLAUDE.md` → `AGENTS.md` once; Kiro/Codex/Antigravity (`agy`) all share that one distilled file), **Consensus** (doc→plan→implement pipeline, `/co-agent:consensus`), **harness** (delegated implementation orchestrator, `/co-agent:harness`). Fans the same prompt to whichever AI CLIs are installed — Kiro/Codex/Antigravity (`agy`; Gemini removed — ADR-010) — in parallel, then **Claude synthesizes**. Degrades gracefully to solo when no CLI is present. Adapters: `references/ai-cli-adapters.md`.
 
 Also in co-agent (moved out of project-init, now an upstream mirror — `docs/reference/project-init-upstream-sync.md`): `pr-autofix` — PR review feedback auto-fix loop (plan on Fable/Opus → opus [medium effort] implementer in a disposable worktree → only the plan-approved delta lands; loop bound `set pr_autofix max_iterations`, default 5), and `decision-reconcile` — ADR contradiction/drift detection via a diverse multi-agent panel, drafting a superseding ADR. Triggers: 의사결정 번복, ADR 모순, reconcile ADRs.
 

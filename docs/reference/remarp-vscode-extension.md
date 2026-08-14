@@ -7,12 +7,8 @@ working on the extension itself — read it when working in `tools/remarp-vscode
 
 ## Development
 
-```bash
-cd tools/remarp-vscode
-npm install && npm run compile    # Build TypeScript
-npx vsce package                  # Package .vsix
-code --install-extension remarp-vscode-*.vsix      # Install locally
-```
+Build/package commands are canonical in `tools/remarp-vscode/CLAUDE.md` (the extension's
+own context file) — not duplicated here.
 
 ## File Detection
 

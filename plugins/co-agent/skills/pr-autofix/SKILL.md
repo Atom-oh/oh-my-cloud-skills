@@ -176,6 +176,8 @@ Non-negotiables (the contract elaborates each — reading it is not optional):
   unconditionally; apply such changes manually outside the loop.
 - `--allow-exec-surface` and `--bypass-hookspath-approved` are used ONLY after explicit
   user approval — never on your own judgment.
+- Any failure AFTER landing → run the `rollback` stage first (restores exactly the
+  landed paths), then fix through re-approval or abort the iteration.
 - **Fail-closed**: any non-zero stage exit aborts the iteration — stop, report, never
   continue past a failed gate.
 
