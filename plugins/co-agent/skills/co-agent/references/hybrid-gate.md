@@ -132,8 +132,8 @@ providers, within the displayed budget.) Wide breadth where diversity pays
 (find), strong judgment where correctness pays (verify) — the same placement logic as
 `harness.implementer_model`/`implementer_effort` on the write path
 (`delegated-implement.md`) and the chair staying on the host's strongest tier.
-Under the default flat-rate cost model (configure.md "모델 티어링" → 비용 모델
-전제) the two-phase split buys wall-clock, quota headroom, and triage signal-to-noise
+Under the default flat-rate cost model (configure.md "Model tiering" → "Cost-model
+assumption") the two-phase split buys wall-clock, quota headroom, and triage signal-to-noise
 rather than dollars — the verify-never-costs-more-than-find bound is then a cap on
 quota and latency, not spend.
 

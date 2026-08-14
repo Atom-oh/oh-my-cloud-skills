@@ -11,7 +11,7 @@ edit a decision's rationale after acceptance — supersede it with a new ADR ins
 - **Sections**: `# ADR-NNN: Title` (English title) → `## Status` → `## Context` →
   `## Options Considered` (optional) → `## Decision` → `## Consequences` → `## References`.
 - **Status line**: `Accepted (YYYY-MM-DD)` / `Proposed` / `Deprecated` / `Superseded by ADR-NNN`.
-- **Language**: English title; **Korean body with English technical terms** (repo bilingual style); no emojis.
+- **Language**: English throughout (title + body); no emojis.
 - **Length**: concise (~25–40 lines). Link the implementing files/PRs in References.
 
 ## Superseding / reconciling

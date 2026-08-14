@@ -62,12 +62,12 @@ instead of building a sandbox.
 - Scope: **CI pr-review only**, same as ADR-011/012. `co-agent`'s own Kiro fan-out
   (`ai-cli-adapters.md`, `check_panel.py`, `consensus_hooks.py`) is unaffected — its
   `fs_read` use is interactive/on-demand and already opt-in/default-off for exactly this
-  threat model (see `plugins/co-agent/CLAUDE.md` "신뢰 한계(read-exfil)").
+  threat model (see `plugins/co-agent/CLAUDE.md` "trust boundary (read-exfil)").
 
 ## Consequences
 
 - Closes the fs_read-based exfiltration path structurally rather than narrowing it —
-  the residual-risk framing in ADR-011 §Kiro `fs_read` 전환 no longer applies to this repo's
+  the residual-risk framing in ADR-011 §Kiro `fs_read` transition no longer applies to this repo's
   pr-review CI (superseded by this ADR; ADR-011's body is left unedited as historical
   record per this repo's ADR convention).
 - Trades one bounded, known limitation (diffs over `KIRO_DIFF_CAP` get prefix-only Kiro

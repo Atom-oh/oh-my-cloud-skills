@@ -1,83 +1,108 @@
-# Event Quotas & Cost Guide (계정 할당량 / Grant / 비용 가이드)
+# Event Quotas & Cost Guide
 
-이벤트 운영자가 계정을 얼마나 쓸 수 있는지, 특수 리소스가 필요할 때 어떻게 요청하는지, 비용을 어디서 확인하는지 정리한다.
+Covers how much account capacity an event operator can use, how to request special resources when needed,
+and where to check costs.
 
 ---
 
-## 계정 할당량(Quota) 구조
+## Account quota structure
 
-| 개념 | 설명 |
+| Concept | Description |
 |------|------|
-| **월간 계정 할당량** | 사용자당 매월 리필되는 AWS 계정 수 (기본 110개, 이월되지 않음) |
-| **Quota consumed** | 이벤트가 **프로비저닝된** 순간 영구 차감 — 취소해도 복구 안 됨 |
-| **Quota allocated (refundable)** | 이벤트를 **예약(Scheduled)**했지만 아직 프로비저닝 전 — 취소하면 할당량으로 복구됨 |
-| **Quota available** | 이번 달 남은 사용 가능 계정 수 |
-| **워크숍(콘텐츠) 할당량** | 게시 가능한 워크숍 수의 별도 상한. 삭제 예약(최대 30일 소요) 후 할당량이 회복됨 |
+| **Monthly account quota** | number of AWS accounts refilled per user each month (default 110, does not roll over) |
+| **Quota consumed** | permanently deducted the moment an event is **provisioned** — not recovered even if canceled |
+| **Quota allocated (refundable)** | an event is **Scheduled** but not yet provisioned — recovered into the quota if canceled |
+| **Quota available** | accounts remaining for use this month |
+| **Workshop (content) quota** | a separate cap on the number of workshops that can be published. Deleting one on schedule (up to 30 days) frees up the quota |
 
-이벤트당 팀 1개 = 계정 1개가 소비된다 (예: 25팀 이벤트 → 25개 계정). 이벤트 상세의 Quotas 탭에서 실제 소비/할당 내역을 확인한다.
-
----
-
-## Grants — 마케팅 행사용 별도 할당량
-
-**Grant는 콘텐츠 저자가 직접 만들 수 없다** — re:Invent, re:Inforce, AWS Summit 등 AWS 마케팅 주관 행사에 한해 Workshop Studio 팀이 발급한다. 월간 할당량과 달리 월 경계에 묶이지 않고, 지정된 활성/만료 기간 내에서만 소비되며 자동 리필되지 않는다.
-
-Grant에는 이벤트 생성 시 강제되는 제약이 함께 붙는다 — 이벤트 제목, 최대 기간, 팀 크기, 참가자 수, 배포/접근 가능 리전, 사전 배포된 참가자 허용목록, 자동 시작 여부 등. 이벤트를 Grant로 생성하면 이런 제약이 이벤트 생성 마법사에서 자동으로 채워지거나 잠긴 값으로 표시된다. **이벤트 생성 후에는 다른 Grant로 바꿀 수 없다** — 취소 후 재생성해야 한다.
-
-콘텐츠 저자 입장에서 알아둘 점: 특정 Grant가 "이 콘텐츠만 사용 가능"하도록 제한될 수 있으므로, 대형 행사용 콘텐츠를 준비한다면 행사 주관팀(Event Marketing team)과 사전 조율이 필요하다.
+Each team in an event consumes 1 account (e.g. a 25-team event → 25 accounts). Check actual
+consumption/allocation on the event detail's Quotas tab.
 
 ---
 
-## Required Resources — 표준 계정 한도를 넘는 리소스 요청
+## Grants — a separate quota for marketing events
 
-Workshop Studio 계정은 기본적으로 낮은 리소스 한도로 프로비저닝된다(악용 방지). GPU 가속 컴퓨팅 등 표준적으로 막혀 있는 리소스가 필요하면 `contentspec.yaml`에 명시적으로 선언해야 한다.
+**Content authors cannot create Grants directly** — they are issued by the Workshop Studio team, and only
+for AWS marketing-organized events such as re:Invent, re:Inforce, and AWS Summit. Unlike the monthly quota,
+a Grant is not tied to calendar-month boundaries; it's consumed only within a designated active/expiration
+window and is not auto-refilled.
+
+A Grant comes with constraints enforced at event creation — event title, max duration, team size,
+participant count, deployable/accessible regions, a pre-deployed participant allowlist, whether autostart
+is forced, etc. When an event is created from a Grant, these constraints are auto-filled in the event
+creation wizard or shown as locked values. **A Grant cannot be swapped for another after event creation** —
+you must cancel and recreate.
+
+Something for content authors to keep in mind: a given Grant may be restricted to "only this content is
+usable," so if you're preparing content for a major event, coordinate in advance with the Event Marketing team.
+
+---
+
+## Required Resources — requesting resources beyond standard account limits
+
+Workshop Studio accounts are provisioned with low resource limits by default (to prevent abuse). If you
+need a resource that's typically blocked, such as GPU-accelerated compute, you must explicitly declare it
+in `contentspec.yaml`.
 
 ```yaml
 infrastructure:
-  # requiredResources는 infrastructure 하위에 위치
+  # requiredResources sits under infrastructure
   requiredResources:
     sagemaker:
-      - type: endpoint/ml.g5.12xlarge   # 허용 목록에 있는 타입만 가능
+      - type: endpoint/ml.g5.12xlarge   # only allow-listed types are permitted
         quantity: 1
 ```
 
-- **콘텐츠당 1개의 Required Resource만 선언 가능** — sagemaker와 guardduty를 동시에 선언해도 둘 다 적용되지 않는다.
-- 현재 허용 서비스는 `sagemaker`(특정 인스턴스/작업 타입, us-east-1·us-west-2 등 리전 제한)와 `guardduty`(detector, 리전 제한 없음) 뿐이며, 타입/수량이 허용 목록과 정확히 일치해야 빌드 시 검증을 통과한다.
-- **용량을 보장하지 않는다** — 리소스 접근 권한만 부여할 뿐, 실제 가용 용량(특히 가속 컴퓨팅)은 별도이므로 테스트 이벤트로 반드시 검증한다.
-- 이미 기본 허용된 리소스에는 이 필드가 필요 없다 — 강한 사업적 근거가 있을 때만 사용한다.
+- **Only 1 Required Resource can be declared per piece of content** — declaring both sagemaker and
+  guardduty simultaneously means neither applies.
+- The only currently allowed services are `sagemaker` (specific instance/job types, region-restricted to
+  us-east-1, us-west-2, etc.) and `guardduty` (detector, no region restriction) — the type/quantity must
+  exactly match the allow-list to pass build validation.
+- **This does not guarantee capacity** — it only grants access permission; actual available capacity
+  (especially for accelerated compute) is a separate matter, so always verify it with a test event.
+- Not needed for resources already allowed by default — use this field only when there's a strong business justification.
 
 ---
 
-## Event Cost — 이벤트 비용 확인
+## Event Cost — checking event costs
 
-이벤트 **종료 후에만** 비용을 확인할 수 있으며, 종료 후 최대 48시간까지 데이터가 확정되지 않을 수 있다. 표시되는 금액은 AWS 퍼블릭 가격 기준 추정치(USD)다.
+Costs are visible **only after the event ends**, and the data may not be finalized until up to 48 hours
+after that. The displayed amount is an estimate (USD) based on AWS public pricing.
 
-- 이벤트 개요 탭 → 이벤트 총비용 + 팀당 평균 비용(총비용 ÷ 팀 수)
-- Teams 탭 → 팀별 비용
-- 팀 상세 → 서비스별 비용 분해(Cost breakdown), 리전별 필터 가능
-- 프로비저닝 전 취소된 이벤트는 비용이 발생하지 않는다
-
----
-
-## On-Demand Capacity Reservations (ODCR) — 베타
-
-> ⚠️ 베타 기능. 사용 전 Workshop Studio 팀 승인 필요.
-
-Workshop Studio 계정은 악용 방지를 위해 내부 위험 평가 점수가 낮게 설정되어 있어, 표준적으로는 공유된 ODCR을 받을 수 없다(수신 측에 일정 수준 이상의 신뢰도가 필요). GenAI 워크숍처럼 가속 컴퓨팅 용량 보장이 꼭 필요한 경우, 아래 우회 경로를 쓴다:
-
-1. ODCR을 소유할 별도 AWS 계정을 준비하고, 해당 계정이 낮은 신뢰도의 계정에도 ODCR을 공유할 수 있도록 EC2 서비스팀에 승인 요청
-2. 이벤트 생성/프로비저닝
-3. **External Event Lifecycle Notifications**(`references/central-account-guide.md` 참조)로 팀 계정이 `deployment_queued` 상태가 될 때마다 Lambda가 트리거되어, `ram.associate_resource_share()`로 해당 팀 계정에 ODCR을 동적으로 공유
-4. 팀 계정 쪽 CloudFormation 커스텀 리소스가 RAM 공유 초대를 폴링 → 수락 → `CapacityReservationId`를 반환해 후속 리소스가 참조할 수 있게 함
-
-**주의할 점**: ODCR은 통째로 공유되므로 한 참가자가 전체를 소비할 수 있다. 공유 자동화(3단계)와 수락 폴링(4단계) 사이에 타이밍 갭이 있으므로, 커스텀 리소스의 Lambda 타임아웃은 최소 10분 이상으로 넉넉하게 잡는다.
+- Event Overview tab → total event cost + average cost per team (total cost ÷ number of teams)
+- Teams tab → per-team cost
+- Team detail → cost breakdown by service, filterable by region
+- Events canceled before provisioning incur no cost
 
 ---
 
-## 체크리스트
+## On-Demand Capacity Reservations (ODCR) — beta
 
-- [ ] 이번 달 계정 할당량이 이벤트 규모(팀 수)를 감당할 수 있는지 사전 확인
-- [ ] 대형 마케팅 행사용 콘텐츠라면 Grant 제약(리전/기간/팀 크기)을 미리 파악
-- [ ] 표준 한도를 넘는 리소스가 필요하면 `requiredResources`를 선언하고 테스트 이벤트로 검증 (용량 보장 아님에 유의)
-- [ ] 비용은 이벤트 종료 후 최대 48시간 뒤에 확인 가능하다는 점을 운영자에게 미리 안내
-- [ ] ODCR이 필요한 정도로 무거운 워크로드라면 베타 승인 절차부터 시작 (일반 experiment로는 불가)
+> ⚠️ Beta feature. Requires Workshop Studio team approval before use.
+
+Workshop Studio accounts are set with a low internal risk-assessment score to prevent abuse, so they cannot
+normally receive a shared ODCR (the recipient side needs a certain trust level). For cases like GenAI
+workshops where guaranteed accelerated-compute capacity is essential, use the following workaround path:
+
+1. Prepare a separate AWS account to own the ODCR, and request approval from the EC2 service team so that
+   account can share the ODCR even to low-trust accounts
+2. Create/provision the event
+3. Via **External Event Lifecycle Notifications** (see `references/central-account-guide.md`), trigger a
+   Lambda whenever a team account enters the `deployment_queued` state, and dynamically share the ODCR to
+   that team account via `ram.associate_resource_share()`
+4. A CloudFormation custom resource on the team-account side polls for the RAM share invitation → accepts
+   it → returns a `CapacityReservationId` so subsequent resources can reference it
+
+**Caveats**: since the ODCR is shared as a whole, a single participant could consume all of it. There's a
+timing gap between the share automation (step 3) and the acceptance polling (step 4), so give the custom
+resource's Lambda a generous timeout of at least 10 minutes.
+
+---
+
+## Checklist
+
+- [ ] Confirm in advance that this month's account quota can cover the event scale (team count)
+- [ ] For content aimed at a large marketing event, understand Grant constraints (region/duration/team size) in advance
+- [ ] If a resource beyond standard limits is needed, declare `requiredResources` and verify with a test event (note this is not a capacity guarantee)
+- [ ] Inform the operator in advance that cost data may take up to 48 hours after the event ends to appear
+- [ ] For workloads heavy enough to need ODCR, start with the beta approval process (not usable as a general experiment)

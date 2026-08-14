@@ -12,7 +12,7 @@ docs/
 ├── runbooks/              # Operational runbooks — see runbooks/CLAUDE.md
 ├── reference/             # Cross-cutting reference docs (e.g. review-routing.md)
 ├── superpowers/           # specs/ + plans/ from the superpowers workflow — see superpowers/CLAUDE.md
-├── architecture.md        # System architecture (bilingual KO/EN) — keep in sync with plugin inventory
+├── architecture.md        # System architecture — keep in sync with plugin inventory
 ├── onboarding.md          # New-contributor onboarding
 ├── ci-pr-review.md        # CI multi-AI PR review — design notes
 └── ci-pr-review-runbook.md # CI multi-AI PR review — operational runbook

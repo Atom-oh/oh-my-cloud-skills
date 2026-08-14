@@ -35,9 +35,9 @@ is about AgentCore or one of its components.
 | `policy_engine` | Policy Engine / Agentic Guardrails (brain + lock + check) |
 
 Typical mapping for a 3-card AgentCore feature slide:
-- "가치 실현 시간 단축 / 빠른 구축" → `runtime`
-- "유연성 / 어떤 모델·프레임워크" → `ai_agent`
-- "신뢰성 / 안전·거버넌스" → `policy_engine`
+- "Faster time-to-value / rapid build-out" → `runtime`
+- "Flexibility / any model or framework" → `ai_agent`
+- "Reliability / safety and governance" → `policy_engine`
 
 ## AWS service icons — `assets/icons/aws/`
 

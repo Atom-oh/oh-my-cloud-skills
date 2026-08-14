@@ -1,33 +1,33 @@
 # Remarp — Reactive Markdown for Presentations
 
-Remarp는 **reactive-presentation** 프레임워크를 위한 차세대 마크다운 포맷입니다. 사람이 읽고 편집할 수 있는 `.remarp.md` 파일 하나가 프레젠테이션의 **단일 소스**가 됩니다.
+Remarp is the next-generation markdown format for the **reactive-presentation** framework. A single human-readable, human-editable `.remarp.md` file becomes the **single source** for the presentation.
 
 ---
 
-## 왜 Remarp인가?
+## Why Remarp?
 
-| | Marp (기존) | JSON+Renderer | **Remarp (신규)** |
+| | Marp (existing) | JSON+Renderer | **Remarp (new)** |
 |---|---|---|---|
-| 소스 포맷 | Markdown | JSON | **Markdown** |
-| 사람이 읽기 | 쉬움 | 어려움 | **쉬움** |
-| 프래그먼트 애니메이션 | 불가 | 수동 HTML | **`{.click}` 한 줄** |
-| Canvas 애니메이션 | 불가 (수동 JS) | 별도 JS 모듈 | **`:::canvas` DSL** |
-| 스피커 노트 | `<!-- notes: -->` | JSON 필드 | **`:::notes` + 타이밍/큐** |
-| 컬럼 레이아웃 | 불가 | 수동 HTML | **`::: left`/`::: right`** |
-| 슬라이드 전환 효과 | 불가 | 불가 | **`@transition fade`** |
-| 키보드 커스텀 | 불가 | 불가 | **`keys:` frontmatter** |
-| 블록별 증분 빌드 | 불가 | 해당 없음 | **`sync` 명령** |
-| 하위 호환 | — | — | **`marp: true` 지원** |
+| Source format | Markdown | JSON | **Markdown** |
+| Human readability | Easy | Hard | **Easy** |
+| Fragment animation | Not supported | Manual HTML | **One line: `{.click}`** |
+| Canvas animation | Not supported (manual JS) | Separate JS module | **`:::canvas` DSL** |
+| Speaker notes | `<!-- notes: -->` | JSON field | **`:::notes` + timing/cues** |
+| Column layout | Not supported | Manual HTML | **`::: left`/`::: right`** |
+| Slide transitions | Not supported | Not supported | **`@transition fade`** |
+| Keyboard customization | Not supported | Not supported | **`keys:` frontmatter** |
+| Per-block incremental build | Not supported | N/A | **`sync` command** |
+| Backward compatibility | — | — | **`marp: true` supported** |
 
-> **한마디로**: Marp의 편집 편의성 + JSON 모드의 인터랙티브 기능 = Remarp
+> **In short**: Marp's editing convenience + JSON mode's interactive features = Remarp
 
 ---
 
-## 5분 퀵스타트
+## 5-Minute Quickstart
 
-### 1. 파일 만들기
+### 1. Create the file
 
-`my-talk.remarp.md` 파일을 생성합니다:
+Create a `my-talk.remarp.md` file:
 
 ```markdown
 ---
@@ -110,21 +110,21 @@ group "VPC" at 30,100 size 580x180 color=border
 :::
 ```
 
-### 2. HTML 빌드
+### 2. Build HTML
 
 ```bash
 python3 remarp_to_slides.py build my-talk.remarp.md
 ```
 
-### 3. 브라우저에서 열기
+### 3. Open in the browser
 
-생성된 HTML을 브라우저에서 열면 끝!
+Open the generated HTML in a browser and you're done!
 
 ---
 
-## 멀티파일 프로젝트 (긴 세션용)
+## Multi-file Projects (for long sessions)
 
-30분 이상의 세션은 블록별로 파일을 분리합니다:
+For sessions longer than 30 minutes, split files by block:
 
 ```
 aws-scaling/
@@ -137,7 +137,7 @@ aws-scaling/
     └── 02-advanced.html
 ```
 
-**`_presentation.remarp.md`** (글로벌 설정만):
+**`_presentation.remarp.md`** (global settings only):
 ```yaml
 ---
 remarp: true
@@ -162,7 +162,7 @@ theme:
 ---
 ```
 
-**블록 파일** (`01-fundamentals.remarp.md`):
+**Block file** (`01-fundamentals.remarp.md`):
 ```markdown
 ---
 remarp: true
@@ -185,7 +185,7 @@ Welcome!
 ...
 ```
 
-### 빌드 명령어
+### Build commands
 
 ```bash
 # 전체 빌드
@@ -200,13 +200,13 @@ python3 remarp_to_slides.py sync ./aws-scaling/
 
 ---
 
-## 주요 문법 요약
+## Syntax Summary
 
-### 슬라이드 구분
+### Slide separators
 
-`---` 줄로 슬라이드를 구분합니다. `---` 다음에 `@directive`를 배치합니다.
+Use `---` lines to separate slides. Place `@directive`s right after the `---`.
 
-### 디렉티브 (`@`)
+### Directives (`@`)
 
 ```markdown
 ---
@@ -217,18 +217,18 @@ python3 remarp_to_slides.py sync ./aws-scaling/
 @timing 3min
 ```
 
-| 디렉티브 | 설명 | 값 |
+| Directive | Description | Values |
 |-----------|------|-----|
-| `@type` | 슬라이드 유형 | content, compare, canvas, quiz, tabs, timeline, checklist, slider, code |
-| `@layout` | 레이아웃 | default, two-column, three-column, grid-2x2 |
-| `@transition` | 전환 효과 | fade, slide, zoom, none |
-| `@background` | 배경색 | CSS 색상 또는 `url(...)` |
-| `@timing` | 발표 시간 | 3min, 90s |
-| `@canvas-id` | Canvas ID | 식별자 |
+| `@type` | Slide type | content, compare, canvas, quiz, tabs, timeline, checklist, slider, code |
+| `@layout` | Layout | default, two-column, three-column, grid-2x2 |
+| `@transition` | Transition effect | fade, slide, zoom, none |
+| `@background` | Background color | CSS color or `url(...)` |
+| `@timing` | Presentation time | 3min, 90s |
+| `@canvas-id` | Canvas ID | Identifier |
 
-### 프래그먼트 애니메이션 (`{.click}`)
+### Fragment Animation (`{.click}`)
 
-Space/→ 키로 하나씩 나타나는 요소:
+Elements that appear one at a time with Space/→:
 
 ```markdown
 - 첫 번째{.click}
@@ -236,7 +236,7 @@ Space/→ 키로 하나씩 나타나는 요소:
 - 세 번째{.click animation=fade-up}
 ```
 
-블록 단위도 가능:
+Block-level fragments are also supported:
 ```markdown
 :::click animation=grow
 ### Phase 1
@@ -244,9 +244,9 @@ Space/→ 키로 하나씩 나타나는 요소:
 :::
 ```
 
-12가지 애니메이션: `fade-in`, `fade-up`, `fade-down`, `fade-left`, `fade-right`, `grow`, `shrink`, `highlight`, `highlight-red`, `highlight-green`, `strike`, `fade-out`
+12 animation types: `fade-in`, `fade-up`, `fade-down`, `fade-left`, `fade-right`, `grow`, `shrink`, `highlight`, `highlight-red`, `highlight-green`, `strike`, `fade-out`
 
-### 컬럼 레이아웃
+### Column Layout
 
 ```markdown
 @layout two-column
@@ -269,7 +269,7 @@ arrow from "서비스A" to "서비스B" at step=1 animate=draw
 :::
 ```
 
-### 스피커 노트
+### Speaker Notes
 
 ```markdown
 :::notes
@@ -280,15 +280,15 @@ arrow from "서비스A" to "서비스B" at step=1 animate=draw
 :::
 ```
 
-큐 유형: `demo` (데모), `pause` (멈춤), `question` (질문), `transition` (전환)
+Cue types: `demo`, `pause`, `question`, `transition`
 
 ---
 
-## 테마 통합
+## Theme Integration
 
-### PPTX/PDF 테마 소스
+### PPTX/PDF Theme Source
 
-Frontmatter에서 PPTX 또는 PDF 파일을 테마 소스로 지정:
+Specify a PPTX or PDF file as the theme source in frontmatter:
 
 ```yaml
 ---
@@ -303,16 +303,16 @@ theme:
 ---
 ```
 
-- `source` — PPTX/PDF 파일 경로 또는 이미 추출된 테마 디렉토리
-- `footer` — `auto`로 설정 시 PPTX에서 자동 추출, 또는 직접 문자열 지정
-- `pagination` — `true`/`false` 페이지 번호 표시 여부
-- `logo` — `auto`로 자동 추출 또는 직접 경로 지정
+- `source` — path to the PPTX/PDF file, or an already-extracted theme directory
+- `footer` — auto-extracted from the PPTX when set to `auto`, or specify a literal string
+- `pagination` — `true`/`false` to show page numbers
+- `logo` — `auto` to auto-extract, or specify a direct path
 
-추출된 테마는 `_theme/` 디렉토리에 캐시됩니다.
+Extracted themes are cached in the `_theme/` directory.
 
-### CSS 변수 자동 생성
+### Automatic CSS Variable Generation
 
-PPTX 색상 스키마가 자동으로 CSS 변수로 변환됩니다:
+PPTX color schemes are automatically converted into CSS variables:
 
 ```css
 :root {
@@ -326,9 +326,9 @@ PPTX 색상 스키마가 자동으로 CSS 변수로 변환됩니다:
 
 ---
 
-## 프리셋 DSL
+## Preset DSL
 
-복잡한 Canvas 애니메이션을 위한 프리셋 시스템:
+A preset system for complex Canvas animations:
 
 ```markdown
 :::canvas
@@ -344,18 +344,18 @@ preset eks-scaling {
 :::
 ```
 
-지원 프리셋:
-- `eks-scaling` — EKS 클러스터 스케일링 시각화
-- `serverless-flow` — Lambda 이벤트 흐름
-- `vpc-architecture` — VPC 네트워크 다이어그램
-- `cicd-pipeline` — CI/CD 파이프라인
-- `data-pipeline` — 데이터 처리 파이프라인
+Supported presets:
+- `eks-scaling` — EKS cluster scaling visualization
+- `serverless-flow` — Lambda event flow
+- `vpc-architecture` — VPC network diagram
+- `cicd-pipeline` — CI/CD pipeline
+- `data-pipeline` — data processing pipeline
 
 ---
 
-## Mermaid 다이어그램
+## Mermaid Diagrams
 
-`:::canvas mermaid` 변형으로 Mermaid 다이어그램 지원:
+Mermaid diagrams are supported via the `:::canvas mermaid` variant:
 
 ```markdown
 :::canvas mermaid
@@ -366,13 +366,13 @@ graph LR
 :::
 ```
 
-Mermaid CDN이 자동으로 주입됩니다.
+The Mermaid CDN is injected automatically.
 
 ---
 
-## 아이콘 사용
+## Using Icons
 
-Canvas DSL에서 AWS 아이콘 사용:
+Using AWS icons in the Canvas DSL:
 
 ```markdown
 :::canvas
@@ -386,13 +386,13 @@ icon custom "../common/aws-icons/services/Arch_Amazon-S3_48.svg" at 100,250 size
 :::
 ```
 
-지원되는 서비스 이름: `Lambda`, `EKS`, `API-Gateway`, `DynamoDB`, `S3`, `CloudWatch`, `EC2`, `VPC`, `RDS`, `SQS`, `SNS`, `CloudFront`, `Route53`, `Cognito`, `StepFunctions`, `Fargate`, `ECS`, `ALB`, `IAM`, `KMS`
+Supported service names: `Lambda`, `EKS`, `API-Gateway`, `DynamoDB`, `S3`, `CloudWatch`, `EC2`, `VPC`, `RDS`, `SQS`, `SNS`, `CloudFront`, `Route53`, `Cognito`, `StepFunctions`, `Fargate`, `ECS`, `ALB`, `IAM`, `KMS`
 
 ---
 
-## 참조 링크 (@ref)
+## Reference Links (@ref)
 
-슬라이드에 참조 링크 추가:
+Add reference links to a slide:
 
 ```markdown
 ---
@@ -405,13 +405,13 @@ icon custom "../common/aws-icons/services/Arch_Amazon-S3_48.svg" at 100,250 size
 Content here...
 ```
 
-참조는 `data-refs` 속성으로 슬라이드에 저장되어 프레젠터 뷰에서 표시됩니다.
+References are stored on the slide as a `data-refs` attribute and shown in the presenter view.
 
 ---
 
-## PPTX 내보내기
+## PPTX Export
 
-프레젠테이션을 PPTX로 내보내기:
+Export the presentation to PPTX:
 
 ```javascript
 // 브라우저에서
@@ -420,66 +420,66 @@ ExportUtils.exportPPTX({ title: 'My Presentation' });
 // 또는 index.html의 Export PPTX 버튼 클릭
 ```
 
-내보내기 옵션:
-- **PDF** — 모든 슬라이드를 PDF로
-- **ZIP** — HTML, CSS, JS를 포함한 전체 패키지
-- **PPTX** — PowerPoint 형식으로 내보내기 (테마 색상 포함)
+Export options:
+- **PDF** — all slides as PDF
+- **ZIP** — a complete package including HTML, CSS, JS
+- **PPTX** — export in PowerPoint format (including theme colors)
 
 ---
 
-## 키보드 단축키
+## Keyboard Shortcuts
 
-| 키 | 동작 |
+| Key | Action |
 |----|------|
-| ← → | 이전/다음 슬라이드 |
-| Space | 다음 프래그먼트 → 다음 슬라이드 |
-| ↑ ↓ | 탭/비교 전환, 애니메이션 스텝 |
-| F | 전체 화면 |
-| N | 스피커 노트 패널 |
-| P | 프레젠터 뷰 (새 창) |
-| O | 슬라이드 오버뷰 (그리드) |
-| B | 블랙아웃 |
-| Esc | 전체 화면/오버뷰 종료 |
+| ← → | Previous/next slide |
+| Space | Next fragment → next slide |
+| ↑ ↓ | Switch tabs/comparisons, animation steps |
+| F | Fullscreen |
+| N | Speaker notes panel |
+| P | Presenter view (new window) |
+| O | Slide overview (grid) |
+| B | Blackout |
+| Esc | Exit fullscreen/overview |
 
-키보드 커스텀은 frontmatter의 `keys:` 섹션에서 설정합니다.
+Keyboard customization is configured in the `keys:` section of frontmatter.
 
 ---
 
-## Marp에서 마이그레이션
+## Migrating from Marp
 
-기존 Marp 파일을 Remarp로 자동 변환:
+Automatically convert existing Marp files to Remarp:
 
 ```bash
 python3 remarp_to_slides.py migrate ./old-content.md -o ./my-presentation/
 ```
 
-변환 내용:
+What gets converted:
 | Marp | Remarp |
 |------|--------|
 | `marp: true` | `remarp: true` |
 | `<!-- type: canvas -->` | `@type canvas` |
-| `<!-- block: name -->` | 별도 블록 파일 |
-| `<!-- notes: text -->` | `:::notes` 블록 |
+| `<!-- block: name -->` | Separate block file |
+| `<!-- notes: text -->` | `:::notes` block |
 
-하위 호환: `marp: true` 파일도 Remarp 파서가 그대로 처리합니다.
-
----
-
-## VSCode 확장
-
-`tools/remarp-vscode/` 에 VSCode 확장이 포함되어 있습니다:
-
-- **구문 하이라이팅** — `@directive`, `:::block`, `{.click}`, Canvas DSL
-- **라이브 프리뷰** — 사이드 패널에서 현재 슬라이드 미리보기
-- **슬라이드 아웃라인** — 탐색기에서 슬라이드 목록 트리뷰
-- **자동 완성** — `@type`, `@layout`, `@transition`, 애니메이션 타입 IntelliSense
+Backward compatibility: `marp: true` files are handled as-is by the Remarp parser too.
 
 ---
 
-## 더 알아보기
+## VSCode Extension
 
-- [Remarp 포맷 전체 사양](references/remarp-format-guide.md) — 모든 문법의 상세 설명과 예제
-- [슬라이드 패턴 가이드](references/slide-patterns.md) — 13개 슬라이드 유형별 HTML 패턴
-- [프레임워크 가이드](references/framework-guide.md) — CSS/JS API 레퍼런스
-- [PPTX 테마 가이드](references/pptx-theme-guide.md) — 기업 테마 추출 방법
-- [AWS 아이콘 가이드](references/aws-icons-guide.md) — AWS 아키텍처 아이콘 사용법
+A VSCode extension is included at `tools/remarp-vscode/`:
+
+- **Syntax highlighting** — `@directive`, `:::block`, `{.click}`, Canvas DSL
+- **Live preview** — preview the current slide in a side panel
+- **Slide outline** — a tree view of the slide list in the explorer
+- **Autocomplete** — IntelliSense for `@type`, `@layout`, `@transition`, animation types
+
+---
+
+## Learn More
+
+- [Full Remarp format specification](references/remarp-format-guide.md) — detailed explanations and examples of all syntax
+- [Slide patterns guide](references/slide-patterns.md) — HTML patterns for 13 slide types
+- [Framework guide](references/framework-guide.md) — CSS/JS API reference
+- [PPTX theme guide](references/pptx-theme-guide.md) — how to extract corporate themes
+- [AWS icons guide](references/aws-icons-guide.md) — how to use AWS architecture icons

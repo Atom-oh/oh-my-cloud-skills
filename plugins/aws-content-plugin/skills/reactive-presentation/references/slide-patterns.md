@@ -1,5 +1,5 @@
-<!-- SECTION INDEX (auto) — 큰 파일. 전체 읽지 말고 필요한 ## 섹션만 offset-read.
-     라인번호 정확값(11 sec). 예: Read(file, offset=L, limit=다음섹션L−L). 해당 섹션이 §/## 참조 시 그 섹션도 함께. -->
+<!-- SECTION INDEX (auto) — large file. Do not read the whole file; offset-read only the ## section you need.
+     Line numbers are exact (as of 11 sec). e.g. Read(file, offset=L, limit=nextSectionL−L). If a section references another via §/##, read that section as well. -->
 <!--
   L19    Slide Title Voice
   L49    Common Slide Types
@@ -11,7 +11,7 @@
   L1647  Cloud Migration Progress
   L1795  Cluster Status
   L1827  Slide Count Guidelines
-  L1840  JSON Authoring Mode (권장)
+  L1840  JSON Authoring Mode (recommended)
 -->
 
 # Slide Design Patterns
@@ -20,22 +20,22 @@
 
 A slide title (the `## heading`) is read in under a second — it must carry **edge**, not be a
 descriptive label. Write the title as a **headline**: a declarative claim, a question, or a
-reversal. Keep it **≤ 28 KO chars**. Put detail in the **subtitle**, written in **체언 종결**
-(noun-ending: `~화 / ~등극 / ~재편 / ~본격화` …), **≤ 45 KO chars**.
+reversal. Keep it **≤ 28 KO chars**. Put detail in the **subtitle**, written in **noun-ending
+style** (체언 종결 — a Korean phrase that ends on a noun rather than a verb, e.g. `~화 / ~등극 / ~재편 / ~본격화` …), **≤ 45 KO chars**.
 
 | Slot | Voice | Limit | Example |
 |------|-------|-------|---------|
-| Title (`##`) | headline with edge (claim / question / reversal) | ≤ 28 chars | "비용은 싸졌고, 모델은 똑똑해졌다" |
-| Subtitle | 체언 종결 (noun-ending phrase) | ≤ 45 chars | "추론 비용 90% 하락, Frontier 모델의 대중화" |
+| Title (`##`) | headline with edge (claim / question / reversal) | ≤ 28 chars | "Costs got cheaper, models got smarter" |
+| Subtitle | noun-ending phrase | ≤ 45 chars | "Inference cost down 90% — frontier models go mainstream" |
 
 ✅ Good (headline):
-- "비용은 싸졌고, 모델은 똑똑해졌다"
-- "왜 지금 에이전트인가?"
-- "RAG는 죽지 않았다 — 역할이 바뀌었다"
+- "Costs got cheaper, models got smarter"
+- "Why agents, why now?"
+- "RAG isn't dead — its role just changed"
 
 ❌ Bad (flat label):
-- "2026년 Frontier AI 모델 동향"  → reword to a claim/question
-- "비용 및 성능에 대한 개요"  → no edge, generic noun phrase as a title
+- "2026 Frontier AI Model Trends"  → reword to a claim/question
+- "An Overview of Cost and Performance"  → no edge, generic noun phrase as a title
 
 **Level gate** — recommend headline voice by the `level` frontmatter field (`_presentation.md`):
 - **level 100–200** (briefing / overview): use headline titles. The audience scans for the
@@ -342,12 +342,12 @@ Session agenda with numbered dots, horizontal timeline, time labels, and break m
 ```
 
 **Rules:**
-- `@type: agenda` 필수 — 없으면 일반 content 슬라이드로 렌더링됨
-- 번호 목록 사용 (`1. 2. 3.`) — "Block N" 접두사 금지 (렌더러가 자동으로 넘버링 dot 추가)
-- 휴식: `- Break (duration)` 또는 `- 휴식 (duration)` → ☕ break marker
-- `{.click}` 사용 금지 — agenda는 전체가 한번에 표시됨
-- `@timing` 디렉티브 → 부제목 "총 X 세션"
-- `> blockquote` → 타임라인 아래 callout 박스
+- `@type: agenda` is required — without it, the slide renders as a plain content slide
+- Use a numbered list (`1. 2. 3.`) — do not prefix items with "Block N" (the renderer adds the numbering dot automatically)
+- Break: `- Break (duration)` or `- 휴식 (duration)` → renders as a ☕ break marker
+- Do not use `{.click}` — the agenda is shown in full at once
+- The `@timing` directive → renders as the subtitle "Total X session"
+- A `> blockquote` → renders as a callout box below the timeline
 
 ### 1. Title Slide (per-block)
 ```html
@@ -418,7 +418,7 @@ Session agenda with numbered dots, horizontal timeline, time labels, and break m
 
 ### 4b. Architecture Diagram Slide (Static Image)
 
-전체 아키텍처 개요처럼 정적 구조를 보여줄 때 사용. draw.io로 제작한 PNG/SVG를 삽입.
+Use this when showing a static structure, such as a full architecture overview. Insert a PNG/SVG produced with draw.io.
 
 ```html
 <div class="slide">
@@ -429,19 +429,19 @@ Session agenda with numbered dots, horizontal timeline, time labels, and break m
 </div>
 ```
 
-Canvas와의 선택 기준:
-- step animation이 필요 → Canvas (`@type: canvas`)
-- 정적 아키텍처 한눈에 → Diagram Image (`@type: content` + `@img:`)
+Selection criteria versus Canvas:
+- Step animation needed → Canvas (`@type: canvas`)
+- A static architecture at a glance → Diagram Image (`@type: content` + `@img:`)
 
-### 4c. HTML Architecture Slide (Multi-layer, 박스 5+)
+### 4c. HTML Architecture Slide (Multi-layer, 5+ boxes)
 
-박스 5개 이상의 다계층 아키텍처, 서비스 에코시스템, 멀티노드 맵 등은 `:::canvas` DSL 대신 `:::html` + `:::css`로 작성한다. flexbox/grid 레이아웃이 복잡한 배치에서 더 안정적이고 정확한 결과를 제공한다.
+For multi-layer architectures, service ecosystems, multi-node maps, and similar diagrams with 5 or more boxes, write it as `:::html` + `:::css` instead of the `:::canvas` DSL. A flexbox/grid layout gives more stable, accurate results for complex arrangements.
 
-> **규칙**: 박스 5개 이상이면 `:::canvas` 사용 금지. 반드시 `:::html` + `:::css`를 사용한다.
+> **Rule**: If there are 5 or more boxes, do not use `:::canvas` — use `:::html` + `:::css` instead.
 >
-> **규칙**: `:::html` 블록에 3개 이상의 동위 요소가 있으면 `class="fragment fade-up" data-fragment-index="N"`으로 순차 등장 적용 필수. 정적 HTML은 금지.
+> **Rule**: If a `:::html` block has 3 or more sibling elements, applying sequential reveal via `class="fragment fade-up" data-fragment-index="N"` is required. Static HTML is not allowed.
 
-#### Remarp Source 형식 (에이전트가 직접 사용)
+#### Remarp Source Format (used directly by the agent)
 
 ```markdown
 ---
@@ -546,9 +546,9 @@ theme: ../common/theme.css
 :::
 ```
 
-#### Step Animation 추가 (`.click` 블록으로 레이어별 reveal)
+#### Adding Step Animation (per-layer reveal via a `.click` block)
 
-레이어별 순차 표시가 필요하면 `.click` 블록을 추가한다:
+If you need to reveal layers one at a time, add a `.click` block:
 
 ```markdown
 :::click
@@ -564,24 +564,24 @@ step 4: [data-layer="outputs"] 계층이 나타남
 :::
 ```
 
-#### 핵심 패턴 요약
+#### Core Pattern Summary
 
-| 요소 | CSS 패턴 | 용도 |
+| Element | CSS Pattern | Purpose |
 |------|----------|------|
-| 수직 레이어 쌓기 | `.arch-diagram` → `flex-direction:column` | 계층 간 위→아래 흐름 |
-| 수평 박스 배치 | `.flow-h` → `display:flex; gap:1rem` | 같은 계층 내 서비스 나열 |
-| 계층 구분 | `.arch-layer` → `background + border` | 계층별 시각적 그룹핑 |
-| AWS 아이콘 | `<img src="../common/aws-icons/...">` | 48x48 서비스 아이콘 |
-| 강조 | `.highlight` / `.accent` | 핵심 서비스 / 결과 구분 |
-| 화살표 연결 | `.arch-arrow` → `▼` 텍스트 | 계층 간 흐름 표시 |
+| Stacking layers vertically | `.arch-diagram` → `flex-direction:column` | top-to-bottom flow between layers |
+| Arranging boxes horizontally | `.flow-h` → `display:flex; gap:1rem` | listing services within the same layer |
+| Distinguishing layers | `.arch-layer` → `background + border` | visual grouping per layer |
+| AWS icons | `<img src="../common/aws-icons/...">` | 48x48 service icons |
+| Emphasis | `.highlight` / `.accent` | distinguishing key services / outcomes |
+| Arrow connectors | `.arch-arrow` → `▼` text | showing flow between layers |
 
 ### 5. Canvas Animation Slide
 
-#### Remarp Source 형식 (에이전트가 직접 사용)
+#### Remarp Source Format (used directly by the agent)
 
-> **Canvas DSL 문법 (필수 준수)**: `box id "label" at X,Y size W,H color <name> [step N]`
-> 색상은 **시맨틱 이름**(`accent`, `green`, `yellow`, `red`, `blue`, `cyan`)을 사용합니다 — `Colors.*`로 해석되어 테마/PPTX 브랜드에 자동 적응합니다. 하드코딩 hex 금지.
-> 다른 형식(bracket syntax `[x=..., y=...]`, positional `80,160 160,80`)은 파서가 인식하지 못합니다.
+> **Canvas DSL syntax (must be followed exactly)**: `box id "label" at X,Y size W,H color <name> [step N]`
+> Colors use **semantic names** (`accent`, `green`, `yellow`, `red`, `blue`, `cyan`) — these resolve via `Colors.*` and automatically adapt to the theme/PPTX brand. Hardcoded hex values are forbidden.
+> Other formats (bracket syntax `[x=..., y=...]`, positional `80,160 160,80`) are not recognized by the parser.
 
 ```markdown
 ---
@@ -607,7 +607,7 @@ arrow process -> target "store" step 3
 :::
 ```
 
-#### HTML Output 패턴
+#### HTML Output Pattern
 ```html
 <div class="slide">
   <div class="slide-header"><h2>Animation Title</h2></div>
@@ -853,9 +853,9 @@ Key points:
 
 ## Canvas Animation Patterns
 
-### 화살표 선택: drawArrow vs drawElbowArrow
+### Choosing an Arrow: drawArrow vs drawElbowArrow
 
-Canvas 화살표는 연결 거리와 방향에 따라 함수를 선택합니다:
+Choose the Canvas arrow function based on the connection distance and direction:
 
 ```javascript
 // ✅ 순수 수평 (dy=0) → drawArrow
@@ -937,7 +937,7 @@ There are two variants depending on whether the block is a middle block or the f
 
 #### 13a. Middle Block (has next block)
 
-The "다음" button is `btn-primary` (highlighted CTA), and the TOC button is `btn` (secondary).
+The "Next" (다음) button is `btn-primary` (highlighted CTA), and the TOC button is `btn` (secondary).
 
 ```html
 <!-- Slide N: Thank You -->
@@ -973,11 +973,11 @@ No next block link. The TOC button becomes `btn-primary` (promoted to primary CT
 
 Key elements:
 - Gradient text "Thank You" heading (accent-light → cyan)
-- Block completion description (e.g., "Block 2 — 노드 라이프사이클 & 모니터링 완료")
-- **← 목차로 돌아가기** button: always present, links to `index.html` (TOC page)
-- **다음: Block N+1 →** button: present for middle blocks only, links to the next block HTML file
-- Button style rule: the primary action (`btn-primary`) is "다음" for middle blocks, "목차로 돌아가기" for the final block
-- Final block adds a congratulations message (e.g., "수고하셨습니다!")
+- Block completion description (e.g., "Block 2 — Node Lifecycle & Monitoring complete")
+- **← Back to TOC** (목차로 돌아가기) button: always present, links to `index.html` (TOC page)
+- **Next: Block N+1 →** (다음: Block N+1 →) button: present for middle blocks only, links to the next block HTML file
+- Button style rule: the primary action (`btn-primary`) is "Next" (다음) for middle blocks, "Back to TOC" (목차로 돌아가기) for the final block
+- Final block adds a congratulations message (e.g., "수고하셨습니다!" — "Great work!")
 
 ### 14. Speaker Notes (presenterNotes)
 
@@ -1837,12 +1837,12 @@ Interactive/animated slides take longer — budget 3-4 min each.
 
 ---
 
-## JSON Authoring Mode (권장)
+## JSON Authoring Mode (recommended)
 
-> **권장**: 새 프레젠테이션은 `slides.json` + `slide-renderer.js` 방식으로 작성합니다.
-> 기존 Raw HTML 방식은 레거시로 유지되며, 특수한 커스터마이징이 필요한 경우에만 사용합니다.
+> **Recommended**: Author new presentations using the `slides.json` + `slide-renderer.js` approach.
+> The legacy Raw HTML approach is kept for backward compatibility and should only be used when special customization is needed.
 
-### slides.json 구조
+### slides.json Structure
 
 ```jsonc
 {
@@ -1857,7 +1857,7 @@ Interactive/animated slides take longer — budget 3-4 min each.
 }
 ```
 
-### 슬라이드 타입별 JSON 스키마
+### JSON Schema per Slide Type
 
 #### §0 Cover (Session Cover)
 
@@ -1943,7 +1943,7 @@ Interactive/animated slides take longer — budget 3-4 min each.
 }
 ```
 
-Canvas 애니메이션은 별도 JS 모듈로 작성합니다. 모듈 규격:
+Canvas animations are written as a separate JS module. Module spec:
 ```javascript
 // animations/slide-05-flow.js
 export function init(canvasId, slideIndex, deck) {
@@ -2287,12 +2287,12 @@ export function init(canvasId, slideIndex, deck) {
 }
 ```
 
-### JSON vs Raw HTML 선택 가이드
+### JSON vs Raw HTML Selection Guide
 
-| 상황 | 방식 | 이유 |
+| Situation | Approach | Reason |
 |------|------|------|
-| 새 프레젠테이션 | JSON (권장) | 일관성, 수정 용이성 |
-| 표준 슬라이드 타입 (13종) | JSON | 렌더러가 HTML 보장 |
-| Canvas 애니메이션 | JSON + 별도 JS 모듈 | 애니메이션만 커스텀 |
-| 기존 프레젠테이션 수정 | Raw HTML (기존 유지) | 마이그레이션 선택사항 |
-| 매우 특수한 레이아웃 | Raw HTML | JSON 스키마에 없는 경우 |
+| New presentation | JSON (recommended) | consistency, easier to edit |
+| Standard slide type (13 kinds) | JSON | renderer guarantees valid HTML |
+| Canvas animation | JSON + separate JS module | only the animation is custom |
+| Editing an existing presentation | Raw HTML (keep as-is) | migration is optional |
+| Highly specialized layout | Raw HTML | not covered by the JSON schema |

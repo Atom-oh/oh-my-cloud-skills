@@ -23,17 +23,17 @@ A brochure is **persuasion + clarity for a dual audience**: a decision-maker gra
 
 ## Mandatory Rules
 
-> **이 규칙은 예외 없이 항상 적용됩니다.**
+> **These rules always apply, with no exceptions.**
 
-1. **사실 우선**: 작성 전 제품 사실(핵심 메시지·지표·기능·아키텍처)을 소스(repo/README/사용자)에서 확보합니다. **지표·기능 수·서비스명을 지어내지 않습니다** — 부풀린 숫자는 기술 독자의 신뢰를 즉시 잃습니다. 누락 시 `AskUserQuestion`으로 확인.
-2. **자기완결 HTML**: 단일 `.html` 파일, CSS는 `<style>`에 인라인. 폰트 CDN은 허용하되 **반드시 system 폰트 폴백**을 둡니다. 빌드 도구·프레임워크 금지.
-3. **3-tier 반응형 필수**: 모바일(~375px)·태블릿(~768px)·PC(~1280px) 모두 검증. 모바일에서 표는 카드로 재배치(의미 열 숨김 금지), 가로 아키텍처 SVG는 90° 회전(세로). `references/design-system.md` 참조.
-4. **접근성 필수**: skip-link, `:focus-visible`, `prefers-reduced-motion`(SVG SMIL 포함), WCAG-AA 대비, 장식 SVG `aria-hidden`. `design-system.md` 체크리스트 준수.
-5. **디자인 디렉션 필수**: 제네릭 템플릿(보라 그라데이션 등) 금지 — 의도된 에디토리얼 방향 하나를 정해 정밀 실행. `assets/example-brochure/`로 품질 기준 calibrate.
-6. **다이어그램 일관성**: 아키텍처 다이어그램은 `architecture-diagram` 스킬로 생성(SVG export 후 임베드). **브로셔 카피와 다이어그램이 같은 이야기**(동일 컴포넌트·수치)를 하도록 유지.
-7. **품질 게이트 필수**: 배포 전 `scripts/check_brochure.py` 통과 + **content-review-agent ≥ 85**. 텍스트 PII(계정 ID·내부 CIDR/IP)는 공개 전 제거. **스크린샷 이미지 안의 민감정보는 텍스트 스캔으로 못 잡으므로**(계정 ID·ARN·세션/토큰 URL·내부 hostname·고객 데이터가 픽셀로 박힘) 공개 전 **모든 스크린샷을 육안 검수**해 블러/크롭/재촬영한다 — 가능하면 처음부터 데모/샌드박스 계정으로 캡처.
-8. **공개 배포 함정**: 제품 도메인이 인증 엣지(CloudFront+Cognito Lambda@Edge 등 전 경로 게이트) 뒤에 있으면 공개 브로셔를 호스팅할 수 **없습니다**. 공개 호스트는 **GitHub Pages** — 배포 후 인증 없이 200 응답하는지 검증.
-9. **스크린샷(도달 가능한 웹 UI가 있는 제품 필수)**: 제품에 도달 가능한 웹 UI가 있으면 Playwright MCP로 핵심 화면 4–6장을 캡처해 `shots` 섹션으로 임베드합니다. `browser_*` 도구는 **Playwright MCP가 세션에 로드된 경우에만** 쓸 수 있으므로, 없으면 `AskUserQuestion`으로 (a) Playwright MCP 활성화 또는 (b) 사용자가 스크린샷 파일 직접 제공을 요청하고 받은 것으로 진행합니다 — 짐작하거나 조용히 생략하지 않습니다. **도달 가능한 웹 UI가 없을 때만**(UI 자체가 없거나(CLI·라이브러리) 도달 불가하고 사용자도 제공 불가) 이 단계를 건너뛰고, 건너뛰면 그 사실을 명시합니다. 캡처는 원칙 7의 이미지 민감정보 검수를 거칩니다.
+1. **Facts first**: Before writing, gather product facts (core message, metrics, features, architecture) from the source (repo/README/user). **Never invent metrics, feature counts, or service names** — inflated numbers instantly lose a technical reader's trust. If something is missing, confirm via `AskUserQuestion`.
+2. **Self-contained HTML**: A single `.html` file, with CSS inlined in `<style>`. Font CDNs are allowed, but **a system-font fallback is mandatory**. No build tools or frameworks.
+3. **3-tier responsive is mandatory**: Verify mobile (~375px), tablet (~768px), and PC (~1280px). On mobile, tables reflow into cards (never hide meaningful columns); wide architecture SVGs rotate 90° (vertical). See `references/design-system.md`.
+4. **Accessibility is mandatory**: skip-link, `:focus-visible`, `prefers-reduced-motion` (including SVG SMIL), WCAG-AA contrast, `aria-hidden` on decorative SVGs. Follow the `design-system.md` checklist.
+5. **Design direction is mandatory**: Generic templates (e.g. purple gradients) are forbidden — commit to one intentional editorial direction and execute it precisely. Calibrate the quality bar against `assets/example-brochure/`.
+6. **Diagram consistency**: Generate the architecture diagram with the `architecture-diagram` skill (export as SVG, then embed). **Keep the brochure copy and the diagram telling the same story** (same components, same numbers).
+7. **Quality gate is mandatory**: Before deployment, pass `scripts/check_brochure.py` and get **content-review-agent ≥ 85**. Remove text PII (account IDs, internal CIDR/IP) before publishing. **Sensitive information inside screenshot images can't be caught by text scanning** (account IDs, ARNs, session/token URLs, internal hostnames, and customer data can be baked into pixels), so before publishing, **visually inspect every screenshot** and blur/crop/recapture as needed — capture from a demo/sandbox account from the start whenever possible.
+8. **Public-deployment pitfall**: If the product's domain sits behind an auth edge (e.g. CloudFront+Cognito Lambda@Edge gating every path), the public brochure **cannot** be hosted there. The public host is **GitHub Pages** — verify it returns 200 without authentication after deployment.
+9. **Screenshots (mandatory for a product with a reachable web UI)**: If the product has a reachable web UI, capture 4–6 key screens with Playwright MCP and embed them in a `shots` section. The `browser_*` tools can only be used **when Playwright MCP is loaded in the session**, so if it isn't, use `AskUserQuestion` to either (a) enable Playwright MCP, or (b) ask the user to supply screenshot files directly and proceed once received — never guess or silently skip. **Only when there is no reachable web UI** (no UI at all — CLI/library — or it's unreachable and the user can't supply screenshots either) skip this step, and state explicitly that it was skipped when you do. Captures go through the image-sensitive-data inspection from rule 7.
 
 ---
 

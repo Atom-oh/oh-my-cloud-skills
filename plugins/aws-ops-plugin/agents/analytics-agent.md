@@ -16,7 +16,7 @@ mcpServers:
 
 A specialized agent for AWS data analytics — search engines, query services, visualization, and streaming data pipelines.
 
-> **Scope boundary (vs `observability-agent`)** — analytics-agent owns **data analytics services**: OpenSearch (search), Athena (S3 query), QuickSight (BI), Kinesis (streaming), ClickHouse **as an OLAP query engine**, and building **log/event analytics pipelines** (e.g. Kinesis → OpenSearch/Athena). For **operational monitoring** of running systems — CloudWatch metrics/alarms, Logs Insights, Prometheus/Grafana, traces, or ClickHouse as a *telemetry backend* — route to **observability-agent**. Rule of thumb: "분석 파이프라인 / 검색 / BI / 데이터 분석" → analytics; "모니터링 / 알람 / 운영 로그 분석" → observability.
+> **Scope boundary (vs `observability-agent`)** — analytics-agent owns **data analytics services**: OpenSearch (search), Athena (S3 query), QuickSight (BI), Kinesis (streaming), ClickHouse **as an OLAP query engine**, and building **log/event analytics pipelines** (e.g. Kinesis → OpenSearch/Athena). For **operational monitoring** of running systems — CloudWatch metrics/alarms, Logs Insights, Prometheus/Grafana, traces, or ClickHouse as a *telemetry backend* — route to **observability-agent**. Rule of thumb: "analytics pipeline / search / BI / data analysis" → analytics; "monitoring / alarms / operational log analysis" → observability.
 
 ---
 

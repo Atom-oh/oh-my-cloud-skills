@@ -520,14 +520,14 @@ Claude Code plugins and Kiro Powers share a similar concept (agents + skills + M
 
 #### Using the Agent (Interactive)
 
-Just describe what you want in natural language — the agent activates on keywords like "convert to kiro", "kiro power", "키로 변환":
+Just describe what you want in natural language — the agent activates on keywords like "convert to kiro", "kiro power", "convert to kiro power":
 
 ```
 "Convert aws-ops-plugin to Kiro Power format"
 ```
 
 ```
-"키로 파워로 변환해줘"
+"Convert this to Kiro Power format"
 ```
 
 #### Using the Script (CLI)
@@ -666,7 +666,7 @@ aws-ops-power/
 | `agentcore-creator-agent` | agentcore-creator | "Deploy agent to AgentCore" | Harness config or Strands Agent + deploy script |
 | `co-agent` | co-agent | "second opinion" / "help me decide" / "co-author ADR" | Multi-AI review / decision / ADR |
 | `doc-sync-checker` | project-init | "/sync-docs" | Doc quality scores |
-| `kiro-delegate-agent` | kiro | "delegate implementation to kiro" / "kiro로 구현" | Kiro-implemented change, verified + committed by Claude |
+| `kiro-delegate-agent` | kiro | "delegate implementation to kiro" / "implement with kiro" | Kiro-implemented change, verified + committed by Claude |
 | `pr-autofix-planner` / `pr-autofix-implementer` | co-agent | (spawned by the pr-autofix skill) | Fix plan / plan-applied worktree edits |
 
 > `pr-autofix-planner` / `pr-autofix-implementer` are meant to be spawned by the pr-autofix skill; their descriptions discourage (but cannot hard-block) direct auto-selection.

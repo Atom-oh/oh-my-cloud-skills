@@ -99,14 +99,14 @@ For each page:
 4. Add diagrams and images
 5. Include cross-references to related pages
 
-### Step 5: Quality Review (필수 — 생략 불가)
+### Step 5: Quality Review (Mandatory — cannot be skipped)
 
-콘텐츠 완성 후 배포/완료 선언 전에 반드시:
-1. content-review-agent 호출 → `review content at [프로젝트경로]`
-2. FAIL/REVIEW 판정 시 수정 후 재리뷰 (최대 3회)
-3. PASS (≥85점) 획득 후에만 완료 선언
+After content is finished, and before declaring deployment/completion, you must always:
+1. Invoke content-review-agent → `review content at [project path]`
+2. On a FAIL/REVIEW verdict, fix and re-review (max 3 rounds)
+3. Declare completion only after achieving PASS (≥85 points)
 
-> ⚠️ 이 단계를 건너뛰고 완료를 선언하는 것은 금지됩니다.
+> ⚠️ Skipping this step and declaring completion is forbidden.
 
 ---
 
@@ -312,29 +312,29 @@ gitbook-agent → content-review-agent → git push → GitBook deployment
 
 ## Team Collaboration
 
-팀의 일원으로 스폰될 때 (Agent tool의 team_name 파라미터가 설정된 경우):
+When spawned as a member of a team (i.e. the Agent tool's `team_name` parameter is set):
 
-> TaskGet/TaskUpdate는 이 에이전트의 상시 tool 목록이 아니라 **팀 스폰 시 팀
-> 하네스가 제공**하는 도구입니다. 단독 실행에서는 사용할 수 없으며, 이 섹션은
-> 팀 컨텍스트에서만 적용됩니다.
+> TaskGet/TaskUpdate are not part of this agent's standing tool list — they are tools
+> **provided by the team harness when spawned as a team**. They are unavailable in a
+> standalone run, and this section applies only in a team context.
 
-### 태스크 수신
-- TaskGet으로 할당된 태스크를 읽고 챕터 할당 정보를 파싱
-- 입력: SUMMARY.md 경로, 담당 챕터 범위, 프로젝트 루트 경로
+### Receiving a Task
+- Use TaskGet to read the assigned task and parse the chapter assignment information
+- Inputs: SUMMARY.md path, assigned chapter range, project root path
 
-### 산출물
-- 지정된 챕터 디렉토리에 페이지 파일 작성
-- 일관된 네이밍: `{chapter-slug}/README.md`, `{chapter-slug}/{page-slug}.md`
-- content-review-agent 호출 생략 (팀 리더가 배치 리뷰 수행)
+### Deliverables
+- Write page files in the specified chapter directory
+- Consistent naming: `{chapter-slug}/README.md`, `{chapter-slug}/{page-slug}.md`
+- Skip invoking content-review-agent (the team lead performs the batch review)
 
-### 완료 신호
-- TaskUpdate로 태스크를 completed 처리
-- 아티팩트 경로 + 페이지 수 + 요약을 보고
+### Completion Signal
+- Mark the task as completed via TaskUpdate
+- Report the artifact path + page count + a summary
 
-### 제약
-- TOC(SUMMARY.md)가 승인된 후에만 콘텐츠 작성 시작
-- 다른 에이전트가 담당하는 챕터의 페이지 수정 금지
-- SUMMARY.md, README.md (루트), .gitbook.yaml은 팀 리더만 관리
+### Constraints
+- Start writing content only after the TOC (SUMMARY.md) is approved
+- Never modify pages for chapters assigned to another agent
+- SUMMARY.md, README.md (root), and .gitbook.yaml are managed only by the team lead
 
 ---
 

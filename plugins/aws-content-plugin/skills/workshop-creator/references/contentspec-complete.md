@@ -1,10 +1,10 @@
 # Workshop Studio Contentspec Complete Reference
 
-`contentspec.yaml` 파일의 전체 레퍼런스입니다.
+The complete reference for the `contentspec.yaml` file.
 
 ---
 
-## 기본 구조
+## Basic structure
 
 ```yaml
 version: 2.0
@@ -16,33 +16,33 @@ localeCodes:
   - en-US
 
 awsAccountConfig:
-  # ... AWS 계정 설정
+  # ... AWS account settings
 
 infrastructure:
-  # ... 인프라 설정
+  # ... infrastructure settings
 ```
 
 ---
 
-## 기본 설정
+## Basic settings
 
-### version (필수)
+### version (required)
 
 ```yaml
-version: 2.0  # 항상 2.0 사용
+version: 2.0  # always use 2.0
 ```
 
-### defaultLocaleCode (필수)
+### defaultLocaleCode (required)
 
-기본 로케일 코드 (languageCode-countryCode 형식)
+The default locale code (languageCode-countryCode format)
 
 ```yaml
 defaultLocaleCode: ko-KR
 ```
 
-### localeCodes (필수)
+### localeCodes (required)
 
-지원하는 모든 로케일 코드 목록
+The list of all supported locale codes
 
 ```yaml
 localeCodes:
@@ -51,9 +51,10 @@ localeCodes:
   - ja-JP
 ```
 
-### params (선택)
+### params (optional)
 
-워크샵 내에서 참조할 수 있는 파라미터. **자유 형식 YAML 딕셔너리**로, 스칼라/중첩 객체/배열을 모두 허용하며 고정 스키마가 없다. CloudFormation과는 무관하며 콘텐츠 텍스트 전용이다.
+Parameters referenceable within the workshop. A **free-form YAML dictionary** that allows scalars, nested
+objects, and arrays with no fixed schema. It is unrelated to CloudFormation and is for content text only.
 
 ```yaml
 params:
@@ -67,19 +68,19 @@ params:
     - 200
 ```
 
-마크다운에서 사용 (점 표기로 중첩 키, 대괄호/점 표기로 배열 인덱스 접근):
+Used in markdown (dot notation for nested keys, bracket/dot notation for array index access):
 ```markdown
-클러스터 이름: :param{key="clusterName"}
-담당자: :param{key=contact.name}
-난이도: :param{key=levels[0]}
-없는 값 대체: :param{key=missingKey defaultValue="N/A"}
+Cluster name: :param{key="clusterName"}
+Contact: :param{key=contact.name}
+Difficulty: :param{key=levels[0]}
+Fallback for a missing value: :param{key=missingKey defaultValue="N/A"}
 ```
 
-상세(운영자 오버라이드·CFN 파라미터와의 구분): `references/event-params-guide.md`
+Details (distinction from operator overrides / CFN parameters): `references/event-params-guide.md`
 
-### additionalLinks (선택)
+### additionalLinks (optional)
 
-네비게이션에 표시할 추가 링크
+Additional links shown in the navigation
 
 ```yaml
 additionalLinks:
@@ -93,20 +94,20 @@ additionalLinks:
 
 ## awsAccountConfig
 
-AWS 계정 관련 설정입니다.
+AWS account-related settings.
 
-### accountSources (필수)
+### accountSources (required)
 
 ```yaml
 awsAccountConfig:
   accountSources:
-    - workshop_studio    # Workshop Studio가 계정 제공
-    - customer_provided  # 참가자가 자체 계정 사용
+    - workshop_studio    # Workshop Studio provides the account
+    - customer_provided  # participants use their own account
 ```
 
-### serviceLinkedRoles (선택)
+### serviceLinkedRoles (optional)
 
-자동 생성할 서비스 연결 역할
+Service-linked roles to auto-create
 
 ```yaml
   serviceLinkedRoles:
@@ -117,20 +118,20 @@ awsAccountConfig:
 
 ### participantRole
 
-참가자 역할 설정
+Participant role settings
 
 ```yaml
   participantRole:
-    # IAM 정책 파일 경로 (static/ 하위)
+    # IAM policy file path (under static/)
     iamPolicies:
       - static/iam/workshop-policy.json
 
-    # AWS 관리형 정책
+    # AWS managed policies
     managedPolicies:
       - "arn:aws:iam::aws:policy/IAMReadOnlyAccess"
       - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
 
-    # 신뢰 주체
+    # Trusted principals
     trustedPrincipals:
       service:
         - ec2.amazonaws.com
@@ -138,24 +139,24 @@ awsAccountConfig:
         - eks.amazonaws.com
 ```
 
-### ec2KeyPair (선택)
+### ec2KeyPair (optional)
 
-EC2 키 페어 자동 생성
+Auto-generate an EC2 key pair
 
 ```yaml
-  ec2KeyPair: true  # ws-default-keypair 생성
+  ec2KeyPair: true  # creates ws-default-keypair
 ```
 
 ### regionConfiguration
 
-리전 설정
+Region settings
 
 ```yaml
   regionConfiguration:
     minAccessibleRegions: 1
     maxAccessibleRegions: 3
 
-    # 배포 리전
+    # Regions for deployment
     deployableRegions:
       required:
         - ap-northeast-2
@@ -166,7 +167,7 @@ EC2 키 페어 자동 생성
         - us-west-2
         - eu-west-1
 
-    # 접근 가능 리전 (배포 없이 접근만)
+    # Accessible regions (access only, no deployment)
     accessibleRegions:
       required:
         - ap-northeast-2
@@ -180,7 +181,7 @@ EC2 키 페어 자동 생성
 
 ## infrastructure
 
-CloudFormation 템플릿 배포 설정
+CloudFormation template deployment settings
 
 ```yaml
 infrastructure:
@@ -190,7 +191,7 @@ infrastructure:
       tags:
         - key: Environment
           value: Workshop
-      # [선택] 참가자에게 노출할 Output (기본값: 비노출)
+      # [optional] Outputs to expose to participants (default: not exposed)
       participantVisibleStackOutputs:
         - VpcId
       parameters:
@@ -204,15 +205,19 @@ infrastructure:
       parameters:
         - templateParameter: ClusterName
           defaultValue: workshop-cluster
-          # [선택] true면 이벤트 운영자가 이벤트별로 이 값을 오버라이드할 수 있음
+          # [optional] if true, the event operator can override this value per event
           userOverridable: true
 ```
 
-파라미터의 `userOverridable`, Output 노출 규칙(`participantVisibleStackOutputs` / `participantAllStackOutputsVisible`)에 대한 상세 설명과 운영자 관점 사용법: `references/event-params-guide.md`
+For details on the `userOverridable` parameter flag and the Output exposure rules
+(`participantVisibleStackOutputs` / `participantAllStackOutputsVisible`), including operator-facing usage,
+see: `references/event-params-guide.md`
 
-### requiredResources (선택)
+### requiredResources (optional)
 
-표준 계정 한도를 넘는 특별 리소스 요청 (예: GPU 인스턴스). **콘텐츠당 1개의 서비스만 선언 가능** — 현재 허용 서비스는 `sagemaker`와 `guardduty`뿐이며, 타입/수량이 허용 목록과 정확히 일치해야 한다. 상세: `references/event-quotas-guide.md`
+Requesting special resources that exceed standard account limits (e.g. GPU instances). **Only one service
+can be declared per piece of content** — the only currently allowed services are `sagemaker` and
+`guardduty`, and the type/quantity must exactly match the allow-list. Details: `references/event-quotas-guide.md`
 
 ```yaml
   requiredResources:
@@ -223,9 +228,12 @@ infrastructure:
 
 ---
 
-## centralAccountInfrastructure (선택)
+## centralAccountInfrastructure (optional)
 
-이벤트당 최대 1개, 팀 계정과 분리된 공유 계정("중앙 계정") 인프라 설정. `infrastructure`와 동일한 필드 구조를 공유하며, 대상이 팀이 아닌 중앙 계정이라는 점만 다르다. 최대 5개 템플릿까지 정의 가능. 워크샵에 공유 리소스/게이미피케이션이 필요할 때만 정의한다.
+Infrastructure settings for a shared account (the "central account") separate from team accounts — at most
+one per event. Shares the same field structure as `infrastructure`, differing only in that the target is
+the central account rather than teams. Up to 5 templates can be defined. Define this only when the workshop
+needs shared resources or gamification.
 
 ```yaml
 centralAccountInfrastructure:
@@ -235,10 +243,10 @@ centralAccountInfrastructure:
       tags:
         - key: Environment
           value: Workshop
-      # [선택] 참가자에게 노출할 Output만 지정
+      # [optional] specify only the Outputs to expose to participants
       participantVisibleStackOutputs:
         - LeaderboardUrl
-      # [선택] 모든 Output/Export 노출 (기본값 false)
+      # [optional] expose all Outputs/Exports (default false)
       participantAllStackOutputsVisible: false
       parameters:
         - templateParameter: NotificationBusArn
@@ -249,52 +257,53 @@ centralAccountInfrastructure:
           defaultValue: "{{.WSEventsAPIRegion}}"
 ```
 
-개념(언제 쓰는지), Central Account Client API, NotificationBus 라이프사이클 알림, 배포 순서 상세: `references/central-account-guide.md`
+For the concept (when to use it), the Central Account Client API, NotificationBus lifecycle notifications,
+and deployment order, see: `references/central-account-guide.md`
 
 ---
 
 ## Magic Variables
 
-### Team CloudFormation 파라미터용
+### For Team CloudFormation parameters
 
-| 변수 | 설명 | 예시 |
+| Variable | Description | Example |
 |------|------|------|
-| `{{.TeamID}}` | 팀 고유 ID | `d30035ed-7bef-405a-8741-6144faa15e17` |
-| `{{.TeamIndex}}` | 팀 인덱스 (0부터) | `0`, `1`, `2` |
-| `{{.ParticipantRoleName}}` | IAM 역할 이름 | `WSParticipantRole` |
-| `{{.ParticipantRoleArn}}` | IAM 역할 ARN | `arn:aws:iam::123456789012:role/WSParticipantRole` |
-| `{{.ParticipantAssumedRoleSessionName}}` | 세션 이름 | `Participant` |
-| `{{.ParticipantAssumedRoleArn}}` | Assumed Role ARN | `arn:aws:sts::123456789012:assumed-role/WSParticipantRole/Participant` |
-| `{{.AssetsBucketName}}` | 자산 버킷 이름 | `ws-event-2009c59b-6c7-us-east-1` |
-| `{{.AssetsBucketPrefix}}` | 자산 버킷 접두사 | `371c6734-2735-4958-8749-4f4db058a75f/assets/` |
-| `{{.EC2KeyPairName}}` | EC2 키페어 이름 | `ws-default-keypair` |
+| `{{.TeamID}}` | unique team ID | `d30035ed-7bef-405a-8741-6144faa15e17` |
+| `{{.TeamIndex}}` | team index (starting at 0) | `0`, `1`, `2` |
+| `{{.ParticipantRoleName}}` | IAM role name | `WSParticipantRole` |
+| `{{.ParticipantRoleArn}}` | IAM role ARN | `arn:aws:iam::123456789012:role/WSParticipantRole` |
+| `{{.ParticipantAssumedRoleSessionName}}` | session name | `Participant` |
+| `{{.ParticipantAssumedRoleArn}}` | assumed role ARN | `arn:aws:sts::123456789012:assumed-role/WSParticipantRole/Participant` |
+| `{{.AssetsBucketName}}` | assets bucket name | `ws-event-2009c59b-6c7-us-east-1` |
+| `{{.AssetsBucketPrefix}}` | assets bucket prefix | `371c6734-2735-4958-8749-4f4db058a75f/assets/` |
+| `{{.EC2KeyPairName}}` | EC2 key pair name | `ws-default-keypair` |
 
-### Central CloudFormation 파라미터용
+### For Central CloudFormation parameters
 
-| 변수 | 설명 | 예시 |
+| Variable | Description | Example |
 |------|------|------|
-| `{{.NotificationBusArn}}` | EventBridge 버스 ARN | `arn:aws:events:us-east-1:123456789012:event-bus/lifecycle-notification-bus` |
-| `{{.AssetsBucketName}}` | 자산 버킷 이름 | `ws-event-2009c59b-6c7-us-east-1` |
-| `{{.AssetsBucketPrefix}}` | 자산 버킷 접두사 | `371c6734-2735-4958-8749-4f4db058a75f/assets/` |
-| `{{.TeamSize}}` | 팀당 최대 참가자 수 | `5` |
-| `{{.WSEventsAPIEndpoint}}` | Workshop Studio API 엔드포인트 | `events-api.us-east-1.prod.workshops.aws` |
-| `{{.WSEventsAPIRegion}}` | Workshop Studio API 리전 | `us-east-1` |
+| `{{.NotificationBusArn}}` | EventBridge bus ARN | `arn:aws:events:us-east-1:123456789012:event-bus/lifecycle-notification-bus` |
+| `{{.AssetsBucketName}}` | assets bucket name | `ws-event-2009c59b-6c7-us-east-1` |
+| `{{.AssetsBucketPrefix}}` | assets bucket prefix | `371c6734-2735-4958-8749-4f4db058a75f/assets/` |
+| `{{.TeamSize}}` | maximum participants per team | `5` |
+| `{{.WSEventsAPIEndpoint}}` | Workshop Studio API endpoint | `events-api.us-east-1.prod.workshops.aws` |
+| `{{.WSEventsAPIRegion}}` | Workshop Studio API region | `us-east-1` |
 
-### IAM Policy JSON용
+### For IAM Policy JSON
 
-| 변수 | 설명 | 예시 |
+| Variable | Description | Example |
 |------|------|------|
-| `{{.ParticipantRoleName}}` | IAM 역할 이름 | `WSParticipantRole` |
-| `{{.ParticipantRoleArn}}` | IAM 역할 ARN | `arn:aws:iam::123456789012:role/WSParticipantRole` |
-| `{{.ParticipantAssumedRoleSessionName}}` | 세션 이름 | `Participant` |
-| `{{.ParticipantAssumedRoleArn}}` | Assumed Role ARN | `arn:aws:sts::123456789012:assumed-role/WSParticipantRole/Participant` |
-| `{{.AccountId}}` | AWS 계정 ID | `123456789012` |
+| `{{.ParticipantRoleName}}` | IAM role name | `WSParticipantRole` |
+| `{{.ParticipantRoleArn}}` | IAM role ARN | `arn:aws:iam::123456789012:role/WSParticipantRole` |
+| `{{.ParticipantAssumedRoleSessionName}}` | session name | `Participant` |
+| `{{.ParticipantAssumedRoleArn}}` | assumed role ARN | `arn:aws:sts::123456789012:assumed-role/WSParticipantRole/Participant` |
+| `{{.AccountId}}` | AWS account ID | `123456789012` |
 
 ---
 
-## 전체 예제
+## Full examples
 
-### 기본 워크샵 (계정 제공)
+### Basic workshop (account provided)
 
 ```yaml
 version: 2.0
@@ -318,7 +327,7 @@ awsAccountConfig:
         - us-east-1
 ```
 
-### EKS 워크샵 (인프라 프로비저닝)
+### EKS workshop (infrastructure provisioning)
 
 ```yaml
 version: 2.0
@@ -379,7 +388,7 @@ awsAccountConfig:
 
 ---
 
-## IAM Policy 예제
+## IAM Policy example
 
 `static/iam/workshop-policy.json`:
 

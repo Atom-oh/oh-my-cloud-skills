@@ -76,19 +76,19 @@ Argument: `$ARGUMENTS`
    python3 "$H" set harness review_mode relay    # harness gate: hybrid (default) | relay | parallel
    python3 "$H" set harness parallel_tasks 3     # harness implement wave size (1 = sequential)
    python3 "$H" set harness max_fix_rounds 2     # harness per-task peer fix-loop bound
-   python3 "$H" set harness implementer_model gpt-5.3-codex-mini  # write-path model (implementer별 저장 — implementer 먼저 설정)
-   python3 "$H" set harness implementer_effort low                # write-path effort (implementer가 codex일 때만)
-   python3 "$H" set pr_autofix max_iterations 5  # /co-agent:pr-autofix review-fix-push 루프 상한
-   python3 "$H" set push_gate enabled on         # 3-lens pre-push gate (correctness/security/scope) — 활성화 = 외부 송신 동의
-   python3 "$H" set push_gate block off          # advisory-only (차단하지 않고 findings만 출력)
-   python3 "$H" set push_gate timeout 180        # 라운드 공유 타임아웃(초)
+   python3 "$H" set harness implementer_model gpt-5.3-codex-mini  # write-path model (stored per implementer — set implementer first)
+   python3 "$H" set harness implementer_effort low                # write-path effort (only when implementer is codex)
+   python3 "$H" set pr_autofix max_iterations 5  # /co-agent:pr-autofix review-fix-push loop bound
+   python3 "$H" set push_gate enabled on         # 3-lens pre-push gate (correctness/security/scope) — enabling = consent to external egress
+   python3 "$H" set push_gate block off          # advisory-only (prints findings without blocking)
+   python3 "$H" set push_gate timeout 180        # shared per-round timeout (seconds)
    ```
    `context_limit` lets the fan-out **skip** an AI when the context is too large for its
    model window (the cause of "prompt tokens exceed model maximum"), instead of hard-failing
    — e.g. Codex (~272K) is skipped on a huge diff while Kiro/Agy (~1M) still run. `model`
    values are charset-validated (letters/digits/`. _ : / - ( )` + spaces — agy tokens like
    `Gemini 3.1 Pro (High)`; shell metacharacters stay rejected) to keep the fan-out safe.
-   **Multi-model = 다방향 검증**: with `profile deep` (the committed default), every model
+   **Multi-model = multi-directional verification**: with `profile deep` (the committed default), every model
    in an AI's `models` list becomes its own `(ai, model)` fan-out/relay link — one gate pass
    verifies from each configured model's direction, capped by `consensus.max_calls`. All
    overrides ride the CLIs' real headless flags (kiro/claude/agy `--model`, codex `-m`), so
@@ -121,50 +121,53 @@ Argument: `$ARGUMENTS`
 4. For Kiro model values, you may enumerate valid models with
    `kiro-cli chat --list-models --format json` and show the user the choices.
 
-## 모델 티어링 (role-based model tiering)
+## Model tiering (role-based model tiering)
 
-같은 모델을 모든 역할에 쓰지 않고, 역할별로 비용효율적인 모델을 배치한다 — Opusplan이
-플랜(Opus)과 실행(Sonnet)을 나누는 것과 같은 원리. 배치 지점은 4곳:
+Rather than using the same model for every role, place a cost-efficient model per role —
+the same principle as Opusplan splitting plan (Opus) from execution (Sonnet). There are
+four placement points:
 
-| 역할 | 성격 | 레버 | 권장 |
+| Role | Character | Lever | Recommendation |
 |------|------|------|------|
-| **Chair** (triage/synthesis/최종 판단) | 좁고 강하게 | 호스트 모델: `/model opusplan`(플랜=Opus·실행=Sonnet) 또는 `gate-chair` 서브에이전트(`agents/gate-chair.md`, `model: opus`) 스폰 | 강한 판단 모델 유지 — 여기서 아끼면 게이트 전체가 약해짐 |
-| **Find 패널** (하이브리드 게이트 F 단계) | 넓고 싸게 | `profile deep` + 각 AI `models` 리스트에 저비용 모델(예: kiro `minimax-m2.5,glm-5`) | 발견은 다양성이 성능 — 모델 수 > 모델 단가 |
-| **Verify 패널** (V 단계) | 좁고 강하게 | 게이트가 자동으로 `pairs --profile default` 사용 — 각 AI의 단일 `model`이 곧 verify 모델 | `model`에 각 AI의 최강 티어 지정 |
-| **Implementer** (harness 쓰기 경로) | 생성 위주 | `set harness implementer <ai>` + `implementer_model <m>` / `implementer_effort <e>` (미설정 시 패널 `model`/`effort` 폴백) | 구독제 CLI(기본 가정)면 **그 CLI의 최강 생성 모델** — fix 라운드 감소가 곧 wall-clock 절약. 종량제일 때만 저비용 모델로 낮추고 리뷰 게이트를 백스톱으로 |
+| **Chair** (triage/synthesis/final judgment) | narrow and strong | host model: `/model opusplan` (plan=Opus, execute=Sonnet) or spawn the `gate-chair` subagent (`agents/gate-chair.md`, `model: opus`) | keep a strong judgment model — skimping here weakens the whole gate |
+| **Find panel** (hybrid gate Phase F) | wide and cheap | `profile deep` + a low-cost model in each AI's `models` list (e.g. kiro `minimax-m2.5,glm-5`) | for finding, diversity of perspective is the performance driver — more models beats a cheaper per-model rate |
+| **Verify panel** (Phase V) | narrow and strong | the gate automatically uses `pairs --profile default` — each AI's single `model` becomes the verify model | set `model` to each AI's strongest tier |
+| **Implementer** (harness write path) | generation-focused | `set harness implementer <ai>` + `implementer_model <m>` / `implementer_effort <e>` (falls back to the panel's `model`/`effort` if unset) | for a subscription (flat-rate) CLI (the default assumption), use **that CLI's strongest generation model** — fewer fix rounds is pure wall-clock savings. Only drop to a cheaper model under metered billing, and let the review gate act as a backstop |
 
-- **주의 — `effort`는 phase-split되지 않는다**: 패널 `effort`(codex)는 find와 verify
-  **양쪽**의 리뷰 호출에 동일하게 적용된다(`--profile`은 모델 쌍만 가른다). 그러므로
-  find를 싸게 하려고 `set codex effort low`를 걸면 verify도 low로 내려가 "verify=최강
-  티어" 배치가 깨진다 — 패널 `effort`는 **verify에 적합한 수준**으로 두고, 쓰기 경로만
-  `implementer_effort`로 낮춰라.
-- `implementer_model`/`implementer_effort`는 **impl-flags(쓰기 경로)에만** 적용되고,
-  **implementer별로 저장**된다(`harness.implementer_models.<ai>` /
-  `implementer_efforts.<ai>`) — 설정 시점의 명시적 `harness.implementer`를 키로 쓰므로
-  **`implementer`를 먼저 설정해야** 하며(미설정 시 exit 2), 이후 `set harness
-  implementer <other>`로 전환해도 이전 AI의 엔트리는 **dormant로 남을 뿐 절대 다른
-  CLI의 `--model`로 새지 않는다**(전환 복귀 시 재사용; `show`가 active/dormant 표시).
-  모델명에는 provider가 없으므로 per-AI 키잉만이 폴백·명시 전환 양쪽에서 안전하다.
-  리뷰/게이트 경로(`flags`)는 계속 패널 설정을 쓰므로, 같은 AI(codex)가 리뷰에서는
-  강한 모델·구현에서는 싼 모델로 갈라진다. `implementer_effort`는 codex 전용 —
-  implementer가 agy일 때는 저장 자체를 거부한다(agy 헤드리스 CLI에 effort 플래그
-  없음).
-- `pairs`/`matrix`의 `--profile default|deep`은 호출 단위 오버라이드로, 하이브리드
-  게이트가 find(deep)/verify(default)를 가르는 데 쓴다 — 설정 파일은 건드리지 않는다.
-- 근거: 발견(find)은 관점 다양성이, 검증(verify)과 의장 판단은 단일 모델의 강도가
-  성능을 지배한다. 자세한 흐름은 `references/hybrid-gate.md` "Role tiering" 참고.
-- **비용 모델 전제 — 글로벌이 아니라 peer별 속성**: 구독제(flat-rate) CLI는 한계
-  토큰 비용 ≈ 0이므로 티어링의 목적이 달러 절감이 아니라 **(1) wall-clock**(강한
-  생성 모델 = 적은 fix 라운드), **(2) rate-limit 쿼터**(구독제의 실제 희소 자원 —
-  사용량 윈도우), **(3) 체어 triage 노이즈**(finder를 넓힐수록 digest 품질 관리
-  필요)가 된다. Claude Code 호스트의 기본 패널(kiro/codex/agy)은 구독제 가정이
-  대체로 성립하지만, **호스트가 바뀌면 뒤집힌다**: Codex 호스트에서는 Claude가
-  peer로 들어오고(`claude -p`, adapters 참조), headless 호출이 API 키 과금이면
-  그 peer는 **종량제**다 — 그 peer에 한해 위 표의 비용 절감 해석(find 저비용
-  모델, 다운티어)이 복원되고, 특히 하이브리드 게이트의 2-phase(find+verify)가
-  라운드당 2회 과금됨을 유의하라. peer별 `billing flat|metered` 설정 키는 아직
-  없다(개선 후보) — 현재는 per-AI `model`/`models` 리스트를 그 peer의 과금
-  방식에 맞춰 수동 조정하는 것이 레버다.
+- **Caution — `effort` is not phase-split**: the panel's `effort` (codex) applies equally to
+  **both** the find and verify review calls (`--profile` only splits the model pair). So
+  setting `set codex effort low` to cheapen find also drops verify to low, breaking the
+  "verify = strongest tier" placement — keep the panel's `effort` at a level suited to
+  **verify**, and lower only the write path via `implementer_effort`.
+- `implementer_model`/`implementer_effort` apply **only to impl-flags (the write path)** and
+  are **stored per implementer** (`harness.implementer_models.<ai>` /
+  `implementer_efforts.<ai>`) — keyed by the explicit `harness.implementer` at set time, so
+  **`implementer` must be set first** (exit 2 if unset), and switching later with
+  `set harness implementer <other>` leaves the previous AI's entry **dormant, never leaking
+  into another CLI's `--model`** (reused when switching back; `show` marks active/dormant).
+  Since model names don't encode a provider, only per-AI keying is safe for both the fallback
+  and an explicit switch. The review/gate path (`flags`) keeps using the panel settings, so
+  the same AI (codex) can use a strong model for review and a cheap one for implementation.
+  `implementer_effort` is codex-only — storing it while the implementer is agy is refused
+  outright (agy's headless CLI has no effort flag).
+- `pairs`/`matrix`'s `--profile default|deep` is a per-call override the hybrid gate uses to
+  split find (deep) from verify (default) — it never touches the config file.
+- Rationale: for finding, perspective diversity drives performance; for verifying and for
+  chair judgment, the strength of a single model drives performance. See
+  `references/hybrid-gate.md` "Role tiering" for the detailed flow.
+- **Cost-model assumption — a per-peer attribute, not global**: flat-rate subscription CLIs
+  have marginal token cost ≈ 0, so tiering's purpose isn't dollar savings but **(1)
+  wall-clock** (a strong generation model = fewer fix rounds), **(2) rate-limit quota** (the
+  actually scarce resource under a subscription — the usage window), and **(3) chair-triage
+  noise** (widening the finder needs more digest-quality management). The flat-rate
+  assumption mostly holds for the Claude Code host's default panel (kiro/codex/agy), but
+  **it flips when the host changes**: on a Codex host, Claude joins as a peer (`claude -p`,
+  see adapters), and if that headless call is billed per API key, that peer is **metered** —
+  for that peer alone, the cost-saving reading of the table above (cheap find model,
+  down-tiering) is restored, and note in particular that the hybrid gate's 2-phase
+  (find+verify) structure bills twice per round for that peer. There is not yet a per-peer
+  `billing flat|metered` setting key (a candidate improvement) — for now, the lever is to
+  manually tune each peer's `model`/`models` list to match that peer's billing model.
 
 Always finish by echoing the effective config (`python3 "$H" show --host "$HOST"`) so the user sees
 exactly what the panel will use.

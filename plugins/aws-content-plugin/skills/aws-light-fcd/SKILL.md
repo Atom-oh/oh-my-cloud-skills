@@ -34,7 +34,7 @@ typography, white canvas, near-black ink, and a single signature gradient
 4. **Write a build script** that `require("./scripts/deck_kit.js")` (and
    `arch_kit.js` if drawing diagrams), calls the layout builders, then
    `await pres.writeFile(...)`. Run it with `NODE_PATH=$(npm root -g) node build.js`.
-5. **QA (필수 — 거절 루프)**: `python3 scripts/check_pptx.py "$DECK"` — fix every
+5. **QA (mandatory — rejection loop)**: `python3 scripts/check_pptx.py "$DECK"` — fix every
    finding and rerun until it passes. **The gate is `score ≥80` AND zero `[geometry]`
    findings** (a geometry defect — overflow/overlap/off-canvas — never passes, no matter
    the score, because content-review-agent treats it as Critical). This is a
@@ -69,8 +69,8 @@ fastest way to learn the API.
 4. **Footer on every content slide**: copyright (left) + small AWS logo + page number
    (right). Cover gets the big bottom-right logo and **no** small footer logo.
    `addFooter(pres, s, pageNum)` handles this; cover uses the built-in `cover()`.
-5. **Agenda lists content chapters ONLY.** Never auto-insert "다음 단계 / PoC / 워크샵
-   제안 / 감사합니다"-type closing items into the agenda. A closing slide may exist at
+5. **Agenda lists content chapters ONLY.** Never auto-insert "Next Steps / PoC / Workshop
+   Proposal / Thank You"-type closing items into the agenda. A closing slide may exist at
    the end of the deck (use `kit.closing`), but it does not belong in the table of contents.
    Section dividers (`kit.sectionDivider`) and the closing use a full-gradient background
    with a white footer — that's handled by the builders, don't override it.
@@ -107,7 +107,7 @@ fastest way to learn the API.
 | `kit.agentcoreCards(pres, o)` | 3 feature cards w/ gradient pill | `headerTitle, cards:[{title,icon,desc}]` |
 | `kit.titleWithVisual(pres, o)` | Big left title + right hero diagram (EKS-21 style) | `title, caption, draw(pres,s,region)` |
 | `kit.pipeline(pres, o)` | Numbered left→right step flow | `steps:[{n,title,desc}]` |
-| `kit.whyWhat(pres, o)` | WHY panel + WHAT cards w/ 차별점 box | `why:[...], what:[{n,t,d,diff,dc}]` |
+| `kit.whyWhat(pres, o)` | WHY panel + WHAT cards w/ differentiator box | `why:[...], what:[{n,t,d,diff,dc}]` |
 | `kit.chartWithCallout(pres, o)` | Native editable chart + side callout | `series:[...], callout:{big,lines}` |
 | `kit.chipGrid(pres, o)` | Vendor-colored chip rows (EKS-23 style) | `vendorBoxes:[...], rows:[...]` |
 | `kit.sectionDivider(pres, o)` | Chapter-transition slide (full gradient bg) | `num, title, kicker` |

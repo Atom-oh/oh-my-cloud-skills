@@ -1,69 +1,75 @@
-# AWS 아이콘 레퍼런스
+# AWS Icon Reference
 
-Draw.io에서 사용 가능한 AWS 아이콘 shape 이름과 스타일 가이드.
+Guide to AWS icon shape names and styles available in Draw.io.
 
-## Shape 이름 규칙
+## Shape naming convention
 
-AWS 아이콘의 shape 이름 형식:
+AWS icon shape name format:
 ```
 shape=mxgraph.aws4.[service_name]
 ```
 
-## 공유 아이콘 — mxgraph에 없는 신규/제품 아이콘 (AgentCore 등)
+## Shared icons — new/product icons not in mxgraph (AgentCore, etc.)
 
-draw.io 내장 `mxgraph.aws4.*` 셰이프 세트는 **고정**이라 신규/제품 아이콘(예: **Bedrock AgentCore**)이
-없습니다. 이런 아이콘은 `reactive-presentation` 스킬의 **공유 아이콘 라이브러리**
-(`skills/reactive-presentation/icons/` — 공식 Architecture-Service-Icons SVG + AgentCore 등 제품 PNG)에서
-가져와 **base64 이미지로 임베드**합니다. `layout_aws.py`가 자동 처리하므로 스펙에서 `icon:` 값만 지정하면 됩니다.
+Draw.io's built-in `mxgraph.aws4.*` shape set is **fixed**, so it lacks new/product icons
+(e.g. **Bedrock AgentCore**). These icons are pulled from the `reactive-presentation` skill's
+**shared icon library** (`skills/reactive-presentation/icons/` — official Architecture-Service-Icons
+SVGs + AgentCore and other product PNGs) and **embedded as base64 images**. `layout_aws.py`
+handles this automatically — you only need to specify the `icon:` value in the spec.
 
-| 스펙의 `icon:` 값 | 동작 |
+| Spec `icon:` value | Behavior |
 |------|------|
-| `ec2`, `lambda`, `s3` … | 내장 `mxgraph.aws4.*` 셰이프 (벡터, 기본) |
-| `agentcore` | 공유 라이브러리의 AgentCore PNG를 임베드 (`EMBED_ICONS` 등록) |
-| `arch:Amazon-Bedrock` | 공식 Service 세트에서 `Arch_Amazon-Bedrock_48.svg`를 찾아 임베드 |
-| `arch:<Service-Name>` | 임의의 공식 서비스 아이콘 (`Arch_<Service-Name>_48.svg`) 임베드 |
+| `ec2`, `lambda`, `s3` … | built-in `mxgraph.aws4.*` shape (vector, default) |
+| `agentcore` | embeds the AgentCore PNG from the shared library (registered in `EMBED_ICONS`) |
+| `arch:Amazon-Bedrock` | finds `Arch_Amazon-Bedrock_48.svg` in the official Service set and embeds it |
+| `arch:<Service-Name>` | embeds an arbitrary official service icon (`Arch_<Service-Name>_48.svg`) |
 
 ```yaml
-# 예: AgentCore 레퍼런스 (stages 패턴)
+# Example: AgentCore reference (stages pattern)
 stages:
   - {name: "Inference", services: [{id: br, icon: "arch:Amazon-Bedrock", label: "Bedrock"}]}
   - {name: "Agent",     services: [{id: ac, icon: agentcore, label: "AgentCore"},
                                     {id: fn, icon: lambda,    label: "Tools"}]}
 ```
 
-- 임베드 형식은 draw.io 규약인 `image=data:<mime>,<base64>` (콤마형 — 스타일의 `;` 충돌 회피). PNG/SVG 모두 익스포트에서 정상 렌더됩니다.
-- `.drawio`는 **자체완결**(아이콘이 파일에 박힘)이라 외부 의존 없이 공유·PNG 익스포트 가능.
-- 새 제품 아이콘을 추가하려면: 공유 라이브러리(`reactive-presentation/icons/`)에 파일을 두고 `layout_aws.py`의 `EMBED_ICONS`에 `"shortname": "<상대경로>"`를 등록. `arch:` 접두사는 공식 Service 세트에 한해 등록 없이 바로 사용 가능.
+- The embedding format follows the draw.io convention `image=data:<mime>,<base64>` (comma form — avoids
+  colliding with the `;` in style strings). Both PNG and SVG render fine in exports.
+- `.drawio` is **self-contained** (icons are baked into the file), so it can be shared and exported to PNG
+  without external dependencies.
+- To add a new product icon: place the file in the shared library (`reactive-presentation/icons/`) and
+  register `"shortname": "<relative-path>"` in `layout_aws.py`'s `EMBED_ICONS`. The `arch:` prefix works
+  immediately without registration, but only for the official Service set.
 
-> 이 공유 라이브러리는 reactive-presentation(슬라이드 AWS 아이콘)과 **동일 소스**입니다 — 콘텐츠 스킬 간 아이콘이 일관됩니다.
+> This shared library is the **same source** used by reactive-presentation (AWS icons in slides) — icons stay
+> consistent across content skills.
 
-## ⚠️ 필수 규칙: 아이콘 라벨 표시
+## Mandatory rule: show icon labels
 
-**AWS 아이콘 추가 시 반드시 아이콘 이름을 라벨로 표시해야 합니다.**
+**Whenever you add an AWS icon, you must label it with the icon's name.**
 
 ```
 ┌─────────────┐
-│   [아이콘]   │
+│   [icon]    │
 │             │
-│ SecretManager│  ← 아이콘 아래에 서비스 이름 필수
+│ SecretManager│  ← service name required below the icon
 └─────────────┘
 ```
 
-### 라벨 스타일 설정
+### Label style settings
 
 ```
-labelPosition=center;      # 라벨 가로 위치
-verticalLabelPosition=bottom;  # 라벨을 아이콘 아래에
-align=center;              # 텍스트 가운데 정렬
-verticalAlign=top;         # 텍스트 상단 정렬
-fontFamily=Amazon Ember;   # AWS 폰트
-fontSize=12;               # 폰트 크기
-fontColor=#FFFFFF;         # Dark 테마용 흰색
+labelPosition=center;      # horizontal label position
+verticalLabelPosition=bottom;  # place label below the icon
+align=center;              # center text horizontally
+verticalAlign=top;         # align text to top
+fontFamily=Amazon Ember;   # AWS font
+fontSize=12;               # font size
+fontColor=#FFFFFF;         # white for Dark theme
 ```
 
-### 라벨 예시
+### Label examples
 
-| 아이콘 | 라벨 텍스트 |
+| Icon | Label text |
 |--------|------------|
 | Secrets Manager | `Secrets Manager` |
 | Lambda | `Lambda` |
@@ -73,203 +79,203 @@ fontColor=#FFFFFF;         # Dark 테마용 흰색
 
 ---
 
-## 카테고리별 아이콘
+## Icons by category
 
 ### Compute
 
-| 서비스 | Shape 이름 | 설명 |
+| Service | Shape name | Description |
 |--------|-----------|------|
 | EC2 | `mxgraph.aws4.ec2` | Elastic Compute Cloud |
-| Lambda | `mxgraph.aws4.lambda_function` | 서버리스 함수 |
+| Lambda | `mxgraph.aws4.lambda_function` | Serverless function |
 | ECS | `mxgraph.aws4.ecs` | Elastic Container Service |
 | EKS | `mxgraph.aws4.eks` | Elastic Kubernetes Service |
-| Fargate | `mxgraph.aws4.fargate` | 서버리스 컨테이너 |
-| Batch | `mxgraph.aws4.batch` | 배치 컴퓨팅 |
-| Elastic Beanstalk | `mxgraph.aws4.elastic_beanstalk` | 앱 배포 |
-| Lightsail | `mxgraph.aws4.lightsail` | 간편 VPS |
-| App Runner | `mxgraph.aws4.app_runner` | 컨테이너 앱 |
+| Fargate | `mxgraph.aws4.fargate` | Serverless containers |
+| Batch | `mxgraph.aws4.batch` | Batch computing |
+| Elastic Beanstalk | `mxgraph.aws4.elastic_beanstalk` | App deployment |
+| Lightsail | `mxgraph.aws4.lightsail` | Simplified VPS |
+| App Runner | `mxgraph.aws4.app_runner` | Containerized apps |
 
 ### Storage
 
-| 서비스 | Shape 이름 | 설명 |
+| Service | Shape name | Description |
 |--------|-----------|------|
 | S3 | `mxgraph.aws4.s3` | Simple Storage Service |
-| S3 Bucket | `mxgraph.aws4.bucket` | S3 버킷 |
-| EBS | `mxgraph.aws4.elastic_block_store` | 블록 스토리지 |
-| EFS | `mxgraph.aws4.elastic_file_system` | 파일 시스템 |
-| FSx | `mxgraph.aws4.fsx` | 고성능 파일 시스템 |
-| Glacier | `mxgraph.aws4.glacier` | 아카이브 스토리지 |
-| Storage Gateway | `mxgraph.aws4.storage_gateway` | 하이브리드 스토리지 |
+| S3 Bucket | `mxgraph.aws4.bucket` | S3 bucket |
+| EBS | `mxgraph.aws4.elastic_block_store` | Block storage |
+| EFS | `mxgraph.aws4.elastic_file_system` | File system |
+| FSx | `mxgraph.aws4.fsx` | High-performance file system |
+| Glacier | `mxgraph.aws4.glacier` | Archival storage |
+| Storage Gateway | `mxgraph.aws4.storage_gateway` | Hybrid storage |
 
 ### Database
 
-| 서비스 | Shape 이름 | 설명 |
+| Service | Shape name | Description |
 |--------|-----------|------|
 | RDS | `mxgraph.aws4.rds` | Relational Database Service |
-| Aurora | `mxgraph.aws4.aurora` | 고성능 관계형 DB |
-| DynamoDB | `mxgraph.aws4.dynamodb` | NoSQL 데이터베이스 |
-| ElastiCache | `mxgraph.aws4.elasticache` | 인메모리 캐시 |
-| Redshift | `mxgraph.aws4.redshift` | 데이터 웨어하우스 |
-| DocumentDB | `mxgraph.aws4.documentdb` | MongoDB 호환 DB |
-| Neptune | `mxgraph.aws4.neptune` | 그래프 데이터베이스 |
-| Timestream | `mxgraph.aws4.timestream` | 시계열 데이터베이스 |
-| QLDB | `mxgraph.aws4.qldb` | 원장 데이터베이스 |
-| MemoryDB | `mxgraph.aws4.memorydb` | Redis 호환 |
+| Aurora | `mxgraph.aws4.aurora` | High-performance relational DB |
+| DynamoDB | `mxgraph.aws4.dynamodb` | NoSQL database |
+| ElastiCache | `mxgraph.aws4.elasticache` | In-memory cache |
+| Redshift | `mxgraph.aws4.redshift` | Data warehouse |
+| DocumentDB | `mxgraph.aws4.documentdb` | MongoDB-compatible DB |
+| Neptune | `mxgraph.aws4.neptune` | Graph database |
+| Timestream | `mxgraph.aws4.timestream` | Time-series database |
+| QLDB | `mxgraph.aws4.qldb` | Ledger database |
+| MemoryDB | `mxgraph.aws4.memorydb` | Redis-compatible |
 
 ### Networking & Content Delivery
 
-| 서비스 | Shape 이름 | 설명 |
+| Service | Shape name | Description |
 |--------|-----------|------|
 | VPC | `mxgraph.aws4.vpc` | Virtual Private Cloud |
 | CloudFront | `mxgraph.aws4.cloudfront` | CDN |
-| Route 53 | `mxgraph.aws4.route_53` | DNS 서비스 |
-| API Gateway | `mxgraph.aws4.api_gateway` | API 관리 |
-| ELB/ALB | `mxgraph.aws4.application_load_balancer` | 로드밸런서 |
-| NLB | `mxgraph.aws4.network_load_balancer` | 네트워크 LB |
-| NAT Gateway | `mxgraph.aws4.nat_gateway` | NAT 게이트웨이 |
+| Route 53 | `mxgraph.aws4.route_53` | DNS service |
+| API Gateway | `mxgraph.aws4.api_gateway` | API management |
+| ELB/ALB | `mxgraph.aws4.application_load_balancer` | Load balancer |
+| NLB | `mxgraph.aws4.network_load_balancer` | Network LB |
+| NAT Gateway | `mxgraph.aws4.nat_gateway` | NAT gateway |
 | Internet Gateway | `mxgraph.aws4.internet_gateway` | IGW |
 | VPN Gateway | `mxgraph.aws4.vpn_gateway` | VPN |
-| Direct Connect | `mxgraph.aws4.direct_connect` | 전용선 |
-| Transit Gateway | `mxgraph.aws4.transit_gateway` | 네트워크 허브 |
-| PrivateLink | `mxgraph.aws4.privatelink` | 프라이빗 연결 |
-| Global Accelerator | `mxgraph.aws4.global_accelerator` | 글로벌 가속 |
+| Direct Connect | `mxgraph.aws4.direct_connect` | Dedicated line |
+| Transit Gateway | `mxgraph.aws4.transit_gateway` | Network hub |
+| PrivateLink | `mxgraph.aws4.privatelink` | Private connectivity |
+| Global Accelerator | `mxgraph.aws4.global_accelerator` | Global acceleration |
 
 ### Security, Identity & Compliance
 
-| 서비스 | Shape 이름 | 설명 |
+| Service | Shape name | Description |
 |--------|-----------|------|
-| IAM | `mxgraph.aws4.identity_and_access_management` | 접근 관리 |
-| Cognito | `mxgraph.aws4.cognito` | 사용자 인증 |
-| WAF | `mxgraph.aws4.waf` | 웹 방화벽 |
-| Shield | `mxgraph.aws4.shield` | DDoS 보호 |
-| KMS | `mxgraph.aws4.key_management_service` | 키 관리 |
-| Secrets Manager | `mxgraph.aws4.secrets_manager` | 시크릿 관리 |
-| Certificate Manager | `mxgraph.aws4.certificate_manager` | SSL/TLS 인증서 |
-| GuardDuty | `mxgraph.aws4.guardduty` | 위협 탐지 |
-| Inspector | `mxgraph.aws4.inspector` | 취약점 스캔 |
-| Macie | `mxgraph.aws4.macie` | 데이터 보안 |
-| Security Hub | `mxgraph.aws4.security_hub` | 보안 허브 |
+| IAM | `mxgraph.aws4.identity_and_access_management` | Access management |
+| Cognito | `mxgraph.aws4.cognito` | User authentication |
+| WAF | `mxgraph.aws4.waf` | Web firewall |
+| Shield | `mxgraph.aws4.shield` | DDoS protection |
+| KMS | `mxgraph.aws4.key_management_service` | Key management |
+| Secrets Manager | `mxgraph.aws4.secrets_manager` | Secrets management |
+| Certificate Manager | `mxgraph.aws4.certificate_manager` | SSL/TLS certificates |
+| GuardDuty | `mxgraph.aws4.guardduty` | Threat detection |
+| Inspector | `mxgraph.aws4.inspector` | Vulnerability scanning |
+| Macie | `mxgraph.aws4.macie` | Data security |
+| Security Hub | `mxgraph.aws4.security_hub` | Security hub |
 
 ### Application Integration
 
-| 서비스 | Shape 이름 | 설명 |
+| Service | Shape name | Description |
 |--------|-----------|------|
-| SQS | `mxgraph.aws4.sqs` | 메시지 큐 |
-| SNS | `mxgraph.aws4.sns` | 알림 서비스 |
-| EventBridge | `mxgraph.aws4.eventbridge` | 이벤트 버스 |
-| Step Functions | `mxgraph.aws4.step_functions` | 워크플로우 |
+| SQS | `mxgraph.aws4.sqs` | Message queue |
+| SNS | `mxgraph.aws4.sns` | Notification service |
+| EventBridge | `mxgraph.aws4.eventbridge` | Event bus |
+| Step Functions | `mxgraph.aws4.step_functions` | Workflow orchestration |
 | AppSync | `mxgraph.aws4.appsync` | GraphQL API |
-| MQ | `mxgraph.aws4.mq` | 메시지 브로커 |
+| MQ | `mxgraph.aws4.mq` | Message broker |
 
 ### Analytics
 
-| 서비스 | Shape 이름 | 설명 |
+| Service | Shape name | Description |
 |--------|-----------|------|
-| Kinesis | `mxgraph.aws4.kinesis` | 스트리밍 데이터 |
-| Athena | `mxgraph.aws4.athena` | S3 쿼리 |
-| EMR | `mxgraph.aws4.emr` | 빅데이터 처리 |
-| Glue | `mxgraph.aws4.glue` | ETL 서비스 |
-| QuickSight | `mxgraph.aws4.quicksight` | BI 시각화 |
-| OpenSearch Service | `mxgraph.aws4.opensearch_service` | 검색/분석 (최신 OpenSearch 글리프 — 우선 사용) |
-| OpenSearch (legacy) | `mxgraph.aws4.elasticsearch_service` | 구버전 draw.io 폴백 (옛 ES 아이콘) |
-| Data Pipeline | `mxgraph.aws4.data_pipeline` | 데이터 이동 |
-| Lake Formation | `mxgraph.aws4.lake_formation` | 데이터 레이크 |
+| Kinesis | `mxgraph.aws4.kinesis` | Streaming data |
+| Athena | `mxgraph.aws4.athena` | S3 query engine |
+| EMR | `mxgraph.aws4.emr` | Big data processing |
+| Glue | `mxgraph.aws4.glue` | ETL service |
+| QuickSight | `mxgraph.aws4.quicksight` | BI visualization |
+| OpenSearch Service | `mxgraph.aws4.opensearch_service` | search/analytics (newer OpenSearch glyph — preferred) |
+| OpenSearch (legacy) | `mxgraph.aws4.elasticsearch_service` | fallback for older draw.io versions (old ES icon) |
+| Data Pipeline | `mxgraph.aws4.data_pipeline` | Data movement |
+| Lake Formation | `mxgraph.aws4.lake_formation` | Data lake |
 | MSK | `mxgraph.aws4.managed_streaming_for_kafka` | Kafka |
 
 ### Machine Learning
 
-| 서비스 | Shape 이름 | 설명 |
+| Service | Shape name | Description |
 |--------|-----------|------|
-| SageMaker | `mxgraph.aws4.sagemaker` | ML 플랫폼 |
-| Bedrock | `mxgraph.aws4.bedrock` | 생성형 AI |
-| Rekognition | `mxgraph.aws4.rekognition` | 이미지/비디오 분석 |
+| SageMaker | `mxgraph.aws4.sagemaker` | ML platform |
+| Bedrock | `mxgraph.aws4.bedrock` | Generative AI |
+| Rekognition | `mxgraph.aws4.rekognition` | Image/video analysis |
 | Comprehend | `mxgraph.aws4.comprehend` | NLP |
-| Lex | `mxgraph.aws4.lex` | 챗봇 |
+| Lex | `mxgraph.aws4.lex` | Chatbot |
 | Polly | `mxgraph.aws4.polly` | TTS |
 | Transcribe | `mxgraph.aws4.transcribe` | STT |
-| Translate | `mxgraph.aws4.translate` | 번역 |
-| Textract | `mxgraph.aws4.textract` | 문서 분석 |
+| Translate | `mxgraph.aws4.translate` | Translation |
+| Textract | `mxgraph.aws4.textract` | Document analysis |
 
 ### Management & Governance
 
-| 서비스 | Shape 이름 | 설명 |
+| Service | Shape name | Description |
 |--------|-----------|------|
-| CloudWatch | `mxgraph.aws4.cloudwatch` | 모니터링 |
-| CloudTrail | `mxgraph.aws4.cloudtrail` | 감사 로그 |
+| CloudWatch | `mxgraph.aws4.cloudwatch` | Monitoring |
+| CloudTrail | `mxgraph.aws4.cloudtrail` | Audit logging |
 | CloudFormation | `mxgraph.aws4.cloudformation` | IaC |
-| Systems Manager | `mxgraph.aws4.systems_manager` | 운영 관리 |
-| Config | `mxgraph.aws4.config` | 리소스 구성 |
-| Organizations | `mxgraph.aws4.organizations` | 계정 관리 |
-| Control Tower | `mxgraph.aws4.control_tower` | 랜딩존 |
-| Service Catalog | `mxgraph.aws4.service_catalog` | 서비스 카탈로그 |
+| Systems Manager | `mxgraph.aws4.systems_manager` | Operations management |
+| Config | `mxgraph.aws4.config` | Resource configuration |
+| Organizations | `mxgraph.aws4.organizations` | Account management |
+| Control Tower | `mxgraph.aws4.control_tower` | Landing zone |
+| Service Catalog | `mxgraph.aws4.service_catalog` | Service catalog |
 
 ### Developer Tools
 
-| 서비스 | Shape 이름 | 설명 |
+| Service | Shape name | Description |
 |--------|-----------|------|
-| CodeCommit | `mxgraph.aws4.codecommit` | Git 저장소 |
-| CodeBuild | `mxgraph.aws4.codebuild` | 빌드 서비스 |
-| CodeDeploy | `mxgraph.aws4.codedeploy` | 배포 자동화 |
+| CodeCommit | `mxgraph.aws4.codecommit` | Git repository |
+| CodeBuild | `mxgraph.aws4.codebuild` | Build service |
+| CodeDeploy | `mxgraph.aws4.codedeploy` | Deployment automation |
 | CodePipeline | `mxgraph.aws4.codepipeline` | CI/CD |
-| Cloud9 | `mxgraph.aws4.cloud9` | 클라우드 IDE |
-| X-Ray | `mxgraph.aws4.xray` | 분산 추적 |
+| Cloud9 | `mxgraph.aws4.cloud9` | Cloud IDE |
+| X-Ray | `mxgraph.aws4.xray` | Distributed tracing |
 
-## AWS Groups (컨테이너/그룹 Shape)
+## AWS Groups (container/group shapes)
 
-아키텍처 다이어그램에서 리소스를 논리적으로 그룹화하는 컨테이너입니다.
+Containers for logically grouping resources in architecture diagrams.
 
-### 기본 인프라 그룹
+### Basic infrastructure groups
 
-| 요소 | Shape 이름 | 색상 | 설명 |
+| Element | Shape name | Color | Description |
 |------|-----------|------|------|
-| AWS Cloud | `mxgraph.aws4.group_aws_cloud` | #242F3E | AWS 클라우드 전체 경계 |
-| AWS Cloud (Alt) | `mxgraph.aws4.group_aws_cloud_alt` | #242F3E | AWS 클라우드 (대체 스타일) |
-| Region | `mxgraph.aws4.group_region` | #147EBA | 리전 경계 |
-| Availability Zone | `mxgraph.aws4.group_availability_zone` | #147EBA | 가용영역 (AZ) |
+| AWS Cloud | `mxgraph.aws4.group_aws_cloud` | #242F3E | overall AWS Cloud boundary |
+| AWS Cloud (Alt) | `mxgraph.aws4.group_aws_cloud_alt` | #242F3E | AWS Cloud (alternate style) |
+| Region | `mxgraph.aws4.group_region` | #147EBA | Region boundary |
+| Availability Zone | `mxgraph.aws4.group_availability_zone` | #147EBA | Availability Zone (AZ) |
 
-### 네트워크 그룹
+### Network groups
 
-| 요소 | Shape 이름 | 색상 | 설명 |
+| Element | Shape name | Color | Description |
 |------|-----------|------|------|
 | VPC | `mxgraph.aws4.group_vpc` | #248814 | Virtual Private Cloud |
-| VPC (alt) | `mxgraph.aws4.group_vpc2` | #248814 | VPC 대체 스타일 |
-| Public Subnet | `mxgraph.aws4.group_public_subnet` | #248814 | 퍼블릭 서브넷 (실선) |
-| Private Subnet | `mxgraph.aws4.group_private_subnet` | #147EBA | 프라이빗 서브넷 (점선) |
-| Security Group | `mxgraph.aws4.group_security_group` | #DF3312 | 보안 그룹 |
-| Network ACL | `mxgraph.aws4.group_nacl` | #248814 | 네트워크 ACL |
+| VPC (alt) | `mxgraph.aws4.group_vpc2` | #248814 | VPC alternate style |
+| Public Subnet | `mxgraph.aws4.group_public_subnet` | #248814 | public subnet (solid line) |
+| Private Subnet | `mxgraph.aws4.group_private_subnet` | #147EBA | private subnet (dashed line) |
+| Security Group | `mxgraph.aws4.group_security_group` | #DF3312 | security group |
+| Network ACL | `mxgraph.aws4.group_nacl` | #248814 | network ACL |
 
-### 컴퓨팅 그룹
+### Compute groups
 
-| 요소 | Shape 이름 | 색상 | 설명 |
+| Element | Shape name | Color | Description |
 |------|-----------|------|------|
-| Auto Scaling Group | `mxgraph.aws4.group_auto_scaling` | #ED7100 | Auto Scaling 그룹 |
-| EC2 Instance Contents | `mxgraph.aws4.group_ec2_instance_contents` | #ED7100 | EC2 인스턴스 내부 |
-| Spot Fleet | `mxgraph.aws4.group_spot_fleet` | #ED7100 | 스팟 플릿 |
-| ECS Cluster | `mxgraph.aws4.group_ecs_cluster` | #ED7100 | ECS 클러스터 |
-| EKS Cluster | `mxgraph.aws4.group_eks_cluster` | #ED7100 | EKS 클러스터 |
+| Auto Scaling Group | `mxgraph.aws4.group_auto_scaling` | #ED7100 | Auto Scaling group |
+| EC2 Instance Contents | `mxgraph.aws4.group_ec2_instance_contents` | #ED7100 | inside an EC2 instance |
+| Spot Fleet | `mxgraph.aws4.group_spot_fleet` | #ED7100 | Spot fleet |
+| ECS Cluster | `mxgraph.aws4.group_ecs_cluster` | #ED7100 | ECS cluster |
+| EKS Cluster | `mxgraph.aws4.group_eks_cluster` | #ED7100 | EKS cluster |
 
-### 서비스/기능 그룹
+### Service/feature groups
 
-| 요소 | Shape 이름 | 색상 | 설명 |
+| Element | Shape name | Color | Description |
 |------|-----------|------|------|
-| AWS Account | `mxgraph.aws4.group_aws_account` | #242F3E | AWS 계정 경계 |
-| Corporate Data Center | `mxgraph.aws4.group_corporate_data_center` | #7D8998 | 온프레미스 데이터센터 |
-| Elastic Beanstalk Container | `mxgraph.aws4.group_elastic_beanstalk` | #248814 | EB 환경 |
-| Step Functions | `mxgraph.aws4.group_step_functions` | #CD2264 | Step Functions 워크플로우 |
-| Generic Group | `mxgraph.aws4.group_generic` | #7D8998 | 일반 그룹 |
-| Generic Group (alt) | `mxgraph.aws4.group_generic_alt` | #7D8998 | 일반 그룹 (대체) |
+| AWS Account | `mxgraph.aws4.group_aws_account` | #242F3E | AWS account boundary |
+| Corporate Data Center | `mxgraph.aws4.group_corporate_data_center` | #7D8998 | on-premises data center |
+| Elastic Beanstalk Container | `mxgraph.aws4.group_elastic_beanstalk` | #248814 | EB environment |
+| Step Functions | `mxgraph.aws4.group_step_functions` | #CD2264 | Step Functions workflow |
+| Generic Group | `mxgraph.aws4.group_generic` | #7D8998 | generic group |
+| Generic Group (alt) | `mxgraph.aws4.group_generic_alt` | #7D8998 | generic group (alternate) |
 
-### 그룹 스타일 가이드
+### Group style guide
 
 ```
-# 기본 그룹 스타일
+# Basic group style
 shape=mxgraph.aws4.group_[type];
 strokeWidth=2;
-dashed=0;               # 실선 (퍼블릭 서브넷)
-dashed=1;               # 점선 (프라이빗 서브넷)
+dashed=0;               # solid line (public subnet)
+dashed=1;               # dashed line (private subnet)
 rounded=1;
 arcSize=10;
-fillColor=none;         # 투명 배경 권장
+fillColor=none;         # transparent background recommended
 fontFamily=Amazon Ember;
 fontStyle=1;            # Bold
 fontSize=14;
@@ -278,7 +284,7 @@ spacingTop=10;
 spacingLeft=10;
 ```
 
-### 그룹 중첩 순서 (바깥 → 안쪽)
+### Group nesting order (outer → inner)
 
 ```
 1. AWS Cloud
@@ -290,41 +296,41 @@ spacingLeft=10;
                        └── 7. EC2 Instance / Auto Scaling Group
 ```
 
-### 그룹 색상 팔레트
+### Group color palette
 
-> **색상 정본은 `references/design-tokens.md`.** 아래는 그 값과 일치 (Public=초록 #7AA116, Private=청록 #00A4A6).
+> **The single source of truth for colors is `references/design-tokens.md`.** Values below match it (Public=green #7AA116, Private=teal #00A4A6).
 
-| 그룹 유형 | Border Color | Fill Color | 용도 |
+| Group type | Border Color | Fill Color | Use |
 |----------|--------------|------------|------|
-| AWS Cloud | #232F3E | none | 전체 클라우드 |
-| Region/AZ | #00A4A6 | none | 지역/가용영역 |
-| VPC | #879196 | none | 네트워크 (실선) |
-| Public Subnet | #7AA116 | #F2F6E8 | 퍼블릭 (초록) |
-| Private Subnet | #00A4A6 | #E6F6F7 | 프라이빗 (청록) |
-| Security Group | #C7131F | #FEE7E7 | 보안 |
-| Compute (ASG/EC2) | #ED7100 | none | 컴퓨팅 |
-| Generic | #7D8998 | none | 일반 |
+| AWS Cloud | #232F3E | none | overall cloud |
+| Region/AZ | #00A4A6 | none | region/availability zone |
+| VPC | #879196 | none | network (solid line) |
+| Public Subnet | #7AA116 | #F2F6E8 | public (green) |
+| Private Subnet | #00A4A6 | #E6F6F7 | private (teal) |
+| Security Group | #C7131F | #FEE7E7 | security |
+| Compute (ASG/EC2) | #ED7100 | none | compute |
+| Generic | #7D8998 | none | generic |
 
-## 일반 아이콘
+## General icons
 
-| 요소 | Shape 이름 | 설명 |
+| Element | Shape name | Description |
 |------|-----------|------|
-| User | `mxgraph.aws4.user` | 사용자 |
-| Users | `mxgraph.aws4.users` | 사용자 그룹 |
-| Client | `mxgraph.aws4.client` | 클라이언트 |
-| Mobile Client | `mxgraph.aws4.mobile_client` | 모바일 |
-| Traditional Server | `mxgraph.aws4.traditional_server` | 온프레미스 서버 |
-| Corporate Data Center | `mxgraph.aws4.corporate_data_center` | 데이터센터 |
-| Internet | `mxgraph.aws4.internet` | 인터넷 |
-| Cloud | `mxgraph.aws4.cloud` | 일반 클라우드 |
+| User | `mxgraph.aws4.user` | user |
+| Users | `mxgraph.aws4.users` | user group |
+| Client | `mxgraph.aws4.client` | client |
+| Mobile Client | `mxgraph.aws4.mobile_client` | mobile |
+| Traditional Server | `mxgraph.aws4.traditional_server` | on-premises server |
+| Corporate Data Center | `mxgraph.aws4.corporate_data_center` | data center |
+| Internet | `mxgraph.aws4.internet` | internet |
+| Cloud | `mxgraph.aws4.cloud` | generic cloud |
 
-## 서비스 아이콘 색상 코드 (fillColor / gradientColor)
+## Service icon color codes (fillColor / gradientColor)
 
-AWS 아이콘은 **서비스 카테고리별로 색상이 구분**됩니다. 아래 색상을 사용하면 AWS 공식 스타일과 일치합니다.
+AWS icons are **color-coded by service category**. Using these colors keeps the diagram consistent with official AWS style.
 
-### 카테고리별 색상 매핑
+### Category-to-color mapping
 
-| 카테고리 | fillColor | gradientColor | 대표 서비스 |
+| Category | fillColor | gradientColor | Representative services |
 |----------|-----------|---------------|-------------|
 | **Compute** (Orange) | `#D05C17` | `#F78E04` | EC2, Lambda, ECS, EKS |
 | **Storage** (Green) | `#277116` | `#60A337` | S3, EBS, EFS, Glacier |
@@ -337,7 +343,7 @@ AWS 아이콘은 **서비스 카테고리별로 색상이 구분**됩니다. 아
 | **Analytics** (Purple) | `#5A30B5` | `#945DF2` | Kinesis, Athena, Glue |
 | **Developer** (Blue) | `#3334B9` | `#4D72F3` | CodePipeline, CodeBuild |
 
-### 색상 적용 XML 예시
+### Example XML with color applied
 
 ```xml
 <!-- Compute (EC2) -->
@@ -380,21 +386,21 @@ AWS 아이콘은 **서비스 카테고리별로 색상이 구분**됩니다. 아
 </mxCell>
 ```
 
-### 연결선 색상 가이드
+### Connector color guide
 
-| 연결 유형 | strokeColor | strokeWidth | 설명 |
+| Connection type | strokeColor | strokeWidth | Description |
 |----------|-------------|-------------|------|
-| Direct Connect | `#FF9800` | 4 | 전용선 연결 |
-| PrivateLink | `#5A30B5` | 2 | VPC 간 프라이빗 연결 |
-| VPN | `#7D8998` | 2 | VPN 터널 |
-| 일반 연결 | `#545B64` | 2 | 기본 화살표 |
-| 데이터 흐름 | `#3334B9` | 2 | 데이터 이동 |
+| Direct Connect | `#FF9800` | 4 | dedicated line connection |
+| PrivateLink | `#5A30B5` | 2 | private connection between VPCs |
+| VPN | `#7D8998` | 2 | VPN tunnel |
+| General connection | `#545B64` | 2 | default arrow |
+| Data flow | `#3334B9` | 2 | data movement |
 
 ---
 
-## 스타일 템플릿
+## Style templates
 
-### AWS 아이콘 기본 스타일
+### Basic AWS icon style
 
 ```
 shape=mxgraph.aws4.[service];
@@ -406,7 +412,7 @@ align=center;
 verticalAlign=top;
 ```
 
-### 그룹/컨테이너 스타일
+### Group/container style
 
 ```
 shape=mxgraph.aws4.group_[type];
@@ -420,26 +426,26 @@ fillColor=#[background];
 dashed=0;
 ```
 
-## 아이콘 크기 가이드
+## Icon size guide
 
-> **정본은 `references/design-tokens.md`: 표준 78×78** (전 아이콘 통일), 밀집 예외 48×48 (≥16개일 때만). 40/60은 폐기.
+> **The single source of truth is `references/design-tokens.md`: standard 78×78** (uniform across all icons), with a dense exception of 48×48 (only when ≥16 icons). 40/60 are retired.
 
-| 유형 | 크기 | 용도 |
+| Type | Size | Use |
 |------|------|------|
-| 서비스/리소스 아이콘 (표준) | **78x78** | 기본값 — 모든 아이콘 동일 |
-| 밀집 예외 | 48x48 | ≥16개 아이콘일 때만, 다이어그램 내 통일 |
+| Service/resource icon (standard) | **78x78** | default — all icons the same |
+| Dense exception | 48x48 | only when ≥16 icons, uniform within a diagram |
 
-## MCP로 아이콘 검색
+## Searching icons via MCP
 
 ```
-# AWS 카테고리 확인
+# Check AWS category
 mcp__drawio__get-shape-categories
 
-# AWS 카테고리의 모든 shape 조회
+# List all shapes in the AWS category
 mcp__drawio__get-shapes-in-category
 → category: "AWS"
 
-# 특정 서비스 검색
+# Search for a specific service
 mcp__drawio__get-shape-by-name
 → name: "ec2"
 ```

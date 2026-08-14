@@ -6,11 +6,11 @@ Draw.io MCP enables real-time diagram editing via Claude Code. This is **optiona
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                         사용자 시스템                                    │
+│                          User's system                                  │
 │                                                                          │
 │  ┌──────────────────┐                      ┌─────────────────────────┐  │
 │  │ Draw.io          │   WebSocket (:3333)  │ drawio-mcp-server       │  │
-│  │ (브라우저/앱)    │◄────────────────────►│ (Singleton 인스턴스)    │  │
+│  │ (browser/app)    │◄────────────────────►│ (singleton instance)    │  │
 │  │ + Browser        │                      │                         │  │
 │  │   Extension      │                      │ HTTP :3000/mcp          │  │
 │  └──────────────────┘                      └────────────┬────────────┘  │
@@ -18,7 +18,8 @@ Draw.io MCP enables real-time diagram editing via Claude Code. This is **optiona
 │                                                         ▼               │
 │  ┌──────────────────┐     HTTP            ┌─────────────────────────┐  │
 │  │ Claude Code      │◄───────────────────►│ /mcp endpoint           │  │
-│  │ Session 1        │                     │ (다중 클라이언트 지원)   │  │
+│  │ Session 1        │                     │ (supports multiple      │  │
+│  │                  │                     │  clients)               │  │
 │  └──────────────────┘                     └─────────────────────────┘  │
 │                                                         ▲               │
 │  ┌──────────────────┐     HTTP                          │               │

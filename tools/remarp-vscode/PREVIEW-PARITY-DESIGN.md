@@ -517,7 +517,7 @@ Full HTML Document             All slides in .slide-deck container
 - Inline styles for layout
 - Navigation buttons (TOC + Next)
 - Support for `@toc`, `@next`, `@next-label`, `@message` directives
-- Conditional "수고하셨습니다!" for final blocks
+- Conditional "수고하셨습니다!" ("Great work!") congratulatory message for final blocks
 
 **Fixes Needed:**
 1. Add navigation buttons from directives

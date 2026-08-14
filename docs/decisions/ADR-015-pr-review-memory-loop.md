@@ -6,62 +6,70 @@ Accepted (2026-07-31)
 
 ## Context
 
-리뷰 계열 에이전트 15개가 `memory: project|user` 를 선언하지만 repo 안에 `MEMORY.md` 는 하나도
-없고, CI PR 리뷰(`.github/workflows/pr-review.yml`)는 축적된 지식을 **읽지도 쓰지도** 않는다.
-결과: 같은 진짜 문제가 매번 처음부터 발견되고, 같은 오탐이 매 PR 마다 다시 지적되며, 특정 셀의
-판단 질이 나빠도 근거가 어디에도 누적되지 않는다 — ADR-012 에서 `kimi-k2.5` 를 뺄 때 쓴
-"7 dismissed findings vs 0" 같은 증거는 채팅 히스토리에만 있었다.
+15 review-lineage agents declare `memory: project|user`, but there is not a single `MEMORY.md`
+anywhere in the repo, and the CI PR review (`.github/workflows/pr-review.yml`) neither **reads
+nor writes** accumulated knowledge. The result: the same real problem gets rediscovered from
+scratch every time, the same false positive gets flagged again on every PR, and even when a
+given cell's judgment quality is poor, no evidence accumulates anywhere — the evidence used in
+ADR-012 to drop `kimi-k2.5` (e.g. "7 dismissed findings vs. 0") existed only in chat history.
 
-**같은 에이전트를 CI 에서 재사용하는 것은 불가능하다.** 체어는 `claude -p …
---disallowedTools "… Task"` 로 실행돼 서브에이전트를 못 띄우고, 패널 셀은 Codex/Kiro CLI 라
-Claude 에이전트가 아니며, `agent-memory` 는 워크스페이스에 있어 `pull_request_target` +
-`clean: true` 체크아웃마다 사라진다. 따라서 **공유되는 것은 에이전트가 아니라 커밋된 파일
-하나**여야 한다.
+**Reusing the same agent across CI runs is not possible.** The chair runs as `claude -p …
+--disallowedTools "… Task"`, so it cannot spawn subagents; the panel cells are Codex/Kiro CLIs,
+not Claude agents; and `agent-memory` lives in the workspace, which disappears on every
+`pull_request_target` + `clean: true` checkout. So **what gets shared must be a single committed
+file, not an agent**.
 
-실제 루프는 **CI 리뷰 FAIL → 로컬 `/co-agent:pr-autofix`** 다. 그래서 메모리는 pr-autofix 가
-참조할 수 있어야 하고 다음 CI 런도 같은 것을 봐야 한다.
+The actual loop in practice is **CI review FAIL → local `/co-agent:pr-autofix`**. So the memory
+must be something pr-autofix can reference, and the next CI run must see the same thing.
 
 ## Options Considered
 
-1. **CI 가 메모리 파일을 자동 커밋** — 기각. 리뷰를 거치지 않은 자기수정이며, PR 본문/diff
-   텍스트가 커밋 내용으로 직통하는 injection 경로가 된다.
-2. **러너 로컬 TSV 에 누적** — 기각. `actions/checkout` 의 `clean: true` 가 매 run 워크스페이스를
-   지우고, 러너 밖 영구 경로의 존재/유지는 이 repo 러너에서 확인되지 않았다
-   (`docs/ci-pr-review.md` "경로 B" 와 같은 미검증 전제). 또 대화형 에이전트가 못 읽는다.
-3. **임계 초과 셀 자동 비활성화** — 기각. 자동 배제는 커버리지 붕괴로 이어지고,
-   `run-panel.sh` 의 severe 게이트가 fail-closed 로 PR 을 영구 차단할 수 있다.
+1. **Have CI auto-commit the memory file** — rejected. This is self-modification that bypasses
+   review, and it opens an injection path where PR body/diff text goes straight into commit
+   content.
+2. **Accumulate in a runner-local TSV** — rejected. `actions/checkout`'s `clean: true` wipes the
+   workspace on every run, and the existence/persistence of a path outside the runner has not
+   been confirmed on this repo's runner (an unverified assumption, same as `docs/ci-pr-review.md`'s
+   "Path B"). Also, interactive agents cannot read it.
+3. **Auto-disable a cell that exceeds a threshold** — rejected. Automatic exclusion leads to
+   coverage collapse, and `run-panel.sh`'s severe gate could then permanently fail-closed a PR.
 
 ## Decision
 
-- **단일 소스는 커밋된 파일 하나** — `docs/pr-review/review-memory.md`. 고정 3섹션(반복 진짜
-  문제 / 알려진 오탐 패턴 / 패널 셀 판단 질) + 데이터 취급 헤더.
-- **읽기는 다수**: `memory_excerpt`(`scripts/pr-review/lib.sh`)가 lens 프롬프트에 발췌를 인라인
-  (`MEMORY_CAP` 기본 4000B, fail-open, `패널 셀 판단 질` 표 제외), 체어는 경로를 받아 직접
-  `Read`, 대화형 `gate-chair`/`content-review-agent` 도 같은 파일을 읽는다.
-- **쓰기는 로컬 호스트 하나**: `/co-agent:pr-autofix` 의 호스트(Claude)만 갱신한다. planner /
-  implementer 는 이 파일 쓰기가 **금지**된다 — implementer 는 untrusted 리뷰 텍스트를 처리하므로,
-  미래 리뷰 프롬프트에 실리는 파일에 쓰기를 주면 injection 경로가 된다.
-- **로스터 배제는 권고만**: 셀이 `unsupported >= 5` 이고 `unsupported/총 >= 0.5` 면
-  `panel_config.py set <cell> enabled false --root .` + ADR 을 **권고**한다. 자동 적용 금지
-  (ADR-012 선례 그대로 사람이 커밋).
+- **The single source is one committed file** — `docs/pr-review/review-memory.md`. Fixed into 3
+  sections (recurring real problems / known false-positive patterns / panel cell judgment
+  quality) plus a data-handling header.
+- **Multiple readers**: `memory_excerpt` (`scripts/pr-review/lib.sh`) inlines an excerpt into the
+  lens prompts (`MEMORY_CAP` default 4000B, fail-open, excludes the "panel cell judgment quality"
+  table); the chair receives the path and reads it directly via `Read`; the interactive
+  `gate-chair`/`content-review-agent` also read the same file.
+- **A single local host is the only writer**: only `/co-agent:pr-autofix`'s host (Claude) updates
+  it. The planner / implementer are **forbidden** from writing to this file — since the
+  implementer processes untrusted review text, letting it write to a file that later gets loaded
+  into future review prompts would open an injection path.
+- **Roster exclusion is only a recommendation**: if a cell has `unsupported >= 5` and
+  `unsupported/total >= 0.5`, `panel_config.py set <cell> enabled false --root .` + an ADR are
+  **recommended**. Automatic application is forbidden (a human still commits it, exactly as in
+  the ADR-012 precedent).
 
 ## Consequences
 
-- PR head 는 자기 리뷰에 쓰일 메모리를 조작할 수 없다 — `pull_request_target` 이 base ref 를
-  체크아웃하므로 injection 표면이 아니다. 대가로 **갱신은 머지된 다음 PR 부터 반영**된다
-  (로스터 변경과 동일한 지연 특성).
-- 메모리 갱신은 `land_delta.sh` 파이프라인을 통과하지 않는다(워크트리 밖 호스트 편집). 그
-  스크립트의 `commit` 스테이지는 landed 파일만 pathspec 으로 스테이징하므로, 메모리 갱신은
-  land 직후의 **별도 호스트 커밋**이다.
-- 파일이 없거나 섹션이 비어도 리뷰는 정상 동작한다(전 경로 fail-open) — 메모리 부재가 리뷰를
-  막지 않는다.
-- 상한(섹션당 30줄, 파일 200줄)을 사람이 지켜야 한다. 자동 정리는 없다.
+- The PR head cannot tamper with the memory used to review itself — since `pull_request_target`
+  checks out the base ref, this is not an injection surface. The trade-off is that **updates only
+  take effect starting from the PR after they merge** (the same delay characteristic as a roster
+  change).
+- Memory updates do not go through the `land_delta.sh` pipeline (they're a host edit outside the
+  worktree). Since that script's `commit` stage only stages landed files via pathspec, a memory
+  update is a **separate host commit** made right after landing.
+- Review works normally even if the file is missing or a section is empty (fail-open on every
+  path) — the absence of memory never blocks a review.
+- The caps (30 lines per section, 200 lines per file) must be enforced by humans. There is no automatic pruning.
 
 ## References
 
-- `docs/pr-review/review-memory.md` — 메모리 파일 자체
-- `scripts/pr-review/lib.sh` (`memory_excerpt`), `scripts/pr-review/synthesize.sh` (체어 프롬프트)
-- `.github/workflows/pr-review.yml` — "Build lens prompts" 스텝의 발췌 append
-- `plugins/co-agent/skills/pr-autofix/SKILL.md` — 마커 해석 + 메모리 읽기/쓰기 + 임계 권고
-- ADR-009(CI 멀티-AI 리뷰), ADR-011(lens×model 매트릭스), ADR-012(로스터 배제 선례),
-  ADR-013(Kiro diff 전달 / `fs_read` 제거)
+- `docs/pr-review/review-memory.md` — the memory file itself
+- `scripts/pr-review/lib.sh` (`memory_excerpt`), `scripts/pr-review/synthesize.sh` (chair prompt)
+- `.github/workflows/pr-review.yml` — the excerpt append in the "Build lens prompts" step
+- `plugins/co-agent/skills/pr-autofix/SKILL.md` — marker interpretation + memory read/write + threshold recommendation
+- ADR-009 (CI multi-AI review), ADR-011 (lens×model matrix), ADR-012 (roster-exclusion precedent),
+  ADR-013 (Kiro diff delivery / removal of `fs_read`)

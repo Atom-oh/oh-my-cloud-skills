@@ -89,8 +89,8 @@ A specialized agent that creates AWS architecture diagrams by directly writing D
   <mxGeometry x="15" y="40" width="200" height="290" as="geometry" />
 </mxCell>
 ```
-> Public subnet은 `grIcon=mxgraph.aws4.group_public_subnet` + `dashed=0` (실선). **절대
-> `group_security_group` 사용 금지** — 자물쇠 글리프가 라벨을 가려 보안 경계로 오독됨
+> A public subnet uses `grIcon=mxgraph.aws4.group_public_subnet` + `dashed=0` (solid line). **Never
+> use `group_security_group`** — its padlock glyph obscures the label and gets misread as a security boundary
 > (`references/design-tokens.md` §2).
 
 ### On-Premise / IDC
@@ -169,7 +169,7 @@ id="0" (root)
 ## Workflow
 
 1. **Requirements** — Architecture type, services, connections
-2. **Choose generation path** (`skills/architecture-diagram/SKILL.md` §스펙 생성기):
+2. **Choose generation path** (`skills/architecture-diagram/SKILL.md` §Spec Generator):
    - **Standard pattern (default)** — VPC/Multi-AZ/tiered, serverless/pipeline,
      multi-region, or hybrid (on-prem+Direct Connect) → write a YAML spec and run
      `scripts/layout_aws.py my-spec.yaml -o output.drawio`. It computes AWS-convention
@@ -185,7 +185,7 @@ id="0" (root)
    Icons (uniform 78x78) → Edges (orthogonal, explicit `exitX/exitY`/`entryX/entryY`
    anchors) → Legend. **Never put `&` or `--` inside XML comments** — drawio silently
    drops every cell after them (exit 0, truncated PNG). Prefer no decorative comments.
-5. **Validate (필수, before export)** — two gates, both must pass (both paths):
+5. **Validate (mandatory, before export)** — two gates, both must pass (both paths):
    - `python3 …/scripts/validate_drawio.py output.drawio` → XML/truncation; compare cell/icon counts to intent.
    - `python3 …/scripts/lint_layout.py output.drawio` → **layout score ≥ 80** (grid alignment, container containment, icon overlap, spacing, edge budget). Below 80 → fix before export. Canonical numbers: `references/design-tokens.md`.
 6. **Export** — `drawio -x -f png -s 2 -t -o output.png input.drawio`
@@ -220,12 +220,12 @@ Per-row calculation (N icons, pitch = 78 + 60 gap = 138):
 
 ---
 
-## Quality Review (배포/완료 선언 전 필수)
+## Quality Review (mandatory before declaring deployment/completion)
 
-대상은 신규 다이어그램과 실질 개정 — 오탈자·한 줄 수정 같은 사소한 손질은 재리뷰 없이 반영.
-1. content-review-agent 호출 → `review content at [파일경로]`
-2. FAIL/REVIEW 판정 시 수정 후 재리뷰 (최대 3회)
-3. 해당 스케일 기준 PASS 판정 획득 후에만 완료 선언 (100점 만점: ≥85 / 비-HTML 90점 환산: ≥77 — content-review-agent의 Verdict 표 참조)
+Applies to new diagrams and substantive revisions — minor touch-ups like typo fixes or one-line edits can be applied without re-review.
+1. Invoke content-review-agent → `review content at [file path]`
+2. On a FAIL/REVIEW verdict, fix and re-review (up to 3 rounds)
+3. Declare completion only after achieving PASS on the applicable scale (100-point scale: ≥85 / non-HTML 90-point scale: ≥77 — see content-review-agent's Verdict table)
 
 ---
 

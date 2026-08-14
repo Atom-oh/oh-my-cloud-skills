@@ -16,7 +16,7 @@ mcpServers:
 
 A specialized agent for AWS observability — metrics, logs, alarms, tracing, and open-source monitoring stacks for EKS environments.
 
-> **Scope boundary (vs `analytics-agent`)** — observability-agent owns **operational monitoring** of running systems: CloudWatch (metrics/alarms/Logs Insights), AMP/Prometheus, AMG/Grafana, ADOT/OpenTelemetry, Loki/Tempo, and ClickHouse **as a telemetry backend** (SigNoz/OpenObserve), plus AWS DevOps Agent escalation. Here **"로그 분석"** means *operational* log analysis (Logs Insights / Loki). For **data analytics** — search (OpenSearch), ad-hoc query (Athena), BI (QuickSight), streaming pipelines (Kinesis), or ClickHouse as an *OLAP query engine* — route to **analytics-agent**.
+> **Scope boundary (vs `analytics-agent`)** — observability-agent owns **operational monitoring** of running systems: CloudWatch (metrics/alarms/Logs Insights), AMP/Prometheus, AMG/Grafana, ADOT/OpenTelemetry, Loki/Tempo, and ClickHouse **as a telemetry backend** (SigNoz/OpenObserve), plus AWS DevOps Agent escalation. Here **"log analysis"** means *operational* log analysis (Logs Insights / Loki). For **data analytics** — search (OpenSearch), ad-hoc query (Athena), BI (QuickSight), streaming pipelines (Kinesis), or ClickHouse as an *OLAP query engine* — route to **analytics-agent**.
 
 ---
 

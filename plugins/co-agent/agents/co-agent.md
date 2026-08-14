@@ -37,15 +37,15 @@ Claude is always the chair: attribute points to each AI, surface disagreement, o
 
 ```mermaid
 graph TD
-    A[요청] --> P[Step 0: 패널 감지<br/>kiro-cli / codex / agy 중 설치된 것]
-    P --> B{의도?}
-    B -->|코드/아키텍처 리뷰| R[Review: diff 팬아웃 → 종합 → PASS/REVIEW/FAIL]
-    B -->|"잘 모르겠어" / 의사결정| D[Decide: 옵션 팬아웃 → 비교표 → 추천]
-    B -->|ADR 작성| ADR[ADR: 대안·트레이드오프 팬아웃 → ADR 초안]
-    R --> S[Claude 종합 + 출처 표기]
+    A[Request] --> P[Step 0: Detect panel<br/>whichever of kiro-cli / codex / agy is installed]
+    P --> B{Intent?}
+    B -->|code/architecture review| R[Review: diff fanned out → synthesized → PASS/REVIEW/FAIL]
+    B -->|"unsure" / decision support| D[Decide: options fanned out → comparison table → recommendation]
+    B -->|draft an ADR| ADR[ADR: alternatives/trade-offs fanned out → ADR draft]
+    R --> S[Claude synthesizes + attributes sources]
     D --> S
     ADR --> S
-    P -->|패널 없음| SOLO[Claude 단독 수행 + 그 사실 명시]
+    P -->|no panel| SOLO[Claude performs solo + states that fact]
 ```
 
 Detailed per-mode steps live in `skills/co-agent/SKILL.md`.
@@ -81,11 +81,11 @@ or errored output means that AI skipped this run — note it and continue.
 
 ## Integration with other agents
 
-| 상황 | 연계 | 역할 분담 |
+| Situation | Integrates with | Division of labor |
 |------|------|-----------|
-| 코드/PR 리뷰 | `co-agent:pr-autofix` | co-agent가 멀티-AI 리뷰, pr-autofix가 피드백 반영 |
-| 설계 의사결정 | `project-init:/add-adr` | co-agent가 패널 협업 + ADR 초안, add-adr이 번호 부여/저장 |
-| AWS 인프라 변경 | `aws-ops-plugin` 에이전트 | co-agent가 다중 AI 설계 검증, ops가 실행 진단 |
+| Code/PR review | `co-agent:pr-autofix` | co-agent runs the multi-AI review, pr-autofix applies the feedback |
+| Design decision | `project-init:/add-adr` | co-agent runs the panel collaboration + ADR draft, add-adr assigns the number/saves it |
+| AWS infrastructure change | `aws-ops-plugin` agents | co-agent runs multi-AI design verification, ops runs execution diagnosis |
 
 ---
 

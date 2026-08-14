@@ -34,8 +34,8 @@ Beyond the immediate incident, the harness had grown well past what frontier mod
   chair's input — directly shrinking the chair's effective timeout budget on any
   diff large enough to make every cell's output non-trivial.
 - **Lens checklists duplicated project rules already inlined in the chair prompt.**
-- **The severity rule was one sentence with no definition**: `CRITICAL/MAJOR 있으면
-  FAIL, 아니면 PASS`. A strong model told to find issues will label its best find
+- **The severity rule was one sentence with no definition**: `FAIL if there's a
+  CRITICAL/MAJOR, else PASS`. A strong model told to find issues will label its best find
   MAJOR, and one MAJOR was fatal — with no distinction between "this breaks
   something" and "this is worth mentioning."
 - **The harness overrode the model's own verdict.** `coverage-severe.flag` forced
@@ -45,8 +45,8 @@ Beyond the immediate incident, the harness had grown well past what frontier mod
   last line; the workflow gate accepted any `^VERDICT: (PASS|FAIL)$` line anywhere.
   `verdict-gate-agreement-check.sh` (107 lines) existed solely to assert the two
   parsers disagreed in the intended direction — with no caller anywhere in the repo.
-- Review-comment archaeology (`"8차 리뷰 MINOR-3"`, `"17차 리뷰 MINOR-1"`, `"20차 리뷰
-  MAJOR L4-1"` style citations) had accumulated to where comments outweighed the code
+- Review-comment archaeology (`"round-8 review MINOR-3"`, `"round-17 review MINOR-1"`,
+  `"round-20 review MAJOR L4-1"` style citations) had accumulated to where comments outweighed the code
   they annotated.
 
 ## Options Considered
@@ -86,7 +86,7 @@ cross-vendor panel, drop the lens dimension.
   files sit in the lenses directory, so writing one file instead of four collapses
   the matrix without touching the fan-out code.
 - **Define blocking, then get out of the way.** The chair prompt replaces
-  `CRITICAL/MAJOR 있으면 FAIL, 아니면 PASS` with an impact test: FAIL only for a
+  `FAIL if there's a CRITICAL/MAJOR, else PASS` with an impact test: FAIL only for a
   finding that would actually break something, leak a credential, or violate a
   stated project contract if merged as-is, stated in one line at the Verdict
   section. Advisory/style findings alone are never sufficient for FAIL.

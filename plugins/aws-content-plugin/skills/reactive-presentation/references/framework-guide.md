@@ -245,60 +245,61 @@ Methods: `quizManager.reset(id)`, `.resetAll()`, `.getScore()` → `{total, corr
 
 ---
 
-## JSON + Renderer Mode (권장)
+## JSON + Renderer Mode (recommended)
 
-> 새 프레젠테이션은 `slides.json` + `slide-renderer.js`로 작성하는 것을 권장합니다.
-> AI가 JSON 데이터만 작성하면 렌더러가 일관된 HTML을 생성합니다.
+> New presentations are recommended to be authored as `slides.json` + `slide-renderer.js`.
+> The AI only needs to write the JSON data, and the renderer generates consistent HTML.
 
 ### slide-renderer.js
 
-`common/slide-renderer.js`는 JSON을 읽어 HTML 슬라이드를 동적으로 생성하는 클래스입니다.
+`common/slide-renderer.js` is a class that reads JSON and dynamically generates HTML slides.
 
-**지원 슬라이드 타입 (13종):**
+**Supported slide types (13):**
 
-| Type | JSON `type` | 대응 패턴 | 설명 |
+| Type | JSON `type` | Corresponding pattern | Description |
 |------|-------------|----------|------|
-| Session Cover | `cover` | §0a/§0b | PPTX 또는 CSS-only 커버 |
-| Title | `title` | §1 | 블록 타이틀 |
-| Content | `content` | §2 | 일반 콘텐츠 |
-| Compare | `compare` | §3 | A vs B 토글 |
-| Tabs | `tabs` | §4 | 탭 콘텐츠 |
-| Canvas | `canvas` | §5 | 캔버스 애니메이션 |
-| Slider | `slider` | §6 | 파라미터 슬라이더 |
-| Checklist | `checklist` | §7/§7b | 체크리스트 (YAML 피드백 옵션) |
-| Code | `code` | §8 | 코드 블록 |
-| Timeline | `timeline` | §9 | 타임라인 |
-| Quiz | `quiz` | §10 | 퀴즈 |
-| Cards | `cards` | §11 | 카드/메트릭 |
-| Thank You | `thankyou` | §13 | 마지막 슬라이드 |
+| Session Cover | `cover` | §0a/§0b | PPTX-based or CSS-only cover |
+| Title | `title` | §1 | Block title |
+| Content | `content` | §2 | General content |
+| Compare | `compare` | §3 | A vs B toggle |
+| Tabs | `tabs` | §4 | Tabbed content |
+| Canvas | `canvas` | §5 | Canvas animation |
+| Slider | `slider` | §6 | Parameter slider |
+| Checklist | `checklist` | §7/§7b | Checklist (optional YAML feedback) |
+| Code | `code` | §8 | Code block |
+| Timeline | `timeline` | §9 | Timeline |
+| Quiz | `quiz` | §10 | Quiz |
+| Cards | `cards` | §11 | Cards/metrics |
+| Thank You | `thankyou` | §13 | Final slide |
 
-### slides.json 전체 스키마
+### Full slides.json schema
 
 ```jsonc
 {
   "meta": {
-    "title": "string — 프레젠테이션 제목 (footer에 사용)",
-    "block": "number — 블록 번호",
-    "blockTitle": "string — 블록 제목",
-    "duration": "string — 예상 소요시간 (예: '30min')",
-    "lang": "string — 언어 코드 ('ko' | 'en')"
+    "title": "string — presentation title (used in the footer)",
+    "block": "number — block number",
+    "blockTitle": "string — block title",
+    "duration": "string — estimated duration (e.g. '30min')",
+    "lang": "string — language code ('ko' | 'en')"
   },
   "slides": [
     {
       "type": "cover | title | content | tabs | compare | canvas | quiz | checklist | timeline | cards | code | slider | thankyou",
-      "title": "string — 슬라이드 제목 (대부분 타입에서 사용)",
-      "notes": "string (optional) — 프레젠터 노트. \\n으로 줄바꿈",
+      "title": "string — slide title (used by most types)",
+      "notes": "string (optional) — presenter notes. Use \\n for line breaks",
       // ... type-specific fields (see slide-patterns.md JSON section)
     }
   ]
 }
 ```
 
-### Canvas 애니메이션 모듈 작성 가이드
+### Canvas animation module authoring guide
 
-Canvas 슬라이드는 JSON에서 `animationModule` 경로를 지정하면, 렌더러가 `import()`로 동적 로드합니다.
+For a canvas slide, specifying an `animationModule` path in the JSON causes the renderer to
+dynamically load it via `import()`.
 
-**모듈 규격:**
+**Module spec:**
 
 ```javascript
 // animations/slide-05-flow.js
@@ -309,7 +310,7 @@ export function init(canvasId, slideIndex, deck) {
   const ctx = canvas.getContext('2d');
   const BASE_W = 960, BASE_H = 400;
 
-  // Proportional resize (필수 — FHD/4K 대응)
+  // Proportional resize (required — to support FHD/4K)
   function resizeCanvas() {
     const cw = container.clientWidth;
     const ch = container.clientHeight;
@@ -344,39 +345,40 @@ export function init(canvasId, slideIndex, deck) {
 }
 ```
 
-**모듈 규칙:**
-- `export function init(canvasId, slideIndex, deck)` — 필수 export
-- `canvasId`: JSON에서 지정한 canvas element ID
-- `slideIndex`: 슬라이드 인덱스 (registerSlideAction용)
-- `deck`: .slide-deck DOM element (SlideFramework 접근용)
-- 반드시 proportional scaling 패턴 사용 (ResizeObserver + BASE_W/BASE_H)
-- `animation-utils.js`의 `drawBox`, `drawArrow`, `Colors`, `AnimationLoop`, `TimelineAnimation` 활용
+**Module rules:**
+- `export function init(canvasId, slideIndex, deck)` — required export
+- `canvasId`: the canvas element ID specified in the JSON
+- `slideIndex`: the slide index (for registerSlideAction)
+- `deck`: the `.slide-deck` DOM element (for accessing SlideFramework)
+- Must use the proportional scaling pattern (ResizeObserver + BASE_W/BASE_H)
+- Make use of `drawBox`, `drawArrow`, `Colors`, `AnimationLoop`, `TimelineAnimation` from
+  `animation-utils.js`
 
-### 블록 디렉토리 구조 (JSON 방식)
+### Block directory structure (JSON approach)
 
 ```
 {presentation-slug}/
-├── index.html                 # TOC 페이지
+├── index.html                 # TOC page
 ├── block-01/
-│   ├── index.html             # 최소 보일러플레이트 (아래 참조)
-│   ├── slides.json            # AI가 작성하는 콘텐츠 데이터
-│   └── animations/            # Canvas 애니메이션 JS 모듈
+│   ├── index.html             # Minimal boilerplate (see below)
+│   ├── slides.json            # Content data authored by the AI
+│   └── animations/            # Canvas animation JS modules
 │       ├── slide-05-flow.js
 │       └── slide-08-arch.js
 ├── block-02/
 │   ├── index.html
 │   ├── slides.json
 │   └── animations/
-└── common/                    # 프레임워크 (기존과 동일)
+└── common/                    # Framework (same as before)
     ├── theme.css
     ├── slide-framework.js
-    ├── slide-renderer.js      # ← 새로 추가
+    ├── slide-renderer.js      # ← newly added
     ├── animation-utils.js
     ├── quiz-component.js
     └── presenter-view.js
 ```
 
-### index.html 보일러플레이트 (JSON 방식)
+### index.html boilerplate (JSON approach)
 
 ```html
 <!DOCTYPE html>
@@ -403,15 +405,15 @@ export function init(canvasId, slideIndex, deck) {
 </html>
 ```
 
-### JSON 방식 vs Raw HTML 비교
+### JSON approach vs. raw HTML comparison
 
-| 관점 | JSON + Renderer | Raw HTML (레거시) |
+| Aspect | JSON + Renderer | Raw HTML (legacy) |
 |------|----------------|-------------------|
-| AI 작성 일관성 | JSON 구조 → 항상 일관됨 | HTML 수작업 → 미세 차이 가능 |
-| 수정 용이성 | JSON 필드 하나 변경 | HTML 전체에서 수정점 탐색 |
-| 렌더링 품질 | Renderer가 HTML 보장 | AI 실수 가능 (닫는 태그 누락 등) |
-| 빌드 스텝 | 없음 (런타임 렌더링) | 없음 |
-| 디버깅 | JSON 검증 → 명확한 에러 | HTML 디버깅 어려움 |
-| 커스터마이징 | 13종 표준 타입 + Canvas 모듈 | 무제한 |
-| GitHub Pages | 그대로 배포 가능 | 그대로 배포 가능 |
-| 기존 호환성 | 기존 HTML 영향 없음 | 기존 그대로 동작 |
+| AI authoring consistency | JSON structure → always consistent | Hand-authored HTML → small differences possible |
+| Ease of editing | Change one JSON field | Search across the whole HTML for the edit point |
+| Rendering quality | Renderer guarantees valid HTML | AI mistakes possible (e.g. missing closing tags) |
+| Build step | None (runtime rendering) | None |
+| Debugging | JSON validation → clear errors | HTML debugging is harder |
+| Customization | 13 standard types + Canvas modules | Unlimited |
+| GitHub Pages | Deployable as-is | Deployable as-is |
+| Backward compatibility | Doesn't affect existing HTML | Existing content works unchanged |

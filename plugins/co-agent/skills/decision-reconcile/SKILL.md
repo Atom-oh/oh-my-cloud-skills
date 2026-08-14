@@ -12,7 +12,7 @@ allowed-tools:
   - AskUserQuestion
 ---
 
-# decision-reconcile — ADR 의사결정 번복
+# decision-reconcile — ADR decision reversal
 
 Architecture Decision Records pile up over time and start to **contradict each
 other** — two Accepted ADRs mandate opposite things, a newer decision silently

@@ -1,5 +1,5 @@
-<!-- SECTION INDEX (auto) — 큰 파일. 전체 읽지 말고 필요한 ## 섹션만 offset-read.
-     라인번호 정확값(74 sec). 예: Read(file, offset=L, limit=다음섹션L−L). 해당 섹션이 §/## 참조 시 그 섹션도 함께. -->
+<!-- SECTION INDEX (auto) — large file. Don't read the whole thing — offset-read only the ## section you need.
+     Line numbers are exact (74 sections). E.g. Read(file, offset=L, limit=nextSectionL−L). If a section references another §/##, read that one too. -->
 <!--
   L84    File Convention
   L109   Global Frontmatter
@@ -160,13 +160,13 @@ transition:
 | `remarp` | boolean | Yes | Must be `true` to enable remarp processing |
 | `version` | number | No | Format version (default: 1) |
 | `title` | string | Yes | Presentation title (used in HTML `<title>`) |
-| `ratio` | string | Yes | Slide aspect ratio (e.g. `"16:9"`, `"4:3"`). Sets CSS `--slide-ratio-w/h` variables. **누락 시 프리뷰 비율 깨짐** |
+| `ratio` | string | Yes | Slide aspect ratio (e.g. `"16:9"`, `"4:3"`). Sets CSS `--slide-ratio-w/h` variables. **If omitted, the preview's aspect ratio breaks** |
 | `speaker` | object | Yes | Speaker info (structured) |
 | `speaker.name` | string | Yes | Speaker name |
 | `speaker.title` | string | Yes | Job title |
 | `speaker.company` | string | Yes | Company/organization |
-| `audience` | string | Yes | Target audience (역할/직군) |
-| `level` | string | Yes | Target level (`100`-`400` or 입문/중급/고급/전문가) |
+| `audience` | string | Yes | Target audience (role / job function) |
+| `level` | string | Yes | Target level (`100`-`400` or beginner/intermediate/advanced/expert) |
 | `quiz` | boolean | Yes | Include per-block quizzes |
 | `duration` | number | Yes | Total duration in minutes — must match sum of blocks durations |
 | `date` | date | No | Presentation date (YYYY-MM-DD) |
@@ -277,7 +277,7 @@ Slides are separated by `---` on its own line. Directives go **immediately after
 
 #### Recommended: Slide Comment Pattern
 
-소스 가독성을 위해 각 슬라이드에 번호/제목 주석을 권장합니다:
+For source readability, a number/title comment on each slide is recommended:
 
 ```markdown
 ---
@@ -292,7 +292,7 @@ Slides are separated by `---` on its own line. Directives go **immediately after
 ## 오늘의 내용
 ```
 
-주석은 converter가 무시하므로 출력에 영향 없습니다. `<!-- Slide N: Title -->` 형식을 일관되게 사용하면 소스 탐색이 용이합니다.
+The converter ignores these comments, so they have no effect on the output. Using the `<!-- Slide N: Title -->` format consistently makes it easier to navigate the source.
 
 #### WRONG — per-slide frontmatter (creates blank slides)
 
@@ -323,7 +323,7 @@ Directives use `@` prefix on lines immediately after `---`. No wrapping `---` bl
 
 ### Issue Annotations (`<!-- issue: ... -->`)
 
-슬라이드에 개선 프롬프트를 인라인으로 남깁니다. 빌드 시 자동 제거되며, Preview에서는 노란색 badge로 표시됩니다.
+Leave improvement prompts inline on a slide. They are automatically removed at build time, and shown as a yellow badge in Preview.
 
 ```markdown
 ---
@@ -336,13 +336,13 @@ Directives use `@` prefix on lines immediately after `---`. No wrapping `---` bl
 - Subnet 배치
 ```
 
-**동작**:
-- **Preview**: 슬라이드 상단에 노란색 issue badge 표시
-- **Build** (`remarp_to_slides.py build`): 이슈가 제거된 깨끗한 HTML 생성
-- **Issues** (`remarp_to_slides.py issues <path>`): 전체 프로젝트의 이슈 목록 추출
-- **Issues JSON** (`remarp_to_slides.py issues <path> --json`): JSON 형식으로 출력
+**Behavior**:
+- **Preview**: shows a yellow issue badge at the top of the slide
+- **Build** (`remarp_to_slides.py build`): generates clean HTML with issues stripped out
+- **Issues** (`remarp_to_slides.py issues <path>`): extracts the full list of issues for the project
+- **Issues JSON** (`remarp_to_slides.py issues <path> --json`): outputs in JSON format
 
-**워크플로우**: 리뷰어가 VSCode 프리뷰에서 이슈를 남기면 → Claude Code에서 `/slide-fix` 실행 → 이슈를 읽고 개선 → 이슈 제거 후 리빌드.
+**Workflow**: A reviewer leaves issues in the VSCode preview → run `/slide-fix` in Claude Code → it reads the issues and applies improvements → removes the issues and rebuilds.
 
 ### Supported `:::` Block Types
 
@@ -434,28 +434,28 @@ Embeds raw HTML directly into the slide body without markdown processing. Use fo
 - Can be combined with :::css for styling and :::script for behavior
 - Multiple :::html blocks per slide are supported
 
-#### :::html 렌더링 컨텍스트
+#### :::html Rendering Context
 
-`:::html` 블록이 렌더링되는 환경을 이해해야 레이아웃 문제를 방지할 수 있습니다:
+Understanding the environment a `:::html` block renders into helps you avoid layout problems:
 
-- **렌더링 위치**: `.slide-body` (`flex: 1`) 안에 삽입됨
-- **슬라이드 패딩 이미 적용**: 외부에 `2rem 2.7rem` 패딩이 존재하므로 `:::html` 내부에서 추가 패딩을 최소화할 것 (합계 ≤60px)
-- **CSS 변수 사용 가능**: `var(--bg-card)`, `var(--text)`, `var(--accent)`, `var(--border)` 등 테마 변수가 스코프 내에 있음
-- **유틸리티 클래스 사용 가능**: `.col-2`, `.col-3`, `.flow-h`, `.flow-v` 등 테마 레이아웃 클래스 사용 가능
-- **`<div>`가 `<p>` 안에 중첩되지 않도록 주의**: `:::html` 앞뒤에 빈 줄을 넣어 마크다운 파서가 `<p>` 태그로 감싸지 않게 할 것
-- **max-height 필수**: 최상위 컨테이너에 `max-height: 500px` 또는 `calc(100% - 2rem)` 설정
-- **반응형 단위 사용**: `px` 대신 `rem`, `%`, `fr`, `clamp()` 사용 (border/shadow 제외)
-- **한국어 텍스트**: `word-break: keep-all; overflow-wrap: break-word;` 필수 적용
+- **Render location**: inserted inside `.slide-body` (`flex: 1`)
+- **Slide padding already applied**: the outer container already has `2rem 2.7rem` padding, so minimize additional padding inside `:::html` (total ≤60px)
+- **CSS variables available**: theme variables such as `var(--bg-card)`, `var(--text)`, `var(--accent)`, `var(--border)` are in scope
+- **Utility classes available**: theme layout classes like `.col-2`, `.col-3`, `.flow-h`, `.flow-v` can be used
+- **Watch out for `<div>` nested inside `<p>`**: add blank lines before and after `:::html` so the markdown parser doesn't wrap it in a `<p>` tag
+- **max-height is required**: set `max-height: 500px` or `calc(100% - 2rem)` on the top-level container
+- **Use responsive units**: use `rem`, `%`, `fr`, `clamp()` instead of `px` (except for borders/shadows)
+- **Korean text**: `word-break: keep-all; overflow-wrap: break-word;` must be applied
 
-> 상세 레이아웃 규칙과 패턴은 `interactive-patterns-guide.md` §0 참조.
+> See `interactive-patterns-guide.md` §0 for detailed layout rules and patterns.
 
-#### :::html Reactive 패턴 (필수)
+#### :::html Reactive Patterns (mandatory)
 
-`:::html` 블록은 **정적이면 안 됩니다.** 모든 `:::html` 블록에 최소 하나의 reactive 패턴을 적용하세요:
+`:::html` blocks **must not be static.** Apply at least one reactive pattern to every `:::html` block:
 
-**1. Fragment 순차 등장 (가장 기본)**
+**1. Sequential fragment reveal (the most basic pattern)**
 
-2개 이상의 항목이 있으면 `class="fragment fade-up"` + `data-fragment-index="N"`으로 순차 등장:
+When there are two or more items, reveal them sequentially with `class="fragment fade-up"` + `data-fragment-index="N"`:
 
 ```html
 :::html
@@ -473,13 +473,13 @@ Embeds raw HTML directly into the slide body without markdown processing. Use fo
 :::
 ```
 
-**Animation 종류**: `fade-up`, `fade-right`, `fade-left`, `fade-down`, `zoom-in`, `grow` — 레이아웃 방향에 맞게 선택:
-- 수직 흐름 (위→아래) → `fade-up`
-- 수평 흐름 (좌→우) → `fade-right`
-- 강조/핵심 → `zoom-in`
-- 파이프라인 단계 → `fade-right` (방향성 암시)
+**Animation types**: `fade-up`, `fade-right`, `fade-left`, `fade-down`, `zoom-in`, `grow` — pick one that matches the layout direction:
+- Vertical flow (top→bottom) → `fade-up`
+- Horizontal flow (left→right) → `fade-right`
+- Emphasis/key point → `zoom-in`
+- Pipeline stage → `fade-right` (implies directionality)
 
-**2. 그룹 Fragment (관련 항목 동시 등장)**
+**2. Grouped fragments (related items appear together)**
 
 ```html
 <div class="fragment fade-up" data-fragment-index="1">
@@ -488,9 +488,9 @@ Embeds raw HTML directly into the slide body without markdown processing. Use fo
 </div>
 ```
 
-제목과 하위 항목이 같은 `data-fragment-index`로 함께 등장.
+The heading and its sub-items appear together with the same `data-fragment-index`.
 
-**3. Flow 다이어그램 순차 활성화**
+**3. Sequential activation of a flow diagram**
 
 ```html
 <div class="flow-h" style="gap:1rem;">
@@ -502,9 +502,9 @@ Embeds raw HTML directly into the slide body without markdown processing. Use fo
 </div>
 ```
 
-화살표와 다음 박스를 같은 인덱스로 묶어 흐름감 부여.
+Group an arrow with the box that follows it under the same index to convey a sense of flow.
 
-**4. Before/After 비교 순차**
+**4. Sequential Before/After comparison**
 
 ```html
 <div class="col-2" style="gap:2rem;">
@@ -517,8 +517,8 @@ Embeds raw HTML directly into the slide body without markdown processing. Use fo
 </div>
 ```
 
-> **규칙**: `:::html` 블록에 3개 이상의 동위 요소가 있으면 반드시 fragment animation을 적용하세요.
-> `interactive-patterns-guide.md`의 고급 패턴(슬라이더, 캔버스 애니메이션, 클릭 상호작용)도 적극 활용하세요.
+> **Rule**: if a `:::html` block has 3 or more sibling elements, you must apply fragment animation.
+> Also make active use of the advanced patterns in `interactive-patterns-guide.md` (sliders, canvas animations, click interactions).
 
 ### :::script — JavaScript Block
 
@@ -545,9 +545,9 @@ slider.oninput = () => {
 
 Slide directives control individual slide behavior. Place them on the line immediately after `---`, before slide content. Use `@` prefix.
 
-> **⛔ 필수: 모든 슬라이드에 명시적 `@type` 디렉티브를 작성하세요.**
-> auto-detect는 의도하지 않은 타입을 배정할 수 있습니다 (예: `###` 3개 → compare로 감지되어 tabs가 아닌 compare 렌더링).
-> `agenda`, `tabs`, `steps`, `timeline`은 반드시 명시적 `@type`이 필요합니다.
+> **⛔ Required: write an explicit `@type` directive on every slide.**
+> Auto-detect can assign an unintended type (e.g. three `###` headings → detected as `compare` and rendered as compare instead of tabs).
+> `agenda`, `tabs`, `steps`, and `timeline` always require an explicit `@type`.
 
 ```markdown
 ---
@@ -591,10 +591,10 @@ Parameters (space-separated after path):
 
 Output: `<div>` with text-align + `<img class="slide-img">` with max-width constraint.
 
-### Architecture Diagram 삽입 패턴
+### Architecture Diagram Insertion Pattern
 
-전체 아키텍처 개요는 draw.io로 제작한 PNG/SVG를 `@img:`로 삽입합니다.
-Canvas DSL은 step animation이 유효한 경우에만 사용합니다.
+For a full architecture overview, insert a PNG/SVG produced with draw.io via `@img:`.
+Use the Canvas DSL only when step animation adds real value.
 
 ```markdown
 ---
@@ -610,7 +610,7 @@ Canvas DSL은 step animation이 유효한 경우에만 사용합니다.
 :::
 ```
 
-Diagram 파일은 프레젠테이션 디렉토리의 `diagrams/` 폴더에 저장:
+Store diagram files in the `diagrams/` folder inside the presentation directory:
 ```
 {slug}/
 ├── diagrams/
@@ -620,7 +620,7 @@ Diagram 파일은 프레젠테이션 디렉토리의 `diagrams/` 폴더에 저�
 └── ...
 ```
 
-**선택 기준**: 아키텍처를 한눈에 보여주는 정적 구조 → `@img:` + draw.io 이미지. 단계별 흐름을 애니메이션으로 설명 → `@type: canvas` + `:::canvas` DSL.
+**Selection criteria**: a static structure that shows the whole architecture at a glance → `@img:` + a draw.io image. A step-by-step flow explained through animation → `@type: canvas` + the `:::canvas` DSL.
 
 ### Type Auto-Detection
 
@@ -802,15 +802,15 @@ Item shown first {.click order=1}
 Item shown second {.click order=2}
 ```
 
-### Fragment 순서 규칙: Top-Down Left-Right (td-lr)
+### Fragment Order Rule: Top-Down Left-Right (td-lr)
 
-> **⛔ 다단 레이아웃에서는 반드시 명시적 `order=N`을 지정하세요.**
-> `{.click}` auto-increment는 DOM 순서를 따르므로, 다단 레이아웃에서는
-> 시각적 읽기 순서(위→아래, 좌→우)와 불일치합니다.
+> **⛔ In multi-column layouts, always specify an explicit `order=N`.**
+> `{.click}` auto-increment follows DOM order, which does not match the
+> visual reading order (top→bottom, left→right) in multi-column layouts.
 
-**단일 컬럼**: auto-increment로 충분 (DOM 순서 = 시각적 순서)
+**Single column**: auto-increment is sufficient (DOM order = visual order)
 
-**다단 컬럼 (:::left/:::right)**: 반드시 `order=N` 명시:
+**Multi-column (`:::left`/`:::right`)**: always specify `order=N` explicitly:
 ```markdown
 ::: left
 - 좌상 항목 {.click order=1}
@@ -823,9 +823,9 @@ Item shown second {.click order=2}
 :::
 ```
 
-시각적 순서: ①좌상 → ②우상 → ③좌하 → ④우하 (Z 패턴)
+Visual order: ①top-left → ②top-right → ③bottom-left → ④bottom-right (Z pattern)
 
-**:::html 블록 내 다단**: `data-fragment-index` 직접 지정:
+**Multi-column inside a `:::html` block**: specify `data-fragment-index` directly:
 ```html
 <div class="col-2">
   <div class="fragment fade-up" data-fragment-index="1">좌상</div>
@@ -835,11 +835,11 @@ Item shown second {.click order=2}
 </div>
 ```
 
-> `validate` 명령은 다단 레이아웃에 `order=N` 누락 시 `FRAGMENT_ORDER` 경고를 발생시킵니다.
+> The `validate` command raises a `FRAGMENT_ORDER` warning when `order=N` is missing in a multi-column layout.
 
-### 동시 표시 (Same Fragment Index)
+### Simultaneous Reveal (Same Fragment Index)
 
-같은 `order` 값을 가진 항목들은 한 번의 클릭으로 **동시에** reveal됩니다:
+Items sharing the same `order` value are revealed **simultaneously** with a single click:
 
 ```markdown
 - 기능 A {.click order=1}
@@ -847,9 +847,9 @@ Item shown second {.click order=2}
 - 기능 C {.click order=1}
 ```
 
-→ ArrowDown 1번에 A, B, C 동시 표시
+→ one ArrowDown press shows A, B, and C simultaneously
 
-같은 `order`를 공유하는 fragment는 내부적으로 같은 `data-fragment-index`를 받으며, 프레임워크가 동일 index 그룹을 한 번에 reveal/hide 합니다.
+Fragments sharing the same `order` internally receive the same `data-fragment-index`, and the framework reveals/hides the whole group with matching indices at once.
 
 ### Animation Types
 
@@ -994,7 +994,7 @@ Adding `{.click}` to every bullet point creates a tedious one-by-one reveal that
 
 ### Reference Links
 
-슬라이드 하단에 참조 링크를 표시합니다. `{.reference}[텍스트](URL)` 형태로 사용:
+Display reference links at the bottom of a slide. Use the form `{.reference}[text](URL)`:
 
 ```markdown
 ## AIOps 아키텍처
@@ -1005,7 +1005,7 @@ Adding `{.click}` to every bullet point creates a tedious one-by-one reveal that
 {.reference}[CloudWatch 가이드](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/)
 ```
 
-여러 개를 한 슬라이드에 사용하면 `|`로 구분되어 하단에 작은 폰트로 표시됩니다. 본문에서는 자동 제거되므로 슬라이드 내용에 영향을 주지 않습니다.
+Using several on one slide displays them separated by `|` in small text at the bottom. They are automatically stripped from the body text, so they don't affect the slide's content.
 
 #### Content Overflow Prevention (MANDATORY)
 
@@ -1017,7 +1017,7 @@ Adding `{.click}` to every bullet point creates a tedious one-by-one reveal that
 | Heading + paragraphs | 1 heading + 3–4 paragraphs |
 | Numbered list + sub-bullets | 3 items with 2 sub-bullets each |
 | Bold sections + descriptions | 3 sections (use two-column for 4+) |
-| `:::html` block | max-height 500px, 패딩 합계 ≤60px, 반응형 단위 필수 |
+| `:::html` block | max-height 500px, total padding ≤60px, responsive units required |
 
 **Rules**:
 1. When a slide has 4+ major sections (e.g., a 4-phase roadmap), **must** use `@layout: two-column` and split evenly across `:::left` / `:::right`
@@ -1079,28 +1079,28 @@ Canvas uses a 960×400 coordinate space. Follow these rules to avoid overlapping
 | **X range** | Use 40–880 (leave 40px margins on both sides) |
 | **Y range** | Use 30–350 (leave 30px top margin, 50px bottom for labels) |
 | **Layer spacing** | Vertical layers should be 80–120px apart |
-| **Box width** | `width ≥ label_length × 9` (한글 label: `× 14`). E.g., "API Gateway" (11 chars) → width ≥ 99 → use 120 |
+| **Box width** | `width ≥ label_length × 9` (Korean-script label: `× 14`). E.g., "API Gateway" (11 chars) → width ≥ 99 → use 120 |
 | **Column formula** | `X_start = 40 + col_index × (880 / num_cols)`. E.g., 3 cols → X = 40, 333, 627 |
 | **Label-arrow gap** | 20px minimum between label text and any arrow path |
 
-**좌표 계산 공식 (LLM 공간 추론 보정 — 반드시 사용)**:
+**Coordinate calculation formulas (correction for LLM spatial-reasoning error — always use these)**:
 
-> 좌표를 "감으로" 배치하지 마세요. 아래 공식을 적용하세요.
+> Do not place coordinates "by feel." Apply the formulas below.
 
-수평 N-박스 직선 흐름 (A → B → C → ...):
+Horizontal N-box straight-line flow (A → B → C → ...):
 ```
 gap = (880 - N * box_width) / (N - 1)
 x[i] = 40 + i * (box_width + gap)         # i = 0, 1, 2, ...
 y = 180                                    # 수직 중앙
 ```
 
-2행 레이아웃:
+Two-row layout:
 ```
 row1_y = 100, row2_y = 280
 x[i] = 40 + i * (880 / cols_in_row)
 ```
 
-**자가 검증**: 작성 후 `validate` 명령으로 `CANVAS_OVERLAP` 체크 필수.
+**Self-check**: after authoring, running the `validate` command's `CANVAS_OVERLAP` check is mandatory.
 
 **Workflow**: For complex diagrams, sketch in drawio or mermaid first to determine optimal layout, then convert coordinates to canvas DSL. This prevents alignment issues that are hard to fix after the fact.
 
@@ -1194,18 +1194,18 @@ icon table "DynamoDB" at 400,150 size 48 step 3
 
 #### Arrow Element (Orthogonal Routing)
 
-화살표는 자동으로 직교(orthogonal) 경로로 라우팅됩니다. 대각선 직선 대신 수평/수직 세그먼트만 사용하는 draw.io 스타일의 직각 꺾임 경로를 생성합니다.
+Arrows are automatically routed along orthogonal paths. Instead of a straight diagonal line, a draw.io-style right-angle path is generated using only horizontal/vertical segments.
 
 ```
 arrow <from-id> -> <to-id> "<label>" [color <color>] [style <dashed|dotted>] [step <n>]
 ```
 
-라우팅 패턴:
-- **직선**: 두 요소가 같은 축에 정렬된 경우
-- **L자형**: 측면↔상하 앵커 조합 (수평→수직 또는 수직→수평)
-- **Z자형**: 같은 유형 앵커이면서 축이 어긋난 경우 (수평→수직→수평 또는 수직→수평→수직)
+Routing patterns:
+- **Straight line**: when the two elements are aligned on the same axis
+- **L-shape**: side↔top/bottom anchor combination (horizontal→vertical or vertical→horizontal)
+- **Z-shape**: when anchors are of the same type but the axes are offset (horizontal→vertical→horizontal or vertical→horizontal→vertical)
 
-앵커 자동 선택: 주 이동 방향(dx vs dy)에 따라 최적 앵커 쌍(좌/우/상/하 중앙)이 선택됩니다. 중간에 다른 요소가 있으면 자동 충돌 회피 경로를 생성합니다.
+Automatic anchor selection: the optimal anchor pair (left/right/top/bottom center) is chosen based on the primary direction of movement (dx vs dy). If another element is in the way, a collision-avoiding path is generated automatically.
 
 ```markdown
 :::canvas
@@ -1293,7 +1293,7 @@ Step 2: 화살표 연결하며 데이터 흐름 표시
 :::
 ```
 
-> `:::prompt`는 `:::canvas prompt`의 축약형입니다. 둘 다 동일하게 동작합니다.
+> `:::prompt` is shorthand for `:::canvas prompt`. Both behave identically.
 
 #### Prompt Structure Guidelines
 
@@ -1304,7 +1304,7 @@ For best results, structure prompts with these elements:
 | **Components** | AWS services or boxes to display | `ALB, Lambda, DynamoDB` |
 | **Flow** | Connections and data direction | `ALB → Lambda → DynamoDB` |
 | **Steps** | Reveal order for keyboard navigation | `Step 1: ..., Step 2: ...` |
-| **Style** | Animation style or visual effects | `파티클 효과`, `펄스 애니메이션` |
+| **Style** | Animation style or visual effects | `particle effect`, `pulse animation` |
 
 #### Workflow
 

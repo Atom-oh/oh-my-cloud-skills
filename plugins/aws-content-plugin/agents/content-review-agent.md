@@ -75,9 +75,9 @@ Email:       [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
 | High | PII (ID numbers, phone) | Mask or delete | -6 |
 | Medium | Internal IPs, emails | Mask if necessary | -2 |
 
-예외 (감점 제외):
-- **의도된 공개 연락처 이메일** — gh-home 프로필 페이지·브로셔의 contact 섹션 등, 작성자가 공개를 의도한 이메일 (카테고리 12의 gh-home 저작권 예외와 같은 원리)
-- **명백한 placeholder** — `<YOUR_TOKEN>`, `YOUR_*`, `xxx`, `example.com` 계열의 예시 값 (문서의 예시 코드가 토큰/패스워드 패턴에 걸리는 false-positive 방지)
+Exceptions (no deduction):
+- **Intentionally public contact emails** — e.g. an email in a gh-home profile page's or brochure's contact section that the author intended to publish (same principle as the gh-home copyright exception in category 12)
+- **Obvious placeholders** — example values like `<YOUR_TOKEN>`, `YOUR_*`, `xxx`, `example.com` (prevents false positives where a document's example code happens to match a token/password pattern)
 
 ### 6. Content-Type-Specific Quality
 
@@ -87,22 +87,22 @@ Email:       [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
 - Quiz data-quiz/data-correct attributes valid
 - Framework file paths correct (../common/)
 
-**Canvas Layout Quality (캔버스 레이아웃 품질):**
-- 요소 간 겹침 없음: 박스/아이콘/텍스트가 서로 겹치지 않는지 확인
-- 화살표와 텍스트 겹침 없음: 화살표 경로가 라벨/박스 텍스트를 가리지 않는지 확인
-- 정렬 일관성: 같은 행/열의 요소들이 수평·수직 정렬이 맞는지 확인
-- 여백 균등: 요소 간 간격이 균등하고 충분한지 확인 (최소 20px 권장)
-- 텍스트 가독성: 캔버스 내 텍스트가 읽을 수 있는 크기인지 확인 (다이어그램 라벨 한정 최소 12px — 본문 텍스트는 접근성 기준 14pt가 우선, 카테고리 9 참조)
-- ↑↓ Step 내비게이션: step이 있는 캔버스에서 ↑↓ 키로 단계가 정상 진행/후퇴하는지 확인
-- Step 순서 논리성: step 1→2→...→N 순서로 요소가 논리적으로 나타나는지 확인
+**Canvas Layout Quality:**
+- No overlap between elements: confirm boxes/icons/text do not overlap each other
+- No overlap between arrows and text: confirm arrow paths don't obscure label/box text
+- Alignment consistency: confirm elements in the same row/column are aligned horizontally/vertically
+- Even spacing: confirm the gap between elements is uniform and sufficient (minimum 20px recommended)
+- Text readability: confirm text within the canvas is a readable size (minimum 12px for diagram labels only — body text defers to the 14pt accessibility standard, see category 9)
+- ↑↓ Step navigation: on a canvas with steps, confirm the ↑↓ keys advance/retreat steps correctly
+- Step order logic: confirm elements appear logically in step 1→2→...→N order
 
-**Canvas Complexity Gate (캔버스 복잡도 검증):**
-- `:::canvas` 블록 내 `box` + `icon` 요소 개수를 카운트
-- **≤4개**: PASS
-- **5-7개**: WARNING — "이 캔버스는 :::html + :::css로 전환을 권장합니다" (감점: -5)
-- **8개 이상**: CRITICAL — ":::canvas 정책 위반. 박스 8개 이상은 반드시 :::html로 전환 필요" (감점: -15)
-- `group` 요소가 있으면: WARNING — "그룹이 포함된 캔버스는 :::html의 .flow-group으로 대체를 권장" (감점: -5)
-- 분기 화살표 (하나의 source에서 2+ target): WARNING — "분기 흐름은 :::html이 더 정확" (감점: -3)
+**Canvas Complexity Gate:**
+- Count the number of `box` + `icon` elements inside a `:::canvas` block
+- **≤4**: PASS
+- **5-7**: WARNING — "This canvas is recommended for conversion to :::html + :::css" (deduction: -5)
+- **8 or more**: CRITICAL — ":::canvas policy violation. 8+ boxes must be converted to :::html" (deduction: -15)
+- If a `group` element is present: WARNING — "A canvas containing groups is recommended to be replaced with :::html's .flow-group" (deduction: -5)
+- Branching arrows (2+ targets from one source): WARNING — ":::html is more accurate for branching flows" (deduction: -3)
 
 **GitBook:**
 - SUMMARY.md navigation matches actual pages
@@ -120,8 +120,8 @@ Email:       [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
 - Icons contextually appropriate
 - Consistent icon usage for same concepts
 - AWS official icons used for AWS services
-- **AWS 서비스 언급 슬라이드에 아이콘 포함 여부 검사**: 서비스명이 텍스트에 등장하지만 해당 아이콘이 없는 경우 Warning
-- **아키텍처/흐름 설명 슬라이드에 Canvas icon 사용 여부**: 3개 이상 서비스가 등장하는 아키텍처 슬라이드에 icon 요소가 없으면 Warning
+- **Check whether slides mentioning AWS services include icons**: Warning if a service name appears in text but has no corresponding icon
+- **Check whether architecture/flow-explanation slides use Canvas icons**: Warning if an architecture slide featuring 3+ services has no icon element
 
 ### 8. Readability Analysis
 - **1-7-7 Rule**: 1 key message, 7 lines max, 7 words max title
@@ -149,7 +149,7 @@ Email:       [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
 
 ### 12. Legal/Regulatory Compliance
 - Copyright notice: `© [Year] Amazon Web Services, Inc. All rights reserved.` —
-  **applies only to AWS-owned/branded deliverables** (AWS 발표자료, 워크숍 등). Personal
+  **applies only to AWS-owned/branded deliverables** (AWS presentations, workshops, etc.). Personal
   or third-party content (e.g. gh-home profile pages) uses its own copyright line and is
   NOT penalized for lacking the AWS notice.
 - Trademark notation on first occurrence (AWS®)
@@ -178,74 +178,76 @@ Email:       [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
 
 ---
 
-## Visual Testing (HTML 콘텐츠)
+## Visual Testing (HTML Content)
 
-HTML 기반 콘텐츠(프레젠테이션, 애니메이션 다이어그램, 브로셔/프로필 페이지, 렌더링된 GitBook)에 대해 Playwright MCP 도구를 사용하여 실제 브라우저에서 인터랙션을 검증합니다.
+For HTML-based content (presentations, animated diagrams, brochures/profile pages, rendered GitBook), use the Playwright MCP tools to validate interaction in a real browser.
 
-> **가용성 게이트 (먼저 확인)**: Playwright MCP 서버는 이 에이전트의 frontmatter
-> `mcpServers: [playwright]`로 선언되어 플러그인이 직접 기동합니다(`npx
-> @playwright/mcp`). 따라서 정상 환경에선 `browser_*` 도구가 사용 가능하지만,
-> npx/브라우저 의존성이 없는 오프라인·미설치 환경에선 기동에 실패할 수 있습니다.
-> Visual Testing 시작 전에 `browser_*` 도구 존재를 확인하고, 없으면 시도하지 말고
-> Visual Testing 10점을 면제 — 90점 만점 환산(verdict 표의 90점 밴드)으로 진행하며
-> 리포트에 "Visual Testing 면제(Playwright MCP 미가용)"를 명시합니다.
+> **Availability gate (check first)**: the Playwright MCP server is declared in this agent's
+> frontmatter as `mcpServers: [playwright]`, so the plugin starts it directly (`npx
+> @playwright/mcp`). In a normal environment the `browser_*` tools are therefore available,
+> but in an offline or unprovisioned environment lacking npx/browser dependencies, startup
+> can fail. Before starting Visual Testing, confirm the `browser_*` tools exist; if they
+> don't, don't attempt it — exempt the 10 Visual Testing points and convert to the 90-point
+> scale (the 90-point band in the verdict table), noting "Visual Testing exempt (Playwright
+> MCP unavailable)" in the report.
 >
-> **GitBook 전제**: GitBook 프로젝트는 markdown 소스라 그대로는 브라우저 테스트
-> 대상이 아닙니다. 렌더링된 결과(gitbook 빌드 산출물 또는 배포 프리뷰 URL)가 있을
-> 때만 Visual Testing을 수행하고, 소스만 있으면 면제(90점 환산)합니다.
+> **GitBook precondition**: a GitBook project is markdown source, so as-is it is not a
+> browser-testing target. Perform Visual Testing only when a rendered result exists (a
+> GitBook build artifact or a deployed preview URL); if only source exists, it is exempt
+> (convert to the 90-point scale).
 
-### Playwright MCP 도구 사용법
+### How to Use the Playwright MCP Tools
 
-HTML 파일을 브라우저에서 열어 테스트하려면:
+To open an HTML file in a browser and test it:
 
-1. **파일 서빙**: Bash로 로컬 HTTP 서버 시작 (전 인터페이스 노출 금지 — loopback + 대상 디렉터리로 한정)
+1. **Serve the file**: start a local HTTP server via Bash (never expose all interfaces — bind to loopback and scope to the target directory)
    ```bash
-   python3 -m http.server 8080 --bind 127.0.0.1 --directory "[프로젝트경로]" &
+   python3 -m http.server 8080 --bind 127.0.0.1 --directory "[project path]" &
    ```
-   8080이 이미 사용 중이면(`Address already in use`) 8081 등 다른 포트로 재시도하고 이후 URL에 그 포트를 사용
+   If 8080 is already in use (`Address already in use`), retry with another port such as 8081 and use that port in the subsequent URL
 
-2. **브라우저 열기**: `browser_navigate` → `http://localhost:8080/[파일경로]`
+2. **Open the browser**: `browser_navigate` → `http://localhost:8080/[file path]`
 
-3. **인터랙션 테스트**: 아래 체크리스트에 따라 Playwright MCP 도구 사용
+3. **Test interactions**: use the Playwright MCP tools per the checklist below
 
-4. **서버 정리**: 테스트 완료 후 HTTP 서버 종료 — 중간에 테스트가 실패/중단되어도 반드시 종료 (고아 프로세스 방지)
+4. **Clean up the server**: shut down the HTTP server once testing completes — always shut it down even if testing fails or is interrupted midway (to prevent orphaned processes)
 
-### Visual Testing 체크리스트
+### Visual Testing Checklist
 
-| 테스트 | Playwright 명령 | 통과 기준 |
+| Test | Playwright command | Pass criteria |
 |--------|----------------|-----------|
-| 페이지 로드 | `browser_navigate` → `browser_console_messages` | JS 콘솔 에러 없음 |
-| 슬라이드 전환 | `browser_press_key` (ArrowRight) x N | 모든 슬라이드 이동 확인 |
-| 탭 전환 | `browser_click` (`.tab-btn`) | 탭 콘텐츠 변경 확인 |
-| 비교 토글 | `browser_click` (`.compare-btn`) | 콘텐츠 전환 확인 |
-| 퀴즈 | `browser_click` (`.quiz-option`) | 피드백 표시 확인 |
-| 캔버스 애니메이션 | Play 버튼 `browser_click` | 애니메이션 실행 확인 |
-| 캔버스 레이아웃 | `browser_take_screenshot` | 요소 겹침 없음, 정렬·여백 균등, 텍스트 가독 |
-| 캔버스 Step 진행 | `browser_press_key` (ArrowDown) x N → `browser_take_screenshot` | 각 step마다 요소 추가, 마지막 step에서 멈춤 |
-| 캔버스 Step 후퇴 | `browser_press_key` (ArrowUp) x N → `browser_take_screenshot` | step 역순 후퇴, step 0에서 멈춤 |
-| 반응형 FHD | `browser_resize` (1920x1080) → `browser_take_screenshot` | 오버플로우 없음 |
-| 반응형 4K | `browser_resize` (3840x2160) → `browser_take_screenshot` | 오버플로우 없음 |
-| 프레젠터 뷰 | `browser_press_key` (P) | 별도 창 열림 확인 |
-| DOM 상태 검증 | `browser_evaluate` (JS 표현식) | 예상 DOM 상태 일치 |
+| Page load | `browser_navigate` → `browser_console_messages` | No JS console errors |
+| Slide transitions | `browser_press_key` (ArrowRight) x N | Confirm all slides advance |
+| Tab switching | `browser_click` (`.tab-btn`) | Confirm tab content changes |
+| Compare toggle | `browser_click` (`.compare-btn`) | Confirm content switches |
+| Quiz | `browser_click` (`.quiz-option`) | Confirm feedback is shown |
+| Canvas animation | Play button `browser_click` | Confirm animation runs |
+| Canvas layout | `browser_take_screenshot` | No element overlap, even alignment/spacing, readable text |
+| Canvas step advance | `browser_press_key` (ArrowDown) x N → `browser_take_screenshot` | Elements added at each step, stops at the final step |
+| Canvas step retreat | `browser_press_key` (ArrowUp) x N → `browser_take_screenshot` | Steps retreat in reverse order, stops at step 0 |
+| Responsive FHD | `browser_resize` (1920x1080) → `browser_take_screenshot` | No overflow |
+| Responsive 4K | `browser_resize` (3840x2160) → `browser_take_screenshot` | No overflow |
+| Presenter view | `browser_press_key` (P) | Confirm a separate window opens |
+| DOM state verification | `browser_evaluate` (JS expression) | Matches expected DOM state |
 
-### 콘텐츠 타입별 Visual Test 범위
+### Visual Test Scope by Content Type
 
-| 콘텐츠 타입 | Visual Test 범위 |
+| Content type | Visual Test scope |
 |-------------|-----------------|
-| HTML 프레젠테이션 | 전체 (네비게이션, 탭, 퀴즈, 캔버스, 반응형, 프레젠터 뷰) |
-| 애니메이션 다이어그램 | 페이지 로드, 레전드 토글, 애니메이션 재생, 반응형 |
-| Brochure / 프로필 페이지 (HTML) | 전체 (반응형 3-tier 375/768/1280 스크린샷, CTA·앵커 동작, 콘솔 에러). Playwright MCP 미가용 시 면제→90점 환산 |
-| GitBook (빌드/프리뷰 URL 있을 때만) | 네비게이션, 컴포넌트 렌더링, 링크 검증 — markdown 소스만 있으면 면제 |
-| Markdown 문서 | 해당 없음 (텍스트만 검사) |
-| Draw.io 다이어그램 | 해당 없음 (XML 구조만 검사) |
-| Workshop | 해당 없음 (Workshop Studio 문법만 검사) |
-| PPTX 덱 | 해당 없음 (`check_pptx.py` 프로그램적 검사만 — Step 2 참조) |
+| HTML presentation | Full (navigation, tabs, quiz, canvas, responsive, presenter view) |
+| Animated diagram | Page load, legend toggle, animation playback, responsive |
+| Brochure / profile page (HTML) | Full (responsive 3-tier 375/768/1280 screenshots, CTA/anchor behavior, console errors). Exempt→converted to 90-point scale if Playwright MCP is unavailable |
+| GitBook (only when a build/preview URL exists) | Navigation, component rendering, link validation — exempt if only markdown source exists |
+| Markdown document | N/A (text-only inspection) |
+| Draw.io diagram | N/A (XML structure only) |
+| Workshop | N/A (Workshop Studio syntax only) |
+| PPTX deck | N/A (programmatic `check_pptx.py` check only — see Step 2) |
 
-### JS 콘솔 에러 정책
+### JS Console Error Policy
 
-- `browser_console_messages`로 확인된 JS 에러 → **자동 FAIL**
-- `warning` 레벨 메시지 → Warning으로 기록 (-1점)
-- 네트워크 에러 (404 등) → Critical로 기록 (-4점)
+- A JS error found via `browser_console_messages` → **automatic FAIL**
+- `warning`-level messages → recorded as Warning (-1 point)
+- Network errors (404, etc.) → recorded as Critical (-4 points)
 
 ---
 
@@ -273,14 +275,14 @@ Deduction rules:
 | Content-Type Quality | 2 | -2 per error |
 | Icon Usage & Appropriateness | 5 | Missing on AWS slide: -1 each (max -3), null ref: -5, inappropriate: -2 |
 
-**Visual Testing (10 points — HTML 콘텐츠만 해당):**
+**Visual Testing (10 points — HTML content only):**
 
 | Item | Points | Deduction |
 |------|--------|-----------|
-| 렌더링 정상 (로드, 콘솔 에러 없음) | 5 | JS 에러: 자동 FAIL |
-| 인터랙션 정상 (네비, 탭, 퀴즈, 반응형) | 5 | -1 per broken interaction |
+| Rendering is normal (loads, no console errors) | 5 | JS error: automatic FAIL |
+| Interactions are normal (navigation, tabs, quiz, responsive) | 5 | -1 per broken interaction |
 
-> HTML이 아닌 콘텐츠(Markdown, Draw.io, Workshop, PPTX)는 Visual Testing 10점이 면제되며, 나머지 90점 기준으로 환산합니다 — 90점 밴드: PASS ≥77 / REVIEW 63-76 / FAIL <63 (Verdict 표 참조).
+> Non-HTML content (Markdown, Draw.io, Workshop, PPTX) is exempt from the 10 Visual Testing points, and is converted to the remaining 90-point basis — 90-point bands: PASS ≥77 / REVIEW 63-76 / FAIL <63 (see the Verdict table).
 
 **Extended Inspection (35 points):**
 
@@ -313,7 +315,7 @@ if it is one of these):
 - Severe hallucination (non-existent AWS service/feature)
 - Legal risk (copyright infringement)
 - Canvas Complexity Gate 8+-box violation (category 6)
-- JS console error / network 404 during Visual Testing (JS 콘솔 에러 정책)
+- JS console error / network 404 during Visual Testing (see the JS Console Error Policy)
 - PPTX: `check_pptx.py` score <80, or any `[geometry]` finding (text overflow, overlap,
   off-canvas) — see the PPTX bullet in Step 2
 
@@ -407,21 +409,21 @@ Find review target files using Glob tool.
 - **Workshop**: Check directives, front matter, bilingual pairs
 - **PPTX Decks**: run `python3 plugins/aws-content-plugin/skills/aws-light-fcd/scripts/check_pptx.py <deck.pptx> --json` and read its `score`/`findings`. Score <80, or any `[geometry]` finding (text overflow, overlap, off-canvas), is Critical; `[design]` findings (missing footer, page-number regression, non-Pretendard font, placeholder text) are Warning unless they recur across most slides.
 
-### Step 3: Visual Testing (HTML 콘텐츠만)
+### Step 3: Visual Testing (HTML content only)
 
-HTML 기반 콘텐츠인 경우 Playwright MCP 도구로 브라우저 검증 수행:
+For HTML-based content, perform browser validation with the Playwright MCP tools:
 
-0. **가용성 확인**: `browser_navigate` 등 Playwright MCP 도구가 세션에 있는지 먼저
-   확인 — 없으면 이 Step 전체를 건너뛰고 90점 환산 (Visual Testing 섹션의 가용성
-   게이트 참조)
-1. **서버 시작**: `python3 -m http.server 8080 --bind 127.0.0.1 --directory "[프로젝트경로]"` (Bash)
-2. **페이지 로드**: `browser_navigate` → URL
-3. **콘솔 체크**: `browser_console_messages` → JS 에러 확인
-4. **인터랙션 테스트**: 콘텐츠 타입별 체크리스트 실행
-5. **반응형 검증**: FHD(1920x1080) + 4K(3840x2160) 스크린샷
-6. **서버 정리**: HTTP 서버 종료
+0. **Confirm availability**: first check whether Playwright MCP tools like `browser_navigate`
+   are present in the session — if not, skip this entire Step and convert to the 90-point
+   scale (see the availability gate in the Visual Testing section)
+1. **Start the server**: `python3 -m http.server 8080 --bind 127.0.0.1 --directory "[project path]"` (Bash)
+2. **Load the page**: `browser_navigate` → URL
+3. **Check the console**: `browser_console_messages` → check for JS errors
+4. **Test interactions**: run the checklist for the content type
+5. **Verify responsiveness**: FHD (1920x1080) + 4K (3840x2160) screenshots
+6. **Clean up the server**: shut down the HTTP server
 
-> Playwright MCP가 사용 불가능한 환경에서는 Visual Testing 점수를 면제하고, 나머지 점수 기준으로 환산합니다.
+> In an environment where Playwright MCP is unavailable, exempt the Visual Testing score and convert to the remaining-points basis.
 
 ### Step 4: Report Generation
 Save as `[project]/results/[ProjectName]_Review_Report.md` (matches Output Deliverables)
@@ -478,16 +480,16 @@ removes a load-bearing claim or a required disclosure is escalated to Critical.
 
 ## Batch Review Mode
 
-다수 아티팩트를 일괄 리뷰할 때 (팀 워크플로우 집계 또는 명시적 배치 요청):
+When batch-reviewing multiple artifacts (team workflow aggregation, or an explicit batch request):
 
-### 프로세스
-1. 아티팩트 목록 수집 (Glob으로 대상 파일 탐색)
-2. 각 아티팩트에 대해 16개 카테고리 검사 수행
-3. HTML 콘텐츠: 단일 HTTP 서버로 Visual Testing 효율화 (`python3 -m http.server` 1회 시작)
-4. 아티팩트별 점수 + 이슈 산출
-5. 통합 리포트 출력
+### Process
+1. Collect the artifact list (find target files with Glob)
+2. Run the 16-category inspection on each artifact
+3. HTML content: streamline Visual Testing with a single HTTP server (start `python3 -m http.server` once)
+4. Compute a score + issues per artifact
+5. Output the consolidated report
 
-### 통합 리포트 형식
+### Consolidated Report Format
 
 ```markdown
 # Batch Review Report
@@ -504,13 +506,13 @@ removes a load-bearing claim or a required disclosure is escalated to Critical.
 - PASS: X | REVIEW: Y | FAIL: Z
 
 ## Next Steps
-- 전체 PASS → 배포 진행
-- 일부 REVIEW → 해당 아티팩트만 수정 후 재리뷰
-- 일부 FAIL → Critical 이슈 수정 필수
+- All PASS → proceed with deployment
+- Some REVIEW → fix and re-review only the affected artifacts
+- Some FAIL → fixing Critical issues is required
 ```
 
-### 개별 이슈 상세
-각 REVIEW/FAIL 아티팩트에 대해 기존 Review Report Format의 Critical/Warning Issues 섹션을 포함합니다.
+### Per-Artifact Issue Detail
+For each REVIEW/FAIL artifact, include the Critical/Warning Issues section from the standard Review Report Format.
 
 ---
 

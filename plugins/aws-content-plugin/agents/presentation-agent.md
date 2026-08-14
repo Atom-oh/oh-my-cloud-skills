@@ -49,10 +49,10 @@ If PPTX keyword is detected, proceed to Step 3 (PPTX path).
 
 If no format keyword is detected, ask the user:
 
-> 프레젠테이션 형식을 선택해 주세요:
+> Please choose a presentation format:
 >
-> 1. **웹 기반 인터랙티브** — 브라우저에서 실행되는 HTML 프레젠테이션. Canvas 애니메이션, 퀴즈, 탭 전환 등 인터랙티브 요소 지원. GitHub Pages로 즉시 배포 가능.
-> 2. **PPTX (파워포인트)** — 다운로드 가능한 .pptx 파일. 오프라인 발표, 사내 공유에 적합.
+> 1. **Web-based interactive** — an HTML presentation that runs in the browser. Supports interactive elements like Canvas animations, quizzes, and tab switching. Deployable immediately via GitHub Pages.
+> 2. **PPTX (PowerPoint)** — a downloadable .pptx file. Suited to offline presentations and internal sharing.
 >
 > (Choose 1 or 2, or describe your preference)
 
@@ -69,7 +69,7 @@ Light-theme `.pptx` files via PptxGenJS with a validated design system (Pretenda
 typography, 11 layout builders, AWS architecture-diagram kit, and the shared 811-icon
 library), then embeds fonts so the deck renders identically everywhere.
 
-> PPTX(파워포인트)로 진행합니다. `aws-light-fcd` 스킬을 사용해 AWS 라이트 테마 .pptx 덱을 생성합니다.
+> Proceeding with PPTX (PowerPoint). Using the `aws-light-fcd` skill to generate an AWS Light-theme .pptx deck.
 
 To proceed, **invoke the `aws-light-fcd` skill** and pass through the user's request
 (topic/source doc, language, presenter, rough slide count). The skill handles layout
@@ -85,4 +85,4 @@ selection, build, QA rendering, and font embedding.
 When delegating to `reactive-presentation-agent`:
 - Pass through the user's original request unchanged
 - Do not re-ask questions that the specialist agent will ask
-- Simply state: "웹 기반 인터랙티브 프레젠테이션으로 진행합니다." and invoke the agent
+- Simply state: "Proceeding with the web-based interactive presentation." and invoke the agent

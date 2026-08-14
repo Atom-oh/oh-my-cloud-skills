@@ -8,35 +8,36 @@ Accepted (2026-06-17) — no prior ADR established the Gemini-family slot, so no
 
 ## Context
 
-co-agent 패널은 Gemini-family CLI를 한 슬롯으로 사용해 왔다. `gemini` CLI가 deprecated되고
-**Antigravity(`agy`)** 가 Gemini-family 후속으로 등장하면서, `agy`와 `gemini`를 둘 다 fan-out하면
-**동일 패밀리 중복**이 생긴다. 어느 것을 패널 멤버로 쓸지 일관 규칙이 필요하다.
+The co-agent panel has used a Gemini-family CLI as one slot. Now that the `gemini` CLI is
+deprecated and **Antigravity (`agy`)** has emerged as the Gemini family's successor, fanning
+out to both `agy` and `gemini` would create **duplication within the same family**. A
+consistent rule is needed for which one is used as the panel member.
 
 ## Options Considered
 
-1. **둘 다 항상 실행** — 같은 모델 패밀리를 두 번 — 비용·중복, 합의 신호 왜곡.
-2. **`agy` 우선, `gemini` 폴백** — 설치된 것 중 `agy`를 쓰고, 없으면 `gemini`, 둘 다 없으면 스킵. (채택)
+1. **Always run both** — runs the same model family twice — cost/duplication, distorts the consensus signal.
+2. **Prefer `agy`, fall back to `gemini`** — use `agy` if installed, otherwise `gemini`, and skip the slot if neither is installed. (Adopted)
 
 ## Decision
 
-Gemini-family 슬롯의 우선순위를 **`agy` → `gemini` → 스킵**으로 고정한다:
+Fix the Gemini-family slot's priority order as **`agy` → `gemini` → skip**:
 
-- `agy`와 `gemini`가 모두 있으면 fan-out은 `agy`만 쓰고 `gemini`는 **스킵**(동일패밀리 중복 방지).
-- `agy`가 없고 `gemini`만 있으면 `gemini` 사용(**하위호환**).
-- 둘 다 없으면 그 슬롯은 스킵(graceful degrade).
-- 적용 범위: co-agent 팬아웃(`ai-cli-adapters.md`), `decision-reconcile` 패널, 사용자 문서(README/architecture)의 패널 표기.
-- 호출: `agy -p "<P>" --model "Gemini 3.1 Pro (High)" --sandbox`(read-only). `--dangerously-skip-permissions` 금지.
+- If both `agy` and `gemini` are present, fan-out uses only `agy` and **skips** `gemini` (to prevent duplication within the same family).
+- If `agy` is absent and only `gemini` is present, use `gemini` (**backward compatibility**).
+- If neither is present, skip that slot (graceful degradation).
+- Scope of application: co-agent fan-out (`ai-cli-adapters.md`), the `decision-reconcile` panel, and the panel notation in user-facing documentation (README/architecture).
+- Invocation: `agy -p "<P>" --model "Gemini 3.1 Pro (High)" --sandbox` (read-only). `--dangerously-skip-permissions` is forbidden.
 
 ## Consequences
 
-- 동일 패밀리 중복 제거; `gemini`만 있는 환경도 계속 동작.
-- 사용자 문서의 패널 표기는 "Kiro/Codex/Antigravity"를 기본으로 하되 **Gemini 폴백을 명시**(완전 대체 아님).
-- **`GEMINI.md` 파일명은 유지** — Antigravity/Gemini가 읽는 Gemini-family 컨텍스트 파일이며 CLI 선택과 무관.
-- pr-review CI 패널에는 미적용 — `agy`가 OAuth 인터랙티브 전용이라 헤드리스 CI에서 인증 불가(거기선 Codex + Kiro만).
+- Eliminates duplication within the same family; environments with only `gemini` continue to work.
+- The panel notation in user-facing documentation defaults to "Kiro/Codex/Antigravity" while **explicitly noting the Gemini fallback** (not a full replacement).
+- **The `GEMINI.md` filename is kept as-is** — it is the Gemini-family context file that both Antigravity and Gemini read, independent of which CLI is selected.
+- Not applied to the pr-review CI panel — `agy` is OAuth-interactive-only and cannot authenticate in headless CI (only Codex + Kiro run there).
 
 ## References
 
 - `plugins/co-agent/CLAUDE.md`, `plugins/co-agent/skills/co-agent/references/ai-cli-adapters.md`
-- `plugins/co-agent/skills/decision-reconcile/SKILL.md` (probe/invoke 우선순위)
-- README.md / README.ko.md / `docs/architecture.md` 패널 표기
-- PR #69 (antigravity 패널 도입), #83 (agy→gemini precedence 문서 정정)
+- `plugins/co-agent/skills/decision-reconcile/SKILL.md` (probe/invoke priority)
+- README.md / README.ko.md / `docs/architecture.md` panel notation
+- PR #69 (introduced the antigravity panel), #83 (corrected the agy→gemini precedence documentation)

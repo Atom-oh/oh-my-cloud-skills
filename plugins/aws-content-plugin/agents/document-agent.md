@@ -51,14 +51,14 @@ When diagrams are needed:
 2. Export .drawio to .png: `drawio -x -f png -s 2 -o output.png input.drawio`
 3. Add image references: `![Description](path/to/diagram.png)`
 
-### Step 5: Quality Review (필수 — 생략 불가)
+### Step 5: Quality Review (mandatory — must not be skipped)
 
-콘텐츠 완성 후 배포/완료 선언 전에 반드시:
-1. content-review-agent 호출 → `review content at [파일경로]`
-2. FAIL/REVIEW 판정 시 수정 후 재리뷰 (최대 3회)
-3. PASS (≥85점) 획득 후에만 완료 선언
+After content is complete and before declaring deployment/completion, you must always:
+1. Invoke content-review-agent → `review content at [file path]`
+2. On a FAIL/REVIEW verdict, fix and re-review (up to 3 rounds)
+3. Declare completion only after achieving PASS (≥85 points)
 
-> ⚠️ 이 단계를 건너뛰고 완료를 선언하는 것은 금지됩니다.
+> Warning: skipping this step and declaring completion anyway is forbidden.
 
 ---
 
@@ -143,9 +143,9 @@ Example: Source: Gartner, 2024
 ## Content Exclusion Rules
 
 **NEVER include:**
-- Greetings ("안녕하세요", "Dear Team")
+- Greetings ("Hello"/"안녕하세요", "Dear Team")
 - Next Steps sections
-- Closing remarks ("감사합니다")
+- Closing remarks ("Thank you"/"감사합니다")
 - Signatures or date stamps
 - Timeline estimates
 

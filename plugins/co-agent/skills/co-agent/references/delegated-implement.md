@@ -44,7 +44,7 @@ implementer from `impl-flags`).
 
 **Role tiering:** `impl-flags` resolves its model/effort from
 `harness.implementer_models.<ai>`/`implementer_efforts.<ai>` first, falling back to the
-panel's `model`/`effort` (`/co-agent:configure` → "모델 티어링"). The overrides are
+panel's `model`/`effort` (`/co-agent:configure` → "Model tiering"). The overrides are
 **stored per implementer, keyed by the explicit `harness.implementer` at set time**
 (setting them with no implementer configured is refused) — model names don't encode a
 provider, so only per-AI keying survives both the host-dependent default fallback
@@ -55,7 +55,7 @@ merged model/effort at emit time (fail-closed, exit 2) since its argv feeds a
 write-enabled sandbox and the local/user JSON can be hand-edited. This splits the
 WRITE path from the review path: the same CLI can implement on a different
 generation model than its review/gate calls (`flags`) use. Which direction to
-split depends on the cost model (configure.md "모델 티어링" → 비용 모델 전제):
+split depends on the cost model (configure.md "Model tiering" → "Cost-model assumption"):
 on a flat-rate subscription CLI (the default assumption) point `implementer_model`
 at that CLI's **strongest** generation model — fewer fix rounds is pure wall-clock
 savings; only on metered API keys drop to a cost-efficient model and let the

@@ -1,103 +1,103 @@
-# Team Workflow Patterns (병렬 오케스트레이션)
+# Team Workflow Patterns (Parallel Orchestration)
 
-> **기본값은 순차 워크플로우.** 팀 기반 병렬 실행은 아래 트리거 조건 충족 시에만 사용합니다.
-> CLAUDE.md는 트리거 요약만 담고, 실제로 팀을 스폰할 때 이 문서를 참조하세요.
+> **The default is a sequential workflow.** Team-based parallel execution is used only when the trigger conditions below are met.
+> CLAUDE.md holds only the trigger summary — consult this document when actually spawning a team.
 
-## 팀 생성 트리거
+## Team Creation Triggers
 
-| 트리거 조건 | 팀 이름 | 파이프라인 |
+| Trigger condition | Team name | Pipeline |
 |-------------|---------|-----------|
-| 프레젠테이션 ≥ 60분 또는 3+ 블록 | `content-presentation` | Multi-Phase Pipeline |
-| 워크숍 3+ 모듈 | `content-workshop` | Multi-Phase Pipeline |
-| GitBook 5+ 챕터 | `content-gitbook` | Block-Parallel (Phase 3만) |
-| 프레젠테이션 + 다이어그램 + 문서 동시 요청 | `content-cross-type` | Cross-Type Parallel |
+| Presentation ≥ 60 min or 3+ blocks | `content-presentation` | Multi-Phase Pipeline |
+| Workshop with 3+ modules | `content-workshop` | Multi-Phase Pipeline |
+| GitBook with 5+ chapters | `content-gitbook` | Block-Parallel (Phase 3 only) |
+| Simultaneous presentation + diagram + document request | `content-cross-type` | Cross-Type Parallel |
 
 ## Subagent Spawn Policy
 
-**위 트리거 조건이 충족되면 subagent를 반드시 스폰합니다.** 다음 작업은 단일 응답으로 처리하지 말고 subagent로 위임:
+**When the trigger conditions above are met, subagents must be spawned.** The following work must be delegated to subagents rather than handled in a single response:
 
-- 3+ 블록 프레젠테이션의 Phase 3 (Content Creation) — 블록당 1개 subagent를 병렬로 스폰
-- Phase 1 Research — explore, document-specialist, dependency-expert를 병렬로 스폰
-- 5+ 챕터 GitBook의 챕터별 작성 — 챕터당 1개 subagent
-- Cross-type 요청 (프레젠테이션 + 다이어그램 + 문서) — 콘텐츠 타입당 1개 subagent
+- Phase 3 (Content Creation) of a 3+-block presentation — spawn one subagent per block, in parallel
+- Phase 1 Research — spawn explore, document-specialist, and dependency-expert in parallel
+- Per-chapter authoring for a GitBook with 5+ chapters — one subagent per chapter
+- Cross-type requests (presentation + diagram + document) — one subagent per content type
 
-**Subagent를 스폰하지 않는 경우:**
-- 트리거 조건 미달 (예: 단일 블록, 30분 미만)
-- 사용자가 명시적으로 순차 실행 요청
-- 직접 read/grep으로 빠르게 해결 가능한 단순 작업
-- 순차 의존성이 있어 병렬화가 의미 없는 작업
+**Cases where subagents should NOT be spawned:**
+- Trigger conditions not met (e.g., a single block, under 30 minutes)
+- The user explicitly requests sequential execution
+- Simple work that can be resolved quickly with a direct read/grep
+- Work with sequential dependencies where parallelization would be meaningless
 
-## Multi-Phase Pipeline (프레젠테이션/워크숍)
+## Multi-Phase Pipeline (Presentation/Workshop)
 
-4단계 파이프라인으로 전문 에이전트가 역할을 분담합니다:
+A 4-phase pipeline in which specialized agents split the work by role:
 
 ```
-Phase 1 — Research (병렬, 팀원 2-3명)
-  ├─ explore agent         : 코드베이스/기존 자료/레퍼런스 탐색
-  ├─ document-specialist   : 공식 AWS 문서/블로그/What's New 수집
-  └─ dependency-expert     : 서비스 최신 기능/버전/제약사항 확인
-  → 산출물: research-context.md (팀 공유 파일)
+Phase 1 — Research (parallel, 2-3 team members)
+  ├─ explore agent         : explore the codebase / existing material / references
+  ├─ document-specialist   : gather official AWS docs / blog posts / What's New items
+  └─ dependency-expert     : confirm the service's latest features / versions / constraints
+  → Deliverable: research-context.md (shared team file)
 
-Phase 2 — Planning (단일)
-  └─ planner (또는 architect) : 리서치 결과 → 블록 구조 설계
-     - 블록 수, 슬라이드 수, 타이밍 배분
-     - 슬라이드 타입 배치 (canvas, compare, quiz 등)
-     - 블록 간 의존성/흐름 정의
-  → 산출물: presentation-outline.md
-  → 사용자 승인 대기
+Phase 2 — Planning (single agent)
+  └─ planner (or architect) : research results → block structure design
+     - number of blocks, slide count, timing allocation
+     - slide type placement (canvas, compare, quiz, etc.)
+     - define dependencies/flow between blocks
+  → Deliverable: presentation-outline.md
+  → Wait for user approval
 
-Phase 3 — Content Creation (병렬, 블록별)
-  ├─ reactive-presentation-agent #1 → Block 1 (+ research-context.md 참조)
-  ├─ reactive-presentation-agent #2 → Block 2 (+ research-context.md 참조)
-  └─ reactive-presentation-agent #3 → Block 3 (+ research-context.md 참조)
-  → 산출물: block-N.html 파일들
+Phase 3 — Content Creation (parallel, per block)
+  ├─ reactive-presentation-agent #1 → Block 1 (+ references research-context.md)
+  ├─ reactive-presentation-agent #2 → Block 2 (+ references research-context.md)
+  └─ reactive-presentation-agent #3 → Block 3 (+ references research-context.md)
+  → Deliverable: block-N.html files
 
-Phase 4 — Quality Gate (단일)
-  └─ content-review-agent  : 전체 리뷰 + 블록 간 일관성 검증
-     - 용어/스타일 통일성
-     - 블록 간 흐름 연결성
-     - 개별 블록 품질 (≥85점)
-  → PASS 시 완료, FAIL 시 해당 블록만 재작업
+Phase 4 — Quality Gate (single agent)
+  └─ content-review-agent  : full review + cross-block consistency check
+     - terminology/style uniformity
+     - flow continuity across blocks
+     - individual block quality (≥85 points)
+  → On PASS, done; on FAIL, rework only the affected block
 ```
 
-## Phase간 데이터 전달 규약
+## Inter-Phase Data Handoff Convention
 
-| Phase 전환 | 전달 파일 | 내용 |
+| Phase transition | Handoff file | Content |
 |-----------|----------|------|
-| 1→2 | `research-context.md` | 수집된 AWS 문서 요약, 핵심 개념, 코드 예제, 최신 기능 목록 |
-| 2→3 | `presentation-outline.md` | 블록별 슬라이드 목록, 타입, 타이밍, 핵심 포인트 |
-| 3→4 | 각 `block-N.html` | 렌더링된 슬라이드 파일 |
+| 1→2 | `research-context.md` | Summary of gathered AWS docs, key concepts, code examples, list of latest features |
+| 2→3 | `presentation-outline.md` | Per-block slide list, types, timing, key points |
+| 3→4 | each `block-N.html` | Rendered slide file |
 
-각 reactive-presentation-agent는 반드시 `research-context.md`와 자신의 블록에 해당하는 `presentation-outline.md` 섹션을 context로 받아야 합니다. 이를 통해 추측 대신 검증된 자료 기반으로 콘텐츠를 생성합니다.
+Each reactive-presentation-agent must receive `research-context.md` and the section of `presentation-outline.md` corresponding to its own block as context. This ensures content is generated from verified material rather than guesswork.
 
-## 오케스트레이션 실행 순서
+## Orchestration Execution Order
 
 ```
 1. TeamCreate("{team-name}")
-2. Phase 1: Research 에이전트 병렬 스폰 → research-context.md 생성
-3. Phase 2: Planner 에이전트 스폰 → presentation-outline.md 생성
-4. 사용자 승인 대기 (아웃라인 확인)
-5. Phase 3: TaskCreate x N (블록별) → reactive-presentation-agent 병렬 스폰
-6. Phase 4: content-review-agent → 전체 리뷰
-7. FAIL 블록 있으면 → 해당 reactive-presentation-agent만 재작업 (최대 2회)
-8. 결과 집계 + TeamDelete
+2. Phase 1: Spawn Research agents in parallel → produce research-context.md
+3. Phase 2: Spawn a Planner agent → produce presentation-outline.md
+4. Wait for user approval (confirm the outline)
+5. Phase 3: TaskCreate x N (per block) → spawn reactive-presentation-agent in parallel
+6. Phase 4: content-review-agent → full review
+7. If any block FAILs → rework only that reactive-presentation-agent (max 2 rounds)
+8. Aggregate results + TeamDelete
 ```
 
-## Block-Parallel (간소화 패턴)
+## Block-Parallel (Simplified Pattern)
 
-리서치가 불필요한 경우 (사용자가 충분한 컨텍스트를 제공했거나 단순 콘텐츠) Phase 1-2를 생략하고 Phase 3-4만 실행:
+When research is unnecessary (the user already provided sufficient context, or the content is simple), skip Phase 1-2 and run only Phase 3-4:
 
 ```
-1. TeamCreate → 메인 세션에서 아웃라인 작성 → 사용자 승인
-2. TaskCreate x N → reactive-presentation-agent 병렬 스폰
-3. content-review-agent 리뷰
+1. TeamCreate → write the outline in the main session → user approval
+2. TaskCreate x N → spawn reactive-presentation-agent in parallel
+3. content-review-agent review
 4. TeamDelete
 ```
 
-## 순차 워크플로우 보존 규칙
+## Sequential Workflow Preservation Rule
 
-- **기본값은 항상 순차 실행**입니다
-- 팀은 위 트리거 테이블의 임계값을 충족하는 경우에만 사용
-- 사용자가 "병렬", "동시에", "in parallel", "팀으로"를 명시적으로 요청한 경우에도 사용 가능
-- 임계값 미달 시 기존 순차 워크플로우(`에이전트 → content-review-agent → 배포`)를 유지
-- 30분 미만 단일 블록 프레젠테이션은 항상 순차 실행
+- **The default is always sequential execution**
+- Teams are used only when the thresholds in the trigger table above are met
+- Also usable when the user explicitly requests "parallel", "at the same time", "in parallel", or "as a team"
+- Below threshold, keep the existing sequential workflow (`agent → content-review-agent → deploy`)
+- A single-block presentation under 30 minutes always runs sequentially

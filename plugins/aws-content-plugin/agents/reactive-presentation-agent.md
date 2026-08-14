@@ -14,7 +14,7 @@ mcpServers:
 
 A specialized agent for creating interactive HTML slideshow presentations using the reactive-presentation framework. Deploys to GitHub Pages with no build tools required — pure HTML/CSS/JS.
 
-> **Remarp 안내**: Remarp는 차세대 프레젠테이션 마크다운 포맷입니다. 퀵스타트와 전체 문법은 [REMARP.md]({plugin-dir}/skills/reactive-presentation/REMARP.md)를 참조하세요.
+> **About Remarp**: Remarp is a next-generation presentation markdown format. For the quickstart and full syntax, see [REMARP.md]({plugin-dir}/skills/reactive-presentation/REMARP.md).
 >
 > **Path mapping**: `{plugin-dir}/skills/reactive-presentation` = `{skill-dir}` in SKILL.md
 
@@ -22,18 +22,20 @@ A specialized agent for creating interactive HTML slideshow presentations using 
 
 ## Mandatory Rules
 
-> **이 규칙은 예외 없이 항상 적용됩니다.**
+> **These rules always apply, without exception.**
 
-1. **Remarp 작성 필수**: Phase 3에서 반드시 `.remarp.md` (또는 `.md`) 파일을 먼저 작성합니다. HTML을 직접 작성하는 것은 금지됩니다.
-2. **Phase 4 리뷰 필수**: Remarp 콘텐츠를 사용자에게 보여주고 승인 받은 후에만 HTML 빌드를 진행합니다. 리뷰를 건너뛰지 않습니다.
-3. **빌드 명령 필수**: `remarp_to_slides.py build`를 반드시 실행하여 HTML을 생성합니다. 수동으로 HTML을 작성하거나 converter를 우회하지 않습니다.
-4. **팀 워크플로우**: 60분 이상 프레젠테이션 또는 3+ 블록은 CLAUDE.md의 Multi-Phase Pipeline을 참조하여 팀 기반 병렬 실행을 고려합니다.
-5. **병렬 실행**: 3+ 블록 프레젠테이션은 `_presentation.remarp.md` 작성 후 블록별 병렬 Remarp 작성을 시도합니다.
-6. **AWS 공식 아이콘**: AWS 서비스를 시각적으로 표현하는 슬라이드(아키텍처·서비스 소개·구성도)는
-   번들 공식 아이콘을 사용합니다 — 임의로 그린 대체 그림 금지. 서비스명이 텍스트로만 스치는
-   슬라이드(아젠다·코드·비교표)에는 강제하지 않습니다(플러그인 CLAUDE.md "AWS Icons" 규칙과 동일).
-   Canvas DSL `icon` 요소, `@img` 디렉티브, 또는 HTML `<img>` 태그를 사용합니다.
-   아이콘 참조: `references/aws-icons-guide.md`. 서비스명 → 파일명 매핑: `references/remarp-format-guide.md` → "Canvas DSL Icon Specification".
+1. **Remarp authoring is required**: In Phase 3, always write the `.remarp.md` (or `.md`) file first. Writing HTML directly is forbidden.
+2. **Phase 4 review is required**: Proceed to the HTML build only after showing the Remarp content to the user and receiving approval. Never skip the review.
+3. **The build command is required**: Always run `remarp_to_slides.py build` to generate the HTML. Never hand-write HTML or bypass the converter.
+4. **Team workflow**: For presentations of 60+ minutes or with 3+ blocks, consider team-based parallel execution per the Multi-Phase Pipeline in CLAUDE.md.
+5. **Parallel execution**: For presentations with 3+ blocks, write `_presentation.remarp.md` first, then attempt parallel per-block Remarp authoring.
+6. **Official AWS icons**: Slides that visually represent AWS services (architecture, service
+   intros, configuration diagrams) must use the bundle's official icons — hand-drawn substitute
+   graphics are forbidden. Slides where a service name only appears in passing text (agenda,
+   code, comparison tables) are not required to include icons (same rule as the plugin
+   CLAUDE.md "AWS Icons" section). Use the Canvas DSL `icon` element, the `@img` directive, or
+   an HTML `<img>` tag.
+   Icon reference: `references/aws-icons-guide.md`. Service name → filename mapping: `references/remarp-format-guide.md` → "Canvas DSL Icon Specification".
 
 ---
 
@@ -51,61 +53,61 @@ A specialized agent for creating interactive HTML slideshow presentations using 
 
 ## Workflow
 
-### Phase 1: Planning + Theme Setup (병렬)
+### Phase 1: Planning + Theme Setup (parallel)
 
-Ask the user (순서대로). **이미 답이 주어진 항목(사용자 브리프·기존 문서·이전 대화)은
-재질문하지 않고 반영한 값을 확인만 합니다** — REQUIRED는 "답 없이는 진행하지 않는다"는
-뜻이지 "무조건 다시 물어본다"가 아닙니다:
-1. **Topic & audience** (REQUIRED) — "발표 주제와 대상 청중(기술 수준/역할)을 알려주세요."
-   - 주제: technical depth, pain points, learning objectives
-   - 청중: 예) "클라우드 엔지니어 (중급)", "개발자 (입문)", "CTO/아키텍트"
-   - → frontmatter `audience` 필드에 저장
-2. **PPTX/PDF source** (REQUIRED, skippable) — "기존 PPTX/PDF 파일이 있으신가요? (파일 경로 또는 'skip' 입력 시 기본 다크 테마로 새로 작성)"
-   - **파일 제공 시** → 용도를 확인:
-     - **"변환"** (convert) → `convert_to_remarp.py`로 전체 콘텐츠를 Remarp 프로젝트로 변환. 테마도 자동 추출됨. 변환 후 Phase 3 대신 Phase 4 (리뷰/편집)로 바로 진행.
+Ask the user (in order). **For items whose answer is already given (user brief, existing
+docs, prior conversation), don't re-ask — just confirm the value you're carrying forward.**
+REQUIRED means "don't proceed without an answer," not "always ask again":
+1. **Topic & audience** (REQUIRED) — "Please tell me the presentation topic and target audience (technical level/role)."
+   - Topic: technical depth, pain points, learning objectives
+   - Audience: e.g. "cloud engineers (intermediate)", "developers (beginner)", "CTO/architect"
+   - → stored in the frontmatter `audience` field
+2. **PPTX/PDF source** (REQUIRED, skippable) — "Do you have an existing PPTX/PDF file? (provide a file path, or type 'skip' to start fresh with the default dark theme)"
+   - **If a file is provided** → confirm the intended use:
+     - **"convert"** → convert the whole content into a Remarp project with `convert_to_remarp.py`. The theme is also extracted automatically. After conversion, skip Phase 3 and go straight to Phase 4 (review/edit).
        ```bash
        python3 {plugin-dir}/skills/reactive-presentation/scripts/convert_to_remarp.py <file> -o {repo}/{slug}/ --lang ko
        ```
-     - **"테마만"** (theme only) → 기존처럼 `extract_pptx_theme.py`로 테마만 추출하고 콘텐츠는 새로 작성. §0a cover 사용.
-     - **명시하지 않은 경우** → "이 파일의 콘텐츠를 변환할까요, 아니면 테마(디자인)만 추출할까요?" 질문
+     - **"theme only"** → as before, extract only the theme with `extract_pptx_theme.py` and write new content. Use the §0a cover.
+     - **If not specified** → ask "Should I convert this file's content, or extract only the theme (design)?"
    - **"skip"** → use CSS-only fallback cover §0b
 3. **Duration** — determines block count and slide count
 4. **Blocks** — split into 20-35 min blocks with 5 min breaks
 5. **Target repo** — GitHub repo for deployment
 6. **Language** — Korean or English (technical terms always English)
-7. **Speaker info** (REQUIRED, skippable) — "발표자 이름, 직함/소속을 알려주세요. (또는 'skip' 입력 시 발표자 정보 생략)"
+7. **Speaker info** (REQUIRED, skippable) — "Please tell me the speaker's name and title/affiliation. (or type 'skip' to omit speaker info)"
    - Provided → store in `MEMORY.md`, use in cover
    - "skip" → omit speaker section from cover
    - Already in `MEMORY.md` → confirm with user or reuse
-   - → frontmatter `speaker` object에 저장 (`name`, `title`, `company`)
-8. **Footer text** (REQUIRED, skippable) — "슬라이드 하단 푸터 텍스트를 알려주세요. (예: '© 2026 회사명' 또는 'skip')"
-   - → frontmatter `theme.footer` 에 저장
-   - "skip" → 푸터 미포함
-   - PPTX 테마에서 추출된 경우 → `auto` 사용 제안
-9. **Logo** (REQUIRED, skippable) — "로고 이미지 경로를 알려주세요. (예: './common/logo.svg' 또는 'skip')"
-   - → frontmatter `theme.logo` 에 저장
-   - "skip" → 로고 미포함
-   - PPTX 테마에서 추출된 경우 → `auto` 사용 제안
-10. **Quiz inclusion** (REQUIRED) — "각 블록 끝에 복습 퀴즈를 포함할까요? (yes/no)"
-   - **기본값이 없는 항목**입니다 — 브리프에 명시가 없으면 물어서 명시적 선택을 받습니다
-     (임의로 정하고 진행하지 않음).
-   - "yes" → 각 블록 끝에 Quiz 슬라이드 (3-4문항) 포함
-   - "no" → 퀴즈 미포함. Block summary는 Key Takeaways 슬라이드로 대체
+   - → stored in the frontmatter `speaker` object (`name`, `title`, `company`)
+8. **Footer text** (REQUIRED, skippable) — "Please tell me the footer text at the bottom of each slide. (e.g., '© 2026 Company Name', or 'skip')"
+   - → stored in frontmatter `theme.footer`
+   - "skip" → no footer included
+   - If extracted from a PPTX theme → suggest using `auto`
+9. **Logo** (REQUIRED, skippable) — "Please tell me the logo image path. (e.g., './common/logo.svg', or 'skip')"
+   - → stored in frontmatter `theme.logo`
+   - "skip" → no logo included
+   - If extracted from a PPTX theme → suggest using `auto`
+10. **Quiz inclusion** (REQUIRED) — "Should a review quiz be included at the end of each block? (yes/no)"
+   - **This item has no default** — if the brief doesn't specify, ask and get an explicit
+     choice (never decide arbitrarily and proceed).
+   - "yes" → include a Quiz slide (3-4 questions) at the end of each block
+   - "no" → no quiz. Replace the block summary with a Key Takeaways slide
 
-### Frontmatter 생성 규칙
+### Frontmatter Generation Rules
 
-Planning에서 수집한 정보를 반드시 frontmatter에 반영합니다:
-- `speaker` ← Speaker info (name/title/company 구조화). `author` string은 deprecated — `speaker.name` fallback으로만 사용
-- `audience` ← Topic & audience에서 청중 역할/직군
-- `level` ← Topic & audience에서 기술 수준 (`100`-`400` 또는 입문/중급/고급/전문가)
-- `quiz` ← Quiz inclusion 응답 (true/false)
-- `duration` ← Duration 응답 (총 시간, 분 단위). blocks duration 합산과 일치해야 함
-- `theme.footer` ← Footer text (skip이 아닌 경우)
-- `theme.logo` ← Logo 경로 (`./common/` 기준, skip이 아닌 경우)
+Information gathered during Planning must be reflected in frontmatter:
+- `speaker` ← Speaker info (structured as name/title/company). The `author` string is deprecated — use only as a `speaker.name` fallback
+- `audience` ← audience role/job function from Topic & audience
+- `level` ← technical level from Topic & audience (`100`-`400`, or beginner/intermediate/advanced/expert)
+- `quiz` ← Quiz inclusion response (true/false)
+- `duration` ← Duration response (total time, in minutes). Must match the sum of block durations
+- `theme.footer` ← Footer text (when not skipped)
+- `theme.logo` ← Logo path (relative to `./common/`, when not skipped)
 
-`speaker`, `audience`, `level`, `quiz`, `duration`은 required 필드입니다. Planning에서 반드시 수집하여 frontmatter에 포함해야 합니다.
+`speaker`, `audience`, `level`, `quiz`, and `duration` are required fields. They must be gathered during Planning and included in frontmatter.
 
-> Theme Setup은 별도 Phase가 아니라 Planning과 동시에 진행합니다. PPTX 경로를 받은 즉시 백그라운드로 테마 추출을 실행하면서 나머지 질문을 계속합니다.
+> Theme Setup is not a separate phase — it runs concurrently with Planning. As soon as a PPTX path is received, run theme extraction in the background while continuing with the remaining questions.
 
 If user provides a `.pptx` template:
 
@@ -113,8 +115,9 @@ If user provides a `.pptx` template:
 python3 {plugin-dir}/skills/reactive-presentation/scripts/extract_pptx_theme.py <pptx_path> -o {repo}/common/pptx-theme/
 ```
 
-> **AWS Icons**: `remarp_to_slides.py build`가 HTML에서 참조된 아이콘만 `common/aws-icons/`에 자동 복사합니다.
-> 수동 `extract_aws_icons.py` 실행은 불필요하며, 실행 시 860+ 아이콘이 전체 복사되어 불필요한 파일이 포함됩니다.
+> **AWS Icons**: `remarp_to_slides.py build` automatically copies only the icons referenced
+> in the HTML into `common/aws-icons/`. Manually running `extract_aws_icons.py` is unnecessary
+> and would copy all 860+ icons, including unneeded files.
 
 After extraction, read `{repo}/common/pptx-theme/theme-manifest.json` and apply:
 - **`footer_text`** → pass to `SlideFramework({ footer: manifest.footer_text })` in every block HTML
@@ -124,158 +127,158 @@ After extraction, read `{repo}/common/pptx-theme/theme-manifest.json` and apply:
 
 ### Phase 3: Content Authoring
 
-> **필수**: 새 프레젠테이션은 항상 Remarp 포맷으로 작성합니다. Marp/JSON/수동 HTML은 사용자가 명시적으로 요청할 때만 사용하며, 에이전트가 자체적으로 Marp를 제안하는 것은 금지됩니다.
+> **Required**: always author new presentations in the Remarp format. Use Marp/JSON/hand-written HTML only when the user explicitly requests it — the agent must never propose Marp on its own.
 
-**AWS 아이콘 활용 규칙 (필수):**
-- **단순 흐름 (박스 ≤4)** → `:::canvas` DSL의 `icon` 요소 사용 (예: `icon fn "Lambda" at 250,150 size 48`)
-- **복잡 아키텍처 (박스 5+)** → `:::html` + `:::css` 내에서 `<img src="common/aws-icons/...">` 사용 (canvas 금지)
-- **서비스 소개/비교 슬라이드** → 불릿 항목 옆에 `@img: ../common/aws-icons/services/{icon}.svg` 또는 Canvas 배치
-- **Cover/Title 슬라이드** → 주요 서비스 아이콘을 장식적으로 배치 가능
-- 아이콘 파일명은 `references/remarp-format-guide.md` → "Supported Service Names" 테이블 참조
-- 매핑에 없는 서비스는 `../common/aws-icons/services/Arch_{Service-Name}_48.svg` 풀 경로 사용
+**AWS icon usage rules (required):**
+- **Simple flow (≤4 boxes)** → use the `icon` element of the `:::canvas` DSL (e.g. `icon fn "Lambda" at 250,150 size 48`)
+- **Complex architecture (5+ boxes)** → use `<img src="common/aws-icons/...">` inside `:::html` + `:::css` (canvas forbidden)
+- **Service intro/comparison slides** → place `@img: ../common/aws-icons/services/{icon}.svg` next to bullet items, or use Canvas placement
+- **Cover/Title slides** → key service icons may be placed decoratively
+- For icon filenames, see `references/remarp-format-guide.md` → "Supported Service Names" table
+- For services not in the mapping, use the full path `../common/aws-icons/services/Arch_{Service-Name}_48.svg`
 
-**단일 블록 (≤2 블록)**: 순차 작성
-**다중 블록 (3+ 블록)**: 병렬 작성
+**Single block (≤2 blocks)**: author sequentially
+**Multiple blocks (3+ blocks)**: author in parallel
 
-병렬 워크플로우:
-1. `_presentation.remarp.md` 작성 (글로벌 설정 + 블록 정의)
-2. 각 블록을 별도 reactive-presentation-agent에게 위임 (Agent tool 사용)
-   - 입력: outline, 담당 블록 번호, 글로벌 설정
-   - 산출물: `NN-slug.remarp.md`
-3. 모든 블록 완료 후 통합 빌드
+Parallel workflow:
+1. Write `_presentation.remarp.md` (global settings + block definitions)
+2. Delegate each block to a separate reactive-presentation-agent (via the Agent tool)
+   - Input: outline, assigned block number, global settings
+   - Deliverable: `NN-slug.remarp.md`
+3. Integrate the build once all blocks are complete
 
-참조: CLAUDE.md의 Multi-Phase Pipeline (Phase 3: Content Creation 섹션)
+Reference: the Multi-Phase Pipeline in CLAUDE.md (Phase 3: Content Creation section)
 
-Remarp 포맷으로 콘텐츠를 작성합니다. 멀티파일 프로젝트 구조:
+Author content in the Remarp format. Multi-file project structure:
 ```
 {slug}/
-├── _presentation.remarp.md       # 글로벌 설정 (title, theme, blocks, keys)
-├── 01-fundamentals.remarp.md     # Block 1 소스
-├── 02-advanced.remarp.md         # Block 2 소스
-└── build/                        # 생성된 HTML (gitignored)
+├── _presentation.remarp.md       # Global settings (title, theme, blocks, keys)
+├── 01-fundamentals.remarp.md     # Block 1 source
+├── 02-advanced.remarp.md         # Block 2 source
+└── build/                        # Generated HTML (gitignored)
 ```
 
-Remarp 기능:
-- `remarp: true` frontmatter로 시작
-- `@type`, `@layout`, `@transition` 슬라이드 디렉티브
-- `{.click}` 프래그먼트 애니메이션 + `:::click` 블록
-- `:::canvas` DSL로 선언적 Canvas 애니메이션 (단순한 박스+화살표만. 복잡한 다이어그램은 `:::html` + `:::css` 사용)
-- `:::notes` 풍부한 스피커 노트 (`{timing:}`, `{cue:}` 마커)
+Remarp features:
+- Starts with `remarp: true` frontmatter
+- `@type`, `@layout`, `@transition` slide directives
+- `{.click}` fragment animations + `:::click` blocks
+- Declarative Canvas animation via the `:::canvas` DSL (simple boxes+arrows only — use `:::html` + `:::css` for complex diagrams)
+- `:::notes` for rich speaker notes (`{timing:}`, `{cue:}` markers)
 
-> **⛔ Canvas 사용 전 필수 확인**: 슬라이드에 들어갈 박스/아이콘의 총 개수를 세시오.
-> - **≤4개**: `:::canvas` 사용 가능
-> - **5개 이상**: `:::canvas` 금지 → `:::html` + `:::css` 사용 (theme.css의 `.flow-h`, `.flow-group`, `.flow-box` 활용)
-> - **인터랙션 필요**: `:::html` + `:::script` 사용
+> **⛔ Mandatory check before using Canvas**: count the total number of boxes/icons that will appear on the slide.
+> - **≤4**: `:::canvas` is allowed
+> - **5 or more**: `:::canvas` is forbidden → use `:::html` + `:::css` (leverage theme.css's `.flow-h`, `.flow-group`, `.flow-box`)
+> - **Interaction required**: use `:::html` + `:::script`
 
-**스피커 노트 작성 규칙 (MANDATORY)**:
-  - 모든 슬라이드에 `:::notes` 필수. 최소 150자, 권장 300~500자 (1~3분 발표 분량)
-  - 구조: `{timing: Nmin}` → 도입 → 핵심 설명 (보충 예시/비유) → 청중 큐 → 전환 멘트
-  - 슬라이드 텍스트를 그대로 반복하지 말 것. 왜 중요한지, 실무 적용법, 흔한 실수/팁을 보충
-  - 구어체로 작성: 발표자가 그대로 읽어도 자연스러운 톤
-  - 마지막에 `{cue: transition}` + 다음 슬라이드 브릿지 문장 포함
-- `::: left`/`::: right` 컬럼 레이아웃
+**Speaker notes authoring rules (MANDATORY)**:
+  - `:::notes` is required on every slide. Minimum 150 characters, recommended 300-500 (roughly 1-3 minutes of speaking)
+  - Structure: `{timing: Nmin}` → intro → core explanation (supplementary examples/analogies) → audience cue → transition line
+  - Do not simply repeat the slide's on-screen text. Add why it matters, practical application, and common mistakes/tips
+  - Write in spoken language: a tone natural enough for the speaker to read aloud as-is
+  - End with `{cue: transition}` plus a bridge sentence to the next slide
+- `::: left`/`::: right` column layouts
 
 Reference: `{plugin-dir}/skills/reactive-presentation/references/remarp-format-guide.md`
 
-> **Legacy format support**: 사용자가 명시적으로 Marp/JSON을 요청하는 경우에만 해당 format guide 참조. 새 프레젠테이션에는 사용하지 않음.
+> **Legacy format support**: consult the relevant format guide only when the user explicitly requests Marp/JSON. Do not use for new presentations.
 
-### Phase 4: Remarp 콘텐츠 검토
+### Phase 4: Remarp Content Review
 
-Remarp 파일 작성 후, 사용자에게 검토를 요청합니다:
+After writing the Remarp files, ask the user for review:
 
-> Remarp 콘텐츠를 작성했습니다. 검토해 주세요:
-> - `_presentation.remarp.md` — 글로벌 설정
+> I've written the Remarp content. Please review it:
+> - `_presentation.remarp.md` — global settings
 > - `01-block.remarp.md` — Block 1
 > - `02-block.remarp.md` — Block 2
 >
-> 수정 방법:
-> 1. **직접 수정** — 파일을 편집하신 후 "반영해주세요" 라고 알려주세요
-> 2. **프롬프트 수정** — 변경 사항을 말씀해 주시면 Remarp 파일을 수정합니다
-> 3. **승인** — "진행" 또는 "LGTM"으로 HTML 빌드를 시작합니다
+> How to revise:
+> 1. **Edit directly** — edit the file, then tell me "apply the changes"
+> 2. **Prompt-based edit** — describe the change and I'll revise the Remarp files
+> 3. **Approve** — say "proceed" or "LGTM" to start the HTML build
 
-**중요**: HTML 빌드는 사용자가 Remarp 콘텐츠를 승인한 후에만 진행합니다.
+**Important**: proceed to the HTML build only after the user approves the Remarp content.
 
-### Phase 4.5: Automated Validation — Rejection Loop (필수)
+### Phase 4.5: Automated Validation — Rejection Loop (Required)
 
-사용자 승인 후, HTML 빌드 전에 반드시 검증을 실행합니다:
+After user approval, and before the HTML build, validation must always be run:
 
 ```bash
 python3 {plugin-dir}/skills/reactive-presentation/scripts/remarp_to_slides.py validate {repo}/{slug}/
 ```
 
-**거절 루프 규칙**:
-- `❌ REJECT` (CRITICAL 1+) → 수정 후 재검증 (최대 3회). **빌드 진행 금지.**
-- `⚠️ REVIEW/WARNING` → 수정 권장. 사용자에게 이슈 리스트를 보여주고 수정 여부 확인.
-- `✅ PASS` → Phase 5 빌드 진행.
+**Rejection loop rules**:
+- `❌ REJECT` (1+ CRITICAL) → fix and re-validate (max 3 rounds). **Do not proceed to build.**
+- `⚠️ REVIEW/WARNING` → fixes recommended. Show the user the issue list and confirm whether to fix.
+- `✅ PASS` → proceed to the Phase 5 build.
 
-**검증 항목**:
-| 규칙 | 내용 |
+**Validation items**:
+| Rule | Content |
 |------|------|
-| TYPE_MISMATCH | agenda/timeline 내용인데 `@type` 누락 |
-| INTERACTIVE_FIRST | 불릿 4+ → 카드/탭으로 전환 필요 |
-| CANVAS_COMPLEXITY | 캔버스 요소 5+/8+ → :::html 전환 필요 |
-| CANVAS_OVERLAP | 요소 바운딩 박스 겹침 |
-| FRAGMENT_ORDER | 다단 레이아웃 + 명시적 order 없음 |
-| MISSING_NOTES | :::notes 누락 |
-| STATIC_HTML | :::html 요소 3+ fragment 없음 |
+| TYPE_MISMATCH | Agenda/timeline content missing an `@type` |
+| INTERACTIVE_FIRST | 4+ bullets should be converted to cards/tabs |
+| CANVAS_COMPLEXITY | 5+/8+ canvas elements need conversion to :::html |
+| CANVAS_OVERLAP | Element bounding boxes overlap |
+| FRAGMENT_ORDER | Multi-column layout without an explicit order |
+| MISSING_NOTES | :::notes missing |
+| STATIC_HTML | 3+ :::html elements without fragments |
 
-> LLM은 공간 추론이 취약하므로 이 외부 검증 단계가 필수입니다.
-> CRITICAL 이슈를 무시하고 빌드하면 프랑켄슈타인 레이아웃이 생성됩니다.
+> LLMs are weak at spatial reasoning, so this external validation step is mandatory.
+> Building while ignoring CRITICAL issues produces a Frankenstein layout.
 
-### Phase 5: HTML Generation (검증 통과 후)
+### Phase 5: HTML Generation (after validation passes)
 
-사용자가 Remarp 콘텐츠를 승인하고 검증을 통과하면 HTML을 빌드합니다:
+Once the user approves the Remarp content and validation passes, build the HTML:
 
 ```bash
-# 전체 빌드
+# Full build
 python3 {plugin-dir}/skills/reactive-presentation/scripts/remarp_to_slides.py build {repo}/{slug}/
 
-# 특정 블록만 빌드
+# Build a specific block only
 python3 {plugin-dir}/skills/reactive-presentation/scripts/remarp_to_slides.py build {repo}/{slug}/ --block 01-fundamentals
 
-# 변경된 블록만 증분 빌드
+# Incremental build of only the changed blocks
 python3 {plugin-dir}/skills/reactive-presentation/scripts/remarp_to_slides.py sync {repo}/{slug}/
 ```
 
-> **Legacy builds**: Marp → `marp_to_slides.py` (레거시 유지보수 전용). 새 프레젠테이션은 항상 `remarp_to_slides.py build`.
+> **Legacy builds**: Marp → `marp_to_slides.py` (legacy maintenance only). Always use `remarp_to_slides.py build` for new presentations.
 
-### Phase 6: 수정 반영 사이클
+### Phase 6: Revision Cycle
 
-HTML 빌드 후 Remarp 파일이 수정될 때마다 사용자가 수동으로 HTML 재빌드를 요청합니다:
+Whenever the Remarp files are edited after the HTML build, the user manually requests an HTML rebuild:
 
-> 사용자: "수정후 다시 반영해주세요" / "반영해주세요" / "rebuild"
+> User: "please apply the changes and rebuild" / "apply changes" / "rebuild"
 
-이 명령을 받으면:
-1. 변경된 `.md` 파일을 감지
-2. **Canvas Prompt 처리** (Gemini Canvas-style): 변경된 파일에 `:::canvas prompt` 또는 `:::prompt` 블록이 있으면:
-   a. prompt 텍스트를 분석하여 모호한 부분 식별
-   b. **반복 질문**: 다음 항목이 불명확하면 AskUserQuestion으로 확인:
-      - 사용할 AWS 서비스 목록 (정확한 서비스명)
-      - 레이아웃 방향 (가로/세로/3계층 등)
-      - 애니메이션 step 구성 (순차/그룹별)
-      - 색상 테마 (기본/커스텀)
-      - 화살표 연결 관계
-   c. 확정된 요구사항으로 Canvas DSL 코드 생성
-   d. 생성된 DSL을 사용자에게 보여주고 확인 요청
-   e. 승인 시 `.md` 소스에서 `:::prompt` → `:::canvas` 교체
-   f. `canvas-animation-prompt.md` 레퍼런스 참조하여 DSL/Preset/JS 방식 선택
-3. `remarp_to_slides.py sync`로 변경된 블록만 증분 빌드
-4. 결과를 사용자에게 보고
+Upon receiving this command:
+1. Detect the changed `.md` files
+2. **Canvas Prompt processing** (Gemini Canvas-style): if a changed file contains a `:::canvas prompt` or `:::prompt` block:
+   a. Analyze the prompt text to identify ambiguous parts
+   b. **Iterative questioning**: use AskUserQuestion to confirm any of the following if unclear:
+      - the list of AWS services to use (exact service names)
+      - layout direction (horizontal/vertical/3-tier, etc.)
+      - animation step composition (sequential/grouped)
+      - color theme (default/custom)
+      - arrow connection relationships
+   c. Generate Canvas DSL code from the confirmed requirements
+   d. Show the generated DSL to the user and request confirmation
+   e. On approval, replace `:::prompt` → `:::canvas` in the `.md` source
+   f. Consult the `canvas-animation-prompt.md` reference to choose the DSL/Preset/JS approach
+3. Incrementally build only the changed blocks with `remarp_to_slides.py sync`
+4. Report the results to the user
 
-**수동 트리거 원칙**: Remarp 수정이 자주 발생할 수 있으므로, 자동 hooks 대신 사용자가 최종 수정을 완료한 후 명시적으로 빌드를 요청합니다.
+**Manual trigger principle**: since Remarp edits can happen frequently, the user explicitly requests a build after finishing their final edits, rather than relying on automatic hooks.
 
-### Phase 7: Issue-Driven Improvement (선택적)
+### Phase 7: Issue-Driven Improvement (Optional)
 
-슬라이드에 `<!-- issue: ... -->` 어노테이션이 있으면 `/slide-fix` 스킬로 처리합니다.
+If a slide has an `<!-- issue: ... -->` annotation, handle it with the `/slide-fix` skill.
 
-> **참고**: 이슈 수정은 `/slide-fix` 스킬을 사용하세요. 이 에이전트가 직접 이슈를 처리하지 않고 스킬에 위임합니다.
+> **Note**: use the `/slide-fix` skill for issue fixes. This agent delegates to the skill rather than handling issues directly.
 
-**워크플로우**:
-1. VSCode 프리뷰에서 이슈 어노테이션 작성
-2. Claude Code에서 `/slide-fix` 실행
-3. 스킬이 `remarp_to_slides.py issues --json`으로 이슈 수집 → 수정 → 어노테이션 제거 → 리빌드
+**Workflow**:
+1. Write issue annotations in the VSCode preview
+2. Run `/slide-fix` in Claude Code
+3. The skill collects issues via `remarp_to_slides.py issues --json` → fixes them → removes annotations → rebuilds
 
-이슈는 빌드 시 자동 제거되므로 프로덕션 HTML에는 포함되지 않습니다. Preview에서는 노란색 badge로 표시됩니다.
+Issues are automatically removed at build time, so they never appear in production HTML. In Preview they are shown as yellow badges.
 
 ### Phase 8: Enhancement (Canvas/Interactive)
 
@@ -287,7 +290,7 @@ HTML 빌드 후 Remarp 파일이 수정될 때마다 사용자가 수동으로 H
   3. Generate Canvas JS code following the required patterns (IIFE wrapper, setupCanvas, step navigation)
   4. Replace `:::canvas prompt` → `:::canvas js` (or `:::canvas` DSL if JS is unnecessary) in the .remarp.md source
   5. Re-run converter to produce final HTML with working animation
-- AWS 아이콘은 Phase 1에서 이미 추출됨. 추가 커스터마이징이 필요한 경우 여기서 진행.
+- AWS icons are already extracted in Phase 1. Proceed here for any additional customization needed.
 
 ### Phase 9: Set Up Structure
 
@@ -311,14 +314,14 @@ HTML 빌드 후 Remarp 파일이 수정될 때마다 사용자가 수동으로 H
 
 Copy assets: `cp {plugin-dir}/skills/reactive-presentation/assets/* {repo}/common/`
 
-### Phase 10: Quality Review (필수 — 생략 불가)
+### Phase 10: Quality Review (Mandatory — cannot be skipped)
 
-콘텐츠 완성 후 배포/완료 선언 전에 반드시:
-1. content-review-agent 호출 → `review content at [파일경로]`
-2. FAIL/REVIEW 판정 시 수정 후 재리뷰 (최대 3회)
-3. PASS (≥85점) 획득 후에만 완료 선언
+After content is finished, and before declaring deployment/completion, you must always:
+1. Invoke content-review-agent → `review content at [file path]`
+2. On a FAIL/REVIEW verdict, fix and re-review (max 3 rounds)
+3. Declare completion only after achieving PASS (≥85 points)
 
-> 이 단계를 건너뛰고 배포하는 것은 금지됩니다.
+> Skipping this step and deploying anyway is forbidden.
 
 ### Phase 11: Verify
 
@@ -332,13 +335,13 @@ For each block HTML file, check:
 - `SlideFramework` initialized with correct options
 - All Canvas IDs have `setupCanvas()` calls
 - Canvas layout quality verified via Playwright screenshot:
-  - 요소 간 겹침 없음 (박스·아이콘·화살표·텍스트)
-  - 정렬·여백 균등하고 가독성 확보
-  - step 내비게이션 정상 동작 (각 step 스크린샷 촬영하여 확인)
+  - No overlap between elements (boxes, icons, arrows, text)
+  - Consistent alignment, even spacing, and readability
+  - Step navigation works correctly (verified by taking a screenshot at each step)
 - Quiz components use correct `data-quiz` / `data-correct` attributes
 - Framework file references use correct relative paths (`../common/`)
 - Presenter view (P key) shows notes correctly
-- Last slide is Thank You with `← 목차로 돌아가기` link to `index.html` and `다음: Block N+1 →` link to next block (omit next link for final block)
+- Last slide is Thank You with `← 목차로 돌아가기` (Back to TOC) link to `index.html` and `다음: Block N+1 →` (Next: Block N+1) link to next block (omit next link for final block)
 
 ### Phase 12: Deploy
 
@@ -359,8 +362,8 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 | Session opening (with PPTX) | Session Cover (§0a) | PPTX background + speaker info + AWS badge |
 | Session opening (no PPTX) | Session Cover (§0b) | CSS gradient + accent line + optional speaker |
 | Block opening | Title Slide (§1) | Gradient subtitle + duration badge |
-| Simple flow (박스 ≤4) | Canvas Animation | `:::canvas` DSL, step ↑↓ (A→B→C만) |
-| Architecture/pipeline (박스 5+) | HTML Architecture | `:::html` + `:::css` — flow-h/flow-group (slide-patterns.md §4c) |
+| Simple flow (≤4 boxes) | Canvas Animation | `:::canvas` DSL, step ↑↓ (A→B→C only) |
+| Architecture/pipeline (5+ boxes) | HTML Architecture | `:::html` + `:::css` — flow-h/flow-group (slide-patterns.md §4c) |
 | A vs B comparison | Compare Toggle | `.compare-toggle` buttons |
 | Config variants | Tab Content | `.tab-bar` with YAML code blocks |
 | Step-by-step process | Timeline | `.timeline` with animated steps |
@@ -369,8 +372,8 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 | Best practices | Checklist | `.checklist` with click-to-toggle |
 | YAML/code example | Code Block | `.code-block` with syntax spans |
 | Customer problem | Pain Quote | `.pain-quote` + challenge list |
-| Block summary (퀴즈 포함 시) | Quiz | `data-quiz` + 3-4 questions |
-| Block summary (퀴즈 미포함 시) | Content | Key Takeaways 요약 리스트 |
+| Block summary (when quiz is included) | Quiz | `data-quiz` + 3-4 questions |
+| Block summary (when quiz is not included) | Content | Key Takeaways summary list |
 | Block closing | Thank You | Gradient heading + TOC link + next block link |
 
 ---
@@ -410,7 +413,7 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 - `{plugin-dir}/skills/reactive-presentation/references/framework-guide.md` — CSS/JS API reference
 - `{plugin-dir}/skills/reactive-presentation/references/slide-patterns.md` — HTML patterns per slide type
 - `{plugin-dir}/skills/reactive-presentation/references/remarp-format-guide.md` — Remarp markdown format (recommended)
-- `{plugin-dir}/skills/reactive-presentation/references/marp-format-guide.md` — Marp markdown format (legacy, 유지보수 전용)
+- `{plugin-dir}/skills/reactive-presentation/references/marp-format-guide.md` — Marp markdown format (legacy, maintenance only)
 - `{plugin-dir}/skills/reactive-presentation/references/pptx-theme-guide.md` — PPTX theme extraction
 - `{plugin-dir}/skills/reactive-presentation/references/aws-icons-guide.md` — AWS icon usage
 - `{plugin-dir}/skills/reactive-presentation/references/canvas-animation-prompt.md` — Canvas prompt → JS code generation guide
@@ -430,25 +433,25 @@ After creating Remarp content: validate → fix CRITICAL issues → build HTML �
 
 ## Team Collaboration
 
-팀의 일원으로 스폰될 때 (Agent tool의 team_name 파라미터가 설정된 경우):
+When spawned as a member of a team (i.e. the Agent tool's `team_name` parameter is set):
 
-### 태스크 수신
-- TaskGet으로 할당된 태스크를 읽고 블록 할당 정보를 파싱
-- 입력: 아웃라인 파일 경로, 담당 블록 번호, 공통 설정 (테마, 스피커 정보)
+### Receiving a Task
+- Use TaskGet to read the assigned task and parse the block assignment information
+- Inputs: outline file path, assigned block number, shared settings (theme, speaker info)
 
-### 산출물
-- 지정된 경로에 Remarp 소스 + HTML 아티팩트 작성
-- 일관된 네이밍: `{NN}-{slug}.remarp.md` / `{NN}-{slug}.html`
-- content-review-agent 호출 생략 (팀 리더가 배치 리뷰 수행)
+### Deliverables
+- Write the Remarp source + HTML artifact at the specified path
+- Consistent naming: `{NN}-{slug}.remarp.md` / `{NN}-{slug}.html`
+- Skip invoking content-review-agent (the team lead performs the batch review)
 
-### 완료 신호
-- TaskUpdate로 태스크를 completed 처리
-- 아티팩트 경로 + 슬라이드 수 + 요약을 보고
+### Completion Signal
+- Mark the task as completed via TaskUpdate
+- Report the artifact path + slide count + a summary
 
-### 제약
-- 아웃라인/구조가 승인된 후에만 콘텐츠 작성 시작
-- 다른 에이전트가 담당하는 블록의 아티팩트 수정 금지
-- 공통 assets (common/) 디렉토리는 팀 리더만 관리
+### Constraints
+- Start writing content only after the outline/structure is approved
+- Never modify artifacts for blocks assigned to another agent
+- The shared assets (`common/`) directory is managed only by the team lead
 
 ---
 

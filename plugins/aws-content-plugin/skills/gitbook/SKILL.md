@@ -56,7 +56,7 @@ docs/
 ├── SUMMARY.md              # Navigation structure (required)
 ├── README.md               # Landing page
 ├── .gitbook/
-│   └── assets/             # Images, diagrams, files (agent와 동일 규약)
+│   └── assets/             # Images, diagrams, files (same convention as the agent)
 │       ├── architecture.png
 │       └── workflow.drawio
 ├── getting-started/        # Chapter directory
@@ -162,14 +162,14 @@ find . -name "*.md" | head -20
 | Step-by-step guide | Numbered list + code blocks | Installation, deployment |
 | Troubleshooting | `<details>` expandable | Error → Solution pairs |
 
-## Quality Review (필수 — 생략 불가)
+## Quality Review (Mandatory — cannot be skipped)
 
-콘텐츠 완성 후 배포/완료 선언 전에 반드시:
-1. content-review-agent 호출 → `review content at [프로젝트경로]`
-2. FAIL/REVIEW 판정 시 수정 후 재리뷰 (최대 3회)
-3. PASS 획득 후에만 완료 선언 — 기준 ≥85/100; 렌더링된 HTML 없이 markdown 소스만 리뷰해 Visual Testing이 면제된 경우 ≥77/90 환산 기준
+After content is finished, and before declaring deployment/completion, you must always:
+1. Invoke content-review-agent → `review content at [project path]`
+2. On a FAIL/REVIEW verdict, fix and re-review (max 3 rounds)
+3. Declare completion only after achieving PASS — threshold ≥85/100; if only markdown source is reviewed without rendered HTML and Visual Testing is exempted, the converted threshold is ≥77/90
 
-> ⚠️ 이 단계를 건너뛰고 완료를 선언하는 것은 금지됩니다.
+> ⚠️ Skipping this step and declaring completion is forbidden.
 
 ## References
 

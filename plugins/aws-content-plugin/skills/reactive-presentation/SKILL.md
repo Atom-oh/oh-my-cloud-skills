@@ -15,57 +15,57 @@ allowed-tools:
 Build interactive HTML slideshows deployed via GitHub Pages. No build tools — pure HTML/CSS/JS with a shared framework (nav, animations, quizzes). Authoring format is **Remarp markdown** (Marp = legacy maintenance only).
 
 > `{skill-dir}` = `{plugin-dir}/skills/reactive-presentation`. New to Remarp? See [REMARP.md](REMARP.md).
-> **상세 작성 규칙·표·복사용 템플릿은 [references/authoring-rules.md](references/authoring-rules.md)** (validation 규칙, Forbidden AI-tells, Interactive 패턴/탭 템플릿, Slide Type 결정, HTML Architecture). 실제 슬라이드를 작성·검증할 때 이 문서를 읽으세요.
+> **Detailed authoring rules, tables, and copy-ready templates live in [references/authoring-rules.md](references/authoring-rules.md)** (validation rules, forbidden AI-tells, interactive patterns/tab templates, slide type decisions, HTML architecture). Read this document when actually authoring or validating slides.
 
 ## Workflow (9 phases)
 
-### Phase 1 — Theme Setup (optional, PPTX 제공 시)
+### Phase 1 — Theme Setup (optional, when a PPTX is provided)
 ```bash
 python3 {skill-dir}/scripts/extract_pptx_theme.py <pptx_path> -o {repo}/common/pptx-theme/
 ```
-생성물: `theme-manifest.json`(colors/fonts/logos/footer/layout) · `theme-override.css` · `images/`. 매니페스트 매핑 → `_presentation.md`: `slide_size.aspect_ratio`→`ratio`, `footer_text`→`theme.footer`, `logos[0]`→`theme.logo`. `theme-override.css`를 `common/`에 복사. 상세: [references/pptx-theme-guide.md](references/pptx-theme-guide.md). (AWS 아이콘은 build가 참조분만 자동 복사 — 수동 추출 불필요.)
+Output: `theme-manifest.json` (colors/fonts/logos/footer/layout) · `theme-override.css` · `images/`. Manifest mapping → `_presentation.md`: `slide_size.aspect_ratio`→`ratio`, `footer_text`→`theme.footer`, `logos[0]`→`theme.logo`. Copy `theme-override.css` into `common/`. Details: [references/pptx-theme-guide.md](references/pptx-theme-guide.md). (AWS icons: the build automatically copies only the icons actually referenced — no manual extraction needed.)
 
 ### Phase 2 — Content Authoring
-**플래닝 질문** (planning 시 확인, 빠진 것만 질문):
-- Topic & audience / Duration(블록당 20-35분 + 5분 휴식) / Target repo(기본 `~/reactive_presentation/`) / Language(KO·EN, 기술용어는 영어) / Aspect ratio(기본 16:9)
-- **Design refs** (REQUIRED, skippable): "참고 디자인(PPTX/PDF/이미지/기존 프레젠테이션 경로)이 있나요? (또는 skip)" → 제공 시 브랜딩+레이아웃 추출(`.pptx`=Phase 1, `.pdf`/이미지=시각 레이아웃 참고). 기존 프레젠테이션은 `~/oh-my-skill-tester/`도 자동 탐색해 목록 제시. skip 시 CSS-only cover + 기본 theme + **`_presentation.md`에 footer/logo 수동 설정 필수**.
+**Planning questions** (confirm during planning, ask only about what's missing):
+- Topic & audience / Duration (20-35 min per block + 5 min break) / Target repo (default `~/reactive_presentation/`) / Language (KO/EN, technical terms in English) / Aspect ratio (default 16:9)
+- **Design refs** (REQUIRED, skippable): "Do you have a reference design (path to a PPTX/PDF/image/existing presentation)? (or skip)" → if provided, extract branding+layout (`.pptx`=Phase 1, `.pdf`/image=visual layout reference). Also auto-search `~/oh-my-skill-tester/` for existing presentations and present the list. If skipped: CSS-only cover + default theme + **footer/logo must be set manually in `_presentation.md`**.
 
-**디자인 플랜 (필수 — 작성 전 2-pass)**: [references/design-direction.md](references/design-direction.md)를
-읽고 Subject/Palette/Type/Signature 플랜을 세운 뒤 anti-default 자기비평을 통과하고 작성 시작.
-테마 선택: 기본(AWS 콘솔 라이트) · `theme: { mode: dark }`(squid-ink night) ·
-`theme: { preset: paper }`(구 웜 룩, 의도적 선택 시만) · PPTX 추출(항상 우선).
-- **Speaker** (skippable): 이름·직함·소속 → frontmatter `speaker`{name,title,company} (MEMORY.md에 저장·재사용)
+**Design plan (required — 2-pass before writing)**: read [references/design-direction.md](references/design-direction.md),
+set a Subject/Palette/Type/Signature plan, pass the anti-default self-critique, and only then start writing.
+Theme choice: default (AWS console light) · `theme: { mode: dark }` (squid-ink night) ·
+`theme: { preset: paper }` (old warm look, only when deliberately chosen) · PPTX extraction (always preferred when available).
+- **Speaker** (skippable): name/title/company → frontmatter `speaker`{name,title,company} (stored in and reused from MEMORY.md)
 - **Level** (REQUIRED): 100/200/300/400 → frontmatter `level`
-- **Quiz** (skippable): 블록 끝 복습 퀴즈? → frontmatter `quiz`(true/false). 미포함 시 Key Takeaways로 대체. 전체 시간 → `duration`(blocks 합과 일치)
+- **Quiz** (skippable): review quiz at the end of the block? → frontmatter `quiz` (true/false). If not included, replace with Key Takeaways. Total time → `duration` (must match the sum of block durations)
 
-**프로젝트 구조** (멀티파일): `_presentation.md`(글로벌 theme/footer/logo/blocks) + `NN-block.md`(remarp:true) + `animations/`(Canvas JS).
+**Project structure** (multi-file): `_presentation.md` (global theme/footer/logo/blocks) + `NN-block.md` (remarp:true) + `animations/` (Canvas JS).
 
-> **`_presentation.md` 필수 (ratio/footer/logo)**: `ratio: "16:9"` 누락 시 프리뷰 비율 깨짐. PPTX 없으면 `theme:`에 `footer`·`logo` 수동 설정:
+> **`_presentation.md` is required (ratio/footer/logo)**: omitting `ratio: "16:9"` breaks the preview aspect ratio. Without a PPTX, set `footer` and `logo` manually under `theme:`:
 > ```yaml
 > ratio: "16:9"
 > theme: { footer: "© 2026 Company. All rights reserved.", logo: "./common/logo.png" }
 > ```
 
-**Remarp 핵심**: `remarp: true` frontmatter · `@type`/`@layout`/`@transition`/`@theme` 디렉티브 · `{.click}`·`:::click` 프래그먼트 · `:::notes` 스피커 노트 · `:::canvas` DSL · `::: left`/`::: right` 컬럼. 전체 문법: [references/remarp-format-guide.md](references/remarp-format-guide.md).
+**Remarp essentials**: `remarp: true` frontmatter · `@type`/`@layout`/`@transition`/`@theme` directives · `{.click}`/`:::click` fragments · `:::notes` speaker notes · `:::canvas` DSL · `::: left`/`::: right` columns. Full syntax: [references/remarp-format-guide.md](references/remarp-format-guide.md).
 
-> **스피커 노트 (필수)**: 모든 슬라이드에 `:::notes` — 150자+ (권장 300~500), `{timing}`/`{cue}` 마커 + `[요약]`(3~5 불릿) + 구어체 스크립트. 누락/무구조 시 `MISSING_NOTES`/`NOTE_STRUCTURE` 경고. 스키마: remarp-format-guide.md "Structured Note Schema".
+> **Speaker notes (required)**: every slide needs `:::notes` — 150+ characters (300-500 recommended), `{timing}`/`{cue}` markers + `[Summary]` (3-5 bullets) + a conversational script. Missing or unstructured notes trigger `MISSING_NOTES`/`NOTE_STRUCTURE` warnings. Schema: remarp-format-guide.md "Structured Note Schema".
 
-> ⚠️ **Interactive-First**: 3+ 하위항목→탭 · 4+ 나열→grid 카드(불릿 금지) · 5+ 박스→`:::html`+`:::css`(canvas 금지) · `:::html`은 3+ 동위요소면 `fragment fade-up`로 reactive. 원칙·탭 템플릿·색상 토큰: **authoring-rules.md §4**.
+> ⚠️ **Interactive-First**: 3+ sub-items → tabs · 4+ listed items → grid cards (no bullets) · 5+ boxes → `:::html`+`:::css` (no canvas) · for `:::html` with 3+ sibling elements, make them reactive with `fragment fade-up`. Principles, tab templates, and color tokens: **authoring-rules.md §4**.
 
-**대안 포맷** (명시 요청 시만): slides.json(런타임 렌더, slide-patterns.md "JSON Authoring Mode") · Marp(레거시, marp-format-guide.md).
+**Alternative formats** (only on explicit request): slides.json (runtime-rendered, slide-patterns.md "JSON Authoring Mode") · Marp (legacy, marp-format-guide.md).
 
 ### Phase 2.5 — Convert PPTX/PDF (optional)
 ```bash
 python3 {skill-dir}/scripts/convert_to_remarp.py <input.pptx|pdf> -o {repo}/{slug}/ --lang ko
 #   --build(즉시 빌드) · --block-size N(분할) · --force(덮어쓰기+.bak)
 ```
-변환 후 `.md`에서 `@speaker`/`{.click}`/`:::canvas`/`@type` 자유 편집. PDF는 이미지 배경+추출 텍스트.
+After conversion, freely edit `@speaker`/`{.click}`/`:::canvas`/`@type` in the `.md`. For PDFs: image background + extracted text.
 
-### Phase 2.8 — Validate (Rejection Loop, 필수 — build 전)
+### Phase 2.8 — Validate (Rejection Loop, required before build)
 ```bash
 python3 {skill-dir}/scripts/remarp_to_slides.py validate {repo}/{slug}/
 ```
-> ⚠️ **CRITICAL 0건이어야 build**. 규칙 표·Verdict·자동교정 지침: **authoring-rules.md §1**. CRITICAL 있으면 수정 후 재검증(최대 3회).
+> ⚠️ **Build only when CRITICAL count is 0**. Rule tables, verdicts, and auto-correction guidance: **authoring-rules.md §1**. If any CRITICAL issues exist, fix and re-validate (up to 3 times).
 
 ### Phase 3 — Build
 ```bash
@@ -76,14 +76,14 @@ python3 {skill-dir}/scripts/remarp_to_slides.py issues {repo}/{slug}/ [--json]  
 ```
 
 ### Phase 4 — Review & Iterate
-콘텐츠 생성 후 사용자에게 선택지를 제시: ① Remarp 직접 수정 후 "반영해주세요"(→ Claude가 읽고 `sync`) · ② 프롬프트로 수정 요청(→ Remarp+HTML 동시 수정) · ③ 진행.
-규칙: Remarp↔HTML 동기 유지(Remarp가 소스) · 기존 Canvas/quiz/인터랙션 보존 · 변경 슬라이드만 수정 · 무엇이 바뀌었는지 요약.
+After content generation, present the user with options: (1) edit the Remarp directly and say "please apply this" (→ Claude reads it and runs `sync`) · (2) request changes via prompt (→ Remarp and HTML are updated together) · (3) proceed.
+Rules: keep Remarp and HTML in sync (Remarp is the source of truth) · preserve existing Canvas/quiz/interactions · only modify the changed slides · summarize what changed.
 
 ### Phase 5 — Enhancement
-`@type: canvas` 슬라이드에 Canvas 애니메이션 구현(animation-utils.js) · 복잡 인터랙션 보강 · presenter view(P) 노트 확인.
+Implement Canvas animations on `@type: canvas` slides (animation-utils.js) · strengthen complex interactions · check speaker notes in presenter view (P).
 
 ### Phase 6 — Set Up Structure
-스킬 `assets/*`를 repo `common/`에 복사: `cp {skill-dir}/assets/* {repo}/common/`. 구조: `{repo}/index.html`(허브) + `common/`(theme.css, slide-framework.js, slide-renderer.js, presenter-view.js, animation-utils.js, quiz-component.js, export-utils.js, [aws-icons/], [pptx-theme/]) + `{slug}/`(TOC index.html + `NN-block.html`). TOC에 export 버튼:
+Copy the skill's `assets/*` into the repo's `common/`: `cp {skill-dir}/assets/* {repo}/common/`. Structure: `{repo}/index.html` (hub) + `common/` (theme.css, slide-framework.js, slide-renderer.js, presenter-view.js, animation-utils.js, quiz-component.js, export-utils.js, [aws-icons/], [pptx-theme/]) + `{slug}/` (TOC index.html + `NN-block.html`). Export buttons on the TOC:
 ```html
 <div class="export-toolbar">
   <button class="export-btn" onclick="ExportUtils.exportPDF({ title: 'Title' })">Export PDF</button>
@@ -92,29 +92,29 @@ python3 {skill-dir}/scripts/remarp_to_slides.py issues {repo}/{slug}/ [--json]  
 </div>
 <script src="../common/export-utils.js"></script>
 ```
-(빌드가 생성하는 `toc.html`에는 블록별/전체 PDF·ZIP·PPTX 버튼이 이미 포함됨.)
+(The `toc.html` generated by the build already includes per-block and overall PDF/ZIP/PPTX buttons.)
 
-### Phase 7 — Quality Review (필수 — 생략 불가)
-1. content-review-agent 호출 → `review content at [경로]` · 2. FAIL/REVIEW 시 수정 후 재리뷰(최대 3회) · 3. **PASS(≥85점) 후에만 완료 선언**.
-> ⚠️ 이 단계를 건너뛰고 배포 금지.
+### Phase 7 — Quality Review (required — cannot be skipped)
+1. Call content-review-agent → `review content at [path]` · 2. On FAIL/REVIEW, fix and re-review (up to 3 times) · 3. **Only declare completion after PASS (score ≥85)**.
+> ⚠️ Do not deploy by skipping this step.
 
 ### Phase 8 — Verify
-블록별 점검: 슬라이드 수 일치 · `SlideFramework` 옵션(footer/logoSrc/presenterNotes) · 모든 Canvas ID에 `setupCanvas()` · quiz `data-quiz`/`data-correct` · `../common/` 상대경로 · **theme-override.css 링크됨(PPTX 추출 시)** · 언어 · 첫 슬라이드=Session Cover(§0a/§0b, `.title-slide` 아님) · 마지막=Thank You(목차 링크).
+Per-block checks: slide count matches · `SlideFramework` options (footer/logoSrc/presenterNotes) · `setupCanvas()` on every Canvas ID · quiz `data-quiz`/`data-correct` · relative `../common/` paths · **theme-override.css is linked (when a PPTX was extracted)** · language · first slide = Session Cover (§0a/§0b, not `.title-slide`) · last slide = Thank You (with a link back to the table of contents).
 
-> **Screenshot 검증 (필수)**: Playwright MCP로 **FHD 1920×1080**(주 해상도) + **4K 3840×2160**에서 모든 인터랙티브/Canvas 슬라이드 캡처. 확인: 텍스트 가독성·캔버스 비율·오버플로우 없음·컨트롤 표시. 인터랙션(탭/슬라이더/버튼) 후 캡처. **Canvas step 슬라이드는 ArrowDown/Up으로 전체 step 순회하며 각 step 캡처**(겹침·정렬·가독성). N(노트)·F(풀스크린) 스케일링 확인. 캡처 검토 시 **디자인 자기비평: [references/design-direction.md](references/design-direction.md) §6 절제 체크리스트** 적용.
-> 스케일링: 고정 1920×1080 디자인 캔버스 + `transform: scale(min(vw/1920, vh/1080))` → FHD/4K 픽셀 일관.
+> **Screenshot verification (required)**: use Playwright MCP to capture every interactive/Canvas slide at **FHD 1920×1080** (primary resolution) + **4K 3840×2160**. Check: text readability, canvas proportions, no overflow, controls visible. Capture after interactions (tabs/sliders/buttons). **For Canvas step slides, step through every step with ArrowDown/Up and capture each one** (overlap, alignment, readability). Verify N (notes) and F (fullscreen) scaling. When reviewing captures, apply the **design self-critique: [references/design-direction.md](references/design-direction.md) §6 restraint checklist**.
+> Scaling: a fixed 1920×1080 design canvas + `transform: scale(min(vw/1920, vh/1080))` → consistent pixels across FHD/4K.
 
-### Phase 8.5 — PPTX Export (요청 시)
-"PPT/PPTX로 내보내기" 요청 시 두 경로:
+### Phase 8.5 — PPTX Export (on request)
+When "export to PPT/PPTX" is requested, two paths:
 ```bash
 # 권장 (headless, 픽셀 정확 — Playwright 네이티브 렌더링 + 스피커 노트 포함)
 pip install 'playwright>=1.40' 'python-pptx>=1.0' && playwright install chromium   # 1회
 python3 {skill-dir}/scripts/export_pptx.py {repo}/{slug}/ -o {slug}.pptx
 ```
-- 브라우저 경로(도구 설치 불필요): `toc.html`의 **Export PPTX** 버튼(`ExportUtils.exportPPTX`, html2canvas+PptxGenJS CDN — 품질은 headless 경로가 우수).
-- 각 슬라이드는 fragment 전체 공개 + Canvas 최종 step 상태로 캡처되고, `:::notes`가 PPTX 스피커 노트로 들어감.
-- 신뢰 경계: **직접 빌드한 덱만** export (캡처 중 덱의 HTML/JS가 headless 브라우저에서 실행됨).
-- **네이티브(편집 가능한) PPTX가 필요하면** 이 스킬이 아니라 `aws-light-fcd` 스킬로 라우팅 (presentation-agent 디스패처 규칙).
+- Browser path (no tool install needed): the **Export PPTX** button in `toc.html` (`ExportUtils.exportPPTX`, html2canvas+PptxGenJS CDN — the headless path gives better quality).
+- Each slide is captured with all fragments revealed and the Canvas at its final step state, and `:::notes` become the PPTX speaker notes.
+- Trust boundary: export **only decks you built yourself** (during capture, the deck's HTML/JS executes in a headless browser).
+- **If a native (editable) PPTX is needed**, route to the `aws-light-fcd` skill instead of this one (per the presentation-agent dispatcher rule).
 
 ### Phase 9 — Deploy
 ```bash
@@ -122,21 +122,21 @@ git add common/ {slug}/ index.html && git commit -m "feat: add {name} interactiv
 ```
 GitHub Pages: Settings → Pages → main / root.
 
-## 작성 규칙·패턴 (상세 — 작성/검증 시 읽기)
-- **[references/authoring-rules.md](references/authoring-rules.md)** — Validation 규칙(§1) · Forbidden AI-tells(§2) · Slide Title Voice(§3) · Interactive 패턴+탭 템플릿+색상 토큰(§4) · Slide Type 결정 + Canvas vs html/diagram(§5) · HTML Architecture flow 패턴(§6)
-- `:::canvas`를 쓰기 전 반드시 **[references/canvas-authoring-guide.md](references/canvas-authoring-guide.md)** (DSL 문법, 필수 좌표 공식, fragment 순서). `validate`가 CANVAS_OVERLAP backstop.
-- 뷰어 단축키(←→ Space ↑↓ F N P O S B Esc 1-9): [references/keyboard-shortcuts.md](references/keyboard-shortcuts.md).
+## Authoring Rules & Patterns (detailed — read when authoring/validating)
+- **[references/authoring-rules.md](references/authoring-rules.md)** — Validation rules (§1) · Forbidden AI-tells (§2) · Slide Title Voice (§3) · Interactive patterns + tab templates + color tokens (§4) · Slide type decisions + Canvas vs html/diagram (§5) · HTML architecture flow patterns (§6)
+- Before writing `:::canvas`, always read **[references/canvas-authoring-guide.md](references/canvas-authoring-guide.md)** (DSL syntax, required coordinate formulas, fragment order). `validate` acts as a CANVAS_OVERLAP backstop.
+- Viewer keyboard shortcuts (←→ Space ↑↓ F N P O S B Esc 1-9): [references/keyboard-shortcuts.md](references/keyboard-shortcuts.md).
 
-## Quality Assurance (사실 검증 — YAML/config 인용 시)
-- **Canvas 비례 스케일**: 모든 Canvas는 `ResizeObserver` + `BASE_W/BASE_H` + `ctx.scale(scale*dpr, scale*dpr)` 패턴 필수 (FHD/4K 대응). `setupCanvas()` 단독 금지 (px max-width 고정됨). slide-patterns.md §5.
-- **Karpenter v1**: `expireAfter`는 `spec.template.spec` (NOT `spec.disruption`). 메트릭은 `_total` 접미사. (karpenter.sh 확인)
-- **Grafana Loki**: derivedFields는 `regex` (NOT `matcherRegex`).
-- **GitBook 앵커**: 한글 제목은 한글 슬러그 (`## 1. 관측성` → `#1-관측성`, 숫자 뒤 점 제거, 공백→하이픈).
-- **K8s**: `topologySpreadConstraints`는 `labelSelector` 필요. VPA `Auto`는 deprecated (→ `Recreate`).
+## Quality Assurance (fact-check when citing YAML/config)
+- **Canvas proportional scaling**: every Canvas must use the `ResizeObserver` + `BASE_W/BASE_H` + `ctx.scale(scale*dpr, scale*dpr)` pattern (for FHD/4K support). `setupCanvas()` alone is forbidden (it fixes a px max-width). slide-patterns.md §5.
+- **Karpenter v1**: `expireAfter` lives under `spec.template.spec` (NOT `spec.disruption`). Metrics use the `_total` suffix. (verified against karpenter.sh)
+- **Grafana Loki**: derivedFields use `regex` (NOT `matcherRegex`).
+- **GitBook anchors**: Korean titles get Korean slugs (`## 1. 관측성` → `#1-관측성`, drop the period after the number, spaces become hyphens).
+- **K8s**: `topologySpreadConstraints` requires `labelSelector`. VPA `Auto` is deprecated (→ `Recreate`).
 
 ## Resources
 **assets/** (→ `common/`): design-tokens.css · theme.css · theme-override-template.css · slide-framework.js · slide-renderer.js · presenter-view.js · animation-utils.js · quiz-component.js · export-utils.js
-**scripts/**: extract_pptx_theme.py · remarp_to_slides.py · export_pptx.py(headless PPTX) · marp_to_slides.py(레거시) · extract_aws_icons.py
-**references/**: design-direction.md(디자인 원칙/테마 선택) · authoring-rules.md(작성 규칙/패턴) · framework-guide.md(CSS/JS API) · slide-patterns.md(타입별 패턴) · remarp-format-guide.md(Remarp 문법) · interactive-patterns-guide.md(고급 인터랙션) · canvas-authoring-guide.md(Canvas DSL) · colors-reference.md(토큰) · pptx-theme-guide.md · aws-icons-guide.md · keyboard-shortcuts.md · marp-format-guide.md(레거시)
+**scripts/**: extract_pptx_theme.py · remarp_to_slides.py · export_pptx.py (headless PPTX) · marp_to_slides.py (legacy) · extract_aws_icons.py
+**references/**: design-direction.md (design principles/theme selection) · authoring-rules.md (authoring rules/patterns) · framework-guide.md (CSS/JS API) · slide-patterns.md (per-type patterns) · remarp-format-guide.md (Remarp syntax) · interactive-patterns-guide.md (advanced interactions) · canvas-authoring-guide.md (Canvas DSL) · colors-reference.md (tokens) · pptx-theme-guide.md · aws-icons-guide.md · keyboard-shortcuts.md · marp-format-guide.md (legacy)
 
-> ⚡ **토큰 절약**: `slide-patterns.md`·`interactive-patterns-guide.md`·`remarp-format-guide.md`는 큰 파일(각 ~25K토큰)입니다. 전체를 Read하지 말고 **상단 `<!-- SECTION INDEX -->`의 정확 라인번호로 필요한 `##` 섹션을 offset-read** 하세요 (예: `Read(file, offset=L, limit=다음섹션L−L)`). 해당 섹션이 다른 `##`/`§`를 참조하면 그 섹션도 함께 읽으세요(교차참조 누락 방지).
+> ⚡ **Token savings**: `slide-patterns.md`, `interactive-patterns-guide.md`, and `remarp-format-guide.md` are large files (~25K tokens each). Instead of reading the whole file, **offset-read only the needed `##` section using the exact line numbers from the `<!-- SECTION INDEX -->` at the top** (e.g. `Read(file, offset=L, limit=nextSectionL−L)`). If that section references another `##`/`§`, read that section too (to avoid missing cross-references).

@@ -265,18 +265,18 @@ infrastructure:
 - Encryption enabled for EBS volumes
 - Least privilege IAM policies
 
-### Central Account (선택)
+### Central Account (Optional)
 
-팀 계정과 분리된 공유 계정이 필요할 때만(공유 대시보드, 부하 생성, 진행도 검증 등) `centralAccountInfrastructure`를 정의한다 — 이벤트당 1개, 계정 할당량을 추가로 소비한다. 팀보다 먼저 배포되며, 실패 시 어떤 팀도 프로비저닝되지 않는다. 팀 계정과의 상호작용은 중앙 계정 내부에서만 호출 가능한 Central Account Client API(SigV4)로 이루어진다. 상세: `{plugin-dir}/skills/workshop-creator/references/central-account-guide.md`
+Define `centralAccountInfrastructure` only when a shared account separate from the team accounts is needed (shared dashboards, load generation, progress verification, etc.) — one per event, consuming additional account quota. It deploys before the teams, and if it fails, no team gets provisioned. Interaction with team accounts happens only through the Central Account Client API (SigV4), which is callable only from inside the central account. Details: `{plugin-dir}/skills/workshop-creator/references/central-account-guide.md`
 
 ### Event Parameter Injection
 
-값을 주입하는 3계층을 구분해서 사용한다:
-1. `params` — 마크다운 콘텐츠 텍스트 변수 (`:param{key="..."}`), CloudFormation과 무관
-2. `infrastructure.cloudformationTemplates[].parameters[]` — CFN 파라미터. `userOverridable: true`를 붙여야 이벤트 운영자가 이벤트별로 값을 오버라이드할 수 있다 (붙이지 않으면 `defaultValue`로 고정)
-3. Magic Variables (`{{.ParticipantRoleArn}}` 등) — Workshop Studio가 자동 계산해 `defaultValue`에 주입
+Distinguish and use the 3 layers of value injection:
+1. `params` — text variables for markdown content (`:param{key="..."}`), unrelated to CloudFormation
+2. `infrastructure.cloudformationTemplates[].parameters[]` — CFN parameters. Attaching `userOverridable: true` lets the event operator override the value per event (without it, the value is fixed to `defaultValue`)
+3. Magic Variables (e.g. `{{.ParticipantRoleArn}}`) — automatically computed by Workshop Studio and injected into `defaultValue`
 
-참가자에게 스택 Output을 보여줘야 하면 `participantVisibleStackOutputs`(선별) 또는 `participantAllStackOutputsVisible: true`(전체, 기본값 false)를 사용한다. 상세: `{plugin-dir}/skills/workshop-creator/references/event-params-guide.md`
+If participants need to see stack Outputs, use `participantVisibleStackOutputs` (selective) or `participantAllStackOutputsVisible: true` (all, default false). Details: `{plugin-dir}/skills/workshop-creator/references/event-params-guide.md`
 
 ---
 
@@ -315,27 +315,27 @@ infrastructure:
 
 1. **Requirements** — Topic, audience, duration, modules, languages
 2. **Structure** — Module breakdown, sections, diagrams, duration per section
-3. **Infrastructure** — CloudFormation template, IAM policy, central account 필요 여부, 운영자 오버라이드가 필요한 파라미터 결정 (if needed)
+3. **Infrastructure** — CloudFormation template, IAM policy, whether a central account is needed, and which parameters need operator overrides (if needed)
 4. **Content** — Create pages with directives, Mermaid diagrams, verification steps
-5. **Quality Review (필수)** — content-review-agent 호출 필수. PASS 획득 전 완료 선언 금지 (Workshop은 Visual-Testing 면제 → 90점 스케일 PASS ≥77 — 플러그인 `CLAUDE.md` Verdict 표 참조)
+5. **Quality Review (mandatory)** — invoking content-review-agent is required. Do not declare completion before achieving PASS (Workshop is Visual-Testing exempt → 90-point scale PASS ≥77 — see the plugin `CLAUDE.md` Verdict table)
 
 ---
 
-## Quality Review (필수 — 생략 불가)
+## Quality Review (Mandatory — cannot be skipped)
 
-콘텐츠 완성 후 배포/완료 선언 전에 반드시:
-1. content-review-agent 호출 → `review content at [프로젝트경로]`
-2. FAIL/REVIEW 판정 시 수정 후 재리뷰 (최대 3회)
-3. PASS 획득 후에만 완료 선언 (Workshop은 90점 면제 스케일: PASS ≥77 / REVIEW 63-76 / FAIL <63)
+After content is finished, and before declaring deployment/completion, you must always:
+1. Invoke content-review-agent → `review content at [project path]`
+2. On a FAIL/REVIEW verdict, fix and re-review (max 3 rounds)
+3. Declare completion only after achieving PASS (Workshop uses the 90-point exempt scale: PASS ≥77 / REVIEW 63-76 / FAIL <63)
 
-> ⚠️ 이 단계를 건너뛰고 완료를 선언하는 것은 금지됩니다.
+> ⚠️ Skipping this step and declaring completion is forbidden.
 
 ---
 
 ## Collaboration Workflow
 
 ```
-workshop-agent → content-review-agent (필수) → Workshop Studio deployment
+workshop-agent → content-review-agent (mandatory) → Workshop Studio deployment
 ```
 
 ---
@@ -357,25 +357,25 @@ workshop-agent → content-review-agent (필수) → Workshop Studio deployment
 
 ## Team Collaboration
 
-팀의 일원으로 스폰될 때 (Agent tool의 team_name 파라미터가 설정된 경우):
+When spawned as a member of a team (i.e. the Agent tool's `team_name` parameter is set):
 
-### 태스크 수신
-- TaskGet으로 할당된 태스크를 읽고 모듈 할당 정보를 파싱
-- 입력: 워크숍 구조 파일 경로, 담당 모듈 번호, contentspec.yaml 경로
+### Receiving a Task
+- Use TaskGet to read the assigned task and parse the module assignment information
+- Inputs: workshop structure file path, assigned module number, contentspec.yaml path
 
-### 산출물
-- 지정된 모듈 디렉토리에 콘텐츠 파일 작성
-- 일관된 네이밍: `content/module{N}-{slug}/index.{ko,en}.md`
-- content-review-agent 호출 생략 (팀 리더가 배치 리뷰 수행)
+### Deliverables
+- Write content files in the specified module directory
+- Consistent naming: `content/module{N}-{slug}/index.{ko,en}.md`
+- Skip invoking content-review-agent (the team lead performs the batch review)
 
-### 완료 신호
-- TaskUpdate로 태스크를 completed 처리
-- 아티팩트 경로 + 페이지 수 + 요약을 보고
+### Completion Signal
+- Mark the task as completed via TaskUpdate
+- Report the artifact path + page count + a summary
 
-### 제약
-- 워크숍 구조가 승인된 후에만 콘텐츠 작성 시작
-- 다른 에이전트가 담당하는 모듈의 콘텐츠 수정 금지
-- contentspec.yaml, 홈페이지, summary 페이지는 팀 리더만 관리
+### Constraints
+- Start writing content only after the workshop structure is approved
+- Never modify content for modules assigned to another agent
+- contentspec.yaml, the homepage, and the summary page are managed only by the team lead
 
 ---
 

@@ -1,8 +1,8 @@
-<!-- SECTION INDEX (auto) — 큰 파일. 전체 읽지 말고 필요한 ## 섹션만 offset-read.
-     라인번호 정확값(10 sec). 예: Read(file, offset=L, limit=다음섹션L−L). 해당 섹션이 §/## 참조 시 그 섹션도 함께. -->
+<!-- SECTION INDEX (auto) — Large file. Don't read the whole thing; offset-read only the ## section you need.
+     Line numbers are exact (as of 10 sec ago). Example: Read(file, offset=L, limit=nextSectionL−L). If a section references another §/##, read that one too. -->
 <!--
-  L22    사용 시점 Decision Tree
-  L54    §0 :::html 블록 레이아웃 규칙 (MANDATORY)
+  L22    When-to-Use Decision Tree
+  L54    §0 :::html Block Layout Rules (MANDATORY)
   L176   §1 Range Slider Patterns
   L628   §2 Mode Selector / Toggle Patterns
   L1083  §3 Dynamic YAML Generation
@@ -15,107 +15,107 @@
 
 # Interactive Patterns Guide
 
-v1.0.0의 인터랙티브 패턴을 Remarp `:::html` / `:::script` / `:::css` 블록으로 구현하는 복사-붙여넣기 템플릿 라이브러리.
+A copy-paste template library implementing the v1.0.0 interactive patterns as Remarp `:::html` / `:::script` / `:::css` blocks.
 
 ---
 
-## 사용 시점 Decision Tree
+## When-to-Use Decision Tree
 
 ```
-정적 콘텐츠? (1-2문장, 이미지)
-├─ Yes → Remarp 마크다운 그대로
-└─ No → 데이터/정보가 있는 슬라이드
+Static content? (1-2 sentences, an image)
+├─ Yes → Use Remarp markdown as-is
+└─ No → Slide has data/information
          │
-         ├─ 3+ 하위 항목/카테고리 → ★ 자체 완결 Tab 패턴 (SKILL.md "Interactive Design 원칙" 참조)
-         │     └─ inline onclick + .tc 토글 — 외부 JS 불필요
-         ├─ 4+ 나열 항목 → ★ Grid 카드 패턴 (불릿 리스트 대신)
-         │     └─ display:grid + 색상 border 카드
-         ├─ A vs B 비교 → Remarp `@type: compare` 또는 자체 Tab
-         ├─ 단계별 흐름 (박스 ≤4) → `:::canvas` DSL 또는 fragment
-         ├─ 다계층/5+ 박스 → `:::html` + `:::css` (canvas 금지)
+         ├─ 3+ sub-items/categories → ★ Self-contained Tab pattern (see SKILL.md "Interactive Design Principles")
+         │     └─ inline onclick + .tc toggle — no external JS needed
+         ├─ 4+ listed items → ★ Grid card pattern (instead of a bullet list)
+         │     └─ display:grid + color-bordered cards
+         ├─ A vs B comparison → Remarp `@type: compare` or a self-contained Tab
+         ├─ Step-by-step flow (≤4 boxes) → `:::canvas` DSL or fragment
+         ├─ Multi-tier/5+ boxes → `:::html` + `:::css` (canvas forbidden)
          │
-         └─ 동적 인터랙션 필요 → `:::html` + `:::script` (이 가이드)
+         └─ Needs dynamic interaction → `:::html` + `:::script` (this guide)
               │
-              ├─ 슬라이더로 값 조절 → §1 Range Slider Patterns
-              ├─ 모드/옵션 선택 → §2 Mode Selector Patterns
-              ├─ 동적 YAML 생성 → §3 Dynamic YAML Patterns
-              ├─ 캔버스 애니메이션 + 컨트롤 → §4 Canvas Animation Patterns
-              ├─ 실시간 입력/계산 → §5 Live Input Patterns
-              ├─ 펼치기/접기 상세 → §6 Expandable Content Patterns
-              └─ DOM 애니메이션 → §7 DOM Animation Patterns
+              ├─ Adjust a value via slider → §1 Range Slider Patterns
+              ├─ Select a mode/option → §2 Mode Selector Patterns
+              ├─ Generate YAML dynamically → §3 Dynamic YAML Patterns
+              ├─ Canvas animation + controls → §4 Canvas Animation Patterns
+              ├─ Live input/calculation → §5 Live Input Patterns
+              ├─ Expand/collapse detail → §6 Expandable Content Patterns
+              └─ DOM animation → §7 DOM Animation Patterns
 ```
 
-> **★ Interactive-First**: 위 트리에서 ★ 표시된 패턴이 가장 자주 사용됩니다.
-> 대부분의 기술 슬라이드는 "탭 + 카드" 조합으로 충분히 interactive해집니다.
-> 슬라이더/시뮬레이터 같은 고급 패턴은 실제로 계산/입력이 필요할 때만 사용합니다.
+> **★ Interactive-First**: The patterns marked ★ in the tree above are the most frequently used.
+> Most technical slides become sufficiently interactive with a "tabs + cards" combination.
+> Reserve advanced patterns like sliders/simulators for cases that genuinely need calculation or input.
 
 ---
 
-## §0 :::html 블록 레이아웃 규칙 (MANDATORY)
+## §0 :::html Block Layout Rules (MANDATORY)
 
-`:::html` 블록은 `.slide-body` (flex: 1) 안에서 렌더링되며, 슬라이드 패딩이 이미 적용된 상태입니다. 아래 규칙을 반드시 준수해야 콘텐츠가 슬라이드 영역을 넘치지 않습니다.
+`:::html` blocks render inside `.slide-body` (flex: 1), where the slide padding is already applied. You must follow the rules below so content never overflows the slide area.
 
 ### Safe Content Area
 
-| 항목 | 값 |
+| Item | Value |
 |------|-----|
-| 기본 슬라이드 크기 | 1280 × 720 px |
-| 슬라이드 패딩 | `2rem 2.7rem` (상하 2rem, 좌우 2.7rem) |
-| 유효 콘텐츠 영역 | **~1194 × 620 px** (제목 영역 제외 시 ~540px 높이) |
+| Default slide size | 1280 × 720 px |
+| Slide padding | `2rem 2.7rem` (2rem top/bottom, 2.7rem left/right) |
+| Effective content area | **~1194 × 620 px** (~540px height once the title area is excluded) |
 
-> **규칙**: `:::html` 내부 콘텐츠는 유효 영역을 절대 초과하면 안 됩니다. 슬라이드에 스크롤바가 생기면 레이아웃 실패입니다.
+> **Rule**: Content inside `:::html` must never exceed the effective area. If a scrollbar appears on the slide, the layout has failed.
 
-### max-height 규칙
+### max-height Rule
 
-`:::html` 블록의 최상위 컨테이너에 반드시 높이 제한을 설정합니다:
+Always set a height limit on the top-level container of a `:::html` block:
 
 ```css
-/* 절대값 방식 — 제목 있는 슬라이드 */
+/* Absolute-value approach — slide with a title */
 .container { max-height: 500px; overflow: hidden; }
 
-/* 상대값 방식 — 제목 없는 슬라이드 */
+/* Relative-value approach — slide without a title */
 .container { max-height: calc(100% - 2rem); overflow: hidden; }
 ```
 
-### 패딩 누적 방지
+### Preventing Padding Accumulation
 
-슬라이드 → html 블록 → 카드 컴포넌트로 패딩이 중첩됩니다. **합계 60px 이하**를 유지합니다:
+Padding stacks up across slide → html block → card component. **Keep the total at or below 60px**:
 
-| 레이어 | 권장 패딩 | 비고 |
+| Layer | Recommended padding | Notes |
 |--------|----------|------|
-| 슬라이드 (자동) | 2rem (~32px) | 테마가 적용, 수정 불가 |
-| `:::html` 외부 wrapper | 0 ~ 0.5rem | 최소화 |
-| 내부 카드/박스 | 0.75rem ~ 1rem max | 합계 60px 이하 유지 |
+| Slide (automatic) | 2rem (~32px) | Applied by the theme, not modifiable |
+| `:::html` outer wrapper | 0 ~ 0.5rem | Minimize |
+| Inner card/box | 0.75rem ~ 1rem max | Keep the total at or below 60px |
 
 ```css
-/* BAD — 패딩 누적 100px+ */
+/* BAD — padding accumulates to 100px+ */
 .wrapper { padding: 2rem; }
 .wrapper .card { padding: 1.5rem; }
 
-/* GOOD — 패딩 누적 ~44px */
+/* GOOD — padding accumulates to ~44px */
 .wrapper { padding: 0.25rem; }
 .wrapper .card { padding: 0.75rem; }
 ```
 
-### 반응형 사이징 규칙
+### Responsive Sizing Rules
 
-hardcoded `px` 값은 FHD/4K 호환을 깨뜨립니다. 아래 테이블에 따라 단위를 선택합니다:
+Hardcoded `px` values break FHD/4K compatibility. Choose units according to the table below:
 
-| 대상 | 사용할 단위 | 예시 | 금지 |
+| Target | Unit to use | Example | Forbidden |
 |------|-----------|------|------|
-| 타이포그래피 | `rem` 또는 `clamp()` | `font-size: clamp(0.8rem, 1.2vw, 1.1rem)` | `font-size: 14px` |
-| 너비 | `%`, `fr` | `width: 48%`, `grid-template-columns: 1fr 1fr` | `width: 400px` |
-| 높이 | `auto`, `max-height` | `max-height: 500px`, `height: auto` | `height: 600px` |
-| 간격 | `rem`, `gap` | `gap: 1rem`, `margin-bottom: 0.5rem` | `margin: 20px` |
-| 아이콘 | `2~3rem` | `width: 2.5rem; height: 2.5rem` | `width: 48px` |
-| 보더/그림자 | `px` 허용 | `border: 1px solid`, `box-shadow: 0 2px 8px` | — |
+| Typography | `rem` or `clamp()` | `font-size: clamp(0.8rem, 1.2vw, 1.1rem)` | `font-size: 14px` |
+| Width | `%`, `fr` | `width: 48%`, `grid-template-columns: 1fr 1fr` | `width: 400px` |
+| Height | `auto`, `max-height` | `max-height: 500px`, `height: auto` | `height: 600px` |
+| Spacing | `rem`, `gap` | `gap: 1rem`, `margin-bottom: 0.5rem` | `margin: 20px` |
+| Icons | `2~3rem` | `width: 2.5rem; height: 2.5rem` | `width: 48px` |
+| Borders/shadows | `px` allowed | `border: 1px solid`, `box-shadow: 0 2px 8px` | — |
 
-### CSS 변수 사용 의무
+### CSS Variables Are Mandatory
 
-테마 일관성을 위해 hardcoded 색상/크기 대신 CSS 변수를 사용합니다:
+For theme consistency, use CSS variables instead of hardcoded colors/sizes:
 
 ```css
-/* GOOD — 테마 변수 사용 */
+/* GOOD — uses theme variables */
 .card {
   background: var(--bg-card);
   color: var(--text);
@@ -123,7 +123,7 @@ hardcoded `px` 값은 FHD/4K 호환을 깨뜨립니다. 아래 테이블에 따�
 }
 .highlight { color: var(--accent); }
 
-/* BAD — hardcoded 색상 */
+/* BAD — hardcoded colors */
 .card {
   background: #1a1a2e;
   color: #e0e0e0;
@@ -131,45 +131,45 @@ hardcoded `px` 값은 FHD/4K 호환을 깨뜨립니다. 아래 테이블에 따�
 }
 ```
 
-주요 CSS 변수 목록:
+Key CSS variables:
 
-| 변수 | 용도 |
+| Variable | Purpose |
 |------|------|
-| `var(--bg)` | 슬라이드 배경 |
-| `var(--bg-card)` | 카드/박스 배경 |
-| `var(--text)` | 기본 텍스트 |
-| `var(--text-muted)` | 보조 텍스트 |
-| `var(--accent)` | 강조 색상 (primary) |
-| `var(--border)` | 테두리 |
-| `var(--success)` | 성공/긍정 |
-| `var(--warning)` | 경고 |
-| `var(--danger)` | 위험/오류 |
+| `var(--bg)` | Slide background |
+| `var(--bg-card)` | Card/box background |
+| `var(--text)` | Base text |
+| `var(--text-muted)` | Secondary text |
+| `var(--accent)` | Accent color (primary) |
+| `var(--border)` | Border |
+| `var(--success)` | Success/positive |
+| `var(--warning)` | Warning |
+| `var(--danger)` | Danger/error |
 
-### 한국어 텍스트 규칙
+### Korean Text Rules
 
-한국어 콘텐츠에서는 반드시 다음 CSS를 적용합니다:
+Always apply the following CSS to Korean content:
 
 ```css
-/* 한국어 줄바꿈 — 단어 단위 유지 */
+/* Korean line-wrapping — keep word units intact */
 .container {
   word-break: keep-all;
   overflow-wrap: break-word;
 }
 ```
 
-`word-break: keep-all` 없이는 한국어 텍스트가 글자 단위로 잘려 가독성이 크게 떨어집니다.
+Without `word-break: keep-all`, Korean text wraps character-by-character, which severely hurts readability.
 
-### 검증 체크리스트
+### Verification Checklist
 
-`:::html` 블록 작성 후 아래 항목을 반드시 확인합니다:
+After writing a `:::html` block, always confirm the following:
 
-- [ ] FHD (1920×1080)에서 스크롤바 없음
-- [ ] 4K (3840×2160)에서 레이아웃 유지
-- [ ] 패딩 합계 ≤ 60px (slide + wrapper + card)
-- [ ] hardcoded 색상 없음 (모두 `var(--*)` 사용)
-- [ ] hardcoded px 없음 (border/shadow 제외)
-- [ ] `max-height` 설정됨
-- [ ] 한국어 텍스트에 `word-break: keep-all` 적용
+- [ ] No scrollbar at FHD (1920×1080)
+- [ ] Layout holds at 4K (3840×2160)
+- [ ] Total padding ≤ 60px (slide + wrapper + card)
+- [ ] No hardcoded colors (all use `var(--*)`)
+- [ ] No hardcoded px (except border/shadow)
+- [ ] `max-height` is set
+- [ ] `word-break: keep-all` applied to Korean text
 
 ---
 
@@ -177,9 +177,9 @@ hardcoded `px` 값은 FHD/4K 호환을 깨뜨립니다. 아래 테이블에 따�
 
 ### §1.1 Single Slider with Value Display
 
-단일 슬라이더로 값을 조절하고 실시간으로 표시. 가장 기본적인 인터랙티브 패턴.
+Adjust a value with a single slider and display it in real time. The most basic interactive pattern.
 
-**사용 시점**: 단일 파라미터 조절 (replicas, timeout, threshold 등)
+**When to use**: Adjusting a single parameter (replicas, timeout, threshold, etc.)
 
 :::html
 ```html
@@ -263,18 +263,18 @@ hardcoded `px` 값은 FHD/4K 호환을 깨뜨립니다. 아래 테이블에 따�
 
 :::notes
 ```
-- 발표 시간: 30초
-- 슬라이더를 움직여 비용 변화 데모
-- "replicas를 늘리면 가용성은 높아지지만 비용도 증가"
+- Presentation time: 30 seconds
+- Demo the cost change by moving the slider
+- "Increasing replicas raises availability but also increases cost"
 ```
 
 ---
 
 ### §1.2 Multi-Slider Calculator (VPA Simulator)
 
-4개 슬라이더로 CPU/Memory request/limit을 조절하고 절감률과 YAML을 실시간 생성.
+Adjust CPU/Memory request/limit with four sliders and generate the savings rate and YAML in real time.
 
-**사용 시점**: VPA, HPA, 리소스 최적화 시뮬레이션
+**When to use**: VPA, HPA, resource-optimization simulations
 
 :::html
 ```html
@@ -447,19 +447,19 @@ spec:
 
 :::notes
 ```
-- 발표 시간: 2분
-- VPA가 자동으로 리소스를 조절하는 원리 설명
-- 슬라이더로 before/after 비교 시연
-- "VPA는 실제 사용량 기반으로 최적 값을 추천"
+- Presentation time: 2 minutes
+- Explain the principle behind VPA's automatic resource adjustment
+- Demonstrate a before/after comparison with the slider
+- "VPA recommends optimal values based on actual usage"
 ```
 
 ---
 
 ### §1.3 Slider with Tradeoff Bars (TTL Controller)
 
-슬라이더 값에 따라 트레이드오프 막대가 시각적으로 변화. 추천 텍스트도 동적 업데이트.
+The tradeoff bars change visually according to the slider value, and the recommendation text updates dynamically too.
 
-**사용 시점**: expireAfter, TTL, retention 등 트레이드오프가 있는 설정
+**When to use**: Settings with a tradeoff, such as expireAfter, TTL, or retention
 
 :::html
 ```html
@@ -617,10 +617,10 @@ spec:
 
 :::notes
 ```
-- 발표 시간: 1분 30초
-- TTL 값에 따른 트레이드오프 시각화
-- "짧은 TTL = 비용 절감 but 높은 churn"
-- "긴 TTL = 안정성 but 비용 증가"
+- Presentation time: 1 minute 30 seconds
+- Visualize the tradeoff across TTL values
+- "Short TTL = cost savings but higher churn"
+- "Long TTL = stability but higher cost"
 ```
 
 ---
@@ -629,9 +629,9 @@ spec:
 
 ### §2.1 Button Group Mode Selector (VPA Mode)
 
-버튼 그룹으로 모드를 선택하면 해당 설명이 표시되는 패턴.
+Selecting a mode via a button group displays the corresponding description.
 
-**사용 시점**: VPA updateMode, HPA behavior, 정책 선택 등
+**When to use**: VPA updateMode, HPA behavior, policy selection, etc.
 
 :::html
 ```html
@@ -784,18 +784,18 @@ spec:
 
 :::notes
 ```
-- 발표 시간: 1분 30초
-- 각 모드를 클릭하며 차이점 설명
-- "프로덕션에서는 Auto + PDB 조합 권장"
+- Presentation time: 1 minute 30 seconds
+- Click through each mode to explain the differences
+- "For production, the Auto + PDB combination is recommended"
 ```
 
 ---
 
 ### §2.2 Compare Toggle (Auto/MNG/Fargate)
 
-A vs B vs C 비교 토글. 기존 compare-toggle 스타일 활용.
+An A vs B vs C comparison toggle, reusing the existing compare-toggle style.
 
-**사용 시점**: EKS compute 옵션, 배포 전략, 스토리지 유형 비교
+**When to use**: Comparing EKS compute options, deployment strategies, storage types
 
 :::html
 ```html
@@ -906,18 +906,18 @@ A vs B vs C 비교 토글. 기존 compare-toggle 스타일 활용.
 
 :::notes
 ```
-- 발표 시간: 1분
-- 세 가지 옵션 빠르게 비교
-- "대부분 Karpenter 권장, Fargate는 특수 케이스"
+- Presentation time: 1 minute
+- Quickly compare the three options
+- "Karpenter is recommended in most cases; Fargate is for special cases"
 ```
 
 ---
 
 ### §2.3 Alert Toggle Builder (Checkbox to YAML)
 
-체크박스 선택에 따라 PrometheusRule YAML이 동적으로 생성되는 패턴.
+A PrometheusRule YAML is generated dynamically based on the checkboxes selected.
 
-**사용 시점**: 알림 설정, 정책 구성, 기능 토글 등
+**When to use**: Alert configuration, policy setup, feature toggles, etc.
 
 :::html
 ```html
@@ -1073,9 +1073,9 @@ ${selected.join('\n')}`;
 
 :::notes
 ```
-- 발표 시간: 1분 30초
-- 체크박스 토글하며 YAML 변화 시연
-- "필요한 알림만 선택해서 바로 적용 가능"
+- Presentation time: 1 minute 30 seconds
+- Toggle the checkboxes to demonstrate the YAML changing
+- "Select only the alerts you need and apply them immediately"
 ```
 
 ---
@@ -1084,9 +1084,9 @@ ${selected.join('\n')}`;
 
 ### §3.1 Radio/Checkbox to YAML (NodeClass Builder)
 
-라디오 버튼과 체크박스 조합으로 EC2NodeClass YAML 생성.
+Generate EC2NodeClass YAML from a combination of radio buttons and checkboxes.
 
-**사용 시점**: Karpenter NodeClass, NodePool, 복잡한 K8s 리소스 설정
+**When to use**: Karpenter NodeClass, NodePool, complex K8s resource configuration
 
 :::html
 ```html
@@ -1266,18 +1266,18 @@ spec:
 
 :::notes
 ```
-- 발표 시간: 2분
-- 인스턴스 타입/기능 조합에 따른 YAML 변화
-- "Graviton + Spot 조합으로 최대 75% 절감"
+- Presentation time: 2 minutes
+- The YAML changes based on the instance type/feature combination
+- "The Graviton + Spot combination can save up to 75%"
 ```
 
 ---
 
 ### §3.2 Slider Values to YAML (Resource Recommendation)
 
-슬라이더 값을 계산하여 VPA recommendation 형식의 YAML 생성.
+Compute the slider values to generate a YAML in the VPA recommendation format.
 
-**사용 시점**: 리소스 추천, 용량 계산, 비용 견적
+**When to use**: Resource recommendations, capacity calculations, cost estimates
 
 :::html
 ```html
@@ -1397,9 +1397,9 @@ resources:
 
 :::notes
 ```
-- 발표 시간: 1분
-- 실제 사용량을 입력하면 VPA 권장값 자동 계산
-- "target은 평균의 15% headroom, upper는 peak의 20% headroom"
+- Presentation time: 1 minute
+- Entering the actual usage values auto-calculates the VPA recommended values
+- "target uses 15% headroom over the average, upper uses 20% headroom over the peak"
 ```
 
 ---
@@ -1408,9 +1408,9 @@ resources:
 
 ### §4.1 Phase Animation with Buttons (Signal Correlation)
 
-Play/Next/Reset 버튼으로 다단계 캔버스 애니메이션을 제어.
+Control a multi-stage canvas animation with Play/Next/Reset buttons.
 
-**사용 시점**: 신호 상관관계, 데이터 흐름, 프로세스 단계 시각화
+**When to use**: Signal correlation, data flow, visualizing process stages
 
 :::html
 ```html
@@ -1628,18 +1628,18 @@ Play/Next/Reset 버튼으로 다단계 캔버스 애니메이션을 제어.
 
 :::notes
 ```
-- 발표 시간: 2분
-- Play로 자동 진행, Next/Prev로 수동 제어
-- "3개 신호의 상관관계를 단계별로 설명"
+- Presentation time: 2 minutes
+- Play advances automatically; Next/Prev give manual control
+- "Explain the correlation among the three signals step by step"
 ```
 
 ---
 
 ### §4.2 Timeline Animation with Speed Control
 
-Start/Reset/Speed 버튼 + requestAnimationFrame으로 타임라인 애니메이션.
+A timeline animation driven by Start/Reset/Speed buttons plus requestAnimationFrame.
 
-**사용 시점**: 롤링 업데이트, 스케일링 과정, 시간 경과 시각화
+**When to use**: Rolling updates, scaling processes, visualizing the passage of time
 
 :::html
 ```html
@@ -1867,9 +1867,9 @@ Start/Reset/Speed 버튼 + requestAnimationFrame으로 타임라인 애니메이
 
 :::notes
 ```
-- 발표 시간: 2분
-- 롤링 업데이트 과정을 타임라인으로 시각화
-- Speed 조절로 빠르게 전체 과정 데모 가능
+- Presentation time: 2 minutes
+- Visualize the rolling-update process as a timeline
+- Adjusting the speed lets you demo the whole process quickly
 ```
 
 ---
@@ -1878,9 +1878,9 @@ Start/Reset/Speed 버튼 + requestAnimationFrame으로 타임라인 애니메이
 
 ### §5.1 Regex Tester with Highlighting
 
-텍스트 입력 + 로그 샘플에서 정규식 매칭 결과를 하이라이트.
+Highlights regex matches in a log sample against a text input.
 
-**사용 시점**: 로그 파싱, 필터 규칙, 패턴 매칭 설명
+**When to use**: Log parsing, filter rules, explaining pattern matching
 
 :::html
 ```html
@@ -2018,18 +2018,18 @@ Start/Reset/Speed 버튼 + requestAnimationFrame으로 타임라인 애니메이
 
 :::notes
 ```
-- 발표 시간: 1분
-- 정규식 입력하며 실시간 하이라이트 데모
-- "ERROR|WARN으로 문제 로그만 필터링"
+- Presentation time: 1 minute
+- Demo the real-time highlighting as the regex is typed
+- "Filter down to just the problem logs with ERROR|WARN"
 ```
 
 ---
 
 ### §5.2 Sampling Rate Calculator
 
-슬라이더로 샘플링 비율을 조절하면 비용/트레이스/에러 캡처율이 계산됨.
+Adjusting the sampling rate with a slider computes the cost/trace count/error-capture rate.
 
-**사용 시점**: X-Ray/ADOT 샘플링, 로깅 비용 최적화
+**When to use**: X-Ray/ADOT sampling, logging cost optimization
 
 :::html
 ```html
@@ -2167,18 +2167,18 @@ Start/Reset/Speed 버튼 + requestAnimationFrame으로 타임라인 애니메이
 
 :::notes
 ```
-- 발표 시간: 1분
-- 샘플링 비율에 따른 비용/가시성 트레이드오프
-- "10-20%가 대부분 워크로드에 적합"
+- Presentation time: 1 minute
+- The cost/visibility tradeoff across sampling rates
+- "10-20% is suitable for most workloads"
 ```
 
 ---
 
 ### §5.3 QoS Class Calculator
 
-4개 슬라이더로 requests/limits를 설정하면 QoS 클래스가 자동 결정됨.
+Setting requests/limits with four sliders automatically determines the QoS class.
 
-**사용 시점**: Pod QoS 클래스, 리소스 구성 교육
+**When to use**: Pod QoS classes, resource-configuration training
 
 :::html
 ```html
@@ -2333,9 +2333,9 @@ Start/Reset/Speed 버튼 + requestAnimationFrame으로 타임라인 애니메이
 
 :::notes
 ```
-- 발표 시간: 1분 30초
-- 슬라이더로 리소스 조합 변경 → QoS 클래스 자동 판정
-- "Guaranteed가 가장 안정적, BestEffort는 eviction 1순위"
+- Presentation time: 1 minute 30 seconds
+- Change the resource combination via the sliders → QoS class is determined automatically
+- "Guaranteed is the most stable; BestEffort is first in line for eviction"
 ```
 
 ---
@@ -2344,9 +2344,9 @@ Start/Reset/Speed 버튼 + requestAnimationFrame으로 타임라인 애니메이
 
 ### §6.1 Command Card with Output Toggle
 
-클릭하면 명령어 출력이 펼쳐지는 카드 패턴.
+A card pattern where clicking expands the command's output.
 
-**사용 시점**: kubectl 명령어, 트러블슈팅 가이드, 단계별 지침
+**When to use**: kubectl commands, troubleshooting guides, step-by-step instructions
 
 :::html
 ```html
@@ -2467,18 +2467,18 @@ nginx-6799fc88d8-8rwtj   10m          124Mi</pre>
 
 :::notes
 ```
-- 발표 시간: 1분
-- 각 명령어 클릭하여 출력 확인
-- "실제 트러블슈팅 시 이 순서로 진행"
+- Presentation time: 1 minute
+- Click each command to see its output
+- "This is the order to follow during actual troubleshooting"
 ```
 
 ---
 
 ### §6.2 Pipeline Component Selector
 
-파이프라인 단계를 클릭하면 상세 패널이 표시되는 패턴.
+A pattern where clicking a pipeline stage displays a detail panel.
 
-**사용 시점**: CI/CD 파이프라인, 데이터 흐름, 아키텍처 구성요소
+**When to use**: CI/CD pipelines, data flow, architecture components
 
 :::html
 ```html
@@ -2634,9 +2634,9 @@ nginx-6799fc88d8-8rwtj   10m          124Mi</pre>
 
 :::notes
 ```
-- 발표 시간: 1분
-- 각 단계 클릭하며 상세 설명
-- "CodePipeline의 4단계 기본 구성"
+- Presentation time: 1 minute
+- Click each stage to give a detailed explanation
+- "CodePipeline's basic 4-stage configuration"
 ```
 
 ---
@@ -2645,9 +2645,9 @@ nginx-6799fc88d8-8rwtj   10m          124Mi</pre>
 
 ### §7.1 Staggered Card Reveal
 
-카드가 순차적으로 나타나는 애니메이션. 슬라이드 진입 시 자동 실행.
+An animation where cards appear one after another; runs automatically when the slide enters.
 
-**사용 시점**: 기능 소개, 비교 항목, 단계별 설명
+**When to use**: Feature introductions, comparison items, step-by-step explanations
 
 :::html
 ```html
@@ -2731,18 +2731,18 @@ nginx-6799fc88d8-8rwtj   10m          124Mi</pre>
 
 :::notes
 ```
-- 발표 시간: 30초
-- 슬라이드 진입 시 카드 순차 등장
-- "4단계 자동화 사이클을 시각적으로 표현"
+- Presentation time: 30 seconds
+- Cards appear one after another as the slide enters
+- "Visualizes the 4-stage automation cycle"
 ```
 
 ---
 
 ### §7.2 Node/Pod Grid with State Transitions
 
-노드 그리드에서 상태 변화를 애니메이션으로 표현.
+Represents state changes in a node grid as an animation.
 
-**사용 시점**: 클러스터 상태, 노드 라이프사이클, 스케일링 시각화
+**When to use**: Cluster status, node lifecycle, visualizing scaling
 
 :::html
 ```html
@@ -2897,18 +2897,18 @@ nginx-6799fc88d8-8rwtj   10m          124Mi</pre>
 
 :::notes
 ```
-- 발표 시간: 2분
-- Scale Up → Cordon → Drain 순서로 데모
-- "Karpenter가 노드 라이프사이클을 자동 관리"
+- Presentation time: 2 minutes
+- Demo in the order Scale Up → Cordon → Drain
+- "Karpenter automatically manages the node lifecycle"
 ```
 
 ---
 
 ### §7.3 Step Flow Animation
 
-단계가 순차적으로 활성화되는 프로세스 플로우 애니메이션.
+A process-flow animation where steps activate one after another.
 
-**사용 시점**: 프로세스 흐름, 워크플로우, 순차 단계
+**When to use**: Process flows, workflows, sequential steps
 
 :::html
 ```html
@@ -3072,18 +3072,18 @@ nginx-6799fc88d8-8rwtj   10m          124Mi</pre>
 
 :::notes
 ```
-- 발표 시간: 1분
-- Start로 자동 진행, 각 단계 하이라이트
-- "API 요청의 5단계 처리 과정"
+- Presentation time: 1 minute
+- Start advances automatically, highlighting each step
+- "The 5-stage processing flow of an API request"
 ```
 
 ---
 
 ### §7.4 Cost Counter Animation
 
-숫자가 부드럽게 카운트업/다운되는 애니메이션.
+An animation where numbers smoothly count up/down.
 
-**사용 시점**: 비용 절감, 성능 개선, 수치 변화 강조
+**When to use**: Cost savings, performance improvements, emphasizing a numeric change
 
 :::html
 ```html
@@ -3223,9 +3223,9 @@ nginx-6799fc88d8-8rwtj   10m          124Mi</pre>
 
 :::notes
 ```
-- 발표 시간: 30초
-- Animate 클릭 시 숫자 카운트업 효과
-- "최적화로 월 $7,700 절감 - 62% 감소"
+- Presentation time: 30 seconds
+- Clicking Animate triggers the count-up effect
+- "The optimization saves $7,700/month — a 62% reduction"
 ```
 
 ---
