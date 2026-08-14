@@ -39,8 +39,8 @@ A brochure lives or dies on accurate, specific content. Before writing markup, p
 
 Capture:
 - **One core message** (the headline promise) + a one-sentence subcopy.
-- **3–5 proof metrics** (real numbers: pages, tools, regions, controls, latency…). Verify each against the source.
-- **3 value pillars** (the "why"), and **6–10 features** (the "what").
+- **A few proof metrics** (real numbers: pages, tools, regions, controls, latency…). Verify each against the source.
+- **Value pillars** (the "why" — few enough to remember), and the **features** worth a card (the "what").
 - **The architecture** (components + primary flow) — for the embedded diagram.
 - **Audience + language** (default: the user's language; this plugin's users are often Korean — mirror the request's language).
 - **Security/positioning posture** if relevant (e.g. read-only, least-privilege).
@@ -60,24 +60,19 @@ Most solution brochures benefit from an architecture visual. Produce it with the
 ### Phase 3.5 — Capture product screenshots (required when the product has a reachable web UI)
 
 A brochure that only describes a UI in prose reads as unfinished when the product actually
-has one to show. **Skip this phase only when the product has no reachable web UI** — either
-it has none at all (a CLI tool, a library, an API-only service) or none you can reach and the
-user can't provide captures. That one condition is the skip rule everywhere (agent rule 9
-says the same); when you skip, say so explicitly.
+has one to show. **Skip this phase only when the product has no reachable web UI** (a CLI
+tool, a library, an API-only service — or none you can reach and the user can't provide
+captures); when you skip, say so explicitly.
 
-1. **Availability gate first.** The `browser_*` capture tools come from the **Playwright
-   MCP server**, which brochure-agent declares in its frontmatter (`mcpServers:
-   [playwright]` — the plugin starts it via `npx @playwright/mcp`). They should normally be
-   available, but the server can fail to start in offline environments or ones missing
-   npx/browser dependencies. If the tools aren't available, don't stall: ask the user (with
-   `AskUserQuestion`) to either fix the Playwright setup or hand you screenshot files
-   directly, and proceed with what they provide.
-2. **Capture.** With Playwright MCP: `browser_navigate` to the product, `browser_resize` to a
-   consistent desktop viewport (e.g. 1600×900) so every capture is uniform, then
-   `browser_take_screenshot` for 4–6 representative screens — one per core use case
-   (overview/dashboard, the flagship feature, a couple of secondary views), not every screen.
-   If you have neither the tools nor user-provided images and no URL to reach, ask with
-   `AskUserQuestion` rather than guessing or skipping silently.
+1. **Availability gate first.** The `browser_*` capture tools come from the Playwright MCP
+   server (brochure-agent frontmatter `mcpServers: [playwright]`); it can fail to start in
+   offline environments or ones missing npx/browser dependencies. If the tools aren't
+   available, don't stall: ask the user (with `AskUserQuestion`) to either fix the Playwright
+   setup or hand you screenshot files directly, and proceed with what they provide.
+2. **Capture.** `browser_navigate` to the product, `browser_resize` to a consistent desktop
+   viewport (e.g. 1600×900) so every capture is uniform, then `browser_take_screenshot` for
+   the representative screens — one per core use case (overview/dashboard, the flagship
+   feature, a couple of secondary views), not every screen.
 3. **Use a sanitized/demo account, and redact before publishing.** A screenshot of a *live*
    console can bake sensitive data into pixels — account IDs, ARNs, session/token URL
    params, internal hostnames/CIDRs, customer names/data — that the text-based PII scan
@@ -86,8 +81,8 @@ says the same); when you skip, say so explicitly.
    the checker and content-review-agent scan text, not image contents.
 4. **Embed.** Save each capture next to the brochure HTML under `screenshots/`, referenced
    with a relative path, `loading="lazy"`, a descriptive `alt` (what the screen shows, not
-   just a filename), and a `<figcaption>` naming the screen. Resize/optimize each to roughly
-   ≤100KB (e.g. via PIL) — a brochure shouldn't ship megabytes of unoptimized PNGs.
+   just a filename), and a `<figcaption>` naming the screen. Resize/optimize each capture
+   (e.g. via PIL) — a brochure shouldn't ship megabytes of unoptimized PNGs.
 
 ### Phase 4 — Write the self-contained HTML
 
@@ -98,9 +93,9 @@ Use this section spine (scale to the product; omit what doesn't apply):
 ```
 nav (sticky, minimal anchors + one CTA)
 hero        — eyebrow · headline (the core message) · subcopy · proof-metric chips · primary CTA
-value       — a short problem framing, then 3 value pillars
-features    — 6–10 feature cards
-shots       — 4–6 product screenshots in a grid, each with a caption (required if the
+value       — a short problem framing, then the value pillars
+features    — feature cards
+shots       — product screenshots in a grid, each with a caption (required if the
               product has a web UI — see Phase 3.5; omit the section entirely otherwise)
 [spec]      — optional table (tiers, tools, gateways, pricing…)
 architecture— embedded SVG diagram (responsive; see design-system.md for the mobile-vertical rotation)
@@ -152,9 +147,4 @@ Relative asset links (`./awsops-arch.svg`) survive any base path; absolute `/` l
 ## Anti-patterns (these make a brochure feel cheap)
 
 - Generic templated hero + purple-gradient-on-white — commit to an intentional aesthetic instead.
-- Inflated or unverified numbers — a wrong tool count loses the engineer immediately.
-- A wide architecture diagram left tiny and unreadable on mobile — rotate it.
-- Hiding the meaningful table column on mobile instead of restacking it.
-- Describing a real product UI in prose only, with no screenshots — if it exists and is reachable, show it.
 - Baking volatile facts (version labels, dated counts) into hero copy — they age badly; keep them in a footer or omit.
-- Deploying behind an auth edge and wondering why no one can see it.

@@ -94,6 +94,16 @@ Phase 4 — Quality Gate (단일)
 4. TeamDelete
 ```
 
+## 병렬 실행 시 파일 소유권 (canonical)
+
+병렬 subagent가 같은 파일을 쓰면 마지막 쓰기가 조용히 이깁니다(충돌 감지 없음). 그래서:
+
+- 각 subagent는 **자신에게 배정된 블록/챕터/모듈의 파일만** 수정합니다. 다른 팀원 담당 파일에서 고칠 것을 발견하면 직접 고치지 말고 결과 보고에 기록합니다.
+- 공유 인덱스 파일(`SUMMARY.md`, `_presentation.remarp.md`, `contentspec.yaml` 등 전체 구조를 정의하는 파일)은 **팀 리더(메인 세션)만** 수정합니다.
+- 공유 컨텍스트 파일(`research-context.md`, `presentation-outline.md`)은 해당 Phase의 산출 담당자만 쓰고, 이후 Phase에서는 읽기 전용입니다.
+
+이 규칙은 gitbook/workshop/reactive-presentation 팀 실행 모두에 동일하게 적용됩니다 (각 에이전트 파일은 이 섹션을 포인터로 참조).
+
 ## 순차 워크플로우 보존 규칙
 
 - **기본값은 항상 순차 실행**입니다

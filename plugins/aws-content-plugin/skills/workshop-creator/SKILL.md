@@ -166,21 +166,13 @@ graph LR
 
 ## Best Practices
 
-### DO
+**목표**: 참가자가 진행자 없이 따라갈 수 있는 콘텐츠 — 모든 hands-on 단계 뒤에 확인 방법(기대 출력), 복사 가능한 명령(`showCopyAction=true`), 섹션 끝 Key Takeaways, 명확한 이전/다음 링크, 아키텍처는 Mermaid로 시각화.
 
-1. **Mermaid 다이어그램** — 아키텍처 시각화
-2. **복사 가능한 코드** — `showCopyAction=true`
-3. **단계별 검증** — 각 단계 후 확인 방법 제공
-4. **Key Takeaways** — 모든 섹션 끝에 요약
-5. **네비게이션 링크** — 명확한 이전/다음 링크
-
-### DON'T
-
-1. Hugo shortcode 사용 금지: `{{% notice %}}`
-2. `chapter: true` 속성 사용 금지
-3. 하드코딩된 계정 ID 금지
-4. 검증 없는 단계 작성 금지
-5. 긴 코드를 heredoc으로 작성 금지
+**플랫폼 계약 (스타일이 아니라 렌더러 동작)**:
+1. Hugo shortcode(`{{% notice %}}`)는 렌더링되지 않고 그대로 노출됨 — Workshop Studio directive만 사용
+2. `chapter: true`는 유효한 front matter 속성이 아님
+3. 하드코딩된 계정 ID/자격증명 없이 (`AWS::AccountId` Ref 등 — 이벤트마다 계정이 다름)
+4. 긴 코드 파일은 heredoc 대신 `static/code/`에 파일로 (heredoc은 인용·변수 확장에 깨지기 쉬움)
 
 ---
 
@@ -234,25 +226,7 @@ cfn_nag_scan --input-path static/workshop.yaml
 
 ## Output Format
 
-워크샵 생성 시 다음 구조를 출력합니다:
-
-```
-[workshop-name]/
-├── contentspec.yaml
-├── content/
-│   ├── index.en.md
-│   ├── introduction/
-│   ├── module1-[topic]/
-│   │   ├── index.en.md
-│   │   └── [subtopics]/
-│   └── summary/
-└── static/
-    ├── workshop.yaml
-    ├── iam-policy.json
-    └── images/
-```
-
-각 파일은 Workshop Studio 형식을 준수하며, `contentspec.yaml`에 정의된 로케일별로 `.ko.md` / `.en.md` 파일을 생성합니다.
+위 Directory Layout 구조 그대로 출력합니다. 각 파일은 Workshop Studio 형식을 준수하며, `contentspec.yaml`에 정의된 로케일별로 `.ko.md` / `.en.md` 파일을 생성합니다 (front matter `weight`는 로케일 쌍 간 일치 — 다르면 네비게이션 순서가 어긋남).
 
 ---
 

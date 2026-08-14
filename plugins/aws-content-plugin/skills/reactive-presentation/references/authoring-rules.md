@@ -33,8 +33,6 @@ python3 {skill-dir}/scripts/remarp_to_slides.py validate {repo}/{slug}/
 
 **Verdict**: `❌ REJECT`(CRITICAL≥1, 빌드 금지) · `⚠️ REVIEW`(WARNING≥6) · `⚠️ PASS WITH WARNINGS`(1~5) · `✅ PASS`.
 
-> ⚠️ CRITICAL이 있는 상태에서 `build`를 실행하면 프랑켄슈타인 레이아웃이 생성됩니다.
-
 ---
 
 ## 2. Forbidden — AI-slide tells (피해야 할 AI 슬라이드 티)
@@ -143,7 +141,6 @@ slide-framework.js 없이 동작. 색상은 theme.css `.tab-set`/`.tab-btn.activ
   <!-- ... 반복 ... -->
 </div>
 ```
-> ⛔ 한 슬라이드에 불릿 4+를 만들려 하면 STOP → grid 카드 + 색상 구분으로 변환.
 
 복잡한 인터랙션(슬라이더·시뮬레이터·대시보드)은 `:::html` + `:::script` + `:::css`. 템플릿/예시: [interactive-patterns-guide.md](interactive-patterns-guide.md).
 
@@ -228,4 +225,4 @@ slide-framework.js 없이 동작. 색상은 theme.css `.tab-set`/`.tab-btn.activ
 - `bg-blue`/`bg-orange`/`bg-pink`: 색상 유틸리티 · `data-fragment-index="N"`: 그룹별 순차 등장
 - AWS 아이콘: `common/aws-icons/services/Arch_{Name}_48.svg`
 
-> ⛔ Canvas 사용 전: 박스+아이콘 5+ → canvas 금지, 위 HTML 패턴 사용. 단방향 직선(A→B→C)만 canvas 허용.
+> Canvas vs HTML의 임계값 canon은 §5의 복잡도 표 — validate의 `CANVAS_COMPLEXITY`가 같은 기준으로 backstop.

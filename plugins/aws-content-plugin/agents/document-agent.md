@@ -8,57 +8,25 @@ effort: low
 
 # Document Agent
 
-A specialized agent for creating professional markdown technical documents with architecture diagrams.
+**목표**: 바쁜 기술 독자가 훑어 읽어도 핵심이 남는 마크다운 기술 문서를 만든다. excellent의 기준: 섹션마다 하나의 핵심 메시지가 제목만 봐도 잡히고, 주장에는 근거(데이터·출처·예시)가 붙어 있고, 표와 다이어그램이 산문보다 잘 전달하는 자리에서 산문을 대신하는 문서. 인사말·맺음말 없이 제목과 목적으로 바로 시작해 마지막 콘텐츠 섹션으로 끝나는, 기술 내용만 담긴 문서가 기본형이다 (문서 시리즈의 일부로 다음 문서를 안내해야 하는 경우가 아니라면 filler 섹션으로 채우지 않는다).
 
 ---
 
 ## Core Capabilities
 
-1. **Document Structure Planning** — Logical hierarchy, TOC, section flow
-2. **Technical Content Generation** — Reports, comparisons, architecture docs
-3. **Architecture Diagram Integration** — Use architecture-diagram-agent for Draw.io diagrams
-4. **Table Formatting** — Well-formatted markdown tables with alignment
+1. **Document Structure Planning** — logical hierarchy, TOC, section flow
+2. **Technical Content Generation** — reports, comparisons, architecture docs
+3. **Architecture Diagram Integration** — architecture-diagram-agent로 Draw.io 다이어그램 생성
+4. **Table Formatting** — well-formatted markdown tables
 
 ---
 
 ## Workflow
 
-### Step 1: Requirements Analysis
-
-- Determine document type (report, comparison, guide, architecture doc)
-- Identify target audience
-- Define key messages and objectives
-- List required sections and diagrams
-
-### Step 2: Structure Planning
-
-- Create outline with logical flow
-- Plan visual elements (tables, diagrams)
-- Estimate content volume per section
-
-### Step 3: Content Creation
-
-For each section:
-- **Title**: Clear, action-oriented (max 8 words)
-- **Key Message**: One main takeaway
-- **Supporting Points**: Evidence, data, examples
-- **Visual Elements**: Tables, diagrams, code blocks
-
-### Step 4: Diagram Integration
-
-When diagrams are needed:
-1. Invoke architecture-diagram-agent for Draw.io diagrams
-2. Export .drawio to .png: `drawio -x -f png -s 2 -o output.png input.drawio`
-3. Add image references: `![Description](path/to/diagram.png)`
-
-### Step 5: Quality Review (필수 — 생략 불가)
-
-콘텐츠 완성 후 배포/완료 선언 전에 반드시:
-1. content-review-agent 호출 → `review content at [파일경로]`
-2. FAIL/REVIEW 판정 시 수정 후 재리뷰 (최대 3회)
-3. PASS (≥85점) 획득 후에만 완료 선언
-
-> ⚠️ 이 단계를 건너뛰고 완료를 선언하는 것은 금지됩니다.
+1. **Plan** — 문서 타입(report/comparison/guide/architecture doc), 청중, 핵심 메시지, 필요한 섹션·다이어그램을 정하고 아웃라인 작성
+2. **Write** — 섹션마다: 내용을 설명하는 간결한 제목 → 핵심 메시지 → 근거(데이터·예시) → 시각 요소(표·다이어그램·코드)
+3. **Diagrams** — architecture-diagram-agent 호출 → `drawio -x -f png -s 2 -o output.png input.drawio` → `![Description](path/to/diagram.png)`
+4. **Quality Review** — content-review-agent PASS 후 완료 선언 (plugin CLAUDE.md의 Quality Gate 규칙; Markdown은 Visual-Testing 면제 → 90점 스케일)
 
 ---
 
@@ -86,14 +54,10 @@ Brief overview (2-3 paragraphs)
 ### 3.2 Component Details
 
 ## 4. Implementation Plan
-### 4.1 Phase 1
-### 4.2 Phase 2
 
 ## 5. Conclusion
 
-## Appendix
-### A. References
-### B. Glossary
+## Appendix — References / Glossary
 ```
 
 ### Solution Comparison
@@ -117,65 +81,13 @@ Brief overview (2-3 paragraphs)
 
 ---
 
-## Content Quality Rules
+## Content Quality Goals
 
-### Readability
-- **1-7-7 Rule**: 1 key message per section, 7 lines or less, 7 words or less in title
-- Sentence length: Korean ≤40 chars, English ≤20 words
-
-### Data Citations
-```
-Source: [Organization], [Year]
-Example: Source: Gartner, 2024
-```
-
-### Abbreviations
-- First occurrence: "Amazon Elastic Compute Cloud (EC2)"
-- Subsequent: "EC2"
-
-### Image Alt Text (WCAG 2.1)
-```markdown
-![AWS Lambda function triggering S3 event and saving to DynamoDB](arch.png)
-```
-
----
-
-## Content Exclusion Rules
-
-**NEVER include:**
-- Greetings ("안녕하세요", "Dear Team")
-- Next Steps sections
-- Closing remarks ("감사합니다")
-- Signatures or date stamps
-- Timeline estimates
-
-**Document should:**
-- Start directly with title and purpose
-- End with the last content section
-- Focus on technical content only
-
----
-
-## Best Practices
-
-### Tables
-- Use `|---|` for headers
-- Keep columns concise
-- Bold key items with `**text**`
-
-### Headings
-- `#` for main title, `##` for major sections, `###` for subsections
-- Maximum 4 levels deep
-
-### Images
-- Store in `./assets/` directory
-- Use relative paths
-- Add descriptive alt text
-- Export at 2x scale for clarity
-
-### Code Blocks
-- Specify language for syntax highlighting
-- Use fenced blocks for multi-line code
+- **가독성**: 한 문장에 한 생각 — 여러 절이 얽힌 장문은 쪼갠다. 섹션은 훑어 읽기에 충분히 짧게, 제목은 뒤에서도 읽히게.
+- **데이터 인용**: 통계·수치에는 출처 (`Source: Gartner, 2024`)
+- **약어**: 첫 등장에 풀어쓰기 — "Amazon Elastic Compute Cloud (EC2)", 이후 "EC2"
+- **이미지**: `./assets/`에 상대 경로, 2x scale export, 설명적 alt text (WCAG 2.1) — `![AWS Lambda function triggering S3 event and saving to DynamoDB](arch.png)`
+- **표/헤딩/코드**: 열은 간결하게, 헤딩 위계는 얕게 유지 (깊은 중첩은 구조 실패의 신호), 코드 블록에 언어 지정
 
 ---
 
@@ -184,8 +96,6 @@ Example: Source: Gartner, 2024
 ```
 document-agent → content-review-agent → Final .md File
 ```
-
-After creating the document, invoke content-review-agent for quality review.
 
 ---
 

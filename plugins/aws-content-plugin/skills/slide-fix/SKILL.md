@@ -70,34 +70,17 @@ python3 <script_path>/remarp_to_slides.py build <project_dir>
 
 ## 주의사항
 
-- 한 번에 하나의 이슈씩 처리하고, 각 수정 후 어노테이션을 즉시 제거
-- 이슈와 무관한 슬라이드는 수정하지 않음
-- `:::html` + `:::css` 블록 수정 시 기존 스타일 패턴 유지
-- `:::canvas` DSL은 박스 5개 이상이면 `:::html`로 변환 (reactive-presentation SKILL.md 규칙)
-- 이슈가 0개이면 "이슈 어노테이션이 없습니다." 메시지 출력 후 종료
+- 목표는 "요청된 이슈만 정확히 반영": 이슈와 무관한 슬라이드는 수정하지 않고, 반영이 끝난 이슈의 어노테이션은 남기지 않는다
+- `:::html` + `:::css` 블록 수정 시 기존 스타일 패턴 유지; canvas 복잡도 규칙은 reactive-presentation의 `references/authoring-rules.md`를 따름 (`remarp_to_slides.py validate`가 검증)
+- 이슈가 0개이면 수정할 것이 없다고 알리고 종료
 
 ---
 
 ## 예시
 
-사용자가 `/slide-fix`를 실행하면:
-
 ```
-1. remarp_to_slides.py issues doc-sites/static/demos/my-session/ --json
-   → 3개 이슈 발견
-
-2. 이슈 1: slide 3 "Architecture Overview" → "다이어그램을 추가해주세요"
-   → 01-intro.md 슬라이드 3에 아키텍처 다이어그램 추가
-   → <!-- issue: 다이어그램을 추가해주세요 --> 제거
-
-3. 이슈 2: slide 5 "Performance" → "수치를 그래프로 변경"
-   → 01-intro.md 슬라이드 5의 텍스트 수치를 :::html 그래프로 변환
-   → <!-- issue: 수치를 그래프로 변경 --> 제거
-
-4. 이슈 3: slide 2 "Overview" → "탭으로 분리"
-   → 02-deep-dive.md 슬라이드 2를 탭 UI로 재구성
-   → <!-- issue: 탭으로 분리 --> 제거
-
-5. remarp_to_slides.py build doc-sites/static/demos/my-session/
-   → HTML 재생성 완료
+1. remarp_to_slides.py issues doc-sites/static/demos/my-session/ --json → 3개 이슈 발견
+2. slide 3 "다이어그램을 추가해주세요" → 슬라이드 3에 다이어그램 추가, 어노테이션 제거
+3. slide 5 "수치를 그래프로 변경" → :::html 그래프로 변환, 어노테이션 제거
+4. remarp_to_slides.py build doc-sites/static/demos/my-session/ → HTML 재생성
 ```

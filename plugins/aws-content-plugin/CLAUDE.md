@@ -13,8 +13,8 @@ presentation-agent (dispatcher) → reactive-presentation-agent → validate (re
 # Native PowerPoint (.pptx):
 presentation-agent (dispatcher) → aws-light-fcd skill (PptxGenJS, AWS Light theme) → check_pptx.py (거절 루프, ≥80 AND geometry 0건) → embed_fonts.py → content-review-agent → .pptx
 ```
-> **필수**: Remarp 작성 후 `remarp_to_slides.py validate`로 거절 루프 실행. CRITICAL 이슈 0건이어야 빌드 진행.
-> **PPTX 분기**: "pptx/파워포인트/ppt" 키워드 또는 사용자가 PPTX 선택 시 디스패처가 `aws-light-fcd` 스킬로 라우팅. python-pptx 직접 작성 금지 — 스킬을 호출. **필수**: `check_pptx.py`가 점수 ≥80 **그리고** `[geometry]` finding 0건이어야(거절 루프) embed_fonts.py로 진행 — geometry 결함은 점수와 무관하게 게이트 실패.
+> Remarp 작성 후 `remarp_to_slides.py validate` 거절 루프: CRITICAL 0건이어야 빌드.
+> **PPTX 분기**: "pptx/파워포인트/ppt" 키워드 또는 사용자가 PPTX 선택 시 디스패처가 `aws-light-fcd` 스킬로 라우팅 (python-pptx를 손으로 쓰지 않는 이유: 스킬이 검증된 디자인 시스템·폰트 임베딩을 소유). 게이트는 위 파이프라인의 `check_pptx.py` 한 곳: 점수 ≥80 **그리고** `[geometry]` finding 0건 — geometry 결함은 점수와 무관하게 실패.
 
 ### Architecture Diagram Workflow
 ```
@@ -51,7 +51,7 @@ brochure-agent → gather product facts → (architecture-diagram → SVG) → (
   → self-contained responsive HTML → check_brochure.py → content-review-agent (≥85)
   → GitHub Pages (public, verify no-auth 200)
 ```
-> 단일 자기완결 HTML(모바일/태블릿/PC 반응형). **웹 UI가 있는 제품은 스크린샷 섹션(4–6장) 필수** — Playwright MCP로 캡처, URL/실행법 모르면 확인 요청. 아키텍처는 `architecture-diagram`으로 만들어 SVG로 임베드하고 카피와 같은 이야기를 유지. **공개 호스팅은 GitHub Pages** — 인증 엣지(Cognito Lambda@Edge 등) 뒤 도메인엔 공개 우회 경로가 없으면 올릴 수 없음.
+> 단일 자기완결 HTML(모바일/태블릿/PC 반응형). **웹 UI가 있는 제품은 실제 스크린샷 섹션 필수** — Playwright MCP로 캡처, URL/실행법 모르면 확인 요청. 아키텍처는 `architecture-diagram`으로 만들어 SVG로 임베드하고 카피와 같은 이야기를 유지. **공개 호스팅은 GitHub Pages** — 인증 엣지(Cognito Lambda@Edge 등) 뒤 도메인엔 공개 우회 경로가 없으면 올릴 수 없음.
 
 ### Profile Page (gh-home) Workflow
 ```
@@ -86,28 +86,13 @@ gather facts (기존 페이지/GitHub/사용자 확인) → self-contained respo
 > 재통과 없이 반영하되, 완료/배포를 선언하는 시점에는 그 산출물의 유효한 PASS
 > 리뷰가 존재해야 한다.
 
-### Auto-Trigger Conditions
+### Auto-Trigger
 
-다음 조건이 충족되면 content-review-agent를 자동으로 호출합니다:
-
-| Trigger | Condition | Action |
-|---------|-----------|--------|
-| HTML 프레젠테이션 완성 | `.html` 슬라이드 파일 작성 완료 | `review content at [파일경로]` |
-| 다이어그램 완성 | `.drawio` 또는 animated `.html` 작성 완료 | `review content at [파일경로]` |
-| 문서 완성 | `.md` 기술문서 작성 완료 | `review content at [파일경로]` |
-| GitBook 페이지 완성 | GitBook 프로젝트 구조 작성 완료 | `review content at [프로젝트경로]` |
-| Workshop 콘텐츠 완성 | Workshop 모듈 콘텐츠 작성 완료 | `review content at [프로젝트경로]` |
-| 브로셔 완성 | 브로셔 `.html` 작성 완료 | `review content at [파일경로]` |
-| 프로필 페이지 완성 | 프로필 페이지 `.html` 작성 완료 | `review content at [파일경로]` |
-| PPTX 덱 완성 | `.pptx` 작성 완료 (check_pptx.py 게이트 통과 + embed_fonts.py 실행 후) | `review content at [파일경로]` |
+산출물이 완성되는 즉시 — 슬라이드/애니메이션 `.html`, `.drawio`, 기술문서 `.md`, GitBook/Workshop 프로젝트, 브로셔/프로필 `.html`, `.pptx`(check_pptx.py 게이트 + embed_fonts.py 이후) — `review content at [경로]`로 content-review-agent를 호출합니다.
 
 ### Review Loop
 
-1. 콘텐츠 에이전트가 콘텐츠 생성 완료
-2. content-review-agent 호출 → 리뷰 리포트 생성
-3. FAIL/REVIEW 판정 시 → 수정 후 재리뷰 (최대 3회)
-4. PASS (≥85점) 획득 후에만 완료/배포 선언
-5. 3회 리뷰 후에도 PASS 미달 → 사용자에게 판단 요청
+FAIL/REVIEW 판정이면 수정 후 재리뷰. PASS 후에 완료/배포 선언. 3회 재리뷰에도 PASS 미달이면 사용자에게 판단을 넘깁니다.
 
 ### Verdict
 
@@ -118,8 +103,7 @@ gather facts (기존 페이지/GitHub/사용자 확인) → self-contained respo
 | **FAIL** | Critical ≥1 or Warning >10 or Score <70 | Cannot proceed |
 
 > Visual Testing 면제 콘텐츠(Markdown, Draw.io, Workshop, PPTX, Playwright 미가용)는
-> **90점 만점** 스케일로 판정: PASS ≥77 / REVIEW 63-76 / FAIL <63. 리뷰 리포트가
-> 어느 스케일인지 명시하므로, 90점 스케일의 77점 PASS를 "85 미달"로 오판하지 말 것.
+> **90점 만점** 스케일: PASS ≥77 / REVIEW 63-76 / FAIL <63. 리뷰 리포트가 어느 스케일인지 명시한다.
 
 ---
 

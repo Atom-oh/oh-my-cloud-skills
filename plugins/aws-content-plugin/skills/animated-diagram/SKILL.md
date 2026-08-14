@@ -115,22 +115,11 @@ python3 -m http.server 8080 --bind 127.0.0.1 --directory "<output-dir>"
 # Then visit http://localhost:8080/animation.html
 ```
 
-## Quality Review (배포/완료 선언 전 필수)
+## Quality Review
 
-대상은 신규 애니메이션 다이어그램과 실질 개정 — 오탈자·한 줄 수정 같은 사소한 손질은 재리뷰 없이 반영.
-1. content-review-agent 호출 → `review content at [파일경로]`
-2. FAIL/REVIEW 판정 시 수정 후 재리뷰 (최대 3회)
-3. 해당 스케일 기준 PASS 판정 획득 후에만 완료 선언 (100점 만점: ≥85 / 비-HTML 90점 환산: ≥77 — content-review-agent의 Verdict 표 참조)
+배포/완료 선언 전 `review content at [파일경로]`로 content-review-agent PASS — plugin CLAUDE.md의 Quality Gate 규칙 (사소한 손질은 재리뷰 없이 반영).
 
-## Diagram Types
-
-| Type | Technique | When to Use |
-|------|-----------|-------------|
-| **Traffic Flow** | SMIL `<animateMotion>` | Continuous request/data flow visualization |
-| **Pulsing Status** | SMIL `<animate>` | Monitoring dashboards, health indicators |
-| **Interactive Scenario** | JavaScript + CSS | Button-driven scaling, deployment, failover |
-
-For interactive scenarios, the agent uses JavaScript-based state machines with `requestAnimationFrame` and CSS transitions instead of SMIL. See the agent definition for the full Interactive Animation Pattern guide.
+Interactive 시나리오는 SMIL 대신 JavaScript 상태 머신 + CSS transition을 사용합니다 — 완전한 동작 예시는 `templates/interactive-scaling.html`.
 
 ## References
 

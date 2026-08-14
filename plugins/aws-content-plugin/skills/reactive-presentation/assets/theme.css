@@ -168,8 +168,12 @@
 /* --- Font Loading: see @import block at the top of this file --- */
 
 html {
-  /* Viewport-scaled root font: ~24px at 1080p, ~48px at 4K, scales proportionally */
-  font-size: clamp(14px, 2.2vh, 52px);
+  /* Fixed design-canvas root font. The deck is a fixed 1920x1080 canvas
+     scaled as a whole via transform (see .slide-deck) — type must NOT
+     track the viewport independently, or a width-constrained window
+     shrinks the deck box while the text stays big (the old vh-clamp bug:
+     "폭에 의해 비율이 조정되지만 컨텐츠가 줄어들지 않음"). */
+  font-size: 24px;
 }
 body {
   width: 100%; height: 100%;
@@ -184,15 +188,33 @@ body {
   justify-content: center;
 }
 
-/* --- Slide Container (aspect ratio enforced via CSS variables) --- */
+/* --- Slide Container: fixed design canvas, scaled as one unit ---
+   1080px tall, width from the ratio vars (16:9 → 1920px). slide-framework.js
+   computes --deck-scale = min(availW/deckW, availH/deckH) on resize /
+   fullscreen / sidebar toggle, so ALL content (type, px coordinates,
+   canvases) shrinks proportionally with the box. Absolute px inside slides
+   is safe — the canvas scales as a whole. */
 .slide-deck {
-  width: 100vw; height: 100vh;
-  max-width: calc(100vh * var(--slide-ratio-w) / var(--slide-ratio-h));
-  max-height: calc(100vw * var(--slide-ratio-h) / var(--slide-ratio-w));
+  height: 1080px;
+  width: calc(1080px * var(--slide-ratio-w) / var(--slide-ratio-h));
+  flex: none;
   margin: auto;
+  transform: scale(var(--deck-scale, 1));
+  transform-origin: center center;
   position: relative;
   overflow: hidden;
   background: var(--bg-primary);
+  /* Re-apply text color INSIDE the deck's theme scope: body's color computes
+     in the light scope and inherits down, so a .slide-deck.theme-dark deck
+     would otherwise show near-black text on its dark background. */
+  color: var(--text-primary);
+}
+/* Oversized flex item still centers visually: body is flex with centered
+   axes; equal overflow is clipped on both sides until the transform shrinks
+   the box into view. */
+body {
+  justify-content: center;
+  align-items: center;
 }
 
 .slide {
@@ -391,7 +413,9 @@ body {
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--text-muted);
+  /* --text-secondary, not muted: inactive tab labels are still navigation —
+     muted fails WCAG on both themes (measured 3.2 light / 3.9 dark) */
+  color: var(--text-secondary);
   font-family: var(--font-main);
   font-size: .88rem;
   cursor: pointer;
@@ -400,6 +424,9 @@ body {
 .tab-btn.active {
   background: var(--accent);
   color: var(--accent-on);
+  /* white-on-Smile-orange measures ~3.0 — compliant only as WCAG large
+     text, which bold >= 14pt qualifies for (also anchors the active tab) */
+  font-weight: var(--weight-bold);
 }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
@@ -427,7 +454,7 @@ body {
 .code-label {
   position: absolute; top: 8px; right: 12px;
   font-size: .7rem;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   background: var(--bg-secondary);
   padding: 2px 8px;
   border-radius: 4px;
@@ -938,6 +965,9 @@ input[type="range"]::-webkit-slider-thumb {
 .compare-btn.active {
   background: var(--accent);
   color: var(--accent-on);
+  /* white-on-Smile-orange measures ~3.0 — compliant only as WCAG large
+     text, which bold >= 14pt qualifies for (also anchors the active tab) */
+  font-weight: var(--weight-bold);
 }
 
 .compare-content {
@@ -1116,6 +1146,8 @@ input[type="range"]::-webkit-slider-thumb {
 @media print {
   .slide { page-break-after: always; position: relative; display: flex !important; opacity: 1 !important; }
   .progress-bar, .slide-counter, .nav-hint, .slide-logo, .slide-footer, .slide-number, .slide-ref { display: none; }
+  /* Print flows pages, not a scaled canvas */
+  .slide-deck { transform: none !important; width: 100% !important; height: auto !important; }
 }
 
 /* === Export Toolbar === */
@@ -1586,8 +1618,11 @@ input[type="range"]::-webkit-slider-thumb {
 .text-orange { color: var(--orange); }
 .text-green  { color: var(--green); }
 .text-red    { color: var(--red); }
-.text-purple { color: #818cf8; }
-.text-pink   { color: #f472b6; }
+/* Purple/pink lack role tokens; theme-scoped literals so both themes pass
+   WCAG (light needs the darker shade — #818cf8 on white measures 2.98). */
+.text-purple { color: #6366f1; }
+.text-pink   { color: var(--pink); }
+.theme-dark .text-purple { color: #818cf8; }
 
 /* --- Text Icon (for services without icon files) --- */
 .text-icon {
@@ -1665,12 +1700,11 @@ body.sidebar-visible {
   justify-content: center;
 }
 
+/* Sidebar shifts the usable area right by 220px: keep the fixed canvas,
+   move its visual center by half the sidebar width. slide-framework.js
+   subtracts the 220px from availW when computing --deck-scale. */
 body.sidebar-visible .slide-deck {
-  width: calc(100vw - 220px);
-  max-width: calc(100vh * var(--slide-ratio-w) / var(--slide-ratio-h));
-  max-height: calc((100vw - 220px) * var(--slide-ratio-h) / var(--slide-ratio-w));
-  margin-left: 220px;
-  margin-right: auto;
+  transform: translateX(110px) scale(var(--deck-scale, 1));
 }
 
 /* Sidebar thumbnails */
@@ -1733,7 +1767,12 @@ body.sidebar-visible .slide-deck {
   overflow: auto !important;
 }
 
+/* Overview is a scrolling grid, not a scaled canvas. The overview class
+   lands ON the deck itself (see SlideFramework.toggleOverview), so match
+   both forms. */
+.slide-deck.overview-mode,
 .overview-mode .slide-deck {
+  transform: none !important;
   display: grid !important;
   grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
@@ -1998,6 +2037,9 @@ body.sidebar-visible .slide-deck {
 .tab-set .tab-btn.active {
   background: var(--accent);
   color: var(--accent-on);
+  /* white-on-Smile-orange measures ~3.0 — compliant only as WCAG large
+     text, which bold >= 14pt qualifies for (also anchors the active tab) */
+  font-weight: var(--weight-bold);
 }
 
 /* Flow group — tokenized */
