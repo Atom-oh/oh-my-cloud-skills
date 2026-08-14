@@ -22,19 +22,20 @@ rm -f "$CD" "$CJ"
 # --- multi-model panel ---
 R=$(mktemp -d "${TMPDIR:-/tmp}/coc.XXXXXX")
 # Set the profile explicitly so these assertions don't depend on the committed default
-# (which is `deep` — opus/minimax/glm as the mainstay Kiro panel).
+# (which is `deep` — opus/minimax as the mainstay Kiro panel; glm-5 dropped for its
+# false-positive rate, see the pr-review kiro-glm-drop ADR).
 python3 "$CFG" set profile default --root "$R" >/dev/null 2>&1
 DEF=$(python3 "$CFG" pairs --root "$R" 2>/dev/null | wc -l | tr -d ' ')
 assert_eq "3" "$DEF" "default profile → one pair per AI (3)"
 python3 "$CFG" set profile deep --root "$R" >/dev/null 2>&1
 DEEP=$(python3 "$CFG" pairs --root "$R" 2>/dev/null | wc -l | tr -d ' ')
-assert_eq "5" "$DEEP" "deep profile → kiro-cli 3 models + codex + agy (5)"
+assert_eq "4" "$DEEP" "deep profile → kiro-cli 2 models + codex + agy (4)"
 # --profile: per-invocation tiering override (hybrid gate: find=deep, verify=default)
 POV=$(python3 "$CFG" pairs --profile default --root "$R" 2>/dev/null | wc -l | tr -d ' ')
 assert_eq "3" "$POV" "pairs --profile default overrides configured deep (3 pairs)"
 python3 "$CFG" set profile default --root "$R" >/dev/null 2>&1
 POV2=$(python3 "$CFG" pairs --profile deep --root "$R" 2>/dev/null | wc -l | tr -d ' ')
-assert_eq "5" "$POV2" "pairs --profile deep overrides configured default (5 pairs)"
+assert_eq "4" "$POV2" "pairs --profile deep overrides configured default (4 pairs)"
 python3 "$CFG" set profile deep --root "$R" >/dev/null 2>&1
 python3 "$CFG" pairs --profile bogus --root "$R" >/dev/null 2>&1 && PB=0 || PB=$?
 assert_eq "2" "$PB" "pairs --profile with invalid value rejected (exit 2)"
@@ -42,7 +43,7 @@ python3 "$CFG" pairs --root "$R" --profile >/dev/null 2>&1 && PM=0 || PM=$?
 assert_eq "2" "$PM" "pairs --profile with missing value hard-fails (exit 2)"
 assert_contains "$(python3 "$CFG" matrix --profile default --root "$R" 2>&1)" "profile default" "matrix --profile default reports the overridden profile"
 assert_contains "$(python3 "$CFG" matrix --root "$R" 2>&1)" "max calls" "matrix prints max-calls budget"
-# Kiro's 3 models (opus/minimax/glm) are cross-vendor via the router → intended diversity,
+# Kiro's 2 models (opus/minimax) are cross-vendor via the router → intended diversity,
 # NOT the same-family redundancy warning.
 assert_contains "$(python3 "$CFG" matrix --root "$R" 2>&1)" "cross-vendor" "matrix notes kiro-cli cross-vendor diversity"
 # A genuine same-family duplicate (two Agy-routed models) DOES warn.

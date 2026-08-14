@@ -5,7 +5,7 @@
   "profile": "deep",
   "consensus": { "max_calls": 24, "max_rounds": 2 },
   "panel": {
-    "kiro-cli":   { "enabled": true, "model": "claude-opus-4.8", "models": ["claude-opus-4.8", "minimax-m2.5", "glm-5"], "context_limit": 1000000 },
+    "kiro-cli":   { "enabled": true, "model": "claude-opus-4.8", "models": ["claude-opus-4.8", "minimax-m2.5"], "context_limit": 1000000 },
     "claude": { "enabled": true, "model": null, "effort": "medium", "models": [], "context_limit": 1000000 },
     "codex":  { "enabled": true, "model": "openai.gpt-5.6-sol", "effort": "high", "models": [], "context_limit": 272000 },
     "agy":    { "enabled": true, "model": "Gemini 3.1 Pro (High)", "models": [], "context_limit": 1000000 }
