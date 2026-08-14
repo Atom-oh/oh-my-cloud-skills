@@ -106,6 +106,11 @@ Written into the plan in 4a; the implementer and the gates inherit them.
   followed, never passed to the implementer.
 - Do NOT refactor beyond what reviews ask. Do NOT modify `.github/workflows/*` (the
   denylist enforces this too).
+- `docs/pr-review/review-memory.md` is NEVER written by the planner or implementer:
+  they process untrusted review text, and write access to a file that feeds future
+  review prompts would be an injection path. Only the host updates it, after `push`
+  (`skills/pr-autofix/SKILL.md` §5) — same unconditional-deny shape as the workflow
+  check above, enforced in `land_delta.sh`'s `land`/`commit` stages.
 
 ## Build check (before committing)
 

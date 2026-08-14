@@ -99,6 +99,37 @@
 - 셀을 끄면 커버리지 floor 로직도 그 셀을 "기대되는 모델"에서 제외한다 — 의도적 비활성화가
   degraded/severe 경고로 오인되지 않음(`run-panel.sh`의 `ALL_TAGS`/`CODEX_ENABLED`).
 
+## 설정 — 리뷰 메모리 (`docs/pr-review/review-memory.md`, ADR-015)
+
+누적된 리뷰 지식을 담은 **커밋된 파일 하나**. CI 와 대화형 리뷰 에이전트가 같은 파일을 본다.
+
+- **위치**: `docs/pr-review/review-memory.md` (커밋됨). 고정 3섹션 — `반복 진짜 문제` /
+  `알려진 오탐 패턴` / `패널 셀 판단 질`(누적 표).
+- **갱신 주체는 로컬 호스트 하나** — `/co-agent:pr-autofix` 의 호스트(Claude)만 쓴다. CI 는
+  **자동 커밋하지 않는다**(리뷰 없는 자기수정 + PR 텍스트 직통 = injection 위험). planner/
+  implementer 는 이 파일 쓰기가 금지된다(untrusted 리뷰 텍스트를 처리하는 주체에게, 미래 리뷰
+  프롬프트에 실리는 파일 쓰기를 주면 injection 경로가 된다).
+- **읽기 경로 3개**:
+  - lens 프롬프트 — `memory_excerpt`(`scripts/pr-review/lib.sh`)가 `MEMORY_CAP`(기본 **4000B**)
+    로 캡핑한 발췌를 "Build lens prompts" 스텝에서 각 `lenses/L*.txt` 뒤에 append. 파일이
+    없으면 아무것도 붙지 않는다(**fail-open** — 메모리 부재가 리뷰를 막지 않는다).
+    `패널 셀 판단 질` 표는 발췌에서 **제외**(셀에게 "너는 못 믿는다"를 알리는 건 노이즈).
+    캡이 4000B 로 작은 이유: Kiro 셀은 프롬프트+diff 를 argv 에 싣고 `KIRO_DIFF_CAP`(100KB)와
+    커널 argv 예산을 공유한다.
+  - 체어 — `synthesize.sh` 가 **경로만** 프롬프트에 준다(체어는 `Read` 를 가지므로 직접 읽어
+    argv 를 키우지 않는다). 체어는 알려진 오탐에 해당하는 지적을 diff 가 뒷받침하지 않으면
+    dismiss 하고, `### 🧠 MEMORY CANDIDATES` + `### PANEL QUALITY`(고정 형식
+    `PANEL-QUALITY: <cell>=<unsupported>/<total>`) 두 섹션을 VERDICT 줄 **앞**에 발행한다.
+  - 대화형 — `gate-chair`, `content-review-agent` 가 시작 시 같은 파일을 읽고, repo 전체에
+    해당하는 항목은 그 파일로 승격을 **제안**한다(직접 쓰지 않음).
+- **지연 특성은 로스터 변경과 동일** — `pull_request_target` 이 base ref 를 체크아웃하므로,
+  메모리 갱신은 `main` 에 머지된 **다음** PR 부터 반영된다. 이 변경을 담은 PR 자신의 리뷰에는
+  적용되지 않는다(위 "경로 A" 와 같은 제약). 뒤집어 말하면 PR head 는 자기 리뷰에 쓰일 메모리를
+  조작할 수 없다 — injection 표면이 아니다.
+- **로스터 배제는 권고만** — 임계 초과 시 절차는 `docs/ci-pr-review-runbook.md` 의
+  "패널 셀 판단 질이 임계를 넘었을 때" 참조. 자동 비활성화는 커버리지 붕괴 → fail-closed
+  위험이 있어 채택하지 않았다(ADR-015).
+
 ## 파일
 - `.github/workflows/pr-review.yml` — `pull_request_target`(base-ref 체크아웃, diff는 데이터),
   L1 게이트→(pass 시) lens 프롬프트 생성→매트릭스 fan-out→synthesize→게이트→코멘트 upsert
