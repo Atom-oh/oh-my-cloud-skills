@@ -170,6 +170,23 @@ _REVIEW = {
 }
 _MODEL_FLAG = {"codex": "-m", "agy": "--model", "kiro-cli": "--model"}
 
+
+def _model_override(ai):
+    """One-shot escalation override for exactly this process's invocation — never
+    written to config. `CO_AGENT_GATE_MODEL_OVERRIDE_<AI>` (ai uppercased, '-' -> '_';
+    e.g. CO_AGENT_GATE_MODEL_OVERRIDE_KIRO_CLI) takes precedence over the configured
+    panel model. Callers (e.g. pr-autofix's iteration>5 escalation) set the env var only
+    for the one escalated gate subprocess call, then leave it unset again."""
+    return os.environ.get("CO_AGENT_GATE_MODEL_OVERRIDE_" + ai.upper().replace("-", "_"))
+
+
+def _codex_effort_override():
+    """Same one-shot contract as `_model_override`, but for codex reasoning effort —
+    passed inline as `-c model_reasoning_effort=...` (see `_build_argv`/`_build_push_argv`)
+    rather than through `co_agent_config.py`'s `CODEX_EFFORTS` enum, which deliberately
+    stops at `high` and is shared with every other flow that reads panel `effort`."""
+    return os.environ.get("CO_AGENT_GATE_CODEX_EFFORT_OVERRIDE")
+
 # Env vars each reviewer legitimately needs for ITS OWN auth. Everything else whose NAME looks
 # like a credential (token/secret/key/password/cloud-provider creds) is STRIPPED before the peer
 # subprocess inherits the environment — so a prompt-injected reviewer can't exfiltrate another
@@ -522,7 +539,7 @@ def _panel(root):
         if not panelcfg.get(ai, {}).get("enabled", True):
             continue   # respect an explicit disable (do NOT PATH-override it)
         peers.append(ai)
-        models[ai] = panelcfg.get(ai, {}).get("model")
+        models[ai] = _model_override(ai) or panelcfg.get(ai, {}).get("model")
     return peers, models
 
 
@@ -556,6 +573,10 @@ def _build_argv(peer, model, fpath):
                 argv += [_MODEL_FLAG[peer], model]
         else:
             argv.append(tok)
+    if peer == "codex":
+        effort = _codex_effort_override()
+        if effort:
+            argv += ["-c", f'model_reasoning_effort="{effort}"']
     return argv
 
 
@@ -600,6 +621,10 @@ def _build_push_argv(peer, model, fpath, lens):
                 argv += [_MODEL_FLAG[peer], model]
         else:
             argv.append(tok)
+    if peer == "codex":
+        effort = _codex_effort_override()
+        if effort:
+            argv += ["-c", f'model_reasoning_effort="{effort}"']
     return argv
 
 

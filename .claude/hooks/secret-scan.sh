@@ -539,6 +539,41 @@ PATTERNS=("${HIGH_CONFIDENCE_PATTERNS[@]}" "${PROJECT_KEY_PATTERNS[@]}" "${GENER
 # no legitimate reason to contain anyway) are skipped for them.
 SKIP_FILES=('.claude/hooks/secret-scan.sh')
 
+# tests/pr-review/{test-lib,test-synthesize}.sh deliberately embed fake-credential
+# literals (AKIA.../sk-proj-.../ghp_...) as scrub_secrets() fixtures. A full-file skip
+# (an earlier version of this list) would make those files a permanent secret-scanning
+# blind spot — a REAL credential pasted into one later would never be caught. Instead,
+# strip only these exact known-fake literal strings before scanning those files, so
+# anything else in them still goes through the normal patterns below. One shared list —
+# both files draw from the same small fake-credential vocabulary.
+PR_REVIEW_TEST_FIXTURE_LITERALS=(
+    'AKIAABCDEFGHIJKLMNOP'
+    'ASIAABCDEFGHIJKLMNOP'
+    'ghp_abcdefghijklmnopqrstuvwxyz1234'
+    'xoxb-1234567890-abcdefghij'
+    'sk-proj-abcdefghijklmnopqrstuvwxyz'
+    'AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ1234'
+    'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'
+    # Full contextual clause, not the bare 16-char value — a bare 'abcdefghijklmnop'
+    # is generic enough to plausibly appear as a substring of a real base64/hex
+    # secret pasted in later, which this literal-strip would then silently eat.
+    'api_key = "abcdefghijklmnop"'
+    'supersecretvalue123'
+    'get_secret()'
+)
+
+# Remove each literal exactly once per occurrence (bash's `//` is global) —
+# what's left is scanned normally below, so a REAL secret added anywhere
+# else in the file (or replacing one of these placeholders with a live
+# value) still matches PATTERNS.
+strip_pr_review_test_fixtures() {
+    local content="$1" lit
+    for lit in "${PR_REVIEW_TEST_FIXTURE_LITERALS[@]}"; do
+        content="${content//$lit/}"
+    done
+    printf '%s' "$content"
+}
+
 is_skipped() {
     local f="$1" s
     for s in "${SKIP_FILES[@]}"; do
@@ -549,6 +584,15 @@ is_skipped() {
 
 scan_content() {
     local file="$1" content="$2" regex
+    case "$file" in
+        # scrub_secrets() fixture files — strip only the known-fake literal
+        # values (see PR_REVIEW_TEST_FIXTURE_LITERALS above), then fall
+        # through to the normal full-PATTERNS scan below on what's left.
+        tests/pr-review/test-lib.sh|*/tests/pr-review/test-lib.sh| \
+        tests/pr-review/test-synthesize.sh|*/tests/pr-review/test-synthesize.sh)
+            content="$(strip_pr_review_test_fixtures "$content")"
+            ;;
+    esac
     case "$file" in
         # Anchored to the basename boundary (`*/name` or bare `name`, not a
         # bare `*name` suffix glob) — `*package-lock.json` would also match

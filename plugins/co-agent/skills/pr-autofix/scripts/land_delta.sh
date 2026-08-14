@@ -301,6 +301,11 @@ cmd_land() { # land <run> --sig <s> --approved-sha <a> --script-sha <h> [--allow
   # CI workflow files are denied UNCONDITIONALLY — no flag opens them (the review CI must
   # never be modifiable by the loop it gates):
   ! grep -qE '^\.github/workflows/' "$run/landed.files" || die "refusing to land .github/workflows changes — hard deny, no override"
+  # The shared review-memory file feeds every future CI lens/chair prompt — the planner
+  # and implementer process untrusted review text, so write access here is an injection
+  # path into that future prompt. Only the host (outside this worktree pipeline) may
+  # update it. Same unconditional-deny shape as the workflow-file check above.
+  ! grep -qE '^docs/pr-review/review-memory\.md$' "$run/landed.files" || die "refusing to land docs/pr-review/review-memory.md changes — host-only, hard deny, no override"
   # Execution-surface gate — CODE, not prose (build/commit execute these files):
   if grep -qE "$EXEC_SURFACE_RE" "$run/landed.files"; then
     [ "$allow" = "--allow-exec-surface" ] || die "execution-surface files in the landing set (user approval + --allow-exec-surface required): $(grep -E "$EXEC_SURFACE_RE" "$run/landed.files" | tr '\n' ' ')"
@@ -431,6 +436,7 @@ cmd_commit() { # commit <run> <msg> --approved-sha <a> --script-sha <h> [--bypas
   # Re-apply the hard denies over the TRUSTED list — land checked them, but landed.files
   # was mutable between stages; the trusted list derives from the host-bound record:
   ! grep -qE '^\.github/workflows/' "$run/landed.files.trusted" || die "workflow path in landing set at commit time — hard deny"
+  ! grep -qE '^docs/pr-review/review-memory\.md$' "$run/landed.files.trusted" || die "docs/pr-review/review-memory.md in landing set at commit time — host-only, hard deny"
   if grep -qE "$EXEC_SURFACE_RE" "$run/landed.files.trusted" && [ ! -f "$run/ok.execsurface-approved" ]; then
     die "execution-surface path in landing set at commit time without recorded approval"
   fi

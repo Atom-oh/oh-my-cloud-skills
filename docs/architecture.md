@@ -8,7 +8,7 @@
 
 ## 시스템 개요
 
-oh-my-cloud-skills는 Claude Code용 플러그인 마켓플레이스로, AWS 클라우드 콘텐츠 생성(프레젠테이션, 다이어그램, 문서, 워크숍)과 인프라 운영/트러블슈팅을 위한 6개 플러그인을 제공합니다.
+oh-my-cloud-skills는 Claude Code용 플러그인 마켓플레이스로, AWS 클라우드 콘텐츠 생성(프레젠테이션, 다이어그램, 문서, 워크숍), 인프라 운영/트러블슈팅, 멀티-AI 협업, 개발자 툴링을 위한 7개 플러그인을 제공합니다.
 
 ## 컴포넌트 구조
 
@@ -18,10 +18,11 @@ oh-my-cloud-skills는 Claude Code용 플러그인 마켓플레이스로, AWS 클
 |----------|------|----------|
 | aws-content-plugin | 콘텐츠 생성 (9 agents, 9 skills) | Python, HTML/CSS/JS, Draw.io |
 | aws-ops-plugin | 인프라 운영 (10 agents, 6 skills) | MCP servers, AWS CLI |
-| kiro-power-converter | 플러그인 → Kiro Power 변환 | YAML/JSON 변환 |
-| co-agent | 멀티-AI 협업 — 리뷰/의사결정/ADR/컨텍스트 동기화 (5 agents, 3 skills, 6 commands) | Kiro/Codex/Antigravity CLI |
+| kiro-power-converter | 플러그인 → Kiro Power 변환 (1 agent, 1 skill) | YAML/JSON 변환 |
 | agentcore-creator | Claude Code → Bedrock AgentCore 변환 (1 agent, 1 skill) | AWS CLI, Python |
+| co-agent | 멀티-AI 협업 — 리뷰/의사결정/ADR/컨텍스트 동기화/consensus/harness (5 agents, 3 skills, 6 commands) | Kiro/Codex/Antigravity CLI |
 | project-init | 프로젝트 초기화 및 문서 관리 (1 agent, 1 skill, 9 commands, upstream mirror) | Bash, Markdown |
+| kiro | 비용 절감형 위임 — Claude가 계획/검증, Kiro CLI가 구현 (1 agent, 1 skill, 4 commands) | Kiro CLI |
 
 ### 도구 레이어
 
@@ -37,56 +38,30 @@ oh-my-cloud-skills는 Claude Code용 플러그인 마켓플레이스로, AWS 클
 
 | 컴포넌트 | 역할 |
 |----------|------|
-| Docusaurus site | 데모/문서 사이트 (docs/) |
+| doc-sites/ | Docusaurus 데모/문서 사이트 (GitHub Pages 배포) |
+| docs/ | 내부 문서 — ADR, 런북, superpowers specs/plans (이 파일) |
 | marketplace.json | 플러그인 레지스트리 |
 
 ## 아키텍처 다이어그램
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    oh-my-cloud-skills                            │
-│                   Plugin Marketplace                             │
-├─────────────────┬──────────────────┬───────────────────────────┤
-│                 │                  │                             │
-│  ┌──────────────▼───────────────┐  │  ┌─────────────────────┐   │
-│  │   aws-content-plugin         │  │  │  aws-ops-plugin      │   │
-│  │                              │  │  │                      │   │
-│  │  Agents:                     │  │  │  Agents:             │   │
-│  │  ├─ presentation-agent       │  │  │  ├─ eks-agent        │   │
-│  │  ├─ reactive-presentation    │  │  │  ├─ network-agent    │   │
-│  │  ├─ architecture-diagram     │  │  │  ├─ iam-agent        │   │
-│  │  ├─ animated-diagram         │  │  │  ├─ observability    │   │
-│  │  ├─ document-agent           │  │  │  ├─ storage-agent    │   │
-│  │  ├─ gitbook-agent            │  │  │  ├─ database-agent   │   │
-│  │  ├─ workshop-agent           │  │  │  ├─ cost-agent       │   │
-│  │  └─ content-review-agent     │  │  │  ├─ analytics-agent  │   │
-│  │                              │  │  │  ├─ ops-coordinator  │   │
-│  │                              │  │  │  └─ wellarchitected  │   │
-│  │  Skills:                     │  │  │                      │   │
-│  │  ├─ reactive-presentation    │  │  │  Skills:             │   │
-│  │  ├─ architecture-diagram     │  │  │  ├─ ops-troubleshoot │   │
-│  │  ├─ animated-diagram         │  │  │  ├─ ops-health-check │   │
-│  │  ├─ gitbook                  │  │  │  ├─ ops-network      │   │
-│  │  ├─ workshop-creator         │  │  │  ├─ ops-observability│   │
-│  │  └─ slide-fix                │  │  │  ├─ ops-security     │   │
-│  └──────────────────────────────┘  │  │  └─ ops-wellarchitect│   │
-│                                    │  └─────────────────────┘   │
-│  ┌──────────────────────────────┐  │  ┌─────────────────────┐   │
-│  │  kiro-power-converter        │  │  │  co-agent         │   │
-│  │  └─ kiro-converter-agent     │  │  │  └─ co-agent│   │
-│  └──────────────────────────────┘  │  └─────────────────────┘   │
-│  ┌──────────────────────────────┐  │  ┌─────────────────────┐   │
-│  │  agentcore-creator           │  │  │  project-init        │   │
-│  │  └─ agentcore-creator-agent  │  │  │  └─ doc-sync-checker │   │
-│  └──────────────────────────────┘  │  └─────────────────────┘   │
-├────────────────────────────────────┼─────────────────────────────┤
-│  Tools                             │  Docs                       │
-│  ├─ remarp_to_slides.py            │  ├─ Docusaurus site         │
-│  ├─ extract_pptx_theme.py          │  ├─ README.md / .ko.md     │
-│  ├─ remarp-vscode (VSCode ext)     │  └─ CHANGELOG.md            │
-│  ├─ eval-skills.py                 │                             │
-│  └─ eval-skill-behavior.py         │                             │
-└────────────────────────────────────┴─────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│                      oh-my-cloud-skills — Plugin Marketplace          │
+├────────────────────┬────────────────────┬──────────────────────────┤
+│ aws-content-plugin  │ aws-ops-plugin      │ co-agent                 │
+│ 9 agents, 9 skills  │ 10 agents, 6 skills │ 5 agents, 3 skills,      │
+│ 콘텐츠 생성          │ 인프라 운영         │ 6 commands — 멀티-AI     │
+├────────────────────┼────────────────────┼──────────────────────────┤
+│ kiro-power-converter│ agentcore-creator   │ project-init             │
+│ 1 agent, 1 skill    │ 1 agent, 1 skill    │ 1 agent, 1 skill,        │
+│ Kiro Power 변환      │ AgentCore 변환      │ 9 commands (upstream)    │
+├────────────────────┴────────────────────┴──────────────────────────┤
+│ kiro — 1 agent, 1 skill, 4 commands — Kiro CLI 구현 위임              │
+├───────────────────────────────────────────────────────────────────────┤
+│ Tools: remarp_to_slides.py · extract_pptx_theme.py · remarp-vscode ·  │
+│        eval-skills.py · eval-skill-behavior.py                       │
+│ Docs:  doc-sites/ (Docusaurus) · docs/ (ADR/런북/superpowers)         │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
 ## 데이터 흐름
@@ -103,7 +78,7 @@ oh-my-cloud-skills는 Claude Code용 플러그인 마켓플레이스로, AWS 클
 | 키워드 기반 자동 라우팅 | 사용자가 에이전트를 직접 선택할 필요 없음 |
 | 한/영 이중 키워드 | 한국어 사용자 우선 지원 |
 | Quality Gate 필수 | content-review-agent 통과 없이 배포 불가 |
-| 단일 버전 관리 | 모든 plugin.json + marketplace.json 동기화 |
+| 단일 버전 관리 | 7개 plugin.json + marketplace.json 전부 동일 버전 동기화 |
 | Kiro CLI 외부 리뷰 통합 | 다중 관점 심층 리뷰 + 적대적 보안 검증 ([ADR-003](decisions/ADR-003-kiro-cli-architecture-deep-review.md)) |
 | AgentCore 변환 독립 플러그인 | Claude Code 플러그인 → Bedrock AgentCore 배포 변환 ([ADR-004](decisions/ADR-004-agentcore-creator-skill.md)) |
 | Rejection Loop (거절 루프) | Remarp 빌드 전 validate로 품질 강제 — CRITICAL 0건이어야 빌드 진행 ([ADR-005](decisions/ADR-005-rejection-loop.md)) |
@@ -116,7 +91,7 @@ oh-my-cloud-skills는 Claude Code용 플러그인 마켓플레이스로, AWS 클
 
 ## System Overview
 
-oh-my-cloud-skills is a Claude Code plugin marketplace providing 7 plugins for AWS cloud content creation (presentations, diagrams, docs, workshops), infrastructure operations/troubleshooting, and developer tooling.
+oh-my-cloud-skills is a Claude Code plugin marketplace providing 7 plugins for AWS cloud content creation (presentations, diagrams, docs, workshops), infrastructure operations/troubleshooting, multi-AI collaboration, and developer tooling.
 
 ## Component Structure
 
@@ -126,10 +101,11 @@ oh-my-cloud-skills is a Claude Code plugin marketplace providing 7 plugins for A
 |-----------|------|------|
 | aws-content-plugin | Content creation (9 agents, 9 skills) | Python, HTML/CSS/JS, Draw.io |
 | aws-ops-plugin | Infrastructure ops (10 agents, 6 skills) | MCP servers, AWS CLI |
-| kiro-power-converter | Plugin → Kiro Power conversion | YAML/JSON transform |
-| co-agent | Multi-AI collaboration — review/decide/ADR/sync-context (5 agents, 3 skills, 6 commands) | Kiro/Codex/Antigravity CLI |
+| kiro-power-converter | Plugin → Kiro Power conversion (1 agent, 1 skill) | YAML/JSON transform |
 | agentcore-creator | Claude Code → Bedrock AgentCore conversion (1 agent, 1 skill) | AWS CLI, Python |
+| co-agent | Multi-AI collaboration — review/decide/ADR/sync-context/consensus/harness (5 agents, 3 skills, 6 commands) | Kiro/Codex/Antigravity CLI |
 | project-init | Project scaffolding & doc management (1 agent, 1 skill, 9 commands, upstream mirror) | Bash, Markdown |
+| kiro | Cost-savings delegation — Claude plans/verifies, Kiro CLI implements (1 agent, 1 skill, 4 commands) | Kiro CLI |
 
 ### Tool Layer
 
@@ -145,56 +121,31 @@ oh-my-cloud-skills is a Claude Code plugin marketplace providing 7 plugins for A
 
 | Component | Role |
 |-----------|------|
-| Docusaurus site | Demo/docs site (docs/) |
+| doc-sites/ | Docusaurus demo/docs site (published to GitHub Pages) |
+| docs/ | Internal docs — ADRs, runbooks, superpowers specs/plans (this file) |
 | marketplace.json | Plugin registry |
 
 ## Architecture Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    oh-my-cloud-skills                            │
-│                   Plugin Marketplace                             │
-├─────────────────┬──────────────────┬───────────────────────────┤
-│                 │                  │                             │
-│  ┌──────────────▼───────────────┐  │  ┌─────────────────────┐   │
-│  │   aws-content-plugin         │  │  │  aws-ops-plugin      │   │
-│  │                              │  │  │                      │   │
-│  │  Agents:                     │  │  │  Agents:             │   │
-│  │  ├─ presentation-agent       │  │  │  ├─ eks-agent        │   │
-│  │  ├─ reactive-presentation    │  │  │  ├─ network-agent    │   │
-│  │  ├─ architecture-diagram     │  │  │  ├─ iam-agent        │   │
-│  │  ├─ animated-diagram         │  │  │  ├─ observability    │   │
-│  │  ├─ document-agent           │  │  │  ├─ storage-agent    │   │
-│  │  ├─ gitbook-agent            │  │  │  ├─ database-agent   │   │
-│  │  ├─ workshop-agent           │  │  │  ├─ cost-agent       │   │
-│  │  └─ content-review-agent     │  │  │  ├─ analytics-agent  │   │
-│  │                              │  │  │  ├─ ops-coordinator  │   │
-│  │                              │  │  │  └─ wellarchitected  │   │
-│  │  Skills:                     │  │  │                      │   │
-│  │  ├─ reactive-presentation    │  │  │  Skills:             │   │
-│  │  ├─ architecture-diagram     │  │  │  ├─ ops-troubleshoot │   │
-│  │  ├─ animated-diagram         │  │  │  ├─ ops-health-check │   │
-│  │  ├─ gitbook                  │  │  │  ├─ ops-network      │   │
-│  │  ├─ workshop-creator         │  │  │  ├─ ops-observability│   │
-│  │  └─ slide-fix                │  │  │  ├─ ops-security     │   │
-│  └──────────────────────────────┘  │  │  └─ ops-wellarchitect│   │
-│                                    │  └─────────────────────┘   │
-│  ┌──────────────────────────────┐  │  ┌─────────────────────┐   │
-│  │  kiro-power-converter        │  │  │  co-agent         │   │
-│  │  └─ kiro-converter-agent     │  │  │  └─ co-agent│   │
-│  └──────────────────────────────┘  │  └─────────────────────┘   │
-│  ┌──────────────────────────────┐  │  ┌─────────────────────┐   │
-│  │  agentcore-creator           │  │  │  project-init        │   │
-│  │  └─ agentcore-creator-agent  │  │  │  └─ doc-sync-checker │   │
-│  └──────────────────────────────┘  │  └─────────────────────┘   │
-├────────────────────────────────────┼─────────────────────────────┤
-│  Tools                             │  Docs                       │
-│  ├─ remarp_to_slides.py            │  ├─ Docusaurus site         │
-│  ├─ extract_pptx_theme.py          │  ├─ README.md / .ko.md     │
-│  ├─ remarp-vscode (VSCode ext)     │  └─ CHANGELOG.md            │
-│  ├─ eval-skills.py                 │                             │
-│  └─ eval-skill-behavior.py         │                             │
-└────────────────────────────────────┴─────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│                      oh-my-cloud-skills — Plugin Marketplace          │
+├────────────────────┬────────────────────┬──────────────────────────┤
+│ aws-content-plugin  │ aws-ops-plugin      │ co-agent                 │
+│ 9 agents, 9 skills  │ 10 agents, 6 skills │ 5 agents, 3 skills,      │
+│ content creation    │ infra operations    │ 6 commands — multi-AI    │
+├────────────────────┼────────────────────┼──────────────────────────┤
+│ kiro-power-converter│ agentcore-creator   │ project-init             │
+│ 1 agent, 1 skill    │ 1 agent, 1 skill    │ 1 agent, 1 skill,        │
+│ → Kiro Power        │ → Bedrock AgentCore │ 9 commands (upstream)    │
+├────────────────────┴────────────────────┴──────────────────────────┤
+│ kiro — 1 agent, 1 skill, 4 commands — delegates implementation to    │
+│ Kiro CLI                                                              │
+├───────────────────────────────────────────────────────────────────────┤
+│ Tools: remarp_to_slides.py · extract_pptx_theme.py · remarp-vscode ·  │
+│        eval-skills.py · eval-skill-behavior.py                       │
+│ Docs:  doc-sites/ (Docusaurus) · docs/ (ADRs/runbooks/superpowers)    │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Data Flow
@@ -211,7 +162,7 @@ User prompt → Keyword routing (CLAUDE.md) → Agent → Skill/MCP → Artifact
 | Keyword-based auto-routing | Users don't need to manually select agents |
 | Bilingual KR/EN keywords | Korean-first user support |
 | Mandatory Quality Gate | No deployment without content-review-agent pass |
-| Single version management | All plugin.json + marketplace.json in sync |
+| Single version management | All 7 plugin.json + marketplace.json kept in sync at one version |
 | Kiro CLI external review integration | Multi-perspective deep review + adversarial security verification ([ADR-003](decisions/ADR-003-kiro-cli-architecture-deep-review.md)) |
 | AgentCore converter as standalone plugin | Claude Code plugin to Bedrock AgentCore deployment conversion ([ADR-004](decisions/ADR-004-agentcore-creator-skill.md)) |
 | Rejection Loop | Validate before build — zero CRITICAL issues required to proceed ([ADR-005](decisions/ADR-005-rejection-loop.md)) |
