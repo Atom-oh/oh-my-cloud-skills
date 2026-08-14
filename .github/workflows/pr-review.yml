@@ -116,7 +116,7 @@ jobs:
           # 태웠다(root cause of the #141/#146 chair runaway). run-panel.sh 는 lenses_dir
           # 안의 *.txt 파일 하나당 lens 하나로 취급하므로, 파일을 하나만 두면 매트릭스가
           # 자동으로 4모델×1lens=4셀이 된다 — run-panel.sh/panel_config.py 는 무변경.
-          cat <<PROMPT_EOF > "$pr_work_dir/lenses/FULL.txt"
+          cat <<'PROMPT_EOF' > "$pr_work_dir/lenses/FULL.txt"
           Review ONLY the diff under review for this PR, in this Claude Code plugin
           marketplace repo. The diff reaches you one of two ways depending on your tool: it
           is either piped to your stdin directly, or embedded inline below in your
