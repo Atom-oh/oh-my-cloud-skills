@@ -146,3 +146,19 @@ cross-vendor panel, drop the lens dimension.
 - `tests/pr-review/{test-synthesize,test-lib}.sh`
 - PRs #141, #146 (the incident), #143/#144/#145 (the author's own diagnostic
   controls, closed as superseded by this root-cause fix)
+
+## Amendment (2026-08-14): timeout headroom raised — 300s/120s → 450s/300s
+
+The first PR reviewed under this ADR's new gate (#148 — 29 files, 5519 diff lines,
+truncated to the 3000-line cap) hit **both** timeouts, primary (300s, tools on) and
+fallback (120s, no tools), exactly at their caps, with empty stderr on both. Since
+the fallback has no file tools at all, it cannot be crawling the repo — this is
+legitimate processing time for a large diff plus four ~20000B panel reviews, not a
+recurrence of the crawl this ADR fixed. `CHAIR_TIMEOUT` → 450s, `CHAIR_FALLBACK_TIMEOUT`
+→ 300s (`synthesize.sh`, `docs/ci-pr-review.md`, `docs/ci-pr-review-runbook.md`), job
+`timeout-minutes` 25 → 30. The Decision/Consequences numbers above are left as
+originally accepted; this amendment documents the follow-up tuning without rewriting
+them. The distinction this ADR draws — bounded-but-slow input processing is a
+different failure mode from unbounded tool-driven crawling, and only the latter is
+what removing the chair's tools was meant to close — still holds: raising a no-tools
+timeout carries no crawl-recurrence risk.
