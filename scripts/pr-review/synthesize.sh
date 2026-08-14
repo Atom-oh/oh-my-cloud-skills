@@ -106,11 +106,18 @@ MEMORY_EXCERPT="$(memory_excerpt docs/pr-review/review-memory.md "${CHAIR_MEMORY
 # ── 의장 종합: primary(Fable 5, 파일 도구 있음) 시도 → 저하 시 Opus 폴백(도구 없음) ──
 # 두 시도 모두 diff+패널은 이미 stdin 에 있으므로 완결적이다 — 폴백에서 도구를 완전히
 # 빼는 것(ADR-016)이 #141/#146 의 600s 크롤 타임아웃을 구조적으로 없앤다: 첫 시도가
-# 여전히 크롤하다 죽어도, 폴백은 도구가 없어 크롤할 수 없고 훨씬 짧은 타임아웃으로 충분.
+# 여전히 크롤하다 죽어도, 폴백은 도구가 없어 크롤할 수 없다.
+# 타임아웃 값 자체는 ADR-016 최초 반영(300s/120s)보다 상향돼 있다 — #148(29파일, diff
+# 5519줄→3000줄 캡 + 4개 패널 리뷰) 실측에서 두 시도 모두 정확히 그 캡에서 죽었고,
+# stderr 는 비어 있었다(크롤이 아니라 순수 처리 시간 부족 — 폴백은 도구가 없어 크롤이
+# 원천적으로 불가능한데도 120s 에서 죽었다는 것 자체가 "크롤이 아니라 큰 입력의 정상
+# 처리 시간"이라는 증거). 큰 diff 에서도 두 시도 모두 완주할 수 있도록 상향; 도구가
+# 없는 폴백은 크롤 재발 위험이 없으므로 값을 늘려도 ADR-016 의 원래 목적(크롤 차단)은
+# 그대로 유지된다.
 PRIMARY_MODEL="${ANTHROPIC_MODEL:-us.anthropic.claude-fable-5}"
 FALLBACK_MODEL="${CHAIR_FALLBACK_MODEL:-us.anthropic.claude-opus-5}"
-CHAIR_TIMEOUT="${CHAIR_TIMEOUT:-300}"
-CHAIR_FALLBACK_TIMEOUT="${CHAIR_FALLBACK_TIMEOUT:-120}"
+CHAIR_TIMEOUT="${CHAIR_TIMEOUT:-450}"
+CHAIR_FALLBACK_TIMEOUT="${CHAIR_FALLBACK_TIMEOUT:-300}"
 
 chair_label() { case "$1" in
   *fable-5*)  echo "Claude Fable 5" ;;

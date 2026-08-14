@@ -20,9 +20,10 @@ jobs:
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: oh-my-cloud-skills-claude-arm
     # 방어적 상한 — self-hosted 러너가 예기치 못한 hang 으로 장시간 점유되는 것을 막는다.
-    # L1(수초) + 패널(4셀 병렬, 최슬로우 ~5m, PANEL_RETRIES=3) + 의장(no-tools 이므로 stdin
-    # 내용만 처리 — primary 300s + 폴백 300s) + 오버헤드(~3m) ≈ 15m. 여유를 두고 25m.
-    timeout-minutes: 25
+    # L1(수초) + 패널(최대 4셀 병렬, 최슬로우 ~5m, PANEL_RETRIES=3) + 의장(primary 450s +
+    # 폴백 300s, 둘 다 큰 diff 의 실측 처리 시간에 맞춰 상향 — #148 실측: 300s/120s 두
+    # 캡 모두에서 정확히 죽었고 크롤은 아니었다) + 오버헤드(~3m) ≈ 21m. 여유를 두고 30m.
+    timeout-minutes: 30
     concurrency:
       group: pr-review-${{ github.event.pull_request.number }}
       cancel-in-progress: true
