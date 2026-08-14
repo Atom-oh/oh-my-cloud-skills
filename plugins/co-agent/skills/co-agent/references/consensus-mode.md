@@ -29,7 +29,7 @@ CRITICAL/MAJOR finding remains (also stop on no-progress / oscillation).
 
 ## Multi-model rules
 - Default profile = one model per AI. The committed default is `deep`, which activates
-  each AI's `models` list — Kiro's mainstay panel is **opus / minimax-m2.5 / glm-5**.
+  each AI's `models` list — Kiro's mainstay panel is **opus / minimax-m2.5**.
 - Cap: `rounds × pairs ≤ max_calls`; trim same-family (round-robin) first, then warn.
 - Same provider *family* (e.g. two Agy-routed variants) = diminishing returns; the matrix warns.
   **Kiro is the exception** — it's a cross-vendor router (Claude / MiniMax / Zhipu), so

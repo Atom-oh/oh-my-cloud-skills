@@ -19,8 +19,8 @@
   -delete`) — 검증기가 트리 밖 경로를 따라갈 여지를 없애는 defense-in-depth.
 
 ## L2–L5 — Lens×Model 매트릭스 (L1 통과 시에만 실행)
-- **매트릭스**: 4 모델(Codex `openai.gpt-5.6-sol` + Kiro `claude-opus-4.8`/`gpt-5.6-terra`/`glm-5`) ×
-  4 lens(L2=Skill/Agent 품질, L3=보안, L4=코드 정확성, L5=문서 일관성) = **최대 16개 독립 find
+- **매트릭스**: 3 모델(Codex `openai.gpt-5.6-sol` + Kiro `claude-opus-4.8`/`gpt-5.6-terra`) ×
+  4 lens(L2=Skill/Agent 품질, L3=보안, L4=코드 정확성, L5=문서 일관성) = **최대 12개 독립 find
   에이전트(기본 구성 기준 — 매트릭스 멤버십은 설정값, 아래 "설정" 절 참조)**, 전부 병렬(`&`+`wait`)
   — 벽시계 ≈ 최슬로우 셀 하나(순차합 아님). 각 셀은 자기 lens
   하나만 리뷰(스코프 축소로 셀당 응답도 짧아짐). (`kimi-k2.5` 교체 근거: 프로덕션 CI에서
@@ -33,7 +33,8 @@
   `--trust-tools=` 로 변경, 아래)/`--no-interactive`/`--wrap never`
   는 `--v3` 유무와 무관하게 동일하게 동작함을 직접 재현 확인) → `--v3` 를 빼고 `gpt-5.5` 로
   최종 확정(codex 와 동일 모델이나 별도 harness/tool-access 경로라 리뷰 내용은 갈림). 결정
-  기록: ADR-012.
+  기록: ADR-012. (`kiro-glm`/`glm-5`는 이후 false-positive rate 로 인해 기본 비활성화 —
+  AWS-Demo-Platform ADR-015 선례, 이 repo의 kiro-glm 드롭 ADR 참조.)
 - **Kiro diff 전달: `fs_read` 경로 참조 → capped argv 직접 embed(ADR-013)** — Kiro 셀은
   `--trust-tools=fs_read` 대신 `--trust-tools=`(툴 미부여)를 받고, diff 는
   `KIRO_DIFF_CAP`(기본 100000B)로 캡핑해 argv 에 직접 실린다. 이유: untrusted PR diff 에
@@ -54,7 +55,7 @@
   600s로 상향.)
 - **데이터 거주성**: 매트릭스 멤버마다 경로가 다름 —
   - **Codex / Claude(의장)**: Amazon Bedrock **us-east-1**(openai.gpt-5.6-sol은 bedrock-mantle In-Region 전용, fable-5는 US 추론 프로파일), AWS 인증은 EKS Pod Identity(SigV4).
-  - **Kiro**: **외부 API-key 기반 서비스** — PR diff가 외부로 전송됨(기본 구성 기준 16셀 중 12셀이 Kiro; 매트릭스 멤버십은 설정값이므로 실제 셀 수는 달라질 수 있음). In-Region 아님.
+  - **Kiro**: **외부 API-key 기반 서비스** — PR diff가 외부로 전송됨(기본 구성 기준 12셀 중 8셀이 Kiro; 매트릭스 멤버십은 설정값이므로 실제 셀 수는 달라질 수 있음). In-Region 아님.
   - **민감 diff 정책**: 외부 전송이 부적절한 변경은 외부 패널(Kiro)을 비활성화하고 Bedrock In-Region
     멤버(Codex)만으로 리뷰할 것. **이걸 실제로 끄는 절차는 아래 "설정" 절의 "CI에서 실제로
     적용되는 방법" 참조** — `.claude/pr-review.local.json`을 워크스페이스에 써 두는 것만으로는
@@ -63,7 +64,7 @@
     private fork 시 강제 skip 게이트 필요 — ADR-009.)
 
 ## 설정 — 매트릭스 멤버십 (`scripts/pr-review/panel_config.py`)
-- 어떤 셀(codex/kiro-opus/kiro-gpt/kiro-glm)이 매트릭스에 참여하는지는
+- 어떤 셀(codex/kiro-opus/kiro-gpt, kiro-glm은 false-positive rate로 기본 비활성 — 아래 참조)이 매트릭스에 참여하는지는
   `scripts/pr-review/run-panel.sh` 하드코딩이 아니라 설정에서 온다 — co-agent 플러그인의
   `co_agent_config.py`(defaults.json + gitignored local override)와 같은 레이어링을
   `scripts/pr-review/pr-review.defaults.json`(committed) + `.claude/pr-review.local.json`

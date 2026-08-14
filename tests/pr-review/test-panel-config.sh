@@ -12,19 +12,21 @@ assert_json_valid "$DEF" "pr-review.defaults.json is valid JSON"
 
 R=$(mktemp -d "${TMPDIR:-/tmp}/prreviewcfg.XXXXXX")
 
-# (a) fresh --root → all 3 kiro cells + codex enabled by default
+# (a) fresh --root → 2 enabled kiro cells (kiro-opus, kiro-gpt) + codex enabled by
+# default; kiro-glm (glm-5) is disabled by default (false-positive rate — see
+# AWS-Demo-Platform ADR-015 / this repo's ADR on dropping kiro-glm).
 CELLS=$(python3 "$CFG" kiro-cells --root "$R" 2>&1)
 assert_eq "claude-opus-5:kiro-opus
-gpt-5.6-terra:kiro-gpt
-glm-5:kiro-glm" "$CELLS" "kiro-cells lists all 3 kiro cells in fixed order by default"
+gpt-5.6-terra:kiro-gpt" "$CELLS" "kiro-cells lists the 2 enabled kiro cells in fixed order by default (kiro-glm disabled)"
 python3 "$CFG" codex-enabled --root "$R" >/dev/null 2>&1 && RC=0 || RC=$?
 assert_eq "0" "$RC" "codex-enabled exits 0 by default"
 
-# (b) disabling a kiro cell removes it from kiro-cells (and only that one)
-python3 "$CFG" set kiro-glm enabled false --root "$R" >/dev/null 2>&1
+# (b) disabling a kiro cell removes it from kiro-cells (and only that one) — uses
+# kiro-gpt since kiro-glm is already disabled by default and wouldn't exercise the
+# disable code path.
+python3 "$CFG" set kiro-gpt enabled false --root "$R" >/dev/null 2>&1
 CELLS_B=$(python3 "$CFG" kiro-cells --root "$R" 2>&1)
-assert_eq "claude-opus-5:kiro-opus
-gpt-5.6-terra:kiro-gpt" "$CELLS_B" "disabling kiro-glm removes only that cell from kiro-cells"
+assert_eq "claude-opus-5:kiro-opus" "$CELLS_B" "disabling kiro-gpt removes only that cell from kiro-cells"
 
 # (c) disabling codex flips codex-enabled's exit code
 python3 "$CFG" set codex enabled false --root "$R" >/dev/null 2>&1
@@ -81,10 +83,10 @@ assert_eq "claude-opus-5:kiro-opus
 gpt-5.6-terra:kiro-gpt" "$CELLS_H3" "set's repair replaced the malformed override -- kiro-cells now succeeds"
 
 # (i) $PR_REVIEW_CONFIG_ROOT env is honored when --root is omitted (test-isolation parity
-# with co-agent's $CO_AGENT_USER_CONFIG) — same disabled-cell state as (b)/(c) above.
+# with co-agent's $CO_AGENT_USER_CONFIG) — same disabled-cell state as (b)/(c) above
+# (kiro-gpt and codex disabled, kiro-glm disabled by default → only kiro-opus remains).
 CELLS_I=$(PR_REVIEW_CONFIG_ROOT="$R" python3 "$CFG" kiro-cells 2>&1)
-assert_eq "claude-opus-5:kiro-opus
-gpt-5.6-terra:kiro-gpt" "$CELLS_I" "\$PR_REVIEW_CONFIG_ROOT is honored when --root is omitted"
+assert_eq "claude-opus-5:kiro-opus" "$CELLS_I" "\$PR_REVIEW_CONFIG_ROOT is honored when --root is omitted"
 
 # (j) MODEL_RE rejects ':' -- run-panel.sh's consumer does a first-colon split
 # ("${entry%%:*}"), so a model value containing ':' would be silently truncated instead
@@ -110,9 +112,12 @@ assert_eq "2" "$RC" "codex-enabled fails closed when a cell's enabled is a JSON 
 # closed -- cmd_kiro_cells' own per-cell check only skips-with-warning (exit 0), which
 # silently shrinks the roster without tripping the coverage floor (the exact failure mode
 # the floor exists to catch). validate_shape() promotes this to a ConfigError under strict.
+# kiro-glm defaults to disabled now, so this override must explicitly re-enable it --
+# otherwise "enabled" merges in as false from defaults and the model check never fires,
+# making the assertion a tautology instead of exercising the invalid-model path.
 R6=$(mktemp -d "${TMPDIR:-/tmp}/prreviewcfg.XXXXXX")
 mkdir -p "$R6/.claude"
-echo '{"panel": {"kiro-glm": {"model": ""}}}' > "$R6/.claude/pr-review.local.json"
+echo '{"panel": {"kiro-glm": {"enabled": true, "model": ""}}}' > "$R6/.claude/pr-review.local.json"
 python3 "$CFG" kiro-cells --root "$R6" >/dev/null 2>&1 && RC=0 || RC=$?
 assert_eq "1" "$RC" "kiro-cells fails closed when an enabled cell's model is empty"
 

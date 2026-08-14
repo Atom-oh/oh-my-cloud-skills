@@ -8,7 +8,8 @@ PR을 열면 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 L1(결정
    호출되지 않음(비용 0) — 원인은 코멘트 본문의 `test-plugins.py`/`test-codex-plugins.py` 출력
    (dangling 참조/버전 불일치/JSON 오류/`.codex-plugin` 매니페스트 오류)에 그대로 나온다.
 2. **L1 통과** 시: PR 코멘트의 `_Cells (model/lens):_` 줄에 `codex/L2`, `kiro-opus/L3`,
-   `kiro-gpt/L4`, `kiro-glm/L5` 등 최대 16개 `<모델>/<lens>` 태그가 보이면 정상(일부 셀은
+   `kiro-gpt/L4` 등 최대 12개 `<모델>/<lens>` 태그가 보이면 정상(kiro-glm은 false-positive
+   rate로 기본 비활성 — 아래 참조; 일부 셀은
    등급/쿼터로 간헐 skip 가능). 모델 하나가 **전체 lens** 에서 응답 없으면(예: kiro-cli 플래그
    무효화) 리뷰 상단에 `⚠️ 커버리지 저하` 배너가 뜬다(synthesize.sh 가 실제로 출력하는 배너
    문자열 그대로 — run-panel.sh 의 모델별 row 체크 결과, lens 하나가 모든 모델에서 동시에
@@ -24,7 +25,7 @@ PR을 열면 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 L1(결정
     (기본 `us.anthropic.claude-opus-4-8`)로 1회 재시도. 튜닝하려면 워크플로 `env`에
     `CHAIR_TIMEOUT`/`CHAIR_FALLBACK_MODEL` 지정.
 - codex: `openai.gpt-5.6-sol` (bedrock-mantle, In-Region us-east-1; 이미지 `~/.codex/config.toml`의 region이 결정) — L2~L5 각 lens 당 1회, 기본 활성 로스터 기준 총 4콜. (`gpt-5.5`→`openai.gpt-5.6-sol` deprecation 교체 — ADR-014.)
-- kiro-cli: `claude-opus-4.8`/`gpt-5.6-terra`/`glm-5` 각각 L2~L5 당 1회, 기본 활성 로스터 기준 총 12콜(매트릭스 멤버십은 설정값 — `panel_config.py`, `docs/ci-pr-review.md` "설정" 절). (`kimi-k2.5`는
+- kiro-cli: `claude-opus-4.8`/`gpt-5.6-terra` 각각 L2~L5 당 1회, 기본 활성 로스터 기준 총 8콜(매트릭스 멤버십은 설정값 — `panel_config.py`, `docs/ci-pr-review.md` "설정" 절). `glm-5`(`kiro-glm`)는 false-positive rate로 기본 비활성 — AWS-Demo-Platform ADR-015 선례, 이 repo의 kiro-glm 드롭 ADR 참조. (`kimi-k2.5`는
   프로덕션에서 커버리지 저하 2/2회 + 근거 없는 지적 7건으로 교체됨. **`--v3` 를 쓰지 않는다**
   — `kiro-cli --v3 chat ... --model gpt-5.5`(구 모델명 — 아래 재현 당시 명칭, ADR-014로
   `gpt-5.6-terra`로 교체)는 `--list-models`엔 나열돼도 실제 호출은
