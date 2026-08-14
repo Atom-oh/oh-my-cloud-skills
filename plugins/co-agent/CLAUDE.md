@@ -21,7 +21,7 @@
 | Skill | Trigger | Purpose |
 |-------|---------|---------|
 | `co-agent` | "co-agent", "second opinion", "다른 AI", "AI 협업", "코드/아키텍처 리뷰", "잘 모르겠어", "의사결정", "decide", "adr" | 멀티-AI 협업 (리뷰·의사결정·ADR·sync-context·consensus·harness·setup) |
-| `pr-autofix` | "pr autofix", "PR 자동 수정", "리뷰 피드백 수정" | PR 생성 후 AI/사람 리뷰를 폴링 → 플랜(Fable/Opus) → 격리 worktree 구현 → 승인 델타만 랜딩 → 커밋·푸시를 루프 (`/co-agent:pr-autofix`; 루프 상한은 `set pr_autofix max_iterations`, 기본 5) |
+| `pr-autofix` | "pr autofix", "PR 자동 수정", "리뷰 피드백 수정" | PR 생성 후 AI/사람 리뷰를 폴링 → 플랜(Fable/Opus) → 격리 worktree 구현 → 승인 델타만 랜딩 → 커밋·푸시를 루프 (`/co-agent:pr-autofix`; 루프 상한은 `set pr_autofix max_iterations`, 기본 5). `push_gate` 활성 시 pass >3/>5 에스컬레이션 — 상세는 `skills/pr-autofix/SKILL.md` §5a/§5b |
 | `decision-reconcile` | "의사결정 번복", "ADR 모순", "reconcile ADRs" | 누적 ADR 간 모순·현실 드리프트를 다양한 리뷰 렌즈(Claude 티어 + 선택적 peer CLI) 패널로 탐지하고 superseding ADR 초안 작성 |
 
 ## Modes

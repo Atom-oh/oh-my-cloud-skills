@@ -105,6 +105,97 @@ ensure_slots "$GOOD_DIR" \
   || fail "ensure_slots still creates the slot dir for a normal workdir" "slot dir missing after call"
 rm -rf "$GOOD_DIR"
 
+# memory_excerpt() — 패널 메모리 발췌 헬퍼. (a) fail-open, (b) 파일 기반 캡이라
+# SIGPIPE(141) 없이 잘리고 마커가 붙는지, (c) `## 패널 셀 판단 질` 섹션만 제외되고
+# 앞/뒤 섹션은 남는지를 검증한다. 이 파일은 run-all.sh 가 `set -euo pipefail` 로 source
+# 하므로 비-zero 로 끝날 수 있는 경로는 전부 if 로 감싼다.
+
+# (a) 파일 부재 → 출력이 빈 문자열이고 반환코드 0 (fail-open)
+MEM_MISSING_PATH="$(mktemp -u)"
+MEM_MISS_RC=0
+MEM_MISS_OUT="$(memory_excerpt "$MEM_MISSING_PATH")" || MEM_MISS_RC=$?
+if [ "$MEM_MISS_RC" = 0 ] && [ -z "$MEM_MISS_OUT" ]; then
+  pass "memory_excerpt is fail-open on a missing file (rc 0, empty output)"
+else
+  fail "memory_excerpt is fail-open on a missing file (rc 0, empty output)" \
+    "rc=$MEM_MISS_RC out=$MEM_MISS_OUT"
+fi
+
+# (b) 100KB 파일 + 4000B 캡 → 반환코드 0(141 아님) + TRUNCATED 마커. 파일 생성도 파이프
+# (`yes | head -c`) 대신 awk 로 — 여기서 파이프를 쓰면 테스트 자체가 SIGPIPE 함정에 빠진다.
+MEM_BIG="$(mktemp)"
+awk 'BEGIN { for (i = 0; i < 2500; i++) print "memory content line " i " for the truncation test" }' > "$MEM_BIG"
+MEM_BIG_RC=0
+MEM_BIG_OUT="$(memory_excerpt "$MEM_BIG" 4000)" || MEM_BIG_RC=$?
+case "$MEM_BIG_OUT" in
+  *"MEMORY TRUNCATED"*) MEM_BIG_MARKER=1 ;;
+  *) MEM_BIG_MARKER=0 ;;
+esac
+if [ "$MEM_BIG_RC" = 0 ] && [ "$MEM_BIG_MARKER" = 1 ]; then
+  pass "memory_excerpt caps a 100KB file at 4000B without SIGPIPE and appends the marker"
+else
+  fail "memory_excerpt caps a 100KB file at 4000B without SIGPIPE and appends the marker" \
+    "rc=$MEM_BIG_RC marker=$MEM_BIG_MARKER"
+fi
+rm -f "$MEM_BIG"
+
+# (c) `## 패널 셀 판단 질` 섹션은 제외, 앞(`## 반복 진짜 문제`)/뒤 섹션 내용은 유지
+MEM_SECTIONS="$(mktemp)"
+cat > "$MEM_SECTIONS" <<'EOF'
+# 패널 메모리
+
+## 반복 진짜 문제
+- pipe-to-head SIGPIPE trap keeps recurring
+
+## 패널 셀 판단 질
+| 셀 | 판단 질 |
+|----|--------|
+| kiro-cell | low-signal |
+
+## 다음 리뷰 지침
+- always verify the file-based cap idiom
+EOF
+MEM_SEC_RC=0
+MEM_SEC_OUT="$(memory_excerpt "$MEM_SECTIONS")" || MEM_SEC_RC=$?
+MEM_SEC_OK=1
+case "$MEM_SEC_OUT" in *"패널 셀 판단 질"*) MEM_SEC_OK=0 ;; esac
+case "$MEM_SEC_OUT" in *"kiro-cell"*) MEM_SEC_OK=0 ;; esac
+case "$MEM_SEC_OUT" in *"반복 진짜 문제"*) : ;; *) MEM_SEC_OK=0 ;; esac
+case "$MEM_SEC_OUT" in *"SIGPIPE trap keeps recurring"*) : ;; *) MEM_SEC_OK=0 ;; esac
+case "$MEM_SEC_OUT" in *"다음 리뷰 지침"*) : ;; *) MEM_SEC_OK=0 ;; esac
+case "$MEM_SEC_OUT" in *"file-based cap idiom"*) : ;; *) MEM_SEC_OK=0 ;; esac
+if [ "$MEM_SEC_RC" = 0 ] && [ "$MEM_SEC_OK" = 1 ]; then
+  pass "memory_excerpt drops the 판단 질 section but keeps surrounding sections"
+else
+  fail "memory_excerpt drops the 판단 질 section but keeps surrounding sections" \
+    "rc=$MEM_SEC_RC got: $MEM_SEC_OUT"
+fi
+rm -f "$MEM_SECTIONS"
+
+# verdict_of() — 단일 verdict 파서(ADR-016), chair_valid()(synthesize.sh)와 워크플로 게이트가
+# 공유한다. (a) 마지막 매치를 채택, (b) 뒤따르는 텍스트 허용, (c) 매치 없으면 빈 문자열,
+# (d) 부재 파일도 죽지 않고 빈 문자열.
+VOF_FILE="$(mktemp)"
+printf 'VERDICT: PASS\nbody\nVERDICT: FAIL\n' > "$VOF_FILE"
+[ "$(verdict_of "$VOF_FILE")" = "FAIL" ] \
+  && pass "verdict_of adopts the LAST VERDICT: PASS|FAIL match, not the first" \
+  || fail "verdict_of adopts the LAST VERDICT: PASS|FAIL match, not the first" "got: $(verdict_of "$VOF_FILE")"
+
+printf 'VERDICT: FAIL (3 MAJOR)\n' > "$VOF_FILE"
+[ "$(verdict_of "$VOF_FILE")" = "FAIL" ] \
+  && pass "verdict_of tolerates trailing text after PASS|FAIL" \
+  || fail "verdict_of tolerates trailing text after PASS|FAIL" "got: $(verdict_of "$VOF_FILE")"
+
+printf 'VERDICT: 설명 프로즈, PASS/FAIL 로 끝나지 않음\n' > "$VOF_FILE"
+[ -z "$(verdict_of "$VOF_FILE")" ] \
+  && pass "verdict_of returns empty when no line ends in a bare PASS|FAIL" \
+  || fail "verdict_of returns empty when no line ends in a bare PASS|FAIL" "got: $(verdict_of "$VOF_FILE")"
+
+[ -z "$(verdict_of "$(mktemp -u)")" ] \
+  && pass "verdict_of on a missing file returns empty, does not error" \
+  || fail "verdict_of on a missing file returns empty, does not error" "got: $(verdict_of "$(mktemp -u)")"
+rm -f "$VOF_FILE"
+
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then
   [ "$_t_fail" = 0 ] && echo "PASS: test-lib" || exit 1

@@ -98,10 +98,9 @@ grep -q "커버리지 저하" "$WORK/review.md" 2>/dev/null \
   || fail "synthesize (d) VERDICT stays the last line despite the prepended banner" "got: $(tail -1 "$WORK/review.md")"
 rm -rf "$WORK" "$BIN"
 
-# (e) 커버리지 붕괴(severe) — run-panel.sh 의 coverage-severe.flag 가 있으면 체어가 PASS 라고
-# 써도 VERDICT 를 강제 FAIL 로 덮어써야 한다(살아남은 벤더가 1개뿐이라 매트릭스의 lens당
-# 교차확인이 성립하지 않음 — ADR-011 M2). 체어의 원래 PASS 줄이 코멘트에 남아 BLOCKED
-# 배지와 모순돼 보이지 않도록, 기존 VERDICT 줄은 지워지고 새 FAIL 줄만 남아야 한다.
+# (e) 커버리지 붕괴(severe) — ADR-016: run-panel.sh 의 coverage-severe.flag 는 더 이상
+# VERDICT 를 강제하지 않는다. 살아남은 벤더가 1개뿐이라 교차확인이 성립하지 않는다는
+# 사실을 배너로만 알리고, 체어의 판정(PASS)은 그대로 남는다.
 setup; mkclaude_pass
 echo "codex-finding" > "$WORK/slot/codex-L2.md"
 echo "codex/L2" >> "$WORK/responded.txt"
@@ -110,16 +109,12 @@ printf 'kiro-opus\nkiro-gpt\nkiro-glm\n' > "$WORK/degraded-models.txt"
 if ! bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
   fail "synthesize (e) script exits 0 even with coverage-severe.flag set" "exited non-zero"
 fi
-[ "$(tail -1 "$WORK/review.md")" = "VERDICT: FAIL" ] \
-  && pass "synthesize (e) coverage-severe.flag forces VERDICT: FAIL despite chair saying PASS" \
-  || fail "synthesize (e) coverage-severe.flag forces VERDICT: FAIL despite chair saying PASS" "got: $(tail -1 "$WORK/review.md")"
-[ "$(grep -c '^VERDICT:' "$WORK/review.md")" = 1 ] \
-  && pass "synthesize (e) only one VERDICT line survives (chair's original PASS is removed)" \
-  || fail "synthesize (e) only one VERDICT line survives (chair's original PASS is removed)" \
-       "$(grep '^VERDICT:' "$WORK/review.md")"
-grep -q "커버리지 붕괴로 강제 FAIL" "$WORK/review.md" 2>/dev/null \
-  && pass "synthesize (e) severe-override banner appears in the review" \
-  || fail "synthesize (e) severe-override banner appears in the review" "banner missing"
+[ "$(tail -1 "$WORK/review.md")" = "VERDICT: PASS" ] \
+  && pass "synthesize (e) coverage-severe.flag no longer overrides the chair's PASS verdict" \
+  || fail "synthesize (e) coverage-severe.flag no longer overrides the chair's PASS verdict" "got: $(tail -1 "$WORK/review.md")"
+grep -q "커버리지 붕괴" "$WORK/review.md" 2>/dev/null \
+  && pass "synthesize (e) severe banner appears in the review" \
+  || fail "synthesize (e) severe banner appears in the review" "banner missing"
 rm -rf "$WORK" "$BIN"
 
 # (f) responded.txt 가 없는 caller — `< 없는파일` 리다이렉트 실패가 pipefail 하에서 command
@@ -139,10 +134,10 @@ grep -q "none — Claude solo" "$WORK/synth-prompt.txt" 2>/dev/null \
   || fail "synthesize (f) documented fallback text reaches the chair prompt when responded.txt is absent" "fallback missing"
 rm -rf "$WORK" "$BIN"
 
-# (g) severe 오버라이드가 체어 본문 프로즈 안의 "VERDICT:"로 시작하는 설명 줄까지 지우면
-# 안 된다 — 이전 구현은 `sed '/^VERDICT:/d'`로 파일 전체에서 그 패턴에 매치하는 모든 줄을
-# 지워, 체어가 규칙을 인용하며 "VERDICT: ..." 로 시작하는 프로즈 줄을 남기면 그 설명까지
-# 함께 사라졌다(17차 리뷰 MINOR-1). 마지막 매치 한 줄만 지우도록 고친 뒤 재현/고정한다.
+# (g) verdict_of() 은 마지막 `^VERDICT: (PASS|FAIL)` 매치만 채택한다(ADR-016 단일 파서) —
+# 체어가 규칙을 인용하며 "VERDICT: ..." 로 시작하는 설명 프로즈 줄을 먼저 내도(PASS/FAIL로
+# 안 끝나 매치되지 않음) 그 뒤의 실제 VERDICT: PASS 줄이 채택되고, 아무 줄도 지워지지 않는다
+# (더 이상 sed 로 줄을 삭제하지 않으므로 설명 줄이 review.md 에 그대로 남는다).
 setup
 cat > "$BIN/claude" <<'EOF'
 #!/usr/bin/env bash
@@ -153,38 +148,40 @@ EOF
 chmod +x "$BIN/claude"
 echo "codex-finding" > "$WORK/slot/codex-L2.md"
 echo "codex/L2" >> "$WORK/responded.txt"
-printf 'kiro-opus\nkiro-gpt\nkiro-glm\n' > "$WORK/degraded-models.txt"
-: > "$WORK/coverage-severe.flag"
 if ! bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
   fail "synthesize (g) script exits 0 with a prose line that starts with VERDICT:" "exited non-zero"
 fi
 grep -q "이 규칙은 파일의 마지막 줄" "$WORK/review.md" 2>/dev/null \
-  && pass "synthesize (g) severe override preserves an explanatory prose line that happens to start with VERDICT:" \
-  || fail "synthesize (g) severe override preserves an explanatory prose line that happens to start with VERDICT:" "explanatory line was also deleted"
-[ "$(tail -1 "$WORK/review.md")" = "VERDICT: FAIL" ] \
-  && pass "synthesize (g) last line is still the forced VERDICT: FAIL" \
-  || fail "synthesize (g) last line is still the forced VERDICT: FAIL" "got: $(tail -1 "$WORK/review.md")"
+  && pass "synthesize (g) explanatory prose line that happens to start with VERDICT: survives (nothing is deleted)" \
+  || fail "synthesize (g) explanatory prose line that happens to start with VERDICT: survives (nothing is deleted)" "explanatory line missing"
+[ "$(tail -1 "$WORK/review.md")" = "VERDICT: PASS" ] \
+  && pass "synthesize (g) the chair's real VERDICT: PASS line is adopted, not the explanatory one" \
+  || fail "synthesize (g) the chair's real VERDICT: PASS line is adopted, not the explanatory one" "got: $(tail -1 "$WORK/review.md")"
 rm -rf "$WORK" "$BIN"
 
-# (h) severe 오버라이드가 "VERDICT:" 줄이 전혀 없는 저하된 체어 응답을 만나면 안 된다 —
-# GNU sed 의 `0,/re/d` 는 패턴이 한 번도 매치하지 않으면 범위 종료 조건이 안 성립해 EOF까지
-# 확장되어 파일 전체를 지운다. primary/fallback 둘 다 비어있진 않지만 VERDICT 줄이 없는
-# 응답을 내면 `[ ! -s "$OUT" ]` 가드로는 못 잡는 corner 다(18차 리뷰 MINOR-1, 17차 수정이
-# 새로 만든 회귀).
+# (h) 인프라 실패 경로(ADR-016) — primary/fallback 둘 다 usable VERDICT 를 못 내면(여기선
+# 둘 다 mkclaude_no_verdict), 이것은 리뷰 발견이 아니라 CI 인프라 문제다. review.md 는
+# fail-closed 안전망으로 VERDICT: FAIL 을 남기지만, 본문은 "인프라 실패"라고 정직하게
+# 말해야 하고(체어의 원래 "something went wrong" 텍스트를 리뷰 발견처럼 보여주지 않음),
+# chair_error=1 이 GITHUB_ENV 로 신호돼 워크플로가 BLOCKED 대신 ERROR 로 표시할 수 있어야
+# 한다.
 setup; mkclaude_no_verdict
 echo "codex-finding" > "$WORK/slot/codex-L2.md"
 echo "codex/L2" >> "$WORK/responded.txt"
-printf 'kiro-opus\nkiro-gpt\nkiro-glm\n' > "$WORK/degraded-models.txt"
-: > "$WORK/coverage-severe.flag"
+export GITHUB_ENV="$WORK/github_env.txt"; : > "$GITHUB_ENV"
 if ! bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
-  fail "synthesize (h) script exits 0 when the chair response has no VERDICT line at all" "exited non-zero"
+  fail "synthesize (h) script exits 0 when both chair attempts produce no VERDICT line" "exited non-zero"
 fi
-grep -q "something went wrong" "$WORK/review.md" 2>/dev/null \
-  && pass "synthesize (h) severe override preserves the chair's body even when it has no VERDICT line to remove" \
-  || fail "synthesize (h) severe override preserves the chair's body even when it has no VERDICT line to remove" "chair body was wiped"
+grep -q "리뷰 생성 실패(인프라)" "$WORK/review.md" 2>/dev/null \
+  && pass "synthesize (h) infra-failure message appears, not a fabricated review finding" \
+  || fail "synthesize (h) infra-failure message appears, not a fabricated review finding" "got: $(cat "$WORK/review.md")"
 [ "$(tail -1 "$WORK/review.md")" = "VERDICT: FAIL" ] \
-  && pass "synthesize (h) last line is still the forced VERDICT: FAIL" \
-  || fail "synthesize (h) last line is still the forced VERDICT: FAIL" "got: $(tail -1 "$WORK/review.md")"
+  && pass "synthesize (h) fail-closed safety net VERDICT: FAIL is still the last line" \
+  || fail "synthesize (h) fail-closed safety net VERDICT: FAIL is still the last line" "got: $(tail -1 "$WORK/review.md")"
+grep -qx "chair_error=1" "$GITHUB_ENV" 2>/dev/null \
+  && pass "synthesize (h) chair_error=1 is signaled via GITHUB_ENV" \
+  || fail "synthesize (h) chair_error=1 is signaled via GITHUB_ENV" "got: $(cat "$GITHUB_ENV" 2>/dev/null)"
+unset GITHUB_ENV
 rm -rf "$WORK" "$BIN"
 
 # (i) Kiro diff truncation 배너 (20차 리뷰 MAJOR L4-1) — run-panel.sh 가 남긴
@@ -203,6 +200,53 @@ grep -q "Kiro diff truncated" "$WORK/review.md" 2>/dev/null \
 [ "$(tail -1 "$WORK/review.md")" = "VERDICT: PASS" ] \
   && pass "synthesize (i) VERDICT stays the last line despite the prepended banner" \
   || fail "synthesize (i) VERDICT stays the last line despite the prepended banner" "got: $(tail -1 "$WORK/review.md")"
+rm -rf "$WORK" "$BIN"
+
+# (j) 새 출력 섹션(메모리 루프) — 체어가 MEMORY CANDIDATES + PANEL QUALITY 두 섹션을 낸 **뒤**
+# VERDICT: PASS 를 마지막 줄로 내면, chair_valid() 를 그대로 통과해(폴백 미발동) 두 섹션이
+# review.md 에 살아남아야 하고, PANEL-QUALITY: 줄은 로컬 호스트가 파싱하는 고정 형식
+# `^PANEL-QUALITY: [a-z0-9-]+=[0-9]+/[0-9]+$` 에 매치해야 한다.
+setup
+cat > "$BIN/claude" <<'EOF'
+#!/usr/bin/env bash
+echo "Summary: ok"
+echo ""
+echo "### 🧠 MEMORY CANDIDATES"
+echo "- (none)"
+echo ""
+echo "### PANEL QUALITY"
+echo "PANEL-QUALITY: codex-l2=0/3"
+echo "PANEL-QUALITY: kiro-opus-l3=1/2"
+echo ""
+echo "VERDICT: PASS"
+EOF
+chmod +x "$BIN/claude"
+echo "codex-finding" > "$WORK/slot/codex-L2.md"
+echo "codex/L2" >> "$WORK/responded.txt"
+if bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
+  pass "synthesize (j) script exits 0 when the chair emits the two new sections before VERDICT"
+else
+  fail "synthesize (j) script exits 0 when the chair emits the two new sections before VERDICT" "exited non-zero"
+fi
+[ "$(tail -1 "$WORK/review.md")" = "VERDICT: PASS" ] \
+  && pass "synthesize (j) VERDICT: PASS is still the last line of review.md" \
+  || fail "synthesize (j) VERDICT: PASS is still the last line of review.md" "got: $(tail -1 "$WORK/review.md")"
+[ "$(grep -c '^VERDICT:' "$WORK/review.md")" = 1 ] \
+  && pass "synthesize (j) exactly one VERDICT line (chair_valid passed, no fallback fired)" \
+  || fail "synthesize (j) exactly one VERDICT line (chair_valid passed, no fallback fired)" \
+       "$(grep '^VERDICT:' "$WORK/review.md")"
+PQ_TOTAL="$(grep -c '^PANEL-QUALITY:' "$WORK/review.md" 2>/dev/null || true)"
+PQ_VALID="$(grep -Ec '^PANEL-QUALITY: [a-z0-9-]+=[0-9]+/[0-9]+$' "$WORK/review.md" 2>/dev/null || true)"
+[ "$PQ_TOTAL" = 2 ] && [ "$PQ_VALID" = 2 ] \
+  && pass "synthesize (j) both PANEL-QUALITY lines survive and match the fixed-format regex" \
+  || fail "synthesize (j) both PANEL-QUALITY lines survive and match the fixed-format regex" \
+       "total=$PQ_TOTAL valid=$PQ_VALID"
+grep -q '^### 🧠 MEMORY CANDIDATES$' "$WORK/review.md" 2>/dev/null \
+  && pass "synthesize (j) MEMORY CANDIDATES section heading survives in review.md" \
+  || fail "synthesize (j) MEMORY CANDIDATES section heading survives in review.md" "heading missing"
+grep -q '^### PANEL QUALITY$' "$WORK/review.md" 2>/dev/null \
+  && pass "synthesize (j) PANEL QUALITY section heading survives in review.md" \
+  || fail "synthesize (j) PANEL QUALITY section heading survives in review.md" "heading missing"
 rm -rf "$WORK" "$BIN"
 
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)

@@ -56,11 +56,8 @@ for s in d['skills']:
 print('All references OK')
 "
 
-# Remarp VSCode Extension development
-cd tools/remarp-vscode
-npm install && npm run compile    # Build TypeScript
-npx vsce package                  # Package .vsix
-code --install-extension remarp-vscode-0.1.0.vsix  # Install locally
+# Remarp VSCode Extension build/package: see tools/remarp-vscode/CLAUDE.md (canonical);
+# extension detail: docs/reference/remarp-vscode-extension.md
 
 # Evaluate skills (quality, structure, token usage)
 python3 scripts/eval-skills.py
@@ -149,8 +146,7 @@ Each `SKILL.md` has frontmatter limited to the six fields the Agent Skills spec
 `user-invocable` / `disable-model-invocation`. Any other key (`triggers:`, `model:`,
 `invocation:`, `argument-hint:`, `tools:`) is **inert**: the runtime ignores it silently.
 **Trigger keywords therefore belong in `description`**, which is the sole selection
-surface — a `triggers:` list strands its keywords where nothing reads them (this bit 11
-skills; see `docs/reference/skill-review-2026-07.md`). `scripts/eval-skills.py` enforces
+surface — a `triggers:` list strands its keywords where nothing reads them. `scripts/eval-skills.py` enforces
 the allowed-key set in its Structure dimension. The `references/` subdirectory holds
 distilled operational knowledge extracted from source docs.
 
@@ -217,54 +213,13 @@ echo "plugins=$VS marketplace=$MV tag=$TAG"
 
 ## Remarp VSCode Extension
 
-Source: `tools/remarp-vscode/` | Entry: `src/extension.ts` | Preview: `src/preview.ts`
-
-### File Detection
-- `.remarp.md` extension → auto `remarp` language ID
-- `.md` + frontmatter `remarp: true` → auto `remarp` language ID switch
-- `.html` + `<meta name="generator" content="remarp">` → recognized as Remarp HTML
-
-### Preview (2 modes)
-| Mode | File | Rendering |
-|------|------|-----------|
-| Markdown | `.md` / `.remarp.md` | Slide parsing → HTML + sidebar (notes, issues, prompt bar) |
-| HTML | Remarp HTML | Direct HTML load + resource path → webview URI conversion |
-
-- **Sidebar layout**: Right panel with Speaker Notes + Issue badges + Prompt bar + Submit button
-- **Arrow key slide navigation**: ←→ / Space / PageUp/PageDown (inside preview)
-- **Scroll Sync**: `remarp.scrollSync` setting controls editor cursor ↔ preview slide sync
-- **Source file tracking**: HTML `<meta name="remarp-source">` → auto-discovers `.md` file (up to 3 parent dirs)
-- **Slide type rendering**: cover, compare, tabs, agenda, timeline, quiz, checklist, cards, code, steps, title, section, thankyou
-- **Directive rendering**: `@background` → background image, `@badge` → overlay image
-
-### Issue Annotation System
-- **Prompt bar**: Sidebar input → inserts `<!-- issue: text -->` into source `.md`
-- **Issue badges**: Yellow badges in sidebar, removable via × button
-- **Slide fix**: `remarp.submitIssues` command → shows toast guiding user to run `/slide-fix` in Claude Code
-- **`/slide-fix` skill**: Reads `<!-- issue: -->` annotations via `remarp_to_slides.py issues --json`, fixes each slide, removes annotations, rebuilds HTML
-- **Auto-cleanup**: `/slide-fix` removes `<!-- issue: -->` comments after fixing
-
-### Visual Edit Mode (PPT edit mode)
-- **Activate**: `Cmd+Shift+E` / editor titlebar Edit button / per-slide floating Edit button
-- **Features**: element drag (position), resize, Property Panel (font/color/margin)
-- **CSS writeback**: changes → auto-written to `:::css` block in source `.md`
-- **Canvas writeback**: canvas element move/resize → `:::canvas` DSL coordinates updated in source `.md`
-- **Canvas editing**: drawio-style SVG overlay hitboxes for element select/move, waypoint editing, step animation control
-
-### Key Files
-| File | Role |
-|------|------|
-| `src/extension.ts` | Entry point: command registration, file detection, build script discovery |
-| `src/preview.ts` | Preview panel: MD/HTML rendering, slide parsing, navigation |
-| `src/htmlPreview.ts` | Dedicated HTML preview handler for Remarp HTML files |
-| `src/outline.ts` | Slide outline provider for editor sidebar |
-| `src/completions.ts` | Autocomplete: @directives, :::blocks, :::css, :::canvas DSL |
-| `src/cssEditor.ts` | CSS editing: `:::css` block parse/create/update |
-| `src/canvasEditor.ts` | Canvas editing: `:::canvas` DSL coordinates/size/step/animate-path update |
-| `src/visualEditor.ts` | Visual editor controller: message routing (to CSS/Canvas editors) |
-| `media/edit-mode.js` | Webview: drag/resize/property panel UI |
-| `media/canvas-editor.js` | Webview: Canvas SVG overlay, hitbox, waypoint editing |
-| `media/prompt-bar.js` | Webview: AI prompt bar UI for slide improvement |
+Source: `tools/remarp-vscode/` (TypeScript, packaged as .vsix) | Entry: `src/extension.ts` |
+Preview: `src/preview.ts`. Two preview modes (Markdown slide parsing / Remarp HTML direct
+load), issue-annotation system (`<!-- issue: -->` → `/slide-fix`), and a visual edit mode
+with `:::css` / `:::canvas` writeback. **Working on the extension? Read
+`docs/reference/remarp-vscode-extension.md` first** — file detection rules, preview/sidebar
+behavior, and key-file map live there, not here; build/package commands are canonical in
+`tools/remarp-vscode/CLAUDE.md`.
 
 ## Plugin Inventory
 
@@ -333,11 +288,13 @@ Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Sk
 | `pr-autofix-planner` | Read-only fix planner for pr-autofix (enforced Read/Grep/Glob; fable/opus) |
 | `pr-autofix-implementer` | Edit-only plan implementer for pr-autofix (enforced Read/Write/Edit/Grep/Glob — no Bash/network; opus [medium effort]) |
 
-Skill: `co-agent` — 6 modes: **Review** (multi-AI code/arch review + Well-Architected), **Decide** (decision support when unsure), **ADR** (co-author ADRs), **sync-context** (distill `CLAUDE.md` → `AGENTS.md` once; Kiro, Codex, and Agy all share that one distilled file — Kiro via `.kiro/steering/project-context.md` → `#[[file:AGENTS.md]]`, Codex and Agy both read `AGENTS.md` natively from their cwd — the fan-out additionally folds it into Agy's context as defense-in-depth for non-root-cwd runs), **Consensus** (autonomous doc→plan→implementation pipeline gated by the multi-model panel, `/co-agent:consensus`), and **harness** (host-designs / peer-implements / panel-reviews orchestrator, `/co-agent:harness`). Fans the same prompt to whichever AI CLIs are installed — Kiro (`kiro-cli chat --no-interactive`; auth via login or `KIRO_API_KEY`), Codex (`codex exec -s read-only`), Agy (`agy -p --sandbox`; Gemini support removed — ADR-010) — in parallel, then **Claude synthesizes** (consensus vs. dissent). Degrades gracefully; if no CLI is present, Claude answers solo. Adapters: `references/ai-cli-adapters.md`.
+Skill: `co-agent` — 6 modes: **Review** (multi-AI diff/arch review), **Decide** (decision support with comparison table), **ADR** (co-authored decision records), **sync-context** (distill `CLAUDE.md` → `AGENTS.md` once; Kiro/Codex/Antigravity (`agy`) all share that one distilled file), **Consensus** (doc→plan→implement pipeline, `/co-agent:consensus`), **harness** (delegated implementation orchestrator, `/co-agent:harness`). Fans the same prompt to whichever AI CLIs are installed — Kiro/Codex/Antigravity (`agy`; Gemini removed — ADR-010) — in parallel, then **Claude synthesizes**. Degrades gracefully to solo when no CLI is present. Adapters: `references/ai-cli-adapters.md`.
 
-Also in co-agent (moved out of project-init, which is now an upstream mirror — `docs/reference/project-init-upstream-sync.md`): `pr-autofix` — PR review feedback auto-fix (AI + human review polling; loop bound is the `pr_autofix.max_iterations` setting, default 5 — `/co-agent:configure set pr_autofix max_iterations <n>`, read by the skill via `co_agent_config.py pr-autofix-iterations`; fix planning on Fable/Opus, implementation delegated to opus [medium effort] subagents in a disposable worktree — only the plan-approved delta lands), and `decision-reconcile` — ADR contradiction detection across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (varied Claude model tiers + optional co-agent CLIs, one review lens each), then drafts a superseding ADR to reverse/reconcile the decision. Triggers: 의사결정 번복, ADR 모순, reconcile ADRs.
+Also in co-agent (moved out of project-init, now an upstream mirror — `docs/reference/project-init-upstream-sync.md`): `pr-autofix` — PR review feedback auto-fix loop (plan on Fable/Opus → opus [medium effort] implementer in a disposable worktree → only the plan-approved delta lands; loop bound `set pr_autofix max_iterations`, default 5; CI review-comment marker resolved from `pr_autofix.review_marker`, regex auto-detect when unset; closes the **PR review memory loop** — the host, never the planner/implementer, reads and updates the one committed `docs/pr-review/review-memory.md` that CI's review prompts also read, ADR-015; escalation ladder — only when `push_gate.enabled` is on, off by default, fails open when it can't review — pass >3 runs the pre-push lens gate before pushing, re-planning once on a blocking verdict; pass >5 escalates the panel/chair models for that gate call only, never persisted to config), and `decision-reconcile` — ADR contradiction/drift detection via a diverse multi-agent panel, drafting a superseding ADR. Triggers: 의사결정 번복, ADR 모순, reconcile ADRs.
 
-Commands: `/co-agent:configure` — tune the panel (per-AI `model`, Codex `effort`, `enabled`, `timeout`, `autosync` opt-in, and **role-based model tiering**: chair on the host's strong tier; hybrid-gate find phase wide-and-cheap on the configured `profile deep` breadth vs. verify phase on each AI's single strongest `model` via `pairs --profile default`; write-path-only `set harness implementer_model`/`implementer_effort` stored per implementer (keyed by the explicitly-set `harness.implementer`, so no cross-CLI model leak on switch) that `impl-flags` prefers over the panel settings — see `commands/configure.md` "모델 티어링"). `/co-agent:sync-context` — distill `CLAUDE.md` → `AGENTS.md` and wire the Kiro steering bridge to that same `AGENTS.md` (Mode 4 surfaced as a standalone command). Layered config: `co-agent.defaults.json` (committed) ← `.claude/co-agent.local.json` (gitignored). Only headless-settable options are exposed (effort is Codex-only); the fan-out reads `co_agent_config.py` so settings are live. The `CLAUDE.md` PostToolUse hook reminds when `AGENTS.md` drifts stale, and — if `autosync on` — tells Claude to re-run sync-context. Scripts: `check_ai_context.py` (context-file validator), `co_agent_config.py` (panel settings). `/co-agent:consensus` — autonomous doc→plan→implementation pipeline gated by the multi-model panel (Stage A plan gate · Stage B implement · Stage C final gate + report; resumable). `/co-agent:harness` — host-designs / peer-implements (isolated git worktree + workspace-write sandbox) / panel-reviews orchestrator; the host owns the failing test and every commit, and lands only the peer's captured, scope-guarded worktree diff so out-of-worktree writes never reach the main tree; reviews via the **hybrid gate** by default (parallel find → chair triage → parallel verify of the curated digest — `references/hybrid-gate.md`; `set harness review_mode hybrid|relay|parallel`), and implements with **one configured implementer fanned out as parallel per-task subagents** in disjoint-file waves (`set harness implementer codex|agy`, `set harness parallel_tasks`, default 3) (`references/delegated-implement.md`; `co_agent_config.py implementer|impl-flags`, `worktree.py`). `/co-agent:pr-autofix` — the pr-autofix loop as a command. `/co-agent:setup` — panel-readiness preflight: detects each peer (`plugin`→`raw`→`none`) and probes real usability, then writes a readiness summary (`.claude/co-agent-panel.local.json`) the other flows consult before fanning out (`check_panel.py`).
+Commands: `/co-agent:configure` (per-AI model/effort/enabled/timeout, role-based model tiering, layered config `co-agent.defaults.json` ← `.claude/co-agent.local.json`), `/co-agent:sync-context`, `/co-agent:consensus` (Stage A plan gate · Stage B implement · Stage C final gate; resumable), `/co-agent:harness` (host-designs / peer-implements in isolated worktree / hybrid-gate reviews — parallel find → chair triage → parallel verify; `references/hybrid-gate.md`, `references/delegated-implement.md`), `/co-agent:pr-autofix`, `/co-agent:setup` (panel-readiness preflight → `.claude/co-agent-panel.local.json`).
+
+> Full detail — fan-out adapters/auth, gate quorum/consent/data-boundary contracts, configure keys, tiering rules — lives in `plugins/co-agent/CLAUDE.md` (auto-loads when working in that plugin).
 
 ### project-init (1 agent, 1 skill, 9 commands) — upstream mirror
 
@@ -375,23 +332,18 @@ reaching the main tree** (host-side side effects of a granted `execute_bash` are
 separate trust decision — `plugins/kiro/CLAUDE.md` → "Trust decision").
 
 Commands: `/kiro:setup` (probe + model list + `.kiro/agents/*.json` generation),
-`/kiro:delegate`, `/kiro:review`, `/kiro:configure`. A `PreToolUse(Bash)` hook can run a
-Kiro-powered review before `git commit` (fail-open; blocks only on `critical` findings
-by default) — **off by default** (the staged diff content is sent to Kiro's backend; a
-tool-layer `fs_read` guard confines the reviewer's reads to the isolated diff dir, with
-authorship trust as defense-in-depth); `/kiro:configure set review on_commit on` to
-enable. A **second, separate** `PreToolUse(Bash)` hook can run a **3-lens**
-(correctness/security/scope, in parallel) review before `git push`, over the commit
-range about to be pushed — also off by default (`review.on_push`); blocks on `critical`
-(plain BLOCKED) or a `warning`-only set at/above `review.push_block` (default
-`warning`, framed as CHAIR JUDGMENT REQUIRED since a hook can't call Claude directly —
-the agent reads the finding from stderr and judges); warns (but still enables) if
-co-agent's own `push_gate` is also on. **Web search delegation** (off by default; `/kiro:setup` asks, or
-`set websearch enabled on`): sessions without a `WebSearch` tool (Claude Code on
-Bedrock) route web searches through kiro-cli's native `web_search` via
-`kiro_websearch.py` — the query text is the only egress; the `kiro-websearch` agent is
-search-only (no filesystem/shell) and the script fail-closed refuses a tampered agent
-file.
+`/kiro:delegate`, `/kiro:review`, `/kiro:configure`. Two opt-in, off-by-default
+`PreToolUse(Bash)` review hooks: pre-commit (Kiro reviews the staged diff — the diff
+content is sent to Kiro's backend, enabling is consent; fail-open,
+blocks only on `critical`) and pre-push (3-lens correctness/security/scope over the
+push range; `critical` BLOCKED, `warning`-only CHAIR JUDGMENT REQUIRED; warns if
+co-agent's `push_gate` is also on). **Web search delegation** (off by default): sessions
+without a `WebSearch` tool (Bedrock) route searches through kiro-cli's native
+`web_search` via `kiro_websearch.py` — query text is the only egress.
+
+> Full detail — hook consent/data-boundary contracts, `fs_read` guard, websearch
+> fail-closed rules, trust decision — lives in `plugins/kiro/CLAUDE.md` (auto-loads when
+> working in that plugin).
 
 ## Workflows
 
