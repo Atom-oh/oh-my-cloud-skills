@@ -11,7 +11,7 @@ working on the extension itself — read it when working in `tools/remarp-vscode
 cd tools/remarp-vscode
 npm install && npm run compile    # Build TypeScript
 npx vsce package                  # Package .vsix
-code --install-extension remarp-vscode-0.1.0.vsix  # Install locally
+code --install-extension remarp-vscode-*.vsix      # Install locally
 ```
 
 ## File Detection

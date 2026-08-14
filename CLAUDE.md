@@ -287,7 +287,7 @@ Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Sk
 | `pr-autofix-planner` | Read-only fix planner for pr-autofix (enforced Read/Grep/Glob; fable/opus) |
 | `pr-autofix-implementer` | Edit-only plan implementer for pr-autofix (enforced Read/Write/Edit/Grep/Glob — no Bash/network; opus [medium effort]) |
 
-Skill: `co-agent` — 6 modes: **Review**, **Decide**, **ADR**, **sync-context** (distill `CLAUDE.md` → `AGENTS.md` once; Kiro/Codex/Agy all share that one distilled file), **Consensus** (`/co-agent:consensus`), **harness** (`/co-agent:harness`). Fans the same prompt to whichever AI CLIs are installed — Kiro, Codex, Agy (Antigravity; Gemini removed — ADR-010) — in parallel, then **Claude synthesizes**. Degrades gracefully to solo when no CLI is present. Adapters: `references/ai-cli-adapters.md`.
+Skill: `co-agent` — 6 modes: **Review**, **Decide**, **ADR**, **sync-context** (distill `CLAUDE.md` → `AGENTS.md` once; Kiro/Codex/Agy (Antigravity) all share that one distilled file), **Consensus** (`/co-agent:consensus`), **harness** (`/co-agent:harness`). Fans the same prompt to whichever AI CLIs are installed — Kiro, Codex, Agy (Gemini removed — ADR-010) — in parallel, then **Claude synthesizes**. Degrades gracefully to solo when no CLI is present. Adapters: `references/ai-cli-adapters.md`.
 
 Also in co-agent (moved out of project-init, now an upstream mirror — `docs/reference/project-init-upstream-sync.md`): `pr-autofix` — PR review feedback auto-fix loop (plan on Fable/Opus → opus [medium effort] implementer in a disposable worktree → only the plan-approved delta lands; loop bound `set pr_autofix max_iterations`, default 5), and `decision-reconcile` — ADR contradiction/drift detection via a diverse multi-agent panel, drafting a superseding ADR. Triggers: 의사결정 번복, ADR 모순, reconcile ADRs.
 
@@ -332,7 +332,8 @@ separate trust decision — `plugins/kiro/CLAUDE.md` → "Trust decision").
 
 Commands: `/kiro:setup` (probe + model list + `.kiro/agents/*.json` generation),
 `/kiro:delegate`, `/kiro:review`, `/kiro:configure`. Two opt-in, off-by-default
-`PreToolUse(Bash)` review hooks: pre-commit (Kiro reviews the staged diff; fail-open,
+`PreToolUse(Bash)` review hooks: pre-commit (Kiro reviews the staged diff — the diff
+content is sent to Kiro's backend, enabling is consent; fail-open,
 blocks only on `critical`) and pre-push (3-lens correctness/security/scope over the
 push range; `critical` BLOCKED, `warning`-only CHAIR JUDGMENT REQUIRED; warns if
 co-agent's `push_gate` is also on). **Web search delegation** (off by default): sessions

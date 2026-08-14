@@ -1,8 +1,8 @@
 # Phase 1 Discovery — Interview Question Flow
 
 The question list for Phase 1 (Discovery). Interview conduct rules — one question at a
-time, plain text (no AskUserQuestion), adapt and skip — live in `SKILL.md` Phase 1.2;
-this file holds only the questions.
+time, plain text (no AskUserQuestion), adapt and skip — live in `SKILL.md` →
+"Conversational Interview"; this file holds only the questions.
 
 1. **Purpose**: "What problem should this agent solve? For example:
    a) Automate a repetitive workflow

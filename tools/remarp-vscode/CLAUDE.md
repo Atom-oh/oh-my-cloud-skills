@@ -40,5 +40,5 @@ code --install-extension remarp-vscode-*.vsix  # Install locally
 - Visual edit mode (`Cmd+Shift+E`) writes CSS/canvas changes back to source `.md`
 
 > Full detail — file detection rules, preview/sidebar behavior, key-file map,
-> build/package commands — lives in `docs/reference/remarp-vscode-extension.md`
+> build/package commands — lives in `<repo-root>/docs/reference/remarp-vscode-extension.md`
 > (extracted from the root CLAUDE.md, 2026-08 token diet).

@@ -200,6 +200,11 @@ ITERATION=$(git log --oneline --grep="fix: address review feedback" origin/main.
 - **Polling patience** — CI takes 2-5 minutes; poll at 60s intervals, not faster
 - **Human review courtesy** — when fixing human comments, add a brief reply acknowledging the fix if possible
 
+## Reference Files
+
+- `references/land-delta-pipeline.md` — the land_delta.sh stage-by-stage contract (implement → verify → land → commit/push/cleanup); MANDATORY read before running any pipeline stage
+- `references/pr-review-workflow.yml` — reference GitHub Actions workflow for the AI review mode (see below)
+
 ## CI Workflow Setup
 
 To use the AI review mode, the project needs the AI Code Review GitHub Actions workflow. A reference workflow is available at:
