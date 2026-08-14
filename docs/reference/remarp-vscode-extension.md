@@ -3,7 +3,7 @@
 Source: `tools/remarp-vscode/` | Entry: `src/extension.ts` | Preview: `src/preview.ts`
 
 Extracted from the root `CLAUDE.md` (2026-08 token diet): this detail is only needed when
-working on the extension itself — `tools/remarp-vscode/` sessions load it from here.
+working on the extension itself — read it when working in `tools/remarp-vscode/`.
 
 ## Development
 

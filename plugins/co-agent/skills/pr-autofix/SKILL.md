@@ -129,7 +129,7 @@ write the plan inline. Otherwise spawn the bundled **`pr-autofix-planner`** agen
 structurally cannot edit. The plan covers, per finding:
 `file:line` → root cause → the exact edit → how to verify it. Scope constraints are
 written INTO the plan so the implementer inherits them (the full constraint list lives
-in the pipeline contract below).
+in `references/land-delta-pipeline.md` → "Constraints").
 
 Feed the plan from both sources:
 - **AI Review**: parse the review comment body; **CRITICAL** and **MAJOR** first, **MINOR** only if trivial
@@ -166,16 +166,20 @@ Non-negotiables (the contract elaborates each — reading it is not optional):
   USER, then work inline — never silently skip findings.
 - **Approve is your judgment step**: strip every hunk the plan does not name, and
   verify every actionable plan item appears in the patch before landing.
+- Symlink and mode-change hunks have NO approval path — approve rejects them
+  unconditionally; apply such changes manually outside the loop.
+- `--allow-exec-surface` and `--bypass-hookspath-approved` are used ONLY after explicit
+  user approval — never on your own judgment.
 - **Fail-closed**: any non-zero stage exit aborts the iteration — stop, report, never
   continue past a failed gate.
 
 ### 5. Commit and push
 
 The commit / push / cleanup stages are part of the same pipeline contract
-(`references/land-delta-pipeline.md` → "Commit, push, cleanup"): run the build check
-first, commit as `fix: address review feedback (iteration N/$MAX_ITER)`, push as a
-separate idempotent stage, then cleanup with the recorded signature. A configured
-`core.hooksPath` STOPs the commit for user approval.
+(`references/land-delta-pipeline.md` → "Commit, push, cleanup"): commit as
+`fix: address review feedback (iteration N/$MAX_ITER)` (the build already ran and
+passed as 4c stage 4), push as a separate idempotent stage, then cleanup with the
+recorded signature. A configured `core.hooksPath` STOPs the commit for user approval.
 
 ### 6. Repeat or stop
 

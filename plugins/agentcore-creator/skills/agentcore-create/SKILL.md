@@ -49,7 +49,7 @@ Ask questions **one at a time**, in natural conversation. Prefer multiple-choice
 
 **Question flow**: follow `references/discovery-interview.md` — 7 questions (purpose,
 users, core capabilities, external tools, knowledge sources, deployment target, success
-criteria), each with ready-made multiple-choice options. Adapt based on answers and skip
+criteria), most with ready-made multiple-choice options. Adapt based on answers and skip
 irrelevant ones.
 
 After gathering sufficient context (typically 4-7 questions), summarize the agent concept:

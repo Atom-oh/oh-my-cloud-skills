@@ -1,9 +1,8 @@
 # Phase 1 Discovery — Interview Question Flow
 
-The conversational question flow for Phase 1 (Discovery). Ask **one at a time**, in
-natural conversation, and adapt based on answers — skip irrelevant ones. Prefer
-multiple-choice when possible. Do not use AskUserQuestion — respond with plain text
-that ends with the question.
+The question list for Phase 1 (Discovery). Interview conduct rules — one question at a
+time, plain text (no AskUserQuestion), adapt and skip — live in `SKILL.md` Phase 1.2;
+this file holds only the questions.
 
 1. **Purpose**: "What problem should this agent solve? For example:
    a) Automate a repetitive workflow
