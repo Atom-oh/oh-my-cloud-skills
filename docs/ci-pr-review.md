@@ -1,8 +1,9 @@
-# CI: Multi-AI PR Review — L1 결정적 게이트 + 4-Model 패널
+# CI: Multi-AI PR Review — L1 결정적 게이트 + 3-Model 패널
 
 이 repo의 PR은 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 2단 게이트를 받습니다: **L1**(매니페스트/버전
-정합 — 결정적 스크립트, AI 호출 없음) → **4-model 패널**(각 모델이 전체 diff를 스코프 제한
-없이 리뷰 → Claude 의장 종합).
+정합 — 결정적 스크립트, AI 호출 없음) → **3-model 패널**(각 모델이 전체 diff를 스코프 제한
+없이 리뷰 → Claude 의장 종합; 기본 구성 기준 — `kiro-glm` 은 false-positive rate 로 기본
+비활성, ADR-017 참조).
 (design: `docs/superpowers/specs/2026-07-05-pr-review-hybrid-lens-design.md`, ADR-011;
 lens×model 매트릭스는 ADR-016 이 뒤집었다 — 4모델×4lens=16셀이 체어 입력을 4배로 불려
 600s 타임아웃을 소진시켰고(#141/#146 실측: 두 모델 모두 정확히 600s 에 걸림), lens
@@ -22,14 +23,15 @@ lens×model 매트릭스는 ADR-016 이 뒤집었다 — 4모델×4lens=16셀이
 - `precheck.sh` 는 추출한 PR 트리에서 검증 전에 symlink 를 제거한다(`find "$TREE" -type l
   -delete`) — 검증기가 트리 밖 경로를 따라갈 여지를 없애는 defense-in-depth.
 
-## 4-Model 패널 (L1 통과 시에만 실행)
-- **패널**: 4 모델(Codex `openai.gpt-5.6-sol` + Kiro `claude-opus-4.8`/`gpt-5.6-terra`/`glm-5`),
+## 3-Model 패널 (L1 통과 시에만 실행)
+- **패널**: 3 모델(Codex `openai.gpt-5.6-sol` + Kiro `claude-opus-5`/`gpt-5.6-terra`),
   각각 diff 전체를 스코프 제한 없이 독립 리뷰(기본 구성 기준 — 매트릭스 멤버십은 설정값,
   아래 "설정" 절 참조), 전부 병렬(`&`+`wait`) — 벽시계 ≈ 최슬로우 셀 하나(순차합 아님).
-  (ADR-016 이전엔 각 모델이 4개 lens 로 나뉘어 16셀이었다 — `run-panel.sh`는 lens 디렉터리에
-  놓인 `*.txt` 파일 수만큼 자동으로 셀을 늘리는 구조라, 지금은 `.github/workflows/
-  pr-review.yml`이 파일을 하나(`FULL.txt`)만 만들어 4셀이 되고, `run-panel.sh` 자체는
-  무변경이다.) (`kimi-k2.5` 교체 근거: 프로덕션 CI에서
+  (ADR-016 이전엔 각 모델이 4개 lens 로 나뉘어 최대 16셀이었다 — `run-panel.sh`는 lens
+  디렉터리에 놓인 `*.txt` 파일 수만큼 자동으로 셀을 늘리는 구조라, 지금은 `.github/workflows/
+  pr-review.yml`이 파일을 하나(`FULL.txt`)만 만들어 셀 수 = 활성 모델 수가 되고,
+  `run-panel.sh` 자체는 무변경이다.) `kiro-glm`(`glm-5`)은 false-positive rate 로 기본
+  비활성 — AWS-Demo-Platform ADR-015 선례, 이 repo의 ADR-017 참조. (`kimi-k2.5` 교체 근거: 프로덕션 CI에서
   `kiro-kimi`가 전체 lens 무응답으로 2/2회 저하됐고, PR 리뷰에서도 근거 없는 지적(할루시네이션
   포함) 7건이 유일하게 이 모델에서만 나와 교체 — `kiro-glm`/`kiro-opus`/`codex`는 같은 조사에서
   0건. `gpt-5.5`로 교체 시도 → `kiro-cli --v3 chat` 경유로는 `INVALID_MODEL_ID`(HTTP 400)로
@@ -51,7 +53,7 @@ lens×model 매트릭스는 ADR-016 이 뒤집었다 — 4모델×4lens=16셀이
   표시된다(VERDICT 를 강제하진 않음 — codex 는 전체 diff 를 계속 봄).
 - **Antigravity(`agy`)는 매트릭스 미포함** — OAuth 인터랙티브 로그인 전용이라 헤드리스 CI에서
   인증 불가(ADR-010).
-- **의장**: Claude Fable 5(`us.anthropic.claude-fable-5`)가 4개 셀의 findings를 종합해 단일
+- **의장**: Claude Fable 5(`us.anthropic.claude-fable-5`)가 3개 셀의 findings를 종합해 단일
   리뷰 + `VERDICT: PASS|FAIL`(fail-closed, 파일 내 마지막 매치가 채택 — ADR-016) 생성. 1차
   시도는 `Read Grep Glob`을 갖고 벽시계 타임아웃(`CHAIR_TIMEOUT`, 기본 **450초**)로 감싼다.
   usable한 VERDICT를 못 내면(연결 거부/행/빈 응답 등) **Claude Opus 5(`CHAIR_FALLBACK_MODEL`)로
@@ -66,7 +68,7 @@ lens×model 매트릭스는 ADR-016 이 뒤집었다 — 4모델×4lens=16셀이
   도구를 완전히 빼는 것으로 근본 원인을 닫았다, ADR-016.)
 - **데이터 거주성**: 매트릭스 멤버마다 경로가 다름 —
   - **Codex / Claude(의장)**: Amazon Bedrock **us-east-1**(openai.gpt-5.6-sol은 bedrock-mantle In-Region 전용, fable-5는 US 추론 프로파일), AWS 인증은 EKS Pod Identity(SigV4).
-  - **Kiro**: **외부 API-key 기반 서비스** — PR diff가 외부로 전송됨(기본 구성 기준 4셀 중 3셀이 Kiro; 매트릭스 멤버십은 설정값이므로 실제 셀 수는 달라질 수 있음). In-Region 아님.
+  - **Kiro**: **외부 API-key 기반 서비스** — PR diff가 외부로 전송됨(기본 구성 기준 3셀 중 2셀이 Kiro; 매트릭스 멤버십은 설정값이므로 실제 셀 수는 달라질 수 있음). In-Region 아님.
   - **민감 diff 정책**: 외부 전송이 부적절한 변경은 외부 패널(Kiro)을 비활성화하고 Bedrock In-Region
     멤버(Codex)만으로 리뷰할 것. **이걸 실제로 끄는 절차는 아래 "설정" 절의 "CI에서 실제로
     적용되는 방법" 참조** — `.claude/pr-review.local.json`을 워크스페이스에 써 두는 것만으로는
@@ -75,7 +77,7 @@ lens×model 매트릭스는 ADR-016 이 뒤집었다 — 4모델×4lens=16셀이
     private fork 시 강제 skip 게이트 필요 — ADR-009.)
 
 ## 설정 — 매트릭스 멤버십 (`scripts/pr-review/panel_config.py`)
-- 어떤 셀(codex/kiro-opus/kiro-gpt/kiro-glm)이 매트릭스에 참여하는지는
+- 어떤 셀(codex/kiro-opus/kiro-gpt, kiro-glm은 false-positive rate로 기본 비활성 — ADR-017 참조)이 매트릭스에 참여하는지는
   `scripts/pr-review/run-panel.sh` 하드코딩이 아니라 설정에서 온다 — co-agent 플러그인의
   `co_agent_config.py`(defaults.json + gitignored local override)와 같은 레이어링을
   `scripts/pr-review/pr-review.defaults.json`(committed) + `.claude/pr-review.local.json`
@@ -83,7 +85,7 @@ lens×model 매트릭스는 ADR-016 이 뒤집었다 — 4모델×4lens=16셀이
   co-agent의 user-scope(`~/.claude/co-agent.user.json`) 레이어는 없음 — 2계층뿐.
 - `python3 scripts/pr-review/panel_config.py show --root .` — effective 설정 표.
   `python3 scripts/pr-review/panel_config.py set <cell> enabled <true|false> --root .` —
-  코드 수정 없이 매트릭스에서 셀을 빼거나 넣음(예: 위 "민감 diff 정책"으로 Kiro 3개를 전부
+  코드 수정 없이 매트릭스에서 셀을 빼거나 넣음(예: 위 "민감 diff 정책"으로 Kiro 2개를 전부
   끄거나, 계속 flaky한 모델 하나만 뺄 때). `python3 scripts/pr-review/panel_config.py set
   <cell> model <name> --root .` — kiro-\* 전용(codex는 `~/.codex/config.toml`로 고정이라
   model 키 없음). (runbook과 동일한 full-path + `--root .` 표기로 통일 — copy-paste 가능하게.)

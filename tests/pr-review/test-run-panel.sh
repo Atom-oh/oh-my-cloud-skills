@@ -33,14 +33,15 @@ if [ "$2" -eq 0 ]; then echo "$3"; for a in "\$@"; do printf '%s\n' "\$a"; done;
 EOF
   chmod +x "$BIN/$1"
 }
-# 2 lens(L2/L3) x 4 모델(codex+kiro x3) = 8 셀 — 매트릭스 회귀를 잡기에 충분한 최소 크기.
+# 2 lens(L2/L3) x 3 모델(codex+kiro x2, kiro-glm은 기본 비활성) = 6 셀 — 매트릭스 회귀를
+# 잡기에 충분한 최소 크기.
 setup() { WORK=$(mktemp -d); BIN=$(mktemp -d); export PATH="$BIN:$PATH"
   echo "diff --git a b" > "$WORK/diff.txt"
   mkdir -p "$WORK/lenses"
   echo "review L2 only" > "$WORK/lenses/L2.txt"
   echo "review L3 only" > "$WORK/lenses/L3.txt"; }
 
-# (a) 전원 응답: 2 lens x 4 모델 = 8 셀. codex 는 diff 를 stdin 으로 받고, kiro 는 stdin 을
+# (a) 전원 응답: 2 lens x 3 모델(kiro-glm은 기본 비활성) = 6 셀. codex 는 diff 를 stdin 으로 받고, kiro 는 stdin 을
 # 읽지 않으므로 diff 텍스트 자체를 (capped) argv 에 직접 embed 받는다 — fs_read 는 부여하지
 # 않는다(19차 리뷰 CRITICAL: fs_read + untrusted diff = 절대경로 read 유도 후 공개 PR 코멘트/
 # 외부 서비스로 exfiltration 가능. 이 diff 는 어차피 public repo 의 공개 PR diff 라 argv
@@ -52,12 +53,12 @@ if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/dev/null 2>&1; then
 fi
 allok=1; codex_diffok=1; kiro_embedok=1; kiro_no_fsreadok=1; lensok=1
 for lens in L2 L3; do
-  for f in "codex-$lens" "kiro-opus-$lens" "kiro-gpt-$lens" "kiro-glm-$lens"; do
+  for f in "codex-$lens" "kiro-opus-$lens" "kiro-gpt-$lens"; do
     [ -s "$WORK/slot/$f.md" ] || allok=0
   done
   # codex: diff 는 stdin 으로 도착 — 슬롯에 diff 내용이 그대로 보여야 한다.
   grep -q "diff --git" "$WORK/slot/codex-$lens.md" 2>/dev/null || codex_diffok=0
-  for tag in kiro-opus kiro-gpt kiro-glm; do
+  for tag in kiro-opus kiro-gpt; do
     # kiro: diff 내용 자체가 argv 에 embed 돼야 한다(더 이상 경로 참조가 아님).
     grep -q "diff --git" "$WORK/slot/$tag-$lens.md" 2>/dev/null || kiro_embedok=0
     # kiro: fs_read 툴을 더 이상 부여받지 않아야 한다(CRITICAL 수정 회귀 가드).
@@ -66,8 +67,8 @@ for lens in L2 L3; do
   # kiro 셀이 자기 lens 프롬프트를 받았는지(다른 lens 프롬프트가 섞여 들어가지 않는지) 확인.
   grep -q "review $lens only" "$WORK/slot/kiro-opus-$lens.md" 2>/dev/null || lensok=0
 done
-[ "$allok" = 1 ] && pass "run-panel (a) all 8 cells filled (2 lens x 4 models)" \
-  || fail "run-panel (a) all 8 cells filled (2 lens x 4 models)" "a cell is empty"
+[ "$allok" = 1 ] && pass "run-panel (a) all 6 cells filled (2 lens x 3 models)" \
+  || fail "run-panel (a) all 6 cells filled (2 lens x 3 models)" "a cell is empty"
 [ "$codex_diffok" = 1 ] && pass "run-panel (a) codex receives diff via stdin" \
   || fail "run-panel (a) codex receives diff via stdin" "codex cell missing diff content"
 [ "$kiro_embedok" = 1 ] && pass "run-panel (a) kiro gets the diff embedded directly in argv (capped, no fs_read)" \
@@ -76,8 +77,8 @@ done
   || fail "run-panel (a) kiro is NOT granted fs_read (CRITICAL fix regression guard)" "fs_read still present in argv"
 [ "$lensok" = 1 ] && pass "run-panel (a) each cell got its own lens prompt (no cross-lens leak)" \
   || fail "run-panel (a) each cell got its own lens prompt (no cross-lens leak)" "lens prompt mismatch"
-[ "$(wc -l < "$WORK/responded.txt" 2>/dev/null || echo 0)" = 8 ] \
-  && pass "run-panel (a) responded=8" || fail "run-panel (a) responded=8" "responded != 8"
+[ "$(wc -l < "$WORK/responded.txt" 2>/dev/null || echo 0)" = 6 ] \
+  && pass "run-panel (a) responded=6" || fail "run-panel (a) responded=6" "responded != 6"
 
 # (b) kiro 실패(codex만 응답) — 2 lens x codex = 2 개 responded, kiro 는 전부 부재.
 # (harness 가 set -euo pipefail 로 이 파일을 source 하므로, run-panel.sh 가 언젠가 비-zero로
@@ -154,23 +155,24 @@ CWD1="$(grep '^CWD=' "$DUMP" 2>/dev/null)"; CWD2="$(grep '^CWD=' "$DUMP2" 2>/dev
   || fail "run-panel (e) two kiro cells (kiro-opus-L2, kiro-gpt-L2) do NOT share a cwd/HOME" "got matching or missing CWD: '$CWD1' vs '$CWD2'"
 
 # (f) 커버리지 floor — kiro 가 전체 lens 에서 응답 없으면(예: 무효 플래그로 조용히 붕괴)
-# degraded-models.txt 에 kiro 태그 3개가 전부 기록되고 경고가 찍혀야 한다(ADR-011 M2).
+# degraded-models.txt 에 활성 kiro 태그 2개(kiro-glm은 기본 비활성이라 애초에 셀이 없음)가
+# 전부 기록되고 경고가 찍혀야 한다(ADR-011 M2).
 setup; mkfake codex 0 "codex-finding"; mkfake kiro-cli 1 ""
 LOG=$(mktemp)
 if ! "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >"$LOG" 2>&1; then
   fail "run-panel (f) script exits 0 even when a whole model row is empty" "exited non-zero"
 fi
 DEGRADED_SORTED="$(sort "$WORK/degraded-models.txt" 2>/dev/null | tr '\n' ',' )"
-[ "$DEGRADED_SORTED" = "kiro-glm,kiro-gpt,kiro-opus," ] \
-  && pass "run-panel (f) degraded-models.txt lists all 3 kiro tags when kiro fully fails" \
-  || fail "run-panel (f) degraded-models.txt lists all 3 kiro tags when kiro fully fails" "got: $DEGRADED_SORTED"
+[ "$DEGRADED_SORTED" = "kiro-gpt,kiro-opus," ] \
+  && pass "run-panel (f) degraded-models.txt lists both enabled kiro tags when kiro fully fails" \
+  || fail "run-panel (f) degraded-models.txt lists both enabled kiro tags when kiro fully fails" "got: $DEGRADED_SORTED"
 grep -q "::warning::model 'kiro-opus' produced zero responses" "$LOG" \
   && pass "run-panel (f) emits a ::warning:: for the degraded model" \
   || fail "run-panel (f) emits a ::warning:: for the degraded model" "warning line missing from stderr"
 grep -q "^codex$" "$WORK/degraded-models.txt" 2>/dev/null \
   && fail "run-panel (f) codex is not falsely marked degraded" "codex responded but was listed as degraded" \
   || pass "run-panel (f) codex is not falsely marked degraded"
-# 3/4 모델이 탈락(살아남은 벤더 1개=codex뿐)하면 severe 플래그가 서야 한다 — synthesize.sh
+# 2/3 모델이 탈락(살아남은 벤더 1개=codex뿐)하면 severe 플래그가 서야 한다 — synthesize.sh
 # 가 이걸 보고 VERDICT 를 강제 FAIL 한다(ADR-011 M2 대응).
 [ -f "$WORK/coverage-severe.flag" ] \
   && pass "run-panel (f) coverage-severe.flag is set when only 1 vendor survives" \
@@ -387,27 +389,29 @@ else
 fi
 rm -rf "$BASE" "$BIN"
 
-# (m) panel_config.py 로 kiro-glm 을 비활성화하면 그 셀이 전혀 생성되지 않고, 의도적
+# (m) panel_config.py 로 kiro-gpt 를 비활성화하면 그 셀이 전혀 생성되지 않고, 의도적
 # 비활성화가 (f)의 "장애로 인한 degraded" 와 혼동되지 않아야 한다(panel_config.py 도입 —
-# co-agent 의 co_agent_config.py 패턴을 매트릭스 멤버십에 적용).
+# co-agent 의 co_agent_config.py 패턴을 매트릭스 멤버십에 적용). kiro-glm은 이제 기본값
+# 자체가 비활성이라 그 cell로는 이 disable 경로를 검증할 수 없으므로 kiro-gpt로 대체
+# (glm-5 false-positive rate로 인한 기본 비활성화 — 이 리포의 kiro-glm 드롭 ADR 참조).
 setup; mkfake codex 0 "codex-finding"; mkfake_args kiro-cli 0 "kiro-finding"
 CFG_ROOT=$(mktemp -d)
-python3 scripts/pr-review/panel_config.py set kiro-glm enabled false --root "$CFG_ROOT" >/dev/null 2>&1
+python3 scripts/pr-review/panel_config.py set kiro-gpt enabled false --root "$CFG_ROOT" >/dev/null 2>&1
 LOG=$(mktemp)
 if ! PR_REVIEW_CONFIG_ROOT="$CFG_ROOT" "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >"$LOG" 2>&1; then
-  fail "run-panel (m) script exits 0 with kiro-glm disabled via config" "exited non-zero"
+  fail "run-panel (m) script exits 0 with kiro-gpt disabled via config" "exited non-zero"
 fi
-{ [ ! -e "$WORK/slot/kiro-glm-L2.md" ] && [ ! -e "$WORK/slot/kiro-glm-L3.md" ]; } \
-  && pass "run-panel (m) a config-disabled cell (kiro-glm) produces no slot files at all" \
-  || fail "run-panel (m) a config-disabled cell (kiro-glm) produces no slot files at all" "kiro-glm slot file exists despite being disabled"
-[ "$(wc -l < "$WORK/responded.txt" 2>/dev/null || echo 0)" = 6 ] \
-  && pass "run-panel (m) responded=6 (2 lens x 3 enabled models, not 4)" \
-  || fail "run-panel (m) responded=6 (2 lens x 3 enabled models, not 4)" "got $(wc -l < "$WORK/responded.txt" 2>/dev/null)"
-grep -q "^kiro-glm$" "$WORK/degraded-models.txt" 2>/dev/null \
+{ [ ! -e "$WORK/slot/kiro-gpt-L2.md" ] && [ ! -e "$WORK/slot/kiro-gpt-L3.md" ]; } \
+  && pass "run-panel (m) a config-disabled cell (kiro-gpt) produces no slot files at all" \
+  || fail "run-panel (m) a config-disabled cell (kiro-gpt) produces no slot files at all" "kiro-gpt slot file exists despite being disabled"
+[ "$(wc -l < "$WORK/responded.txt" 2>/dev/null || echo 0)" = 4 ] \
+  && pass "run-panel (m) responded=4 (2 lens x 2 enabled models — codex + kiro-opus; kiro-glm already off by default, kiro-gpt off via override)" \
+  || fail "run-panel (m) responded=4 (2 lens x 2 enabled models — codex + kiro-opus; kiro-glm already off by default, kiro-gpt off via override)" "got $(wc -l < "$WORK/responded.txt" 2>/dev/null)"
+grep -q "^kiro-gpt$" "$WORK/degraded-models.txt" 2>/dev/null \
   && fail "run-panel (m) a config-disabled cell is NOT listed in degraded-models.txt" "intentional disable was flagged as degraded" \
   || pass "run-panel (m) a config-disabled cell is NOT listed in degraded-models.txt"
 [ -f "$WORK/coverage-severe.flag" ] \
-  && fail "run-panel (m) coverage-severe.flag is NOT set from an intentional single-cell disable" "flag set despite 3/3 remaining vendors responding" \
+  && fail "run-panel (m) coverage-severe.flag is NOT set from an intentional single-cell disable" "flag set despite the remaining vendors responding" \
   || pass "run-panel (m) coverage-severe.flag is NOT set from an intentional single-cell disable"
 rm -rf "$CFG_ROOT" "$LOG"
 

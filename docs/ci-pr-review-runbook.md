@@ -1,14 +1,15 @@
 # Runbook: PR Review Panel 동작 확인
 
-PR을 열면 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 L1(결정적) → 4-model 패널
+PR을 열면 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 L1(결정적) → 3-model 패널
 (각 모델이 diff 전체를 스코프 제한 없이 리뷰, ADR-016) 2단 게이트가 자동 실행됩니다.
 
 ## 정상 동작 체크
 1. **L1 실패** 시: PR 코멘트에 "L1 pre-check (매니페스트/버전 정합) 실패" 블록만 보이고 AI 패널은
    호출되지 않음(비용 0) — 원인은 코멘트 본문의 `test-plugins.py`/`test-codex-plugins.py` 출력
    (dangling 참조/버전 불일치/JSON 오류/`.codex-plugin` 매니페스트 오류)에 그대로 나온다.
-2. **L1 통과** 시: PR 코멘트의 `_Cells (model):_` 줄에 `codex`, `kiro-opus`, `kiro-gpt`,
-   `kiro-glm` 등 최대 4개 모델 태그가 보이면 정상(일부 셀은 등급/쿼터로 간헐 skip 가능). 모델
+2. **L1 통과** 시: PR 코멘트의 `_Cells (model):_` 줄에 `codex`, `kiro-opus`, `kiro-gpt` 등
+   최대 3개 모델 태그가 보이면 정상(일부 셀은 등급/쿼터로 간헐 skip 가능; `kiro-glm`은
+   false-positive rate로 기본 비활성 — ADR-017 참조). 모델
    하나가 응답 없으면(예: kiro-cli 플래그 무효화) 리뷰 상단에 `⚠️ 커버리지 저하` 배너가 뜬다
    (synthesize.sh 가 실제로 출력하는 배너 문자열 그대로). 살아남은 벤더가 1개 이하면
    `🛑 커버리지 붕괴` 배너가 뜨지만(ADR-016) VERDICT 를 강제하진 않는다 — 체어의 판정이
@@ -29,7 +30,7 @@ PR을 열면 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 L1(결정
     타임아웃을 정확히 소진했다, #141/#146). 튜닝하려면 워크플로 `env`에
     `CHAIR_TIMEOUT`/`CHAIR_FALLBACK_TIMEOUT`/`CHAIR_FALLBACK_MODEL` 지정.
 - codex: `openai.gpt-5.6-sol` (bedrock-mantle, In-Region us-east-1; 이미지 `~/.codex/config.toml`의 region이 결정) — diff 전체를 1회 리뷰. (`gpt-5.5`→`openai.gpt-5.6-sol` deprecation 교체 — ADR-014.)
-- kiro-cli: `claude-opus-4.8`/`gpt-5.6-terra`/`glm-5` 각각 diff 전체를 1회 리뷰, 기본 활성 로스터 기준 총 3콜(매트릭스 멤버십은 설정값 — `panel_config.py`, `docs/ci-pr-review.md` "설정" 절). (`kimi-k2.5`는
+- kiro-cli: `claude-opus-5`/`gpt-5.6-terra` 각각 diff 전체를 1회 리뷰, 기본 활성 로스터 기준 총 2콜(매트릭스 멤버십은 설정값 — `panel_config.py`, `docs/ci-pr-review.md` "설정" 절). `glm-5`(`kiro-glm`)는 false-positive rate로 기본 비활성 — AWS-Demo-Platform ADR-015 선례, 이 repo의 ADR-017 참조. (`kimi-k2.5`는
   프로덕션에서 커버리지 저하 2/2회 + 근거 없는 지적 7건으로 교체됨. **`--v3` 를 쓰지 않는다**
   — `kiro-cli --v3 chat ... --model gpt-5.5`(구 모델명 — 아래 재현 당시 명칭, ADR-014로
   `gpt-5.6-terra`로 교체)는 `--list-models`엔 나열돼도 실제 호출은
@@ -62,9 +63,9 @@ PR을 열면 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 L1(결정
 ## 패널 셀이 비면(skip) 진단
 - 러너 로그의 `[<model>] skipped; stderr` 블록에서 원인 확인(404 Engine not found = 모델/
   리전 불일치, credentials 에러 = Pod Identity 누락 등).
-- 한 모델이 통째로 빠져도(예: kiro-cli 바이너리 부재) 다른 3개 모델이 여전히 diff 전체를
+- 한 모델이 통째로 빠져도(예: kiro-cli 바이너리 부재) 다른 2개 모델이 여전히 diff 전체를
   독립적으로 리뷰 — 단일 장애점은 없음(**기본 활성 로스터 기준** — "민감 diff 정책"으로 Kiro
-  3개를 전부 끈 codex-only 구성에선 codex 가 곧 유일한 벤더이므로 이 불변식이 성립하지 않음.
+  2개를 전부 끈 codex-only 구성에선 codex 가 곧 유일한 벤더이므로 이 불변식이 성립하지 않음.
   그 구성에서의 coverage floor 처리는 아래 및 `docs/ci-pr-review.md` "설정" 절 참조).
 - 특정 모델이 바이너리 부재가 아니라 **계속 flaky**하면(간헐 응답이 아니라 지속적으로
   degraded), 다음 두 단계로 뺀다 — 순서를 뒤집어 읽지 말 것: (1) **로컬 preview** —
