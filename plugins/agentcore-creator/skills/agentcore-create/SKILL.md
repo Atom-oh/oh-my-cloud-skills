@@ -47,7 +47,8 @@ Read `CLAUDE.md` if it exists. Scan for existing plugins, skills, agents in the 
 
 Ask questions **one at a time**, in natural conversation. Prefer multiple-choice when possible. Do not use AskUserQuestion — respond with plain text that ends with the question.
 
-**Question flow**: follow `references/discovery-interview.md` — 7 questions (purpose,
+**Question flow**: Read `references/discovery-interview.md` before asking the first
+question, then follow it — 7 questions (purpose,
 users, core capabilities, external tools, knowledge sources, deployment target, success
 criteria), most with ready-made multiple-choice options. Adapt based on answers and skip
 irrelevant ones.

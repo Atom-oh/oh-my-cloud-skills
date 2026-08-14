@@ -153,8 +153,14 @@ covers.
 
 Non-negotiables (the contract elaborates each — reading it is not optional):
 
-- Re-hash `land_delta.sh` before EVERY destructive/final stage call and STOP on drift;
-  record `$RUN` / `$SIG` / `$APPROVED_SHA` / `$LANDED_SHA` in your notes — the one
+- Re-hash `land_delta.sh` before EVERY destructive/final stage call and STOP on drift:
+
+  ```bash
+  LD="${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts/land_delta.sh"
+  LD_SHA=$( (sha256sum "$LD" 2>/dev/null || shasum -a 256 "$LD") | cut -d' ' -f1 )
+  ```
+
+  Record `$RUN` / `$SIG` / `$APPROVED_SHA` / `$LANDED_SHA` in your notes — the one
   storage the implementer cannot write.
 - Only plan-named findings with `approval: granted` AND `disposition: actionable` reach
   the implementer; execution-surface edits carry `approval: required`, and

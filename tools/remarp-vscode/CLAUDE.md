@@ -39,6 +39,6 @@ code --install-extension remarp-vscode-*.vsix  # Install locally
 - Issue annotations (`<!-- issue: text -->`) flow between extension prompt bar and `/slide-fix` skill
 - Visual edit mode (`Cmd+Shift+E`) writes CSS/canvas changes back to source `.md`
 
-> Full detail — file detection rules, preview/sidebar behavior, key-file map,
-> build/package commands — lives in `<repo-root>/docs/reference/remarp-vscode-extension.md`
-> (extracted from the root CLAUDE.md, 2026-08 token diet).
+> Full detail — file detection rules, preview/sidebar behavior, key-file map — lives
+> in `../../docs/reference/remarp-vscode-extension.md` (extracted from the root
+> CLAUDE.md, 2026-08 token diet). Build/package commands: the block above is canonical.

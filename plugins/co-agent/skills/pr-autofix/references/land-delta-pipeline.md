@@ -116,8 +116,10 @@ BUILD_OK=1
 [ -f go.mod ]       && { go build ./...                   || BUILD_OK=0; }
 [ -f package.json ] && { npm run build || npx tsc --noEmit || BUILD_OK=0; }
 if [ -f pyproject.toml ]; then
-  # -z + xargs -0: filenames with spaces stay intact; AM catches added files too
-  git diff --name-only -z --diff-filter=AM -- '*.py' \
+  # git diff HEAD sees modified AND staged-new .py; ls-files -o adds untracked new
+  # ones (plain `git diff` shows neither). -z/-0 keeps odd filenames intact.
+  { git diff HEAD --name-only -z --diff-filter=AM -- '*.py';
+    git ls-files -o --exclude-standard -z -- '*.py'; } \
     | xargs -0 -r python3 -m py_compile                   || BUILD_OK=0
 fi
 [ -f Cargo.toml ]   && { cargo check                      || BUILD_OK=0; }
