@@ -109,7 +109,7 @@ gitbook-agent → content-review-agent → git push → GitBook deployment
 - **태스크 수신**: TaskGet으로 챕터 할당 파싱 — 입력: SUMMARY.md 경로, 담당 챕터 범위, 프로젝트 루트
 - **산출물**: `{chapter-slug}/README.md`, `{chapter-slug}/{page-slug}.md`. content-review-agent 호출 생략 (팀 리더가 배치 리뷰)
 - **완료 신호**: TaskUpdate completed + 아티팩트 경로·페이지 수·요약 보고
-- **파일 소유권**: `references/team-workflows.md`의 "병렬 실행 시 파일 소유권" 규칙 적용 — 담당 챕터만 수정, SUMMARY.md·루트 README.md·.gitbook.yaml은 팀 리더 소유
+- **파일 소유권**: `{plugin-dir}/references/team-workflows.md`의 "병렬 실행 시 파일 소유권" 규칙 적용 — 담당 챕터만 수정, SUMMARY.md·루트 README.md·.gitbook.yaml은 팀 리더 소유
 
 ---
 

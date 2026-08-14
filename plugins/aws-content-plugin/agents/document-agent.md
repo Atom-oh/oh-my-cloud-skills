@@ -41,7 +41,8 @@ effort: low
 Brief overview (2-3 paragraphs)
 
 ## 1. Introduction
-### 1.1 Background / 1.2 Purpose
+### 1.1 Background
+### 1.2 Purpose
 
 ## 2. Current State Analysis
 | Category | Status | Notes |

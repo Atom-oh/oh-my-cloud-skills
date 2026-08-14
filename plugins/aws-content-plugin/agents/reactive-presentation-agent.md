@@ -201,7 +201,7 @@ Enable GitHub Pages: Settings → Pages → main branch / root.
 | Block summary (퀴즈 미포함 시) | Content | Key Takeaways 요약 리스트 |
 | Block closing | Thank You | Gradient heading + TOC link + next block link |
 
-키보드 단축키 전체 목록: `references/framework-guide.md`.
+키보드 단축키 전체 목록: `references/keyboard-shortcuts.md`.
 
 ---
 
@@ -233,7 +233,7 @@ reactive-presentation-agent → validate (rejection loop) → build → content-
 - **태스크 수신**: TaskGet으로 할당된 태스크를 읽고 블록 할당 파싱 — 입력: 아웃라인 경로, 담당 블록 번호, 공통 설정(테마, 스피커)
 - **산출물**: 지정 경로에 `{NN}-{slug}.remarp.md` / `{NN}-{slug}.html`. content-review-agent 호출은 생략 (팀 리더가 배치 리뷰)
 - **완료 신호**: TaskUpdate completed + 아티팩트 경로·슬라이드 수·요약 보고
-- **파일 소유권**: `references/team-workflows.md`의 "병렬 실행 시 파일 소유권" 규칙 적용 — 담당 블록 파일만 수정, `common/`·`_presentation.remarp.md`는 팀 리더 소유
+- **파일 소유권**: `{plugin-dir}/references/team-workflows.md`의 "병렬 실행 시 파일 소유권" 규칙 적용 — 담당 블록 파일만 수정, `common/`·`_presentation.remarp.md`는 팀 리더 소유
 
 ---
 

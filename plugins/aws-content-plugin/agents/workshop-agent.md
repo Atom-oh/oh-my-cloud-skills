@@ -116,7 +116,7 @@ workshop-agent → content-review-agent → Workshop Studio deployment
 - **태스크 수신**: TaskGet으로 모듈 할당 파싱 — 입력: 워크숍 구조 파일 경로, 담당 모듈 번호, contentspec.yaml 경로
 - **산출물**: `content/module{N}-{slug}/index.{ko,en}.md`. content-review-agent 호출 생략 (팀 리더가 배치 리뷰)
 - **완료 신호**: TaskUpdate completed + 아티팩트 경로·페이지 수·요약 보고
-- **파일 소유권**: `references/team-workflows.md`의 "병렬 실행 시 파일 소유권" 규칙 적용 — 담당 모듈만 수정, contentspec.yaml·홈페이지·summary는 팀 리더 소유
+- **파일 소유권**: `{plugin-dir}/references/team-workflows.md`의 "병렬 실행 시 파일 소유권" 규칙 적용 — 담당 모듈만 수정, contentspec.yaml·홈페이지·summary는 팀 리더 소유
 
 ---
 
