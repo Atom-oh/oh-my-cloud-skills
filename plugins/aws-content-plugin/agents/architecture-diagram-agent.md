@@ -28,7 +28,7 @@ skills:
 - **XML 주석 안에 `&` 또는 `--`를 쓰지 말 것** — drawio가 그 지점 이후의 모든 cell을 조용히 버린다 (exit 0, truncated PNG). 장식성 주석 자체를 지양.
 - **Edge는 항상 `parent="1"`** — 컨테이너를 parent로 삼은 edge는 좌표계가 어긋난다. Vertex 위계는 시각적 포함 관계 그대로: `1` → aws-cloud → region → vpc → subnet → icon.
 - **Public/Private Subnet 구분**: public은 `grIcon=mxgraph.aws4.group_public_subnet` + `dashed=0`, private은 `group_private_subnet` + `dashed=1`. **`group_security_group`은 사용하지 않는다** — 자물쇠 글리프가 라벨을 가려 보안 경계로 오독됨 (`references/design-tokens.md` §2).
-- 크기·색·폰트·간격의 canonical 값은 `references/design-tokens.md`가 소유 (충돌 시 그 파일이 이긴다) — 아이콘 78×78 균일 (48×48은 16+ 아이콘 밀집 다이어그램 전용, 같은 다이어그램에서 78과 혼용 금지), 카테고리 색상, 그룹 스타일 문자열 전부 포함.
+- 크기·색·폰트·간격의 canonical 값은 `references/design-tokens.md`가 소유 (충돌 시 그 파일이 이긴다) — 아이콘 크기(표준·예외 모두), 카테고리 색상, 그룹 스타일 문자열 전부 포함.
 
 ---
 
