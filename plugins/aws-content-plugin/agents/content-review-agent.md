@@ -73,6 +73,8 @@ Email:       [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
 | High | PII (ID numbers, phone) | Mask or delete |
 | Medium | Internal IPs, emails | Mask if necessary |
 
+High·Medium 등급은 반드시 Warning finding으로 기록되어 Warning band 집계에 포함됩니다 (Critical만 자동 FAIL).
+
 예외 (finding 아님):
 - **의도된 공개 연락처 이메일** — gh-home 프로필 페이지·브로셔의 contact 섹션 등, 작성자가 공개를 의도한 이메일 (카테고리 12의 gh-home 저작권 예외와 같은 원리)
 - **명백한 placeholder** — `<YOUR_TOKEN>`, `YOUR_*`, `xxx`, `example.com` 계열의 예시 값 (문서의 예시 코드가 토큰/패스워드 패턴에 걸리는 false-positive 방지)
@@ -171,7 +173,7 @@ python3 -m http.server 8080 --bind 127.0.0.1 --directory "[프로젝트경로]" 
 | 테스트 | Playwright 명령 | 통과 기준 |
 |--------|----------------|-----------|
 | 페이지 로드 | `browser_navigate` → `browser_console_messages` | JS 콘솔 에러 없음 |
-| 슬라이드 전환 | `browser_press_key` (ArrowRight) | 모든 슬라이드 이동 확인 |
+| 슬라이드 전환 | `browser_press_key` (ArrowRight) x N | 모든 슬라이드 이동 확인 |
 | 탭/비교/퀴즈 | `browser_click` (`.tab-btn`, `.compare-btn`, `.quiz-option`) | 콘텐츠 전환·피드백 표시 |
 | 캔버스 애니메이션 | Play 버튼 `browser_click` | 애니메이션 실행 확인 |
 | 캔버스 레이아웃 | `browser_take_screenshot` | 요소 겹침 없음, 정렬·여백 균등, 텍스트 가독 |
@@ -202,7 +204,7 @@ python3 -m http.server 8080 --bind 127.0.0.1 --directory "[프로젝트경로]" 
 
 ### Scoring (100 points total)
 
-각 카테고리는 만점에서 시작해 **발견된 결함의 심각도와 빈도에 비례해 0..만점 사이 점수를 판단**으로 부여합니다. 산수 규칙이 아니라 근거가 점수를 정당화해야 합니다 — 모든 감점은 리포트의 구체적 finding(위치+인용)에 연결되어야 하고, finding 없는 감점은 없습니다. 결함이 없으면 만점, 카테고리의 목적을 훼손하는 결함이 반복되면 0점에 수렴.
+각 카테고리는 만점에서 시작해 **발견된 결함의 심각도와 빈도에 비례해 0..만점 사이 점수를 판단**으로 부여합니다. 산수 규칙이 아니라 근거가 점수를 정당화해야 합니다 — 모든 감점은 리포트의 구체적 finding(위치+인용)에 연결되어야 하고, finding 없는 감점은 없습니다. 결함이 없으면 만점, 카테고리의 목적을 훼손하는 결함이 반복되면 0점에 수렴. 카테고리 안에 Critical 결함이 있으면 그 카테고리는 0점, 결함이 전혀 없으면 만점 — 그 사이는 결함의 개수·빈도에 비례해 판단합니다.
 
 **Basic Inspection (55 points):**
 
@@ -361,7 +363,7 @@ unavailable — omission cross-check skipped" and proceed.
 [Any content agent] → content-review-agent → Revision Loop or Approval
 ```
 
-Revision loop: 리뷰 → REVIEW/FAIL이면 제작 에이전트가 수정 → 재리뷰. 3회 재리뷰에도 PASS 미달이면 사용자에게 판단을 넘깁니다 (plugin CLAUDE.md의 Quality Gate 규칙).
+Revision loop: 리뷰 → REVIEW/FAIL이면 제작 에이전트가 수정 → 재리뷰. 최대 3회 재리뷰에도 PASS 미달이면 사용자에게 판단을 넘깁니다 (plugin CLAUDE.md의 Quality Gate 규칙).
 
 ---
 
