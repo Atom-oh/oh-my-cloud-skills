@@ -146,8 +146,7 @@ Each `SKILL.md` has frontmatter limited to the six fields the Agent Skills spec
 `user-invocable` / `disable-model-invocation`. Any other key (`triggers:`, `model:`,
 `invocation:`, `argument-hint:`, `tools:`) is **inert**: the runtime ignores it silently.
 **Trigger keywords therefore belong in `description`**, which is the sole selection
-surface — a `triggers:` list strands its keywords where nothing reads them (this bit 11
-skills; see `docs/reference/skill-review-2026-07.md`). `scripts/eval-skills.py` enforces
+surface — a `triggers:` list strands its keywords where nothing reads them. `scripts/eval-skills.py` enforces
 the allowed-key set in its Structure dimension. The `references/` subdirectory holds
 distilled operational knowledge extracted from source docs.
 
