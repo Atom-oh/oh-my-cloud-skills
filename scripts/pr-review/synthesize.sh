@@ -63,9 +63,9 @@ Synthesize ONE final review:
    relevant, verified against the diff — not asserted from agreement alone.
 3. **Suggestions**
 4. **Verdict**
-5. Before the Verdict line, if you found anything memory-worthy: a `### 🧠 MEMORY
-   CANDIDATES` section (new recurring-problem or false-positive-pattern entries) and
-   a `### PANEL QUALITY` section with one `PANEL-QUALITY: <cell>=<unsupported>/<total>`
+5. Before the Verdict line, if you found anything memory-worthy: a \`### 🧠 MEMORY
+   CANDIDATES\` section (new recurring-problem or false-positive-pattern entries) and
+   a \`### PANEL QUALITY\` section with one \`PANEL-QUALITY: <cell>=<unsupported>/<total>\`
    line per panel cell that had an unsupported finding this round (cell name = the
    filename stem from "=== 패널: ... ===", lowercased). Omit either section entirely
    if it has nothing to add — don't emit an empty one.
