@@ -90,6 +90,19 @@ memory_excerpt() {  # $1=메모리 파일, $2=캡 바이트(기본 4000)
   return 0
 }
 
+# 단일 verdict 파서(ADR-016) — chair_valid()(synthesize.sh)와 워크플로 게이트가 공유하는
+# 하나의 규칙. 예전엔 두 규칙이 달랐다: 게이트는 파일 어디든 있는 `^VERDICT: FAIL$`/
+# `^VERDICT: PASS$` 를, chair_valid()는 "정확히 한 줄뿐이고 그 줄이 파일의 마지막 non-empty
+# 줄"이라는 더 엄격한 부분집합을 요구했다 — 체어가 `VERDICT: FAIL (3 MAJOR)`처럼 뒤에 텍스트를
+# 붙이면 게이트는 받아들이는데 chair_valid()는 무효로 보고 폴백을 태우는 위험한 비대칭이 있었다
+# (PR#140 리뷰 L4 MAJOR). 지금은 둘 다 이 함수 하나로: 파일 안의 마지막
+# `VERDICT: (PASS|FAIL)` 매치를 채택하고, 그 줄이 마지막 줄이 아니어도, 그 뒤에 텍스트가
+# 붙어도 무방하다.
+verdict_of() {  # $1=review.md 경로 → stdout: PASS|FAIL|(빈 문자열)
+  [ -f "$1" ] || return 0
+  grep -oE '^VERDICT: (PASS|FAIL)' "$1" | tail -1 | awk '{print $2}'
+}
+
 scrub_secrets() {
   # PEM 은 여러 줄에 걸치므로 line-oriented sed 로는 본문을 못 지운다(헤더 줄만 매칭)
   # — awk 상태기계로 BEGIN..END 블록 전체를 마커 한 줄로 치환(첫 스테이지, 구조적 스크럽).

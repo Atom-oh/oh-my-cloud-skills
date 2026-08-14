@@ -172,6 +172,30 @@ else
 fi
 rm -f "$MEM_SECTIONS"
 
+# verdict_of() — 단일 verdict 파서(ADR-016), chair_valid()(synthesize.sh)와 워크플로 게이트가
+# 공유한다. (a) 마지막 매치를 채택, (b) 뒤따르는 텍스트 허용, (c) 매치 없으면 빈 문자열,
+# (d) 부재 파일도 죽지 않고 빈 문자열.
+VOF_FILE="$(mktemp)"
+printf 'VERDICT: PASS\nbody\nVERDICT: FAIL\n' > "$VOF_FILE"
+[ "$(verdict_of "$VOF_FILE")" = "FAIL" ] \
+  && pass "verdict_of adopts the LAST VERDICT: PASS|FAIL match, not the first" \
+  || fail "verdict_of adopts the LAST VERDICT: PASS|FAIL match, not the first" "got: $(verdict_of "$VOF_FILE")"
+
+printf 'VERDICT: FAIL (3 MAJOR)\n' > "$VOF_FILE"
+[ "$(verdict_of "$VOF_FILE")" = "FAIL" ] \
+  && pass "verdict_of tolerates trailing text after PASS|FAIL" \
+  || fail "verdict_of tolerates trailing text after PASS|FAIL" "got: $(verdict_of "$VOF_FILE")"
+
+printf 'VERDICT: 설명 프로즈, PASS/FAIL 로 끝나지 않음\n' > "$VOF_FILE"
+[ -z "$(verdict_of "$VOF_FILE")" ] \
+  && pass "verdict_of returns empty when no line ends in a bare PASS|FAIL" \
+  || fail "verdict_of returns empty when no line ends in a bare PASS|FAIL" "got: $(verdict_of "$VOF_FILE")"
+
+[ -z "$(verdict_of "$(mktemp -u)")" ] \
+  && pass "verdict_of on a missing file returns empty, does not error" \
+  || fail "verdict_of on a missing file returns empty, does not error" "got: $(verdict_of "$(mktemp -u)")"
+rm -f "$VOF_FILE"
+
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then
   [ "$_t_fail" = 0 ] && echo "PASS: test-lib" || exit 1
