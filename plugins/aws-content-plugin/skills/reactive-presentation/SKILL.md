@@ -48,7 +48,7 @@ Theme choice: default (AWS console light) · `theme: { mode: dark }` (squid-ink 
 
 **Remarp essentials**: `remarp: true` frontmatter · `@type`/`@layout`/`@transition`/`@theme` directives · `{.click}`/`:::click` fragments · `:::notes` speaker notes · `:::canvas` DSL · `::: left`/`::: right` columns. Full syntax: [references/remarp-format-guide.md](references/remarp-format-guide.md).
 
-> **Speaker notes (required)**: every slide needs `:::notes` — 150+ characters (300-500 recommended), `{timing}`/`{cue}` markers + `[Summary]` (3-5 bullets) + a conversational script. Missing or unstructured notes trigger `MISSING_NOTES`/`NOTE_STRUCTURE` warnings. Schema: remarp-format-guide.md "Structured Note Schema".
+> **Speaker notes (required)**: every slide needs `:::notes` — 150+ characters (300-500 recommended), `{timing}`/`{cue}` markers + `[요약]` ("Summary", 3-5 bullets) + a conversational script. Missing or unstructured notes trigger `MISSING_NOTES`/`NOTE_STRUCTURE` warnings. Schema: remarp-format-guide.md "Structured Note Schema".
 
 > ⚠️ **Interactive-First**: 3+ sub-items → tabs · 4+ listed items → grid cards (no bullets) · 5+ boxes → `:::html`+`:::css` (no canvas) · for `:::html` with 3+ sibling elements, make them reactive with `fragment fade-up`. Principles, tab templates, and color tokens: **authoring-rules.md §4**.
 

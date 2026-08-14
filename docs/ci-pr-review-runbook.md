@@ -5,16 +5,21 @@ Opening a PR automatically triggers a two-stage gate on a self-hosted runner
 the entire diff with no scope restriction, ADR-016).
 
 ## Normal-behavior checks
-1. **On L1 failure**: only an "L1 pre-check (manifest/version consistency) failed" block
-   appears in the PR comment, and the AI panel is not invoked (zero cost) — the cause
+1. **On L1 failure**: only a block headed `**L1 pre-check (매니페스트/버전 정합) 실패**`
+   ("L1 pre-check (manifest/version consistency) failed" — the literal header text is
+   still Korean, `pr-review.yml`'s L1_HEADER wasn't in scope of the English-only docs
+   sweep, PR #154) appears in the PR comment, and the AI panel is not invoked (zero
+   cost) — the cause
    appears directly in the comment body, in the `test-plugins.py`/`test-codex-plugins.py`
    output (dangling reference/version mismatch/JSON error/`.codex-plugin` manifest error).
 2. **On L1 pass**: it's normal to see up to 4 model tags — `codex`, `kiro-opus`,
    `kiro-gpt`, `kiro-glm` — on the `_Cells (model):_` line in the PR comment (some cells
    may be intermittently skipped due to rate limits/quota). If one model doesn't respond
-   (e.g. a kiro-cli flag got invalidated), a `⚠️ Coverage degraded` banner appears at the
-   top of the review (this is the exact banner string `synthesize.sh` actually emits). If
-   one or fewer vendors survive, a `🛑 Coverage collapsed` banner appears (ADR-016), but
+   (e.g. a kiro-cli flag got invalidated), a `⚠️ **커버리지 저하**` ("coverage degraded")
+   banner appears at the top of the review — that Korean string is the literal
+   `synthesize.sh` actually emits; the script itself wasn't in scope of the English-only
+   docs sweep (PR #154), so its output banners are still Korean. If one or fewer vendors
+   survive, a `🛑 **커버리지 붕괴**` ("coverage collapsed") banner appears (ADR-016), but
    it does not force the VERDICT — the chair's judgment stands as-is. **Antigravity
    (`agy`) is not in the panel** (ADR-010 — cannot authenticate headlessly).
 3. **`chair_error`**: if the chair fails to produce a usable VERDICT on both attempts
