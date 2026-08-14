@@ -1,15 +1,15 @@
 # Authoring Rules & Patterns
 
-A collection of the detailed rules, tables, and copy-paste templates applied during authoring. SKILL.md covers only the workflow and gates;
-refer to this document when **actually writing/validating slides**.
+A collection of detailed authoring rules, tables, and copy-paste templates. SKILL.md holds only
+the workflow and gates; refer to this document **when actually authoring/validating slides**.
 
 ---
 
-## 1. Validation — Rejection Loop (mandatory before build)
+## 1. Validation — Rejection Loop (required before build)
 
-> **Overcoming LLM spatial-reasoning limits**: language models cannot self-detect layout, alignment, or
-> overlap issues on a 2D canvas. `validate` is an **externalized rejection loop** that mechanically
-> catches structural/cognitive defects before the build.
+> **Overcoming an LLM's limits at spatial reasoning**: language models cannot self-detect
+> layout, alignment, or overlap on a 2D canvas. `validate` is an **externalized rejection loop**
+> that mechanically detects structural/cognitive defects before build.
 
 ```bash
 python3 {skill-dir}/scripts/remarp_to_slides.py validate {repo}/{slug}/
@@ -19,71 +19,69 @@ python3 {skill-dir}/scripts/remarp_to_slides.py validate {repo}/{slug}/
 
 | Rule | Severity | What it checks | Auto-fix guidance |
 |------|--------|---------|-------------|
-| `TYPE_MISMATCH` | WARNING | A numbered+timed pattern is present but `@type: agenda` is missing | Add `@type: agenda` |
-| `INTERACTIVE_FIRST` | WARNING | 4+ bullets but no cards/tabs used | Convert to `:::html` grid cards or a tab pattern |
-| `CONTENT_OVERFLOW` | CRITICAL | 8+ bullets or 12+ elements on a single slide | Split into multiple slides |
+| `TYPE_MISMATCH` | WARNING | A numbered+timed pattern exists but `@type: agenda` is missing | Add `@type: agenda` |
+| `INTERACTIVE_FIRST` | WARNING | 4+ bullets → cards/tabs not used | Convert to a `:::html` grid-card or tab pattern |
+| `CONTENT_OVERFLOW` | CRITICAL | 8+ bullets or 12+ elements on one slide | Split across multiple slides |
 | `CANVAS_COMPLEXITY` | CRITICAL/WARN | 5+/8+ visual elements on the canvas | Switch to `:::html` + `:::css` + flow utilities |
 | `CANVAS_OVERLAP` | CRITICAL | Canvas element bounding boxes overlap | Adjust coordinates (minimum 40px gap) |
-| `FRAGMENT_ORDER` | WARNING | Multi-column layout with no explicit `order=N` | Add `{.click order=N}` (td-lr order) |
-| `MISSING_NOTES` | WARNING | `:::notes` block missing | Write 150+ character speaker notes |
-| `NOTE_STRUCTURE` | WARNING | Content slide notes lack a `[Summary]` hierarchy | Add `[Summary]` (3–5 bullets) at the top of `:::notes` |
+| `FRAGMENT_ORDER` | WARNING | A multi-column layout without explicit `order=N` | Add `{.click order=N}` (top-down, left-right order) |
+| `MISSING_NOTES` | WARNING | Missing `:::notes` block | Write 150+ character speaker notes |
+| `NOTE_STRUCTURE` | WARNING | A content slide's notes lack the `[요약]` ("Summary") hierarchy | Add `[요약]` ("Summary") (3-5 bullets) at the top of `:::notes` |
 | `TITLE_LENGTH` | WARNING | Slide title exceeds 28 characters | Shorten to a headline of 28 characters or fewer (§3 Slide Title Voice) |
-| `STATIC_HTML` | WARNING | 3+ `:::html` elements with no fragments | Add `fragment fade-up` + `data-fragment-index` |
+| `STATIC_HTML` | WARNING | 3+ `:::html` elements but no fragments | Add `fragment fade-up` + `data-fragment-index` |
 
-**Rejection loop**: write → validate → if CRITICAL exists, fix and re-validate (up to 3 times) → otherwise review WARNINGs → build.
+**Rejection loop**: author → validate → if CRITICAL, fix and re-validate (up to 3 times) → otherwise review WARNINGs → build.
 
-**Verdict**: `❌ REJECT` (CRITICAL≥1, build forbidden) · `⚠️ REVIEW` (WARNING≥6) · `⚠️ PASS WITH WARNINGS` (1–5) · `✅ PASS`.
-
-> ⚠️ Running `build` while CRITICAL issues exist produces a Frankenstein layout.
+**Verdict**: `❌ REJECT` (CRITICAL≥1, build forbidden) · `⚠️ REVIEW` (WARNING≥6) · `⚠️ PASS WITH WARNINGS` (1-5) · `✅ PASS`.
 
 ---
 
 ## 2. Forbidden — AI-slide tells
 
-Each tell links to an enforcing **lint rule id** (machine-detected) or a review gate (`content-review-agent`).
+Each tell is enforced by a **lint rule id** (machine-detected) or by the review gate (`content-review-agent`).
 
-| Anti-pattern (AI-slide tell) | Why it's a tell | Use instead | Enforcement (lint rule / gate) |
+| Anti-pattern (AI-slide tell) | Why it reads as AI-generated | Use instead | Enforcement (lint rule / gate) |
 |--------------------------|----------------|------|--------------------------|
-| Hardcoded hex (raw 6-digit color values) | Ignores theme tokens, locks into a single theme | Semantic role tokens like `var(--accent)` | `RAW_HEX` (lint) |
+| Hardcoded hex (raw 6-digit color values) | Ignores theme tokens, locks the deck to a single theme | Semantic role tokens like `var(--accent)` | `RAW_HEX` (lint) |
 | Inline color/spacing style (color/padding written directly in `style=`) | Bypasses the token system, breaks consistency | Token classes (`.card-grid`, `.metric-card`) + `:::css` | `INLINE_STYLE` (lint) |
-| Raw rgba color functions | Can't adapt to theme, hardcoded shadows/overlays | `var(--surface-*)`, `color-mix()` tokens | `RAW_RGBA` (lint) |
-| Magic-number/off-scale spacing (px values outside the 4/8px scale) | Uneven spacing | Spacing-scale tokens (`var(--space-*)`) | `OFF_SCALE` (lint) + token system |
-| Wall-of-text bullets (8+ lines) | Overloads a single slide, becomes unreadable | Split the slide or break into cards/tabs | `CONTENT_OVERFLOW` (lint) |
-| Dark-only / generic blue-teal default | Reads as an "AI default theme" | **Light-default** dual theme + role tokens | dual-theme (light default) |
-| Gradient text headings · decorative gradient orbs · empty bottom space | Meaningless decoration, zero information density | Fill the space with content/visual hierarchy, remove decoration | Guideline (review gate) |
-| Encyclopedia-tone descriptive titles ("2026 Frontier AI Model Trends") | Flat label, no edge | Assertive/argumentative/question/twist headline (28 chars or fewer) | Slide Title Voice (gate) + `TITLE_LENGTH` (length-only lint) |
-| Freeform / missing speaker notes | Not presentable, no structure | `[Summary]`-structured notes with 5 tiers (150+ chars) | `NOTE_STRUCTURE` / `MISSING_NOTES` (lint) |
+| Raw rgba color functions | Cannot adapt to theme, hardcoded shadows/overlays | `var(--surface-*)`, `color-mix()` tokens | `RAW_RGBA` (lint) |
+| Magic-number/off-scale spacing (px outside the 4/8px scale) | Uneven spacing | Spacing-scale tokens (`var(--space-*)`) | `OFF_SCALE` (lint) + token system |
+| Wall-of-text bullets (8+ lines) | Overloads one slide, unreadable | Split the slide or break into cards/tabs | `CONTENT_OVERFLOW` (lint) |
+| Dark-only theme / generic blue-teal default | Reads as "AI default theme" | **Light-default** dual theme + role tokens | dual-theme (light default) |
+| Gradient-text headings, decorative gradient orbs, empty lower-half space | Meaningless decoration, zero information density | Fill the area with content/visual hierarchy, remove decoration | guideline (review gate) |
+| Encyclopedia-tone descriptive titles (e.g. "2026 Frontier AI Model Trends") | Flat label, no edge | Assertive/argumentative/question/twist headline (≤28 chars) | Slide Title Voice (gate) + `TITLE_LENGTH` (lint checks length only) |
+| Free-form or missing speaker notes | Cannot be presented from, no structure | `[요약]` ("Summary") five-tier structured notes (150+ chars) | `NOTE_STRUCTURE` / `MISSING_NOTES` (lint) |
 
-> Items with a rule id are caught mechanically by `validate` (§1); gate items (decoration, title voice) are penalized by `content-review-agent`.
+> Items with a rule id are mechanically caught by `validate` (§1); gate items (decoration, title voice) are deducted for by `content-review-agent`.
 
 ---
 
 ## 3. Slide Title Voice
 
-The slide title (`## heading`) is a **headline** readable in one second — carrying an edge through assertion/argument/question/twist, at **28 characters or fewer**.
-The subtitle ends in **체언 종결** (noun-form endings — nominalized endings like `~화/~등극/~재편/~본격화` in Korean, or the equivalent noun-phrase construction in English) at **45 characters or fewer**.
-✅ "Costs got cheaper, models got smarter"  ❌ "2026 Frontier AI Model Trends" (a flat label).
-**Level gate**: `level` 100–200 should prefer headlines; 300–400 also allows descriptive titles (API names, config keys).
+The slide title (`## heading`) must be a **headline** readable in one second — carry edge via an assertion/argument/question/twist, **28 characters or fewer**.
+Subtitles must end in **체언 종결** ("noun-form ending" — nominal endings like `~화/~등극/~재편/~본격화`, etc.), **45 characters or fewer**.
+✅ "비용은 싸졌고, 모델은 똑똑해졌다" (Costs went down, models got smarter) ❌ "2026년 Frontier AI 모델 동향" (2026 Frontier AI Model Trends — a flat, encyclopedic label).
+**Level gate**: for `level` 100-200, a headline is recommended; 300-400 also allows descriptive titles (API names, config keys).
 Exceeding 28 characters triggers `validate`'s `TITLE_LENGTH` warning. Full examples: [slide-patterns.md](slide-patterns.md) "Slide Title Voice".
 
 ---
 
-## 4. Interactive Design (★ Top Priority)
+## 4. Interactive Design (★ highest priority)
 
-> **Key point: the more information-dense a slide is, the more interactive it should be.** 3 tabs × 3 cards beats 10 lines of bullets.
-> The default pattern is "lay out data as visual cards + progressively reveal via tabs/toggles."
+> **Core rule: the more information a slide holds, the more interactive it must be.** 10 bullet lines < 3 tabs × 3 cards each.
+> The default pattern is "lay data out as visual cards + reveal progressively via tabs/toggles."
 
-1. **Split into tabs**: 3+ subsections on the same topic → separate into tabs
-2. **Card grid**: 4+ listed items → `.card-grid` token class (bullet lists forbidden)
-3. **Self-contained**: every interaction is completed via an inline onclick inside `:::html` (no dependency on external JS)
-4. **Visual hierarchy**: colors only via semantic role tokens (`var(--accent/--info/--success/--warning/--danger)`). Hardcoded hex/rgba and flat backgrounds are forbidden
-5. **`:::html` reactive**: 3+ sibling elements should appear sequentially via `class="fragment fade-up" data-fragment-index="N"` (static HTML is forbidden)
+1. **Split into tabs**: 3+ sub-items of the same topic → separate into tabs
+2. **Card grid**: 4+ listed items → use the `.card-grid` token class (bullet lists forbidden)
+3. **Self-contained**: every interaction is completed via an inline onclick inside `:::html` (no external JS dependency)
+4. **Visual hierarchy**: color must use only semantic role tokens (`var(--accent/--info/--success/--warning/--danger)`). Hardcoded hex/rgba and solid-color backgrounds are forbidden
+5. **`:::html` reactive**: 3+ peer elements must appear sequentially via `class="fragment fade-up" data-fragment-index="N"` (static HTML forbidden)
 
 > **Theme**: light by default. Dark mode is set via `class="… theme-dark"` on the deck root. Per-slide dark mode uses `@theme: dark`. All colors auto-adapt to both via theme.css tokens.
 
-### Self-contained tab pattern (copy-paste)
+### Self-contained Tab Pattern (copy-paste)
 
-Works without slide-framework.js. Colors are handled by theme.css's `.tab-set`/`.tab-btn.active`/`.metric-card`/`.callout` (inline styles forbidden). Use when the data has 3+ categories:
+Works without slide-framework.js. Colors are handled by theme.css's `.tab-set`/`.tab-btn.active`/`.metric-card`/`.callout` (no inline styles). Use when data has 3+ categories:
 
 ```markdown
 :::html
@@ -124,29 +122,28 @@ Works without slide-framework.js. Colors are handled by theme.css's `.tab-set`/`
 
 **Semantic color roles** (instead of hardcoded hex):
 
-| Role | Token | Subtle background | Class helper | Usage |
+| Role | Token | Subtle background | Class helper | Use case |
 |------|------|------------|-------------|------|
-| accent | `var(--accent)` | `var(--accent-subtle)` | `.text-accent` | default/input/source |
-| success | `var(--success)` | `var(--success-subtle)` | `.callout-success` | success/result/automation |
-| warning | `var(--warning)` | `var(--warning-subtle)` | `.callout-warning` | warning/processing/AI |
-| info | `var(--info)` | `var(--info-subtle)` | `.callout-info` | secondary/streaming/analysis |
-| danger | `var(--danger)` | `var(--danger-subtle)` | `.callout-danger` | error/risk/alert |
+| accent | `var(--accent)` | `var(--accent-subtle)` | `.text-accent` | Primary/input/source |
+| success | `var(--success)` | `var(--success-subtle)` | `.callout-success` | Success/result/automation |
+| warning | `var(--warning)` | `var(--warning-subtle)` | `.callout-warning` | Warning/processing/AI |
+| info | `var(--info)` | `var(--info-subtle)` | `.callout-info` | Supplementary/streaming/analytics |
+| danger | `var(--danger)` | `var(--danger-subtle)` | `.callout-danger` | Error/risk/alert |
 
 Surfaces/text use `var(--surface-1/2/3)`, `var(--on-surface)`, `var(--on-surface-muted)`. Full reference: [colors-reference.md](colors-reference.md).
 
-### Converting bullet lists to cards
+### Bullet List → Card Conversion
 
 **Before (ineffective)**: `- CloudWatch Agent: metric collection` … a list of bullets
 **After (effective)** — `.card-grid` + `.metric-card` (colors from theme.css):
 ```html
 <div class="card-grid">
-  <div class="metric-card"><strong class="text-accent">CloudWatch Agent</strong><div class="on-surface-muted">Metric collection</div></div>
-  <!-- ... repeat ... -->
+  <div class="metric-card"><strong class="text-accent">CloudWatch Agent</strong><div class="on-surface-muted">메트릭 수집</div></div>
+  <!-- ... 반복 ... -->
 </div>
 ```
-> ⛔ If you're about to put 4+ bullets on one slide, STOP → convert to grid cards + color differentiation instead.
 
-For complex interactions (sliders, simulators, dashboards), use `:::html` + `:::script` + `:::css`. Templates/examples: [interactive-patterns-guide.md](interactive-patterns-guide.md).
+Complex interactions (sliders, simulators, dashboards) use `:::html` + `:::script` + `:::css`. Templates/examples: [interactive-patterns-guide.md](interactive-patterns-guide.md).
 
 ---
 
@@ -168,32 +165,32 @@ For complex interactions (sliders, simulators, dashboards), use `:::html` + `:::
 | YAML/code example | Code Block | `.code-block` syntax spans |
 | Customer problem | Pain Quote | `.pain-quote` + challenge list |
 | Session agenda/table of contents | Agenda | `@type: agenda` numbered dots + time |
-| Block summary | Quiz (for a quiz) / Content (Key Takeaways) | `data-quiz` with 3–4 questions / summary list |
+| Block summary | Quiz (if quizzes are on) / Content (Key Takeaways) | `data-quiz` 3-4 questions / summary list |
 | Block closing | Thank You | Gradient heading + TOC link |
-| Simulator/dashboard/tester/builder (VPA, Grafana, Regex, YAML, mode, cost) | `:::html` + `:::script` | sliders/inputs → live output |
+| Simulator/dashboard/tester/builder (VPA, Grafana, Regex, YAML, Mode, cost) | `:::html` + `:::script` | sliders/inputs → live output |
 
 ### Canvas DSL vs `:::html` (important)
 
-> For complex diagrams/interactions, prefer `:::html` + `:::css` (+`:::script`). Canvas DSL is for simple boxes+arrows only.
+> For complex diagrams/interactions, prefer `:::html` + `:::css` (+`:::script`). The Canvas DSL is for simple boxes+arrows only.
 
 | Complexity | Approach | Example |
 |--------|------|------|
 | **Simple** (≤4 boxes + arrows) | `:::canvas` DSL allowed | A→B→C |
-| **Medium** (5+ boxes, multi-layer) | `:::html` + `:::css` required (canvas forbidden) | 3-tier, service map, ecosystem |
-| **Complex** (interaction + computation) | `:::html` + `:::script` required | sliders, calculators, dashboards |
-| **Static architecture** | `@img:` + draw.io | full AWS architecture, VPC |
+| **Medium** (5+ boxes, multi-tier) | `:::html` + `:::css` required (canvas forbidden) | 3-tier, service map, ecosystem |
+| **Complex** (interaction + computation) | `:::html` + `:::script` required | Slider, calculator, dashboard |
+| **Static architecture** | `@img:` + draw.io | Full AWS architecture, VPC |
 
 ### Canvas vs Diagram
 
 | Criterion | Canvas (`@type: canvas`) | Diagram (`@img:`) |
 |------|--------------------------|---------------------|
-| Purpose | step-by-step flow animation | see the whole architecture at a glance |
-| Advantage | ↑↓ step-by-step narration | accurate complex layout/arrows |
-| Production | code the Canvas DSL directly | draw.io/architecture-diagram → PNG/SVG |
+| Purpose | Step-by-step flow animation | Full architecture at a glance |
+| Advantage | Sequential ↑↓ step explanation | Accurate for complex layout/arrows |
+| Authoring | Code the Canvas DSL directly | draw.io/architecture-diagram → PNG/SVG |
 
-**Principle**: if animation doesn't add explanatory power, use a diagram image instead. For complex diagrams, prefer `:::html`+`:::css`.
+**Principle**: if the animation doesn't add explanatory power, use a diagram image instead. For complex diagrams, prefer `:::html`+`:::css`.
 
-> Before writing `:::canvas`, you must read [canvas-authoring-guide.md](canvas-authoring-guide.md) — DSL syntax, the required coordinate formula, and fragment ordering.
+> Before using `:::canvas`, always read [canvas-authoring-guide.md](canvas-authoring-guide.md) — DSL syntax, required coordinate formulas, fragment order.
 
 ---
 
@@ -226,7 +223,7 @@ For complex interactions (sliders, simulators, dashboards), use `:::html` + `:::
 ```
 
 - `flow-h`/`flow-group`/`flow-box`/`flow-arrow`: theme.css utilities (no custom CSS needed, stage height/width auto-uniform)
-- `bg-blue`/`bg-orange`/`bg-pink`: color utilities · `data-fragment-index="N"`: sequential reveal per group
+- `bg-blue`/`bg-orange`/`bg-pink`: color utilities · `data-fragment-index="N"`: sequential per-group reveal
 - AWS icons: `common/aws-icons/services/Arch_{Name}_48.svg`
 
-> ⛔ Before using canvas: 5+ boxes+icons → canvas is forbidden, use the HTML pattern above. Canvas is allowed only for a single-direction straight line (A→B→C).
+> The canon for the Canvas-vs-HTML threshold is the complexity table in §5 — validate's `CANVAS_COMPLEXITY` backstops it against the same criteria.

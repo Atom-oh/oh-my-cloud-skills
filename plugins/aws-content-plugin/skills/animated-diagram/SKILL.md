@@ -115,22 +115,11 @@ python3 -m http.server 8080 --bind 127.0.0.1 --directory "<output-dir>"
 # Then visit http://localhost:8080/animation.html
 ```
 
-## Quality Review (mandatory before declaring deployment/completion)
+## Quality Review
 
-Applies to new animated diagrams and substantive revisions — minor touch-ups like typo fixes or one-line edits can be applied without re-review.
-1. Invoke content-review-agent → `review content at [file path]`
-2. On a FAIL/REVIEW verdict, fix and re-review (up to 3 rounds)
-3. Declare completion only after achieving PASS on the applicable scale (100-point scale: ≥85 / non-HTML 90-point scale: ≥77 — see content-review-agent's Verdict table)
+content-review-agent must PASS via `review content at [file-path]` before declaring deployment/completion — plugin CLAUDE.md Quality Gate rules (minor touch-ups can be applied without re-review).
 
-## Diagram Types
-
-| Type | Technique | When to Use |
-|------|-----------|-------------|
-| **Traffic Flow** | SMIL `<animateMotion>` | Continuous request/data flow visualization |
-| **Pulsing Status** | SMIL `<animate>` | Monitoring dashboards, health indicators |
-| **Interactive Scenario** | JavaScript + CSS | Button-driven scaling, deployment, failover |
-
-For interactive scenarios, the agent uses JavaScript-based state machines with `requestAnimationFrame` and CSS transitions instead of SMIL. See the agent definition for the full Interactive Animation Pattern guide.
+Interactive scenarios use a JavaScript state machine + CSS transitions instead of SMIL — see `templates/interactive-scaling.html` for a complete working example.
 
 ## References
 

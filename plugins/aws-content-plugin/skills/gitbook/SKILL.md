@@ -22,29 +22,10 @@ Create structured GitBook documentation sites with proper navigation, components
 
 ## Workflow
 
-### Phase 1: Plan Structure
-1. Define documentation scope and audience
-2. Outline chapters and sections (max 3 levels deep)
-3. Identify content types per section (guides, references, tutorials)
-4. Plan cross-references and navigation flow
-
-### Phase 2: Create Project
-1. Initialize git repository
-2. Create `.gitbook.yaml` configuration
-3. Create `SUMMARY.md` navigation file
-4. Set up chapter directories with `README.md` index pages
-
-### Phase 3: Write Content
-1. Write content pages using GitBook components
-2. Add code blocks, hints, tabs as needed
-3. Embed diagrams and images in `.gitbook/assets/`
-4. Create cross-links between related pages
-
-### Phase 4: Quality Review
-1. Run `content-review-agent` on project root
-2. Fix issues flagged (broken links, formatting, consistency)
-3. Re-review until PASS (≥85 score)
-4. Push to GitBook-connected repository
+1. **Plan** — define scope/audience, outline chapters/sections (keep any page reachable from the table of contents within a few clicks), and the cross-reference flow
+2. **Create Project** — git init, `.gitbook.yaml`, `SUMMARY.md`, chapter directories + `README.md` indexes
+3. **Write Content** — write pages using GitBook components, put diagrams in `.gitbook/assets/`, and cross-link related pages
+4. **Quality Review** — get content-review-agent PASS, then push to the repo connected to GitBook (see Quality Review below)
 
 ---
 
@@ -162,14 +143,9 @@ find . -name "*.md" | head -20
 | Step-by-step guide | Numbered list + code blocks | Installation, deployment |
 | Troubleshooting | `<details>` expandable | Error → Solution pairs |
 
-## Quality Review (Mandatory — cannot be skipped)
+## Quality Review
 
-After content is finished, and before declaring deployment/completion, you must always:
-1. Invoke content-review-agent → `review content at [project path]`
-2. On a FAIL/REVIEW verdict, fix and re-review (max 3 rounds)
-3. Declare completion only after achieving PASS — threshold ≥85/100; if only markdown source is reviewed without rendered HTML and Visual Testing is exempted, the converted threshold is ≥77/90
-
-> ⚠️ Skipping this step and declaring completion is forbidden.
+content-review-agent must PASS via `review content at [project-path]` before declaring deployment/completion — plugin CLAUDE.md Quality Gate rules (when only the markdown source is reviewed and Visual Testing is exempted, the 90-point scale applies).
 
 ## References
 

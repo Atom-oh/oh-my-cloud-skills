@@ -9,7 +9,7 @@ allowed-tools:
 
 # Workshop Creator Skill
 
-Creates AWS Workshop Studio-format workshop projects and authors their content.
+Creates AWS Workshop Studio-format workshop projects and writes their content.
 
 ---
 
@@ -31,8 +31,8 @@ Creates AWS Workshop Studio-format workshop projects and authors their content.
 workshop-name/
 ├── contentspec.yaml              # Workshop Studio configuration
 ├── content/
-│   ├── index.ko.md              # Home page (Korean)
-│   ├── index.en.md              # Home page (English)
+│   ├── index.ko.md              # Homepage (Korean)
+│   ├── index.en.md              # Homepage (English)
 │   ├── introduction/
 │   │   └── index.en.md
 │   ├── module1-topic/           # Module 1
@@ -42,7 +42,7 @@ workshop-name/
 │   └── summary/
 │       └── index.en.md
 ├── static/
-│   ├── images/module-N/         # Images per module
+│   ├── images/module-N/         # Per-module images
 │   ├── code/                    # Code samples
 │   └── iam-policy.json
 └── assets/                      # S3 assets
@@ -70,9 +70,9 @@ weight: 10
 
 | Attribute | Required | Description |
 |------|------|------|
-| `title` | **required** | page title (shown in navigation) |
-| `weight` | optional | sort order (lower comes first) |
-| `hidden` | optional | if `true`, hidden from navigation |
+| `title` | **Required** | Page title (shown in navigation) |
+| `weight` | Optional | Sort order (lower comes first) |
+| `hidden` | Optional | `true` hides it from navigation |
 
 > **Note**: the `chapter` attribute is not supported by Workshop Studio.
 
@@ -82,7 +82,7 @@ Details: `references/front-matter.md`
 
 ## Workshop Studio Directives
 
-Workshop Studio uses its own directive syntax. Hugo shortcodes are not allowed.
+Workshop Studio uses its own directive syntax. Do not use Hugo shortcodes.
 
 ### Alert
 
@@ -96,12 +96,12 @@ Before starting:
 :::
 ```
 
-| Type | Use |
+| Type | Purpose |
 |------|------|
-| `info` | general information (default) |
-| `success` | success/completion |
-| `warning` | caution/warning |
-| `error` | error/danger |
+| `info` | General information (default) |
+| `success` | Success/completion |
+| `warning` | Caution/warning |
+| `error` | Error/danger |
 
 Details: `references/alert-reference.md`
 
@@ -122,15 +122,15 @@ metadata:
 
 | Property | Description |
 |----------|------|
-| `language` | language (bash, python, yaml, etc.) |
-| `showCopyAction` | show a copy button |
-| `highlightLines` | lines to highlight (e.g. `4-6,10`) |
+| `language` | Language (bash, python, yaml, etc.) |
+| `showCopyAction` | Show a copy button |
+| `highlightLines` | Lines to highlight (e.g. `4-6,10`) |
 
 Details: `references/code-reference.md`
 
 ### Tabs
 
-When it contains code, you need to increase the colon count (`:::::tabs` depending on nesting level).
+When a tab contains code, the number of colons must increase (based on nesting level, e.g. `:::::tabs`).
 
 Details: `references/tabs-reference.md`
 
@@ -155,7 +155,7 @@ graph LR
 ### Expand
 
 ```markdown
-::::expand{header="See more"}
+::::expand{header="View details"}
 Hidden content
 ::::
 ```
@@ -166,21 +166,13 @@ Details: `references/directives-complete.md`
 
 ## Best Practices
 
-### DO
+**Goal**: content participants can follow without a facilitator — after every hands-on step, include a verification method (expected output), copyable commands (`showCopyAction=true`), Key Takeaways at the end of each section, clear previous/next links, and visualize architecture with Mermaid.
 
-1. **Mermaid diagrams** — architecture visualization
-2. **Copyable code** — `showCopyAction=true`
-3. **Step-by-step verification** — provide a way to confirm each step
-4. **Key Takeaways** — summarize at the end of every section
-5. **Navigation links** — clear previous/next links
-
-### DON'T
-
-1. Do not use Hugo shortcodes: `{{% notice %}}`
-2. Do not use the `chapter: true` attribute
-3. No hardcoded account IDs
-4. Never write a step without a verification method
-5. Don't write long code as a heredoc
+**Platform contract (renderer behavior, not just style)**:
+1. Hugo shortcodes (`{{% notice %}}`) are not rendered and appear as raw text — use only Workshop Studio directives
+2. `chapter: true` is not a valid front matter attribute
+3. No hardcoded account IDs/credentials (use `AWS::AccountId` Ref, etc. — the account differs per event)
+4. Put long code files in `static/code/` instead of a heredoc (heredocs are fragile with quoting and variable expansion)
 
 ---
 
@@ -206,14 +198,14 @@ Details: `references/infrastructure-guide.md`, `references/cloudformation-refere
 
 ## Event Params & Central Account
 
-Reference this when you need to inject values into infrastructure or maintain shared state across teams.
+Reference this when you need to inject values into infrastructure or share state across teams.
 
 | Layer/Feature | Defined in | Purpose |
 |-----------|-----------|------|
-| `params` | top level of `contentspec.yaml` | text variables for markdown content (`:param` directive) |
-| CFN `parameters` + `userOverridable` | `infrastructure.cloudformationTemplates[]` | infrastructure values event operators can override |
-| Magic Variables | injected automatically | Workshop Studio-computed values such as TeamID, ParticipantRoleArn |
-| `centralAccountInfrastructure` | top level of `contentspec.yaml` (optional) | a shared account separate from teams — only when shared resources/gamification are needed |
+| `params` | Top level of `contentspec.yaml` | Text variables for markdown content (`:param` directive) |
+| CFN `parameters` + `userOverridable` | `infrastructure.cloudformationTemplates[]` | Infrastructure values the event operator can override |
+| Magic Variables | Auto-injected | Workshop Studio-computed values such as TeamID, ParticipantRoleArn |
+| `centralAccountInfrastructure` | Top level of `contentspec.yaml` (optional) | A shared account separate from the teams — only when shared resources/gamification are needed |
 
 Details: `references/event-params-guide.md` (the 3 layers of variable injection), `references/central-account-guide.md` (central account)
 
@@ -224,35 +216,17 @@ Details: `references/event-params-guide.md` (the 3 layers of variable injection)
 1. `/workshop-creator init my-workshop` — initialize the project
 2. Configure `contentspec.yaml` — region, IAM, parameters, and (if needed) event overrides/central account
 3. Write the CloudFormation template — `static/workshop.yaml`
-4. Write the homepage — include Mermaid diagrams
+4. Write the homepage — including a Mermaid diagram
 5. Write per-module content — step-by-step hands-on
 6. Add images/screenshots
 7. Validate with `cfn-lint` / `cfn_nag`
-8. Review content with `content-review-agent`
+8. Review the content with `content-review-agent`
 
 ---
 
 ## Output Format
 
-When generating a workshop, output the following structure:
-
-```
-[workshop-name]/
-├── contentspec.yaml
-├── content/
-│   ├── index.en.md
-│   ├── introduction/
-│   ├── module1-[topic]/
-│   │   ├── index.en.md
-│   │   └── [subtopics]/
-│   └── summary/
-└── static/
-    ├── workshop.yaml
-    ├── iam-policy.json
-    └── images/
-```
-
-Each file conforms to the Workshop Studio format, generating `.ko.md` / `.en.md` files per locale as defined in `contentspec.yaml`.
+Output the exact Directory Layout structure shown above. Each file conforms to Workshop Studio format, and `.ko.md` / `.en.md` files are generated per the locales defined in `contentspec.yaml` (the front matter `weight` must match between the locale pair for a given page — a mismatch throws off the navigation order).
 
 ---
 
@@ -260,7 +234,7 @@ Each file conforms to the Workshop Studio format, generating `.ko.md` / `.en.md`
 
 | Document | Description |
 |------|------|
-| `references/front-matter.md` | Front Matter attributes |
+| `references/front-matter.md` | Front matter attributes |
 | `references/alert-reference.md` | Alert directive details |
 | `references/code-reference.md` | Code directive (40+ languages) |
 | `references/tabs-reference.md` | Tabs directive details |

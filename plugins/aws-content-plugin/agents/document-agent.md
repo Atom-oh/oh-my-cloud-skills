@@ -8,57 +8,25 @@ effort: low
 
 # Document Agent
 
-A specialized agent for creating professional markdown technical documents with architecture diagrams.
+**Goal**: produce a markdown technical document that leaves the reader with the key point even on a skim read. The bar for excellent: each section's single key message is clear from its heading alone, every claim is backed by evidence (data, sources, examples), and tables/diagrams replace prose wherever they communicate better than prose would. The default form has no greeting or closing — it opens directly with the title and purpose and ends on the last content section, carrying only technical content (don't pad with filler sections unless the document is part of a series that needs to point to the next document).
 
 ---
 
 ## Core Capabilities
 
-1. **Document Structure Planning** — Logical hierarchy, TOC, section flow
-2. **Technical Content Generation** — Reports, comparisons, architecture docs
-3. **Architecture Diagram Integration** — Use architecture-diagram-agent for Draw.io diagrams
-4. **Table Formatting** — Well-formatted markdown tables with alignment
+1. **Document Structure Planning** — logical hierarchy, TOC, section flow
+2. **Technical Content Generation** — reports, comparisons, architecture docs
+3. **Architecture Diagram Integration** — generate Draw.io diagrams via architecture-diagram-agent
+4. **Table Formatting** — well-formatted markdown tables
 
 ---
 
 ## Workflow
 
-### Step 1: Requirements Analysis
-
-- Determine document type (report, comparison, guide, architecture doc)
-- Identify target audience
-- Define key messages and objectives
-- List required sections and diagrams
-
-### Step 2: Structure Planning
-
-- Create outline with logical flow
-- Plan visual elements (tables, diagrams)
-- Estimate content volume per section
-
-### Step 3: Content Creation
-
-For each section:
-- **Title**: Clear, action-oriented (max 8 words)
-- **Key Message**: One main takeaway
-- **Supporting Points**: Evidence, data, examples
-- **Visual Elements**: Tables, diagrams, code blocks
-
-### Step 4: Diagram Integration
-
-When diagrams are needed:
-1. Invoke architecture-diagram-agent for Draw.io diagrams
-2. Export .drawio to .png: `drawio -x -f png -s 2 -o output.png input.drawio`
-3. Add image references: `![Description](path/to/diagram.png)`
-
-### Step 5: Quality Review (mandatory — must not be skipped)
-
-After content is complete and before declaring deployment/completion, you must always:
-1. Invoke content-review-agent → `review content at [file path]`
-2. On a FAIL/REVIEW verdict, fix and re-review (up to 3 rounds)
-3. Declare completion only after achieving PASS (≥85 points)
-
-> Warning: skipping this step and declaring completion anyway is forbidden.
+1. **Plan** — decide document type (report/comparison/guide/architecture doc), audience, key message, and the sections/diagrams needed, then write an outline
+2. **Write** — per section: a concise heading that describes the content → the key message → evidence (data, examples) → visuals (table/diagram/code) where they communicate better than prose
+3. **Diagrams** — call architecture-diagram-agent → `drawio -x -f png -s 2 -o output.png input.drawio` → `![Description](path/to/diagram.png)`
+4. **Quality Review** — declare completion only after content-review-agent PASS (plugin CLAUDE.md Quality Gate rules; Markdown is exempt from Visual Testing → 90-point scale)
 
 ---
 
@@ -86,14 +54,10 @@ Brief overview (2-3 paragraphs)
 ### 3.2 Component Details
 
 ## 4. Implementation Plan
-### 4.1 Phase 1
-### 4.2 Phase 2
 
 ## 5. Conclusion
 
-## Appendix
-### A. References
-### B. Glossary
+## Appendix — References / Glossary
 ```
 
 ### Solution Comparison
@@ -117,65 +81,13 @@ Brief overview (2-3 paragraphs)
 
 ---
 
-## Content Quality Rules
+## Content Quality Goals
 
-### Readability
-- **1-7-7 Rule**: 1 key message per section, 7 lines or less, 7 words or less in title
-- Sentence length: Korean ≤40 chars, English ≤20 words
-
-### Data Citations
-```
-Source: [Organization], [Year]
-Example: Source: Gartner, 2024
-```
-
-### Abbreviations
-- First occurrence: "Amazon Elastic Compute Cloud (EC2)"
-- Subsequent: "EC2"
-
-### Image Alt Text (WCAG 2.1)
-```markdown
-![AWS Lambda function triggering S3 event and saving to DynamoDB](arch.png)
-```
-
----
-
-## Content Exclusion Rules
-
-**NEVER include:**
-- Greetings ("Hello"/"안녕하세요", "Dear Team")
-- Next Steps sections
-- Closing remarks ("Thank you"/"감사합니다")
-- Signatures or date stamps
-- Timeline estimates
-
-**Document should:**
-- Start directly with title and purpose
-- End with the last content section
-- Focus on technical content only
-
----
-
-## Best Practices
-
-### Tables
-- Use `|---|` for headers
-- Keep columns concise
-- Bold key items with `**text**`
-
-### Headings
-- `#` for main title, `##` for major sections, `###` for subsections
-- Maximum 4 levels deep
-
-### Images
-- Store in `./assets/` directory
-- Use relative paths
-- Add descriptive alt text
-- Export at 2x scale for clarity
-
-### Code Blocks
-- Specify language for syntax highlighting
-- Use fenced blocks for multi-line code
+- **Readability**: one idea per sentence — split up long sentences with multiple tangled clauses. Keep sections short enough to skim, and write headings that read clearly even out of context.
+- **Data citation**: cite a source for statistics and figures (`Source: Gartner, 2024`)
+- **Abbreviations**: spell out on first use — "Amazon Elastic Compute Cloud (EC2)", then "EC2" thereafter
+- **Images**: relative paths under `./assets/`, 2x scale export, descriptive alt text (WCAG 2.1) — `![AWS Lambda function triggering S3 event and saving to DynamoDB](arch.png)`
+- **Tables/headings/code**: keep columns concise, keep the heading hierarchy shallow (deep nesting is a sign of structural failure), and specify a language on code blocks
 
 ---
 
@@ -184,8 +96,6 @@ Example: Source: Gartner, 2024
 ```
 document-agent → content-review-agent → Final .md File
 ```
-
-After creating the document, invoke content-review-agent for quality review.
 
 ---
 

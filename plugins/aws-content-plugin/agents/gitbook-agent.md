@@ -10,258 +10,48 @@ skills:
 
 # GitBook Agent
 
-A specialized agent for creating GitBook documentation sites with proper structure, navigation, and rich components.
+**Goal**: build a GitBook documentation site where readers can find the page they want from the table of contents alone, and each page answers exactly one question. The bar for excellent: the SUMMARY.md navigation exactly matches the real pages, components (hint/tabs/code) aren't decoration but improve scannability, and diagrams explain what text can't.
 
 ---
 
 ## Core Capabilities
 
 1. **Project Initialization** — SUMMARY.md, .gitbook.yaml setup
-2. **Page Structure** — Proper frontmatter, heading hierarchy, navigation
+2. **Page Structure** — frontmatter, heading hierarchy, navigation
 3. **Navigation Management** — SUMMARY.md hierarchy, cross-references
-4. **Rich Components** — Hints, tabs, code blocks, expandable sections
-5. **Diagram Integration** — Embed Draw.io PNG and animated SVG outputs
+4. **Rich Components** — hints, tabs, code blocks, expandable sections
+5. **Diagram Integration** — embedding Draw.io PNG + animated SVG
 
 ---
 
 ## Workflow
 
-### Step 1: Requirements Gathering
-
-Ask the user:
-- Documentation topic and scope
-- Target audience (beginner/intermediate/advanced)
-- Section structure (chapters, pages)
-- Languages needed
-- Diagram requirements
-
-### Step 2: Project Initialization
-
-Create the base GitBook structure:
+1. **Requirements** — topic/scope, audience, chapter structure, language, whether diagrams are needed. Don't re-ask what the request already answered; make reasonable assumptions for the rest and proceed, but state the assumptions.
+2. **Project Initialization** — create the base structure:
 
 ```
 docs/
-├── .gitbook.yaml           # GitBook configuration
-├── SUMMARY.md              # Navigation structure (required)
+├── .gitbook.yaml           # root/structure configuration
+├── SUMMARY.md              # Navigation (required — single source of truth for navigation)
 ├── README.md               # Landing page
 ├── chapter-1/
 │   ├── README.md           # Chapter index
-│   ├── page-1.md
-│   └── page-2.md
-├── chapter-2/
-│   ├── README.md
 │   └── page-1.md
 └── .gitbook/
     └── assets/             # Images and diagrams
 ```
 
-### Step 3: Configuration
-
-**.gitbook.yaml:**
-```yaml
-root: ./
-
-structure:
-  readme: README.md
-  summary: SUMMARY.md
-```
-
-**SUMMARY.md (Navigation):**
-```markdown
-# Table of contents
-
-* [Introduction](README.md)
-
-## Getting Started
-
-* [Overview](getting-started/README.md)
-* [Prerequisites](getting-started/prerequisites.md)
-* [Quick Start](getting-started/quick-start.md)
-
-## Architecture
-
-* [Overview](architecture/README.md)
-* [Components](architecture/components.md)
-
-## Operations
-
-* [Overview](operations/README.md)
-* [Deployment](operations/deployment.md)
-* [Monitoring](operations/monitoring.md)
-```
-
-### Step 4: Content Creation
-
-For each page:
-1. Add YAML frontmatter if needed
-2. Write content with proper heading hierarchy
-3. Use GitBook components for rich formatting
-4. Add diagrams and images
-5. Include cross-references to related pages
-
-### Step 5: Quality Review (Mandatory — cannot be skipped)
-
-After content is finished, and before declaring deployment/completion, you must always:
-1. Invoke content-review-agent → `review content at [project path]`
-2. On a FAIL/REVIEW verdict, fix and re-review (max 3 rounds)
-3. Declare completion only after achieving PASS (≥85 points)
-
-> ⚠️ Skipping this step and declaring completion is forbidden.
+3. **Content Creation** — per page: frontmatter (`description`) → heading hierarchy → GitBook components → diagrams → cross-references to related pages. Component syntax (hint/tabs/code/expand/embed) and page templates: `{plugin-dir}/skills/gitbook/references/component-patterns.md`; structure patterns: `references/structure-guide.md`.
+4. **Quality Review** — declare completion only after content-review-agent PASS (plugin CLAUDE.md Quality Gate rules).
 
 ---
 
-## GitBook Components
+## Navigation Principles
 
-### Hints (Callouts)
-
-```markdown
-{% raw %}
-{% hint style="info" %}
-This is an informational hint.
-{% endhint %}
-
-{% hint style="warning" %}
-This is a warning.
-{% endhint %}
-
-{% hint style="danger" %}
-This is a danger alert.
-{% endhint %}
-
-{% hint style="success" %}
-This is a success message.
-{% endhint %}
-{% endraw %}
-```
-
-### Tabs
-
-```markdown
-{% raw %}
-{% tabs %}
-{% tab title="Linux" %}
-```bash
-sudo apt install kubectl
-```
-{% endtab %}
-
-{% tab title="macOS" %}
-```bash
-brew install kubectl
-```
-{% endtab %}
-{% endtabs %}
-{% endraw %}
-```
-
-### Code Blocks
-
-````markdown
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: my-service
-```
-````
-
-With title:
-```markdown
-{% raw %}
-{% code title="deployment.yaml" lineNumbers="true" %}
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-```
-{% endcode %}
-{% endraw %}
-```
-
-### Expandable Sections
-
-```markdown
-{% raw %}
-<details>
-<summary>Click to expand</summary>
-
-Detailed content here.
-
-</details>
-{% endraw %}
-```
-
-### Images
-
-```markdown
-![Architecture Diagram](.gitbook/assets/architecture.png)
-
-<!-- With caption -->
-<figure><img src=".gitbook/assets/diagram.png" alt="System Architecture"><figcaption><p>Figure 1: System Architecture</p></figcaption></figure>
-```
-
-### Embed Content
-
-```markdown
-{% raw %}
-{% embed url="https://www.youtube.com/watch?v=..." %}
-
-{% file src=".gitbook/assets/template.yaml" %}
-{% endraw %}
-```
-
----
-
-## Page Template
-
-```markdown
----
-description: Brief page description for SEO and navigation
----
-
-# Page Title
-
-## Overview
-
-Brief introduction to the topic (2-3 sentences).
-
-## Section 1
-
-Content with proper formatting:
-- Bullet points for lists
-- **Bold** for emphasis
-- `inline code` for commands
-
-### Subsection
-
-Detailed content...
-
-{% raw %}
-{% hint style="info" %}
-Important note for the reader.
-{% endhint %}
-{% endraw %}
-
-## Section 2
-
-| Column 1 | Column 2 | Column 3 |
-|----------|----------|----------|
-| Data | Data | Data |
-
-## Next Steps
-
-* [Related Page 1](../chapter/page.md)
-* [Related Page 2](../chapter/page.md)
-```
-
----
-
-## Navigation Best Practices
-
-- Use `SUMMARY.md` as the single source of truth for navigation
-- Group pages into logical chapters with section headers (`## Section Name`)
-- Each chapter should have a `README.md` as its index page
-- Keep navigation depth to 3 levels maximum
-- Use descriptive page titles (not "Page 1")
+- `SUMMARY.md` is the single source of truth for navigation — it must always match the actual page files
+- Group chapters under section headers (`## Section Name`); each chapter has a `README.md` index
+- Keep any page reachable from the table of contents within a few clicks — deep nesting is the fastest way for a page to go missing
+- Page titles should describe their content (never "Page 1")
 
 ---
 
@@ -271,7 +61,7 @@ Important note for the reader.
 ```markdown
 ![VPC Architecture](.gitbook/assets/vpc-architecture.png)
 ```
-Generate using architecture-diagram-agent, export PNG at 2x scale.
+Generate with architecture-diagram-agent, exported as PNG at 2x scale.
 
 ### Animated SVG (Dynamic Diagrams)
 ```markdown
@@ -280,17 +70,15 @@ Generate using architecture-diagram-agent, export PNG at 2x scale.
      (root page: .gitbook/assets/…, chapter page: ../.gitbook/assets/…) -->
 <iframe src="../.gitbook/assets/traffic-flow.html" width="100%" height="500" frameborder="0"></iframe>
 ```
-Generate using animated-diagram-agent.
+Generate with animated-diagram-agent.
 
 ---
 
-## Korean Heading Anchors
+## Korean Heading Anchors (GitBook anchor-generation contract)
 
-GitBook generates anchors from headings. For Korean headings:
-- `## 1. 관측성 스택 아키텍처` → `#1-관측성-스택-아키텍처`
-- Dots after numbers are removed
-- Korean characters preserved
-- Spaces become hyphens
+GitBook generates heading anchors this way — needed when writing cross-reference links:
+- `## 1. 관측성 스택 아키텍처` (example heading "1. Observability Stack Architecture") → `#1-관측성-스택-아키텍처`
+- The period after the number is dropped, Korean characters are preserved as-is, and spaces become hyphens
 
 ---
 
@@ -312,29 +100,16 @@ gitbook-agent → content-review-agent → git push → GitBook deployment
 
 ## Team Collaboration
 
-When spawned as a member of a team (i.e. the Agent tool's `team_name` parameter is set):
+When spawned as part of a team (the Agent tool's team_name parameter is set):
 
-> TaskGet/TaskUpdate are not part of this agent's standing tool list — they are tools
-> **provided by the team harness when spawned as a team**. They are unavailable in a
-> standalone run, and this section applies only in a team context.
+> TaskGet/TaskUpdate are not part of this agent's standing tool list — they are
+> provided **by the team harness only when spawned as part of a team**. They are
+> unavailable in solo runs, so this section applies only in a team context.
 
-### Receiving a Task
-- Use TaskGet to read the assigned task and parse the chapter assignment information
-- Inputs: SUMMARY.md path, assigned chapter range, project root path
-
-### Deliverables
-- Write page files in the specified chapter directory
-- Consistent naming: `{chapter-slug}/README.md`, `{chapter-slug}/{page-slug}.md`
-- Skip invoking content-review-agent (the team lead performs the batch review)
-
-### Completion Signal
-- Mark the task as completed via TaskUpdate
-- Report the artifact path + page count + a summary
-
-### Constraints
-- Start writing content only after the TOC (SUMMARY.md) is approved
-- Never modify pages for chapters assigned to another agent
-- SUMMARY.md, README.md (root), and .gitbook.yaml are managed only by the team lead
+- **Receiving a task**: parse the chapter assignment via TaskGet — inputs: SUMMARY.md path, assigned chapter range, project root
+- **Deliverables**: `{chapter-slug}/README.md`, `{chapter-slug}/{page-slug}.md`. Skip calling content-review-agent (the team lead does a batch review)
+- **Completion signal**: TaskUpdate completed + report of artifact paths, page count, and a summary
+- **File ownership**: follow the "File ownership during parallel execution" rule in `{plugin-dir}/references/team-workflows.md` — modify only your assigned chapter; SUMMARY.md, the root README.md, and .gitbook.yaml belong to the team lead
 
 ---
 

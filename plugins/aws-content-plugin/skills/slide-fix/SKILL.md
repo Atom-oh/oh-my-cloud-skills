@@ -11,7 +11,7 @@ allowed-tools:
 
 # Slide Fix Skill
 
-Reads `<!-- issue: content -->` annotations inserted into Remarp `.md` files, applies each issue to the corresponding source slide, and then removes the annotation.
+Reads `<!-- issue: content -->` annotations inserted into Remarp `.md` files, applies each issue to the source slide, then removes the annotation.
 
 ---
 
@@ -19,7 +19,7 @@ Reads `<!-- issue: content -->` annotations inserted into Remarp `.md` files, ap
 
 ### Step 1: Collect Issues
 
-Find the project directory or file path, and collect the issue list with the `remarp_to_slides.py issues` command.
+Locate the project directory or file path, and collect the issue list with the `remarp_to_slides.py issues` command.
 
 ```bash
 # Project directory (scans multiple .md files)
@@ -29,10 +29,10 @@ python3 <script_path>/remarp_to_slides.py issues <project_dir> --json
 python3 <script_path>/remarp_to_slides.py issues <file.md> --json
 ```
 
-**Script location search order:**
+**Script location lookup order:**
 1. `plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py` in the current workspace
 2. `scripts/remarp_to_slides.py`
-3. Search with Glob for `**/remarp_to_slides.py`
+3. Search for `**/remarp_to_slides.py` with Glob
 
 **JSON output format:**
 ```json
@@ -42,7 +42,7 @@ python3 <script_path>/remarp_to_slides.py issues <file.md> --json
     "block": "01-intro",
     "slide": 3,
     "title": "Architecture Overview",
-    "issue": "Please add a diagram"
+    "issue": "다이어그램을 추가해주세요"
   }
 ]
 ```
@@ -52,11 +52,11 @@ python3 <script_path>/remarp_to_slides.py issues <file.md> --json
 For each issue:
 
 1. **Read the source file**: Read the `.md` file at the `file` path
-2. **Locate the slide**: slides are separated by `---`; find the one matching the `slide` number (1-based)
+2. **Locate the slide**: separate slides by the `---` delimiter and find the slide corresponding to the `slide` number (1-based)
 3. **Apply the issue content**: apply the improvement described in the `issue` text to the slide
-   - text edits, layout changes, content additions/removals, etc.
-   - follow Remarp syntax rules (see the reactive-presentation SKILL.md)
-4. **Remove the annotation**: after the fix is complete, remove the corresponding `<!-- issue: ... -->` comment
+   - Text edits, layout changes, content additions/removals, etc.
+   - Comply with Remarp syntax rules (see reactive-presentation SKILL.md)
+4. **Remove the annotation**: after the fix is applied, remove the corresponding `<!-- issue: ... -->` comment
 
 ### Step 3: Rebuild
 
@@ -68,36 +68,19 @@ python3 <script_path>/remarp_to_slides.py build <project_dir>
 
 ---
 
-## Notes
+## Caveats
 
-- Process one issue at a time, and remove the annotation immediately after each fix
-- Do not modify slides unrelated to the issue
-- When editing `:::html` + `:::css` blocks, preserve the existing style patterns
-- Convert `:::canvas` DSL to `:::html` when there are 5 or more boxes (per the reactive-presentation SKILL.md rule)
-- If there are 0 issues, print "No issue annotations found." and exit
+- The goal is to "apply only the requested issues precisely": do not modify slides unrelated to an issue, and do not leave the annotation behind once an issue has been applied
+- When editing `:::html` + `:::css` blocks, preserve existing style patterns; canvas complexity rules follow reactive-presentation's `references/authoring-rules.md` (validated by `remarp_to_slides.py validate`)
+- If there are 0 issues, report that there is nothing to fix and exit
 
 ---
 
 ## Example
 
-When the user runs `/slide-fix`:
-
 ```
-1. remarp_to_slides.py issues doc-sites/static/demos/my-session/ --json
-   → 3 issues found
-
-2. Issue 1: slide 3 "Architecture Overview" → "Please add a diagram"
-   → Add an architecture diagram to slide 3 of 01-intro.md
-   → Remove <!-- issue: Please add a diagram -->
-
-3. Issue 2: slide 5 "Performance" → "Change the numbers into a graph"
-   → Convert slide 5's text figures in 01-intro.md into a :::html graph
-   → Remove <!-- issue: Change the numbers into a graph -->
-
-4. Issue 3: slide 2 "Overview" → "Split into tabs"
-   → Restructure slide 2 of 02-deep-dive.md into a tab UI
-   → Remove <!-- issue: Split into tabs -->
-
-5. remarp_to_slides.py build doc-sites/static/demos/my-session/
-   → HTML regeneration complete
+1. remarp_to_slides.py issues doc-sites/static/demos/my-session/ --json → found 3 issues
+2. slide 3 "Please add a diagram" → added a diagram to slide 3, removed the annotation
+3. slide 5 "Change the numbers to a graph" → converted to a :::html graph, removed the annotation
+4. remarp_to_slides.py build doc-sites/static/demos/my-session/ → regenerated HTML
 ```

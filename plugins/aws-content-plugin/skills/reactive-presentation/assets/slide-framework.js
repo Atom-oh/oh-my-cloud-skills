@@ -42,6 +42,21 @@ class SlideFramework {
         this.keyMappings = window.__remarpKeys;
       }
 
+      // Harvest <template class="notes"> speaker notes from slide DOM.
+      // Must run BEFORE createSidebar() clones slide innerHTML (a cloned
+      // <template> is inert but would double-count if harvested later).
+      // An explicit presenterNotes option always wins over the DOM.
+      this.slides.forEach((slide, idx) => {
+        const key = idx + 1;
+        if (this.presenterNotes[key] !== undefined) return;
+        const tpl = slide.querySelector('template.notes');
+        if (!tpl) return;
+        const text = tpl.content.textContent.trim();
+        if (!text) return;
+        const timing = tpl.dataset.timing || null;
+        this.presenterNotes[key] = timing ? { text: text, timing: timing } : text;
+      });
+
       // Read theme config
       if (window.__remarpTheme) {
         if (!this.footer && window.__remarpTheme.footer) this.footer = window.__remarpTheme.footer;
@@ -63,6 +78,7 @@ class SlideFramework {
       this.bindKeys();
       this.bindTouch();
       this.handleHash();
+      this.bindDeckScale();
       if (this.footer) this.createFooter();
       if (this.logoSrc) this.createLogo();
       this.initFragments(this.currentSlide);
@@ -220,12 +236,14 @@ class SlideFramework {
     document.body.classList.add('sidebar-visible');
     this.sidebarVisible = true;
     this.updateSidebarHighlight(this.currentSlide);
+    this.updateDeckScale();
   }
 
   hideSidebar() {
     if (!this.sidebar) return;
     document.body.classList.remove('sidebar-visible');
     this.sidebarVisible = false;
+    this.updateDeckScale();
   }
 
   updateSidebarHighlight(index) {
@@ -289,6 +307,27 @@ class SlideFramework {
 
   getDeck() {
     return document.querySelector('.slide-deck');
+  }
+
+  // Fixed design-canvas scaling: the deck is a fixed 1920x1080 (ratio-derived)
+  // box; scale it as one unit so type, px coordinates and canvases all shrink
+  // proportionally. Pairs with the .slide-deck transform in theme.css.
+  updateDeckScale() {
+    const deck = this.getDeck();
+    if (!deck) return;
+    const sidebarPad = (this.sidebarVisible && !document.fullscreenElement) ? 220 : 0;
+    const availW = window.innerWidth - sidebarPad;
+    const availH = window.innerHeight;
+    // offsetWidth/Height are layout size, unaffected by the transform itself
+    const w = deck.offsetWidth || 1920;
+    const h = deck.offsetHeight || 1080;
+    deck.style.setProperty('--deck-scale', Math.min(availW / w, availH / h));
+  }
+
+  bindDeckScale() {
+    this.updateDeckScale();
+    window.addEventListener('resize', () => this.updateDeckScale());
+    document.addEventListener('fullscreenchange', () => this.updateDeckScale());
   }
 
   updateFooterVisibility(slide) {

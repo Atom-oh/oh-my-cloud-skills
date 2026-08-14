@@ -13,8 +13,8 @@ presentation-agent (dispatcher) → reactive-presentation-agent → validate (re
 # Native PowerPoint (.pptx):
 presentation-agent (dispatcher) → aws-light-fcd skill (PptxGenJS, AWS Light theme) → check_pptx.py (rejection loop, ≥80 AND zero geometry findings) → embed_fonts.py → content-review-agent → .pptx
 ```
-> **Required**: After writing Remarp content, run the rejection loop via `remarp_to_slides.py validate`. Proceed to build only when CRITICAL issue count is 0.
-> **PPTX branch**: When the "pptx/PowerPoint/ppt" keyword appears, or the user selects PPTX, the dispatcher routes to the `aws-light-fcd` skill. Writing python-pptx directly is forbidden — always call the skill. **Required**: proceed to embed_fonts.py only after `check_pptx.py` reports a score ≥80 **and** zero `[geometry]` findings (rejection loop) — a geometry defect fails the gate regardless of score.
+> After authoring in Remarp, run the `remarp_to_slides.py validate` rejection loop: there must be zero CRITICAL findings before building.
+> **PPTX branch**: on a "pptx/PowerPoint/ppt" keyword or when the user picks PPTX, the dispatcher routes to the `aws-light-fcd` skill (python-pptx is not hand-written because the skill owns the validated design system and font embedding). The single gate in the pipeline above is `check_pptx.py`: score ≥80 **and** zero `[geometry]` findings — a geometry defect fails regardless of score.
 
 ### Architecture Diagram Workflow
 ```
@@ -23,7 +23,7 @@ architecture-diagram-agent → layout_aws.py (YAML spec → .drawio) → validat
 # Hand-authored (non-standard shapes only): → .drawio → validate + lint → PNG export
 → (embed in presentation/document/gitbook)
 ```
-> For standard patterns, do not hand-place coordinates — use the `skills/architecture-diagram/scripts/layout_aws.py` spec generator. Golden examples: `skills/architecture-diagram/examples/`.
+> For standard patterns, don't place coordinates by hand — use the `skills/architecture-diagram/scripts/layout_aws.py` spec generator. Golden examples: `skills/architecture-diagram/examples/`.
 
 ### Animated Diagram Workflow
 ```
@@ -51,63 +51,49 @@ brochure-agent → gather product facts → (architecture-diagram → SVG) → (
   → self-contained responsive HTML → check_brochure.py → content-review-agent (≥85)
   → GitHub Pages (public, verify no-auth 200)
 ```
-> A single self-contained HTML file (responsive across mobile/tablet/PC). **A product with a web UI requires a screenshot section (4–6 shots)** — capture with Playwright MCP, and ask for confirmation if the URL or how to run it is unknown. Build the architecture with `architecture-diagram`, embed it as an SVG, and keep it telling the same story as the copy. **Public hosting is GitHub Pages** — a domain sitting behind an auth edge (e.g. Cognito Lambda@Edge) cannot be published there unless it has a public bypass path.
+> One self-contained HTML file (mobile/tablet/PC responsive). **A product with a web UI requires a real screenshot section** — capture it with Playwright MCP; if you don't know the URL or how to run it, ask. Build the architecture diagram with `architecture-diagram` and embed it as SVG, keeping the diagram consistent with the copy's story. **Public hosting is GitHub Pages** — a domain behind an auth edge (Cognito Lambda@Edge, etc.) can't be published there unless it has a public bypass path.
 
 ### Profile Page (gh-home) Workflow
 ```
 gather facts (existing page / GitHub / user confirmation) → self-contained responsive HTML (sidebar+about+experience+skills+projects)
   → check_brochure.py (shared with the brochure skill) → content-review-agent (≥85) → GitHub Pages (public)
 ```
-> A personal profile/portfolio page (subject is a person, not a product/solution) — distinct from brochure. Never fabricate experience or projects; fill them in only from an existing page, GitHub, or user confirmation. If an existing `index.html` exists, **confirm before overwriting**, and preserve unrelated files such as CNAME/robots.txt/analytics scripts.
+> A personal profile/portfolio page (the subject is a person, not a product/solution) — distinct from a brochure. Never invent career history or projects; populate it only from an existing page, GitHub, or user confirmation. If an existing `index.html` is present, **confirm before overwriting**, and preserve unrelated files such as CNAME/robots.txt/analytics scripts.
 
 ---
 
-## Team Workflow Patterns (Parallel Orchestration)
+## Team Workflow Patterns (parallel orchestration)
 
-**The default is a sequential workflow.** Team-based parallel execution is used only when the triggers below are met:
+**The default is a sequential workflow.** Team-based parallelism is used only when the triggers below are met:
 
 | Trigger | Team | Pipeline |
 |--------|----|-----------|
 | Presentation ≥60 min or 3+ blocks | `content-presentation` | Multi-Phase |
 | Workshop with 3+ modules | `content-workshop` | Multi-Phase |
 | GitBook with 5+ chapters | `content-gitbook` | Block-Parallel |
-| Simultaneous presentation+diagram+document request | `content-cross-type` | Cross-Type |
+| Presentation + diagram + document requested together | `content-cross-type` | Cross-Type |
 
-When a trigger is met, spawn subagents (one per block, in parallel); otherwise run sequentially. Also use this when the user explicitly asks for "parallel/at the same time/as a team."
+When a trigger is met, spawn subagents (one in parallel per block); otherwise stay sequential. Also use this when the user explicitly says "in parallel / simultaneously / as a team."
 
-> **Details** (the Multi-Phase 4 stages, Subagent Spawn Policy, inter-phase data handoff, orchestration execution order, Block-Parallel): **`references/team-workflows.md`** — consult this when actually spawning a team.
+> **Details** (the 4 Multi-Phase stages, Subagent Spawn Policy, Phase-to-phase data handoff, orchestration execution order, Block-Parallel): **`references/team-workflows.md`** — consult it when actually spawning a team.
 
 ---
 
 ## Quality Gate (Mandatory)
 
-> **Rule: a deliverable must pass content-review-agent before deployment/completion is declared.**
-> This applies to new artifacts and substantive revisions. Minor touch-ups such as typo
-> fixes or one-line edits can be applied without re-passing the gate, but at the moment
-> completion/deployment is declared, a valid PASS review for that deliverable must exist.
+> **Rule: a deliverable must pass content-review-agent before it is declared deployed/complete.**
+> This applies to new artifacts and substantive revisions. Minor touch-ups such as
+> typo fixes or one-line edits can be applied without re-passing the gate, but at the
+> moment completion/deployment is declared, a valid PASS review for that deliverable
+> must exist.
 
-### Auto-Trigger Conditions
+### Auto-Trigger
 
-content-review-agent is invoked automatically when the following conditions are met:
-
-| Trigger | Condition | Action |
-|---------|-----------|--------|
-| HTML presentation complete | `.html` slide file finished | `review content at [file path]` |
-| Diagram complete | `.drawio` or animated `.html` finished | `review content at [file path]` |
-| Document complete | `.md` technical document finished | `review content at [file path]` |
-| GitBook pages complete | GitBook project structure finished | `review content at [project path]` |
-| Workshop content complete | Workshop module content finished | `review content at [project path]` |
-| Brochure complete | Brochure `.html` finished | `review content at [file path]` |
-| Profile page complete | Profile page `.html` finished | `review content at [file path]` |
-| PPTX deck complete | `.pptx` finished (after check_pptx.py gate passes + embed_fonts.py runs) | `review content at [file path]` |
+As soon as a deliverable is finished — slide/animation `.html`, `.drawio`, technical-doc `.md`, GitBook/Workshop project, brochure/profile `.html`, `.pptx` (after the check_pptx.py gate + embed_fonts.py) — invoke content-review-agent with `review content at [path]`.
 
 ### Review Loop
 
-1. Content agent finishes generating content
-2. Invoke content-review-agent → produces a review report
-3. On a FAIL/REVIEW verdict → fix and re-review (max 3 rounds)
-4. Declare completion/deployment only after achieving PASS (≥85 points)
-5. If still below PASS after 3 reviews → ask the user for a judgment call
+On a FAIL/REVIEW verdict, fix and re-review. Declare completion/deployment only after PASS. If PASS still isn't reached after 3 re-reviews, hand the decision to the user.
 
 ### Verdict
 
@@ -117,10 +103,9 @@ content-review-agent is invoked automatically when the following conditions are 
 | **REVIEW** | Critical 0, Warning 4-10, Score 70-84 | Fix and re-review |
 | **FAIL** | Critical ≥1 or Warning >10 or Score <70 | Cannot proceed |
 
-> Content exempt from Visual Testing (Markdown, Draw.io, Workshop, PPTX, or when Playwright
-> is unavailable) is judged on a **90-point scale**: PASS ≥77 / REVIEW 63-76 / FAIL <63.
-> The review report states which scale applies, so do not misjudge a 77-point PASS on the
-> 90-point scale as "below 85."
+> Content exempt from Visual Testing (Markdown, Draw.io, Workshop, PPTX, or when
+> Playwright is unavailable) uses the **90-point** scale: PASS ≥77 / REVIEW 63-76 /
+> FAIL <63. The review report must state which scale it used.
 
 ---
 
@@ -163,11 +148,11 @@ AWS Architecture Icons are located in `skills/reactive-presentation/assets/aws-i
 - `Resource-Icons_07312025/` — Resource-level icons (22 categories)
 - `others/` — Third-party icons (LangChain, Grafana, etc.)
 
-> **Rule**: slides that visually represent AWS services (architecture, service intros,
-> configuration diagrams) must use this bundle's **official icons** — hand-drawn
-> substitute graphics are forbidden. Slides where a service name only appears in passing
-> text (agenda, code, comparison tables) are not required to include icons.
-> Not using the official icons is penalized by content-review-agent.
+> **Rule**: any slide that visually represents an AWS service (architecture, service
+> introduction, diagrams) must use this bundle's **official icons** — do not draw ad hoc
+> substitute graphics. Icons are not mandatory on slides where the service name only
+> appears as text (agenda, code, comparison tables). Failing to use the official icons
+> costs points in content-review-agent.
 
 ---
 

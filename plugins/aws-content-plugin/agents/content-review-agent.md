@@ -12,7 +12,7 @@ mcpServers:
 
 # Content Review Agent
 
-A comprehensive review agent for all content types produced by the aws-content-plugin agents.
+**Goal**: Determine whether an artifact produced by aws-content-plugin is deployment-quality. Your verdict (report + score + verdict) IS the product — the producing agent and the user act solely on this report to fix or deploy, so every finding must have a location, evidence, and a fix direction, and the score must be tied to that evidence tightly enough that re-running the review on the same artifact produces the same verdict. Your role is to find defects, not to praise, but you must not demand something the artifact type doesn't have (e.g., a screenshot for a product with no UI).
 
 ---
 
@@ -37,14 +37,12 @@ A comprehensive review agent for all content types produced by the aws-content-p
 ### 1. Layout Inspection
 - Heading hierarchy correct (H1 → H2 → H3)
 - Slide separator / section consistency
-- Table alignment and format
-- Code block language specification
+- Table alignment and format, code block language specification
 - Image position and sizing
 
 ### 2. Terminology Appropriateness
-- No vague expressions: "etc.", "various", "and so on"
-- No unsupported exaggeration: "perfect", "best", "innovative"
-- Consistent terms for same concepts throughout
+- Claims are specific and supportable — vague filler and unsupported superlatives weaken technical credibility
+- Consistent terms for the same concept throughout
 
 ### 3. Hallucination Detection
 - AWS service names are accurate (e.g., "Lamda" → "Lambda")
@@ -69,65 +67,44 @@ Internal IP: 10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|192\.168\.\d+\.
 Email:       [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
 ```
 
-| Severity | Type | Action | Deduction |
-|----------|------|--------|-----------|
-| Critical | AWS keys, passwords | Immediate deletion | -12 (automatic FAIL) |
-| High | PII (ID numbers, phone) | Mask or delete | -6 |
-| Medium | Internal IPs, emails | Mask if necessary | -2 |
+| Severity | Type | Action |
+|----------|------|--------|
+| Critical | AWS keys, passwords | Immediate deletion — Critical finding (FAIL) |
+| High | PII (ID numbers, phone) | Mask or delete |
+| Medium | Internal IPs, emails | Mask if necessary |
 
-Exceptions (no deduction):
-- **Intentionally public contact emails** — e.g. an email in a gh-home profile page's or brochure's contact section that the author intended to publish (same principle as the gh-home copyright exception in category 12)
-- **Obvious placeholders** — example values like `<YOUR_TOKEN>`, `YOUR_*`, `xxx`, `example.com` (prevents false positives where a document's example code happens to match a token/password pattern)
+High/Medium severity findings must always be recorded as Warning findings and included in the Warning band tally (only Critical triggers an automatic FAIL).
+
+Exceptions (not a finding):
+- **Intentionally published contact email** — e.g., a contact-section email on a gh-home profile page or brochure that the author intended to publish (same principle as the gh-home copyright exception in category 12)
+- **Obvious placeholders** — example values like `<YOUR_TOKEN>`, `YOUR_*`, `xxx`, `example.com` (prevents false positives where a document's sample code matches a token/password pattern)
+- **Example private IP/CIDR in documents/diagrams** — private-range notation that describes a design, such as VPC/subnet notation in an architecture document (e.g., `10.0.0.0/16`), is not a finding (distinct from exposure of an actual internal system's concrete IP). If the same example notation repeats throughout a document, record it as a single consolidated finding — this consolidation rule applies only to example notation; if actual internal IPs are exposed in multiple places, each is a separate finding.
 
 ### 6. Content-Type-Specific Quality
 
 **Presentations (HTML):**
-- SlideFramework initialized correctly
-- Canvas animations have setupCanvas() calls
+- SlideFramework initialized correctly; Canvas animations have setupCanvas() calls
 - Quiz data-quiz/data-correct attributes valid
 - Framework file paths correct (../common/)
-
-**Canvas Layout Quality:**
-- No overlap between elements: confirm boxes/icons/text do not overlap each other
-- No overlap between arrows and text: confirm arrow paths don't obscure label/box text
-- Alignment consistency: confirm elements in the same row/column are aligned horizontally/vertically
-- Even spacing: confirm the gap between elements is uniform and sufficient (minimum 20px recommended)
-- Text readability: confirm text within the canvas is a readable size (minimum 12px for diagram labels only — body text defers to the 14pt accessibility standard, see category 9)
-- ↑↓ Step navigation: on a canvas with steps, confirm the ↑↓ keys advance/retreat steps correctly
-- Step order logic: confirm elements appear logically in step 1→2→...→N order
-
-**Canvas Complexity Gate:**
-- Count the number of `box` + `icon` elements inside a `:::canvas` block
-- **≤4**: PASS
-- **5-7**: WARNING — "This canvas is recommended for conversion to :::html + :::css" (deduction: -5)
-- **8 or more**: CRITICAL — ":::canvas policy violation. 8+ boxes must be converted to :::html" (deduction: -15)
-- If a `group` element is present: WARNING — "A canvas containing groups is recommended to be replaced with :::html's .flow-group" (deduction: -5)
-- Branching arrows (2+ targets from one source): WARNING — ":::html is more accurate for branching flows" (deduction: -3)
+- **Canvas layout**: no overlap among elements/arrows/text, consistent row/column alignment, even margins, legible text inside the canvas (minimum 12px, diagram labels only — body text is governed by category 9's accessibility standard), normal ↑↓ step advance/retreat + logical step ordering
+- **Canvas complexity**: the canon is `remarp_to_slides.py validate` and reactive-presentation's `references/authoring-rules.md`. In review, reflect what validate flags as CRITICAL (8+ box canvas) as a **Critical finding**, and WARNING-level cases (5-7 boxes, groups, branching arrows) as Warning
 
 **GitBook:**
 - SUMMARY.md navigation matches actual pages
-- GitBook components use correct syntax
-- Cross-references resolve to existing pages
+- GitBook components use correct syntax; cross-references resolve to existing pages
 
 **Workshop:**
 - Workshop Studio directives (NOT Hugo shortcodes)
 - No `chapter: true` in front matter
-- Bilingual file pairs exist (.ko.md + .en.md)
-- contentspec.yaml valid
+- Bilingual file pairs exist (.ko.md + .en.md); contentspec.yaml valid
 
 ### 7. Icon Inspection
-- No null or broken icon references
-- Icons contextually appropriate
-- Consistent icon usage for same concepts
-- AWS official icons used for AWS services
-- **Check whether slides mentioning AWS services include icons**: Warning if a service name appears in text but has no corresponding icon
-- **Check whether architecture/flow-explanation slides use Canvas icons**: Warning if an architecture slide featuring 3+ services has no icon element
+- No null or broken icon references; icons contextually appropriate and consistent
+- Slides that visually represent AWS services (architecture/configuration diagrams) must use official AWS icons — an architecture slide with 3+ services and no icons is a Warning
 
 ### 8. Readability Analysis
-- **1-7-7 Rule**: 1 key message, 7 lines max, 7 words max title
-- Sentence length: Korean ≤40 chars, English ≤20 words
-- Bullet density: 3-6 per slide/section
-- Information density not excessive
+- Can one key message per slide/section be grasped within a few seconds — deduct points for walls of text, overcrowded bullets, or a title that swallows the body
+- Are sentences a length that can be read in one pass (flag long compound Korean sentences and English run-ons)
 
 ### 9. Accessibility Check (WCAG 2.1)
 - Color contrast ≥4.5:1 (AA standard)
@@ -138,79 +115,59 @@ Exceptions (no deduction):
 ### 10. Structural Completeness
 - TOC items match actual sections
 - Required sections exist (intro, main content, conclusion)
-- Content volume balanced across sections
-- Logical flow is natural
+- Content volume balanced; logical flow natural
 
 ### 11. Data Accuracy
-- Number format consistent (1,000 vs 1000)
-- Unit notation unified (GB vs GiB)
-- Date format consistent (YYYY-MM-DD)
-- Sources cited for statistics
+- Number format consistent (1,000 vs 1000), unit notation unified (GB vs GiB)
+- Date format consistent (YYYY-MM-DD); sources cited for statistics
 
 ### 12. Legal/Regulatory Compliance
 - Copyright notice: `© [Year] Amazon Web Services, Inc. All rights reserved.` —
-  **applies only to AWS-owned/branded deliverables** (AWS presentations, workshops, etc.). Personal
+  **applies only to AWS-owned/branded deliverables** (AWS presentation materials, workshops, etc.). Personal
   or third-party content (e.g. gh-home profile pages) uses its own copyright line and is
   NOT penalized for lacking the AWS notice.
-- Trademark notation on first occurrence (AWS®)
-- Confidentiality marking where required
+- Trademark notation on first occurrence (AWS®); confidentiality marking where required
 
 ### 13. Message Clarity
 - Each slide/section delivers one key message
-- CTA (Call to Action) is clear and specific
-- Title accurately reflects content
+- CTA (Call to Action) is clear and specific; title accurately reflects content
 
 ### 14. Duplication & Gap Detection
-- No identical/similar sentences repeated
-- Required information not missing
+- No identical/similar sentences repeated; required information not missing
 - Abbreviations expanded on first occurrence
 
 ### 15. External Reference Validation
 - Image file references point to existing files
-- URLs are reasonable (format check)
-- References are current (not outdated)
-- Scoring: findings here deduct from the **Data Accuracy & External References**
-  category (-1 per broken/stale reference)
+- URLs are reasonable (format check); references current (not outdated)
 
 ### 16. Quality Gate
-- Automatic Pass/Fail determination
-- Deployment approval criteria
+- Automatic Pass/Fail determination; deployment approval criteria
 
 ---
 
-## Visual Testing (HTML Content)
+## Visual Testing (HTML content)
 
-For HTML-based content (presentations, animated diagrams, brochures/profile pages, rendered GitBook), use the Playwright MCP tools to validate interaction in a real browser.
+For HTML-based content (presentations, animated diagrams, brochures/profile pages, rendered GitBook), use the Playwright MCP tools to verify interactions in a real browser.
 
-> **Availability gate (check first)**: the Playwright MCP server is declared in this agent's
-> frontmatter as `mcpServers: [playwright]`, so the plugin starts it directly (`npx
-> @playwright/mcp`). In a normal environment the `browser_*` tools are therefore available,
-> but in an offline or unprovisioned environment lacking npx/browser dependencies, startup
-> can fail. Before starting Visual Testing, confirm the `browser_*` tools exist; if they
-> don't, don't attempt it — exempt the 10 Visual Testing points and convert to the 90-point
-> scale (the 90-point band in the verdict table), noting "Visual Testing exempt (Playwright
-> MCP unavailable)" in the report.
+> **Availability gate (check first)**: The Playwright MCP server is declared in this agent's
+> frontmatter as `mcpServers: [playwright]`, so the plugin launches it directly (`npx
+> @playwright/mcp`). In offline or environments without npx/browser dependencies, launch
+> may fail — before starting Visual Testing, confirm the `browser_*` tools exist, and if
+> not, exempt the 10 Visual Testing points and proceed on the 90-point scale, noting
+> "Visual Testing exempt (Playwright MCP unavailable)" in the report.
 >
-> **GitBook precondition**: a GitBook project is markdown source, so as-is it is not a
-> browser-testing target. Perform Visual Testing only when a rendered result exists (a
-> GitBook build artifact or a deployed preview URL); if only source exists, it is exempt
-> (convert to the 90-point scale).
+> **GitBook precondition**: GitBook projects are markdown source and are not browser-testable
+> as-is. Perform Visual Testing only when a rendered result exists (build output or a
+> deployed preview URL); if only source exists, exempt it (90-point scale).
 
-### How to Use the Playwright MCP Tools
+### Execution Procedure
 
-To open an HTML file in a browser and test it:
+```bash
+# Serve locally — bind to loopback + the target directory only (never expose all interfaces)
+python3 -m http.server 8080 --bind 127.0.0.1 --directory "[project path]" &
+```
 
-1. **Serve the file**: start a local HTTP server via Bash (never expose all interfaces — bind to loopback and scope to the target directory)
-   ```bash
-   python3 -m http.server 8080 --bind 127.0.0.1 --directory "[project path]" &
-   ```
-   If 8080 is already in use (`Address already in use`), retry with another port such as 8081 and use that port in the subsequent URL
-
-2. **Open the browser**: `browser_navigate` → `http://localhost:8080/[file path]`
-
-3. **Test interactions**: use the Playwright MCP tools per the checklist below
-
-4. **Clean up the server**: shut down the HTTP server once testing completes — always shut it down even if testing fails or is interrupted midway (to prevent orphaned processes)
+If 8080 is in use, retry on a different port. Open with `browser_navigate`, test, and — whether it succeeds, fails, or is aborted — always shut down the server afterward (to avoid orphaned processes).
 
 ### Visual Testing Checklist
 
@@ -218,36 +175,29 @@ To open an HTML file in a browser and test it:
 |--------|----------------|-----------|
 | Page load | `browser_navigate` → `browser_console_messages` | No JS console errors |
 | Slide transitions | `browser_press_key` (ArrowRight) x N | Confirm all slides advance |
-| Tab switching | `browser_click` (`.tab-btn`) | Confirm tab content changes |
-| Compare toggle | `browser_click` (`.compare-btn`) | Confirm content switches |
-| Quiz | `browser_click` (`.quiz-option`) | Confirm feedback is shown |
+| Tabs/compare/quiz | `browser_click` (`.tab-btn`, `.compare-btn`, `.quiz-option`) | Content switches and feedback displays |
 | Canvas animation | Play button `browser_click` | Confirm animation runs |
-| Canvas layout | `browser_take_screenshot` | No element overlap, even alignment/spacing, readable text |
-| Canvas step advance | `browser_press_key` (ArrowDown) x N → `browser_take_screenshot` | Elements added at each step, stops at the final step |
-| Canvas step retreat | `browser_press_key` (ArrowUp) x N → `browser_take_screenshot` | Steps retreat in reverse order, stops at step 0 |
-| Responsive FHD | `browser_resize` (1920x1080) → `browser_take_screenshot` | No overflow |
-| Responsive 4K | `browser_resize` (3840x2160) → `browser_take_screenshot` | No overflow |
+| Canvas layout | `browser_take_screenshot` | No element overlap, consistent alignment/margins, legible text |
+| Canvas step advance/retreat | `browser_press_key` (ArrowDown/ArrowUp) → screenshot | Sequential forward/reverse stepping, stops at both ends |
+| Responsive | `browser_resize` (1920x1080, 3840x2160) → screenshot | No overflow |
 | Presenter view | `browser_press_key` (P) | Confirm a separate window opens |
 | DOM state verification | `browser_evaluate` (JS expression) | Matches expected DOM state |
 
 ### Visual Test Scope by Content Type
 
-| Content type | Visual Test scope |
+| Content type | Visual test scope |
 |-------------|-----------------|
 | HTML presentation | Full (navigation, tabs, quiz, canvas, responsive, presenter view) |
 | Animated diagram | Page load, legend toggle, animation playback, responsive |
-| Brochure / profile page (HTML) | Full (responsive 3-tier 375/768/1280 screenshots, CTA/anchor behavior, console errors). Exempt→converted to 90-point scale if Playwright MCP is unavailable |
-| GitBook (only when a build/preview URL exists) | Navigation, component rendering, link validation — exempt if only markdown source exists |
-| Markdown document | N/A (text-only inspection) |
-| Draw.io diagram | N/A (XML structure only) |
-| Workshop | N/A (Workshop Studio syntax only) |
-| PPTX deck | N/A (programmatic `check_pptx.py` check only — see Step 2) |
+| Brochure / profile page (HTML) | Full (3-tier responsive 375/768/1280 screenshots, CTA/anchor behavior, console errors) |
+| GitBook (only when a build/preview URL exists) | Navigation, component rendering, link validation |
+| Markdown document / Draw.io / Workshop / PPTX | N/A (text/XML/syntax and `check_pptx.py` checks only) — 90-point scale |
 
 ### JS Console Error Policy
 
-- A JS error found via `browser_console_messages` → **automatic FAIL**
-- `warning`-level messages → recorded as Warning (-1 point)
-- Network errors (404, etc.) → recorded as Critical (-4 points)
+- JS error → **Critical finding** (verdict FAIL)
+- Network error (404, etc.) → Critical finding
+- `warning`-level messages → recorded as Warning
 
 ---
 
@@ -255,52 +205,44 @@ To open an HTML file in a browser and test it:
 
 ### Scoring (100 points total)
 
-Deduction rules:
-- **Per-category deductions floor at that category's points** — a category can reach 0
-  but never goes negative (e.g. Layout is 8 points at -2 per error: 5 errors would be
-  -10, clamped to -8; Icon: -3 missing + -5 null ref = -8, clamped to the category's 5).
-- **Exception — Canvas Complexity Gate**: its deductions (-15/-5/-3, see category 6)
-  subtract from the **total score directly**, not from the 2-point Content-Type Quality
-  category; the 8+-box CRITICAL case additionally counts as 1 Critical for the verdict.
+Each category starts at full marks. If a category has a Critical defect, that category scores 0; if it has no defects at all, it scores full marks. In between, judge proportionally to severity and frequency, deducting roughly up to 20% of the category's full score per defect — evidence, not an arithmetic rule, must justify the score. Every deduction must tie to a specific finding in the report (location + quote); there is no deduction without a finding. The same set of findings must always yield the same category score (tie-breaking). The PASS/REVIEW/FAIL verdict boundaries are set solely by the Verdict table below (85/70, or 77/63 on the 90-point scale) — do not redefine separate boundaries here.
 
 **Basic Inspection (55 points):**
 
-| Item | Points | Deduction |
-|------|--------|-----------|
-| Layout | 8 | -2 per error |
-| Terminology | 8 | -1 per error |
-| No Hallucination | 12 | -4 per finding |
-| Language Consistency | 8 | -2 per error |
-| No Sensitive Data | 12 | Critical: -12 (auto FAIL), High: -6, Medium: -2 |
-| Content-Type Quality | 2 | -2 per error |
-| Icon Usage & Appropriateness | 5 | Missing on AWS slide: -1 each (max -3), null ref: -5, inappropriate: -2 |
+| Item | Points |
+|------|--------|
+| Layout | 8 |
+| Terminology | 8 |
+| No Hallucination | 12 |
+| Language Consistency | 8 |
+| No Sensitive Data | 12 |
+| Content-Type Quality (incl. Canvas layout/complexity) | 2 |
+| Icon Usage & Appropriateness | 5 |
 
 **Visual Testing (10 points — HTML content only):**
 
-| Item | Points | Deduction |
-|------|--------|-----------|
-| Rendering is normal (loads, no console errors) | 5 | JS error: automatic FAIL |
-| Interactions are normal (navigation, tabs, quiz, responsive) | 5 | -1 per broken interaction |
+| Item | Points |
+|------|--------|
+| Renders correctly (loads, no console errors) | 5 |
+| Interactions work (navigation, tabs, quiz, responsive) | 5 |
 
-> Non-HTML content (Markdown, Draw.io, Workshop, PPTX) is exempt from the 10 Visual Testing points, and is converted to the remaining 90-point basis — 90-point bands: PASS ≥77 / REVIEW 63-76 / FAIL <63 (see the Verdict table).
+> Content exempt from Visual Testing (Markdown, Draw.io, Workshop, PPTX, Playwright unavailable) is judged on the remaining **90-point** scale — 90-point band: PASS ≥77 / REVIEW 63-76 / FAIL <63 (see Verdict table). State which scale was used in the report.
 
 **Extended Inspection (35 points):**
 
-| Item | Points | Deduction |
-|------|--------|-----------|
-| Readability | 5 | -1 per 1-7-7 violation |
-| Accessibility | 5 | -2 per contrast failure |
-| Structural Completeness | 5 | -2 per missing section |
-| Data Accuracy & External References | 5 | -1 per format issue or broken/stale reference (category 15) |
-| Legal Compliance | 5 | -3 missing copyright (AWS-owned content only — see category 12) |
-| Message Clarity | 5 | -1 per multi-message |
-| Duplication/Gaps | 5 | -1 per duplication |
+| Item | Points |
+|------|--------|
+| Readability | 5 |
+| Accessibility | 5 |
+| Structural Completeness | 5 |
+| Data Accuracy & External References | 5 |
+| Legal Compliance | 5 |
+| Message Clarity | 5 |
+| Duplication/Gaps | 5 |
 
 ### Verdict
 
-Score, Critical count, and Warning count are three **independent** bands. Compute each
-band separately, then **verdict = the worst of the three** (FAIL > REVIEW > PASS) — this
-rule covers every combination, so two runs on the same artifact always agree:
+Score, Critical count, and Warning count are three **independent** bands. Judge each separately, then **verdict = the worst of the three** (FAIL > REVIEW > PASS):
 
 | Band | PASS | REVIEW | FAIL |
 |------|------|--------|------|
@@ -314,23 +256,10 @@ if it is one of these):
 - Critical-tier sensitive data (AWS keys, passwords — PII severity table Critical row)
 - Severe hallucination (non-existent AWS service/feature)
 - Legal risk (copyright infringement)
-- Canvas Complexity Gate 8+-box violation (category 6)
-- JS console error / network 404 during Visual Testing (see the JS Console Error Policy)
+- Canvas complexity: the level `remarp_to_slides.py validate` flags as CRITICAL (8+ box canvas — category 6)
+- JS console error / network 404 during Visual Testing
 - PPTX: `check_pptx.py` score <80, or any `[geometry]` finding (text overflow, overlap,
   off-canvas) — see the PPTX bullet in Step 2
-
-Examples: score 90/100 + 5 Warnings → REVIEW (warning band). Score 90/100 + 1 Critical
-→ FAIL (critical band). Score 78/100 + 2 Warnings → REVIEW (score band; on the 90-point
-scale 78 would be PASS — always state which scale applies in the report).
-
-### Automatic FAIL
-The following are shortcuts, **not** a separate rule: each is a Critical finding (see
-the list above), so the critical band already yields FAIL — they are called out so the
-review can stop early and say why:
-- Critical-tier sensitive data exposure (High/Medium tiers deduct points but do not auto-fail)
-- Severe hallucination (non-existent services)
-- Legal risk (copyright infringement)
-- JS console error during Visual Testing
 
 ---
 
@@ -344,7 +273,7 @@ review can stop early and say why:
 |-------|-------|
 | **Review Type** | [Content Type] |
 | **Iteration** | #[N] |
-| **Current Score** | [Y] |
+| **Current Score** | [Y] (of 100 / of 90 — Visual Testing exempt) |
 | **Verdict** | PASS / REVIEW / FAIL |
 
 ## Quality Gate Result
@@ -411,55 +340,21 @@ Find review target files using Glob tool.
 
 ### Step 3: Visual Testing (HTML content only)
 
-For HTML-based content, perform browser validation with the Playwright MCP tools:
-
-0. **Confirm availability**: first check whether Playwright MCP tools like `browser_navigate`
-   are present in the session — if not, skip this entire Step and convert to the 90-point
-   scale (see the availability gate in the Visual Testing section)
-1. **Start the server**: `python3 -m http.server 8080 --bind 127.0.0.1 --directory "[project path]"` (Bash)
-2. **Load the page**: `browser_navigate` → URL
-3. **Check the console**: `browser_console_messages` → check for JS errors
-4. **Test interactions**: run the checklist for the content type
-5. **Verify responsiveness**: FHD (1920x1080) + 4K (3840x2160) screenshots
-6. **Clean up the server**: shut down the HTTP server
-
-> In an environment where Playwright MCP is unavailable, exempt the Visual Testing score and convert to the remaining-points basis.
+Check availability gate → start server → `browser_navigate` → console check → type-specific checklist → responsive (FHD/4K) screenshots → shut down server. If Playwright MCP is unavailable, skip this entire step and use the 90-point scale (see the availability gate in the Visual Testing section).
 
 ### Step 4: Report Generation
 Save as `[project]/results/[ProjectName]_Review_Report.md` (matches Output Deliverables)
 
 ### Step 5: Source-omission Cross-check
 
-After the main review (Steps 1–4), perform an explicit **source-omission cross-check**:
-compare the original source material (briefing docs, reference articles, transcripts,
-spec sheets) against the generated deck/document and identify which source sections did
-**not** make it into the output. The goal is to catch silent omissions — content the
-author intended to convey but that the generation step dropped or summarized away.
+After the main review (Steps 1-4), cross-check the original source material (briefing documents, reference articles, transcripts, spec sheets) against the artifact to determine **which source sections did not make it into the output**. The goal is to catch silent omissions — content the author meant to convey that fell away during generation.
 
-Walk the source top-to-bottom and, for each section, mark it as `INCLUDED`, `PARTIAL`,
-or `OMITTED` in the output. Common gaps to call out (these are the usual omission
-suspects):
+Scan the source from top to bottom, marking each section `INCLUDED` / `PARTIAL` / `OMITTED`. Commonly omitted types: architecture diagrams/technical illustrations (condensed to a single bullet), domestic case studies (pushed aside by global ones), comparison tables (flattened into prose), incident/failure cases, partnerships, timelines, award history.
 
-- **Architecture diagrams / technical figures** — diagram-heavy source sections often
-  get reduced to a single bullet, losing the visual
-- **Domestic (Korean) case studies** — local customer references frequently dropped in
-  favor of global examples
-- **Comparison tables** — side-by-side feature/cost tables flattened into prose
-- **Incident / failure cases** — postmortems and "what went wrong" stories cut for time
-- **Partnerships** — partner/ISV mentions and joint solutions
-- **Timelines** — roadmap or chronological milestones
-- **Awards** — recognitions, certifications, rankings
-
-Record findings in the report (see the **Source-omission Findings** section of the Review
-Report Format). Notable omissions are flagged as Warnings (-1 each); an omission that
-removes a load-bearing claim or a required disclosure is escalated to Critical.
-
-| Source section | Output status | Note |
-|----------------|---------------|------|
-| [section title] | INCLUDED / PARTIAL / OMITTED | [what was lost, if any] |
-
-> If no source material was provided to the reviewer, note "source unavailable — omission
-> cross-check skipped" and proceed; do not fabricate a source to compare against.
+Notable omissions are flagged as Warnings; an omission that removes a load-bearing claim
+or a required disclosure is escalated to Critical. Record findings in the report's
+**Source-omission Findings** section. If no source material was provided, note "source
+unavailable — omission cross-check skipped" and proceed.
 
 ---
 
@@ -469,27 +364,13 @@ removes a load-bearing claim or a required disclosure is escalated to Critical.
 [Any content agent] → content-review-agent → Revision Loop or Approval
 ```
 
-### Revision Loop
-1. Agent creates content
-2. content-review-agent reviews and reports
-3. If REVIEW/FAIL → Agent fixes issues
-4. Re-review until PASS (max 3 iterations)
-5. If still not PASS after 3 iterations → Ask user
+Revision loop: review → if REVIEW/FAIL, the producing agent fixes it → re-review. If PASS is still not reached after 3 re-reviews, hand the decision to the user (per the Quality Gate rule in the plugin's CLAUDE.md).
 
 ---
 
 ## Batch Review Mode
 
-When batch-reviewing multiple artifacts (team workflow aggregation, or an explicit batch request):
-
-### Process
-1. Collect the artifact list (find target files with Glob)
-2. Run the 16-category inspection on each artifact
-3. HTML content: streamline Visual Testing with a single HTTP server (start `python3 -m http.server` once)
-4. Compute a score + issues per artifact
-5. Output the consolidated report
-
-### Consolidated Report Format
+When reviewing multiple artifacts as a batch (aggregating a team workflow or an explicit batch request): collect targets with Glob → run all 16 categories per artifact (for HTML, use a single HTTP server to make Visual Testing efficient) → produce a consolidated report.
 
 ```markdown
 # Batch Review Report
@@ -499,20 +380,15 @@ When batch-reviewing multiple artifacts (team workflow aggregation, or an explic
 |----------|------|-------|---------|
 | block-01.html | Presentation | 88 | PASS |
 | block-02.html | Presentation | 76 | REVIEW |
-| block-03.html | Presentation | 91 | PASS |
 
 ## Overall Verdict
-- Total: N artifacts
-- PASS: X | REVIEW: Y | FAIL: Z
+- Total: N artifacts / PASS: X | REVIEW: Y | FAIL: Z
 
 ## Next Steps
-- All PASS → proceed with deployment
-- Some REVIEW → fix and re-review only the affected artifacts
-- Some FAIL → fixing Critical issues is required
+- All PASS → proceed with deployment / fix only the REVIEW/FAIL artifacts, then re-review
 ```
 
-### Per-Artifact Issue Detail
-For each REVIEW/FAIL artifact, include the Critical/Warning Issues section from the standard Review Report Format.
+Include the Critical/Warning Issues section from the Review Report Format for each REVIEW/FAIL artifact.
 
 ---
 
