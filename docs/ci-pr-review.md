@@ -68,10 +68,10 @@ models hit exactly 600s), and the lens checklist was unnecessary for frontier mo
 - **Chair**: Claude Fable 5 (`us.anthropic.claude-fable-5`) synthesizes the findings from
   the 4 cells into a single review + `VERDICT: PASS|FAIL` (fail-closed, the last match in
   the file is what's adopted — ADR-016). The first attempt is given `Read Grep Glob` and
-  wrapped in a wall-clock timeout (`CHAIR_TIMEOUT`, default **300 seconds**). If it fails
+  wrapped in a wall-clock timeout (`CHAIR_TIMEOUT`, default **450 seconds**). If it fails
   to produce a usable VERDICT (connection refused/hang/empty response, etc.), it
   **falls back once to Claude Opus 5 (`CHAIR_FALLBACK_MODEL`), but this time with no file
-  tools granted at all** (`CHAIR_FALLBACK_TIMEOUT`, default **120 seconds**) — the fallback
+  tools granted at all** (`CHAIR_FALLBACK_TIMEOUT`, default **300 seconds**) — the fallback
   is self-contained because the diff and panel reviews are already on stdin, and with no
   tools it cannot crawl the repo tree. If both attempts fail, this is a CI infrastructure
   problem rather than a review finding, so it signals `chair_error=1`, and the workflow

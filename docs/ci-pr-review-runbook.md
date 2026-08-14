@@ -33,10 +33,10 @@ the entire diff with no scope restriction, ADR-016).
 - Claude chair: `us.anthropic.claude-fable-5` (US geo, on-demand) · endpoint/region
   `us-east-1`
   - The first attempt has `Read Grep Glob` and must produce a VERDICT within
-    `CHAIR_TIMEOUT` (default **300 seconds**). If it can't (connection refused/hang/empty
+    `CHAIR_TIMEOUT` (default **450 seconds**). If it can't (connection refused/hang/empty
     response/an unusable VERDICT), it retries once against `CHAIR_FALLBACK_MODEL`
     (default `us.anthropic.claude-opus-5`), but **this time with no file tools granted at
-    all** (`CHAIR_FALLBACK_TIMEOUT`, default **120 seconds**) — this is self-contained
+    all** (`CHAIR_FALLBACK_TIMEOUT`, default **300 seconds**) — this is self-contained
     since the diff+panel reviews are already on stdin, and with no tools it can't crawl
     the repo tree (ADR-016 — the old single 600-second attempt combined an instruction to
     "Read CLAUDE.md/AGENTS.md" with file-tool access, which exhausted that timeout exactly
