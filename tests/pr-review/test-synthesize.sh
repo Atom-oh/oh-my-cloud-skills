@@ -249,6 +249,42 @@ grep -q '^### PANEL QUALITY$' "$WORK/review.md" 2>/dev/null \
   || fail "synthesize (j) PANEL QUALITY section heading survives in review.md" "heading missing"
 rm -rf "$WORK" "$BIN"
 
+# (k) Regression guard — the heredoc that builds synth-prompt.txt
+# (`cat > ... <<PROMPT_EOF`, unquoted delimiter) runs command substitution on any
+# backtick pair in its body. The pre-fix source didn't escape those backticks, so
+# the "### 🧠 MEMORY CANDIDATES" / "PANEL-QUALITY: <cell>=..." instructions got
+# executed as real shell commands instead of written literally (`CANDIDATES:
+# command not found`, `syntax error near unexpected token 'newline'` — both chair
+# attempts then received this corrupted prompt and neither could produce a usable
+# VERDICT, fail-closing to ERROR; reproduced on PR#148's post-merge iterations).
+# This test runs the real (unmocked) script source and asserts the literal
+# backtick-quoted instructions survive into synth-prompt.txt with none of those
+# errors on stderr — (j) only mocked the chair's response and never exercised this
+# heredoc-construction code path, which is why it missed the regression.
+setup; mkclaude_pass
+echo "codex-finding" > "$WORK/slot/codex-L2.md"
+echo "codex/L2" >> "$WORK/responded.txt"
+ERR=$(mktemp)
+if bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>"$ERR"; then
+  pass "synthesize (k) script exits 0 while building the synth prompt heredoc"
+else
+  fail "synthesize (k) script exits 0 while building the synth prompt heredoc" "$(tail -10 "$ERR")"
+fi
+if grep -qE 'command not found|syntax error near unexpected token' "$ERR"; then
+  fail "synthesize (k) no heredoc command-substitution errors on stderr" "$(cat "$ERR")"
+else
+  pass "synthesize (k) no heredoc command-substitution errors on stderr"
+fi
+grep -qF '`### PANEL QUALITY`' "$WORK/synth-prompt.txt" 2>/dev/null \
+  && pass "synthesize (k) literal backtick-quoted PANEL QUALITY instruction survives in synth-prompt.txt" \
+  || fail "synthesize (k) literal backtick-quoted PANEL QUALITY instruction survives in synth-prompt.txt" \
+       "not found in $WORK/synth-prompt.txt"
+grep -qF '`PANEL-QUALITY: <cell>=<unsupported>/<total>`' "$WORK/synth-prompt.txt" 2>/dev/null \
+  && pass "synthesize (k) literal PANEL-QUALITY line format survives in synth-prompt.txt" \
+  || fail "synthesize (k) literal PANEL-QUALITY line format survives in synth-prompt.txt" \
+       "not found in $WORK/synth-prompt.txt"
+rm -rf "$WORK" "$BIN" "$ERR"
+
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then
   [ "$_t_fail" = 0 ] && echo "PASS: test-synthesize" || exit 1

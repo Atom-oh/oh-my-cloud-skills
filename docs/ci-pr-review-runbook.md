@@ -20,10 +20,10 @@ PR을 열면 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 L1(결정
 
 ## 리전/모델 (us-east-1 통일)
 - Claude 의장: `us.anthropic.claude-fable-5` (US geo, on-demand) · endpoint/region `us-east-1`
-  - 1차 시도는 `Read Grep Glob` 을 갖고 `CHAIR_TIMEOUT`(기본 **300초**) 내 VERDICT 를 내야
+  - 1차 시도는 `Read Grep Glob` 을 갖고 `CHAIR_TIMEOUT`(기본 **450초**) 내 VERDICT 를 내야
     한다. 못 내면(연결 거부/행/빈 응답/usable하지 않은 VERDICT) `CHAIR_FALLBACK_MODEL`
     (기본 `us.anthropic.claude-opus-5`)로 1회 재시도하되, **이번엔 파일 도구를 전혀 주지
-    않는다**(`CHAIR_FALLBACK_TIMEOUT`, 기본 **120초**) — diff+패널은 이미 stdin 에 다 있으므로
+    않는다**(`CHAIR_FALLBACK_TIMEOUT`, 기본 **300초**) — diff+패널은 이미 stdin 에 다 있으므로
     완결적이고, 도구가 없어 repo 트리를 crawl 할 수 없다(ADR-016 — 옛 600초 단일 시도는
     "CLAUDE.md/AGENTS.md 를 Read 하라"는 지시 + 파일 도구 허용이 겹쳐 대형 diff 에서 그
     타임아웃을 정확히 소진했다, #141/#146). 튜닝하려면 워크플로 `env`에
