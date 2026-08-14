@@ -13,8 +13,5 @@ Development tools and utilities.
 
 Source: `remarp-vscode/` | Language: TypeScript | Package: `.vsix`
 
-```bash
-cd tools/remarp-vscode
-npm install && npm run compile
-npx vsce package
-```
+Build/package commands are canonical in `remarp-vscode/CLAUDE.md`; extension detail in
+`../docs/reference/remarp-vscode-extension.md`.
