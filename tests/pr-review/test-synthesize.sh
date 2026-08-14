@@ -205,6 +205,53 @@ grep -q "Kiro diff truncated" "$WORK/review.md" 2>/dev/null \
   || fail "synthesize (i) VERDICT stays the last line despite the prepended banner" "got: $(tail -1 "$WORK/review.md")"
 rm -rf "$WORK" "$BIN"
 
+# (j) 새 출력 섹션(메모리 루프) — 체어가 MEMORY CANDIDATES + PANEL QUALITY 두 섹션을 낸 **뒤**
+# VERDICT: PASS 를 마지막 줄로 내면, chair_valid() 를 그대로 통과해(폴백 미발동) 두 섹션이
+# review.md 에 살아남아야 하고, PANEL-QUALITY: 줄은 로컬 호스트가 파싱하는 고정 형식
+# `^PANEL-QUALITY: [a-z0-9-]+=[0-9]+/[0-9]+$` 에 매치해야 한다.
+setup
+cat > "$BIN/claude" <<'EOF'
+#!/usr/bin/env bash
+echo "Summary: ok"
+echo ""
+echo "### 🧠 MEMORY CANDIDATES"
+echo "- (none)"
+echo ""
+echo "### PANEL QUALITY"
+echo "PANEL-QUALITY: codex-l2=0/3"
+echo "PANEL-QUALITY: kiro-opus-l3=1/2"
+echo ""
+echo "VERDICT: PASS"
+EOF
+chmod +x "$BIN/claude"
+echo "codex-finding" > "$WORK/slot/codex-L2.md"
+echo "codex/L2" >> "$WORK/responded.txt"
+if bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
+  pass "synthesize (j) script exits 0 when the chair emits the two new sections before VERDICT"
+else
+  fail "synthesize (j) script exits 0 when the chair emits the two new sections before VERDICT" "exited non-zero"
+fi
+[ "$(tail -1 "$WORK/review.md")" = "VERDICT: PASS" ] \
+  && pass "synthesize (j) VERDICT: PASS is still the last line of review.md" \
+  || fail "synthesize (j) VERDICT: PASS is still the last line of review.md" "got: $(tail -1 "$WORK/review.md")"
+[ "$(grep -c '^VERDICT:' "$WORK/review.md")" = 1 ] \
+  && pass "synthesize (j) exactly one VERDICT line (chair_valid passed, no fallback fired)" \
+  || fail "synthesize (j) exactly one VERDICT line (chair_valid passed, no fallback fired)" \
+       "$(grep '^VERDICT:' "$WORK/review.md")"
+PQ_TOTAL="$(grep -c '^PANEL-QUALITY:' "$WORK/review.md" 2>/dev/null || true)"
+PQ_VALID="$(grep -Ec '^PANEL-QUALITY: [a-z0-9-]+=[0-9]+/[0-9]+$' "$WORK/review.md" 2>/dev/null || true)"
+[ "$PQ_TOTAL" = 2 ] && [ "$PQ_VALID" = 2 ] \
+  && pass "synthesize (j) both PANEL-QUALITY lines survive and match the fixed-format regex" \
+  || fail "synthesize (j) both PANEL-QUALITY lines survive and match the fixed-format regex" \
+       "total=$PQ_TOTAL valid=$PQ_VALID"
+grep -q '^### 🧠 MEMORY CANDIDATES$' "$WORK/review.md" 2>/dev/null \
+  && pass "synthesize (j) MEMORY CANDIDATES section heading survives in review.md" \
+  || fail "synthesize (j) MEMORY CANDIDATES section heading survives in review.md" "heading missing"
+grep -q '^### PANEL QUALITY$' "$WORK/review.md" 2>/dev/null \
+  && pass "synthesize (j) PANEL QUALITY section heading survives in review.md" \
+  || fail "synthesize (j) PANEL QUALITY section heading survives in review.md" "heading missing"
+rm -rf "$WORK" "$BIN"
+
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then
   [ "$_t_fail" = 0 ] && echo "PASS: test-synthesize" || exit 1

@@ -59,6 +59,37 @@ chair_err_excerpt() {  # $1=stderr 파일, $2=캡 바이트(기본 500)
   rm -f "$tmp"
 }
 
+# 패널 메모리 발췌 — 셀 프롬프트에 인라인할 메모리 파일 요약. 계약:
+#   ① fail-open: 파일이 없으면 stdout 에 아무것도 쓰지 않고 return 0 — 메모리 부재가
+#      리뷰를 막아서는 안 된다.
+#   ② `## 패널 셀 판단 질` 섹션은 발췌에서 제외한다 — 셀에게 "너는 못 믿는다"를 알리는 건
+#      노이즈다. awk 상태기계: 그 헤딩에서 skip=1, 그 다음 임의의 `^## ` 헤딩에서 skip=0
+#      (그 헤딩 줄은 출력됨), skip 중인 줄은 버린다.
+#   ③ 캡은 파이프가 아니라 **파일 기반** `head -c <file>` — `... | head -c N` 은 head 가
+#      N 바이트만 읽고 종료할 때 상류가 SIGPIPE(141)로 죽고 호출자의 `set -euo pipefail` 이
+#      그것을 스크립트 전체 중단으로 전파한다(위 chair_err_excerpt / synthesize.sh:29-40 에
+#      기록된 실측 교훈). 실제로 잘렸으면(제외 처리 후 길이 > cap) ASCII 마커를 붙인다 —
+#      head -c 는 UTF-8 문자 경계와 무관하게 바이트로 자르므로 마커 자체는 항상 ASCII 여야
+#      표시가 깨지지 않는다.
+memory_excerpt() {  # $1=메모리 파일, $2=캡 바이트(기본 4000)
+  local f="$1" cap="${2:-4000}" tmp size
+  [ -f "$f" ] || return 0
+  tmp="$(mktemp)"
+  awk '
+    /^## 패널 셀 판단 질/ { skip = 1; next }
+    skip && /^## / { skip = 0 }
+    skip { next }
+    { print }
+  ' "$f" > "$tmp"
+  size="$(wc -c < "$tmp")"
+  head -c "$cap" "$tmp"
+  if [ "$size" -gt "$cap" ]; then
+    printf '\n[...MEMORY TRUNCATED at %sB...]\n' "$cap"
+  fi
+  rm -f "$tmp"
+  return 0
+}
+
 scrub_secrets() {
   # PEM 은 여러 줄에 걸치므로 line-oriented sed 로는 본문을 못 지운다(헤더 줄만 매칭)
   # — awk 상태기계로 BEGIN..END 블록 전체를 마커 한 줄로 치환(첫 스테이지, 구조적 스크럽).

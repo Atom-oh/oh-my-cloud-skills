@@ -47,48 +47,11 @@ Read `CLAUDE.md` if it exists. Scan for existing plugins, skills, agents in the 
 
 Ask questions **one at a time**, in natural conversation. Prefer multiple-choice when possible. Do not use AskUserQuestion — respond with plain text that ends with the question.
 
-**Question flow** (adapt based on answers — skip irrelevant ones):
-
-1. **Purpose**: "What problem should this agent solve? For example:
-   a) Automate a repetitive workflow
-   b) Provide expert diagnosis/troubleshooting
-   c) Generate content or artifacts
-   d) Integrate with external services
-   e) Something else — describe it"
-
-2. **Users**: "Who will use this agent?
-   a) Developers on the team
-   b) DevOps/SRE engineers
-   c) Non-technical stakeholders
-   d) End users via API
-   e) Other"
-
-3. **Core capabilities**: "What are the 3-5 key things this agent must be able to do? List them, or I can suggest based on what you've described."
-
-4. **External tools**: "Does this agent need to call external services?
-   a) AWS services (which ones?)
-   b) Third-party APIs (which ones?)
-   c) MCP servers (existing or new?)
-   d) No external tools needed"
-
-5. **Knowledge sources**: "What knowledge does this agent need?
-   a) Existing documentation (point me to it)
-   b) Runbooks or SOPs
-   c) Code patterns from this repo
-   d) Domain expertise (I'll create reference docs)
-   e) No special knowledge needed"
-
-6. **Deployment target**: "Where should this agent run?
-   a) AgentCore (cloud-hosted — harness config or Runtime code; we pick in Phase 2)
-   b) Claude Code skill first, then AgentCore later
-   c) Both — build skill first, then deploy
-   d) Not sure yet"
-
-7. **Success criteria**: "How will you know this agent is working well? For example:
-   a) Resolves X% of issues without escalation
-   b) Produces output matching a quality bar
-   c) Responds within N seconds
-   d) Other metric"
+**Question flow**: Read `references/discovery-interview.md` before asking the first
+question, then follow it — 7 questions (purpose,
+users, core capabilities, external tools, knowledge sources, deployment target, success
+criteria), most with ready-made multiple-choice options. Adapt based on answers and skip
+irrelevant ones.
 
 After gathering sufficient context (typically 4-7 questions), summarize the agent concept:
 
@@ -367,29 +330,9 @@ instructions, the skill source list, tool config, and limits. Review it as a sin
 - Must use `BedrockAgentCoreApp` wrapper with `@app.entrypoint`
 - Strands Agent with BedrockModel
 - System prompt loaded from `system-prompts/<name>.md`
-
-Correct pattern:
-```python
-from strands import Agent
-from strands.models.bedrock import BedrockModel
-from bedrock_agentcore.runtime import BedrockAgentCoreApp
-
-app = BedrockAgentCoreApp()
-
-@app.entrypoint
-async def invoke(payload, context):
-    prompt_path = Path(__file__).parent / "system-prompts" / "<name>.md"
-    system_prompt = prompt_path.read_text(encoding="utf-8")
-    agent = Agent(
-        model=BedrockModel(model_id="us.anthropic.claude-sonnet-4-6"),
-        system_prompt=system_prompt,
-    )
-    result = agent(payload["prompt"])
-    return {"result": str(result)}
-
-if __name__ == "__main__":
-    app.run()
-```
+- Compare against the canonical templates in `references/agent-code-templates.md` —
+  the generated code must match the Strands "Single Agent" pattern there (or the
+  "Agent with Tools" / "Agent with Memory" variant when Gateway/Memory is on)
 
 **System prompts** (`agents/system-prompts/<name>.md`):
 - Merged from agent body + SKILL.md workflows + capability descriptions
@@ -532,6 +475,7 @@ Provide guidance on:
 
 ## Reference Files
 
+- `references/discovery-interview.md` — Phase 1 interview question flow (7 questions with multiple-choice options)
 - `references/agentcore-harness.md` — Harness deep-dive: APIs, skill sources, models (Mantle/LiteLLM), memory/filesystem, versioning, CLI flow, harness-vs-Runtime decision grid
 - `references/agentcore-mapping-rules.md` — Field-by-field conversion rules (harness + Runtime), edge cases, hooks gap analysis
 - `references/agentcore-format-reference.md` — AgentCore format specs (Runtime, Gateway, Memory, Lambda)

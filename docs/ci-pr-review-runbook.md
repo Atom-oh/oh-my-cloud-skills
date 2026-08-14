@@ -75,3 +75,28 @@ PR을 열면 self-hosted 러너(`oh-my-cloud-skills-claude-arm`)에서 L1(결정
   `docs/ci-pr-review.md` "설정" 절의 "CI에서 실제로 적용되는 방법" 참조).
   `python3 scripts/pr-review/panel_config.py show --root .` 로 현재(로컬) effective 설정
   확인.
+
+## 패널 셀 판단 질이 임계를 넘었을 때 (ADR-015)
+
+`docs/pr-review/review-memory.md` 의 `패널 셀 판단 질` 표는 `/co-agent:pr-autofix` 호스트가
+체어의 `PANEL-QUALITY: <cell>=<unsupported>/<total>` 줄을 파싱해 누적한다. 어떤 셀이
+**`unsupported >= 5` 이고 `unsupported/총 >= 0.5`** 이면 pr-autofix 가 배제 **권고**를 출력한다.
+**자동 적용은 없다** — 아래 절차를 사람이 밟는다(ADR-012 의 `kimi-k2.5` 배제와 동일한 경로).
+
+1. **증거 확인** — 표의 수치를 그대로 믿지 말고 근거를 본다. 해당 셀의 dismissed finding 들이
+   실제로 근거 없는(diff 가 뒷받침하지 않는) 지적이었는지, 아니면 체어가 오탐으로 잘못 분류한
+   진짜 문제였는지 최근 PR 리뷰 코멘트에서 표본을 확인한다. 표는 **신호**이고 판단 근거가 아니다.
+   (커버리지 저하로 응답 자체가 없던 것인지도 구분한다 — 그건 판단 질 문제가 아니라 위
+   "매트릭스 셀이 비면(skip) 진단" 항목이다.)
+2. **ADR 작성** — 배제는 로스터 변경이므로 결정 기록을 남긴다(ADR-012 선례: "7 dismissed
+   findings vs 0" 같은 수치를 근거로 인용). 이 증거가 채팅 히스토리에만 남지 않게 하는 것이
+   메모리 표의 존재 이유다.
+3. **실제 반영** — `python3 scripts/pr-review/panel_config.py set <cell> enabled false --root .`
+   로 로컬 preview 한 뒤(그 파일은 gitignored 라 CI 반영과 무관), 확인한 값을
+   `scripts/pr-review/pr-review.defaults.json` 에 **손으로 옮겨 커밋 + 머지**한다 — 위
+   "특정 모델이 … 계속 flaky하면" 항목의 2단계와 정확히 같은 경로다. `main` 이후의 PR 부터
+   적용된다.
+4. **표 정리** — 배제한 셀의 행은 메모리 파일에서 지운다(틀린/무효 항목은 즉시 삭제가 원칙).
+
+> 자동 비활성화를 채택하지 않은 이유: 살아남은 벤더가 1개 이하가 되면 `run-panel.sh` 의
+> severe 게이트가 fail-closed 로 PR 을 영구 차단한다(ADR-015 기각 대안 3).

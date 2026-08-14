@@ -174,6 +174,20 @@ assert_eq "1" "$RC" "workflow edits hard-denied even with --allow-exec-surface"
 assert_contains "$ERR" "workflows" "workflow deny names the reason"
 ( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" --script-sha "$LDSHA" --sig "$SIG" ) >/dev/null 2>&1 || true; rm -rf "$FIX"
 
+# --- docs/pr-review/review-memory.md is denied even WITH --allow-exec-surface ---
+FIX=$(_ld_fixture)
+( cd "$FIX" && mkdir -p docs/pr-review && echo '# memory' > docs/pr-review/review-memory.md && git add -A && git commit -qm mem ) >/dev/null
+read -r RUN SIG <<<"$( cd "$FIX" && bash "$LD_ABS" setup )" || true
+IMPL_WT=$(sed -n 's/^IMPL_WT=//p' "$RUN/state" | head -1)
+echo '# tampered by implementer' > "$IMPL_WT/docs/pr-review/review-memory.md"
+( cd "$FIX" && bash "$LD_ABS" capture "$RUN" --script-sha "$LDSHA" --sig "$SIG" ) >/dev/null 2>&1 || true
+printf '%s\n' src/app.py a.txt package.json build.gradle.kts installer docs/pr-review/review-memory.md | ( cd "$FIX" && bash "$LD_ABS" check-plan-paths "$RUN" ) >/dev/null 2>&1 || true
+cp "$RUN/full.1.patch" "$RUN/approved.patch"; APPR=$( cd "$FIX" && bash "$LD_ABS" approve "$RUN" 2>/dev/null ) || true
+RC=0; ERR=$( cd "$FIX" && bash "$LD_ABS" land "$RUN" --script-sha "$LDSHA" --sig "$SIG" --approved-sha "$APPR" --allow-exec-surface 2>&1 ) || RC=$?
+assert_eq "1" "$RC" "review-memory.md edits hard-denied even with --allow-exec-surface"
+assert_contains "$ERR" "review-memory" "review-memory deny names the reason"
+( cd "$FIX" && bash "$LD_ABS" cleanup "$RUN" --script-sha "$LDSHA" --sig "$SIG" ) >/dev/null 2>&1 || true; rm -rf "$FIX"
+
 # --- new executable file rejected at approve ---
 FIX=$(_ld_fixture)
 read -r RUN SIG <<<"$( cd "$FIX" && bash "$LD_ABS" setup )" || true
