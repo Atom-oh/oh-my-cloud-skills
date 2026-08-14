@@ -53,9 +53,9 @@ lens×model 매트릭스는 ADR-016 이 뒤집었다 — 4모델×4lens=16셀이
   인증 불가(ADR-010).
 - **의장**: Claude Fable 5(`us.anthropic.claude-fable-5`)가 4개 셀의 findings를 종합해 단일
   리뷰 + `VERDICT: PASS|FAIL`(fail-closed, 파일 내 마지막 매치가 채택 — ADR-016) 생성. 1차
-  시도는 `Read Grep Glob`을 갖고 벽시계 타임아웃(`CHAIR_TIMEOUT`, 기본 **300초**)로 감싼다.
+  시도는 `Read Grep Glob`을 갖고 벽시계 타임아웃(`CHAIR_TIMEOUT`, 기본 **450초**)로 감싼다.
   usable한 VERDICT를 못 내면(연결 거부/행/빈 응답 등) **Claude Opus 5(`CHAIR_FALLBACK_MODEL`)로
-  1회 폴백하되, 이번엔 파일 도구를 전혀 주지 않는다**(`CHAIR_FALLBACK_TIMEOUT`, 기본 **120초**) —
+  1회 폴백하되, 이번엔 파일 도구를 전혀 주지 않는다**(`CHAIR_FALLBACK_TIMEOUT`, 기본 **300초**) —
   diff+패널 리뷰는 이미 stdin에 다 있으므로 폴백은 완결적이고, 도구가 없으니 repo 트리를
   crawl 할 수 없다. 두 시도 모두 실패하면 이는 리뷰 발견이 아니라 CI 인프라 문제이므로,
   `chair_error=1`로 신호해 워크플로 게이트가 코멘트에 "BLOCKED — CRITICAL/MAJOR"가 아니라
