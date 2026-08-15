@@ -221,5 +221,3 @@ review agents read the same file.
 - Kiro: `ai-panel-keys` ExternalSecret (`<secret-path>`) → runner env (external API key)
 - Codex/Claude: EKS Pod Identity (`<ci-runner-role>`, Bedrock) SigV4 — requires a Pod
   Identity Association
-</content>
-</invoke>

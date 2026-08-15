@@ -127,5 +127,3 @@ adapters in `references/ai-cli-adapters.md` directly rather than a slash command
 3. Apply the AWS Well-Architected checklist
 4. Validate findings with `check_citations.py` → synthesize consensus/dissent
 5. Merge results → combined PASS/REVIEW/FAIL report
-</content>
-</invoke>

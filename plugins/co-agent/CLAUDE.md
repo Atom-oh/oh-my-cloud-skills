@@ -242,5 +242,3 @@ External AIs **advise**, **Claude makes the final decision and writes the artifa
 | 잘 모르겠어 / 의사결정 | help me decide |
 | ADR 협업 | co-author ADR |
 | second opinion | second opinion |
-</content>
-</invoke>

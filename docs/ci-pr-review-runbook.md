@@ -5,17 +5,22 @@ Opening a PR automatically runs the two-stage gate on the self-hosted runner
 the full diff with no scope restriction, ADR-016).
 
 ## Normal-operation checklist
-1. **On L1 failure**: only an "L1 pre-check (manifest/version consistency) failed" block
-   shows up in the PR comment and the AI panel is never invoked (zero cost) — the cause
+1. **On L1 failure**: only a block headed `**L1 pre-check (매니페스트/버전 정합) 실패**`
+   ("L1 pre-check (manifest/version consistency) failed" — the literal header text is
+   still Korean, `pr-review.yml`'s L1_HEADER wasn't in scope of the English-only docs
+   sweep, PR #154) shows up in the PR comment and the AI panel is never invoked (zero
+   cost) — the cause
    is right there in the comment body's `test-plugins.py`/`test-codex-plugins.py` output
    (dangling reference/version mismatch/JSON error/`.codex-plugin` manifest error).
 2. **On L1 pass**: it's normal to see up to 3 model tags — `codex`, `kiro-opus`,
    `kiro-gpt` — on the PR comment's `_Cells (model):_` line (some cells may be
    intermittently skipped due to rate limiting/quota; `kiro-glm` is disabled by default
    due to its false-positive rate — see ADR-017). If one model doesn't respond (e.g. a
-   kiro-cli flag got invalidated), a `⚠️ Coverage degraded` banner shows at the top of the
-   review (this is the exact banner string `synthesize.sh` actually outputs). If one or
-   fewer vendors survive, a `🛑 Coverage collapsed` banner shows (ADR-016), but it does
+   kiro-cli flag got invalidated), a `⚠️ **커버리지 저하**` ("coverage degraded") banner
+   shows at the top of the review — that Korean string is the literal `synthesize.sh`
+   actually outputs; the script itself wasn't in scope of the English-only docs sweep
+   (PR #154), so its output banners are still Korean. If one or fewer vendors survive, a
+   `🛑 **커버리지 붕괴**` ("coverage collapsed") banner shows (ADR-016), but it does
    not force the VERDICT — the chair's judgment stands as-is. **Antigravity (`agy`) is
    not in the panel** (ADR-010 — cannot authenticate headlessly).
 3. **`chair_error`**: if the chair fails to produce a usable VERDICT on both attempts
@@ -144,5 +149,3 @@ below (the same path as the `kimi-k2.5` exclusion in ADR-012).
 > 2026-07, this state used to force a severe banner + fail-closed — ADR-016 changed the
 > enforcement to banner-only, but this doesn't affect this section's conclusion: exclusion
 > is still a human judgment call that gets committed.)
-</content>
-</invoke>

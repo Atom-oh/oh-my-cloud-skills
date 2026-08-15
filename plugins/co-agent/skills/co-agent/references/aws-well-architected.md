@@ -172,5 +172,3 @@ Per-pillar verdict:
 - ★★★★☆ or better: **PASS**
 - ★★★☆☆: **REVIEW**
 - ★★☆☆☆ or worse: **FAIL**
-</content>
-</invoke>

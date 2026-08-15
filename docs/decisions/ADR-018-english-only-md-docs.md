@@ -45,6 +45,14 @@ rather than reduce context Claude Code reads:
   sample Korean slide decks in `reactive-presentation`'s authoring guides) — Korean is a
   first-class *target output* language for that tool, so Korean-language examples of its
   output are real content, not incidental prose.
+- **Prose that quotes a runtime literal a script actually emits** (a status banner, a
+  comment-body header) when that script itself wasn't in scope of the sweep (only `.md`
+  files were). Translating the quoted literal makes the doc describe output that doesn't
+  exist — the runbook then tells an operator to grep for a string CI never prints. Two
+  instances of exactly this were caught by the chair review during this sweep
+  (`docs/ci-pr-review-runbook.md`'s coverage-degraded/collapsed banners and its L1-failure
+  header) and fixed by quoting the actual Korean literal with an English gloss instead of
+  translating it outright — the pattern to follow for any such literal found later.
 
 **Convention updates**: `docs/decisions/CLAUDE.md`'s ADR language rule changed from
 "Korean body with English technical terms" to "English throughout." `docs/CLAUDE.md`'s
