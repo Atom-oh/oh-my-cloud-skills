@@ -120,20 +120,20 @@ flowchart TD
 
 ## Team Coordination Pattern
 
-### Sequential Mode (기본)
+### Sequential Mode (default)
 
-단일 도메인 이슈는 직접 전문 에이전트를 호출합니다 (팀 미사용):
+Single-domain issues call the specialist agent directly (no team used):
 
 ```
-"Pod crashloop" → eks-agent → 조사 → 해결 → 검증
-"DNS failure"   → network-agent → 조사 → 해결 → 검증
+"Pod crashloop" → eks-agent → investigate → resolve → verify
+"DNS failure"   → network-agent → investigate → resolve → verify
 ```
 
-### Parallel Team Mode (P1/P2 또는 멀티 도메인)
+### Parallel Team Mode (P1/P2 or multi-domain)
 
-팀 사용 조건: P1/P2 심각도, 2+ 도메인 증상, 사용자 병렬 요청
+Conditions for using a team: P1/P2 severity, symptoms spanning 2+ domains, or an explicit user request for parallel execution.
 
-에이전트 라우팅:
+Agent routing:
 ```
 ops-coordinator-agent (triage + orchestration)
 ├── network-agent       → Network connectivity, DNS, LB findings
@@ -145,22 +145,22 @@ ops-coordinator-agent (triage + orchestration)
 └── analytics-agent     → Search, analytics, data pipeline findings
 ```
 
-팀 수명주기:
+Team lifecycle:
 ```
 1. TeamCreate("incident-{timestamp}")
-2. 5분 트리아지 → 증상 분류
-3. 증상별 TaskCreate (network, eks, iam 등)
-4. 전문 에이전트 병렬 스폰 (team_name 파라미터)
-5. TaskList로 진행 모니터링
-6. 전체 완료 시 결과 집계 → 타임스탬프 상관분석 → 근본원인
-7. 수정 실행 → 검증 → TeamDelete + 포스트모템
+2. 5-minute triage → classify symptoms
+3. TaskCreate per symptom (network, eks, iam, etc.)
+4. Spawn specialist agents in parallel (team_name parameter)
+5. Monitor progress via TaskList
+6. Once all complete: aggregate results → correlate by timestamp → root cause
+7. Execute fix → verify → TeamDelete + postmortem
 ```
 
-### 집계 의사결정
+### Aggregation decision-making
 
-- 결과 간 상관관계 있음 → 단일 근본원인 도출 → 통합 수정
-- 상관관계 없음 → 다중 독립 이슈 → 심각도순 개별 수정
-- 교차 도메인 관찰 사항 → 근본원인 분석에 반영
+- Results correlate with each other → derive a single root cause → apply a unified fix
+- No correlation → treat as multiple independent issues → fix individually in severity order
+- Cross-domain observations → feed back into the root-cause analysis
 
 ---
 

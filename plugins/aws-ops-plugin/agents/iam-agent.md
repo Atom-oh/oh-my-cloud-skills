@@ -170,31 +170,31 @@ flowchart TD
 
 ## Team Collaboration
 
-인시던트 대응 팀의 일원으로 스폰될 때 (Agent tool의 team_name 파라미터가 설정된 경우):
+When spawned as a member of an incident-response team (the Agent tool's team_name parameter is set):
 
-### 태스크 수신
-- 인시던트 컨텍스트, 심각도, 트리아지 결과를 파싱
-- 할당된 도메인 (IAM, RBAC, 인증)에만 집중
+### Receiving the task
+- Parse the incident context, severity, and triage results
+- Focus only on the assigned domain (IAM, RBAC, authentication)
 
-### 결과 보고 형식
+### Result reporting format
 
 | Check | Status | Details |
 |-------|--------|---------|
-| IRSA Config | OK/WARN/CRIT | OIDC, SA 어노테이션 상태 |
-| Pod Identity | OK/WARN/CRIT | Agent 상태, Association 검증 |
-| RBAC Bindings | OK/WARN/CRIT | Role/ClusterRole 바인딩 |
-| aws-auth | OK/WARN/CRIT | ConfigMap 매핑 상태 |
+| IRSA Config | OK/WARN/CRIT | OIDC, SA annotation status |
+| Pod Identity | OK/WARN/CRIT | Agent status, association verification |
+| RBAC Bindings | OK/WARN/CRIT | Role/ClusterRole bindings |
+| aws-auth | OK/WARN/CRIT | ConfigMap mapping status |
 
-+ 근본원인 후보 + 권장 조치 + 검증 명령어
++ candidate root cause + recommended actions + verification commands
 
-### 완료 신호
-- TaskUpdate로 태스크를 completed 처리
-- "[IAM] 조사 완료: [요약]" 보고
+### Completion signal
+- Mark the task completed via TaskUpdate
+- Report "[IAM] Investigation complete: [summary]"
 
-### 제약
-- 수정 실행 금지 (코디네이터에게 보고만 수행)
-- 다른 도메인 (네트워크, EKS 클러스터 등) 조사 금지
-- 교차 도메인 관찰 사항은 결과에 포함하여 코디네이터가 활용
+### Constraints
+- Do not execute fixes (only report to the coordinator)
+- Do not investigate other domains (network, EKS cluster, etc.)
+- Include cross-domain observations in the results so the coordinator can use them
 
 ---
 

@@ -58,7 +58,7 @@ that `command -v` can't. If none are available, the host answers solo and says s
 
 Route by intent (triggers above):
 
-### Mode 1 — Review  (`review`, "코드/아키텍처 리뷰", "second opinion")
+### Mode 1 — Review  (`review`, "code/architecture review", "second opinion")
 Get multiple AIs to review a change, then synthesize.
 
 0. **Consent before fan-out (MANDATORY).** Fan-out ships repo content to third-party AI
@@ -94,7 +94,7 @@ Get multiple AIs to review a change, then synthesize.
    - Verdict: **PASS** (Critical 0, High ≤2) / **REVIEW** / **FAIL** — rubric in
      `references/architecture-review-framework.md`.
 
-### Mode 2 — Decision support  (`decide`, "잘 모르겠어", "의사결정", "help me decide")
+### Mode 2 — Decision support  (`decide`, "unsure", "decision support", "help me decide")
 When the user is unsure, bring the panel in.
 
 1. Pin down the decision + options. If the user only gave a question, the host first
@@ -110,7 +110,7 @@ When the user is unsure, bring the panel in.
    Then give a **single recommendation** and name the trade-off that decided it.
    If the panel splits, say so and explain the split — don't fake consensus.
 
-### Mode 3 — ADR co-authoring  (`adr`, "ADR 협업")
+### Mode 3 — ADR co-authoring  (`adr`, "ADR collaboration")
 Co-author an Architecture Decision Record with the panel.
 
 1. Establish context + the decision to record.

@@ -1,4 +1,4 @@
-# ADR-003: Kiro CLI를 통한 종합 아키텍처 심층 리뷰 스킬
+# ADR-003: Comprehensive Architecture Deep-Review Skill via Kiro CLI
 
 ## Status
 
@@ -6,44 +6,44 @@ Accepted
 
 ## Context
 
-Claude Code로 코딩하면서 코드 리뷰와 아키텍처 검토가 단일 에이전트의 관점에 의존하게 되는 한계가 있었다. 특히 보안 취약점 탐지, Spec-driven 개발, AWS 인프라 리뷰(CDK/CloudFormation) 등은 전문화된 별도 검증이 필요하다. Kiro는 코드 리뷰, EARS 요구사항 기반 설계, 적대적 보안 리뷰 등의 기능을 제공하며, 이를 Claude Code 워크플로우에 통합하면 다중 관점의 심층 리뷰가 가능해진다.
+Coding with Claude Code, code review and architecture review were limited by depending on a single agent's perspective. In particular, security vulnerability detection, spec-driven development, and AWS infrastructure review (CDK/CloudFormation) all benefit from dedicated, specialized verification. Kiro provides capabilities such as code review, EARS-requirement-based design, and adversarial security review; integrating these into the Claude Code workflow enables multi-perspective deep review.
 
 ## Options Considered
 
-### Option 1: Claude Code 내장 리뷰만 사용
+### Option 1: Use only Claude Code's built-in review
 
-- **Pros**: 추가 도구 설치 불필요, 단일 컨텍스트에서 처리
-- **Cons**: 단일 관점 한계, 적대적(adversarial) 보안 리뷰 불가, Spec-driven 개발 워크플로우 부재
+- **Pros**: No additional tool installation required; everything processed in a single context
+- **Cons**: Limited to a single perspective, no adversarial security review possible, no spec-driven development workflow
 
-### Option 2: Kiro CLI 플러그인으로 외부 리뷰 통합
+### Option 2: Integrate external review via the Kiro CLI plugin
 
-- **Pros**: 다중 관점 리뷰(일반 + 적대적 보안), EARS 요구사항 → 설계 → 구현 자동화, AWS 인프라 전문 리뷰 지원, 백그라운드 태스크 위임 가능
-- **Cons**: 외부 도구 의존성 추가, Kiro CLI 설치 필요, 네트워크 지연 발생 가능
+- **Pros**: Multi-perspective review (general + adversarial security), automated EARS requirements → design → implementation pipeline, specialized AWS infrastructure review support, ability to delegate background tasks
+- **Cons**: Adds an external tool dependency, requires Kiro CLI installation, may introduce network latency
 
-### Option 3: MCP 서버로 리뷰 기능 직접 구현
+### Option 3: Implement review functionality directly as an MCP server
 
-- **Pros**: 외부 의존성 없음, 완전한 커스터마이징
-- **Cons**: 개발/유지보수 비용 높음, Kiro의 기존 리뷰 엔진 수준 도달 어려움
+- **Pros**: No external dependency, full customizability
+- **Cons**: High development/maintenance cost, difficult to reach the quality of Kiro's existing review engine
 
 ## Decision
 
-Option 2 채택. kiro-cli-plugin(https://github.com/whchoi98/kiro-cli-plugin)을 Claude Code 플러그인으로 통합하여 종합 아키텍처 심층 리뷰 스킬을 구성한다.
+Adopt Option 2. Integrate kiro-cli-plugin (https://github.com/whchoi98/kiro-cli-plugin) as a Claude Code plugin to build a comprehensive architecture deep-review skill.
 
-### 핵심 기능
+### Core Capabilities
 
-| 스킬 | 역할 |
+| Skill | Role |
 |------|------|
-| `/kiro-cli:review` | 변경사항 코드 리뷰 위임 (보안 중심 적대적 리뷰 포함) |
-| `/kiro-cli:task` | 디버깅/구현 작업 위임 (백그라운드 실행 지원) |
-| `/kiro-cli:spec` | EARS 요구사항 + 아키텍처 설계 + 구현 태스크 자동 생성 |
+| `/kiro-cli:review` | Delegates code review of changes (including security-focused adversarial review) |
+| `/kiro-cli:task` | Delegates debugging/implementation tasks (supports background execution) |
+| `/kiro-cli:spec` | Auto-generates EARS requirements + architecture design + implementation tasks |
 
-### AWS 인프라 지원 범위
+### AWS Infrastructure Support Scope
 
-- CDK/CloudFormation 템플릿 리뷰
-- 비용 최적화 분석
-- 멀티리전 DR 설계 검증
+- CDK/CloudFormation template review
+- Cost optimization analysis
+- Multi-region DR design verification
 
-### 설치
+### Installation
 
 ```bash
 /plugin marketplace add https://github.com/whchoi98/kiro-cli-plugin
@@ -55,19 +55,19 @@ Option 2 채택. kiro-cli-plugin(https://github.com/whchoi98/kiro-cli-plugin)을
 
 ### Positive
 
-- 다중 관점 리뷰로 코드 품질 및 보안 수준 향상
-- Spec-driven 개발로 요구사항 → 설계 → 구현의 추적성 확보
-- 기존 oh-my-cloud-skills의 content-review-agent Quality Gate와 상호 보완
+- Multi-perspective review improves code quality and security posture
+- Spec-driven development establishes traceability from requirements → design → implementation
+- Complements the existing content-review-agent Quality Gate in oh-my-cloud-skills
 
 ### Negative
 
-- Kiro CLI 설치 및 인증이 전제 조건
-- 외부 서비스 의존으로 오프라인 환경에서 사용 불가
-- 리뷰 응답 대기 시간으로 워크플로우 지연 가능
+- Requires Kiro CLI installation and authentication as a prerequisite
+- Dependency on an external service makes it unusable in offline environments
+- Review response wait time can introduce workflow delays
 
 ## References
 
 - kiro-cli-plugin: https://github.com/whchoi98/kiro-cli-plugin
-- 기존 Quality Gate: `aws-content-plugin/agents/content-review-agent.md`
-- ADR-001: Stack-based parser (내부 도구 품질 기반)
-- ADR-002: Image-based PPTX export (클라이언트 측 아키텍처 결정)
+- Existing Quality Gate: `aws-content-plugin/agents/content-review-agent.md`
+- ADR-001: Stack-based parser (internal tool quality basis)
+- ADR-002: Image-based PPTX export (client-side architecture decision)

@@ -85,7 +85,7 @@ const Colors = {
 |----------|-----------|-------------|
 | `drawBox` | `(ctx, x, y, w, h, label, color, textColor?)` | Rounded rect with centered label (auto word-wrap) |
 | `drawArrow` | `(ctx, x1, y1, x2, y2, color?, dashed?)` | Arrow with arrowhead |
-| `drawElbowArrow` | `(ctx, x1, y1, x2, y2, color?, dashed?)` | 꺽은선(Elbow) 화살표 — 그룹 간 연결용 |
+| `drawElbowArrow` | `(ctx, x1, y1, x2, y2, color?, dashed?)` | Elbow-routed arrow — for connecting groups |
 | `drawCircle` | `(ctx, x, y, radius, fill?, stroke?)` | Circle with optional fill/stroke |
 | `drawText` | `(ctx, text, x, y, opts?)` | Text with `{color, size, weight, font, align, baseline}` |
 | `drawIcon` | `(ctx, src, x, y, size, onLoad?)` | Draw image/icon centered at (x,y). `src` can be Image or URL |
@@ -95,14 +95,14 @@ const Colors = {
 | `drawNode` | `(ctx, x, y, w, h, name, pods, maxPods, opts?)` | K8s node box with pod grid |
 | `drawCluster` | `(ctx, x, y, w, h, name)` | K8s cluster dashed boundary |
 
-### 화살표 선택 기준 (Arrow Selection Guide)
+### Arrow Selection Guide
 
-| 조건 | 함수 | 이유 |
+| Condition | Function | Reason |
 |------|------|------|
-| 순수 수평/수직 (dx=0 또는 dy=0) | `drawArrow` | 꺾을 필요 없음 |
-| 근거리 연결 (dx < 80px AND dy < 80px) | `drawArrow` | 짧은 거리에 꺾임은 어색 |
-| 그룹 간 대각선 연결 (dx ≥ 80) | `drawElbowArrow` | 깔끔한 직교 라우팅 |
-| drawArrow + drawText('→') 조합 | ❌ 금지 | arrowhead 중복 — drawArrow가 이미 화살촉 포함 |
+| Purely horizontal/vertical (dx=0 or dy=0) | `drawArrow` | No need to bend |
+| Short-distance connection (dx < 80px AND dy < 80px) | `drawArrow` | Bending looks awkward over a short distance |
+| Diagonal connection between groups (dx ≥ 80) | `drawElbowArrow` | Clean orthogonal routing |
+| `drawArrow` + `drawText('→')` combo | ❌ Forbidden | Duplicate arrowhead — `drawArrow` already includes one |
 
 ### Animation Classes
 
@@ -310,9 +310,9 @@ Object.entries(icons).forEach(([key, src]) => {
 
 **Prompt:**
 ```
-ALB → EKS → RDS 트래픽 흐름
-Step 1: 서비스 아이콘 표시
-Step 2: 화살표 연결
+ALB → EKS → RDS traffic flow
+Step 1: Show service icons
+Step 2: Connect with arrows
 ```
 
 **Approach:** DSL is sufficient — convert to `:::canvas` (not `:::canvas js`)
@@ -333,11 +333,11 @@ arrow eks -> rds "Query" step 2
 
 **Prompt:**
 ```
-EKS 클러스터 오토스케일링 시각화
-3개 노드, 각각 2/4 파드
-Step 1: 현재 상태
-Step 2: 노드1에 파드 추가
-Step 3: 노드2에 파드 추가
+EKS cluster autoscaling visualization
+3 nodes, each with 2/4 pods
+Step 1: Current state
+Step 2: Add a pod to node-1
+Step 3: Add a pod to node-2
 ```
 
 **Approach:** Use `CanvasPresets['eks-pod-scaling']`
@@ -390,9 +390,9 @@ Step 3: 노드2에 파드 추가
 
 **Prompt:**
 ```
-API Gateway → Lambda → DynamoDB → S3 데이터 파이프라인
-각 서비스가 순서대로 나타나고 화살표 연결
-마지막에 CloudWatch 모니터링 추가
+API Gateway → Lambda → DynamoDB → S3 data pipeline
+Each service appears in sequence, connected by arrows
+Add CloudWatch monitoring at the end
 ```
 
 **Approach:** Custom JS with icon preloading + step control
@@ -470,10 +470,10 @@ API Gateway → Lambda → DynamoDB → S3 데이터 파이프라인
 
 **Prompt:**
 ```
-Primary-Standby 장애 조치
-Step 1: Primary 활성, Standby 대기
-Step 2: Primary 장애 발생
-Step 3: Standby로 전환 완료
+Primary-Standby failover
+Step 1: Primary active, standby on standby
+Step 2: Primary failure occurs
+Step 3: Failover to standby complete
 ```
 
 **Approach:** Use `CanvasPresets['failover']`
@@ -517,10 +517,10 @@ Step 3: Standby로 전환 완료
 
 **Prompt:**
 ```
-실시간 데이터 스트리밍 시각화
+Real-time data streaming visualization
 Kinesis → Lambda → OpenSearch
-파티클 효과로 데이터 흐름 표현
-연속 애니메이션
+Represent data flow with particle effects
+Continuous animation
 ```
 
 **Approach:** Custom JS with `AnimationLoop` + `ParticleSystem`
@@ -577,25 +577,25 @@ Kinesis → Lambda → OpenSearch
 
 | User Keyword / Pattern | Recommended Approach |
 |------------------------|----------------------|
-| "A → B → C 흐름", "트래픽 흐름" | DSL with `icon` + `arrow` + `step` |
-| "아키텍처 다이어그램" (static) | DSL with `box`/`icon`/`arrow`/`group` |
-| "오토스케일링", "파드 스케일링" | `CanvasPresets['eks-pod-scaling']` |
-| "노드 스케일링", "노드 추가" | `CanvasPresets['eks-node-scaling']` |
-| "롤링 업데이트", "배포" | `CanvasPresets['rolling-update']` |
-| "장애 조치", "Failover" | `CanvasPresets['failover']` |
-| "서비스 간 트래픽" (with config) | `CanvasPresets['traffic-flow']` |
-| "타임라인 애니메이션", "단계별 진행" | Custom JS with `TimelineAnimation` |
-| "실시간", "스트리밍", "파티클" | Custom JS with `AnimationLoop` + `ParticleSystem` |
-| "맥박", "펄스", "깜빡임" | Custom JS with `AnimationLoop` + `Math.sin()` |
-| "커스텀 시각화" | Custom JS with `setupCanvas` + primitives |
-| "차트", "chart", "그래프", "graph" | Chart.js CDN or CSS/SVG chart |
-| "대시보드", "dashboard", "KPI", "메트릭" | HTML/CSS dashboard slide |
-| "인포그래픽", "infographic", "시각화" | HTML/CSS infographic slide |
-| "게이지", "gauge", "미터", "meter" | Canvas JS drawGauge pattern |
-| "도넛", "파이", "pie", "donut" | CSS conic-gradient or Canvas |
-| "스파크라인", "sparkline", "미니차트" | SVG polyline mini chart |
-| "진행률", "progress", "프로그레스" | SVG/CSS progress ring/bar |
-| "비교", "comparison", "vs" | Comparison slide or horizontal bar |
+| "A → B → C flow", "traffic flow" | DSL with `icon` + `arrow` + `step` |
+| "architecture diagram" (static) | DSL with `box`/`icon`/`arrow`/`group` |
+| "autoscaling", "pod scaling" | `CanvasPresets['eks-pod-scaling']` |
+| "node scaling", "add nodes" | `CanvasPresets['eks-node-scaling']` |
+| "rolling update", "deployment" | `CanvasPresets['rolling-update']` |
+| "failover", "Failover" | `CanvasPresets['failover']` |
+| "traffic between services" (with config) | `CanvasPresets['traffic-flow']` |
+| "timeline animation", "step-by-step progression" | Custom JS with `TimelineAnimation` |
+| "real-time", "streaming", "particles" | Custom JS with `AnimationLoop` + `ParticleSystem` |
+| "pulse", "pulsing", "blinking" | Custom JS with `AnimationLoop` + `Math.sin()` |
+| "custom visualization" | Custom JS with `setupCanvas` + primitives |
+| "chart", "chart", "graph", "graph" | Chart.js CDN or CSS/SVG chart |
+| "dashboard", "dashboard", "KPI", "metrics" | HTML/CSS dashboard slide |
+| "infographic", "infographic", "visualization" | HTML/CSS infographic slide |
+| "gauge", "gauge", "meter", "meter" | Canvas JS drawGauge pattern |
+| "donut", "pie", "pie", "donut" | CSS conic-gradient or Canvas |
+| "sparkline", "sparkline", "mini chart" | SVG polyline mini chart |
+| "progress rate", "progress", "progress" | SVG/CSS progress ring/bar |
+| "comparison", "comparison", "vs" | Comparison slide or horizontal bar |
 
 ---
 

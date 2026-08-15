@@ -1,8 +1,8 @@
 # co-agent Plugin — Claude Code Configuration
 
-다른 AI 에이전트(Kiro CLI, Codex, Agy)와 협업해 **second opinion**을 받고, **Claude가 의장으로 종합**하는 플러그인. 멀티-AI 리뷰, 의사결정 보조, ADR 협업, 컨텍스트 동기화를 제공.
+A plugin that collaborates with other AI agents (Kiro CLI, Codex, Agy) to get a **second opinion**, with **Claude chairing and synthesizing**. Provides multi-AI review, decision support, ADR co-authoring, and context sync.
 
-**Prerequisites (선택적 — 있는 것만 사용)**: `kiro-cli`(+`KIRO_API_KEY`), `codex`, `agy` CLI 중 설치된 것을 패널로 활용(Gemini 지원은 제거 — Agy가 대체, ADR-010). 하나도 없으면 Claude 단독 수행 + 그 사실을 명시. 절대 hard-fail 하지 않음. **예외:** `harness`·`consensus`는 멀티모델 게이트가 본질인 **non-degraded 모드** — READY peer가 하나도 없으면 solo 강등 대신 멈추고 `/co-agent:setup`을 안내함(리뷰/의사결정/ADR은 평소대로 solo 강등).
+**Prerequisites (optional — use whichever are present)**: whichever of `kiro-cli` (+`KIRO_API_KEY`), `codex`, `agy` CLIs are installed are used as the panel (Gemini support was removed — Agy replaced it, ADR-010). If none are installed, Claude performs the task solo and states that fact explicitly. Never hard-fails. **Exception:** `harness` and `consensus` are **non-degraded modes** where the multi-model gate is the whole point — if there is not a single READY peer, they stop and point to `/co-agent:setup` instead of degrading to solo (review/decision-support/ADR still degrade to solo as usual).
 
 ---
 
@@ -10,47 +10,47 @@
 
 | Agent | Purpose |
 |-------|---------|
-| `co-agent` | 멀티-AI 패널 의장 — 리뷰/의사결정/ADR을 외부 AI에 팬아웃하고 Claude가 종합 |
-| `gate-chair` | 하이브리드 게이트의 의장 판단 격리(`opus`+`xhigh` 서브에이전트) — Phase T triage(인용 검증→아티팩트 대조→dedupe→digest) + verify 라운드 종결 판정. **팬아웃 없음** — 외부 호출·동의·비용은 호스트 소유, 이 에이전트는 판단만 (호스트가 저비용 티어일 때 스폰; opus 호스트는 인라인 triage 가능) |
-| `harness-analyst` | hill-climbing 분석가(advisory-only, `opus`+`low`) — `.claude/co-agent-consensus/` 누적 기록(`stage_wall.tsv`·`tasks/*/result.json`·게이트 result)을 읽어 `/co-agent:configure set` 제안 생성. **설정을 직접 쓰지 않음**; 기록 <3회(`plan-gate` 행 기준)면 제안 없이 관찰만 |
-| `pr-autofix-planner` | `/co-agent:pr-autofix`의 read-only 수정 플래너(`opus`+`xhigh`, Read/Grep/Glob 강제) — 리뷰 finding을 기계적으로 적용 가능한 플랜으로 환산 |
-| `pr-autofix-implementer` | 플랜 적용 전용 구현자(`opus`+`medium`, Read/Write/Edit/Grep/Glob — Bash·네트워크 없음) — 승인된 델타만 격리 worktree에 씀 |
+| `co-agent` | Multi-AI panel chair — fans review/decision/ADR work out to external AIs and Claude synthesizes |
+| `gate-chair` | Isolates the hybrid gate's chair judgment (`opus`+`xhigh` subagent) — Phase T triage (citation check → artifact verification → dedupe → digest) + verify-round-close verdicts. **No fan-out** — external calls, consent, and cost stay with the host; this agent only judges (spawned when the host is on a cheaper tier; an opus host can triage inline) |
+| `harness-analyst` | Hill-climbing analyst (advisory-only, `opus`+`low`) — reads accumulated `.claude/co-agent-consensus/` records (`stage_wall.tsv`, `tasks/*/result.json`, gate results) and produces proposed `/co-agent:configure set` changes. **Never writes config itself**; with fewer than 3 recorded runs (by `plan-gate` row count) it only reports observations, no proposals |
+| `pr-autofix-planner` | Read-only fix planner for `/co-agent:pr-autofix` (`opus`+`xhigh`, Read/Grep/Glob enforced) — converts review findings into a mechanically-applicable plan |
+| `pr-autofix-implementer` | Plan-application-only implementer (`opus`+`medium`, Read/Write/Edit/Grep/Glob — no Bash/network) — writes only the approved delta, in an isolated worktree |
 
 ## Skills
 
 | Skill | Trigger | Purpose |
 |-------|---------|---------|
-| `co-agent` | "co-agent", "second opinion", "다른 AI", "AI 협업", "코드/아키텍처 리뷰", "잘 모르겠어", "의사결정", "decide", "adr" | 멀티-AI 협업 (리뷰·의사결정·ADR·sync-context·consensus·harness·setup) |
-| `pr-autofix` | "pr autofix", "PR 자동 수정", "리뷰 피드백 수정" | PR 생성 후 AI/사람 리뷰를 폴링 → 플랜(Fable/Opus) → 격리 worktree 구현 → 승인 델타만 랜딩 → 커밋·푸시를 루프 (`/co-agent:pr-autofix`; 루프 상한은 `set pr_autofix max_iterations`, 기본 5). `push_gate` 활성 시 pass >3/>5 에스컬레이션 — 상세는 `skills/pr-autofix/SKILL.md` §5a/§5b |
-| `decision-reconcile` | "의사결정 번복", "ADR 모순", "reconcile ADRs" | 누적 ADR 간 모순·현실 드리프트를 다양한 리뷰 렌즈(Claude 티어 + 선택적 peer CLI) 패널로 탐지하고 superseding ADR 초안 작성 |
+| `co-agent` | "co-agent", "second opinion", "다른 AI", "AI 협업", "code/architecture review", "잘 모르겠어", "decision support", "decide", "adr" | Multi-AI collaboration (review · decision support · ADR · sync-context · consensus · harness · setup) |
+| `pr-autofix` | "pr autofix", "PR 자동 수정", "fix review feedback" | After a PR is created, polls AI/human review → plans (Fable/Opus) → implements in an isolated worktree → lands only the approved delta → loops commit/push (`/co-agent:pr-autofix`; loop bound is `set pr_autofix max_iterations`, default 5). When `push_gate` is active, escalates at pass >3/>5 — details in `skills/pr-autofix/SKILL.md` §5a/§5b |
+| `decision-reconcile` | "의사결정 번복", "ADR 모순", "reconcile ADRs" | Detects contradictions and reality-drift across accumulated ADRs using a panel of diverse review lenses (Claude tiers + optional peer CLIs) and drafts a superseding ADR |
 
 ## Modes
 
 ```
 co-agent
-  ├── Step 0: 패널 감지 (kiro-cli / codex / agy 중 설치된 것)
-  ├── Review       : git diff → 동일 프롬프트 팬아웃 → 합의/이견 종합 → PASS/REVIEW/FAIL
-  ├── Decide       : 결정+옵션 팬아웃 → 비교표 → Claude 추천 (의장)
-  ├── ADR          : 대안·트레이드오프·리스크 팬아웃 → Nygard ADR 초안 → /add-adr 연동
-  ├── sync-context : CLAUDE.md 증류 → AGENTS.md(Codex) 생성 + Kiro steering bridge 연결
-  ├── consensus    : doc→plan→구현 자율 파이프라인 + 멀티모델 게이트 (`/co-agent:consensus`)
-  ├── harness      : host 설계 / 단일 구현자(configure 선택)·병렬 태스크 서브에이전트(격리 worktree+workspace-write) / 하이브리드 게이트(병렬 find → 체어 triage → 병렬 verify); host가 red·커밋 소유 (`/co-agent:harness`)
-  └── setup        : 패널 준비도 프리플라이트 — peer별 plugin→raw→none 감지 + 실사용 프로브, 흐름이 참조하는 readiness 요약 기록 (`/co-agent:setup`)
+  ├── Step 0: Panel detection (whichever of kiro-cli / codex / agy are installed)
+  ├── Review       : same prompt fanned out → consensus/dissent synthesis → PASS/REVIEW/FAIL
+  ├── Decide       : decision+options fanned out → comparison table → Claude's recommendation (as chair)
+  ├── ADR          : alternatives/trade-offs/risks fanned out → Nygard ADR draft → hooks into /add-adr
+  ├── sync-context : distill CLAUDE.md → generate AGENTS.md (Codex) + wire the Kiro steering bridge to it
+  ├── consensus    : autonomous doc→plan→implementation pipeline + multi-model gate (`/co-agent:consensus`)
+  ├── harness      : host designs / one configured implementer runs as parallel task subagents (isolated worktree + workspace-write) / hybrid gate (parallel find → chair triage → parallel verify); host owns red-test + every commit (`/co-agent:harness`)
+  └── setup        : panel-readiness preflight — detects each peer's plugin→raw→none access + probes real usability, records the readiness summary the flows consult (`/co-agent:setup`)
 ```
 
-> harness 신뢰 경계·태스크 루프·병렬 웨이브: `skills/co-agent/references/delegated-implement.md`. 구현자 선택/쓰기 플래그: `co_agent_config.py implementer|impl-flags`; 웨이브 동시성 `parallel-tasks`(기본 3). 리뷰 게이트: 기본 **하이브리드** `skills/co-agent/references/hybrid-gate.md` (병렬 find → 체어 triage → 병렬 verify), `set harness review_mode relay|parallel`로 전환.
+> Harness trust boundary, task loop, parallel waves: `skills/co-agent/references/delegated-implement.md`. Implementer selection/write flags: `co_agent_config.py implementer|impl-flags`; wave concurrency `parallel-tasks` (default 3). Review gate: default is **hybrid**, `skills/co-agent/references/hybrid-gate.md` (parallel find → chair triage → parallel verify); switch with `set harness review_mode relay|parallel`.
 
 ## AI Context Files (per-AI project docs)
 
-각 AI CLI가 리포 루트에서 자동 로드/참조하는 컨텍스트 파일. `CLAUDE.md`가 canonical source이고, co-agent는 **`AGENTS.md` 하나만 증류(distill)** 해 생성 — 복사 ❌. Kiro·Codex·Agy 모두 **이 하나의 distilled 파일을 공통 사용** (셋 다 자기 cwd에서 네이티브 자동로드 — Agy도 Codex와 같은 컨벤션으로 `AGENTS.md`를 읽음; 팬아웃의 fold-in은 non-root cwd 대비 defense-in-depth).
+Context files each AI CLI auto-loads/references from the repo root. `CLAUDE.md` is the canonical source, and co-agent **distills it into a single `AGENTS.md`** — never a straight copy. Kiro, Codex, and Agy all **share this one distilled file** (all three natively auto-load from their own cwd — Agy reads `AGENTS.md` under the same convention as Codex; the fan-out's fold-in is additional defense-in-depth against a non-root cwd).
 
-| AI | 파일 | 생성? |
-|----|------|-------|
-| Kiro | `.kiro/steering/project-context.md` → `#[[file:AGENTS.md]]` (Codex와 동일 파일 — `CLAUDE.md` 직참조 아님) | bridge 생성 |
-| Codex | `AGENTS.md` (~32 KiB cap) | ✅ |
-| Agy | `AGENTS.md` (네이티브, Codex와 동일 컨벤션) | 별도 생성 불필요 — Codex와 공유 |
+| AI | File | Generated? |
+|----|------|------|
+| Kiro | `.kiro/steering/project-context.md` → `#[[file:AGENTS.md]]` (the same file as Codex — no longer a direct reference to `CLAUDE.md`) | bridge generated |
+| Codex | `AGENTS.md` (~32 KiB cap) | yes |
+| Agy | `AGENTS.md` (native, same convention as Codex) | not separately generated — shared with Codex |
 
-`AGENTS.md` 생성 마커(`generated-by: co-agent · claude-md-sha:`)로 staleness/수기파일 보호. `scripts/check_ai_context.py`가 검증(크기·마커·동기화·시크릿 스캔). CLAUDE.md 편집 시 PostToolUse 훅이 동기화 알림.
+A generation marker (`generated-by: co-agent · claude-md-sha:`) on `AGENTS.md` guards against staleness and protects hand-written files. `scripts/check_ai_context.py` validates it (size, marker, sync, secret scan). A PostToolUse hook fires a sync reminder when `CLAUDE.md` is edited.
 
 ## AI CLI Adapters (read-only advisory)
 
@@ -60,108 +60,182 @@ co-agent
 | Codex | `codex exec -s read-only "<P>"` |
 | Agy | `agy -p "<P>" --sandbox` |
 
-> 상세: `skills/co-agent/references/ai-cli-adapters.md`. 패널은 병렬 실행, 누락/에러 시 스킵.
+> Details: `skills/co-agent/references/ai-cli-adapters.md`. The panel runs in parallel; a missing/erroring CLI is skipped.
 
 ## PR Consensus Gate (PreToolUse hook)
 
-`gh pr create`(PR 올리는 시점)에 **멀티-AI 합의 게이트**를 거침(**opt-in — 기본 off**).
-`plugin.json`의 `PreToolUse(Bash)` 훅이 `consensus_hooks.py pre-pr-gate`를 호출 → PR diff(PR의
-`--base` 우선, 없으면 trunk `...HEAD`; 30KB cap)를 `panel_ais` 정규 패널(kiro-cli + 교차 peer +
-agy, host 제외) 중 enabled·설치된 것에 **병렬 팬아웃** → 각 peer가 `PASS`/`BLOCK`
-응답 → **정족수(quorum)** 충족 시 **exit 2로 차단**하고 findings를 host에 피드백. 동기 실행이라 PR당 2-3분.
+A **multi-AI consensus gate** runs at the moment a PR is raised (`gh pr create`) (**opt-in — off by default**).
+The `PreToolUse(Bash)` hook in `plugin.json` calls `consensus_hooks.py pre-pr-gate` →
+fans the PR diff (`--base` if the PR has one, otherwise trunk `...HEAD`; 30KB cap) out **in
+parallel** to whichever enabled/installed peers are in the standard `panel_ais` panel
+(kiro-cli + the cross peer + agy, host excluded) → each peer answers
+`PASS`/`BLOCK` → if **quorum** is reached, **blocks with exit 2** and feeds the findings
+back to the host. Runs synchronously, so 2-3 minutes per PR.
 
-- **동의(consent)**: 외부로 diff를 보내므로 SKILL.md의 "Consent before fan-out (MANDATORY)"을
-  지켜 **기본 비활성(`pr_gate.enabled=false`)**. `.claude/co-agent.local.json`(또는
-  `co-agent.defaults.json`)에서 `"pr_gate":{"enabled":true}`로 켜는 행위가 곧 외부 송신 동의
-  (`/co-agent:configure set`은 per-AI 설정 전용 — `pr_gate`는 글로벌 키라 config 파일에서 직접 편집).
-- **정족수(Chair Principle "단일 AI 의존/차단 금지")**: `quorum=majority`(기본)면 **투표 peer의
-  과반 AND ≥2**가 BLOCK해야 차단 — 단일 peer는 단독 veto 불가(미달 시 **advisory**로 표시, host가 판단).
-  `quorum=any`로 바꾸면 1건도 차단.
-- **Fail-open**: 내부 오류·전 peer 타임아웃·설치된 peer 없음 → exit 0(게이트 버그/오프라인이 PR을
-  영구 차단하지 않음). 모든 fail-open 경로는 stderr로 로그(silent failure 없음).
-- **데이터 경계**: 팬아웃 전 **full diff**의 추가(`+`)·삭제(`-`)·context 모든 전송 라인 secret-scan(cap 너머/주변 크리덴셜도 포착, 패턴은 AWS AKIA/ASIA·GH·Slack·OpenAI sk-proj-·Anthropic·Google + quoted/unquoted env) — 보이면 3rd-party로 **전송하지 않음**. (삭제-only=시크릿 제거 cleanup PR은 차단 대신 advisory.) 전송 payload만 30KB·라인 경계 절단. **diff는 argv에 안 넣음**(`ps` 노출 없음): stdin 채널(codex/agy) 파이프, **kiro는 stdin 무시**라 temp 파일+`--trust-tools=fs_read`. peer는 격리 temp 디렉터리를 cwd로 실행 — 이 격리는 cwd 기반 컨텍스트 자동로드(Codex/Agy의 `AGENTS.md`, Agy의 `GEMINI.md` back-compat)도 함께 차단하며 게이트는 fold-in도 하지 않으므로, **PR 게이트 리뷰어는 프로젝트 컨텍스트 없이 diff만으로 판정**(의도된 트레이드오프 — 격리 우선; 컨텍스트가 실리는 리뷰는 advisory 팬아웃 경로).
-- **신뢰 한계(read-exfil)**: reviewer는 read-only/sandbox/비-acting(codex `-s read-only`·agy `--sandbox`·kiro `--no-interactive`+fs_read만 승인)이라 **쓰기/변경은 막지만 읽기는 가능**. peer 서브프로세스는 cwd 격리에 더해 **env도 정화** — 크리덴셜성 변수(`*TOKEN*`·`*SECRET*`·`*API_KEY*`·`AWS_*`·`GH_*`·`GITHUB_*`·`GOOGLE_*` 등)는 각 peer가 **자기 인증에 필요한 화이트리스트**(예: codex `OPENAI_API_KEY`, kiro `KIRO_API_KEY`)만 남기고 제거해, 오염된 diff가 prompt-injection으로 **다른 도구의 토큰을 env에서 읽어** 외부로 흘리는 경로를 막음. 다만 **절대경로 파일**(`~/.aws/credentials` 등) 읽기 유도는 reviewer가 read-capable인 한 잔존 위험(상대경로는 cwd 격리로 차단). 그래서 **opt-in·기본 off**이고 활성화가 곧 동의(외부 egress 경로 포함) — diff 외 민감정보가 있을 수 있는 환경에선 켜지 말 것.
-- **명령 매칭**: `gh pr create`가 명령 경계(줄 시작 또는 `;`/`&`/`|`/`&&` 뒤)에 올 때만 — `env `·`VAR=val` prefix와 `gh -R o/r pr create`처럼 gh~pr 사이 플래그도 허용. `echo "gh pr create"`/`git commit -m "..."`(문자열)은 무시. `cd x && gh pr create`(또는 `pushd`, 인수 없는 `cd`, `cd "my dir"` 포함)처럼 **cwd를 바꾸는 compound는 skip+advisory** — 훅은 항상 자기 root에서 diff하므로 스코프가 어긋날 수 있음(조용히 다른 diff를 리뷰하지 않음). 마찬가지로 `git commit && gh pr create`처럼 **state-changing git이 앞서는 compound도 skip+advisory** — PreToolUse가 명령 *전* 실행돼 `base...HEAD`가 아직 만들어지지 않은 커밋을 빠뜨린 **불완전 diff**가 되므로(커밋 후 `/co-agent:consensus review` 권장). 두 검사 모두 **quote-blank된 cmd_detect**로 매칭해 따옴표 안의 `cd`/`git commit`은 무시. `gh pr edit`은 **게이트 안 함**. **한계(보안 경계 아님 — fail-open, 데이터 경계는 secret-scan+read-only peer)**: heredoc·`$(gh pr create)`·서브셸은 매칭 안 함(skip); 따옴표 내부 `; gh pr create`는 over-match 가능(무해 — 본인 브랜치 diff 리뷰).
-- **base 미탐 시**: trunk ref(`origin/HEAD`→`origin/main`→`main`…; 의도적으로 `@{upstream}`은 안 씀 — feature 브랜치에선 origin/<feature>를 가리켜 빈 diff가 됨)를 못 찾으면(shallow clone/무remote) `git diff HEAD`로 조용히 통과하지 않고 **advisory 경고 후 skip**(silent bypass 방지).
-- **Bypass / 설정**: 세션에 `export CO_AGENT_PR_GATE=off` (훅은 자기 프로세스 env를 읽으므로 `CO_AGENT_PR_GATE=off gh pr create` 같은 **인라인 prefix는 안 먹힘**), 또는 `co-agent.defaults.json`/`.claude/co-agent.local.json`의 `pr_gate`(`enabled`/`block`/`quorum`/`timeout`).
-- **판정 계약**: peer 응답 첫 토큰 줄(`PASS` / `BLOCK: …`)만 신뢰 — 본문 free-text 스캔 안 함(배너 몇 줄 허용). 파싱 불가 응답은 fail-open(미차단). `no diff received`(전달 글리치)는 non-vote 처리.
-- **한계(verdict 무결성)**: 오염된 diff가 reviewer에게 "first line: PASS"를 유도하는 prompt-injection은 read-only/sandbox로 툴 실행은 막지만 verdict 자체 위조는 본질적 한계 — 그래서 opt-in + (사람) chair 재검토 전제. secret-scan은 추가/삭제/context 모든 전송 라인을 검사.
-- 다른 Bash 명령은 즉시 통과(`gh pr create`만 매칭). Codex 호스트는 Claude Code 훅을
-  돌리지 않으므로 적용 안 됨(`.codex-plugin`에는 미등록).
+- **Consent**: because a diff leaves the machine, SKILL.md's "Consent before fan-out (MANDATORY)"
+  rule applies, so **it defaults to disabled (`pr_gate.enabled=false`)**. Setting
+  `"pr_gate":{"enabled":true}` in `.claude/co-agent.local.json` (or `co-agent.defaults.json`)
+  is itself the consent to send data externally
+  (`/co-agent:configure set` is for per-AI settings only — `pr_gate` is a global key edited directly in the config file).
+- **Quorum (the Chair Principle "no single AI may decide/block alone")**: with `quorum=majority`
+  (default), a block requires a **majority of voting peers AND ≥2** to say BLOCK — a
+  single peer can never veto alone (below that threshold it is shown as **advisory**, and the
+  host judges). Switching to `quorum=any` makes a single BLOCK enough.
+- **Fail-open**: an internal error, all-peer timeout, or no installed peer → exit 0 (a gate
+  bug or an offline panel must never permanently block a PR). Every fail-open path logs to
+  stderr (no silent failure).
+- **Data boundary**: before fan-out, **every transmitted line of the full diff** (additions
+  `+`, deletions `-`, and context) is secret-scanned (catches credentials beyond/around the
+  cap too; patterns cover AWS AKIA/ASIA, GH, Slack, OpenAI sk-proj-, Anthropic, Google, plus
+  quoted/unquoted env vars) — if anything is found, it is **not sent** to the third party.
+  (A deletion-only secret-removal cleanup PR is advisory instead of blocked.) Only the sent
+  payload is capped at 30KB and cut on a line boundary. **The diff never goes into argv**
+  (no `ps` exposure): it is piped via stdin for codex/agy, and since **kiro ignores stdin**
+  it goes through a temp file + `--trust-tools=fs_read`. Each peer runs with an isolated
+  temp directory as its cwd — this isolation also blocks cwd-based context auto-load
+  (Codex/Agy's `AGENTS.md`, Agy's back-compat `GEMINI.md`), and the gate does no fold-in
+  either, so **the PR-gate reviewer judges from the diff alone, with no project context**
+  (an intentional trade-off — isolation takes priority; the context-carrying review path is
+  the advisory fan-out).
+- **Trust limits (read-exfil)**: reviewers are read-only/sandboxed/non-acting (codex
+  `-s read-only`, agy `--sandbox`, kiro `--no-interactive` + fs_read approval only), so
+  **writes/changes are blocked but reads are still possible**. Each peer subprocess also has
+  its **env sanitized** in addition to cwd isolation — credential-shaped variables
+  (`*TOKEN*`, `*SECRET*`, `*API_KEY*`, `AWS_*`, `GH_*`, `GITHUB_*`, `GOOGLE_*`, etc.) are
+  stripped except the **whitelist each peer needs for its own auth** (e.g. codex's
+  `OPENAI_API_KEY`, kiro's `KIRO_API_KEY`), blocking the path where a poisoned diff uses
+  prompt injection to **read another tool's token from env** and leak it externally.
+  However, coaxing a reviewer into reading an **absolute-path file** (e.g.
+  `~/.aws/credentials`) remains a residual risk as long as the reviewer stays read-capable
+  (relative paths are blocked by cwd isolation). That is why this is **opt-in and off by
+  default** — enabling it is itself consent (including the external egress path) — never
+  turn it on in an environment that may hold sensitive data beyond the diff.
+- **Command matching**: only matches `gh pr create` at a command boundary (line start, or
+  after `;`/`&`/`|`/`&&`) — an `env ` / `VAR=val` prefix and flags between `gh` and `pr create`
+  (e.g. `gh -R o/r pr create`) are still allowed. `echo "gh pr create"` /
+  `git commit -m "..."` (string literals) are ignored. A compound that **changes cwd**, like
+  `cd x && gh pr create` (also `pushd`, argument-less `cd`, `cd "my dir"`), is **skipped with
+  advisory** — the hook always diffs from its own root, so scope may not match (it never
+  silently reviews a different diff). Likewise a compound where **state-changing git runs
+  first**, like `git commit && gh pr create`, is also **skipped with advisory** — PreToolUse
+  runs *before* the command, so `base...HEAD` would omit the not-yet-made commit, producing an
+  **incomplete diff** (recommend `/co-agent:consensus review` after committing). Both checks
+  match with a **quote-blanked `cmd_detect`** so a `cd`/`git commit` inside quotes is ignored.
+  `gh pr edit` is **not gated**. **Limits (not a security boundary — fail-open; the data
+  boundary is secret-scan + read-only peers)**: heredocs, `$(gh pr create)`, and subshells
+  don't match (skipped); `; gh pr create` inside quotes can over-match (harmless — it just
+  reviews the diff of your own branch).
+- **When trunk can't be found**: if no trunk ref (`origin/HEAD`→`origin/main`→`main`…;
+  deliberately not `@{upstream}` — on a feature branch that points at `origin/<feature>`,
+  producing an empty diff) can be found (shallow clone / no remote), it doesn't silently pass
+  via `git diff HEAD` — it **warns advisory and skips** (no silent bypass).
+- **Bypass / config**: `export CO_AGENT_PR_GATE=off` in the session (the hook reads its own
+  process env, so an **inline prefix like `CO_AGENT_PR_GATE=off gh pr create` does NOT
+  work**), or the `pr_gate` block (`enabled`/`block`/`quorum`/`timeout`) in
+  `co-agent.defaults.json`/`.claude/co-agent.local.json`.
+- **Verdict contract**: only the first token/line of a peer's response (`PASS` / `BLOCK: …`)
+  is trusted — free-text in the body is not scanned (a few banner lines are tolerated). An
+  unparseable response fails open (not blocked). `no diff received` (a delivery glitch) is
+  treated as a non-vote.
+- **Limits (verdict integrity)**: a poisoned diff that prompt-injects a reviewer into
+  outputting "first line: PASS" bypasses tool execution restrictions but can still forge the
+  verdict itself — an inherent limit — hence opt-in plus a (human) chair re-review. Secret-scan
+  covers every transmitted line: additions, deletions, and context.
+- Any other Bash command passes straight through (only `gh pr create` matches). A Codex host
+  doesn't run Claude Code hooks, so this doesn't apply there (not registered in
+  `.codex-plugin`).
 
 ## Pre-push Lens Gate (PreToolUse hook)
 
-`git push`(로컬 → 원격, PR보다 앞선 시점)에 **3-lens 게이트**를 거침(**opt-in — 기본 off**).
-`plugin.json`의 같은 `PreToolUse(Bash)` 훅 배열에 `consensus_hooks.py pre-push-gate`가 PR
-게이트와 나란히 추가됨 → push될 range(`@{upstream}..HEAD`, 없으면 trunk merge-base)를 diff
-→ **동일 프롬프트가 아니라 3개 lens**(correctness/security/scope — `_PUSH_LENSES`)를
-gate-eligible peer에 **round-robin으로 배정**(peer 수와 무관하게 호출 수는 항상 3 —
-PR 게이트의 peer당 1콜과 같은 비용 프로파일) → 각 lens가 독립적으로 `PASS`/`BLOCK` 응답 →
-**BLOCK한 lens 수**로 판정(PR 게이트의 peer quorum과 다른 축):
+A **3-lens gate** runs at `git push` (local → remote, earlier than the PR gate) (**opt-in — off by default**).
+`consensus_hooks.py pre-push-gate` is added alongside the PR gate in the same
+`PreToolUse(Bash)` hook array → diffs the range about to be pushed (`@{upstream}..HEAD`, or
+trunk merge-base if unset) → **not the same prompt but 3 lenses** (correctness/security/scope
+— `_PUSH_LENSES`) **round-robined** across gate-eligible peers (call count is always 3
+regardless of peer count — the same cost profile as the PR gate's one-call-per-peer) → each
+lens independently answers `PASS`/`BLOCK` → the verdict is based on the **number of BLOCKing
+lenses** (a different axis from the PR gate's peer quorum):
 
-- **2개 이상 lens가 BLOCK** → `exit 2` **BLOCKED** — 고치고 재시도, bypass 권하지 않음.
-- **정확히 1개 lens만 BLOCK** → `exit 2` **CHAIR JUDGMENT REQUIRED** — 훅은 Claude를 직접
-  호출할 수 없으므로, exit 2 + 이 stderr 텍스트가 곧 판정을 체어에게 전달하는 유일한
-  경로. 호스트(Claude)가 finding을 실제 변경과 대조해 판단하고, 수용 가능하면
-  `CO_AGENT_PUSH_GATE=off git push ...`로 bypass, 아니면 고쳐서 재시도.
-- **0개** → `exit 0` PASS.
+- **2 or more lenses BLOCK** → `exit 2` **BLOCKED** — fix and retry; bypass is discouraged.
+- **Exactly 1 lens BLOCKs** → `exit 2` **CHAIR JUDGMENT REQUIRED** — since a hook can't call
+  Claude directly, exit 2 plus this stderr text is the sole channel that delivers the verdict
+  to the chair. The host (Claude) weighs the finding against the actual change and decides —
+  if acceptable, bypass with `CO_AGENT_PUSH_GATE=off git push ...`, otherwise fix and retry.
+- **0** → `exit 0` PASS.
 
-- **리뷰할 수 없는 push는 SKIP(fail-open)** — kiro의 `push-scope-mismatch`와 **같은 4개
-  클래스**를 쓴다(두 훅이 같은 이벤트를 가로채므로 스킵 규칙이 갈리면 그 자체가 버그 표면):
-  선행 `cd`/`pushd`, 같은 invocation의 선행 `git commit` 류 상태 변경, **다른 repo/워크트리로
-  리다이렉트**(`-C` · `--git-dir` · `--work-tree` · `GIT_DIR=` 계열 — 게이트는 언제나 자기
-  root만 diff하므로 엉뚱한 저장소를 리뷰하게 된다), **ref 삭제 push**(리뷰할 내용이 없음).
-  뒤 두 개는 co-agent 쪽에 빠져 있던 것을 이식했다. `--delete`는 **이 invocation 범위**
-  에서만 인식한다 — 뒤따르는 다른 명령의 플래그가 이 push의 리뷰를 없애지 못한다.
-- **동의(consent)**: `push_gate.enabled=false`가 기본 — 활성화가 곧 외부 송신 동의.
-  `co_agent_config.py`에 처음으로 **tracked-file consent 스트리핑**이 추가됨(kiro의
-  `_strip_consent_keys`와 동일 로직): `.claude/co-agent.local.json`이 이 repo에 커밋돼
-  있거나 심볼릭링크 alias로 우회되면, `pr_gate.enabled`/`push_gate.enabled` 두 키만
-  무시하고 나머지 설정(model/timeout/block/quorum)은 그대로 적용.
-- **`/co-agent:configure set push_gate enabled|block|timeout <값>`으로 켬** —
-  `pr_gate`(config 파일 직접 편집만 가능)와 달리 `push_gate`는 `set` 경로가 있음. 켤 때
-  kiro의 `review.on_push`가 이미 켜져 있으면 "두 게이트 동시 실행은 비용·대기 2배" 경고
-  출력(그래도 씀 — 거부 아님). 반대 방향(kiro `set review on_push on`)도 co-agent
-  `push_gate`를 확인해 대칭 경고.
-- **Bypass**: 인라인 `CO_AGENT_PUSH_GATE=off git push ...` — PR 게이트의 `os.environ`
-  방식(`CO_AGENT_PR_GATE=off`)과 달리, push 게이트는 **payload 텍스트에서** 이 prefix를
-  인식(`_PUSH_BYPASS_ENV_RE`) — CHAIR JUDGMENT를 받아들이고 실제로 push하려면 인라인
-  bypass가 반드시 동작해야 하기 때문(세션 export만으로는 인라인 prefix가 안 먹히는 PR
-  게이트의 한계를 여기서는 반복하지 않음).
-- **Fail-open / secret-scan / read-only peer / 명령 매칭**: PR 게이트와 동일한 계약 —
-  `_scan_secret`(추가/삭제/context 전송 라인 스캔), read-only/sandbox peer, 명령 경계
-  매칭(`_GIT_PUSH_CMD_RE`, `git push`가 문자열 내부/heredoc/subshell에 있으면 스킵),
-  선행 `cd`/`pushd`나 state-changing `git commit`이 같은 invocation에 있으면 skip+advisory
-  (diff가 잘못된 scope/불완전할 수 있음).
+- **A push that can't be reviewed is SKIPped (fail-open)** — it uses the **same 4 classes** as
+  kiro's `push-scope-mismatch` (since both hooks intercept the same event, divergent skip rules
+  would themselves be a bug surface): a preceding `cd`/`pushd`, a state-changing `git commit`
+  earlier in the same invocation, a **redirect to a different repo/worktree** (`-C` /
+  `--git-dir` / `--work-tree` / `GIT_DIR=` — the gate always diffs its own root, so it would
+  otherwise review the wrong repo), and a **ref-deletion push** (nothing to review). The last
+  two were ported over from what co-agent was missing. `--delete` is only recognized **within
+  this invocation's scope** — a later command's flags can't remove this push's review.
+- **Consent**: `push_gate.enabled=false` by default — enabling it is itself consent to send
+  data externally. `co_agent_config.py` gets **tracked-file consent stripping** for the first
+  time (same logic as kiro's `_strip_consent_keys`): if `.claude/co-agent.local.json` is
+  committed to this repo, or bypassed via a symlink alias, only the two keys
+  `pr_gate.enabled`/`push_gate.enabled` are ignored, and the rest of the settings
+  (model/timeout/block/quorum) still apply.
+- **Enable with `/co-agent:configure set push_gate enabled|block|timeout <value>`** — unlike
+  `pr_gate` (config-file-edit only), `push_gate` has a `set` path. Turning it on warns if
+  kiro's `review.on_push` is already on — "running both gates doubles cost/latency" (still
+  allowed, not refused). The reverse direction (kiro `set review on_push on`) also checks
+  co-agent's `push_gate` and warns symmetrically.
+- **Bypass**: inline `CO_AGENT_PUSH_GATE=off git push ...` — unlike the PR gate's
+  `os.environ` approach (`CO_AGENT_PR_GATE=off`), the push gate recognizes this prefix **in
+  the payload text** itself (`_PUSH_BYPASS_ENV_RE`) — because accepting a CHAIR JUDGMENT and
+  actually pushing requires the inline bypass to actually work (this does not repeat the PR
+  gate's limitation where only a session export, not an inline prefix, works).
+- **Fail-open / secret-scan / read-only peer / command matching**: the same contract as the
+  PR gate — `_scan_secret` (scans added/removed/context lines), read-only/sandboxed peers,
+  command-boundary matching (`_GIT_PUSH_CMD_RE`, skips if `git push` is inside a
+  string/heredoc/subshell), skip+advisory if a preceding `cd`/`pushd` or state-changing
+  `git commit` is in the same invocation (the diff could be mis-scoped/incomplete).
 
 ## Configure (`/co-agent:configure`)
 
-패널 설정을 레이어드(`co-agent.defaults.json` ← `~/.claude/co-agent.user.json`(유저 스코프) ← `.claude/co-agent.local.json`(레포 로컬))로 관리. **CLI가 헤드리스로 실제 받는 것만** 노출:
+Panel settings are managed in **layers** (`co-agent.defaults.json` ← `~/.claude/co-agent.user.json` (user scope) ← `.claude/co-agent.local.json` (repo-local)). **Only what the CLI actually accepts headlessly** is exposed:
 
-| 설정 | kiro-cli | codex | agy |
+| Setting | kiro-cli | codex | agy |
 |------|------|-------|-----|
 | model | `--model` | `-m` | `--model` |
 | effort | — | `-c model_reasoning_effort` | — |
 | enabled / timeout | yes | yes | yes |
-| context_limit (토큰) | 1,000,000 | 272,000 | 1,000,000 |
-| autosync (global) | `set autosync on` → CLAUDE.md 변경 시 `/co-agent:sync-context` 자동 실행 (옵트인, 기본 off) |
-| pr_autofix (global) | `set pr_autofix max_iterations <n>` → `/co-agent:pr-autofix` 루프 상한(기본 5). 스킬이 `co_agent_config.py pr-autofix-iterations`로 읽음 |
+| context_limit (tokens) | 1,000,000 | 272,000 | 1,000,000 |
+| autosync (global) | `set autosync on` → auto-runs `/co-agent:sync-context` when CLAUDE.md changes (opt-in, default off) |
+| pr_autofix (global) | `set pr_autofix max_iterations <n>` → `/co-agent:pr-autofix` loop bound (default 5). Read by the skill via `co_agent_config.py pr-autofix-iterations` |
 
-> effort는 Claude/Codex처럼 헤드리스 effort 플래그가 있는 CLI에만 노출(dead 설정 미노출). 팬아웃이 `co_agent_config.py`의 `panel`/`flags`/`timeout`/`fits`을 호출해 설정이 **실시간 반영**됨. `context_limit` 초과 AI는 하드 실패 대신 **스킵**(예: 거대 diff에서 Codex 272K 초과 → Kiro/Agy만). model 값은 charset 검증으로 팬아웃 주입 차단.
+> `effort` is only exposed for CLIs with a real headless effort flag, like Claude/Codex (dead settings aren't exposed). The fan-out calls `co_agent_config.py`'s `panel`/`flags`/`timeout`/`fits`, so settings are applied **live**. An AI exceeding `context_limit` is **skipped** rather than hard-failed (e.g. Codex's 272K is exceeded on a huge diff → only Kiro/Agy run). `model` values are charset-validated to block fan-out injection.
 
-**모델 티어링(역할별 배치)**: chair = 호스트 모델(`/model opusplan` 또는 chair 서브에이전트 `model: opus`) · find 패널 = `profile deep` 저비용 breadth · verify 패널 = `--profile default` 단일 최강 모델(하이브리드 게이트가 자동 적용; 패널 `effort`는 phase-split 안 되므로 verify 기준으로 유지) · implementer = `set harness implementer_model <m>` / `implementer_effort <e>`(effort는 codex implementer 전용; **implementer별 저장**(`implementer_models.<ai>`) — implementer 미설정 시 저장 거부, 전환 시 이전 엔트리는 dormant(타 CLI로 누수 불가), **impl-flags 쓰기 경로에만** 적용 + emit 시점 재검증). 상세: `commands/configure.md` "모델 티어링", `references/hybrid-gate.md` "Role tiering".
+**Model tiering (role-based placement)**: chair = the host model (`/model opusplan`, or the
+`gate-chair` subagent with `model: opus`) · find panel = `profile deep` low-cost breadth ·
+verify panel = `--profile default` each AI's single strongest model (applied automatically by
+the hybrid gate; the panel's `effort` isn't phase-split, so keep it at the level that's
+right for verify) · implementer = `set harness implementer_model <m>` /
+`implementer_effort <e>` (effort is codex-implementer-only; **stored per implementer**
+(`implementer_models.<ai>`) — a write is refused if no implementer is set, and switching
+implementers leaves the previous entry dormant (never leaks to another CLI); applies **only
+to the impl-flags write path** + is re-validated at emit time). Details:
+`commands/configure.md` "Model tiering", `references/hybrid-gate.md` "Role tiering".
 
 ## Sync-context (`/co-agent:sync-context`)
 
-`CLAUDE.md`를 **한 번만 증류**해 `AGENTS.md`를 생성 — Codex·Agy는 네이티브 자동로드(동일 컨벤션), Kiro는 `.kiro/steering/project-context.md`에서 `#[[file:AGENTS.md]]`로 **같은 파일**을 참조(더 이상 `CLAUDE.md` 직참조 아님 — 패널 전체 일관성 우선); 팬아웃이 Agy 컨텍스트에 추가로 fold-in하는 건 non-root cwd 대비 defense-in-depth. 생성 마커로 `AGENTS.md` staleness 추적·수기파일 보호. `CLAUDE.md` PostToolUse 훅이 drift 알림 — `autosync on`이면 Claude에게 재동기화 지시.
+**Distills `CLAUDE.md` once** into `AGENTS.md` — Codex and Agy auto-load it natively (same
+convention), and Kiro references **the same file** via
+`#[[file:AGENTS.md]]` from `.kiro/steering/project-context.md` (no longer a direct reference
+to `CLAUDE.md` — panel-wide consistency wins); the fan-out additionally folds it into Agy's
+context as defense-in-depth for a non-root cwd. A generation marker tracks `AGENTS.md`
+staleness and protects hand-written files. A `CLAUDE.md` PostToolUse hook notifies on drift —
+if `autosync on`, it tells Claude to resync.
 
 ## Chair Principle
 
-외부 AI는 **자문**, **Claude가 최종 결정·작성**. 출처 표기 + 이견 명시. 단일 AI에 의존/차단 금지.
+External AIs **advise**, **Claude makes the final decision and writes the artifact**. Attribute sources and surface disagreement. No single AI may decide or block alone.
 
 ## Auto-Invocation Keywords
 
-| 한국어 | English |
+| Korean | English |
 |--------|---------|
 | 다른 AI 협업 | collaborate with other AI |
 | 코드 리뷰 | code review |

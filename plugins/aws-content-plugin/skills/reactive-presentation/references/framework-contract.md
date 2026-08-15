@@ -1,13 +1,11 @@
 # Framework Contract — HTML-First Deck Authoring
 
-이 문서가 **컴파일러를 대체한다**: Claude는 Remarp 문법이 아니라 이 계약과
-`assets/example-deck/` 골든 예시를 읽고 슬라이드 HTML을 직접 작성한다.
-모든 내용은 `assets/`의 실제 코드에서 도출되었다 — 이 문서가 코드와 어긋나면 그건
-버그다 (`tests/structure/test-reactive-design-tokens.sh`가 토큰 커버리지를 강제).
+This document **replaces the compiler**: instead of Remarp syntax, Claude reads this contract and the golden example at `assets/example-deck/`, then writes slide HTML directly.
+Everything here is derived from the actual code in `assets/` — if this document disagrees with the code, that's a bug (`tests/structure/test-reactive-design-tokens.sh` enforces token coverage).
 
-## 1. Deck Skeleton (필수 DOM)
+## 1. Deck Skeleton (required DOM)
 
-`theme.css`와 `slide-framework.js`가 이 구조를 요구한다:
+`theme.css` and `slide-framework.js` require this structure:
 
 ```html
 <!DOCTYPE html>
@@ -59,64 +57,64 @@
 </html>
 ```
 
-- 커버/섹션 슬라이드는 `.slide-header`/`.slide-body` 없이 자유 레이아웃 가능 —
-  단 최상위는 반드시 `.slide`.
-- 첫 슬라이드 = Session Cover, 마지막 = Thank You(목차 링크) 관례 유지.
-- 스피커 노트: `<template class="notes">` 권장 (이스케이프 불필요, diff 깨끗).
-  구형 `const presenterNotes = {1: "...", ...}` + `presenterNotes:` 옵션도 계속 동작.
-  둘 다 있으면 옵션 객체가 우선.
+- Cover/section slides may use a free layout without `.slide-header`/`.slide-body` —
+  but the top-level element must still be `.slide`.
+- Keep the convention: first slide = Session Cover, last slide = Thank You (with a table-of-contents link).
+- Speaker notes: `<template class="notes">` is recommended (no escaping needed, clean diffs).
+  The legacy `const presenterNotes = {1: "...", ...}` + `presenterNotes:` option still works.
+  If both are present, the option object takes priority.
 
 ## 2. Theme Tokens (theme.css)
 
-**3개 스코프**: `:root, .theme-light`(기본 — AWS 콘솔 라이트) · `.theme-dark`(squid-ink
-night; 덱 루트 또는 개별 `.slide`에 클래스) · `.preset-paper`(웜 룩, 명시 선택 시만).
-PPTX 추출 브랜드는 `--pptx-accent1/dk1/lt1/dk2/lt2`로 들어와 항상 우선한다
+**3 scopes**: `:root, .theme-light` (default — AWS Console light) · `.theme-dark` (squid-ink
+night; class applied to the deck root or to individual `.slide` elements) · `.preset-paper` (warm look, only when explicitly selected).
+Brand colors extracted from a PPTX arrive as `--pptx-accent1/dk1/lt1/dk2/lt2` and always take priority
 (`--accent: var(--pptx-accent1, #ec7211)`).
 
-**시맨틱 롤 (색상은 반드시 이 토큰으로 — raw hex/rgba 금지, check_deck.py가 잡음):**
+**Semantic roles (colors must always use these tokens — raw hex/rgba is forbidden and caught by `check_deck.py`):**
 
-| 롤 | 토큰 | subtle 배경 | on-색 | 용도 |
+| Role | Token | Subtle bg | On-color | Purpose |
 |----|------|------------|-------|------|
-| accent | `--accent` | `--accent-subtle` | `--accent-on` | 강조/입력/소스 (light: Smile orange #ec7211) |
-| info | `--info` | `--info-subtle` | `--info-on` | 보조/분석 (Cloudscape blue) |
-| success | `--success` | `--success-subtle` | `--success-on` | 성공/결과 |
-| warning | `--warning` | `--warning-subtle` | `--warning-on` | 경고/처리 |
-| danger | `--danger` | `--danger-subtle` | `--danger-on` | 에러/위험 |
+| accent | `--accent` | `--accent-subtle` | `--accent-on` | Emphasis/input/source (light: Smile orange #ec7211) |
+| info | `--info` | `--info-subtle` | `--info-on` | Secondary/analysis (Cloudscape blue) |
+| success | `--success` | `--success-subtle` | `--success-on` | Success/result |
+| warning | `--warning` | `--warning-subtle` | `--warning-on` | Warning/processing |
+| danger | `--danger` | `--danger-subtle` | `--danger-on` | Error/risk |
 
-**서피스/텍스트**: `--surface-1/2/3` (카드 배경 단계) · `--on-surface` ·
-`--on-surface-muted` · `--bg-primary`(페이지 캔버스) · `--border` · `--border-focus`.
+**Surface/text**: `--surface-1/2/3` (card background levels) · `--on-surface` ·
+`--on-surface-muted` · `--bg-primary` (page canvas) · `--border` · `--border-focus`.
 
-**레거시 별칭** (구 마크업·캔버스 호환, 새 코드는 롤 토큰 우선):
-`--green/--yellow/--red/--blue/--orange`(+`-bg`) → 롤 토큰으로 라우팅됨 ·
-`--cyan`/`--pink`(스코프별 고유 hue — 캔버스 다이어그램이 blue/red와 구분에 의존) ·
+**Legacy aliases** (for compatibility with old markup/canvas code; new code should prefer role tokens):
+`--green/--yellow/--red/--blue/--orange` (+`-bg`) → routed to role tokens ·
+`--cyan`/`--pink` (scope-specific unique hues — canvas diagrams depend on these being distinct from blue/red) ·
 `--bg-secondary/tertiary/card` · `--surface` · `--text-primary/secondary/muted/accent` ·
 `--accent-light` · `--accent-glow` · `--shadow-glow`.
 
-**design-tokens.css (theme.css가 @import)**:
+**design-tokens.css (imported by theme.css via @import)**:
 
-| 그룹 | 토큰 |
+| Group | Tokens |
 |------|------|
-| 타입 스케일 (모듈러 1.25) | `--text-xs` `--text-sm` `--text-base` `--text-lg` `--text-xl` `--text-2xl` `--text-3xl` `--text-4xl` |
-| 행간 | `--leading-tight` `--leading-normal` `--leading-relaxed` |
-| 굵기 | `--weight-regular` `--weight-medium` `--weight-semibold` `--weight-bold` |
-| 자간 | `--tracking-tight` `--tracking-normal` `--tracking-wide` |
-| 스페이싱 (8px 그리드 — px 매직넘버 금지, OFF_SCALE 린트) | `--space-1` `--space-2` `--space-3` `--space-4` `--space-5` `--space-6` `--space-7` `--space-8` |
-| 라운딩 | `--radius-sm` `--radius-md` `--radius-lg` `--radius-pill` |
-| 그림자 | `--shadow-1` `--shadow-2` `--shadow-3` `--shadow-glow` |
-| 모션 | `--duration-fast` `--duration-normal` `--duration-slow` `--ease-out` |
+| Type scale (modular 1.25) | `--text-xs` `--text-sm` `--text-base` `--text-lg` `--text-xl` `--text-2xl` `--text-3xl` `--text-4xl` |
+| Line height | `--leading-tight` `--leading-normal` `--leading-relaxed` |
+| Weight | `--weight-regular` `--weight-medium` `--weight-semibold` `--weight-bold` |
+| Letter spacing | `--tracking-tight` `--tracking-normal` `--tracking-wide` |
+| Spacing (8px grid — no magic-number px, enforced by the OFF_SCALE lint) | `--space-1` `--space-2` `--space-3` `--space-4` `--space-5` `--space-6` `--space-7` `--space-8` |
+| Rounding | `--radius-sm` `--radius-md` `--radius-lg` `--radius-pill` |
+| Shadow | `--shadow-1` `--shadow-2` `--shadow-3` `--shadow-glow` |
+| Motion | `--duration-fast` `--duration-normal` `--duration-slow` `--ease-out` |
 | z-index | `--z-base` `--z-nav` `--z-overlay` `--z-modal` `--z-toast` |
 
-**폰트**: `--font-display`(Space Grotesk→Pretendard, 헤딩) · `--font-main`(Pretendard) ·
-`--font-mono`(JetBrains Mono).
+**Fonts**: `--font-display` (Space Grotesk→Pretendard, headings) · `--font-main` (Pretendard) ·
+`--font-mono` (JetBrains Mono).
 
-**사이징**: `--slide-width/height`, `--slide-ratio-w/h`(기본 16/9) — 비 16:9 덱만 재정의.
+**Sizing**: `--slide-width/height`, `--slide-ratio-w/h` (default 16/9) — redefine only for non-16:9 decks.
 
 ## 3. Scaling Model
 
-고정 1920×1080 디자인 캔버스, `.slide-deck`이 `transform: scale(min(100vw/1920,
-100vh/1080))`로 뷰포트에 맞춰 통째로 축소된다. 슬라이드 안에서는 절대 px 좌표를
-써도 안전하다(캔버스가 통째로 스케일됨). **뷰포트 단위(vw/vh)를 콘텐츠 크기에 쓰지 말 것**
-— 스케일 밖에서 이중 반응해 비율이 깨진다.
+A fixed 1920×1080 design canvas: `.slide-deck` is scaled down as a whole to fit the viewport via
+`transform: scale(min(100vw/1920, 100vh/1080))`. Inside a slide, absolute px coordinates are safe to
+use (the whole canvas scales together). **Never use viewport units (vw/vh) for content sizing** —
+they respond a second time outside the scale transform, breaking proportions.
 
 ## 4. SlideFramework API (slide-framework.js)
 
@@ -127,37 +125,37 @@ deck.registerSlideAction(slideIndex, { up: fn, down: fn })  // ↑↓ 키 가로
 deck.goTo(i) / deck.next() / deck.prev()
 ```
 
-- 프레임워크가 자동 생성: progress bar, slide counter/number, nav hint, footer,
-  logo, ref 컨테이너, 썸네일 사이드바(1920px 콘텐츠를 scale로 축소).
-- **키맵** (기본): `←→ Space PageUp/Down` 이동+fragment · `↑↓` slideAction →
-  인터랙티브 순환(canvas step/tabs/compare) → fragment · `Home/End` · `P` presenter ·
-  `F` fullscreen · `O` overview · `S` sidebar · `Esc`. `window.__remarpKeys`로 재매핑.
-- 슬라이드에 `<img>`가 있으면 footer/logo/번호 자동 숨김.
-- `data-transition="fade|slide|zoom"` per-slide 전환.
-- `data-refs='[{"url":"…","label":"…"}]'` → 하단 참조 링크.
-- URL 해시 `#N`으로 슬라이드 딥링크.
+- Auto-generated by the framework: progress bar, slide counter/number, nav hint, footer,
+  logo, ref container, thumbnail sidebar (scales the 1920px content down).
+- **Key map** (default): `←→ Space PageUp/Down` move + fragment · `↑↓` slideAction →
+  interactive cycling (canvas step/tabs/compare) → fragment · `Home/End` · `P` presenter ·
+  `F` fullscreen · `O` overview · `S` sidebar · `Esc`. Remap via `window.__remarpKeys`.
+- If a slide contains an `<img>`, footer/logo/page number are auto-hidden.
+- `data-transition="fade|slide|zoom"` for per-slide transitions.
+- `data-refs='[{"url":"…","label":"…"}]'` → reference links at the bottom.
+- Slide deep-linking via the URL hash `#N`.
 
-**Fragments**: `class="fragment fade-up" data-fragment-index="N"` — Space/→로 순차
-공개. 같은 index는 동시 공개. 애니메이션: `fade-in/up/down/left/right, grow, shrink,
+**Fragments**: `class="fragment fade-up" data-fragment-index="N"` — revealed sequentially with
+Space/→. Elements sharing the same index reveal together. Animations: `fade-in/up/down/left/right, grow, shrink,
 highlight(-red/-green), strike, fade-out`.
 
-**Canvas step 슬라이드**: 슬라이드 요소에 `slide.__canvasStep = (dir) => bool` 를
-달면 ↑↓가 step을 몰고, 끝에서 `false`를 반환하면 슬라이드가 넘어간다.
-(또는 `registerSlideAction`.)
+**Canvas step slides**: attach `slide.__canvasStep = (dir) => bool` to the slide element —
+↑↓ then drives the step, and returning `false` at the boundary lets the slide advance instead.
+(Or use `registerSlideAction`.)
 
-**자동 초기화되는 컴포넌트** (DOMContentLoaded에서 `initTabs/initChecklists/
-initCompareToggles`):
-- 탭: `.tab-bar > .tab-btn[data-tab="id"]` + 형제 `.tab-content[data-tab="id"]`
-  (`.active`로 표시). ↑↓ 키로도 순환.
-- 체크리스트: `.checklist li` 클릭 토글(+`.checklist-detail` 펼침).
-- 비교: `.compare-toggle > .compare-btn[data-compare]` + `.compare-content[data-compare]`;
-  컨테이너 `data-compare-mode="side-by-side"`면 하이라이트 모드.
-- 프레임워크 JS 없이 동작해야 하는 자체완결 탭은 inline onclick 패턴도 허용
-  (골든 예시 참조).
+**Auto-initialized components** (via `initTabs/initChecklists/
+initCompareToggles` on DOMContentLoaded):
+- Tabs: `.tab-bar > .tab-btn[data-tab="id"]` + sibling `.tab-content[data-tab="id"]`
+  (shown via `.active`). Also cyclable with ↑↓ keys.
+- Checklist: `.checklist li` click-to-toggle (+ `.checklist-detail` expand).
+- Compare: `.compare-toggle > .compare-btn[data-compare]` + `.compare-content[data-compare]`;
+  highlight mode when the container has `data-compare-mode="side-by-side"`.
+- Self-contained tabs that must work without the framework's JS may also use the inline onclick
+  pattern (see the golden example).
 
 ## 5. Canvas Animation (animation-utils.js)
 
-**필수 패턴** — 모든 캔버스는 비례 스케일 + DPR 보정 (FHD/4K 대응):
+**Required pattern** — every canvas must apply proportional scaling + DPR correction (for FHD/4K support):
 
 ```js
 (function() {
@@ -191,43 +189,43 @@ initCompareToggles`):
 })();
 ```
 
-**드로잉 헬퍼** (BASE 좌표계 인자): `drawBox(ctx,x,y,w,h,label,color)` ·
+**Drawing helpers** (take BASE-coordinate arguments): `drawBox(ctx,x,y,w,h,label,color)` ·
 `drawArrow(ctx,x1,y1,x2,y2,color,dashed,showHead)` · `drawOrthogonalArrow(ctx,points,color)` ·
 `drawCircle` · `drawText(ctx,text,x,y,{size,color,weight,align})` ·
-`drawGroup(ctx,x,y,w,h,label,color)`(점선 그룹 박스) · `drawIcon(ctx,src,x,y,size)` ·
+`drawGroup(ctx,x,y,w,h,label,color)` (dashed group box) · `drawIcon(ctx,src,x,y,size)` ·
 `drawPod` · `drawNode` · `drawCluster` · `drawRoundRect`.
 
-**색상**: `Colors.accent/.blue/.green/.yellow/.red/.cyan/.pink/...` — CSS 변수에서
-읽으므로 테마 자동 적응. 테마 전환 후 `refreshThemeColors()` 필요(위 패턴이 draw마다 호출).
-`withAlpha(color, a)` · `resolveColor(ref)`.
+**Colors**: `Colors.accent/.blue/.green/.yellow/.red/.cyan/.pink/...` — read from CSS variables,
+so they adapt to the theme automatically. Call `refreshThemeColors()` after a theme switch (the pattern above
+already calls it on every draw). `withAlpha(color, a)` · `resolveColor(ref)`.
 
-**유틸**: `AnimationLoop(drawFn)` · `TimelineAnimation(steps, duration)` ·
+**Utilities**: `AnimationLoop(drawFn)` · `TimelineAnimation(steps, duration)` ·
 `ParticleSystem` · `Ease.linear/inOut/out/in/elastic/bounce` · `lerp` · `clamp`.
 
-**프리셋 5종** — `CanvasPresets[type](ctx, config, step, w, h)`:
+**5 presets** — `CanvasPresets[type](ctx, config, step, w, h)`:
 `eks-pod-scaling` · `eks-node-scaling` · `traffic-flow` · `rolling-update` · `failover`.
-직접 호출해 config 객체만 넘기면 됨.
+Call directly, passing only a config object.
 
-**복잡도 규칙**: 박스 ≤4 + 단방향 화살표만 canvas. 5+ 박스/다계층은 HTML flow
-유틸리티(§6)로. 정적 전체 아키텍처는 draw.io PNG/SVG `<img>`.
+**Complexity rule**: canvas is for ≤4 boxes with unidirectional arrows only. Use the HTML flow
+utility (§6) for 5+ boxes or multi-tier diagrams. Use a static draw.io PNG/SVG `<img>` for full architecture diagrams.
 
 ## 6. CSS Component Inventory (theme.css)
 
-| 그룹 | 클래스 | 비고 |
+| Group | Classes | Notes |
 |------|--------|------|
-| 카드 | `.card-grid` `.card` `.metric-card` `.metric-value/.metric-label` `.kpi-row/.kpi-card/.kpi-value/.kpi-label/.kpi-delta` `.badge(-blue/-green/-red/-yellow/-up/-down)` | 4+ 나열은 불릿 대신 카드 |
-| 콜아웃 | `.callout` `.callout-info/-success/-warning/-danger` `.pain-quote` `.stat-highlight` | |
-| 레이아웃 | `.columns` `.col-2/.col-3` `.columns-1-2/-2-1/-3` `.grid-2x2/.grid-3x2` `.center-content` | |
-| Flow(HTML 아키텍처) | `.flow-h/.flow-v` `.flow-group` `.flow-box` `.flow-arrow` `.flow-col` `.flow-step` `.flow-desc` `.icon-item` + `.bg-blue/-orange/-pink/-green/-purple/-red/-dark/-accent` | 박스 5+ 다이어그램의 기본 수단; stage 높이·너비 자동 균일 |
-| 탭/비교 | `.tab-bar/.tab-btn/.tab-content` `.tab-set`(자체완결형) `.compare-toggle/.compare-btn/.compare-content/.compare-highlight` | §4 자동 init |
-| 타임라인/스텝 | `.timeline/.timeline-step/-dot/-label/-desc/-connector` `.steps-container` `.steps--horizontal/--vertical/--circle/--rect/--icon` `.step-item/-marker/-label/-desc` `.agenda-timeline/.agenda-step/-dot/-label/-connector` | |
-| 체크리스트/퀴즈 | `.checklist` `.checklist-detail` `.quiz`+`data-quiz` `.quiz-option`+`data-correct` | §4/§7 |
-| 코드 | `.code-block` `.code-label` + `.keyword/.string/.comment/.number/.function` span | 하이라이트는 span 직접 또는 highlight.js CDN |
-| 대시보드 | `.dashboard-grid` `.node-grid/.node-cell(-ready/-cordoned/-terminating/-empty)` `.event-log` `.data-table` `.qos-card/.qos-display` `.simulator-layout/.simulator-results` `.slider-container/-group/-row/-value` `.command-card/-header/-output` `.chart-container` `.yaml-output` `.mode-selector/-btn/-content` `.alert-toggle` | 인터랙티브 대시보드/시뮬레이터 |
-| 타이포 헬퍼 | `.eyebrow` `.heading-group` `.text-blue/-green/-orange/-pink/-purple/-red/-icon` | |
-| 캔버스 | `.canvas-container`(aspect-ratio 960/400) `.canvas-controls` | |
-| 버튼 | `.btn/.btn-primary/.btn-sm/.btn-group` `.export-toolbar/.export-btn` | |
-| 프레임워크 전용(직접 쓰지 말 것) | `.progress-bar` `.slide-counter/-number/-footer/-logo/-ref` `.nav-hint` `.slide-sidebar/.sidebar-thumb*` `.overview-mode` `.presenter-*` `.export-overlay/-progress*` | JS가 생성/관리 |
+| Cards | `.card-grid` `.card` `.metric-card` `.metric-value/.metric-label` `.kpi-row/.kpi-card/.kpi-value/.kpi-label/.kpi-delta` `.badge(-blue/-green/-red/-yellow/-up/-down)` | For 4+ items, use cards instead of bullets |
+| Callouts | `.callout` `.callout-info/-success/-warning/-danger` `.pain-quote` `.stat-highlight` | |
+| Layout | `.columns` `.col-2/.col-3` `.columns-1-2/-2-1/-3` `.grid-2x2/.grid-3x2` `.center-content` | |
+| Flow (HTML architecture) | `.flow-h/.flow-v` `.flow-group` `.flow-box` `.flow-arrow` `.flow-col` `.flow-step` `.flow-desc` `.icon-item` + `.bg-blue/-orange/-pink/-green/-purple/-red/-dark/-accent` | The default mechanism for 5+ box diagrams; stage height/width auto-normalize |
+| Tabs/compare | `.tab-bar/.tab-btn/.tab-content` `.tab-set` (self-contained) `.compare-toggle/.compare-btn/.compare-content/.compare-highlight` | Auto-init per §4 |
+| Timeline/steps | `.timeline/.timeline-step/-dot/-label/-desc/-connector` `.steps-container` `.steps--horizontal/--vertical/--circle/--rect/--icon` `.step-item/-marker/-label/-desc` `.agenda-timeline/.agenda-step/-dot/-label/-connector` | |
+| Checklist/quiz | `.checklist` `.checklist-detail` `.quiz`+`data-quiz` `.quiz-option`+`data-correct` | §4/§7 |
+| Code | `.code-block` `.code-label` + `.keyword/.string/.comment/.number/.function` span | Highlight either directly via spans or with the highlight.js CDN |
+| Dashboard | `.dashboard-grid` `.node-grid/.node-cell(-ready/-cordoned/-terminating/-empty)` `.event-log` `.data-table` `.qos-card/.qos-display` `.simulator-layout/.simulator-results` `.slider-container/-group/-row/-value` `.command-card/-header/-output` `.chart-container` `.yaml-output` `.mode-selector/-btn/-content` `.alert-toggle` | Interactive dashboards/simulators |
+| Typography helpers | `.eyebrow` `.heading-group` `.text-blue/-green/-orange/-pink/-purple/-red/-icon` | |
+| Canvas | `.canvas-container` (aspect-ratio 960/400) `.canvas-controls` | |
+| Buttons | `.btn/.btn-primary/.btn-sm/.btn-group` `.export-toolbar/.export-btn` | |
+| Framework-only (do not use directly) | `.progress-bar` `.slide-counter/-number/-footer/-logo/-ref` `.nav-hint` `.slide-sidebar/.sidebar-thumb*` `.overview-mode` `.presenter-*` `.export-overlay/-progress*` | Generated/managed by JS |
 
 ## 7. Quiz (quiz-component.js)
 
@@ -240,31 +238,31 @@ initCompareToggles`):
   </div>
 </div>
 ```
-자동 init. `quizManager.reset(id)/resetAll()/getScore()`.
+Auto-initialized. `quizManager.reset(id)/resetAll()/getScore()`.
 
 ## 8. Presenter View & Export
 
-- **P 키** → `PresenterView` 새 창: 현재+다음 슬라이드, 노트(cue/timing 렌더),
-  경과 타이머, 드래그 분할. 노트 소스는 §1의 `presenterNotes`/`<template class="notes">`.
-- **export-utils.js** (toc.html에서만 로드): `ExportUtils.exportPDF({title})` ·
-  `exportPPTX({title})`(html2canvas+PptxGenJS CDN) · `downloadZIP()`.
-- 고품질 PPTX는 headless 경로: `scripts/export_pptx.py <deck-dir>/ -o out.pptx`
-  (Playwright 픽셀 캡처 + 스피커 노트 포함).
+- **P key** → opens a new `PresenterView` window: current + next slide, notes (cue/timing rendered),
+  elapsed timer, drag-to-split. Notes are sourced from §1's `presenterNotes`/`<template class="notes">`.
+- **export-utils.js** (loaded only from toc.html): `ExportUtils.exportPDF({title})` ·
+  `exportPPTX({title})` (html2canvas + PptxGenJS CDN) · `downloadZIP()`.
+- High-quality PPTX uses the headless path: `scripts/export_pptx.py <deck-dir>/ -o out.pptx`
+  (Playwright pixel capture + includes speaker notes).
 
 ## 9. AWS Icons
 
-- 공식 아이콘 필수 (아키텍처/서비스 소개 슬라이드) — 임의 그림 금지.
-- 경로: `common/aws-icons/services/Arch_{Service}_48.svg` 등.
-- `scripts/deck_assets.py`가 참조된 아이콘만 `common/aws-icons/`로 복사하고
-  미해석 이름을 보고한다. (전체 811개 복사 금지.)
+- Official icons are required (for architecture/service-introduction slides) — no arbitrary artwork.
+- Path: `common/aws-icons/services/Arch_{Service}_48.svg`, etc.
+- `scripts/deck_assets.py` copies only referenced icons into `common/aws-icons/`
+  and reports any unresolved names. (Never copy all 811.)
 
-## 10. Authoring Rules (요약 — 상세는 design-direction.md)
+## 10. Authoring Rules (summary — see design-direction.md for detail)
 
-- 색상은 롤 토큰만: raw hex/rgba/inline style 금지 (`check_deck.py` RAW_HEX/RAW_RGBA/INLINE_STYLE).
-- 스페이싱은 8px 그리드 토큰 (OFF_SCALE).
-- 불릿 4+ → 카드 그리드, 8+ → 슬라이드 분할.
-- 제목 ≤28자 헤드라인 (단정/주장/질문/반전), 부제 체언 종결 ≤45자.
-- 모든 콘텐츠 슬라이드에 `<template class="notes">` 150자+.
-- light 기본 듀얼 테마 — 다크 전용 금지. 모든 색이 두 테마에서 성립해야 함.
-- 덱 로컬 `<style>`은 최소화; 일반화 가능한 규칙은 스킬 `assets/theme.css`에
-  패치하고 프레임워크 버전을 올린다 (덱별 재발명 금지 — check_deck.py가 중복 경고).
+- Colors: role tokens only — raw hex/rgba/inline style are forbidden (`check_deck.py` RAW_HEX/RAW_RGBA/INLINE_STYLE).
+- Spacing: 8px grid tokens only (OFF_SCALE).
+- 4+ bullets → card grid; 8+ → split into multiple slides.
+- Title: ≤28-character headline (declarative/claim/question/twist); subtitle: noun-form ending (체언 종결), ≤45 characters.
+- Every content slide needs a `<template class="notes">` of 150+ characters.
+- Light is the default of a dual theme — dark-only is forbidden. Every color must work in both themes.
+- Minimize deck-local `<style>`; when a rule is generalizable, patch it into the skill's
+  `assets/theme.css` and bump the framework version (no per-deck reinvention — check_deck.py warns on duplication).

@@ -209,7 +209,7 @@ assert_contains "$(cat "$RP/SKILL.md" 2>/dev/null || true)" "card-grid" "SKILL.m
 
 - [ ] **Step 2: Run** → FAIL (legacy hardcoded hex/inline styles present).
 
-- [ ] **Step 3: Implement** — rewrite the tab/card/flow copy-paste templates and the "색상 팔레트" table to use the Task-2 primitive classes (`.card-grid`, `.metric-card`, `.tab-set`, `.callout`, `.comparison`, `.flow-group`) and `var(--*)` tokens; no raw hex, no inline color/padding/radius styles. Replace the color table with semantic role names (info/success/warning/danger/accent → tokens). Add a one-line note: light is the default theme; opt back to dark with `class="… theme-dark"` on the deck root.
+- [ ] **Step 3: Implement** — rewrite the tab/card/flow copy-paste templates and the "color palette" table to use the Task-2 primitive classes (`.card-grid`, `.metric-card`, `.tab-set`, `.callout`, `.comparison`, `.flow-group`) and `var(--*)` tokens; no raw hex, no inline color/padding/radius styles. Replace the color table with semantic role names (info/success/warning/danger/accent → tokens). Add a one-line note: light is the default theme; opt back to dark with `class="… theme-dark"` on the deck root.
 
 - [ ] **Step 4: Run** → PASS.
 

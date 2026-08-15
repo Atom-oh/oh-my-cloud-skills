@@ -1,4 +1,4 @@
-# ADR-011: PR Review — L1 결정적 게이트 + Lens×Model 매트릭스
+# ADR-011: PR Review — L1 Deterministic Gate + Lens×Model Matrix
 
 ## Status
 
@@ -6,528 +6,607 @@ Accepted (2026-07-05)
 
 ## Context
 
-ADR-009의 멀티-AI 패널(Codex + Kiro×3)은 리뷰어를 벤더로 다양화했지만, 4개 AI 모두
-**동일한 "전부 다 봐" 프롬프트**로 diff를 리뷰했다. 이 구조는 다양성의 축이 벤더 하나뿐이라,
-특정 검토 영역(예: 버전 정합·dangling 참조)을 한 모델이 놓치면 다른 모델도 같은 프롬프트로
-같은 영역을 놓칠 확률이 높고, 리뷰 결과를 걸러내는 verification 단계도 없어 오탐이 그대로
-코멘트에 실렸다. 또한 결정적으로(스크립트로) 검증 가능한 항목(JSON 유효성, dangling 참조,
-버전 정합)까지 AI 호출로 처리해 불필요한 비용·지연·오탐 여지를 만들었다.
+ADR-009's multi-AI panel (Codex + Kiro×3) diversified reviewers by vendor, but all four AIs
+reviewed the diff with the **same "look at everything" prompt**. In this structure, the only
+axis of diversity is the vendor, so if one model misses a particular review area (e.g. version
+consistency, dangling references), the other models — using the same prompt — are also likely
+to miss that same area. There was also no verification stage to filter review results, so false
+positives went straight into comments unfiltered. In addition, items that can be verified
+deterministically (JSON validity, dangling references, version consistency) were being handled
+via AI calls, creating unnecessary cost, latency, and room for false positives.
 
 ## Options Considered
 
-1. **현행 유지(동일 프롬프트 브로드캐스트)** — 단순하나 다양성 축이 벤더 하나뿐, 사각지대 반복.
-2. **lens 별 전담(모델 1개 : lens 1개)** — 벤더 다양성을 lens 교차확인과 교환, 특정 CLI 부재 시
-   lens 가 통째로 빈다.
-3. **lens×model 풀 매트릭스 + 결정적 pre-check 분리** (채택) — 벤더 다양성과 관점(lens) 다양성을
-   동시에 최대화하고, 결정적으로 검증 가능한 것은 AI 이전에 스크립트로 뺀다.
+1. **Keep the current setup (broadcast the same prompt)** — simple, but diversity has only one axis (vendor), so blind spots repeat.
+2. **One model dedicated per lens (1 model : 1 lens)** — trades vendor diversity for lens cross-checking; if a given CLI is absent, that whole lens goes empty.
+3. **Full lens×model matrix + separate deterministic pre-check** (Adopted) — maximizes both vendor diversity and lens (perspective) diversity at once, and pulls out anything that can be verified deterministically into a script, ahead of AI.
 
 ## Decision
 
-`.github/workflows/pr-review.yml`을 2단 게이트로 재구성한다
+Restructure `.github/workflows/pr-review.yml` into a two-tier gate
 (design: `docs/superpowers/specs/2026-07-05-pr-review-hybrid-lens-design.md`):
 
-- **L1(결정적, AI 호출 없음)** — `scripts/pr-review/precheck.sh`가 PR head 트리를 `git archive`로
-  **데이터로만** 추출(실행 없음)해, base(신뢰) 체크아웃의 `scripts/test-plugins.py --root <트리>`
-  **와 `scripts/test-codex-plugins.py --root <트리>`** 로 매니페스트 JSON 유효성·dangling 참조·
-  버전 정합(`.claude-plugin`)과 `.codex-plugin`/`.agents` 매니페스트 양쪽을 모두 검증한다.
-  (초기 리비전은 `test-plugins.py`만 돌려 `.codex-plugin` 매니페스트가 L1도 AI 재검토도 다
-  건너뛰는 커버리지 갭이 있었다 — CI 자체 리뷰에서 MAJOR로 발견, 같은 PR에서 수정.) 실패 시
-  AI 패널을 호출하지 않고 즉시 `VERDICT: FAIL` — 결정적 문제에 AI 비용을 쓰지 않는다.
-- **L2–L5(lens×model 매트릭스)** — L1 통과 시 4 모델(Codex + Kiro×3) × 4 lens(L2=Skill/Agent
-  품질, L3=보안, L4=코드 정확성, L5=문서 일관성) = 16개 독립 find 에이전트가 전부 병렬(`&`+`wait`)
-  로 실행된다. 각 셀은 자기 lens 하나만 리뷰 — 스코프 축소로 셀당 응답이 짧아져, 병렬 실행 특성상
-  벽시계가 현행(4콜, 전 영역 스코프)보다 오히려 단축될 개연성이 있다(최슬로우-of-16(좁은 스코프)
-  < 최슬로우-of-4(넓은 스코프)).
-- **의장**: Claude Fable 5(→Opus 4.8 폴백, ADR-009 유지)가 16개 셀을 lens 별로 종합.
-  `CHAIR_TIMEOUT`은 120s→600s로 상향(#105, 이 PR과 별개로 병렬 진행). 실측 근거: 같은
-  러너 이미지·서비스어카운트의 다른 실행에서 타임아웃 없는 구버전 스크립트가 357줄
-  diff 종합에 286초를 썼다 — 120s(이후 180s 검토)는 정상 응답 중인 체어를 매번 강제
-  종료시켜 "빈 응답→FAIL"로 오귀속시켰다(Bedrock 장애가 아니라 타임아웃 설정 문제).
-  매트릭스는 입력이 4→16 출력으로 더 커서 여유를 넉넉히 잡아 600s로 유지.
-- **의장 호출은 diff+패널 내용을 argv 가 아니라 stdin 으로 전달**한다. Linux 는 단일 argv
-  인자에 ~128KiB 하드 리밋(exec 즉시 실패)이 있는데, 구 구조(4콜)는 셀당 ~31KB 는 돼야
-  터졌지만 16콜에서는 셀당 평균 ~8KB 만 넘어도 초과한다 — 리뷰가 상세할수록(=출력이
-  길수록) exec 자체가 실패해 "빈 응답→VERDICT: FAIL"로 귀결되는 역설을 막는다. 셀당
-  바이트 캡(`PANEL_CELL_CAP`, 기본 20000)도 belt-and-braces로 추가. 같은 이유로
-  Kiro 셀도 diff 를 argv 에 텍스트로 embed 하지 않고 `fs_read`로 파일 경로만 참조하도록
-  전환(co-agent의 `ai-cli-adapters.md`에 이미 문서화된 패턴 재사용; 이전 리비전의
-  `--trust-tools=read,grep`는 무효한 플래그였다 — 실제 툴명은 `fs_read`).
-- **Kiro `fs_read` 전환의 잔여 위험을 co-agent PR 게이트와 동일하게 완화**한다. `fs_read`로
-  실제 파일 read 권한을 부여하면, 신뢰할 수 없는 PR diff 안의 프롬프트 인젝션이 "그 경로
-  대신 이 job 의 다른 크리덴셜(GH_TOKEN, Codex/의장의 Bedrock Pod Identity `AWS_*`)을
-  읽어 응답에 실으라"를 유도할 수 있고, 그 응답은 체어 종합을 거쳐 공개 PR 코멘트로
-  노출되거나 외부 서비스인 Kiro 로 리전 밖 유출될 수 있다(CI 자체 리뷰에서 CRITICAL로
-  발견 — 상세는 부록 참조). `consensus_hooks.py`의 `_review_one`/`_sanitized_env`와 동일한
-  완화를 Kiro 셀에만 적용: (1) 격리 cwd(`$WORK/kiro-cwd`, 레포 아님) — 상대경로 read가
-  레포 파일에 못 닿게(diff 경로는 이미 절대경로라 무관), (2) env allowlist — `KIRO_API_KEY`
-  + 비민감 변수(PATH/HOME/LANG/TMPDIR)만 전달, GH_TOKEN/AWS_* 등은 차단. Codex는
-  Bedrock 인증에 그 `AWS_*` 자체가 필요해(Pod Identity 주입) 동일 격리를 적용하지
-  않음(스코프 밖 — 이 diff가 새로 연 위험이 아니라 기존 Bedrock 인증 모델의 구조).
-  절대경로 read(`~/.aws/credentials` 등) 유도는 fs_read 가 read-capable 인 한 남는
-  잔여 위험 — co-agent 문서에도 동일하게 명시된 한계. **이 잔여 위험은 명시적
-  accepted-risk 다** — 절대경로 read 유도가 성공하면 그 내용은 로컬 `scrub_secrets()`
-  적용 **이전에 이미 외부 서비스(Kiro)로 전송**된다(egress leg는 스크럽으로 못 막음).
-  완화 요인: 워크플로가 `head.repo.full_name == github.repository` 게이트로 same-repo
-  PR만 실행하므로 위협 행위자는 이미 write 권한을 가진 collaborator로 좁혀지고, env
-  allowlist·격리 cwd/HOME 이 env·`~` 경유 표면은 실측 테스트로 제거함(15차 리뷰에서
-  패널이 CRITICAL로 제기 → 체어가 이 문서화 사실 자체를 근거로 MINOR 하향, 재확인).
-  프로세스/컨테이너 레벨 FS 샌드박스(예: 러너 이미지에 bubblewrap·read-only 마운트로
-  diff 파일만 노출)가 이 잔여 위험을 구조적으로 닫는 유일한 방법 — 운영 후속 항목으로 남김.
-  **HOME 도 격리**(`$KIRO_CWD`, 실제 러너 `$HOME` 아님)해 `~` 표기로 유도되는 케이스의
-  실효 표면을 줄인다(이 러너의 Kiro 인증은 `KIRO_API_KEY` 뿐이라 HOME 아래 크리덴셜
-  파일에 의존하지 않음 — CI 자체 리뷰에서 MAJOR로 발견, 같은 PR에서 수정).
-- **커버리지 floor**: `--v3 --mode default --trust-tools=fs_read` 같은 kiro-cli 플래그가
-  이 러너에서 무효화되거나 바이너리가 없으면, 그 모델의 lens 전부가 graceful skip 으로
-  빠지면서 매트릭스가 조용히 축소된 채(예: Codex 4셀만) `VERDICT: PASS`가 나올 수 있다
-  (CI 자체 리뷰에서 MAJOR로 발견). `run-panel.sh`가 모델별 row 가 완전히 비면
-  `::warning::` + `degraded-models.txt` 를 기록하고, `synthesize.sh`가 그 목록을 리뷰
-  상단에 명시 배너로 남긴다(VERDICT 를 강제 FAIL 하진 않음 — 간헐적 rate-limit로도
-  흔하고, 매트릭스 자체가 lens당 교차확인이라 완전한 맹점은 아니라고 판단; 대신 사람이
-  놓치지 않게 가시화). 살아남은 벤더가 1개 이하로 붕괴하면(전 모델의 (전체-1)개 이상
-  degraded) 이 warn-only 전제 자체가 깨지므로 그 경우만 강제 `VERDICT: FAIL`로 승격한다
-  (상세: 부록 5차). 러너 이미지에서의 실제 `fs_read` 스모크 검증은 이 저장소의 개발
-  환경으로는 할 수 없는 운영 후속 항목으로 남김. 같은 운영 후속 목록에 lens 컬럼 blind
-  spot(모델별 row 체크만 있고 lens 하나가 모든 모델에서 동시에 비는 케이스는 미감지 —
-  runbook 에 이미 "낮은 확률로 간주"로 명시된 판단)의 명시적 추적도 추가한다(16차 리뷰
-  MINOR-3 — 서술 자체는 정확했으나 이 목록에 빠져 있어 추적성이 떨어졌다).
-- **비용은 제약으로 두지 않음**(사용자 결정) — 실제 상한은 러너 동시성/API rate-limit뿐이며,
-  job `timeout-minutes`(50m)로 방어.
-- ADR-009의 나머지 불변식(보안: base-checkout + fork PR 미실행, 데이터 거주성: Kiro 외부 송신
-  accepted-risk, fail-closed VERDICT, 코멘트 upsert marker)은 변경 없이 유지.
+- **L1 (deterministic, no AI calls)** — `scripts/pr-review/precheck.sh` extracts the PR head
+  tree via `git archive` **as data only** (never executed), and against the base (trusted)
+  checkout's `scripts/test-plugins.py --root <tree>` **and `scripts/test-codex-plugins.py
+  --root <tree>`**, verifies manifest JSON validity, dangling references, and version
+  consistency across both the `.claude-plugin` manifests and the `.codex-plugin`/`.agents`
+  manifests. (An early revision ran only `test-plugins.py`, leaving a coverage gap where
+  `.codex-plugin` manifests skipped both L1 and AI re-review — this was found as a MAJOR
+  finding in the CI's own self-review and fixed within the same PR.) On failure, the AI panel
+  is never invoked and the job immediately reports `VERDICT: FAIL` — deterministic problems
+  don't spend AI budget.
+- **L2–L5 (lens×model matrix)** — once L1 passes, 4 models (Codex + Kiro×3) × 4 lenses
+  (L2 = Skill/Agent quality, L3 = security, L4 = code correctness, L5 = documentation
+  consistency) = 16 independent find agents all run in parallel (`&`+`wait`). Each cell reviews
+  only its own single lens — the narrower scope shortens each cell's response, and given the
+  parallel execution, wall-clock time is plausibly even shorter than the current setup (4 calls,
+  full scope) (worst-of-16 (narrow scope) < worst-of-4 (broad scope)).
+- **Chair**: Claude Fable 5 (→ Opus 4.8 fallback, per ADR-009) synthesizes the 16 cells by
+  lens. `CHAIR_TIMEOUT` was raised from 120s to 600s (#105, progressed in parallel and
+  independently of this PR). Measured basis: in a separate run on the same runner image/service
+  account, an older script version without a timeout spent 286 seconds normally synthesizing a
+  357-line diff — the 120s value (later reviewed at 180s) was force-killing a chair that was
+  still responding normally, every time, and misattributing it as "empty response → FAIL" (a
+  timeout misconfiguration, not a Bedrock outage). Since the matrix has more input (4→16
+  outputs), the timeout was kept generously at 600s.
+- **The chair call passes the diff+panel content via stdin rather than argv.** Linux has a hard
+  ~128 KiB limit on a single argv argument (exec fails immediately beyond it); the old structure
+  (4 calls) only broke once each cell exceeded roughly ~31 KB, but with 16 calls the average per
+  cell only needs to exceed roughly ~8 KB to hit the limit — this prevents the paradox where the
+  more detailed a review is (= the longer its output), the more likely the exec itself fails,
+  resulting in "empty response → VERDICT: FAIL." A per-cell byte cap (`PANEL_CELL_CAP`, default
+  20000) was also added as belt-and-braces. For the same reason, the Kiro cell was also switched
+  from embedding the diff as text in argv to referencing only the file path via `fs_read`
+  (reusing a pattern already documented in co-agent's `ai-cli-adapters.md`; the previous
+  revision's `--trust-tools=read,grep` was an invalid flag — the actual tool name is `fs_read`).
+- **The residual risk of switching Kiro to `fs_read` is mitigated the same way as co-agent's PR
+  gate.** Granting `fs_read` actual file-read permission means that prompt injection embedded in
+  an untrusted PR diff could induce it to "instead of that path, read this job's other
+  credentials (GH_TOKEN, Codex/chair's Bedrock Pod Identity `AWS_*`) and include them in the
+  response," and that response could then be exposed in a public PR comment via the chair's
+  synthesis, or leaked outside the region to Kiro, an external service (found as a CRITICAL
+  finding in the CI's own self-review — see Appendix for detail). The same mitigation used in
+  `consensus_hooks.py`'s `_review_one`/`_sanitized_env` is applied only to the Kiro cell:
+  (1) an isolated cwd (`$WORK/kiro-cwd`, not the repo) — so relative-path reads can't reach repo
+  files (the diff path is already absolute, so this doesn't matter for it); (2) an env allowlist
+  — only `KIRO_API_KEY` plus non-sensitive variables (PATH/HOME/LANG/TMPDIR) are passed through;
+  GH_TOKEN/AWS_* etc. are blocked. Codex is not given the same isolation because it actually
+  needs that `AWS_*` itself for Bedrock authentication (Pod Identity injection) (out of scope —
+  this isn't a risk newly opened by this diff, but a structural property of the existing Bedrock
+  auth model). The risk of inducing an absolute-path read (e.g. `~/.aws/credentials`) remains as
+  long as `fs_read` is read-capable — the same limitation is documented in the co-agent docs.
+  **This residual risk is an explicit accepted risk** — if an induced absolute-path read
+  succeeds, its content is **already sent to the external service (Kiro) before** the local
+  `scrub_secrets()` is applied (the egress leg cannot be blocked by scrubbing). Mitigating
+  factors: the workflow only runs same-repo PRs via the `head.repo.full_name ==
+  github.repository` gate, so the threat actor is already narrowed to a collaborator with write
+  access, and the env allowlist plus isolated cwd/HOME have removed the env-/`~`-based attack
+  surface through actual testing (raised as CRITICAL by the panel in round 15 → the chair
+  downgraded it to MINOR based on this very documented fact, and it was reconfirmed). A
+  process/container-level FS sandbox (e.g. exposing only the diff file via bubblewrap or a
+  read-only mount on the runner image) is the only way to structurally close this residual risk —
+  left as an operational follow-up item. **HOME is also isolated** (`$KIRO_CWD`, not the actual
+  runner's `$HOME`) to reduce the effective attack surface of cases induced via `~` notation
+  (this runner's Kiro auth relies only on `KIRO_API_KEY`, not on credential files under HOME —
+  found as MAJOR in the CI's own self-review and fixed within the same PR).
+- **Coverage floor**: if a kiro-cli flag such as `--v3 --mode default --trust-tools=fs_read` is
+  invalidated on this runner, or the binary is missing, all of that model's lenses fall back to a
+  graceful skip, and the matrix could silently shrink (e.g. only Codex's 4 cells remain) while
+  still producing `VERDICT: PASS` (found as MAJOR in the CI's own self-review). When an entire
+  model's row is empty, `run-panel.sh` logs `::warning::` plus `degraded-models.txt`, and
+  `synthesize.sh` puts that list in an explicit banner at the top of the review (this doesn't
+  force VERDICT to FAIL — it's judged that intermittent rate limits are common too, and since the
+  matrix itself provides cross-checking per lens, it isn't a total blind spot; instead, it's made
+  visible so a human doesn't miss it). If the surviving vendor count collapses to 1 or fewer
+  (i.e. (total-1) or more models are degraded), this warn-only premise itself breaks, so only in
+  that case is it forcibly escalated to `VERDICT: FAIL` (detail: Appendix, round 5). Actual
+  `fs_read` smoke verification on the runner image is left as an operational follow-up that
+  cannot be done in this repository's development environment. Also added to the same
+  operational follow-up list: explicit tracking of the lens-column blind spot (only per-model
+  row checks exist; the case where a single lens is simultaneously empty across all models is not
+  detected — a judgment already noted in the runbook as "considered low-probability") (round 16,
+  MINOR-3 — the description itself was accurate, but it was missing from this list, hurting
+  traceability).
+- **Cost is not treated as a constraint** (user decision) — the actual ceiling is only the
+  runner's concurrency/API rate limits, defended against with the job's `timeout-minutes` (50m).
+- The remaining invariants of ADR-009 (security: base-checkout + no fork-PR execution, data
+  residency: Kiro's external transmission as accepted risk, fail-closed VERDICT, comment-upsert
+  marker) remain unchanged.
 
 ## Consequences
 
-- 커버리지가 "리뷰어 다양화"에서 "리뷰어×관점 매트릭스"로 체계화 — 사각지대 감소.
-- 결정적으로 검증 가능한 매니페스트/버전 문제는 0 오탐·0 AI 비용으로 즉시 차단.
-- AI 콜 수가 1×패널(4)에서 최대 4×패널(16)로 증가 — 의도된 트레이드오프(비용 비제약).
-- Phase V(verify, hybrid-gate 완전형)는 이번 구현에 포함하지 않음 — 매트릭스 자체가 lens당
-  4중 교차확인이라 오탐을 상당 부분 흡수한다고 판단; 실제 오탐이 문제되면 추가.
-- 테스트: `tests/pr-review/test-run-panel.sh`(매트릭스 fan-out) + `tests/pr-review/
-  test-precheck.sh`(L1) + `tests/pr-review/test-synthesize.sh`(의장 종합) + `tests/
-  pr-review/test-lib.sh`(scrub_secrets/ensure_slots) 신설, `tests/run-all.sh`에
-  `pass`/`fail` 브리지 추가해 `tests/pr-review/*.sh`를 CI 집계에 포함(이전엔 미집계
-  gap). 라운드별 상세 커버리지는 부록 참조.
-- **자기 검증의 한계이자 그 안에서의 실질 성과**: 이 재설계 자체가 base-script 모델상
-  자기검증 불가(ADR-009)이지만, **이 PR 자체가 CI를 두 차례 거치며 실제 리뷰를 받았다**.
-  1차(구 4-패널 구조, 커밋 01cf9d4)에서 C1(Kiro env/cwd 격리 누락)과 M2(harness `set -e`
-  오염)를 잡아 같은 PR에서 수정. main 에 병렬로 머지된 #105(`CHAIR_TIMEOUT` 120s→600s,
-  이 PR과 별개 원인 진단 — 아래 참조)가 반영된 뒤 2차 리뷰(커밋 9ee2d99)가 실제로
-  완주해, `.codex-plugin` 매니페스트 L1 커버리지 갭(M1)·커버리지 floor 부재(M2)·HOME
-  스크래치 미적용(M3)을 추가로 잡아 같은 PR에서 수정했다. 반대로 그 리뷰가 제기한 항목
-  중 실측으로 반증된 것도 있다(`KIRO_API_KEY` 인용 미비 주장 — `env -i` 조건부 확장이
-  이미 안전함을 직접 재현해 확인, 반영하지 않음) — 패널 지적을 그대로 적용하지 않고
-  코드 대조·재현으로 검증 후 채택한 사례. 이 패턴(제기 → diff/코드 대조 → 확인 시
-  수정, 반증 시 거부 + 사유 기록)은 이후 14차례의 라운드에서도 동일하게 반복됐다 —
-  라운드별 상세는 부록 참조.
-- **CHAIR_TIMEOUT 120s→600s(#105)의 실제 원인**: 이 PR이 진단했던 "argv 128KiB 한계"와는
-  별개로, 병렬로 착수된 #105 가 더 근본적인 원인을 찾았다 — 같은 러너 이미지/서비스어카운트의
-  다른 실행에서 타임아웃 없는 구버전 스크립트가 357줄 diff 종합에 286초를 정상적으로 썼다.
-  즉 관측된 "의장 빈 응답" 실패의 다수는 Bedrock 장애나 ARG_MAX 가 아니라 **120s(이후 180s
-  검토)라는 타임아웃 값 자체가 정상 응답을 죽이기에 너무 짧았던 것**이었다. 두 수정(stdin
-  전환 + 타임아웃 상향)은 서로 다른 실패 모드를 겨냥하며 상호 배타적이지 않다 — stdin
-  전환은 exec() 레벨 하드 실패를 막고, 타임아웃 상향은 정상이지만 느린 응답을 살린다.
+- Coverage is systematized from "diversifying reviewers" to a "reviewer×perspective matrix" — reducing blind spots.
+- Manifest/version problems that can be verified deterministically are blocked immediately with 0 false positives and 0 AI cost.
+- The number of AI calls increases from 1×panel (4) to up to 4×panel (16) — an intended trade-off (cost unconstrained).
+- Phase V (verify, the fully-formed hybrid gate) is not included in this implementation — the matrix itself already provides 4-way cross-checking per lens, which is judged to absorb a substantial share of false positives; it will be added if real false positives become a problem.
+- Tests: newly created `tests/pr-review/test-run-panel.sh` (matrix fan-out) + `tests/pr-review/
+  test-precheck.sh` (L1) + `tests/pr-review/test-synthesize.sh` (chair synthesis) + `tests/
+  pr-review/test-lib.sh` (scrub_secrets/ensure_slots), and a pass/fail bridge was added to
+  `tests/run-all.sh` to include `tests/pr-review/*.sh` in CI aggregation (previously an
+  uncounted gap). Detailed round-by-round coverage is in the Appendix.
+- **A limit of self-verification, and real progress achieved within it**: this redesign is itself
+  unable to self-verify under the base-script model (ADR-009), but **this PR itself went through
+  two actual CI review passes**. The first pass (the old 4-panel structure, commit 01cf9d4)
+  caught C1 (missing Kiro env/cwd isolation) and M2 (harness `set -e` contamination), both fixed
+  within the same PR. After #105 (`CHAIR_TIMEOUT` 120s→600s — diagnosed from a separate root
+  cause, see below), which merged into main in parallel, was reflected, a second review (commit
+  9ee2d99) actually ran to completion, catching and fixing an additional `.codex-plugin` manifest
+  L1 coverage gap (M1), the absence of a coverage floor (M2), and the missing HOME scratch
+  isolation (M3), all within the same PR. Conversely, some items raised by that review were
+  actually disproven through direct verification (a claim that `KIRO_API_KEY` quoting was
+  insufficient — directly reproduced and confirmed that the `env -i` conditional expansion was
+  already safe, so it was not applied) — an example of not blindly applying panel feedback, but
+  verifying it against the code/reproduction before adopting it. This pattern (raised → checked
+  against diff/code → fixed if confirmed, rejected with a documented reason if disproven) recurred
+  identically across the following 14 rounds — see the Appendix for round-by-round detail.
+- **The actual root cause of CHAIR_TIMEOUT 120s→600s (#105)**: separately from the "argv 128 KiB
+  limit" this PR diagnosed, #105, started in parallel, found a more fundamental cause — in a
+  separate run on the same runner image/service account, an older script version without a
+  timeout normally spent 286 seconds synthesizing a 357-line diff. In other words, most of the
+  observed "chair empty response" failures were not Bedrock outages or ARG_MAX, but rather **the
+  timeout value itself — 120s (later reviewed at 180s) — being too short and killing normal
+  responses**. The two fixes (switching to stdin + raising the timeout) target different failure
+  modes and are not mutually exclusive — switching to stdin prevents the hard exec()-level
+  failure, while raising the timeout saves normal-but-slow responses.
 
 ## References
 
-- ADR-009(멀티-AI 패널 원안, 이 ADR 이 amend), ADR-010(Antigravity 제거)
-- `docs/superpowers/specs/2026-07-05-pr-review-hybrid-lens-design.md` (설계안)
+- ADR-009 (the original multi-AI panel decision, amended by this ADR), ADR-010 (Antigravity removal)
+- `docs/superpowers/specs/2026-07-05-pr-review-hybrid-lens-design.md` (design proposal)
 - `.github/workflows/pr-review.yml`, `scripts/pr-review/{precheck,run-panel,synthesize,lib}.sh`,
   `scripts/test-plugins.py --root`, `scripts/test-codex-plugins.py --root`
 - `docs/ci-pr-review.md`, `docs/ci-pr-review-runbook.md`
 - `tests/pr-review/{test-run-panel,test-precheck,test-lib,test-synthesize}.sh`
-- PR #103(이 재설계), #104(co-agent 모델 티어링, 무관 병렬 머지), #105(`CHAIR_TIMEOUT`
-  120s→600s — 이 PR과 별개로 근본 원인 진단)
+- PR #103 (this redesign), #104 (co-agent model tiering, unrelated parallel merge), #105
+  (`CHAIR_TIMEOUT` 120s→600s — root cause diagnosed independently of this PR)
 
 ## Appendix: Round-by-Round Review Log
 
-> 이 부록은 PR #103 이 머지되기 전 자체 CI 리뷰를 15차례 거치며 나온 지적·검증·수정
-> 이력이다. 위 Decision/Consequences 는 durable 한 최종 결정만 담고, 그 결정에 이르는
-> 과정(무엇이 지적됐고, 어떻게 검증했고, 왜 반영했거나 반영하지 않았는지)은 여기 보존한다.
-> 11~14차에서 "Decision 본문이 리비전 로그를 겸해 가독성이 떨어진다"는 지적이 반복됐고,
-> 이 부록 분리로 그 지적을 반영했다.
+> This appendix is the history of findings, verification, and fixes produced across 15 rounds of
+> self-CI review before PR #103 was merged. The Decision/Consequences above hold only the durable
+> final decisions; the process leading to them (what was raised, how it was verified, and why it
+> was or wasn't adopted) is preserved here. Rounds 11–14 repeatedly noted that "the Decision body
+> is also doubling as a revision log, hurting readability," and splitting off this appendix
+> addresses that feedback.
 
-- **3차 리뷰 수정(CI 자체 리뷰, 커밋 5c56d7f 이후)**: (1) 위 절대경로 read 잔여 위험에
-  belt-and-braces 한 겹 추가 — `lib.sh::scrub_secrets()`가 co-agent `_SECRET_RE`(AWS/
-  GitHub/Slack/OpenAI·Anthropic/Google + generic key=value) 패턴과 JWT(Pod Identity
-  토큰 형태) 탐지를 셀 캡 적용 *전*에 적용해, 절대경로 read로 유출된 값이 체어 stdin에
-  실제로 도달하기 전 치환한다(값이 이미 셀 출력에 나타난 뒤에만 작동 — read 자체를 막지
-  못하는 건 여전한 한계). (2) `docs/ci-pr-review.md`/runbook이 `test-codex-plugins.py`를
-  언급 안 해 L1 문서-구현이 드리프트됐던 것을 동기화. (3) L1-fail 코멘트 헤더가 매트릭스가
-  안 돈 경로에서도 "lens×model matrix"를 붙이던 mislabel 수정. (4) `precheck.sh` 세
-  인자 전부 빈 문자열 가드, L1 스텝 `set -euo pipefail` 상향, `synthesize.sh` 셀 순회를
-  `LC_ALL=C sort`로 고정(로케일 의존 순서 제거) + 스테일 주석 정리.
-- **4차 리뷰 수정(CI 자체 리뷰, 커밋 27ab2de 이후) — 이번엔 실제 크래시 버그 포함**:
-  (1) **M1 실측 확인**: `synthesize.sh`의 `printf '%s' "$SCRUBBED" | head -c "$CAP"`가
-  스크럽된 셀이 캡을 넘으면 `head`가 먼저 종료 → `printf`가 SIGPIPE(141) → `set -euo
-  pipefail`이 스크립트 전체를 죽여 `review.md`조차 안 생기는 버그였다(3차 라운드에서
-  스크럽을 파이프에 얹으며 만든 회귀; 100KB→20000B 캡으로 직접 재현해 exit 141 확인,
-  파일 경유로 바꿔 재현 안 되는 것도 확인). 파이프를 없애고 스크럽 결과를 임시파일에
-  써서 `head -c file`로 읽도록 수정 — 프로세스 간 파이프가 없으니 SIGPIPE 자체가 발생
-  불가. (2) `scrub_secrets()` 커버리지 갭 2건도 실측 확인 후 수정: unquoted `KEY=value`
-  (가장 흔한 크리덴셜 파일 형태)가 안 걸렸던 것, PEM 이 헤더 줄만 치환되고 본문(실제
-  키)이 그대로 남던 것(line-oriented sed 로는 멀티라인 블록을 못 다룸 — awk 상태기계로
-  BEGIN..END 블록 전체를 치환하도록 전환). (3) minor: 워크플로 timeout 산정 주석을
-  600s 기준으로 갱신, `precheck.sh`에 `pr_number` 숫자 형식 가드 추가, 테스트의
-  하드코딩 `/tmp/*.log` 경로를 전부 `mktemp` 로 교체(병렬 실행 간섭 제거).
-  **의식적으로 반영 안 함**: 설계 spec의 Status를 "Implemented"로 갱신하라는 제안 —
-  `docs/superpowers/CLAUDE.md` 컨벤션상 spec 은 작성 시점의 의도를 그대로 굳혀두는
-  historical 아티팩트이고 durable 한 현재 상태는 ADR(이미 Accepted)이 맡는다; spec
-  Status 를 나중 현실에 맞춰 되돌려 쓰는 건 그 컨벤션이 명시적으로 금지.
+- **Round 3 fix (CI self-review, after commit 5c56d7f)**: (1) added one more layer of
+  belt-and-braces to the above absolute-path-read residual risk — `lib.sh::scrub_secrets()` now
+  applies detection of the co-agent `_SECRET_RE` patterns (AWS/GitHub/Slack/OpenAI·Anthropic/
+  Google + generic key=value) and JWTs (Pod Identity token shape) *before* the per-cell cap is
+  applied, substituting any value leaked via an absolute-path read before it actually reaches the
+  chair's stdin (this only works once the value has already appeared in a cell's output — it
+  still cannot prevent the read itself, a remaining limitation). (2) synced
+  `docs/ci-pr-review.md`/runbook, which had drifted from the L1 implementation by not mentioning
+  `test-codex-plugins.py`. (3) fixed a mislabel where the L1-fail comment header attached
+  "lens×model matrix" even on paths where the matrix never ran. (4) added a guard for all three
+  `precheck.sh` arguments being empty strings, raised the L1 step to `set -euo pipefail`, fixed
+  `synthesize.sh`'s cell iteration to use `LC_ALL=C sort` (removing locale-dependent ordering), and cleaned up stale comments.
+- **Round 4 fix (CI self-review, after commit 27ab2de) — this time including an actual crash bug**:
+  (1) **M1 confirmed by direct reproduction**: in `synthesize.sh`, `printf '%s' "$SCRUBBED" |
+  head -c "$CAP"` had a bug where, if a scrubbed cell exceeded the cap, `head` would exit first →
+  `printf` would receive SIGPIPE (141) → `set -euo pipefail` would kill the entire script, so not
+  even `review.md` would be produced (a regression introduced in round 3 when scrubbing was
+  layered onto a pipe; directly reproduced with a 100KB→20000B cap and confirmed exit 141, and
+  confirmed it does not reproduce once routed through a file instead). Removed the pipe and had
+  the scrub result written to a temp file, read via `head -c file` — with no inter-process pipe,
+  SIGPIPE itself cannot occur. (2) also fixed, after direct confirmation, 2 coverage gaps in
+  `scrub_secrets()`: unquoted `KEY=value` (the most common credential-file shape) wasn't being
+  caught, and a PEM's header line was substituted but its body (the actual key) was left intact
+  (a line-oriented sed cannot handle multi-line blocks — switched to an awk state machine that
+  substitutes the entire BEGIN..END block). (3) minor: updated the workflow's timeout-estimation
+  comment to reflect the 600s baseline, added a numeric-format guard for `pr_number` in
+  `precheck.sh`, and replaced all of the tests' hardcoded `/tmp/*.log` paths with `mktemp`
+  (removing interference between parallel runs). **Deliberately not adopted**: a suggestion to
+  update the design spec's Status to "Implemented" — per `docs/superpowers/CLAUDE.md`'s
+  convention, a spec is a historical artifact that freezes the intent at the time it was written,
+  and the durable current state is the ADR's job (already Accepted); rewriting a spec's Status to
+  match later reality is explicitly forbidden by that convention.
 
-- **5차 리뷰 수정(커밋 14a6686 이후)**: (1) MAJOR — `run-panel.sh`의 스킵-진단 블록이
-  실패한 셀의 stderr 마지막 25줄을 `tail -25 "$e" >&2`로 스크럽 없이 그대로 public CI
-  로그에 흘렸다. `docs/ci-pr-review.md`는 "원시 stderr를 코멘트/로그로 노출하지 않음"을
-  명시하는데 실제 구현이 그 문서와 불일치했고, Kiro `fs_read` 위협모델(디프에 심어진
-  프롬프트 인젝션이 크리덴셜을 stderr로 유도)까지 겹치면 실제 유출 경로였다. 코드 확인으로
-  CONFIRMED — `tail -25 "$e" | scrub_secrets >&2`로 수정, `tail`/`scrub_secrets` 내부
-  awk·sed 모두 EOF까지 전량 소비하므로(3차/4차에서 잡은 SIGPIPE 패턴과 달리 조기 종료
-  단계가 없음) 새로운 SIGPIPE 위험은 생기지 않음을 확인. (2) MAJOR — 커버리지 floor가
-  warn-only라, 벤더 하나가 통째로(예: Kiro 3개 모델 전부가 새 플래그 조합 버그로 동시
-  실패) 죽어도 나머지 벤더 하나(Codex)만으로 매트릭스가 조용히 `VERDICT: PASS`를 낼 수
-  있어 fail-closed 계약이 약화된다는 지적 — 실측(3/4 모델 죽는 시나리오를 mock으로 재현)
-  으로 CONFIRMED. 리뷰가 제안한 "1개라도 죽으면 즉시 FAIL"은 채택하지 않음(단일 모델의
-  일시적 rate-limit까지 차단하면 그 lens는 여전히 3중 교차확인이 성립하는데도 과잉
-  차단) — 대신 `TOTAL_MODELS - 1`(살아남은 벤더 ≤1, 즉 어떤 lens에도 교차확인이 전혀
-  안 남는 경우)만 강제 FAIL 하는 중간 지점을 구현: `run-panel.sh`가
-  `coverage-severe.flag`를 쓰고, `synthesize.sh`가 그 플래그를 보면 체어가 이미 쓴
-  `VERDICT:` 줄을 `sed -i '/^VERDICT:/d'`로 지운 뒤 강제 FAIL 줄 하나만 남긴다(코멘트
-  스텝이 파일 마지막 줄만 보므로 원본 PASS 가 남아있으면 BLOCKED 배지와 모순돼 보임).
-  3/4 죽음(플래그 켜짐+체어 PASS→강제 FAIL, VERDICT 줄 1개만 남음) / 1/4 죽음(플래그
-  안 켜짐+체어 PASS 그대로 보존) 두 시나리오 모두 mock 기반으로 직접 재현 후 테스트로
-  고정(`test-run-panel.sh` (f)/(g), `test-synthesize.sh` (e)). **반증**: 같은 라운드에서
-  나온 "JWT 패턴이 개행을 넘어 인젝션될 수 있다" 주장은 실측으로 반증 — `scrub_secrets`는
-  `sed -z` 없이 라인 단위로만 동작하므로 `[[:space:]]`가 개행을 건너 매칭될 수 없음을
-  직접 확인, 반영하지 않음.
+- **Round 5 fix (after commit 14a6686)**: (1) MAJOR — `run-panel.sh`'s skip-diagnostic block was
+  piping the last 25 lines of a failed cell's stderr straight into the public CI log via `tail
+  -25 "$e" >&2`, unscrubbed. `docs/ci-pr-review.md` explicitly states that "raw stderr is never
+  exposed via comments/logs," and the actual implementation did not match that documentation;
+  combined with the Kiro `fs_read` threat model (prompt injection embedded in the diff inducing
+  credentials to be routed to stderr), this was an actual leak path. CONFIRMED by code review —
+  fixed to `tail -25 "$e" | scrub_secrets >&2`, and confirmed no new SIGPIPE risk is introduced,
+  since both `tail` and the awk/sed inside `scrub_secrets` fully consume input to EOF (unlike the
+  SIGPIPE pattern caught in rounds 3/4, there is no early-exit stage here). (2) MAJOR — because
+  the coverage floor is warn-only, if an entire vendor dies at once (e.g. all 3 Kiro models fail
+  simultaneously due to a new flag-combination bug), the matrix could still silently produce
+  `VERDICT: PASS` using only the remaining vendor (Codex), weakening the fail-closed contract —
+  CONFIRMED by direct reproduction (mocking a scenario where 3/4 models die). The review's
+  suggestion of "force FAIL if even one dies" was not adopted (that would over-block even a single
+  model's transient rate limit, when that lens still has 3-way cross-checking) — instead
+  implemented a middle ground that forces FAIL only when `TOTAL_MODELS - 1` (i.e. ≤1 surviving
+  vendor, meaning no lens retains any cross-checking at all): `run-panel.sh` writes a
+  `coverage-severe.flag`, and when `synthesize.sh` sees that flag, it deletes whatever
+  `VERDICT:` line the chair already wrote via `sed -i '/^VERDICT:/d'` and leaves only the single
+  forced-FAIL line (the comment step only looks at the file's last line, so leaving the original
+  PASS in place would visually contradict the BLOCKED badge). Both the 3/4-dead scenario (flag on
+  + chair PASS → forced FAIL, only 1 VERDICT line remains) and the 1/4-dead scenario (flag off +
+  chair PASS preserved as-is) were directly reproduced via mocks and locked in with tests
+  (`test-run-panel.sh` (f)/(g), `test-synthesize.sh` (e)). **Disproven**: a claim raised in the
+  same round that "the JWT pattern could be injected across a newline" was disproven by direct
+  testing — confirmed that `scrub_secrets` operates line-by-line without `sed -z`, so
+  `[[:space:]]` cannot match across a newline; not adopted.
 
-- **6차 리뷰 수정(커밋 1132c1d 이후, PASSED — CRITICAL/MAJOR 0건, MINOR만)**: 3/3 패널
-  합의로 CRITICAL·MAJOR 없음이 확정됐고(제기된 2건은 diff 대조로 MINOR 하향 — L1 실패
-  출력 미스크럽, `kiro_env` 함수-as-command 패턴), 나머지 MINOR 4건 중 비용이 낮고 실질
-  하드닝 효과가 있는 것들을 이번 라운드에 함께 반영했다: (1) `pr-review.yml`의 "Write L1
-  failure as review" 스텝이 `precheck.sh` 출력을 `scrub_secrets` 없이 그대로 PR 코멘트에
-  게시하던 것 — 현재 L1 입력엔 실질 크리덴셜 유출원이 없다는 패널 분석에 동의하지만,
-  `docs/ci-pr-review.md`의 "원시 출력 미노출" 원칙과의 불일치는 실재해 `lib.sh`를 source 해
-  `scrub_secrets`를 통과시키도록 수정. (2) `precheck.sh`의 tar 추출이 PR 트리의 symlink를
-  그대로 남기던 것 — 현재 검증기는 파싱 실패를 에코하지 않아 유출은 없지만, (1)의 경로와
-  결합될 수 있는 미래 위험에 대한 defense-in-depth로 `find "$TREE" -type l -delete` 추가.
-  (3) `run-panel.sh`의 `DIFF="$(realpath "$1" 2>/dev/null || echo "$1")"` 폴백이
-  realpath 실패 시 원본(상대)경로를 그대로 흘려 격리 cwd 의 Kiro가 diff를 못 찾는
-  blind-review로 조용히 새던 것 — fail-fast(`|| exit 1`)로 전환. 직접 재현해 realpath는
-  대상 파일이 없어도 부모 디렉터리만 존재하면 성공(exit 0)함을 확인, 부모 디렉터리 자체가
-  없는 경로로 실패를 재현한 뒤 테스트로 고정. (4) `test-plugins.py`가 `--root` 미지정
-  시에만 `.resolve()`를 빠뜨리던 비대칭을 `test-codex-plugins.py`와 맞춤(cosmetic).
-  **채택 안 함**: 패널이 "결함 아님"으로 확인한 `kiro_env` 함수-as-command 패턴은 현재
-  서브셸 상속으로 정상 동작함이 확인돼 있어 불필요한 리팩터를 하지 않음(미래 리팩터 시
-  주의사항으로만 기록); 비인용 heredoc lens 프롬프트 역시 `$COMMON` 확장이 의도된 설계라
-  변경하지 않음. 신규 테스트: `test-run-panel.sh` (i)(realpath fail-fast),
-  `test-precheck.sh` (k)(symlink 제거) — 전체 스위트 586 passed(+4), 기존 무관 17건
-  실패는 그대로.
+- **Round 6 fix (after commit 1132c1d, PASSED — 0 CRITICAL/MAJOR, MINOR only)**: with 3/3 panel
+  consensus, no CRITICAL/MAJOR was confirmed (the 2 items raised were downgraded to MINOR after
+  cross-checking against the diff — unscrubbed L1-failure output, and the `kiro_env`
+  function-as-command pattern); of the remaining 4 MINOR items, the low-cost ones with real
+  hardening value were folded into this round too: (1) the "Write L1 failure as review" step in
+  `pr-review.yml` was posting `precheck.sh`'s output straight into the PR comment without
+  `scrub_secrets` — while agreeing with the panel's analysis that the current L1 inputs have no
+  real credential-leak source, the mismatch with `docs/ci-pr-review.md`'s "never expose raw
+  output" principle was real, so `lib.sh` is now sourced to pass the output through
+  `scrub_secrets`. (2) `precheck.sh`'s tar extraction was leaving symlinks from the PR tree
+  intact — the current validators don't echo parse failures, so there is no leak today, but as
+  defense-in-depth against a future risk that could combine with (1), added `find "$TREE" -type l
+  -delete`. (3) `run-panel.sh`'s `DIFF="$(realpath "$1" 2>/dev/null || echo "$1")"` fallback was
+  silently leaking into a blind review, where, on realpath failure, it passed through the
+  original (relative) path, which Kiro's isolated cwd could not find — switched to fail-fast
+  (`|| exit 1`). Directly reproduced that realpath succeeds (exit 0) as long as the parent
+  directory exists, even if the target file doesn't, then reproduced an actual failure using a
+  path whose parent directory itself doesn't exist, and locked it in with a test. (4) aligned an
+  asymmetry where `test-plugins.py` only omitted `.resolve()` when `--root` wasn't given, matching
+  `test-codex-plugins.py` (cosmetic). **Not adopted**: the `kiro_env` function-as-command pattern,
+  which the panel confirmed as "not a defect," was left unrefactored since it's confirmed to work
+  correctly today via subshell inheritance (noted only as a caution for future refactors); the
+  unquoted heredoc lens prompt was also left unchanged since `$COMMON` expansion is an intended
+  part of the design. New tests: `test-run-panel.sh` (i) (realpath fail-fast),
+  `test-precheck.sh` (k) (symlink removal) — full suite 586 passed (+4), the same 17 pre-existing unrelated failures remain.
 
-- **7차 리뷰 수정(커밋 e59c0ff 이후, BLOCKED — MAJOR 1건)**: 패널 무응답(Claude solo)으로
-  체어 단독 diff 대조였지만 지적은 CONFIRMED — `run-panel.sh`가 새로 만드는 상태 파일 중
-  `coverage-severe.flag`만 실행 시작 시 리셋되지 않았다. `responded.txt`(`: >`),
-  `degraded-models.txt`(`: >`), `pr-tree`(`rm -rf`)는 전부 매 실행 초기화되는데 이 플래그만
-  빠져, self-hosted 러너가 job 간 `/tmp`를 유지하면(현재 워크플로는 `mkdir -p`만 하고
-  정리하지 않음 — ephemeral 가정이 코드 어디에도 명시돼 있지 않음) 한 번 3/4 모델이 죽은
-  이후 완전히 정상인 후속 PR 리뷰까지 전부 "커버리지 붕괴로 강제 FAIL"이 되는 상태 오염
-  버그였다. `run-panel.sh` 시작부(`ensure_slots`/`: > "$RESP"` 옆)에 `rm -f
-  "$WORK/coverage-severe.flag"` 추가로 수정. 같은 라운드에서 지적된 MINOR도 뿌리가 같아
-  함께 반영: `ensure_slots()`가 `mkdir -p`만 해 slot 디렉터리 내 orphaned 셀 파일(예: 이전
-  실행/구 lens 구성의 잔재)이 안 지워지던 것 — `rm -rf "$1/slot"; mkdir -p "$1/slot"`로 변경.
-  또한 `scrub_secrets`의 PEM awk 상태기계가 `END` 줄이 끝내 안 나오면(잘리거나 변조된 셀
-  출력) `skip=1`이 유지돼 그 뒤 정상 finding 까지 통째로 삼키는 문제 — fail-safe 방향이라
-  유출은 아니지만, `END { if (skip) print "[REDACTED-UNTERMINATED-PEM-BLOCK]" }`를 추가해
-  "무언가 삼켜졌다"는 사실 자체는 보존하도록 수정. **채택 안 함**: L1-fail 경로를
-  `panel_responded` 문자열 리터럴 비교 대신 전용 output 변수로 바꾸라는 제안과, `run-panel.sh`
-  의 `$WORK` 상대경로 비대칭 정렬 제안은 둘 다 실제 결함이 아닌 코스메틱 하드닝이라 이번
-  라운드엔 반영하지 않음(호출부가 전부 절대경로만 써 현재 안전). 신규 테스트: `test-run-panel.sh`
-  (j)(같은 `$WORK` 로 severe→정상 재실행 시 플래그·slot 잔재 모두 사라지는지),
-  `test-lib.sh`(unterminated PEM 이 경고 마커를 남기는지) — 전체 스위트 589 passed(+3),
-  기존 무관 17건 실패는 그대로.
+- **Round 7 fix (after commit e59c0ff, BLOCKED — 1 MAJOR)**: the panel didn't respond
+  (Claude solo), so it was the chair alone cross-checking against the diff, but the finding was
+  CONFIRMED — of the state files `run-panel.sh` newly creates, only `coverage-severe.flag` was
+  not reset at the start of a run. `responded.txt` (`: >`), `degraded-models.txt` (`: >`), and
+  `pr-tree` (`rm -rf`) are all reinitialized on every run, but this flag was missing from that
+  set — if the self-hosted runner preserves `/tmp` across jobs (the current workflow only does
+  `mkdir -p` and never cleans up — the ephemeral assumption is never stated anywhere in the code),
+  a single instance of 3/4 models dying would poison state so that even a subsequent, fully
+  normal PR review would be forced into "coverage collapse → forced FAIL." Fixed by adding `rm -f
+  "$WORK/coverage-severe.flag"` near the start of `run-panel.sh` (next to `ensure_slots`/`: >
+  "$RESP"`). A MINOR item raised in the same round, sharing the same root cause, was fixed
+  together: `ensure_slots()` only did `mkdir -p`, so orphaned cell files inside a slot directory
+  (leftovers from a previous run or an old lens configuration) never got cleared — changed to
+  `rm -rf "$1/slot"; mkdir -p "$1/slot"`. Also, `scrub_secrets`'s PEM awk state machine had a
+  problem where, if the `END` line never appeared (a truncated or tampered cell output), `skip=1`
+  would remain set and swallow all subsequent legitimate findings whole — while this is fail-safe
+  in direction (not a leak), added `END { if (skip) print "[REDACTED-UNTERMINATED-PEM-BLOCK]" }`
+  to at least preserve the fact that "something was swallowed." **Not adopted**: a suggestion to
+  replace the L1-fail path's string-literal comparison of `panel_responded` with a dedicated
+  output variable, and a suggestion to align `run-panel.sh`'s relative-path asymmetry for
+  `$WORK` — both were judged cosmetic hardening rather than real defects, so neither was adopted
+  in this round (all call sites already use absolute paths only, so it is safe as-is). New tests:
+  `test-run-panel.sh` (j) (that both the flag and slot leftovers disappear on a re-run using the
+  same `$WORK`, severe→normal), `test-lib.sh` (that an unterminated PEM leaves a warning marker) — full suite 589 passed (+3), the same 17 pre-existing unrelated failures remain.
 
-- **8차 리뷰 수정(커밋 15ab50d 이후, PASSED — CRITICAL/MAJOR 0건, MINOR 5건)**: 비차단
-  하드닝/UX 지적 중 비용이 낮고 실질 이득이 있는 3건을 반영했다. (1) `ensure_slots`를
-  `rm -rf "$1/slot"`로 바꾼 직전 라운드 수정이 `precheck.sh`가 이미 지키는 "파괴적 경로가
-  생길 수 있는 인자는 가드" 원칙을 `run-panel.sh`엔 적용하지 않은 비일관 — `$WORK`가 비면
-  `rm -rf /slot`(파일시스템 루트 하위)이 되는 latent 파괴적 경로였다. `LENSES_DIR`/`WORK`
-  빈 문자열 가드를 추가(`DIFF`는 `realpath`가 빈 문자열에 이미 실패해 fail-fast 되어 있음을
-  직접 확인, 별도 가드 불필요). (2) `precheck.sh`가 `set -e` 아래 `test-plugins.py` →
-  `test-codex-plugins.py`를 순차 실행해, 첫 검증기가 실패하면 두 번째는 안 돌아 PR 작성자가
-  한 부류를 고치고 다시 push 해야 다른 부류를 발견하는 왕복이 생겼다(fail-closed 계약 자체는
-  유지 — UX 문제) — `rc=0; ... || rc=1` 로 모아 양쪽 다 실행 후 합산 종료하도록 수정.
-  (3) `scrub_secrets`의 `sk-(proj-|ant-)?...` 패턴에 좌측 단어 경계가 없어 "risk-assessment-
-  management-system" 같은 일반 문구의 부분 문자열(`risk`의 "sk-")도 20자 이상 이어지면
-  통째로 치환되던 것을 직접 재현 확인 — fail-safe 방향(유출 아님)이라도 리뷰 가독성을
-  훼손해 `(^|[^A-Za-z0-9_])` 좌측 경계를 추가, 실제 키(`sk-ant-...`/`sk-proj-...`) 탐지는
-  그대로 유지됨을 재확인. **채택 안 함**: 테스트 `setup()`이 매번 새 `$BIN`을 prepend만
-  하고 걷어내지 않는 PATH 누적 패턴 — 각 케이스가 필요한 mock을 항상 새로 만들어 최신
-  mock이 이기므로 현재 실해 없음(구 테스트 파일들도 이미 이 패턴), 불필요한 리팩터 보류.
-  워크플로 YAML heredoc 들여쓰기 잔존은 모델 동작에 무해한 cosmetic이라 보류. 신규 테스트:
-  `test-run-panel.sh` (k)(lenses_dir/workdir 빈 인자 가드), `test-precheck.sh` (l)(두
-  검증기 오류가 한 번에 보고되는지), `test-lib.sh`(risk-... 오탐 가드) — 전체 스위트 594
-  passed(+5), 기존 무관 17건 실패는 그대로.
+- **Round 8 fix (after commit 15ab50d, PASSED — 0 CRITICAL/MAJOR, 5 MINOR)**: adopted 3 of the
+  non-blocking hardening/UX items that were low-cost with real value. (1) the previous round's
+  fix that changed `ensure_slots` to `rm -rf "$1/slot"` was inconsistent with the "guard arguments
+  that could produce a destructive path" principle already followed in `precheck.sh`, but not
+  applied to `run-panel.sh` — if `$WORK` is empty, this becomes `rm -rf /slot` (under the
+  filesystem root), a latent destructive path. Added empty-string guards for `LENSES_DIR`/`WORK`
+  (directly confirmed `DIFF` is already fail-fast because `realpath` already fails on an empty
+  string, so no separate guard is needed there). (2) `precheck.sh` ran `test-plugins.py` →
+  `test-codex-plugins.py` sequentially under `set -e`, so if the first validator failed, the
+  second never ran, forcing the PR author into a round trip of fixing one category, pushing
+  again, and only then discovering the other category (the fail-closed contract itself was
+  preserved — this was a UX problem) — fixed to accumulate via `rc=0; ... || rc=1` so both run
+  and the exit code reflects both. (3) `scrub_secrets`'s `sk-(proj-|ant-)?...` pattern had no
+  left word boundary, so a substring like "risk-assessment-management-system" (the "sk-" inside
+  "risk") could get wholly substituted if it ran 20+ characters — directly reproduced and
+  confirmed — while this is fail-safe in direction (not a leak), it hurt review readability, so
+  added a `(^|[^A-Za-z0-9_])` left boundary, reconfirmed that detection of actual keys
+  (`sk-ant-...`/`sk-proj-...`) is preserved. **Not adopted**: the tests' `setup()` pattern of
+  always prepending a new `$BIN` to PATH without ever removing the old one — since each test case
+  always creates the mock it needs fresh, the newest mock always wins, so there's no real harm
+  today (older test files already use this same pattern) — deferred an unnecessary refactor.
+  Also deferred: leftover indentation in the workflow YAML heredocs, which is harmless cosmetic
+  and doesn't affect model behavior. New tests: `test-run-panel.sh` (k) (empty
+  lenses_dir/workdir argument guards), `test-precheck.sh` (l) (that both validators' errors are
+  reported at once), `test-lib.sh` (guard against the risk-... false positive) — full suite 594 passed (+5), the same 17 pre-existing unrelated failures remain.
 
-- **9차 리뷰 수정(커밋 f4a0f57 이후, PASSED — CRITICAL/MAJOR 0건, MINOR 4건)**: 이번
-  라운드는 검토한 위험 후보 대부분이 이미 방어돼 있음을 diff로 재확인했다고 명시(`if`-감싼
-  L1 fail-closed 라우팅, `synthesize.sh`의 비최종 `&&` 리스트, `kiro_env` 서브셸 상속,
-  `realpath` fail-fast, severe flag/slot 리셋, `while … done < <(sort)` 서브셸 아님). 남은
-  MINOR 4건 중 3건을 반영: (1) `.github/workflows/pr-review.yml`의 "Build lens prompts"
-  스텝이 `/tmp/pr-review/lenses`를 `mkdir -p`만 하고 절대 비우지 않던 것 — 7차/8차에서 잡은
-  `coverage-severe.flag`/slot과 같은 뿌리(비-ephemeral 러너에서 lens 구성이 바뀌면 구버전
-  `*.txt`가 `LENS_FILES` 글롭에 잡혀 유령 매트릭스 행이 생김) — 실행 시작 시 `rm -rf` 후
-  재생성하도록 수정. (2) `ensure_slots()` 자체가 `$1` 빈 문자열을 안 가드해, 유일한
-  호출자(`run-panel.sh`)의 가드에만 의존하던 것 — `precheck.sh`의 "파괴적 경로를 만드는
-  함수는 자기 안에서도 가드" 원칙에 맞춰 함수 내부에 직접 가드 추가. (3) 같은 self-hosted
-  러너에서 다른 PR의 잡이 겹치면(러너 풀 병렬화 시) 고정된 `/tmp/pr-review` 경로를 공유해
-  서로의 상태를 밟을 수 있다는 지적 — 리뷰가 제시한 두 대안(`$RUNNER_TEMP` 전환 / PR 번호
-  포함 경로) 중 후자를 선택: L1 스텝에서 `WORK="/tmp/pr-review-${PR_NUMBER}"`를 계산해
-  `GITHUB_ENV`로 내보내고, 이후 모든 스텝이 `$pr_work_dir`을 그대로 재사용하도록 워크플로
-  전체를 정렬(단일 PR 재실행 시나리오는 여전히 script-level 리셋(coverage-severe.flag/slot/
-  lenses)이 방어, 이 변경은 서로 다른 PR 간 경로 격리를 추가). `$RUNNER_TEMP` 전면 전환은
-  `/tmp/pr-diff*.txt`/`review.md` 등 다른 파일까지 건드리는 더 큰 blast radius라 이번엔
-  보류(현재 리뷰가 지목한 것은 `/tmp/pr-review`뿐). **채택 안 함**: 테스트 PATH 누적/YAML
-  heredoc 들여쓰기는 이미 6차/8차에서 "의식적 보류"로 기록된 항목이라 재차 판단하지 않음.
-  신규 테스트: `test-lib.sh`(`ensure_slots("")` 가 실패하는지, 정상 workdir 에는 그대로
-  slot 을 만드는지) — 전체 스위트 596 passed(+2), 기존 무관 17건 실패는 그대로.
+- **Round 9 fix (after commit f4a0f57, PASSED — 0 CRITICAL/MAJOR, 4 MINOR)**: this round
+  explicitly noted, after re-checking the diff, that most candidate risks reviewed were already
+  defended (the `if`-wrapped L1 fail-closed routing, `synthesize.sh`'s non-final `&&` list,
+  `kiro_env` subshell inheritance, `realpath` fail-fast, the severe-flag/slot reset, and `while …
+  done < <(sort)` not being a subshell). Of the remaining 4 MINOR items, 3 were adopted: (1) the
+  "Build lens prompts" step in `.github/workflows/pr-review.yml` only did `mkdir -p` on
+  `/tmp/pr-review/lenses` and never cleared it — sharing the same root cause caught in rounds
+  7/8 with `coverage-severe.flag`/slot (on a non-ephemeral runner, changing the lens
+  configuration could leave stale `*.txt` files that get picked up by the `LENS_FILES` glob,
+  producing a phantom matrix row) — fixed to `rm -rf` and regenerate at the start of the run.
+  (2) `ensure_slots()` itself didn't guard against an empty `$1`, relying purely on its only
+  caller (`run-panel.sh`) to guard it — added a direct guard inside the function itself, in line
+  with `precheck.sh`'s "a function that produces destructive paths must guard itself internally"
+  principle. (3) a concern that overlapping jobs from different PRs on the same self-hosted
+  runner (when parallelized across a runner pool) share the fixed `/tmp/pr-review` path and could
+  step on each other's state — of the two alternatives the review suggested (switching to
+  `$RUNNER_TEMP` / including the PR number in the path), the latter was chosen: the L1 step now
+  computes `WORK="/tmp/pr-review-${PR_NUMBER}"` and exports it via `GITHUB_ENV`, and the entire
+  workflow was aligned so every subsequent step reuses `$pr_work_dir` as-is (the single-PR
+  re-run scenario is still defended by the existing script-level resets
+  (coverage-severe.flag/slot/lenses); this change adds path isolation between different PRs). A
+  full switch to `$RUNNER_TEMP` was deferred this round since it would have a much larger blast
+  radius, touching other files like `/tmp/pr-diff*.txt`/`review.md` (the current review only
+  flagged `/tmp/pr-review`). **Not adopted**: the test PATH accumulation and YAML heredoc
+  indentation, already recorded as "deliberately deferred" in rounds 6/8, weren't re-judged.
+  New tests: `test-lib.sh` (that `ensure_slots("")` fails, and that a normal workdir still gets
+  its slot created) — full suite 596 passed (+2), the same 17 pre-existing unrelated failures remain.
 
-- **10차 리뷰 수정(커밋 75cfbab 이후, PASSED — CRITICAL/MAJOR 0건, MINOR 4건)**: 9차가
-  `/tmp/pr-review`를 PR 번호로 격리한 직후, 이번 리뷰는 **그 PR이 새로 만든** 파일 하나가
-  같은 격리를 놓쳤음을 잡았다 — 4건 모두 비용이 낮고 실질 이득이 있어 전부 반영. (1)
-  `l1-output.txt`가 여전히 고정 `/tmp/l1-output.txt`라, `$WORK`를 PR 번호로 격리한 의도와
-  불일치(러너 풀 병렬화 시 다른 PR의 L1 실패 코멘트에 이 PR의 precheck 출력이 실릴 수
-  있음) — `"$WORK/l1-output.txt"`로 옮기고 "Write L1 failure as review" 스텝도
-  `$pr_work_dir`를 참조하도록 정렬. (2) `coverage-severe.flag`/slot/lenses 는 매 실행
-  리셋되는데 `$WORK/kiro-cwd`(Kiro 가짜 HOME)는 `mkdir -p`만 해 kiro-cli 가 남기는 캐시/
-  세션 상태가 비-ephemeral 러너에서 누적·전이될 수 있었다(크리덴셜은 없어 보안 영향은
-  아니고 재현성 문제) — `KIRO_CWD` 정의 줄에 `rm -rf` 추가로 같은 뿌리를 완결. (3) PR별로
-  격리된 `/tmp/pr-review-<N>` 이 job 종료 후 정리되지 않아 PR 수만큼 디스크에 누적되는
-  위생 문제 — 워크플로 맨 끝에 `if: always()` 정리 스텝을 추가해 job 성공/실패/취소
-  어느 쪽으로 끝나도 `$pr_work_dir`를 지우도록 함(정리 자체의 실패가 리뷰 결과를 뒤집지
-  않도록 스텝 끝에 `exit 0`으로 non-fatal 처리). (4) `test-lib.sh`의 신규 `ensure_slots`
-  테스트가 4차에서 정립한 `mktemp` 컨벤션을 안 따르고 `/tmp/ensure_slots_test.$$`를 직접
-  썼던 것 — `mktemp`로 교체. 신규 테스트: `test-run-panel.sh` (j) 세 번째 하위 케이스
-  (kiro-cwd 도 재사용되는 `$WORK`에서 리셋되는지) — 전체 스위트 597 passed(+1), 기존
-  무관 17건 실패는 그대로.
+- **Round 10 fix (after commit 75cfbab, PASSED — 0 CRITICAL/MAJOR, 4 MINOR)**: right after
+  round 9 isolated `/tmp/pr-review` by PR number, this review caught one file **newly created by
+  that same PR** that missed that same isolation — all 4 items were low-cost with real value and
+  all were adopted. (1) `l1-output.txt` was still hardcoded to `/tmp/l1-output.txt`, inconsistent
+  with the intent behind isolating `$WORK` by PR number (a runner-pool parallelization scenario
+  could let another PR's L1-failure comment carry this PR's precheck output) — moved to
+  `"$WORK/l1-output.txt"` and aligned the "Write L1 failure as review" step to reference
+  `$pr_work_dir` too. (2) while `coverage-severe.flag`/slot/lenses are reset on every run,
+  `$WORK/kiro-cwd` (Kiro's fake HOME) only did `mkdir -p`, so cache/session state left behind by
+  kiro-cli could accumulate and carry over on a non-ephemeral runner (there are no credentials
+  there, so it isn't a security impact, just a reproducibility problem) — added `rm -rf` at the
+  `KIRO_CWD` definition line, closing the same root cause. (3) a hygiene problem where
+  per-PR-isolated `/tmp/pr-review-<N>` directories were never cleaned up after a job finished,
+  accumulating on disk in proportion to the number of PRs — added an `if: always()` cleanup step
+  at the end of the workflow so `$pr_work_dir` is removed regardless of whether the job succeeds,
+  fails, or is cancelled (the step ends with a non-fatal `exit 0` so a cleanup failure never
+  flips the review's own result). (4) `test-lib.sh`'s new `ensure_slots` test didn't follow the
+  `mktemp` convention established in round 4, instead using `/tmp/ensure_slots_test.$$` directly
+  — replaced with `mktemp`. New tests: `test-run-panel.sh` (j)'s third sub-case (that
+  `kiro-cwd` is also reset in a reused `$WORK`) — full suite 597 passed (+1), the same 17 pre-existing unrelated failures remain.
 
-- **11차 리뷰 수정(커밋 7e1c278 이후, PASSED — CRITICAL/MAJOR 0건, MINOR 3건)**: 9차/10차가
-  `$pr_work_dir`를 PR 번호로 격리했는데, 정작 `/tmp/pr-diff*.txt`·`/tmp/review*.md`·
-  `/tmp/comment.md`는 여전히 고정 `/tmp` 경로라 격리가 "워크dir(coverage-severe.flag/slot/
-  lenses/kiro-cwd)"에만 적용되고 "diff·리뷰 본문 자체"는 러너 풀 병렬화 시 여전히 교차
-  오염될 수 있다는 지적(MINOR-1) — 9차에서 `$RUNNER_TEMP` 전면 전환은 blast radius 사유로
-  보류했지만, 이미 확립된 `$pr_work_dir` 패턴에 이 파일들을 얹는 것은 기계적이고 낮은
-  리스크라 이번엔 완결: `pr-diff-raw.txt`/`pr-diff.txt`/`pr-diff-truncated.txt`/`review.md`/
-  `review-clean.md`/`comment.md` 전부 `$pr_work_dir` 아래로 이전, 기존 cleanup 스텝
-  (`if: always()`)이 이 전체 산출물까지 자동으로 정리하게 됨(부수 효과로 디스크 위생도
-  개선). MINOR-2(L1-fail 헤더 분기가 `panel_responded` 문자열 리터럴 비교) — 이미
-  `steps.l1.outputs.result`가 존재해 전환 비용이 사실상 0이라는 리뷰 판단에 동의, "Write L1
-  failure as review" 스텝(이미 `if: steps.l1.outputs.result == 'fail'` 조건)이 전용
-  `l1_failed=1` 플래그를 `GITHUB_ENV`에 남기도록 하고 코멘트 스텝은 그 플래그만 검사하도록
-  변경 — L1 통과 경로에서는 `l1_failed`가 애초에 안 찍히므로 `${l1_failed:-0}` 폴백이
-  올바르게 "0"으로 처리됨을 로컬 시뮬레이션으로 확인. **채택 안 함**: YAML heredoc
-  들여쓰기 잔존(MINOR-3)은 6차/8차/10차에서 이미 반복 확인된 무해한 cosmetic이라 재차
-  판단하지 않음. 스크립트(run-panel.sh/synthesize.sh/lib.sh) 변경이 없어 신규 유닛테스트는
-  없음 — 워크플로 YAML 경로 치환 로직을 bash 로 로컬 시뮬레이션해 L1-fail 분기(헤더/파일
-  경로)가 그대로 동작함을 확인, 전체 스위트는 597 passed 유지(스크립트 불변), 기존 무관
-  17건 실패도 그대로.
+- **Round 11 fix (after commit 7e1c278, PASSED — 0 CRITICAL/MAJOR, 3 MINOR)**: rounds 9/10
+  isolated `$pr_work_dir` by PR number, but `/tmp/pr-diff*.txt`, `/tmp/review*.md`, and
+  `/tmp/comment.md` were still on fixed `/tmp` paths, so isolation only applied to the "work
+  dir" (coverage-severe.flag/slot/lenses/kiro-cwd) while "the diff and the review body itself"
+  could still cross-contaminate under runner-pool parallelization (MINOR-1) — round 9 had
+  deferred a full switch to `$RUNNER_TEMP` due to blast radius, but layering these files onto the
+  already-established `$pr_work_dir` pattern is mechanical and low-risk, so this was completed
+  now: `pr-diff-raw.txt`/`pr-diff.txt`/`pr-diff-truncated.txt`/`review.md`/`review-clean.md`/
+  `comment.md` were all moved under `$pr_work_dir`, so the existing cleanup step (`if: always()`)
+  now automatically cleans up these artifacts too (a side benefit of improved disk hygiene).
+  MINOR-2 (the L1-fail header branch's string-literal comparison of `panel_responded`) — agreed
+  with the review's judgment that, since `steps.l1.outputs.result` already exists, the switch is
+  effectively free, so the "Write L1 failure as review" step (already gated on
+  `if: steps.l1.outputs.result == 'fail'`) now leaves a dedicated `l1_failed=1` flag in
+  `GITHUB_ENV`, and the comment step checks only that flag — confirmed via local simulation that,
+  on the L1-pass path, `l1_failed` is never set at all, so the `${l1_failed:-0}` fallback
+  correctly resolves to "0." **Not adopted**: leftover YAML heredoc indentation (MINOR-3),
+  already repeatedly confirmed as harmless cosmetic in rounds 6/8/10, wasn't re-judged. No script
+  (run-panel.sh/synthesize.sh/lib.sh) changes were made, so there are no new unit tests — locally
+  simulated the workflow YAML's path-substitution logic in bash and confirmed the L1-fail branch
+  (header/file path) still works correctly; the full suite remains at 597 passed (scripts
+  unchanged), the same 17 pre-existing unrelated failures remain.
 
-- **12차 리뷰 수정(커밋 f77a9e1 이후, PASSED — CRITICAL/MAJOR 0건, MINOR 4건)**: 3건 반영,
-  1건 채택 안 함. (1) `$pr_work_dir`가 PR 번호로만 격리돼, `cancel-in-progress: true`로
-  취소된 이전 run 의 `if: always()` cleanup 스텝이 같은 PR 의 새 run 이 방금 만든 경로를
-  `rm -rf` 할 수 있다는 지적(러너 풀에 호스트가 2개 이상일 때만 발생, 결과는 fail-closed→
-  재실행으로 복구되는 안전한 방향이라 발생 조건이 좁은 MINOR) — 리뷰가 제안한 대로 경로에
-  `${GITHUB_RUN_ID}`를 더해(`RUN_ATTEMPT`는 제외) 트리거(푸시)당 경로를 분리. `RUN_ATTEMPT`
-  를 안 넣은 건 의도적 — 같은 run 의 수동 "Re-run failed jobs"는 여전히 같은 경로를
-  재사용해, 7~10차에서 고정한 stale-state 리셋 테스트(coverage-severe.flag/slot/lenses/
-  kiro-cwd)가 겨냥하는 시나리오가 계속 유효하다. (2) `synthesize.sh`의
-  `RESP="$(tr ... < "$WORK/responded.txt" ...)"` 가 파일 부재 시 리다이렉트 실패로
-  command substitution 자체가 non-zero가 되어, 바로 아래 문서화된 `(none — Claude solo)`
-  폴백이 `set -e` 하에서 실행 전에 스크립트를 죽여 도달 불가능함을 직접 재현 확인(현재
-  유일한 호출자 `run-panel.sh`는 항상 `: > "$RESP"`로 파일을 먼저 만들어 실 경로는 안전 —
-  standalone 호출에서만 드러나는 latent 비대칭) — `|| true`를 붙여 폴백이 실제로 동작하도록
-  수정, 수정 전/후 모두 직접 재현해 확인. (3) `docs/ci-pr-review.md`가 러너 라벨을
-  `<runner-label>` 플레이스홀더로 남겨 실제 라벨을 쓰는 runbook과 불일치하던 것 — 그 라벨은
-  이미 `.github/workflows/pr-review.yml`의 `runs-on:`에 그대로 공개돼 있어 sanitize 사유가
-  없음을 확인, runbook과 동일하게 갱신. **채택 안 함**: `lib.sh`의 GNU sed 전용 구문
-  (`I` 플래그, `-i`) 의존은 self-hosted 러너가 Linux 로 고정돼 CI 영향이 없고 macOS 로컬
-  개발 편의 문제일 뿐이라 이번엔 보류(재작성 비용 대비 실익이 낮음). 신규 테스트:
-  `test-synthesize.sh` (f)(responded.txt 부재 시 문서화된 폴백이 실제로 chair 프롬프트에
-  도달하는지) — 전체 스위트 599 passed(+2), 기존 무관 17건 실패는 그대로.
+- **Round 12 fix (after commit f77a9e1, PASSED — 0 CRITICAL/MAJOR, 4 MINOR)**: adopted 3, did not
+  adopt 1. (1) since `$pr_work_dir` is isolated only by PR number, a `cancel-in-progress: true`
+  cancelled prior run's `if: always()` cleanup step could `rm -rf` a path that a new run of the
+  same PR just created (this only happens when the runner pool has 2+ hosts, and it resolves
+  safely via fail-closed → re-run recovery, so it's a narrow-condition MINOR) — as the review
+  suggested, added `${GITHUB_RUN_ID}` to the path (excluding `RUN_ATTEMPT`), separating the path
+  per trigger (push). `RUN_ATTEMPT` was deliberately excluded — a manual "Re-run failed jobs" on
+  the same run still reuses the same path, so the stale-state reset tests fixed in rounds 7–10
+  (coverage-severe.flag/slot/lenses/kiro-cwd) still target a valid scenario. (2) directly
+  reproduced and confirmed that `synthesize.sh`'s `RESP="$(tr ... < "$WORK/responded.txt"
+  ...)"`, on a missing file, fails the redirect, making the command substitution itself
+  non-zero, which under `set -e` kills the script before ever reaching the documented `(none —
+  Claude solo)` fallback right below it (the current sole caller, `run-panel.sh`, always creates
+  the file first via `: > "$RESP"`, so the real code path is safe — this is a latent asymmetry
+  only exposed on a standalone call) — appended `|| true` so the fallback actually fires,
+  confirmed by direct reproduction both before and after the fix. (3) `docs/ci-pr-review.md` was
+  left with a `<runner-label>` placeholder for the runner label, inconsistent with the runbook,
+  which uses the actual label — confirmed the label is already exposed as-is in `runs-on:` in
+  `.github/workflows/pr-review.yml`, so there's no sanitization reason not to, and updated it to
+  match the runbook. **Not adopted**: `lib.sh`'s reliance on GNU-sed-only syntax (the `I` flag,
+  `-i`) has no CI impact since the self-hosted runner is fixed to Linux, and is only a macOS
+  local-dev convenience issue — deferred this round (low payoff relative to rewrite cost). New
+  tests: `test-synthesize.sh` (f) (that the documented fallback actually reaches the chair
+  prompt when responded.txt is absent) — full suite 599 passed (+2), the same 17 pre-existing unrelated failures remain.
 
-- **13차 리뷰 수정(커밋 7c8159d 이후, PASSED — CRITICAL/MAJOR 0건, MINOR 4건)**: 2건 반영.
-  (1) `run-panel.sh`의 `$SLOT`(="$WORK/slot")이 Kiro 셀의 `cd "$KIRO_CWD"` 서브셸 안에서도
-  그대로 참조되는데, `$WORK`가 상대경로면 그 리다이렉트가 `$KIRO_CWD` 기준으로 다시 풀려
-  엉뚱한 곳에 쓰인다는 지적 — 실제로 `cd "$BASE" && "$SCRIPT" diff.txt lenses relwork` 로
-  재현: 수정 전엔 Kiro 셀 출력이 `relwork/slot/...`가 아니라
-  `relwork/kiro-cwd/relwork/slot/...`(중첩된 잘못된 경로)에 쓰였다. `DIFF`와 같은 방식으로
-  `WORK="$(realpath "$WORK")"`를 빈-문자열 가드 뒤에 추가(대상이 아직 없어도 `mkdir -p
-  "$WORK"`를 먼저 해 realpath 가 항상 성공하도록 함) — 수정 전/후 모두 실행해 버그 재현과
-  수정 확인을 직접 검증. `LENSES_DIR`는 같은 처리 불필요함을 확인(그 값을 읽는
-  `cat "$lens_file"`이 아직 `cd` 전인 메인 프로세스에서 실행돼 항상 원래 cwd 기준으로
-  안전). (2) `tests/run-all.sh`의 `PATTERN="${1:-tests/**/*.sh}"`가 정의만 되고 실제 for
-  루프는 3개 디렉터리를 하드코딩해 인자를 완전히 무시하던 것 — `plugins/project-init`의
-  스캐폴딩 템플릿(`references/tests-templates.md`)이 이미 `bash tests/run-all.sh
-  [test-file-pattern]`(예: `... hooks`)을 문서화된 계약으로 명시하는데, 이 repo 자신의
-  `run-all.sh`는 그 계약을 잃어버린 상태였다 — `PATTERN`이 있으면 파일 경로에 부분 문자열
-  매칭하는 필터로 실제 연결(인자 없으면 기존과 동일하게 전체 실행, 기존 호출부 전부 무인자
-  라 회귀 없음). **채택 안 함**: `test-lib.sh`가 `lib.sh`를 source 하며 harness 셸에
-  `set -uo pipefail`을 주입하는 결합(현재 `run-all.sh`도 같은 옵션이라 무해, harness 옵션이
-  달라질 때만 문제되는 가정적 시나리오)은 반영하지 않음; ADR-011 자체의 리비전 로그 분리
-  제안은 문서 구조 결정이라 사용자 확인 대기. 신규 테스트: `test-run-panel.sh`
-  (l)(상대경로 workdir 가 Kiro 셀에서도 절대화되는지, 수정 전 버전으로 실패를 직접 재현
-  후 복원해 확인) — 전체 스위트 600 passed(+1), 기존 무관 17건 실패는 그대로(`bash
-  tests/run-all.sh hooks` 로 새 필터도 별도 확인).
+- **Round 13 fix (after commit 7c8159d, PASSED — 0 CRITICAL/MAJOR, 4 MINOR)**: adopted 2. (1) a
+  finding that `run-panel.sh`'s `$SLOT` (="$WORK/slot") is still referenced as-is inside the
+  Kiro cell's `cd "$KIRO_CWD"` subshell, so if `$WORK` is a relative path, that redirect resolves
+  again relative to `$KIRO_CWD`, writing to the wrong place — actually reproduced via
+  `cd "$BASE" && "$SCRIPT" diff.txt lenses relwork`: before the fix, the Kiro cell's output was
+  written not to `relwork/slot/...` but to `relwork/kiro-cwd/relwork/slot/...` (a nested, wrong
+  path). Added `WORK="$(realpath "$WORK")"` after the empty-string guard, the same way `DIFF` is
+  handled (first running `mkdir -p "$WORK"` so realpath always succeeds even before the target
+  exists) — directly verified the bug's reproduction and the fix's correctness by running both
+  before and after. Confirmed `LENSES_DIR` needs no equivalent handling (the `cat "$lens_file"`
+  that reads that value runs in the main process, before any `cd`, so it's always safe relative
+  to the original cwd). (2) `tests/run-all.sh`'s `PATTERN="${1:-tests/**/*.sh}"` was defined but
+  the actual for-loop hardcoded 3 directories, completely ignoring the argument — the scaffolding
+  template in `plugins/project-init` (`references/tests-templates.md`) already documents `bash
+  tests/run-all.sh [test-file-pattern]` (e.g. `... hooks`) as a contract, but this repo's own
+  `run-all.sh` had lost that contract — actually wired `PATTERN`, when given, as a substring
+  filter against file paths (with no argument, it still runs everything as before; all existing
+  call sites pass no argument, so there's no regression). **Not adopted**: `test-lib.sh` sourcing
+  `lib.sh` and thereby injecting `set -uo pipefail` into the harness shell (currently harmless
+  since `run-all.sh` already uses the same options; this only matters in a hypothetical scenario
+  where the harness options later diverge) was not adopted; ADR-011's own suggestion to split off
+  its revision log is a documentation-structure decision, pending user confirmation. New tests:
+  `test-run-panel.sh` (l) (that a relative workdir is absolutized even in the Kiro cell — directly
+  reproduced the failure with the pre-fix version, then restored and confirmed) — full suite 600 passed (+1), the same 17 pre-existing unrelated failures remain (also separately confirmed the new filter with `bash tests/run-all.sh hooks`).
 
-- **14차 리뷰 수정(커밋 665809e 이후, PASSED — CRITICAL/MAJOR 0건, MINOR 4건)**: 2건 반영,
-  1건은 이미 알려진 문서 구조 결정 대기 항목으로 재확인, 1건 채택 안 함. (1)
-  `run-panel.sh` 커버리지 floor 의 `row_count=$(grep -c ... "$RESP" 2>/dev/null)` 가
-  `$RESP` 부재/비가독 시 진짜 빈 문자열을 만들 수 있고, `[ "" -eq 0 ]` 은(`set -e` 없이)
-  조용히 false 로 삼켜져 degraded 경고 자체가 빠진다는 지적 — 12차에서 잡은
-  `responded.txt` 부재 비대칭과 같은 부류. 직접 실측: 디렉터리 대상엔 GNU grep 이 여전히
-  "0"을 stdout 에 찍어(에러와 무관) 이 경로로는 재현되지 않지만, 파일이 **아예 없는**
-  경우엔 stdout 이 진짜 공백임을 확인 — `${row_count:-0}` 로 수정해 두 경우 다 안전하게.
-  단, 이 latent 경로는 run-panel.sh 자신이 스크립트 시작부에서 무조건 `: > "$RESP"` 로
-  파일을 만들고, 그 사이에 삭제할 외부 접점이 없어(synthesize.sh 의 RESP 처럼 별도
-  프로세스로 재호출 가능한 구조가 아님) 실제 스크립트 흐름을 통한 end-to-end 회귀테스트가
-  불가능함을 확인 — 수동 bash 재현으로 수정을 검증했으나 자동 테스트는 없음(알려진 커버리지
-  한계로 기록). (2) 워크플로의 `COMMON` lens 프롬프트 문구가 "diff 는 stdin 또는 inline
-  marker 로 제공"이라고 말하는데, 실제로는 **어느 lens 프롬프트 수신자도** 그렇게 받지
-  않는다 — inline marker(`=== DIFF UNDER REVIEW ===`)는 `synthesize.sh`의 체어 프롬프트
-  전용이고 lens 프롬프트와 무관함을 코드 대조로 확인. Codex 는 stdin, Kiro 는 뒤에 덧붙는
-  fs_read 경로 지시로 받아 약한 모델(kimi/glm)이 "diff 가 안 왔다"고 오판할 여지가 있는
-  부정확한 문구였다 — 셀 타입별 완전 분기 대신(워크플로 구조 변경 필요) COMMON 자체를
-  중립화해 "stdin 또는 파일-read 지시 중 해당하는 쪽이 곧 리뷰 대상 diff"라고 정확히
-  기술하도록 수정, 로컬 시뮬레이션으로 heredoc 렌더링 확인. **채택 안 함**: ADR-011
-  리비전 로그 분리(11~13차에서 반복 제기)는 여전히 사용자 확인 대기 — 이번 라운드도 다시
-  지적됐으나 문서 구조 결정은 라운드 안에서 임의로 처리하지 않음; 코멘트 헤더의 16-tag
-  한 줄 노출(cosmetic 가독성)은 기능 결함이 아니라 보류. 신규 테스트 없음(사유 위 기술) —
-  전체 스위트 600 passed 유지, 기존 무관 17건 실패는 그대로.
+- **Round 14 fix (after commit 665809e, PASSED — 0 CRITICAL/MAJOR, 4 MINOR)**: adopted 2,
+  reconfirmed 1 as an already-known pending documentation-structure decision, did not adopt 1.
+  (1) a finding that `run-panel.sh`'s coverage-floor `row_count=$(grep -c ... "$RESP"
+  2>/dev/null)` can produce a truly empty string when `$RESP` is missing/unreadable, and
+  `[ "" -eq 0 ]` (without `set -e`) silently swallows this as false, dropping the degraded
+  warning itself — the same class of asymmetry caught in round 12 around `responded.txt`'s
+  absence. Directly tested: against a directory target, GNU grep still prints "0" to stdout
+  (unrelated to the error), so this path doesn't reproduce that way, but confirmed that when the
+  file is **entirely absent**, stdout is truly empty — fixed to `${row_count:-0}`, safe in both
+  cases. However, confirmed that this latent path is unreachable via any end-to-end regression
+  test through the actual script flow, since run-panel.sh itself unconditionally creates the file
+  via `: > "$RESP"` at script start, and there's no external touchpoint to delete it in between
+  (unlike synthesize.sh's RESP, this isn't a structure that can be re-invoked as a separate
+  process) — verified the fix via manual bash reproduction, but there is no automated test
+  (recorded as a known coverage limitation). (2) the workflow's `COMMON` lens-prompt text says
+  "the diff is provided via stdin or an inline marker," but in fact **no lens-prompt recipient**
+  receives it that way — confirmed via code review that the inline marker (`=== DIFF UNDER
+  REVIEW ===`) is exclusive to `synthesize.sh`'s chair prompt and unrelated to the lens prompts.
+  Codex receives it via stdin, and Kiro via an appended fs_read path instruction, so the
+  inaccurate wording could lead a weaker model (kimi/glm) to mistakenly conclude "the diff never
+  arrived" — instead of fully branching by cell type (which would require a workflow structure
+  change), neutralized `COMMON` itself to accurately state "whichever of stdin or file-read
+  instructions applies is the diff under review," confirmed via local simulation of heredoc
+  rendering. **Not adopted**: splitting off ADR-011's revision log (repeatedly raised in rounds
+  11–13) is still pending user confirmation — raised again this round, but a documentation
+  structure decision is not handled arbitrarily within a round; the comment header's one-line
+  exposure of the 16 tags (cosmetic readability) was deferred as not a functional defect. No new
+  tests (reason stated above) — full suite remains at 600 passed, the same 17 pre-existing unrelated failures remain.
 
-- **15차 리뷰 수정(커밋 ecdf6ba 이후, PASSED — 패널 codex 1/1 응답, Kiro 무응답)**: codex가
-  제기한 CRITICAL 1건("Kiro fs_read 절대경로 read → scrub_secrets 이전에 이미 외부
-  서비스로 유출")과 MAJOR 1건("`mkdir -p`/`realpath` 실패해도 계속 진행")은 체어가 diff·
-  repo 실물과 대조해 **둘 다 MINOR로 하향**했다 — CRITICAL 쪽은 이 잔여 위험 자체가
-  이미 ADR 본문(위 Decision, "명시적 accepted-risk" 문단)과 `docs/ci-pr-review.md`에
-  문서화·수용돼 있고, `head.repo.full_name == github.repository` 게이트로 위협 모델이
-  이미 write 권한 collaborator로 좁혀져 있음을 근거로 재확인만 함(반영 없음, 이미 반영된
-  결정의 재확인). MAJOR 쪽은 diff 대조 결과 "root-level 파괴적 cleanup" 주장은 성립하지
-  않지만(실제 도달 경로는 존재하지 않는 경로의 비파괴적 `rm -f`/`rm -rf`뿐, 종단은 셀
-  전멸→coverage collapse→강제 FAIL 로 fail-closed) `mkdir -p "$WORK"`/`WORK="$(realpath
-  "$WORK")"`에 명시적 실패 처리가 없는 latent 하드닝 갭은 실재 — 8~9차에서 이미 확립한
-  "파괴적 경로를 만들 수 있는 연산은 실패를 명시적으로 처리" 원칙과 일관되므로
-  `|| exit 1`을 추가해 반영. 같은 라운드에서 codex 가 제기하고 체어가 CONFIRMED 한 MINOR
-  2건도 반영: `synthesize.sh`의 절단 마커 문구 `"...see full output in CI logs..."`가
-  거짓 — 성공한 셀의 stdout(.md)은 CI 로그 어디에도 출력되지 않는다(로그에 남는 건 skip
-  셀의 stderr tail 뿐임을 코드 대조로 확인) — "full output not retained" 류로 수정해
-  존재하지 않는 복구 경로를 안내하지 않도록 함. `docs/ci-pr-review-runbook.md`의 `⚠️`가
-  "formal docs 에 emoji 금지" 컨벤션(AGENTS.md/`docs/CLAUDE.md` 등에 실재)과 부딪히던 것
-  — `synthesize.sh` 가 실제로 출력하는 배너 문자열의 리터럴 인용이라는 점을 참작해 해당
-  줄만 코드 스팬으로 감싸 컨벤션과 양립하도록 수정. **채택 안 함**: 프로세스/컨테이너
-  FS 샌드박스(CRITICAL 항목의 구조적 해법)는 이미 ADR 에 운영 후속으로 기록된 이 저장소
-  개발 환경 밖의 항목이라 이번 PR 범위 밖. **이번 라운드에서 함께 처리**: 11~14차에서
-  반복 제기된 ADR-011 리비전 로그 분리 — `AskUserQuestion` 이 두 차례 모두 응답을 받지
-  못해(tool stream 오류) 사용자 확인 없이 진행, 권장 옵션("Decision 은 결정만, 라운드
-  로그는 부록으로 분리")을 기본값으로 적용해 이 부록을 신설했다. Decision/Consequences
-  본문은 라운드 로그 문단을 제거했을 뿐 문구 자체는 그대로 보존(수정 없음, 위치만 이동)
-  — "이미 accepted 된 근거를 사후 편집하지 않는다"는 이 문서 자체의 컨벤션을 이 재구성에도
-  적용.
+- **Round 15 fix (after commit ecdf6ba, PASSED — panel: codex responded 1/1, Kiro did not
+  respond)**: codex raised 1 CRITICAL ("Kiro fs_read absolute-path read → leaks to the external
+  service before scrub_secrets") and 1 MAJOR ("continues even if `mkdir -p`/`realpath` fails"),
+  and the chair cross-checked both against the diff and the actual repo and **downgraded both to
+  MINOR** — the CRITICAL item was simply reconfirmed, on the grounds that this exact residual
+  risk is already documented and accepted in the ADR body itself (the above Decision, the
+  "explicit accepted risk" paragraph) and in `docs/ci-pr-review.md`, and that the
+  `head.repo.full_name == github.repository` gate already narrows the threat model to a
+  write-permission collaborator (no changes made — reconfirmation of an already-adopted
+  decision). For the MAJOR item, cross-checking against the diff showed the claim of "root-level
+  destructive cleanup" doesn't actually hold (the only real code path is a non-destructive `rm
+  -f`/`rm -rf` on a path that doesn't exist, and the end state is fail-closed via total cell
+  failure → coverage collapse → forced FAIL), but a real latent hardening gap does exist —
+  `mkdir -p "$WORK"`/`WORK="$(realpath "$WORK")"` have no explicit failure handling — consistent
+  with the "operations that can produce a destructive path must handle failure explicitly"
+  principle already established in rounds 8–9, so `|| exit 1` was added. Also adopted 2 MINOR
+  items raised by codex and CONFIRMED by the chair in the same round: `synthesize.sh`'s
+  truncation-marker text, "...see full output in CI logs...", is false — a successful cell's
+  stdout (.md) is never printed anywhere in the CI logs (confirmed via code review that only a
+  skipped cell's stderr tail ends up in the logs) — fixed to something like "full output not
+  retained" so it no longer points to a recovery path that doesn't exist. The `⚠️` in
+  `docs/ci-pr-review-runbook.md` conflicted with the "no emoji in formal docs" convention (real,
+  e.g. in AGENTS.md/`docs/CLAUDE.md`) — accounting for the fact that it's a literal quotation of
+  the banner string `synthesize.sh` actually outputs, wrapped only that line in a code span to
+  reconcile it with the convention. **Not adopted**: a process/container FS sandbox (the
+  structural fix for the CRITICAL item) is already recorded in the ADR as an operational
+  follow-up outside this repository's development environment, and is out of this PR's scope.
+  **Also handled this round**: the repeatedly-raised (rounds 11–14) split of ADR-011's revision
+  log — `AskUserQuestion` received no response on either attempt (tool-stream error), so this
+  proceeded without user confirmation, applying the recommended option by default ("Decision
+  holds only the decision; the round-by-round log is split into an appendix"), creating this
+  appendix. The Decision/Consequences body only had the round-log paragraphs removed — the
+  wording itself is preserved as-is (not edited, only relocated) — applying this document's own
+  convention of "never post-edit an already-accepted rationale" to this restructuring as well.
 
-- **16차 리뷰 수정(커밋 2b336a9 이후, PASSED — CRITICAL/MAJOR 0건, MINOR 4건)**: 이번
-  라운드는 부록 분리 이후 첫 리뷰로, 부록의 존재 자체를 diff 로 확인하고 fail-closed
-  계약·상태 리셋·scrub 방어선 전수 대조에서 신규 결함을 찾지 못했다고 명시. MINOR 4건 중
-  2건을 반영, 2건은 조치 불필요로 확인. (1) 워크플로 `timeout-minutes: 50` 산정 주석의
-  "매트릭스 재시도 ~15m"이 `PANEL_RETRIES=3` 기본값 전제인데 그 사실이 주석에 없어, 이
-  env 를 올리면 산정이 조용히 무효화된다는 지적 — 주석에 "PANEL_RETRIES=3 기준" 한 줄
-  추가로 반영. (2) `docs/ci-pr-review-runbook.md`의 "lens 하나가 모든 모델에서 동시에
-  비는 케이스는 별도 감지 없음" 서술은 코드와 일치하지만 위 Decision 의 운영 후속 목록에는
-  없어 추적성이 떨어진다는 지적 — "커버리지 floor" 항목의 운영 후속 문장에 이 항목을
-  추가(기존 문장은 그대로 두고 새 문장만 덧붙임, 기존 rationale 편집 아님). **조치
-  불필요로 확인**: (3) 테스트 픽스처의 canonical 크리덴셜 예시(`AKIA...`, AWS 공식 예제
-  `wJalrXUtnFEMI/...EXAMPLEKEY`, `ghp_...`)가 이 repo의 `secret-scan.sh` PreToolUse
-  커밋 훅에 걸릴 수 있다는 지적 — `find`로 직접 확인한 결과 `.claude/hooks/secret-scan.sh`
-  자체가 이 체크아웃에 **존재하지 않는다**(hooks 관련 4개 파일 부재는 이 스위트의 기존
-  무관 17건 실패 중 하나로 이미 알려진 상태) — 지금 이 순간 실제로 커밋을 막을 훅이
-  없으므로 조치 대상 없음(훅 자체의 부재는 이 PR 범위 밖의 별개 사전 존재 갭). (4)
-  `kiro_env()`의 비인용 조건부 확장(`${KIRO_API_KEY:+...}`)은 리뷰 스스로 "현상 유지
-  가능"으로 판단해 조치를 요청하지 않음. 신규 테스트 없음(둘 다 문서/주석 변경) — 전체
-  스위트 600 passed 유지, 기존 무관 17건 실패는 그대로(같은 라운드에서 무관 flaky
-  테스트 하나(`remarp-format-guide ... [요약] note layer`)가 간헐적으로 18건째로
-  나타나는 것을 관측 — reactive-presentation 관련, 이 PR 이 건드린 파일과 무관함을
-  확인, 별도 이슈로 다루지 않음).
+- **Round 16 fix (after commit 2b336a9, PASSED — 0 CRITICAL/MAJOR, 4 MINOR)**: this round, the
+  first review after the appendix split, confirmed the appendix's existence itself via the diff,
+  and stated no new defects were found in a full cross-check of the fail-closed contract, state
+  resets, and scrub defenses. Adopted 2 of the 4 MINOR items, confirmed 2 as needing no action.
+  (1) the workflow's `timeout-minutes: 50` estimate comment's "~15m for matrix retries" assumed
+  the `PANEL_RETRIES=3` default, but that assumption wasn't stated in the comment, so raising this
+  env var would silently invalidate the estimate — adopted by adding a line noting "based on
+  PANEL_RETRIES=3" to the comment. (2) `docs/ci-pr-review-runbook.md`'s statement that "there is
+  no separate detection for the case where a single lens is simultaneously empty across all
+  models" matches the code, but this item was missing from the Decision's operational
+  follow-up list above, hurting traceability — adopted by appending this item to the operational-
+  follow-up sentence under "Coverage floor" (the existing sentence was left untouched, only a new
+  sentence was appended — not an edit to the existing rationale). **Confirmed as needing no
+  action**: (3) a finding that the test fixtures' canonical credential examples (`AKIA...`, the
+  official AWS example `wJalrXUtnFEMI/...EXAMPLEKEY`, `ghp_...`) could trip this repo's
+  `secret-scan.sh` PreToolUse commit hook — directly confirmed via `find` that
+  `.claude/hooks/secret-scan.sh` itself **does not exist** in this checkout (the absence of 4
+  hooks-related files is already known as one of this suite's 17 pre-existing unrelated
+  failures) — no action needed since there is currently no hook that could actually block a
+  commit (the hook's own absence is a separate, pre-existing gap outside this PR's scope). (4)
+  `kiro_env()`'s unquoted conditional expansion (`${KIRO_API_KEY:+...}`) — the review itself
+  judged this "fine as-is" and requested no action. No new tests (both were doc/comment changes)
+  — full suite remains at 600 passed, the same 17 pre-existing unrelated failures remain (also
+  observed, in the same round, an unrelated flaky test
+  (`remarp-format-guide ... [summary] note layer`) intermittently appearing as an 18th failure —
+  confirmed it's related to reactive-presentation and unrelated to files touched by this PR, not
+  treated as a separate issue).
 
-- **17차 리뷰 수정(커밋 818b21d 이후, PASSED — CRITICAL/MAJOR 0건, MINOR 3건)**: 이번
-  라운드는 재확인 위주였으나(`try_panel`의 stdin 이 realpath 절대화로 `cd` 이후에도
-  유효, 비최종 `&&` 리스트 안전, L1 pipefail 정상), 실제 정확성 결함 1건을 새로 잡았다.
-  (1) `synthesize.sh`의 severe 오버라이드 `sed -i '/^VERDICT:/d' "$OUT"` 가 파일
-  **전체**에서 그 패턴에 매치하는 모든 줄을 지운다 — 체어가 본문 프로즈에서 "VERDICT:
-  ..." 로 시작하는 줄로 규칙을 설명/인용하면 그 설명 줄까지 함께 삭제되는 정보 손실이
-  실재함을 직접 재현 확인(fail 방향 자체는 훼손 안 됨 — 강제 FAIL 줄은 항상 뒤에 붙음).
-  `tac "$OUT" | sed '0,/^VERDICT:/d' | tac` 로 **마지막 매치 한 줄만** 지우도록 교체 —
-  수정 전 버전으로 리그레션 테스트가 실패하는 것을 직접 확인한 뒤 복원해 통과를 재확인.
-  (2) `test-run-panel.sh` 케이스 (l)의 `( cd "$BASE" && "$SCRIPT" ... )` bare 호출이
-  파일 서두에 스스로 명시한 "비-zero 종료 경로는 전부 if로 감싼다" 컨벤션과 불일치 —
-  `if ! ( ... ); then fail ...; fi` 로 정렬해 (a)/(b)/(j) 등 기존 케이스와 같은 패턴으로
-  통일. (3) `tests/run-all.sh`의 `PATTERN` 이 부분 문자열 매칭이라 짧은 인자가 의도보다
-  넓게 잡힐 수 있다는 지적 — project-init 템플릿의 문서화된 계약과 부합하는 설계라
-  동작은 바꾸지 않고, 주석에 그 특성과 회피법(더 구체적인 디렉터리명/파일명 조각 사용)을
-  한 줄 추가. 신규 테스트: `test-synthesize.sh` (g)(severe 오버라이드가 "VERDICT:" 로
-  시작하는 설명 프로즈 줄은 보존하고 체어의 실제 마지막 판정 줄만 지우는지, 수정 전
-  버전으로 실패를 직접 재현 후 복원해 확인) — 전체 스위트 602 passed(+2), 기존 무관
-  17건 실패는 그대로.
+- **Round 17 fix (after commit 818b21d, PASSED — 0 CRITICAL/MAJOR, 3 MINOR)**: this round was
+  mostly reconfirmation (`try_panel`'s stdin remains valid via realpath absolutization even
+  after `cd`, the non-final `&&` list is safe, L1 pipefail is normal), but caught 1 new actual
+  correctness defect. (1) `synthesize.sh`'s severe override, `sed -i '/^VERDICT:/d' "$OUT"`,
+  deletes every line in the **entire** file matching that pattern — directly reproduced and
+  confirmed this really does cause information loss if the chair's body prose explains/quotes a
+  rule using a line starting with "VERDICT: ..." (the fail direction itself isn't compromised —
+  the forced FAIL line is always appended after). Replaced with `tac "$OUT" | sed
+  '0,/^VERDICT:/d' | tac`, which deletes **only the last matching line** — directly confirmed the
+  regression test failed with the pre-fix version, then restored it and reconfirmed it passes.
+  (2) case (l) in `test-run-panel.sh`'s bare `( cd "$BASE" && "$SCRIPT" ... )` call was
+  inconsistent with the convention, stated at the top of the file itself, that "every non-zero
+  exit path is wrapped in an if" — aligned it to `if ! ( ... ); then fail ...; fi`, matching the
+  pattern used by (a)/(b)/(j) and other existing cases. (3) a finding that `tests/run-all.sh`'s
+  `PATTERN` uses substring matching, so a short argument could match more broadly than intended
+  — since this design matches project-init's documented template contract, behavior was left
+  unchanged, and a one-line comment was added noting this characteristic and how to work around
+  it (use a more specific directory/file-name fragment). New tests: `test-synthesize.sh` (g)
+  (that the severe override preserves an explanatory prose line starting with "VERDICT:" while
+  deleting only the chair's actual final verdict line — directly reproduced the failure with the
+  pre-fix version, then restored and confirmed) — full suite 602 passed (+2), the same 17 pre-existing unrelated failures remain.
 
-- **18차 리뷰 수정(커밋 70c8618 이후, PASSED — CRITICAL/MAJOR 0건, MINOR 1건)**: 17차의
-  수정 자체가 만든 새 회귀를 잡았다. `tac "$OUT" | sed '0,/^VERDICT:/d' | tac` — GNU
-  sed 의 `0,/re/d` 범위는 패턴이 **한 번도 매치하지 않으면** 종료 조건이 성립하지 않아
-  EOF까지 확장되어 입력 **전체**를 지운다. 도달 경로: primary·fallback 체어가 둘 다
-  "비어있지 않지만 `^VERDICT:` 줄이 전혀 없이" 저하되고(`[ ! -s "$OUT" ]` 빈-파일 가드는
-  이 케이스를 못 잡음) 동시에 `coverage-severe.flag`가 성립하는 corner — 결과는 배너 +
-  강제 `VERDICT: FAIL`만 남고 체어 본문 진단 정보가 전부 사라진다(fail 방향 자체는
-  훼손 안 됨 — 강제 FAIL 줄은 always 붙음, 게이트 결함은 아님). 직접 재현: 매치 없는
-  3줄짜리 입력에 그 파이프라인을 그대로 돌려 출력이 완전히 빈 문자열이 됨을 확인.
-  `grep -q '^VERDICT:' "$OUT"` 로 감싸 매치가 실제로 있을 때만 삭제를 수행하도록 수정 —
-  매치 있음/없음 두 시나리오 모두 재현 후 (없음 쪽은 수정 전 버전으로 실패 확인 → 복원해
-  통과 재확인). 신규 테스트: `test-synthesize.sh` (h)(VERDICT 줄이 전혀 없는 저하된
-  체어 응답이라도 severe 오버라이드가 본문을 보존하는지) — 전체 스위트 619→621 total
-  (+2, 신규 테스트 개수와 일치). passed/failed 분할 수치(605/16 vs 606/15 등)는 반복
-  실행마다 흔들렸으나 — 실제로 실패하는 테스트 목록(hooks 4파일 부재·headline·
-  design-tokens·accent1 관련 17건)은 매번 동일 — 이전 라운드들에서도 관측된 이 harness
-  자체의 알려진 counter 플레이크이고 이 PR의 diff 와 무관.
+- **Round 18 fix (after commit 70c8618, PASSED — 0 CRITICAL/MAJOR, 1 MINOR)**: caught a new
+  regression introduced by round 17's own fix. `tac "$OUT" | sed '0,/^VERDICT:/d' | tac` — GNU
+  sed's `0,/re/d` range, if the pattern **never matches at all**, never satisfies its end
+  condition, so it extends to EOF and deletes the **entire** input. Reachable path: a corner case
+  where both the primary and fallback chair degrade to "non-empty, but with no `^VERDICT:` line
+  at all" (the `[ ! -s "$OUT" ]` empty-file guard cannot catch this case), while
+  `coverage-severe.flag` is simultaneously set — the result would leave only the banner and the
+  forced `VERDICT: FAIL`, with the chair's entire body diagnosis erased (the fail direction itself
+  is not compromised — the forced-FAIL line is always appended, so this is not a gate defect).
+  Directly reproduced: running that exact pipeline against a 3-line input with no match produced
+  a completely empty output string. Fixed by wrapping it in `grep -q '^VERDICT:' "$OUT"` so the
+  deletion only runs when a match actually exists — reproduced both the match and no-match
+  scenarios (for no-match, confirmed the failure with the pre-fix version → restored and
+  reconfirmed it passes). New tests: `test-synthesize.sh` (h) (that the severe override preserves
+  the body even for a degraded chair response with no VERDICT line at all) — full suite total
+  619→621 (+2, matching the count of new tests). The passed/failed split numbers (605/16 vs
+  606/15, etc.) fluctuated across repeated runs — but the actual list of failing tests (17 items
+  related to the 4 missing hooks files, headline, design-tokens, and accent1) was identical every
+  time — this is a known counting flake of the harness itself, already observed in prior rounds, and unrelated to this PR's diff.
 
-- **19차 리뷰 수정(커밋 c6ca4f2 이후, PASSED — CRITICAL/MAJOR 0건, MINOR 2건 신규 +
-  1건 기존 재확인)**: 신규 MINOR 1건을 반영. `precheck.sh`는 `git fetch`/`archive`
-  같은 **인프라** 단계가 실패해도 검증기가 한 번도 안 돈 채 `set -euo pipefail` 로 즉시
-  죽는데, 워크플로의 "Write L1 failure as review" 스텝은 그 경우도 똑같이 "매니페스트/
-  버전 정합 실패"라고 코멘트를 단다 — PR 작성자가 실제로는 무관한 자기 매니페스트를
-  의심하게 되는 오귀속 여지가 실재함을 코드 대조로 확인(fail-closed 방향 자체는 옳아
-  차단 사유는 아니었음). `test-plugins.py`가 검증기 실행 시에만 찍는 배너 문자열
-  ("Plugin Validation Suite")의 존재 여부로 두 경로를 구분해 헤더만 분기하도록 수정
-  (VERDICT: FAIL 은 두 경로 모두 동일 — 메시지만 정확해짐). 스크립트 변경이 아니라
-  워크플로 YAML 조건 분기라 pr-review 유닛테스트로는 exercise 불가 — 배너 있음/없음
-  두 입력으로 로컬 bash 시뮬레이션해 분기가 올바르게 갈리는지 확인. 신규 MINOR 1건은
-  조치 불필요로 확인: `synthesize.sh` severe 오버라이드의 `TAC_TMP="$(...)"` 가 본문
-  말미의 연속 빈 줄을 접는 것은 내용 손실 없는 순수 cosmetic — 반영하지 않음. 기존
-  MINOR(GNU coreutils/sed 전용 의존)는 12차에서 이미 "러너 Linux 고정"으로 보류된
-  항목의 재확인이라 재판정하지 않음. 전체 스위트는 스크립트 불변이라 621 total 그대로
-  유지, 기존 무관 17건 실패도 동일.
+- **Round 19 fix (after commit c6ca4f2, PASSED — 0 CRITICAL/MAJOR, 2 new MINOR + 1 existing
+  reconfirmation)**: adopted 1 new MINOR. `precheck.sh` dies immediately under `set -euo
+  pipefail` if an **infrastructure** step like `git fetch`/`archive` fails, before any validator
+  ever runs, but the workflow's "Write L1 failure as review" step comments on that case exactly
+  the same way as a "manifest/version-consistency failure" — confirmed via code review that this
+  really could mislead a PR author into suspecting their own unrelated manifest (the fail-closed
+  direction itself is correct — this wasn't a blocking issue, just misattribution). Fixed by
+  distinguishing the two paths via whether `test-plugins.py`'s validator-run-only banner string
+  ("Plugin Validation Suite") appears, so only the header branches differently (VERDICT: FAIL is
+  identical on both paths — only the message becomes accurate). Since this is a workflow YAML
+  conditional branch rather than a script change, it can't be exercised by pr-review unit tests
+  — locally simulated both the banner-present and banner-absent inputs in bash to confirm the
+  branch resolves correctly. The 1 new MINOR item was confirmed as needing no action: the severe
+  override's `TAC_TMP="$(...)"` in `synthesize.sh` collapsing consecutive trailing blank lines in
+  the body is pure lossless cosmetic — not adopted. The existing MINOR (reliance on GNU
+  coreutils/sed-only tools) is a reconfirmation of an item already deferred in round 12 as
+  "runner fixed to Linux," so it wasn't re-judged. The full suite remains at 621 total since
+  scripts are unchanged, the same 17 pre-existing unrelated failures remain too.
 
-- **20차 리뷰 수정(커밋 b006eec 이후, PASSED — CRITICAL/MAJOR 0건, MINOR 5건, 4건은
-  기지 항목 재확인)**: 신규 MINOR-5 를 반영. 19차가 도입한 "test-plugins.py 배너 문자열
-  존재로 인프라/매니페스트 실패 구분" 휴리스틱은, 그 검증기가 배너를 찍기도 전에(예:
-  argparse/`Path(args.root).resolve()` 단계) 죽으면 실제로는 검증기 실패인데도 인프라로
-  오분류될 수 있다는 지적(게이트 영향 없음 — 두 경로 다 VERDICT: FAIL, 메시지 정확도
-  이슈) — `test-plugins.py` 배너 출력 코드(`main()` 내부, argparse 다음)를 직접 대조해
-  이 corner 가 이론상 실재함을 확인. 배너 문자열에 의존하는 대신 `precheck.sh` 가
-  python3 호출 **직전**(즉 git fetch/archive/tar 인프라 단계가 전부 성공한 뒤)에
-  `touch "$WORK/l1-validators-started"` 로 전용 sentinel 을 남기고, 워크플로는 그
-  sentinel 존재 여부로 분기하도록 교체 — 검증기 자신의 print 순서와 완전히 독립적이라
-  그 corner 자체가 구조적으로 사라진다. 신규 테스트: `test-precheck.sh` (m)(fetch 실패
-  경로에선 sentinel 이 안 생기고, 검증기까지 도달하는 정상 경로에선 항상 생기는지) —
-  전체 스위트 621→624 total(+3, 신규 테스트 개수와 일치), 기존 무관 17건 실패는 그대로.
-  나머지 MINOR 4건(kiro_env 비인용 확장, GNU 전용 도구 의존, heredoc 들여쓰기, lens
-  컬럼 blind spot)은 전부 16~19차에서 이미 판정된 기지 항목의 재확인이라 재판정하지
-  않음 — 리뷰 스스로도 "부록 분리 이후 Decision 본문 동결 유지" 를 제안해 그 컨벤션을
-  그대로 따름.
+- **Round 20 fix (after commit b006eec, PASSED — 0 CRITICAL/MAJOR, 5 MINOR, 4 of which are
+  reconfirmations of already-known items)**: adopted the new MINOR-5. Round 19's "distinguish
+  infra/manifest failure via the test-plugins.py banner string presence" heuristic has a finding
+  that, if that validator dies before it even prints the banner (e.g. at the argparse/
+  `Path(args.root).resolve()` stage), an actual validator failure could still be misclassified as
+  infrastructure (no gate impact — both paths still give VERDICT: FAIL; this is a message-accuracy
+  issue) — directly cross-checked `test-plugins.py`'s banner-printing code (inside `main()`, after
+  argparse) and confirmed this corner theoretically exists. Instead of relying on the banner
+  string, replaced it so that `precheck.sh` touches a dedicated sentinel,
+  `touch "$WORK/l1-validators-started"`, right **before** calling python3 (i.e. only after the
+  git fetch/archive/tar infrastructure steps have all succeeded), and the workflow now branches
+  on that sentinel's presence — since this is completely independent of the validator's own print
+  ordering, that corner case is structurally eliminated. New tests: `test-precheck.sh` (m) (that
+  the sentinel is never created on a fetch-failure path, and is always created on a normal path
+  that reaches the validators) — full suite total 621→624 (+3, matching the new test count), the
+  same 17 pre-existing unrelated failures remain. The remaining 4 MINOR items (kiro_env's
+  unquoted expansion, reliance on GNU-only tools, heredoc indentation, the lens-column blind
+  spot) are all reconfirmations of items already judged in rounds 16–19, so they weren't
+  re-judged — the review itself also suggested "keep the Decision body frozen post-appendix-
+  split," a convention this follows as-is.
 
 ## Verification (2026-07-05, restructuring pass)
 
-이 부록 분리 시점에 전체 스위트를 재실행해 순수 문서 재구성이 스크립트 동작에 영향이
-없음을 확인: `bash tests/run-all.sh` → 600 passed, 기존 무관 17건 실패는 그대로(스크립트
-파일 변경 없음, `.md` 만 재구성).
+At the point this appendix was split off, the full suite was re-run to confirm that a purely
+documentation-level restructuring had no effect on script behavior: `bash tests/run-all.sh` →
+600 passed, the same 17 pre-existing unrelated failures remain (no script files changed — only
+the `.md` was restructured).

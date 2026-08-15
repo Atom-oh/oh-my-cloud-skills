@@ -22,10 +22,10 @@ Create structured GitBook documentation sites with proper navigation, components
 
 ## Workflow
 
-1. **Plan** — 범위·청중 정의, 챕터/섹션 아웃라인 (어떤 페이지든 목차에서 몇 클릭이면 닿을 만큼 얕게), cross-reference 흐름
-2. **Create Project** — git init, `.gitbook.yaml`, `SUMMARY.md`, 챕터 디렉토리 + `README.md` 인덱스
-3. **Write Content** — GitBook 컴포넌트로 페이지 작성, 다이어그램은 `.gitbook/assets/`, 관련 페이지 간 cross-link
-4. **Quality Review** — content-review-agent PASS 후 GitBook 연결 repo에 push (아래 Quality Review)
+1. **Plan** — define scope/audience, outline chapters/sections (keep any page reachable from the table of contents within a few clicks), and the cross-reference flow
+2. **Create Project** — git init, `.gitbook.yaml`, `SUMMARY.md`, chapter directories + `README.md` indexes
+3. **Write Content** — write pages using GitBook components, put diagrams in `.gitbook/assets/`, and cross-link related pages
+4. **Quality Review** — get content-review-agent PASS, then push to the repo connected to GitBook (see Quality Review below)
 
 ---
 
@@ -37,7 +37,7 @@ docs/
 ├── SUMMARY.md              # Navigation structure (required)
 ├── README.md               # Landing page
 ├── .gitbook/
-│   └── assets/             # Images, diagrams, files (agent와 동일 규약)
+│   └── assets/             # Images, diagrams, files (same convention as the agent)
 │       ├── architecture.png
 │       └── workflow.drawio
 ├── getting-started/        # Chapter directory
@@ -145,7 +145,7 @@ find . -name "*.md" | head -20
 
 ## Quality Review
 
-배포/완료 선언 전 `review content at [프로젝트경로]`로 content-review-agent PASS — plugin CLAUDE.md의 Quality Gate 규칙 (markdown 소스만 리뷰해 Visual Testing이 면제되면 90점 스케일).
+content-review-agent must PASS via `review content at [project-path]` before declaring deployment/completion — plugin CLAUDE.md Quality Gate rules (when only the markdown source is reviewed and Visual Testing is exempted, the 90-point scale applies).
 
 ## References
 

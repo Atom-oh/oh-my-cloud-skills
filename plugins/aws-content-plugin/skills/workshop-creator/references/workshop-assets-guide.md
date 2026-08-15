@@ -1,78 +1,96 @@
-# Workshop Assets Guide (에셋 관리 가이드)
+# Workshop Assets Guide
 
-마크다운 콘텐츠 외에 참가자에게 제공해야 하는 모든 파일("에셋")을 다루는 방법. 저장 위치에 따라 **Repository Assets**(`/static`)와 **S3 Assets**(`/assets`)로 나뉘며, 용도가 서로 다르다.
+How to handle every file ("asset") that must be provided to participants beyond markdown content. Split
+by storage location into **Repository Assets** (`/static`) and **S3 Assets** (`/assets`), which serve
+different purposes.
 
 ---
 
-## Repository Assets vs S3 Assets — 무엇을 어디에 둘까
+## Repository Assets vs S3 Assets — what goes where
 
 | | Repository Assets (`/static`) | S3 Assets (`/assets`) |
 |---|---|---|
-| 적합한 파일 | CloudFormation 템플릿, IAM 정책, 텍스트 기반 코드 (버전 관리 필요) | Lambda 배포 패키지(zip), 바이너리, 대량 이미지 등 텍스트가 아닌 파일 |
-| 저장 위치 | 콘텐츠 git 리포지토리 | S3 스테이징 버킷 (콘텐츠별 고유 prefix) |
-| 스캔 시점 | 커밋 푸시 → 빌드 시 | 업로드 시 |
-| 마크다운에서 참조 | `:assetUrl` directive | `:assetUrl` directive |
-| CloudFormation에서 참조 | **불가** (마크다운에서만 접근 가능) | Magic Variables (`{{.AssetsBucketName}}`/`{{.AssetsBucketPrefix}}`) |
-| 고정 공개 URL(ASU) 생성 | **불가** | 가능 |
-| 한도 | 파일 수 1000개, 파일당 1GB, 총합 3GB | 파일 수 500개, 파일당 1GB, 총합 3GB (Repository Assets와 별도 한도) |
+| Suitable files | CloudFormation templates, IAM policies, text-based code (needs version control) | Lambda deployment packages (zip), binaries, bulk images, and other non-text files |
+| Storage location | content git repository | S3 staging bucket (unique prefix per content) |
+| Scan timing | on commit push → at build time | at upload time |
+| Referenced from markdown | `:assetUrl` directive | `:assetUrl` directive |
+| Referenced from CloudFormation | **not possible** (accessible only from markdown) | Magic Variables (`{{.AssetsBucketName}}`/`{{.AssetsBucketPrefix}}`) |
+| Fixed public URL (ASU) generation | **not possible** | possible |
+| Limits | 1000 files, 1GB per file, 3GB total | 500 files, 1GB per file, 3GB total (separate limit from Repository Assets) |
 
-핵심 판단 기준: **CloudFormation 템플릿이 그 파일에 접근해야 하면 반드시 S3 Assets**를 써야 한다 (Repository Assets는 마크다운 콘텐츠에서만 접근 가능, 인프라 프로비저닝 과정에서는 접근 불가).
+Key decision criterion: **if a CloudFormation template needs to access the file, it must be an S3 Asset**
+(Repository Assets are accessible only from markdown content, not during infrastructure provisioning).
 
-### S3 Assets 업로드/동기화
+### Uploading/syncing S3 Assets
 
-Workshop Studio 콘솔의 Credentials 버튼에서 임시 자격 증명과 `aws s3 sync` 명령을 받아 사용한다.
+Get temporary credentials and the `aws s3 sync` command from the Credentials button in the Workshop Studio console.
 
 ```bash
-# 로컬 → S3 (에셋 변경분 업로드)
+# local → S3 (upload asset changes)
 aws s3 sync ./assets s3://<workshop-staging-bucket>/<prefix>/assets/
 
-# S3 → 로컬 (기존 에셋 내려받기)
+# S3 → local (download existing assets)
 aws s3 sync s3://<workshop-staging-bucket>/<prefix>/assets/ ./assets
 ```
 
-> ⚠️ **에셋 변경은 새 빌드를 트리거해야 반영된다.** `/assets`를 수정만 하고 콘텐츠 커밋/푸시를 하지 않으면 기존 빌드/게시된 결과물에는 반영되지 않는다 — 에셋을 먼저 동기화한 뒤 콘텐츠 커밋을 푸시하는 순서를 지킨다.
+> ⚠️ **Asset changes only take effect after a new build is triggered.** If you only modify `/assets`
+> without committing/pushing content, the existing built/published output won't reflect the change —
+> always sync assets first, then push the content commit.
 
 ---
 
-## Assets Scanning (자산 스캔)
+## Assets Scanning
 
-모든 에셋은 참가자에게 노출되기 전 자동 스캔된다 — Repository Assets는 빌드 시, S3 Assets는 업로드 시.
+Every asset is automatically scanned before being exposed to participants — Repository Assets at build
+time, S3 Assets at upload time.
 
-**스캔 항목**: 멀웨어, 정적 코드 분석(보안 취약점) — 코드 스캔은 보호 대상 파일 형식(`.yaml`, `.yml`, `.json`, `.template`, `.py`, `.sh`, `.bash`)에만 적용되고, 그 외 파일(이미지/바이너리 등)은 멀웨어 스캔만 받는다.
+**What's scanned**: malware, static code analysis (security vulnerabilities) — code scanning applies only
+to protected file types (`.yaml`, `.yml`, `.json`, `.template`, `.py`, `.sh`, `.bash`); other files
+(images/binaries, etc.) receive malware scanning only.
 
-| 스캔 결과 | 의미 | 빌드/게시 | ASU 생성/동기화 |
+| Scan result | Meaning | Build/publish | ASU generation/sync |
 |-----------|------|-----------|------------------|
-| `pass` | 이상 없음 | 허용 | 허용 |
-| `code_findings` | 코드 취약점 발견 (멀웨어 없음) | 허용 (경고만) | 허용 |
-| `malware_detected` | 멀웨어 발견 | 차단 | 차단 |
-| `code_and_malware` | 둘 다 발견 | 차단 | 차단 |
-| `fail` | 스캔 프로세스 자체 오류 (타임아웃 등, 콘텐츠 문제 아님) | 차단 | 차단 |
+| `pass` | no issues | allowed | allowed |
+| `code_findings` | code vulnerability found (no malware) | allowed (warning only) | allowed |
+| `malware_detected` | malware found | blocked | blocked |
+| `code_and_malware` | both found | blocked | blocked |
+| `fail` | scan process error itself (timeout, etc., not a content issue) | blocked | blocked |
 
-- **코드 취약점(code findings)은 non-blocking** — 빌드/게시/ASU 생성을 막지 않고 경고만 남는다.
-- **멀웨어 발견 시**: Repository Assets는 빌드 실패, S3 Assets는 해당 파일이 스테이징 버킷에서 truncate(키는 유지, 내용 삭제)된다.
-- **스캔 실패(fail)는 멀웨어 발견이 아니다** — 스캐너 자체 오류이므로 재시도(커밋 재푸시 또는 파일 재업로드)로 해결한다.
+- **Code vulnerabilities (code findings) are non-blocking** — they don't block build/publish/ASU
+  generation, only leave a warning.
+- **On malware detection**: Repository Assets fail the build; S3 Assets have that file truncated in the
+  staging bucket (key retained, content deleted).
+- **A scan failure (fail) is not malware detection** — it's a scanner error itself, resolved by retrying
+  (re-push the commit or re-upload the file).
 
 ---
 
-## Asset Static URLs (ASU) — S3 Assets 전용 고정 공개 URL
+## Asset Static URLs (ASU) — fixed public URLs for S3 Assets only
 
-일반 에셋 URL(`:assetUrl` directive로 생성되는 서명 URL)은 **빌드/이벤트에 종속**되어 있어 빌드가 바뀌면 링크도 바뀐다. ASU는 **빌드와 독립적으로 고정된** S3/HTTPS URL을 제공하며, 아래와 같은 경우에만 사용한다:
+Normal asset URLs (the signed URLs generated by the `:assetUrl` directive) are **tied to the build/event**,
+so the link changes when the build changes. ASU provides a **build-independent fixed** S3/HTTPS URL, and
+should be used only in these cases:
 
-- CloudFormation 파라미터로 얻을 수 없는 결정적(deterministic) URL이 스크립트 등에 필요한 경우
-- 참가자가 자신의 환경에서 그대로 사용할 One-Click Launch Stack URL이 필요한 경우 (S3 스킴 URL 요구)
-- 참가자 계정에 배포되는 CloudFormation 템플릿이 참조하는 Lambda 배포 패키지 등 결정적 URL이 필요한 경우
+- when a script, etc. needs a deterministic URL that can't be obtained via a CloudFormation parameter
+- when participants need a One-Click Launch Stack URL to use as-is in their own environment (requires an S3-scheme URL)
+- when a CloudFormation template deployed to participant accounts references something like a Lambda deployment package that needs a deterministic URL
 
-**주의사항**: ASU는 콘텐츠 빌드/게시 상태와 무관하게 라이프사이클이 독립적이고, 업데이트 시 **기존 URL을 즉시 덮어쓴다** — 진행 중이거나 예정된 이벤트에도 즉시 영향을 준다. 새 자산 버전을 스테이징 버킷에 올려도 ASU가 자동으로 갱신되지 않으며, 명시적으로 "Sync static URLs"를 눌러야 갱신된다 (버전 고정으로 인한 실수 방지). 삭제 시에는 진행 중인 이벤트에서 사용 중인지 반드시 확인한다. 지원 리전(17개 주요 상용 리전)에 자동 복제된다.
+**Caveats**: an ASU's lifecycle is independent of the content build/publish state, and updating it
+**immediately overwrites the existing URL** — this immediately affects in-progress or scheduled events too.
+Uploading a new asset version to the staging bucket does not auto-refresh the ASU; you must explicitly
+click "Sync static URLs" to refresh it (this prevents accidental version-pinning mistakes). Before
+deleting, always check whether it's in use by an ongoing event. It is auto-replicated to the supported
+regions (17 major commercial regions).
 
 ---
 
 ## Amazon EC2 SSH Keypair
 
-참가자가 계정 내 리소스(EC2 등)에 SSH로 접근해야 할 때 Workshop Studio가 자동 생성해주는 키페어.
+A key pair Workshop Studio auto-generates when participants need SSH access to resources (EC2, etc.) in their account.
 
 ```yaml
 awsAccountConfig:
-  ec2KeyPair: true   # 기본값 false
+  ec2KeyPair: true   # default false
 
 infrastructure:
   cloudformationTemplates:
@@ -83,18 +101,20 @@ infrastructure:
           defaultValue: "{{.EC2KeyPairName}}"
 ```
 
-- 고정 이름 `ws-default-keypair`가 부여되지만, 하드코딩 대신 항상 `{{.EC2KeyPairName}}` Magic Variable로 참조한다.
-- **배포 리전에서 생성된 뒤, 이벤트의 접근 가능 리전(accessibleRegions) 전체로 자동 임포트**된다 — 참가자는 어느 접근 가능 리전에서든 동일한 키페어를 쓸 수 있다.
-- 참가자는 이벤트 대시보드의 "Get EC2 SSH key" 메뉴에서 프라이빗 키를 다운로드한다.
+- It's given the fixed name `ws-default-keypair`, but always reference it via the `{{.EC2KeyPairName}}`
+  Magic Variable instead of hardcoding it.
+- **Created in the deployment region, then automatically imported into every accessible region
+  (accessibleRegions) of the event** — participants can use the same key pair in any accessible region.
+- Participants download the private key from the "Get EC2 SSH key" menu on the event dashboard.
 
-상세 contentspec 스키마: `references/contentspec-complete.md`
+Detailed contentspec schema: `references/contentspec-complete.md`
 
 ---
 
-## 체크리스트
+## Checklist
 
-- [ ] CloudFormation이 접근해야 하는 파일 → S3 Assets (`/assets`), 아니면 Repository Assets (`/static`)
-- [ ] 에셋 변경 후 반드시 콘텐츠 커밋/푸시로 새 빌드를 트리거
-- [ ] 시크릿/자격증명은 Repository Assets에 커밋하지 않는다 (git 히스토리에 영구 저장됨)
-- [ ] ASU는 정말 고정 URL이 필요한 경우에만 — 업데이트가 진행 중인 이벤트에 즉시 영향을 준다는 점을 인지
-- [ ] EC2 키페어가 필요하면 `ec2KeyPair: true` + `{{.EC2KeyPairName}}` 매직 변수 사용, 이름 하드코딩 금지
+- [ ] Files that CloudFormation needs to access → S3 Assets (`/assets`), otherwise Repository Assets (`/static`)
+- [ ] Always trigger a new build via a content commit/push after changing assets
+- [ ] Never commit secrets/credentials to Repository Assets (permanently stored in git history)
+- [ ] Use ASU only when a truly fixed URL is needed — remember an update immediately affects in-progress events
+- [ ] If an EC2 key pair is needed, use `ec2KeyPair: true` + the `{{.EC2KeyPairName}}` Magic Variable, never hardcode the name

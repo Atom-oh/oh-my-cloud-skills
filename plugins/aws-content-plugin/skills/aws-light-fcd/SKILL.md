@@ -34,7 +34,7 @@ typography, white canvas, near-black ink, and a single signature gradient
 4. **Write a build script** that `require("./scripts/deck_kit.js")` (and
    `arch_kit.js` if drawing diagrams), calls the layout builders, then
    `await pres.writeFile(...)`. Run it with `NODE_PATH=$(npm root -g) node build.js`.
-5. **QA (거절 루프)**: `python3 scripts/check_pptx.py "$DECK"` — fix every finding and
+5. **QA (rejection loop)**: `python3 scripts/check_pptx.py "$DECK"` — fix every finding and
    rerun until it passes. **The gate is `score ≥80` AND zero `[geometry]` findings**
    (a geometry defect — overflow/overlap/off-canvas — never passes, no matter the
    score, because content-review-agent treats it as Critical). Optional visual spot
@@ -50,7 +50,7 @@ A complete working example lives in `scripts/demo_build.js` — read it first; i
 exercises every layout builder, including the declarative `arch.archFlow`, and is the
 fastest way to learn the API.
 
-## Core rules (디자인 시스템 계약)
+## Core rules (design-system contract)
 
 1. **Font: Pretendard only.** No fallbacks. (Preview renders via a substitute font,
    so trust the layout, not the exact glyph widths in the JPG. See font note below.)
@@ -63,9 +63,10 @@ fastest way to learn the API.
 4. **Footer on every content slide**: copyright (left) + small AWS logo + page number
    (right). Cover gets the big bottom-right logo and **no** small footer logo.
    `addFooter(pres, s, pageNum)` handles this; cover uses the built-in `cover()`.
-5. **Agenda lists content chapters only** — "다음 단계 / 감사합니다"류 closing 항목은
-   목차가 아니라 덱 끝의 closing 슬라이드(`kit.closing`)에 속한다. Section divider와
-   closing의 full-gradient 배경 + 흰 푸터는 빌더가 처리하므로 오버라이드하지 않는다.
+5. **Agenda lists content chapters only** — closing items like "Next steps / Thank you"
+   don't belong in the table of contents; they belong on the deck's final closing slide
+   (`kit.closing`). The section-divider's and closing slide's full-gradient background +
+   white footer are already handled by the builder, so don't override them.
 6. **Background is white by default.** Use the subtle top-right glow (`bg: "glow"`)
    only on slides that deserve emphasis (e.g. big-stat, section openers) — not everywhere.
 7. **AgentCore content → AgentCore icons.** When a slide is about AgentCore or its
@@ -99,7 +100,7 @@ fastest way to learn the API.
 | `kit.agentcoreCards(pres, o)` | 3 feature cards w/ gradient pill | `headerTitle, cards:[{title,icon,desc}]` |
 | `kit.titleWithVisual(pres, o)` | Big left title + right hero diagram (EKS-21 style) | `title, caption, draw(pres,s,region)` |
 | `kit.pipeline(pres, o)` | Numbered left→right step flow | `steps:[{n,title,desc}]` |
-| `kit.whyWhat(pres, o)` | WHY panel + WHAT cards w/ 차별점 box | `why:[...], what:[{n,t,d,diff,dc}]` |
+| `kit.whyWhat(pres, o)` | WHY panel + WHAT cards w/ differentiation box | `why:[...], what:[{n,t,d,diff,dc}]` |
 | `kit.chartWithCallout(pres, o)` | Native editable chart + side callout | `series:[...], callout:{big,lines}` |
 | `kit.chipGrid(pres, o)` | Vendor-colored chip rows (EKS-23 style) | `vendorBoxes:[...], rows:[...]` |
 | `kit.sectionDivider(pres, o)` | Chapter-transition slide (full gradient bg) | `num, title, kicker` |

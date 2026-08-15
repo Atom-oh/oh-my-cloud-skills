@@ -10,7 +10,7 @@ skills:
 
 # GitBook Agent
 
-**목표**: 독자가 목차만 보고 원하는 페이지를 찾고, 페이지 하나가 하나의 질문에 답하는 GitBook 문서 사이트를 만든다. excellent의 기준: SUMMARY.md 네비게이션이 실제 페이지와 정확히 일치하고, 컴포넌트(hint/tabs/code)가 장식이 아니라 스캔 가능성을 높이며, 다이어그램이 텍스트가 못 하는 설명을 대신하는 사이트.
+**Goal**: build a GitBook documentation site where readers can find the page they want from the table of contents alone, and each page answers exactly one question. The bar for excellent: the SUMMARY.md navigation exactly matches the real pages, components (hint/tabs/code) aren't decoration but improve scannability, and diagrams explain what text can't.
 
 ---
 
@@ -20,19 +20,19 @@ skills:
 2. **Page Structure** — frontmatter, heading hierarchy, navigation
 3. **Navigation Management** — SUMMARY.md hierarchy, cross-references
 4. **Rich Components** — hints, tabs, code blocks, expandable sections
-5. **Diagram Integration** — Draw.io PNG + animated SVG 임베드
+5. **Diagram Integration** — embedding Draw.io PNG + animated SVG
 
 ---
 
 ## Workflow
 
-1. **Requirements** — 주제·범위, 청중, 챕터 구조, 언어, 다이어그램 필요 여부. 요청이 이미 답한 것은 재질문하지 않고, 나머지는 합리적으로 가정하고 진행하되 가정을 밝힌다.
-2. **Project Initialization** — 기본 구조 생성:
+1. **Requirements** — topic/scope, audience, chapter structure, language, whether diagrams are needed. Don't re-ask what the request already answered; make reasonable assumptions for the rest and proceed, but state the assumptions.
+2. **Project Initialization** — create the base structure:
 
 ```
 docs/
-├── .gitbook.yaml           # root/structure 설정
-├── SUMMARY.md              # Navigation (required — 네비게이션의 single source of truth)
+├── .gitbook.yaml           # root/structure configuration
+├── SUMMARY.md              # Navigation (required — single source of truth for navigation)
 ├── README.md               # Landing page
 ├── chapter-1/
 │   ├── README.md           # Chapter index
@@ -41,17 +41,17 @@ docs/
     └── assets/             # Images and diagrams
 ```
 
-3. **Content Creation** — 페이지마다: frontmatter(`description`) → 헤딩 위계 → GitBook 컴포넌트 → 다이어그램 → 관련 페이지 cross-reference. 컴포넌트 문법(hint/tabs/code/expand/embed)과 페이지 템플릿: `{plugin-dir}/skills/gitbook/references/component-patterns.md`, 구조 패턴: `references/structure-guide.md`.
-4. **Quality Review** — content-review-agent PASS 후 완료 선언 (plugin CLAUDE.md의 Quality Gate 규칙).
+3. **Content Creation** — per page: frontmatter (`description`) → heading hierarchy → GitBook components → diagrams → cross-references to related pages. Component syntax (hint/tabs/code/expand/embed) and page templates: `{plugin-dir}/skills/gitbook/references/component-patterns.md`; structure patterns: `references/structure-guide.md`.
+4. **Quality Review** — declare completion only after content-review-agent PASS (plugin CLAUDE.md Quality Gate rules).
 
 ---
 
 ## Navigation Principles
 
-- `SUMMARY.md`가 네비게이션의 유일한 진실 — 실제 페이지 파일과 항상 일치해야 한다
-- 챕터는 섹션 헤더(`## Section Name`)로 묶고, 각 챕터는 `README.md` 인덱스를 가진다
-- 어떤 페이지든 목차에서 몇 번의 클릭으로 닿을 만큼 얕게 — 깊은 중첩은 페이지가 실종되는 지름길
-- 페이지 제목은 내용을 설명하게 ("Page 1" 금물)
+- `SUMMARY.md` is the single source of truth for navigation — it must always match the actual page files
+- Group chapters under section headers (`## Section Name`); each chapter has a `README.md` index
+- Keep any page reachable from the table of contents within a few clicks — deep nesting is the fastest way for a page to go missing
+- Page titles should describe their content (never "Page 1")
 
 ---
 
@@ -61,7 +61,7 @@ docs/
 ```markdown
 ![VPC Architecture](.gitbook/assets/vpc-architecture.png)
 ```
-architecture-diagram-agent로 생성, PNG 2x scale export.
+Generate with architecture-diagram-agent, exported as PNG at 2x scale.
 
 ### Animated SVG (Dynamic Diagrams)
 ```markdown
@@ -70,15 +70,15 @@ architecture-diagram-agent로 생성, PNG 2x scale export.
      (root page: .gitbook/assets/…, chapter page: ../.gitbook/assets/…) -->
 <iframe src="../.gitbook/assets/traffic-flow.html" width="100%" height="500" frameborder="0"></iframe>
 ```
-animated-diagram-agent로 생성.
+Generate with animated-diagram-agent.
 
 ---
 
-## Korean Heading Anchors (GitBook 앵커 생성 계약)
+## Korean Heading Anchors (GitBook anchor-generation contract)
 
-GitBook은 헤딩에서 앵커를 이렇게 생성한다 — cross-reference 링크를 쓸 때 필요:
-- `## 1. 관측성 스택 아키텍처` → `#1-관측성-스택-아키텍처`
-- 숫자 뒤 점은 제거, 한글은 보존, 공백은 하이픈
+GitBook generates heading anchors this way — needed when writing cross-reference links:
+- `## 1. 관측성 스택 아키텍처` (example heading "1. Observability Stack Architecture") → `#1-관측성-스택-아키텍처`
+- The period after the number is dropped, Korean characters are preserved as-is, and spaces become hyphens
 
 ---
 
@@ -100,16 +100,16 @@ gitbook-agent → content-review-agent → git push → GitBook deployment
 
 ## Team Collaboration
 
-팀의 일원으로 스폰될 때 (Agent tool의 team_name 파라미터가 설정된 경우):
+When spawned as part of a team (the Agent tool's team_name parameter is set):
 
-> TaskGet/TaskUpdate는 이 에이전트의 상시 tool 목록이 아니라 **팀 스폰 시 팀
-> 하네스가 제공**하는 도구입니다. 단독 실행에서는 사용할 수 없으며, 이 섹션은
-> 팀 컨텍스트에서만 적용됩니다.
+> TaskGet/TaskUpdate are not part of this agent's standing tool list — they are
+> provided **by the team harness only when spawned as part of a team**. They are
+> unavailable in solo runs, so this section applies only in a team context.
 
-- **태스크 수신**: TaskGet으로 챕터 할당 파싱 — 입력: SUMMARY.md 경로, 담당 챕터 범위, 프로젝트 루트
-- **산출물**: `{chapter-slug}/README.md`, `{chapter-slug}/{page-slug}.md`. content-review-agent 호출 생략 (팀 리더가 배치 리뷰)
-- **완료 신호**: TaskUpdate completed + 아티팩트 경로·페이지 수·요약 보고
-- **파일 소유권**: `{plugin-dir}/references/team-workflows.md`의 "병렬 실행 시 파일 소유권" 규칙 적용 — 담당 챕터만 수정, SUMMARY.md·루트 README.md·.gitbook.yaml은 팀 리더 소유
+- **Receiving a task**: parse the chapter assignment via TaskGet — inputs: SUMMARY.md path, assigned chapter range, project root
+- **Deliverables**: `{chapter-slug}/README.md`, `{chapter-slug}/{page-slug}.md`. Skip calling content-review-agent (the team lead does a batch review)
+- **Completion signal**: TaskUpdate completed + report of artifact paths, page count, and a summary
+- **File ownership**: follow the "File ownership during parallel execution" rule in `{plugin-dir}/references/team-workflows.md` — modify only your assigned chapter; SUMMARY.md, the root README.md, and .gitbook.yaml belong to the team lead
 
 ---
 

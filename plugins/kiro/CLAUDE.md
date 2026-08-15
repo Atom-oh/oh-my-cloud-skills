@@ -17,9 +17,10 @@ never set up is not).
 ## Routing rule (this file is always loaded — this is what makes `default_delegate` fire)
 
 The skill/agent triggers below only match requests that **name Kiro explicitly** ("kiro
-로 구현", "delegate to kiro", …). A generic implementation request ("이 함수 구현해줘",
-"add a retry to this function") never contains those words, so `default_delegate` being
-on would otherwise never actually route anything — the toggle would be dead.
+implement this", "delegate to kiro", …). A generic implementation request ("implement
+this function", "add a retry to this function") never contains those words, so
+`default_delegate` being on would otherwise never actually route anything — the toggle
+would be dead.
 
 **The mechanism that makes it real is `hooks/session-routing.sh` (SessionStart), NOT this
 file.** An earlier version of this section claimed *"this `CLAUDE.md` is loaded into
@@ -240,7 +241,7 @@ identical across all three — see the note in `skills/kiro-delegate/SKILL.md`).
 explicit **implementation**-delegation phrasings; review is the separate `/kiro:review`
 command and has no auto-invocation trigger (it never loads this write-capable skill):
 
-| 한국어 | English |
+| Korean | English |
 |--------|---------|
 | kiro한테 시켜서 구현 | delegate implementation to kiro |
 | kiro로 구현 | kiro implement this |

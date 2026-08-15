@@ -11,10 +11,10 @@ A unified plugin for AWS cloud content creation: presentations, architecture dia
 # Web/HTML (interactive):
 presentation-agent (dispatcher) → reactive-presentation-agent → validate (rejection loop) → build → content-review-agent → Deploy (GitHub Pages)
 # Native PowerPoint (.pptx):
-presentation-agent (dispatcher) → aws-light-fcd skill (PptxGenJS, AWS Light theme) → check_pptx.py (거절 루프, ≥80 AND geometry 0건) → embed_fonts.py → content-review-agent → .pptx
+presentation-agent (dispatcher) → aws-light-fcd skill (PptxGenJS, AWS Light theme) → check_pptx.py (rejection loop, ≥80 AND zero geometry findings) → embed_fonts.py → content-review-agent → .pptx
 ```
-> Remarp 작성 후 `remarp_to_slides.py validate` 거절 루프: CRITICAL 0건이어야 빌드.
-> **PPTX 분기**: "pptx/파워포인트/ppt" 키워드 또는 사용자가 PPTX 선택 시 디스패처가 `aws-light-fcd` 스킬로 라우팅 (python-pptx를 손으로 쓰지 않는 이유: 스킬이 검증된 디자인 시스템·폰트 임베딩을 소유). 게이트는 위 파이프라인의 `check_pptx.py` 한 곳: 점수 ≥80 **그리고** `[geometry]` finding 0건 — geometry 결함은 점수와 무관하게 실패.
+> After authoring in Remarp, run the `remarp_to_slides.py validate` rejection loop: there must be zero CRITICAL findings before building.
+> **PPTX branch**: on a "pptx/PowerPoint/ppt" keyword or when the user picks PPTX, the dispatcher routes to the `aws-light-fcd` skill (python-pptx is not hand-written because the skill owns the validated design system and font embedding). The single gate in the pipeline above is `check_pptx.py`: score ≥80 **and** zero `[geometry]` findings — a geometry defect fails regardless of score.
 
 ### Architecture Diagram Workflow
 ```
@@ -23,7 +23,7 @@ architecture-diagram-agent → layout_aws.py (YAML spec → .drawio) → validat
 # Hand-authored (non-standard shapes only): → .drawio → validate + lint → PNG export
 → (embed in presentation/document/gitbook)
 ```
-> 표준 패턴은 좌표를 손으로 찍지 말고 `skills/architecture-diagram/scripts/layout_aws.py` 스펙 생성기를 사용. 골든 예시: `skills/architecture-diagram/examples/`.
+> For standard patterns, don't place coordinates by hand — use the `skills/architecture-diagram/scripts/layout_aws.py` spec generator. Golden examples: `skills/architecture-diagram/examples/`.
 
 ### Animated Diagram Workflow
 ```
@@ -47,52 +47,53 @@ workshop-agent → content-review-agent → Workshop Studio content
 
 ### Brochure Workflow
 ```
-brochure-agent → gather product facts → (architecture-diagram → SVG) → (Playwright UI 캡처)
+brochure-agent → gather product facts → (architecture-diagram → SVG) → (Playwright UI capture)
   → self-contained responsive HTML → check_brochure.py → content-review-agent (≥85)
   → GitHub Pages (public, verify no-auth 200)
 ```
-> 단일 자기완결 HTML(모바일/태블릿/PC 반응형). **웹 UI가 있는 제품은 실제 스크린샷 섹션 필수** — Playwright MCP로 캡처, URL/실행법 모르면 확인 요청. 아키텍처는 `architecture-diagram`으로 만들어 SVG로 임베드하고 카피와 같은 이야기를 유지. **공개 호스팅은 GitHub Pages** — 인증 엣지(Cognito Lambda@Edge 등) 뒤 도메인엔 공개 우회 경로가 없으면 올릴 수 없음.
+> One self-contained HTML file (mobile/tablet/PC responsive). **A product with a web UI requires a real screenshot section** — capture it with Playwright MCP; if you don't know the URL or how to run it, ask. Build the architecture diagram with `architecture-diagram` and embed it as SVG, keeping the diagram consistent with the copy's story. **Public hosting is GitHub Pages** — a domain behind an auth edge (Cognito Lambda@Edge, etc.) can't be published there unless it has a public bypass path.
 
 ### Profile Page (gh-home) Workflow
 ```
-gather facts (기존 페이지/GitHub/사용자 확인) → self-contained responsive HTML (sidebar+about+experience+skills+projects)
-  → check_brochure.py (brochure 스킬과 공유) → content-review-agent (≥85) → GitHub Pages (public)
+gather facts (existing page / GitHub / user confirmation) → self-contained responsive HTML (sidebar+about+experience+skills+projects)
+  → check_brochure.py (shared with the brochure skill) → content-review-agent (≥85) → GitHub Pages (public)
 ```
-> 개인 프로필/포트폴리오 페이지(제품/솔루션이 아닌 사람이 주제) — brochure와 구분. 경력/프로젝트는 절대 지어내지 않고 기존 페이지·GitHub·사용자 확인으로만 채움. 기존 `index.html`이 있으면 **덮어쓰기 전 확인**, CNAME/robots.txt/analytics 스크립트 등 무관 파일은 보존.
+> A personal profile/portfolio page (the subject is a person, not a product/solution) — distinct from a brochure. Never invent career history or projects; populate it only from an existing page, GitHub, or user confirmation. If an existing `index.html` is present, **confirm before overwriting**, and preserve unrelated files such as CNAME/robots.txt/analytics scripts.
 
 ---
 
-## Team Workflow Patterns (병렬 오케스트레이션)
+## Team Workflow Patterns (parallel orchestration)
 
-**기본값은 순차 워크플로우.** 팀 기반 병렬은 아래 트리거 충족 시에만:
+**The default is a sequential workflow.** Team-based parallelism is used only when the triggers below are met:
 
-| 트리거 | 팀 | 파이프라인 |
+| Trigger | Team | Pipeline |
 |--------|----|-----------|
-| 프레젠테이션 ≥60분 또는 3+ 블록 | `content-presentation` | Multi-Phase |
-| 워크숍 3+ 모듈 | `content-workshop` | Multi-Phase |
-| GitBook 5+ 챕터 | `content-gitbook` | Block-Parallel |
-| 프레젠테이션+다이어그램+문서 동시 | `content-cross-type` | Cross-Type |
+| Presentation ≥60 min or 3+ blocks | `content-presentation` | Multi-Phase |
+| Workshop with 3+ modules | `content-workshop` | Multi-Phase |
+| GitBook with 5+ chapters | `content-gitbook` | Block-Parallel |
+| Presentation + diagram + document requested together | `content-cross-type` | Cross-Type |
 
-트리거 충족 시 subagent 스폰(블록당 1개 병렬), 미달이면 순차. 사용자가 "병렬/동시에/팀으로" 명시 시에도 사용.
+When a trigger is met, spawn subagents (one in parallel per block); otherwise stay sequential. Also use this when the user explicitly says "in parallel / simultaneously / as a team."
 
-> **상세**(Multi-Phase 4단계, Subagent Spawn Policy, Phase 데이터 전달, 오케스트레이션 실행 순서, Block-Parallel): **`references/team-workflows.md`** — 팀을 실제로 스폰할 때 참조.
+> **Details** (the 4 Multi-Phase stages, Subagent Spawn Policy, Phase-to-phase data handoff, orchestration execution order, Block-Parallel): **`references/team-workflows.md`** — consult it when actually spawning a team.
 
 ---
 
-## Quality Gate (필수 — Mandatory)
+## Quality Gate (Mandatory)
 
-> **규칙: 산출물(deliverable)은 배포/완료 선언 전에 content-review-agent를 통과한다.**
-> 대상은 신규 아티팩트와 실질 개정. 오탈자·한 줄 수정 같은 사소한 손질은 게이트
-> 재통과 없이 반영하되, 완료/배포를 선언하는 시점에는 그 산출물의 유효한 PASS
-> 리뷰가 존재해야 한다.
+> **Rule: a deliverable must pass content-review-agent before it is declared deployed/complete.**
+> This applies to new artifacts and substantive revisions. Minor touch-ups such as
+> typo fixes or one-line edits can be applied without re-passing the gate, but at the
+> moment completion/deployment is declared, a valid PASS review for that deliverable
+> must exist.
 
 ### Auto-Trigger
 
-산출물이 완성되는 즉시 — 슬라이드/애니메이션 `.html`, `.drawio`, 기술문서 `.md`, GitBook/Workshop 프로젝트, 브로셔/프로필 `.html`, `.pptx`(check_pptx.py 게이트 + embed_fonts.py 이후) — `review content at [경로]`로 content-review-agent를 호출합니다.
+As soon as a deliverable is finished — slide/animation `.html`, `.drawio`, technical-doc `.md`, GitBook/Workshop project, brochure/profile `.html`, `.pptx` (after the check_pptx.py gate + embed_fonts.py) — invoke content-review-agent with `review content at [path]`.
 
 ### Review Loop
 
-FAIL/REVIEW 판정이면 수정 후 재리뷰. PASS 후에 완료/배포 선언. 3회 재리뷰에도 PASS 미달이면 사용자에게 판단을 넘깁니다.
+On a FAIL/REVIEW verdict, fix and re-review. Declare completion/deployment only after PASS. If PASS still isn't reached after 3 re-reviews, hand the decision to the user.
 
 ### Verdict
 
@@ -102,8 +103,9 @@ FAIL/REVIEW 판정이면 수정 후 재리뷰. PASS 후에 완료/배포 선언.
 | **REVIEW** | Critical 0, Warning 4-10, Score 70-84 | Fix and re-review |
 | **FAIL** | Critical ≥1 or Warning >10 or Score <70 | Cannot proceed |
 
-> Visual Testing 면제 콘텐츠(Markdown, Draw.io, Workshop, PPTX, Playwright 미가용)는
-> **90점 만점** 스케일: PASS ≥77 / REVIEW 63-76 / FAIL <63. 리뷰 리포트가 어느 스케일인지 명시한다.
+> Content exempt from Visual Testing (Markdown, Draw.io, Workshop, PPTX, or when
+> Playwright is unavailable) uses the **90-point** scale: PASS ≥77 / REVIEW 63-76 /
+> FAIL <63. The review report must state which scale it used.
 
 ---
 
@@ -137,7 +139,7 @@ FAIL/REVIEW 판정이면 수정 후 재리뷰. PASS 후에 완료/배포 선언.
 
 ---
 
-## AWS Icons (필수 — Mandatory)
+## AWS Icons (Mandatory)
 
 AWS Architecture Icons are located in `skills/reactive-presentation/assets/aws-icons/`:
 - `Architecture-Service-Icons_07312025/` — Service-level icons (121 categories)
@@ -146,10 +148,11 @@ AWS Architecture Icons are located in `skills/reactive-presentation/assets/aws-i
 - `Resource-Icons_07312025/` — Resource-level icons (22 categories)
 - `others/` — Third-party icons (LangChain, Grafana, etc.)
 
-> **규칙**: AWS 서비스를 시각적으로 표현하는 슬라이드(아키텍처·서비스 소개·구성도)는
-> 이 번들의 **공식 아이콘**을 사용한다 — 임의로 그린 대체 그림 금지. 서비스명이
-> 텍스트로만 스치는 슬라이드(아젠다·코드·비교표)에는 아이콘을 강제하지 않는다.
-> 공식 아이콘 미사용은 content-review-agent에서 감점된다.
+> **Rule**: any slide that visually represents an AWS service (architecture, service
+> introduction, diagrams) must use this bundle's **official icons** — do not draw ad hoc
+> substitute graphics. Icons are not mandatory on slides where the service name only
+> appears as text (agenda, code, comparison tables). Failing to use the official icons
+> costs points in content-review-agent.
 
 ---
 

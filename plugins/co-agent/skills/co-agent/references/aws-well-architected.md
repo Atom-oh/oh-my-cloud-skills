@@ -1,174 +1,174 @@
 # AWS Well-Architected Framework — Deep Review Checklist
 
-6개 필러별 상세 체크리스트. 인프라 코드(Terraform, CDK, CloudFormation) 리뷰에 사용합니다.
+Detailed checklist per pillar (6 pillars). Used for reviewing infrastructure code (Terraform, CDK, CloudFormation).
 
 ---
 
-## Pillar 1: Operational Excellence (운영 우수성)
+## Pillar 1: Operational Excellence
 
-### OPS-01: IaC 관리
+### OPS-01: IaC management
 ```bash
-# 모든 리소스가 IaC로 관리되는지 확인
+# Confirm all resources are managed as IaC
 # Terraform
 terraform state list | wc -l
 # CDK
 cdk diff 2>&1 | grep -c "Resources"
 ```
-- [ ] 모든 리소스가 코드로 정의됨
-- [ ] 수동 콘솔 변경 없음 (drift detection)
-- [ ] 환경별 분리 (dev/staging/prod)
+- [ ] All resources are defined as code
+- [ ] No manual console changes (drift detection)
+- [ ] Separated per environment (dev/staging/prod)
 
-### OPS-02: 관찰 가능성
-- [ ] CloudWatch 메트릭 대시보드
-- [ ] 알람 설정 (CPU, 메모리, 에러율, 지연)
-- [ ] 구조화된 로깅 (JSON 형식)
-- [ ] 분산 추적 (X-Ray, ADOT)
-- [ ] 로그 보존 정책
+### OPS-02: Observability
+- [ ] CloudWatch metrics dashboard
+- [ ] Alarms configured (CPU, memory, error rate, latency)
+- [ ] Structured logging (JSON format)
+- [ ] Distributed tracing (X-Ray, ADOT)
+- [ ] Log retention policy
 
-### OPS-03: 변경 관리
-- [ ] CI/CD 파이프라인 정의
-- [ ] 자동 테스트 게이트
-- [ ] Blue/Green or Canary 배포
-- [ ] 롤백 자동화
+### OPS-03: Change management
+- [ ] CI/CD pipeline defined
+- [ ] Automated test gates
+- [ ] Blue/Green or Canary deployment
+- [ ] Automated rollback
 
 ---
 
-## Pillar 2: Security (보안)
+## Pillar 2: Security
 
 ### SEC-01: IAM
 ```bash
-# 과도한 권한 탐지
+# Detect over-broad permissions
 grep -rn "Action.*\"\*\"" --include="*.tf" --include="*.yaml" --include="*.json"
 grep -rn "Resource.*\"\*\"" --include="*.tf" --include="*.yaml" --include="*.json"
 
-# AdministratorAccess 사용 여부
+# Check for AdministratorAccess usage
 grep -rn "AdministratorAccess\|PowerUserAccess" --include="*.tf" --include="*.yaml"
 ```
-- [ ] 최소 권한 원칙
-- [ ] 서비스별 전용 IAM 역할
+- [ ] Principle of least privilege
+- [ ] Dedicated IAM role per service
 - [ ] IRSA / Pod Identity (EKS)
-- [ ] 임시 자격증명 사용
+- [ ] Use of temporary credentials
 
-### SEC-02: 데이터 보호
-- [ ] 저장 시 암호화 (EBS, S3, RDS: KMS)
-- [ ] 전송 중 암호화 (TLS 1.2+)
+### SEC-02: Data protection
+- [ ] Encryption at rest (EBS, S3, RDS: KMS)
+- [ ] Encryption in transit (TLS 1.2+)
 - [ ] Secrets Manager / SSM Parameter Store
-- [ ] S3 버킷 퍼블릭 액세스 차단
+- [ ] S3 bucket public access blocked
 
-### SEC-03: 네트워크
+### SEC-03: Network
 ```bash
-# 보안 그룹 0.0.0.0/0 오픈 탐지
+# Detect security groups open to 0.0.0.0/0
 grep -rn "0\.0\.0\.0/0\|::/0" --include="*.tf" --include="*.yaml" | grep -i "ingress\|cidr"
 ```
-- [ ] VPC 서브넷 분리 (public/private)
-- [ ] 보안 그룹 최소 포트 오픈
-- [ ] VPC 엔드포인트 (S3, DynamoDB, ECR)
-- [ ] WAF 적용 (public-facing)
+- [ ] VPC subnet separation (public/private)
+- [ ] Security groups open the minimum ports
+- [ ] VPC endpoints (S3, DynamoDB, ECR)
+- [ ] WAF applied (public-facing)
 
 ---
 
-## Pillar 3: Reliability (안정성)
+## Pillar 3: Reliability
 
-### REL-01: 고가용성
-- [ ] 멀티 AZ 배포
-- [ ] Auto Scaling 그룹 설정
-- [ ] 헬스체크 (ALB + 컨테이너)
-- [ ] 서킷 브레이커 패턴
+### REL-01: High availability
+- [ ] Multi-AZ deployment
+- [ ] Auto Scaling group configured
+- [ ] Health checks (ALB + container)
+- [ ] Circuit breaker pattern
 
-### REL-02: 장애 복구
+### REL-02: Disaster recovery
 ```bash
-# 백업 설정 확인
+# Check backup configuration
 grep -rn "backup_retention\|point_in_time_recovery\|backup_window" --include="*.tf" --include="*.yaml"
 ```
-- [ ] RDS 자동 백업 + 스냅샷
-- [ ] S3 버전 관리
-- [ ] 크로스 리전 복제 (필요 시)
-- [ ] RPO/RTO 정의 및 테스트
+- [ ] RDS automated backups + snapshots
+- [ ] S3 versioning
+- [ ] Cross-region replication (where required)
+- [ ] RPO/RTO defined and tested
 
-### REL-03: 한계 관리
-- [ ] Service Quotas 확인
-- [ ] 속도 제한 (API Gateway throttling)
-- [ ] 큐 기반 부하 분산 (SQS)
-- [ ] 그레이스풀 디그레이데이션
-
----
-
-## Pillar 4: Performance Efficiency (성능 효율성)
-
-### PERF-01: 컴퓨팅
-- [ ] 워크로드에 적합한 인스턴스 타입
-- [ ] Graviton 프로세서 고려
-- [ ] 컨테이너 리소스 요청/제한 설정
-- [ ] Lambda 메모리/타임아웃 최적화
-
-### PERF-02: 데이터
-- [ ] 데이터베이스 인덱스 전략
-- [ ] 읽기 복제본 (읽기 부하 분산)
-- [ ] 캐싱 레이어 (ElastiCache, DAX)
-- [ ] 쿼리 성능 인사이트 활성화
-
-### PERF-03: 네트워크
-- [ ] CloudFront CDN (정적 콘텐츠)
-- [ ] Global Accelerator (글로벌 트래픽)
-- [ ] VPC 엔드포인트 (AWS 서비스 직접 연결)
-- [ ] 적절한 리전 선택
+### REL-03: Limits management
+- [ ] Service Quotas checked
+- [ ] Rate limiting (API Gateway throttling)
+- [ ] Queue-based load distribution (SQS)
+- [ ] Graceful degradation
 
 ---
 
-## Pillar 5: Cost Optimization (비용 최적화)
+## Pillar 4: Performance Efficiency
 
-### COST-01: 리소스 효율성
+### PERF-01: Compute
+- [ ] Instance type suited to the workload
+- [ ] Graviton processors considered
+- [ ] Container resource requests/limits configured
+- [ ] Lambda memory/timeout optimized
+
+### PERF-02: Data
+- [ ] Database index strategy
+- [ ] Read replicas (distribute read load)
+- [ ] Caching layer (ElastiCache, DAX)
+- [ ] Query performance insights enabled
+
+### PERF-03: Network
+- [ ] CloudFront CDN (static content)
+- [ ] Global Accelerator (global traffic)
+- [ ] VPC endpoints (direct connection to AWS services)
+- [ ] Appropriate region selection
+
+---
+
+## Pillar 5: Cost Optimization
+
+### COST-01: Resource efficiency
 ```bash
-# 과도한 인스턴스 사이징 탐지
+# Detect oversized instances
 grep -rn "instance_type\|instance_class" --include="*.tf" | grep -iE "xlarge|2xlarge|4xlarge|metal"
 ```
-- [ ] 인스턴스 Right-sizing
-- [ ] Savings Plans / Reserved Instances 분석
-- [ ] 스팟 인스턴스 활용 (비 미션 크리티컬)
-- [ ] 미사용 리소스 제거
+- [ ] Instance right-sizing
+- [ ] Savings Plans / Reserved Instances analysis
+- [ ] Spot instance usage (non-mission-critical workloads)
+- [ ] Unused resources removed
 
-### COST-02: 비용 가시성
-- [ ] 리소스 태깅 전략 (팀, 환경, 프로젝트)
-- [ ] AWS 예산 알림 설정
-- [ ] Cost Explorer 대시보드
-- [ ] 비용 할당 태그
+### COST-02: Cost visibility
+- [ ] Resource tagging strategy (team, environment, project)
+- [ ] AWS budget alerts configured
+- [ ] Cost Explorer dashboard
+- [ ] Cost allocation tags
 
-### COST-03: 아키텍처 최적화
-- [ ] 서버리스 전환 가능 여부 (Lambda, Fargate)
-- [ ] 스토리지 계층화 (S3 Lifecycle)
-- [ ] 데이터 전송 비용 최소화
-- [ ] NAT Gateway vs VPC 엔드포인트
+### COST-03: Architecture optimization
+- [ ] Serverless migration feasibility (Lambda, Fargate)
+- [ ] Storage tiering (S3 Lifecycle)
+- [ ] Minimized data transfer cost
+- [ ] NAT Gateway vs VPC endpoint
 
 ---
 
-## Pillar 6: Sustainability (지속 가능성)
+## Pillar 6: Sustainability
 
-### SUS-01: 효율적 리소스 사용
-- [ ] Graviton (ARM) 프로세서 채택
-- [ ] 서버리스 우선 아키텍처
-- [ ] 자동 스케일링으로 유휴 리소스 최소화
-- [ ] 적절한 리소스 사이징
+### SUS-01: Efficient resource use
+- [ ] Graviton (ARM) processor adoption
+- [ ] Serverless-first architecture
+- [ ] Auto scaling to minimize idle resources
+- [ ] Appropriate resource sizing
 
-### SUS-02: 데이터 관리
-- [ ] 데이터 보존 정책 (TTL)
-- [ ] 불필요한 데이터 이동 최소화
-- [ ] 압축 사용 (S3, 로그)
+### SUS-02: Data management
+- [ ] Data retention policy (TTL)
+- [ ] Minimized unnecessary data movement
+- [ ] Compression used (S3, logs)
 
 ---
 
 ## Scoring Guide
 
-각 필러는 5점 만점으로 채점:
+Each pillar is scored out of 5:
 
-| 점수 | 기준 |
+| Score | Criteria |
 |------|------|
-| ★★★★★ (5) | 모든 체크 통과, Best Practice 준수 |
-| ★★★★☆ (4) | 1-2개 미충족, 경미한 개선 필요 |
-| ★★★☆☆ (3) | 3-4개 미충족, 개선 권고 |
-| ★★☆☆☆ (2) | 5개 이상 미충족, 주요 개선 필요 |
-| ★☆☆☆☆ (1) | 기본 사항 미충족, 즉각 대응 필요 |
+| ★★★★★ (5) | All checks pass, best practices followed |
+| ★★★★☆ (4) | 1-2 unmet, minor improvement needed |
+| ★★★☆☆ (3) | 3-4 unmet, improvement recommended |
+| ★★☆☆☆ (2) | 5+ unmet, major improvement needed |
+| ★☆☆☆☆ (1) | Basic requirements unmet, immediate action needed |
 
-필러별 판정:
-- ★★★★☆ 이상: **PASS**
+Per-pillar verdict:
+- ★★★★☆ or better: **PASS**
 - ★★★☆☆: **REVIEW**
-- ★★☆☆☆ 이하: **FAIL**
+- ★★☆☆☆ or worse: **FAIL**

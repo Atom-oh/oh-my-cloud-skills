@@ -1,49 +1,55 @@
-# Central Account Guide (중앙 계정 가이드)
+# Central Account Guide
 
-이벤트당 하나, 참가자(팀) 계정과 분리된 **공유 계정**을 배포해 팀 간 공유 리소스·게이미피케이션·API 기반 상호작용을 구현하는 방법.
+How to deploy a single, per-event **shared account** separate from participant (team) accounts, to
+implement cross-team shared resources, gamification, and API-based interactions.
 
 ---
 
-## 중앙 계정이란 / 언제 사용하나
+## What is a central account / when to use it
 
-Workshop Studio는 워크샵당 최대 **1개**의 중앙 계정(Central Account)을 지원한다. 중앙 계정은 팀 계정과 별도로 프로비저닝되는 AWS 계정으로, 이벤트 진행 중 팀 계정들과 API로 상호작용할 수 있다.
+Workshop Studio supports at most **one** Central Account per workshop. A central account is an AWS account
+provisioned separately from team accounts that can interact with team accounts via API during the event.
 
-| 사용 사례 | 설명 |
+| Use case | Description |
 |-----------|------|
-| 공유 백엔드 리소스 | 모든 팀이 함께 사용하는 대시보드, 리더보드, 공용 데이터셋 |
-| 부하 생성/트래픽 주입 | 팀 계정으로 트래픽을 보내는 로드 제너레이터 |
-| 진행도 검증 | 팀 계정 내부 상태를 확인해 참가자의 진행 상황을 판정 |
-| 게이미피케이션 | 체크포인트 완료 시 참가자에게 보이는 결과를 동적으로 생성 |
+| Shared backend resources | dashboards, leaderboards, shared datasets used by all teams together |
+| Load generation/traffic injection | a load generator that sends traffic to team accounts |
+| Progress verification | checks internal state in team accounts to judge participant progress |
+| Gamification | dynamically generates results shown to participants when they complete checkpoints |
 
-**비용/제약**: 중앙 계정은 이벤트 프로비저닝 시 운영자의 계정 할당량에서 **추가로 1개**를 소비한다. 중앙 계정에는 최대 5개의 CloudFormation 템플릿을 배포할 수 있다(팀 인프라와 동일한 제한).
+**Cost/constraints**: a central account consumes **one extra** account from the operator's account quota
+during event provisioning. Up to 5 CloudFormation templates can be deployed to the central account (the
+same limit as team infrastructure).
 
-공유 리소스가 필요 없다면 중앙 계정 없이 팀 인프라(`infrastructure`)만으로 충분하다 — 불필요하게 계정을 추가 소비하지 않도록 실제로 팀 간 상호작용/공유 상태가 필요한 경우에만 사용한다.
+If you don't need shared resources, team infrastructure (`infrastructure`) alone is sufficient without a
+central account — use it only when you actually need cross-team interaction/shared state, to avoid
+unnecessarily consuming an extra account.
 
 ---
 
-## contentspec 스키마 — `centralAccountInfrastructure`
+## contentspec schema — `centralAccountInfrastructure`
 
 ```yaml
-# [선택] 중앙 계정을 사용할 때만 정의
+# [optional] define only when using a central account
 centralAccountInfrastructure:
   cloudformationTemplates:
-    # static/ 하위에 위치해야 함, 최대 5개
+    # must be located under static/, max 5
     - templateLocation: static/cfn/central-stack.yaml
       label: Central Account Stack
 
-      # [선택] 스택에 적용할 태그
+      # [optional] tags applied to the stack
       tags:
         - key: Environment
           value: Workshop
 
-      # [선택] 참가자에게 노출할 특정 Output만 지정
+      # [optional] specify only the particular Outputs to expose to participants
       participantVisibleStackOutputs:
         - LeaderboardUrl
 
-      # [선택] 모든 Output/Export를 참가자에게 노출 (기본값 false)
+      # [optional] expose all Outputs/Exports to participants (default false)
       participantAllStackOutputsVisible: false
 
-      # [선택] 템플릿 파라미터 — Magic Variable 사용 가능
+      # [optional] template parameters — Magic Variables can be used
       parameters:
         - templateParameter: NotificationBusArn
           defaultValue: "{{.NotificationBusArn}}"
@@ -53,84 +59,105 @@ centralAccountInfrastructure:
           defaultValue: "{{.WSEventsAPIRegion}}"
 ```
 
-`infrastructure.cloudformationTemplates`와 동일한 필드 구조를 쓰지만, 대상 계정이 팀이 아니라 중앙 계정이라는 점만 다르다. Outputs/Exports 노출 규칙(`participantVisibleStackOutputs` / `participantAllStackOutputsVisible`)도 동일하게 적용된다 — 상세: `references/event-params-guide.md`.
+Uses the same field structure as `infrastructure.cloudformationTemplates`, differing only in that the
+target account is the central account rather than a team. The same Outputs/Exports exposure rules
+(`participantVisibleStackOutputs` / `participantAllStackOutputsVisible`) apply — details:
+`references/event-params-guide.md`.
 
 ---
 
 ## Central CloudFormation Magic Variables
 
-팀용 Magic Variable 중 `{{.AssetsBucketName}}`, `{{.AssetsBucketPrefix}}`는 중앙 계정에서도 그대로 쓸 수 있고, 아래 4개가 중앙 계정 전용으로 추가된다.
+Of the team Magic Variables, `{{.AssetsBucketName}}` and `{{.AssetsBucketPrefix}}` can be used as-is in the
+central account too, and the following 4 are added specifically for the central account.
 
-| 변수 | 설명 | 예시 |
+| Variable | Description | Example |
 |------|------|------|
-| `{{.NotificationBusArn}}` | 라이프사이클 알림을 수신하는 EventBridge 버스 ARN | `arn:aws:events:us-east-1:123456789012:event-bus/lifecycle-notification-bus` |
-| `{{.WSEventsAPIEndpoint}}` | Central Account Client API 엔드포인트 호스트명 (스킴 없음) | `events-api.us-east-1.prod.workshops.aws` |
-| `{{.WSEventsAPIRegion}}` | 위 API의 리전 | `us-east-1` |
-| `{{.TeamSize}}` | 팀당 최대 참가자 수 | `5` |
+| `{{.NotificationBusArn}}` | ARN of the EventBridge bus receiving lifecycle notifications | `arn:aws:events:us-east-1:123456789012:event-bus/lifecycle-notification-bus` |
+| `{{.WSEventsAPIEndpoint}}` | Central Account Client API endpoint hostname (no scheme) | `events-api.us-east-1.prod.workshops.aws` |
+| `{{.WSEventsAPIRegion}}` | region of the above API | `us-east-1` |
+| `{{.TeamSize}}` | maximum participants per team | `5` |
 
-전체 Magic Variable 목록: `references/contentspec-complete.md`.
+Full Magic Variable list: `references/contentspec-complete.md`.
 
 ---
 
-## 중앙 ↔ 참가자 계정 데이터 흐름
+## Central ↔ participant account data flow
 
 ```mermaid
 flowchart LR
-    subgraph Central["중앙 계정"]
+    subgraph Central["Central Account"]
         App["Central Client App"]
         Bus["EventBridge Bus<br/>(lifecycle-notification-bus)"]
     end
-    subgraph Team["팀 계정 (N개)"]
-        Stack["팀 CFN 스택"]
+    subgraph Team["Team Accounts (N)"]
+        Stack["Team CFN Stack"]
     end
-    Bus -->|상태 전이 알림| App
+    Bus -->|state transition notification| App
     App -->|Central Account Client API<br/>SigV4| Stack
-    App -->|CentralCreateTeamOutputs| Output["팀별 Participant-Visible Output"]
+    App -->|CentralCreateTeamOutputs| Output["Per-team Participant-Visible Output"]
 ```
 
-### 패턴 1 — Central Account Client API로 팀에 값 전달
+### Pattern 1 — pushing values to teams via the Central Account Client API
 
-중앙 계정 내부에서만 호출 가능한 별도 API 세트다 (팀 계정에서는 호출 불가, SigV4 서명 + 중앙 계정 내 IAM 역할 필요). 대표 오퍼레이션:
+A separate set of APIs callable only from within the central account (not callable from team accounts;
+requires SigV4 signing + an IAM role within the central account). Representative operations:
 
-| Operation | 용도 |
+| Operation | Purpose |
 |-----------|------|
-| `CentralListTeams` / `CentralGetTeam` | 이벤트 내 팀 목록/상세 조회 |
-| `CentralGetEventTeamCredentials` | 특정 팀 계정의 Ops 역할 STS 자격 증명 발급 (팀 계정 리소스에 직접 접근) |
-| `CentralListTeamOutputs` | 팀의 CFN Output + 중앙 앱이 생성한 Output 조회 |
-| `CentralCreateTeamOutputs` / `CentralUpdateTeamOutputs` / `CentralDeleteTeamOutputs` | 팀별로 참가자에게 보이는 커스텀 Output 생성/수정/삭제 (체크포인트 완료 표시 등) |
+| `CentralListTeams` / `CentralGetTeam` | list/inspect teams within an event |
+| `CentralGetEventTeamCredentials` | issue STS credentials for a specific team account's Ops role (direct access to team account resources) |
+| `CentralListTeamOutputs` | fetch a team's CFN Outputs + Outputs created by the central app |
+| `CentralCreateTeamOutputs` / `CentralUpdateTeamOutputs` / `CentralDeleteTeamOutputs` | create/update/delete per-team custom Outputs visible to participants (e.g. marking checkpoint completion) |
 
-레이트 리밋: Write/List 100 TPM(분당 트랜잭션), Read 400 TPM, Delete 50 TPM. 제약: 이벤트당 중앙 계정 1개·중앙 클라이언트 앱 1개, CFN이 생성한 Output/Export는 API로 수정·삭제 불가.
+Rate limits: Write/List 100 TPM (transactions per minute), Read 400 TPM, Delete 50 TPM. Constraints: 1
+central account and 1 central client app per event; Outputs/Exports created by CFN cannot be modified or
+deleted via the API.
 
-### 패턴 2 — NotificationBus로 라이프사이클 이벤트 수신
+### Pattern 2 — receiving lifecycle events via NotificationBus
 
-중앙 계정의 EventBridge 버스(`lifecycle-notification-bus`)는 팀/이벤트 상태 전이가 있을 때마다 알림을 받는다 (동일 상태로의 전이는 발생하지 않음). 기본적으로 `cloudwatch-log-rule`이라는 규칙이 모든 알림(`source: com.workshopstudio`)을 CloudWatch Log Group(`/aws/events/lifecycle-notification-logs`)에 기록한다.
+The central account's EventBridge bus (`lifecycle-notification-bus`) receives a notification whenever a
+team/event state transition occurs (transitioning to the same state does not fire a notification). By
+default, a rule named `cloudwatch-log-rule` logs all notifications (`source: com.workshopstudio`) to a
+CloudWatch Log Group (`/aws/events/lifecycle-notification-logs`).
 
-| DetailType | 발생 조건 |
+| DetailType | Fired when |
 |------------|-----------|
-| `team` | 팀 상태 전이: `deployment_queued` → `deployment_success`/`deployment_failed` → `terminate_success` |
-| `event` | 이벤트 상태 전이: `start_success`, `pause_success` |
-| `event_parameters` | 이벤트 파라미터 값 변경 (운영자가 런타임에 값을 조정했을 때) — 상세: `references/event-params-guide.md` |
+| `team` | team state transition: `deployment_queued` → `deployment_success`/`deployment_failed` → `terminate_success` |
+| `event` | event state transition: `start_success`, `pause_success` |
+| `event_parameters` | an event parameter value changes (when the operator adjusts a value at runtime) — details: `references/event-params-guide.md` |
 
-이 알림을 트리거로 삼아, 예를 들어 팀이 성공적으로 배포되면 중앙 앱이 `CentralCreateTeamOutputs`로 해당 팀에 참가자용 결과를 만들어주는 흐름을 구성할 수 있다.
+Using this notification as a trigger, you can build a flow where, for example, once a team deploys
+successfully, the central app calls `CentralCreateTeamOutputs` to produce a participant-visible result for
+that team.
 
-### 패턴 3 — Central Account Client API 인증
+### Pattern 3 — authenticating to the Central Account Client API
 
-boto3로 사용할 경우 별도 서비스 모델(C2J)을 로컬 `models/` 경로에 내려받아 등록한 뒤 저수준 클라이언트를 생성한다. API 오퍼레이션명은 PascalCase(`CentralGetEvent`)지만 boto3 메서드는 snake_case(`central_get_event()`)로 매핑된다. 인증은 중앙 계정 내 IAM 역할의 SigV4 서명만으로 충분하며, 이벤트가 일시정지 상태여도 중앙 계정 배포가 완료되어 있으면 호출할 수 있다.
+If using boto3, download the separate service model (C2J) to a local `models/` path, register it, then
+create a low-level client. API operation names are PascalCase (`CentralGetEvent`), but the boto3 method
+maps to snake_case (`central_get_event()`). SigV4 signing from an IAM role within the central account is
+sufficient for authentication, and calls can be made even while the event is paused, as long as the
+central account deployment has completed.
 
-> **참고 — External Event Lifecycle Notifications (베타)**: 중앙 계정 없이도 임의의 AWS 계정 EventBridge 버스로 동일 계열의 알림(+ `event_created`/`event_updated`/`event_canceled` 사전 배포 알림)을 받을 수 있는 별도 베타 기능(`infrastructure.externalLifecycleNotificationBusArn`)이 있다. Workshop Studio 팀의 별도 승인·보안 검토를 거쳐야 활성화되는 베타 기능이므로, 계산 리소스 없이 외부 통합만 필요하면 중앙 계정 대신 검토할 수 있다.
+> **Note — External Event Lifecycle Notifications (beta)**: there is a separate beta feature
+> (`infrastructure.externalLifecycleNotificationBusArn`) that lets any AWS account's EventBridge bus receive
+> the same family of notifications (plus `event_created`/`event_updated`/`event_canceled` pre-deployment
+> notifications) without a central account. This beta feature requires separate approval and a security
+> review from the Workshop Studio team, so consider it instead of a central account if you only need
+> external integration without compute resources.
 
 ---
 
-## 배포·정리 순서
+## Deployment/teardown order
 
-1. 이벤트 프로비저닝 시작 → 중앙 계정(정의된 경우) 리스·배포가 **팀보다 먼저** 실행
-2. 중앙 계정 배포 실패 → 어떤 팀도 프로비저닝/배포되지 않고 이벤트 전체가 실패 처리
-3. 중앙 계정 배포 성공 → 팀 계정 리스·배포 진행 (10개 단위 배치)
-4. 이벤트 종료(Terminate) → 팀 계정과 함께 중앙 계정도 정리되어 반환
+1. When event provisioning starts → the central account (if defined) is leased/deployed **before** teams
+2. If central account deployment fails → no teams are provisioned/deployed and the entire event fails
+3. If central account deployment succeeds → team account leasing/deployment proceeds (in batches of 10)
+4. When the event is terminated → the central account is torn down and returned along with the team accounts
 
 ---
 
-## 전체 예제
+## Full example
 
 ```yaml
 # contentspec.yaml
@@ -157,7 +184,7 @@ centralAccountInfrastructure:
           defaultValue: "{{.WSEventsAPIRegion}}"
 ```
 
-`static/cfn/central-stack.yaml` 뼈대 — NotificationBus를 구독하는 EventBridge 규칙 + Lambda:
+`static/cfn/central-stack.yaml` skeleton — an EventBridge rule + Lambda subscribing to the NotificationBus:
 
 ```yaml
 AWSTemplateFormatVersion: '2010-09-09'
@@ -210,8 +237,8 @@ Resources:
         ZipFile: |
           def handler(event, context):
               team_id = event["detail"]["teamId"]
-              # boto3 workshopstudio-central 클라이언트로
-              # CentralCreateTeamOutputs 호출해 참가자용 Output 생성
+              # call CentralCreateTeamOutputs via the boto3 workshopstudio-central client
+              # to create a participant-visible Output
               return {"teamId": team_id}
 
   OnTeamDeployedPermission:
@@ -225,11 +252,11 @@ Resources:
 
 ---
 
-## 체크리스트
+## Checklist
 
-- [ ] 중앙 계정 없이 해결 가능한지 먼저 검토 (계정 할당량 추가 소비)
-- [ ] `centralAccountInfrastructure.cloudformationTemplates`는 5개 이하
-- [ ] 참가자에게 보여줄 Output만 `participantVisibleStackOutputs`에 명시 (기본값은 비노출)
-- [ ] 중앙 계정 API 호출은 SigV4 + 중앙 계정 내 IAM 역할로만 — 팀 계정에서 직접 호출 불가
-- [ ] NotificationBus 규칙은 `source: com.workshopstudio` 패턴으로 필터링
-- [ ] 라이프사이클 알림 기반 로직은 상태 전이(prev≠new) 시에만 발생함을 전제로 설계
+- [ ] Have you first considered whether this can be solved without a central account (it consumes an extra account quota)?
+- [ ] Does `centralAccountInfrastructure.cloudformationTemplates` have 5 or fewer entries?
+- [ ] Is only the Output you want participants to see specified in `participantVisibleStackOutputs` (default is not exposed)?
+- [ ] Are central account API calls made only with SigV4 + an IAM role within the central account — never directly from team accounts?
+- [ ] Is the NotificationBus rule filtered on the `source: com.workshopstudio` pattern?
+- [ ] Is lifecycle-notification-based logic designed on the premise that it only fires on state transitions (prev≠new)?

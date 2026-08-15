@@ -9,7 +9,7 @@ allowed-tools:
 
 # Workshop Creator Skill
 
-AWS Workshop Studio 형식의 워크샵 프로젝트를 생성하고 콘텐츠를 작성합니다.
+Creates AWS Workshop Studio-format workshop projects and writes their content.
 
 ---
 
@@ -17,11 +17,11 @@ AWS Workshop Studio 형식의 워크샵 프로젝트를 생성하고 콘텐츠�
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `init` | 새 워크샵 프로젝트 초기화 | `/workshop-creator init my-workshop` |
-| `add-module` | 모듈 추가 | `/workshop-creator add-module --title "EKS 설정"` |
-| `add-lab` | 랩 추가 | `/workshop-creator add-lab --module 030 --title "클러스터 생성"` |
-| `translate` | 번역 (ko↔en) | `/workshop-creator translate --from ko --to en` |
-| `validate` | 구조 검증 | `/workshop-creator validate` |
+| `init` | Initialize a new workshop project | `/workshop-creator init my-workshop` |
+| `add-module` | Add a module | `/workshop-creator add-module --title "EKS Setup"` |
+| `add-lab` | Add a lab | `/workshop-creator add-lab --module 030 --title "Create Cluster"` |
+| `translate` | Translate (ko↔en) | `/workshop-creator translate --from ko --to en` |
+| `validate` | Validate structure | `/workshop-creator validate` |
 
 ---
 
@@ -29,33 +29,33 @@ AWS Workshop Studio 형식의 워크샵 프로젝트를 생성하고 콘텐츠�
 
 ```
 workshop-name/
-├── contentspec.yaml              # Workshop Studio 설정
+├── contentspec.yaml              # Workshop Studio configuration
 ├── content/
-│   ├── index.ko.md              # 홈페이지 (한국어)
-│   ├── index.en.md              # 홈페이지 (영어)
+│   ├── index.ko.md              # Homepage (Korean)
+│   ├── index.en.md              # Homepage (English)
 │   ├── introduction/
 │   │   └── index.en.md
-│   ├── module1-topic/           # 모듈 1
-│   │   ├── index.en.md          # 모듈 인덱스
+│   ├── module1-topic/           # Module 1
+│   │   ├── index.en.md          # Module index
 │   │   └── subtopic1/
 │   │       └── index.en.md
 │   └── summary/
 │       └── index.en.md
 ├── static/
-│   ├── images/module-N/         # 모듈별 이미지
-│   ├── code/                    # 코드 샘플
+│   ├── images/module-N/         # Per-module images
+│   ├── code/                    # Code samples
 │   └── iam-policy.json
-└── assets/                      # S3 에셋
+└── assets/                      # S3 assets
 ```
 
 ## Naming Conventions
 
 | Item | Pattern | Example |
 |------|---------|---------|
-| 모듈 폴더 | `moduleN-topic` | `module1-interacting-with-models` |
-| 파일 (한국어) | `name.ko.md` | `index.ko.md` |
-| 파일 (영어) | `name.en.md` | `index.en.md` |
-| 이미지 | `/static/images/module-N/name.png` | `/static/images/module-1/logs.png` |
+| Module folder | `moduleN-topic` | `module1-interacting-with-models` |
+| File (Korean) | `name.ko.md` | `index.ko.md` |
+| File (English) | `name.en.md` | `index.en.md` |
+| Image | `/static/images/module-N/name.png` | `/static/images/module-1/logs.png` |
 
 ---
 
@@ -63,26 +63,26 @@ workshop-name/
 
 ```yaml
 ---
-title: "페이지 제목"
+title: "Page Title"
 weight: 10
 ---
 ```
 
-| 속성 | 필수 | 설명 |
+| Attribute | Required | Description |
 |------|------|------|
-| `title` | **필수** | 페이지 제목 (네비게이션에 표시) |
-| `weight` | 선택 | 정렬 순서 (낮을수록 먼저) |
-| `hidden` | 선택 | `true`면 네비게이션에서 숨김 |
+| `title` | **Required** | Page title (shown in navigation) |
+| `weight` | Optional | Sort order (lower comes first) |
+| `hidden` | Optional | `true` hides it from navigation |
 
-> **주의**: `chapter` 속성은 Workshop Studio에서 지원하지 않습니다.
+> **Note**: the `chapter` attribute is not supported by Workshop Studio.
 
-상세: `references/front-matter.md`
+Details: `references/front-matter.md`
 
 ---
 
 ## Workshop Studio Directives
 
-Workshop Studio는 자체 Directive 문법을 사용합니다. Hugo shortcode는 사용 금지.
+Workshop Studio uses its own directive syntax. Do not use Hugo shortcodes.
 
 ### Alert
 
@@ -96,14 +96,14 @@ Before starting:
 :::
 ```
 
-| Type | 용도 |
+| Type | Purpose |
 |------|------|
-| `info` | 일반 정보 (기본값) |
-| `success` | 성공/완료 |
-| `warning` | 주의/경고 |
-| `error` | 에러/위험 |
+| `info` | General information (default) |
+| `success` | Success/completion |
+| `warning` | Caution/warning |
+| `error` | Error/danger |
 
-상세: `references/alert-reference.md`
+Details: `references/alert-reference.md`
 
 ### Code
 
@@ -120,19 +120,19 @@ metadata:
 :::
 ```
 
-| Property | 설명 |
+| Property | Description |
 |----------|------|
-| `language` | 언어 (bash, python, yaml 등) |
-| `showCopyAction` | 복사 버튼 표시 |
-| `highlightLines` | 강조할 라인 (예: `4-6,10`) |
+| `language` | Language (bash, python, yaml, etc.) |
+| `showCopyAction` | Show a copy button |
+| `highlightLines` | Lines to highlight (e.g. `4-6,10`) |
 
-상세: `references/code-reference.md`
+Details: `references/code-reference.md`
 
 ### Tabs
 
-코드 포함 시 콜론 개수 증가 필요 (중첩 수준에 따라 `:::::tabs`).
+When a tab contains code, the number of colons must increase (based on nesting level, e.g. `:::::tabs`).
 
-상세: `references/tabs-reference.md`
+Details: `references/tabs-reference.md`
 
 ### Image
 
@@ -140,7 +140,7 @@ metadata:
 :image[Architecture]{src="/static/images/diagrams/arch.png" width=800}
 ```
 
-상세: `references/image-reference.md`
+Details: `references/image-reference.md`
 
 ### Mermaid
 
@@ -155,99 +155,99 @@ graph LR
 ### Expand
 
 ```markdown
-::::expand{header="자세히 보기"}
-숨겨진 내용
+::::expand{header="View details"}
+Hidden content
 ::::
 ```
 
-상세: `references/directives-complete.md`
+Details: `references/directives-complete.md`
 
 ---
 
 ## Best Practices
 
-**목표**: 참가자가 진행자 없이 따라갈 수 있는 콘텐츠 — 모든 hands-on 단계 뒤에 확인 방법(기대 출력), 복사 가능한 명령(`showCopyAction=true`), 섹션 끝 Key Takeaways, 명확한 이전/다음 링크, 아키텍처는 Mermaid로 시각화.
+**Goal**: content participants can follow without a facilitator — after every hands-on step, include a verification method (expected output), copyable commands (`showCopyAction=true`), Key Takeaways at the end of each section, clear previous/next links, and visualize architecture with Mermaid.
 
-**플랫폼 계약 (스타일이 아니라 렌더러 동작)**:
-1. Hugo shortcode(`{{% notice %}}`)는 렌더링되지 않고 그대로 노출됨 — Workshop Studio directive만 사용
-2. `chapter: true`는 유효한 front matter 속성이 아님
-3. 하드코딩된 계정 ID/자격증명 없이 (`AWS::AccountId` Ref 등 — 이벤트마다 계정이 다름)
-4. 긴 코드 파일은 heredoc 대신 `static/code/`에 파일로 (heredoc은 인용·변수 확장에 깨지기 쉬움)
+**Platform contract (renderer behavior, not just style)**:
+1. Hugo shortcodes (`{{% notice %}}`) are not rendered and appear as raw text — use only Workshop Studio directives
+2. `chapter: true` is not a valid front matter attribute
+3. No hardcoded account IDs/credentials (use `AWS::AccountId` Ref, etc. — the account differs per event)
+4. Put long code files in `static/code/` instead of a heredoc (heredocs are fragile with quoting and variable expansion)
 
 ---
 
 ## Infrastructure
 
-워크샵 인프라는 CloudFormation으로 프로비저닝합니다.
+Workshop infrastructure is provisioned via CloudFormation.
 
 ```
 static/
-├── workshop.yaml       # CloudFormation 템플릿
-└── iam-policy.json     # 참가자 IAM 정책
+├── workshop.yaml       # CloudFormation template
+└── iam-policy.json     # Participant IAM policy
 ```
 
-검증:
+Validation:
 ```bash
 cfn-lint static/workshop.yaml
 cfn_nag_scan --input-path static/workshop.yaml
 ```
 
-상세: `references/infrastructure-guide.md`, `references/cloudformation-reference.md`
+Details: `references/infrastructure-guide.md`, `references/cloudformation-reference.md`
 
 ---
 
 ## Event Params & Central Account
 
-인프라에 값을 주입하거나 팀 간 공유 상태가 필요할 때 참조.
+Reference this when you need to inject values into infrastructure or share state across teams.
 
-| 계층/기능 | 정의 위치 | 용도 |
+| Layer/Feature | Defined in | Purpose |
 |-----------|-----------|------|
-| `params` | `contentspec.yaml` 최상위 | 마크다운 콘텐츠 텍스트 변수 (`:param` 디렉티브) |
-| CFN `parameters` + `userOverridable` | `infrastructure.cloudformationTemplates[]` | 이벤트 운영자가 오버라이드 가능한 인프라 값 |
-| Magic Variables | 자동 주입 | TeamID, ParticipantRoleArn 등 Workshop Studio 계산 값 |
-| `centralAccountInfrastructure` | `contentspec.yaml` 최상위 (선택) | 팀과 분리된 공유 계정 — 공유 리소스/게이미피케이션이 필요할 때만 |
+| `params` | Top level of `contentspec.yaml` | Text variables for markdown content (`:param` directive) |
+| CFN `parameters` + `userOverridable` | `infrastructure.cloudformationTemplates[]` | Infrastructure values the event operator can override |
+| Magic Variables | Auto-injected | Workshop Studio-computed values such as TeamID, ParticipantRoleArn |
+| `centralAccountInfrastructure` | Top level of `contentspec.yaml` (optional) | A shared account separate from the teams — only when shared resources/gamification are needed |
 
-상세: `references/event-params-guide.md` (변수 주입 3계층), `references/central-account-guide.md` (중앙 계정)
+Details: `references/event-params-guide.md` (the 3 layers of variable injection), `references/central-account-guide.md` (central account)
 
 ---
 
 ## Workflow
 
-1. `/workshop-creator init my-workshop` — 프로젝트 초기화
-2. `contentspec.yaml` 설정 — 리전, IAM, 파라미터, (필요 시) 이벤트 오버라이드/중앙 계정
-3. CloudFormation 템플릿 작성 — `static/workshop.yaml`
-4. Homepage 작성 — Mermaid 다이어그램 포함
-5. 모듈별 콘텐츠 작성 — 단계별 hands-on
-6. 이미지/스크린샷 추가
-7. `cfn-lint` / `cfn_nag` 검증
-8. `content-review-agent`로 콘텐츠 검토
+1. `/workshop-creator init my-workshop` — initialize the project
+2. Configure `contentspec.yaml` — region, IAM, parameters, and (if needed) event overrides/central account
+3. Write the CloudFormation template — `static/workshop.yaml`
+4. Write the homepage — including a Mermaid diagram
+5. Write per-module content — step-by-step hands-on
+6. Add images/screenshots
+7. Validate with `cfn-lint` / `cfn_nag`
+8. Review the content with `content-review-agent`
 
 ---
 
 ## Output Format
 
-위 Directory Layout 구조 그대로 출력합니다. 각 파일은 Workshop Studio 형식을 준수하며, `contentspec.yaml`에 정의된 로케일별로 `.ko.md` / `.en.md` 파일을 생성합니다 (front matter `weight`는 로케일 쌍 간 일치 — 다르면 네비게이션 순서가 어긋남).
+Output the exact Directory Layout structure shown above. Each file conforms to Workshop Studio format, and `.ko.md` / `.en.md` files are generated per the locales defined in `contentspec.yaml` (the front matter `weight` must match between the locale pair for a given page — a mismatch throws off the navigation order).
 
 ---
 
 ## Reference Documents
 
-| 문서 | 설명 |
+| Document | Description |
 |------|------|
-| `references/front-matter.md` | Front Matter 속성 |
-| `references/alert-reference.md` | Alert directive 상세 |
-| `references/code-reference.md` | Code directive (40+ 언어) |
-| `references/tabs-reference.md` | Tabs directive 상세 |
-| `references/image-reference.md` | Image directive 상세 |
-| `references/directives-complete.md` | 전체 directive 목록 |
-| `references/workshop-templates.md` | 콘텐츠 템플릿 (Homepage, Module, Lab) |
+| `references/front-matter.md` | Front matter attributes |
+| `references/alert-reference.md` | Alert directive details |
+| `references/code-reference.md` | Code directive (40+ languages) |
+| `references/tabs-reference.md` | Tabs directive details |
+| `references/image-reference.md` | Image directive details |
+| `references/directives-complete.md` | Full directive list |
+| `references/workshop-templates.md` | Content templates (Homepage, Module, Lab) |
 | `references/infrastructure-guide.md` | Contentspec.yaml, Magic Variables, CloudFormation |
-| `references/contentspec-complete.md` | contentspec.yaml 전체 설정 |
-| `references/cloudformation-reference.md` | CloudFormation 인프라 패턴 |
-| `references/central-account-guide.md` | 중앙 계정 (centralAccountInfrastructure, 데이터 흐름, 라이프사이클) |
-| `references/event-params-guide.md` | 이벤트 파라미터 / 변수 주입 (params, userOverridable, Magic Variables, Outputs) |
-| `references/workshop-assets-guide.md` | 에셋 관리 (Repository/S3 Assets, 스캔, ASU, EC2 키페어) |
-| `references/event-quotas-guide.md` | 계정 할당량, Grant, Required Resources, 비용, ODCR |
-| `references/event-operations-guide.md` | 참가자 서베이, 콘텐츠 파일 구조, Autostart, 사기 방지, Opportunity ID |
+| `references/contentspec-complete.md` | Full contentspec.yaml configuration |
+| `references/cloudformation-reference.md` | CloudFormation infrastructure patterns |
+| `references/central-account-guide.md` | Central account (centralAccountInfrastructure, data flow, lifecycle) |
+| `references/event-params-guide.md` | Event parameters / variable injection (params, userOverridable, Magic Variables, Outputs) |
+| `references/workshop-assets-guide.md` | Asset management (Repository/S3 Assets, scanning, ASU, EC2 key pairs) |
+| `references/event-quotas-guide.md` | Account quotas, Grants, Required Resources, cost, ODCR |
+| `references/event-operations-guide.md` | Participant surveys, content file structure, Autostart, fraud prevention, Opportunity ID |
 | `references/platform-features-guide.md` | MCP Server, Atlas Agent, Content Quality Program |
-| `references/supported-services-guide.md` | 지원/미지원 서비스, GPU/인스턴스 제약, Marketplace/Bedrock 지원 범위 |
+| `references/supported-services-guide.md` | Supported/unsupported services, GPU/instance constraints, Marketplace/Bedrock support scope |

@@ -172,6 +172,41 @@ else
 fi
 rm -f "$MEM_SECTIONS"
 
+# (c2) same exclusion, English heading (PR #154 translated review-memory.md's headings;
+# the awk pattern must match both so the ADR-015 exclusion contract survives the rename
+# regardless of which heading text a given review-memory.md revision uses).
+MEM_SECTIONS_EN="$(mktemp)"
+cat > "$MEM_SECTIONS_EN" <<'EOF'
+# PR Review Memory
+
+## Recurring real issues
+- pipe-to-head SIGPIPE trap keeps recurring
+
+## Panel-cell judgment quality (cumulative)
+| cell | unsupported |
+|----|--------|
+| kiro-cell | low-signal |
+
+## Next-review guidance
+- always verify the file-based cap idiom
+EOF
+MEM_SEC_EN_RC=0
+MEM_SEC_EN_OUT="$(memory_excerpt "$MEM_SECTIONS_EN")" || MEM_SEC_EN_RC=$?
+MEM_SEC_EN_OK=1
+case "$MEM_SEC_EN_OUT" in *"Panel-cell judgment quality"*) MEM_SEC_EN_OK=0 ;; esac
+case "$MEM_SEC_EN_OUT" in *"kiro-cell"*) MEM_SEC_EN_OK=0 ;; esac
+case "$MEM_SEC_EN_OUT" in *"Recurring real issues"*) : ;; *) MEM_SEC_EN_OK=0 ;; esac
+case "$MEM_SEC_EN_OUT" in *"SIGPIPE trap keeps recurring"*) : ;; *) MEM_SEC_EN_OK=0 ;; esac
+case "$MEM_SEC_EN_OUT" in *"Next-review guidance"*) : ;; *) MEM_SEC_EN_OK=0 ;; esac
+case "$MEM_SEC_EN_OUT" in *"file-based cap idiom"*) : ;; *) MEM_SEC_EN_OK=0 ;; esac
+if [ "$MEM_SEC_EN_RC" = 0 ] && [ "$MEM_SEC_EN_OK" = 1 ]; then
+  pass "memory_excerpt drops the Panel-cell judgment quality section (English heading) too"
+else
+  fail "memory_excerpt drops the Panel-cell judgment quality section (English heading) too" \
+    "rc=$MEM_SEC_EN_RC got: $MEM_SEC_EN_OUT"
+fi
+rm -f "$MEM_SECTIONS_EN"
+
 # verdict_of() — 단일 verdict 파서(ADR-016), chair_valid()(synthesize.sh)와 워크플로 게이트가
 # 공유한다. (a) 마지막 매치를 채택, (b) 뒤따르는 텍스트 허용, (c) 매치 없으면 빈 문자열,
 # (d) 부재 파일도 죽지 않고 빈 문자열.

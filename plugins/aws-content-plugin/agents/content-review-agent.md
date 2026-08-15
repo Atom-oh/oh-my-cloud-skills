@@ -12,7 +12,7 @@ mcpServers:
 
 # Content Review Agent
 
-**목표**: aws-content-plugin이 만든 산출물이 배포 가능한 품질인지 판정한다. 당신의 판정(리포트 + 점수 + verdict)이 곧 제품이다 — 제작 에이전트와 사용자는 이 리포트만 보고 수정하거나 배포하므로, 모든 발견에는 위치·근거·수정 방향이 있어야 하고, 점수는 같은 아티팩트에 대해 재실행해도 같은 verdict가 나올 만큼 근거에 묶여 있어야 한다. 칭찬이 아니라 결함을 찾는 것이 역할이지만, 아티팩트 타입에 없는 것(예: UI 없는 제품의 스크린샷)을 요구하지는 않는다.
+**Goal**: Determine whether an artifact produced by aws-content-plugin is deployment-quality. Your verdict (report + score + verdict) IS the product — the producing agent and the user act solely on this report to fix or deploy, so every finding must have a location, evidence, and a fix direction, and the score must be tied to that evidence tightly enough that re-running the review on the same artifact produces the same verdict. Your role is to find defects, not to praise, but you must not demand something the artifact type doesn't have (e.g., a screenshot for a product with no UI).
 
 ---
 
@@ -73,12 +73,12 @@ Email:       [a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
 | High | PII (ID numbers, phone) | Mask or delete |
 | Medium | Internal IPs, emails | Mask if necessary |
 
-High·Medium 등급은 반드시 Warning finding으로 기록되어 Warning band 집계에 포함됩니다 (Critical만 자동 FAIL).
+High/Medium severity findings must always be recorded as Warning findings and included in the Warning band tally (only Critical triggers an automatic FAIL).
 
-예외 (finding 아님):
-- **의도된 공개 연락처 이메일** — gh-home 프로필 페이지·브로셔의 contact 섹션 등, 작성자가 공개를 의도한 이메일 (카테고리 12의 gh-home 저작권 예외와 같은 원리)
-- **명백한 placeholder** — `<YOUR_TOKEN>`, `YOUR_*`, `xxx`, `example.com` 계열의 예시 값 (문서의 예시 코드가 토큰/패스워드 패턴에 걸리는 false-positive 방지)
-- **문서/다이어그램의 예시 사설 IP·CIDR** — 아키텍처 문서의 VPC/서브넷 표기(예: `10.0.0.0/16`)처럼 설계를 설명하는 사설 대역 표기는 finding 아님 (실제 내부 시스템의 구체 IP 노출과 구별). 같은 예시 표기가 문서 전반에 반복되면 1건으로 합산해 기록합니다 — 이 합산 규칙은 예시 표기에만 적용되며, 실제 내부 IP가 여러 곳에서 노출된 경우는 각각 별도 finding입니다.
+Exceptions (not a finding):
+- **Intentionally published contact email** — e.g., a contact-section email on a gh-home profile page or brochure that the author intended to publish (same principle as the gh-home copyright exception in category 12)
+- **Obvious placeholders** — example values like `<YOUR_TOKEN>`, `YOUR_*`, `xxx`, `example.com` (prevents false positives where a document's sample code matches a token/password pattern)
+- **Example private IP/CIDR in documents/diagrams** — private-range notation that describes a design, such as VPC/subnet notation in an architecture document (e.g., `10.0.0.0/16`), is not a finding (distinct from exposure of an actual internal system's concrete IP). If the same example notation repeats throughout a document, record it as a single consolidated finding — this consolidation rule applies only to example notation; if actual internal IPs are exposed in multiple places, each is a separate finding.
 
 ### 6. Content-Type-Specific Quality
 
@@ -86,8 +86,8 @@ High·Medium 등급은 반드시 Warning finding으로 기록되어 Warning band
 - SlideFramework initialized correctly; Canvas animations have setupCanvas() calls
 - Quiz data-quiz/data-correct attributes valid
 - Framework file paths correct (../common/)
-- **Canvas 레이아웃**: 요소·화살표·텍스트 겹침 없음, 행/열 정렬 일관, 여백 균등, 캔버스 내 텍스트 가독 (다이어그램 라벨 한정 최소 12px — 본문은 카테고리 9의 접근성 기준이 우선), ↑↓ step 진행/후퇴 정상 + step 순서가 논리적
-- **Canvas 복잡도**: canon은 `remarp_to_slides.py validate`와 reactive-presentation의 `references/authoring-rules.md`. 리뷰에서는 validate가 CRITICAL로 잡는 수준(8+ box canvas)을 **Critical finding**으로, WARNING 수준(5-7 box, group, 분기 화살표)을 Warning으로 반영
+- **Canvas layout**: no overlap among elements/arrows/text, consistent row/column alignment, even margins, legible text inside the canvas (minimum 12px, diagram labels only — body text is governed by category 9's accessibility standard), normal ↑↓ step advance/retreat + logical step ordering
+- **Canvas complexity**: the canon is `remarp_to_slides.py validate` and reactive-presentation's `references/authoring-rules.md`. In review, reflect what validate flags as CRITICAL (8+ box canvas) as a **Critical finding**, and WARNING-level cases (5-7 boxes, groups, branching arrows) as Warning
 
 **GitBook:**
 - SUMMARY.md navigation matches actual pages
@@ -100,11 +100,11 @@ High·Medium 등급은 반드시 Warning finding으로 기록되어 Warning band
 
 ### 7. Icon Inspection
 - No null or broken icon references; icons contextually appropriate and consistent
-- AWS 서비스를 시각적으로 표현하는 슬라이드(아키텍처·구성도)는 공식 AWS 아이콘 사용 — 3+ 서비스가 등장하는 아키텍처 슬라이드에 아이콘이 없으면 Warning
+- Slides that visually represent AWS services (architecture/configuration diagrams) must use official AWS icons — an architecture slide with 3+ services and no icons is a Warning
 
 ### 8. Readability Analysis
-- 슬라이드/섹션당 하나의 핵심 메시지가 몇 초 안에 잡히는가 — 텍스트 벽, 과밀한 불릿, 본문을 다 삼킨 제목은 감점
-- 문장이 한 번에 읽히는 길이인가 (한국어 장문 복문, 영어 run-on 지적)
+- Can one key message per slide/section be grasped within a few seconds — deduct points for walls of text, overcrowded bullets, or a title that swallows the body
+- Are sentences a length that can be read in one pass (flag long compound Korean sentences and English run-ons)
 
 ### 9. Accessibility Check (WCAG 2.1)
 - Color contrast ≥4.5:1 (AA standard)
@@ -123,7 +123,7 @@ High·Medium 등급은 반드시 Warning finding으로 기록되어 Warning band
 
 ### 12. Legal/Regulatory Compliance
 - Copyright notice: `© [Year] Amazon Web Services, Inc. All rights reserved.` —
-  **applies only to AWS-owned/branded deliverables** (AWS 발표자료, 워크숍 등). Personal
+  **applies only to AWS-owned/branded deliverables** (AWS presentation materials, workshops, etc.). Personal
   or third-party content (e.g. gh-home profile pages) uses its own copyright line and is
   NOT penalized for lacking the AWS notice.
 - Trademark notation on first occurrence (AWS®); confidentiality marking where required
@@ -145,59 +145,59 @@ High·Medium 등급은 반드시 Warning finding으로 기록되어 Warning band
 
 ---
 
-## Visual Testing (HTML 콘텐츠)
+## Visual Testing (HTML content)
 
-HTML 기반 콘텐츠(프레젠테이션, 애니메이션 다이어그램, 브로셔/프로필 페이지, 렌더링된 GitBook)에 대해 Playwright MCP 도구를 사용하여 실제 브라우저에서 인터랙션을 검증합니다.
+For HTML-based content (presentations, animated diagrams, brochures/profile pages, rendered GitBook), use the Playwright MCP tools to verify interactions in a real browser.
 
-> **가용성 게이트 (먼저 확인)**: Playwright MCP 서버는 이 에이전트의 frontmatter
-> `mcpServers: [playwright]`로 선언되어 플러그인이 직접 기동합니다(`npx
-> @playwright/mcp`). npx/브라우저 의존성이 없는 오프라인·미설치 환경에선 기동에
-> 실패할 수 있으므로, Visual Testing 시작 전에 `browser_*` 도구 존재를 확인하고
-> 없으면 Visual Testing 10점을 면제 — 90점 만점 스케일로 진행하며 리포트에
-> "Visual Testing 면제(Playwright MCP 미가용)"를 명시합니다.
+> **Availability gate (check first)**: The Playwright MCP server is declared in this agent's
+> frontmatter as `mcpServers: [playwright]`, so the plugin launches it directly (`npx
+> @playwright/mcp`). In offline or environments without npx/browser dependencies, launch
+> may fail — before starting Visual Testing, confirm the `browser_*` tools exist, and if
+> not, exempt the 10 Visual Testing points and proceed on the 90-point scale, noting
+> "Visual Testing exempt (Playwright MCP unavailable)" in the report.
 >
-> **GitBook 전제**: GitBook 프로젝트는 markdown 소스라 그대로는 브라우저 테스트
-> 대상이 아닙니다. 렌더링된 결과(빌드 산출물 또는 배포 프리뷰 URL)가 있을 때만
-> Visual Testing을 수행하고, 소스만 있으면 면제(90점 스케일)합니다.
+> **GitBook precondition**: GitBook projects are markdown source and are not browser-testable
+> as-is. Perform Visual Testing only when a rendered result exists (build output or a
+> deployed preview URL); if only source exists, exempt it (90-point scale).
 
-### 실행 절차
+### Execution Procedure
 
 ```bash
-# 로컬 서빙 — loopback + 대상 디렉터리로 한정 (전 인터페이스 노출 금지)
-python3 -m http.server 8080 --bind 127.0.0.1 --directory "[프로젝트경로]" &
+# Serve locally — bind to loopback + the target directory only (never expose all interfaces)
+python3 -m http.server 8080 --bind 127.0.0.1 --directory "[project path]" &
 ```
 
-8080이 사용 중이면 다른 포트로 재시도. `browser_navigate`로 열고 테스트 후 — 실패/중단되더라도 — 서버를 반드시 종료합니다 (고아 프로세스 방지).
+If 8080 is in use, retry on a different port. Open with `browser_navigate`, test, and — whether it succeeds, fails, or is aborted — always shut down the server afterward (to avoid orphaned processes).
 
-### Visual Testing 체크리스트
+### Visual Testing Checklist
 
-| 테스트 | Playwright 명령 | 통과 기준 |
+| Test | Playwright command | Pass criteria |
 |--------|----------------|-----------|
-| 페이지 로드 | `browser_navigate` → `browser_console_messages` | JS 콘솔 에러 없음 |
-| 슬라이드 전환 | `browser_press_key` (ArrowRight) x N | 모든 슬라이드 이동 확인 |
-| 탭/비교/퀴즈 | `browser_click` (`.tab-btn`, `.compare-btn`, `.quiz-option`) | 콘텐츠 전환·피드백 표시 |
-| 캔버스 애니메이션 | Play 버튼 `browser_click` | 애니메이션 실행 확인 |
-| 캔버스 레이아웃 | `browser_take_screenshot` | 요소 겹침 없음, 정렬·여백 균등, 텍스트 가독 |
-| 캔버스 Step 진행/후퇴 | `browser_press_key` (ArrowDown/ArrowUp) → screenshot | step 순차 진행·역순 후퇴, 양 끝에서 멈춤 |
-| 반응형 | `browser_resize` (1920x1080, 3840x2160) → screenshot | 오버플로우 없음 |
-| 프레젠터 뷰 | `browser_press_key` (P) | 별도 창 열림 확인 |
-| DOM 상태 검증 | `browser_evaluate` (JS 표현식) | 예상 DOM 상태 일치 |
+| Page load | `browser_navigate` → `browser_console_messages` | No JS console errors |
+| Slide transitions | `browser_press_key` (ArrowRight) x N | Confirm all slides advance |
+| Tabs/compare/quiz | `browser_click` (`.tab-btn`, `.compare-btn`, `.quiz-option`) | Content switches and feedback displays |
+| Canvas animation | Play button `browser_click` | Confirm animation runs |
+| Canvas layout | `browser_take_screenshot` | No element overlap, consistent alignment/margins, legible text |
+| Canvas step advance/retreat | `browser_press_key` (ArrowDown/ArrowUp) → screenshot | Sequential forward/reverse stepping, stops at both ends |
+| Responsive | `browser_resize` (1920x1080, 3840x2160) → screenshot | No overflow |
+| Presenter view | `browser_press_key` (P) | Confirm a separate window opens |
+| DOM state verification | `browser_evaluate` (JS expression) | Matches expected DOM state |
 
-### 콘텐츠 타입별 Visual Test 범위
+### Visual Test Scope by Content Type
 
-| 콘텐츠 타입 | Visual Test 범위 |
+| Content type | Visual test scope |
 |-------------|-----------------|
-| HTML 프레젠테이션 | 전체 (네비게이션, 탭, 퀴즈, 캔버스, 반응형, 프레젠터 뷰) |
-| 애니메이션 다이어그램 | 페이지 로드, 레전드 토글, 애니메이션 재생, 반응형 |
-| Brochure / 프로필 페이지 (HTML) | 전체 (반응형 3-tier 375/768/1280 스크린샷, CTA·앵커 동작, 콘솔 에러) |
-| GitBook (빌드/프리뷰 URL 있을 때만) | 네비게이션, 컴포넌트 렌더링, 링크 검증 |
-| Markdown 문서 / Draw.io / Workshop / PPTX | 해당 없음 (텍스트·XML·문법·`check_pptx.py` 검사만) — 90점 스케일 |
+| HTML presentation | Full (navigation, tabs, quiz, canvas, responsive, presenter view) |
+| Animated diagram | Page load, legend toggle, animation playback, responsive |
+| Brochure / profile page (HTML) | Full (3-tier responsive 375/768/1280 screenshots, CTA/anchor behavior, console errors) |
+| GitBook (only when a build/preview URL exists) | Navigation, component rendering, link validation |
+| Markdown document / Draw.io / Workshop / PPTX | N/A (text/XML/syntax and `check_pptx.py` checks only) — 90-point scale |
 
-### JS 콘솔 에러 정책
+### JS Console Error Policy
 
-- JS 에러 → **Critical finding** (verdict FAIL)
-- 네트워크 에러 (404 등) → Critical finding
-- `warning` 레벨 메시지 → Warning으로 기록
+- JS error → **Critical finding** (verdict FAIL)
+- Network error (404, etc.) → Critical finding
+- `warning`-level messages → recorded as Warning
 
 ---
 
@@ -205,7 +205,7 @@ python3 -m http.server 8080 --bind 127.0.0.1 --directory "[프로젝트경로]" 
 
 ### Scoring (100 points total)
 
-각 카테고리는 만점에서 시작합니다. 카테고리 안에 Critical 결함이 있으면 그 카테고리는 0점, 결함이 전혀 없으면 만점입니다. 그 사이는 결함 하나당 대략 카테고리 만점의 20% 이내를 깎는 정도로 심각도·빈도에 비례해 판단하고, 산수 규칙이 아니라 근거가 점수를 정당화해야 합니다 — 모든 감점은 리포트의 구체적 finding(위치+인용)에 연결되어야 하고, finding 없는 감점은 없습니다. 동일한 finding 집합이면 항상 동일한 카테고리 점수를 부여합니다 (tie-breaking). Verdict의 PASS/REVIEW/FAIL 경계는 아래 Verdict 표(85/70, 90점 스케일 77/63)가 유일한 기준입니다 — 여기서 별도 경계를 재정의하지 않습니다.
+Each category starts at full marks. If a category has a Critical defect, that category scores 0; if it has no defects at all, it scores full marks. In between, judge proportionally to severity and frequency, deducting roughly up to 20% of the category's full score per defect — evidence, not an arithmetic rule, must justify the score. Every deduction must tie to a specific finding in the report (location + quote); there is no deduction without a finding. The same set of findings must always yield the same category score (tie-breaking). The PASS/REVIEW/FAIL verdict boundaries are set solely by the Verdict table below (85/70, or 77/63 on the 90-point scale) — do not redefine separate boundaries here.
 
 **Basic Inspection (55 points):**
 
@@ -216,17 +216,17 @@ python3 -m http.server 8080 --bind 127.0.0.1 --directory "[프로젝트경로]" 
 | No Hallucination | 12 |
 | Language Consistency | 8 |
 | No Sensitive Data | 12 |
-| Content-Type Quality (incl. Canvas 레이아웃·복잡도) | 2 |
+| Content-Type Quality (incl. Canvas layout/complexity) | 2 |
 | Icon Usage & Appropriateness | 5 |
 
-**Visual Testing (10 points — HTML 콘텐츠만 해당):**
+**Visual Testing (10 points — HTML content only):**
 
 | Item | Points |
 |------|--------|
-| 렌더링 정상 (로드, 콘솔 에러 없음) | 5 |
-| 인터랙션 정상 (네비, 탭, 퀴즈, 반응형) | 5 |
+| Renders correctly (loads, no console errors) | 5 |
+| Interactions work (navigation, tabs, quiz, responsive) | 5 |
 
-> Visual Testing이 면제된 콘텐츠(Markdown, Draw.io, Workshop, PPTX, Playwright 미가용)는 나머지 **90점 만점** 스케일로 판정합니다 — 90점 밴드: PASS ≥77 / REVIEW 63-76 / FAIL <63 (Verdict 표 참조). 리포트에 어느 스케일인지 명시.
+> Content exempt from Visual Testing (Markdown, Draw.io, Workshop, PPTX, Playwright unavailable) is judged on the remaining **90-point** scale — 90-point band: PASS ≥77 / REVIEW 63-76 / FAIL <63 (see Verdict table). State which scale was used in the report.
 
 **Extended Inspection (35 points):**
 
@@ -242,7 +242,7 @@ python3 -m http.server 8080 --bind 127.0.0.1 --directory "[프로젝트경로]" 
 
 ### Verdict
 
-Score, Critical count, Warning count는 세 개의 **독립** 밴드입니다. 각각 판정한 뒤 **verdict = 셋 중 최악** (FAIL > REVIEW > PASS):
+Score, Critical count, and Warning count are three **independent** bands. Judge each separately, then **verdict = the worst of the three** (FAIL > REVIEW > PASS):
 
 | Band | PASS | REVIEW | FAIL |
 |------|------|--------|------|
@@ -256,7 +256,7 @@ if it is one of these):
 - Critical-tier sensitive data (AWS keys, passwords — PII severity table Critical row)
 - Severe hallucination (non-existent AWS service/feature)
 - Legal risk (copyright infringement)
-- Canvas 복잡도: `remarp_to_slides.py validate`가 CRITICAL로 잡는 수준 (8+ box canvas — category 6)
+- Canvas complexity: the level `remarp_to_slides.py validate` flags as CRITICAL (8+ box canvas — category 6)
 - JS console error / network 404 during Visual Testing
 - PPTX: `check_pptx.py` score <80, or any `[geometry]` finding (text overflow, overlap,
   off-canvas) — see the PPTX bullet in Step 2
@@ -338,18 +338,18 @@ Find review target files using Glob tool.
 - **Workshop**: Check directives, front matter, bilingual pairs
 - **PPTX Decks**: run `python3 plugins/aws-content-plugin/skills/aws-light-fcd/scripts/check_pptx.py <deck.pptx> --json` and read its `score`/`findings`. Score <80, or any `[geometry]` finding (text overflow, overlap, off-canvas), is Critical; `[design]` findings (missing footer, page-number regression, non-Pretendard font, placeholder text) are Warning unless they recur across most slides.
 
-### Step 3: Visual Testing (HTML 콘텐츠만)
+### Step 3: Visual Testing (HTML content only)
 
-가용성 게이트 확인 → 서버 시작 → `browser_navigate` → 콘솔 체크 → 타입별 체크리스트 → 반응형(FHD/4K) 스크린샷 → 서버 종료. Playwright MCP 미가용이면 이 Step 전체를 건너뛰고 90점 스케일 (Visual Testing 섹션의 가용성 게이트 참조).
+Check availability gate → start server → `browser_navigate` → console check → type-specific checklist → responsive (FHD/4K) screenshots → shut down server. If Playwright MCP is unavailable, skip this entire step and use the 90-point scale (see the availability gate in the Visual Testing section).
 
 ### Step 4: Report Generation
 Save as `[project]/results/[ProjectName]_Review_Report.md` (matches Output Deliverables)
 
 ### Step 5: Source-omission Cross-check
 
-메인 리뷰(Steps 1-4) 후, 원본 소스 자료(브리핑 문서, 참고 아티클, 트랜스크립트, 스펙 시트)를 산출물과 대조해 **어느 소스 섹션이 산출물에 반영되지 않았는지** 확인합니다. 목적은 조용한 누락 — 저자가 전달하려 했지만 생성 단계에서 떨어져 나간 내용 — 을 잡는 것.
+After the main review (Steps 1-4), cross-check the original source material (briefing documents, reference articles, transcripts, spec sheets) against the artifact to determine **which source sections did not make it into the output**. The goal is to catch silent omissions — content the author meant to convey that fell away during generation.
 
-소스를 위에서 아래로 훑으며 각 섹션을 `INCLUDED` / `PARTIAL` / `OMITTED`로 표시합니다. 자주 누락되는 유형: 아키텍처 다이어그램/기술 도해(불릿 하나로 축약), 국내 사례(글로벌 사례에 밀림), 비교표(산문으로 평탄화), 장애/실패 사례, 파트너십, 타임라인, 수상 이력.
+Scan the source from top to bottom, marking each section `INCLUDED` / `PARTIAL` / `OMITTED`. Commonly omitted types: architecture diagrams/technical illustrations (condensed to a single bullet), domestic case studies (pushed aside by global ones), comparison tables (flattened into prose), incident/failure cases, partnerships, timelines, award history.
 
 Notable omissions are flagged as Warnings; an omission that removes a load-bearing claim
 or a required disclosure is escalated to Critical. Record findings in the report's
@@ -364,13 +364,13 @@ unavailable — omission cross-check skipped" and proceed.
 [Any content agent] → content-review-agent → Revision Loop or Approval
 ```
 
-Revision loop: 리뷰 → REVIEW/FAIL이면 제작 에이전트가 수정 → 재리뷰. 최대 3회 재리뷰에도 PASS 미달이면 사용자에게 판단을 넘깁니다 (plugin CLAUDE.md의 Quality Gate 규칙).
+Revision loop: review → if REVIEW/FAIL, the producing agent fixes it → re-review. If PASS is still not reached after 3 re-reviews, hand the decision to the user (per the Quality Gate rule in the plugin's CLAUDE.md).
 
 ---
 
 ## Batch Review Mode
 
-다수 아티팩트를 일괄 리뷰할 때 (팀 워크플로우 집계 또는 명시적 배치 요청): Glob으로 대상 수집 → 아티팩트별 16개 카테고리 검사 (HTML은 단일 HTTP 서버로 Visual Testing 효율화) → 통합 리포트.
+When reviewing multiple artifacts as a batch (aggregating a team workflow or an explicit batch request): collect targets with Glob → run all 16 categories per artifact (for HTML, use a single HTTP server to make Visual Testing efficient) → produce a consolidated report.
 
 ```markdown
 # Batch Review Report
@@ -385,10 +385,10 @@ Revision loop: 리뷰 → REVIEW/FAIL이면 제작 에이전트가 수정 → �
 - Total: N artifacts / PASS: X | REVIEW: Y | FAIL: Z
 
 ## Next Steps
-- 전체 PASS → 배포 진행 / REVIEW·FAIL 아티팩트만 수정 후 재리뷰
+- All PASS → proceed with deployment / fix only the REVIEW/FAIL artifacts, then re-review
 ```
 
-각 REVIEW/FAIL 아티팩트에 대해 Review Report Format의 Critical/Warning Issues 섹션을 포함합니다.
+Include the Critical/Warning Issues section from the Review Report Format for each REVIEW/FAIL artifact.
 
 ---
 

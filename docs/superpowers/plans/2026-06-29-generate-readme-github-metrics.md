@@ -359,8 +359,8 @@ language toggle on its own line above the metric row. All badges are shields.io 
 In `plugins/project-init/references/upstream-sync.md`:
 1. Add `--exclude='commands/generate-readme.md'` to the `rsync` snippet.
 2. Add `--exclude=generate-readme.md` to the `diff -rq` snippet.
-3. Add a bullet under "로컬 분기 파일 (동기화 제외 대상):":
-   `- `commands/generate-readme.md` — 로컬 전용 GitHub-metrics fetch 단계(Step 2.5) + `Bash(gh:*)`/`Bash(python3:*)` 추가. upstream에는 없는 라이브 배지 기능이라 제외.`
+3. Add a bullet under "Locally-diverged files (excluded from sync):":
+   `- `commands/generate-readme.md` — adds a local-only GitHub-metrics fetch step (Step 2.5) + `Bash(gh:*)`/`Bash(python3:*)`. Excluded because it's a live-badge feature that doesn't exist upstream.`
 
 - [ ] **Step 8: Run the full suite to verify everything passes**
 

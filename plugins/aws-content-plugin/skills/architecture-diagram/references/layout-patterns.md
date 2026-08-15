@@ -1,95 +1,97 @@
-# Draw.io 레이아웃 패턴 및 수정 기법
+# Draw.io Layout Patterns and Editing Techniques
 
-실제 아키텍처 다이어그램 작업에서 검증된 레이아웃 패턴과 XML 수정 기법.
+Layout patterns and XML editing techniques validated on real architecture diagram work.
 
-> 💡 **스펙 생성기가 이 패턴들을 자동 구현합니다.** `scripts/layout_aws.py` 는 여기 설명된
-> 레이아웃 원칙(Multi-AZ 미러, VPC 중첩, 좌→우 티어, 엣지 앵커)을 YAML 스펙에서 결정적으로
-> 생성합니다(`examples/`). 이 문서는 생성기가 어떤 규칙을 따르는지 이해하거나, 생성된 다이어그램을
-> 손으로 추가 수정할 때 참고하세요.
+> 💡 **The spec generator implements these patterns automatically.** `scripts/layout_aws.py`
+> deterministically generates the layout principles described here (Multi-AZ mirroring, VPC nesting,
+> left-to-right tiers, edge anchors) from a YAML spec (`examples/`). Use this document to understand what
+> rules the generator follows, or as a reference when hand-editing a generated diagram further.
 
 ---
 
-## 박스 스타일 수정
+## Editing box styles
 
-### 라운딩 곡률 조정 (arcSize)
+### Adjusting corner rounding (arcSize)
 
-**문제**: 기본 rounded 박스의 곡률이 너무 커서 모서리의 텍스트가 잘림
+**Problem**: the default rounded box's curvature is too large and clips text near the corners
 
 ```xml
-<!-- 문제: 기본 rounded는 arcSize가 크다 -->
+<!-- Problem: default rounded has a large arcSize -->
 style="rounded=1;..."
 
-<!-- 해결: arcSize를 명시적으로 작게 설정 -->
+<!-- Fix: set arcSize explicitly smaller -->
 style="rounded=1;arcSize=5;..."
 ```
 
-| arcSize 값 | 효과 |
+| arcSize value | Effect |
 |-----------|------|
-| 0 | 직각 모서리 |
-| 5 | 약간 둥근 모서리 (권장) |
-| 10 | 보통 둥근 모서리 |
-| 20+ | 많이 둥근 모서리 |
+| 0 | square corners |
+| 5 | slightly rounded corners (recommended) |
+| 10 | moderately rounded corners |
+| 20+ | heavily rounded corners |
 
-### 내부 여백 (Spacing)
+### Internal spacing
 
-**문제**: 텍스트가 박스 가장자리에 너무 붙음
+**Problem**: text sits too close to the box edge
 
 ```xml
-<!-- 해결: spacingTop, spacingLeft 추가 -->
+<!-- Fix: add spacingTop, spacingLeft -->
 style="verticalAlign=top;spacingTop=8;spacingLeft=10;..."
 ```
 
-| 속성 | 용도 | 권장값 |
+| Attribute | Use | Recommended value |
 |------|------|--------|
-| spacingTop | 상단 여백 | 5-10 |
-| spacingLeft | 좌측 여백 | 5-10 |
-| spacingRight | 우측 여백 | 5-10 |
-| spacingBottom | 하단 여백 | 5-10 |
+| spacingTop | top margin | 5-10 |
+| spacingLeft | left margin | 5-10 |
+| spacingRight | right margin | 5-10 |
+| spacingBottom | bottom margin | 5-10 |
 
-### 텍스트 정렬
+### Text alignment
 
 ```xml
-<!-- 그룹 박스 제목을 좌상단에 -->
+<!-- Group box title in the top-left -->
 style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=30;..."
 
-<!-- 내용을 중앙에 -->
+<!-- Content centered -->
 style="verticalAlign=middle;align=center;..."
 ```
 
 ---
 
-## 아이콘 그리드 배치
+## Icon grid placement
 
-### 기본 그리드 패턴
+### Basic grid pattern
 
 ```
-행당 4-5개 아이콘 배치:
+Place 4-5 icons per row:
 
 ┌──────────────────────────────────────────────────────────┐
-│ [아이콘1] [아이콘2] [아이콘3] [아이콘4] [아이콘5]         │
-│  라벨1    라벨2     라벨3     라벨4     라벨5            │
+│ [icon1] [icon2] [icon3] [icon4] [icon5]         │
+│  label1    label2     label3     label4     label5            │
 │                                                          │
-│ [아이콘6] [아이콘7] [아이콘8] [아이콘9]                   │
-│  라벨6    라벨7     라벨8     라벨9                      │
+│ [icon6] [icon7] [icon8] [icon9]                   │
+│  label6    label7     label8     label9                      │
 └──────────────────────────────────────────────────────────┘
 ```
 
-### 좌표 계산
+### Coordinate calculation
 
-> **아이콘 크기 정본은 `references/design-tokens.md`: 표준 78×78** (밀집 예외 48×48). 아래 예시 수치는 좌표 계산 방법 설명용이며, 실제 크기는 78을 사용.
+> **The single source of truth for icon size is `references/design-tokens.md`: standard 78×78** (dense
+> exception 48×48). The figures below are for illustrating the calculation method only — actual sizes
+> should use 78.
 
 ```
-아이콘 크기: 78x78 (표준, design-tokens.md) — 밀집 예외만 48x48
-라벨 높이: 25px
-행 간격: 아이콘높이 + 라벨높이 + 여백 = 78 + 25 + 17 = 120px
+Icon size: 78x78 (standard, per design-tokens.md) — 48x48 only as a dense exception
+Label height: 25px
+Row spacing: icon height + label height + margin = 78 + 25 + 17 = 120px
 
-예시 (시작점 x=914, y=162):
-- Row 1 아이콘: y=162, 라벨: y=202
-- Row 2 아이콘: y=230, 라벨: y=270
-- Row 3 아이콘: y=322, 라벨: y=362 (섹션 구분자 포함 시)
-- Row 4 아이콘: y=390, 라벨: y=430
+Example (starting point x=914, y=162):
+- Row 1 icon: y=162, label: y=202
+- Row 2 icon: y=230, label: y=270
+- Row 3 icon: y=322, label: y=362 (if a section divider is included)
+- Row 4 icon: y=390, label: y=430
 
-열 간격 (40px 아이콘 기준):
+Column spacing (based on 40px icons):
 - Column 1: x=914
 - Column 2: x=989 (+75)
 - Column 3: x=1064 (+75)
@@ -97,17 +99,17 @@ style="verticalAlign=middle;align=center;..."
 - Column 5: x=1214 (+75)
 ```
 
-### 아이콘 + 라벨 쌍
+### Icon + label pair
 
 ```xml
-<!-- 아이콘 -->
+<!-- Icon -->
 <mxCell id="secrets-mgr" value=""
         style="sketch=0;outlineConnect=0;fontColor=#FFFFFF;gradientColor=#F54749;gradientDirection=north;fillColor=#C7131F;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.secrets_manager;fontFamily=Amazon Ember;"
         vertex="1" parent="1">
   <mxGeometry x="914" y="162" width="40" height="40" as="geometry" />
 </mxCell>
 
-<!-- 라벨 (아이콘 아래) -->
+<!-- Label (below the icon) -->
 <mxCell id="secrets-mgr-label" value="Secrets&#xa;Manager"
         style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Amazon Ember;fontSize=8;fontColor=#FFFFFF;"
         vertex="1" parent="1">
@@ -115,94 +117,94 @@ style="verticalAlign=middle;align=center;..."
 </mxCell>
 ```
 
-**라벨 좌표 계산**:
-- 라벨 x = 아이콘 x - (라벨너비 - 아이콘너비) / 2
-- 예: 아이콘 x=914, 아이콘너비=40, 라벨너비=60 → 라벨 x = 914 - 10 = 904
-- 라벨 y = 아이콘 y + 아이콘높이 = 162 + 40 = 202
+**Label coordinate calculation**:
+- label x = icon x - (label width - icon width) / 2
+- example: icon x=914, icon width=40, label width=60 → label x = 914 - 10 = 904
+- label y = icon y + icon height = 162 + 40 = 202
 
 ---
 
-## 연관 요소 동시 조정
+## Adjusting related elements together
 
-### 부모 박스 크기 변경 시
+### When resizing a parent box
 
 ```
 mgmt-box height: 340 → 360 (+20)
 
-영향받는 하위 요소들:
+Affected child elements:
 - mapping-box: y=465 → y=485 (+20)
 - mapping-title: y=468 → y=488 (+20)
 - legend: y=560 → y=580 (+20)
-- 범례 내 모든 요소: y += 20
+- all elements inside the legend: y += 20
 - footer: y=665 → y=685 (+20)
 ```
 
-### 일괄 수정 패턴
+### Bulk edit pattern
 
 ```
-Edit 도구로 y 좌표 일괄 수정:
-1. 영향받는 요소 식별
-2. 각 요소의 y 좌표에 동일한 delta 적용
-3. 계층 구조 확인 (부모-자식 관계)
+Bulk-editing y coordinates with the Edit tool:
+1. Identify affected elements
+2. Apply the same delta to each element's y coordinate
+3. Verify the parent-child hierarchy
 ```
 
 ---
 
-## 그룹 범위 조정
+## Adjusting group scope
 
-### Region은 VPC만 포함
+### Region should contain only VPCs
 
-**원칙**: Region 박스는 실제 Region에 속하는 리소스(VPC)만 포함
+**Principle**: the Region box should contain only resources that actually belong to the Region (VPCs)
 
 ```
 ┌─ AWS Cloud ───────────────────────────────────────────┐
-│  ┌─ Region (VPC만 포함) ─┐  ┌─ 관리 서비스 (별도) ─┐  │
-│  │  ┌────┐ ┌────┐       │  │  아이콘들...        │  │
+│  ┌─ Region (VPCs only) ─┐  ┌─ Management services (separate) ─┐  │
+│  │  ┌────┐ ┌────┐       │  │  icons...        │  │
 │  │  │VPC1│ │VPC2│       │  │                     │  │
 │  │  └────┘ └────┘       │  └─────────────────────┘  │
 │  │  ┌────────────────┐  │                           │
-│  │  │    VPC3        │  │  ┌─ 범례 ──────────────┐  │
+│  │  │    VPC3        │  │  ┌─ Legend ──────────────┐  │
 │  │  └────────────────┘  │  │                     │  │
 │  └──────────────────────┘  └─────────────────────┘  │
 └─────────────────────────────────────────────────────┘
 ```
 
-**Width 계산**:
+**Width calculation**:
 ```
-VPC들이 x=880에서 끝남
-Region 시작: x=410
-Region 끝 (여백 포함): x=890
+VPCs end at x=880
+Region start: x=410
+Region end (with margin): x=890
 Region width = 890 - 410 = 480
 ```
 
 ---
 
-## 범례 레이아웃
+## Legend layout
 
-### 2줄 범례 패턴
+### Two-row legend pattern
 
 ```
-┌─ 범례 ────────────────────────────────────────────────────────┐
-│ [IDC서버] IDC 솔루션  [EC2] 컴퓨팅  [S3] 스토리지  [Aurora] DB │
-│ [Shield] 보안  [TGW] 네트워킹  [━━▶] Direct Connect  BYOL     │
+┌─ Legend ────────────────────────────────────────────────────────┐
+│ [IDC server] IDC solution  [EC2] compute  [S3] storage  [Aurora] DB │
+│ [Shield] security  [TGW] networking  [━━▶] Direct Connect  BYOL     │
 └───────────────────────────────────────────────────────────────┘
 ```
 
-### 범례 요소 배치
+### Legend element placement
 
 ```xml
 <!-- Row 1 -->
 <mxCell id="leg-1" ... vertex="1" parent="1">
   <mxGeometry x="905" y="610" width="20" height="20" as="geometry" />
 </mxCell>
-<mxCell id="leg-1-text" value="IDC 솔루션" ...>
+<mxCell id="leg-1-text" value="IDC solution" ...>
   <mxGeometry x="928" y="607" width="65" height="25" as="geometry" />
 </mxCell>
 
 <mxCell id="leg-2" ... vertex="1" parent="1">
   <mxGeometry x="998" y="608" width="24" height="24" as="geometry" />
 </mxCell>
-<mxCell id="leg-2-text" value="컴퓨팅" ...>
+<mxCell id="leg-2-text" value="Compute" ...>
   <mxGeometry x="1025" y="607" width="45" height="25" as="geometry" />
 </mxCell>
 
@@ -212,7 +214,7 @@ Region width = 890 - 410 = 480
 </mxCell>
 ```
 
-### Direct Connect 범례 화살표
+### Direct Connect legend arrow
 
 ```xml
 <mxCell id="leg-7" value=""
@@ -227,25 +229,26 @@ Region width = 890 - 410 = 480
 
 ---
 
-## 색상 참조
+## Color reference
 
-### AWS 서비스 카테고리 색상
+### AWS service category colors
 
-| 카테고리 | fillColor | gradientColor | strokeColor |
+| Category | fillColor | gradientColor | strokeColor |
 |----------|-----------|---------------|-------------|
-| 컴퓨팅 | #D05C17 | #F78E04 | #ffffff |
-| 스토리지 | #277116 | #60A337 | #ffffff |
-| 데이터베이스 | #3334B9 | #4D72F3 | #ffffff |
-| 보안 | #C7131F | #F54749 | #ffffff |
-| 네트워킹 | #5A30B5 | #945DF2 | #ffffff |
-| 관리 | #BC1356 | #F34482 | #ffffff |
+| Compute | #D05C17 | #F78E04 | #ffffff |
+| Storage | #277116 | #60A337 | #ffffff |
+| Database | #3334B9 | #4D72F3 | #ffffff |
+| Security | #C7131F | #F54749 | #ffffff |
+| Networking | #5A30B5 | #945DF2 | #ffffff |
+| Management | #BC1356 | #F34482 | #ffffff |
 | AI/ML | #116D5B | #4AB29A | #ffffff |
 
-### 그룹 박스 색상
+### Group box colors
 
-> **정본은 `references/design-tokens.md`.** Public=초록(#7AA116), Private=청록(#00A4A6) — `templates/*.drawio`의 Web Tier(초록)/App·Data Tier(청록)와 일치. 뒤바꾸지 말 것.
+> **The single source of truth is `references/design-tokens.md`.** Public=green (#7AA116), Private=teal
+> (#00A4A6) — matches the Web Tier (green)/App·Data Tier (teal) in `templates/*.drawio`. Don't swap them.
 
-| 그룹 | strokeColor | fillColor | fontColor |
+| Group | strokeColor | fillColor | fontColor |
 |------|-------------|-----------|-----------|
 | AWS Cloud | #232F3E | none | #232F3E |
 | Region | #00A4A6 | none | #147EBA |
@@ -255,38 +258,38 @@ Region width = 890 - 410 = 480
 | Security Group | #C7131F | #FEE7E7 | #C62828 |
 | IDC | #5A6C86 | #E6E6E6 | #5A6C86 |
 
-### 커스텀 박스 색상
+### Custom box colors
 
-| 용도 | fillColor | strokeColor | fontColor |
+| Use | fillColor | strokeColor | fontColor |
 |------|-----------|-------------|-----------|
-| 관리 서비스 (Dark) | #263238 | #FF9900 | #FF9900 |
-| 하이브리드 장점 | #1B5E20 | #4CAF50 | #A5D6A7 |
-| 범례 박스 | #FAFAFA | #E0E0E0 | #424242 |
-| BYOL 배지 | #FFF9C4 | #F57F17 | #F57F17 |
+| Management services (Dark) | #263238 | #FF9900 | #FF9900 |
+| Hybrid advantage | #1B5E20 | #4CAF50 | #A5D6A7 |
+| Legend box | #FAFAFA | #E0E0E0 | #424242 |
+| BYOL badge | #FFF9C4 | #F57F17 | #F57F17 |
 
 ---
 
-## 연결선 스타일
+## Connector styles
 
-### 기본 연결선
+### Basic connector
 
 ```xml
 style="endArrow=classic;html=1;strokeWidth=1;strokeColor=#545B64;"
 ```
 
-### 양방향 연결선
+### Bidirectional connector
 
 ```xml
 style="endArrow=classic;startArrow=classic;html=1;strokeWidth=2;strokeColor=#5A30B5;"
 ```
 
-### Direct Connect (두꺼운 오렌지)
+### Direct Connect (thick orange)
 
 ```xml
 style="endArrow=classic;startArrow=classic;html=1;rounded=0;strokeWidth=4;strokeColor=#FF9800;edgeStyle=orthogonalEdgeStyle;"
 ```
 
-### 꺾인 연결선 (Orthogonal)
+### Elbow connector (Orthogonal)
 
 ```xml
 style="edgeStyle=orthogonalEdgeStyle;..."
@@ -298,9 +301,9 @@ style="edgeStyle=orthogonalEdgeStyle;..."
 
 ---
 
-## 자주 사용하는 수정 패턴
+## Frequently used editing patterns
 
-### 1. 텍스트 잘림 수정
+### 1. Fixing clipped text
 
 ```xml
 <!-- Before -->
@@ -310,25 +313,25 @@ style="rounded=1;..."
 style="rounded=1;arcSize=5;spacingTop=8;spacingLeft=10;..."
 ```
 
-### 2. 박스 높이 증가 + 하위 요소 이동
+### 2. Increasing box height + moving child elements
 
 ```
-1. 박스 height 증가량 계산 (예: +20)
-2. 박스 아래 모든 요소의 y += 20
-3. 부모 컨테이너도 필요시 확장
+1. Calculate the box height increase (e.g. +20)
+2. y += 20 for all elements below the box
+3. Expand the parent container too, if needed
 ```
 
-### 3. 아이콘 행 추가
+### 3. Adding an icon row
 
 ```
-새 행 y = 이전 행 y + 68 (아이콘40 + 라벨25 + 간격3)
-또는
-새 행 y = 이전 행 y + 92 (섹션 라벨 포함 시)
+new row y = previous row y + 68 (icon 40 + label 25 + spacing 3)
+or
+new row y = previous row y + 92 (if a section label is included)
 ```
 
-### 4. Region 범위 축소
+### 4. Shrinking Region scope
 
 ```
-1. VPC들의 최대 x + width 확인
-2. Region width = (VPC 끝 x) - (Region 시작 x) + 여백(10)
+1. Check the max x + width across the VPCs
+2. Region width = (VPC end x) - (Region start x) + margin (10)
 ```

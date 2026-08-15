@@ -1,112 +1,112 @@
 # Workshop Studio Front Matter Reference
 
-모든 Workshop Studio 콘텐츠 페이지의 Front Matter 설정 레퍼런스입니다.
+The Front Matter configuration reference for all Workshop Studio content pages.
 
 ---
 
-## 페이지 구조
+## Page structure
 
-모든 콘텐츠 페이지는 두 부분으로 구성됩니다:
+Every content page consists of two parts:
 
-1. **Front Matter** (메타데이터) - 페이지 상단
-2. **Markdown Content** (실제 내용) - Front Matter 아래
+1. **Front Matter** (metadata) - top of the page
+2. **Markdown Content** (actual content) - below the Front Matter
 
 ---
 
-## Front Matter 문법
+## Front Matter syntax
 
-Front Matter는 **필수**이며, 파일 최상단에 `---`로 구분하여 작성합니다.
+Front Matter is **required**, delimited by `---` at the top of the file.
 
 ```markdown
 ---
-title: "페이지 제목"
+title: "Page Title"
 weight: 10
 ---
 
-여기부터 마크다운 내용을 작성합니다.
+Write your markdown content starting here.
 ```
 
 ---
 
-## 지원되는 속성
+## Supported attributes
 
-| 속성 | 타입 | 설명 | 필수 | 기본값 |
+| Attribute | Type | Description | Required | Default |
 |------|------|------|------|--------|
-| `title` | `string` | 페이지 제목. 네비게이션 링크 텍스트로 사용됩니다. | **필수** | - |
-| `weight` | `number` | 네비게이션에서의 정렬 순서. 낮은 값이 먼저 표시됩니다. | 선택 | - |
-| `hidden` | `boolean` | `true`면 네비게이션에 표시되지 않습니다. | 선택 | `false` |
+| `title` | `string` | page title. Used as the navigation link text. | **required** | - |
+| `weight` | `number` | sort order in navigation. Lower values appear first. | optional | - |
+| `hidden` | `boolean` | if `true`, not shown in navigation. | optional | `false` |
 
 ---
 
-## 주의사항
+## Caveats
 
-1. **title은 필수입니다** - title이 없으면 빌드가 실패합니다.
-2. **title은 따옴표로 감싸야 합니다** - `title: "제목"` 형식 사용
-3. **잘못된 속성/값은 빌드 실패 원인** - 지원되는 속성만 사용하세요.
+1. **title is required** - the build fails without a title.
+2. **title must be quoted** - use the format `title: "Title"`
+3. **Invalid attributes/values cause build failures** - use only supported attributes.
 
 ---
 
-## 예제
+## Examples
 
-### 기본 페이지
+### Basic page
 
 ```yaml
 ---
-title: "소개"
+title: "Introduction"
 weight: 10
 ---
 ```
 
-### 숨겨진 페이지
+### Hidden page
 
-네비게이션에 표시되지 않지만 직접 링크로 접근 가능합니다.
+Not shown in navigation, but accessible via a direct link.
 
 ```yaml
 ---
-title: "부록 A - 참고 자료"
+title: "Appendix A - References"
 weight: 999
 hidden: true
 ---
 ```
 
-### 정렬 예제
+### Ordering example
 
-같은 레벨의 페이지들:
+Pages at the same level:
 
 ```yaml
 # 010_introduction/index.ko.md
 ---
-title: "소개"
+title: "Introduction"
 weight: 10
 ---
 
 # 020_setup/index.ko.md
 ---
-title: "사전 준비"
+title: "Prerequisites"
 weight: 20
 ---
 
 # 030_module1/index.ko.md
 ---
-title: "모듈 1: 기본 설정"
+title: "Module 1: Basic Setup"
 weight: 30
 ---
 ```
 
-### 같은 weight 처리
+### Handling equal weight
 
-같은 weight를 가진 페이지들은 **사전순(lexicographic order)**으로 정렬됩니다.
+Pages with the same weight are sorted **lexicographically**.
 
 ```yaml
-# 두 페이지가 weight: 10을 가지면
-# 디렉토리/파일명의 알파벳순으로 정렬됨
+# if two pages both have weight: 10,
+# they are sorted alphabetically by directory/file name
 ```
 
 ---
 
-## 워크샵 구조별 권장 weight
+## Recommended weight ranges by workshop structure
 
-| 섹션 | weight 범위 | 예시 |
+| Section | weight range | Example |
 |------|-------------|------|
 | Introduction | 1-9 | 1, 5 |
 | Prerequisites | 10-19 | 10 |
@@ -118,14 +118,14 @@ weight: 30
 
 ---
 
-## 다국어 페이지
+## Multilingual pages
 
-한국어와 영어 페이지는 같은 weight를 사용합니다:
+Korean and English pages use the same weight:
 
 ```yaml
 # index.ko.md
 ---
-title: "소개"
+title: "Introduction"
 weight: 10
 ---
 
@@ -138,30 +138,30 @@ weight: 10
 
 ---
 
-## 흔한 실수
+## Common mistakes
 
-### 잘못된 예시
+### Incorrect examples
 
 ```yaml
-# title 누락 - 빌드 실패
+# missing title - build fails
 ---
 weight: 10
 ---
 
-# 따옴표 누락 - 특수문자 포함 시 오류
+# missing quotes - error when special characters are included
 ---
 title: Module 1: Setup
 weight: 10
 ---
 
-# 잘못된 속성
+# invalid attribute
 ---
-title: "제목"
-author: "홍길동"  # 지원되지 않는 속성
+title: "Title"
+author: "John Doe"  # unsupported attribute
 ---
 ```
 
-### 올바른 예시
+### Correct example
 
 ```yaml
 ---

@@ -1,82 +1,84 @@
 # Semantic Color Token Reference
 
-Reactive-presentation 색상은 **하드코딩 hex가 아니라 시맨틱 역할 토큰**으로 표현합니다. 토큰은
-`assets/design-tokens.css`에 정의되고, `assets/theme.css`의 `.theme-light`(기본) / `.theme-dark`
-스코프에서 실제 값으로 바인딩됩니다. 슬라이드/템플릿은 항상 `var(--*)` 토큰을 사용하므로
-light/dark 테마 전환과 PPTX 브랜드 추출(Phase 1)에 자동으로 적응합니다.
+Reactive-presentation colors are expressed as **semantic role tokens, not hardcoded hex values**.
+Tokens are defined in `assets/design-tokens.css` and bound to actual values within the
+`.theme-light` (default) / `.theme-dark` scopes of `assets/theme.css`. Slides and templates
+always use `var(--*)` tokens, so they automatically adapt to light/dark theme switching and to
+PPTX brand extraction (Phase 1).
 
-> **테마 기본값**: light가 기본입니다. dark로 되돌리려면 덱 루트 요소에 `class="… theme-dark"`를
-> 지정하세요 (frontmatter `theme: { mode: dark }`). 토큰을 쓰면 같은 마크업이 양쪽 테마에서
-> 올바른 대비로 렌더링됩니다.
+> **Theme default**: light is the default. To switch back to dark, apply `class="… theme-dark"`
+> to the deck root element (frontmatter `theme: { mode: dark }`). Because tokens are used, the
+> same markup renders with correct contrast in both themes.
 >
-> **팔레트 아이덴티티**: 기본 테마는 AWS 자체 디자인 언어에 근거합니다 — 라이트는 콘솔 그레이
-> 캔버스(`#eaedee`) + 화이트 카드 + Squid Ink 계열 텍스트(`#0f141a`, 브랜드 기준색 Squid Ink는
-> `#232F3E`) + Smile Orange 액센트(`#ec7211`) + Cloudscape 블루 텍스트 액센트(`#0972d3`);
-> 다크는 squid-ink night(`#0f1b2a` 계열) + `#ff9900`.
-> 구(舊) 웜 페이퍼 룩은 `theme: { preset: paper }`로 옵트인합니다. 배경/선정 원칙:
-> [design-direction.md](design-direction.md).
+> **Palette identity**: the default theme is grounded in AWS's own design language — light mode
+> uses a console-gray canvas (`#eaedee`) + white cards + Squid Ink–family text (`#0f141a`; the
+> brand reference color Squid Ink itself is `#232F3E`) + a Smile Orange accent (`#ec7211`) +
+> Cloudscape blue text accent (`#0972d3`); dark mode uses squid-ink night (`#0f1b2a` family) +
+> `#ff9900`. The old warm-paper look is available as an opt-in via `theme: { preset: paper }`.
+> For background/selection principles, see [design-direction.md](design-direction.md).
 
 ---
 
-## Role Tokens (사용 우선순위 1순위)
+## Role Tokens (top priority for use)
 
 ### Surfaces & Text
 
-| 토큰 | 역할 | 사용 |
+| Token | Role | Usage |
 |------|------|------|
-| `--surface-1` | 가장 낮은 표면 (덱/슬라이드 배경) | `background: var(--surface-1)` |
-| `--surface-2` | 카드/패널 표면 | `background: var(--surface-2)` |
-| `--surface-3` | 표면 위 경계/구분선/그리드 라인 | `border-color: var(--surface-3)` |
-| `--on-surface` | 표면 위 본문 텍스트 | `color: var(--on-surface)` |
-| `--on-surface-muted` | 보조/캡션 텍스트, 차트 축 라벨 | `color: var(--on-surface-muted)` |
+| `--surface-1` | The lowest-level surface (deck/slide background) | `background: var(--surface-1)` |
+| `--surface-2` | Card/panel surface | `background: var(--surface-2)` |
+| `--surface-3` | Borders/dividers/grid lines on top of surfaces | `border-color: var(--surface-3)` |
+| `--on-surface` | Body text on a surface | `color: var(--on-surface)` |
+| `--on-surface-muted` | Secondary/caption text, chart axis labels | `color: var(--on-surface-muted)` |
 
 ### Accent & Status
 
-각 역할은 3종 토큰을 가집니다: **base**(채움/선), **`-subtle`**(연한 배경 틴트), **`-on`**(base 위 텍스트).
+Each role has 3 tokens: **base** (fill/stroke), **`-subtle`** (light background tint), and
+**`-on`** (text placed on top of base).
 
-| 역할 | base | subtle 배경 | on (텍스트) | 의미 |
+| Role | base | subtle background | on (text) | Meaning |
 |------|------|-------------|-------------|------|
-| accent | `--accent` | `--accent-subtle` | `--accent-on` | 기본 강조, 입력/소스, 1차 CTA |
-| info | `--info` | `--info-subtle` | `--info-on` | 보조 정보, 스트리밍/분석 |
-| success | `--success` | `--success-subtle` | `--success-on` | 성공, 결과, 자동화 |
-| warning | `--warning` | `--warning-subtle` | `--warning-on` | 경고, 처리 중, AI/추론 |
-| danger | `--danger` | `--danger-subtle` | `--danger-on` | 에러, 위험, 알림 |
+| accent | `--accent` | `--accent-subtle` | `--accent-on` | Primary emphasis, input/source, primary CTA |
+| info | `--info` | `--info-subtle` | `--info-on` | Secondary information, streaming/analytics |
+| success | `--success` | `--success-subtle` | `--success-on` | Success, results, automation |
+| warning | `--warning` | `--warning-subtle` | `--warning-on` | Warning, in-progress, AI/inference |
+| danger | `--danger` | `--danger-subtle` | `--danger-on` | Error, risk, alert |
 
-**사용 패턴**:
+**Usage pattern**:
 
 ```css
-/* 카드: 표면 + 본문 텍스트 */
+/* Card: surface + body text */
 .metric-card { background: var(--surface-2); color: var(--on-surface); border: 1px solid var(--surface-3); }
 
-/* 상태 배지: base 채움 + on 텍스트 (대비 보장) */
+/* Status badge: base fill + on text (guarantees contrast) */
 .badge-warn  { background: var(--warning); color: var(--warning-on); }
 
-/* 연한 강조 영역: subtle 틴트 + base 보더 + role 텍스트 */
+/* Light emphasis area: subtle tint + base border + role text */
 .callout-info { background: var(--info-subtle); border: 1px solid var(--info); color: var(--on-surface); }
 
-/* 강조 텍스트 */
+/* Accent text */
 .text-accent { color: var(--accent); }
 ```
 
-> 옛 레거시 별칭(`--blue`, `--cyan`, `--green`, `--yellow`, `--red`, `--text-muted`)은
-> 하위호환을 위해 theme.css에 남아 있을 수 있으나, **새 콘텐츠는 위 역할 토큰을 사용하세요.**
-> 매핑: blue/cyan→`--info`·`--accent`, green→`--success`, yellow/orange→`--warning`,
+> Old legacy aliases (`--blue`, `--cyan`, `--green`, `--yellow`, `--red`, `--text-muted`) may
+> still remain in theme.css for backward compatibility, but **new content should use the role
+> tokens above.** Mapping: blue/cyan→`--info`/`--accent`, green→`--success`, yellow/orange→`--warning`,
 > red→`--danger`, text-muted→`--on-surface-muted`.
 
 ---
 
-## Scale Tokens (간격·반경·타이포·그림자)
+## Scale Tokens (spacing, radius, typography, shadow)
 
-색상 외 디자인 값도 토큰을 사용합니다. 하드코딩 px/rem 대신:
+Non-color design values also use tokens. Instead of hardcoded px/rem:
 
-| 그룹 | 토큰 | 용도 |
+| Group | Token | Usage |
 |------|------|------|
-| Spacing (8px 그리드) | `--space-1`…`--space-8` | `padding`, `gap`, `margin` |
+| Spacing (8px grid) | `--space-1`…`--space-8` | `padding`, `gap`, `margin` |
 | Radius | `--radius-sm` / `--radius-md` / `--radius-lg` / `--radius-pill` | `border-radius` |
 | Type scale | `--text-xs`…`--text-4xl` | `font-size` |
 | Type role | `--leading-tight/normal/relaxed`, `--weight-regular/medium/semibold/bold` | line-height, weight |
-| Tracking | `--tracking-tight/normal/wide` | 디스플레이 제목(tight), eyebrow/라벨(wide) |
-| Typeface | `--font-display` / `--font-main` / `--font-mono` | h1·h2 디스플레이, 본문, 데이터/코드 |
+| Tracking | `--tracking-tight/normal/wide` | tight for display titles, wide for eyebrows/labels |
+| Typeface | `--font-display` / `--font-main` / `--font-mono` | h1/h2 display, body, data/code |
 | Shadow | `--shadow-1/2/3`, `--shadow-glow` | `box-shadow` |
 | Motion | `--duration-fast/normal/slow` | transition/animation |
 | Z ladder | `--z-base/nav/overlay/modal/toast` | `z-index` |
@@ -85,55 +87,62 @@ light/dark 테마 전환과 PPTX 브랜드 추출(Phase 1)에 자동으로 적�
 
 ## Token-backed Primitive Classes
 
-대부분의 슬라이드는 직접 `var(--*)`를 쓰기보다 theme.css의 **프리미티브 클래스**를 조합합니다
-(클래스가 토큰을 소비하므로 테마 적응이 자동):
+Most slides combine theme.css's **primitive classes** rather than using `var(--*)` directly
+(since the classes consume the tokens, theme adaptation is automatic):
 
-| 클래스 | 역할 |
+| Class | Role |
 |--------|------|
-| `.card-grid` | auto-fit 반응형 카드 그리드 |
-| `.metric-card` | 표면 카드 (KPI/지표) |
-| `.callout` + `.callout-info/-warning/-danger/-success` | 상태별 강조 박스 |
-| `.comparison` | 비교 표면 박스 |
-| `.tab-set` / `.tab-btn`(+`.active`) | 탭 바 (active는 accent로 채움) |
-| `.flow-group` / `.flow-h` / `.flow-box` / `.flow-arrow` | 아키텍처 흐름 레이아웃 |
+| `.card-grid` | Auto-fit responsive card grid |
+| `.metric-card` | Surface card (KPI/metric) |
+| `.callout` + `.callout-info/-warning/-danger/-success` | Status-specific emphasis boxes |
+| `.comparison` | Comparison surface box |
+| `.tab-set` / `.tab-btn`(+`.active`) | Tab bar (active is filled with accent) |
+| `.flow-group` / `.flow-h` / `.flow-box` / `.flow-arrow` | Architecture flow layout |
 
 ---
 
-## Canvas & JSON 색상 (named tokens)
+## Canvas & JSON colors (named tokens)
 
-런타임 렌더링 경로는 hex 대신 **이름 토큰**을 받습니다.
+Runtime rendering paths receive **named tokens** instead of hex values.
 
-- **Canvas DSL** (`:::canvas`): `box id "label" at X,Y size W,H color <name>` — `<name>`은
-  `accent`, `green`, `yellow`, `red`, `blue`, `cyan` (animation-utils.js `Colors.*`로 해석, 테마/PPTX 적응).
-- **slides.json**: `"color"` / `"colors"` 필드에 같은 이름 토큰(`accent`, `cyan`, `yellow`, `red`, `muted` 등)을 사용.
-- **Chart.js**: `getComputedStyle(document.documentElement).getPropertyValue('--accent')`로 토큰을 읽어 사용 (slide-patterns.md §16 참조).
+- **Canvas DSL** (`:::canvas`): `box id "label" at X,Y size W,H color <name>` — `<name>` is
+  `accent`, `green`, `yellow`, `red`, `blue`, or `cyan` (resolved via animation-utils.js
+  `Colors.*`, adapting to theme/PPTX).
+- **slides.json**: use the same named tokens (`accent`, `cyan`, `yellow`, `red`, `muted`, etc.)
+  in the `"color"` / `"colors"` fields.
+- **Chart.js**: read tokens via `getComputedStyle(document.documentElement).getPropertyValue('--accent')`
+  (see slide-patterns.md §16).
 
 ---
 
-## PPTX 브랜드 추출 → 토큰 (Phase 1)
+## PPTX brand extraction → tokens (Phase 1)
 
-`.pptx` 템플릿을 제공하면 `extract_pptx_theme.py`가 브랜드 색을 추출해 `theme-override.css`에서
-역할 토큰을 재바인딩합니다. 즉 **추출된 브랜드 색이 `--accent`, `--surface-*` 등으로 흘러들어가**
-모든 토큰 기반 슬라이드에 일괄 반영됩니다. 슬라이드 마크업은 바뀌지 않습니다 — 토큰 값만 바뀝니다.
+When a `.pptx` template is provided, `extract_pptx_theme.py` extracts brand colors and rebinds
+the role tokens in `theme-override.css`. That is, **the extracted brand colors flow into
+`--accent`, `--surface-*`, etc.**, and propagate to every token-based slide at once. Slide
+markup does not change — only the token values change.
 
-PPTX MCP 도구(`mcp__ppt__*`)는 토큰을 직접 받지 않고 `[r, g, b]` 배열을 받으므로, 추출된 매니페스트
-(`theme-manifest.json`)의 RGB 값을 그대로 전달합니다. 이때도 의미는 동일한 역할(accent/surface/on-surface)에
-매핑하여 사용하세요. 예:
+The PPTX MCP tools (`mcp__ppt__*`) don't accept tokens directly; they take `[r, g, b]` arrays,
+so pass the RGB values from the extracted manifest (`theme-manifest.json`) directly. Even then,
+map them to the same semantic roles (accent/surface/on-surface). Example:
 
 ```yaml
-# 표면 배경 = surface 역할, 텍스트 = on-surface 역할 (값은 매니페스트에서)
+# Surface background = surface role, text = on-surface role (values from the manifest)
 mcp__ppt__add_table:
   header_bg_color: <theme-manifest surface RGB>
   header_font_color: <theme-manifest on-surface RGB>
 mcp__ppt__add_shape:
-  fill_color: <theme-manifest accent RGB>   # accent 역할
+  fill_color: <theme-manifest accent RGB>   # accent role
 ```
 
 ---
 
 ## Accessibility
 
-1. **대비율**: 본문 텍스트는 표면 대비 최소 4.5:1. `--on-surface` / `--on-surface-muted`와
-   `--surface-*` 조합, 그리고 status base와 짝지어진 `-on` 토큰은 이 대비를 만족하도록 정의되어 있습니다.
-2. **색맹 고려**: 색만으로 의미를 전달하지 말고 아이콘/라벨을 병행 (특히 success/danger).
-3. **일관성**: 같은 의미에는 같은 역할 토큰을 사용 (예: "성공"은 항상 `--success`).
+1. **Contrast ratio**: body text must have at least 4.5:1 contrast against the surface. The
+   `--on-surface` / `--on-surface-muted` combinations with `--surface-*`, and the `-on` tokens
+   paired with each status base, are defined to satisfy this contrast.
+2. **Color-blindness consideration**: don't convey meaning through color alone — pair it with
+   icons/labels (especially for success/danger).
+3. **Consistency**: use the same role token for the same meaning (e.g., "success" is always
+   `--success`).

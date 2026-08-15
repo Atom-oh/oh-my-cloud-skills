@@ -93,13 +93,24 @@ if __name__ == "__main__":
     app.run()
 ```
 
-> **모던 Opus(4.7/4.8)·Fable 5 호환 주의사항**: Opus 4.7/4.8과 Fable 5는 `temperature`/`top_p`/`top_k`와 `thinking.type: "enabled"` (with `budget_tokens`)를 거부합니다 (400 에러). `opus` 별칭은 현재 4.8로 매핑되고, `fable` 별칭은 Fable 5로 매핑됩니다. 위 템플릿은 이를 모두 회피하며, effort 지원 모델에는 adaptive thinking + effort가 실제로 켜져서 생성됩니다(주석이 아님). Fable 5는 `stop_reason == "refusal"`이 HTTP 200으로 오므로 별도 체크가 필요하고, Bedrock에서 호출 전 30일 데이터 보존(`provider_data_sharing`) 옵트인이 필수입니다(무보존 옵션 없음). 자세한 내용: `references/agentcore-mapping-rules.md` → Model-Specific Compatibility Notes.
+> **Modern Opus (4.7/4.8) / Fable 5 compatibility note**: Opus 4.7/4.8 and Fable 5 reject
+> `temperature`/`top_p`/`top_k` and `thinking.type: "enabled"` (with `budget_tokens`) —
+> both return a 400 error. The `opus` alias currently maps to 4.8, and the `fable` alias
+> maps to Fable 5. The template above avoids all of that, and for models that support
+> `effort`, adaptive thinking + effort is actually turned on in the generated code (not
+> just left as a comment). Fable 5 needs a separate check because `stop_reason ==
+> "refusal"` comes back as HTTP 200; on Bedrock, a 30-day data-retention
+> (`provider_data_sharing`) opt-in is required before you can call it (there is no
+> zero-retention option). Details: `references/agentcore-mapping-rules.md` →
+> Model-Specific Compatibility Notes.
 
 ### agents/requirements.txt
 
-버전 하한은 PyPI 2026-07-12 기준 확인됨(`strands-agents` 1.47.0, `strands-agents-tools` 0.8.3,
-`bedrock-agentcore` 1.18.0, `boto3` 1.43.46) — 이전 0.1.0/1.34.0은 각 패키지의 GA 이전
-스캐폴딩 시절 placeholder였음. 고정 버전이 아니라 하한이므로 시간이 지나면 재확인할 것.
+These lower-bound versions were confirmed against PyPI as of 2026-07-12
+(`strands-agents` 1.47.0, `strands-agents-tools` 0.8.3, `bedrock-agentcore` 1.18.0,
+`boto3` 1.43.46) — the earlier 0.1.0/1.34.0 pins were placeholders from before each
+package's GA, back in the scaffolding era. These are lower bounds, not pinned versions,
+so re-verify them periodically as time passes.
 
 ```
 strands-agents>=1.0.0

@@ -6,20 +6,20 @@ Accepted (2026-04-20)
 
 ## Context
 
-프로젝트 초기화(CLAUDE.md 생성, ADR 관리, 문서 동기화)를 위한 명령들이 루트 수준에 산재하여 재사용과 유지보수가 어려웠다. 여러 프로젝트에서 동일한 패턴(CLAUDE.md, docs/decisions/, CHANGELOG.md)을 반복 생성하고 있었다.
+The commands for project initialization (generating CLAUDE.md, managing ADRs, syncing documentation) were scattered at the root level, making reuse and maintenance difficult. Multiple projects were repeatedly recreating the same pattern (CLAUDE.md, docs/decisions/, CHANGELOG.md).
 
 ## Decision
 
-`project-init` 플러그인을 독립 플러그인으로 분리한다:
-- 1 agent (`doc-sync-checker`): 문서 동기화 분석 및 품질 점수 산정
-- 1 skill (`project-scaffolder`): Claude Code 프로젝트 구조 패턴
+Split the `project-init` plugin out as an independent plugin:
+- 1 agent (`doc-sync-checker`): documentation sync analysis and quality scoring
+- 1 skill (`project-scaffolder`): Claude Code project structure patterns
 - 8 commands: `/init-project`, `/sync-docs`, `/add-adr`, `/add-module`, `/add-runbook`, `/generate-readme`, `/generate-changelog`, `/health-check`
 
 ## Consequences
 
-- 문서 동기화 상태를 100점 만점으로 정량화 가능
-- `/sync-docs`로 누락 CLAUDE.md, 버전 불일치, ADR 누락을 자동 감지
-- 다른 프로젝트에서도 플러그인으로 바로 사용 가능
+- Documentation sync status can be quantified on a 100-point scale
+- `/sync-docs` automatically detects missing CLAUDE.md files, version mismatches, and missing ADRs
+- Can be used directly as a plugin in other projects
 
 ## References
 

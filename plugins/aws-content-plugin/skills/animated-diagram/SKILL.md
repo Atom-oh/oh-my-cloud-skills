@@ -117,9 +117,9 @@ python3 -m http.server 8080 --bind 127.0.0.1 --directory "<output-dir>"
 
 ## Quality Review
 
-배포/완료 선언 전 `review content at [파일경로]`로 content-review-agent PASS — plugin CLAUDE.md의 Quality Gate 규칙 (사소한 손질은 재리뷰 없이 반영).
+content-review-agent must PASS via `review content at [file-path]` before declaring deployment/completion — plugin CLAUDE.md Quality Gate rules (minor touch-ups can be applied without re-review).
 
-Interactive 시나리오는 SMIL 대신 JavaScript 상태 머신 + CSS transition을 사용합니다 — 완전한 동작 예시는 `templates/interactive-scaling.html`.
+Interactive scenarios use a JavaScript state machine + CSS transitions instead of SMIL — see `templates/interactive-scaling.html` for a complete working example.
 
 ## References
 

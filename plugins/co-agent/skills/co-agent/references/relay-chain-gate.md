@@ -17,7 +17,8 @@
 - **Relay** = one *cumulative* pass. Peer *k* sees the artifact **plus every prior peer's
   findings** and is asked to confirm/refute each and add what was missed. The chain deepens
   instead of duplicating, so the panel converges on **one thoroughly-vetted result in a
-  single pass** — the harness goal ("완주해서 신뢰도 높은 결과를 한 번에 도출").
+  single pass** — the harness goal ("go the full distance to produce one high-confidence
+  result in a single pass").
 - Trade-off: relay is **sequential** (slower wall-clock, no `&`/`wait`) and later peers are
   primed by earlier ones (less independence). That priming is the point here — the chair
   still verifies every surviving finding against the actual code, so a wrong early claim is
@@ -48,7 +49,7 @@ trimmed-out pairs (the fan-out `pairs` calls themselves are silent), so check th
 to see whether your tail links survived. A single gate-eligible pair degenerates to one
 review (still valid — see Quorum).
 
-## Multi-model relay — 다방향 검증
+## Multi-model relay — multi-directional verification
 
 Each chain link is an `(ai, model)` **pair**, not just an AI: with the committed `deep`
 profile, every model in an AI's `models` list becomes its own link, so **one relay pass
