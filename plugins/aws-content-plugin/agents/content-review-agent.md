@@ -79,7 +79,9 @@ Exceptions (not a finding):
 - **Intentionally published contact email** — e.g., a contact-section email on a gh-home profile page or brochure that the author intended to publish (same principle as the gh-home copyright exception in category 12)
 - **Obvious placeholders** — example values like `<YOUR_TOKEN>`, `YOUR_*`, `xxx`, `example.com` (prevents false positives where a document's sample code matches a token/password pattern)
 - **Example private IP/CIDR in documents/diagrams** — private-range notation that describes a design, such as VPC/subnet notation in an architecture document (e.g., `10.0.0.0/16`), is not a finding (distinct from exposure of an actual internal system's concrete IP).
-- **Same-type repeats consolidate** — for High/Medium severity, when the same underlying instance (the same email address, the same subnet range, etc.) is exposed repeatedly throughout a document, record it as **one consolidated finding** rather than one per occurrence (multiple sightings, one root cause — otherwise a single repeated exposure alone could push the Warning band over its threshold). Distinct emails/IPs each remain separate findings.
+
+Finding consolidation (still a finding — just recorded once, not once per occurrence):
+- **Same-type repeats** — for High/Medium severity, when the same underlying instance (the same email address, the same subnet range, etc.) is exposed repeatedly throughout a document, record it as **one consolidated finding** rather than one per occurrence (multiple sightings, one root cause — otherwise a single repeated exposure alone could push the Warning band over its threshold). Distinct emails/IPs each remain separate findings.
 
 ### 6. Content-Type-Specific Quality
 
@@ -206,7 +208,7 @@ If 8080 is in use, retry on a different port. Open with `browser_navigate`, test
 
 ### Scoring (100 points total)
 
-Each category starts at full marks. If a category has a Critical defect, that category scores 0; if it has no defects at all, it scores full marks. In between, deduct a fixed rate of roughly 1/4 of the category's full score per defect (cumulative across multiple defects in the same category, floored at 0) — judgment decides only whether something qualifies as a defect worth counting, not how many points it costs. Every deduction must tie to a specific finding in the report (location + quote); there is no deduction without a finding. This fixed rate is what makes the same set of findings always yield the same category score (not a separate tie-breaking rule — it's a direct consequence of the formula). The PASS/REVIEW/FAIL verdict boundaries are set solely by the Verdict table below (85/70, or 77/63 on the 90-point scale) — do not redefine separate boundaries here.
+Each category starts at full marks. If a category has a Critical defect, that category scores 0; if it has no defects at all, it scores full marks. In between, deduct exactly 1/4 of the category's full score per defect, rounded to the nearest 0.5 point (cumulative across multiple defects in the same category, floored at 1 point — 4+ defects in one category still score higher than a Critical, which alone scores 0) — judgment decides only whether something qualifies as a defect worth counting, not how many points it costs. Every deduction must tie to a specific finding in the report (location + quote); there is no deduction without a finding. This exact, fixed rate is what makes the same set of findings always yield the same category score — restate it if you find yourself hedging with words like "roughly" or "approximately", since that reintroduces the non-determinism this rule exists to remove. The PASS/REVIEW/FAIL verdict boundaries are set solely by the Verdict table below (85/70, or 77/63 on the 90-point scale) — do not redefine separate boundaries here.
 
 **Basic Inspection (55 points):**
 
