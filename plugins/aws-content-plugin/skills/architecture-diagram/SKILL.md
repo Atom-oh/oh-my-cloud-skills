@@ -148,7 +148,7 @@ xvfb-run -a drawio -x -f png -s 2 -o output.png input.drawio
 1. **Outside to inside**: user/internet → AWS Cloud → Region → VPC → Subnet
 2. **Left to right**: the direction of data flow
 3. **Tier separation**: presentation → application → data
-4. **Icons at the same level get the same size** (standard 78×78; only tightly nested subnets use 48) — mixing sizes looks cluttered
+4. **Icons at the same level get the same size** — standard and exception sizes are defined canonically in `references/design-tokens.md` (mixing sizes looks cluttered)
 5. Keep legend/caption boxes from overlapping the VPC area
 
 ## Edge routing (the key to quality — the main cause of an "ugly" diagram)

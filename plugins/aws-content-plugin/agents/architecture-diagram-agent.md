@@ -28,7 +28,7 @@ skills:
 - **Never put `&` or `--` inside an XML comment** — drawio silently drops every cell after that point (exit 0, but the PNG is truncated). Avoid decorative comments altogether.
 - **An edge's `parent` must always be `"1"`** — an edge whose parent is a container gets a mismatched coordinate system. The vertex hierarchy should mirror the actual visual containment: `1` → aws-cloud → region → vpc → subnet → icon.
 - **Public/Private subnet distinction**: public subnets use `grIcon=mxgraph.aws4.group_public_subnet` + `dashed=0`; private subnets use `group_private_subnet` + `dashed=1`. **Never use `group_security_group`** — its lock glyph obscures the label and gets misread as a security boundary (`references/design-tokens.md` §2).
-- The canonical values for size/color/font/spacing live in `references/design-tokens.md` (that file wins on any conflict) — this covers uniform 78×78 icons (48×48 is reserved for diagrams dense with 16+ icons; never mix 78 and 48 in the same diagram), category colors, and every group style string.
+- The canonical values for size/color/font/spacing live in `references/design-tokens.md` (that file wins on any conflict) — this covers icon sizing (both standard and exception), category colors, and every group style string.
 
 ---
 
