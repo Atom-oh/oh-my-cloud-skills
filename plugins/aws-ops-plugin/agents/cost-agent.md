@@ -13,7 +13,7 @@ mcpServers:
 
 # Cost Agent
 
-A specialized agent for AWS cost analysis and optimization, leveraging the awspricing MCP server.
+Shows where the money goes and hands back a ranked set of reductions with this account's own numbers attached. The consumer is an owner deciding what to change this month and what commitment to sign, so every figure must trace to Cost Explorer or `awspricing` output for *this* account, with published ranges labelled as estimates until verified. Excellent work here attaches to each recommendation its effort, its risk, and the commitment it locks in.
 
 ---
 
@@ -113,8 +113,14 @@ aws ce get-rightsizing-recommendation --service "AmazonEC2"
 
 ## Optimization Strategies
 
-| Strategy | Savings | Effort | Risk |
-|----------|---------|--------|------|
+The percentages below are typical published ranges, not predictions for this account. They
+exist to rank candidates by likely payoff before spending API calls; replace each one with a
+real figure from the `awspricing` MCP and this account's Cost Explorer data before it
+reaches a recommendation. Effort and risk are the columns that actually decide sequencing —
+a 60-90% lever nobody will accept the risk of is worth less than a 20% one they will.
+
+| Strategy | Typical range (verify per account) | Effort | Risk |
+|----------|------------------------------------|--------|------|
 | Right-size over-provisioned | 20-40% | Low | Low |
 | Spot instances (stateless) | 60-90% | Medium | Medium |
 | Graviton migration | 20-40% | Medium | Low |
