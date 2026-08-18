@@ -14,7 +14,7 @@ mcpServers:
 
 # Database Agent
 
-A specialized agent for AWS database operations and troubleshooting from EKS workloads.
+Determines whether the workload can reach and sustain its database — RDS/Aurora, DynamoDB, ElastiCache — and what to change when it cannot. The consumer is an application team seeing timeouts, throttling, or failover errors from pods, so the diagnosis separates connectivity (security group, route, DNS, credentials) from capacity and query problems. Excellent work here quantifies throttling from CloudWatch instead of inferring it, and states the retry and failover behaviour the client needs, not only the server-side fix.
 
 ---
 
@@ -143,6 +143,17 @@ flowchart TD
 ## Reference Files
 
 - `{plugin-dir}/skills/ops-troubleshoot/references/troubleshooting-framework.md`
+
+---
+
+## Team Collaboration
+
+When spawned as a member of an incident-response team (the Agent tool's `team_name`
+parameter is set), follow the shared specialist protocol in
+`{plugin-dir}/references/team-workflows.md` → *Specialist agent protocol*. Report RDS/Aurora
+reachability, DynamoDB throttling, ElastiCache health, and credential/IAM auth as an
+OK/WARN/CRIT table with the candidate root cause, the recommended actions, and the
+verification commands; leave the fix itself to the coordinator.
 
 ---
 

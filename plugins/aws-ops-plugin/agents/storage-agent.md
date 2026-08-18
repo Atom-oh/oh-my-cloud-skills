@@ -14,7 +14,7 @@ mcpServers:
 
 # Storage Agent
 
-A specialized agent for AWS/EKS storage troubleshooting — EBS, EFS, and FSx CSI drivers.
+Diagnoses why a volume will not provision, attach, or mount — across the EBS, EFS, and FSx CSI drivers — and delivers the change that fixes it. The consumer is an operator staring at a `Pending` PVC or a pod stuck on mount, so the diagnosis has to separate control-plane failures (provisioning, IRSA, StorageClass) from data-plane ones (attach, mount, filesystem). Excellent work here names the AZ or topology constraint when that is the cause, and verifies from the PVC's own events rather than by re-applying and hoping.
 
 ---
 
@@ -151,6 +151,17 @@ flowchart TD
 ## Reference Files
 
 - `{plugin-dir}/skills/ops-troubleshoot/references/troubleshooting-framework.md`
+
+---
+
+## Team Collaboration
+
+When spawned as a member of an incident-response team (the Agent tool's `team_name`
+parameter is set), follow the shared specialist protocol in
+`{plugin-dir}/references/team-workflows.md` → *Specialist agent protocol*. Report PVC/PV
+binding, CSI driver health, volume attachment, and mount state as an OK/WARN/CRIT table with
+the candidate root cause, the recommended actions, and the verification commands; leave the
+fix itself to the coordinator.
 
 ---
 
