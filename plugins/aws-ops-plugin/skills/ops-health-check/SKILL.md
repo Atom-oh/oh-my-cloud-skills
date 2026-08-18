@@ -9,7 +9,7 @@ allowed-tools:
 
 # Ops Health Check Skill
 
-Comprehensive infrastructure health assessment covering cluster, nodes, workloads, networking, storage, and security.
+Delivers a six-domain OK/WARN/CRIT read on whether a cluster is healthy right now, for someone asking "is anything wrong?" — a concrete failure routes to `ops-troubleshoot` instead. Excellent work here answers every domain even when it is clean, attaches to each WARN or CRIT the number that triggered it, and orders recommendations by risk. This skill stays deliberately lean: it is a sweep, not a diagnosis.
 
 ## Health Check Domains
 

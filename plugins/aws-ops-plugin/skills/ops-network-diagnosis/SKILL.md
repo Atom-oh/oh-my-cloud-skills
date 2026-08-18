@@ -9,21 +9,15 @@ allowed-tools:
 
 # Ops Network Diagnosis Skill
 
-Deep network diagnostics for VPC CNI, load balancers, and DNS in EKS environments.
+Names the layer at fault, the root cause, and a verified fix for an EKS network symptom. The consumer is an operator working the symptom directly, or `network-agent` working the same one. Excellent work here identifies the layer from evidence *before* touching configuration, prefers a structural fix (prefix delegation, a larger CIDR) over a symptomatic one, and closes by testing the path end to end rather than declaring victory on a single `describe` call.
 
 ## Diagnosis Workflow
 
-### Step 1: Identify the Layer
+### Identify the layer first
 - **L3 (IP)**: IP exhaustion, subnet, routing, VPC peering
 - **L4 (Transport)**: Security groups, NACLs, port connectivity
 - **L7 (Application)**: Load balancer, Ingress, target health
 - **DNS**: CoreDNS, Route 53, external-dns
-
-### Step 2: Layer-Specific Diagnostics
-Route to appropriate reference for detailed commands and decision trees.
-
-### Step 3: Verify Resolution
-Test connectivity end-to-end after applying fixes.
 
 ## Network Diagnosis Decision Tree
 
