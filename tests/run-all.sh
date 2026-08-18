@@ -15,7 +15,13 @@ assert_eq() {
 }
 assert_contains() {
   TOTAL=$((TOTAL + 1))
-  if echo "$1" | grep -q "$2"; then
+  # Herestring, not a pipe: `echo "$1" | grep -q` lets grep -q exit the moment it
+  # finds a match, closing its stdin early; if $1 is large enough that echo hasn't
+  # finished writing yet, echo dies of SIGPIPE, and `pipefail` promotes that to the
+  # pipeline's exit status — reporting "not found" even when grep DID match.
+  # `--` before the pattern: a needle starting with `-` (e.g. "--surface-1/2/3")
+  # would otherwise be parsed as a grep option and error out instead of matching.
+  if grep -q -- "$2" <<< "$1"; then
     echo -e "${GREEN}ok $TOTAL - $3${NC}"; PASS=$((PASS + 1))
   else
     echo -e "${RED}not ok $TOTAL - $3 ('$2' not found)${NC}"; FAIL=$((FAIL + 1))
@@ -56,7 +62,9 @@ assert_bash_syntax() {
 
 assert_grep_match() {
   TOTAL=$((TOTAL + 1))
-  if echo "$2" | grep -qP "$1" 2>/dev/null; then
+  # See assert_contains — herestring avoids the SIGPIPE/pipefail false-negative;
+  # `--` guards a pattern that itself starts with `-`.
+  if grep -qP -- "$1" <<< "$2" 2>/dev/null; then
     echo -e "${GREEN}ok $TOTAL - $3${NC}"; PASS=$((PASS + 1))
   else
     echo -e "${RED}not ok $TOTAL - $3 (pattern '$1' did not match)${NC}"; FAIL=$((FAIL + 1))
@@ -64,7 +72,7 @@ assert_grep_match() {
 }
 assert_grep_no_match() {
   TOTAL=$((TOTAL + 1))
-  if echo "$2" | grep -qP "$1" 2>/dev/null; then
+  if grep -qP -- "$1" <<< "$2" 2>/dev/null; then
     echo -e "${RED}not ok $TOTAL - $3 (pattern '$1' matched unexpectedly)${NC}"; FAIL=$((FAIL + 1))
   else
     echo -e "${GREEN}ok $TOTAL - $3${NC}"; PASS=$((PASS + 1))

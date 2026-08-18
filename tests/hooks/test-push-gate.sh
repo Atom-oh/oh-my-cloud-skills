@@ -165,9 +165,9 @@ _routing() {
   out=$(cd "$d" && CLAUDE_PLUGIN_ROOT="$PWD_ROOT/plugins/kiro" \
         bash "$PWD_ROOT/plugins/kiro/hooks/session-routing.sh" 2>/dev/null) || rc=$?
   local marks=""
-  if echo "$out" | grep -q "kiro loaded"; then marks="banner"; fi
-  if echo "$out" | grep -q "default_delegate is ON"; then marks="$marks+delegate"; fi
-  if echo "$out" | grep -q "websearch.enabled is ON"; then marks="$marks+websearch"; fi
+  if grep -q "kiro loaded" <<< "$out"; then marks="banner"; fi
+  if grep -q "default_delegate is ON" <<< "$out"; then marks="$marks+delegate"; fi
+  if grep -q "websearch.enabled is ON" <<< "$out"; then marks="$marks+websearch"; fi
   rm -rf "$d"
   echo "$rc|$marks"
 }
