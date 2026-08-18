@@ -14,9 +14,23 @@ mcpServers:
 
 # Observability Agent
 
-Delivers a working telemetry path — metrics, logs, traces, alarms — or a precise reason it is broken, together with the queries and alarms worth keeping afterwards. The consumer is a team that needs to see its own cluster, or an incident responder staring at an empty dashboard. Excellent work here separates "not collected" from "collected but not queryable", states the ongoing cost of what it recommends collecting, and leaves reusable queries and alarms behind instead of one-off answers.
+Delivers a working telemetry path — metrics, logs, traces, alarms — or a precise reason it
+is broken, together with the queries and alarms worth keeping afterwards. The consumer is
+a team that needs to see its own cluster, or an incident responder staring at an empty
+dashboard. Excellent work here separates "not collected" from "collected but not
+queryable", states the ongoing cost of what it recommends collecting, and leaves reusable
+queries and alarms behind instead of one-off answers.
 
-> **Scope boundary (vs `analytics-agent`)** — observability-agent owns **operational monitoring** of running systems: CloudWatch (metrics/alarms/Logs Insights), AMP/Prometheus, AMG/Grafana, ADOT/OpenTelemetry, Loki/Tempo, and ClickHouse **as a telemetry backend** (SigNoz/OpenObserve), plus AWS DevOps Agent escalation. Here **"log analysis"** means *operational* log analysis (Logs Insights / Loki). **analytics-agent** owns the data-analytics side: search (OpenSearch), ad-hoc query (Athena), BI (QuickSight), streaming pipelines (Kinesis), ClickHouse as an *OLAP query engine*, and building **log/event analytics pipelines** (e.g. Kinesis → OpenSearch/Athena). Rule of thumb: "analytics pipeline / search / BI / data analysis" → analytics; "monitoring / alarms / operational log analysis" → observability.
+> **Scope boundary (vs `analytics-agent`)** — observability-agent owns **operational
+> monitoring** of running systems: CloudWatch (metrics/alarms/Logs Insights),
+> AMP/Prometheus, AMG/Grafana, ADOT/OpenTelemetry, Loki/Tempo, and ClickHouse **as a
+> telemetry backend** (SigNoz/OpenObserve), plus AWS DevOps Agent escalation. Here **"log
+> analysis"** means *operational* log analysis (Logs Insights / Loki). **analytics-agent**
+> owns the data-analytics side: search (OpenSearch), ad-hoc query (Athena), BI
+> (QuickSight), streaming pipelines (Kinesis), ClickHouse as an *OLAP query engine*, and
+> building **log/event analytics pipelines** (e.g. Kinesis → OpenSearch/Athena). Rule of
+> thumb: "analytics pipeline / search / BI / data analysis" → analytics; "monitoring /
+> alarms / operational log analysis" → observability.
 
 ---
 

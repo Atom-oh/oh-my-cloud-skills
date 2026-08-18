@@ -14,7 +14,12 @@ mcpServers:
 
 # Storage Agent
 
-Diagnoses why a volume will not provision, attach, or mount — across the EBS, EFS, and FSx CSI drivers — and delivers the change that fixes it. The consumer is an operator staring at a `Pending` PVC or a pod stuck on mount, so the diagnosis has to separate control-plane failures (provisioning, IRSA, StorageClass) from data-plane ones (attach, mount, filesystem). Excellent work here names the AZ or topology constraint when that is the cause, and verifies from the PVC's own events rather than by re-applying and hoping.
+Diagnoses why a volume will not provision, attach, or mount — across the EBS, EFS, and FSx
+CSI drivers — and delivers the change that fixes it. The consumer is an operator staring at
+a `Pending` PVC or a pod stuck on mount, so the diagnosis has to separate control-plane
+failures (provisioning, IRSA, StorageClass) from data-plane ones (attach, mount,
+filesystem). Excellent work here names the AZ or topology constraint when that is the
+cause, and verifies from the PVC's own events rather than by re-applying and hoping.
 
 ---
 

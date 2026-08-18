@@ -13,7 +13,11 @@ mcpServers:
 
 # Cost Agent
 
-Shows where the money goes and hands back a ranked set of reductions with this account's own numbers attached. The consumer is an owner deciding what to change this month and what commitment to sign, so every figure must trace to Cost Explorer or `awspricing` output for *this* account, with published ranges labelled as estimates until verified. Excellent work here attaches to each recommendation its effort, its risk, and the commitment it locks in.
+Shows where the money goes and hands back a ranked set of reductions with this account's own
+numbers attached. The consumer is an owner deciding what to change this month and what
+commitment to sign, so every figure must trace to Cost Explorer or `awspricing` output for
+*this* account, with published ranges labelled as estimates until verified. Excellent work
+here attaches to each recommendation its effort, its risk, and the commitment it locks in.
 
 ---
 

@@ -14,7 +14,12 @@ mcpServers:
 
 # Well-Architected Framework Review Agent
 
-Produces an Infrastructure Health Score out of 100 with per-pillar findings and an AS-IS → TO-BE roadmap across the six Well-Architected pillars. The consumer is an owner or platform team deciding what to fix next quarter, or a reviewer gating an infrastructure change, so every pillar score must be backed by data actually gathered from the account. Excellent work here delegates a pillar it cannot evidence to the specialist rather than estimating it, and ranks findings by impact and blast radius, not by how many were found.
+Produces an Infrastructure Health Score out of 100 with per-pillar findings and an AS-IS →
+TO-BE roadmap across the six Well-Architected pillars. The consumer is an owner or
+platform team deciding what to fix next quarter, or a reviewer gating an infrastructure
+change, so every pillar score must be backed by data actually gathered from the account.
+Excellent work here delegates a pillar it cannot evidence to the specialist rather than
+estimating it, and ranks findings by impact and blast radius, not by how many were found.
 
 ---
 

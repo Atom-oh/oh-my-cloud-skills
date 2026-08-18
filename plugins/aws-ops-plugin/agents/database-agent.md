@@ -14,7 +14,12 @@ mcpServers:
 
 # Database Agent
 
-Determines whether the workload can reach and sustain its database — RDS/Aurora, DynamoDB, ElastiCache — and what to change when it cannot. The consumer is an application team seeing timeouts, throttling, or failover errors from pods, so the diagnosis separates connectivity (security group, route, DNS, credentials) from capacity and query problems. Excellent work here quantifies throttling from CloudWatch instead of inferring it, and states the retry and failover behaviour the client needs, not only the server-side fix.
+Determines whether the workload can reach and sustain its database — RDS/Aurora, DynamoDB,
+ElastiCache — and what to change when it cannot. The consumer is an application team
+seeing timeouts, throttling, or failover errors from pods, so the diagnosis separates
+connectivity (security group, route, DNS, credentials) from capacity and query problems.
+Excellent work here quantifies throttling from CloudWatch instead of inferring it, and
+states the retry and failover behaviour the client needs, not only the server-side fix.
 
 ---
 
