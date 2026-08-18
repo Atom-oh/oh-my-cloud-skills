@@ -9,7 +9,7 @@ allowed-tools:
 
 # Well-Architected Framework Review Workflow
 
-Systematic 6-pillar infrastructure assessment producing quantified scores, prioritized findings, and a transformation roadmap.
+Walks the six-pillar Well-Architected review from scoping to a delivered report — a weighted score out of 100, findings ranked by severity, and a phased AS-IS → TO-BE roadmap. It is run by `wellarchitected-agent`, or by anyone stepping through the review by hand. Excellent work here scores only from data actually gathered — an absent service is skipped and said so, never invented — carries dependency notes on the roadmap, and delegates any pillar under 60 to the specialist instead of hand-waving it.
 
 ## Phase 1: Scope & Context
 
@@ -84,6 +84,19 @@ Score = Σ (pillar_score × pillar_weight)
 | Sustainability | XX | 10% | X.X | ... |
 | **Total** | | **100%** | **XX/100** | **[Rating]** |
 
+Rating bands for the total:
+
+| Range | Rating |
+|-------|--------|
+| 90-100 | Excellent |
+| 70-89 | Good |
+| 50-69 | Fair |
+| < 50 | Needs Attention |
+
+The weights and bands are a published contract — keep them stable across reviews so scores
+stay comparable. A score is only defensible if every pillar's number came from data
+gathered in this account; delegate any pillar you cannot evidence rather than estimating it.
+
 3. **Top 5 findings** — rank by impact (severity × blast radius)
 4. **Estimated savings** — aggregate from Cost and Performance findings
 
@@ -109,11 +122,13 @@ Include dependency notes (e.g., "Requires VPC endpoint before NAT GW removal").
 
 Output the structured WAF report. Match user's language (Korean or English).
 
+### Output Format
+
 ```
 ============================================================
   AWS Well-Architected Review Report
 ============================================================
-  Date:    YYYY-MM-DD
+  Date:    YYYY-MM-DD HH:MM UTC
   Account: XXXXXXXXXXXX
   Region:  ap-northeast-2
   Scope:   Full 6-Pillar Review
@@ -121,11 +136,35 @@ Output the structured WAF report. Match user's language (Korean or English).
   Infrastructure Health Score: XX / 100  [Rating]
 ============================================================
 
-  [Pillar Scores Table]
-  [Top 5 Findings]
-  [Estimated Savings: Monthly $X, Annual $Y]
-  [Quick Wins / Short-term / Medium-term Roadmap]
-  [Immediate Action Items]
+  Pillar Scores:
+  | Pillar                    | Score | Status          |
+  |---------------------------|-------|-----------------|
+  | Operational Excellence    |  XX   | Good/Fair/...   |
+  | Security                  |  XX   | ...             |
+  | Reliability               |  XX   | ...             |
+  | Performance Efficiency    |  XX   | ...             |
+  | Cost Optimization         |  XX   | ...             |
+  | Sustainability            |  XX   | ...             |
+
+  Top 5 Findings:
+  1. [Pillar] Finding — Impact: $X/month or Risk Level
+  2. ...
+
+  Estimated Savings:
+  - Monthly: $X
+  - Annual: $Y
+
+  Quick Wins (This Week):
+  | # | Finding | AS-IS | TO-BE | Impact | Effort |
+
+  Short-term (1-3 Months):
+  | # | Finding | AS-IS | TO-BE | Impact | Effort |
+
+  Medium-term (3-6 Months):
+  | # | Finding | AS-IS | TO-BE | Impact | Effort |
+
+  Immediate Action Items:
+  1. [Action] — [Owner] — [Deadline]
 ============================================================
 ```
 

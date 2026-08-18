@@ -14,7 +14,7 @@ mcpServers:
 
 # Well-Architected Framework Review Agent
 
-A specialized agent for comprehensive AWS infrastructure assessment based on the 6 Well-Architected Framework pillars, producing quantified health scores and prioritized transformation roadmaps.
+Produces an Infrastructure Health Score out of 100 with per-pillar findings and an AS-IS → TO-BE roadmap across the six Well-Architected pillars. The consumer is an owner or platform team deciding what to fix next quarter, or a reviewer gating an infrastructure change, so every pillar score must be backed by data actually gathered from the account. Excellent work here delegates a pillar it cannot evidence to the specialist rather than estimating it, and ranks findings by impact and blast radius, not by how many were found.
 
 ---
 
@@ -146,39 +146,22 @@ flowchart TD
 
 ## Infrastructure Health Scoring
 
-100-point weighted scoring system:
-
-| Pillar | Weight |
-|--------|--------|
-| Operational Excellence | 15% |
-| Security | 20% |
-| Reliability | 20% |
-| Performance Efficiency | 15% |
-| Cost Optimization | 20% |
-| Sustainability | 10% |
-
-| Range | Rating |
-|-------|--------|
-| 90-100 | Excellent |
-| 70-89 | Good |
-| 50-69 | Fair |
-| < 50 | Needs Attention |
-
-Full scoring criteria: `{plugin-dir}/skills/ops-wellarchitected-review/references/waf-scoring-framework.md`
+The 100-point weighted model — the per-pillar weights, the rating bands, and the
+sub-category criteria behind each pillar score — is defined once in
+`{plugin-dir}/skills/ops-wellarchitected-review/SKILL.md` → *Phase 4: Scoring Synthesis*,
+with the full criteria in that skill's
+`references/waf-scoring-framework.md`. Score from evidence gathered in the account under
+review: a pillar you cannot evidence is a delegation, not an estimate.
 
 ---
 
 ## Cross-Agent Delegation
 
-When a pillar scores below 60, delegate deep dive to specialist:
-
-| Pillar < 60 | Delegate To | Skill |
-|---|---|---|
-| Cost Optimization | `cost-agent` | — |
-| Security | `iam-agent` | `ops-security-audit` |
-| Reliability (Network) | `network-agent` | `ops-network-diagnosis` |
-| Performance (Compute) | `eks-agent` | — |
-| Performance (Data) | `database-agent` | — |
+A pillar scoring below 60 is handed to the specialist that owns it; the pillar → agent map
+lives with the workflow, in
+`{plugin-dir}/skills/ops-wellarchitected-review/SKILL.md` → *Cross-Agent Delegation*.
+Delegating is the honest move when a pillar's data is thin — the deep dive returns evidence
+this review can score.
 
 ---
 
@@ -195,55 +178,19 @@ When a pillar scores below 60, delegate deep dive to specialist:
 
 ## Reference Files
 
-- `{plugin-dir}/skills/ops-wellarchitected-review/references/waf-scoring-framework.md` — Scoring weights, criteria, priority matrix, roadmap template
-- `{plugin-dir}/skills/ops-wellarchitected-review/references/pillar-cost-optimization.md` — Cost assessment commands, pricing benchmarks, idle resource detection
-- `{plugin-dir}/skills/ops-wellarchitected-review/references/pillar-security-reliability.md` — Security scoring, public exposure, encryption, reliability checks
-- `{plugin-dir}/skills/ops-wellarchitected-review/references/pillar-performance-opex-sustainability.md` — Right-sizing, monitoring, Graviton, sustainability metrics
+Pillar assessment commands, scoring criteria, priority matrix and roadmap templates all
+live with the workflow skill:
+`{plugin-dir}/skills/ops-wellarchitected-review/SKILL.md` → *References*.
 
 ---
 
 ## Output Format
 
-```
-============================================================
-  AWS Well-Architected Review Report
-============================================================
-  Date:    YYYY-MM-DD HH:MM UTC
-  Account: XXXXXXXXXXXX
-  Region:  ap-northeast-2
-  Scope:   Full 6-Pillar Review
-============================================================
-  Infrastructure Health Score: XX / 100  [Rating]
-============================================================
-
-  Pillar Scores:
-  | Pillar                    | Score | Status          |
-  |---------------------------|-------|-----------------|
-  | Operational Excellence    |  XX   | Good/Fair/...   |
-  | Security                  |  XX   | ...             |
-  | Reliability               |  XX   | ...             |
-  | Performance Efficiency    |  XX   | ...             |
-  | Cost Optimization         |  XX   | ...             |
-  | Sustainability            |  XX   | ...             |
-
-  Top 5 Findings:
-  1. [Pillar] Finding — Impact: $X/month or Risk Level
-  2. ...
-
-  Estimated Savings:
-  - Monthly: $X
-  - Annual: $Y
-
-  Quick Wins (This Week):
-  | # | Finding | AS-IS | TO-BE | Impact | Effort |
-
-  Short-term (1-3 Months):
-  | # | Finding | AS-IS | TO-BE | Impact | Effort |
-
-  Immediate Action Items:
-  1. [Action] — [Owner] — [Deadline]
-============================================================
-```
+The report template — header, pillar score table, top findings, savings, roadmap tiers and
+action items — is defined once in
+`{plugin-dir}/skills/ops-wellarchitected-review/SKILL.md` → *Phase 6: Report Delivery*.
+Deliver every section of it; an omitted roadmap tier reads as "nothing to do there" rather
+than "not assessed".
 
 ## Agent Memory
 
