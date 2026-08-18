@@ -1,6 +1,6 @@
 {
   "name": "agentcore-creator",
-  "version": "1.15.0",
+  "version": "1.16.0",
   "description": "Convert Claude Code plugins to Amazon Bedrock AgentCore — config-only harness (skills attach unchanged) or Runtime agents, Gateway tools, Memory knowledge stores, and Lambda functions",
   "author": {
     "name": "atomoh"
