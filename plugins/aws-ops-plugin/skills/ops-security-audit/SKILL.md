@@ -9,7 +9,27 @@ allowed-tools:
 
 # Ops Security Audit Skill
 
-Comprehensive security audit for AWS/EKS environments covering IAM, network, and compliance.
+Produces a severity-ranked list of posture findings for cluster, IAM, and network, measured
+against the global AWS security mandates below. The consumer is a reviewer gating an IaC or
+AWS change, or an operator auditing a running cluster, so each finding names the specific
+resource and the mandate or benchmark it violates. Excellent work here hands application-layer
+concerns to AWS Security Agent rather than guessing at them, and gives every CRITICAL a
+remediation concrete enough to apply.
+
+## Global AWS Security Mandates
+
+Six hard constraints apply to every AWS/IaC change in this repository. They are not
+recommendations and not scored — a change that violates one fails this audit regardless of
+its other merits. Report each violation as CRITICAL, naming the resource and the mandate.
+
+| # | Mandate | Why it is non-negotiable |
+|---|---------|--------------------------|
+| 1 | No `0.0.0.0/0` ingress on any security group | An open port is the most-exploited misconfiguration there is; public ingress belongs to the CloudFront → ALB path, not to a security-group CIDR |
+| 2 | No IAM `Principal: "*"` or `Resource: "*"` without a `Condition` | An unconditioned wildcard is an account-wide grant in practice, whatever the intent was |
+| 3 | No Lambda function URL or API with `AuthType: NONE` | An unauthenticated endpoint is a public API with no identity, no rate limit, and no attribution in the audit trail |
+| 4 | No secrets in environment variables — use Secrets Manager or SSM Parameter Store | Env vars are readable by anyone holding `describe`-class permissions and they leak into logs, task definitions, and CI output |
+| 5 | S3 Block Public Access enabled on every bucket | Public-read is a one-click accident; Block Public Access is the only setting that still holds when a bucket policy is wrong |
+| 6 | No ALB/NLB reachable without passing through CloudFront | Bypassing CloudFront removes WAF, the TLS policy, and the origin's only access control in one step |
 
 ## Audit Domains
 

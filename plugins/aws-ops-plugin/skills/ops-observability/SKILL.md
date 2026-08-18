@@ -9,7 +9,12 @@ allowed-tools:
 
 # Ops Observability Skill
 
-Observability setup, configuration, and analysis for AWS/EKS environments.
+Delivers an observability assessment — what is collected, what is missing, what it costs —
+plus the queries and alarms worth adding. The consumer is a team standing up or repairing
+monitoring for an EKS environment, so establish which stack the environment actually runs
+(AWS-managed or open-source) before recommending anything. Excellent work here escalates an
+unclear multi-signal incident to agentic RCA instead of guessing, and attaches a threshold
+and an action to every alarm it recommends.
 
 ## Workflow
 
@@ -27,13 +32,7 @@ aws logs describe-log-groups --log-group-name-prefix /aws/containerinsights/$CLU
 aws cloudwatch describe-alarms --state-value ALARM --query 'MetricAlarms[].{name:AlarmName,state:StateValue,metric:MetricName}'
 ```
 
-### Step 2: Setup / Fix
-Route to appropriate reference for setup procedures.
-
-### Step 3: Create Queries and Alarms
-Use reference files for query templates and threshold guidelines.
-
-### Step 4: Agentic RCA — investigations first, DevOps Agent for cross-signal incidents
+### Step 2: Agentic RCA — investigations first, DevOps Agent for cross-signal incidents
 When an alarm/anomaly has no single obvious cause, use agentic RCA instead of guessing:
 
 1. **First-line — native CloudWatch investigations** (GA 2025-06): trigger an AI
