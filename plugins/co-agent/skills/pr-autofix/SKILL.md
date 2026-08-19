@@ -15,7 +15,8 @@ planner/implementer (same trust rule as `review-memory.md`: they process untrust
 review text):
 
 ```bash
-STATE_DIR=".claude/co-agent-consensus/pr-autofix/pr-${PR_NUMBER}"
+REPO_ROOT=$(git rev-parse --show-toplevel)
+STATE_DIR="$REPO_ROOT/.claude/co-agent-consensus/pr-autofix/pr-${PR_NUMBER}"
 STATE="$STATE_DIR/state.json"; mkdir -p "$STATE_DIR"
 ```
 
@@ -41,7 +42,12 @@ The schema is exactly what the init write below produces:
   (Replaces the former `$RUN/gate-replanned` sentinel file; resuming a pass whose `$RUN`
   still holds that sentinel → honor it as `true`.)
 - `phase` / `stop_reason` — where a resumed run re-enters, and why a stopped one stopped
-  (`max_iter` | `clean` | `gate_blocked_final`).
+  (`max_iter` | `clean` | `gate_blocked_final`). `phase: "gate"` covers exactly the span
+  from the Commit node's write through §5a/§5b and the push + cleanup calls — and nothing
+  past them: the `poll` write happens immediately after `cleanup`, so the fail-open
+  memory update that follows runs under `phase: "poll"`, same as ordinary polling. A crash
+  during the memory update is therefore just a normal poll-phase resume, with no special
+  handling needed.
 - `run_dir` / `sig` — the `$RUN` path and the cleanup signature §4b's `setup` stage
   returns, persisted the moment they exist. They are what makes a `phase: "gate"` resume
   self-sufficient: the resumed push (`$RUN`) and cleanup (`$RUN` + `$SIG`) need nothing
@@ -87,10 +93,17 @@ elif [ "$(jq -r '.phase' "$STATE")" = "stop" ]; then
   # recovery path after a max_iter stop). The same reset applies when `stop_reason` was
   # `gate_blocked_final`: re-entering the skill on a stopped run IS the acknowledgment
   # (a human or host chose to invoke pr-autofix again on this PR). It does not itself
-  # verify the previously-flagged content was reverted or fixed — if the problem is still
-  # present, the next Poll-driven CI/lens gate catches it again on its own.
+  # verify the previously-flagged content was reverted or fixed. For a `max_iter` stop, a
+  # fresh pass (if the bound was raised) goes through Poll/lens review again and would
+  # catch a recurring problem. For a `gate_blocked_final` stop specifically — especially if
+  # `iteration` is also already at `max_iter` — a stop-reset re-entry may hit BoundCheck
+  # immediately and stop again without any gate re-running at all; the blocked pass's fix
+  # commit is still on HEAD, unpushed, and a stop-reset does not retry pushing it. Check
+  # `git log` for an unpushed `fix: address review feedback` commit before re-entering
+  # after a `gate_blocked_final` stop.
   MAX_ITER=$(python3 "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py" pr-autofix-iterations)
-  jq --argjson max "$MAX_ITER" '.phase = "poll" | .stop_reason = null | .max_iter = $max' \
+  jq --argjson max "$MAX_ITER" '.phase = "poll" | .stop_reason = null | .max_iter = $max
+     | .replanned_this_pass = false | .run_dir = null | .sig = null' \
     "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" || { echo "stop-reset failed — stop"; exit 1; }
 fi
 if [ "$(jq -r '.iteration' "$STATE")" != "$GIT_ITER" ]; then
@@ -141,6 +154,7 @@ stateDiagram-v2
     LensGate --> Stop : 2nd BLOCK, secret-scan (checked first) && replanned → stop_reason=gate_blocked_final
     LensGate --> Push : 2nd BLOCK, lone-lens CHAIR JUDGMENT && replanned (push anyway, CI arbitrates)
     LensGate --> Stop : 2nd BLOCK, >= 2 lenses && replanned → stop_reason=gate_blocked_final
+    LensGate --> Stop : 2nd BLOCK, unclassifiable && replanned (fail-closed default) → stop_reason=gate_blocked_final
     RePlan --> LensGate : replanned=true (distinct commit prefix, iteration unchanged)
     Push --> Poll
     Stop --> [*]
@@ -355,6 +369,7 @@ ran and passed as 4c stage 4. A configured `core.hooksPath` STOPs the commit for
 user approval.
 
 ```bash
+jq '.phase = "committing"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" || { echo "pre-commit phase write failed — stop"; exit 1; }
 bash "$LD" commit "$RUN" "fix: address review feedback (iteration N/$MAX_ITER)" --script-sha "$LD_SHA" --approved-sha "$APPROVED_SHA" --landed-sha "$LANDED_SHA"
 ```
 
@@ -367,6 +382,12 @@ jq '.iteration += 1 | .replanned_this_pass = false | .phase = "gate"' "$STATE" >
   || { echo "iteration increment failed — stop, never continue on a stale counter"; exit 1; }
 ITERATION=$(jq -r '.iteration' "$STATE")
 ```
+
+If a resumed run loads `phase: "committing"`, the State model's git-based iteration
+cross-check (which runs on every entry, unconditionally) will already have adopted the
+correct post-commit iteration if the commit actually landed — once that repair has run,
+treat `committing` identically to `gate` for dispatch purposes (proceed to §5a/§5b)
+rather than building a separate resume path for it.
 
 (The commit message's `N` above is this post-increment value: `iteration + 1` at message-writing time.)
 
@@ -439,7 +460,13 @@ fi
   occurrence (see the secret-scan edge below). This must be a fresh
   `land_delta.sh` run producing a follow-up commit, not an amend of the one just
   committed: `cmd_push` refuses to push unless `HEAD` still equals the SHA `cmd_commit`
-  recorded, so rewriting history under it breaks that invariant. Use a **distinct**
+  recorded, so rewriting history under it breaks that invariant. The fresh pass's own
+  `setup` call returns a NEW `$RUN`/`$SIG` that overwrites the ones currently persisted in
+  `$STATE`, so clean up the ORIGINAL pass's run BEFORE that overwrite —
+  `bash "$LD" cleanup "$RUN" --script-sha "$LD_SHA" --sig "$SIG" --keep` (`--keep`
+  preserves the patches for inspection; the delta is already safely committed to git, only
+  the worktree needs cleaning) — otherwise the primary pass's worktree leaks every time a
+  re-plan happens. Use a **distinct**
   commit message prefix for this follow-up — `fix: address pre-push gate feedback` — so
   the git repair count stays consistent with the state file: `RePlan → LensGate` never
   increments `iteration`, and this prefix is what keeps the Poll-entry cross-check from
@@ -456,7 +483,7 @@ fi
 
   If it is already `true`, the panel and the fixer disagree — stop re-planning and take
   the second-failure edge matching the verdict below.
-- **Second gate failure — three edges, split by verdict severity.** A ≥2-lens BLOCKED
+- **Second gate failure — four edges, split by verdict severity.** A ≥2-lens BLOCKED
   verdict means independent lenses (security among them) agree the change has a real
   problem; overriding that automatically is not the posture of this skill's other gates
   (approve/land/verify), which are fail-closed. So, checking the secret-scan edge FIRST:
@@ -471,11 +498,16 @@ fi
 
     ```bash
     jq '.phase = "stop" | .stop_reason = "gate_blocked_final"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" || exit 1
+    echo "Pre-push lens gate blocked twice — stopping without pushing. The just-committed fix commit IS on HEAD but was never pushed; re-entering this skill later starts a NEW pass on top of it rather than retrying the push — inspect it with git log/git show first if you want to review or discard it."
     ```
   - **Lone-lens CHAIR JUDGMENT verdict again** (exactly 1 lens BLOCKed — any lens; among
     lens verdicts there is no third outcome, but see the secret-scan edge above, checked
     first) → `LensGate → Push`: report both findings and push anyway, letting CI
     arbitrate.
+  - **Neither pattern matches** (unclassifiable — e.g. `consensus_hooks.py`'s wording
+    changed and `$GATE_OUT` matches none of the known markers) → default to
+    `LensGate → Stop` (same `gate_blocked_final` write), fail-closed. Never take the
+    `push anyway` edge on an unrecognized second-failure shape.
 - The gate fails **open** if it genuinely cannot review (no gate-eligible peer, no
   parseable verdict, mis-scoped push) — that is its documented contract, not a bug here.
 - **This call is the only lens review iteration 4+ pushes get.** The `PreToolUse(Bash)`
@@ -489,6 +521,7 @@ fi
 bash "$LD" push "$RUN" --script-sha "$LD_SHA"               # separate + idempotent: a transient push failure
                                      # never strands the commit (retry this stage alone)
 bash "$LD" cleanup "$RUN" --script-sha "$LD_SHA" --sig "$SIG"   # add --keep to preserve patches for inspection
+jq '.phase = "poll"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" || exit 1   # the `Push → Poll` transition, moved up from "### 6" so the fail-open, non-gating memory update below never sits inside the "gate" window
 ```
 
 **Memory update (host-only, AFTER `push`):** follow
@@ -501,13 +534,8 @@ threshold advisory (never auto-apply).
 
 ### 6. Repeat or stop
 
-`Push → Poll`:
-
-```bash
-jq '.phase = "poll"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" || exit 1
-```
-
-Then go back to step 2. `iteration` was already
+The `Push → Poll` transition already happened in §5b, immediately after `cleanup` — phase
+is `poll` by the time you get here, so this step is just: go back to step 2. `iteration` was already
 incremented at the Commit node — nothing to recount here; the next Poll entry's git
 cross-check (State model section) is what repairs any drift, and the re-plan follow-up's
 distinct prefix keeps that check from double-counting. The `>= max_iter` stop is the
