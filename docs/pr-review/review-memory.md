@@ -17,6 +17,7 @@ immediately**. Keep the whole file under 200 lines.
 - Refactoring a counter/state onto a file drops two things together: (a) the initialization write itself and (b) the fail-hard (`|| exit 1`) the old path had — check the diff for both whenever an existing fail-hard is deleted (source: PR #158, kiro-opus + kiro-gpt convergent)
 - Introducing a terminal phase into a per-PR persistent state file without a reset/re-init path silently voids init-only-resolved config (`max_iter`) on re-runs after a stop — a state-file diff must answer "how do you leave the terminal state" (source: PR #158 round 2, 3-cell convergent)
 - Restating AWS security mandates in a skill/doc body drifts from the authoritative `AGENTS.md` §Banned patterns (rules get weakened, dropped, or over-extended). Point at `AGENTS.md` instead of paraphrasing it, or diff any restatement against it verbatim before landing — this recurred within the same PR one round later (a fix-round edit re-added an over-extension, "or API", not present in the source) (source: PR #156 round 1 + round 2; the same wording drift was already present in `docs/reference/review-routing.md`).
+- A "ALL state lives in ONE file" declaration must be checked against every resume path, not just the happy path — if mid-pass resume (e.g. a committed-but-not-pushed gate re-entry) still needs an external handle (a run directory, a notes-only signature) the declaration is false on its own terms. When promoting ad hoc counters into a state file, record every handle a resume path needs inside that same file (source: PR #158 round 3, codex + kiro-opus convergent).
 
 ## Known false-positive patterns (do not flag again without evidence)
 - L3: `AKIA…`/`sk-proj-…` strings in fixtures under `tests/` are intentional fake values used to test the scrubber itself — not hardcoded secrets (source: PR #141)
@@ -26,10 +27,11 @@ immediately**. Keep the whole file under 200 lines.
 - The co-agent pre-push lens gate has exactly two BLOCK verdicts: 2+ lenses = hard BLOCKED, exactly 1 lens (any lens) = CHAIR JUDGMENT REQUIRED (`consensus_hooks.py`) — "CHAIR" is verdict framing, not a lens name, so "the 1-non-chair-lens case is undefined" edge-gap findings are baseless (source: PR #158, kiro-gpt).
 - In a prose SKILL.md, an explicit instruction ("resuming … → honor it as `true`") IS the spec — don't raise "unspecified" to MAJOR just because no shell command accompanies it; the asymmetry is at most MINOR when the skill shows commands for its other transitions (source: PR #158).
 - The panel-quality table only updates rows for cells that had unsupported findings that round (the chair emits PANEL-QUALITY only for those cells) — a row sitting at an older PR next to same-PR real-issue credit is correct, not "inconsistent" (source: PR #158 round 2, kiro-opus).
+- A finding that a gitignored, untracked, host-computed local state file (e.g. `.claude/co-agent-consensus/**`) could be "pre-seeded" or symlink-attacked by a malicious PR requires the attacker to already have local working-tree write access — at which point the finding restates its own precondition rather than identifying a new threat. Check whether the attack actually needs pre-existing local compromise before raising it (source: PR #158 round 3, codex CRITICAL dismissed).
 
 ## Panel-cell judgment quality (cumulative)
 | cell | unsupported | total findings | last |
 |---|---|---|---|
-| kiro-opus-full | 7 | 26 | PR #158 |
-| kiro-gpt-full | 5 | 12 | PR #158 |
-| codex-full | 2 | 5 | PR #158 |
+| kiro-opus-full | 8 | 36 | PR #158 |
+| kiro-gpt-full | 6 | 15 | PR #158 |
+| codex-full | 3 | 10 | PR #158 |
