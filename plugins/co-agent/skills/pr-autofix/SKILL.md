@@ -7,36 +7,61 @@ description: "After creating a PR, poll for AI and human review feedback, auto-f
 
 After you create a PR (via `gh pr create`), automatically wait for review feedback — from AI Code Review CI and/or human reviewers — then read the feedback, fix issues, and push. Repeat up to `MAX_ITER` times until all reviews pass.
 
-**Resolve the loop bound FIRST** — it is a co-agent panel setting, not a constant, so a
-long-running review loop can be widened or tightened per repo without editing this skill:
+## State model
+
+The loop is an explicit state machine. All loop state lives in ONE file, `$STATE` —
+created on first entry, updated at each node transition, never written by the
+planner/implementer (same trust rule as `review-memory.md`: they process untrusted
+review text):
 
 ```bash
-MAX_ITER=$(python3 "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py" pr-autofix-iterations)
+STATE_DIR=".claude/co-agent-consensus/pr-autofix/pr-${PR_NUMBER}"
+STATE="$STATE_DIR/state.json"; mkdir -p "$STATE_DIR"
 ```
 
-Tune it with `/co-agent:configure set pr_autofix max_iterations <n>` (default 5). Every
-`5` below is `$MAX_ITER`.
+```json
+{
+  "pr": 123, "base_ref": "main",
+  "iteration": 0,
+  "max_iter": 5,
+  "replanned_this_pass": false,
+  "phase": "poll",
+  "stop_reason": null
+}
+```
 
-**Resolve the current iteration too** — `$ITERATION` is the count of **completed** fix
-commits, used by §6's `-ge $MAX_ITER` stop check. It is NOT what the two escalation
-sub-steps of §5 (§5a model escalation, §5b lens gate) gate on: mid-pass, before this
-pass's own fix is committed, `$ITERATION` is still one short of the pass in progress.
-§5a/§5b instead use `$ITERATION_NOW` (`= $ITERATION + 1`), recomputed right after §5's
-commit — see there.
+- `iteration` — count of **completed** `fix: address review feedback` commits.
+  Incremented exactly once per pass, at the Commit node (§5). Every threshold gates on
+  this one post-commit number: the BoundCheck stop (`>= max_iter`), §5b's lens gate
+  (`> 3`), §5a's model escalation (`> 5`, rung = `iteration - 5`). There is no second
+  counter.
+- `max_iter` — resolved once at init:
+  `MAX_ITER=$(python3 "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py" pr-autofix-iterations)`
+  (tune: `/co-agent:configure set pr_autofix max_iterations <n>`, default 5). At the
+  default, a run completes at most 5 passes, so §5a (`> 5`) never fires — it activates
+  only once the bound is raised past 5; §5b (`> 3`) is live at the default. Every `5`
+  below is `$MAX_ITER`.
+- `replanned_this_pass` — §5b's one-shot re-plan guard; set at RePlan, reset at Commit.
+  (Replaces the former `$RUN/gate-replanned` sentinel file; resuming a pass whose `$RUN`
+  still holds that sentinel → honor it as `true`.)
+- `phase` / `stop_reason` — where a resumed run re-enters, and why a stopped one stopped
+  (`max_iter` | `clean` | `gate_blocked_final`).
+
+**Git is the repair source, not the truth.** On every Poll entry, cross-check
+`iteration` against the git-derived count below; on mismatch, adopt the git value and
+warn. This keeps the loop self-healing when someone rebases or drops commits under it,
+and it is also how a first entry (or a pre-state.json resumed run) initializes:
 
 ```bash
 BASE_REF=$(gh pr view "$PR_NUMBER" --json baseRefName --jq '.baseRefName')
-ITERATION=$(git rev-list --count --grep="^fix: address review feedback" "origin/${BASE_REF}..HEAD") \
+GIT_ITER=$(git rev-list --count --grep="^fix: address review feedback" "origin/${BASE_REF}..HEAD") \
   || { echo "iteration count failed — treat as unknown, do not silently proceed as iteration 0"; exit 1; }
 ```
 
-Prefer the PR's actual base (`baseRefName`, not a hardcoded `origin/main`) — a base of
+Use the PR's actual base (`baseRefName`, not a hardcoded `origin/main`) — a base of
 `master`/`develop`/`release/*`, or `origin/main` not being fetched, would otherwise make
 the `git rev-list` call fail silently into `0` and skip every threshold and the
-`$MAX_ITER` stop condition alike. At the default `MAX_ITER=5`, the loop can complete at
-most 5 fix passes, so §5a's `$ITERATION_NOW > 5` (pass 6+) never fires — it only
-activates once `/co-agent:configure set pr_autofix max_iterations` is raised past 5.
-§5b's `$ITERATION_NOW > 3` (pass 4+) is live at the default.
+`$MAX_ITER` stop condition alike.
 
 ## When to use
 
@@ -56,11 +81,38 @@ Both sources must pass for the PR to be considered approved. If either is blocki
 
 ## Flow
 
+```mermaid
+stateDiagram-v2
+    [*] --> Poll
+    Poll --> Stop : all PASS/SKIP → stop_reason=clean
+    Poll --> BoundCheck : any BLOCKED
+    BoundCheck --> Stop : iteration >= max_iter → stop_reason=max_iter
+    BoundCheck --> Plan : iteration < max_iter
+    Plan --> Implement
+    Implement --> Commit
+    Commit --> Push : iteration += 1, replanned=false [iteration <= 3]
+    Commit --> LensGate : iteration += 1, replanned=false [iteration > 3]
+    LensGate --> Push : PASS / fail-open / disabled
+    LensGate --> RePlan : BLOCK && !replanned
+    LensGate --> Push : 2nd BLOCK, lone CHAIR lens && replanned (push anyway, CI arbitrates)
+    LensGate --> Stop : 2nd BLOCK, >= 2 lenses && replanned → stop_reason=gate_blocked_final
+    RePlan --> LensGate : replanned=true (distinct commit prefix, iteration unchanged)
+    Push --> Poll
+    Stop --> [*]
 ```
-PR created → poll for reviews → ALL PASS? → done
-                               → ANY BLOCKED? → read issues → fix code → commit & push → repeat
-                               → $MAX_ITER iterations? → stop, notify user
-```
+
+Structural invariants the graph carries (formerly prose conventions):
+
+- `Poll → BoundCheck` is the **only** path into a fix pass, so a resumed/re-entered run
+  can never spend a pass past `max_iter` — the bound is checked before the pass, at one
+  node, not after-the-fact in two places.
+- `RePlan → LensGate` never touches `iteration`. The re-plan commit's distinct message
+  prefix (`fix: address pre-push gate feedback`) now serves only the git repair path
+  (keeping the cross-check consistent with the state file) — correctness no longer rests
+  on a grep convention.
+- **§5a is not a node.** Model escalation is a parameter of the LensGate call
+  (rung = `iteration - 5` when positive), exported for that one subprocess and unset
+  after — no state transition, nothing persisted.
 
 ## Steps
 
@@ -139,12 +191,13 @@ defined in §2 (one filter, two call sites — no copies), then:
 
 **Combined verdict:**
 - Both PASS (or SKIP) → done, inform user
-- Either BLOCKED → **check the bound BEFORE starting another fix pass**, not only at
-  the end in §6 — a resumed/re-entered run must not spend one more full fix→commit→push
-  cycle past `$MAX_ITER` just because the after-the-fact check in §6 is the only one:
+- Either BLOCKED → this is the **BoundCheck node** — the single gate every fix pass
+  passes through before starting:
 
 ```bash
+ITERATION=$(jq -r '.iteration' "$STATE")
 if [ "$ITERATION" -ge "$MAX_ITER" ]; then
+  jq '.phase = "stop" | .stop_reason = "max_iter"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
   echo "Already at $ITERATION/$MAX_ITER fix commits — stopping without another pass; manual review needed."
   exit 0   # or your harness's equivalent "stop, report to user" action
 fi
@@ -248,19 +301,21 @@ user approval.
 bash "$LD" commit "$RUN" "fix: address review feedback (iteration N/$MAX_ITER)" --script-sha "$LD_SHA" --approved-sha "$APPROVED_SHA" --landed-sha "$LANDED_SHA"
 ```
 
-Recompute the in-progress iteration now that this pass's fix is committed — this is what
-§5a/§5b actually gate on, not the `$ITERATION` resolved at the top (which is one behind
-until this line runs):
+**Commit node transition** — the one place `iteration` increments, and where the re-plan
+guard resets for the new pass. From here on, `$ITERATION` is the post-commit value that
+§5a/§5b and §6 all gate on:
 
 ```bash
-ITERATION_NOW=$((ITERATION + 1))
+jq '.iteration += 1 | .replanned_this_pass = false | .phase = "gate"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
+ITERATION=$(jq -r '.iteration' "$STATE")
 ```
 
 ### 5a. Model escalation (iteration > 5) — one-shot, not persisted
 
-Resolved BEFORE §5b's gate call so the escalated model is actually in effect for it — a
-step that only describes rungs with no way to apply them is not runnable. If
-`$ITERATION_NOW -gt 5`, escalate models for §5b's gate call, one rung per escalated pass
+Not a graph node — a **parameter of the LensGate call**, resolved BEFORE §5b so the
+escalated model is actually in effect for it (a step that only describes rungs with no
+way to apply them is not runnable). If `$ITERATION -gt 5` (post-commit value), escalate
+models for §5b's gate call, one rung per escalated pass
 (pass 6 = rung 1, pass 7 = rung 2, …; past the last rung, stay on it). This is
 **one-shot** — env vars exported only for §5b's subprocess call below, then unset
 immediately after — never written via `co_agent_config.py set`, so
@@ -283,7 +338,7 @@ immediately after — never written via `co_agent_config.py set`, so
   call, unset right after:
 
 ```bash
-if [ "$ITERATION_NOW" -gt 5 ]; then
+if [ "$ITERATION" -gt 5 ]; then
   export CO_AGENT_GATE_MODEL_OVERRIDE_KIRO_CLI="claude-opus-5"   # or the resolved rung
   export CO_AGENT_GATE_MODEL_OVERRIDE_CODEX="openai.gpt-5.6-sol"  # rung 1 — set explicitly,
   # never rely on it happening to match the configured panel default; a future config
@@ -298,7 +353,7 @@ immediately after §5b's call — these must not leak into a later, non-escalate
 
 ### 5b. Escalation gate (iteration > 3) — lens review before push
 
-If `$ITERATION_NOW -gt 3`, review the just-committed delta with co-agent's own pre-push
+If `$ITERATION -gt 3` (post-commit value), review the just-committed delta with co-agent's own pre-push
 lens gate **before** attempting the push — a bad fix at pass 4+ should not cost another
 full CI round to discover. Reuse the tested gate; do not hand-roll a second fan-out. The
 path stays inside this plugin's own root — never `../co-agent/…`, which only resolves
@@ -345,18 +400,26 @@ fi
   committed: `cmd_push` refuses to push unless `HEAD` still equals the SHA `cmd_commit`
   recorded, so rewriting history under it breaks that invariant. Use a **distinct**
   commit message prefix for this follow-up — `fix: address pre-push gate feedback` — so
-  it is never matched by `--grep="^fix: address review feedback"` and cannot silently
-  double-count `$ITERATION` in §6. **At most one re-plan pass per pass** — track this
-  with a sentinel file under `$RUN` (e.g. `touch "$RUN/gate-replanned"`) so a resumed or
-  re-entered pass can tell it already re-planned once; a second gate failure after that
-  means the panel and the fixer disagree — stop re-planning, report both findings, and
-  push anyway, letting CI arbitrate.
-- **On the "push anyway" path above, weigh it before taking it**: a ≥2-lens BLOCKED
-  verdict came from the security lens among others agreeing the change has a real
-  problem; overriding that automatically is not the same posture as this skill's other
-  gates (approve/land/verify), which are fail-closed. Prefer surfacing to the user and
-  stopping over silently pushing when the second failure repeats a ≥2-lens BLOCK,
-  reserving the automatic "push anyway" for a lone CHAIR-JUDGMENT-only second failure.
+  the git repair count stays consistent with the state file: `RePlan → LensGate` never
+  increments `iteration`, and this prefix is what keeps the Poll-entry cross-check from
+  double-counting. **At most one re-plan per pass** — this is the `replanned_this_pass`
+  guard. Before re-planning, check it; if `false`, set it and re-plan:
+
+  ```bash
+  jq '.replanned_this_pass = true' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
+  ```
+
+  If it is already `true`, the panel and the fixer disagree — stop re-planning and take
+  the second-failure edge matching the verdict below.
+- **Second gate failure — two edges, split by verdict severity.** A ≥2-lens BLOCKED
+  verdict means independent lenses (security among them) agree the change has a real
+  problem; overriding that automatically is not the posture of this skill's other gates
+  (approve/land/verify), which are fail-closed. So:
+  - **≥2 lenses BLOCKED again** → `LensGate → Stop`: set
+    `stop_reason = "gate_blocked_final"`, surface both rounds of findings to the user,
+    do NOT push.
+  - **Lone CHAIR-JUDGMENT lens again** → `LensGate → Push`: report both findings and
+    push anyway, letting CI arbitrate.
 - The gate fails **open** if it genuinely cannot review (no gate-eligible peer, no
   parseable verdict, mis-scoped push) — that is its documented contract, not a bug here.
 - **This call is the only lens review iteration 4+ pushes get.** The `PreToolUse(Bash)`
@@ -399,19 +462,12 @@ coverage and risks fail-closed.
 
 ### 6. Repeat or stop
 
-Re-resolve `$ITERATION` — the push in §5b just added a new `fix: address review
-feedback` commit (a re-plan follow-up in §5b uses a distinct prefix, so it is correctly
-excluded here):
-
-```bash
-ITERATION=$(git rev-list --count --grep="^fix: address review feedback" "origin/${BASE_REF}..HEAD") \
-  || { echo "iteration count failed — stop and report rather than silently continue"; exit 1; }
-```
-
-- If `$ITERATION -ge $MAX_ITER` and still BLOCKED: stop and tell the user that manual
-  review is needed (`-ge`, not `==` — a missed exact match must never let the loop run
-  past `$MAX_ITER`).
-- Otherwise: go back to step 2 (poll for new review after push).
+`Push → Poll`: set `phase = "poll"` and go back to step 2. `iteration` was already
+incremented at the Commit node — nothing to recount here; the next Poll entry's git
+cross-check (State model section) is what repairs any drift, and the re-plan follow-up's
+distinct prefix keeps that check from double-counting. The `>= max_iter` stop is the
+BoundCheck node in §3 (`-ge`, not `==` — a missed exact match must never let the loop
+run past the bound).
 
 ## Important constraints
 
@@ -419,6 +475,9 @@ ITERATION=$(git rev-list --count --grep="^fix: address review feedback" "origin/
 - **Escalation never raises `$MAX_ITER`**: §5b's pre-push lens gate (iteration > 3) and
   §5a's one-shot model escalation (iteration > 5) change how passes 4+ are reviewed
   and fixed, never how many passes the loop is allowed
+- **The state file is host-only**: `$STATE` is never read from or written by the
+  planner/implementer — like `review-memory.md`, a state file that steers the loop must
+  not be writable by agents that process untrusted review text
 - **Never modify workflow files** — the review CI itself must not be changed during autofix
 - **Scope discipline** — only fix what the reviews mention, nothing else
 - **Build verification** — always verify the code compiles before committing
