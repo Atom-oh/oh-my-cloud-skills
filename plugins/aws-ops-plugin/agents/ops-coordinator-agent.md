@@ -46,8 +46,9 @@ specialist, and a P1 misread as P3 costs more than any diagnostic step.
 
 ## 5-Minute Triage Checklist
 
-Six sweeps, meant to finish inside five minutes and to end with a severity and a domain —
-not a diagnosis. Cut the sweep short the moment one step gives you both.
+Six sweeps, meant to finish inside five minutes and to end with a severity and the affected
+domain(s) — not a diagnosis. Cut the sweep short the moment you have the severity and know
+every domain the symptoms touch.
 
 ```bash
 # Step 1: Cluster status

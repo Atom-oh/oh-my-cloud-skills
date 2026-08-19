@@ -143,3 +143,4 @@ aws cloudwatch put-metric-alarm --alarm-name "$CLUSTER_NAME-high-cpu" --namespac
 - `references/log-analysis-queries.md` — CloudWatch Logs Insights query templates
 - `references/opensource-observability.md` — OpenTelemetry, Grafana, Loki, Tempo, ClickHouse, VictoriaMetrics, Thanos/Mimir on EKS
 - `references/aws-devops-agent.md` — AWS DevOps Agent incident escalation (Agent Spaces, CloudWatch→webhook wiring, `aws devopsagent` CLI, mitigation plans)
+- `references/aws-analytics-launches.md` — OpenSearch/Athena/QuickSight/Kinesis/ClickHouse-as-OLAP launch notes. **`analytics-agent`-owned content, colocated here for now — not observability material**; read it only when a question crosses into the data-analytics side

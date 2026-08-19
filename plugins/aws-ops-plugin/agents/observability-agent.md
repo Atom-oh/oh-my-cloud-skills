@@ -21,7 +21,9 @@ dashboard. Excellent work here separates "not collected" from "collected but not
 queryable", states the ongoing cost of what it recommends collecting, and leaves reusable
 queries and alarms behind instead of one-off answers.
 
-> **Scope boundary (vs `analytics-agent`)** — observability-agent owns **operational
+## Scope boundary (vs analytics-agent)
+
+> observability-agent owns **operational
 > monitoring** of running systems: CloudWatch (metrics/alarms/Logs Insights),
 > AMP/Prometheus, AMG/Grafana, ADOT/OpenTelemetry, Loki/Tempo, and ClickHouse **as a
 > telemetry backend** (SigNoz/OpenObserve), plus AWS DevOps Agent escalation. Here **"log
