@@ -19,21 +19,24 @@ STATE_DIR=".claude/co-agent-consensus/pr-autofix/pr-${PR_NUMBER}"
 STATE="$STATE_DIR/state.json"; mkdir -p "$STATE_DIR"
 ```
 
-The schema is exactly what the init write below produces — six fields:
+The schema is exactly what the init write below produces:
 
 - `iteration` — count of **completed** `fix: address review feedback` commits.
   Incremented exactly once per pass, at the Commit node (§5). Every threshold gates on
   this one post-commit number: the BoundCheck stop (`>= max_iter`), §5b's lens gate
   (`> 3`), §5a's model escalation (`> 5`, rung = `iteration - 5`). There is no second
   counter.
-- `max_iter` — resolved from config ONLY at init
+- `max_iter` — resolved from config at init AND at every stop-reset
   (`python3 "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py" pr-autofix-iterations`;
   tune: `/co-agent:configure set pr_autofix max_iterations <n>`, default 5), written
-  into the state file, and from then on read from state — a resumed run gets
-  `$MAX_ITER` from `jq -r '.max_iter' "$STATE"`, never from a re-resolve it might skip.
-  At the default, a run completes at most 5 passes, so §5a (`> 5`) never fires — it
-  activates only once the bound is raised past 5; §5b (`> 3`) is live at the default.
-  Every `5` below is `$MAX_ITER`.
+  into the state file, and read from state mid-run — a resumed run gets `$MAX_ITER`
+  from `jq -r '.max_iter' "$STATE"`, never from a re-resolve it might skip. The
+  stop-reset re-resolve is what makes the tuning contract survive a stop: raise
+  `max_iterations` after a `max_iter` stop and the next entry picks it up. At the
+  default, a run completes at most 5 passes, so §5a (`> 5`) never fires — it activates
+  only once the bound is raised past 5; §5b (`> 3`) is live at the default. Every `5`
+  in the stop bound below is `$MAX_ITER` (§5a's `> 5` / `rung = iteration - 5` are
+  fixed escalation thresholds, not the bound).
 - `replanned_this_pass` — §5b's one-shot re-plan guard; set at RePlan, reset at Commit.
   (Replaces the former `$RUN/gate-replanned` sentinel file; resuming a pass whose `$RUN`
   still holds that sentinel → honor it as `true`.)
@@ -66,18 +69,27 @@ if [ ! -f "$STATE" ]; then
     '{pr: $pr, base_ref: $base, iteration: $it, max_iter: $max,
       replanned_this_pass: false, phase: "poll", stop_reason: null}' > "$STATE" \
     || { echo "state init failed — stop, do not run stateless"; exit 1; }
-elif [ "$(jq -r '.iteration' "$STATE")" != "$GIT_ITER" ]; then
+elif [ "$(jq -r '.phase' "$STATE")" = "stop" ]; then
+  # Stop-reset: a fresh entry on a stopped run is a NEW run — clear the terminal state
+  # and re-resolve max_iter so a raised `max_iterations` takes effect (the documented
+  # recovery path after a max_iter stop).
+  MAX_ITER=$(python3 "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py" pr-autofix-iterations)
+  jq --argjson max "$MAX_ITER" '.phase = "poll" | .stop_reason = null | .max_iter = $max' \
+    "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" || { echo "stop-reset failed — stop"; exit 1; }
+fi
+if [ "$(jq -r '.iteration' "$STATE")" != "$GIT_ITER" ]; then
   echo "state/git iteration mismatch ($(jq -r '.iteration' "$STATE") vs $GIT_ITER) — adopting git value"
   jq --argjson it "$GIT_ITER" '.iteration = $it' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" \
     || { echo "state repair failed — stop"; exit 1; }
 fi
-MAX_ITER=$(jq -r '.max_iter' "$STATE")
+MAX_ITER=$(jq -r '.max_iter' "$STATE"); ITERATION=$(jq -r '.iteration' "$STATE")
 ```
 
-## When to use
+Re-entry mid-pass: `phase: "gate"` (committed, not yet pushed) resumes at §5a/§5b with
+the `$ITERATION` loaded above — it is already the post-commit value.
 
-Invoke this skill immediately after creating a PR. It replaces the manual cycle of:
-1. Push → wait for review → read comments → fix → push again
+Invoke this skill immediately after creating a PR — it replaces the manual
+push → wait for review → read comments → fix → push-again cycle.
 
 ## Review Sources
 
@@ -95,6 +107,7 @@ Both sources must pass for the PR to be considered approved. If either is blocki
 ```mermaid
 stateDiagram-v2
     [*] --> Poll
+    Poll --> Poll : reviews still pending (60s interval, 10 min timeout)
     Poll --> Stop : all PASS/SKIP → stop_reason=clean
     Poll --> BoundCheck : any BLOCKED
     BoundCheck --> Stop : iteration >= max_iter → stop_reason=max_iter
@@ -212,7 +225,7 @@ jq '.phase = "stop" | .stop_reason = "clean"' "$STATE" > "$STATE.tmp" && mv "$ST
 ```bash
 ITERATION=$(jq -r '.iteration' "$STATE")
 if [ "$ITERATION" -ge "$MAX_ITER" ]; then
-  jq '.phase = "stop" | .stop_reason = "max_iter"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
+  jq '.phase = "stop" | .stop_reason = "max_iter"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" || exit 1
   echo "Already at $ITERATION/$MAX_ITER fix commits — stopping without another pass; manual review needed."
   exit 0   # or your harness's equivalent "stop, report to user" action
 fi
@@ -326,8 +339,7 @@ jq '.iteration += 1 | .replanned_this_pass = false | .phase = "gate"' "$STATE" >
 ITERATION=$(jq -r '.iteration' "$STATE")
 ```
 
-(The commit message's `N` above is this post-increment value — the pass just completed —
-so write the message after this transition, or as `iteration + 1` before it.)
+(The commit message's `N` above is this post-increment value: `iteration + 1` at message-writing time.)
 
 ### 5a. Model escalation (iteration > 5) — one-shot, not persisted
 
@@ -397,8 +409,11 @@ fi
   commit message prefix for this follow-up — `fix: address pre-push gate feedback` — so
   the git repair count stays consistent with the state file: `RePlan → LensGate` never
   increments `iteration`, and this prefix is what keeps the Poll-entry cross-check from
-  double-counting. **At most one re-plan per pass** — this is the `replanned_this_pass`
-  guard. Before re-planning, check it; if `false`, set it and re-plan:
+  double-counting. The re-plan commit also does NOT take §5's Commit-node transition —
+  that transition resets `replanned_this_pass`, which here would unbound the re-plan
+  loop; only primary fix commits transition. **At most one re-plan per pass** — this is
+  the `replanned_this_pass` guard. Before re-planning, check it; if `false`, set it and
+  re-plan:
 
   ```bash
   jq '.replanned_this_pass = true' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" \
@@ -435,30 +450,13 @@ bash "$LD" push "$RUN" --script-sha "$LD_SHA"               # separate + idempot
 bash "$LD" cleanup "$RUN" --script-sha "$LD_SHA" --sig "$SIG"   # add --keep to preserve patches for inspection
 ```
 
-**Memory update (host-only, AFTER `push`, as a separate follow-up commit + push — NOT
-between commit and push: `cmd_push` refuses to push unless `HEAD` still equals the SHA
-`cmd_commit` recorded, so an intervening memory commit would move HEAD and make every
-push fail):** you — the host, editing the MAIN tree directly; never the
-planner/implementer — update `docs/pr-review/review-memory.md`:
-
-- Append `MEMORY CANDIDATES` items **after de-duplication**, tagged with source `PR #N`.
-- Parse `PANEL-QUALITY: <cell>=<unsupported>/<total>` lines (the chair's fixed output
-  format) and increment the matching row of the "panel-cell judgment quality" table — add
-  the row if absent. Parse failure or a missing section → skip silently (fail-open).
-- Cap each section at its newest 30 lines and the whole file at 200 lines.
-- Commit and push it directly (plain `git`, not `land_delta.sh` — the memory file is a
-  host edit outside the worktree/landed-file set that script tracks, and it
-  hard-denies this exact path, by design):
-  `git add docs/pr-review/review-memory.md && git commit -m "docs: update PR review memory (PR #N)" && git push`.
-  If this push fails (e.g. someone else pushed meanwhile), `git pull --rebase` once and
-  retry — a lost memory update is not worth blocking the loop over; report and move on
-  if it still fails.
-
-**Threshold advisory (never auto-apply):** after updating the table, if any cell reaches
-cumulative `unsupported >= 5` AND `unsupported/total >= 0.5`, tell the user to run
-`python3 scripts/pr-review/panel_config.py set <cell> enabled false --root .` and to
-write an ADR (ADR-012 precedent). Auto-disabling is forbidden — it collapses panel
-coverage and risks fail-closed.
+**Memory update (host-only, AFTER `push`):** follow
+[`references/review-memory-maintenance.md`](references/review-memory-maintenance.md) —
+you, the host, update `docs/pr-review/review-memory.md` as a separate follow-up
+commit + push (never between commit and push — an intervening commit moves HEAD and
+breaks `cmd_push`'s SHA check; never via the planner/implementer). It covers the
+dedup/append rules, the PANEL-QUALITY table increment, the caps, and the cell-disable
+threshold advisory (never auto-apply).
 
 ### 6. Repeat or stop
 
@@ -494,6 +492,7 @@ run past the bound).
 
 - `references/land-delta-pipeline.md` — the land_delta.sh stage-by-stage contract (implement → verify → land → commit/push/cleanup); MANDATORY read before running any pipeline stage
 - `references/model-escalation.md` — §5a's rung table + env-var override mechanics; read when `iteration > 5`
+- `references/review-memory-maintenance.md` — host-only review-memory update procedure + threshold advisory; read after each fix push
 - `references/pr-review-workflow.yml` — reference GitHub Actions workflow for the AI review mode (see below)
 
 ## CI Workflow Setup
