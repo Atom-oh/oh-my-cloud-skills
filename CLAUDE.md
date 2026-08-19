@@ -34,11 +34,22 @@ routing — per-plugin `CLAUDE.md` holds the detail. Design: `docs/superpowers/s
 ## Development Commands
 
 ```bash
+# One-command setup for new developers (prereq check, .env, doc-sites deps)
+./scripts/setup.sh
+./scripts/install-hooks.sh   # commit-msg hook: strips Co-Authored-By lines
+
 # Load plugins locally for testing
 claude --plugin-dir ./plugins/aws-content-plugin
 claude --plugin-dir ./plugins/aws-ops-plugin
 
-# Validate plugin manifests (all 7 plugins).
+# Structural test suite — the canonical validation (manifests, frontmatter, references)
+python3 scripts/test-plugins.py                 # all plugins; -p <plugin> for one, -v verbose
+python3 scripts/test-codex-plugins.py           # Codex-format manifests (project-init absence = warning)
+
+# Stale plugin cache check — local ~/.claude/plugins/cache vs source (--fix to copy)
+./scripts/sync-plugin-cache.sh
+
+# Quick manual manifest inspection (all 7 plugins).
 # project-init is an upstream mirror whose manifest declares no agents/skills arrays
 # (Claude Code discovers them by convention), hence the .get() defaults.
 for f in plugins/*/.claude-plugin/plugin.json; do
@@ -201,6 +212,7 @@ echo "plugins=$VS marketplace=$MV tag=$TAG"
 
 ## Key Conventions
 
+- Architecture decisions are ADRs in `docs/decisions/` (ADR-001…); add new ones via `/add-adr`, reconcile contradictions via `co-agent:decision-reconcile`
 - Content plugin agents produce artifacts (HTML, .drawio, .md); ops plugin agents produce diagnoses with commands
 - Content goes through `content-review-agent` quality gate (100-point scale: PASS ≥85, REVIEW 70-84, FAIL <70; Visual-Testing-exempt content is judged on a 90-point scale: PASS ≥77)
 - Ops plugin reference files are commands-first, with Mermaid decision trees and error→solution tables
@@ -377,6 +389,11 @@ kiro:      /kiro:setup → probe kiro-cli, list models, write .kiro/agents/*.jso
            git push → PreToolUse hook (opt-in, off by default) → 3-lens Kiro review (fail-open; `critical` BLOCKED, `warning`-only chair judgment)
            web search needed + no WebSearch tool (Bedrock) → kiro_websearch.py --query-file (opt-in) → summary + source URLs
 ```
+
+## Docs Site & CI
+
+- `doc-sites/` — Docusaurus site (en/ko i18n) deployed to https://www.atomai.click/oh-my-cloud-skills/ by `.github/workflows/deploy-docs.yml` on push to main; build detail in `doc-sites/CLAUDE.md`
+- `.github/workflows/pr-review.yml` — CI multi-AI PR review (ADR-009); runbook in `docs/ci-pr-review-runbook.md`, review memory in `docs/pr-review/review-memory.md` (host-maintained, see pr-autofix)
 
 ## Auto-Sync Rules
 
