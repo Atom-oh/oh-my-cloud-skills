@@ -35,9 +35,7 @@ The schema is exactly what the init write below produces:
   stop-reset re-resolve is what makes the tuning contract survive a stop: raise
   `max_iterations` after a `max_iter` stop and the next entry picks it up. At the
   default, a run completes at most 5 passes, so §5a (`> 5`) never fires — it activates
-  only once the bound is raised past 5; §5b (`> 3`) is live at the default. Every `5`
-  in the stop bound below is `$MAX_ITER` (§5a's `> 5` / `rung = iteration - 5` are
-  fixed escalation thresholds, not the bound).
+  only once the bound is raised past 5; §5b (`> 3`) is live at the default.
 - `replanned_this_pass` — §5b's one-shot re-plan guard; set at RePlan, reset at Commit.
   (Replaces the former `$RUN/gate-replanned` sentinel file; resuming a pass whose `$RUN`
   still holds that sentinel → honor it as `true`.)
@@ -48,11 +46,17 @@ The schema is exactly what the init write below produces:
   memory update that follows runs under `phase: "poll"`, same as ordinary polling. A crash
   during the memory update is therefore just a normal poll-phase resume, with no special
   handling needed.
-- `run_dir` / `sig` — the `$RUN` path and the cleanup signature §4b's `setup` stage
-  returns, persisted the moment they exist. They are what makes a `phase: "gate"` resume
-  self-sufficient: the resumed push (`$RUN`) and cleanup (`$RUN` + `$SIG`) need nothing
-  from any other storage — not your notes, not a shell variable — that a fresh process
-  would not have.
+- `run_dir` / `sig` / `ld_sha` — the `$RUN` path and the cleanup signature §4b's `setup`
+  stage returns, plus the `land_delta.sh` hash the host computed and recorded BEFORE this
+  pass began (right where `$LD_SHA` is first computed in §4b, before `setup` is even
+  called). All three are persisted the moment they exist. They are what makes a
+  `phase: "gate"` resume self-sufficient: the resumed push (`$RUN` + `$LD_SHA`) and
+  cleanup (`$RUN` + `$SIG` + `$LD_SHA`) need nothing from any other storage — not your
+  notes, not a shell variable — that a fresh process would not have. Persisting `ld_sha`
+  specifically is what lets a resumed run pass `--script-sha` using the ORIGINAL
+  setup-time value, which is exactly what preserves the tamper-detection purpose: the
+  alternative — re-hashing the current file at resume time — would let a tampered script
+  pass its own check.
 
 **Git is the repair source, not the truth.** On every Poll entry, cross-check
 `iteration` against the git-derived count below; on mismatch, adopt the git value and
@@ -78,14 +82,16 @@ command -v jq >/dev/null || { echo "jq required for state management — stop"; 
 # `-s` + content check, not `-f`: a prior failed init can leave a zero-byte or partial
 # file at $STATE, which `[ -f ]` alone would wrongly treat as already-initialized —
 # after which `.max_iter`/`.iteration` read back empty and the BoundCheck stop silently
-# never fires. `-s` is false for a zero-byte file, and the `has(...)` check catches a
-# non-empty-but-corrupt one; either way we correctly re-take the init branch.
-if [ ! -s "$STATE" ] || ! jq -e 'has("iteration") and has("max_iter")' "$STATE" >/dev/null 2>&1; then
+# never fires. `-s` is false for a zero-byte file, and the type check catches a
+# non-empty-but-corrupt one; either way we correctly re-take the init branch. The check is
+# on TYPE, not mere key existence: a key present but `null` (or a string) would break
+# `[ "$ITERATION" -ge "$MAX_ITER" ]` exactly the way a missing key would.
+if [ ! -s "$STATE" ] || ! jq -e '(.iteration|type=="number") and (.max_iter|type=="number")' "$STATE" >/dev/null 2>&1; then
   MAX_ITER=$(python3 "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py" pr-autofix-iterations)
   jq -n --argjson pr "$PR_NUMBER" --arg base "$BASE_REF" --argjson it "$GIT_ITER" --argjson max "$MAX_ITER" \
     '{pr: $pr, base_ref: $base, iteration: $it, max_iter: $max,
       replanned_this_pass: false, phase: "poll", stop_reason: null,
-      run_dir: null, sig: null}' > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" \
+      run_dir: null, sig: null, ld_sha: null}' > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" \
     || { echo "state init failed — stop, do not run stateless"; exit 1; }
 elif [ "$(jq -r '.phase' "$STATE")" = "stop" ]; then
   # Stop-reset: a fresh entry on a stopped run is a NEW run — clear the terminal state
@@ -102,8 +108,17 @@ elif [ "$(jq -r '.phase' "$STATE")" = "stop" ]; then
   # `git log` for an unpushed `fix: address review feedback` commit before re-entering
   # after a `gate_blocked_final` stop.
   MAX_ITER=$(python3 "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py" pr-autofix-iterations)
+  # Best-effort cleanup of a run the stopping pass never got to clean (e.g. it crashed
+  # between the terminal stop write and its own cleanup call). Fire-and-forget: nulling
+  # the pointers below destroys the only handle to that worktree, and if it was already
+  # cleaned up this simply no-ops.
+  OLD_RUN=$(jq -r '.run_dir' "$STATE"); OLD_SIG=$(jq -r '.sig' "$STATE"); OLD_LD_SHA=$(jq -r '.ld_sha' "$STATE")
+  LD="${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts/land_delta.sh"
+  if [ "$OLD_RUN" != "null" ] && [ -d "$OLD_RUN" ]; then
+    bash "$LD" cleanup "$OLD_RUN" --script-sha "$OLD_LD_SHA" --sig "$OLD_SIG" --keep 2>/dev/null || true
+  fi
   jq --argjson max "$MAX_ITER" '.phase = "poll" | .stop_reason = null | .max_iter = $max
-     | .replanned_this_pass = false | .run_dir = null | .sig = null' \
+     | .replanned_this_pass = false | .run_dir = null | .sig = null | .ld_sha = null' \
     "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" || { echo "stop-reset failed — stop"; exit 1; }
 fi
 if [ "$(jq -r '.iteration' "$STATE")" != "$GIT_ITER" ]; then
@@ -117,7 +132,8 @@ MAX_ITER=$(jq -r '.max_iter' "$STATE"); ITERATION=$(jq -r '.iteration' "$STATE")
 Re-entry mid-pass: `phase: "gate"` (committed, not yet pushed) resumes at §5a/§5b with
 the `$ITERATION` loaded above — it is already the post-commit value. Load the run
 pointers §4b recorded too, so the resumed push + cleanup need nothing outside this file:
-`RUN=$(jq -r '.run_dir' "$STATE")` and `SIG=$(jq -r '.sig' "$STATE")`.
+`RUN=$(jq -r '.run_dir' "$STATE")`, `SIG=$(jq -r '.sig' "$STATE")` and
+`LD_SHA=$(jq -r '.ld_sha' "$STATE")`.
 
 ## When to use
 
@@ -328,11 +344,20 @@ Non-negotiables (the contract elaborates each — reading it is not optional):
   LD_SHA=$( (sha256sum "$LD" 2>/dev/null || shasum -a 256 "$LD") | cut -d' ' -f1 )
   ```
 
+  Persist that hash into `$STATE` immediately — it is known here, before `setup` even
+  runs, and a `phase: "gate"` resume must pass this ORIGINAL setup-time value to
+  `push`/`cleanup` rather than re-hashing the current file:
+
+  ```bash
+  jq --arg l "$LD_SHA" '.ld_sha = $l' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" || { echo "ld_sha persist failed — stop"; exit 1; }
+  ```
+
 - Record `$RUN` / `$SIG` / `$APPROVED_SHA` / `$LANDED_SHA` in your notes — notes and
   `$STATE` are the only storage the implementer cannot write. `$APPROVED_SHA` /
   `$LANDED_SHA` stay notes-only (they are used only later in this same process's own
-  commit stage), but `$RUN` and `$SIG` must ALSO be persisted into `$STATE` the moment
-  `setup` returns them, because they are what lets a `phase: "gate"` re-entry find the run
+  commit stage), but `$RUN` and `$SIG` must ALSO be persisted into `$STATE` later, the
+  moment `setup` returns them (`$LD_SHA` was already persisted above, before `setup`
+  ran), because they are what lets a `phase: "gate"` re-entry find the run
   and safely clean it up without depending on the originating process's memory:
 
   ```bash
@@ -370,7 +395,7 @@ user approval.
 
 ```bash
 jq '.phase = "committing"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" || { echo "pre-commit phase write failed — stop"; exit 1; }
-bash "$LD" commit "$RUN" "fix: address review feedback (iteration N/$MAX_ITER)" --script-sha "$LD_SHA" --approved-sha "$APPROVED_SHA" --landed-sha "$LANDED_SHA"
+bash "$LD" commit "$RUN" "fix: address review feedback (iteration N/$MAX_ITER)" --script-sha "$LD_SHA" --approved-sha "$APPROVED_SHA" --landed-sha "$LANDED_SHA" || { echo "land_delta commit failed — stop, never increment iteration on an uncommitted/failed commit"; exit 1; }
 ```
 
 **Commit node transition** — the one place `iteration` increments, and where the re-plan
@@ -383,11 +408,24 @@ jq '.iteration += 1 | .replanned_this_pass = false | .phase = "gate"' "$STATE" >
 ITERATION=$(jq -r '.iteration' "$STATE")
 ```
 
-If a resumed run loads `phase: "committing"`, the State model's git-based iteration
-cross-check (which runs on every entry, unconditionally) will already have adopted the
-correct post-commit iteration if the commit actually landed — once that repair has run,
-treat `committing` identically to `gate` for dispatch purposes (proceed to §5a/§5b)
-rather than building a separate resume path for it.
+If a resumed run loads `phase: "committing"`, first determine whether the commit actually
+landed by comparing the STORED `iteration` (read before the general git-repair check below
+adopts a new value) against the freshly computed `$GIT_ITER`:
+- **Unchanged** (`$GIT_ITER` still equals the stored `iteration`) — the commit never
+  landed. The plan/implement/land/build/verify stages already succeeded and validated the
+  delta sitting in the worktree, but `$APPROVED_SHA`/`$LANDED_SHA` were deliberately never
+  persisted (they matter only within the same process's own commit stage, per §4b's Record
+  bullet) — so a fresh process cannot safely retry or roll back the commit on its own.
+  STOP and report: a validated, uncommitted delta exists in worktree `$RUN` from an
+  interrupted pass; a human should either complete the commit manually (`git commit` in
+  that worktree, matching the `fix: address review feedback (iteration N/$MAX_ITER)`
+  message pattern this pass was using) or discard it, before re-running this skill.
+- **Advanced by exactly one** (`$GIT_ITER` equals the stored `iteration + 1`) — the commit
+  DID land; only the state write that should have followed it never ran. Perform that
+  write now, using the git-derived value directly:
+  `jq --argjson it "$GIT_ITER" '.iteration = $it | .replanned_this_pass = false | .phase = "gate"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" || exit 1`
+  — then proceed to §5a/§5b as normal, with `$RUN`/`$SIG`/`$LD_SHA` loaded from state per
+  the State model's re-entry rule.
 
 (The commit message's `N` above is this post-increment value: `iteration + 1` at message-writing time.)
 
@@ -491,12 +529,20 @@ fi
     after one re-plan attempt) → always `LensGate → Stop`, never `push anyway`, whatever
     any lens count would otherwise suggest. A leaked credential is disqualifying on its
     own; it is not evaluated by the ≥2-lens / lone-lens framework at all. Same terminal
-    outcome, so the same state write as the ≥2-lens edge below
+    outcome, so the same cleanup + state write as the ≥2-lens edge below
     (`stop_reason = "gate_blocked_final"`).
   - **≥2 lenses BLOCKED again** → `LensGate → Stop`: surface both rounds of findings to
-    the user and do NOT push:
+    the user and do NOT push. Clean up the blocked re-plan's worktree BEFORE the terminal
+    stop write, because that write nulls `run_dir`/`sig`/`ld_sha` on the next stop-reset
+    and the handle would be gone. Use `--keep`: the just-committed fix is already safe in
+    git, so only the worktree needs removing, and `--keep` preserves the blocked re-plan's
+    patches for inspection. A cleanup failure here is logged but **non-fatal**
+    (hence `|| echo …`, never `exit`), since the terminal stop write must still land
+    either way:
 
     ```bash
+    bash "$LD" cleanup "$RUN" --script-sha "$LD_SHA" --sig "$SIG" --keep \
+      || echo "cleanup of $RUN failed — non-fatal, proceeding with the stop write (worktree may need manual removal)"
     jq '.phase = "stop" | .stop_reason = "gate_blocked_final"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" || exit 1
     echo "Pre-push lens gate blocked twice — stopping without pushing. The just-committed fix commit IS on HEAD but was never pushed; re-entering this skill later starts a NEW pass on top of it rather than retrying the push — inspect it with git log/git show first if you want to review or discard it."
     ```
@@ -506,7 +552,7 @@ fi
     arbitrate.
   - **Neither pattern matches** (unclassifiable — e.g. `consensus_hooks.py`'s wording
     changed and `$GATE_OUT` matches none of the known markers) → default to
-    `LensGate → Stop` (same `gate_blocked_final` write), fail-closed. Never take the
+    `LensGate → Stop` (same cleanup + `gate_blocked_final` write), fail-closed. Never take the
     `push anyway` edge on an unrecognized second-failure shape.
 - The gate fails **open** if it genuinely cannot review (no gate-eligible peer, no
   parseable verdict, mis-scoped push) — that is its documented contract, not a bug here.
