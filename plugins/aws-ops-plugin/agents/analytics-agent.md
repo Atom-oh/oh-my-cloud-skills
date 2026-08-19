@@ -26,7 +26,7 @@ alarms that would have caught the problem earlier.
 > (Kinesis), and ClickHouse as an *OLAP query engine*. Operational monitoring belongs to
 > `observability-agent`, and the full split — including which side ambiguous "log
 > analysis" requests fall on — is defined once in
-> `{plugin-dir}/agents/observability-agent.md` → *Scope boundary*.
+> `{plugin-dir}/agents/observability-agent.md` → *Scope boundary (vs analytics-agent)*.
 
 ---
 

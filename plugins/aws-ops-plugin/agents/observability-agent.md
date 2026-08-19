@@ -23,16 +23,16 @@ queries and alarms behind instead of one-off answers.
 
 ## Scope boundary (vs analytics-agent)
 
-> observability-agent owns **operational
-> monitoring** of running systems: CloudWatch (metrics/alarms/Logs Insights),
-> AMP/Prometheus, AMG/Grafana, ADOT/OpenTelemetry, Loki/Tempo, and ClickHouse **as a
-> telemetry backend** (SigNoz/OpenObserve), plus AWS DevOps Agent escalation. Here **"log
-> analysis"** means *operational* log analysis (Logs Insights / Loki). **analytics-agent**
-> owns the data-analytics side: search (OpenSearch), ad-hoc query (Athena), BI
-> (QuickSight), streaming pipelines (Kinesis), ClickHouse as an *OLAP query engine*, and
-> building **log/event analytics pipelines** (e.g. Kinesis → OpenSearch/Athena). Rule of
-> thumb: "analytics pipeline / search / BI / data analysis" → analytics; "monitoring /
-> alarms / operational log analysis" → observability.
+> observability-agent owns **operational monitoring** of running systems: CloudWatch
+> (metrics/alarms/Logs Insights), AMP/Prometheus, AMG/Grafana, ADOT/OpenTelemetry,
+> Loki/Tempo, and ClickHouse **as a telemetry backend** (SigNoz/OpenObserve), plus AWS
+> DevOps Agent escalation. Here **"log analysis"** means *operational* log analysis
+> (Logs Insights / Loki). **analytics-agent** owns the data-analytics side: search
+> (OpenSearch), ad-hoc query (Athena), BI (QuickSight), streaming pipelines (Kinesis),
+> ClickHouse as an *OLAP query engine*, and building **log/event analytics pipelines**
+> (e.g. Kinesis → OpenSearch/Athena). Rule of thumb: "analytics pipeline / search / BI /
+> data analysis" → analytics; "monitoring / alarms / operational log analysis" →
+> observability.
 
 ---
 

@@ -31,9 +31,9 @@ future edit against it.
 | 2 | Security groups changed via CDK/Terraform only — never the CLI (`authorize-security-group-ingress`) | A CLI-opened port exists in no template, so review never sees it and the next deploy silently reverts or preserves it at random |
 | 3 | Public ALB reachable only via the CloudFront prefix list | Bypassing CloudFront removes WAF, the TLS policy, and the origin's only access control in one step |
 | 4 | No Route53 record pointing directly at an ALB or EC2 instance | A direct DNS name is a public entry point that skips CloudFront entirely, whatever the ALB's own rules say |
-| 5 | No IAM `Principal: "*"` — unconditionally, with or without a `Condition` | A wildcard principal opens the resource to every AWS account on earth; no `Condition` makes that an acceptable default |
+| 5 | No IAM `Principal: "*"` — unconditionally, with or without a `Condition` | A wildcard principal opens the resource to every AWS account on earth; no `Condition` can make an unconditioned `Principal: "*"` acceptable |
 | 6 | Minimize IAM `Resource: "*"` — a `Condition` is required if it is used at all | An unconditioned resource wildcard is an account-wide grant in practice, whatever the intent was |
-| 7 | No Lambda function URL or API with `AuthType: NONE` | An unauthenticated endpoint is a public API with no identity, no rate limit, and no attribution in the audit trail |
+| 7 | No Lambda function URL with `AuthType: NONE` | An unauthenticated endpoint is a public API with no identity, no rate limit, and no attribution in the audit trail |
 | 8 | No secrets in environment variables — use Secrets Manager or SSM Parameter Store | Env vars are readable by anyone holding `describe`-class permissions and they leak into logs, task definitions, and CI output |
 | 9 | PII in DynamoDB needs KMS + TTL; S3 Block Public Access always on; never delete CloudTrail logs | Data-layer defaults: encryption and expiry bound the blast radius of a leak, Block Public Access is the only setting that still holds when a bucket policy is wrong, and a deleted audit trail destroys the evidence of every other violation |
 
