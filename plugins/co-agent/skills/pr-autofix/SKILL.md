@@ -19,28 +19,21 @@ STATE_DIR=".claude/co-agent-consensus/pr-autofix/pr-${PR_NUMBER}"
 STATE="$STATE_DIR/state.json"; mkdir -p "$STATE_DIR"
 ```
 
-```json
-{
-  "pr": 123, "base_ref": "main",
-  "iteration": 0,
-  "max_iter": 5,
-  "replanned_this_pass": false,
-  "phase": "poll",
-  "stop_reason": null
-}
-```
+The schema is exactly what the init write below produces — six fields:
 
 - `iteration` — count of **completed** `fix: address review feedback` commits.
   Incremented exactly once per pass, at the Commit node (§5). Every threshold gates on
   this one post-commit number: the BoundCheck stop (`>= max_iter`), §5b's lens gate
   (`> 3`), §5a's model escalation (`> 5`, rung = `iteration - 5`). There is no second
   counter.
-- `max_iter` — resolved once at init:
-  `MAX_ITER=$(python3 "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py" pr-autofix-iterations)`
-  (tune: `/co-agent:configure set pr_autofix max_iterations <n>`, default 5). At the
-  default, a run completes at most 5 passes, so §5a (`> 5`) never fires — it activates
-  only once the bound is raised past 5; §5b (`> 3`) is live at the default. Every `5`
-  below is `$MAX_ITER`.
+- `max_iter` — resolved from config ONLY at init
+  (`python3 "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py" pr-autofix-iterations`;
+  tune: `/co-agent:configure set pr_autofix max_iterations <n>`, default 5), written
+  into the state file, and from then on read from state — a resumed run gets
+  `$MAX_ITER` from `jq -r '.max_iter' "$STATE"`, never from a re-resolve it might skip.
+  At the default, a run completes at most 5 passes, so §5a (`> 5`) never fires — it
+  activates only once the bound is raised past 5; §5b (`> 3`) is live at the default.
+  Every `5` below is `$MAX_ITER`.
 - `replanned_this_pass` — §5b's one-shot re-plan guard; set at RePlan, reset at Commit.
   (Replaces the former `$RUN/gate-replanned` sentinel file; resuming a pass whose `$RUN`
   still holds that sentinel → honor it as `true`.)
@@ -62,6 +55,24 @@ Use the PR's actual base (`baseRefName`, not a hardcoded `origin/main`) — a ba
 `master`/`develop`/`release/*`, or `origin/main` not being fetched, would otherwise make
 the `git rev-list` call fail silently into `0` and skip every threshold and the
 `$MAX_ITER` stop condition alike.
+
+The init/repair write itself (every state write in this skill fails HARD — a write that
+silently no-ops leaves a stale counter that BoundCheck then trusts):
+
+```bash
+if [ ! -f "$STATE" ]; then
+  MAX_ITER=$(python3 "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py" pr-autofix-iterations)
+  jq -n --argjson pr "$PR_NUMBER" --arg base "$BASE_REF" --argjson it "$GIT_ITER" --argjson max "$MAX_ITER" \
+    '{pr: $pr, base_ref: $base, iteration: $it, max_iter: $max,
+      replanned_this_pass: false, phase: "poll", stop_reason: null}' > "$STATE" \
+    || { echo "state init failed — stop, do not run stateless"; exit 1; }
+elif [ "$(jq -r '.iteration' "$STATE")" != "$GIT_ITER" ]; then
+  echo "state/git iteration mismatch ($(jq -r '.iteration' "$STATE") vs $GIT_ITER) — adopting git value"
+  jq --argjson it "$GIT_ITER" '.iteration = $it' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" \
+    || { echo "state repair failed — stop"; exit 1; }
+fi
+MAX_ITER=$(jq -r '.max_iter' "$STATE")
+```
 
 ## When to use
 
@@ -94,7 +105,7 @@ stateDiagram-v2
     Commit --> LensGate : iteration += 1, replanned=false [iteration > 3]
     LensGate --> Push : PASS / fail-open / disabled
     LensGate --> RePlan : BLOCK && !replanned
-    LensGate --> Push : 2nd BLOCK, lone CHAIR lens && replanned (push anyway, CI arbitrates)
+    LensGate --> Push : 2nd BLOCK, lone-lens CHAIR JUDGMENT && replanned (push anyway, CI arbitrates)
     LensGate --> Stop : 2nd BLOCK, >= 2 lenses && replanned → stop_reason=gate_blocked_final
     RePlan --> LensGate : replanned=true (distinct commit prefix, iteration unchanged)
     Push --> Poll
@@ -190,7 +201,11 @@ defined in §2 (one filter, two call sites — no copies), then:
 - No human reviews yet → SKIP (not yet reviewed)
 
 **Combined verdict:**
-- Both PASS (or SKIP) → done, inform user
+- Both PASS (or SKIP) → done, inform user:
+
+```bash
+jq '.phase = "stop" | .stop_reason = "clean"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" || exit 1
+```
 - Either BLOCKED → this is the **BoundCheck node** — the single gate every fix pass
   passes through before starting:
 
@@ -306,9 +321,13 @@ guard resets for the new pass. From here on, `$ITERATION` is the post-commit val
 §5a/§5b and §6 all gate on:
 
 ```bash
-jq '.iteration += 1 | .replanned_this_pass = false | .phase = "gate"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
+jq '.iteration += 1 | .replanned_this_pass = false | .phase = "gate"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" \
+  || { echo "iteration increment failed — stop, never continue on a stale counter"; exit 1; }
 ITERATION=$(jq -r '.iteration' "$STATE")
 ```
+
+(The commit message's `N` above is this post-increment value — the pass just completed —
+so write the message after this transition, or as `iteration + 1` before it.)
 
 ### 5a. Model escalation (iteration > 5) — one-shot, not persisted
 
@@ -321,35 +340,14 @@ models for §5b's gate call, one rung per escalated pass
 immediately after — never written via `co_agent_config.py set`, so
 `.claude/co-agent.local.json` is unchanged afterward.
 
-| Peer | Rung 1 | Rung 2 | Rung 3 |
-|------|--------|--------|--------|
-| kiro-cli | `claude-opus-5` | `claude-fable-5` (only if `kiro-cli chat --list-models` lists it — it's `[Internal]`) | `gpt-5.6-sol` |
-| codex | `openai.gpt-5.6-sol`, effort `xhigh` | — | — |
-| agy | stays on its configured/default model (no escalation rung defined for it) | — | — |
-| chair | spawn `co-agent:gate-chair` (`opus`+`xhigh`) for triage instead of judging inline | — | — |
-
-- Check `kiro-cli chat --list-models` for `claude-fable-5` before using rung 2 — never
-  assume it's available; skip straight to `gpt-5.6-sol` if it's not listed.
-- A rung's model can still return `INVALID_MODEL_ID` even when listed — treat that
-  invocation as a skipped peer for this call, never a loop abort (same fail-open
-  contract §5b's gate already has).
-- Apply the override via the env vars `consensus_hooks.py` reads for exactly this
-  purpose (`_model_override`/`_codex_effort_override`) — set them right before §5b's
-  call, unset right after:
-
-```bash
-if [ "$ITERATION" -gt 5 ]; then
-  export CO_AGENT_GATE_MODEL_OVERRIDE_KIRO_CLI="claude-opus-5"   # or the resolved rung
-  export CO_AGENT_GATE_MODEL_OVERRIDE_CODEX="openai.gpt-5.6-sol"  # rung 1 — set explicitly,
-  # never rely on it happening to match the configured panel default; a future config
-  # change must not silently disable this escalation.
-  export CO_AGENT_GATE_CODEX_EFFORT_OVERRIDE="xhigh"
-fi
-```
-
-Unset all three
-(`unset CO_AGENT_GATE_MODEL_OVERRIDE_KIRO_CLI CO_AGENT_GATE_MODEL_OVERRIDE_CODEX CO_AGENT_GATE_CODEX_EFFORT_OVERRIDE`)
-immediately after §5b's call — these must not leak into a later, non-escalated pass.
+**Rung table and env-var application mechanics:
+[`references/model-escalation.md`](references/model-escalation.md)** — read it when this
+threshold fires. Non-negotiables it elaborates: overrides ride the
+`CO_AGENT_GATE_MODEL_OVERRIDE_*`/`CO_AGENT_GATE_CODEX_EFFORT_OVERRIDE` env vars
+`consensus_hooks.py` reads, exported right before §5b's call and unset immediately
+after (never leaking into a later, non-escalated pass); an unavailable/invalid rung
+model is a skipped peer for that call, never a loop abort; the chair rung spawns
+`co-agent:gate-chair` for triage instead of judging inline.
 
 ### 5b. Escalation gate (iteration > 3) — lens review before push
 
@@ -367,12 +365,9 @@ HOOK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/consensus_hooks.py"
 if [ ! -f "$HOOK" ]; then
   echo "pre-push lens gate script not found at $HOOK — skipping §5b, reporting this, pushing without it"
   GATE_RC=0; GATE_OUT=""
-# `if CMD; then GATE_RC=0; else GATE_RC=$?; fi` (not `GATE_OUT=$(...); GATE_RC=$?`) is
-# deliberate: under `set -e` (in effect if this snippet runs inside a stricter caller
-# script), a bare failing command substitution aborts the shell right there, before the
-# next line ever assigns $?, silently skipping the intended re-plan handling below. An
-# `if` condition is exempt from `set -e` by POSIX design, so this form is correct either
-# way — with or without `set -e` in the surrounding shell.
+# The `if CMD` form (not `GATE_OUT=$(...); GATE_RC=$?`) is deliberate: under `set -e`,
+# a bare failing command substitution aborts the shell before $? is ever read, silently
+# skipping the re-plan handling below; an `if` condition is exempt from `set -e` (POSIX).
 elif GATE_OUT=$(echo '{"tool_input":{"command":"git push"}}' | python3 "$HOOK" pre-push-gate --root . 2>&1); then
   GATE_RC=0
 else
@@ -406,7 +401,8 @@ fi
   guard. Before re-planning, check it; if `false`, set it and re-plan:
 
   ```bash
-  jq '.replanned_this_pass = true' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
+  jq '.replanned_this_pass = true' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" \
+    || { echo "re-plan guard write failed — stop"; exit 1; }
   ```
 
   If it is already `true`, the panel and the fixer disagree — stop re-planning and take
@@ -415,11 +411,15 @@ fi
   verdict means independent lenses (security among them) agree the change has a real
   problem; overriding that automatically is not the posture of this skill's other gates
   (approve/land/verify), which are fail-closed. So:
-  - **≥2 lenses BLOCKED again** → `LensGate → Stop`: set
-    `stop_reason = "gate_blocked_final"`, surface both rounds of findings to the user,
-    do NOT push.
-  - **Lone CHAIR-JUDGMENT lens again** → `LensGate → Push`: report both findings and
-    push anyway, letting CI arbitrate.
+  - **≥2 lenses BLOCKED again** → `LensGate → Stop`: surface both rounds of findings to
+    the user and do NOT push:
+
+    ```bash
+    jq '.phase = "stop" | .stop_reason = "gate_blocked_final"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" || exit 1
+    ```
+  - **Lone-lens CHAIR JUDGMENT verdict again** (exactly 1 lens BLOCKed — any lens; the
+    gate has no third verdict) → `LensGate → Push`: report both findings and push
+    anyway, letting CI arbitrate.
 - The gate fails **open** if it genuinely cannot review (no gate-eligible peer, no
   parseable verdict, mis-scoped push) — that is its documented contract, not a bug here.
 - **This call is the only lens review iteration 4+ pushes get.** The `PreToolUse(Bash)`
@@ -462,7 +462,13 @@ coverage and risks fail-closed.
 
 ### 6. Repeat or stop
 
-`Push → Poll`: set `phase = "poll"` and go back to step 2. `iteration` was already
+`Push → Poll`:
+
+```bash
+jq '.phase = "poll"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" || exit 1
+```
+
+Then go back to step 2. `iteration` was already
 incremented at the Commit node — nothing to recount here; the next Poll entry's git
 cross-check (State model section) is what repairs any drift, and the re-plan follow-up's
 distinct prefix keeps that check from double-counting. The `>= max_iter` stop is the
@@ -487,17 +493,13 @@ run past the bound).
 ## Reference Files
 
 - `references/land-delta-pipeline.md` — the land_delta.sh stage-by-stage contract (implement → verify → land → commit/push/cleanup); MANDATORY read before running any pipeline stage
+- `references/model-escalation.md` — §5a's rung table + env-var override mechanics; read when `iteration > 5`
 - `references/pr-review-workflow.yml` — reference GitHub Actions workflow for the AI review mode (see below)
 
 ## CI Workflow Setup
 
-To use the AI review mode, the project needs the AI Code Review GitHub Actions workflow. A reference workflow is available at:
-
-```
-references/pr-review-workflow.yml
-```
-
-Copy it to your project's `.github/workflows/pr-review.yml` and configure:
-1. Set `ANTHROPIC_MODEL` in repository variables (e.g., `us.anthropic.claude-opus-4-8`)
-2. Ensure the runner has AWS Bedrock access (or set `ANTHROPIC_API_KEY` for direct API)
-3. Grant `pull-requests: write` and `contents: read` permissions
+AI review mode needs the AI Code Review GitHub Actions workflow: copy
+`references/pr-review-workflow.yml` to the project's `.github/workflows/pr-review.yml`,
+set `ANTHROPIC_MODEL` in repository variables (e.g. `us.anthropic.claude-opus-4-8`),
+ensure Bedrock access on the runner (or `ANTHROPIC_API_KEY` for direct API), and grant
+`pull-requests: write` + `contents: read`.

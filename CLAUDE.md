@@ -44,7 +44,7 @@ claude --plugin-dir ./plugins/aws-ops-plugin
 
 # Structural test suite — the canonical validation (manifests, frontmatter, references)
 python3 scripts/test-plugins.py                 # all plugins; -p <plugin> for one, -v verbose
-python3 scripts/test-codex-plugins.py           # Codex-format manifests (project-init absence = warning)
+python3 scripts/test-codex-plugins.py           # Codex-format manifests (project-init: deliberate silent skip, CLAUDE_ONLY)
 
 # Stale plugin cache check — local ~/.claude/plugins/cache vs source (--fix to copy)
 ./scripts/sync-plugin-cache.sh
@@ -323,7 +323,7 @@ is `version` in `.claude-plugin/plugin.json` (marketplace-uniform). Never edit i
 the next sync wipes the change. Local features that used to live here moved to co-agent
 (`pr-autofix`, `decision-reconcile`) or to the root routing table (superpowers hints). It
 also carries no `.codex-plugin/plugin.json`, so it is absent from the Codex marketplace
-(`scripts/test-codex-plugins.py` reports that as a warning, not an error), and its manifest
+(`scripts/test-codex-plugins.py` deliberately skips it silently — `CLAUDE_ONLY`; a standing warning on a known-correct state would be noise), and its manifest
 declares no `agents`/`skills` arrays — `scripts/test-plugins.py` discovers them on disk so
 the frontmatter is still validated. Sync procedure and rationale:
 `docs/reference/project-init-upstream-sync.md`.
