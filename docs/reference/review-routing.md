@@ -33,9 +33,10 @@ Procedure:
    `ops-security-audit`'s banned-pattern check is a **required, blocking** leg — even if the
    change is "mostly docs". Canonical banned patterns (see the global AWS security mandates in
    `CLAUDE.md` / `AGENTS.md` for the authoritative list): no `0.0.0.0/0` ingress; no IAM
-   `Principal:"*"` or `Resource:"*"` without a Condition; no Lambda `AuthType:NONE`; no secrets
-   in env (use Secrets Manager / Parameter Store); S3 Block Public Access always on; no ALB
-   bypassing CloudFront; CloudTrail logs retained (never deleted).
+   `Principal:"*"` at all, and `Resource:"*"` minimized (Condition required if used); no Lambda
+   `AuthType:NONE`; no secrets in env (use Secrets Manager / Parameter Store); S3 Block Public
+   Access always on; no public ALB bypassing the CloudFront prefix list; CloudTrail logs
+   retained (never deleted).
 4. Aggregate: the review passes only when **every** fired gate passes. One failing gate blocks.
 
 ## Notes

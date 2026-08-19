@@ -13,11 +13,16 @@ immediately**. Keep the whole file under 200 lines.
 
 ## Recurring real issues (must not recur)
 - `grep -c` prints `0` on zero matches but exits 1, so appending `|| echo 0` produces `"0\n0"` — use `|| true` instead (source: PR #140)
+- Restating AWS security mandates in a skill/doc body drifts from the authoritative `AGENTS.md` §Banned patterns (rules get weakened, dropped, or over-extended). Point at `AGENTS.md` instead of paraphrasing it, or diff any restatement against it verbatim before landing — this recurred within the same PR one round later (a fix-round edit re-added an over-extension, "or API", not present in the source) (source: PR #156 round 1 + round 2; the same wording drift was already present in `docs/reference/review-routing.md`).
 
 ## Known false-positive patterns (do not flag again without evidence)
 - L3: `AKIA…`/`sk-proj-…` strings in fixtures under `tests/` are intentional fake values used to test the scrubber itself — not hardcoded secrets (source: PR #141)
 - L4: `head -c "$cap" "$file"` (file argument) carries no SIGPIPE risk — only the piped form (`… | head -c`) dies with 141 (source: PR #141)
+- A `{plugin-dir}/path.md → *Section*` pointer flagged as dangling because the target isn't visible in the diff — the target section frequently already exists in the base file untouched by the diff. Grep the actual repo for the target heading before flagging (source: PR #156 — two kiro-opus MAJOR findings dismissed on this exact basis).
+- An agent's goal-statement prose ("delivers the fix") and its own *Team Collaboration* section ("leave the fix to the coordinator") are not a conflict — they describe the solo-mode default vs. the `team_name`-set override, and the team section explicitly states it overrides. Don't flag this pairing as "conflicting execution authority" without checking whether the agent has both a solo path and a team path (source: PR #156, kiro-gpt).
 
 ## Panel-cell judgment quality (cumulative)
 | cell | unsupported | total findings | last |
 |---|---|---|---|
+| kiro-opus-full | 6 | 19 | PR #156 |
+| kiro-gpt-full | 2 | 5 | PR #156 |

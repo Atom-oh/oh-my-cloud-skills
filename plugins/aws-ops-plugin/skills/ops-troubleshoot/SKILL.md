@@ -9,7 +9,13 @@ allowed-tools:
 
 # Ops Troubleshoot Skill
 
-A systematic troubleshooting workflow for AWS/EKS infrastructure issues.
+Delivers a root cause and an incident report for a cloud-infrastructure symptom, reached
+from a five-minute triage. The consumer is the debugging loop that called in
+(`superpowers:systematic-debugging`) or the operator running the incident, so the result
+must hand back cleanly to whichever one is waiting on it. Excellent work here narrows
+triage to one domain before any deep dive, classifies severity early enough to shape the
+response, and closes with a postmortem that updates a runbook so the next occurrence
+routes faster.
 
 ## Relationship to superpowers:systematic-debugging
 
@@ -83,12 +89,12 @@ graph TD
 
 ## Severity Classification
 
-| Level | Response | Criteria |
-|-------|----------|----------|
-| P1 Critical | < 5 min | Service outage, data loss risk |
-| P2 High | < 30 min | Major degradation, high error rate |
-| P3 Medium | < 4 hr | Minor impact, single component |
-| P4 Low | Next business day | Warning, optimization |
+| Level | Response | Criteria | Examples |
+|-------|----------|----------|----------|
+| P1 Critical | < 5 min | Service outage, data loss risk | Cluster unreachable, 50%+ nodes down |
+| P2 High | < 30 min | Major degradation, high error rate | High error rate, pod crash loops |
+| P3 Medium | < 4 hr | Minor impact, single component | Single node issue, non-critical pod failures |
+| P4 Low | Next business day | Warning, optimization | Warning alerts, optimization |
 
 ## Output Format
 
