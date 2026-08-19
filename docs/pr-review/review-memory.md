@@ -18,6 +18,7 @@ immediately**. Keep the whole file under 200 lines.
 - Introducing a terminal phase into a per-PR persistent state file without a reset/re-init path silently voids init-only-resolved config (`max_iter`) on re-runs after a stop — a state-file diff must answer "how do you leave the terminal state" (source: PR #158 round 2, 3-cell convergent)
 - Restating AWS security mandates in a skill/doc body drifts from the authoritative `AGENTS.md` §Banned patterns (rules get weakened, dropped, or over-extended). Point at `AGENTS.md` instead of paraphrasing it, or diff any restatement against it verbatim before landing — this recurred within the same PR one round later (a fix-round edit re-added an over-extension, "or API", not present in the source) (source: PR #156 round 1 + round 2; the same wording drift was already present in `docs/reference/review-routing.md`).
 - A "ALL state lives in ONE file" declaration must be checked against every resume path, not just the happy path — if mid-pass resume (e.g. a committed-but-not-pushed gate re-entry) still needs an external handle (a run directory, a notes-only signature) the declaration is false on its own terms. When promoting ad hoc counters into a state file, record every handle a resume path needs inside that same file (source: PR #158 round 3, codex + kiro-opus convergent).
+- When a skill introduces a flat, unconditional security mandate table, check whether the SAME skill's own `references/*.md` files already grade that mandate by severity/exception (e.g. a "banned pattern" table landing next to a reference file that scores the same pattern HIGH/MEDIUM/CRITICAL by port, or expects a stricter/looser condition) — the two can silently contradict inside one skill tree even when each is individually correct against its own source (source: PR #156 round 3: `ops-security-audit/SKILL.md`'s new mandate table vs. `references/network-security.md` and `references/iam-audit.md`).
 
 ## Known false-positive patterns (do not flag again without evidence)
 - L3: `AKIA…`/`sk-proj-…` strings in fixtures under `tests/` are intentional fake values used to test the scrubber itself — not hardcoded secrets (source: PR #141)
@@ -28,10 +29,11 @@ immediately**. Keep the whole file under 200 lines.
 - In a prose SKILL.md, an explicit instruction ("resuming … → honor it as `true`") IS the spec — don't raise "unspecified" to MAJOR just because no shell command accompanies it; the asymmetry is at most MINOR when the skill shows commands for its other transitions (source: PR #158).
 - The panel-quality table only updates rows for cells that had unsupported findings that round (the chair emits PANEL-QUALITY only for those cells) — a row sitting at an older PR next to same-PR real-issue credit is correct, not "inconsistent" (source: PR #158 round 2, kiro-opus).
 - A finding that a gitignored, untracked, host-computed local state file (e.g. `.claude/co-agent-consensus/**`) could be "pre-seeded" or symlink-attacked by a malicious PR requires the attacker to already have local working-tree write access — at which point the finding restates its own precondition rather than identifying a new threat. Check whether the attack actually needs pre-existing local compromise before raising it (source: PR #158 round 3, codex CRITICAL dismissed).
+- **Reverse case of the "mandate drifts from AGENTS.md" issue above**: a fix that CORRECTS an existing drift (e.g. tightens `Principal:"*"` to match `AGENTS.md`'s unconditional ban, after older text wrongly allowed a Condition exception) can get flagged as itself being an "over-extension" by a panel cell comparing only against the diff's old text, not against `AGENTS.md`. Always diff the claimed source of truth directly — a correction is not a violation (source: PR #156 round 3, two cells).
 
 ## Panel-cell judgment quality (cumulative)
 | cell | unsupported | total findings | last |
 |---|---|---|---|
-| kiro-opus-full | 8 | 36 | PR #158 |
-| kiro-gpt-full | 6 | 15 | PR #158 |
+| kiro-opus-full | 10 | 45 | PR #158 |
+| kiro-gpt-full | 7 | 17 | PR #158 |
 | codex-full | 3 | 10 | PR #158 |
