@@ -77,7 +77,8 @@ print('All references OK')
 
 # Evaluate skills (quality, structure, token usage)
 python3 scripts/eval-skills.py
-python3 scripts/eval-skills.py --plugin aws-content-plugin --skill reactive-presentation
+# NOTE: there is no `--plugin` flag; eval-skills.py selects by SKILL name only.
+python3 scripts/eval-skills.py --skill reactive-presentation --verbose --threshold 85
 
 # Behavioral eval (E2E skill runtime testing via claude --print)
 python3 scripts/eval-skill-behavior.py --skill reactive-presentation --dry-run
