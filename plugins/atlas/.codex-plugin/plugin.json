@@ -1,0 +1,23 @@
+{
+  "name": "atlas",
+  "version": "1.16.0",
+  "description": "A self-syncing per-topic documentation wiki for LLM consumption — docs declare the files they cover, drift is detected mechanically against a git rev anchor, and stale docs can be auto-fixed before a push",
+  "author": {
+    "name": "atomoh"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Atlas Doc Wiki",
+    "shortDescription": "Per-topic docs that stay in sync with the code.",
+    "longDescription": "Atlas turns a repository's knowledge into a per-topic wiki an agent can navigate by index instead of cramming into CLAUDE.md. Each doc's frontmatter declares `covers` globs and a `code_rev` anchor, so staleness is a mechanical glob match over `git diff --name-only` with no model pass. Drift detection and the INDEX generator are plain Python; the push-time auto-fix is Claude Code-only and off by default, so this Codex manifest exposes the doc model, the validator and the drift detector.",
+    "developerName": "atomoh",
+    "category": "Documentation",
+    "capabilities": [
+      "Skills",
+      "Shell"
+    ],
+    "defaultPrompt": [
+      "Check which atlas docs have drifted from the code."
+    ]
+  }
+}
