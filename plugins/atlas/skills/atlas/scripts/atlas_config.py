@@ -324,6 +324,17 @@ def effective(root):
                 cfg = deep_merge(cfg, _strip_consent_keys(raw, root, lp))
         except (json.JSONDecodeError, OSError) as e:
             print(f"⚠️  ignoring malformed {lp}: {e}", file=sys.stderr)
+    # `_root_value` is the only thing that neutralizes an absolute or `..`-escaping
+    # `root` — and `root` can arrive here from a HAND-EDITED, possibly git-tracked
+    # local override (`_strip_consent_keys` deliberately does not drop `root`, since it
+    # is configuration, not a consent bypass). Every caller of `effective()` — this
+    # module's own CLI, `atlas_index.atlas_root()`, and `atlas_sync.py` — uses
+    # `cfg["root"]` as a write-and-commit scope, so this is the one place that must
+    # apply `_root_value` for ALL of them; a caller that read `cfg.get("root")` directly
+    # used to see the raw, unsanitized string. Idempotent: callers still calling
+    # `_root_value` on this result (e.g. `cmd_show`) just re-validate an already-safe
+    # value.
+    cfg["root"] = _root_value(cfg.get("root"))
     return cfg
 
 

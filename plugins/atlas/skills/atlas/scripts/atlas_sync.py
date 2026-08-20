@@ -105,6 +105,37 @@ def _prompt_for(doc_path):
     )
 
 
+# Tool-layer confinement for the one tool that's actually allowed to write: Edit.
+# `--disallowedTools`/`--allowedTools` are a permission *policy*, not a filesystem
+# boundary — Edit can still target any EXISTING file the process can reach, including
+# one outside the atlas root that git can't see at all (an existing gitignored file,
+# or an absolute path outside the repo entirely), which the post-hoc `_confine()` scan
+# below cannot detect because it only reads `git diff`/`git ls-files` output. This
+# PreToolUse hook is the actual enforcement: it reads Edit's `file_path` from stdin,
+# resolves it to a realpath, and blocks (exit 2) anything that doesn't resolve inside
+# the atlas root passed via the ATLAS_GUARD_ROOT env var — the same realpath-guard
+# pattern this repo already uses for kiro-cli's fs_write/fs_read
+# (.kiro/agents/kiro-implementer.json), translated to Claude Code's Edit/file_path
+# hook schema. `_confine()` still runs afterward as defense-in-depth (it can revert an
+# in-root write too, e.g. if a future task widens --allowedTools), but this hook is
+# what actually prevents the escape from landing on disk at all.
+_GUARD_CMD = (
+    "python3 -I -c \"import json,sys,os; "
+    "d=json.load(sys.stdin); "
+    "p=(d.get('tool_input') or {}).get('file_path',''); "
+    "root=os.environ.get('ATLAS_GUARD_ROOT',''); "
+    "t=os.path.realpath(p if os.path.isabs(p) else os.path.join(os.getcwd(), p)); "
+    "sys.exit(0 if root and (t == root or t.startswith(root + os.sep)) else 2)\""
+)
+_SETTINGS_JSON = json.dumps({
+    "hooks": {
+        "PreToolUse": [
+            {"matcher": "Edit", "hooks": [{"type": "command", "command": _GUARD_CMD}]},
+        ],
+    },
+})
+
+
 def _claude_cmd(prompt_text, model):
     """The literal argv from design.md §G1. Built as a list and run with no shell
     interpretation, so nothing in the prompt or config can splice extra arguments."""
@@ -121,13 +152,15 @@ def _claude_cmd(prompt_text, model):
         # already exist; WebFetch/WebSearch deny network egress; Task denies
         # spawning a subagent that would not inherit these restrictions.
         "--disallowedTools", "Bash,Write,WebFetch,WebSearch,Task",
+        # See _GUARD_CMD above: the actual write-confinement enforcement.
+        "--settings", _SETTINGS_JSON,
     ]
     if model:
         cmd += ["--model", model]
     return cmd
 
 
-def _run_packet(packet, diff_text, model, timeout, base):
+def _run_packet(packet, diff_text, model, timeout, base, atlas_rel):
     """Run one headless call. Returns "" on success, else a one-line failure reason.
     TimeoutExpired and OSError are caught HERE, per packet, so one doc's failure
     cannot abort the other docs running in the same pool."""
@@ -135,7 +168,11 @@ def _run_packet(packet, diff_text, model, timeout, base):
     # ATLAS_SYNC_ACTIVE=1 in the child environment: a nested `git push` issued
     # inside the headless call re-enters the PreToolUse hook, re-runs this script,
     # and stops at the recursion guard in main() instead of recursing forever.
-    env = {**os.environ, "ATLAS_SYNC_ACTIVE": "1"}
+    # ATLAS_GUARD_ROOT: the absolute, realpath'd atlas root the _GUARD_CMD PreToolUse
+    # hook reads to decide whether an Edit's file_path is in-bounds — computed here
+    # (not baked into _claude_cmd) because it depends on this call's `base`/`atlas_rel`.
+    env = {**os.environ, "ATLAS_SYNC_ACTIVE": "1",
+           "ATLAS_GUARD_ROOT": os.path.realpath(os.path.join(base, atlas_rel))}
     try:
         p = subprocess.run(cmd, input=diff_text, text=True, capture_output=True,
                            cwd=base, env=env, timeout=timeout)
@@ -366,7 +403,7 @@ def _run(args):
     synced = []
     if runnable:
         with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, parallel)) as ex:
-            futs = {ex.submit(_run_packet, pk, diff_text, model, timeout, base): pk
+            futs = {ex.submit(_run_packet, pk, diff_text, model, timeout, base, atlas_rel): pk
                     for pk, diff_text in runnable}
             for fut in concurrent.futures.as_completed(futs):
                 pk = futs[fut]
