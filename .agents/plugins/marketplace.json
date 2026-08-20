@@ -81,6 +81,19 @@
       },
       "category": "Collaboration",
       "version": "1.15.0"
+    },
+    {
+      "name": "atlas",
+      "source": {
+        "source": "local",
+        "path": "./plugins/atlas"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Documentation",
+      "version": "1.16.0"
     }
   ]
 }
