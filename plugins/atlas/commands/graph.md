@@ -76,9 +76,8 @@ After the diagram, a text summary:
    these docs are also invisible to drift detection until fixed, which is the more
    urgent consequence.
 
-If the user asks to fix a broken link or add an edge, edit the doc's frontmatter
-`related` list, then regenerate the index:
-
-```bash
-python3 "$SK/atlas_index.py" --write --root "$ROOT"
-```
+This command's own `allowed-tools` (`Read, Bash`) is deliberately read-only — it
+reports the graph, it does not edit it. If the user asks to fix a broken link or add
+an edge, that is a frontmatter edit + an INDEX regeneration, which is `/atlas:add-doc`'s
+job (Step 3 there updates a sibling doc's `related` list; Step 4 regenerates the
+INDEX) — hand off to it rather than editing here.

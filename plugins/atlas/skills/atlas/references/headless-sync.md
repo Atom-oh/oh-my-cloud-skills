@@ -48,26 +48,52 @@ restrictions.
 ## Write confinement
 
 Be clear-eyed about what the flag list does **not** cover: `Edit` can reach any file
-that already exists, anywhere in the repository — the allow/deny lists confine *which
-tools* run, not *which paths* they touch. So the flag list is not the guarantee. The
-layer that actually holds is post-hoc: after each call, and before any commit,
-`atlas_sync.py` runs `git diff --name-only` (plus `git ls-files --others
---exclude-standard` for new untracked files) and checks that every changed path is
-inside the atlas root. Anything outside it is reverted — tracked files with a
-`git checkout --` scoped to that explicit path, untracked files with `os.remove` — and
-reported on stderr, and that packet's doc is skipped rather than committed. Never a bare
-`git checkout .`, never `git clean`, never `git reset`: every destructive call is scoped
-to named paths, so the confinement pass cannot itself destroy unrelated local work.
+that already exists, anywhere the process can address — the allow/deny lists confine
+*which tools* run, not *which paths* they touch. So the flag list is not the guarantee.
 
-The ordering matters: confinement runs before the commit, so an escaped edit is
-impossible to *ship* even though it was momentarily possible to *make*. The tool flags
-narrow the blast radius up front; the diff-subset check is what makes the property hold.
+Two layers actually hold, in order:
+
+1. **A `--settings` `PreToolUse` hook is the real enforcement.** Every `claude -p`
+   invocation carries an inline hook that reads `Edit`'s `file_path` from stdin,
+   resolves it to a realpath, and blocks the tool call (exit 2) unless it resolves
+   inside the atlas root — the wiki root's OWN realpath, read from the
+   `ATLAS_GUARD_ROOT` environment variable set for that call. This is the same
+   realpath-guard pattern this repo already uses for kiro-cli's `fs_write`/`fs_read`
+   (`.kiro/agents/kiro-implementer.json`), translated to Claude Code's `Edit`/
+   `file_path` hook schema. It is checked BEFORE the write happens, not after.
+2. **A post-hoc git-based scan is defense-in-depth, not the primary guarantee.**
+   After each call, and before any commit, `atlas_sync.py` runs `git diff
+   --name-only` (plus `git ls-files --others --exclude-standard` for new untracked
+   files) and checks that every changed path is inside the atlas root, reverting
+   anything outside it — tracked files with a `git checkout --` scoped to that
+   explicit path, untracked files with `os.remove`. This is necessarily incomplete on
+   its own: it can only see paths git already tracks or would show as untracked-and-
+   not-ignored, so a write to an EXISTING gitignored file, or to an absolute path
+   outside the git working tree entirely, is invisible to it. That gap is exactly why
+   layer 1 is the one that actually matters; layer 2 catches whatever layer 1 might
+   somehow miss (e.g. a future change that widens `--allowedTools`), and never a bare
+   `git checkout .`, `git clean`, or `git reset` — every destructive call stays
+   scoped to named paths, so confinement cannot itself destroy unrelated local work.
+
+Before either layer runs, `atlas_sync.py` also refuses to proceed at all if the wiki
+root's realpath resolves outside the repository's realpath — guarding against a
+committed symlinked wiki-root directory redirecting BOTH layers' idea of "inside the
+root" to somewhere else entirely (in which case layer 2 would see nothing dirty at
+all, since the actual write lands outside the git working tree, and layer 1's own
+`ATLAS_GUARD_ROOT` would be the redirected location too).
+
+The ordering matters: layer 2's confinement runs before the commit, so an escaped
+edit layer 1 somehow missed is still impossible to *ship*. The tool flags narrow the
+blast radius up front; the `PreToolUse` guard is what actually prevents the escape;
+the diff-subset check and the root-realpath precondition are what make the property
+hold even if the guard is ever bypassed or misconfigured.
 
 ## Prompt injection
 
-The diff on stdin is attacker-controllable text: any commit author in the push range —
-a rebased contributor branch, a merged PR, a vendored file — chose its content, and the
-fixer reads all of it. Assume it contains instructions aimed at the model.
+The diff on stdin is attacker-controllable text: any commit author between the doc's
+`code_rev` and `HEAD` — a rebased contributor branch, a merged PR, a vendored file —
+chose its content, and the fixer reads all of it. Assume it contains instructions
+aimed at the model.
 
 Three things bound the damage. First, the prompt states explicitly that the diff is
 untrusted data and that any instruction found *inside* it is content to document, never
@@ -103,8 +129,12 @@ Every failure exits 0 with an advisory on stderr — all of them:
   push still succeeds);
 - a per-doc timeout or spawn failure (caught per packet, so one doc's failure does not
   abort the others);
-- an unresolvable push range (no upstream, no trunk candidate, a scope the hook cannot
-  map to a diff — repo redirects, `--delete`, explicit refspecs);
+- the wiki root resolving outside the repository (e.g. a symlinked wiki-root
+  directory) — refused outright, before any call runs;
+- a scope the hook cannot map to a diff at all (repo redirects, `--delete`, explicit
+  refspecs) — note this is no longer "an unresolvable push range": every doc is
+  checked against literal `HEAD` regardless of whether an upstream/trunk auto-resolves,
+  so only a genuine scope mismatch (not merely a missing upstream) short-circuits;
 - a nested re-entry (`ATLAS_SYNC_ACTIVE=1` already set).
 
 The reason is blunt: this is a documentation-sync hook sitting in front of `git push`,

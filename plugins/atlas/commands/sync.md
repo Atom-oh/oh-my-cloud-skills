@@ -25,9 +25,10 @@ directory would make them look for docs nested one level too deep). Always pass
 ## First run on an unsynced repo: `--dry-run`
 
 **`--dry-run` should be the first thing you run on a repo you have not synced
-before.** It spawns no subprocess and writes nothing — it is how you find out what
-WOULD be sent (which docs, which matched files, which diff range) before anything is
-sent anywhere:
+before.** It spawns no `claude` process and writes nothing (it still runs a few
+read-only `git` calls to compute the preview) — it is how you find out what WOULD be
+sent (which docs, which matched files, which diff range) before anything is sent
+anywhere:
 
 ```bash
 python3 "$SK/atlas_sync.py" --dry-run --root "$ROOT"
@@ -61,19 +62,27 @@ python3 "$SK/atlas_sync.py" --root "$ROOT"
 python3 "$SK/atlas_sync.py" --range "$ARGUMENTS" --root "$ROOT"    # explicit range
 ```
 
-Each stale doc gets its own headless call that may only edit that one doc (write
-confinement reverts anything outside the wiki directory). Afterwards the script — not
+Each stale doc gets its own headless call that may only edit that one doc — a
+`PreToolUse` hook confines its `Edit` calls to the wiki directory by realpath, and a
+post-hoc scan reverts anything that somehow still landed outside it. Afterwards the script — not
 the model — advances `code_rev` to HEAD, regenerates `INDEX.md`, and creates a
 `docs(atlas): sync ...` commit. Sending covered-file diff content to Anthropic is
 inherent to the fix step; that is why the preview above comes first.
 
 ## Range semantics
 
-- No `--range`: auto-resolved — `@{upstream}...HEAD` when an upstream exists, else
-  the merge-base against the first of `origin/main`, `main`, `origin/master`,
-  `master` that resolves. Unresolvable range: stderr advisory, nothing checked.
-- `$ARGUMENTS`, when given, is passed as the explicit `--range A..B` and wins over
-  auto-resolution.
+`--range` overrides which ref counts as "now" for every doc's staleness check — only
+the RIGHT-hand side of `A..B`/`A...B` is used. Each doc always uses its OWN `code_rev`
+as the left bound, never a shared one: gating on a shared range used to mean a covered
+file that changed during an earlier push the hook never saw (hook was off, or a
+terminal push this `PreToolUse` hook can't see at all) could go permanently unreviewed
+once some OTHER covered file later advanced the same doc's anchor to `HEAD`.
+
+- No `--range`: literal `HEAD`. (An informational auto-resolution against
+  `@{upstream}...HEAD` or a trunk merge-base still runs and prints an advisory if it
+  can't resolve, but it is no longer load-bearing — every doc is checked against
+  `HEAD` either way.)
+- `$ARGUMENTS`, when given, is passed as the explicit `--range A..B`; only `B` is used.
 
 ## Report
 

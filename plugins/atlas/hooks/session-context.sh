@@ -30,6 +30,7 @@ echo "atlas loaded. Per-topic repo wiki with push-time drift sync: /atlas:init �
 # Every call is best-effort (`|| echo` fallback) — a missing/broken config must never
 # make SessionStart fail.
 ATLAS_ROOT="$(python3 "$SK/atlas_config.py" atlas-root 2>/dev/null || echo docs/atlas)"
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
 
 # The atlas root is printed by its own `echo` below, never inside the heredoc. Inside
 # the quoted heredoc the `$ATLAS_ROOT` expansion would reach the host verbatim — and
@@ -38,7 +39,17 @@ ATLAS_ROOT="$(python3 "$SK/atlas_config.py" atlas-root 2>/dev/null || echo docs/
 # backticks, which an unquoted heredoc would run as command substitution.
 echo ""
 echo "[atlas] This repo keeps a per-topic doc wiki at: $ATLAS_ROOT"
-cat <<'ATLAS'
+
+# The reading rule below only makes sense once a wiki actually exists. Gating this on
+# `INDEX.md`'s presence is not optional: plugin install and `/atlas:init` are two
+# separate steps, so every session in every repo that has merely installed atlas but
+# never run init would otherwise be told to read a file that is not there — and,
+# worse, told that doing so is the "already-verified" path to an answer, which is
+# false when there is nothing to verify against. Toggle-gating (see the
+# sync.on_push note below) covers a different axis (is push-time auto-fix armed) and
+# was never a substitute for this existence check.
+if [ -f "$REPO_ROOT/$ATLAS_ROOT/INDEX.md" ]; then
+  cat <<'ATLAS'
 [atlas] Reading rule (always in effect): before answering questions about this repo's
 architecture or conventions, read the atlas root's `INDEX.md` FIRST. Choose which docs
 to open by their `description` and `covers` fields in that index — only then read the
@@ -46,6 +57,9 @@ bodies of the chosen docs. Prefer an atlas doc over re-deriving the same knowled
 from source: the docs are drift-checked against `code_rev`, so a matching doc is the
 cheaper and already-verified path to the same answer.
 ATLAS
+else
+  echo "[atlas] Wiki not initialized yet — run /atlas:init to bootstrap it."
+fi
 
 if python3 "$SK/atlas_config.py" sync-on-push >/dev/null 2>&1; then
   cat <<'ATLAS'

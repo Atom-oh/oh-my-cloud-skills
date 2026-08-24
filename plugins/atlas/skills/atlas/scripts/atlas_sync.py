@@ -338,15 +338,17 @@ def _run(args):
               file=sys.stderr)
         return 0
 
+    # See atlas_drift.stale_docs' docstring: only the right-hand side of an
+    # explicit --range override matters now (defaults to literal HEAD); an
+    # unresolvable auto-range is no longer fatal — it used to mean "skip every doc
+    # in this repo," which was itself part of the anchor-skipping bug that made a
+    # doc changed during an earlier hook-off (or terminal) push look permanently
+    # fresh once some OTHER covered file later advanced its anchor.
     rng = atlas_drift.resolve_range(args.range, base)
-    if not rng:
-        print("atlas-sync: could not resolve a diff range — skipping doc sync",
-              file=sys.stderr)
-        return 0
+    head_ref = atlas_drift.head_ref_for(args.range, rng)
 
     docs = atlas_index.load_docs(base)
-    changed = atlas_drift.changed_files(rng, base)
-    packets = atlas_drift.stale_docs(docs, changed, base)
+    packets = atlas_drift.stale_docs(docs, base, head_ref=head_ref)
     if not packets:
         # Zero stale docs is the everyday case: no output at all, exit 0.
         return 0
@@ -366,6 +368,33 @@ def _run(args):
     model, timeout, parallel = _sync_settings(base)
     aroot = atlas_index.atlas_root(base)
     atlas_rel = os.path.relpath(aroot, base).replace(os.sep, "/")
+
+    # `_root_value` only ever validated the CONFIG STRING (rejects absolute / `..`
+    # segments) — it says nothing about whether the resulting on-disk path is itself
+    # a symlink into somewhere else. A repo could commit `docs/atlas` as a symlink to
+    # a directory outside the repository entirely: the string `"docs/atlas"` passes
+    # every check `_root_value` runs, `os.path.join(base, "docs/atlas")` looks
+    # perfectly inside the repo, but following the link lands outside it — and since
+    # the PreToolUse guard's ATLAS_GUARD_ROOT is ALSO built from this same `aroot`
+    # (realpath'd), a redirected root would silently move the guard's own boundary
+    # outside the repo too, defeating it rather than tripping it. Check the REAL
+    # on-disk destination, not just the config string, before trusting `aroot` for
+    # anything.
+    # Deliberately a STRICT subdirectory check (real_aroot == real_base is REFUSED
+    # too, not accepted): ATLAS_GUARD_ROOT becomes whatever `real_aroot` is, so a
+    # root that resolves to the repo root itself would make the PreToolUse guard
+    # allow Edit on the ENTIRE repository — including gitignored files the post-hoc
+    # git-based scan can't see either — silently widening confinement instead of
+    # narrowing it. There is no legitimate reason for the wiki root to BE the repo
+    # root; it is always meant to be a subdirectory (default `docs/atlas`).
+    real_base = os.path.realpath(base)
+    real_aroot = os.path.realpath(aroot)
+    if real_aroot == real_base or not real_aroot.startswith(real_base + os.sep):
+        print("atlas-sync: refusing to run — the wiki root %r does not resolve to a "
+              "proper subdirectory of the repository (%r), e.g. via a symlinked "
+              "directory or a root pointing at the repo root itself — skipping doc "
+              "sync" % (atlas_rel, real_aroot), file=sys.stderr)
+        return 0
 
     # Baseline snapshot BEFORE any headless call: everything dirty now belongs to
     # the developer, and confinement must never touch it. If the snapshot itself
@@ -509,7 +538,9 @@ def main():
               file=sys.stderr)
         return 0
     ap = argparse.ArgumentParser(description="atlas push-time doc auto-fix")
-    ap.add_argument("--range", default=None, help="diff range A..B (default: auto)")
+    ap.add_argument("--range", default=None,
+                     help="override which ref counts as \"now\" (right-hand side of "
+                          "A..B; default: literal HEAD) — see atlas_drift.py's --range")
     ap.add_argument("--root", default=None,
                     help="repo root (default: git toplevel of cwd)")
     ap.add_argument("--dry-run", action="store_true",

@@ -15,8 +15,13 @@ Resolve paths first:
 ```bash
 SK="${CLAUDE_PLUGIN_ROOT}/skills/atlas/scripts"
 ROOT="$(git rev-parse --show-toplevel)"
-CFG="python3 ${SK}/atlas_config.py"
 ```
+
+Every command below spells out `python3 "$SK/atlas_config.py" ...` in full, rather than
+a combined `CFG="python3 $SK/atlas_config.py"` alias expanded unquoted as `$CFG ...` —
+an unquoted alias only works by relying on word splitting to re-separate `python3` from
+the script path, which breaks the moment `CLAUDE_PLUGIN_ROOT` (and so `$SK`) contains a
+space.
 
 `--root` takes the REPOSITORY root, never the wiki directory. Pass `--root "$ROOT"`
 on every call; it may appear anywhere in the argv.
@@ -38,17 +43,17 @@ never a crash.
 Map `$ARGUMENTS` onto one of these (bare `/atlas:configure` means `show`):
 
 ```bash
-$CFG show --root "$ROOT"                          # effective merged config
-$CFG set root <path> --root "$ROOT"               # wiki directory, repo-relative
-$CFG set sync on_push <on|off> --root "$ROOT"     # push-time auto-sync gate
-$CFG set sync model <m|default> --root "$ROOT"    # fixer model (default/null clears)
-$CFG set sync timeout <seconds> --root "$ROOT"    # per-doc headless-call timeout
-$CFG set sync parallel <n> --root "$ROOT"         # concurrent headless calls
-$CFG sync-on-push --root "$ROOT"                  # exit 0 if on, 1 if off
-$CFG atlas-root --root "$ROOT"                    # effective wiki dir, repo-relative
-$CFG sync-model --root "$ROOT"                    # effective model (empty = default)
-$CFG sync-timeout --root "$ROOT"                  # effective timeout in seconds
-$CFG sync-parallel --root "$ROOT"                 # effective parallelism
+python3 "$SK/atlas_config.py" show --root "$ROOT"                          # effective merged config
+python3 "$SK/atlas_config.py" set root <path> --root "$ROOT"               # wiki directory, repo-relative
+python3 "$SK/atlas_config.py" set sync on_push <on|off> --root "$ROOT"     # push-time auto-sync gate
+python3 "$SK/atlas_config.py" set sync model <m|default> --root "$ROOT"    # fixer model (default/null clears)
+python3 "$SK/atlas_config.py" set sync timeout <seconds> --root "$ROOT"    # per-doc headless-call timeout
+python3 "$SK/atlas_config.py" set sync parallel <n> --root "$ROOT"         # concurrent headless calls
+python3 "$SK/atlas_config.py" sync-on-push --root "$ROOT"                  # exit 0 if on, 1 if off
+python3 "$SK/atlas_config.py" atlas-root --root "$ROOT"                    # effective wiki dir, repo-relative
+python3 "$SK/atlas_config.py" sync-model --root "$ROOT"                    # effective model (empty = default)
+python3 "$SK/atlas_config.py" sync-timeout --root "$ROOT"                  # effective timeout in seconds
+python3 "$SK/atlas_config.py" sync-parallel --root "$ROOT"                 # effective parallelism
 ```
 
 ## Keys

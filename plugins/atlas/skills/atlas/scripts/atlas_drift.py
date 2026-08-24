@@ -2,22 +2,29 @@
 """atlas drift detection — range resolution, covers matching, work packets.
 
 A doc is stale iff a file matching one of its `covers` globs changed between its
-frontmatter `code_rev` and HEAD. Detection is O(changed files x docs) with no LLM
-call: this script only runs git and matches globs. atlas_sync.py imports
-resolve_range / changed_files / stale_docs and feeds the resulting work packets to
-the headless fixer, so their names and the packet JSON shape are a cross-module
-contract (design.md §E / §E2) — do not rename them.
+OWN frontmatter `code_rev` and the effective "now" ref (`head_ref`, "HEAD" unless
+overridden). Detection is O(changed files x docs) with no LLM call: this script
+only runs git and matches globs. atlas_sync.py imports resolve_range / range_head /
+changed_files / stale_docs and feeds the resulting work packets to the headless
+fixer, so their names and the packet JSON shape are a cross-module contract
+(design.md §E / §E2) — do not rename them.
 
 Usage:
   atlas_drift.py [--range A..B] [--root DIR] [--json]
 
---range A..B  explicit diff range (wins over any auto-resolution)
+--range A..B  override which ref counts as "now" for every doc's staleness check —
+              only the RIGHT-hand side (B) is used; the left-hand side is
+              informational only (each doc always uses its own code_rev as the
+              left bound, never a caller-supplied one — see stale_docs' docstring
+              for why: gating on a shared range used to let real drift go
+              permanently unreviewed). Omit to use literal HEAD.
 --root DIR    target a repo other than the cwd
 --json        one work packet (design.md §E2) per line instead of human-readable text
 
 Always exits 0 (fail-open): this script runs from a PreToolUse push hook, and an
 uncaught exception or non-zero exit there is a traceback on a developer's push. An
-unresolvable range prints a stderr advisory and produces no packets.
+unresolvable auto-range is no longer fatal to the check (see main()) — it only
+means no explicit override; every doc still gets checked against literal HEAD.
 """
 import argparse
 import json
@@ -109,6 +116,47 @@ def changed_files(rng, root=None):
     return sorted(set(line.strip() for line in out.splitlines() if line.strip()))
 
 
+def range_head(rng):
+    """Extract the right-hand ref from an "A..B" or "A...B" range string ("..."
+    checked first — it's a superset of ".."). "" when `rng` is empty or has no
+    recognizable separator; callers then fall back to the literal "HEAD".
+
+    Used to let an explicit `--range` override which ref counts as "now" for
+    staleness (see `stale_docs`'s `head_ref`) — the left-hand side is no longer
+    used for anything (see `stale_docs` for why: it used to gate which changes were
+    even visible, which was the bug)."""
+    if not rng:
+        return ""
+    for sep in ("...", ".."):
+        idx = rng.find(sep)
+        if idx != -1:
+            right = rng[idx + len(sep):].strip()
+            return right or "HEAD"
+    return ""
+
+
+def head_ref_for(explicit_rng, resolved_rng):
+    """-> the ref `stale_docs` should treat as "now". Shared by atlas_drift.py's and
+    atlas_sync.py's CLIs so the "explicit override that couldn't be parsed" warning
+    below is written once, not duplicated (and possibly drifting) in both.
+
+    `range_head(resolved_rng) or "HEAD"` alone would silently swap in the default
+    the moment a user's EXPLICIT `--range` has no recognizable separator (a typo'd
+    ref, a bare sha with no "..") — the caller asked for an override, got the
+    default instead, and nothing on stderr says so. That is a real footgun: a typo
+    silently checked against (and, from atlas_sync.py, could sync + commit against)
+    an unintended revision with no sign anything went wrong. So an EXPLICIT
+    `explicit_rng` that fails to parse gets its own advisory; an unresolved AUTO
+    range (no explicit override given at all) stays silent, by design — that path's
+    own advisory already printed inside `resolve_range`."""
+    head_ref = range_head(resolved_rng) or "HEAD"
+    if explicit_rng and not range_head(explicit_rng):
+        print("atlas drift: --range %r has no recognizable right-hand ref (expected "
+              "\"A..B\" or \"A...B\") — ignoring it and using literal HEAD instead"
+              % explicit_rng, file=sys.stderr)
+    return head_ref
+
+
 _GLOB_CACHE = {}
 
 
@@ -169,21 +217,35 @@ def _skip(doc, reason):
     print("atlas drift: skipping %s — %s" % (doc.relpath, reason), file=sys.stderr)
 
 
-def stale_docs(docs, changed, root=None):
+def stale_docs(docs, root=None, head_ref="HEAD"):
     """-> list of work packets (design.md §E2), one per stale doc, ordered by doc
     relpath. A doc yields a packet iff ALL of (§E3, in this order):
       1. doc.errors is empty, and
       2. doc.covers is non-empty, and
       3. doc.code_rev is non-empty and resolves to a commit, and
-      4. the resolved code_rev sha != the resolved HEAD sha, and
-      5. at least one path in `changed` matches at least one covers glob.
+      4. the resolved code_rev sha != the resolved head_ref sha, and
+      5. at least one path changed between the doc's OWN code_rev and head_ref
+         matches at least one covers glob.
     Failing (1), (2) or (3) produces a stderr advisory naming the doc and the
-    reason; failing (4) or (5) is silent — the doc simply is not stale."""
+    reason; failing (4) or (5) is silent — the doc simply is not stale.
+
+    Condition 5 used to be gated on a single CALLER-SUPPLIED `changed` list (the
+    push-range's changed files) shared across every doc. That was a real bug, not
+    a cosmetic one: a covered file that changed during an earlier push the hook
+    never saw (hook was off, or the push went straight from a terminal — this
+    PreToolUse hook only fires on Bash calls Claude itself makes) would not appear
+    in THIS push's range, so `matched` came back empty and the doc was silently
+    treated as not stale — and if the SAME doc later got a packet for some OTHER
+    covered file, anchor advancement moved `code_rev` straight to head_ref, marking
+    the never-reviewed earlier change as synced forever. Computing `matched` from
+    each doc's OWN `code_rev..head_ref` (below) closes both holes: it can never
+    miss a change, and it always exactly matches the range whose end becomes the
+    new anchor."""
     base = repo_root(root)
-    head_sha, head_ok = _git(["rev-parse", "--verify", "HEAD^{commit}"], cwd=base)
+    head_sha, head_ok = _git(["rev-parse", "--verify", "%s^{commit}" % head_ref], cwd=base)
     # Short form for the packet's `head` / `range` fields (matches §E2's example
     # shape); the full sha above is what the freshness comparison uses.
-    head_short, ok = _git(["rev-parse", "--short", "HEAD"], cwd=base)
+    head_short, ok = _git(["rev-parse", "--short", head_ref], cwd=base)
     if not ok or not head_short:
         head_short = head_sha[:7] if head_sha else ""
 
@@ -207,12 +269,15 @@ def stale_docs(docs, changed, root=None):
         if not ok or not rev_sha:
             _skip(doc, "code_rev %r does not resolve to a commit" % doc.code_rev)
             continue
-        # (4) Already synced to HEAD: fresh, silent.
+        # (4) Already synced to head_ref: fresh, silent.
         if not head_ok or rev_sha == head_sha:
             continue
-        # (5) Which of the changed paths does this doc actually cover? `matched`
-        # is what scopes the diff the fixer later sees — never the whole change set.
-        matched = [p for p in changed
+        # (5) The doc's OWN full history since its OWN code_rev — never a shared,
+        # possibly-narrower push-range change set (see the docstring above for why
+        # that was wrong). `matched` is what scopes the diff the fixer later sees,
+        # and it is exactly the same range `range`/anchor-advancement below uses.
+        doc_changed = changed_files("%s..%s" % (doc.code_rev, head_ref), root)
+        matched = [p for p in doc_changed
                    if any(glob_match(g, p) for g in doc.covers)]
         if not matched:
             continue
@@ -238,14 +303,16 @@ def main():
                     help="one work packet per line instead of human-readable text")
     args = ap.parse_args()
 
+    # `--range` only ever supplies which ref counts as "now" (its right-hand side);
+    # resolve_range's auto-detected forms (`@{upstream}...HEAD`, `<merge-base>..HEAD`)
+    # always end in literal HEAD anyway. An unresolvable auto-range used to mean "no
+    # drift check at all" — that was itself part of the anchor-skipping bug this
+    # rewrite fixes, so it no longer short-circuits anything; it only means no
+    # explicit override, and stale_docs() still checks every doc against true HEAD.
     rng = resolve_range(args.rng, args.root)
-    if not rng:
-        # resolve_range already printed the advisory; no range means no packets,
-        # and fail-open means exit 0 regardless.
-        return 0
-    changed = changed_files(rng, args.root)
+    head_ref = head_ref_for(args.rng, rng)
     docs = load_docs(args.root)
-    packets = stale_docs(docs, changed, args.root)
+    packets = stale_docs(docs, args.root, head_ref=head_ref)
 
     for pkt in packets:
         if args.as_json:

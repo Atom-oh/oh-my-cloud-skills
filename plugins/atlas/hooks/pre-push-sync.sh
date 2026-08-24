@@ -8,12 +8,23 @@
 # Anthropic on every push. Fails OPEN on any internal error, missing claude binary, or
 # an unresolvable range — a doc-syncer that can wedge a push is worse than one that
 # occasionally misses a stale doc.
-set -euo pipefail
+# NOT a bare `set -e`: under `-e` alone, `${CLAUDE_PLUGIN_ROOT}` being unset (no
+# default expansion below) or `mktemp` failing would exit non-zero WITHOUT the
+# stderr advisory this hook's whole contract promises ("every failure path prints
+# an advisory and exits 0") — a silent exit 1 satisfies "never blocks" (PreToolUse
+# only blocks on exit 2) but breaks the stronger, separately documented promise.
+# `-u` and `pipefail` stay: they only matter for commands this file writes itself,
+# and every guard below is explicit rather than relying on them to trip.
+set -uo pipefail
 
 if [ "${ATLAS_SYNC:-}" = "off" ]; then
   exit 0
 fi
 
+if [ -z "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+  echo "atlas-sync: CLAUDE_PLUGIN_ROOT is unset — skipping doc sync" >&2
+  exit 0
+fi
 SK="${CLAUDE_PLUGIN_ROOT}/skills/atlas/scripts"
 
 # Same rationale as the kiro hooks: `.claude/atlas.local.json` (holding
@@ -22,7 +33,7 @@ ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
 
 # Same reason as the kiro hooks for doing boundary matching in Python, and for saving
 # the payload to a file rather than a bash variable.
-PAYLOAD_FILE="$(mktemp)"
+PAYLOAD_FILE="$(mktemp)" || { echo "atlas-sync: mktemp failed — skipping doc sync" >&2; exit 0; }
 trap 'rm -f "$PAYLOAD_FILE"' EXIT
 cat > "$PAYLOAD_FILE"
 

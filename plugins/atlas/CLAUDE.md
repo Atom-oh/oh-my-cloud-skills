@@ -26,9 +26,13 @@ once claimed to be "loaded into context on every turn", which silently killed it
 default-delegate routing — see `plugins/kiro/CLAUDE.md`, "Routing rule"), and atlas is
 built on the fix: the one plugin-side channel whose output *does* land in a consuming
 repo's context is a **SessionStart hook**, so the operative instruction is emitted from
-`hooks/session-context.sh`, unconditionally, on every session.
+`hooks/session-context.sh`, on every session (gated only on the wiki actually existing —
+see below, not on any toggle).
 
-The rule the hook emits: read the wiki root's `INDEX.md` first; choose docs by their
+The rule the hook emits, once the wiki root's `INDEX.md` exists (plugin install and
+`/atlas:init` are two separate steps; a session in a repo that installed atlas but never
+ran init gets a one-line "not initialized yet" note instead — telling it to read a file
+that is not there would be worse than saying nothing): read that `INDEX.md` first; choose docs by their
 `description` and `covers` fields in that index; only then read the chosen bodies; and
 prefer an atlas doc over re-deriving the same knowledge from source, because the docs
 are drift-checked against `code_rev`. This file is only in context when someone is
@@ -53,24 +57,32 @@ repo cannot commit a file that silently opts an installing user's pushes into di
 egress. Every other key in the same tracked file (`root`, `sync.model`, `sync.timeout`,
 `sync.parallel`) still applies; those are configuration, not a consent bypass, and a
 hostile `root` value is separately neutralized (absolute and `..`-escaping paths are
-refused, because `root` is also the fixer's write-and-commit scope).
+refused, because `root` is also the fixer's write-and-commit scope; the on-disk result
+is also checked by realpath before anything runs, since a string can pass every check
+above and still resolve outside the repo via a symlinked directory).
 
 What confines the fixer once it runs: the allow/deny tool lists
 (`--allowedTools Read,Grep,Glob,Edit`, explicit `--disallowedTools` because deny beats
-allow), and — the layer that actually holds — a post-hoc scan that reverts any changed
-path outside the wiki root before anything is committed. The diff it reads is treated
-as attacker-controllable text. Full argument: `skills/atlas/references/headless-sync.md`.
+allow), a `--settings` `PreToolUse` hook that is the actual enforcement (confines
+`Edit` to the wiki root by realpath, checked before the write happens), and a post-hoc
+git-based scan as defense-in-depth (it cannot see a write to an existing gitignored
+file or a path outside the repo at all, which is exactly why it isn't the primary
+layer). The diff it reads is treated as attacker-controllable text. Full argument:
+`skills/atlas/references/headless-sync.md`.
 
 ## Fail-open contract
 
 A broken doc-syncer must never wedge a push. Every failure in the push path prints a
 stderr advisory and exits 0: missing `claude` binary, per-doc timeout or spawn failure,
-unresolvable push range, a push whose scope the hook cannot map to a diff (repo/tree
-redirects, a preceding `cd`, `--delete`, explicit refspecs), nested re-entry
-(`ATLAS_SYNC_ACTIVE=1`), and any internal error. An inline `ATLAS_SYNC=off git push ...`
-prefix skips the gate for one push. The accepted cost: when the syncer fails, a stale
-doc ships unfixed and nothing stops the push — recoverable, since the doc stays flagged
-on the next run and `/atlas:sync` fixes it on demand.
+the wiki root resolving outside the repository, a push whose scope the hook cannot map
+to a diff (repo/tree redirects, a preceding `cd`, `--delete`, explicit refspecs), nested
+re-entry (`ATLAS_SYNC_ACTIVE=1`), and any internal error. Every doc is checked against
+literal `HEAD` regardless of whether an upstream/trunk auto-resolves, so a missing
+upstream is no longer one of these failure modes on its own — only a genuine scope
+mismatch is. An inline `ATLAS_SYNC=off git push ...` prefix skips the gate for one push.
+The accepted cost: when the syncer fails, a stale doc ships unfixed and nothing stops
+the push — recoverable, since the doc stays flagged on the next run and `/atlas:sync`
+fixes it on demand.
 
 The one deliberate exception is `atlas_index.py --validate`, which exits 1 on problems
 because it exists to be a gate — and `atlas_sync.py` refuses to commit while validation
@@ -96,5 +108,5 @@ reports hard errors (orphan advisories alone do not block a sync commit).
 
 | Hook | Event | Behavior |
 |------|-------|----------|
-| `hooks/pre-push-sync.sh` | `PreToolUse(Bash)` on `git push` | Advisory gate, never blocks: drift-check and (if `sync.on_push`) auto-fix + commit before the push executes |
-| `hooks/session-context.sh` | `SessionStart` | Emits the plugin banner, the unconditional reading rule (see above), and a toggle-gated note when push-time sync is armed |
+| `hooks/pre-push-sync.sh` | `PreToolUse(Bash)` on `git push` | Advisory gate, never blocks. Exits immediately, doing nothing, when `sync.on_push` is off (the default) — drift-check and auto-fix + commit only run when the toggle is on, not unconditionally |
+| `hooks/session-context.sh` | `SessionStart` | Emits the plugin banner and, only once the wiki is initialized (an `INDEX.md` exists), the reading rule (see above); a toggle-gated note when push-time sync is armed |

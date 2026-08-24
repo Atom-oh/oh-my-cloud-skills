@@ -81,16 +81,20 @@ terminal are not intercepted; that coverage gap is accepted by design.
 
 ## Running the scripts directly
 
-All four scripts live under this skill's `scripts/` directory. On every one of them,
-**`--root DIR` means the repository root, not the wiki root** — the wiki root is
-derived as `<repo root>/<config root>` (default `docs/atlas`). Omit the flag and each
-script resolves the repo root itself via `git rev-parse --show-toplevel`.
+All five scripts (`atlas_config.py`, `atlas_index.py`, `atlas_drift.py`,
+`atlas_sync.py`, `hook_match.py`) live under this skill's `scripts/` directory.
+On the four that take one, **`--root DIR` means the repository root, not the wiki
+root** — the wiki root is derived as `<repo root>/<config root>` (default
+`docs/atlas`). Omit the flag and each script resolves the repo root itself via
+`git rev-parse --show-toplevel`.
 
 ```bash
-# detect stale docs against the auto-resolved push range (read-only, always exit 0)
+# detect stale docs: every doc's OWN code_rev..HEAD, never a push-range subset
+# (read-only, always exit 0)
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/atlas/scripts/atlas_drift.py" --json
 
-# preview a sync: prints per-doc what WOULD be sent; spawns nothing, writes nothing
+# preview a sync: prints per-doc what WOULD be sent; spawns no `claude` process and
+# writes nothing (it still runs a few read-only `git` calls to compute the preview)
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/atlas/scripts/atlas_sync.py" --dry-run
 
 # schema + graph check — the ONE gate in the plugin: exits 1 on any problem
@@ -103,8 +107,11 @@ python3 "${CLAUDE_PLUGIN_ROOT}/skills/atlas/scripts/atlas_index.py" --write
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/atlas/scripts/atlas_config.py" set sync on_push on
 ```
 
-An explicit `--range A..B` on `atlas_drift.py` or `atlas_sync.py` overrides the
-auto-resolved range (`@{upstream}...HEAD`, falling back to the trunk merge-base).
+An explicit `--range A..B` on `atlas_drift.py` or `atlas_sync.py` overrides which ref
+counts as "now" — only the right-hand side (`B`) is used; each doc always uses its OWN
+`code_rev` as the left bound, never a shared one, because gating on a shared range used
+to let real drift go permanently unreviewed once some other covered file advanced the
+same doc's anchor. Omit the flag to use literal `HEAD`.
 `atlas_config.py show` prints the effective merged settings and their source.
 
 ## Consent and fail-open
@@ -118,8 +125,10 @@ auto-resolved range (`@{upstream}...HEAD`, falling back to the trunk merge-base)
   unresolvable range, nested re-entry, internal error — with a stderr advisory. Only
   `atlas_index.py --validate` is allowed to exit non-zero, because it exists to gate.
 - The headless fixer runs with `--allowedTools Read,Grep,Glob,Edit` and an explicit
-  deny list; the real guarantee is post-hoc — any path it changed outside the wiki
-  root is reverted before anything is committed (`references/headless-sync.md`).
+  deny list; the actual enforcement is a `--settings` `PreToolUse` hook that confines
+  `Edit` to the wiki root by realpath (a post-hoc git-based scan runs too, as
+  defense-in-depth, but can't see a write to an existing gitignored file or a path
+  outside the git working tree at all — `references/headless-sync.md`).
 
 ## Output
 

@@ -222,7 +222,9 @@ echo "plugins=$VS marketplace=$MV tag=$TAG"
 - Content plugin agents produce artifacts (HTML, .drawio, .md); ops plugin agents produce diagnoses with commands
 - Content goes through `content-review-agent` quality gate (100-point scale: PASS ≥85, REVIEW 70-84, FAIL <70; Visual-Testing-exempt content is judged on a 90-point scale: PASS ≥77)
 - Ops plugin reference files are commands-first, with Mermaid decision trees and error→solution tables
-- Korean/English bilingual keywords in all auto-invocation rules
+- Korean/English bilingual keywords in all auto-invocation rules — except `atlas`,
+  which is deliberately English-only (it's a general-purpose, exportable-to-any-repo
+  plugin, not scoped to this marketplace's Korean-speaking AWS-practitioner audience)
 - AWS icons are packaged in `aws-content-plugin/skills/reactive-presentation/assets/aws-icons.zip` (4 icon sets: Service, Group, Category, Resource)
 - Remarp-generated HTML contains `<meta name="generator" content="remarp">` for extension recognition
 - Remarp VSCode Extension source lives in `tools/remarp-vscode/` (TypeScript, packaged as .vsix)
