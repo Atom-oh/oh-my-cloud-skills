@@ -65,17 +65,26 @@ above and still resolve outside the repo via a symlinked directory).
 
 What confines the fixer once it runs: the allow/deny tool lists
 (`--allowedTools Read,Grep,Glob,Edit`, explicit `--disallowedTools` because deny beats
-allow), a `--settings` `PreToolUse` hook that is the actual enforcement for `Edit`
-(confines it to the wiki root by realpath, checked before the write happens), and a
-post-hoc git-based scan as defense-in-depth (it cannot see a write to an existing
-gitignored file or a path outside the repo at all, which is exactly why it isn't the
-primary layer). **This confinement covers `Edit` only** — `Read`/`Grep`/`Glob` are not
-path-restricted, so a hijacked session can read a file outside the wiki root and
-`Edit` its content into an in-root doc, which both write-confinement layers will let
-through because the edit's *target* is in-bounds. That doc still ships in the same
-`docs(atlas): sync` commit, so a malicious diff between a doc's `code_rev` and `HEAD`
-is a real, currently open exfiltration path, not a closed one. The diff it reads is
-treated as attacker-controllable text. Full argument, including this gap:
+allow), and a `--settings` `PreToolUse` hook that is the actual enforcement — for
+`Edit`, `Read`, `Grep`, AND `Glob` alike, all four confined to the wiki root by
+realpath, checked before the tool call runs (a Grep/Glob with no explicit `path` is
+denied outright, not given a silent pass: its default search root is the repo root,
+never the wiki root, so an absent path can only ever resolve out-of-bounds). A
+post-hoc git-based scan still runs as defense-in-depth for the write side (it cannot
+see a write to an existing gitignored file or a path outside the repo at all, which is
+exactly why it isn't the primary layer). **Read/Grep/Glob confinement closes the
+read-then-launder path this section used to describe as open**: the fixer's prompt
+never gives it a legitimate reason to look outside the one doc it may edit (the
+covered-files diff already arrives on stdin), so confining these three tools costs it
+nothing it needed. As a second, independent net — not a substitute for the guard
+above — `atlas_sync.py` also runs a narrow, self-contained secret-shaped-string scan
+over each synced doc's own diff right before staging it, and reverts (not commits)
+any doc whose newly-added content matches; this is belt-and-braces for the case where
+an already-in-scope Read (the doc's own prior content, or a legitimately covered code
+file) contained secret-shaped text that ends up copied verbatim into the doc body —
+narrower and more conservative than a full secret scanner on purpose, since a false
+positive here silently drops a real doc fix rather than merely warning. The diff the
+fixer reads is still treated as attacker-controllable text otherwise. Full argument:
 `skills/atlas/references/headless-sync.md`.
 
 ## Fail-open contract

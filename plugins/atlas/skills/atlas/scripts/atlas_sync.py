@@ -2,9 +2,10 @@
 """atlas push-time auto-fix: one confined headless `claude -p` call per stale doc.
 
 atlas_drift.py finds the stale docs (cheap, no LLM); this script repairs them. Each
-stale doc gets its own headless call that may Read anything but Edit ONLY that doc,
-then the script itself advances the doc's `code_rev` anchor, regenerates INDEX.md,
-and commits the result — so the fix rides along in the `git push` that triggered it.
+stale doc gets its own headless call confined to Read/Edit ONLY that doc (Grep/Glob
+similarly confined to the wiki root), then the script itself advances the doc's
+`code_rev` anchor, regenerates INDEX.md, and commits the result — so the fix rides
+along in the `git push` that triggered it.
 
 Usage:
   atlas_sync.py [--range A..B] [--root DIR] [--dry-run] [--json]
@@ -114,26 +115,49 @@ def _prompt_for(doc_path):
 # one outside the atlas root that git can't see at all (an existing gitignored file,
 # or an absolute path outside the repo entirely), which the post-hoc `_confine()` scan
 # below cannot detect because it only reads `git diff`/`git ls-files` output. This
-# PreToolUse hook is the actual enforcement: it reads Edit's `file_path` from stdin,
+# PreToolUse hook is the actual enforcement: it reads the tool_input path from stdin,
 # resolves it to a realpath, and blocks (exit 2) anything that doesn't resolve inside
 # the atlas root passed via the ATLAS_GUARD_ROOT env var — the same realpath-guard
 # pattern this repo already uses for kiro-cli's fs_write/fs_read
-# (.kiro/agents/kiro-implementer.json), translated to Claude Code's Edit/file_path
+# (.kiro/agents/kiro-implementer.json), translated to Claude Code's PreToolUse
 # hook schema. `_confine()` still runs afterward as defense-in-depth (it can revert an
 # in-root write too, e.g. if a future task widens --allowedTools), but this hook is
 # what actually prevents the escape from landing on disk at all.
-_GUARD_CMD = (
+#
+# Read/Grep/Glob are ALSO guarded now, not just Edit — this is the fix for the
+# documented exfiltration gap (see plugins/atlas/CLAUDE.md, "Trust / consent
+# boundary"): a hijacked fixer could Read a file outside the wiki root (a
+# gitignored credential, an unrelated secret) and Edit its content into the one
+# in-root doc it's allowed to touch, which the Edit-only guard and the post-hoc
+# `_confine()` scan both let through because the EDIT's target was always in-bounds
+# — only the READ was the actual leak. The prompt (`_prompt_for`) gives the fixer
+# no legitimate reason to Read/Grep/Glob anything outside the one doc it may edit
+# (the covered-files diff already arrives on stdin), so confining these three to
+# the same root as Edit costs the fixer nothing it was supposed to be able to do.
+# Read's path key is `file_path` (same as Edit); Grep/Glob use `path`, which is
+# OPTIONAL in Claude Code's tool schema (an absent path searches the cwd) — an
+# absent path here resolves to `os.getcwd()`, which is the repo root passed via
+# `cwd=base` to the headless call, i.e. always OUTSIDE the atlas root (a wiki root
+# equal to the repo root is refused earlier in `_run()`), so a bare Grep/Glob with
+# no explicit in-root path is denied by the same boundary check, not given a silent
+# pass — fail-closed, not "no path means no opinion."
+_GUARD_CMD_TEMPLATE = (
     "python3 -I -c \"import json,sys,os; "
     "d=json.load(sys.stdin); "
-    "p=(d.get('tool_input') or {}).get('file_path',''); "
+    "p=(d.get('tool_input') or {}).get('%s',''); "
     "root=os.environ.get('ATLAS_GUARD_ROOT',''); "
     "t=os.path.realpath(p if os.path.isabs(p) else os.path.join(os.getcwd(), p)); "
-    "sys.exit(0 if root and (t == root or t.startswith(root + os.sep)) else 2)\""
+    "sys.exit(0 if (p and root and (t == root or t.startswith(root + os.sep))) else 2)\""
 )
+_GUARD_CMD_FILE_PATH = _GUARD_CMD_TEMPLATE % "file_path"
+_GUARD_CMD_PATH = _GUARD_CMD_TEMPLATE % "path"
 _SETTINGS_JSON = json.dumps({
     "hooks": {
         "PreToolUse": [
-            {"matcher": "Edit", "hooks": [{"type": "command", "command": _GUARD_CMD}]},
+            {"matcher": "Edit", "hooks": [{"type": "command", "command": _GUARD_CMD_FILE_PATH}]},
+            {"matcher": "Read", "hooks": [{"type": "command", "command": _GUARD_CMD_FILE_PATH}]},
+            {"matcher": "Grep", "hooks": [{"type": "command", "command": _GUARD_CMD_PATH}]},
+            {"matcher": "Glob", "hooks": [{"type": "command", "command": _GUARD_CMD_PATH}]},
         ],
     },
 })
@@ -157,7 +181,7 @@ def _claude_cmd(prompt_text, model):
         # WebFetch/WebSearch deny network egress; Task denies spawning a subagent
         # that would not inherit these restrictions.
         "--disallowedTools", "Bash,Write,NotebookEdit,WebFetch,WebSearch,Task",
-        # See _GUARD_CMD above: the actual write-confinement enforcement.
+        # See _GUARD_CMD_TEMPLATE above: the actual read/write-confinement enforcement.
         "--settings", _SETTINGS_JSON,
     ]
     if model:
@@ -173,7 +197,7 @@ def _run_packet(packet, diff_text, model, timeout, base, atlas_rel):
     # ATLAS_SYNC_ACTIVE=1 in the child environment: a nested `git push` issued
     # inside the headless call re-enters the PreToolUse hook, re-runs this script,
     # and stops at the recursion guard in main() instead of recursing forever.
-    # ATLAS_GUARD_ROOT: the absolute, realpath'd atlas root the _GUARD_CMD PreToolUse
+    # ATLAS_GUARD_ROOT: the absolute, realpath'd atlas root the _GUARD_CMD_TEMPLATE PreToolUse
     # hook reads to decide whether an Edit's file_path is in-bounds — computed here
     # (not baked into _claude_cmd) because it depends on this call's `base`/`atlas_rel`.
     env = {**os.environ, "ATLAS_SYNC_ACTIVE": "1",
@@ -258,6 +282,51 @@ def _confine(base, atlas_rel, baseline_tracked, baseline_untracked):
     if out_tracked or out_untracked:
         return reverted if reverted else None
     return []
+
+
+# Best-effort secret net over a synced doc's OWN diff, checked right before that
+# doc is accepted for staging. Belt-and-braces alongside the Read/Grep/Glob guard
+# above (§ "Read/Grep/Glob are ALSO guarded now"): that guard closes the read-side
+# leak going forward, but this catches the case where an already-in-scope Read (the
+# doc's own prior content, or a legitimately-covered code file) contained secret-
+# shaped text that a hijacked fixer copies verbatim into the doc body. Deliberately
+# self-contained rather than importing co-agent's consensus_hooks.py: atlas is a
+# standalone, general-purpose plugin (installable without co-agent present) and
+# must not depend on another plugin's internal scripts. Narrower than that
+# scanner on purpose — high-confidence patterns only, since a false-positive here
+# silently drops a real doc fix rather than just warning.
+_SECRET_LINE_RE = re.compile(
+    r"AKIA[0-9A-Z]{16}"                                          # AWS access key id
+    r"|aws_secret_access_key\s*[:=]\s*\S{16,}"                   # AWS secret access key
+    r"|-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----"  # PEM private key
+    r"|(?:password|passwd|secret|api[_-]?key|client[_-]?secret|token)"
+    r"['\"]?\s*[:=]\s*['\"][^'\"]{8,}['\"]",
+    re.I,
+)
+# Same allowlist convention as .claude/hooks/secret-scan.sh / consensus_hooks.py: an
+# explicit marker means "known fixture/example", not a real secret.
+_SECRET_ALLOWLIST_RE = re.compile(r"pragma:\s*allowlist secret|atlas:\s*test-fixture", re.I)
+
+
+def _scan_doc_secrets(doc_path, base):
+    """"" (no hit) or the matched text (truncated) if a synced doc's own diff
+    (working tree vs HEAD, not yet staged) contains a secret-shaped string on an
+    ADDED line. Checked once per doc, right before that doc is accepted into
+    `synced` — a hit reverts just that one doc (see the call site), never the
+    whole batch."""
+    rel = os.path.relpath(doc_path, base).replace(os.sep, "/")
+    diff_text, ok = _git(["diff", "--", rel], base)
+    if not ok:
+        return ""
+    for line in diff_text.splitlines():
+        if not line.startswith("+") or line.startswith("+++"):
+            continue
+        if _SECRET_ALLOWLIST_RE.search(line):
+            continue
+        m = _SECRET_LINE_RE.search(line)
+        if m:
+            return m.group()[:40]
+    return ""
 
 
 def _advance_anchor(doc_path, head):
@@ -485,6 +554,15 @@ def _run(args):
                     _revert_doc(pk["doc_path"], base)
                     results.append({"doc": pk["doc"], "status": "failed",
                                     "reason": err})
+                    continue
+                secret_hit = _scan_doc_secrets(pk["doc_path"], base)
+                if secret_hit:
+                    print("atlas-sync: %s: possible secret in the synced content "
+                          "(%r) — reverting, not committing" % (pk["doc"], secret_hit),
+                          file=sys.stderr)
+                    _revert_doc(pk["doc_path"], base)
+                    results.append({"doc": pk["doc"], "status": "failed",
+                                    "reason": "possible secret in synced content"})
                     continue
                 if _advance_anchor(pk["doc_path"], pk["head"]):
                     synced.append(pk)

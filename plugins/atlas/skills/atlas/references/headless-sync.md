@@ -45,33 +45,37 @@ section) and a shell is the shortest path from injected text to arbitrary effect
 exfiltrate anything; `Task` to deny spawning a subagent, which would not inherit these
 restrictions.
 
-## Write confinement
+## Read/write confinement
 
 Be clear-eyed about what the flag list does **not** cover: `Edit` can reach any file
 that already exists, anywhere the process can address — the allow/deny lists confine
-*which tools* run, not *which paths* they touch. So the flag list is not the guarantee.
+*which tools* run, not *which paths* they touch. So the flag list alone is not the
+guarantee; the `PreToolUse` guard below is.
 
-Be equally clear-eyed about `Read`/`Grep`/`Glob`: nothing below confines them to the
-atlas root. The `PreToolUse` guard in layer 1 only matches the `Edit` tool, so an
-injected instruction can have the fixer `Read`/`Grep` any file the process can address
-— including something outside the wiki entirely, gitignored credentials included — and
-then `Edit` that content into an in-root doc, which layer 2 will happily let through
-because the *edit itself* lands inside the atlas root. The write-confinement layers
-stop the fixer from writing to an arbitrary path; they do not stop it from *reading*
-one and laundering the content into a doc that ships in the same push. This is a real,
-currently open gap, not a hardened one — treat "confined to the wiki root" claims
-elsewhere in this plugin's docs as describing `Edit` only, not the full tool set.
+`Read`/`Grep`/`Glob` are confined the same way `Edit` is — this used to be a documented
+open gap (an injected instruction could have the fixer `Read`/`Grep` a file outside the
+wiki entirely, gitignored credentials included, then `Edit` that content into an
+in-root doc, which layer 2 would let through because the *edit itself* landed inside
+the atlas root) and is closed by extending layer 1 to all four tools. The fixer's
+prompt (see `_prompt_for` in `atlas_sync.py`) never gives it a legitimate reason to
+Read/Grep/Glob anything beyond the one doc it may edit — the covered-files diff already
+arrives on stdin — so this costs the fixer nothing it needed to do its job.
 
 Two layers actually hold, in order:
 
 1. **A `--settings` `PreToolUse` hook is the real enforcement.** Every `claude -p`
-   invocation carries an inline hook that reads `Edit`'s `file_path` from stdin,
-   resolves it to a realpath, and blocks the tool call (exit 2) unless it resolves
-   inside the atlas root — the wiki root's OWN realpath, read from the
-   `ATLAS_GUARD_ROOT` environment variable set for that call. This is the same
-   realpath-guard pattern this repo already uses for kiro-cli's `fs_write`/`fs_read`
-   (`.kiro/agents/kiro-implementer.json`), translated to Claude Code's `Edit`/
-   `file_path` hook schema. It is checked BEFORE the write happens, not after.
+   invocation carries an inline hook, registered for `Edit`, `Read`, `Grep`, and
+   `Glob` alike, that reads the tool call's path (`file_path` for Edit/Read, `path`
+   for Grep/Glob) from stdin, resolves it to a realpath, and blocks the tool call
+   (exit 2) unless it resolves inside the atlas root — the wiki root's OWN realpath,
+   read from the `ATLAS_GUARD_ROOT` environment variable set for that call. Grep/Glob's
+   `path` argument is optional in the tool schema (an absent path searches the
+   process's cwd, which is the repo root the headless call runs in, never the wiki
+   root) — an absent path is denied outright here, not given a silent pass, since it
+   can only ever resolve outside the guarded root. This is the same realpath-guard
+   pattern this repo already uses for kiro-cli's `fs_write`/`fs_read`
+   (`.kiro/agents/kiro-implementer.json`), translated to Claude Code's PreToolUse hook
+   schema. It is checked BEFORE the tool call runs, not after.
 2. **A post-hoc git-based scan is defense-in-depth, not the primary guarantee.**
    After each call, and before any commit, `atlas_sync.py` runs `git diff
    --name-only` (plus `git ls-files --others --exclude-standard` for new untracked
@@ -106,26 +110,22 @@ The diff on stdin is attacker-controllable text: any commit author between the d
 chose its content, and the fixer reads all of it. Assume it contains instructions
 aimed at the model.
 
-Three things bound the damage, but not all the way. First, the prompt states explicitly
-that the diff is untrusted data and that any instruction found *inside* it is content to
-document, never a command to follow — necessary, but prose alone is the weakest layer
-here. Second, the tool set removes the payloads that would make a successful injection
-reach outside the process entirely: no `Bash` to execute anything, no
-`WebFetch`/`WebSearch` to reach the network directly, no `Task` to launder the attempt
-through an unrestricted subagent. Third, a hijacked session's *writes* are still bounded
-to `Edit` calls, and the write-confinement pass above reverts any of them that land
-outside the atlas root.
-
-What is NOT bounded: `Read`/`Grep`/`Glob` are unconfined (see "Write confinement" above),
-so a hijacked session can read a file outside the wiki — a gitignored secret, an
-unrelated repo file — and `Edit` its content straight into an in-root doc. That edit
-passes both write-confinement layers because the *target* path is in-bounds; only the
-*content* is tainted. The result still lands in a `docs(atlas): sync ...` commit in your
-push, where review can catch it before it goes further — but "review catches it" is a
-weaker backstop than for a pure content-corruption injection, because this path is a
-push, i.e. the content already left the local machine once, unreviewed, before that
-review happens. If your threat model includes a genuinely malicious contributor branch
-being synced against, treat this as an open exfiltration path, not a closed one.
+Four things bound the damage. First, the prompt states explicitly that the diff is
+untrusted data and that any instruction found *inside* it is content to document, never
+a command to follow — necessary, but prose alone is the weakest layer here. Second, the
+tool set removes the payloads that would make a successful injection reach outside the
+process entirely: no `Bash` to execute anything, no `WebFetch`/`WebSearch` to reach the
+network directly, no `Task` to launder the attempt through an unrestricted subagent.
+Third, a hijacked session's reads AND writes are both bounded to the wiki root — see
+"Read/write confinement" above — so there is no in-process path left to a file outside
+it at all, closing the read-then-launder route this section used to describe as open.
+Fourth, as a narrower, independent net over what DOES stay in scope (the doc's own
+prior content, or a legitimately covered code file, could still itself contain
+secret-shaped text): `atlas_sync.py` scans each synced doc's own diff for high-
+confidence secret patterns on added lines, right before staging, and reverts — never
+commits — a doc that matches. This is deliberately conservative (narrower than a full
+secret scanner) rather than a hardened guarantee; treat it as a best-effort backstop for
+the case above, not a substitute for the confinement guard.
 
 ## Why the script writes code_rev
 

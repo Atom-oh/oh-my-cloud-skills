@@ -49,6 +49,9 @@ assert_eq "0" "$(_hm push-scope-mismatch 'cd ../other && git push')" "push-scope
 assert_eq "0" "$(_hm push-scope-mismatch 'git commit -m x && git push')" "push-scope-mismatch: preceding commit (stale range)"
 assert_eq "0" "$(_hm push-scope-mismatch 'git push origin --delete foo')" "push-scope-mismatch: --delete has nothing to review"
 assert_eq "0" "$(_hm push-scope-mismatch 'git -C /elsewhere push')" "push-scope-mismatch: -C redirect"
+assert_eq "0" "$(_hm push-scope-mismatch 'git push --dry-run')" "push-scope-mismatch: --dry-run — nothing actually pushed"
+assert_eq "0" "$(_hm push-scope-mismatch 'git push -n')" "push-scope-mismatch: -n short form"
+assert_eq "0" "$(_hm push-scope-mismatch 'git push origin -n')" "push-scope-mismatch: -n after a remote positional"
 
 # --- push-scope-mismatch: false positive (an ordinary push must NOT warn) ---
 assert_eq "1" "$(_hm push-scope-mismatch 'git push')" "push-scope-mismatch: bare push is not a mismatch"

@@ -46,8 +46,9 @@ Usage:
                                     #   (`-C`/`--git-dir`/`--work-tree`/`GIT_DIR=`
                                     #   redirect, a preceding `cd`/`pushd`, a preceding
                                     #   `git commit` in the same invocation whose content
-                                    #   the diff would miss, or `--delete`/`-d` — nothing
-                                    #   to review). exit 1 = no mismatch signal detected.
+                                    #   the diff would miss, `--delete`/`-d` — nothing
+                                    #   to review, or `--dry-run`/`-n` — nothing is
+                                    #   actually pushed). exit 1 = no mismatch signal detected.
 """
 import sys
 import re
@@ -293,6 +294,19 @@ _PUSH_ARGS_RE = re.compile(
 # `--delete`/`-d` (and its `:branch` refspec shorthand) removes a remote ref — there
 # is no local content being pushed, so there is nothing meaningful to diff/review.
 _PUSH_DELETE_RE = re.compile(r"(?:^|\s)(?:--delete\b|-d\b)")
+# `--dry-run`/`-n` simulates the push — nothing actually leaves the machine, and no
+# range this hook computes now will ever really be pushed. `_push_has_explicit_refspec`
+# already has to recognize both spellings as value-less flags (so they aren't
+# mistaken for a positional refspec), but recognizing them there only keeps this
+# detector from misfiring on OTHER checks — it does not, by itself, treat a dry run
+# as its own mismatch class. Without a dedicated check here, a `git push --dry-run`
+# reads as an ordinary push to the calling hook, which then runs its full
+# side-effecting flow (a real review call, or — in atlas's copy of this file — a
+# real `docs(atlas): sync` commit + diff egress) even though the user asked only
+# for a simulation. Same bare-`-n\b` boundary as `_PUSH_DELETE_RE` above (no `\S`
+# after `n`, so `-name`-shaped long-option text can't slip in — not a real risk for
+# git push's flag set today, but the boundary costs nothing to get right).
+_PUSH_DRY_RUN_RE = re.compile(r"(?:^|\s)(?:--dry-run\b|-n\b)")
 # A push whose CONTENT is not "the current branch vs its upstream" cannot be judged by
 # the range these gates compute. `--all`/`--tags`/`--mirror` send many refs; an explicit
 # positional refspec (`origin other-branch`, `origin src:dst`) sends a ref that may have
@@ -343,6 +357,10 @@ def is_push_scope_mismatch(cmd):
         the content about to be pushed. Stale-HEAD analog of the commit-side
         `is_stale_index` check.
       - `--delete`/`-d`: nothing to review (a ref deletion, not new content).
+      - `--dry-run`/`-n`: a simulation — nothing is actually pushed, so a
+        side-effecting response to "this push is happening" (a review call, or
+        atlas's real sync commit + diff egress) would be reacting to content that
+        never leaves the machine.
       - `--all`/`--tags`/`--mirror`, or an explicit refspec positional (`git push origin
         other-branch`): the content pushed is not what `@{upstream}...HEAD` describes, so
         the computed diff would judge the wrong commits — unreviewed content could pass,
@@ -356,7 +374,7 @@ def is_push_scope_mismatch(cmd):
         return True
     if _PUSH_MULTIREF_RE.search(rest) or _push_has_explicit_refspec(rest):
         return True
-    if _PUSH_DELETE_RE.search(rest):
+    if _PUSH_DELETE_RE.search(rest) or _PUSH_DRY_RUN_RE.search(rest):
         return True
     gm = _GIT_PUSH_RE.search(detect)
     if gm:
