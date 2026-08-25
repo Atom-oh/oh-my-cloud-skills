@@ -1,0 +1,5 @@
+{
+  "_comment": "atlas plugin defaults. sync.on_push: auto-fix drifted atlas docs from a PreToolUse(Bash) hook just before `git push`, so the fix commit rides along in that same push. OFF by default — enabling it sends the diff of covered files to Anthropic on every push, so turning it on IS the consent. See /atlas:configure.",
+  "root": "docs/atlas",
+  "sync": { "on_push": false, "model": null, "timeout": 300, "parallel": 3 }
+}

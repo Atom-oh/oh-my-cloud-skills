@@ -2,9 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Tool call parameters
+
+- Write non-ASCII as literal UTF-8 in tool inputs, never `\uXXXX` escapes (incl. inside JSON strings). Exempt: escapes that are the file's own source syntax (char-class ranges, codepoint bounds).
+
 ## What This Is
 
-A Claude Code plugin marketplace containing seven plugins for AWS cloud work:
+A Claude Code plugin marketplace containing eight plugins for AWS cloud work:
 - **aws-content-plugin** — Content creation (presentations, diagrams, docs, workshops)
 - **aws-ops-plugin** — Infrastructure operations & troubleshooting (EKS, networking, IAM, observability)
 - **kiro-power-converter** — Convert Claude Code plugins to Kiro IDE Power format
@@ -12,6 +16,7 @@ A Claude Code plugin marketplace containing seven plugins for AWS cloud work:
 - **co-agent** — Multi-AI collaboration (Kiro CLI, Codex, Antigravity): review, decision support, ADR co-authoring; Claude chairs
 - **project-init** — Project scaffolding and documentation management
 - **kiro** — Cost-savings delegation: Claude plans and verifies, Kiro CLI implements and reviews on its own subscription credits inside an isolated git worktree
+- **atlas** — A self-syncing per-topic doc wiki for LLM consumption: docs declare the files they `cover`, drift is detected mechanically against a `code_rev` anchor, and stale docs can be auto-fixed just before a push
 
 All plugins are installed via `/plugin marketplace add` or loaded locally with `--plugin-dir`.
 
@@ -34,11 +39,22 @@ routing — per-plugin `CLAUDE.md` holds the detail. Design: `docs/superpowers/s
 ## Development Commands
 
 ```bash
+# One-command setup for new developers (prereq check, .env, doc-sites deps)
+./scripts/setup.sh
+./scripts/install-hooks.sh   # commit-msg hook: strips Co-Authored-By lines
+
 # Load plugins locally for testing
 claude --plugin-dir ./plugins/aws-content-plugin
 claude --plugin-dir ./plugins/aws-ops-plugin
 
-# Validate plugin manifests (all 7 plugins).
+# Structural test suite — the canonical validation (manifests, frontmatter, references)
+python3 scripts/test-plugins.py                 # all plugins; -p <plugin> for one, -v verbose
+python3 scripts/test-codex-plugins.py           # Codex-format manifests (project-init: deliberate silent skip, CLAUDE_ONLY)
+
+# Stale plugin cache check — local ~/.claude/plugins/cache vs source (--fix to copy)
+./scripts/sync-plugin-cache.sh
+
+# Quick manual manifest inspection (all 8 plugins).
 # project-init is an upstream mirror whose manifest declares no agents/skills arrays
 # (Claude Code discovers them by convention), hence the .get() defaults.
 for f in plugins/*/.claude-plugin/plugin.json; do
@@ -61,7 +77,8 @@ print('All references OK')
 
 # Evaluate skills (quality, structure, token usage)
 python3 scripts/eval-skills.py
-python3 scripts/eval-skills.py --plugin aws-content-plugin --skill reactive-presentation
+# NOTE: there is no `--plugin` flag; eval-skills.py selects by SKILL name only.
+python3 scripts/eval-skills.py --skill reactive-presentation --verbose --threshold 85
 
 # Behavioral eval (E2E skill runtime testing via claude --print)
 python3 scripts/eval-skill-behavior.py --skill reactive-presentation --dry-run
@@ -187,24 +204,34 @@ All plugins share a single version tracked in their `plugin.json` → `"version"
 - **Release process**: bump `"version"` in all `plugin.json` files + `marketplace.json` → commit → `git tag v{version}` → push with `--tags`
 - **Validation**: `git describe --tags` should match all `plugin.json` and `marketplace.json` versions
 - Each plugin also carries a `.codex-plugin/plugin.json` alongside its `.claude-plugin/plugin.json`
-  (Codex-format manifest, kept version-synced with its Claude counterpart) — not covered by the
-  snippet below, which validates the Claude manifests + marketplace + tag.
+  (Codex-format manifest, kept version-synced with its Claude counterpart), and there is a second,
+  separate Codex marketplace at `.agents/plugins/marketplace.json` — project-init excepted (it
+  carries no `.codex-plugin/plugin.json` and so is absent from that file). All four surfaces
+  (Claude manifests, Claude marketplace, Codex manifests, Codex marketplace) are covered by the
+  snippet below — `.agents/plugins/marketplace.json` drifted to a stale version once already
+  (fixed alongside the atlas plugin's addition) precisely because nothing checked it.
 
 ```bash
-# Verify version consistency across all 7 plugins' .claude-plugin/plugin.json
+# Verify version consistency across all 8 plugins' .claude-plugin/plugin.json, both
+# marketplaces, the Codex manifests (project-init excepted), and the git tag
 VS=$(for f in plugins/*/.claude-plugin/plugin.json; do python3 -c "import json; print(json.load(open('$f'))['version'])"; done | sort -u)
 MV=$(python3 -c "import json; vs=set(p['version'] for p in json.load(open('.claude-plugin/marketplace.json'))['plugins']); print(vs.pop() if len(vs)==1 else 'MISMATCH')")
+CV=$(for f in plugins/*/.codex-plugin/plugin.json; do python3 -c "import json; print(json.load(open('$f'))['version'])"; done | sort -u)
+CMV=$(python3 -c "import json; vs=set(p['version'] for p in json.load(open('.agents/plugins/marketplace.json'))['plugins']); print(vs.pop() if len(vs)==1 else 'MISMATCH')")
 TAG=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
-echo "plugins=$VS marketplace=$MV tag=$TAG"
-[ "$(echo "$VS" | wc -l)" = "1" ] && [ "$VS" = "$MV" ] && [ "$VS" = "$TAG" ] && echo "OK: all match" || echo "MISMATCH"
+echo "plugins=$VS marketplace=$MV codex-plugins=$CV codex-marketplace=$CMV tag=$TAG"
+[ "$(echo "$VS" | wc -l)" = "1" ] && [ "$VS" = "$MV" ] && [ "$VS" = "$CV" ] && [ "$VS" = "$CMV" ] && [ "$VS" = "$TAG" ] && echo "OK: all match" || echo "MISMATCH"
 ```
 
 ## Key Conventions
 
+- Architecture decisions are ADRs in `docs/decisions/` (ADR-001…); add new ones via `/add-adr`, reconcile contradictions via `co-agent:decision-reconcile`
 - Content plugin agents produce artifacts (HTML, .drawio, .md); ops plugin agents produce diagnoses with commands
 - Content goes through `content-review-agent` quality gate (100-point scale: PASS ≥85, REVIEW 70-84, FAIL <70; Visual-Testing-exempt content is judged on a 90-point scale: PASS ≥77)
 - Ops plugin reference files are commands-first, with Mermaid decision trees and error→solution tables
-- Korean/English bilingual keywords in all auto-invocation rules
+- Korean/English bilingual keywords in all auto-invocation rules — except `atlas`,
+  which is deliberately English-only (it's a general-purpose, exportable-to-any-repo
+  plugin, not scoped to this marketplace's Korean-speaking AWS-practitioner audience)
 - AWS icons are packaged in `aws-content-plugin/skills/reactive-presentation/assets/aws-icons.zip` (4 icon sets: Service, Group, Category, Resource)
 - Remarp-generated HTML contains `<meta name="generator" content="remarp">` for extension recognition
 - Remarp VSCode Extension source lives in `tools/remarp-vscode/` (TypeScript, packaged as .vsix)
@@ -311,7 +338,7 @@ is `version` in `.claude-plugin/plugin.json` (marketplace-uniform). Never edit i
 the next sync wipes the change. Local features that used to live here moved to co-agent
 (`pr-autofix`, `decision-reconcile`) or to the root routing table (superpowers hints). It
 also carries no `.codex-plugin/plugin.json`, so it is absent from the Codex marketplace
-(`scripts/test-codex-plugins.py` reports that as a warning, not an error), and its manifest
+(`scripts/test-codex-plugins.py` deliberately skips it silently — `CLAUDE_ONLY`; a standing warning on a known-correct state would be noise), and its manifest
 declares no `agents`/`skills` arrays — `scripts/test-plugins.py` discovers them on disk so
 the frontmatter is still validated. Sync procedure and rationale:
 `docs/reference/project-init-upstream-sync.md`.
@@ -345,6 +372,35 @@ without a `WebSearch` tool (Bedrock) route searches through kiro-cli's native
 > fail-closed rules, trust decision — lives in `plugins/kiro/CLAUDE.md` (auto-loads when
 > working in that plugin).
 
+### atlas (1 agent, 1 skill, 5 commands)
+
+| Agent | Purpose |
+|-------|---------|
+| `atlas-sync-agent` | Decides which atlas docs have drifted and repairs their prose; refuses anything outside the wiki root |
+
+Skill: `atlas` — a per-topic documentation wiki written **for LLM consumption**, kept in
+sync with the code mechanically. Each doc's frontmatter declares `covers` globs and a
+`code_rev` anchor, so staleness is a glob match over `git diff --name-only` with **no LLM
+pass** — detection is O(changed files × docs) and free. Docs default to `docs/atlas/`
+(`root` config key) with an AUTO-MANAGED `INDEX.md` an agent reads first to pick which
+bodies to load, instead of cramming everything into `CLAUDE.md`. The glob matcher is
+hand-rolled rather than `fnmatch`: `fnmatch`'s `*` crosses `/`, which would let a doc
+claim territory it does not cover.
+
+Commands: `/atlas:init`, `/atlas:sync`, `/atlas:add-doc`, `/atlas:graph`,
+`/atlas:configure`. One opt-in, **off-by-default** `PreToolUse(Bash)` hook: push-time
+auto-sync (`sync.on_push`) runs one confined `claude -p` per stale doc just before
+`git push`, so the doc fix rides along in that same push — enabling it sends covered-file
+diff content to Anthropic on every push, so turning it on **is** the consent, and a
+git-tracked `.claude/atlas.local.json` cannot enable it. Always fail-open: every failure
+path prints to stderr and exits 0, because a broken doc-syncer must never wedge a push.
+A `SessionStart` hook emits the operative "read INDEX.md first" rule, since a plugin's own
+`CLAUDE.md` is never injected into a consuming repo's context.
+
+> Full detail — write confinement, prompt-injection posture, the consent boundary, and the
+> context-injection failure mode — lives in `plugins/atlas/CLAUDE.md` (auto-loads when
+> working in that plugin) and `docs/decisions/ADR-019-atlas-push-sync.md`.
+
 ## Workflows
 
 ```
@@ -376,7 +432,17 @@ kiro:      /kiro:setup → probe kiro-cli, list models, write .kiro/agents/*.jso
            git commit → PreToolUse hook (opt-in, off by default) → Kiro review (fail-open, blocks only on `critical`)
            git push → PreToolUse hook (opt-in, off by default) → 3-lens Kiro review (fail-open; `critical` BLOCKED, `warning`-only chair judgment)
            web search needed + no WebSearch tool (Bedrock) → kiro_websearch.py --query-file (opt-in) → summary + source URLs
+
+atlas:     /atlas:init → scan repo → propose doc set (AskUserQuestion) → write skeletons w/ covers+code_rev → atlas_index.py --write → offer sync.on_push (states the egress first)
+           /atlas:sync → atlas_drift.py (each doc's own code_rev..HEAD → covers glob match → work packets) → atlas_sync.py --dry-run → confined `claude -p` per doc (PreToolUse realpath guard + write-confinement revert) → validate → INDEX regen → docs(atlas): sync commit (staged narrowly: only the synced docs + INDEX.md, never the whole wiki root)
+           git push → PreToolUse hook (opt-in, off by default) → drift detect → auto-fix → commit rides along in THAT push (fail-open: always exit 0)
+           session start → SessionStart hook → "read INDEX.md first, pick by description+covers" rule, gated on INDEX.md existing (not on any toggle) — a plugin's own CLAUDE.md never reaches a consuming repo
 ```
+
+## Docs Site & CI
+
+- `doc-sites/` — Docusaurus site (en/ko i18n) deployed to https://www.atomai.click/oh-my-cloud-skills/ by `.github/workflows/deploy-docs.yml` on push to main; build detail in `doc-sites/CLAUDE.md`
+- `.github/workflows/pr-review.yml` — CI multi-AI PR review (ADR-009); runbook in `docs/ci-pr-review-runbook.md`, review memory in `docs/pr-review/review-memory.md` (host-maintained, see pr-autofix)
 
 ## Auto-Sync Rules
 
@@ -389,7 +455,9 @@ Documentation stays in sync via hooks and skills:
 | `git commit` (Bash) | `secret-scan.sh` (PreToolUse) | Blocks commits containing API keys, tokens, passwords |
 | `git commit` (Bash) | `pre-commit-review.sh` (kiro, PreToolUse, opt-in) | Kiro-run review of the staged diff; fail-open, blocks only on `critical` |
 | `git push` (Bash) | `pre-push-review.sh` (kiro, PreToolUse, opt-in) / `consensus_hooks.py pre-push-gate` (co-agent, PreToolUse, opt-in) | 3-lens (correctness/security/scope) review of the range about to be pushed; fail-open; `critical`/2+-lens BLOCKED, `warning`/1-lens CHAIR JUDGMENT REQUIRED |
-| Session start | `session-context.sh` (SessionStart) | Loads project type, version, branch, uncommitted file count |
+| `git push` (Bash) | `pre-push-sync.sh` (atlas, PreToolUse, opt-in) | Detects atlas docs whose `covers` files changed since their `code_rev` and auto-fixes them, so the `docs(atlas): sync` commit rides along in that same push; always fail-open (exit 0) |
+| Session start | `.claude/hooks/session-context.sh` (repo's own, SessionStart) | Loads project type, version, branch, uncommitted file count |
+| Session start | `plugins/atlas/hooks/session-context.sh` (atlas, SessionStart) | Emits the operative "read `INDEX.md` first, pick docs by `description`/`covers`" rule whenever the wiki is initialized — a plugin's own `CLAUDE.md` never reaches a consuming repo's context, so this hook is the only channel that does, and it is gated only on `INDEX.md` existing (not on any toggle) |
 | Session start / turn end (Stop) | `reap_kiro_orphans.sh` (co-agent) | Kills orphaned (ppid=1) kiro `acp-server` processes leaked by headless `timeout` kills |
 | `remarp_to_slides.py` run | PreToolUse inline hook | Verifies common/ assets (theme.css, JS) exist before build |
 | Commit creation | `.git/hooks/commit-msg` | Strips Co-Authored-By lines from commit messages |

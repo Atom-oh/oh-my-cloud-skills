@@ -69,6 +69,9 @@ doc-sites/.docusaurus/
 # kiro plugin specs (working scratch space for /kiro:delegate; not meant to be committed
 # pre-review — a user who wants to keep one can force-add it)
 .kiro/specs/
+# kiro plugin delegate-run logs/prompts/patches (ad hoc multi-task delegation scratch
+# space — same category as .kiro/specs/ above, just not yet listed here)
+.kiro/delegate-run/
 
 # scratch working dir (presentation/demo authoring — not tracked)
 work/
