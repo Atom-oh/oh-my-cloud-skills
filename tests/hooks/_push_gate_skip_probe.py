@@ -20,15 +20,16 @@ _spec.loader.exec_module(ch)
 
 def classify(cmd):
     """Mirror ev_pre_push_gate's skip logic, without running the gate itself. Checks
-    ALL `git push` occurrences (via `_push_gate_mismatch_reason`, same as the real
-    function) — a compound command is only classified as skipped if EVERY push
-    invocation in it is itself unreviewable; a single reviewable occurrence anywhere
+    ALL `git push` occurrences (via `_push_gate_skip_reason`, same as the real
+    function — folds in the per-occurrence bypass check too) — a compound command is
+    only classified as skipped if EVERY push invocation in it is itself either
+    bypassed or unreviewable; a single reviewable, non-bypassed occurrence anywhere
     makes the whole command GATED."""
     detect = re.sub(r"'[^']*'|\"[^\"]*\"", lambda mm: " " * len(mm.group()), cmd)
     gms = list(ch._GIT_PUSH_CMD_RE.finditer(detect))
     if not gms:
         return "not-a-push"
-    reasons = [ch._push_gate_mismatch_reason(detect, gm) for gm in gms]
+    reasons = [ch._push_gate_skip_reason(detect, gm) for gm in gms]
     if not all(reasons):
         return "GATED"
     r = reasons[0]
@@ -40,6 +41,8 @@ def classify(cmd):
         return "skip:refspec"
     if "dry-run" in r:
         return "skip:dry-run"
+    if "bypassed" in r:
+        return "skip:bypass"
     return "skip:other"
 
 

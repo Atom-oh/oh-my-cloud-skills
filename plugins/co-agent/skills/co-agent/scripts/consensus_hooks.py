@@ -91,7 +91,10 @@ _PRECEDING_CD = re.compile(r"(?:^|[\n;&|])\s*(?:pushd|cd)(?:\s|$)")
 # different skip rules is a bug surface by itself.
 _PUSH_REDIRECT_RE = re.compile(
     r"(?:^|\s)-C\s+\S|(?:^|\s)--(?:git-dir|work-tree)(?:\s+\S|=\S)|\bGIT_(?:DIR|WORK_TREE)=\S")
-_PUSH_DELETE_RE = re.compile(r"(?:^|\s)(?:--delete\b|-d\b)")
+# `-[A-Za-z]*d[A-Za-z]*\b`, not bare `-d\b`: git's parse-options lets value-less
+# short flags bundle (`-fd`, `-vd`) — a bare `-d\b` alone missed those clusters,
+# silently reviewing a ref-deletion push as if it were ordinary content.
+_PUSH_DELETE_RE = re.compile(r"(?:^|\s)(?:--delete\b|-[A-Za-z]*d[A-Za-z]*\b)")
 # A third class ported the same way, for the same reason: kiro's hook_match.py (and
 # atlas's verbatim copy of it) both treat `--dry-run`/`-n` as a scope mismatch —
 # nothing is actually pushed, so a side-effecting response to "this push is
@@ -100,7 +103,9 @@ _PUSH_DELETE_RE = re.compile(r"(?:^|\s)(?:--delete\b|-d\b)")
 # --dry-run` is skipped by kiro's/atlas's hooks but still reviewed (and its diff
 # egressed to the peer panel) by this gate — exactly the "different skip rules is a
 # bug surface" problem the comment above already names for the other two classes.
-_PUSH_DRY_RUN_RE = re.compile(r"(?:^|\s)(?:--dry-run\b|-n\b)")
+# Same bundled-short-flag reasoning as `_PUSH_DELETE_RE` above applies here too —
+# `-[A-Za-z]*n[A-Za-z]*\b`, not bare `-n\b`, so `-vn`/`-qn` clusters are caught.
+_PUSH_DRY_RUN_RE = re.compile(r"(?:^|\s)(?:--dry-run\b|-[A-Za-z]*n[A-Za-z]*\b)")
 # A push whose CONTENT is not "the current branch vs its upstream" cannot be judged by
 # the range these gates compute. `--all`/`--tags`/`--mirror` send many refs; an explicit
 # positional refspec (`origin other-branch`, `origin src:dst`) sends a ref that may have
@@ -720,6 +725,20 @@ def _push_gate_mismatch_reason(cmd_detect, m):
     return None
 
 
+def _push_gate_skip_reason(cmd_detect, gm):
+    """(reason string) if this ONE `git push` occurrence should be skipped —
+    either it carries its OWN inline `CO_AGENT_PUSH_GATE=off` bypass prefix, or
+    `_push_gate_mismatch_reason` finds it otherwise unreviewable — else None.
+    Bypass is checked per-occurrence, not once for the whole command: shell
+    semantics mean an inline env prefix applies only to the ONE invocation it
+    literally prefixes, so `CO_AGENT_PUSH_GATE=off git push --dry-run && git
+    push` bypasses just the first push — the second, carrying no prefix of its
+    own, must remain reviewable on its own merits."""
+    if _PUSH_BYPASS_ENV_RE.search(gm.group()):
+        return "bypassed via an inline CO_AGENT_PUSH_GATE=off prefix on this push"
+    return _push_gate_mismatch_reason(cmd_detect, gm)
+
+
 def ev_pre_push_gate(root):
     if os.environ.get("CO_AGENT_PUSH_GATE", "").lower() in ("off", "0", "false", "no"):
         return 0
@@ -729,15 +748,14 @@ def ev_pre_push_gate(root):
     gms = list(_GIT_PUSH_CMD_RE.finditer(cmd_detect))
     if not gms:
         return 0  # not a `git push` — pass through
-    if _PUSH_BYPASS_ENV_RE.search(gms[0].group()):
-        return 0
     gate = _gate_config(root, "push_gate")
     if not gate["enabled"]:
         return 0
-    # Skip only when EVERY `git push` occurrence found is itself unreviewable — if
-    # at least one is reviewable, fall through and review (erring toward reviewing,
-    # the safe direction for a gate). See `_push_gate_mismatch_reason`'s docstring.
-    reasons = [_push_gate_mismatch_reason(cmd_detect, gm) for gm in gms]
+    # Skip only when EVERY `git push` occurrence found is itself either bypassed
+    # or otherwise unreviewable — if at least one is reviewable (and not
+    # bypassed), fall through and review (erring toward reviewing, the safe
+    # direction for a gate). See `_push_gate_skip_reason`'s docstring.
+    reasons = [_push_gate_skip_reason(cmd_detect, gm) for gm in gms]
     if all(reasons):
         extra = (" (%d push invocations found in this command, all unreviewable)"
                  % len(gms)) if len(gms) > 1 else ""

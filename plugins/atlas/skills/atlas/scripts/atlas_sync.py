@@ -334,10 +334,17 @@ _HUNK_HEADER_RE = re.compile(r"@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 
 
 def _scan_doc_secrets(doc_path, base):
-    """(matched, lineno) — matched is False (no hit) or True (possible secret found)
-    on an ADDED line of a synced doc's own diff against HEAD (i.e. everything new
-    since the last commit, regardless of whether it's already staged); lineno is
-    the 1-based line number within the NEW file version on a hit, else None. Never
+    """(matched, lineno) — matched is False (no hit), True (possible secret found),
+    or True (COULD NOT SCAN, see below) — lineno distinguishes the two True cases:
+    a real number on an actual hit, None when the diff itself couldn't be read at
+    all. Deliberately fails CLOSED on a git failure here specifically, unlike the
+    rest of this file's fail-open contract: this is the last check before a doc is
+    accepted into `synced`, and "could not verify" must not be read as "verified
+    clean" for a control whose entire job is deciding what's safe to commit — the
+    caller reverts just that one doc either way (see the call site), which never
+    wedges the push (the surrounding push-gate machinery is still fully fail-open;
+    only THIS doc's sync is deferred to a later, hopefully-scannable run). Never
+    returns the matched TEXT itself — a control built to stop a secret reaching a
     returns the matched TEXT itself — a control built to stop a secret reaching a
     commit must not hand that same secret back to a caller that might log it (see
     the round-1 CRITICAL this shape fixes). Checked once per doc, right before that
@@ -359,11 +366,21 @@ def _scan_doc_secrets(doc_path, base):
     apart once the content is attacker-controlled, but a hunk marker is diff
     metadata that a content line can never masquerade as (it always starts the
     line with `@@`, and content lines are never blank-line-adjacent to header text
-    in a way that produces one)."""
+    in a way that produces one).
+
+    `-c color.ui=false` and `--no-ext-diff` are NOT optional flourishes: this
+    parser's `+`/`-`/`@@` line-prefix checks assume plain porcelain output. A
+    user's global `color.ui=always` would prepend ANSI escape codes to every
+    line, breaking every `startswith` check below and making `seen_hunk` never
+    go True — silently degrading this entire scan to fail-open on every doc, in
+    an install where the operator never even touches `atlas`'s own config.
+    `diff.external` is neutralized the same way (a configured external diff
+    tool can suppress the hunk markers this scan keys on entirely)."""
     rel = os.path.relpath(doc_path, base).replace(os.sep, "/")
-    diff_text, ok = _git(["diff", "HEAD", "--", rel], base)
+    diff_text, ok = _git(["-c", "color.ui=false", "diff", "--no-ext-diff",
+                          "HEAD", "--", rel], base)
     if not ok:
-        return False, None
+        return True, None
     seen_hunk = False
     lineno = 0
     for line in diff_text.splitlines():
@@ -623,12 +640,18 @@ def _run(args):
                 # description of WHY the pattern fired.
                 secret_hit, secret_line = _scan_doc_secrets(pk["doc_path"], base)
                 if secret_hit:
-                    print("atlas-sync: %s: possible secret detected on line %d of "
-                          "the synced content — reverting, not committing" %
-                          (pk["doc"], secret_line), file=sys.stderr)
+                    if secret_line is None:
+                        print("atlas-sync: %s: secret scan unavailable (could not "
+                              "read the diff) — reverting, not committing" % pk["doc"],
+                              file=sys.stderr)
+                        reason = "secret scan unavailable"
+                    else:
+                        print("atlas-sync: %s: possible secret detected on line %d "
+                              "of the synced content — reverting, not committing" %
+                              (pk["doc"], secret_line), file=sys.stderr)
+                        reason = "possible secret on line %d" % secret_line
                     _revert_doc(pk["doc_path"], base)
-                    results.append({"doc": pk["doc"], "status": "failed",
-                                    "reason": "possible secret on line %d" % secret_line})
+                    results.append({"doc": pk["doc"], "status": "failed", "reason": reason})
                     continue
                 if _advance_anchor(pk["doc_path"], pk["head"]):
                     synced.append(pk)
@@ -669,9 +692,14 @@ def _run(args):
     for pk in list(synced):
         hit, line = _scan_doc_secrets(pk["doc_path"], base)
         if hit:
-            print("atlas-sync: %s: possible secret detected on line %d of the "
-                  "synced content (found on final sweep) — reverting, not "
-                  "committing" % (pk["doc"], line), file=sys.stderr)
+            if line is None:
+                print("atlas-sync: %s: secret scan unavailable on final sweep "
+                      "(could not read the diff) — reverting, not committing" %
+                      pk["doc"], file=sys.stderr)
+            else:
+                print("atlas-sync: %s: possible secret detected on line %d of the "
+                      "synced content (found on final sweep) — reverting, not "
+                      "committing" % (pk["doc"], line), file=sys.stderr)
             _revert_doc(pk["doc_path"], base)
             resweep_failed.append(pk)
     if resweep_failed:

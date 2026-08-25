@@ -293,7 +293,11 @@ _PUSH_ARGS_RE = re.compile(
     r"\s+push(?=$|[\s;&|\n])(?P<rest>[^\n;&|]*)")
 # `--delete`/`-d` (and its `:branch` refspec shorthand) removes a remote ref — there
 # is no local content being pushed, so there is nothing meaningful to diff/review.
-_PUSH_DELETE_RE = re.compile(r"(?:^|\s)(?:--delete\b|-d\b)")
+# `-[A-Za-z]*d[A-Za-z]*\b` (not bare `-d\b`) also catches `-d` bundled with other
+# value-less short flags git's own parse-options allows (`-fd`, `-vd`) — a bare
+# `-d\b` alone missed those, silently falling back to reviewing/syncing a
+# ref-deletion push as if it were ordinary content.
+_PUSH_DELETE_RE = re.compile(r"(?:^|\s)(?:--delete\b|-[A-Za-z]*d[A-Za-z]*\b)")
 # `--dry-run`/`-n` simulates the push — nothing actually leaves the machine, and no
 # range this hook computes now will ever really be pushed. `_push_has_explicit_refspec`
 # already has to recognize both spellings as value-less flags (so they aren't
@@ -303,10 +307,11 @@ _PUSH_DELETE_RE = re.compile(r"(?:^|\s)(?:--delete\b|-d\b)")
 # reads as an ordinary push to the calling hook, which then runs its full
 # side-effecting flow (a real review call, or — in atlas's copy of this file — a
 # real `docs(atlas): sync` commit + diff egress) even though the user asked only
-# for a simulation. Same bare-`-n\b` boundary as `_PUSH_DELETE_RE` above (no `\S`
-# after `n`, so `-name`-shaped long-option text can't slip in — not a real risk for
-# git push's flag set today, but the boundary costs nothing to get right).
-_PUSH_DRY_RUN_RE = re.compile(r"(?:^|\s)(?:--dry-run\b|-n\b)")
+# for a simulation. Same bundled-short-flag reasoning as `_PUSH_DELETE_RE` above:
+# `-[A-Za-z]*n[A-Za-z]*\b`, not bare `-n\b`, so `-vn`/`-qn`-shaped clusters (value-
+# less flags git's parse-options lets you combine) are recognized too — a bare
+# `-n\b` silently missed those, letting a bundled dry-run push through as if real.
+_PUSH_DRY_RUN_RE = re.compile(r"(?:^|\s)(?:--dry-run\b|-[A-Za-z]*n[A-Za-z]*\b)")
 # A push whose CONTENT is not "the current branch vs its upstream" cannot be judged by
 # the range these gates compute. `--all`/`--tags`/`--mirror` send many refs; an explicit
 # positional refspec (`origin other-branch`, `origin src:dst`) sends a ref that may have
@@ -407,10 +412,23 @@ def is_push_scope_mismatch(cmd):
 
 def is_push_bypassed(cmd):
     """Same rationale as is_bypassed() (below), for `git push` — an inline
-    `KIRO_REVIEW=off git push ...` prefix as part of THIS SAME invocation."""
+    `KIRO_REVIEW=off git push ...` prefix as part of THIS SAME invocation.
+
+    Checks ALL occurrences, not just the first — the same "skip only if every
+    occurrence agrees" reasoning `is_push_scope_mismatch` documents applies
+    here too: shell semantics mean an inline env prefix bypasses only the ONE
+    push invocation it literally prefixes, so `KIRO_REVIEW=off git push
+    --dry-run && git push` bypasses just the first push — the second, carrying
+    no prefix of its own, must remain reviewable. Returns True only when EVERY
+    occurrence found carries the prefix; if even one does not, this returns
+    False so `is_push_scope_mismatch` (or an outright review) still gets to
+    judge that occurrence on its own merits — a single non-bypassed
+    occurrence must never be swallowed by another one's consent."""
     detect = _blank_quotes(cmd)
-    m = _GIT_PUSH_RE.search(detect)
-    return bool(m and _BYPASS_ENV_RE.search(m.group()))
+    gms = list(_GIT_PUSH_RE.finditer(detect))
+    if not gms:
+        return False
+    return all(_BYPASS_ENV_RE.search(gm.group()) for gm in gms)
 
 
 # `(?:^|[\s;&|])` anchor, not a bare `\b`: `\b` matches at any word/non-word boundary,

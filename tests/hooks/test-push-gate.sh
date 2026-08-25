@@ -44,6 +44,11 @@ assert_eq "1" "$(_hm bypass commit 'KIRO_REVIEW=off git push && git commit -m x'
 assert_eq "1" "$(_hm bypass push 'KIRO_REVIEW=off git commit -m x && git push')" "bypass push: a prefix on the COMMIT does not bypass the push review"
 assert_eq "2" "$(_hm bypass 'KIRO_REVIEW=off git push')" "bypass with no subcommand is a usage error (callers treat non-zero as 'not bypassed' — the review runs)"
 
+# --- bypass push: all-occurrences fix — a prefix on occurrence 1 alone must not
+# bypass a non-prefixed occurrence 2 in the same compound command ---
+assert_eq "1" "$(_hm bypass push 'KIRO_REVIEW=off git push --dry-run && git push')" "bypass push: prefix on the FIRST push only does not bypass the second, unprefixed push"
+assert_eq "0" "$(_hm bypass push 'KIRO_REVIEW=off git push --dry-run && KIRO_REVIEW=off git push')" "bypass push: every occurrence prefixed IS a full bypass"
+
 # --- push-scope-mismatch: true positives ---
 assert_eq "0" "$(_hm push-scope-mismatch 'cd ../other && git push')" "push-scope-mismatch: preceding cd"
 assert_eq "0" "$(_hm push-scope-mismatch 'git commit -m x && git push')" "push-scope-mismatch: preceding commit (stale range)"
@@ -63,6 +68,12 @@ assert_eq "1" "$(_hm push-scope-mismatch 'git push -u origin HEAD')" "push-scope
 assert_eq "1" "$(_hm push-scope-mismatch 'git push --dry-run && git push')" "push-scope-mismatch: dry-run THEN a real push — the real one must still be reviewed"
 assert_eq "1" "$(_hm push-scope-mismatch 'git push --delete origin foo && git push')" "push-scope-mismatch: delete THEN a real push — same fix, pre-existing class"
 assert_eq "0" "$(_hm push-scope-mismatch 'git push --dry-run')" "push-scope-mismatch: a LONE dry-run push is still skipped (nothing reviewable at all)"
+
+# --- push-scope-mismatch: bundled value-less short flags (git's own parse-options
+# allows combining them) — a bare -n\b/-d\b alone missed these clusters ---
+assert_eq "0" "$(_hm push-scope-mismatch 'git push -vn')" "push-scope-mismatch: -vn bundled dry-run"
+assert_eq "0" "$(_hm push-scope-mismatch 'git push -qn')" "push-scope-mismatch: -qn bundled dry-run"
+assert_eq "0" "$(_hm push-scope-mismatch 'git push origin -fd foo')" "push-scope-mismatch: -fd bundled delete"
 
 # --- kiro_review.py lens merge: dedupe by (file, line), keep highest severity ---
 MERGE_OUT="$(python3 -c "
@@ -235,6 +246,13 @@ assert_eq "skip skip" "$(_pgb 'git push --dry-run')" "dry-run: both gates skip a
 assert_eq "GATED" "$(_pgs 'git push --dry-run && git push')" "push gate: dry-run THEN a real push in one invocation is still GATED"
 assert_eq "GATED GATED" "$(_pgb 'git push --dry-run && git push')" "dry-run compound: both gates still review the real push"
 
+# --- co-agent push gate: bundled short flags, and the same all-occurrences fix
+# applied to the inline CO_AGENT_PUSH_GATE=off bypass prefix ---
+assert_eq "skip:dry-run" "$(_pgs 'git push -vn')" "push gate: bundled -vn dry-run is skipped"
+assert_eq "skip:delete" "$(_pgs 'git push origin -fd foo')" "push gate: bundled -fd delete is skipped"
+assert_eq "GATED" "$(_pgs 'CO_AGENT_PUSH_GATE=off git push --dry-run && git push')" "push gate: bypass on the FIRST push only does not bypass the second, unprefixed push"
+assert_eq "skip:bypass" "$(_pgs 'CO_AGENT_PUSH_GATE=off git push')" "push gate: a lone bypassed push is skipped"
+
 assert_json_valid "plugins/co-agent/skills/co-agent/co-agent.defaults.json" "co-agent.defaults.json is valid JSON after adding push_gate"
 
 # --- atlas_sync.py's _scan_doc_secrets: header-misclassification bypass, case
@@ -247,6 +265,7 @@ assert_eq "HIT 2" "$(_aspc header-bypass)" "secret-scan: added content starting 
 assert_eq "HIT 2" "$(_aspc aws-uppercase)" "secret-scan: uppercase AWS_SECRET_ACCESS_KEY= is caught (case-fold bug fix)"
 assert_eq "HIT 2" "$(_aspc allowlist-no-bypass)" "secret-scan: an allowlist marker on the fixer-controlled line does NOT bypass detection"
 assert_eq "CLEAN" "$(_aspc benign)" "secret-scan: an ordinary prose edit is not flagged"
+assert_eq "HIT 2" "$(_aspc color-ui-always)" "secret-scan: a repo-local color.ui=always config does not blind the scan (ANSI codes must not defeat the +/@@ prefix checks)"
 
 if python3 -c "import py_compile" 2>/dev/null; then
   # `if python3 ...; then`, NOT `python3 ...` followed by `[ $? -eq 0 ]`: this file is

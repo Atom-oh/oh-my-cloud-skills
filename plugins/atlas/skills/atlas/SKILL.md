@@ -126,9 +126,10 @@ same doc's anchor. Omit the flag to use literal `HEAD`.
   `atlas_index.py --validate` is allowed to exit non-zero, because it exists to gate.
 - The headless fixer runs with `--allowedTools Read,Grep,Glob,Edit` and an explicit
   deny list; the actual enforcement is a `--settings` `PreToolUse` hook that confines
-  `Edit` to the wiki root by realpath (a post-hoc git-based scan runs too, as
-  defense-in-depth, but can't see a write to an existing gitignored file or a path
-  outside the git working tree at all — `references/headless-sync.md`).
+  `Edit`, `Read`, `Grep`, AND `Glob` alike to the wiki root by realpath (a post-hoc
+  git-based scan runs too, as defense-in-depth for the write side, but can't see a
+  write to an existing gitignored file or a path outside the git working tree at all
+  — `references/headless-sync.md`).
 
 ## Output
 

@@ -50,7 +50,12 @@ def _case(name):
 
 
 def main():
-    if sys.argv[1:2] == ["--case"]:
+    color_always = sys.argv[1:2] == ["--case"] and sys.argv[2] == "color-ui-always"
+    if color_always:
+        # Reuses the same fixture content as "aws-uppercase" — this case only
+        # adds a git config, not a different secret shape.
+        before, after = _case("aws-uppercase")
+    elif sys.argv[1:2] == ["--case"]:
         before, after = _case(sys.argv[2])
     else:
         before, after = sys.argv[1], sys.argv[2]
@@ -59,6 +64,13 @@ def main():
         subprocess.run(["git", "init", "-q"], cwd=d, check=True)
         subprocess.run(["git", "config", "user.email", "t@t.com"], cwd=d, check=True)
         subprocess.run(["git", "config", "user.name", "t"], cwd=d, check=True)
+        if color_always:
+            # Reproduces the round-4 finding: a user's global `color.ui=always`
+            # would prepend ANSI codes to every `git diff` line, breaking every
+            # `+`/`@@` prefix check `_scan_doc_secrets` relies on — this repo-local
+            # config is the same effect without touching the test runner's own
+            # global git config.
+            subprocess.run(["git", "config", "color.ui", "always"], cwd=d, check=True)
         doc = os.path.join(d, "foo.md")
         with open(doc, "w") as f:
             f.write(before)
