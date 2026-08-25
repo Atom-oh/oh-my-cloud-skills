@@ -104,6 +104,16 @@ cases passed) before this doc was written:
 | `plugins/co-agent/**/scripts/gate_*.py` | `plugins/co-agent/scripts/gate_x.py` | yes — `**` matches zero directories |
 | `plugins/co-agent/**/scripts/gate_*.py` | `plugins/co-agent/a/b/scripts/gate_deep.py` | yes |
 | `plugins/co-agent/**/scripts/gate_*.py` | `plugins/co-agent/skills/co-agent/scripts/other.py` | no |
+| `src/한글/**` | `src/한글/mod.py` | yes — the matcher itself handles non-ASCII bytes fine; the regression this row guards against is upstream, in how the changed-file list reaches the matcher (see below) |
+
+Regression guard: `atlas_drift.py:changed_files()` calls `git diff` with `-c
+core.quotePath=false -z`, not a bare `--name-only`. Git's default
+`core.quotePath=true` octal-escapes and double-quotes any path byte outside
+printable ASCII (`src/한글/mod.py` comes back as `"src/\355\225\234\352\270\200/mod.py"`),
+which the matcher's literal-escaping (`re.escape`) then never matches — a covered
+non-ASCII path would silently never be flagged stale, even though `glob_match` itself
+is fine (row above). If this file's changed-file computation is ever reworked, keep
+`core.quotePath=false` (or use `-z` with NUL-split output some other way).
 
 ## Why code_rev is the anchor
 

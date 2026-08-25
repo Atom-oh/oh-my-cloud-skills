@@ -34,8 +34,10 @@ The rule the hook emits, once the wiki root's `INDEX.md` exists (plugin install 
 ran init gets a one-line "not initialized yet" note instead — telling it to read a file
 that is not there would be worse than saying nothing): read that `INDEX.md` first; choose docs by their
 `description` and `covers` fields in that index; only then read the chosen bodies; and
-prefer an atlas doc over re-deriving the same knowledge from source, because the docs
-are drift-checked against `code_rev`. This file is only in context when someone is
+prefer an atlas doc over re-deriving the same knowledge from source — each doc's
+`code_rev` names the commit its prose was last checked against, which is the cheaper
+starting point either way (drift-checked if `sync.on_push` is on and has actually run
+against it; otherwise still the author's most recent take). This file is only in context when someone is
 working **on** this plugin (as a nested project file) — which is precisely why the
 original kiro bug stayed invisible for so long. **Keep the two in sync**: the hook
 carries the operative instruction, this section carries the rationale, and a change to

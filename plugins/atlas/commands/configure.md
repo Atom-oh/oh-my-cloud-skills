@@ -32,7 +32,7 @@ Two files, merged in order (`atlas.defaults.json` <- `.claude/atlas.local.json`)
 
 | Layer | File | Role |
 |---|---|---|
-| base | `atlas.defaults.json` (ships with the plugin, next to the skill) | shipped defaults |
+| base | `atlas.defaults.json` (ships inside `skills/atlas/`, alongside `SKILL.md`) | shipped defaults |
 | override | `<repo>/.claude/atlas.local.json` | personal, per-repo, gitignored |
 
 `set` writes only the override file. A malformed override is reported and ignored,

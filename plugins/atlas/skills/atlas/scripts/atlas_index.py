@@ -23,8 +23,8 @@ import re
 import subprocess
 import sys
 
-# The cross-task contract (design.md §D). Tasks 4 and 5 import these names —
-# renaming any of them silently breaks a module that cannot see this code.
+# The cross-module contract atlas_drift.py and atlas_sync.py import these names
+# against — renaming any of them silently breaks a module that cannot see this code.
 REQUIRED_KEYS = ("title", "description", "covers", "code_rev")
 OPTIONAL_KEYS = ("related", "updated")
 INDEX_NAME = "INDEX.md"
@@ -127,8 +127,9 @@ _KEY_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_-]*):\s*(.*)$")
 def parse_frontmatter(text):
     """(dict, body) from a markdown string. Stdlib only — no pyyaml, which is not a
     dependency of this repo and would break the plugin on a clean machine. Supports
-    exactly the shapes design.md §I documents: `key: scalar`, an inline flow list
-    (`["a", "b"]` and `[a, b]`), and a block list of `  - item` lines. Returns
+    exactly the shapes `references/frontmatter-schema.md` documents: `key: scalar`,
+    an inline flow list (`["a", "b"]` and `[a, b]`), and a block list of `  - item`
+    lines. Returns
     ({}, text) when the text does not begin with `---` or the frontmatter is never
     closed by a second `---`."""
     lines = text.splitlines()
@@ -289,9 +290,10 @@ def render_index(docs):
 
 
 def _fresh_index_content(block):
-    """The minimal header + block from design.md §J, used only when INDEX.md does
-    not exist yet. The `Last updated` footer lives OUTSIDE the block on purpose:
-    everything outside the markers belongs to the user after creation."""
+    """The minimal header + block used only when INDEX.md does not exist yet (see
+    `references/atlas-templates.md` for the skeleton this mirrors). The `Last
+    updated` footer lives OUTSIDE the block on purpose: everything outside the
+    markers belongs to the user after creation."""
     today = datetime.date.today().isoformat()
     return (
         "# Atlas Index\n"

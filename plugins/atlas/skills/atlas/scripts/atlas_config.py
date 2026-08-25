@@ -161,20 +161,52 @@ def _is_tracked_by_git(root, relpath):
     return True
 
 
+def _has_gitlink_ancestor(root):
+    """True iff `.claude` itself is a git SUBMODULE (a "gitlink" index entry, mode
+    `160000`) in the OUTER repo — a cheap belt-and-braces alongside
+    `_is_tracked_by_git`. If `.claude` is a submodule, `git ls-files --error-unmatch
+    -- .claude/atlas.local.json` run against the outer repo reports "not tracked":
+    the outer index holds a single gitlink entry for `.claude`, never individual
+    paths inside it. But the submodule's OWN inner repository can independently
+    commit `atlas.local.json` with `sync.on_push: true` — invisible to the outer
+    check entirely. Same fail-safe direction as `_is_tracked_by_git`: no repo at
+    `root` at all is False (trusted — no repository to have committed anything in),
+    any other git error is True (untrustworthy)."""
+    try:
+        repo_check = subprocess.run(
+            ["git", "-C", root, "rev-parse", "--is-inside-work-tree"],
+            capture_output=True, text=True, timeout=10)
+    except (subprocess.TimeoutExpired, OSError):
+        return True
+    if repo_check.returncode != 0:
+        return False
+    try:
+        r = subprocess.run(["git", "-C", root, "ls-files", "--stage", "--", ".claude"],
+                            capture_output=True, text=True, timeout=10)
+    except (subprocess.TimeoutExpired, OSError):
+        return True
+    if r.returncode != 0:
+        return True
+    return any(line.startswith("160000 ") for line in r.stdout.splitlines())
+
+
 def _consent_config_untrustworthy(root, lp):
-    """True iff the consent-gating key in `lp` should NOT be trusted: either the
-    literal path `.claude/atlas.local.json` is tracked by git, OR resolving `lp`
-    involves a symlink anywhere in the chain. The symlink check closes an alias bypass
-    of the tracked-path check alone: a malicious repo can track `.claude` itself as a
+    """True iff the consent-gating key in `lp` should NOT be trusted: the literal
+    path `.claude/atlas.local.json` is tracked by git, OR `.claude` is itself a git
+    submodule (a gitlink — see `_has_gitlink_ancestor`), OR resolving `lp` involves
+    a symlink anywhere in the chain. The symlink check closes an alias bypass of the
+    tracked-path check alone: a malicious repo can track `.claude` itself as a
     symlink to e.g. `settings/`, then track `settings/atlas.local.json` (with
     `sync.on_push: true`) — `git ls-files -- .claude/atlas.local.json` reports "not
     tracked" (the index has no entry for that literal string; it only has
     `settings/atlas.local.json`), even though `open()` transparently follows the
     symlink and reads the tracked file's content. A genuine personal override a user
-    creates directly with an editor never involves a symlink at all, so ANY symlink in
-    the resolution chain is itself suspicious here — fail closed regardless of whether
-    the literal name happens to be tracked."""
+    creates directly with an editor never involves a symlink OR a submodule
+    boundary, so either is itself suspicious here — fail closed regardless of
+    whether the literal name happens to be tracked."""
     if _is_tracked_by_git(root, os.path.join(".claude", "atlas.local.json")):
+        return True
+    if _has_gitlink_ancestor(root):
         return True
     return _resolves_through_symlink(lp, root)
 
@@ -204,8 +236,9 @@ def _strip_consent_keys(raw, root, lp):
         del stripped["sync"]["on_push"]
         dropped.append("sync.on_push")
     if dropped:
-        print(f"⚠️  {lp} is tracked by git in this repo (directly, or reached through a "
-              f"symlinked ancestor/alias) — a personal override file should never be "
+        print(f"⚠️  {lp} is tracked by git in this repo (directly, reached through a "
+              f"symlinked ancestor/alias, or inside a `.claude` git submodule) — a "
+              f"personal override file should never be "
               f"committed. Ignoring its {', '.join(dropped)} value(s) and falling back "
               f"to the shipped default (off) for consent-gating settings; a committed "
               f"file must not be able to silently opt this repo's users into sending "

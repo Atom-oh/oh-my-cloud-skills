@@ -204,16 +204,23 @@ All plugins share a single version tracked in their `plugin.json` → `"version"
 - **Release process**: bump `"version"` in all `plugin.json` files + `marketplace.json` → commit → `git tag v{version}` → push with `--tags`
 - **Validation**: `git describe --tags` should match all `plugin.json` and `marketplace.json` versions
 - Each plugin also carries a `.codex-plugin/plugin.json` alongside its `.claude-plugin/plugin.json`
-  (Codex-format manifest, kept version-synced with its Claude counterpart) — not covered by the
-  snippet below, which validates the Claude manifests + marketplace + tag.
+  (Codex-format manifest, kept version-synced with its Claude counterpart), and there is a second,
+  separate Codex marketplace at `.agents/plugins/marketplace.json` — project-init excepted (it
+  carries no `.codex-plugin/plugin.json` and so is absent from that file). All four surfaces
+  (Claude manifests, Claude marketplace, Codex manifests, Codex marketplace) are covered by the
+  snippet below — `.agents/plugins/marketplace.json` drifted to a stale version once already
+  (fixed alongside the atlas plugin's addition) precisely because nothing checked it.
 
 ```bash
-# Verify version consistency across all 8 plugins' .claude-plugin/plugin.json
+# Verify version consistency across all 8 plugins' .claude-plugin/plugin.json, both
+# marketplaces, the Codex manifests (project-init excepted), and the git tag
 VS=$(for f in plugins/*/.claude-plugin/plugin.json; do python3 -c "import json; print(json.load(open('$f'))['version'])"; done | sort -u)
 MV=$(python3 -c "import json; vs=set(p['version'] for p in json.load(open('.claude-plugin/marketplace.json'))['plugins']); print(vs.pop() if len(vs)==1 else 'MISMATCH')")
+CV=$(for f in plugins/*/.codex-plugin/plugin.json; do python3 -c "import json; print(json.load(open('$f'))['version'])"; done | sort -u)
+CMV=$(python3 -c "import json; vs=set(p['version'] for p in json.load(open('.agents/plugins/marketplace.json'))['plugins']); print(vs.pop() if len(vs)==1 else 'MISMATCH')")
 TAG=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
-echo "plugins=$VS marketplace=$MV tag=$TAG"
-[ "$(echo "$VS" | wc -l)" = "1" ] && [ "$VS" = "$MV" ] && [ "$VS" = "$TAG" ] && echo "OK: all match" || echo "MISMATCH"
+echo "plugins=$VS marketplace=$MV codex-plugins=$CV codex-marketplace=$CMV tag=$TAG"
+[ "$(echo "$VS" | wc -l)" = "1" ] && [ "$VS" = "$MV" ] && [ "$VS" = "$CV" ] && [ "$VS" = "$CMV" ] && [ "$VS" = "$TAG" ] && echo "OK: all match" || echo "MISMATCH"
 ```
 
 ## Key Conventions
@@ -427,9 +434,9 @@ kiro:      /kiro:setup → probe kiro-cli, list models, write .kiro/agents/*.jso
            web search needed + no WebSearch tool (Bedrock) → kiro_websearch.py --query-file (opt-in) → summary + source URLs
 
 atlas:     /atlas:init → scan repo → propose doc set (AskUserQuestion) → write skeletons w/ covers+code_rev → atlas_index.py --write → offer sync.on_push (states the egress first)
-           /atlas:sync → atlas_drift.py (resolve range → covers glob match → §E2 work packets) → atlas_sync.py --dry-run → confined `claude -p` per doc → write-confinement revert → validate → INDEX regen → docs(atlas): sync commit
+           /atlas:sync → atlas_drift.py (each doc's own code_rev..HEAD → covers glob match → work packets) → atlas_sync.py --dry-run → confined `claude -p` per doc (PreToolUse realpath guard + write-confinement revert) → validate → INDEX regen → docs(atlas): sync commit (staged narrowly: only the synced docs + INDEX.md, never the whole wiki root)
            git push → PreToolUse hook (opt-in, off by default) → drift detect → auto-fix → commit rides along in THAT push (fail-open: always exit 0)
-           session start → SessionStart hook → "read INDEX.md first, pick by description+covers" rule (unconditional — a plugin's own CLAUDE.md never reaches a consuming repo)
+           session start → SessionStart hook → "read INDEX.md first, pick by description+covers" rule, gated on INDEX.md existing (not on any toggle) — a plugin's own CLAUDE.md never reaches a consuming repo
 ```
 
 ## Docs Site & CI
@@ -450,7 +457,7 @@ Documentation stays in sync via hooks and skills:
 | `git push` (Bash) | `pre-push-review.sh` (kiro, PreToolUse, opt-in) / `consensus_hooks.py pre-push-gate` (co-agent, PreToolUse, opt-in) | 3-lens (correctness/security/scope) review of the range about to be pushed; fail-open; `critical`/2+-lens BLOCKED, `warning`/1-lens CHAIR JUDGMENT REQUIRED |
 | `git push` (Bash) | `pre-push-sync.sh` (atlas, PreToolUse, opt-in) | Detects atlas docs whose `covers` files changed since their `code_rev` and auto-fixes them, so the `docs(atlas): sync` commit rides along in that same push; always fail-open (exit 0) |
 | Session start | `.claude/hooks/session-context.sh` (repo's own, SessionStart) | Loads project type, version, branch, uncommitted file count |
-| Session start | `plugins/atlas/hooks/session-context.sh` (atlas, SessionStart) | Emits the operative "read `INDEX.md` first, pick docs by `description`/`covers`" rule **unconditionally** — a plugin's own `CLAUDE.md` never reaches a consuming repo's context, so this hook is the only channel that does |
+| Session start | `plugins/atlas/hooks/session-context.sh` (atlas, SessionStart) | Emits the operative "read `INDEX.md` first, pick docs by `description`/`covers`" rule whenever the wiki is initialized — a plugin's own `CLAUDE.md` never reaches a consuming repo's context, so this hook is the only channel that does, and it is gated only on `INDEX.md` existing (not on any toggle) |
 | Session start / turn end (Stop) | `reap_kiro_orphans.sh` (co-agent) | Kills orphaned (ppid=1) kiro `acp-server` processes leaked by headless `timeout` kills |
 | `remarp_to_slides.py` run | PreToolUse inline hook | Verifies common/ assets (theme.css, JS) exist before build |
 | Commit creation | `.git/hooks/commit-msg` | Strips Co-Authored-By lines from commit messages |

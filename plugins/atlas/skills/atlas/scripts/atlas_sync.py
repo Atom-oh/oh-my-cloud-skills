@@ -44,12 +44,15 @@ GIT_TIMEOUT = 30
 
 def _git(args, cwd):
     """(stdout, ok) for a git call. Never raises — same contract as atlas_drift's
-    helper: in a fail-open gate a missing/hung git binary must degrade, not
-    traceback, and a non-zero exit is data for the caller, not an exception."""
+    helper (including catching UnicodeDecodeError: `text=True` decodes stdout as
+    UTF-8 internally, and not every filesystem byte sequence is valid UTF-8 — see
+    atlas_drift._git's docstring for the concrete case this guards): in a fail-open
+    gate a missing/hung git binary must degrade, not traceback, and a non-zero exit
+    is data for the caller, not an exception."""
     try:
         p = subprocess.run(["git"] + list(args), cwd=cwd, capture_output=True,
                            text=True, timeout=GIT_TIMEOUT)
-    except (OSError, subprocess.TimeoutExpired):
+    except (OSError, subprocess.TimeoutExpired, UnicodeDecodeError):
         return "", False
     if p.returncode != 0:
         return "", False
@@ -137,8 +140,9 @@ _SETTINGS_JSON = json.dumps({
 
 
 def _claude_cmd(prompt_text, model):
-    """The literal argv from design.md §G1. Built as a list and run with no shell
-    interpretation, so nothing in the prompt or config can splice extra arguments."""
+    """The literal argv for the headless fixer (see `references/headless-sync.md`
+    → "The invocation"). Built as a list and run with no shell interpretation, so
+    nothing in the prompt or config can splice extra arguments."""
     cmd = [
         "claude", "-p", prompt_text,
         "--output-format", "text",
@@ -308,8 +312,10 @@ def _advance_anchor(doc_path, head):
 def _revert_doc(doc_path, base):
     """Undo a packet's own doc edit with a checkout scoped to that ONE explicit
     path. Used when a call failed, escaped, or could not be anchored: a
-    half-updated doc with a stale code_rev must not be swept into the sync commit
-    by the atlas-root-wide `git add`."""
+    half-updated doc with a stale code_rev must not be left dirty in the working
+    tree (staging is scoped to exactly the successfully-`synced` docs below, so a
+    failed one would never be staged either way — this keeps the tree clean, not
+    just the commit)."""
     _git(["checkout", "--", doc_path], base)
 
 
@@ -407,6 +413,30 @@ def _run(args):
         return 0
     baseline_dirty = baseline_tracked | baseline_untracked
 
+    # INDEX.md dirty at baseline blocks the WHOLE round, before any fixer call
+    # runs — not merely "regenerate but don't stage" and not merely "stage the old
+    # content." Neither of those is actually safe: regenerating-but-not-committing
+    # would ship the just-synced docs alongside a COMMITTED INDEX.md that no longer
+    # matches them (their code_rev advanced, but the committed table wasn't
+    # regenerated); regenerating-and-still-somehow-committing would either clobber
+    # the developer's uncommitted edit or require an unreliable partial-file commit
+    # git doesn't support. Since a synced doc's commit can never be internally
+    # consistent without an equally up-to-date, committable INDEX.md, and the
+    # developer's dirty INDEX.md can never safely be made committable this round,
+    # the only choice that corrupts nothing is to defer the ENTIRE round — same
+    # philosophy as the per-doc dirty check below, applied to the one file every
+    # doc in this round would need staged alongside it. Recoverable exactly like
+    # any other fail-open skip: every doc stays flagged stale until this INDEX.md
+    # edit is committed (or discarded) and `/atlas:sync` runs again.
+    index_rel = os.path.relpath(os.path.join(aroot, atlas_index.INDEX_NAME), base
+                                 ).replace(os.sep, "/")
+    if index_rel in baseline_dirty:
+        print("atlas-sync: %s has uncommitted local edits — deferring the entire "
+              "sync round (a synced doc's commit needs an equally up-to-date "
+              "INDEX.md, and this file can't be safely regenerated while dirty)"
+              % index_rel, file=sys.stderr)
+        return 0
+
     results = []
     runnable = []
     for pk in packets:
@@ -496,9 +526,31 @@ def _run(args):
         _emit(results, args.json)
         return 0
 
-    atlas_index.write_index(base)
-    _git(["add", "--", atlas_rel], base)
-    staged, _ = _git(["diff", "--cached", "--name-only"], base)
+    # index_rel is guaranteed clean at baseline here — the check at the top of this
+    # function already deferred the whole round otherwise — so this write is
+    # always safe to make and, if it changed anything, always safe to stage below.
+    index_changed = atlas_index.write_index(base)
+
+    stage_paths = [os.path.relpath(pk["doc_path"], base).replace(os.sep, "/")
+                   for pk in synced]
+    if index_changed:
+        stage_paths.append(index_rel)
+    if not stage_paths:
+        print("atlas-sync: nothing to stage after sync — not committing",
+              file=sys.stderr)
+        _emit(results, args.json)
+        return 0
+
+    # `git add --` prepares exactly these paths' content. The commit itself is ALSO
+    # pathspec-scoped (`git commit ... -- <stage_paths>`, not a bare `git commit`)
+    # for a reason that isn't redundant: a bare commit commits the WHOLE INDEX, so
+    # anything the developer had ALREADY staged before this script ran — mid
+    # `git add` on something unrelated — would ride along in the sync commit too.
+    # Scoping the commit itself is what actually isolates it; scoping only the
+    # `add` does not, and can additionally mask a failed `add` (a stale pre-existing
+    # staged file would still make `git diff --cached` non-empty).
+    _git(["add", "--"] + stage_paths, base)
+    staged, _ = _git(["diff", "--cached", "--name-only", "--"] + stage_paths, base)
     if not staged.strip():
         print("atlas-sync: nothing staged after sync — not committing",
               file=sys.stderr)
@@ -509,7 +561,7 @@ def _run(args):
     short = short.strip() if ok and short.strip() else synced[0]["head"][:7]
     names = ", ".join(pk["doc"] for pk in synced)
     msg = "docs(atlas): sync %s to %s" % (names, short)
-    _, ok = _git(["commit", "-m", msg], base)
+    _, ok = _git(["commit", "-m", msg, "--"] + stage_paths, base)
     if ok:
         print("atlas-sync: committed: %s" % msg)
     else:

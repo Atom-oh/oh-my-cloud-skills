@@ -77,7 +77,10 @@ After the diagram, a text summary:
    urgent consequence.
 
 This command's own `allowed-tools` (`Read, Bash`) is deliberately read-only — it
-reports the graph, it does not edit it. If the user asks to fix a broken link or add
-an edge, that is a frontmatter edit + an INDEX regeneration, which is `/atlas:add-doc`'s
-job (Step 3 there updates a sibling doc's `related` list; Step 4 regenerates the
-INDEX) — hand off to it rather than editing here.
+reports the graph, it does not edit it. If the user asks to fix a broken link or add an
+edge on an EXISTING doc, that's a direct frontmatter edit (`Read` + `Edit` the doc's
+`related` list, outside this command's own restricted tool set) followed by
+`atlas_index.py --write` to regenerate the INDEX — not a job for `/atlas:add-doc`, which
+creates a brand-new page (its Step 3 touching a sibling's `related` list is a side
+effect of adding that new page, not a general link-repair entry point). Only route to
+`/atlas:add-doc` when the actual ask is a new page.

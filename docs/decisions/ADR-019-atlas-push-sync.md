@@ -98,14 +98,26 @@ wrong range.
   cases in the shipped code:
   - no `claude` binary on PATH (`shutil.which` check at the top of
     `atlas_sync.py:main()` — rename the binary and the push still succeeds);
-  - an unresolvable diff range (`atlas_drift.py:resolve_range()` returns empty when
-    there is no explicit range, no `@{upstream}`, and no resolvable trunk candidate);
+  - the wiki root's realpath not resolving to a proper subdirectory of the
+    repository's realpath (a symlinked wiki-root directory, or a `root` config value
+    that resolves to the repository root itself — refused before any headless call
+    runs, since it would widen the write-confinement guard's own scope rather than
+    narrowing it);
   - a per-packet timeout or spawn failure (`subprocess.TimeoutExpired` / `OSError`
     caught per doc, so one doc's failure cannot abort its siblings);
   - a validation failure before commit (`atlas_sync.py` refuses to commit while
     `atlas_index.py`'s validation reports hard errors, and prints why);
   - a push-scope mismatch, a failed working-tree snapshot or confinement scan, nested
     re-entry (`ATLAS_SYNC_ACTIVE=1`), and a catch-all for any internal exception.
+
+  **Not** a fail-open case, despite an earlier draft of this ADR listing it as one: an
+  unresolvable auto-detected diff range (no `@{upstream}`, no resolvable trunk
+  candidate). Every doc is checked against literal `HEAD` regardless of whether an
+  upstream/trunk auto-resolves — `atlas_drift.py:stale_docs()` takes a `head_ref`
+  (default `"HEAD"`, overridable only by an *explicit* `--range`'s right-hand side)
+  and computes each doc's own `code_rev..head_ref` diff, never a shared push-range
+  change set. A missing upstream was never actually fatal to the check once that was
+  fixed; only a genuine scope mismatch (§Decision, above) short-circuits it.
 
   The one deliberate exception is `atlas_index.py --validate`, which exits 1 on
   problems because it exists to be a gate — it is never on the push path's exit-code
@@ -118,13 +130,18 @@ wrong range.
 
 ## References
 
-- `docs/superpowers/specs/2026-08-19-atlas-design.md` — the full design record,
-  including the safety contracts around the headless fixer
-- `plugins/atlas/hooks/pre-push-sync.sh` — the shipped hook (seven-step gate)
+- `docs/superpowers/specs/2026-08-19-atlas-design.md` — the design record as of
+  2026-08-19 (a point-in-time snapshot per `docs/superpowers/CLAUDE.md`, not
+  retro-edited to track later fixes — this ADR and the code below are the living
+  record where the two differ, e.g. write-confinement's enforcement layer and the
+  drift-range semantics, both corrected after that spec was written)
+- `plugins/atlas/hooks/pre-push-sync.sh` — the shipped hook
 - `plugins/atlas/skills/atlas/scripts/atlas_sync.py` — recursion guard, fail-open
   paths, confinement, and the sync commit
 - `plugins/atlas/skills/atlas/scripts/atlas_config.py` — the tracked-override consent
   strip
-- `plugins/atlas/skills/atlas/references/headless-sync.md` — why deny beats allow and
-  why the post-hoc scan is the real write guarantee
+- `plugins/atlas/skills/atlas/references/headless-sync.md` — why deny beats allow,
+  and why the `--settings` `PreToolUse` realpath guard (not the post-hoc git-based
+  scan, which cannot see a write to an existing gitignored file or a path outside
+  the repo at all) is the actual write-confinement enforcement
 - `plugins/atlas/CLAUDE.md` — the plugin's own rationale summary of this decision

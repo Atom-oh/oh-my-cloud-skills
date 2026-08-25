@@ -21,6 +21,14 @@
 # silently missing toggle note.
 set -uo pipefail
 
+# `${CLAUDE_PLUGIN_ROOT}` referenced bare would itself trip `set -u` (an "unbound
+# variable" exit, before the banner even prints) if it's ever unset — the exact
+# non-zero-SessionStart outcome the comment above says must never happen. Same
+# guard as sibling hooks/pre-push-sync.sh uses for the same variable.
+if [ -z "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+  echo "atlas: CLAUDE_PLUGIN_ROOT is unset — skipping the atlas banner/reading rule"
+  exit 0
+fi
 SK="${CLAUDE_PLUGIN_ROOT}/skills/atlas/scripts"
 
 echo "atlas loaded. Per-topic repo wiki with push-time drift sync: /atlas:init · sync · add-doc · graph · configure."
@@ -53,9 +61,10 @@ if [ -f "$REPO_ROOT/$ATLAS_ROOT/INDEX.md" ]; then
 [atlas] Reading rule (always in effect): before answering questions about this repo's
 architecture or conventions, read the atlas root's `INDEX.md` FIRST. Choose which docs
 to open by their `description` and `covers` fields in that index — only then read the
-bodies of the chosen docs. Prefer an atlas doc over re-deriving the same knowledge
-from source: the docs are drift-checked against `code_rev`, so a matching doc is the
-cheaper and already-verified path to the same answer.
+bodies of the chosen docs. Prefer an atlas doc over re-deriving the same knowledge from
+source: each doc's `code_rev` names the commit its prose was last checked against, so a
+matching doc is the cheaper starting point either way (drift-checked if sync.on_push is
+on and has actually run against it; otherwise still the author's most recent take).
 ATLAS
 else
   echo "[atlas] Wiki not initialized yet — run /atlas:init to bootstrap it."

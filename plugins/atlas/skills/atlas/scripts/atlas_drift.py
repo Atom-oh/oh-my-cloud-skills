@@ -6,8 +6,8 @@ OWN frontmatter `code_rev` and the effective "now" ref (`head_ref`, "HEAD" unles
 overridden). Detection is O(changed files x docs) with no LLM call: this script
 only runs git and matches globs. atlas_sync.py imports resolve_range / range_head /
 changed_files / stale_docs and feeds the resulting work packets to the headless
-fixer, so their names and the packet JSON shape are a cross-module contract
-(design.md §E / §E2) — do not rename them.
+fixer, so their names and the packet JSON shape are a cross-module contract with
+atlas_sync.py — do not rename them.
 
 Usage:
   atlas_drift.py [--range A..B] [--root DIR] [--json]
@@ -19,7 +19,8 @@ Usage:
               for why: gating on a shared range used to let real drift go
               permanently unreviewed). Omit to use literal HEAD.
 --root DIR    target a repo other than the cwd
---json        one work packet (design.md §E2) per line instead of human-readable text
+--json        one work packet (see stale_docs' docstring for the exact shape) per
+              line instead of human-readable text
 
 Always exits 0 (fail-open): this script runs from a PreToolUse push hook, and an
 uncaught exception or non-zero exit there is a traceback on a developer's push. An
@@ -51,15 +52,27 @@ TRUNK_CANDIDATES = ("origin/main", "main", "origin/master", "master")
 def _git(args, cwd=None):
     """Run one git command; -> (stripped stdout, ok). The single funnel for every
     git invocation in this file: it returns the ("", False) sentinel on OSError,
-    TimeoutExpired, or a non-zero exit instead of raising, because this script is
-    called from a push hook and an uncaught exception there is a traceback on a
-    developer's push — the one outcome this plugin must never produce."""
+    TimeoutExpired, UnicodeDecodeError, or a non-zero exit instead of raising,
+    because this script is called from a push hook and an uncaught exception there
+    is a traceback on a developer's push — the one outcome this plugin must never
+    produce.
+
+    UnicodeDecodeError is caught alongside the other two for a concrete reason, not
+    defensively: `text=True` makes subprocess.run() decode stdout as UTF-8 (the
+    platform default) internally, BEFORE this function ever sees it. A filename can
+    be an arbitrary byte sequence on Linux — not every byte sequence is valid
+    UTF-8 — and `changed_files()` runs with `core.quotePath=false` specifically so
+    non-ASCII-but-valid-UTF-8 names come back unquoted (see that function's
+    docstring); the tradeoff is that a name which ISN'T valid UTF-8 at all now
+    raises during decoding instead of coming back safely quoted. Failing this
+    single call closed (treated as a git error, same as any other) is correct: one
+    unusual filename must not crash the whole push."""
     try:
         p = subprocess.run(
             ["git"] + list(args),
             cwd=cwd, capture_output=True, text=True, timeout=30,
         )
-    except (OSError, subprocess.TimeoutExpired):
+    except (OSError, subprocess.TimeoutExpired, UnicodeDecodeError):
         return "", False
     if p.returncode != 0:
         return "", False
@@ -89,8 +102,9 @@ def resolve_range(rng=None, root=None):
         mb, ok = _git(["merge-base", trunk, "HEAD"], cwd=base)
         if ok and mb:
             return "%s..HEAD" % mb
-    print("atlas drift: could not resolve a diff range (no explicit --range, no "
-          "@{upstream}, and none of %s resolve) — no drift check performed"
+    print("atlas drift: could not auto-resolve a push range (no explicit --range, "
+          "no @{upstream}, and none of %s resolve) — no explicit override; every "
+          "doc is still checked against literal HEAD"
           % ", ".join(TRUNK_CANDIDATES), file=sys.stderr)
     return ""
 
@@ -98,11 +112,23 @@ def resolve_range(rng=None, root=None):
 def changed_files(rng, root=None):
     """-> sorted list of repo-relative POSIX paths changed in `rng`
     (`git diff --name-only <rng>`). [] on any git error — an empty change set
-    yields zero packets, which is the fail-open direction."""
+    yields zero packets, which is the fail-open direction.
+
+    `-c core.quotePath=false` + `-z`, not a bare `--name-only`: git's default
+    `core.quotePath=true` octal-escapes and double-quotes any path byte outside
+    printable ASCII, so a file with a non-ASCII name (this plugin is "installable
+    in any repo" — plenty have them) comes back as e.g. `"plugins/\\355\\225\\234/x.py"`
+    instead of the literal path. `glob_match`'s matcher escapes every character of a
+    `covers` glob literally, so that quoted form can never match — the changed path
+    is simply missing from the returned list, which reads as "not stale" (silent
+    drift, the exact failure this plugin exists to prevent). `-z` NUL-terminates
+    each entry unambiguously regardless of quoting, sidestepping the escaping
+    entirely rather than trying to un-escape it."""
     if not rng:
         return []
     base = repo_root(root)
-    out, ok = _git(["diff", "--name-only", rng], cwd=base)
+    out, ok = _git(["-c", "core.quotePath=false", "diff", "-z", "--name-only", rng],
+                    cwd=base)
     if not ok:
         # An advisory, not silence: a range git rejects (typo'd ref, shallow clone)
         # would otherwise be indistinguishable from a genuinely empty change set,
@@ -113,7 +139,7 @@ def changed_files(rng, root=None):
         return []
     if not out:
         return []
-    return sorted(set(line.strip() for line in out.splitlines() if line.strip()))
+    return sorted(set(p for p in out.split("\0") if p))
 
 
 def range_head(rng):
@@ -209,8 +235,8 @@ def glob_match(pat, path):
 
 
 def _skip(doc, reason):
-    """The one-line stderr advisory for a doc that CANNOT be drift-checked (§E3
-    conditions 1-3). Load-bearing, not cosmetic: staying silent here would let a
+    """The one-line stderr advisory for a doc that CANNOT be drift-checked
+    (stale_docs' conditions 1-3). Load-bearing, not cosmetic: staying silent here would let a
     doc with a broken schema or an unresolvable code_rev look permanently fresh —
     the exact failure this plugin exists to prevent. A doc that merely is not
     stale (conditions 4-5) gets no advisory."""
@@ -218,8 +244,10 @@ def _skip(doc, reason):
 
 
 def stale_docs(docs, root=None, head_ref="HEAD"):
-    """-> list of work packets (design.md §E2), one per stale doc, ordered by doc
-    relpath. A doc yields a packet iff ALL of (§E3, in this order):
+    """-> list of work packets, one per stale doc, ordered by doc relpath. Each
+    packet: {"doc", "doc_path", "code_rev", "head", "matched", "range"} (see the
+    packet built at the bottom of this function for the exact shape — atlas_sync.py
+    consumes it as-is). A doc yields a packet iff ALL of (in this order):
       1. doc.errors is empty, and
       2. doc.covers is non-empty, and
       3. doc.code_rev is non-empty and resolves to a commit, and
@@ -243,8 +271,20 @@ def stale_docs(docs, root=None, head_ref="HEAD"):
     new anchor."""
     base = repo_root(root)
     head_sha, head_ok = _git(["rev-parse", "--verify", "%s^{commit}" % head_ref], cwd=base)
-    # Short form for the packet's `head` / `range` fields (matches §E2's example
-    # shape); the full sha above is what the freshness comparison uses.
+    # An UNRESOLVABLE head_ref (a typo'd explicit --range's right-hand side, e.g.
+    # "main..typoo") must not fail silently: every doc's condition (4) below reads
+    # `not head_ok` as "not stale" and `continue`s with NO advisory of its own, which
+    # would make an entire repo report "nothing stale" with no sign anything is
+    # wrong. head_ref_for() only catches a right-hand side with no separator at all
+    # (a string with no ".." in it); a syntactically-fine but non-existent ref still
+    # reaches here.
+    if not head_ok:
+        print("atlas drift: --range's right-hand ref %r does not resolve to a "
+              "commit — no doc can be checked against it" % head_ref,
+              file=sys.stderr)
+    # Short form for the packet's `head` / `range` fields (matches this function's
+    # own packet shape below); the full sha above is what the freshness comparison
+    # uses.
     head_short, ok = _git(["rev-parse", "--short", head_ref], cwd=base)
     if not ok or not head_short:
         head_short = head_sha[:7] if head_sha else ""

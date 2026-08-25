@@ -46,9 +46,13 @@ directly:
 
 ```bash
 python3 "$SK/atlas_drift.py" --root "$ROOT"
-python3 "$SK/atlas_drift.py" --range "$ARGUMENTS" --root "$ROOT"   # explicit range
+python3 "$SK/atlas_drift.py" --range "<the literal A..B text>" --root "$ROOT"   # only when $ARGUMENTS is non-empty
 python3 "$SK/atlas_drift.py" --json --root "$ROOT"                 # one packet per line
 ```
+
+Omit `--range` entirely when `$ARGUMENTS` is empty — don't pass it as a literal empty
+string; that happens to be harmless here (an empty string is treated the same as no
+override) but is fragile to rely on.
 
 One `stale:` line per drifted doc. **Read stderr too**: a `skipping <doc> — ...`
 advisory means that doc has a schema error, empty `covers`, or an unresolvable
@@ -59,12 +63,16 @@ that is how docs rot invisibly. Surface every advisory to the user.
 
 ```bash
 python3 "$SK/atlas_sync.py" --root "$ROOT"
-python3 "$SK/atlas_sync.py" --range "$ARGUMENTS" --root "$ROOT"    # explicit range
+python3 "$SK/atlas_sync.py" --range "<the literal A..B text>" --root "$ROOT"    # only when $ARGUMENTS is non-empty
 ```
 
-Each stale doc gets its own headless call that may only edit that one doc — a
-`PreToolUse` hook confines its `Edit` calls to the wiki directory by realpath, and a
-post-hoc scan reverts anything that somehow still landed outside it. Afterwards the script — not
+Each stale doc gets its own headless call, told by its prompt to touch only that one
+doc's frontmatter-excluded prose — but the enforced boundary is coarser than that: a
+`PreToolUse` hook confines `Edit` to the wiki DIRECTORY by realpath (not to that single
+doc's own path), and a post-hoc scan reverts anything that somehow still landed outside
+even that. With `sync.parallel` > 1, concurrent calls share that same directory-wide
+boundary — see `references/atlas-templates.md`'s note on two docs claiming overlapping
+territory needing an authoritative-doc note, the same class of risk. Afterwards the script — not
 the model — advances `code_rev` to HEAD, regenerates `INDEX.md`, and creates a
 `docs(atlas): sync ...` commit. Sending covered-file diff content to Anthropic is
 inherent to the fix step; that is why the preview above comes first.
