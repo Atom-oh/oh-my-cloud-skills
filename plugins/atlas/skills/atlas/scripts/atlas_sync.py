@@ -2,10 +2,11 @@
 """atlas push-time auto-fix: one confined headless `claude -p` call per stale doc.
 
 atlas_drift.py finds the stale docs (cheap, no LLM); this script repairs them. Each
-stale doc gets its own headless call confined to Read/Edit ONLY that doc (Grep/Glob
-similarly confined to the wiki root), then the script itself advances the doc's
-`code_rev` anchor, regenerates INDEX.md, and commits the result — so the fix rides
-along in the `git push` that triggered it.
+stale doc gets its own headless call whose Read/Edit/Grep/Glob are ALL confined by a
+PreToolUse guard to the wiki root (single-doc-only for Edit is prompt policy, not a
+separate enforced boundary — the guard's actual scope is the whole root), then the
+script itself advances the doc's `code_rev` anchor, regenerates INDEX.md, and commits
+the result — so the fix rides along in the `git push` that triggered it.
 
 Usage:
   atlas_sync.py [--range A..B] [--root DIR] [--dry-run] [--json]
@@ -198,8 +199,9 @@ def _run_packet(packet, diff_text, model, timeout, base, atlas_rel):
     # inside the headless call re-enters the PreToolUse hook, re-runs this script,
     # and stops at the recursion guard in main() instead of recursing forever.
     # ATLAS_GUARD_ROOT: the absolute, realpath'd atlas root the _GUARD_CMD_TEMPLATE PreToolUse
-    # hook reads to decide whether an Edit's file_path is in-bounds — computed here
-    # (not baked into _claude_cmd) because it depends on this call's `base`/`atlas_rel`.
+    # hooks read to decide whether an Edit/Read's file_path (or a Grep/Glob's path)
+    # is in-bounds — computed here (not baked into _claude_cmd) because it depends
+    # on this call's `base`/`atlas_rel`.
     env = {**os.environ, "ATLAS_SYNC_ACTIVE": "1",
            "ATLAS_GUARD_ROOT": os.path.realpath(os.path.join(base, atlas_rel))}
     try:
@@ -295,33 +297,53 @@ def _confine(base, atlas_rel, baseline_tracked, baseline_untracked):
 # must not depend on another plugin's internal scripts. Narrower than that
 # scanner on purpose — high-confidence patterns only, since a false-positive here
 # silently drops a real doc fix rather than just warning.
+#
+# `re.I` applies ONLY to the generic password/token/etc. alternation, deliberately
+# NOT to AKIA/PEM: those are fixed-case constants with no legitimate case variant,
+# and case-folding them only widens the "high-confidence only" pattern set the
+# module docstring above promises.
 _SECRET_LINE_RE = re.compile(
     r"AKIA[0-9A-Z]{16}"                                          # AWS access key id
     r"|aws_secret_access_key\s*[:=]\s*\S{16,}"                   # AWS secret access key
     r"|-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----"  # PEM private key
-    r"|(?:password|passwd|secret|api[_-]?key|client[_-]?secret|token)"
-    r"['\"]?\s*[:=]\s*['\"][^'\"]{8,}['\"]",
-    re.I,
+    r"|(?i:(?:password|passwd|secret|api[_-]?key|client[_-]?secret|token)"
+    r"['\"]?\s*[:=]\s*['\"][^'\"]{8,}['\"])"
 )
-# Same allowlist convention as .claude/hooks/secret-scan.sh / consensus_hooks.py: an
-# explicit marker means "known fixture/example", not a real secret.
-_SECRET_ALLOWLIST_RE = re.compile(r"pragma:\s*allowlist secret|atlas:\s*test-fixture", re.I)
+# No allowlist-marker escape here, unlike .claude/hooks/secret-scan.sh or
+# consensus_hooks.py: those scanners cover content a human author wrote (a PR diff,
+# a staged commit), so an explicit "this is a known fixture" marker on the SAME
+# line is a legitimate signal from a trusted party. Here the content under scan is
+# the doc body the (potentially hijacked) headless fixer just wrote — the marker
+# would sit on the exact line the fixer controls, so honoring it would let the
+# threat this net exists to catch simply annotate its own way past it. If a real
+# fixture ever needs a secret-shaped string in an atlas doc, curate it as part of
+# the doc's PRE-existing (baseline) content instead — this scan only looks at
+# lines ADDED by this sync round.
 
 
 def _scan_doc_secrets(doc_path, base):
     """"" (no hit) or the matched text (truncated) if a synced doc's own diff
-    (working tree vs HEAD, not yet staged) contains a secret-shaped string on an
-    ADDED line. Checked once per doc, right before that doc is accepted into
-    `synced` — a hit reverts just that one doc (see the call site), never the
-    whole batch."""
+    against HEAD (i.e. everything new since the last commit, regardless of
+    whether it's already staged) contains a secret-shaped string on an ADDED
+    line. Checked once per doc, right before that doc is accepted into `synced`
+    — a hit reverts just that one doc (see the call site), never the whole
+    batch. Deliberately `git diff HEAD --`, not the bare (index-relative) `git
+    diff --`: the latter is blind to content already sitting in the index, so a
+    doc with a pre-existing STAGED secret (never caught by the working-tree-only
+    baseline-dirty check above either) would sail through this scan and still
+    reach `git add` further down — comparing against HEAD instead means the scan
+    sees the doc's full delta since the last commit, staged or not."""
     rel = os.path.relpath(doc_path, base).replace(os.sep, "/")
-    diff_text, ok = _git(["diff", "--", rel], base)
+    diff_text, ok = _git(["diff", "HEAD", "--", rel], base)
     if not ok:
         return ""
     for line in diff_text.splitlines():
-        if not line.startswith("+") or line.startswith("+++"):
-            continue
-        if _SECRET_ALLOWLIST_RE.search(line):
+        # A real `+++ b/…` file header always has the space after the markers;
+        # an added CONTENT line whose text itself starts with "++" becomes
+        # "+++<text>" with NO following space once the diff's own leading "+" is
+        # prepended — `startswith("+++")` alone misclassifies that as a header
+        # and skips it from scanning.
+        if not line.startswith("+") or line.startswith("+++ "):
             continue
         m = _SECRET_LINE_RE.search(line)
         if m:
@@ -555,10 +577,14 @@ def _run(args):
                     results.append({"doc": pk["doc"], "status": "failed",
                                     "reason": err})
                     continue
-                secret_hit = _scan_doc_secrets(pk["doc_path"], base)
-                if secret_hit:
-                    print("atlas-sync: %s: possible secret in the synced content "
-                          "(%r) — reverting, not committing" % (pk["doc"], secret_hit),
+                # Only the doc's path is logged — NEVER the matched text itself
+                # (not even truncated): a control built to stop a secret from
+                # reaching a commit must not turn around and print that same
+                # secret to stderr, which a push hook's caller (terminal, CI
+                # logs) can capture just as durably as a git commit would.
+                if _scan_doc_secrets(pk["doc_path"], base):
+                    print("atlas-sync: %s: possible secret detected in the synced "
+                          "content — reverting, not committing" % pk["doc"],
                           file=sys.stderr)
                     _revert_doc(pk["doc_path"], base)
                     results.append({"doc": pk["doc"], "status": "failed",

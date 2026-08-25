@@ -163,14 +163,18 @@ lenses** (a different axis from the PR gate's peer quorum):
   if acceptable, bypass with `CO_AGENT_PUSH_GATE=off git push ...`, otherwise fix and retry.
 - **0** → `exit 0` PASS.
 
-- **A push that can't be reviewed is SKIPped (fail-open)** — it uses the **same 4 classes** as
+- **A push that can't be reviewed is SKIPped (fail-open)** — it uses the **same 5 classes** as
   kiro's `push-scope-mismatch` (since both hooks intercept the same event, divergent skip rules
-  would themselves be a bug surface): a preceding `cd`/`pushd`, a state-changing `git commit`
+  would themselves be a bug surface — every class added to one side needs the same pass over
+  the other, atlas's verbatim copy of `hook_match.py` included, since it intercepts the same
+  event too): a preceding `cd`/`pushd`, a state-changing `git commit`
   earlier in the same invocation, a **redirect to a different repo/worktree** (`-C` /
   `--git-dir` / `--work-tree` / `GIT_DIR=` — the gate always diffs its own root, so it would
-  otherwise review the wrong repo), and a **ref-deletion push** (nothing to review). The last
-  two were ported over from what co-agent was missing. `--delete` is only recognized **within
-  this invocation's scope** — a later command's flags can't remove this push's review.
+  otherwise review the wrong repo), a **ref-deletion push** (nothing to review), and a
+  **`--dry-run`/`-n` push** (nothing is actually pushed, so there is nothing yet to review).
+  The last three were ported over from what co-agent was missing. `--delete`/`--dry-run` are
+  only recognized **within this invocation's scope** — a later command's flags can't remove
+  this push's review.
 - **Consent**: `push_gate.enabled=false` by default — enabling it is itself consent to send
   data externally. `co_agent_config.py` gets **tracked-file consent stripping** for the first
   time (same logic as kiro's `_strip_consent_keys`): if `.claude/co-agent.local.json` is

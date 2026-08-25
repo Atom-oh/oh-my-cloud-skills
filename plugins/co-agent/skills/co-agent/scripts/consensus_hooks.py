@@ -92,6 +92,15 @@ _PRECEDING_CD = re.compile(r"(?:^|[\n;&|])\s*(?:pushd|cd)(?:\s|$)")
 _PUSH_REDIRECT_RE = re.compile(
     r"(?:^|\s)-C\s+\S|(?:^|\s)--(?:git-dir|work-tree)(?:\s+\S|=\S)|\bGIT_(?:DIR|WORK_TREE)=\S")
 _PUSH_DELETE_RE = re.compile(r"(?:^|\s)(?:--delete\b|-d\b)")
+# A third class ported the same way, for the same reason: kiro's hook_match.py (and
+# atlas's verbatim copy of it) both treat `--dry-run`/`-n` as a scope mismatch —
+# nothing is actually pushed, so a side-effecting response to "this push is
+# happening" (a real 3-lens review call here) would be reacting to content that
+# never leaves the machine. Missing this class would mean the SAME `git push
+# --dry-run` is skipped by kiro's/atlas's hooks but still reviewed (and its diff
+# egressed to the peer panel) by this gate — exactly the "different skip rules is a
+# bug surface" problem the comment above already names for the other two classes.
+_PUSH_DRY_RUN_RE = re.compile(r"(?:^|\s)(?:--dry-run\b|-n\b)")
 # A push whose CONTENT is not "the current branch vs its upstream" cannot be judged by
 # the range these gates compute. `--all`/`--tags`/`--mirror` send many refs; an explicit
 # positional refspec (`origin other-branch`, `origin src:dst`) sends a ref that may have
@@ -711,6 +720,10 @@ def ev_pre_push_gate(root):
     if _PUSH_DELETE_RE.search(rest):
         _notify("[co-agent push gate] note: a ref-deletion push has no content to review — "
                 "gate SKIPPED.\n")
+        return 0
+    if _PUSH_DRY_RUN_RE.search(rest):
+        _notify("[co-agent push gate] note: this is a --dry-run/-n push — nothing is "
+                "actually pushed, so there is nothing to review yet. Gate SKIPPED.\n")
         return 0
     if _PUSH_MULTIREF_RE.search(rest) or _push_has_explicit_refspec(rest):
         _notify("[co-agent push gate] note: this push sends refs the gate's range does not "
