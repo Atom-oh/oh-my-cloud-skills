@@ -15,7 +15,7 @@ cmd = [
     "claude", "-p", prompt_text,
     "--output-format", "text",
     "--allowedTools", "Read,Grep,Glob,Edit",
-    "--disallowedTools", "Bash,Write,WebFetch,WebSearch,Task",
+    "--disallowedTools", "Bash,Write,NotebookEdit,WebFetch,WebSearch,Task",
 ]
 if model:
     cmd += ["--model", model]
@@ -50,6 +50,17 @@ restrictions.
 Be clear-eyed about what the flag list does **not** cover: `Edit` can reach any file
 that already exists, anywhere the process can address — the allow/deny lists confine
 *which tools* run, not *which paths* they touch. So the flag list is not the guarantee.
+
+Be equally clear-eyed about `Read`/`Grep`/`Glob`: nothing below confines them to the
+atlas root. The `PreToolUse` guard in layer 1 only matches the `Edit` tool, so an
+injected instruction can have the fixer `Read`/`Grep` any file the process can address
+— including something outside the wiki entirely, gitignored credentials included — and
+then `Edit` that content into an in-root doc, which layer 2 will happily let through
+because the *edit itself* lands inside the atlas root. The write-confinement layers
+stop the fixer from writing to an arbitrary path; they do not stop it from *reading*
+one and laundering the content into a doc that ships in the same push. This is a real,
+currently open gap, not a hardened one — treat "confined to the wiki root" claims
+elsewhere in this plugin's docs as describing `Edit` only, not the full tool set.
 
 Two layers actually hold, in order:
 
@@ -95,17 +106,26 @@ The diff on stdin is attacker-controllable text: any commit author between the d
 chose its content, and the fixer reads all of it. Assume it contains instructions
 aimed at the model.
 
-Three things bound the damage. First, the prompt states explicitly that the diff is
-untrusted data and that any instruction found *inside* it is content to document, never
-a command to follow — necessary, but prose alone is the weakest layer here. Second, the
-tool set removes the payloads that would make a successful injection matter: no `Bash`
-to execute anything, no `WebFetch`/`WebSearch` to reach the network, no `Task` to
-launder the attempt through an unrestricted subagent. Third, even a fully hijacked
-session can only produce `Edit` calls, and the write-confinement pass above reverts any
-of them that land outside the atlas root. The residual risk is real but narrow: injected
-text can corrupt the *content* of atlas docs. That lands in a `docs(atlas): sync ...`
-commit in your push, where review catches it — the same review that would catch a bad
-human doc edit.
+Three things bound the damage, but not all the way. First, the prompt states explicitly
+that the diff is untrusted data and that any instruction found *inside* it is content to
+document, never a command to follow — necessary, but prose alone is the weakest layer
+here. Second, the tool set removes the payloads that would make a successful injection
+reach outside the process entirely: no `Bash` to execute anything, no
+`WebFetch`/`WebSearch` to reach the network directly, no `Task` to launder the attempt
+through an unrestricted subagent. Third, a hijacked session's *writes* are still bounded
+to `Edit` calls, and the write-confinement pass above reverts any of them that land
+outside the atlas root.
+
+What is NOT bounded: `Read`/`Grep`/`Glob` are unconfined (see "Write confinement" above),
+so a hijacked session can read a file outside the wiki — a gitignored secret, an
+unrelated repo file — and `Edit` its content straight into an in-root doc. That edit
+passes both write-confinement layers because the *target* path is in-bounds; only the
+*content* is tainted. The result still lands in a `docs(atlas): sync ...` commit in your
+push, where review can catch it before it goes further — but "review catches it" is a
+weaker backstop than for a pure content-corruption injection, because this path is a
+push, i.e. the content already left the local machine once, unreviewed, before that
+review happens. If your threat model includes a genuinely malicious contributor branch
+being synced against, treat this as an open exfiltration path, not a closed one.
 
 ## Why the script writes code_rev
 

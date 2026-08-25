@@ -152,10 +152,11 @@ def _claude_cmd(prompt_text, model):
         # is merely absent from --allowedTools. This repo already encodes that
         # lesson in scripts/pr-review/synthesize.sh, whose run_chair() comment says
         # exactly that. Bash is denied because the diff on stdin is
-        # attacker-controllable text; Write so the fixer can only Edit files that
-        # already exist; WebFetch/WebSearch deny network egress; Task denies
-        # spawning a subagent that would not inherit these restrictions.
-        "--disallowedTools", "Bash,Write,WebFetch,WebSearch,Task",
+        # attacker-controllable text; Write and NotebookEdit so the fixer can only
+        # Edit files that already exist, never create or notebook-edit a new one;
+        # WebFetch/WebSearch deny network egress; Task denies spawning a subagent
+        # that would not inherit these restrictions.
+        "--disallowedTools", "Bash,Write,NotebookEdit,WebFetch,WebSearch,Task",
         # See _GUARD_CMD above: the actual write-confinement enforcement.
         "--settings", _SETTINGS_JSON,
     ]

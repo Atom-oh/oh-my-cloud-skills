@@ -55,7 +55,11 @@ fi
 # a coarse match here is an EXTRA SKIP, which is the fail-open-safe direction — the
 # opposite mistake, missing a real bypass, would run a sync the user explicitly asked
 # to skip.
-if grep -Eq '(^|[[:space:];&|])ATLAS_SYNC=off' "$PAYLOAD_FILE"; then
+# The boundary class includes `"` and `'`: $PAYLOAD_FILE is the raw PreToolUse JSON
+# (not a bare command string), so the token is always preceded by the opening quote
+# of the `"command":"..."` value, e.g. `"command":"ATLAS_SYNC=off git push"` — without
+# `"`/`'` in the class, this never matches the documented inline-prefix form at all.
+if grep -Eq "(^|[[:space:];&|\"'])ATLAS_SYNC=off" "$PAYLOAD_FILE"; then
   exit 0
 fi
 

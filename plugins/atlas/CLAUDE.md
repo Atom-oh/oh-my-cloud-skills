@@ -65,11 +65,17 @@ above and still resolve outside the repo via a symlinked directory).
 
 What confines the fixer once it runs: the allow/deny tool lists
 (`--allowedTools Read,Grep,Glob,Edit`, explicit `--disallowedTools` because deny beats
-allow), a `--settings` `PreToolUse` hook that is the actual enforcement (confines
-`Edit` to the wiki root by realpath, checked before the write happens), and a post-hoc
-git-based scan as defense-in-depth (it cannot see a write to an existing gitignored
-file or a path outside the repo at all, which is exactly why it isn't the primary
-layer). The diff it reads is treated as attacker-controllable text. Full argument:
+allow), a `--settings` `PreToolUse` hook that is the actual enforcement for `Edit`
+(confines it to the wiki root by realpath, checked before the write happens), and a
+post-hoc git-based scan as defense-in-depth (it cannot see a write to an existing
+gitignored file or a path outside the repo at all, which is exactly why it isn't the
+primary layer). **This confinement covers `Edit` only** — `Read`/`Grep`/`Glob` are not
+path-restricted, so a hijacked session can read a file outside the wiki root and
+`Edit` its content into an in-root doc, which both write-confinement layers will let
+through because the edit's *target* is in-bounds. That doc still ships in the same
+`docs(atlas): sync` commit, so a malicious diff between a doc's `code_rev` and `HEAD`
+is a real, currently open exfiltration path, not a closed one. The diff it reads is
+treated as attacker-controllable text. Full argument, including this gap:
 `skills/atlas/references/headless-sync.md`.
 
 ## Fail-open contract
