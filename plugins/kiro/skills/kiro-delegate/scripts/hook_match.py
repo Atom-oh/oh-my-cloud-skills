@@ -344,50 +344,65 @@ def _push_has_explicit_refspec(rest):
     return len(positionals) >= 2 and positionals[1] not in ("HEAD",)
 
 
-def is_push_scope_mismatch(cmd):
-    """True iff the push invocation may not correspond to the diff the pre-push hook
-    would compute (`@{upstream}...HEAD`, falling back to the trunk merge-base):
-      - `-C`/`--git-dir`/`--work-tree` (flag or `GIT_DIR=`/`GIT_WORK_TREE=` env
-        prefix) redirects to a different repo/tree than this hook's own root.
-      - a `cd`/`pushd` earlier in the SAME invocation changes the shell's cwd before
-        `git push` runs there, same class of redirect.
-      - a `git commit` earlier in the SAME invocation runs AFTER this PreToolUse
-        hook fires (it fires once, before ANY of a compound command executes) — the
-        diff computed now is missing that not-yet-created commit, which is exactly
-        the content about to be pushed. Stale-HEAD analog of the commit-side
-        `is_stale_index` check.
-      - `--delete`/`-d`: nothing to review (a ref deletion, not new content).
-      - `--dry-run`/`-n`: a simulation — nothing is actually pushed, so a
-        side-effecting response to "this push is happening" (a review call, or
-        atlas's real sync commit + diff egress) would be reacting to content that
-        never leaves the machine.
-      - `--all`/`--tags`/`--mirror`, or an explicit refspec positional (`git push origin
-        other-branch`): the content pushed is not what `@{upstream}...HEAD` describes, so
-        the computed diff would judge the wrong commits — unreviewed content could pass,
-        or an unrelated diff could block."""
-    detect = _blank_quotes(cmd)
-    m = _PUSH_ARGS_RE.search(detect)
-    if not m:
-        return False
-    before, rest = m.group("before"), m.group("rest")
+def _mismatch_for_one_push(detect, gm):
+    """True iff the ONE `git push` occurrence matched by `gm` (a `_GIT_PUSH_RE`
+    match against the full, already quote-blanked `detect` text) is itself
+    unreviewable, by the same classes `is_push_scope_mismatch`'s docstring lists.
+    Factored out of that function so a COMPOUND command with more than one `git
+    push` invocation can be judged occurrence-by-occurrence instead of only ever
+    looking at the first one."""
+    if _GIT_ENV_REDIRECT_RE.search(gm.group()):
+        return True
+    # Same slicing convention as is_stale_index(): only the text BEFORE this
+    # git-push invocation's own boundary character.
+    pre = detect[:gm.start() + 1]
+    if _PRECEDING_CD_RE.search(pre):
+        return True
+    if _GIT_COMMIT_RE.search(pre):
+        return True
+    # `_PUSH_ARGS_RE`'s own `git\b...push` core is entirely contained inside
+    # `gm.group()` (which may additionally carry an env-prefix `_GIT_PUSH_RE`
+    # tolerates but `_PUSH_ARGS_RE` does not) — searching within that substring
+    # only, rather than the full `detect` text, guarantees this can never
+    # accidentally match a DIFFERENT push occurrence's flags.
+    am = _PUSH_ARGS_RE.search(gm.group())
+    before = am.group("before") if am else ""
     if _PRE_C_RE.search(before) or _PRE_GIT_DIR_RE.search(before):
         return True
+    # `gm.end()` sits exactly after `push` (a lookahead, not consumed) — the same
+    # start position `_PUSH_ARGS_RE`'s own `rest` group would use for this
+    # occurrence.
+    rest = re.split(r"[;&|\n]", detect[gm.end():], 1)[0]
     if _PUSH_MULTIREF_RE.search(rest) or _push_has_explicit_refspec(rest):
         return True
     if _PUSH_DELETE_RE.search(rest) or _PUSH_DRY_RUN_RE.search(rest):
         return True
-    gm = _GIT_PUSH_RE.search(detect)
-    if gm:
-        if _GIT_ENV_REDIRECT_RE.search(gm.group()):
-            return True
-        # Same slicing convention as is_stale_index(): only the text BEFORE this
-        # git-push invocation's own boundary character.
-        pre = detect[:gm.start() + 1]
-        if _PRECEDING_CD_RE.search(pre):
-            return True
-        if _GIT_COMMIT_RE.search(pre):
-            return True
     return False
+
+
+def is_push_scope_mismatch(cmd):
+    """True iff EVERY `git push` invocation found in `cmd` may not correspond to
+    the diff the pre-push hook would compute (`@{upstream}...HEAD`, falling back
+    to the trunk merge-base) — see `_mismatch_for_one_push` for the per-occurrence
+    classes (`-C`/`--git-dir`/`--work-tree`/`GIT_DIR=` redirect; a preceding
+    `cd`/`pushd`; a preceding `git commit` in the same invocation; `--delete`/`-d`;
+    `--dry-run`/`-n`; `--all`/`--tags`/`--mirror`; an explicit refspec positional).
+
+    Checks ALL occurrences, not just the first: a compound command can contain
+    more than one `git push` (`git push --dry-run && git push` is the natural,
+    common case — dry-run first, then the real thing, in one invocation). Judging
+    only the first occurrence would let its own class (here, `--dry-run`) skip the
+    ENTIRE command's review, silently missing the second, perfectly reviewable
+    push right after it. The overall verdict is a mismatch only when there is no
+    single occurrence left that a range-based diff could actually judge — i.e.
+    skip only if reviewing would find NOTHING to review anywhere in the command;
+    if at least one push invocation is itself reviewable, this returns False and
+    the hook proceeds (erring toward reviewing, the safe direction for a gate)."""
+    detect = _blank_quotes(cmd)
+    gms = list(_GIT_PUSH_RE.finditer(detect))
+    if not gms:
+        return False
+    return all(_mismatch_for_one_push(detect, gm) for gm in gms)
 
 
 def is_push_bypassed(cmd):

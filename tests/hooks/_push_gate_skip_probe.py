@@ -19,19 +19,28 @@ _spec.loader.exec_module(ch)
 
 
 def classify(cmd):
-    """Mirror ev_pre_push_gate's skip ordering, without running the gate itself."""
+    """Mirror ev_pre_push_gate's skip logic, without running the gate itself. Checks
+    ALL `git push` occurrences (via `_push_gate_mismatch_reason`, same as the real
+    function) — a compound command is only classified as skipped if EVERY push
+    invocation in it is itself unreviewable; a single reviewable occurrence anywhere
+    makes the whole command GATED."""
     detect = re.sub(r"'[^']*'|\"[^\"]*\"", lambda mm: " " * len(mm.group()), cmd)
-    m = ch._GIT_PUSH_CMD_RE.search(detect)
-    if not m:
+    gms = list(ch._GIT_PUSH_CMD_RE.finditer(detect))
+    if not gms:
         return "not-a-push"
-    if ch._PUSH_REDIRECT_RE.search(m.group()):
+    reasons = [ch._push_gate_mismatch_reason(detect, gm) for gm in gms]
+    if not all(reasons):
+        return "GATED"
+    r = reasons[0]
+    if "redirect" in r or "WRONG repository" in r:
         return "skip:redirect"
-    rest = re.split(r"[;&|\n]", detect[m.end():], 1)[0]
-    if ch._PUSH_DELETE_RE.search(rest):
+    if "ref-deletion" in r:
         return "skip:delete"
-    if ch._PUSH_MULTIREF_RE.search(rest) or ch._push_has_explicit_refspec(rest):
+    if "refs the gate's range does not describe" in r:
         return "skip:refspec"
-    return "GATED"
+    if "dry-run" in r:
+        return "skip:dry-run"
+    return "skip:other"
 
 
 def kiro_classify(cmd):

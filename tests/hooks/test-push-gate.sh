@@ -57,6 +57,13 @@ assert_eq "0" "$(_hm push-scope-mismatch 'git push origin -n')" "push-scope-mism
 assert_eq "1" "$(_hm push-scope-mismatch 'git push')" "push-scope-mismatch: bare push is not a mismatch"
 assert_eq "1" "$(_hm push-scope-mismatch 'git push -u origin HEAD')" "push-scope-mismatch: ordinary explicit push is not a mismatch"
 
+# --- push-scope-mismatch: compound commands with MORE THAN ONE `git push` — only the
+# FIRST occurrence's class must not blind the hook to a second, reviewable push right
+# after it (a dry-run-first-then-real-push in one invocation is the natural case). ---
+assert_eq "1" "$(_hm push-scope-mismatch 'git push --dry-run && git push')" "push-scope-mismatch: dry-run THEN a real push — the real one must still be reviewed"
+assert_eq "1" "$(_hm push-scope-mismatch 'git push --delete origin foo && git push')" "push-scope-mismatch: delete THEN a real push — same fix, pre-existing class"
+assert_eq "0" "$(_hm push-scope-mismatch 'git push --dry-run')" "push-scope-mismatch: a LONE dry-run push is still skipped (nothing reviewable at all)"
+
 # --- kiro_review.py lens merge: dedupe by (file, line), keep highest severity ---
 MERGE_OUT="$(python3 -c "
 import sys
@@ -220,7 +227,26 @@ assert_eq "skip skip" "$(_pgb 'git push --all')" "refspec: --all sends refs the 
 assert_eq "skip skip" "$(_pgb 'git push --tags')" "refspec: --tags likewise"
 assert_eq "skip skip" "$(_pgb 'git push --mirror origin')" "refspec: --mirror likewise"
 
+# --- co-agent push gate: --dry-run skip class, and the same compound-command fix as
+# kiro's push-scope-mismatch — a dry-run-then-real-push in ONE invocation must still be
+# gated on the real push, not blinded by the first occurrence's class. ---
+assert_eq "skip:dry-run" "$(_pgs 'git push --dry-run')" "push gate: a lone --dry-run push is skipped"
+assert_eq "skip skip" "$(_pgb 'git push --dry-run')" "dry-run: both gates skip a lone dry-run push"
+assert_eq "GATED" "$(_pgs 'git push --dry-run && git push')" "push gate: dry-run THEN a real push in one invocation is still GATED"
+assert_eq "GATED GATED" "$(_pgb 'git push --dry-run && git push')" "dry-run compound: both gates still review the real push"
+
 assert_json_valid "plugins/co-agent/skills/co-agent/co-agent.defaults.json" "co-agent.defaults.json is valid JSON after adding push_gate"
+
+# --- atlas_sync.py's _scan_doc_secrets: header-misclassification bypass, case
+# sensitivity, and the (deliberately absent) allowlist marker. Fixture VALUES live
+# in _atlas_secret_scan_probe.py, assembled from parts there — not as literals in
+# this file — so this repo's own commit-time secret-scan.sh doesn't flag the very
+# fixtures meant to test atlas's scanner for these shapes. ---
+_aspc() { python3 tests/hooks/_atlas_secret_scan_probe.py --case "$1"; }
+assert_eq "HIT 2" "$(_aspc header-bypass)" "secret-scan: added content starting with '++ ' is NOT misread as a diff file header"
+assert_eq "HIT 2" "$(_aspc aws-uppercase)" "secret-scan: uppercase AWS_SECRET_ACCESS_KEY= is caught (case-fold bug fix)"
+assert_eq "HIT 2" "$(_aspc allowlist-no-bypass)" "secret-scan: an allowlist marker on the fixer-controlled line does NOT bypass detection"
+assert_eq "CLEAN" "$(_aspc benign)" "secret-scan: an ordinary prose edit is not flagged"
 
 if python3 -c "import py_compile" 2>/dev/null; then
   # `if python3 ...; then`, NOT `python3 ...` followed by `[ $? -eq 0 ]`: this file is
