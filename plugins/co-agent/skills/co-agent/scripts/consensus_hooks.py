@@ -94,13 +94,17 @@ _PUSH_REDIRECT_RE = re.compile(
 # `-[A-Za-z]*d[A-Za-z]*\b`, not bare `-d\b`: git's parse-options lets value-less
 # short flags bundle (`-fd`, `-vd`) — a bare `-d\b` alone missed those clusters,
 # silently reviewing a ref-deletion push as if it were ordinary content.
-# `(?!o)` right after the leading `-` excludes `-o<value>` (push's `--push-option`
-# short form, e.g. `-odeploy` == `-o deploy`): `-o` is VALUE-TAKING, so everything
-# after it is that option's value, not more bundled flags — without this
-# exclusion, `-odeploy`'s embedded "d" misfires this class on an ordinary push,
-# skipping review in the WRONG direction for a gate whose contract is "err
-# toward reviewing".
-_PUSH_DELETE_RE = re.compile(r"(?:^|\s)(?:--delete\b|-(?!o)[A-Za-z]*d[A-Za-z]*\b)")
+# `(?:(?!o)[A-Za-z])*` on both sides of the target letter excludes `-o<value>`
+# (push's `--push-option` short form, e.g. `-odeploy` == `-o deploy`): `-o` is
+# VALUE-TAKING, so everything after it is that option's value, not more bundled
+# flags. A lookahead only right after the leading `-` stops `-odeploy` but not
+# `-vodeploy` (= `-v -o deploy`) — git allows `-o` at any position in a cluster,
+# not just first — so the exclusion is repeated at EVERY position: once an `o`
+# appears anywhere in the candidate span, the run of "plain letters" stops there
+# and can never reach the target letter, failing toward NOT matching (review
+# anyway) rather than a wrong skip.
+_PUSH_DELETE_RE = re.compile(
+    r"(?:^|\s)(?:--delete\b|-(?:(?!o)[A-Za-z])*d(?:(?!o)[A-Za-z])*\b)")
 # A third class ported the same way, for the same reason: kiro's hook_match.py (and
 # atlas's verbatim copy of it) both treat `--dry-run`/`-n` as a scope mismatch —
 # nothing is actually pushed, so a side-effecting response to "this push is
@@ -111,9 +115,10 @@ _PUSH_DELETE_RE = re.compile(r"(?:^|\s)(?:--delete\b|-(?!o)[A-Za-z]*d[A-Za-z]*\b
 # bug surface" problem the comment above already names for the other two classes.
 # Same bundled-short-flag reasoning as `_PUSH_DELETE_RE` above applies here too —
 # `-[A-Za-z]*n[A-Za-z]*\b`, not bare `-n\b`, so `-vn`/`-qn` clusters are caught,
-# and the same `(?!o)` exclusion applies for the same reason (`-onotify` is a
-# push-option value, not a bundle containing dry-run's `n`).
-_PUSH_DRY_RUN_RE = re.compile(r"(?:^|\s)(?:--dry-run\b|-(?!o)[A-Za-z]*n[A-Za-z]*\b)")
+# and the same all-positions `(?!o)` exclusion applies for the same reason
+# (`-vonotify` = `-v -o notify` must not match on "notify"'s embedded `n`).
+_PUSH_DRY_RUN_RE = re.compile(
+    r"(?:^|\s)(?:--dry-run\b|-(?:(?!o)[A-Za-z])*n(?:(?!o)[A-Za-z])*\b)")
 # A push whose CONTENT is not "the current branch vs its upstream" cannot be judged by
 # the range these gates compute. `--all`/`--tags`/`--mirror` send many refs; an explicit
 # positional refspec (`origin other-branch`, `origin src:dst`) sends a ref that may have

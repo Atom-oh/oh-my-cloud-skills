@@ -79,6 +79,11 @@ assert_eq "0" "$(_hm push-scope-mismatch 'git push origin -fd foo')" "push-scope
 # as a bundled cluster containing 'd'/'n' from its attached VALUE ---
 assert_eq "1" "$(_hm push-scope-mismatch 'git push -odeploy')" "push-scope-mismatch: -odeploy is a push-option value, not a bundled delete"
 assert_eq "1" "$(_hm push-scope-mismatch 'git push -onotify')" "push-scope-mismatch: -onotify is a push-option value, not a bundled dry-run"
+# -o is not necessarily the FIRST flag in a cluster (-v -o deploy can be written
+# as one token -vodeploy) — a lookahead only right after the leading `-` misses
+# this; the exclusion must apply at every position in the candidate span.
+assert_eq "1" "$(_hm push-scope-mismatch 'git push -vodeploy')" "push-scope-mismatch: -vodeploy (-v -o deploy) is not a bundled delete despite the embedded 'd'"
+assert_eq "1" "$(_hm push-scope-mismatch 'git push -vonotify')" "push-scope-mismatch: -vonotify (-v -o notify) is not a bundled dry-run despite the embedded 'n'"
 
 # --- push-scope-mismatch: the bypass-mismatch UNION fix — a compound command where
 # EVERY occurrence is skip-worthy but for a DIFFERENT reason (one bypassed, one a
@@ -264,6 +269,8 @@ assert_eq "skip:dry-run" "$(_pgs 'git push -vn')" "push gate: bundled -vn dry-ru
 assert_eq "skip:delete" "$(_pgs 'git push origin -fd foo')" "push gate: bundled -fd delete is skipped"
 assert_eq "GATED" "$(_pgs 'git push -odeploy')" "push gate: -odeploy is a push-option value, not a bundled delete"
 assert_eq "GATED" "$(_pgs 'git push -onotify')" "push gate: -onotify is a push-option value, not a bundled dry-run"
+assert_eq "GATED" "$(_pgs 'git push -vodeploy')" "push gate: -vodeploy (-v -o deploy) is not a bundled delete despite the embedded 'd'"
+assert_eq "GATED" "$(_pgs 'git push -vonotify')" "push gate: -vonotify (-v -o notify) is not a bundled dry-run despite the embedded 'n'"
 assert_eq "GATED" "$(_pgs 'CO_AGENT_PUSH_GATE=off git push --dry-run && git push')" "push gate: bypass on the FIRST push only does not bypass the second, unprefixed push"
 assert_eq "skip:bypass" "$(_pgs 'CO_AGENT_PUSH_GATE=off git push')" "push gate: a lone bypassed push is skipped"
 

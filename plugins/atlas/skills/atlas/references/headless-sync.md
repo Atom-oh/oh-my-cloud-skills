@@ -116,9 +116,15 @@ a command to follow — necessary, but prose alone is the weakest layer here. Se
 tool set removes the payloads that would make a successful injection reach outside the
 process entirely: no `Bash` to execute anything, no `WebFetch`/`WebSearch` to reach the
 network directly, no `Task` to launder the attempt through an unrestricted subagent.
-Third, a hijacked session's reads AND writes are both bounded to the wiki root — see
-"Read/write confinement" above — so there is no in-process path left to a file outside
-it at all, closing the read-then-launder route this section used to describe as open.
+Third, a hijacked session's reads AND writes through its BUILT-IN tools (`Read`, `Edit`,
+`Grep`, `Glob` — the only four the `--settings` guard matches) are bounded to the wiki
+root — see "Read/write confinement" above — closing the read-then-launder route this
+section used to describe as open, *for that tool set*. This does not extend to any
+MCP-provided tool an installing repo's own settings additionally grant the headless
+call: those aren't named in `--allowedTools`/`--disallowedTools` here and aren't matched
+by the guard hook either, so an operator-approved MCP tool remains a separate,
+pre-existing trust boundary this fix does not touch (`--strict-mcp-config` would close
+that gap for an install that wants it).
 Fourth, as a narrower, independent net over what DOES stay in scope (the doc's own
 prior content, or a legitimately covered code file, could still itself contain
 secret-shaped text): `atlas_sync.py` scans each synced doc's own diff for high-
