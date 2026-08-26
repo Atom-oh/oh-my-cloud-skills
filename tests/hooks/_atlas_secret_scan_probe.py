@@ -49,11 +49,24 @@ def _case(name):
     raise SystemExit("unknown case: %s" % name)
 
 
+_COLOR_CONFIG_CASES = {
+    # Reproduces the round-4/round-5 findings: a user's own git config, at two
+    # different specificities, would prepend ANSI codes to every `git diff` line,
+    # breaking every `+`/`@@` prefix check `_scan_doc_secrets` relies on. A
+    # repo-local config has the identical effect to a real global one without
+    # touching the test runner's own global git config. `color.diff` is the MORE
+    # specific key — it wins over a bare `color.ui=false` override, which is
+    # exactly why the fix uses the CLI flag `--color=never` instead.
+    "color-ui-always": ("color.ui", "always"),
+    "color-diff-always": ("color.diff", "always"),
+}
+
+
 def main():
-    color_always = sys.argv[1:2] == ["--case"] and sys.argv[2] == "color-ui-always"
-    if color_always:
-        # Reuses the same fixture content as "aws-uppercase" — this case only
-        # adds a git config, not a different secret shape.
+    color_case = sys.argv[1:2] == ["--case"] and sys.argv[2] in _COLOR_CONFIG_CASES
+    if color_case:
+        # Reuses the same fixture content as "aws-uppercase" — these cases only
+        # add a git config, not a different secret shape.
         before, after = _case("aws-uppercase")
     elif sys.argv[1:2] == ["--case"]:
         before, after = _case(sys.argv[2])
@@ -64,13 +77,9 @@ def main():
         subprocess.run(["git", "init", "-q"], cwd=d, check=True)
         subprocess.run(["git", "config", "user.email", "t@t.com"], cwd=d, check=True)
         subprocess.run(["git", "config", "user.name", "t"], cwd=d, check=True)
-        if color_always:
-            # Reproduces the round-4 finding: a user's global `color.ui=always`
-            # would prepend ANSI codes to every `git diff` line, breaking every
-            # `+`/`@@` prefix check `_scan_doc_secrets` relies on — this repo-local
-            # config is the same effect without touching the test runner's own
-            # global git config.
-            subprocess.run(["git", "config", "color.ui", "always"], cwd=d, check=True)
+        if color_case:
+            key, val = _COLOR_CONFIG_CASES[sys.argv[2]]
+            subprocess.run(["git", "config", key, val], cwd=d, check=True)
         doc = os.path.join(d, "foo.md")
         with open(doc, "w") as f:
             f.write(before)

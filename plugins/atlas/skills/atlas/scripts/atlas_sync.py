@@ -306,14 +306,19 @@ def _confine(base, atlas_rel, baseline_tracked, baseline_untracked):
 # `re.I` wraps every alternative that has a legitimate lowercase/uppercase spelling
 # in real-world use — which includes `aws_secret_access_key`/`AWS_SECRET_ACCESS_KEY`
 # (both spellings are common: the lowercase form in config files, the uppercase form
-# as an env var). AKIA/PEM headers are the only ones left OUTSIDE the fold: they are
-# fixed-case protocol constants (an AWS access key ID is always `AKIA` + uppercase
-# alnum; a PEM header is always exactly `-----BEGIN ... PRIVATE KEY-----`) with no
-# legitimate case variant, so folding them would only widen the "high-confidence
-# only" pattern set the module docstring above promises, for no detection gain.
+# as an env var). AKIA/ASIA and the PEM/PGP headers are the only ones left OUTSIDE
+# the fold: they are fixed-case protocol constants (an AWS access key id is always
+# `AKIA` (long-term) or `ASIA` (STS/temporary) + uppercase alnum; a PEM header is
+# always exactly `-----BEGIN ... PRIVATE KEY-----`; PGP's own armor uses a
+# DIFFERENT trailing token, `-----BEGIN PGP PRIVATE KEY BLOCK-----` — checked as
+# its own alternative rather than folded into the generic PEM one, which can never
+# match it) with no legitimate case variant, so folding them would only widen the
+# "high-confidence only" pattern set the module docstring above promises, for no
+# detection gain.
 _SECRET_LINE_RE = re.compile(
-    r"AKIA[0-9A-Z]{16}"                                          # AWS access key id
-    r"|-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?(?:ENCRYPTED )?PRIVATE KEY-----"
+    r"A[SK]IA[0-9A-Z]{16}"                                       # AWS (temp/long-term) access key id
+    r"|-----BEGIN (?:RSA |EC |OPENSSH |DSA )?(?:ENCRYPTED )?PRIVATE KEY-----"
+    r"|-----BEGIN PGP PRIVATE KEY BLOCK-----"                    # PGP's own armor header
     r"|(?i:aws_secret_access_key\s*[:=]\s*\S{16,}"                # AWS secret access key
     r"|(?:password|passwd|secret|api[_-]?key|client[_-]?secret|token)"
     r"['\"]?\s*[:=]\s*['\"][^'\"]{8,}['\"])"
@@ -345,7 +350,6 @@ def _scan_doc_secrets(doc_path, base):
     wedges the push (the surrounding push-gate machinery is still fully fail-open;
     only THIS doc's sync is deferred to a later, hopefully-scannable run). Never
     returns the matched TEXT itself — a control built to stop a secret reaching a
-    returns the matched TEXT itself — a control built to stop a secret reaching a
     commit must not hand that same secret back to a caller that might log it (see
     the round-1 CRITICAL this shape fixes). Checked once per doc, right before that
     doc is accepted into `synced` — a hit reverts just that one doc (see the call
@@ -368,17 +372,28 @@ def _scan_doc_secrets(doc_path, base):
     line with `@@`, and content lines are never blank-line-adjacent to header text
     in a way that produces one).
 
-    `-c color.ui=false` and `--no-ext-diff` are NOT optional flourishes: this
-    parser's `+`/`-`/`@@` line-prefix checks assume plain porcelain output. A
-    user's global `color.ui=always` would prepend ANSI escape codes to every
-    line, breaking every `startswith` check below and making `seen_hunk` never
-    go True — silently degrading this entire scan to fail-open on every doc, in
-    an install where the operator never even touches `atlas`'s own config.
-    `diff.external` is neutralized the same way (a configured external diff
-    tool can suppress the hunk markers this scan keys on entirely)."""
+    `--color=never`/`--no-textconv`/`--no-ext-diff`/`--text` are NOT optional
+    flourishes: this parser's `+`/`-`/`@@` line-prefix checks assume plain
+    porcelain output, and each flag closes a DIFFERENT way a user's own git
+    config can break that assumption. `--color=never` (a CLI flag, not `-c
+    color.ui=false`) is the one that actually wins: a `-c` override for
+    `color.ui` loses to a more specific `color.diff=always` in the SAME config
+    layer, since git resolves the more specific key first — `color.ui=false`
+    alone leaves that case wide open, prepending ANSI escape codes to every
+    line and making `seen_hunk` never go True. `--no-textconv` disables a
+    configured `diff.<driver>.textconv` filter (which can transform content
+    into something with no recognizable hunk markers at all); `--no-ext-diff`
+    does the same for `diff.external`; `--text` forces text-mode diffing even
+    for a path a repo's own `.gitattributes` marks `-diff` (binary-for-diff-
+    purposes), which would otherwise suppress hunks for that one path
+    entirely. Every one of these failure modes degrades this scan to silent
+    fail-open on every doc, in an install where the operator never even
+    touches `atlas`'s own config — this is a best-effort backstop, not the
+    primary guard (see the Read/Grep/Glob confinement above), but it should
+    not fail for reasons this cheap to close."""
     rel = os.path.relpath(doc_path, base).replace(os.sep, "/")
-    diff_text, ok = _git(["-c", "color.ui=false", "diff", "--no-ext-diff",
-                          "HEAD", "--", rel], base)
+    diff_text, ok = _git(["diff", "--color=never", "--no-textconv", "--no-ext-diff",
+                          "--text", "HEAD", "--", rel], base)
     if not ok:
         return True, None
     seen_hunk = False

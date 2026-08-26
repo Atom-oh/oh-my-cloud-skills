@@ -352,10 +352,27 @@ def _push_has_explicit_refspec(rest):
 def _mismatch_for_one_push(detect, gm):
     """True iff the ONE `git push` occurrence matched by `gm` (a `_GIT_PUSH_RE`
     match against the full, already quote-blanked `detect` text) is itself
-    unreviewable, by the same classes `is_push_scope_mismatch`'s docstring lists.
-    Factored out of that function so a COMPOUND command with more than one `git
-    push` invocation can be judged occurrence-by-occurrence instead of only ever
-    looking at the first one."""
+    unreviewable OR explicitly bypassed, by the same classes `is_push_scope_mismatch`'s
+    docstring lists. Factored out of that function so a COMPOUND command with more
+    than one `git push` invocation can be judged occurrence-by-occurrence instead
+    of only ever looking at the first one.
+
+    The inline bypass prefix (`KIRO_REVIEW=off`) is folded in here as its own class,
+    NOT left to the separate `is_push_bypassed`/`bypass push` check the calling hook
+    also runs: those two checks are invoked as SEPARATE early-exits in
+    `pre-push-review.sh` (bypass first, then scope-mismatch), each independently
+    `all()`-aggregated. A command where every occurrence is skip-worthy but for a
+    DIFFERENT reason per occurrence (`KIRO_REVIEW=off git push && git push
+    --dry-run` — the first bypassed, the second a dry-run) would fail BOTH separate
+    `all()` checks (one occurrence isn't bypassed; the other occurrence isn't a
+    scope mismatch), so neither hook-level check would fire and the hook would run
+    a full, unwanted review — even though the ONE real push the user cared about
+    was explicitly bypassed. Folding bypass in here means `is_push_scope_mismatch`
+    alone recognizes that mixed case; `is_push_bypassed` still exists separately
+    for the calling hook's distinct "flat-out bypassed" message and its own callers
+    that only care about that one class."""
+    if _BYPASS_ENV_RE.search(gm.group()):
+        return True
     if _GIT_ENV_REDIRECT_RE.search(gm.group()):
         return True
     # Same slicing convention as is_stale_index(): only the text BEFORE this
@@ -389,7 +406,8 @@ def is_push_scope_mismatch(cmd):
     """True iff EVERY `git push` invocation found in `cmd` may not correspond to
     the diff the pre-push hook would compute (`@{upstream}...HEAD`, falling back
     to the trunk merge-base) — see `_mismatch_for_one_push` for the per-occurrence
-    classes (`-C`/`--git-dir`/`--work-tree`/`GIT_DIR=` redirect; a preceding
+    classes (an inline `KIRO_REVIEW=off` bypass prefix on THIS occurrence;
+    `-C`/`--git-dir`/`--work-tree`/`GIT_DIR=` redirect; a preceding
     `cd`/`pushd`; a preceding `git commit` in the same invocation; `--delete`/`-d`;
     `--dry-run`/`-n`; `--all`/`--tags`/`--mirror`; an explicit refspec positional).
 

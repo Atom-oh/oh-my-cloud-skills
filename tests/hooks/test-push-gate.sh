@@ -75,6 +75,13 @@ assert_eq "0" "$(_hm push-scope-mismatch 'git push -vn')" "push-scope-mismatch: 
 assert_eq "0" "$(_hm push-scope-mismatch 'git push -qn')" "push-scope-mismatch: -qn bundled dry-run"
 assert_eq "0" "$(_hm push-scope-mismatch 'git push origin -fd foo')" "push-scope-mismatch: -fd bundled delete"
 
+# --- push-scope-mismatch: the bypass-mismatch UNION fix — a compound command where
+# EVERY occurrence is skip-worthy but for a DIFFERENT reason (one bypassed, one a
+# dry-run) must still skip as a whole, even though neither is_push_bypassed NOR the
+# mismatch-only check alone would agree on all occurrences ---
+assert_eq "0" "$(_hm push-scope-mismatch 'KIRO_REVIEW=off git push && git push --dry-run')" "push-scope-mismatch: mixed bypass+dry-run compound is fully skip-worthy via the union"
+assert_eq "1" "$(_hm push-scope-mismatch 'KIRO_REVIEW=off git push && git push')" "push-scope-mismatch: bypass on occurrence 1 does not cover a plain, unbypassed occurrence 2"
+
 # --- kiro_review.py lens merge: dedupe by (file, line), keep highest severity ---
 MERGE_OUT="$(python3 -c "
 import sys
@@ -266,6 +273,7 @@ assert_eq "HIT 2" "$(_aspc aws-uppercase)" "secret-scan: uppercase AWS_SECRET_AC
 assert_eq "HIT 2" "$(_aspc allowlist-no-bypass)" "secret-scan: an allowlist marker on the fixer-controlled line does NOT bypass detection"
 assert_eq "CLEAN" "$(_aspc benign)" "secret-scan: an ordinary prose edit is not flagged"
 assert_eq "HIT 2" "$(_aspc color-ui-always)" "secret-scan: a repo-local color.ui=always config does not blind the scan (ANSI codes must not defeat the +/@@ prefix checks)"
+assert_eq "HIT 2" "$(_aspc color-diff-always)" "secret-scan: color.diff=always (more specific than color.ui, wins over a -c override) does not blind the scan either"
 
 if python3 -c "import py_compile" 2>/dev/null; then
   # `if python3 ...; then`, NOT `python3 ...` followed by `[ $? -eq 0 ]`: this file is
