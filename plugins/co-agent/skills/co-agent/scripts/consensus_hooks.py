@@ -94,7 +94,13 @@ _PUSH_REDIRECT_RE = re.compile(
 # `-[A-Za-z]*d[A-Za-z]*\b`, not bare `-d\b`: git's parse-options lets value-less
 # short flags bundle (`-fd`, `-vd`) — a bare `-d\b` alone missed those clusters,
 # silently reviewing a ref-deletion push as if it were ordinary content.
-_PUSH_DELETE_RE = re.compile(r"(?:^|\s)(?:--delete\b|-[A-Za-z]*d[A-Za-z]*\b)")
+# `(?!o)` right after the leading `-` excludes `-o<value>` (push's `--push-option`
+# short form, e.g. `-odeploy` == `-o deploy`): `-o` is VALUE-TAKING, so everything
+# after it is that option's value, not more bundled flags — without this
+# exclusion, `-odeploy`'s embedded "d" misfires this class on an ordinary push,
+# skipping review in the WRONG direction for a gate whose contract is "err
+# toward reviewing".
+_PUSH_DELETE_RE = re.compile(r"(?:^|\s)(?:--delete\b|-(?!o)[A-Za-z]*d[A-Za-z]*\b)")
 # A third class ported the same way, for the same reason: kiro's hook_match.py (and
 # atlas's verbatim copy of it) both treat `--dry-run`/`-n` as a scope mismatch —
 # nothing is actually pushed, so a side-effecting response to "this push is
@@ -104,8 +110,10 @@ _PUSH_DELETE_RE = re.compile(r"(?:^|\s)(?:--delete\b|-[A-Za-z]*d[A-Za-z]*\b)")
 # egressed to the peer panel) by this gate — exactly the "different skip rules is a
 # bug surface" problem the comment above already names for the other two classes.
 # Same bundled-short-flag reasoning as `_PUSH_DELETE_RE` above applies here too —
-# `-[A-Za-z]*n[A-Za-z]*\b`, not bare `-n\b`, so `-vn`/`-qn` clusters are caught.
-_PUSH_DRY_RUN_RE = re.compile(r"(?:^|\s)(?:--dry-run\b|-[A-Za-z]*n[A-Za-z]*\b)")
+# `-[A-Za-z]*n[A-Za-z]*\b`, not bare `-n\b`, so `-vn`/`-qn` clusters are caught,
+# and the same `(?!o)` exclusion applies for the same reason (`-onotify` is a
+# push-option value, not a bundle containing dry-run's `n`).
+_PUSH_DRY_RUN_RE = re.compile(r"(?:^|\s)(?:--dry-run\b|-(?!o)[A-Za-z]*n[A-Za-z]*\b)")
 # A push whose CONTENT is not "the current branch vs its upstream" cannot be judged by
 # the range these gates compute. `--all`/`--tags`/`--mirror` send many refs; an explicit
 # positional refspec (`origin other-branch`, `origin src:dst`) sends a ref that may have

@@ -75,6 +75,11 @@ assert_eq "0" "$(_hm push-scope-mismatch 'git push -vn')" "push-scope-mismatch: 
 assert_eq "0" "$(_hm push-scope-mismatch 'git push -qn')" "push-scope-mismatch: -qn bundled dry-run"
 assert_eq "0" "$(_hm push-scope-mismatch 'git push origin -fd foo')" "push-scope-mismatch: -fd bundled delete"
 
+# --- push-scope-mismatch: -o (--push-option, VALUE-TAKING) must never be misread
+# as a bundled cluster containing 'd'/'n' from its attached VALUE ---
+assert_eq "1" "$(_hm push-scope-mismatch 'git push -odeploy')" "push-scope-mismatch: -odeploy is a push-option value, not a bundled delete"
+assert_eq "1" "$(_hm push-scope-mismatch 'git push -onotify')" "push-scope-mismatch: -onotify is a push-option value, not a bundled dry-run"
+
 # --- push-scope-mismatch: the bypass-mismatch UNION fix — a compound command where
 # EVERY occurrence is skip-worthy but for a DIFFERENT reason (one bypassed, one a
 # dry-run) must still skip as a whole, even though neither is_push_bypassed NOR the
@@ -257,6 +262,8 @@ assert_eq "GATED GATED" "$(_pgb 'git push --dry-run && git push')" "dry-run comp
 # applied to the inline CO_AGENT_PUSH_GATE=off bypass prefix ---
 assert_eq "skip:dry-run" "$(_pgs 'git push -vn')" "push gate: bundled -vn dry-run is skipped"
 assert_eq "skip:delete" "$(_pgs 'git push origin -fd foo')" "push gate: bundled -fd delete is skipped"
+assert_eq "GATED" "$(_pgs 'git push -odeploy')" "push gate: -odeploy is a push-option value, not a bundled delete"
+assert_eq "GATED" "$(_pgs 'git push -onotify')" "push gate: -onotify is a push-option value, not a bundled dry-run"
 assert_eq "GATED" "$(_pgs 'CO_AGENT_PUSH_GATE=off git push --dry-run && git push')" "push gate: bypass on the FIRST push only does not bypass the second, unprefixed push"
 assert_eq "skip:bypass" "$(_pgs 'CO_AGENT_PUSH_GATE=off git push')" "push gate: a lone bypassed push is skipped"
 
@@ -274,6 +281,7 @@ assert_eq "HIT 2" "$(_aspc allowlist-no-bypass)" "secret-scan: an allowlist mark
 assert_eq "CLEAN" "$(_aspc benign)" "secret-scan: an ordinary prose edit is not flagged"
 assert_eq "HIT 2" "$(_aspc color-ui-always)" "secret-scan: a repo-local color.ui=always config does not blind the scan (ANSI codes must not defeat the +/@@ prefix checks)"
 assert_eq "HIT 2" "$(_aspc color-diff-always)" "secret-scan: color.diff=always (more specific than color.ui, wins over a -c override) does not blind the scan either"
+assert_eq "STAGE_OK=False REVERTED_CLEAN=True" "$(python3 tests/hooks/_atlas_secret_scan_probe.py --case index-revert 2>/dev/null)" "secret-scan: INDEX.md itself is scanned and reverted on a hit (round-6 laundering-via-description fix)"
 
 if python3 -c "import py_compile" 2>/dev/null; then
   # `if python3 ...; then`, NOT `python3 ...` followed by `[ $? -eq 0 ]`: this file is

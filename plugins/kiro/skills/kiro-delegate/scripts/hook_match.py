@@ -297,7 +297,17 @@ _PUSH_ARGS_RE = re.compile(
 # value-less short flags git's own parse-options allows (`-fd`, `-vd`) — a bare
 # `-d\b` alone missed those, silently falling back to reviewing/syncing a
 # ref-deletion push as if it were ordinary content.
-_PUSH_DELETE_RE = re.compile(r"(?:^|\s)(?:--delete\b|-[A-Za-z]*d[A-Za-z]*\b)")
+#
+# `(?!o)` right after the leading `-` excludes `-o<value>` (push's `--push-option`
+# short form, e.g. `-odeploy` == `-o deploy`) from ever being read as a bundled
+# short-flag cluster: `-o` is VALUE-TAKING, and git attaches everything after it
+# directly to that value rather than treating the remaining letters as more
+# flags — without this exclusion, `-odeploy`'s embedded "d" (or `-onotify`'s
+# embedded "n" in the dry-run pattern below) would misfire this class on an
+# ordinary push, which fails in the WRONG direction for a gate whose own
+# contract is "err toward reviewing": it would SKIP a push that should be
+# reviewed/synced, not the reverse.
+_PUSH_DELETE_RE = re.compile(r"(?:^|\s)(?:--delete\b|-(?!o)[A-Za-z]*d[A-Za-z]*\b)")
 # `--dry-run`/`-n` simulates the push — nothing actually leaves the machine, and no
 # range this hook computes now will ever really be pushed. `_push_has_explicit_refspec`
 # already has to recognize both spellings as value-less flags (so they aren't
@@ -311,7 +321,9 @@ _PUSH_DELETE_RE = re.compile(r"(?:^|\s)(?:--delete\b|-[A-Za-z]*d[A-Za-z]*\b)")
 # `-[A-Za-z]*n[A-Za-z]*\b`, not bare `-n\b`, so `-vn`/`-qn`-shaped clusters (value-
 # less flags git's parse-options lets you combine) are recognized too — a bare
 # `-n\b` silently missed those, letting a bundled dry-run push through as if real.
-_PUSH_DRY_RUN_RE = re.compile(r"(?:^|\s)(?:--dry-run\b|-[A-Za-z]*n[A-Za-z]*\b)")
+# Same `(?!o)` exclusion as `_PUSH_DELETE_RE` above, same reason: `-onotify` is
+# `-o notify` (a push-option value), not a bundle containing dry-run's `n`.
+_PUSH_DRY_RUN_RE = re.compile(r"(?:^|\s)(?:--dry-run\b|-(?!o)[A-Za-z]*n[A-Za-z]*\b)")
 # A push whose CONTENT is not "the current branch vs its upstream" cannot be judged by
 # the range these gates compute. `--all`/`--tags`/`--mirror` send many refs; an explicit
 # positional refspec (`origin other-branch`, `origin src:dst`) sends a ref that may have

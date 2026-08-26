@@ -425,6 +425,28 @@ def _scan_doc_secrets(doc_path, base):
     return False, None
 
 
+def _scan_and_revert_if_secret(rel_path, base):
+    """Runs `_scan_doc_secrets` against `rel_path` (repo-relative, e.g. INDEX.md)
+    and, on a hit, reverts it via `git checkout -- rel_path` and logs an advisory
+    (path + line number only, never the matched value — same contract as the
+    per-doc call site). Returns False if a secret was found (and reverted, so the
+    caller must not stage it), True if the path is clean and safe to stage.
+    Factored out so this one check can be unit-tested directly, and reused for
+    both a synced doc and the regenerated INDEX.md."""
+    path = os.path.join(base, rel_path)
+    hit, line = _scan_doc_secrets(path, base)
+    if not hit:
+        return True
+    if line is None:
+        print("atlas-sync: %s: secret scan unavailable (could not read the "
+              "diff) — reverting, not staging it" % rel_path, file=sys.stderr)
+    else:
+        print("atlas-sync: %s: possible secret detected on line %d — "
+              "reverting, not staging it" % (rel_path, line), file=sys.stderr)
+    _git(["checkout", "--", rel_path], base)
+    return False
+
+
 def _advance_anchor(doc_path, head):
     """Rewrite `code_rev:` (to the resolved HEAD sha) and `updated:` (to today) in
     the doc's own frontmatter, line-wise, BETWEEN the opening and closing `---`
@@ -756,6 +778,22 @@ def _run(args):
     # function already deferred the whole round otherwise — so this write is
     # always safe to make and, if it changed anything, always safe to stage below.
     index_changed = atlas_index.write_index(base)
+
+    # INDEX.md is its own secret-scan surface, distinct from any single synced
+    # doc's own diff: `render_index()` copies EVERY doc's frontmatter
+    # `description` field into the index table — including docs that are NOT
+    # in `synced` this round at all — and `write_index()` preserves everything
+    # outside the AUTO-MANAGED markers byte-for-byte, so a hijacked fixer could
+    # launder a secret into INDEX.md two ways the per-doc scan above never
+    # looks at: editing a non-packet doc's own description field (that doc is
+    # never opened this round, so its diff is never scanned), or editing
+    # INDEX.md's own hand-authored region directly. Scan INDEX.md's own diff
+    # the same way; a hit reverts just the index (not the whole batch) and
+    # this round ships without a refreshed index — cosmetic staleness, fixed
+    # by the next successful run, same "eventually consistent" trade-off the
+    # rest of this fail-open script already makes.
+    if index_changed:
+        index_changed = _scan_and_revert_if_secret(index_rel, base)
 
     stage_paths = [os.path.relpath(pk["doc_path"], base).replace(os.sep, "/")
                    for pk in synced]

@@ -62,7 +62,33 @@ _COLOR_CONFIG_CASES = {
 }
 
 
+def _run_index_revert_case():
+    """Exercises _scan_and_revert_if_secret directly against an INDEX.md-shaped
+    file — the MAJOR-2 fix from round 6: the per-doc scan never looks at
+    INDEX.md's own regenerated content, which can carry a laundered secret via
+    ANY doc's frontmatter description, not just a synced one's own diff."""
+    key = "AWS_" + "SECRET_ACCESS_KEY"
+    val = "abcd1234" + "efgh5678ijkl"
+    with tempfile.TemporaryDirectory() as d:
+        subprocess.run(["git", "init", "-q"], cwd=d, check=True)
+        subprocess.run(["git", "config", "user.email", "t@t.com"], cwd=d, check=True)
+        subprocess.run(["git", "config", "user.name", "t"], cwd=d, check=True)
+        idx = os.path.join(d, "INDEX.md")
+        with open(idx, "w") as f:
+            f.write("# INDEX\n\n| doc | desc |\n|---|---|\n| foo.md | normal |\n")
+        subprocess.run(["git", "add", "-A"], cwd=d, check=True)
+        subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=d, check=True)
+        with open(idx, "w") as f:
+            f.write("# INDEX\n\n| doc | desc |\n|---|---|\n| foo.md | %s=%s |\n" % (key, val))
+        ok = atlas_sync._scan_and_revert_if_secret("INDEX.md", d)
+        reverted_clean = "normal" in open(idx).read() and val not in open(idx).read()
+        print("STAGE_OK=%s REVERTED_CLEAN=%s" % (ok, reverted_clean))
+
+
 def main():
+    if sys.argv[1:2] == ["--case"] and sys.argv[2] == "index-revert":
+        _run_index_revert_case()
+        return
     color_case = sys.argv[1:2] == ["--case"] and sys.argv[2] in _COLOR_CONFIG_CASES
     if color_case:
         # Reuses the same fixture content as "aws-uppercase" — these cases only
