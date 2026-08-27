@@ -44,15 +44,53 @@ assert_eq "1" "$(_hm bypass commit 'KIRO_REVIEW=off git push && git commit -m x'
 assert_eq "1" "$(_hm bypass push 'KIRO_REVIEW=off git commit -m x && git push')" "bypass push: a prefix on the COMMIT does not bypass the push review"
 assert_eq "2" "$(_hm bypass 'KIRO_REVIEW=off git push')" "bypass with no subcommand is a usage error (callers treat non-zero as 'not bypassed' — the review runs)"
 
+# --- bypass push: all-occurrences fix — a prefix on occurrence 1 alone must not
+# bypass a non-prefixed occurrence 2 in the same compound command ---
+assert_eq "1" "$(_hm bypass push 'KIRO_REVIEW=off git push --dry-run && git push')" "bypass push: prefix on the FIRST push only does not bypass the second, unprefixed push"
+assert_eq "0" "$(_hm bypass push 'KIRO_REVIEW=off git push --dry-run && KIRO_REVIEW=off git push')" "bypass push: every occurrence prefixed IS a full bypass"
+
 # --- push-scope-mismatch: true positives ---
 assert_eq "0" "$(_hm push-scope-mismatch 'cd ../other && git push')" "push-scope-mismatch: preceding cd"
 assert_eq "0" "$(_hm push-scope-mismatch 'git commit -m x && git push')" "push-scope-mismatch: preceding commit (stale range)"
 assert_eq "0" "$(_hm push-scope-mismatch 'git push origin --delete foo')" "push-scope-mismatch: --delete has nothing to review"
 assert_eq "0" "$(_hm push-scope-mismatch 'git -C /elsewhere push')" "push-scope-mismatch: -C redirect"
+assert_eq "0" "$(_hm push-scope-mismatch 'git push --dry-run')" "push-scope-mismatch: --dry-run — nothing actually pushed"
+assert_eq "0" "$(_hm push-scope-mismatch 'git push -n')" "push-scope-mismatch: -n short form"
+assert_eq "0" "$(_hm push-scope-mismatch 'git push origin -n')" "push-scope-mismatch: -n after a remote positional"
 
 # --- push-scope-mismatch: false positive (an ordinary push must NOT warn) ---
 assert_eq "1" "$(_hm push-scope-mismatch 'git push')" "push-scope-mismatch: bare push is not a mismatch"
 assert_eq "1" "$(_hm push-scope-mismatch 'git push -u origin HEAD')" "push-scope-mismatch: ordinary explicit push is not a mismatch"
+
+# --- push-scope-mismatch: compound commands with MORE THAN ONE `git push` — only the
+# FIRST occurrence's class must not blind the hook to a second, reviewable push right
+# after it (a dry-run-first-then-real-push in one invocation is the natural case). ---
+assert_eq "1" "$(_hm push-scope-mismatch 'git push --dry-run && git push')" "push-scope-mismatch: dry-run THEN a real push — the real one must still be reviewed"
+assert_eq "1" "$(_hm push-scope-mismatch 'git push --delete origin foo && git push')" "push-scope-mismatch: delete THEN a real push — same fix, pre-existing class"
+assert_eq "0" "$(_hm push-scope-mismatch 'git push --dry-run')" "push-scope-mismatch: a LONE dry-run push is still skipped (nothing reviewable at all)"
+
+# --- push-scope-mismatch: bundled value-less short flags (git's own parse-options
+# allows combining them) — a bare -n\b/-d\b alone missed these clusters ---
+assert_eq "0" "$(_hm push-scope-mismatch 'git push -vn')" "push-scope-mismatch: -vn bundled dry-run"
+assert_eq "0" "$(_hm push-scope-mismatch 'git push -qn')" "push-scope-mismatch: -qn bundled dry-run"
+assert_eq "0" "$(_hm push-scope-mismatch 'git push origin -fd foo')" "push-scope-mismatch: -fd bundled delete"
+
+# --- push-scope-mismatch: -o (--push-option, VALUE-TAKING) must never be misread
+# as a bundled cluster containing 'd'/'n' from its attached VALUE ---
+assert_eq "1" "$(_hm push-scope-mismatch 'git push -odeploy')" "push-scope-mismatch: -odeploy is a push-option value, not a bundled delete"
+assert_eq "1" "$(_hm push-scope-mismatch 'git push -onotify')" "push-scope-mismatch: -onotify is a push-option value, not a bundled dry-run"
+# -o is not necessarily the FIRST flag in a cluster (-v -o deploy can be written
+# as one token -vodeploy) — a lookahead only right after the leading `-` misses
+# this; the exclusion must apply at every position in the candidate span.
+assert_eq "1" "$(_hm push-scope-mismatch 'git push -vodeploy')" "push-scope-mismatch: -vodeploy (-v -o deploy) is not a bundled delete despite the embedded 'd'"
+assert_eq "1" "$(_hm push-scope-mismatch 'git push -vonotify')" "push-scope-mismatch: -vonotify (-v -o notify) is not a bundled dry-run despite the embedded 'n'"
+
+# --- push-scope-mismatch: the bypass-mismatch UNION fix — a compound command where
+# EVERY occurrence is skip-worthy but for a DIFFERENT reason (one bypassed, one a
+# dry-run) must still skip as a whole, even though neither is_push_bypassed NOR the
+# mismatch-only check alone would agree on all occurrences ---
+assert_eq "0" "$(_hm push-scope-mismatch 'KIRO_REVIEW=off git push && git push --dry-run')" "push-scope-mismatch: mixed bypass+dry-run compound is fully skip-worthy via the union"
+assert_eq "1" "$(_hm push-scope-mismatch 'KIRO_REVIEW=off git push && git push')" "push-scope-mismatch: bypass on occurrence 1 does not cover a plain, unbypassed occurrence 2"
 
 # --- kiro_review.py lens merge: dedupe by (file, line), keep highest severity ---
 MERGE_OUT="$(python3 -c "
@@ -217,7 +255,40 @@ assert_eq "skip skip" "$(_pgb 'git push --all')" "refspec: --all sends refs the 
 assert_eq "skip skip" "$(_pgb 'git push --tags')" "refspec: --tags likewise"
 assert_eq "skip skip" "$(_pgb 'git push --mirror origin')" "refspec: --mirror likewise"
 
+# --- co-agent push gate: --dry-run skip class, and the same compound-command fix as
+# kiro's push-scope-mismatch — a dry-run-then-real-push in ONE invocation must still be
+# gated on the real push, not blinded by the first occurrence's class. ---
+assert_eq "skip:dry-run" "$(_pgs 'git push --dry-run')" "push gate: a lone --dry-run push is skipped"
+assert_eq "skip skip" "$(_pgb 'git push --dry-run')" "dry-run: both gates skip a lone dry-run push"
+assert_eq "GATED" "$(_pgs 'git push --dry-run && git push')" "push gate: dry-run THEN a real push in one invocation is still GATED"
+assert_eq "GATED GATED" "$(_pgb 'git push --dry-run && git push')" "dry-run compound: both gates still review the real push"
+
+# --- co-agent push gate: bundled short flags, and the same all-occurrences fix
+# applied to the inline CO_AGENT_PUSH_GATE=off bypass prefix ---
+assert_eq "skip:dry-run" "$(_pgs 'git push -vn')" "push gate: bundled -vn dry-run is skipped"
+assert_eq "skip:delete" "$(_pgs 'git push origin -fd foo')" "push gate: bundled -fd delete is skipped"
+assert_eq "GATED" "$(_pgs 'git push -odeploy')" "push gate: -odeploy is a push-option value, not a bundled delete"
+assert_eq "GATED" "$(_pgs 'git push -onotify')" "push gate: -onotify is a push-option value, not a bundled dry-run"
+assert_eq "GATED" "$(_pgs 'git push -vodeploy')" "push gate: -vodeploy (-v -o deploy) is not a bundled delete despite the embedded 'd'"
+assert_eq "GATED" "$(_pgs 'git push -vonotify')" "push gate: -vonotify (-v -o notify) is not a bundled dry-run despite the embedded 'n'"
+assert_eq "GATED" "$(_pgs 'CO_AGENT_PUSH_GATE=off git push --dry-run && git push')" "push gate: bypass on the FIRST push only does not bypass the second, unprefixed push"
+assert_eq "skip:bypass" "$(_pgs 'CO_AGENT_PUSH_GATE=off git push')" "push gate: a lone bypassed push is skipped"
+
 assert_json_valid "plugins/co-agent/skills/co-agent/co-agent.defaults.json" "co-agent.defaults.json is valid JSON after adding push_gate"
+
+# --- atlas_sync.py's _scan_doc_secrets: header-misclassification bypass, case
+# sensitivity, and the (deliberately absent) allowlist marker. Fixture VALUES live
+# in _atlas_secret_scan_probe.py, assembled from parts there — not as literals in
+# this file — so this repo's own commit-time secret-scan.sh doesn't flag the very
+# fixtures meant to test atlas's scanner for these shapes. ---
+_aspc() { python3 tests/hooks/_atlas_secret_scan_probe.py --case "$1"; }
+assert_eq "HIT 2" "$(_aspc header-bypass)" "secret-scan: added content starting with '++ ' is NOT misread as a diff file header"
+assert_eq "HIT 2" "$(_aspc aws-uppercase)" "secret-scan: uppercase AWS_SECRET_ACCESS_KEY= is caught (case-fold bug fix)"
+assert_eq "HIT 2" "$(_aspc allowlist-no-bypass)" "secret-scan: an allowlist marker on the fixer-controlled line does NOT bypass detection"
+assert_eq "CLEAN" "$(_aspc benign)" "secret-scan: an ordinary prose edit is not flagged"
+assert_eq "HIT 2" "$(_aspc color-ui-always)" "secret-scan: a repo-local color.ui=always config does not blind the scan (ANSI codes must not defeat the +/@@ prefix checks)"
+assert_eq "HIT 2" "$(_aspc color-diff-always)" "secret-scan: color.diff=always (more specific than color.ui, wins over a -c override) does not blind the scan either"
+assert_eq "STAGE_OK=False REVERTED_CLEAN=True" "$(python3 tests/hooks/_atlas_secret_scan_probe.py --case index-revert 2>/dev/null)" "secret-scan: INDEX.md itself is scanned and reverted on a hit (round-6 laundering-via-description fix)"
 
 if python3 -c "import py_compile" 2>/dev/null; then
   # `if python3 ...; then`, NOT `python3 ...` followed by `[ $? -eq 0 ]`: this file is

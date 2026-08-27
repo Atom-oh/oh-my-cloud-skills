@@ -68,11 +68,12 @@ python3 "$SK/atlas_sync.py" --range "<the literal A..B text>" --root "$ROOT"    
 
 Each stale doc gets its own headless call, told by its prompt to touch only that one
 doc's frontmatter-excluded prose — but the enforced boundary is coarser than that: a
-`PreToolUse` hook confines `Edit` to the wiki DIRECTORY by realpath (not to that single
-doc's own path), and a post-hoc scan reverts anything that somehow still landed outside
-even that. With `sync.parallel` > 1, concurrent calls share that same directory-wide
-boundary — see `references/atlas-templates.md`'s note on two docs claiming overlapping
-territory needing an authoritative-doc note, the same class of risk. Afterwards the script — not
+`PreToolUse` hook confines `Edit`, `Read`, `Grep`, AND `Glob` alike to the wiki
+DIRECTORY by realpath (not to that single doc's own path), and a post-hoc scan reverts
+anything that somehow still landed outside even that (write side only). With
+`sync.parallel` > 1, concurrent calls share that same directory-wide boundary — see
+`references/atlas-templates.md`'s note on two docs claiming overlapping territory
+needing an authoritative-doc note, the same class of risk. Afterwards the script — not
 the model — advances `code_rev` to HEAD, regenerates `INDEX.md`, and creates a
 `docs(atlas): sync ...` commit. Sending covered-file diff content to Anthropic is
 inherent to the fix step; that is why the preview above comes first.

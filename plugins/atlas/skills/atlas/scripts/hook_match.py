@@ -46,8 +46,9 @@ Usage:
                                     #   (`-C`/`--git-dir`/`--work-tree`/`GIT_DIR=`
                                     #   redirect, a preceding `cd`/`pushd`, a preceding
                                     #   `git commit` in the same invocation whose content
-                                    #   the diff would miss, or `--delete`/`-d` — nothing
-                                    #   to review). exit 1 = no mismatch signal detected.
+                                    #   the diff would miss, `--delete`/`-d` — nothing
+                                    #   to review, or `--dry-run`/`-n` — nothing is
+                                    #   actually pushed). exit 1 = no mismatch signal detected.
 """
 import sys
 import re
@@ -292,7 +293,44 @@ _PUSH_ARGS_RE = re.compile(
     r"\s+push(?=$|[\s;&|\n])(?P<rest>[^\n;&|]*)")
 # `--delete`/`-d` (and its `:branch` refspec shorthand) removes a remote ref — there
 # is no local content being pushed, so there is nothing meaningful to diff/review.
-_PUSH_DELETE_RE = re.compile(r"(?:^|\s)(?:--delete\b|-d\b)")
+# `-[A-Za-z]*d[A-Za-z]*\b` (not bare `-d\b`) also catches `-d` bundled with other
+# value-less short flags git's own parse-options allows (`-fd`, `-vd`) — a bare
+# `-d\b` alone missed those, silently falling back to reviewing/syncing a
+# ref-deletion push as if it were ordinary content.
+#
+# `(?:(?!o)[A-Za-z])*` on both sides of the target letter excludes `-o<value>`
+# (push's `--push-option` short form, e.g. `-odeploy` == `-o deploy`) from ever
+# being read as a bundled short-flag cluster: `-o` is VALUE-TAKING, and git
+# attaches everything after it directly to that value rather than treating the
+# remaining letters as more flags. An earlier version of this exclusion was
+# `-(?!o)[A-Za-z]*d[A-Za-z]*\b` — a lookahead ONLY right after the leading `-`,
+# which stops `-odeploy` but not `-vodeploy` (= `-v -o deploy`): git allows `-o`
+# at any position in a cluster, not just first, so the embedded "d" in
+# "deploy"/"n" in "notify" still slipped through whenever `-o` wasn't the very
+# first flag. Repeating the `(?!o)` check at EVERY position closes that — once
+# an `o` appears anywhere in the candidate span, the run of "plain letters"
+# stops there and can never reach past it to find the target letter, which
+# fails toward NOT matching (i.e. toward reviewing/syncing anyway) rather than
+# toward a wrong skip — the safe direction this whole class already commits to.
+_PUSH_DELETE_RE = re.compile(
+    r"(?:^|\s)(?:--delete\b|-(?:(?!o)[A-Za-z])*d(?:(?!o)[A-Za-z])*\b)")
+# `--dry-run`/`-n` simulates the push — nothing actually leaves the machine, and no
+# range this hook computes now will ever really be pushed. `_push_has_explicit_refspec`
+# already has to recognize both spellings as value-less flags (so they aren't
+# mistaken for a positional refspec), but recognizing them there only keeps this
+# detector from misfiring on OTHER checks — it does not, by itself, treat a dry run
+# as its own mismatch class. Without a dedicated check here, a `git push --dry-run`
+# reads as an ordinary push to the calling hook, which then runs its full
+# side-effecting flow (a real review call, or — in atlas's copy of this file — a
+# real `docs(atlas): sync` commit + diff egress) even though the user asked only
+# for a simulation. Same bundled-short-flag reasoning as `_PUSH_DELETE_RE` above:
+# `-[A-Za-z]*n[A-Za-z]*\b`, not bare `-n\b`, so `-vn`/`-qn`-shaped clusters (value-
+# less flags git's parse-options lets you combine) are recognized too — a bare
+# `-n\b` silently missed those, letting a bundled dry-run push through as if real.
+# Same all-positions `(?!o)` exclusion as `_PUSH_DELETE_RE` above, same reason:
+# `-vonotify` (= `-v -o notify`) must not match on "notify"'s embedded "n" either.
+_PUSH_DRY_RUN_RE = re.compile(
+    r"(?:^|\s)(?:--dry-run\b|-(?:(?!o)[A-Za-z])*n(?:(?!o)[A-Za-z])*\b)")
 # A push whose CONTENT is not "the current branch vs its upstream" cannot be judged by
 # the range these gates compute. `--all`/`--tags`/`--mirror` send many refs; an explicit
 # positional refspec (`origin other-branch`, `origin src:dst`) sends a ref that may have
@@ -330,54 +368,104 @@ def _push_has_explicit_refspec(rest):
     return len(positionals) >= 2 and positionals[1] not in ("HEAD",)
 
 
-def is_push_scope_mismatch(cmd):
-    """True iff the push invocation may not correspond to the diff the pre-push hook
-    would compute (`@{upstream}...HEAD`, falling back to the trunk merge-base):
-      - `-C`/`--git-dir`/`--work-tree` (flag or `GIT_DIR=`/`GIT_WORK_TREE=` env
-        prefix) redirects to a different repo/tree than this hook's own root.
-      - a `cd`/`pushd` earlier in the SAME invocation changes the shell's cwd before
-        `git push` runs there, same class of redirect.
-      - a `git commit` earlier in the SAME invocation runs AFTER this PreToolUse
-        hook fires (it fires once, before ANY of a compound command executes) — the
-        diff computed now is missing that not-yet-created commit, which is exactly
-        the content about to be pushed. Stale-HEAD analog of the commit-side
-        `is_stale_index` check.
-      - `--delete`/`-d`: nothing to review (a ref deletion, not new content).
-      - `--all`/`--tags`/`--mirror`, or an explicit refspec positional (`git push origin
-        other-branch`): the content pushed is not what `@{upstream}...HEAD` describes, so
-        the computed diff would judge the wrong commits — unreviewed content could pass,
-        or an unrelated diff could block."""
-    detect = _blank_quotes(cmd)
-    m = _PUSH_ARGS_RE.search(detect)
-    if not m:
-        return False
-    before, rest = m.group("before"), m.group("rest")
+def _mismatch_for_one_push(detect, gm):
+    """True iff the ONE `git push` occurrence matched by `gm` (a `_GIT_PUSH_RE`
+    match against the full, already quote-blanked `detect` text) is itself
+    unreviewable OR explicitly bypassed, by the same classes `is_push_scope_mismatch`'s
+    docstring lists. Factored out of that function so a COMPOUND command with more
+    than one `git push` invocation can be judged occurrence-by-occurrence instead
+    of only ever looking at the first one.
+
+    The inline bypass prefix (`KIRO_REVIEW=off`) is folded in here as its own class,
+    NOT left to the separate `is_push_bypassed`/`bypass push` check the calling hook
+    also runs: those two checks are invoked as SEPARATE early-exits in
+    `pre-push-review.sh` (bypass first, then scope-mismatch), each independently
+    `all()`-aggregated. A command where every occurrence is skip-worthy but for a
+    DIFFERENT reason per occurrence (`KIRO_REVIEW=off git push && git push
+    --dry-run` — the first bypassed, the second a dry-run) would fail BOTH separate
+    `all()` checks (one occurrence isn't bypassed; the other occurrence isn't a
+    scope mismatch), so neither hook-level check would fire and the hook would run
+    a full, unwanted review — even though the ONE real push the user cared about
+    was explicitly bypassed. Folding bypass in here means `is_push_scope_mismatch`
+    alone recognizes that mixed case; `is_push_bypassed` still exists separately
+    for the calling hook's distinct "flat-out bypassed" message and its own callers
+    that only care about that one class."""
+    if _BYPASS_ENV_RE.search(gm.group()):
+        return True
+    if _GIT_ENV_REDIRECT_RE.search(gm.group()):
+        return True
+    # Same slicing convention as is_stale_index(): only the text BEFORE this
+    # git-push invocation's own boundary character.
+    pre = detect[:gm.start() + 1]
+    if _PRECEDING_CD_RE.search(pre):
+        return True
+    if _GIT_COMMIT_RE.search(pre):
+        return True
+    # `_PUSH_ARGS_RE`'s own `git\b...push` core is entirely contained inside
+    # `gm.group()` (which may additionally carry an env-prefix `_GIT_PUSH_RE`
+    # tolerates but `_PUSH_ARGS_RE` does not) — searching within that substring
+    # only, rather than the full `detect` text, guarantees this can never
+    # accidentally match a DIFFERENT push occurrence's flags.
+    am = _PUSH_ARGS_RE.search(gm.group())
+    before = am.group("before") if am else ""
     if _PRE_C_RE.search(before) or _PRE_GIT_DIR_RE.search(before):
         return True
+    # `gm.end()` sits exactly after `push` (a lookahead, not consumed) — the same
+    # start position `_PUSH_ARGS_RE`'s own `rest` group would use for this
+    # occurrence.
+    rest = re.split(r"[;&|\n]", detect[gm.end():], 1)[0]
     if _PUSH_MULTIREF_RE.search(rest) or _push_has_explicit_refspec(rest):
         return True
-    if _PUSH_DELETE_RE.search(rest):
+    if _PUSH_DELETE_RE.search(rest) or _PUSH_DRY_RUN_RE.search(rest):
         return True
-    gm = _GIT_PUSH_RE.search(detect)
-    if gm:
-        if _GIT_ENV_REDIRECT_RE.search(gm.group()):
-            return True
-        # Same slicing convention as is_stale_index(): only the text BEFORE this
-        # git-push invocation's own boundary character.
-        pre = detect[:gm.start() + 1]
-        if _PRECEDING_CD_RE.search(pre):
-            return True
-        if _GIT_COMMIT_RE.search(pre):
-            return True
     return False
+
+
+def is_push_scope_mismatch(cmd):
+    """True iff EVERY `git push` invocation found in `cmd` may not correspond to
+    the diff the pre-push hook would compute (`@{upstream}...HEAD`, falling back
+    to the trunk merge-base) — see `_mismatch_for_one_push` for the per-occurrence
+    classes (an inline `KIRO_REVIEW=off` bypass prefix on THIS occurrence;
+    `-C`/`--git-dir`/`--work-tree`/`GIT_DIR=` redirect; a preceding
+    `cd`/`pushd`; a preceding `git commit` in the same invocation; `--delete`/`-d`;
+    `--dry-run`/`-n`; `--all`/`--tags`/`--mirror`; an explicit refspec positional).
+
+    Checks ALL occurrences, not just the first: a compound command can contain
+    more than one `git push` (`git push --dry-run && git push` is the natural,
+    common case — dry-run first, then the real thing, in one invocation). Judging
+    only the first occurrence would let its own class (here, `--dry-run`) skip the
+    ENTIRE command's review, silently missing the second, perfectly reviewable
+    push right after it. The overall verdict is a mismatch only when there is no
+    single occurrence left that a range-based diff could actually judge — i.e.
+    skip only if reviewing would find NOTHING to review anywhere in the command;
+    if at least one push invocation is itself reviewable, this returns False and
+    the hook proceeds (erring toward reviewing, the safe direction for a gate)."""
+    detect = _blank_quotes(cmd)
+    gms = list(_GIT_PUSH_RE.finditer(detect))
+    if not gms:
+        return False
+    return all(_mismatch_for_one_push(detect, gm) for gm in gms)
 
 
 def is_push_bypassed(cmd):
     """Same rationale as is_bypassed() (below), for `git push` — an inline
-    `KIRO_REVIEW=off git push ...` prefix as part of THIS SAME invocation."""
+    `KIRO_REVIEW=off git push ...` prefix as part of THIS SAME invocation.
+
+    Checks ALL occurrences, not just the first — the same "skip only if every
+    occurrence agrees" reasoning `is_push_scope_mismatch` documents applies
+    here too: shell semantics mean an inline env prefix bypasses only the ONE
+    push invocation it literally prefixes, so `KIRO_REVIEW=off git push
+    --dry-run && git push` bypasses just the first push — the second, carrying
+    no prefix of its own, must remain reviewable. Returns True only when EVERY
+    occurrence found carries the prefix; if even one does not, this returns
+    False so `is_push_scope_mismatch` (or an outright review) still gets to
+    judge that occurrence on its own merits — a single non-bypassed
+    occurrence must never be swallowed by another one's consent."""
     detect = _blank_quotes(cmd)
-    m = _GIT_PUSH_RE.search(detect)
-    return bool(m and _BYPASS_ENV_RE.search(m.group()))
+    gms = list(_GIT_PUSH_RE.finditer(detect))
+    if not gms:
+        return False
+    return all(_BYPASS_ENV_RE.search(gm.group()) for gm in gms)
 
 
 # `(?:^|[\s;&|])` anchor, not a bare `\b`: `\b` matches at any word/non-word boundary,

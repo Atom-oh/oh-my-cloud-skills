@@ -158,9 +158,14 @@ commit hook's bypass — `hook_match.py`'s `bypass` mode takes the subcommand ex
 `bypass push` here and `bypass commit` in the commit hook, so a prefix on one subcommand
 of a compound command can never bypass the other hook's review). `hook_match.py`'s `push-scope-mismatch` mode skips (fail-open,
 advisory) the same mismatch classes the commit hook's `scope-mismatch` catches, adapted
-for push: a repo/tree redirect, a preceding `cd`/`pushd`, a preceding `git commit` in
-the same invocation whose content the diffed range would miss, or `--delete` (nothing
-to review). Enable via `/kiro:setup` or `/kiro:configure set review on_push on` — this
+for push, judged per `git push` occurrence in a compound command (not just the first —
+this now folds in the inline bypass prefix too, so a command where every occurrence is
+skip-worthy for a DIFFERENT reason still skips as a whole): a `KIRO_REVIEW=off` bypass
+on that occurrence, a repo/tree redirect, a preceding `cd`/`pushd`, a preceding `git
+commit` in the same invocation whose content the diffed range would miss,
+`--delete`/`--dry-run` (bundled short-flag clusters like `-fd`/`-vn` included, nothing
+to review either way), or an explicit refspec/`--all`/`--tags`/`--mirror` push the
+computed range doesn't describe. Enable via `/kiro:setup` or `/kiro:configure set review on_push on` — this
 warns (but still writes) if co-agent's own `push_gate` is ALSO on for this repo, since
 both firing means every push runs two independent review rounds. Run the same 3-lens
 pass on demand with `/kiro:review --range --lenses correctness,security,scope` (or via

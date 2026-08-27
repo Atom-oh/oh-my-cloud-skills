@@ -70,15 +70,18 @@ fi
 # SKIP (fail-open) when the push invocation may not correspond to the range this hook
 # would sync against (@{upstream}...HEAD, or the trunk merge-base) — see
 # hook_match.py's push-scope-mismatch docstring for the exact mismatch classes
-# (repo/tree redirect, a preceding cd/pushd, a preceding git commit in the same
-# invocation whose content the diff would miss, or --delete with nothing to sync).
+# (an inline KIRO_REVIEW=off bypass on that occurrence, repo/tree redirect, a
+# preceding cd/pushd, a preceding git commit in the same invocation whose content
+# the diff would miss, --delete/--dry-run with nothing to sync, or a refspec/
+# multiref push the computed range doesn't describe).
 if python3 "$SK/hook_match.py" push-scope-mismatch < "$PAYLOAD_FILE"; then
   echo "⚠️  atlas sync SKIPPED (fail-open): this push invocation may not correspond to" \
        "the range this hook would sync against (-C/--git-dir/--work-tree/GIT_DIR=/" \
        "GIT_WORK_TREE=, a preceding cd/pushd, a preceding git commit in the same" \
-       "invocation whose content the diff would miss, or --delete with nothing to" \
-       "sync) — syncing against the wrong range could rewrite docs to the wrong code." \
-       "Run /atlas:sync on the right scope if needed." >&2
+       "invocation whose content the diff would miss, --delete/--dry-run with" \
+       "nothing to sync, or an explicit refspec) — syncing against the wrong range" \
+       "could rewrite docs to the wrong code. Run /atlas:sync on the right scope" \
+       "if needed." >&2
   exit 0
 fi
 
