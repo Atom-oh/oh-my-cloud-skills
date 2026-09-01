@@ -2,7 +2,8 @@
 
 ## Status
 
-Proposed (2026-09-01) — draft; two open questions below are gated on a PoC.
+Proposed (2026-09-01) — PoC complete, both gates resolved (see below and
+`poc/adr-020/`); ready for acceptance.
 
 ## Context
 
@@ -74,16 +75,25 @@ fifth redundant path:
    icons for AWS services, scored in category 7) applies to Archify nodes the same as
    to slides.
 
-## Open questions (PoC gates — resolve before Accepted)
+## PoC results (2026-09-01 — evidence and repro in `poc/adr-020/`)
 
-- **Vendor vs. depend.** If Archify's spec supports custom node icons/brand marks
-  natively, we depend on the upstream skill and inject icons purely at spec level (no
-  fork). If icon injection requires touching the renderer, we vendor a pinned copy
-  under the project-init-style mirror rule (byte-identical + documented local delta).
-  The PoC answers which.
-- **Iframe interaction budget.** Verify on a real deck: focus hand-off both directions,
-  1920×1080 canvas fit, capture behavior in `export_pptx.py`, and that a deck carrying
-  2-3 Archify iframes stays within acceptable size/load for GitHub Pages hosting.
+- **Vendor vs. depend → depend, version-pinned, no fork.** Archify's native `brand`
+  field cannot carry AWS icons (its Simple Icons-based catalog has zero AWS marks —
+  Simple Icons removed them — and the only other schema form is a network-captured
+  `{url, sha256}`). Post-render injection works instead: the output HTML gives every
+  node a stable `id="node-<id>"` hook with spec-coordinate rects, so a small script
+  (`poc/adr-020/inject_aws_icons.py`) places official icons without touching the
+  renderer, and Archify's own `check` still passes on the modified artifact. Two
+  injection rules are load-bearing (paint order; `<g transform>` not nested-svg
+  geometry) — recorded in the PoC README. Cost of this path: we depend on the output
+  markup shape, so the Archify version is pinned and a structure probe test must fail
+  loudly on upgrade.
+- **Iframe interaction budget → fits.** 6-node EKS reference diagram, official icons
+  on all 6 nodes, iframed into a 1920×1080 slide: focus stays with the deck on load,
+  arrow keys reach the deck's handler, the artifact is ~716 KB self-contained, and
+  headless Playwright (the `export_pptx.py` capture path) screenshots it cleanly.
+  Deferred to implementation: a real `:::archify` build in `remarp_to_slides.py`,
+  an end-to-end `export_pptx.py` run, and click-in/Escape-out focus return.
 
 ## Consequences
 

@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "EKS Web Service — Reference Architecture",
+    "visual_preset": "signal-flow"
+  },
+  "components": [
+    {
+      "id": "users",
+      "type": "external",
+      "label": "Users",
+      "sublabel": "Web + mobile",
+      "pos": [
+        40,
+        250
+      ],
+      "size": [
+        120,
+        60
+      ]
+    },
+    {
+      "id": "route53",
+      "type": "cloud",
+      "label": "Route 53",
+      "sublabel": "DNS",
+      "pos": [
+        220,
+        250
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "alb",
+      "type": "cloud",
+      "label": "ALB",
+      "sublabel": "Elastic Load Balancing",
+      "pos": [
+        410,
+        250
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "eks",
+      "type": "backend",
+      "label": "EKS Cluster",
+      "sublabel": "web + api pods",
+      "pos": [
+        620,
+        250
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "rds",
+      "type": "database",
+      "label": "Amazon RDS",
+      "sublabel": "Aurora PostgreSQL",
+      "pos": [
+        840,
+        330
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "cache",
+      "type": "database",
+      "label": "ElastiCache",
+      "sublabel": "Redis session store",
+      "pos": [
+        840,
+        170
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "s3",
+      "type": "database",
+      "label": "Amazon S3",
+      "sublabel": "static assets",
+      "pos": [
+        620,
+        430
+      ],
+      "size": [
+        140,
+        60
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "ap-northeast-2",
+      "wraps": [
+        "route53",
+        "alb",
+        "eks",
+        "rds",
+        "cache",
+        "s3"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "Private data plane",
+      "wraps": [
+        "eks",
+        "rds",
+        "cache"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "dns",
+      "from": "users",
+      "to": "route53",
+      "label": "HTTPS",
+      "variant": "emphasis"
+    },
+    {
+      "id": "resolve",
+      "from": "route53",
+      "to": "alb",
+      "label": "alias"
+    },
+    {
+      "id": "ingress",
+      "from": "alb",
+      "to": "eks",
+      "label": "target group",
+      "labelDy": 24
+    },
+    {
+      "id": "sql",
+      "from": "eks",
+      "to": "rds",
+      "label": "SQL"
+    },
+    {
+      "id": "session",
+      "from": "eks",
+      "to": "cache",
+      "label": "session"
+    },
+    {
+      "id": "assets",
+      "from": "eks",
+      "to": "s3",
+      "label": "assets",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    }
+  ]
+}
