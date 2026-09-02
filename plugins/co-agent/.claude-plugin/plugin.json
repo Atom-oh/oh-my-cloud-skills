@@ -47,7 +47,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'FILE=\"$TOOL_INPUT_FILE_PATH\"; [ \"$(basename \"$FILE\" 2>/dev/null)\" = \"CLAUDE.md\" ] || exit 0; DIR=$(dirname \"$FILE\"); SK=\"${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts\"; OUT=$(python3 \"$SK/check_ai_context.py\" \"$DIR\" 2>/dev/null) || { if python3 \"$SK/co_agent_config.py\" autosync --root \"$DIR\" 2>/dev/null; then echo \"[co-agent] CLAUDE.md changed and AI context files are stale. Auto-sync is ON — run /co-agent:sync-context $DIR now to regenerate AGENTS.md (Codex) + the Kiro steering bridge.\"; else echo \"[co-agent] CLAUDE.md changed — AI context files are stale. Run /co-agent:sync-context to regenerate (or enable auto-sync: /co-agent:configure set autosync on).\"; echo \"$OUT\"; fi; }; exit 0'"
+            "command": "bash -c 'FILE=$(jq -r \".tool_input.file_path // .tool_response.filePath // empty\" 2>/dev/null); [ \"$(basename \"$FILE\" 2>/dev/null)\" = \"CLAUDE.md\" ] || exit 0; DIR=$(dirname \"$FILE\"); SK=\"${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts\"; OUT=$(python3 \"$SK/check_ai_context.py\" \"$DIR\" 2>/dev/null) || { if python3 \"$SK/co_agent_config.py\" autosync --root \"$DIR\" 2>/dev/null; then MSG=\"[co-agent] CLAUDE.md changed and AI context files are stale. Auto-sync is ON — run /co-agent:sync-context $DIR now to regenerate AGENTS.md (Codex) + the Kiro steering bridge.\"; else MSG=\"[co-agent] CLAUDE.md changed — AI context files are stale. Run /co-agent:sync-context to regenerate (or enable auto-sync: /co-agent:configure set autosync on).\"; [ -n \"$OUT\" ] && MSG=$(printf \"%s\\n%s\" \"$MSG\" \"$OUT\"); fi; jq -n --arg m \"$MSG\" \"{hookSpecificOutput:{hookEventName:\\\"PostToolUse\\\",additionalContext:\\$m}}\"; }; exit 0'"
           }
         ]
       },
@@ -56,7 +56,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/consensus_hooks.py\" post-tooluse --root . 2>/dev/null"
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/consensus_hooks.py\" post-tooluse --root ."
           }
         ]
       }
@@ -66,7 +66,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/consensus_hooks.py\" stop --root . 2>/dev/null"
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/consensus_hooks.py\" stop --root ."
           },
           {
             "type": "command",

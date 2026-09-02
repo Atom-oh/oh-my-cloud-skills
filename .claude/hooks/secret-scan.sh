@@ -64,14 +64,25 @@ fi
 CMD="$(printf '%s' "$HOOK_JSON" | jq -r '.tool_input.command // empty' 2>/dev/null)"
 [ -z "$CMD" ] && CMD="${TOOL_INPUT_COMMAND:-}"
 
-# Deliberately loose: `git.*commit` anywhere in the string, not an
-# option-token whitelist. A tighter regex like `git[[:space:]]+([a-z-]+[[:space:]]+)*commit`
-# looks precise but is fail-open by construction — it silently never matches
-# (and never scans) `git -C /path commit` (a `C` flag), `git -c k=v commit`
-# (`.`/`=`), or `--git-dir=... commit` (`/`,`=`), since [a-z-] can't consume
-# any of those tokens. Over-matching here only costs an extra scan (safe
-# direction); under-matching skips the scan entirely (unsafe). Prefer broad.
-[[ "$CMD" =~ git.*commit ]] || exit 0
+# Deliberately word-loose, not option-token-precise: require a standalone
+# "git" word AND a standalone "commit" word anywhere in the string (any
+# order), never a whole-invocation regex. A tighter shape like
+# `git[[:space:]]+([a-z-]+[[:space:]]+)*commit` looks precise but is
+# fail-open by construction — it silently never matches (and never scans)
+# `git -C /path commit` (a `C` flag), `git -c k=v commit` (`.`/`=`), or
+# `--git-dir=... commit` (`/`,`=`), since [a-z-] can't consume any of those
+# tokens. The word boundary here is "anything but [alnum_]", so `-`, quotes,
+# `&`, `=` all count as boundaries: `git -C /path commit`, `git -c k=v
+# commit`, `--git-dir=... commit`, `bash -c 'git commit ...'`,
+# `git "commit"`, and `git init&&git commit` all still enter. What no
+# longer enters is the pure-substring class that contains NEITHER word
+# standalone — `gitcommit`, `digital committee`, `committed.txt` — which
+# used to pay this hook's full parser plus a working-tree scan (and could
+# false-block) on commands that never invoke git at all. Past this gate,
+# over-matching only costs an extra scan (safe direction); under-matching
+# skips the scan entirely (unsafe).
+[[ "$CMD" =~ (^|[^[:alnum:]_])git([^[:alnum:]_]|$) ]] || exit 0
+[[ "$CMD" =~ (^|[^[:alnum:]_])commit([^[:alnum:]_]|$) ]] || exit 0
 
 # The repo-selector detection below (-C, --git-dir, --work-tree, GIT_DIR=,
 # GIT_WORK_TREE=, GIT_INDEX_FILE=) must only look at git's GLOBAL options
@@ -271,9 +282,15 @@ else:
     # see. Checked against raw `s`, not masked, because masked blanks a
     # selector that is itself quoted (`git "-C" /other "commit" -m x` is
     # valid and really does pass -C to git); a command that reaches this
-    # branch is already atypical, so the friction of an occasional prose
+    # branch is already atypical, so the friction of an occasional raw-text
     # "-C" mention triggering it is an accepted tradeoff against silently
-    # missing a real one.
+    # missing a real one. Known false positive of exactly this shape:
+    # `grep -rn -C 3 "git commit" docs/` -- quoted git+commit words plus a
+    # bare -C token in the raw text -- is textually indistinguishable from
+    # a quoted real cross-repo commit (`bash -c "git -C /other commit -m
+    # x"`), which ONLY this check blocks. That collateral is irreducible
+    # without going fail-open on the attack shape; the exit-5 block message
+    # already tells the caller to rerun the commit as its own plain call.
     #
     # Only once there is no selector hint at all does it matter whether
     # this command is:
@@ -600,7 +617,7 @@ scan_content() {
         *.env.example|package-lock.json|*/package-lock.json|yarn.lock|*/yarn.lock)
             for regex in "${HIGH_CONFIDENCE_PATTERNS[@]}" "${PROJECT_KEY_PATTERNS[@]}"; do
                 if printf '%s' "$content" | grep -qPi "$regex" 2>/dev/null; then
-                    echo "[secret-scan] Potential secret found in $file (pattern: ${regex:0:30}...)"
+                    echo "[secret-scan] Potential secret found in $file (pattern: ${regex:0:30}...)" >&2
                     SECRETS_FOUND=1
                 fi
             done
@@ -609,7 +626,7 @@ scan_content() {
     esac
     for regex in "${PATTERNS[@]}"; do
         if printf '%s' "$content" | grep -qPi "$regex" 2>/dev/null; then
-            echo "[secret-scan] Potential secret found in $file (pattern: ${regex:0:30}...)"
+            echo "[secret-scan] Potential secret found in $file (pattern: ${regex:0:30}...)" >&2
             SECRETS_FOUND=1
         fi
     done
@@ -699,9 +716,12 @@ if [ "$has_add" -eq 1 ] && [ "$has_force" -eq 1 ]; then
 fi
 
 if [ "$SECRETS_FOUND" -eq 1 ]; then
-    echo ""
-    echo "[secret-scan] BLOCKED: Potential secrets detected."
-    echo "[secret-scan] Review the files above and remove secrets before committing."
-    echo "[secret-scan] Use .env files for secrets and .env.example for templates."
+    # All of this goes to stderr: PreToolUse only surfaces stderr to the
+    # model on a blocking exit 2 — stdout is dropped, which used to make
+    # every legitimate block opaque (file/pattern/remediation invisible).
+    echo "" >&2
+    echo "[secret-scan] BLOCKED: Potential secrets detected." >&2
+    echo "[secret-scan] Review the files above and remove secrets before committing." >&2
+    echo "[secret-scan] Use .env files for secrets and .env.example for templates." >&2
     exit 2
 fi

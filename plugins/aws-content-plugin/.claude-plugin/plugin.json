@@ -45,7 +45,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'if echo \"$TOOL_INPUT\" | grep -q \"remarp_to_slides.py\"; then if echo \"$TOOL_OUTPUT\" | grep -qi \"warning\\|error\"; then echo \"Build warnings detected. Review output before proceeding.\"; fi; fi'"
+            "command": "bash -c 'j=$(cat); cmd=$(jq -r \".tool_input.command // empty\" <<<\"$j\" 2>/dev/null); out=$(jq -r \"(.tool_response // .tool_output // empty) | tostring\" <<<\"$j\" 2>/dev/null); if [[ \"$cmd\" == *remarp_to_slides.py* ]] && grep -qiE \"warning|error\" <<<\"$out\"; then echo \"Build warnings detected. Review output before proceeding.\"; fi'"
           }
         ]
       },
@@ -54,7 +54,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'FILE=\"$TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" == *reactive-presentation/references/* ]] || [[ \"$FILE\" == *reactive-presentation/SKILL.md ]] || [[ \"$FILE\" == *reactive-presentation/scripts/* ]]; then PROJ=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\"; [ -f \"$PROJ/scripts/eval-skill-behavior.py\" ] || exit 0; mkdir -p \"$PROJ/.omc/logs\"; echo \"[SKILL CHANGED] reactive-presentation — $(basename \"$FILE\"). Running eval...\"; nohup python3 \"$PROJ/scripts/eval-skill-behavior.py\" --skill reactive-presentation > \"$PROJ/.omc/logs/eval-reactive-presentation-latest.log\" 2>&1 & echo \"[EVAL STARTED] PID=$! — results at .omc/logs/eval-reactive-presentation-latest.log\"; fi'"
+            "command": "bash -c 'FILE=$(jq -r \".tool_input.file_path // .tool_response.filePath // empty\" 2>/dev/null); if [[ \"$FILE\" == *reactive-presentation/references/* ]] || [[ \"$FILE\" == *reactive-presentation/SKILL.md ]] || [[ \"$FILE\" == *reactive-presentation/scripts/* ]]; then PROJ=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\"; [ -f \"$PROJ/scripts/eval-skill-behavior.py\" ] || exit 0; if pgrep -f \"eval-skill-behavior[.]py --skill reactive-presentation\" >/dev/null 2>&1; then echo \"[EVAL SKIPPED] reactive-presentation eval already running.\"; exit 0; fi; mkdir -p \"$PROJ/.omc/logs\"; echo \"[SKILL CHANGED] reactive-presentation — $(basename \"$FILE\"). Running eval...\"; nohup python3 \"$PROJ/scripts/eval-skill-behavior.py\" --skill reactive-presentation > \"$PROJ/.omc/logs/eval-reactive-presentation-latest.log\" 2>&1 & echo \"[EVAL STARTED] PID=$! — results at .omc/logs/eval-reactive-presentation-latest.log\"; fi'"
           }
         ]
       },
@@ -63,7 +63,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'FILE=\"$TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" == *.md ]] && head -5 \"$FILE\" 2>/dev/null | grep -q \"remarp: true\"; then python3 -c \"import re,sys; t=open(sys.argv[1]).read(); slides=t.split(chr(10)+\\\"---\\\"+chr(10)); missing=[i+1 for i,s in enumerate(slides) if s.strip() and \\\":::notes\\\" not in s and \\\"---\\\" in t]; print(f\\\"Slides missing notes: {missing}\\\") if missing else print(\\\"All slides have notes.\\\")\" \"$FILE\"; fi'"
+            "command": "bash -c 'FILE=$(jq -r \".tool_input.file_path // .tool_response.filePath // empty\" 2>/dev/null); if [[ \"$FILE\" == *.md ]] && head -5 \"$FILE\" 2>/dev/null | grep -q \"remarp: true\"; then python3 -c \"import sys; t=open(sys.argv[1]).read(); nl=chr(10); t=t.split(nl+\\\"---\\\"+nl,1)[1] if t.startswith(\\\"---\\\"+nl) and nl+\\\"---\\\"+nl in t else t; slides=t.split(nl+\\\"---\\\"+nl); missing=[i+1 for i,s in enumerate(slides) if s.strip() and \\\":::notes\\\" not in s]; print(f\\\"Slides missing notes: {missing}\\\") if missing else print(\\\"All slides have notes.\\\")\" \"$FILE\"; fi'"
           }
         ]
       },
@@ -72,7 +72,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'FILE=\"$TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" == *.html ]] && [[ \"$FILE\" != /tmp/eval-* ]] && [[ \"$FILE\" != *node_modules* ]] && grep -q '\"'\"'\"generator\".*\"remarp\"'\"'\"' \"$FILE\" 2>/dev/null; then echo \"[CONTENT COMPLETE] Remarp presentation written: $(basename \"$FILE\"). Quality gate required: run content-review-agent (>= 85) before deployment.\"; fi'"
+            "command": "bash -c 'FILE=$(jq -r \".tool_input.file_path // .tool_response.filePath // empty\" 2>/dev/null); if [[ \"$FILE\" == *.html ]] && [[ \"$FILE\" != /tmp/eval-* ]] && [[ \"$FILE\" != *node_modules* ]] && grep -q '\"'\"'\"generator\".*\"remarp\"'\"'\"' \"$FILE\" 2>/dev/null; then echo \"[CONTENT COMPLETE] Remarp presentation written: $(basename \"$FILE\"). Quality gate required: run content-review-agent (>= 85) before deployment.\"; fi'"
           }
         ]
       },
@@ -81,7 +81,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'FILE=\"$TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" == *reactive-presentation/references/* ]] || [[ \"$FILE\" == *reactive-presentation/SKILL.md ]] || [[ \"$FILE\" == *reactive-presentation/scripts/* ]]; then PROJ=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\"; [ -f \"$PROJ/scripts/eval-skill-behavior.py\" ] || exit 0; mkdir -p \"$PROJ/.omc/logs\"; echo \"[SKILL CHANGED] reactive-presentation — $(basename \"$FILE\"). Running eval...\"; nohup python3 \"$PROJ/scripts/eval-skill-behavior.py\" --skill reactive-presentation > \"$PROJ/.omc/logs/eval-reactive-presentation-latest.log\" 2>&1 & echo \"[EVAL STARTED] PID=$! — results at .omc/logs/eval-reactive-presentation-latest.log\"; fi'"
+            "command": "bash -c 'FILE=$(jq -r \".tool_input.file_path // .tool_response.filePath // empty\" 2>/dev/null); if [[ \"$FILE\" == *reactive-presentation/references/* ]] || [[ \"$FILE\" == *reactive-presentation/SKILL.md ]] || [[ \"$FILE\" == *reactive-presentation/scripts/* ]]; then PROJ=\"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}\"; [ -f \"$PROJ/scripts/eval-skill-behavior.py\" ] || exit 0; if pgrep -f \"eval-skill-behavior[.]py --skill reactive-presentation\" >/dev/null 2>&1; then echo \"[EVAL SKIPPED] reactive-presentation eval already running.\"; exit 0; fi; mkdir -p \"$PROJ/.omc/logs\"; echo \"[SKILL CHANGED] reactive-presentation — $(basename \"$FILE\"). Running eval...\"; nohup python3 \"$PROJ/scripts/eval-skill-behavior.py\" --skill reactive-presentation > \"$PROJ/.omc/logs/eval-reactive-presentation-latest.log\" 2>&1 & echo \"[EVAL STARTED] PID=$! — results at .omc/logs/eval-reactive-presentation-latest.log\"; fi'"
           }
         ]
       }

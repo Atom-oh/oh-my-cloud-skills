@@ -53,6 +53,7 @@ import os
 import re
 import json
 import shutil
+import signal
 import subprocess
 import tempfile
 import threading
@@ -65,6 +66,25 @@ import kiro_config as kc
 
 
 _ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
+
+
+def _kill_proc(p):
+    """Kill a kiro-cli child, whole process group on POSIX (same pattern as co-agent's
+    check_panel.py _kill_proc). A bare p.kill() SIGKILLs only the kiro-cli pid — its node
+    child (acp-server.js, ~260MB) reparents to init and survives, and a SIGKILLed parent
+    can never clean it up (measured in-repo: 96 orphans x ~260MB = 24.8GiB — see
+    co-agent's reap_kiro_orphans.sh header). os.killpg/getpgid don't exist on Windows —
+    fall back to p.kill() there instead of raising AttributeError."""
+    try:
+        if hasattr(os, "killpg") and hasattr(os, "getpgid"):
+            os.killpg(os.getpgid(p.pid), signal.SIGKILL)
+        else:
+            p.kill()
+    except Exception:
+        try:
+            p.kill()
+        except Exception:
+            pass
 
 
 def _run_streamed(argv, cwd, env, outp, errp, timeout, echo_tag=None):
@@ -81,8 +101,11 @@ def _run_streamed(argv, cwd, env, outp, errp, timeout, echo_tag=None):
     Returns the exit code, or None if the timeout was hit (process killed)."""
     prefix = f"[kiro:{echo_tag}] " if echo_tag else ""
     with open(outp, "w") as of, open(errp, "w") as ef:
+        # start_new_session: put kiro-cli in its own process group so the timeout path
+        # can killpg the WHOLE group (kiro-cli + its node acp-server child) — a plain
+        # p.kill() orphans the child to init (ignored on Windows, same as check_panel.py).
         p = subprocess.Popen(argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
-                             stdout=of, stderr=ef)
+                             stdout=of, stderr=ef, start_new_session=True)
         start = time.monotonic()
         end = start + timeout
         buf = ""
@@ -105,7 +128,7 @@ def _run_streamed(argv, cwd, env, outp, errp, timeout, echo_tag=None):
                     return rc
                 now = time.monotonic()
                 if now >= end:
-                    p.kill()
+                    _kill_proc(p)
                     p.wait()
                     return None
                 if echo_tag and now - last_out > 15:
