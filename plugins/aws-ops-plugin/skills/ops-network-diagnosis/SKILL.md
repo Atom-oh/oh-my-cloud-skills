@@ -61,6 +61,20 @@ kubectl get nodes -o json | jq '.items[] | {name:.metadata.name, enis:.status.ad
 kubectl set env daemonset aws-node -n kube-system ENABLE_PREFIX_DELEGATION=true
 ```
 
+## Load Balancer Target Health
+
+```bash
+# Which targets are unhealthy, and why
+aws elbv2 describe-target-health --target-group-arn $TG_ARN \
+  --query 'TargetHealthDescriptions[?TargetHealth.State!=`healthy`].{id:Target.Id,port:Target.Port,state:TargetHealth.State,reason:TargetHealth.Reason}'
+
+# Ingress → target group wiring (AWS Load Balancer Controller)
+kubectl get targetgroupbindings -A
+kubectl describe ingress <ingress> -n <namespace>
+```
+
+An unhealthy target usually traces to the health-check path returning non-2xx or to a node security group that does not admit the load balancer's health-check traffic — verify both before touching the application.
+
 ## Quick Connectivity Tests
 
 ```bash

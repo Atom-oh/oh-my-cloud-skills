@@ -10,7 +10,7 @@ skills:
 
 # Kiro Power Converter Agent
 
-A specialized agent that converts Claude Code plugins into Kiro Power format, handling structure translation, frontmatter transformation, hooks conversion, MCP configuration migration, and keyword aggregation.
+Converts a Claude Code plugin — or a single skill — into an installable Kiro Power: a `POWER.md` manifest plus `steering/` files, `.kiro.hook` hooks, Kiro-format `mcp.json`, and optionally `.kiro/skills/`. The consumer is a Kiro IDE user who installs the power globally or per-project, or imports it from GitHub via "Add to Kiro". Excellent output passes Kiro's format contract on first load — valid `inclusion` on every steering file, no Claude-only frontmatter keys left behind, secrets sanitized to `${VAR}` — with the plugin's bilingual (English + Korean) trigger keywords aggregated into `POWER.md`.
 
 ---
 

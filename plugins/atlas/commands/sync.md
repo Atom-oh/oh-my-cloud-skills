@@ -8,7 +8,9 @@ argument-hint: Optional explicit diff range A..B (default — auto-resolved from
 
 Run the push-time drift pipeline by hand: find atlas docs whose covered code changed
 since their `code_rev`, then fix them with one confined headless `claude -p` call per
-stale doc. Same machinery the pre-push hook uses, minus the push.
+stale doc. Same machinery the pre-push hook uses, minus the push. The user ends up
+with repaired docs, an advanced index, a `docs(atlas): sync` commit — and a clear
+per-doc account of what was synced, skipped, or failed.
 
 Resolve paths first:
 
@@ -18,8 +20,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 ```
 
 `--root` on both scripts below takes the REPOSITORY root, never the wiki directory
-(the scripts derive the wiki directory from config themselves — passing the wiki
-directory would make them look for docs nested one level too deep). Always pass
+(the scripts derive the wiki directory from config themselves). Always pass
 `--root "$ROOT"`.
 
 ## First run on an unsynced repo: `--dry-run`
@@ -49,10 +50,6 @@ python3 "$SK/atlas_drift.py" --root "$ROOT"
 python3 "$SK/atlas_drift.py" --range "<the literal A..B text>" --root "$ROOT"   # only when $ARGUMENTS is non-empty
 python3 "$SK/atlas_drift.py" --json --root "$ROOT"                 # one packet per line
 ```
-
-Omit `--range` entirely when `$ARGUMENTS` is empty — don't pass it as a literal empty
-string; that happens to be harmless here (an empty string is treated the same as no
-override) but is fragile to rely on.
 
 One `stale:` line per drifted doc. **Read stderr too**: a `skipping <doc> — ...`
 advisory means that doc has a schema error, empty `covers`, or an unresolvable

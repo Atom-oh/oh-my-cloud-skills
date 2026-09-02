@@ -11,91 +11,94 @@ allowed-tools:
 
 # Kiro Power Conversion Skill
 
-A systematic workflow for converting Claude Code plugins into Kiro Power format, including hooks, skills, steering files, and MCP configuration.
+Converts a Claude Code plugin — or a single skill — into an installable Kiro Power: a `POWER.md` manifest plus `steering/` files, `.kiro.hook` hooks, and Kiro-format `mcp.json` that Kiro IDE loads directly. The consumer is a Kiro user who installs the power globally or per-project, or imports it from GitHub via "Add to Kiro". Excellent output passes Kiro's format contract on first load: a valid `inclusion` field on every steering file, no Claude-only frontmatter keys left behind, secrets sanitized to `${VAR}`, and the plugin's bilingual (English + Korean) trigger keywords aggregated into `POWER.md`.
 
 ## Workflow
 
-### Phase 1: Source Selection
+### Phase 1: Source and Target
 
-1. **Identify input type** — Ask the user which source to use:
-   - GitHub URL (`--git-url`) — Clone a repository and extract the plugin
-   - Local path (`--source`) — Use an existing local plugin directory
-   - Marketplace (`--marketplace`) — Search and download by plugin name
-   - Skill standalone (`--skill`) — Convert individual skills only
+Infer the source and target from the request; ask only what the request doesn't answer. Output target defaults to `export`.
 
-2. **Gather parameters** — Collect required info based on source type:
-   - Git: URL, optional branch/tag, optional plugin subdirectory path
-   - Local: absolute or relative path to plugin root
-   - Marketplace: plugin name or search query
-   - Skill: path(s) to skill directories
-
-### Phase 2: Plugin Discovery
-
-1. **Git source** — `git clone --depth 1` the repository, navigate to plugin subdirectory
-2. **Local source** — Validate that `.claude-plugin/plugin.json` exists
-3. **Marketplace source** — Search local `plugins/` and `~/.claude/plugins/` directories
-4. **Skill source** — Validate that `SKILL.md` exists in each specified directory
-
-### Phase 3: Target Selection
-
-Ask the user where to output the converted power:
+| Source | Flag | Discovery |
+|--------|------|-----------|
+| GitHub repo | `--git-url URL` (+ `--plugin-path`, `--branch`) | `git clone --depth 1`, then the plugin subdirectory |
+| Local plugin | `--source PATH` | `.claude-plugin/plugin.json` must exist at the path |
+| Marketplace | `--marketplace [NAME]` (`--search QUERY` lists matches) | Searches local `plugins/` and `~/.claude/plugins/` |
+| Single skill | `--skill PATH` (repeatable) | Each directory must contain `SKILL.md` |
 
 | Target | Path | Use Case |
 |--------|------|----------|
 | `global` | `~/.kiro/powers/<name>/` | Install for all Kiro projects |
 | `project` | `.kiro/powers/<name>/` | Install for current project only |
-| `export` | User-specified path | Export for sharing or manual installation |
+| `export` | User-specified path | Sharing or manual installation |
 
-### Phase 4: Conversion Options
+Add `--preserve-skills` when skills should stay in Kiro's `.kiro/skills/` format (frontmatter `metadata` with author/version; `references/` and `scripts/` kept) instead of being flattened into steering files.
 
-Ask about conversion preferences:
+### Phase 2: Conversion
 
-| Option | Flag | Effect |
-|--------|------|--------|
-| Preserve skills | `--preserve-skills` | Output skills as `.kiro/skills/` format instead of steering |
-
-### Phase 5: Conversion
-
-Run the conversion script:
+Run the converter:
 
 ```bash
 python3 {plugin-dir}/skills/kiro-convert/scripts/convert_plugin_to_power.py \
   --source <plugin-path> --output <output-path> --target <target> [--preserve-skills]
 ```
 
-Or perform manual conversion following the rules in `references/conversion-rules.md`.
+Other source types:
 
-#### What Gets Converted
+```bash
+## GitHub repository, plugin in a subdirectory, specific branch/tag
+python3 convert_plugin_to_power.py --git-url https://github.com/user/repo \
+  --plugin-path plugins/my-plugin --branch v1.2.0 --output /tmp/my-power
 
-| Source | Target | Key Changes |
-|--------|--------|-------------|
-| `plugin.json` | `POWER.md` | Manifest → frontmatter; keywords aggregated; author preserved |
-| `CLAUDE.md` | `steering/routing.md` | Wrapped with `inclusion: always` |
-| `agents/*.md` | `steering/<agent>.md` | `tools`/`model` removed; `inclusion: auto` added |
-| `skills/*/SKILL.md` | `steering/<skill>.md` | `triggers` merged into description; `inclusion: auto` |
-| `skills/*/references/*.md` | `steering/ref-*.md` | `inclusion: manual` or `fileMatch` (auto-detected) |
-| `.mcp.json` | `mcp.json` | `type` removed; `autoApprove`/`disabled`/`disabledTools` added; secrets → `${VAR}` |
-| `hooks` in plugin.json | `hooks/*.kiro.hook` | JSON hook files with Kiro trigger/action types |
-| SessionStart prompts | POWER.md onboarding | Migrated to body since Kiro has no SessionStart event |
+## Marketplace: list matches, then convert by name into the global target
+python3 convert_plugin_to_power.py --marketplace --search "ops"
+python3 convert_plugin_to_power.py --marketplace my-plugin --output /tmp/my-power --target global
 
-### Phase 6: Verification
+## Single skill → one standalone steering file
+python3 convert_plugin_to_power.py --skill ./skills/my-skill --output ~/.kiro/steering/my-skill.md
+```
 
-1. **Structure check** — Verify output contains `POWER.md`, `steering/` directory
-2. **POWER.md check** — Confirm frontmatter has `name`, `displayName`, `description`, `keywords`
-3. **Body check** — Confirm POWER.md has onboarding section (if MCP/env vars) and steering mappings
-4. **Steering check** — Confirm all steering files have valid `inclusion` field
-5. **fileMatch check** — Verify `globs` field present when `inclusion: fileMatch`
-6. **MCP check** — If source had `.mcp.json`, verify `mcp.json` has no `type` fields, has `autoApprove`/`disabled`/`disabledTools`
-7. **Hooks check** — Verify `.kiro.hook` files have `when.type`, `then.type`, and valid JSON
-8. **Skills check** — If `--preserve-skills`, verify `skills/*/SKILL.md` has proper frontmatter
+The field-by-field mapping — frontmatter transforms, hook trigger mapping, fileMatch glob detection, secret sanitization, large-asset (>10MB) handling — is canonical in `references/conversion-rules.md`; the target format itself is specified in `references/kiro-power-format.md`. For a manual (script-less) conversion, follow those two files directly.
 
-### Phase 7: Next Steps
+### Phase 3: Verification
 
-- **Test in Kiro** — Open Kiro IDE and verify the power appears in the powers list
-- **Publish to GitHub** — Push to a repository and use "Add to Kiro" import
-- **Share** — Distribute the exported directory to other Kiro users
+Kiro loads what parses and silently skips what doesn't — a malformed file surfaces as a missing feature, not an error — so check the output against `references/kiro-power-format.md`:
+
+- `POWER.md` frontmatter carries `name`, `displayName`, `description`, `keywords`, and none of the invalid keys (`version`, `tags`, `repository`, `license`)
+- Every `steering/*.md` has a valid `inclusion`; `fileMatch` files also carry `globs`
+- `mcp.json` has no `type` fields, has `autoApprove`/`disabled`/`disabledTools`, and any hardcoded secret became a `${VAR}` reference surfaced in the POWER.md onboarding section
+- Each `hooks/*.kiro.hook` is valid JSON with `when.type` and `then.type`
+- With `--preserve-skills`: each `skills/*/SKILL.md` carries Kiro skill frontmatter
+
+## Conversion Example
+
+A Claude skill frontmatter and its default steering-file result (`triggers` merged into the description, Claude-only keys dropped, `inclusion: auto` added):
+
+```yaml
+# Input: skills/ops-troubleshoot/SKILL.md (Claude Code)
+---
+name: ops-troubleshoot
+description: "Systematic troubleshooting workflow"
+triggers:
+  - "troubleshoot"
+  - "장애 대응"
+model: sonnet
+allowed-tools: [Read, Bash]
+---
+
+# Output: steering/ops-troubleshoot.md (Kiro)
+---
+name: ops-troubleshoot
+description: "Systematic troubleshooting workflow. Triggers: \"troubleshoot\", \"장애 대응\""
+inclusion: auto
+---
+```
+
+## Output
+
+Report what the conversion produced: source and output paths, counts per artifact type (steering files, preserved skills, references, hooks), whether `mcp.json` was generated, and every `${VAR}` the user must set before the power works. Close with next steps — open Kiro IDE and confirm the power appears in the powers list, or push to GitHub and import via "Add to Kiro".
 
 ## References
 
-- `references/kiro-power-format.md` — Kiro Power directory structure, format specification, hooks, skills, agents, MCP config
-- `references/conversion-rules.md` — Detailed field-by-field conversion rules, hook mapping, fileMatch detection, edge cases
+- `references/kiro-power-format.md` — Kiro Power directory structure and format specification (POWER.md schema, steering `inclusion` types, hooks, skills, agents, MCP config)
+- `references/conversion-rules.md` — Field-by-field conversion rules, hook mapping, fileMatch detection heuristic, edge cases

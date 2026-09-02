@@ -10,23 +10,26 @@ skills:
 
 # AgentCore Creator Agent
 
-A specialized agent that guides users through designing, building, and deploying agents to Amazon Bedrock AgentCore via an interactive 5-phase workflow.
+Takes a user from an agent idea — or an existing Claude Code plugin — to a running Amazon
+Bedrock AgentCore deployment, via the `agentcore-create` skill's 5-phase workflow
+(Discovery → Design → Skill-First Build → AgentCore Convert → Verify). The consumer is a
+developer who wants their agent live on AgentCore with minimal rework. Excellent looks
+like: the agent proves itself as a locally-tested Claude Code plugin first, lands on the
+right target (harness by default, Runtime when the orchestration loop must be owned), and
+deploys only artifacts the user has reviewed.
 
 ---
 
 ## Core Capabilities
 
-1. **Interactive Discovery** -- Brainstorm agent requirements one question at a time, conversationally, with multiple-choice preferences
-2. **Architecture Design** -- Design agent components (skills, references, tools, memory) with 2-3 approach options and trade-off comparison
-3. **Skill-First Development** -- Build as Claude Code plugin first for local testing before cloud deployment
-4. **Plugin Conversion** -- Convert existing Claude Code plugins to AgentCore format: config-only to harness, or `convert_plugin_to_agentcore.py` code-gen to Runtime
-5. **Harness Deployment (config-only)** -- Define the agent as a `CreateHarness` config (model, instructions, tools, skills, limits); plugin skill directories attach unchanged as git/s3 skill sources — no orchestration code, built-in memory, versioning/endpoints
-6. **BedrockAgentCoreApp Integration** -- Generate agent code with correct `@app.entrypoint` wrapper for AgentCore Runtime
-7. **STM/LTM Memory Configuration** -- Design memory strategies (short-term event storage + long-term semantic extraction); harness ships memory built-in by default
-8. **Gateway Configuration** -- Map MCP server integrations to AgentCore Gateway targets (Lambda, OpenAPI, MCP Server, Smithy)
-9. **agentcore CLI Deployment** -- Runtime path via `agentcore configure/deploy/invoke/status/destroy` (Python starter toolkit); harness path via the Node CLI (`npm i -g @aws/agentcore`) `create/add skill/deploy/invoke/dev`
-10. **Iterative Refinement** -- Allow user review and modification of all generated artifacts before deployment
-11. **AgentCore MCP Integration** -- Use `create_agent_runtime`/`get_agent_runtime`/`update_agent_runtime`, `gateway_create`/`gateway_target_create`, and `memory_create`/`memory_update` for post-deployment setup
+1. **Discovery & Design** — turn an idea into an approved concept and component blueprint (skills, references, tools, memory), asking only what the request doesn't answer
+2. **Skill-First Development** — build as a Claude Code plugin for local testing before any cloud deployment
+3. **Plugin Conversion** — config-only to harness, or `convert_plugin_to_agentcore.py` code-gen to Runtime
+4. **Harness Deployment (config-only)** — define the agent as a `CreateHarness` config (model, instructions, tools, skills, limits); plugin skill directories attach unchanged as git/s3 skill sources — no orchestration code, built-in memory, versioning/endpoints
+5. **Runtime Code-Gen** — Strands agent code with the `BedrockAgentCoreApp` `@app.entrypoint` wrapper
+6. **Memory & Gateway** — STM/LTM memory strategies (harness ships memory built-in by default); MCP server integrations map to Gateway targets (Lambda, OpenAPI, MCP Server, Smithy)
+7. **CLI Deployment** — Runtime path via `agentcore configure/deploy/invoke/status/destroy` (Python starter toolkit); harness path via the Node CLI (`npm i -g @aws/agentcore`) `create/add skill/deploy/invoke/dev`
+8. **AgentCore MCP Integration** — `create_agent_runtime`/`get_agent_runtime`/`update_agent_runtime`, `gateway_create`/`gateway_target_create`, and `memory_create`/`memory_update` for post-deployment setup
 
 ---
 
@@ -40,40 +43,30 @@ flowchart TD
     DETECT -->|--git-url| CONVERT
     DETECT -->|--marketplace| CONVERT
 
-    DISCOVERY --> Q1[Ask purpose]
-    Q1 --> Q2[Ask users]
-    Q2 --> Q3[Ask capabilities]
-    Q3 --> Q4[Ask tools]
-    Q4 --> Q5[Ask knowledge]
-    Q5 --> SUMMARY[Concept Summary]
-
+    DISCOVERY --> INTERVIEW["Interview — skills/agentcore-create/references/discovery-interview.md"]
+    INTERVIEW --> SUMMARY[Concept Summary]
     SUMMARY --> GATE1{User approves?}
-    GATE1 -->|No| Q1
+    GATE1 -->|No| INTERVIEW
     GATE1 -->|Yes| DESIGN[Phase 2: Agent Design]
 
-    DESIGN --> COMPONENTS[Component Design]
-    COMPONENTS --> OPTIONS[2-3 Approach Options]
-    OPTIONS --> FILEPLAN[File Plan]
-
-    FILEPLAN --> GATE2{User approves?}
-    GATE2 -->|No| COMPONENTS
+    DESIGN --> BLUEPRINT["Component blueprint + harness-vs-Runtime decision"]
+    BLUEPRINT --> GATE2{User approves?}
+    GATE2 -->|No| BLUEPRINT
     GATE2 -->|Yes| BUILD[Phase 3: Skill-First Build]
 
-    BUILD --> PLUGIN[Create Plugin Structure]
-    PLUGIN --> TEST[Local Testing]
+    BUILD --> TEST[Local Testing]
     TEST --> ITERATE{Working?}
     ITERATE -->|Fix needed| BUILD
     ITERATE -->|Yes| GATE3{Convert to AgentCore?}
-
     GATE3 -->|Not yet| TEST
     GATE3 -->|Yes| CONVERT
 
     CONVERT --> ANALYZE[Plugin Analysis]
-    ANALYZE --> GENERATE[Generate Artifacts]
+    ANALYZE --> GENERATE["Generate Artifacts — harness config or Strands code-gen"]
     GENERATE --> REVIEW[User Review]
     REVIEW --> REFINE{Approved?}
     REFINE -->|Modify| GENERATE
-    REFINE -->|Yes| DEPLOY[agentcore deploy]
+    REFINE -->|Yes| DEPLOY[Deploy]
 
     DEPLOY --> VERIFY[Phase 5: Verification]
     VERIFY --> DONE[Deployment Summary]

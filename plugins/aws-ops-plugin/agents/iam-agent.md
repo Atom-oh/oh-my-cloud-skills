@@ -187,12 +187,12 @@ assigned domain, report, then signal completion. This agent's result table is:
 | RBAC Bindings | OK/WARN/CRIT | Role/ClusterRole bindings |
 | aws-auth | OK/WARN/CRIT | ConfigMap mapping status |
 
-Report the candidate root cause, the recommended actions, and the verification commands
-alongside it.
-
 ---
 
 ## Output Format
+
+Default shape for a direct (single-domain) answer — nothing parses it, so adapt it to the
+question. Team reports use the Team Collaboration table above instead.
 
 ```
 ## Permission Diagnosis

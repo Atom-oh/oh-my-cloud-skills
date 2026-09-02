@@ -163,14 +163,15 @@ flowchart TD
 
 When spawned as a member of an incident-response team (the Agent tool's `team_name`
 parameter is set), follow the shared specialist protocol in
-`{plugin-dir}/references/team-workflows.md` → *Specialist agent protocol*. Report PVC/PV
-binding, CSI driver health, volume attachment, and mount state as an OK/WARN/CRIT table with
-the candidate root cause, the recommended actions, and the verification commands; leave the
-fix itself to the coordinator.
+`{plugin-dir}/references/team-workflows.md` → *Specialist agent protocol*. This agent's
+OK/WARN/CRIT rows: PVC/PV binding, CSI driver health, volume attachment, mount state.
 
 ---
 
 ## Output Format
+
+Default shape for a direct (single-domain) answer — nothing parses it, so adapt it to the
+question. Team reports use the Team Collaboration rows above instead.
 
 ```
 ## Storage Diagnosis

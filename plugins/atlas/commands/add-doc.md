@@ -8,6 +8,9 @@ argument-hint: Topic or filename for the new doc, e.g. "hybrid-gate" or "how the
 
 Add one new page to this repo's atlas wiki: a skeleton with fully pre-filled
 frontmatter, then a regenerated `INDEX.md` so the page is immediately discoverable.
+A good page is one a future session can judge from the index alone and that drift
+detection can actually check — which is why the frontmatter matters more than the
+prose.
 
 Resolve paths first:
 
@@ -19,8 +22,8 @@ HEAD_SHA="$(git rev-parse --short HEAD)"
 ```
 
 `--root` takes the REPOSITORY root, never the wiki directory — the scripts derive the
-wiki directory from config themselves, and passing it to `--root` would double the
-path up. Always pass `--root "$ROOT"`.
+wiki directory from config themselves, and passing it would double the path up. Always
+pass `--root "$ROOT"`.
 
 ## Step 1: Name the doc and check for collisions
 
@@ -37,8 +40,9 @@ field:
 
 - `title` — the topic, phrased the way a teammate would say it.
 - `description` — one sentence a reader can judge relevance by without opening the
-  body; load-bearing words first (the INDEX truncates at 80 characters).
-- `covers` — see the drafting rules below.
+  body; load-bearing words first (the INDEX generator truncates long descriptions —
+  `references/frontmatter-schema.md`).
+- `covers` — see below.
 - `related` — relpaths of existing sibling docs where a real edge exists, else `[]`.
 - `code_rev` — `$HEAD_SHA`. This anchors drift detection to the code the body
   actually describes.
@@ -46,27 +50,25 @@ field:
 
 ### Drafting `covers`
 
-`covers` decides both when this doc is flagged stale and which diff the fixer sees:
+`covers` decides both when this doc is flagged stale and which diff the fixer sees.
+The full drafting guidance is in `references/atlas-templates.md`, "How covers is
+drafted"; two traps are silent and worth restating here:
 
-- **Derive globs from the module paths the doc describes.** Start from the concrete
-  files you will cite in `## Code pointers` and generalize upward to the directory
-  that owns them.
-- **Prefer one directory-scoped `**` glob over enumerating files** — `plugins/x/**`
-  keeps covering files added later; an enumerated list silently stops covering new
-  files, which is the exact drift this plugin exists to catch. Remember `*` stops at
-  `/`; write `dir/**` when you mean the whole tree.
-- **Overlap needs a note.** Check the `covers` of the docs from Step 1: if two docs
-  claim the same file, each doc's `## Overview` MUST say which one is authoritative
-  for the shared territory. Without that note, one code change drags both docs into
-  the fixer and they can be rewritten in opposite directions on the same push.
+- The matcher's `*` stops at `/` — write `dir/**` when you mean the whole tree, and
+  prefer one directory-scoped `**` glob over enumerating files (an enumerated list
+  silently stops covering files added later).
+- If this doc's globs overlap another doc's (check the `covers` from Step 1), each
+  doc's `## Overview` MUST name which one is authoritative for the shared territory —
+  otherwise one code change drags both docs into the fixer and they can be rewritten
+  in opposite directions on the same push.
 
 ## Step 3: Write the doc
 
 Write the file under `$ROOT/$WIKI_REL/` and fill the body sections (Overview, Key
-decisions, Code pointers, Related) with real content — verify each code pointer
-exists, and keep pointers inside the `covers` globs (a pointer outside them means the
-globs are wrong). Update the frontmatter `related` of any existing doc that should
-now link back, so the new page does not start life as an orphan.
+decisions, Code pointers, Related) with real content. Every code pointer should exist
+and fall inside the `covers` globs — a pointer outside them means the globs are wrong.
+Update the frontmatter `related` of any existing doc that should now link back, so the
+new page does not start life as an orphan.
 
 ## Step 4: Regenerate the INDEX and validate
 
@@ -82,6 +84,5 @@ sibling links to it yet — add a reciprocal `related` edge where one genuinely 
 ## Step 5: Report
 
 Show the new doc's path, its frontmatter, any overlap notes added, and the INDEX
-update. Remind the user the doc is drift-checked from `code_rev` onward: from the
-next covered change, `/atlas:sync` (or the push hook, if enabled) will keep it
-current.
+update. Note that the doc is drift-checked from `code_rev` onward: from the next
+covered change, `/atlas:sync` (or the push hook, if enabled) will keep it current.

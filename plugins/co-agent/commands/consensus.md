@@ -6,9 +6,12 @@ argument-hint: "plan <doc...> | review [diff base] | implement <plan> | (full)  
 
 # co-agent: consensus
 
-Autonomous **doc → plan → implementation** with cross-family multi-model consensus gates.
-**All stages are implemented** — Stage A (P0–P2: plan + plan-review gate), Stage B (P3:
-autonomous implement), Stage C (P4 final gate + P5 report). Full reference: `references/consensus-pipeline.md`.
+Autonomous **doc → plan → implementation** in which the host writes the code and a
+cross-family multi-model panel gates both the plan and the result. The product is a fully
+implemented, locally committed change whose plan and cumulative diff each survived the
+consensus gate, delivered to the user with a run report. Excellent means gate verdicts
+rest on cited evidence, the implementation never leaves the plan's file scope, and a
+re-run resumes instead of restarting. Full reference: `references/consensus-pipeline.md`.
 
 > **The host itself writes the code here** (TDD loop, main tree). Want a cross-provider peer
 > to write it instead, sandboxed in a worktree, while the host stays the gatekeeper? Use
@@ -17,11 +20,15 @@ autonomous implement), Stage C (P4 final gate + P5 report). Full reference: `ref
 Argument: `$ARGUMENTS`
 
 ## Sub-modes
-- `plan <doc...>` — P0–P2: detect input(s), load-or-generate the plan, run the plan consensus gate. **(available — Stage A)**
-- `review [diff base]` — standalone multi-model diff review (the consensus gate run on its own). **(available — shipped v1.7.2)**
-- `implement <plan>` — autonomously implement a reviewed plan (P3 TDD loop, multi-model gated). **(available — Stage B)**
-- (default, no sub-mode) — runs the **full pipeline P0→P5** end-to-end: detect inputs → load/generate plan → P2 plan gate → P3 implement → P4 final gate → P5 report. **Resumable** — re-running reads `consensus_state` (phase/task_index) and continues.
-- Flags: `--deep` (use each AI's full model list for the gates), `--trust-plan` (skip the P2 plan gate when the plan was already reviewed upstream). Round/call limits come from `consensus.max_rounds`/`consensus.max_calls` (config) — there is no `--apply`/`--max-rounds` flag.
+- `plan <doc...>` — P0–P2: detect input(s), load-or-generate the plan, run the plan consensus gate.
+- `review [diff base]` — standalone multi-model diff review (the consensus gate run on its own).
+- `implement <plan>` — autonomously implement a reviewed plan (P3 TDD loop, multi-model gated).
+- (default, no sub-mode) — the **full pipeline P0→P5** end-to-end: detect inputs →
+  load/generate plan → P2 plan gate → P3 implement → P4 final gate → P5 report.
+  **Resumable** — re-running reads `consensus_state` (phase/task_index) and continues.
+- Flags: `--deep` (use each AI's full model list for the gates), `--trust-plan` (skip the
+  P2 plan gate when the plan was already reviewed upstream). Round/call limits come from
+  `consensus.max_rounds`/`consensus.max_calls` (config) — there is no `--apply`/`--max-rounds` flag.
 
 ## Stage A workflow (`plan <doc>`)
 Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"`.
@@ -61,7 +68,7 @@ the review checkpoint. Requires a clean tree; commits locally only (never push/r
    `parse_plan.py <plan> --files` (enforced by `scope_guard.py`).
 1. **Per task** (advance `consensus_state.py task-start . <i>`):
    a. **Checkpoint**: `git stash create`/tag or a WIP commit you can reset to.
-   b. **Implement (TDD)**: write the failing test → minimal code → refactor. Every file you
+   b. **Implement (TDD)**: failing test → minimal code → refactor. Every file you
       touch MUST pass `scope_guard.py --plan <plan> -- <path>` (else stop — out of
       scope; candidate paths go after a literal `--` — see the script's own `--help`).
    c. **Security veto**: reject any change violating the AWS mandates (0.0.0.0/0, Principal:"*",

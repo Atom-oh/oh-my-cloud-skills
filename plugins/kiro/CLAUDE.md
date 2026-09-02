@@ -241,7 +241,7 @@ delegation report).
 
 ## Auto-Invocation Keywords
 
-Same canonical set as the skill's `triggers:` frontmatter and description (kept
+Same canonical set as the skill's `description` and the agent's `description` (kept
 identical across all three — see the note in `skills/kiro-delegate/SKILL.md`). All are
 explicit **implementation**-delegation phrasings; review is the separate `/kiro:review`
 command and has no auto-invocation trigger (it never loads this write-capable skill):

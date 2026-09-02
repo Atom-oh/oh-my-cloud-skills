@@ -6,9 +6,10 @@ argument-hint: show | set root <path> | set sync <on_push|model|timeout|parallel
 
 # atlas: configure
 
-Read or change this repo's atlas settings through `atlas_config.py`. Never edit the
-config files by hand when the script can do it — the script validates values and
-refuses symlink-tricked write paths.
+Read or change this repo's atlas settings through `atlas_config.py`, so the user ends
+up with a validated effective config and understands any consent implications of what
+they changed. Never edit the config files by hand when the script can do it — the
+script validates values and refuses symlink-tricked write paths.
 
 Resolve paths first:
 
@@ -16,12 +17,6 @@ Resolve paths first:
 SK="${CLAUDE_PLUGIN_ROOT}/skills/atlas/scripts"
 ROOT="$(git rev-parse --show-toplevel)"
 ```
-
-Every command below spells out `python3 "$SK/atlas_config.py" ...` in full, rather than
-a combined `CFG="python3 $SK/atlas_config.py"` alias expanded unquoted as `$CFG ...` —
-an unquoted alias only works by relying on word splitting to re-separate `python3` from
-the script path, which breaks the moment `CLAUDE_PLUGIN_ROOT` (and so `$SK`) contains a
-space.
 
 `--root` takes the REPOSITORY root, never the wiki directory. Pass `--root "$ROOT"`
 on every call; it may appear anywhere in the argv.
@@ -94,6 +89,6 @@ ATLAS_SYNC=off git push origin main
 
 ## Report
 
-After any `set`, run `show` and echo the effective config back to the user,
-including any warnings the script printed on stderr (tracked override, coerced
-values) — those warnings are the interesting part of the output.
+After any `set`, run `show` and echo the effective config back to the user, including
+any warnings the script printed on stderr (tracked override, coerced values) — those
+warnings are the interesting part of the output.

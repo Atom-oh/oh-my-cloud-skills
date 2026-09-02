@@ -11,6 +11,25 @@ allowed-tools:
 
 Delivers a six-domain OK/WARN/CRIT read on whether a cluster is healthy right now, for someone asking "is anything wrong?" — a concrete failure routes to `ops-troubleshoot` instead. Excellent work here answers every domain even when it is clean, attaches to each WARN or CRIT the number that triggered it, and orders recommendations by risk. This skill stays deliberately lean: it is a sweep, not a diagnosis.
 
+## Workflow
+
+### Step 1: Establish context
+
+```bash
+aws sts get-caller-identity --query 'Account' --output text
+aws eks list-clusters --output text
+```
+
+Confirm which cluster and region the sweep targets before running anything — a health verdict on the wrong cluster is worse than none.
+
+### Step 2: Sweep all six domains
+
+Run every domain below even when the early ones come back clean; the report's value is that every domain was answered. Judge each result against the warning/critical thresholds in `references/metrics-thresholds.md` — that file owns the numbers, this one owns the commands. Deeper per-domain procedures live in `references/health-check-procedures.md`.
+
+### Step 3: Report and route
+
+Emit the report in the Output Format below, then hand any WARN/CRIT domain to its specialist (see Escalation Routing) rather than diagnosing it inside the sweep.
+
 ## Health Check Domains
 
 ### 1. Cluster Health
@@ -53,6 +72,21 @@ kubectl get csidrivers
 kubectl get pods -A -o json | jq '[.items[] | select(.spec.containers[].securityContext.privileged==true) | {name:.metadata.name, ns:.metadata.namespace}]'
 kubectl get networkpolicies -A
 kubectl get podsecuritypolicies 2>/dev/null
+```
+
+## Escalation Routing
+
+A WARN or CRIT domain leaves this skill with a named owner. Route by domain:
+
+```mermaid
+graph TD
+    A[Domain result] --> B{WARN or CRIT?}
+    B -->|No, all clean| C[Report HEALTHY — done]
+    B -->|Cluster / Nodes / Workloads| D[ops-troubleshoot → eks-agent]
+    B -->|Network| E[ops-network-diagnosis → network-agent]
+    B -->|Storage| F[storage-agent]
+    B -->|Security| G[ops-security-audit → iam-agent]
+    B -->|Spans 2+ domains| H[ops-coordinator-agent]
 ```
 
 ## Output Format

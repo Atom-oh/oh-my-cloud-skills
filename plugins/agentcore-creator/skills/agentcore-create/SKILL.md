@@ -14,46 +14,37 @@ allowed-tools:
 
 # AgentCore Create
 
-Interactive 5-phase workflow for designing, building, and deploying agents to Amazon Bedrock AgentCore. Start from a blank slate with brainstorming or convert an existing Claude Code plugin.
+5-phase workflow that takes an agent from idea — or from an existing Claude Code plugin —
+to a verified Amazon Bedrock AgentCore deployment. The artifact is either a
+`CreateHarness` config whose plugin skills attach unchanged (Path A, the default) or a
+generated Strands + `BedrockAgentCoreApp` codebase (Path B), deployed and smoke-tested.
+Excellent looks like: the agent proves itself as a locally-tested Claude Code plugin
+first, lands on the right target for its orchestration needs, and every resource-creating
+step runs with the user's explicit confirmation.
+
+Each phase ends with the user's sign-off before the next begins. Ask only what the
+request doesn't answer.
 
 ## Entry Point Detection
 
-Determine the entry mode from the user's input:
-
-- **No argument or agent idea** → Phase 1 (Discovery brainstorming)
-- **`convert <path>` or plugin path** → Phase 4 (Direct AgentCore conversion)
-- **`--git-url <url>`** → Phase 4 (Clone and convert)
-- **`--marketplace <name>`** → Phase 4 (Search marketplace and convert)
-
-For direct conversion (Phase 4), skip Phases 1-3 and go straight to plugin analysis and conversion.
-
----
+| Input | Entry |
+|-------|-------|
+| No argument, or an agent idea | Phase 1 (Discovery brainstorming) |
+| `convert <path>` or a plugin path | Phase 4 (direct conversion — skip Phases 1–3) |
+| `--git-url <url>` | Phase 4 (clone and convert) |
+| `--marketplace <name>` | Phase 4 (search marketplace and convert) |
 
 ## Phase 1: Discovery
 
-**Goal**: Understand what agent the user wants to build through conversational Q&A.
+Understand what agent the user wants. Gather context first (recent `git log`, `CLAUDE.md`,
+existing plugins/skills in the workspace) so questions build on what's already known
+instead of re-asking it.
 
-### 1.1 Context Gathering
-
-Before asking questions, silently explore the project:
-
-```bash
-git log --oneline -10 2>/dev/null
-```
-
-Read `CLAUDE.md` if it exists. Scan for existing plugins, skills, agents in the workspace. This context informs your questions — do not dump it to the user.
-
-### 1.2 Conversational Interview
-
-Ask questions **one at a time**, in natural conversation. Prefer multiple-choice when possible. Do not use AskUserQuestion — respond with plain text that ends with the question.
-
-**Question flow**: Read `references/discovery-interview.md` before asking the first
-question, then follow it — 7 questions (purpose,
-users, core capabilities, external tools, knowledge sources, deployment target, success
-criteria), most with ready-made multiple-choice options. Adapt based on answers and skip
-irrelevant ones.
-
-After gathering sufficient context (typically 4-7 questions), summarize the agent concept:
+Interview guide: `references/discovery-interview.md` — 7 questions (purpose, users,
+capabilities, tools, knowledge, deployment target, success criteria) with ready-made
+options. Interview in plain text, one question at a time (not `AskUserQuestion` — the
+answers build on each other). Adapt to the conversation, skip what's already answered,
+then summarize:
 
 ```
 Agent Concept Summary
@@ -64,31 +55,18 @@ Users:        <target audience>
 Capabilities: <numbered list>
 Tools:        <MCP servers, APIs, Lambda functions>
 Knowledge:    <reference sources>
-Deployment:   <AgentCore Runtime / skill-first / both>
+Deployment:   <harness / Runtime / skill-first / both>
 Success:      <metrics>
 ```
 
-<HARD-GATE>
-DO NOT proceed to Phase 2 until the user explicitly approves the concept summary.
-Ask: "Does this capture what you want? I can adjust any part before we design the architecture."
-No code generation, no file creation, no implementation until approval.
-</HARD-GATE>
-
----
+Proceed to Phase 2 on the user's approval of the summary.
 
 ## Phase 2: Agent Design
 
-**Goal**: Create a detailed architecture blueprint that the user approves section by section.
-
-### 2.1 Component Design
-
-Based on the approved concept, design the agent's components:
-
-**Agent definition** — Propose the agent `.md` file structure:
-- Name, description (with trigger keywords)
-- Tools needed (Read, Write, Bash, Glob, Grep, etc.)
-- Model recommendation (see Model Selection Guide below)
-- Core capabilities list
+Produce a blueprint the user approves before anything is built: agent definition (name,
+trigger-keyword description, tools, model), skill workflow, reference docs, and tool
+integrations (MCP servers, Lambda stubs, APIs). Where the design has real forks, present
+the alternatives with trade-offs and recommend one.
 
 **Model Selection Guide (Bedrock):**
 
@@ -102,7 +80,8 @@ Based on the approved concept, design the agent's components:
 
 > **Note on modern Opus (4.7/4.8) and Fable 5 deployment**: Generated code must NOT include `temperature`, `top_p`, `top_k`, or `thinking.type: "enabled"` with `budget_tokens` — these return 400 errors on Opus 4.7/4.8 and Fable 5. Use `thinking.type: "adaptive"` for reasoning depth control (on Fable 5 it's the *only* mode). 4.6/4.7 remain valid for pinned deployments. See `references/agentcore-mapping-rules.md` → Model-Specific Compatibility Notes.
 
-**Deployment target decision (harness vs. Runtime)** — decide this here, before Phase 4, because it changes what Phase 4 produces:
+**Deployment target decision (harness vs. Runtime)** — decide this here, before Phase 4,
+because it changes what Phase 4 produces:
 
 | Target | What it is | Choose when |
 |---|---|---|
@@ -111,38 +90,7 @@ Based on the approved concept, design the agent's components:
 
 Full decision grid and escape hatch (`agentcore export` harness → Strands code): `references/agentcore-harness.md`.
 
-**Skill definition** — Propose the SKILL.md structure:
-- Trigger phrases (Korean + English)
-- Workflow phases
-- Reference files needed
-- Scripts needed (if any)
-
-**Reference documents** — Propose knowledge docs:
-- What topics each reference covers
-- Source material (existing docs, to be written, extracted from code)
-
-**Tool integrations** — If external tools needed:
-- MCP server configs
-- Lambda function stubs
-- API integration approach
-
-### 2.2 Approach Options
-
-Present 2-3 approaches as a comparison table:
-
-```
-| Approach | Complexity | Capabilities | Trade-off |
-|----------|-----------|--------------|-----------|
-| A. Minimal | Low | Core features only | Fast to build, limited |
-| B. Standard | Medium | Core + tools | Balanced |
-| C. Full | High | Core + tools + memory | Most capable, more work |
-```
-
-Recommend one approach with reasoning.
-
-### 2.3 File Plan
-
-Present the exact files that will be created:
+**File plan** — show the exact files that will be created, and get approval before creating any:
 
 ```
 <plugin-name>/
@@ -157,106 +105,30 @@ Present the exact files that will be created:
     └── scripts/          (if needed)
 ```
 
-Get section-by-section approval:
-1. "Agent design looks good?" → proceed or adjust
-2. "Skill workflow makes sense?" → proceed or adjust
-3. "Reference docs coverage sufficient?" → proceed or adjust
-4. "Tool integrations correct?" → proceed or adjust
-
-<HARD-GATE>
-DO NOT create any files until the complete design is approved.
-Ask: "Design is complete. Ready to build the Claude Code skill? (Phase 3)"
-</HARD-GATE>
-
----
-
 ## Phase 3: Skill-First Development
 
-**Goal**: Build a working Claude Code plugin that can be tested locally before AgentCore deployment.
+Build the approved design as a working Claude Code plugin so it can be tested locally
+before anything touches the cloud: `plugin.json` manifest, agent `.md`, `SKILL.md`,
+`references/` knowledge docs, `CLAUDE.md` routing table, and scripts if needed. Trigger
+keywords go in the `description` frontmatter (Korean + English bilingual) — that is the
+selection surface the runtime reads.
 
-### 3.1 Plugin Structure Creation
-
-Create the plugin directory structure:
+Hand the user a test loop:
 
 ```bash
-mkdir -p <plugin-path>/.claude-plugin
-mkdir -p <plugin-path>/agents
-mkdir -p <plugin-path>/skills/<skill-name>/references
+claude --plugin-dir <plugin-path>
 ```
 
-### 3.2 File Generation
-
-Generate files in this order:
-
-1. **plugin.json** — Manifest with agents[], skills[], hooks
-2. **Agent .md** — YAML frontmatter (name, description, tools, model) + body (capabilities, decision tree, output format)
-3. **SKILL.md** — YAML frontmatter (name, description, triggers, allowed-tools) + workflow instructions
-4. **Reference docs** — Knowledge documents in `references/`
-5. **CLAUDE.md** — Auto-invocation keyword routing table
-6. **Scripts** — Utility scripts if needed
-
-Follow these conventions:
-- Agent description: include trigger keywords in natural sentence
-- Skill description: third-person form ("Analyzes...", "Generates...")
-- Skill body: imperative form ("Read the file", "Generate the output")
-- Reference docs: commands-first, with practical examples
-- Korean + English bilingual keywords in all trigger lists
-
-### 3.3 Local Testing
-
-After generating all files, guide the user to test:
-
-```
-Plugin created at: <path>
-
-To test locally:
-  claude --plugin-dir <path>
-
-Try these prompts to verify:
-  1. "<trigger phrase 1>"
-  2. "<trigger phrase 2>"
-  3. "<edge case scenario>"
-
-Let me know what works and what needs adjustment.
-```
-
-### 3.4 Iteration
-
-If the user reports issues or wants changes:
-1. Read their feedback
-2. Identify which files need modification
-3. Make targeted edits (do not regenerate everything)
-4. Re-test
-
-Repeat until the user is satisfied with the skill behavior.
-
-<HARD-GATE>
-DO NOT proceed to Phase 4 until the user confirms the skill works as expected.
-Ask: "Skill is working well? Ready to convert to AgentCore? (Phase 4)"
-If the user says "no" or "not yet", continue iterating in Phase 3.
-</HARD-GATE>
-
----
+Suggest trigger phrases and an edge case to try. Iterate on feedback with targeted edits
+until the user confirms the skill behaves as designed — that confirmation is the gate
+into Phase 4.
 
 ## Phase 4: AgentCore Conversion
 
-**Goal**: Convert the Claude Code plugin (from Phase 3 or an existing plugin) into AgentCore deployable artifacts.
-
 ### 4.1 Source Analysis
 
-For existing plugin conversion (direct entry):
-1. Validate `.claude-plugin/plugin.json` exists
-2. Parse manifest — extract agents, skills, references, hooks, MCP servers
-3. Display inventory:
-
-```
-Plugin: <name> (v<version>)
-  Agents:     N files
-  Skills:     N directories
-  References: N files
-  Hooks:      N events
-  MCP:        N servers
-```
+Validate `.claude-plugin/plugin.json` exists, parse the manifest, and show the inventory
+(agents, skills, references, hooks, MCP servers) before proposing anything.
 
 ### 4.2 Conversion Options
 
@@ -293,17 +165,11 @@ Conversion options:
 
 **Path A — Harness (config-only).** No script. Generate the harness definition inline per
 `references/agentcore-harness.md` and the "Harness Conversion" section of
-`references/agentcore-mapping-rules.md`:
-
-1. **Instructions**: merge agent `.md` body (+ SKILL.md workflows) into the system prompt
-   using the same rules as the Runtime path.
-2. **Skills**: attach each plugin skill directory unchanged as a `git` source (public repo)
-   or `s3` source (private) — reference docs ship inside the skill, so no Memory chunking.
-   (The 4.2 eligibility gate already verified a fetchable source exists and each skill is
-   self-contained.)
-3. **Tools**: map `mcpServers` to harness MCP tools or Gateway targets; built-in shell,
-   file operations, browser, and code interpreter are config toggles.
-4. Present the resulting `create-harness` command (or `agentcore` CLI flow) for review.
+`references/agentcore-mapping-rules.md`: merge the agent `.md` body (+ SKILL.md workflows)
+into `instructions`; attach each skill directory unchanged as a `git` or `s3` source
+(reference docs ship inside the skill, so no Memory chunking); map `mcpServers` to harness
+MCP tools or Gateway targets (built-in shell, file operations, browser, and code
+interpreter are config toggles). Present the resulting `create-harness` command for review.
 
 **Path B — Runtime (Strands code-gen).** Execute the conversion script:
 
@@ -318,34 +184,20 @@ python3 {skill-dir}/scripts/convert_plugin_to_agentcore.py \
 
 ### 4.4 Artifact Review
 
-Present generated artifacts for review.
+Present the generated artifacts and fold in the user's refinements before deploying.
 
-**Harness path (A)** — the artifact is the harness definition itself: the merged
-instructions, the skill source list, tool config, and limits. Review it as a single
-`create-harness` payload before deploying.
+**Harness path (A)** — the artifact is the harness definition itself: merged instructions,
+skill source list, tool config, limits. Review it as a single `create-harness` payload.
 
-**Runtime path (B)** — review each generated file:
+**Runtime path (B)** — generated agent code (`agents/<name>.py`) must use the
+`BedrockAgentCoreApp` wrapper with `@app.entrypoint`, a Strands Agent with BedrockModel,
+and load its system prompt from `agents/system-prompts/<name>.md` — compare against the
+canonical templates in `references/agent-code-templates.md` (Single Agent pattern, or the
+Tools/Memory variants when Gateway/Memory is on). Alongside it: system prompts (merged
+agent body + SKILL.md workflows), `memory/memory-config.json` (STM/LTM strategies,
+knowledge namespaces), `gateway/gateway-config.json` (Lambda / OpenAPI / MCP Server /
+Smithy targets), and `requirements.txt`:
 
-**Agent code** (`agents/<name>.py`):
-- Must use `BedrockAgentCoreApp` wrapper with `@app.entrypoint`
-- Strands Agent with BedrockModel
-- System prompt loaded from `system-prompts/<name>.md`
-- Compare against the canonical templates in `references/agent-code-templates.md` —
-  the generated code must match the Strands "Single Agent" pattern there (or the
-  "Agent with Tools" / "Agent with Memory" variant when Gateway/Memory is on)
-
-**System prompts** (`agents/system-prompts/<name>.md`):
-- Merged from agent body + SKILL.md workflows + capability descriptions
-
-**Memory config** (`memory/memory-config.json`):
-- STM/LTM strategy definitions
-- Namespace organization for knowledge domains
-
-**Gateway config** (`gateway/gateway-config.json`):
-- Target definitions for MCP server integrations
-- Supports Lambda, OpenAPI, MCP Server, Smithy target types
-
-**Requirements** (`requirements.txt`):
 ```
 strands-agents>=0.1.0
 strands-agents-tools>=0.1.0
@@ -353,17 +205,9 @@ bedrock-agentcore>=0.1.0
 boto3>=1.34.0
 ```
 
-### 4.5 Artifact Refinement
+### 4.5 Deployment
 
-Allow the user to review and request modifications to any generated artifact. Common refinements:
-- System prompt tuning
-- Memory namespace reorganization
-- Gateway target adjustments
-- Tool function logic
-
-### 4.6 Deployment
-
-Each step requires user confirmation.
+Every resource-creating step runs only after the user confirms it.
 
 **Path A — Harness.** Uses the Node-based AgentCore CLI (`npm install -g @aws/agentcore`,
 Node.js 20+) or raw AWS CLI — full flow in `references/agentcore-harness.md`.
@@ -382,45 +226,20 @@ Or without the CLI: `aws bedrock-agentcore-control create-harness --harness-name
 `"status": "READY"`. Memory is built-in by default; Gateway/Policy attach via config when
 the plugin had MCP servers or tool restrictions.
 
-**Path B — Runtime.** Uses the Python `agentcore` CLI (from `bedrock-agentcore-starter-toolkit`).
+**Path B — Runtime.** Uses the Python `agentcore` CLI:
 
-**Step 1: Prerequisites check**
 ```bash
-aws sts get-caller-identity
+aws sts get-caller-identity                      # prerequisites check
 pip install bedrock-agentcore-starter-toolkit
-```
-
-**Step 2: Configure**
-```bash
 agentcore configure
-```
-
-**Step 3: Deploy agent to Runtime**
-```bash
 agentcore deploy
 ```
 
-**Step 4: Memory setup** (if enabled)
-Use AgentCore MCP tools `memory_create` / `memory_update` to:
-- Create memory store
-- Configure STM/LTM strategies
-- Initialize knowledge namespaces
-
-**Step 5: Gateway setup** (if enabled)
-Use AgentCore MCP tools `gateway_create` / `gateway_target_create` to:
-- Create gateway
-- Register tool targets (Lambda, MCP Server, etc.)
-- Configure authorization
-
-Confirm each step with the user before executing.
-
----
+Then, if enabled: Memory via AgentCore MCP tools `memory_create` / `memory_update`
+(store, STM/LTM strategies, knowledge namespaces); Gateway via `gateway_create` /
+`gateway_target_create` (targets + authorization).
 
 ## Phase 5: Verification & Next Steps
-
-**Goal**: Validate deployment and provide operational guidance.
-
-### 5.1 Deployment Verification
 
 ```bash
 agentcore status        # Check deployment status
@@ -432,15 +251,14 @@ Harness path: poll `get-harness` until `"status": "READY"`, then smoke-test with
 `invoke_harness` (note: `runtimeSessionId` must be ≥33 chars — use a UUID) and confirm the
 skills loaded (a bad git/s3 source fails the invocation with a descriptive error, never
 silently). Reuse the session ID once to verify built-in memory persists across invocations.
+Runtime path: invoke the agent, and exercise Memory retrieval and Gateway tool endpoints
+if enabled.
 
-Test each component:
-- Runtime: invoke agent, verify response quality
-- Memory: query knowledge store, verify retrieval
-- Gateway: test tool endpoint, verify integration
+If Phase 1 captured concrete success criteria, mention **AgentCore Evaluations** and
+**Recommendations/Failure Insights** as optional steps beyond a manual `invoke` smoke test
+— see `references/agentcore-mapping-rules.md` → New AgentCore Primitives.
 
-If Phase 1 captured concrete success criteria, mention **AgentCore Evaluations** (GA — 13 built-in evaluators, Ground Truth, custom Lambda evaluators, batch evaluations, A/B testing) as an optional step beyond a manual `invoke` smoke test, and **Recommendations/Failure Insights** for continuous improvement on production traffic — see `references/agentcore-mapping-rules.md` → New AgentCore Primitives for what's available and when it's worth the setup cost.
-
-### 5.2 Deployment Summary
+### Deployment Summary (output format)
 
 ```
 AgentCore Deployment Summary
@@ -462,16 +280,8 @@ Cleanup command:
 ════════════════════════════
 ```
 
-### 5.3 Next Steps
-
-Provide guidance on:
-1. **Monitoring** — CloudWatch metrics, logging
-2. **CI/CD** — Automate redeployment on changes
-3. **Multi-agent** — Orchestrating multiple AgentCore agents
-4. **Scaling** — Concurrency, throttling configuration
-5. **Cleanup** — `agentcore destroy` to tear down all resources
-
----
+Close with operational pointers: monitoring (CloudWatch), CI/CD for redeployment,
+multi-agent orchestration, scaling/concurrency, and `agentcore destroy` for cleanup.
 
 ## Reference Files
 
@@ -481,14 +291,3 @@ Provide guidance on:
 - `references/agentcore-format-reference.md` — AgentCore format specs (Runtime, Gateway, Memory, Lambda)
 - `references/agent-code-templates.md` — Python agent code templates (Strands + BedrockAgentCoreApp)
 - `references/memory-chunking-strategy.md` — Memory STM/LTM strategy, knowledge namespace design (Runtime path)
-
-## Conversion Script (Runtime path)
-
-```bash
-python3 {skill-dir}/scripts/convert_plugin_to_agentcore.py \
-  --source <plugin-path> \
-  --output <output-path> \
-  --region <aws-region> \
-  --framework strands \
-  [--disable-memory] [--disable-gateway] [--enable-lambda]   # Memory/Gateway on by default
-```

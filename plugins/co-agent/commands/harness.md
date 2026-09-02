@@ -6,14 +6,18 @@ argument-hint: "<adr|spec|plan|task>  [--implementer codex|agy]"
 
 # co-agent: harness
 
-Autonomous **design → delegated-implement → review** with cross-provider role separation.
-The **host** (Claude in Claude Code, Codex in Codex) designs, writes the failing test, and
-is the **only committer**. A **peer implementer** writes code **only inside an isolated git
-worktree** under a workspace-write sandbox. Review runs the **hybrid gate** by default —
-parallel find → chair triage (the chair keeps only meaningful findings) → parallel verify
-of the curated digest (`harness.review_mode`: `hybrid` | `relay` | `parallel`).
+Autonomous **design → delegated-implement → review** with cross-provider role separation:
+the **host** (Claude in Claude Code, Codex in Codex) designs, writes the failing test, and
+is the **only committer**, while a **peer implementer** writes code only inside isolated
+git worktrees under a workspace-write sandbox, and a review gate (hybrid by default) judges
+the result. The product is a locally committed, gate-approved implementation with clear
+attribution of who wrote what. Excellent means the trust boundary never blurs — external
+AIs propose patches, the host applies, tests, and commits them.
+
 Implementation stays with **one** implementer AI but fans out as **parallel per-task
-subagents** in separate worktrees (`harness.parallel_tasks`, default 3).
+subagents** in separate worktrees (`harness.parallel_tasks`, default 3). Gate mode:
+`harness.review_mode` — `hybrid` (default: parallel find → chair triage → parallel verify)
+| `relay` | `parallel`.
 
 > Trust boundary, per-task loop + parallel waves, fallback chain, output gate:
 > **`references/delegated-implement.md`**. Review-gate mechanics: **hybrid**
@@ -60,10 +64,9 @@ regen). An **adr/spec** → generate a TDD plan (`docs/superpowers/plans/`), the
 
 ## H2 — Plan gate
 Run the review gate on the plan; iterate ≤ `consensus.max_rounds` to no CRITICAL/MAJOR.
-**Gate mechanics = `co_agent_config.py review-mode`**: `hybrid` (default) → **parallel
-find → chair triage → parallel verify** (`references/hybrid-gate.md`) — the whole panel
-reviews at once, the chair keeps only the meaningful findings and sends that curated
-digest back to the panel for confirmation; `relay` → the sequential chain
+**Gate mechanics = `co_agent_config.py review-mode`**: `hybrid` (default) → parallel find →
+chair triage (the chair keeps only meaningful findings) → parallel verify of the curated
+digest (`references/hybrid-gate.md`); `relay` → the sequential chain
 (`references/relay-chain-gate.md`); `parallel` → the one-shot independent fan-out
 (`references/consensus-mode.md`). Record `…/plan-gate/result.json` via
 `consensus_state.py stage-result`. Unresolved → `set . status needs-human` and stop.

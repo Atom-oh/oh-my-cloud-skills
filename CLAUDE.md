@@ -123,8 +123,8 @@ survivor, and it is a row in the same table, not a footnote to it:
 
 | Tier | Role | Examples |
 |------|------|----------|
-| `opus`+`xhigh` | judgment/synthesis gates where the verdict is the product | `content-review-agent`, `ops-coordinator-agent`, `gate-chair`, `wellarchitected-agent` |
-| `opus`+`high` | multi-step diagnosis / build workers | ops domain agents, `architecture-diagram-agent`, `workshop-agent` |
+| `opus`+`xhigh` | judgment/synthesis gates where the verdict is the product | `content-review-agent`, `ops-coordinator-agent`, `gate-chair`, `wellarchitected-agent`, `iam-agent` |
+| `opus`+`high` | multi-step diagnosis / build workers | ops domain agents (`iam-agent` excepted — its permission verdicts are security judgments, tiered `xhigh` since PR #130), `architecture-diagram-agent`, `workshop-agent` |
 | `opus`+`medium` | mechanical application of an already-approved plan | `pr-autofix-implementer` (only) |
 | `opus`+`low` | single-artifact writers, analysis with a narrow output | `document-agent`, `gitbook-agent`, `cost-agent`, `kiro-converter-agent`, `harness-analyst` |
 | `sonnet`+`low` | pure dispatch/scan — routes to another agent | `presentation-agent` (only) |
@@ -303,7 +303,7 @@ Skill: `kiro-convert` — interactive workflow for plugin-to-power conversion wi
 |-------|---------|
 | `agentcore-creator-agent` | Converts Claude Code plugins to Bedrock AgentCore — config-only to **harness** (GA 2026-06: skills attach unchanged as git/s3 SKILL.md sources, `CreateHarness`/`InvokeHarness`) or Strands code-gen to Runtime (Gateway, Memory, Lambda) |
 
-Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Skill-First Build, AgentCore Convert, Deploy) with `references/` and `scripts/` subdirectories. Phase 2 decides the deploy target (harness-vs-Runtime grid in `references/agentcore-harness.md`); Phase 4 is dual-path (A: harness config, B: Runtime code-gen). The `opus` alias resolves to `us.anthropic.claude-opus-4-8`; modern-Opus (4.7/4.8) param contract (no `temperature`/`top_p`/`top_k`, no `thinking.type:"enabled"`+`budget_tokens`) is documented in `references/agentcore-mapping-rules.md`.
+Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Skill-First Build, AgentCore Convert, Verify — deployment itself is §4.5 of Convert) with `references/` and `scripts/` subdirectories. Phase 2 decides the deploy target (harness-vs-Runtime grid in `references/agentcore-harness.md`); Phase 4 is dual-path (A: harness config, B: Runtime code-gen). The `opus` alias resolves to `us.anthropic.claude-opus-4-8`; modern-Opus (4.7/4.8) param contract (no `temperature`/`top_p`/`top_k`, no `thinking.type:"enabled"`+`budget_tokens`) is documented in `references/agentcore-mapping-rules.md`.
 
 ### co-agent (5 agents, 3 skills, 6 commands)
 

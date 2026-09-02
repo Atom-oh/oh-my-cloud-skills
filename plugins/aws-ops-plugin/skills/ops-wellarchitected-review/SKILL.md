@@ -11,6 +11,16 @@ allowed-tools:
 
 Walks the six-pillar Well-Architected review from scoping to a delivered report — a weighted score out of 100, findings ranked by severity, and a phased AS-IS → TO-BE roadmap. It is run by `wellarchitected-agent`, or by anyone stepping through the review by hand. Excellent work here scores only from data actually gathered — an absent service is skipped and said so, never invented — carries dependency notes on the roadmap, and delegates any pillar under 60 to the specialist instead of hand-waving it.
 
+```mermaid
+graph LR
+    P1[Scope] --> P2[Collect by pillar]
+    P2 --> P3[Assess & rate findings]
+    P3 --> P4[Weighted score]
+    P4 --> P5[AS-IS → TO-BE roadmap]
+    P5 --> P6[Report]
+    P4 -->|pillar < 60| D[Delegate to specialist]
+```
+
 ## Phase 1: Scope & Context
 
 1. **Determine review scope**:
@@ -48,7 +58,7 @@ Gather data by pillar. Run commands from reference files:
 | OpEx | CloudWatch alarms, log retention, CloudTrail, IaC detection | `references/pillar-performance-opex-sustainability.md` Part B |
 | Sustainability | Graviton ratio, gp2/gp3 ratio, Lambda architecture, serverless count | `references/pillar-performance-opex-sustainability.md` Part C |
 
-**Missing data handling**: If a service is not detected (no EKS clusters, no MSK, etc.), skip that sub-assessment and note: `"[Service] not detected — skipping related assessment."` Do not fabricate data.
+**Missing data handling**: If a service is not detected (no EKS clusters, no MSK, etc.), skip that sub-assessment and note: `"[Service] not detected — skipping related assessment."`
 
 ## Phase 3: Pillar Assessment
 
@@ -72,29 +82,16 @@ For each pillar, apply scoring criteria from `references/waf-scoring-framework.m
 Score = Σ (pillar_score × pillar_weight)
 ```
 
-2. **Generate pillar summary table**:
+2. **Generate pillar summary table** — one row per pillar plus a total row:
 
 | Pillar | Score | Weight | Weighted | Status |
 |--------|-------|--------|----------|--------|
-| Operational Excellence | XX | 15% | X.X | Good/Fair/Needs Attention |
-| Security | XX | 20% | X.X | ... |
-| Reliability | XX | 20% | X.X | ... |
-| Performance Efficiency | XX | 15% | X.X | ... |
-| Cost Optimization | XX | 20% | X.X | ... |
-| Sustainability | XX | 10% | X.X | ... |
+| [each of the six pillars] | XX | [from framework] | X.X | Good/Fair/Needs Attention |
 | **Total** | | **100%** | **XX/100** | **[Rating]** |
 
-Rating bands for the total:
-
-| Range | Rating |
-|-------|--------|
-| 90-100 | Excellent |
-| 70-89 | Good |
-| 50-69 | Fair |
-| < 50 | Needs Attention |
-
-The weights and bands are a published contract — keep them stable across reviews so scores
-stay comparable. A score is only defensible if every pillar's number came from data
+The pillar weights and the rating bands (Excellent/Good/Fair/Needs Attention) are owned by
+`references/waf-scoring-framework.md` — a published contract, kept stable across reviews so
+scores stay comparable. A score is only defensible if every pillar's number came from data
 gathered in this account; delegate any pillar you cannot evidence rather than estimating it.
 
 3. **Top 5 findings** — rank by impact (severity × blast radius)
