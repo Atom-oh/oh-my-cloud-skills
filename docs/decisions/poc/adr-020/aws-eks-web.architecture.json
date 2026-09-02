@@ -26,7 +26,21 @@
       "label": "Route 53",
       "sublabel": "DNS",
       "pos": [
-        220,
+        210,
+        250
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "cloudfront",
+      "type": "cloud",
+      "label": "CloudFront",
+      "sublabel": "CDN — public entry",
+      "pos": [
+        380,
         250
       ],
       "size": [
@@ -40,7 +54,7 @@
       "label": "ALB",
       "sublabel": "Elastic Load Balancing",
       "pos": [
-        410,
+        580,
         250
       ],
       "size": [
@@ -54,7 +68,7 @@
       "label": "EKS Cluster",
       "sublabel": "web + api pods",
       "pos": [
-        620,
+        780,
         250
       ],
       "size": [
@@ -68,7 +82,7 @@
       "label": "Amazon RDS",
       "sublabel": "Aurora PostgreSQL",
       "pos": [
-        840,
+        1000,
         330
       ],
       "size": [
@@ -82,7 +96,7 @@
       "label": "ElastiCache",
       "sublabel": "Redis session store",
       "pos": [
-        840,
+        1000,
         170
       ],
       "size": [
@@ -96,7 +110,7 @@
       "label": "Amazon S3",
       "sublabel": "static assets",
       "pos": [
-        620,
+        780,
         430
       ],
       "size": [
@@ -110,7 +124,6 @@
       "kind": "region",
       "label": "ap-northeast-2",
       "wraps": [
-        "route53",
         "alb",
         "eks",
         "rds",
@@ -139,8 +152,15 @@
     {
       "id": "resolve",
       "from": "route53",
-      "to": "alb",
+      "to": "cloudfront",
       "label": "alias"
+    },
+    {
+      "id": "origin",
+      "from": "cloudfront",
+      "to": "alb",
+      "label": "origin (prefix list)",
+      "labelDy": -24
     },
     {
       "id": "ingress",

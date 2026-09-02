@@ -17,8 +17,8 @@ node bin/archify.mjs render   architecture <this-dir>/aws-eks-web.architecture.j
 #    Architecture-Service-Icons */64/*.svg) → 디렉터리에 저장.
 
 # 3. 공식 아이콘 주입 (Archify는 수정하지 않음) 후 재검사:
-python3 <this-dir>/inject_aws_icons.py /tmp/poc-aws.html <this-dir>/icon-map.json <icons-dir> /tmp/poc-aws-icons.html
-node bin/archify.mjs check /tmp/poc-aws-icons.html   # 수정된 아티팩트에서도 여전히 통과
+python3 <this-dir>/inject_aws_icons.py /tmp/poc-aws.html <this-dir>/icon-map.json <icons-dir> <this-dir>/poc-aws-icons.html
+node bin/archify.mjs check <this-dir>/poc-aws-icons.html   # 수정된 아티팩트에서도 여전히 통과
 
 # 4. 슬라이드 임베드: poc-slide.html이 1920x1080에서 다이어그램을 iframe으로 포함.
 ```
@@ -48,7 +48,7 @@ node bin/archify.mjs check /tmp/poc-aws-icons.html   # 수정된 아티팩트에
 상태(`poc-slide.html`)에서: 로드 시 포커스는 부모 문서에 유지되고
 (`document.activeElement === BODY`), ArrowRight 2회가 부모의 키 핸들러에 도달하며
 (발표자가 다이어그램을 클릭하기 전까지 Remarp 네비게이션에 영향 없음), 아티팩트는
-~716 KB 자립형이고, headless Playwright로 깨끗하게 캡처된다(`evidence-slide.png`) —
+~716 KB 자립형이고, headless Playwright로 깨끗하게 캡처된다(증거 PNG는 위 재현 절차로 재생성 — 커밋하지 않음) —
 `export_pptx.py`가 쓰는 것과 같은 캡처 경로다.
 
 아직 검증하지 않은 것 (구현 단계 항목이지 게이트 차단 요소는 아님): 실제

@@ -17,8 +17,8 @@ node bin/archify.mjs render   architecture <this-dir>/aws-eks-web.architecture.j
 #    Architecture-Service-Icons */64/*.svg) into a directory.
 
 # 3. Inject official icons (keeps Archify unmodified) and re-check:
-python3 <this-dir>/inject_aws_icons.py /tmp/poc-aws.html <this-dir>/icon-map.json <icons-dir> /tmp/poc-aws-icons.html
-node bin/archify.mjs check /tmp/poc-aws-icons.html   # still passes on the modified artifact
+python3 <this-dir>/inject_aws_icons.py /tmp/poc-aws.html <this-dir>/icon-map.json <icons-dir> <this-dir>/poc-aws-icons.html
+node bin/archify.mjs check <this-dir>/poc-aws-icons.html   # still passes on the modified artifact
 
 # 4. Slide embed: poc-slide.html iframes the diagram at 1920x1080.
 ```
@@ -48,7 +48,7 @@ that fails loudly on an Archify upgrade.
 (`poc-slide.html`): focus stays on the parent document at load (`document.activeElement
 === BODY`), two ArrowRight presses reach the parent's key handler (Remarp navigation
 unaffected until the presenter clicks into the diagram), the artifact is ~716 KB
-self-contained, and headless Playwright captures it cleanly (`evidence-slide.png`) —
+self-contained, and headless Playwright captures it cleanly (evidence PNG regenerable via the repro above; not committed) —
 the same capture path `export_pptx.py` uses.
 
 Not yet exercised (implementation-phase items, not gate blockers): a full

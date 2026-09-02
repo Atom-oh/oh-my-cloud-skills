@@ -7,7 +7,9 @@ REMARP="plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_t
 EXPORT_PY="plugins/aws-content-plugin/skills/reactive-presentation/scripts/export_pptx.py"
 SPEC="docs/decisions/poc/adr-020/aws-eks-web.architecture.json"
 INDEX="plugins/aws-content-plugin/skills/reactive-presentation/icons/index-lite.json"
-ARCHIFY_PIN="199360cc6687a7857b54dd188d4922b09e466a4b"
+# The pin's single home is archify_icons.py (its ARCHIFY_PIN constant) — the test
+# derives it instead of re-hardcoding, so bumping the pin is genuinely one edit.
+ARCHIFY_PIN=$(grep -oE 'ARCHIFY_PIN = "[0-9a-f]{40}"' "$ICONS_PY" | grep -oE '[0-9a-f]{40}' | head -1)
 
 # ---- §6.1 unconditional assertions (no node, no clone, no network) --------
 
@@ -17,10 +19,10 @@ assert_file_executable "$ICONS_PY" "archify_icons.py is executable"
 python3 -c "import ast;ast.parse(open('$ICONS_PY').read())" >/dev/null 2>&1 && RC=0 || RC=$?
 assert_eq "0" "$RC" "archify_icons.py parses as valid Python"
 
-# The pin literal AND the ARCHIFY_PIN identifier must both be present, so the guard also
-# breaks if someone renames the constant while leaving the hash behind.
-assert_contains "$(cat "$ICONS_PY")" "$ARCHIFY_PIN" "archify_icons.py pins the Archify commit"
-assert_grep_match '\bARCHIFY_PIN\b' "$(cat "$ICONS_PY")" "ARCHIFY_PIN identifier is present"
+# The constant must exist and hold a full 40-hex commit — an empty or malformed pin
+# would silently disable every downstream pin comparison in this file.
+[ -n "$ARCHIFY_PIN" ] && PIN_OK=yes || PIN_OK=no
+assert_eq "yes" "$PIN_OK" "archify_icons.py pins the Archify commit (ARCHIFY_PIN = 40-hex)"
 
 # remarp_to_slides.py must have an archify handler and the iframe class the export path
 # and deck CSS both key on.
@@ -114,9 +116,9 @@ else
   assert_eq "0" "$RC" "archify_icons.py --spec exits 0 on the rendered output"
 
   INJ_N=$(grep -oP 'injected \K\d+(?=/\d+)' "$LOG" || true)
-  # Measured expectation on the PoC spec is exactly 5/5 (users and cache legitimately do
-  # not resolve — design.md §0.7). The threshold stays >= 4 per the spec; do not "fix" a
-  # future 5 back down to 7.
+  # Measured expectation on the PoC spec is 6 (users and cache legitimately do not
+  # resolve: "users" is not a service, "cache" is not in the ARCH_STEMS vocabulary —
+  # the spec would use "elasticache" to opt in). The threshold stays >= 4.
   [ -n "${INJ_N:-}" ] && [ "$INJ_N" -ge 4 ] 2>/dev/null && INJ_OK=yes || INJ_OK=no
   assert_eq "yes" "$INJ_OK" "auto-mapped icon injection lands >= 4 nodes"
 

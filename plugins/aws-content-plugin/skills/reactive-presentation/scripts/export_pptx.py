@@ -17,9 +17,10 @@ This is the reliable, scriptable counterpart to the in-browser
 means fonts, canvas drawings, shadows, and gradients survive intact.
 
 An interactive Archify diagram cannot survive this flatten-to-image round-trip
-(ADR-020 Decision 4), so with --base-url each slide's speaker notes gain the
-hosted URL of every interactive Archify diagram on that slide — the notes are
-how the reader reaches the interactive artifact.
+(ADR-020 Decision 4), so each slide's speaker notes gain a link to every
+interactive Archify diagram on that slide — the deck-relative path as-is, or
+the full hosted URL when --base-url gives the deck's published location. The
+notes are how the reader reaches the interactive artifact.
 
 Usage:
     python3 export_pptx.py <project-dir> [-o out.pptx] [--blocks a.html b.html]

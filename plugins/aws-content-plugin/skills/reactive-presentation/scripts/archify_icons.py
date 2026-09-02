@@ -82,7 +82,22 @@ def check_pin(archify_dir):
     if result.returncode != 0:
         return (False, "")
     actual = result.stdout.strip()
-    return (actual == ARCHIFY_PIN, actual)
+    if actual != ARCHIFY_PIN:
+        return (False, actual)
+    # HEAD alone is not the pin promise: a clone checked out at the pinned
+    # commit with locally modified files (e.g. a world-writable /tmp/archify
+    # on a shared host) would pass the SHA test and still run arbitrary code
+    # under `node`. A dirty worktree therefore fails the pin check too.
+    try:
+        dirty = subprocess.run(
+            ["git", "-C", archify_dir, "status", "--porcelain"],
+            capture_output=True, text=True, check=False,
+        )
+    except OSError:
+        return (False, actual)
+    if dirty.returncode != 0 or dirty.stdout.strip():
+        return (False, f"{actual} (dirty worktree)")
+    return (True, actual)
 
 
 # ---- 3.2 Icon vocabulary — import, never copy ------------------------------
@@ -353,7 +368,11 @@ def _resolve_map_value(node_id, value):
     """Resolve one --map value to an absolute icon file path, or None.
 
     A value may be:
-      1. a path that os.path.isfile() (absolute or relative to cwd) -> as-is
+      1. a path to a file INSIDE the bundled icons library (absolute or
+         relative to cwd) -> as-is. Paths outside the library are refused:
+         _load_icon inlines the file's content into the published artifact,
+         so an arbitrary path in an untrusted deck's map would exfiltrate
+         builder-local files. The library is the only inline source.
       2. a key of the index (a stem) -> resolved via icon_path_for_stem
       3. a filename shaped Arch_<stem>_<16|32|48|64>.svg -> extract <stem>,
          resolve via the index. This is what makes the PoC's own
@@ -362,7 +381,13 @@ def _resolve_map_value(node_id, value):
     Unresolvable values are reported by the caller, never raised here.
     """
     if os.path.isfile(value):
-        return os.path.abspath(value)
+        resolved = os.path.realpath(value)
+        icons_root = os.path.realpath(_ICONS_DIR) + os.sep
+        if resolved.startswith(icons_root):
+            return resolved
+        print(f"skip: node-{node_id} map path {value!r} is outside the icon "
+              "library — only bundled icons can be inlined", file=sys.stderr)
+        return None
     index = _load_icons_index()
     if value in index:
         return icon_path_for_stem(value)

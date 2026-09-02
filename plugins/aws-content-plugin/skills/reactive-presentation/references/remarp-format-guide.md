@@ -530,7 +530,8 @@ the diagram is meant to be **explored** during the talk; a fixed reveal order is
 
 ```markdown
 :::archify id=eks-web
-{ "name": "aws-eks-web", "nodes": [ {"id": "alb", ...}, {"id": "eks", ...} ], ... }
+{ "schema_version": 2, "diagram_type": "architecture", "meta": { "title": "EKS Web" },
+  "components": [ {"id": "alb", ...}, {"id": "eks", ...} ], ... }
 :::
 ```
 
@@ -544,8 +545,9 @@ the diagram is meant to be **explored** during the talk; a fixed reveal order is
   official icon injected automatically at build; unmapped nodes stay Archify-styled and
   are listed on stderr. Name spec nodes with vocabulary ids and the icons come for free.
 - **Focus invariant**: the diagram is iframed for isolation — arrow keys drive the deck
-  until the presenter clicks into the diagram; Esc returns focus to the deck. Nothing in
-  the block may autofocus the iframe.
+  until the presenter clicks into the diagram. Nothing in the block may autofocus the
+  iframe. Esc returns focus to the deck on a served (same-origin) deck; under `file://`
+  the Esc hook cannot reach into the frame, so click outside the diagram instead.
 - **Build dependency**: the build renders through a **version-pinned** Archify clone
   (`$ARCHIFY_DIR` or `/tmp/archify`); a missing or wrong-version clone fails the build
   with the exact clone/checkout command. The pin lives in `scripts/archify_icons.py`

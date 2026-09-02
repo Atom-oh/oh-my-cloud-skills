@@ -1451,7 +1451,11 @@ class RemarpHTMLGenerator:
         # build reuses a block file's slides); focus-return script guard.
         self.archify_source_dir: Optional[str] = None
         self.archify_source_name: str = ''
-        self._archify_rendered: set = set()
+        # block_id -> spec fingerprint (raw block content). A dict, not a
+        # set: a repeat of the SAME block is a cache hit, but two different
+        # blocks landing on one id must fail loudly instead of the second
+        # silently reusing the first diagram's iframe.
+        self._archify_rendered: Dict[str, str] = {}
         self._archify_focus_wired = False
 
     @staticmethod
@@ -1620,10 +1624,14 @@ class RemarpHTMLGenerator:
                     f":::archify id={explicit_id!r} is not a valid id — it becomes a "
                     "filename and a URL path, so it must match ^[A-Za-z0-9_-]+$")
             return explicit_id
+        # A second unnamed block on the same slide must not collide with the
+        # first (same derived id would silently alias it to the first diagram
+        # via the render cache) — fold the block index in past the first.
+        suffix = f'-{idx + 1}' if idx else ''
         if self.archify_source_name:
             stem = re.sub(r'[^A-Za-z0-9_-]', '-', self.archify_source_name)
-            return f'archify-{stem}-{slide.index + 1}'
-        return f'archify-{slide.index + 1}'
+            return f'archify-{stem}-{slide.index + 1}{suffix}'
+        return f'archify-{slide.index + 1}{suffix}'
 
     def _render_archify_block(self, slide: Slide, idx: int, blk: Dict[str, Any]) -> str:
         """Render one :::archify block to an icon-injected HTML file and
@@ -1632,9 +1640,17 @@ class RemarpHTMLGenerator:
 
         # Skip re-render when the same generator has already produced this
         # block (a merged-index build and a per-block build can both touch
-        # the same source slides within one run).
+        # the same source slides within one run) — but only for the SAME
+        # content: a different block resolving to an already-used id (e.g.
+        # two blocks given the same explicit id=) is an authoring error.
+        fingerprint = blk['raw']
         if block_id in self._archify_rendered:
-            return self._archify_iframe_html(block_id, blk)
+            if self._archify_rendered[block_id] == fingerprint:
+                return self._archify_iframe_html(block_id, blk)
+            raise ArchifyBuildError(
+                f":::archify id={block_id!r} is used by two different blocks — each "
+                "block needs its own id (the id becomes the rendered filename, so a "
+                "duplicate would silently show the first diagram twice)")
 
         raw = blk['raw']
         source_dir = self.archify_source_dir or os.getcwd()
@@ -1658,6 +1674,14 @@ class RemarpHTMLGenerator:
             except json.JSONDecodeError as e:
                 raise ArchifyBuildError(
                     f":::archify id={block_id!r} spec file {spec_path!r} is not valid JSON: {e}")
+
+        # Archify's architecture schema requires "components"; remarp's own
+        # validate accepts "nodes" as an alias, so build must normalize the
+        # same alias — otherwise a validate-clean deck hard-fails here and the
+        # rejection-loop contract (0 CRITICAL findings ⇒ the deck builds) breaks.
+        if 'components' not in spec and isinstance(spec.get('nodes'), list):
+            spec = dict(spec)
+            spec['components'] = spec.pop('nodes')
 
         ai = _load_archify_icons()
         archify_dir = ai.resolve_archify_dir()
@@ -1738,6 +1762,8 @@ class RemarpHTMLGenerator:
             mapping = ai._mapping_from_map_file(map_path)
         else:
             mapping = ai.auto_mapping(spec)
+            for node_id in ai.unmapped_ids(spec):
+                print(f"skip: node-{node_id} no icon for this id", file=sys.stderr)
 
         with open(out_path, encoding='utf-8') as fh:
             rendered_html = fh.read()
@@ -1747,7 +1773,7 @@ class RemarpHTMLGenerator:
 
         print(f'  archify: {block_id} — injected {injected_n}/{len(mapping)} icons')
 
-        self._archify_rendered.add(block_id)
+        self._archify_rendered[block_id] = fingerprint
         self._wire_archify_focus_script()
         return self._archify_iframe_html(block_id, blk)
 
@@ -1759,7 +1785,7 @@ class RemarpHTMLGenerator:
         focus-return script (see _wire_archify_focus_script) only runs on
         Escape, from inside the frame, never on load.
         """
-        height = blk.get('height', '100%')
+        height = html.escape(blk.get('height', '100%'), quote=True)
         escaped_id = html.escape(block_id, quote=True)
         return (
             f'<iframe class="archify-diagram" src="archify/{escaped_id}.html" '
@@ -2015,8 +2041,11 @@ class RemarpHTMLGenerator:
                     html_parts.append(list_html)
                 continue
 
-            # HTML block placeholders — pass through without <p> wrapping
-            if re.match(r'^\s*<!-- __(?:HTML_BLOCK|COL_HTML)_\d+__ -->\s*$', line):
+            # HTML/archify block placeholders — pass through without <p>
+            # wrapping: an archify iframe inside a <p> gets an auto-height
+            # parent, which collapses its height:100% to the iframe default
+            # (~150px) and visibly breaks the default embed.
+            if re.match(r'^\s*<!-- __(?:HTML_BLOCK|COL_HTML|ARCHIFY_BLOCK)_\d+__ -->\s*$', line):
                 html_parts.append(line.strip())
                 idx += 1
                 continue
