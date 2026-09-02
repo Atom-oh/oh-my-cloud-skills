@@ -155,10 +155,21 @@ def body_links_to_refs(body: str) -> bool:
 
 
 def heading_hierarchy_ok(body: str) -> bool:
-    """Check heading hierarchy doesn't have jumps (e.g., h2 -> h4 skipping h3)."""
+    """Check heading hierarchy doesn't have jumps (e.g., h2 -> h4 skipping h3).
+
+    Fenced code blocks are excluded: a bash `# comment` inside ```/~~~ fences
+    is not a markdown heading and must not register as an h1."""
     levels = []
-    for m in re.finditer(r'^(#{1,6})\s+', body, re.MULTILINE):
-        levels.append(len(m.group(1)))
+    in_fence = False
+    for line in body.split('\n'):
+        if re.match(r'^\s*(```|~~~)', line):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        m = re.match(r'^(#{1,6})\s+', line)
+        if m:
+            levels.append(len(m.group(1)))
     if not levels:
         return True
     for i in range(1, len(levels)):

@@ -36,6 +36,6 @@ prefix) is an **error**: it reads as narrowed while granting everything.
 
 ```bash
 python3 scripts/eval-skills.py
-python3 scripts/eval-skills.py --plugin aws-content-plugin --skill reactive-presentation
+python3 scripts/eval-skills.py --skill reactive-presentation   # selects by SKILL name only (no --plugin flag)
 python3 scripts/test-plugins.py
 ```
