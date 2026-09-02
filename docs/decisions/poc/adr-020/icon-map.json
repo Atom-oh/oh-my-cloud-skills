@@ -1,0 +1,9 @@
+{
+  "route53": "Arch_Amazon-Route-53_64.svg",
+  "alb": "Arch_Elastic-Load-Balancing_64.svg",
+  "eks": "Arch_Amazon-Elastic-Kubernetes-Service_64.svg",
+  "rds": "Arch_Amazon-RDS_64.svg",
+  "cache": "Arch_Amazon-ElastiCache_64.svg",
+  "s3": "Arch_Amazon-Simple-Storage-Service_64.svg",
+  "cloudfront": "Arch_Amazon-CloudFront_64.svg"
+}

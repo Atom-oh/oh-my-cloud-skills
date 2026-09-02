@@ -1,0 +1,209 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": ":::archify 빌드 파이프라인",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "happy-path",
+        "label": "행복 경로",
+        "focus": [
+          "spec",
+          "static_validate",
+          "pin_check",
+          "af_validate",
+          "render",
+          "inject",
+          "embed"
+        ],
+        "note": "덱 작성자의 JSON 스펙이 슬라이드 속 iframe이 되기까지의 한 줄기 경로."
+      },
+      {
+        "id": "icon-contract",
+        "label": "아이콘 주입 계약",
+        "focus": [
+          "render",
+          "inject",
+          "embed"
+        ],
+        "note": "노드 rect 뒤에 삽입(페인트 순서), <g transform> 배치, ARCH_STEMS 공유 어휘 — 세 가지가 로드베어링."
+      },
+      {
+        "id": "guards",
+        "label": "가드와 평면화",
+        "focus": [
+          "static_validate",
+          "pin_check",
+          "halt"
+        ],
+        "note": "CRITICAL·핀 불일치는 빌드를 멈춘다. PPTX 평면화(ADR-020 Decision 4)는 아래 산출물 카드 참고."
+      }
+    ]
+  },
+  "lanes": [
+    {
+      "id": "author",
+      "label": "덱 작성자 (Remarp)"
+    },
+    {
+      "id": "remarp",
+      "label": "remarp_to_slides.py"
+    },
+    {
+      "id": "archify_cli",
+      "label": "Archify 렌더 + 아이콘 주입"
+    },
+    {
+      "id": "exceptions",
+      "label": "실패 경로",
+      "variant": "exception"
+    }
+  ],
+  "mainPath": [
+    "spec",
+    "static_validate",
+    "pin_check",
+    "af_validate",
+    "render",
+    "inject",
+    "embed"
+  ],
+  "nodes": [
+    {
+      "id": "spec",
+      "lane": "author",
+      "col": 0,
+      "type": "frontend",
+      "label": ":::archify 블록",
+      "sublabel": "JSON 스펙 — 인라인 또는 경로",
+      "width": 164
+    },
+    {
+      "id": "static_validate",
+      "lane": "remarp",
+      "col": 1,
+      "type": "security",
+      "label": "validate",
+      "sublabel": "정적 스펙 검사",
+      "width": 156
+    },
+    {
+      "id": "pin_check",
+      "lane": "remarp",
+      "col": 2,
+      "type": "security",
+      "label": "핀 검증",
+      "sublabel": "2.16.0 @ 199360cc",
+      "width": 156
+    },
+    {
+      "id": "af_validate",
+      "lane": "archify_cli",
+      "col": 3,
+      "type": "backend",
+      "label": "archify validate",
+      "sublabel": "스키마 + 컴포지션 검사",
+      "width": 164
+    },
+    {
+      "id": "render",
+      "lane": "archify_cli",
+      "col": 4,
+      "type": "backend",
+      "label": "archify render",
+      "sublabel": "self-contained HTML",
+      "width": 160
+    },
+    {
+      "id": "inject",
+      "lane": "archify_cli",
+      "col": 5,
+      "type": "backend",
+      "label": "공식 아이콘 주입",
+      "sublabel": "archify_icons.py",
+      "width": 164
+    },
+    {
+      "id": "embed",
+      "lane": "remarp",
+      "col": 5,
+      "type": "cloud",
+      "label": "iframe 임베드",
+      "sublabel": "포커스 격리 · Esc 복귀",
+      "width": 164,
+      "tag": "archify/<id>.html"
+    },
+    {
+      "id": "halt",
+      "lane": "exceptions",
+      "col": 2,
+      "type": "security",
+      "label": "빌드 중단",
+      "sublabel": "복구 명령을 안내",
+      "width": 156
+    }
+  ],
+  "edges": [
+    {
+      "from": "spec",
+      "to": "static_validate",
+      "label": "build"
+    },
+    {
+      "from": "static_validate",
+      "to": "pin_check"
+    },
+    {
+      "from": "pin_check",
+      "to": "af_validate",
+      "label": "핀 일치"
+    },
+    {
+      "from": "af_validate",
+      "to": "render"
+    },
+    {
+      "from": "render",
+      "to": "inject",
+      "label": "노드 id → 아이콘"
+    },
+    {
+      "from": "inject",
+      "to": "embed",
+      "label": "미매핑 노드는 skip(비치명)"
+    },
+    {
+      "from": "static_validate",
+      "to": "halt",
+      "label": "CRITICAL",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "from": "pin_check",
+      "to": "halt",
+      "label": "핀 불일치",
+      "variant": "security",
+      "role": "error"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "로드베어링 계약",
+      "items": [
+        "아이콘은 rect 뒤에 <g transform>으로 삽입",
+        "서비스명 어휘는 ARCH_STEMS 한 곳뿐"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "가드와 평면화",
+      "items": [
+        "버전 핀 의존 — 불일치·CRITICAL은 빌드 중단",
+        "PPTX는 MAP 캡처 + 노트 URL로 평면화"
+      ]
+    }
+  ]
+}

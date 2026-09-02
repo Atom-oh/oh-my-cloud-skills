@@ -21,7 +21,9 @@ if [[ "${1:-}" == "--fix" ]]; then
   FIX_MODE=true
 fi
 
-for plugin in aws-content-plugin aws-ops-plugin kiro-power-converter; do
+# Every plugin in the marketplace — a hardcoded subset let cached copies of the
+# others (notably co-agent's live hooks) drift silently.
+for plugin in aws-content-plugin aws-ops-plugin kiro-power-converter co-agent agentcore-creator project-init kiro atlas; do
   PLUGIN_JSON="$SRC_BASE/$plugin/.claude-plugin/plugin.json"
   if [[ ! -f "$PLUGIN_JSON" ]]; then
     echo "SKIP: $plugin — plugin.json not found"
@@ -43,11 +45,13 @@ for plugin in aws-content-plugin aws-ops-plugin kiro-power-converter; do
     CACHED="$CACHE_DIR/$REL"
     [[ -f "$CACHED" ]] || continue
 
-    ((CHECKED_COUNT++))
+    # Not ((CHECKED_COUNT++)): under set -e a post-increment from 0 returns
+    # status 1 (the OLD value) and kills the script on the very first file.
+    CHECKED_COUNT=$((CHECKED_COUNT + 1))
 
     if ! diff -q "$src_file" "$CACHED" >/dev/null 2>&1; then
       echo "  STALE: $REL"
-      ((STALE_COUNT++))
+      STALE_COUNT=$((STALE_COUNT + 1))
       if $FIX_MODE; then
         mkdir -p "$(dirname "$CACHED")"
         cp "$src_file" "$CACHED"

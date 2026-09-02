@@ -151,6 +151,43 @@ ICONS = {
     "sagemaker":  ("sagemaker", *_GREEN),
 }
 
+# ---- shared service-name vocabulary (ADR-020) ----
+# Consumed by reactive-presentation/scripts/archify_icons.py to resolve Archify diagram
+# node ids to official AWS icons, so the two diagram paths (this static .drawio engine and
+# the interactive Archify path) name AWS services identically and never grow a second,
+# divergent vocabulary. Keys are a subset of the ICONS short names above; values are keys
+# of reactive-presentation/icons/index-lite.json's ["icons"] sub-dict (official
+# Architecture-Service-Icons stems). "users"/"user" are deliberately omitted: they are
+# draw.io shapes, not AWS services, and neither is an index key.
+ARCH_STEMS = {
+    "cloudfront":    "Amazon-CloudFront",
+    "route53":       "Amazon-Route-53",
+    "directconnect": "AWS-Direct-Connect",
+    "tgw":           "AWS-Transit-Gateway",
+    "vpngateway":    "AWS-Site-to-Site-VPN",
+    "waf":           "AWS-WAF",
+    "apigateway":    "Amazon-API-Gateway",
+    "alb":           "Elastic-Load-Balancing",
+    "elb":           "Elastic-Load-Balancing",
+    "ec2":           "Amazon-EC2",
+    "ecs":           "Amazon-Elastic-Container-Service",
+    "eks":           "Amazon-Elastic-Kubernetes-Service",
+    "lambda":        "AWS-Lambda",
+    "fargate":       "AWS-Fargate",
+    "rds":           "Amazon-RDS",
+    "aurora":        "Amazon-Aurora",
+    "dynamodb":      "Amazon-DynamoDB",
+    "elasticache":   "Amazon-ElastiCache",
+    "s3":            "Amazon-Simple-Storage-Service",
+    "sqs":           "Amazon-Simple-Queue-Service",
+    "sns":           "Amazon-Simple-Notification-Service",
+    "eventbridge":   "Amazon-EventBridge",
+    "secrets":       "AWS-Secrets-Manager",
+    "cloudwatch":    "Amazon-CloudWatch",
+    "bedrock":       "Amazon-Bedrock",
+    "sagemaker":     "Amazon-SageMaker",
+}
+
 # ---- shared AWS icon library (canonical: reactive-presentation/icons) ----
 # draw.io's built-in mxgraph.aws4 shape set is fixed and omits new / product icons
 # (e.g. Bedrock AgentCore). Those live in the sibling reactive-presentation skill's

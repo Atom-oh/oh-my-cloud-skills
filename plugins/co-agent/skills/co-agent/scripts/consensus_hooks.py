@@ -487,10 +487,13 @@ _SECRET_RE = re.compile(
     # own .claude/hooks/secret-scan.sh would flag the example itself.)
     r"|(?:password|passwd|secret|api[_-]?key|token|client[_-]?secret)['\"]?\s*[:=]\s*['\"][^'\"]{8,}"
     # …and an UNQUOTED high-entropy value (>=16 url-safe chars, no spaces/parens) for
-    # .env-style lines — the length/charset guard is what keeps a bare assignment from a
-    # short function call out of the match set.
+    # .env-style lines. Two guards keep source-code assignments out of the match set:
+    # the length/charset guard (a short function call), and a digit-or-/,+ requirement —
+    # a real key material value virtually always carries one, while a long camelCase
+    # identifier on the right of `token = someOwnerToken` never does (measured false
+    # positive: archify's viewer JS, PR #161 round 1).
     r"|(?:api[_-]?key|aws_access_key_id|access[_-]?token|client[_-]?secret|secret|passwd|password|token)"
-    r"\s*[:=]\s*[A-Za-z0-9/+_\-]{16,}\b",
+    r"\s*[:=]\s*(?=[A-Za-z0-9/+_\-]{16,}\b)[A-Za-z_\-]*[0-9/+][A-Za-z0-9/+_\-]*\b",
     re.I,
 )
 

@@ -15,10 +15,15 @@ This is a new parser that extends Marp compatibility while adding:
 """
 
 import argparse
+import html
+import importlib.util
 import os
 import re
 import json
 import shutil
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
@@ -30,6 +35,30 @@ try:
     HAS_YAML = True
 except ImportError:
     HAS_YAML = False
+
+
+class ArchifyBuildError(RuntimeError):
+    """A :::archify block could not be built (missing/mispinned clone, bad spec, render failure)."""
+
+
+# Lazy-loaded handle to the sibling archify_icons.py module (ADR-020). Loaded
+# by file path via importlib, never via `sys.path.insert` + bare `import` —
+# this module is imported from other places and run from arbitrary cwds, so a
+# bare import would only work when cwd/sys.path happened to contain scripts/.
+_ARCHIFY_ICONS = None
+
+
+def _load_archify_icons():
+    """Lazy-load the sibling archify_icons module by path (cwd-independent)."""
+    global _ARCHIFY_ICONS
+    if _ARCHIFY_ICONS is not None:
+        return _ARCHIFY_ICONS
+    module_path = Path(__file__).resolve().with_name('archify_icons.py')
+    spec = importlib.util.spec_from_file_location('archify_icons', module_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    _ARCHIFY_ICONS = module
+    return _ARCHIFY_ICONS
 
 # AWS service name to icon filename mapping
 ICON_NAME_MAP = {
@@ -225,6 +254,7 @@ class Slide:
     script_blocks: List[str] = field(default_factory=list)
     tab_blocks: List['ParsedBlock'] = field(default_factory=list)
     issues: List[str] = field(default_factory=list)
+    archify_blocks: List[Dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -516,6 +546,20 @@ class RemarpParser:
             if canvas_id_parsed:
                 canvas_id = canvas_id_parsed
 
+        # Archify blocks (:::archify) — parsed here, rendered at build time
+        # (RemarpHTMLGenerator._render_archify_block, ADR-020).
+        archify_blocks: List[Dict[str, Any]] = []
+        for blk in all_blocks.get('archify', []):
+            attrs: Dict[str, str] = {}
+            for m in re.finditer(r'(\w+)=(\S+)', blk.args):
+                attrs[m.group(1)] = m.group(2)
+            archify_blocks.append({
+                'id': attrs.get('id'),
+                'icons': attrs.get('icons'),
+                'height': attrs.get('height', '100%'),
+                'raw': blk.content.strip(),
+            })
+
         # Tab blocks (:::tab "Title") — now supported as inner blocks
         tab_blocks = all_blocks.get('tab', [])
 
@@ -537,6 +581,12 @@ class RemarpParser:
             md_text = md_text.replace(
                 f'<!-- __BLOCK:html:{i}__ -->',
                 f'<!-- __HTML_BLOCK_{i}__ -->')
+
+        # Re-inject archify block placeholders (position-preserving)
+        for i, blk in enumerate(all_blocks.get('archify', [])):
+            md_text = md_text.replace(
+                f'<!-- __BLOCK:archify:{i}__ -->',
+                f'<!-- __ARCHIFY_BLOCK_{i}__ -->')
 
         # Extract {.reference}[text](url) patterns
         REFERENCE_PATTERN = re.compile(r'\{\.reference\}\[([^\]]+)\]\(([^)]+)\)')
@@ -577,6 +627,7 @@ class RemarpParser:
             script_blocks=script_blocks,
             tab_blocks=tab_blocks,
             issues=issues,
+            archify_blocks=archify_blocks,
         )
 
     def parse_directives(self, md_text: str) -> Dict[str, str]:
@@ -1279,7 +1330,14 @@ class RemarpParser:
 
         # Check for title slide (single h1 at start, few lines)
         lines = md.strip().split('\n')
-        non_empty_lines = [l for l in lines if l.strip() and not (l.strip().startswith('<!--') and '__HTML_BLOCK_' not in l) and not l.strip().startswith('@')]
+        # A block placeholder comment is real content, not decoration: without this an
+        # archify/html-only slide falls under the `<= 4 lines` TITLE heuristic below and
+        # the title generator discards the marker (measured: the diagram silently vanishes).
+        _KEEP_MARKERS = ('__HTML_BLOCK_', '__ARCHIFY_BLOCK_')
+        non_empty_lines = [l for l in lines if l.strip()
+                           and not (l.strip().startswith('<!--')
+                                    and not any(k in l for k in _KEEP_MARKERS))
+                           and not l.strip().startswith('@')]
         if non_empty_lines and non_empty_lines[0].startswith('# '):
             h1_count = sum(1 for l in non_empty_lines if l.startswith('# '))
             if h1_count == 1 and len(non_empty_lines) <= 4:
@@ -1328,6 +1386,40 @@ class RemarpParser:
         return params
 
 
+# Escape-out focus-return script for :::archify iframes (ADR-020, PoC's deferred
+# "click-in / Escape-out focus return" item). Emitted ONCE per built page via the
+# existing deferred_canvas_scripts channel, guarded by window.__archifyEscapeWired
+# so a duplicate injection across block files (merged-index build) is a no-op.
+# Best-effort: cross-origin contentWindow access throws — swallow it, the deck's
+# own keyboard handler still works either way.
+_ARCHIFY_FOCUS_RETURN_JS = """
+if (!window.__archifyEscapeWired) {
+  window.__archifyEscapeWired = true;
+  try {
+    document.querySelectorAll('iframe.archify-diagram').forEach(function (f) {
+      f.addEventListener('load', function () {
+        try {
+          f.contentWindow.addEventListener('keydown', function (ev) {
+            if (ev.key !== 'Escape') return;
+            try {
+              var doc = f.contentDocument || f.contentWindow.document;
+              if (doc && doc.activeElement && doc.activeElement.blur) {
+                doc.activeElement.blur();
+              }
+            } catch (e) {}
+            try { window.parent.focus(); } catch (e) {}
+            try { window.parent.document.body.focus(); } catch (e) {}
+          });
+        } catch (e) {
+          // Cross-origin frame — the deck's own handler still works.
+        }
+      });
+    });
+  } catch (e) {}
+}
+"""
+
+
 class RemarpHTMLGenerator:
     """Generator for reactive-presentation HTML from parsed Remarp slides."""
 
@@ -1353,6 +1445,18 @@ class RemarpHTMLGenerator:
         self.quiz_counter = 0
         self.canvas_counter = 0
         self.deferred_canvas_scripts: List[str] = []
+        # Archify (ADR-020): source dir/name for resolving relative spec paths
+        # and default-id disambiguation across per-block-file builds; renders
+        # already emitted this run (avoids re-rendering when the merged index
+        # build reuses a block file's slides); focus-return script guard.
+        self.archify_source_dir: Optional[str] = None
+        self.archify_source_name: str = ''
+        # block_id -> spec fingerprint (raw block content). A dict, not a
+        # set: a repeat of the SAME block is a cache hit, but two different
+        # blocks landing on one id must fail loudly instead of the second
+        # silently reusing the first diagram's iframe.
+        self._archify_rendered: Dict[str, str] = {}
+        self._archify_focus_wired = False
 
     @staticmethod
     def _strip_block_prefix(title: str) -> str:
@@ -1492,10 +1596,216 @@ class RemarpHTMLGenerator:
         for idx, html_block in enumerate(slide.html_blocks):
             html = html.replace(f'<!-- __HTML_BLOCK_{idx}__ -->', html_block)
 
+        # Replace archify block placeholders with the rendered iframe (ADR-020)
+        for idx, blk in enumerate(slide.archify_blocks):
+            archify_html = self._render_archify_block(slide, idx, blk)
+            html = html.replace(f'<!-- __ARCHIFY_BLOCK_{idx}__ -->', archify_html)
+
         # Normalize asset paths in restored HTML blocks (../common/ → ./common/)
         html = re.sub(r'\.\./common/', './common/', html)
 
         return html
+
+    def _archify_block_id(self, slide: Slide, idx: int, blk: Dict[str, Any]) -> str:
+        """Resolve the stable id for one :::archify block.
+
+        Explicit `id=` wins outright (it becomes both a filename and a URL
+        path, so it must be a bare slug). Otherwise the default folds in the
+        source .md stem: `_build_merged_index` constructs a NEW generator per
+        block .md file, so slide numbering restarts at 0 for every file, and
+        a bare `archify-<n>` default would make two different diagrams in a
+        multi-block deck collide on the same `archify/archify-1.html` output
+        file. Explicit `id=` is still the recommended, collision-proof form.
+        """
+        explicit_id = blk.get('id')
+        if explicit_id:
+            if not re.match(r'^[A-Za-z0-9_-]+$', explicit_id):
+                raise ArchifyBuildError(
+                    f":::archify id={explicit_id!r} is not a valid id — it becomes a "
+                    "filename and a URL path, so it must match ^[A-Za-z0-9_-]+$")
+            return explicit_id
+        # A second unnamed block on the same slide must not collide with the
+        # first (same derived id would silently alias it to the first diagram
+        # via the render cache) — fold the block index in past the first.
+        suffix = f'-{idx + 1}' if idx else ''
+        if self.archify_source_name:
+            stem = re.sub(r'[^A-Za-z0-9_-]', '-', self.archify_source_name)
+            return f'archify-{stem}-{slide.index + 1}{suffix}'
+        return f'archify-{slide.index + 1}{suffix}'
+
+    def _render_archify_block(self, slide: Slide, idx: int, blk: Dict[str, Any]) -> str:
+        """Render one :::archify block to an icon-injected HTML file and
+        return the iframe markup that embeds it (ADR-020)."""
+        block_id = self._archify_block_id(slide, idx, blk)
+
+        # Skip re-render when the same generator has already produced this
+        # block (a merged-index build and a per-block build can both touch
+        # the same source slides within one run) — but only for the SAME
+        # content: a different block resolving to an already-used id (e.g.
+        # two blocks given the same explicit id=) is an authoring error.
+        fingerprint = blk['raw']
+        if block_id in self._archify_rendered:
+            if self._archify_rendered[block_id] == fingerprint:
+                return self._archify_iframe_html(block_id, blk)
+            raise ArchifyBuildError(
+                f":::archify id={block_id!r} is used by two different blocks — each "
+                "block needs its own id (the id becomes the rendered filename, so a "
+                "duplicate would silently show the first diagram twice)")
+
+        raw = blk['raw']
+        source_dir = self.archify_source_dir or os.getcwd()
+        if raw.lstrip().startswith('{'):
+            try:
+                spec = json.loads(raw)
+            except json.JSONDecodeError as e:
+                raise ArchifyBuildError(
+                    f":::archify id={block_id!r} has invalid inline JSON: {e}")
+        else:
+            spec_path = os.path.join(source_dir, raw)
+            try:
+                with open(spec_path, encoding='utf-8') as fh:
+                    spec_text = fh.read()
+            except OSError as e:
+                raise ArchifyBuildError(
+                    f":::archify id={block_id!r} references spec file {spec_path!r} "
+                    f"which could not be read: {e}")
+            try:
+                spec = json.loads(spec_text)
+            except json.JSONDecodeError as e:
+                raise ArchifyBuildError(
+                    f":::archify id={block_id!r} spec file {spec_path!r} is not valid JSON: {e}")
+
+        # Archify's architecture schema requires "components"; remarp's own
+        # validate accepts "nodes" as an alias, so build must normalize the
+        # same alias — otherwise a validate-clean deck hard-fails here and the
+        # rejection-loop contract (0 CRITICAL findings ⇒ the deck builds) breaks.
+        if 'components' not in spec and isinstance(spec.get('nodes'), list):
+            spec = dict(spec)
+            spec['components'] = spec.pop('nodes')
+
+        ai = _load_archify_icons()
+        archify_dir = ai.resolve_archify_dir()
+        if archify_dir is None:
+            raise ArchifyBuildError(
+                "No Archify clone found for :::archify. Run:\n"
+                "git clone https://github.com/tt-a1i/archify /tmp/archify && "
+                f"git -C /tmp/archify checkout {ai.ARCHIFY_PIN}\n"
+                "or set $ARCHIFY_DIR to an existing clone.")
+
+        ok, actual = ai.check_pin(archify_dir)
+        if not ok:
+            if os.environ.get('ARCHIFY_ALLOW_UNPINNED') == '1':
+                print(
+                    f"WARNING: Archify clone at {archify_dir} is not at the pinned commit "
+                    f"(expected {ai.ARCHIFY_PIN}, actual {actual or 'unknown'}) — continuing "
+                    "because ARCHIFY_ALLOW_UNPINNED=1. The icon injector depends on Archify's "
+                    "output markup shape, so an unpinned clone can silently produce a diagram "
+                    "with no icons.", file=sys.stderr)
+            else:
+                raise ArchifyBuildError(
+                    f"Archify clone at {archify_dir} is not at the pinned commit "
+                    f"(expected {ai.ARCHIFY_PIN}, actual {actual or 'unknown'}). The icon "
+                    "injector depends on Archify's output markup shape, so an unpinned clone "
+                    "can silently produce a diagram with no icons. Re-pin the clone, or set "
+                    "ARCHIFY_ALLOW_UNPINNED=1 to proceed anyway at your own risk.")
+
+        if self.output_dir is None:
+            raise ArchifyBuildError(
+                f":::archify id={block_id!r} needs an output directory to render into, "
+                "but this build path never set one.")
+
+        archify_out_dir = self.output_dir / 'archify'
+        archify_out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = archify_out_dir / f'{block_id}.html'
+
+        tmp_fd = tempfile.NamedTemporaryFile(
+            mode='w', suffix='.json', delete=False, encoding='utf-8')
+        # Bind tmp_path BEFORE the try: the finally unlinks it, and a failure
+        # inside the try (json.dump on an exotic spec) would otherwise raise
+        # NameError from the cleanup instead of the real error.
+        tmp_path = tmp_fd.name
+        try:
+            json.dump(spec, tmp_fd)
+            tmp_fd.close()
+
+            validate_result = subprocess.run(
+                ['node', os.path.join(archify_dir, 'bin', 'archify.mjs'),
+                 'validate', 'architecture', tmp_path],
+                capture_output=True, text=True, check=False,
+            )
+            if validate_result.returncode != 0:
+                msg = (validate_result.stderr or validate_result.stdout).strip()
+                raise ArchifyBuildError(
+                    f":::archify id={block_id!r} spec failed Archify validation: {msg}")
+
+            render_result = subprocess.run(
+                ['node', os.path.join(archify_dir, 'bin', 'archify.mjs'),
+                 'render', 'architecture', tmp_path, str(out_path)],
+                capture_output=True, text=True, check=False,
+            )
+            if render_result.returncode != 0:
+                msg = (render_result.stderr or render_result.stdout).strip()
+                raise ArchifyBuildError(
+                    f":::archify id={block_id!r} render failed: {msg}")
+        finally:
+            os.unlink(tmp_path)
+
+        # Icon injection, in-process.
+        icons_opt = blk.get('icons')
+        if icons_opt == 'off':
+            mapping: Dict[str, str] = {}
+        elif icons_opt:
+            map_path = os.path.join(source_dir, icons_opt)
+            # Resolve exactly as the CLI's --map does (archify_icons._mapping_from_map_file):
+            # a path, an index stem, or an Arch_<stem>_<size>.svg filename. An explicit map
+            # WINS over the auto mapping.
+            mapping = ai._mapping_from_map_file(map_path)
+        else:
+            mapping = ai.auto_mapping(spec)
+            for node_id in ai.unmapped_ids(spec):
+                print(f"skip: node-{node_id} no icon for this id", file=sys.stderr)
+
+        with open(out_path, encoding='utf-8') as fh:
+            rendered_html = fh.read()
+        injected_html, injected_n = ai.inject_icons(rendered_html, mapping)
+        with open(out_path, 'w', encoding='utf-8') as fh:
+            fh.write(injected_html)
+
+        print(f'  archify: {block_id} — injected {injected_n}/{len(mapping)} icons')
+
+        self._archify_rendered[block_id] = fingerprint
+        self._wire_archify_focus_script()
+        return self._archify_iframe_html(block_id, blk)
+
+    def _archify_iframe_html(self, block_id: str, blk: Dict[str, Any]) -> str:
+        """Build the iframe markup for an already-rendered archify block.
+
+        No `autofocus`, no script that focuses the frame: focus isolation is
+        the whole point of the iframe (ADR-020 Decision 3) — the escape-out
+        focus-return script (see _wire_archify_focus_script) only runs on
+        Escape, from inside the frame, never on load.
+        """
+        height = html.escape(blk.get('height', '100%'), quote=True)
+        escaped_id = html.escape(block_id, quote=True)
+        return (
+            f'<iframe class="archify-diagram" src="archify/{escaped_id}.html" '
+            f'title="{escaped_id}" loading="lazy" '
+            f'style="width:100%;height:{height};border:0;border-radius:8px;'
+            f'background:transparent"></iframe>'
+        )
+
+    def _wire_archify_focus_script(self):
+        """Append the escape-out focus-return script once per page.
+
+        `deferred_canvas_scripts` is the existing page-script injection
+        channel already consumed by both build paths (generate_block and
+        _build_merged_index) — this reuses it rather than inventing a second
+        mechanism, and never adds a <script> inside the slide body.
+        """
+        if self._archify_focus_wired:
+            return
+        self._archify_focus_wired = True
+        self.deferred_canvas_scripts.append(_ARCHIFY_FOCUS_RETURN_JS)
 
     def _gen_references_html(self, slide: Slide) -> str:
         """Generate reference links HTML for slide bottom."""
@@ -1731,8 +2041,11 @@ class RemarpHTMLGenerator:
                     html_parts.append(list_html)
                 continue
 
-            # HTML block placeholders — pass through without <p> wrapping
-            if re.match(r'^\s*<!-- __(?:HTML_BLOCK|COL_HTML)_\d+__ -->\s*$', line):
+            # HTML/archify block placeholders — pass through without <p>
+            # wrapping: an archify iframe inside a <p> gets an auto-height
+            # parent, which collapses its height:100% to the iframe default
+            # (~150px) and visibly breaks the default embed.
+            if re.match(r'^\s*<!-- __(?:HTML_BLOCK|COL_HTML|ARCHIFY_BLOCK)_\d+__ -->\s*$', line):
                 html_parts.append(line.strip())
                 idx += 1
                 continue
@@ -4377,6 +4690,8 @@ class RemarpProjectBuilder:
             html_gen = RemarpHTMLGenerator(lang=lang, output_dir=str(self.output_dir))
             if self.theme_dir:
                 html_gen.theme_dir = str(self.theme_dir)
+            html_gen.archify_source_dir = str(block_path.parent)
+            html_gen.archify_source_name = block_path.stem
 
             for internal_name, slides in blocks.items():
                 for slide in slides:
@@ -4460,6 +4775,8 @@ class RemarpProjectBuilder:
         lang = merged_config.get('lang', 'ko')
 
         html_gen = RemarpHTMLGenerator(lang=lang, output_dir=str(self.output_dir))
+        html_gen.archify_source_dir = str(block_path.parent)
+        html_gen.archify_source_name = block_path.stem
 
         # Generate HTML for each internal block
         for internal_block_name, slides in blocks.items():
@@ -5015,6 +5332,47 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
                     f'— it will render as a floating label with no icon',
                     hint)
 
+    # --- Rule: :::archify block validity (no node, no Archify, no network) ---
+    # Order matters: a missing/unparseable file must not also report NO_COMPONENTS,
+    # and at most one finding is emitted per block.
+    for blk in slide.archify_blocks:
+        raw = blk['raw']
+        block_label = blk.get('id') or f'(slide {slide.index + 1})'
+        if raw.lstrip().startswith('{'):
+            try:
+                spec = json.loads(raw)
+            except json.JSONDecodeError as e:
+                add('CRITICAL', 'ARCHIFY_BAD_JSON',
+                    f':::archify {block_label} has invalid inline JSON: {e}',
+                    'Correct the inline Archify spec JSON')
+                continue
+        else:
+            spec_path = md_file.parent / raw
+            if not spec_path.exists():
+                add('CRITICAL', 'ARCHIFY_SPEC_MISSING',
+                    f':::archify {block_label} references {spec_path} which does not exist',
+                    'Create it or point :::archify at the right relative path')
+                continue
+            try:
+                with open(spec_path, encoding='utf-8') as fh:
+                    spec_text = fh.read()
+                spec = json.loads(spec_text)
+            except json.JSONDecodeError as e:
+                add('CRITICAL', 'ARCHIFY_SPEC_UNPARSEABLE',
+                    f':::archify {block_label} spec file {spec_path} is not valid JSON: {e}',
+                    'Fix the JSON syntax in the referenced spec file')
+                continue
+
+        # components is the Archify architecture schema's required key; nodes is
+        # accepted only as a forward-compat alias (neither present -> CRITICAL).
+        components = spec.get('components') if isinstance(spec, dict) else None
+        if not components:
+            components = spec.get('nodes') if isinstance(spec, dict) else None
+        if not components:
+            add('CRITICAL', 'ARCHIFY_NO_COMPONENTS',
+                f':::archify {block_label} spec has no non-empty "components" list',
+                'Add a non-empty components array (the Archify architecture schema\'s required key)')
+
     return findings
 
 
@@ -5099,52 +5457,58 @@ def main():
     args = parser.parse_args()
 
     if args.command == 'build':
-        input_path = Path(args.path)
+        try:
+            input_path = Path(args.path)
 
-        if input_path.is_file():
-            # Single file build
-            with open(input_path, 'r', encoding='utf-8') as f:
-                content = f.read()
+            if input_path.is_file():
+                # Single file build
+                with open(input_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
 
-            remarp_parser = RemarpParser(content)
-            config, blocks = remarp_parser.parse()
+                remarp_parser = RemarpParser(content)
+                config, blocks = remarp_parser.parse()
 
-            output_dir = Path(args.output) if args.output else input_path.parent / 'slides'
-            output_dir.mkdir(parents=True, exist_ok=True)
+                output_dir = Path(args.output) if args.output else input_path.parent / 'slides'
+                output_dir.mkdir(parents=True, exist_ok=True)
 
-            html_gen = RemarpHTMLGenerator(lang=args.lang)
+                html_gen = RemarpHTMLGenerator(lang=args.lang, output_dir=str(output_dir))
+                html_gen.archify_source_dir = str(input_path.parent)
+                html_gen.archify_source_name = input_path.stem
 
-            for block_name, slides in blocks.items():
-                html_content = html_gen.generate_block(block_name, slides, config,
-                                                       source_file=input_path.name)
-                output_file = output_dir / f'{block_name}.html'
+                for block_name, slides in blocks.items():
+                    html_content = html_gen.generate_block(block_name, slides, config,
+                                                           source_file=input_path.name)
+                    output_file = output_dir / f'{block_name}.html'
 
-                with open(output_file, 'w', encoding='utf-8') as f:
-                    f.write(html_content)
+                    with open(output_file, 'w', encoding='utf-8') as f:
+                        f.write(html_content)
 
-                print(f'Generated: {output_file}')
+                    print(f'Generated: {output_file}')
 
-            print(f'\nBuild complete. {len(blocks)} block(s) generated.')
+                print(f'\nBuild complete. {len(blocks)} block(s) generated.')
 
-        elif input_path.is_dir():
-            # Project build
-            builder = RemarpProjectBuilder(str(input_path), args.output)
+            elif input_path.is_dir():
+                # Project build
+                builder = RemarpProjectBuilder(str(input_path), args.output)
 
-            if not builder.load_project():
-                print(f'Error: No .md or .remarp.md files found in {input_path}')
-                return
+                if not builder.load_project():
+                    print(f'Error: No .md or .remarp.md files found in {input_path}')
+                    return
 
-            if args.block:
-                output = builder.build_block(args.block)
-                if output:
-                    print(f'Generated: {output}')
+                if args.block:
+                    output = builder.build_block(args.block)
+                    if output:
+                        print(f'Generated: {output}')
+                    else:
+                        print(f'Error: Block "{args.block}" not found')
                 else:
-                    print(f'Error: Block "{args.block}" not found')
-            else:
-                built = builder.build_all()
-                for f in built:
-                    print(f'Generated: {f}')
-                print(f'\nBuild complete. {len(built)} file(s) generated.')
+                    built = builder.build_all()
+                    for f in built:
+                        print(f'Generated: {f}')
+                    print(f'\nBuild complete. {len(built)} file(s) generated.')
+        except ArchifyBuildError as e:
+            print(f'ERROR: {e}', file=sys.stderr)
+            sys.exit(1)
 
     elif args.command == 'sync':
         builder = RemarpProjectBuilder(args.path, args.output)

@@ -356,6 +356,7 @@ Only these fenced div blocks are recognized by the converter:
 | `:::cell` | Grid cell |
 | `:::notes` | Speaker notes (hidden in presentation) |
 | `:::canvas` | Canvas DSL diagram block |
+| `:::archify` | Explorable Archify diagram (JSON spec → rendered, icon-injected, iframed) |
 | `:::css` | Per-slide CSS overrides |
 | `:::html` | Raw HTML block (no markdown processing) |
 | `:::script` | JavaScript block (executes on slide load) |
@@ -519,6 +520,42 @@ Group an arrow with the box that follows it under the same index to convey a sen
 
 > **Rule**: if a `:::html` block has 3 or more sibling elements, you must apply fragment animation.
 > Also make active use of the advanced patterns in `interactive-patterns-guide.md` (sliders, canvas animations, click interactions).
+
+### :::archify — Explorable Archify Diagram (ADR-020)
+
+An [Archify](https://github.com/tt-a1i/archify) diagram the audience navigates — zoom
+(MAP→READ→FULL progressive detail), path-aware highlighting, semantic camera. Use it when
+the diagram is meant to be **explored** during the talk; a fixed reveal order is
+`:::canvas`'s seat, a static artifact is the architecture-diagram path.
+
+```markdown
+:::archify id=eks-web
+{ "schema_version": 2, "diagram_type": "architecture", "meta": { "title": "EKS Web" },
+  "components": [ {"id": "alb", ...}, {"id": "eks", ...} ], ... }
+:::
+```
+
+- **Content** is an Archify `architecture` JSON spec — inline, or a relative path to a
+  `.json` file next to the source markdown.
+- **Args**: `id=<slug>` (output name, defaults to a counter) · `icons=off` or
+  `icons=<map.json>` (explicit node→icon map) · `height=<css>` (default `100%`).
+- **Goal: the diagram looks AWS-official and behaves like part of the deck.** Node ids
+  that name AWS services in the shared vocabulary (`ARCH_STEMS` in `layout_aws.py` —
+  `route53`, `alb`, `eks`, `s3`, …) or exact icon stems (`Amazon-Route-53`) get the
+  official icon injected automatically at build; unmapped nodes stay Archify-styled and
+  are listed on stderr. Name spec nodes with vocabulary ids and the icons come for free.
+- **Focus invariant**: the diagram is iframed for isolation — arrow keys drive the deck
+  until the presenter clicks into the diagram. Nothing in the block may autofocus the
+  iframe. Esc returns focus to the deck on a served (same-origin) deck; under `file://`
+  the Esc hook cannot reach into the frame, so click outside the diagram instead.
+- **Build dependency**: the build renders through a **version-pinned** Archify clone
+  (`$ARCHIFY_DIR` or `/tmp/archify`); a missing or wrong-version clone fails the build
+  with the exact clone/checkout command. The pin lives in `scripts/archify_icons.py`
+  and is guarded by `tests/structure/test-archify-structure-probe.sh` — upgrading
+  Archify means updating both together.
+- **PPTX export flattens deliberately** (ADR-020 Decision 4): the slide image is the
+  diagram's MAP state; the interactive URL rides in the speaker notes
+  (`export_pptx.py --base-url` prefixes it with the hosted location).
 
 ### :::script — JavaScript Block
 

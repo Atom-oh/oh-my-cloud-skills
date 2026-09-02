@@ -1,0 +1,48 @@
+---
+sidebar_position: 9
+title: "Archify 인터랙티브 다이어그램 데모"
+---
+
+import DemoEmbed from '@site/src/components/DemoEmbed';
+
+# Archify 인터랙티브 다이어그램 데모
+
+다섯 번째 다이어그램 경로(ADR-020) — [Archify](https://github.com/tt-a1i/archify)(MIT, 버전 고정 의존)가 만드는 **탐색형** 다이어그램입니다. 아래 다이어그램 자체가 Archify 산출물이며, 주제는 이 경로의 빌드 파이프라인입니다: 덱 작성자의 `:::archify` JSON 스펙이 검증 게이트(정적 스펙 검사 → 버전 핀 검증 → archify validate)를 지나 렌더·공식 아이콘 주입을 거쳐 슬라이드 속 iframe이 되기까지.
+
+노드를 클릭해 탐색하고, 상단 **Play story**로 3개의 가이드 뷰(행복 경로 · 아이콘 주입 계약 · 가드와 평면화)를 순서대로 따라갈 수 있습니다.
+
+## 데모
+
+<DemoEmbed
+  src="/oh-my-cloud-skills/demos/archify-pipeline/index.html"
+  title=":::archify 빌드 파이프라인 — 탐색형 워크플로 다이어그램"
+  height="720px"
+  command="node archify.mjs deliver workflow archify-pipeline.workflow.json index.html --quality showcase"
+  remarpSource="archify-pipeline.workflow.json (같은 디렉토리)"
+/>
+
+## 언제 이 경로인가
+
+| 필요 | 경로 | 산출물 |
+|------|------|--------|
+| 청중이 **탐색**하는 다이어그램 (줌, 경로 추적, MAP→READ→FULL) | `:::archify` (이 데모) | self-contained HTML, 슬라이드에 iframe |
+| 정적 아키텍처 산출물 | `architecture-diagram` | .drawio → PNG/SVG |
+| 고정 순서의 선형 애니메이션 | `animated-diagram` | SVG + SMIL |
+| 발표 진행에 맞춘 단계 공개 | `:::canvas` DSL | 슬라이드 내 Canvas |
+
+## 덱에 넣는 법
+
+Remarp 마크다운 슬라이드 안에 Archify JSON 스펙을 그대로 넣으면, 빌드가 렌더와 공식 아이콘 주입까지 처리합니다:
+
+```markdown
+:::archify id=eks-web
+{ "schema_version": 2, "diagram_type": "architecture",
+  "components": [ {"id": "alb", ...}, {"id": "eks", ...} ], ... }
+:::
+```
+
+- 노드 id가 공유 어휘(`route53`, `alb`, `eks`, `s3`, …) 또는 공식 아이콘 stem(`Amazon-Route-53`)이면 811개 공식 AWS 아이콘이 자동 주입됩니다.
+- 화살표 키는 덱이 갖고, 다이어그램을 클릭해야 탐색이 시작되며 Esc로 덱에 복귀합니다(포커스 격리).
+- PPTX 내보내기는 MAP 상태 이미지 + 스피커 노트의 인터랙티브 URL로 **의도적으로 평면화**됩니다.
+
+전체 문법: [reactive-presentation 스킬](/docs/aws-content-plugin/skills/reactive-presentation)의 `references/remarp-format-guide.md` — `:::archify` 섹션.

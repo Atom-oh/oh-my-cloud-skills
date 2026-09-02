@@ -43,7 +43,7 @@ Theme choice: default (AWS console light) · `theme: { mode: dark }` (squid-ink 
 > theme: { footer: "© 2026 Company. All rights reserved.", logo: "./common/logo.png" }
 > ```
 
-**Remarp essentials**: `remarp: true` frontmatter · `@type`/`@layout`/`@transition`/`@theme` directives · `{.click}`/`:::click` fragments · `:::notes` speaker notes · `:::canvas` DSL · `::: left`/`::: right` columns. Full syntax: [references/remarp-format-guide.md](references/remarp-format-guide.md).
+**Remarp essentials**: `remarp: true` frontmatter · `@type`/`@layout`/`@transition`/`@theme` directives · `{.click}`/`:::click` fragments · `:::notes` speaker notes · `:::canvas` DSL · `:::archify` explorable diagrams (Archify, ADR-020 — official icons auto-injected, build needs the pinned clone) · `::: left`/`::: right` columns. Full syntax: [references/remarp-format-guide.md](references/remarp-format-guide.md).
 
 > **Speaker notes**: every slide needs `:::notes` — enough content and structure for the presenter to speak to that slide from the notes alone (`{timing}`/`{cue}` markers + `[요약]` ("Summary") bullets + a conversational script). Missing or unstructured notes are flagged by validate as `MISSING_NOTES`/`NOTE_STRUCTURE`. Schema: remarp-format-guide.md "Structured Note Schema".
 

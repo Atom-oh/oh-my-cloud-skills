@@ -15,6 +15,7 @@ required review is silently skipped.
 | Code (source, scripts, tests) | `co-agent` Review (multi-AI) / standard PR review | reviewer judgment |
 | Presentation / slides (Remarp, HTML) | `aws-content`: `content-review-agent` | ≥ 85 / 100 |
 | Diagram (`.drawio`, animated SVG/HTML) | `aws-content`: `content-review-agent` | ≥ 85 / 100 |
+| Interactive diagram (Archify HTML, `:::archify` spec — ADR-020) | `aws-content`: `content-review-agent` (icon rule, category 7, applies to Archify nodes) | ≥ 85 / 100 |
 | Document / GitBook / workshop / brochure | `aws-content`: `content-review-agent` | ≥ 85 / 100 |
 | IaC / architecture (CDK, Terraform, CFN) | `aws-ops`: `wellarchitected-agent` | 6-pillar score |
 | Security-sensitive IaC/AWS (SG, IAM, Lambda, S3, Route53) | `aws-ops`: `ops-security-audit` **(mandatory)** | no banned pattern |

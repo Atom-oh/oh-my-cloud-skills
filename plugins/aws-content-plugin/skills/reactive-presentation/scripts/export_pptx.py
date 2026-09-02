@@ -16,9 +16,16 @@ This is the reliable, scriptable counterpart to the in-browser
 `ExportUtils.exportPPTX()` button (html2canvas): real browser rendering
 means fonts, canvas drawings, shadows, and gradients survive intact.
 
+An interactive Archify diagram cannot survive this flatten-to-image round-trip
+(ADR-020 Decision 4), so each slide's speaker notes gain a link to every
+interactive Archify diagram on that slide — the deck-relative path as-is, or
+the full hosted URL when --base-url gives the deck's published location. The
+notes are how the reader reaches the interactive artifact.
+
 Usage:
     python3 export_pptx.py <project-dir> [-o out.pptx] [--blocks a.html b.html]
                            [--width 1920] [--height 1080] [--scale 2]
+                           [--base-url URL]
 
     <project-dir>  Built output dir (contains index.html / NN-block.html + common/)
 
@@ -207,6 +214,18 @@ _MEDIA_READY_JS = """
 }
 """
 
+# Interactive Archify diagrams (ADR-020) are emitted as `loading="lazy"`
+# iframes, which _PREPARE_JS/_MEDIA_READY_JS already force eager and wait on
+# — no extra handling needed here. This just collects their `src` for the
+# speaker notes; PPTX export flattens the diagram to its MAP-state image on
+# purpose (ADR-020 Decision 4), and the notes are how the reader reaches the
+# interactive artifact.
+_ARCHIFY_SRC_JS = """
+() => Array.from(document.querySelectorAll('.slide-deck .slide.active iframe.archify-diagram'))
+          .map(f => f.getAttribute('src'))
+          .filter(Boolean)
+"""
+
 # presenterNotes is a top-level `const` in compiler-built HTML; hand-authored
 # decks may instead carry <template class="notes"> per slide, which
 # slide-framework.js harvests into deck.presenterNotes — fall back to that.
@@ -239,12 +258,13 @@ def _notes_to_text(text: str) -> str:
     return text.strip()
 
 
-def export(project_dir: Path, out_path: Path, blocks, width: int, height: int, scale: int):
+def export(project_dir: Path, out_path: Path, blocks, width: int, height: int, scale: int,
+           base_url: str = ''):
     from playwright.sync_api import sync_playwright
     from pptx import Presentation
     from pptx.util import Inches
 
-    httpd, base_url = _serve(project_dir)
+    httpd, serve_url = _serve(project_dir)
     tmpdir = Path(tempfile.mkdtemp(prefix='remarp-pptx-'))
 
     prs = Presentation()
@@ -266,7 +286,7 @@ def export(project_dir: Path, out_path: Path, blocks, width: int, height: int, s
             )
 
             for block in blocks:
-                page.goto(f"{base_url}/{urllib.parse.quote(block)}", wait_until='networkidle')
+                page.goto(f"{serve_url}/{urllib.parse.quote(block)}", wait_until='networkidle')
                 page.evaluate("() => document.fonts.ready.then(() => true)")
                 page.wait_for_timeout(600)  # let canvas setup scripts settle
 
@@ -309,6 +329,16 @@ def export(project_dir: Path, out_path: Path, blocks, width: int, height: int, s
                         print(f"  (warn) media still loading on slide {i + 1} of {block} — capturing anyway")
                     page.wait_for_timeout(80)
 
+                    # Best-effort: a notes nicety must never fail an export.
+                    # The active slide + its (now eager, loaded) iframes are
+                    # exactly what MEDIA_READY_JS just confirmed above — the
+                    # iframe's initial (MAP) state is what gets captured, and
+                    # is not interacted with here.
+                    try:
+                        archify_srcs = page.evaluate(_ARCHIFY_SRC_JS) or []
+                    except Exception:
+                        archify_srcs = []
+
                     img = tmpdir / f"{Path(block).stem}-{i + 1:03d}.png"
                     deck.screenshot(path=str(img))
 
@@ -322,6 +352,15 @@ def export(project_dir: Path, out_path: Path, blocks, width: int, height: int, s
                         note_text = f"{title}\n\n{note_text}"
                     elif title:
                         note_text = title
+
+                    # Interactive diagram URLs go LAST, after the presenter's
+                    # own note text (ADR-020 Decision 4).
+                    links = [urllib.parse.urljoin(base_url, s) if base_url else s
+                             for s in archify_srcs]
+                    if links:
+                        extra = '\n'.join(f'Interactive diagram: {u}' for u in links)
+                        note_text = f'{note_text}\n\n{extra}' if note_text else extra
+
                     if note_text:
                         pptx_slide.notes_slide.notes_text_frame.text = note_text
 
@@ -351,6 +390,11 @@ def main():
     ap.add_argument('--height', type=int, default=1080, help='Capture viewport height (default 1080)')
     ap.add_argument('--scale', type=int, default=2, choices=(1, 2, 3),
                     help='Device scale factor for crisp captures (default 2)')
+    ap.add_argument('--base-url', default='',
+                    help='Base URL for hosted interactive Archify diagrams, appended to '
+                         'each slide\'s speaker notes (ADR-020 Decision 4). Should end '
+                         'with a trailing "/" — urllib.parse.urljoin drops the last path '
+                         'segment of a base that does not.')
     args = ap.parse_args()
 
     _import_deps()
@@ -375,7 +419,7 @@ def main():
     out_path = Path(args.output) if args.output else project_dir / f"{project_dir.name}.pptx"
 
     print(f"Exporting {len(blocks)} file(s) from {project_dir} → {out_path}")
-    export(project_dir, out_path, blocks, args.width, args.height, args.scale)
+    export(project_dir, out_path, blocks, args.width, args.height, args.scale, args.base_url)
 
 
 if __name__ == '__main__':
