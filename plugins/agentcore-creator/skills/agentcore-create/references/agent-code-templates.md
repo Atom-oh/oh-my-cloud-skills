@@ -255,7 +255,7 @@ if __name__ == "__main__":
 | `{{agent_name}}` | Agent frontmatter `name` | `eks-agent` |
 | `{{source_plugin}}` | plugin.json `name` | `aws-ops-plugin` |
 | `{{source_version}}` | plugin.json `version` | `1.3.1` |
-| `{{bedrock_model_id}}` | Model mapping table | `us.anthropic.claude-sonnet-4-6` |
+| `{{bedrock_model_id}}` | `MODEL_MAP` in the convert script | `us.anthropic.claude-sonnet-5` |
 | `{{region}}` | User-specified region | `us-east-1` |
 | `{{tool_imports}}` | strands-agents-tools imports | `shell, file_read` |
 | `{{tool_list}}` | Tool function references | `shell, file_read` |
@@ -282,19 +282,19 @@ These defaults are applied by the conversion script and templates. Tune per use 
 | Parameter | Default | Tuning Notes |
 |-----------|---------|--------------|
 | `max_tokens` | 16000 | Use 64000 for long outputs (requires streaming). Truncation forces retries — don't lowball. |
-| `thinking` | `{"type": "adaptive"}` on effort-capable models, omitted otherwise | Emitted by the generator for Opus 4.7/4.8, Sonnet 4.6, and Fable 5 (see `EFFORT_CAPABLE_MODELS` in the script) |
-| `temperature` / `top_p` / `top_k` | NOT SET | Removed on Opus 4.7/4.8 and Fable 5 (400 error). Use prompting for variance instead. |
-| `effort` (Opus 4.5+, Sonnet 4.6, Fable 5) | `"high"` by default, tunable | `xhigh` for coding/agentic, `high` for intelligence-sensitive, `medium` for balanced. **Actually emitted by the generator** (`output_config.effort`), not just documented — see `generate_agent_code()`. |
+| `thinking` | `{"type": "adaptive"}` on effort-capable models, omitted otherwise | Emitted by the generator for Opus 5, Sonnet 5, Opus 4.7/4.8, Sonnet 4.6, and Fable 5 (see `EFFORT_CAPABLE_MODELS` in the script) |
+| `temperature` / `top_p` / `top_k` | NOT SET | Removed on Opus 4.7+, Sonnet 5, and Fable 5 (400 error). Use prompting for variance instead. |
+| `effort` (Opus 4.5+, Sonnet 4.6+, Fable 5) | `"high"` by default, tunable | `xhigh` for coding/agentic, `high` for intelligence-sensitive, `medium` for balanced. **Actually emitted by the generator** (`output_config.effort`), not just documented — see `generate_agent_code()`. |
 
-### Modern Opus (4.7 / 4.8) and Fable 5 Specific Defaults
+### Opus 4.7+ / Opus 5 / Sonnet 5 / Fable 5 Specific Defaults
 
-When `{{bedrock_model_id}}` resolves to `us.anthropic.claude-opus-4-8` (the `opus` alias default), `...-opus-4-7`, or `us.anthropic.claude-fable-5`:
+When `{{bedrock_model_id}}` resolves to `us.anthropic.claude-opus-5` (the `opus` alias default), `us.anthropic.claude-sonnet-5` (the `sonnet` default), `...-opus-4-8`/`...-opus-4-7`, or `us.anthropic.claude-fable-5`:
 - Do NOT set `temperature`, `top_p`, `top_k` → 400 error
 - Do NOT use `thinking: {"type": "enabled", "budget_tokens": N}` → 400 error
-- Use `thinking: {"type": "adaptive"}` for reasoning control — on Fable 5 this is the *only* mode (`"disabled"` is unsupported, unlike Opus)
+- Use `thinking: {"type": "adaptive"}` for reasoning control — on Fable 5 this is the *only* mode; on Opus 5 thinking is on by default and `"disabled"` is accepted only at `effort` `high` or below
 - To surface thinking content: add `thinking: {"type": "adaptive", "display": "summarized"}` (default is `"omitted"`; Fable 5 never returns raw CoT regardless)
 - Re-baseline `max_tokens` with `count_tokens()` — do not reuse 4.6-calibrated estimates
-- **Fable 5 only**: check `stop_reason == "refusal"` after invocation — it comes back as HTTP 200, not an error, so a bare status check will treat a refusal as success. Also: Bedrock requires opting into 30-day data retention (`provider_data_sharing`) before Fable 5 can be invoked at all — flag this during design if the target org has a no-retention policy.
+- **Fable 5 and Opus 5** (`REFUSAL_CHECK_MODELS`): check `stop_reason == "refusal"` after invocation — it comes back as HTTP 200, not an error, so a bare status check will treat a refusal as success. Also: Bedrock requires opting into 30-day data retention (`provider_data_sharing`) before Fable 5 can be invoked at all — flag this during design if the target org has a no-retention policy.
 
 See `references/agentcore-mapping-rules.md` → Model-Specific Compatibility Notes for full breaking-change details.
 

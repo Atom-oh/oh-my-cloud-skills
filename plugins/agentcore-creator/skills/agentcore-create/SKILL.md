@@ -72,13 +72,13 @@ the alternatives with trade-offs and recommend one.
 
 | Task profile | Recommended model | Notes |
 |---|---|---|
-| Coding, agentic loops, long-horizon work | `us.anthropic.claude-opus-4-8` | Current most-capable Opus; on Bedrock with extended thinking, use adaptive thinking. Budget generously for output tokens. |
-| Most production workloads (balanced) | `us.anthropic.claude-sonnet-4-6` | Best speed/intelligence balance. Supports adaptive thinking. |
+| Coding, agentic loops, long-horizon work | `us.anthropic.claude-opus-5` | Current most-capable Opus (same price as Opus 4.8). Thinking is on by default — control depth with `effort` (`xhigh` for coding/agentic). Budget generously for output tokens. |
+| Most production workloads (balanced) | `us.anthropic.claude-sonnet-5` | Best speed/intelligence balance, and cheaper than Sonnet 4.6. Adaptive thinking + `effort`. |
 | High-volume simple tasks | `us.anthropic.claude-haiku-4-5` | Fastest, lowest cost. No `effort` parameter support. |
-| Complex reasoning with cost flexibility | `us.anthropic.claude-opus-4-8` | When correctness matters more than latency |
-| Multi-day autonomous/large-migration work | `us.anthropic.claude-fable-5` | Only when Fable 5's edge over Opus 4.8 actually shows on that scale. Requires opting into 30-day Bedrock data retention first — ask about org data policy before recommending it. |
+| Complex reasoning with cost flexibility | `us.anthropic.claude-opus-5` | When correctness matters more than latency — raise `effort` to `max` |
+| Multi-day autonomous/large-migration work | `us.anthropic.claude-fable-5` | Only when Fable 5's edge over Opus 5 actually shows on that scale. Requires opting into 30-day Bedrock data retention first — ask about org data policy before recommending it. |
 
-> **Note on modern Opus (4.7/4.8) and Fable 5 deployment**: Generated code must NOT include `temperature`, `top_p`, `top_k`, or `thinking.type: "enabled"` with `budget_tokens` — these return 400 errors on Opus 4.7/4.8 and Fable 5. Use `thinking.type: "adaptive"` for reasoning depth control (on Fable 5 it's the *only* mode). 4.6/4.7 remain valid for pinned deployments. See `references/agentcore-mapping-rules.md` → Model-Specific Compatibility Notes.
+> **Note on Opus 4.7+, Sonnet 5, and Fable 5 deployment**: Generated code must NOT include `temperature`, `top_p`, `top_k`, or `thinking.type: "enabled"` with `budget_tokens` — these return 400 errors on Opus 4.7/4.8/5, Sonnet 5, and Fable 5. Use `thinking.type: "adaptive"` + `effort` for reasoning depth control (on Fable 5 adaptive is the *only* mode; on Opus 5 thinking is on by default). Exact IDs live in `MODEL_MAP` (`scripts/convert_plugin_to_agentcore.py`); 4.6/4.7/4.8 remain valid for pinned deployments. See `references/agentcore-mapping-rules.md` → Model-Specific Compatibility Notes.
 
 **Deployment target decision (harness vs. Runtime)** — decide this here, before Phase 4,
 because it changes what Phase 4 produces:
