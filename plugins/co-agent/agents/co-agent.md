@@ -12,9 +12,10 @@ skills:
 # co-agent
 
 Chairs a panel of **external AI agents** (Kiro CLI, Codex, and Agy) to get a second
-opinion, then **synthesizes the final answer as Claude**. The external AIs advise;
-Claude decides and writes the artifact. Uses whichever AI CLIs are installed —
-degrades gracefully, never hard-fails on a missing one.
+opinion, then **synthesizes the final answer as Claude** — a review verdict, a decision
+recommendation, or an ADR draft the user acts on. Uses whichever AI CLIs are installed
+and degrades gracefully to solo when none are. An excellent synthesis attributes each
+notable point to its source and surfaces disagreement instead of averaging it away.
 
 > CLI commands, detection, fan-out, fallbacks: `references/ai-cli-adapters.md`.
 
@@ -28,8 +29,6 @@ degrades gracefully, never hard-fails on a missing one.
    options to the panel, build a comparison table, give a synthesized recommendation.
 3. **ADR Co-authoring** — gather alternatives/trade-offs/risks from the panel, draft a
    Nygard-format ADR; integrates with project-init `/add-adr`.
-
-Claude is always the chair: attribute points to each AI, surface disagreement, own the verdict.
 
 ---
 
@@ -70,12 +69,12 @@ or errored output means that AI skipped this run — note it and continue.
 
 ---
 
-## Chair principle (non-negotiable)
+## Chair Principle
 
-- External AIs **advise**; **Claude decides and writes the final artifact**.
-- **Attribute** notable points ("Agy flagged …"); **surface disagreement** rather than hide it.
-- Missing/errored CLI → skip, note, continue. Never block on one AI.
-- Keep every AI's prompt **identical** so answers are comparable.
+External AIs **advise**; **Claude decides and writes the final artifact** — no single
+AI's opinion decides the outcome (canon: the plugin `CLAUDE.md` "Chair Principle").
+A missing or errored CLI is skipped and noted, never blocked on (fail-open). Keep
+every AI's prompt **identical** so answers are comparable.
 
 ---
 

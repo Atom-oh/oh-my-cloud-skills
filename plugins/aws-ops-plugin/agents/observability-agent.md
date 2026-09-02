@@ -180,15 +180,10 @@ kubectl port-forward -n monitoring svc/grafana 3000:3000 &
 
 ## Key Metrics Reference
 
-| Level | Metric | Warning | Critical |
-|-------|--------|---------|----------|
-| Cluster | `cluster_cpu_utilization` | > 70% | > 85% |
-| Cluster | `cluster_memory_utilization` | > 75% | > 90% |
-| Cluster | `cluster_failed_node_count` | > 0 | > 1 |
-| Node | `node_cpu_utilization` | > 80% | > 95% |
-| Node | `node_filesystem_utilization` | > 80% | > 90% |
-| Pod | `pod_cpu_utilization` | > 80% | > 95% |
-| Pod | `pod_memory_utilization` | > 85% | > 95% |
+Warning/critical thresholds for cluster, node, pod, network, and storage metrics are
+defined once in `{plugin-dir}/skills/ops-health-check/references/metrics-thresholds.md` —
+base alarm recommendations on that table so they never drift from what health checks
+score against.
 
 ---
 
@@ -275,14 +270,15 @@ flowchart TD
 
 When spawned as a member of an incident-response team (the Agent tool's `team_name`
 parameter is set), follow the shared specialist protocol in
-`{plugin-dir}/references/team-workflows.md` → *Specialist agent protocol*. Report metric
-collection, log delivery, alarm state, and tracing coverage as an OK/WARN/CRIT table with
-the candidate root cause, the recommended actions, and the verification commands; leave the
-fix itself to the coordinator.
+`{plugin-dir}/references/team-workflows.md` → *Specialist agent protocol*. This agent's
+OK/WARN/CRIT rows: metric collection, log delivery, alarm state, tracing coverage.
 
 ---
 
 ## Output Format
+
+Default shape for a direct (single-domain) answer — nothing parses it, so adapt it to the
+question. Team reports use the Team Collaboration rows above instead.
 
 ```
 ## Observability Diagnosis

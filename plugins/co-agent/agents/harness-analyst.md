@@ -58,8 +58,7 @@ from the records. Ask the user which peers are metered if it isn't evident.
 
 ## Signal → proposal map
 
-Evidence first: never propose from a hunch — cite the rows/records behind every
-recommendation.
+Every proposal cites the rows/records behind it.
 
 | Signal in records | Proposal to surface |
 |-------------------|---------------------|

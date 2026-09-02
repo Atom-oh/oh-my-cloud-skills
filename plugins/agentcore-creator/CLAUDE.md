@@ -16,7 +16,7 @@ Interactive agent design and deployment to Amazon Bedrock AgentCore. Brainstorm 
 
 | Skill | Trigger | Purpose |
 |-------|---------|---------|
-| `agentcore-create` | `/agentcore-create`, "convert to agentcore", "에이전트코어 생성" | 5-Phase: Discovery → Design → Skill-First Build → AgentCore Convert → Deploy |
+| `agentcore-create` | `/agentcore-create`, "convert to agentcore", "에이전트코어 생성" | 5-Phase: Discovery → Design → Skill-First Build → AgentCore Convert → Verify (deploy is §4.5 of Convert) |
 
 ---
 

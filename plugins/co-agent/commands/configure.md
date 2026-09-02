@@ -6,8 +6,14 @@ argument-hint: "show | set <ai> <key> <value> | set timeout <seconds>  (host: cl
 
 # co-agent: configure
 
-Configure the host-aware multi-AI panel. Settings are **layered** like Claude Code's own
-settings — precedence low→high:
+Inspect and change what the multi-AI panel actually runs with — models, effort, panel
+membership, timeouts, and the harness / pr-autofix / push-gate knobs. Every write lands in
+a layered config that the fan-out (`references/ai-cli-adapters.md`) reads live via
+`co_agent_config.py`, so a change here changes the very next panel call (e.g.
+`enabled false` drops that AI from the panel). Excellent means the user leaves seeing the
+effective merged config and never believes a dead setting took effect.
+
+Settings are **layered** like Claude Code's own settings — precedence low→high:
 
 - `co-agent.defaults.json` (committed, in the skill) — base/shared
 - `~/.claude/co-agent.user.json` (**user scope** — applies across all your repos) — written with `--scope user`
@@ -33,9 +39,6 @@ Host controls panel membership:
 - `--host claude` (default): Claude chairs; panel = Kiro, Codex, Agy.
 - `--host codex`: Codex chairs; panel = Kiro, Claude, Agy.
 - The third reviewer is always Agy — Gemini support was removed (Agy superseded it; ADR-010).
-
-The fan-out in `references/ai-cli-adapters.md` reads these via the helper, so a change
-here changes what actually runs (e.g. `enabled false` drops that AI from the panel).
 
 ## Helper
 
@@ -83,41 +86,36 @@ Argument: `$ARGUMENTS`
    python3 "$H" set push_gate block off          # advisory-only (does not block, just prints findings)
    python3 "$H" set push_gate timeout 180        # shared per-round timeout (seconds)
    ```
-   `context_limit` lets the fan-out **skip** an AI when the context is too large for its
-   model window (the cause of "prompt tokens exceed model maximum"), instead of hard-failing
-   — e.g. Codex (~272K) is skipped on a huge diff while Kiro/Agy (~1M) still run. `model`
-   values are charset-validated (letters/digits/`. _ : / - ( )` + spaces — agy tokens like
-   `Gemini 3.1 Pro (High)`; shell metacharacters stay rejected) to keep the fan-out safe.
-   **Multi-model = multi-directional verification**: with `profile deep` (the committed default), every model
-   in an AI's `models` list becomes its own `(ai, model)` fan-out/relay link — one gate pass
-   verifies from each configured model's direction, capped by `consensus.max_calls`. All
-   overrides ride the CLIs' real headless flags (kiro/claude/agy `--model`, codex `-m`), so
-   this works fully non-interactively; see `references/hybrid-gate.md` (default gate) and
-   `references/relay-chain-gate.md` → "Multi-model relay" for how the gates use them.
-   `pr_autofix max_iterations` bounds the `/co-agent:pr-autofix` review→fix→push loop
-   (positive int, default 5). It is a config knob rather than a skill constant because the
-   right number depends on how noisy the repo's review CI is — a slow reviewer wants fewer
-   rounds, a chatty linter more. The skill reads it once at start via
-   `co_agent_config.py pr-autofix-iterations`.
-   `push_gate enabled on` turns on the `git push` PreToolUse gate
-   (`consensus_hooks.py pre-push-gate`) — unlike `pr_gate` (hand-edited in the JSON
-   file directly, no `set` path), `push_gate` is `set`-able because this is where the
-   user is meant to opt in. It round-robins THREE LENSES (correctness/security/scope,
-   not the panel's usual identical-prompt diversity) across gate-eligible peers, so
-   the call count stays fixed at 3 regardless of panel size. 2+ lenses flagging an
-   issue is a hard BLOCK; exactly 1 is framed as "CHAIR JUDGMENT REQUIRED" (a hook
-   can't call Claude directly — this is how the verdict reaches whoever's chairing).
-   Enabling is consent to external fan-out, same as `pr_gate` — and if kiro's own
-   `review.on_push` is ALSO on for this repo, `set push_gate enabled on` warns that
-   both gates firing means every push runs two independent review rounds (not
-   recommended, not blocked). Detail: `CLAUDE.md` "Pre-push Lens Gate".
-   `autosync on` makes the `CLAUDE.md` PostToolUse hook tell Claude to run
-   `/co-agent:sync-context` whenever `AGENTS.md` drifts stale (opt-in; default
-   off = reminder only). It refreshes `AGENTS.md` and the Kiro steering bridge;
-   first-time generation is still done by running the command once.
-3. If the user asks for a setting that isn't headless-settable (e.g. Agy effort),
-   explain why it's not offered and suggest the closest real lever (model, or run
-   that AI interactively). Do **not** invent a setting that the CLI ignores.
+   Key semantics:
+   - `context_limit` — the fan-out **skips** an AI whose model window can't hold the
+     context (the cause of "prompt tokens exceed model maximum") instead of hard-failing:
+     e.g. Codex (~272K) is skipped on a huge diff while Kiro/Agy (~1M) still run.
+   - `model` values are charset-validated (letters/digits/`. _ : / - ( )` + spaces — agy
+     tokens like `Gemini 3.1 Pro (High)`; shell metacharacters stay rejected) to block
+     fan-out injection.
+   - `profile deep` (the committed default) makes every model in an AI's `models` list its
+     own `(ai, model)` fan-out/relay link — one gate pass verifies from each configured
+     model's direction, capped by `consensus.max_calls`. All overrides ride the CLIs' real
+     headless flags, so this works fully non-interactively; gate usage:
+     `references/hybrid-gate.md` (default gate) and `references/relay-chain-gate.md` → "Multi-model relay".
+   - `pr_autofix max_iterations` bounds the `/co-agent:pr-autofix` review→fix→push loop
+     (positive int, default 5). It's a config knob rather than a skill constant because the
+     right bound tracks how noisy the repo's review CI is; the skill reads it via
+     `co_agent_config.py pr-autofix-iterations`.
+   - `push_gate enabled on` turns on the `git push` PreToolUse gate
+     (`consensus_hooks.py pre-push-gate`). Unlike `pr_gate` (hand-edited in the JSON file
+     directly, no `set` path), `push_gate` is `set`-able because this is where the user is
+     meant to opt in — **enabling is consent to external fan-out**, same as `pr_gate`. If
+     kiro's own `review.on_push` is ALSO on for this repo, warn that both gates firing
+     means every push runs two independent review rounds (not recommended, not blocked).
+     Gate mechanics (3 lenses, verdict thresholds) are canonical in the plugin `CLAUDE.md`
+     → "Pre-push Lens Gate".
+   - `autosync on` makes the `CLAUDE.md` PostToolUse hook tell Claude to re-run
+     `/co-agent:sync-context` when `AGENTS.md` drifts stale (default off = reminder only;
+     first-time generation is still done by running the command once).
+3. If the user asks for a setting that isn't headless-settable (e.g. Agy effort), explain
+   why it's not offered and point at the closest real lever (model, or run that AI
+   interactively).
 4. For Kiro model values, you may enumerate valid models with
    `kiro-cli chat --list-models --format json` and show the user the choices.
 
@@ -134,43 +132,33 @@ placement points:
 | **Verify panel** (V phase) | narrow and strong | The gate automatically uses `pairs --profile default` — each AI's single `model` becomes the verify model | Set `model` to each AI's strongest tier |
 | **Implementer** (harness write path) | generation-focused | `set harness implementer <ai>` + `implementer_model <m>` / `implementer_effort <e>` (falls back to the panel's `model`/`effort` if unset) | For a subscription (flat-rate) CLI (the default assumption), use **that CLI's strongest generation model** — fewer fix rounds directly saves wall-clock time. Only lower to a cheaper model when metered billing applies, and use the review gate as a backstop |
 
-- **Caution — `effort` is not phase-split**: the panel `effort` (codex) applies
-  identically to review calls in **both** find and verify (`--profile` only splits the
-  model pairing). So setting `set codex effort low` to make find cheap also drops verify
-  to low, breaking the "verify = strongest tier" placement — keep the panel `effort` at
-  **the level appropriate for verify**, and lower only the write path via
-  `implementer_effort`.
+- **`effort` is not phase-split** (easy to trip on silently): the panel `effort` (codex)
+  applies identically to review calls in **both** find and verify — `--profile` only
+  splits the model pairing. So `set codex effort low` to cheapen find also drops verify to
+  low, breaking the "verify = strongest tier" placement. Keep the panel `effort` at the
+  verify-appropriate level and lower only the write path via `implementer_effort`.
 - `implementer_model`/`implementer_effort` apply **only to impl-flags (the write path)**
   and are **stored per implementer** (`harness.implementer_models.<ai>` /
-  `implementer_efforts.<ai>`) — keyed by the explicit `harness.implementer` at the time
-  of setting, so **`implementer` must be set first** (exits with code 2 if unset), and
-  even after switching with `set harness implementer <other>`, the previous AI's entry
-  **stays dormant and never leaks into another CLI's `--model`** (it's reused when you
-  switch back; `show` marks it active/dormant). Since model names carry no provider
-  prefix, only per-AI keying is safe for both fallback and explicit switching. The
-  review/gate path (`flags`) continues to use the panel settings, so the same AI (codex)
-  can end up using a strong model for review and a cheap one for implementation.
-  `implementer_effort` is codex-only — storing it is refused outright when the
-  implementer is agy (agy's headless CLI has no effort flag).
-- `pairs`/`matrix`'s `--profile default|deep` is a per-call override, used by the hybrid
-  gate to split find (deep) from verify (default) — it does not touch the config file.
-- Rationale: for discovery (find), diversity of perspective drives performance; for
-  verification (verify) and chair judgment, a single model's strength drives it. See
-  "Role tiering" in `references/hybrid-gate.md` for the detailed flow.
-- **The cost-model assumption is a per-peer property, not global**: for a subscription
-  (flat-rate) CLI, marginal token cost ≈ 0, so tiering's purpose isn't dollar savings but
-  **(1) wall-clock** (a strong generation model = fewer fix rounds), **(2) rate-limit
-  quota** (the real scarce resource under a subscription — the usage window), and **(3)
-  chair triage noise** (widening the finder pool requires more digest-quality
-  management). The Claude Code host's default panel (kiro/codex/agy) generally satisfies
-  the subscription assumption, but **this flips when the host changes**: under a Codex
-  host, Claude becomes a peer (`claude -p`, see adapters), and if that headless call is
-  billed by API key, that peer is **metered** — for that peer specifically, the cost-
-  saving interpretation in the table above (cheap model for find, down-tiering) is
-  restored, and it's worth noting in particular that the hybrid gate's 2-phase
-  (find+verify) structure gets billed twice per round. There is no per-peer `billing
-  flat|metered` config key yet (a candidate improvement) — for now, the lever is manually
-  adjusting the per-AI `model`/`models` list to match that peer's billing model.
+  `implementer_efforts.<ai>`), keyed by the explicit `harness.implementer` at set time —
+  so `implementer` must be set first (exits with code 2 if unset). After switching with
+  `set harness implementer <other>`, the previous AI's entry stays dormant and never leaks
+  into another CLI's `--model` (reused when you switch back; `show` marks active/dormant;
+  re-validated at emit time). `implementer_effort` is codex-only — refused outright when
+  the implementer is agy (agy's headless CLI has no effort flag). The review/gate path
+  (`flags`) keeps the panel settings, so the same AI (codex) can review on a strong model
+  and implement on a cheap one.
+- `pairs`/`matrix`'s `--profile default|deep` is a per-call override the hybrid gate uses
+  to split find (deep) from verify (default) — it never touches the config file. Detailed
+  flow: "Role tiering" in `references/hybrid-gate.md`.
+- **Billing is a per-peer property, not global**: under a flat-rate subscription (the
+  usual case for the Claude Code host's kiro/codex/agy panel), marginal token cost ≈ 0, so
+  tiering buys **(1) wall-clock** (strong generation model = fewer fix rounds), **(2)
+  rate-limit quota** (the real scarce resource — the usage window), and **(3) chair triage
+  noise** — not dollars. This flips per peer: under a Codex host, the Claude peer
+  (`claude -p`, see adapters) may be API-key metered — for that peer the cheap-model-for-
+  find, down-tiering reading is restored (and the hybrid gate's find+verify structure
+  bills twice per round). There is no per-peer `billing flat|metered` key yet — the lever
+  is that peer's `model`/`models` list.
 
-Always finish by echoing the effective config (`python3 "$H" show --host "$HOST"`) so the user sees
-exactly what the panel will use.
+Finish by echoing the effective config (`python3 "$H" show --host "$HOST"`) so the user
+sees exactly what the panel will use.

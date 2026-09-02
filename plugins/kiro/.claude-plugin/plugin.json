@@ -39,6 +39,20 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-routing.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash -c 'for pid in $(pgrep -f \"${KIRO_REAP_PATTERN:-kiro-cli/kas/.*/@kiro/agent/dist/server/acp-server\\.js}\" 2>/dev/null); do [ \"$(ps -o ppid= -p \"$pid\" 2>/dev/null | tr -d \" \")\" = \"1\" ] && kill \"$pid\" 2>/dev/null; done; exit 0'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'for pid in $(pgrep -f \"${KIRO_REAP_PATTERN:-kiro-cli/kas/.*/@kiro/agent/dist/server/acp-server\\.js}\" 2>/dev/null); do [ \"$(ps -o ppid= -p \"$pid\" 2>/dev/null | tr -d \" \")\" = \"1\" ] && kill \"$pid\" 2>/dev/null; done; exit 0'"
           }
         ]
       }

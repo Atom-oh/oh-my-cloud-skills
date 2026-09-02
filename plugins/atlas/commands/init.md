@@ -5,8 +5,9 @@ allowed-tools: Read, Write, Glob, Grep, Bash, AskUserQuestion
 
 # atlas: init
 
-Bootstrap the per-topic doc wiki for this repository. Nothing is written until the user
-approves the proposed doc set in Step 2.
+Bootstrap the per-topic doc wiki for this repository: a small set of frontmatter-filled
+pages a future session can select from `INDEX.md` alone, each drift-checkable from day
+one. Nothing is written until the user approves the proposed doc set in Step 2.
 
 Resolve paths once, up front, and reuse them in every step:
 
@@ -17,11 +18,10 @@ WIKI_REL="$(python3 "$SK/atlas_config.py" atlas-root --root "$ROOT")"
 HEAD_SHA="$(git rev-parse --short HEAD)"
 ```
 
-`--root` on every atlas script takes the REPOSITORY root, never the wiki directory.
-The wiki directory is derived internally as `<repo>/<config value>`, so passing
-`$ROOT/$WIKI_REL` there would join the config value onto it a second time and write
-every skeleton into a nested wiki-inside-the-wiki (`docs/atlas/docs/atlas`). Always
-pass `--root "$ROOT"`.
+`--root` on every atlas script takes the REPOSITORY root, never the wiki directory —
+the wiki directory is derived internally as `<repo>/<config value>`, so passing
+`$ROOT/$WIKI_REL` would join the config value on twice and write every skeleton into a
+nested wiki-inside-the-wiki. Always pass `--root "$ROOT"`.
 
 ## Step 1: Scan the repository
 
@@ -43,12 +43,12 @@ Draft one candidate entry per topic worth a page: a filename, a one-sentence
 `description`, and 1-3 `covers` globs derived from the module paths that doc will
 describe (prefer one directory-scoped `**` glob per module — see
 `${CLAUDE_PLUGIN_ROOT}/skills/atlas/references/atlas-templates.md`, "How covers is
-drafted"). Keep the set small: 3-8 docs for a typical repo.
+drafted"). Keep the set small enough that `INDEX.md` stays readable in one pass — a
+page per genuine topic, not per file.
 
 Present the full list via `AskUserQuestion` — filename, description, and covers globs
 for every proposed doc — with options to approve all, trim the list, or cancel.
-**Write nothing until the user approves.** If the user trims, re-confirm the reduced
-set before continuing.
+**Write nothing until the user has approved a set.**
 
 ## Step 3: Write the skeletons
 
@@ -57,8 +57,8 @@ For each approved doc, copy the doc skeleton from
 frontmatter:
 
 - `title` — the topic, phrased the way a teammate would say it.
-- `description` — the drafted sentence from Step 2 (load-bearing words first; the
-  INDEX truncates at 80 characters).
+- `description` — the drafted sentence from Step 2; load-bearing words first (the
+  INDEX generator truncates long descriptions — `references/frontmatter-schema.md`).
 - `covers` — the approved globs, repo-root-relative, block-list form.
 - `related` — sibling filenames from this same batch where a real edge exists;
   otherwise `related: []`.

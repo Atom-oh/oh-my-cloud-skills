@@ -56,7 +56,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'if echo \"$TOOL_OUTPUT\" | grep -qiE \"Access[ -]?Denied|Permission denied|not authorized to perform|Unauthorized|Forbidden|ThrottlingException|Throttled|TooManyRequests|SlowDown|LimitExceeded|AuthFailure|SignatureDoesNotMatch|ExpiredToken|Validation(Error|Exception)|NotFound|ServiceUnavailable|InternalServer|FailureReason|An error occurred\"; then echo \"AWS error pattern detected in output. Consider capturing for incident context.\"; fi'"
+            "command": "bash -c 'out=$(jq -r \"(.tool_response // .tool_output // empty) | tostring\" 2>/dev/null); if grep -qiE \"Access[ -]?Denied|Permission denied|not authorized to perform|Unauthorized|Forbidden|ThrottlingException|Throttled|TooManyRequests|SlowDown|LimitExceeded|AuthFailure|SignatureDoesNotMatch|ExpiredToken|Validation(Error|Exception)|NotFound|ServiceUnavailable|InternalServer|FailureReason|An error occurred\" <<<\"$out\"; then echo \"AWS error pattern detected in output. Consider capturing for incident context.\"; fi'"
           }
         ]
       }

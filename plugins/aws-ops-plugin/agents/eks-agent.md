@@ -189,12 +189,12 @@ assigned domain, report, then signal completion. This agent's result table is:
 | System Pods | OK/WARN/CRIT | kube-system pod status |
 | Workloads | OK/WARN/CRIT | CrashLoop/Pending pods |
 
-Report the candidate root cause, the recommended actions, and the verification commands
-alongside it.
-
 ---
 
 ## Output Format
+
+Default shape for a direct (single-domain) answer — nothing parses it, so adapt it to the
+question. Team reports use the Team Collaboration table above instead.
 
 ```
 ## Diagnosis

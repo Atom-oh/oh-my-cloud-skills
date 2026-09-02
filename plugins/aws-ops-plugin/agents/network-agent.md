@@ -199,12 +199,12 @@ assigned domain, report, then signal completion. This agent's result table is:
 | DNS Resolution | OK/WARN/CRIT | CoreDNS status, resolution success rate |
 | Security Groups | OK/WARN/CRIT | Inbound/outbound rules |
 
-Report the candidate root cause, the recommended actions, and the verification commands
-alongside it.
-
 ---
 
 ## Output Format
+
+Default shape for a direct (single-domain) answer — nothing parses it, so adapt it to the
+question. Team reports use the Team Collaboration table above instead.
 
 ```
 ## Network Diagnosis

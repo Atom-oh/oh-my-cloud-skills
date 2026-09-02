@@ -37,6 +37,29 @@ future edit against it.
 | 8 | No secrets in environment variables — use Secrets Manager or SSM Parameter Store | Env vars are readable by anyone holding `describe`-class permissions and they leak into logs, task definitions, and CI output |
 | 9 | PII in DynamoDB needs KMS + TTL; S3 Block Public Access always on; never delete CloudTrail logs | Data-layer defaults: encryption and expiry bound the blast radius of a leak, Block Public Access is the only setting that still holds when a bucket policy is wrong, and a deleted audit trail destroys the evidence of every other violation |
 
+## Audit Workflow
+
+### Step 1: Scope — route by what is being audited
+
+```mermaid
+graph TD
+    A[Security review request] --> B{Subject?}
+    B -->|IaC / PR diff| C[Scan the diff against the nine mandates]
+    B -->|Live cluster| D[Cluster posture audit: IAM + network + compliance]
+    B -->|App design / code / pentest| E[Delegate to AWS Security Agent]
+    B -->|Per-diff adversarial review| F[co-agent plugin]
+    C --> G[Report: each violation CRITICAL, resource + mandate named]
+    D --> G
+```
+
+### Step 2: Collect evidence
+
+Work through the audit domains below, gathering evidence with the Quick Audit Commands and the per-domain procedures in `references/`. A finding without the resource name and the command that surfaced it is not evidence.
+
+### Step 3: Report
+
+Rank findings by severity in the Output Format. A mandate violation is always CRITICAL; everything else is judged by exploitability and blast radius.
+
 ## Audit Domains
 
 ### 1. IAM & Authentication
@@ -62,10 +85,8 @@ For application-layer security (beyond cluster/IAM posture), delegate to **AWS
 Security Agent** (frontier agent): design review, full-repo/PR code security
 review, and on-demand penetration testing validated with proof-based exploit
 paths + fix PRs. This skill covers cloud/cluster posture; Security Agent covers
-the app. See `references/aws-security-agent.md`.
-
-> Scope split: **AWS Security Agent** = app design/code/pentest · **this skill** =
-> EKS/IAM/network/CIS posture · **`co-agent` plugin** = per-diff adversarial review.
+the app; the `co-agent` plugin covers per-diff adversarial review (the routing
+tree above). See `references/aws-security-agent.md`.
 
 ## Quick Audit Commands
 

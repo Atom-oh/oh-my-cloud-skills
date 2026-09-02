@@ -11,10 +11,11 @@ PPTX brand extraction (Phase 1).
 > same markup renders with correct contrast in both themes.
 >
 > **Palette identity**: the default theme is grounded in AWS's own design language — light mode
-> uses a console-gray canvas (`#eaedee`) + white cards + Squid Ink–family text (`#0f141a`; the
-> brand reference color Squid Ink itself is `#232F3E`) + a Smile Orange accent (`#ec7211`) +
-> Cloudscape blue text accent (`#0972d3`); dark mode uses squid-ink night (`#0f1b2a` family) +
-> `#ff9900`. The old warm-paper look is available as an opt-in via `theme: { preset: paper }`.
+> uses a console-gray canvas (`--bg-primary`) + white cards + Squid Ink–family text + a
+> Smile Orange accent + the Cloudscape blue text accent (`--text-accent`); dark mode uses the
+> squid-ink night surface family + AWS orange. The actual color values live only in
+> `assets/theme.css` (`.theme-light` / `.theme-dark` scopes) — copy tokens from this doc, never
+> hex. The old warm-paper look is available as an opt-in via `theme: { preset: paper }`.
 > For background/selection principles, see [design-direction.md](design-direction.md).
 
 ---

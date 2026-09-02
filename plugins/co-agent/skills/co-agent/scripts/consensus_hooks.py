@@ -352,9 +352,18 @@ def ev_post_tooluse(root):
             s["consec_failures"] = n
             cs.write_state(root, s)
             if n >= STUCK_LIMIT:
-                print(f"[co-agent consensus] {n} consecutive failing test runs — the P3 loop looks STUCK. "
-                      f"Revert to the last checkpoint and abort this task "
-                      f"(`consensus_state.py task-abort . {s.get('task_index')}`).")
+                # Plain stdout on a PostToolUse exit 0 is transcript-only under the hook
+                # contract — the model never sees it. The stuck notice is the whole point of
+                # this detection, so it rides in a JSON envelope's additionalContext (the
+                # channel the model DOES see). Posture unchanged: still advisory, still exit 0.
+                print(json.dumps({"hookSpecificOutput": {
+                    "hookEventName": "PostToolUse",
+                    "additionalContext": (
+                        f"[co-agent consensus] {n} consecutive failing test runs — the P3 loop "
+                        f"looks STUCK. Revert to the last checkpoint and abort this task "
+                        f"(`consensus_state.py task-abort . {s.get('task_index')}`)."
+                    ),
+                }}))
     return 0
 
 
@@ -376,12 +385,30 @@ def _git(root, *args):
         return ""
 
 
+_NOTICES = []
+
+
 def _notify(msg):
-    """Emit an exit-0 advisory/skip notice on BOTH stdout and stderr. Claude Code reliably
-    surfaces hook stderr to the model only on a blocking exit (2); duplicating to stdout makes
-    advisory/skip outcomes visible too (so 'host decides' / 'gate skipped' is never silent)."""
+    """Queue an exit-0 advisory/skip notice. Under the hook contract, PLAIN stdout/stderr on
+    exit 0 is transcript-only — it never reaches the model; only exit-2 stderr or a JSON
+    envelope (systemMessage / hookSpecificOutput.additionalContext) does. So: write the
+    human-readable copy to stderr immediately (transcript/debug), and buffer the message for
+    `_flush_notices`, which main() calls just before an exit-0 return to emit exactly ONE
+    JSON envelope on stdout (per-call envelopes would concatenate into unparseable stdout —
+    _notify can fire more than once per run, e.g. lens-assignment then PASS). Blocking paths
+    (exit 2) never call _notify — they write stderr and return 2, which the contract already
+    surfaces on its own."""
     sys.stderr.write(msg)
-    sys.stdout.write(msg)
+    _NOTICES.append(msg)
+
+
+def _flush_notices():
+    """Emit every buffered _notify message as ONE `{"systemMessage": ...}` envelope on stdout
+    (event-agnostic per the hook contract, so the same helper serves every event this script
+    handles). No-op when nothing was buffered, so no-op events stay output-free."""
+    if _NOTICES:
+        sys.stdout.write(json.dumps({"systemMessage": "".join(_NOTICES).rstrip("\n")}) + "\n")
+        del _NOTICES[:]
 
 
 def _git_diff(root, spec):
@@ -1119,23 +1146,36 @@ def main():
         return 0
     event = a[0]
     root = a[a.index("--root") + 1] if "--root" in a and a.index("--root") + 1 < len(a) else "."
+    if root == ".":
+        # Hook cwd is wherever the Bash tool last ran, so a literal "." mis-roots config and
+        # consensus-state lookups from a subdirectory/worktree cwd. Resolve the repo toplevel
+        # via the hardened _git helper (NOT a bare subprocess — _git neutralizes repo-local
+        # fsmonitor/hooksPath/pager exec surfaces); fall back to "." on failure (fail-open).
+        root = _git(".", "rev-parse", "--show-toplevel") or "."
     try:
         if event == "stop":
-            return ev_stop(root)
-        if event == "post-tooluse":
-            return ev_post_tooluse(root)
-        if event == "pre-pr-gate":
-            return ev_pre_pr_gate(root)
-        if event == "pre-push-gate":
-            return ev_pre_push_gate(root)
-        return 0
+            rc = ev_stop(root)
+        elif event == "post-tooluse":
+            rc = ev_post_tooluse(root)
+        elif event == "pre-pr-gate":
+            rc = ev_pre_pr_gate(root)
+        elif event == "pre-push-gate":
+            rc = ev_pre_push_gate(root)
+        else:
+            rc = 0
     except Exception as e:
         # Fail-open (never wedge PR creation on a gate bug) but NOT silent — surface the error
         # to stderr with a traceback so a swallowed bug is debuggable, then allow the action.
         import traceback
         sys.stderr.write(f"[co-agent {event}] internal error (fail-open): {e}\n")
         traceback.print_exc(file=sys.stderr)
-        return 0
+        rc = 0
+    if rc == 0:
+        # On exit 2 the stderr channel already reaches the model; on exit 0 only this JSON
+        # envelope does. ev_stop / ev_post_tooluse print their own single envelope and never
+        # call _notify, so at most one JSON object ever lands on stdout.
+        _flush_notices()
+    return rc
 
 
 if __name__ == "__main__":
