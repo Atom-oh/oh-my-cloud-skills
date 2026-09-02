@@ -1,6 +1,6 @@
 {
   "name": "atlas",
-  "version": "1.16.0",
+  "version": "1.17.0",
   "description": "A per-topic documentation wiki for LLM consumption that keeps itself in sync with the code. Docs declare which files they cover; a PreToolUse(Bash) hook detects drift just before `git push` and can auto-fix the affected docs so the fix rides along in that same push.",
   "author": {
     "name": "atomoh"

@@ -15,7 +15,7 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Content Creation",
-      "version": "1.16.0"
+      "version": "1.17.0"
     },
     {
       "name": "aws-ops-plugin",
@@ -28,7 +28,7 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Cloud Operations",
-      "version": "1.16.0"
+      "version": "1.17.0"
     },
     {
       "name": "kiro-power-converter",
@@ -41,7 +41,7 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Conversion",
-      "version": "1.16.0"
+      "version": "1.17.0"
     },
     {
       "name": "co-agent",
@@ -54,7 +54,7 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Collaboration",
-      "version": "1.16.0"
+      "version": "1.17.0"
     },
     {
       "name": "agentcore-creator",
@@ -67,7 +67,7 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Conversion",
-      "version": "1.16.0"
+      "version": "1.17.0"
     },
     {
       "name": "kiro",
@@ -80,7 +80,7 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Collaboration",
-      "version": "1.16.0"
+      "version": "1.17.0"
     },
     {
       "name": "atlas",
@@ -93,7 +93,7 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Documentation",
-      "version": "1.16.0"
+      "version": "1.17.0"
     }
   ]
 }

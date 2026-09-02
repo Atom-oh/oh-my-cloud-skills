@@ -1,6 +1,6 @@
 {
   "name": "atlas",
-  "version": "1.16.0",
+  "version": "1.17.0",
   "description": "A self-syncing per-topic documentation wiki for LLM consumption — docs declare the files they cover, drift is detected mechanically against a git rev anchor, and stale docs can be auto-fixed before a push",
   "author": {
     "name": "atomoh"

@@ -1,6 +1,6 @@
 {
   "name": "kiro",
-  "version": "1.16.0",
+  "version": "1.17.0",
   "description": "Claude/Codex plans and verifies, Kiro CLI implements on subscription credits — a cost-savings implementation-delegation workflow using an isolated git worktree and scope-guarded diffs",
   "author": {
     "name": "atomoh"
