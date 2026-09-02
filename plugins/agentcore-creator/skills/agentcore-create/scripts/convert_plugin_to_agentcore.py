@@ -28,28 +28,38 @@ from pathlib import Path
 # Constants
 # ---------------------------------------------------------------------------
 
-# NOTE: keep in sync with references/agentcore-mapping-rules.md model table.
-# `opus` resolves to the current most-capable Opus (4.8). 4.6/4.7 remain valid
-# IDs for pinned deployments; the modern-Opus param contract (see
-# generate_agent_code below) applies to 4.7 and 4.8 alike.
+# SINGLE SOURCE OF TRUTH for alias -> Bedrock ID (the reference docs point here).
+# Aliases float to the current Claude 5 generation: `opus` -> Opus 5 (same price
+# as Opus 4.8, stronger), `sonnet` -> Sonnet 5 (cheaper than Sonnet 4.6). 4.6/4.7/4.8
+# stay valid IDs for pinned deployments; the no-sampling / no-`budget_tokens` param
+# contract (see generate_agent_code below) applies to Opus 4.7+, Sonnet 5 and Fable 5.
 MODEL_MAP = {
-    "sonnet": "us.anthropic.claude-sonnet-4-6",
-    "opus": "us.anthropic.claude-opus-4-8",
+    "sonnet": "us.anthropic.claude-sonnet-5",
+    "opus": "us.anthropic.claude-opus-5",
     "haiku": "us.anthropic.claude-haiku-4-5",
     "fable": "us.anthropic.claude-fable-5",
 }
 
-DEFAULT_MODEL = "us.anthropic.claude-sonnet-4-6"
+DEFAULT_MODEL = "us.anthropic.claude-sonnet-5"
 
 # Models that accept the `effort` request field (see agentcore-mapping-rules.md
 # "Model-Specific Compatibility Notes"). Haiku 4.5 does NOT support it.
 EFFORT_CAPABLE_MODELS = {
+    "us.anthropic.claude-opus-5",
+    "us.anthropic.claude-sonnet-5",
     "us.anthropic.claude-opus-4-8",
     "us.anthropic.claude-opus-4-7",
     "us.anthropic.claude-sonnet-4-6",
     "us.anthropic.claude-fable-5",
 }
 DEFAULT_EFFORT = "high"
+
+# Models whose safety classifiers can return stop_reason="refusal" as an HTTP 200 —
+# generated code must treat that as a distinct outcome, not a success.
+REFUSAL_CHECK_MODELS = {
+    "us.anthropic.claude-fable-5",
+    "us.anthropic.claude-opus-5",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -290,13 +300,13 @@ def generate_system_prompt(agent: dict, skills: list) -> str:
 
 def generate_agent_code(agent_name: str, model_id: str, framework: str) -> str:
     """Generate Python agent code with BedrockAgentCoreApp wrapper."""
-    # Modern-Opus (4.7/4.8)/Fable 5 compatibility note: these models reject
+    # Opus 4.7+/Sonnet 5/Fable 5 compatibility note: these models reject
     # temperature/top_p/top_k and thinking.type="enabled" with budget_tokens.
     # Effort-capable models (see EFFORT_CAPABLE_MODELS) get adaptive thinking +
     # output_config.effort wired in below -- this used to be documented-only
     # in agentcore-mapping-rules.md but never actually emitted here.
     effort_capable = model_id in EFFORT_CAPABLE_MODELS
-    is_fable = model_id == "us.anthropic.claude-fable-5"
+    needs_refusal_check = model_id in REFUSAL_CHECK_MODELS
 
     if framework == "strands":
         if effort_capable:
@@ -310,9 +320,9 @@ def generate_agent_code(agent_name: str, model_id: str, framework: str) -> str:
                 f'        # {model_id} does not support adaptive thinking / effort\n'
             )
         refusal_check = ""
-        if is_fable:
+        if needs_refusal_check:
             refusal_check = (
-                '\n    # Fable 5 returns stop_reason="refusal" as an HTTP 200, not an error --\n'
+                '\n    # Fable 5 / Opus 5 return stop_reason="refusal" as an HTTP 200, not an error --\n'
                 '    # check it explicitly rather than assuming any 200 response is usable.\n'
                 '    if getattr(result, "stop_reason", None) == "refusal":\n'
                 '        return {"result": "", "refused": True}\n'
@@ -367,9 +377,9 @@ if __name__ == "__main__":
                 f'            # {model_id} does not support adaptive thinking / effort\n'
             )
         refusal_check = ""
-        if is_fable:
+        if needs_refusal_check:
             refusal_check = (
-                '        # Fable 5 returns stopReason="refusal" as an HTTP 200, not an error --\n'
+                '        # Fable 5 / Opus 5 return stopReason="refusal" as an HTTP 200, not an error --\n'
                 '        # check it explicitly rather than assuming any 200 response is usable.\n'
                 '        if response["stopReason"] == "refusal":\n'
                 '            return ""\n'

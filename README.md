@@ -70,6 +70,12 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 - **`/kiro:setup`** — detect kiro-cli, probe usability, list models, and write the `.kiro/agents/*.json` custom agents the pipeline uses
 - **Web search delegation (opt-in)** — sessions without a `WebSearch` tool (Claude Code on Bedrock) can route web searches through kiro-cli's native `web_search`; only the query text leaves the machine, and the search agent is search-only (no filesystem/shell)
 
+*Self-Syncing Docs Wiki (atlas):*
+- **Per-topic docs written for LLM consumption** — each doc declares the files it `covers` and a `code_rev` anchor; an `INDEX.md` an agent reads first replaces cramming everything into `CLAUDE.md`
+- **Mechanical drift detection** — staleness is a glob match over `git diff --name-only` between the anchor and `HEAD`, no LLM pass, so the check is free
+- **Confined headless repair** — `/atlas:sync` runs one write-confined `claude -p` per stale doc and commits only the synced docs + `INDEX.md`
+- **Push-time auto-sync (opt-in)** — a `PreToolUse` hook can fix stale docs just before `git push` so the doc fix rides in the same push; off by default because covered-file diffs are sent to Anthropic, and always fail-open (a broken doc-syncer never wedges a push)
+
 ---
 
 ## Installation

@@ -308,7 +308,7 @@ Skill: `kiro-convert` — interactive workflow for plugin-to-power conversion wi
 |-------|---------|
 | `agentcore-creator-agent` | Converts Claude Code plugins to Bedrock AgentCore — config-only to **harness** (GA 2026-06: skills attach unchanged as git/s3 SKILL.md sources, `CreateHarness`/`InvokeHarness`) or Strands code-gen to Runtime (Gateway, Memory, Lambda) |
 
-Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Skill-First Build, AgentCore Convert, Verify — deployment itself is §4.5 of Convert) with `references/` and `scripts/` subdirectories. Phase 2 decides the deploy target (harness-vs-Runtime grid in `references/agentcore-harness.md`); Phase 4 is dual-path (A: harness config, B: Runtime code-gen). The `opus` alias resolves to `us.anthropic.claude-opus-4-8`; modern-Opus (4.7/4.8) param contract (no `temperature`/`top_p`/`top_k`, no `thinking.type:"enabled"`+`budget_tokens`) is documented in `references/agentcore-mapping-rules.md`.
+Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Skill-First Build, AgentCore Convert, Verify — deployment itself is §4.5 of Convert) with `references/` and `scripts/` subdirectories. Phase 2 decides the deploy target (harness-vs-Runtime grid in `references/agentcore-harness.md`); Phase 4 is dual-path (A: harness config, B: Runtime code-gen). Model aliases resolve through `MODEL_MAP` in `scripts/convert_plugin_to_agentcore.py` (the single source — currently the Claude 5 generation: `opus` -> Opus 5, `sonnet` -> Sonnet 5); the no-sampling / no-`budget_tokens` param contract (Opus 4.7+, Sonnet 5, Fable 5) is documented in `references/agentcore-mapping-rules.md`.
 
 ### co-agent (5 agents, 3 skills, 6 commands)
 

@@ -10,7 +10,7 @@ Specification for Amazon Bedrock AgentCore deployment artifact formats generated
 {
   "agentName": "<agent-name>",
   "description": "<agent-description>",
-  "modelId": "us.anthropic.claude-sonnet-4-6",
+  "modelId": "us.anthropic.claude-sonnet-5",
   "instruction": "<path-to-system-prompt>",
   "tools": [
     {
@@ -73,9 +73,9 @@ async def invoke(payload, context):
     model = BedrockModel(
         model_id="<bedrock-model-id>",
         region_name="<region>",
-        max_tokens=16000,  # 4.7/4.8/Fable-5 compatible default; stream for >16K outputs
+        max_tokens=16000,  # Claude 5 / Opus 4.7+ compatible default; stream for >16K outputs
         # Emitted (not commented out) when the model is effort-capable
-        # (Opus 4.7/4.8, Sonnet 4.6, Fable 5) -- see EFFORT_CAPABLE_MODELS
+        # (Opus 5, Sonnet 5, Opus 4.7/4.8, Sonnet 4.6, Fable 5) -- see EFFORT_CAPABLE_MODELS
         # in scripts/convert_plugin_to_agentcore.py:
         additional_request_fields={"thinking": {"type": "adaptive"}, "output_config": {"effort": "high"}},
     )
@@ -93,12 +93,12 @@ if __name__ == "__main__":
     app.run()
 ```
 
-> **Modern Opus (4.7/4.8) / Fable 5 compatibility note**: Opus 4.7/4.8 and Fable 5 reject
+> **Opus 4.7+ / Sonnet 5 / Fable 5 compatibility note**: these models reject
 > `temperature`/`top_p`/`top_k` and `thinking.type: "enabled"` (with `budget_tokens`) —
-> both return a 400 error. The `opus` alias currently maps to 4.8, and the `fable` alias
-> maps to Fable 5. The template above avoids all of that, and for models that support
-> `effort`, adaptive thinking + effort is actually turned on in the generated code (not
-> just left as a comment). Fable 5 needs a separate check because `stop_reason ==
+> both return a 400 error. The `opus` alias currently maps to Opus 5, `sonnet` to Sonnet 5,
+> and `fable` to Fable 5 (`MODEL_MAP` is the source). The template above avoids all of that,
+> and for models that support `effort`, adaptive thinking + effort is actually turned on in
+> the generated code (not just left as a comment). Fable 5 and Opus 5 need a separate check because `stop_reason ==
 > "refusal"` comes back as HTTP 200; on Bedrock, a 30-day data-retention
 > (`provider_data_sharing`) opt-in is required before you can call it (there is no
 > zero-retention option). Details: `references/agentcore-mapping-rules.md` →

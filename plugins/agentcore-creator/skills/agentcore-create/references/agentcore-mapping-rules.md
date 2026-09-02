@@ -41,7 +41,7 @@ compatibility caveats".
 | `name` | Agent name | Preserve as-is; validate against AgentCore naming rules (alphanumeric + hyphens, 1-128 chars) |
 | `description` | Agent description | Preserve; strip trigger keyword list (moved to routing config) |
 | `tools` | Tool permissions | Map to AgentCore tool list: `Read`/`Glob`/`Grep` -> knowledge retrieval, `Bash` -> code execution, `Write`/`Edit` -> file operations |
-| `model` | Bedrock model ID | `sonnet` -> `us.anthropic.claude-sonnet-4-6`, `opus` -> `us.anthropic.claude-opus-4-8`, `haiku` -> `us.anthropic.claude-haiku-4-5`, `fable` -> `us.anthropic.claude-fable-5` (keep in sync with `MODEL_MAP` in `scripts/convert_plugin_to_agentcore.py`) |
+| `model` | Bedrock model ID | `MODEL_MAP` in `scripts/convert_plugin_to_agentcore.py` is the single source of truth — currently `sonnet` -> Sonnet 5, `opus` -> Opus 5, `haiku` -> Haiku 4.5, `fable` -> Fable 5 (all `us.anthropic.*` inference-profile IDs) |
 | `skills` | System prompt sections | Each referenced skill's SKILL.md body merged into system prompt |
 | `mcpServers` | Gateway targets | Each server becomes a Gateway target definition |
 
@@ -219,20 +219,36 @@ agentcore destroy       # Tear down
 
 Generated agent code uses `BedrockModel(model_id=...)` via Strands. Different Claude model versions on Bedrock have different parameter requirements — the generated code must respect these or requests will return 400.
 
-### Opus 4.8 (`us.anthropic.claude-opus-4-8`) — current target for the `opus` alias
+### Opus 5 / Sonnet 5 (`us.anthropic.claude-opus-5`, `us.anthropic.claude-sonnet-5`) — current `opus` / `sonnet` aliases
 
-Opus 4.8 is the current most-capable Opus and is what the `opus` alias resolves to in `MODEL_MAP`. It inherits the Opus 4.7 parameter contract:
+The Claude 5 generation is what `MODEL_MAP` resolves the aliases to. Opus 5 is the current
+most-capable Opus at the same price as Opus 4.8; Sonnet 5 is cheaper than Sonnet 4.6 and
+supersedes it as the balanced default. Both keep the Opus 4.7 parameter contract (below)
+with two additions the generated code must respect:
+
+- **Thinking is on by default** — omitting `thinking` runs adaptive thinking (unlike Opus
+  4.7/4.8, where omitting it runs without thinking). `thinking.type: "disabled"` is accepted
+  on Opus 5 only at `effort` `high` or below (400 at `xhigh`/`max`) — prefer lowering
+  `effort` over disabling thinking.
+- **Refusals return `stop_reason: "refusal"` as an HTTP 200** on Opus 5 (as on Fable 5) —
+  the generator emits the explicit check for both (`REFUSAL_CHECK_MODELS`).
+
+`effort` is supported on both (`low`–`max`); `xhigh` is the sweet spot for coding/agentic work.
+
+### Opus 4.8 (`us.anthropic.claude-opus-4-8`) — pinned deployments
+
+Opus 4.8 remains a valid ID for deployments that must stay pinned. It inherits the Opus 4.7 parameter contract:
 
 - **Removed and will 400 if sent**: sampling params `temperature`, `top_p`, `top_k`; extended thinking `thinking.type: "enabled"` with `budget_tokens`.
 - For thinking control: `thinking.type: "adaptive"`. For thinking display: `thinking.display: "summarized"` (default `"omitted"`).
 - `effort` is supported (Opus 4.5+): `xhigh` for coding/agentic, `high` for intelligence-sensitive, `medium` for balanced.
 - Budget output tokens generously; re-baseline `max_tokens` with `count_tokens()` rather than reusing 4.6/4.7 estimates.
 
-> Confirm the exact Bedrock inference-profile ID and any 4.8-specific output ceiling against the current AWS Bedrock model catalog before pinning in production. 4.6/4.7 remain valid IDs for deployments that must stay pinned.
+> Confirm the exact Bedrock inference-profile ID and output ceiling against the current AWS Bedrock model catalog before pinning in production. 4.6/4.7/4.8 remain valid IDs for deployments that must stay pinned.
 
 ### Fable 5 (`us.anthropic.claude-fable-5`, also `anthropic.claude-fable-5` / `global.anthropic.claude-fable-5`)
 
-Fable 5 extends the Opus 4.8 adaptive-thinking pattern but with real behavioral and deployment differences the converter/generated code must account for:
+Fable 5 extends the Opus 5 / Opus 4.8 adaptive-thinking pattern but with real behavioral and deployment differences the converter/generated code must account for:
 
 - **Adaptive thinking is the only mode** — `thinking.type: "disabled"` is not supported at all (unlike Opus, which allows disabling thinking). Always emit `thinking.type: "adaptive"`.
 - **Raw chain-of-thought is never returned** — only `thinking.display: "summarized"` or the default `"omitted"`; there is no "full" display option to request.
@@ -258,16 +274,16 @@ Token counting on 4.7 differs from 4.6 — same input produces higher token coun
 
 ### Haiku 4.5 (`us.anthropic.claude-haiku-4-5`)
 
-No `effort` parameter support — only Opus 4.5+ and Sonnet 4.6 accept it.
+No `effort` parameter support — Opus 4.5+, Sonnet 4.6+, and Fable 5 accept it; Haiku 4.5 does not.
 
 ### Generated Code Checklist
 
-When `MODEL_MAP` resolves to a modern Opus model (4.7 or 4.8) or Fable 5, the converter should:
+When `MODEL_MAP` resolves to Opus 4.7+, Opus 5, Sonnet 5, or Fable 5, the converter should:
 1. Not emit `temperature=`, `top_p=`, `top_k=` parameters in BedrockModel construction
 2. Not emit `thinking={"type": "enabled", "budget_tokens": N}` — use `{"type": "adaptive"}` if thinking needed
 3. Allow generous `max_tokens` for output (modern Opus supports large outputs with streaming — confirm the ceiling for the pinned model)
-4. **Emit `additional_request_fields={"output_config": {"effort": "..."}}`** on Opus 4.5+/Sonnet 4.6+/Fable targets, not just document it — this was previously documented here but never actually wired into `generate_agent_code()`; see the script's `MODEL_MAP`/`SUPPORTS_EFFORT` handling
-5. On Fable 5 specifically, add a `stop_reason == "refusal"` check after invocation (see Fable 5 section above) — treat it as a distinct outcome, not a generic success
+4. **Emit `additional_request_fields={"output_config": {"effort": "..."}}`** on Opus 4.5+/Sonnet 4.6+/Sonnet 5/Fable targets, not just document it — this was previously documented here but never actually wired into `generate_agent_code()`; see the script's `MODEL_MAP`/`SUPPORTS_EFFORT` handling
+5. On Fable 5 and Opus 5 (`REFUSAL_CHECK_MODELS`), add a `stop_reason == "refusal"` check after invocation — treat it as a distinct outcome, not a generic success
 
 For full migration details, see [Model Migration Guide](https://platform.claude.com/docs/en/about-claude/models/migration-guide).
 

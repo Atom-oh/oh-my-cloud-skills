@@ -32,10 +32,15 @@ sleep 0.3
 
 if [ -z "$ORPHAN_PID" ]; then
   fail "reaper kills the orphaned process" "skipped — no orphan pid to check"
-elif ! kill -0 "$ORPHAN_PID" 2>/dev/null; then
-  pass "reaper kills the orphaned (ppid=1) acp-server-pattern process"
 else
-  fail "reaper kills the orphaned process" "pid $ORPHAN_PID still alive"
+  # `kill -0` alone is not a liveness test here: in a sandbox whose pid 1 does not reap
+  # children, the killed orphan lingers as a zombie (state Z) and kill -0 still succeeds.
+  ORPHAN_STATE="$(ps -o stat= -p "$ORPHAN_PID" 2>/dev/null | tr -d ' ')"
+  if ! kill -0 "$ORPHAN_PID" 2>/dev/null || [ -z "$ORPHAN_STATE" ] || [[ "$ORPHAN_STATE" == Z* ]]; then
+    pass "reaper kills the orphaned (ppid=1) acp-server-pattern process"
+  else
+    fail "reaper kills the orphaned process" "pid $ORPHAN_PID still alive (state=$ORPHAN_STATE)"
+  fi
 fi
 
 if kill -0 "$NONORPHAN_PID" 2>/dev/null; then

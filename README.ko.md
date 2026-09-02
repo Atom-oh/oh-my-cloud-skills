@@ -70,6 +70,12 @@
 - **`/kiro:setup`** — kiro-cli를 감지하고 사용 가능 여부를 프로브, 모델 목록을 조회하고 파이프라인이 사용할 `.kiro/agents/*.json` 커스텀 에이전트를 작성
 - **웹 검색 위임 (opt-in)** — `WebSearch` 도구가 없는 세션(Claude Code on Bedrock)이 kiro-cli의 네이티브 `web_search`로 웹 검색을 라우팅; 쿼리 텍스트만 외부로 나가며, 검색 에이전트는 검색 전용(파일시스템/셸 없음)
 
+*자체 동기화 문서 위키 (atlas):*
+- **LLM 소비용 주제별 문서** — 각 문서가 자신이 `covers`하는 파일과 `code_rev` 앵커를 선언; 에이전트가 먼저 읽는 `INDEX.md`가 `CLAUDE.md`에 모든 것을 밀어 넣는 방식을 대체
+- **기계적 드리프트 감지** — 앵커와 `HEAD` 사이 `git diff --name-only`에 대한 glob 매칭으로 stale 판정, LLM 호출 없음 — 검사 비용이 0
+- **격리된 headless 수정** — `/atlas:sync`가 stale 문서마다 쓰기 범위가 제한된 `claude -p`를 실행하고, 동기화된 문서 + `INDEX.md`만 커밋
+- **push 시점 자동 동기화 (opt-in)** — `PreToolUse` 훅이 `git push` 직전에 stale 문서를 고쳐 같은 push에 태움; covered 파일의 diff가 Anthropic으로 전송되므로 기본값은 off, 그리고 항상 fail-open(문서 동기화기 고장이 push를 막지 않음)
+
 ---
 
 ## 설치
