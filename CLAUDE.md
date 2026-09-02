@@ -271,6 +271,11 @@ The presentation-agent dispatcher routes PPTX requests to `aws-light-fcd`; it sh
 official 811-icon library with `reactive-presentation` via `kit.icon()` (referenced in
 place, not duplicated). `gh-home` is a personal profile/portfolio page (GitHub Pages user-site home) analog of
 `brochure` (person, not product) and reuses its self-check script.
+Explorable/interactive diagrams (the fifth diagram path — ADR-020) ride inside
+`reactive-presentation` via the `:::archify` block: [Archify](https://github.com/tt-a1i/archify)
+(version-pinned dependency, never forked) renders the spec, official icons are injected from the
+shared 811-icon library (`scripts/archify_icons.py`, vocabulary from `layout_aws.py`), and the
+diagram embeds in the slide as an iframe; PPTX export flattens it to the MAP state + URL in notes.
 
 ### aws-ops-plugin (10 agents, 6 skills)
 

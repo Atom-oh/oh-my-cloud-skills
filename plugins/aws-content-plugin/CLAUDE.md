@@ -164,3 +164,4 @@ AWS Architecture Icons are located in `skills/reactive-presentation/assets/aws-i
 | Animated traffic flow | `animated-diagram-agent` | .html with SVG + SMIL |
 | Workshop inline diagram | `workshop-agent` (Mermaid) | Mermaid in markdown |
 | Presentation Canvas animation | `reactive-presentation-agent` | Canvas JS in HTML slides |
+| Explorable/interactive diagram (zoom, path trace, MAP→READ→FULL) | `reactive-presentation-agent` (`:::archify` block — Archify, version-pinned, ADR-020) | self-contained HTML, iframed into the slide; official icons auto-injected |

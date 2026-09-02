@@ -2,8 +2,8 @@
 
 ## Status
 
-Proposed (2026-09-01) — PoC complete, both gates resolved (see below and
-`poc/adr-020/`); ready for acceptance.
+Accepted (2026-09-01) — PoC complete, both gates resolved (see below and
+`poc/adr-020/`).
 
 ## Context
 
@@ -118,3 +118,14 @@ fifth redundant path:
 - **Iframe-embed without the icon layer** — works immediately but produces generically
   styled nodes, which fails the official-icon convention and the review gate's
   category 7; rejected as not meeting the repo's own bar.
+
+## References
+
+- Pin: [tt-a1i/archify](https://github.com/tt-a1i/archify) 2.16.0, commit
+  `199360cc6687a7857b54dd188d4922b09e466a4b` (canonical constant:
+  `reactive-presentation/scripts/archify_icons.py`)
+- PoC evidence and repro: `poc/adr-020/`
+- Implementation: `archify_icons.py` (icon injection), `ARCH_STEMS` in
+  `architecture-diagram/scripts/layout_aws.py` (shared vocabulary), `:::archify` in
+  `remarp_to_slides.py`, `--base-url` notes in `export_pptx.py`,
+  `tests/structure/test-archify-structure-probe.sh` (upgrade guard)
