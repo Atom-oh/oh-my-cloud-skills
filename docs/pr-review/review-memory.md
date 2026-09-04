@@ -64,10 +64,12 @@ immediately**. Keep the whole file under 200 lines.
 - Using ABSENCE as evidence inside a truncated diff ("file X was not added → 404") — an absence claim only holds within the un-truncated range. Verify against the checked-out tree; in PR #163 the file really was absent, but the consumer tolerated a non-OK fetch, so the claimed failure still did not exist (source: PR #163, kiro-opus self-hedged; host-verified).
 - In a stylesheet whose per-mode override blocks (`.overview-mode`, `:fullscreen`, `@media print`) sit late in the file with `!important`, a "mode X regressed" claim based only on a changed base rule must first check that mode's own override block — it usually already wins (source: PR #163 round 2, kiro-opus overview-width dismissed).
 - "Unguarded indexing → TypeError" claims about a value whose constructor default (`options.x || {}`) is outside the diff are settled by reading the base constructor, not raised (source: PR #163 round 2, kiro-opus #12 dismissed).
+- "An ancestor gained a `transform`, so html2canvas captures of a descendant come out scaled/offset" does not follow — html2canvas does not re-apply ancestor transforms to the clone root, and a state class like `body.sidebar-visible` only matters if some code path in the diff actually adds it in the capture context (source: PR #163 round 3, codex dismissed).
+- "Re-resolving theme tokens after the `__remarpTheme` merge overwrites the extracted brand colors" is false when the merge assigns only `Colors.pptx*`-prefixed keys and the re-resolve table (`THEME_COLOR_VARS`) has no such keys — check the visible key naming before inferring a collision from hidden lines (source: PR #163 round 3, kiro-opus dismissed).
 
 ## Panel-cell judgment quality (cumulative)
 | cell | unsupported | total findings | last |
 |---|---|---|---|
-| kiro-opus-full | 16 | 92 | PR #163 |
+| kiro-opus-full | 18 | 103 | PR #163 |
 | kiro-gpt-full | 10 | 26 | PR #158 |
-| codex-full | 6 | 24 | PR #163 |
+| codex-full | 8 | 27 | PR #163 |
