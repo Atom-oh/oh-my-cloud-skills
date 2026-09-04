@@ -4,9 +4,14 @@
  * Include in TOC index.html pages: <script src="../common/export-utils.js"></script>
  */
 const ExportUtils = {
-  JSZIP_CDN: 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
-  PPTXGEN_CDN: 'https://cdn.jsdelivr.net/gh/gitbrent/PptxGenJS@3.12.0/dist/pptxgen.bundle.js',
-  HTML2CANVAS_CDN: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+  // All export libs load from jsDelivr's npm mirror (serves the published
+  // npm files verbatim) with SRI pinned to the sha384 of each npm artifact.
+  JSZIP_CDN: 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js',
+  JSZIP_SRI: 'sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG',
+  PPTXGEN_CDN: 'https://cdn.jsdelivr.net/npm/pptxgenjs@4.0.1/dist/pptxgen.bundle.js',
+  PPTXGEN_SRI: 'sha384-qb0Xhi7LLYpvW1HCK6oMrmDLSY9sy7vwm6ZlV6KjtrlL9yg30+YN4neTwnmX+Kp8',
+  HTML2CANVAS_CDN: 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
+  HTML2CANVAS_SRI: 'sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H',
 
   /** Escape HTML special characters to prevent XSS in generated markup */
   _escapeHTML: function(str) {
@@ -46,8 +51,8 @@ const ExportUtils = {
   },
 
   COMMON_FILES: [
-    'theme.css', 'theme-override.css', 'slide-framework.js',
-    'presenter-view.js', 'animation-utils.js', 'quiz-component.js',
+    'design-tokens.css', 'theme.css', 'theme-override.css', 'slide-framework.js',
+    'slide-renderer.js', 'presenter-view.js', 'animation-utils.js', 'quiz-component.js',
     'export-utils.js'
   ],
 
@@ -62,6 +67,16 @@ const ExportUtils = {
   getSlug: function() {
     var parts = window.location.pathname.replace(/\/index\.html$/, '').split('/').filter(Boolean);
     return parts[parts.length - 1] || 'presentation';
+  },
+
+  _resolveCommonPath: function() {
+    var tags = document.querySelectorAll('link[href*="common/"], script[src*="common/"]');
+    for (var i = 0; i < tags.length; i++) {
+      var attr = tags[i].getAttribute('href') || tags[i].getAttribute('src') || '';
+      var idx = attr.indexOf('common/');
+      if (idx !== -1) return attr.substring(0, idx + 7);
+    }
+    return './common/';
   },
 
   /**
@@ -104,12 +119,13 @@ const ExportUtils = {
       this.updateProgress('Building print view (' + slideCount + ' slides)...', 75);
 
       var baseURL = window.location.href;
+      var commonPath = this._resolveCommonPath();
       var printHTML = '<!DOCTYPE html>\n<html lang="ko">\n<head>\n' +
         '<meta charset="UTF-8">\n' +
         '<base href="' + this._escapeHTML(baseURL) + '">\n' +
         '<title>' + this._escapeHTML(title) + ' - PDF Export</title>\n' +
-        '<link rel="stylesheet" href="../common/theme.css">\n' +
-        '<link rel="stylesheet" href="../common/theme-override.css">\n' +
+        '<link rel="stylesheet" href="' + commonPath + 'theme.css">\n' +
+        '<link rel="stylesheet" href="' + commonPath + 'theme-override.css">\n' +
         '<style>\n' +
         '@page { size: 16in 9in landscape; margin: 0; }\n' +
         'html, body { margin: 0; padding: 0; background: #000; overflow: visible !important; display: block !important; height: auto !important; }\n' +
@@ -286,40 +302,35 @@ const ExportUtils = {
     }
   },
 
-  /** Lazy-load JSZip from CDN */
+  /** Load a script from CDN with SRI + crossOrigin (fail-secure on mismatch) */
+  _loadScript: function(src, integrity, name) {
+    return new Promise(function(resolve, reject) {
+      var script = document.createElement('script');
+      script.src = src;
+      script.integrity = integrity;
+      script.crossOrigin = 'anonymous';
+      script.onload = resolve;
+      script.onerror = function() { reject(new Error('Failed to load ' + name + ' from CDN')); };
+      document.head.appendChild(script);
+    });
+  },
+
+  /** Lazy-load JSZip from CDN (SRI-pinned) */
   loadJSZip: function() {
     if (window.JSZip) return Promise.resolve();
-    return new Promise(function(resolve, reject) {
-      var script = document.createElement('script');
-      script.src = ExportUtils.JSZIP_CDN;
-      script.onload = resolve;
-      script.onerror = function() { reject(new Error('Failed to load JSZip from CDN')); };
-      document.head.appendChild(script);
-    });
+    return this._loadScript(ExportUtils.JSZIP_CDN, ExportUtils.JSZIP_SRI, 'JSZip');
   },
 
-  /** Lazy-load PptxGenJS from CDN */
+  /** Lazy-load PptxGenJS from CDN (SRI-pinned) */
   loadPptxGen: function() {
     if (window.PptxGenJS) return Promise.resolve();
-    return new Promise(function(resolve, reject) {
-      var script = document.createElement('script');
-      script.src = ExportUtils.PPTXGEN_CDN;
-      script.onload = resolve;
-      script.onerror = function() { reject(new Error('Failed to load PptxGenJS from CDN')); };
-      document.head.appendChild(script);
-    });
+    return this._loadScript(ExportUtils.PPTXGEN_CDN, ExportUtils.PPTXGEN_SRI, 'PptxGenJS');
   },
 
-  /** Lazy-load html2canvas from CDN */
+  /** Lazy-load html2canvas from CDN (SRI-pinned) */
   loadHtml2Canvas: function() {
     if (window.html2canvas) return Promise.resolve();
-    return new Promise(function(resolve, reject) {
-      var script = document.createElement('script');
-      script.src = ExportUtils.HTML2CANVAS_CDN;
-      script.onload = resolve;
-      script.onerror = function() { reject(new Error('Failed to load html2canvas from CDN')); };
-      document.head.appendChild(script);
-    });
+    return this._loadScript(ExportUtils.HTML2CANVAS_CDN, ExportUtils.HTML2CANVAS_SRI, 'html2canvas');
   },
 
   /**
@@ -333,11 +344,18 @@ const ExportUtils = {
       document.body.appendChild(iframe);
 
       iframe.onload = function() {
-        // Wait for images and fonts to load
+        // Wait for webfonts, then give scripts time to execute (canvas rendering, etc.)
         var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-        var checkReady = function() {
-          // Give scripts time to execute (canvas rendering, etc.)
+        var settle = function() {
           setTimeout(function() { resolve({ doc: iframeDoc, iframe: iframe }); }, 800);
+        };
+        var checkReady = function() {
+          var fonts = iframeDoc.fonts;
+          if (fonts && fonts.ready && fonts.ready.then) {
+            fonts.ready.then(settle, settle);
+          } else {
+            settle();
+          }
         };
 
         if (iframeDoc.readyState === 'complete') {
@@ -393,16 +411,93 @@ const ExportUtils = {
   },
 
   /**
+   * Read the block's presenter notes from inside its iframe.
+   * `presenterNotes` is a top-level `const` in the built HTML, so it is not a
+   * window property; a script injected INTO the iframe shares the global
+   * lexical scope and can copy it onto window for us.
+   * Returns an object keyed by 1-based slide number (values may contain HTML).
+   */
+  _extractNotesFromIframe: function(iframeDoc) {
+    try {
+      var s = iframeDoc.createElement('script');
+      s.textContent = 'try { window.__exportNotes = presenterNotes; } catch (e) { window.__exportNotes = {}; }';
+      iframeDoc.body.appendChild(s);
+      s.remove();
+      var win = iframeDoc.defaultView;
+      return (win && win.__exportNotes) || {};
+    } catch (e) {
+      console.warn('Presenter notes extraction failed — exporting without speaker notes:', e);
+      return {};
+    }
+  },
+
+  /** Presenter notes → PPTX speaker-notes text.
+   *  presenterNotes carries the RAW :::notes markdown (plus [timing]/cue
+   *  markers) — it is not HTML, so no tag stripping/parsing: that would eat
+   *  real content like `List<T>`. Only normalize whitespace. */
+  _notesToPlainText: function(text) {
+    return String(text)
+      .replace(/\r\n?/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  },
+
+  /**
+   * Extract theme info from a block HTML for PPTX metadata.
+   * Reads __remarpTheme and CSS custom properties.
+   */
+  _extractThemeFromBlock: async function(blockFile) {
+    var info = { bgColor: null, footerText: null, fonts: {} };
+    try {
+      var resp = await fetch(blockFile);
+      if (!resp.ok) return info;
+      var html = await resp.text();
+
+      // Extract __remarpTheme JSON
+      var themeMatch = html.match(/window\.__remarpTheme\s*=\s*(\{[^;]+\})/);
+      if (themeMatch) {
+        var theme = JSON.parse(themeMatch[1]);
+        if (theme.footer) info.footerText = theme.footer;
+        if (theme.fonts) info.fonts = theme.fonts;
+
+        // Derive background color from theme colors (darkest of dk1/dk2/lt1/lt2)
+        var colors = theme.colors || {};
+        var darkest = null;
+        var darkestLum = 1;
+        ['dk1', 'dk2', 'lt1', 'lt2'].forEach(function(k) {
+          if (!colors[k]) return;
+          var hex = colors[k].replace('#', '');
+          var r = parseInt(hex.substr(0, 2), 16) / 255;
+          var g = parseInt(hex.substr(2, 2), 16) / 255;
+          var b = parseInt(hex.substr(4, 2), 16) / 255;
+          var lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+          if (lum < darkestLum) { darkestLum = lum; darkest = hex; }
+        });
+        if (darkest && darkestLum < 0.3) info.bgColor = darkest;
+      }
+
+      // Fallback: extract --bg-primary from CSS
+      if (!info.bgColor) {
+        var bgMatch = html.match(/--bg-primary:\s*([#\w]+)/);
+        if (bgMatch) info.bgColor = bgMatch[1].replace('#', '');
+      }
+    } catch (e) {
+      console.warn('Theme extraction failed:', e);
+    }
+    return info;
+  },
+
+  /**
    * Capture a single slide element as a base64 PNG using html2canvas.
    * The html2canvas library must be loaded in the PARENT window.
    */
-  _captureSlide: async function(slideEl, iframeWindow) {
+  _captureSlide: async function(slideEl, iframeWindow, scale) {
     // html2canvas is loaded in the parent window; we need to pass the element
     // html2canvas can work cross-frame if same-origin
     var canvas = await html2canvas(slideEl, {
       width: 1920,
       height: 1080,
-      scale: 1,
+      scale: scale || 2,
       useCORS: true,
       allowTaint: true,
       backgroundColor: null,
@@ -457,6 +552,9 @@ const ExportUtils = {
         var iframeDoc = result.doc;
         var iframe = result.iframe;
 
+        // Presenter notes → PPTX speaker notes (keyed by 1-based slide number)
+        var blockNotes = this._extractNotesFromIframe(iframeDoc);
+
         // Complete all animations (fragments visible, canvas at final step)
         this._completeAllAnimations(iframeDoc);
 
@@ -481,7 +579,7 @@ const ExportUtils = {
           var slideHeading = slideEl.querySelector('h1, h2');
 
           try {
-            var dataUrl = await self._captureSlide(slideEl, iframe.contentWindow);
+            var dataUrl = await self._captureSlide(slideEl, iframe.contentWindow, options.scale);
 
             pptxSlide.addImage({
               data: dataUrl,
@@ -489,9 +587,15 @@ const ExportUtils = {
               w: '100%', h: '100%'
             });
 
-            // Add heading text as slide notes (for searchability)
-            if (slideHeading) {
-              pptxSlide.addNotes(slideHeading.textContent.trim());
+            // Speaker notes: presenter notes first, heading as fallback/prefix
+            var noteRaw = blockNotes[j + 1] || blockNotes[String(j + 1)] || '';
+            var noteText = noteRaw ? self._notesToPlainText(noteRaw) : '';
+            var headingText = slideHeading ? slideHeading.textContent.trim() : '';
+            var combined = headingText && noteText
+              ? headingText + '\n\n' + noteText
+              : (noteText || headingText);
+            if (combined) {
+              pptxSlide.addNotes(combined);
             }
           } catch (captureErr) {
             console.warn('Capture failed for slide ' + totalSlides + ', using text fallback:', captureErr);
@@ -501,7 +605,7 @@ const ExportUtils = {
                 x: 0.5, y: 0.5, w: '90%', fontSize: 24, color: 'FFFFFF', bold: true
               });
             }
-            pptxSlide.background = { color: '1a1d2e' };
+            pptxSlide.background = { color: '0F1B2A' };
           }
         }
 

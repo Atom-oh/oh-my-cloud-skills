@@ -111,7 +111,7 @@ ${styleSheets}
   .presenter-timer {
     font-family: 'JetBrains Mono', monospace;
     font-size: 1.5rem;
-    color: #6c5ce7;
+    color: var(--accent, #ec7211);
   }
   .presenter-counter {
     font-family: 'JetBrains Mono', monospace;
@@ -218,7 +218,7 @@ ${styleSheets}
     transition: background 150ms;
   }
   .splitter-v:hover, .splitter-v.dragging {
-    background: #6c5ce7;
+    background: var(--accent, #ec7211);
   }
   .splitter-v::after {
     content: '';
@@ -241,7 +241,7 @@ ${styleSheets}
     transition: background 150ms;
   }
   .splitter-h:hover, .splitter-h.dragging {
-    background: #6c5ce7;
+    background: var(--accent, #ec7211);
   }
   .splitter-h::after {
     content: '';
@@ -280,8 +280,8 @@ ${styleSheets}
     align-items: center;
     gap: 4px;
     padding: 4px 10px;
-    background: rgba(108, 92, 231, 0.2);
-    border: 1px solid #6c5ce7;
+    background: var(--accent-subtle, rgba(236, 114, 17, 0.15));
+    border: 1px solid var(--accent, #ec7211);
     border-radius: 12px;
     font-size: 0.75rem;
     color: #a29bfe;
@@ -301,7 +301,7 @@ ${styleSheets}
   .presenter-notes .notes-content li { margin: 0.3em 0; }
   .presenter-notes .notes-content strong { color: #fff; font-weight: 600; }
   .presenter-notes .notes-content code {
-    background: rgba(108, 92, 231, 0.2);
+    background: var(--accent-subtle, rgba(236, 114, 17, 0.15));
     padding: 2px 6px;
     border-radius: 4px;
     font-family: 'JetBrains Mono', monospace;
@@ -367,7 +367,7 @@ ${styleSheets}
   }
   .presenter-nav button:hover {
     background: #2d3250;
-    border-color: #6c5ce7;
+    border-color: var(--accent, #ec7211);
   }
   .end-message {
     display: flex;

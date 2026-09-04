@@ -11,6 +11,8 @@ class SlideFramework {
     this.onSlideChange = options.onSlideChange || null;
     this.footer = options.footer || null;
     this.logoSrc = options.logoSrc || null;
+    // Logo shown on dark slides (white/light logo). Falls back to logoSrc when unset.
+    this.logoDarkSrc = options.logoDarkSrc || null;
     this.presenterNotes = options.presenterNotes || {};
     this.presenterView = null;
     this.slideActions = {};  // { slideIndex: { up: fn, down: fn } }
@@ -40,6 +42,21 @@ class SlideFramework {
         this.keyMappings = window.__remarpKeys;
       }
 
+      // Harvest <template class="notes"> speaker notes from slide DOM.
+      // Must run BEFORE createSidebar() clones slide innerHTML (a cloned
+      // <template> is inert but would double-count if harvested later).
+      // An explicit presenterNotes option always wins over the DOM.
+      this.slides.forEach((slide, idx) => {
+        const key = idx + 1;
+        if (this.presenterNotes[key] !== undefined) return;
+        const tpl = slide.querySelector('template.notes');
+        if (!tpl) return;
+        const text = tpl.content.textContent.trim();
+        if (!text) return;
+        const timing = tpl.dataset.timing || null;
+        this.presenterNotes[key] = timing ? { text: text, timing: timing } : text;
+      });
+
       // Read theme config
       if (window.__remarpTheme) {
         if (!this.footer && window.__remarpTheme.footer) this.footer = window.__remarpTheme.footer;
@@ -61,6 +78,7 @@ class SlideFramework {
       this.bindKeys();
       this.bindTouch();
       this.handleHash();
+      this.bindDeckScale();
       if (this.footer) this.createFooter();
       if (this.logoSrc) this.createLogo();
       this.initFragments(this.currentSlide);
@@ -218,12 +236,14 @@ class SlideFramework {
     document.body.classList.add('sidebar-visible');
     this.sidebarVisible = true;
     this.updateSidebarHighlight(this.currentSlide);
+    this.updateDeckScale();
   }
 
   hideSidebar() {
     if (!this.sidebar) return;
     document.body.classList.remove('sidebar-visible');
     this.sidebarVisible = false;
+    this.updateDeckScale();
   }
 
   updateSidebarHighlight(index) {
@@ -289,13 +309,46 @@ class SlideFramework {
     return document.querySelector('.slide-deck');
   }
 
+  // Fixed design-canvas scaling: the deck is a fixed 1920x1080 (ratio-derived)
+  // box; scale it as one unit so type, px coordinates and canvases all shrink
+  // proportionally. Pairs with the .slide-deck transform in theme.css.
+  updateDeckScale() {
+    const deck = this.getDeck();
+    if (!deck) return;
+    const sidebarPad = (this.sidebarVisible && !document.fullscreenElement) ? 220 : 0;
+    const availW = window.innerWidth - sidebarPad;
+    const availH = window.innerHeight;
+    // offsetWidth/Height are layout size, unaffected by the transform itself
+    const w = deck.offsetWidth || 1920;
+    const h = deck.offsetHeight || 1080;
+    deck.style.setProperty('--deck-scale', Math.min(availW / w, availH / h));
+  }
+
+  bindDeckScale() {
+    this.updateDeckScale();
+    window.addEventListener('resize', () => this.updateDeckScale());
+    document.addEventListener('fullscreenchange', () => this.updateDeckScale());
+  }
+
   updateFooterVisibility(slide) {
     const deck = this.getDeck() || document.body;
     const logo = deck.querySelector('.slide-logo');
     const footer = deck.querySelector('.slide-footer');
     // Hide framework logo/footer when the current slide already contains an <img>
     const hide = slide.querySelector('img') !== null;
-    if (logo) logo.style.display = hide ? 'none' : '';
+    if (logo) {
+      logo.style.display = hide ? 'none' : '';
+      // Per-slide adaptive logo: dark slides show the light/white logo, light slides
+      // show the default (dark) logo. A slide is "dark" when it (or the deck) carries
+      // the theme-dark class. Only swaps when a distinct dark logo was supplied.
+      if (this.logoDarkSrc) {
+        const deckDark = (this.getDeck() || document.body).classList.contains('theme-dark');
+        const slideDark = slide.classList.contains('theme-dark') ||
+          (deckDark && !slide.classList.contains('theme-light'));
+        const want = slideDark ? this.logoDarkSrc : this.logoSrc;
+        if (want && logo.getAttribute('src') !== want) logo.src = want;
+      }
+    }
     if (footer) footer.style.display = hide ? 'none' : '';
     const slideNum = deck.querySelector('.slide-number');
     if (slideNum) slideNum.style.display = hide ? 'none' : '';
@@ -343,6 +396,8 @@ class SlideFramework {
     const hint = document.createElement('div');
     hint.className = 'nav-hint';
     hint.textContent = '← → Space  |  F: Fullscreen  |  P: Presenter  |  O: Overview';
+    // Footer occupies the same bottom-left corner — lift the hint above it
+    if (this.footer) hint.style.bottom = '2.2rem';
     (this.getDeck() || document.body).appendChild(hint);
     this.navHint = hint;
     // Fade out after 5s
@@ -582,14 +637,25 @@ class SlideFramework {
       return false;
     }
 
-    // Try tabs
+    // Try tabs — detect .tab-bar container first, then fall back to any .tab-btn group
     const tabBar = slide.querySelector('.tab-bar');
-    if (tabBar) {
-      const tabs = Array.from(tabBar.querySelectorAll('.tab-btn'));
-      const activeIdx = tabs.findIndex(t => t.classList.contains('active'));
-      const nextIdx = Math.max(0, Math.min(activeIdx + direction, tabs.length - 1));
+    const tabBtns = tabBar
+      ? Array.from(tabBar.querySelectorAll('.tab-btn'))
+      : Array.from(slide.querySelectorAll('.tab-btn'));
+    if (tabBtns.length > 1) {
+      // Detect active tab: .active class OR visually highlighted (inline background)
+      let activeIdx = tabBtns.findIndex(t => t.classList.contains('active'));
+      if (activeIdx < 0) {
+        // Self-contained tabs use inline style instead of .active class
+        activeIdx = tabBtns.findIndex(t => {
+          const bg = (t.style.background || t.style.backgroundColor || '').toLowerCase();
+          return bg.includes('#00d4ff') || bg.includes('var(--accent');
+        });
+      }
+      if (activeIdx < 0) activeIdx = 0;
+      const nextIdx = Math.max(0, Math.min(activeIdx + direction, tabBtns.length - 1));
       if (nextIdx !== activeIdx) {
-        tabs[nextIdx].click();
+        tabBtns[nextIdx].click();
         return true;
       }
       return false;

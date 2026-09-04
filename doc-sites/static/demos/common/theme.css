@@ -1,42 +1,148 @@
+@import url('design-tokens.css');
+/* Font loading — @import is only valid before any style rule (CSS spec);
+   imports placed later in this file are ignored by browsers. */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap');
+
 /* ============================================================
-   Reactive Presentation - Dark Theme (16:9)
+   Reactive Presentation - Dual Theme (light default, 16:9)
    ============================================================ */
+
+/* ============================================================
+   Theme Scopes — semantic color-role values per theme.
+   Light is the no-class default at ZERO specificity (:where),
+   so .theme-dark overrides cleanly. Dark reproduces the
+   historical look so existing decks don't regress.
+   ============================================================ */
+/* Light is the no-class default. We use `:root, .theme-light` — specificity
+   (0,1,0) — so it WINS the cascade against design-tokens.css's own `:root`
+   placeholders (also (0,1,0)) by virtue of LATER source order (theme.css
+   @imports design-tokens.css at the top). A zero-specificity :where(html)
+   here would LOSE to those :root placeholders and the deck would not be light.
+   The legacy base vars (--bg-primary/--text-primary/etc.) are mapped onto the
+   semantic roles below so the base chrome follows the active theme.
+
+   Palette identity — grounded in AWS's own design language (Cloudscape /
+   Squid Ink #232F3E / Smile Orange), NOT a generic template look: cool
+   console-grey canvas with white cards, deep squid-ink text, Smile-orange
+   accent reserved for emphasis, Cloudscape blue for interactive/heading
+   accents. An extracted PPTX brand (--pptx-*) always takes precedence. */
+:root, .theme-light {
+  --surface-1:var(--pptx-lt1, #ffffff); --surface-2:#f2f3f3; --surface-3:#e3e7ea;
+  --on-surface:var(--pptx-dk2, #0f141a); --on-surface-muted:#5f6b7a;
+  /* --accent routes through the brand token --pptx-accent1; AWS console
+     orange is the fallback so non-branded decks read unmistakably "AWS". */
+  --accent:var(--pptx-accent1, #ec7211); --accent-subtle:rgba(236,114,17,.10); --accent-on:#ffffff;
+  --info:#0972d3; --info-subtle:rgba(9,114,211,.10); --info-on:#fff;
+  --success:#037f0c; --success-subtle:rgba(3,127,12,.10); --success-on:#fff;
+  --warning:#8a5b00; --warning-subtle:rgba(180,120,9,.12); --warning-on:#fff;
+  --danger:#d91515; --danger-subtle:rgba(217,21,21,.10); --danger-on:#fff;
+
+  /* Legacy base vars mapped onto the LIGHT roles. Page = cool console-grey
+     canvas (#eaedee — a FIXED value, clearly not white, so white cards
+     elevate above it). Borders/muted text are squid-ink greys. */
+  --bg-primary:   #eaedee;
+  --bg-secondary: var(--surface-2);
+  --bg-tertiary:  var(--surface-3);
+  --bg-card:      var(--surface-1);
+  --surface:      var(--surface-2);
+  --border:       #d0d7dc;
+  --text-primary:   var(--on-surface);
+  --text-secondary: #414d5c;
+  --text-muted:     #7d8998;
+  --text-accent:  #0972d3;
+  --border-focus: #0972d3;
+  --cyan: #0891b2;
+  --pink: #d13d73;
+}
+/* Dark = "squid-ink night": Cloudscape dark surfaces with Smile-orange accent.
+   (Existing decks keep their previously copied common/ CSS, so this refresh
+   only affects newly built/copied decks.) */
+.theme-dark { --surface-1:var(--pptx-dk2, #0f1b2a); --surface-2:#16212f; --surface-3:#1e2c3c;
+  --on-surface:var(--pptx-lt1, #e9ebed); --on-surface-muted:#8d99a8;
+  --accent:var(--pptx-accent1, #ff9900); --accent-subtle:rgba(255,153,0,.14); --accent-on:#16191f;
+  --info:#539fe5; --info-subtle:rgba(83,159,229,.15); --info-on:#0f1b2a;
+  --success:#44b556; --success-subtle:rgba(68,181,86,.15); --success-on:#0f1b2a;
+  --warning:#ffcf40; --warning-subtle:rgba(255,207,64,.14); --warning-on:#231b00;
+  --danger:#ff6161; --danger-subtle:rgba(255,97,97,.14); --danger-on:#2a0606;
+
+  /* Legacy base vars — squid-ink dark values. */
+  --bg-primary:   #0f1b2a;
+  --bg-secondary: #16212f;
+  --bg-tertiary:  #1e2c3c;
+  --bg-card:      #182534;
+  --surface:      #22344a;
+  --border:       #2e425a;
+  --text-primary:   #e9ebed;
+  --text-secondary: #9fb0c1;
+  --text-muted:     #6c7f93;
+  --text-accent:  #539fe5;
+  --border-focus: #539fe5;
+  --cyan: #00cec9;
+  --pink: #fd79a8;
+}
+
+/* Opt-in preset: the previous warm "paper + ink" look, kept for decks that
+   deliberately choose it (frontmatter `theme.preset: paper`). */
+.preset-paper, .preset-paper .theme-light {
+  --surface-1:var(--pptx-lt1, #ffffff); --surface-2:#f3f1eb; --surface-3:#edebe4;
+  --on-surface:var(--pptx-dk2, #1f1e1d); --on-surface-muted:#5f5a4d;
+  --accent:var(--pptx-accent1, #d97757); --accent-subtle:rgba(217,119,87,.12); --accent-on:#ffffff;
+  --info:#2563eb; --info-subtle:rgba(37,99,235,.12); --info-on:#fff;
+  --success:#10b981; --success-subtle:rgba(16,185,129,.12); --success-on:#fff;
+  --warning:#b45309; --warning-subtle:rgba(180,83,9,.12); --warning-on:#fff;
+  --danger:#f43f5e; --danger-subtle:rgba(244,63,94,.12); --danger-on:#fff;
+  --bg-primary:   #ece9e0;
+  --bg-secondary: var(--surface-2);
+  --bg-tertiary:  var(--surface-3);
+  --bg-card:      var(--surface-1);
+  --surface:      var(--surface-2);
+  --border:       #d7d3c7;
+  --text-primary:   var(--on-surface);
+  --text-secondary: var(--on-surface-muted);
+  --text-muted:     #8a8474;
+  --text-accent:  #b8560b;
+  --border-focus: #b8560b;
+}
 
 /* --- Reset & Base --- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Legacy palette aliases — routed through the role tokens so canvas drawings
+   and old markup adapt to the active theme. IMPORTANT: var() substitution in
+   a custom property is resolved at computed-value time ON THE DECLARING
+   ELEMENT and the RESOLVED value inherits — declaring these only on :root
+   would freeze them to the light values for the whole document. Every theme
+   scope must therefore re-declare the aliases so `.theme-dark`/`.preset-paper`
+   re-substitute them against their own role tokens. cyan/pink stay distinct
+   per-scope hues (canvas diagrams rely on them differing from blue/red). */
+:root, .theme-light, .theme-dark, .preset-paper, .preset-paper .theme-light {
+  --accent-light:  var(--accent);
+  --accent-glow:   var(--accent-subtle);
+  --shadow-glow:   0 0 20px var(--accent-subtle);
+  --green:  var(--success);
+  --green-bg: var(--success-subtle);
+  --yellow: var(--warning);
+  --yellow-bg: var(--warning-subtle);
+  --red:    var(--danger);
+  --red-bg: var(--danger-subtle);
+  --blue:   var(--info);
+  --blue-bg: var(--info-subtle);
+  --orange: var(--accent);
+}
+
 :root {
-  /* Palette */
-  --bg-primary:    #0f1117;
-  --bg-secondary:  #1a1d2e;
-  --bg-tertiary:   #232740;
-  --bg-card:       #1e2235;
-  --surface:       #282d45;
-  --border:        #2d3250;
-  --border-focus:  #5b6abf;
+  /* Palette — base chrome vars (bg, surface, border, text, --text-accent,
+     --border-focus) are theme-scoped in `:root, .theme-light` and
+     `.theme-dark` above so they follow the active theme; legacy aliases are
+     re-declared per theme scope (see block above). Only theme-agnostic
+     helpers remain here. */
 
-  --text-primary:  #e8eaf0;
-  --text-secondary:#9ba1b8;
-  --text-muted:    #6b7194;
-  --text-accent:   #7b8cff;
-
-  --accent:        #6c5ce7;
-  --accent-light:  #a29bfe;
-  --accent-glow:   rgba(108, 92, 231, .3);
-
-  --green:  #00b894;
-  --green-bg: rgba(0, 184, 148, .15);
-  --yellow: #fdcb6e;
-  --yellow-bg: rgba(253, 203, 110, .15);
-  --red:    #e17055;
-  --red-bg: rgba(225, 112, 85, .15);
-  --blue:   #74b9ff;
-  --blue-bg: rgba(116, 185, 255, .15);
-  --orange: #f39c12;
-  --cyan:   #00cec9;
-  --pink:   #fd79a8;
-
-  /* Typography */
+  /* Typography — display face carries the deck's personality on Latin
+     headings; Korean glyphs fall back to Pretendard, which tolerates the
+     tightened tracking. */
+  --font-display: 'Space Grotesk', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-main: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 
@@ -51,26 +157,23 @@
   --transition-normal: 300ms ease;
   --transition-slow:   500ms ease;
 
-  /* PPTX Theme color overrides (set via JS from extracted theme) */
-  --pptx-accent1: var(--accent);
-  --pptx-accent2: var(--green);
-  --pptx-accent3: var(--blue);
-  --pptx-accent4: var(--yellow);
-  --pptx-accent5: var(--red);
-  --pptx-accent6: var(--cyan);
-  --pptx-dk1: #000000;
-  --pptx-lt1: #ffffff;
-  --pptx-dk2: #1a1d2e;
-  --pptx-lt2: #e8eaf0;
+  /* PPTX / brand tokens — the INPUT layer for extracted theming.
+     Intentionally left UNDEFINED here: the role tokens above consume them
+     as `var(--pptx-*, <theme-default>)`, so when no PPTX theme is extracted
+     the theme default applies. An extracted theme-override.css (generated by
+     extract_pptx_theme.py) sets --pptx-accent1/dk1/lt1/dk2/lt2/... which then
+     propagate through --accent and the surface roles to the whole token system. */
 }
 
-/* --- Font Loading --- */
-@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+/* --- Font Loading: see @import block at the top of this file --- */
 
 html {
-  /* Viewport-scaled root font: ~24px at 1080p, ~48px at 4K, scales proportionally */
-  font-size: clamp(14px, 2.2vh, 52px);
+  /* Fixed design-canvas root font. The deck is a fixed 1920x1080 canvas
+     scaled as a whole via transform (see .slide-deck) — type must NOT
+     track the viewport independently, or a width-constrained window
+     shrinks the deck box while the text stays big (the old vh-clamp bug:
+     "폭에 의해 비율이 조정되지만 컨텐츠가 줄어들지 않음"). */
+  font-size: 24px;
 }
 body {
   width: 100%; height: 100%;
@@ -85,15 +188,33 @@ body {
   justify-content: center;
 }
 
-/* --- Slide Container (aspect ratio enforced via CSS variables) --- */
+/* --- Slide Container: fixed design canvas, scaled as one unit ---
+   1080px tall, width from the ratio vars (16:9 → 1920px). slide-framework.js
+   computes --deck-scale = min(availW/deckW, availH/deckH) on resize /
+   fullscreen / sidebar toggle, so ALL content (type, px coordinates,
+   canvases) shrinks proportionally with the box. Absolute px inside slides
+   is safe — the canvas scales as a whole. */
 .slide-deck {
-  width: 100vw; height: 100vh;
-  max-width: calc(100vh * var(--slide-ratio-w) / var(--slide-ratio-h));
-  max-height: calc(100vw * var(--slide-ratio-h) / var(--slide-ratio-w));
+  height: 1080px;
+  width: calc(1080px * var(--slide-ratio-w) / var(--slide-ratio-h));
+  flex: none;
   margin: auto;
+  transform: scale(var(--deck-scale, 1));
+  transform-origin: center center;
   position: relative;
   overflow: hidden;
   background: var(--bg-primary);
+  /* Re-apply text color INSIDE the deck's theme scope: body's color computes
+     in the light scope and inherits down, so a .slide-deck.theme-dark deck
+     would otherwise show near-black text on its dark background. */
+  color: var(--text-primary);
+}
+/* Oversized flex item still centers visually: body is flex with centered
+   axes; equal overflow is clipped on both sides until the transform shrinks
+   the box into view. */
+body {
+  justify-content: center;
+  align-items: center;
 }
 
 .slide {
@@ -101,9 +222,16 @@ body {
   inset: 0;
   display: none;
   flex-direction: column;
-  padding: 2rem 2.7rem;
+  padding: var(--space-6);
   opacity: 0;
   transition: opacity var(--transition-normal);
+}
+/* Per-slide dark scope: a slide carrying .theme-dark re-binds its tokens to the dark
+   palette (see .theme-dark above) and gets a dark surface + light text, so a mostly
+   light deck can intersperse dark cover/section/emphasis slides (light:dark mix). */
+.slide.theme-dark {
+  background: var(--surface-1);
+  color: var(--on-surface);
 }
 .slide.active {
   display: flex;
@@ -123,20 +251,37 @@ body {
 
 /* --- Typography --- */
 .slide h1 {
-  font-size: 2.4rem; font-weight: 700;
+  font-family: var(--font-display);
+  font-size: var(--text-3xl); font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
   color: var(--text-primary);
-  margin-top: 0; margin-bottom: .33rem;
-  line-height: 1.2;
+  margin-top: 0; margin-bottom: var(--space-1);
+  line-height: var(--leading-tight);
 }
 .slide h2 {
-  font-size: 1.8rem; font-weight: 600;
+  font-family: var(--font-display);
+  font-size: var(--text-2xl); font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
   color: var(--text-primary);
-  margin-top: .83rem; margin-bottom: .5rem;
+  margin-top: var(--space-3); margin-bottom: var(--space-2);
 }
 .slide h3 {
-  font-size: 1.3rem; font-weight: 600;
+  font-size: var(--text-lg); font-weight: var(--weight-semibold);
   color: var(--text-accent);
-  margin-top: .67rem; margin-bottom: .33rem;
+  margin-top: var(--space-3); margin-bottom: var(--space-1);
+}
+/* Eyebrow — small structural label above a heading (mono, spread, accent).
+   Use for section numbers/module labels ONLY where order/category carries
+   real information; it encodes structure, it does not decorate. */
+.eyebrow {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: var(--space-1);
 }
 /* First heading in a container should not have extra top margin */
 .slide-body > h1:first-child,
@@ -154,20 +299,38 @@ body {
 }
 
 /* --- Layout Helpers --- */
+/* Signature element: the "beam rule" — a short accent gradient hairline under
+   every slide header. One consistent, quiet mark that brands the whole deck;
+   everything else stays disciplined. */
 .slide-header {
   margin-bottom: 1rem;
+  padding-bottom: var(--space-2);
+  position: relative;
+}
+.slide-header::after {
+  content: '';
+  position: absolute;
+  left: 0; bottom: 0;
+  width: var(--space-8);
+  height: 3px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--accent), var(--accent-subtle));
 }
 .slide-body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: .67rem;
+  gap: var(--space-3);
   overflow-y: auto;
 }
-.columns { display: flex; gap: 1.33rem; flex: 1; }
+.columns { display: flex; gap: var(--space-5); flex: 1; }
 .columns > * { flex: 1; }
-.col-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-.col-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .83rem; }
+.col-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+.col-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-3); }
+/* Vertically center a sparse grid in the remaining slide height. Auto
+   margins collapse to 0 when the grid overflows, so dense decks still
+   scroll from the top instead of clipping. */
+.slide-body > .grid-vcenter { margin-top: auto; margin-bottom: auto; }
 .center-content {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
@@ -178,29 +341,29 @@ body {
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: .5rem;
-  padding: .83rem;
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 .card:hover {
   border-color: var(--border-focus);
-  box-shadow: 0 4px 20px rgba(0,0,0,.3);
+  box-shadow: var(--shadow-2);
 }
 .card.highlight {
   border-color: var(--accent);
-  box-shadow: 0 0 20px var(--accent-glow);
+  box-shadow: var(--shadow-glow);
 }
 .card-title {
   font-size: 1.1rem; font-weight: 600;
   color: var(--text-accent);
-  margin-bottom: .33rem;
+  margin-bottom: var(--space-1);
 }
 
 /* --- Badges / Tags --- */
 .badge {
   display: inline-block;
-  padding: .13rem .42rem;
-  border-radius: .83rem;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
   font-size: .78rem;
   font-weight: 600;
   letter-spacing: .02em;
@@ -212,10 +375,10 @@ body {
 
 /* --- Buttons --- */
 .btn {
-  display: inline-flex; align-items: center; gap: .25rem;
-  padding: .33rem .75rem;
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
   border: 1px solid var(--border);
-  border-radius: .33rem;
+  border-radius: var(--radius-sm);
   background: var(--bg-tertiary);
   color: var(--text-primary);
   font-family: var(--font-main);
@@ -227,30 +390,32 @@ body {
 .btn-primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--accent-on);
 }
 .btn-primary:hover {
   background: var(--accent-light);
   border-color: var(--accent-light);
 }
-.btn-sm { padding: .21rem .5rem; font-size: .82rem; }
-.btn-group { display: flex; gap: .33rem; flex-wrap: wrap; }
+.btn-sm { padding: var(--space-1) var(--space-2); font-size: .82rem; }
+.btn-group { display: flex; gap: var(--space-1); flex-wrap: wrap; }
 
 /* --- Tabs --- */
 .tab-bar {
-  display: flex; gap: .17rem;
+  display: flex; gap: var(--space-1);
   background: var(--bg-secondary);
-  border-radius: .42rem;
-  padding: .17rem;
-  margin-bottom: .67rem;
+  border-radius: var(--radius-md);
+  padding: var(--space-1);
+  margin-bottom: var(--space-3);
   width: fit-content;
 }
 .tab-btn {
-  padding: .29rem .67rem;
+  padding: var(--space-1) var(--space-3);
   border: none;
-  border-radius: .33rem;
+  border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--text-muted);
+  /* --text-secondary, not muted: inactive tab labels are still navigation —
+     muted fails WCAG on both themes (measured 3.2 light / 3.9 dark) */
+  color: var(--text-secondary);
   font-family: var(--font-main);
   font-size: .88rem;
   cursor: pointer;
@@ -258,7 +423,10 @@ body {
 }
 .tab-btn.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-on);
+  /* white-on-Smile-orange measures ~3.0 — compliant only as WCAG large
+     text, which bold >= 14pt qualifies for (also anchors the active tab) */
+  font-weight: var(--weight-bold);
 }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
@@ -267,8 +435,8 @@ body {
 .code-block {
   background: #0d1117;
   border: 1px solid var(--border);
-  border-radius: .42rem;
-  padding: .67rem .83rem;
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
   font-family: var(--font-mono);
   font-size: .85rem;
   line-height: 1.65;
@@ -286,7 +454,7 @@ body {
 .code-label {
   position: absolute; top: 8px; right: 12px;
   font-size: .7rem;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   background: var(--bg-secondary);
   padding: 2px 8px;
   border-radius: 4px;
@@ -297,7 +465,7 @@ body {
   position: relative;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
-  border-radius: .5rem;
+  border-radius: var(--radius-md);
   overflow: hidden;
   min-height: 200px;
 }
@@ -328,7 +496,7 @@ body {
   bottom: .5rem;
   left: 50%;
   transform: translateX(-50%);
-  display: flex; gap: .33rem;
+  display: flex; gap: var(--space-1);
   z-index: 10;
 }
 
@@ -345,7 +513,7 @@ body {
 /* --- Slide Counter --- */
 .slide-counter {
   position: absolute;
-  bottom: .5rem; right: .83rem;
+  bottom: var(--space-2); right: var(--space-3);
   font-size: .8rem;
   color: var(--text-muted);
   z-index: 1000;
@@ -400,7 +568,7 @@ body {
 /* --- Navigation --- */
 .nav-hint {
   position: absolute;
-  bottom: .5rem; left: .83rem;
+  bottom: var(--space-2); left: var(--space-3);
   font-size: .75rem;
   color: var(--text-muted);
   z-index: 1000;
@@ -420,22 +588,22 @@ body {
 /* Checklist */
 .checklist { list-style: none; padding-left: 0; }
 .checklist li {
-  display: flex; align-items: flex-start; gap: .42rem;
-  padding: .33rem .5rem;
-  border-radius: .33rem;
+  display: flex; align-items: flex-start; gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background var(--transition-fast);
   flex-wrap: wrap;
 }
 .checklist li:hover { background: var(--bg-tertiary); }
 .checklist li .check {
-  width: .83rem; height: .83rem;
+  width: var(--space-3); height: var(--space-3);
   border: 2px solid var(--border);
-  border-radius: .21rem;
+  border-radius: var(--radius-sm);
   display: flex; align-items: center; justify-content: center;
   transition: all var(--transition-fast);
   flex-shrink: 0;
-  margin-top: .15rem;
+  margin-top: var(--space-1);
 }
 .checklist li.checked .check {
   background: var(--green);
@@ -451,7 +619,7 @@ body {
 .checklist-detail {
   display: none;
   width: 100%;
-  margin-top: .33rem;
+  margin-top: var(--space-1);
   padding-left: 1.25rem;
   max-height: 0;
   overflow: hidden;
@@ -476,7 +644,7 @@ body {
   font-size: .92rem;
 }
 .slide th, .slide td {
-  padding: .42rem .58rem;
+  padding: var(--space-2) var(--space-2);
   text-align: left;
   border-bottom: 1px solid var(--border);
   font-size: inherit;
@@ -491,15 +659,13 @@ body {
 
 /* --- Callout Boxes --- */
 .callout {
-  padding: .58rem .75rem;
-  border-radius: .42rem;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
   border-left: 4px solid;
   font-size: .95rem;
 }
-.callout-info    { border-color: var(--blue);   background: var(--blue-bg); }
-.callout-warning { border-color: var(--yellow); background: var(--yellow-bg); }
-.callout-danger  { border-color: var(--red);    background: var(--red-bg); }
-.callout-success { border-color: var(--green);  background: var(--green-bg); }
+/* .callout-* role variants are defined AFTER the .callout primitive block
+   (token-backed primitives section) so they win source order; see below. */
 
 /* --- Timeline --- */
 .timeline {
@@ -515,7 +681,7 @@ body {
   position: relative;
 }
 .timeline-dot {
-  width: 1.33rem; height: 1.33rem;
+  width: var(--space-5); height: var(--space-5);
   border-radius: 50%;
   background: var(--bg-tertiary);
   border: 2px solid var(--border);
@@ -528,16 +694,19 @@ body {
 .timeline-step.active .timeline-dot {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--accent-on);
   box-shadow: 0 0 12px var(--accent-glow);
 }
+/* done = subdued accent (same single-hue progress language as .agenda-step.done)
+   — green made "done" the dominant color on a finished timeline */
 .timeline-step.done .timeline-dot {
-  background: var(--green);
-  border-color: var(--green);
-  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-on);
+  opacity: .55;
 }
 .timeline-label {
-  margin-top: .33rem;
+  margin-top: var(--space-1);
   font-size: .78rem;
   color: var(--text-muted);
   max-width: 4.2rem;
@@ -550,11 +719,11 @@ body {
   position: relative;
   top: -16px;
 }
-.timeline-connector.done { background: var(--green); }
+.timeline-connector.done { background: var(--accent); opacity: .5; }
 .timeline-desc {
   font-size: .7rem;
   color: var(--text-muted);
-  margin-top: .17rem;
+  margin-top: var(--space-1);
   max-width: 5rem;
   line-height: 1.3;
 }
@@ -585,33 +754,33 @@ body {
   justify-content: center;
   font-size: 1rem;
   font-weight: 700;
-  color: var(--text-muted, #8b8fa3);
+  color: var(--text-muted);
   z-index: 2;
   transition: all 0.3s ease;
 }
 .agenda-step.active .agenda-dot {
-  background: var(--accent, #6c5ce7);
-  border-color: var(--accent, #6c5ce7);
-  color: #fff;
-  box-shadow: 0 0 20px var(--accent-glow, rgba(108, 92, 231, 0.3));
+  background: var(--accent, #ec7211);
+  border-color: var(--accent, #ec7211);
+  color: var(--accent-on, #fff);
+  box-shadow: 0 0 20px var(--accent-glow, rgba(236, 114, 17, 0.3));
 }
 .agenda-step.done .agenda-dot {
-  background: var(--accent, #6c5ce7);
-  border-color: var(--accent, #6c5ce7);
-  color: #fff;
+  background: var(--accent, #ec7211);
+  border-color: var(--accent, #ec7211);
+  color: var(--accent-on, #fff);
   opacity: 0.5;
 }
 .agenda-connector.done {
-  background: var(--accent, #6c5ce7);
+  background: var(--accent, #ec7211);
   opacity: 0.5;
 }
 .agenda-step.break .agenda-dot {
-  background: var(--yellow, #f1c40f);
-  border-color: var(--yellow, #f1c40f);
+  background: var(--yellow);
+  border-color: var(--yellow);
   color: #000;
 }
 .agenda-label {
-  margin-top: 0.67rem;
+  margin-top: var(--space-3);
   text-align: center;
   max-width: 7rem;
 }
@@ -623,7 +792,7 @@ body {
 }
 .agenda-label span {
   font-size: 0.8rem;
-  color: var(--text-muted, #8b8fa3);
+  color: var(--text-muted);
 }
 .agenda-connector {
   position: absolute;
@@ -638,10 +807,10 @@ body {
 
 /* --- Steps (agenda/process) --- */
 .steps-container {
-  --step-color: var(--accent, #6c5ce7);
+  --step-color: var(--accent, #ec7211);
   --step-size: 3rem;
   --step-font-size: 1.1rem;
-  --step-connector-color: rgba(255,255,255,0.2);
+  --step-connector-color: var(--border);
   display: flex; align-items: flex-start; justify-content: center;
   gap: 0; width: 100%; padding: 2rem 1rem;
 }
@@ -674,7 +843,7 @@ body {
 .step-desc { font-size: 0.85rem; opacity: 0.8; margin-top: 0.25rem; }
 
 .step-item.done .step-marker { background: var(--step-color); opacity: 0.6; }
-.step-item.active .step-marker { box-shadow: 0 0 0 4px rgba(108, 92, 231, 0.3); transform: scale(1.1); }
+.step-item.active .step-marker { box-shadow: 0 0 0 4px var(--accent-subtle); transform: scale(1.1); }
 
 /* --- Slider --- */
 .slider-container {
@@ -706,7 +875,7 @@ input[type="range"]::-webkit-slider-thumb {
 /* --- Metric Cards --- */
 .metric-card {
   text-align: center;
-  padding: .67rem;
+  padding: var(--space-3);
 }
 .metric-value {
   font-size: 2rem;
@@ -724,8 +893,8 @@ input[type="range"]::-webkit-slider-thumb {
 .event-log {
   background: #0d1117;
   border: 1px solid var(--border);
-  border-radius: .33rem;
-  padding: .5rem;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
   font-family: var(--font-mono);
   font-size: .78rem;
   line-height: 1.6;
@@ -747,18 +916,17 @@ input[type="range"]::-webkit-slider-thumb {
 }
 .title-slide h1 {
   font-size: 3rem;
-  background: linear-gradient(135deg, var(--accent-light), var(--cyan));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: .67rem;
+  font-family: var(--font-display);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
+  margin-bottom: var(--space-3);
 }
 .title-slide .subtitle {
   font-size: 1.3rem;
   color: var(--text-secondary);
 }
 .title-slide .meta {
-  margin-top: 1.33rem;
+  margin-top: var(--space-5);
   font-size: .9rem;
   color: var(--text-muted);
 }
@@ -769,23 +937,23 @@ input[type="range"]::-webkit-slider-thumb {
   font-style: italic;
   color: var(--yellow);
   border-left: 3px solid var(--yellow);
-  padding: .5rem .83rem;
+  padding: var(--space-2) var(--space-3);
   background: var(--yellow-bg);
-  border-radius: 0 .42rem .42rem 0;
-  margin: .5rem 0;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  margin: var(--space-2) 0;
 }
 
 /* --- Comparison Toggle --- */
 .compare-toggle {
   display: flex; gap: 0;
-  border-radius: .42rem;
+  border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--border);
-  margin-bottom: .67rem;
+  margin-bottom: var(--space-3);
   width: fit-content;
 }
 .compare-btn {
-  padding: .42rem 1rem;
+  padding: var(--space-2) var(--space-4);
   border: none;
   background: var(--bg-tertiary);
   color: var(--text-muted);
@@ -796,7 +964,10 @@ input[type="range"]::-webkit-slider-thumb {
 }
 .compare-btn.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-on);
+  /* white-on-Smile-orange measures ~3.0 — compliant only as WCAG large
+     text, which bold >= 14pt qualifies for (also anchors the active tab) */
+  font-weight: var(--weight-bold);
 }
 
 .compare-content {
@@ -814,7 +985,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 .node-cell {
   aspect-ratio: 1;
-  border-radius: .33rem;
+  border-radius: var(--radius-sm);
   display: flex; align-items: center; justify-content: center;
   font-size: .7rem; font-weight: 700;
   transition: all var(--transition-normal);
@@ -860,6 +1031,9 @@ input[type="range"]::-webkit-slider-thumb {
   z-index: 999;
   opacity: 0.8;
   pointer-events: none;
+  /* No blanket invert — each deck supplies a logo matching its own theme
+     (dark-ink logo for light decks, light/white logo for dark decks) via
+     `theme.logo` in _presentation.md. */
 }
 
 /* --- Footer --- */
@@ -972,6 +1146,8 @@ input[type="range"]::-webkit-slider-thumb {
 @media print {
   .slide { page-break-after: always; position: relative; display: flex !important; opacity: 1 !important; }
   .progress-bar, .slide-counter, .nav-hint, .slide-logo, .slide-footer, .slide-number, .slide-ref { display: none; }
+  /* Print flows pages, not a scaled canvas */
+  .slide-deck { transform: none !important; width: 100% !important; height: auto !important; }
 }
 
 /* === Export Toolbar === */
@@ -1140,7 +1316,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 .fragment.highlight.visible {
   opacity: 1;
-  background-color: rgba(108, 92, 231, 0.3);
+  background-color: var(--accent-subtle);
 }
 
 /* highlight-red */
@@ -1363,10 +1539,10 @@ input[type="range"]::-webkit-slider-thumb {
 /* --- Flow Containers --- */
 .flow-h {
   display: flex;
-  align-items: center;
+  align-items: stretch;   /* all flow-groups share the tallest one's height */
   justify-content: center;
-  gap: 1rem;
-  flex: 1;
+  gap: 1.25rem;
+  margin: auto 0;         /* size to the tallest group, centered vertically in the slide */
 }
 .flow-v {
   display: flex;
@@ -1390,6 +1566,7 @@ input[type="range"]::-webkit-slider-thumb {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;  /* stay vertically centered between equal-height groups */
   flex-shrink: 0;
 }
 .flow-arrow .arrow-label {
@@ -1404,6 +1581,8 @@ input[type="range"]::-webkit-slider-thumb {
   font-weight: 500;
   text-align: center;
   min-width: 120px;
+  width: 100%;             /* fill the group → uniform box width across stages */
+  box-sizing: border-box;
 }
 
 /* --- Icon + Label component --- */
@@ -1439,8 +1618,11 @@ input[type="range"]::-webkit-slider-thumb {
 .text-orange { color: var(--orange); }
 .text-green  { color: var(--green); }
 .text-red    { color: var(--red); }
-.text-purple { color: #818cf8; }
-.text-pink   { color: #f472b6; }
+/* Purple/pink lack role tokens; theme-scoped literals so both themes pass
+   WCAG (light needs the darker shade — #818cf8 on white measures 2.98). */
+.text-purple { color: #6366f1; }
+.text-pink   { color: var(--pink); }
+.theme-dark .text-purple { color: #818cf8; }
 
 /* --- Text Icon (for services without icon files) --- */
 .text-icon {
@@ -1465,6 +1647,7 @@ input[type="range"]::-webkit-slider-thumb {
   gap: 0.75rem;
   padding: 1rem;
   border-radius: 8px;
+  flex: 1 1 0;            /* equal width, spread evenly across the row */
 }
 .flow-group .flow-group-label {
   font-size: 0.85rem;
@@ -1517,12 +1700,11 @@ body.sidebar-visible {
   justify-content: center;
 }
 
+/* Sidebar shifts the usable area right by 220px: keep the fixed canvas,
+   move its visual center by half the sidebar width. slide-framework.js
+   subtracts the 220px from availW when computing --deck-scale. */
 body.sidebar-visible .slide-deck {
-  width: calc(100vw - 220px);
-  max-width: calc(100vh * var(--slide-ratio-w) / var(--slide-ratio-h));
-  max-height: calc((100vw - 220px) * var(--slide-ratio-h) / var(--slide-ratio-w));
-  margin-left: 220px;
-  margin-right: auto;
+  transform: translateX(110px) scale(var(--deck-scale, 1));
 }
 
 /* Sidebar thumbnails */
@@ -1585,7 +1767,12 @@ body.sidebar-visible .slide-deck {
   overflow: auto !important;
 }
 
+/* Overview is a scrolling grid, not a scaled canvas. The overview class
+   lands ON the deck itself (see SlideFramework.toggleOverview), so match
+   both forms. */
+.slide-deck.overview-mode,
 .overview-mode .slide-deck {
+  transform: none !important;
   display: grid !important;
   grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
@@ -1724,7 +1911,7 @@ body.sidebar-visible .slide-deck {
 .mode-selector { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
 .mode-btn { padding: 10px 20px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-tertiary); color: var(--text-secondary); font-family: var(--font-main); font-size: .9rem; cursor: pointer; transition: all var(--transition-fast); }
 .mode-btn:hover { border-color: var(--accent); }
-.mode-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.mode-btn.active { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
 .mode-content { display: none; }
 .mode-content.active { display: block; }
 
@@ -1784,4 +1971,80 @@ body.sidebar-visible .slide-deck {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-in, .animate-slide, .animate-scale, .kpi-card { animation: none !important; }
+}
+
+/* ============================================================
+   Token-backed Component Primitives (theme-agnostic)
+   Consume semantic color roles + spacing/radius/shadow scales
+   so they adapt automatically to .theme-light / .theme-dark.
+   ============================================================ */
+
+/* Responsive card grid */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+
+/* Surface-based content primitives */
+.metric-card,
+.callout,
+.comparison {
+  background: var(--surface-2);
+  color: var(--on-surface);
+  border: 1px solid var(--surface-3);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-1);
+}
+
+/* Light theme only: lift cards off the warm paper canvas. The primitive above paints
+   cards in paper-muted (--surface-2), which sits only a hair above the page and reads
+   flat. In LIGHT we promote them to a white surface with a soft layered shadow so they
+   read as distinct, floating cards. Scoped to a non-dark deck AND non-dark slide, so the
+   dark theme (deck-level or per-slide @theme:dark) keeps the surface-2 look untouched. */
+.slide-deck:not(.theme-dark) .slide:not(.theme-dark) :is(.metric-card, .comparison, .flow-box) {
+  background: var(--surface-1);
+  border: 1px solid var(--surface-3);
+  box-shadow: var(--shadow-2);
+}
+.slide-deck:not(.theme-dark) .slide:not(.theme-dark) :is(.card, .callout) {
+  box-shadow: var(--shadow-2);
+}
+
+/* Callout role variants — bound to semantic role tokens and placed AFTER the
+   .callout primitive so they override its generic background/border by source
+   order. Specificity raised to (0,2,0) via .callout.callout-* for safety. */
+.callout.callout-info    { border-color: var(--info);    background: var(--info-subtle); }
+.callout.callout-success { border-color: var(--success); background: var(--success-subtle); }
+.callout.callout-warning { border-color: var(--warning); background: var(--warning-subtle); }
+.callout.callout-danger  { border-color: var(--danger);  background: var(--danger-subtle); }
+
+/* Tab set */
+.tab-set {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-2);
+}
+.tab-set .tab-btn {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 0;
+  background: var(--surface-2);
+  color: var(--on-surface-muted);
+  cursor: pointer;
+}
+.tab-set .tab-btn.active {
+  background: var(--accent);
+  color: var(--accent-on);
+  /* white-on-Smile-orange measures ~3.0 — compliant only as WCAG large
+     text, which bold >= 14pt qualifies for (also anchors the active tab) */
+  font-weight: var(--weight-bold);
+}
+
+/* Flow group — tokenized */
+.flow-group {
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
 }
