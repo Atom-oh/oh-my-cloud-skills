@@ -186,6 +186,7 @@ class SlideFramework {
         slide.onclick = null;
       });
       this.showSlide(this.currentSlide, false);
+      this.updateDeckScale(); // overview is height:auto — rescale to the restored canvas
     }
   }
 
@@ -616,10 +617,15 @@ class SlideFramework {
   }
 
   toggleFullscreen() {
-    const deck = document.querySelector('.slide-deck');
-    if (!deck) return;
     if (!document.fullscreenElement) {
-      deck.requestFullscreen().catch(() => {});
+      // Fullscreen the document ROOT, not .slide-deck: the UA's !important
+      // :fullscreen rules (width/height:100%, transform:none) cannot be
+      // overridden by author CSS and would defeat the fixed 1920x1080 canvas
+      // + --deck-scale model. With the root fullscreen the deck stays a
+      // centered child of body and updateDeckScale() (bound to
+      // fullscreenchange) fits it to the screen.
+      const root = document.documentElement;
+      if (root && root.requestFullscreen) root.requestFullscreen().catch(() => {});
     } else {
       document.exitFullscreen();
     }
