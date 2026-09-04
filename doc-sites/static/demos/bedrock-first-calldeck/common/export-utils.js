@@ -415,7 +415,8 @@ const ExportUtils = {
    * `presenterNotes` is a top-level `const` in the built HTML, so it is not a
    * window property; a script injected INTO the iframe shares the global
    * lexical scope and can copy it onto window for us.
-   * Returns an object keyed by 1-based slide number (values may contain HTML).
+   * Returns an object keyed by 1-based slide number; each value is either a raw
+   * :::notes markdown string or `{ text, timing }` (never HTML — see _notesToPlainText).
    */
   _extractNotesFromIframe: function(iframeDoc) {
     try {
@@ -431,12 +432,16 @@ const ExportUtils = {
     }
   },
 
-  /** Presenter notes → PPTX speaker-notes text.
+  /** Presenter notes (`string | {text, timing}`) → PPTX speaker-notes text.
    *  presenterNotes carries the RAW :::notes markdown (plus [timing]/cue
    *  markers) — it is not HTML, so no tag stripping/parsing: that would eat
    *  real content like `List<T>`. Only normalize whitespace. */
-  _notesToPlainText: function(text) {
-    return String(text)
+  _notesToPlainText: function(note) {
+    // presenterNotes values are `string | { text, timing }` — slide-framework.js
+    // stores a <template class="notes" data-timing> note as an object. Unwrap
+    // before stringifying; String(obj) would emit "[object Object]".
+    var text = note && typeof note === 'object' ? (note.text || note.notes || '') : note;
+    return String(text == null ? '' : text)
       .replace(/\r\n?/g, '\n')
       .replace(/\n{3,}/g, '\n\n')
       .trim();

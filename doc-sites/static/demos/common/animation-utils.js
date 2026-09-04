@@ -7,12 +7,41 @@
    PPTX override) instead of assuming the historical dark palette. Values are
    resolved from the deck's computed custom properties; the literals below are
    only fallbacks for headless/partial contexts. */
-function _cssColor(name, fallback) {
+/* Nearest theme scope of an element: decks may be light at the root with
+   per-slide `.slide.theme-dark` scopes, so a canvas must resolve against its
+   own enclosing scope, not the deck root. */
+function _themeScopeOf(el) {
   try {
-    var root = document.querySelector('.slide-deck') || document.documentElement;
+    return (el && el.closest && el.closest('.theme-dark, .theme-light, .preset-paper, .slide-deck'))
+      || el || document.querySelector('.slide-deck') || document.documentElement;
+  } catch (e) { return document.documentElement; }
+}
+
+function _cssColor(name, fallback, scope) {
+  try {
+    var root = scope ? _themeScopeOf(scope) : (document.querySelector('.slide-deck') || document.documentElement);
     var v = getComputedStyle(root).getPropertyValue(name).trim();
     return v || fallback;
   } catch (e) { return fallback; }
+}
+
+/* Colors key → CSS custom property it is resolved from. */
+var THEME_COLOR_VARS = {
+  bg: '--bg-primary', bgSecond: '--bg-secondary', surface: '--surface', border: '--border',
+  accent: '--accent', accentLt: '--accent-light', green: '--green', yellow: '--yellow',
+  red: '--red', blue: '--blue', cyan: '--cyan', pink: '--pink', orange: '--orange',
+  textPri: '--text-primary', textSec: '--text-secondary', textMuted: '--text-muted'
+};
+
+/** Palette resolved at `el`'s nearest theme scope, as a NEW object (global
+ *  Colors untouched). Canvas code inside a per-slide `.theme-dark` scope
+ *  should draw with `themeColorsFor(canvas)` instead of the deck-level Colors. */
+function themeColorsFor(el) {
+  var out = Object.assign({}, Colors);
+  Object.keys(THEME_COLOR_VARS).forEach(function(k) {
+    out[k] = _cssColor(THEME_COLOR_VARS[k], Colors[k], el || undefined);
+  });
+  return out;
 }
 
 const Colors = {
@@ -37,24 +66,12 @@ const Colors = {
 /** Re-resolve Colors from the live CSS theme (call after theme switches).
  *  Dispatches 'remarp:theme-colors' on document so canvas code can redraw
  *  with the new palette (already-painted static canvases do not repaint
- *  on their own). */
-function refreshThemeColors() {
-  Colors.bg        = _cssColor('--bg-primary',     Colors.bg);
-  Colors.bgSecond  = _cssColor('--bg-secondary',   Colors.bgSecond);
-  Colors.surface   = _cssColor('--surface',        Colors.surface);
-  Colors.border    = _cssColor('--border',         Colors.border);
-  Colors.accent    = _cssColor('--accent',         Colors.accent);
-  Colors.accentLt  = _cssColor('--accent-light',   Colors.accentLt);
-  Colors.green     = _cssColor('--green',          Colors.green);
-  Colors.yellow    = _cssColor('--yellow',         Colors.yellow);
-  Colors.red       = _cssColor('--red',            Colors.red);
-  Colors.blue      = _cssColor('--blue',           Colors.blue);
-  Colors.cyan      = _cssColor('--cyan',           Colors.cyan);
-  Colors.pink      = _cssColor('--pink',           Colors.pink);
-  Colors.orange    = _cssColor('--orange',         Colors.orange);
-  Colors.textPri   = _cssColor('--text-primary',   Colors.textPri);
-  Colors.textSec   = _cssColor('--text-secondary', Colors.textSec);
-  Colors.textMuted = _cssColor('--text-muted',     Colors.textMuted);
+ *  on their own).
+ *  Pass a scope element to resolve against its nearest theme scope. */
+function refreshThemeColors(scope) {
+  Object.keys(THEME_COLOR_VARS).forEach(function(k) {
+    Colors[k] = _cssColor(THEME_COLOR_VARS[k], Colors[k], scope);
+  });
   if (typeof document !== 'undefined' && typeof CustomEvent === 'function') {
     document.dispatchEvent(new CustomEvent('remarp:theme-colors', { detail: Colors }));
   }

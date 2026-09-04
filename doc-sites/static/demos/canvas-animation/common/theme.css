@@ -56,9 +56,7 @@
   --cyan: #0891b2;
   --pink: #d13d73;
 }
-/* Dark = "squid-ink night": Cloudscape dark surfaces with Smile-orange accent.
-   (Existing decks keep their previously copied common/ CSS, so this refresh
-   only affects newly built/copied decks.) */
+/* Dark = "squid-ink night": Cloudscape dark surfaces with Smile-orange accent. */
 .theme-dark { --surface-1:var(--pptx-dk2, #0f1b2a); --surface-2:#16212f; --surface-3:#1e2c3c;
   --on-surface:var(--pptx-lt1, #e9ebed); --on-surface-muted:#8d99a8;
   --accent:var(--pptx-accent1, #ff9900); --accent-subtle:rgba(255,153,0,.14); --accent-on:#16191f;
@@ -168,6 +166,7 @@
 /* --- Font Loading: see @import block at the top of this file --- */
 
 html {
+  height: 100%;
   /* Fixed design-canvas root font. The deck is a fixed 1920x1080 canvas
      scaled as a whole via transform (see .slide-deck) — type must NOT
      track the viewport independently, or a width-constrained window

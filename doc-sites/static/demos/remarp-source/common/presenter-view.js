@@ -284,7 +284,7 @@ ${styleSheets}
     border: 1px solid var(--accent, #ec7211);
     border-radius: 12px;
     font-size: 0.75rem;
-    color: #a29bfe;
+    color: var(--accent, #ec7211);
     font-family: 'JetBrains Mono', monospace;
   }
   .presenter-notes .notes-content {
@@ -340,9 +340,9 @@ ${styleSheets}
     border: 1px solid rgba(0, 184, 148, 0.3);
   }
   .cue-marker.transition {
-    background: rgba(162, 155, 254, 0.15);
-    color: #a29bfe;
-    border: 1px solid rgba(162, 155, 254, 0.3);
+    background: var(--accent-subtle, rgba(236, 114, 17, 0.15));
+    color: var(--accent, #ec7211);
+    border: 1px solid var(--accent, #ec7211);
   }
 
   /* === Nav === */
@@ -366,7 +366,7 @@ ${styleSheets}
     transition: all 150ms ease;
   }
   .presenter-nav button:hover {
-    background: #2d3250;
+    background: var(--accent-subtle, rgba(236, 114, 17, 0.15));
     border-color: var(--accent, #ec7211);
   }
   .end-message {
