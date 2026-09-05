@@ -29,6 +29,18 @@
   --weight-semibold: 600;
   --weight-bold: 700;
 
+  /* --- Typography roles: tracking ---------------------------------------
+     Display headings tighten; eyebrows/labels spread. Korean glyphs ignore
+     negative tracking gracefully (Pretendard), so these are safe bilingually. */
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.08em;
+
+  /* --- Typeface roles ----------------------------------------------------
+     display = characterful face for headings/covers (Latin), falls back to
+     the body face for Korean. body = workhorse. mono = data/labels/code.
+     Actual font-family stacks are bound in theme.css (--font-display/-main/-mono). */
+
   /* --- Spacing (8px grid) ----------------------------------------------- */
   --space-1: .25rem;   /* 4px  */
   --space-2: .5rem;    /* 8px  */

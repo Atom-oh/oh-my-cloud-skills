@@ -42,6 +42,21 @@ class SlideFramework {
         this.keyMappings = window.__remarpKeys;
       }
 
+      // Harvest <template class="notes"> speaker notes from slide DOM.
+      // Must run BEFORE createSidebar() clones slide innerHTML (a cloned
+      // <template> is inert but would double-count if harvested later).
+      // An explicit presenterNotes option always wins over the DOM.
+      this.slides.forEach((slide, idx) => {
+        const key = idx + 1;
+        if (this.presenterNotes[key] !== undefined) return;
+        const tpl = slide.querySelector('template.notes');
+        if (!tpl) return;
+        const text = tpl.content.textContent.trim();
+        if (!text) return;
+        const timing = tpl.dataset.timing || null;
+        this.presenterNotes[key] = timing ? { text: text, timing: timing } : text;
+      });
+
       // Read theme config
       if (window.__remarpTheme) {
         if (!this.footer && window.__remarpTheme.footer) this.footer = window.__remarpTheme.footer;
@@ -63,6 +78,7 @@ class SlideFramework {
       this.bindKeys();
       this.bindTouch();
       this.handleHash();
+      this.bindDeckScale();
       if (this.footer) this.createFooter();
       if (this.logoSrc) this.createLogo();
       this.initFragments(this.currentSlide);
@@ -170,6 +186,7 @@ class SlideFramework {
         slide.onclick = null;
       });
       this.showSlide(this.currentSlide, false);
+      this.updateDeckScale(); // overview is height:auto — rescale to the restored canvas
     }
   }
 
@@ -220,12 +237,14 @@ class SlideFramework {
     document.body.classList.add('sidebar-visible');
     this.sidebarVisible = true;
     this.updateSidebarHighlight(this.currentSlide);
+    this.updateDeckScale();
   }
 
   hideSidebar() {
     if (!this.sidebar) return;
     document.body.classList.remove('sidebar-visible');
     this.sidebarVisible = false;
+    this.updateDeckScale();
   }
 
   updateSidebarHighlight(index) {
@@ -289,6 +308,27 @@ class SlideFramework {
 
   getDeck() {
     return document.querySelector('.slide-deck');
+  }
+
+  // Fixed design-canvas scaling: the deck is a fixed 1920x1080 (ratio-derived)
+  // box; scale it as one unit so type, px coordinates and canvases all shrink
+  // proportionally. Pairs with the .slide-deck transform in theme.css.
+  updateDeckScale() {
+    const deck = this.getDeck();
+    if (!deck) return;
+    const sidebarPad = (this.sidebarVisible && !document.fullscreenElement) ? 220 : 0;
+    const availW = window.innerWidth - sidebarPad;
+    const availH = window.innerHeight;
+    // offsetWidth/Height are layout size, unaffected by the transform itself
+    const w = deck.offsetWidth || 1920;
+    const h = deck.offsetHeight || 1080;
+    deck.style.setProperty('--deck-scale', Math.min(availW / w, availH / h));
+  }
+
+  bindDeckScale() {
+    this.updateDeckScale();
+    window.addEventListener('resize', () => this.updateDeckScale());
+    document.addEventListener('fullscreenchange', () => this.updateDeckScale());
   }
 
   updateFooterVisibility(slide) {
@@ -357,6 +397,8 @@ class SlideFramework {
     const hint = document.createElement('div');
     hint.className = 'nav-hint';
     hint.textContent = '← → Space  |  F: Fullscreen  |  P: Presenter  |  O: Overview';
+    // Footer occupies the same bottom-left corner — lift the hint above it
+    if (this.footer) hint.style.bottom = '2.2rem';
     (this.getDeck() || document.body).appendChild(hint);
     this.navHint = hint;
     // Fade out after 5s
@@ -575,10 +617,15 @@ class SlideFramework {
   }
 
   toggleFullscreen() {
-    const deck = document.querySelector('.slide-deck');
-    if (!deck) return;
     if (!document.fullscreenElement) {
-      deck.requestFullscreen().catch(() => {});
+      // Fullscreen the document ROOT, not .slide-deck: the UA's !important
+      // :fullscreen rules (width/height:100%, transform:none) cannot be
+      // overridden by author CSS and would defeat the fixed 1920x1080 canvas
+      // + --deck-scale model. With the root fullscreen the deck stays a
+      // centered child of body and updateDeckScale() (bound to
+      // fullscreenchange) fits it to the screen.
+      const root = document.documentElement;
+      if (root && root.requestFullscreen) root.requestFullscreen().catch(() => {});
     } else {
       document.exitFullscreen();
     }

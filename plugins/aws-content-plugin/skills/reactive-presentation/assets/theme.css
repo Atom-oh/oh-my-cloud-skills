@@ -56,9 +56,7 @@
   --cyan: #0891b2;
   --pink: #d13d73;
 }
-/* Dark = "squid-ink night": Cloudscape dark surfaces with Smile-orange accent.
-   (Existing decks keep their previously copied common/ CSS, so this refresh
-   only affects newly built/copied decks.) */
+/* Dark = "squid-ink night": Cloudscape dark surfaces with Smile-orange accent. */
 .theme-dark { --surface-1:var(--pptx-dk2, #0f1b2a); --surface-2:#16212f; --surface-3:#1e2c3c;
   --on-surface:var(--pptx-lt1, #e9ebed); --on-surface-muted:#8d99a8;
   --accent:var(--pptx-accent1, #ff9900); --accent-subtle:rgba(255,153,0,.14); --accent-on:#16191f;
@@ -168,6 +166,7 @@
 /* --- Font Loading: see @import block at the top of this file --- */
 
 html {
+  height: 100%;
   /* Fixed design-canvas root font. The deck is a fixed 1920x1080 canvas
      scaled as a whole via transform (see .slide-deck) — type must NOT
      track the viewport independently, or a width-constrained window
@@ -1001,9 +1000,18 @@ input[type="range"]::-webkit-slider-thumb {
   50%      { opacity: .5; }
 }
 
-/* --- Fullscreen --- */
-.slide-deck:-webkit-full-screen { background: var(--bg-primary); width: 100vw; height: 100vh; max-width: calc(100vh * var(--slide-ratio-w) / var(--slide-ratio-h)); max-height: calc(100vw * var(--slide-ratio-h) / var(--slide-ratio-w)); margin: auto; }
-.slide-deck:fullscreen          { background: var(--bg-primary); width: 100vw; height: 100vh; max-width: calc(100vh * var(--slide-ratio-w) / var(--slide-ratio-h)); max-height: calc(100vw * var(--slide-ratio-h) / var(--slide-ratio-w)); margin: auto; }
+/* --- Fullscreen ---
+   slide-framework.js fullscreens the document ROOT, not .slide-deck: the UA's
+   !important :fullscreen rules (width/height:100%, transform:none) cannot be
+   overridden by author CSS and would defeat the fixed-canvas + --deck-scale
+   model (the old 100vw/100vh rules here date from the vh-clamp era). With the
+   root fullscreen the deck stays a centered child of body and updateDeckScale()
+   fits it to the screen. The sidebar is hidden in fullscreen (see below), so
+   its 110px shift must not apply either. */
+:root:fullscreen body.sidebar-visible .slide-deck,
+:root:-webkit-full-screen body.sidebar-visible .slide-deck {
+  transform: scale(var(--deck-scale, 1));
+}
 
 /* --- Scrollbar --- */
 ::-webkit-scrollbar { width: 6px; }
@@ -1747,9 +1755,9 @@ body.sidebar-visible .slide-deck {
   /* scale is calculated in JS and applied as inline style */
 }
 
-/* Hide sidebar in fullscreen (sibling selector fallback) */
-.slide-deck:fullscreen ~ .slide-sidebar,
-.slide-deck:-webkit-full-screen ~ .slide-sidebar { display: none !important; }
+/* Hide sidebar in fullscreen (the root is the fullscreen element) */
+:root:fullscreen .slide-sidebar,
+:root:-webkit-full-screen .slide-sidebar { display: none !important; }
 
 /* Hide sidebar in overview mode */
 .overview-mode ~ .slide-sidebar { display: none !important; }

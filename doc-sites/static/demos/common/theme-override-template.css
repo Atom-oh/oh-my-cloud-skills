@@ -4,17 +4,28 @@
    This file is loaded AFTER theme.css to override defaults.
    ============================================================= */
 
+/* Override the SEMANTIC ROLE tokens — not per-component colors.
+   These cascade automatically into every token-backed primitive
+   (.card-grid, .metric-card, .callout, .tab-set, .flow-group, …)
+   in both the light default and the .theme-dark scope. */
 :root {
-  /* --- Colors from PPTX color scheme --- */
-  /* --bg-primary:    #161D26;  /* dk2 (only if dark enough) */
-  /* --accent:        #41B3FF;  /* accent1 */
-  /* --accent-light:  #AD5CFF;  /* accent2 */
-  /* --accent-glow:   rgba(65, 179, 255, 0.3);  /* accent1 @ 30% */
-  /* --green:         #00E500;  /* accent3 */
-  /* --red:           #FF5C85;  /* accent4 */
-  /* --orange:        #FF693C;  /* accent5 */
-  /* --yellow:        #FBD332;  /* accent6 */
-  /* --cyan:          #00cec9;  /* hlink (if present) */
+  /* --- Color ROLES from PPTX color scheme --- */
+  /* --accent:        #41B3FF;             /* accent1 */
+  /* --accent-subtle: rgba(65,179,255,.12); /* accent1 @ ~12% */
+  /* --accent-on:     #ffffff;             /* text on accent */
+
+  /* --- Surfaces & text roles --- */
+  /* --surface-1:     #ffffff;  /* page / deck background */
+  /* --surface-2:     #f6f7f9;  /* card / panel background */
+  /* --surface-3:     #eceff3;  /* borders / dividers */
+  /* --on-surface:    #161D26;  /* primary text (dk2) */
+  /* --on-surface-muted: #5b6072; /* secondary text */
+
+  /* --- Status roles (accent3-6 / semantic) --- */
+  /* --success: #00E500;  --success-subtle: rgba(0,229,0,.12);   --success-on: #fff; */
+  /* --danger:  #FF5C85;  --danger-subtle:  rgba(255,92,133,.12); --danger-on:  #fff; */
+  /* --warning: #FF693C;  --warning-subtle: rgba(255,105,60,.12); --warning-on: #fff; */
+  /* --info:    #FBD332;  --info-subtle:    rgba(251,211,50,.12); --info-on:    #06283d; */
 
   /* --- Fonts from PPTX font scheme --- */
   /* --font-main: 'Calibri', -apple-system, sans-serif; */
@@ -24,7 +35,7 @@
 /* --- Title Slide gradient using PPTX accents --- */
 /*
 .title-slide h1 {
-  background: linear-gradient(135deg, var(--accent), var(--accent-light));
+  background: linear-gradient(135deg, var(--accent), var(--info));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

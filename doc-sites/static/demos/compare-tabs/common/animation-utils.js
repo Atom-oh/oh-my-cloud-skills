@@ -3,25 +3,79 @@
  */
 
 /* ── Color Helpers ── */
-const Colors = {
-  bg:        '#0f1117',
-  bgSecond:  '#1a1d2e',
-  surface:   '#282d45',
-  border:    '#2d3250',
-  accent:    '#6c5ce7',
-  accentLt:  '#a29bfe',
-  green:     '#00b894',
-  yellow:    '#fdcb6e',
-  red:       '#e17055',
-  blue:      '#74b9ff',
-  cyan:      '#00cec9',
-  pink:      '#fd79a8',
-  orange:    '#f39c12',
-  textPri:   '#e8eaf0',
-  textSec:   '#9ba1b8',
-  textMuted: '#6b7194',
+/* Canvas colors follow the active CSS theme (light default / .theme-dark /
+   PPTX override) instead of assuming the historical dark palette. Values are
+   resolved from the deck's computed custom properties; the literals below are
+   only fallbacks for headless/partial contexts. */
+/* Nearest theme scope of an element: decks may be light at the root with
+   per-slide `.slide.theme-dark` scopes, so a canvas must resolve against its
+   own enclosing scope, not the deck root. */
+function _themeScopeOf(el) {
+  try {
+    return (el && el.closest && el.closest('.theme-dark, .theme-light, .preset-paper, .slide-deck'))
+      || el || document.querySelector('.slide-deck') || document.documentElement;
+  } catch (e) { return document.documentElement; }
+}
+
+function _cssColor(name, fallback, scope) {
+  try {
+    var root = scope ? _themeScopeOf(scope) : (document.querySelector('.slide-deck') || document.documentElement);
+    var v = getComputedStyle(root).getPropertyValue(name).trim();
+    return v || fallback;
+  } catch (e) { return fallback; }
+}
+
+/* Colors key → CSS custom property it is resolved from. */
+var THEME_COLOR_VARS = {
+  bg: '--bg-primary', bgSecond: '--bg-secondary', surface: '--surface', border: '--border',
+  accent: '--accent', accentLt: '--accent-light', green: '--green', yellow: '--yellow',
+  red: '--red', blue: '--blue', cyan: '--cyan', pink: '--pink', orange: '--orange',
+  textPri: '--text-primary', textSec: '--text-secondary', textMuted: '--text-muted'
 };
 
+/** Palette resolved at `el`'s nearest theme scope, as a NEW object (global
+ *  Colors untouched). Canvas code inside a per-slide `.theme-dark` scope
+ *  should draw with `themeColorsFor(canvas)` instead of the deck-level Colors. */
+function themeColorsFor(el) {
+  var out = Object.assign({}, Colors);
+  Object.keys(THEME_COLOR_VARS).forEach(function(k) {
+    out[k] = _cssColor(THEME_COLOR_VARS[k], Colors[k], el || undefined);
+  });
+  return out;
+}
+
+const Colors = {
+  bg:        '#eaedee',
+  bgSecond:  '#f2f3f3',
+  surface:   '#f2f3f3',
+  border:    '#d0d7dc',
+  accent:    '#ec7211',
+  accentLt:  '#ec7211',
+  green:     '#037f0c',
+  yellow:    '#8a5b00',
+  red:       '#d91515',
+  blue:      '#0972d3',
+  cyan:      '#0891b2',
+  pink:      '#d13d73',
+  orange:    '#ec7211',
+  textPri:   '#0f141a',
+  textSec:   '#414d5c',
+  textMuted: '#7d8998',
+};
+
+/** Re-resolve Colors from the live CSS theme (call after theme switches).
+ *  Dispatches 'remarp:theme-colors' on document so canvas code can redraw
+ *  with the new palette (already-painted static canvases do not repaint
+ *  on their own).
+ *  Pass a scope element to resolve against its nearest theme scope. */
+function refreshThemeColors(scope) {
+  Object.keys(THEME_COLOR_VARS).forEach(function(k) {
+    Colors[k] = _cssColor(THEME_COLOR_VARS[k], Colors[k], scope);
+  });
+  if (typeof document !== 'undefined' && typeof CustomEvent === 'function') {
+    document.dispatchEvent(new CustomEvent('remarp:theme-colors', { detail: Colors }));
+  }
+}
 // Merge PPTX theme colors if available
 if (window.__remarpTheme && window.__remarpTheme.colors) {
   const tc = window.__remarpTheme.colors;
@@ -35,6 +89,37 @@ if (window.__remarpTheme && window.__remarpTheme.colors) {
   if (tc.lt1) Colors.pptxLt1 = tc.lt1;
   if (tc.dk2) Colors.pptxDk2 = tc.dk2;
   if (tc.lt2) Colors.pptxLt2 = tc.lt2;
+}
+
+if (typeof document !== 'undefined') {
+  // Resolve immediately, AFTER the __remarpTheme merge above so the first
+  // 'remarp:theme-colors' event already carries the pptx* keys. Head
+  // stylesheets are loaded before body-end scripts execute, so canvas setup
+  // code that runs next sees themed values.
+  refreshThemeColors();
+  // Re-resolve once the DOM is complete, covering the <head>-included case
+  // where the deck root (.slide-deck) did not exist yet on first resolve.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { refreshThemeColors(); });
+  }
+}
+
+/** Color + alpha → rgba(). Handles #rgb, #rrggbb, and rgb()/rgba() inputs;
+ *  anything else (named colors, etc.) passes through unchanged. */
+function withAlpha(color, alpha) {
+  var c = String(color).trim();
+  var m8 = /^#([0-9a-f]{6})[0-9a-f]{2}$/i.exec(c);
+  if (m8) c = '#' + m8[1];  // #rrggbbaa → drop embedded alpha, ours wins
+  var m3 = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(c);
+  if (m3) c = '#' + m3[1] + m3[1] + m3[2] + m3[2] + m3[3] + m3[3];
+  var m6 = /^#([0-9a-f]{6})$/i.exec(c);
+  if (m6) {
+    var n = parseInt(m6[1], 16);
+    return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + alpha + ')';
+  }
+  var mrgb = /^rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)/i.exec(c);
+  if (mrgb) return 'rgba(' + mrgb[1] + ',' + mrgb[2] + ',' + mrgb[3] + ',' + alpha + ')';
+  return color;
 }
 
 /** Resolve color reference - supports 'theme-accent1' style refs */
@@ -298,7 +383,7 @@ class ParticleSystem {
     this.particles.forEach(p => {
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(108, 92, 231, ${p.alpha})`;
+      ctx.fillStyle = withAlpha(Colors.accent, p.alpha);
       ctx.fill();
     });
   }

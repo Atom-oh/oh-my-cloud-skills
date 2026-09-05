@@ -414,29 +414,52 @@ const ExportUtils = {
    * Read the block's presenter notes from inside its iframe.
    * `presenterNotes` is a top-level `const` in the built HTML, so it is not a
    * window property; a script injected INTO the iframe shares the global
-   * lexical scope and can copy it onto window for us.
-   * Returns an object keyed by 1-based slide number (values may contain HTML).
+   * lexical scope and can copy it onto window for us. Decks that only carry
+   * <template class="notes"> (no const) are harvested from the DOM the same way
+   * slide-framework.js does, so export and presenter view agree.
+   * Returns an object keyed by 1-based slide number; each value is either a raw
+   * :::notes markdown string or `{ text, timing }` (never HTML — see _notesToPlainText).
    */
   _extractNotesFromIframe: function(iframeDoc) {
+    var notes = {};
     try {
       var s = iframeDoc.createElement('script');
       s.textContent = 'try { window.__exportNotes = presenterNotes; } catch (e) { window.__exportNotes = {}; }';
       iframeDoc.body.appendChild(s);
       s.remove();
       var win = iframeDoc.defaultView;
-      return (win && win.__exportNotes) || {};
+      notes = Object.assign({}, (win && win.__exportNotes) || {});
     } catch (e) {
-      console.warn('Presenter notes extraction failed — exporting without speaker notes:', e);
-      return {};
+      console.warn('Presenter notes extraction failed — falling back to <template class="notes">:', e);
     }
+    try {
+      var slides = iframeDoc.querySelectorAll('.slide');
+      for (var i = 0; i < slides.length; i++) {
+        var key = i + 1;
+        if (notes[key] !== undefined || notes[String(key)] !== undefined) continue;
+        var tpl = slides[i].querySelector('template.notes');
+        if (!tpl) continue;
+        var text = ((tpl.content ? tpl.content.textContent : tpl.textContent) || '').trim();
+        if (!text) continue;
+        var timing = tpl.getAttribute('data-timing');
+        notes[key] = timing ? { text: text, timing: timing } : text;
+      }
+    } catch (e) {
+      console.warn('Template notes harvest failed — exporting with what was found:', e);
+    }
+    return notes;
   },
 
-  /** Presenter notes → PPTX speaker-notes text.
+  /** Presenter notes (`string | {text, timing}`) → PPTX speaker-notes text.
    *  presenterNotes carries the RAW :::notes markdown (plus [timing]/cue
    *  markers) — it is not HTML, so no tag stripping/parsing: that would eat
    *  real content like `List<T>`. Only normalize whitespace. */
-  _notesToPlainText: function(text) {
-    return String(text)
+  _notesToPlainText: function(note) {
+    // presenterNotes values are `string | { text, timing }` — slide-framework.js
+    // stores a <template class="notes" data-timing> note as an object. Unwrap
+    // before stringifying; String(obj) would emit "[object Object]".
+    var text = note && typeof note === 'object' ? (note.text || note.notes || '') : note;
+    return String(text == null ? '' : text)
       .replace(/\r\n?/g, '\n')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
