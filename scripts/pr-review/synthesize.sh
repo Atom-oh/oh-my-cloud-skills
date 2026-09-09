@@ -103,7 +103,7 @@ MEMORY_EXCERPT="$(memory_excerpt docs/pr-review/review-memory.md "${CHAIR_MEMORY
   fi
 } > "$WORK/synth-stdin.txt"
 
-# ── 의장 종합: primary(Fable 5, 파일 도구 있음) 시도 → 저하 시 Opus 폴백(도구 없음) ──
+# ── 의장 종합: primary(Fable 5.1, 파일 도구 있음) 시도 → 저하 시 Opus 폴백(도구 없음) ──
 # 두 시도 모두 diff+패널은 이미 stdin 에 있으므로 완결적이다 — 폴백에서 도구를 완전히
 # 빼는 것(ADR-016)이 #141/#146 의 600s 크롤 타임아웃을 구조적으로 없앤다: 첫 시도가
 # 여전히 크롤하다 죽어도, 폴백은 도구가 없어 크롤할 수 없다.
@@ -114,15 +114,16 @@ MEMORY_EXCERPT="$(memory_excerpt docs/pr-review/review-memory.md "${CHAIR_MEMORY
 # 처리 시간"이라는 증거). 큰 diff 에서도 두 시도 모두 완주할 수 있도록 상향; 도구가
 # 없는 폴백은 크롤 재발 위험이 없으므로 값을 늘려도 ADR-016 의 원래 목적(크롤 차단)은
 # 그대로 유지된다.
-PRIMARY_MODEL="${ANTHROPIC_MODEL:-us.anthropic.claude-fable-5}"
-FALLBACK_MODEL="${CHAIR_FALLBACK_MODEL:-us.anthropic.claude-opus-5}"
+PRIMARY_MODEL="${ANTHROPIC_MODEL:-global.anthropic.claude-fable-5-1}"
+FALLBACK_MODEL="${CHAIR_FALLBACK_MODEL:-global.anthropic.claude-opus-5}"
 CHAIR_TIMEOUT="${CHAIR_TIMEOUT:-450}"
 CHAIR_FALLBACK_TIMEOUT="${CHAIR_FALLBACK_TIMEOUT:-300}"
 
 chair_label() { case "$1" in
-  *fable-5*)  echo "Claude Fable 5" ;;
-  *opus-5*)   echo "Claude Opus 5" ;;
-  *)          echo "$1" ;;
+  *fable-5-1*) echo "Claude Fable 5.1" ;;
+  *fable-5*)   echo "Claude Fable 5" ;;
+  *opus-5*)    echo "Claude Opus 5" ;;
+  *)           echo "$1" ;;
 esac ; }
 
 run_chair() {  # $1=model $2=timeout $3=allow-file-tools(1|0) → "$OUT" (scrub 통과)

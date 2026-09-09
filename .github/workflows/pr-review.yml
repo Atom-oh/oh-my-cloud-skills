@@ -1,7 +1,7 @@
 name: AI Code Review
 
 # L1(결정적 pre-check) → 4-model panel(Codex + Kiro×3, each does one full-scope review —
-# no lens split) → Claude Fable 5 의장 종합 → PR 코멘트.
+# no lens split) → Claude Fable 5.1 의장 종합 → PR 코멘트.
 # (design: docs/superpowers/specs/2026-07-05-pr-review-hybrid-lens-design.md;
 #  reversed by ADR-016 — see there for why the lens×model matrix was collapsed)
 #   - self-hosted 러너(oh-my-cloud-skills-claude-arm)가 EKS Pod Identity(SigV4)로 Bedrock 호출
@@ -31,15 +31,15 @@ jobs:
       pull-requests: write
       contents: read
     env:
-      # us-east-1 고정 필요: claude-fable-5 는 US 추론 프로파일이 필요하고 — endpoint 와
-      # AWS_REGION 이 일치해야 SigV4 서명이 성립한다. 핵심: model id 는 US 프로파일 —
-      # `us.anthropic.claude-fable-5` (global.* 아님). Codex 자체 모델
-      # (global.openai.gpt-6-astra, amazon-bedrock-runtime, config.toml) 은 global 이라
-      # 더 이상 region pinning 이 필요 없지만, 이 job-level 변수는 codex 에도 무해하게 적용된다.
-      ANTHROPIC_MODEL: us.anthropic.claude-fable-5
+      # claude-fable-5-1 은 Codex 자체 모델(global.openai.gpt-6-astra, amazon-bedrock-runtime)과
+      # 마찬가지로 global 추론 프로파일이라 — AWS_REGION pinning 이 더 이상 필요 없다.
+      # ANTHROPIC_BEDROCK_BASE_URL 은 여전히 실제 리전 bedrock-runtime 엔드포인트를 가리키지만,
+      # 그건 그냥 요청이 처음 들어가는 진입점일 뿐이다 — model id 의 `global.` 접두사가 Bedrock이
+      # 여유 capacity 가 있는 곳으로 라우팅하게 해주므로, 이제 가장 가까운 리전(ap-northeast-2/서울)을
+      # 가리키도록 바꿀 수 있다.
+      ANTHROPIC_MODEL: global.anthropic.claude-fable-5-1
       CLAUDE_CODE_USE_BEDROCK: 1
-      ANTHROPIC_BEDROCK_BASE_URL: https://bedrock-runtime.us-east-1.amazonaws.com
-      AWS_REGION: us-east-1
+      ANTHROPIC_BEDROCK_BASE_URL: https://bedrock-runtime.ap-northeast-2.amazonaws.com
     steps:
       # 보안(M1): pull_request_target 는 시크릿/쓰기권한 컨텍스트다. PR head 코드를
       # 실행하면 push 권한자가 scripts/*.sh 를 바꿔 패널 키/노드 IAM 을 탈취할 수 있다.
@@ -241,7 +241,7 @@ jobs:
           if [ "${l1_failed:-0}" = "1" ]; then
             HEADER="## 🤖 AI Code Review (L1 결정적 pre-check — 패널 미실행)"
           else
-            HEADER="## 🤖 AI Code Review (${chair_used:-Claude Fable 5} chair · 4-model panel)"
+            HEADER="## 🤖 AI Code Review (${chair_used:-Claude Fable 5.1} chair · 4-model panel)"
           fi
           {
             echo "$MARKER"
