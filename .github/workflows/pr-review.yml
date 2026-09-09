@@ -31,9 +31,11 @@ jobs:
       pull-requests: write
       contents: read
     env:
-      # 리전 통일: us-east-1 (fable-5 US 추론 프로파일 + openai.gpt-5.6-sol In-Region).
-      # 핵심: model id 는 US 프로파일 — `us.anthropic.claude-fable-5` (global.* 아님).
-      # openai.gpt-5.6-sol(bedrock-mantle)는 In-Region 만 지원이라 전체를 us-east-1 로 맞춤. 노드 IAM(ci_runner) SigV4.
+      # us-east-1 고정 필요: claude-fable-5 는 US 추론 프로파일이 필요하고 — endpoint 와
+      # AWS_REGION 이 일치해야 SigV4 서명이 성립한다. 핵심: model id 는 US 프로파일 —
+      # `us.anthropic.claude-fable-5` (global.* 아님). Codex 자체 모델
+      # (global.openai.gpt-6-astra, amazon-bedrock-runtime, config.toml) 은 global 이라
+      # 더 이상 region pinning 이 필요 없지만, 이 job-level 변수는 codex 에도 무해하게 적용된다.
       ANTHROPIC_MODEL: us.anthropic.claude-fable-5
       CLAUDE_CODE_USE_BEDROCK: 1
       ANTHROPIC_BEDROCK_BASE_URL: https://bedrock-runtime.us-east-1.amazonaws.com
