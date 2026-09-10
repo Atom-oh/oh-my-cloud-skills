@@ -114,15 +114,16 @@ MEMORY_EXCERPT="$(memory_excerpt docs/pr-review/review-memory.md "${CHAIR_MEMORY
 # 처리 시간"이라는 증거). 큰 diff 에서도 두 시도 모두 완주할 수 있도록 상향; 도구가
 # 없는 폴백은 크롤 재발 위험이 없으므로 값을 늘려도 ADR-016 의 원래 목적(크롤 차단)은
 # 그대로 유지된다.
-PRIMARY_MODEL="${ANTHROPIC_MODEL:-us.anthropic.claude-fable-5}"
-FALLBACK_MODEL="${CHAIR_FALLBACK_MODEL:-us.anthropic.claude-opus-5}"
+PRIMARY_MODEL="${ANTHROPIC_MODEL:-global.anthropic.claude-fable-5-1}"
+FALLBACK_MODEL="${CHAIR_FALLBACK_MODEL:-global.anthropic.claude-opus-5}"
 CHAIR_TIMEOUT="${CHAIR_TIMEOUT:-450}"
 CHAIR_FALLBACK_TIMEOUT="${CHAIR_FALLBACK_TIMEOUT:-300}"
 
 chair_label() { case "$1" in
-  *fable-5*)  echo "Claude Fable 5" ;;
-  *opus-5*)   echo "Claude Opus 5" ;;
-  *)          echo "$1" ;;
+  *fable-5-1*) echo "Claude Fable 5.1" ;;
+  *fable-5*)   echo "Claude Fable 5" ;;
+  *opus-5*)    echo "Claude Opus 5" ;;
+  *)           echo "$1" ;;
 esac ; }
 
 run_chair() {  # $1=model $2=timeout $3=allow-file-tools(1|0) → "$OUT" (scrub 통과)
