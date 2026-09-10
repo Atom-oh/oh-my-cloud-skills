@@ -31,15 +31,17 @@ jobs:
       pull-requests: write
       contents: read
     env:
-      # us-east-1 고정 필요: claude-fable-5 는 US 추론 프로파일이 필요하고 — endpoint 와
-      # AWS_REGION 이 일치해야 SigV4 서명이 성립한다. 핵심: model id 는 US 프로파일 —
-      # `us.anthropic.claude-fable-5` (global.* 아님). Codex 자체 모델
-      # (global.openai.gpt-6-astra, amazon-bedrock-runtime, config.toml) 은 global 이라
-      # 더 이상 region pinning 이 필요 없지만, 이 job-level 변수는 codex 에도 무해하게 적용된다.
-      ANTHROPIC_MODEL: us.anthropic.claude-fable-5
+      # claude-fable-5-1 은 global 추론 프로파일이다 — 하지만 "global." 은 Bedrock의
+      # 요청 도달 *이후* 라우팅에만 적용되고, SigV4 서명 리전에는 적용되지 않는다.
+      # ANTHROPIC_BEDROCK_BASE_URL 의 엔드포인트 리전과 AWS_REGION 은 여전히 일치해야
+      # 서명이 성립한다 — 둘 다 us-east-1 대신 ap-northeast-2(Seoul)로 짝을 맞춰 이동.
+      # Codex 자체 모델(global.openai.gpt-6-astra, amazon-bedrock-runtime, config.toml)은
+      # 이 제약이 없어 이미 region pinning 없이도 동작하며, 이 job-level 변수는 codex 에도
+      # 무해하게 적용된다.
+      ANTHROPIC_MODEL: global.anthropic.claude-fable-5-1
       CLAUDE_CODE_USE_BEDROCK: 1
-      ANTHROPIC_BEDROCK_BASE_URL: https://bedrock-runtime.us-east-1.amazonaws.com
-      AWS_REGION: us-east-1
+      ANTHROPIC_BEDROCK_BASE_URL: https://bedrock-runtime.ap-northeast-2.amazonaws.com
+      AWS_REGION: ap-northeast-2
     steps:
       # 보안(M1): pull_request_target 는 시크릿/쓰기권한 컨텍스트다. PR head 코드를
       # 실행하면 push 권한자가 scripts/*.sh 를 바꿔 패널 키/노드 IAM 을 탈취할 수 있다.
