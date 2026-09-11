@@ -23,16 +23,15 @@ Locate the project directory or file path, and collect the issue list with the `
 
 ```bash
 # Project directory (scans multiple .md files)
-python3 <script_path>/remarp_to_slides.py issues <project_dir> --json
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/reactive-presentation/scripts/remarp_to_slides.py" issues <project_dir> --json
 
 # Single file
-python3 <script_path>/remarp_to_slides.py issues <file.md> --json
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/reactive-presentation/scripts/remarp_to_slides.py" issues <file.md> --json
 ```
 
-**Script location lookup order:**
-1. `plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py` in the current workspace
-2. `scripts/remarp_to_slides.py`
-3. Search for `**/remarp_to_slides.py` with Glob
+**Script location:** use the bundled sibling `reactive-presentation` skill in this
+plugin installation. Resolve the plugin root from the loaded skill's location; the
+consumer workspace does not need a marketplace checkout or its own copy of the script.
 
 **JSON output format:**
 ```json
@@ -58,13 +57,30 @@ For each issue:
    - Comply with Remarp syntax rules (see reactive-presentation SKILL.md)
 4. **Remove the annotation**: after the fix is applied, remove the corresponding `<!-- issue: ... -->` comment
 
-### Step 3: Rebuild
+### Step 3: Validate
 
-After all issues are fixed, regenerate the HTML.
+After all issues are fixed, run the Remarp rejection loop:
 
 ```bash
-python3 <script_path>/remarp_to_slides.py build <project_dir>
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/reactive-presentation/scripts/remarp_to_slides.py" validate <project_dir> --json
 ```
+
+Read the findings and fix every CRITICAL issue before building. The validator can
+return exit code 0 with findings, so shell success alone does not pass this gate.
+
+### Step 4: Rebuild
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/reactive-presentation/scripts/remarp_to_slides.py" build <project_dir>
+```
+
+### Step 5: Quality Review
+
+Submit the rebuilt artifacts to `content-review-agent` (`review content at [path]`)
+before declaring completion. Apply the reviewer's rubric from
+`${CLAUDE_PLUGIN_ROOT}/agents/content-review-agent.md`, fix REVIEW/FAIL findings,
+and obtain PASS for the final artifacts. Substantive source changes invalidate the
+previous artifact review; rebuilding alone is not a quality review.
 
 ---
 
@@ -82,5 +98,7 @@ python3 <script_path>/remarp_to_slides.py build <project_dir>
 1. remarp_to_slides.py issues doc-sites/static/demos/my-session/ --json → found 3 issues
 2. slide 3 "Please add a diagram" → added a diagram to slide 3, removed the annotation
 3. slide 5 "Change the numbers to a graph" → converted to a :::html graph, removed the annotation
-4. remarp_to_slides.py build doc-sites/static/demos/my-session/ → regenerated HTML
+4. remarp_to_slides.py validate doc-sites/static/demos/my-session/ --json → zero CRITICAL findings
+5. remarp_to_slides.py build doc-sites/static/demos/my-session/ → regenerated HTML
+6. content-review-agent → final artifacts PASS
 ```
