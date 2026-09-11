@@ -18,6 +18,8 @@ def require(condition, message):
 
 
 def git(*args):
+    require("GIT_CONFIG" not in os.environ,
+            "unset GIT_CONFIG: git config and bare git push would read different configuration.")
     result = subprocess.run(["git", *args], capture_output=True, text=True, timeout=10)
     # Git errors can contain credential-bearing URLs/config keys. Never relay them.
     require(result.returncode == 0,
@@ -59,6 +61,8 @@ def url_identity(raw, *, pr=False):
             not any(character.isspace() or ord(character) < 32 for character in raw),
             "invalid repository URL; configure a canonical HTTPS or SSH URL.")
     if "://" in raw:
+        require(raw.split("://", 1)[0] in (("https",) if pr else ("https", "ssh")),
+                "use lowercase https:// or ssh://; Git treats other schemes as remote helpers.")
         parsed = urlsplit(raw)
         require(parsed.scheme in (("https",) if pr else ("https", "ssh")) and
                 parsed.hostname and not parsed.query and not parsed.fragment,

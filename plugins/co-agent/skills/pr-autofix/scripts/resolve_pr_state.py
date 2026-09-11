@@ -7,6 +7,8 @@ import re
 import subprocess
 import sys
 
+TAIL = Path(".claude/co-agent-consensus/pr-autofix")
+
 
 class StateError(Exception):
     pass
@@ -23,10 +25,15 @@ def number(value):
     return value
 
 
-def plain_path(path):
+def plain_path(path, root):
     path = path.absolute()
-    require(not any(part.is_symlink() for part in (path, *path.parents)),
-            "state path must not contain symlinks; preserve it and resolve explicitly.")
+    for part in (path, *path.parents):
+        if part.is_symlink():
+            parent, target = part.parent.resolve(), part.resolve()
+            # Workspace/OS ancestors may be aliases; paths within the repository
+            # or aliases directly into its state tail may not redirect state access.
+            require(parent != root and root not in parent.parents and root not in target.parents,
+                    "state path inside the repository must not contain symlinks.")
     return path.resolve()
 
 
@@ -49,22 +56,30 @@ def resolve(root, pr=None, state=None):
     root = Path(root).resolve()
     require(root.is_dir(), "repository root is unavailable.")
     selected = None
-    if pr is not None:
+    if pr not in (None, ""):
         require(re.fullmatch(r"[1-9][0-9]{0,15}", pr) is not None,
                 "explicit PR_NUMBER must be a positive safe integer.")
         selected = number(int(pr))
     supplied = None
     if state is not None:
         require(bool(state), "supplied STATE is empty; do not fall back to branch discovery.")
-        supplied = plain_path(Path(state))
-        saved = read_state(supplied)
+        supplied = plain_path(Path(state), root)
+        try:
+            relative = supplied.relative_to(root / TAIL)
+        except ValueError:
+            raise StateError("STATE must be this repository's canonical pr-N/state.json; foreign state is not adopted.")
+        require(len(relative.parts) == 2 and relative.name == "state.json" and
+                re.fullmatch(r"pr-([1-9][0-9]{0,15})", relative.parts[0]) is not None,
+                "STATE must use the canonical pr-N/state.json layout.")
+        saved = number(int(relative.parts[0][3:]))
         require(selected is None or selected == saved,
-                "explicit PR_NUMBER differs from saved .pr; preserve state and select the intended PR.")
+                "explicit PR_NUMBER differs from the canonical state path; preserve state and select the intended PR.")
+        require(read_state(supplied) == saved,
+                "state .pr differs from its canonical pr-N directory; preserve it and repair explicitly.")
         selected = saved
     if selected is None:
         return {"pr": None, "state": None}
-    canonical = plain_path(root / ".claude/co-agent-consensus/pr-autofix" /
-                           f"pr-{selected}" / "state.json")
+    canonical = plain_path(root / TAIL / f"pr-{selected}" / "state.json", root)
     require(supplied is None or supplied == canonical,
             "STATE must be this repository's canonical pr-N/state.json; foreign state is not adopted.")
     if supplied is None and canonical.exists():

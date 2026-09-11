@@ -25,8 +25,17 @@ All review-loop state lives in ONE file, `$STATE` — written only by the host, 
 planner/implementer. They process untrusted review text, and a file that steers the loop
 must not be writable by them (same trust rule as `review-memory.md`).
 
+Run Step 1 first. In each new shell tool call, pass its reported JSON as
+`STATE_BINDING` and run this block to rebind the state variables; same-shell use
+also works. Resolve `REPO` and other query temporaries in the call using them.
+Re-run Step 1 before every fix/push rather than reusing a cached target approval.
+
 ```bash
-# After Step 1 has resolved PR_NUMBER:
+# STATE_BINDING is Step 1's JSON result, not a second state file.
+if [ -n "${STATE_BINDING:-}" ]; then
+  PR_NUMBER=$(printf '%s' "$STATE_BINDING" | jq -er '.pr | select(type == "number")') || exit 1
+  STATE=$(printf '%s' "$STATE_BINDING" | jq -er '.state | select(type == "string" and length > 0)') || exit 1
+fi
 [ -n "${STATE:-}" ] && [ -n "${PR_NUMBER:-}" ] || { echo "run Step 1 before state initialization"; exit 1; }
 STATE_DIR=$(dirname -- "$STATE")
 mkdir -p -- "$STATE_DIR" || exit 1

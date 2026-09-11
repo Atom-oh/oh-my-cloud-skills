@@ -7,7 +7,7 @@ set -o pipefail
 REPO_ROOT=$(git rev-parse --show-toplevel) || exit 1
 STATE_ARGS=()
 [ "${STATE+x}" != x ] || STATE_ARGS+=(--state "$STATE")
-[ "${PR_NUMBER+x}" != x ] || STATE_ARGS+=(--pr "$PR_NUMBER")
+[ -z "${PR_NUMBER:-}" ] || STATE_ARGS+=(--pr "$PR_NUMBER")
 STATE_BINDING=$(python3 "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts/resolve_pr_state.py" \
   "$REPO_ROOT" ${STATE_ARGS[@]+"${STATE_ARGS[@]}"}) || exit 1
 PR_NUMBER=$(printf '%s' "$STATE_BINDING" | jq -r '.pr // empty') || exit 1
@@ -27,15 +27,25 @@ fi
 gh pr view "$PR_NUMBER" --repo "$REPO" --json state,headRefName,headRepository,headRepositoryOwner,url |
   python3 "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts/check_pr_target.py" || exit 1
 STATE=$(printf '%s' "$STATE_BINDING" | jq -er '.state') || exit 1
+printf '%s\n' "$STATE_BINDING"
 ```
+
+Success prints the authoritative `{"pr": N, "state": "/physical/repo/.../state.json"}`
+binding. Keep subsequent snippets in this shell, or pass that JSON as
+`STATE_BINDING` to a new tool call and run the SKILL's State model block there.
+Shell assignments do not propagate between tool calls. This binding supplies
+identity, not permission to skip the fresh pre-fix/pre-push guard.
 
 Run this guard on entry and before fixes/pushes, including resumes. It permits
 unpushed `gate`/`committing` deltas; local/remote SHA equality is required only at
 Mark clean. A supplied `STATE` must already be valid and occupy this checkout's
-canonical `.claude/co-agent-consensus/pr-autofix/pr-N/state.json` path. Its `.pr`
-selects the PR; an explicit `PR_NUMBER` must agree. Missing, empty, symlinked,
-malformed or foreign state stops before queries or writes, without a reset.
-Only when neither input is supplied does branch discovery select the PR.
+canonical `.claude/co-agent-consensus/pr-autofix/pr-N/state.json` path. The canonical
+directory selects the PR before contents are read; `.pr` and an explicit
+`PR_NUMBER` must agree. Logical workspace/OS ancestors are normalized to the
+physical repository. Symlinks inside the repository/state tail or aliases into
+that tail are rejected. Missing, empty, malformed or foreign state stops without
+a reset; foreign contents are not opened. Empty `PR_NUMBER` permits discovery,
+but set-but-empty `STATE` remains invalid.
 The State model reuses the bound path, so a resume cannot silently switch files.
 
 The target helper binds the attached branch and bare `git push` destination
@@ -46,6 +56,7 @@ tracking configuration before re-entering. It never pushes or resolves SSH alias
 Either recursive submodule setting blocks entry regardless of their relative
 config order, because submodule pushes can update other repositories.
 HTTPS credentials do not change repository identity and are never printed.
+Unset `GIT_CONFIG` before entry: it changes `git config` reads but not bare push.
 Handle fixes for closed/merged PRs through the host's corrective-PR
 workflow outside this loop.
 
@@ -191,10 +202,11 @@ jq -L "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts" -s \
   else .[0] end
   | if .phase != "checking_review" or .stop_reason != null or (.review | ready_review | not)
     then error("review evidence is not ready")
+    elif $local_head != $after.headRefOid
+    then error("local HEAD is not the PR head; check out or push the intended commit before marking clean")
     elif .pr != $pr or $after.number != $pr
       or ($before | scope) != ($after | scope)
       or .review.head != $after.headRefOid
-      or $local_head != $after.headRefOid
       or .base_ref != $after.baseRefName or .review.diff_sha256 != $diff
     then error("PR scope changed; collect review evidence again")
     elif $after.state != "OPEN" or $after.mergeable != "MERGEABLE"

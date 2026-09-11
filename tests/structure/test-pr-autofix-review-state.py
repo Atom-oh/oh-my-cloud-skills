@@ -18,7 +18,7 @@ class ReviewStateTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="pr review state ")
         self.addCleanup(temporary.cleanup)
-        self.directory = Path(temporary.name)
+        self.directory = Path(temporary.name).resolve()
         self.state_dir = self.directory / ".claude/co-agent-consensus/pr-autofix/pr-17"
         self.state_dir.mkdir(parents=True)
         self.state = self.state_dir / "state.json"

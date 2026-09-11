@@ -3,10 +3,12 @@ import json
 import os
 from pathlib import Path
 import re
+import runpy
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 SKILL = ROOT / "plugins/co-agent/skills/pr-autofix"
@@ -18,7 +20,7 @@ class PrTargetTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="pr target ")
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        self.root = Path(temporary.name).resolve()
         self.repo = self.root / "consumer repo"
         self.repo.mkdir()
         self.env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
@@ -148,6 +150,35 @@ class PrTargetTests(unittest.TestCase):
         self.git("remote", "add", "other", "https://github.com/Other/Repo.git")
         self.check(False)
 
+    def test_real_bare_push_uses_the_sole_non_origin_remote(self):
+        self.git("config", "--remove-section", "branch.topic")
+        self.git("remote", "rename", "origin", "only")
+        self.git("config", "push.default", "current")
+        self.check()
+        bare = self.root / "only.git"
+        self.git("init", "-q", "--bare", "--template=", str(bare))
+        self.git("remote", "set-url", "only", str(bare))
+        self.git("push")  # Local file transport only; no network.
+        self.assertEqual(self.git("rev-parse", "HEAD"),
+                         self.git("--git-dir", str(bare), "rev-parse", "refs/heads/topic"))
+
+    def test_git_config_override_disagrees_with_actual_push_and_is_rejected(self):
+        alternate = self.root / "alternate.config"
+        alternate.write_bytes((self.repo / ".git/config").read_bytes())
+        bare = self.root / "actual.git"
+        self.git("init", "-q", "--bare", "--template=", str(bare))
+        self.git("remote", "set-url", "origin", str(bare))
+        self.env["GIT_CONFIG"] = str(alternate)
+        self.assertEqual("https://github.com/Upstream/Repo.git",
+                         self.git("config", "--get", "remote.origin.url"))
+        self.git("push")  # GIT_CONFIG is ignored here: only the local bare repo is contacted.
+        self.assertEqual(self.git("rev-parse", "HEAD"),
+                         self.git("--git-dir", str(bare), "rev-parse", "refs/heads/topic"))
+        result = self.check(False)
+        self.assertIn("GIT_CONFIG", result.stderr)
+        self.assertNotIn(str(alternate), result.stderr)
+        self.entry(False)
+
     def test_branch_closed_merged_detached_and_missing_repository(self):
         for patch in ({"state": "CLOSED"}, {"state": "MERGED"},
                       {"headRefName": "other"}, {"headRepository": None},
@@ -230,6 +261,12 @@ class PrTargetTests(unittest.TestCase):
                     "ext::command", "/local/repo", "https://github.com/Upstream/Repo/extra",
                     "https://github.com/Upstream/Repo?route=Other/Repo",
                     "https://github.com/Upstream/%52epo"):
+            with self.subTest(url=url):
+                self.git("config", "remote.origin.url", url)
+                self.check(False)
+
+    def test_raw_url_scheme_must_match_git_transport_case(self):
+        for url in ("HTTPS://github.com/Upstream/Repo.git", "SSH://git@github.com/Upstream/Repo.git"):
             with self.subTest(url=url):
                 self.git("config", "remote.origin.url", url)
                 self.check(False)
@@ -338,6 +375,59 @@ else:
                 calls = [json.loads(line) for line in (self.root / "gh.log").read_text().splitlines()]
                 self.assertFalse(any(call[:2] == ["pr", "list"] for call in calls))
 
+    def test_reported_binding_is_consumed_in_a_separate_shell(self):
+        for phase in (None, "gate", "committing"):
+            with self.subTest(phase=phase):
+                if self.state.exists():
+                    self.state.unlink()
+                saved = self.saved_state(phase) if phase else None
+                result = self.entry(supplied={"STATE": str(self.state) if phase else None})
+                binding = json.loads(result.stdout.splitlines()[0])
+                self.assertEqual({"pr": 171, "state": str(self.state)}, binding)
+                model = SKILL.joinpath("SKILL.md").read_text().split("## State model", 1)[1]
+                script = re.search(r"```bash\n(.*?)\n```", model, re.S)[1]
+                reference = SKILL.joinpath("references/review-state.md").read_text()
+                script += "\n" + next(block for block in re.findall(r"```bash\n(.*?)\n```", reference, re.S)
+                                     if "command -v jq" in block)
+                env = {**self.env, "STATE_BINDING": json.dumps(binding), "BASE_REF": "main", "GIT_ITER": "2",
+                       "PR_AUTOFIX_WAIT_SECONDS": "60", "CLAUDE_PLUGIN_ROOT": str(SKILL.parents[1]),
+                       "CO_AGENT_USER_CONFIG": str(self.root / "no-user-config")}
+                for key in ("STATE", "STATE_DIR", "PR_NUMBER"):
+                    env.pop(key, None)
+                consumed = subprocess.run(["bash", "-euo", "pipefail", "-c", script],
+                                          cwd=self.repo, env=env, capture_output=True, text=True)
+                self.assertEqual(0, consumed.returncode, consumed.stderr)
+                state = json.loads(self.state.read_text())
+                self.assertEqual(saved, state) if saved else self.assertEqual(171, state["pr"])
+
+    def test_logical_workspace_ancestor_resolves_to_the_same_state(self):
+        saved = self.saved_state()
+        alias = self.root / "workspace alias"
+        alias.symlink_to(self.repo, target_is_directory=True)
+        logical = alias / self.state.relative_to(self.repo)
+        result = self.entry(supplied={"STATE": str(logical), "PR_NUMBER": None}, initialize=True)
+        self.assertIn("resolved-state=" + str(self.state), result.stdout)
+        self.assertEqual(saved, json.loads(self.state.read_text()))
+
+    def test_internal_alias_to_canonical_state_is_rejected(self):
+        self.saved_state()
+        alias = self.repo / "state-alias"
+        alias.symlink_to(self.state.parent, target_is_directory=True)
+        self.entry(False, supplied={"STATE": str(alias / "state.json"), "PR_NUMBER": None})
+
+    def test_foreign_state_is_rejected_before_reading_its_contents(self):
+        self.saved_state()
+        foreign = self.root / "foreign/.claude/co-agent-consensus/pr-autofix/pr-171/state.json"
+        foreign.parent.mkdir(parents=True)
+        foreign.write_bytes(self.state.read_bytes())
+        module = runpy.run_path(str(SKILL / "scripts/resolve_pr_state.py"))
+        resolver = module["resolve"]
+        def unexpected_read(_):
+            self.fail("Foreign state contents were opened before path rejection")
+        with patch.dict(resolver.__globals__, {"read_state": unexpected_read}):
+            with self.assertRaises(module["StateError"]):
+                resolver(self.repo, state=str(foreign))
+
     def test_explicit_number_must_match_state_before_querying(self):
         self.saved_state()
         before = self.state.read_bytes()
@@ -389,6 +479,11 @@ else:
         self.assertEqual(171, json.loads(self.state.read_text())["pr"])
         calls = [json.loads(line) for line in (self.root / "gh.log").read_text().splitlines()]
         self.assertTrue(any(call[:2] == ["pr", "list"] for call in calls))
+
+    def test_empty_pr_number_allows_discovery(self):
+        result = self.entry(supplied={"PR_NUMBER": "", "STATE": None}, initialize=True)
+        self.assertIn("resolved-pr=171", result.stdout)
+        self.assertEqual(171, json.loads(self.state.read_text())["pr"])
 
     def test_derived_existing_state_pr_mismatch_is_not_reset(self):
         self.saved_state()
