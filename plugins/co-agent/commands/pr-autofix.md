@@ -7,8 +7,8 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
 
 Drive the current branch's PR to a passing review state: poll AI and human review
 feedback, fix what the reviews raise, push, and repeat until required reviews are
-complete or a defined blocker is reached. When the user authorized merging, verify
-the final HEAD, CI and integration path, then merge. The landed changes are exactly the
+complete or a defined blocker is reached. Return the reviewed HEAD and remaining
+integration work to the host. The landed changes are exactly the
 plan-approved delta, consumed by the PR's reviewers and whoever merges. Excellent means
 every blocking finding is resolved with the smallest change that addresses it — and
 nothing else moves.
@@ -16,7 +16,7 @@ nothing else moves.
 ## Context
 
 - Current branch: !`git branch --show-current`
-- PR status: !`gh pr list --head "$(git branch --show-current)" --json number,title,state,reviewDecision --jq '.[0]' 2>/dev/null || echo "No PR found"`
+- Matching PRs (including merged): !`gh pr list --head "$(git branch --show-current)" --state all --json number,title,state,headRefOid,reviewDecision`
 
 ## Instructions
 
@@ -36,5 +36,6 @@ state machine, worktree isolation, and safety rails all live there, not here). I
 5. Repeat up to the loop bound the skill resolves via `co_agent_config.py
    pr-autofix-iterations` (tune: `/co-agent:configure set pr_autofix max_iterations <n>`,
    default 5).
-6. Once required reviews and CI pass, complete the user's authorized review/merge
-   workflow. Re-read HEAD, target branch and prerequisite PR state before merging.
+6. Once the loop is clean, the host continues any user-requested integration/merge
+   under the user's authorization and fresh HEAD/base/CI checks. The loop state
+   itself does not authorize or perform merge/retarget operations.
