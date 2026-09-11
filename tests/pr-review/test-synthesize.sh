@@ -16,11 +16,25 @@ setup() {
   mkdir -p "$WORK/slot"
   echo "diff --git a b" > "$WORK/diff.txt"
   : > "$WORK/responded.txt"
+  export MOCK_REVIEW_REPORT="$WORK/canonical.md"
+  cat > "$MOCK_REVIEW_REPORT" <<'EOF'
+## Summary
+Reviewed the diff.
+## Issues
+### CRITICAL
+None.
+### MAJOR
+None.
+### MINOR
+None.
+## Verdict
+VERDICT: PASS
+EOF
 }
 mkclaude_pass() {  # 항상 성공 응답하는 claude mock.
   cat > "$BIN/claude" <<'EOF'
 #!/usr/bin/env bash
-echo "Summary: ok"; echo "VERDICT: PASS"
+cat "$MOCK_REVIEW_REPORT"
 EOF
   chmod +x "$BIN/claude"
 }
@@ -62,6 +76,16 @@ fi
 grep -q "TRUNCATED" "$WORK/synth-stdin.txt" 2>/dev/null \
   && pass "synthesize (b) truncated cell gets a TRUNCATED marker in chair stdin" \
   || fail "synthesize (b) truncated cell gets a TRUNCATED marker in chair stdin" "marker missing"
+[ -f "$WORK/panel-cell-truncated.flag" ] \
+  && pass "synthesize records truncated chair input for the semantic gate" \
+  || fail "synthesize records truncated chair input for the semantic gate"
+echo "complete short review" > "$WORK/slot/codex-L2.md"
+if bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1 &&
+   [ ! -e "$WORK/panel-cell-truncated.flag" ]; then
+  pass "synthesize clears stale cell truncation evidence on a complete rerun"
+else
+  fail "synthesize clears stale cell truncation evidence on a complete rerun"
+fi
 rm -rf "$WORK" "$BIN"
 
 # (c) 크리덴셜 스크럽이 체어 stdin 까지 실제로 도달하기 전에 적용되는지(end-to-end).
@@ -141,7 +165,7 @@ rm -rf "$WORK" "$BIN"
 setup
 cat > "$BIN/claude" <<'EOF'
 #!/usr/bin/env bash
-echo "Summary: ok"
+sed '$d' "$MOCK_REVIEW_REPORT"
 echo "VERDICT: 이 규칙은 파일의 마지막 줄에 PASS 또는 FAIL 로 나타나야 합니다"
 echo "VERDICT: PASS"
 EOF
@@ -209,7 +233,7 @@ rm -rf "$WORK" "$BIN"
 setup
 cat > "$BIN/claude" <<'EOF'
 #!/usr/bin/env bash
-echo "Summary: ok"
+sed '$d' "$MOCK_REVIEW_REPORT"
 echo ""
 echo "### 🧠 MEMORY CANDIDATES"
 echo "- (none)"
@@ -284,6 +308,24 @@ grep -qF '`PANEL-QUALITY: <cell>=<unsupported>/<total>`' "$WORK/synth-prompt.txt
   || fail "synthesize (k) literal PANEL-QUALITY line format survives in synth-prompt.txt" \
        "not found in $WORK/synth-prompt.txt"
 rm -rf "$WORK" "$BIN" "$ERR"
+
+# A CLI failure with otherwise valid PASS text is infrastructure failure, not a vote.
+setup
+cat > "$BIN/claude" <<'EOF'
+#!/usr/bin/env bash
+cat "$MOCK_REVIEW_REPORT"
+exit 7
+EOF
+chmod +x "$BIN/claude"
+export GITHUB_ENV="$WORK/github_env.txt"
+if bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1 &&
+   grep -qx 'chair_error=1' "$GITHUB_ENV" && [ "$(tail -1 "$WORK/review.md")" = 'VERDICT: FAIL' ]; then
+  pass "synthesize rejects a nonzero CLI even when its partial output says PASS"
+else
+  fail "synthesize rejects a nonzero CLI even when its partial output says PASS"
+fi
+unset GITHUB_ENV
+rm -rf "$WORK" "$BIN"
 
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then

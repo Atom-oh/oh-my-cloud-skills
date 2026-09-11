@@ -79,6 +79,11 @@ done
   || fail "run-panel (a) each cell got its own lens prompt (no cross-lens leak)" "lens prompt mismatch"
 [ "$(wc -l < "$WORK/responded.txt" 2>/dev/null || echo 0)" = 6 ] \
   && pass "run-panel (a) responded=6" || fail "run-panel (a) responded=6" "responded != 6"
+if cmp -s <(sort "$WORK/expected.txt") <(sort "$WORK/responded.txt"); then
+  pass "run-panel records the complete configured cell matrix for semantic gating"
+else
+  fail "run-panel records the complete configured cell matrix for semantic gating"
+fi
 
 # (b) kiro 실패(codex만 응답) — 2 lens x codex = 2 개 responded, kiro 는 전부 부재.
 # (harness 가 set -euo pipefail 로 이 파일을 source 하므로, run-panel.sh 가 언젠가 비-zero로
@@ -407,6 +412,11 @@ fi
 [ "$(wc -l < "$WORK/responded.txt" 2>/dev/null || echo 0)" = 4 ] \
   && pass "run-panel (m) responded=4 (2 lens x 2 enabled models — codex + kiro-opus; kiro-glm already off by default, kiro-gpt off via override)" \
   || fail "run-panel (m) responded=4 (2 lens x 2 enabled models — codex + kiro-opus; kiro-glm already off by default, kiro-gpt off via override)" "got $(wc -l < "$WORK/responded.txt" 2>/dev/null)"
+if [ "$(wc -l < "$WORK/expected.txt")" = 4 ] && ! grep -q '^kiro-gpt/' "$WORK/expected.txt"; then
+  pass "run-panel excludes explicitly disabled cells from required coverage"
+else
+  fail "run-panel excludes explicitly disabled cells from required coverage"
+fi
 grep -q "^kiro-gpt$" "$WORK/degraded-models.txt" 2>/dev/null \
   && fail "run-panel (m) a config-disabled cell is NOT listed in degraded-models.txt" "intentional disable was flagged as degraded" \
   || pass "run-panel (m) a config-disabled cell is NOT listed in degraded-models.txt"

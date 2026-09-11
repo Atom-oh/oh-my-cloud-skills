@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import tempfile
 import textwrap
@@ -48,6 +49,9 @@ class ReviewTemplateTests(unittest.TestCase):
         self.bin = self.root / "bin"
         self.bin.mkdir()
         self.git("init", "-q")
+        validator = self.repo / ".github/scripts/pr-review-gate.py"
+        validator.parent.mkdir(parents=True)
+        shutil.copyfile(ROOT / "plugins/co-agent/skills/pr-autofix/scripts/review_gate.py", validator)
         (self.repo / "CLAUDE.md").write_text("TRUSTED_BASE_CONTEXT\n")
         (self.repo / "app.txt").write_text("before\n")
         self.git("add", ".")
@@ -213,6 +217,26 @@ class ReviewTemplateTests(unittest.TestCase):
     def test_invalid_finding_schema_cannot_pass(self):
         self.prepare()
         self.generate(self.report(findings=[{"severity": "unknown", "message": "Problem"}]))
+        self.assert_status(self.publish(), "ERROR")
+
+    def test_dismissed_findings_are_not_active_blockers(self):
+        self.prepare()
+        report = json.loads(self.report())
+        report["dismissed"] = [{"severity": "MAJOR", "file": "app.txt", "line": 1,
+                                "message": "Quoted claim", "reason": "Disproved against the diff"}]
+        self.generate(json.dumps(report))
+        self.assert_status(self.publish(), "PASSED")
+
+    def test_ambiguous_json_or_missing_copied_validator_cannot_pass(self):
+        self.prepare()
+        for output in (
+            '{"status":"PASSED","summary":"ok","findings":[],"findings":[]}',
+            '{"status":"PASSED","summary":"ok","findings":[],"issues":"MAJOR"}',
+        ):
+            self.generate(output)
+            self.assert_status(self.publish(), "ERROR")
+        (self.repo / ".github/scripts/pr-review-gate.py").unlink()
+        self.generate(self.report())
         self.assert_status(self.publish(), "ERROR")
 
     def test_model_text_cannot_inject_a_native_status_or_footer(self):

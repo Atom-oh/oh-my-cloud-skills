@@ -75,12 +75,15 @@ models hit exactly 600s), and the lens checklists were unnecessary for frontier 
   `pull_request_target` (discovered during review of claude-code-usage-dashboard PR #4). A
   diff exceeding the cap is delivered to the Kiro cell only as a truncated prefix, and is
   signaled via `::warning::` + `$WORK/kiro-diff-truncated.flag`, shown as a banner in the
-  review body (it does not force the VERDICT — codex continues to see the full diff).
+  review body. The acceptance gate returns ERROR for incomplete required Kiro input,
+  even if codex saw the full diff or the chair wrote PASS.
 - **Antigravity (`agy`) is not in the matrix** — it's OAuth interactive-login-only, so it
   cannot authenticate in headless CI (ADR-010).
 - **Chair**: Claude Fable 5 (`us.anthropic.claude-fable-5`) synthesizes the findings from
-  the 3 cells into a single review + `VERDICT: PASS|FAIL` (fail-closed, the last match in
-  the file wins — ADR-016). The primary attempt has `Read Grep Glob` and is wrapped in a
+  the 3 cells into a single review + `VERDICT: PASS|FAIL`. The legacy lexical parser
+  retains last-match compatibility; acceptance instead validates the final Issues
+  with `plugins/co-agent/skills/pr-autofix/scripts/review_gate.py`.
+  The primary attempt has `Read Grep Glob` and is wrapped in a
   wall-clock timeout (`CHAIR_TIMEOUT`, default **450 seconds**). If it fails to produce a
   usable VERDICT (connection refused/hang/empty response, etc.), it **falls back once to
   Claude Opus 5 (`CHAIR_FALLBACK_MODEL`), this time granting no file tools at all**
@@ -95,6 +98,21 @@ models hit exactly 600s), and the lens checklists were unnecessary for frontier 
   Glob`, which led to a repo-tree crawl on large diffs, and #141/#146 both timed out at
   exactly 600s — removing that Read instruction from the prompt and stripping tools
   entirely from the fallback closed the root cause, ADR-016.)
+- **Consistency and completeness**: final `## Issues` has `### CRITICAL`,
+  `### MAJOR`, and `### MINOR` sections. Each contains active findings or exactly
+  `None.`. Active Critical/Major findings always block, even beside `VERDICT: PASS`;
+  dismissed claims belong in a separate section. Fenced code, quotations, suggestions,
+  and memory references are not active findings. Missing/ambiguous structure is ERROR.
+  Every enabled model/lens pair in `expected.txt` must complete; missing responses,
+  diff truncation, and capped panel output prevent PASS. This is a consistency check,
+  not a vote or proof that the models found every defect.
+- **Current review visibility**: a new run updates the bot-owned canonical comment
+  to PENDING for its event HEAD, replacing old status text while preserving GitHub
+  edit history. Publication rechecks head/ref and refuses to overwrite a newer
+  run/attempt. CLI, validation, or comment-build failure cannot republish an old PASS.
+- **Reusable workflow**: copy the PRAF workflow together with `scripts/review_gate.py`
+  to `.github/scripts/pr-review-gate.py`, as described in the skill's CI setup.
+  Its structured JSON findings use the same validator; dismissed claims stay separate.
 - **Data residency**: paths differ by matrix member —
   - **Codex / Claude (chair)**: Amazon Bedrock **us-east-1** (`openai.gpt-5.6-sol` is
     bedrock-mantle In-Region only, `fable-5` is a US inference profile), AWS auth via EKS

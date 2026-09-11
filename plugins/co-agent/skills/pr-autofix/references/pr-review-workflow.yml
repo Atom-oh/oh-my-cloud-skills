@@ -1,4 +1,5 @@
 # AI Code Review — copy to .github/workflows/pr-review.yml.
+# Also copy ../scripts/review_gate.py to .github/scripts/pr-review-gate.py.
 # Use a trusted runner/setup step with Claude CLI and Bedrock credentials configured.
 # Set ANTHROPIC_MODEL/AWS_REGION repository variables as needed. CLAUDE.md is optional.
 # PR content is data only: never check out or execute the PR head in this privileged job.
@@ -80,9 +81,13 @@ jobs:
           {"status":"PASSED|BLOCKED|ERROR","summary":"nonempty text","findings":[
             {"severity":"CRITICAL|MAJOR|MINOR|INFO","file":"path","line":1,"message":"concrete issue"}
           ]}
-          Use an empty findings array when there are no findings. A line may be null.
+          findings contains ONLY active, confirmed findings; use [] when empty.
+          Put dismissed claims in a separate optional "dismissed" array with the same
+          finding fields plus a nonempty "reason". Never leave a dismissed claim active.
+          A line may be null. Do not add other fields.
           CRITICAL or MAJOR findings require BLOCKED. Use ERROR if unable to complete
-          the full review; otherwise PASSED. Do not include credentials or raw error logs.
+          the full review; otherwise PASSED. A Major cannot be excused as "not merge-blocking".
+          Do not include credentials or raw error logs.
           PROMPT_EOF
           )
           # No repository execution, filesystem tools, MCP tools, or auto-loaded settings.
@@ -110,6 +115,7 @@ jobs:
             const fs = require('fs');
             const path = require('path');
             const crypto = require('crypto');
+            const {execFileSync} = require('child_process');
             const marker = '<!-- bedrock-pr-review -->';
             const head = process.env.REVIEW_HEAD;
             const base = process.env.REVIEW_BASE;
@@ -137,22 +143,13 @@ jobs:
                   const raw = fs.readFileSync(path.join(work, 'review.json'), 'utf8');
                   if (!raw.trim() || Buffer.byteLength(raw) > 50000) throw new Error('Unusable output');
                   const candidate = JSON.parse(raw);
-                  const object = x => x !== null && typeof x === 'object' && !Array.isArray(x);
-                  const text = x => typeof x === 'string' && x.trim().length > 0;
-                  const severities = ['CRITICAL', 'MAJOR', 'MINOR', 'INFO'];
-                  if (!object(candidate) || !['PASSED', 'BLOCKED', 'ERROR'].includes(candidate.status) ||
-                      !text(candidate.summary) || !Array.isArray(candidate.findings) ||
-                      !candidate.findings.every(f => object(f) && severities.includes(f.severity) &&
-                        text(f.file) && text(f.message) && (f.line === null ||
-                          (Number.isSafeInteger(f.line) && f.line > 0)))) throw new Error('Invalid report schema');
-                  if (candidate.status === 'ERROR') {
-                    reason = 'The reviewer reported that it could not complete the review.';
-                  } else {
-                    report = candidate;
-                    const blocking = report.findings.some(f => ['CRITICAL', 'MAJOR'].includes(f.severity));
-                    status = blocking || report.status === 'BLOCKED' ? 'BLOCKED' : 'PASSED';
-                    reason = status === 'BLOCKED' ? 'Blocking review findings require resolution.' : 'No blocking findings reported.';
-                  }
+                  const checked = JSON.parse(execFileSync('python3', [
+                    path.join(process.env.GITHUB_WORKSPACE, '.github/scripts/pr-review-gate.py'),
+                    'json', path.join(work, 'review.json')], {encoding:'utf8', maxBuffer:100000}));
+                  if (!['PASSED', 'BLOCKED', 'ERROR'].includes(checked.status)) throw new Error('Invalid gate result');
+                  status = checked.status;
+                  reason = checked.reason;
+                  if (status !== 'ERROR') report = candidate;
                 }
               } catch (_) {
                 reason = 'Review output is missing, empty, oversized, or malformed; no valid review verdict is available.';
@@ -176,10 +173,20 @@ jobs:
               sections.push(warning);
             }
             if (report) {
-              sections.push('### Summary', quote(report.summary), '### Findings');
-              if (!report.findings.length) sections.push('None reported.');
-              for (const finding of report.findings) {
-                sections.push(quote(`${finding.severity} — ${finding.file}:${finding.line ?? '?'} — ${finding.message}`));
+              sections.push('## Summary', quote(report.summary), '## Issues');
+              for (const severity of ['CRITICAL', 'MAJOR', 'MINOR', 'INFO']) {
+                sections.push(`### ${severity}`);
+                const findings = report.findings.filter(f => f.severity === severity);
+                if (!findings.length) sections.push('None.');
+                for (const finding of findings) {
+                  sections.push(quote(`${finding.file}:${finding.line ?? '?'} — ${finding.message}`));
+                }
+              }
+              if (report.dismissed?.length) {
+                sections.push('## Dismissed findings');
+                for (const finding of report.dismissed) {
+                  sections.push(quote(`${finding.severity} — ${finding.message} — ${finding.reason}`));
+                }
               }
             }
             if (diffHash) sections.push(`Diff SHA-256: \`${diffHash}\``);
