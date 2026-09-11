@@ -35,9 +35,16 @@ cache. Relative paths in bundled examples are relative to this skill's directory
    language, and rough slide count. Don't over-ask — proceed with defaults if unanswered.
 3. **Read `references/layouts.md`** to pick the right layout per section, and
    **`references/icons.md`** for the exact icon names available.
-4. **Write a build script** that `require("${CLAUDE_PLUGIN_ROOT}/skills/aws-light-fcd/scripts/deck_kit.js")` (and
-   `arch_kit.js` if drawing diagrams), calls the layout builders, then
-   `await pres.writeFile(...)`. Run it with `NODE_PATH=$(npm root -g) node build.js`.
+4. **Resolve installed absolute module paths before writing JavaScript:**
+   `${CLAUDE_PLUGIN_ROOT}/skills/aws-light-fcd/scripts/deck_kit.js` and, for diagrams,
+   `${CLAUDE_PLUGIN_ROOT}/skills/aws-light-fcd/scripts/arch_kit.js`.
+   Claude renders the plain `${CLAUDE_PLUGIN_ROOT}` token in skill text; in Codex,
+   substitute the loaded plugin installation's absolute root yourself. Verify the
+   files exist, then write those resolved paths as quoted JavaScript string literals
+   in `require(...)` calls in the consumer's `build.js`. Do not copy an unresolved
+   token or bare filename into those calls or rely on an exported root variable.
+   Call the layout builders, then `await pres.writeFile(...)`. Run the script with
+   `NODE_PATH=$(npm root -g) node build.js`.
 5. **QA (rejection loop)**: `python3 "${CLAUDE_PLUGIN_ROOT}/skills/aws-light-fcd/scripts/check_pptx.py" "$DECK"` — fix every finding and
    rerun until it passes. **The gate is `score ≥80` AND zero `[geometry]` findings**
    (a geometry defect — overflow/overlap/off-canvas — never passes, no matter the
