@@ -288,3 +288,12 @@ and never clobber a hand-written file:
 - The optional `kiro-cli-plugin` (Claude Code) exposes interactive slash commands
   (`/kiro-cli:review`, `/kiro-cli:adversarial-review`); those are for interactive use,
   not this skill's automated fan-out.
+
+## Readiness environments
+
+General `check_panel.py report` probes inherit the caller environment, matching
+direct consensus/harness fan-out and custom-provider authentication. Its historical
+`gate-eligible` predicate means `READY` plus raw CLI access. For PR/push gates,
+run `check_panel.py probe <peer> --gate`: this uses the gate's credential filter
+and succeeds only with `READY`. Do not equate the two environments or exclude a
+working direct peer merely because its credentials are unavailable to a gate.

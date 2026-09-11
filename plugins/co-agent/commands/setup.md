@@ -29,13 +29,19 @@ Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"`.
    (`npm install -g @openai/codex`), then re-run the report.
 4. Auth issues (`AUTH` status) are guidance only — point the user at the peer's login
    (e.g. `!codex login`, `!kiro-cli` login). Do not automate auth.
-5. Present the final readiness table. The flows consult the summary keeping gate-eligible
+5. Present the final readiness table. It records inherited-environment CLI probes
+   (`probe_environment: inherited`); schema-1 summaries are refreshed once.
+   The flows consult the summary keeping gate-eligible
    peers only — `status==READY` **and** `raw_cli`. **No-peer behavior is mode-specific
    (decided here, in one place):** **review / decide / ADR** degrade to **solo** (say so);
    **consensus / harness** are **non-degraded** — with no gate-eligible peer they **block**
    and tell the user to run `/co-agent:setup` (or install/auth a raw peer), never
    silently solo.
-6. If at least one peer is gate-eligible, offer the pre-push lens gate ONCE via
+6. For each raw-CLI peer considered for a gate, run
+   `python3 "$SK/check_panel.py" probe <peer> --gate` and require `READY`.
+   This separate check uses the gate's restricted environment; an inherited-
+   environment peer may still work for consensus/harness while failing this check.
+   If at least one gate probe is `READY`, offer the pre-push lens gate ONCE via
    `AskUserQuestion`: a 3-lens review (correctness/security/scope) that runs before every
    `git push` and can block it. State what "passes" means in the ask itself:
    **≥2 lenses flagging → BLOCKED** (push stops); **exactly 1 → CHAIR JUDGMENT REQUIRED**
@@ -55,7 +61,7 @@ Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"`.
    off (this plugin's default). Never enable it without this explicit ask — enabling is
    consent to external diff fan-out on every push.
 
-   If **no** peer is gate-eligible, don't skip this step silently — tell the user the
-   gate exists, is off, and needs at least one gate-eligible peer before it can be
+   If **no** peer passes the gate probe, don't skip this step silently — tell the user the
+   gate exists, is off, and needs at least one `READY` gate probe before it can be
    offered; re-running `/co-agent:setup` after fixing auth/install is what surfaces
    the ask.

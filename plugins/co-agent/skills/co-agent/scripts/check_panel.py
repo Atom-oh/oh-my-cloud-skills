@@ -4,9 +4,10 @@
 Usage:
   check_panel.py classify --sentinel S --exit N --timeout 0|1   # stdin = candidate stdout
   check_panel.py report [--root DIR] [--json] [--host claude|codex]
+  check_panel.py probe <peer> [--gate] [--timeout SECONDS]  # inherited env; --gate uses gate filter
   check_panel.py status <peer> [--root DIR]
   check_panel.py access <peer> [--root DIR]
-  check_panel.py gate-eligible <peer> [--root DIR]   # exit 0 + "true" iff READY AND raw_cli
+  check_panel.py gate-eligible <peer> [--root DIR]   # inherited-env READY AND raw_cli
   check_panel.py fresh [--root DIR]                  # exit 0 iff summary config_hash matches current
 """
 import sys
@@ -31,7 +32,7 @@ try:
 except Exception:
     co_agent_config = None
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 PEERS = ("kiro-cli", "claude", "codex", "agy")
 PEER_PLUGINS = {"codex": "openai/codex-plugin-cc"}   # peer → official Claude Code plugin repo
@@ -185,7 +186,8 @@ def _kill_proc(p):
             pass
 
 
-def probe(peer, timeout=90, nonce="STATIC"):
+def probe(peer, timeout=90, nonce="STATIC", gate=False):
+    """General fan-out inherits its environment; explicit gate probes use the gate filter."""
     # 90s, not 20s: cold-start CLIs blow far past 20s on first run — kiro auth-refresh + MCP init,
     # codex reasoning + MCP init, and agy especially (12-24s warm but a cold model load can exceed
     # 80s). 20s produced spurious TIMEOUTs on warm-usable peers. report() probes sequentially, and
@@ -227,7 +229,7 @@ def probe(peer, timeout=90, nonce="STATIC"):
             with open(outp, "w") as of, open(errp, "w") as ef:
                 p = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.PIPE, stdout=of,
                                      stderr=ef, text=True, start_new_session=True,
-                                     env=_sanitized_env(peer))
+                                     env=_sanitized_env(peer) if gate else None)
                 try:
                     p.communicate(input=stdin_data, timeout=timeout)
                     timed_out = False
@@ -335,6 +337,7 @@ def report(root, plugins_root, as_json=False, host=None):
         "schema_version": SCHEMA_VERSION,
         "generated_at": datetime.datetime.now().astimezone().isoformat(),
         "host": host,
+        "probe_environment": "inherited",
         "config_hash": _config_hash(root, host),
         "peers": peers,
     }
@@ -374,6 +377,8 @@ def is_fresh(root, host=None):
     s = _read_summary(root)
     if not s:
         return False
+    if s.get("schema_version") != SCHEMA_VERSION or s.get("probe_environment") != "inherited":
+        return False
     if s.get("host") != detect_host(host):
         return False
     cur = _config_hash(root, host)
@@ -382,10 +387,13 @@ def is_fresh(root, host=None):
 
 
 def gate_eligible(root, peer, host=None):
-    """A peer produces panel/gate output only if READY AND has a raw CLI. The fan-out calls
-    raw CLIs only, so a plugin-only peer (READY, raw_cli false) is silent — the 'plugin-only
-    READY but silent' bug. consensus and harness share this single predicate."""
-    if peer == detect_host(host):
+    """Historical name for inherited-environment raw-CLI readiness.
+
+    Consensus/harness use this result. It is not proof of sanitized gate auth;
+    `probe PEER --gate` verifies the separate gate environment before enabling gates.
+    """
+    resolved_host = detect_host(host)
+    if resolved_host not in HOSTS or peer == resolved_host:
         return False
     s = _read_summary(root)
     if not s:
@@ -411,10 +419,10 @@ def main():
         return _cmd_classify(argv[1:])
     if argv[0] == "probe":
         peer = argv[1]
-        timeout = int(argv[argv.index("--timeout") + 1]) if "--timeout" in argv else 20
-        status, _ = probe(peer, timeout=timeout)
+        timeout = int(argv[argv.index("--timeout") + 1]) if "--timeout" in argv else 90
+        status, _ = probe(peer, timeout=timeout, gate="--gate" in argv)
         print(status)
-        return 0
+        return (0 if status == "READY" else 1) if "--gate" in argv else 0
     if argv[0] == "--selftest-access":
         peer, hc, hp = argv[1], argv[2] == "1", argv[3] == "1"
         access, suggest = decide_access(peer, hc, hp)

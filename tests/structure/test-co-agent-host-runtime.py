@@ -262,7 +262,7 @@ class HostRuntimeTests(unittest.TestCase):
                         "claude": {**spec, "argv": [sys.executable, str(stub), *spec["argv"][1:]]}}))
                 stack.enter_context(patch.object(panel, "detect_cli", return_value=str(stub)))
                 stack.enter_context(patch.object(subprocess, "Popen", side_effect=launch))
-                self.assertEqual("READY", panel.probe("claude", timeout=5)[0])
+                self.assertEqual("READY", panel.probe("claude", timeout=5, gate=True)[0])
                 result = {}
                 hooks._review_one("claude", "fixture", None, "", str(self.root), 5, result)
                 hooks._review_one_push("claude", "security", "fixture", None, "", str(self.root), 5, result)
@@ -291,11 +291,40 @@ class HostRuntimeTests(unittest.TestCase):
     def test_conflicting_cloud_families_do_not_launch_a_peer(self):
         with patch.dict(os.environ, {"CLAUDE_CODE_USE_BEDROCK": "1", "CLAUDE_CODE_USE_VERTEX": "1"}):
             with patch.object(panel, "detect_cli", return_value="/fake/claude"):
-                self.assertEqual("ERROR", panel.probe("claude")[0])
+                self.assertEqual("ERROR", panel.probe("claude", gate=True)[0])
             result = {}
             with contextlib.redirect_stderr(io.StringIO()):
                 hooks._review_one("claude", "fixture", None, "", str(self.root), 5, result)
             self.assertTrue(result["claude"].startswith("__ERROR__"))
+
+    def test_general_probe_keeps_custom_provider_auth_separate_from_gate_probe(self):
+        stub = self.root / "codex-provider-stub.py"
+        stub.write_text(
+            "import os,sys\n"
+            "text=sys.stdin.read()\n"
+            "if 'AWS_BEARER_TOKEN_BEDROCK' not in os.environ:\n"
+            "    print('Unauthorized: missing fixture credential',file=sys.stderr);sys.exit(1)\n"
+            "print(text.strip())\n")
+        def launch(argv, *args, **kwargs):
+            self.assertEqual([sys.executable, str(stub)], argv[:2])
+            return self.real_popen(argv, *args, **kwargs)
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(patch.dict(os.environ, {
+                "CO_AGENT_HOST": "claude", "AWS_BEARER_TOKEN_BEDROCK": "fixture",
+            }))
+            spec = panel.ADAPTERS["codex"]
+            stack.enter_context(patch.dict(panel.ADAPTERS, {
+                "codex": {**spec, "argv": [sys.executable, str(stub), *spec["argv"][1:]]}}))
+            stack.enter_context(patch.object(panel, "detect_cli", return_value=str(stub)))
+            stack.enter_context(patch.object(panel, "detect_plugin", return_value=False))
+            stack.enter_context(patch.object(subprocess, "Popen", side_effect=launch))
+            entry = panel._peer_entry("codex", str(self.root))
+            self.assertEqual("READY", entry["status"])
+            self.assertNotEqual("READY", panel.probe("codex", gate=True)[0])
+            panel._atomic_write_json(panel._summary_path(str(self.root)), {
+                "peers": {"codex": entry}, "host": "claude",
+            })
+            self.assertTrue(panel.gate_eligible(str(self.root), "codex"))
 
 
 if __name__ == "__main__":

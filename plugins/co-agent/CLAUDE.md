@@ -104,7 +104,7 @@ back to the host. Runs synchronously, so 2-3 minutes per PR.
   (`*TOKEN*`, `*SECRET*`, `*API_KEY*`, `AWS_*`, `GH_*`, `GITHUB_*`, `GOOGLE_*`, etc.) are
   stripped except the **whitelist each peer needs for its own auth** (e.g. codex's
   `OPENAI_API_KEY`, kiro's `KIRO_API_KEY`, and Claude's explicitly selected cloud-backend
-  credential chain). Readiness probes use the same filter as both gates, blocking the path where a poisoned diff uses
+  credential chain), blocking the path where a poisoned diff uses
   prompt injection to **read another tool's token from env** and leak it externally.
   However, coaxing a reviewer into reading an **absolute-path file** (e.g.
   `~/.aws/credentials`) remains a residual risk as long as the reviewer stays read-capable
@@ -146,6 +146,12 @@ back to the host. Runs synchronously, so 2-3 minutes per PR.
   When a generated Codex package declares hooks, the same handlers run through
   `.codex-plugin/hooks.json` and its `hook.py` bridge with native hook trust.
   Without that declaration they are not registered in Codex. The gates remain opt-in.
+
+General readiness and the historical `gate-eligible` predicate describe inherited-
+environment raw CLI access for consensus/harness. They do not certify the filtered
+gate environment. `check_panel.py probe <peer> --gate` uses the same credential
+filter as the gates; require `READY` before enabling a gate for that peer.
+Readiness schema 2 records this distinction and refreshes older summaries.
 
 ## Pre-push Lens Gate (PreToolUse hook)
 
