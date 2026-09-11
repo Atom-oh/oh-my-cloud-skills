@@ -1,0 +1,10 @@
+{
+  "plugin": "agentcore-creator",
+  "handlers": [
+    {
+      "event": "SessionStart",
+      "matcher": "",
+      "command": "echo 'AgentCore Creator loaded. Use /agentcore-create or say \"convert to agentcore\" to start.'"
+    }
+  ]
+}

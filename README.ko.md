@@ -80,11 +80,9 @@
 
 ## 설치
 
-모든 플러그인은 Claude Code 매니페스트(`.claude-plugin/plugin.json`)를 제공하고, 하나를
-제외한 전부가 Codex 매니페스트(`.codex-plugin/plugin.json`)도 함께 제공하므로 동일한
-마켓플레이스를 어느 호스트에서도 설치할 수 있습니다. 예외는 `project-init` — upstream
-미러라 매니페스트 구성을 그대로 유지하므로 Claude Code 전용입니다. 아래에서 사용하는
-호스트를 선택하세요.
+8개 플러그인 모두 Claude Code와 Codex 매니페스트를 제공합니다. Codex용 진입 스킬이
+공유 skill·command·전문 agent 절차를 연결합니다. project-init은 upstream 원본을
+수정하지 않고 별도 Codex adapter를 생성합니다.
 
 ### Claude Code
 
@@ -134,11 +132,14 @@ claude --plugin-dir ./plugins/kiro
 이 저장소는 **Codex 플러그인 마켓플레이스**이기도 합니다 — 매니페스트는
 [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json)에 있고
 (`name: oh-my-cloud-skills`), 등록된 각 플러그인의 `.codex-plugin/plugin.json`이 스킬을 Codex에
-노출합니다. 플러그인을 지원하는 최신 Codex CLI가 필요합니다.
+노출합니다. 플러그인을 지원하는 Codex CLI가 필요하며, 0.154.0에서 설치와 검색을 검증합니다.
 
 ```bash
 # 이 저장소를 마켓플레이스로 등록 (GitHub 단축형, 또는 git/SSH URL)
 codex plugin marketplace add Atom-oh/oh-my-cloud-skills
+
+# 원하는 플러그인을 직접 설치
+codex plugin add aws-content-plugin@oh-my-cloud-skills
 
 # 인터랙티브 플러그인 선택기에서 탐색 & 설치
 #   → "Oh My Cloud Skills" 소스로 전환한 뒤 원하는 플러그인 설치
@@ -162,9 +163,26 @@ codex plugin marketplace upgrade oh-my-cloud-skills # 최신 플러그인 버전
 codex plugin marketplace remove oh-my-cloud-skills  # 등록 해제 (개별 제거는 `codex /plugins`)
 ```
 
-> **Codex에서의 co-agent** — 호스트가 Codex이면 **Codex가 패널 의장**이 되고 Claude / Kiro
-> / Agy가 자문 peer가 됩니다(Claude 호스트 모드의 대칭). 스킬은 이를 `CO_AGENT_HOST=codex`로
-> 감지합니다. Claude Code 전용 훅(예: PR 합의 게이트)은 설계상 Codex에서는 실행되지 않습니다.
+설치 후 새 세션을 시작하세요. 자연어로 작업을 요청하거나 설치된 스킬을 선택할 수
+있습니다. 전문 agent의 절차도 스킬로 제공하며, Claude 모델 이름을 Codex의 native
+agent로 등록하지 않습니다.
+
+**Codex에서의 co-agent:** Codex가 의장이고 Claude / Kiro / Agy가 자문 peer입니다.
+런타임 표식으로 호스트를 감지하며 `--host` 또는 `CO_AGENT_HOST`로 명시할 수 있습니다.
+번들 helper adapter는 Codex 호스트를 명시적으로 전달합니다.
+
+Command hook은 다중 파일 편집을 포함해 Codex에 맞게 연결합니다. 설치만으로 hook이
+실행되지는 않으므로 정의를 검토하고 신뢰 설정을 완료해야 합니다. Atlas의 수동
+동기화는 현재 호스트에서 수행할 수 있으며, 무인 동기화는 별도로 활성화하는 기존
+Claude CLI 흐름을 유지합니다.
+
+개발 중 공유 절차를 변경했다면 adapter를 다시 생성하세요.
+
+```bash
+python3 scripts/sync-codex-plugins.py
+python3 scripts/test-codex-plugins.py
+python3 scripts/test-codex-runtime.py # 임시 환경 설치 검사, 모델 호출 없음
+```
 
 ---
 

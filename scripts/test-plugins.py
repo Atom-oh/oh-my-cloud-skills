@@ -21,7 +21,7 @@ VALID_HOOK_TYPES = {"command", "prompt", "agent"}
 # kept verbatim and therefore declares no agents/skills arrays. ONLY these may fall back
 # to on-disk discovery — see test_manifest(). Mirror procedure and rationale:
 # docs/reference/project-init-upstream-sync.md
-# Keep in sync with CLAUDE_ONLY in test-codex-plugins.py (same plugin, other surface).
+# The generated Codex adapter is separate from these upstream-owned sources.
 MIRRORED_PLUGINS = {"project-init"}
 
 # Files under agents/ that are documentation, not agent definitions — discovery must not

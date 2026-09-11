@@ -8,23 +8,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A Claude Code plugin marketplace containing eight plugins for AWS cloud work:
+A Claude Code and Codex plugin marketplace containing eight plugins for AWS cloud work:
 - **aws-content-plugin** — Content creation (presentations, diagrams, docs, workshops)
 - **aws-ops-plugin** — Infrastructure operations & troubleshooting (EKS, networking, IAM, observability)
 - **kiro-power-converter** — Convert Claude Code plugins to Kiro IDE Power format
 - **agentcore-creator** — Convert Claude Code plugins to Bedrock AgentCore (harness or Runtime)
 - **co-agent** — Multi-AI collaboration (Kiro CLI, Codex, Antigravity): review, decision support, ADR co-authoring; Claude chairs
 - **project-init** — Project scaffolding and documentation management
-- **kiro** — Cost-savings delegation: Claude plans and verifies, Kiro CLI implements and reviews on its own subscription credits inside an isolated git worktree
+- **kiro** — Cost-savings delegation: the current host plans and verifies, Kiro CLI implements and reviews on its own subscription credits inside an isolated git worktree
 - **atlas** — A self-syncing per-topic doc wiki for LLM consumption: docs declare the files they `cover`, drift is detected mechanically against a `code_rev` anchor, and stale docs can be auto-fixed just before a push
 
 Claude Code plugins are installed via `/plugin marketplace add` or loaded locally with `--plugin-dir`.
 
-**Approved Codex target:** all eight plugins must expose their skills, command workflows
-and specialist procedures naturally in Codex. Publication is staged; missing adapters
-remain pending work, not permanent Claude-only exclusions. A generated Codex overlay
-may adapt host behavior without forking shared or upstream-owned source files.
-Full eight-plugin acceptance remains pending until the complete integration is verified.
+All eight plugins expose skills, command workflows and specialist procedures through
+generated Codex overlays. These overlays adapt host behavior without forking upstream
+sources. Full acceptance requires the complete generation, validation and actual CLI
+checks below; version agreement alone does not establish runtime readiness.
 
 ## superpowers Integration Routing
 
@@ -55,7 +54,9 @@ claude --plugin-dir ./plugins/aws-ops-plugin
 
 # Structural test suite — the canonical validation (manifests, frontmatter, references)
 python3 scripts/test-plugins.py                 # all plugins; -p <plugin> for one, -v verbose
-python3 scripts/test-codex-plugins.py           # published Codex manifests; CLAUDE_ONLY temporarily permits project-init's unpublished adapter
+python3 scripts/sync-codex-plugins.py --check   # generated Codex adapters match their sources
+python3 scripts/test-codex-plugins.py           # all eight Codex manifests and procedure coverage
+python3 scripts/test-codex-runtime.py           # disposable CLI install/discovery, no model call
 
 # Stale plugin cache check — local ~/.claude/plugins/cache vs source (--fix to copy)
 ./scripts/sync-plugin-cache.sh
@@ -112,6 +113,14 @@ plugins/<plugin-name>/
 ```
 
 ### Agent File Format
+
+Codex uses generated entry skills under `.codex-plugin/skills/` for the shared
+skills, commands and specialist agent procedures. `scripts/sync-codex-plugins.py`
+owns these adapters, their inventory, hook bridge and MCP configuration; templates
+live in `scripts/codex/`. Source agent frontmatter does not register native Codex
+agent types. The runtime guide resolves installed package paths and the per-plugin
+workflow preserves substantive review gates. Regenerate after changing source
+metadata, then run both static validation and `test-codex-runtime.py`.
 
 Every agent `.md` file has YAML frontmatter with five core fields (some agents add
 optional `skills`/`color`/`mcpServers`/`memory` — `memory: project|user` gives the agent
@@ -209,17 +218,17 @@ All plugins share a single version tracked in their `plugin.json` → `"version"
 - **Git tag format**: `v{version}` (e.g., `v1.1.0`) — created on the release commit
 - **Release process**: bump `"version"` in all `plugin.json` files + `marketplace.json` → commit → `git tag v{version}` → push with `--tags`
 - **Validation**: `git describe --tags` should match all `plugin.json` and `marketplace.json` versions
-- Published Codex manifests (`.codex-plugin/plugin.json`) and entries in
-  `.agents/plugins/marketplace.json` share the Claude marketplace version. Project-init's
-  generated overlay and entry are approved but not yet published on this base; their
-  temporary absence does not change the eight-plugin target. Once published, they receive
-  normal Codex validation while the upstream source remains mirrored.
-- The following checks version agreement across existing surfaces, not completeness of
-  Codex delivery. Missing adapters and unverified host behavior cannot count as ready.
+- Each plugin also carries a `.codex-plugin/plugin.json` alongside its `.claude-plugin/plugin.json`
+  (Codex-format manifest, kept version-synced with its Claude counterpart), and there is a second,
+  separate Codex marketplace at `.agents/plugins/marketplace.json`, including the generated
+  project-init adapter. All four surfaces
+  (Claude manifests, Claude marketplace, Codex manifests, Codex marketplace) are covered by the
+  snippet below — `.agents/plugins/marketplace.json` drifted to a stale version once already
+  (fixed alongside the atlas plugin's addition) precisely because nothing checked it.
 
 ```bash
 # Verify version consistency across all 8 plugins' .claude-plugin/plugin.json, both
-# marketplaces, currently published Codex manifests, and the git tag
+# marketplaces, all eight Codex manifests, and the git tag
 VS=$(for f in plugins/*/.claude-plugin/plugin.json; do python3 -c "import json; print(json.load(open('$f'))['version'])"; done | sort -u)
 MV=$(python3 -c "import json; vs=set(p['version'] for p in json.load(open('.claude-plugin/marketplace.json'))['plugins']); print(vs.pop() if len(vs)==1 else 'MISMATCH')")
 CV=$(for f in plugins/*/.codex-plugin/plugin.json; do python3 -c "import json; print(json.load(open('$f'))['version'])"; done | sort -u)
@@ -346,14 +355,13 @@ Commands: `/init-project`, `/sync-docs`, `/add-adr`, `/add-module`, `/add-runboo
 
 **Upstream-owned files mirror `whchoi98/project-init` byte-for-byte**, except the
 marketplace-uniform `version` in `.claude-plugin/plugin.json`. Do not edit those sources
-locally. The separate repository-owned `.codex-plugin/` overlay is allowed: generate host
-adaptations from tooling outside the mirrored source, preserve the overlay during sync,
-and regenerate it when the generator is available. See the staged sync procedure before
-claiming it is current.
+locally. The separate repository-owned `.codex-plugin/` overlay exposes Codex workflows:
+generate host adaptations from tooling outside the mirrored source, preserve the overlay
+during sync, and regenerate it with `scripts/sync-codex-plugins.py` before validation.
 
-`MIRRORED_PLUGINS` permits source discovery when manifest arrays are absent; it is
-independent of `CLAUDE_ONLY`, the temporary missing-Codex-adapter exception. Publishing
-the overlay does not end source mirroring. Local features remain in co-agent
+`MIRRORED_PLUGINS` permits source discovery when manifest arrays are absent. It remains
+applicable after Codex publication, while the Codex validator requires every plugin's
+manifest, entry and procedure coverage. Local features remain in co-agent
 (`pr-autofix`, `decision-reconcile`) or the root routing table. Sync procedure:
 `docs/reference/project-init-upstream-sync.md`.
 

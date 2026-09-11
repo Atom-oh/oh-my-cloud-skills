@@ -31,9 +31,6 @@ ALLOWED_MANIFEST_FIELDS = {
     "keywords",
     "hooks",
 }
-# Retain the existing mirror exception until its generated adapter lands.
-CLAUDE_ONLY = {"project-init"}
-
 ALLOWED_INSTALL_POLICIES = {"NOT_AVAILABLE", "AVAILABLE", "INSTALLED_BY_DEFAULT"}
 ALLOWED_AUTH_POLICIES = {"ON_INSTALL", "ON_USE"}
 
@@ -71,17 +68,17 @@ class CodexPluginValidator:
         return payload
 
     def discover_plugins(self) -> list[str]:
-        """Validate the Codex surface while retaining the upstream mirror exception."""
+        """Every marketplace plugin must expose a Codex manifest."""
         names = {
             path.parent.parent.name
             for path in self.plugins_dir.glob("*/.codex-plugin/plugin.json")
         }
         for path in self.plugins_dir.glob("*/.claude-plugin/plugin.json"):
             name = path.parent.parent.name
-            if name in names or name in CLAUDE_ONLY:
+            if name in names:
                 continue
             self.error(f"{name}: no .codex-plugin manifest — not exposed to Codex "
-                       f"(add the missing Codex manifest)")
+                       f"(generate the Codex adapter with sync-codex-plugins.py)")
         return sorted(names)
 
     def validate_manifest(self, plugin_name: str) -> None:
@@ -120,6 +117,8 @@ class CodexPluginValidator:
         skills_path = self.plugin_path(plugin_name, manifest.get("skills"), "skills")
         if skills_path:
             self.validate_skills(plugin_name, skills_path)
+        if manifest.get("skills") == "./.codex-plugin/skills/":
+            self.validate_inventory(plugin_name)
 
         mcp_servers = manifest.get("mcpServers")
         if mcp_servers is not None:
@@ -168,6 +167,56 @@ class CodexPluginValidator:
             self.error(f"{plugin_name}: {label} path escapes the plugin")
             return None
         return path
+
+    def validate_inventory(self, plugin_name: str) -> None:
+        plugin = self.plugins_dir / plugin_name
+        inventory = self.load_json(plugin / ".codex-plugin/inventory.json",
+                                   f"{plugin_name} Codex inventory")
+        if inventory is None:
+            return
+        entries = inventory.get("skills")
+        if inventory.get("plugin") != plugin_name or not isinstance(entries, list):
+            self.error(f"{plugin_name}: invalid Codex inventory")
+            return
+        actual: set[str] = set()
+        names: set[str] = set()
+        for entry in entries:
+            if not isinstance(entry, dict) or not isinstance(entry.get("name"), str):
+                self.error(f"{plugin_name}: invalid Codex inventory entry")
+                continue
+            name = entry["name"]
+            if name in names:
+                self.error(f"{plugin_name}: duplicate Codex skill {name}")
+            names.add(name)
+            expected = f".codex-plugin/skills/{name}/SKILL.md"
+            if entry.get("path") != expected:
+                self.error(f"{plugin_name}: invalid Codex entry path for {name}")
+                continue
+            path = self.plugin_path(plugin_name, "./" + expected, "entry")
+            if path and not path.is_file():
+                self.error(f"{plugin_name}: missing Codex skill {name}")
+            sources = entry.get("sources")
+            if not isinstance(sources, list) or not sources:
+                self.error(f"{plugin_name}: {name} has no source procedures")
+                continue
+            for source in sources:
+                if not isinstance(source, str):
+                    self.error(f"{plugin_name}: invalid source procedure")
+                    continue
+                actual.add(source)
+                source_path = self.plugin_path(plugin_name, "./" + source, "source")
+                if source_path and not source_path.is_file():
+                    self.error(f"{plugin_name}: missing procedure {source}")
+        expected_sources = {
+            str(path.relative_to(plugin))
+            for pattern in ("skills/*/SKILL.md", "commands/*.md", "agents/*.md")
+            for path in plugin.glob(pattern)
+            if path.name not in {"README.md", "CLAUDE.md", "AGENTS.md"}
+        }
+        if actual != expected_sources:
+            self.error(f"{plugin_name}: Codex procedure coverage mismatch "
+                       f"(missing={sorted(expected_sources - actual)}, "
+                       f"extra={sorted(actual - expected_sources)})")
 
     def validate_skills(self, plugin_name: str, skills_dir: Path) -> None:
         if not skills_dir.is_dir():
@@ -253,10 +302,7 @@ class CodexPluginValidator:
                 self.error(f"marketplace: duplicate entry {name}")
             seen.add(name)
             if name not in expected:
-                if name in CLAUDE_ONLY:
-                    self.error(f"marketplace: entry {name} is deliberately Claude-only and ships no .codex-plugin manifest")
-                else:
-                    self.error(f"marketplace: entry {name} has no .codex-plugin manifest")
+                self.error(f"marketplace: entry {name} has no .codex-plugin manifest")
 
             source = entry.get("source")
             expected_path = f"./plugins/{name}"

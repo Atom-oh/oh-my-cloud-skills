@@ -66,5 +66,29 @@ The disposable runtime test installs packages, queries actual skills/hooks,
 and runs bundled read-only helpers from a separate consumer repository.
 Unit fixtures verify the generator independently; they do not substitute
 for the real-checkout freshness gate in `tests/structure/test-codex-published.sh`.
-During staged publication that gate covers the explicitly published adapters.
-The complete marketplace check is required before declaring the migration done.
+That gate checks the complete marketplace, including every source plugin. A
+missing adapter must fail instead of disappearing from the checked set.
+
+## Consumer workflow checks
+
+The current Codex host also followed the generated entry skills and shared
+procedures in disposable consumer repositories. These were local workflow checks,
+not additional model/provider invocations:
+
+- Project initialization preserved an existing Python CLI, produced root/scoped
+  `AGENTS.md` and nine reusable skills with valid metadata, and passed three code
+  tests plus seven scaffold checks. Codex discovered all nine generated skills.
+- Native project hooks were copied into the fixture and inspected through
+  `hooks/list`: all three definitions appeared after recording project trust in
+  disposable Codex state. Each hook remained `untrusted`; discovery did not imply
+  execution approval. Separate payload tests exercise the hook script.
+- Atlas detected a stale one-document wiki, supplied the exact code-change packet,
+  and accepted the host's documentation repair. The document's `code_rev` matched
+  the packet HEAD; repeat drift output was empty. `related: []` remained valid with
+  an orphan advisory, without adding dummy documents or links.
+
+The final combined checkout passed `sync-codex-plugins.py --check` for 138 generated
+files and the real CLI probe for eight plugins, 74 skills, and 25 configured plugin
+hooks. It also executed the installed co-agent, Atlas and Kiro helpers from the
+consumer working directory. External AI, AWS and notification operations remain
+dependent on the consumer's own credentials, configuration and authorization.

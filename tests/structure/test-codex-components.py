@@ -45,15 +45,58 @@ class ComponentTests(unittest.TestCase):
         validator.validate_manifest("sample")
         return validator.errors
 
+    def generated_adapter(self):
+        self.skill(".codex-plugin/skills")
+        self.manifest["skills"] = "./.codex-plugin/skills/"
+        inventory = self.plugin / ".codex-plugin/inventory.json"
+        inventory.write_text(json.dumps({
+            "plugin": "sample",
+            "skills": [{
+                "name": "example",
+                "path": ".codex-plugin/skills/example/SKILL.md",
+                "sources": ["skills/example/SKILL.md"],
+            }],
+        }))
+        return inventory
+
     def test_existing_default_skill_directory_remains_valid(self):
         self.assertEqual([], self.validate())
 
-    def test_declared_skill_directory_is_validated(self):
-        self.skill(".codex-plugin/skills")
-        self.manifest["skills"] = "./.codex-plugin/skills/"
+    def test_custom_skill_directory_is_validated_without_generated_inventory(self):
+        # An arbitrary custom directory does not opt into the generated-adapter
+        # contract; the reserved .codex-plugin/skills path is tested separately.
+        self.skill("custom-skills")
+        self.manifest["skills"] = "./custom-skills/"
         self.assertEqual([], self.validate())
-        (self.plugin / ".codex-plugin/skills/example/SKILL.md").unlink()
+        (self.plugin / "custom-skills/example/SKILL.md").unlink()
         self.assertTrue(any("missing SKILL.md" in error for error in self.validate()))
+
+    def test_generated_adapter_requires_inventory(self):
+        inventory = self.generated_adapter()
+        self.assertEqual([], self.validate())
+        inventory.unlink()
+        self.assertTrue(any("Codex inventory missing" in error for error in self.validate()))
+
+    def test_generated_inventory_must_cover_all_source_procedures(self):
+        self.generated_adapter()
+        self.assertEqual([], self.validate())
+        command = self.plugin / "commands/review.md"
+        command.parent.mkdir()
+        command.write_text("---\ndescription: Review the requested files\n---\nInspect the diff.\n")
+        errors = self.validate()
+        self.assertTrue(any(
+            "procedure coverage mismatch" in error and "commands/review.md" in error
+            for error in errors
+        ), errors)
+
+    def test_generated_inventory_rejects_missing_referenced_source(self):
+        self.generated_adapter()
+        self.assertEqual([], self.validate())
+        (self.plugin / "skills/example/SKILL.md").unlink()
+        errors = self.validate()
+        self.assertTrue(any(
+            "missing procedure skills/example/SKILL.md" in error for error in errors
+        ), errors)
 
     def test_declared_mcp_and_hook_files(self):
         (self.plugin / ".codex-plugin/mcp.json").write_text(json.dumps({
