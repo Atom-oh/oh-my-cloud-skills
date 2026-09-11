@@ -103,8 +103,8 @@ fixes it on demand.
 
 The one deliberate exception is `atlas_index.py --validate`, which exits 1 on hard errors
 because it exists to be a gate — and `atlas_sync.py` refuses to commit while validation
-reports hard errors. Orphan advisories remain visible but yield validation exit 0
-and do not block a sync commit.
+reports hard errors. Orphan advisories alone remain visible but yield validation
+exit 0 and do not block a sync commit.
 
 ## Commands
 
