@@ -1,11 +1,11 @@
 {
   "name": "aws-ops-plugin",
   "version": "1.17.0",
-  "description": "AWS/EKS infrastructure operations and troubleshooting plugin for EKS, networking, IAM, observability, storage, database, analytics, cost, and Well-Architected reviews",
+  "description": "AWS/EKS infrastructure operations and troubleshooting plugin — EKS cluster management, networking, IAM, observability, storage, database, and cost optimization",
   "author": {
     "name": "atomoh"
   },
-  "skills": "./skills/",
+  "skills": "./.codex-plugin/skills/",
   "interface": {
     "displayName": "AWS Ops Plugin",
     "shortDescription": "Troubleshoot, review, and operate AWS and EKS environments.",
@@ -24,5 +24,6 @@
       "Review this workload against Well-Architected."
     ]
   },
-  "mcpServers": "./.mcp.json"
+  "mcpServers": "./.codex-plugin/mcp.json",
+  "hooks": "./.codex-plugin/hooks.json"
 }
