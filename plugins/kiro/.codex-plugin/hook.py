@@ -40,16 +40,11 @@ class AggregationError(ValueError):
     """A per-file result cannot safely describe the original apply_patch call."""
 
 
-def merge_identical(values, excluded):
-    merged = {}
-    for value in values:
-        for key, item in value.items():
-            if key in excluded:
-                continue
-            if key in merged and json.dumps(merged[key], sort_keys=True) != json.dumps(item, sort_keys=True):
-                raise AggregationError(f"conflicting {key} values")
-            merged[key] = item
-    return merged
+def require_fields(value, allowed):
+    unknown = set(value) - allowed
+    if unknown:
+        # Codex rejects unknown keys before applying a denial. Exit 2 instead.
+        raise AggregationError("unsupported fields: " + json.dumps(sorted(unknown)))
 
 
 def merge_text(values, key):
@@ -86,6 +81,14 @@ def aggregate(outputs, event, complete_coverage):
         for key in ("updatedInput", "updatedMCPToolOutput", "updatedPermissions"):
             if key in value or key in specific:
                 raise AggregationError(f"{key} requires a native apply_patch handler")
+        require_fields(value, {
+            "hookSpecificOutput", "continue", "stopReason", "systemMessage",
+            "suppressOutput", "decision", "reason",
+        })
+        require_fields(specific, {
+            "hookEventName", "additionalContext", "permissionDecision",
+            "permissionDecisionReason", "suppressOutput",
+        })
         if "suppressOutput" in value or "suppressOutput" in specific:
             raise AggregationError(f"suppressOutput is unsupported for {event}")
         if "continue" in value and not isinstance(value["continue"], bool):
@@ -103,13 +106,8 @@ def aggregate(outputs, event, complete_coverage):
         values.append(value)
         specifics.append(specific)
 
-    merged = merge_identical(values, {
-        "hookSpecificOutput", "continue", "decision", "reason", "stopReason", "systemMessage",
-    })
-    specific = merge_identical(specifics, {
-        "additionalContext", "permissionDecision", "permissionDecisionReason",
-    })
-    specific["hookEventName"] = event
+    merged = {}
+    specific = {"hookEventName": event}
     stopped = any(value.get("continue") is False for value in values)
     blocked = any(value.get("decision") == "block" for value in values)
     decisions = [value.get("permissionDecision") for value in specifics]

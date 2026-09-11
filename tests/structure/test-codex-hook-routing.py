@@ -274,13 +274,28 @@ class HookRoutingTests(unittest.TestCase):
         self.assertNotIn("permissionDecision", output.get("hookSpecificOutput", {}))
 
     def test_identical_supported_metadata_is_preserved(self):
-        value = {"continue": True,
+        value = {"continue": True, "systemMessage": "warning",
                  "hookSpecificOutput": {"hookEventName": "PostToolUse",
-                                        "additionalContext": "notice", "fixtureMetadata": {"version": 1}}}
+                                        "additionalContext": "notice"}}
         output = self.merged([value, value], event="PostToolUse")
         self.assertEqual(value, output)
         output = self.merged([value, {}], event="PostToolUse")
-        self.assertEqual({"version": 1}, output["hookSpecificOutput"]["fixtureMetadata"])
+        self.assertEqual("warning", output["systemMessage"])
+
+    def test_unknown_fields_cannot_invalidate_a_denial(self):
+        deny = self.permission("deny")
+        values = [
+            {**deny, "fixtureMetadata": {"version": 1}},
+            {"hookSpecificOutput": {**deny["hookSpecificOutput"],
+                                    "fixtureMetadata": {"version": 1}}},
+        ]
+        for value in values:
+            for outputs in ([value, {}], [value, value]):
+                with self.subTest(outputs=outputs):
+                    result = self.outputs(outputs)
+                    self.assertEqual(2, result.returncode)
+                    self.assertIn("fixtureMetadata", result.stderr)
+                    self.assertFalse(result.stdout.strip())
 
     def test_unsupported_suppression_and_post_permission_fields_fail_closed(self):
         for event in ("PreToolUse", "PostToolUse"):
