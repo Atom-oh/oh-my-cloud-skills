@@ -43,11 +43,9 @@ is `UNBOUND`, not `NOT_REQUIRED`; if it cannot be recovered, record the specific
 `review_unavailable` blocker. Other providers need their documented equivalent
 verdict and authenticated author/run identity.
 
-Read the PR's current `headRefOid` and bind the review to that **exact commit**.
-The oh-my-cloud-skills CI footer records `Triggered by commit <full SHA>`; other
-providers may attach `commit_id` or a check run to the reviewed commit. A recent
-`updated_at` alone is insufficient: an old run can finish after a newer push.
-The entry skill's §3 consumes the verdict and evidence recorded here.
+Bind evidence to the current **exact `headRefOid`** using the CI footer
+`Triggered by commit <full SHA>`, a provider `commit_id` or a bound check run.
+`updated_at` alone is insufficient: old runs can finish after a newer push.
 
 ```bash
 gh pr view "$PR_NUMBER" --json state,headRefOid,baseRefName,baseRefOid,statusCheckRollup,reviewDecision,mergeStateStatus,mergeable,mergeCommit
@@ -63,17 +61,7 @@ identity and required coverage in the single `review` checkpoint defined in
 previous pass result. A base retarget can also change the diff with the same HEAD;
 compare that delta with the recorded review scope before retaining a pass result.
 
-**Human review.** `gh pr reviews` does not exist — reviews are read via
-`gh pr view --json reviews`; inline (line-level) comments come from the pulls API:
-
-```bash
-gh pr view "$PR_NUMBER" --json reviews \
-  --jq '.reviews[] | select(.state == "CHANGES_REQUESTED" or .state == "APPROVED")
-        | {author: .author.login, state, body, submittedAt}'
-gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
-  --jq '.[] | select(.pull_request_review_id != null) | {path, line, body, created_at}'
-```
-
+**Human review.** Use the reviews and inline comments from the pulls API above.
 Review history is not the current decision: a later approval can resolve the same
 reviewer's earlier change request, and a dismissed review is not active. Use each
 reviewer's latest effective state and GitHub's branch-protection decision; apply

@@ -26,6 +26,7 @@ jobs:
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
       REVIEW_HEAD: ${{ github.event.pull_request.head.sha }}
       REVIEW_BASE: ${{ github.event.pull_request.base.sha }}
+      REVIEW_BASE_REF: ${{ github.event.pull_request.base.ref }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -112,8 +113,9 @@ jobs:
             const marker = '<!-- bedrock-pr-review -->';
             const head = process.env.REVIEW_HEAD;
             const base = process.env.REVIEW_BASE;
+            const baseRef = process.env.REVIEW_BASE_REF;
             core.setOutput('result', 'ERROR');
-            if (!/^[0-9a-f]{40}$/.test(head || '') || !/^[0-9a-f]{40}$/.test(base || '')) {
+            if (!/^[0-9a-f]{40}$/.test(head || '') || !/^[0-9a-f]{40}$/.test(base || '') || !baseRef) {
               throw new Error('Missing or invalid reviewed commit identity');
             }
             let status = 'ERROR';
@@ -157,16 +159,22 @@ jobs:
               }
             }
             core.setOutput('result', status);
-            // A previous event must never replace a newer head/base review in this comment slot.
+            // Reject changed heads or retargets; same-branch base advancement does not
+            // rebind this report to a new diff. Reruns retain the original event snapshot.
             const pr = await github.rest.pulls.get({...context.repo, pull_number: context.issue.number});
-            if (pr.data.head.sha !== head || pr.data.base.sha !== base) {
+            if (pr.data.head.sha !== head || pr.data.base.ref !== baseRef) {
               core.setOutput('result', 'ERROR');
-              core.warning('PR head/base changed during review; stale result was not published.');
+              core.warning('PR head or target branch changed during review; stale result was not published.');
               return;
             }
             // Quote model text so it cannot manufacture another top-level Status/footer.
             const quote = value => String(value).split(/\r?\n/).map(line => '> ' + line).join('\n');
             const sections = [marker, '## AI Code Review', `**Status: ${status}**`, reason];
+            if (pr.data.base.sha !== base) {
+              const warning = 'Target branch advanced. The footer and diff hash identify the reviewed snapshot; the host must compare the current diff before reusing this result.';
+              core.warning(warning);
+              sections.push(warning);
+            }
             if (report) {
               sections.push('### Summary', quote(report.summary), '### Findings');
               if (!report.findings.length) sections.push('None reported.');

@@ -2,17 +2,38 @@
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import tempfile
+import textwrap
 import unittest
-
-import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 TEMPLATE = Path(os.environ.get("PR_REVIEW_TEMPLATE_UNDER_TEST",
     str(ROOT / "plugins/co-agent/skills/pr-autofix/references/pr-review-workflow.yml")))
-WORKFLOW = yaml.safe_load(TEMPLATE.read_text())
-STEPS = WORKFLOW["jobs"]["review"]["steps"]
+def template_steps(source):
+    """Extract this template's literal Bash/JS blocks without a YAML dependency."""
+    steps = []
+    for section in re.split(r"(?m)^      - ", source)[1:]:
+        section = "        " + section
+        step = dict(re.findall(r"(?m)^        (name|uses|if): (.+)$", section))
+        step["with"] = dict(re.findall(
+            r"(?m)^          (ref|persist-credentials): (.+)$", section))
+        if "persist-credentials" in step["with"]:
+            step["with"]["persist-credentials"] = step["with"]["persist-credentials"] != "false"
+        for name, indent in (("run", 8), ("script", 10)):
+            match = re.search(
+                rf"(?m)^{' ' * indent}{name}: \|\n"
+                rf"((?:{' ' * (indent + 2)}[^\n]*(?:\n|$)|[ \t]*\n)*)", section,
+            )
+            if match:
+                target = step if name == "run" else step["with"]
+                target[name] = textwrap.dedent(match.group(1))
+        steps.append(step)
+    return steps
+
+
+STEPS = template_steps(TEMPLATE.read_text())
 
 
 class ReviewTemplateTests(unittest.TestCase):
@@ -47,7 +68,7 @@ class ReviewTemplateTests(unittest.TestCase):
         self.env = {
             **os.environ, "RUNNER_TEMP": str(self.root), "GITHUB_WORKSPACE": str(self.repo),
             "GITHUB_ENV": str(self.env_file), "GITHUB_OUTPUT": str(self.output_file),
-            "REVIEW_HEAD": self.head, "REVIEW_BASE": self.base, "PR_NUMBER": "17",
+            "REVIEW_HEAD": self.head, "REVIEW_BASE": self.base, "REVIEW_BASE_REF": "main", "PR_NUMBER": "17",
             "REVIEW_WORK_DIR": str(self.work), "PR_TITLE": "fixture",
             "MOCK_CLAUDE_CALL": str(self.root / "claude-call.json"),
             "MOCK_CLAUDE_EXIT": "0", "MOCK_CLAUDE_OUTPUT": "",
@@ -106,11 +127,12 @@ class ReviewTemplateTests(unittest.TestCase):
         result = self.shell("Review with Claude Code")
         self.assertEqual(0, result.returncode, result.stderr)
 
-    def publish(self, comments=None, current_head=None, current_base=None):
+    def publish(self, comments=None, current_head=None, current_base=None, current_base_ref="main"):
         step = self.step("Post review comment")
         self.assertIn("github-script@", step.get("uses", ""), "publisher must run its tested JS")
         payload = {"script": step["with"]["script"], "comments": comments or [],
-                   "head": current_head or self.head, "base": current_base or self.base}
+                   "head": current_head or self.head, "base": current_base or self.base,
+                   "base_ref": current_base_ref}
         harness = r"""
         const fs = require('fs');
         const p = JSON.parse(fs.readFileSync(0, 'utf8'));
@@ -118,7 +140,7 @@ class ReviewTemplateTests(unittest.TestCase):
         const core = {setOutput:(k,v)=>{outputs[k]=v}, warning:x=>warnings.push(x)};
         const github = {
           rest: {
-            pulls: {get:async()=>({data:{head:{sha:p.head},base:{sha:p.base}}})},
+            pulls: {get:async()=>({data:{head:{sha:p.head},base:{sha:p.base,ref:p.base_ref}}})},
             issues: {
               listComments:()=>{},
               updateComment:async x=>{writes.push({method:'update',...x})},
@@ -215,14 +237,27 @@ class ReviewTemplateTests(unittest.TestCase):
         self.assertIn("--strict-mcp-config", call["argv"])
         self.assertFalse((Path(call["cwd"]) / ".claude/settings.json").exists())
 
-    def test_stale_head_or_base_does_not_overwrite_a_newer_review(self):
+    def test_stale_head_or_retarget_does_not_overwrite_a_newer_review(self):
         self.prepare()
         self.generate(self.report())
-        for kwargs in ({"current_head": "d" * 40}, {"current_base": "e" * 40}):
+        for kwargs in ({"current_head": "d" * 40}, {"current_base_ref": "release"}):
             with self.subTest(kwargs=kwargs):
                 result = self.publish(**kwargs)
                 self.assertEqual("ERROR", result["outputs"]["result"])
                 self.assertEqual([], result["writes"])
+
+    def test_base_advance_on_same_branch_preserves_reviewed_snapshot(self):
+        self.prepare()
+        self.generate(self.report())
+        original = self.assert_status(self.publish(), "PASSED")
+        result = self.publish(current_base="e" * 40)
+        body = self.assert_status(result, "PASSED")
+        self.assertIn(f"base `{self.base}`", body)
+        self.assertNotIn("e" * 40, body)
+        self.assertEqual(re.findall(r"Diff SHA-256: `([^`]+)`", original),
+                         re.findall(r"Diff SHA-256: `([^`]+)`", body))
+        self.assertTrue(result["warnings"])
+        self.assertIn("host must compare the current diff", body)
 
     def test_upsert_ignores_user_owned_marker_comments(self):
         self.prepare()

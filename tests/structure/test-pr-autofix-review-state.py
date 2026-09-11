@@ -140,12 +140,7 @@ class ReviewStateTests(unittest.TestCase):
         ):
             with self.subTest(corrupt=corrupt[:30]):
                 self.state.write_bytes(corrupt)
-                result = subprocess.run(
-                    ["bash", "-euo", "pipefail", "-c", self.snippet("command -v jq")],
-                    env=self.env, cwd=self.directory, capture_output=True, text=True,
-                )
-                self.assertNotEqual(result.returncode, 0)
-                self.assertEqual(corrupt, self.state.read_bytes())
+                self.assert_refused("command -v jq")
 
     def test_invalid_numeric_bounds_are_rejected(self):
         for field, value in (("phase", ["poll"]), ("max_iter", 1.5), ("await_deadline", "later"),
@@ -155,13 +150,7 @@ class ReviewStateTests(unittest.TestCase):
                 state = self.read()
                 state[field] = value
                 self.write(state)
-                original = self.state.read_bytes()
-                result = subprocess.run(
-                    ["bash", "-euo", "pipefail", "-c", self.snippet("command -v jq")],
-                    env=self.env, cwd=self.directory, capture_output=True, text=True,
-                )
-                self.assertNotEqual(result.returncode, 0)
-                self.assertEqual(original, self.state.read_bytes())
+                self.assert_refused("command -v jq")
 
     def test_scope_change_does_not_extend_invocation_deadline(self):
         self.initialize()
@@ -181,15 +170,9 @@ class ReviewStateTests(unittest.TestCase):
             with self.subTest(verdict=verdict):
                 self.initialize()
                 observation = self.record(verdict)
-                original = self.state.read_bytes()
                 observation["sources"]["ai"]["head"] = "d" * 40
                 (self.directory / "review-observation.tmp.json").write_text(json.dumps(observation))
-                result = subprocess.run(
-                    ["bash", "-euo", "pipefail", "-c", self.snippet("jq --slurpfile record")],
-                    env=self.env, cwd=self.directory, capture_output=True, text=True,
-                )
-                self.assertNotEqual(result.returncode, 0)
-                self.assertEqual(original, self.state.read_bytes())
+                self.assert_refused("jq --slurpfile record")
 
     def prepare_clean(self):
         self.initialize()
@@ -200,7 +183,7 @@ class ReviewStateTests(unittest.TestCase):
         state["review"]["diff_sha256"] = hashlib.sha256(b"fixture diff\n").hexdigest()
         self.write(state)
         live = {
-            "number": 17, "state": "OPEN", "headRefOid": "a" * 40,
+            "number": 17, "state": "OPEN", "headRefOid": "a" * 40, "headRefName": "fixture",
             "baseRefOid": "b" * 40, "baseRefName": "main",
             "reviewDecision": "APPROVED", "mergeStateStatus": "CLEAN",
             "mergeable": "MERGEABLE",
@@ -226,6 +209,12 @@ elif sys.argv[1:3] == ["pr", "view"]:
     if os.environ.get("TEST_QUERY_FAIL"):
         sys.exit(1)
     print(path.read_text())
+elif sys.argv[1:3] == ["pr", "checks"]:
+    error = os.environ.get("TEST_CHECK_ERROR")
+    if error:
+        print(error, file=sys.stderr)
+        sys.exit(1)
+    print(os.environ.get("TEST_CHECKS", '[{"name":"CI","bucket":"pass","state":"SUCCESS"}]'))
 else:
     sys.exit(2)
 """)
@@ -233,10 +222,10 @@ else:
         self.env["PATH"] = str(fake) + os.pathsep + os.environ["PATH"]
         return state, live
 
-    def refuse_clean(self):
+    def assert_refused(self, needle='.stop_reason = "clean"'):
         original = self.state.read_bytes()
         result = subprocess.run(
-            ["bash", "-euo", "pipefail", "-c", self.snippet('.stop_reason = "clean"')],
+            ["bash", "-euo", "pipefail", "-c", self.snippet(needle)],
             env=self.env, cwd=self.directory, capture_output=True, text=True,
         )
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -279,21 +268,22 @@ else:
                 else:
                     source["verdict"] = "NOT_REQUIRED"
                 self.write(state)
-                self.refuse_clean()
+                self.assert_refused()
 
     def test_clean_rechecks_live_scope_and_effective_protection(self):
         for field, value in (
-            ("number", 18), ("headRefOid", "d" * 40), ("baseRefOid", "e" * 40),
+            ("number", 18), ("headRefOid", "d" * 40),
             ("baseRefName", "release"), ("state", "MERGED"),
             ("reviewDecision", "CHANGES_REQUESTED"), ("reviewDecision", "REVIEW_REQUIRED"),
             ("mergeStateStatus", "BLOCKED"), ("mergeStateStatus", "UNKNOWN"),
+            ("mergeStateStatus", "BEHIND"),
             ("mergeable", "CONFLICTING"),
         ):
             with self.subTest(field=field, value=value):
                 _, live = self.prepare_clean()
                 live[field] = value
                 self.live_path.write_text(json.dumps(live))
-                self.refuse_clean()
+                self.assert_refused()
 
     def test_clean_refuses_query_failure_diff_drift_and_racing_push(self):
         for variable, value in (("TEST_QUERY_FAIL", "1"), ("TEST_DIFF_FAIL", "1"),
@@ -301,27 +291,46 @@ else:
             with self.subTest(variable=variable):
                 self.prepare_clean()
                 self.env[variable] = value
-                self.refuse_clean()
+                self.assert_refused()
                 del self.env[variable]
+
+    def test_clean_allows_optional_failure_and_unchanged_diff_after_base_advance(self):
+        for merge_state in ("CLEAN", "UNSTABLE", "HAS_HOOKS"):
+            with self.subTest(merge_state=merge_state):
+                _, live = self.prepare_clean()
+                live.update(baseRefOid="e" * 40, mergeStateStatus=merge_state)
+                self.live_path.write_text(json.dumps(live))
+                self.run_snippet('.stop_reason = "clean"')
+                self.assertEqual("b" * 40, self.read()["review"]["base_sha"])
+
+    def test_required_check_lookup_and_results_cannot_fail_open(self):
+        for variable, value in (
+            ("TEST_CHECK_ERROR", "HTTP 403"), ("TEST_CHECK_ERROR", "unknown flag: --required"),
+            ("TEST_CHECKS", "null"), ("TEST_CHECKS", "{}"),
+            ("TEST_CHECKS", '[{"name":"CI","bucket":"fail","state":"FAILURE"}]'),
+            ("TEST_CHECKS", '[{"name":"CI","bucket":"pending","state":"PENDING"}]'),
+        ):
+            with self.subTest(value=value):
+                self.prepare_clean()
+                self.env[variable] = value
+                self.assert_refused()
+                del self.env[variable]
+        self.prepare_clean()
+        self.env["TEST_CHECK_ERROR"] = "no required checks reported on the 'fixture' branch"
+        self.run_snippet('.stop_reason = "clean"')
 
     def test_invalid_exemption_and_multiple_documents_are_rejected(self):
         for mode in ("exemption", "multi"):
             with self.subTest(mode=mode):
                 self.initialize()
                 observation = self.record()
-                original = self.state.read_bytes()
                 if mode == "exemption":
                     observation["sources"]["ai"]["verdict"] = "NOT_REQUIRED"
                     text = json.dumps(observation)
                 else:
                     text = "{}\n" + json.dumps(observation)
                 (self.directory / "review-observation.tmp.json").write_text(text)
-                result = subprocess.run(
-                    ["bash", "-euo", "pipefail", "-c", self.snippet("jq --slurpfile record")],
-                    env=self.env, cwd=self.directory, capture_output=True, text=True,
-                )
-                self.assertNotEqual(result.returncode, 0)
-                self.assertEqual(original, self.state.read_bytes())
+                self.assert_refused("jq --slurpfile record")
 
     def test_justified_optional_source_is_preserved(self):
         self.initialize()
@@ -340,13 +349,7 @@ else:
         state = self.read()
         state["await_deadline"] = "later"
         self.write(state)
-        original = self.state.read_bytes()
-        result = subprocess.run(
-            ["bash", "-euo", "pipefail", "-c", self.snippet("NOW=$(date")],
-            env=self.env, cwd=self.directory, capture_output=True, text=True,
-        )
-        self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(original, self.state.read_bytes())
+        self.assert_refused("NOW=$(date")
 
     def test_quoted_and_fenced_tokens_do_not_override_native_verdict(self):
         path = self.directory / "comment.json"

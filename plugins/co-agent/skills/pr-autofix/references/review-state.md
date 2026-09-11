@@ -116,26 +116,36 @@ rm -f "$REVIEW_RECORD" "$STATE_DIR/review-comment.tmp.json"
 
 ## Mark clean
 
-Run this only after the host has checked current authenticated reviews, inline
-findings and required CI, and checkpointed every required source. The shared
-validator refuses absent/malformed evidence, stale source HEADs, incomplete
-required coverage and any unresolved blocking finding, including optional sources.
-The native verdict cannot be replaced by an informal host conclusion.
-
-The final reads also require an open, mergeable PR with GitHub's effective merge
-state `CLEAN`. A pending/unknown/blocked state must be rechecked or diagnosed.
-Capture diff bytes without command-substitution newline loss; a failed query or
-changed HEAD/base/diff leaves the state file unchanged. The host must still check
-HEAD and integration conditions immediately before its separately authorized merge.
+After checking authenticated reviews, inline findings and required CI, checkpoint
+every source. This guard rejects missing, stale, partial or blocking evidence.
+Fresh required checks must pass; `UNSTABLE`/`HAS_HOOKS` alone are not blockers.
+An unchanged diff may retain its original reviewed `base_sha` after the base tip
+advances. Failed queries or changed HEAD/target/diff preserve state. The host still
+rechecks HEAD and integration conditions before its separately authorized merge.
 
 ```bash
 set -o pipefail
-PR_FIELDS=number,state,headRefOid,baseRefName,baseRefOid,reviewDecision,mergeStateStatus,mergeable
+PR_FIELDS=number,state,headRefName,headRefOid,baseRefName,baseRefOid,reviewDecision,mergeStateStatus,mergeable
 PR_BEFORE=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json "$PR_FIELDS") || exit 1
 DIFF_SHA=$(gh pr diff "$PR_NUMBER" --repo "$REPO" --color never |
   python3 -c 'import hashlib, sys; print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())') || exit 1
+CHECKS="$STATE_DIR/required-checks.tmp.json"
+HEAD_REF=$(printf '%s' "$PR_BEFORE" | jq -er '.headRefName | select(type == "string" and length > 0)') || exit 1
+if gh pr checks "$PR_NUMBER" --repo "$REPO" --required --json name,bucket,state > "$CHECKS" 2> "$CHECKS.err"; then
+  :
+else
+  CHECKS_RC=$?
+  # gh emits this exact error only after successfully filtering an empty required set.
+  EXPECTED_EMPTY="no required checks reported on the '$HEAD_REF' branch"
+  if [ "$CHECKS_RC" -eq 1 ] && [ ! -s "$CHECKS" ] && [ "$(cat "$CHECKS.err")" = "$EXPECTED_EMPTY" ]; then
+    printf '[]\n' > "$CHECKS"
+  else
+    echo "required check query did not pass; preserve state"; exit 1
+  fi
+fi
 PR_AFTER=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json "$PR_FIELDS") || exit 1
 jq -L "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts" -s \
+  --slurpfile checks "$CHECKS" \
   --argjson before "$PR_BEFORE" --argjson after "$PR_AFTER" \
   --argjson pr "$PR_NUMBER" --arg diff "$DIFF_SHA" '
   include "review_state";
@@ -146,17 +156,25 @@ jq -L "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts" -s \
     then error("review evidence is not ready")
     elif .pr != $pr or $after.number != $pr
       or ($before | scope) != ($after | scope)
-      or .review.head != $after.headRefOid or .review.base_sha != $after.baseRefOid
+      or .review.head != $after.headRefOid
       or .base_ref != $after.baseRefName or .review.diff_sha256 != $diff
     then error("PR scope changed; collect review evidence again")
     elif $after.state != "OPEN" or $after.mergeable != "MERGEABLE"
-      or $after.mergeStateStatus != "CLEAN"
+      or ($after.mergeStateStatus | type != "string")
+      or (["CLEAN","UNSTABLE","HAS_HOOKS"] | index($after.mergeStateStatus)) == null
       or ($after.reviewDecision != null and ($after.reviewDecision | type != "string"))
       or (["", "APPROVED", null] | index($after.reviewDecision)) == null
     then error("current PR protection or merge state is not ready")
+    elif ($checks | length) != 1 or ($checks[0] | type != "array")
+      or ($checks[0] | all(.[]; (.name | type == "string")
+        and (.bucket == "pass" or .bucket == "skipping")
+        and (.state | type == "string")
+        and (.state as $s | ["SUCCESS","NEUTRAL","SKIPPED"] | index($s) != null)) | not)
+    then error("required checks are not satisfied")
     else .phase = "stop" | .stop_reason = "clean" | .stop_detail = null end
 ' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" \
   || { echo "clean transition refused; preserve state and refresh evidence"; exit 1; }
+rm -f "$CHECKS" "$CHECKS.err"
 ```
 
 ## Bound the local wait without restarting a remote job
