@@ -34,6 +34,7 @@ class PrTargetTests(unittest.TestCase):
             "headRepository": {"nameWithOwner": "Upstream/Repo"},
             "url": "https://github.com/Upstream/Repo/pull/171",
         }
+        self.state = self.repo / ".claude/co-agent-consensus/pr-autofix/pr-171/state.json"
 
     def git(self, *args):
         return subprocess.run(["git", *args], cwd=self.repo, env=self.env,
@@ -66,6 +67,28 @@ class PrTargetTests(unittest.TestCase):
         self.git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
                  "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-qm", "pending fix")
         self.check()
+
+    def test_owner_name_schema_with_and_without_name_with_owner(self):
+        self.metadata["headRepositoryOwner"] = {"login": "Upstream"}
+        for repository in ({"id": "fixture-id", "name": "Repo"},
+                           {"name": "Repo", "nameWithOwner": "Upstream/Repo"}):
+            self.metadata["headRepository"] = repository
+            self.check()
+            self.entry()
+        self.metadata["headRepository"]["nameWithOwner"] = "Other/Repo"
+        self.check(False)
+        self.metadata["headRepository"] = {"name": "Repo"}
+        self.metadata["headRepositoryOwner"] = None
+        self.check(False)
+
+    def test_fork_owner_name_schema_binds_push_remote(self):
+        self.fork()
+        self.metadata["headRepository"] = {"name": "Repo"}
+        self.metadata["headRepositoryOwner"] = {"login": "Contributor"}
+        self.check(False)
+        self.git("config", "branch.topic.pushRemote", "fork")
+        self.check()
+        self.entry()
 
     def test_wrong_origin_for_fork_is_rejected(self):
         self.fork()
@@ -163,6 +186,22 @@ class PrTargetTests(unittest.TestCase):
         self.git("config", "remote.origin.mirror", "false")
         self.check()
 
+    def test_submodule_recurse_is_rejected_in_both_config_orders(self):
+        original = (self.repo / ".git/config").read_bytes()
+        for settings in (
+            (("submodule.recurse", "true"),),
+            (("submodule.recurse", "true"), ("push.recurseSubmodules", "no")),
+            (("push.recurseSubmodules", "no"), ("submodule.recurse", "true")),
+            (("submodule.recurse", "false"), ("submodule.recurse", "true")),
+        ):
+            with self.subTest(settings=settings):
+                (self.repo / ".git/config").write_bytes(original)
+                for key, value in settings:
+                    self.git("config", "--add", key, value)
+                self.check(False)
+        self.git("config", "--add", "submodule.recurse", "false")
+        self.check()
+
     def test_push_url_not_fetch_url_and_multiple_destinations(self):
         self.fork()
         self.git("config", "remote.origin.pushurl", "https://github.com/Contributor/Repo.git")
@@ -225,36 +264,147 @@ class PrTargetTests(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertNotIn("fixture-secret", result.stderr)
 
-    def entry(self, allowed=True, gh_status="0"):
+    def entry(self, allowed=True, gh_status="0", supplied=None, initialize=False):
         bindir = self.root / "bin"
         bindir.mkdir(exist_ok=True)
         gh = bindir / "gh"
         gh.write_text("""#!/usr/bin/env python3
 import json, os, sys
 data = json.loads(os.environ["FIXTURE_PR"])
+with open(os.environ["FIXTURE_GH_LOG"], "a") as log:
+    log.write(json.dumps(sys.argv[1:]) + "\\n")
 if sys.argv[1:3] == ["repo", "view"]:
     print("Upstream/Repo")
 elif sys.argv[1:3] == ["pr", "view"]:
-    if "--jq" in sys.argv:
-        print(data["state"] + "\\t" + data["headRefName"])
-    else:
-        print(json.dumps(data))
+    fields = sys.argv[sys.argv.index("--json") + 1].split(",")
+    print(json.dumps({key: value for key, value in data.items() if key in fields}))
     sys.exit(int(os.environ["FIXTURE_GH_STATUS"]))
+elif sys.argv[1:3] == ["pr", "list"]:
+    print('[{"number": 171}]')
 else:
     sys.exit(2)
 """)
         gh.chmod(0o755)
-        step = SKILL.joinpath("SKILL.md").read_text().split("### 1. Identify the PR", 1)[1]
-        snippet = re.search(r"```bash\n(.*?)\n```", step, re.S)[1]
+        reference = SKILL.joinpath("references/review-state.md").read_text()
+        snippet = next(block for block in re.findall(r"```bash\n(.*?)\n```", reference, re.S)
+                       if "STATE_BINDING=" in block)
         env = {**self.env, "PR_NUMBER": "171", "FIXTURE_PR": json.dumps(self.metadata),
                "FIXTURE_GH_STATUS": gh_status, "CLAUDE_PLUGIN_ROOT": str(SKILL.parents[1]),
+               "FIXTURE_GH_LOG": str(self.root / "gh.log"),
                "PATH": str(bindir) + os.pathsep + self.env["PATH"]}
+        for key, value in (supplied or {}).items():
+            if value is None:
+                env.pop(key, None)
+            else:
+                env[key] = value
+        snippet += '\nprintf "\\nresolved-pr=%s\\n" "$PR_NUMBER"\n'
+        if initialize:
+            model = SKILL.joinpath("SKILL.md").read_text().split("## State model", 1)[1]
+            snippet += re.search(r"```bash\n(.*?)\n```", model, re.S)[1] + "\n"
+            reference = SKILL.joinpath("references/review-state.md").read_text()
+            snippet += next(block for block in re.findall(r"```bash\n(.*?)\n```", reference, re.S)
+                            if "command -v jq" in block)
+            snippet += '\nprintf "\\nresolved-state=%s\\n" "$STATE"\n'
+            env.update(BASE_REF="main", GIT_ITER="2", PR_AUTOFIX_WAIT_SECONDS="60",
+                       CO_AGENT_USER_CONFIG=str(self.root / "no-user-config"))
         result = subprocess.run(["bash", "-c", snippet], cwd=self.repo, env=env,
                                 text=True, capture_output=True)
         if allowed:
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         else:
             self.assertNotEqual(0, result.returncode, "Step 1 accepted an unsafe target")
+        return result
+
+    def saved_state(self, phase="gate"):
+        data = {"pr": 171, "base_ref": "main", "iteration": 2, "max_iter": 5,
+                "phase": phase, "run_dir": "pending-delta", "sig": "signature",
+                "ld_sha": "script-hash", "review": None, "stop_detail": None,
+                "await_started_at": None, "await_deadline": None, "await_limit_seconds": 60}
+        self.state.parent.mkdir(parents=True, exist_ok=True)
+        self.state.write_text(json.dumps(data))
+        return data
+
+    def test_state_only_resume_preserves_gate_and_committing_without_discovery(self):
+        self.git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+                 "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-qm", "pending fix")
+        for phase in ("gate", "committing"):
+            with self.subTest(phase=phase):
+                data = self.saved_state(phase)
+                result = self.entry(supplied={"STATE": str(self.state), "PR_NUMBER": None},
+                                    initialize=True)
+                self.assertIn("resolved-pr=171", result.stdout)
+                self.assertIn("resolved-state=" + str(self.state), result.stdout)
+                self.assertEqual(data, json.loads(self.state.read_text()))
+                calls = [json.loads(line) for line in (self.root / "gh.log").read_text().splitlines()]
+                self.assertFalse(any(call[:2] == ["pr", "list"] for call in calls))
+
+    def test_explicit_number_must_match_state_before_querying(self):
+        self.saved_state()
+        before = self.state.read_bytes()
+        self.entry(False, supplied={"STATE": str(self.state), "PR_NUMBER": "172"})
+        self.assertEqual(before, self.state.read_bytes())
+        self.assertFalse((self.root / "gh.log").exists())
+
+    def test_foreign_state_with_same_number_is_not_adopted(self):
+        self.saved_state()
+        foreign = self.root / "foreign repo/.claude/co-agent-consensus/pr-autofix/pr-171/state.json"
+        foreign.parent.mkdir(parents=True)
+        foreign.write_bytes(self.state.read_bytes())
+        before = foreign.read_bytes()
+        self.entry(False, supplied={"STATE": str(foreign), "PR_NUMBER": None}, initialize=True)
+        self.assertEqual(before, foreign.read_bytes())
+        self.assertFalse((self.root / "gh.log").exists())
+
+    def test_supplied_missing_empty_malformed_and_multidocument_state_never_resets(self):
+        self.state.parent.mkdir(parents=True)
+        for contents in (None, b"", b"{broken", b"{}{}", b'{"pr":171}', b'{"pr":0}'):
+            with self.subTest(contents=contents):
+                if contents is not None:
+                    self.state.write_bytes(contents)
+                self.entry(False, supplied={"STATE": str(self.state), "PR_NUMBER": None},
+                           initialize=True)
+                if contents is None:
+                    self.assertFalse(self.state.exists())
+                else:
+                    self.assertEqual(contents, self.state.read_bytes())
+                self.assertFalse((self.root / "gh.log").exists())
+        self.entry(False, supplied={"STATE": ""})
+
+    def test_symlink_state_and_parent_directory_are_rejected(self):
+        self.saved_state()
+        backup = self.root / "saved.json"
+        self.state.rename(backup)
+        self.state.symlink_to(backup)
+        self.entry(False, supplied={"STATE": str(self.state)})
+        self.state.unlink()
+        backup.rename(self.state)
+        directory = self.state.parent
+        directory.rename(self.root / "saved directory")
+        directory.symlink_to(self.root / "saved directory", target_is_directory=True)
+        self.entry(False, supplied={"STATE": str(self.state)})
+
+    def test_branch_discovery_only_without_supplied_number_or_state(self):
+        result = self.entry(supplied={"PR_NUMBER": None, "STATE": None}, initialize=True)
+        self.assertIn("resolved-pr=171", result.stdout)
+        self.assertEqual(171, json.loads(self.state.read_text())["pr"])
+        calls = [json.loads(line) for line in (self.root / "gh.log").read_text().splitlines()]
+        self.assertTrue(any(call[:2] == ["pr", "list"] for call in calls))
+
+    def test_derived_existing_state_pr_mismatch_is_not_reset(self):
+        self.saved_state()
+        data = json.loads(self.state.read_text())
+        data["pr"] = 172
+        self.state.write_text(json.dumps(data))
+        before = self.state.read_bytes()
+        self.entry(False, initialize=True)
+        self.assertEqual(before, self.state.read_bytes())
+
+    def test_relative_canonical_state_keeps_same_file(self):
+        before = self.saved_state()
+        result = self.entry(supplied={"STATE": str(self.state.relative_to(self.repo)),
+                                     "PR_NUMBER": None}, initialize=True)
+        self.assertIn("resolved-state=" + str(self.state), result.stdout)
+        self.assertEqual(before, json.loads(self.state.read_text()))
 
     def test_step_one_rejects_wrong_fork_then_accepts_push_remote(self):
         self.fork()

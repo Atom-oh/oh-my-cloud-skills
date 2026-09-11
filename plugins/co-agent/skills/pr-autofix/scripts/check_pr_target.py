@@ -97,7 +97,17 @@ def validate(pr):
     require(isinstance(branch, str) and branch, "PR head branch is missing.")
     head_repository = pr.get("headRepository")
     require(isinstance(head_repository, dict), "PR head repository is missing or deleted.")
-    owner_repo = repository_path(head_repository.get("nameWithOwner"))
+    if "headRepositoryOwner" in pr:
+        owner = pr["headRepositoryOwner"]
+        name = head_repository.get("name")
+        require(isinstance(owner, dict) and isinstance(owner.get("login"), str) and
+                isinstance(name, str), "PR head repository owner/name is missing.")
+        owner_repo = repository_path(owner["login"] + "/" + name)
+        if "nameWithOwner" in head_repository:
+            require(repository_path(head_repository["nameWithOwner"]) == owner_repo,
+                    "PR head repository identities disagree.")
+    else:
+        owner_repo = repository_path(head_repository.get("nameWithOwner"))
     host, _ = url_identity(pr.get("url"), pr=True)
 
     config = Config()
@@ -128,7 +138,10 @@ def validate(pr):
     require(not config.boolean(remote_prefix + ".mirror") and
             not config.boolean("push.followtags"),
             "mirror/followTags may push unrelated refs; disable them before entering this loop.")
-    require(config.last("push.recursesubmodules", "no") in ("no", "false", "off", "0", "check"),
+    # Git processes both keys in config order. Reject either recursive setting
+    # rather than accepting a no-push value that another key may override.
+    require(not config.boolean("submodule.recurse") and
+            config.last("push.recursesubmodules", "no") in ("no", "false", "off", "0", "check"),
             "submodule pushes may change other repositories; disable recursive pushes.")
     require(not config.all(remote_prefix + ".vcs") and
             not config.all(remote_prefix + ".receivepack"),

@@ -1,6 +1,57 @@
 # Review-loop state and checkpoints
 
-Run Step 1's OPEN/branch guard before initializing state. This file grants no
+## Resolve the PR and checkout
+
+```bash
+set -o pipefail
+REPO_ROOT=$(git rev-parse --show-toplevel) || exit 1
+STATE_ARGS=()
+[ "${STATE+x}" != x ] || STATE_ARGS+=(--state "$STATE")
+[ "${PR_NUMBER+x}" != x ] || STATE_ARGS+=(--pr "$PR_NUMBER")
+STATE_BINDING=$(python3 "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts/resolve_pr_state.py" \
+  "$REPO_ROOT" ${STATE_ARGS[@]+"${STATE_ARGS[@]}"}) || exit 1
+PR_NUMBER=$(printf '%s' "$STATE_BINDING" | jq -r '.pr // empty') || exit 1
+REPO=$(gh repo view --json nameWithOwner --jq '.nameWithOwner') || exit 1
+CURRENT_BRANCH=$(git symbolic-ref --quiet --short HEAD) || { echo "detached HEAD; select the PR branch"; exit 1; }
+if [ -z "${PR_NUMBER:-}" ]; then
+  PR_MATCHES=$(gh pr list --repo "$REPO" --head "$CURRENT_BRANCH" --state open --json number) || exit 1
+  PR_NUMBER=$(printf '%s' "$PR_MATCHES" | jq -er '
+    if length == 1 then .[0].number
+    elif length == 0 then error("no open PR on this branch; identify the intended PR explicitly")
+    else error("multiple matching PRs; resolve the user-intended PR explicitly") end
+  ') || exit 1
+  STATE_BINDING=$(python3 "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts/resolve_pr_state.py" \
+    "$REPO_ROOT" --pr "$PR_NUMBER") || exit 1
+fi
+[[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]] || { echo "invalid PR number"; exit 1; }
+gh pr view "$PR_NUMBER" --repo "$REPO" --json state,headRefName,headRepository,headRepositoryOwner,url |
+  python3 "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts/check_pr_target.py" || exit 1
+STATE=$(printf '%s' "$STATE_BINDING" | jq -er '.state') || exit 1
+```
+
+Run this guard on entry and before fixes/pushes, including resumes. It permits
+unpushed `gate`/`committing` deltas; local/remote SHA equality is required only at
+Mark clean. A supplied `STATE` must already be valid and occupy this checkout's
+canonical `.claude/co-agent-consensus/pr-autofix/pr-N/state.json` path. Its `.pr`
+selects the PR; an explicit `PR_NUMBER` must agree. Missing, empty, symlinked,
+malformed or foreign state stops before queries or writes, without a reset.
+Only when neither input is supplied does branch discovery select the PR.
+The State model reuses the bound path, so a resume cannot silently switch files.
+
+The target helper binds the attached branch and bare `git push` destination
+to the OPEN PR's head repository/ref using local Git metadata, including fork
+`pushRemote`/`pushurl` routes. Ambiguous routes, URL rewrites, multiple destinations,
+and pushes of extra/forced refs fail closed; correct the named push remote or
+tracking configuration before re-entering. It never pushes or resolves SSH aliases.
+Either recursive submodule setting blocks entry regardless of their relative
+config order, because submodule pushes can update other repositories.
+HTTPS credentials do not change repository identity and are never printed.
+Handle fixes for closed/merged PRs through the host's corrective-PR
+workflow outside this loop.
+
+## Initialize, resume and repair
+
+Run Step 1's state-path/OPEN/push-target guards before initializing state. This file grants no
 merge authority. On Poll, repair `iteration` from Git with a warning; resolve the
 actual PR base and reject failed counts rather than defaulting to zero:
 
@@ -10,7 +61,8 @@ GIT_ITER=$(git rev-list --count --grep="^fix: address review feedback" "origin/$
   || { echo "iteration count failed — treat as unknown, do not silently proceed as iteration 0"; exit 1; }
 ```
 
-Initialize only absent state. Preserve invalid existing bytes and handles;
+Initialize only absent, derived state; a supplied state must already exist.
+Preserve empty, malformed, multi-document or symlinked state and its handles;
 repair from verified evidence, never fresh defaults.
 
 ```bash
@@ -20,9 +72,9 @@ WAIT_SECONDS="${PR_AUTOFIX_WAIT_SECONDS:-3600}"
   [ "$WAIT_SECONDS" -le 2147483647 ] || { echo "PR_AUTOFIX_WAIT_SECONDS must be an integer in 1..2147483647"; exit 1; }
 pr_autofix_validate_state() {
   [ -f "$STATE" ] && [ -s "$STATE" ] && [ ! -L "$STATE" ] || return 1
-  jq -L "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts" -se '
+  jq -L "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts" --argjson pr "$PR_NUMBER" -se '
     include "review_state";
-    length == 1 and (.[0] | valid_state)
+    length == 1 and (.[0] | valid_state and .pr == $pr)
   ' "$STATE" >/dev/null
 }
 if [ -e "$STATE" ] || [ -L "$STATE" ]; then

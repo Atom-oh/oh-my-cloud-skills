@@ -4,6 +4,7 @@ import hashlib
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -18,15 +19,31 @@ class ReviewStateTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory(prefix="pr review state ")
         self.addCleanup(temporary.cleanup)
         self.directory = Path(temporary.name)
-        self.state = self.directory / "state.json"
+        self.state_dir = self.directory / ".claude/co-agent-consensus/pr-autofix/pr-17"
+        self.state_dir.mkdir(parents=True)
+        self.state = self.state_dir / "state.json"
+        self.git_bin = shutil.which("git")
         self.env = {
-            **os.environ, "STATE": str(self.state), "STATE_DIR": str(self.directory),
+            **{k: v for k, v in os.environ.items() if not k.startswith("GIT_")},
+            "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null",
+            "STATE": str(self.state), "STATE_DIR": str(self.state_dir),
             "PR_NUMBER": "17", "BASE_REF": "main", "GIT_ITER": "2",
             "REPO": "example/repository",
             "CLAUDE_PLUGIN_ROOT": str(ROOT / "plugins/co-agent"),
             "CO_AGENT_USER_CONFIG": str(self.directory / "no-user-config"),
             "PR_AUTOFIX_WAIT_SECONDS": "60",
+            "TEST_REAL_GIT": self.git_bin,
         }
+        self.git("init", "-q", "--template=", "-b", "fixture")
+        self.git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+                 "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-qm", "initial")
+        self.git("remote", "add", "origin", "https://github.com/example/repository.git")
+        self.git("config", "branch.fixture.remote", "origin")
+        self.git("config", "branch.fixture.merge", "refs/heads/fixture")
+
+    def git(self, *args):
+        return subprocess.run([self.git_bin, *args], cwd=self.directory, env=self.env,
+                              capture_output=True, text=True, check=True).stdout.strip()
 
     def snippet(self, needle):
         files = [SKILL / "SKILL.md", SKILL / "references/review-state.md",
@@ -65,7 +82,7 @@ class ReviewStateTests(unittest.TestCase):
             "sources": {"ai": {"verdict": verdict, "head": "a" * 40,
                                "coverage_complete": False, "blocking_findings": []}},
         }
-        (self.directory / "review-observation.tmp.json").write_text(json.dumps(observation))
+        (self.state_dir / "review-observation.tmp.json").write_text(json.dumps(observation))
         self.run_snippet("jq --slurpfile record")
         return observation
 
@@ -89,7 +106,7 @@ class ReviewStateTests(unittest.TestCase):
         self.initialize()
         observation = self.record("BLOCKED")
         self.assertEqual(observation, self.read()["review"])
-        self.assertFalse((self.directory / "review-observation.tmp.json").exists())
+        self.assertFalse((self.state_dir / "review-observation.tmp.json").exists())
 
     def test_wait_budget_preserves_pending_remote_handle(self):
         self.initialize()
@@ -161,7 +178,7 @@ class ReviewStateTests(unittest.TestCase):
         observation["head"] = "d" * 40
         observation["sources"]["ai"]["head"] = "d" * 40
         observation["diff_sha256"] = "e" * 64
-        (self.directory / "review-observation.tmp.json").write_text(json.dumps(observation))
+        (self.state_dir / "review-observation.tmp.json").write_text(json.dumps(observation))
         self.run_snippet("jq --slurpfile record")
         self.assertEqual(before["await_deadline"], self.read()["await_deadline"])
 
@@ -171,7 +188,7 @@ class ReviewStateTests(unittest.TestCase):
                 self.initialize()
                 observation = self.record(verdict)
                 observation["sources"]["ai"]["head"] = "d" * 40
-                (self.directory / "review-observation.tmp.json").write_text(json.dumps(observation))
+                (self.state_dir / "review-observation.tmp.json").write_text(json.dumps(observation))
                 self.assert_refused("jq --slurpfile record")
 
     def prepare_clean(self):
@@ -185,7 +202,8 @@ class ReviewStateTests(unittest.TestCase):
         live = {
             "number": 17, "state": "OPEN", "headRefOid": "a" * 40, "headRefName": "fixture",
             "baseRefOid": "b" * 40, "baseRefName": "main",
-            "headRepository": {"nameWithOwner": "example/repository"},
+            "headRepository": {"id": "fixture-id", "name": "repository"},
+            "headRepositoryOwner": {"login": "example"},
             "url": "https://github.com/example/repository/pull/17",
             "reviewDecision": "APPROVED", "mergeStateStatus": "CLEAN",
             "mergeable": "MERGEABLE",
@@ -200,19 +218,10 @@ class ReviewStateTests(unittest.TestCase):
 import json, os, pathlib, sys
 path = pathlib.Path(os.environ["TEST_LIVE_PR"])
 if pathlib.Path(sys.argv[0]).name == "git":
-    if sys.argv[1:] == ["symbolic-ref", "--quiet", "--short", "HEAD"]:
-        if os.environ.get("TEST_BRANCH") == "DETACHED": sys.exit(1)
-        print(os.environ.get("TEST_BRANCH", "fixture"))
-    elif sys.argv[1:] == ["rev-parse", "--verify", "HEAD"]:
+    if sys.argv[1:] == ["rev-parse", "--verify", "HEAD"]:
         print(os.environ.get("TEST_LOCAL_HEAD", "a" * 40))
-    elif sys.argv[1:] == ["config", "--null", "--list"]:
-        print("remote.origin.url\\ngit@github.com:example/repository.git\\0"
-              "branch.fixture.remote\\norigin\\0"
-              "branch.fixture.merge\\nrefs/heads/fixture\\0", end="")
-    elif sys.argv[1] == "for-each-ref":
-        branch = os.environ.get("TEST_BRANCH", "fixture")
-        print("*\\0refs/heads/" + branch + "\\0origin\\0\\0origin\\0refs/heads/" + branch)
-    else: sys.exit(2)
+    else:
+        os.execv(os.environ["TEST_REAL_GIT"], [os.environ["TEST_REAL_GIT"], *sys.argv[1:]])
 elif sys.argv[1:3] == ["repo", "view"]:
     print("example/repository")
 elif sys.argv[1:3] == ["pr", "diff"]:
@@ -228,12 +237,11 @@ elif sys.argv[1:3] == ["pr", "view"]:
         sys.exit(1)
     data = json.loads(path.read_text())
     if "--jq" not in sys.argv:
-        print(path.read_text())
+        fields = sys.argv[sys.argv.index("--json") + 1].split(",")
+        print(json.dumps({key: value for key, value in data.items() if key in fields}))
     else:
         query = sys.argv[sys.argv.index("--jq") + 1]
-        if query == "[.state,.headRefName]|@tsv":
-            print(data["state"] + "\\t" + data["headRefName"])
-        elif query in (".baseRefName", ".headRefOid", ".headRefName"):
+        if query in (".baseRefName", ".headRefOid", ".headRefName"):
             print(data[query[1:]])
         else:
             sys.exit(2)
@@ -273,7 +281,10 @@ else:
                 _, live = self.prepare_clean()
                 live["state"] = status
                 self.live_path.write_text(json.dumps(live))
-                self.env["TEST_BRANCH"] = branch
+                if branch == "DETACHED":
+                    self.git("checkout", "--detach", "-q")
+                else:
+                    self.git("checkout", "-q", "-B", branch)
                 self.assert_refused("REPO=$(gh repo view")
 
     def test_entry_preserves_gate_and_committing_state(self):
@@ -380,7 +391,7 @@ else:
                     text = json.dumps(observation)
                 else:
                     text = "{}\n" + json.dumps(observation)
-                (self.directory / "review-observation.tmp.json").write_text(text)
+                (self.state_dir / "review-observation.tmp.json").write_text(text)
                 self.assert_refused("jq --slurpfile record")
 
     def test_justified_optional_source_is_preserved(self):
@@ -390,7 +401,7 @@ else:
             "required": False, "basis": "human-only task; no AI requirement or configured AI review",
         }
         observation["sources"]["ai"]["verdict"] = "NOT_REQUIRED"
-        (self.directory / "review-observation.tmp.json").write_text(json.dumps(observation))
+        (self.state_dir / "review-observation.tmp.json").write_text(json.dumps(observation))
         self.run_snippet("jq --slurpfile record")
         self.assertEqual("NOT_REQUIRED", self.read()["review"]["sources"]["ai"]["verdict"])
 

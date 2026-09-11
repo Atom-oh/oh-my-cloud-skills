@@ -42,9 +42,10 @@ gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/reviews"
 gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/comments"
 ```
 
-Check unresolved inline findings against current code. Checkpoint scope, coverage
+Check unresolved inline findings against current code; a summary alone cannot
+establish that they were fixed. Checkpoint scope, coverage
 and run identities through `review-state.md`. New HEADs invalidate old passes;
-retargets may change the diff without changing HEAD.
+retargets may change the diff without changing HEAD, so compare against the recorded scope.
 The CI `git diff` hash identifies its snapshot; it is not byte-comparable with the
 host's `gh pr diff` hash. Verify matching refs and patch scope across those formats.
 Mark clean compares the host's recorded `gh pr diff` hash with a fresh result from
@@ -66,5 +67,6 @@ HEAD_SHA=$(gh pr view "$PR_NUMBER" --json headRefOid --jq '.headRefOid')
 gh run list --commit "$HEAD_SHA" --json databaseId,workflowName,headSha,status,conclusion,createdAt
 ```
 
-Query saved handles before starting another run. Atomic checkpoints own state;
+Query saved handles before starting another run; elapsed time alone is not a check failure.
+Atomic checkpoints own state;
 scratch query results do not.

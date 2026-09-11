@@ -27,9 +27,9 @@ must not be writable by them (same trust rule as `review-memory.md`).
 
 ```bash
 # After Step 1 has resolved PR_NUMBER:
-REPO_ROOT=$(git rev-parse --show-toplevel)
-STATE_DIR="$REPO_ROOT/.claude/co-agent-consensus/pr-autofix/pr-${PR_NUMBER}"
-STATE="$STATE_DIR/state.json"; mkdir -p "$STATE_DIR"
+[ -n "${STATE:-}" ] && [ -n "${PR_NUMBER:-}" ] || { echo "run Step 1 before state initialization"; exit 1; }
+STATE_DIR=$(dirname -- "$STATE")
+mkdir -p -- "$STATE_DIR" || exit 1
 ```
 
 | Field | Meaning |
@@ -127,33 +127,11 @@ parameter of one LensGate call, never persisted.
 
 ### 1. Identify the PR
 
-```bash
-set -o pipefail
-REPO=$(gh repo view --json nameWithOwner --jq '.nameWithOwner') || exit 1
-CURRENT_BRANCH=$(git symbolic-ref --quiet --short HEAD) || { echo "detached HEAD; select the PR branch"; exit 1; }
-if [ -z "${PR_NUMBER:-}" ]; then
-  PR_MATCHES=$(gh pr list --repo "$REPO" --head "$CURRENT_BRANCH" --state open --json number) || exit 1
-  PR_NUMBER=$(printf '%s' "$PR_MATCHES" | jq -er '
-    if length == 1 then .[0].number
-    elif length == 0 then error("no open PR on this branch; identify the intended PR explicitly")
-    else error("multiple matching PRs; resolve the user-intended PR explicitly") end
-  ') || exit 1
-fi
-[[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]] || { echo "invalid PR number"; exit 1; }
-gh pr view "$PR_NUMBER" --repo "$REPO" --json state,headRefName,headRepository,url |
-  python3 "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts/check_pr_target.py" || exit 1
-```
-
-Run this guard on entry and before fixes/pushes, including resumes. It permits
-unpushed `gate`/`committing` deltas; local/remote SHA equality is required only at
-Mark clean. The helper binds the attached branch and bare `git push` destination
-to the OPEN PR's head repository/ref using local Git metadata, including fork
-`pushRemote`/`pushurl` routes. Ambiguous routes, URL rewrites, multiple destinations,
-and pushes of extra/forced refs fail closed; correct the named push remote or
-tracking configuration before re-entering. It never pushes or resolves SSH aliases.
-Handle fixes for closed/merged PRs through the host's corrective-PR
-workflow outside this loop. Without a number, select the unique open PR for the
-attached branch.
+Read **Resolve the PR and checkout** in
+[review-state.md](references/review-state.md) and run its guard on entry and
+before fixes/pushes, including resumes. It validates the supplied state locator,
+PR identity, checkout and configured push destination before initialization.
+Stop on a rejected target; handle closed PRs in the host's corrective workflow.
 
 ### 2. Poll for review feedback
 
