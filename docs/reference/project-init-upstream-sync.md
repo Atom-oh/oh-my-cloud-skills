@@ -13,17 +13,16 @@
 The repository-owned `.codex-plugin/` directory is a separate generated overlay,
 outside that source comparison; it is not a fork of upstream agents or skills.
 Preserve this overlay during sync, then regenerate it from repository-owned tooling
-using `scripts/sync-codex-plugins.py`. Do not maintain source-file exclusions.
+when that tooling is published. Do not maintain source-file exclusions.
 
-All eight plugins, including project-init, are approved for Codex support. This
-package includes its generated overlay. The temporary `CLAUDE_ONLY` staging
-exception does not exempt a present overlay from validation and is independent
-of upstream source mirroring. Complete eight-plugin acceptance still requires
-all packages and the global checks; source validation alone is insufficient.
+All eight plugins, including project-init, are approved for Codex support. The
+current `CLAUDE_ONLY` validator exception covers an unpublished adapter, not a
+permanent exclusion. Generator publication and the full Codex integration are
+still pending; source validation alone does not establish Codex readiness.
 
 upstream 소스는 버전 필드 외에는 원본을 유지합니다. 별도 `.codex-plugin/` 생성
-결과는 동기화에서 보존하고 다시 생성·검증합니다. project-init의 Codex overlay는
-이 패키지에 포함됩니다. 여덟 플러그인 전체의 통합 검증은 별도로 완료해야 합니다.
+결과는 동기화에서 보존하며, 생성기 배포 후 다시 생성·검증합니다. Codex 지원은
+승인된 목표이며 전체 통합 검증 완료를 의미하지 않습니다.
 
 Previously, 12 files carried local divergence (model tier adjustments, superpowers
 routing hints, GitHub-metrics badges, a code-review recall guide, writing-style-guide
@@ -76,9 +75,13 @@ p.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
 PY
 
 # 4) Regenerate the preserved overlay before checks that may reject stale artifacts.
-python3 scripts/sync-codex-plugins.py --plugin project-init
-python3 scripts/sync-codex-plugins.py --check --plugin project-init
-python3 scripts/test-codex-plugins.py -p project-init
+if [ -f scripts/sync-codex-plugins.py ]; then
+  python3 scripts/sync-codex-plugins.py --plugin project-init
+  python3 scripts/sync-codex-plugins.py --check --plugin project-init
+  python3 scripts/test-codex-plugins.py -p project-init
+else
+  printf '%s\n' 'PENDING: Codex generator is not published; overlay regeneration and Codex verification remain outstanding.'
+fi
 
 # 5) Verify mirrored source and applicable repository checks.
 python3 scripts/test-plugins.py -p project-init
