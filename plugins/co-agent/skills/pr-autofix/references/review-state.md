@@ -28,19 +28,9 @@ WAIT_SECONDS="${PR_AUTOFIX_WAIT_SECONDS:-3600}"
   [ "$WAIT_SECONDS" -le 2147483647 ] || { echo "PR_AUTOFIX_WAIT_SECONDS must be an integer in 1..2147483647"; exit 1; }
 pr_autofix_validate_state() {
   [ -f "$STATE" ] && [ -s "$STATE" ] && [ ! -L "$STATE" ] || return 1
-  jq -se '
-    def uint($max): type == "number" and . == floor and . >= 0 and . <= $max;
-    length == 1 and (.[0] |
-      type == "object"
-      and (.pr | uint(9007199254740991) and . > 0)
-      and (.base_ref | type == "string" and length > 0)
-      and (.iteration | uint(2147483647))
-      and (.max_iter | uint(2147483647) and . > 0)
-      and (.phase as $p | ["poll","gate","committing","stop","awaiting_review","checking_review","finalizing"] | index($p) != null)
-      and (.review == null or (.review | type == "object"))
-      and (.await_limit_seconds == null or (.await_limit_seconds | uint(2147483647) and . > 0))
-      and (.await_started_at == null or (.await_started_at | uint(9007199254740991)))
-      and (.await_deadline == null or (.await_deadline | uint(9007199254740991))))
+  jq -L "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts" -se '
+    include "review_state";
+    length == 1 and (.[0] | valid_state)
   ' "$STATE" >/dev/null
 }
 if [ -e "$STATE" ] || [ -L "$STATE" ]; then
@@ -71,7 +61,8 @@ pr_autofix_validate_state || { echo "state validation failed"; exit 1; }
 # Migrate legacy state without resetting iteration, live review handles or delta pointers.
 jq --argjson wait "$WAIT_SECONDS" '
   .review //= null | .stop_detail //= null
-  | .await_limit_seconds = $wait | .await_started_at //= null | .await_deadline //= null
+  | .await_started_at //= null | .await_deadline //= null
+  | if .await_deadline == null then .await_limit_seconds = $wait else . end
   | if .phase == "finalizing" then .phase = "poll" else . end
 ' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" \
   || { echo "state migration failed"; exit 1; }
@@ -95,7 +86,7 @@ Never let the planner or implementer produce this record.
 |---|---|
 | `head` | Requested PR `headRefOid`, full commit SHA |
 | `base_sha` | `baseRefOid` used for this review; a commit SHA, not `base_ref`'s branch name |
-| `diff_sha256` | SHA-256 of the requested diff captured for these refs |
+| `diff_sha256` | SHA-256 of the exact bytes from `gh pr diff "$PR_NUMBER" --repo "$REPO" --color never`, captured between matching HEAD/base queries before review |
 | `handles` | Array of verified provider/run/check identifiers, including still-live runs |
 | `requirements` | Object keyed by source; each value has `required` (boolean), nonempty `basis` (task/project/protection/config evidence), and any expected providers/lenses |
 | `sources` | Object keyed by source; each value records the native `verdict` (`PASSED`, `BLOCKED`, `ERROR`, `PENDING`, `UNBOUND`, `NOT_REQUIRED`), reviewed `head`, `coverage_complete`, and unresolved `blocking_findings` |
@@ -103,37 +94,69 @@ Never let the planner or implementer produce this record.
 Do not substitute a new diff identity for old evidence: if the requested refs/diff
 changed, mark old source results unbound and collect new coverage first. A
 `NOT_REQUIRED` result needs an explicit requirement basis, not an absent comment.
-Keep a native `BLOCKED` verdict even when disputing a finding; obtain an updated
+Bound source verdicts must name the checkpoint's exact HEAD. Only `UNBOUND` and
+justified `NOT_REQUIRED` may carry no HEAD or a previous one; neither satisfies a
+required source. Keep a native `BLOCKED` verdict even when disputing a finding; obtain an updated
 review rather than silently changing it to `PASSED`.
 
 ```bash
 REVIEW_RECORD="$STATE_DIR/review-observation.tmp.json"
 # The host has written the verified observation described in the table above.
-jq --slurpfile record "$REVIEW_RECORD" --arg base "$BASE_REF" -s '
-  def valid_observation:
-    . as $r | type == "object"
-    and (.head | test("^[0-9a-f]{40}$"))
-    and (.base_sha | test("^[0-9a-f]{40}$"))
-    and (.diff_sha256 | test("^[0-9a-f]{64}$"))
-    and (.handles | type == "array")
-    and (.requirements | type == "object" and length > 0)
-    and (.requirements | all(.[]; (.required | type == "boolean") and (.basis | type == "string" and length > 0)))
-    and (.sources | type == "object" and length > 0)
-    and ((.requirements | keys) - (.sources | keys) | length == 0)
-    and (.sources | all(.[]; .verdict as $v |
-         ["PASSED","BLOCKED","ERROR","PENDING","UNBOUND","NOT_REQUIRED"] | index($v) != null))
-    and (.sources | all(.[]; (.coverage_complete | type == "boolean")
-         and (.blocking_findings | type == "array")))
-    and (.sources | to_entries | all(.[]; .value.verdict != "NOT_REQUIRED"
-         or ($r.requirements[.key].required == false and ($r.requirements[.key].basis | length > 0))));
-  if length != 1 or (.[0] | type != "object") then error("state must contain exactly one JSON object")
+jq --slurpfile record "$REVIEW_RECORD" -L "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts" --arg base "$BASE_REF" -s '
+  include "review_state";
+  if length != 1 or (.[0] | valid_state | not) then error("invalid existing state")
   else .[0] end
   | if ($record | length) != 1 then error("observation must contain exactly one JSON document")
   elif ($record[0] | valid_observation | not) then error("invalid review observation")
   else .base_ref = $base | .review = $record[0] end
 ' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" \
   || { echo "review checkpoint failed"; exit 1; }
-rm -f "$REVIEW_RECORD"
+rm -f "$REVIEW_RECORD" "$STATE_DIR/review-comment.tmp.json"
+```
+
+## Mark clean
+
+Run this only after the host has checked current authenticated reviews, inline
+findings and required CI, and checkpointed every required source. The shared
+validator refuses absent/malformed evidence, stale source HEADs, incomplete
+required coverage and any unresolved blocking finding, including optional sources.
+The native verdict cannot be replaced by an informal host conclusion.
+
+The final reads also require an open, mergeable PR with GitHub's effective merge
+state `CLEAN`. A pending/unknown/blocked state must be rechecked or diagnosed.
+Capture diff bytes without command-substitution newline loss; a failed query or
+changed HEAD/base/diff leaves the state file unchanged. The host must still check
+HEAD and integration conditions immediately before its separately authorized merge.
+
+```bash
+set -o pipefail
+PR_FIELDS=number,state,headRefOid,baseRefName,baseRefOid,reviewDecision,mergeStateStatus,mergeable
+PR_BEFORE=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json "$PR_FIELDS") || exit 1
+DIFF_SHA=$(gh pr diff "$PR_NUMBER" --repo "$REPO" --color never |
+  python3 -c 'import hashlib, sys; print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())') || exit 1
+PR_AFTER=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json "$PR_FIELDS") || exit 1
+jq -L "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts" -s \
+  --argjson before "$PR_BEFORE" --argjson after "$PR_AFTER" \
+  --argjson pr "$PR_NUMBER" --arg diff "$DIFF_SHA" '
+  include "review_state";
+  def scope: [.number, .headRefOid, .baseRefName, .baseRefOid];
+  if length != 1 or (.[0] | valid_state | not) then error("invalid state")
+  else .[0] end
+  | if .phase != "checking_review" or .stop_reason != null or (.review | ready_review | not)
+    then error("review evidence is not ready")
+    elif .pr != $pr or $after.number != $pr
+      or ($before | scope) != ($after | scope)
+      or .review.head != $after.headRefOid or .review.base_sha != $after.baseRefOid
+      or .base_ref != $after.baseRefName or .review.diff_sha256 != $diff
+    then error("PR scope changed; collect review evidence again")
+    elif $after.state != "OPEN" or $after.mergeable != "MERGEABLE"
+      or $after.mergeStateStatus != "CLEAN"
+      or ($after.reviewDecision != null and ($after.reviewDecision | type != "string"))
+      or (["", "APPROVED", null] | index($after.reviewDecision)) == null
+    then error("current PR protection or merge state is not ready")
+    else .phase = "stop" | .stop_reason = "clean" | .stop_detail = null end
+' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" \
+  || { echo "clean transition refused; preserve state and refresh evidence"; exit 1; }
 ```
 
 ## Bound the local wait without restarting a remote job
@@ -169,6 +192,6 @@ fi
 
 This ends only the automation invocation, not the remote check. Do not cancel,
 rerun or classify that check as failed from elapsed time alone. An explicit resume
-renews the local budget while preserving `review.handles` and the git-derived
+from `stop_reason: "review_unavailable"` renews the local budget while preserving `review.handles` and the git-derived
 iteration count. Diagnose a stalled queue or missing runner separately.
 Changing HEAD or diff does not renew this invocation's deadline.

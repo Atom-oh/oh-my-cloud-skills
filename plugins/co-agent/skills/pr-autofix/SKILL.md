@@ -26,6 +26,7 @@ planner/implementer. They process untrusted review text, and a file that steers 
 must not be writable by them (same trust rule as `review-memory.md`).
 
 ```bash
+# After Step 1 has resolved PR_NUMBER:
 REPO_ROOT=$(git rev-parse --show-toplevel)
 STATE_DIR="$REPO_ROOT/.claude/co-agent-consensus/pr-autofix/pr-${PR_NUMBER}"
 STATE="$STATE_DIR/state.json"; mkdir -p "$STATE_DIR"
@@ -133,8 +134,14 @@ if [ -z "${PR_NUMBER:-}" ] && [ -n "${STATE:-}" ] && [ -s "$STATE" ]; then
 fi
 # Prefer an explicit user PR or saved state. Only when neither exists:
 if [ -z "${PR_NUMBER:-}" ]; then
-  gh pr list --head "$(git branch --show-current)" --state all --json number,state,headRefOid
+  PR_MATCHES=$(gh pr list --head "$(git branch --show-current)" --state all --json number,state,headRefOid) || exit 1
+  PR_NUMBER=$(printf '%s' "$PR_MATCHES" | jq -er '
+    if length == 1 then .[0].number
+    elif length == 0 then error("no matching PR; create or identify it first")
+    else error("multiple matching PRs; resolve the user-intended PR explicitly") end
+  ') || exit 1
 fi
+[[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]] || { echo "invalid PR number"; exit 1; }
 ```
 
 Select the unambiguous PR matching the user's task, then query `gh pr view
@@ -187,11 +194,11 @@ effective human-review rules. Checkpoint the resulting `review` object using
 jq '.phase = "checking_review"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" || exit 1
 ```
 
-- Mark only this review loop clean, then return the recorded result to the host:
-
-```bash
-jq '.phase = "stop" | .stop_reason = "clean"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" || exit 1
-```
+- Run **Mark clean** in [review-state.md](references/review-state.md), which
+  validates the checkpoint, required source results and fresh PR scope/protection
+  before writing `stop_reason: "clean"`. A refused transition preserves the state:
+  refresh the evidence or report the concrete blocker. Do not write a clean state
+  directly. Return the recorded result to the host only after that guard succeeds.
 
 The host continues any user-requested merge: it uses current user authorization,
 checks the reviewed HEAD and intended integration branch, and confirms prerequisite

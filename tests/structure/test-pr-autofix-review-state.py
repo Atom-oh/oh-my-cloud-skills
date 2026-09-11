@@ -1,5 +1,6 @@
 """Execute the skill's state/observation snippets against local fixtures."""
 import json
+import hashlib
 import os
 from pathlib import Path
 import re
@@ -21,6 +22,7 @@ class ReviewStateTests(unittest.TestCase):
         self.env = {
             **os.environ, "STATE": str(self.state), "STATE_DIR": str(self.directory),
             "PR_NUMBER": "17", "BASE_REF": "main", "GIT_ITER": "2",
+            "REPO": "example/repository",
             "CLAUDE_PLUGIN_ROOT": str(ROOT / "plugins/co-agent"),
             "CO_AGENT_USER_CONFIG": str(self.directory / "no-user-config"),
             "PR_AUTOFIX_WAIT_SECONDS": "60",
@@ -146,7 +148,7 @@ class ReviewStateTests(unittest.TestCase):
                 self.assertEqual(corrupt, self.state.read_bytes())
 
     def test_invalid_numeric_bounds_are_rejected(self):
-        for field, value in (("max_iter", 1.5), ("await_deadline", "later"),
+        for field, value in (("phase", ["poll"]), ("max_iter", 1.5), ("await_deadline", "later"),
                              ("iteration", -1), ("max_iter", 10**30)):
             with self.subTest(field=field):
                 self.initialize()
@@ -168,10 +170,139 @@ class ReviewStateTests(unittest.TestCase):
         before = self.read()
         observation = before["review"]
         observation["head"] = "d" * 40
+        observation["sources"]["ai"]["head"] = "d" * 40
         observation["diff_sha256"] = "e" * 64
         (self.directory / "review-observation.tmp.json").write_text(json.dumps(observation))
         self.run_snippet("jq --slurpfile record")
         self.assertEqual(before["await_deadline"], self.read()["await_deadline"])
+
+    def test_checkpoint_rejects_bound_source_from_another_head(self):
+        for verdict in ("PASSED", "BLOCKED", "ERROR", "PENDING"):
+            with self.subTest(verdict=verdict):
+                self.initialize()
+                observation = self.record(verdict)
+                original = self.state.read_bytes()
+                observation["sources"]["ai"]["head"] = "d" * 40
+                (self.directory / "review-observation.tmp.json").write_text(json.dumps(observation))
+                result = subprocess.run(
+                    ["bash", "-euo", "pipefail", "-c", self.snippet("jq --slurpfile record")],
+                    env=self.env, cwd=self.directory, capture_output=True, text=True,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(original, self.state.read_bytes())
+
+    def prepare_clean(self):
+        self.initialize()
+        self.record("PASSED")
+        state = self.read()
+        state["phase"] = "checking_review"
+        state["review"]["sources"]["ai"]["coverage_complete"] = True
+        state["review"]["diff_sha256"] = hashlib.sha256(b"fixture diff\n").hexdigest()
+        self.write(state)
+        live = {
+            "number": 17, "state": "OPEN", "headRefOid": "a" * 40,
+            "baseRefOid": "b" * 40, "baseRefName": "main",
+            "reviewDecision": "APPROVED", "mergeStateStatus": "CLEAN",
+            "mergeable": "MERGEABLE",
+        }
+        self.live_path = self.directory / "live-pr.json"
+        self.live_path.write_text(json.dumps(live))
+        self.env["TEST_LIVE_PR"] = str(self.live_path)
+        fake = self.directory / "bin"
+        fake.mkdir(exist_ok=True)
+        gh = fake / "gh"
+        gh.write_text("""#!/usr/bin/env python3
+import json, os, pathlib, sys
+path = pathlib.Path(os.environ["TEST_LIVE_PR"])
+if sys.argv[1:3] == ["pr", "diff"]:
+    if os.environ.get("TEST_DIFF_FAIL"):
+        sys.exit(1)
+    print(os.environ.get("TEST_DIFF", "fixture diff"))
+    if os.environ.get("TEST_HEAD_RACE"):
+        data = json.loads(path.read_text())
+        data["headRefOid"] = "d" * 40
+        path.write_text(json.dumps(data))
+elif sys.argv[1:3] == ["pr", "view"]:
+    if os.environ.get("TEST_QUERY_FAIL"):
+        sys.exit(1)
+    print(path.read_text())
+else:
+    sys.exit(2)
+""")
+        gh.chmod(0o755)
+        self.env["PATH"] = str(fake) + os.pathsep + os.environ["PATH"]
+        return state, live
+
+    def refuse_clean(self):
+        original = self.state.read_bytes()
+        result = subprocess.run(
+            ["bash", "-euo", "pipefail", "-c", self.snippet('.stop_reason = "clean"')],
+            env=self.env, cwd=self.directory, capture_output=True, text=True,
+        )
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(original, self.state.read_bytes())
+
+    def test_clean_accepts_complete_current_head_evidence(self):
+        self.prepare_clean()
+        self.run_snippet('.stop_reason = "clean"')
+        self.assertEqual(("stop", "clean"), (self.read()["phase"], self.read()["stop_reason"]))
+
+    def test_clean_refuses_missing_stale_partial_or_blocked_evidence(self):
+        for invalid in ("null", "empty", "pending", "error", "unbound", "stale",
+                        "coverage", "finding", "optional_block", "array_verdict", "blank_basis",
+                        "stop_reason", "invalid_phase", "exemption"):
+            with self.subTest(invalid=invalid):
+                state, _ = self.prepare_clean()
+                source = state["review"]["sources"]["ai"]
+                if invalid in ("null", "empty"):
+                    state["review"] = None if invalid == "null" else {}
+                elif invalid in ("pending", "error", "unbound"):
+                    source["verdict"] = invalid.upper()
+                elif invalid == "stale":
+                    source["head"] = "d" * 40
+                elif invalid == "coverage":
+                    source["coverage_complete"] = False
+                elif invalid == "finding":
+                    source["blocking_findings"] = ["unresolved Major"]
+                elif invalid == "optional_block":
+                    state["review"]["requirements"]["ai"]["required"] = False
+                    source["verdict"] = "BLOCKED"
+                elif invalid == "array_verdict":
+                    state["review"]["requirements"]["ai"]["required"] = False
+                    source["verdict"] = ["BLOCKED"]
+                elif invalid == "blank_basis":
+                    state["review"]["requirements"]["ai"]["basis"] = " \n "
+                elif invalid == "stop_reason":
+                    state["stop_reason"] = "review_unavailable"
+                elif invalid == "invalid_phase":
+                    state["phase"] = "committing"
+                else:
+                    source["verdict"] = "NOT_REQUIRED"
+                self.write(state)
+                self.refuse_clean()
+
+    def test_clean_rechecks_live_scope_and_effective_protection(self):
+        for field, value in (
+            ("number", 18), ("headRefOid", "d" * 40), ("baseRefOid", "e" * 40),
+            ("baseRefName", "release"), ("state", "MERGED"),
+            ("reviewDecision", "CHANGES_REQUESTED"), ("reviewDecision", "REVIEW_REQUIRED"),
+            ("mergeStateStatus", "BLOCKED"), ("mergeStateStatus", "UNKNOWN"),
+            ("mergeable", "CONFLICTING"),
+        ):
+            with self.subTest(field=field, value=value):
+                _, live = self.prepare_clean()
+                live[field] = value
+                self.live_path.write_text(json.dumps(live))
+                self.refuse_clean()
+
+    def test_clean_refuses_query_failure_diff_drift_and_racing_push(self):
+        for variable, value in (("TEST_QUERY_FAIL", "1"), ("TEST_DIFF_FAIL", "1"),
+                                ("TEST_DIFF", "different diff"), ("TEST_HEAD_RACE", "1")):
+            with self.subTest(variable=variable):
+                self.prepare_clean()
+                self.env[variable] = value
+                self.refuse_clean()
+                del self.env[variable]
 
     def test_invalid_exemption_and_multiple_documents_are_rejected(self):
         for mode in ("exemption", "multi"):
