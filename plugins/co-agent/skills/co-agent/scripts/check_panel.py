@@ -24,6 +24,7 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 from co_agent_host import HOSTS, detect_host
+from co_agent_env import sanitized_env as _sanitized_env
 
 try:
     import co_agent_config  # sibling — for config_hash
@@ -225,7 +226,8 @@ def probe(peer, timeout=90, nonce="STATIC"):
         try:
             with open(outp, "w") as of, open(errp, "w") as ef:
                 p = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.PIPE, stdout=of,
-                                     stderr=ef, text=True, start_new_session=True)
+                                     stderr=ef, text=True, start_new_session=True,
+                                     env=_sanitized_env(peer))
                 try:
                     p.communicate(input=stdin_data, timeout=timeout)
                     timed_out = False

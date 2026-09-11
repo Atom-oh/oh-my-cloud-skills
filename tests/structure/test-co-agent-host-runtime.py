@@ -17,6 +17,22 @@ import check_panel as panel
 import co_agent_config as config
 import consensus_hooks as hooks
 
+BACKEND_AUTH = {
+    "BEDROCK": """AWS_REGION AWS_DEFAULT_REGION AWS_PROFILE AWS_CONFIG_FILE
+        AWS_SHARED_CREDENTIALS_FILE AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
+        AWS_ROLE_ARN AWS_ROLE_SESSION_NAME AWS_WEB_IDENTITY_TOKEN_FILE
+        AWS_CONTAINER_CREDENTIALS_RELATIVE_URI AWS_CONTAINER_CREDENTIALS_FULL_URI
+        AWS_CONTAINER_AUTHORIZATION_TOKEN AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE
+        AWS_BEARER_TOKEN_BEDROCK""".split(),
+    "VERTEX": """GOOGLE_APPLICATION_CREDENTIALS google_application_credentials
+        GOOGLE_CLOUD_PROJECT GCLOUD_PROJECT GOOGLE_CLOUD_QUOTA_PROJECT CLOUDSDK_CONFIG""".split(),
+    "FOUNDRY": """ANTHROPIC_FOUNDRY_API_KEY ANTHROPIC_FOUNDRY_AUTH_TOKEN
+        AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_CLIENT_SECRET AZURE_AUTHORITY_HOST
+        AZURE_CLIENT_CERTIFICATE_PATH AZURE_CLIENT_CERTIFICATE_PASSWORD
+        AZURE_FEDERATED_TOKEN_FILE AZURE_TOKEN_CREDENTIALS
+        IDENTITY_ENDPOINT IDENTITY_HEADER MSI_ENDPOINT MSI_SECRET""".split(),
+}
+
 
 class HostRuntimeTests(unittest.TestCase):
     def setUp(self):
@@ -30,7 +46,7 @@ class HostRuntimeTests(unittest.TestCase):
         self.env.start()
         self.addCleanup(self.env.stop)
         # Any unexpected provider subprocess must fail locally instead of contacting AI.
-        real_popen = subprocess.Popen
+        real_popen = self.real_popen = subprocess.Popen
 
         def local_git_only(argv, *args, **kwargs):
             if argv[0] != "git":
@@ -204,6 +220,82 @@ class HostRuntimeTests(unittest.TestCase):
                      hooks._build_push_argv("codex", None, "/tmp/review.diff", "correctness")):
             self.assertIn("--skip-git-repo-check", argv)
             self.assertEqual("read-only", argv[argv.index("-s") + 1])
+
+    def test_only_selected_claude_backend_receives_its_auth(self):
+        cloud = {key: "fixture" for keys in BACKEND_AUTH.values() for key in keys}
+        unrelated = dict(GH_TOKEN="fixture", KIRO_API_KEY="fixture", OPENAI_API_KEY="fixture",
+                         AWS_UNRELATED_SECRET="fixture", GOOGLE_API_KEY="fixture")
+        for backend, required in BACKEND_AUTH.items():
+            for enabled in ("1", "true", " YES ", "on", "0", "false", ""):
+                with self.subTest(backend=backend, enabled=enabled), patch.dict(os.environ, {
+                    **cloud, **unrelated, "CLAUDE_CODE_USE_" + backend: enabled,
+                }):
+                    result = hooks._sanitized_env("claude")
+                    selected = set(required) if enabled in ("1", "true", " YES ", "on") else set()
+                    self.assertEqual(selected, set(cloud) & result.keys())
+                    self.assertFalse(unrelated.keys() & result.keys())
+                    self.assertIn("PATH", result)
+                    for peer in ("codex", "agy", "kiro-cli"):
+                        self.assertFalse(set(cloud) & hooks._sanitized_env(peer).keys())
+
+    def test_probe_and_both_gates_use_identical_env_with_stub_cli(self):
+        self.assertIs(panel._sanitized_env, hooks._sanitized_env)
+        stub = self.root / "claude-stub.py"
+        stub.write_text(
+            "import json,os,sys\n"
+            "with open(os.environ['FIXTURE_ENV_LOG'],'a') as f:\n"
+            "    f.write(json.dumps(dict(os.environ),sort_keys=True)+'\\n')\n"
+            "data=sys.stdin.read()\n"
+            "print(data.strip() if data.startswith('COAGENT_PROBE_') else 'BLOCK: fixture')\n")
+        def launch(argv, *args, **kwargs):
+            self.assertEqual([sys.executable, str(stub)], argv[:2])
+            return self.real_popen(argv, *args, **kwargs)
+        for backend, required in BACKEND_AUTH.items():
+            log = self.root / (backend + ".jsonl")
+            with contextlib.ExitStack() as stack:
+                stack.enter_context(patch.dict(os.environ, {
+                    **{key: "fixture" for key in required}, "GH_TOKEN": "unrelated",
+                    "CLAUDE_CODE_USE_" + backend: "1", "FIXTURE_ENV_LOG": str(log)}))
+                for adapters in (panel.ADAPTERS, hooks._REVIEW):
+                    spec = adapters["claude"]
+                    stack.enter_context(patch.dict(adapters, {
+                        "claude": {**spec, "argv": [sys.executable, str(stub), *spec["argv"][1:]]}}))
+                stack.enter_context(patch.object(panel, "detect_cli", return_value=str(stub)))
+                stack.enter_context(patch.object(subprocess, "Popen", side_effect=launch))
+                self.assertEqual("READY", panel.probe("claude", timeout=5)[0])
+                result = {}
+                hooks._review_one("claude", "fixture", None, "", str(self.root), 5, result)
+                hooks._review_one_push("claude", "security", "fixture", None, "", str(self.root), 5, result)
+                self.assertTrue(all(text.startswith("BLOCK:") for text in result.values()))
+            environments = [json.loads(line) for line in log.read_text().splitlines()]
+            self.assertEqual(3, len(environments))
+            self.assertTrue(all(env == environments[0] for env in environments))
+            self.assertTrue(set(required) <= environments[0].keys())
+            self.assertNotIn("GH_TOKEN", environments[0])
+
+    def test_related_claude_backends_and_disabled_cloud_flags(self):
+        cases = [
+            ("MANTLE", {"AWS_PROFILE", "AWS_BEARER_TOKEN_BEDROCK"}),
+            ("ANTHROPIC_AWS", {"AWS_PROFILE", "ANTHROPIC_AWS_API_KEY"}),
+            ("ANTHROPIC_GOOGLE_CLOUD", {"GOOGLE_APPLICATION_CREDENTIALS"}),
+        ]
+        credentials = {key: "fixture" for _, keys in cases for key in keys}
+        for backend, required in cases:
+            with self.subTest(backend=backend), patch.dict(os.environ, {
+                **credentials, "CLAUDE_CODE_USE_" + backend: "1",
+                "CLAUDE_CODE_USE_FOUNDRY": "false",
+            }):
+                result = hooks._sanitized_env("claude")
+                self.assertEqual(required, credentials.keys() & result.keys())
+
+    def test_conflicting_cloud_families_do_not_launch_a_peer(self):
+        with patch.dict(os.environ, {"CLAUDE_CODE_USE_BEDROCK": "1", "CLAUDE_CODE_USE_VERTEX": "1"}):
+            with patch.object(panel, "detect_cli", return_value="/fake/claude"):
+                self.assertEqual("ERROR", panel.probe("claude")[0])
+            result = {}
+            with contextlib.redirect_stderr(io.StringIO()):
+                hooks._review_one("claude", "fixture", None, "", str(self.root), 5, result)
+            self.assertTrue(result["claude"].startswith("__ERROR__"))
 
 
 if __name__ == "__main__":

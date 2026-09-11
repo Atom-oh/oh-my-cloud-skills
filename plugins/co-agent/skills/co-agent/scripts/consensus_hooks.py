@@ -57,6 +57,7 @@ if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 import consensus_state as cs
 from co_agent_host import HOSTS, detect_host
+from co_agent_env import sanitized_env as _sanitized_env, _SENSITIVE_ENV_RE
 try:
     import co_agent_config as cac
 except Exception as _e:   # missing OR a SyntaxError/etc. in the module — degrade, but don't hide it
@@ -220,34 +221,6 @@ def _codex_effort_override():
     stops at `high` and is shared with every other flow that reads panel `effort`."""
     return os.environ.get("CO_AGENT_GATE_CODEX_EFFORT_OVERRIDE")
 
-# Env vars each reviewer legitimately needs for ITS OWN auth. Everything else whose NAME looks
-# like a credential (token/secret/key/password/cloud-provider creds) is STRIPPED before the peer
-# subprocess inherits the environment — so a prompt-injected reviewer can't exfiltrate another
-# tool's credential (GH_TOKEN, AWS_*, etc.) out of `os.environ`. (Absolute-path file reads like
-# ~/.aws/credentials remain a documented residual — reviewers are read-capable; see CLAUDE.md.)
-_PEER_ENV_KEEP = {
-    "claude":   ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN"),
-    "codex":    ("OPENAI_API_KEY", "CODEX_API_KEY"),
-    "agy":      ("GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENAI_API_KEY"),
-    "kiro-cli": ("KIRO_API_KEY",),
-}
-# Names that look credential-bearing. Matched against the env-var NAME (not value). Anchored so
-# benign vars are preserved: `(?:^|_)KEY`/`(?:^|_)PAT`/`_PWD` followed by a non-letter catch
-# `OPENAI_KEY`/`GITLAB_PAT`/`DB_PWD` but NOT `PATH`, `PWD` (the cwd var), `KEYBOARD`, or `KEYRING`.
-# AWS_SESSION_TOKEN is already covered by TOKEN and ^AWS_.
-_SENSITIVE_ENV_RE = re.compile(
-    r"TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|PRIVATE_KEY|API_?KEY|"
-    r"(?:^|_)KEY(?![A-Za-z])|(?:^|_)PAT(?![A-Za-z])|_PWD(?![A-Za-z])|"
-    r"^AWS_|^GOOGLE_|^GCP_|^AZURE_|^GH_|^GITHUB_", re.I)
-
-
-def _sanitized_env(peer):
-    """A copy of os.environ with credential-looking vars removed, except the small per-peer
-    auth whitelist the reviewer CLI needs for its OWN auth. Keeps non-sensitive vars (PATH, HOME,
-    LANG, TMPDIR, …) so the CLI still runs."""
-    keep = set(_PEER_ENV_KEEP.get(peer, ()))
-    return {k: v for k, v in os.environ.items()
-            if k in keep or not _SENSITIVE_ENV_RE.search(k)}
 _GATE_INSTR = "Review the PR diff provided on standard input per the instructions in it."
 _GATE_INSTR_FILE = ("Use fs_read to read the PR diff at {F}, then review it. Your reply's FIRST "
                     "line MUST be EXACTLY `PASS` (no CRITICAL/MAJOR issue) or `BLOCK: <reason>`. "
