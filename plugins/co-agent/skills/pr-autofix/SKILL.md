@@ -31,7 +31,8 @@ STATE="$STATE_DIR/state.json"; mkdir -p "$STATE_DIR"
 | `iteration` | Count of **completed** `fix: address review feedback` commits. Incremented exactly once per pass, at the Commit node (§5). Every threshold gates on this one post-commit number: BoundCheck (`>= max_iter`), §5b's lens gate (`> 3`), §5a's escalation (`> 5`, rung = `iteration - 5`). There is no second counter. |
 | `max_iter` | Resolved from config at init and at every stop-reset (`co_agent_config.py pr-autofix-iterations`; tune: `/co-agent:configure set pr_autofix max_iterations <n>`, default 5). Mid-run reads come from the state file, so raising the bound after a `max_iter` stop takes effect on the next entry. At the default 5, §5a (`> 5`) never fires; §5b (`> 3`) is live. |
 | `replanned_this_pass` | §5b's one-shot re-plan guard; set at RePlan, reset at Commit. (Replaces the former `$RUN/gate-replanned` sentinel file; resuming a pass whose `$RUN` still holds that sentinel → honor it as `true`.) |
-| `phase` / `stop_reason` | Where a resumed run re-enters, and why a stopped one stopped (`max_iter` \| `clean` \| `gate_blocked_final`). `phase: "gate"` spans the Commit write → §5a/§5b → push + cleanup; the memory update afterwards runs under `poll`. |
+| `phase` / `stop_reason` | Where a resumed run re-enters, and why a stopped one stopped (`max_iter` \| `clean` \| `gate_blocked_final` \| `review_unavailable`). `awaiting_review` is a live wait, not a clean or terminal result. `phase: "gate"` spans the Commit write → §5a/§5b → push + cleanup; the memory update afterwards runs under `poll`. |
+| `review_head` / `review_base` / `review_diff` / `review_handles` / `required_coverage` | Reviewed HEAD, base commit/ref, diff identity/scope, authoritative run/check identifiers, and required providers/jobs/lenses. Recompute requirements at Poll; retain live handles across observation timeouts and resumes. Existing state initializes missing fields at its next Poll. |
 | `run_dir` / `sig` / `ld_sha` | The §4b run pointers, persisted the moment they exist, so a `phase: "gate"` resume can push and clean up with nothing but this file. `ld_sha` is the ORIGINAL setup-time script hash — a resume must pass that value rather than re-hash the current file, or a tampered script would pass its own check. |
 
 **Git is the repair source, not the truth.** On every Poll entry, cross-check
@@ -86,6 +87,14 @@ Re-entry notes:
   got to clean. After a `gate_blocked_final` stop, the blocked pass's fix commit is
   still on HEAD and unpushed; a stop-reset does not retry that push — check `git log`
   for an unpushed `fix: address review feedback` commit before re-entering.
+- `phase: "awaiting_review"` resumes by querying the saved handles. A still-running
+  job keeps the same handle; do not restart it because observation expired. If HEAD
+  changed, invalidate the old pass result and bind coverage to the new HEAD.
+- `stop_reason: "review_unavailable"` resumes after the missing provider,
+  credentials, configuration or permission is restored; recheck actual provider
+  state before starting another run.
+- `phase: "finalizing"` resumes with fresh HEAD/base/diff and PR-state checks.
+  Complete only the authorized action; do not repeat a merge already performed.
 - `phase: "gate"` (committed, not yet pushed) resumes at §5a/§5b with the loaded
   `$ITERATION` (already the post-commit value) and the run pointers from state:
   `RUN=$(jq -r '.run_dir' "$STATE")`, `SIG=$(jq -r '.sig' "$STATE")`,
@@ -94,21 +103,33 @@ Re-entry notes:
 
 ## Review sources
 
-Both sources must pass for the PR to count as approved; either one blocking starts a
-fix pass.
+**Required coverage** is the union of review providers, jobs and lenses required
+by the user's task, project instructions, branch protection and enabled review
+configuration. Record that set before judging results. A required reviewer must
+cover the requested changes at the current HEAD; truncation and missing responses
+do not reduce the set. Intentionally disabled optional reviewers are not failures.
+If a source is not required, record `NOT_REQUIRED` with the requirement/configuration
+that establishes this, rather than inferring it from an absent comment.
+
+Every required source must pass. A justified `NOT_REQUIRED` source does not block
+completion; a verified blocking finding from either source starts a fix pass.
 
 | Source | Detection | Pass condition |
 |--------|-----------|----------------|
-| **AI Code Review** | Marker in issue comments — configured `pr_autofix.review_marker`, or auto-detected `<!-- …pr-review -->` when unset (§2) | `**Status: PASSED**` in comment body |
-| **Human reviewer** | `gh pr view --json reviews` with `CHANGES_REQUESTED` state | All reviews `APPROVED` or no reviews yet |
+| **AI Code Review** | Trusted review result and its exact reviewed commit (§2) | Completed for the latest PR HEAD, required coverage present, no unresolved Critical/Major findings |
+| **Human reviewer** | Latest effective review per reviewer plus branch protection | No active change request; required approvals satisfy current branch rules |
 
 ## Flow
 
 ```mermaid
 stateDiagram-v2
     [*] --> Poll
-    Poll --> Poll : reviews still pending (60s interval, 10 min timeout)
-    Poll --> Stop : all PASS/SKIP → stop_reason=clean
+    Poll --> AwaitReview : required review is queued or running
+    AwaitReview --> Poll : same handle emits activity or next poll
+    Poll --> Stop : required review cannot run or recover → review_unavailable
+    Poll --> Finalize : required reviews and CI pass for current diff
+    Finalize --> Poll : HEAD or reviewed diff changed
+    Finalize --> Stop : authorized review or merge fulfilled → clean
     Poll --> BoundCheck : any BLOCKED
     BoundCheck --> Stop : iteration >= max_iter → stop_reason=max_iter
     BoundCheck --> Plan : iteration < max_iter
@@ -146,45 +167,48 @@ If no PR is found, stop and inform the user.
 
 ### 2. Poll for review feedback
 
-Poll every 60 seconds (CI takes 2–5 minutes), 10-minute timeout. If the session has
-PR-activity subscription (Claude Code web/remote: `subscribe_pr_activity`), react to
-delivered events instead of sleep-polling.
+Poll every 60 seconds, or react to a PR-activity subscription when available.
+Ten minutes is an observation interval, not a job failure. If a required job is
+still live, persist `phase: "awaiting_review"` and its exact handle, report the
+pending state, then continue/resume observing that same job. Do not manufacture
+a clean result or start a duplicate review.
 
-**AI review.** The marker rides in as DATA via `jq --arg`, never interpolated into the
-filter string, and the author check pins the verdict to the CI's own
-`github-actions[bot]` comments — a user-authored comment containing the marker text can
-never be mistaken for, or override, the CI verdict:
+If authoritative configuration shows a required provider is absent, or a terminal
+failure cannot be repaired without external action, set `phase: "stop"` and
+`stop_reason: "review_unavailable"` with the concrete missing requirement. This is
+not successful completion. Retry a terminal infrastructure failure after addressing
+its cause; an observation timeout alone is never a retry reason.
 
-```bash
-MARKER=$(python3 "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py" pr-autofix-marker)
-AI_REVIEW_FILTER='[ .[] | select(.user.login == "github-actions[bot]") |
-                     select(if $m == "" then (.body | test("<!--\\s*[a-z0-9-]*pr-review\\s*-->"))
-                            else (.body | contains($m)) end) ] | last | select(. != null) | {updated_at, body}'
-gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" | jq --arg m "$MARKER" "$AI_REVIEW_FILTER"
-```
-
-Verify the comment's `updated_at` is after the last push, so the verdict reflects the
-current code. §3 re-uses this SAME `$MARKER` + `$AI_REVIEW_FILTER` — one filter, two
-call sites, never a forked copy.
-
-**Human review.** `gh pr reviews` does not exist — reviews are read via
-`gh pr view --json reviews`; inline (line-level) comments come from the pulls API:
-
-```bash
-gh pr view "$PR_NUMBER" --json reviews \
-  --jq '.reviews[] | select(.state == "CHANGES_REQUESTED" or .state == "APPROVED")
-        | {author: .author.login, state, body, submittedAt}'
-gh api "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
-  --jq '.[] | select(.pull_request_review_id != null) | {path, line, body, created_at}'
-```
+Read [review-evidence.md](references/review-evidence.md) before judging results.
+That reference owns the trusted-author/marker filter, provider queries, exact-HEAD
+binding and effective human-review rules. Record `review_head`, `review_base`,
+`review_diff`, `review_handles` and `required_coverage`; a timestamp or missing comment
+does not establish completion.
 
 ### 3. Check verdict
 
-- **AI review**: body contains `**Status: PASSED**` → PASS · `**Status: BLOCKED**` →
-  BLOCKED · no comment found → SKIP (no CI configured)
-- **Human review**: all `APPROVED` → PASS · any `CHANGES_REQUESTED` → BLOCKED · none
-  yet → SKIP
-- **Both PASS/SKIP** → done, inform the user:
+- **Required AI review**: PASS only when a completed trusted review applies to the current
+  HEAD, required coverage is present, and verified findings contain no unresolved
+  Critical/Major issue. `BLOCKED` starts a fix pass. Missing, running, failed,
+  errored, partial or unbound review evidence remains PENDING/ERROR; it is never
+  equivalent to "no blocking issues." Inspect the actual workflow/run, retry
+  recoverable failures, and report a specific external or permission blocker.
+- **Human review**: active `CHANGES_REQUESTED` → BLOCKED; required current approvals
+  satisfied → PASS. No review is acceptable only when branch protection and the
+  task permit it.
+- **Completion**: latest HEAD reviewed, no unresolved Critical/Major findings,
+  and all required CI and branch protection conditions satisfied. Minor/Info
+  findings alone do not stop an otherwise authorized merge workflow.
+- Enter `phase: "finalizing"` before completing the authorized review/merge action.
+  The current base and diff must still match the recorded review scope.
+- If the user authorized merging, re-read HEAD and base branch, confirm prerequisite
+  PRs are integrated along the intended path, then merge without asking again.
+  A changed HEAD returns to polling and verification. Never disable required checks.
+  After a prerequisite merges, retarget its dependent PR to the intended integration
+  branch when appropriate; a closed predecessor's feature branch is not automatically
+  `main`. Refresh `base_ref` in state and revalidate coverage if retargeting changes
+  the reviewed diff.
+- Only after the requested review/merge workflow is fulfilled, mark the loop clean:
 
 ```bash
 jq '.phase = "stop" | .stop_reason = "clean"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" || exit 1
@@ -435,18 +459,22 @@ When fixing human comments, reply briefly acknowledging the fix where possible.
 
 ## Output
 
-Every run ends at one of three stops — report which, and what happened:
+A finished run ends at one of four stops below. A live `awaiting_review` run has
+not finished; report its HEAD and handle without assigning a clean stop:
 
 | `stop_reason` | Meaning | Report to the user |
 |---------------|---------|--------------------|
-| `clean` | Both review sources PASS/SKIP | Passes used, fixes landed, memory-update status |
+| `clean` | Required reviews cover the latest HEAD; required coverage and CI pass; authorized merge completed when requested | Fixes, tests, PR link, merge status, memory-update status |
 | `max_iter` | Bound reached with reviews still blocking | Remaining findings + the tuning path (`/co-agent:configure set pr_autofix max_iterations`) |
 | `gate_blocked_final` | §5b blocked twice, or found a secret | Both rounds of findings; the unpushed fix commit sitting on HEAD |
+| `review_unavailable` | Required review cannot run or recover without external action | Required provider/coverage, HEAD, failed or missing handle, concrete blocker and resume condition |
 
 Per pass, name the gate outcome precisely: `gate ran (PASS)` / `gate skipped — fail-open
 (<reason>)` / `gate disabled` — plus any `report-only` findings held for human judgment.
 
 ## Reference files
+
+- `references/review-evidence.md` — trusted review sources, latest-HEAD binding and human-review history; read before judging a result
 
 - `references/land-delta-pipeline.md` — the land_delta.sh stage-by-stage contract (implement → verify → land → commit/push/cleanup); read before running any pipeline stage
 - `references/model-escalation.md` — §5a's rung table + env-var override mechanics; read when `iteration > 5`
