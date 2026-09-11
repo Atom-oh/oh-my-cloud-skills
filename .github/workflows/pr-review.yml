@@ -235,7 +235,7 @@ jobs:
           case "$GATE_RESULT" in
             fail)  STATUS_BADGE="**Status: BLOCKED** — CRITICAL/MAJOR issues must be resolved before merge" ;;
             pass)  STATUS_BADGE="**Status: PASSED** — No blocking issues found" ;;
-            *)     STATUS_BADGE="**Status: ERROR** — incomplete review or invalid evidence; inspect this run and retry" ;;
+            *)     STATUS_BADGE="**Status: ERROR** — inspect the cause; split/reduce over-limit input before another review" ;;
           esac
           sed '$ { /^VERDICT:/d }' "$pr_work_dir/review.md" > "$pr_work_dir/review-clean.md"
           # L1 이 fail 로 막힌 경로에선 패널이 전혀 안 돌았다 — l1_failed 플래그로 식별.

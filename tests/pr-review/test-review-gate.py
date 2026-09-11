@@ -79,6 +79,30 @@ class ReviewGateTests(unittest.TestCase):
                 "## Verdict\nVERDICT: PASS\n")
         self.assertEqual("fail", self.gate(body)["result"])
 
+    def test_invalid_backtick_info_cannot_hide_a_visible_major(self):
+        visible = ("## Issues\n### CRITICAL\nNone.\n### MAJOR\n"
+                   "- Real blocking finding.\n### MINOR\nNone.\n")
+        for opener in ("```label```", "```label`", "   ````label``"):
+            with self.subTest(opener=opener):
+                body = "## Summary\nFixture\n" + opener + "\n" + visible + "````\n" + review()
+                self.assertEqual("fail", self.gate(body)["result"])
+
+    def test_tilde_fence_info_may_contain_backticks(self):
+        fake = "~~~label`code`\n## Issues\n### MAJOR\n- Quoted finding.\n~~~\n"
+        self.assertEqual("pass", self.gate(fake + review())["result"])
+
+    def test_only_standalone_korean_empty_markers_are_accepted(self):
+        for marker in ("없음", "없음.", " 없음. "):
+            with self.subTest(marker=marker):
+                self.assertEqual("pass", self.gate(
+                    review(critical=marker, major=marker, minor=marker))["result"])
+        for prose in ("없음. 추가 확인 필요", "관련 이슈 없음", "없음.\n추가 확인 필요",
+                      "- 없음", "- 없음."):
+            with self.subTest(prose=prose):
+                self.assertEqual("error", self.gate(review(major=prose))["result"])
+        self.assertEqual("fail", self.gate(
+            review(major="- Real blocking finding.\n없음."))["result"])
+
     def test_comments_fences_and_quotes_do_not_leak_lexer_state(self):
         fake = "## Issues\n### MAJOR\n- Quoted finding.\nVERDICT: FAIL\n"
         prefixes = [

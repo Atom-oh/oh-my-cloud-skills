@@ -84,8 +84,9 @@ models hit exactly 600s), and the lens checklists were unnecessary for frontier 
   retains last-match compatibility; acceptance instead validates the final Issues
   with `plugins/co-agent/skills/pr-autofix/scripts/review_gate.py`.
   The primary attempt has `Read Grep Glob` and is wrapped in a
-  wall-clock timeout (`CHAIR_TIMEOUT`, default **450 seconds**). If it fails to produce a
-  usable VERDICT (connection refused/hang/empty response, etc.), it **falls back once to
+  wall-clock timeout (`CHAIR_TIMEOUT`, default **450 seconds**). If the CLI exits nonzero
+  or the semantic validator returns ERROR (for example, empty output or malformed Issues),
+  it **falls back once to
   Claude Opus 5 (`CHAIR_FALLBACK_MODEL`), this time granting no file tools at all**
   (`CHAIR_FALLBACK_TIMEOUT`, default **300 seconds**) — since the diff + panel reviews are
   already fully present on stdin, the fallback is self-contained, and with no tools it
@@ -100,18 +101,23 @@ models hit exactly 600s), and the lens checklists were unnecessary for frontier 
   entirely from the fallback closed the root cause, ADR-016.)
 - **Consistency and completeness**: final `## Issues` has `### CRITICAL`,
   `### MAJOR`, and `### MINOR` sections. Each contains active findings or exactly
-  `None.`. Active Critical/Major findings always block, even beside `VERDICT: PASS`;
+  a standalone empty marker (`None`, `None.`, `없음`, or `없음.`), without extra prose.
+  Active Critical/Major findings always block, even beside `VERDICT: PASS`;
   dismissed claims belong in a separate section. Fenced code, quotations, suggestions,
   and memory references are not active findings. Missing/ambiguous structure is ERROR.
   Every enabled model/lens pair in `expected.txt` must complete; missing responses,
   diff truncation, and capped panel output prevent PASS. This is a consistency check,
   not a vote or proof that the models found every defect.
+  Inspect the cause before retrying: identical over-limit input will fail again.
+  Split/reduce the PR or request more concise panel output before another review;
+  the existing caps remain in force.
 - **Current review visibility**: a new run updates the bot-owned canonical comment
   to PENDING for its event HEAD, replacing old status text while preserving GitHub
   edit history. Publication rechecks head/ref and refuses to overwrite a newer
   run/attempt. CLI, validation, or comment-build failure cannot republish an old PASS.
 - **Reusable workflow**: copy the PRAF workflow together with `scripts/review_gate.py`
   to `.github/scripts/pr-review-gate.py`, as described in the skill's CI setup.
+  The runner requires `python3` (standard library only) as well as Claude CLI.
   Its structured JSON findings use the same validator; dismissed claims stay separate.
 - **Data residency**: paths differ by matrix member —
   - **Codex / Claude (chair)**: Amazon Bedrock **us-east-1** (`openai.gpt-5.6-sol` is

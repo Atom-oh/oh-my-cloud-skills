@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 
 SEVERITIES = ("CRITICAL", "MAJOR", "MINOR", "INFO")
+EMPTY_MARKERS = ("None", "None.", "없음", "없음.")
 
 
 def decision(status, reason):
@@ -36,7 +37,7 @@ def visible_lines(text):
             else:
                 continue
         match = re.match(r" {0,3}(`{3,}|~{3,})(.*)$", raw)
-        if match:
+        if match and (match[1][0] != "`" or "`" not in match[2]):
             fence = match[1]
             continue
         if raw.startswith(("    ", "\t")):
@@ -88,13 +89,13 @@ def markdown_review(text):
         elif section == "issues" and line and not ignored:
             errors.append("Unclassified text inside Issues")
     # An explicit active finding cannot be excused by PASS or malformed text elsewhere.
-    for severity in SEVERITIES[:2]:
+    for severity in SEVERITIES:
         for line in counts.get(severity, []):
             item = re.fullmatch(r"(?:[-+*]|\d+[.)])\s+(\S.*)", line)
             if item:
-                if item[1] in ("None", "None."):
-                    errors.append("Write None. without a list marker")
-                else:
+                if item[1] in EMPTY_MARKERS:
+                    errors.append("Write empty markers without a list marker")
+                elif severity in SEVERITIES[:2]:
                     return decision("BLOCKED", f"Active {severity} finding in final Issues")
     if len(verdicts) != 1:
         return decision("ERROR", "Review must contain one unquoted VERDICT: PASS or FAIL")
@@ -103,10 +104,10 @@ def markdown_review(text):
     if issues != 1 or not set(SEVERITIES[:3]) <= counts.keys():
         errors.append("Missing or duplicate canonical Issues/severity sections")
     for body in counts.values():
-        if body not in (["None"], ["None."]) and not (
+        if not (len(body) == 1 and body[0] in EMPTY_MARKERS) and not (
             body and re.match(r"(?:[-+*]|\d+[.)])\s+\S", body[0])
         ):
-            errors.append("Severity section must contain findings or exactly None.")
+            errors.append("Severity section must contain findings or one standalone empty marker")
     if errors:
         return decision("ERROR", errors[0])
     return decision("PASSED", "Explicit Issues contain no active CRITICAL or MAJOR findings")

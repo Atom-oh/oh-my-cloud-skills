@@ -1,6 +1,6 @@
 # AI Code Review — copy to .github/workflows/pr-review.yml.
 # Also copy ../scripts/review_gate.py to .github/scripts/pr-review-gate.py.
-# Use a trusted runner/setup step with Claude CLI and Bedrock credentials configured.
+# Requires python3 (stdlib only), Claude CLI, and configured Bedrock credentials on the runner.
 # Set ANTHROPIC_MODEL/AWS_REGION repository variables as needed. CLAUDE.md is optional.
 # PR content is data only: never check out or execute the PR head in this privileged job.
 # Marker and native Status/footer grammar are consumed by pr-autofix/review-evidence.md.
@@ -136,7 +136,7 @@ jobs:
                 if (process.env.REVIEW_OUTCOME !== 'success') {
                   reason = 'Review step failed or was skipped; no completed review is available.';
                 } else if (process.env.CLI_EXIT === 'not_run') {
-                  reason = 'Diff is empty or exceeds the review limit (3000 lines / 100000 bytes); coverage is incomplete.';
+                  reason = 'Diff is empty or exceeds the review limit (3000 lines / 100000 bytes); inspect scope and split/reduce oversized input before another review.';
                 } else if (process.env.CLI_EXIT !== '0') {
                   reason = 'Claude CLI failed; partial output is not a review verdict.';
                 } else {

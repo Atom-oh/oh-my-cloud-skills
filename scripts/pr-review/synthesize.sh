@@ -66,7 +66,8 @@ Synthesize ONE final review with these exact Markdown headings:
 ### CRITICAL
 ### MAJOR
 ### MINOR
-Under EACH severity heading, write exactly None. when empty, or a numbered/bulleted
+Under EACH severity heading, write exactly None. when empty (standalone 없음 or 없음.
+is also accepted, without extra prose), or a numbered/bulleted
 list of active, confirmed findings with concrete evidence. Do not leave a heading
 empty. Only verified blockers belong in CRITICAL/MAJOR; advisory observations belong
 in MINOR. Every active CRITICAL/MAJOR finding requires VERDICT: FAIL, without exceptions
@@ -78,7 +79,7 @@ Put dismissed panel claims here with reasons, separate from active Issues.
 ## Verdict
 Use a code fence or prefix EVERY quoted line with > when quoting diff/code/panel text.
 Never place raw quoted headings or verdict lines among your own review decisions.
-5. Before the Verdict line, if you found anything memory-worthy: a \`### 🧠 MEMORY
+Before the Verdict line, if you found anything memory-worthy: a \`### 🧠 MEMORY
    CANDIDATES\` section (new recurring-problem or false-positive-pattern entries) and
    a \`### PANEL QUALITY\` section with one \`PANEL-QUALITY: <cell>=<unsupported>/<total>\`
    line per panel cell that had an unsupported finding this round (cell name = the
@@ -177,7 +178,7 @@ run_chair "$PRIMARY_MODEL" "$CHAIR_TIMEOUT" 1
 CHAIR_USED="$PRIMARY_MODEL"
 if ! chair_valid; then
   CHAIR_ERR_EXCERPT="$(chair_err_excerpt "$WORK/chair.err")"
-  echo "::warning::chair '$(chair_label "$PRIMARY_MODEL")' produced no usable verdict (${CHAIR_TIMEOUT}s cap, tools on): $CHAIR_ERR_EXCERPT — falling back to '$(chair_label "$FALLBACK_MODEL")' with no file tools"
+  echo "::warning::chair '$(chair_label "$PRIMARY_MODEL")' failed CLI completion or structural validation (exit ${CHAIR_CLI_RC:-unknown}, ${CHAIR_TIMEOUT}s cap, tools on): $CHAIR_ERR_EXCERPT — falling back to '$(chair_label "$FALLBACK_MODEL")' with no file tools"
   run_chair "$FALLBACK_MODEL" "$CHAIR_FALLBACK_TIMEOUT" 0
   chair_valid && CHAIR_USED="$FALLBACK_MODEL"
 fi
@@ -185,14 +186,15 @@ fi
 if chair_valid; then
   [ -n "${GITHUB_ENV:-}" ] && echo "chair_error=0" >> "$GITHUB_ENV"
 else
-  # 인프라 실패 — 두 시도 모두 usable 한 VERDICT 를 못 냈다. 이것은 리뷰 발견이 아니라
+  # 인프라/출력 실패 — 두 시도 모두 정상 종료와 리뷰 구조 검증을 통과하지 못했다.
+  # 이것은 리뷰 발견이 아니라
   # CI 인프라 문제이므로, 워크플로 게이트가 "BLOCKED — CRITICAL/MAJOR" 로 잘못 표시하지
   # 않도록 별도 플래그(chair_error)로 신호한다. review.md 에는 진단 목적의 안내 + 여전히
   # fail-closed VERDICT: FAIL 을 남겨(비-CI 호출자를 위한 안전망), 워크플로는 chair_error
   # 를 먼저 보고 ERROR 라고 정확히 표시한다.
   CHAIR_ERR_EXCERPT="$(chair_err_excerpt "$WORK/chair.err")"
-  echo "::error::chair 양쪽 모두 usable VERDICT 를 내지 못했다 (마지막 stderr: $CHAIR_ERR_EXCERPT)" >&2
-  echo "리뷰 생성 실패(인프라) — $(chair_label "$PRIMARY_MODEL")·$(chair_label "$FALLBACK_MODEL") 모두 응답하지 못함. 이것은 리뷰 발견이 아니다 — 재실행하십시오." > "$OUT"
+  echo "::error::chair 양쪽 모두 정상 종료·구조 검증을 통과하지 못했다 (마지막 stderr: $CHAIR_ERR_EXCERPT)" >&2
+  echo "리뷰 생성 실패(인프라) — $(chair_label "$PRIMARY_MODEL")·$(chair_label "$FALLBACK_MODEL") 응답이 정상 종료·구조 검증을 통과하지 못함. 이것은 리뷰 발견이 아니다 — 원인을 확인하고 수정하십시오." > "$OUT"
   echo "VERDICT: FAIL" >> "$OUT"
   [ -n "${GITHUB_ENV:-}" ] && echo "chair_error=1" >> "$GITHUB_ENV"
 fi
