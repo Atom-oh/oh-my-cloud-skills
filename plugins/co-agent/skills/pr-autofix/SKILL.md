@@ -25,11 +25,13 @@ All review-loop state lives in ONE file, `$STATE` — written only by the host, 
 planner/implementer. They process untrusted review text, and a file that steers the loop
 must not be writable by them (same trust rule as `review-memory.md`).
 
-Run Step 1 first. In each new shell tool call, pass its reported JSON as
-`STATE_BINDING` and run this block to rebind the state variables; same-shell use
-also works. Rebinding revalidates the canonical path before any write.
+First entry: **Step 1 → this State model block → Initialize, resume and repair**.
+This block is mandatory even when all snippets run in the same shell.
+In later shell calls, pass the reported JSON as `STATE_BINDING` and run this block
+before any state snippet; it revalidates the canonical path before writing.
+Before each fix/push, restore variables with this block, rerun Step 1's fresh
+target guard, then run this block again before initialization or state access.
 Resolve `REPO` and other query temporaries in the call using them.
-Re-run Step 1 before every fix/push rather than reusing a cached target approval.
 
 ```bash
 # STATE_BINDING is Step 1's JSON result, not a second state file.

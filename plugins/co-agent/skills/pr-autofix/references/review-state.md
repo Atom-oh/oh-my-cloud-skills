@@ -32,9 +32,13 @@ printf '%s\n' "$STATE_BINDING"
 
 Success prints the authoritative `{"pr": N, "state": "/physical/repo/.../state.json"}`
 binding. Keep subsequent snippets in this shell, or pass that JSON as
-`STATE_BINDING` to a new tool call and run the SKILL's State model block there.
-Shell assignments do not propagate between tool calls. This binding supplies
-identity, not permission to skip the fresh pre-fix/pre-push guard.
+`STATE_BINDING` to a new tool call. **Both paths must execute the SKILL's State
+model block before Initialize, resume and repair or any other state snippet**;
+it defines `STATE_DIR` and creates the verified parent directory.
+When rerunning this guard in a new shell, first use that State model block to
+restore `STATE` and `PR_NUMBER` from the carried binding, then execute this
+guard and the State model block again. Shell assignments do not propagate
+between tool calls. The binding never replaces the fresh pre-fix/pre-push guard.
 
 Run this guard on entry and before fixes/pushes, including resumes. It does not
 compare local and remote SHAs; equality is required only at Mark clean.
