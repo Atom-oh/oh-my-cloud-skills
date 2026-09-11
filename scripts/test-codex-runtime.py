@@ -3,6 +3,7 @@
 
 Requires a local `codex` CLI with plugin/app-server support. Does not invoke a
 model, start a thread, trust hooks, or modify the user's installed plugins.
+Run sync-codex-plugins.py first to produce the adapters being tested.
 """
 import argparse
 import json
@@ -44,6 +45,11 @@ def main():
     if not cli:
         parser.error("codex CLI is not installed")
     marketplace = json.loads((root / ".agents/plugins/marketplace.json").read_text())
+    missing = [entry["name"] for entry in marketplace["plugins"]
+               if not (root / "plugins" / entry["name"] / ".codex-plugin/inventory.json").is_file()]
+    if missing:
+        parser.error("Generate adapters first with scripts/sync-codex-plugins.py; "
+                     "missing: " + ", ".join(missing))
     with tempfile.TemporaryDirectory(prefix="codex marketplace test ") as tmp:
         tmp = Path(tmp)
         state = tmp / "config"
