@@ -375,6 +375,35 @@ else:
                 calls = [json.loads(line) for line in (self.root / "gh.log").read_text().splitlines()]
                 self.assertFalse(any(call[:2] == ["pr", "list"] for call in calls))
 
+    def consume_binding(self, binding):
+        model = SKILL.joinpath("SKILL.md").read_text().split("## State model", 1)[1]
+        script = re.search(r"```bash\n(.*?)\n```", model, re.S)[1]
+        reference = SKILL.joinpath("references/review-state.md").read_text()
+        script += "\n" + next(block for block in re.findall(r"```bash\n(.*?)\n```", reference, re.S)
+                             if "command -v jq" in block)
+        env = {**self.env, "STATE_BINDING": json.dumps(binding), "BASE_REF": "main", "GIT_ITER": "2",
+               "PR_AUTOFIX_WAIT_SECONDS": "60", "CLAUDE_PLUGIN_ROOT": str(SKILL.parents[1]),
+               "CO_AGENT_USER_CONFIG": str(self.root / "no-user-config")}
+        for key in ("STATE", "STATE_DIR", "PR_NUMBER"):
+            env.pop(key, None)
+        return subprocess.run(["bash", "-euo", "pipefail", "-c", script],
+                              cwd=self.repo, env=env, capture_output=True, text=True)
+
+    def test_binding_from_another_path_is_rejected_before_any_write(self):
+        for target in (self.root / "foreign", self.repo / "other-state"):
+            with self.subTest(target=target):
+                result = self.consume_binding({"pr": 171, "state": str(target / "state.json")})
+                self.assertNotEqual(0, result.returncode)
+                self.assertFalse(target.exists())
+                self.assertFalse(self.state.exists())
+
+    def test_binding_with_invalid_pr_is_rejected_before_any_write(self):
+        for pr in (0, -1, 1.5, True, "171"):
+            with self.subTest(pr=pr):
+                result = self.consume_binding({"pr": pr, "state": str(self.state)})
+                self.assertNotEqual(0, result.returncode)
+                self.assertFalse(self.state.parent.exists())
+
     def test_reported_binding_is_consumed_in_a_separate_shell(self):
         for phase in (None, "gate", "committing"):
             with self.subTest(phase=phase):
@@ -384,18 +413,7 @@ else:
                 result = self.entry(supplied={"STATE": str(self.state) if phase else None})
                 binding = json.loads(result.stdout.splitlines()[0])
                 self.assertEqual({"pr": 171, "state": str(self.state)}, binding)
-                model = SKILL.joinpath("SKILL.md").read_text().split("## State model", 1)[1]
-                script = re.search(r"```bash\n(.*?)\n```", model, re.S)[1]
-                reference = SKILL.joinpath("references/review-state.md").read_text()
-                script += "\n" + next(block for block in re.findall(r"```bash\n(.*?)\n```", reference, re.S)
-                                     if "command -v jq" in block)
-                env = {**self.env, "STATE_BINDING": json.dumps(binding), "BASE_REF": "main", "GIT_ITER": "2",
-                       "PR_AUTOFIX_WAIT_SECONDS": "60", "CLAUDE_PLUGIN_ROOT": str(SKILL.parents[1]),
-                       "CO_AGENT_USER_CONFIG": str(self.root / "no-user-config")}
-                for key in ("STATE", "STATE_DIR", "PR_NUMBER"):
-                    env.pop(key, None)
-                consumed = subprocess.run(["bash", "-euo", "pipefail", "-c", script],
-                                          cwd=self.repo, env=env, capture_output=True, text=True)
+                consumed = self.consume_binding(binding)
                 self.assertEqual(0, consumed.returncode, consumed.stderr)
                 state = json.loads(self.state.read_text())
                 self.assertEqual(saved, state) if saved else self.assertEqual(171, state["pr"])

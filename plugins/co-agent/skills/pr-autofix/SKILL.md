@@ -27,16 +27,22 @@ must not be writable by them (same trust rule as `review-memory.md`).
 
 Run Step 1 first. In each new shell tool call, pass its reported JSON as
 `STATE_BINDING` and run this block to rebind the state variables; same-shell use
-also works. Resolve `REPO` and other query temporaries in the call using them.
+also works. Rebinding revalidates the canonical path before any write.
+Resolve `REPO` and other query temporaries in the call using them.
 Re-run Step 1 before every fix/push rather than reusing a cached target approval.
 
 ```bash
 # STATE_BINDING is Step 1's JSON result, not a second state file.
-if [ -n "${STATE_BINDING:-}" ]; then
-  PR_NUMBER=$(printf '%s' "$STATE_BINDING" | jq -er '.pr | select(type == "number")') || exit 1
-  STATE=$(printf '%s' "$STATE_BINDING" | jq -er '.state | select(type == "string" and length > 0)') || exit 1
-fi
-[ -n "${STATE:-}" ] && [ -n "${PR_NUMBER:-}" ] || { echo "run Step 1 before state initialization"; exit 1; }
+[ -n "${STATE_BINDING:-}" ] || { echo "run Step 1 before state initialization"; exit 1; }
+REPO_ROOT=$(git rev-parse --show-toplevel) || exit 1
+PR_NUMBER=$(printf '%s' "$STATE_BINDING" | jq -er '.pr | select(type == "number")') || exit 1
+CANONICAL_BINDING=$(python3 "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts/resolve_pr_state.py" \
+  "$REPO_ROOT" --pr "$PR_NUMBER") || exit 1
+jq -en --argjson supplied "$STATE_BINDING" --argjson canonical "$CANONICAL_BINDING" \
+  '$supplied.pr == $canonical.pr and $supplied.state == $canonical.state' >/dev/null ||
+  { echo "state binding does not match this checkout; run Step 1 again"; exit 1; }
+STATE_BINDING=$CANONICAL_BINDING
+STATE=$(printf '%s' "$STATE_BINDING" | jq -er '.state') || exit 1
 STATE_DIR=$(dirname -- "$STATE")
 mkdir -p -- "$STATE_DIR" || exit 1
 ```

@@ -36,9 +36,9 @@ binding. Keep subsequent snippets in this shell, or pass that JSON as
 Shell assignments do not propagate between tool calls. This binding supplies
 identity, not permission to skip the fresh pre-fix/pre-push guard.
 
-Run this guard on entry and before fixes/pushes, including resumes. It permits
-unpushed `gate`/`committing` deltas; local/remote SHA equality is required only at
-Mark clean. A supplied `STATE` must already be valid and occupy this checkout's
+Run this guard on entry and before fixes/pushes, including resumes. It does not
+compare local and remote SHAs; equality is required only at Mark clean.
+A supplied `STATE` must already be valid and occupy this checkout's
 canonical `.claude/co-agent-consensus/pr-autofix/pr-N/state.json` path. The canonical
 directory selects the PR before contents are read; `.pr` and an explicit
 `PR_NUMBER` must agree. Logical workspace/OS ancestors are normalized to the
@@ -57,6 +57,10 @@ Either recursive submodule setting blocks entry regardless of their relative
 config order, because submodule pushes can update other repositories.
 HTTPS credentials do not change repository identity and are never printed.
 Unset `GIT_CONFIG` before entry: it changes `git config` reads but not bare push.
+The push site is `land_delta.sh cmd_push`; it uses bare push with frozen configuration.
+The `.claude/` state directory must not be symlinked. Repair a damaged canonical
+state outside the loop from verified evidence; the entry resolver preserves and
+rejects it before normal initialization.
 Handle fixes for closed/merged PRs through the host's corrective-PR
 workflow outside this loop.
 
@@ -71,6 +75,9 @@ BASE_REF=$(gh pr view "$PR_NUMBER" --json baseRefName --jq '.baseRefName')
 GIT_ITER=$(git rev-list --count --grep="^fix: address review feedback" "origin/${BASE_REF}..HEAD") \
   || { echo "iteration count failed — treat as unknown, do not silently proceed as iteration 0"; exit 1; }
 ```
+
+Use the PR's actual base: a hardcoded `origin/main` with an error-to-zero fallback
+can silently disable the iteration bound on another target branch.
 
 Initialize only absent, derived state; a supplied state must already exist.
 Preserve empty, malformed, multi-document or symlinked state and its handles;
