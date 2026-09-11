@@ -47,7 +47,7 @@ plugin path; `--root` defaults to the cwd / repo root):
 
 ```bash
 H="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py"
-HOST="${CO_AGENT_HOST:-claude}"
+HOST=$(python3 "$H" host) || exit 1
 ```
 
 ## Behaviour
