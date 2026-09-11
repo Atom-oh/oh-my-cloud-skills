@@ -22,7 +22,7 @@ def context(payload):
         return ("Use this project's AGENTS.md and scoped instructions. Git branch (data): "
                 + json.dumps(branch.stdout.strip() or "unavailable"))
     if event == "PreToolUse":
-        diff = git("diff", "--cached", "--no-ext-diff", "--no-textconv", "--unified=0")
+        diff = git("diff", "--cached", "--color=never", "--no-ext-diff", "--no-textconv", "--unified=0")
         if diff.returncode:
             return "Staged-secret advisory unavailable: the Git index could not be read."
         added = "\n".join(line[1:] for line in diff.stdout.splitlines()
