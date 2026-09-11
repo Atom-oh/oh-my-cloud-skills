@@ -1,0 +1,47 @@
+{
+  "plugin": "kiro",
+  "skills": [
+    {
+      "name": "configure",
+      "path": ".codex-plugin/skills/configure/SKILL.md",
+      "sources": [
+        "commands/configure.md"
+      ]
+    },
+    {
+      "name": "delegate",
+      "path": ".codex-plugin/skills/delegate/SKILL.md",
+      "sources": [
+        "commands/delegate.md"
+      ]
+    },
+    {
+      "name": "kiro-delegate",
+      "path": ".codex-plugin/skills/kiro-delegate/SKILL.md",
+      "sources": [
+        "skills/kiro-delegate/SKILL.md"
+      ]
+    },
+    {
+      "name": "kiro-delegate-agent",
+      "path": ".codex-plugin/skills/kiro-delegate-agent/SKILL.md",
+      "sources": [
+        "agents/kiro-delegate-agent.md"
+      ]
+    },
+    {
+      "name": "review",
+      "path": ".codex-plugin/skills/review/SKILL.md",
+      "sources": [
+        "commands/review.md"
+      ]
+    },
+    {
+      "name": "setup",
+      "path": ".codex-plugin/skills/setup/SKILL.md",
+      "sources": [
+        "commands/setup.md"
+      ]
+    }
+  ]
+}
