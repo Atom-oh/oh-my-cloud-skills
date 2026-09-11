@@ -113,7 +113,15 @@ before anything touches the cloud: `plugin.json` manifest, agent `.md`, `SKILL.m
 keywords go in the `description` frontmatter (Korean + English bilingual) — that is the
 selection surface the runtime reads.
 
-Hand the user a test loop:
+Keep `.claude-plugin/plugin.json` as the conversion source on either host. For a
+**Codex session**, also expose the new skill in the generated project's
+`.agents/skills/` (a relative symlink to `../../skills/<name>` is sufficient).
+The skill entry point must explicitly load its agent instructions from
+`../../agents/<name>.md`, or include those instructions itself: naming a Claude
+agent does not register it in Codex. Open a fresh Codex session in the generated
+project and invoke that skill to run the local test loop.
+
+For a **Claude Code session**, use:
 
 ```bash
 claude --plugin-dir <plugin-path>
@@ -208,6 +216,12 @@ boto3>=1.34.0
 ### 4.5 Deployment
 
 Every resource-creating step runs only after the user confirms it.
+
+**Runtime prerequisites:** when Memory or Gateway is enabled, check before deploying
+that the session has the required AgentCore MCP operations available. Discover the
+loaded server's tools; the names below are not tool registrations. If the server
+is missing, configure it or establish an equivalent documented CLI workflow before
+creating resources, so deployment does not stop halfway through post-deploy setup.
 
 **Path A — Harness.** Uses the Node-based AgentCore CLI (`npm install -g @aws/agentcore`,
 Node.js 20+) or raw AWS CLI — full flow in `references/agentcore-harness.md`.
