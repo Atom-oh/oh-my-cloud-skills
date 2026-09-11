@@ -30,6 +30,16 @@ models hit exactly 600s), and the lens checklists were unnecessary for frontier 
   validator to follow a path outside the tree.
 
 ## 3-Model panel (runs only if L1 passes)
+- **Cell time budget**: `PANEL_TIMEOUT × PANEL_RETRIES` is one shared deadline
+  (defaults: **300 × 3 = 900 seconds**). A long first call can use all 900 seconds;
+  fast failures may retry up to three total attempts, each receiving only the
+  remaining time. Inputs must be positive decimal integers without leading zeros,
+  and their product must not exceed 2,147,483,647 seconds. Both launchers add
+  `timeout --kill-after=5s`, allowing at most five extra seconds for termination.
+  Default panel-plus-chair timeout allowances total **1,655 seconds**
+  (900 + 5 + 450 + 300), before workflow setup/IO overhead.
+  **셀 예산**은 시도마다 초기화하지 않는 총 900초이며, 빠른 실패만 남은 시간으로
+  재시도합니다. 종료 신호를 무시하는 프로세스는 최대 5초 후 강제 종료합니다.
 - **Panel**: 3 models (Codex `openai.gpt-5.6-sol` + Kiro `claude-opus-5`/`gpt-5.6-terra`),
   each independently reviewing the full diff with no scope restriction (as of the default
   configuration — matrix membership is a config value, see the "Configuration" section
