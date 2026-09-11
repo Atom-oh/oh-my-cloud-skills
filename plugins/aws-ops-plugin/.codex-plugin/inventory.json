@@ -1,0 +1,117 @@
+{
+  "plugin": "aws-ops-plugin",
+  "skills": [
+    {
+      "name": "analytics-agent",
+      "path": ".codex-plugin/skills/analytics-agent/SKILL.md",
+      "sources": [
+        "agents/analytics-agent.md"
+      ]
+    },
+    {
+      "name": "cost-agent",
+      "path": ".codex-plugin/skills/cost-agent/SKILL.md",
+      "sources": [
+        "agents/cost-agent.md"
+      ]
+    },
+    {
+      "name": "database-agent",
+      "path": ".codex-plugin/skills/database-agent/SKILL.md",
+      "sources": [
+        "agents/database-agent.md"
+      ]
+    },
+    {
+      "name": "eks-agent",
+      "path": ".codex-plugin/skills/eks-agent/SKILL.md",
+      "sources": [
+        "agents/eks-agent.md"
+      ]
+    },
+    {
+      "name": "iam-agent",
+      "path": ".codex-plugin/skills/iam-agent/SKILL.md",
+      "sources": [
+        "agents/iam-agent.md"
+      ]
+    },
+    {
+      "name": "network-agent",
+      "path": ".codex-plugin/skills/network-agent/SKILL.md",
+      "sources": [
+        "agents/network-agent.md"
+      ]
+    },
+    {
+      "name": "observability-agent",
+      "path": ".codex-plugin/skills/observability-agent/SKILL.md",
+      "sources": [
+        "agents/observability-agent.md"
+      ]
+    },
+    {
+      "name": "ops-coordinator-agent",
+      "path": ".codex-plugin/skills/ops-coordinator-agent/SKILL.md",
+      "sources": [
+        "agents/ops-coordinator-agent.md"
+      ]
+    },
+    {
+      "name": "ops-health-check",
+      "path": ".codex-plugin/skills/ops-health-check/SKILL.md",
+      "sources": [
+        "skills/ops-health-check/SKILL.md"
+      ]
+    },
+    {
+      "name": "ops-network-diagnosis",
+      "path": ".codex-plugin/skills/ops-network-diagnosis/SKILL.md",
+      "sources": [
+        "skills/ops-network-diagnosis/SKILL.md"
+      ]
+    },
+    {
+      "name": "ops-observability",
+      "path": ".codex-plugin/skills/ops-observability/SKILL.md",
+      "sources": [
+        "skills/ops-observability/SKILL.md"
+      ]
+    },
+    {
+      "name": "ops-security-audit",
+      "path": ".codex-plugin/skills/ops-security-audit/SKILL.md",
+      "sources": [
+        "skills/ops-security-audit/SKILL.md"
+      ]
+    },
+    {
+      "name": "ops-troubleshoot",
+      "path": ".codex-plugin/skills/ops-troubleshoot/SKILL.md",
+      "sources": [
+        "skills/ops-troubleshoot/SKILL.md"
+      ]
+    },
+    {
+      "name": "ops-wellarchitected-review",
+      "path": ".codex-plugin/skills/ops-wellarchitected-review/SKILL.md",
+      "sources": [
+        "skills/ops-wellarchitected-review/SKILL.md"
+      ]
+    },
+    {
+      "name": "storage-agent",
+      "path": ".codex-plugin/skills/storage-agent/SKILL.md",
+      "sources": [
+        "agents/storage-agent.md"
+      ]
+    },
+    {
+      "name": "wellarchitected-agent",
+      "path": ".codex-plugin/skills/wellarchitected-agent/SKILL.md",
+      "sources": [
+        "agents/wellarchitected-agent.md"
+      ]
+    }
+  ]
+}
