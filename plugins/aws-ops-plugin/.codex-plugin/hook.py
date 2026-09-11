@@ -53,7 +53,9 @@ def merge_text(values, key):
         text = value.get(key)
         if text is not None and not isinstance(text, str):
             raise AggregationError(f"{key} must be text")
-        if text:
+        # Empty denial reasons invalidate the entire native hook response.
+        # Retain formatting inside real context, but discard whitespace-only fields.
+        if text and text.strip():
             texts.append(text)
     return "\n".join(dict.fromkeys(texts))
 
