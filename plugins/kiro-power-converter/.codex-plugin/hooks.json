@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/.codex-plugin/hook.py\" 0"
+          }
+        ]
+      }
+    ]
+  }
+}

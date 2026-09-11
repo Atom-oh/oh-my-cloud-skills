@@ -1,11 +1,11 @@
 {
   "name": "agentcore-creator",
   "version": "1.17.0",
-  "description": "Convert Claude Code plugins to Amazon Bedrock AgentCore — config-only harness (skills attach unchanged) or Runtime agents, Gateway tools, Memory knowledge stores, and Lambda functions",
+  "description": "Convert Claude Code plugins to Amazon Bedrock AgentCore — config-only harness (skills attach unchanged) or Runtime agents, Gateway tools, Memory knowledge stores, Lambda functions",
   "author": {
     "name": "atomoh"
   },
-  "skills": "./skills/",
+  "skills": "./.codex-plugin/skills/",
   "interface": {
     "displayName": "AgentCore Creator",
     "shortDescription": "Convert plugin workflows into Bedrock AgentCore artifacts.",
@@ -22,5 +22,6 @@
       "Convert this plugin to AgentCore.",
       "Generate AgentCore deployment artifacts."
     ]
-  }
+  },
+  "hooks": "./.codex-plugin/hooks.json"
 }
