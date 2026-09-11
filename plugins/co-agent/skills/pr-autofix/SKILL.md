@@ -128,13 +128,10 @@ parameter of one LensGate call, never persisted.
 ### 1. Identify the PR
 
 ```bash
-REPO=$(gh repo view --json nameWithOwner --jq '.nameWithOwner')
-if [ -z "${PR_NUMBER:-}" ] && [ -n "${STATE:-}" ] && [ -s "$STATE" ]; then
-  PR_NUMBER=$(jq -r '.pr // empty' "$STATE")
-fi
-# Prefer an explicit user PR or saved state. Only when neither exists:
+REPO=$(gh repo view --json nameWithOwner --jq '.nameWithOwner') || exit 1
+CURRENT_BRANCH=$(git symbolic-ref --quiet --short HEAD) || { echo "detached HEAD; select the PR branch"; exit 1; }
 if [ -z "${PR_NUMBER:-}" ]; then
-  PR_MATCHES=$(gh pr list --head "$(git branch --show-current)" --state all --json number,state,headRefOid) || exit 1
+  PR_MATCHES=$(gh pr list --head "$CURRENT_BRANCH" --state open --json number) || exit 1
   PR_NUMBER=$(printf '%s' "$PR_MATCHES" | jq -er '
     if length == 1 then .[0].number
     elif length == 0 then error("no matching PR; create or identify it first")
@@ -142,13 +139,17 @@ if [ -z "${PR_NUMBER:-}" ]; then
   ') || exit 1
 fi
 [[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]] || { echo "invalid PR number"; exit 1; }
+PR_TARGET=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json state,headRefName --jq '[.state,.headRefName]|@tsv') || exit 1
+[ "$PR_TARGET" = $'OPEN\t'"$CURRENT_BRANCH" ] || {
+  printf 'PR state/head: %s; require OPEN on %s before fixes or pushes.\n' "$PR_TARGET" "$CURRENT_BRANCH"; exit 1;
+}
 ```
 
-Select the unambiguous PR matching the user's task, then query `gh pr view
-"$PR_NUMBER" --json state,headRefOid,baseRefName,mergeCommit`. Do not silently pick
-the first of multiple matches. A merged/closed PR remains observable on resume;
-do not push further fixes into it. Report its state and hand remaining fixes to
-the host's corrective-PR workflow.
+Run this guard on entry and before fixes/pushes, including resumes. It permits
+unpushed `gate`/`committing` deltas; local/remote SHA equality is required only at
+Mark clean. An explicit PR number can identify a closed/merged PR for observation,
+but this loop refuses writes; hand remaining fixes to the host's corrective-PR
+workflow. Without a number, select the unique open PR for the attached branch.
 
 ### 2. Poll for review feedback
 

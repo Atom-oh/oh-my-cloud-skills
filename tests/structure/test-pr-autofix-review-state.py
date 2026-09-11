@@ -197,7 +197,16 @@ class ReviewStateTests(unittest.TestCase):
         gh.write_text("""#!/usr/bin/env python3
 import json, os, pathlib, sys
 path = pathlib.Path(os.environ["TEST_LIVE_PR"])
-if sys.argv[1:3] == ["pr", "diff"]:
+if pathlib.Path(sys.argv[0]).name == "git":
+    if sys.argv[1:] == ["symbolic-ref", "--quiet", "--short", "HEAD"]:
+        if os.environ.get("TEST_BRANCH") == "DETACHED": sys.exit(1)
+        print(os.environ.get("TEST_BRANCH", "fixture"))
+    elif sys.argv[1:] == ["rev-parse", "--verify", "HEAD"]:
+        print(os.environ.get("TEST_LOCAL_HEAD", "a" * 40))
+    else: sys.exit(2)
+elif sys.argv[1:3] == ["repo", "view"]:
+    print("example/repository")
+elif sys.argv[1:3] == ["pr", "diff"]:
     if os.environ.get("TEST_DIFF_FAIL"):
         sys.exit(1)
     print(os.environ.get("TEST_DIFF", "fixture diff"))
@@ -208,7 +217,8 @@ if sys.argv[1:3] == ["pr", "diff"]:
 elif sys.argv[1:3] == ["pr", "view"]:
     if os.environ.get("TEST_QUERY_FAIL"):
         sys.exit(1)
-    print(path.read_text())
+    data = json.loads(path.read_text())
+    print(data["state"] + "\\t" + data["headRefName"] if "--jq" in sys.argv else path.read_text())
 elif sys.argv[1:3] == ["pr", "checks"]:
     error = os.environ.get("TEST_CHECK_ERROR")
     if error:
@@ -219,6 +229,8 @@ else:
     sys.exit(2)
 """)
         gh.chmod(0o755)
+        if not (fake / "git").exists():
+            (fake / "git").symlink_to("gh")
         self.env["PATH"] = str(fake) + os.pathsep + os.environ["PATH"]
         return state, live
 
@@ -235,6 +247,27 @@ else:
         self.prepare_clean()
         self.run_snippet('.stop_reason = "clean"')
         self.assertEqual(("stop", "clean"), (self.read()["phase"], self.read()["stop_reason"]))
+
+    def test_entry_refuses_wrong_branch_closed_pr_and_detached_head(self):
+        for branch, status in (("other", "OPEN"), ("fixture", "CLOSED"),
+                               ("fixture", "MERGED"), ("DETACHED", "OPEN")):
+            with self.subTest(branch=branch, status=status):
+                _, live = self.prepare_clean()
+                live["state"] = status
+                self.live_path.write_text(json.dumps(live))
+                self.env["TEST_BRANCH"] = branch
+                self.assert_refused("REPO=$(gh repo view")
+
+    def test_entry_preserves_unpushed_gate_and_committing_resumes(self):
+        for phase in ("gate", "committing"):
+            with self.subTest(phase=phase):
+                state, _ = self.prepare_clean()
+                state["phase"] = phase
+                self.write(state)
+                self.env["TEST_LOCAL_HEAD"] = "d" * 40
+                self.run_snippet("REPO=$(gh repo view")
+                self.run_snippet("command -v jq")
+                self.assertEqual(state, self.read())
 
     def test_clean_refuses_missing_stale_partial_or_blocked_evidence(self):
         for invalid in ("null", "empty", "pending", "error", "unbound", "stale",
@@ -287,7 +320,8 @@ else:
 
     def test_clean_refuses_query_failure_diff_drift_and_racing_push(self):
         for variable, value in (("TEST_QUERY_FAIL", "1"), ("TEST_DIFF_FAIL", "1"),
-                                ("TEST_DIFF", "different diff"), ("TEST_HEAD_RACE", "1")):
+                                ("TEST_DIFF", "different diff"), ("TEST_HEAD_RACE", "1"),
+                                ("TEST_LOCAL_HEAD", "d" * 40)):
             with self.subTest(variable=variable):
                 self.prepare_clean()
                 self.env[variable] = value

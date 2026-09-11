@@ -1,14 +1,8 @@
 # Review-loop state and checkpoints
 
-Resolve the PR in Step 1 first. Initialize or migrate the single host-owned state
-file before polling. This state controls review/fix/push only; it never grants merge
-authorization or performs retarget/merge actions.
-
-**Git is the repair source, not the truth.** On every Poll entry, cross-check
-`iteration` against the git-derived count; on mismatch, adopt the git value and warn.
-Use the PR's actual base — a hardcoded `origin/main` fails silently into `0` on a
-`master`/`develop`/unfetched base, disabling every threshold including the `max_iter`
-stop:
+Run Step 1's OPEN/branch guard before initializing state. This file grants no
+merge authority. On Poll, repair `iteration` from Git with a warning; resolve the
+actual PR base and reject failed counts rather than defaulting to zero:
 
 ```bash
 BASE_REF=$(gh pr view "$PR_NUMBER" --json baseRefName --jq '.baseRefName')
@@ -16,10 +10,8 @@ GIT_ITER=$(git rev-list --count --grep="^fix: address review feedback" "origin/$
   || { echo "iteration count failed — treat as unknown, do not silently proceed as iteration 0"; exit 1; }
 ```
 
-Init / stop-reset / repair. Initialize only an absent file. Existing empty,
-malformed, multi-document or invalid state is a recovery problem: preserve its
-bytes and handles, report it, and repair from verified evidence before continuing.
-Never silently replace damaged state with fresh defaults.
+Initialize only absent state. Preserve invalid existing bytes and handles;
+repair from verified evidence, never fresh defaults.
 
 ```bash
 command -v jq >/dev/null || { echo "jq required for state management — stop"; exit 1; }
@@ -76,11 +68,9 @@ MAX_ITER=$(jq -r '.max_iter' "$STATE"); ITERATION=$(jq -r '.iteration' "$STATE")
 
 ## Record an observation
 
-After the queries in `review-evidence.md`, the host writes
-`REVIEW_RECORD="$STATE_DIR/review-observation.tmp.json"` with the fields below.
-This is disposable input, not a second state file: regenerate it on resume,
-checkpoint the controlling values into `$STATE`, then remove the temporary file.
-Never let the planner or implementer produce this record.
+The host writes the observation below to `$STATE_DIR/review-observation.tmp.json`,
+checkpoints it into `$STATE`, then removes it. Regenerate scratch input on resume;
+the planner/implementer must not produce it.
 
 | Field | Value and source |
 |---|---|
@@ -91,13 +81,9 @@ Never let the planner or implementer produce this record.
 | `requirements` | Object keyed by source; each value has `required` (boolean), nonempty `basis` (task/project/protection/config evidence), and any expected providers/lenses |
 | `sources` | Object keyed by source; each value records the native `verdict` (`PASSED`, `BLOCKED`, `ERROR`, `PENDING`, `UNBOUND`, `NOT_REQUIRED`), reviewed `head`, `coverage_complete`, and unresolved `blocking_findings` |
 
-Do not substitute a new diff identity for old evidence: if the requested refs/diff
-changed, mark old source results unbound and collect new coverage first. A
-`NOT_REQUIRED` result needs an explicit requirement basis, not an absent comment.
-Bound source verdicts must name the checkpoint's exact HEAD. Only `UNBOUND` and
-justified `NOT_REQUIRED` may carry no HEAD or a previous one; neither satisfies a
-required source. Keep a native `BLOCKED` verdict even when disputing a finding; obtain an updated
-review rather than silently changing it to `PASSED`.
+Changed scope needs new coverage, not relabeled old evidence. Bound verdicts must
+match `head`; only `UNBOUND` and justified `NOT_REQUIRED` may lack it, and neither
+satisfies a required source. Never rewrite `BLOCKED` to `PASSED`.
 
 ```bash
 REVIEW_RECORD="$STATE_DIR/review-observation.tmp.json"
@@ -116,12 +102,10 @@ rm -f "$REVIEW_RECORD" "$STATE_DIR/review-comment.tmp.json"
 
 ## Mark clean
 
-After checking authenticated reviews, inline findings and required CI, checkpoint
-every source. This guard rejects missing, stale, partial or blocking evidence.
-Fresh required checks must pass; `UNSTABLE`/`HAS_HOOKS` alone are not blockers.
-An unchanged diff may retain its original reviewed `base_sha` after the base tip
-advances. Failed queries or changed HEAD/target/diff preserve state. The host still
-rechecks HEAD and integration conditions before its separately authorized merge.
+Checkpoint authenticated reviews and resolved findings first. This guard requires
+fresh checks and matching local/remote/reviewed HEADs. An unchanged diff may retain
+its reviewed base after advancement; `UNSTABLE`/`HAS_HOOKS` alone do not block.
+Failure preserves state. The host separately rechecks authorized integration.
 
 ```bash
 set -o pipefail
@@ -144,10 +128,11 @@ else
   fi
 fi
 PR_AFTER=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json "$PR_FIELDS") || exit 1
+LOCAL_HEAD=$(git rev-parse --verify HEAD) || exit 1
 jq -L "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts" -s \
   --slurpfile checks "$CHECKS" \
   --argjson before "$PR_BEFORE" --argjson after "$PR_AFTER" \
-  --argjson pr "$PR_NUMBER" --arg diff "$DIFF_SHA" '
+  --argjson pr "$PR_NUMBER" --arg diff "$DIFF_SHA" --arg local_head "$LOCAL_HEAD" '
   include "review_state";
   def scope: [.number, .headRefOid, .baseRefName, .baseRefOid];
   if length != 1 or (.[0] | valid_state | not) then error("invalid state")
@@ -157,6 +142,7 @@ jq -L "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts" -s \
     elif .pr != $pr or $after.number != $pr
       or ($before | scope) != ($after | scope)
       or .review.head != $after.headRefOid
+      or $local_head != $after.headRefOid
       or .base_ref != $after.baseRefName or .review.diff_sha256 != $diff
     then error("PR scope changed; collect review evidence again")
     elif $after.state != "OPEN" or $after.mergeable != "MERGEABLE"
@@ -179,8 +165,8 @@ rm -f "$CHECKS" "$CHECKS.err"
 
 ## Bound the local wait without restarting a remote job
 
-Query the saved handles before entering this branch. A completed result is judged
-normally even if the local deadline just expired. For a still-pending required run:
+Query saved handles first; judge completed results even after deadline expiry.
+For a still-pending required run:
 
 ```bash
 NOW=$(date +%s) || exit 1
@@ -208,8 +194,6 @@ else
 fi
 ```
 
-This ends only the automation invocation, not the remote check. Do not cancel,
-rerun or classify that check as failed from elapsed time alone. An explicit resume
-from `stop_reason: "review_unavailable"` renews the local budget while preserving `review.handles` and the git-derived
-iteration count. Diagnose a stalled queue or missing runner separately.
-Changing HEAD or diff does not renew this invocation's deadline.
+Expiry ends only this invocation: retain handles and do not cancel/rerun the remote
+check. Explicit resume from `review_unavailable` renews the local budget, preserving
+handles and iteration. Scope changes do not renew it; diagnose stalled queues separately.
