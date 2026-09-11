@@ -31,9 +31,6 @@ ALLOWED_MANIFEST_FIELDS = {
     "keywords",
     "hooks",
 }
-# Retain the existing mirror exception until its generated adapter lands.
-CLAUDE_ONLY = {"project-init"}
-
 ALLOWED_INSTALL_POLICIES = {"NOT_AVAILABLE", "AVAILABLE", "INSTALLED_BY_DEFAULT"}
 ALLOWED_AUTH_POLICIES = {"ON_INSTALL", "ON_USE"}
 
@@ -71,14 +68,14 @@ class CodexPluginValidator:
         return payload
 
     def discover_plugins(self) -> list[str]:
-        """Validate the Codex surface while retaining the upstream mirror exception."""
+        """Require a Codex manifest for every marketplace plugin."""
         names = {
             path.parent.parent.name
             for path in self.plugins_dir.glob("*/.codex-plugin/plugin.json")
         }
         for path in self.plugins_dir.glob("*/.claude-plugin/plugin.json"):
             name = path.parent.parent.name
-            if name in names or name in CLAUDE_ONLY:
+            if name in names:
                 continue
             self.error(f"{name}: no .codex-plugin manifest — not exposed to Codex "
                        f"(add the missing Codex manifest)")
@@ -253,10 +250,7 @@ class CodexPluginValidator:
                 self.error(f"marketplace: duplicate entry {name}")
             seen.add(name)
             if name not in expected:
-                if name in CLAUDE_ONLY:
-                    self.error(f"marketplace: entry {name} is deliberately Claude-only and ships no .codex-plugin manifest")
-                else:
-                    self.error(f"marketplace: entry {name} has no .codex-plugin manifest")
+                self.error(f"marketplace: entry {name} has no .codex-plugin manifest")
 
             source = entry.get("source")
             expected_path = f"./plugins/{name}"

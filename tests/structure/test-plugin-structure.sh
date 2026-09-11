@@ -68,14 +68,14 @@ printf '{"name":"project-init","version":"1.0.0"}' > "$VAL_TMP/plugins/project-i
 MIRROR_OUT="$(python3 scripts/test-plugins.py --root "$VAL_TMP" 2>&1 || true)"
 assert_contains "$MIRROR_OUT" "not declared in plugin.json and no agents/\*.md found on disk" "a mirror with neither a declared field nor any file on disk errors instead of passing silently"
 
-# A CLAUDE_ONLY plugin that no longer ships a .codex-plugin manifest must not keep its
+# A plugin that no longer ships a .codex-plugin manifest must not keep its
 # Codex marketplace entry: `expected` never contains it (so the missing-entry check can't
 # fire) and its directory exists (so the source-path check passes) — this assertion covers
 # the only check standing between a stale entry and a green run.
 mkdir -p "$VAL_TMP/.agents/plugins"
 printf '%s' '{"name":"oh-my-cloud-skills","interface":{"displayName":"x"},"plugins":[{"name":"project-init","category":"docs","source":{"source":"local","path":"./plugins/project-init"},"policy":{"installation":"AVAILABLE","authentication":"ON_USE"}}]}' > "$VAL_TMP/.agents/plugins/marketplace.json"
 STALE_OUT="$(python3 scripts/test-codex-plugins.py --root "$VAL_TMP" 2>&1 || true)"
-assert_contains "$STALE_OUT" "deliberately Claude-only" "a stale Codex marketplace entry for a CLAUDE_ONLY plugin is an ERROR"
+assert_contains "$STALE_OUT" "entry project-init has no .codex-plugin manifest" "a stale Codex marketplace entry without its manifest is an ERROR"
 
 # `Bash(:*)` — empty prefix, matches every command — must be an ERROR, not the softer
 # "not verified at runtime" warning, and an empty scope item must say so rather than
