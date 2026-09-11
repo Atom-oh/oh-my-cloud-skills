@@ -7,7 +7,7 @@ name: AI Code Review
 #   - self-hosted 러너(oh-my-cloud-skills-claude-arm)가 EKS Pod Identity(SigV4)로 Bedrock 호출
 #   - L1: scripts/pr-review/precheck.sh — 매니페스트/버전 정합을 AI 호출 전 스크립트로 검증(0 비용)
 #   - 패널 fan-out: scripts/pr-review/run-panel.sh(멤버십은 panel_config.py 설정값) → synthesize.sh
-#   - VERDICT: PASS|FAIL — 파일 내 마지막 매치가 채택 (fail-closed, L1 실패/체어 인프라 실패도 FAIL)
+#   - PASS requires consistent final Issues and complete configured review coverage.
 #   - <!-- oh-my-cloud-skills-pr-review --> marker 로 코멘트 upsert
 
 on:
@@ -42,12 +42,20 @@ jobs:
       CLAUDE_CODE_USE_BEDROCK: 1
       ANTHROPIC_BEDROCK_BASE_URL: https://bedrock-runtime.ap-northeast-2.amazonaws.com
       AWS_REGION: ap-northeast-2
+      REVIEW_HEAD: ${{ github.event.pull_request.head.sha }}
+      REVIEW_BASE_REF: ${{ github.event.pull_request.base.ref }}
     steps:
       # 보안(M1): pull_request_target 는 시크릿/쓰기권한 컨텍스트다. PR head 코드를
       # 실행하면 push 권한자가 scripts/*.sh 를 바꿔 패널 키/노드 IAM 을 탈취할 수 있다.
       # base(머지 대상, 신뢰됨)를 체크아웃해 scripts/* + CLAUDE.md/AGENTS.md 를 신뢰
       # 컨텍스트로 쓰고, PR 변경분은 아래 `gh pr diff` 로 '데이터'로만 받는다(미실행).
       - uses: actions/checkout@v4
+
+      - name: Mark current review pending
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await require('./scripts/pr-review/publish-comment.js')({github, context, core, phase:'pending'});
 
       - name: Verify CLIs present (pre-installed on runner image)
         run: |
@@ -69,7 +77,7 @@ jobs:
         run: |
           set -euo pipefail
           # PR/run 별로 격리 — 러너 풀 병렬화 시 다른 run의 상태를 밟지 않도록.
-          WORK="/tmp/pr-review-${PR_NUMBER}-${GITHUB_RUN_ID}"
+          WORK="/tmp/pr-review-${PR_NUMBER}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT:-1}"
           echo "pr_work_dir=$WORK" >> "$GITHUB_ENV"
           mkdir -p "$WORK"
           if bash scripts/pr-review/precheck.sh "$GITHUB_WORKSPACE" "$PR_NUMBER" "$WORK" \
@@ -110,6 +118,7 @@ jobs:
         run: |
           set -euo pipefail
           MAX_LINES=3000
+          echo "panel_truncated=0" >> "$GITHUB_ENV"
           head -"$MAX_LINES" "$pr_work_dir/pr-diff.txt" > "$pr_work_dir/pr-diff-truncated.txt"
           # 재사용되는 workdir 에서 이전 실행의 *.txt 가 남아 있으면 유령 매트릭스 행이
           # 생긴다 — 매 실행 시작 시 비우고 새로 만든다.
@@ -206,37 +215,27 @@ jobs:
 
       - name: Check for blocking issues
         id: gate
+        if: ${{ always() && !cancelled() }}
         run: |
+          set -euo pipefail
           . scripts/pr-review/lib.sh
-          # 단일 파서(ADR-016) — chair_valid() 와 이 게이트가 같은 규칙을 공유한다:
-          # 파일 내 마지막 `VERDICT: PASS|FAIL` 매치가 채택, 뒤따르는 텍스트는 허용.
-          V="$(verdict_of "$pr_work_dir/review.md")"
-          if [ "${chair_error:-0}" = "1" ]; then
-            echo "result=error" >> "$GITHUB_OUTPUT"
-            echo "reason=Chair produced no usable output (infra failure, not a review finding)" >> "$GITHUB_OUTPUT"
-          elif [ "$V" = "FAIL" ]; then
-            echo "result=fail" >> "$GITHUB_OUTPUT"
-            echo "reason=VERDICT: FAIL" >> "$GITHUB_OUTPUT"
-          elif [ "$V" = "PASS" ]; then
-            echo "result=pass" >> "$GITHUB_OUTPUT"
-            echo "reason=No blocking issues" >> "$GITHUB_OUTPUT"
-          else
-            echo "result=fail" >> "$GITHUB_OUTPUT"
-            echo "reason=No VERDICT line found — fail-closed" >> "$GITHUB_OUTPUT"
-          fi
+          review_gate "${pr_work_dir:-/nonexistent}/review.md" "${pr_work_dir:-/nonexistent}" \
+            --github-output "$GITHUB_OUTPUT"
 
-      - name: Post review comment (upsert)
+      - name: Build review comment
+        id: comment
+        if: ${{ always() && !cancelled() }}
         env:
-          GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPO: ${{ github.repository }}
           GATE_RESULT: ${{ steps.gate.outputs.result }}
+          GATE_REASON: ${{ steps.gate.outputs.reason }}
         run: |
+          set -euo pipefail
           MARKER="<!-- oh-my-cloud-skills-pr-review -->"
           case "$GATE_RESULT" in
-            error) STATUS_BADGE="**Status: ERROR** — the chair produced no usable output (infra failure, not a content finding); re-run once fixed, don't chase this as a review comment" ;;
             fail)  STATUS_BADGE="**Status: BLOCKED** — CRITICAL/MAJOR issues must be resolved before merge" ;;
-            *)     STATUS_BADGE="**Status: PASSED** — No blocking issues found" ;;
+            pass)  STATUS_BADGE="**Status: PASSED** — No blocking issues found" ;;
+            *)     STATUS_BADGE="**Status: ERROR** — inspect the cause; split/reduce over-limit input before another review" ;;
           esac
           sed '$ { /^VERDICT:/d }' "$pr_work_dir/review.md" > "$pr_work_dir/review-clean.md"
           # L1 이 fail 로 막힌 경로에선 패널이 전혀 안 돌았다 — l1_failed 플래그로 식별.
@@ -253,23 +252,26 @@ jobs:
             [ "${panel_truncated:-0}" = "1" ] && echo "_⚠️ diff truncated to first 3000 lines — review is partial._"
             echo ""
             echo "$STATUS_BADGE"
+            printf '%s\n' "$GATE_REASON"
             echo ""
             cat "$pr_work_dir/review-clean.md"
             echo ""
             echo "---"
             echo "_Triggered by commit \`${{ github.event.pull_request.head.sha }}\` · workflow: \`.github/workflows/pr-review.yml\`_"
           } > "$pr_work_dir/comment.md"
-          EXISTING=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
-            --jq '.[] | select(.body | contains("<!-- oh-my-cloud-skills-pr-review -->")) | .id' 2>/dev/null | head -1)
-          if [ -n "$EXISTING" ]; then
-            gh api "repos/$REPO/issues/comments/$EXISTING" -X PATCH -f body="$(cat "$pr_work_dir/comment.md")" 2>/dev/null || \
-              gh pr comment "$PR_NUMBER" --body-file "$pr_work_dir/comment.md"
-          else
-            gh pr comment "$PR_NUMBER" --body-file "$pr_work_dir/comment.md"
-          fi
+
+      - name: Post review comment
+        if: ${{ always() && !cancelled() }}
+        uses: actions/github-script@v7
+        env:
+          GATE_RESULT: ${{ steps.gate.outputs.result }}
+          COMMENT_OUTCOME: ${{ steps.comment.outcome }}
+        with:
+          script: |
+            await require('./scripts/pr-review/publish-comment.js')({github, context, core, phase:'final'});
 
       - name: Fail if blocked or errored
-        if: steps.gate.outputs.result == 'fail' || steps.gate.outputs.result == 'error'
+        if: ${{ always() && !cancelled() && steps.gate.outputs.result != 'pass' }}
         run: |
           echo "AI Review: ${{ steps.gate.outputs.reason }}"
           exit 1

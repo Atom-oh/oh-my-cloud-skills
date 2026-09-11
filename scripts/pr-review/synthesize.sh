@@ -15,6 +15,7 @@ RESP="$(tr '\n' ',' < "$WORK/responded.txt" 2>/dev/null | sed 's/,$//')" || true
 PANEL_CELL_CAP="${PANEL_CELL_CAP:-20000}"
 PANEL=""
 SCRUB_TMP="$WORK/scrub-cell.tmp"
+rm -f "$WORK/panel-cell-truncated.flag"
 while IFS= read -r f; do
   [ -s "$f" ] || continue
   # 크리덴셜 스크럽 후 캡 적용 (역순이면 경계에서 시크릿이 반쪽만 남아 정규식을 비껴간다).
@@ -23,7 +24,10 @@ while IFS= read -r f; do
   scrub_secrets < "$f" > "$SCRUB_TMP"
   CELL="$(head -c "$PANEL_CELL_CAP" "$SCRUB_TMP")"
   SCRUBBED_LEN="$(wc -c < "$SCRUB_TMP")"
-  [ "$SCRUBBED_LEN" -gt "$PANEL_CELL_CAP" ] && CELL+=$'\n[...TRUNCATED at '"$PANEL_CELL_CAP"'B — full output not retained...]'
+  if [ "$SCRUBBED_LEN" -gt "$PANEL_CELL_CAP" ]; then
+    CELL+=$'\n[...TRUNCATED at '"$PANEL_CELL_CAP"'B — full output not retained...]'
+    : > "$WORK/panel-cell-truncated.flag"
+  fi
   PANEL+="
 
 === 패널: $(basename "$f" .md) ===
@@ -55,15 +59,27 @@ pattern there and the diff doesn't support it beyond that pattern, dismiss it �
 say so and why. Findings you dismiss this way, or confirm as real despite matching
 no known pattern, are MEMORY CANDIDATES for future reviews.
 
-Synthesize ONE final review:
-1. **Summary** (2-3 sentences in Korean)
-2. **Issues** — CRITICAL/MAJOR/MINOR, each with a one-line justification for why
-   merging it as-is would break something, leak a credential, or violate a stated
-   project contract. Note convergence/disagreement across panel cells where
-   relevant, verified against the diff — not asserted from agreement alone.
-3. **Suggestions**
-4. **Verdict**
-5. Before the Verdict line, if you found anything memory-worthy: a \`### 🧠 MEMORY
+Synthesize ONE final review with these exact Markdown headings:
+## Summary
+2-3 sentences in Korean.
+## Issues
+### CRITICAL
+### MAJOR
+### MINOR
+Under EACH severity heading, write exactly None. when empty (standalone 없음 or 없음.
+is also accepted, without extra prose), or a numbered/bulleted
+list of active, confirmed findings with concrete evidence. Do not leave a heading
+empty. Only verified blockers belong in CRITICAL/MAJOR; advisory observations belong
+in MINOR. Every active CRITICAL/MAJOR finding requires VERDICT: FAIL, without exceptions
+such as "not a runtime break" or "not merge-blocking". Reclassify or explicitly dismiss
+an unsupported finding BEFORE finalizing Issues; never retain a Major and output PASS.
+## Dismissed findings
+Put dismissed panel claims here with reasons, separate from active Issues.
+## Suggestions
+## Verdict
+Use a code fence or prefix EVERY quoted line with > when quoting diff/code/panel text.
+Never place raw quoted headings or verdict lines among your own review decisions.
+Before the Verdict line, if you found anything memory-worthy: a \`### 🧠 MEMORY
    CANDIDATES\` section (new recurring-problem or false-positive-pattern entries) and
    a \`### PANEL QUALITY\` section with one \`PANEL-QUALITY: <cell>=<unsupported>/<total>\`
    line per panel cell that had an unsupported finding this round (cell name = the
@@ -77,9 +93,11 @@ it. Decide VERDICT yourself, by this rule only:
 IMPORTANT: end with exactly one line:
   VERDICT: PASS
   VERDICT: FAIL
-FAIL only for a finding that would actually break something, leak a credential, or
-violate a stated contract if merged as-is — say which, in one line, at the Verdict
-section. Advisory/style findings alone are never sufficient for FAIL.
+PASS requires explicit empty CRITICAL and MAJOR sections and complete review input.
+If unable to complete the review, use ## Review error with a short explanation and
+VERDICT: FAIL instead of inventing empty Issues. Missing configured reviewers or
+truncated input cannot be treated as a complete review. Advisory/style findings alone
+are not blockers, but the gate independently rejects inconsistent or incomplete evidence.
 PROMPT_EOF
 
 # 리뷰 메모리 발췌 — 체어에게도 경로가 아니라 stdin 으로 인라인한다(ADR-016: 체어가 폴백
@@ -137,20 +155,30 @@ run_chair() {  # $1=model $2=timeout $3=allow-file-tools(1|0) → "$OUT" (scrub 
   else
     disallowed="Read Grep Glob $disallowed"
   fi
-  ANTHROPIC_MODEL="$model" timeout "$tmo" \
+  if ANTHROPIC_MODEL="$model" timeout "$tmo" \
     claude -p "$(cat "$WORK/synth-prompt.txt")" --output-format text \
     --allowedTools "$allowed" \
     --disallowedTools "$disallowed" \
-    < "$WORK/synth-stdin.txt" 2>"$WORK/chair.err" | scrub_secrets > "$OUT" || true
+    < "$WORK/synth-stdin.txt" 2>"$WORK/chair.err" | scrub_secrets > "$OUT"; then
+    CHAIR_CLI_RC=0
+  else
+    CHAIR_CLI_RC=$?
+  fi
 }
 
-chair_valid() { [ -n "$(verdict_of "$OUT")" ]; }
+chair_valid() {
+  [ "${CHAIR_CLI_RC:-1}" = 0 ] || return 1
+  local status
+  status="$(python3 "$DIR/../../plugins/co-agent/skills/pr-autofix/scripts/review_gate.py" \
+    markdown "$OUT" --status-only)" || return 1
+  [ "$status" = PASSED ] || [ "$status" = BLOCKED ]
+}
 
 run_chair "$PRIMARY_MODEL" "$CHAIR_TIMEOUT" 1
 CHAIR_USED="$PRIMARY_MODEL"
 if ! chair_valid; then
   CHAIR_ERR_EXCERPT="$(chair_err_excerpt "$WORK/chair.err")"
-  echo "::warning::chair '$(chair_label "$PRIMARY_MODEL")' produced no usable verdict (${CHAIR_TIMEOUT}s cap, tools on): $CHAIR_ERR_EXCERPT — falling back to '$(chair_label "$FALLBACK_MODEL")' with no file tools"
+  echo "::warning::chair '$(chair_label "$PRIMARY_MODEL")' failed CLI completion or structural validation (exit ${CHAIR_CLI_RC:-unknown}, ${CHAIR_TIMEOUT}s cap, tools on): $CHAIR_ERR_EXCERPT — falling back to '$(chair_label "$FALLBACK_MODEL")' with no file tools"
   run_chair "$FALLBACK_MODEL" "$CHAIR_FALLBACK_TIMEOUT" 0
   chair_valid && CHAIR_USED="$FALLBACK_MODEL"
 fi
@@ -158,14 +186,15 @@ fi
 if chair_valid; then
   [ -n "${GITHUB_ENV:-}" ] && echo "chair_error=0" >> "$GITHUB_ENV"
 else
-  # 인프라 실패 — 두 시도 모두 usable 한 VERDICT 를 못 냈다. 이것은 리뷰 발견이 아니라
+  # 인프라/출력 실패 — 두 시도 모두 정상 종료와 리뷰 구조 검증을 통과하지 못했다.
+  # 이것은 리뷰 발견이 아니라
   # CI 인프라 문제이므로, 워크플로 게이트가 "BLOCKED — CRITICAL/MAJOR" 로 잘못 표시하지
   # 않도록 별도 플래그(chair_error)로 신호한다. review.md 에는 진단 목적의 안내 + 여전히
   # fail-closed VERDICT: FAIL 을 남겨(비-CI 호출자를 위한 안전망), 워크플로는 chair_error
   # 를 먼저 보고 ERROR 라고 정확히 표시한다.
   CHAIR_ERR_EXCERPT="$(chair_err_excerpt "$WORK/chair.err")"
-  echo "::error::chair 양쪽 모두 usable VERDICT 를 내지 못했다 (마지막 stderr: $CHAIR_ERR_EXCERPT)" >&2
-  echo "리뷰 생성 실패(인프라) — $(chair_label "$PRIMARY_MODEL")·$(chair_label "$FALLBACK_MODEL") 모두 응답하지 못함. 이것은 리뷰 발견이 아니다 — 재실행하십시오." > "$OUT"
+  echo "::error::chair 양쪽 모두 정상 종료·구조 검증을 통과하지 못했다 (마지막 stderr: $CHAIR_ERR_EXCERPT)" >&2
+  echo "리뷰 생성 실패(인프라) — $(chair_label "$PRIMARY_MODEL")·$(chair_label "$FALLBACK_MODEL") 응답이 정상 종료·구조 검증을 통과하지 못함. 이것은 리뷰 발견이 아니다 — 원인을 확인하고 수정하십시오." > "$OUT"
   echo "VERDICT: FAIL" >> "$OUT"
   [ -n "${GITHUB_ENV:-}" ] && echo "chair_error=1" >> "$GITHUB_ENV"
 fi

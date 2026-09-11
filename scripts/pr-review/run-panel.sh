@@ -41,6 +41,7 @@ CELL_BUDGET=$((T * RETRIES))
 DIR="$(cd "$(dirname "$0")" && pwd)"; . "$DIR/lib.sh"
 ensure_slots "$WORK"
 SLOT="$WORK/slot"; RESP="$WORK/responded.txt"; : > "$RESP"
+: > "$WORK/expected.txt" || exit 1
 # 비-ephemeral 러너에서 $WORK 가 재사용되면 이전 실행이 남긴 severe 플래그가 그대로
 # 살아남아, 이번엔 4모델 모두 정상 응답해도 synthesize.sh 가 강제 FAIL 하게 된다 —
 # responded.txt/degraded-models.txt 처럼 매 실행 시작 시 리셋. kiro-diff-truncated.flag 도
@@ -109,6 +110,11 @@ if [ "${#LENS_FILES[@]}" -eq 0 ]; then
   echo "run-panel.sh: no *.txt lens files found in $LENSES_DIR" >&2
   exit 1
 fi
+for lens_file in "${LENS_FILES[@]}"; do
+  for tag in "${ALL_TAGS[@]}"; do
+    printf '%s/%s\n' "$tag" "$(basename "$lens_file" .txt)"
+  done
+done > "$WORK/expected.txt" || exit 1
 
 # Each cell shares the former worst-case budget across at most RETRIES attempts.
 # Read Bash SECONDS without resetting it; never launch timeout with zero seconds.
@@ -179,7 +185,7 @@ KIRO_DIFF_TEXT="$(head -c "$KIRO_DIFF_CAP" "$DIFF")"
 # 12셀은 prefix 만 보고도 정상 응답으로 집계돼 이 PR 이 세운 "벤더 하나가 diff 일부만 보면
 # coverage 신호를 남긴다" 계약을 조용히 어긴다(20차 리뷰 MAJOR L4-1) — synthesize.sh 가
 # 리뷰 본문에 명시하도록 플래그 파일로 전달.
-if [ "$(wc -c < "$DIFF")" -gt "$KIRO_DIFF_CAP" ]; then
+if [ "${#KIRO_MODELS[@]}" -gt 0 ] && [ "$(wc -c < "$DIFF")" -gt "$KIRO_DIFF_CAP" ]; then
   KIRO_DIFF_TEXT+=$'\n[...TRUNCATED at '"$KIRO_DIFF_CAP"'B — full diff not sent to Kiro...]'
   echo "::warning::diff exceeds KIRO_DIFF_CAP (${KIRO_DIFF_CAP}B) — Kiro cells only see a truncated prefix" >&2
   : > "$WORK/kiro-diff-truncated.flag"
