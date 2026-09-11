@@ -50,7 +50,7 @@ printf '#!/usr/bin/env bash\ncat\n' > "$S2/codex"; chmod +x "$S2/codex"   # code
 # real kiro-cli/agy/gemini, which can hang on an interactive prompt and make the suite flaky.
 ln -sf "$(command -v python3)" "$S2/python3"
 ISO="$S2:/usr/bin:/bin"
-PATH="$ISO" python3 "$CP" report --root "$R" --plugins-root /nonexistent >/dev/null 2>&1
+PATH="$ISO" python3 "$CP" report --host claude --root "$R" --plugins-root /nonexistent >/dev/null 2>&1
 SUM="$R/.claude/co-agent-panel.local.json"
 assert_file_exists "$SUM" "report writes the readiness summary"
 assert_json_valid "$SUM" "summary is valid JSON"

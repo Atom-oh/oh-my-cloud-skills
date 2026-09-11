@@ -1,0 +1,91 @@
+{
+  "plugin": "co-agent",
+  "skills": [
+    {
+      "name": "co-agent",
+      "path": ".codex-plugin/skills/co-agent/SKILL.md",
+      "sources": [
+        "skills/co-agent/SKILL.md",
+        "agents/co-agent.md"
+      ]
+    },
+    {
+      "name": "configure",
+      "path": ".codex-plugin/skills/configure/SKILL.md",
+      "sources": [
+        "commands/configure.md"
+      ]
+    },
+    {
+      "name": "consensus",
+      "path": ".codex-plugin/skills/consensus/SKILL.md",
+      "sources": [
+        "commands/consensus.md"
+      ]
+    },
+    {
+      "name": "decision-reconcile",
+      "path": ".codex-plugin/skills/decision-reconcile/SKILL.md",
+      "sources": [
+        "skills/decision-reconcile/SKILL.md"
+      ]
+    },
+    {
+      "name": "gate-chair",
+      "path": ".codex-plugin/skills/gate-chair/SKILL.md",
+      "sources": [
+        "agents/gate-chair.md"
+      ]
+    },
+    {
+      "name": "harness",
+      "path": ".codex-plugin/skills/harness/SKILL.md",
+      "sources": [
+        "commands/harness.md"
+      ]
+    },
+    {
+      "name": "harness-analyst",
+      "path": ".codex-plugin/skills/harness-analyst/SKILL.md",
+      "sources": [
+        "agents/harness-analyst.md"
+      ]
+    },
+    {
+      "name": "pr-autofix",
+      "path": ".codex-plugin/skills/pr-autofix/SKILL.md",
+      "sources": [
+        "skills/pr-autofix/SKILL.md",
+        "commands/pr-autofix.md"
+      ]
+    },
+    {
+      "name": "pr-autofix-implementer",
+      "path": ".codex-plugin/skills/pr-autofix-implementer/SKILL.md",
+      "sources": [
+        "agents/pr-autofix-implementer.md"
+      ]
+    },
+    {
+      "name": "pr-autofix-planner",
+      "path": ".codex-plugin/skills/pr-autofix-planner/SKILL.md",
+      "sources": [
+        "agents/pr-autofix-planner.md"
+      ]
+    },
+    {
+      "name": "setup",
+      "path": ".codex-plugin/skills/setup/SKILL.md",
+      "sources": [
+        "commands/setup.md"
+      ]
+    },
+    {
+      "name": "sync-context",
+      "path": ".codex-plugin/skills/sync-context/SKILL.md",
+      "sources": [
+        "commands/sync-context.md"
+      ]
+    }
+  ]
+}
