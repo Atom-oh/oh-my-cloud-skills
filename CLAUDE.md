@@ -18,7 +18,13 @@ A Claude Code plugin marketplace containing eight plugins for AWS cloud work:
 - **kiro** — Cost-savings delegation: Claude plans and verifies, Kiro CLI implements and reviews on its own subscription credits inside an isolated git worktree
 - **atlas** — A self-syncing per-topic doc wiki for LLM consumption: docs declare the files they `cover`, drift is detected mechanically against a `code_rev` anchor, and stale docs can be auto-fixed just before a push
 
-All plugins are installed via `/plugin marketplace add` or loaded locally with `--plugin-dir`.
+Claude Code plugins are installed via `/plugin marketplace add` or loaded locally with `--plugin-dir`.
+
+**Approved Codex target:** all eight plugins must expose their skills, command workflows
+and specialist procedures naturally in Codex. Publication is staged; missing adapters
+remain pending work, not permanent Claude-only exclusions. A generated Codex overlay
+may adapt host behavior without forking shared or upstream-owned source files.
+Full eight-plugin acceptance remains pending until the complete integration is verified.
 
 ## superpowers Integration Routing
 
@@ -49,7 +55,7 @@ claude --plugin-dir ./plugins/aws-ops-plugin
 
 # Structural test suite — the canonical validation (manifests, frontmatter, references)
 python3 scripts/test-plugins.py                 # all plugins; -p <plugin> for one, -v verbose
-python3 scripts/test-codex-plugins.py           # Codex-format manifests (project-init: deliberate silent skip, CLAUDE_ONLY)
+python3 scripts/test-codex-plugins.py           # published Codex manifests; CLAUDE_ONLY temporarily permits project-init's unpublished adapter
 
 # Stale plugin cache check — local ~/.claude/plugins/cache vs source (--fix to copy)
 ./scripts/sync-plugin-cache.sh
@@ -203,17 +209,17 @@ All plugins share a single version tracked in their `plugin.json` → `"version"
 - **Git tag format**: `v{version}` (e.g., `v1.1.0`) — created on the release commit
 - **Release process**: bump `"version"` in all `plugin.json` files + `marketplace.json` → commit → `git tag v{version}` → push with `--tags`
 - **Validation**: `git describe --tags` should match all `plugin.json` and `marketplace.json` versions
-- Each plugin also carries a `.codex-plugin/plugin.json` alongside its `.claude-plugin/plugin.json`
-  (Codex-format manifest, kept version-synced with its Claude counterpart), and there is a second,
-  separate Codex marketplace at `.agents/plugins/marketplace.json` — project-init excepted (it
-  carries no `.codex-plugin/plugin.json` and so is absent from that file). All four surfaces
-  (Claude manifests, Claude marketplace, Codex manifests, Codex marketplace) are covered by the
-  snippet below — `.agents/plugins/marketplace.json` drifted to a stale version once already
-  (fixed alongside the atlas plugin's addition) precisely because nothing checked it.
+- Published Codex manifests (`.codex-plugin/plugin.json`) and entries in
+  `.agents/plugins/marketplace.json` share the Claude marketplace version. Project-init's
+  generated overlay and entry are approved but not yet published on this base; their
+  temporary absence does not change the eight-plugin target. Once published, they receive
+  normal Codex validation while the upstream source remains mirrored.
+- The following checks version agreement across existing surfaces, not completeness of
+  Codex delivery. Missing adapters and unverified host behavior cannot count as ready.
 
 ```bash
 # Verify version consistency across all 8 plugins' .claude-plugin/plugin.json, both
-# marketplaces, the Codex manifests (project-init excepted), and the git tag
+# marketplaces, currently published Codex manifests, and the git tag
 VS=$(for f in plugins/*/.claude-plugin/plugin.json; do python3 -c "import json; print(json.load(open('$f'))['version'])"; done | sort -u)
 MV=$(python3 -c "import json; vs=set(p['version'] for p in json.load(open('.claude-plugin/marketplace.json'))['plugins']); print(vs.pop() if len(vs)==1 else 'MISMATCH')")
 CV=$(for f in plugins/*/.codex-plugin/plugin.json; do python3 -c "import json; print(json.load(open('$f'))['version'])"; done | sort -u)
@@ -338,14 +344,17 @@ Skill: `project-scaffolder` — Claude Code project structure patterns and conve
 
 Commands: `/init-project`, `/sync-docs`, `/add-adr`, `/add-module`, `/add-runbook`, `/generate-readme`, `/generate-changelog`, `/health-check`, `/add-reference-doc`
 
-**This plugin is a byte-identical mirror of `whchoi98/project-init`** — the only local delta
-is `version` in `.claude-plugin/plugin.json` (marketplace-uniform). Never edit it in place:
-the next sync wipes the change. Local features that used to live here moved to co-agent
-(`pr-autofix`, `decision-reconcile`) or to the root routing table (superpowers hints). It
-also carries no `.codex-plugin/plugin.json`, so it is absent from the Codex marketplace
-(`scripts/test-codex-plugins.py` deliberately skips it silently — `CLAUDE_ONLY`; a standing warning on a known-correct state would be noise), and its manifest
-declares no `agents`/`skills` arrays — `scripts/test-plugins.py` discovers them on disk so
-the frontmatter is still validated. Sync procedure and rationale:
+**Upstream-owned files mirror `whchoi98/project-init` byte-for-byte**, except the
+marketplace-uniform `version` in `.claude-plugin/plugin.json`. Do not edit those sources
+locally. The separate repository-owned `.codex-plugin/` overlay is allowed: generate host
+adaptations from tooling outside the mirrored source, preserve the overlay during sync,
+and regenerate it when the generator is available. See the staged sync procedure before
+claiming it is current.
+
+`MIRRORED_PLUGINS` permits source discovery when manifest arrays are absent; it is
+independent of `CLAUDE_ONLY`, the temporary missing-Codex-adapter exception. Publishing
+the overlay does not end source mirroring. Local features remain in co-agent
+(`pr-autofix`, `decision-reconcile`) or the root routing table. Sync procedure:
 `docs/reference/project-init-upstream-sync.md`.
 
 ### kiro (1 agent, 1 skill, 4 commands)

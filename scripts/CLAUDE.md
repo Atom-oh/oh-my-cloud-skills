@@ -13,18 +13,26 @@ Evaluation and utility scripts for the plugin marketplace.
 | `setup.sh` | One-command project setup for new developers |
 | `install-hooks.sh` | Install Git commit-msg hook |
 
-## Validator allowlists (two, kept in sync)
+## Validator exceptions (independent source and publication scopes)
 
-Both validators carry one named exception, and neither is a blanket relaxation — anything
-not listed still fails:
+These exceptions govern different surfaces; neither authorizes weaker validation
+or a source fork:
 
 | Constant | Script | Means |
 |----------|--------|-------|
 | `MIRRORED_PLUGINS` | `test-plugins.py` | plugin.json is an upstream mirror kept verbatim, so `agents`/`skills` may be absent — they're discovered from `agents/*.md` and `skills/*/SKILL.md` instead, and a mirror with neither the field nor any file on disk is an error |
-| `CLAUDE_ONLY` | `test-codex-plugins.py` | deliberately off the Codex surface: no `.codex-plugin/plugin.json` and no Codex marketplace entry. Any other plugin missing that manifest is an error, and a leftover marketplace entry for a listed plugin is an error once its manifest is gone |
+| `CLAUDE_ONLY` | `test-codex-plugins.py` | temporarily permits an unpublished adapter's absence. A present Codex manifest is validated normally; a marketplace entry without its manifest is still an error |
 
-Both currently hold `project-init` only. Add a plugin to one and you almost always want the
-other too.
+Both currently name `project-init`, but their membership need not stay coupled.
+`MIRRORED_PLUGINS` concerns upstream source conventions and remains applicable after
+Codex publication. `CLAUDE_ONLY` is a staging exception, not a permanent platform
+policy: once the generated overlay and entry ship, it must not excuse missing Codex
+delivery. Historical "keep in sync" comments do not extend its scope.
+
+All eight plugins are approved for Codex support. Keep adaptation tooling outside
+upstream-owned files, and generate project-init's separate `.codex-plugin/` overlay
+when the factory is available. Current validator success does not establish that
+every adapter or host workflow has been published and verified.
 
 **Agent `tools:` scopes.** `Bash(git log:*)` is accepted (upstream's mirrored
 `doc-sync-checker` uses it) but **warns** — the scope syntax is documented for a command's
