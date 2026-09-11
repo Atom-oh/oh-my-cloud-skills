@@ -17,7 +17,7 @@ kiro:configure
 kiro:setup
 ```
 
-Command basenames therefore do not collide across plugins. Prefixing every
+Plugin-qualified names therefore do not collide across plugins. Prefixing every
 source `name` again would change the exposed command names unnecessarily.
 `test-codex-runtime.py` compares the returned names and installed paths with
 each package's inventory and rejects duplicates or fallback source paths.
@@ -43,8 +43,19 @@ two Bash handlers and Stop handlers from unchanged installed sources.
 Kiro review stayed off; no external provider was called.
 
 A native `custom_tool_call` created two files; PostToolUse supplied
-`tool_name: "apply_patch"` and `tool_input.command`. A native denial fixture
-blocked its tool and marker creation. User hook trust was unchanged.
+`tool_name: "apply_patch"` and `tool_input.command`. The script also checks nine
+translated two-file denials: ask, deny followed by exit 1, continue:false, and
+deny with suppressOutput, unknown fields at either output level, or whitespace-only
+reason/context/warning text. Each must report native `blocked`, with neither file
+created. User hook trust is unchanged; only disposable fixture hashes are trusted.
+
+Codex rejects unsupported PreToolUse fields and then continues the tool call,
+so translated `ask` and `continue:false` become supported denials. Unknown output
+fields, unsupported rewrites and child failures exit 2. Whitespace-only reasons
+use a nonempty fallback so Codex does not discard the denial.
+This policy applies to per-file translation; source Kiro Bash review hooks keep
+their own configured failure policy. PostToolUse feedback cannot undo a tool
+that has already executed.
 
 ## Reproduction and scope
 
@@ -52,6 +63,8 @@ blocked its tool and marker creation. User hook trust was unchanged.
 # Check a published package against the real checkout.
 python3 scripts/sync-codex-plugins.py --check --plugin kiro
 python3 scripts/test-codex-runtime.py --plugin kiro
+# Execute native hooks against a local Responses fixture (no external inference).
+python3 scripts/test-codex-native-hooks.py --report /var/tmp/codex-native-hooks.json
 
 # After publishing all packages, check the complete marketplace.
 python3 scripts/sync-codex-plugins.py --check

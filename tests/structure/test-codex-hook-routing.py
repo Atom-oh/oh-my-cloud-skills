@@ -32,12 +32,23 @@ class HookRoutingTests(unittest.TestCase):
             "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null",
             "CLAUDE_PROJECT_DIR": str(self.plugin),
             "PROBE_MODE": "", "PROBE_BLOCK_PATH": "",
+            "PROBE_OUTPUTS": "",
         }
         subprocess.run(["git", "init", "-q", str(self.repo)], env=self.env,
                        check=True, capture_output=True, text=True)
         (self.plugin / "probe.py").write_text(
             "import json, os, sys\n"
             "p = json.load(sys.stdin)\n"
+            "if os.environ['PROBE_OUTPUTS']:\n"
+            "    outputs = json.loads(os.environ['PROBE_OUTPUTS'])\n"
+            "    name = os.path.basename(p['tool_input'].get('file_path', ''))\n"
+            "    value = outputs[name]\n"
+            "    if isinstance(value, dict) and 'fixtureExit' in value:\n"
+            "        print('fixture child error', file=sys.stderr)\n"
+            "        sys.exit(value['fixtureExit'])\n"
+            "    if isinstance(value, str): sys.stdout.write(value)\n"
+            "    elif value is not None: print(json.dumps(value))\n"
+            "    sys.exit(0)\n"
             "record = {'cwd': os.getcwd(), 'project': os.environ['CLAUDE_PROJECT_DIR'],\n"
             "          'tool': p['tool_name'], 'input': p['tool_input']}\n"
             "specific = {'hookEventName': p['hook_event_name'],\n"
@@ -165,6 +176,208 @@ class HookRoutingTests(unittest.TestCase):
         result = self.invoke("Edit", patch, event="PreToolUse")
         self.assertEqual(2, result.returncode, result.stdout + result.stderr)
         self.assertIn("old path blocked", result.stderr)
+
+    def outputs(self, values, event="PreToolUse", matcher="Edit"):
+        self.env["PROBE_OUTPUTS"] = json.dumps({
+            f"file-{index}.md": value for index, value in enumerate(values)
+        })
+        patch = "*** Begin Patch\n" + "".join(
+            f"*** Update File: file-{index}.md\n@@\n-before\n+after\n"
+            for index in range(len(values))
+        ) + "*** End Patch\n"
+        return self.invoke(matcher, patch, event=event)
+
+    def permission(self, decision):
+        return {"hookSpecificOutput": {
+            "hookEventName": "PreToolUse", "permissionDecision": decision,
+            "permissionDecisionReason": decision + " reason",
+        }}
+
+    def merged(self, values, event="PreToolUse"):
+        result = self.outputs(values, event)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        return json.loads(result.stdout)
+
+    def test_deny_overrides_ask_in_either_file_order(self):
+        for decisions in (("ask", "deny"), ("deny", "ask")):
+            with self.subTest(decisions=decisions):
+                output = self.merged([self.permission(d) for d in decisions])
+                specific = output["hookSpecificOutput"]
+                self.assertEqual("deny", specific["permissionDecision"])
+                self.assertEqual("deny reason", specific["permissionDecisionReason"])
+
+    def test_stop_and_block_override_ask_in_either_order(self):
+        for control in ({"continue": False, "stopReason": "stop now"},
+                        {"decision": "block", "reason": "block now"}):
+            for values in ([self.permission("ask"), control],
+                           [control, self.permission("ask")]):
+                with self.subTest(values=values):
+                    output = self.merged(values)
+                    specific = output["hookSpecificOutput"]
+                    self.assertEqual("deny", specific["permissionDecision"])
+                    self.assertIn(control.get("reason", control.get("stopReason")),
+                                  specific["permissionDecisionReason"])
+                    self.assertTrue(all(key not in output for key in ("continue", "stopReason", "decision")))
+
+    def test_ask_alone_becomes_supported_denial_not_permission(self):
+        output = self.merged([self.permission("ask")])
+        self.assertEqual("deny", output["hookSpecificOutput"]["permissionDecision"])
+        self.assertIn("approval", output["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_nonzero_child_never_loses_prior_denial_or_allows_partial_coverage(self):
+        for control in (self.permission("deny"), {"decision": "block", "reason": "block reason"},
+                        {"continue": False, "stopReason": "stop reason"}, self.permission("allow")):
+            for values in ([control, {"fixtureExit": 1}], [{"fixtureExit": 1}, control]):
+                with self.subTest(values=values):
+                    result = self.outputs(values)
+                    self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                    self.assertEqual("", result.stdout)
+        result = self.outputs([self.permission("deny"), {"fixtureExit": 1}])
+        self.assertIn("deny reason", result.stderr)
+
+    def test_plain_text_and_json_context_are_merged_with_warnings(self):
+        notice = {"hookSpecificOutput": {"hookEventName": "PostToolUse",
+                                        "additionalContext": "JSON notice"},
+                  "systemMessage": "review this"}
+        for values in (["plain notice\n", notice], [notice, "plain notice\n"]):
+            output = self.merged(values, event="PostToolUse")
+            self.assertEqual({"plain notice", "JSON notice"},
+                             set(output["hookSpecificOutput"]["additionalContext"].splitlines()))
+            self.assertEqual("review this", output["systemMessage"])
+
+    def test_plain_json_scalar_status_is_context_and_silent_hooks_stay_silent(self):
+        for text in ("42\n", '"status"\n', "true\n"):
+            with self.subTest(text=text):
+                output = self.merged([text, None], event="PostToolUse")
+                self.assertEqual(text.strip(), output["hookSpecificOutput"]["additionalContext"])
+        result = self.outputs([None, ""])
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("", result.stdout)
+
+    def test_allow_requires_every_input_including_silent_and_plain_results(self):
+        allow = self.permission("allow")
+        output = self.merged([allow, allow])
+        self.assertEqual("allow", output["hookSpecificOutput"]["permissionDecision"])
+        for neutral in (None, "", {}, "plain notice"):
+            with self.subTest(neutral=neutral):
+                for values in ([allow, neutral], [neutral, allow]):
+                    output = self.merged(values)
+                    self.assertNotIn("permissionDecision", output.get("hookSpecificOutput", {}))
+
+    def test_allow_cannot_approve_unmatched_files_in_the_original_patch(self):
+        self.env["PROBE_OUTPUTS"] = json.dumps({"created.md": self.permission("allow")})
+        result = self.invoke("Write", "*** Begin Patch\n*** Add File: created.md\n+new\n"
+                             "*** Update File: skipped.md\n@@\n-a\n+b\n*** End Patch\n",
+                             event="PreToolUse")
+        self.assertEqual(0, result.returncode, result.stderr)
+        output = json.loads(result.stdout)
+        self.assertNotIn("permissionDecision", output.get("hookSpecificOutput", {}))
+
+    def test_identical_supported_metadata_is_preserved(self):
+        value = {"continue": True, "systemMessage": "warning",
+                 "hookSpecificOutput": {"hookEventName": "PostToolUse",
+                                        "additionalContext": "notice"}}
+        output = self.merged([value, value], event="PostToolUse")
+        self.assertEqual(value, output)
+        output = self.merged([value, {}], event="PostToolUse")
+        self.assertEqual("warning", output["systemMessage"])
+
+    def test_unknown_fields_cannot_invalidate_a_denial(self):
+        deny = self.permission("deny")
+        values = [
+            {**deny, "fixtureMetadata": {"version": 1}},
+            {"hookSpecificOutput": {**deny["hookSpecificOutput"],
+                                    "fixtureMetadata": {"version": 1}}},
+        ]
+        for value in values:
+            for outputs in ([value, {}], [value, value]):
+                with self.subTest(outputs=outputs):
+                    result = self.outputs(outputs)
+                    self.assertEqual(2, result.returncode)
+                    self.assertIn("fixtureMetadata", result.stderr)
+                    self.assertFalse(result.stdout.strip())
+
+    def test_blank_text_cannot_invalidate_a_denial(self):
+        deny = self.permission("deny")
+        deny["hookSpecificOutput"]["permissionDecisionReason"] = " \n\t"
+        deny["systemMessage"] = " \n\t"
+        deny["hookSpecificOutput"]["additionalContext"] = " \n\t"
+        output = self.merged([deny, {}])
+        specific = output["hookSpecificOutput"]
+        self.assertEqual("deny", specific["permissionDecision"])
+        self.assertTrue(specific["permissionDecisionReason"].strip())
+        self.assertNotIn("additionalContext", specific)
+        self.assertNotIn("systemMessage", output)
+
+    def test_unsupported_suppression_and_post_permission_fields_fail_closed(self):
+        for event in ("PreToolUse", "PostToolUse"):
+            for flag in (True, False):
+                with self.subTest(event=event, flag=flag):
+                    result = self.outputs([{"suppressOutput": flag}], event=event)
+                    self.assertEqual(2, result.returncode)
+                    self.assertEqual("", result.stdout)
+        for values in ([self.permission("deny"), {"suppressOutput": True}],
+                       [{"suppressOutput": True}, self.permission("deny")],
+                       [{**self.permission("deny"), "suppressOutput": True}]):
+            result = self.outputs(values)
+            self.assertEqual(2, result.returncode)
+            self.assertEqual("", result.stdout)
+        for decision in ("allow", "ask", "deny"):
+            value = self.permission(decision)
+            value["hookSpecificOutput"]["hookEventName"] = "PostToolUse"
+            result = self.outputs([value], event="PostToolUse")
+            self.assertEqual(2, result.returncode)
+            self.assertEqual("", result.stdout)
+
+    def test_post_tool_stop_preserves_all_context_and_stop_reason(self):
+        stop = {"continue": False, "stopReason": "review required",
+                "hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": "first"}}
+        notice = {"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": "second"},
+                  "systemMessage": "warning"}
+        output = self.merged([stop, notice], event="PostToolUse")
+        self.assertFalse(output["continue"])
+        self.assertEqual("review required", output["stopReason"])
+        self.assertEqual("first\nsecond", output["hookSpecificOutput"]["additionalContext"])
+        self.assertEqual("warning", output["systemMessage"])
+
+    def test_pre_continue_true_is_removed_and_post_block_remains_feedback(self):
+        output = self.merged([{"continue": True}, self.permission("deny")])
+        self.assertNotIn("continue", output)
+        self.assertEqual("deny", output["hookSpecificOutput"]["permissionDecision"])
+        output = self.merged([{"decision": "block", "reason": "review result"}, {}],
+                             event="PostToolUse")
+        self.assertEqual("block", output["decision"])
+        self.assertEqual("review result", output["reason"])
+        self.assertNotIn("permissionDecision", output["hookSpecificOutput"])
+
+    def test_per_file_rewrites_and_conflicting_fields_fail_closed(self):
+        rewrite = self.permission("allow")
+        rewrite["hookSpecificOutput"]["updatedInput"] = {"file_path": "replacement.md"}
+        cases = [
+            ([rewrite], "updatedInput"), ([rewrite, rewrite], "updatedInput"),
+            ([{"suppressOutput": True}, {"suppressOutput": False}], "suppressOutput"),
+            ([{"fixtureMetadata": "one"}, {"fixtureMetadata": "two"}], "fixtureMetadata"),
+            ([{"hookSpecificOutput": {"fixtureMetadata": "one"}},
+              {"hookSpecificOutput": {"fixtureMetadata": "two"}}], "fixtureMetadata"),
+            ([{"hookSpecificOutput": {"updatedMCPToolOutput": {"value": "one"}}}, {}],
+             "updatedMCPToolOutput"),
+            ([{"hookSpecificOutput": {"hookEventName": "Stop"}}, {}], "hookEventName"),
+        ]
+        for values, field in cases:
+            with self.subTest(field=field, count=len(values)):
+                result = self.outputs(values)
+                self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                self.assertIn(field, result.stderr)
+                self.assertIn("apply_patch", result.stderr)
+                self.assertFalse(result.stdout.strip())
+
+    def test_native_input_keeps_untranslated_output_fields(self):
+        value = self.permission("allow")
+        value["hookSpecificOutput"]["updatedInput"] = {"command": "echo rewritten"}
+        (self.plugin / "probe.py").write_text("print(" + repr(json.dumps(value)) + ")\n")
+        result = self.invoke("Bash", "echo original", event="PreToolUse", tool="Bash")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(value, json.loads(result.stdout))
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 ---
 name: kiro-delegate
-description: "Claude plans and verifies, Kiro CLI implements on its own flat-rate subscription credits — a cost-savings implementation-delegation workflow, not a second opinion (see co-agent for that). Kiro implements inside an isolated git worktree; only the captured, scope-guarded diff ever reaches the main tree. Triggers on 'kiro한테 시켜서 구현', 'kiro로 구현', 'kiro한테 구현 위임', 'delegate implementation to kiro', 'kiro implement this'. For read-only review of a diff, use the /kiro:review command instead — this skill is write-capable (it commits) and deliberately does NOT own review triggers."
+description: "The current host plans and verifies, Kiro CLI implements on its own flat-rate subscription credits — a cost-savings implementation-delegation workflow, not a second opinion (see co-agent for that). Kiro implements inside an isolated git worktree; only the captured, scope-guarded diff ever reaches the main tree. Triggers on 'kiro한테 시켜서 구현', 'kiro로 구현', 'kiro한테 구현 위임', 'delegate implementation to kiro', 'kiro implement this'. For read-only review of a diff, use the /kiro:review command instead — this skill is write-capable (it commits) and deliberately does NOT own review triggers."
 allowed-tools:
   - Read
   - Write
@@ -13,10 +13,10 @@ allowed-tools:
 
 # kiro-delegate — Cost-Savings Implementation Delegation
 
-Claude plans, decomposes, and verifies; **Kiro CLI writes the code**, running on its own
+The current host plans, decomposes, and verifies; **Kiro CLI writes the code**, running on its own
 flat-rate subscription credits instead of this session's token budget. The output is
 committed, tested code on the main tree plus a delegation-rate report showing what Kiro
-finished vs. what Claude had to take over. Excellent means every task ends in exactly one
+finished vs. what the host had to take over. Excellent means every task ends in exactly one
 of those two buckets — never a silent skip — and nothing outside the plan's declared file
 set ever lands. Kiro is chosen because it's cheaper for the work, not for a second
 opinion (that's `co-agent`).
@@ -42,10 +42,10 @@ flowchart TD
     E --> F["worktree.py capture-diff &lt;wt&gt;"]
     F --> G["scope_guard.py --plan tasks.md"]
     G --> H{tests pass?}
-    H -->|yes| I["Claude commits the wave"]
+    H -->|yes| I["The host commits the wave"]
     H -->|"no, rounds left"| J["fix round via --resume-id"]
     J --> F
-    H -->|"no, exhausted"| K["Claude implements the task"]
+    H -->|"no, exhausted"| K["The host implements the task"]
     K --> I
     I --> L["delegation-rate report"]
 ```
@@ -55,7 +55,7 @@ flowchart TD
 | Command | Purpose |
 |---------|---------|
 | `/kiro:setup` | Detect `kiro-cli`, probe real usability, list available models, write `.kiro/agents/{kiro-implementer,kiro-reviewer}.json`, set `default_delegate`/`review.on_commit` |
-| `/kiro:delegate <request>` | Plan → spec → Kiro implements per task → Claude verifies + commits → delegation-rate report |
+| `/kiro:delegate <request>` | Plan → spec → Kiro implements per task → the host verifies + commits → delegation-rate report |
 | `/kiro:review [paths...]` | Run the same Kiro-powered review the pre-commit hook runs, on demand (default: staged changes) |
 | `/kiro:configure` | Inspect/change `default_delegate`, delegate/review models + `effort` (kiro-cli `--effort`; delegate `low`, review `high`), `parallel_tasks`, `max_fix_rounds`, `review.on_commit`, `review.on_push`, `review.block`, `review.push_block` |
 
@@ -156,7 +156,7 @@ Full tiering rationale and the measured kiro-cli flag surface:
 
 `/kiro:delegate` ends with a report the user reads to judge whether delegation paid off:
 
-- **Delegation rate** — tasks Kiro completed vs. tasks Claude took over (each fallback
+- **Delegation rate** — tasks Kiro completed vs. tasks the host took over (each fallback
   named, with why the fix loop was exhausted).
 - **Credits spent** — `kiro_run.py credits` over the run's logs; omitted entirely when
   the script exits 1 (best-effort by contract — never a guessed figure).
