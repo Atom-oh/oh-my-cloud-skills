@@ -3,10 +3,11 @@
 
 Usage:
   check_panel.py classify --sentinel S --exit N --timeout 0|1   # stdin = candidate stdout
-  check_panel.py report [--root DIR] [--json]
+  check_panel.py report [--root DIR] [--json] [--host claude|codex]
+  check_panel.py probe <peer> [--gate] [--timeout SECONDS]  # inherited env; --gate uses gate filter
   check_panel.py status <peer> [--root DIR]
   check_panel.py access <peer> [--root DIR]
-  check_panel.py gate-eligible <peer> [--root DIR]   # exit 0 + "true" iff READY AND raw_cli
+  check_panel.py gate-eligible <peer> [--root DIR]   # inherited-env READY AND raw_cli
   check_panel.py fresh [--root DIR]                  # exit 0 iff summary config_hash matches current
 """
 import sys
@@ -23,12 +24,15 @@ import hashlib
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
+from co_agent_host import HOSTS, detect_host
+from co_agent_env import sanitized_env as _sanitized_env, CLAUDE_GATE_ISOLATION
+
 try:
     import co_agent_config  # sibling — for config_hash
 except Exception:
     co_agent_config = None
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 PEERS = ("kiro-cli", "claude", "codex", "agy")
 PEER_PLUGINS = {"codex": "openai/codex-plugin-cc"}   # peer → official Claude Code plugin repo
@@ -152,9 +156,9 @@ def _cmd_classify(argv):
 
 # Read-only adapters, mirroring references/ai-cli-adapters.md. "{P}" = prompt, "{I}" = INPUT (prompt+sentinel).
 # NOTE: the probe runs each CLI in an isolated temp dir (not a git repo). codex exec refuses to
-# run outside a trusted/git dir, so the probe — and ONLY the probe — passes --skip-git-repo-check.
-# The real fan-out runs in the repo root (a git repo) and builds its command from the skill /
-# ai-cli-adapters.md, not from this dict, so the flag stays probe-local.
+# run outside a trusted/git dir, so the probe passes --skip-git-repo-check. The
+# isolated PR/push gates need it too; the context-rich fan-out in ai-cli-adapters.md
+# runs inside the repo and does not need the exception.
 ADAPTERS = {
     "codex":    {"argv": ["codex", "exec", "-s", "read-only", "--skip-git-repo-check", "{P}"], "channel": "stdin"},
     "agy":      {"argv": ["agy", "-p", "{P}", "--sandbox"], "channel": "stdin"},
@@ -182,7 +186,8 @@ def _kill_proc(p):
             pass
 
 
-def probe(peer, timeout=90, nonce="STATIC"):
+def probe(peer, timeout=90, nonce="STATIC", gate=False):
+    """General fan-out inherits its environment; explicit gate probes use the gate filter."""
     # 90s, not 20s: cold-start CLIs blow far past 20s on first run — kiro auth-refresh + MCP init,
     # codex reasoning + MCP init, and agy especially (12-24s warm but a cold model load can exceed
     # 80s). 20s produced spurious TIMEOUTs on warm-usable peers. report() probes sequentially, and
@@ -210,6 +215,8 @@ def probe(peer, timeout=90, nonce="STATIC"):
         inp = f"Reply with exactly this token and nothing else: {sentinel}"
         argv = [a.replace("{I}", inp) for a in spec["argv"]]
         stdin_data = ""
+    if gate and peer == "claude":
+        argv.extend(CLAUDE_GATE_ISOLATION)
     with tempfile.TemporaryDirectory() as cwd:
         # Capture stdout/stderr to FILES, not PIPEs. Some peers refresh auth over the host fds
         # they were launched with (kiro here runs --auth=acp-callback host-mediated refresh);
@@ -223,7 +230,8 @@ def probe(peer, timeout=90, nonce="STATIC"):
         try:
             with open(outp, "w") as of, open(errp, "w") as ef:
                 p = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.PIPE, stdout=of,
-                                     stderr=ef, text=True, start_new_session=True)
+                                     stderr=ef, text=True, start_new_session=True,
+                                     env=_sanitized_env(peer) if gate else None)
                 try:
                     p.communicate(input=stdin_data, timeout=timeout)
                     timed_out = False
@@ -251,11 +259,12 @@ def probe(peer, timeout=90, nonce="STATIC"):
                 _kill_proc(p)
 
 
-def _config_hash(root):
+def _config_hash(root, host=None):
     if co_agent_config is None:
         return ""
     try:
-        blob = json.dumps(co_agent_config.effective(root), sort_keys=True)
+        blob = json.dumps({"host": detect_host(host),
+                           "config": co_agent_config.effective(root)}, sort_keys=True)
         return hashlib.sha256(blob.encode()).hexdigest()[:16]
     except Exception:
         return ""
@@ -308,18 +317,30 @@ def _peer_entry(peer, plugins_root):
     return entry
 
 
-def report(root, plugins_root, as_json=False):
+def report(root, plugins_root, as_json=False, host=None):
+    host = detect_host(host)
+    if host not in HOSTS:
+        print(f"unknown host '{host}' (one of: {', '.join(HOSTS)})", file=sys.stderr)
+        return 2
+    if co_agent_config is None:
+        print("cannot resolve enabled panel: co_agent_config unavailable", file=sys.stderr)
+        return 2
     # Probe peers SEQUENTIALLY, not concurrently. Peers commonly share one model backend (e.g.
     # codex/kiro/agy all on amazon-bedrock here); firing all probes at once throttles that backend
     # and pushes every call past its timeout — peers that pass alone (kiro ~5s, agy ~24s) all
     # flapped to TIMEOUT when probed in parallel. Sequential gives each probe the full backend.
     # Absent peers return instantly (no CLI), so the realistic cost is the sum of installed peers'
     # actual response times (~tens of seconds), not 5×timeout.
-    peers = {peer: _peer_entry(peer, plugins_root) for peer in PEERS}
+    enabled = co_agent_config.effective(root).get("panel", {})
+    peers = {peer: _peer_entry(peer, plugins_root)
+             for peer in co_agent_config.panel_ais(host)
+             if enabled.get(peer, {}).get("enabled", True)}
     summary = {
         "schema_version": SCHEMA_VERSION,
         "generated_at": datetime.datetime.now().astimezone().isoformat(),
-        "config_hash": _config_hash(root),
+        "host": host,
+        "probe_environment": "inherited",
+        "config_hash": _config_hash(root, host),
         "peers": peers,
     }
     _atomic_write_json(_summary_path(root), summary)
@@ -351,22 +372,31 @@ def _reader(root, peer, field, default):
     return s.get("peers", {}).get(peer, {}).get(field, default)
 
 
-def is_fresh(root):
-    """True iff the saved summary's config_hash matches the current effective config; callers
-    re-run `/co-agent:setup` on a mismatch. Catches CONFIG drift only — not PATH/auth/install
+def is_fresh(root, host=None):
+    """True iff the saved summary matches the current host and effective config; callers
+    re-run `/co-agent:setup` on a mismatch. Catches HOST/CONFIG drift — not PATH/auth/install
     (a full `report` re-probe catches those; config_hash can't see them)."""
     s = _read_summary(root)
     if not s:
         return False
-    cur = _config_hash(root)
+    if s.get("schema_version") != SCHEMA_VERSION or s.get("probe_environment") != "inherited":
+        return False
+    if s.get("host") != detect_host(host):
+        return False
+    cur = _config_hash(root, host)
     # Can't compute current hash (config module unavailable) → don't force churn.
     return (not cur) or s.get("config_hash", "") == cur
 
 
-def gate_eligible(root, peer):
-    """A peer produces panel/gate output only if READY AND has a raw CLI. The fan-out calls
-    raw CLIs only, so a plugin-only peer (READY, raw_cli false) is silent — the 'plugin-only
-    READY but silent' bug. consensus and harness share this single predicate."""
+def gate_eligible(root, peer, host=None):
+    """Historical name for inherited-environment raw-CLI readiness.
+
+    Consensus/harness use this result. It is not proof of sanitized gate auth;
+    `probe PEER --gate` verifies the separate gate environment before enabling gates.
+    """
+    resolved_host = detect_host(host)
+    if resolved_host not in HOSTS or peer == resolved_host:
+        return False
     s = _read_summary(root)
     if not s:
         return False
@@ -376,6 +406,14 @@ def gate_eligible(root, peer):
 
 def main():
     argv = sys.argv[1:]
+    host = None
+    if "--host" in argv:
+        index = argv.index("--host")
+        if index + 1 >= len(argv) or argv[index + 1] not in HOSTS:
+            print("--host requires claude|codex", file=sys.stderr)
+            return 2
+        host = argv[index + 1]
+        del argv[index:index + 2]
     if not argv:
         print(__doc__)
         return 2
@@ -383,10 +421,10 @@ def main():
         return _cmd_classify(argv[1:])
     if argv[0] == "probe":
         peer = argv[1]
-        timeout = int(argv[argv.index("--timeout") + 1]) if "--timeout" in argv else 20
-        status, _ = probe(peer, timeout=timeout)
+        timeout = int(argv[argv.index("--timeout") + 1]) if "--timeout" in argv else 90
+        status, _ = probe(peer, timeout=timeout, gate="--gate" in argv)
         print(status)
-        return 0
+        return (0 if status == "READY" else 1) if "--gate" in argv else 0
     if argv[0] == "--selftest-access":
         peer, hc, hp = argv[1], argv[2] == "1", argv[3] == "1"
         access, suggest = decide_access(peer, hc, hp)
@@ -395,7 +433,7 @@ def main():
     if argv[0] == "report":
         root = argv[argv.index("--root") + 1] if "--root" in argv else "."
         proot = argv[argv.index("--plugins-root") + 1] if "--plugins-root" in argv else os.path.expanduser("~/.claude/plugins")
-        return report(root, proot, as_json="--json" in argv)
+        return report(root, proot, as_json="--json" in argv, host=host)
     if argv[0] in ("status", "access"):
         peer = argv[1]
         root = argv[argv.index("--root") + 1] if "--root" in argv else "."
@@ -405,12 +443,12 @@ def main():
     if argv[0] == "gate-eligible":
         peer = argv[1]
         root = argv[argv.index("--root") + 1] if "--root" in argv else "."
-        ok = gate_eligible(root, peer)
+        ok = gate_eligible(root, peer, host=host)
         print("true" if ok else "false")
         return 0 if ok else 1
     if argv[0] == "fresh":
         root = argv[argv.index("--root") + 1] if "--root" in argv else "."
-        ok = is_fresh(root)
+        ok = is_fresh(root, host=host)
         print("fresh" if ok else "stale")
         return 0 if ok else 1
     print(__doc__)

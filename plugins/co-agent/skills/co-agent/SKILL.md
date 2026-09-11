@@ -31,9 +31,9 @@ made it, disagreement surfaced instead of averaged away, and graceful solo degra
 ## Step 0: Detect the panel (always first)
 
 ```bash
-# Set CO_AGENT_HOST=codex when running this skill from Codex. Default host is claude.
-HOST="${CO_AGENT_HOST:-claude}"
 CFG="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py"
+# Runtime detection; an explicit CO_AGENT_HOST overrides it.
+HOST=$(python3 "$CFG" host) || exit 1
 # config `panel` lists ENABLED peers regardless of install/auth — announce only the ones
 # actually present on PATH.
 PANEL=""; MISSING=""

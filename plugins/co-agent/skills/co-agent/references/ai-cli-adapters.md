@@ -63,7 +63,7 @@ fi
 # defaults + .claude/co-agent.local.json (see /co-agent:configure). This makes the
 # config LIVE: `enabled false` drops an AI; model/effort flags are injected per CLI.
 CFG="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py"
-HOST="${CO_AGENT_HOST:-claude}"  # set to codex when running co-agent from Codex
+HOST=$(python3 "$CFG" host) || exit 1
 T=$(python3 "$CFG" timeout --host "$HOST" 2>/dev/null || echo 240)
 python3 "$CFG" matrix --host "$HOST"   # show provider·model·ctx + max-calls BEFORE running
 TOKENS=$(( ( $(wc -c < "$CTX_FILE") + 3 ) / 4 ))
@@ -288,3 +288,12 @@ and never clobber a hand-written file:
 - The optional `kiro-cli-plugin` (Claude Code) exposes interactive slash commands
   (`/kiro-cli:review`, `/kiro-cli:adversarial-review`); those are for interactive use,
   not this skill's automated fan-out.
+
+## Readiness environments
+
+General `check_panel.py report` probes inherit the caller environment, matching
+direct consensus/harness fan-out and custom-provider authentication. Its historical
+`gate-eligible` predicate means `READY` plus raw CLI access. For PR/push gates,
+run `check_panel.py probe <peer> --gate`: this uses the gate's credential filter
+and succeeds only with `READY`. Do not equate the two environments or exclude a
+working direct peer merely because its credentials are unavailable to a gate.

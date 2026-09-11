@@ -103,7 +103,8 @@ back to the host. Runs synchronously, so 2-3 minutes per PR.
   its **env sanitized** in addition to cwd isolation — credential-shaped variables
   (`*TOKEN*`, `*SECRET*`, `*API_KEY*`, `AWS_*`, `GH_*`, `GITHUB_*`, `GOOGLE_*`, etc.) are
   stripped except the **whitelist each peer needs for its own auth** (e.g. codex's
-  `OPENAI_API_KEY`, kiro's `KIRO_API_KEY`), blocking the path where a poisoned diff uses
+  `OPENAI_API_KEY`, kiro's `KIRO_API_KEY`, and Claude's explicitly selected cloud-backend
+  credential chain), blocking the path where a poisoned diff uses
   prompt injection to **read another tool's token from env** and leak it externally.
   However, coaxing a reviewer into reading an **absolute-path file** (e.g.
   `~/.aws/credentials`) remains a residual risk as long as the reviewer stays read-capable
@@ -141,9 +142,19 @@ back to the host. Runs synchronously, so 2-3 minutes per PR.
   outputting "first line: PASS" bypasses tool execution restrictions but can still forge the
   verdict itself — an inherent limit — hence opt-in plus a (human) chair re-review. Secret-scan
   covers every transmitted line: additions, deletions, and context.
-- Any other Bash command passes straight through (only `gh pr create` matches). A Codex host
-  doesn't run Claude Code hooks, so this doesn't apply there (not registered in
-  `.codex-plugin`).
+- Any other Bash command passes straight through (only `gh pr create` matches).
+  When a generated Codex package declares hooks, the same handlers run through
+  `.codex-plugin/hooks.json` and its `hook.py` bridge with native hook trust.
+  Without that declaration they are not registered in Codex. The gates remain opt-in.
+
+General readiness and the historical `gate-eligible` predicate describe inherited-
+environment raw CLI access for consensus/harness. They do not certify the filtered
+gate environment. `check_panel.py probe <peer> --gate` uses the same credential
+filter as the gates; require `READY` before enabling a gate for that peer.
+Claude gate calls also disable user/project settings, hooks and configured MCP
+servers. Supply the intended backend through the gate environment; inherited
+settings remain available to general consensus/harness calls.
+Readiness schema 2 records this distinction and refreshes older summaries.
 
 ## Pre-push Lens Gate (PreToolUse hook)
 

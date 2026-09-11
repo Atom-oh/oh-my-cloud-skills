@@ -2,6 +2,11 @@
 # Tests for co-agent co_agent_config.py — panel model/effort/enabled/timeout settings.
 # Only headless-settable options are exposed.
 
+# Pin this legacy fixture once; explicit --host overrides still test Codex.
+CO_AGENT_CONFIG_SAVED_HOST=${CO_AGENT_HOST-}
+CO_AGENT_CONFIG_HOST_DECL=$(declare -p CO_AGENT_HOST 2>/dev/null || true)
+export CO_AGENT_HOST=claude
+
 CFG="plugins/co-agent/skills/co-agent/scripts/co_agent_config.py"
 DEF="plugins/co-agent/skills/co-agent/co-agent.defaults.json"
 # Isolate the user-scope layer from the real ~/.claude/co-agent.user.json for the whole
@@ -144,3 +149,13 @@ assert_contains "$(python3 "$CFG" show --root "$RR" 2>&1 | tr '\n' ' ')" "gpt-4.
 python3 "$CFG" set codex model x --scope bogus --root "$RR" >/dev/null 2>&1 && BS=0 || BS=$?
 assert_eq "2" "$BS" "invalid --scope rejected (exit 2)"
 rm -rf "$RU" "$RR"; export CO_AGENT_USER_CONFIG="$SAVED_UC"
+
+# This file is sourced: preserve the caller's value, unset state, and export flag.
+unset CO_AGENT_HOST
+if [ -n "$CO_AGENT_CONFIG_HOST_DECL" ]; then
+  CO_AGENT_HOST=$CO_AGENT_CONFIG_SAVED_HOST
+  if [[ "$CO_AGENT_CONFIG_HOST_DECL" == "declare -x "* ]]; then
+    export CO_AGENT_HOST
+  fi
+fi
+unset CO_AGENT_CONFIG_SAVED_HOST CO_AGENT_CONFIG_HOST_DECL
