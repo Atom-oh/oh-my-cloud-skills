@@ -1,0 +1,30 @@
+{
+  "plugin": "kiro",
+  "handlers": [
+    {
+      "event": "PreToolUse",
+      "matcher": "Bash",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-commit-review.sh\""
+    },
+    {
+      "event": "PreToolUse",
+      "matcher": "Bash",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-push-review.sh\""
+    },
+    {
+      "event": "SessionStart",
+      "matcher": "",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-routing.sh\""
+    },
+    {
+      "event": "SessionStart",
+      "matcher": "",
+      "command": "bash -c 'for pid in $(pgrep -f \"${KIRO_REAP_PATTERN:-kiro-cli/kas/.*/@kiro/agent/dist/server/acp-server\\.js}\" 2>/dev/null); do [ \"$(ps -o ppid= -p \"$pid\" 2>/dev/null | tr -d \" \")\" = \"1\" ] && kill \"$pid\" 2>/dev/null; done; exit 0'"
+    },
+    {
+      "event": "Stop",
+      "matcher": "",
+      "command": "bash -c 'for pid in $(pgrep -f \"${KIRO_REAP_PATTERN:-kiro-cli/kas/.*/@kiro/agent/dist/server/acp-server\\.js}\" 2>/dev/null); do [ \"$(ps -o ppid= -p \"$pid\" 2>/dev/null | tr -d \" \")\" = \"1\" ] && kill \"$pid\" 2>/dev/null; done; exit 0'"
+    }
+  ]
+}

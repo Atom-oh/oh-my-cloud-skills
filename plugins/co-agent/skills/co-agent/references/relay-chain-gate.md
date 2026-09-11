@@ -85,7 +85,7 @@ Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"` and `CFG="$SK/co_agent_
 
 ```bash
 RUN=$(mktemp -d "${TMPDIR:-/tmp}/co-agent-relay.XXXXXX"); trap 'rm -rf "$RUN"' EXIT
-HOST="${CO_AGENT_HOST:-claude}"
+HOST=$(python3 "$CFG" host) || exit 1
 T=$(python3 "$CFG" timeout --host "$HOST" 2>/dev/null || echo 240)
 
 # The artifact under review (plan doc for H2, cumulative diff for H4). Secret-scan it and
