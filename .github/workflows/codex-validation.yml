@@ -1,0 +1,33 @@
+name: Codex package validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Codex package validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: codex-validation-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Check all generated Codex artifacts
+        run: |
+          set -euo pipefail
+          python3 scripts/sync-codex-plugins.py --check
+
+      - name: Validate plugin manifests and source inventories
+        run: |
+          set -euo pipefail
+          python3 scripts/test-plugins.py
+          python3 scripts/test-codex-plugins.py

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # L1 결정적 pre-check — 매니페스트 무결성(JSON 유효성 / dangling agent·skill·command 참조 /
-# plugin.json↔marketplace.json 버전 정합 / .codex-plugin·.agents 매니페스트)을 AI 패널
-# 호출 전에 스크립트로 검증한다. 0 false-positive, AI 비용 0, 즉시 fail-closed.
+# plugin.json↔marketplace.json 버전 정합 / .codex-plugin·.agents 매니페스트와 소스 inventory)를
+# AI 호출 없이 검증한다. 생성물의 byte 일치 검사는 별도 GitHub-hosted PR-head job이 담당한다.
 # 인자: <base_repo_dir> <pr_number> <workdir>
 #
 # 보안: pull_request_target 는 PR head 코드를 실행하지 않는다(base 체크아웃만 신뢰).
 # PR head 파일 트리는 `git archive`로 **데이터로만** 추출하며, 이 트리 안의 어떤 스크립트도
-# 실행하지 않는다 — base(신뢰) 체크아웃의 test-plugins.py/test-codex-plugins.py 가 --root 로
-# 그 경로를 파일 read/json.load 로만 읽는다. `gh pr diff` 를 데이터로만 쓰는 기존 신뢰 경계와
+# 실행하지 않는다 — base(신뢰) 체크아웃의 구조 검증기가 --root 로
+# 그 경로를 데이터로만 읽는다. `gh pr diff` 를 데이터로만 쓰는 기존 신뢰 경계와
 # 동일하다.
 set -euo pipefail
 BASE_DIR="$1"; PR_NUMBER="$2"; WORK="$3"
@@ -48,7 +48,7 @@ touch "$WORK/l1-validators-started"
 
 # set -e 아래 첫 검증기가 실패하면 두 번째는 안 돌아 그 오류를 못 본다 — PR 작성자가
 # 첫 번째 부류를 고치고 다시 push 해야 두 번째 부류를 발견하는 왕복이 생긴다(fail-closed
-# 계약 자체는 유지됨, UX 문제). rc 로 모아서 양쪽 다 실행한 뒤 합산 종료.
+# 계약 자체는 유지됨, UX 문제). rc 로 모아서 모든 검사를 실행한 뒤 합산 종료.
 rc=0
 python3 "$BASE_DIR/scripts/test-plugins.py" --root "$TREE" || rc=1
 python3 "$BASE_DIR/scripts/test-codex-plugins.py" --root "$TREE" || rc=1

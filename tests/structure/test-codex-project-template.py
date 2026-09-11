@@ -46,6 +46,14 @@ class ProjectHookTests(unittest.TestCase):
         self.assertIn("src/one.py", text)
         self.assertIn("src/two.py", text)
 
+    def test_renaming_code_to_a_document_still_requests_documentation_review(self):
+        text = self.hook("PostToolUse",
+                         "*** Begin Patch\n*** Update File: src/one.py\n"
+                         "*** Move to: docs/one.txt\n@@\n-x\n+y\n*** End Patch",
+                         "apply_patch")
+        self.assertIn("src/one.py", text)
+        self.assertIn("documentation", text)
+
     def test_staged_secret_warning_never_echoes_value(self):
         secret = "ghp_" + "A" * 36
         (self.root / "config.txt").write_text(secret + "\n")

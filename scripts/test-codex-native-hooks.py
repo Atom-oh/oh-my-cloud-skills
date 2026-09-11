@@ -116,7 +116,7 @@ def stop(process):
     process.stdout.close()
 
 
-def probe(root, temp_dir, report):
+def probe(root, temp_dir, report, project_init=False):
     source = root / "plugins/kiro"
     require((source / ".codex-plugin/hook.py").read_bytes() ==
             (root / "scripts/codex/hook.py").read_bytes(), "Regenerate Kiro adapters before this test")
@@ -125,6 +125,9 @@ def probe(root, temp_dir, report):
         state, workspace, market = tmp / "state", tmp / "consumer", tmp / "market"
         state.mkdir()
         workspace.mkdir()
+        if project_init:
+            shutil.copytree(root / "plugins/project-init/.codex-plugin/project-template/.codex",
+                            workspace / ".codex")
         package = market / "plugins/kiro"
         shutil.copytree(source, package, ignore=shutil.ignore_patterns("__pycache__"))
         capture = market / "plugins/patch-capture"
@@ -183,6 +186,11 @@ def probe(root, temp_dir, report):
             f'name="Loopback fixture"\nbase_url="http://127.0.0.1:{server.server_port}/v1"\n'
             'wire_api="responses"\nrequires_openai_auth=false\n')
 
+        if project_init:
+            # Only this disposable consumer is trusted. Hook definitions still start untrusted.
+            with (state / "config.toml").open("a") as config:
+                config.write("\n[projects." + json.dumps(str(workspace)) + "]\ntrust_level=\"trusted\"\n")
+
         def cli(*args):
             return subprocess.run(["codex", *args], cwd=workspace, env=env, check=True,
                                   capture_output=True, text=True, timeout=30).stdout
@@ -230,13 +238,16 @@ def probe(root, temp_dir, report):
         process.stdin.write('{"method":"initialized"}\n')
         process.stdin.flush()
         before = call("hooks/list", {"cwds": [str(workspace)]})["data"][0]["hooks"]
-        require(len(before) == 7 and all(h["trustStatus"] == "untrusted" for h in before), "Unexpected initial trust")
+        require(len(before) == (10 if project_init else 7) and all(h["trustStatus"] == "untrusted" for h in before), "Unexpected initial trust")
         turn(thread())
         require(not server.routing_seen and not payload_file.exists(), "Untrusted hook executed")
         require(not any(e.get("method") == "hook/started" for e in events), "Untrusted hook started")
         for hook in before:
-            require(hook["pluginId"] in {"kiro@native-proof", "patch-capture@native-proof"} and
-                    any(Path(hook["sourcePath"]).is_relative_to(p) for p in installed.values()), "Unexpected hook source")
+            plugin_source = hook.get("pluginId") in {"kiro@native-proof", "patch-capture@native-proof"} and any(
+                Path(hook["sourcePath"]).is_relative_to(p) for p in installed.values())
+            project_source = project_init and not hook.get("pluginId") and (
+                Path(hook["sourcePath"]) == workspace / ".codex/hooks.json")
+            require(plugin_source or project_source, "Unexpected hook source")
             call("config/value/write", {"filePath": str(state / "config.toml"),
                  "keyPath": "hooks.state." + json.dumps(hook["key"]) + ".trusted_hash",
                  "mergeStrategy": "upsert", "value": hook["currentHash"]})
@@ -272,6 +283,13 @@ def probe(root, temp_dir, report):
                 payloads[0]["tool_input"]["command"] == PATCH, "Wrong native patch payload")
         require((workspace / "native-one.txt").read_text() == "one\n" and
                 (workspace / "native-two.md").read_text() == "two\n", "Patch did not execute")
+        if project_init:
+            project_runs = [e["params"]["run"] for e in completed
+                            if Path(e["params"]["run"]["sourcePath"]) == workspace / ".codex/hooks.json"]
+            require(all(r["status"] == "completed" for r in project_runs), "Project hook failed")
+            require({r["eventName"] for r in project_runs} == {"sessionStart", "preToolUse", "postToolUse"},
+                    "Missing native project-template hook dispatch")
+            report["project_template_runs"] = project_runs
         report.update(passed=True, untrusted_hooks_ran=False, external_provider_calls=0,
                       source_files_verified=files, trust_before=before, trust_after=after,
                       completed_hooks=completed, patch_payload=payloads[0],
@@ -283,10 +301,12 @@ def main():
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--tmp-dir", default="/var/tmp")
     parser.add_argument("--report", type=Path)
+    parser.add_argument("--project-init", action="store_true",
+                        help="Also execute the packaged project-init templates in a trusted disposable project")
     args = parser.parse_args()
     report = {"passed": False}
     try:
-        probe(args.root.resolve(), args.tmp_dir, report)
+        probe(args.root.resolve(), args.tmp_dir, report, args.project_init)
     except Exception as exc:
         report["error"] = str(exc)
     if args.report:

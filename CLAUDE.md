@@ -8,23 +8,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A Claude Code plugin marketplace containing eight plugins for AWS cloud work:
+A Claude Code and Codex plugin marketplace containing eight plugins for AWS cloud work:
 - **aws-content-plugin** — Content creation (presentations, diagrams, docs, workshops)
 - **aws-ops-plugin** — Infrastructure operations & troubleshooting (EKS, networking, IAM, observability)
 - **kiro-power-converter** — Convert Claude Code plugins to Kiro IDE Power format
 - **agentcore-creator** — Convert Claude Code plugins to Bedrock AgentCore (harness or Runtime)
-- **co-agent** — Multi-AI collaboration (Kiro CLI, Codex, Antigravity): review, decision support, ADR co-authoring; Claude chairs
+- **co-agent** — Multi-AI collaboration (Kiro CLI, Codex, Antigravity): review, decision support, ADR co-authoring; the current host chairs
 - **project-init** — Project scaffolding and documentation management
-- **kiro** — Cost-savings delegation: Claude plans and verifies, Kiro CLI implements and reviews on its own subscription credits inside an isolated git worktree
+- **kiro** — Cost-savings delegation: the current host plans and verifies, Kiro CLI implements and reviews on its own subscription credits inside an isolated git worktree
 - **atlas** — A self-syncing per-topic doc wiki for LLM consumption: docs declare the files they `cover`, drift is detected mechanically against a `code_rev` anchor, and stale docs can be auto-fixed just before a push
 
 Claude Code plugins are installed via `/plugin marketplace add` or loaded locally with `--plugin-dir`.
 
-**Approved Codex target:** all eight plugins must expose their skills, command workflows
-and specialist procedures naturally in Codex. Publication is staged; missing adapters
-remain pending work, not permanent Claude-only exclusions. A generated Codex overlay
-may adapt host behavior without forking shared or upstream-owned source files.
-Full eight-plugin acceptance remains pending until the complete integration is verified.
+**Codex delivery:** all eight plugins expose generated entry skills for their shared
+skills, command workflows and specialist procedures. `scripts/codex/` owns host adaptations;
+`scripts/sync-codex-plugins.py` generates the installed overlays without forking shared or
+upstream-owned source files. Inventory validation and the unconditional generation check
+must pass for every plugin. Runtime acceptance additionally verifies installed helpers,
+actual skill/hook discovery and native hook behavior; see `docs/reference/codex-runtime-verification.md`.
+Specialist Markdown is a procedure, not registration of a native Codex agent role.
+Project-init supplies separately installed project templates, not plugin hooks.
+Before merging, require the latest-HEAD AI review and the separate Codex validation CI
+result. Generator changes and regenerated outputs are checked together in isolated PR CI;
+never skip freshness or execute PR code in the privileged review job.
 
 ## superpowers Integration Routing
 
@@ -55,7 +61,10 @@ claude --plugin-dir ./plugins/aws-ops-plugin
 
 # Structural test suite — the canonical validation (manifests, frontmatter, references)
 python3 scripts/test-plugins.py                 # all plugins; -p <plugin> for one, -v verbose
-python3 scripts/test-codex-plugins.py           # all eight Codex manifests and marketplace entries
+python3 scripts/test-codex-plugins.py           # all eight manifests, inventory and marketplace entries
+python3 scripts/sync-codex-plugins.py --check   # every generated artifact; no publication exceptions
+python3 scripts/test-codex-runtime.py           # disposable actual Codex install/discovery; no inference
+python3 scripts/test-codex-native-hooks.py --project-init  # loopback fixture; no external provider
 
 # Stale plugin cache check — local ~/.claude/plugins/cache vs source (--fix to copy)
 ./scripts/sync-plugin-cache.sh
@@ -218,7 +227,7 @@ All plugins share a single version tracked in their `plugin.json` → `"version"
 
 ```bash
 # Verify version consistency across all 8 plugins' .claude-plugin/plugin.json, both
-# marketplaces, currently published Codex manifests, and the git tag
+# marketplaces, all Codex manifests, and the git tag
 VS=$(for f in plugins/*/.claude-plugin/plugin.json; do python3 -c "import json; print(json.load(open('$f'))['version'])"; done | sort -u)
 MV=$(python3 -c "import json; vs=set(p['version'] for p in json.load(open('.claude-plugin/marketplace.json'))['plugins']); print(vs.pop() if len(vs)==1 else 'MISMATCH')")
 CV=$(for f in plugins/*/.codex-plugin/plugin.json; do python3 -c "import json; print(json.load(open('$f'))['version'])"; done | sort -u)
@@ -319,13 +328,13 @@ Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Sk
 
 | Agent | Purpose |
 |-------|---------|
-| `co-agent` | Multi-AI panel chair — fans review/decision/ADR prompts to Kiro/Codex/Antigravity CLIs and synthesizes |
+| `co-agent` | Multi-AI panel chair — fans review/decision/ADR prompts to configured peer CLIs and synthesizes |
 | `gate-chair` | Hybrid-gate chair judgment isolated on its own `opus`+`xhigh` subagent — Phase T triage + verify round-close verdicts; makes zero external calls (fan-out/consent/cost stay with the host), for hosts running a cheaper tier |
 | `harness-analyst` | Hill-climbing analyst (advisory-only, `opus`+`low`) — mines accumulated `.claude/co-agent-consensus/` run records (`stage_wall.tsv`, task/gate `result.json`) into proposed `/co-agent:configure set` commands; never writes config, observations-only below 3 recorded runs |
 | `pr-autofix-planner` | Read-only fix planner for pr-autofix (enforced Read/Grep/Glob; fable/opus) |
 | `pr-autofix-implementer` | Edit-only plan implementer for pr-autofix (enforced Read/Write/Edit/Grep/Glob — no Bash/network; opus [medium effort]) |
 
-Skill: `co-agent` — 6 modes: **Review** (multi-AI diff/arch review), **Decide** (decision support with comparison table), **ADR** (co-authored decision records), **sync-context** (distill `CLAUDE.md` → `AGENTS.md` once; Kiro/Codex/Antigravity (`agy`) all share that one distilled file), **Consensus** (doc→plan→implement pipeline, `/co-agent:consensus`), **harness** (delegated implementation orchestrator, `/co-agent:harness`). Fans the same prompt to whichever AI CLIs are installed — Kiro/Codex/Antigravity (`agy`; Gemini removed — ADR-010) — in parallel, then **Claude synthesizes**. Degrades gracefully to solo when no CLI is present. Adapters: `references/ai-cli-adapters.md`.
+Skill: `co-agent` — 6 modes: **Review** (multi-AI diff/arch review), **Decide** (decision support with comparison table), **ADR** (co-authored decision records), **sync-context** (distill `CLAUDE.md` → `AGENTS.md` once; Kiro/Codex/Antigravity (`agy`) all share that one distilled file), **Consensus** (doc→plan→implement pipeline, `/co-agent:consensus`), **harness** (delegated implementation orchestrator, `/co-agent:harness`). Fans the same prompt to configured peers — Kiro, the other host CLI (Claude or Codex), and Antigravity (`agy`; Gemini removed — ADR-010) — in parallel, excluding the current host, then **the current host synthesizes**. Reports unavailable peers; required review coverage must complete before claiming a gate passed. Adapters: `references/ai-cli-adapters.md`.
 
 Also in co-agent (moved out of project-init, now an upstream mirror — `docs/reference/project-init-upstream-sync.md`): `pr-autofix` — PR review feedback auto-fix loop (plan on Fable/Opus → opus [medium effort] implementer in a disposable worktree → only the plan-approved delta lands; loop bound `set pr_autofix max_iterations`, default 5; CI review-comment marker resolved from `pr_autofix.review_marker`, regex auto-detect when unset; closes the **PR review memory loop** — the host, never the planner/implementer, reads and updates the one committed `docs/pr-review/review-memory.md` that CI's review prompts also read, ADR-015; escalation ladder — only when `push_gate.enabled` is on, off by default, fails open when it can't review — pass >3 runs the pre-push lens gate before pushing, re-planning once on a blocking verdict; pass >5 escalates the panel/chair models for that gate call only, never persisted to config), and `decision-reconcile` — ADR contradiction/drift detection via a diverse multi-agent panel, drafting a superseding ADR. Triggers: reversed decisions, ADR contradictions, reconcile ADRs.
 
@@ -436,12 +445,12 @@ Ops:       User issue → auto-routed agent → Diagnose → Resolve → Verify
 
 AgentCore: Plugin source → analyze → harness-vs-Runtime decision → A: harness config (skills attach as-is) | B: generate Strands artifacts → user refinement → deploy via CLI → verify
 
-Co-agent:  /co-agent → detect panel (Kiro/Codex/Antigravity) → fan-out prompt → Claude synthesizes → Review report / Decision / ADR
+Co-agent:  /co-agent → detect configured peer CLIs → fan-out prompt → current host synthesizes → Review report / Decision / ADR
            gh pr create → PreToolUse hook (opt-in) → same-prompt panel fan-out → quorum BLOCK/PASS
            git push → PreToolUse hook (opt-in) → 3-lens (correctness/security/scope) round-robin fan-out → 2+ BLOCK / 1 BLOCK (chair judgment) / 0 (pass)
 
 kiro:      /kiro:setup → probe kiro-cli, list models, write .kiro/agents/*.json
-           /kiro:delegate → Claude plans (Kiro spec) → per task: worktree → Kiro implements → capture-diff → scope_guard → Claude applies+tests → bounded retry → Claude fallback → commit → delegation-rate report
+           /kiro:delegate → host plans (Kiro spec) → per task: worktree → Kiro implements → capture-diff → scope_guard → host applies+tests → bounded retry → host fallback → commit → delegation-rate report
            git commit → PreToolUse hook (opt-in, off by default) → Kiro review (fail-open, blocks only on `critical`)
            git push → PreToolUse hook (opt-in, off by default) → 3-lens Kiro review (fail-open; `critical` BLOCKED, `warning`-only chair judgment)
            web search needed + no WebSearch tool (Bedrock) → kiro_websearch.py --query-file (opt-in) → summary + source URLs

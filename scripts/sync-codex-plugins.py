@@ -84,7 +84,8 @@ def generated_files(root, plugins=None):
             # augments the existing skill instead of becoming a duplicate.
             description = sources[0][1]["description"]
             if name == "project-init":
-                description = description.replace("Claude Code", "Codex or Claude Code")
+                description = (description.replace("Claude Code", "Codex or Claude Code")
+                               .replace("CLAUDE.md", "AGENTS.md or CLAUDE.md"))
             path = adapter / "skills" / skill_name / "SKILL.md"
             source_paths = [str(s.relative_to(plugin)) for s, _ in sources]
             inventory["skills"].append({

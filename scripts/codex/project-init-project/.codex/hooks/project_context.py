@@ -41,7 +41,7 @@ def context(payload):
                     break
             else:
                 if line.startswith("*** Move to: ") and paths:
-                    paths[-1] = line[len("*** Move to: "):]
+                    paths.append(line[len("*** Move to: "):])
         code = [path for path in dict.fromkeys(paths)
                 if Path(path).suffix.lower() not in {".md", ".txt", ".rst"}]
         if code:

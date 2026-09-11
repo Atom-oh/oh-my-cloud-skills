@@ -1,12 +1,12 @@
-<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 36b2e73714be · generated-at: 2026-09-11 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
+<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 3b33511d1781 · generated-at: 2026-09-11 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
 > You are an external reviewer for this repo — project context below, distilled from
 > CLAUDE.md. This file is shared verbatim by Kiro, Codex, and Agy (not a per-AI copy).
 
 # oh-my-cloud-skills — reviewer context
 
-A **Claude Code and Codex plugin marketplace** targeting all 8 plugins (aws-content, aws-ops, kiro-power-converter, agentcore-creator, co-agent, project-init, kiro, atlas). Deliverables are Markdown procedures and Python/Bash/Node helpers. Claude manifests and marketplace are present; Codex manifests/entries are published in stages. Project-init includes its generated Codex overlay, and every plugin must retain its Codex manifest and marketplace entry. Full eight-plugin acceptance remains pending.
+A **Claude Code and Codex plugin marketplace** with 8 plugins (aws-content, aws-ops, kiro-power-converter, agentcore-creator, co-agent, project-init, kiro, atlas). Deliverables are Markdown procedures and Python/Bash/Node helpers. Every plugin has both manifests and marketplace entries. Codex overlays are generated from shared procedures; all source skills, commands and specialist procedures must appear in the inventory. Specialist entries are procedural skills, not native Codex agent roles. Project-init's project hook templates require separate installation and trust.
 
-The **kiro** plugin is a cost-savings delegation workflow, distinct from co-agent (multi-AI perspective diversity): Claude plans/verifies, Kiro CLI implements + reviews on its own subscription credits inside an isolated git worktree — only the captured, `scope_guard.py`-checked diff reaches the main tree (`worktree.py`/`scope_guard.py`/`parse_plan.py` copied verbatim from co-agent). Its "safe" claim is scoped narrowly to changes reaching the main tree; it does not sandbox `execute_bash` inside the worktree, which is a separate trust decision about `kiro-cli` itself (see `plugins/kiro/CLAUDE.md` → "Trust decision" when reviewing anything that touches `.kiro/agents/kiro-implementer.json`).
+The **kiro** plugin is a cost-savings delegation workflow, distinct from co-agent (multi-AI perspective diversity): The current host plans/verifies, Kiro CLI implements + reviews on its own subscription credits inside an isolated git worktree — only the captured, `scope_guard.py`-checked diff reaches the main tree (`worktree.py`/`scope_guard.py`/`parse_plan.py` copied verbatim from co-agent). Its "safe" claim is scoped narrowly to changes reaching the main tree; it does not sandbox `execute_bash` inside the worktree, which is a separate trust decision about `kiro-cli` itself (see `plugins/kiro/CLAUDE.md` → "Trust decision" when reviewing anything that touches `.kiro/agents/kiro-implementer.json`).
 
 ## Stack
 - **Python 3** (stdlib-first; `defusedxml` for XML), **Bash**, **Node.js** (PptxGenJS deck scripts), **Markdown** (agents/skills/commands), JSON manifests. Docs site = Docusaurus (`docs/`).
@@ -16,17 +16,21 @@ The **kiro** plugin is a cost-savings delegation workflow, distinct from co-agen
 - `bash tests/run-all.sh` — TAP test suite (hooks, secret-scan regex, plugin structure). Must be **0 failed**.
 - `python3 scripts/test-plugins.py` — validates all 8 plugins' Claude manifests + agent/skill/command refs + version consistency. Must PASS.
 - `python3 scripts/test-codex-plugins.py` — validates the `.codex-plugin/plugin.json` manifests + `.agents/plugins/marketplace.json`. Must PASS.
+- `python3 scripts/sync-codex-plugins.py --check` — all generated overlays must match; no plugin may be skipped.
+- Merge only with the latest-HEAD AI review and separate Codex validation CI passing. Generation runs with the PR's implementation in isolated CI; privileged L1 reads the PR tree as data only.
+- `python3 scripts/test-codex-runtime.py` — disposable actual install, skill/hook discovery and consumer helpers.
+- `python3 scripts/test-codex-native-hooks.py --project-init` — native hook/trust fixtures with local Responses; no external inference.
 - `python3 scripts/eval-skills.py` — skill quality/structure/token eval.
 - Diagram skill gates (before exporting a `.drawio`): `validate_drawio.py` (XML/truncation) → `lint_layout.py` (layout score ≥80) → optional `snap_grid.py` (grid align).
 - Remarp: `remarp_to_slides.py validate <dir>` before build.
 - PPTX (`aws-light-fcd` skill): build with `NODE_PATH=$(npm root -g) node build.js`; finish with `python scripts/embed_fonts.py <deck>.pptx`.
 
 ## Architectural boundaries
-- Plugin layout: `.claude-plugin/plugin.json` (manifest: `agents[]`, `skills[]`, `commands[]`, `hooks`, `mcpServers`) + `.codex-plugin/plugin.json` where published + `CLAUDE.md` (routing) + `agents/*.md` + `skills/<name>/{SKILL.md,references/,scripts/}`.
+- Plugin layout: `.claude-plugin/plugin.json` (manifest: `agents[]`, `skills[]`, `commands[]`, `hooks`, `mcpServers`) + `.codex-plugin/plugin.json` plus generated entry skills + `CLAUDE.md` (routing) + `agents/*.md` + `skills/<name>/{SKILL.md,references/,scripts/}`.
 - Project-init's upstream-owned files remain byte-identical except the Claude manifest's version. Its separate generated `.codex-plugin/` overlay is preserved during sync and regenerated after source updates. `MIRRORED_PLUGINS` is source-only; no plugin is exempt from Codex manifest validation. Validator success alone does not prove all Codex workflows ready. See `docs/reference/project-init-upstream-sync.md`.
 - **Every path in plugin.json must resolve to a real file** (test-plugins.py / test-codex-plugins.py enforce).
 - Content plugin → artifacts (HTML/.drawio/.md/.pptx) → **content-review-agent quality gate (≥85)** before "done". Native (editable) PPTX is the `aws-light-fcd` skill (PptxGenJS); `reactive-presentation` additionally exports built web decks to screenshot-based PPTX (`scripts/export_pptx.py`, headless Playwright + python-pptx). `aws-light-fcd` references `reactive-presentation`'s 811-icon library in place via `kit.icon()` — don't duplicate icon assets.
-- Ops plugin → diagnoses (commands-first runbooks). co-agent → chairs a multi-AI panel (Kiro/Codex/Antigravity — `agy`; no Gemini CLI support, removed per ADR-010), the host synthesizes (Codex chairs when `CO_AGENT_HOST=codex`).
+- Ops plugin → diagnoses (commands-first runbooks). co-agent → the current host chairs a panel of Kiro, the other host CLI (Claude or Codex), and Antigravity (`agy`; Gemini removed per ADR-010). The current host is excluded from peer selection; Codex chairs when `CO_AGENT_HOST=codex`.
 - A single shared **version** across all `plugin.json` (both `.claude-plugin` and `.codex-plugin`) + both marketplaces + git tag `v{version}` — they must match.
 
 ## Conventions
@@ -45,7 +49,7 @@ The **kiro** plugin is a cost-savings delegation workflow, distinct from co-agen
 - PII in DynamoDB needs KMS + TTL. S3 Block Public Access always on. Never delete CloudTrail logs.
 
 ## Review checklist
-1. Do all plugin.json refs resolve? Version consistent across plugin.json/marketplace.json (Claude + Codex)?
+1. Do all plugin.json refs resolve? Versions consistent across both hosts? Does inventory cover every source procedure, and does the unconditional generation check pass?
 2. Bash: quote vars, `set -e`-safe capture (`v=$(cmd) && rc=0 || rc=$?`), no unquoted `$(...)` injection, no untrusted repo content interpolated into a command line (use STDIN).
 3. Python: `with open(...)`, defusedxml/XXE guard, no silent failures.
 4. Any AWS security mandate violated? (see Banned patterns)

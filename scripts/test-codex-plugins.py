@@ -59,8 +59,8 @@ class CodexPluginValidator:
             return None
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            self.error(f"{label} contains invalid JSON: {exc}")
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            self.error(f"{label} contains unreadable or invalid JSON: {exc}")
             return None
         if not isinstance(payload, dict):
             self.error(f"{label} must contain a JSON object")
@@ -117,6 +117,8 @@ class CodexPluginValidator:
         skills_path = self.plugin_path(plugin_name, manifest.get("skills"), "skills")
         if skills_path:
             self.validate_skills(plugin_name, skills_path)
+            if skills_path == (plugin_dir / ".codex-plugin/skills").resolve():
+                self.validate_inventory(plugin_name)
 
         mcp_servers = manifest.get("mcpServers")
         if mcp_servers is not None:
@@ -182,6 +184,9 @@ class CodexPluginValidator:
             return
         for skill_dir in sorted(skill_dirs):
             skill_md = skill_dir / "SKILL.md"
+            if (self.plugins_dir / plugin_name).resolve() not in skill_md.resolve().parents:
+                self.error(f"{plugin_name}: skill {skill_dir.name} path escapes the plugin")
+                continue
             if not skill_md.is_file():
                 self.error(f"{plugin_name}: skill {skill_dir.name} missing SKILL.md")
                 continue
@@ -202,6 +207,70 @@ class CodexPluginValidator:
                 self.error(f"{plugin_name}: skill {skill_dir.name} missing frontmatter name")
             if not re.search(r"^description:\s*\S+", frontmatter, re.MULTILINE):
                 self.error(f"{plugin_name}: skill {skill_dir.name} missing frontmatter description")
+
+    def validate_inventory(self, plugin_name: str) -> None:
+        """Check source coverage independently of the generator, without executing code."""
+        plugin = self.plugins_dir / plugin_name
+        inventory_path = self.plugin_path(plugin_name, "./.codex-plugin/inventory.json", "inventory")
+        if inventory_path is None:
+            return
+        inventory = self.load_json(inventory_path, f"{plugin_name} Codex inventory")
+        if inventory is None:
+            return
+        entries = inventory.get("skills")
+        if inventory.get("plugin") != plugin_name or not isinstance(entries, list) or not entries:
+            self.error(f"{plugin_name}: invalid Codex inventory")
+            return
+        names: set[str] = set()
+        sources_seen: set[str] = set()
+        entry_paths: set[str] = set()
+        for entry in entries:
+            if (not isinstance(entry, dict) or not isinstance(entry.get("name"), str)
+                    or re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", entry["name"]) is None):
+                self.error(f"{plugin_name}: invalid Codex inventory entry name")
+                continue
+            name = entry["name"]
+            if name in names:
+                self.error(f"{plugin_name}: duplicate Codex inventory entry {name}")
+            names.add(name)
+            expected_path = f".codex-plugin/skills/{name}/SKILL.md"
+            if entry.get("path") != expected_path:
+                self.error(f"{plugin_name}: invalid Codex inventory entry path for {name}")
+                continue
+            entry_paths.add(expected_path)
+            path = self.plugin_path(plugin_name, "./" + expected_path, "entry")
+            if path is not None and not path.is_file():
+                self.error(f"{plugin_name}: missing Codex entry {name}")
+            sources = entry.get("sources")
+            if not isinstance(sources, list) or not sources:
+                self.error(f"{plugin_name}: {name} has no source procedures")
+                continue
+            for source in sources:
+                if not isinstance(source, str):
+                    self.error(f"{plugin_name}: invalid source procedure")
+                    continue
+                if source in sources_seen:
+                    self.error(f"{plugin_name}: duplicate source procedure {source}")
+                sources_seen.add(source)
+                source_path = self.plugin_path(plugin_name, "./" + source, "source")
+                if source_path is not None and not source_path.is_file():
+                    self.error(f"{plugin_name}: missing procedure {source}")
+        expected_sources = {
+            str(path.relative_to(plugin))
+            for pattern in ("skills/*/SKILL.md", "commands/*.md", "agents/*.md")
+            for path in plugin.glob(pattern)
+            if path.name not in {"README.md", "CLAUDE.md", "AGENTS.md"}
+        }
+        if sources_seen != expected_sources:
+            self.error(f"{plugin_name}: Codex procedure coverage mismatch "
+                       f"(missing={sorted(expected_sources - sources_seen)}, "
+                       f"extra={sorted(sources_seen - expected_sources)})")
+        discovered = {str(path.relative_to(plugin))
+                      for path in (plugin / ".codex-plugin/skills").rglob("SKILL.md")}
+        if entry_paths != discovered:
+            self.error(f"{plugin_name}: Codex entry coverage mismatch "
+                       f"(missing={sorted(entry_paths - discovered)}, "
+                       f"extra={sorted(discovered - entry_paths)})")
 
     def validate_mcp(self, plugin_name: str, mcp_path: Path) -> None:
         payload = self.load_json(mcp_path, f"{plugin_name} .mcp.json")
