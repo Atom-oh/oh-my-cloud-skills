@@ -16,10 +16,9 @@ import tempfile
 import time
 
 
-def request(process, selector, request_id, method, params):
-    process.stdin.write(json.dumps({"id": request_id, "method": method, "params": params}) + "\n")
-    process.stdin.flush()
-    deadline = time.monotonic() + 30
+def receive(process, selector, timeout=30):
+    """Read one frame, retaining coalesced/partial frames for subsequent calls."""
+    deadline = time.monotonic() + timeout
     buffer = getattr(process, "_codex_rpc_buffer", b"")
     while True:
         while b"\n" in buffer:
@@ -27,13 +26,9 @@ def request(process, selector, request_id, method, params):
             process._codex_rpc_buffer = buffer
             if not line.strip():
                 continue
-            message = json.loads(line)
-            if message.get("id") == request_id:
-                if "error" in message:
-                    raise RuntimeError(f"{method}: {message['error']}")
-                return message["result"]
+            return json.loads(line)
         if time.monotonic() >= deadline:
-            raise RuntimeError(f"Timed out waiting for {method}")
+            raise RuntimeError("Timed out waiting for an app-server frame")
         if not selector.select(timeout=1):
             if process.poll() is not None:
                 raise RuntimeError("Codex app-server exited before replying")
@@ -43,6 +38,20 @@ def request(process, selector, request_id, method, params):
             raise RuntimeError("Codex app-server closed stdout")
         buffer += chunk
         process._codex_rpc_buffer = buffer
+
+
+def request(process, selector, request_id, method, params, on_event=None):
+    process.stdin.write(json.dumps({"id": request_id, "method": method, "params": params}) + "\n")
+    process.stdin.flush()
+    deadline = time.monotonic() + 30
+    while True:
+        message = receive(process, selector, deadline - time.monotonic())
+        if message.get("id") == request_id:
+            if "error" in message:
+                raise RuntimeError(f"{method}: {message['error']}")
+            return message["result"]
+        if on_event is not None:
+            on_event(message)
 
 
 def main():
