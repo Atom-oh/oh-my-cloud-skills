@@ -35,7 +35,9 @@ if [ -z "$ORPHAN_PID" ]; then
 else
   # `kill -0` alone is not a liveness test here: in a sandbox whose pid 1 does not reap
   # children, the killed orphan lingers as a zombie (state Z) and kill -0 still succeeds.
-  ORPHAN_STATE="$(ps -o stat= -p "$ORPHAN_PID" 2>/dev/null | tr -d ' ')"
+  # The expected successful reap can make ps exit 1. Under the suite's
+  # set -e/pipefail this must not terminate the runner before the assertion.
+  ORPHAN_STATE="$(ps -o stat= -p "$ORPHAN_PID" 2>/dev/null | tr -d ' ' || true)"
   if ! kill -0 "$ORPHAN_PID" 2>/dev/null || [ -z "$ORPHAN_STATE" ] || [[ "$ORPHAN_STATE" == Z* ]]; then
     pass "reaper kills the orphaned (ppid=1) acp-server-pattern process"
   else

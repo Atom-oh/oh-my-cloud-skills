@@ -29,11 +29,9 @@ ALLOWED_MANIFEST_FIELDS = {
     "repository",
     "license",
     "keywords",
+    "hooks",
 }
-# Plugins deliberately absent from the Codex surface — an upstream mirror whose manifest
-# set is kept verbatim (docs/reference/project-init-upstream-sync.md). Everything else
-# missing a .codex-plugin manifest is an error, not a warning. Keep in sync with
-# MIRRORED_PLUGINS in test-plugins.py (same plugin, other surface).
+# Retain the existing mirror exception until its generated adapter lands.
 CLAUDE_ONLY = {"project-init"}
 
 ALLOWED_INSTALL_POLICIES = {"NOT_AVAILABLE", "AVAILABLE", "INSTALLED_BY_DEFAULT"}
@@ -73,16 +71,7 @@ class CodexPluginValidator:
         return payload
 
     def discover_plugins(self) -> list[str]:
-        """Plugins exposed on the Codex surface — those carrying a `.codex-plugin` manifest.
-
-        A missing Codex manifest is an ERROR for every plugin except those in
-        `CLAUDE_ONLY`: `project-init` is mirrored verbatim from its upstream fork source,
-        which ships no Codex manifest, so it is deliberately absent from the Codex
-        marketplace and skipped silently (a standing warning on a known-correct state is
-        noise that buries a real one). Anywhere else, a `.codex-plugin/plugin.json` that
-        goes missing means the plugin silently dropped off the Codex marketplace — the
-        suite has to fail, not warn, since warnings don't reach the exit code.
-        """
+        """Validate the Codex surface while retaining the upstream mirror exception."""
         names = {
             path.parent.parent.name
             for path in self.plugins_dir.glob("*/.codex-plugin/plugin.json")
@@ -92,7 +81,7 @@ class CodexPluginValidator:
             if name in names or name in CLAUDE_ONLY:
                 continue
             self.error(f"{name}: no .codex-plugin manifest — not exposed to Codex "
-                       f"(add one, or list it in CLAUDE_ONLY if that's deliberate)")
+                       f"(add the missing Codex manifest)")
         return sorted(names)
 
     def validate_manifest(self, plugin_name: str) -> None:
@@ -128,15 +117,22 @@ class CodexPluginValidator:
                     f"Claude version {claude_manifest.get('version')}"
                 )
 
-        if manifest.get("skills") != "./skills/":
-            self.error(f"{plugin_name}: skills must be './skills/'")
-        self.validate_skills(plugin_name, plugin_dir / "skills")
+        skills_path = self.plugin_path(plugin_name, manifest.get("skills"), "skills")
+        if skills_path:
+            self.validate_skills(plugin_name, skills_path)
 
         mcp_servers = manifest.get("mcpServers")
         if mcp_servers is not None:
-            if mcp_servers != "./.mcp.json":
-                self.error(f"{plugin_name}: mcpServers must be './.mcp.json'")
-            self.validate_mcp(plugin_name, plugin_dir / ".mcp.json")
+            mcp_path = self.plugin_path(plugin_name, mcp_servers, "mcpServers")
+            if mcp_path:
+                self.validate_mcp(plugin_name, mcp_path)
+
+        if "hooks" in manifest:
+            hooks_path = self.plugin_path(plugin_name, manifest["hooks"], "hooks")
+            if hooks_path:
+                payload = self.load_json(hooks_path, f"{plugin_name} hooks")
+                if payload is not None and not isinstance(payload.get("hooks"), dict):
+                    self.error(f"{plugin_name}: hooks must contain a hooks object")
 
         interface = manifest.get("interface")
         if not isinstance(interface, dict):
@@ -153,7 +149,7 @@ class CodexPluginValidator:
             self.require_string(interface, field, plugin_name, prefix="interface")
 
         capabilities = interface.get("capabilities")
-        if not isinstance(capabilities, list) or not all(
+        if not isinstance(capabilities, list) or not capabilities or not all(
             isinstance(item, str) and item.strip() for item in capabilities
         ):
             self.error(f"{plugin_name}: interface.capabilities must be a non-empty string list")
@@ -161,6 +157,17 @@ class CodexPluginValidator:
         default_prompt = interface.get("defaultPrompt", interface.get("default_prompt"))
         if not self.is_prompt_value(default_prompt):
             self.error(f"{plugin_name}: interface.defaultPrompt must be a string or string list")
+
+    def plugin_path(self, plugin_name: str, value: Any, label: str) -> Path | None:
+        root = (self.plugins_dir / plugin_name).resolve()
+        if not isinstance(value, str) or not value.startswith("./"):
+            self.error(f"{plugin_name}: {label} must be a './'-prefixed package path")
+            return None
+        path = (root / value).resolve()
+        if root not in path.parents:
+            self.error(f"{plugin_name}: {label} path escapes the plugin")
+            return None
+        return path
 
     def validate_skills(self, plugin_name: str, skills_dir: Path) -> None:
         if not skills_dir.is_dir():
@@ -213,8 +220,8 @@ class CodexPluginValidator:
             if not isinstance(config, dict):
                 self.error(f"{plugin_name}: MCP server {server_name} config must be an object")
                 continue
-            if not config.get("command"):
-                self.error(f"{plugin_name}: MCP server {server_name} missing command")
+            if not config.get("command") and not config.get("url"):
+                self.error(f"{plugin_name}: MCP server {server_name} missing command or url")
 
     def validate_marketplace(self, plugin_names: list[str]) -> None:
         marketplace_path = self.project_root / ".agents" / "plugins" / "marketplace.json"
@@ -242,29 +249,14 @@ class CodexPluginValidator:
             if not isinstance(name, str) or not name:
                 self.error("marketplace: plugin entry name is required")
                 continue
+            if name in seen:
+                self.error(f"marketplace: duplicate entry {name}")
             seen.add(name)
-            if name in CLAUDE_ONLY:
-                # A CLAUDE_ONLY plugin is deliberately off the Codex surface, so a
-                # marketplace entry for it is either stale or premature. Neither of the
-                # other checks catches it: `expected` never contains it (so "missing
-                # entry" can't fire) and its plugins/ directory does exist (so the
-                # source-path check passes). Error only once the manifest is actually
-                # gone — while it still ships one, the entry is merely early, and the
-                # pairing is meant to land in a single commit.
-                if (self.plugins_dir / name / ".codex-plugin" / "plugin.json").is_file():
-                    self.warn(f"marketplace: entry {name} is listed as Claude-only "
-                              f"(CLAUDE_ONLY) but still ships a .codex-plugin manifest — "
-                              f"remove both together")
+            if name not in expected:
+                if name in CLAUDE_ONLY:
+                    self.error(f"marketplace: entry {name} is deliberately Claude-only and ships no .codex-plugin manifest")
                 else:
-                    self.error(f"marketplace: entry {name} is deliberately Claude-only "
-                               f"(CLAUDE_ONLY) and ships no .codex-plugin manifest — "
-                               f"remove it from the Codex marketplace")
-            elif name not in expected:
-                # `expected` is the Codex surface (plugins with a .codex-plugin manifest),
-                # not "directories that exist" — so say which one is actually absent. The
-                # directory usually IS there; the manifest is what's missing, and
-                # discover_plugins() has already errored about it.
-                self.warn(f"marketplace: entry {name} has no .codex-plugin manifest")
+                    self.error(f"marketplace: entry {name} has no .codex-plugin manifest")
 
             source = entry.get("source")
             expected_path = f"./plugins/{name}"
