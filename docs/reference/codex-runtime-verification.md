@@ -17,7 +17,7 @@ kiro:configure
 kiro:setup
 ```
 
-Command basenames therefore do not collide across plugins. Prefixing every
+Plugin-qualified names therefore do not collide across plugins. Prefixing every
 source `name` again would change the exposed command names unnecessarily.
 `test-codex-runtime.py` compares the returned names and installed paths with
 each package's inventory and rejects duplicates or fallback source paths.
@@ -43,8 +43,10 @@ two Bash handlers and Stop handlers from unchanged installed sources.
 Kiro review stayed off; no external provider was called.
 
 A native `custom_tool_call` created two files; PostToolUse supplied
-`tool_name: "apply_patch"` and `tool_input.command`. A native denial fixture
-blocked its tool and marker creation. User hook trust was unchanged.
+`tool_name: "apply_patch"` and `tool_input.command`. A separate manual native
+denial fixture blocked its tool and marker creation. User hook trust was unchanged.
+The script below reproduces Kiro execution, trust checks and patch delivery;
+the denial fixture is not part of that script.
 
 ## Reproduction and scope
 
@@ -52,6 +54,8 @@ blocked its tool and marker creation. User hook trust was unchanged.
 # Check a published package against the real checkout.
 python3 scripts/sync-codex-plugins.py --check --plugin kiro
 python3 scripts/test-codex-runtime.py --plugin kiro
+# Execute native hooks against a local Responses fixture (no external inference).
+python3 scripts/test-codex-native-hooks.py --report /var/tmp/codex-native-hooks.json
 
 # After publishing all packages, check the complete marketplace.
 python3 scripts/sync-codex-plugins.py --check

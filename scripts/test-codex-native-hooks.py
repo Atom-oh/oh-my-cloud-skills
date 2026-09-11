@@ -212,7 +212,8 @@ def probe(root, temp_dir, report):
                 str(installed["kiro"]) in e["params"]["run"]["sourcePath"]]
         require(all(r["status"] == "completed" for r in runs), "Kiro bridge failed")
         require(sum(r["eventName"] == "sessionStart" for r in runs) == 2 and
-                sum(r["eventName"] == "preToolUse" for r in runs) == 2, "Missing native Kiro dispatch")
+                sum(r["eventName"] == "preToolUse" for r in runs) == 2 and
+                sum(r["eventName"] == "stop" for r in runs) == 2, "Missing native Kiro dispatch")
         require(server.routing_seen and not provider_called.exists(), "Routing absent or provider invoked")
         payloads = [json.loads(line) for line in payload_file.read_text().splitlines()]
         require(len(payloads) == 1 and payloads[0]["tool_name"] == "apply_patch" and
