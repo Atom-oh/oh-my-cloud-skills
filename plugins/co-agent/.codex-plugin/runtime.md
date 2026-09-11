@@ -72,9 +72,11 @@ authorization or override an already specified workflow.
 
 ## Hooks and evidence
 
-This plugin's command hooks are connected through `.codex-plugin/hooks.json`.
-The adapter translates a Codex `apply_patch` into the affected file paths for
-legacy file checks, including renames, while retaining shell-hook decisions.
+When this package's manifest declares `hooks`, its command hooks are connected
+through `.codex-plugin/hooks.json`; otherwise it has no plugin command hooks.
+A `project-template/.codex/` tree requires separate installation into the consumer
+project. For configured file matchers, the adapter translates Codex `apply_patch`
+into affected paths, including renames, while retaining shell-hook decisions.
 Installation alone does not establish that hooks ran: Codex requires hook trust
 and the runtime must support the event. Run the procedure's substantive checks
 explicitly when needed. Report actual review and validation evidence; an absent
