@@ -1,0 +1,82 @@
+{
+  "plugin": "project-init",
+  "skills": [
+    {
+      "name": "add-adr",
+      "path": ".codex-plugin/skills/add-adr/SKILL.md",
+      "sources": [
+        "commands/add-adr.md"
+      ]
+    },
+    {
+      "name": "add-module",
+      "path": ".codex-plugin/skills/add-module/SKILL.md",
+      "sources": [
+        "commands/add-module.md"
+      ]
+    },
+    {
+      "name": "add-reference-doc",
+      "path": ".codex-plugin/skills/add-reference-doc/SKILL.md",
+      "sources": [
+        "commands/add-reference-doc.md"
+      ]
+    },
+    {
+      "name": "add-runbook",
+      "path": ".codex-plugin/skills/add-runbook/SKILL.md",
+      "sources": [
+        "commands/add-runbook.md"
+      ]
+    },
+    {
+      "name": "doc-sync-checker",
+      "path": ".codex-plugin/skills/doc-sync-checker/SKILL.md",
+      "sources": [
+        "agents/doc-sync-checker.md"
+      ]
+    },
+    {
+      "name": "generate-changelog",
+      "path": ".codex-plugin/skills/generate-changelog/SKILL.md",
+      "sources": [
+        "commands/generate-changelog.md"
+      ]
+    },
+    {
+      "name": "generate-readme",
+      "path": ".codex-plugin/skills/generate-readme/SKILL.md",
+      "sources": [
+        "commands/generate-readme.md"
+      ]
+    },
+    {
+      "name": "init-project",
+      "path": ".codex-plugin/skills/init-project/SKILL.md",
+      "sources": [
+        "commands/init-project.md"
+      ]
+    },
+    {
+      "name": "project-scaffolder",
+      "path": ".codex-plugin/skills/project-scaffolder/SKILL.md",
+      "sources": [
+        "skills/project-scaffolder/SKILL.md"
+      ]
+    },
+    {
+      "name": "source-command-health-check",
+      "path": ".codex-plugin/skills/source-command-health-check/SKILL.md",
+      "sources": [
+        "commands/health-check.md"
+      ]
+    },
+    {
+      "name": "sync-docs",
+      "path": ".codex-plugin/skills/sync-docs/SKILL.md",
+      "sources": [
+        "commands/sync-docs.md"
+      ]
+    }
+  ]
+}

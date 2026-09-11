@@ -67,8 +67,9 @@ List of sibling doc relpaths (e.g. `consensus-pipeline.md`, relative to the atla
 **Optional** — but if present it must be a list, or the doc gets a schema error. A
 `related` entry that does not resolve to another doc under the same root is reported by
 `atlas_index.py --validate` (exit 1) and blocks the sync commit, so a broken link cannot
-quietly ship. A doc no other doc points at is reported as an orphan advisory — the graph
-is only navigable if the edges are real.
+quietly ship. A doc no other doc points at is reported as an orphan advisory; that
+warning alone leaves validation at exit 0 and does not block a sync commit. Add
+edges only for real relationships, not to silence warnings in a one-doc wiki.
 
 ## code_rev
 
