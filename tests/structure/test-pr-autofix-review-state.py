@@ -185,6 +185,8 @@ class ReviewStateTests(unittest.TestCase):
         live = {
             "number": 17, "state": "OPEN", "headRefOid": "a" * 40, "headRefName": "fixture",
             "baseRefOid": "b" * 40, "baseRefName": "main",
+            "headRepository": {"nameWithOwner": "example/repository"},
+            "url": "https://github.com/example/repository/pull/17",
             "reviewDecision": "APPROVED", "mergeStateStatus": "CLEAN",
             "mergeable": "MERGEABLE",
         }
@@ -203,6 +205,13 @@ if pathlib.Path(sys.argv[0]).name == "git":
         print(os.environ.get("TEST_BRANCH", "fixture"))
     elif sys.argv[1:] == ["rev-parse", "--verify", "HEAD"]:
         print(os.environ.get("TEST_LOCAL_HEAD", "a" * 40))
+    elif sys.argv[1:] == ["config", "--null", "--list"]:
+        print("remote.origin.url\\ngit@github.com:example/repository.git\\0"
+              "branch.fixture.remote\\norigin\\0"
+              "branch.fixture.merge\\nrefs/heads/fixture\\0", end="")
+    elif sys.argv[1] == "for-each-ref":
+        branch = os.environ.get("TEST_BRANCH", "fixture")
+        print("*\\0refs/heads/" + branch + "\\0origin\\0\\0origin\\0refs/heads/" + branch)
     else: sys.exit(2)
 elif sys.argv[1:3] == ["repo", "view"]:
     print("example/repository")

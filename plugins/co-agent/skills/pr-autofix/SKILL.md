@@ -128,6 +128,7 @@ parameter of one LensGate call, never persisted.
 ### 1. Identify the PR
 
 ```bash
+set -o pipefail
 REPO=$(gh repo view --json nameWithOwner --jq '.nameWithOwner') || exit 1
 CURRENT_BRANCH=$(git symbolic-ref --quiet --short HEAD) || { echo "detached HEAD; select the PR branch"; exit 1; }
 if [ -z "${PR_NUMBER:-}" ]; then
@@ -139,16 +140,18 @@ if [ -z "${PR_NUMBER:-}" ]; then
   ') || exit 1
 fi
 [[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]] || { echo "invalid PR number"; exit 1; }
-PR_TARGET=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json state,headRefName --jq '[.state,.headRefName]|@tsv') || exit 1
-[ "$PR_TARGET" = $'OPEN\t'"$CURRENT_BRANCH" ] || {
-  printf 'PR state/head: %s; require OPEN on %s before fixes or pushes.\n' "$PR_TARGET" "$CURRENT_BRANCH"; exit 1;
-}
+gh pr view "$PR_NUMBER" --repo "$REPO" --json state,headRefName,headRepository,url |
+  python3 "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts/check_pr_target.py" || exit 1
 ```
 
 Run this guard on entry and before fixes/pushes, including resumes. It permits
 unpushed `gate`/`committing` deltas; local/remote SHA equality is required only at
-Mark clean. Non-OPEN or off-branch PRs exit here. Resolve a checkout mismatch before
-re-entering; handle fixes for closed/merged PRs through the host's corrective-PR
+Mark clean. The helper binds the attached branch and bare `git push` destination
+to the OPEN PR's head repository/ref using local Git metadata, including fork
+`pushRemote`/`pushurl` routes. Ambiguous routes, URL rewrites, multiple destinations,
+and pushes of extra/forced refs fail closed; correct the named push remote or
+tracking configuration before re-entering. It never pushes or resolves SSH aliases.
+Handle fixes for closed/merged PRs through the host's corrective-PR
 workflow outside this loop. Without a number, select the unique open PR for the
 attached branch.
 
