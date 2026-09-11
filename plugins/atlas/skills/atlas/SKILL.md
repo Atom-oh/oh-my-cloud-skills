@@ -97,7 +97,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/skills/atlas/scripts/atlas_drift.py" --json
 # writes nothing (it still runs a few read-only `git` calls to compute the preview)
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/atlas/scripts/atlas_sync.py" --dry-run
 
-# schema + graph check — the ONE gate in the plugin: exits 1 on any problem
+# schema + graph check — exits 1 on hard errors; orphan advisories alone exit 0
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/atlas/scripts/atlas_index.py" --validate
 
 # regenerate the INDEX table between its AUTO-MANAGED markers

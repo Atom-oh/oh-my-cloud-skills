@@ -77,8 +77,8 @@ python3 "$SK/atlas_index.py" --write --root "$ROOT"
 python3 "$SK/atlas_index.py" --validate --root "$ROOT"
 ```
 
-`--validate` exits 1 on any problem. Fix every `error:` line (schema break, broken
-`related` link) before finishing; an `advisory:` orphan line for the new doc means no
+`--validate` exits 1 on hard errors and 0 when only advisories remain. Fix every
+`error:` line (schema break, broken `related` link) before finishing; an `advisory:` orphan line for the new doc means no
 sibling links to it yet — add a reciprocal `related` edge where one genuinely exists.
 
 ## Step 5: Report
