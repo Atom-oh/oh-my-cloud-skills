@@ -1,7 +1,7 @@
 {
   "name": "kiro",
   "version": "1.17.0",
-  "description": "Claude plans, Kiro implements and reviews — a cost-savings delegation plugin. Claude designs specs and verifies results while Kiro CLI (subscription credits) writes the code inside an isolated worktree and can optionally review diffs before commit.",
+  "description": "Cost-saving delegation: the current host plans and verifies; Kiro CLI implements in isolated worktrees and optionally reviews changes before commits.",
   "author": {
     "name": "atomoh"
   },
@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "Kiro Delegate",
     "shortDescription": "Delegate implementation to Kiro CLI to save tokens.",
-    "longDescription": "Plan with the current host and delegate implementation to Kiro CLI in an isolated worktree. Codex skills expose setup, configuration, delegation, read-only review and the delegate procedure; adapted commit/push hooks retain their configured review behavior. Verify captured changes and tests before landing them.",
+    "longDescription": "Use Codex to plan, configure and verify Kiro worktree delegation or read-only review. Shared commit/push hooks preserve opt-in review behavior. Check captured changes and tests before landing them.",
     "developerName": "atomoh",
     "category": "Collaboration",
     "capabilities": [

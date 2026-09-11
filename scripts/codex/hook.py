@@ -18,8 +18,22 @@ def patch_changes(patch):
                 break
         else:
             if line.startswith("*** Move to: ") and changes:
-                changes[-1] = (line[len("*** Move to: "):], changes[-1][1])
+                # A move affects the original path as well as its destination.
+                changes.append((line[len("*** Move to: "):], "Edit"))
     return list(dict.fromkeys(changes))
+
+
+def project_root(cwd):
+    try:
+        result = subprocess.run(
+            ["git", "-c", "core.fsmonitor=false", "rev-parse", "--show-toplevel"],
+            cwd=cwd, capture_output=True, text=True, timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return cwd
+    # Preserve spaces in real directory names; remove only Git's line ending.
+    top = result.stdout.rstrip("\r\n")
+    return Path(top).resolve() if result.returncode == 0 and top else cwd
 
 
 def main():
@@ -34,16 +48,17 @@ def main():
             raise ValueError("hook event does not match the installed handler")
         cwd = Path(payload["cwd"]).resolve()
         env = dict(os.environ, PLUGIN_ROOT=str(root), CLAUDE_PLUGIN_ROOT=str(root),
-                   CLAUDE_PROJECT_DIR=str(cwd))
+                   CLAUDE_PROJECT_DIR=str(project_root(cwd)))
         if config["plugin"] == "co-agent":
             env["CO_AGENT_HOST"] = "codex"
         inputs = [payload]
-        if payload.get("tool_name") == "apply_patch" and any(
-            alias in handler.get("matcher", "") for alias in ("Edit", "Write")
+        matcher = handler.get("matcher", "")
+        if payload.get("tool_name") == "apply_patch" and matcher not in ("", "*") and any(
+            re.search(matcher, alias) is not None for alias in ("Edit", "Write")
         ):
             inputs = []
             for path, tool in patch_changes(payload.get("tool_input", {}).get("command", "")):
-                if re.search(handler["matcher"], tool) is None:
+                if re.search(matcher, tool) is None:
                     continue
                 # No command interpolation: the path is passed only as stdin JSON.
                 absolute = str((cwd / path).resolve())
@@ -90,7 +105,7 @@ def main():
                 value["systemMessage"] = "\n".join(dict.fromkeys(warnings))
             print(json.dumps(value))
         return 0
-    except (OSError, ValueError, KeyError, IndexError, TypeError) as exc:
+    except (OSError, ValueError, KeyError, IndexError, TypeError, re.error) as exc:
         print(f"Codex plugin hook failed: {exc}", file=sys.stderr)
         return 1
 

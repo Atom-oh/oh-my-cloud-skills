@@ -11,12 +11,15 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 EXCLUDED = {"README.md", "CLAUDE.md", "AGENTS.md"}
+OPTIONAL_ARTIFACTS = ("hook.py", "hooks.json", "hook-handlers.json", "mcp.json", "workflow.md")
 # Codex 0.154 also migrates these argument-free source commands automatically.
 # Reuse its stable names so the explicit, host-adapted skill wins deduplication.
 COMMAND_ALIASES = {
     ("atlas", "graph"): "source-command-graph",
     ("project-init", "health-check"): "source-command-health-check",
 }
+# Keep the public command alias, but let its canonical skill own automatic routing.
+EXPLICIT_COMMANDS = {("kiro", "delegate")}
 
 
 def dump(value):
@@ -100,7 +103,9 @@ def generated_files(root, plugins=None):
             for source_path in source_paths:
                 body += f"- [{source_path}](../../../{source_path})\n"
             outputs[path] = body
-            if any(meta.get("disable-model-invocation") == "true" for _, meta in sources):
+            worker_only = all(source.parent.name == "agents" for source, _ in sources)
+            if (worker_only or (name, skill_name) in EXPLICIT_COMMANDS
+                    or any(meta.get("disable-model-invocation") == "true" for _, meta in sources)):
                 outputs[path.parent / "agents/openai.yaml"] = (
                     "policy:\n  allow_implicit_invocation: false\n"
                 )
@@ -155,8 +160,8 @@ def generated_files(root, plugins=None):
                         })
                     adapted_group = {**group, "hooks": adapted}
                     matcher = group.get("matcher", "")
-                    if event in {"PreToolUse", "PostToolUse"} and any(
-                        alias in matcher for alias in ("Edit", "Write")
+                    if event in {"PreToolUse", "PostToolUse"} and matcher not in ("", "*") and any(
+                        re.search(matcher, alias) for alias in ("Edit", "Write")
                     ):
                         # Codex aliases Edit/Write today; name apply_patch
                         # explicitly as well. The bridge retains the original
@@ -171,17 +176,19 @@ def generated_files(root, plugins=None):
         outputs[adapter / "plugin.json"] = dump(manifest)
     marketplace_path = root / ".agents/plugins/marketplace.json"
     marketplace = json.loads(marketplace_path.read_text(encoding="utf-8"))
-    existing = {entry["name"] for entry in marketplace["plugins"]}
+    existing = {entry["name"]: entry for entry in marketplace["plugins"]}
     for plugin in sorted(selected):
+        source = root / "plugins" / plugin / ".claude-plugin/plugin.json"
+        version = json.loads(source.read_text(encoding="utf-8"))["version"]
         if plugin not in existing:
-            source = root / "plugins" / plugin / ".claude-plugin/plugin.json"
-            version = json.loads(source.read_text(encoding="utf-8"))["version"]
             marketplace["plugins"].append({
                 "name": plugin,
                 "source": {"source": "local", "path": f"./plugins/{plugin}"},
                 "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
                 "category": interfaces[plugin]["category"], "version": version,
             })
+        else:
+            existing[plugin]["version"] = version
     outputs[marketplace_path] = dump(marketplace)
     return outputs
 
@@ -196,7 +203,7 @@ def main():
     selected = set(args.plugin) if args.plugin else None
     try:
         outputs = generated_files(args.root, selected)
-    except (OSError, ValueError, KeyError) as exc:
+    except (OSError, ValueError, KeyError, re.error) as exc:
         print(str(exc), file=sys.stderr)
         return 1
     stale = []
@@ -206,11 +213,18 @@ def main():
             if not args.check:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(content, encoding="utf-8")
-    # Only remove files in the explicitly generated skills tree, never arbitrary
-    # user or source files under the plugin.
+    # Prune only reserved generated paths; preserve arbitrary operator/source files.
     for plugin in (args.root / "plugins").iterdir():
+        if not (plugin / ".claude-plugin/plugin.json").is_file():
+            continue
         if selected is not None and plugin.name not in selected:
             continue
+        for name in OPTIONAL_ARTIFACTS:
+            path = plugin / ".codex-plugin" / name
+            if path not in outputs and (path.is_file() or path.is_symlink()):
+                stale.append(path)
+                if not args.check:
+                    path.unlink()
         for tree in ("skills", "project-template"):
             generated_root = plugin / ".codex-plugin" / tree
             for path in generated_root.rglob("*"):

@@ -20,7 +20,7 @@ set -uo pipefail
 
 SK="${CLAUDE_PLUGIN_ROOT}/skills/kiro-delegate/scripts"
 
-echo "kiro loaded. Claude plans + verifies, Kiro CLI implements + reviews (cost savings): /kiro:delegate · review · setup · configure. Run /kiro:setup first to detect kiro-cli and pick models."
+echo "kiro loaded. The current host plans + verifies, Kiro CLI implements + reviews (cost savings): /kiro:delegate · review · setup · configure. Run /kiro:setup first to detect kiro-cli and pick models."
 
 # `--root` omitted on purpose: kiro_config.py resolves the repo root itself via
 # `git rev-parse --show-toplevel`, so this works from any cwd the session starts in.

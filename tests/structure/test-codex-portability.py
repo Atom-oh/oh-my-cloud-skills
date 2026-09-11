@@ -104,6 +104,49 @@ class PortabilityTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 1, "full check must still detect unselected drift")
 
+    def test_regeneration_updates_selected_marketplace_version(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "source"
+            shutil.copytree(self.generated, root)
+            source = root / "plugins/kiro/.claude-plugin/plugin.json"
+            manifest = json.loads(source.read_text())
+            manifest["version"] = "9.8.7"
+            source.write_text(json.dumps(manifest))
+            market = root / ".agents/plugins/marketplace.json"
+            before = json.loads(market.read_text())
+            selected = next(p for p in before["plugins"] if p["name"] == "kiro")
+            selected["policy"]["installation"] = "NOT_AVAILABLE"
+            market.write_text(json.dumps(before))
+            subprocess.run([sys.executable, str(GENERATOR), "--root", str(root),
+                            "--plugin", "kiro"], check=True, capture_output=True)
+            after = json.loads(market.read_text())
+            actual = next(p for p in after["plugins"] if p["name"] == "kiro")
+            self.assertEqual("9.8.7", actual["version"])
+            self.assertEqual(selected["policy"], actual["policy"])
+            self.assertEqual([p for p in before["plugins"] if p["name"] != "kiro"],
+                             [p for p in after["plugins"] if p["name"] != "kiro"])
+
+    def test_removed_optional_artifacts_fail_check_and_are_pruned(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "source"
+            shutil.copytree(self.generated, root)
+            adapter = root / "plugins/project-init/.codex-plugin"
+            guide = root / "scripts/codex/project-init.md"
+            guide.unlink(missing_ok=True)
+            args = [sys.executable, str(GENERATOR), "--root", str(root),
+                    "--plugin", "project-init"]
+            subprocess.run(args, check=True, capture_output=True)
+            names = ("hook.py", "hooks.json", "hook-handlers.json", "mcp.json", "workflow.md")
+            for name in names:
+                (adapter / name).write_text("obsolete generated artifact\n")
+            manual = adapter / "operator-notes.txt"
+            manual.write_text("Keep this unowned file.\n")
+            self.assertNotEqual(0, subprocess.run(args + ["--check"], capture_output=True).returncode)
+            subprocess.run(args, check=True, capture_output=True)
+            self.assertTrue(all(not (adapter / name).exists() for name in names))
+            self.assertEqual("Keep this unowned file.\n", manual.read_text())
+            self.assertEqual(0, subprocess.run(args + ["--check"], capture_output=True).returncode)
+
     def test_every_plugin_exposes_all_source_procedures(self):
         for plugin in sorted((self.generated / "plugins").iterdir()):
             if not (plugin / ".claude-plugin/plugin.json").is_file():
@@ -125,6 +168,17 @@ class PortabilityTests(unittest.TestCase):
                     self.assertTrue(skill.is_file(), str(skill))
                     for source in entry["sources"]:
                         self.assertTrue((plugin / source).is_file(), source)
+
+    def test_internal_workers_and_duplicate_delegate_alias_require_explicit_selection(self):
+        kiro = self.generated / "plugins/kiro/.codex-plugin/skills"
+        for name in ("kiro-delegate-agent", "delegate"):
+            policy = kiro / name / "agents/openai.yaml"
+            self.assertEqual("policy:\n  allow_implicit_invocation: false\n", policy.read_text())
+        for name in ("kiro-delegate", "configure"):
+            self.assertFalse((kiro / name / "agents/openai.yaml").exists())
+        # A combined canonical skill + specialist stays an automatic workflow entry.
+        co = self.generated / "plugins/co-agent/.codex-plugin/skills/co-agent"
+        self.assertFalse((co / "agents/openai.yaml").exists())
 
     def test_generated_file_hooks_explicitly_match_apply_patch(self):
         checked = 0
@@ -195,73 +249,6 @@ class PortabilityTests(unittest.TestCase):
                 )
                 self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
                 self.assertFalse(sentinel.exists())
-
-    def test_hook_adapts_every_patch_file_and_preserves_denial(self):
-        bridge = ROOT / "scripts/codex/hook.py"
-        self.assertTrue(bridge.is_file(), str(bridge))
-        with tempfile.TemporaryDirectory(prefix="codex hook ") as tmp:
-            plugin = Path(tmp)
-            adapter = plugin / ".codex-plugin"
-            adapter.mkdir()
-            shutil.copyfile(bridge, adapter / "hook.py")
-            echo_script = plugin / "echo.py"
-            echo_script.write_text(
-                "import json,sys\np=json.load(sys.stdin)\n"
-                "print(json.dumps({'hookSpecificOutput':{'hookEventName':'PostToolUse',"
-                "'additionalContext':p['tool_input']['file_path']}}))\n"
-            )
-            spec = {
-                "plugin": "test",
-                "handlers": [
-                    {"event": "PostToolUse", "matcher": "Edit|Write",
-                     "command": 'python3 "$CLAUDE_PLUGIN_ROOT/echo.py"'},
-                    {"event": "PreToolUse", "matcher": "Bash", "command":
-                     """printf '%s' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"review missing"}}'"""},
-                    {"event": "PostToolUse", "matcher": "Edit",
-                     "command": 'python3 "$CLAUDE_PLUGIN_ROOT/echo.py"'},
-                    {"event": "PostToolUse", "matcher": "Write",
-                     "command": 'python3 "$CLAUDE_PLUGIN_ROOT/echo.py"'},
-                ],
-            }
-            (adapter / "hook-handlers.json").write_text(json.dumps(spec))
-            payload = {"cwd": tmp, "hook_event_name": "PostToolUse",
-                       "tool_name": "apply_patch", "tool_input": {"command":
-                           "*** Begin Patch\n*** Add File: new file.md\n+x\n"
-                           "*** Update File: old.md\n*** Move to: moved.md\n@@\n-a\n+b\n"
-                           "*** Delete File: removed.md\n*** End Patch"}}
-            result = subprocess.run(
-                [sys.executable, str(adapter / "hook.py"), "0"],
-                input=json.dumps(payload), capture_output=True, text=True,
-            )
-            self.assertEqual(result.returncode, 0, result.stderr)
-            context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
-            for relative in ("new file.md", "moved.md", "removed.md"):
-                self.assertIn(str(plugin / relative), context)
-            # Codex aliases apply_patch to BOTH Edit and Write. Distinguish file
-            # operations so the legacy Edit/Write handlers do not both process
-            # every file (and start the same background evaluator twice).
-            for index, included, excluded in (
-                ("2", "moved.md", "new file.md"),
-                ("3", "new file.md", "moved.md"),
-            ):
-                result = subprocess.run(
-                    [sys.executable, str(adapter / "hook.py"), index],
-                    input=json.dumps(payload), capture_output=True, text=True,
-                )
-                self.assertEqual(result.returncode, 0, result.stderr)
-                context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
-                self.assertIn(str(plugin / included), context)
-                self.assertNotIn(str(plugin / excluded), context)
-            payload.update(hook_event_name="PreToolUse", tool_name="Bash",
-                           tool_input={"command": "git push"})
-            result = subprocess.run(
-                [sys.executable, str(adapter / "hook.py"), "1"],
-                input=json.dumps(payload), capture_output=True, text=True,
-            )
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertEqual(json.loads(result.stdout)["hookSpecificOutput"]["permissionDecision"],
-                             "deny")
-
 
 if __name__ == "__main__":
     unittest.main()

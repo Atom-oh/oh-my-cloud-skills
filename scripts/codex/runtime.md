@@ -59,6 +59,9 @@ search a different installation, or assume the consumer has `plugins/` in its re
   Enforce a procedure's required read-only planning or host-state protection with
   an actual sandbox/tool boundary before delegating. If the available agent
   interface cannot enforce it, perform that phase inline in this host.
+- Internal worker entries require explicit selection; canonical workflow skills
+  retain automatic routing. The `delegate` command remains an explicit alias for
+  Kiro's canonical `kiro-delegate` workflow.
 - Discover MCP tools from the current session. A missing optional tool may use
   a documented CLI equivalent; missing credentials or required capabilities must
   be reported, not silently counted as a successful check.

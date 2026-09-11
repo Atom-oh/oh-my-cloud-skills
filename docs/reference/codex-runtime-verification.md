@@ -36,6 +36,16 @@ Actual `hooks/list` discovery found all 25 configured plugin handlers in the
 complete integration tree. Discovery does not execute hooks or grant trust;
 the host's project/hook trust checks still apply.
 
+Native execution passed on CLI 0.154.0 using loopback Responses. Untrusted hooks
+stayed inactive. Disposable `config/value/write` trusted the installed test hashes,
+confirmed by `hooks/list`. `thread/start`/`turn/start` executed real Kiro routing,
+two Bash handlers and Stop handlers from unchanged installed sources.
+Kiro review stayed off; no external provider was called.
+
+A native `custom_tool_call` created two files; PostToolUse supplied
+`tool_name: "apply_patch"` and `tool_input.command`. A native denial fixture
+blocked its tool and marker creation. User hook trust was unchanged.
+
 ## Reproduction and scope
 
 ```bash
