@@ -1080,7 +1080,7 @@ def main():
                     choice = int(input('Select an index (or rerun with --source PATH): ').strip())
                     if not 0 <= choice < len(results):
                         raise ValueError('selection out of range')
-                except (ValueError, EOFError):
+                except (ValueError, EOFError, OSError):
                     parser.error('Multiple sources found; provide a valid selection or use --source PATH.')
                 source_dir = results[choice]['path']
             else:

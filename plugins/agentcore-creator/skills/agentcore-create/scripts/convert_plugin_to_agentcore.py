@@ -208,7 +208,7 @@ def build_inventory(plugin_root: Path, manifest: dict) -> dict:
         agent_paths = [
             str(path.relative_to(plugin_root))
             for path in sorted((plugin_root / "agents").glob("*.md"))
-            if path.is_file() and path.stem.upper() not in {"README", "CLAUDE"}
+            if path.is_file() and path.stem.upper() not in {"README", "CLAUDE", "AGENTS"}
         ]
     for agent_path in agent_paths:
         resolved = plugin_root / agent_path.lstrip("./")

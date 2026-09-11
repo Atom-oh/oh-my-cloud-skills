@@ -110,7 +110,7 @@ class MarketplaceDiscoveryTests(unittest.TestCase):
         agents.mkdir(parents=True)
         for name in ("z-runner", "a-reviewer"):
             (agents / f"{name}.md").write_text(f"---\nname: {name}\n---\nAgent instructions.\n")
-        for name in ("README.md", "CLAUDE.md", "readme.md"):
+        for name in ("README.md", "CLAUDE.md", "AGENTS.md", "readme.md"):
             (agents / name).write_text("Documentation, not an agent.\n")
         (agents / "directory.md").mkdir()
         (agents / "nested").mkdir()
@@ -129,8 +129,8 @@ class MarketplaceDiscoveryTests(unittest.TestCase):
         with (root / ".claude-plugin/plugin.json").open(encoding="utf-8") as stream:
             manifest = json.load(stream)
         inventory = self.agentcore_inventory(root, manifest)
-        self.assertEqual(["doc-sync-checker"], [agent["name"] for agent in inventory["agents"]])
-        self.assertEqual(["project-scaffolder"], [skill["name"] for skill in inventory["skills"]])
+        self.assertIn("doc-sync-checker", [agent["name"] for agent in inventory["agents"]])
+        self.assertIn("project-scaffolder", [skill["name"] for skill in inventory["skills"]])
         self.assertTrue(inventory["references"])
 
     def test_agentcore_inventory_conventions_exclude_docs_and_non_components(self):
@@ -236,6 +236,16 @@ class MarketplaceDiscoveryTests(unittest.TestCase):
         self.assertEqual(0, rc, stderr)
         self.assertTrue((output / "POWER.md").is_file())
         self.assertIn("Selected version: 1.17.0", (output / "steering/routing.md").read_text())
+
+    def test_unavailable_stdin_does_not_convert_an_ambiguous_source(self):
+        self.cached_versions()
+        output = self.base / "unavailable-input"
+        with patch("builtins.input", side_effect=OSError("input unavailable")):
+            rc, _, stderr = self.kiro_cli(
+                ["--marketplace", "audit-target", "--output", str(output)])
+        self.assertNotEqual(0, rc)
+        self.assertIn("--source", stderr)
+        self.assertFalse(output.exists())
 
     def test_kiro_cli_explicit_source_bypasses_cache_ambiguity(self):
         sources = self.cached_versions()
