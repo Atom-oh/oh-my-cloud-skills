@@ -249,6 +249,36 @@ fi
   || fail "precheck (m) sentinel is created once validators actually start running" "sentinel missing after a successful run"
 rm -rf "$ORIGIN" "$BASE" "$WORK" "$LOG"
 
+# A PR cannot hide generated drift by replacing its own generator with a no-op.
+# The trusted base generator must inspect the archived tree only as data.
+ORIGIN=$(mktemp -d); BASE=$(mktemp -d); WORK=$(mktemp -d); LOG=$(mktemp)
+MARKER="$WORK/pr-generator-executed"
+git init -q --bare "$ORIGIN"
+git -C "$REPO_ROOT" archive HEAD | tar -x -C "$BASE"
+printf '\nUnreviewed generated drift\n' >> "$BASE/plugins/kiro/.codex-plugin/run.py"
+python3 - "$BASE/scripts/sync-codex-plugins.py" "$MARKER" <<'PY'
+from pathlib import Path
+import sys
+Path(sys.argv[1]).write_text(f"from pathlib import Path\nPath({sys.argv[2]!r}).touch()\n")
+PY
+git init -q "$BASE"
+git -C "$BASE" remote add origin "$ORIGIN"
+git -C "$BASE" add -A
+git -C "$BASE" -c user.email=t@t -c user.name=t commit -q -m pr
+git -C "$BASE" push -q origin HEAD:refs/pull/998/head
+cp "$REPO_ROOT/scripts/sync-codex-plugins.py" "$BASE/scripts/sync-codex-plugins.py"
+if bash "$SCRIPT" "$BASE" 998 "$WORK" >"$LOG" 2>&1; then
+  fail "precheck rejects generated drift even when both manifests remain valid"
+else
+  pass "precheck rejects generated drift even when both manifests remain valid"
+fi
+if [ ! -e "$MARKER" ] && grep -q "stale Codex artifact: plugins/kiro/.codex-plugin/run.py" "$LOG"; then
+  pass "precheck uses the trusted generator, never the PR's replacement script"
+else
+  fail "precheck uses the trusted generator, never the PR's replacement script" "$(tail -8 "$LOG")"
+fi
+rm -rf "$ORIGIN" "$BASE" "$WORK" "$LOG"
+
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then
   [ "$_t_fail" = 0 ] && echo "PASS: test-precheck" || exit 1

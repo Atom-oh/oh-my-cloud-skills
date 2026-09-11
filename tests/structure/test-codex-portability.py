@@ -57,6 +57,27 @@ class PortabilityTests(unittest.TestCase):
         finally:
             path.write_text(original)
 
+    def test_real_checkout_gate_cannot_skip_missing_or_downgraded_adapters(self):
+        gate = ROOT / "tests/structure/test-codex-published.sh"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shutil.copytree(self.generated, root, dirs_exist_ok=True)
+            shutil.copyfile(GENERATOR, root / "scripts/sync-codex-plugins.py")
+            command = ["bash", "-euo", "pipefail", "-c",
+                       'pass() { :; }; fail() { return 1; }; source "$1"', "fixture", str(gate)]
+            result = subprocess.run(command, cwd=root, capture_output=True, text=True)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            manifest = root / "plugins/project-init/.codex-plugin/plugin.json"
+            original = manifest.read_bytes()
+            manifest.unlink()
+            result = subprocess.run(command, cwd=root, capture_output=True, text=True)
+            self.assertNotEqual(0, result.returncode, "missing package escaped the real-checkout gate")
+            data = json.loads(original)
+            data["skills"] = "./skills/"
+            manifest.write_text(json.dumps(data))
+            result = subprocess.run(command, cwd=root, capture_output=True, text=True)
+            self.assertNotEqual(0, result.returncode, "downgraded package escaped the real-checkout gate")
+
     def test_relative_root_preserves_generated_skills(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "source"

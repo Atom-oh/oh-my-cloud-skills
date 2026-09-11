@@ -6,7 +6,7 @@ regex assumption, determines tool aliases and skill namespaces.
 ## Entry names
 
 Codex's app-server `skills/list` returns plugin-qualified names. The complete
-generated integration tree returned 74 distinct skills from eight plugins,
+eight-plugin package tree returned 74 distinct skills covering 76 source procedures,
 including these actual names:
 
 ```text
@@ -16,6 +16,25 @@ co-agent:setup
 kiro:configure
 kiro:setup
 ```
+
+The checked inventory snapshot is:
+
+| Plugin | Entry skills | Source procedures | Plugin hooks |
+|---|---:|---:|---:|
+| agentcore-creator | 2 | 2 | 1 |
+| atlas | 7 | 7 | 2 |
+| aws-content-plugin | 18 | 18 | 6 |
+| aws-ops-plugin | 16 | 16 | 2 |
+| co-agent | 12 | 14 | 8 |
+| kiro | 6 | 6 | 5 |
+| kiro-power-converter | 2 | 2 | 1 |
+| project-init | 11 | 11 | 0 |
+| Total | 74 | 76 | 25 |
+
+Co-agent's same-name aliases share entries without losing their source references.
+Project-init additionally provides three project hook templates; these are not plugin hooks.
+The manifest validator independently compares the inventory with actual source and entry
+files. The generation check also catches stale entry text and invocation policies.
 
 Plugin-qualified names therefore do not collide across plugins. Prefixing every
 source `name` again would change the exposed command names unnecessarily.
@@ -49,6 +68,13 @@ deny with suppressOutput, unknown fields at either output level, or whitespace-o
 reason/context/warning text. Each must report native `blocked`, with neither file
 created. User hook trust is unchanged; only disposable fixture hashes are trusted.
 
+With `--project-init`, the same native fixture copies the packaged project templates
+into its disposable consumer. The target project must be trusted for its hooks to appear
+in `hooks/list`; hook definitions then require their own trust. All three project events
+(SessionStart, PreToolUse, PostToolUse) completed after that trust sequence. Before hook
+trust, no plugin or project handler ran. This mode still executes all nine denial cases.
+It changes only the fixture's configuration, never the user's project or hook trust.
+
 Codex rejects unsupported PreToolUse fields and then continues the tool call,
 so translated `ask` and `continue:false` become supported denials. Unknown output
 fields, unsupported rewrites and child failures exit 2. Whitespace-only reasons
@@ -63,17 +89,28 @@ that has already executed.
 # Check a published package against the real checkout.
 python3 scripts/sync-codex-plugins.py --check --plugin kiro
 python3 scripts/test-codex-runtime.py --plugin kiro
-# Execute native hooks against a local Responses fixture (no external inference).
-python3 scripts/test-codex-native-hooks.py --report /var/tmp/codex-native-hooks.json
+# Execute native plugin and project hooks against local Responses (no external inference).
+python3 scripts/test-codex-native-hooks.py --project-init --report /var/tmp/codex-native-hooks.json
 
-# After publishing all packages, check the complete marketplace.
+# Acceptance: run against the actual checkout being accepted and record its commit.
+git rev-parse HEAD
+python3 scripts/test-plugins.py
+python3 scripts/test-codex-plugins.py
 python3 scripts/sync-codex-plugins.py --check
 python3 scripts/test-codex-runtime.py
+bash tests/run-all.sh
 ```
 
 The disposable runtime test installs packages, queries actual skills/hooks,
 and runs bundled read-only helpers from a separate consumer repository.
 Unit fixtures verify the generator independently; they do not substitute
 for the real-checkout freshness gate in `tests/structure/test-codex-published.sh`.
-During staged publication that gate covers the explicitly published adapters.
-The complete marketplace check is required before declaring the migration done.
+That gate unconditionally checks the entire marketplace, including missing or downgraded
+adapters. The PR L1 pre-check runs the trusted base's validators and generator against the
+archived PR tree as data. A PR cannot bypass freshness by replacing its own generator.
+
+Candidate preflight results apply to that candidate. After integration, repeat acceptance
+against actual `main` and record its commit and command results; a prospective combined
+tree alone does not certify the merged state. CLI discovery does not prove external
+provider readiness or authorize cloud changes. Those workflows keep their own setup,
+credentials, validation and user-authorization requirements.

@@ -13,7 +13,7 @@
 
 </div>
 
-AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) — content creation and infrastructure operations.
+AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Codex](https://developers.openai.com/codex/plugins) — content creation, infrastructure operations, and development workflows.
 
 **[Documentation](https://www.atomai.click/oh-my-cloud-skills/)** | **[Release Notes](https://github.com/Atom-oh/oh-my-cloud-skills/releases)**
 
@@ -53,19 +53,19 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 
 *Multi-AI Collaboration (co-agent):*
 - **6 modes** — multi-AI review, decision support, ADR co-authoring, `sync-context` (distill `CLAUDE.md` -> `AGENTS.md`), an autonomous doc->plan->implementation **consensus** pipeline, and a host-designs/peer-implements/panel-reviews **harness** orchestrator
-- **Panel of installed CLIs** — fan the same prompt to Kiro/Codex/Antigravity (`agy`) in parallel; Claude chairs and synthesizes consensus vs. dissent (degrades gracefully if none installed) — skipped if `agy` isn't installed. (Gemini CLI support was removed; Antigravity supersedes it — ADR-010.)
+- **Panel of installed CLIs** — the current host chairs; Kiro, the other host CLI (Claude or Codex), and Antigravity (`agy`) provide peer reviews when installed and configured. Missing peers are reported. (Gemini CLI support was removed; Antigravity supersedes it — ADR-010.)
   - **`gate-chair`** — triages the hybrid gate's panel findings (citation check -> verification -> dedupe) and closes verify rounds with a quorum-checked verdict.
   - **`harness-analyst`** — advisory, retrospective: mines past harness run records to propose `/co-agent:configure` tuning (implementer, parallel_tasks, review_mode, timeout); never edits config itself.
 - **`/co-agent:configure`** — tune per-AI model, Codex effort, enable/disable, timeout, and `autosync` (regenerate AI context on `CLAUDE.md` change)
+- **ADR contradiction review** — `decision-reconcile` checks conflicting ADRs and ADR-vs-reality drift with a diverse panel, then drafts a superseding ADR.
 
 *Project Scaffolding (project-init):*
-- **10 slash commands** — /init-project, /sync-docs, /add-adr, /add-module, /add-runbook, /add-reference-doc, and more
-- **Documentation quality scoring** — CLAUDE.md quality assessment on 100-point scale
+- **Project commands** — /init-project, /sync-docs, /add-adr, /add-module, /add-runbook, /add-reference-doc, and more
+- **Documentation quality scoring** — assess the target host’s instructions (`AGENTS.md` or `CLAUDE.md`) using applicable checks
 - **Auto-sync workflows** — Keep documentation in sync with code changes
-- **ADR contradiction review** — `decision-reconcile` finds conflicting ADRs (and ADR-vs-reality drift) with a diverse multi-agent panel and drafts a superseding ADR
 
 *Cost-Savings Delegation (kiro):*
-- **Claude plans, Kiro implements** — Claude writes a Kiro-native spec and verifies results; Kiro CLI writes the actual code on its own flat-rate subscription credits, inside an isolated git worktree with a scope-guarded diff
+- **The host plans, Kiro implements** — the current host writes a Kiro-native spec and verifies results; Kiro CLI writes the actual code on its own subscription credits, inside an isolated git worktree with a scope-guarded diff
 - **Pre-commit review gate (opt-in)** — a `PreToolUse` hook can run a Kiro-powered review before `git commit`, blocking only on `critical` findings by default (fails open on any infra problem); off by default since the staged diff content is sent to Kiro's backend (the reviewer's reads are tool-layer-confined to the isolated diff dir)
 - **`/kiro:setup`** — detect kiro-cli, probe usability, list models, and write the `.kiro/agents/*.json` custom agents the pipeline uses
 - **Web search delegation (opt-in)** — sessions without a `WebSearch` tool (Claude Code on Bedrock) can route web searches through kiro-cli's native `web_search`; only the query text leaves the machine, and the search agent is search-only (no filesystem/shell)
@@ -73,17 +73,16 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 *Self-Syncing Docs Wiki (atlas):*
 - **Per-topic docs written for LLM consumption** — each doc declares the files it `covers` and a `code_rev` anchor; an `INDEX.md` an agent reads first replaces cramming everything into `CLAUDE.md`
 - **Mechanical drift detection** — staleness is a glob match over `git diff --name-only` between the anchor and `HEAD`, no LLM pass, so the check is free
-- **Confined headless repair** — `/atlas:sync` runs one write-confined `claude -p` per stale doc and commits only the synced docs + `INDEX.md`
+- **Documentation repair** — Codex repairs stale packets in the active host and validates the index; optional unattended repair uses a write-confined `claude -p` per stale document
 - **Push-time auto-sync (opt-in)** — a `PreToolUse` hook can fix stale docs just before `git push` so the doc fix rides in the same push; off by default because covered-file diffs are sent to Anthropic, and always fail-open (a broken doc-syncer never wedges a push)
 
 ---
 
 ## Installation
 
-Every plugin ships a Claude Code manifest (`.claude-plugin/plugin.json`), and all but one
-also ship a Codex manifest (`.codex-plugin/plugin.json`), so the same marketplace installs
-on either host. The exception is `project-init`, an upstream mirror whose manifest set is
-kept verbatim — it is Claude Code only. Pick your host below.
+All eight plugins ship Claude Code and Codex manifests. Codex entry points are generated
+from the shared skills, commands, and specialist procedures. Project-init preserves its
+upstream source and adds a separate generated Codex overlay. Pick your host below.
 
 ### Claude Code
 
@@ -99,6 +98,7 @@ kept verbatim — it is Claude Code only. Pick your host below.
 /plugin install co-agent@oh-my-cloud-skills
 /plugin install project-init@oh-my-cloud-skills
 /plugin install kiro@oh-my-cloud-skills
+/plugin install atlas@oh-my-cloud-skills
 ```
 
 For local development:
@@ -111,6 +111,7 @@ claude --plugin-dir ./plugins/agentcore-creator
 claude --plugin-dir ./plugins/co-agent
 claude --plugin-dir ./plugins/project-init
 claude --plugin-dir ./plugins/kiro
+claude --plugin-dir ./plugins/atlas
 ```
 
 Uninstall:
@@ -123,6 +124,7 @@ Uninstall:
 /plugin uninstall co-agent@oh-my-cloud-skills
 /plugin uninstall project-init@oh-my-cloud-skills
 /plugin uninstall kiro@oh-my-cloud-skills
+/plugin uninstall atlas@oh-my-cloud-skills
 
 # Remove the marketplace
 /plugin marketplace remove oh-my-cloud-skills
@@ -132,17 +134,18 @@ Uninstall:
 
 This repo is also a **Codex plugin marketplace** — the manifest lives at
 [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json) (`name: oh-my-cloud-skills`)
-and each listed plugin's `.codex-plugin/plugin.json` exposes its skills to Codex. Requires a recent
-Codex CLI with plugin support.
+and each listed plugin's `.codex-plugin/plugin.json` exposes its generated entry points.
+Use a Codex CLI with plugin support; the runtime contract was exercised with CLI 0.154.0.
 
 ```bash
 # Register this repo as a marketplace (GitHub shorthand, or a git/SSH URL)
 codex plugin marketplace add Atom-oh/oh-my-cloud-skills
 
-# Browse & install from the interactive plugin picker
-#   → switch to the "Oh My Cloud Skills" source, then install the plugins you want
-codex /plugins
+# Start Codex
+codex
 ```
+
+Inside Codex, open `/plugins`, choose "Oh My Cloud Skills", and install the plugins you want.
 
 For local development, the **repo-scoped** marketplace is auto-discovered when you run Codex
 from inside a clone (Codex reads `$REPO_ROOT/.agents/plugins/marketplace.json`). You can also
@@ -151,26 +154,44 @@ register the local path explicitly:
 ```bash
 # From the repo root
 codex plugin marketplace add ./
-codex /plugins
+codex
 ```
 
 Manage / remove the marketplace:
 ```bash
 codex plugin marketplace list                       # list registered marketplaces
 codex plugin marketplace upgrade oh-my-cloud-skills # pull the latest plugin versions
-codex plugin marketplace remove oh-my-cloud-skills  # unregister (uninstall via `codex /plugins`)
+codex plugin marketplace remove oh-my-cloud-skills  # unregister (uninstall via /plugins inside Codex)
 ```
 
-> **co-agent on Codex** — when the host is Codex, **Codex chairs** the panel and Claude / Kiro
-> / Agy become the advisory peers (the mirror of Claude-hosted mode). The skill detects this via
-> `CO_AGENT_HOST=codex`. The Claude Code-only hooks (e.g. the PR consensus gate) don't run under
-> Codex by design.
+### Skills, commands, and specialists in Codex
+
+Ask naturally for the workflow you need, or use `/skills` or the `$` picker to select an
+installed entry. Each plugin's `.codex-plugin/inventory.json` maps those entries to every
+shared skill, command, and agent procedure. Same-name skill/command aliases share an entry.
+Atlas graph and project-init health-check use `source-command-graph` and
+`source-command-health-check`; the picker shows their plugin-qualified names.
+
+Agent-only specialist entries require explicit selection by the host as a workflow step.
+Their Markdown supplies instructions; `agents/openai.yaml` controls skill invocation policy,
+not a new native agent runtime. Source `Task`/tool/model declarations are adapted through
+the bundled runtime guide and the host's available tools. A procedure that invokes an
+external CLI still requires that CLI and its credentials.
+
+With co-agent, Codex chairs on a Codex host; the installed helper supplies
+`CO_AGENT_HOST=codex`. Declared plugin hooks are wired through the Codex bridge and require
+Codex hook trust. Project-init instead supplies project-template hooks: initialize the
+consumer project, establish project trust, then inspect `/hooks` and trust the reviewed
+definitions. Installing the plugin alone does not activate those project hooks.
+
+See [runtime verification and evidence scope](docs/reference/codex-runtime-verification.md)
+for installed-consumer checks and the distinction between candidate preflight and final main acceptance.
 
 ---
 
 ## Reactive Presentation
 
-The core feature. Tell Claude what training or presentation you need, and it builds a complete interactive HTML slideshow — no PowerPoint, no Reveal.js config, no npm install.
+The core feature. Tell your host what training or presentation you need, and it builds a complete interactive HTML slideshow — no PowerPoint, no Reveal.js config, no npm install.
 
 ### What gets created
 
@@ -712,7 +733,7 @@ All agents (except the internal pr-autofix workers above) activate automatically
 |-------|----------|
 | `kiro-convert` | Plugin-to-Kiro-Power conversion workflow |
 | `agentcore-create` | 5-phase AgentCore design, build, convert, deploy workflow (harness or Runtime target) |
-| `co-agent` | Multi-AI collaboration (Kiro/Codex/Antigravity — `agy`) — review, decision support, ADR co-authoring, and `sync-context`; Claude chairs. Commands: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus`, `/co-agent:harness`, `/co-agent:setup`, `/co-agent:pr-autofix` |
+| `co-agent` | Multi-AI collaboration (Kiro/Codex/Antigravity — `agy`) — review, decision support, ADR co-authoring, and `sync-context`; the current host chairs. Commands: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus`, `/co-agent:harness`, `/co-agent:setup`, `/co-agent:pr-autofix` |
 | `project-scaffolder` | Claude Code project structure patterns and conventions |
 | `pr-autofix` | Poll AI + human PR review feedback and auto-fix issues (co-agent; loop bound via `/co-agent:configure set pr_autofix max_iterations`, default 5; plan on Fable/Opus, implement via opus [medium effort] subagents) |
 | `decision-reconcile` | (co-agent) Detect contradictions across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (varied Claude model tiers + optional Kiro/Codex/Antigravity, one review lens each), then draft a superseding ADR |
@@ -762,7 +783,7 @@ Well-Architected:   wellarchitected-agent  -->  6-pillar scoring  -->  AS-IS/TO-
 ```
 Kiro conversion:   plugin source  -->  kiro-converter-agent  -->  Kiro Power directory  -->  install/export
 AgentCore deploy:  discovery  -->  design (harness vs Runtime)  -->  skill-first build  -->  AgentCore convert  -->  deploy
-Co-agent collab:     prompt  -->  fan-out to Kiro/Codex/Antigravity(agy)  -->  Claude synthesizes  -->  review / decision / ADR / sync-context
+Co-agent collab:     prompt  -->  configured peer CLIs  -->  current host synthesizes  -->  review / decision / ADR / sync-context
 Doc sync:          /sync-docs  -->  doc-sync-checker  -->  quality scores  -->  update docs
 ```
 

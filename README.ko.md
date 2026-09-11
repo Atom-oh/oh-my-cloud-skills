@@ -13,7 +13,7 @@
 
 </div>
 
-[Claude Code](https://docs.anthropic.com/en/docs/claude-code)용 AWS 클라우드 플러그인 — 콘텐츠 제작과 인프라 운영.
+[Claude Code](https://docs.anthropic.com/en/docs/claude-code)와 [Codex](https://developers.openai.com/codex/plugins)용 AWS 클라우드 플러그인 — 콘텐츠 제작, 인프라 운영, 개발 워크플로우.
 
 **[문서](https://www.atomai.click/oh-my-cloud-skills/)** | **[릴리스 노트](https://github.com/Atom-oh/oh-my-cloud-skills/releases)**
 
@@ -53,19 +53,19 @@
 
 *멀티-AI 협업 (co-agent):*
 - **6가지 모드** — 멀티-AI 리뷰, 의사결정 보조, ADR 협업, `sync-context`(`CLAUDE.md` 증류 -> `AGENTS.md`), 문서→계획→구현 자율 파이프라인인 **consensus**, host가 설계하고 peer가 구현하고 패널이 리뷰하는 **harness** 오케스트레이터
-- **설치된 CLI 패널** — 같은 프롬프트를 Kiro/Codex/Antigravity(`agy`)에 병렬 팬아웃, Claude가 의장으로 합의/이견 종합 (없으면 Claude 단독, hard-fail 없음) — `agy`가 없으면 스킵. (Gemini CLI 지원은 제거됨 — Antigravity가 대체, ADR-010.)
+- **설치된 CLI 패널** — 현재 호스트가 의장을 맡고, 설치·설정된 Kiro, 다른 호스트 CLI(Claude 또는 Codex), Antigravity(`agy`)가 peer 리뷰를 제공합니다. 사용할 수 없는 peer는 명시합니다. (Gemini CLI 지원은 제거됨 — Antigravity가 대체, ADR-010.)
   - **`gate-chair`** — 하이브리드 게이트의 패널 findings를 triage(인용 검증 -> 검증 -> 중복 제거)하고, quorum 검증된 판정으로 verify 라운드를 마감.
   - **`harness-analyst`** — 어드바이저리, 회고형: 과거 harness 실행 기록을 분석해 `/co-agent:configure` 튜닝(implementer, parallel_tasks, review_mode, timeout)을 제안 — 설정을 직접 수정하지는 않음.
 - **`/co-agent:configure`** — AI별 model, Codex effort, 활성/비활성, timeout, `autosync`(`CLAUDE.md` 변경 시 AI 컨텍스트 재생성) 튜닝
+- **ADR 모순 검토** — `decision-reconcile`가 다양한 패널로 ADR 간 충돌과 현실과의 차이를 확인하고 대체 ADR 초안을 작성합니다.
 
 *프로젝트 스캐폴딩 (project-init):*
-- **10개 슬래시 명령** — /init-project, /sync-docs, /add-adr, /add-module, /add-runbook, /add-reference-doc 등
-- **문서 품질 스코어링** — CLAUDE.md 품질 평가 (100점 척도)
+- **프로젝트 명령** — /init-project, /sync-docs, /add-adr, /add-module, /add-runbook, /add-reference-doc 등
+- **문서 품질 스코어링** — 대상 호스트의 지침(`AGENTS.md` 또는 `CLAUDE.md`)을 적용 가능한 항목으로 평가
 - **자동 동기화 워크플로우** — 코드 변경에 따라 문서를 동기화 유지
-- **ADR 모순 검토** — `decision-reconcile`가 다양성 멀티 에이전트 패널로 충돌하는 ADR(및 ADR vs 현실 drift)을 찾아 번복 ADR 초안 작성
 
 *비용 절감 위임 (kiro):*
-- **Claude가 계획, Kiro가 구현** — Claude가 Kiro 네이티브 spec을 작성하고 결과를 검증하는 동안, Kiro CLI가 자체 정액 구독 크레딧으로 실제 코드를 작성 — 격리된 git worktree 안에서, scope-guard로 검증된 diff만 적용
+- **호스트가 계획, Kiro가 구현** — 현재 호스트가 Kiro 네이티브 spec을 작성하고 결과를 검증하는 동안, Kiro CLI가 자체 구독 크레딧으로 실제 코드를 작성 — 격리된 git worktree 안에서, scope-guard로 검증된 diff만 적용
 - **커밋 전 리뷰 게이트 (opt-in)** — `git commit` 전에 `PreToolUse` 훅이 Kiro 기반 리뷰를 실행할 수 있음, 기본값으로 `critical` 발견 사항에만 차단(인프라 문제 발생 시 fail-open); staged diff 내용이 Kiro 백엔드로 전송되므로 기본값은 off(리뷰어의 읽기는 격리된 diff 디렉터리로 툴 레이어에서 제한됨)
 - **`/kiro:setup`** — kiro-cli를 감지하고 사용 가능 여부를 프로브, 모델 목록을 조회하고 파이프라인이 사용할 `.kiro/agents/*.json` 커스텀 에이전트를 작성
 - **웹 검색 위임 (opt-in)** — `WebSearch` 도구가 없는 세션(Claude Code on Bedrock)이 kiro-cli의 네이티브 `web_search`로 웹 검색을 라우팅; 쿼리 텍스트만 외부로 나가며, 검색 에이전트는 검색 전용(파일시스템/셸 없음)
@@ -73,18 +73,16 @@
 *자체 동기화 문서 위키 (atlas):*
 - **LLM 소비용 주제별 문서** — 각 문서가 자신이 `covers`하는 파일과 `code_rev` 앵커를 선언; 에이전트가 먼저 읽는 `INDEX.md`가 `CLAUDE.md`에 모든 것을 밀어 넣는 방식을 대체
 - **기계적 드리프트 감지** — 앵커와 `HEAD` 사이 `git diff --name-only`에 대한 glob 매칭으로 stale 판정, LLM 호출 없음 — 검사 비용이 0
-- **격리된 headless 수정** — `/atlas:sync`가 stale 문서마다 쓰기 범위가 제한된 `claude -p`를 실행하고, 동기화된 문서 + `INDEX.md`만 커밋
+- **문서 수정** — Codex는 현재 호스트에서 stale packet을 반영하고 인덱스를 검증합니다. 선택적인 무인 수정은 문서마다 쓰기 범위가 제한된 `claude -p`를 사용합니다
 - **push 시점 자동 동기화 (opt-in)** — `PreToolUse` 훅이 `git push` 직전에 stale 문서를 고쳐 같은 push에 태움; covered 파일의 diff가 Anthropic으로 전송되므로 기본값은 off, 그리고 항상 fail-open(문서 동기화기 고장이 push를 막지 않음)
 
 ---
 
 ## 설치
 
-모든 플러그인은 Claude Code 매니페스트(`.claude-plugin/plugin.json`)를 제공하고, 하나를
-제외한 전부가 Codex 매니페스트(`.codex-plugin/plugin.json`)도 함께 제공하므로 동일한
-마켓플레이스를 어느 호스트에서도 설치할 수 있습니다. 예외는 `project-init` — upstream
-미러라 매니페스트 구성을 그대로 유지하므로 Claude Code 전용입니다. 아래에서 사용하는
-호스트를 선택하세요.
+8개 플러그인 모두 Claude Code와 Codex 매니페스트를 제공합니다. Codex 진입점은 공용
+스킬·명령·전문가 절차에서 생성됩니다. Project-init은 upstream 소스를 보존하면서 별도의
+Codex overlay를 생성합니다. 아래에서 사용하는 호스트를 선택하세요.
 
 ### Claude Code
 
@@ -100,6 +98,7 @@
 /plugin install co-agent@oh-my-cloud-skills
 /plugin install project-init@oh-my-cloud-skills
 /plugin install kiro@oh-my-cloud-skills
+/plugin install atlas@oh-my-cloud-skills
 ```
 
 로컬 개발용:
@@ -112,6 +111,7 @@ claude --plugin-dir ./plugins/agentcore-creator
 claude --plugin-dir ./plugins/co-agent
 claude --plugin-dir ./plugins/project-init
 claude --plugin-dir ./plugins/kiro
+claude --plugin-dir ./plugins/atlas
 ```
 
 제거:
@@ -124,6 +124,7 @@ claude --plugin-dir ./plugins/kiro
 /plugin uninstall co-agent@oh-my-cloud-skills
 /plugin uninstall project-init@oh-my-cloud-skills
 /plugin uninstall kiro@oh-my-cloud-skills
+/plugin uninstall atlas@oh-my-cloud-skills
 
 # 마켓플레이스 제거
 /plugin marketplace remove oh-my-cloud-skills
@@ -133,17 +134,18 @@ claude --plugin-dir ./plugins/kiro
 
 이 저장소는 **Codex 플러그인 마켓플레이스**이기도 합니다 — 매니페스트는
 [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json)에 있고
-(`name: oh-my-cloud-skills`), 등록된 각 플러그인의 `.codex-plugin/plugin.json`이 스킬을 Codex에
-노출합니다. 플러그인을 지원하는 최신 Codex CLI가 필요합니다.
+(`name: oh-my-cloud-skills`), 등록된 각 플러그인의 `.codex-plugin/plugin.json`이 생성된 진입점을
+노출합니다. 플러그인을 지원하는 Codex CLI가 필요하며, 런타임 계약은 CLI 0.154.0으로 검증했습니다.
 
 ```bash
 # 이 저장소를 마켓플레이스로 등록 (GitHub 단축형, 또는 git/SSH URL)
 codex plugin marketplace add Atom-oh/oh-my-cloud-skills
 
-# 인터랙티브 플러그인 선택기에서 탐색 & 설치
-#   → "Oh My Cloud Skills" 소스로 전환한 뒤 원하는 플러그인 설치
-codex /plugins
+# Codex 시작
+codex
 ```
+
+Codex 안에서 `/plugins`를 열고 "Oh My Cloud Skills" 소스를 선택한 뒤 원하는 플러그인을 설치하세요.
 
 로컬 개발 시에는 클론한 저장소 안에서 Codex를 실행하면 **저장소 범위(repo-scoped)**
 마켓플레이스가 자동 검색됩니다(Codex가 `$REPO_ROOT/.agents/plugins/marketplace.json`을
@@ -152,25 +154,42 @@ codex /plugins
 ```bash
 # 저장소 루트에서
 codex plugin marketplace add ./
-codex /plugins
+codex
 ```
 
 마켓플레이스 관리 / 제거:
 ```bash
 codex plugin marketplace list                       # 등록된 마켓플레이스 목록
 codex plugin marketplace upgrade oh-my-cloud-skills # 최신 플러그인 버전 받기
-codex plugin marketplace remove oh-my-cloud-skills  # 등록 해제 (개별 제거는 `codex /plugins`)
+codex plugin marketplace remove oh-my-cloud-skills  # 등록 해제 (개별 제거는 Codex 안의 /plugins)
 ```
 
-> **Codex에서의 co-agent** — 호스트가 Codex이면 **Codex가 패널 의장**이 되고 Claude / Kiro
-> / Agy가 자문 peer가 됩니다(Claude 호스트 모드의 대칭). 스킬은 이를 `CO_AGENT_HOST=codex`로
-> 감지합니다. Claude Code 전용 훅(예: PR 합의 게이트)은 설계상 Codex에서는 실행되지 않습니다.
+### Codex의 스킬·명령·전문가 절차
+
+필요한 작업을 자연어로 요청하거나 `/skills` 또는 `$` 선택기에서 설치된 진입점을 선택하세요.
+각 플러그인의 `.codex-plugin/inventory.json`은 모든 공용 스킬·명령·에이전트 절차와 진입점의
+대응 관계를 기록합니다. 같은 이름의 스킬/명령 별칭은 하나의 진입점을 공유합니다.
+Atlas graph와 project-init health-check는 `source-command-graph`,
+`source-command-health-check`를 사용하며, 선택기에는 플러그인 이름이 포함된 이름이 표시됩니다.
+
+에이전트 절차만 연결된 전문가 진입점은 호스트가 워크플로우 단계에서 명시적으로 선택합니다.
+Markdown은 수행 지침이며, `agents/openai.yaml`은 스킬 호출 정책을 설정합니다. 별도의 네이티브
+에이전트 런타임 등록은 아닙니다. 소스의 `Task`/도구/모델 선언은 함께 제공되는 런타임 안내와
+호스트에서 사용 가능한 도구에 맞춰 적용합니다. 외부 CLI를 호출하는 절차에는 해당 CLI와 인증이 필요합니다.
+
+co-agent는 Codex 호스트에서 Codex가 의장을 맡고, 설치된 helper가 `CO_AGENT_HOST=codex`를
+설정합니다. 선언된 플러그인 훅은 Codex bridge에 연결되며 Codex 훅 신뢰가 필요합니다.
+Project-init은 프로젝트 템플릿 훅을 제공합니다. 소비자 프로젝트를 초기화하고 프로젝트 신뢰를
+설정한 뒤 `/hooks`에서 검토한 정의를 신뢰해야 합니다. 플러그인 설치만으로 프로젝트 훅이 활성화되지는 않습니다.
+
+설치된 소비자 환경 검사와 후보 preflight/최종 main 검증의 구분은
+[런타임 검증 및 증거 범위](docs/reference/codex-runtime-verification.md)를 참고하세요.
 
 ---
 
 ## 리액티브 프레젠테이션
 
-핵심 기능입니다. 필요한 교육이나 프레젠테이션을 설명하면, Claude가 완전한 인터랙티브 HTML 슬라이드쇼를 만들어 줍니다. PowerPoint도, Reveal.js 설정도, npm install도 필요 없습니다.
+핵심 기능입니다. 필요한 교육이나 프레젠테이션을 설명하면, 현재 호스트가 완전한 인터랙티브 HTML 슬라이드쇼를 만들어 줍니다. PowerPoint도, Reveal.js 설정도, npm install도 필요 없습니다.
 
 ### 생성되는 결과물
 
@@ -712,7 +731,7 @@ aws-ops-power/
 |------|----------|
 | `kiro-convert` | 플러그인-to-Kiro-Power 변환 워크플로우 |
 | `agentcore-create` | 5단계 AgentCore 설계, 빌드, 변환, 배포 워크플로우 (harness 또는 Runtime 타깃) |
-| `co-agent` | 멀티-AI 협업 (Kiro/Codex/Antigravity — `agy`) — 리뷰, 의사결정 보조, ADR 협업, `sync-context`; Claude가 의장. 명령: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus`, `/co-agent:harness`, `/co-agent:setup`, `/co-agent:pr-autofix` |
+| `co-agent` | 멀티-AI 협업 (Kiro/Codex/Antigravity — `agy`) — 리뷰, 의사결정 보조, ADR 협업, `sync-context`; 현재 호스트가 의장. 명령: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus`, `/co-agent:harness`, `/co-agent:setup`, `/co-agent:pr-autofix` |
 | `project-scaffolder` | Claude Code 프로젝트 구조 패턴 및 컨벤션 |
 | `pr-autofix` | AI + 사람 PR 리뷰 피드백 polling 후 이슈 자동 수정 (co-agent; 루프 상한은 `/co-agent:configure set pr_autofix max_iterations`, 기본 5회; 계획은 Fable/Opus, 구현은 opus [medium effort] 서브에이전트) |
 | `decision-reconcile` | (co-agent) 누적 ADR 간 모순(및 ADR vs 현실 drift)을 다양성 멀티 에이전트 패널(Claude 모델 티어 + 선택적 Kiro/Codex/Antigravity, 렌즈 1개씩)로 검출 후 번복 ADR 초안 작성 |
@@ -762,7 +781,7 @@ Well-Architected: wellarchitected-agent  -->  6-pillar 스코어링  -->  AS-IS/
 ```
 Kiro 변환:        플러그인 소스  -->  kiro-converter-agent  -->  Kiro Power 디렉토리  -->  설치/내보내기
 AgentCore 배포:   발견  -->  설계 (harness vs Runtime)  -->  스킬 우선 빌드  -->  AgentCore 변환  -->  배포
-co-agent 협업:   프롬프트  -->  Kiro/Codex/Antigravity(agy) 팬아웃  -->  Claude 종합  -->  리뷰 / 의사결정 / ADR / 컨텍스트 동기화
+co-agent 협업:   프롬프트  -->  설정된 peer CLI 팬아웃  -->  현재 호스트 종합  -->  리뷰 / 의사결정 / ADR / 컨텍스트 동기화
 문서 동기화:      /sync-docs  -->  doc-sync-checker  -->  품질 점수  -->  문서 업데이트
 ```
 
