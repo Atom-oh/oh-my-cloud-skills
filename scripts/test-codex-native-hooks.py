@@ -23,6 +23,20 @@ import time
 
 RPC = runpy.run_path(str(Path(__file__).with_name("test-codex-runtime.py")))
 PATCH = "*** Begin Patch\n*** Add File: native-one.txt\n+one\n*** Add File: native-two.md\n+two\n*** End Patch\n"
+DENY = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+                               "permissionDecisionReason": "fixture denied"}}
+DENIALS = {
+    "ask": [{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "ask"}}, {}],
+    "deny-error": [DENY, {"fixtureExit": 1}],
+    "stop": [{"continue": False, "stopReason": "fixture stopped"}, {}],
+    "suppress-deny": [{**DENY, "suppressOutput": True}, {}],
+}
+
+
+def denial_patch(phase):
+    return "*** Begin Patch\n" + "".join(
+        f"*** Add File: {phase}-{i}.txt\n+MUST_NOT_EXIST\n" for i in range(2)
+    ) + "*** End Patch\n"
 
 
 def require(condition, message):
@@ -60,7 +74,8 @@ class ResponsesFixture(http.server.BaseHTTPRequestHandler):
                 else:
                     require(offered["type"] == "custom", "apply_patch is not an offered custom tool")
                     server.patch_schema = offered
-                    item.update(type="custom_tool_call", input=PATCH)
+                    item.update(type="custom_tool_call",
+                                input=PATCH if server.phase == "patch" else denial_patch(server.phase))
         except Exception as exc:
             server.error = str(exc)  # Finish the turn so the assertion fails without retry storms.
         response = {"id": "resp_" + str(server.requests), "object": "response", "created_at": 1,
@@ -112,7 +127,23 @@ def probe(root, temp_dir, report):
         (capture / "capture.py").write_text(
             "import json,sys\np=json.load(sys.stdin)\n"
             f"with open({str(payload_file)!r}, 'a') as f: f.write(json.dumps(p)+'\\n')\n")
-        (capture / "hooks.json").write_text(json.dumps({"hooks": {"PostToolUse": [{
+        shutil.copyfile(root / "scripts/codex/hook.py", capture / ".codex-plugin/hook.py")
+        decisions = {f"{phase}-{i}.txt": value for phase, values in DENIALS.items()
+                     for i, value in enumerate(values)}
+        (capture / "decide.py").write_text(
+            "import json,sys\nfrom pathlib import Path\np=json.load(sys.stdin)\n"
+            f"values={decisions!r}\n"
+            "value=values.get(Path(p['tool_input']['file_path']).name, {})\n"
+            "if 'fixtureExit' in value:\n"
+            "    print('fixture child error', file=sys.stderr)\n"
+            "    sys.exit(value['fixtureExit'])\n"
+            "print(json.dumps(value))\n")
+        (capture / ".codex-plugin/hook-handlers.json").write_text(json.dumps({
+            "plugin": "patch-capture", "handlers": [{"event": "PreToolUse", "matcher": "Edit|Write",
+                "command": 'python3 "${PLUGIN_ROOT}/decide.py"'}]}))
+        (capture / "hooks.json").write_text(json.dumps({"hooks": {"PreToolUse": [{
+            "matcher": "apply_patch", "hooks": [{"type": "command",
+                "command": 'python3 "${PLUGIN_ROOT}/.codex-plugin/hook.py" 0'}]}], "PostToolUse": [{
             "matcher": "apply_patch", "hooks": [{"type": "command",
                                                "command": 'python3 "${PLUGIN_ROOT}/capture.py"'}]}]}}))
         (market / ".agents/plugins").mkdir(parents=True)
@@ -191,7 +222,7 @@ def probe(root, temp_dir, report):
         process.stdin.write('{"method":"initialized"}\n')
         process.stdin.flush()
         before = call("hooks/list", {"cwds": [str(workspace)]})["data"][0]["hooks"]
-        require(len(before) == 6 and all(h["trustStatus"] == "untrusted" for h in before), "Unexpected initial trust")
+        require(len(before) == 7 and all(h["trustStatus"] == "untrusted" for h in before), "Unexpected initial trust")
         turn(thread())
         require(not server.routing_seen and not payload_file.exists(), "Untrusted hook executed")
         require(not any(e.get("method") == "hook/started" for e in events), "Untrusted hook started")
@@ -204,16 +235,28 @@ def probe(root, temp_dir, report):
         after = call("hooks/list", {"cwds": [str(workspace)]})["data"][0]["hooks"]
         require(all(h["trustStatus"] == "trusted" for h in after), "Trust write did not take effect")
         current = thread()
-        for phase in ("bash", "patch"):
+        report["denials"] = {}
+        for phase in ("bash", "patch", *DENIALS):
             server.phase = phase
+            start = len(events)
             turn(current)
+            if phase in DENIALS:
+                runs = [e["params"]["run"] for e in events[start:] if e.get("method") == "hook/completed"
+                        and e["params"]["run"]["eventName"] == "preToolUse"
+                        and str(installed["patch-capture"]) in e["params"]["run"]["sourcePath"]]
+                absent = all(not (workspace / f"{phase}-{i}.txt").exists() for i in range(2))
+                report["denials"][phase] = {"patch": denial_patch(phase), "source_outputs": DENIALS[phase],
+                                           "runs": runs, "files_absent": absent}
+        require(all(case["files_absent"] and len(case["runs"]) == 1 and
+                    case["runs"][0]["status"] == "blocked" for case in report["denials"].values()),
+                "Native denial failed: " + json.dumps(report["denials"]))
         completed = [e for e in events if e.get("method") == "hook/completed"]
         runs = [e["params"]["run"] for e in completed if
                 str(installed["kiro"]) in e["params"]["run"]["sourcePath"]]
         require(all(r["status"] == "completed" for r in runs), "Kiro bridge failed")
         require(sum(r["eventName"] == "sessionStart" for r in runs) == 2 and
                 sum(r["eventName"] == "preToolUse" for r in runs) == 2 and
-                sum(r["eventName"] == "stop" for r in runs) == 2, "Missing native Kiro dispatch")
+                sum(r["eventName"] == "stop" for r in runs) == 2 + len(DENIALS), "Missing native Kiro dispatch")
         require(server.routing_seen and not provider_called.exists(), "Routing absent or provider invoked")
         payloads = [json.loads(line) for line in payload_file.read_text().splitlines()]
         require(len(payloads) == 1 and payloads[0]["tool_name"] == "apply_patch" and
@@ -240,7 +283,7 @@ def main():
         report["error"] = str(exc)
     if args.report:
         args.report.write_text(json.dumps(report, indent=2) + "\n")
-    print("PASS: native Kiro routing/Bash hooks and apply_patch PostToolUse" if report["passed"]
+    print("PASS: native Kiro hooks, apply_patch payload and four translated denials" if report["passed"]
           else "FAIL: " + report["error"])
     return 0 if report["passed"] else 1
 

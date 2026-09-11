@@ -64,6 +64,8 @@ def merge_text(values, key):
 
 
 def aggregate(outputs, event, complete_coverage):
+    if event not in ("PreToolUse", "PostToolUse"):
+        raise AggregationError(f"per-file translation is unsupported for {event}")
     values = []
     specifics = []
     for output in outputs:
@@ -84,9 +86,16 @@ def aggregate(outputs, event, complete_coverage):
         for key in ("updatedInput", "updatedMCPToolOutput", "updatedPermissions"):
             if key in value or key in specific:
                 raise AggregationError(f"{key} requires a native apply_patch handler")
-        for key in ("continue", "suppressOutput"):
-            if key in value and not isinstance(value[key], bool):
-                raise AggregationError(f"{key} must be boolean")
+        if "suppressOutput" in value or "suppressOutput" in specific:
+            raise AggregationError(f"suppressOutput is unsupported for {event}")
+        if "continue" in value and not isinstance(value["continue"], bool):
+            raise AggregationError("continue must be boolean")
+        if event == "PreToolUse" and "stopReason" in value and value.get("continue") is not False:
+            raise AggregationError("stopReason requires continue:false for translation")
+        if event == "PostToolUse" and any(
+            key in specific for key in ("permissionDecision", "permissionDecisionReason")
+        ):
+            raise AggregationError("permissionDecision fields are unsupported for PostToolUse")
         if value.get("decision") not in (None, "block"):
             raise AggregationError("unsupported decision requires a native apply_patch handler")
         if specific.get("permissionDecision") not in (None, "allow", "ask", "deny"):
@@ -104,30 +113,39 @@ def aggregate(outputs, event, complete_coverage):
     stopped = any(value.get("continue") is False for value in values)
     blocked = any(value.get("decision") == "block" for value in values)
     decisions = [value.get("permissionDecision") for value in specifics]
-    if stopped or blocked:
-        # A request for confirmation cannot replace an already stopped/blocked call.
-        decision = "deny" if "deny" in decisions else None
-    elif "deny" in decisions:
+    if event == "PreToolUse" and (stopped or blocked or "deny" in decisions):
         decision = "deny"
+        reasons = [
+            merge_text([v for v in specifics if v.get("permissionDecision") == "deny"],
+                       "permissionDecisionReason"),
+            merge_text([v for v in values if v.get("decision") == "block"], "reason"),
+            merge_text([v for v in values if v.get("continue") is False], "stopReason"),
+        ]
+        reason = "\n".join(dict.fromkeys(text for text in reasons if text)) or "Blocked by source hook."
     elif "ask" in decisions:
-        decision = "ask"
+        # Codex currently treats ask as a hook failure and then runs the tool.
+        decision = "deny"
+        reason = "Manual approval required by source hook."
+        detail = merge_text([v for v in specifics if v.get("permissionDecision") == "ask"],
+                            "permissionDecisionReason")
+        if detail:
+            reason += "\n" + detail
     elif complete_coverage and decisions and all(item == "allow" for item in decisions):
         decision = "allow"
+        reason = merge_text(specifics, "permissionDecisionReason")
     else:
         decision = None
     if decision:
         specific["permissionDecision"] = decision
-        reason = merge_text([value for value in specifics
-                             if value.get("permissionDecision") == decision], "permissionDecisionReason")
         if reason:
             specific["permissionDecisionReason"] = reason
-    if any("continue" in value for value in values):
+    if event == "PostToolUse" and any("continue" in value for value in values):
         merged["continue"] = not stopped
-    if blocked:
+    if event == "PostToolUse" and blocked:
         merged["decision"] = "block"
     for key in ("reason", "stopReason", "systemMessage"):
         text = merge_text(values, key)
-        if text:
+        if text and (event == "PostToolUse" or key == "systemMessage"):
             merged[key] = text
     context = merge_text(specifics, "additionalContext")
     if context:
@@ -139,6 +157,7 @@ def aggregate(outputs, event, complete_coverage):
 def main():
     adapter = Path(__file__).resolve().parent
     root = adapter.parent
+    translated = False
     try:
         config = json.loads((adapter / "hook-handlers.json").read_text(encoding="utf-8"))
         handler = config["handlers"][int(sys.argv[1])]
@@ -152,7 +171,6 @@ def main():
         if config["plugin"] == "co-agent":
             env["CO_AGENT_HOST"] = "codex"
         inputs = [payload]
-        translated = False
         complete_coverage = True
         matcher = handler.get("matcher", "")
         if payload.get("tool_name") == "apply_patch" and matcher not in ("", "*") and any(
@@ -180,6 +198,13 @@ def main():
             if result.stderr:
                 sys.stderr.write(result.stderr)
             if result.returncode:
+                if translated:
+                    previous = aggregate(outputs, event, False)
+                    reasons = [previous.get("reason"), previous.get("stopReason"),
+                               previous["hookSpecificOutput"].get("permissionDecisionReason")]
+                    for reason in dict.fromkeys(text for text in reasons if text):
+                        print(reason, file=sys.stderr)
+                    raise AggregationError(f"child exited with code {result.returncode}; incomplete file checks")
                 sys.stdout.write(result.stdout)
                 return result.returncode
             # Silent hooks still count: missing coverage must never imply allow.
@@ -195,7 +220,7 @@ def main():
         return 2
     except (OSError, ValueError, KeyError, IndexError, TypeError, re.error) as exc:
         print(f"Codex plugin hook failed: {exc}", file=sys.stderr)
-        return 1
+        return 2 if translated else 1
 
 
 if __name__ == "__main__":

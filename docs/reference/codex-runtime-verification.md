@@ -43,10 +43,10 @@ two Bash handlers and Stop handlers from unchanged installed sources.
 Kiro review stayed off; no external provider was called.
 
 A native `custom_tool_call` created two files; PostToolUse supplied
-`tool_name: "apply_patch"` and `tool_input.command`. A separate manual native
-denial fixture blocked its tool and marker creation. User hook trust was unchanged.
-The script below reproduces Kiro execution, trust checks and patch delivery;
-the denial fixture is not part of that script.
+`tool_name: "apply_patch"` and `tool_input.command`. The script also checks four
+translated two-file denials: ask, deny followed by exit 1, continue:false, and
+deny with suppressOutput. Each must report native `blocked`, with neither file
+created. User hook trust is unchanged; only disposable fixture hashes are trusted.
 
 ## Reproduction and scope
 

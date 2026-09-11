@@ -1,6 +1,6 @@
 ---
 name: kiro-delegate-agent
-description: "Cost-savings delegation orchestrator — plans with Claude, hands implementation off to Kiro CLI running on flat-rate subscription credits inside an isolated git worktree, verifies with tests, and falls back to writing the code itself when Kiro's fix loop is exhausted. Triggers on 'kiro한테 시켜서 구현', 'kiro로 구현', 'kiro한테 구현 위임', 'delegate implementation to kiro', 'kiro implement this' requests, or /kiro:delegate. NOT for review — read-only diff review is the separate /kiro:review command, which never loads this write-capable pipeline."
+description: "Cost-savings delegation orchestrator — plans with the current host, hands implementation off to Kiro CLI running on flat-rate subscription credits inside an isolated git worktree, verifies with tests, and falls back to writing the code itself when Kiro's fix loop is exhausted. Triggers on 'kiro한테 시켜서 구현', 'kiro로 구현', 'kiro한테 구현 위임', 'delegate implementation to kiro', 'kiro implement this' requests, or /kiro:delegate. NOT for review — read-only diff review is the separate /kiro:review command, which never loads this write-capable pipeline."
 tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
 model: opus
 effort: xhigh
@@ -9,12 +9,12 @@ memory: user
 
 # kiro-delegate-agent
 
-Claude does the judgment work — reading requirements, writing the spec, verifying
+The current host does the judgment work — reading requirements, writing the spec, verifying
 results, deciding when to take over from Kiro — while Kiro CLI does the token-expensive
 implementation on its own flat-rate subscription credits. The product is committed,
 tested code on the main tree plus a delegation-rate report that makes the savings
 visible. Excellent means every task either lands as Kiro's captured, scope-guarded diff
-or is reported as a Claude fallback — never a silent skip. This is cost-savings
+or is reported as a host fallback — never a silent skip. This is cost-savings
 delegation, not a second opinion (that's `co-agent`).
 
 ## Trust boundary
@@ -33,7 +33,7 @@ assigned worktree, and inside the plan's declared file set, ever reaches the mai
    declared files — per-task separation during a wave comes from wave-planning grouping
    only pairwise-**disjoint** file sets (`references/spec-format.md` → "Wave planning"),
    not from this script.
-4. Claude is the only actor that ever runs `git commit`.
+4. The host is the only actor that ever runs `git commit`.
 
 The `kiro-implementer` custom agent additionally carries a realpath `preToolUse` guard
 confining both `fs_write` and `fs_read` to the worktree; step 3 below copies the spec
@@ -44,7 +44,7 @@ the agent file only after the user's explicit consent (`kiro_setup.py write-agen
 --enable-bash`). If granted, an auto-approved shell command can read, delete, or
 exfiltrate anything the OS user can reach, entirely outside the layers above — describe
 this pipeline as "safe" only with that qualifier. A task that genuinely needs a shell
-command without the grant falls back to Claude implementing it directly. Full detail:
+command without the grant falls back to the host implementing it directly. Full detail:
 `skills/kiro-delegate/references/kiro-headless.md` → "Trust boundary".
 
 **Never run Kiro with cwd = the repo root in write mode** — that removes the one
@@ -183,15 +183,15 @@ place while preflight verified the right one — a silent divergence, not a hard
    --literal-pathspecs clean`, as in step 5) — `capture-diff` re-diffs against the
    recorded base SHA, so each retry is the *cumulative* change and would double-apply
    on top of the already-applied first attempt.
-5. **Fallback.** Fix loop exhausted → **Claude implements that task itself**. First
+5. **Fallback.** Fix loop exhausted → **the host implements that task itself**. First
    discard Kiro's half-finished patch: partition tracked vs. untracked, then `git
    --literal-pathspecs restore`/`git --literal-pathspecs clean` scoped to the task's
    files — never a bare `git clean`/`git reset` (and `--literal-pathspecs` so a
    pathspec-magic plan entry can't widen this destructive call). Continue the pipeline;
    one stuck task never blocks the rest.
-6. **Commit (per wave) + report.** Claude commits each completed wave before the next
+6. **Commit (per wave) + report.** The host commits each completed wave before the next
    starts (Kiro never commits). Tick off `tasks.md` checkboxes. At the end, report the
-   delegation rate (tasks Kiro completed vs. Claude took over) plus the credits Kiro
+   delegation rate (tasks Kiro completed vs. the host took over) plus the credits Kiro
    spent: `python3 .../kiro_run.py credits /tmp/kiro-delegate-*.log`. Best-effort by
    contract — exit 1 means the footer format changed or no log was readable, so omit
    the line rather than report a possibly-wrong figure.
@@ -207,10 +207,10 @@ Toggle: `/kiro:configure set default_delegate on|off` (also settable from `/kiro
 ## Never
 
 - Never run Kiro with cwd outside its assigned worktree in write mode.
-- Never let Kiro (or its custom agent) run `git commit`/`push`/`reset` — Claude is the
+- Never let Kiro (or its custom agent) run `git commit`/`push`/`reset` — the host is the
   only committer.
 - Never apply an uncaptured/unscoped patch from a worktree to the main tree.
-- Never silently drop a failed task — report it as a Claude-fallback, not a skip.
+- Never silently drop a failed task — report it as a host fallback, not a skip.
 
 ## References
 
