@@ -7,7 +7,7 @@
 # TTY 아님 → no-hang); Kiro 는 stdin 을 무시하므로 size-capped argv 텍스트로 직접 embed
 # 한다(툴 미부여 — 아래 KIRO_DIFF_TEXT 주석 참조; fs_read 부여는 19차 리뷰 CRITICAL로
 # 제거됨). timeout 백스톱 + 비대화형 플래그로 멈춤 방지. 셀이 비면 최대
-# PANEL_RETRIES 회 재시도(global.openai.gpt-6-astra/amazon-bedrock-runtime 등 transient 흡수). 매 시도마다 재실행.
+# PANEL_RETRIES 회 시도하며, 빠른 실패만 남은 셀 예산 안에서 재시도한다.
 # 모든 셀(모델 수 × lens 수)이 병렬(&+wait) — 벽시계 ≈ 최슬로우 셀 하나, 순차합 아님.
 set -uo pipefail
 DIFF="$(realpath "$1" 2>/dev/null)" \
@@ -28,6 +28,16 @@ LENSES_DIR="$2"; WORK="$3"
 mkdir -p "$WORK" || { echo "run-panel.sh: failed to create workdir: $WORK" >&2; exit 1; }
 WORK="$(realpath "$WORK")" \
   || { echo "run-panel.sh: realpath failed to resolve workdir: $WORK" >&2; exit 1; }
+T="${PANEL_TIMEOUT:-300}"
+RETRIES="${PANEL_RETRIES:-3}"
+CELL_BUDGET_MAX=2147483647
+for budget_value in "$T" "$RETRIES"; do
+  [[ "$budget_value" =~ ^[1-9][0-9]{0,9}$ ]] && [ "$budget_value" -le "$CELL_BUDGET_MAX" ] \
+    || { echo "run-panel.sh: budget values PANEL_TIMEOUT/PANEL_RETRIES must be integers in 1..2147483647 without leading zeros" >&2; exit 1; }
+done
+[ "$T" -le "$((CELL_BUDGET_MAX / RETRIES))" ] \
+  || { echo "run-panel.sh: total cell budget exceeds 2147483647 seconds" >&2; exit 1; }
+CELL_BUDGET=$((T * RETRIES))
 DIR="$(cd "$(dirname "$0")" && pwd)"; . "$DIR/lib.sh"
 ensure_slots "$WORK"
 SLOT="$WORK/slot"; RESP="$WORK/responded.txt"; : > "$RESP"
@@ -37,8 +47,6 @@ SLOT="$WORK/slot"; RESP="$WORK/responded.txt"; : > "$RESP"
 # 같은 이유로 함께 리셋 — 없으면 이전 실행의 stale flag 가 이번(truncation 없는) 리뷰에
 # 허위 배너를 붙일 수 있다(20차 리뷰 MINOR).
 rm -f "$WORK/coverage-severe.flag" "$WORK/kiro-diff-truncated.flag"
-T="${PANEL_TIMEOUT:-300}"
-RETRIES="${PANEL_RETRIES:-3}"
 # 매트릭스 멤버십(어떤 셀이 참여하는가)은 하드코딩이 아니라 panel_config.py 설정에서 온다 —
 # co-agent 의 co_agent_config.py 패턴(defaults.json + gitignored local override)과 동일
 # 레이어링. 코드 수정 없이 `panel_config.py set <cell> enabled false`로 매트릭스를 줄일 수
@@ -102,17 +110,29 @@ if [ "${#LENS_FILES[@]}" -eq 0 ]; then
   exit 1
 fi
 
-# 한 셀을 최대 $RETRIES 회 실행 — 슬롯이 비면 재시도(transient). 백그라운드로 호출.
-#   try_panel <slot> <err> <cmd...>   (stdin=$DIFF, stdout=slot, stderr=err)
+# Each cell shares the former worst-case budget across at most RETRIES attempts.
+# Read Bash SECONDS without resetting it; never launch timeout with zero seconds.
+#   try_panel <slot> <err> <launcher> <args...>
 try_panel() {
-  local slot="$1" err="$2"; shift 2
-  local a rc=1
-  for a in $(seq 1 "$RETRIES"); do
-    "$@" > "$slot" 2>"$err" < "$DIFF"; rc=$?
+  local slot="$1" err="$2" launcher="$3"; shift 3
+  local a remaining rc=1 deadline=$((SECONDS + CELL_BUDGET))
+  for ((a=1; a<=RETRIES; a++)); do
+    remaining=$((deadline - SECONDS))
+    if [ "$remaining" -le 0 ]; then
+      rc=124
+      echo "[timeout] $(basename "$slot" .md) exhausted ${CELL_BUDGET}s cell budget" >&2
+      break
+    fi
+    [ "$a" -gt 1 ] && echo "[retry $((a - 1))/$RETRIES] $(basename "$slot" .md)" >&2
+    "$launcher" "$remaining" "$@" > "$slot" 2>"$err" < "$DIFF" && rc=0 || rc=$?
     [ -s "$slot" ] && [ "$rc" -eq 0 ] && break
-    [ "$a" -lt "$RETRIES" ] && echo "[retry $a/$RETRIES] $(basename "$slot" .md)" >&2
   done
   echo "$rc" > "$slot.rc"
+}
+
+launch_codex() {
+  local limit="$1"; shift
+  timeout --kill-after=5s "$limit" "$@"
 }
 
 # Kiro 셀은 이제 어떤 툴도 부여받지 않는다(`--trust-tools=`, 아래) — 19차 리뷰 CRITICAL로
@@ -131,6 +151,10 @@ kiro_env() {
   local cell_cwd="$1"; shift
   env -i PATH="$PATH" HOME="$cell_cwd" LANG="${LANG:-}" LC_ALL="${LC_ALL:-}" TMPDIR="${TMPDIR:-/tmp}" \
     ${KIRO_API_KEY:+KIRO_API_KEY="$KIRO_API_KEY"} "$@"
+}
+launch_kiro() {
+  local limit="$1" cell_cwd="$2"; shift 2
+  kiro_env "$cell_cwd" timeout --kill-after=5s "$limit" "$@"
 }
 
 # Kiro 셀은 더 이상 fs_read 를 받지 않는다(diff 는 아래에서 size-capped argv 텍스트로 직접
@@ -174,7 +198,7 @@ for lens_file in "${LENS_FILES[@]}"; do
   # region pinning 이 불필요. diff 는 stdin.
   if [ "$CODEX_ENABLED" = 1 ] && command -v codex >/dev/null 2>&1; then
     ( try_panel "$SLOT/codex-$lens.md" "$SLOT/codex-$lens.err" \
-        timeout "$T" codex exec -s read-only --skip-git-repo-check "$LENS_PROMPT" ) &
+        launch_codex codex exec -s read-only --skip-git-repo-check "$LENS_PROMPT" ) &
   else echo "[skip] codex/$lens (disabled or binary absent)" >&2; : > "$SLOT/codex-$lens.md"; fi
 
   # Kiro x3 셀 — model:tag 를 한 배열에서 파생(호출/집계 동기화). Kiro's non-interactive
@@ -186,7 +210,7 @@ for lens_file in "${LENS_FILES[@]}"; do
     if command -v kiro-cli >/dev/null 2>&1; then
       CELL_CWD="$KIRO_CWD_BASE/$tag-$lens"; mkdir -p "$CELL_CWD"
       ( cd "$CELL_CWD" && try_panel "$SLOT/$tag-$lens.md" "$SLOT/$tag-$lens.err" \
-          kiro_env "$CELL_CWD" timeout "$T" kiro-cli chat "$KIRO_INSTRUCTION" --model "$m" \
+          launch_kiro "$CELL_CWD" kiro-cli chat "$KIRO_INSTRUCTION" --model "$m" \
           --mode default --no-interactive --trust-tools= --wrap never ) &
     else echo "[skip] $tag/$lens (binary absent)" >&2; : > "$SLOT/$tag-$lens.md"; fi
   done
