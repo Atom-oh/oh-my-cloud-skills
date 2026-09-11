@@ -339,7 +339,7 @@ Find review target files using Glob tool.
 - **HTML Presentations**: Check framework init, Canvas setup, quiz attributes
 - **GitBook**: Verify SUMMARY.md, component syntax, navigation
 - **Workshop**: Check directives, front matter, bilingual pairs
-- **PPTX Decks**: run `python3 plugins/aws-content-plugin/skills/aws-light-fcd/scripts/check_pptx.py <deck.pptx> --json` and read its `score`/`findings`. Score <80, or any `[geometry]` finding (text overflow, overlap, off-canvas), is Critical; `[design]` findings (missing footer, page-number regression, non-Pretendard font, placeholder text) are Warning unless they recur across most slides.
+- **PPTX Decks**: run `python3 "${CLAUDE_PLUGIN_ROOT}/skills/aws-light-fcd/scripts/check_pptx.py" <deck.pptx> --json` and read its `score`/`findings`. Resolve the checker from this plugin's installation, independently of the artifact's working directory. Score <80, or any `[geometry]` finding (text overflow, overlap, off-canvas), is Critical; `[design]` findings (missing footer, page-number regression, non-Pretendard font, placeholder text) are Warning unless they recur across most slides.
 
 ### Step 3: Visual Testing (HTML content only)
 

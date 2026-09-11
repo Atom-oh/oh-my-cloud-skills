@@ -25,22 +25,33 @@ typography, white canvas, near-black ink, and a single signature gradient
 
 ## Workflow
 
+Resolve resource paths against the loaded plugin installation. Keep `build.js` and
+generated artifacts in the consumer's working/output directory, not in the plugin
+cache. Relative paths in bundled examples are relative to this skill's directory.
+
 1. **Read the source** thoroughly if the user provides a doc (Read for md/txt,
    python-pptx for an existing .pptx, python-docx for .docx). Build a section map.
 2. **Confirm** presenter (default: 오준석 · Senior Solutions Architect · AWS Korea),
    language, and rough slide count. Don't over-ask — proceed with defaults if unanswered.
 3. **Read `references/layouts.md`** to pick the right layout per section, and
    **`references/icons.md`** for the exact icon names available.
-4. **Write a build script** that `require("./scripts/deck_kit.js")` (and
-   `arch_kit.js` if drawing diagrams), calls the layout builders, then
-   `await pres.writeFile(...)`. Run it with `NODE_PATH=$(npm root -g) node build.js`.
-5. **QA (rejection loop)**: `python3 scripts/check_pptx.py "$DECK"` — fix every finding and
+4. **Resolve installed absolute module paths before writing JavaScript:**
+   `${CLAUDE_PLUGIN_ROOT}/skills/aws-light-fcd/scripts/deck_kit.js` and, for diagrams,
+   `${CLAUDE_PLUGIN_ROOT}/skills/aws-light-fcd/scripts/arch_kit.js`.
+   Claude renders the plain `${CLAUDE_PLUGIN_ROOT}` token in skill text; in Codex,
+   substitute the loaded plugin installation's absolute root yourself. Verify the
+   files exist, then write those resolved paths as quoted JavaScript string literals
+   in `require(...)` calls in the consumer's `build.js`. Do not copy an unresolved
+   token or bare filename into those calls or rely on an exported root variable.
+   Call the layout builders, then `await pres.writeFile(...)`. Run the script with
+   `NODE_PATH=$(npm root -g) node build.js`.
+5. **QA (rejection loop)**: `python3 "${CLAUDE_PLUGIN_ROOT}/skills/aws-light-fcd/scripts/check_pptx.py" "$DECK"` — fix every finding and
    rerun until it passes. **The gate is `score ≥80` AND zero `[geometry]` findings**
    (a geometry defect — overflow/overlap/off-canvas — never passes, no matter the
    score, because content-review-agent treats it as Critical). Optional visual spot
    check if `soffice` is installed: `soffice --headless --convert-to pdf "$DECK" &&
    pdftoppm -jpeg -r 130 "${DECK%.pptx}.pdf" preview`.
-6. **Embed fonts** — run `python scripts/embed_fonts.py "$DECK"` so the deck
+6. **Embed fonts** — run `python3 "${CLAUDE_PLUGIN_ROOT}/skills/aws-light-fcd/scripts/embed_fonts.py" "$DECK"` so the deck
    carries Pretendard and renders identically everywhere.
 7. **Deliver** — leave the `.pptx` in the working/output directory and report its
    absolute path. Per the plugin's Quality Gate, a completed deck then goes through
@@ -129,7 +140,7 @@ it will render identically on any machine — even ones without Pretendard insta
 **Always run the embed step as the last build action:**
 
 ```bash
-python scripts/embed_fonts.py your_deck.pptx
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/aws-light-fcd/scripts/embed_fonts.py" your_deck.pptx
 ```
 
 This injects the TTFs into the pptx (OOXML `embeddedFontLst`), leaving a `.bak` copy.
@@ -137,7 +148,8 @@ The file grows ~2MB. It's validated to reopen cleanly in PowerPoint/LibreOffice.
 
 If you add italic or more weights, drop the TTFs in `assets/fonts/` (filenames
 containing `regular`/`bold`/`italic`) and the script picks them up automatically.
-For QA rendering inside this environment, also `cp assets/fonts/*.ttf ~/.fonts/ &&
+For QA rendering inside this environment, also `mkdir -p ~/.fonts/ &&
+cp "${CLAUDE_PLUGIN_ROOT}/skills/aws-light-fcd/assets/fonts/"*.ttf ~/.fonts/ &&
 fc-cache -f` so the preview uses real Pretendard instead of a substitute.
 
 ## Dependencies
