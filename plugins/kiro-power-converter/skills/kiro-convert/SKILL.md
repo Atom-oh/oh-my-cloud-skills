@@ -27,9 +27,10 @@ Infer the source and target from the request; ask only what the request doesn't 
 | Single skill | `--skill PATH` (repeatable) | Each directory must contain `SKILL.md` |
 
 In an agent or other non-interactive session, list marketplace candidates first
-and convert the intended path with `--source`. `--marketplace NAME` converts
-directly only when one source matches. Multiple checkouts/cache versions require
-an explicit listed index or `--source`; missing/invalid selection stops without
+and convert the intended path with `--source`. `--marketplace NAME` uses an exact
+name match (case-insensitive); fuzzy matching is reserved for listing/search.
+It converts directly only when one exact source matches. Multiple checkouts/cache
+versions require an explicit index on stdin or `--source`; missing/invalid selection stops without
 conversion. Never silently choose the first cached version.
 
 | Target | Path | Use Case |

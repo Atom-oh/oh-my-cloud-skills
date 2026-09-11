@@ -1066,7 +1066,9 @@ def main():
                 parser.error(f'Source directory not found: {source_dir}')
 
         elif args.marketplace and args.marketplace != '__list__':
-            results = search_marketplace(args.marketplace)
+            # Listing/search is fuzzy; a conversion request selects an exact name.
+            results = [item for item in search_marketplace(args.marketplace)
+                       if item["name"].casefold() == args.marketplace.casefold()]
             if not results:
                 print(
                     f'Plugin "{args.marketplace}" not found in marketplace.',

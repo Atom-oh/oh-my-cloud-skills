@@ -255,6 +255,28 @@ class MarketplaceDiscoveryTests(unittest.TestCase):
         self.assertTrue((output / "POWER.md").is_file())
         self.assertIn("Selected version: 1.17.0", (output / "steering/routing.md").read_text())
 
+    def test_marketplace_conversion_prefers_exact_name_over_search_matches(self):
+        exact = self.plugin(self.base / "codex/plugins/cache/team/audit-target/1.0")
+        (exact / "CLAUDE.md").write_text("Exact requested source.\n")
+        other = self.plugin(self.base / "codex/plugins/cache/team/audit-target-tools/1.0",
+                            "audit-target-tools")
+        output = self.base / "exact-output"
+        self.assertEqual(2, len(self.searches["kiro"]("audit-target")))
+        rc, _, stderr = self.kiro_cli(
+            ["--marketplace", "audit-target", "--output", str(output)])
+        self.assertEqual(0, rc, stderr)
+        self.assertIn("Exact requested source.", (output / "steering/routing.md").read_text())
+
+    def test_marketplace_conversion_does_not_choose_a_fuzzy_only_result(self):
+        self.plugin(self.base / "codex/plugins/cache/team/audit-target-tools/1.0",
+                    "audit-target-tools")
+        output = self.base / "fuzzy-output"
+        rc, _, stderr = self.kiro_cli(
+            ["--marketplace", "audit-target", "--output", str(output)])
+        self.assertNotEqual(0, rc)
+        self.assertIn("not found", stderr)
+        self.assertFalse(output.exists())
+
 
 if __name__ == "__main__":
     unittest.main()
