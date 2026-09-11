@@ -25,11 +25,28 @@ All review-loop state lives in ONE file, `$STATE` — written only by the host, 
 planner/implementer. They process untrusted review text, and a file that steers the loop
 must not be writable by them (same trust rule as `review-memory.md`).
 
+First entry: **Step 1 → this State model block → Initialize, resume and repair**.
+This block is mandatory even when all snippets run in the same shell.
+In later shell calls, pass the reported JSON as `STATE_BINDING` and run this block
+before any state snippet; it revalidates the canonical path before writing.
+Before each fix/push, restore variables with this block, rerun Step 1's fresh
+target guard, then run this block again before initialization or state access.
+Resolve `REPO` and other query temporaries in the call using them.
+
 ```bash
-# After Step 1 has resolved PR_NUMBER:
-REPO_ROOT=$(git rev-parse --show-toplevel)
-STATE_DIR="$REPO_ROOT/.claude/co-agent-consensus/pr-autofix/pr-${PR_NUMBER}"
-STATE="$STATE_DIR/state.json"; mkdir -p "$STATE_DIR"
+# STATE_BINDING is Step 1's JSON result, not a second state file.
+[ -n "${STATE_BINDING:-}" ] || { echo "run Step 1 before state initialization"; exit 1; }
+REPO_ROOT=$(git rev-parse --show-toplevel) || exit 1
+PR_NUMBER=$(printf '%s' "$STATE_BINDING" | jq -er '.pr | select(type == "number")') || exit 1
+CANONICAL_BINDING=$(python3 "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts/resolve_pr_state.py" \
+  "$REPO_ROOT" --pr "$PR_NUMBER") || exit 1
+jq -en --argjson supplied "$STATE_BINDING" --argjson canonical "$CANONICAL_BINDING" \
+  '$supplied.pr == $canonical.pr and $supplied.state == $canonical.state' >/dev/null ||
+  { echo "state binding does not match this checkout; run Step 1 again"; exit 1; }
+STATE_BINDING=$CANONICAL_BINDING
+STATE=$(printf '%s' "$STATE_BINDING" | jq -er '.state') || exit 1
+STATE_DIR=$(dirname -- "$STATE")
+mkdir -p -- "$STATE_DIR" || exit 1
 ```
 
 | Field | Meaning |
@@ -127,28 +144,11 @@ parameter of one LensGate call, never persisted.
 
 ### 1. Identify the PR
 
-```bash
-REPO=$(gh repo view --json nameWithOwner --jq '.nameWithOwner')
-if [ -z "${PR_NUMBER:-}" ] && [ -n "${STATE:-}" ] && [ -s "$STATE" ]; then
-  PR_NUMBER=$(jq -r '.pr // empty' "$STATE")
-fi
-# Prefer an explicit user PR or saved state. Only when neither exists:
-if [ -z "${PR_NUMBER:-}" ]; then
-  PR_MATCHES=$(gh pr list --head "$(git branch --show-current)" --state all --json number,state,headRefOid) || exit 1
-  PR_NUMBER=$(printf '%s' "$PR_MATCHES" | jq -er '
-    if length == 1 then .[0].number
-    elif length == 0 then error("no matching PR; create or identify it first")
-    else error("multiple matching PRs; resolve the user-intended PR explicitly") end
-  ') || exit 1
-fi
-[[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]] || { echo "invalid PR number"; exit 1; }
-```
-
-Select the unambiguous PR matching the user's task, then query `gh pr view
-"$PR_NUMBER" --json state,headRefOid,baseRefName,mergeCommit`. Do not silently pick
-the first of multiple matches. A merged/closed PR remains observable on resume;
-do not push further fixes into it. Report its state and hand remaining fixes to
-the host's corrective-PR workflow.
+Read **Resolve the PR and checkout** in
+[review-state.md](references/review-state.md) and run its guard on entry and
+before fixes/pushes, including resumes. It validates the supplied state locator,
+PR identity, checkout and configured push destination before initialization.
+Stop on a rejected target; handle closed PRs in the host's corrective workflow.
 
 ### 2. Poll for review feedback
 
