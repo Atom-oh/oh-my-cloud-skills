@@ -21,7 +21,7 @@ A plugin that collaborates with other AI agents (Kiro CLI, Codex, Agy) to get a 
 | Skill | Trigger | Purpose |
 |-------|---------|---------|
 | `co-agent` | "co-agent", "second opinion", "다른 AI", "AI 협업", "code/architecture review", "잘 모르겠어", "decision support", "decide", "adr" | Multi-AI collaboration (review · decision support · ADR · sync-context · consensus · harness · setup) |
-| `pr-autofix` | "pr autofix", "PR 자동 수정", "fix review feedback" | After a PR is created, polls AI/human review → plans (Fable/Opus) → implements in an isolated worktree → lands only the approved delta → loops commit/push (`/co-agent:pr-autofix`; loop bound is `set pr_autofix max_iterations`, default 5). When `push_gate` is active, escalates at pass >3/>5 — details in `skills/pr-autofix/SKILL.md` §5a/§5b |
+| `pr-autofix` | "pr autofix", "PR 자동 수정", "fix review feedback" | Polls required reviews → plans → implements/tests in an isolated worktree → commits/pushes. Preserves live handles and bounds its wait; unavailable evidence is never clean. Returns a reviewed HEAD to the host, which separately completes authorized integration/merge. Loop bound: `set pr_autofix max_iterations` (default 5); escalation: `skills/pr-autofix/SKILL.md` §5a/§5b |
 | `decision-reconcile` | "의사결정 번복", "ADR 모순", "reconcile ADRs" | Detects contradictions and reality-drift across accumulated ADRs using a panel of diverse review lenses (Claude tiers + optional peer CLIs) and drafts a superseding ADR |
 
 ## Modes

@@ -49,7 +49,9 @@ The runner prints `TAP version 14`, one `ok`/`not ok` line per assertion, and a 
 
 ## Conventions
 
-- Tests are pure bash + standard CLI (`grep`, `jq`, `python3`) — no test framework dependency.
+- Tests use Bash, standard CLI tools (`grep`, `jq`, `python3`) and Python's standard
+  library, without third-party test packages. Workflow JavaScript fixtures also use
+  Node.js, an existing prerequisite checked by `scripts/setup.sh`; no npm packages are needed.
 - Secret-pattern tests are the safety net for the `secret-scan.sh` PreToolUse hook: every new
   detection pattern needs a true-positive fixture in `secret-samples.txt` **and** a
   false-positive guard in `false-positives.txt`.
