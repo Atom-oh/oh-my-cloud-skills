@@ -33,6 +33,11 @@ DENIALS = {
     "extra-top": [{**DENY, "fixtureMetadata": "safe fixture"}, {}],
     "extra-specific": [{"hookSpecificOutput": {**DENY["hookSpecificOutput"],
                                                "fixtureMetadata": "safe fixture"}}, {}],
+    "blank-reason": [{"hookSpecificOutput": {**DENY["hookSpecificOutput"],
+                                            "permissionDecisionReason": " \n\t"}}, {}],
+    "blank-context": [{"hookSpecificOutput": {**DENY["hookSpecificOutput"],
+                                             "additionalContext": " \n\t"}}, {}],
+    "blank-warning": [{**DENY, "systemMessage": " \n\t"}, {}],
 }
 
 
@@ -286,7 +291,7 @@ def main():
         report["error"] = str(exc)
     if args.report:
         args.report.write_text(json.dumps(report, indent=2) + "\n")
-    print("PASS: native Kiro hooks, apply_patch payload and six translated denials" if report["passed"]
+    print("PASS: native Kiro hooks, apply_patch payload and nine translated denials" if report["passed"]
           else "FAIL: " + report["error"])
     return 0 if report["passed"] else 1
 

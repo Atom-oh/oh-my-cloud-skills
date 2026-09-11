@@ -297,6 +297,18 @@ class HookRoutingTests(unittest.TestCase):
                     self.assertIn("fixtureMetadata", result.stderr)
                     self.assertFalse(result.stdout.strip())
 
+    def test_blank_text_cannot_invalidate_a_denial(self):
+        deny = self.permission("deny")
+        deny["hookSpecificOutput"]["permissionDecisionReason"] = " \n\t"
+        deny["systemMessage"] = " \n\t"
+        deny["hookSpecificOutput"]["additionalContext"] = " \n\t"
+        output = self.merged([deny, {}])
+        specific = output["hookSpecificOutput"]
+        self.assertEqual("deny", specific["permissionDecision"])
+        self.assertTrue(specific["permissionDecisionReason"].strip())
+        self.assertNotIn("additionalContext", specific)
+        self.assertNotIn("systemMessage", output)
+
     def test_unsupported_suppression_and_post_permission_fields_fail_closed(self):
         for event in ("PreToolUse", "PostToolUse"):
             for flag in (True, False):

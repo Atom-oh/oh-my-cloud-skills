@@ -43,15 +43,16 @@ two Bash handlers and Stop handlers from unchanged installed sources.
 Kiro review stayed off; no external provider was called.
 
 A native `custom_tool_call` created two files; PostToolUse supplied
-`tool_name: "apply_patch"` and `tool_input.command`. The script also checks six
+`tool_name: "apply_patch"` and `tool_input.command`. The script also checks nine
 translated two-file denials: ask, deny followed by exit 1, continue:false, and
-deny with suppressOutput or unknown fields at either output level. Each must report
-native `blocked`, with neither file created. User hook trust is unchanged; only
-disposable fixture hashes are trusted.
+deny with suppressOutput, unknown fields at either output level, or whitespace-only
+reason/context/warning text. Each must report native `blocked`, with neither file
+created. User hook trust is unchanged; only disposable fixture hashes are trusted.
 
 Codex rejects unsupported PreToolUse fields and then continues the tool call,
 so translated `ask` and `continue:false` become supported denials. Unknown output
-fields, unsupported rewrites and child failures exit 2 before the tool runs.
+fields, unsupported rewrites and child failures exit 2. Whitespace-only reasons
+use a nonempty fallback so Codex does not discard the denial.
 This policy applies to per-file translation; source Kiro Bash review hooks keep
 their own configured failure policy. PostToolUse feedback cannot undo a tool
 that has already executed.
