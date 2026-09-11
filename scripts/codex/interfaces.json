@@ -1,0 +1,131 @@
+{
+  "kiro": {
+    "displayName": "Kiro Delegate",
+    "shortDescription": "Delegate implementation to Kiro CLI to save tokens.",
+    "longDescription": "Plan with Codex, hand off implementation tasks to Kiro CLI (flat-rate subscription credits) inside an isolated git worktree, verify with tests. Falls back to the host writing the code when Kiro's fix-loop is exhausted. (The Kiro-run pre-commit review and /kiro:* commands are Claude Code-only — this Codex manifest exposes the implementation-delegation skill only.)",
+    "developerName": "atomoh",
+    "category": "Collaboration",
+    "capabilities": [
+      "Skills",
+      "Shell"
+    ],
+    "defaultPrompt": [
+      "Delegate this implementation to Kiro."
+    ]
+  },
+  "kiro-power-converter": {
+    "displayName": "Kiro Power Converter",
+    "shortDescription": "Convert Claude plugin content into Kiro Power packages.",
+    "longDescription": "Use Codex to analyze Claude Code plugins and generate Kiro Power compatible skill packages, conversion reports, and migration guidance.",
+    "developerName": "atomoh",
+    "category": "Conversion",
+    "capabilities": [
+      "Skills",
+      "Write",
+      "Migration"
+    ],
+    "defaultPrompt": [
+      "Convert this plugin to Kiro Power.",
+      "Convert this skill to Kiro format."
+    ]
+  },
+  "co-agent": {
+    "displayName": "Co Agent",
+    "shortDescription": "Coordinate multi-AI review and decision workflows.",
+    "longDescription": "Use Codex with co-agent workflows for multi-agent code review, architecture review, decision support, ADR co-authoring, AI context synchronization, and autonomous consensus/harness implementation pipelines. In Codex, Codex chairs while Claude CLI, Kiro CLI, and Agy provide advisory opinions.",
+    "developerName": "atomoh",
+    "category": "Collaboration",
+    "capabilities": [
+      "Skills",
+      "Shell",
+      "Review"
+    ],
+    "defaultPrompt": [
+      "Run a multi-AI review.",
+      "Help me decide with co-agent.",
+      "Sync AI context files."
+    ]
+  },
+  "aws-ops-plugin": {
+    "displayName": "AWS Ops Plugin",
+    "shortDescription": "Troubleshoot, review, and operate AWS and EKS environments.",
+    "longDescription": "Use Codex skills for AWS operations workflows including troubleshooting, health checks, network diagnosis, observability, security audit, and Well-Architected review.",
+    "developerName": "atomoh",
+    "category": "Cloud Operations",
+    "capabilities": [
+      "Skills",
+      "MCP",
+      "Read",
+      "Shell"
+    ],
+    "defaultPrompt": [
+      "Troubleshoot this EKS issue.",
+      "Run an AWS security audit.",
+      "Review this workload against Well-Architected."
+    ]
+  },
+  "aws-content-plugin": {
+    "displayName": "AWS Content Plugin",
+    "shortDescription": "Create AWS presentations, diagrams, docs, GitBook sites, workshops, and brochures.",
+    "longDescription": "Build AWS-focused content with reusable Codex skills for reactive presentations, architecture diagrams, animated diagrams, GitBook pages, workshops, brochures, and slide quality fixes.",
+    "developerName": "atomoh",
+    "category": "Content Creation",
+    "capabilities": [
+      "Skills",
+      "Write",
+      "Interactive",
+      "Export"
+    ],
+    "defaultPrompt": [
+      "Create an AWS architecture presentation.",
+      "Review my Remarp slides.",
+      "Draw an AWS architecture diagram."
+    ]
+  },
+  "atlas": {
+    "displayName": "Atlas Doc Wiki",
+    "shortDescription": "Per-topic docs that stay in sync with the code.",
+    "longDescription": "Maintain a per-topic repository wiki with mechanically detected documentation drift. Repair stale docs in the current host; Claude-backed unattended sync is an optional, separately configured workflow.",
+    "developerName": "atomoh",
+    "category": "Documentation",
+    "capabilities": [
+      "Skills",
+      "Shell"
+    ],
+    "defaultPrompt": [
+      "Check which atlas docs have drifted from the code."
+    ]
+  },
+  "agentcore-creator": {
+    "displayName": "AgentCore Creator",
+    "shortDescription": "Convert plugin workflows into Bedrock AgentCore artifacts.",
+    "longDescription": "Use Codex to map Claude Code plugin assets into Amazon Bedrock AgentCore runtimes, gateways, memory stores, Lambda functions, and deployment guidance.",
+    "developerName": "atomoh",
+    "category": "Conversion",
+    "capabilities": [
+      "Skills",
+      "Write",
+      "AWS",
+      "Migration"
+    ],
+    "defaultPrompt": [
+      "Convert this plugin to AgentCore.",
+      "Generate AgentCore deployment artifacts."
+    ]
+  },
+  "project-init": {
+    "displayName": "Project Init",
+    "shortDescription": "Initialize and maintain Codex and Claude Code projects.",
+    "longDescription": "Project detection, scoped instructions, skills, documentation, ADRs, runbooks and project health checks with host-specific setup guidance.",
+    "developerName": "whchoi98",
+    "category": "Development",
+    "capabilities": [
+      "Skills",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Initialize this project for Codex.",
+      "Check project instructions and documentation."
+    ]
+  }
+}
