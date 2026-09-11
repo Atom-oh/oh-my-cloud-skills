@@ -33,10 +33,12 @@ staged additions for common secret patterns, and an `apply_patch` documentation
 reminder. They do not send notifications or claim comprehensive secret detection.
 Keep existing hook definitions and custom scripts; do not overwrite them.
 
-Validate the JSON, run the script with representative hook payloads, and inspect
-the configured hooks with Codex `/hooks`. The project and current hook definitions
-must be trusted before automatic execution. Do not bypass that trust step or claim
-untrusted hooks ran. The template launcher assumes the target is the Git toplevel.
+Validate the JSON and run the script with representative hook payloads. Trust the
+target project before inspecting its configured hooks with Codex `/hooks`: the
+verified CLI omits project hooks while the project is untrusted. Then grant trust
+to the current hook definitions before automatic execution. Do not bypass these
+trust steps or claim untrusted hooks ran. The template launcher assumes the target
+is the Git toplevel.
 For a nested project or a non-Git project, register shell-quoted, resolved absolute
 paths to that project's copied hook script instead of using `git rev-parse` to
 select a parent repository. Add external notifications only when the user
