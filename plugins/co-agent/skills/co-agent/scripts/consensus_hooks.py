@@ -56,6 +56,7 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 import consensus_state as cs
+from co_agent_host import HOSTS, detect_host
 try:
     import co_agent_config as cac
 except Exception as _e:   # missing OR a SyntaxError/etc. in the module — degrade, but don't hide it
@@ -182,7 +183,7 @@ _VERDICT_RE = re.compile(r"^\s*(PASS(?:ED)?|BLOCK(?:ED)?)\b", re.I)
 
 # Review adapters, mirroring references/ai-cli-adapters.md. Delivery is per the channel each
 # CLI actually consumes (untrusted content is NEVER put in argv → no `ps` exposure):
-#   channel "stdin" — prompt+diff piped on stdin (codex/agy).
+#   channel "stdin" — prompt+diff piped on stdin (claude/codex/agy).
 #   channel "file"  — written to a temp file; argv tells the CLI to fs_read it. Kiro `chat`
 #                     IGNORES stdin (see ai-cli-adapters.md), so it MUST read the file.
 # Each reviewer runs read-only / sandboxed / non-acting so a diff prompt-injection can't drive
@@ -190,12 +191,17 @@ _VERDICT_RE = re.compile(r"^\s*(PASS(?:ED)?|BLOCK(?:ED)?)\b", re.I)
 # (only the read-only fs_read tool auto-approved). {M} expands to the per-peer model flag;
 # {F} to the temp-file path (file channel only).
 _REVIEW = {
-    "codex":    {"channel": "stdin", "argv": ["codex", "exec", "-s", "read-only", "{M}", "{I}"]},
+    "claude":   {"channel": "stdin", "argv": ["claude", "-p", "{I}", "--permission-mode", "plan",
+                                            "--tools", "Read,Grep,Glob", "--output-format", "text", "{M}"]},
+    # Gates launch in a temporary NON-git directory; keep the read-only sandbox,
+    # but allow that cwd (the same prerequisite as the readiness probe).
+    "codex":    {"channel": "stdin", "argv": ["codex", "exec", "-s", "read-only",
+                                            "--skip-git-repo-check", "{M}", "{I}"]},
     "agy":      {"channel": "stdin", "argv": ["agy", "-p", "{I}", "--sandbox", "{M}"]},
     "kiro-cli": {"channel": "file",  "argv": ["kiro-cli", "chat", "{I}", "--v3", "--mode", "default",
                           "--no-interactive", "--trust-tools=fs_read", "--wrap", "never", "{M}"]},
 }
-_MODEL_FLAG = {"codex": "-m", "agy": "--model", "kiro-cli": "--model"}
+_MODEL_FLAG = {"claude": "--model", "codex": "-m", "agy": "--model", "kiro-cli": "--model"}
 
 
 def _model_override(ai):
@@ -220,6 +226,7 @@ def _codex_effort_override():
 # tool's credential (GH_TOKEN, AWS_*, etc.) out of `os.environ`. (Absolute-path file reads like
 # ~/.aws/credentials remain a documented residual — reviewers are read-capable; see CLAUDE.md.)
 _PEER_ENV_KEEP = {
+    "claude":   ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN"),
     "codex":    ("OPENAI_API_KEY", "CODEX_API_KEY"),
     "agy":      ("GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENAI_API_KEY"),
     "kiro-cli": ("KIRO_API_KEY",),
@@ -580,7 +587,10 @@ def _panel(root):
     """The canonical panel (`panel_ais`: kiro-cli + cross-provider peer + agy), filtered by
     config `enabled` and PATH. Never the host. An explicit "all disabled" yields [] (no PATH override). Only a missing/failed config
     module degrades to a best-effort PATH scan."""
-    host = os.environ.get("CO_AGENT_HOST", "claude")
+    host = detect_host()
+    if host not in HOSTS:
+        sys.stderr.write(f"[co-agent PR gate] unknown host '{host}' — skipping panel.\n")
+        return [], {}
     if cac is None:
         return _path_panel(host)
     try:
@@ -653,7 +663,7 @@ def _review_one(peer, prompt_text, model, fpath, cwd, timeout, out):
             # stdin channel: pipe prompt+diff (never argv → no `ps` exposure). A CLI that
             # ignores stdin sees no diff → replies `BLOCK: no diff received` per the prompt.
             r = subprocess.run(argv, cwd=cwd, env=penv, input=prompt_text, capture_output=True, text=True, timeout=timeout)
-        out[peer] = (r.stdout or "")[:8000]
+        out[peer] = (r.stdout or "")[:8000] if r.returncode == 0 else f"__ERROR__ exit {r.returncode}"
     except subprocess.TimeoutExpired:
         out[peer] = "__TIMEOUT__"
     except Exception as e:
@@ -698,7 +708,7 @@ def _review_one_push(peer, lens, prompt_text, model, fpath, cwd, timeout, out):
             r = subprocess.run(argv, cwd=cwd, env=penv, capture_output=True, text=True, timeout=timeout)
         else:
             r = subprocess.run(argv, cwd=cwd, env=penv, input=prompt_text, capture_output=True, text=True, timeout=timeout)
-        out[key] = (r.stdout or "")[:8000]
+        out[key] = (r.stdout or "")[:8000] if r.returncode == 0 else f"__ERROR__ exit {r.returncode}"
     except subprocess.TimeoutExpired:
         out[key] = "__TIMEOUT__"
     except Exception as e:
