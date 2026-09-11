@@ -48,6 +48,15 @@ class ComponentTests(unittest.TestCase):
     def test_existing_default_skill_directory_remains_valid(self):
         self.assertEqual([], self.validate())
 
+    def test_missing_project_init_adapter_is_an_error(self):
+        source = self.root / "plugins/project-init/.claude-plugin/plugin.json"
+        source.parent.mkdir(parents=True)
+        source.write_text(json.dumps({"name": "project-init"}))
+        validator = MODULE.CodexPluginValidator(self.root)
+        validator.discover_plugins()
+        self.assertTrue(any("project-init: no .codex-plugin manifest" in error
+                            for error in validator.errors), validator.errors)
+
     def test_declared_skill_directory_is_validated(self):
         self.skill(".codex-plugin/skills")
         self.manifest["skills"] = "./.codex-plugin/skills/"

@@ -13,25 +13,20 @@ Evaluation and utility scripts for the plugin marketplace.
 | `setup.sh` | One-command project setup for new developers |
 | `install-hooks.sh` | Install Git commit-msg hook |
 
-## Validator exceptions (independent source and publication scopes)
+## Validator scope
 
-These exceptions govern different surfaces; neither authorizes weaker validation
-or a source fork:
+Source-mirror discovery does not authorize a Codex publication exception or source fork:
 
 | Constant | Script | Means |
 |----------|--------|-------|
 | `MIRRORED_PLUGINS` | `test-plugins.py` | plugin.json is an upstream mirror kept verbatim, so `agents`/`skills` may be absent — they're discovered from `agents/*.md` and `skills/*/SKILL.md` instead, and a mirror with neither the field nor any file on disk is an error |
-| `CLAUDE_ONLY` | `test-codex-plugins.py` | temporarily permits an unpublished adapter's absence. A present Codex manifest is validated normally; a marketplace entry without its manifest is still an error |
-
-Both currently name `project-init`, but their membership need not stay coupled.
-`MIRRORED_PLUGINS` concerns upstream source conventions and remains applicable after
-Codex publication. `CLAUDE_ONLY` is a staging exception, not a permanent platform
-policy: once the generated overlay and entry ship, it must not excuse missing Codex
-delivery. Historical "keep in sync" comments do not extend its scope.
+`MIRRORED_PLUGINS` contains `project-init` and remains applicable after Codex
+publication. The Codex validator requires every plugin's manifest and marketplace
+entry; the temporary `CLAUDE_ONLY` staging exception has been removed.
 
 All eight plugins are approved for Codex support. Keep adaptation tooling outside
 upstream-owned files, and generate project-init's separate `.codex-plugin/` overlay
-when the factory is available. Current validator success does not establish that
+after source updates. Current validator success does not establish that
 every adapter or host workflow has been published and verified.
 
 **Agent `tools:` scopes.** `Bash(git log:*)` is accepted (upstream's mirrored

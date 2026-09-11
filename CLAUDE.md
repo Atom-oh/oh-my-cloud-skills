@@ -55,7 +55,7 @@ claude --plugin-dir ./plugins/aws-ops-plugin
 
 # Structural test suite — the canonical validation (manifests, frontmatter, references)
 python3 scripts/test-plugins.py                 # all plugins; -p <plugin> for one, -v verbose
-python3 scripts/test-codex-plugins.py           # published Codex manifests; CLAUDE_ONLY temporarily permits project-init's unpublished adapter
+python3 scripts/test-codex-plugins.py           # all eight Codex manifests and marketplace entries
 
 # Stale plugin cache check — local ~/.claude/plugins/cache vs source (--fix to copy)
 ./scripts/sync-plugin-cache.sh
@@ -209,11 +209,10 @@ All plugins share a single version tracked in their `plugin.json` → `"version"
 - **Git tag format**: `v{version}` (e.g., `v1.1.0`) — created on the release commit
 - **Release process**: bump `"version"` in all `plugin.json` files + `marketplace.json` → commit → `git tag v{version}` → push with `--tags`
 - **Validation**: `git describe --tags` should match all `plugin.json` and `marketplace.json` versions
-- Published Codex manifests (`.codex-plugin/plugin.json`) and entries in
+- Codex manifests (`.codex-plugin/plugin.json`) and entries in
   `.agents/plugins/marketplace.json` share the Claude marketplace version. Project-init's
-  generated overlay and entry are approved but not yet published on this base; their
-  temporary absence does not change the eight-plugin target. Once published, they receive
-  normal Codex validation while the upstream source remains mirrored.
+  generated overlay and entry receive normal Codex validation; no plugin is exempt
+  from the missing-adapter check. Its upstream source remains mirrored.
 - The following checks version agreement across existing surfaces, not completeness of
   Codex delivery. Missing adapters and unverified host behavior cannot count as ready.
 
@@ -348,12 +347,12 @@ Commands: `/init-project`, `/sync-docs`, `/add-adr`, `/add-module`, `/add-runboo
 marketplace-uniform `version` in `.claude-plugin/plugin.json`. Do not edit those sources
 locally. The separate repository-owned `.codex-plugin/` overlay is allowed: generate host
 adaptations from tooling outside the mirrored source, preserve the overlay during sync,
-and regenerate it when the generator is available. See the staged sync procedure before
+and regenerate it after source updates. See the sync procedure before
 claiming it is current.
 
-`MIRRORED_PLUGINS` permits source discovery when manifest arrays are absent; it is
-independent of `CLAUDE_ONLY`, the temporary missing-Codex-adapter exception. Publishing
-the overlay does not end source mirroring. Local features remain in co-agent
+`MIRRORED_PLUGINS` permits source discovery when manifest arrays are absent.
+It does not exempt a plugin from Codex validation or end source mirroring.
+Local features remain in co-agent
 (`pr-autofix`, `decision-reconcile`) or the root routing table. Sync procedure:
 `docs/reference/project-init-upstream-sync.md`.
 
