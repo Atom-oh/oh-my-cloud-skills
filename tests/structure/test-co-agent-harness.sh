@@ -7,67 +7,67 @@ WT="plugins/co-agent/skills/co-agent/scripts/worktree.py"
 
 # --- Task 1 / R2-A: implementer resolution (sandbox CLIs only: codex, agy) ---
 R=$(mktemp -d "${TMPDIR:-/tmp}/coagent-harness.XXXXXX")
-assert_eq "codex" "$(CO_AGENT_HOST=claude python3 "$CFG" implementer --host claude --root "$R" 2>&1)" "default implementer for claude host = codex"
-assert_eq "agy" "$(CO_AGENT_HOST=claude python3 "$CFG" implementer --host codex --root "$R" 2>&1)" "default implementer for codex host = agy (claude is not a sandbox CLI)"
-CO_AGENT_HOST=claude python3 "$CFG" set harness implementer agy --root "$R" >/dev/null 2>&1
-assert_eq "agy" "$(CO_AGENT_HOST=claude python3 "$CFG" implementer --host claude --root "$R" 2>&1)" "override to a sandbox CLI respected"
+assert_eq "codex" "$(python3 "$CFG" implementer --host claude --root "$R" 2>&1)" "default implementer for claude host = codex"
+assert_eq "agy" "$(python3 "$CFG" implementer --host codex --root "$R" 2>&1)" "default implementer for codex host = agy (claude is not a sandbox CLI)"
+python3 "$CFG" set harness implementer agy --root "$R" >/dev/null 2>&1
+assert_eq "agy" "$(python3 "$CFG" implementer --host claude --root "$R" 2>&1)" "override to a sandbox CLI respected"
 # non-sandbox implementers rejected at set time (claude/kiro-cli have no worktree sandbox;
 # gemini isn't even a recognized AI anymore — Agy superseded it, ADR-010)
-CO_AGENT_HOST=claude python3 "$CFG" set harness implementer claude --root "$R" >/dev/null 2>&1 && C1=0 || C1=$?
+python3 "$CFG" set harness implementer claude --root "$R" >/dev/null 2>&1 && C1=0 || C1=$?
 assert_eq "2" "$C1" "non-sandbox implementer claude rejected (exit 2)"
-CO_AGENT_HOST=claude python3 "$CFG" set harness implementer kiro-cli --root "$R" >/dev/null 2>&1 && C2=0 || C2=$?
+python3 "$CFG" set harness implementer kiro-cli --root "$R" >/dev/null 2>&1 && C2=0 || C2=$?
 assert_eq "2" "$C2" "non-sandbox implementer kiro-cli rejected (exit 2)"
 # a valid sandbox implementer equal to the host is rejected at resolve time
-CO_AGENT_HOST=claude python3 "$CFG" set harness implementer codex --root "$R" >/dev/null 2>&1
-CO_AGENT_HOST=claude python3 "$CFG" implementer --host codex --root "$R" >/dev/null 2>&1 && IRC=0 || IRC=$?
+python3 "$CFG" set harness implementer codex --root "$R" >/dev/null 2>&1
+python3 "$CFG" implementer --host codex --root "$R" >/dev/null 2>&1 && IRC=0 || IRC=$?
 assert_eq "2" "$IRC" "implementer equal to host rejected (exit 2)"
 rm -rf "$R"
 
 # --- Task 2 / R2-A: write-mode implementer flags (sandbox CLIs only) ---
 R2=$(mktemp -d "${TMPDIR:-/tmp}/coagent-harness2.XXXXXX")
-assert_contains "$(CO_AGENT_HOST=claude python3 "$CFG" impl-flags codex --host claude --root "$R2" 2>&1)" "workspace-write" "codex impl-flags use workspace-write sandbox"
-assert_contains "$(CO_AGENT_HOST=claude python3 "$CFG" impl-flags agy --host claude --root "$R2" 2>&1)" "sandbox" "agy impl-flags keep sandbox"
+assert_contains "$(python3 "$CFG" impl-flags codex --host claude --root "$R2" 2>&1)" "workspace-write" "codex impl-flags use workspace-write sandbox"
+assert_contains "$(python3 "$CFG" impl-flags agy --host claude --root "$R2" 2>&1)" "sandbox" "agy impl-flags keep sandbox"
 # non-sandbox CLIs are not valid implementers — impl-flags rejects them
-CO_AGENT_HOST=claude python3 "$CFG" impl-flags claude --host codex --root "$R2" >/dev/null 2>&1 && NF=0 || NF=$?
+python3 "$CFG" impl-flags claude --host codex --root "$R2" >/dev/null 2>&1 && NF=0 || NF=$?
 assert_eq "2" "$NF" "impl-flags rejects non-sandbox implementer claude (exit 2)"
-CO_AGENT_HOST=claude python3 "$CFG" impl-flags codex --host codex --root "$R2" >/dev/null 2>&1 && HRC=0 || HRC=$?
+python3 "$CFG" impl-flags codex --host codex --root "$R2" >/dev/null 2>&1 && HRC=0 || HRC=$?
 assert_eq "2" "$HRC" "impl-flags rejects ai equal to host (exit 2)"
-assert_grep_no_match "workspace-write|acceptEdits" "$(CO_AGENT_HOST=claude python3 "$CFG" flags codex --host claude --root "$R2" 2>&1)" "review flags stay read-only (no write sandbox)"
+assert_grep_no_match "workspace-write|acceptEdits" "$(python3 "$CFG" flags codex --host claude --root "$R2" 2>&1)" "review flags stay read-only (no write sandbox)"
 rm -rf "$R2"
 
 # --- Role tiering: implementer_models/<ai> apply to impl-flags ONLY, keyed per
 # --- implementer so no provider's model can leak onto another CLI's --model flag ---
 R2T=$(mktemp -d "${TMPDIR:-/tmp}/coagent-harness2t.XXXXXX")
-CO_AGENT_HOST=claude python3 "$CFG" set codex model gpt-5-codex --root "$R2T" >/dev/null 2>&1     # panel (review) model
+python3 "$CFG" set codex model gpt-5-codex --root "$R2T" >/dev/null 2>&1     # panel (review) model
 # per-implementer keying: storing without an explicit implementer is refused
-CO_AGENT_HOST=claude python3 "$CFG" set harness implementer_model gpt-5.3-codex-mini --root "$R2T" >/dev/null 2>&1 && SU=0 || SU=$?
+python3 "$CFG" set harness implementer_model gpt-5.3-codex-mini --root "$R2T" >/dev/null 2>&1 && SU=0 || SU=$?
 assert_eq "2" "$SU" "set implementer_model without an explicit implementer refused (exit 2)"
 # bind codex, set overrides → they apply to codex's write path
-CO_AGENT_HOST=claude python3 "$CFG" set harness implementer codex --root "$R2T" >/dev/null 2>&1
-CO_AGENT_HOST=claude python3 "$CFG" set harness implementer_model gpt-5.3-codex-mini --root "$R2T" >/dev/null 2>&1
-CO_AGENT_HOST=claude python3 "$CFG" set harness implementer_effort low --root "$R2T" >/dev/null 2>&1
-IFT=$(CO_AGENT_HOST=claude python3 "$CFG" impl-flags codex --host claude --root "$R2T" 2>&1)
+python3 "$CFG" set harness implementer codex --root "$R2T" >/dev/null 2>&1
+python3 "$CFG" set harness implementer_model gpt-5.3-codex-mini --root "$R2T" >/dev/null 2>&1
+python3 "$CFG" set harness implementer_effort low --root "$R2T" >/dev/null 2>&1
+IFT=$(python3 "$CFG" impl-flags codex --host claude --root "$R2T" 2>&1)
 assert_contains "$IFT" "gpt-5.3-codex-mini" "implementer_models.codex overrides panel model (write path)"
 assert_contains "$IFT" 'model_reasoning_effort="low"' "implementer_efforts.codex overrides panel effort"
 # SWITCH-LEAK regression: an explicit implementer switch must NOT carry the codex
 # model onto agy's --model flag (the entry stays keyed to codex, dormant)
-CO_AGENT_HOST=claude python3 "$CFG" set harness implementer agy --root "$R2T" >/dev/null 2>&1
-IFA=$(CO_AGENT_HOST=claude python3 "$CFG" impl-flags agy --host claude --root "$R2T" 2>&1)
+python3 "$CFG" set harness implementer agy --root "$R2T" >/dev/null 2>&1
+IFA=$(python3 "$CFG" impl-flags agy --host claude --root "$R2T" 2>&1)
 assert_grep_no_match "codex-mini" "$IFA" "implementer switch does not leak codex model to agy (per-AI keying)"
 # effort is codex-only: storing it while the implementer is agy is refused
-CO_AGENT_HOST=claude python3 "$CFG" set harness implementer_effort low --root "$R2T" >/dev/null 2>&1 && AE=0 || AE=$?
+python3 "$CFG" set harness implementer_effort low --root "$R2T" >/dev/null 2>&1 && AE=0 || AE=$?
 assert_eq "2" "$AE" "implementer_effort refused while implementer is agy (codex-only, exit 2)"
 # show marks the codex entry dormant while agy is the implementer
-assert_contains "$(CO_AGENT_HOST=claude python3 "$CFG" show --root "$R2T" 2>/dev/null)" "dormant" "show marks a non-current implementer's tiering entry dormant"
+assert_contains "$(python3 "$CFG" show --root "$R2T" 2>/dev/null)" "dormant" "show marks a non-current implementer's tiering entry dormant"
 # review flags never pick up the write-path override
-CO_AGENT_HOST=claude python3 "$CFG" set harness implementer codex --root "$R2T" >/dev/null 2>&1
-RVT=$(CO_AGENT_HOST=claude python3 "$CFG" flags codex --host claude --root "$R2T" 2>&1)
+python3 "$CFG" set harness implementer codex --root "$R2T" >/dev/null 2>&1
+RVT=$(python3 "$CFG" flags codex --host claude --root "$R2T" 2>&1)
 assert_contains "$RVT" "gpt-5-codex" "review flags keep the panel model (tiering is write-path only)"
 assert_grep_no_match "codex-mini" "$RVT" "review flags never pick up implementer_models"
 # validation: bad values rejected at set time
-CO_AGENT_HOST=claude python3 "$CFG" set harness implementer_effort turbo --root "$R2T" >/dev/null 2>&1 && TE=0 || TE=$?
+python3 "$CFG" set harness implementer_effort turbo --root "$R2T" >/dev/null 2>&1 && TE=0 || TE=$?
 assert_eq "2" "$TE" "invalid implementer_effort rejected (exit 2)"
-CO_AGENT_HOST=claude python3 "$CFG" set harness implementer_model "bad model;rm" --root "$R2T" >/dev/null 2>&1 && TM=0 || TM=$?
+python3 "$CFG" set harness implementer_model "bad model;rm" --root "$R2T" >/dev/null 2>&1 && TM=0 || TM=$?
 assert_eq "2" "$TM" "implementer_model with shell metacharacters rejected (exit 2)"
 # emit-time revalidation: a hand-edited local.json (bypassing set) must be refused
 # fail-closed — impl-flags argv feeds a write-enabled sandbox
@@ -77,7 +77,7 @@ p = os.path.join(sys.argv[1], ".claude/co-agent.local.json")
 d = json.load(open(p)); d["harness"]["implementer_models"]["codex"] = "gpt-5\n--evil"
 json.dump(d, open(p, "w"))
 PYEOF
-CO_AGENT_HOST=claude python3 "$CFG" impl-flags codex --host claude --root "$R2T" >/dev/null 2>&1 && EV=0 || EV=$?
+python3 "$CFG" impl-flags codex --host claude --root "$R2T" >/dev/null 2>&1 && EV=0 || EV=$?
 assert_eq "2" "$EV" "impl-flags re-validates model at emit time — hand-edited control-char model refused (exit 2)"
 python3 - "$R2T" <<'PYEOF'
 import json, sys, os
@@ -87,12 +87,12 @@ d["harness"]["implementer_models"]["codex"] = "gpt-5.3-codex-mini"
 d["harness"]["implementer_efforts"]["codex"] = "turbo"
 json.dump(d, open(p, "w"))
 PYEOF
-CO_AGENT_HOST=claude python3 "$CFG" impl-flags codex --host claude --root "$R2T" >/dev/null 2>&1 && EE=0 || EE=$?
+python3 "$CFG" impl-flags codex --host claude --root "$R2T" >/dev/null 2>&1 && EE=0 || EE=$?
 assert_eq "2" "$EE" "impl-flags re-validates effort at emit time — hand-edited bad effort refused (exit 2)"
 # clearing falls back to the panel settings
-CO_AGENT_HOST=claude python3 "$CFG" set harness implementer_effort null --root "$R2T" >/dev/null 2>&1
-CO_AGENT_HOST=claude python3 "$CFG" set harness implementer_model default --root "$R2T" >/dev/null 2>&1
-IFC=$(CO_AGENT_HOST=claude python3 "$CFG" impl-flags codex --host claude --root "$R2T" 2>&1)
+python3 "$CFG" set harness implementer_effort null --root "$R2T" >/dev/null 2>&1
+python3 "$CFG" set harness implementer_model default --root "$R2T" >/dev/null 2>&1
+IFC=$(python3 "$CFG" impl-flags codex --host claude --root "$R2T" 2>&1)
 assert_grep_no_match "codex-mini" "$IFC" "cleared implementer_models entry falls back to panel model"
 assert_contains "$IFC" "gpt-5-codex" "fallback impl-flags carry the panel model"
 rm -rf "$R2T"

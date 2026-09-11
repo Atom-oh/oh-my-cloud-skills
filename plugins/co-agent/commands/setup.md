@@ -13,9 +13,7 @@ leaves having made a conscious choice about the pre-push gate.
 
 Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"`.
 
-1. Run the preflight and show the table. It detects the current host and probes only
-   enabled peers; use `--host claude|codex` to override detection. A host change makes
-   the saved summary stale, so run setup again when switching hosts:
+1. Run the preflight and show the table:
    ```bash
    python3 "$SK/check_panel.py" report
    ```

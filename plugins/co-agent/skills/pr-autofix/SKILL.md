@@ -99,7 +99,7 @@ fix pass.
 
 | Source | Detection | Pass condition |
 |--------|-----------|----------------|
-| **AI Code Review** | Trusted review result and its exact reviewed commit (§2) | Completed for the latest PR HEAD, required coverage present, no unresolved Critical/Major findings |
+| **AI Code Review** | Marker in issue comments — configured `pr_autofix.review_marker`, or auto-detected `<!-- …pr-review -->` when unset (§2) | `**Status: PASSED**` in comment body |
 | **Human reviewer** | `gh pr view --json reviews` with `CHANGES_REQUESTED` state | All reviews `APPROVED` or no reviews yet |
 
 ## Flow
@@ -108,7 +108,7 @@ fix pass.
 stateDiagram-v2
     [*] --> Poll
     Poll --> Poll : reviews still pending (60s interval, 10 min timeout)
-    Poll --> Stop : current HEAD reviewed, required coverage and CI pass
+    Poll --> Stop : all PASS/SKIP → stop_reason=clean
     Poll --> BoundCheck : any BLOCKED
     BoundCheck --> Stop : iteration >= max_iter → stop_reason=max_iter
     BoundCheck --> Plan : iteration < max_iter
@@ -163,22 +163,9 @@ AI_REVIEW_FILTER='[ .[] | select(.user.login == "github-actions[bot]") |
 gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" | jq --arg m "$MARKER" "$AI_REVIEW_FILTER"
 ```
 
-Read the PR's current `headRefOid` and bind the review to that **exact commit**.
-This repository's review footer records `Triggered by commit <full SHA>`; other
-providers may attach `commit_id` or a check run to the reviewed commit. A recent
-`updated_at` alone is insufficient: an old run can finish after a newer push.
-§3 re-uses the same trusted-author and marker filter.
-
-```bash
-gh pr view "$PR_NUMBER" --json headRefOid,baseRefName,statusCheckRollup
-gh api "repos/${REPO}/pulls/${PR_NUMBER}/reviews"
-gh api "repos/${REPO}/pulls/${PR_NUMBER}/comments"
-```
-
-Check inline findings too, including unresolved earlier findings against the
-current code. A summary alone does not establish that they were fixed. Capture
-the reviewed SHA, check/run identity and required review coverage in the loop
-state. Any new push invalidates the previous pass result.
+Verify the comment's `updated_at` is after the last push, so the verdict reflects the
+current code. §3 re-uses this SAME `$MARKER` + `$AI_REVIEW_FILTER` — one filter, two
+call sites, never a forked copy.
 
 **Human review.** `gh pr reviews` does not exist — reviews are read via
 `gh pr view --json reviews`; inline (line-level) comments come from the pulls API:
@@ -193,21 +180,11 @@ gh api "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
 
 ### 3. Check verdict
 
-- **AI review**: PASS only when a completed trusted review applies to the current
-  HEAD, required coverage is present, and verified findings contain no unresolved
-  Critical/Major issue. `BLOCKED` starts a fix pass. Missing, running, failed,
-  errored, partial or unbound review evidence remains PENDING/ERROR; it is never
-  equivalent to "no blocking issues." Inspect the actual workflow/run, retry
-  recoverable failures, and report a specific external or permission blocker.
+- **AI review**: body contains `**Status: PASSED**` → PASS · `**Status: BLOCKED**` →
+  BLOCKED · no comment found → SKIP (no CI configured)
 - **Human review**: all `APPROVED` → PASS · any `CHANGES_REQUESTED` → BLOCKED · none
-  yet → not required only when branch protection and the task permit it.
-- **Completion**: latest HEAD reviewed, no unresolved Critical/Major findings,
-  and all required CI and branch protection conditions satisfied. Minor/Info
-  findings alone do not stop an otherwise authorized merge workflow.
-- If the user authorized merging, re-read HEAD and base branch, confirm prerequisite
-  PRs are integrated along the intended path, then merge without asking again.
-  A changed HEAD returns to polling and verification. Never disable required checks.
-- Only after the requested review/merge workflow is fulfilled, mark the loop clean:
+  yet → SKIP
+- **Both PASS/SKIP** → done, inform the user:
 
 ```bash
 jq '.phase = "stop" | .stop_reason = "clean"' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" || exit 1
@@ -462,7 +439,7 @@ Every run ends at one of three stops — report which, and what happened:
 
 | `stop_reason` | Meaning | Report to the user |
 |---------------|---------|--------------------|
-| `clean` | Latest HEAD reviewed; required coverage and CI pass; authorized merge completed when requested | Fixes, tests, PR link, merge status, memory-update status |
+| `clean` | Both review sources PASS/SKIP | Passes used, fixes landed, memory-update status |
 | `max_iter` | Bound reached with reviews still blocking | Remaining findings + the tuning path (`/co-agent:configure set pr_autofix max_iterations`) |
 | `gate_blocked_final` | §5b blocked twice, or found a secret | Both rounds of findings; the unpushed fix commit sitting on HEAD |
 

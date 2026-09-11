@@ -11,8 +11,8 @@ skills:
 
 # co-agent
 
-Chairs a panel of **external AI agents** (Kiro CLI, the peer host CLI, and Agy) to get a second
-opinion, then **synthesizes the final answer as the current host** — a review verdict, a decision
+Chairs a panel of **external AI agents** (Kiro CLI, Codex, and Agy) to get a second
+opinion, then **synthesizes the final answer as Claude** — a review verdict, a decision
 recommendation, or an ADR draft the user acts on. Uses whichever AI CLIs are installed
 and degrades gracefully to solo when none are. An excellent synthesis attributes each
 notable point to its source and surfaces disagreement instead of averaging it away.
@@ -36,15 +36,15 @@ notable point to its source and surfaces disagreement instead of averaging it aw
 
 ```mermaid
 graph TD
-    A[Request] --> P[Step 0: Detect enabled peers<br/>exclude the current host]
+    A[Request] --> P[Step 0: Detect panel<br/>whichever of kiro-cli / codex / agy is installed]
     P --> B{Intent?}
     B -->|code/architecture review| R[Review: diff fanned out → synthesized → PASS/REVIEW/FAIL]
     B -->|"unsure" / decision support| D[Decide: options fanned out → comparison table → recommendation]
     B -->|draft an ADR| ADR[ADR: alternatives/trade-offs fanned out → ADR draft]
-    R --> S[Host synthesizes + attributes sources]
+    R --> S[Claude synthesizes + attributes sources]
     D --> S
     ADR --> S
-    P -->|no panel| SOLO[Host performs solo + states that fact]
+    P -->|no panel| SOLO[Claude performs solo + states that fact]
 ```
 
 Detailed per-mode steps live in `skills/co-agent/SKILL.md`.
@@ -55,16 +55,13 @@ Detailed per-mode steps live in `skills/co-agent/SKILL.md`.
 
 ```bash
 PANEL=""
-CFG="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py"
-HOST=$(python3 "$CFG" host) || exit 1
 # Binary presence only — kiro-cli works headless via interactive login OR
 # $KIRO_API_KEY. Unauthenticated CLIs just error at call time → skipped.
 # NOTE: the peer label `kiro-cli` is also the binary name — invoke `kiro-cli` directly.
-ENABLED=$(python3 "$CFG" panel --host "$HOST") || exit 1
-for ai in $ENABLED; do
-  command -v "$ai" >/dev/null 2>&1 && PANEL="$PANEL $ai"
-done
-echo "Panel: ${PANEL:-none (host solo)}"
+command -v kiro-cli >/dev/null 2>&1 && PANEL="$PANEL kiro-cli"
+command -v codex    >/dev/null 2>&1 && PANEL="$PANEL codex"
+command -v agy      >/dev/null 2>&1 && PANEL="$PANEL agy"
+echo "Panel: ${PANEL:-none (Claude solo)}"
 ```
 
 Run panel members **in parallel** (`&` + `wait`) capturing each to a file; an empty
@@ -74,7 +71,7 @@ or errored output means that AI skipped this run — note it and continue.
 
 ## Chair Principle
 
-External AIs **advise**; **the current host decides and writes the final artifact** — no single
+External AIs **advise**; **Claude decides and writes the final artifact** — no single
 AI's opinion decides the outcome (canon: the plugin `CLAUDE.md` "Chair Principle").
 A missing or errored CLI is skipped and noted, never blocked on (fail-open). Keep
 every AI's prompt **identical** so answers are comparable.

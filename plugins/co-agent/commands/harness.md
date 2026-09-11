@@ -29,7 +29,7 @@ subagents** in separate worktrees (`harness.parallel_tasks`, default 3). Gate mo
 Argument: `$ARGUMENTS`
 
 Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"` and
-resolve `HOST=$(python3 "$SK/co_agent_config.py" host)` (stop if resolution fails).
+`HOST="${CO_AGENT_HOST:-claude}"`.
 
 ## H0 — Detect & consent
 1. **Consent + cost**: resolve `MODE=$(python3 "$SK/co_agent_config.py" review-mode)`; the

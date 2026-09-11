@@ -19,7 +19,6 @@ The fan-out (see references/ai-cli-adapters.md) consumes `flags`/`panel`/`timeou
 so these settings are LIVE — changing them changes what actually runs.
 
 Usage:
-  co_agent_config.py host                       # detected host (or explicit override)
   co_agent_config.py show --host claude          # Claude chairs; panel = kiro-cli/codex/agy
   co_agent_config.py show --host codex           # Codex chairs; panel = kiro-cli/claude/agy
   co_agent_config.py show                       # effective merged config (table)
@@ -54,7 +53,7 @@ Usage:
   co_agent_config.py pairs [--phases N] [--profile default|deep]   # (ai, model) pairs for this round
   co_agent_config.py matrix [--phases N] [--profile default|deep]  # pairs × rounds × phases = true max calls
 Add --root DIR to target a repo other than the cwd.
-Host is detected from runtime markers; --host or CO_AGENT_HOST overrides detection.
+Add --host claude|codex or set CO_AGENT_HOST to choose the current chair.
 Add --phases N to `pairs`/`matrix` when a gate fans out more than once per round (the
 hybrid gate's find+verify = 2 phases) — divides the per-round call budget across phases
 so `rounds × phases × pairs` still stays within `consensus.max_calls`. Default 1.
@@ -70,13 +69,8 @@ import json
 import copy
 import subprocess
 
-# Also support importlib.spec_from_file_location callers outside this directory.
-_HERE = os.path.dirname(os.path.abspath(__file__))
-if _HERE not in sys.path:
-    sys.path.insert(0, _HERE)
-from co_agent_host import HOSTS, detect_host
-
 ALL_AIS = ("kiro-cli", "claude", "codex", "agy")
+HOSTS = ("claude", "codex")
 CODEX_EFFORTS = ("minimal", "low", "medium", "high")
 CLAUDE_EFFORTS = ("low", "medium", "high", "xhigh", "max")
 EFFORTS_BY_AI = {"codex": CODEX_EFFORTS, "claude": CLAUDE_EFFORTS}
@@ -991,16 +985,13 @@ def main():
         print("--scope must be user|local", file=sys.stderr)
         return 2
 
-    host = normalize_host(detect_host(host_arg))
+    host = normalize_host(host_arg or os.environ.get("CO_AGENT_HOST", "claude"))
     if host is None:
         return 2
 
     if not args:
         return cmd_show(root, host)
     cmd, rest = args[0], args[1:]
-    if cmd == "host":
-        print(host)
-        return 0
     if cmd == "show":
         return cmd_show(root, host)
     if cmd == "set":

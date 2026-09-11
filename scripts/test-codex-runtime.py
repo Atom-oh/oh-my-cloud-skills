@@ -114,11 +114,12 @@ def main():
                 helper = installed_roots["co-agent"] / ".codex-plugin/run.py"
                 result = subprocess.run(
                     ["python3", str(helper), "skills/co-agent/scripts/co_agent_config.py",
-                     "host", "--root", str(target)],
+                     "panel", "--root", str(target)],
                     cwd=target, env=env, capture_output=True, text=True, timeout=15,
                 )
-                if result.returncode or result.stdout.strip() != "codex":
-                    raise RuntimeError("Installed helper did not select the Codex host: " +
+                peers = result.stdout.split()
+                if result.returncode or "codex" in peers or "claude" not in peers:
+                    raise RuntimeError("Installed helper did not select the Codex-host panel: " +
                                        result.stdout + result.stderr)
                 helper = installed_roots["atlas"] / ".codex-plugin/run.py"
                 result = subprocess.run(
