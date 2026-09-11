@@ -218,7 +218,16 @@ elif sys.argv[1:3] == ["pr", "view"]:
     if os.environ.get("TEST_QUERY_FAIL"):
         sys.exit(1)
     data = json.loads(path.read_text())
-    print(data["state"] + "\\t" + data["headRefName"] if "--jq" in sys.argv else path.read_text())
+    if "--jq" not in sys.argv:
+        print(path.read_text())
+    else:
+        query = sys.argv[sys.argv.index("--jq") + 1]
+        if query == "[.state,.headRefName]|@tsv":
+            print(data["state"] + "\\t" + data["headRefName"])
+        elif query in (".baseRefName", ".headRefOid", ".headRefName"):
+            print(data[query[1:]])
+        else:
+            sys.exit(2)
 elif sys.argv[1:3] == ["pr", "checks"]:
     error = os.environ.get("TEST_CHECK_ERROR")
     if error:
@@ -258,13 +267,12 @@ else:
                 self.env["TEST_BRANCH"] = branch
                 self.assert_refused("REPO=$(gh repo view")
 
-    def test_entry_preserves_unpushed_gate_and_committing_resumes(self):
+    def test_entry_preserves_gate_and_committing_state(self):
         for phase in ("gate", "committing"):
             with self.subTest(phase=phase):
                 state, _ = self.prepare_clean()
                 state["phase"] = phase
                 self.write(state)
-                self.env["TEST_LOCAL_HEAD"] = "d" * 40
                 self.run_snippet("REPO=$(gh repo view")
                 self.run_snippet("command -v jq")
                 self.assertEqual(state, self.read())

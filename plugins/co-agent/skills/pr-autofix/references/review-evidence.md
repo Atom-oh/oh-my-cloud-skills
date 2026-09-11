@@ -47,6 +47,8 @@ and run identities through `review-state.md`. New HEADs invalidate old passes;
 retargets may change the diff without changing HEAD.
 The CI `git diff` hash identifies its snapshot; it is not byte-comparable with the
 host's `gh pr diff` hash. Verify matching refs and patch scope across those formats.
+Mark clean compares the host's recorded `gh pr diff` hash with a fresh result from
+that same producer; the CI snapshot hash is separate provenance evidence.
 
 For human reviews, use each reviewer's latest effective state; ignore dismissed
 reviews and superseded change requests. Apply branch protection's stale-approval

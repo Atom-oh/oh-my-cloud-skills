@@ -131,10 +131,10 @@ parameter of one LensGate call, never persisted.
 REPO=$(gh repo view --json nameWithOwner --jq '.nameWithOwner') || exit 1
 CURRENT_BRANCH=$(git symbolic-ref --quiet --short HEAD) || { echo "detached HEAD; select the PR branch"; exit 1; }
 if [ -z "${PR_NUMBER:-}" ]; then
-  PR_MATCHES=$(gh pr list --head "$CURRENT_BRANCH" --state open --json number) || exit 1
+  PR_MATCHES=$(gh pr list --repo "$REPO" --head "$CURRENT_BRANCH" --state open --json number) || exit 1
   PR_NUMBER=$(printf '%s' "$PR_MATCHES" | jq -er '
     if length == 1 then .[0].number
-    elif length == 0 then error("no matching PR; create or identify it first")
+    elif length == 0 then error("no open PR on this branch; identify the intended PR explicitly")
     else error("multiple matching PRs; resolve the user-intended PR explicitly") end
   ') || exit 1
 fi
@@ -147,9 +147,10 @@ PR_TARGET=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json state,headRefName --jq
 
 Run this guard on entry and before fixes/pushes, including resumes. It permits
 unpushed `gate`/`committing` deltas; local/remote SHA equality is required only at
-Mark clean. An explicit PR number can identify a closed/merged PR for observation,
-but this loop refuses writes; hand remaining fixes to the host's corrective-PR
-workflow. Without a number, select the unique open PR for the attached branch.
+Mark clean. Non-OPEN or off-branch PRs exit here. Resolve a checkout mismatch before
+re-entering; handle fixes for closed/merged PRs through the host's corrective-PR
+workflow outside this loop. Without a number, select the unique open PR for the
+attached branch.
 
 ### 2. Poll for review feedback
 
