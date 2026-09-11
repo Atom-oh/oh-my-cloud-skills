@@ -31,9 +31,10 @@ python3 "$SK/atlas_index.py" --validate --root "$ROOT"
 `--list` prints one JSON object per doc, one per line — read `relpath`, `title`,
 `description`, and `related` from each to build the node and edge sets.
 
-`--validate` is the one atlas entry point that exits **1** on problems — it exists to
-be a gate, so do not treat its non-zero exit as a script failure. Its output uses two
-prefixes with different weights, and the report must keep them distinct:
+`--validate` is the one atlas entry point that exits **1** on hard errors; it exits
+**0** when only advisories remain. Do not treat its non-zero exit as a script
+failure. Its output uses two prefixes with different weights, and the report must
+keep them distinct:
 
 - `error:` — a hard problem (schema break, or a `related` edge whose target doc does
   not exist). These block the sync commit and must be fixed.

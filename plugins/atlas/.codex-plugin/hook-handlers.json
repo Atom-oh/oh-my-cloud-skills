@@ -1,0 +1,15 @@
+{
+  "plugin": "atlas",
+  "handlers": [
+    {
+      "event": "PreToolUse",
+      "matcher": "Bash",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-push-sync.sh\""
+    },
+    {
+      "event": "SessionStart",
+      "matcher": "",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-context.sh\""
+    }
+  ]
+}

@@ -76,8 +76,8 @@ python3 "$SK/atlas_index.py" --write --root "$ROOT"
 python3 "$SK/atlas_index.py" --validate --root "$ROOT"
 ```
 
-`--validate` exits 1 on any problem. Fix `error:` lines (schema breaks, broken
-`related` links) before finishing — a schema-broken doc is skipped by drift detection
+`--validate` exits 1 on hard errors and 0 when only advisories remain. Fix `error:`
+lines (schema breaks, broken `related` links) before finishing — a schema-broken doc is skipped by drift detection
 forever. `advisory:` orphan lines are acceptable for a fresh wiki; mention them to the
 user rather than forcing edges that do not exist.
 
