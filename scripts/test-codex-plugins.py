@@ -60,7 +60,7 @@ class CodexPluginValidator:
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-            self.error(f"{label} contains invalid JSON: {exc}")
+            self.error(f"{label} contains unreadable or invalid JSON: {exc}")
             return None
         if not isinstance(payload, dict):
             self.error(f"{label} must contain a JSON object")

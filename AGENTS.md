@@ -1,4 +1,4 @@
-<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 9eb2f1dc7a70 · generated-at: 2026-09-11 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
+<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 3b33511d1781 · generated-at: 2026-09-11 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
 > You are an external reviewer for this repo — project context below, distilled from
 > CLAUDE.md. This file is shared verbatim by Kiro, Codex, and Agy (not a per-AI copy).
 
@@ -17,6 +17,7 @@ The **kiro** plugin is a cost-savings delegation workflow, distinct from co-agen
 - `python3 scripts/test-plugins.py` — validates all 8 plugins' Claude manifests + agent/skill/command refs + version consistency. Must PASS.
 - `python3 scripts/test-codex-plugins.py` — validates the `.codex-plugin/plugin.json` manifests + `.agents/plugins/marketplace.json`. Must PASS.
 - `python3 scripts/sync-codex-plugins.py --check` — all generated overlays must match; no plugin may be skipped.
+- Merge only with the latest-HEAD AI review and separate Codex validation CI passing. Generation runs with the PR's implementation in isolated CI; privileged L1 reads the PR tree as data only.
 - `python3 scripts/test-codex-runtime.py` — disposable actual install, skill/hook discovery and consumer helpers.
 - `python3 scripts/test-codex-native-hooks.py --project-init` — native hook/trust fixtures with local Responses; no external inference.
 - `python3 scripts/eval-skills.py` — skill quality/structure/token eval.

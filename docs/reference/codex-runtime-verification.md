@@ -89,15 +89,14 @@ that has already executed.
 # Check a published package against the real checkout.
 python3 scripts/sync-codex-plugins.py --check --plugin kiro
 python3 scripts/test-codex-runtime.py --plugin kiro
-# Execute native plugin and project hooks against local Responses (no external inference).
-python3 scripts/test-codex-native-hooks.py --project-init --report /var/tmp/codex-native-hooks.json
-
 # Acceptance: run against the actual checkout being accepted and record its commit.
 git rev-parse HEAD
 python3 scripts/test-plugins.py
 python3 scripts/test-codex-plugins.py
 python3 scripts/sync-codex-plugins.py --check
 python3 scripts/test-codex-runtime.py
+# Native plugin and project hooks use local Responses; no external inference.
+python3 scripts/test-codex-native-hooks.py --project-init --report /var/tmp/codex-native-hooks.json
 bash tests/run-all.sh
 ```
 
@@ -106,8 +105,15 @@ and runs bundled read-only helpers from a separate consumer repository.
 Unit fixtures verify the generator independently; they do not substitute
 for the real-checkout freshness gate in `tests/structure/test-codex-published.sh`.
 That gate unconditionally checks the entire marketplace, including missing or downgraded
-adapters. The PR L1 pre-check runs the trusted base's validators and generator against the
-archived PR tree as data. A PR cannot bypass freshness by replacing its own generator.
+adapters. The PR L1 pre-check runs trusted-base structural validators against the archived
+PR tree as data. A separate GitHub-hosted `pull_request` check runs the PR's own generator
+against its outputs, with a read-only repository token, no persisted checkout credentials
+and no provider secrets. PR code never runs in the privileged review job.
+
+Generator logic and regenerated outputs can therefore change together in one PR. The
+freshness check is always executed, including when the generator changes; do not substitute
+a trusted-base byte comparison or skip the check. Require this CI result together with the
+latest-HEAD AI review before merging.
 
 Candidate preflight results apply to that candidate. After integration, repeat acceptance
 against actual `main` and record its commit and command results; a prospective combined

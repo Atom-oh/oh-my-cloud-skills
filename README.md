@@ -73,7 +73,7 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 *Self-Syncing Docs Wiki (atlas):*
 - **Per-topic docs written for LLM consumption** — each doc declares the files it `covers` and a `code_rev` anchor; an `INDEX.md` an agent reads first replaces cramming everything into `CLAUDE.md`
 - **Mechanical drift detection** — staleness is a glob match over `git diff --name-only` between the anchor and `HEAD`, no LLM pass, so the check is free
-- **Documentation repair** — Codex repairs stale packets in the active host and validates the index; optional unattended repair uses a write-confined `claude -p` per stale document
+- **Documentation repair** — `/atlas:sync` repairs stale packets through the active Codex host or optional write-confined `claude -p` runs. Commit only synchronized documents and `INDEX.md`
 - **Push-time auto-sync (opt-in)** — a `PreToolUse` hook can fix stale docs just before `git push` so the doc fix rides in the same push; off by default because covered-file diffs are sent to Anthropic, and always fail-open (a broken doc-syncer never wedges a push)
 
 ---
@@ -733,10 +733,10 @@ All agents (except the internal pr-autofix workers above) activate automatically
 |-------|----------|
 | `kiro-convert` | Plugin-to-Kiro-Power conversion workflow |
 | `agentcore-create` | 5-phase AgentCore design, build, convert, deploy workflow (harness or Runtime target) |
-| `co-agent` | Multi-AI collaboration (Kiro/Codex/Antigravity — `agy`) — review, decision support, ADR co-authoring, and `sync-context`; the current host chairs. Commands: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus`, `/co-agent:harness`, `/co-agent:setup`, `/co-agent:pr-autofix` |
+| `co-agent` | Multi-AI collaboration (Kiro / the other host CLI / Antigravity — `agy`) — review, decision support, ADR co-authoring, and `sync-context`; the current host chairs. Commands: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus`, `/co-agent:harness`, `/co-agent:setup`, `/co-agent:pr-autofix` |
 | `project-scaffolder` | Claude Code project structure patterns and conventions |
 | `pr-autofix` | Poll AI + human PR review feedback and auto-fix issues (co-agent; loop bound via `/co-agent:configure set pr_autofix max_iterations`, default 5; plan on Fable/Opus, implement via opus [medium effort] subagents) |
-| `decision-reconcile` | (co-agent) Detect contradictions across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (varied Claude model tiers + optional Kiro/Codex/Antigravity, one review lens each), then draft a superseding ADR |
+| `decision-reconcile` | (co-agent) Detect contradictions across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (available host agents + optional external AI CLIs, one review lens each), then draft a superseding ADR |
 | `kiro-delegate` | Cost-savings implementation + review delegation to Kiro CLI (subscription credits) — worktree-isolated implement loop, scope-guarded diff, opt-in pre-commit and 3-lens pre-push review gates (both off by default — enabling one sends diff content to Kiro's backend), and opt-in web search delegation for WebSearch-less sessions (Claude Code on Bedrock). Commands: `/kiro:setup`, `/kiro:delegate`, `/kiro:review`, `/kiro:configure` |
 
 ### Project Init Commands

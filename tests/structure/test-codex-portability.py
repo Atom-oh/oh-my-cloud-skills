@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import re
+import runpy
 import shutil
 import subprocess
 import sys
@@ -77,6 +78,57 @@ class PortabilityTests(unittest.TestCase):
             manifest.write_text(json.dumps(data))
             result = subprocess.run(command, cwd=root, capture_output=True, text=True)
             self.assertNotEqual(0, result.returncode, "downgraded package escaped the real-checkout gate")
+
+    def head_workflow(self):
+        path = ROOT / ".github/workflows/codex-validation.yml"
+        self.assertTrue(path.is_file(), "Independent PR-head validation workflow is missing")
+        source = path.read_text()
+        extract = runpy.run_path(str(ROOT / "tests/structure/test-pr-review-template.py"))["template_steps"]
+        return source, extract(source)
+
+    def test_head_validation_runs_without_privileged_runner_or_credentials(self):
+        source, steps = self.head_workflow()
+        self.assertRegex(source, r"(?m)^  pull_request:\s*$")
+        self.assertNotIn("pull_request_target", source)
+        self.assertRegex(source, r"(?m)^    runs-on: ubuntu-latest\s*$")
+        self.assertNotIn("self-hosted", source)
+        permissions = re.search(r"(?m)^permissions:\n((?:  [^\n]*\n)+)", source)
+        self.assertIsNotNone(permissions)
+        self.assertEqual(["contents: read"], permissions[1].strip().splitlines())
+        self.assertNotRegex(source, r"(?m)^ +(?:permissions|env|environment|if|paths|paths-ignore|continue-on-error):")
+        self.assertNotIn("secrets.", source)
+        checkout = next(step for step in steps if step.get("uses", "").startswith("actions/checkout@"))
+        self.assertEqual("${{ github.event.pull_request.head.sha }}", checkout["with"]["ref"])
+        self.assertIs(False, checkout["with"]["persist-credentials"])
+
+    def test_head_generator_change_and_outputs_pass_but_stale_output_fails(self):
+        _, steps = self.head_workflow()
+        check = next(step["run"] for step in steps
+                     if step.get("name") == "Check all generated Codex artifacts")
+        self.assertNotIn("--plugin", check, "The head check must cover every plugin")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shutil.copytree(self.generated, root, dirs_exist_ok=True)
+            head_generator = root / "scripts/sync-codex-plugins.py"
+            source = GENERATOR.read_text()
+            before = "Read [Codex runtime guidance]"
+            self.assertIn(before, source)
+            head_generator.write_text(source.replace(before, "Read the [Codex runtime guidance]"))
+            subprocess.run([sys.executable, str(head_generator)], cwd=root, check=True,
+                           capture_output=True, text=True)
+            # The former trusted-base byte check rejects a legitimate logic change.
+            old = subprocess.run([sys.executable, str(GENERATOR), "--check", "--root", str(root)],
+                                 capture_output=True, text=True)
+            self.assertNotEqual(0, old.returncode)
+            current = subprocess.run(["bash", "-euo", "pipefail", "-c", check],
+                                     cwd=root, capture_output=True, text=True)
+            self.assertEqual(0, current.returncode, current.stdout + current.stderr)
+            artifact = next(root.glob("plugins/*/.codex-plugin/skills/*/SKILL.md"))
+            artifact.write_text(artifact.read_text() + "\nStale generated output.\n")
+            stale = subprocess.run(["bash", "-euo", "pipefail", "-c", check],
+                                   cwd=root, capture_output=True, text=True)
+            self.assertNotEqual(0, stale.returncode)
+            self.assertIn("stale Codex artifact", stale.stdout)
 
     def test_relative_root_preserves_generated_skills(self):
         with tempfile.TemporaryDirectory() as tmp:

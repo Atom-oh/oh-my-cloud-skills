@@ -73,7 +73,7 @@
 *자체 동기화 문서 위키 (atlas):*
 - **LLM 소비용 주제별 문서** — 각 문서가 자신이 `covers`하는 파일과 `code_rev` 앵커를 선언; 에이전트가 먼저 읽는 `INDEX.md`가 `CLAUDE.md`에 모든 것을 밀어 넣는 방식을 대체
 - **기계적 드리프트 감지** — 앵커와 `HEAD` 사이 `git diff --name-only`에 대한 glob 매칭으로 stale 판정, LLM 호출 없음 — 검사 비용이 0
-- **문서 수정** — Codex는 현재 호스트에서 stale packet을 반영하고 인덱스를 검증합니다. 선택적인 무인 수정은 문서마다 쓰기 범위가 제한된 `claude -p`를 사용합니다
+- **문서 수정** — `/atlas:sync`는 Codex의 현재 호스트에서 stale packet을 반영하거나 선택적인 무인 수정에 쓰기 범위가 제한된 `claude -p`를 사용합니다. 동기화한 문서와 `INDEX.md`만 커밋합니다
 - **push 시점 자동 동기화 (opt-in)** — `PreToolUse` 훅이 `git push` 직전에 stale 문서를 고쳐 같은 push에 태움; covered 파일의 diff가 Anthropic으로 전송되므로 기본값은 off, 그리고 항상 fail-open(문서 동기화기 고장이 push를 막지 않음)
 
 ---
@@ -731,10 +731,10 @@ aws-ops-power/
 |------|----------|
 | `kiro-convert` | 플러그인-to-Kiro-Power 변환 워크플로우 |
 | `agentcore-create` | 5단계 AgentCore 설계, 빌드, 변환, 배포 워크플로우 (harness 또는 Runtime 타깃) |
-| `co-agent` | 멀티-AI 협업 (Kiro/Codex/Antigravity — `agy`) — 리뷰, 의사결정 보조, ADR 협업, `sync-context`; 현재 호스트가 의장. 명령: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus`, `/co-agent:harness`, `/co-agent:setup`, `/co-agent:pr-autofix` |
+| `co-agent` | 멀티-AI 협업 (Kiro / 다른 호스트 CLI / Antigravity — `agy`) — 리뷰, 의사결정 보조, ADR 협업, `sync-context`; 현재 호스트가 의장. 명령: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus`, `/co-agent:harness`, `/co-agent:setup`, `/co-agent:pr-autofix` |
 | `project-scaffolder` | Claude Code 프로젝트 구조 패턴 및 컨벤션 |
 | `pr-autofix` | AI + 사람 PR 리뷰 피드백 polling 후 이슈 자동 수정 (co-agent; 루프 상한은 `/co-agent:configure set pr_autofix max_iterations`, 기본 5회; 계획은 Fable/Opus, 구현은 opus [medium effort] 서브에이전트) |
-| `decision-reconcile` | (co-agent) 누적 ADR 간 모순(및 ADR vs 현실 drift)을 다양성 멀티 에이전트 패널(Claude 모델 티어 + 선택적 Kiro/Codex/Antigravity, 렌즈 1개씩)로 검출 후 번복 ADR 초안 작성 |
+| `decision-reconcile` | (co-agent) 누적 ADR 간 모순(및 ADR vs 현실 drift)을 다양성 멀티 에이전트 패널(사용 가능한 호스트 에이전트 + 선택적 외부 AI CLI, 렌즈 1개씩)로 검출 후 번복 ADR 초안 작성 |
 | `kiro-delegate` | Kiro CLI(구독 크레딧)로의 비용 절감 구현+리뷰 위임 — worktree로 격리된 구현 루프, scope-guard된 diff, opt-in 커밋 전·3-렌즈 푸시 전 리뷰 게이트(둘 다 기본 off — 활성화가 곧 Kiro 백엔드로의 diff 송신 동의), WebSearch 도구가 없는 세션(Claude Code on Bedrock)을 위한 opt-in 웹 검색 위임. 명령: `/kiro:setup`, `/kiro:delegate`, `/kiro:review`, `/kiro:configure` |
 
 ### Project Init 명령

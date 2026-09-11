@@ -30,11 +30,16 @@ publication. The Codex validator requires every plugin's manifest and marketplac
 entry; the temporary `CLAUDE_ONLY` staging exception has been removed.
 
 All eight plugins provide Codex overlays. Keep adaptation tooling outside upstream-owned
-files and regenerate after source updates. L1 executes the trusted-base validators and
-generator against the archived PR tree as data; it never executes the PR's replacement
-scripts. The full-checkout gate always checks all plugins, so deleting or downgrading a
-manifest cannot hide its package. Structural success does not substitute for installed
-runtime and native hook verification.
+files and regenerate after source updates. L1 executes trusted-base structural validators
+against the archived PR tree as data; it never executes PR-supplied scripts. Generation
+freshness runs separately in GitHub-hosted `pull_request` CI using that PR's generator and
+outputs. The job has a read-only repository token, does not persist checkout credentials,
+and receives no provider secrets. It does not run on the privileged cloud review runner.
+
+A generator logic change and its regenerated outputs belong in the same PR. Both the
+local full-checkout gate and the separate CI check always cover all plugins, including
+missing or downgraded manifests. No generator-change exception skips freshness. Structural
+success does not substitute for installed runtime and native hook verification.
 
 **Agent `tools:` scopes.** `Bash(git log:*)` is accepted (upstream's mirrored
 `doc-sync-checker` uses it) but **warns** — the scope syntax is documented for a command's

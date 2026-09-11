@@ -28,6 +28,9 @@ must pass for every plugin. Runtime acceptance additionally verifies installed h
 actual skill/hook discovery and native hook behavior; see `docs/reference/codex-runtime-verification.md`.
 Specialist Markdown is a procedure, not registration of a native Codex agent role.
 Project-init supplies separately installed project templates, not plugin hooks.
+Before merging, require the latest-HEAD AI review and the separate Codex validation CI
+result. Generator changes and regenerated outputs are checked together in isolated PR CI;
+never skip freshness or execute PR code in the privileged review job.
 
 ## superpowers Integration Routing
 
