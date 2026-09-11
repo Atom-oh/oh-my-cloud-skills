@@ -57,7 +57,7 @@ if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 import consensus_state as cs
 from co_agent_host import HOSTS, detect_host
-from co_agent_env import sanitized_env as _sanitized_env, _SENSITIVE_ENV_RE
+from co_agent_env import sanitized_env as _sanitized_env, _SENSITIVE_ENV_RE, CLAUDE_GATE_ISOLATION
 try:
     import co_agent_config as cac
 except Exception as _e:   # missing OR a SyntaxError/etc. in the module — degrade, but don't hide it
@@ -193,7 +193,7 @@ _VERDICT_RE = re.compile(r"^\s*(PASS(?:ED)?|BLOCK(?:ED)?)\b", re.I)
 # {F} to the temp-file path (file channel only).
 _REVIEW = {
     "claude":   {"channel": "stdin", "argv": ["claude", "-p", "{I}", "--permission-mode", "plan",
-                                            "--tools", "Read,Grep,Glob", "--output-format", "text", "{M}"]},
+                                            "--output-format", "text", "{M}", *CLAUDE_GATE_ISOLATION]},
     # Gates launch in a temporary NON-git directory; keep the read-only sandbox,
     # but allow that cwd (the same prerequisite as the readiness probe).
     "codex":    {"channel": "stdin", "argv": ["codex", "exec", "-s", "read-only",

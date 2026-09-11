@@ -41,6 +41,8 @@ Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"`.
    `python3 "$SK/check_panel.py" probe <peer> --gate` and require `READY`.
    This separate check uses the gate's restricted environment; an inherited-
    environment peer may still work for consensus/harness while failing this check.
+   Claude gate calls disable user/project settings and configured MCP servers;
+   configure the intended backend in the gate environment before probing it.
    If at least one gate probe is `READY`, offer the pre-push lens gate ONCE via
    `AskUserQuestion`: a 3-lens review (correctness/security/scope) that runs before every
    `git push` and can block it. State what "passes" means in the ask itself:

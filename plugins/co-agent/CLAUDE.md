@@ -151,6 +151,9 @@ General readiness and the historical `gate-eligible` predicate describe inherite
 environment raw CLI access for consensus/harness. They do not certify the filtered
 gate environment. `check_panel.py probe <peer> --gate` uses the same credential
 filter as the gates; require `READY` before enabling a gate for that peer.
+Claude gate calls also disable user/project settings, hooks and configured MCP
+servers. Supply the intended backend through the gate environment; inherited
+settings remain available to general consensus/harness calls.
 Readiness schema 2 records this distinction and refreshes older summaries.
 
 ## Pre-push Lens Gate (PreToolUse hook)

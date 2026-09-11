@@ -25,7 +25,7 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 from co_agent_host import HOSTS, detect_host
-from co_agent_env import sanitized_env as _sanitized_env
+from co_agent_env import sanitized_env as _sanitized_env, CLAUDE_GATE_ISOLATION
 
 try:
     import co_agent_config  # sibling — for config_hash
@@ -215,6 +215,8 @@ def probe(peer, timeout=90, nonce="STATIC", gate=False):
         inp = f"Reply with exactly this token and nothing else: {sentinel}"
         argv = [a.replace("{I}", inp) for a in spec["argv"]]
         stdin_data = ""
+    if gate and peer == "claude":
+        argv.extend(CLAUDE_GATE_ISOLATION)
     with tempfile.TemporaryDirectory() as cwd:
         # Capture stdout/stderr to FILES, not PIPEs. Some peers refresh auth over the host fds
         # they were launched with (kiro here runs --auth=acp-callback host-mediated refresh);

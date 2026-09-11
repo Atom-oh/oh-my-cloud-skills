@@ -199,6 +199,9 @@ class HostRuntimeTests(unittest.TestCase):
                     self.assertEqual("claude", argv[0])
                     self.assertEqual("plan", argv[argv.index("--permission-mode") + 1])
                     self.assertEqual("Read,Grep,Glob", argv[argv.index("--tools") + 1])
+                    self.assertEqual("", argv[argv.index("--setting-sources") + 1])
+                    self.assertIn("--strict-mcp-config", argv)
+                    self.assertEqual('{"mcpServers":{}}', argv[argv.index("--mcp-config") + 1])
                     self.assertEqual("sonnet", argv[argv.index("--model") + 1])
                     self.assertIn("+new", kwargs["input"])
                     self.assertNotIn("+new", " ".join(argv))
@@ -236,7 +239,9 @@ class HostRuntimeTests(unittest.TestCase):
                     self.assertFalse(unrelated.keys() & result.keys())
                     self.assertIn("PATH", result)
                     for peer in ("codex", "agy", "kiro-cli"):
-                        self.assertFalse(set(cloud) & hooks._sanitized_env(peer).keys())
+                        previous_project_config = {"CLOUDSDK_CONFIG", "GCLOUD_PROJECT"} if peer == "agy" else set()
+                        self.assertEqual(previous_project_config,
+                                         set(cloud) & hooks._sanitized_env(peer).keys())
 
     def test_probe_and_both_gates_use_identical_env_with_stub_cli(self):
         self.assertIs(panel._sanitized_env, hooks._sanitized_env)
@@ -249,6 +254,10 @@ class HostRuntimeTests(unittest.TestCase):
             "print(data.strip() if data.startswith('COAGENT_PROBE_') else 'BLOCK: fixture')\n")
         def launch(argv, *args, **kwargs):
             self.assertEqual([sys.executable, str(stub)], argv[:2])
+            self.assertEqual("", argv[argv.index("--setting-sources") + 1])
+            self.assertIn("--strict-mcp-config", argv)
+            self.assertEqual('{"mcpServers":{}}', argv[argv.index("--mcp-config") + 1])
+            self.assertEqual("Read,Grep,Glob", argv[argv.index("--tools") + 1])
             return self.real_popen(argv, *args, **kwargs)
         for backend, required in BACKEND_AUTH.items():
             log = self.root / (backend + ".jsonl")

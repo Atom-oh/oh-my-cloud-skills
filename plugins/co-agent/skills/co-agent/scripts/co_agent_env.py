@@ -1,4 +1,4 @@
-"""Shared readiness/gate environment policy; never read credential files."""
+"""Shared peer launch policy; never read credential files."""
 import os
 import re
 
@@ -7,9 +7,14 @@ _PEER_ENV_KEEP = {
                "ANTHROPIC_CUSTOM_HEADERS", "CLAUDE_CODE_CLIENT_CERT",
                "CLAUDE_CODE_CLIENT_KEY", "CLAUDE_CODE_CLIENT_KEY_PASSPHRASE"},
     "codex": {"OPENAI_API_KEY", "CODEX_API_KEY"},
-    "agy": {"GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENAI_API_KEY"},
+    "agy": {"GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENAI_API_KEY",
+            "CLOUDSDK_CONFIG", "GCLOUD_PROJECT", "gcloud_project"},
     "kiro-cli": {"KIRO_API_KEY"},
 }
+CLAUDE_GATE_ISOLATION = (
+    "--tools", "Read,Grep,Glob", "--setting-sources", "",
+    "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
+)
 # Standard credential-chain inputs, not an AWS_* wildcard:
 # https://docs.aws.amazon.com/sdkref/latest/guide/standardized-credentials.html
 # https://docs.aws.amazon.com/sdkref/latest/guide/feature-container-credentials.html
