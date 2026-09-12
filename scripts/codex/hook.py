@@ -3,21 +3,23 @@
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 
 
-def patch_paths(patch):
-    paths = []
+def patch_changes(patch):
+    changes = []
     for line in patch.splitlines():
-        for marker in ("*** Add File: ", "*** Update File: ", "*** Delete File: "):
+        for marker, tool in (("*** Add File: ", "Write"), ("*** Update File: ", "Edit"),
+                             ("*** Delete File: ", "Edit")):
             if line.startswith(marker):
-                paths.append(line[len(marker):])
+                changes.append((line[len(marker):], tool))
                 break
         else:
-            if line.startswith("*** Move to: ") and paths:
-                paths[-1] = line[len("*** Move to: "):]
-    return list(dict.fromkeys(paths))
+            if line.startswith("*** Move to: ") and changes:
+                changes[-1] = (line[len("*** Move to: "):], changes[-1][1])
+    return list(dict.fromkeys(changes))
 
 
 def main():
@@ -37,14 +39,16 @@ def main():
             env["CO_AGENT_HOST"] = "codex"
         inputs = [payload]
         if payload.get("tool_name") == "apply_patch" and any(
-            alias in handler.get("matcher", "") for alias in ("Edit", "Write", "apply_patch")
+            alias in handler.get("matcher", "") for alias in ("Edit", "Write")
         ):
             inputs = []
-            for path in patch_paths(payload.get("tool_input", {}).get("command", "")):
+            for path, tool in patch_changes(payload.get("tool_input", {}).get("command", "")):
+                if re.search(handler["matcher"], tool) is None:
+                    continue
                 # No command interpolation: the path is passed only as stdin JSON.
                 absolute = str((cwd / path).resolve())
                 inputs.append({
-                    **payload, "tool_name": "Write",
+                    **payload, "tool_name": tool,
                     "tool_input": {**payload.get("tool_input", {}), "file_path": absolute},
                 })
         outputs = []

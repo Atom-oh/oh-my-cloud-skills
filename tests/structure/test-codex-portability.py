@@ -179,6 +179,10 @@ class PortabilityTests(unittest.TestCase):
                      "command": 'python3 "$CLAUDE_PLUGIN_ROOT/echo.py"'},
                     {"event": "PreToolUse", "matcher": "Bash", "command":
                      """printf '%s' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"review missing"}}'"""},
+                    {"event": "PostToolUse", "matcher": "Edit",
+                     "command": 'python3 "$CLAUDE_PLUGIN_ROOT/echo.py"'},
+                    {"event": "PostToolUse", "matcher": "Write",
+                     "command": 'python3 "$CLAUDE_PLUGIN_ROOT/echo.py"'},
                 ],
             }
             (adapter / "hook-handlers.json").write_text(json.dumps(spec))
@@ -195,6 +199,21 @@ class PortabilityTests(unittest.TestCase):
             context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
             for relative in ("new file.md", "moved.md", "removed.md"):
                 self.assertIn(str(plugin / relative), context)
+            # Codex aliases apply_patch to BOTH Edit and Write. Distinguish file
+            # operations so the legacy Edit/Write handlers do not both process
+            # every file (and start the same background evaluator twice).
+            for index, included, excluded in (
+                ("2", "moved.md", "new file.md"),
+                ("3", "new file.md", "moved.md"),
+            ):
+                result = subprocess.run(
+                    [sys.executable, str(adapter / "hook.py"), index],
+                    input=json.dumps(payload), capture_output=True, text=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+                self.assertIn(str(plugin / included), context)
+                self.assertNotIn(str(plugin / excluded), context)
             payload.update(hook_event_name="PreToolUse", tool_name="Bash",
                            tool_input={"command": "git push"})
             result = subprocess.run(
