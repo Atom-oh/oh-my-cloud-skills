@@ -80,10 +80,9 @@ AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-co
 
 ## Installation
 
-Every plugin ships a Claude Code manifest (`.claude-plugin/plugin.json`), and all but one
-also ship a Codex manifest (`.codex-plugin/plugin.json`), so the same marketplace installs
-on either host. The exception is `project-init`, an upstream mirror whose manifest set is
-kept verbatim — it is Claude Code only. Pick your host below.
+All eight plugins ship Claude Code and Codex manifests. Codex entry skills expose
+the shared skills, command workflows and specialist procedures. The project-init
+adapter is generated separately from its unchanged upstream sources.
 
 ### Claude Code
 
@@ -133,11 +132,14 @@ Uninstall:
 This repo is also a **Codex plugin marketplace** — the manifest lives at
 [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json) (`name: oh-my-cloud-skills`)
 and each listed plugin's `.codex-plugin/plugin.json` exposes its skills to Codex. Requires a recent
-Codex CLI with plugin support.
+Codex CLI with plugin support; installation and discovery are tested with 0.154.0.
 
 ```bash
 # Register this repo as a marketplace (GitHub shorthand, or a git/SSH URL)
 codex plugin marketplace add Atom-oh/oh-my-cloud-skills
+
+# Install a plugin directly
+codex plugin add aws-content-plugin@oh-my-cloud-skills
 
 # Browse & install from the interactive plugin picker
 #   → switch to the "Oh My Cloud Skills" source, then install the plugins you want
@@ -161,10 +163,26 @@ codex plugin marketplace upgrade oh-my-cloud-skills # pull the latest plugin ver
 codex plugin marketplace remove oh-my-cloud-skills  # unregister (uninstall via `codex /plugins`)
 ```
 
-> **co-agent on Codex** — when the host is Codex, **Codex chairs** the panel and Claude / Kiro
-> / Agy become the advisory peers (the mirror of Claude-hosted mode). The skill detects this via
-> `CO_AGENT_HOST=codex`. The Claude Code-only hooks (e.g. the PR consensus gate) don't run under
-> Codex by design.
+Start a new session after installation. Ask for a workflow naturally or choose its
+installed skill. Specialist agent procedures are exposed as skills; they do not
+register Claude model names as native Codex agents.
+
+**co-agent on Codex:** Codex chairs; Claude / Kiro / Agy are advisory peers.
+Host detection uses runtime markers, with an explicit `--host` or `CO_AGENT_HOST`
+override. Bundled helper adapters set the Codex host explicitly.
+
+Command hooks are adapted for Codex, including multi-file patches. Review and trust
+the installed hooks before relying on them; installing a plugin alone does not run
+its hooks. Atlas on-demand sync can use the active host; unattended sync retains
+its separately enabled Claude CLI workflow.
+
+For development, regenerate adapters after editing shared procedures:
+
+```bash
+python3 scripts/sync-codex-plugins.py
+python3 scripts/test-codex-plugins.py
+python3 scripts/test-codex-runtime.py # disposable install, no inference requests
+```
 
 ---
 

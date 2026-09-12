@@ -7,12 +7,13 @@ single owner of that model: atlas_drift.py and atlas_sync.py import it and must
 never reparse frontmatter themselves.
 
 Usage:
-  atlas_index.py --validate [--root DIR]   # print problems; exit 1 if any, 0 if clean
+  atlas_index.py --validate [--root DIR]   # print problems; exit 1 on errors, 0 on advisories only
   atlas_index.py --write    [--root DIR]   # regenerate the INDEX block; print what changed
   atlas_index.py --list     [--root DIR]   # one JSON object per doc, one per line
 
 --root DIR targets a repo other than the cwd. `--validate` is the ONE entry point in
-this plugin that is NOT fail-open: it exists to be a gate, so problems exit 1.
+this plugin that is NOT fail-open: hard schema or graph errors exit 1, while
+orphan advisories remain visible without failing validation.
 Everything else here exits 0.
 """
 import argparse
@@ -241,8 +242,8 @@ def validate(docs):
     """-> list of problem strings: every doc's own `errors`, plus each `related`
     target that does not resolve to another doc's relpath, plus each doc with no
     inbound `related` edge (an orphan advisory). Hard errors are prefixed `error:`
-    and orphans `advisory:` — both make --validate exit 1, and a user reading the
-    output needs to tell which kind they are looking at."""
+    and orphans `advisory:`. Consumers retain both kinds for reporting but block
+    only on non-advisory problems, including the --validate CLI."""
     problems = []
     known = set(d.relpath for d in docs)
     inbound = set()
@@ -350,7 +351,7 @@ def main():
     ap = argparse.ArgumentParser(description="atlas doc validator and INDEX generator")
     group = ap.add_mutually_exclusive_group(required=True)
     group.add_argument("--validate", action="store_true",
-                       help="print problems; exit 1 if any, 0 if clean")
+                       help="print problems; exit 1 on errors, 0 if clean or advisories only")
     group.add_argument("--write", action="store_true",
                        help="regenerate the INDEX block; print what changed")
     group.add_argument("--list", action="store_true", dest="list_docs",
@@ -361,12 +362,12 @@ def main():
     docs = load_docs(args.root)
 
     if args.validate:
-        # The ONE non-fail-open entry point in this plugin: it exists to be a gate,
-        # so any problem — hard error or orphan advisory alike — exits 1.
+        # Match atlas_sync.py's commit gate: keep orphan warnings visible, but
+        # fail only on hard problems. A valid one-doc wiki needs no invented edge.
         problems = validate(docs)
         for p in problems:
             print(p)
-        return 1 if problems else 0
+        return 1 if any(not p.startswith("advisory:") for p in problems) else 0
 
     if args.write:
         path = os.path.join(atlas_root(args.root), INDEX_NAME)

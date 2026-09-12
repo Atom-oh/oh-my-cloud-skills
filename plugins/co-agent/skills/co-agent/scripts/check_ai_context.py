@@ -11,9 +11,9 @@ Codex, and Agy all draw from — not a per-AI copy each:
                  as Codex); the fan-out additionally folds it into Agy's context at
                  call time as defense-in-depth for non-root-cwd invocations.
 
-Claude (the co-agent skill) writes AGENTS.md; this script does the mechanical checks:
+The current host (the co-agent skill) writes AGENTS.md; this script does the mechanical checks:
 staleness vs CLAUDE.md, size caps, the generated marker, and a secret scan. It is
-NOT the distiller — distillation needs Claude.
+NOT the distiller — distillation is performed by the host.
 
 Usage:
   python3 check_ai_context.py [project_dir]          # check (exit 1 if stale/oversized/missing)

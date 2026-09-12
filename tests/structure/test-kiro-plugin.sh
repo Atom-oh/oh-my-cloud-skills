@@ -10,6 +10,23 @@ WT="$SK/worktree.py"
 SG="$SK/scope_guard.py"
 PP="$SK/parse_plan.py"
 
+# File-generation tests must not depend on an installed CLI's login state.
+# Individual CLI protocol/error tests below install their own higher-priority
+# fakes; the default only accepts local agent validation and rejects inference.
+KIRO_TEST_ORIGINAL_PATH="$PATH"
+KIRO_TEST_BIN="$(mktemp -d)"
+cat > "$KIRO_TEST_BIN/kiro-cli" <<'STUB'
+#!/usr/bin/env bash
+if [[ "$1" = agent && "$2" = validate && "$3" = --path ]]; then
+  python3 -m json.tool "$4" >/dev/null
+else
+  echo "unexpected external Kiro call in a file-generation test" >&2
+  exit 2
+fi
+STUB
+chmod +x "$KIRO_TEST_BIN/kiro-cli"
+export PATH="$KIRO_TEST_BIN:$PATH"
+
 # --- manifest + wiring ---
 PJ="plugins/kiro/.claude-plugin/plugin.json"
 assert_file_exists "$PJ" "kiro plugin.json exists"
@@ -1369,3 +1386,6 @@ assert_contains "$(cat plugins/kiro/agents/kiro-delegate-agent.md)" "resume-id" 
 assert_contains "$(cat plugins/kiro/agents/kiro-delegate-agent.md)" "kiro_run.py" "kiro-delegate-agent.md wires kiro_run.py (session id + credits)"
 assert_contains "$(cat plugins/kiro/commands/configure.md)" "set delegate effort" "configure.md documents set delegate effort"
 assert_contains "$(cat plugins/kiro/commands/configure.md)" "set review effort" "configure.md documents set review effort"
+
+export PATH="$KIRO_TEST_ORIGINAL_PATH"
+rm -rf "$KIRO_TEST_BIN"

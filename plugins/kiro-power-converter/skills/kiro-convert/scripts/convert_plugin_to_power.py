@@ -706,32 +706,49 @@ def clone_from_git(url: str, branch: str = None,
 # ---------------------------------------------------------------------------
 
 def search_marketplace(query: str) -> list:
-    """Search for plugins in known local directories."""
+    """Find source plugins from consumer projects, checkout siblings, and caches."""
     results = []
+    seen = set()
+    codex_home = Path(os.environ.get('CODEX_HOME') or Path.home() / '.codex').expanduser()
     search_dirs = [
         Path.cwd() / 'plugins',
+        Path(__file__).resolve().parents[4],
         Path.home() / '.claude' / 'plugins',
+        codex_home / 'plugins' / 'cache',
     ]
 
     for search_dir in search_dirs:
         if not search_dir.exists():
             continue
-        for item in sorted(search_dir.iterdir()):
-            if not item.is_dir():
-                continue
-            pj = item / '.claude-plugin' / 'plugin.json'
-            if not pj.exists():
-                continue
-            data = json.loads(pj.read_text(encoding='utf-8'))
-            pname = data.get('name', item.name)
-            pdesc = data.get('description', '')
-            if not query or query.lower() in pname.lower() or query.lower() in pdesc.lower():
-                results.append({
-                    'name': pname,
-                    'path': str(item),
-                    'description': pdesc,
-                    'version': data.get('version', 'unknown'),
-                })
+        # Direct plugins and cache/<marketplace>/<plugin>/<version>; bounded so
+        # discovery never walks arbitrary asset trees recursively.
+        for depth in range(1, 5):
+            for pj in sorted(search_dir.glob('*/' * depth + '.claude-plugin/plugin.json')):
+                item = pj.parent.parent.resolve()
+                if item in seen:
+                    continue
+                seen.add(item)
+                try:
+                    with pj.open(encoding='utf-8') as stream:
+                        data = json.load(stream)
+                    if not isinstance(data, dict):
+                        raise ValueError('manifest must be an object')
+                    pname = data.get('name', item.name)
+                    pdesc = data.get('description', '')
+                    if not isinstance(pname, str) or not pname.strip():
+                        raise ValueError('manifest name must be a non-empty string')
+                    if not isinstance(pdesc, str):
+                        raise ValueError('manifest description must be a string')
+                except (OSError, ValueError) as exc:
+                    print(f'Warning: skipping unreadable plugin manifest {pj}: {exc}', file=sys.stderr)
+                    continue
+                if not query or query.lower() in pname.lower() or query.lower() in pdesc.lower():
+                    results.append({
+                        'name': pname,
+                        'path': str(item),
+                        'description': pdesc,
+                        'version': data.get('version', 'unknown'),
+                    })
 
     return results
 
@@ -1060,10 +1077,12 @@ def main():
                 for i, r in enumerate(results):
                     print(f'  [{i}] {r["name"]}  —  {r["path"]}')
                 try:
-                    choice = input('Select [0]: ').strip() or '0'
-                    source_dir = results[int(choice)]['path']
-                except (ValueError, IndexError, EOFError):
-                    source_dir = results[0]['path']
+                    choice = int(input('Select an index (or rerun with --source PATH): ').strip())
+                    if not 0 <= choice < len(results):
+                        raise ValueError('selection out of range')
+                except (ValueError, EOFError):
+                    parser.error('Multiple sources found; provide a valid selection or use --source PATH.')
+                source_dir = results[choice]['path']
             else:
                 source_dir = results[0]['path']
                 print(f'Found: {results[0]["name"]} at {source_dir}')

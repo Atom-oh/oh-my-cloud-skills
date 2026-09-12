@@ -23,7 +23,7 @@ Infer the source and target from the request; ask only what the request doesn't 
 |--------|------|-----------|
 | GitHub repo | `--git-url URL` (+ `--plugin-path`, `--branch`) | `git clone --depth 1`, then the plugin subdirectory |
 | Local plugin | `--source PATH` | `.claude-plugin/plugin.json` must exist at the path |
-| Marketplace | `--marketplace [NAME]` (`--search QUERY` lists matches) | Searches local `plugins/` and `~/.claude/plugins/` |
+| Marketplace | `--marketplace [NAME]` (`--search QUERY` lists matches) | Searches workspace `plugins/`, siblings of the installed converter, Claude plugin caches, and `${CODEX_HOME}/plugins/cache` (default `~/.codex/plugins/cache`) |
 | Single skill | `--skill PATH` (repeatable) | Each directory must contain `SKILL.md` |
 
 | Target | Path | Use Case |
@@ -39,7 +39,7 @@ Add `--preserve-skills` when skills should stay in Kiro's `.kiro/skills/` format
 Run the converter:
 
 ```bash
-python3 {plugin-dir}/skills/kiro-convert/scripts/convert_plugin_to_power.py \
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-convert/scripts/convert_plugin_to_power.py" \
   --source <plugin-path> --output <output-path> --target <target> [--preserve-skills]
 ```
 
@@ -47,15 +47,15 @@ Other source types:
 
 ```bash
 ## GitHub repository, plugin in a subdirectory, specific branch/tag
-python3 convert_plugin_to_power.py --git-url https://github.com/user/repo \
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-convert/scripts/convert_plugin_to_power.py" --git-url https://github.com/user/repo \
   --plugin-path plugins/my-plugin --branch v1.2.0 --output /tmp/my-power
 
 ## Marketplace: list matches, then convert by name into the global target
-python3 convert_plugin_to_power.py --marketplace --search "ops"
-python3 convert_plugin_to_power.py --marketplace my-plugin --output /tmp/my-power --target global
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-convert/scripts/convert_plugin_to_power.py" --marketplace --search "ops"
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-convert/scripts/convert_plugin_to_power.py" --marketplace my-plugin --output /tmp/my-power --target global
 
 ## Single skill → one standalone steering file
-python3 convert_plugin_to_power.py --skill ./skills/my-skill --output ~/.kiro/steering/my-skill.md
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/kiro-convert/scripts/convert_plugin_to_power.py" --skill ./skills/my-skill --output ~/.kiro/steering/my-skill.md
 ```
 
 The field-by-field mapping — frontmatter transforms, hook trigger mapping, fileMatch glob detection, secret sanitization, large-asset (>10MB) handling — is canonical in `references/conversion-rules.md`; the target format itself is specified in `references/kiro-power-format.md`. For a manual (script-less) conversion, follow those two files directly.

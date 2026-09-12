@@ -150,14 +150,36 @@ def clone_repo(git_url: str, branch: str = None) -> Path:
 
 
 def search_marketplace(name: str) -> Path:
-    """Search for a plugin in known locations."""
+    """Find a source plugin without requiring the consumer to run in its checkout."""
+    codex_home = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex").expanduser()
     search_paths = [
-        Path.cwd() / "plugins" / name,
-        Path.home() / ".claude" / "plugins" / "cache" / name,
+        Path.cwd() / "plugins",
+        Path(__file__).resolve().parents[4],
+        Path.home() / ".claude" / "plugins",
+        codex_home / "plugins" / "cache",
     ]
-    for p in search_paths:
-        if (p / ".claude-plugin" / "plugin.json").exists():
-            return p
+    for directory in search_paths:
+        matches = set()
+        # Direct plugins and versioned caches. Bound the depth instead of walking
+        # entire asset trees; manifests still describe Claude source plugins.
+        for depth in range(1, 5):
+            for manifest in sorted(directory.glob("*/" * depth + ".claude-plugin/plugin.json")):
+                try:
+                    with manifest.open(encoding="utf-8") as stream:
+                        data = json.load(stream)
+                    if not isinstance(data, dict):
+                        raise ValueError("manifest must be an object")
+                except (OSError, ValueError) as exc:
+                    print(f"Warning: skipping unreadable plugin manifest {manifest}: {exc}", file=sys.stderr)
+                    continue
+                root = manifest.parent.parent.resolve()
+                if data.get("name", root.name) == name:
+                    matches.add(root)
+        if len(matches) == 1:
+            return matches.pop()
+        if matches:
+            paths = ", ".join(str(path) for path in sorted(matches))
+            raise ValueError(f"Multiple sources for '{name}'; select one with --source: {paths}")
     raise FileNotFoundError(f"Plugin '{name}' not found in marketplace locations")
 
 
@@ -179,8 +201,16 @@ def build_inventory(plugin_root: Path, manifest: dict) -> dict:
         "mcp_servers": {},
     }
 
-    # Agents
-    for agent_path in manifest.get("agents", []):
+    # Omitted fields use plugin conventions; explicit arrays (including []) are
+    # authoritative and must not be expanded with additional discovered files.
+    agent_paths = manifest.get("agents")
+    if "agents" not in manifest:
+        agent_paths = [
+            str(path.relative_to(plugin_root))
+            for path in sorted((plugin_root / "agents").glob("*.md"))
+            if path.is_file() and path.stem.upper() not in {"README", "CLAUDE"}
+        ]
+    for agent_path in agent_paths:
         resolved = plugin_root / agent_path.lstrip("./")
         if resolved.exists():
             content = resolved.read_text(encoding="utf-8")
@@ -196,8 +226,14 @@ def build_inventory(plugin_root: Path, manifest: dict) -> dict:
                 "body": body,
             })
 
-    # Skills
-    for skill_path in manifest.get("skills", []):
+    skill_paths = manifest.get("skills")
+    if "skills" not in manifest:
+        skill_paths = [
+            str(path.parent.relative_to(plugin_root))
+            for path in sorted((plugin_root / "skills").glob("*/SKILL.md"))
+            if path.is_file()
+        ]
+    for skill_path in skill_paths:
         skill_dir = plugin_root / skill_path.lstrip("./")
         skill_md = skill_dir / "SKILL.md"
         if skill_md.exists():
