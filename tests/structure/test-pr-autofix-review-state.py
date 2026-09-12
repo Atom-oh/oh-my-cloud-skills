@@ -4,6 +4,7 @@ import hashlib
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -17,16 +18,32 @@ class ReviewStateTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="pr review state ")
         self.addCleanup(temporary.cleanup)
-        self.directory = Path(temporary.name)
-        self.state = self.directory / "state.json"
+        self.directory = Path(temporary.name).resolve()
+        self.state_dir = self.directory / ".claude/co-agent-consensus/pr-autofix/pr-17"
+        self.state_dir.mkdir(parents=True)
+        self.state = self.state_dir / "state.json"
+        self.git_bin = shutil.which("git")
         self.env = {
-            **os.environ, "STATE": str(self.state), "STATE_DIR": str(self.directory),
+            **{k: v for k, v in os.environ.items() if not k.startswith("GIT_")},
+            "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null",
+            "STATE": str(self.state), "STATE_DIR": str(self.state_dir),
             "PR_NUMBER": "17", "BASE_REF": "main", "GIT_ITER": "2",
             "REPO": "example/repository",
             "CLAUDE_PLUGIN_ROOT": str(ROOT / "plugins/co-agent"),
             "CO_AGENT_USER_CONFIG": str(self.directory / "no-user-config"),
             "PR_AUTOFIX_WAIT_SECONDS": "60",
+            "TEST_REAL_GIT": self.git_bin,
         }
+        self.git("init", "-q", "--template=", "-b", "fixture")
+        self.git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+                 "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-qm", "initial")
+        self.git("remote", "add", "origin", "https://github.com/example/repository.git")
+        self.git("config", "branch.fixture.remote", "origin")
+        self.git("config", "branch.fixture.merge", "refs/heads/fixture")
+
+    def git(self, *args):
+        return subprocess.run([self.git_bin, *args], cwd=self.directory, env=self.env,
+                              capture_output=True, text=True, check=True).stdout.strip()
 
     def snippet(self, needle):
         files = [SKILL / "SKILL.md", SKILL / "references/review-state.md",
@@ -65,7 +82,7 @@ class ReviewStateTests(unittest.TestCase):
             "sources": {"ai": {"verdict": verdict, "head": "a" * 40,
                                "coverage_complete": False, "blocking_findings": []}},
         }
-        (self.directory / "review-observation.tmp.json").write_text(json.dumps(observation))
+        (self.state_dir / "review-observation.tmp.json").write_text(json.dumps(observation))
         self.run_snippet("jq --slurpfile record")
         return observation
 
@@ -89,7 +106,7 @@ class ReviewStateTests(unittest.TestCase):
         self.initialize()
         observation = self.record("BLOCKED")
         self.assertEqual(observation, self.read()["review"])
-        self.assertFalse((self.directory / "review-observation.tmp.json").exists())
+        self.assertFalse((self.state_dir / "review-observation.tmp.json").exists())
 
     def test_wait_budget_preserves_pending_remote_handle(self):
         self.initialize()
@@ -161,7 +178,7 @@ class ReviewStateTests(unittest.TestCase):
         observation["head"] = "d" * 40
         observation["sources"]["ai"]["head"] = "d" * 40
         observation["diff_sha256"] = "e" * 64
-        (self.directory / "review-observation.tmp.json").write_text(json.dumps(observation))
+        (self.state_dir / "review-observation.tmp.json").write_text(json.dumps(observation))
         self.run_snippet("jq --slurpfile record")
         self.assertEqual(before["await_deadline"], self.read()["await_deadline"])
 
@@ -171,7 +188,7 @@ class ReviewStateTests(unittest.TestCase):
                 self.initialize()
                 observation = self.record(verdict)
                 observation["sources"]["ai"]["head"] = "d" * 40
-                (self.directory / "review-observation.tmp.json").write_text(json.dumps(observation))
+                (self.state_dir / "review-observation.tmp.json").write_text(json.dumps(observation))
                 self.assert_refused("jq --slurpfile record")
 
     def prepare_clean(self):
@@ -185,6 +202,9 @@ class ReviewStateTests(unittest.TestCase):
         live = {
             "number": 17, "state": "OPEN", "headRefOid": "a" * 40, "headRefName": "fixture",
             "baseRefOid": "b" * 40, "baseRefName": "main",
+            "headRepository": {"id": "fixture-id", "name": "repository"},
+            "headRepositoryOwner": {"login": "example"},
+            "url": "https://github.com/example/repository/pull/17",
             "reviewDecision": "APPROVED", "mergeStateStatus": "CLEAN",
             "mergeable": "MERGEABLE",
         }
@@ -197,7 +217,14 @@ class ReviewStateTests(unittest.TestCase):
         gh.write_text("""#!/usr/bin/env python3
 import json, os, pathlib, sys
 path = pathlib.Path(os.environ["TEST_LIVE_PR"])
-if sys.argv[1:3] == ["pr", "diff"]:
+if pathlib.Path(sys.argv[0]).name == "git":
+    if sys.argv[1:] == ["rev-parse", "--verify", "HEAD"]:
+        print(os.environ.get("TEST_LOCAL_HEAD", "a" * 40))
+    else:
+        os.execv(os.environ["TEST_REAL_GIT"], [os.environ["TEST_REAL_GIT"], *sys.argv[1:]])
+elif sys.argv[1:3] == ["repo", "view"]:
+    print("example/repository")
+elif sys.argv[1:3] == ["pr", "diff"]:
     if os.environ.get("TEST_DIFF_FAIL"):
         sys.exit(1)
     print(os.environ.get("TEST_DIFF", "fixture diff"))
@@ -208,7 +235,16 @@ if sys.argv[1:3] == ["pr", "diff"]:
 elif sys.argv[1:3] == ["pr", "view"]:
     if os.environ.get("TEST_QUERY_FAIL"):
         sys.exit(1)
-    print(path.read_text())
+    data = json.loads(path.read_text())
+    if "--jq" not in sys.argv:
+        fields = sys.argv[sys.argv.index("--json") + 1].split(",")
+        print(json.dumps({key: value for key, value in data.items() if key in fields}))
+    else:
+        query = sys.argv[sys.argv.index("--jq") + 1]
+        if query in (".baseRefName", ".headRefOid", ".headRefName"):
+            print(data[query[1:]])
+        else:
+            sys.exit(2)
 elif sys.argv[1:3] == ["pr", "checks"]:
     error = os.environ.get("TEST_CHECK_ERROR")
     if error:
@@ -219,6 +255,8 @@ else:
     sys.exit(2)
 """)
         gh.chmod(0o755)
+        if not (fake / "git").exists():
+            (fake / "git").symlink_to("gh")
         self.env["PATH"] = str(fake) + os.pathsep + os.environ["PATH"]
         return state, live
 
@@ -235,6 +273,29 @@ else:
         self.prepare_clean()
         self.run_snippet('.stop_reason = "clean"')
         self.assertEqual(("stop", "clean"), (self.read()["phase"], self.read()["stop_reason"]))
+
+    def test_entry_refuses_wrong_branch_closed_pr_and_detached_head(self):
+        for branch, status in (("other", "OPEN"), ("fixture", "CLOSED"),
+                               ("fixture", "MERGED"), ("DETACHED", "OPEN")):
+            with self.subTest(branch=branch, status=status):
+                _, live = self.prepare_clean()
+                live["state"] = status
+                self.live_path.write_text(json.dumps(live))
+                if branch == "DETACHED":
+                    self.git("checkout", "--detach", "-q")
+                else:
+                    self.git("checkout", "-q", "-B", branch)
+                self.assert_refused("REPO=$(gh repo view")
+
+    def test_entry_preserves_gate_and_committing_state(self):
+        for phase in ("gate", "committing"):
+            with self.subTest(phase=phase):
+                state, _ = self.prepare_clean()
+                state["phase"] = phase
+                self.write(state)
+                self.run_snippet("REPO=$(gh repo view")
+                self.run_snippet("command -v jq")
+                self.assertEqual(state, self.read())
 
     def test_clean_refuses_missing_stale_partial_or_blocked_evidence(self):
         for invalid in ("null", "empty", "pending", "error", "unbound", "stale",
@@ -287,7 +348,8 @@ else:
 
     def test_clean_refuses_query_failure_diff_drift_and_racing_push(self):
         for variable, value in (("TEST_QUERY_FAIL", "1"), ("TEST_DIFF_FAIL", "1"),
-                                ("TEST_DIFF", "different diff"), ("TEST_HEAD_RACE", "1")):
+                                ("TEST_DIFF", "different diff"), ("TEST_HEAD_RACE", "1"),
+                                ("TEST_LOCAL_HEAD", "d" * 40)):
             with self.subTest(variable=variable):
                 self.prepare_clean()
                 self.env[variable] = value
@@ -329,7 +391,7 @@ else:
                     text = json.dumps(observation)
                 else:
                     text = "{}\n" + json.dumps(observation)
-                (self.directory / "review-observation.tmp.json").write_text(text)
+                (self.state_dir / "review-observation.tmp.json").write_text(text)
                 self.assert_refused("jq --slurpfile record")
 
     def test_justified_optional_source_is_preserved(self):
@@ -339,7 +401,7 @@ else:
             "required": False, "basis": "human-only task; no AI requirement or configured AI review",
         }
         observation["sources"]["ai"]["verdict"] = "NOT_REQUIRED"
-        (self.directory / "review-observation.tmp.json").write_text(json.dumps(observation))
+        (self.state_dir / "review-observation.tmp.json").write_text(json.dumps(observation))
         self.run_snippet("jq --slurpfile record")
         self.assertEqual("NOT_REQUIRED", self.read()["review"]["sources"]["ai"]["verdict"])
 

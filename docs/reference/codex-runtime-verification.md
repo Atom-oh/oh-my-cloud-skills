@@ -43,10 +43,19 @@ two Bash handlers and Stop handlers from unchanged installed sources.
 Kiro review stayed off; no external provider was called.
 
 A native `custom_tool_call` created two files; PostToolUse supplied
-`tool_name: "apply_patch"` and `tool_input.command`. A separate manual native
-denial fixture blocked its tool and marker creation. User hook trust was unchanged.
-The script below reproduces Kiro execution, trust checks and patch delivery;
-the denial fixture is not part of that script.
+`tool_name: "apply_patch"` and `tool_input.command`. The script also checks nine
+translated two-file denials: ask, deny followed by exit 1, continue:false, and
+deny with suppressOutput, unknown fields at either output level, or whitespace-only
+reason/context/warning text. Each must report native `blocked`, with neither file
+created. User hook trust is unchanged; only disposable fixture hashes are trusted.
+
+Codex rejects unsupported PreToolUse fields and then continues the tool call,
+so translated `ask` and `continue:false` become supported denials. Unknown output
+fields, unsupported rewrites and child failures exit 2. Whitespace-only reasons
+use a nonempty fallback so Codex does not discard the denial.
+This policy applies to per-file translation; source Kiro Bash review hooks keep
+their own configured failure policy. PostToolUse feedback cannot undo a tool
+that has already executed.
 
 ## Reproduction and scope
 
@@ -87,8 +96,13 @@ not additional model/provider invocations:
   the packet HEAD; repeat drift output was empty. `related: []` remained valid with
   an orphan advisory, without adding dummy documents or links.
 
-The final combined checkout passed `sync-codex-plugins.py --check` for 138 generated
-files and the real CLI probe for eight plugins, 74 skills, and 25 configured plugin
-hooks. It also executed the installed co-agent, Atlas and Kiro helpers from the
+The final combined checkout passed `sync-codex-plugins.py --check` for 167 generated
+files, the full TAP suite (1,148 passed, zero failed), and the real CLI probe for
+eight plugins, 74 skills, and 25 configured plugin hooks. It also executed the installed co-agent, Atlas and Kiro helpers from the
 consumer working directory. External AI, AWS and notification operations remain
 dependent on the consumer's own credentials, configuration and authorization.
+
+A separate installed-helper audit ran 17 helper calls from a consumer path containing
+spaces against read-only co-agent, Atlas and Kiro package copies. Six write-denial
+checks passed; 139 package files and their metadata stayed unchanged, and generated
+configuration/index output remained in the consumer repository.

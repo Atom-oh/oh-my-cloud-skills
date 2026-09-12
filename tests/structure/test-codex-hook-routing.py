@@ -43,6 +43,9 @@ class HookRoutingTests(unittest.TestCase):
             "    outputs = json.loads(os.environ['PROBE_OUTPUTS'])\n"
             "    name = os.path.basename(p['tool_input'].get('file_path', ''))\n"
             "    value = outputs[name]\n"
+            "    if isinstance(value, dict) and 'fixtureExit' in value:\n"
+            "        print('fixture child error', file=sys.stderr)\n"
+            "        sys.exit(value['fixtureExit'])\n"
             "    if isinstance(value, str): sys.stdout.write(value)\n"
             "    elif value is not None: print(json.dumps(value))\n"
             "    sys.exit(0)\n"
@@ -210,9 +213,27 @@ class HookRoutingTests(unittest.TestCase):
                            [control, self.permission("ask")]):
                 with self.subTest(values=values):
                     output = self.merged(values)
-                    for key, value in control.items():
-                        self.assertEqual(value, output[key])
-                    self.assertNotIn("permissionDecision", output.get("hookSpecificOutput", {}))
+                    specific = output["hookSpecificOutput"]
+                    self.assertEqual("deny", specific["permissionDecision"])
+                    self.assertIn(control.get("reason", control.get("stopReason")),
+                                  specific["permissionDecisionReason"])
+                    self.assertTrue(all(key not in output for key in ("continue", "stopReason", "decision")))
+
+    def test_ask_alone_becomes_supported_denial_not_permission(self):
+        output = self.merged([self.permission("ask")])
+        self.assertEqual("deny", output["hookSpecificOutput"]["permissionDecision"])
+        self.assertIn("approval", output["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_nonzero_child_never_loses_prior_denial_or_allows_partial_coverage(self):
+        for control in (self.permission("deny"), {"decision": "block", "reason": "block reason"},
+                        {"continue": False, "stopReason": "stop reason"}, self.permission("allow")):
+            for values in ([control, {"fixtureExit": 1}], [{"fixtureExit": 1}, control]):
+                with self.subTest(values=values):
+                    result = self.outputs(values)
+                    self.assertEqual(2, result.returncode, result.stdout + result.stderr)
+                    self.assertEqual("", result.stdout)
+        result = self.outputs([self.permission("deny"), {"fixtureExit": 1}])
+        self.assertIn("deny reason", result.stderr)
 
     def test_plain_text_and_json_context_are_merged_with_warnings(self):
         notice = {"hookSpecificOutput": {"hookEventName": "PostToolUse",
@@ -252,15 +273,61 @@ class HookRoutingTests(unittest.TestCase):
         output = json.loads(result.stdout)
         self.assertNotIn("permissionDecision", output.get("hookSpecificOutput", {}))
 
-    def test_identical_metadata_and_suppress_output_are_preserved(self):
-        value = {"suppressOutput": True, "continue": True,
+    def test_identical_supported_metadata_is_preserved(self):
+        value = {"continue": True, "systemMessage": "warning",
                  "hookSpecificOutput": {"hookEventName": "PostToolUse",
-                                        "additionalContext": "notice", "fixtureMetadata": {"version": 1}}}
+                                        "additionalContext": "notice"}}
         output = self.merged([value, value], event="PostToolUse")
         self.assertEqual(value, output)
         output = self.merged([value, {}], event="PostToolUse")
-        self.assertTrue(output["suppressOutput"])
-        self.assertEqual({"version": 1}, output["hookSpecificOutput"]["fixtureMetadata"])
+        self.assertEqual("warning", output["systemMessage"])
+
+    def test_unknown_fields_cannot_invalidate_a_denial(self):
+        deny = self.permission("deny")
+        values = [
+            {**deny, "fixtureMetadata": {"version": 1}},
+            {"hookSpecificOutput": {**deny["hookSpecificOutput"],
+                                    "fixtureMetadata": {"version": 1}}},
+        ]
+        for value in values:
+            for outputs in ([value, {}], [value, value]):
+                with self.subTest(outputs=outputs):
+                    result = self.outputs(outputs)
+                    self.assertEqual(2, result.returncode)
+                    self.assertIn("fixtureMetadata", result.stderr)
+                    self.assertFalse(result.stdout.strip())
+
+    def test_blank_text_cannot_invalidate_a_denial(self):
+        deny = self.permission("deny")
+        deny["hookSpecificOutput"]["permissionDecisionReason"] = " \n\t"
+        deny["systemMessage"] = " \n\t"
+        deny["hookSpecificOutput"]["additionalContext"] = " \n\t"
+        output = self.merged([deny, {}])
+        specific = output["hookSpecificOutput"]
+        self.assertEqual("deny", specific["permissionDecision"])
+        self.assertTrue(specific["permissionDecisionReason"].strip())
+        self.assertNotIn("additionalContext", specific)
+        self.assertNotIn("systemMessage", output)
+
+    def test_unsupported_suppression_and_post_permission_fields_fail_closed(self):
+        for event in ("PreToolUse", "PostToolUse"):
+            for flag in (True, False):
+                with self.subTest(event=event, flag=flag):
+                    result = self.outputs([{"suppressOutput": flag}], event=event)
+                    self.assertEqual(2, result.returncode)
+                    self.assertEqual("", result.stdout)
+        for values in ([self.permission("deny"), {"suppressOutput": True}],
+                       [{"suppressOutput": True}, self.permission("deny")],
+                       [{**self.permission("deny"), "suppressOutput": True}]):
+            result = self.outputs(values)
+            self.assertEqual(2, result.returncode)
+            self.assertEqual("", result.stdout)
+        for decision in ("allow", "ask", "deny"):
+            value = self.permission(decision)
+            value["hookSpecificOutput"]["hookEventName"] = "PostToolUse"
+            result = self.outputs([value], event="PostToolUse")
+            self.assertEqual(2, result.returncode)
+            self.assertEqual("", result.stdout)
 
     def test_post_tool_stop_preserves_all_context_and_stop_reason(self):
         stop = {"continue": False, "stopReason": "review required",
@@ -272,6 +339,16 @@ class HookRoutingTests(unittest.TestCase):
         self.assertEqual("review required", output["stopReason"])
         self.assertEqual("first\nsecond", output["hookSpecificOutput"]["additionalContext"])
         self.assertEqual("warning", output["systemMessage"])
+
+    def test_pre_continue_true_is_removed_and_post_block_remains_feedback(self):
+        output = self.merged([{"continue": True}, self.permission("deny")])
+        self.assertNotIn("continue", output)
+        self.assertEqual("deny", output["hookSpecificOutput"]["permissionDecision"])
+        output = self.merged([{"decision": "block", "reason": "review result"}, {}],
+                             event="PostToolUse")
+        self.assertEqual("block", output["decision"])
+        self.assertEqual("review result", output["reason"])
+        self.assertNotIn("permissionDecision", output["hookSpecificOutput"])
 
     def test_per_file_rewrites_and_conflicting_fields_fail_closed(self):
         rewrite = self.permission("allow")

@@ -1,6 +1,6 @@
-# kiro Plugin — Claude Code Configuration
+# kiro Plugin — Host Configuration
 
-Cost-savings delegation: **Claude plans and verifies, Kiro CLI implements and reviews**
+Cost-savings delegation: **The current host plans and verifies, Kiro CLI implements and reviews**
 on its own flat-rate subscription credits. Not a second opinion — `co-agent` covers that
 (multi-AI review/decision/ADR); this plugin exists purely to move token-expensive work
 (writing code, reviewing diffs) off this session's budget and onto Kiro's.
@@ -114,7 +114,7 @@ from outside it) specifically so this holds. None of that constrains what Kiro d
 inside the worktree with `execute_bash` — an auto-approved shell command there can still
 read/exfiltrate host-reachable secrets or destroy files outside the worktree; nothing in
 this pipeline's layers stops that class of host-side side effect (see "Trust decision"
-below). Kiro never commits — Claude is the only committer. Detail:
+below). Kiro never commits — the host is the only committer. Detail:
 `skills/kiro-delegate/references/kiro-headless.md`.
 
 ### Trust decision (read before enabling default-delegate)
@@ -127,7 +127,7 @@ decision** you are making in the Kiro CLI itself — no worktree, no capture-dif
 the host while it runs (read credentials, delete files outside the worktree, make
 network calls). If you are not comfortable extending that trust to `kiro-cli`, either
 don't enable `execute_bash` in `.kiro/agents/kiro-implementer.json` (accepting that some
-tasks Kiro would otherwise finish will need Claude fallback instead), or run it inside
+tasks Kiro would otherwise finish will need host fallback instead), or run it inside
 an OS-level sandbox/container you control. `/kiro:setup` surfaces this decision once,
 before writing the implementer agent file.
 
@@ -150,7 +150,7 @@ lenses (same `(file, line)` dedupe as a single pass, keeping the highest severit
 tagging which lens(es) raised it). The stderr framing depends on WHAT'S blocking, not
 just whether anything is: a **critical** finding is a plain `BLOCKED` (fix and retry,
 no bypass suggested); a **warning-only** set (no critical) is framed as `CHAIR
-JUDGMENT REQUIRED` — a hook cannot call Claude directly, so exit 2 + this stderr text
+JUDGMENT REQUIRED` — a hook cannot call the host directly, so exit 2 + this stderr text
 IS the mechanism by which the verdict reaches whoever is chairing the session; they
 read each finding against the actual change and either fix it or bypass with an inline
 `KIRO_REVIEW=off git push ...` prefix (same recognized-in-payload-text mechanism as the
@@ -216,7 +216,7 @@ still applies, since those aren't a consent bypass.
 
 - **Delegate (implement)** — `delegate.model` + `delegate.effort` (kiro-cli `--effort`,
   default **`low`**). Flat-rate credits mean no per-token cost trade-off, so point the
-  model at whatever finishes tasks correctly; effort stays low because Claude already
+  model at whatever finishes tasks correctly; effort stays low because the host already
   wrote the spec and the file set — the implementer is applying an approved plan, the same
   reasoning behind this repo's `pr-autofix-implementer` tier. Raise it only if a repo's
   tasks keep exhausting the fix loop (a wall-clock signal, not a cost one).
@@ -256,10 +256,10 @@ command and has no auto-invocation trigger (it never loads this write-capable sk
 
 ```
 /kiro:setup     → detect kiro-cli, probe, list models, write .kiro/agents/*.json
-/kiro:delegate  → Claude plans (Kiro-native spec) → wave-plan tasks
+/kiro:delegate  → the current host plans (Kiro-native spec) → wave-plan tasks
                 → per task: worktree → Kiro implements → capture-diff → scope_guard
-                → Claude applies + tests → bounded retry → Claude fallback if exhausted
-                → Claude commits → delegation-rate report
+                → the host applies + tests → bounded retry → host fallback if exhausted
+                → the host commits → delegation-rate report
 git commit      → PreToolUse hook → kiro_review.py --staged (fail-open, blocks only on `critical`)
 git push        → PreToolUse hook → kiro_review.py --range --lenses correctness,security,scope
                 → (fail-open; `critical` = BLOCKED, `warning`-only = CHAIR JUDGMENT REQUIRED)

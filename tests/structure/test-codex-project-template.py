@@ -54,6 +54,22 @@ class ProjectHookTests(unittest.TestCase):
         self.assertIn("secret", text.lower())
         self.assertNotIn(secret, text)
 
+    def test_staged_secret_warning_ignores_forced_git_diff_color(self):
+        subprocess.run(["git", "-C", str(self.root), "config", "color.diff", "always"],
+                       check=True)
+        secret = "ghp_" + "B" * 36
+        (self.root / "config.txt").write_text(secret + "\n")
+        subprocess.run(["git", "-C", str(self.root), "add", "config.txt"], check=True)
+        text = self.hook("PreToolUse", "git status")
+        self.assertIn("secret", text.lower())
+        self.assertNotIn(secret, text)
+        self.assertNotIn("\x1b", text)
+        configured = subprocess.run(
+            ["git", "-C", str(self.root), "config", "--get", "color.diff"],
+            check=True, capture_output=True, text=True,
+        )
+        self.assertEqual("always", configured.stdout.strip())
+
     def test_clean_staging_has_no_warning(self):
         (self.root / "src/one.py").write_text("print('hello')\n")
         subprocess.run(["git", "-C", str(self.root), "add", "src/one.py"], check=True)
