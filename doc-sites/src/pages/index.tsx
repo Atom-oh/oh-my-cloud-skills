@@ -9,60 +9,54 @@ import styles from './index.module.css';
 
 const plugins = [
   {
-    title: 'co-agent',
-    description: 'Kiro/Codex/Agy와 협업해 코드/아키텍처 리뷰, 의사결정 보조, ADR 작성을 진행합니다. 자율 doc→plan→구현 consensus 파이프라인과 harness 오케스트레이터도 지원합니다.',
-    agents: 3,
-    skills: 1,
-    link: '/docs/co-agent/overview',
+    "title": "co-agent",
+    "description": "Peer review, decision support, ADRs, and verified implementation pipelines.",
+    "link": "/docs/co-agent/overview"
   },
   {
-    title: 'project-init',
-    description: '프로젝트 구조 스캐폴딩, 문서 동기화, PR 리뷰 피드백 자동 수정, ADR 모순 검토를 지원합니다.',
-    agents: 1,
-    skills: 3,
-    link: '/docs/project-init/overview',
+    "title": "kiro",
+    "description": "Kiro implementation and optional review, with host-owned plans and verification.",
+    "link": "/docs/kiro/overview"
   },
   {
-    title: 'aws-content-plugin',
-    description: '프레젠테이션(웹+네이티브 PPTX), 아키텍처 다이어그램, 애니메이션 다이어그램, 문서, GitBook, 워크샵, 브로셔 콘텐츠를 생성합니다.',
-    agents: 9,
-    skills: 8,
-    link: '/docs/aws-content-plugin/overview',
+    "title": "atlas",
+    "description": "A repository wiki with coverage metadata and git-based documentation drift checks.",
+    "link": "/docs/atlas/overview"
   },
   {
-    title: 'aws-ops-plugin',
-    description: 'EKS 클러스터 관리, 네트워크 진단, IAM/RBAC, 옵저버빌리티, 스토리지, 데이터베이스, 비용 최적화, Well-Architected 리뷰를 지원합니다.',
-    agents: 10,
-    skills: 6,
-    link: '/docs/aws-ops-plugin/overview',
+    "title": "project-init",
+    "description": "Project setup, instructions, ADRs, runbooks, and documentation maintenance for both hosts.",
+    "link": "/docs/project-init/overview"
   },
   {
-    title: 'kiro-power-converter',
-    description: 'Claude Code 플러그인을 Kiro Power 포맷으로 변환합니다. GitHub URL, 로컬 경로, 마켓플레이스 이름을 지원합니다.',
-    agents: 1,
-    skills: 1,
-    link: '/docs/kiro-power-converter/overview',
+    "title": "aws-content-plugin",
+    "description": "Web and PowerPoint decks, architecture diagrams, workshops, brochures, and profiles.",
+    "link": "/docs/aws-content-plugin/overview"
   },
   {
-    title: 'agentcore-creator',
-    description: 'Claude Code 플러그인을 Bedrock AgentCore(Runtime, Gateway, Memory)로 배포합니다. 5단계 워크플로우와 Strands Agent 프레임워크를 사용합니다.',
-    agents: 1,
-    skills: 1,
-    link: '/docs/agentcore-creator/overview',
+    "title": "aws-ops-plugin",
+    "description": "AWS and EKS diagnostics across infrastructure, security, observability, and cost.",
+    "link": "/docs/aws-ops-plugin/overview"
   },
+  {
+    "title": "kiro-power-converter",
+    "description": "Convert plugin sources and skills into Kiro Powers with steering, hooks, and MCP settings.",
+    "link": "/docs/kiro-power-converter/overview"
+  },
+  {
+    "title": "agentcore-creator",
+    "description": "Design and test agents, then prepare AgentCore harness or Runtime deployments.",
+    "link": "/docs/agentcore-creator/overview"
+  }
 ];
 
-function PluginCard({title, description, agents, skills, link}: typeof plugins[0]) {
+function PluginCard({title, description, link}: typeof plugins[0]) {
   return (
-    <div className={clsx('col col--4')}>
+    <div className="col col--4">
       <Link to={link} style={{textDecoration: 'none', color: 'inherit'}}>
         <div className="plugin-card">
           <div className="plugin-card__title">{title}</div>
           <div className="plugin-card__description">{description}</div>
-          <div className="plugin-card__stats">
-            <span>{agents} Agents</span>
-            <span>{skills} Skills</span>
-          </div>
         </div>
       </Link>
     </div>
@@ -82,7 +76,7 @@ function HomepageHeader() {
           <Link
             className="button button--secondary button--lg"
             to="/docs/intro">
-            시작하기
+            Get started
           </Link>
           <Link
             className="button button--outline button--lg"
@@ -117,10 +111,11 @@ export default function Home(): ReactNode {
           <div className="container">
             <div className="row">
               <div className="col col--8 col--offset-2" style={{textAlign: 'center'}}>
-                <Heading as="h2">Claude Code Plugin Marketplace</Heading>
+                <Heading as="h2">Claude Code and Codex plugins</Heading>
                 <p style={{fontSize: '1.1rem', color: 'var(--ifm-font-color-secondary)'}}>
-                  <code>/plugin marketplace add aws-content-plugin</code> 명령어 하나로 설치하고,
-                  자연어로 AWS 콘텐츠를 생성하거나 인프라를 운영하세요.
+                  Choose the plugins you need, install them in your host, and request
+                  a workflow in plain English. The guide explains setup, verification,
+                  and the boundaries of each integration.
                 </p>
               </div>
             </div>

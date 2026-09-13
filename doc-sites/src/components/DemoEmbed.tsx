@@ -21,7 +21,7 @@ export default function DemoEmbed({
         <span className="demo-embed__title">{title}</span>
         <span className="demo-embed__actions">
           <a href={src} target="_blank" rel="noopener noreferrer">
-            새 탭에서 열기 ↗
+            Open in a new tab ↗
           </a>
         </span>
       </div>
@@ -37,12 +37,12 @@ export default function DemoEmbed({
         <div className="demo-embed__footer">
           {command && (
             <div>
-              <strong>생성 명령어:</strong> <code>{command}</code>
+              <strong>Example workflow:</strong> <code>{command}</code>
             </div>
           )}
           {remarpSource && (
             <div style={{marginTop: command ? '0.5rem' : 0}}>
-              <strong>Remarp 소스:</strong> <code>{remarpSource}</code>
+              <strong>Remarp source:</strong> <code>{remarpSource}</code>
             </div>
           )}
         </div>

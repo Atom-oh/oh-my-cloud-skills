@@ -13,14 +13,15 @@ doc-sites/
 ├── docs/            # Authored content (per-plugin overview/installation/agents/skills, intro, remarp-guide)
 ├── src/             # Docusaurus React components, CSS
 ├── static/          # Static assets (demos, images)
-├── i18n/            # Translations
+├── plugins/         # Build-time compatibility redirects
 └── build/, .docusaurus/, node_modules/   # generated / deps (not edited by hand)
 ```
 
 ## Conventions
 - **Per-plugin pages** in `doc-sites/docs/<plugin>/`: `overview.md`, `installation.md`, `agents/*.md`, `skills/*.md`. Mirror the plugin's actual agents/skills/commands.
-- `intro.md` carries **plugin counts** (agents/skills/commands) — update it when a plugin's component count changes (the `/sync-docs` skill audits this; the counts also live in `../docs/architecture.md`, keep both in sync).
-- Bilingual (KO/EN) where user-facing; match the repo's no-emoji / clear-prose style.
+- `intro.md` and the home page list the eight plugins. Derive component inventories from manifests/source directories and link canonical settings instead of duplicating model catalogs. Codex command wrappers are generated skills, so their counts differ from Claude source skills.
+- Maintained content and UI are English only. English is the sole locale; the build plugin preserves old `/en/` and `/ko/` routes. Preserve required syntax literals and legacy fragment IDs.
+- `static/demos/` and associated visual assets are frozen examples; localized input/output artifacts can remain unchanged. Explain their historical scope in the maintained wrapper pages.
 - Do **not** hand-edit `build/`, `.docusaurus/`, or `node_modules/`.
 
 ## Commands

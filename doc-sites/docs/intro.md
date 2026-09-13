@@ -1,109 +1,65 @@
 ---
 sidebar_position: 1
 slug: /intro
-title: 시작하기
+title: "Getting started"
 ---
 
-# oh-my-cloud-skills 시작하기
+{/* Legacy section links retained after the English rewrite. */}
+<span id="oh-my-cloud-skills-시작하기" />
+<span id="플러그인-목록" />
+<span id="설치-방법" />
+<span id="marketplace에서-설치-권장" />
+<span id="로컬에서-직접-로드" />
+<span id="플러그인-구조" />
+<span id="사용-예시" />
+<span id="콘텐츠-생성" />
+<span id="인프라-운영" />
+<span id="다음-단계" />
 
-**oh-my-cloud-skills**는 AWS 클라우드 작업을 위한 [Claude Code](https://claude.ai/code) 플러그인 마켓플레이스입니다. 7개의 플러그인이 총 28개의 AI 에이전트와 22개의 스킬을 제공합니다.
 
-## 플러그인 목록
+# Getting started
 
-| 플러그인 | 설명 | Agents | Skills |
-|----------|------|--------|--------|
-| [co-agent](/docs/co-agent/overview) | 멀티-AI 협업 (Kiro/Codex/Antigravity) — 리뷰·의사결정·ADR·컨텍스트 동기화·consensus·harness·pr-autofix 파이프라인, 6개 명령 | 5 | 3 |
-| [kiro](/docs/kiro/overview) | 비용 절감 구현 위임 — Claude가 계획·검증, Kiro CLI가 구독 크레딧으로 구현·리뷰, 4개 명령 | 1 | 1 |
-| [project-init](/docs/project-init/overview) | 프로젝트 스캐폴딩, 문서 동기화, 9개 명령 (upstream 미러) | 1 | 1 |
-| [aws-content-plugin](/docs/aws-content-plugin/overview) | 프레젠테이션(웹+네이티브 PPTX), 다이어그램, 문서, GitBook, 워크샵, 브로셔, 프로필 페이지 | 9 | 9 |
-| [aws-ops-plugin](/docs/aws-ops-plugin/overview) | EKS, 네트워크, IAM, 옵저버빌리티, 스토리지, DB, 비용, Well-Architected | 10 | 6 |
-| [kiro-power-converter](/docs/kiro-power-converter/overview) | Claude Code 플러그인 → Kiro Power 변환 | 1 | 1 |
-| [agentcore-creator](/docs/agentcore-creator/overview) | Claude Code 플러그인 → Bedrock AgentCore 배포 | 1 | 1 |
+This marketplace contains eight plugins for Claude Code and Codex. Plugin definitions and helper scripts are the product; this site documents their workflows.
 
-## 설치 방법
+## Choose a plugin
 
-### Marketplace에서 설치 (권장)
+| Plugin | Purpose |
+| --- | --- |
+| [co-agent](/docs/co-agent/overview) | Second opinions, decisions, ADRs, and implementation pipelines with peer review. The current host chairs the work. |
+| [kiro](/docs/kiro/overview) | Delegate implementation and optional reviews to Kiro CLI while the current host owns the plan, verification, and commits. |
+| [atlas](/docs/atlas/overview) | Maintain a per-topic repository wiki with git-based drift detection and optional push-time synchronization. |
+| [project-init](/docs/project-init/overview) | Initialize project instructions and structure, synchronize documentation, and create ADRs, runbooks, and reference guides for either host. |
+| [aws-content-plugin](/docs/aws-content-plugin/overview) | Create web presentations, editable PowerPoint decks, diagrams, documents, workshops, brochures, and portfolio pages. |
+| [aws-ops-plugin](/docs/aws-ops-plugin/overview) | Diagnose AWS and EKS incidents across compute, networking, identity, observability, storage, databases, analytics, and cost. |
+| [kiro-power-converter](/docs/kiro-power-converter/overview) | Convert Claude plugin sources and individual skills into Kiro Powers, including steering, hooks, assets, and MCP configuration. |
+| [agentcore-creator](/docs/agentcore-creator/overview) | Design and test an agent locally, then prepare an AgentCore harness configuration or a generated Runtime application. |
 
-```bash
-# 마켓플레이스 추가
-/plugin marketplace add https://github.com/Atom-oh/oh-my-cloud-skills
+## Install
 
-# 플러그인 설치
-/plugin install co-agent@oh-my-cloud-skills
-/plugin install kiro@oh-my-cloud-skills
-/plugin install project-init@oh-my-cloud-skills
+In Claude Code, add the repository marketplace, then install the plugins you need:
+
+```text
+/plugin marketplace add Atom-oh/oh-my-cloud-skills
 /plugin install aws-content-plugin@oh-my-cloud-skills
-/plugin install aws-ops-plugin@oh-my-cloud-skills
-/plugin install kiro-power-converter@oh-my-cloud-skills
-/plugin install agentcore-creator@oh-my-cloud-skills
 ```
 
-### 로컬에서 직접 로드
+In Codex, add this repository's `.agents/plugins/marketplace.json` as a marketplace source and install from `/plugins`. Start a new thread after installation. Select the installed skill in the host's skill picker or request the documented workflow in plain English.
 
-```bash
-# 저장소 클론
-git clone https://github.com/Atom-oh/oh-my-cloud-skills.git
+The Claude manifests expose agents, skills, commands, and hooks. Codex manifests point to generated skill overlays and host-specific hook/MCP adapters. A Claude command becomes a skill entry in Codex; Claude subagent registration and tool names do not automatically transfer. Project-init and Atlas both have Codex packages.
 
-# 플러그인 디렉토리를 직접 지정하여 로드
-claude --plugin-dir ./oh-my-cloud-skills/plugins/co-agent
-claude --plugin-dir ./oh-my-cloud-skills/plugins/kiro
-claude --plugin-dir ./oh-my-cloud-skills/plugins/project-init
-claude --plugin-dir ./oh-my-cloud-skills/plugins/aws-content-plugin
-claude --plugin-dir ./oh-my-cloud-skills/plugins/aws-ops-plugin
-claude --plugin-dir ./oh-my-cloud-skills/plugins/kiro-power-converter
-claude --plugin-dir ./oh-my-cloud-skills/plugins/agentcore-creator
-```
+## Current configuration
 
-## 플러그인 구조
+[Claude marketplace](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/.claude-plugin/marketplace.json) · [Codex marketplace](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/.agents/plugins/marketplace.json)
 
-각 플러그인은 동일한 구조를 따릅니다:
+Those manifests and each plugin's source directories define the installed inventory. Generated Codex overlays may expose more skill entries because they wrap Claude commands. Model identifiers, reasoning settings, and context limits come from each plugin's configuration; this site does not maintain a second model catalog.
 
-```
-plugins/<plugin-name>/
-├── .claude-plugin/plugin.json    # 매니페스트: agents[], skills[]
-├── .mcp.json                     # MCP 서버 설정 (ops-plugin만 해당)
-├── CLAUDE.md                     # 자동 호출 키워드 → 에이전트 라우팅 규칙
-├── agents/<name>.md              # 에이전트 정의 (YAML frontmatter + markdown)
-└── skills/<name>/                # 스킬 디렉토리
-    ├── SKILL.md                  # 진입점 (YAML frontmatter + triggers)
-    └── references/               # 참조 문서
-```
+## Review and examples
 
-## 사용 예시
+Content output requires the content-review quality gate before publication. Local review hooks are opt-in controls; they do not replace CI checks or repository branch protection. Review findings must be checked against the actual changed files and current configuration.
 
-### 콘텐츠 생성
+Demo embeds and downloadable artifacts are frozen examples. Their language, model names, prices, or dated claims illustrate the original output and are not current operational guidance.
 
-```
-"AWS EKS 스케일링에 대한 교육 프레젠테이션을 만들어주세요"
-→ presentation-agent가 자동 활성화되어 인터랙티브 HTML 슬라이드를 생성합니다.
+## Related links
 
-"VPC 아키텍처 다이어그램을 그려주세요"
-→ architecture-diagram-agent가 Draw.io XML을 생성합니다.
-
-"서비스 간 트래픽 흐름을 애니메이션으로 보여주세요"
-→ animated-diagram-agent가 SVG + SMIL 애니메이션을 생성합니다.
-```
-
-### 인프라 운영
-
-```
-"EKS 노드가 NotReady 상태입니다. 트러블슈팅해주세요"
-→ eks-agent가 5분 트리아지를 수행하고 해결 방법을 제시합니다.
-
-"ALB에서 502 에러가 발생합니다"
-→ network-agent가 네트워크 진단을 시작합니다.
-
-"IAM IRSA 설정이 안 됩니다"
-→ iam-agent가 IRSA 구성을 검증하고 수정합니다.
-```
-
-## 다음 단계
-
-- [co-agent 개요](/docs/co-agent/overview) — 멀티-AI 협업 플러그인 (리뷰·의사결정·ADR·컨텍스트 동기화 + `/co-agent:configure`)
-- [kiro 개요](/docs/kiro/overview) — 비용 절감 구현 위임 플러그인 (Claude 계획·검증 + Kiro CLI 구현·리뷰)
-- [project-init 개요](/docs/project-init/overview) — 프로젝트 스캐폴딩 플러그인
-- [aws-content-plugin 개요](/docs/aws-content-plugin/overview) — 콘텐츠 생성 플러그인
-- [aws-ops-plugin 개요](/docs/aws-ops-plugin/overview) — 인프라 운영 플러그인
-- [kiro-power-converter 개요](/docs/kiro-power-converter/overview) — Kiro Power 변환 플러그인
-- [agentcore-creator 개요](/docs/agentcore-creator/overview) — Bedrock AgentCore 배포 플러그인
-- [Remarp Guide](/docs/remarp-guide/introduction) — 차세대 프레젠테이션 마크다운 포맷
+- [Claude Code](https://claude.ai/code)
+- [Remarp Guide](/docs/remarp-guide/introduction)

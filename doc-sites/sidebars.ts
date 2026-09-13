@@ -5,6 +5,12 @@ const sidebars: SidebarsConfig = {
     'intro',
   ],
 
+  atlas: [
+    'atlas/overview',
+    'atlas/installation',
+    'atlas/commands',
+  ],
+
   awsContent: [
     'aws-content-plugin/overview',
     'aws-content-plugin/usage-guide',
@@ -50,6 +56,7 @@ const sidebars: SidebarsConfig = {
         'aws-content-plugin/demos/quiz-slides',
         'aws-content-plugin/demos/compare-tabs',
         'aws-content-plugin/demos/architecture-diagram-demo',
+        'aws-content-plugin/demos/archify-pipeline',
         'aws-content-plugin/demos/animated-diagram-demo',
         'aws-content-plugin/demos/workshop-demo',
       ],
