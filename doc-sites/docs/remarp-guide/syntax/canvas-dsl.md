@@ -43,8 +43,8 @@ Canvas DSL describes a small stepwise diagram. Use it for at most four boxes/ico
 
 :::canvas
 box client "Client" at 40,150 size 100,50 color accent step 1
-box api "API" at 220,150 size 100,50 color info step 2
-box store "Store" at 400,150 size 100,50 color success step 3
+box api "API" at 220,150 size 100,50 color blue step 2
+box store "Store" at 400,150 size 100,50 color green step 3
 arrow client -> api "request" step 4
 arrow api -> store "write" step 5
 :::
@@ -59,6 +59,8 @@ icon <id> "<service-or-path>" at <x>,<y> size <s> [step <n>]
 arrow <from-id> -> <to-id> "<label>" [color <color>] [style dashed|dotted] [step <n>]
 group "<label>" containing <id1>, <id2> [color <color>] [step <n>]
 ```
+
+The compiler resolves the named colors `accent`, `blue`, `green`, `yellow`, `red`, and `cyan`. Use six-digit hex colors for other values.
 
 The parser recognizes groups, but current authoring policy sends grouped architecture to HTML/CSS. Icon names resolve through the shipped icon mapping; use a verified local path for a custom icon. Do not assume every marketing service name is an accepted alias.
 
