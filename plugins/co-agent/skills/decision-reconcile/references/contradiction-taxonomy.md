@@ -91,8 +91,9 @@ superseding ADR draft contains:
 
 ### Superseding ADR draft
 
-Follow the project's ADR convention exactly (see `/add-adr`,
-`commands/add-adr.md`): bilingual EN/KR, Nygard sections, no emojis. Additions
+Follow the target project's ADR convention (see `/add-adr`): Nygard sections and no
+emojis; this repository maintains English prose. Template language defaults do not
+override the user's requested artifact language or project policy. Additions
 specific to a reversal ADR:
 - **Status**: `Accepted`
 - **Context** must name the contradiction being resolved and cite the superseded
@@ -100,8 +101,8 @@ specific to a reversal ADR:
 - **Decision** states the single unified choice.
 - **Consequences** must include: "Supersedes ADR-NNN (and ADR-MMM)" and the
   migration/cleanup implied by the reversal.
-- Then **edit each superseded ADR**: change Status (EN + KR sections) to
-  `Superseded` / `대체됨` and add a line `Superseded by ADR-NNN`.
+- Then **edit each superseded ADR**: set Status to `Superseded by ADR-NNN`.
+  Mark partial reversals by scope; preserve original rationale as dated evidence.
 
 <a id="synthesis"></a>
 ## Synthesis: consensus vs dissent

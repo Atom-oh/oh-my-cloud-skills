@@ -13,7 +13,9 @@
 ## The gate (one round)
 1. Consent + scope; print `co_agent_config.py matrix` (provider·model·ctx + max calls).
 2. One **independent** round over `(ai,model)` pairs (`co_agent_config.py pairs`; `deep`
-   profile activates each AI's full model list; capped by `consensus.max_calls`, default 24 — sized so the committed deep profile's 5 pairs survive even the hybrid gate's 2-phase split, 24 // 2 rounds // 2 phases = 6 ≥ 5).
+   profile activates each AI's full model list). Derive the roster and cap from
+   `matrix`/`pairs` for the current host, rounds and phases; do not reuse an old
+   default pair count.
    `pairs` emits the panel key in the first column (`kiro-cli`, `claude`, `codex`, `agy`) —
    these ARE the binary names (the old `kiro`/`antigravity` aliases were removed), so invoke
    each directly via the `references/ai-cli-adapters.md` fan-out `case "$ai"` block, which
@@ -28,22 +30,16 @@ A **gate loop** repeats this round up to `consensus.max_rounds` (default 2) unti
 CRITICAL/MAJOR finding remains (also stop on no-progress / oscillation).
 
 ## Multi-model rules
-- Default profile = one model per AI. The committed default is `deep`, which activates
-  each AI's `models` list — Kiro's mainstay panel is **opus / minimax-m2.5**.
+- The `default` profile selects one model per AI; `deep` uses each AI's `models`
+  list. Read `co-agent.defaults.json` and effective configuration for the chosen profile.
 - Cap: `rounds × pairs ≤ max_calls`; trim same-family (round-robin) first, then warn.
 - Same provider *family* (e.g. two Agy-routed variants) = diminishing returns; the matrix warns.
-  **Kiro is the exception** — it's a cross-vendor router (Claude / MiniMax; the router
-  also supports Zhipu, but glm-5 isn't in the default roster here), so
-  multiple Kiro models are genuine cross-family diversity (matrix notes it, no warning).
-  Note this is why `gpt-5.6-terra` isn't the Kiro-side pick even though it replaced `kimi-k2.5` in
-  pr-review's panel — Codex already covers OpenAI here, so routing Kiro to `gpt-5.6-terra` too would
-  collapse two of the panel's vendor-diversity slots into one family.
-- **`kimi-k2.5` was dropped** (2026-07) — it was the sole model attributed to unfounded/
-  hallucinated findings across this repo's PR review history (7 dismissed claims, 0 for any
-  other panel model — see ADR-012 / `docs/ci-pr-review.md`) and to zero-response coverage
-  degradation in CI. `minimax-m2.5` isn't flagged `[Internal]` in `kiro-cli --list-models`
-  (unlike `kimi-k2.5`), so it doesn't carry the same access-risk caveat this section used to
-  document.
+  Kiro can route models from different families, so `matrix` treats its multi-model
+  list separately. Confirm the actual model families rather than assuming distinct
+  CLI names imply diversity.
+- The interactive co-agent roster and repository PR CI roster are independent.
+  Historical roster decisions do not supply current model IDs or waive required
+  coverage. Consensus/harness require READY raw-CLI peers; report missing evidence.
 
 ## Where the gate is used
 - **`/co-agent:consensus review`** — the gate, standalone, on a git diff (shipped v1.7.2).

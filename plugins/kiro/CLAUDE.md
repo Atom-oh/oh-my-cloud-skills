@@ -14,7 +14,7 @@ never set up is not).
 
 ---
 
-## Routing rule (this file is always loaded — this is what makes `default_delegate` fire)
+## Routing rule (emitted by the SessionStart hook)
 
 The skill/agent triggers below only match requests that **name Kiro explicitly** ("kiro
 implement this", "delegate to kiro", …). A generic implementation request ("implement
@@ -212,22 +212,17 @@ the current repo and, if so, drops just these consent-gating keys from it before
 merging — every other setting in the same tracked file (models, timeouts, block level)
 still applies, since those aren't a consent bypass.
 
-## Model + effort tiering
+Local hook skips and overrides do not satisfy mandatory repository PR CI. Latest-HEAD
+review, unresolved Critical/Major findings, configured coverage and required checks
+remain governed by the repository's review policy.
 
-- **Delegate (implement)** — `delegate.model` + `delegate.effort` (kiro-cli `--effort`,
-  default **`low`**). Flat-rate credits mean no per-token cost trade-off, so point the
-  model at whatever finishes tasks correctly; effort stays low because the host already
-  wrote the spec and the file set — the implementer is applying an approved plan, the same
-  reasoning behind this repo's `pr-autofix-implementer` tier. Raise it only if a repo's
-  tasks keep exhausting the fix loop (a wall-clock signal, not a cost one).
-- **Review** — `review.model` deliberately kept at Kiro's strongest/newest available model
-  (e.g. `gpt-5.6-sol`) even when the delegate model is lighter, with
-  `review.effort` default **`high`** — the opposite end of the ladder on purpose, since
-  the blocking verdict IS this call's product. Applies to the commit pass and to each of
-  the 3 parallel push lenses.
-- Both are `/kiro:configure set <delegate|review> effort <low|medium|high|xhigh|max>`
-  (`default` omits the flag). Measured flag surface: `references/kiro-headless.md` → "The
-  real headless flag surface".
+## Model and effort configuration
+
+Delegate and review settings are independent. Read
+`skills/kiro-delegate/kiro.defaults.json` and `kiro_config.py show` for effective
+models and effort values; do not infer capabilities from a model name or copy tier
+claims into this guide. `/kiro:configure` exposes supported flags. Invocation details
+live in `skills/kiro-delegate/references/kiro-headless.md`.
 
 ## Scripts reused from co-agent (unmodified)
 

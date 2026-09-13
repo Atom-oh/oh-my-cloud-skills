@@ -1,4 +1,4 @@
-# AgentCore Creator -- Claude Code Configuration
+# AgentCore Creator -- Shared plugin guidance
 
 Interactive agent design and deployment to Amazon Bedrock AgentCore. Brainstorm requirements, build as Claude Code skill first, then convert and deploy — config-only to AgentCore harness (skills attach unchanged) or Strands code-gen to Runtime with Memory, Gateway, and tools.
 

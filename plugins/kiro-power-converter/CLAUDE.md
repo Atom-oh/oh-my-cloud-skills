@@ -1,4 +1,4 @@
-# Kiro Power Converter — Claude Code Configuration
+# Kiro Power Converter — Shared plugin guidance
 
 Converts Claude Code plugins to Kiro Power format. Supports multiple input sources (GitHub URL, local path, marketplace, individual skills) and output targets (global, project, export).
 

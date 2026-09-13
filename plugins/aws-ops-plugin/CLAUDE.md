@@ -1,4 +1,4 @@
-# AWS Ops Plugin — Claude Code Configuration
+# AWS Ops Plugin — Shared plugin guidance
 
 A unified plugin for AWS/EKS infrastructure operations and troubleshooting: cluster management, networking diagnostics, IAM/RBAC, observability, storage, database, and cost optimization.
 

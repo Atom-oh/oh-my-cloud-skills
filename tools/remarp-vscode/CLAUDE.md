@@ -4,7 +4,10 @@ VSCode extension for Remarp presentation format — preview, visual editing, and
 
 ## Build & Test
 
+Run from the repository root:
+
 ```bash
+cd tools/remarp-vscode
 npm install && npm run compile    # Build TypeScript
 npx vsce package                  # Package .vsix
 code --install-extension remarp-vscode-*.vsix  # Install locally

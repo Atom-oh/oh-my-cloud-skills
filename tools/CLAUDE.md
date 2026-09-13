@@ -1,13 +1,14 @@
 # tools/
 
-Development tools and utilities.
+Repository development tools. Use the existing `remarp-vscode/` TypeScript project;
+do not scaffold application directories or unrelated host configuration. Maintain
+English documentation, preserving literal syntax and example content.
 
 ## Contents
 
 | Directory | Purpose |
 |-----------|---------|
 | `remarp-vscode/` | VSCode extension for Remarp slide preview and visual editing |
-| `prompts/` | Prompt templates for common workflows |
 
 ## Remarp VSCode Extension
 

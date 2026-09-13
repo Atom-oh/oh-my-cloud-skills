@@ -1,6 +1,8 @@
 # scripts/
 
-Evaluation and utility scripts for the plugin marketplace.
+Evaluation, host-adapter generation and repository utilities. This is an existing
+plugin marketplace, not an application scaffold. Maintain English prose and derive
+commands from the scripts here; do not create dummy application/configuration files.
 
 ## Files
 
@@ -16,6 +18,7 @@ Evaluation and utility scripts for the plugin marketplace.
 | `sync-plugin-cache.sh` | Sync plugin cache for marketplace |
 | `setup.sh` | One-command project setup for new developers |
 | `install-hooks.sh` | Install Git commit-msg hook |
+| `pr-review/` | Trusted-base CI prechecks, panel orchestration and review publication |
 
 ## Validator scope
 
@@ -23,7 +26,7 @@ Source-mirror discovery does not authorize a Codex publication exception or sour
 
 | Constant | Script | Means |
 |----------|--------|-------|
-| `MIRRORED_PLUGINS` | `test-plugins.py` | plugin.json is an upstream mirror kept verbatim, so `agents`/`skills` may be absent — they're discovered from `agents/*.md` and `skills/*/SKILL.md` instead, and a mirror with neither the field nor any file on disk is an error |
+| `MIRRORED_PLUGINS` | `test-plugins.py` | plugin.json preserves upstream fields except the shared release version, so `agents`/`skills` may be absent — they're discovered from `agents/*.md` and `skills/*/SKILL.md` instead, and a mirror with neither the field nor any file on disk is an error |
 
 `MIRRORED_PLUGINS` contains `project-init` and remains applicable after Codex
 publication. The Codex validator requires every plugin's manifest and marketplace
@@ -46,6 +49,11 @@ success does not substitute for installed runtime and native hook verification.
 `allowed-tools`, not verified for a subagent's `tools:`, so it's treated as a full `Bash`
 grant. A scope item that grants everything (`*`, `*:*`, `:*` — the last has an empty
 prefix) is an **error**: it reads as narrowed while granting everything.
+
+Mandatory CI review validates final Issues and complete configured coverage for the
+latest HEAD. The semantic acceptance helper is
+`plugins/co-agent/skills/pr-autofix/scripts/review_gate.py`; a lexical PASS or an
+optional local hook skip cannot replace that result or separate Codex package CI.
 
 ## Running
 

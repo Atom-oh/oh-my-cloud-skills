@@ -1,4 +1,4 @@
-# atlas Plugin — Claude Code Configuration
+# atlas Plugin — Shared plugin guidance
 
 A per-topic documentation wiki for LLM consumption that keeps itself in sync with the
 code. Docs under the wiki root (default `docs/atlas/`) declare `covers` globs (which
@@ -7,6 +7,11 @@ a `PreToolUse(Bash)` hook detects drift just before `git push` — a pure git co
 no LLM — and, when the opt-in toggle is on, auto-fixes the affected docs with a confined
 headless `claude -p` call so the `docs(atlas): sync ...` commit rides along in that same
 push. General-purpose: installable in any repository, not an oh-my-cloud-skills tool.
+
+Claude Code and Codex both expose the shared procedure. Generated Codex hooks require
+host support and trust; automatic `atlas_sync.py` repair remains Claude-backed.
+On-demand Codex repair follows the package workflow and does not imply permission to
+switch the unattended provider. Optional fail-open sync never replaces mandatory CI.
 
 This file is **rationale only**. The operative rules live elsewhere (see the next
 section for why), and the operator-facing detail lives in `skills/atlas/SKILL.md` and

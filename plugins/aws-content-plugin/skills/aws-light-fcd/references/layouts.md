@@ -132,7 +132,7 @@ const { s, cols } = arch.archFlow(kit, pres, {
   item's `{cx,cy}` center — use it to anchor any extra hand-drawn elements (a mid-flow
   fan-out, an annotation) without picking coordinates from scratch. See
   `scripts/demo_build.js` (slide 5/6) for the inference-architecture example, including
-  a GPU/추론 엔진 fan-out anchored off `cols[3]`.
+  a GPU/inference-engine fan-out anchored off `cols[3]`.
 
 **Primitives — for irregular topologies only** (mesh, non-linear flows the column
 model doesn't fit):

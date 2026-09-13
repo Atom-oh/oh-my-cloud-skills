@@ -59,7 +59,7 @@ Each tell is enforced by a **lint rule id** (machine-detected) or by the review 
 ## 3. Slide Title Voice
 
 The slide title (`## heading`) must be a **headline** readable in one second — carry edge via an assertion/argument/question/twist, **28 characters or fewer**.
-Subtitles must end in **체언 종결** ("noun-form ending" — nominal endings like `~화/~등극/~재편/~본격화`, etc.), **45 characters or fewer**.
+Subtitles use **noun-form endings** (Korean examples: `~화/~등극/~재편/~본격화`), **45 characters or fewer**.
 ✅ "비용은 싸졌고, 모델은 똑똑해졌다" (Costs went down, models got smarter) ❌ "2026년 Frontier AI 모델 동향" (2026 Frontier AI Model Trends — a flat, encyclopedic label).
 **Level gate**: for `level` 100-200, a headline is recommended; 300-400 also allows descriptive titles (API names, config keys).
 Exceeding 28 characters triggers `validate`'s `TITLE_LENGTH` warning. Full examples: [slide-patterns.md](slide-patterns.md) "Slide Title Voice".
