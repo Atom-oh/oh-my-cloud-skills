@@ -41,7 +41,7 @@ HTML output also requires browser checks: load without application errors, inspe
 
 ## Content-specific checks
 
-Remarp needs valid source, framework initialization, notes, slide types, and interactions. Prefer HTML/CSS when a diagram exceeds the simple Canvas policy. Draw.io needs valid XML, correct nesting, canonical tokens, layout validation, and a complete export. GitBook navigation must match files. Workshops use Workshop Studio directives and only the language variants requested by the brief.
+Remarp needs valid source, framework initialization, notes, slide types, and interactions. Prefer HTML/CSS when a diagram exceeds the simple Canvas policy. Draw.io needs valid XML, correct nesting, canonical tokens, layout validation, and a complete export. GitBook navigation must match files. Workshops use Workshop Studio directives and the source rubric's language-file checks.
 
 ## Quality gate
 

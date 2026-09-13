@@ -34,13 +34,12 @@ Build/package commands are canonical in `tools/remarp-vscode/CLAUDE.md`, not her
 - **`/slide-fix` skill**: Reads `<!-- issue: -->` annotations via `remarp_to_slides.py issues --json`, fixes each slide, removes annotations, rebuilds HTML
 - **Auto-cleanup**: `/slide-fix` removes `<!-- issue: -->` comments after fixing
 
-## Visual Edit Mode (PPT edit mode)
+## Unwired visual-edit helpers
 
-- **Activate**: `Cmd+Shift+E` / editor titlebar Edit button / per-slide floating Edit button
-- **Features**: element drag (position), resize, Property Panel (font/color/margin)
-- **CSS writeback**: changes → auto-written to `:::css` block in source `.md`
-- **Canvas writeback**: canvas element move/resize → `:::canvas` DSL coordinates updated in source `.md`
-- **Canvas editing**: drawio-style SVG overlay hitboxes for element select/move, waypoint editing, step animation control
+The source tree contains CSS/Canvas editing controllers and a renderer that injects
+per-slide Edit buttons. Current activation and preview message handling do not wire
+those helpers into the registered commands. They are not an available editing or
+writeback workflow; modify the source and rebuild. No edit-mode shortcut is registered.
 
 ## Key Files
 

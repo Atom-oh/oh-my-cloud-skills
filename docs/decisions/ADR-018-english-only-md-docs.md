@@ -2,7 +2,7 @@
 
 ## Status
 
-Superseded by [ADR-021](ADR-021-english-docs-current-review-authority.md)
+Public-document exclusions superseded by [ADR-021](ADR-021-english-docs-current-review-authority.md)
 (2026-09-13); originally accepted 2026-08-14.
 
 The sweep, exclusions and validation results below are the historical PR #154 record.

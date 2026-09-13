@@ -21,6 +21,8 @@ title: "Getting started"
 
 This marketplace contains eight plugins for Claude Code and Codex. Plugin definitions and helper scripts are the product; this site documents their workflows.
 
+<span id="plugins" />
+
 ## Choose a plugin
 
 | Plugin | Purpose |
@@ -33,6 +35,8 @@ This marketplace contains eight plugins for Claude Code and Codex. Plugin defini
 | [aws-ops-plugin](/docs/aws-ops-plugin/overview) | Diagnose AWS and EKS incidents across compute, networking, identity, observability, storage, databases, analytics, and cost. |
 | [kiro-power-converter](/docs/kiro-power-converter/overview) | Convert Claude plugin sources and individual skills into Kiro Powers, including steering, hooks, assets, and MCP configuration. |
 | [agentcore-creator](/docs/agentcore-creator/overview) | Design and test an agent locally, then prepare an AgentCore harness configuration or a generated Runtime application. |
+
+<span id="quick-install" />
 
 ## Install
 

@@ -8,14 +8,15 @@ decisions instead of rewriting past behavior as current.
 - **Filename**: `ADR-NNN-kebab-title.md` (zero-padded, monotonic). `ADR-001`/`ADR-002`
   predate the slug convention; `ADR-003+` use the descriptive slug. `.template.md` is the
   skeleton (not a real ADR — excluded from numbering scans).
-- **Next number**: inspect `rg --files docs/decisions | sort` for the highest
+- **Next number**: inspect `rg --files docs/decisions -g 'ADR-*.md' | sort -V` for the highest
   zero-padded `ADR-NNN-*.md` and increment it. ADR-021 is the latest as of
   2026-09-13. The `/add-adr` command auto-numbers; `.template.md` is not an ADR.
 - **Sections**: `# ADR-NNN: Title` (English title) → `## Status` → `## Context` →
   `## Options Considered` (optional) → `## Decision` → `## Consequences` → `## References`.
 - **Status line**: `Accepted (YYYY-MM-DD)` / `Proposed` / `Deprecated` /
   `Superseded by ADR-NNN`. For a partial reversal, retain the acceptance date and
-  name the superseding ADR and affected scope. Do not invent an original date.
+  name the superseding ADR and affected scope. Use `Accepted (date unrecorded)`
+  when the original date is unknown; put later implementation checks in the scope note.
 - **Language**: English throughout (title + body); no emojis.
 - **Length**: concise (~25–40 lines). Link the implementing files/PRs in References.
 

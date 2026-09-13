@@ -14,7 +14,10 @@ Drift detection compares each page's own `code_rev` with HEAD for files matching
 
 ## Synchronization
 
-`/atlas:sync --dry-run` previews stale pages and their covered diffs without invoking a model or writing files. On-demand repair can use the current host. The optional push-time path uses a confined Claude CLI fixer, advances revision anchors, regenerates the index, and commits repaired wiki pages.
+`atlas_drift.py --json` lists stale pages and their covered-file ranges without a
+model call or Claude CLI. The optional `atlas_sync.py --dry-run` repair preview
+requires `claude` on PATH even though it invokes no model and writes no files;
+see [Local checks](commands.md#local-checks). On-demand repair can use the current host. The optional push-time path uses a confined Claude CLI fixer, advances revision anchors, regenerates the index, and commits repaired wiki pages.
 
 `sync.on_push` defaults off. Enabling it authorizes sending covered-file diffs to the configured Claude service. The hook observes supported shell-tool push calls; it does not intercept pushes typed directly in a terminal. Hook failures are advisory and fail open. `atlas_index.py --validate` is the explicit schema/graph validation gate.
 

@@ -76,6 +76,8 @@ an assumption unverified rather than claim it reproduced a failure.
 The local override is `.claude/pr-review.local.json`, not a co-agent user-scope file.
 It is untracked local configuration and is not delivered to the clean CI checkout;
 CI roster changes use the committed defaults.
+`PR_REVIEW_CONFIG_ROOT` can redirect the helper's configuration root in tests or
+manual invocations; the production workflow does not set it.
 The production workflow has one FULL lens; helper tests may use multiple lenses.
 Do not infer active membership from old ADR examples or a fixed model-count label.
 Codex's model comes from runner configuration; Kiro model IDs come from the panel
@@ -94,6 +96,14 @@ Opus or another cell just to avoid a finding. A single remaining vendor cannot s
 required coverage when a configured vendor fails. Intentionally disabled cells are
 excluded from the expected roster; the helper does not independently enforce a
 minimum vendor count for every possible configuration.
+
+## Provider data boundary
+
+Configured CLI providers receive the PR diff and bounded review context. ADR-009
+records the accepted external-review risk for this public repository. Model names
+do not establish data residency. Any intentional roster change requires the
+owner-approved configuration review described above; disabling a reviewer to evade
+a finding is not an acceptable resolution.
 
 ## Memory and history
 

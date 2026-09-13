@@ -28,7 +28,7 @@ A complete sample shows source-driven content, fragments, comparisons, Canvas st
   src="/oh-my-cloud-skills/demos/remarp-source/index.html"
   title="Remarp feature tour"
   height={600}
-  command="python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build doc-sites/static/demos/remarp-source -o /var/tmp/remarp-source-example --lang en"
+  command="python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build doc-sites/static/demos/remarp-source -o /var/tmp/remarp-source-example"
   remarpSource="feature-tour.md"
 />
 
@@ -36,4 +36,4 @@ A complete sample shows source-driven content, fragments, comparisons, Canvas st
 
 Use the live demo as an output reference and the [quick-start example](../quick-start.md) for current English source. Each syntax feature has a dedicated guide; frozen embedded source may use older language, styling, or runtime behavior.
 
-Embedded HTML, downloadable sources, and screenshots are frozen example artifacts. Their original language is preserved; this wrapper documents how to interpret them in English.
+The example project reads its language from `_presentation.md`; the command writes a separate output directory. Embedded HTML, downloadable sources, and screenshots are frozen example artifacts. Their original language is preserved; this wrapper documents how to interpret them in English.

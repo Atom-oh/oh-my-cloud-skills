@@ -60,7 +60,7 @@ transition:
 
 ## Blocks
 
-Each block has a name, title, and duration; the project can also declare the source file. Local block frontmatter supplies `remarp: true`, `block`, and an optional title. Keep the block name consistent with the global list and total duration consistent with the plan.
+Block metadata can supply a name, title, and duration. The builder discovers marked `.md` files and legacy `.remarp.md` files in the project directory by filename stem; a block metadata entry does not select an arbitrary source file. Local block frontmatter supplies `remarp: true`, `block`, and an optional title. Keep the block name consistent with the global list and total duration consistent with the plan.
 
 ## Theme
 

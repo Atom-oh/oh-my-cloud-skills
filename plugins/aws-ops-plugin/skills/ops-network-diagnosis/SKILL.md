@@ -1,6 +1,6 @@
 ---
 name: ops-network-diagnosis
-description: "Deep network diagnosis for AWS/EKS: VPC CNI, load balancers, DNS, security groups, and IP exhaustion. Use when the user reports a network issue, connectivity problem, or DNS failure — '네트워크 오류', '연결 문제', 'DNS 실패' — including pods that can't reach a service, ALB/NLB targets unhealthy, or IP 고갈 in a subnet."
+description: "Deep network diagnosis for AWS/EKS: VPC CNI, load balancers, DNS, security groups, and IP exhaustion. Use when the user reports a network issue, connectivity problem, or DNS failure — '네트워크 오류', '연결 문제', 'DNS 실패', 'IP 고갈' — including pods that can't reach a service, ALB/NLB targets unhealthy, or IP exhaustion in a subnet."
 allowed-tools:
   - Bash
   - Read

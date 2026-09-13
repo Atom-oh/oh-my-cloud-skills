@@ -42,7 +42,12 @@ Setup discovers each peer's plugin/CLI access path, performs a real probe, and r
 /co-agent:harness docs/spec.md
 ```
 
-Consensus takes the document through planning, a plan gate, host implementation, final review, and reporting. Harness keeps design, test ownership, verification, and commits with the host while one eligible peer implements per-task work in isolated worktrees. Kiro is a review peer, but is not an eligible harness implementer because its tool trust does not supply the required write sandbox.
+Consensus takes the document through planning, a plan gate, host implementation,
+final review, and reporting. Harness keeps design, tests, verification, and commits
+with the host. An eligible peer implements in isolated worktrees when READY;
+otherwise the host implements. A READY raw-CLI reviewer is still mandatory. Kiro can
+review but cannot be the harness implementer because it lacks the required write
+sandbox. See the [harness contract](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/commands/harness.md).
 
 ## Tune and inspect
 

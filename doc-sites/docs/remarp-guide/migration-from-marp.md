@@ -33,8 +33,22 @@ The converter can migrate an existing Marp file into a Remarp project. Migration
 
 ```bash
 python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py migrate old-talk.md -o /var/tmp/remarp-talk
+```
+
+Before the project build, create or update `/var/tmp/remarp-talk/_presentation.md` with the desired global language, and keep any block-level `lang` overrides consistent:
+
+```yaml
+---
+remarp: true
+lang: en
+---
+```
+
+Copy other shared metadata from the original deck as needed. Migration preserves source prose; setting `lang` does not translate it. Project builds and `sync` read frontmatter, not the single-file `--lang` flag.
+
+```bash
 python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py validate /var/tmp/remarp-talk
-python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build /var/tmp/remarp-talk --lang en
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build /var/tmp/remarp-talk
 ```
 
 ## Review the mapping

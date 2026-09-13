@@ -9,6 +9,8 @@ agent and plugin conversion, peer review, implementation delegation, and project
 [Releases](https://github.com/Atom-oh/oh-my-cloud-skills/releases) ·
 [License](LICENSE)
 
+<a id="skills"></a>
+
 ## Plugins
 
 | Plugin | Workflows |
@@ -87,6 +89,8 @@ hook templates: install them in the consumer project, establish project trust,
 inspect their definitions, and grant hook trust. Installing project-init alone
 does not activate those project hooks. See
 [runtime verification and evidence scope](docs/reference/codex-runtime-verification.md).
+
+<a id="workflows"></a>
 
 ## Quick Start
 
@@ -183,7 +187,7 @@ Use [ops-troubleshoot](plugins/aws-ops-plugin/skills/ops-troubleshoot/SKILL.md) 
 concrete failure, [ops-health-check](plugins/aws-ops-plugin/skills/ops-health-check/SKILL.md)
 for an overall assessment, and the network, observability, security-audit, or
 Well-Architected skill for its specific scope. Specialist procedures cover EKS,
-network, IAM, observability, storage, database, analytics, cost, and architecture;
+network, IAM, observability, storage, database, analytics, cost, and Well-Architected reviews;
 the coordinator correlates multi-domain incidents.
 
 The workflow is scope → read-only evidence → diagnosis → authorized remediation →
@@ -281,13 +285,14 @@ separate from its repository-owned Codex overlay; see
 Atlas pages declare `covers`, `related`, and `code_rev` metadata. Git compares each
 page's own revision anchor with changed covered files; the index helps select
 relevant topics. `/atlas:init`, `/atlas:add-doc`, `/atlas:graph`, `/atlas:sync`, and
-`/atlas:configure` manage the wiki. Start sync with `--dry-run` to inspect drift
-without a model call or writes. On-demand repair can use the active Codex host;
+`/atlas:configure` manage the wiki. For a host-neutral preview, run
+`python3 plugins/atlas/skills/atlas/scripts/atlas_drift.py --json --root .`.
+The separate `atlas_sync.py --dry-run` path requires Claude CLI on PATH even though
+it invokes no model and writes no changes. On-demand repair can use the active Codex host;
 opt-in unattended repair remains Claude-backed. See the
 [Atlas contract](plugins/atlas/skills/atlas/SKILL.md) and
 [defaults](plugins/atlas/skills/atlas/atlas.defaults.json).
 
-<a id="workflows"></a>
 <a id="content-review"></a>
 
 ## Quality Gate
@@ -301,6 +306,10 @@ are necessary evidence, not a substitute for the content review.
 Local co-agent PR/push hooks, Kiro commit/push reviews, and Atlas push synchronization
 are optional controls with their own consent and failure policies. Their disabled
 or fail-open state does not waive this repository's required GitHub checks.
+Read the data-sharing disclosures before enabling
+[Kiro review/search delegation](plugins/kiro/commands/configure.md),
+[Atlas push sync](plugins/atlas/commands/configure.md), or
+[co-agent hooks](plugins/co-agent/commands/configure.md).
 
 Repository PRs require **latest-HEAD AI Code Review and Codex package validation**.
 The configured review roster covers the full reviewed diff, and a chair verifies
@@ -310,14 +319,13 @@ and prerequisite PRs immediately before merge; retain the enforced diff caps.
 
 Use [current review policy](docs/decisions/ADR-021-english-docs-current-review-authority.md),
 [CI review operations](docs/ci-pr-review-runbook.md),
+[artifact review routing](docs/reference/review-routing.md),
 [CI roster defaults](scripts/pr-review/pr-review.defaults.json),
 [AI review workflow](.github/workflows/pr-review.yml), and
 [Codex validation workflow](.github/workflows/codex-validation.yml) as the authority.
 The privileged review executes trusted-base code and treats PR content as data;
 the separate GitHub-hosted validation job checks the PR's generated packages without
 provider secrets.
-
-<a id="skills"></a>
 
 ## Project Structure
 

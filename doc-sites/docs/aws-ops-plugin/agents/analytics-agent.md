@@ -33,7 +33,7 @@ Separate ingest lag from query latency. Inspect cluster/shard health, storage an
 
 ## Initial read-only checks
 
-Run only in the intended account, region, and Kubernetes context. Service-specific follow-ups come from the observed result.
+Run these AWS CLI checks only in the intended account and region. Choose service-specific follow-ups from the observed result.
 
 ```bash
 aws opensearch list-domain-names

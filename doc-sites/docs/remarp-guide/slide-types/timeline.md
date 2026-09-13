@@ -44,3 +44,5 @@ Build, check links, and review the result.
 Third-level headings define timeline points. Keep each description short and put detail on a separate slide. Rendered classes include timeline-step, timeline-dot, timeline-connector, and active/done states where assigned by the renderer. Dates in a timeline are authored content, not evidence of a feature release.
 
 Add speaker notes and run source validation before building. Test the slide in the generated deck; the HTML structure and CSS classes are implementation details, not a substitute for checking behavior.
+
+See [directives](../syntax/directives.md), [speaker notes](../syntax/speaker-notes.md), and [keyboard controls](../keyboard-shortcuts.md).

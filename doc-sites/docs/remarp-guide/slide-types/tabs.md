@@ -41,3 +41,5 @@ Check rendered content, controls, and navigation.
 Each third-level heading becomes a tab label and its following content becomes the panel. Use explicit `@type: tabs`, keep labels short, and test both tab buttons and Up/Down cycling. For code examples, use a longer outer Markdown fence when demonstrating nested code fences.
 
 Add speaker notes and run source validation before building. Test the slide in the generated deck; the HTML structure and CSS classes are implementation details, not a substitute for checking behavior.
+
+See [directives](../syntax/directives.md), [speaker notes](../syntax/speaker-notes.md), and [keyboard controls](../keyboard-shortcuts.md).

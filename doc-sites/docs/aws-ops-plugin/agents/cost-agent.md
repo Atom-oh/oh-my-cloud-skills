@@ -30,7 +30,7 @@ Start with a stated account/time range and cost basis. Compare usage and capacit
 
 ## Initial read-only checks
 
-Run only in the intended account, region, and Kubernetes context. Service-specific follow-ups come from the observed result.
+Use the source procedure's [Cost Explorer queries](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-ops-plugin/agents/cost-agent.md#analysis-commands) for the selected billing period and account. For an EKS workload, these additional read-only checks provide utilization context in the intended Kubernetes cluster:
 
 ```bash
 kubectl top nodes
@@ -40,8 +40,8 @@ kubectl get deployments -A
 
 ## Evidence and handoff
 
-Return the affected component, observed symptoms, supporting output, likely cause, proposed action, and a verification command with expected results. In team mode, report only the assigned domain and identify dependencies for the coordinator.
+Return the billing scope, measured spending and utilization, recommendation assumptions, expected savings, and performance/recovery tradeoffs. Distinguish account-specific evidence from pricing estimates.
 
-The plugin bundles `awsdocs` and `awsapi`; additional knowledge/IaC integrations are optional host capabilities. Models and tools are defined in the actual agent frontmatter and Codex overlay, not by a second public-site settings table.
+The plugin bundles `awsdocs` and `awsapi`. The optional `awspricing` integration is provided by the external `deploy-on-aws` plugin when configured; the cost procedure uses it alongside Cost Explorer evidence. Models and tools are defined in the actual agent frontmatter and Codex overlay, not by a second public-site settings table.
 
 [Agent commands and decision tree](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-ops-plugin/agents/cost-agent.md)

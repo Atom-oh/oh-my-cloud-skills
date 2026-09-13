@@ -22,7 +22,10 @@ Show merged settings and their origins. Configure peer models, profiles, effort 
 
 [Defaults and exact keys](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/skills/co-agent/co-agent.defaults.json)
 
-Optional hook gates default off; required CI and branch protection remain independently enforced.
+Optional hook gates default off; required CI and branch protection remain independent.
+Enabling `pr_gate` or `push_gate` is consent to send the reviewed diff to third-party
+peer services. A git-tracked `.claude/co-agent.local.json` cannot enable either gate;
+see the [configuration contract](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/commands/configure.md).
 
 ## /co-agent:sync-context
 
@@ -34,7 +37,10 @@ Run the document-to-plan-to-implementation workflow. The host implements; peers 
 
 ## /co-agent:harness
 
-The host designs, owns tests, reviews captured changes, and commits. An eligible cross-provider peer implements in isolated worktrees. Model/effort overrides and task parallelism come from harness configuration. Kiro is excluded as a harness implementer.
+The host designs, owns tests, reviews captured changes, and commits. A READY eligible
+peer implements in isolated worktrees; otherwise the host implements. A READY raw-CLI
+reviewer is mandatory in either case. Kiro is excluded as an implementer. Exact role
+and fallback rules are in the [harness contract](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/commands/harness.md).
 
 ## /co-agent:setup
 
@@ -43,5 +49,8 @@ Detect plugin and CLI access paths, probe actual usability, and write readiness 
 ## /co-agent:pr-autofix
 
 Poll review feedback, plan verified fixes, apply them in an isolated worktree, validate, commit, and push within the configured iteration limit. Recheck the new HEAD's reviews and CI; follow the repository's authorization and merge rules.
+
+Set up the consumer's review workflow and paired gate helper first. The loop never
+edits `.github/workflows/*`; see [PR autofix setup and boundaries](/docs/co-agent/skills/pr-autofix#limits-and-integration).
 
 In Codex these command workflows are generated skill entries. Select the matching installed entry rather than assuming Claude command registration is shared.

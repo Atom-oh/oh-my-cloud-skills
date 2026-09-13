@@ -22,11 +22,11 @@ Review operational excellence, security, reliability, performance efficiency, co
 
 ## Diagnostic approach
 
-Collect evidence for each pillar, score against the source rubric, rank findings by severity and impact, and propose an AS-IS to TO-BE roadmap with owners, prerequisites, verification, and sequencing. Do not score absent evidence as a verified control.
+Collect evidence for each pillar, score against the source's [100-point weighted rubric](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-ops-plugin/skills/ops-wellarchitected-review/SKILL.md#phase-4-scoring-synthesis), rank findings by severity and impact, and propose an AS-IS to TO-BE roadmap with owners, prerequisites, verification, and sequencing. Do not score absent evidence as a verified control.
 
 ## Evidence and handoff
 
-Return the affected component, observed symptoms, supporting output, likely cause, proposed action, and a verification command with expected results. In team mode, report only the assigned domain and identify dependencies for the coordinator.
+Lead the six-pillar assessment, delegate weak or insufficiently evidenced pillars to the appropriate specialists, and reconcile their results into the final score and improvement roadmap. Include evidence gaps, owners, and verification criteria.
 
 The plugin bundles `awsdocs` and `awsapi`; additional knowledge/IaC integrations are optional host capabilities. Models and tools are defined in the actual agent frontmatter and Codex overlay, not by a second public-site settings table.
 

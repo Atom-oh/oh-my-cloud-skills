@@ -30,7 +30,13 @@ Invoke this skill explicitly for a second opinion, multi-AI review, collaborativ
 
 ## Mode contracts
 
-Review inspects a defined diff or scope. Decide compares explicit options. ADR gathers alternatives and consequences. Sync-context generates shared instructions from the source document. Consensus lets the host implement behind review gates; harness assigns implementation to an eligible peer while the host retains test and commit control. Setup measures readiness with real calls.
+The skill has six modes. Review inspects a defined diff or scope. Decide compares
+explicit options. ADR gathers alternatives and consequences. Sync-context generates
+shared instructions. Consensus lets the host implement behind review gates. Harness
+uses an eligible peer when READY and otherwise falls back to host implementation;
+a READY raw-CLI reviewer remains mandatory, and the host owns tests and commits.
+
+`/co-agent:setup` is a separate command that measures readiness with real calls.
 
 Peer adapter commands, input handling, model selection, and sandbox behavior are defined in the installed skill and its references. Inspect those rather than assuming that a CLI trust flag means filesystem confinement.
 

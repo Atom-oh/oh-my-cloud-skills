@@ -66,7 +66,7 @@ The parser recognizes groups, but current authoring policy sends grouped archite
 
 ## Steps and routing
 
-Elements without `step` appear immediately; numbered steps reveal them in sequence. Up/Down uses the registered Canvas controls. Arrows use the compiler's routing and anchors, but automatic routing does not replace overlap inspection. The validator checks complexity, groups, branching, and intersecting element bounds.
+Elements without `step` appear immediately; numbered steps reveal them in sequence. Up/Down uses the registered Canvas controls. Arrows use the compiler's routing and anchors, but automatic routing does not replace overlap inspection. The validator checks visual-element complexity and overlapping box/icon bounds; groups contribute to the complexity count. Its branching check does not currently recognize the `from_id` field produced by the demonstrated arrow syntax. Apply the group/branching authoring policy explicitly; a clean validation report is not proof that policy was checked.
 
 ## Extensions
 

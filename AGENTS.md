@@ -1,4 +1,4 @@
-<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 7579789047d6 · generated-at: 2026-09-13 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
+<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 0add59010f90 · generated-at: 2026-09-13 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
 > Shared context derived from CLAUDE.md; facts describe the trusted base.
 
 # Review contract
@@ -41,7 +41,8 @@ separates source skills, commands, agents, generated entries and review cells.
   Follow `docs/reference/review-routing.md`: content rubric PASS under its applicable
   scale and finding bands, diagram XML/layout >=80, Remarp validation before build.
 - Use bare tool names, correct installed paths, quoted arguments and stdin for
-  untrusted text. Reject unsafe XML. Themes use `.theme-dark`/`.theme-light`.
+  untrusted text. Reject unsafe XML. Content visualizations use
+  `.theme-dark`/`.theme-light`; the site uses native Docusaurus theme attributes.
 - Shared/generated code is not exempt from real defects. Check the changed exposure
   and maintained source. Fixture/credential names are not leaked values by themselves.
   Provider catalogs differ. Historical-path notes alone are not Major defects.

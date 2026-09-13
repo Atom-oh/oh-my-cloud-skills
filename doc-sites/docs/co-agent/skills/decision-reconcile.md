@@ -33,6 +33,10 @@ A superseding ADR identifies the replaced decision, explains the new evidence, r
 
 ## Tooling and boundaries
 
+External peer fan-out sends the selected ADR text to third-party AI services and
+requires consent for that scope. The [skill contract](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/skills/decision-reconcile/SKILL.md)
+defines that boundary.
+
 `collect_adrs.py` builds the ADR input set. Source checks distinguish direct contradictions from intentional exceptions or decisions with different scopes. External peer availability and failures must be disclosed.
 
 [Skill and reference contracts](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/skills/decision-reconcile/SKILL.md)

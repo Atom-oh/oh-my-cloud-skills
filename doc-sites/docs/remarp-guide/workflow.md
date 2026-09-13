@@ -36,7 +36,7 @@ Specify audience, technical level, language, duration, output format, and source
 
 ## Edit source
 
-Use the editor preview to navigate slides and inspect notes. Modify content, directives, fragments, quizzes, tabs, or the simple Canvas DSL in the source. Visual editing can write CSS or coordinates back through the extension's supported controls; verify the changed source and rebuild.
+Use the editor preview to navigate slides and inspect notes. Modify content, directives, fragments, quizzes, tabs, or the simple Canvas DSL in the source. The current registered editor commands do not expose the visual-edit/writeback helpers; make those changes in source and rebuild. See the [editor guide](./vscode-extension.md) for the supported entry points.
 
 ## Issue-based revision
 
@@ -50,7 +50,7 @@ python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_t
 python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py sync ./my-presentation/
 ```
 
-Inspect the first slide and representative layouts; exercise fragments, option/tab buttons, quizzes, Canvas steps, and any custom input controls; check notes and presenter view; inspect asset and console failures. Direct edits to generated HTML can be overwritten unless the editor writes them back to the source.
+Inspect the first slide and representative layouts; exercise fragments, option/tab buttons, quizzes, Canvas steps, and any custom input controls; check notes and presenter view; inspect asset and console failures. Keep durable edits in Remarp source; rebuilding overwrites direct HTML changes. A full build refreshes the merged deck, table of contents, and shared assets; `sync` updates changed block pages only.
 
 ## Finish
 

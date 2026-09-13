@@ -152,7 +152,8 @@ in [the prior instruction record](https://github.com/Atom-oh/oh-my-cloud-skills/
 - Quote shell arguments, use stdin for untrusted content, and capture nonzero exit
   codes safely under `set -e`. Never interpolate review text into executable code.
 - Prefer `defusedxml`; a stdlib fallback rejects `<!DOCTYPE>` and `<!ENTITY>`.
-- HTML themes use `.theme-dark` / `.theme-light`, not `data-theme`.
+- Content-plugin HTML visualizations use `.theme-dark` / `.theme-light`.
+  The documentation site follows Docusaurus's native theme attributes instead.
 - Keep credentials out of committed content and generated artifacts. Approved CLI
   authentication inputs are not hardcoded secrets merely because their variable
   names occur in code. Never print credential values during diagnosis.

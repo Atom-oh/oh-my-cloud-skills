@@ -21,11 +21,16 @@ title: "Use Kiro delegation"
 ```text
 /kiro:setup
 /kiro:delegate implement the approved pagination plan
-/kiro:review
+/kiro:review --range --lenses correctness,security,scope
 /kiro:configure
 ```
 
 Setup validates actual CLI access and prepares `.kiro/agents/` configuration. Select implementation and review settings from the available local configuration. Automatic delegation, review hooks, and web search require their own opt-in settings.
+
+The range review covers the committed work produced by delegation. A bare
+`/kiro:review` uses the staged-diff path; see the
+[review command](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/kiro/commands/review.md)
+for scope options.
 
 ## Implementation
 
@@ -33,7 +38,7 @@ The current host prepares the plan/spec and declares editable paths. Kiro implem
 
 ## Reviews and false positives
 
-On-demand review and optional commit/push hooks use the review engine. Judge findings against the actual diff, runtime path, configuration, and tests. Review effort and model are separate from delegation; inspect effective settings instead of assuming a particular Opus ID.
+On-demand review and optional commit/push hooks use the review engine. The host checks findings against the diff, runtime behavior, configuration, and tests. Review effort and model are configured separately from delegation.
 
 `review.on_commit` and `review.on_push` default off. Their configured blocking thresholds apply only when enabled. A local advisory or disabled optional hook does not waive a required CI review.
 
