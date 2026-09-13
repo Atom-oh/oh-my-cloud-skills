@@ -10,6 +10,12 @@ sandbox; the host owns the failing test, the verification, and every commit.
 > `scripts/co_agent_config.py implementer|impl-flags`; wave concurrency:
 > `co_agent_config.py parallel-tasks` (see "Parallel waves" below).
 
+Retain the absolute `ORCH_ROOT`, `HOST` and helper path `SK` captured by harness H0.
+All configuration, readiness, planning and flag calls below use
+`--root "$ORCH_ROOT" --host "$HOST"`, including retries and calls made from a task
+directory. The ignored setup record and local overrides belong to that root, not
+the task checkout. Run orchestration/state/commit commands from `ORCH_ROOT`.
+
 ## Trust boundary
 
 The **hard guarantee is the host applies only the worktree's captured, scope-guarded
@@ -25,47 +31,60 @@ the host applies the result and **runs the tests on the main tree** — never tr
 run inside the worktree. Capture-scoped-to-worktree + scope_guard + host-applies-only-that is
 the load-bearing guarantee; the sandbox is defense-in-depth.
 
-**Defense-in-depth: a workspace-write sandbox with cwd = the worktree** (`co_agent_config.py
-impl-flags <ai> --host <h>`). Only CLIs with a real workspace-write sandbox are eligible:
+**Defense-in-depth: the writer runs in a workspace-write sandbox with cwd = the worktree**.
+Resolve its flags with `co_agent_config.py impl-flags <ai> --root "$ORCH_ROOT" --host "$HOST"`.
+Only CLIs with a real workspace-write sandbox are eligible:
 
 | Implementer | Write-mode flags |
 |-------------|------------------|
 | Codex | `-s workspace-write` (+ `-m <model>`, effort) |
-| Agy | `--sandbox` (+ `--model`) |
+| Agy | `--sandbox` (+ `--model`); write mode omits advisory `-p` |
 
-Codex `-s workspace-write` confines writes to the cwd; **agy has a *single* `--sandbox` mode**
-(no separate read-only flag like Codex's `-s read-only`) that likewise sandboxes to the launch
-cwd — the per-task loop sets cwd = the worktree for both. The advisory path instead runs agy
-in **`-p` print mode** (emits text, never acts), so `impl-flags agy` differs from `flags agy`
-only by print-vs-agent mode (same `--sandbox`). We do **not** assert agy's `--sandbox`
-provably blocks `..`/absolute writes — which is exactly why the capture backstop above, not
-the sandbox, is load-bearing (if an audit shows a sandbox doesn't confine to cwd, drop that
-implementer from `impl-flags`).
+Resolve the writer through `implementation-plan --root "$ORCH_ROOT" --host "$HOST"`.
+For a successful peer-mode plan, resolve its non-null `IMPLEMENTER` with:
+
+```bash
+python3 "$SK/co_agent_config.py" impl-flags "$IMPLEMENTER" --root "$ORCH_ROOT" --host "$HOST"
+```
+
+Require exit 0 before using the emitted argv; preserve each line as one argument.
+Only the writer process changes cwd to the task worktree. Agy has one sandbox
+mode; advisory calls add `-p`. Do not infer a guarantee against absolute-path or
+parent-directory writes from a flag alone. The capture/scope and main-tree escape
+checks above remain mandatory defense in depth.
+
+`implementer` reports the configured/default external writer without proving readiness.
+After fresh setup, `implementation-plan` resolves a JSON execution plan. Explicit
+`--allow-host-implementation` permits `mode: host` when no eligible writer is READY,
+but only with an enabled READY external reviewer. A configuration/readiness error
+exits 2 and must be repaired. This command launches nothing and grants no permission.
+In host mode, use the host's native tools in the task worktrees and retain scoped
+capture, tests, checkpoints, commits and external review; never invoke a null writer
+or launch the host CLI as its own peer.
 
 **Role tiering:** `impl-flags` resolves its model/effort from
 `harness.implementer_models.<ai>`/`implementer_efforts.<ai>` first, falling back to the
 panel's `model`/`effort` (`/co-agent:configure` → "Model tiering"). The overrides are
 **stored per implementer, keyed by the explicit `harness.implementer` at set time**
 (setting them with no implementer configured is refused) — model names don't encode a
-provider, so only per-AI keying survives both the host-dependent default fallback
-(claude-host→codex, codex-host→agy) AND an explicit `set harness implementer` switch
-without handing, e.g., a codex model to `agy --model`; a non-current implementer's
+provider, so the keys identify the CLI that can consume them. A non-current writer's
 entry stays dormant (and is reused on switch-back). `impl-flags` also re-validates the
 merged model/effort at emit time (fail-closed, exit 2) since its argv feeds a
 write-enabled sandbox and the local/user JSON can be hand-edited. This splits the
 WRITE path from the review path: the same CLI can implement on a different
 generation model than its review/gate calls (`flags`) use. Which direction to
 split depends on the cost model (configure.md "Model tiering" → "Cost-model assumption"):
-on a flat-rate subscription CLI (the default assumption) point `implementer_model`
+within a confirmed included subscription allowance, point `implementer_model`
 at that CLI's **strongest** generation model — fewer fix rounds is pure wall-clock
 savings; only on metered API keys drop to a cost-efficient model and let the
 hybrid gate behind it catch the generation mistakes.
-`implementer_effort` is codex-only (storing it while the implementer is agy is
-refused — agy's headless CLI has no effort flag).
+`implementer_effort` configures the delegated Codex writer; it does not change the
+host app's reasoning settings.
 
 **Not eligible:** `claude --permission-mode acceptEdits` and `kiro-cli --trust-tools`
 auto-accept writes but don't sandbox them to a cwd — `implementer`/`impl-flags`
-reject them. Default: claude host → `codex`, codex host → `agy`. These write variants exist
+reject them. Inspect the host-dependent default with `implementer --host <host>`;
+resolve a READY execution mode through `implementation-plan`. These write variants exist
 **only** here; review/decide/ADR/plan/code-gate paths stay advisory (`flags`, not `impl-flags`).
 
 ## Per-task loop
@@ -91,17 +110,19 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
    red-test commit, so the peer sees the failing test. Put `<wt>` under a gitignored path
    (e.g. `.claude/co-agent-consensus/worktrees/<task>`).
 3. **Implement (peer).** Pick the implementer from peers that are **READY** AND
-   **`raw_cli: true`** (a usable raw write CLI) AND a sandbox CLI (codex/agy) — consult
-   `.claude/co-agent-panel.local.json` (written by `/co-agent:setup`). Gate on `raw_cli`,
+   **`raw_cli: true`** (a usable raw write CLI) AND a supported sandbox CLI accepted by `impl-flags` — consult
+   `$ORCH_ROOT/.claude/co-agent-panel.local.json` (written by `/co-agent:setup`). Gate on `raw_cli`,
    NOT `access`: a peer with BOTH the official plugin and a raw CLI is `access: plugin` yet
    `raw_cli: true` → still eligible. Only a peer with **no raw CLI** (`raw_cli: false`) can't
-   run `impl-flags` and is ineligible. Run the implementer with
-   `impl-flags` **inside `<wt>`**, scoped to the task's files. Fallback chain on
-   missing/error/not-READY/timeout: configured implementer → next READY peer (keep provider
-   separation) → **host-implement**. No-implementer vs no-reviewer differ (matches harness H3):
-   **no implementer-eligible peer → host-implement** (don't block — the host can write the
-   code); **block** only when **no gate-eligible peer** remains for the review panel, since
-   then the multi-model gate can't run — tell the user to run `/co-agent:setup`. Never silently block.
+   run `impl-flags` and is ineligible. Resolve flags against `ORCH_ROOT` as above,
+   then launch the writer **inside `<wt>`**, scoped to the task's files. If it fails
+   or times out, preserve the evidence and refresh readiness in `ORCH_ROOT` as needed.
+   Resolve `implementation-plan --root "$ORCH_ROOT" --host "$HOST"` again;
+   choose `--allow-host-implementation` explicitly when
+   the workflow authorizes that fallback. Being a READY reviewer does not make another
+   CLI an eligible sandbox writer. With no READY external reviewer, stop and run
+   `/co-agent:setup`. Report the reason rather than silently blocking or invoking a
+   unsupported fallback.
 4. **Capture + scope.** `worktree.py capture-diff <wt>` → patch; every path must pass
    `scope_guard.py --plan <plan> -- <path>...` (candidates go after a literal `--`).
    Out-of-scope hunks are dropped and fed back.
@@ -166,7 +187,7 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
 ## Parallel waves — one implementer, N concurrent task subagents
 
 The panel deliberates in numbers, but **implementation stays with ONE implementer AI**
-(`co_agent_config.py implementer`, user-selectable via `set harness implementer codex|agy`)
+(`co_agent_config.py implementer`, user-selectable via `set harness implementer <ai>`)
 — cross-AI implementation diversity belongs in the review gate, not in the diff. Throughput
 comes from running **that one implementer as parallel subagent instances**, one per task,
 each in its own worktree. `harness.parallel_tasks` (default 3; `1` = the sequential

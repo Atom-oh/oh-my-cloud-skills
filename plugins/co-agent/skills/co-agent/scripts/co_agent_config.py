@@ -69,6 +69,7 @@ import re
 import json
 import copy
 import subprocess
+import stat
 
 # Also support importlib.spec_from_file_location callers outside this directory.
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -108,6 +109,7 @@ def panel_ais(host):
 # auto-accept writes but do NOT confine them to the worktree, so they are NOT safe
 # delegated implementers — the trust boundary would not hold.
 SANDBOX_IMPLEMENTERS = ("codex", "agy")
+HOST_IMPLEMENTATION_REQUIRED = 3
 # harness review-gate mechanics (only /co-agent:harness reads it):
 #   hybrid   = parallel find -> chair triage -> parallel verify (references/hybrid-gate.md; default)
 #   relay    = sequential relay chain (references/relay-chain-gate.md)
@@ -267,7 +269,40 @@ def _strip_consent_keys(raw, root, lp):
     return stripped
 
 
-def effective(root, warn=False):
+_TEXT_OR_NULL = (str, type(None))
+_CONFIG_SHAPE = {
+    "timeout": int, "sync_on_change": bool, "profile": str,
+    "consensus": {"max_calls": int, "max_rounds": int},
+    "panel": {"*": {"enabled": bool, "model": _TEXT_OR_NULL, "effort": _TEXT_OR_NULL,
+                    "models": [str], "context_limit": int}},
+    "harness": {"implementer": _TEXT_OR_NULL, "implementer_models": {"*": _TEXT_OR_NULL},
+                "implementer_efforts": {"*": _TEXT_OR_NULL}, "max_fix_rounds": int,
+                "review_mode": str, "parallel_tasks": int},
+    "pr_autofix": {"max_iterations": int, "review_marker": str},
+    "pr_gate": {"enabled": bool, "block": bool, "timeout": int, "quorum": str},
+    "push_gate": {"enabled": bool, "block": bool, "timeout": int},
+}
+
+
+def _validate_config_shape(value, shape, path):
+    """Check known configuration shapes without echoing their values or changing them."""
+    if isinstance(shape, dict):
+        if not isinstance(value, dict):
+            raise ValueError(f"{path}: expected an object")
+        for key, item in value.items():
+            child = shape.get(key, shape.get("*"))
+            if child is not None:
+                _validate_config_shape(item, child, f"{path}.{key}")
+    elif isinstance(shape, list):
+        if not isinstance(value, list):
+            raise ValueError(f"{path}: expected an array")
+        for item in value:
+            _validate_config_shape(item, shape[0], path)
+    elif type(value) not in (shape if isinstance(shape, tuple) else (shape,)):
+        raise ValueError(f"{path}: invalid value type")
+
+
+def effective(root, warn=False, strict=False):
     # Precedence low→high: committed defaults → user scope (~/.claude) → repo-local (.claude).
     # `warn` gates the legacy-key hygiene warnings: only the DISPLAY commands (show/matrix)
     # pass warn=True. The plumbing commands (pairs/flags/fits/timeout/panel/review-mode/…)
@@ -276,12 +311,25 @@ def effective(root, warn=False):
     # commands are the one place the user actually reads, so warn there and stay silent in
     # the loop. Malformed-config warnings are NOT gated: a broken file must always be loud.
     cfg = load_defaults()
+    if strict:
+        _validate_config_shape(cfg, _CONFIG_SHAPE, DEFAULTS_PATH)
     lclp = local_path(root)
     for lp in (user_path(), lclp):
-        if os.path.isfile(lp):
+        if strict or os.path.isfile(lp):
             try:
+                if strict:
+                    try:
+                        mode = os.stat(lp).st_mode
+                    except FileNotFoundError:
+                        if os.path.lexists(lp):
+                            raise
+                        continue   # A genuinely absent optional override is valid.
+                    if not stat.S_ISREG(mode):
+                        raise ValueError(f"{lp}: expected a regular configuration file")
                 with open(lp, encoding="utf-8") as f:
                     raw = json.load(f)
+                if strict:
+                    _validate_config_shape(raw, _CONFIG_SHAPE, lp)
                 if warn:
                     stale = [k for k in raw.get("panel", {}) if k in LEGACY_KEYS]
                     renames = [k for k in stale if LEGACY_KEYS[k]]
@@ -302,7 +350,11 @@ def effective(root, warn=False):
                 if lp == lclp:
                     raw = _strip_consent_keys(raw, root, lp)
                 cfg = deep_merge(cfg, raw)
-            except (json.JSONDecodeError, OSError) as e:
+            except (ValueError, OSError) as e:
+                if strict:
+                    raise ValueError(f"{lp}: invalid or unreadable configuration") from e
+                if not isinstance(e, (json.JSONDecodeError, OSError)):
+                    raise   # Preserve advisory behavior for other invalid inputs.
                 print(f"⚠️  ignoring malformed {lp}: {e}", file=sys.stderr)
     return cfg
 
@@ -824,6 +876,60 @@ def cmd_implementer(root, host):
     return 0
 
 
+def cmd_implementation_plan(root, host, allow_host=False):
+    """Resolve execution mode without launching a CLI or granting write permissions.
+
+    The host fallback is explicit and requires fresh enabled raw-CLI review evidence.
+    A peer-mode consumer must still call impl-flags and honor its validation result.
+    """
+    try:
+        import check_panel
+
+        cfg = effective(root, strict=True)
+        harness = cfg.get("harness") or {}
+        explicit = harness.get("implementer")
+        if explicit is not None:
+            if explicit not in SANDBOX_IMPLEMENTERS or explicit == host:
+                print(f"Configured implementer {explicit!r} is not an eligible external "
+                      "writer for this host. Use 'set harness implementer default' "
+                      "before selecting host implementation.", file=sys.stderr)
+                return 2
+        if not check_panel.is_fresh(root, host, strict=True):
+            print("A fresh readiness record is required. Run /co-agent:setup for this "
+                  "host and configuration before planning implementation.", file=sys.stderr)
+            return 2
+        reviewers = [
+            peer for peer in panel_ais(host)
+            if cfg.get("panel", {}).get(peer, {}).get("enabled", True)
+            and check_panel.gate_eligible(root, peer, host=host)
+        ]
+        if not reviewers:
+            print("No enabled READY external raw-CLI reviewer is available. Run "
+                  "/co-agent:setup; host implementation does not waive review readiness.",
+                  file=sys.stderr)
+            return 2
+        writer, error = implementer_ai(cfg, host)
+        if error or writer not in reviewers:
+            writer = next((peer for peer in reviewers if peer in SANDBOX_IMPLEMENTERS), None)
+        if writer is None and not allow_host:
+            print("No READY external sandbox writer is available. To implement in the "
+                  "current host, explicitly pass --allow-host-implementation; the "
+                  "external review gates remain required.", file=sys.stderr)
+            return HOST_IMPLEMENTATION_REQUIRED
+        print(json.dumps({
+            "schema_version": 1,
+            "mode": "peer" if writer else "host",
+            "host": host,
+            "implementer": writer,
+            "reviewers": reviewers,
+        }, sort_keys=True))
+        return 0
+    except (OSError, ValueError, TypeError, AttributeError, KeyError) as exc:
+        print(f"Cannot plan implementation from invalid configuration/readiness: {exc}",
+              file=sys.stderr)
+        return 2
+
+
 def cmd_review_mode(root):
     """Print the effective harness review-gate mode (hybrid | relay | parallel)."""
     # `or {}`: a local override of `"harness": null` (the null-means-unset style the
@@ -1028,6 +1134,11 @@ def main():
         return cmd_matrix(root, host, phases, profile_arg)
     if cmd == "implementer":
         return cmd_implementer(root, host)
+    if cmd == "implementation-plan":
+        if rest not in ([], ["--allow-host-implementation"]):
+            print("usage: implementation-plan [--allow-host-implementation]", file=sys.stderr)
+            return 2
+        return cmd_implementation_plan(root, host, "--allow-host-implementation" in rest)
     if cmd == "review-mode":
         return cmd_review_mode(root)
     if cmd == "parallel-tasks":

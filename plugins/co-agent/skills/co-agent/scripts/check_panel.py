@@ -259,12 +259,12 @@ def probe(peer, timeout=90, nonce="STATIC", gate=False):
                 _kill_proc(p)
 
 
-def _config_hash(root, host=None):
+def _config_hash(root, host=None, strict=False):
     if co_agent_config is None:
         return ""
     try:
         blob = json.dumps({"host": detect_host(host),
-                           "config": co_agent_config.effective(root)}, sort_keys=True)
+                           "config": co_agent_config.effective(root, strict=strict)}, sort_keys=True)
         return hashlib.sha256(blob.encode()).hexdigest()[:16]
     except Exception:
         return ""
@@ -372,20 +372,20 @@ def _reader(root, peer, field, default):
     return s.get("peers", {}).get(peer, {}).get(field, default)
 
 
-def is_fresh(root, host=None):
+def is_fresh(root, host=None, strict=False):
     """True iff the saved summary matches the current host and effective config; callers
     re-run `/co-agent:setup` on a mismatch. Catches HOST/CONFIG drift — not PATH/auth/install
     (a full `report` re-probe catches those; config_hash can't see them)."""
     s = _read_summary(root)
-    if not s:
+    if not isinstance(s, dict):
         return False
     if s.get("schema_version") != SCHEMA_VERSION or s.get("probe_environment") != "inherited":
         return False
     if s.get("host") != detect_host(host):
         return False
-    cur = _config_hash(root, host)
-    # Can't compute current hash (config module unavailable) → don't force churn.
-    return (not cur) or s.get("config_hash", "") == cur
+    cur = _config_hash(root, host, strict=strict)
+    # Missing provenance cannot establish readiness for an implementation plan.
+    return bool(cur) and s.get("config_hash", "") == cur
 
 
 def gate_eligible(root, peer, host=None):
@@ -395,13 +395,13 @@ def gate_eligible(root, peer, host=None):
     `probe PEER --gate` verifies the separate gate environment before enabling gates.
     """
     resolved_host = detect_host(host)
-    if resolved_host not in HOSTS or peer == resolved_host:
+    if resolved_host not in HOSTS or peer == resolved_host or peer not in PEERS:
         return False
     s = _read_summary(root)
-    if not s:
+    if not isinstance(s, dict) or not isinstance(s.get("peers"), dict):
         return False
     e = s.get("peers", {}).get(peer, {})
-    return e.get("status") == "READY" and bool(e.get("raw_cli"))
+    return isinstance(e, dict) and e.get("status") == "READY" and e.get("raw_cli") is True
 
 
 def main():
