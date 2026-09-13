@@ -86,9 +86,11 @@ Run from the marketplace repository root:
 ```bash
 python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py validate my-talk.md
 python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build my-talk.md -o /var/tmp/my-talk --lang en
+mkdir -p /var/tmp/my-talk/common
+cp -R plugins/aws-content-plugin/skills/reactive-presentation/assets/. /var/tmp/my-talk/common/
 ```
 
-Open the generated HTML and exercise the fragments. Right/Space advances; Left reverses; P opens presenter view. Run content review before publication.
+Single-file builds emit HTML only; the copy step supplies the CSS and JavaScript referenced from `common/`. Open `/var/tmp/my-talk/default.html` and exercise the fragments. Right/Space advances; Left reverses; P opens presenter view. Run content review before publication.
 
 ## Extend the deck
 
