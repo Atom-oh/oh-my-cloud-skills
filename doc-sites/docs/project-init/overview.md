@@ -20,11 +20,11 @@ title: "Project init"
 
 Initialize project instructions and structure, synchronize documentation, and create ADRs, runbooks, and reference guides for either host.
 
-## Host-specific setup
+## Host-specific setup {#host-specific-setup}
 
 Claude Code uses the source plugin's commands, project-scaffolder knowledge skill, and doc-sync-checker agent. Codex uses generated overlays that adapt initialization to AGENTS.md, `.agents/skills/`, and available host tools. Do not install Claude hook JSON as if it were Codex configuration.
 
-## Workflows
+## Workflows {#workflows}
 
 | Entry | Result |
 | --- | --- |
@@ -38,7 +38,7 @@ Claude Code uses the source plugin's commands, project-scaffolder knowledge skil
 | `generate-changelog` | Update the release record |
 | `health-check` | Inspect project setup and documentation quality |
 
-## Adaptation and quality
+## Adaptation and quality {#adaptation-and-quality}
 
 Existing projects keep their detected language, framework, source layout, and user-authored instructions. Generated files should describe real commands and boundaries. Follow the user's language requirement; bilingual templates are an optional output capability, not a requirement to duplicate all documentation.
 

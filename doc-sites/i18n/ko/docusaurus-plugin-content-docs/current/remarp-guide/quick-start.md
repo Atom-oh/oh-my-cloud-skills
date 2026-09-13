@@ -1,9 +1,9 @@
 ---
 sidebar_position: 2
-title: "Quick start"
+title: "빠른 시작"
 ---
 
-{/* Legacy section links retained after the English rewrite. */}
+{/* 영문 개편 전의 기존 섹션 링크를 유지합니다. */}
 <span id="빠른-시작" />
 <span id="1-파일-만들기" />
 <span id="2-html-빌드" />
@@ -17,11 +17,11 @@ title: "Quick start"
 <span id="다음-단계" />
 
 
-# Quick start
+# 빠른 시작
 
-## Create the source {#create-the-source}
+## 소스 만들기 {#create-the-source}
 
-Save this as `my-talk.md`. The literal `[요약]` marker means “summary” and is checked by the current structured-notes validator (`NOTE_STRUCTURE` is a warning when the marker is missing); the notes themselves remain English.
+아래 내용을 `my-talk.md`로 저장합니다. `[요약]` 표시는 요약을 뜻하며 현재 구조화된 노트 검증기가 확인하는 리터럴입니다. 이 표시가 없으면 `NOTE_STRUCTURE` 경고가 발생합니다. 노트 본문은 영어로 유지합니다.
 
 ```markdown
 ---
@@ -79,9 +79,9 @@ Next, use the same method when reviewing a teammate's change.
 
 ```
 
-## Validate and build {#validate-and-build}
+## 검증과 빌드 {#validate-and-build}
 
-Run from the marketplace repository root:
+마켓플레이스 저장소 루트에서 실행합니다.
 
 ```bash
 python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py validate my-talk.md
@@ -90,15 +90,15 @@ mkdir -p /var/tmp/my-talk/common
 cp -R plugins/aws-content-plugin/skills/reactive-presentation/assets/. /var/tmp/my-talk/common/
 ```
 
-Single-file builds emit HTML only; the copy step supplies the CSS and JavaScript referenced from `common/`. Open `/var/tmp/my-talk/default.html` and exercise the fragments. Right/Space advances; Left reverses; P opens presenter view. Run content review before publication.
+단일 파일 빌드는 HTML만 생성합니다. 복사 단계에서 `common/`으로 참조되는 CSS와 JavaScript를 제공합니다. `/var/tmp/my-talk/default.html`을 열어 단계별 표시를 확인합니다. Right/Space로 앞으로 진행하고, Left로 되돌아가며, P로 발표자 보기를 엽니다. 게시 전에 콘텐츠 리뷰를 수행합니다.
 
-## Extend the deck {#extend-the-deck}
+## 덱 확장 {#extend-the-deck}
 
-Use `@type` for compare/tabs/quiz/checklist/timeline/Canvas slides, `@layout` for columns, and `:::notes` for speaking guidance. For multi-file decks put shared frontmatter in `_presentation.md`. See the syntax and CLI reference for exact supported fields and commands.
+compare/tabs/quiz/checklist/timeline/Canvas 슬라이드에는 `@type`, 열 구성에는 `@layout`, 발표 안내에는 `:::notes`를 사용합니다. 여러 파일로 구성된 덱의 공유 프런트매터는 `_presentation.md`에 둡니다. 지원되는 정확한 필드와 명령은 문법·CLI 참고 문서를 확인합니다.
 
-## Related links {#related-links}
+## 관련 링크 {#related-links}
 
-- [Frontmatter](./syntax/frontmatter.md)
-- [directives](./syntax/directives.md)
-- [fragments](./syntax/fragments.md)
+- [프런트매터](./syntax/frontmatter.md)
+- [지시문](./syntax/directives.md)
+- [단계별 표시](./syntax/fragments.md)
 - [Canvas DSL](./syntax/canvas-dsl.md)
