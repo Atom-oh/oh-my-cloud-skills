@@ -127,11 +127,16 @@ Output:
 ## Step 4: Workload Health Check {#step-4-workload-health-check}
 
 ```bash
-# Unhealthy pods
-kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded | head -20
+# Inspect READY, STATUS, and RESTARTS for all pods.
+kubectl get pods -A
 ```
 
-Output:
+Inspect `READY`, `STATUS`, and `RESTARTS` across the complete list.
+`CrashLoopBackOff` is a kubectl display status, not a Pod phase, and can occur
+while the phase is `Running`. Filtering out `Running` can therefore hide a restart
+loop. See [Kubernetes Pod lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/).
+
+Illustrative output excerpt (other rows omitted):
 ```
 NAMESPACE     NAME                      READY   STATUS             RESTARTS   AGE
 backend       api-worker-7b9f4-x2k9l    0/1     CrashLoopBackOff   15         2h
