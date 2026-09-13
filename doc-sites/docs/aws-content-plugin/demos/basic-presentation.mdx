@@ -1,109 +1,47 @@
 ---
 sidebar_position: 1
-title: "기본 프레젠테이션 데모"
+title: "Basic presentation demo"
 ---
+
+{/* Legacy section links retained after the English rewrite. */}
+<span id="기본-프레젠테이션-데모" />
+<span id="데모" />
+<span id="스크린샷" />
+<span id="커버-슬라이드" />
+<span id="타이틀-슬라이드--fragment-순차-표시" />
+<span id="개요-모드-o-키" />
+<span id="생성-프롬프트" />
+<span id="remarp-소스-발췌" />
+<span id="주요-기능" />
+<span id="키보드-단축키" />
+
+
+# Basic presentation demo
 
 import DemoEmbed from '@site/src/components/DemoEmbed';
 
-# 기본 프레젠테이션 데모
+A block from the AIOps deck demonstrates covers, text slides, fragments, and overview navigation.
 
-AIOps Deep Dive — Block 1: AIOps Foundations & Observability 프레젠테이션입니다. Remarp DSL로 작성된 마크다운에서 인터랙티브 HTML 슬라이드쇼로 자동 변환됩니다.
-
-## 데모
+## Live example
 
 <DemoEmbed
   src="/oh-my-cloud-skills/demos/aiops-deep-dive/01-observability-pipeline.html"
-  title="AIOps Deep Dive — Block 1: 관측성 파이프라인"
-  height="600px"
-  command="python3 remarp_to_slides.py build aiops-deep-dive/"
+  title="AIOps observability pipeline"
+  height={600}
+  command="python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build doc-sites/static/demos/aiops-deep-dive -o /var/tmp/aiops-deep-dive-example --lang en"
   remarpSource="01-observability-pipeline.md"
 />
 
-## 스크린샷
+## What to inspect
 
-### 커버 슬라이드
+Use Right/Space to advance fragments, O for overview, and P for presenter view where supported by the embedded version. The example shows a source-to-HTML workflow; use the current runtime keyboard reference for newly built decks.
 
-> v1.17.0 컴파일러로 재빌드(토큰 디자인 시스템) — 이 덱은 인터랙티브 캔버스(`:::script`)가 많아 `theme.mode: dark`로 다크 스코프(`.theme-dark`)를 사용합니다.
+Embedded HTML, downloadable sources, and screenshots are frozen example artifacts. Their original language is preserved; this wrapper documents how to interpret them in English.
 
-![커버 슬라이드 (v1.9.0 theme-dark)](/img/demos/aiops/aiops-cover-dark.png)
+## Screenshots
 
-### 타이틀 슬라이드 — Fragment 순차 표시
+![Basic presentation demo screenshot](/img/demos/aiops/aiops-cover-dark.png)
 
-![타이틀 슬라이드](/img/demos/block1-title-fhd.png)
+![Basic presentation demo screenshot](/img/demos/block1-title-fhd.png)
 
-### 개요 모드 (O 키)
-
-![개요 모드](/img/demos/overview-mode-fhd.png)
-
-## 생성 프롬프트
-
-```
-"AIOps Deep Dive 프레젠테이션 만들어줘.
-3블록 구성 (각 30분): Block 1은 AIOps Foundations & Observability,
-Block 2는 ML-Powered Operations,
-Block 3는 Automation & Maturity Model.
-PPTX 테마 적용하고 인터랙티브 슬라이드 포함."
-```
-
-## Remarp 소스 (발췌)
-
-```markdown
----
-remarp: true
-block: foundations
----
-
----
-@type: cover
-@background: linear-gradient(135deg, #232F3E 0%, #0a1628 50%, #1a1a2e 100%)
-
-# AIOps Deep Dive
-AI-Powered Cloud Operations — 90min L300
-
-Junseok Oh, Sr. Solutions Architect, AWS
-
----
-@type: title
-
-# Block 1: AIOps Foundations & Observability
-클라우드 운영의 새로운 패러다임
-
----
-@type: compare
-
-## Traditional Ops vs AIOps
-
-### Traditional Ops
-- 수동 모니터링 & 대시보드 확인
-- 정적 임계값 기반 알림
-- 사후 대응 (Reactive)
-- MTTR: **4시간 이상**
-
-### AIOps
-- 자동화된 이상 탐지
-- ML 기반 동적 기준선
-- 사전 예방 (Proactive)
-- MTTR: **30분 이하**
-```
-
-## 주요 기능
-
-| 기능 | 설명 |
-|----|------|
-| `{.click}` Fragment | 스페이스바로 요소를 순차적으로 표시 |
-| 다크 테마 | AWS Squid Ink (#232F3E) 배경 |
-| 16:9 비율 | FHD/4K 해상도 자동 스케일링 |
-| 진행 표시줄 | 하단에 현재 슬라이드 위치 표시 |
-| 프레젠터 뷰 | P 키로 노트/타이밍 확인 |
-| 개요 모드 | O 키로 전체 슬라이드 그리드 보기 |
-
-## 키보드 단축키
-
-| 키 | 동작 |
-|----|------|
-| ← → | 이전/다음 슬라이드 |
-| Space | 다음 Fragment 또는 다음 슬라이드 |
-| F | 전체 화면 |
-| P | 프레젠터 뷰 |
-| O | 개요 모드 |
-| Esc | 종료 |
+![Basic presentation demo screenshot](/img/demos/overview-mode-fhd.png)
