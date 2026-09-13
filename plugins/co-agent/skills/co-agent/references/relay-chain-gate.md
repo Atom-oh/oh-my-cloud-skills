@@ -64,7 +64,6 @@ contract as `/co-agent:configure`):
 | kiro-cli | `--model` | `set kiro-cli models m1,m2,m3` |
 | claude (codex-host panel) | `--model` (+ `--effort`) | `set claude models …` |
 | codex | `-m` (+ `-c model_reasoning_effort`) | `set codex models …` |
-
 | agy | `--model` (spaced tokens OK, e.g. `Gemini 3.1 Pro (High)`) | `set agy models …` |
 
 Caps still apply: `pairs` trims to `consensus.max_calls / max_rounds` round-robin across

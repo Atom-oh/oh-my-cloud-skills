@@ -17,7 +17,6 @@ marker-tracked, and secret-free.
 |----|-------|---------------------|
 | Kiro | `.kiro/steering/project-context.md` → `#[[file:AGENTS.md]]` | create/update bridge |
 | Codex | `AGENTS.md` (~32 KiB cap) | distill + validate |
-
 | Agy | `AGENTS.md` (native, same convention as Codex) | shared with Codex — no separate generation; `ai-cli-adapters.md`'s fan-out also prepends it to Agy's context at call time as defense-in-depth |
 
 **DISTILL — never copy `CLAUDE.md` verbatim.** These context channels degrade on a dumped
