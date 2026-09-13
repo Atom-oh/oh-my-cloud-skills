@@ -31,3 +31,9 @@ jobs:
           set -euo pipefail
           python3 scripts/test-plugins.py
           python3 scripts/test-codex-plugins.py
+
+      - name: Validate review context from this PR HEAD
+        run: |
+          set -euo pipefail
+          python3 scripts/pr-review/context.py --root "$GITHUB_WORKSPACE" \
+            --output "$RUNNER_TEMP/validated-review-context.md"

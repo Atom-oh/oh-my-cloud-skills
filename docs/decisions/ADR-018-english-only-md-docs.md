@@ -2,7 +2,13 @@
 
 ## Status
 
-Accepted (2026-08-14)
+Superseded by [ADR-021](ADR-021-english-docs-current-review-authority.md)
+(2026-09-13); originally accepted 2026-08-14.
+
+The sweep, exclusions and validation results below are the historical PR #154 record.
+Maintained public docs, README/CHANGELOG and scoped host instructions now also use
+English. Functional literals and user artifact language remain separate; upstream
+source ownership still applies. Old bilingual/public exclusions are not current policy.
 
 ## Context
 
@@ -60,7 +66,7 @@ entry for `architecture.md` dropped "(bilingual KO/EN)" — see Consequences bel
 
 ## Consequences
 
-- Two files had a duplicate-bilingual-toggle structure (a `# 한국어`/`# Korean` section
+- Two files had a duplicate-bilingual-toggle structure (a Korean-language section
   followed by a full parallel `# English` section, badge-linked) rather than inline
   mixed prose: `docs/architecture.md` and `docs/decisions/ADR-004-agentcore-creator-skill.md`.
   Translating the Korean half in place would have produced two identical English

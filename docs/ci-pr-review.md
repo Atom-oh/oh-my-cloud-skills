@@ -1,4 +1,6 @@
-# CI: Multi-AI PR Review — L1 Deterministic Gate + 3-Model Panel
+# Historical CI implementation notes
+
+> Historical context only. Current operator instructions are in [the runbook](ci-pr-review-runbook.md) and [ADR-021](decisions/ADR-021-english-docs-current-review-authority.md). Old regions, model IDs, lexical verdicts and partial-coverage rules below are not the current contract.
 
 PRs in this repo go through a two-stage gate on the self-hosted runner
 (`oh-my-cloud-skills-claude-arm`): **L1** (manifest/version consistency — a deterministic
