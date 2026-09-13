@@ -63,7 +63,7 @@ const config: Config = {
   themeConfig: {
     announcementBar: {
       id: 'release-v2.0.0',
-      content: `<strong>v2.0.0 is available.</strong> <a href="${baseUrl}docs/releases/v2.0.0">Release notes and co-agent migration</a>`,
+      content: `<span class="release-notice"><strong>v2.0.0 is available.</strong> <a href="${baseUrl}docs/releases/v2.0.0">Release notes and co-agent migration</a></span>`,
       backgroundColor: '#fff4df',
       textColor: '#232f3e',
       isCloseable: true,
