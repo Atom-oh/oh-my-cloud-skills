@@ -127,11 +127,16 @@ kubectl get nodes -o json | jq '.items[] | {name:.metadata.name, conditions:[.st
 ## 4단계: 워크로드 상태 점검 {#step-4-workload-health-check}
 
 ```bash
-# Unhealthy pods
-kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded | head -20
+# Inspect READY, STATUS, and RESTARTS for all pods.
+kubectl get pods -A
 ```
 
-출력:
+전체 목록에서 `READY`, `STATUS`, `RESTARTS`를 확인합니다.
+`CrashLoopBackOff`는 Pod phase가 아니라 kubectl 표시 상태이며 phase가
+`Running`일 때도 나타날 수 있습니다. 따라서 `Running`을 제외하면 반복 재시작을
+놓칠 수 있습니다. [Kubernetes Pod 수명 주기](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/)를 참고합니다.
+
+예시 출력의 일부입니다(다른 행은 생략):
 ```
 NAMESPACE     NAME                      READY   STATUS             RESTARTS   AGE
 backend       api-worker-7b9f4-x2k9l    0/1     CrashLoopBackOff   15         2h

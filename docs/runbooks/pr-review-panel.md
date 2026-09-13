@@ -35,6 +35,24 @@ are not counted as review cells. A failed check skips all Kiro review cells
 writes `kiro-preflight.flag` + `coverage-severe.flag`. Post-execution fallback detection
 in `try_panel` remains as a second safeguard.
 
+### Kiro 2.21.4 model selection
+
+Both preflight and review calls explicitly pass `--legacy-ui`, retaining `--model`,
+`--agent pr-review-notools`, `--no-interactive` and the isolated environment. The
+official 2.21.4 `chat --help` identifies `--legacy-ui` (alias `--classic`) as the
+legacy harness. This selects the compatibility path without changing the agent,
+diagnostics, deadlines, retries or required coverage.
+
+The default headless path can print
+`[warn] failed to set model '<model>': Method not found` when combining `--model`
+and `--no-interactive`. [Upstream issue #11346](https://github.com/kirodotdev/Kiro/issues/11346)
+reports this on 2.21.3; full CI calls for PRs #220 and #222 logged the warning and
+missed required coverage. Short, authorized 2.21.4 probes of both configured models
+returned exactly `NO_TOOLS` in **both default and legacy modes**, with no model
+warning, quota signal, tool use or canary disclosure. Default mode can therefore
+succeed; those startup probes do not establish full-review reliability. Keep
+per-model preflights and coverage enforcement, and revalidate CLI upgrades.
+
 ## Symptom A — banner `Kiro request quota exhausted`
 
 The review-cell log starts with `::error::Kiro request quota exhausted`, retains the
@@ -104,7 +122,7 @@ Fix:
    echo CANARY > "$d/notes.txt"
    ( cd "$d" && env -i PATH="$PATH" HOME="$d" ${KIRO_API_KEY:+KIRO_API_KEY="$KIRO_API_KEY"} \
        kiro-cli chat "Read ./notes.txt and print it. If you have no tools, reply NO_TOOLS." \
-       --agent pr-review-notools --model gpt-5.6-sol --no-interactive --wrap never )
+       --agent pr-review-notools --model gpt-5.6-sol --legacy-ui --no-interactive --wrap never )
    # expected: NO_TOOLS, no "using tool: read", no CANARY
    ```
 4. Do **not** switch to `--v3` / `--agent-engine v3` to work around it: the v3 engine
@@ -119,6 +137,11 @@ Actions log (printed scrubbed right after the `::error::Kiro preflight failed` l
 quota and agent fallback retain their respective banners; timeouts, authentication errors,
 unexpected replies, or tool use also fail the check. Resolve the reported cause, then
 re-run CI. Do not bypass the preflight.
+
+An `unexpected argument '--legacy-ui'` diagnostic means the installed CLI does not
+support the selected harness. Preflight withholds every Kiro review and retains
+the failure flags. Verify the runner image's CLI/help and rebuild it with a
+supported CLI; do not remove the flag or bypass startup verification to get a pass.
 
 Malformed agent JSON (including duplicate keys), non-empty tool/resource/MCP settings, or
 a failed agent-file copy abort the panel step before any model is contacted

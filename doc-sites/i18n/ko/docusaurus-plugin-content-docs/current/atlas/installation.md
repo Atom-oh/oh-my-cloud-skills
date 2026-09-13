@@ -24,7 +24,7 @@ claude --plugin-dir ./plugins/atlas
 ## 설정 및 검증 {#setup-and-verification}
 
 `/atlas:init`으로 위키 주제를 제안합니다. Claude CLI 없이 변경 불일치를 점검하려면
-`atlas_drift.py --json`을 사용합니다. 체크아웃 명령은 [로컬 점검](commands.md#local-checks)를
+`atlas_drift.py --json`을 사용합니다. 체크아웃 명령은 [로컬 점검](commands.md#local-checks)을
 참고합니다. `atlas_sync.py --dry-run`도 모델 호출과 파일 쓰기를 하지 않지만,
 인수 해석 전에 PATH에서 `claude`를 찾을 수 있어야 합니다. 푸시 시 자동 동기화는
 기본적으로 꺼져 있으며 별도로 설정한 Claude CLI 수정 도구를 사용합니다.
