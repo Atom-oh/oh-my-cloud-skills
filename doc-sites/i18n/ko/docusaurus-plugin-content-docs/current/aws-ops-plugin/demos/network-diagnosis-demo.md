@@ -1,33 +1,33 @@
 ---
 sidebar_position: 4
-title: Network Diagnosis Demo
+title: 네트워크 진단 데모
 ---
 
-# Network Diagnosis Demo
+# 네트워크 진단 데모
 
-This is an illustrative walkthrough. Command outputs, identifiers, thresholds, and findings are sample data, not a live assessment or the plugin defaults. Use the current skill for the execution contract and verify the actual environment before applying a proposed repair.
+이 문서는 설명을 위한 예제입니다. 명령 출력, 식별자, 임계값, 발견 사항은 샘플 데이터이며 실제 평가 결과나 플러그인 기본값이 아닙니다. 실행 규칙은 현재 스킬을 따르고, 제안된 수정을 적용하기 전에 실제 환경을 확인합니다.
 
-IP exhaustion and ALB 502 error diagnosis walkthrough with diagnostic command execution and resolution process.
+진단 명령 실행과 해결 과정을 통해 IP 고갈과 ALB 502 오류를 진단하는 예제입니다.
 
-## Scenario Overview {#scenario-overview}
+## 시나리오 개요 {#scenario-overview}
 
-This demo covers two common network issues:
-1. **IP Exhaustion** - Pods stuck in Pending due to insufficient VPC IPs
-2. **ALB 502 Errors** - Application Load Balancer returning 502 Bad Gateway
+이 데모는 두 가지 일반적인 네트워크 문제를 다룹니다:
+1. **IP 고갈** - VPC IP 부족으로 파드가 Pending 상태에 머무릅니다.
+2. **ALB 502 오류** - Application Load Balancer가 502 Bad Gateway를 반환합니다.
 
 ---
 
-## Scenario 1: IP Exhaustion {#scenario-1-ip-exhaustion}
+## 시나리오 1: IP 고갈 {#scenario-1-ip-exhaustion}
 
-### Problem Report {#problem-report}
+### 문제 보고 {#problem-report}
 
-User reports:
+사용자 보고:
 
 ```
 New pods are stuck in Pending state. kubectl describe shows "failed to assign IP address" errors.
 ```
 
-### Diagnosis Workflow {#diagnosis-workflow}
+### 진단 워크플로 {#diagnosis-workflow}
 
 ```mermaid
 flowchart TD
@@ -41,14 +41,14 @@ flowchart TD
     SOLUTION -->|Long-term| CIDR[Add Secondary CIDR]
 ```
 
-### Step 1: Identify the Problem {#step-1-identify-the-problem}
+### 1단계: 문제 식별 {#step-1-identify-the-problem}
 
 ```bash
 # Check pending pods
 kubectl get pods -A --field-selector=status.phase=Pending
 ```
 
-Output:
+출력:
 ```
 NAMESPACE   NAME                        READY   STATUS    RESTARTS   AGE
 backend     api-server-7f8b9-abc        0/1     Pending   0          15m
@@ -62,7 +62,7 @@ frontend    web-app-8e9f0-jkl           0/1     Pending   0          8m
 kubectl describe pod api-server-7f8b9-abc -n backend | grep -A 10 "Events:"
 ```
 
-Output:
+출력:
 ```
 Events:
   Type     Reason            Age   From               Message
@@ -71,9 +71,9 @@ Events:
   Warning  FailedCreatePodSandBox  13m  kubelet  Failed to create pod sandbox: rpc error: code = Unknown desc = failed to setup network for sandbox: plugin type="aws-cni" name="aws-cni" failed: add cmd: failed to assign an IP address to container
 ```
 
-**Identified**: IP assignment failure from VPC CNI.
+**확인 사항**: VPC CNI의 IP 할당 실패입니다.
 
-### Step 2: Check Subnet IP Availability {#step-2-check-subnet-ip-availability}
+### 2단계: 서브넷 가용 IP 확인 {#step-2-check-subnet-ip-availability}
 
 ```bash
 # Get cluster subnets and available IPs
@@ -81,7 +81,7 @@ aws ec2 describe-subnets --filters "Name=tag:kubernetes.io/cluster/prod-cluster,
   --query 'Subnets[].{SubnetId:SubnetId,AZ:AvailabilityZone,CIDR:CidrBlock,Available:AvailableIpAddressCount}'
 ```
 
-Output:
+출력:
 ```json
 [
     {
@@ -105,16 +105,16 @@ Output:
 ]
 ```
 
-**Finding**: All subnets critically low on IPs (total 10 available across 3 AZs).
+**발견 사항**: 모든 서브넷의 IP가 심각하게 부족합니다(3개 AZ 전체에서 가용 IP 10개).
 
-### Step 3: Check ENI Allocation {#step-3-check-eni-allocation}
+### 3단계: ENI 할당 확인 {#step-3-check-eni-allocation}
 
 ```bash
 # Check per-node IP usage via IPAMD
 kubectl exec -n kube-system ds/aws-node -c aws-node -- curl -s http://localhost:61678/v1/enis 2>/dev/null | jq '.ENIs | length'
 ```
 
-Output:
+출력:
 ```
 3
 ```
@@ -124,29 +124,29 @@ Output:
 kubectl get nodes -o json | jq '.items[] | {name:.metadata.name, allocatable_pods:.status.allocatable.pods, capacity_pods:.status.capacity.pods}'
 ```
 
-Output:
+출력:
 ```json
 {"name":"ip-10-0-1-100.ec2.internal","allocatable_pods":"17","capacity_pods":"17"}
 {"name":"ip-10-0-2-150.ec2.internal","allocatable_pods":"17","capacity_pods":"17"}
 {"name":"ip-10-0-3-200.ec2.internal","allocatable_pods":"17","capacity_pods":"17"}
 ```
 
-**Finding**: t3.medium instances with max 17 pods each. Total capacity: 51 pods.
+**발견 사항**: t3.medium 인스턴스는 각각 최대 17개 파드를 수용하며, 총 용량은 파드 51개입니다.
 
-### Step 4: Check IPAMD Logs {#step-4-check-ipamd-logs}
+### 4단계: IPAMD 로그 확인 {#step-4-check-ipamd-logs}
 
 ```bash
 # Check for IP allocation errors
 kubectl logs -n kube-system -l k8s-app=aws-node -c aws-node --tail=50 | grep -i "insufficient\|error\|failed"
 ```
 
-Output:
+출력:
 ```
 {"level":"error","ts":"2026-03-22T10:15:23.456Z","msg":"InsufficientFreeAddressesInSubnet: The subnet 'subnet-0a1b2c3d4e5f' has insufficient free addresses to satisfy the request"}
 {"level":"error","ts":"2026-03-22T10:15:45.789Z","msg":"Failed to allocate IP address for pod backend/api-server-7f8b9-abc"}
 ```
 
-### Root Cause Analysis {#root-cause-analysis}
+### 근본 원인 분석 {#root-cause-analysis}
 
 ```
 ## Root Cause Analysis
@@ -166,9 +166,9 @@ IP exhaustion in all EKS subnets preventing new pod scheduling.
 3. WARM_IP_TARGET not tuned (over-allocation)
 ```
 
-### Resolution {#resolution}
+### 해결 {#resolution}
 
-#### Immediate Fix: Enable Prefix Delegation {#immediate-fix-enable-prefix-delegation}
+#### 즉시 조치: Prefix Delegation 활성화 {#immediate-fix-enable-prefix-delegation}
 
 ```bash
 # Enable prefix delegation for 16x more IPs per slot
@@ -183,19 +183,19 @@ kubectl rollout restart daemonset/aws-node -n kube-system
 kubectl rollout status daemonset/aws-node -n kube-system
 ```
 
-Output:
+출력:
 ```
 daemonset "aws-node" successfully rolled out
 ```
 
-#### Verify Fix {#verify-fix}
+#### 수정 검증 {#verify-fix}
 
 ```bash
 # Check pods are now scheduling
 kubectl get pods -A --field-selector=status.phase=Pending
 ```
 
-Output:
+출력:
 ```
 No resources found
 ```
@@ -205,7 +205,7 @@ No resources found
 kubectl get pods -n backend
 ```
 
-Output:
+출력:
 ```
 NAME                        READY   STATUS    RESTARTS   AGE
 api-server-7f8b9-abc        1/1     Running   0          20m
@@ -213,7 +213,7 @@ api-server-7f8b9-def        1/1     Running   0          20m
 worker-5c6d7-ghi            1/1     Running   0          15m
 ```
 
-#### Long-term Fix: Add Secondary CIDR {#long-term-fix-add-secondary-cidr}
+#### 장기 조치: 보조 CIDR 추가 {#long-term-fix-add-secondary-cidr}
 
 ```bash
 # Add secondary CIDR for dedicated pod subnets
@@ -227,17 +227,17 @@ aws ec2 create-subnet --vpc-id vpc-0123456789abcdef0 --cidr-block 100.64.64.0/19
 
 ---
 
-## Scenario 2: ALB 502 Errors {#scenario-2-alb-502-errors}
+## 시나리오 2: ALB 502 오류 {#scenario-2-alb-502-errors}
 
-### Problem Report {#problem-report-1}
+### 문제 보고 {#problem-report-1}
 
-User reports:
+사용자 보고:
 
 ```
 Application returns 502 Bad Gateway intermittently. Started after recent deployment.
 ```
 
-### Diagnosis Workflow {#diagnosis-workflow-1}
+### 진단 워크플로 {#diagnosis-workflow-1}
 
 ```mermaid
 flowchart TD
@@ -250,14 +250,14 @@ flowchart TD
     FIX --> VERIFY[Verify Resolution]
 ```
 
-### Step 1: Check Target Group Health {#step-1-check-target-group-health}
+### 1단계: 대상 그룹 상태 확인 {#step-1-check-target-group-health}
 
 ```bash
 # Get target group ARN from Ingress
 kubectl get ingress api-ingress -n backend -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
 ```
 
-Output:
+출력:
 ```
 k8s-backend-apiingr-abc123-456789.us-west-2.elb.amazonaws.com
 ```
@@ -270,7 +270,7 @@ TG_ARN=$(aws elbv2 describe-target-groups --query "TargetGroups[?contains(Target
 aws elbv2 describe-target-health --target-group-arn $TG_ARN
 ```
 
-Output:
+출력:
 ```json
 {
     "TargetHealthDescriptions": [
@@ -293,16 +293,16 @@ Output:
 }
 ```
 
-**Finding**: 2 of 3 targets unhealthy, health checks returning 503.
+**발견 사항**: 대상 3개 중 2개가 비정상이며 상태 확인이 503을 반환합니다.
 
-### Step 2: Check Pod Status {#step-2-check-pod-status}
+### 2단계: 파드 상태 확인 {#step-2-check-pod-status}
 
 ```bash
 # Check backend pods
 kubectl get pods -n backend -l app=api-server -o wide
 ```
 
-Output:
+출력:
 ```
 NAME                        READY   STATUS    RESTARTS   AGE   IP           NODE
 api-server-7f8b9-abc        1/1     Running   0          30m   10.0.1.45    ip-10-0-1-100.ec2.internal
@@ -315,14 +315,14 @@ api-server-7f8b9-ghi        1/1     Running   0          30m   10.0.3.112   ip-1
 kubectl exec -it api-server-7f8b9-abc -n backend -- curl -s localhost:8080/health
 ```
 
-Output:
+출력:
 ```json
 {"status": "healthy", "version": "2.1.0"}
 ```
 
-**Finding**: Pods are running and health endpoint works locally.
+**발견 사항**: 파드는 실행 중이며 상태 확인 엔드포인트는 로컬에서 정상 작동합니다.
 
-### Step 3: Check Security Groups {#step-3-check-security-groups}
+### 3단계: 보안 그룹 확인 {#step-3-check-security-groups}
 
 ```bash
 # Get node security group
@@ -332,7 +332,7 @@ NODE_SG=$(aws ec2 describe-instances --filters "Name=private-ip-address,Values=1
 aws ec2 describe-security-group-rules --filter Name=group-id,Values=$NODE_SG --query 'SecurityGroupRules[?!IsEgress].{FromPort:FromPort,ToPort:ToPort,Source:CidrIpv4,SourceSG:ReferencedGroupInfo.GroupId}'
 ```
 
-Output:
+출력:
 ```json
 [
     {"FromPort": 443, "ToPort": 443, "Source": null, "SourceSG": "sg-alb12345"},
@@ -340,16 +340,16 @@ Output:
 ]
 ```
 
-**Finding**: Port 8080 not allowed from ALB security group!
+**발견 사항**: ALB 보안 그룹에서 오는 포트 8080 트래픽이 허용되지 않습니다.
 
-### Step 4: Check Health Check Configuration {#step-4-check-health-check-configuration}
+### 4단계: 상태 확인 설정 점검 {#step-4-check-health-check-configuration}
 
 ```bash
 # Check Ingress annotations
 kubectl get ingress api-ingress -n backend -o yaml | grep -A 10 "annotations:"
 ```
 
-Output:
+출력:
 ```yaml
 annotations:
   alb.ingress.kubernetes.io/scheme: internet-facing
@@ -358,9 +358,9 @@ annotations:
   alb.ingress.kubernetes.io/healthcheck-port: "8080"
 ```
 
-**Finding**: Health check configured for port 8080, but SG blocks it.
+**발견 사항**: 상태 확인은 포트 8080으로 설정되어 있지만 SG가 차단합니다.
 
-### Root Cause Analysis {#root-cause-analysis-1}
+### 근본 원인 분석 {#root-cause-analysis-1}
 
 ```
 ## Root Cause Analysis
@@ -383,9 +383,9 @@ Security Group migration incomplete when switching from instance to ip target ty
 - Intermittent 502 errors for end users
 ```
 
-### Resolution {#resolution-1}
+### 해결 {#resolution-1}
 
-#### Fix Security Group {#fix-security-group}
+#### 보안 그룹 수정 {#fix-security-group}
 
 ```bash
 # Get ALB security group
@@ -400,7 +400,7 @@ aws ec2 authorize-security-group-ingress \
   --description "ALB to backend pods"
 ```
 
-Output:
+출력:
 ```json
 {
     "Return": true,
@@ -417,7 +417,7 @@ Output:
 }
 ```
 
-#### Verify Resolution {#verify-resolution}
+#### 해결 결과 검증 {#verify-resolution}
 
 ```bash
 # Wait for health checks to pass (30-60 seconds)
@@ -427,7 +427,7 @@ sleep 60
 aws elbv2 describe-target-health --target-group-arn $TG_ARN --query 'TargetHealthDescriptions[].TargetHealth.State'
 ```
 
-Output:
+출력:
 ```json
 ["healthy", "healthy", "healthy"]
 ```
@@ -437,14 +437,14 @@ Output:
 curl -s -o /dev/null -w "%{http_code}" https://k8s-backend-apiingr-abc123-456789.us-west-2.elb.amazonaws.com/api/health
 ```
 
-Output:
+출력:
 ```
 200
 ```
 
 ---
 
-## Summary Report {#summary-report}
+## 요약 보고서 {#summary-report}
 
 ```markdown
 ## Network Diagnosis Report
@@ -468,16 +468,16 @@ Output:
 
 ---
 
-## Key Points {#key-points}
+## 핵심 사항 {#key-points}
 
-:::tip IP Planning
-Plan subnet CIDRs for 3-5x expected pod count. Enable prefix delegation early - it's non-disruptive and provides significant capacity increase.
+:::tip IP 계획
+예상 파드 수의 3-5배를 수용하도록 서브넷 CIDR을 계획합니다. Prefix Delegation은 중단 없이 용량을 크게 늘릴 수 있으므로 초기에 활성화합니다.
 :::
 
-:::warning Target Type Migration
-When switching from `instance` to `ip` target type, Security Groups must be updated to allow ALB direct access to pod ports. This is a common oversight.
+:::warning 대상 유형 전환
+대상 유형을 `instance`에서 `ip`로 전환할 때는 ALB가 파드 포트에 직접 접근할 수 있도록 보안 그룹을 반드시 갱신해야 합니다. 이 설정은 자주 누락됩니다.
 :::
 
-:::info Health Check Testing
-Always test health check paths from both inside the pod (`localhost`) and from external sources (another pod, ALB) to identify network/SG issues.
+:::info 상태 확인 테스트
+네트워크·SG 문제를 파악하려면 파드 내부(`localhost`)와 외부 출발지(다른 파드, ALB) 양쪽에서 상태 확인 경로를 항상 테스트합니다.
 :::

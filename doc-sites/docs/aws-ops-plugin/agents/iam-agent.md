@@ -26,11 +26,11 @@ title: "IAM agent"
 
 IRSA, EKS Pod Identity, IAM trust and permissions, Kubernetes RBAC, EKS access entries, and legacy aws-auth mappings.
 
-## Diagnostic approach
+## Diagnostic approach {#diagnostic-approach}
 
 Identify the caller and failed action. Check the service account and its identity association, trust conditions, policy scope, endpoint access, and RBAC binding. Distinguish IAM denial from Kubernetes Forbidden before changing permissions.
 
-## Initial read-only checks
+## Initial read-only checks {#initial-read-only-checks}
 
 Run only in the intended account, region, and Kubernetes context. Service-specific follow-ups come from the observed result.
 
@@ -41,7 +41,7 @@ kubectl get clusterrolebindings
 kubectl get configmap aws-auth -n kube-system -o yaml
 ```
 
-## Evidence and handoff
+## Evidence and handoff {#evidence-and-handoff}
 
 Return the affected component, observed symptoms, supporting output, likely cause, proposed action, and a verification command with expected results. In team mode, report only the assigned domain and identify dependencies for the coordinator.
 

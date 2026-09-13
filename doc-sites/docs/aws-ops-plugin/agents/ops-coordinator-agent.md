@@ -25,11 +25,11 @@ title: "Ops coordinator agent"
 
 Incident severity, five-minute triage, domain routing, cross-domain evidence, mitigation, verification, and postmortems.
 
-## Diagnostic approach
+## Diagnostic approach {#diagnostic-approach}
 
 Use a direct specialist for a single-domain symptom. P1 (Critical) / P2 (High) or multi-domain incidents can use parallel specialists when host tools support them; use the source [severity classification](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-ops-plugin/skills/ops-troubleshoot/SKILL.md#severity-classification). Correlate evidence without forcing independent failures into one root cause. Report impact, chronology, fixes, checks, and prevention.
 
-## Initial read-only checks
+## Initial read-only checks {#initial-read-only-checks}
 
 Run only in the intended account, region, and Kubernetes context. Service-specific follow-ups come from the observed result.
 
@@ -39,7 +39,7 @@ kubectl get pods -A -o wide
 kubectl get events -A --sort-by=.lastTimestamp
 ```
 
-## Evidence and handoff
+## Evidence and handoff {#evidence-and-handoff}
 
 Aggregate the specialists' evidence, distinguish correlated failures from independent incidents, and own the mitigation, verification, and postmortem handoff. Report the affected components, confirmed cause, actions, and observed recovery.
 
