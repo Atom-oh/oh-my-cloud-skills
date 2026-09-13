@@ -1,63 +1,77 @@
-<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 3b33511d1781 · generated-at: 2026-09-11 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
-> You are an external reviewer for this repo — project context below, distilled from
-> CLAUDE.md. This file is shared verbatim by Kiro, Codex, and Agy (not a per-AI copy).
+<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: bda703d304b3 · generated-at: 2026-09-13 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
+> Shared reviewer context derived from CLAUDE.md. Use the same facts in every peer
+> review and chair synthesis; facts below describe the trusted base checkout.
 
-# oh-my-cloud-skills — reviewer context
+# Repository review contract
 
-A **Claude Code and Codex plugin marketplace** with 8 plugins (aws-content, aws-ops, kiro-power-converter, agentcore-creator, co-agent, project-init, kiro, atlas). Deliverables are Markdown procedures and Python/Bash/Node helpers. Every plugin has both manifests and marketplace entries. Codex overlays are generated from shared procedures; all source skills, commands and specialist procedures must appear in the inventory. Specialist entries are procedural skills, not native Codex agent roles. Project-init's project hook templates require separate installation and trust.
+A Claude Code and Codex plugin marketplace: Markdown skills, command workflows,
+agent procedures, Python/Bash/Node helpers. `docs/` is internal; `doc-sites/` is the
+public site. Derive inventory counts from manifests and Codex inventories: source
+skills, commands, agents and generated entries are different populations.
 
-The **kiro** plugin is a cost-savings delegation workflow, distinct from co-agent (multi-AI perspective diversity): The current host plans/verifies, Kiro CLI implements + reviews on its own subscription credits inside an isolated git worktree — only the captured, `scope_guard.py`-checked diff reaches the main tree (`worktree.py`/`scope_guard.py`/`parse_plan.py` copied verbatim from co-agent). Its "safe" claim is scoped narrowly to changes reaching the main tree; it does not sandbox `execute_bash` inside the worktree, which is a separate trust decision about `kiro-cli` itself (see `plugins/kiro/CLAUDE.md` → "Trust decision" when reviewing anything that touches `.kiro/agents/kiro-implementer.json`).
+## Authority and language
 
-## Stack
-- **Python 3** (stdlib-first; `defusedxml` for XML), **Bash**, **Node.js** (PptxGenJS deck scripts), **Markdown** (agents/skills/commands), JSON manifests. Docs site = Docusaurus (`docs/`).
-- No app server. "Code" = helper scripts under `plugins/*/skills/*/scripts/` and `scripts/`.
+- Maintained instructions/docs and CI review prose are English. No bilingual-copy
+  requirement. Literal invocation aliases, syntax, fixtures and localized example
+  payloads remain data; user-requested deliverables may use another language.
+- Current root/scoped contracts and accepted, non-superseded decisions guide work.
+  ADR histories, specs/plans and earlier acceptance results are dated evidence.
+  Do not apply an old proposal or past failure count as a current requirement.
+- Verify factual claims against the correct base/head code and configuration. An
+  absent diff hunk does not prove a helper/file is missing. Code evidence does not
+  excuse a current policy violation. Unverified assumptions are not findings.
 
-## Build / test / lint (run from repo root)
-- `bash tests/run-all.sh` — TAP test suite (hooks, secret-scan regex, plugin structure). Must be **0 failed**.
-- `python3 scripts/test-plugins.py` — validates all 8 plugins' Claude manifests + agent/skill/command refs + version consistency. Must PASS.
-- `python3 scripts/test-codex-plugins.py` — validates the `.codex-plugin/plugin.json` manifests + `.agents/plugins/marketplace.json`. Must PASS.
-- `python3 scripts/sync-codex-plugins.py --check` — all generated overlays must match; no plugin may be skipped.
-- Merge only with the latest-HEAD AI review and separate Codex validation CI passing. Generation runs with the PR's implementation in isolated CI; privileged L1 reads the PR tree as data only.
-- `python3 scripts/test-codex-runtime.py` — disposable actual install, skill/hook discovery and consumer helpers.
-- `python3 scripts/test-codex-native-hooks.py --project-init` — native hook/trust fixtures with local Responses; no external inference.
-- `python3 scripts/eval-skills.py` — skill quality/structure/token eval.
-- Diagram skill gates (before exporting a `.drawio`): `validate_drawio.py` (XML/truncation) → `lint_layout.py` (layout score ≥80) → optional `snap_grid.py` (grid align).
-- Remarp: `remarp_to_slides.py validate <dir>` before build.
-- PPTX (`aws-light-fcd` skill): build with `NODE_PATH=$(npm root -g) node build.js`; finish with `python scripts/embed_fonts.py <deck>.pptx`.
+## Distinct workflows
 
-## Architectural boundaries
-- Plugin layout: `.claude-plugin/plugin.json` (manifest: `agents[]`, `skills[]`, `commands[]`, `hooks`, `mcpServers`) + `.codex-plugin/plugin.json` plus generated entry skills + `CLAUDE.md` (routing) + `agents/*.md` + `skills/<name>/{SKILL.md,references/,scripts/}`.
-- Project-init's upstream-owned files remain byte-identical except the Claude manifest's version. Its separate generated `.codex-plugin/` overlay is preserved during sync and regenerated after source updates. `MIRRORED_PLUGINS` is source-only; no plugin is exempt from Codex manifest validation. Validator success alone does not prove all Codex workflows ready. See `docs/reference/project-init-upstream-sync.md`.
-- **Every path in plugin.json must resolve to a real file** (test-plugins.py / test-codex-plugins.py enforce).
-- Content plugin → artifacts (HTML/.drawio/.md/.pptx) → **content-review-agent quality gate (≥85)** before "done". Native (editable) PPTX is the `aws-light-fcd` skill (PptxGenJS); `reactive-presentation` additionally exports built web decks to screenshot-based PPTX (`scripts/export_pptx.py`, headless Playwright + python-pptx). `aws-light-fcd` references `reactive-presentation`'s 811-icon library in place via `kit.icon()` — don't duplicate icon assets.
-- Ops plugin → diagnoses (commands-first runbooks). co-agent → the current host chairs a panel of Kiro, the other host CLI (Claude or Codex), and Antigravity (`agy`; Gemini removed per ADR-010). The current host is excluded from peer selection; Codex chairs when `CO_AGENT_HOST=codex`.
-- A single shared **version** across all `plugin.json` (both `.claude-plugin` and `.codex-plugin`) + both marketplaces + git tag `v{version}` — they must match.
+- CI: configured peers each review the complete diff; the chair verifies findings.
+  Active Critical/Major blocks. Required missing/failed/truncated evidence is ERROR.
+  Inspect current-HEAD body and inline comments, not just the badge. Both AI Code
+  Review and Codex package validation must pass before authorized merge.
+- CI review uses trusted-base code and PR data; isolated PR CI runs the head's
+  generator. A legitimate generator change includes its regenerated outputs.
+  GitHub branch-protection registration is external configuration, not a fact
+  established merely by adding a workflow or stating a merge procedure.
+- Local co-agent: the current Claude/Codex host chairs and excludes itself from
+  peers. Review/decide/ADR may report solo execution; consensus/harness need ready
+  peers. Opt-in local PR/push hooks have their own quorum/failure contracts.
+- Codex entries adapt procedures; Claude agent metadata does not create native
+  Codex roles or grants. Plugin hooks need trust. Project-init's three project
+  hook templates need separate consumer installation, project trust and hook trust.
+- Kiro's scope guard limits the applied diff, not every action of its CLI process.
+  Atlas on-demand Codex repair and optional Claude-backed unattended repair differ.
 
-## Conventions
-- **Agent/subagent `tools:` frontmatter takes BARE tool names only** (`Read, Grep, Bash`). Scoped `Bash(cmd:*)` is **NOT honored** in a subagent `tools:` field (that belongs to settings.json `permissions`) — don't "fix" an agent by adding `Bash(find:*)`.
-- **Plugin script paths in command/SKILL markdown use the plain `${CLAUDE_PLUGIN_ROOT}` token** (render-time substituted). Do NOT use the bash default form `${CLAUDE_PLUGIN_ROOT:-fallback}` — Claude Code doesn't substitute it and doesn't export the var to the Bash tool, so it silently resolves against the wrong cwd.
-- Prefer `defusedxml`; on stdlib fallback, reject `<!DOCTYPE>`/`<!ENTITY>` (XXE/billion-laughs).
-- HTML visualizations: **class-based theming** (`.theme-dark`/`.theme-light`), exact CSS-var names; never `data-theme`.
-- Bilingual KO/EN for user-facing docs; no emojis in formal docs.
-- Diagram design tokens are canonical in `architecture-diagram/references/design-tokens.md` (icon 78×78; Public subnet green #7AA116 / Private teal #00A4A6) — don't restate divergent values.
+## Checks and source ownership
 
-## Banned patterns (AWS security — hard rules, flag any violation)
-- **No `0.0.0.0/0` inbound** in Security Groups; SGs via CDK/Terraform only (never CLI `authorize-security-group-ingress`).
-- Public ALB only via CloudFront prefix list; no Route53 → ALB/EC2 direct.
-- No IAM `Principal:"*"`; minimize `Resource:"*"` (require Condition if used).
-- No Lambda URL `AuthType: NONE`. No secrets in env vars (use Secrets Manager/SSM).
-- PII in DynamoDB needs KMS + TTL. S3 Block Public Access always on. Never delete CloudTrail logs.
+- Full TAP suite, both manifest validators, all-plugin generated freshness and skill
+  evaluation must pass. Actual runtime/hook probes additionally require local Codex.
+- Source files and generated `.codex-plugin` outputs must agree; edit maintained
+  sources and regenerate. Do not skip a package or hand-fix an overlay alone.
+- Project-init upstream sources remain mirrored; its Codex overlay is repository
+  owned. Shared version fields agree; tags belong to releases, not every PR.
+- Read `docs/reference/review-routing.md` for scope-specific artifact/security
+  gates. Content score >=85; diagram XML then layout >=80; Remarp validates before
+  build. Reuse aws-light-fcd's sibling icon library; that reference is intentional.
 
-## Review checklist
-1. Do all plugin.json refs resolve? Versions consistent across both hosts? Does inventory cover every source procedure, and does the unconditional generation check pass?
-2. Bash: quote vars, `set -e`-safe capture (`v=$(cmd) && rc=0 || rc=$?`), no unquoted `$(...)` injection, no untrusted repo content interpolated into a command line (use STDIN).
-3. Python: `with open(...)`, defusedxml/XXE guard, no silent failures.
-4. Any AWS security mandate violated? (see Banned patterns)
-5. Secrets committed? Tests/validators still pass?
+## Safety and review calibration
 
-## Known false-positives (don't over-flag)
-- Placeholder credentials in `tests/fixtures/` and the secret-scan pattern tests (example AWS keys / tokens) are intentional test data, not leaks — many carry a `# pragma: allowlist secret` marker.
-- `width="60"` in `drawio-xml-guide.md` inline examples is illustrative; the canonical icon size is 78 (design-tokens.md).
-- Multi-AI panel "verdicts" are advisory — verify against the actual diff, never vote-count.
-- `aws-light-fcd` icons resolved via `kit.icon()` live in the sibling `reactive-presentation` skill — a cross-skill relative path (`../reactive-presentation/icons/`) is intentional, not a broken reference.
-- A set of pre-existing test failures is environmental (missing local `.claude/hooks/*.sh`, an unrelated reactive-pptx token test) — compare failure counts before/after a diff rather than treating any failure as new.
+- Bare agent tool names only; scoped Bash text is not an enforced restriction.
+  Use plain `${CLAUDE_PLUGIN_ROOT}` in Claude Markdown; Codex resolves installed paths.
+- Quote shell arguments and keep untrusted text on stdin. Use defused XML or reject
+  DOCTYPE/ENTITY on fallback. Theme classes are `.theme-dark`/`.theme-light`.
+- No committed secrets. Fixture tokens and credential variable names are not leaks
+  by themselves. Never expose real values. Provider model catalogs are independent.
+- Generated/shared/pre-existing code is not categorically exempt. Report a verified
+  defect at its maintained source; assess the changed exposure and concrete impact.
+  Advisory wording or a historical-local-path note alone is not a Major.
+- A past environment failure needs a same-environment base/head comparison; it is
+  not a waiver for missing required checks. Panel agreement is not evidence by itself.
+
+## Banned patterns
+
+These project rules apply to AWS/IaC changes:
+- No `0.0.0.0/0` inbound. Manage security groups through CDK/Terraform, never ad-hoc CLI ingress.
+- Public ALBs use the CloudFront prefix list; no direct Route53-to-ALB/EC2 bypass.
+- No IAM `Principal:"*"`, with or without a Condition. Wildcard `Resource` requires a restrictive Condition.
+- No Lambda function URL `AuthType: NONE`.
+- No secrets in environment variables; use Secrets Manager or SSM Parameter Store.
+- PII in DynamoDB needs KMS and TTL. Keep S3 Block Public Access enabled. Never delete CloudTrail logs.

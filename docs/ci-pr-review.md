@@ -1,3 +1,18 @@
+# Current PR review contract
+
+The current operational contract is [the review runbook](ci-pr-review-runbook.md)
+and [ADR-021](decisions/ADR-021-english-docs-current-review-authority.md). CI uses
+verified base context, English reports, a semantic Critical/Major gate, complete
+configured coverage and a separate isolated Codex validation job. A PASS token or
+missing required reviewer is never approval. Configuration and implementation win
+factual comparisons; they do not waive policy.
+
+## Historical implementation notes
+
+The following text records earlier implementations. Its old regions, model IDs,
+lexical verdict rules, solo/partial-coverage behavior and memory-loading claims are
+historical, not current operator instructions. Use the runbook and source files above.
+
 # CI: Multi-AI PR Review — L1 Deterministic Gate + 3-Model Panel
 
 PRs in this repo go through a two-stage gate on the self-hosted runner

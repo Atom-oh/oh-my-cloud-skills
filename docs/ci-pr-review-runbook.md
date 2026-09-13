@@ -1,151 +1,94 @@
-# Runbook: Verifying PR Review Panel behavior
+# PR review runbook
 
-Opening a PR automatically runs the two-stage gate on the self-hosted runner
-(`oh-my-cloud-skills-claude-arm`): L1 (deterministic) → 3-model panel (each model reviews
-the full diff with no scope restriction, ADR-016).
+Use this runbook with [the current review contract](ci-pr-review.md). Do not use an
+old ADR's model roster, region, lexical PASS rule or warning-only coverage behavior
+as current instructions. Inspect the exact PR HEAD, both CI checks and the latest
+bot comment before deciding what failed.
 
-## Normal-operation checklist
-1. **On L1 failure**: only a block headed `**L1 pre-check (매니페스트/버전 정합) 실패**`
-   ("L1 pre-check (manifest/version consistency) failed" — the literal header text is
-   still Korean, `pr-review.yml`'s L1_HEADER wasn't in scope of the English-only docs
-   sweep, PR #154) shows up in the PR comment and the AI panel is never invoked (zero
-   cost) — the cause
-   is right there in the comment body's `test-plugins.py`/`test-codex-plugins.py` output
-   (dangling reference/version mismatch/JSON error/`.codex-plugin` manifest error).
-2. **On L1 pass**: it's normal to see up to 3 model tags — `codex`, `kiro-opus`,
-   `kiro-gpt` — on the PR comment's `_Cells (model):_` line (some cells may be
-   intermittently skipped due to rate limiting/quota; `kiro-glm` is disabled by default
-   due to its false-positive rate — see ADR-017). If one model doesn't respond (e.g. a
-   kiro-cli flag got invalidated), a `⚠️ **커버리지 저하**` ("coverage degraded") banner
-   shows at the top of the review — that Korean string is the literal `synthesize.sh`
-   actually outputs; the script itself wasn't in scope of the English-only docs sweep
-   (PR #154), so its output banners are still Korean. If one or fewer vendors survive, a
-   `🛑 **커버리지 붕괴**` ("coverage collapsed") banner shows (ADR-016), but it does
-   not force the VERDICT — the chair's judgment stands as-is. **Antigravity (`agy`) is
-   not in the panel** (ADR-010 — cannot authenticate headlessly).
-3. **`chair_error`**: if the chair fails to produce a usable VERDICT on both attempts
-   (primary + fallback), the comment's Status shows `ERROR` (not BLOCKED) — this is not
-   a review finding but a CI infrastructure problem, so a re-run is all that's needed;
-   there is no content to fix.
-4. The gate decision is based on the last `VERDICT: PASS|FAIL` match (fail-closed; L1
-   failure/chair_error also count as fail).
+## Inspect a review
 
-## Region/model (unified on us-east-1)
-- Claude chair: `us.anthropic.claude-fable-5` (US geo, on-demand) · endpoint/region
-  `us-east-1`
-  - The primary attempt is granted `Read Grep Glob` and must produce a VERDICT within
-    `CHAIR_TIMEOUT` (default **450 seconds**). If it fails to (connection
-    refused/hang/empty response/unusable VERDICT), it retries once with
-    `CHAIR_FALLBACK_MODEL` (default `us.anthropic.claude-opus-5`), but **this time with
-    no file tools granted at all** (`CHAIR_FALLBACK_TIMEOUT`, default **300 seconds**) —
-    the diff+panel reviews are already on stdin, so this attempt is self-contained, and
-    with no tools it cannot crawl the repo tree (ADR-016 — the old single 600-second
-    attempt combined the instruction "Read CLAUDE.md/AGENTS.md" with granting file tools,
-    which exhausted exactly that timeout on large diffs, #141/#146). To tune this, set
-    `CHAIR_TIMEOUT`/`CHAIR_FALLBACK_TIMEOUT`/`CHAIR_FALLBACK_MODEL` in the workflow's
-    `env`.
-- codex: `openai.gpt-5.6-sol` (bedrock-mantle, In-Region us-east-1; the region is
-  determined by the image's `~/.codex/config.toml`) — reviews the full diff once.
-  (`gpt-5.5`→`openai.gpt-5.6-sol` deprecation replacement — ADR-014.)
-- kiro-cli: `claude-opus-5`/`gpt-5.6-terra`, each reviewing the full diff once — 2 calls
-  total under the default active roster (matrix membership is a config value —
-  `panel_config.py`, see the "Configuration" section of `docs/ci-pr-review.md`).
-  `glm-5` (`kiro-glm`) is disabled by default due to its false-positive rate — following
-  the AWS-Demo-Platform ADR-015 precedent, see this repo's ADR-017. (`kimi-k2.5` was
-  replaced after 2/2 production coverage-degradation incidents + 7 unsupported findings.
-  **`--v3` is not used** — `kiro-cli --v3 chat ... --model gpt-5.5` (the model name used
-  at the time of this reproduction; replaced by `gpt-5.6-terra` under ADR-014) is listed
-  by `--list-models` but the actual call is rejected with `INVALID_MODEL_ID` (HTTP 400) —
-  this isn't a problem with the model itself, but because **the separate backend that
-  `--v3` routes to** has a narrower model catalog. `kiro-cli chat` without `--v3` (with
-  the remaining flags at the time being `--mode default --trust-tools=fs_read
-  --no-interactive --wrap never` — `--trust-tools=fs_read` was changed to
-  `--trust-tools=` (no tools granted) under ADR-013, below) was confirmed to respond
-  normally for all 5 models including gpt-5.5. `--v3` was originally introduced to fix a
-  stdin-ignoring/`fs_read` tool-name bug unrelated to model support (commit `c5b19c7`) —
-  since both bugs are already bypassed by the argv-based delivery, they don't recur even
-  without `--v3`. See ADR-012 for the full replacement background/rationale.)
-- **Kiro diff delivery (ADR-013)**: Kiro cells use `--trust-tools=` (no tools granted,
-  diff embedded as capped text directly in argv, `KIRO_DIFF_CAP` default 100000B) instead
-  of `--trust-tools=fs_read` (diff referenced by file path) — this structurally closes a
-  CRITICAL residual risk where trusting `fs_read` on an untrusted diff could let
-  diff-injection induce an absolute-path read, exposing credentials via a public PR
-  comment (discovered during the claude-code-usage-dashboard PR #4 review). When
-  debugging: if a Kiro cell comes back empty, first check whether the diff was truncated
-  by exceeding `KIRO_DIFF_CAP` (see `$WORK/kiro-diff-truncated.flag` and the "✂️ Kiro diff
-  truncated" banner in the review body) rather than assuming `--trust-tools=` was
-  mistyped/invalidated.
-- AWS auth: EKS Pod Identity (ci-runner role) SigV4
+```bash
+gh pr view <number> --json headRefOid,baseRefName,state,statusCheckRollup
+gh api repos/Atom-oh/oh-my-cloud-skills/issues/<number>/comments
+gh api repos/Atom-oh/oh-my-cloud-skills/pulls/<number>/comments
+gh run view <run-id> --log-failed
+```
 
-## When L1 fails and blocks the PR
-- Read the `test-plugins.py`/`test-codex-plugins.py` output attached to the comment
-  directly — the error message points to the exact file path/field (e.g. dangling agent
-  reference, plugin.json↔marketplace.json version mismatch, `.codex-plugin/plugin.json`
-  schema error).
-- Local reproduction: `python3 scripts/test-plugins.py` and `python3
-  scripts/test-codex-plugins.py` (both against the current checkout by default), or
-  `--root <arbitrary tree>` to target a specific tree.
-- If L1 itself (fetch/archive) fails due to an infrastructure problem (e.g. a `git fetch`
-  error), the cause shows up directly in the "L1 pre-check" step output in the runner log
-  — since this is fail-closed, the gate is FAIL in this case too.
+Never paste credential values from a log into chat, issues or commits. Use masked
+error excerpts. The canonical comment must match the current HEAD/run; an old
+PASSED comment or PENDING review is not approval. Read final Issues and inline
+comments even when a check is green.
 
-## Diagnosing a skipped panel cell
-- Check the cause in the `[<model>] skipped; stderr` block in the runner log (404 Engine
-  not found = model/region mismatch, credentials error = missing Pod Identity, etc.).
-- Even if one model drops out entirely (e.g. the kiro-cli binary is missing), the other 2
-  models still independently review the full diff — there's no single point of failure
-  (**under the default active roster** — in a codex-only configuration where the
-  "sensitive-diff policy" has turned off both Kiro cells, codex is the only vendor left,
-  so this invariant no longer holds. See below and the "Configuration" section of
-  `docs/ci-pr-review.md` for how the coverage floor is handled in that configuration).
-- If a specific model is not simply missing its binary but is **persistently flaky**
-  (continuously degraded, not just intermittent non-response), remove it in the following
-  two steps — do not read them in reverse order: (1) **Local preview** — running
-  `python3 scripts/pr-review/panel_config.py set <cell> enabled false --root .` in a local
-  clone writes to `.claude/pr-review.local.json` (a gitignored local override file), and
-  you can immediately confirm the result with `show` — **this file itself has no effect
-  on CI**. (2) **Actual CI application** — you must **manually copy** the value confirmed
-  in (1) into `scripts/pr-review/pr-review.defaults.json`, **commit it, and merge** for it
-  to actually take effect starting with PRs after `main`. **Simply placing the (1)
-  override file in the CI workspace and re-running does NOT work** (checkout's default
-  clean behavior wipes gitignored files every run, and this doesn't apply to the review
-  of the PR carrying the change itself either, due to `pull_request_target`'s base-ref
-  checkout — for the detailed constraints and an exceptional workaround, see "How this is
-  actually applied in CI" in the "Configuration" section of `docs/ci-pr-review.md`).
-  Use `python3 scripts/pr-review/panel_config.py show --root .` to check the current
-  (local) effective configuration.
+## Failure classification
 
-## When a panel cell's judgment quality crosses the threshold (ADR-015)
+| Observation | Meaning and next action |
+|---|---|
+| `L1 validation failed` | Read the named manifest/version/inventory error. Fix the source and run both validators locally. |
+| `L1 infrastructure failed` | Fetch/archive failed before validators started. Inspect runner/Git access; do not guess a manifest defect. |
+| `Review context unavailable` or missing base context | Restore/regenerate base AGENTS.md from CLAUDE.md and verify provenance, size and secret checks. |
+| BLOCKED, active Critical/Major | Verify the finding against code, fix a real defect, test and push; obtain a fresh full review. |
+| `Review coverage incomplete` | At least one configured cell failed or returned no usable result. Diagnose that provider/CLI; all required cells must complete. |
+| `Kiro diff truncated` or output-cap evidence | The reviewed input/output is partial. Reduce/split the PR or output; do not call it complete. |
+| `Insufficient independent coverage` | Required vendor diversity was not available. The semantic gate rejects it, regardless of the chair's text. |
+| `Review generation failed` | Neither chair attempt completed with valid structured output. Inspect CLI/format errors; retry only after identifying the cause. |
+| Codex package validation failed | Use the PR's generator and manifests together. Regenerate, then rerun `--check`; a base-generator comparison is not a substitute. |
 
-The `Panel cell judgment quality` table in `docs/pr-review/review-memory.md` is
-accumulated by the `/co-agent:pr-autofix` host parsing the chair's
-`PANEL-QUALITY: <cell>=<unsupported>/<total>` line. If a cell has
-**`unsupported >= 5` and `unsupported/total >= 0.5`**, pr-autofix outputs an exclusion
-**recommendation**. **There is no automatic enforcement** — a human follows the procedure
-below (the same path as the `kimi-k2.5` exclusion in ADR-012).
+A transient provider error may justify a bounded retry. The same oversized input or
+malformed structure needs correction, not an unbounded rerun loop. Missing optional
+memory does not block review, but it does not replace required context or coverage.
 
-1. **Verify the evidence** — don't take the table's numbers at face value; look at the
-   underlying evidence. Sample recent PR review comments to confirm whether that cell's
-   dismissed findings were actually unsupported (not backed by the diff), or whether the
-   chair misclassified genuine issues as false positives. The table is a **signal**, not
-   the judgment itself. (Also distinguish this from cases where there simply was no
-   response due to coverage degradation — that's not a judgment-quality problem, it's the
-   "Diagnosing a skipped panel cell" item above.)
-2. **Write an ADR** — since exclusion is a roster change, record the decision (following
-   the ADR-012 precedent of citing numbers like "7 dismissed findings vs. 0"). The memory
-   table exists precisely so this evidence doesn't remain only in chat history.
-3. **Apply it for real** — after locally previewing with `python3
-   scripts/pr-review/panel_config.py set <cell> enabled false --root .` (that file is
-   gitignored, so it has no effect on CI), **manually copy** the confirmed value into
-   `scripts/pr-review/pr-review.defaults.json`, **commit and merge it** — exactly the
-   same path as step 2 of "If a specific model is ... persistently flaky" above. It takes
-   effect starting with PRs after `main`.
-4. **Clean up the table** — delete the excluded cell's row from the memory file (incorrect
-   or invalid entries should be removed immediately on principle).
+## Local reproduction
 
-> Why automatic disablement was not adopted: if the surviving vendor count drops to one or
-> fewer, cross-checking itself stops functioning, and the system could quietly stabilize
-> in that state without human intervention (ADR-015 rejected alternative 3). (As of
-> 2026-07, this state used to force a severe banner + fail-closed — ADR-016 changed the
-> enforcement to banner-only, but this doesn't affect this section's conclusion: exclusion
-> is still a human judgment call that gets committed.)
+Run in the checkout under review:
+
+```bash
+python3 scripts/test-plugins.py
+python3 scripts/test-codex-plugins.py
+python3 scripts/sync-codex-plugins.py --check
+bash tests/run-all.sh
+```
+
+After changing a maintained source/template, regenerate the affected Codex outputs
+before freshness validation. A generator logic change and its output belong in one
+PR; the isolated head CI checks them together.
+
+For base-context diagnosis, run from the trusted checkout:
+
+```bash
+python3 plugins/co-agent/skills/co-agent/scripts/check_ai_context.py . --verify AGENTS.md
+python3 scripts/pr-review/context.py --root . --output /var/tmp/base-review-context.md
+```
+
+The context builder checks the generated marker/hash, rejects outside paths and
+refuses oversized context. It derives inventory populations from repository data.
+It does not execute scripts from a supplied PR tree or load every historical doc.
+
+## Roster, model and authentication diagnosis
+
+```bash
+python3 scripts/pr-review/panel_config.py show --root .
+```
+
+Compare with committed `pr-review.defaults.json` and the workflow configuration.
+A gitignored local override normally disappears during clean CI checkout. A change
+to base configuration takes effect after it merges; it cannot retroactively change
+the trusted scripts used to review that same PR.
+
+Check CLI availability, the configured provider/model and the actual masked error.
+The workflow supplies the chair's region/endpoint pair; Codex uses its runner CLI
+configuration and Kiro uses its own catalog. Do not infer equivalence or residency
+from similar model names. A Kiro quota error is not evidence that a different
+provider's credentials failed. Do not print environment variables containing keys.
+
+No automatic model exclusion is authorized by judgment-quality statistics. Verify
+unsupported findings against current code, distinguish them from provider failures,
+and obtain an explicit owner-approved roster change when warranted. Keep genuine
+blocking findings and all required coverage; do not weaken gates to make a PR green.
+
+## Completion
+
+Require both CI checks, complete configured peer responses, no unresolved current
+Critical/Major, and a comment bound to the latest HEAD. Recheck HEAD, target branch
+and prerequisite PRs immediately before authorized merge. Retain the merge commit
+and relevant verification results; temporary local evidence is not a portable
+artifact link unless it was actually published.

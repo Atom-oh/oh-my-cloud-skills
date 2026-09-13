@@ -6,6 +6,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - Write non-ASCII as literal UTF-8 in tool inputs, never `\uXXXX` escapes (incl. inside JSON strings). Exempt: escapes that are the file's own source syntax (char-class ranges, codepoint bounds).
 
+## Documentation contract
+
+- Write maintained documentation, instructions and review reports in English.
+  Keep one canonical explanation instead of parallel English/Korean copies.
+- Preserve literal API field names, command names, paths, Korean invocation aliases and
+  syntax tokens such as `[요약]`. Localized examples, fixtures and frozen demo
+  payloads are data, not a requirement to write explanations in Korean.
+- A generated deliverable uses the language the user requests. That capability
+  does not require bilingual maintenance of this repository's own documentation.
+- Read the nearest directory `CLAUDE.md` before editing. This root sets repository
+  policy; scoped files describe their component. Follow the user's current scope.
+- Accepted ADRs explain decisions. Check their status and later supersession before
+  treating them as current requirements. Specs/plans and recorded test results are
+  dated evidence, not new instructions or guarantees about the current checkout.
+- Resolve factual disagreements against the relevant code/configuration and the
+  current policy. Code is evidence of behavior, not permission to violate policy.
+  Do not erase a real defect merely to make the documentation agree with it.
+
 ## What This Is
 
 A Claude Code and Codex plugin marketplace containing eight plugins for AWS cloud work:
@@ -172,15 +190,11 @@ The body contains: Core Capabilities, Diagnostic Commands, Decision Tree (Mermai
 
 ### Skill File Format
 
-Each `SKILL.md` has frontmatter limited to the six fields the Agent Skills spec
-(`https://agentskills.io/specification`) defines — `name`, `description`, `license`,
-`compatibility`, `metadata`, `allowed-tools` — plus the Claude Code extensions
-`user-invocable` / `disable-model-invocation`. Any other key (`triggers:`, `model:`,
-`invocation:`, `argument-hint:`, `tools:`) is **inert**: the runtime ignores it silently.
-**Trigger keywords therefore belong in `description`**, which is the sole selection
-surface — a `triggers:` list strands its keywords where nothing reads them. `scripts/eval-skills.py` enforces
-the allowed-key set in its Structure dimension. The `references/` subdirectory holds
-distilled operational knowledge extracted from source docs.
+Keep skill frontmatter minimal and validated by `scripts/eval-skills.py`. Put routing
+keywords in `description`; a separate `triggers` list is not this repository's selection
+contract. Host-specific metadata is not automatically portable to another host, and
+Claude frontmatter does not register a native Codex role or permission boundary.
+Keep detailed operational knowledge in `references/` and avoid duplicating it here.
 
 ### MCP Configuration
 
@@ -334,7 +348,7 @@ Skill: `agentcore-create` — 5-Phase conversion workflow (Discovery, Design, Sk
 | `pr-autofix-planner` | Read-only fix planner for pr-autofix (enforced Read/Grep/Glob; fable/opus) |
 | `pr-autofix-implementer` | Edit-only plan implementer for pr-autofix (enforced Read/Write/Edit/Grep/Glob — no Bash/network; opus [medium effort]) |
 
-Skill: `co-agent` — 6 modes: **Review** (multi-AI diff/arch review), **Decide** (decision support with comparison table), **ADR** (co-authored decision records), **sync-context** (distill `CLAUDE.md` → `AGENTS.md` once; Kiro/Codex/Antigravity (`agy`) all share that one distilled file), **Consensus** (doc→plan→implement pipeline, `/co-agent:consensus`), **harness** (delegated implementation orchestrator, `/co-agent:harness`). Fans the same prompt to configured peers — Kiro, the other host CLI (Claude or Codex), and Antigravity (`agy`; Gemini removed — ADR-010) — in parallel, excluding the current host, then **the current host synthesizes**. Reports unavailable peers; required review coverage must complete before claiming a gate passed. Adapters: `references/ai-cli-adapters.md`.
+Skill: `co-agent` — 6 modes: **Review** (multi-AI diff/arch review), **Decide** (decision support with comparison table), **ADR** (co-authored decision records), **sync-context** (distill `CLAUDE.md` → `AGENTS.md` once; Kiro/Codex/Antigravity (`agy`) all share that one distilled file), **Consensus** (doc→plan→implement pipeline, `/co-agent:consensus`), **harness** (delegated implementation orchestrator, `/co-agent:harness`). Fans the same prompt to configured peers — Kiro, the other host CLI (Claude or Codex), and Antigravity (`agy`; Gemini removed — ADR-010) — in parallel, excluding the current host, then **the current host synthesizes**. Review/decide/ADR can report solo operation when peers are unavailable; consensus/harness require ready peers. These local workflows do not relax mandatory GitHub CI coverage. Adapters: `references/ai-cli-adapters.md`.
 
 Also in co-agent (moved out of project-init, now an upstream mirror — `docs/reference/project-init-upstream-sync.md`): `pr-autofix` — PR review feedback auto-fix loop (plan on Fable/Opus → opus [medium effort] implementer in a disposable worktree → only the plan-approved delta lands; loop bound `set pr_autofix max_iterations`, default 5; CI review-comment marker resolved from `pr_autofix.review_marker`, regex auto-detect when unset; closes the **PR review memory loop** — the host, never the planner/implementer, reads and updates the one committed `docs/pr-review/review-memory.md` that CI's review prompts also read, ADR-015; escalation ladder — only when `push_gate.enabled` is on, off by default, fails open when it can't review — pass >3 runs the pre-push lens gate before pushing, re-planning once on a blocking verdict; pass >5 escalates the panel/chair models for that gate call only, never persisted to config), and `decision-reconcile` — ADR contradiction/drift detection via a diverse multi-agent panel, drafting a superseding ADR. Triggers: reversed decisions, ADR contradictions, reconcile ADRs.
 
@@ -463,7 +477,7 @@ atlas:     /atlas:init → scan repo → propose doc set (AskUserQuestion) → w
 
 ## Docs Site & CI
 
-- `doc-sites/` — Docusaurus site (en/ko i18n) deployed to https://www.atomai.click/oh-my-cloud-skills/ by `.github/workflows/deploy-docs.yml` on push to main; build detail in `doc-sites/CLAUDE.md`
+- `doc-sites/` — Docusaurus documentation site deployed to https://www.atomai.click/oh-my-cloud-skills/ by `.github/workflows/deploy-docs.yml` on push to main; build detail in `doc-sites/CLAUDE.md`
 - `.github/workflows/pr-review.yml` — CI multi-AI PR review (ADR-009); runbook in `docs/ci-pr-review-runbook.md`, review memory in `docs/pr-review/review-memory.md` (host-maintained, see pr-autofix)
 
 ## Auto-Sync Rules
@@ -473,7 +487,7 @@ Documentation stays in sync via hooks and skills:
 | Trigger | Mechanism | Action |
 |---------|-----------|--------|
 | File edit (Write/Edit) | `check-doc-sync.sh` (PostToolUse) | Walks parent dirs for missing CLAUDE.md, warns if absent |
-| File edit on README.md | PostToolUse hook | Auto-prompts Korean translation to README.ko.md |
+| File edit on README.md | PostToolUse hook | Maintains canonical English README content; legacy README.ko.md is an English compatibility pointer |
 | `git commit` (Bash) | `secret-scan.sh` (PreToolUse) | Blocks commits containing API keys, tokens, passwords |
 | `git commit` (Bash) | `pre-commit-review.sh` (kiro, PreToolUse, opt-in) | Kiro-run review of the staged diff; fail-open, blocks only on `critical` |
 | `git push` (Bash) | `pre-push-review.sh` (kiro, PreToolUse, opt-in) / `consensus_hooks.py pre-push-gate` (co-agent, PreToolUse, opt-in) | 3-lens (correctness/security/scope) review of the range about to be pushed; fail-open; `critical`/2+-lens BLOCKED, `warning`/1-lens CHAIR JUDGMENT REQUIRED |
@@ -485,3 +499,13 @@ Documentation stays in sync via hooks and skills:
 | Commit creation | `.git/hooks/commit-msg` | Strips Co-Authored-By lines from commit messages |
 | Manual | `/sync-docs` skill | Full documentation sync with quality scoring |
 | Plan mode exit | CLAUDE.md convention | Update docs when architectural decisions change |
+
+## Banned patterns
+
+These project rules apply to AWS/IaC changes:
+- No `0.0.0.0/0` inbound. Manage security groups through CDK/Terraform, never ad-hoc CLI ingress.
+- Public ALBs use the CloudFront prefix list; no direct Route53-to-ALB/EC2 bypass.
+- No IAM `Principal:"*"`, with or without a Condition. Wildcard `Resource` requires a restrictive Condition.
+- No Lambda function URL `AuthType: NONE`.
+- No secrets in environment variables; use Secrets Manager or SSM Parameter Store.
+- PII in DynamoDB needs KMS and TTL. Keep S3 Block Public Access enabled. Never delete CloudTrail logs.

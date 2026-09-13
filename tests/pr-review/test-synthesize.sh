@@ -15,6 +15,7 @@ setup() {
   WORK=$(mktemp -d); BIN=$(mktemp -d); export PATH="$BIN:$PATH"
   mkdir -p "$WORK/slot"
   echo "diff --git a b" > "$WORK/diff.txt"
+  printf 'VERIFIED_BASE_CONTEXT_FIXTURE\nSource procedures and Codex entries are distinct.\n' > "$WORK/base-context.md"
   : > "$WORK/responded.txt"
   export MOCK_REVIEW_REPORT="$WORK/canonical.md"
   cat > "$MOCK_REVIEW_REPORT" <<'EOF'
@@ -63,6 +64,12 @@ fi
 [ -s "$WORK/review.md" ] \
   && pass "synthesize (a) review.md is still produced" \
   || fail "synthesize (a) review.md is still produced" "file missing or empty"
+grep -q "VERIFIED_BASE_CONTEXT_FIXTURE" "$WORK/synth-stdin.txt" \
+  && pass "synthesize includes the same verified base context supplied to peers" \
+  || fail "synthesize includes the same verified base context supplied to peers"
+grep -q "Write the review in English" "$WORK/synth-prompt.txt" \
+  && pass "synthesize requests English review prose" \
+  || fail "synthesize requests English review prose"
 rm -rf "$WORK" "$BIN" "$LOG"
 
 # (b) 절단 마커 — 캡을 실제로 넘긴 셀은 체어 stdin 에 TRUNCATED 마커가 남아야 한다(잘린
@@ -114,7 +121,7 @@ printf 'kiro-opus\nkiro-gpt\nkiro-glm\n' > "$WORK/degraded-models.txt"
 if ! bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
   fail "synthesize (d) script exits 0 with a degraded-models.txt present" "exited non-zero"
 fi
-grep -q "커버리지 저하" "$WORK/review.md" 2>/dev/null \
+grep -q "Review coverage incomplete" "$WORK/review.md" 2>/dev/null \
   && pass "synthesize (d) degraded-models banner appears in the review" \
   || fail "synthesize (d) degraded-models banner appears in the review" "banner missing"
 [ "$(tail -1 "$WORK/review.md")" = "VERDICT: PASS" ] \
@@ -136,13 +143,13 @@ fi
 [ "$(tail -1 "$WORK/review.md")" = "VERDICT: PASS" ] \
   && pass "synthesize (e) coverage-severe.flag no longer overrides the chair's PASS verdict" \
   || fail "synthesize (e) coverage-severe.flag no longer overrides the chair's PASS verdict" "got: $(tail -1 "$WORK/review.md")"
-grep -q "커버리지 붕괴" "$WORK/review.md" 2>/dev/null \
+grep -q "Insufficient independent coverage" "$WORK/review.md" 2>/dev/null \
   && pass "synthesize (e) severe banner appears in the review" \
   || fail "synthesize (e) severe banner appears in the review" "banner missing"
 rm -rf "$WORK" "$BIN"
 
 # (f) responded.txt 가 없는 caller — `< 없는파일` 리다이렉트 실패가 pipefail 하에서 command
-# substitution 을 즉시 죽여, 바로 아래의 문서화된 "(none — Claude solo)" 폴백이 set -e 하에서
+# substitution 을 즉시 죽여, 바로 아래의 문서화된 "(none — required coverage incomplete)" 폴백이 set -e 하에서
 # 사실상 도달 불가능한 latent 비대칭이 있었다(현재 유일한 호출자 run-panel.sh 는 항상
 # `: > "$RESP"` 로 파일을 먼저 만들어 실 호출 경로는 안전 — 11차 리뷰).
 setup; mkclaude_pass
@@ -153,7 +160,7 @@ if bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev
 else
   fail "synthesize (f) script exits 0 when responded.txt is missing (standalone caller)" "exited non-zero"
 fi
-grep -q "none — Claude solo" "$WORK/synth-prompt.txt" 2>/dev/null \
+grep -q "none — required coverage incomplete" "$WORK/synth-prompt.txt" 2>/dev/null \
   && pass "synthesize (f) documented fallback text reaches the chair prompt when responded.txt is absent" \
   || fail "synthesize (f) documented fallback text reaches the chair prompt when responded.txt is absent" "fallback missing"
 rm -rf "$WORK" "$BIN"
@@ -196,7 +203,7 @@ export GITHUB_ENV="$WORK/github_env.txt"; : > "$GITHUB_ENV"
 if ! bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
   fail "synthesize (h) script exits 0 when both chair attempts produce no VERDICT line" "exited non-zero"
 fi
-grep -q "리뷰 생성 실패(인프라)" "$WORK/review.md" 2>/dev/null \
+grep -q "Review generation failed" "$WORK/review.md" 2>/dev/null \
   && pass "synthesize (h) infra-failure message appears, not a fabricated review finding" \
   || fail "synthesize (h) infra-failure message appears, not a fabricated review finding" "got: $(cat "$WORK/review.md")"
 [ "$(tail -1 "$WORK/review.md")" = "VERDICT: FAIL" ] \
@@ -325,6 +332,26 @@ else
   fail "synthesize rejects a nonzero CLI even when its partial output says PASS"
 fi
 unset GITHUB_ENV
+rm -rf "$WORK" "$BIN"
+
+# Missing verified context must fail before any provider is invoked.
+setup
+export MOCK_CONTEXT_CALL="$WORK/provider-called"
+cat > "$BIN/claude" <<'EOF'
+#!/usr/bin/env bash
+touch "$MOCK_CONTEXT_CALL"
+cat "$MOCK_REVIEW_REPORT"
+EOF
+chmod +x "$BIN/claude"
+rm "$WORK/base-context.md"
+if bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
+  fail "synthesize rejects missing verified base context"
+else
+  pass "synthesize rejects missing verified base context"
+fi
+[ ! -e "$MOCK_CONTEXT_CALL" ] && pass "missing base context does not invoke a provider" \
+  || fail "missing base context does not invoke a provider"
+unset MOCK_CONTEXT_CALL
 rm -rf "$WORK" "$BIN"
 
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)

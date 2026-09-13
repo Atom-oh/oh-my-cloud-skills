@@ -1,6 +1,6 @@
-# docs/ — Internal, Claude-facing project documentation
+# docs/ — Internal project documentation
 
-Documentation Claude (and contributors) read while working on this repo — decisions, ops
+Documentation hosts and contributors read while working on this repo — decisions, ops
 runbooks, cross-cutting reference material, and superpowers-workflow specs/plans. **Not**
 the public documentation site — that's the separate Docusaurus project at `../doc-sites/`
 (published to GitHub Pages). Don't add site content here, and don't add internal docs there.
@@ -22,7 +22,7 @@ docs/
 - `architecture.md` carries **plugin counts** (agents/skills/commands) — update it when a
   plugin's component count changes (the `/sync-docs` skill audits this; `doc-sites/docs/intro.md`
   carries the same counts for the public site — keep both in sync).
-- Bilingual (KO/EN) where user-facing; no emojis; match the repo's clear-prose style.
+- Maintained prose is English; no duplicate Korean translation is required. Preserve literal syntax, invocation aliases and example data. Match the root documentation contract.
 - Each subdirectory has its own `CLAUDE.md` with filename/section conventions — read it
   before adding a file there (`decisions/`, `runbooks/`, `superpowers/`).
 

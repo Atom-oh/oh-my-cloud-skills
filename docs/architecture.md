@@ -2,7 +2,7 @@
 
 ## System Overview
 
-oh-my-cloud-skills is a Claude Code plugin marketplace providing 7 plugins for AWS cloud content creation (presentations, diagrams, docs, workshops), infrastructure operations/troubleshooting, multi-AI collaboration, and developer tooling.
+oh-my-cloud-skills is a Claude Code and Codex plugin marketplace providing 8 plugins for AWS cloud content creation (presentations, diagrams, docs, workshops), infrastructure operations/troubleshooting, multi-AI collaboration, and developer tooling.
 
 ## Component Structure
 
@@ -16,7 +16,7 @@ oh-my-cloud-skills is a Claude Code plugin marketplace providing 7 plugins for A
 | agentcore-creator | Claude Code → Bedrock AgentCore conversion (1 agent, 1 skill) | AWS CLI, Python |
 | co-agent | Multi-AI collaboration — review/decide/ADR/sync-context/consensus/harness (5 agents, 3 skills, 6 commands) | Kiro/Codex/Antigravity CLI |
 | project-init | Project scaffolding & doc management (1 agent, 1 skill, 9 commands, upstream mirror) | Bash, Markdown |
-| kiro | Cost-savings delegation — Claude plans/verifies, Kiro CLI implements (1 agent, 1 skill, 4 commands) | Kiro CLI |
+| kiro | Cost-savings delegation — the current host plans/verifies, Kiro CLI implements (1 agent, 1 skill, 4 commands) | Kiro CLI |
 
 ### Tool Layer
 
@@ -36,28 +36,12 @@ oh-my-cloud-skills is a Claude Code plugin marketplace providing 7 plugins for A
 | docs/ | Internal docs — ADRs, runbooks, superpowers specs/plans (this file) |
 | marketplace.json | Plugin registry |
 
-## Architecture Diagram
+## Host surfaces
 
-```
-┌───────────────────────────────────────────────────────────────────────┐
-│                      oh-my-cloud-skills — Plugin Marketplace          │
-├────────────────────┬────────────────────┬──────────────────────────┤
-│ aws-content-plugin  │ aws-ops-plugin      │ co-agent                 │
-│ 9 agents, 9 skills  │ 10 agents, 6 skills │ 5 agents, 3 skills,      │
-│ content creation    │ infra operations    │ 6 commands — multi-AI    │
-├────────────────────┼────────────────────┼──────────────────────────┤
-│ kiro-power-converter│ agentcore-creator   │ project-init             │
-│ 1 agent, 1 skill    │ 1 agent, 1 skill    │ 1 agent, 1 skill,        │
-│ → Kiro Power        │ → Bedrock AgentCore │ 9 commands (upstream)    │
-├────────────────────┴────────────────────┴──────────────────────────┤
-│ kiro — 1 agent, 1 skill, 4 commands — delegates implementation to    │
-│ Kiro CLI                                                              │
-├───────────────────────────────────────────────────────────────────────┤
-│ Tools: remarp_to_slides.py · extract_pptx_theme.py · remarp-vscode ·  │
-│        eval-skills.py · eval-skill-behavior.py                       │
-│ Docs:  doc-sites/ (Docusaurus) · docs/ (ADRs/runbooks/superpowers)    │
-└───────────────────────────────────────────────────────────────────────┘
-```
+The table above lists all eight plugins. Each has Claude and Codex manifests and a
+marketplace entry. Codex projections contain 74 entry skills covering 76 source
+procedures (23 skills, 24 commands, 29 agents), plus 25 plugin hooks. Project-init's
+three project-hook templates are installed separately and are not plugin hooks.
 
 ## Data Flow
 

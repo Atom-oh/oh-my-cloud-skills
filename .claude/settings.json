@@ -31,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "jq -r '.tool_input.file_path // .tool_response.filePath // empty' | { read -r f; if [ -n \"$f\" ] && echo \"$f\" | grep -qE '/README\\.md$'; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"README.md was just modified. You MUST now read README.md and translate it to Korean, then write the result to README.ko.md in the same directory. Keep all markdown formatting, links, code blocks, and structure intact. Translate English text to natural Korean.\"}}'; fi; }",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath // empty' | { read -r f; if [ -n \"$f\" ] && echo \"$f\" | grep -qE '(^|/)README\\.md$'; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"README.md was modified. Maintain its canonical English documentation and verify affected links. If README.ko.md exists, keep only an English compatibility pointer to README.md; do not generate a duplicate translation.\"}}'; fi; }",
             "statusMessage": "Checking README sync..."
           },
           {
