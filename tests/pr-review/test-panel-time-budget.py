@@ -70,6 +70,7 @@ class PanelTimeBudgetTests(unittest.TestCase):
         function = re.search(r"(?ms)^try_panel\(\) \{\n.*?^\}", SCRIPT.read_text())
         self.assertIsNotNone(function)
         program = (
+            "source " + shlex.quote(str(ROOT / "scripts/pr-review/lib.sh")) + "\n" +
             function[0] + "\nlauncher() {\n"
             'printf \'%s\\n\' "$1" >> "$ATTEMPTS"\n' + body + "\n}\n"
             'try_panel codex "$SLOT" "$ERR" launcher "literal argument"\n'

@@ -1,5 +1,10 @@
 # ADR-014: PR-Review + co-agent — `gpt-5.5` Deprecated, Bump to `gpt-5.6` Variants
 
+Current PR-review selection (2026-09-13): Kiro GPT uses `gpt-5.6-sol` and Codex
+explicitly requests `global.openai.gpt-6-astra` with its existing provider settings.
+The migration details below record the earlier decision, not the active roster.
+See [the current guide](../ci-pr-review.md).
+
 ## Status
 
 Accepted (2026-07-15) — amends the Kiro roster set by ADR-012 and co-agent's default

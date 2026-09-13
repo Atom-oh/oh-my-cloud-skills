@@ -23,8 +23,9 @@ GitHub configuration; do not infer its current state from this document.
    It derives source-procedure and Codex-entry counts from that checkout. The bounded
    context is included in every peer prompt and in chair stdin. Missing/stale/oversized
    context stops the review; it is never silently truncated or replaced with guesses.
-4. The workflow creates one FULL prompt for every configured peer. The complete
-   diff arrives on stdin or as embedded text; Kiro receives no file tools. Base facts
+4. With `ROLE_REVIEW=1`, the workflow creates one common FULL context and adds one
+   distinct specialist prompt per configured peer. The supplied diff arrives on
+   stdin or as embedded text; Kiro receives no file tools. Base facts
    describe base, so a proposed head change may intentionally update them.
 5. `run-panel.sh` records expected/responded cells, failures and truncation evidence.
    `synthesize.sh` supplies the same verified context, diff and peer reports to the
@@ -78,10 +79,13 @@ It is untracked local configuration and is not delivered to the clean CI checkou
 CI roster changes use the committed defaults.
 `PR_REVIEW_CONFIG_ROOT` can redirect the helper's configuration root in tests or
 manual invocations; the production workflow does not set it.
-The production workflow has one FULL lens; helper tests may use multiple lenses.
+The production workflow requires exactly one FULL input; legacy helper tests may
+use multiple lenses without `ROLE_REVIEW=1`.
 Do not infer active membership from old ADR examples or a fixed model-count label.
-Codex's model comes from runner configuration; Kiro model IDs come from the panel
-configuration. Provider catalogs are independent and their strings need not match.
+Codex explicitly requests `global.openai.gpt-6-astra` while retaining the runner's
+existing provider configuration. The default Kiro GPT cell requests `gpt-5.6-sol`;
+Kiro model IDs come from the validated panel configuration. Provider catalogs are
+independent and their strings need not match.
 
 The workflow's region/endpoint and chair configuration, `run-panel.sh` deadline/input
 limits, and `synthesize.sh` output/timeout limits are authoritative. Do not restate
@@ -94,8 +98,51 @@ merely to turn incomplete coverage green. Every enabled required reviewer must f
 Intentional roster changes need owner-approved configuration review; do not drop Kiro
 Opus or another cell just to avoid a finding. A single remaining vendor cannot satisfy
 required coverage when a configured vendor fails. Intentionally disabled cells are
-excluded from the expected roster; the helper does not independently enforce a
-minimum vendor count for every possible configuration.
+excluded from the expected roster. Specialist mode additionally requires at least
+two recognized model families for code, configuration, instructions, decisions,
+security docs and unrecognized input. Sensitive AWS/authentication/security/deployment
+content also requires two families when it appears in README or other Markdown;
+runbook/operational paths are conservatively sensitive. Removed guards count too.
+Only ordinary nonsensitive documentation may use a single configured family.
+A failed family check remains a severe coverage failure.
+
+## Specialist assignments
+
+| Configured cell | Role |
+| --- | --- |
+| Codex | Correctness: code/data flow, edge cases, regression tests |
+| Kiro Opus | AWS and security: IAM, networking, secrets, privacy boundaries |
+| Kiro GPT | Operations: deployment, recovery, observability, budgets |
+| Kiro GLM, only if enabled | Contracts: API/schema/configuration and documentation promises |
+
+The adapter does not add providers or override `panel_config.py`. Every enabled
+role receives the same supplied input and must return; another role cannot fill
+its missing slot. `role-assignments.json` records the validated mapping.
+The panel keeps `run-panel.sh DIFF LENSES WORK`; chair arguments remain
+`synthesize.sh DIFF WORK PR TITLE OUT`.
+
+The chair remains mandatory: peer Markdown is not a structured severity
+attestation sufficient for a clean fast path. L1 checks, context validation,
+per-cell total deadlines, no-tools preflight, fallback/quota checks, truncation
+flags, semantic verdict parsing and HEAD-bound publication remain in force.
+The added role header is included in the 128 KiB per-argument check; oversize
+input fails coverage rather than silently losing text.
+
+Offline checks: `bash tests/pr-review/test-run-panel.sh` and
+`bash tests/pr-review/test-specialist-roles.sh`. These mock providers and do not
+establish native model quality or remote required-check status.
+
+The distributable workflow remains a separate source:
+`plugins/co-agent/skills/pr-autofix/references/pr-review-workflow.yml`, installed
+by its `scripts/review_gate.py`. This adapter changes this repository's configured
+workflow, not that generic template.
+
+Anchored provider diagnostics are checked before accepting panel, startup or chair
+output, even after exit zero. Model-selection/implicit fallback and account usage
+failures are terminal and retained; a later retry or chair fallback cannot erase
+them. Service throttles retain the existing bounded recovery. Quoted/fenced diff
+examples are not provider failures. These rules apply to Codex and Claude as well
+as Kiro; no retry, time or byte limit is increased.
 
 ## Provider data boundary
 

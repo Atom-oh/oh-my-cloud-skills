@@ -324,7 +324,7 @@ EOF2
 #!/bin/bash
 [ "${1:-}" = "--version" ] && { echo "kiro-cli test"; exit 0; }
 if [[ "${2:-}" == 'Kiro startup safety check.'* ]]; then
-    if [[ "$*" == *gpt-5.6-terra* ]]; then
+    if [[ "$*" == *gpt-5.6-sol* ]]; then
         cat preflight-canary.txt
     else
         echo "NO_TOOLS"

@@ -1,9 +1,9 @@
 {
-  "_comment": "pr-review lens×model matrix defaults. Disabling a cell removes it from every lens (matrix = lens × enabled cells). See scripts/pr-review/panel_config.py. kiro-gpt's model is 'gpt-5.6-terra', NOT the same string as codex's 'global.openai.gpt-6-astra' (see run-panel.sh's Codex-cell comment / ~/.codex/config.toml) — these are independently-named models, one per vendor-side catalog (Kiro's cross-vendor router vs. Codex's own amazon-bedrock-runtime catalog), not a typo/drift between them. See ADR-014.",
+  "_comment": "Validated PR-review peer defaults. Kiro GPT requests gpt-5.6-sol; run-panel.sh pins Codex to global.openai.gpt-6-astra while preserving its runner provider configuration. Disabled cells are omitted; every enabled role is required.",
   "panel": {
     "codex":     { "enabled": true },
     "kiro-opus": { "enabled": true, "model": "claude-opus-5" },
-    "kiro-gpt":  { "enabled": true, "model": "gpt-5.6-terra" },
+    "kiro-gpt":  { "enabled": true, "model": "gpt-5.6-sol" },
     "kiro-glm":  { "enabled": false, "model": "glm-5" }
   }
 }

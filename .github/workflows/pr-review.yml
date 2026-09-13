@@ -20,6 +20,7 @@ jobs:
       pull-requests: write
       contents: read
     env:
+      ROLE_REVIEW: "1"
       # SigV4 region and the Bedrock endpoint region must agree.
       ANTHROPIC_MODEL: global.anthropic.claude-fable-5-1
       CLAUDE_CODE_USE_BEDROCK: 1

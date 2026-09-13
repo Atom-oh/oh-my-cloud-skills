@@ -96,3 +96,74 @@ scrub_secrets() {
     -e 's/((api[_-]?key|aws_secret_access_key|aws_access_key_id|access[_-]?token|client[_-]?secret|secret|passwd|password|token)['"'"'"]?[[:space:]]*[:=][[:space:]]*['"'"'"])[^'"'"'"]{8,}(['"'"'"])/\1[REDACTED]\3/gI' \
     -e 's/((^|[^A-Za-z0-9_])(api[_-]?key|aws_secret_access_key|aws_access_key_id|access[_-]?token|client[_-]?secret|secret|passwd|password|token)[[:space:]]*[:=][[:space:]]*)[A-Za-z0-9/+_-]{16,}/\1[REDACTED]/gI'
 }
+
+# Interpret anchored CLI diagnostics, never general words in echoed review data.
+# Output: failure-kind<TAB>diagnostic. Empty output means no known failure.
+provider_diagnostic() {
+  python3 - "$1" <<'PY'
+import re, sys
+ansi = re.compile(r"\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07\x1b]*(?:\x07|\x1b\\))")
+log_prefix = re.compile(r"^(?:\[(?:error|fatal|warning|warn|info)\]|(?:error|fatal|warning|warn|info)\s*:)\s*", re.I)
+model_code = re.compile(r"\b(?:INVALID_MODEL_ID|ModelNotFoundException|invalid_model|model_not_found)\b", re.I)
+transient_code = re.compile(r"\b(?:ThrottlingException|TooManyRequestsException|ServiceQuotaExceededException|RESOURCE_EXHAUSTED)\b", re.I)
+usage_code = re.compile(r"\b(?:MONTHLY_REQUEST_COUNT|UsageLimitReachedError|insufficient_quota)\b", re.I)
+account_limit = re.compile(r"(?:insufficient credits|monthly request limit (?:reached|exceeded)|usage limit (?:reached|exceeded)|billing hard limit reached|you have reached (?:the limit for overages|your (?:monthly|usage|credit) limit))\b", re.I)
+def classify(line):
+    body = log_prefix.sub("", line)
+    diagnostic_prefix = body != line or line.startswith("An error occurred (")
+    if model_code.match(body) or (diagnostic_prefix and model_code.search(body)):
+        return "model_selection"
+    if re.match(r"failed to set model\b|(?:invalid|unknown|unsupported)\s+model\b|model\s+.{0,100}\s+(?:not found|not available|unsupported)\b", body, re.I):
+        return "model_selection"
+    if re.match(r"no agent with name\b|Json supplied at .* is invalid\b", body, re.I):
+        return "agent_fallback"
+    if re.match(r"(?:falling back|using (?:a )?fallback|fallback model)\b", body, re.I):
+        return "agent_fallback" if re.search(r"agent|user specified default", body, re.I) else "model_fallback"
+    if (usage_code.match(body) or (diagnostic_prefix and usage_code.search(body))
+            or account_limit.match(body) or re.match(r"quota exceeded\b", body, re.I)
+            or ((diagnostic_prefix or transient_code.match(body)) and account_limit.search(body))):
+        return "usage_limit"
+    if transient_code.match(body) or (diagnostic_prefix and transient_code.search(body)) or re.match(r"rate limit exceeded\b", body, re.I):
+        return "transient_service"
+    return None
+try:
+    fence = None
+    failure = None
+    reset_recorded = False
+    with open(sys.argv[1], encoding="utf-8", errors="replace") as source:
+        for raw in source:
+            raw = ansi.sub("", raw)
+            line = raw.strip()
+            marker = re.match(r"^(`{3,}|~{3,})", line)
+            if marker:
+                token = marker[1]
+                if fence is None:
+                    fence = token
+                elif token[0] == fence[0] and len(token) >= len(fence):
+                    fence = None
+                continue
+            if fence or raw.startswith(("    ", "\t")) or line.startswith(("+", "-", ">", "|", "diff --git", "@@")):
+                continue
+            kind = classify(line)
+            if kind and (failure is None or (failure.startswith("transient_service\t") and kind != "transient_service")):
+                failure = kind + "\t" + line.replace("\t", " ")
+            if failure and failure.startswith("usage_limit\t") and not reset_recorded and re.match(
+                    r"(?:The |Your )?(?:request )?limits reset on\b", line, re.I):
+                failure += "; " + line.replace("\t", " ")
+                reset_recorded = True
+    if failure:
+        print(failure)
+except OSError:
+    print("diagnostic_read_error\tProvider diagnostic file could not be read")
+PY
+}
+
+# Service throttles retain the existing bounded retries. Model selection, implicit
+# fallback and account usage failures are terminal for this review attempt.
+provider_diagnostic_terminal() {
+  case "$1" in
+    transient_service$'\t'*) return 1 ;;
+    '') return 1 ;;
+    *) return 0 ;;
+  esac
+}

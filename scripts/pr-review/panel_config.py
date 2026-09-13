@@ -11,10 +11,10 @@ this repo's CI — there is no "current user" to have a personal layer, so this 
   pr-review.defaults.json              (committed, next to this script)      ← base
   <repo>/.claude/pr-review.local.json  (gitignored, this repo only)           ← override
 
-Cells: codex (no `model` knob — fixed via ~/.codex/config.toml) + kiro-opus/kiro-gpt/
-kiro-glm (each wraps one Kiro model). Disabling a cell removes it from every lens — the
-matrix is lens × enabled cells, not a per-lens routing table (YAGNI: nothing has asked
-for per-lens model assignment; full matrix is the current, only documented shape).
+Cells: codex (model pinned by run-panel.sh; provider settings stay in runner config)
+plus kiro-opus/kiro-gpt/kiro-glm (each wraps one configured Kiro model). Disabling a
+cell removes it from the expected roster. ROLE_REVIEW=1 assigns one specialist
+per enabled cell; legacy mode retains the lens matrix.
 
 Usage:
   panel_config.py show [--root DIR]                     # effective config table
@@ -218,7 +218,7 @@ def cmd_set(root, rest):
         local["panel"][cell]["enabled"] = val.lower() in ("true", "1", "yes")
     elif key == "model":
         if cell == "codex":
-            print("codex has no model knob — it's fixed via ~/.codex/config.toml", file=sys.stderr)
+            print("codex has no model knob — it's pinned by run-panel.sh; provider settings remain in runner config", file=sys.stderr)
             return 2
         if not MODEL_RE.fullmatch(val) or val.startswith("-"):
             print(f"model contains invalid characters: {val!r}", file=sys.stderr)
