@@ -219,8 +219,9 @@ arrow lambda -> api "Response" color #4CAF50 style dashed step 3
 
 ### Circle Element {#circle-element}
 
-Circular nodes use the legacy static syntax. They do not accept an ID or a `step`
-attribute; use boxes when the node needs arrow connections or progressive reveal.
+Circular nodes use the legacy static syntax. The parser records the label, but the
+current Canvas compiler does not draw it. Circles accept neither an ID nor a `step`
+attribute; use boxes for visible labels, arrow connections, or progressive reveal.
 
 ```markdown
 :::canvas

@@ -332,9 +332,10 @@ aws eks describe-cluster --name prod-cluster \
 
 **관찰 사항 (INFORMATIONAL)**: 이 EKS 1.29 예제의 `encryptionConfig: null`은
 고객 관리형 KMS 구성이 없다는 뜻이며, Secret이 암호화되지 않았다는 의미가 아닙니다.
-EKS 1.28 이상은 고객 관리형 키를 구성하지 않은 경우 AWS 소유 KMS 키로 모든
-Kubernetes API 데이터에 기본 봉투 암호화를 제공합니다. 실제 버전과 키 소유권을
-확인하고 워크로드별 CMK 요구 사항은 별도로 평가합니다.
+EKS 1.28 이상은 모든 Kubernetes API 데이터에 봉투 암호화를 적용합니다. 기본 키
+암호화 키(KEK)는 AWS 소유 키이며, 고객 관리형 KMS 키(CMK)를 구성하면 해당 키를
+KEK로 사용합니다. 기존에 Secret에 사용하던 CMK도 모든 API 데이터의 KEK가 됩니다.
+실제 버전과 키 소유권을 확인하고 워크로드별 CMK 요구 사항은 별도로 평가합니다.
 [AWS 기본 봉투 암호화](https://docs.aws.amazon.com/eks/latest/userguide/envelope-encryption.html)를 참고합니다.
 
 아래 보고서의 #14는 정보 항목입니다. 조직별 CMK 요구 사항이 주어지지 않았으므로
@@ -476,8 +477,9 @@ The absence of a customer-managed KMS key is not counted as unencrypted data or 
 ### Critical #2: SSH 규칙 제거 {#critical-2-remove-ssh-rule}
 
 공개 SSH 규칙을 관리하는 CDK/Terraform 정의에서 제거하고 승인된 IaC 배포 절차로
-적용합니다. 관리 접근 경로와 롤백을 먼저 확인하고 배포된 규칙을 검사하여 이후 배포가
-노출을 다시 만들지 않도록 합니다. 임시 보안 그룹 CLI 변경으로 대신하지 않습니다.
+적용합니다. 이미 구성된 AWS Systems Manager Session Manager 같은 승인된 관리 접근
+경로와 롤백을 먼저 확인합니다. 이후 배포가 노출을 다시 만들지 않도록 배포된 규칙을
+검사합니다. 임시 보안 그룹 CLI 변경으로 대신하지 않습니다.
 
 감사에서 선택한 그룹에 대해 읽기 전용으로 검증합니다:
 

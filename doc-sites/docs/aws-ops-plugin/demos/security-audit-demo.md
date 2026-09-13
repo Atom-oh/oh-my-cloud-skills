@@ -332,10 +332,11 @@ Illustrative response:
 
 **OBSERVATION (INFORMATIONAL)**: In this EKS 1.29 sample, `encryptionConfig: null`
 shows no customer-managed KMS configuration; it does not mean Secrets are unencrypted.
-EKS 1.28 and later provide default envelope encryption for all Kubernetes API data
-with an AWS-owned KMS key unless a customer-managed key is configured. Verify the
-actual version and key ownership, and assess any workload-specific CMK requirement
-separately. See [AWS default envelope encryption](https://docs.aws.amazon.com/eks/latest/userguide/envelope-encryption.html).
+EKS 1.28 and later envelope-encrypt all Kubernetes API data. They use an AWS-owned
+key encryption key (KEK) by default, or a configured customer-managed KMS key (CMK)
+as the KEK. A CMK previously used for Secrets becomes the KEK for all API data.
+Verify the actual version and key ownership, and assess any workload-specific CMK
+requirement separately. See [AWS default envelope encryption](https://docs.aws.amazon.com/eks/latest/userguide/envelope-encryption.html).
 
 Item #14 is informational in the report below. No organization-specific CMK
 requirement has been supplied, so the example does not invent one to justify a finding.
@@ -476,9 +477,10 @@ workflow, with rollback and workload verification; this page does not run an IAM
 ### Critical #2: Remove SSH Rule {#critical-2-remove-ssh-rule}
 
 Remove the public SSH rule from its owning CDK/Terraform definition and apply the
-change through the approved IaC deployment process. Confirm administrative access
-and rollback first, then inspect the deployed rules so a later deployment cannot
-silently restore the exposure. Do not substitute an ad-hoc security-group CLI change.
+change through the approved IaC deployment process. Confirm approved administrative
+access, such as an already-configured AWS Systems Manager Session Manager path, and
+rollback first. Then inspect the deployed rules so a later deployment cannot silently
+restore the exposure. Do not substitute an ad-hoc security-group CLI change.
 
 Read-only verification, using the selected group from the audit:
 
