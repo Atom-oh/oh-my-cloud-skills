@@ -84,16 +84,15 @@ logical prompt (+ the ADR JSON) to whichever exist:
 ```bash
 command -v kiro-cli >/dev/null 2>&1 && echo "kiro-cli available"   # NOTE: binary is kiro-cli, NOT kiro
 command -v codex    >/dev/null 2>&1 && echo "codex available"
-command -v agy      >/dev/null 2>&1 && echo "agy available"
+command -v claude   >/dev/null 2>&1 && echo "claude available"
 ```
 
 If the **co-agent** plugin is loaded, prefer delegating this fan-out to it (it owns the
 adapters, size guards, and citation validation — `co-agent` skill, Review mode).
-Otherwise invoke directly, read-only, capturing each to a file:
+Otherwise exclude the current host, then invoke peers read-only, capturing each to a file:
 `kiro-cli chat "<prompt>" --no-interactive --trust-tools=read,grep --wrap never` ·
-`codex exec -s read-only "<prompt>"` · `agy -p "<prompt>" --model "Gemini 3.1 Pro (High)" --sandbox`.
-Never call the `gemini` CLI — co-agent removed Gemini support (Agy superseded it;
-ADR-010) and this skill inherits that policy. Degrade gracefully: if none are installed,
+`codex exec -s read-only "<prompt>"` or the read-only Claude adapter when Codex hosts.
+Never call `agy` or `gemini`: both are retired by ADR-022. Degrade gracefully: if none are installed,
 the Claude-only panel is complete — say so, never hard-fail on a missing CLI.
 
 > **External CLIs get a digest, not repo access** — they can only find logical conflicts

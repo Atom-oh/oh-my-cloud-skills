@@ -56,7 +56,7 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 import consensus_state as cs
-from co_agent_host import HOSTS, detect_host, peer_roster
+from co_agent_host import HOSTS, detect_host, peer_roster, retired_peer_message
 from co_agent_env import sanitized_env as _sanitized_env, _SENSITIVE_ENV_RE, CLAUDE_GATE_ISOLATION
 try:
     import co_agent_config as cac
@@ -184,15 +184,14 @@ _VERDICT_RE = re.compile(r"^\s*(PASS(?:ED)?|BLOCK(?:ED)?)\b", re.I)
 
 # Review adapters, mirroring references/ai-cli-adapters.md. Delivery is per the channel each
 # CLI actually consumes (untrusted content is NEVER put in argv → no `ps` exposure):
-#   channel "stdin" — prompt+diff piped on stdin (claude/codex/agy).
+#   channel "stdin" — prompt+diff piped on stdin (claude/codex).
 #   channel "file"  — written to a temp file; argv tells the CLI to fs_read it. Kiro `chat`
 #                     IGNORES stdin (see ai-cli-adapters.md), so it MUST read the file.
 # Each reviewer runs read-only / sandboxed / non-acting so a diff prompt-injection can't drive
-# tool execution: codex -s read-only · agy --sandbox · kiro --trust-tools=fs_read
+# tool execution: codex -s read-only · kiro --trust-tools=fs_read
 # (only the read-only fs_read tool auto-approved). {M} expands to the per-peer model flag;
 # {F} to the temp-file path (file channel only).
 _REVIEW = {
-    "agy":      {"channel": "stdin", "argv": ["agy", "-p", "{I}", "--sandbox", "{M}"]},
     "claude":   {"channel": "stdin", "argv": ["claude", "-p", "{I}", "--permission-mode", "plan",
                                             "--output-format", "text", "{M}", *CLAUDE_GATE_ISOLATION]},
     # Gates launch in a temporary NON-git directory; keep the read-only sandbox,
@@ -202,7 +201,7 @@ _REVIEW = {
     "kiro-cli": {"channel": "file",  "argv": ["kiro-cli", "chat", "{I}", "--v3", "--mode", "default",
                           "--no-interactive", "--trust-tools=fs_read", "--wrap", "never", "{M}"]},
 }
-_MODEL_FLAG = {"claude": "--model", "codex": "-m", "agy": "--model", "kiro-cli": "--model"}
+_MODEL_FLAG = {"claude": "--model", "codex": "-m", "kiro-cli": "--model"}
 
 
 def _model_override(ai):
@@ -552,12 +551,12 @@ def _scan_secret(diff):
 
 def _path_panel(host):
     """Degraded fallback when the config module is unavailable: review CLIs on PATH."""
-    peers = [ai for ai in _REVIEW if ai != host and shutil.which(ai)]
+    peers = [ai for ai in peer_roster(host) if ai in _REVIEW and shutil.which(ai)]
     return peers, {}
 
 
 def _panel(root):
-    """The canonical panel (kiro-cli + opposite host CLI + agy), filtered by
+    """The canonical panel (kiro-cli + opposite host CLI), filtered by
     config `enabled` and PATH. Never the host. An explicit "all disabled" yields [] (no PATH override). Only a missing/failed config
     module degrades to a best-effort PATH scan."""
     host = detect_host()
@@ -602,6 +601,9 @@ def _build_argv(peer, model, fpath):
     """Expand the adapter template. {I} → the fixed instruction (stdin-channel: references
     stdin; file-channel: tells the CLI to fs_read {F}). {M} → the per-peer model flag. The
     untrusted diff is NEVER placed in argv."""
+    retired = retired_peer_message(peer)
+    if retired:
+        raise ValueError(retired)
     file_ch = _REVIEW[peer]["channel"] == "file"
     instr = _GATE_INSTR_FILE.replace("{F}", fpath) if file_ch else _GATE_INSTR
     argv = []
@@ -650,6 +652,9 @@ def _build_push_argv(peer, model, fpath, lens):
     `_GATE_INSTR_FILE` — the stdin-channel instruction stays the generic "read stdin"
     pointer, since the lens text lives in the piped PROMPT body for that channel
     (see ev_pre_push_gate's per-assignment `prompt_text`), not in argv."""
+    retired = retired_peer_message(peer)
+    if retired:
+        raise ValueError(retired)
     file_ch = _REVIEW[peer]["channel"] == "file"
     instr = _PUSH_GATE_INSTR_FILE.format(F=fpath, LENS=_PUSH_LENSES.get(lens, "")) if file_ch else _GATE_INSTR
     argv = []

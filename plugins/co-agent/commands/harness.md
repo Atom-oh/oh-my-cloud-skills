@@ -52,6 +52,8 @@ readiness, planning and flag calls use `--root "$ORCH_ROOT" --host "$HOST"`.
    configured/default writer; it does not establish readiness. Use the JSON planner
    in step 3 to resolve execution mode. Never invoke the current host as its own peer.
    Writer eligibility comes from the helper's sandbox allowlist, not panel membership.
+   Antigravity is retired (ADR-022). If `implementer` exits 3 with no stdout, resolve
+   the explicit planner mode below; exit 2 requires fixing configuration.
 3. **Consult readiness** (`$ORCH_ROOT/.claude/co-agent-panel.local.json`):
    `check_panel.py fresh --root "$ORCH_ROOT" --host "$HOST"`, then
    `check_panel.py gate-eligible <peer> --root "$ORCH_ROOT" --host "$HOST"` —

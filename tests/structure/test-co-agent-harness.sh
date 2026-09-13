@@ -5,14 +5,18 @@ CFG="plugins/co-agent/skills/co-agent/scripts/co_agent_config.py"
 ST="plugins/co-agent/skills/co-agent/scripts/consensus_state.py"
 WT="plugins/co-agent/skills/co-agent/scripts/worktree.py"
 
-# --- Task 1 / R2-A: implementer resolution (sandbox CLIs only: codex, agy) ---
+# --- Task 1 / R2-A: only Codex can be an external sandbox writer ---
 R=$(mktemp -d "${TMPDIR:-/tmp}/coagent-harness.XXXXXX")
 assert_eq "codex" "$(CO_AGENT_HOST=claude python3 "$CFG" implementer --host claude --root "$R" 2>&1)" "default implementer for claude host = codex"
-assert_eq "agy" "$(CO_AGENT_HOST=claude python3 "$CFG" implementer --host codex --root "$R" 2>&1)" "default implementer for codex host = agy (claude is not a sandbox CLI)"
-CO_AGENT_HOST=claude python3 "$CFG" set harness implementer agy --root "$R" >/dev/null 2>&1
-assert_eq "agy" "$(CO_AGENT_HOST=claude python3 "$CFG" implementer --host claude --root "$R" 2>&1)" "override to a sandbox CLI respected"
+CO_AGENT_HOST=claude python3 "$CFG" implementer --host codex --root "$R" >"$R/writer" 2>"$R/diagnostic" && NO_WRITER=0 || NO_WRITER=$?
+assert_eq "3" "$NO_WRITER" "Codex host requires explicit host implementation, not an implicit peer"
+assert_eq "" "$(cat "$R/writer")" "no fake writer name is emitted for host implementation"
+assert_contains "$(cat "$R/diagnostic")" "--allow-host-implementation" "no-writer result explains the explicit fallback"
+CO_AGENT_HOST=claude python3 "$CFG" set harness implementer agy --root "$R" >/dev/null 2>&1 && RETIRED_WRITER=0 || RETIRED_WRITER=$?
+assert_eq "2" "$RETIRED_WRITER" "retired writer override is rejected"
+assert_eq "codex" "$(CO_AGENT_HOST=claude python3 "$CFG" implementer --host claude --root "$R" 2>&1)" "rejected override cannot replace the valid default writer"
 # non-sandbox implementers rejected at set time (claude/kiro-cli have no worktree sandbox;
-# gemini isn't even a recognized AI anymore — Agy superseded it, ADR-010)
+# retired peers are not eligible substitutes)
 CO_AGENT_HOST=claude python3 "$CFG" set harness implementer claude --root "$R" >/dev/null 2>&1 && C1=0 || C1=$?
 assert_eq "2" "$C1" "non-sandbox implementer claude rejected (exit 2)"
 CO_AGENT_HOST=claude python3 "$CFG" set harness implementer kiro-cli --root "$R" >/dev/null 2>&1 && C2=0 || C2=$?
@@ -26,7 +30,9 @@ rm -rf "$R"
 # --- Task 2 / R2-A: write-mode implementer flags (sandbox CLIs only) ---
 R2=$(mktemp -d "${TMPDIR:-/tmp}/coagent-harness2.XXXXXX")
 assert_contains "$(CO_AGENT_HOST=claude python3 "$CFG" impl-flags codex --host claude --root "$R2" 2>&1)" "workspace-write" "codex impl-flags use workspace-write sandbox"
-assert_contains "$(CO_AGENT_HOST=claude python3 "$CFG" impl-flags agy --host claude --root "$R2" 2>&1)" "sandbox" "agy impl-flags keep sandbox"
+CO_AGENT_HOST=claude python3 "$CFG" impl-flags agy --host claude --root "$R2" >"$R2/retired-flags" 2>"$R2/retired-error" && RETIRED_FLAGS=0 || RETIRED_FLAGS=$?
+assert_eq "2" "$RETIRED_FLAGS" "retired peer cannot obtain implementation flags"
+assert_eq "" "$(cat "$R2/retired-flags")" "retired peer emits no write-mode argv"
 # non-sandbox CLIs are not valid implementers — impl-flags rejects them
 CO_AGENT_HOST=claude python3 "$CFG" impl-flags claude --host codex --root "$R2" >/dev/null 2>&1 && NF=0 || NF=$?
 assert_eq "2" "$NF" "impl-flags rejects non-sandbox implementer claude (exit 2)"
@@ -49,16 +55,22 @@ CO_AGENT_HOST=claude python3 "$CFG" set harness implementer_effort low --root "$
 IFT=$(CO_AGENT_HOST=claude python3 "$CFG" impl-flags codex --host claude --root "$R2T" 2>&1)
 assert_contains "$IFT" "gpt-5.3-codex-mini" "implementer_models.codex overrides panel model (write path)"
 assert_contains "$IFT" 'model_reasoning_effort="low"' "implementer_efforts.codex overrides panel effort"
-# SWITCH-LEAK regression: an explicit implementer switch must NOT carry the codex
-# model onto agy's --model flag (the entry stays keyed to codex, dormant)
-CO_AGENT_HOST=claude python3 "$CFG" set harness implementer agy --root "$R2T" >/dev/null 2>&1
-IFA=$(CO_AGENT_HOST=claude python3 "$CFG" impl-flags agy --host claude --root "$R2T" 2>&1)
-assert_grep_no_match "codex-mini" "$IFA" "implementer switch does not leak codex model to agy (per-AI keying)"
-# effort is codex-only: storing it while the implementer is agy is refused
+# A retired switch is refused without changing the valid writer/model binding.
+CO_AGENT_HOST=claude python3 "$CFG" set harness implementer agy --root "$R2T" >/dev/null 2>&1 && RETIRED_SWITCH=0 || RETIRED_SWITCH=$?
+assert_eq "2" "$RETIRED_SWITCH" "retired implementer switch is rejected"
+assert_contains "$(CO_AGENT_HOST=claude python3 "$CFG" impl-flags codex --host claude --root "$R2T")" "gpt-5.3-codex-mini" "rejected switch preserves the Codex write model"
+# Hand-edited retired selection cannot receive new tiering settings either.
+python3 - "$R2T" <<'PYEOF'
+import json, sys, pathlib
+p = pathlib.Path(sys.argv[1]) / ".claude/co-agent.local.json"
+d = json.loads(p.read_text())
+d["harness"]["implementer"] = "agy"
+p.write_text(json.dumps(d))
+PYEOF
 CO_AGENT_HOST=claude python3 "$CFG" set harness implementer_effort low --root "$R2T" >/dev/null 2>&1 && AE=0 || AE=$?
-assert_eq "2" "$AE" "implementer_effort refused while implementer is agy (codex-only, exit 2)"
-# show marks the codex entry dormant while agy is the implementer
-assert_contains "$(CO_AGENT_HOST=claude python3 "$CFG" show --root "$R2T" 2>/dev/null)" "dormant" "show marks a non-current implementer's tiering entry dormant"
+assert_eq "2" "$AE" "implementer_effort refuses a stale retired writer (exit 2)"
+# Existing Codex tiering remains dormant until a valid writer is selected again.
+assert_contains "$(CO_AGENT_HOST=claude python3 "$CFG" show --root "$R2T" 2>/dev/null)" "dormant" "stale retired writer does not activate the Codex override"
 # review flags never pick up the write-path override
 CO_AGENT_HOST=claude python3 "$CFG" set harness implementer codex --root "$R2T" >/dev/null 2>&1
 RVT=$(CO_AGENT_HOST=claude python3 "$CFG" flags codex --host claude --root "$R2T" 2>&1)

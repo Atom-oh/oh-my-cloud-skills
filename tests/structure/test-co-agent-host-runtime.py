@@ -71,21 +71,22 @@ class HostRuntimeTests(unittest.TestCase):
 
     def test_host_detection_and_explicit_override(self):
         cases = [
-            ({}, [], "kiro-cli codex agy"),
-            ({"CODEX_THREAD_ID": "thread"}, [], "kiro-cli claude agy"),
-            ({"CODEX_SESSION_ID": "session"}, [], "kiro-cli claude agy"),
+            ({}, [], "kiro-cli codex"),
+            ({"CODEX_THREAD_ID": "thread"}, [], "kiro-cli claude"),
+            ({"CODEX_SESSION_ID": "session"}, [], "kiro-cli claude"),
             ({"PLUGIN_ROOT": "/installed/plugin", "PLUGIN_DATA": "/data"}, [],
-             "kiro-cli claude agy"),
-            ({"CODEX_THREAD_ID": "thread", "CLAUDECODE": "1"}, [], "kiro-cli codex agy"),
+             "kiro-cli claude"),
+            ({"CODEX_THREAD_ID": "thread", "CLAUDECODE": "1"}, [], "kiro-cli codex"),
             ({"CODEX_THREAD_ID": "thread", "CO_AGENT_HOST": "claude"}, [],
-             "kiro-cli codex agy"),
-            ({"CO_AGENT_HOST": "claude"}, ["--host", "codex"], "kiro-cli claude agy"),
+             "kiro-cli codex"),
+            ({"CO_AGENT_HOST": "claude"}, ["--host", "codex"], "kiro-cli claude"),
         ]
         for markers, flags, expected in cases:
             with self.subTest(markers=markers, flags=flags), patch.dict(os.environ, markers):
                 self.assertEqual((0, expected), self.config_cli(["panel", *flags]))
         with patch.dict(os.environ, {"CODEX_THREAD_ID": "thread"}):
-            self.assertEqual((0, "agy"), self.config_cli(["implementer"]))
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual((3, ""), self.config_cli(["implementer"]))
             self.assertEqual((0, "codex"), self.config_cli(["host"]))
 
     def test_invalid_explicit_host_is_not_silently_replaced(self):
@@ -120,15 +121,15 @@ class HostRuntimeTests(unittest.TestCase):
         return json.loads((self.root / ".claude/co-agent-panel.local.json").read_text()), probes
 
     def test_setup_probes_only_enabled_peers_of_detected_host(self):
-        self.configure({"panel": {"agy": {"enabled": False}}})
+        self.configure({"panel": {"claude": {"enabled": False}}})
         with patch.dict(os.environ, {"CODEX_THREAD_ID": "thread"}):
             summary, probes = self.report()
-        self.assertEqual(["kiro-cli", "claude"], probes)
-        self.assertEqual({"kiro-cli", "claude"}, set(summary["peers"]))
+        self.assertEqual(["kiro-cli"], probes)
+        self.assertEqual({"kiro-cli"}, set(summary["peers"]))
 
     def test_setup_explicit_host_and_freshness_across_hosts(self):
         summary, probes = self.report(host="codex")
-        self.assertEqual(["kiro-cli", "claude", "agy"], probes)
+        self.assertEqual(["kiro-cli", "claude"], probes)
         self.assertEqual("codex", summary.get("host"))
         self.assertFalse(panel.is_fresh(str(self.root)))
         with patch.dict(os.environ, {"CO_AGENT_HOST": "codex"}):
@@ -143,14 +144,14 @@ class HostRuntimeTests(unittest.TestCase):
         with patch.dict(os.environ, {"CODEX_THREAD_ID": "thread"}):
             with patch.object(hooks.shutil, "which", side_effect=lambda peer: "/fake/" + peer):
                 peers, _ = hooks._panel(str(self.root))
-        self.assertEqual(["kiro-cli", "claude", "agy"], peers)
+        self.assertEqual(["kiro-cli", "claude"], peers)
 
     def test_gate_path_fallback_still_uses_the_detected_host(self):
         with patch.dict(os.environ, {"CODEX_THREAD_ID": "thread"}):
             with patch.object(hooks, "cac", None):
                 with patch.object(hooks.shutil, "which", side_effect=lambda peer: "/fake/" + peer):
                     peers, _ = hooks._panel(str(self.root))
-        self.assertEqual({"kiro-cli", "claude", "agy"}, set(peers))
+        self.assertEqual({"kiro-cli", "claude"}, set(peers))
 
     def run_gate(self, event, verdict="BLOCK: correctness issue", returncode=0):
         self.configure({
@@ -239,7 +240,7 @@ class HostRuntimeTests(unittest.TestCase):
                     self.assertFalse(unrelated.keys() & result.keys())
                     self.assertIn("PATH", result)
                     for peer in ("codex", "agy", "kiro-cli"):
-                        previous_project_config = {"CLOUDSDK_CONFIG", "GCLOUD_PROJECT"} if peer == "agy" else set()
+                        previous_project_config = set()
                         self.assertEqual(previous_project_config,
                                          set(cloud) & hooks._sanitized_env(peer).keys())
 

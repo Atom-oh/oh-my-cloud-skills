@@ -1,4 +1,4 @@
-<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 0add59010f90 · generated-at: 2026-09-13 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
+<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: b40e45f0867f · generated-at: 2026-09-13 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
 > Shared context derived from CLAUDE.md; facts describe the trusted base.
 
 # Review contract
@@ -27,6 +27,8 @@ separates source skills, commands, agents, generated entries and review cells.
 - Local co-agent excludes its current host. Review/decide/ADR may report solo work;
   consensus/harness need ready peers. Opt-in hooks retain their own quorum/failure
   rules and do not replace CI.
+- Co-agent peers are Kiro and the opposite host CLI. Antigravity/Gemini CLI are
+  retired; no setup, review or implementation fallback may invoke them.
 - Codex entries are procedures, not native roles or permission grants. Hooks need
   trust; project-init templates additionally need consumer installation and project
   trust. Kiro guards the applied diff, not its process. Atlas Codex repair differs

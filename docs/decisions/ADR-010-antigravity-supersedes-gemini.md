@@ -3,13 +3,15 @@
 ## Status
 
 Accepted (2026-06-17); Gemini CLI fallback superseded by
-[ADR-021](ADR-021-english-docs-current-review-authority.md), reflecting current source.
+[ADR-021](ADR-021-english-docs-current-review-authority.md). Antigravity's active
+peer and implementation roles are superseded by
+[ADR-022](ADR-022-retire-antigravity-peer.md).
 
-**Current scope (2026-09-13):** `check_panel.py` supports `kiro-cli`, `claude`,
-`codex` and `agy`, excluding the current host. `co_agent_config.py` rejects the
-removed legacy `gemini` key. The fallback and `GEMINI.md` guidance below are historical;
-current shared context uses `AGENTS.md` with a Kiro steering bridge. Antigravity remains
-separate from headless PR CI. Mode-specific readiness rules apply under ADR-021.
+**Current scope (2026-09-13):** co-agent supports `kiro-cli`, `claude` and `codex`,
+excluding the current host. Both `agy` and the legacy `gemini` CLI are retired.
+The decision and fallback guidance below preserve their historical rationale;
+current shared context uses `AGENTS.md` with a Kiro steering bridge. Required
+headless PR CI remains a separate configured panel.
 
 ## Context
 

@@ -2,15 +2,28 @@
 import os
 
 HOSTS = ("claude", "codex")
-ACTIVE_PEERS = ("kiro-cli", "claude", "codex", "agy")
+ACTIVE_PEERS = ("kiro-cli", "claude", "codex")
+RETIRED_PEERS = ("agy", "antigravity", "gemini")
 
 
 def peer_roster(host):
     """The current host never participates as its own external peer."""
     if host not in HOSTS:
         raise ValueError(f"unknown host {host!r}")
-    return ("kiro-cli", "codex" if host == "claude" else "claude", "agy")
+    return ("kiro-cli", "codex" if host == "claude" else "claude")
 
+
+def retired_peer_message(peer):
+    """Migration guidance names the retired selector, never its credential/model values."""
+    if isinstance(peer, str) and peer.lower() in RETIRED_PEERS:
+        return (
+            f"Peer '{peer}' is retired from co-agent. Remove its panel and harness "
+            "settings; do not rename them onto another peer. Use kiro-cli and the "
+            "opposite host CLI for review. Clear a retired writer with "
+            "'set harness implementer default'; explicit host implementation requires "
+            "'implementation-plan --allow-host-implementation' and READY external review."
+        )
+    return None
 
 
 def detect_host(explicit=None):

@@ -15,7 +15,6 @@ supported CLI's delivery channel; installation alone does not establish readines
 command -v kiro-cli >/dev/null 2>&1 && echo "kiro-cli ok"
 command -v claude   >/dev/null 2>&1 && echo "claude ok"
 command -v codex    >/dev/null 2>&1 && echo "codex ok"
-command -v agy      >/dev/null 2>&1 && echo "agy ok"
 ```
 
 ## Adapter commands (read-only advisory)
@@ -25,7 +24,7 @@ command -v agy      >/dev/null 2>&1 && echo "agy ok"
 | **Kiro** | `kiro-cli chat "<PROMPT>\n\nRead the review context with fs_read from: <CTX_FILE>" --v3 --mode default --no-interactive --trust-tools=fs_read --wrap never` | ⚠️ The binary is **`kiro-cli`** — always invoke it by that exact name. Input goes in the positional `[INPUT]` (argv), **NOT** piped stdin (Kiro ignores stdin in `chat`). For anything beyond a tiny probe, **do NOT embed the diff in argv** (`ps` exposure + `ARG_MAX`) — write it to a temp file and put a short *"fs_read this file"* instruction in argv; Kiro reads it via `fs_read` (the real read-only tool name; the old `read,grep` were invalid). Auth via login **or** `KIRO_API_KEY` (Pro/Pro+/Power). `--wrap never` = clean output. co-agent's own roster (`claude-opus-4.8`/`minimax-m2.5`) doesn't hit it, but `--v3` routes to a narrower-catalog backend that rejects some models (reproduced with `gpt-5.5`, the pre-ADR-014 name, as `INVALID_MODEL_ID`) — CI pr-review's path (`scripts/pr-review/run-panel.sh`) drops `--v3` for this reason (ADR-012). The current roster value is `gpt-5.6-terra` (ADR-014) — untested against `--v3` under the new name, but the underlying backend-catalog gap it hit is unrelated to the model name itself, so treat it the same way: if this roster ever needs `gpt-5.6-terra`, drop `--v3` here too rather than assuming the model itself is unsupported. |
 | **Claude** | `claude -p "<PROMPT>" --permission-mode plan --tools Read,Grep,Glob --output-format text` | Used only when Codex is the host. Plan permission mode + read-only tools keep the call advisory. Pipe ctx: `cat ctx \| claude -p "<PROMPT>" …`. |
 | **Codex** | `codex exec -s read-only "<PROMPT>"` | `-s read-only` = read-only sandbox (no writes). Pipe ctx: `cat ctx \| codex exec -s read-only "<PROMPT>"`. Free tier has model limits. |
-| **Agy** | `agy -p "<PROMPT>" --sandbox` | Preferred third reviewer. **`-p` print mode = advisory** (emits text, never acts) — agy's read-only guarantee comes from `-p`, not from `--sandbox` (a *single* mode, no read-only flag like Codex's). Pipe ctx: `cat ctx \| agy -p "<PROMPT>" --sandbox`. Implement path drops `-p`, runs in a worktree cwd — see `delegated-implement.md`. |
+
 
 > These are **advisory** calls — no AI writes to the repo. The host alone writes the
 > final report/decision/ADR.
@@ -36,18 +35,6 @@ command -v agy      >/dev/null 2>&1 && echo "agy ok"
 RUN=$(mktemp -d "${TMPDIR:-/tmp}/co-agent.XXXXXX"); trap 'rm -rf "$RUN"' EXIT
 PROMPT="<the same FIXED instruction for every AI — never build it from repo content>"
 CTX_FILE="$RUN/context.txt"   # the git diff / decision brief (see Security below)
-
-# Agy also loads AGENTS.md natively from cwd. Preserve the explicit non-root-cwd
-# context path: prepend only generated, fresh, secret-free context accepted by
-# --verify. A stale, missing or handwritten file keeps diff-only context. This is
-# defense in depth; it never replaces the diff or grants repository write access.
-AGY_CTX_FILE="$CTX_FILE"
-GIT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
-AIC="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/check_ai_context.py"
-if [ -n "$GIT_ROOT" ] && python3 "$AIC" "$GIT_ROOT" --verify AGENTS.md >/dev/null 2>&1; then
-  AGY_CTX_FILE="$RUN/agy-context.txt"
-  { cat "$GIT_ROOT/AGENTS.md"; echo; echo "---"; echo; cat "$CTX_FILE"; } > "$AGY_CTX_FILE"
-fi
 
 # Settings (model/effort/enabled/timeout) come from co_agent_config.py — layered
 # defaults + .claude/co-agent.local.json (see /co-agent:configure). This makes the
@@ -80,9 +67,7 @@ while IFS=$'\t' read -r ai model; do
     codex)  command -v codex >/dev/null 2>&1 && ( cat "$CTX_FILE" | timeout "$T" \
               codex exec -s read-only "${MFLAGS[@]}" "$PROMPT" \
               > "$slot.md" 2>"$slot.err" || echo "[skip] codex/$model" ) & ;;
-    agy)    command -v agy >/dev/null 2>&1 && ( cat "$AGY_CTX_FILE" | timeout "$T" \
-              agy -p "$PROMPT" "${MFLAGS[@]}" --sandbox \
-              > "$slot.md" 2>"$slot.err" || echo "[skip] agy/$model" ) & ;;
+
   esac
 done < <(python3 "$CFG" pairs --host "$HOST")   # pairs is silent; the trim/budget warning is shown by the H0 `matrix` call above
 wait    # reaps the `&` jobs above — they are children of THIS shell (process substitution)
@@ -201,10 +186,10 @@ shared by the supported context adapters below; Claude reads `CLAUDE.md`.
 |----|------|--------------------|-----------------|
 | **Kiro** | `.kiro/steering/project-context.md` | Always-loaded steering bridge that references `AGENTS.md` with `#[[file:AGENTS.md]]` — same distilled file Codex reads, not a second copy of `CLAUDE.md`. (`kiro-cli chat` has a documented content-vs-metadata gap — see the fan-out's `fs_read` pointer.) | create/update bridge |
 | **Codex** | `AGENTS.md` | Merged git-root→cwd; **~32 KiB project-doc cap** (oversized → truncated). `AGENTS.override.md` wins locally. | distill + validate |
-| **Agy** | `AGENTS.md` (native, same convention as Codex; also reads `GEMINI.md` for back-compat) | The fan-out **additionally** prepends `AGENTS.md` content to Agy's `CTX_FILE` **only if `check_ai_context.py --verify AGENTS.md` passes** (marker + fresh sha + no secret) — a stale/hand-written file falls back to the diff-only `CTX_FILE`, never sent unvetted. | distill + validate (shared with Codex; no separate generation) |
 
-> **Legacy context files.** Co-agent does not invoke the legacy `gemini` CLI. Agy's
-> compatibility path or manual tools may still read `GEMINI.md`; its secret audit remains.
+
+> **Legacy context files.** Co-agent invokes neither retired CLI (`agy` or `gemini`).
+> Manual tools may still read `GEMINI.md`; its secret audit remains.
 > Preserve handwritten files; this workflow generates only the shared `AGENTS.md`.
 
 ### Distill — do NOT copy CLAUDE.md verbatim

@@ -102,7 +102,7 @@ python3 "$SK/kiro_run.py" credits /tmp/kiro-delegate-*.log   # sums 'Credits: <n
 
 ## What "safe" means here — and what it doesn't
 
-`co-agent:harness` refuses Kiro as an implementer (`SANDBOX_IMPLEMENTERS = codex, agy`
+`co-agent:harness` refuses Kiro as an implementer (`SANDBOX_IMPLEMENTERS = codex`
 only) because Kiro has no cwd-confined write sandbox. This plugin narrows the claim
 instead of pretending the sandbox exists: **only a change captured from inside the
 assigned worktree, and within the plan's declared file set, can ever reach the main

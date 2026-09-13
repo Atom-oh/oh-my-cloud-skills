@@ -29,7 +29,7 @@ see the [configuration contract](https://github.com/Atom-oh/oh-my-cloud-skills/b
 
 ## /co-agent:sync-context
 
-Generate marked AGENTS.md from CLAUDE.md and wire the Kiro steering bridge. Source hashes identify stale generated context; handwritten unmarked files are protected. Agy context is folded into peer input only after validation.
+Generate marked AGENTS.md from CLAUDE.md and wire the Kiro steering bridge. Source hashes identify stale generated context; handwritten unmarked files are protected. Antigravity is no longer a co-agent peer.
 
 ## /co-agent:consensus
 

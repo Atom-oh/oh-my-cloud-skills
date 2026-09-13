@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   before sending PR input. Reject default-agent fallback, surface monthly/overage account-limit
   exhaustion without retries, and preserve required coverage failures (PR207).
 
+### Removed
+
+- Antigravity (`agy`) peer, probe, hook and delegated implementation paths in
+  co-agent. Retired configuration keys require migration. Kiro and the opposite
+  host CLI remain available; an explicit native-host implementation plan still
+  requires fresh external review readiness.
+
 ## [1.17.0] - 2026-09-02
 
 ### Added

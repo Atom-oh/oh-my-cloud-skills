@@ -38,7 +38,6 @@ Only CLIs with a real workspace-write sandbox are eligible:
 | Implementer | Write-mode flags |
 |-------------|------------------|
 | Codex | `-s workspace-write` (+ `-m <model>`, effort) |
-| Agy | `--sandbox` (+ `--model`); write mode omits advisory `-p` |
 
 Resolve the writer through `implementation-plan --root "$ORCH_ROOT" --host "$HOST"`.
 For a successful peer-mode plan, resolve its non-null `IMPLEMENTER` with:
@@ -48,12 +47,14 @@ python3 "$SK/co_agent_config.py" impl-flags "$IMPLEMENTER" --root "$ORCH_ROOT" -
 ```
 
 Require exit 0 before using the emitted argv; preserve each line as one argument.
-Only the writer process changes cwd to the task worktree. Agy has one sandbox
-mode; advisory calls add `-p`. Do not infer a guarantee against absolute-path or
+`impl-flags` exits 2 for a disabled or ineligible writer; repair selection before launch.
+Only the writer process changes cwd to the task worktree.
+Do not infer a guarantee against absolute-path or
 parent-directory writes from a flag alone. The capture/scope and main-tree escape
 checks above remain mandatory defense in depth.
 
-`implementer` reports the configured/default external writer without proving readiness.
+`implementer` reports the configured/default external writer without proving readiness;
+exit 3 with no stdout means no default external writer is available.
 After fresh setup, `implementation-plan` resolves a JSON execution plan. Explicit
 `--allow-host-implementation` permits `mode: host` when no eligible writer is READY,
 but only with an enabled READY external reviewer. A configuration/readiness error

@@ -24,7 +24,8 @@ import hashlib
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
-from co_agent_host import (HOSTS, ACTIVE_PEERS, detect_host, peer_roster)
+from co_agent_host import (HOSTS, ACTIVE_PEERS, detect_host, peer_roster,
+                           retired_peer_message)
 from co_agent_env import sanitized_env as _sanitized_env, CLAUDE_GATE_ISOLATION
 
 try:
@@ -162,7 +163,6 @@ def _cmd_classify(argv):
 # isolated PR/push gates need it too; the context-rich fan-out in ai-cli-adapters.md
 # runs inside the repo and does not need the exception.
 ADAPTERS = {
-    "agy":      {"argv": ["agy", "-p", "{P}", "--sandbox"], "channel": "stdin"},
     "codex":    {"argv": ["codex", "exec", "-s", "read-only", "--skip-git-repo-check", "{P}"], "channel": "stdin"},
     "claude":   {"argv": ["claude", "-p", "{P}", "--permission-mode", "plan", "--output-format", "text"], "channel": "stdin"},
     "kiro-cli": {"argv": ["kiro-cli", "chat", "{I}", "--v3", "--mode", "default",
@@ -191,6 +191,9 @@ def _kill_proc(p):
 def probe(peer, timeout=90, nonce="STATIC", gate=False):
     """General fan-out inherits its environment; explicit gate probes use the gate filter."""
     # Allow cold-start/auth-refresh time without concurrent probes contending for one backend.
+    retired = retired_peer_message(peer)
+    if retired:
+        return "ERROR", retired
     if peer not in PEERS or peer not in ADAPTERS:
         return "ERROR", f"unknown peer {peer}"
     if not detect_cli(peer):
@@ -410,6 +413,10 @@ def main():
     if argv[0] in ("probe", "status", "access", "gate-eligible", "--selftest-access"):
         if len(argv) < 2:
             print(f"{argv[0]} requires a peer", file=sys.stderr)
+            return 2
+        retired = retired_peer_message(argv[1])
+        if retired:
+            print(retired, file=sys.stderr)
             return 2
     if argv[0] == "probe":
         peer = argv[1]

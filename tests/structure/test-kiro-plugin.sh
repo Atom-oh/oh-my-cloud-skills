@@ -1075,7 +1075,13 @@ assert_contains "$SG_LIB_OUT" "SG_LIB_OK" "scope_guard.allowed_set() keeps its o
 
 # --- CLAUDE.md documents the trust boundary consistently with co-agent's stance on kiro ---
 assert_contains "$(cat plugins/kiro/CLAUDE.md)" "no cwd-confined write sandbox" "kiro plugin CLAUDE.md documents why co-agent refuses Kiro as an implementer"
-assert_contains "$(cat plugins/co-agent/skills/co-agent/scripts/co_agent_config.py)" 'SANDBOX_IMPLEMENTERS = ("codex", "agy")' "co-agent still excludes kiro-cli from SANDBOX_IMPLEMENTERS (consistency check)"
+KC_SANDBOX_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/kiro-coagent-writer.XXXXXX")
+CO_AGENT_HOST=claude python3 plugins/co-agent/skills/co-agent/scripts/co_agent_config.py \
+  impl-flags kiro-cli --root "$KC_SANDBOX_ROOT" >"$KC_SANDBOX_ROOT/out" 2>"$KC_SANDBOX_ROOT/err" \
+  && KC_WRITER_RC=0 || KC_WRITER_RC=$?
+assert_eq "2" "$KC_WRITER_RC" "co-agent rejects Kiro as a delegated sandbox writer"
+assert_eq "" "$(cat "$KC_SANDBOX_ROOT/out")" "co-agent emits no write flags for Kiro"
+rm -rf "$KC_SANDBOX_ROOT"
 
 # --- round-12 fix: kiro-delegate-agent.md's own symlink-refusal example must actually
 # `exit` on finding a symlink, not just `echo` a warning and let the caller's mkdir/cp

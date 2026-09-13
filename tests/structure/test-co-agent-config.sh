@@ -19,11 +19,11 @@ assert_json_valid "$DEF" "co-agent.defaults.json is valid JSON"
 
 R=$(mktemp -d "${TMPDIR:-/tmp}/coagentcfg.XXXXXX")
 
-# show on a fresh root → all three AIs + default timeout
+# show on a fresh root → both external peers + default timeout
 SHOW=$(python3 "$CFG" show --root "$R" 2>&1)
 assert_contains "$SHOW" "kiro-cli" "show lists kiro-cli"
 assert_contains "$SHOW" "codex" "show lists codex"
-assert_contains "$SHOW" "agy" "show lists agy"
+assert_eq "kiro-cli codex" "$(python3 "$CFG" panel --root "$R")" "fresh Claude panel selects only Kiro and Codex"
 assert_contains "$SHOW" "240" "show reports default timeout 240"
 
 # Codex-hosted co-agent swaps the current host out of the advisory panel:
@@ -32,7 +32,7 @@ CODEX_HOST_SHOW=$(python3 "$CFG" show --host codex --root "$R" 2>&1)
 assert_contains "$CODEX_HOST_SHOW" "host codex" "codex-host show reports host"
 assert_contains "$CODEX_HOST_SHOW" "claude" "codex-host show lists claude"
 CODEX_HOST_PANEL=$(python3 "$CFG" panel --host codex --root "$R" 2>&1)
-assert_eq "kiro-cli claude agy" "$CODEX_HOST_PANEL" "codex-host panel swaps codex for claude and prefers agy"
+assert_eq "kiro-cli claude" "$CODEX_HOST_PANEL" "codex-host panel selects Kiro and the opposite host"
 
 python3 "$CFG" set claude model sonnet --host codex --root "$R" >/dev/null 2>&1
 python3 "$CFG" set claude effort max --host codex --root "$R" >/dev/null 2>&1
@@ -40,12 +40,12 @@ CLAUDE_FLAGS=$(python3 "$CFG" flags claude --host codex --root "$R" 2>&1 | tr '\
 assert_contains "$CLAUDE_FLAGS" "model sonnet" "claude flags include model (--model)"
 assert_contains "$CLAUDE_FLAGS" "effort max" "claude flags include effort"
 
-# Gemini support was removed (Agy superseded it — ADR-010): no env override can bring it
-# back, and it is rejected as an unknown AI everywhere the config exposes a per-AI verb.
-NO_GEMINI_FALLBACK=$(CO_AGENT_THIRD_AI=gemini python3 "$CFG" panel --root "$R" 2>&1)
-assert_eq "kiro-cli codex agy" "$NO_GEMINI_FALLBACK" "CO_AGENT_THIRD_AI is not read — panel is always agy"
+# Retired peer environment/config cannot reintroduce a third reviewer.
+NO_GEMINI_FALLBACK=$(CO_AGENT_THIRD_AI=gemini python3 "$CFG" panel --root "$R" 2>"$R/retired-env.err")
+assert_eq "kiro-cli codex" "$NO_GEMINI_FALLBACK" "obsolete third-peer environment cannot add a retired reviewer"
+assert_contains "$(cat "$R/retired-env.err")" "retired" "obsolete peer environment has migration guidance"
 python3 "$CFG" set gemini enabled false --root "$R" >/dev/null 2>&1 && GS=0 || GS=$?
-assert_eq "2" "$GS" "gemini is rejected as an unknown ai (exit 2)"
+assert_eq "2" "$GS" "gemini is rejected as a retired ai (exit 2)"
 
 # effort is available only where the headless CLI supports it; others show n/a
 assert_contains "$SHOW" "n/a" "effort marked n/a for non-Codex"
@@ -59,18 +59,18 @@ CODEX_FLAGS=$(python3 "$CFG" flags codex --root "$R" 2>&1 | tr '\n' ' ')   # fla
 # needle avoids a leading '-' so grep (in assert_contains) doesn't read it as a flag
 assert_contains "$CODEX_FLAGS" "m gpt-5-codex" "codex flags include model (-m)"
 assert_contains "$CODEX_FLAGS" 'model_reasoning_effort="high"' "codex flags include effort"
-# agy model tokens contain spaces + parens (e.g. "Gemini 3.1 Pro (High)") — accepted, carried as ONE flag token
-python3 "$CFG" set agy model "Gemini 3.1 Pro (High)" --root "$R" >/dev/null 2>&1 && AM=0 || AM=$?
-assert_eq "0" "$AM" "agy spaced model accepted (exit 0)"
-AGY_FLAGS=$(python3 "$CFG" flags agy --host claude --root "$R" 2>&1 | tr '\n' ' ')
-assert_contains "$AGY_FLAGS" "model Gemini 3.1 Pro (High)" "agy flags carry the spaced model as one token"
+# Generic model tokens retain spaces/parens even when their label contains Gemini.
+python3 "$CFG" set kiro-cli model "Gemini 3.1 Pro (High)" --root "$R" >/dev/null 2>&1 && AM=0 || AM=$?
+assert_eq "0" "$AM" "generic spaced model accepted on Kiro (exit 0)"
+SPACED_FLAGS=$(python3 "$CFG" flags kiro-cli --host claude --root "$R" 2>&1 | tr '\n' ' ')
+assert_contains "$SPACED_FLAGS" "model Gemini 3.1 Pro (High)" "Kiro flags carry the spaced model as one token"
 # shell metacharacters in a model value are still rejected
-python3 "$CFG" set agy model "Gemini; rm -rf /" --root "$R" >/dev/null 2>&1 && MM=0 || MM=$?
+python3 "$CFG" set kiro-cli model "Gemini; rm -rf /" --root "$R" >/dev/null 2>&1 && MM=0 || MM=$?
 assert_eq "2" "$MM" "model with shell metacharacter still rejected (exit 2)"
 
 # effort on a non-effort AI is rejected (not a dead setting)
-python3 "$CFG" set agy effort high --root "$R" >/dev/null 2>&1 && GE_RC=0 || GE_RC=$?
-assert_eq "2" "$GE_RC" "set agy effort → rejected (exit 2)"
+python3 "$CFG" set kiro-cli effort high --root "$R" >/dev/null 2>&1 && GE_RC=0 || GE_RC=$?
+assert_eq "2" "$GE_RC" "set kiro-cli effort → rejected (exit 2)"
 
 # invalid effort value rejected
 python3 "$CFG" set codex effort turbo --root "$R" >/dev/null 2>&1 && IE_RC=0 || IE_RC=$?
@@ -79,7 +79,7 @@ assert_eq "2" "$IE_RC" "invalid effort value → exit 2"
 # disable kiro-cli → dropped from panel, enabled check fails
 python3 "$CFG" set kiro-cli enabled false --root "$R" >/dev/null 2>&1
 PANEL=$(python3 "$CFG" panel --root "$R" 2>&1)
-assert_eq "codex agy" "$PANEL" "disabled kiro-cli removed from panel"
+assert_eq "codex" "$PANEL" "disabled kiro-cli removed from panel"
 python3 "$CFG" enabled kiro-cli --root "$R" >/dev/null 2>&1 && KI_RC=0 || KI_RC=$?
 assert_eq "1" "$KI_RC" "enabled kiro-cli → exit 1 when disabled"
 python3 "$CFG" enabled codex --root "$R" >/dev/null 2>&1 && CO_RC=0 || CO_RC=$?
@@ -109,11 +109,11 @@ assert_eq "2" "$MG" "model with glob char rejected (exit 2)"
 python3 "$CFG" set codex model gpt-4.1 --root "$R" >/dev/null 2>&1 && MV=0 || MV=$?
 assert_eq "0" "$MV" "valid model accepted (exit 0)"
 
-# context-size guard: defaults Kiro/Agy 1M, Codex 272K
+# context-size guard: defaults Kiro/Claude 1M, Codex 272K
 R3=$(mktemp -d "${TMPDIR:-/tmp}/coagentctx3.XXXXXX")
 assert_eq "272000" "$(python3 "$CFG" context-limit codex --root "$R3" 2>&1)" "codex default context-limit 272000"
 assert_eq "1000000" "$(python3 "$CFG" context-limit kiro-cli --root "$R3" 2>&1)" "kiro-cli default context-limit 1000000"
-assert_eq "1000000" "$(python3 "$CFG" context-limit agy --root "$R3" 2>&1)" "agy default context-limit 1000000"
+assert_eq "1000000" "$(python3 "$CFG" context-limit claude --host codex --root "$R3" 2>&1)" "Claude default context-limit 1000000"
 python3 "$CFG" fits codex 200000 --root "$R3" >/dev/null 2>&1 && F1=0 || F1=$?
 assert_eq "0" "$F1" "200K tokens fits codex window (exit 0)"
 python3 "$CFG" fits codex 812861 --root "$R3" >/dev/null 2>&1 && F2=0 || F2=$?

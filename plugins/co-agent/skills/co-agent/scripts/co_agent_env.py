@@ -7,9 +7,13 @@ _PEER_ENV_KEEP = {
                "ANTHROPIC_CUSTOM_HEADERS", "CLAUDE_CODE_CLIENT_CERT",
                "CLAUDE_CODE_CLIENT_KEY", "CLAUDE_CODE_CLIENT_KEY_PASSPHRASE"},
     "codex": {"OPENAI_API_KEY", "CODEX_API_KEY"},
-    "agy": {"GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENAI_API_KEY",
-            "CLOUDSDK_CONFIG", "GCLOUD_PROJECT", "gcloud_project"},
     "kiro-cli": {"KIRO_API_KEY"},
+}
+# Retirement removes the peer's allowlist, not credential filtering. These names
+# remain scoped so benign-looking project/config variables cannot leak to a peer.
+_RETIRED_PEER_AUTH = {
+    "GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENAI_API_KEY",
+    "CLOUDSDK_CONFIG", "GCLOUD_PROJECT", "gcloud_project",
 }
 CLAUDE_GATE_ISOLATION = (
     "--tools", "Read,Grep,Glob", "--setting-sources", "",
@@ -58,7 +62,8 @@ _BACKENDS = {
     "FOUNDRY": ("azure", _AZURE_AUTH),
 }
 # Some auth inputs (e.g. IDENTITY_HEADER) do not look like secrets by name.
-_SCOPED_ENV = set().union(*_PEER_ENV_KEEP.values(), *(keys for _, keys in _BACKENDS.values()))
+_SCOPED_ENV = set().union(_RETIRED_PEER_AUTH, *_PEER_ENV_KEEP.values(),
+                        *(keys for _, keys in _BACKENDS.values()))
 # Match credential names without stripping benign PATH/PWD/KEYBOARD variables.
 _SENSITIVE_ENV_RE = re.compile(
     r"TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|PRIVATE_KEY|API_?KEY|"

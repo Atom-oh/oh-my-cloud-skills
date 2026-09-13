@@ -26,16 +26,16 @@ R=$(mktemp -d "${TMPDIR:-/tmp}/coc.XXXXXX")
 # false-positive rate, see the pr-review kiro-glm-drop ADR).
 CO_AGENT_HOST=claude python3 "$CFG" set profile default --root "$R" >/dev/null 2>&1
 DEF=$(CO_AGENT_HOST=claude python3 "$CFG" pairs --root "$R" 2>/dev/null | wc -l | tr -d ' ')
-assert_eq "3" "$DEF" "default profile → one pair per AI (3)"
+assert_eq "2" "$DEF" "default profile → one pair per external AI (2)"
 CO_AGENT_HOST=claude python3 "$CFG" set profile deep --root "$R" >/dev/null 2>&1
 DEEP=$(CO_AGENT_HOST=claude python3 "$CFG" pairs --root "$R" 2>/dev/null | wc -l | tr -d ' ')
-assert_eq "4" "$DEEP" "deep profile → kiro-cli 2 models + codex + agy (4)"
+assert_eq "3" "$DEEP" "deep profile → kiro-cli 2 models + codex (3)"
 # --profile: per-invocation tiering override (hybrid gate: find=deep, verify=default)
 POV=$(CO_AGENT_HOST=claude python3 "$CFG" pairs --profile default --root "$R" 2>/dev/null | wc -l | tr -d ' ')
-assert_eq "3" "$POV" "pairs --profile default overrides configured deep (3 pairs)"
+assert_eq "2" "$POV" "pairs --profile default overrides configured deep (2 pairs)"
 CO_AGENT_HOST=claude python3 "$CFG" set profile default --root "$R" >/dev/null 2>&1
 POV2=$(CO_AGENT_HOST=claude python3 "$CFG" pairs --profile deep --root "$R" 2>/dev/null | wc -l | tr -d ' ')
-assert_eq "4" "$POV2" "pairs --profile deep overrides configured default (4 pairs)"
+assert_eq "3" "$POV2" "pairs --profile deep overrides configured default (3 pairs)"
 CO_AGENT_HOST=claude python3 "$CFG" set profile deep --root "$R" >/dev/null 2>&1
 CO_AGENT_HOST=claude python3 "$CFG" pairs --profile bogus --root "$R" >/dev/null 2>&1 && PB=0 || PB=$?
 assert_eq "2" "$PB" "pairs --profile with invalid value rejected (exit 2)"
@@ -46,8 +46,8 @@ assert_contains "$(CO_AGENT_HOST=claude python3 "$CFG" matrix --root "$R" 2>&1)"
 # Kiro's 2 models (opus/minimax) are cross-vendor via the router → intended diversity,
 # NOT the same-family redundancy warning.
 assert_contains "$(CO_AGENT_HOST=claude python3 "$CFG" matrix --root "$R" 2>&1)" "cross-vendor" "matrix notes kiro-cli cross-vendor diversity"
-# A genuine same-family duplicate (two Agy-routed models) DOES warn.
-CO_AGENT_HOST=claude python3 "$CFG" set agy models "gemini-2.5-pro,gemini-2.5-flash" --root "$R" >/dev/null 2>&1
+# A genuine same-family duplicate (two Codex models) DOES warn.
+CO_AGENT_HOST=claude python3 "$CFG" set codex models "Model Alpha (High),Model Beta" --root "$R" >/dev/null 2>&1
 assert_contains "$(CO_AGENT_HOST=claude python3 "$CFG" matrix --root "$R" 2>&1)" "same provider family" "matrix warns on same-family duplicates"
 # invalid model name in list rejected (space/comma are list delimiters, so use a
 # genuine shell metacharacter to trigger MODEL_RE rejection)

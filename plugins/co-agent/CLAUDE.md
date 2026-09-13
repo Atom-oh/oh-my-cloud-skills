@@ -2,8 +2,9 @@
 
 Multi-AI collaboration for a second opinion. The current host chairs, verifies claims
 against evidence, attributes peer findings and writes the final artifact. Claude Code
-uses Kiro CLI, Codex and Agy as candidate peers; Codex uses Kiro CLI, Claude CLI and Agy.
-Always exclude the current host. The legacy `gemini` CLI is unsupported.
+uses Kiro CLI and Codex as candidate peers; Codex uses Kiro CLI and Claude CLI.
+Always exclude the current host. Antigravity (`agy`) and the legacy `gemini` CLI
+are retired; see ADR-022 for the owner-requested change and configuration migration.
 
 ## Chair Principle
 
@@ -97,7 +98,7 @@ copied `hook_match.py`: all three can intercept the same push.
   peers and unparseable responses skip with an advisory. A skipped local hook is not
   evidence that the change passed review. Terminal commands bypass host tool hooks.
 - **Data:** scan the full diff before capping the transmitted payload; do not send a
-  diff containing detected secrets. Codex/Claude/Agy
+  diff containing detected secrets. Codex/Claude
   receive stdin; Kiro reads a temporary context file through `fs_read`. Isolated cwd
   and filtered credentials reduce exposure but do not prevent every absolute-path
   read; tool restrictions are not a complete filesystem sandbox. Do not enable these

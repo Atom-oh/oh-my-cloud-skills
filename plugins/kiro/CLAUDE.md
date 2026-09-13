@@ -100,7 +100,7 @@ a tampered agent file (fail-closed, same defense as `/kiro:review`).
 ## Trust boundary (why Kiro can write here when co-agent's harness refuses it)
 
 Kiro has no cwd-confined write sandbox, so co-agent's harness excludes it as an
-implementer (`SANDBOX_IMPLEMENTERS = codex, agy`). This limits what "safe" means here:
+implementer (`SANDBOX_IMPLEMENTERS = codex`). This limits what "safe" means here:
 capture-diff + scope_guard guarantee that **only a change that lands inside the
 worktree, and inside the plan's declared file set, can ever reach the main tree** — that
 part is enforced. `scope_guard.py` (verbatim from co-agent) checks against the **union of

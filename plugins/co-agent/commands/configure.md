@@ -136,6 +136,11 @@ planner loads every present override strictly; ordinary advisory commands keep t
 existing lenient loading. Remove obsolete settings reported by `show`; do not copy
 model labels into a different provider without checking that provider's catalog.
 
+Antigravity (`agy`) and the legacy `gemini` CLI are retired (ADR-022). Remove their
+obsolete settings when the helper reports them; never transfer their model values to
+another provider. `implementer` exits 3 with no stdout when no default writer exists.
+`impl-flags` exits 2 for a disabled or ineligible writer; do not launch on that error.
+
 ## Role-based model tiering
 
 Instead of using the same model for every role, assign a cost-efficient model per role —
