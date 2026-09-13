@@ -2,7 +2,6 @@
 
 This is a Codex entry point to shared procedures. Read the source linked by the
 entry skill, using these host adaptations. Apply them to nested references too.
-원본 절차와 helper를 공유하되 경로·도구·호스트 설정은 아래 Codex 규칙을 적용합니다.
 
 ## Installed files and the target repository
 
