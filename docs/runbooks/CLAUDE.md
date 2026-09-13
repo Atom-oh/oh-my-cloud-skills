@@ -14,9 +14,5 @@ both marketplaces, generated-output freshness and the shared `v{version}` tag.
 Run the required tests and host-specific checks; do not hardcode an old test count or
 treat optional local hooks as mandatory CI evidence.
 
-Known gap (2026-09-13 audit): `plugin-release.md` still contains a three-plugin
-version snippet and bilingual changelog instructions. Those steps need reconciliation
-before use; the full inventory and English policy above apply.
-
 Use `/add-runbook` for scaffolding, applying this repository's instructions over
 template defaults. One-off actions belong in the PR description or owning skill.

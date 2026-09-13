@@ -23,6 +23,8 @@ decisions, runbooks and implementation context here.
   trigger/API/fixture literals are separate concerns.
 - Derive inventory from source files, generated inventories and manifests. Distinguish
   source procedures, Codex entries, plugin hook commands and CI review cells.
+  Keep `architecture.md`, the root README and `../doc-sites/docs/intro.md` aligned
+  when plugin membership or published counts change.
 - Check living claims against source and current policy. Code that violates a
   requirement is a defect to resolve, not permission to weaken that requirement.
 - Preserve historical ADR/spec/plan rationale as dated evidence; add a scoped status

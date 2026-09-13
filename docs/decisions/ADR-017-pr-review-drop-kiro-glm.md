@@ -104,7 +104,8 @@ issues those ADRs addressed.
   this ADR only changes which cells start disabled by default.
 - `glm-5` remains available to any operator who wants it back: `python3
   scripts/pr-review/panel_config.py set kiro-glm enabled true --root .` (or a committed
-  edit to `pr-review.defaults.json`, per `docs/ci-pr-review.md`'s "Path A") re-enables it
+  edit to `pr-review.defaults.json`, per `docs/ci-pr-review.md`'s
+  "Configuration and bounds" section) re-enables it
   with that one command, no code change — the disabled entry keeps `model: glm-5` (only
   `enabled` flips to `false`), so `validate_shape()`'s enabled-cell model check never
   trips on re-enable.

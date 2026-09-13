@@ -59,6 +59,8 @@ an assumption unverified rather than claim it reproduced a failure.
 
 `pr-review.defaults.json` defines the committed roster; `panel_config.py` validates it.
 The local override is `.claude/pr-review.local.json`, not a co-agent user-scope file.
+It is untracked local configuration and is not delivered to the clean CI checkout;
+CI roster changes use the committed defaults.
 The production workflow has one FULL lens; helper tests may use multiple lenses.
 Do not infer active membership from old ADR examples or a fixed model-count label.
 Codex's model comes from runner configuration; Kiro model IDs come from the panel
@@ -74,7 +76,9 @@ reducing/splitting input or diagnosing the failed provider; never raise/disable 
 merely to turn incomplete coverage green. Every enabled required reviewer must finish.
 Intentional roster changes need owner-approved configuration review; do not drop Kiro
 Opus or another cell just to avoid a finding. A single remaining vendor cannot satisfy
-the current independent-coverage gate.
+required coverage when a configured vendor fails. Intentionally disabled cells are
+excluded from the expected roster; the helper does not independently enforce a
+minimum vendor count for every possible configuration.
 
 ## Memory and history
 
