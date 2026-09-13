@@ -5,6 +5,8 @@ title: Network Diagnosis Demo
 
 # Network Diagnosis Demo
 
+This is an illustrative walkthrough. Command outputs, identifiers, thresholds, and findings are sample data, not a live assessment or the plugin defaults. Use the current skill for the execution contract and verify the actual environment before applying a proposed repair.
+
 IP exhaustion and ALB 502 error diagnosis walkthrough with diagnostic command execution and resolution process.
 
 ## Scenario Overview

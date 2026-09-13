@@ -1,158 +1,62 @@
 ---
 sidebar_position: 2
-title: 설치
+title: "Install aws-ops-plugin"
 ---
 
-# 설치
+{/* Legacy section links retained after the English rewrite. */}
+<span id="설치" />
+<span id="사전-요구사항" />
+<span id="필수-도구" />
+<span id="aws-환경" />
+<span id="설치-방법" />
+<span id="1-마켓플레이스-설치-권장" />
+<span id="2-로컬-설치-개발테스트용" />
+<span id="mcp-서버-설정" />
+<span id="mcp-서버-목록" />
+<span id="uvx-설치" />
+<span id="수동-mcp-설정-필요한-경우" />
+<span id="설치-확인" />
+<span id="플러그인-로드-확인" />
+<span id="mcp-서버-상태-확인" />
+<span id="에이전트-호출-테스트" />
+<span id="문제-해결" />
+<span id="uvx-명령을-찾을-수-없음" />
+<span id="mcp-서버-타임아웃" />
+<span id="aws-자격-증명-오류" />
 
-AWS Ops Plugin 설치 방법을 설명합니다.
 
-## 사전 요구사항
+# Install aws-ops-plugin
 
-### 필수 도구
+## Claude Code
 
-- **Claude Code**: 최신 버전
-- **Python 3.9+**: MCP 서버 실행용
-- **uvx**: Python 패키지 실행 도구 (pipx 대안)
-
-### AWS 환경
-
-- AWS CLI 구성 (`aws configure`)
-- EKS 클러스터 접근 권한
-- kubectl 설치 및 kubeconfig 설정
-
-## 설치 방법
-
-### 1. 마켓플레이스 설치 (권장)
-
-```bash
-# 플러그인 마켓플레이스에서 설치
-/plugin marketplace add aws-ops-plugin
+```text
+/plugin marketplace add Atom-oh/oh-my-cloud-skills
+/plugin install aws-ops-plugin@oh-my-cloud-skills
 ```
 
-### 2. 로컬 설치 (개발/테스트용)
+For local development from a repository checkout:
 
 ```bash
-# 저장소 클론
-git clone https://github.com/your-org/oh-my-cloud-skills.git
-cd oh-my-cloud-skills
-
-# 플러그인 디렉토리 지정하여 Claude Code 실행
 claude --plugin-dir ./plugins/aws-ops-plugin
 ```
 
-## MCP 서버 설정
+## Codex
 
-AWS Ops Plugin은 2개의 MCP 서버를 번들로 포함합니다. 나머지 3개 (`awsknowledge`, `awspricing`, `awsiac`)는 `deploy-on-aws` 플러그인에서 제공되며, 두 플러그인이 함께 로드될 때 사용 가능합니다.
+Install `aws-ops-plugin` from this repository's Codex marketplace using `/plugins`, then start a new thread. The package loads its generated `.codex-plugin/skills/` entries. Use the installed skill picker or describe the desired operation; the slash commands shown in this guide name the corresponding Claude workflows.
 
-### MCP 서버 목록
+## Setup and verification
 
-| 서버 | 소스 | 타입 | 용도 |
-|------|------|------|------|
-| `awsdocs` | **this plugin** | stdio/uvx | AWS 공식 문서 검색/읽기 |
-| `awsapi` | **this plugin** | stdio/uvx | AWS API 직접 호출 |
-| `awsknowledge` | deploy-on-aws | HTTP | AWS 아키텍처 지식, 권장사항 |
-| `awspricing` | deploy-on-aws | stdio/uvx | 비용 분석, 가격 조회 |
-| `awsiac` | deploy-on-aws | stdio/uvx | CloudFormation/CDK 검증 |
+Prepare Python/uvx for the manifest-defined MCP servers and authenticate AWS CLI for the intended account and region. EKS work additionally needs kubectl and the correct context. Inspect credentials and server status locally before an operational request.
 
-### uvx 설치
-
-MCP 서버 실행을 위해 uvx가 필요합니다.
+For a source checkout, validate both host packages from the repository root:
 
 ```bash
-# pipx로 uv 설치
-pipx install uv
-
-# 또는 brew로 설치 (macOS)
-brew install uv
+python3 scripts/test-plugins.py
+python3 scripts/test-codex-plugins.py
 ```
 
-### 수동 MCP 설정 (필요한 경우)
+Inspect the plugin's manifest and generated overlay if an expected entry is missing. Do not treat a successful installation as proof that external credentials, peer CLIs, or cloud permissions work.
 
-`.mcp.json` 파일이 자동 생성되지 않은 경우, 다음 내용으로 생성합니다. 이 플러그인이 번들하는 2개 서버만 포함됩니다.
+## Remove
 
-```json
-{
-  "mcpServers": {
-    "awsdocs": {
-      "command": "uvx",
-      "args": ["awslabs.aws-documentation-mcp-server@latest"],
-      "type": "stdio",
-      "timeout": 60000,
-      "env": { "FASTMCP_LOG_LEVEL": "ERROR" }
-    },
-    "awsapi": {
-      "command": "uvx",
-      "args": ["awslabs.aws-api-mcp-server@latest"],
-      "type": "stdio",
-      "timeout": 120000,
-      "env": { "FASTMCP_LOG_LEVEL": "ERROR" }
-    }
-  }
-}
-```
-
-:::tip deploy-on-aws 플러그인
-`awsknowledge`, `awspricing`, `awsiac` 서버를 사용하려면 `deploy-on-aws` 플러그인도 함께 로드하세요.
-:::
-
-## 설치 확인
-
-### 플러그인 로드 확인
-
-```bash
-# Claude Code 실행 후
-/plugin list
-```
-
-출력에 `aws-ops-plugin`이 표시되어야 합니다.
-
-### MCP 서버 상태 확인
-
-```bash
-# MCP 서버 연결 테스트
-/mcp status
-```
-
-### 에이전트 호출 테스트
-
-```bash
-# EKS 클러스터 상태 확인 요청
-클러스터 상태 확인해줘
-```
-
-`eks-agent`가 자동으로 호출되면 정상 설치된 것입니다.
-
-## 문제 해결
-
-### uvx 명령을 찾을 수 없음
-
-```bash
-# PATH에 uv 추가
-export PATH="$HOME/.local/bin:$PATH"
-
-# .bashrc 또는 .zshrc에 추가
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-```
-
-### MCP 서버 타임아웃
-
-MCP 서버 첫 실행 시 패키지 다운로드로 시간이 소요될 수 있습니다. 타임아웃이 발생하면 다시 시도하세요.
-
-### AWS 자격 증명 오류
-
-```bash
-# AWS 자격 증명 확인
-aws sts get-caller-identity
-
-# 프로필 지정
-export AWS_PROFILE=your-profile
-```
-
-:::tip kubeconfig 설정
-EKS 클러스터 접근을 위해 kubeconfig가 올바르게 설정되어 있어야 합니다.
-
-```bash
-aws eks update-kubeconfig --name your-cluster-name --region your-region
-```
-:::
+Use `/plugin uninstall aws-ops-plugin@oh-my-cloud-skills` in Claude Code or uninstall the entry through Codex `/plugins`.
