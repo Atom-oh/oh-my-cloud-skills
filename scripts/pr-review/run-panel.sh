@@ -158,8 +158,8 @@ launch_kiro() {
 }
 
 # PR207 replaces ignored empty --trust-tools= with a strict agent configuration.
-# Historical CLI 2.11.1 verification used the default v2 engine; keep --v3 and its
-# --mode flag out of this path, and revalidate behavior when the CLI changes.
+# CLI 2.21.4 uses the explicitly selected legacy harness for both call paths.
+# Keep --v3 and its --mode flag out, and revalidate behavior when the CLI changes.
 KIRO_AGENT_NAME="pr-review-notools"
 KIRO_AGENT_SRC="$DIR/agents/$KIRO_AGENT_NAME.json"
 [ -f "$KIRO_AGENT_SRC" ] || { echo "run-panel.sh: kiro agent config missing: $KIRO_AGENT_SRC" >&2; exit 1; }

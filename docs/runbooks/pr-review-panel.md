@@ -138,6 +138,11 @@ quota and agent fallback retain their respective banners; timeouts, authenticati
 unexpected replies, or tool use also fail the check. Resolve the reported cause, then
 re-run CI. Do not bypass the preflight.
 
+An `unexpected argument '--legacy-ui'` diagnostic means the installed CLI does not
+support the selected harness. Preflight withholds every Kiro review and retains
+the failure flags. Verify the runner image's CLI/help and rebuild it with a
+supported CLI; do not remove the flag or bypass startup verification to get a pass.
+
 Malformed agent JSON (including duplicate keys), non-empty tool/resource/MCP settings, or
 a failed agent-file copy abort the panel step before any model is contacted
 (`run-panel.sh: invalid no-tools agent configuration`, `failed to prepare Kiro ... agent`).
