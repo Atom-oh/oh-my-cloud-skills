@@ -26,7 +26,7 @@ title: "Canvas slides"
 
 Show a small linear process with stepwise drawing.
 
-## Source
+## Source {#source}
 
 ```markdown
 ---
@@ -44,7 +44,7 @@ arrow build -> check "verify" step 5
 :::
 ```
 
-## Rendering and interaction
+## Rendering and interaction {#rendering-and-interaction}
 
 The compiler resolves the named colors `accent`, `blue`, `green`, `yellow`, `red`, and `cyan`. Use six-digit hex colors for other values.
 
@@ -52,7 +52,7 @@ Use a unique canvas ID and inspect actual bounds and arrow routing. Current auth
 
 Add speaker notes and run source validation before building. Test the slide in the generated deck; the HTML structure and CSS classes are implementation details, not a substitute for checking behavior.
 
-## Related links
+## Related links {#related-links}
 
 - [Canvas DSL](../syntax/canvas-dsl.md)
 - [Canvas DSL — Arrow](../syntax/canvas-dsl.md#elements)

@@ -1,38 +1,38 @@
 ---
 sidebar_position: 3
-title: Data Visualization Example
+title: 데이터 시각화 예제
 ---
 
 import DemoEmbed from '@site/src/components/DemoEmbed';
 
-# Data Visualization Example
+# 데이터 시각화 예제
 
-These examples illustrate syntax and rendering patterns. Use the current [Canvas policy](/docs/remarp-guide/syntax/canvas-dsl) and [theme tokens](/docs/remarp-guide/themes/css-variables) for new decks; large or grouped architectures use HTML/CSS. Sample metrics are illustrative.
+이 예제는 문법과 렌더링 패턴을 설명합니다. 새 덱에는 현재 [Canvas 정책](/docs/remarp-guide/syntax/canvas-dsl)과 [테마 토큰](/docs/remarp-guide/themes/css-variables)을 적용합니다. 규모가 크거나 그룹이 있는 아키텍처에는 HTML/CSS를 사용합니다. 예제 지표는 설명용입니다.
 
-This example demonstrates data visualization techniques in Remarp: KPI cards, charts, and dashboard layouts.
+Remarp에서 KPI 카드, 차트와 대시보드 레이아웃을 활용하는 데이터 시각화 기법을 설명합니다.
 
-## Design System Principles {#design-system-principles}
+## 디자인 시스템 원칙 {#design-system-principles}
 
-### Typography Hierarchy {#typography-hierarchy}
+### 글자 계층 {#typography-hierarchy}
 
-| Element | Size | Weight | Use Case |
+| 요소 | 크기 | 굵기 | 용도 |
 |---------|------|--------|----------|
-| Hero stat | 3.5rem+ | 700 | Single dominant metric |
-| KPI value | 2.4rem | 700 | Dashboard card values |
-| Card title | 1.1rem | 600 | Section headers |
-| Body text | 1rem | 400 | Descriptions |
-| Label | 0.85rem | 500 | Axis labels, captions |
+| 대표 통계 | 3.5rem+ | 700 | 핵심 지표 하나를 강조 |
+| KPI 값 | 2.4rem | 700 | 대시보드 카드 값 |
+| 카드 제목 | 1.1rem | 600 | 섹션 제목 |
+| 본문 | 1rem | 400 | 설명 |
+| 레이블 | 0.85rem | 500 | 축 레이블, 캡션 |
 
-### Semantic Colors {#semantic-colors}
+### 의미별 색상 {#semantic-colors}
 
-| Purpose | Variable | Usage |
+| 목적 | 변수 | 용도 |
 |---------|----------|-------|
-| Positive | `--green` (#00b894) | Upward trends, success |
-| Negative | `--red` (#e17055) | Downward trends, errors |
-| Warning | `--yellow` (#fdcb6e) | Alerts, pending |
-| Primary | `--accent` (#6c5ce7) | Key metrics |
+| 긍정 | `--green` (#00b894) | 상승 추세, 성공 |
+| 부정 | `--red` (#e17055) | 하락 추세, 오류 |
+| 경고 | `--yellow` (#fdcb6e) | 알림, 대기 |
+| 주요 강조 | `--accent` (#6c5ce7) | 핵심 지표 |
 
-## Complete Example: Metrics Dashboard {#complete-example-metrics-dashboard}
+## 전체 예제: 지표 대시보드 {#complete-example-metrics-dashboard}
 
 ````markdown
 ---
@@ -488,9 +488,9 @@ Lightweight CSS sparklines for quick metrics overview.
 :::
 ````
 
-## KPI Card Patterns {#kpi-card-patterns}
+## KPI 카드 패턴 {#kpi-card-patterns}
 
-### Basic KPI Card {#basic-kpi-card}
+### 기본 KPI 카드 {#basic-kpi-card}
 
 ```html
 <div class="kpi-card">
@@ -516,7 +516,7 @@ Lightweight CSS sparklines for quick metrics overview.
 .kpi-trend.negative { color: var(--red); }
 ```
 
-### KPI with Icon {#kpi-with-icon}
+### 아이콘이 있는 KPI {#kpi-with-icon}
 
 ```html
 <div class="kpi-card">
@@ -529,7 +529,7 @@ Lightweight CSS sparklines for quick metrics overview.
 </div>
 ```
 
-### KPI Grid Layout {#kpi-grid-layout}
+### KPI 그리드 레이아웃 {#kpi-grid-layout}
 
 ```css
 .kpi-grid {
@@ -539,11 +539,11 @@ Lightweight CSS sparklines for quick metrics overview.
 }
 ```
 
-## Chart.js Integration {#chartjs-integration}
+## Chart.js 통합 {#chartjs-integration}
 
-### Setup {#setup}
+### 설정 {#setup}
 
-Include Chart.js in your presentation's `:::script` block:
+프레젠테이션의 `:::script` 블록에 Chart.js를 포함합니다.
 
 ```html
 :::script
@@ -551,7 +551,7 @@ Include Chart.js in your presentation's `:::script` block:
 :::
 ```
 
-### Bar Chart {#bar-chart}
+### 막대 차트 {#bar-chart}
 
 ```javascript
 new Chart(ctx, {
@@ -574,7 +574,7 @@ new Chart(ctx, {
 });
 ```
 
-### Line Chart {#line-chart}
+### 선 차트 {#line-chart}
 
 ```javascript
 new Chart(ctx, {
@@ -593,7 +593,7 @@ new Chart(ctx, {
 });
 ```
 
-### Doughnut Chart {#doughnut-chart}
+### 도넛 차트 {#doughnut-chart}
 
 ```javascript
 new Chart(ctx, {
@@ -613,9 +613,9 @@ new Chart(ctx, {
 });
 ```
 
-## CSS-Only Charts {#css-only-charts}
+## CSS만 사용하는 차트 {#css-only-charts}
 
-### Progress Bar {#progress-bar}
+### 진행률 표시줄 {#progress-bar}
 
 ```html
 <div class="progress-bar">
@@ -637,7 +637,7 @@ new Chart(ctx, {
 }
 ```
 
-### Horizontal Bar Chart (CSS Grid) {#horizontal-bar-chart-css-grid}
+### 가로 막대 차트(CSS Grid) {#horizontal-bar-chart-css-grid}
 
 ```html
 <div class="bar-chart">
@@ -668,12 +668,12 @@ new Chart(ctx, {
 }
 ```
 
-## Best Practices {#best-practices}
+## 권장 사항 {#best-practices}
 
-1. **Use semantic colors** - Green for positive, red for negative, consistently
-2. **Limit data density** - Maximum 4-6 KPI cards per slide
-3. **Add context** - Show trends, comparisons, or time periods
-4. **Responsive grids** - Use `auto-fit` and `minmax()` for flexible layouts
-5. **Progressive reveal** - Use `data-fragment-index` to build up dashboards
-6. **Consistent typography** - Follow the hierarchy table for font sizes
-7. **Dark theme friendly** - Use CSS variables for colors, not hardcoded values
+1. **의미별 색상을 사용합니다** — 긍정은 녹색, 부정은 빨간색으로 일관되게 표시합니다.
+2. **데이터 밀도를 제한합니다** — 슬라이드당 KPI 카드는 최대 4-6개로 제한합니다.
+3. **맥락을 제공합니다** — 추세, 비교나 기간을 표시합니다.
+4. **반응형 그리드를 사용합니다** — `auto-fit`과 `minmax()`로 유연한 레이아웃을 구성합니다.
+5. **점진적으로 표시합니다** — `data-fragment-index`로 대시보드를 단계별로 보여 줍니다.
+6. **글자 스타일을 통일합니다** — 글자 크기는 계층 표를 따릅니다.
+7. **다크 테마를 고려합니다** — 색상을 직접 고정하지 말고 CSS 변수를 사용합니다.

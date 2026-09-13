@@ -38,7 +38,7 @@ The defaults below come from the current `SlideFramework.getKeyAction()` impleme
 
 Typing in an input or textarea does not navigate the deck. Touch swipes on the deck support previous/next navigation. Compare/tabs/Canvas behavior depends on the registered interaction for that slide.
 
-## Custom mappings
+## Custom mappings {#custom-mappings}
 
 ```yaml
 keys:
@@ -48,7 +48,7 @@ keys:
 
 The runtime reads a key-to-action object. Supported actions are those implemented by the navigation switch. The current default map does not bind number keys, N for a notes panel, or B for blackout; older examples that list them are not the active runtime contract.
 
-## Presenter and overview
+## Presenter and overview {#presenter-and-overview}
 
 Use P before presenting with a second display and verify window synchronization. Use O and select a slide to navigate the overview. Test custom key mappings in the actual generated deck, particularly when they replace a default.
 

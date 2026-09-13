@@ -24,21 +24,21 @@ title: "Remarp"
 
 Remarp is this repository's Markdown-to-HTML presentation format. It adds slide directives, fragments, speaker notes, simple Canvas diagrams, interactive slide types, theme extraction, and multi-file projects to ordinary Markdown.
 
-## Authoring model
+## Authoring model {#authoring-model}
 
 Use `.md` files with `remarp: true` frontmatter. A single file can hold a short deck; a longer session can use `_presentation.md` plus numbered block files. `.remarp.md` remains supported for existing sources and editor integration.
 
 Slides are separated by `---`. Directives such as `@type: tabs` precede content. `{.click}` reveals fragments. `:::notes` contains speaking guidance. HTML/CSS/script blocks support layouts and interactive tools beyond the small Canvas DSL.
 
-## Workflow
+## Workflow {#workflow}
 
 Plan → author → validate → build → browser checks → content review. Edit source and rebuild; do not treat generated HTML as the durable source unless the editor explicitly writes changes back. Marp migration is available, but generated output still needs validation and review.
 
-## Next steps
+## Next steps {#next-steps}
 
 [Quick start](/docs/remarp-guide/quick-start) · [Frontmatter](/docs/remarp-guide/syntax/frontmatter) · [Build CLI](/docs/remarp-guide/build-cli) · [Editor](/docs/remarp-guide/vscode-extension)
 
-## Related links
+## Related links {#related-links}
 
 - [quick start](./quick-start.md)
 - [Frontmatter](./syntax/frontmatter.md)

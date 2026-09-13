@@ -21,7 +21,7 @@ title: "Checklist slides"
 
 Track completion without quiz scoring.
 
-## Source
+## Source {#source}
 
 ```markdown
 ---
@@ -35,7 +35,7 @@ Track completion without quiz scoring.
 - [ ] Remaining limits recorded
 ```
 
-## Rendering and interaction
+## Rendering and interaction {#rendering-and-interaction}
 
 Use `@type: checklist` so checkboxes are not inferred as a quiz. Clicking toggles the item state and its checked class. Supported nested code feedback can reveal a configuration example; inspect the compiled result and keep the example scoped to the item. Split a long checklist into meaningful groups.
 
