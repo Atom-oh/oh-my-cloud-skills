@@ -3,6 +3,8 @@ sidebar_position: 8
 title: "AWS light PowerPoint skill"
 ---
 
+# AWS light PowerPoint skill
+
 {/* Legacy section links retained after the English rewrite. */}
 <span id="aws-light-fcd-skill" />
 <span id="트리거-키워드" />
@@ -11,9 +13,6 @@ title: "AWS light PowerPoint skill"
 <span id="워크플로우" />
 <span id="핵심-규칙-non-negotiable" />
 <span id="제공-자산-위치" />
-
-
-# AWS light PowerPoint skill
 
 Create native editable PowerPoint decks with the shipped AWS light theme, Pretendard typography, gradient accents, reusable layouts, and AWS/AgentCore icon helpers.
 

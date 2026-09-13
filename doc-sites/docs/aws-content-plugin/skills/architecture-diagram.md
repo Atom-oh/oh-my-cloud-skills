@@ -3,6 +3,8 @@ sidebar_position: 2
 title: "Architecture diagram skill"
 ---
 
+# Architecture diagram skill
+
 {/* Legacy section links retained after the English rewrite. */}
 <span id="trigger-keywords" />
 <span id="supported-modes" />
@@ -38,9 +40,6 @@ title: "Architecture diagram skill"
 <span id="drawio-mcp-setup-optional" />
 <span id="quality-review-required" />
 <span id="validation-checklist" />
-
-
-# Architecture diagram skill
 
 Create editable AWS Draw.io diagrams and exported images. Standard VPC/Multi-AZ/tiered, serverless/pipeline, multi-region, and hybrid patterns use a YAML spec with `layout_aws.py`; unsupported shapes can use hand-authored XML.
 

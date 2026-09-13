@@ -3,6 +3,8 @@ sidebar_position: 5
 title: "Slide fix skill"
 ---
 
+# Slide fix skill
+
 {/* Legacy section links retained after the English rewrite. */}
 <span id="trigger-keywords" />
 <span id="워크플로우" />
@@ -13,9 +15,6 @@ title: "Slide fix skill"
 <span id="vscode-extension-연동" />
 <span id="사용-예시" />
 <span id="quality-review" />
-
-
-# Slide fix skill
 
 Apply issue annotations from Remarp or the editor to the actual slide source.
 

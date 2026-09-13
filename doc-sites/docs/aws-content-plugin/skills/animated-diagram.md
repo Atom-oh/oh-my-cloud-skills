@@ -3,6 +3,8 @@ sidebar_position: 3
 title: "Animated diagram skill"
 ---
 
+# Animated diagram skill
+
 {/* Legacy section links retained after the English rewrite. */}
 <span id="trigger-keywords" />
 <span id="use-cases" />
@@ -33,9 +35,6 @@ title: "Animated diagram skill"
 <span id="validation-checklist" />
 <span id="smil-animation" />
 <span id="interactive-animation" />
-
-
-# Animated diagram skill
 
 Visualize request traffic, autoscaling, blue/green deployment, failover, and other service interactions using SVG motion or interactive HTML.
 

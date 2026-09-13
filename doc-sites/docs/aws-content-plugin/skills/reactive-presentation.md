@@ -3,6 +3,8 @@ sidebar_position: 1
 title: "Reactive presentation skill"
 ---
 
+# Reactive presentation skill
+
 {/* Legacy section links retained after the English rewrite. */}
 <span id="trigger-keywords" />
 <span id="provided-resources" />
@@ -45,9 +47,6 @@ title: "Reactive presentation skill"
 <span id="keyboard-shortcuts" />
 <span id="usage-example" />
 <span id="quality-review-required" />
-
-
-# Reactive presentation skill
 
 Build interactive HTML decks from Remarp, with speaker notes, keyboard navigation, light/dark themes, quizzes, tabs, diagrams, and optional PowerPoint theme extraction.
 

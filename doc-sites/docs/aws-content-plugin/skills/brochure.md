@@ -3,6 +3,8 @@ sidebar_position: 6
 title: "Brochure skill"
 ---
 
+# Brochure skill
+
 {/* Legacy section links retained after the English rewrite. */}
 <span id="trigger-keywords" />
 <span id="when-this-applies-and-when-it-doesnt" />
@@ -11,9 +13,6 @@ title: "Brochure skill"
 <span id="assets" />
 <span id="scripts" />
 <span id="mandatory-rules" />
-
-
-# Brochure skill
 
 Create a responsive single-file product or solution landing page with a value proposition, feature story, architecture, and call to action.
 

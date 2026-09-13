@@ -3,6 +3,8 @@ sidebar_position: 4
 title: "GitBook skill"
 ---
 
+# GitBook skill
+
 {/* Legacy section links retained after the English rewrite. */}
 <span id="trigger-keywords" />
 <span id="use-cases" />
@@ -40,9 +42,6 @@ title: "GitBook skill"
 <span id="quick-start-commands" />
 <span id="usage-example" />
 <span id="quality-review-required" />
-
-
-# GitBook skill
 
 Build a structured documentation site with navigable topic pages and rich GitBook components.
 

@@ -3,6 +3,8 @@ sidebar_position: 7
 title: "Personal profile skill"
 ---
 
+# Personal profile skill
+
 {/* Legacy section links retained after the English rewrite. */}
 <span id="gh-home-skill--개인-프로필-페이지" />
 <span id="trigger-keywords" />
@@ -10,9 +12,6 @@ title: "Personal profile skill"
 <span id="provided-resources" />
 <span id="references" />
 <span id="mandatory-rules" />
-
-
-# Personal profile skill
 
 Create a responsive personal profile or developer portfolio as a single HTML page.
 
