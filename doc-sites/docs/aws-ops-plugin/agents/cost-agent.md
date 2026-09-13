@@ -24,11 +24,11 @@ title: "Cost agent"
 
 Service-level spending, EKS allocation, idle resources, utilization, storage lifecycle, and commitment/right-sizing opportunities.
 
-## Diagnostic approach
+## Diagnostic approach {#diagnostic-approach}
 
 Start with a stated account/time range and cost basis. Compare usage and capacity, distinguish recurring savings from one-time changes, and quantify assumptions. A recommendation must consider performance, availability, and existing commitments.
 
-## Initial read-only checks
+## Initial read-only checks {#initial-read-only-checks}
 
 Use the source procedure's [Cost Explorer queries](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-ops-plugin/agents/cost-agent.md#analysis-commands) for the selected billing period and account. For an EKS workload, these additional read-only checks provide utilization context in the intended Kubernetes cluster:
 
@@ -38,7 +38,7 @@ kubectl top pods -A
 kubectl get deployments -A
 ```
 
-## Evidence and handoff
+## Evidence and handoff {#evidence-and-handoff}
 
 Return the billing scope, measured spending and utilization, recommendation assumptions, expected savings, and performance/recovery tradeoffs. Distinguish account-specific evidence from pricing estimates.
 

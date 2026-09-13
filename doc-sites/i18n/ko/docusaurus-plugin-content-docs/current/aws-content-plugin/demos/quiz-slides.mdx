@@ -1,0 +1,44 @@
+---
+sidebar_position: 3
+title: "퀴즈 데모"
+---
+
+{/* 영문 개편 전의 기존 섹션 링크를 유지합니다. */}
+<span id="퀴즈-슬라이드-데모" />
+<span id="데모" />
+<span id="스크린샷" />
+<span id="퀴즈-화면" />
+<span id="정답-선택-시-피드백" />
+<span id="생성-프롬프트" />
+<span id="remarp-소스" />
+<span id="퀴즈-문법" />
+<span id="동작-방식" />
+
+
+# 퀴즈 데모
+
+import DemoEmbed from '@site/src/components/DemoEmbed';
+
+이해도 확인 슬라이드로 답안 선택과 피드백 표시를 설명합니다.
+
+## 실행 예제 {#live-example}
+
+<DemoEmbed
+  src="/oh-my-cloud-skills/demos/quiz-slides/index.html"
+  title="이해도 확인 퀴즈"
+  height={600}
+  command="python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build doc-sites/static/demos/quiz-slides -o /var/tmp/quiz-slides-example"
+  remarpSource="quiz-demo.md"
+/>
+
+## 확인할 사항 {#what-to-inspect}
+
+정답과 오답을 각각 눌러 피드백과 상태를 확인합니다. 소스에서 [x]는 정답을, [ ]는 오답 선택지를 표시합니다. 정답이 여러 개인 문제에는 안내를 명시하고, 삽입된 퀴즈 구현이 실제로 무엇을 지원하는지 확인합니다.
+
+삽입된 HTML, 다운로드 가능한 소스와 스크린샷은 변경하지 않는 예제 결과물입니다. 원래 언어를 유지하며, 이 가이드에서는 예제를 이해하는 방법을 설명합니다.
+
+## 스크린샷 {#screenshots}
+
+![퀴즈 데모 스크린샷](/img/demos/quiz-slides-newtheme.png)
+
+![퀴즈 데모 스크린샷](/img/demos/quiz-correct-answer-fhd.png)

@@ -34,15 +34,15 @@ title: "Workshop example"
 
 This example illustrates an EKS Workshop Studio project with a homepage, ordered modules, lab pages, infrastructure assets, and learner checkpoints.
 
-## Project shape
+## Project shape {#project-shape}
 
 Keep `contentspec.yaml` at the project root, content pages under module/lab directories, and reusable images/templates in static assets. Homepage and module pages explain objectives and prerequisites; a lab page gives commands, expected results, verification, and cleanup.
 
-## Content features
+## Content features {#content-features}
 
 Use Workshop Studio alerts for cautions, code blocks with copy support, and tabs for real alternatives. Frontmatter controls title and ordering. Use only the requested language variants; localized input/output examples can be retained as frozen artifacts.
 
-## Infrastructure review
+## Infrastructure review {#infrastructure-review}
 
 Infrastructure and IAM are exercise-specific. Validate templates, scope permissions, keep public access controlled, and identify every resource the learner creates. An old example template is not a current production deployment recommendation.
 

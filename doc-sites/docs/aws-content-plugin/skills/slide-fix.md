@@ -18,7 +18,7 @@ title: "Slide fix skill"
 
 Apply issue annotations from Remarp or the editor to the actual slide source.
 
-## Annotation loop
+## Annotation loop {#annotation-loop}
 
 ```markdown
 <!-- issue: The comparison labels overlap at the mobile viewport. -->

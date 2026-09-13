@@ -16,11 +16,11 @@ title: "AWS light PowerPoint skill"
 
 Create native editable PowerPoint decks with the shipped AWS light theme, Pretendard typography, gradient accents, reusable layouts, and AWS/AgentCore icon helpers.
 
-## Use this workflow
+## Use this workflow {#use-this-workflow}
 
 Choose this skill when the deliverable must be an editable AWS light `.pptx`. Use reactive-presentation for interactive web slides and its screenshot-based export when that is the desired result.
 
-## Build
+## Build {#build}
 
 Read the kit and reference layouts; plan a coherent narrative; use native PowerPoint shapes/text where editing matters; resolve icons through `kit.icon()`; inspect slide layout; build and embed fonts using the supplied tooling.
 
@@ -40,7 +40,7 @@ script alone does not preserve its default `assets/fonts` lookup.
 Before embedding, `check_pptx.py` must score at least 80 with zero `[geometry]`
 findings. Content review remains required before publication.
 
-## Assets and verification
+## Assets and verification {#assets-and-verification}
 
 The kit provides covers, agendas, statistics, AgentCore cards, and architecture layouts. `kit.icon()` intentionally uses the sibling reactive-presentation icon library. Keep editable objects aligned, use canonical assets, inspect the exported slides, and run content review before publication.
 

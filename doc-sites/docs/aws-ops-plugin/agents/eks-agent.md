@@ -26,11 +26,11 @@ title: "EKS agent"
 
 Cluster and node health, add-on lifecycle, upgrades, pod scheduling, CrashLoopBackOff, ImagePullBackOff, eviction, and resource pressure.
 
-## Diagnostic approach
+## Diagnostic approach {#diagnostic-approach}
 
 For node failures inspect conditions, kubelet, network, and disk. For Pending pods inspect scheduler events, selectors, taints, capacity, and volumes. For crash loops inspect previous logs, limits, and configuration. Before upgrades check the target version, add-ons, and deprecated APIs.
 
-## Initial read-only checks
+## Initial read-only checks {#initial-read-only-checks}
 
 Run only in the intended account, region, and Kubernetes context. Service-specific follow-ups come from the observed result.
 
@@ -41,7 +41,7 @@ kubectl get pods -A -o wide
 kubectl get events -A --sort-by=.lastTimestamp
 ```
 
-## Evidence and handoff
+## Evidence and handoff {#evidence-and-handoff}
 
 Return the affected component, observed symptoms, supporting output, likely cause, proposed action, and a verification command with expected results. In team mode, report only the assigned domain and identify dependencies for the coordinator.
 

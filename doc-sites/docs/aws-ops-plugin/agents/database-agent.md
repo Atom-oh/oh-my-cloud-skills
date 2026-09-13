@@ -25,11 +25,11 @@ title: "Database agent"
 
 RDS/Aurora connectivity and performance, DynamoDB throttling/capacity, and ElastiCache connectivity, memory, and latency.
 
-## Diagnostic approach
+## Diagnostic approach {#diagnostic-approach}
 
 Check endpoint/network/authentication before query performance. Correlate connection limits, failover events, hot partitions, capacity modes, cache evictions, and application retry behavior. Validate any proposed change against workload and recovery needs.
 
-## Initial read-only checks
+## Initial read-only checks {#initial-read-only-checks}
 
 Run these AWS CLI checks only in the intended account and region. Choose service-specific follow-ups from the observed result.
 
@@ -39,7 +39,7 @@ aws dynamodb list-tables
 aws elasticache describe-cache-clusters
 ```
 
-## Evidence and handoff
+## Evidence and handoff {#evidence-and-handoff}
 
 Return the affected component, observed symptoms, supporting output, likely cause, proposed action, and a verification command with expected results. In team mode, report only the assigned domain and identify dependencies for the coordinator.
 

@@ -46,19 +46,19 @@ title: "Workshop creator skill"
 
 Create AWS Workshop Studio content and project structure, including modules, labs, assets, and optional infrastructure.
 
-## Project layout
+## Project layout {#project-layout}
 
 The project contains contentspec.yaml, content pages grouped by module/lab, and static assets such as diagrams and infrastructure templates. Pages require a quoted `title`; optional `weight` controls navigation order. Follow the source [frontmatter reference](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-content-plugin/skills/workshop-creator/references/front-matter.md) for other fields. Do not use Hugo `chapter: true` or shortcode syntax.
 
-## Authoring
+## Authoring {#authoring}
 
 Use Workshop Studio alert, code, tabs, image, expand, and Mermaid directives. Provide copyable commands, expected output, checkpoints, troubleshooting, and cleanup. Tabs can show real alternatives such as operating systems or deployment options. Keep infrastructure scoped to the exercise and document event parameters or central-account resources when the workshop uses them.
 
-## Infrastructure and language
+## Infrastructure and language {#infrastructure-and-language}
 
 Validate CloudFormation and IAM before use, follow the repository's AWS security rules, and avoid embedding secrets. Localized page pairs are an output option when requested; otherwise use one consistent language. Explain every resource the lab creates and how learners verify or remove it.
 
-## Review
+## Review {#review}
 
 Check contentspec paths, page order, directive syntax, files/assets, prerequisites, and lab completion criteria. Test the documented steps in the authorized environment and run content review before publication.
 

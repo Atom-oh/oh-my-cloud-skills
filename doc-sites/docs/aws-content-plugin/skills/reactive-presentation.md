@@ -50,19 +50,19 @@ title: "Reactive presentation skill"
 
 Build interactive HTML decks from Remarp, with speaker notes, keyboard navigation, light/dark themes, quizzes, tabs, diagrams, and optional PowerPoint theme extraction.
 
-## Workflow
+## Workflow {#workflow}
 
 Plan the audience, message, blocks, and timing. Use `_presentation.md` for shared metadata and numbered `.md` files with `remarp: true` for blocks. Author slide directives, fragments, notes, and references; validate; build; inspect the rendered deck; revise; run content review before publication.
 
-## Content and interaction
+## Content and interaction {#content-and-interaction}
 
 Supported slide forms include content, code, compare, Canvas, quiz, tabs, timeline, and checklist. Use native HTML/CSS grids for KPI cards, charts, grouped architectures, and readable layouts. Use `:::script` for calculators or simulators with real input/output state. Canvas is limited to simple linear diagrams with at most four boxes/icons; groups and branches use HTML/CSS.
 
-## Design and notes
+## Design and notes {#design-and-notes}
 
 Use semantic tokens and class-based themes. Brand input uses `--pptx-*` variables consumed by the framework. Keep type hierarchy and contrast clear, use the shared AWS icon library, and include useful notes explaining the message, practical implications, audience cues, and transition.
 
-## Tools and exports
+## Tools and exports {#tools-and-exports}
 
 The source directory contains the converter, theme extractor, export helpers, framework assets, icons, and reference patterns. `build`, `sync`, `migrate`, `issues`, and `validate` are converter subcommands. Browser exports and the screenshot-based PPTX helper are distinct from native editable PowerPoint generation.
 

@@ -43,7 +43,7 @@ title: "Architecture diagram skill"
 
 Create editable AWS Draw.io diagrams and exported images. Standard VPC/Multi-AZ/tiered, serverless/pipeline, multi-region, and hybrid patterns use a YAML spec with `layout_aws.py`; unsupported shapes can use hand-authored XML.
 
-## Generate and validate
+## Generate and validate {#generate-and-validate}
 
 ```bash
 python3 plugins/aws-content-plugin/skills/architecture-diagram/scripts/layout_aws.py my-spec.yaml -o output.drawio
@@ -54,7 +54,7 @@ drawio -x -f png -s 2 -t -o output.png output.drawio
 
 Require layout score at least 80 before export. Headless Linux export can use `xvfb-run -a`. Reopen the image and compare service/cell coverage to the intended architecture; successful export status alone does not catch truncation.
 
-## Structure and tokens
+## Structure and tokens {#structure-and-tokens}
 
 Use vertex nesting that matches Cloud/Region/VPC/Subnet containment. Edges use parent="1" and explicit orthogonal anchors. Distinguish public and private subnet groups using their correct AWS group styles. Copy sizing, colors, fonts, pitch, and label rules from the canonical token file rather than maintaining a second table.
 
