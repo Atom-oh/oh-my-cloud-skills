@@ -21,7 +21,7 @@ title: "Quick start"
 
 ## Create the source
 
-Save this as `my-talk.md`. The literal `[요약]` marker means “summary” and is required by the current structured-notes validator; the notes themselves remain English.
+Save this as `my-talk.md`. The literal `[요약]` marker means “summary” and is checked by the current structured-notes validator (`NOTE_STRUCTURE` is a warning when the marker is missing); the notes themselves remain English.
 
 ```markdown
 ---

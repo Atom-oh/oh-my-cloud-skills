@@ -23,7 +23,9 @@ title: "Kiro convert skill"
 
 # Kiro convert skill
 
-Convert a plugin or skill into a Kiro Power with a manifest, steering, supported hooks, MCP configuration, and assets.
+Convert a plugin into a Kiro Power with a manifest, steering, supported hooks, MCP
+configuration, and assets. Standalone `--skill` conversion instead emits steering
+Markdown; it does not create a Power manifest, MCP configuration or hooks.
 
 ## Local conversion
 
@@ -33,7 +35,10 @@ Run from a checkout of this marketplace:
 python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_to_power.py --source ./plugins/aws-ops-plugin --output /var/tmp/aws-ops-power --target export
 ```
 
-Add `--preserve-skills` to retain skill directories and their references/scripts. GitHub sources use `--git-url`, with `--plugin-path` and `--branch` when needed. `--skill` accepts individual skill directories.
+For plugin conversion, add `--preserve-skills` to retain skill directories and their
+references/scripts. GitHub sources use `--git-url`, with `--plugin-path` and
+`--branch` when needed. `--skill` accepts individual skill directories and returns
+through the separate steering-only path; `--preserve-skills` does not apply there.
 
 ## Marketplace selection
 
@@ -41,6 +46,6 @@ List candidates with `--marketplace --search "ops"`, then convert the intended p
 
 ## Validate and deliver
 
-POWER.md needs supported metadata; steering needs valid `inclusion` and `globs` when file-matched; MCP secrets become environment references; hooks must be valid Kiro JSON. Report source/target paths, produced artifact counts, required variables, skipped features, and manual installation checks.
+For plugin packages, POWER.md needs supported metadata; steering needs valid `inclusion` and `globs` when file-matched; MCP secrets become environment references; hooks must be valid Kiro JSON. For standalone skill output, validate the steering Markdown. Report source/target paths, produced artifact counts, required variables, skipped features, and manual installation checks.
 
 [Full workflow](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/kiro-power-converter/skills/kiro-convert/SKILL.md)

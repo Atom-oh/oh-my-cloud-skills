@@ -31,6 +31,10 @@ A failed review, absent response, or review of an older commit is not evidence t
 
 [Canonical iteration setting](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/skills/co-agent/co-agent.defaults.json)
 
+AI review requires the consumer repository to install the example workflow and its
+paired gate helper; follow the [CI workflow setup](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/skills/pr-autofix/SKILL.md#ci-workflow-setup).
+The autofix loop never edits `.github/workflows/*`; configure that automation separately.
+
 The skill itself does not grant merge authorization or bypass protection rules. Follow the repository's explicit review and merge policy. Local optional review hooks and CI review workflows are separate controls.
 
 [Skill contract](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/skills/pr-autofix/SKILL.md) · [Example review workflow](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/skills/pr-autofix/references/pr-review-workflow.yml)

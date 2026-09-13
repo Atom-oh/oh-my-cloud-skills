@@ -40,3 +40,5 @@ Track completion without quiz scoring.
 Use `@type: checklist` so checkboxes are not inferred as a quiz. Clicking toggles the item state and its checked class. Supported nested code feedback can reveal a configuration example; inspect the compiled result and keep the example scoped to the item. Split a long checklist into meaningful groups.
 
 Add speaker notes and run source validation before building. Test the slide in the generated deck; the HTML structure and CSS classes are implementation details, not a substitute for checking behavior.
+
+See [directives](../syntax/directives.md), [speaker notes](../syntax/speaker-notes.md), and [keyboard controls](../keyboard-shortcuts.md).

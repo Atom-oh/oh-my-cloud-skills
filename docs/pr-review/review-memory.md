@@ -21,6 +21,9 @@ review runs. Older detail is in
 
 ## Known false-positive patterns (conditions to verify, not exemptions)
 
+- MDX comments and alias spans before an H1 did not duplicate titles in the
+  verified Docusaurus 3.9.2 build. Inspect generated HTML before claiming duplicate
+  H1s from source ordering alone (PR #199).
 - A helper absent from the diff may already exist in base. Verify its definition
   before reporting it missing; never invent a reproduction (PR #177–184).
 - Source skills, commands and agents sum to source procedures. Generated Codex

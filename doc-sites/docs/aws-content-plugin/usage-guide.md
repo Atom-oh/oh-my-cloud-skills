@@ -45,11 +45,11 @@ State the audience, technical level, language, duration or page scope, output fo
 
 ## Presentations
 
-The web workflow plans blocks, optionally extracts a PPTX theme, authors Remarp, validates source, builds HTML, and tests interactions. A multi-file deck uses `_presentation.md` plus numbered block files. The source remains the editing authority; synchronize only changed blocks when appropriate.
+The web workflow plans blocks, optionally extracts a PPTX theme, authors Remarp, validates source, builds HTML, and tests interactions. A multi-file deck uses `_presentation.md` plus numbered block files. The source remains the editing authority; synchronize only changed blocks when appropriate. Set `lang: en` in `_presentation.md` for English project and table-of-contents output, and keep any block-level language overrides consistent. The `--lang` flag applies only to single-file builds. Use a full build after global metadata changes and before publishing; `sync` refreshes changed block pages, not the merged deck or shared assets.
 
 ```bash
 python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py validate ./my-presentation/
-python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build ./my-presentation/ --lang en
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build ./my-presentation/
 python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py sync ./my-presentation/
 ```
 
@@ -61,7 +61,7 @@ Use the Draw.io layout generator for supported AWS patterns. Validate XML and la
 
 ## Documents, sites, and workshops
 
-The document agent writes reports and comparisons. GitBook supplies multi-page navigation and rich documentation components. Workshop Creator supplies Workshop Studio structure, directives, lab verification, and cleanup. Brochure builds product/solution landing pages; gh-home builds a personal profile with experience, skills, and selected work.
+The document agent writes reports and comparisons. GitBook supplies multi-page navigation and rich documentation components. Workshop Creator supplies Workshop Studio structure, directives, lab verification, and cleanup. Brochure builds product/solution landing pages; gh-home builds a personal profile with experience, skills, and selected work. For a profile refresh, confirm before overwriting an existing `index.html` and preserve unrelated CNAME, robots.txt, and analytics files.
 
 ## Revision and review
 

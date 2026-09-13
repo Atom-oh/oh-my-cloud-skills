@@ -5,6 +5,12 @@ against evidence, attributes peer findings and writes the final artifact. Claude
 uses Kiro CLI, Codex and Agy as candidate peers; Codex uses Kiro CLI, Claude CLI and Agy.
 Always exclude the current host. The legacy `gemini` CLI is unsupported.
 
+## Chair Principle
+
+External peers advise; the current host verifies evidence and writes the result.
+A single unverified opinion does not settle an advisory decision. Hook quorum and
+pipeline readiness rules remain explicit controls with their own acceptance rules.
+
 ## Routing and taxonomy
 
 The selection contract is `skills/co-agent/SKILL.md`'s `description`: invoke for
@@ -77,6 +83,8 @@ push hooks. Both are off by default. Enabling them is consent to external diff r
 tracked or symlink-aliased repo overrides cannot enable consent keys. Keep the
 secret scan, restricted peer environment and scope checks. Source files define the
 exact command-matching grammar and configuration defaults.
+Keep push-scope handling aligned with Kiro's `is_push_scope_mismatch` and Atlas's
+copied `hook_match.py`: all three can intercept the same push.
 
 - **PR hook:** `gh pr create` review uses peer quorum. `majority` requires a majority
   of usable voters and at least two blockers; `any` permits one blocker. Unusable
@@ -95,6 +103,8 @@ exact command-matching grammar and configuration defaults.
   read; tool restrictions are not a complete filesystem sandbox. Do not enable these
   read-capable gates where sensitive data outside the diff could be exposed. The CI
   Kiro path has a separate no-tool-grant contract (ADR-013).
+  Untrusted diff text can also forge a verdict without executing tools; a returned
+  PASS token does not replace host verification.
 - **Overrides:** the PR hook reads session `CO_AGENT_PR_GATE=off`; an inline prefix
   does not disable it. The push hook recognizes `CO_AGENT_PUSH_GATE=off` on the specific
   push invocation. These local controls never waive mandatory CI or security policy.

@@ -42,7 +42,13 @@ claude --plugin-dir ./plugins/aws-ops-plugin
 
 ## Codex
 
-Install `aws-ops-plugin` from this repository's Codex marketplace using `/plugins`, then start a new thread. The package loads its generated `.codex-plugin/skills/` entries. Use the installed skill picker or describe the desired operation; the slash commands shown in this guide name the corresponding Claude workflows.
+Register the marketplace in a Codex CLI with plugin support:
+
+```bash
+codex plugin marketplace add Atom-oh/oh-my-cloud-skills
+```
+
+Open `/plugins`, install `aws-ops-plugin`, and start a new thread. Select an installed skill or describe the desired operation. This package exposes skill and specialist procedures through `.codex-plugin/skills/`; it does not ship a separate `commands/` catalog. The `/plugin` commands above manage the Claude Code installation.
 
 ## Setup and verification
 

@@ -38,7 +38,7 @@ title: "VS Code extension"
 
 # VS Code extension
 
-The repository's Remarp extension provides syntax highlighting, slide navigation, preview, source building, outline, completion, issue annotations, and editing support. Use the package manifest as the authority for registered commands, settings, and shortcuts.
+The repository's Remarp extension provides syntax highlighting, slide navigation, preview, source building, outline, completion, and issue annotations for source editing. Use the package manifest as the authority for registered commands, settings, and shortcuts.
 
 ## Local setup
 
@@ -73,10 +73,12 @@ The manifest registers Ctrl/Cmd+Shift+Right and Left for slide navigation, and C
 
 ## Editing and issues
 
-Preview includes notes and slide-specific issue annotations. `<!-- issue: ... -->` records a repair request for slide-fix. Visual-edit helpers support CSS property writeback and Canvas position/size/step updates; inspect the source after editing. Remarp-generated HTML can carry generator/source metadata for preview and source discovery, but generated output is still rebuilt from source.
+Preview includes notes and slide-specific issue annotations. `<!-- issue: ... -->` records a repair request for slide-fix. Edit the Markdown/CSS/Canvas source, rebuild, and inspect the generated HTML in a browser.
+
+The repository contains visual-edit/writeback and HTML-preview helper classes, but the current registered preview/build commands do not wire them in. There is no registered Visual Edit command or shortcut; do not treat those helper files as an available editing workflow.
 
 ## Boundaries
 
-The registered language extension is `.remarp.md`; the converter also accepts `.md` with `remarp: true`. Preview rendering and the production HTML builder are separate paths. Validate the final generated deck in a browser rather than treating preview success as complete production verification.
+The registered language extension is `.remarp.md`. The extension also detects `.md` documents with `remarp: true` and switches them to the Remarp editor language on activation, open, or save, enabling its menus, shortcuts, and outline. Preview rendering and the production HTML builder are separate paths. Validate the final generated deck in a browser rather than treating preview success as complete production verification.
 
 [Commands, settings, and keybindings](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/tools/remarp-vscode/package.json) · [Editor implementation](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/tools/remarp-vscode/src/)

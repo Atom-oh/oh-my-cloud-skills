@@ -41,3 +41,5 @@ Repeatable checks in the configured workflow.
 Third-level headings identify alternatives. The parser can infer comparison from repeated headings, but use an explicit type to distinguish it from tabs or timeline. Test option buttons and Up/Down cycling; Left/Right continues ordinary navigation. Use matching criteria across alternatives.
 
 Add speaker notes and run source validation before building. Test the slide in the generated deck; the HTML structure and CSS classes are implementation details, not a substitute for checking behavior.
+
+See [directives](../syntax/directives.md), [speaker notes](../syntax/speaker-notes.md), and [keyboard controls](../keyboard-shortcuts.md).

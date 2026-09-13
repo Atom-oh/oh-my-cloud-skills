@@ -48,7 +48,7 @@ Create AWS Workshop Studio content and project structure, including modules, lab
 
 ## Project layout
 
-The project contains contentspec.yaml, content pages grouped by module/lab, and static assets such as diagrams and infrastructure templates. Pages carry the required title, weight, and other Workshop Studio frontmatter. Do not use Hugo `chapter: true` or shortcode syntax.
+The project contains contentspec.yaml, content pages grouped by module/lab, and static assets such as diagrams and infrastructure templates. Pages require a quoted `title`; optional `weight` controls navigation order. Follow the source [frontmatter reference](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-content-plugin/skills/workshop-creator/references/front-matter.md) for other fields. Do not use Hugo `chapter: true` or shortcode syntax.
 
 ## Authoring
 

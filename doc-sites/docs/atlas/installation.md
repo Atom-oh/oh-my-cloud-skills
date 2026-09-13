@@ -23,7 +23,11 @@ Install `atlas` from this repository's Codex marketplace using `/plugins`, then 
 
 ## Setup and verification
 
-Run `/atlas:init` to propose wiki topics, then `/atlas:sync --dry-run` to inspect drift. Automatic push-time synchronization defaults off and uses a separately configured Claude CLI fixer.
+Run `/atlas:init` to propose wiki topics. Use `atlas_drift.py --json` for drift
+inspection without Claude CLI; see [Local checks](commands.md#local-checks) for the
+checkout commands. `atlas_sync.py --dry-run` also avoids model calls and writes, but
+requires `claude` on PATH before its arguments are parsed. Automatic push-time
+synchronization defaults off and uses that separately configured Claude CLI fixer.
 
 For a source checkout, validate both host packages from the repository root:
 

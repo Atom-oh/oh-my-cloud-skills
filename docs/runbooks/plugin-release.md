@@ -11,7 +11,12 @@ Choose an unused SemVer version and create the branch:
 
 ```bash
 RELEASE_VERSION="X.Y.Z"
-git switch -c "release/v${RELEASE_VERSION}"
+if [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  git switch -c "release/v${RELEASE_VERSION}"
+else
+  printf '%s\n' "Replace X.Y.Z with a numeric release version" >&2
+  false
+fi
 ```
 
 Update all Claude manifests and their marketplace. The generator then updates every
@@ -79,8 +84,14 @@ version and rerun the manifest/freshness checks if the tree changed. Confirm tha
 `v${RELEASE_VERSION}` is unused locally and remotely, then tag that exact commit:
 
 ```bash
-git tag "v${RELEASE_VERSION}"
-git push origin "refs/tags/v${RELEASE_VERSION}"
+RELEASE_VERSION="X.Y.Z"  # Set the verified merged version in this shell.
+if [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  git tag "v${RELEASE_VERSION}" &&
+    git push origin "refs/tags/v${RELEASE_VERSION}"
+else
+  printf '%s\n' "Replace X.Y.Z with the verified merged version" >&2
+  false
+fi
 ```
 
 Verify the remote tag resolves to the intended merged commit. Publish or verify a

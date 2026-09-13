@@ -32,7 +32,11 @@ Second opinions, decisions, ADRs, and implementation pipelines with peer review.
 | `adr` | Alternatives, tradeoffs, and an ADR draft | Available peers; solo allowed with notice |
 | `sync-context` | Shared AGENTS.md and Kiro steering bridge | Local context validation |
 | `consensus` | Host implementation with plan and final review gates | READY peer required |
-| `harness` | Peer implementation in isolated worktrees; host verification and commits | READY peer and eligible implementer required |
+| `harness` | Peer implementation in isolated worktrees, or host implementation fallback | READY raw-CLI reviewer required; host owns verification and commits |
+
+When no eligible implementer is READY, harness falls back to host implementation.
+It still stops if no gate-eligible reviewer is READY; see the
+[harness contract](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/commands/harness.md).
 
 `/co-agent:setup` is a separate command that probes installed/authenticated peer CLIs and records readiness before the gated workflows run.
 

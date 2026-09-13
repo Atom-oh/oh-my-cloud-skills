@@ -22,7 +22,7 @@ title: "MCP integrations"
 
 # MCP integrations
 
-The AWS operations plugin declares two MCP servers in its Claude manifest: `awsdocs` for AWS documentation and `awsapi` for AWS API operations. Codex uses the generated MCP configuration referenced by its manifest. Additional tools mentioned in agent references are optional host integrations, not automatically bundled servers.
+The AWS operations plugin declares two MCP servers in its Claude manifest: `awsdocs` for AWS documentation and `awsapi` for AWS API operations. Codex uses the generated MCP configuration referenced by its manifest. The external `deploy-on-aws` plugin provides the optional `awsknowledge`, `awspricing`, and `awsiac` integrations when both plugins are loaded and configured. In particular, `awspricing` supplies pricing data for the cost workflow; these servers are not bundled here.
 
 ## Setup
 

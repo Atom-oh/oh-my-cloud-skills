@@ -41,3 +41,5 @@ Ask a focused knowledge question and give feedback when an option is selected.
 `[x]` marks a correct answer and `[ ]` a distractor. Checkbox content may be inferred as quiz, so specify checklist explicitly for completion tracking. Keep options concise and explain the answer. Test the actual selection/feedback behavior; multiple marked answers do not by themselves establish a multi-select completion rule.
 
 Add speaker notes and run source validation before building. Test the slide in the generated deck; the HTML structure and CSS classes are implementation details, not a substitute for checking behavior.
+
+See [directives](../syntax/directives.md), [speaker notes](../syntax/speaker-notes.md), and [keyboard controls](../keyboard-shortcuts.md).

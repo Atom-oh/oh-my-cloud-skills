@@ -152,7 +152,15 @@ checkout. The archive contains these sets:
 - `Architecture-Group-Icons_07312025/` — Group icons (Cloud, VPC, Region, Subnet)
 - `Category-Icons_07312025/` — Category-level icons (4 sizes)
 - `Resource-Icons_07312025/` — Resource-level icons
-- `others/` — Third-party icons (LangChain, Grafana, etc.)
+
+Third-party icons (LangChain, Grafana, etc.) are already unpacked under
+`skills/reactive-presentation/icons/others/`; they are not part of this archive.
+From this plugin's root, extract the AWS sets with:
+
+```bash
+unzip -q skills/reactive-presentation/assets/aws-icons.zip \
+  -d skills/reactive-presentation/assets/aws-icons
+```
 
 > **Rule**: any slide that visually represents an AWS service (architecture, service
 > introduction, diagrams) must use this bundle's **official icons** — do not draw ad hoc

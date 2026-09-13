@@ -27,7 +27,7 @@ Incident severity, five-minute triage, domain routing, cross-domain evidence, mi
 
 ## Diagnostic approach
 
-Use a direct specialist for a single-domain symptom. P1/P2 or multi-domain incidents can use parallel specialists when host tools support them. Correlate evidence without forcing independent failures into one root cause. Report impact, chronology, fixes, checks, and prevention.
+Use a direct specialist for a single-domain symptom. P1 (Critical) / P2 (High) or multi-domain incidents can use parallel specialists when host tools support them; use the source [severity classification](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-ops-plugin/skills/ops-troubleshoot/SKILL.md#severity-classification). Correlate evidence without forcing independent failures into one root cause. Report impact, chronology, fixes, checks, and prevention.
 
 ## Initial read-only checks
 
@@ -41,7 +41,7 @@ kubectl get events -A --sort-by=.lastTimestamp
 
 ## Evidence and handoff
 
-Return the affected component, observed symptoms, supporting output, likely cause, proposed action, and a verification command with expected results. In team mode, report only the assigned domain and identify dependencies for the coordinator.
+Aggregate the specialists' evidence, distinguish correlated failures from independent incidents, and own the mitigation, verification, and postmortem handoff. Report the affected components, confirmed cause, actions, and observed recovery.
 
 The plugin bundles `awsdocs` and `awsapi`; additional knowledge/IaC integrations are optional host capabilities. Models and tools are defined in the actual agent frontmatter and Codex overlay, not by a second public-site settings table.
 

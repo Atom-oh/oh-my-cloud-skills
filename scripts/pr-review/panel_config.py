@@ -142,7 +142,7 @@ def effective(root, strict=False):
     repair tools, not the gate itself.
 
     defaults.json itself is validated unconditionally (not gated by `strict`) — it's the
-    committed file ("경로 A" in docs/ci-pr-review.md, the only path verified to actually take
+    committed file ("Configuration and bounds" in docs/ci-pr-review.md, the path that takes
     effect in CI, since the gitignored local override never survives a real run there). If
     it's ever wrong-shape/wrong-type, that's a repo-integrity bug, not a runtime override
     problem, and there's no sensible "ignore and fall back to defaults" recovery when

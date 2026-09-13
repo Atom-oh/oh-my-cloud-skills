@@ -47,10 +47,12 @@ graph TD
     B -->|code/architecture review| R[Review: diff fanned out → synthesized → PASS/REVIEW/FAIL]
     B -->|"unsure" / decision support| D[Decide: options fanned out → comparison table → recommendation]
     B -->|draft an ADR| ADR[ADR: alternatives/trade-offs fanned out → ADR draft]
+    B -->|consensus/harness| G[Dedicated pipeline with READY gate peers]
     R --> S[Host synthesizes + attributes sources]
     D --> S
     ADR --> S
-    P -->|no panel| SOLO[Host performs solo + states that fact]
+    P -->|advisory mode + no panel| SOLO[Host performs solo + states that fact]
+    P -->|pipeline + no READY gate peer| STOP[Stop and run setup]
 ```
 
 The skill defines six modes; setup is a separate readiness command. Detailed steps

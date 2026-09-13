@@ -226,7 +226,7 @@ PY
 fi
 
 # Kiro ignores stdin; embed bounded diff text, never ask it to read a file.
-# The cap leaves room for prompt/context under the Linux single-argument limit.
+# The default cap leaves room for prompt/context under the Linux single-argument limit.
 # The agent and preflight enforce the no-tools contract; CLI upgrades need revalidation.
 KIRO_DIFF_CAP="${KIRO_DIFF_CAP:-100000}"
 KIRO_DIFF_TEXT="$(head -c "$KIRO_DIFF_CAP" "$DIFF")"

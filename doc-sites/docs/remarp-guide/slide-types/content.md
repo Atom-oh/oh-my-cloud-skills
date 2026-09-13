@@ -39,3 +39,5 @@ Use for a focused statement, list, table, code excerpt, or image.
 The default layout is a single content area. Add column layout blocks when comparison helps, and use background/timing directives where appropriate. Keep a single main message, a readable hierarchy, and notes explaining the practical implication.
 
 Add speaker notes and run source validation before building. Test the slide in the generated deck; the HTML structure and CSS classes are implementation details, not a substitute for checking behavior.
+
+See [directives](../syntax/directives.md), [speaker notes](../syntax/speaker-notes.md), and [keyboard controls](../keyboard-shortcuts.md).

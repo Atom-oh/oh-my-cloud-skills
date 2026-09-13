@@ -24,12 +24,21 @@ Choose this skill when the deliverable must be an editable AWS light `.pptx`. Us
 
 Read the kit and reference layouts; plan a coherent narrative; use native PowerPoint shapes/text where editing matters; resolve icons through `kit.icon()`; inspect slide layout; build and embed fonts using the supplied tooling.
 
+Run from the prepared deck workspace. Set `PPTX_SKILL` to the actual installed
+`aws-light-fcd` directory so the helper retains access to its bundled fonts:
+
 ```bash
+PPTX_SKILL="/absolute/path/to/installed/plugin/skills/aws-light-fcd"
 NODE_PATH=$(npm root -g) node build.js
-python3 scripts/embed_fonts.py deck.pptx
+python3 "$PPTX_SKILL/scripts/check_pptx.py" deck.pptx
+python3 "$PPTX_SKILL/scripts/embed_fonts.py" deck.pptx
 ```
 
-These commands run from a prepared deck workspace containing the generated build script and supplied font helper. Check the skill for setup and paths.
+The workspace contains the generated `build.js`. If the font helper is copied
+elsewhere, pass `--fonts-dir` pointing to the supplied font directory; copying the
+script alone does not preserve its default `assets/fonts` lookup.
+Before embedding, `check_pptx.py` must score at least 80 with zero `[geometry]`
+findings. Content review remains required before publication.
 
 ## Assets and verification
 

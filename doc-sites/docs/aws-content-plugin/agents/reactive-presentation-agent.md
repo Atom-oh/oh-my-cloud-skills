@@ -26,7 +26,11 @@ Authors Remarp source, builds interactive HTML slides, and verifies the presenta
 
 ## Workflow
 
-Plan the story and blocks; extract a supplied PPTX theme when needed; author source with speaker notes; validate; build; test navigation and interactions; run content review before publication. Use HTML/CSS for grouped or branching architectures and interactive calculators, and Canvas only for small linear flows.
+Plan the story and blocks; extract a supplied PPTX theme when needed; author source
+with speaker notes; obtain the user's content approval; validate; build; test
+navigation and interactions; run content review before publication. Use HTML/CSS
+for grouped or branching architectures and interactive calculators, and Canvas only
+for small linear flows.
 
 ## Output and verification
 
