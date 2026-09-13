@@ -3,6 +3,7 @@ import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 const sidebars: SidebarsConfig = {
   intro: [
     'intro',
+    'releases/v2.0.0',
   ],
 
   atlas: [

@@ -33,8 +33,10 @@ Invoke this skill explicitly for a second opinion, multi-AI review, collaborativ
 The skill has six modes. Review inspects a defined diff or scope. Decide compares
 explicit options. ADR gathers alternatives and consequences. Sync-context generates
 shared instructions. Consensus lets the host implement behind review gates. Harness
-uses an eligible peer when READY and otherwise falls back to host implementation;
-a READY raw-CLI reviewer remains mandatory, and the host owns tests and commits.
+uses an eligible READY peer, or an explicitly selected, authorized host plan when
+no eligible writer is available. Host mode uses `--allow-host-implementation`;
+configuration and readiness errors must be repaired before proceeding. An enabled,
+fresh READY raw-CLI reviewer remains mandatory, and the host owns tests and commits.
 
 `/co-agent:setup` is a separate command that measures readiness with real calls.
 
