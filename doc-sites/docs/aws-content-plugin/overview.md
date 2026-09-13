@@ -26,7 +26,7 @@ title: "AWS content plugin"
 
 Create web presentations, editable PowerPoint decks, diagrams, documents, workshops, brochures, and portfolio pages.
 
-## Choose a workflow
+## Choose a workflow {#choose-a-workflow}
 
 | Output | Skill or agent |
 | --- | --- |
@@ -43,11 +43,11 @@ Create web presentations, editable PowerPoint decks, diagrams, documents, worksh
 
 The presentation dispatcher selects web or native PowerPoint based on the requested format. Static diagrams use Draw.io; complex architecture inside a web slide uses HTML/CSS; small linear sequences can use Canvas. An external Archify composition can be embedded as an artifact, but Archify is not an additional bundled marketplace plugin.
 
-## Build and review
+## Build and review {#build-and-review}
 
 Plan the audience and story; create editable source; validate the relevant format; build or export; inspect the result; then run content-review-agent. The quality gate requires PASS before publishing. Diagram exports additionally need valid XML and a layout score of at least 80.
 
-## Shared assets
+## Shared assets {#shared-assets}
 
 Use the shipped icon library and canonical diagram tokens. Native PowerPoint's `kit.icon()` resolves the sibling reactive-presentation library; do not duplicate it. Asset counts and current templates are discoverable from their source directories.
 

@@ -1,0 +1,56 @@
+---
+sidebar_position: 0
+title: "전체 프레젠테이션 데모"
+---
+
+{/* 영문 개편 전의 기존 섹션 링크를 유지합니다. */}
+<span id="실전-프레젠테이션-데모" />
+<span id="데모-프롬프트" />
+<span id="프롬프트-분석" />
+<span id="에이전트-워크플로우" />
+<span id="결과물-구조" />
+<span id="라이브-데모" />
+<span id="remarp-소스-예시" />
+<span id="커버-슬라이드" />
+<span id="canvas-애니메이션-슬라이드" />
+<span id="퀴즈-슬라이드" />
+<span id="커스터마이징-가이드" />
+<span id="주제-변경" />
+<span id="난이도-변경" />
+<span id="테마-없이-기본-스타일" />
+<span id="영어-프레젠테이션" />
+<span id="관련-문서" />
+
+
+# 전체 프레젠테이션 데모
+
+import DemoEmbed from '@site/src/components/DemoEmbed';
+
+여러 블록으로 구성된 AIOps 심화 자료로 기획, 공유 테마 에셋, 편집 가능한 Remarp 소스, 탐색, 다이어그램과 이해도 확인을 설명합니다.
+
+## 실행 예제 {#live-example}
+
+<DemoEmbed
+  src="/oh-my-cloud-skills/demos/aiops-deep-dive/index.html"
+  title="AIOps 심화: 세 개 블록"
+  height={600}
+  command="python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build doc-sites/static/demos/aiops-deep-dive -o /var/tmp/aiops-deep-dive-example"
+  remarpSource="01-observability-pipeline.md, 02-anomaly-detection-rca.md, 03-auto-remediation.md"
+/>
+
+## 확인할 사항 {#what-to-inspect}
+
+요청 정리 → 블록 계획 → 소스 → 검증 → HTML 빌드 → 상호작용 확인 → 콘텐츠 리뷰 순서로 진행합니다. 소스에서 대상 독자, 수준, 시간과 테마를 조정합니다. 공유 메타데이터는 _presentation.md에 두고 영향을 받는 블록을 다시 빌드합니다. 고정 예제의 콘텐츠는 원래 언어를 유지합니다.
+
+삽입된 HTML, 다운로드 가능한 소스와 스크린샷은 변경하지 않는 예제 결과물입니다. 원래 언어를 유지하며, 이 가이드에서는 예제를 이해하는 방법을 설명합니다.
+
+## 스크린샷 {#screenshots}
+
+![전체 프레젠테이션 데모 스크린샷](/img/demos/aiops/aiops-band-dark.png)
+
+## 관련 링크 {#related-links}
+
+- [사용 가이드](../usage-guide)
+- [프레젠테이션 에이전트](../agents/presentation-agent)
+- [인터랙티브 프레젠테이션](../skills/reactive-presentation)
+- [기본 프레젠테이션](./basic-presentation)

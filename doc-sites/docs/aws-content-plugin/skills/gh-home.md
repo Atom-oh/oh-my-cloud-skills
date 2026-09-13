@@ -15,11 +15,11 @@ title: "Personal profile skill"
 
 Create a responsive personal profile or developer portfolio as a single HTML page.
 
-## Page structure
+## Page structure {#page-structure}
 
 Use a sidebar for the photo, name, and links; develop an about section, experience timeline, skills, featured work, and project showcase. Use supplied facts and assets; do not invent career history, credentials, or project outcomes.
 
-## Workflow
+## Workflow {#workflow}
 
 Collect the approved profile content, select relevant work, build the page, test responsive navigation and links, and run content review before authorized GitHub Pages publication. Use brochure for a product or solution page.
 

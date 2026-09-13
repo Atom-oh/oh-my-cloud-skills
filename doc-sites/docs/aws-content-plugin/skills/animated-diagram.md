@@ -38,13 +38,13 @@ title: "Animated diagram skill"
 
 Visualize request traffic, autoscaling, blue/green deployment, failover, and other service interactions using SVG motion or interactive HTML.
 
-## Select the motion model
+## Select the motion model {#select-the-motion-model}
 
 SMIL `animateMotion`, opacity/glow, dash offsets, and staggered highlights suit repeating flow demonstrations. JavaScript state machines and CSS transitions suit start/pause/reset controls, changing replica counts, migrations, and failure recovery.
 
 Keep the underlying architecture readable as a still image. Use consistent semantic colors, a legend, stable labels, and enough spacing for motion. Sequence related events deliberately and keep timing in a single scenario model.
 
-## Verify
+## Verify {#verify}
 
 Exercise each scenario, reset, and replay; inspect reduced viewport sizes; check console errors and animation overlap. Embed the result as SVG or HTML where the target supports it and provide a static export where motion is unavailable.
 

@@ -27,11 +27,11 @@ title: "Analytics agent"
 
 OpenSearch and OpenSearch Serverless, ClickHouse, Athena, QuickSight, and Kinesis ingestion/query pipelines.
 
-## Diagnostic approach
+## Diagnostic approach {#diagnostic-approach}
 
 Separate ingest lag from query latency. Inspect cluster/shard health, storage and memory pressure, collection access, query plans, scanned data, partitioning, dashboard refreshes, stream capacity, and iterator age. Tie suggested tuning to measured bottlenecks.
 
-## Initial read-only checks
+## Initial read-only checks {#initial-read-only-checks}
 
 Run these AWS CLI checks only in the intended account and region. Choose service-specific follow-ups from the observed result.
 
@@ -42,7 +42,7 @@ aws athena list-work-groups
 aws kinesis list-streams
 ```
 
-## Evidence and handoff
+## Evidence and handoff {#evidence-and-handoff}
 
 Return the affected component, observed symptoms, supporting output, likely cause, proposed action, and a verification command with expected results. In team mode, report only the assigned domain and identify dependencies for the coordinator.
 

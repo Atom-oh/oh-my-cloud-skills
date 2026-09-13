@@ -16,7 +16,7 @@ title: "Brochure skill"
 
 Create a responsive single-file product or solution landing page with a value proposition, feature story, architecture, and call to action.
 
-## Workflow
+## Workflow {#workflow}
 
 Identify the reader and desired action; draft concise copy; build the editorial layout; embed the architecture; test desktop/mobile rendering, links, and controls; run content review; publish only within the user's authorized scope.
 

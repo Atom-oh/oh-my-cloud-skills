@@ -45,19 +45,19 @@ title: "GitBook skill"
 
 Build a structured documentation site with navigable topic pages and rich GitBook components.
 
-## Structure
+## Structure {#structure}
 
 Use README.md for the entry page, SUMMARY.md for navigation, .gitbook.yaml for source configuration, and topic directories for the actual pages. Keep navigation depth shallow enough to scan and ensure every listed path exists.
 
-## Components
+## Components {#components}
 
 Use hints for warnings and tips, tabs for alternatives, titled code fences for commands/files, expandable sections for detail, and images with useful captions and alt text. Downloads, videos, and external embeds must have valid targets. Integrate static Draw.io exports, supported animated embeds, or Mermaid diagrams according to the output format.
 
-## Language and anchors
+## Language and anchors {#language-and-anchors}
 
 Use the language requested by the user. For a deliberately multilingual site, create explicit language roots and align navigation/content. Preserve published anchors during renames; exact syntax or historical example text can remain quoted with an English explanation.
 
-## Validate
+## Validate {#validate}
 
 Check SUMMARY.md, relative paths, component syntax, image references, and cross-links. Run the site's build and inspect important pages before content review and authorized publication.
 

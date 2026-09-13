@@ -39,11 +39,11 @@ title: "Create content"
 
 # Create content
 
-## Start from the deliverable
+## Start from the deliverable {#start-from-the-deliverable}
 
 State the audience, technical level, language, duration or page scope, output format, and source material. Example: “Create an English 30-minute EKS operations web deck with speaker notes, a small traffic animation, and review questions.” For editable PowerPoint, request the native AWS light workflow explicitly.
 
-## Presentations
+## Presentations {#presentations}
 
 The web workflow plans blocks, optionally extracts a PPTX theme, authors Remarp, validates source, builds HTML, and tests interactions. A multi-file deck uses `_presentation.md` plus numbered block files. The source remains the editing authority; synchronize only changed blocks when appropriate. Set `lang: en` in `_presentation.md` for English project and table-of-contents output, and keep any block-level language overrides consistent. The `--lang` flag applies only to single-file builds. Use a full build after global metadata changes and before publishing; `sync` refreshes changed block pages, not the merged deck or shared assets.
 
@@ -55,15 +55,15 @@ python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_t
 
 Native PowerPoint uses aws-light-fcd assets and PptxGenJS, then embeds fonts and inspects the deck. Web-deck PPTX export produces screenshot-based slides; it does not make animated HTML objects editable.
 
-## Diagrams
+## Diagrams {#diagrams}
 
 Use the Draw.io layout generator for supported AWS patterns. Validate XML and layout before export, and use the canonical token file for size/color rules. Animated SVG suits repeating traffic; JavaScript/CSS handles scenario controls. On a slide, use Canvas for at most four boxes/icons in a simple linear flow; use HTML/CSS for groups, branches, or larger architectures.
 
-## Documents, sites, and workshops
+## Documents, sites, and workshops {#documents-sites-and-workshops}
 
 The document agent writes reports and comparisons. GitBook supplies multi-page navigation and rich documentation components. Workshop Creator supplies Workshop Studio structure, directives, lab verification, and cleanup. Brochure builds product/solution landing pages; gh-home builds a personal profile with experience, skills, and selected work. For a profile refresh, confirm before overwriting an existing `index.html` and preserve unrelated CNAME, robots.txt, and analytics files.
 
-## Revision and review
+## Revision and review {#revision-and-review}
 
 Edit Remarp source or add `<!-- issue: ... -->` annotations through the editor, then run slide-fix and rebuild. Inspect keyboard navigation, fragments, Canvas steps, quizzes, tabs, and responsive layout. Use the content-review gate before authorized publication. Keep prose in the requested language and preserve exact service names, syntax, paths, and identifiers.
 
