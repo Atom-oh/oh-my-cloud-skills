@@ -14,7 +14,7 @@ title: "Atlas commands"
 
 Codex exposes corresponding generated skills. The unattended Claude fixer is a separate option from host-native repair.
 
-## Local checks
+## Local checks {#local-checks}
 
 Run from the repository root containing the wiki; script paths below refer to this marketplace checkout:
 

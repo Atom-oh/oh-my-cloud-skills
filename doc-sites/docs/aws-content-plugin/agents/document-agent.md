@@ -30,11 +30,11 @@ title: "Document agent"
 
 Creates technical reports, solution comparisons, whitepapers, and explanatory documents with supporting diagrams and references.
 
-## Workflow
+## Workflow {#workflow}
 
 Define audience and decision needs; outline the document; draft a clear argument; integrate diagrams; cite factual claims; check terminology, units, acronym expansion, accessibility, and sensitive data. Use useful alt text and avoid unsupported superlatives or duplicated sections.
 
-## Output and verification
+## Output and verification {#output-and-verification}
 
 Return the editable source, rendered output, relevant build commands, and verification evidence. The content-review gate applies before completion/publication; a successful file write alone is not a passing review.
 

@@ -1,0 +1,55 @@
+---
+sidebar_position: 7
+title: "애니메이션 다이어그램 데모"
+---
+
+{/* 영문 개편 전의 기존 섹션 링크를 유지합니다. */}
+<span id="라이브-데모--traffic-flow" />
+<span id="라이브-데모--pod-scaling-simulation" />
+<span id="생성-프롬프트" />
+<span id="traffic-flow-애니메이션" />
+<span id="스크린샷" />
+<span id="html-코드-발췌" />
+<span id="interactive-scaling-애니메이션" />
+<span id="생성-프롬프트-1" />
+<span id="스크린샷-1" />
+<span id="javascript-state-machine-발췌" />
+<span id="css-transitions" />
+<span id="smil-vs-interactive-선택-가이드" />
+<span id="색상-표준" />
+<span id="주요-포인트" />
+
+
+# 애니메이션 다이어그램 데모
+
+import DemoEmbed from '@site/src/components/DemoEmbed';
+
+두 예제로 정적 아키텍처를 흐르는 트래픽과 제어 가능한 Pod 확장 시나리오를 보여 줍니다. 반복되는 SVG 움직임과 JavaScript/CSS 상태 전환을 비교합니다.
+
+## 실행 예제 {#live-example}
+
+<DemoEmbed
+  src="/oh-my-cloud-skills/demos/animated-diagram/traffic-flow.html"
+  title="필터링 가능한 범례가 있는 VPC 트래픽 흐름"
+  height={550}
+  command="Create SVG traffic paths with SMIL animation and a legend filter."
+/>
+
+<DemoEmbed
+  src="/oh-my-cloud-skills/demos/animated-diagram/scaling-sim.html"
+  title="확장·축소 제어 기능이 있는 EKS Pod 확장"
+  height={550}
+  command="Create an EKS pod-scaling state machine with JavaScript and CSS."
+/>
+
+## 확인할 사항 {#what-to-inspect}
+
+시작·초기화 기능을 실행하고 트래픽, 복제본, 레이블과 범례의 변화를 확인합니다. 반복되는 흐름에는 SMIL을, 인터랙티브 확장·배포·장애 조치에는 상태 머신을 사용합니다. 이 고정 예제는 두 방식의 차이를 보여 줍니다. 새 다이어그램에는 현재 기준 토큰을 사용합니다.
+
+삽입된 HTML, 다운로드 가능한 소스와 스크린샷은 변경하지 않는 예제 결과물입니다. 원래 언어를 유지하며, 이 가이드에서는 예제를 이해하는 방법을 설명합니다.
+
+## 스크린샷 {#screenshots}
+
+![애니메이션 다이어그램 데모 스크린샷](/img/demos/animated-traffic-flow.png)
+
+![애니메이션 다이어그램 데모 스크린샷](/img/demos/animated-scaling-sim.png)

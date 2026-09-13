@@ -25,11 +25,11 @@ title: "Architecture diagram agent"
 
 Creates AWS Draw.io diagrams through the YAML layout generator or hand-authored XML for unsupported structures. Outputs editable .drawio plus a reviewed PNG or SVG export.
 
-## Workflow
+## Workflow {#workflow}
 
 Use canonical design tokens for icon size, subnet colors, fonts, and spacing. Vertex parents follow Cloud → Region → VPC → Subnet → service; edges stay under parent="1". Validate XML and cell counts, require layout score at least 80, export, and inspect the render for truncation or overlap.
 
-## Output and verification
+## Output and verification {#output-and-verification}
 
 Return the editable source, rendered output, relevant build commands, and verification evidence. The content-review gate applies before completion/publication; a successful file write alone is not a passing review.
 

@@ -1,0 +1,38 @@
+---
+sidebar_position: 9
+title: "Archify 다이어그램 데모"
+---
+
+{/* 영문 개편 전의 기존 섹션 링크를 유지합니다. */}
+<span id="archify-인터랙티브-다이어그램-데모" />
+<span id="데모" />
+<span id="언제-이-경로인가" />
+<span id="덱에-넣는-법" />
+
+
+# Archify 다이어그램 데모
+
+import DemoEmbed from '@site/src/components/DemoEmbed';
+
+삽입된 독립형 다이어그램에서 아키텍처를 탐색하며 파이프라인을 살펴봅니다. Archify는 외부 제작 도구이며 이 마켓플레이스에 추가로 포함된 플러그인은 아닙니다.
+
+## 실행 예제 {#live-example}
+
+<DemoEmbed
+  src="/oh-my-cloud-skills/demos/archify-pipeline/index.html"
+  title="Archify 빌드 파이프라인"
+  height={720}
+  command="node archify.mjs deliver workflow archify-pipeline.workflow.json index.html --quality showcase"
+  remarpSource="archify-pipeline.workflow.json"
+/>
+
+## 확인할 사항 {#what-to-inspect}
+
+단순한 슬라이드 흐름보다 자세한 탐색이 필요한 아키텍처에는 다이어그램 결과물을 사용합니다. 크기를 제한한 화면 영역에 로컬 HTML을 삽입하거나 내보낸 이미지를 사용합니다. 상위 페이지 안에서 에셋 경로와 상호작용을 검증합니다.
+
+삽입된 HTML, 다운로드 가능한 소스와 스크린샷은 변경하지 않는 예제 결과물입니다. 원래 언어를 유지하며, 이 가이드에서는 예제를 이해하는 방법을 설명합니다.
+
+## 관련 링크 {#related-links}
+
+- [Archify](https://github.com/tt-a1i/archify)
+- [인터랙티브 프레젠테이션](/docs/aws-content-plugin/skills/reactive-presentation)

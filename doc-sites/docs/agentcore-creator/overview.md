@@ -19,7 +19,7 @@ title: "AgentCore creator"
 
 Design and test an agent locally, then prepare an AgentCore harness configuration or a generated Runtime application.
 
-## Five phases
+## Five phases {#five-phases}
 
 | Phase | Result |
 | --- | --- |
@@ -31,7 +31,7 @@ Design and test an agent locally, then prepare an AgentCore harness configuratio
 
 An existing plugin path enters at conversion; a new idea starts with discovery. Harness configuration attaches skills and tools to the managed loop. Runtime generation supplies a Strands application when the design requires custom orchestration or runtime behavior.
 
-## Components and integration
+## Components and integration {#components-and-integration}
 
 The package exposes agentcore-creator-agent and agentcore-create. The workflow can map tools through Gateway and plan Memory where needed. Keep `.claude-plugin/plugin.json` as the conversion input on either host; Codex local testing additionally needs a host-visible skill that loads the relevant instructions.
 

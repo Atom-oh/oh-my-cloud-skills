@@ -33,17 +33,17 @@ title: "Content review agent"
 
 Reviews presentations, diagrams, documents, GitBook pages, workshops, brochures, and profile pages. A report must name actual files, evidence, severity, corrections, and the applicable score.
 
-## Review coverage
+## Review coverage {#review-coverage}
 
 Check layout and hierarchy; precise terminology; unsupported factual claims; the requested language; secrets and personal data; content-type rules; icon references; readability; accessibility; structural completeness; data consistency; legal attribution; message clarity; duplication/gaps; and external references.
 
 HTML output also requires browser checks: load without application errors, inspect representative viewports, exercise navigation and controls, and check images, diagrams, overflow, and text contrast. A screenshot does not prove a quiz, tab, calculator, or animation works; exercise it.
 
-## Content-specific checks
+## Content-specific checks {#content-specific-checks}
 
 Remarp needs valid source, framework initialization, notes, slide types, and interactions. Prefer HTML/CSS when a diagram exceeds the simple Canvas policy. Draw.io needs valid XML, correct nesting, canonical tokens, layout validation, and a complete export. GitBook navigation must match files. Workshops use Workshop Studio directives and the source rubric's language-file checks.
 
-## Quality gate
+## Quality gate {#quality-gate}
 
 The source rubric defines category weights and format-specific handling. PASS requires a score of at least 85, zero Critical findings, and no more than three Warnings. A sensitive-data leak, serious fabricated claim, or other automatic-fail condition cannot be offset by points in unrelated categories. Non-HTML output follows the rubric's visual-testing exemption.
 

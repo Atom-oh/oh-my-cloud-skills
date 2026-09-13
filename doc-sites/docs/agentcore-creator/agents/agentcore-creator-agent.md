@@ -16,13 +16,13 @@ title: "AgentCore creator agent"
 
 Guides an agent from an idea or existing plugin to a locally validated design and an AgentCore deployment candidate.
 
-## Responsibilities
+## Responsibilities {#responsibilities}
 
 Discover requirements; design skills, references, tools, and state; select harness configuration or Runtime generation; build and test locally; convert; then deploy and smoke-test within the user's authorization. Keep the file/resource plan concrete and record the result of each phase.
 
 For an existing plugin, inspect its manifest, skills, agent instructions, MCP tools, references, and hooks. Do not imply that host-specific hooks automatically become managed harness behavior. Choose Runtime when the required custom orchestration cannot be expressed by the selected harness path.
 
-## Output
+## Output {#output}
 
 Return generated configuration/code, dependencies, tool and memory mappings, local test results, and the proposed deployment commands. After an authorized deployment, report resource identifiers and actual invocation results without exposing credentials.
 
