@@ -1,130 +1,55 @@
 ---
 sidebar_position: 13
-title: 키보드 단축키
+title: "Keyboard shortcuts"
 ---
 
-# 키보드 단축키
+{/* Legacy section links retained after the English rewrite. */}
+<span id="키보드-단축키" />
+<span id="기본-네비게이션" />
+<span id="프래그먼트--스텝" />
+<span id="인터랙티브-슬라이드" />
+<span id="뷰-모드" />
+<span id="프레젠터-뷰" />
+<span id="오버뷰-모드" />
+<span id="터치-제스처-모바일" />
+<span id="키보드-커스터마이징" />
+<span id="커스터마이즈-가능한-키" />
+<span id="퀵-레퍼런스" />
+<span id="발표-시작-전" />
+<span id="발표-중" />
+<span id="네비게이션" />
 
-Remarp 프레젠테이션의 런타임 키보드 단축키 전체 목록입니다.
 
-## 기본 네비게이션
+# Keyboard shortcuts
 
-| 키 | 동작 |
-|----|------|
-| `←` | 이전 슬라이드 |
-| `→` | 다음 슬라이드 |
-| `Space` | 다음 프래그먼트, 없으면 다음 슬라이드 |
-| `PageDown` | 다음 슬라이드 |
-| `PageUp` | 이전 슬라이드 |
-| `Home` | 첫 번째 슬라이드 |
-| `End` | 마지막 슬라이드 |
-| `1`-`9` | 해당 번호 슬라이드로 이동 |
+The defaults below come from the current `SlideFramework.getKeyAction()` implementation. A deck can override them with its own key-to-action map.
 
-## 프래그먼트 & 스텝
+| Key | Action |
+| --- | --- |
+| Right, Space, PageDown | Reveal next fragment, then advance |
+| Left, PageUp | Hide previous fragment where available, then go back |
+| Down / Up | Registered slide action, interactive cycling, then fragment/slide navigation |
+| Home / End | First / last slide |
+| P | Open presenter view |
+| F | Toggle fullscreen |
+| O | Toggle overview |
+| S | Toggle sidebar outside fullscreen |
+| Escape | Exit overview or fullscreen |
 
-| 키 | 동작 |
-|----|------|
-| `Space` | 다음 프래그먼트 표시 |
-| `→` | 다음 프래그먼트/슬라이드 |
-| `↓` | Canvas 슬라이드: 다음 스텝 |
-| `↑` | Canvas 슬라이드: 이전 스텝 |
+Typing in an input or textarea does not navigate the deck. Touch swipes on the deck support previous/next navigation. Compare/tabs/Canvas behavior depends on the registered interaction for that slide.
 
-:::info
-`↑`/`↓` 키는 해당 슬라이드에 등록된 액션이 있을 때만 동작합니다. Compare 슬라이드에서는 옵션 전환, Tabs 슬라이드에서는 탭 전환, Canvas 슬라이드에서는 스텝 이동에 사용됩니다.
-:::
-
-## 인터랙티브 슬라이드
-
-| 키 | 슬라이드 타입 | 동작 |
-|----|-------------|------|
-| `↑` / `↓` | Compare | 비교 옵션 전환 |
-| `↑` / `↓` | Tabs | 탭 전환 |
-| `↑` / `↓` | Canvas | 애니메이션 스텝 이동 |
-
-## 뷰 모드
-
-| 키 | 동작 |
-|----|------|
-| `F` | 전체 화면 토글 |
-| `Esc` | 전체 화면 종료 / 오버뷰 종료 |
-| `O` | 슬라이드 오버뷰 (그리드) 토글 |
-| `S` | 슬라이드 사이드바 토글 (전체화면 아닌 경우만) |
-| `N` | 스피커 노트 패널 토글 |
-| `P` | 프레젠터 뷰 (새 창) |
-| `B` | 블랙아웃 (화면 어둡게) |
-
-## 프레젠터 뷰
-
-프레젠터 뷰(`P`)에서 사용 가능한 단축키:
-
-| 키 | 동작 |
-|----|------|
-| `←` `→` | 슬라이드 이동 |
-| `Space` | 다음 슬라이드 |
-
-프레젠터 뷰와 메인 창은 `BroadcastChannel`을 통해 자동 동기화됩니다.
-
-## 오버뷰 모드
-
-오버뷰 모드(`O`)에서 사용 가능한 단축키:
-
-| 키 | 동작 |
-|----|------|
-| `←` `→` `↑` `↓` | 슬라이드 선택 이동 |
-| `Enter` | 선택한 슬라이드로 이동 |
-| `Esc` | 오버뷰 종료 |
-
-## 터치 제스처 (모바일)
-
-| 제스처 | 동작 |
-|--------|------|
-| 왼쪽으로 스와이프 | 다음 슬라이드 |
-| 오른쪽으로 스와이프 | 이전 슬라이드 |
-
-## 키보드 커스터마이징
-
-Frontmatter의 `keys` 섹션에서 단축키를 커스터마이즈할 수 있습니다:
+## Custom mappings
 
 ```yaml
----
-remarp: true
-title: "My Presentation"
-
 keys:
-  next: ["ArrowRight", "Space", "n"]
-  prev: ["ArrowLeft", "Backspace", "p"]
-  overview: ["o", "Escape"]
-  presenter: ["s"]
----
+  n: next
+  Backspace: prev
 ```
 
-### 커스터마이즈 가능한 키
+The runtime reads a key-to-action object. Supported actions are those implemented by the navigation switch. The current default map does not bind number keys, N for a notes panel, or B for blackout; older examples that list them are not the active runtime contract.
 
-| 액션 | 기본값 | 설명 |
-|------|--------|------|
-| `next` | `["ArrowRight", "Space"]` | 다음 슬라이드 |
-| `prev` | `["ArrowLeft"]` | 이전 슬라이드 |
-| `overview` | `["o"]` | 오버뷰 토글 |
-| `presenter` | `["p"]` | 프레젠터 뷰 |
-| `fullscreen` | `["f"]` | 전체 화면 |
-| `blackout` | `["b"]` | 블랙아웃 |
-| `notes` | `["n"]` | 노트 패널 |
+## Presenter and overview
 
-## 퀵 레퍼런스
+Use P before presenting with a second display and verify window synchronization. Use O and select a slide to navigate the overview. Test custom key mappings in the actual generated deck, particularly when they replace a default.
 
-### 발표 시작 전
-
-1. `F` - 전체 화면 진입
-2. `P` - 프레젠터 뷰 열기 (듀얼 모니터 시)
-
-### 발표 중
-
-1. `Space` 또는 `→` - 다음으로 진행
-2. `↓` - Canvas 애니메이션 스텝 진행
-3. `B` - 잠깐 화면 끄기 (질문 시)
-
-### 네비게이션
-
-1. `O` - 오버뷰에서 특정 슬라이드 찾기
-2. `1`-`9` - 빠른 슬라이드 점프
-3. `Home` / `End` - 처음/끝으로 이동
+[Runtime key map](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-content-plugin/skills/reactive-presentation/assets/slide-framework.js)

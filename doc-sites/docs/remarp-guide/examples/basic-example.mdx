@@ -1,262 +1,39 @@
 ---
 sidebar_position: 1
-title: 기본 예제
+title: "Basic Remarp example"
 ---
+
+{/* Legacy section links retained after the English rewrite. */}
+<span id="기본-예제" />
+<span id="전체-예제-코드" />
+<span id="슬라이드-타입-요약" />
+<span id="데모" />
+<span id="주요-기능-하이라이트" />
+<span id="click-애니메이션" />
+<span id="compare-레이아웃" />
+<span id="canvas-dsl" />
+<span id="퀴즈" />
+<span id="스피커-노트" />
+
+
+# Basic Remarp example
 
 import DemoEmbed from '@site/src/components/DemoEmbed';
 
-# 기본 예제
+A complete sample shows source-driven content, fragments, comparisons, Canvas steps, quizzes, and notes.
 
-Remarp의 주요 기능을 보여주는 완전한 예제입니다.
-
-## 전체 예제 코드
-
-아래는 다양한 슬라이드 타입을 포함한 완전한 Remarp 프레젠테이션입니다.
-
-````markdown
----
-remarp: true
-version: 1
-title: "Remarp Feature Tour"
-author: "Cloud Skills Team"
-date: 2026-03-04
-lang: ko
-
-blocks:
-  - name: tour
-    title: "Remarp Feature Tour"
-    duration: 10
-
-theme:
-  accent: "#6c5ce7"
-
-transition:
-  default: slide
-  duration: 400
----
-
----
-remarp: true
-block: tour
----
-
-# Remarp Feature Tour
-마크다운으로 만드는 인터랙티브 프레젠테이션
-
-:::notes
-{timing: 1min}
-Remarp의 핵심 기능을 직접 보여주는 메타 데모입니다.
-:::
-
----
-
-## Click Animations
-
-요소를 순서대로 나타나게 하는 `{.click}` 문법:
-
-- Remarp는 마크다운 기반입니다 {.click}
-- 슬라이드 구분은 `---` 로 합니다 {.click}
-- `@type` 디렉티브로 슬라이드 유형을 지정합니다 {.click}
-- `{.click}` 으로 클릭 애니메이션을 추가합니다 {.click}
-
-:::notes
-{timing: 2min}
-각 항목을 클릭하며 순차 공개 기능을 설명합니다.
-:::
-
----
-@type: compare
-
-## Compare Layout
-
-::: left
-### Marp (기존)
-- 정적 슬라이드만 지원
-- 제한된 레이아웃
-- 애니메이션 없음
-- 텍스트 중심
-:::
-
-::: right
-### Remarp (확장)
-- 인터랙티브 슬라이드
-- 다양한 레이아웃 프리셋
-- Click / Canvas 애니메이션
-- Quiz, Tabs, Timeline 지원
-:::
-
-:::notes
-{timing: 2min}
-좌우 비교 레이아웃으로 Marp vs Remarp 차이를 보여줍니다.
-:::
-
----
-@type: canvas
-@canvas-id: arch-demo
-
-## Canvas DSL
-
-:::canvas
-icon gw "API-Gateway" at 100,150 size 48 step 1
-box api "API Layer" at 75,210 size 100,30 color #FF9900 step 1
-
-icon fn "Lambda" at 300,150 size 48 step 2
-box compute "Compute" at 275,210 size 100,30 color #FF9900 step 2
-
-icon db "DynamoDB" at 500,150 size 48 step 3
-box storage "Storage" at 475,210 size 100,30 color #3B48CC step 3
-
-arrow api -> compute "invoke" step 4
-arrow compute -> storage "read/write" step 4
-:::
-
-:::notes
-{timing: 2min}
-{cue: demo}
-Canvas DSL로 아키텍처 다이어그램을 선언적으로 작성합니다.
-화살표 키로 step별 애니메이션을 확인하세요.
-:::
-
----
-
-## Code Blocks
-
-코드 블록에 파일명과 라인 하이라이트를 추가할 수 있습니다:
-
-```python {filename="handler.py" highlight="3-5"}
-import json
-
-def handler(event, context):
-    user_id = event['pathParameters']['userId']
-    action = event.get('action', 'read')
-
-    return {
-        'statusCode': 200,
-        'body': json.dumps({'userId': user_id})
-    }
-```
-
-:::notes
-{timing: 1min}
-코드 블록의 하이라이트 기능을 시연합니다.
-:::
-
----
-@type: quiz
-
-## Quick Quiz
-
-**Q1: Remarp 슬라이드 구분 기호는?**
-- [ ] `===`
-- [x] `---`
-- [ ] `***`
-- [ ] `+++`
-
-**Q2: 클릭 애니메이션 문법은?**
-- [ ] `[click]`
-- [ ] `(click)`
-- [x] `{.click}`
-- [ ] `@click`
-
-:::notes
-{timing: 2min}
-{cue: question}
-퀴즈로 핵심 문법을 복습합니다.
-:::
-
----
-
-## Start Building!
-
-Remarp로 나만의 프레젠테이션을 만들어 보세요.
-
-:::click
-### 핵심 정리
-- `remarp: true` frontmatter로 시작
-- `---` 로 슬라이드 구분
-- `@type` 디렉티브로 레이아웃 지정
-- `{.click}`, `:::canvas`, `[x]/[ ]` 로 인터랙션 추가
-:::
-
-:::notes
-{timing: 1min}
-마무리 슬라이드. 다운로드 버튼으로 이 소스를 받아볼 수 있습니다.
-:::
-````
-
-## 슬라이드 타입 요약
-
-이 예제에 포함된 슬라이드 타입:
-
-| 슬라이드 | 타입 | 설명 |
-|----------|------|------|
-| 1 | Title | 타이틀 슬라이드 |
-| 2 | Content | Click 애니메이션 데모 |
-| 3 | Compare | Marp vs Remarp 좌우 비교 |
-| 4 | Canvas | 아키텍처 다이어그램 (step 애니메이션) |
-| 5 | Content | 코드 블록 하이라이트 |
-| 6 | Quiz | 인터랙티브 퀴즈 |
-| 7 | Content | 핵심 정리 (블록 프래그먼트) |
-
-## 데모
+## Live example
 
 <DemoEmbed
   src="/oh-my-cloud-skills/demos/remarp-source/index.html"
-  title="Remarp Feature Tour — 7 슬라이드 인터랙티브 데모"
-  height="600px"
-  command="python3 remarp_to_slides.py build example.remarp.md"
-  remarpSource="example.remarp.md"
+  title="Remarp feature tour"
+  height={600}
+  command="python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build doc-sites/static/demos/remarp-source -o /var/tmp/remarp-source-example --lang en"
+  remarpSource="feature-tour.md"
 />
 
-## 주요 기능 하이라이트
+## What to inspect
 
-### Click 애니메이션
+Use the live demo as an output reference and the [quick-start example](../quick-start.md) for current English source. Each syntax feature has a dedicated guide; frozen embedded source may use older language, styling, or runtime behavior.
 
-```markdown
-- Remarp는 마크다운 기반입니다 {.click}
-- 슬라이드 구분은 `---` 로 합니다 {.click}
-```
-
-### Compare 레이아웃
-
-```markdown
-@type: compare
-
-::: left
-### Marp (기존)
-:::
-
-::: right
-### Remarp (확장)
-:::
-```
-
-### Canvas DSL
-
-```markdown
-:::canvas
-icon gw "API-Gateway" at 100,150 size 48 step 1
-box api "API Layer" at 75,210 size 100,30 color #FF9900 step 1
-arrow api -> compute "invoke" step 4
-:::
-```
-
-### 퀴즈
-
-```markdown
-@type: quiz
-
-**Q1: Remarp 슬라이드 구분 기호는?**
-- [ ] `===`
-- [x] `---`
-```
-
-### 스피커 노트
-
-```markdown
-:::notes
-{timing: 2min}
-{cue: demo}
-설명 내용...
-:::
-```
+Embedded HTML, downloadable sources, and screenshots are frozen example artifacts. Their original language is preserved; this wrapper documents how to interpret them in English.
