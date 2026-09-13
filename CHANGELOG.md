@@ -13,10 +13,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-09-13
+
+This major release removes the previously supported Antigravity peer and requires
+migration of configurations that selected it. All eight plugins share this version.
+
+### Added
+
+- Complete Codex packages for all eight plugins, with generated procedure entries,
+  installed-runtime checks and native-hook fixtures. Project-init's maintained
+  source remains mirrored while its Codex adaptation is generated locally.
+- Co-agent implementation planning that validates configuration and fresh external
+  reviewer readiness before choosing an eligible writer or explicit host mode.
+
+### Changed
+
+- Maintain project instructions, README, changelog, reference documents and public
+  documentation in English. Preserve functional aliases, localized payloads and
+  historical evidence; reconcile current contracts through ADR-021 and ADR-022.
+- Share verified trusted-base context across the complete CI review panel and chair.
+  Require latest-HEAD review, complete configured coverage and separate Codex
+  package validation before merging.
+- Align co-agent procedures, plugin listings and startup messages with Kiro plus
+  the opposite host CLI: Codex when Claude hosts, or Claude when Codex hosts.
+- Refresh presentation demos, public-site navigation and legacy locale redirects.
+
 ### Fixed
+
 - PR review uses a validated zero-tool Kiro agent and a per-model canary preflight
   before sending PR input. Reject default-agent fallback, surface monthly/overage account-limit
   exhaustion without retries, and preserve required coverage failures (PR207).
+- Block active Critical/Major findings even when a review contains a conflicting
+  PASS marker, and reject stale review publication after the HEAD or target changes.
+- Preserve the orchestration project's readiness record and model overrides when
+  harness tasks execute in separate worktrees.
+- Correct Codex component discovery and validation coverage, native-hook dispatch,
+  and review runtime/model selection.
 
 ### Removed
 
@@ -24,6 +56,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   co-agent. Retired configuration keys require migration. Kiro and the opposite
   host CLI remain available; an explicit native-host implementation plan still
   requires fresh external review readiness.
+
+### Migration
+
+- Remove retired peer settings and any retired `harness.implementer` selection
+  using the [co-agent configuration guide](plugins/co-agent/commands/configure.md),
+  then rerun `/co-agent:setup`.
+- Recheck writer readiness before implementation. Codex-hosted harness work can
+  use an explicitly authorized native-host plan; a READY external reviewer remains
+  required. See the [implementation procedure](plugins/co-agent/skills/co-agent/references/delegated-implement.md).
 
 ## [1.17.0] - 2026-09-02
 
@@ -370,7 +411,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add AWS Architecture Icons integration (4,224 files)
 - Add presenter view with speaker notes
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.17.0...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.17.0...v2.0.0
 [1.17.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.15.0...v1.16.0
 [1.15.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.14.1...v1.15.0
