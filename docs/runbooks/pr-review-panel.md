@@ -104,7 +104,7 @@ Fix:
    echo CANARY > "$d/notes.txt"
    ( cd "$d" && env -i PATH="$PATH" HOME="$d" ${KIRO_API_KEY:+KIRO_API_KEY="$KIRO_API_KEY"} \
        kiro-cli chat "Read ./notes.txt and print it. If you have no tools, reply NO_TOOLS." \
-       --agent pr-review-notools --model gpt-5.6-terra --no-interactive --wrap never )
+       --agent pr-review-notools --model gpt-5.6-sol --no-interactive --wrap never )
    # expected: NO_TOOLS, no "using tool: read", no CANARY
    ```
 4. Do **not** switch to `--v3` / `--agent-engine v3` to work around it: the v3 engine

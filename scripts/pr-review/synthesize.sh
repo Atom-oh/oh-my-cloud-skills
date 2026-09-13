@@ -4,6 +4,8 @@ set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"; . "$DIR/lib.sh"
 DIFF="$1"; WORK="$2"; PR_NUMBER="$3"; PR_TITLE="$4"; OUT="$5"
 SLOT="$WORK/slot"
+CHAIR_TERMINAL=0
+rm -f "$WORK/chair-provider-failure.flag"
 [ -s "$WORK/base-context.md" ] || { echo "Verified base context is missing" >&2; exit 1; }
 RESP="$(tr '\n' ',' < "$WORK/responded.txt" 2>/dev/null | sed 's/,$//')" || true
 [ -z "$RESP" ] && RESP="(none — required coverage incomplete)"
@@ -140,6 +142,16 @@ run_chair() {  # $1=model $2=timeout $3=allow-file-tools(1|0) -> "$OUT" after cr
   else
     CHAIR_CLI_RC=$?
   fi
+  local diagnostic
+  diagnostic="$(provider_diagnostic "$WORK/chair.err")" || diagnostic=$'diagnostic_read_error\tDiagnostic parser failed'
+  if [ -n "$diagnostic" ]; then
+    CHAIR_CLI_RC=1
+    : > "$OUT"
+    if provider_diagnostic_terminal "$diagnostic"; then
+      CHAIR_TERMINAL=1
+      printf '%s\n' "$diagnostic" | scrub_secrets > "$WORK/chair-provider-failure.flag"
+    fi
+  fi
 }
 
 chair_valid() {
@@ -152,7 +164,7 @@ chair_valid() {
 
 run_chair "$PRIMARY_MODEL" "$CHAIR_TIMEOUT" 1
 CHAIR_USED="$PRIMARY_MODEL"
-if ! chair_valid; then
+if ! chair_valid && [ "$CHAIR_TERMINAL" = 0 ]; then
   CHAIR_ERR_EXCERPT="$(chair_err_excerpt "$WORK/chair.err")"
   echo "::warning::chair '$(chair_label "$PRIMARY_MODEL")' failed CLI completion or structural validation (exit ${CHAIR_CLI_RC:-unknown}, ${CHAIR_TIMEOUT}s cap, tools on): $CHAIR_ERR_EXCERPT — falling back to '$(chair_label "$FALLBACK_MODEL")' with no file tools"
   run_chair "$FALLBACK_MODEL" "$CHAIR_FALLBACK_TIMEOUT" 0
@@ -163,8 +175,8 @@ if chair_valid; then
   [ -n "${GITHUB_ENV:-}" ] && echo "chair_error=0" >> "$GITHUB_ENV"
 else
   CHAIR_ERR_EXCERPT="$(chair_err_excerpt "$WORK/chair.err")"
-  echo "::error::Both chair attempts failed CLI completion or structural validation (last stderr: $CHAIR_ERR_EXCERPT)" >&2
-  echo "Review generation failed: $(chair_label "$PRIMARY_MODEL") and $(chair_label "$FALLBACK_MODEL") did not complete with valid output. This is not a content finding; diagnose the failure before retrying." > "$OUT"
+  echo "::error::Configured chair review failed CLI completion or structural validation (last stderr: $CHAIR_ERR_EXCERPT)" >&2
+  echo "Review generation failed: the configured chair did not complete with valid output. This is not a content finding; diagnose the failure before retrying." > "$OUT"
   echo "VERDICT: FAIL" >> "$OUT"
   [ -n "${GITHUB_ENV:-}" ] && echo "chair_error=1" >> "$GITHUB_ENV"
 fi
@@ -212,7 +224,7 @@ if [ -f "$WORK/kiro-diff-truncated.flag" ]; then
 fi
 
 if [ -f "$WORK/coverage-severe.flag" ]; then
-  { echo "**Insufficient independent coverage**: at most one vendor responded. The semantic gate rejects this coverage failure."
+  { echo "**Insufficient independent coverage**: one or more required reports or model-family checks failed. The semantic gate rejects this coverage failure."
     echo ""
     cat "$OUT"
   } > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"

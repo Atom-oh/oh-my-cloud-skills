@@ -17,7 +17,7 @@ R=$(mktemp -d "${TMPDIR:-/tmp}/prreviewcfg.XXXXXX")
 # AWS-Demo-Platform ADR-015 / this repo's ADR on dropping kiro-glm).
 CELLS=$(python3 "$CFG" kiro-cells --root "$R" 2>&1)
 assert_eq "claude-opus-5:kiro-opus
-gpt-5.6-terra:kiro-gpt" "$CELLS" "kiro-cells lists the 2 enabled kiro cells in fixed order by default (kiro-glm disabled)"
+gpt-5.6-sol:kiro-gpt" "$CELLS" "kiro-cells lists the 2 enabled kiro cells in fixed order by default (kiro-glm disabled)"
 python3 "$CFG" codex-enabled --root "$R" >/dev/null 2>&1 && RC=0 || RC=$?
 assert_eq "0" "$RC" "codex-enabled exits 0 by default"
 
@@ -80,7 +80,7 @@ python3 "$CFG" set kiro-glm enabled false --root "$R3" >/dev/null 2>&1 && RC=0 |
 assert_eq "0" "$RC" "set succeeds against a malformed override (repairs it rather than refusing)"
 CELLS_H3=$(python3 "$CFG" kiro-cells --root "$R3" 2>&1)
 assert_eq "claude-opus-5:kiro-opus
-gpt-5.6-terra:kiro-gpt" "$CELLS_H3" "set's repair replaced the malformed override -- kiro-cells now succeeds"
+gpt-5.6-sol:kiro-gpt" "$CELLS_H3" "set's repair replaced the malformed override -- kiro-cells now succeeds"
 
 # (i) $PR_REVIEW_CONFIG_ROOT env is honored when --root is omitted (test-isolation parity
 # with co-agent's $CO_AGENT_USER_CONFIG) — same disabled-cell state as (b)/(c) above
