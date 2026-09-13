@@ -29,11 +29,11 @@ title: "Observability agent"
 
 CloudWatch/Container Insights, Logs Insights, alarms, AMP, AMG, ADOT, and self-managed Prometheus/Grafana.
 
-## Diagnostic approach
+## Diagnostic approach {#diagnostic-approach}
 
 Trace telemetry from application/collector through credentials and network egress to the destination. Inspect scrape targets, exporter errors, labels, retention, alert thresholds, and dashboard queries. Diagnose missing data before proposing a new stack.
 
-## Initial read-only checks
+## Initial read-only checks {#initial-read-only-checks}
 
 Run only in the intended account, region, and Kubernetes context. Service-specific follow-ups come from the observed result.
 
@@ -43,7 +43,7 @@ kubectl get pods -A -l app.kubernetes.io/name=opentelemetry-collector
 aws cloudwatch describe-alarms --state-value ALARM
 ```
 
-## Evidence and handoff
+## Evidence and handoff {#evidence-and-handoff}
 
 Return the affected component, observed symptoms, supporting output, likely cause, proposed action, and a verification command with expected results. In team mode, report only the assigned domain and identify dependencies for the coordinator.
 

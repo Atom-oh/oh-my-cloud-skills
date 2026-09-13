@@ -25,11 +25,11 @@ title: "Network agent"
 
 VPC CNI, ENI/IP capacity, pod connectivity, load balancers, DNS, routes, network policies, security groups, and VPC endpoints.
 
-## Diagnostic approach
+## Diagnostic approach {#diagnostic-approach}
 
 Trace the actual source-to-destination path. For IP exhaustion compare subnet capacity, CNI settings, and node allocation; for unhealthy targets inspect target status, readiness, ports, and allowed traffic; for DNS inspect CoreDNS and resolver reachability.
 
-## Initial read-only checks
+## Initial read-only checks {#initial-read-only-checks}
 
 Run only in the intended account, region, and Kubernetes context. Service-specific follow-ups come from the observed result.
 
@@ -40,7 +40,7 @@ kubectl get networkpolicies -A
 kubectl logs -n kube-system deployment/coredns --tail=100
 ```
 
-## Evidence and handoff
+## Evidence and handoff {#evidence-and-handoff}
 
 Return the affected component, observed symptoms, supporting output, likely cause, proposed action, and a verification command with expected results. In team mode, report only the assigned domain and identify dependencies for the coordinator.
 

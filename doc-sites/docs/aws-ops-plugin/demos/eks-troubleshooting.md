@@ -21,7 +21,7 @@ title: "EKS troubleshooting example"
 
 A node becomes NotReady and workloads stop scheduling. This example demonstrates evidence collection and verification; it is not an instruction to change an arbitrary live cluster.
 
-## Triage
+## Triage {#triage}
 
 Confirm context, affected nodes/pods, timestamps, and recent changes. Read node conditions and events, then inspect kubelet, CNI, resource pressure, and scheduler messages for the affected component.
 
@@ -31,11 +31,11 @@ kubectl get pods -A -o wide
 kubectl get events -A --sort-by=.lastTimestamp
 ```
 
-## Diagnose and resolve
+## Diagnose and resolve {#diagnose-and-resolve}
 
 Compare the observed evidence with the EKS agent's node/pod decision tree. A network condition, disk pressure, failed image pull, or capacity shortage needs a different fix. Apply only the remedy supported by evidence and within the user's authorization.
 
-## Verify and report
+## Verify and report {#verify-and-report}
 
 Check node readiness, pod scheduling, workload health, and recurrence of the original event. Report cause, action, measured result, and prevention. Escalate correlated networking, identity, or storage symptoms to the relevant specialist.
 

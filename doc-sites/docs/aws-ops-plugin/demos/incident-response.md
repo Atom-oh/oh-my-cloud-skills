@@ -30,19 +30,19 @@ title: "Incident response example"
 
 A service outage spans unhealthy load-balancer targets and failing application pods. The coordinator gathers a shared timeline and assigns independent network and workload investigations.
 
-## Five-minute triage
+## Five-minute triage {#five-minute-triage}
 
 Record affected users/services, start time, severity, recent deployments, and the selected account/cluster. Collect node/pod status, events, target health, and relevant telemetry. Preserve the difference between observations and hypotheses.
 
-## Parallel investigation
+## Parallel investigation {#parallel-investigation}
 
 The network specialist traces target selection, ports, readiness, routes, and allowed traffic. The EKS specialist checks restarts, previous logs, configuration, scheduling, and resources. Add identity, storage, database, or observability specialists only when the evidence calls for them and host tools support the workflow.
 
-## Correlation and mitigation
+## Correlation and mitigation {#correlation-and-mitigation}
 
 Identify which finding explains the other, or treat uncorrelated failures separately. Choose the smallest authorized mitigation, document its recovery implications, and verify the original user-visible path. Recheck workload health and alarms instead of declaring recovery from one green pod.
 
-## Postmortem
+## Postmortem {#postmortem}
 
 Record impact, timeline, confirmed cause, actions, verification, and prevention with owners. Keep secrets, raw credentials, and unnecessary personal data out of the report.
 

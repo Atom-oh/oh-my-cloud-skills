@@ -1,19 +1,19 @@
 ---
 sidebar_position: 3
-title: Health Check Walkthrough
+title: 상태 점검 따라 하기
 ---
 
-# Health Check Walkthrough
+# 상태 점검 따라 하기
 
-This is an illustrative walkthrough. Command outputs, identifiers, thresholds, and findings are sample data, not a live assessment or the plugin defaults. Use the current skill for the execution contract and verify the actual environment before applying a proposed repair.
+이 문서는 설명을 위한 예제입니다. 명령 출력, 식별자, 임계값, 발견 사항은 샘플 데이터이며 실제 평가 결과나 플러그인 기본값이 아닙니다. 실행 규칙은 현재 스킬을 따르고, 제안된 수정을 적용하기 전에 실제 환경을 확인합니다.
 
-A complete cluster health check demonstration with 6 domain check results and report template.
+6개 영역의 점검 결과와 보고서 템플릿을 포함한 전체 클러스터 상태 점검 예제입니다.
 
-## Scenario {#scenario}
+## 시나리오 {#scenario}
 
-Perform a comprehensive health check on a production EKS cluster to identify potential issues before they cause incidents.
+운영 EKS 클러스터를 종합 점검하여 인시던트로 이어지기 전에 잠재적 문제를 파악합니다.
 
-## Health Check Workflow {#health-check-workflow}
+## 상태 점검 워크플로 {#health-check-workflow}
 
 ```mermaid
 flowchart TD
@@ -26,24 +26,24 @@ flowchart TD
     SECURITY --> REPORT[Generate Report]
 ```
 
-## Step 1: Initiate Health Check {#step-1-initiate-health-check}
+## 1단계: 상태 점검 시작 {#step-1-initiate-health-check}
 
-User request:
+사용자 요청:
 
 ```
 Please perform a full cluster health check.
 ```
 
-**ops-health-check** skill activates and begins systematic domain checks.
+**ops-health-check** 스킬이 활성화되어 영역별 점검을 순서대로 시작합니다.
 
-## Step 2: Cluster Health Check {#step-2-cluster-health-check}
+## 2단계: 클러스터 상태 점검 {#step-2-cluster-health-check}
 
 ```bash
 # API server responsiveness
 time kubectl get --raw /healthz
 ```
 
-Output:
+출력:
 ```
 ok
 real    0m0.089s
@@ -54,7 +54,7 @@ real    0m0.089s
 aws eks describe-cluster --name prod-cluster --query 'cluster.{status:status,version:version,platformVersion:platformVersion}'
 ```
 
-Output:
+출력:
 ```json
 {
     "status": "ACTIVE",
@@ -68,7 +68,7 @@ Output:
 aws eks list-addons --cluster-name prod-cluster --output table
 ```
 
-Output:
+출력:
 ```
 ----------------------------------
 |          ListAddons            |
@@ -80,16 +80,16 @@ Output:
 +--------------------------------+
 ```
 
-**Result**: Cluster OK - API server responsive (89ms), version current, all add-ons active.
+**결과**: 클러스터 OK - API 서버 응답 정상(89ms), 최신 버전, 모든 추가 기능 활성 상태입니다.
 
-## Step 3: Node Health Check {#step-3-node-health-check}
+## 3단계: 노드 상태 점검 {#step-3-node-health-check}
 
 ```bash
 # Node status
 kubectl get nodes -o wide
 ```
 
-Output:
+출력:
 ```
 NAME                            STATUS   ROLES    AGE   VERSION   INTERNAL-IP    OS-IMAGE         KERNEL-VERSION
 ip-10-0-1-100.ec2.internal     Ready    <none>   45d   v1.29.0   10.0.1.100     Amazon Linux 2   5.10.199-190.747.amzn2.x86_64
@@ -102,7 +102,7 @@ ip-10-0-3-200.ec2.internal     Ready    <none>   45d   v1.29.0   10.0.3.200     
 kubectl top nodes
 ```
 
-Output:
+출력:
 ```
 NAME                            CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%
 ip-10-0-1-100.ec2.internal     450m         22%    2100Mi          54%
@@ -115,23 +115,23 @@ ip-10-0-3-200.ec2.internal     520m         26%    2400Mi          62%
 kubectl get nodes -o json | jq '.items[] | {name:.metadata.name, conditions:[.status.conditions[] | select(.status!="False") | .type]}'
 ```
 
-Output:
+출력:
 ```json
 {"name":"ip-10-0-1-100.ec2.internal","conditions":["Ready"]}
 {"name":"ip-10-0-2-150.ec2.internal","conditions":["Ready"]}
 {"name":"ip-10-0-3-200.ec2.internal","conditions":["Ready"]}
 ```
 
-**Result**: Nodes OK - 3/3 Ready, CPU < 30%, Memory < 65%.
+**결과**: 노드 OK - 3/3 Ready, CPU < 30%, 메모리 < 65%입니다.
 
-## Step 4: Workload Health Check {#step-4-workload-health-check}
+## 4단계: 워크로드 상태 점검 {#step-4-workload-health-check}
 
 ```bash
 # Unhealthy pods
 kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded | head -20
 ```
 
-Output:
+출력:
 ```
 NAMESPACE     NAME                      READY   STATUS             RESTARTS   AGE
 backend       api-worker-7b9f4-x2k9l    0/1     CrashLoopBackOff   15         2h
@@ -143,7 +143,7 @@ monitoring    prometheus-node-exp-abc   0/1     Pending            0          30
 kubectl get deployments -A -o json | jq '.items[] | select(.status.unavailableReplicas > 0) | {name:.metadata.name, ns:.metadata.namespace, unavailable:.status.unavailableReplicas}'
 ```
 
-Output:
+출력:
 ```json
 {"name":"api-worker","ns":"backend","unavailable":1}
 ```
@@ -153,49 +153,49 @@ Output:
 kubectl get daemonsets -A -o json | jq '.items[] | select(.status.desiredNumberScheduled != .status.numberReady) | {name:.metadata.name, ns:.metadata.namespace, desired:.status.desiredNumberScheduled, ready:.status.numberReady}'
 ```
 
-Output:
+출력:
 ```json
 {"name":"prometheus-node-exporter","ns":"monitoring","desired":3,"ready":2}
 ```
 
-**Result**: Workloads WARNING - 2 unhealthy pods detected.
+**결과**: 워크로드 WARNING - 비정상 파드 2개를 발견했습니다.
 
-### Issue Details {#issue-details}
+### 문제 상세 {#issue-details}
 
-**CrashLoopBackOff Pod Analysis**:
+**CrashLoopBackOff 파드 분석**:
 ```bash
 kubectl logs api-worker-7b9f4-x2k9l -n backend --previous | tail -20
 ```
 
-Output:
+출력:
 ```
 Error: FATAL: password authentication failed for user "api_user"
 Connection to database failed, exiting...
 ```
 
-**Root Cause**: Database credential mismatch in Secret.
+**근본 원인**: Secret의 데이터베이스 자격 증명이 일치하지 않습니다.
 
-**Pending Pod Analysis**:
+**Pending 파드 분석**:
 ```bash
 kubectl describe pod prometheus-node-exp-abc -n monitoring | grep -A 5 "Events:"
 ```
 
-Output:
+출력:
 ```
 Events:
   Warning  FailedScheduling  30m  default-scheduler  0/3 nodes are available: 3 node(s) didn't match Pod's node affinity/selector.
 ```
 
-**Root Cause**: Node selector mismatch for monitoring namespace.
+**근본 원인**: monitoring 네임스페이스의 노드 선택기가 일치하지 않습니다.
 
-## Step 5: Network Health Check {#step-5-network-health-check}
+## 5단계: 네트워크 상태 점검 {#step-5-network-health-check}
 
 ```bash
 # CoreDNS status
 kubectl get pods -n kube-system -l k8s-app=kube-dns -o wide
 ```
 
-Output:
+출력:
 ```
 NAME                      READY   STATUS    RESTARTS   AGE   IP           NODE
 coredns-5d78c9869d-abc    1/1     Running   0          15d   10.0.1.45    ip-10-0-1-100.ec2.internal
@@ -207,7 +207,7 @@ coredns-5d78c9869d-def    1/1     Running   0          15d   10.0.2.78    ip-10-
 kubectl get pods -n kube-system -l k8s-app=aws-node -o wide
 ```
 
-Output:
+출력:
 ```
 NAME             READY   STATUS    RESTARTS   AGE   IP           NODE
 aws-node-abc     2/2     Running   0          45d   10.0.1.100   ip-10-0-1-100.ec2.internal
@@ -221,7 +221,7 @@ aws ec2 describe-subnets --subnet-ids subnet-abc subnet-def subnet-ghi \
   --query 'Subnets[].{ID:SubnetId,AZ:AvailabilityZone,Available:AvailableIpAddressCount}'
 ```
 
-Output:
+출력:
 ```json
 [
     {"ID": "subnet-abc", "AZ": "us-west-2a", "Available": 245},
@@ -230,16 +230,16 @@ Output:
 ]
 ```
 
-**Result**: Network OK - CoreDNS running, VPC CNI healthy, sufficient IPs.
+**결과**: 네트워크 OK - CoreDNS 실행 중, VPC CNI 정상, IP 충분입니다.
 
-## Step 6: Storage Health Check {#step-6-storage-health-check}
+## 6단계: 스토리지 상태 점검 {#step-6-storage-health-check}
 
 ```bash
 # PVC status
 kubectl get pvc -A --field-selector status.phase!=Bound
 ```
 
-Output:
+출력:
 ```
 NAMESPACE   NAME              STATUS    VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS
 analytics   data-volume-pvc   Pending                                      gp3
@@ -250,7 +250,7 @@ analytics   data-volume-pvc   Pending                                      gp3
 kubectl get pods -n kube-system -l app=ebs-csi-controller -o wide
 ```
 
-Output:
+출력:
 ```
 NAME                                  READY   STATUS    RESTARTS   AGE
 ebs-csi-controller-5f4b7c8d9-abc     6/6     Running   0          30d
@@ -262,22 +262,22 @@ ebs-csi-controller-5f4b7c8d9-def     6/6     Running   0          30d
 kubectl describe pvc data-volume-pvc -n analytics | grep -A 5 "Events:"
 ```
 
-Output:
+출력:
 ```
 Events:
   Warning  ProvisioningFailed  5m  ebs.csi.aws.com  failed to provision volume: could not create volume in EC2: UnauthorizedOperation
 ```
 
-**Result**: Storage WARNING - 1 PVC pending due to IAM permissions.
+**결과**: 스토리지 WARNING - IAM 권한으로 인해 PVC 1개가 대기 중입니다.
 
-## Step 7: Security Health Check {#step-7-security-health-check}
+## 7단계: 보안 상태 점검 {#step-7-security-health-check}
 
 ```bash
 # Privileged containers
 kubectl get pods -A -o json | jq '[.items[] | select(.spec.containers[].securityContext.privileged==true) | {name:.metadata.name, ns:.metadata.namespace}]'
 ```
 
-Output:
+출력:
 ```json
 [
   {"name":"aws-node-abc","ns":"kube-system"},
@@ -291,7 +291,7 @@ Output:
 kubectl get networkpolicies -A
 ```
 
-Output:
+출력:
 ```
 NAMESPACE   NAME              POD-SELECTOR   AGE
 backend     backend-policy    app=api        60d
@@ -308,18 +308,18 @@ for ns in $(kubectl get ns -o jsonpath='{.items[*].metadata.name}'); do
 done
 ```
 
-Output:
+출력:
 ```
 WARNING: analytics has no network policies
 WARNING: monitoring has no network policies
 WARNING: default has no network policies
 ```
 
-**Result**: Security WARNING - 3 namespaces lack network policies.
+**결과**: 보안 WARNING - 네임스페이스 3개에 네트워크 정책이 없습니다.
 
 ---
 
-## Final Health Report {#final-health-report}
+## 최종 상태 보고서 {#final-health-report}
 
 ```markdown
 # Infrastructure Health Report
@@ -373,16 +373,16 @@ WARNING: default has no network policies
 
 ---
 
-## Key Points {#key-points}
+## 핵심 사항 {#key-points}
 
-:::tip Systematic Approach
-Health checks should follow a consistent order: Cluster → Nodes → Workloads → Network → Storage → Security. This ensures no domain is missed and issues are correlated properly.
+:::tip 체계적인 접근
+상태 점검은 클러스터 → 노드 → 워크로드 → 네트워크 → 스토리지 → 보안 순서로 일관되게 진행합니다. 영역 누락을 막고 문제의 연관성을 올바르게 파악할 수 있습니다.
 :::
 
-:::warning Priority Assessment
-Not all warnings are equal. CrashLoopBackOff affects service availability (P2), while missing network policies is a security best practice (P4). Prioritize fixes by impact.
+:::warning 우선순위 평가
+모든 경고의 중요도가 같지는 않습니다. 이 예제에서 CrashLoopBackOff는 서비스 가용성(P2)에 영향을 주고, 네트워크 정책 누락은 보안 모범 사례(P4)에 해당합니다. 영향에 따라 수정 우선순위를 정합니다.
 :::
 
-:::info Automation
-Consider running health checks on a schedule (daily/weekly) and alerting on status changes. This enables proactive issue detection before user impact.
+:::info 자동화
+상태 점검을 매일 또는 매주 정기 실행하고 상태 변화에 알림을 보내는 방안을 고려합니다. 사용자에게 영향이 발생하기 전에 문제를 선제적으로 감지할 수 있습니다.
 :::

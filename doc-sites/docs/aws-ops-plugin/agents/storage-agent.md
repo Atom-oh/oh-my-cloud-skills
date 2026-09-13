@@ -24,11 +24,11 @@ title: "Storage agent"
 
 EBS/EFS, CSI drivers, persistent volumes/claims, StorageClasses, access modes, topology, attachment failures, throughput, and lifecycle.
 
-## Diagnostic approach
+## Diagnostic approach {#diagnostic-approach}
 
 For Pending PVCs compare class/provisioner, capacity, binding mode, and node AZ. For mount errors inspect CSI controller/node logs, IAM, endpoints, and filesystem permissions. Confirm snapshots and recovery implications before destructive changes.
 
-## Initial read-only checks
+## Initial read-only checks {#initial-read-only-checks}
 
 Run only in the intended account, region, and Kubernetes context. Service-specific follow-ups come from the observed result.
 
@@ -39,7 +39,7 @@ kubectl get pvc -A
 kubectl get volumeattachments
 ```
 
-## Evidence and handoff
+## Evidence and handoff {#evidence-and-handoff}
 
 Return the affected component, observed symptoms, supporting output, likely cause, proposed action, and a verification command with expected results. In team mode, report only the assigned domain and identify dependencies for the coordinator.
 
