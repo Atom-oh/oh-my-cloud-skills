@@ -85,7 +85,7 @@ EOF
     assert_grep_match '^run-panel\.sh: kiro-cli test' "$PANEL_OUT" "kiro-cli --version is logged as the first line"
     assert_grep_no_match '\[retry ' "$PANEL_OUT" "quota exhaustion is not retried"
     assert_grep_match '\[quota\] kiro-opus-L2' "$PANEL_OUT" "quota exhaustion is logged per cell"
-    assert_grep_match '::error::Kiro monthly request quota exhausted.*reset on 10/01' "$PANEL_OUT" \
+    assert_grep_match '::error::Kiro request quota exhausted.*reset on 10/01' "$PANEL_OUT" \
         "quota exhaustion is reported as ::error:: with the reset date"
     assert_file_exists "$T_STUB/work/kiro-quota.flag" "quota exhaustion leaves kiro-quota.flag"
     assert_file_exists "$T_STUB/work/coverage-severe.flag" "quota exhaustion still forces coverage-severe (fail-closed kept)"
@@ -101,9 +101,79 @@ EOF2
     PANEL_OUT=$(PATH="$T_STUB:$PATH" PANEL_TIMEOUT=30 PANEL_RETRIES=3 \
         bash "$PANEL" "$T_STUB/diff.txt" "$T_STUB/lenses" "$T_STUB/work" 2>&1 || true)
     assert_grep_no_match '\[retry ' "$PANEL_OUT" "v3-style quota error is not retried"
-    assert_grep_match '::error::Kiro monthly request quota exhausted' "$PANEL_OUT" "v3-style quota error is reported"
+    assert_grep_match '::error::Kiro request quota exhausted' "$PANEL_OUT" "v3-style quota error is reported"
     KIRO_SLOT_BYTES=$(cat "$T_STUB"/work/slot/kiro-*.md 2>/dev/null | wc -c | tr -d ' ')
     assert_eq "0" "$KIRO_SLOT_BYTES" "v3-style quota stdout message is not counted as a response"
+
+    # An exhausted overage allowance is also non-transient, even with exit 0.
+    cat > "$T_STUB/kiro-cli" <<'EOF2'
+#!/bin/bash
+printf 'attempt\n' >> "$0.overage-review-attempts"
+printf '%s\n' 'ServiceQuotaExceededException: You have reached the limit for overages.' >&2
+exit 0
+EOF2
+    wrap_kiro_stub
+    PANEL_OUT=$(PATH="$T_STUB:$PATH" PANEL_TIMEOUT=30 PANEL_RETRIES=3 \
+        bash "$PANEL" "$T_STUB/diff.txt" "$T_STUB/lenses" "$T_STUB/work" 2>&1 || true)
+    OVERAGE_ATTEMPTS=$(wc -l < "$T_STUB/kiro-cli.overage-review-attempts" | tr -d ' ')
+    assert_eq "2" "$OVERAGE_ATTEMPTS" "overage exhaustion stops after one review call per Kiro model"
+    assert_grep_no_match '\[retry ' "$PANEL_OUT" "overage exhaustion does not consume cell retries"
+    assert_file_exists "$T_STUB/work/kiro-quota.flag" "overage exhaustion uses the existing quota diagnostic flag"
+    OVERAGE_DETAIL=$(cat "$T_STUB/work/kiro-quota.flag" 2>/dev/null || true)
+    assert_contains "$OVERAGE_DETAIL" "You have reached the limit for overages." \
+        "overage diagnostic retains the actual account-limit reason"
+    assert_grep_no_match '\[quota\].*monthly|::error::Kiro monthly' "$PANEL_OUT" \
+        "overage exhaustion is not mislabeled as a monthly limit"
+    assert_file_exists "$T_STUB/work/coverage-severe.flag" "overage exhaustion retains the coverage failure gate"
+
+    # A generic service-quota error can be transient; do not classify its type alone.
+    cat > "$T_STUB/kiro-cli" <<'EOF2'
+#!/bin/bash
+model=unknown
+while [ "$#" -gt 0 ]; do
+    if [ "$1" = "--model" ]; then model="$2"; break; fi
+    shift
+done
+attempts="$0.transient-$model"
+printf 'attempt\n' >> "$attempts"
+if [ "$(wc -l < "$attempts")" -eq 1 ]; then
+    printf '%s\n' 'ServiceQuotaExceededException: temporary concurrency quota exceeded; retry later.' >&2
+    exit 1
+fi
+echo "no findings"
+EOF2
+    wrap_kiro_stub
+    PANEL_OUT=$(PATH="$T_STUB:$PATH" PANEL_TIMEOUT=30 PANEL_RETRIES=3 \
+        bash "$PANEL" "$T_STUB/diff.txt" "$T_STUB/lenses" "$T_STUB/work" 2>&1 || true)
+    TRANSIENT_ATTEMPTS=$(cat "$T_STUB"/kiro-cli.transient-* | wc -l | tr -d ' ')
+    assert_eq "4" "$TRANSIENT_ATTEMPTS" "generic transient quota can retry and recover each Kiro cell"
+    assert_grep_match 'Panel responded \(3 / 3 cells\)' "$PANEL_OUT" \
+        "generic transient quota recovery restores complete coverage"
+    TRANSIENT_QUOTA_FLAGS=$(find "$T_STUB/work" -maxdepth 1 -name 'kiro-quota.flag' | wc -l | tr -d ' ')
+    assert_eq "0" "$TRANSIENT_QUOTA_FLAGS" "generic quota exception alone does not create an account-limit flag"
+
+    # Overage exhaustion at startup withholds PR input and records the quota cause.
+    cat > "$T_STUB/kiro-cli" <<'EOF2'
+#!/bin/bash
+[ "${1:-}" = "--version" ] && { echo "kiro-cli test"; exit 0; }
+if [[ "${2:-}" == 'Kiro startup safety check.'* ]]; then
+    printf 'attempt\n' >> "$0.overage-preflight-attempts"
+    printf '%s\n' 'ServiceQuotaExceededException: You have reached the limit for overages.' >&2
+    exit 0
+fi
+touch "$0.overage-review-started"
+echo "no findings"
+EOF2
+    chmod +x "$T_STUB/kiro-cli"
+    PANEL_OUT=$(PATH="$T_STUB:$PATH" PANEL_TIMEOUT=30 PANEL_RETRIES=3 \
+        bash "$PANEL" "$T_STUB/diff.txt" "$T_STUB/lenses" "$T_STUB/work" 2>&1 || true)
+    OVERAGE_PREFLIGHT_ATTEMPTS=$(wc -l < "$T_STUB/kiro-cli.overage-preflight-attempts" | tr -d ' ')
+    assert_eq "1" "$OVERAGE_PREFLIGHT_ATTEMPTS" "overage exhaustion stops startup before the second Kiro model"
+    OVERAGE_REVIEWS=$(find "$T_STUB" -maxdepth 1 -name 'kiro-cli.overage-review-started' | wc -l | tr -d ' ')
+    assert_eq "0" "$OVERAGE_REVIEWS" "overage preflight failure never sends PR input to Kiro review cells"
+    assert_file_exists "$T_STUB/work/kiro-preflight.flag" "overage preflight failure retains startup diagnostics"
+    assert_file_exists "$T_STUB/work/kiro-quota.flag" "overage preflight failure records the specific quota cause"
+    assert_file_exists "$T_STUB/work/coverage-severe.flag" "overage preflight failure keeps required coverage blocked"
 
     # Default-agent fallback invalidates plausible output even when the CLI exits 0.
     cat > "$T_STUB/kiro-cli" <<'EOF2'

@@ -30,7 +30,7 @@ comments even when a check is green.
 | `Review coverage incomplete` | At least one configured cell failed or returned no usable result. Diagnose that provider/CLI; all required cells must complete. |
 | `Kiro preflight failed` | No PR input was sent to Kiro. Diagnose startup response, CLI completion and tool-use/fallback signals. |
 | `Kiro no-tools contract violated` | Default-agent fallback was detected; responses were discarded. Revalidate the CLI/agent configuration. |
-| `Kiro monthly request quota exhausted` | Known account-limit evidence explains missing Kiro coverage; do not spend retries on the same exhausted allowance. |
+| `Kiro request quota exhausted` | Known account-limit evidence explains missing Kiro coverage; do not spend retries on the same exhausted monthly allowance or overage cap. |
 | `Kiro diff truncated` or output-cap evidence | The reviewed input/output is partial. Reduce/split the PR or output; do not call it complete. |
 | `Insufficient independent coverage` | Required vendor diversity was not available. The semantic gate rejects it, regardless of the chair's text. |
 | `Review generation failed` | Neither chair attempt completed with valid structured output. Inspect CLI/format errors; retry only after identifying the cause. |

@@ -42,8 +42,9 @@ CLI completion and no fallback, quota or tool-use diagnostic. Each startup reque
 uses `KIRO_PREFLIGHT_TIMEOUT`; it is separate from the review-cell deadline.
 
 Preflight failure withholds all Kiro reviews. Agent fallback discards the affected
-response even when it looks valid. Known monthly-limit diagnostics stop cell retries
-and explain the missing coverage. All existing semantic acceptance rules still apply.
+response even when it looks valid. Known monthly/overage account-limit diagnostics stop cell retries
+and explain the missing coverage. A generic service-quota exception alone is not
+classified as account exhaustion; ordinary review retries remain bounded. All existing semantic acceptance rules still apply.
 See [the Kiro panel runbook](runbooks/pr-review-panel.md) for diagnosis and the
 historical CLI assumptions behind the mechanism.
 

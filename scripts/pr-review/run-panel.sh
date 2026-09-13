@@ -78,9 +78,9 @@ for lens_file in "${LENS_FILES[@]}"; do
 done > "$WORK/expected.txt" || exit 1
 
 # Interpret known Kiro failure signatures only on Kiro stderr, never review text.
-# The v2 monthly limit can return exit 0 with empty stdout; the JSON form also
-# identifies the account limit. Known non-transient failures must not burn retries.
-KIRO_QUOTA_RE='Monthly request limit reached|MONTHLY_REQUEST_COUNT|UsageLimitReachedError'
+# Account-limit errors can return exit 0 with empty stdout. Match the known monthly
+# and overage messages, not generic service-quota errors that may be transient.
+KIRO_QUOTA_RE='Monthly request limit reached|MONTHLY_REQUEST_COUNT|UsageLimitReachedError|You have reached the limit for overages[.]'
 KIRO_AGENT_FALLBACK_RE='no agent with name|Falling back to user specified default|Json supplied at .* is invalid'
 
 # Each cell shares the former worst-case budget across at most RETRIES attempts.
@@ -110,7 +110,7 @@ try_panel() {
       grep -E "$KIRO_QUOTA_RE|limits reset on" "$err" \
         | sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g' | head -3 > "$slot.quota"
       : > "$slot"; rc=1
-      echo "[quota] $(basename "$slot" .md) — monthly request limit reached, not retrying" >&2
+      echo "[quota] $(basename "$slot" .md) — account request limit reached, not retrying" >&2
       break
     fi
   done
@@ -324,7 +324,7 @@ shopt -u nullglob
 if [ "${#QUOTA_MARKERS[@]}" -gt 0 ]; then
   QUOTA_DETAIL="$(cat "${QUOTA_MARKERS[@]}" | scrub_secrets | grep -v '^\s*$' | sort -u | tr '\n' ' ' | sed 's/ *$//')"
   QUOTA_CELLS="$(for q in "${QUOTA_MARKERS[@]}"; do basename "$q" .md.quota; done | tr '\n' ' ' | sed 's/ *$//')"
-  echo "::error::Kiro monthly request quota exhausted for KIRO_API_KEY — ${#QUOTA_MARKERS[@]} cell(s) [$QUOTA_CELLS]: $QUOTA_DETAIL — enable overages or rotate the key (/demo-platform/actions/AI-key); not a headless-flag failure" >&2
+  echo "::error::Kiro request quota exhausted for the configured account — ${#QUOTA_MARKERS[@]} cell(s) [$QUOTA_CELLS]: $QUOTA_DETAIL — resolve the reported limit before retrying; see docs/runbooks/pr-review-panel.md" >&2
   printf '%s\n' "$QUOTA_DETAIL" > "$WORK/kiro-quota.flag"
   rm -f "${QUOTA_MARKERS[@]}"
 fi

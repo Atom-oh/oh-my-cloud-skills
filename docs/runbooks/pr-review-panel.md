@@ -35,37 +35,41 @@ are not counted as review cells. A failed check skips all Kiro review cells
 writes `kiro-preflight.flag` + `coverage-severe.flag`. Post-execution fallback detection
 in `try_panel` remains as a second safeguard.
 
-## Symptom A — banner `Kiro monthly request quota exhausted`
+## Symptom A — banner `Kiro request quota exhausted`
 
-Log: `::error::Kiro monthly request quota exhausted for KIRO_API_KEY — ... The limits
-reset on MM/DD`. Every Kiro cell is skipped without retry (`[quota] kiro-...`), only
-`codex/<lens>` responds. If the quota was already exhausted at startup the preflight fails
-first (`::error::Kiro preflight failed for kiro-opus`) and both the preflight and quota
-banners appear.
+The review-cell log starts with `::error::Kiro request quota exhausted`, retains the
+reported reason, and records `kiro-quota.flag`. The affected cells stop without
+retrying and cannot count as completed reviews. If a limit is reported during
+startup, preflight withholds all Kiro reviews and records both startup and quota
+flags. Required coverage remains incomplete in either case.
 
-Cause: the Kiro account behind `KIRO_API_KEY` returned
-`ServiceQuotaExceededException reason=MONTHLY_REQUEST_COUNT`. On the v2 engine (the one
-the panel uses) kiro-cli prints `Monthly request limit reached` / `The limits reset on
-MM/DD` to stderr and exits 0 with empty stdout, so before this detection it looked like an
-ordinary empty response and burned `PANEL_RETRIES` attempts per cell. In the original rollout, the key was managed in
-Secrets Manager `/demo-platform/actions/AI-key` (AWS-Demo-Platform repository,
-ExternalSecret `ai-panel-keys`) and is shared by every repo whose PR review runs on the
-`actions-runner-claude` image, so the documented rollout shared that account allowance across those repositories. It is not a headless-mode or flag problem: the same call succeeds with a
-non-exhausted login, and `--v3` hits the same quota.
+Only these known Kiro stderr signals select the account-limit path:
 
-Fix (account-side only — nothing in this repo can lift it):
-1. Enable overages on the Kiro account that owns the key, **or** issue a key from an
-   account with remaining quota and update `KIRO_API_KEY` in
-   `/demo-platform/actions/AI-key` (ESO refreshes the runner secret; new runner pods pick
-   it up).
-2. Re-run the failed `AI Code Review` workflow (or push to the PR). The banner disappears
-   when Kiro cells respond again; `run-panel.sh` resets the flag at the start of every run.
-3. If nothing is done, the quota resets on the date printed in the banner.
+| Signal | Interpretation |
+|---|---|
+| `Monthly request limit reached` or `MONTHLY_REQUEST_COUNT` | Monthly request allowance exhausted |
+| `UsageLimitReachedError` | Known account usage-limit signal; inspect its details |
+| `You have reached the limit for overages.` | Overage allowance exhausted |
 
-An authorized operator can verify the configured account and runner credential
-through its approved management procedure. Do not print or copy credential values.
-Provider calls and account/quota changes are separate from repository validation.
-The local tests below use stubs and do not contact a provider:
+The CLI can exit 0 with empty stdout for an exhausted allowance. The JSON/error
+variant can also include non-review text on stdout and exit nonzero; such output is
+discarded. A generic `ServiceQuotaExceededException` does not identify a monthly or
+overage limit by itself. Unmatched transient review failures retain the existing
+bounded retries. Startup checks still withhold PR input unless every configured
+model passes the no-tools check.
+
+An authorized operator must resolve the reported account condition through the
+approved quota/credential process before rerunning the failed review. A printed
+monthly reset date applies to that monthly signal, not automatically to an overage
+cap. Do not change models, disable required cells or weaken coverage to bypass the
+failure. Repository code does not modify account limits or billing settings.
+
+In the original rollout, the runner credential was managed by the
+AWS-Demo-Platform repository. Check the actual runner ownership/configuration rather
+than assuming that every consumer uses that platform or secret path. Never print or
+copy credential values. Live provider and account checks require separate authority.
+
+Local regression tests use stubs and do not contact a provider:
 
 ```bash
 TMPDIR=/var/tmp bash tests/run-all.sh test-pr-review-panel

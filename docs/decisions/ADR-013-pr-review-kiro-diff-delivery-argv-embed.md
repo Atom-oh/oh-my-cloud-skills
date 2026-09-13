@@ -22,6 +22,11 @@ are recorded by ADR-016/017/021; this ADR does not freeze ADR-011's other behavi
 > `docs/runbooks/pr-review-panel.md`. The `--trust-tools=` references in the sections
 > below are left as the historical record of what was verified in July.
 
+**Integration note (2026-09-13):** the same quota flag and non-retry path also
+recognize the exact account-limit message `You have reached the limit for overages.`.
+Diagnostics retain the actual reason instead of calling every limit monthly.
+Generic service-quota errors alone do not select this account-exhaustion path.
+
 ## Context
 
 ADR-011 gave Kiro cells `--trust-tools=fs_read` and told them to read the diff from a file

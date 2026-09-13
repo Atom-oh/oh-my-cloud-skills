@@ -189,7 +189,7 @@ fi
 # Quota evidence explains missing coverage; it never substitutes for a review.
 if [ -s "$WORK/kiro-quota.flag" ]; then
   QUOTA_DETAIL="$(tr '\n' ' ' < "$WORK/kiro-quota.flag" | sed 's/ *$//')"
-  { echo "**Kiro monthly request quota exhausted**: $QUOTA_DETAIL Resolve the account limit before retrying; required review coverage remains incomplete. See docs/runbooks/pr-review-panel.md."
+  { echo "**Kiro request quota exhausted**: $QUOTA_DETAIL Resolve the account limit before retrying; required review coverage remains incomplete. See docs/runbooks/pr-review-panel.md."
     echo ""
     cat "$OUT"
   } > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
