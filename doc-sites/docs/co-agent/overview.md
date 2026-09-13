@@ -23,7 +23,7 @@ title: "co-agent"
 
 Second opinions, decisions, ADRs, and implementation pipelines with peer review. The current host chairs the work.
 
-## Six skill modes
+## Six skill modes {#six-skill-modes}
 
 | Mode | Result | Execution requirement |
 | --- | --- | --- |
@@ -50,11 +50,11 @@ are retired. Refresh setup after migrating old provider settings.
 The [v2.0.0 migration guide](/docs/releases/v2.0.0#co-agent-migration) describes
 the supported peers and implementation choices.
 
-## Components
+## Components {#components}
 
 The Claude package declares `co-agent`, `gate-chair`, `harness-analyst`, `pr-autofix-planner`, and `pr-autofix-implementer`; its skills are `co-agent`, `pr-autofix`, and `decision-reconcile`. The planner and implementer are internal PR workers that require prepared inputs. Codex exposes these workflows through generated overlays, including command wrappers.
 
-## Configuration and gates
+## Configuration and gates {#configuration-and-gates}
 
 Use `/co-agent:configure` to inspect merged configuration, its source, and host-specific peer availability. The defaults file defines profiles, model lists, effort, timeouts, context limits, call budgets, and retry bounds. A deep profile can use multiple models per peer; a default profile uses the single model setting. Do not infer a provider's supported model catalog from a configured string.
 
@@ -62,10 +62,10 @@ Use `/co-agent:configure` to inspect merged configuration, its source, and host-
 
 `pr_gate.enabled` and `push_gate.enabled` default off. These optional local hooks are separate from mandatory CI and branch protection. Missing, failed, or stale required review coverage is not a successful review.
 
-## Context synchronization
+## Context synchronization {#context-synchronization}
 
 `/co-agent:sync-context` distills `CLAUDE.md` into a marked `AGENTS.md` and creates `.kiro/steering/project-context.md` as a bridge. The source hash detects drift; unmarked handwritten files are protected. Use `/co-agent:configure set autosync on` to opt into automatic synchronization prompts.
 
-## Related workflows
+## Related workflows {#related-workflows}
 
 [PR autofix](/docs/co-agent/skills/pr-autofix) applies review feedback. [Decision reconcile](/docs/co-agent/skills/decision-reconcile) finds contradictions across ADRs and current code. Ordinary code review or an unqualified “decide” request does not by itself request a multi-AI panel; explicitly invoke co-agent when peer input is wanted.

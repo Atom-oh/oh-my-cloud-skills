@@ -1,19 +1,19 @@
 ---
 sidebar_position: 5
-title: Security Audit Demo
+title: 보안 감사 데모
 ---
 
-# Security Audit Demo
+# 보안 감사 데모
 
-This is an illustrative walkthrough. Command outputs, identifiers, thresholds, and findings are sample data, not a live assessment or the plugin defaults. Use the current skill for the execution contract and verify the actual environment before applying a proposed repair.
+이 문서는 설명을 위한 예제입니다. 명령 출력, 식별자, 임계값, 발견 사항은 샘플 데이터이며 실제 평가 결과나 플러그인 기본값이 아닙니다. 실행 규칙은 현재 스킬을 따르고, 제안된 수정을 적용하기 전에 실제 환경을 확인합니다.
 
-Security audit walkthrough covering IAM, Network, and Compliance audit results with findings report.
+IAM, 네트워크, 규정 준수 감사 결과와 발견 사항 보고서를 다루는 보안 감사 예제입니다.
 
-## Scenario {#scenario}
+## 시나리오 {#scenario}
 
-Perform a comprehensive security audit on an EKS cluster to identify vulnerabilities and compliance gaps before a security review.
+보안 검토 전에 EKS 클러스터를 종합 감사하여 취약점과 규정 준수의 공백을 파악합니다.
 
-## Audit Workflow {#audit-workflow}
+## 감사 워크플로 {#audit-workflow}
 
 ```mermaid
 flowchart TD
@@ -24,28 +24,28 @@ flowchart TD
     REPORT --> REMEDIATION[Remediation Plan]
 ```
 
-## Step 1: Initiate Security Audit {#step-1-initiate-security-audit}
+## 1단계: 보안 감사 시작 {#step-1-initiate-security-audit}
 
-User request:
+사용자 요청:
 
 ```
 Please run a comprehensive security audit on the cluster.
 ```
 
-**ops-security-audit** skill activates and begins systematic security checks.
+**ops-security-audit** 스킬이 활성화되어 체계적인 보안 점검을 시작합니다.
 
 ---
 
-## Phase 1: IAM & Authentication Audit {#phase-1-iam--authentication-audit}
+## 1단계: IAM 및 인증 감사 {#phase-1-iam--authentication-audit}
 
-### 1.1 IRSA Configuration Check {#11-irsa-configuration-check}
+### 1.1 IRSA 설정 점검 {#11-irsa-configuration-check}
 
 ```bash
 # List all IRSA-annotated service accounts
 kubectl get sa -A -o json | jq '.items[] | select(.metadata.annotations["eks.amazonaws.com/role-arn"] != null) | {namespace:.metadata.namespace, name:.metadata.name, role:.metadata.annotations["eks.amazonaws.com/role-arn"]}'
 ```
 
-Output:
+출력:
 ```json
 {"namespace":"kube-system","name":"aws-load-balancer-controller","role":"arn:aws:iam::123456789012:role/eks-lb-controller-role"}
 {"namespace":"kube-system","name":"ebs-csi-controller-sa","role":"arn:aws:iam::123456789012:role/eks-ebs-csi-role"}
@@ -53,14 +53,14 @@ Output:
 {"namespace":"analytics","name":"data-processor","role":"arn:aws:iam::123456789012:role/analytics-full-access"}
 ```
 
-### 1.2 Verify Trust Policies {#12-verify-trust-policies}
+### 1.2 신뢰 정책 검증 {#12-verify-trust-policies}
 
 ```bash
 # Check trust policy for suspicious role
 aws iam get-role --role-name analytics-full-access --query 'Role.AssumeRolePolicyDocument'
 ```
 
-Output:
+출력:
 ```json
 {
     "Version": "2012-10-17",
@@ -81,16 +81,16 @@ Output:
 }
 ```
 
-**FINDING (CRITICAL)**: Trust policy uses wildcard `*:*` - any service account can assume this role!
+**발견 사항 (CRITICAL)**: 신뢰 정책이 와일드카드 `*:*`를 사용하므로 모든 서비스 계정이 이 역할을 수임할 수 있습니다.
 
-### 1.3 Check IAM Permissions {#13-check-iam-permissions}
+### 1.3 IAM 권한 점검 {#13-check-iam-permissions}
 
 ```bash
 # Check for overly permissive policies
 aws iam list-attached-role-policies --role-name analytics-full-access
 ```
 
-Output:
+출력:
 ```json
 {
     "AttachedPolicies": [
@@ -100,16 +100,16 @@ Output:
 }
 ```
 
-**FINDING (HIGH)**: Role has FullAccess policies attached - violates least privilege.
+**발견 사항 (HIGH)**: 역할에 FullAccess 정책이 연결되어 최소 권한 원칙을 위반합니다.
 
-### 1.4 RBAC Audit {#14-rbac-audit}
+### 1.4 RBAC 감사 {#14-rbac-audit}
 
 ```bash
 # Find cluster-admin bindings
 kubectl get clusterrolebindings -o json | jq '.items[] | select(.roleRef.name=="cluster-admin") | {name:.metadata.name, subjects:.subjects}'
 ```
 
-Output:
+출력:
 ```json
 {
   "name": "cluster-admin-binding",
@@ -127,15 +127,15 @@ Output:
 }
 ```
 
-**FINDING (HIGH)**: Developer user has cluster-admin binding. Default service account has cluster-admin.
+**발견 사항 (HIGH)**: 개발자 사용자에게 cluster-admin 바인딩이 있고 기본 서비스 계정도 cluster-admin 권한을 가집니다.
 
-### 1.5 aws-auth ConfigMap Check {#15-aws-auth-configmap-check}
+### 1.5 aws-auth ConfigMap 점검 {#15-aws-auth-configmap-check}
 
 ```bash
 kubectl get configmap aws-auth -n kube-system -o yaml
 ```
 
-Output:
+출력:
 ```yaml
 apiVersion: v1
 kind: ConfigMap
@@ -159,13 +159,13 @@ data:
         - system:masters
 ```
 
-**FINDING (HIGH)**: Developer role mapped to system:masters group.
+**발견 사항 (HIGH)**: 개발자 역할이 system:masters 그룹에 매핑되어 있습니다.
 
 ---
 
-## Phase 2: Network Security Audit {#phase-2-network-security-audit}
+## 2단계: 네트워크 보안 감사 {#phase-2-network-security-audit}
 
-### 2.1 Security Group Analysis {#21-security-group-analysis}
+### 2.1 보안 그룹 분석 {#21-security-group-analysis}
 
 ```bash
 # Get cluster security group
@@ -175,7 +175,7 @@ CLUSTER_SG=$(aws eks describe-cluster --name prod-cluster --query 'cluster.resou
 aws ec2 describe-security-group-rules --filter Name=group-id,Values=$CLUSTER_SG --query 'SecurityGroupRules[?!IsEgress].{FromPort:FromPort,ToPort:ToPort,Source:CidrIpv4}'
 ```
 
-Output:
+출력:
 ```json
 [
     {"FromPort": 443, "ToPort": 443, "Source": "0.0.0.0/0"},
@@ -183,9 +183,9 @@ Output:
 ]
 ```
 
-**FINDING (CRITICAL)**: SSH (port 22) open to 0.0.0.0/0!
+**발견 사항 (CRITICAL)**: SSH(포트 22)가 0.0.0.0/0에 개방되어 있습니다.
 
-### 2.2 Network Policy Coverage {#22-network-policy-coverage}
+### 2.2 네트워크 정책 적용 범위 {#22-network-policy-coverage}
 
 ```bash
 # Check namespaces without network policies
@@ -198,7 +198,7 @@ for ns in $(kubectl get ns -o jsonpath='{.items[*].metadata.name}'); do
 done
 ```
 
-Output:
+출력:
 ```
 WARNING: backend has 6 pods but no network policies
 WARNING: analytics has 4 pods but no network policies
@@ -206,15 +206,15 @@ WARNING: monitoring has 8 pods but no network policies
 WARNING: default has 2 pods but no network policies
 ```
 
-**FINDING (MEDIUM)**: 4 namespaces with workloads lack network policies.
+**발견 사항 (MEDIUM)**: 워크로드가 있는 네임스페이스 4개에 네트워크 정책이 없습니다.
 
-### 2.3 Cluster Endpoint Access {#23-cluster-endpoint-access}
+### 2.3 클러스터 엔드포인트 접근 {#23-cluster-endpoint-access}
 
 ```bash
 aws eks describe-cluster --name prod-cluster --query 'cluster.resourcesVpcConfig.{publicAccess:endpointPublicAccess,privateAccess:endpointPrivateAccess,publicCIDRs:publicAccessCidrs}'
 ```
 
-Output:
+출력:
 ```json
 {
     "publicAccess": true,
@@ -223,9 +223,9 @@ Output:
 }
 ```
 
-**FINDING (HIGH)**: Cluster API endpoint publicly accessible from anywhere.
+**발견 사항 (HIGH)**: 클러스터 API 엔드포인트에 어디서나 공개적으로 접근할 수 있습니다.
 
-### 2.4 VPC Endpoints Check {#24-vpc-endpoints-check}
+### 2.4 VPC 엔드포인트 점검 {#24-vpc-endpoints-check}
 
 ```bash
 # Check existing VPC endpoints
@@ -233,7 +233,7 @@ VPC_ID=$(aws eks describe-cluster --name prod-cluster --query 'cluster.resources
 aws ec2 describe-vpc-endpoints --filters Name=vpc-id,Values=$VPC_ID --query 'VpcEndpoints[].ServiceName'
 ```
 
-Output:
+출력:
 ```json
 [
     "com.amazonaws.us-west-2.s3",
@@ -241,19 +241,19 @@ Output:
 ]
 ```
 
-**FINDING (MEDIUM)**: Missing recommended VPC endpoints (ecr.dkr, sts, logs, ec2).
+**발견 사항 (MEDIUM)**: 권장 VPC 엔드포인트(ecr.dkr, sts, logs, ec2)가 없습니다.
 
 ---
 
-## Phase 3: Compliance Audit {#phase-3-compliance-audit}
+## 3단계: 규정 준수 감사 {#phase-3-compliance-audit}
 
-### 3.1 Privileged Containers {#31-privileged-containers}
+### 3.1 특권 컨테이너 {#31-privileged-containers}
 
 ```bash
 kubectl get pods -A -o json | jq '[.items[] | select(.spec.containers[].securityContext.privileged==true) | {name:.metadata.name, ns:.metadata.namespace}]'
 ```
 
-Output:
+출력:
 ```json
 [
   {"name":"aws-node-abc","ns":"kube-system"},
@@ -263,15 +263,15 @@ Output:
 ]
 ```
 
-**FINDING (HIGH)**: 2 privileged containers in non-system namespaces (default, analytics).
+**발견 사항 (HIGH)**: 시스템용이 아닌 네임스페이스(default, analytics)에 특권 컨테이너 2개가 있습니다.
 
-### 3.2 Root Containers {#32-root-containers}
+### 3.2 root 컨테이너 {#32-root-containers}
 
 ```bash
 kubectl get pods -A -o json | jq '[.items[] | select(.spec.securityContext.runAsUser==0 or .spec.containers[].securityContext.runAsUser==0) | {name:.metadata.name, ns:.metadata.namespace}]'
 ```
 
-Output:
+출력:
 ```json
 [
   {"name":"api-server-abc","ns":"backend"},
@@ -281,7 +281,7 @@ Output:
 ]
 ```
 
-**FINDING (MEDIUM)**: 4 pods running as root user.
+**발견 사항 (MEDIUM)**: 파드 4개가 root 사용자로 실행됩니다.
 
 ### 3.3 Pod Security Standards {#33-pod-security-standards}
 
@@ -290,41 +290,41 @@ Output:
 kubectl get ns -o json | jq '.items[] | select(.metadata.labels["pod-security.kubernetes.io/enforce"] != null) | {name:.metadata.name, enforce:.metadata.labels["pod-security.kubernetes.io/enforce"]}'
 ```
 
-Output:
+출력:
 ```json
 ```
 
-**FINDING (MEDIUM)**: No namespaces have Pod Security Standards enforced.
+**발견 사항 (MEDIUM)**: Pod Security Standards가 적용된 네임스페이스가 없습니다.
 
-### 3.4 Control Plane Logging {#34-control-plane-logging}
+### 3.4 컨트롤 플레인 로깅 {#34-control-plane-logging}
 
 ```bash
 aws eks describe-cluster --name prod-cluster --query 'cluster.logging.clusterLogging[?enabled==`true`].types[]'
 ```
 
-Output:
+출력:
 ```json
 ["api"]
 ```
 
-**FINDING (MEDIUM)**: Only API logging enabled. Missing audit and authenticator logs.
+**발견 사항 (MEDIUM)**: API 로깅만 활성화되어 있으며 audit 및 authenticator 로그가 없습니다.
 
-### 3.5 Secrets Encryption {#35-secrets-encryption}
+### 3.5 Secret 암호화 {#35-secrets-encryption}
 
 ```bash
 aws eks describe-cluster --name prod-cluster --query 'cluster.encryptionConfig'
 ```
 
-Output:
+출력:
 ```json
 null
 ```
 
-**FINDING (MEDIUM)**: EKS secrets encryption not enabled (secrets stored unencrypted in etcd).
+**발견 사항 (MEDIUM)**: EKS Secret 암호화가 활성화되어 있지 않습니다(Secret이 etcd에 암호화되지 않은 상태로 저장됩니다).
 
 ---
 
-## Security Audit Report {#security-audit-report}
+## 보안 감사 보고서 {#security-audit-report}
 
 ```markdown
 # Security Audit Report
@@ -419,9 +419,9 @@ The audit identified 15 security findings across IAM, Network, and Compliance do
 
 ---
 
-## Remediation Commands {#remediation-commands}
+## 시정 조치 명령어 {#remediation-commands}
 
-### Critical #1: Fix IRSA Trust Policy {#critical-1-fix-irsa-trust-policy}
+### Critical #1: IRSA 신뢰 정책 수정 {#critical-1-fix-irsa-trust-policy}
 
 ```bash
 # Create scoped trust policy
@@ -448,14 +448,14 @@ EOF
 aws iam update-assume-role-policy --role-name analytics-full-access --policy-document file://trust-policy.json
 ```
 
-### Critical #2: Remove SSH Rule {#critical-2-remove-ssh-rule}
+### Critical #2: SSH 규칙 제거 {#critical-2-remove-ssh-rule}
 
 ```bash
 # Remove SSH 0.0.0.0/0 rule
 aws ec2 revoke-security-group-ingress --group-id $CLUSTER_SG --protocol tcp --port 22 --cidr 0.0.0.0/0
 ```
 
-### High #7: Restrict API Endpoint {#high-7-restrict-api-endpoint}
+### High #7: API 엔드포인트 제한 {#high-7-restrict-api-endpoint}
 
 ```bash
 # Restrict to corporate IPs only
@@ -465,16 +465,16 @@ aws eks update-cluster-config --name prod-cluster \
 
 ---
 
-## Key Points {#key-points}
+## 핵심 사항 {#key-points}
 
-:::danger Critical Findings
-IRSA wildcard trust policies and SSH open to internet are critical vulnerabilities that could lead to cluster compromise. Remediate immediately.
+:::danger Critical 발견 사항
+IRSA 와일드카드 신뢰 정책과 인터넷에 개방된 SSH는 클러스터 침해로 이어질 수 있는 심각한 취약점입니다. 즉시 시정합니다.
 :::
 
-:::warning Least Privilege
-Multiple findings relate to excessive permissions (FullAccess policies, system:masters mappings). Implement least privilege across IAM and RBAC.
+:::warning 최소 권한
+여러 발견 사항이 과도한 권한(FullAccess 정책, system:masters 매핑)과 관련되어 있습니다. IAM과 RBAC 전반에 최소 권한을 적용합니다.
 :::
 
-:::tip Defense in Depth
-Enable multiple security layers: NetworkPolicies for network segmentation, Pod Security Standards for workload hardening, and encryption for data protection.
+:::tip 심층 방어
+네트워크 분리를 위한 NetworkPolicies, 워크로드 보안 강화를 위한 Pod Security Standards, 데이터 보호를 위한 암호화 등 여러 보안 계층을 활성화합니다.
 :::

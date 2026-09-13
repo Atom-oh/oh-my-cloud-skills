@@ -37,15 +37,15 @@ title: "Troubleshoot AWS and EKS"
 
 Use for a concrete incident, error, or broken cloud behavior.
 
-## Workflow
+## Workflow {#workflow}
 
 Triage scope, impact, severity, and recent changes; collect evidence; form and test a hypothesis; apply authorized mitigation; reproduce the original operation; document cause, recovery, and prevention.
 
-## Coverage
+## Coverage {#coverage}
 
 Pod scheduling/crash/image/OOM failures; node conditions and kubelet; API/add-on errors; CNI/DNS/load-balancer paths; PVC/CSI topology; IAM and RBAC denials.
 
-## Reporting and boundaries
+## Reporting and boundaries {#reporting-and-boundaries}
 
 P1/P2 incidents or symptoms spanning multiple domains can use the coordinator. Preserve timestamps and correlation evidence; do not infer one root cause merely because symptoms occurred together.
 

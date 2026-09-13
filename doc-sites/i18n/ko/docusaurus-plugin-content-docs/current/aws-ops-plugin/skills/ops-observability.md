@@ -1,9 +1,9 @@
 ---
 sidebar_position: 4
-title: "Observability workflow"
+title: "관측성 워크플로"
 ---
 
-{/* Legacy section links retained after the English rewrite. */}
+{/* 영문 개편 이전의 섹션 링크를 유지합니다. */}
 <span id="ops-observability" />
 <span id="description" />
 <span id="trigger-keywords" />
@@ -60,22 +60,22 @@ title: "Observability workflow"
 <span id="reference-files" />
 
 
-# Observability workflow
+# 관측성 워크플로
 
-Set up or analyze monitoring, logs, metrics, traces, alarms, and incident signals.
+모니터링, 로그, 메트릭, 트레이스, 알람, 인시던트 신호를 설정하거나 분석합니다.
 
-## Workflow {#workflow}
+## 워크플로 {#workflow}
 
-Map producers, collectors, transports, storage, queries, dashboards, and alerts. Inspect the failing hop, permissions, configuration, and retention. Validate that a representative event reaches the destination and triggers the intended query or alert.
+생성자, 수집기, 전송 경로, 저장소, 쿼리, 대시보드, 알림의 관계를 파악합니다. 실패한 구간, 권한, 설정, 보존 기간을 점검합니다. 대표 이벤트가 목적지에 도달하고 의도한 쿼리나 알림으로 이어지는지 검증합니다.
 
-## Coverage {#coverage}
+## 대상 범위 {#coverage}
 
-CloudWatch and Logs Insights; X-Ray/ADOT/OTel; Prometheus/AMP; Grafana/AMG; self-managed Loki, Tempo, ClickHouse, and VictoriaMetrics; relevant DevOps Agent escalation.
+CloudWatch와 Logs Insights, X-Ray/ADOT/OTel, Prometheus/AMP, Grafana/AMG, 자체 관리형 Loki·Tempo·ClickHouse·VictoriaMetrics, 관련 DevOps Agent 에스컬레이션을 다룹니다.
 
-## Reporting and boundaries {#reporting-and-boundaries}
+## 보고 및 경계 {#reporting-and-boundaries}
 
-Examples and thresholds must fit the workload. Distinguish telemetry setup from diagnosing an application bug; record evidence and gaps rather than treating a dashboard screenshot as end-to-end validation.
+예제와 임계값은 워크로드에 맞아야 합니다. 텔레메트리 설정과 애플리케이션 버그 진단을 구분합니다. 대시보드 스크린샷을 종단 간 검증으로 간주하지 말고 근거와 공백을 기록합니다.
 
-The source skill contains the command playbooks, decision trees, examples, reference files, and host/team integration. Consult it for the exact operation being performed.
+소스 스킬에는 명령별 실행 절차, 의사결정 트리, 예제, 참조 파일, 호스트·팀 연동이 포함되어 있습니다. 수행할 작업의 정확한 절차는 소스 스킬에서 확인합니다.
 
-[Canonical workflow and playbooks](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-ops-plugin/skills/ops-observability/SKILL.md)
+[기준 워크플로 및 실행 절차](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-ops-plugin/skills/ops-observability/SKILL.md)
