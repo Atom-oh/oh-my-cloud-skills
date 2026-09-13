@@ -59,8 +59,9 @@ python3 plugins/co-agent/skills/co-agent/scripts/check_ai_context.py . --verify 
 python3 scripts/pr-review/context.py --root . --output /var/tmp/base-review-context.md
 ```
 
-The context builder checks the generated marker/hash, rejects outside paths and
-refuses oversized context. It derives inventory populations from repository data.
+The context builder checks the generated marker/hash and rejects outside paths.
+AGENTS.md is capped at 6,144 bytes; the complete context is capped at 8,192 bytes.
+The isolated PR-head CI validates the real assembled context before merge. It derives inventory populations from repository data.
 It does not execute scripts from a supplied PR tree or load every historical doc.
 
 ## Roster, model and authentication diagnosis

@@ -2,7 +2,16 @@
 
 ## Status
 
-Accepted (2026-08-14)
+Accepted (2026-08-14); verdict-only acceptance and warn-only missing coverage
+superseded by [ADR-021](ADR-021-english-docs-current-review-authority.md).
+
+**Current scope (2026-09-13):** the single full-scope prompt, bounded chair fallback
+and memory-on-stdin remain. Timeout values below are historical; source owns current
+defaults. `verdict_of()` is only a compatibility parser: the semantic gate validates
+final Issues, and an active Critical/Major cannot coexist with PASS. Missing or
+truncated configured review input also prevents PASS, regardless of the chair token.
+Latest-HEAD review, separate PR-head Codex CI and required checks remain mandatory.
+Optional local hook failure behavior does not apply to this CI contract.
 
 ## Context
 

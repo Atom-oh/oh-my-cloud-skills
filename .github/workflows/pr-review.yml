@@ -20,6 +20,7 @@ jobs:
       pull-requests: write
       contents: read
     env:
+      # SigV4 region and the Bedrock endpoint region must agree.
       ANTHROPIC_MODEL: global.anthropic.claude-fable-5-1
       CLAUDE_CODE_USE_BEDROCK: 1
       ANTHROPIC_BEDROCK_BASE_URL: https://bedrock-runtime.ap-northeast-2.amazonaws.com

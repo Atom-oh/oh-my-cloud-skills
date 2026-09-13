@@ -78,6 +78,18 @@ class ReviewContextTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             CONTEXT.build_context(self.root)
 
+    def test_component_budget_reserves_space_for_facts(self):
+        path = self.root / "AGENTS.md"
+        path.write_text(self.marker + "x" * (CONTEXT.AGENTS_CAP - len(self.marker.encode())))
+        self.assertLessEqual(len(CONTEXT.build_context(self.root).encode()), CONTEXT.CONTEXT_CAP)
+        path.write_text(path.read_text() + "x")
+        with self.assertRaisesRegex(ValueError, str(CONTEXT.AGENTS_CAP)):
+            CONTEXT.build_context(self.root)
+
+    def test_actual_repository_context_builds(self):
+        text = CONTEXT.build_context(ROOT)
+        self.assertLessEqual(len(text.encode()), CONTEXT.CONTEXT_CAP)
+
     def test_a_context_symlink_cannot_read_outside_the_snapshot(self):
         with tempfile.TemporaryDirectory() as tmp:
             outside = Path(tmp) / "AGENTS.md"

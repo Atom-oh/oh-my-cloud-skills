@@ -10,7 +10,8 @@ SOURCE_ROOT = Path(__file__).resolve().parents[2]
 CHECKER = runpy.run_path(str(
     SOURCE_ROOT / "plugins/co-agent/skills/co-agent/scripts/check_ai_context.py"
 ))
-MAX_BYTES = 8192
+AGENTS_CAP = 6144
+CONTEXT_CAP = 8192
 NON_PROCEDURES = {"README.md", "CLAUDE.md", "AGENTS.md"}
 
 
@@ -28,7 +29,7 @@ def build_context(root):
     root = root.resolve()
     claude = inside(root, root / "CLAUDE.md").read_text(encoding="utf-8")
     agents = inside(root, root / "AGENTS.md")
-    problems = CHECKER["_file_problems"](str(agents), CHECKER["claude_sha"](claude), MAX_BYTES)
+    problems = CHECKER["_file_problems"](str(agents), CHECKER["claude_sha"](claude), AGENTS_CAP)
     if problems:
         raise ValueError("Base AGENTS.md cannot be forwarded: " + "; ".join(problems))
     facts = {"plugins": {}, "source_procedures": 0, "codex_entries": 0}
@@ -67,8 +68,13 @@ def build_context(root):
         + json.dumps(facts, indent=2, sort_keys=True)
         + "\n```\n"
     )
-    if len(text.encode("utf-8")) > MAX_BYTES:
-        raise ValueError("Base review context exceeds 8192 bytes; distill AGENTS.md")
+    size = len(text.encode("utf-8"))
+    if size > CONTEXT_CAP:
+        agent_size = agents.stat().st_size
+        raise ValueError(
+            f"Assembled context {size} B exceeds {CONTEXT_CAP} B: "
+            f"AGENTS.md={agent_size}/{AGENTS_CAP} B, facts/header={size - agent_size} B"
+        )
     return text
 
 

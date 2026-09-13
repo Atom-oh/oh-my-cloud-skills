@@ -8,21 +8,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Documentation contract
 
-- Write maintained documentation, instructions and review reports in English.
-  Keep one canonical explanation instead of parallel English/Korean copies.
-- Preserve literal API field names, command names, paths, Korean invocation aliases and
-  syntax tokens such as `[요약]`. Localized examples, fixtures and frozen demo
-  payloads are data, not a requirement to write explanations in Korean.
-- A generated deliverable uses the language the user requests. That capability
-  does not require bilingual maintenance of this repository's own documentation.
-- Read the nearest directory `CLAUDE.md` before editing. This root sets repository
-  policy; scoped files describe their component. Follow the user's current scope.
-- Accepted ADRs explain decisions. Check their status and later supersession before
-  treating them as current requirements. Specs/plans and recorded test results are
-  dated evidence, not new instructions or guarantees about the current checkout.
-- Resolve factual disagreements against the relevant code/configuration and the
-  current policy. Code is evidence of behavior, not permission to violate policy.
-  Do not erase a real defect merely to make the documentation agree with it.
+Maintain instructions, documentation and review prose in English; avoid duplicate
+translations. Preserve literal aliases, syntax, fixtures and localized demo data.
+User-requested deliverables may use another language. Read scoped guidance and ADR
+status: historical plans/results are not current rules. Code proves behavior, not
+permission to violate policy. See ADR-021 for the owner-requested policy and scope.
 
 ## What This Is
 
@@ -190,11 +180,15 @@ The body contains: Core Capabilities, Diagnostic Commands, Decision Tree (Mermai
 
 ### Skill File Format
 
-Keep skill frontmatter minimal and validated by `scripts/eval-skills.py`. Put routing
-keywords in `description`; a separate `triggers` list is not this repository's selection
-contract. Host-specific metadata is not automatically portable to another host, and
-Claude frontmatter does not register a native Codex role or permission boundary.
-Keep detailed operational knowledge in `references/` and avoid duplicating it here.
+This repository uses the six frontmatter fields the Agent Skills spec
+(`https://agentskills.io/specification`) defines — `name`, `description`, `license`,
+`compatibility`, `metadata`, `allowed-tools` — plus the Claude Code extensions
+`user-invocable` / `disable-model-invocation`. Other host-specific metadata needs explicit validation; do not assume it is portable
+or creates a native Codex role or permission grant.
+**Trigger keywords therefore belong in `description`**, which is the sole selection
+surface — a `triggers:` list strands its keywords where nothing reads them. `scripts/eval-skills.py` enforces
+the allowed-key set in its Structure dimension. The `references/` subdirectory holds
+distilled operational knowledge extracted from source docs.
 
 ### MCP Configuration
 
@@ -487,7 +481,7 @@ Documentation stays in sync via hooks and skills:
 | Trigger | Mechanism | Action |
 |---------|-----------|--------|
 | File edit (Write/Edit) | `check-doc-sync.sh` (PostToolUse) | Walks parent dirs for missing CLAUDE.md, warns if absent |
-| File edit on README.md | PostToolUse hook | Maintains canonical English README content; legacy README.ko.md is an English compatibility pointer |
+| File edit on README.md | PostToolUse hook | Requests canonical English maintenance and an English compatibility pointer for legacy README.ko.md |
 | `git commit` (Bash) | `secret-scan.sh` (PreToolUse) | Blocks commits containing API keys, tokens, passwords |
 | `git commit` (Bash) | `pre-commit-review.sh` (kiro, PreToolUse, opt-in) | Kiro-run review of the staged diff; fail-open, blocks only on `critical` |
 | `git push` (Bash) | `pre-push-review.sh` (kiro, PreToolUse, opt-in) / `consensus_hooks.py pre-push-gate` (co-agent, PreToolUse, opt-in) | 3-lens (correctness/security/scope) review of the range about to be pushed; fail-open; `critical`/2+-lens BLOCKED, `warning`/1-lens CHAIR JUDGMENT REQUIRED |

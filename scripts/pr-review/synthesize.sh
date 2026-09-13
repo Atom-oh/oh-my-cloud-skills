@@ -14,6 +14,7 @@ SCRUB_TMP="$WORK/scrub-cell.tmp"
 rm -f "$WORK/panel-cell-truncated.flag"
 while IFS= read -r f; do
   [ -s "$f" ] || continue
+  # Scrub before clipping; file-based head avoids an upstream SIGPIPE.
   scrub_secrets < "$f" > "$SCRUB_TMP"
   CELL="$(head -c "$PANEL_CELL_CAP" "$SCRUB_TMP")"
   SCRUBBED_LEN="$(wc -c < "$SCRUB_TMP")"
@@ -123,6 +124,7 @@ esac ; }
 
 run_chair() {  # $1=model $2=timeout $3=allow-file-tools(1|0) -> "$OUT" after credential scrubbing
   local model="$1" tmo="$2" allow_tools="$3"
+  # Explicit denials override permissions inherited from other sources.
   local allowed="" disallowed="Bash Write Edit NotebookEdit WebFetch WebSearch Task"
   if [ "$allow_tools" = "1" ]; then
     allowed="Read Grep Glob"
