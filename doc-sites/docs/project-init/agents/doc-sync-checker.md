@@ -14,11 +14,11 @@ title: "Doc sync checker"
 
 Analyze whether project instructions and documentation match current code, commands, dependencies, and architecture. The checker detects missing module context, stale references, undocumented decisions, and quality gaps.
 
-## Use
+## Use {#use}
 
 Run the project-init `sync-docs` workflow, or request a scoped documentation audit. Supply the relevant source paths and intended language. The checker produces evidence and proposed updates; its report is not proof that changes were applied or tested.
 
-## Report
+## Report {#report}
 
 Identify the affected document, supporting source path, mismatch, and concrete correction. Assess command usability, architectural clarity, conciseness, freshness, and actionability. Use the current rubric from the agent rather than treating an old score as a permanent gate.
 

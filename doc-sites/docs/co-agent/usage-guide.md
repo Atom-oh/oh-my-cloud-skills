@@ -24,7 +24,7 @@ title: "Use co-agent"
 
 # Use co-agent
 
-## Start with readiness
+## Start with readiness {#start-with-readiness}
 
 ```text
 /co-agent:setup
@@ -35,7 +35,7 @@ title: "Use co-agent"
 
 Setup discovers each peer's plugin/CLI access path, performs a real probe, and records READY or the failure reason. A CLI binary existing on PATH is not proof that authentication or a model call works. Ordinary review, decide, and ADR work can continue solo with notice. Consensus and harness stop for setup when no peer is READY.
 
-## Choose an implementation workflow
+## Choose an implementation workflow {#choose-an-implementation-workflow}
 
 ```text
 /co-agent:consensus docs/spec.md
@@ -56,7 +56,7 @@ where setup ran. Only the writer changes cwd to its task worktree. Follow the
 [harness contract](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/commands/harness.md)
 for the exact planner calls, exit statuses and capture/review gates.
 
-## Tune and inspect
+## Tune and inspect {#tune-and-inspect}
 
 ```text
 /co-agent:configure
@@ -67,13 +67,13 @@ for the exact planner calls, exit statuses and capture/review gates.
 
 Inspect effective settings before changing models or reasoning effort. Committed defaults merge with user and repository-local overrides; the current host determines the applicable paths and peer roster. Use the configuration output and canonical defaults rather than copying model IDs from an example.
 
-## Read the result
+## Read the result {#read-the-result}
 
 The host sends comparable prompts, checks peer findings against source, separates confirmed problems from unsupported claims, and records peer failures. Large inputs can exceed a peer's configured context limit; missing coverage must be disclosed. Review verdicts are advisory and do not override repository CI or merge requirements.
 
 Use [commands](/docs/co-agent/commands/) for settings and workflow entry points, and [PR autofix](/docs/co-agent/skills/pr-autofix) for the feedback loop.
 
-## Related links
+## Related links {#related-links}
 
 - [overview](/docs/co-agent/overview)
 - [co agent](/docs/co-agent/skills/co-agent)

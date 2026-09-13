@@ -21,14 +21,14 @@ title: "co-agent skill"
 
 Invoke this skill explicitly for a second opinion, multi-AI review, collaborative decision, or ADR. A plain code-review request does not automatically request external peer calls.
 
-## Workflow
+## Workflow {#workflow}
 
 1. Determine the current host, requested mode, available peers, and validated context.
 2. Run or consult setup probes; record missing CLIs, authentication failures, timeouts, and input limits.
 3. Dispatch review/decide/ADR to available peers, or report solo operation. For consensus/harness, require READY coverage before continuing.
 4. Check findings against source, surface disagreements, and return a host-authored result with verification evidence.
 
-## Mode contracts
+## Mode contracts {#mode-contracts}
 
 The skill has six modes. Review inspects a defined diff or scope. Decide compares
 explicit options. ADR gathers alternatives and consequences. Sync-context generates

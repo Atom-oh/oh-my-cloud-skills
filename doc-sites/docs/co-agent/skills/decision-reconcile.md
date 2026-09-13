@@ -21,17 +21,17 @@ title: "Decision reconcile"
 
 Review accumulated ADRs for contradictions with other decisions or with the current repository, then draft a superseding ADR backed by evidence.
 
-## What it checks
+## What it checks {#what-it-checks}
 
 Look for incompatible technology choices, conflicting scope or constraints, outdated assumptions, decisions that drifted from implementation, and dependency chains invalidated by a later decision. The panel assigns different review lenses so agreement is not just repeated phrasing.
 
-## Workflow
+## Workflow {#workflow}
 
 Collect ADRs and their status; trace referenced code and configuration; ask the available review panel for independent concerns; validate each claim; then present the contradictions and options. The host synthesizes the result rather than counting votes.
 
 A superseding ADR identifies the replaced decision, explains the new evidence, records alternatives and consequences, and links both directions. Preserve historical ADRs instead of silently rewriting the record. Do not execute migrations merely because an ADR proposes one.
 
-## Tooling and boundaries
+## Tooling and boundaries {#tooling-and-boundaries}
 
 External peer fan-out sends the selected ADR text to third-party AI services and
 requires consent for that scope. The [skill contract](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/skills/decision-reconcile/SKILL.md)
