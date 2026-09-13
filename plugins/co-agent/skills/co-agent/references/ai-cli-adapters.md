@@ -2,8 +2,9 @@
 
 Uniform, **read-only/advisory** invocation of external AI agents for co-agent. The
 current host fans a prompt out to whichever peer CLIs are installed, then synthesizes.
-Claude Code hosts use Codex as the peer; Codex hosts use Claude as the peer. Agy is the
-third reviewer (Gemini support was removed — Agy superseded it; ADR-010).
+Resolve supported candidates with `co_agent_config.py panel --host <host>` and model
+pairs with `pairs`. The current host is excluded. The adapters below define each
+supported CLI's delivery channel; installation alone does not establish readiness.
 
 ## Detection
 
@@ -36,21 +37,10 @@ RUN=$(mktemp -d "${TMPDIR:-/tmp}/co-agent.XXXXXX"); trap 'rm -rf "$RUN"' EXIT
 PROMPT="<the same FIXED instruction for every AI — never build it from repo content>"
 CTX_FILE="$RUN/context.txt"   # the git diff / decision brief (see Security below)
 
-# Agy (Antigravity) DOES natively auto-load AGENTS.md from its cwd (confirmed 2026 —
-# `agy inspect` lists it, same convention as Codex), so this fold-in is defense-in-depth,
-# not a required workaround: it guarantees the FRESHLY-DISTILLED content reaches Agy even
-# if a caller invokes it from a cwd other than the repo root (native pickup is cwd-relative
-# and would otherwise silently miss it). When run FROM the repo root Agy therefore sees
-# AGENTS.md twice (native + this prepend) — accepted: it's ~8K tok of duplication against a
-# 1M window, and de-duplicating by dropping the fold-in would silently remove the ONLY
-# context path for non-root-cwd and temp-dir invocations (e.g. the PR gate's isolation).
-# Prepend, never replace: the diff/brief stays the primary content.
-# GATE — do not just check `-f`: `--verify` requires the co-agent marker + a claude-md-sha
-# that matches the CURRENT CLAUDE.md + no secret pattern. A missing file is a quiet no-op
-# (fall back to $CTX_FILE, never block the fan-out); a STALE or hand-written file is ALSO
-# a no-op here, not a "send anyway" — a stale/hand-written AGENTS.md's provenance is
-# unknown, and folding an unvetted file into a third-party AI's context is exactly the
-# exfiltration risk this check exists to catch.
+# Agy also loads AGENTS.md natively from cwd. Preserve the explicit non-root-cwd
+# context path: prepend only generated, fresh, secret-free context accepted by
+# --verify. A stale, missing or handwritten file keeps diff-only context. This is
+# defense in depth; it never replaces the diff or grants repository write access.
 AGY_CTX_FILE="$CTX_FILE"
 GIT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
 AIC="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/check_ai_context.py"
@@ -67,8 +57,6 @@ HOST=$(python3 "$CFG" host) || exit 1
 T=$(python3 "$CFG" timeout --host "$HOST" 2>/dev/null || echo 240)
 python3 "$CFG" matrix --host "$HOST"   # show provider·model·ctx + max-calls BEFORE running
 TOKENS=$(( ( $(wc -c < "$CTX_FILE") + 3 ) / 4 ))
-# NOTE: this undercounts Agy's actual usage by AGENTS.md's size (capped ~32 KiB ≈ 8K tok) —
-# acceptable slack against Agy's 1M window; not worth a per-peer TOKENS split.
 
 # One fan-out per ENABLED (ai, model) pair (capped). `pairs` emits "ai<TAB>model".
 # PROCESS SUBSTITUTION, not `pairs | while …`: a pipe runs the loop in a subshell, so the
@@ -77,7 +65,7 @@ i=0
 while IFS=$'\t' read -r ai model; do
   i=$((i+1)); slot="$RUN/${ai}-${i}"
   # Pass the per-(ai,model) PAIR model so the deep profile runs EACH model (not the single
-  # configured one N times). newline-delimited: a spaced value ("Gemini 3.1 Pro (High)") stays one arg.
+  # configured one N times). Newline-delimited flags preserve a spaced model as one arg.
   mapfile -t MFLAGS < <(python3 "$CFG" flags "$ai" --model "$model" --host "$HOST" 2>/dev/null || true)
   if ! python3 "$CFG" fits "$ai" "$TOKENS" --host "$HOST" 2>/dev/null; then
     echo "[skip] $ai/$model — context ~${TOKENS} tok > model window"; continue
@@ -115,7 +103,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/reap_kiro_orphans.sh"
   (`set <ai> context_limit <n>` or `set <ai> model <1M-model>`); narrowing the diff
   is usually the right fix. A 0/unset limit means "no check".
 - **Safe flag expansion**: `mapfile -t MFLAGS < <(...)` + `"${MFLAGS[@]}"` — flags are
-  newline-delimited so a value with spaces (e.g. agy's `Gemini 3.1 Pro (High)`) stays one
+  newline-delimited so a model value containing spaces stays one
   argv element; model values are charset-validated at `set` time (no shell metacharacters)
   AND never word-split/globbed at call time (defense in depth).
 - Settings are **live**: `python3 "$CFG" show --host "$HOST"` to inspect; `/co-agent:configure` to change
@@ -142,7 +130,7 @@ python3 "$CP" access <peer>   # plugin | raw | none
 ```
 
 - **The bash fan-out uses RAW CLIs only.** The `case "$ai"` block above calls raw binaries
-  (`codex exec`, `agy -p`, …). A peer is gate-eligible only with a usable raw path —
+  (the explicit adapter commands above). A peer is gate-eligible only with a usable raw path —
   `status==READY` **and** `raw_cli` (use `check_panel.py gate-eligible`, the single predicate;
   do **not** key on `access`, since a peer with BOTH the plugin and a raw CLI is `access:plugin`
   yet `raw_cli:true` → eligible). Only a peer with **no raw CLI** (`raw_cli:false`, e.g.
@@ -167,7 +155,7 @@ python3 "$CP" access <peer>   # plugin | raw | none
    starting signal, NOT proof. Models share training biases and can repeat the same
    wrong artifact, so **confirm each finding against the actual code/diff** before
    reporting it. The host is the chair, not a tallier.
-2. **Attribute dissent**: "Agy flagged X (others didn't)" — divergence is signal.
+2. **Attribute dissent**: "Kiro flagged X (the other peer did not)" — divergence is signal.
 3. **The host owns the verdict/decision/ADR** — the panel never decides alone; a single
    AI's verdict is never authoritative (see Security: prompt injection).
 4. Keep each AI's prompt **identical** so their answers are comparable.
@@ -180,8 +168,8 @@ reason over content an attacker may control. Treat this as a trust boundary:
 - **Consent / data classification**: confirm with the user before fan-out on private
   or proprietary repos. Offer scope choices (diff-only / selected files / full repo).
   The diff may contain accidentally-committed secrets — don't blindly ship it.
-- **Stdin where possible**: pass context via stdin (`cat ctx | cli`) for Codex/Claude/
-  Agy — keeps malicious content (backticks, `$()`) out of the shell. Kiro ignores
+- **Stdin where possible**: pass context via stdin (`cat ctx | cli`) for stdin-channel peers
+  to keep malicious content (backticks, `$()`) out of the shell. Kiro ignores
   stdin in `chat`, so its context goes in the positional `[INPUT]` argv; pass it as a
   **quoted shell variable** (`"$PROMPT"$'\n\n'"$(cat "$CTX_FILE")"`), never unquoted, so
   the content is a single literal argument and is not re-evaluated by the shell.
@@ -206,11 +194,8 @@ co-agent's ADR mode provides the **collaboration layer** that enriches the
 
 ## Project context files
 
-Keep `CLAUDE.md` as the canonical project memory, distilled once into `AGENTS.md`. Kiro,
-Codex, and Agy all draw from **that same distilled file** — all three read it natively
-from their cwd (steering bridge / repo-root auto-load), so the fan-out's explicit fold-in
-is defense-in-depth (guarantees the current content reaches the AI even from a non-root
-cwd), not the only path:
+Keep `CLAUDE.md` as the canonical project memory. Its distilled `AGENTS.md` is
+shared by the supported context adapters below; Claude reads `CLAUDE.md`.
 
 | AI | File | Behaviour / limits | co-agent action |
 |----|------|--------------------|-----------------|
@@ -218,11 +203,9 @@ cwd), not the only path:
 | **Codex** | `AGENTS.md` | Merged git-root→cwd; **~32 KiB project-doc cap** (oversized → truncated). `AGENTS.override.md` wins locally. | distill + validate |
 | **Agy** | `AGENTS.md` (native, same convention as Codex; also reads `GEMINI.md` for back-compat) | The fan-out **additionally** prepends `AGENTS.md` content to Agy's `CTX_FILE` **only if `check_ai_context.py --verify AGENTS.md` passes** (marker + fresh sha + no secret) — a stale/hand-written file falls back to the diff-only `CTX_FILE`, never sent unvetted. | distill + validate (shared with Codex; no separate generation) |
 
-> **Residual `GEMINI.md` (legacy).** co-agent no longer invokes the `gemini` CLI at all,
-> but an older co-agent version may have left a repo-root `GEMINI.md` that a *user-run*
-> `gemini` **or Agy's back-compat path** would still auto-load. `check_ai_context.py`
-> secret-scans a residual `GEMINI.md` and suggests deleting it (the canonical shared file
-> is `AGENTS.md`; co-agent does not generate a separate `GEMINI.md`).
+> **Legacy context files.** Co-agent does not invoke the legacy `gemini` CLI. Agy's
+> compatibility path or manual tools may still read `GEMINI.md`; its secret audit remains.
+> Preserve handwritten files; this workflow generates only the shared `AGENTS.md`.
 
 ### Distill — do NOT copy CLAUDE.md verbatim
 
@@ -272,9 +255,9 @@ and never clobber a hand-written file:
 
 - Emit it with `python3 scripts/check_ai_context.py <dir> --emit-marker` (hashes the
   current `CLAUDE.md`), then prepend a one-line **neutral** role header — NOT "You are
-  Codex" (Kiro's steering bridge and Agy's folded-in fan-out context read this same file):
+  Codex" (the supported adapters consume the same validated file):
   `> You are an external reviewer for this repo — project context below, distilled from
-  CLAUDE.md. This file is shared verbatim by Kiro, Codex, and Agy (not a per-AI copy).`
+  CLAUDE.md. This file is shared verbatim by the external review panel (not a per-AI copy).`
 - Files **without** the marker are treated as hand-written → left untouched (this also
   protects Codex's `AGENTS.override.md`).
 - Validate after writing: `python3 scripts/check_ai_context.py <project-dir>` — checks

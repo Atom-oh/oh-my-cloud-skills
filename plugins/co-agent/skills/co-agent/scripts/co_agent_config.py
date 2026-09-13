@@ -8,7 +8,7 @@ Layered like Claude Code's own settings:
 
 Only settings the CLIs ACCEPT HEADLESSLY are exposed (verified against the installed
 CLIs) — no dead settings:
-  - model   : Kiro/Claude/Agy `--model`, Codex `-m`
+  - model   : Kiro/Claude `--model`, Codex `-m`
   - effort  : Codex `-c model_reasoning_effort="<v>"`, Claude `--effort`
   - enabled : panel membership (orchestration)
   - timeout : per-CLI wall-clock budget in the fan-out (orchestration)
@@ -45,6 +45,9 @@ Usage:
   co_agent_config.py set push_gate timeout <seconds>
   co_agent_config.py set <ai> context_limit <n> # per-AI context window (tokens)
   co_agent_config.py flags <ai>                 # CLI flag fragment for the fan-out
+  co_agent_config.py implementer               # configured/default external writer (readiness is separate)
+  co_agent_config.py implementation-plan [--allow-host-implementation]
+                                              # JSON mode/writer/READY reviewers; no execution
   co_agent_config.py panel                      # space-separated enabled AIs
   co_agent_config.py timeout                     # effective timeout (int)
   co_agent_config.py enabled <ai>               # exit 0 if enabled, 1 if not
@@ -75,14 +78,15 @@ import stat
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
-from co_agent_host import HOSTS, detect_host
+from co_agent_host import (HOSTS, ACTIVE_PEERS, detect_host,
+                           peer_roster)
 
-ALL_AIS = ("kiro-cli", "claude", "codex", "agy")
+ALL_AIS = ACTIVE_PEERS
 CODEX_EFFORTS = ("minimal", "low", "medium", "high")
 CLAUDE_EFFORTS = ("low", "medium", "high", "xhigh", "max")
 EFFORTS_BY_AI = {"codex": CODEX_EFFORTS, "claude": CLAUDE_EFFORTS}
-# Allow the chars in real model tokens — incl. spaces and parens for Agy tokens like
-# "Gemini 3.1 Pro (High)". Shell metacharacters (; | & $ ` " ' < > \ * ? etc.) stay
+# Model labels can contain spaces/parens independent of the provider catalog.
+# Shell metacharacters (; | & $ ` " ' < > \ * ? etc.) stay
 # rejected; the value is always passed as a single argv element (never shell-interpolated),
 # so spaces/parens are safe. Flags are emitted newline-delimited so a spaced value
 # survives as one token (see cmd_flags / the fan-out's `mapfile -t`).
@@ -99,13 +103,11 @@ def normalize_host(host):
 
 
 def panel_ais(host):
-    # Third member is always Agy — Gemini support was removed (Agy superseded it; ADR-010).
-    peer = "codex" if host == "claude" else "claude"
-    return ("kiro-cli", peer, "agy")
+    return peer_roster(host)
 
 
-# Only these CLIs enforce a worktree-scoped WRITE sandbox (codex -s workspace-write,
-# agy --sandbox). claude(--permission-mode acceptEdits) and kiro-cli(--trust-tools)
+# Eligible external writers are listed here; the current host is always excluded.
+# claude(--permission-mode acceptEdits) and kiro-cli(--trust-tools)
 # auto-accept writes but do NOT confine them to the worktree, so they are NOT safe
 # delegated implementers — the trust boundary would not hold.
 SANDBOX_IMPLEMENTERS = ("codex", "agy")
@@ -142,6 +144,14 @@ def effort_values(ai):
     return EFFORTS_BY_AI.get(ai, ())
 
 
+def _valid_peer(ai, host):
+    if ai not in panel_ais(host):
+        print(f"unknown ai '{ai}' for host {host} "
+              f"(one of: {', '.join(panel_ais(host))})", file=sys.stderr)
+        return False
+    return True
+
+
 def local_path(root):
     return os.path.join(root, ".claude", "co-agent.local.json")
 
@@ -173,14 +183,9 @@ def deep_merge(base, over):
     return out
 
 
-# Peer keys renamed in 1.10 (kiro→kiro-cli, antigravity→agy), plus `gemini` — REMOVED
-# entirely (Agy superseded it, ADR-010), value None = "delete this key, do not rename".
-# Not read as aliases (no back-compat) — but WARN so a stale override (e.g. a user's
-# `gemini.enabled:true` from before this AI was dropped) isn't silently ignored, silently
-# losing their third reviewer with no error. gemini must NOT say "rename to agy": grafting
-# a stale gemini block (enabled:false, gemini-* model ids) onto agy would disable or
-# misconfigure a live AI — worse than the ignored override.
+# Legacy display hints do not change the configured provider identity.
 LEGACY_KEYS = {"kiro": "kiro-cli", "antigravity": "agy", "gemini": None}
+
 
 
 def _resolves_through_symlink(path, root=None):
@@ -434,9 +439,10 @@ def _cap_warnings(cfg, configured, per_round_cap, floor_clamped, phases):
 
 def cmd_pairs(root, host, phases=1, profile=None):
     # Silent by design: `pairs` is called N times per fan-out loop. The trim/floor-clamp
-    # warnings (and the legacy-key hygiene warnings) belong to the consent display `matrix`,
+    # warnings (and rename-only hygiene warnings) belong to the consent display `matrix`,
     # which every documented flow runs at H0 before the loop — re-emitting them from each
-    # `pairs` call printed the same line ~9× per gate run. The trim itself still happens.
+    # `pairs` call printed the same line ~9× per gate run. The trim itself still happens;
+    # retired-peer and security diagnostics are still emitted by effective().
     cfg = effective(root)
     if profile:   # per-invocation tiering override (find=deep breadth / verify=default strength)
         cfg = {**cfg, "profile": profile}
@@ -464,7 +470,7 @@ def cmd_matrix(root, host, phases=1, profile=None):
           f"host {host} · {len(pairs)} pairs × up to {rounds} rounds{phase_note} = "
           f"{total} max calls{trim_note})")
     # F9: name the dropped pairs so consent reflects which reviewers were cut (a bare count
-    # hides that whole providers — e.g. codex, agy — may have been trimmed out).
+    # hides that a whole provider may have been trimmed out).
     if len(full) > len(pairs):
         dropped = ", ".join(f"{ai}/{m or '(default)'}" for ai, m in full[len(pairs):])
         print(f"  trimmed out (won't run): {dropped}")
@@ -634,7 +640,7 @@ def cmd_set(root, rest, host, scope="local"):
                     print("implementer_model may contain only letters, digits, spaces, and "
                           ". _ : / ( ) - (no shell metacharacters)", file=sys.stderr)
                     return 2
-            else:   # implementer_effort — codex-only knob (agy has no headless effort flag)
+            else:   # implementer_effort — codex-only knob
                 if impl != "codex":
                     print(f"implementer_effort is codex-only, but the implementer is "
                           f"'{impl}' (its headless CLI has no effort flag) — not stored",
@@ -729,10 +735,7 @@ def cmd_set(root, rest, host, scope="local"):
             print("usage: set <ai> <key> <value>", file=sys.stderr)
             return 2
         ai, key, val = rest
-        active_ais = panel_ais(host)
-        if ai not in active_ais:
-            print(f"unknown ai '{ai}' for host {host} (one of: {', '.join(active_ais)})",
-                  file=sys.stderr)
+        if not _valid_peer(ai, host):
             return 2
         slot = local["panel"].setdefault(ai, {})
         if key == "enabled":
@@ -751,7 +754,7 @@ def cmd_set(root, rest, host, scope="local"):
                 return 2
         elif key == "models":
             # Split on COMMAS only (trim surrounding whitespace) — NOT whitespace, or a
-            # single spaced token like "Gemini 3.1 Pro (High)" would shatter into 4 models.
+            # single spaced model label would shatter into several models.
             items = [m.strip() for m in val.split(",") if m.strip()]
             bad = [m for m in items if not MODEL_RE.fullmatch(m)]
             if bad:
@@ -837,7 +840,7 @@ def cmd_timeout(root):
 
 
 def cmd_enabled(root, ai, host):
-    if ai not in panel_ais(host):
+    if not _valid_peer(ai, host):
         return 2
     return 0 if effective(root)["panel"].get(ai, {}).get("enabled", True) else 1
 
@@ -847,7 +850,7 @@ def cmd_autosync(root):
 
 
 def cmd_context_limit(root, ai, host):
-    if ai not in panel_ais(host):
+    if not _valid_peer(ai, host):
         return 2
     print(int(effective(root)["panel"].get(ai, {}).get("context_limit", 0) or 0))
     return 0
@@ -855,7 +858,7 @@ def cmd_context_limit(root, ai, host):
 
 def cmd_fits(root, ai, tokens, host):
     """exit 0 if `tokens` fit the AI's context window (or no limit set), 1 if it overflows."""
-    if ai not in panel_ais(host):
+    if not _valid_peer(ai, host):
         return 2
     limit = int(effective(root)["panel"].get(ai, {}).get("context_limit", 0) or 0)
     if limit <= 0:
@@ -1136,9 +1139,10 @@ def main():
         return cmd_implementer(root, host)
     if cmd == "implementation-plan":
         if rest not in ([], ["--allow-host-implementation"]):
-            print("usage: implementation-plan [--allow-host-implementation]", file=sys.stderr)
+            print("usage: implementation-plan [--allow-host-implementation]",
+                  file=sys.stderr)
             return 2
-        return cmd_implementation_plan(root, host, "--allow-host-implementation" in rest)
+        return cmd_implementation_plan(root, host, bool(rest))
     if cmd == "review-mode":
         return cmd_review_mode(root)
     if cmd == "parallel-tasks":

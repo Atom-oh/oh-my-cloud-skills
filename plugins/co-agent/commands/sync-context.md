@@ -1,5 +1,5 @@
 ---
-description: Distill CLAUDE.md into AGENTS.md and wire Kiro steering to the same file (Codex and Agy auto-load it natively; the fan-out also folds it into Agy's context as defense-in-depth)
+description: Distill CLAUDE.md into AGENTS.md and wire Kiro steering to the same file (supported adapters share the validated context)
 allowed-tools: Read, Write, Glob, Grep, Bash(python3:*)
 argument-hint: "[project-dir]  (defaults to the repo root / cwd)"
 ---
@@ -7,8 +7,8 @@ argument-hint: "[project-dir]  (defaults to the repo root / cwd)"
 # co-agent: sync-context
 
 Give the external AI panel project context so it reviews with the repo's own conventions:
-keep `CLAUDE.md` canonical, distill it once into `AGENTS.md`, and have Kiro, Codex, and
-Agy all draw from that one distilled file instead of each peer seeing a different (or no)
+keep `CLAUDE.md` canonical, distill it once into `AGENTS.md`, and have the configured external peers
+draw from that one distilled file instead of each peer seeing a different (or no)
 view of the project. Excellent means an external reviewer can judge a diff with the repo's
 build commands, boundaries, and banned patterns in hand — from a file that stays lean,
 marker-tracked, and secret-free.
@@ -23,7 +23,7 @@ marker-tracked, and secret-free.
 copy (Codex silently truncates at the cap). Produce one lean, review-oriented core and
 write it to **`AGENTS.md` only** — Kiro's steering points at this same file rather than
 the full `CLAUDE.md`, trading Kiro's previously more-complete view for one that's
-*consistent* with what Codex and Agy see.
+*consistent* with what the other peers see.
 
 ## Steps
 
@@ -48,7 +48,7 @@ H="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/check_ai_context.py"
    ```
 4. **Write** `<dir>/AGENTS.md` as:
    `<marker>` → `> You are an external reviewer for this repo — project context below,
-   distilled from CLAUDE.md. This file is shared verbatim by Kiro, Codex, and Agy
+   distilled from CLAUDE.md. This file is shared verbatim by the external review panel
    (not a per-AI copy).` → the distilled core.
    **Only overwrite a file that is missing or already carries the co-agent marker.** If a
    target exists WITHOUT the marker, it's hand-written (or Codex's `AGENTS.override.md`

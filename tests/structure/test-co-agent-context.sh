@@ -11,7 +11,7 @@ assert_file_executable "$SCRIPT" "check_ai_context.py is executable"
 assert_file_exists "$CMD" "sync-context command exists"
 CMD_BODY=$(cat "$CMD" 2>/dev/null)
 assert_contains "$CMD_BODY" ".kiro/steering/project-context.md" "sync-context documents Kiro steering bridge"
-assert_grep_match "#\\[\\[file:AGENTS\\.md\\]\\]" "$CMD_BODY" "sync-context references AGENTS.md from Kiro steering (shared with Codex/Agy, not a separate CLAUDE.md copy)"
+assert_grep_match "#\\[\\[file:AGENTS\\.md\\]\\]" "$CMD_BODY" "sync-context references AGENTS.md from Kiro steering (shared with supported peers, not a separate CLAUDE.md copy)"
 assert_grep_no_match "GEMINI\\.md" "$CMD_BODY" "sync-context no longer targets GEMINI.md"
 assert_file_exists "$KIRO_BRIDGE" "repo Kiro steering bridge exists"
 assert_grep_match "#\\[\\[file:AGENTS\\.md\\]\\]" "$(cat "$KIRO_BRIDGE" 2>/dev/null)" "repo Kiro steering bridge references AGENTS.md"

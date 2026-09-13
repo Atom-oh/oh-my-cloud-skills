@@ -3,7 +3,7 @@
 The current host is Codex. Pass `--host codex` where supported and use the bundled
 `run.py` adapter so child processes receive `CO_AGENT_HOST=codex`. For a direct
 shell invocation, set that variable on the same invocation; do not rely on it
-persisting across tools. Codex chairs; Claude CLI, Kiro CLI and Agy may be peers.
+persisting across tools. Codex chairs; resolve configured external peers with `co_agent_config.py panel --host codex`.
 Never launch Codex as its own external panel member.
 
 Use `configure`, `setup`, `sync-context`, `consensus`, `harness`, `pr-autofix` and

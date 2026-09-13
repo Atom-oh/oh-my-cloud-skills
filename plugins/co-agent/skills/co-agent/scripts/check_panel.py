@@ -24,7 +24,7 @@ import hashlib
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
-from co_agent_host import HOSTS, detect_host
+from co_agent_host import (HOSTS, ACTIVE_PEERS, detect_host, peer_roster)
 from co_agent_env import sanitized_env as _sanitized_env, CLAUDE_GATE_ISOLATION
 
 try:
@@ -34,13 +34,13 @@ except Exception:
 
 SCHEMA_VERSION = 2
 
-PEERS = ("kiro-cli", "claude", "codex", "agy")
+PEERS = ACTIVE_PEERS
 PEER_PLUGINS = {"codex": "openai/codex-plugin-cc"}   # peer → official Claude Code plugin repo
 PEER_MARKETPLACES = {"codex": "openai-codex"}   # peer → official marketplace.json "name" field
 
 
 def detect_cli(peer):
-    return shutil.which(peer)
+    return shutil.which(peer) if peer in PEERS else None
 
 
 def detect_plugin(peer, plugins_root):
@@ -109,6 +109,8 @@ def detect_plugin(peer, plugins_root):
 
 
 def decide_access(peer, has_cli, has_plugin):
+    if peer not in PEERS:
+        return "none", False
     if has_plugin:
         return "plugin", False
     if has_cli:
@@ -160,8 +162,8 @@ def _cmd_classify(argv):
 # isolated PR/push gates need it too; the context-rich fan-out in ai-cli-adapters.md
 # runs inside the repo and does not need the exception.
 ADAPTERS = {
-    "codex":    {"argv": ["codex", "exec", "-s", "read-only", "--skip-git-repo-check", "{P}"], "channel": "stdin"},
     "agy":      {"argv": ["agy", "-p", "{P}", "--sandbox"], "channel": "stdin"},
+    "codex":    {"argv": ["codex", "exec", "-s", "read-only", "--skip-git-repo-check", "{P}"], "channel": "stdin"},
     "claude":   {"argv": ["claude", "-p", "{P}", "--permission-mode", "plan", "--output-format", "text"], "channel": "stdin"},
     "kiro-cli": {"argv": ["kiro-cli", "chat", "{I}", "--v3", "--mode", "default",
                           "--no-interactive", "--trust-tools=fs_read", "--wrap", "never"],
@@ -188,26 +190,15 @@ def _kill_proc(p):
 
 def probe(peer, timeout=90, nonce="STATIC", gate=False):
     """General fan-out inherits its environment; explicit gate probes use the gate filter."""
-    # 90s, not 20s: cold-start CLIs blow far past 20s on first run — kiro auth-refresh + MCP init,
-    # codex reasoning + MCP init, and agy especially (12-24s warm but a cold model load can exceed
-    # 80s). 20s produced spurious TIMEOUTs on warm-usable peers. report() probes sequentially, and
-    # absent peers cost nothing, so the realistic ceiling is one cold peer's load, not 5×90s. A
-    # peer whose backend is mid-cold-load can still flap to TIMEOUT — re-run setup once it's warm.
-    if peer not in ADAPTERS:
+    # Allow cold-start/auth-refresh time without concurrent probes contending for one backend.
+    if peer not in PEERS or peer not in ADAPTERS:
         return "ERROR", f"unknown peer {peer}"
     if not detect_cli(peer):
         return "ABSENT", "command not found"
     sentinel = f"COAGENT_PROBE_{nonce}"
     spec = ADAPTERS[peer]
     if spec["channel"] == "stdin":
-        # Wording matters here, not just for agy's UX — "read ... on/from stdin" phrases the
-        # instruction as an explicit read-action on stdin. agy's agent then appears to try to
-        # actually invoke a second, literal read of stdin as a tool call; that second read hits
-        # an already-fully-consumed pipe (communicate() already wrote+closed it) and hangs to the
-        # full timeout every time (reproduced 7/7, deterministic, independent of stdin content —
-        # confirmed via direct agy invocation outside this probe). Rephrasing as "the text you
-        # received via stdin" (preposition, not a read-verb object) reproduced READY 3/3 with no
-        # code change elsewhere. codex is unaffected either way (verified) — this covers both.
+        # Ask about already-delivered input, not a second tool read from an exhausted pipe.
         prompt = "Reply with exactly the text you received via stdin, and nothing else."
         argv = [a.replace("{P}", prompt) for a in spec["argv"]]
         stdin_data = sentinel + "\n"
@@ -223,7 +214,7 @@ def probe(peer, timeout=90, nonce="STATIC", gate=False):
         # replacing stdout with our own *pipe* severs that callback and the refresh hangs to the
         # full timeout (kiro: 5s with a file, TIMEOUT with a pipe). File redirection leaves no
         # reader on the other end and the auth path survives. stdin still uses a PIPE so we can
-        # feed the sentinel to stdin-channel peers (codex/agy); argv-channel peers (kiro) get "".
+        # feed the sentinel to stdin-channel peers; argv-channel peers get "".
         outp = os.path.join(cwd, ".probe_out")
         errp = os.path.join(cwd, ".probe_err")
         p = None
@@ -325,16 +316,11 @@ def report(root, plugins_root, as_json=False, host=None):
     if co_agent_config is None:
         print("cannot resolve enabled panel: co_agent_config unavailable", file=sys.stderr)
         return 2
-    # Probe peers SEQUENTIALLY, not concurrently. Peers commonly share one model backend (e.g.
-    # codex/kiro/agy all on amazon-bedrock here); firing all probes at once throttles that backend
-    # and pushes every call past its timeout — peers that pass alone (kiro ~5s, agy ~24s) all
-    # flapped to TIMEOUT when probed in parallel. Sequential gives each probe the full backend.
-    # Absent peers return instantly (no CLI), so the realistic cost is the sum of installed peers'
-    # actual response times (~tens of seconds), not 5×timeout.
+    # Probe sequentially: peers may share one backend and throttle each other.
     enabled = co_agent_config.effective(root).get("panel", {})
     peers = {peer: _peer_entry(peer, plugins_root)
              for peer in co_agent_config.panel_ais(host)
-             if enabled.get(peer, {}).get("enabled", True)}
+             if peer in peer_roster(host) and enabled.get(peer, {}).get("enabled", True)}
     summary = {
         "schema_version": SCHEMA_VERSION,
         "generated_at": datetime.datetime.now().astimezone().isoformat(),
@@ -366,8 +352,10 @@ def _read_summary(root):
 
 
 def _reader(root, peer, field, default):
+    if peer not in PEERS:
+        return default
     s = _read_summary(root)
-    if not s:
+    if not isinstance(s, dict):
         return default
     return s.get("peers", {}).get(peer, {}).get(field, default)
 
@@ -395,7 +383,7 @@ def gate_eligible(root, peer, host=None):
     `probe PEER --gate` verifies the separate gate environment before enabling gates.
     """
     resolved_host = detect_host(host)
-    if resolved_host not in HOSTS or peer == resolved_host or peer not in PEERS:
+    if resolved_host not in HOSTS or peer not in peer_roster(resolved_host):
         return False
     s = _read_summary(root)
     if not isinstance(s, dict) or not isinstance(s.get("peers"), dict):
@@ -419,6 +407,10 @@ def main():
         return 2
     if argv[0] == "classify":
         return _cmd_classify(argv[1:])
+    if argv[0] in ("probe", "status", "access", "gate-eligible", "--selftest-access"):
+        if len(argv) < 2:
+            print(f"{argv[0]} requires a peer", file=sys.stderr)
+            return 2
     if argv[0] == "probe":
         peer = argv[1]
         timeout = int(argv[argv.index("--timeout") + 1]) if "--timeout" in argv else 90

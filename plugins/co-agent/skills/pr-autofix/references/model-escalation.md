@@ -9,7 +9,7 @@ escalated pass: pass 6 = rung 1, pass 7 = rung 2, …; past the last rung, stay 
 |------|--------|--------|--------|
 | kiro-cli | `claude-opus-5` | `claude-fable-5` (only if `kiro-cli chat --list-models` lists it — it's `[Internal]`) | `gpt-5.6-sol` |
 | codex | `openai.gpt-5.6-sol`, effort `xhigh` | — | — |
-| agy | stays on its configured/default model (no escalation rung defined for it) | — | — |
+| Other configured peers | Keep the configured/default model when no escalation rung is defined. | — | — |
 | chair | spawn `co-agent:gate-chair` (`opus`+`xhigh`) for triage instead of judging inline | — | — |
 
 - Check `kiro-cli chat --list-models` for `claude-fable-5` before using rung 2 — never

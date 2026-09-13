@@ -46,8 +46,8 @@ Current config for comparison: `python3 "$SK/co_agent_config.py" show` (and
 ## Optimization target — cost model assumption
 
 The cost model is a **per-peer attribute**, not global (configure.md "Model tiering" →
-"Cost-model assumption"). Flat-rate subscription peers (the usual Claude-Code-host panel:
-kiro/codex/agy) have marginal token cost ≈ 0 — for them optimize **wall-clock**
+"Cost-model assumption"). Peers with confirmed flat-rate subscription access can have zero marginal token cost within their included allowance;
+verify that assumption before applying it. For that case optimize **wall-clock**
 (`stage_wall.tsv` is the longitudinal record for exactly this), **fix/gate rounds**,
 and **quota/timeout pressure**, and never propose a model downgrade to "save tokens"
 (trading rounds for cheaper calls is a regression). But a **metered peer** — e.g. on
