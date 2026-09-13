@@ -1,5 +1,5 @@
 #!/bin/bash
-# Exercise Kiro no-tools, preflight, fallback and monthly-limit behavior with local stubs.
+# Exercise Kiro no-tools, preflight, fallback and account-limit behavior with local stubs.
 # Review-cell retry and transport coverage also lives in tests/pr-review/test-run-panel.sh.
 # The historical CLI assumptions are documented in docs/runbooks/pr-review-panel.md.
 PANEL="scripts/pr-review/run-panel.sh"
@@ -126,6 +126,37 @@ EOF2
         "overage exhaustion is not mislabeled as a monthly limit"
     assert_file_exists "$T_STUB/work/coverage-severe.flag" "overage exhaustion retains the coverage failure gate"
 
+    # Partial review output cannot override an account-limit diagnostic on stderr.
+    for QUOTA_CASE in monthly overage; do
+        case "$QUOTA_CASE" in
+            monthly) QUOTA_MESSAGE='Monthly request limit reached' ;;
+            overage) QUOTA_MESSAGE='ServiceQuotaExceededException: You have reached the limit for overages.' ;;
+        esac
+        printf '%s\n' "$QUOTA_MESSAGE" > "$T_STUB/kiro-cli.partial-quota-message"
+        : > "$T_STUB/kiro-cli.partial-quota-attempts"
+        cat > "$T_STUB/kiro-cli" <<'EOF2'
+#!/bin/bash
+printf 'attempt\n' >> "$0.partial-quota-attempts"
+printf '%s\n' '> Reviewing the diff...' 'No findings so far.'
+cat "$0.partial-quota-message" >&2
+exit 0
+EOF2
+        wrap_kiro_stub
+        PANEL_OUT=$(PATH="$T_STUB:$PATH" PANEL_TIMEOUT=30 PANEL_RETRIES=3 \
+            bash "$PANEL" "$T_STUB/diff.txt" "$T_STUB/lenses" "$T_STUB/work" 2>&1 || true)
+        PARTIAL_ATTEMPTS=$(wc -l < "$T_STUB/kiro-cli.partial-quota-attempts" | tr -d ' ')
+        assert_eq "2" "$PARTIAL_ATTEMPTS" "$QUOTA_CASE with partial stdout calls each Kiro model once"
+        assert_grep_no_match '\[retry ' "$PANEL_OUT" "$QUOTA_CASE with partial stdout is not retried"
+        assert_grep_match 'Panel responded \(1 / 3 cells\)' "$PANEL_OUT" \
+            "$QUOTA_CASE with partial stdout is excluded from response coverage"
+        KIRO_SLOT_BYTES=$(cat "$T_STUB"/work/slot/kiro-*.md 2>/dev/null | wc -c | tr -d ' ')
+        assert_eq "0" "$KIRO_SLOT_BYTES" "$QUOTA_CASE with exit 0 discards partial stdout"
+        KIRO_FAILED_CELLS=$(printf '%s\n' "$PANEL_OUT" | grep -cE '^\[skip\] kiro-.* \(exit=1\)$' || true)
+        assert_eq "2" "$KIRO_FAILED_CELLS" "$QUOTA_CASE with exit 0 records each Kiro cell as failed"
+        assert_file_exists "$T_STUB/work/kiro-quota.flag" "$QUOTA_CASE with partial stdout records the quota cause"
+        assert_file_exists "$T_STUB/work/coverage-severe.flag" "$QUOTA_CASE with partial stdout keeps coverage blocked"
+    done
+
     # A generic service-quota error can be transient; do not classify its type alone.
     cat > "$T_STUB/kiro-cli" <<'EOF2'
 #!/bin/bash
@@ -211,7 +242,7 @@ EOF2
 cat >&2
 echo "no findings"
 EOF2
-    printf 'diff --git a/x b/x\n+Monthly request limit reached\n+no agent with name pr-review-notools found\n' > "$T_STUB/diff.txt"
+    printf 'diff --git a/x b/x\n+Monthly request limit reached\n+You have reached the limit for overages.\n+no agent with name pr-review-notools found\n' > "$T_STUB/diff.txt"
     PANEL_OUT=$(PATH="$T_STUB:$PATH" PANEL_TIMEOUT=30 PANEL_RETRIES=3 \
         bash "$PANEL" "$T_STUB/diff.txt" "$T_STUB/lenses" "$T_STUB/work" 2>&1 || true)
     assert_grep_match 'Panel responded \(3 / 3 cells\)' "$PANEL_OUT" \

@@ -78,7 +78,7 @@ for lens_file in "${LENS_FILES[@]}"; do
 done > "$WORK/expected.txt" || exit 1
 
 # Interpret known Kiro failure signatures only on Kiro stderr, never review text.
-# Account-limit errors can return exit 0 with empty stdout. Match the known monthly
+# Account-limit errors can return exit 0 with partial stdout. Match the known monthly
 # and overage messages, not generic service-quota errors that may be transient.
 KIRO_QUOTA_RE='Monthly request limit reached|MONTHLY_REQUEST_COUNT|UsageLimitReachedError|You have reached the limit for overages[.]'
 KIRO_AGENT_FALLBACK_RE='no agent with name|Falling back to user specified default|Json supplied at .* is invalid'
@@ -86,7 +86,7 @@ KIRO_AGENT_FALLBACK_RE='no agent with name|Falling back to user specified defaul
 # Each cell shares the former worst-case budget across at most RETRIES attempts.
 # Read Bash SECONDS without resetting it; never launch timeout with zero seconds.
 #   try_panel <provider> <slot> <err> <launcher> <args...>
-# Reject default-agent fallback before accepting even a plausible successful reply.
+# Reject default-agent fallback and account limits before accepting a plausible reply.
 try_panel() {
   local provider="$1" slot="$2" err="$3" launcher="$4"; shift 4
   local a remaining rc=1 deadline=$((SECONDS + CELL_BUDGET))
@@ -105,7 +105,6 @@ try_panel() {
       echo "[agent-fallback] $(basename "$slot" .md) — kiro-cli ignored --agent, no-tools contract broken; discarding response" >&2
       break
     fi
-    [ -s "$slot" ] && [ "$rc" -eq 0 ] && break
     if [ "$provider" = kiro ] && grep -qE "$KIRO_QUOTA_RE" "$err" 2>/dev/null; then
       grep -E "$KIRO_QUOTA_RE|limits reset on" "$err" \
         | sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g' | head -3 > "$slot.quota"
@@ -113,6 +112,7 @@ try_panel() {
       echo "[quota] $(basename "$slot" .md) — account request limit reached, not retrying" >&2
       break
     fi
+    [ -s "$slot" ] && [ "$rc" -eq 0 ] && break
   done
   echo "$rc" > "$slot.rc"
 }
