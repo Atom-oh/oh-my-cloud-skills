@@ -28,6 +28,9 @@ comments even when a check is green.
 | `Review context unavailable` or missing base context | Restore/regenerate base AGENTS.md from CLAUDE.md and verify provenance, size and secret checks. |
 | BLOCKED, active Critical/Major | Verify the finding against code, fix a real defect, test and push; obtain a fresh full review. |
 | `Review coverage incomplete` | At least one configured cell failed or returned no usable result. Diagnose that provider/CLI; all required cells must complete. |
+| `Kiro preflight failed` | No PR input was sent to Kiro. Diagnose startup response, CLI completion and tool-use/fallback signals. |
+| `Kiro no-tools contract violated` | Default-agent fallback was detected; responses were discarded. Revalidate the CLI/agent configuration. |
+| `Kiro request quota exhausted` | Known account-limit evidence explains missing Kiro coverage; do not spend retries on the same exhausted monthly allowance or overage cap. |
 | `Kiro diff truncated` or output-cap evidence | The reviewed input/output is partial. Reduce/split the PR or output; do not call it complete. |
 | `Insufficient independent coverage` | Required vendor diversity was not available. The semantic gate rejects it, regardless of the chair's text. |
 | `Review generation failed` | Neither chair attempt completed with valid structured output. Inspect CLI/format errors; retry only after identifying the cause. |
@@ -85,6 +88,9 @@ No automatic model exclusion is authorized by judgment-quality statistics. Verif
 unsupported findings against current code, distinguish them from provider failures,
 and obtain an explicit owner-approved roster change when warranted. Keep genuine
 blocking findings and all required coverage; do not weaken gates to make a PR green.
+
+For these Kiro-specific failures, use [the panel runbook](runbooks/pr-review-panel.md).
+It separates configuration, startup and quota failures without weakening the review gate.
 
 ## Completion
 

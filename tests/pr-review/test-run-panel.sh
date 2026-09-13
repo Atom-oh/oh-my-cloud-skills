@@ -25,10 +25,16 @@ if [ "$2" -eq 0 ]; then echo "$3"; cat; else exit $2; fi
 EOF
   chmod +x "$BIN/$1"
 }
+# Review stubs must answer --version and the fixed preflight canary first. A
+# failed preflight withholds every Kiro review; its contract is tested separately
+# in tests/structure/test-pr-review-panel.sh.
+KIRO_MOCK_PRELUDE='[ "${1:-}" = "--version" ] && { echo "kiro-cli mock"; exit 0; }
+if [[ "${2:-}" == "Kiro startup safety check."* ]]; then echo "NO_TOOLS"; exit 0; fi'
 mkfake_args() { # like mkfake but echoes ARGV, ignoring stdin — models a CLI that reads the
   # prompt from its argument and never reads stdin (e.g. `kiro-cli chat "<prompt>"`).
   cat > "$BIN/$1" <<EOF
 #!/usr/bin/env bash
+$KIRO_MOCK_PRELUDE
 if [ "$2" -eq 0 ]; then echo "$3"; for a in "\$@"; do printf '%s\n' "\$a"; done; else exit $2; fi
 EOF
   chmod +x "$BIN/$1"
@@ -121,9 +127,10 @@ fi
 # (docs/decisions/ADR-011 C1). mock kiro-cli 가 자신이 실제로 물려받은 env 전체와 cwd 를
 # 그대로 슬롯에 덤프하도록 해서, 격리가 빠지면 이 테스트가 즉시 잡는다.
 setup; mkfake codex 0 "codex-finding"
-cat > "$BIN/kiro-cli" <<'EOF'
+cat > "$BIN/kiro-cli" <<EOF
 #!/usr/bin/env bash
-echo "kiro-finding"; env; echo "CWD=$(pwd)"
+$KIRO_MOCK_PRELUDE
+echo "kiro-finding"; env; echo "CWD=\$(pwd)"
 EOF
 chmod +x "$BIN/kiro-cli"
 # Same reword-don't-weaken reason as the (h) block below: a literal
@@ -187,16 +194,17 @@ grep -q "::error::coverage collapsed" "$LOG" \
   || fail "run-panel (f) emits a ::error:: for the severe collapse" "error line missing from stderr"
 rm -f "$LOG"
 
-# (g) 1개 모델만 탈락(codex + kiro 2개 생존)하면 severe 는 아니다 — 남은 3개 벤더가 여전히
-# 서로 교차확인하므로 warn-only 유지가 맞다(fail-closed 를 과하게 좁혀 간헐적 rate-limit
-# 하나로도 매번 게이트가 막히는 것을 피함).
+# A single review-model failure does not collapse both providers. Keep both
+# preflights healthy to exercise the narrower vendor-coverage flag; required
+# per-cell coverage is still incomplete and cannot pass the semantic gate.
 setup; mkfake codex 0 "codex-finding"
-cat > "$BIN/kiro-cli" <<'EOF'
+cat > "$BIN/kiro-cli" <<EOF
 #!/usr/bin/env bash
+$KIRO_MOCK_PRELUDE
 prev=""
-for a in "$@"; do
-  if [ "$prev" = "--model" ] && [ "$a" = "claude-opus-5" ]; then exit 1; fi
-  prev="$a"
+for a in "\$@"; do
+  if [ "\$prev" = "--model" ] && [ "\$a" = "claude-opus-5" ]; then exit 1; fi
+  prev="\$a"
 done
 echo "kiro-finding"
 EOF

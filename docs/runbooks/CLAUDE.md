@@ -7,7 +7,8 @@ documentation language ([ADR-021](../decisions/ADR-021-english-docs-current-revi
 
 This repository ships eight plugins for Claude Code and Codex. It has no application
 server or database migration lifecycle. `plugin-release.md` covers releases; CI review
-operations live in `../ci-pr-review-runbook.md`.
+operations live in `../ci-pr-review-runbook.md`. Kiro startup, no-tools-agent and
+quota diagnostics are in `pr-review-panel.md`.
 
 Release procedures must cover all eight Claude manifests, all eight Codex manifests,
 both marketplaces, generated-output freshness and the shared `v{version}` tag.

@@ -41,12 +41,23 @@ class PanelTimeBudgetTests(unittest.TestCase):
             self.env.pop(key, None)
         # Both provider names are always intercepted, including invalid-budget cases.
         self.fake("codex", "printf 'codex-complete\\n'\n")
-        self.fake("kiro-cli", "printf 'kiro-complete\\n'\n")
+        self.kiro_fake("printf 'kiro-complete\\n'\n")
 
     def fake(self, name, body):
         path = self.bin / name
         path.write_text("#!/usr/bin/env bash\nset -uo pipefail\n" + body)
         path.chmod(0o755)
+
+    # run-panel.sh logs `kiro-cli --version` first and then sends each model a fixed
+    # no-tools canary prompt (preflight) before any PR diff; a fake that models the review
+    # cell must answer NO_TOOLS to that prompt or every Kiro cell is withheld by design.
+    KIRO_PRELUDE = (
+        '[ "${1:-}" = "--version" ] && { printf "kiro-cli fake\\n"; exit 0; }\n'
+        'if [[ "${2:-}" == "Kiro startup safety check."* ]]; then printf "NO_TOOLS\\n"; exit 0; fi\n'
+    )
+
+    def kiro_fake(self, body):
+        self.fake("kiro-cli", self.KIRO_PRELUDE + body)
 
     def panel(self, **overrides):
         return subprocess.run(
@@ -61,7 +72,7 @@ class PanelTimeBudgetTests(unittest.TestCase):
         program = (
             function[0] + "\nlauncher() {\n"
             'printf \'%s\\n\' "$1" >> "$ATTEMPTS"\n' + body + "\n}\n"
-            'try_panel "$SLOT" "$ERR" launcher "literal argument"\n'
+            'try_panel codex "$SLOT" "$ERR" launcher "literal argument"\n'
         )
         result = subprocess.run(
             ["bash", "-uo", "pipefail", "-c", program], cwd=self.root,
@@ -77,18 +88,30 @@ class PanelTimeBudgetTests(unittest.TestCase):
                   f'printf "%s %s %s\\n" "$1" "$2" "${{3:-}}" >> {shlex.quote(str(log))}\n'
                   '[ "$1" = "--kill-after=5s" ] && shift\n'
                   'shift\nexec "$@"\n')
+        # The isolation checks run for the preflight canary too (same kiro_env/launch_kiro).
         self.fake("kiro-cli",
                   '[ "$HOME" = "$PWD" ] || exit 21\n'
                   '[ "${KIRO_API_KEY:-}" = "fixture" ] || exit 22\n'
                   '[ -z "${PARENT_ONLY_CREDENTIAL:-}" ] || exit 23\n'
+                  + self.KIRO_PRELUDE +
                   'printf "kiro-complete\\n"\n')
-        result = self.panel(KIRO_API_KEY="fixture", PARENT_ONLY_CREDENTIAL="not-for-kiro")
+        result = self.panel(KIRO_API_KEY="fixture", PARENT_ONLY_CREDENTIAL="not-for-kiro",
+                            KIRO_PREFLIGHT_TIMEOUT="7")
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         calls = [line.split() for line in log.read_text().splitlines()]
+        # `timeout 10 kiro-cli --version` (first stderr line of run-panel.sh) is not a cell.
+        version = [call for call in calls if call[-1] == "--version"]
+        self.assertEqual([["10", "kiro-cli", "--version"]], version, calls)
+        calls = [call for call in calls if call[-1] != "--version"]
         self.assertTrue(all(call[0] == "--kill-after=5s" for call in calls), calls)
+        # Two preflight calls (one per roster model) run under KIRO_PREFLIGHT_TIMEOUT, not the
+        # cell budget; the review cells keep the former worst-case first allowance.
+        preflight = [call for call in calls if call[1] == "7"]
+        self.assertEqual(["kiro-cli", "kiro-cli"], [call[2] for call in preflight], calls)
+        cells = [call for call in calls if call[1] != "7"]
         # SECONDS can tick between establishing the deadline and launching.
-        self.assertTrue(all(call[1].isdigit() and 300 < int(call[1]) <= 900 for call in calls), calls)
-        self.assertEqual({"codex", "kiro-cli"}, {call[2] for call in calls})
+        self.assertTrue(all(call[1].isdigit() and 300 < int(call[1]) <= 900 for call in cells), calls)
+        self.assertEqual({"codex", "kiro-cli"}, {call[2] for call in cells})
         self.assertIn("kiro-opus/FULL", (self.work / "responded.txt").read_text())
 
     def test_long_first_attempt_can_finish_without_restart(self):
@@ -114,7 +137,7 @@ class PanelTimeBudgetTests(unittest.TestCase):
 
     def test_kiro_hard_kill_diagnostics_do_not_expand_its_api_key(self):
         fixture_key = "fixture-" + "private-kiro-value"
-        self.fake("kiro-cli",
+        self.kiro_fake(
                   f'[ "${{KIRO_API_KEY:-}}" = {shlex.quote(fixture_key)} ] || exit 31\n'
                   "trap '' TERM\nsleep 9\n"
                   'printf "completed\\n" > "$PWD/ignored-term-completed"\n')

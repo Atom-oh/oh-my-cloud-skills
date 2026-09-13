@@ -177,6 +177,33 @@ if [ -s "$WORK/degraded-models.txt" ]; then
   } > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
 fi
 
+# Startup failure means no PR input reached Kiro; show the diagnostic separately.
+if [ -s "$WORK/kiro-preflight.flag" ]; then
+  PREFLIGHT_DETAIL="$(tr '\n' ' ' < "$WORK/kiro-preflight.flag" | sed 's/ *$//')"
+  { echo "**Kiro preflight failed**: $PREFLIGHT_DETAIL Kiro reviews did not start because the no-tools check failed. See docs/runbooks/pr-review-panel.md."
+    echo ""
+    cat "$OUT"
+  } > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
+fi
+
+# Quota evidence explains missing coverage; it never substitutes for a review.
+if [ -s "$WORK/kiro-quota.flag" ]; then
+  QUOTA_DETAIL="$(tr '\n' ' ' < "$WORK/kiro-quota.flag" | sed 's/ *$//')"
+  { echo "**Kiro request quota exhausted**: $QUOTA_DETAIL Resolve the account limit before retrying; required review coverage remains incomplete. See docs/runbooks/pr-review-panel.md."
+    echo ""
+    cat "$OUT"
+  } > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
+fi
+
+# A fallback may return plausible text with exit 0; its response is discarded.
+if [ -s "$WORK/kiro-agent-fallback.flag" ]; then
+  AGENTFAIL_DETAIL="$(tr '\n' ' ' < "$WORK/kiro-agent-fallback.flag" | sed 's/ *$//')"
+  { echo "**Kiro no-tools contract violated**: $AGENTFAIL_DETAIL Responses were discarded because the CLI fell back to its default agent. Verify the CLI version and agent schema; see docs/runbooks/pr-review-panel.md."
+    echo ""
+    cat "$OUT"
+  } > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
+fi
+
 if [ -f "$WORK/kiro-diff-truncated.flag" ]; then
   { echo "**Kiro diff truncated**: input exceeded KIRO_DIFF_CAP. Kiro reviewed only a prefix; the semantic gate rejects incomplete input."
     echo ""

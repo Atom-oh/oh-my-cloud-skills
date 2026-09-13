@@ -33,6 +33,21 @@ GitHub configuration; do not infer its current state from this document.
 6. `review_gate.py` validates the final Issues structure and required coverage. The
    final comment is bound to the current HEAD/run; a failed/error gate fails the job.
 
+## Kiro startup and failure diagnostics
+
+Kiro cells use the validated `pr-review-notools` agent with no tools, resources or
+MCP servers. A fixed canary request tests each configured model before any Kiro
+cell receives PR input. Every model must return exactly `NO_TOOLS` with successful
+CLI completion and no fallback, quota or tool-use diagnostic. Each startup request
+uses `KIRO_PREFLIGHT_TIMEOUT`; it is separate from the review-cell deadline.
+
+Preflight failure withholds all Kiro reviews. Agent fallback discards the affected
+response even when it looks valid. Known monthly/overage account-limit diagnostics stop cell retries
+and explain the missing coverage. A generic service-quota exception alone is not
+classified as account exhaustion; ordinary review retries remain bounded. All existing semantic acceptance rules still apply.
+See [the Kiro panel runbook](runbooks/pr-review-panel.md) for diagnosis and the
+historical CLI assumptions behind the mechanism.
+
 ## Decision contract
 
 - `PENDING`: review is not complete. A previous result does not approve this HEAD.
