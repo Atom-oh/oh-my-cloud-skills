@@ -1,176 +1,102 @@
 ---
 sidebar_position: 2
-title: 빠른 시작
+title: "Quick start"
 ---
 
-# 빠른 시작
+{/* Legacy section links retained after the English rewrite. */}
+<span id="빠른-시작" />
+<span id="1-파일-만들기" />
+<span id="2-html-빌드" />
+<span id="3-브라우저에서-열기" />
+<span id="기본-조작법" />
+<span id="핵심-문법-요약" />
+<span id="슬라이드-구분" />
+<span id="디렉티브" />
+<span id="프래그먼트" />
+<span id="컬럼-레이아웃" />
+<span id="다음-단계" />
 
-5분 만에 Remarp로 첫 프레젠테이션을 만들어 봅니다.
 
-## 1. 파일 만들기
+# Quick start
 
-`my-talk.md` 파일을 생성합니다 (frontmatter에 `remarp: true` 필수):
+## Create the source
+
+Save this as `my-talk.md`. The literal `[요약]` marker means “summary” and is required by the current structured-notes validator; the notes themselves remain English.
 
 ```markdown
 ---
 remarp: true
-title: "My First Remarp Presentation"
+title: "Build with evidence"
 speaker:
-  name: "Your Name"
-  title: "Solutions Architect"
-  company: "My Company"
-audience: "Cloud Engineers"
+  name: "Alex Morgan"
+  title: "Engineer"
+  company: "Example team"
+audience: "Project contributors"
 level: "200"
 quiz: false
-duration: 15
-lang: ko
-
-theme:
-  source: "./company-template.pptx"   # 또는 skip
-  footer: "© 2026 My Company"
-
-transition:
-  type: fade
-  duration: 350
+duration: 5
+lang: en
 ---
 
-# My First Remarp Presentation
+# Build with evidence
 
-Your Name | 2026
+A short introduction to the review loop.
 
 :::notes
-{timing: 1min}
-인사하고 자기소개.
+{timing: 2min}
+[요약]
+- Introduce the review loop.
+- Connect each change to observable behavior.
+- Explain how the checks support the conclusion.
+
+Introduce the example and ask the audience to keep one recent change in mind.
+Explain that the next slide separates reading the code, exercising its behavior,
+and recording what the result proves. This keeps the review concrete and gives
+the next reviewer enough evidence to reproduce the conclusion.
 :::
 
 ---
+@type: content
 
-## 핵심 포인트
+## Verify each change
 
-- 첫 번째 포인트{.click}
-- 두 번째 포인트{.click}
-- 세 번째 포인트{.click animation=fade-up}
+- Read the affected code {.click order=1}
+- Run the relevant checks {.click order=2}
+- Record the result {.click order=3}
 
 :::notes
 {timing: 3min}
-**핵심**: 각 포인트를 클릭하며 설명.
-{cue: question} "질문 있으신가요?"
+[요약]
+- Start from the changed behavior.
+- Choose checks that exercise it.
+- Report evidence and limits.
+
+Explain why a successful build alone may not exercise the changed behavior.
+Walk through one relevant test and describe what its passing result proves.
+{cue: transition}
+Next, use the same method when reviewing a teammate's change.
 :::
 
----
-@type compare
-@layout two-column
-
-## 비교
-
-::: left
-### Option A
-- 빠른 배포
-- 간단한 구성
-:::
-
-::: right
-### Option B
-- 높은 확장성
-- 세밀한 제어
-:::
-
----
-@type canvas
-@canvas-id arch-flow
-
-## 아키텍처
-
-:::canvas width=960 height=400
-box apigw "API GW" at 50,170 size 130,60 color #FF9900
-box lambda "Lambda" at 260,170 size 130,60 color #4CAF50
-box dynamo "DynamoDB" at 470,170 size 130,60 color #3B48CC
-
-arrow apigw -> lambda "request" step 1
-arrow lambda -> dynamo "query" step 2
-
-group "VPC" containing apigw, lambda, dynamo color #232F3E
-:::
-
-:::notes
-{timing: 5min}
-{cue: demo} 아키텍처 흐름을 step별로 보여주기.
-:::
 ```
 
-## 2. HTML 빌드
+## Validate and build
+
+Run from the marketplace repository root:
 
 ```bash
-python3 remarp_to_slides.py build my-talk.md
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py validate my-talk.md
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build my-talk.md -o /var/tmp/my-talk --lang en
 ```
 
-## 3. 브라우저에서 열기
+Open the generated HTML and exercise the fragments. Right/Space advances; Left reverses; P opens presenter view. Run content review before publication.
 
-생성된 HTML 파일을 브라우저에서 열면 프레젠테이션이 완성됩니다.
+## Extend the deck
 
-## 기본 조작법
+Use `@type` for compare/tabs/quiz/checklist/timeline/Canvas slides, `@layout` for columns, and `:::notes` for speaking guidance. For multi-file decks put shared frontmatter in `_presentation.md`. See the syntax and CLI reference for exact supported fields and commands.
 
-| 키 | 동작 |
-|----|------|
-| `←` `→` | 이전/다음 슬라이드 |
-| `Space` | 다음 프래그먼트 또는 다음 슬라이드 |
-| `F` | 전체 화면 |
-| `N` | 스피커 노트 패널 |
-| `P` | 프레젠터 뷰 |
+## Related links
 
-## 핵심 문법 요약
-
-### 슬라이드 구분
-
-`---` 줄로 슬라이드를 구분합니다:
-
-```markdown
-# 슬라이드 1 내용
-
----
-
-# 슬라이드 2 내용
-```
-
-### 디렉티브
-
-`@` 접두사로 슬라이드 속성을 지정합니다:
-
-```markdown
----
-@type canvas
-@layout two-column
-@transition zoom
-```
-
-### 프래그먼트
-
-`{.click}`으로 클릭 시 나타나는 요소를 만듭니다:
-
-```markdown
-- 첫 번째{.click}
-- 두 번째{.click animation=fade-up}
-```
-
-### 컬럼 레이아웃
-
-`::: left`와 `::: right`로 2단 레이아웃을 구성합니다:
-
-```markdown
-@layout two-column
-
-::: left
-왼쪽 내용
-:::
-
-::: right
-오른쪽 내용
-:::
-```
-
-## 다음 단계
-
-- [Frontmatter](./syntax/frontmatter.md) - 프레젠테이션 전역 설정
-- [디렉티브](./syntax/directives.md) - 슬라이드별 속성 지정
-- [프래그먼트 애니메이션](./syntax/fragments.md) - 클릭 애니메이션 상세
-- [Canvas DSL](./syntax/canvas-dsl.md) - 다이어그램 작성법
+- [Frontmatter](./syntax/frontmatter.md)
+- [directives](./syntax/directives.md)
+- [fragments](./syntax/fragments.md)
+- [Canvas DSL](./syntax/canvas-dsl.md)

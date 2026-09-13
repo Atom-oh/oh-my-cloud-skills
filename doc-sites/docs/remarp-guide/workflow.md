@@ -1,234 +1,64 @@
 ---
 sidebar_position: 3
-title: 사용 워크플로우
+title: "Author and revise a deck"
 ---
 
-# 사용 워크플로우
+{/* Legacy section links retained after the English rewrite. */}
+<span id="사용-워크플로우" />
+<span id="전체-흐름" />
+<span id="1단계-프레젠테이션-생성" />
+<span id="2단계-vscode에서-편집" />
+<span id="편집-예시--슬라이드-내용-수정" />
+<span id="편집-예시--퀴즈-추가" />
+<span id="편집-예시--canvas-다이어그램-추가" />
+<span id="3단계-프롬프트로-반영" />
+<span id="반영-프롬프트" />
+<span id="예시" />
+<span id="4단계-브라우저-프리뷰" />
+<span id="키보드-조작" />
+<span id="인터랙티브-슬라이드-조작" />
+<span id="5단계-html-직접-편집-선택" />
+<span id="확인-방법" />
+<span id="visual-edit-모드" />
+<span id="canvas-visual-edit" />
+<span id="이슈-기반-리뷰-워크플로우" />
+<span id="반복-편집-사이클" />
+<span id="증분-빌드" />
+<span id="슬라이드-타입-빠른-참조" />
+<span id="다음-단계" />
 
-Remarp 파일을 편집하고 Claude Code 프롬프트로 빌드하는 실전 워크플로우입니다.
 
-## 전체 흐름
+# Author and revise a deck
 
-```
-.md 편집 → "반영해줘" 프롬프트 → HTML 자동 빌드 → 브라우저 프리뷰
-                                                  ↕ (VSCode Visual Edit로 양방향 편집)
-```
+## Plan and generate
 
-:::tip 파일 확장자
-`.md` 확장자를 사용하고 frontmatter에 `remarp: true`를 추가합니다. `.remarp.md` 확장자도 하위호환 지원됩니다.
-:::
+Specify audience, technical level, language, duration, output format, and source material. Plan blocks and the main message of each slide. For web output, the reactive-presentation workflow authors Remarp source and builds a browsable deck.
 
-## 1단계: 프레젠테이션 생성
+## Edit source
 
-Claude Code에 프롬프트를 입력하면 `.md` 파일이 자동으로 생성됩니다.
+Use the editor preview to navigate slides and inspect notes. Modify content, directives, fragments, quizzes, tabs, or the simple Canvas DSL in the source. Visual editing can write CSS or coordinates back through the extension's supported controls; verify the changed source and rebuild.
 
-```
-"AWS AIOps 마스터클래스 프레젠테이션 만들어줘.
-3블록 구성 (각 30분), 인터랙티브 슬라이드 포함."
-```
+## Issue-based revision
 
-생성되는 파일 구조:
+Record a specific issue as `<!-- issue: ... -->`, including the affected slide and observable problem. Run slide-fix to inspect and repair the source, remove resolved annotations, and leave unresolved issues visible in the report. List annotations using the converter's `issues` command.
 
-```
-aiops-masterclass/
-├── _presentation.md            ← 글로벌 설정 (테마, 블록 목록)
-├── 01-fundamentals.md          ← Block 1 슬라이드
-├── 02-detection.md             ← Block 2 슬라이드
-└── 03-automation.md            ← Block 3 슬라이드
-```
+## Build and verify
 
-:::info Remarp 파일 식별
-빌드 도구는 frontmatter의 `remarp: true` 필드로 Remarp 파일을 식별합니다. `.remarp.md` 확장자도 하위호환 지원됩니다.
-:::
-
-## 2단계: VSCode에서 편집
-
-생성된 `.md` 파일을 VSCode(code-server)에서 직접 편집합니다. Remarp VSCode 확장이 설치되어 있으면 구문 강조, 프리뷰, Visual Edit 모드를 사용할 수 있습니다.
-
-### 편집 예시 — 슬라이드 내용 수정
-
-```markdown
-## AIOps란 무엇인가?
-
-**Artificial Intelligence for IT Operations**
-
-> "AIOps 플랫폼은 빅데이터, 현대적 머신러닝 및 기타 고급 분석 기술을
-> 결합하여 가시성을 향상시키고, 노이즈를 줄이며,
-> IT 운영 관리의 문제를 자동으로 해결합니다."
-
-**Gartner 정의** {.click}
-**핵심 목표** {.click}
-**주요 기술** {.click}
+```bash
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py validate ./my-presentation/
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build ./my-presentation/ --lang en
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py sync ./my-presentation/
 ```
 
-### 편집 예시 — 퀴즈 추가
+Inspect the first slide and representative layouts; exercise fragments, option/tab buttons, quizzes, Canvas steps, and any custom input controls; check notes and presenter view; inspect asset and console failures. Direct edits to generated HTML can be overwritten unless the editor writes them back to the source.
 
-```markdown
-@type: quiz
+## Finish
 
-## 확인 퀴즈
+Keep the editable source with the generated output, record validation evidence, and pass content review before authorized publication. Use the native PowerPoint workflow when the deliverable requires editable PowerPoint shapes and text.
 
-**CloudWatch Anomaly Detection의 주요 장점은?**
+## Related links
 
-- [ ] 고정 임계값 설정이 쉽다
-- [x] ML 기반으로 동적 기준선을 자동 생성한다
-- [ ] 알림을 완전히 제거한다
-- [ ] 로그 수집이 불필요하다
-```
-
-### 편집 예시 — Canvas 다이어그램 추가
-
-```markdown
-@type: canvas
-
-## AWS Observability 서비스 맵
-
-:::canvas
-icon cw "CloudWatch" at 80,120 size 48 step 1
-box collect "Collect" at 55,180 size 100,35 color #41B3FF step 1
-icon guru "DevOpsGuru" at 272,120 size 48 step 2
-box analyze "Analyze" at 247,180 size 100,35 color #AD5CFF step 2
-arrow collect -> analyze "metrics" step 3
-:::
-```
-
-## 3단계: 프롬프트로 반영
-
-편집이 끝나면 Claude Code에 반영 프롬프트를 입력합니다.
-
-### 반영 프롬프트
-
-다음 중 아무 표현이나 사용할 수 있습니다:
-
-| 프롬프트 | 설명 |
-|----------|------|
-| `반영해주세요` | 변경사항을 HTML로 빌드 |
-| `remarp 반영` | 동일 |
-| `다시 빌드` | 동일 |
-| `rebuild` | 영어 키워드 |
-
-### 예시
-
-```
-01-fundamentals.md 에서 퀴즈 문제를 3개에서 4개로 늘렸어. 반영해줘.
-```
-
-```
-Canvas 슬라이드에서 Detect 단계 아이콘을 추가했어. 다시 빌드해줘.
-```
-
-Claude가 자동으로 `remarp_to_slides.py build` 또는 `sync`를 실행하여 변경된 블록만 다시 빌드합니다.
-
-## 4단계: 브라우저 프리뷰
-
-빌드된 HTML 파일을 브라우저에서 엽니다.
-
-### 키보드 조작
-
-| 키 | 동작 |
-|----|------|
-| `←` `→` | 이전/다음 슬라이드 |
-| `Space` | 다음 Fragment 또는 다음 슬라이드 |
-| `F` | 전체 화면 |
-| `O` | 개요 모드 (전체 슬라이드 그리드) |
-| `P` | 프레젠터 뷰 (노트/타이밍 표시) |
-| `N` | 스피커 노트 패널 |
-
-### 인터랙티브 슬라이드 조작
-
-| 슬라이드 타입 | 조작 |
-|---------------|------|
-| Compare | `↑` `↓` 로 좌/우 옵션 전환 |
-| Tabs | `↑` `↓` 로 탭 전환 |
-| Quiz | 선택지 클릭으로 정답 확인 |
-| Canvas | `Space` 로 step별 요소 등장 |
-| Checklist | 체크박스 클릭으로 항목 완료 |
-
-## 5단계: HTML 직접 편집 (선택)
-
-빌드된 HTML 파일을 VSCode에서 열면 Remarp 확장이 자동으로 인식합니다.
-
-### 확인 방법
-
-에디터 타이틀 바에 👁(Preview), ✏️(Edit), ▶(Build) 아이콘이 표시되면 Remarp HTML로 인식된 것입니다.
-
-### Visual Edit 모드
-
-1. ✏️ 아이콘을 클릭하거나 `Cmd+Shift+E`로 Edit 모드 활성화
-2. 슬라이드 요소를 드래그하여 위치/크기 조정
-3. 변경사항이 소스 `.md`의 `:::css` 블록에 자동 반영
-4. Canvas 요소 이동 시 `:::canvas` DSL 좌표도 자동 업데이트
-5. 소스 저장 시 HTML 자동 재빌드
-
-이 기능으로 **HTML 결과물을 보면서 소스를 간접 편집**하는 양방향 워크플로우가 가능합니다.
-
-### Canvas Visual Edit
-
-Canvas 슬라이드에서는 추가 편집 기능을 제공합니다:
-- 박스/아이콘 드래그로 위치 변경 -> `:::canvas` DSL의 `at x,y` 좌표 업데이트
-- 요소 리사이즈 -> `size w,h` 값 업데이트
-- 화살표 waypoint 편집 -> 경로 조정
-- Step 애니메이션 컨트롤 -> step 순서 확인
-
-## 이슈 기반 리뷰 워크플로우
-
-VSCode 프리뷰에서 슬라이드를 리뷰하며 이슈를 기록하고, Claude Code에 일괄 제출하여 자동 수정할 수 있습니다.
-
-```
-┌─────────────────────────────────────────────────┐
-│  1. VSCode 프리뷰에서 슬라이드 넘기며 리뷰     │
-│  2. 사이드바 프롬프트 바에 이슈/개선사항 입력   │
-│     → .md에 <!-- issue: 내용 --> 자동 삽입      │
-│  3. 모든 슬라이드 리뷰 완료                     │
-│  4. Claude Code에서 /slide-fix 실행             │
-│     → 이슈를 자동으로 읽고 슬라이드 수정        │
-│     → 처리된 <!-- issue: --> 주석 자동 제거     │
-│  5. 프리뷰에서 수정 결과 확인                   │
-└─────────────────────────────────────────────────┘
-```
-
-:::tip 이슈 포맷
-이슈는 `<!-- issue: @type: agenda로 변경 -->` 처럼 구체적으로 작성하면 Claude가 정확하게 수정합니다.
-:::
-
-## 반복 편집 사이클
-
-실제 작업은 아래 사이클을 반복합니다:
-
-```
-┌─────────────────────────────────────────────────┐
-│  1. VSCode에서 .md 편집                         │
-│  2. Claude에 "반영해줘" 프롬프트                │
-│  3. 브라우저 또는 VSCode에서 결과 확인          │
-│  3b. (선택) Visual Edit → 소스 자동반영         │
-│  3c. (선택) 이슈 리뷰 → 일괄 제출 → 자동 수정  │
-│  4. 필요하면 1로 돌아가서 수정                  │
-└─────────────────────────────────────────────────┘
-```
-
-### 증분 빌드
-
-멀티파일 프로젝트에서는 변경된 블록만 빌드하므로 빠르게 반복할 수 있습니다. `sync` 명령은 `.md` 파일의 수정 시각(mtime)을 `.html` 파일과 비교하여 변경된 블록만 다시 빌드합니다.
-
-## 슬라이드 타입 빠른 참조
-
-| 타입 | 디렉티브 | 용도 |
-|------|----------|------|
-| 기본 | (없음) | 제목 + 본문 + 리스트 |
-| Compare | `@type: compare` | A vs B 좌우 비교 |
-| Tabs | `@type: tabs` | 탭으로 구분된 콘텐츠 |
-| Canvas | `@type: canvas` | 아키텍처 다이어그램 애니메이션 |
-| Quiz | `@type: quiz` | 자동 채점 퀴즈 |
-| Timeline | `@type: timeline` | 시간순 흐름 |
-| Cards | `@type: cards` | 카드 그리드 |
-| Checklist | `@type: checklist` | 체크리스트 |
-| Agenda | `@type: agenda` | 세션 아젠다 (번호 dot + 시간 + Break) |
-| Prompt | `@type: prompt` | AI 프롬프트 워크플로우 표시 |
-| Thank You | `@type: thankyou` | 마무리 슬라이드 |
-
-## 다음 단계
-
-- [슬라이드 타입별 문법](./slide-types/content.md) 상세 가이드
-- [Canvas DSL](./syntax/canvas-dsl.md) 다이어그램 작성법
-- [프래그먼트](./syntax/fragments.md) 클릭 애니메이션 상세
-- [테마 설정](./themes/pptx-extraction.md) PPTX 테마 추출
+- [content](./slide-types/content.md)
+- [Canvas DSL](./syntax/canvas-dsl.md)
+- [fragments](./syntax/fragments.md)
+- [pptx extraction](./themes/pptx-extraction.md)
