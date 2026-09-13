@@ -1,75 +1,36 @@
 ---
 sidebar_position: 2
-title: "pr-autofix"
+title: "PR autofix"
 ---
 
-# pr-autofix Skill
+{/* Legacy section links retained after the English rewrite. */}
+<span id="pr-autofix-skill" />
+<span id="리뷰-소스" />
+<span id="워크플로우" />
+<span id="판정-기준" />
+<span id="제약-사항" />
+<span id="레퍼런스" />
+<span id="pr-review-workflowyml" />
 
-PR 리뷰 피드백(AI + 사람)을 자동으로 읽고 코드를 수정하는 스킬입니다. 반복 상한은 `/co-agent:configure set pr_autofix max_iterations <n>` 설정값(기본 5)입니다.
 
-## 리뷰 소스
+# PR autofix
 
-| 모드 | 감지 방식 | 트리거 |
-|------|----------|--------|
-| **AI 리뷰** | `<!-- bedrock-pr-review -->` 마커 코멘트 polling | PR push → CI 자동 실행 |
-| **사람 리뷰** | `gh pr reviews`로 `CHANGES_REQUESTED` 상태 감지 | 리뷰어가 GitHub에서 'Request changes' 제출 |
+PR autofix gathers AI and human review feedback, validates findings against the code, and applies bounded fixes with separate planning and implementation workers.
 
-두 모드 모두 같은 수정-커밋-push 루프를 탑니다. AI/사람 리뷰가 동시에 있으면 둘 다 읽고 통합 수정합니다.
+## Feedback loop
 
-**모델 티어링 + worktree 격리**: 수정 **계획**(finding별 root cause·정확한 수정·검증 방법)은 Fable/Opus에서
-수립하고(호스트가 이미 Fable/Opus면 인라인, 아니면 강한 모델 서브에이전트), **구현**은 그
-계획을 그대로 적용하는 opus [medium effort] 서브에이전트에 위임합니다 — 판단은 상위 티어, 기계적 적용은
-opus [medium effort](CRITICAL → MAJOR → MINOR 우선순위는 계획 단계에서 반영; opus는 멀티파일 수정 신뢰도가
-높아 sonnet보다 fix-loop 반복 횟수를 줄여줌). 구현은 **일회용 git
-worktree**에서 수행되어 사용자의 미커밋 변경이 작업 경로 밖에 있으며(checkout 수준
-격리 — 보안 샌드박스는 아님), host가 worktree
-diff를 계획과 대조해 승인된 변경만 브랜치에 반영합니다.
+1. Read the PR's current HEAD, review summaries, inline comments, unresolved threads, and check results.
+2. Reject stale or unsupported findings; prepare a concrete fix plan for confirmed issues.
+3. Apply the plan in an isolated worktree, run relevant tests and required checks, then commit and push.
+4. Wait for review of the new HEAD and repeat within `pr_autofix.max_iterations`.
+5. Report remaining findings, review coverage, checks, and the final PR state.
 
-## 워크플로우
+A failed review, absent response, or review of an older commit is not evidence that the current change is clean. Validate severity against the affected runtime path; do not automatically implement every suggestion.
 
-```mermaid
-flowchart TD
-    A["/pr-autofix"] --> B[PR 번호 식별]
-    B --> C[리뷰 polling<br/>60s 간격, 최대 10분]
-    C --> D{AI + 사람<br/>리뷰 확인}
-    D -->|모두 PASS| E[완료]
-    D -->|이슈 발견| F[수정 계획 수립<br/>Fable/Opus]
-    F --> F2["격리 worktree에서 구현<br/>opus (medium effort) 서브에이전트"]
-    F2 --> V[worktree diff를 계획과 대조<br/>host — 승인분만 반영]
-    V --> G[빌드 검증]
-    G --> H[커밋 & push]
-    H --> I{반복 < 5?}
-    I -->|Yes| C
-    I -->|No| J[수동 리뷰 요청]
-```
+## Limits and integration
 
-## 판정 기준
+[Canonical iteration setting](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/skills/co-agent/co-agent.defaults.json)
 
-| AI 리뷰 | 사람 리뷰 | 결과 |
-|---------|----------|------|
-| PASSED | APPROVED 또는 없음 | 완료 |
-| BLOCKED | - | 수정 진행 |
-| - | CHANGES_REQUESTED | 수정 진행 |
-| BLOCKED | CHANGES_REQUESTED | 통합 수정 |
+The skill itself does not grant merge authorization or bypass protection rules. Follow the repository's explicit review and merge policy. Local optional review hooks and CI review workflows are separate controls.
 
-## 제약 사항
-
-- `.github/workflows/*` 파일 수정 금지
-- 리뷰에서 언급된 이슈만 수정 (추가 리팩토링 금지)
-- 빌드 검증 후에만 커밋
-- 설정된 반복 상한(`pr_autofix.max_iterations`, 기본 5) 도달 후 사용자에게 수동 리뷰 요청
-
-## 레퍼런스
-
-### pr-review-workflow.yml
-
-AI 리뷰를 사용하려면 프로젝트에 GitHub Actions 워크플로우가 필요합니다. `references/pr-review-workflow.yml`을 `.github/workflows/`에 복사하여 사용합니다.
-
-```bash
-cp plugins/co-agent/skills/pr-autofix/references/pr-review-workflow.yml \
-   .github/workflows/pr-review.yml
-```
-
-필요한 설정:
-- AWS Bedrock 자격 증명 — GitHub Secrets에 `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` 등록 (또는 `ANTHROPIC_API_KEY`로 직접 API 사용)
-- `vars.ANTHROPIC_MODEL` — GitHub Variables에 모델 ID 설정 (기본: `us.anthropic.claude-opus-4-8`)
+[Skill contract](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/skills/pr-autofix/SKILL.md) · [Example review workflow](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/skills/pr-autofix/references/pr-review-workflow.yml)
