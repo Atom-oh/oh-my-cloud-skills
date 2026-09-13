@@ -5,479 +5,334 @@ title: Network Diagnosis Demo
 
 # Network Diagnosis Demo
 
-This is an illustrative walkthrough. Command outputs, identifiers, thresholds, and findings are sample data, not a live assessment or the plugin defaults. Use the current skill for the execution contract and verify the actual environment before applying a proposed repair.
-
-IP exhaustion and ALB 502 error diagnosis walkthrough with diagnostic command execution and resolution process.
+This is an illustrative diagnosis, not a live assessment or a promise of recovery.
+Every output below is synthetic example data. Use the current skill's execution
+contract and the selected environment's evidence before approving a change.
 
 ## Scenario Overview {#scenario-overview}
 
-This demo covers two common network issues:
-1. **IP Exhaustion** - Pods stuck in Pending due to insufficient VPC IPs
-2. **ALB 502 Errors** - Application Load Balancer returning 502 Bad Gateway
-
----
+Two independent examples distinguish node/subnet capacity from application readiness.
+Commands are read-only. First confirm the authorized AWS account, region and Kubernetes
+context; replace example resource names and placeholder variables with explicitly
+selected resources. Keep those selections throughout the investigation.
 
 ## Scenario 1: IP Exhaustion {#scenario-1-ip-exhaustion}
 
+This synthetic case has two constraints: some Pods cannot obtain a scheduler pod
+slot, while another scheduled Pod cannot obtain network addresses. Do not merge
+these into a single capacity calculation.
+
 ### Problem Report {#problem-report}
 
-User reports:
-
-```
-New pods are stuck in Pending state. kubectl describe shows "failed to assign IP address" errors.
-```
+The example operator reports an unscheduled API Pod and a worker stuck creating its
+network sandbox. Read each Pod's own events before selecting a remedy.
 
 ### Diagnosis Workflow {#diagnosis-workflow}
 
 ```mermaid
 flowchart TD
-    START[Pods Pending] --> EVENTS[Check Pod Events]
-    EVENTS --> IP_ERROR{IP Assignment Error?}
-    IP_ERROR -->|Yes| SUBNET[Check Subnet IPs]
-    SUBNET --> ENI[Check ENI Allocation]
-    ENI --> IPAMD[Check IPAMD Logs]
-    IPAMD --> SOLUTION{Solution}
-    SOLUTION -->|Short-term| PREFIX[Enable Prefix Delegation]
-    SOLUTION -->|Long-term| CIDR[Add Secondary CIDR]
+    START[Pending or creating Pod] --> EVENTS[Read individual Pod events]
+    EVENTS --> SLOTS[Check node pod-slot limit]
+    EVENTS --> CNI[Check CNI allocation failure]
+    CNI --> SUBNET[Check free contiguous subnet ranges]
+    SLOTS --> PLAN[Review capacity change plan]
+    SUBNET --> PLAN
 ```
 
 ### Step 1: Identify the Problem {#step-1-identify-the-problem}
 
 ```bash
-# Check pending pods
-kubectl get pods -A --field-selector=status.phase=Pending
+kubectl get pods -A -o wide
+kubectl describe pod api-server-pending -n backend
+kubectl describe pod worker-net-pending -n backend
 ```
 
-Output:
-```
-NAMESPACE   NAME                        READY   STATUS    RESTARTS   AGE
-backend     api-server-7f8b9-abc        0/1     Pending   0          15m
-backend     api-server-7f8b9-def        0/1     Pending   0          15m
-backend     worker-5c6d7-ghi            0/1     Pending   0          10m
-frontend    web-app-8e9f0-jkl           0/1     Pending   0          8m
+Illustrative event excerpts from two different Pods:
+
+```text
+api-server-pending:
+  FailedScheduling: Insufficient pods
+worker-net-pending:
+  FailedCreatePodSandBox: failed to assign an IP address to container
 ```
 
-```bash
-# Check pod events
-kubectl describe pod api-server-7f8b9-abc -n backend | grep -A 10 "Events:"
-```
-
-Output:
-```
-Events:
-  Type     Reason            Age   From               Message
-  ----     ------            ----  ----               -------
-  Warning  FailedScheduling  14m   default-scheduler  0/3 nodes are available: 3 Insufficient pods.
-  Warning  FailedCreatePodSandBox  13m  kubelet  Failed to create pod sandbox: rpc error: code = Unknown desc = failed to setup network for sandbox: plugin type="aws-cni" name="aws-cni" failed: add cmd: failed to assign an IP address to container
-```
-
-**Identified**: IP assignment failure from VPC CNI.
+`Insufficient pods` is scheduler evidence about pod-slot capacity. The sandbox event
+is separate evidence of a CNI allocation failure; it does not establish its cause alone.
 
 ### Step 2: Check Subnet IP Availability {#step-2-check-subnet-ip-availability}
 
+Select the affected node/pod subnet IDs from the environment's network inventory.
+
 ```bash
-# Get cluster subnets and available IPs
-aws ec2 describe-subnets --filters "Name=tag:kubernetes.io/cluster/prod-cluster,Values=*" \
-  --query 'Subnets[].{SubnetId:SubnetId,AZ:AvailabilityZone,CIDR:CidrBlock,Available:AvailableIpAddressCount}'
+SUBNET_A="<selected-subnet-a>"
+SUBNET_B="<selected-subnet-b>"
+SUBNET_C="<selected-subnet-c>"
+aws ec2 describe-subnets --subnet-ids "$SUBNET_A" "$SUBNET_B" "$SUBNET_C" \
+  --query 'Subnets[].{SubnetId:SubnetId,Available:AvailableIpAddressCount}'
 ```
 
-Output:
+Illustrative response:
+
 ```json
 [
-    {
-        "SubnetId": "subnet-0a1b2c3d4e5f",
-        "AZ": "us-west-2a",
-        "CIDR": "10.0.1.0/24",
-        "Available": 3
-    },
-    {
-        "SubnetId": "subnet-1b2c3d4e5f6g",
-        "AZ": "us-west-2b",
-        "CIDR": "10.0.2.0/24",
-        "Available": 5
-    },
-    {
-        "SubnetId": "subnet-2c3d4e5f6g7h",
-        "AZ": "us-west-2c",
-        "CIDR": "10.0.3.0/24",
-        "Available": 2
-    }
+  {"SubnetId": "subnet-example-a", "Available": 3},
+  {"SubnetId": "subnet-example-b", "Available": 5},
+  {"SubnetId": "subnet-example-c", "Available": 2}
 ]
 ```
 
-**Finding**: All subnets critically low on IPs (total 10 available across 3 AZs).
+Prefix allocation requires a free contiguous `/28` block. None of these subnets has
+enough free addresses for that block; addresses across different subnets cannot be
+combined. A larger free-address count alone would not prove contiguity. See the
+[AWS prefix-mode guidance](https://docs.aws.amazon.com/eks/latest/best-practices/prefix-mode-linux.html).
 
-### Step 3: Check ENI Allocation {#step-3-check-eni-allocation}
-
-```bash
-# Check per-node IP usage via IPAMD
-kubectl exec -n kube-system ds/aws-node -c aws-node -- curl -s http://localhost:61678/v1/enis 2>/dev/null | jq '.ENIs | length'
-```
-
-Output:
-```
-3
-```
+### Step 3: Check Node Pod Limits and ENIs {#step-3-check-eni-allocation}
 
 ```bash
-# Check node allocatable pods
-kubectl get nodes -o json | jq '.items[] | {name:.metadata.name, allocatable_pods:.status.allocatable.pods, capacity_pods:.status.capacity.pods}'
+kubectl get nodes -o custom-columns=NAME:.metadata.name,ALLOCATABLE_PODS:.status.allocatable.pods
+INSTANCE_ID="<selected-node-instance-id>"
+aws ec2 describe-network-interfaces --filters "Name=attachment.instance-id,Values=$INSTANCE_ID" \
+  --query 'NetworkInterfaces[].{ENI:NetworkInterfaceId,Subnet:SubnetId,Prefixes:Ipv4Prefixes}'
 ```
 
-Output:
-```json
-{"name":"ip-10-0-1-100.ec2.internal","allocatable_pods":"17","capacity_pods":"17"}
-{"name":"ip-10-0-2-150.ec2.internal","allocatable_pods":"17","capacity_pods":"17"}
-{"name":"ip-10-0-3-200.ec2.internal","allocatable_pods":"17","capacity_pods":"17"}
+Illustrative node excerpt; this is configured capacity, not a universal instance limit:
+
+```text
+NAME             ALLOCATABLE_PODS
+example-node-a   17
+example-node-b   17
+example-node-c   17
 ```
 
-**Finding**: t3.medium instances with max 17 pods each. Total capacity: 51 pods.
+The kubelet pod limit remains 17 in this example. Enabling prefix delegation does
+not by itself raise an existing kubelet limit. Review both address capacity and the
+node group's kubelet `max-pods` configuration; the
+[AWS prefix-mode guidance](https://docs.aws.amazon.com/eks/latest/best-practices/prefix-mode-linux.html) covers that prerequisite.
 
-### Step 4: Check IPAMD Logs {#step-4-check-ipamd-logs}
+### Step 4: Check CNI Configuration and IPAMD Logs {#step-4-check-ipamd-logs}
 
 ```bash
-# Check for IP allocation errors
-kubectl logs -n kube-system -l k8s-app=aws-node -c aws-node --tail=50 | grep -i "insufficient\|error\|failed"
+kubectl get daemonset aws-node -n kube-system -o yaml
+kubectl logs -n kube-system -l k8s-app=aws-node -c aws-node --tail=50
 ```
 
-Output:
-```
-{"level":"error","ts":"2026-03-22T10:15:23.456Z","msg":"InsufficientFreeAddressesInSubnet: The subnet 'subnet-0a1b2c3d4e5f' has insufficient free addresses to satisfy the request"}
-{"level":"error","ts":"2026-03-22T10:15:45.789Z","msg":"Failed to allocate IP address for pod backend/api-server-7f8b9-abc"}
-```
+Illustrative excerpts show prefix mode is already enabled and cannot allocate a block:
 
-### Root Cause Analysis {#root-cause-analysis}
-
-```
-## Root Cause Analysis
-
-### Summary
-IP exhaustion in all EKS subnets preventing new pod scheduling.
-
-### Details
-- VPC CIDR: 10.0.0.0/16
-- Subnet CIDRs: 3 x /24 (254 usable IPs each, 762 total)
-- Current allocation: ~752 IPs in use
-- Available: 10 IPs total (critical)
-
-### Contributing Factors
-1. Subnet sizing too small for workload growth
-2. No prefix delegation enabled
-3. WARM_IP_TARGET not tuned (over-allocation)
+```text
+Configuration excerpt:
+  name: ENABLE_PREFIX_DELEGATION
+  value: "true"
+Log excerpt:
+  InsufficientCidrBlocks: There are not enough free cidr blocks in the specified subnet
 ```
 
-### Resolution {#resolution}
+Correlate the log with the affected subnet and Pod timestamps. Do not assume an
+unset toggle is the problem or infer allocated-address totals from subnet size.
 
-#### Immediate Fix: Enable Prefix Delegation {#immediate-fix-enable-prefix-delegation}
+### Capacity Diagnosis {#root-cause-analysis}
+
+The synthetic evidence identifies a pod-slot constraint and a failed prefix
+allocation. It does not support the old claim that changing a CNI toggle alone
+restores scheduling. Do not derive an allocated-IP total or a recovery guarantee
+from these excerpts.
+
+### Resolution Planning {#resolution}
+
+Prepare a reviewable change plan with rollback and workload-disruption controls.
+Apply it only through the approved IaC and workload rollout process; no resource
+mutation command is provided here.
+
+#### Immediate Action: Assess Safe Capacity Options {#immediate-fix-enable-prefix-delegation}
+
+Do not treat prefix delegation as a fix for exhausted or fragmented address space.
+Review suitable subnet space, supported node/CNI configuration and the required
+kubelet limit before a capacity rollout. AWS recommends new subnets and node groups
+when existing subnets cannot supply contiguous blocks; use the linked prefix-mode
+guidance and an approved migration plan.
+
+#### Verify the Approved Change {#verify-fix}
+
+After an authorized change, collect new evidence:
 
 ```bash
-# Enable prefix delegation for 16x more IPs per slot
-kubectl set env daemonset aws-node -n kube-system \
-  ENABLE_PREFIX_DELEGATION=true \
-  WARM_PREFIX_TARGET=1
-
-# Restart aws-node to apply
-kubectl rollout restart daemonset/aws-node -n kube-system
-
-# Verify rollout
-kubectl rollout status daemonset/aws-node -n kube-system
+kubectl get pods -A -o wide
+kubectl get nodes -o custom-columns=NAME:.metadata.name,ALLOCATABLE_PODS:.status.allocatable.pods
+kubectl logs -n kube-system -l k8s-app=aws-node -c aws-node --tail=50
 ```
 
-Output:
-```
-daemonset "aws-node" successfully rolled out
-```
+Require the intended Pod readiness, the reviewed node capacity and absence of the
+original allocation failure over the observation window. Record actual results;
+a successful configuration rollout alone is not proof of workload recovery.
 
-#### Verify Fix {#verify-fix}
+#### Long-term: Plan Suitable Address Space {#long-term-fix-add-secondary-cidr}
 
-```bash
-# Check pods are now scheduling
-kubectl get pods -A --field-selector=status.phase=Pending
-```
+Size address space from workload demand and network constraints. If new subnets,
+node groups or additional VPC CIDR space are needed, review overlap, allocation,
+routing and migration in IaC. Reserve contiguous ranges where appropriate; do not
+substitute a universal capacity multiplier for that design work.
 
-Output:
-```
-No resources found
-```
+## Scenario 2: ALB Target Readiness Failures {#scenario-2-alb-502-errors}
 
-```bash
-# Verify all pods running
-kubectl get pods -n backend
-```
-
-Output:
-```
-NAME                        READY   STATUS    RESTARTS   AGE
-api-server-7f8b9-abc        1/1     Running   0          20m
-api-server-7f8b9-def        1/1     Running   0          20m
-worker-5c6d7-ghi            1/1     Running   0          15m
-```
-
-#### Long-term Fix: Add Secondary CIDR {#long-term-fix-add-secondary-cidr}
-
-```bash
-# Add secondary CIDR for dedicated pod subnets
-aws ec2 associate-vpc-cidr-block --vpc-id vpc-0123456789abcdef0 --cidr-block 100.64.0.0/16
-
-# Create new subnets in secondary CIDR
-aws ec2 create-subnet --vpc-id vpc-0123456789abcdef0 --cidr-block 100.64.0.0/19 --availability-zone us-west-2a
-aws ec2 create-subnet --vpc-id vpc-0123456789abcdef0 --cidr-block 100.64.32.0/19 --availability-zone us-west-2b
-aws ec2 create-subnet --vpc-id vpc-0123456789abcdef0 --cidr-block 100.64.64.0/19 --availability-zone us-west-2c
-```
-
----
-
-## Scenario 2: ALB 502 Errors {#scenario-2-alb-502-errors}
+This example diagnoses unhealthy targets after a workload rollout. It does not
+attribute a viewer-facing 502 to a security group or infer a client-error percentage.
+The existing fragment ID is retained for older links.
 
 ### Problem Report {#problem-report-1}
 
-User reports:
-
-```
-Application returns 502 Bad Gateway intermittently. Started after recent deployment.
-```
+Target health reports unsuccessful readiness checks on two replicas. Identify the
+exact target group, check path and timestamps before investigating application or
+network causes.
 
 ### Diagnosis Workflow {#diagnosis-workflow-1}
 
 ```mermaid
 flowchart TD
-    START[ALB 502 Error] --> TG[Check Target Group Health]
-    TG --> UNHEALTHY{Targets Unhealthy?}
-    UNHEALTHY -->|Yes| POD[Check Pod Status]
-    POD --> SG[Check Security Groups]
-    SG --> HC[Check Health Check Config]
-    HC --> FIX[Apply Fix]
-    FIX --> VERIFY[Verify Resolution]
+    START[Unhealthy ALB targets] --> REASON[Read target-health reason]
+    REASON --> RESPONSE[Response code mismatch: inspect readiness]
+    REASON --> TIMEOUT[Timeout: investigate reachability and response delay]
+    RESPONSE --> CONFIG[Compare health-check and application configuration]
+    CONFIG --> PLAN[Approved workload change]
+    TIMEOUT --> PLAN
+    PLAN --> VERIFY[Verify target health and viewer path]
 ```
 
 ### Step 1: Check Target Group Health {#step-1-check-target-group-health}
 
-```bash
-# Get target group ARN from Ingress
-kubectl get ingress api-ingress -n backend -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
-```
-
-Output:
-```
-k8s-backend-apiingr-abc123-456789.us-west-2.elb.amazonaws.com
-```
+Resolve the exact target-group ARN associated with the selected ingress using the
+approved resource inventory. An ALB hostname is not a target-group ARN; do not pick
+the first name-substring match.
 
 ```bash
-# Find target group ARN
-TG_ARN=$(aws elbv2 describe-target-groups --query "TargetGroups[?contains(TargetGroupName, 'backend')].TargetGroupArn" --output text)
-
-# Check target health
-aws elbv2 describe-target-health --target-group-arn $TG_ARN
+TG_ARN="<selected-target-group-arn>"
+aws elbv2 describe-target-health --target-group-arn "$TG_ARN"
 ```
 
-Output:
+Illustrative response:
+
 ```json
 {
-    "TargetHealthDescriptions": [
-        {
-            "Target": {"Id": "10.0.1.45", "Port": 8080},
-            "HealthCheckPort": "8080",
-            "TargetHealth": {"State": "unhealthy", "Reason": "Target.FailedHealthChecks", "Description": "Health checks failed with these codes: [503]"}
-        },
-        {
-            "Target": {"Id": "10.0.2.78", "Port": 8080},
-            "HealthCheckPort": "8080",
-            "TargetHealth": {"State": "unhealthy", "Reason": "Target.FailedHealthChecks", "Description": "Health checks failed with these codes: [503]"}
-        },
-        {
-            "Target": {"Id": "10.0.3.112", "Port": 8080},
-            "HealthCheckPort": "8080",
-            "TargetHealth": {"State": "healthy"}
-        }
-    ]
+  "TargetHealthDescriptions": [
+    {
+      "Target": {"Id": "10.0.1.45", "Port": 8080},
+      "TargetHealth": {"State": "unhealthy", "Reason": "Target.ResponseCodeMismatch", "Description": "Health checks failed with these codes: [503]"}
+    },
+    {
+      "Target": {"Id": "10.0.2.78", "Port": 8080},
+      "TargetHealth": {"State": "unhealthy", "Reason": "Target.ResponseCodeMismatch", "Description": "Health checks failed with these codes: [503]"}
+    },
+    {
+      "Target": {"Id": "10.0.3.112", "Port": 8080},
+      "TargetHealth": {"State": "healthy"}
+    }
+  ]
 }
 ```
 
-**Finding**: 2 of 3 targets unhealthy, health checks returning 503.
+`Target.ResponseCodeMismatch` means a response code did not match the configured
+matcher. `Target.Timeout` indicates a timeout instead. A received 503 is not proof
+of a security group blocking that same probe. See
+[ALB target health checks and reason codes](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/target-group-health-checks.html).
 
-### Step 2: Check Pod Status {#step-2-check-pod-status}
+### Step 2: Inspect Workload Readiness {#step-2-check-pod-status}
 
 ```bash
-# Check backend pods
+POD_NAME="<selected-backend-pod>"
 kubectl get pods -n backend -l app=api-server -o wide
+kubectl logs "$POD_NAME" -n backend --tail=50
+kubectl get deployment api-server -n backend -o json \
+  | jq '.spec.template.spec.containers[] | {name, readinessPath:.readinessProbe.httpGet.path, readinessPort:.readinessProbe.httpGet.port}'
 ```
 
-Output:
+Illustrative application log excerpt:
+
+```text
+readiness path=/ready status=503 reason=dependency_unavailable
 ```
-NAME                        READY   STATUS    RESTARTS   AGE   IP           NODE
-api-server-7f8b9-abc        1/1     Running   0          30m   10.0.1.45    ip-10-0-1-100.ec2.internal
-api-server-7f8b9-def        1/1     Running   0          30m   10.0.2.78    ip-10-0-2-150.ec2.internal
-api-server-7f8b9-ghi        1/1     Running   0          30m   10.0.3.112   ip-10-0-3-200.ec2.internal
-```
+
+Inspect readiness probes, Pod readiness and application logs at matching times.
+A Running phase alone is not an application-health verdict. Compare the endpoint
+actually checked by ALB with the application's readiness contract.
+
+### Step 3: Inspect the Actual Target Network Path {#step-3-check-security-groups}
+
+Identify the security groups attached to the target's actual ENI; do not assume
+node and Pod security groups are interchangeable.
 
 ```bash
-# Test health endpoint from within pod
-kubectl exec -it api-server-7f8b9-abc -n backend -- curl -s localhost:8080/health
+TARGET_SG_ID="<selected-target-security-group-id>"
+aws ec2 describe-security-group-rules --filters "Name=group-id,Values=$TARGET_SG_ID"
 ```
 
-Output:
-```json
-{"status": "healthy", "version": "2.1.0"}
-```
-
-**Finding**: Pods are running and health endpoint works locally.
-
-### Step 3: Check Security Groups {#step-3-check-security-groups}
-
-```bash
-# Get node security group
-NODE_SG=$(aws ec2 describe-instances --filters "Name=private-ip-address,Values=10.0.1.100" --query 'Reservations[].Instances[].SecurityGroups[].GroupId' --output text)
-
-# Check inbound rules
-aws ec2 describe-security-group-rules --filter Name=group-id,Values=$NODE_SG --query 'SecurityGroupRules[?!IsEgress].{FromPort:FromPort,ToPort:ToPort,Source:CidrIpv4,SourceSG:ReferencedGroupInfo.GroupId}'
-```
-
-Output:
-```json
-[
-    {"FromPort": 443, "ToPort": 443, "Source": null, "SourceSG": "sg-alb12345"},
-    {"FromPort": 10250, "ToPort": 10250, "Source": "10.0.0.0/16", "SourceSG": null}
-]
-```
-
-**Finding**: Port 8080 not allowed from ALB security group!
+Review the ALB source group, target port, routes and applicable network controls.
+The sample's HTTP response does not establish a missing ingress rule. Investigate
+a timeout separately instead of treating every health failure as an SG problem.
 
 ### Step 4: Check Health Check Configuration {#step-4-check-health-check-configuration}
 
 ```bash
-# Check Ingress annotations
-kubectl get ingress api-ingress -n backend -o yaml | grep -A 10 "annotations:"
+aws elbv2 describe-target-groups --target-group-arns "$TG_ARN" \
+  --query 'TargetGroups[].{Protocol:HealthCheckProtocol,Port:HealthCheckPort,Path:HealthCheckPath,Matcher:Matcher.HttpCode}'
 ```
 
-Output:
-```yaml
-annotations:
-  alb.ingress.kubernetes.io/scheme: internet-facing
-  alb.ingress.kubernetes.io/target-type: ip
-  alb.ingress.kubernetes.io/healthcheck-path: /health
-  alb.ingress.kubernetes.io/healthcheck-port: "8080"
-```
+Illustrative configuration:
 
-**Finding**: Health check configured for port 8080, but SG blocks it.
-
-### Root Cause Analysis {#root-cause-analysis-1}
-
-```
-## Root Cause Analysis
-
-### Summary
-ALB health checks failing due to missing Security Group rule for port 8080.
-
-### Timeline
-- T-1h: Deployment updated to use target-type: ip (previously instance)
-- T-45m: First 502 errors reported
-- T-30m: Target health degraded to 1/3 healthy
-
-### Root Cause
-Security Group migration incomplete when switching from instance to ip target type.
-- Instance mode: ALB routes to NodePort, SG allows NodePort range
-- IP mode: ALB routes directly to pod IP:port, SG must allow pod port
-
-### Impact
-- 66% of requests hitting unhealthy targets
-- Intermittent 502 errors for end users
-```
-
-### Resolution {#resolution-1}
-
-#### Fix Security Group {#fix-security-group}
-
-```bash
-# Get ALB security group
-ALB_SG=$(aws ec2 describe-security-groups --filters "Name=tag:ingress.k8s.aws/stack,Values=backend/api-ingress" --query 'SecurityGroups[].GroupId' --output text)
-
-# Add rule allowing ALB to reach pod port 8080
-aws ec2 authorize-security-group-ingress \
-  --group-id $NODE_SG \
-  --protocol tcp \
-  --port 8080 \
-  --source-group $ALB_SG \
-  --description "ALB to backend pods"
-```
-
-Output:
 ```json
-{
-    "Return": true,
-    "SecurityGroupRules": [
-        {
-            "SecurityGroupRuleId": "sgr-0abc123def456",
-            "GroupId": "sg-node12345",
-            "IpProtocol": "tcp",
-            "FromPort": 8080,
-            "ToPort": 8080,
-            "ReferencedGroupInfo": {"GroupId": "sg-alb12345"}
-        }
-    ]
-}
+[
+  {"Protocol": "HTTP", "Port": "8080", "Path": "/ready", "Matcher": "200"}
+]
 ```
+
+A 503 response from this readiness path fails the 200 matcher. Correlate application
+configuration and dependencies; do not widen the success matcher to hide an
+unready application.
+
+### Working Diagnosis {#root-cause-analysis-1}
+
+The synthetic evidence supports an application-readiness investigation: ALB
+receives 503 where 200 is expected, and the example application reports an unavailable
+dependency. Confirm the underlying dependency/configuration fault before remediation.
+Two unhealthy targets out of three does not establish a 66% request-failure rate.
+
+### Resolution Planning {#resolution-1}
+
+Assign the confirmed cause to its owner and prepare an approved workload change.
+Preserve rollback, availability and least-privilege requirements.
+
+#### Apply Approved Workload Remediation {#fix-security-group}
+
+Correct the confirmed dependency or readiness configuration through the reviewed
+deployment process. A security-group change is not the demonstrated remedy here.
+If a separate investigation confirms a network-rule defect, change it only through
+approved IaC with narrowly scoped access. Do not use ad-hoc ingress CLI commands or
+open the port to the internet.
 
 #### Verify Resolution {#verify-resolution}
 
 ```bash
-# Wait for health checks to pass (30-60 seconds)
-sleep 60
-
-# Check target health
-aws elbv2 describe-target-health --target-group-arn $TG_ARN --query 'TargetHealthDescriptions[].TargetHealth.State'
+aws elbv2 describe-target-health --target-group-arn "$TG_ARN"
+kubectl get pods -n backend -l app=api-server -o wide
+kubectl logs "$POD_NAME" -n backend --tail=50
 ```
 
-Output:
-```json
-["healthy", "healthy", "healthy"]
-```
-
-```bash
-# Test ALB endpoint
-curl -s -o /dev/null -w "%{http_code}" https://k8s-backend-apiingr-abc123-456789.us-west-2.elb.amazonaws.com/api/health
-```
-
-Output:
-```
-200
-```
-
----
+Observe the configured health-check thresholds and record actual readiness, reasons
+and timestamps after the authorized rollout. Verify user-visible behavior through
+the approved CloudFront viewer endpoint and its monitoring/logs, not direct access
+to the public ALB hostname. Report measured request outcomes rather than deriving
+them from the fraction of unhealthy targets.
 
 ## Summary Report {#summary-report}
 
-```markdown
-## Network Diagnosis Report
+| Scenario | Evidence to report | Follow-up |
+| --- | --- | --- |
+| Capacity | Per-Pod events, node pod limits, subnet availability and CNI errors | Reviewed IaC/node-group capacity plan and workload verification |
+| Target readiness | Exact target group, response reason, check configuration and application logs | Approved workload repair and verification through CloudFront |
 
-### Scenario 1: IP Exhaustion
-- **Issue**: Pods stuck in Pending due to IP exhaustion
-- **Layer**: L3 (IP)
-- **Severity**: P2 - High
-- **Root Cause**: Subnet CIDR too small, no prefix delegation
-- **Resolution**: Enabled prefix delegation, planned secondary CIDR
-- **Prevention**: Monitor subnet IP availability, alert at < 20%
-
-### Scenario 2: ALB 502 Errors
-- **Issue**: Intermittent 502 Bad Gateway
-- **Layer**: L7 (Application)
-- **Severity**: P2 - High
-- **Root Cause**: Security Group missing rule for pod port
-- **Resolution**: Added SG rule for ALB to pod communication
-- **Prevention**: Include SG updates in deployment checklist for target-type changes
-```
-
----
+Do not mark either scenario resolved until its verification criteria have been
+observed. Keep sample identifiers and hypotheses separate from actual evidence.
 
 ## Key Points {#key-points}
 
-:::tip IP Planning
-Plan subnet CIDRs for 3-5x expected pod count. Enable prefix delegation early - it's non-disruptive and provides significant capacity increase.
-:::
-
-:::warning Target Type Migration
-When switching from `instance` to `ip` target type, Security Groups must be updated to allow ALB direct access to pod ports. This is a common oversight.
-:::
-
-:::info Health Check Testing
-Always test health check paths from both inside the pod (`localhost`) and from external sources (another pod, ALB) to identify network/SG issues.
-:::
+- Free-address totals do not establish a contiguous prefix block or kubelet capacity.
+- Distinguish a received unsuccessful HTTP response from a timeout.
+- Keep diagnosis read-only, remediation authorized and declarative, and public
+  verification on the approved CloudFront path.

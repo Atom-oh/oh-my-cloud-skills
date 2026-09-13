@@ -122,8 +122,10 @@ jobs:
           documentation contracts. Source skills, commands, agents, generated entries and
           reviewer cells are different populations. Check ADR status and historical scope;
           a dated plan or an old acceptance result is not a current operational contract.
-          Maintained prose is English; literal aliases, syntax and example payloads may
-          use another language. Do not demand parallel Korean documentation.
+          Internal project prose is English; literal aliases, syntax and example payloads
+          may use another language. Public guides under doc-sites/ follow ADR-023:
+          Korean and English, with Korean as the default after validated locale activation.
+          Do not require Korean copies of internal project documentation.
 
           Group concise findings as CRITICAL/MAJOR/MINOR. A blocking finding needs a concrete
           trigger, affected path and evidence of breakage, exposure or a current-contract
