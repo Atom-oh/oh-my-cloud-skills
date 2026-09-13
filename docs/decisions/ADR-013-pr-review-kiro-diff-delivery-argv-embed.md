@@ -11,6 +11,17 @@ The warn-only truncation treatment below is historical: incomplete required inpu
 cannot pass the semantic coverage gate. Later matrix, roster and coverage changes
 are recorded by ADR-016/017/021; this ADR does not freeze ADR-011's other behavior.
 
+> Amendment (2026-09-12): the *decision* (zero tools, capped argv embed) stands, but the
+> *mechanism* named below — `--trust-tools=` (empty) — is ignored by kiro-cli 2.11.1 (it is
+> parsed as an empty custom-tool name, warned about, and dropped, leaving the default
+> agent's cwd `read` trust). The no-tools contract is now enforced by
+> `--agent pr-review-notools` (`scripts/pr-review/agents/pr-review-notools.json`,
+> `tools: []`, v2 engine only — `--v3` ignores it), a per-model `NO_TOOLS` preflight, and
+> stderr signature detection for agent fallback and monthly-quota exhaustion. Ported from
+> the claude-code-usage-dashboard repository's PR #33; procedures in
+> `docs/runbooks/pr-review-panel.md`. The `--trust-tools=` references in the sections
+> below are left as the historical record of what was verified in July.
+
 ## Context
 
 ADR-011 gave Kiro cells `--trust-tools=fs_read` and told them to read the diff from a file

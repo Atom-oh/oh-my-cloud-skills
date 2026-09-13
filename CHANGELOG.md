@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- PR review uses a validated zero-tool Kiro agent and a per-model canary preflight
+  before sending PR input. Reject default-agent fallback, surface monthly quota
+  exhaustion without retries, and preserve required coverage failures (PR207).
+
 ## [1.17.0] - 2026-09-02
 
 ### Added

@@ -1,0 +1,9 @@
+{
+  "name": "pr-review-notools",
+  "description": "PR-review panel cell (run-panel.sh): zero tools. The diff arrives inline in the prompt; nothing may be read, written, executed, or fetched.",
+  "tools": [],
+  "allowedTools": [],
+  "mcpServers": {},
+  "useLegacyMcpJson": false,
+  "resources": []
+}
