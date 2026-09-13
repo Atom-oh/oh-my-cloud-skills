@@ -99,9 +99,9 @@ does not activate those project hooks. See
 | “Build a Workshop Studio lab with verification and cleanup.” | workshop-creator |
 | “Diagnose why these pods cannot reach the service.” | ops-network-diagnosis |
 | “Assess this cluster's health.” | ops-health-check |
-| “Get a second opinion on this diff.” | co-agent review |
+| “Get a second opinion on this diff.” | co-agent (review mode) |
 | “Delegate this approved implementation plan to Kiro.” | kiro-delegate |
-| “Initialize this existing project for Codex.” | project-init |
+| “Initialize this existing project for Codex.” | init-project |
 | “Find Atlas pages that drifted from the code.” | atlas |
 
 Commands shown below name the Claude workflows; select their corresponding
@@ -116,11 +116,12 @@ notes, comparison/tabs, quizzes, timelines, checklists, code, and custom calcula
 or simulations. A multi-file deck uses `_presentation.md`, block files, assets,
 and generated HTML with a shared framework.
 
-A local source workflow, run from this marketplace checkout:
+A local source workflow, run from this marketplace checkout. For an English directory
+build, set `lang: en` in `my-presentation/_presentation.md` frontmatter:
 
 ```bash
 python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py validate ./my-presentation/
-python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build ./my-presentation/ --lang en
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build ./my-presentation/
 python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py sync ./my-presentation/
 ```
 
@@ -307,7 +308,8 @@ findings. Active Critical/Major findings block merge. Missing, failed, or trunca
 required coverage is an error, not an implicit pass. Review the HEAD, target branch,
 and prerequisite PRs immediately before merge; retain the enforced diff caps.
 
-Use [CI review policy](docs/ci-pr-review.md),
+Use [current review policy](docs/decisions/ADR-021-english-docs-current-review-authority.md),
+[CI review operations](docs/ci-pr-review-runbook.md),
 [CI roster defaults](scripts/pr-review/pr-review.defaults.json),
 [AI review workflow](.github/workflows/pr-review.yml), and
 [Codex validation workflow](.github/workflows/codex-validation.yml) as the authority.
