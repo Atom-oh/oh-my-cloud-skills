@@ -1,98 +1,57 @@
 ---
 sidebar_position: 3
-title: "설치"
+title: "Install aws-content-plugin"
 ---
 
-# 설치
+{/* Legacy section links retained after the English rewrite. */}
+<span id="설치" />
+<span id="marketplace-설치" />
+<span id="로컬-로딩" />
+<span id="설치-확인" />
+<span id="파일-참조-확인" />
+<span id="플러그인-구조" />
+<span id="자동-호출" />
+<span id="다음-단계" />
 
-AWS Content Plugin을 설치하고 사용하는 방법입니다.
 
-## Marketplace 설치
+# Install aws-content-plugin
 
-Claude Code의 플러그인 마켓플레이스에서 설치합니다:
+## Claude Code
 
-```bash
-# 마켓플레이스 추가
-/plugin marketplace add https://github.com/Atom-oh/oh-my-cloud-skills
-
-# 플러그인 설치
+```text
+/plugin marketplace add Atom-oh/oh-my-cloud-skills
 /plugin install aws-content-plugin@oh-my-cloud-skills
 ```
 
-## 로컬 로딩
-
-개발 또는 테스트 목적으로 로컬에서 플러그인을 로드할 수 있습니다:
+For local development from a repository checkout:
 
 ```bash
 claude --plugin-dir ./plugins/aws-content-plugin
 ```
 
-## 설치 확인
+## Codex
 
-플러그인이 올바르게 로드되었는지 확인합니다:
+Install `aws-content-plugin` from this repository's Codex marketplace using `/plugins`, then start a new thread. The package loads its generated `.codex-plugin/skills/` entries. Use the installed skill picker or describe the desired operation; the slash commands shown in this guide name the corresponding Claude workflows.
 
-```bash
-# 플러그인 매니페스트 검증
-python3 -c "import json; d=json.load(open('plugins/aws-content-plugin/.claude-plugin/plugin.json')); print(f'agents: {len(d[\"agents\"])}, skills: {len(d[\"skills\"])}')"
-```
+## Setup and verification
 
-정상 출력:
-```
-agents: 8, skills: 5
-```
+The manifest bundles Playwright for rendered-content checks. Install only the local tools required by the selected output, such as Python, Draw.io for diagram export, or Node/PptxGenJS and the documented font tools for native PowerPoint.
 
-## 파일 참조 확인
-
-모든 에이전트와 스킬 파일이 존재하는지 확인합니다:
+For a source checkout, validate both host packages from the repository root:
 
 ```bash
-cd plugins/aws-content-plugin && python3 -c "
-import json, os
-d = json.load(open('.claude-plugin/plugin.json'))
-for a in d['agents']:
-    assert os.path.isfile(a.lstrip('./')), f'Missing agent: {a}'
-for s in d['skills']:
-    assert os.path.isfile(s.lstrip('./') + '/SKILL.md'), f'Missing skill: {s}'
-print('All references OK')
-"
+python3 scripts/test-plugins.py
+python3 scripts/test-codex-plugins.py
 ```
 
-## 플러그인 구조
+Inspect the plugin's manifest and generated overlay if an expected entry is missing. Do not treat a successful installation as proof that external credentials, peer CLIs, or cloud permissions work.
 
-설치 후 플러그인 구조:
+## Remove
 
-```
-aws-content-plugin/
-├── .claude-plugin/
-│   └── plugin.json          # 매니페스트 파일
-├── CLAUDE.md                # 자동 호출 규칙
-├── agents/
-│   ├── presentation-agent.md
-│   ├── reactive-presentation-agent.md
-│   ├── architecture-diagram-agent.md
-│   ├── animated-diagram-agent.md
-│   ├── document-agent.md
-│   ├── gitbook-agent.md
-│   ├── workshop-agent.md
-│   └── content-review-agent.md
-└── skills/
-    ├── reactive-presentation/
-    ├── architecture-diagram/
-    ├── animated-diagram/
-    ├── gitbook/
-    └── workshop-creator/
-```
+Use `/plugin uninstall aws-content-plugin@oh-my-cloud-skills` in Claude Code or uninstall the entry through Codex `/plugins`.
 
-## 자동 호출
+## Related links
 
-플러그인이 로드되면 특정 키워드에 따라 에이전트가 자동으로 활성화됩니다.
-
-:::info 자동 호출 키워드
-각 에이전트의 트리거 키워드는 해당 에이전트 문서 페이지에서 확인할 수 있습니다.
-:::
-
-## 다음 단계
-
-- [Presentation Agent](./agents/presentation-agent) - 프레젠테이션 생성
-- [Architecture Diagram Agent](./agents/architecture-diagram-agent) - 아키텍처 다이어그램 생성
-- [Content Review Agent](./agents/content-review-agent) - 콘텐츠 품질 검토
+- [Presentation Agent](./agents/presentation-agent)
+- [Architecture Diagram Agent](./agents/architecture-diagram-agent)
+- [Content Review Agent](./agents/content-review-agent)
