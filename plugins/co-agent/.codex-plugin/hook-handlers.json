@@ -39,7 +39,7 @@
     {
       "event": "SessionStart",
       "matcher": "",
-      "command": "echo 'co-agent loaded. Multi-AI collaboration (Kiro/Codex/Agy): /co-agent review · decide · adr · sync-context · consensus · harness · setup. Tune the panel with /co-agent:configure. The current host synthesizes; uses whichever peer AI CLIs are installed.'"
+      "command": "echo 'co-agent loaded. Multi-AI collaboration (Kiro plus the opposite host CLI): /co-agent review · decide · adr · sync-context · consensus · harness · setup. Tune the panel with /co-agent:configure. The current host synthesizes; uses the configured supported peers.'"
     }
   ]
 }
