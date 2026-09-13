@@ -1,49 +1,25 @@
 ---
 sidebar_position: 1
-title: "Doc Sync Checker"
+title: "Doc sync checker"
 ---
 
-# Doc Sync Checker Agent
+{/* Legacy section links retained after the English rewrite. */}
+<span id="doc-sync-checker-agent" />
+<span id="기능" />
+<span id="사용-방법" />
+<span id="출력-형식" />
 
-프로젝트 문서가 현재 코드 상태와 동기화되어 있는지 분석하고, 누락되거나 오래된 문서를 품질 점수와 함께 보고하는 에이전트입니다.
 
-## 기능
+# Doc sync checker
 
-1. **소스 디렉토리 감지** — `src/`, `app/`, `lib/`, `cmd/` 등 주요 소스 디렉토리 탐색
-2. **누락 CLAUDE.md 감지** — 각 소스 디렉토리에 모듈 CLAUDE.md 존재 여부 확인
-3. **아키텍처 문서 검증** — `docs/architecture.md`의 컴포넌트, 다이어그램, 레이어 커버리지 확인
-4. **ADR 커버리지** — git log에서 아키텍처 결정을 시사하는 커밋과 ADR 매칭
-5. **이중 언어 일관성** — 한국어/영어 섹션 구조 일치 확인
-6. **CLAUDE.md 품질 평가** — 500줄 이하, 기술 스택, 핵심 명령, 프로젝트 구조 섹션 존재 여부
+Analyze whether project instructions and documentation match current code, commands, dependencies, and architecture. The checker detects missing module context, stale references, undocumented decisions, and quality gaps.
 
-## 사용 방법
+## Use
 
-```
-"/sync-docs"
-```
+Run the project-init `sync-docs` workflow, or request a scoped documentation audit. Supply the relevant source paths and intended language. The checker produces evidence and proposed updates; its report is not proof that changes were applied or tested.
 
-또는 doc-sync-checker 에이전트가 자동으로 활성화됩니다.
+## Report
 
-## 출력 형식
+Identify the affected document, supporting source path, mismatch, and concrete correction. Assess command usability, architectural clarity, conciseness, freshness, and actionability. Use the current rubric from the agent rather than treating an old score as a permanent gate.
 
-```markdown
-## Documentation Sync Report
-
-### Missing Module CLAUDE.md
-- src/api/ — MISSING
-- src/persistence/ — OK
-
-### Architecture Doc Freshness
-- Component Sync: 3/5 match
-- Diagram Accuracy: OK
-- Layer Coverage: 80%
-
-### CLAUDE.md Quality: 85/100 (Grade: A)
-- ✓ Under 500 lines
-- ✓ Has Tech Stack section
-- ✗ Missing Key Commands section
-
-### Recommendations
-1. Add CLAUDE.md to src/api/
-2. Update architecture diagram with new components
-```
+[Checker definition](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/project-init/agents/doc-sync-checker.md)

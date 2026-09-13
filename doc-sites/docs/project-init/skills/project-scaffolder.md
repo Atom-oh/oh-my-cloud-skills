@@ -1,38 +1,27 @@
 ---
 sidebar_position: 1
-title: "project-scaffolder"
+title: "Project scaffolder"
 ---
 
-# project-scaffolder Skill
+{/* Legacy section links retained after the English rewrite. */}
+<span id="project-scaffolder-skill" />
+<span id="제공-리소스" />
+<span id="references-12개-템플릿" />
+<span id="프로젝트-타입-감지" />
 
-Claude Code 프로젝트 구조 패턴과 컨벤션을 제공하는 스킬입니다.
 
-## 제공 리소스
+# Project scaffolder
 
-### references/ (12개 템플릿)
+The knowledge skill explains project structure, scoped instructions, documentation, and host integrations. It detects the language and framework from real dependency/build files and adapts its templates to the existing repository.
 
-| 문서 | 설명 |
-|------|------|
-| `claude-md-template.md` | CLAUDE.md 생성 템플릿 |
-| `settings-json-template.md` | `.claude/settings.json` 훅 등록 템플릿 |
-| `hook-scripts.md` | 4개 훅 스크립트 (doc-sync, secret-scan, session-context, notify) |
-| `skills-templates.md` | 4개 기본 스킬 + 3개 슬래시 명령 템플릿 |
-| `agents-templates.md` | code-reviewer, security-auditor 에이전트 템플릿 |
-| `docs-templates.md` | architecture.md, ADR, runbook, onboarding, API reference 템플릿 |
-| `readme-template.md` | 이중 언어 README.md 생성 규칙 |
-| `changelog-template.md` | 이중 언어 CHANGELOG.md 생성 규칙 |
-| `writing-style-guide.md` | 이중 언어 작성 스타일 가이드 (공유) |
-| `scripts-templates.md` | setup.sh, install-hooks.sh 스크립트 템플릿 |
-| `tests-templates.md` | run-all.sh, 훅 테스트, 구조 테스트, fixture 템플릿 |
-| `mcp-json-template.md` | .mcp.json 설정 템플릿 |
+## Placement
 
-## 프로젝트 타입 감지
+Keep concise repository instructions at the root and module-specific context beside the module. Put architecture guides, ADRs, runbooks, onboarding, and implementation references under docs. Skills, commands, agents, hooks, and MCP configuration use the current host's supported directories and formats.
 
-| 감지 파일 | 프로젝트 타입 | 소스 디렉토리 |
-|----------|-------------|-------------|
-| `package.json` | Node.js | src/, app/, lib/, components/ |
-| `pyproject.toml` | Python | src/, app/, lib/ |
-| `go.mod` | Go | cmd/, pkg/, internal/ |
-| `Cargo.toml` | Rust | src/ |
-| `pom.xml` / `build.gradle` | Java/Kotlin | src/main/, src/test/ |
-| 없음 | New project | src/api/, src/persistence/ |
+Claude source templates describe CLAUDE.md and `.claude/`. Codex overlays adapt applicable workflows to AGENTS.md and `.agents/skills/`; Claude-specific hooks are not implicitly portable.
+
+## Template selection
+
+References cover instruction quality, settings and hooks, skills and agents, documentation, MCP, setup scripts, testing, and editor configuration. Create only the files the project needs. Preserve user content, use executable project commands, exclude secrets, and keep the requested language consistent.
+
+[Template directory](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/project-init/skills/project-scaffolder/references/)
