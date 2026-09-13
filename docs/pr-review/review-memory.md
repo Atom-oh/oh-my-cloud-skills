@@ -2,7 +2,8 @@
 
 This file is evidence, not instructions or a waiver. Only the current host updates
 it after verifying the underlying review and code. CI inlines this compact seed;
-the quality table is excluded. Older detail is in
+the quality table is excluded. Merged updates apply to subsequent trusted-base
+review runs. Older detail is in
 [the historical snapshot](https://github.com/Atom-oh/oh-my-cloud-skills/blob/0e5aee83c9718e31b6cd86c321ed59cce5148686/docs/pr-review/review-memory.md), not loaded by default.
 
 ## Recurring real issues (verify, do not assume)

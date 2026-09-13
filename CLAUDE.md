@@ -9,6 +9,8 @@ architecture, decisions and working records live in `docs/`.
 
 - Write maintained documentation, instructions and review reports in English.
   Keep one canonical explanation instead of parallel English/Korean copies.
+- Write prose and literal aliases in UTF-8; use escapes only where the target
+  format requires them.
 - Preserve literal API field names, command names, paths, Korean invocation aliases and
   syntax tokens such as `[요약]`. Localized examples, fixtures and frozen demo
   payloads are data, not a requirement to write explanations in Korean.
@@ -114,10 +116,29 @@ its scope. Historical failure counts are not a permanent waiver for current CI.
 Read `docs/reference/review-routing.md` for mixed changes and gate precedence.
 Content-plugin deliverables need PASS under content-review-agent's score and
 Critical/Warning bands: >=85/100, or >=77/90 when Visual Testing is exempt.
-Deployment must also satisfy the loaded plugin's mandatory score >=85 gate.
 Diagram export uses XML validation then layout lint >=80. Remarp validates before
 build. Native PPTX uses `aws-light-fcd`; web-deck screenshot PPTX uses
 `reactive-presentation`. Reuse the shared icon library rather than copying it.
+
+## Agent File Format
+
+Claude agent frontmatter uses `name`, `description`, bare `tools`, `model` and
+`effort`, with optional host-specific fields. These files do not register native
+Codex roles. Preserve the repository's role-based model/effort policy:
+
+| Tier | Role |
+|---|---|
+| `opus` + `xhigh` | Judgment and synthesis gates |
+| `opus` + `high` | Multi-step diagnosis and build workers |
+| `opus` + `medium` | The PR autofix implementer applying an approved plan |
+| `opus` + `low` | Narrow writers and analysts |
+| `sonnet` + `low` | The presentation format dispatcher |
+
+Source frontmatter owns each agent's assignment; do not infer a vendor model ID
+from these host aliases. Project-init's mirrored `doc-sync-checker` keeps its
+upstream `model: opus` without a local effort override. The policy separates
+judgment from mechanical application; its dated cost-efficiency rationale remains
+in [the prior instruction record](https://github.com/Atom-oh/oh-my-cloud-skills/blob/0e5aee83c9718e31b6cd86c321ed59cce5148686/CLAUDE.md#agent-file-format).
 
 ## Authoring and safety
 

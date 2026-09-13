@@ -23,8 +23,8 @@ required review is silently skipped.
 Content-review PASS uses the owning agent's three independent bands: score,
 Critical count and Warning count. Its standard score bar is >=85/100; Visual
 Testing exemptions use >=77/90. State the scale and exemption in the report.
-Deployment must additionally satisfy the loaded content plugin's score >=85 gate;
-a lower passing score on the exempt scale does not authorize deployment.
+Use the owning agent's verdict table for completion and deployment; do not invent
+a second numerical threshold when summarizing its exempt scale.
 
 ## Mixed changeset — precedence rule
 
