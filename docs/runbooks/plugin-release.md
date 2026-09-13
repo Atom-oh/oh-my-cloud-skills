@@ -1,113 +1,94 @@
-# Runbook: Plugin Release
+# Runbook: Plugin release
 
-## Overview
+Release all eight plugins for Claude Code and Codex at one shared version. Run from
+the repository root. Start from an up-to-date, clean `main`; prepare changes on a
+release branch and complete the required PR review before tagging the merged commit.
+The extension's package version is a separate concern.
 
-All plugins in the marketplace share a single version. This runbook covers the full release cycle: version bump, validation, tagging, and push.
+## Prepare the release
 
-## When to Use
-
-- New feature, fix, or breaking change is merged to `main`
-- Marketplace version needs to be updated
-
-## Prerequisites
-
-- [ ] All changes merged to `main`
-- [ ] `bash tests/run-all.sh` passes (40/40)
-- [ ] Working tree is clean (`git status` shows no uncommitted changes)
-
-## Procedure
-
-### Step 1: Determine Next Version
-
-Follow semver: MAJOR.MINOR.PATCH
+Choose an unused SemVer version and create the branch:
 
 ```bash
-git describe --tags --abbrev=0
+RELEASE_VERSION="X.Y.Z"
+git switch -c "release/v${RELEASE_VERSION}"
 ```
 
-### Step 2: Bump Version in All Manifests
-
-Update `"version"` in all 4 files:
+Update all Claude manifests and their marketplace. The generator then updates every
+Codex manifest, inventory/adapter output and Codex marketplace version. Project-init's
+shared release-version field is the permitted exception to its upstream source mirror.
 
 ```bash
-NEW_VERSION="X.Y.Z"
-
-# Plugin manifests
-for f in plugins/aws-content-plugin/.claude-plugin/plugin.json \
-         plugins/aws-ops-plugin/.claude-plugin/plugin.json \
-         plugins/kiro-power-converter/.claude-plugin/plugin.json; do
-  python3 -c "
-import json, sys
-d = json.load(open('$f'))
-d['version'] = '$NEW_VERSION'
-json.dump(d, open('$f', 'w'), indent=2, ensure_ascii=False)
-print(f'Updated: $f -> $NEW_VERSION')
-"
-done
-
-# Marketplace manifest
-python3 -c "
+python3 - "$RELEASE_VERSION" <<'PYTHON'
 import json
-d = json.load(open('.claude-plugin/marketplace.json'))
-for p in d['plugins']:
-    p['version'] = '$NEW_VERSION'
-json.dump(d, open('.claude-plugin/marketplace.json', 'w'), indent=2, ensure_ascii=False)
-print('Updated: marketplace.json -> $NEW_VERSION')
-"
+import re
+import sys
+from pathlib import Path
+
+version = sys.argv[1]
+if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
+    raise SystemExit("Replace X.Y.Z with a numeric release version")
+paths = sorted(Path("plugins").glob("*/.claude-plugin/plugin.json"))
+marketplace_path = Path(".claude-plugin/marketplace.json")
+marketplace = json.loads(marketplace_path.read_text())
+if {p.parents[1].name for p in paths} != {e["name"] for e in marketplace["plugins"]}:
+    raise SystemExit("Plugin directories and marketplace entries disagree")
+for path in paths:
+    data = json.loads(path.read_text())
+    data["version"] = version
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+for entry in marketplace["plugins"]:
+    entry["version"] = version
+marketplace_path.write_text(json.dumps(marketplace, indent=2, ensure_ascii=False) + "\n")
+PYTHON
+python3 scripts/sync-codex-plugins.py
 ```
 
-### Step 3: Verify Version Consistency
+Update `CHANGELOG.md` in English, moving released entries out of `[Unreleased]` while
+preserving their history. Inspect the complete diff and stage only intended release
+files; generated output belongs in the same PR as its source.
 
-```bash
-V=$(python3 -c "import json; print(json.load(open('plugins/aws-content-plugin/.claude-plugin/plugin.json'))['version'])")
-V2=$(python3 -c "import json; print(json.load(open('plugins/aws-ops-plugin/.claude-plugin/plugin.json'))['version'])")
-V3=$(python3 -c "import json; print(json.load(open('plugins/kiro-power-converter/.claude-plugin/plugin.json'))['version'])")
-MV=$(python3 -c "import json; vs=set(p['version'] for p in json.load(open('.claude-plugin/marketplace.json'))['plugins']); print(vs.pop() if len(vs)==1 else 'MISMATCH')")
-echo "content=$V ops=$V2 converter=$V3 marketplace=$MV"
-[ "$V" = "$V2" ] && [ "$V" = "$V3" ] && [ "$V" = "$MV" ] && echo "OK: all match" || echo "MISMATCH — fix before proceeding"
-```
-
-### Step 4: Run Tests
+## Validate and review
 
 ```bash
 bash tests/run-all.sh
+python3 scripts/test-plugins.py
+python3 scripts/test-codex-plugins.py
+python3 scripts/sync-codex-plugins.py --check
+python3 scripts/eval-skills.py
+git diff --check
 ```
 
-All 40+ tests must pass before proceeding.
+The validators cover all eight manifests for each host and both marketplaces. Missing
+or stale generated output is a failure, including project-init. For adapter, hook or
+installation changes, also run the checks in
+[Codex runtime verification](../reference/codex-runtime-verification.md).
+Record actual results and resolve required failures; do not rely on a historical test
+count or optional local hook result.
 
-### Step 5: Update CHANGELOG.md
+Commit the reviewed file set, push the release branch and open its PR to `main`.
+Before merge, require AI review of the latest HEAD, no unresolved Critical/Major issues,
+complete configured coverage, separate Codex package CI and all branch protection
+checks. Confirm the reviewed HEAD, target branch and predecessor PR state immediately
+before merging. Missing/failed reviews require repair or retry, never a bypass.
 
-Move items from `[Unreleased]` to `[X.Y.Z] - YYYY-MM-DD`. Add entries in both English and Korean sections.
+## Tag the merged release
 
-### Step 6: Commit and Tag
+On clean, updated `main`, verify that the release metadata is the intended merged
+version and rerun the manifest/freshness checks if the tree changed. Confirm that
+`v${RELEASE_VERSION}` is unused locally and remotely, then tag that exact commit:
 
 ```bash
-git add -A
-git commit -m "chore: bump version to v${NEW_VERSION}"
-git tag "v${NEW_VERSION}"
+git tag "v${RELEASE_VERSION}"
+git push origin "refs/tags/v${RELEASE_VERSION}"
 ```
 
-### Step 7: Push
+Verify the remote tag resolves to the intended merged commit. Publish or verify a
+GitHub Release only if that is part of the authorized release workflow; a pushed tag
+alone does not prove a Release exists.
 
-```bash
-git push origin main --tags
-```
+## Recovery
 
-## Verification
-
-- [ ] `git describe --tags` shows `vX.Y.Z`
-- [ ] `bash tests/run-all.sh` passes
-- [ ] All 4 manifest files show the same version
-- [ ] GitHub release page shows the new tag
-
-## Rollback
-
-If the tag was pushed with incorrect content:
-
-```bash
-# Delete remote tag
-git push origin --delete "v${NEW_VERSION}"
-# Delete local tag
-git tag -d "v${NEW_VERSION}"
-# Fix the issue, then re-tag
-```
+Before publishing, fix release mistakes through the same review and validation path.
+For a published mistake, prefer a corrective version. Do not automatically delete or
+move a public tag; coordinate any explicit retagging decision with affected consumers.

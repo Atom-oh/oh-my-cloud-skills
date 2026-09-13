@@ -5,6 +5,12 @@
 Accepted (2026-09-01) — PoC complete, both gates resolved (see below and
 `poc/adr-020/`).
 
+**Current scope (2026-09-13):** the `:::archify` build path, icon adapter and export
+integration now ship in reactive-presentation; the dated PoC's pending checks are
+historical, not a current test report. Archify is a pinned dependency within an
+existing skill, not an additional marketplace plugin or source skill. The user-level
+`aws-diagram` row below was external context, not part of the shipped inventory.
+
 ## Context
 
 The marketplace already ships four diagram paths, each with a settled seat:

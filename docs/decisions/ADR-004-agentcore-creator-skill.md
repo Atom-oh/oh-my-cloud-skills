@@ -2,7 +2,13 @@
 
 ## Status
 
-Proposed
+Accepted (implementation confirmed 2026-09-13; original acceptance date unrecorded).
+
+**Current scope:** the originally proposed standalone plugin is shipped under
+`plugins/agentcore-creator/` for both hosts. Its source `agentcore-create/SKILL.md`
+now defines five phases, including discovery/design and skill-first development,
+with a direct-conversion entry path. The nine-phase mapping below remains the
+original proposal rationale, not the current procedure or deployment authorization.
 
 ## Context
 

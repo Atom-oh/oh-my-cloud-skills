@@ -4,6 +4,11 @@
 
 Accepted
 
+**Current scope (2026-09-13):** this records the external `kiro-cli-plugin`
+integration. It is not the inventory or a required installation step for this
+marketplace's separate `co-agent` and `kiro` plugins. Those current workflows support
+either host; see [architecture](../architecture.md) and their scoped instructions.
+
 ## Context
 
 Coding with Claude Code, code review and architecture review were limited by depending on a single agent's perspective. In particular, security vulnerability detection, spec-driven development, and AWS infrastructure review (CDK/CloudFormation) all benefit from dedicated, specialized verification. Kiro provides capabilities such as code review, EARS-requirement-based design, and adversarial security review; integrating these into the Claude Code workflow enables multi-perspective deep review.

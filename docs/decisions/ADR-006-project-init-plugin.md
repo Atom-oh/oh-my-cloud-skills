@@ -4,6 +4,11 @@
 
 Accepted (2026-04-20)
 
+**Current scope (2026-09-13):** the eight-command list below records the introduction.
+The upstream mirror now has nine source commands, one skill and one agent, mapped
+to eleven Codex entries. The generated overlay and separately installed project
+templates are distinct from the mirrored source; see [architecture](../architecture.md).
+
 ## Context
 
 The commands for project initialization (generating CLAUDE.md, managing ADRs, syncing documentation) were scattered at the root level, making reuse and maintenance difficult. Multiple projects were repeatedly recreating the same pattern (CLAUDE.md, docs/decisions/, CHANGELOG.md).

@@ -6,6 +6,13 @@ Accepted (2026-07-15) — amends the Kiro roster set by ADR-012 and co-agent's d
 codex model set by PR #112; both decisions' rationale (why a 3rd/4th vendor slot, why
 `--v3` is dropped) is unaffected and remains historical record.
 
+**Current scope (2026-09-13):** this records two independent catalog migrations,
+not a shared model identifier for CI Codex, Kiro and the interactive co-agent.
+ADR-017 subsequently disabled `kiro-glm`; current values belong in each configuration
+file and the runner configuration. [ADR-021](ADR-021-english-docs-current-review-authority.md)
+governs review acceptance and coverage; no roster or runtime change accompanies this
+documentation reconciliation.
+
 ## Context
 
 `gpt-5.5` was deprecated upstream. Two independent call sites in this repo pin a

@@ -21,12 +21,6 @@ exception is removed: a missing adapter is now an error even without a marketpla
 entry. Upstream source discovery remains separate. Complete eight-plugin acceptance
 still requires all packages and global checks; source validation alone is insufficient.
 
-upstream 소스는 버전 필드 외에는 원본을 유지합니다. 별도 `.codex-plugin/` 생성
-결과는 동기화에서 보존하고 다시 생성·검증합니다. project-init의 Codex overlay는
-이 패키지에 포함됩니다. 임시 예외를 제거했으므로 adapter가 없으면 검증 오류이며,
-upstream 소스 탐색 예외와는 별개입니다. 여덟 플러그인 전체 통합 검증은 별도로 완료해야 하며,
-소스 검증만으로 Codex 사용 가능 여부를 판정하지 않습니다.
-
 Previously, 12 files carried local divergence (model tier adjustments, superpowers
 routing hints, GitHub-metrics badges, a code-review recall guide, writing-style-guide
 references, etc.), and an exclusion list had to be maintained at every sync. That cost

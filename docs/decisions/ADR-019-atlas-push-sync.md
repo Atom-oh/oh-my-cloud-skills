@@ -4,6 +4,14 @@
 
 Accepted (2026-08-19)
 
+**Current scope (2026-09-13):** this records the original Claude hook path and its
+timing rationale. Generated Codex plugin hooks adapt the same source behavior,
+subject to host event support and trust; direct terminal pushes still bypass it.
+Automatic repair remains Claude-backed, even from Codex. On-demand Codex repair is
+documented in `scripts/codex/atlas.md`; installation does not authorize a provider
+switch. Opt-in/fail-open sync does not satisfy mandatory PR review or coverage
+([ADR-021](ADR-021-english-docs-current-review-authority.md)).
+
 ## Context
 
 The `atlas` plugin (the marketplace's 8th) keeps per-topic LLM-consumed documentation

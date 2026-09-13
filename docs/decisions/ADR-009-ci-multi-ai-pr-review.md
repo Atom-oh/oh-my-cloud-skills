@@ -2,7 +2,16 @@
 
 ## Status
 
-Accepted (2026-06-17)
+Accepted (2026-06-17); implementation details amended by ADR-011/013/016/017 and
+[ADR-021](ADR-021-english-docs-current-review-authority.md).
+
+**Current scope (2026-09-13):** the multi-AI panel, trusted-base execution and advisory
+peer findings remain. The roster, chair, timeout and diff-delivery details below are
+historical. Acceptance now requires semantic final-Issues validation, no unresolved
+Critical/Major findings and complete configured coverage for the latest HEAD, plus
+separate PR-head Codex package CI and required checks. A verdict token alone is
+insufficient. Read `scripts/pr-review/` and the current CI runbook for live values;
+the dated residency discussion does not waive current security requirements.
 
 ## Context
 

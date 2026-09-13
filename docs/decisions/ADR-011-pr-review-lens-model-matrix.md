@@ -2,7 +2,16 @@
 
 ## Status
 
-Accepted (2026-07-05)
+Accepted (2026-07-05); partially superseded by ADR-013 (Kiro tool grant), ADR-016
+(matrix/timeout design), and [ADR-021](ADR-021-english-docs-current-review-authority.md)
+(current review acceptance).
+
+**Current scope (2026-09-13):** deterministic prechecks and trusted-base review remain.
+The 16-cell matrix, `fs_read` grant, timeout values and coverage rules below describe
+the 2026-07-05 implementation. Current CI uses one full-scope prompt, the configured
+roster, semantic Critical/Major validation and complete configured coverage; separate
+Codex CI checks the PR HEAD. The appendix is dated review evidence, not instructions
+to restore old behavior or an exception to current security gates.
 
 ## Context
 

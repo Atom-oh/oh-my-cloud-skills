@@ -1,259 +1,103 @@
-# Historical CI implementation notes
+# Required PR review
 
-> Historical context only. Current operator instructions are in [the runbook](ci-pr-review-runbook.md) and [ADR-021](decisions/ADR-021-english-docs-current-review-authority.md). Old regions, model IDs, lexical verdicts and partial-coverage rules below are not the current contract.
+This repository has two separate checks. Both must pass for the latest PR HEAD
+before an authorized merge. The workflow files and validators are executable truth
+about their implementation; ADR-021 records the current review/documentation policy.
 
-PRs in this repo go through a two-stage gate on the self-hosted runner
-(`oh-my-cloud-skills-claude-arm`): **L1** (manifest/version consistency — a deterministic
-script, no AI calls) → **3-model panel** (each model reviews the full diff with no scope
-restriction → Claude chairs and synthesizes; as of the default configuration — `kiro-glm`
-is disabled by default due to its false-positive rate, see ADR-017).
-(design: `docs/superpowers/specs/2026-07-05-pr-review-hybrid-lens-design.md`, ADR-011;
-the lens×model matrix was reversed by ADR-016 — a 4-model×4-lens grid of 16 cells
-quadrupled the chair's input and exhausted the 600s timeout (observed in #141/#146: both
-models hit exactly 600s), and the lens checklists were unnecessary for frontier models.)
+| Check | Execution boundary | Required result |
+|---|---|---|
+| AI Code Review | Trusted-base code on the review runner; PR content is data | Complete configured peer coverage and no active Critical/Major |
+| Codex package validation | Exact PR HEAD on a GitHub-hosted runner, read-only repository permissions, no provider secrets | All generated artifacts and manifest/inventory validation pass |
 
-## L1 — Deterministic pre-check (before any AI call, zero cost)
-- `scripts/pr-review/precheck.sh` extracts the PR head's file tree **as data only**
-  (no execution) via `git archive` → validates it against `scripts/test-plugins.py --root
-  <extracted tree>` **and `scripts/test-codex-plugins.py --root <extracted tree>`** run
-  from the base (trusted) checkout (both must pass for L1 to pass).
-- What's checked: `plugin.json`/`marketplace.json` JSON validity, dangling agent/skill/
-  command references, plugin.json↔marketplace.json version consistency
-  (`test-plugins.py`) + `.codex-plugin`/`.agents` manifest validity
-  (`test-codex-plugins.py`).
-- **On failure, the AI panel is not invoked at all** — an immediate `VERDICT: FAIL` —
-  because AI cost shouldn't be spent on problems that are deterministically verifiable.
-  Failure output also passes through `scrub_secrets()` before being posted as a PR comment
-  (the "Write L1 failure as review" step in `.github/workflows/pr-review.yml`) — the
-  validator's error messages themselves contain no credentials, but this applies the same
-  defensive line consistently with the matrix.
-- `precheck.sh` removes symlinks from the extracted PR tree before validation
-  (`find "$TREE" -type l -delete`) — defense-in-depth that removes any chance for the
-  validator to follow a path outside the tree.
+These are merge-procedure requirements. Branch-protection registration is external
+GitHub configuration; do not infer its current state from this document.
 
-## 3-Model panel (runs only if L1 passes)
-- **Cell time budget**: `PANEL_TIMEOUT × PANEL_RETRIES` is one shared deadline
-  (defaults: **300 × 3 = 900 seconds**). A long first call can use all 900 seconds;
-  fast failures may retry up to three total attempts, each receiving only the
-  remaining time. Inputs must be positive decimal integers without leading zeros,
-  and their product must not exceed 2,147,483,647 seconds. Both launchers add
-  `timeout --kill-after=5s`, allowing at most five extra seconds for termination.
-  Default panel-plus-chair timeout allowances total **1,655 seconds**
-  (900 + 5 + 450 + 300), before workflow setup/IO overhead.
-  **셀 예산**은 시도마다 초기화하지 않는 총 900초이며, 빠른 실패만 남은 시간으로
-  재시도합니다. 종료 신호를 무시하는 프로세스는 최대 5초 후 강제 종료합니다.
-- **Panel**: 3 models (Codex `openai.gpt-5.6-sol` + Kiro `claude-opus-5`/`gpt-5.6-terra`),
-  each independently reviewing the full diff with no scope restriction (as of the default
-  configuration — matrix membership is a config value, see the "Configuration" section
-  below), all running in parallel (`&`+`wait`) — wall clock ≈ the single slowest cell (not
-  a sequential sum).
-  (Before ADR-016, each model was split across 4 lenses for up to 16 cells —
-  `run-panel.sh` is structured to automatically scale the cell count to the number of
-  `*.txt` files placed in the lens directory, so now that `.github/workflows/
-  pr-review.yml` creates only one file (`FULL.txt`), the cell count equals the number of
-  active models, and `run-panel.sh` itself is unchanged.) `kiro-glm` (`glm-5`) is disabled
-  by default due to its false-positive rate — following the AWS-Demo-Platform ADR-015
-  precedent, see this repo's ADR-017. (Rationale for the `kimi-k2.5` replacement: in
-  production CI, `kiro-kimi` degraded (no response across all lenses) 2 out of 2 times,
-  and 7 unsupported findings (including hallucinations) in PR reviews came uniquely from
-  this model — `kiro-glm`/`kiro-opus`/`codex` had zero in the same investigation. An
-  attempt to switch to `gpt-5.5` was directly reproduced as being rejected with
-  `INVALID_MODEL_ID` (HTTP 400) via `kiro-cli --v3 chat` (initially substituted with
-  `minimax-m2.5`) → it was then discovered that **the `--v3` flag itself was the cause**
-  (directly reproduced and confirmed that `kiro-cli chat` without `--v3` responds
-  normally for gpt-5.5/kimi-k2.5/minimax-m2.5/glm-5/claude-opus-4.8 — and that `--mode
-  default`/`--trust-tools=fs_read` (the flag used at the time — changed to
-  `--trust-tools=` by ADR-013, below)/`--no-interactive`/`--wrap never` behave identically
-  regardless of `--v3`) → settled on `gpt-5.5` with `--v3` dropped (same model as codex,
-  but a separate harness/tool-access path, so review content diverges). Decision record:
-  ADR-012.
-- **Kiro diff delivery: from an `fs_read` path reference → directly embedding a capped
-  argv (ADR-013)** — Kiro cells receive `--trust-tools=` (no tools granted) instead of
-  `--trust-tools=fs_read`, and the diff is capped by `KIRO_DIFF_CAP` (default 100000B) and
-  embedded directly in argv. Reason: trusting `fs_read` with an untrusted PR diff could let
-  diff-injection induce an absolute-path read, and that value could then be **exposed in a
-  public PR comment** via the chair's synthesis — this was judged to exceed the "accepted
-  residual risk" level stated by ADR-011, in the combination of a public repo +
-  `pull_request_target` (discovered during review of claude-code-usage-dashboard PR #4). A
-  diff exceeding the cap is delivered to the Kiro cell only as a truncated prefix, and is
-  signaled via `::warning::` + `$WORK/kiro-diff-truncated.flag`, shown as a banner in the
-  review body. The acceptance gate returns ERROR for incomplete required Kiro input,
-  even if codex saw the full diff or the chair wrote PASS.
-- **Antigravity (`agy`) is not in the matrix** — it's OAuth interactive-login-only, so it
-  cannot authenticate in headless CI (ADR-010).
-- **Chair**: Claude Fable 5 (`us.anthropic.claude-fable-5`) synthesizes the findings from
-  the 3 cells into a single review + `VERDICT: PASS|FAIL`. The legacy lexical parser
-  retains last-match compatibility; acceptance instead validates the final Issues
-  with `plugins/co-agent/skills/pr-autofix/scripts/review_gate.py`.
-  The primary attempt has `Read Grep Glob` and is wrapped in a
-  wall-clock timeout (`CHAIR_TIMEOUT`, default **450 seconds**). If the CLI exits nonzero
-  or the semantic validator returns ERROR (for example, empty output or malformed Issues),
-  it **falls back once to
-  Claude Opus 5 (`CHAIR_FALLBACK_MODEL`), this time granting no file tools at all**
-  (`CHAIR_FALLBACK_TIMEOUT`, default **300 seconds**) — since the diff + panel reviews are
-  already fully present on stdin, the fallback is self-contained, and with no tools it
-  cannot crawl the repo tree. If both attempts fail, this is a CI infrastructure problem
-  rather than a review finding, so it signals `chair_error=1`, letting the workflow gate
-  display "ERROR" precisely (rather than "BLOCKED — CRITICAL/MAJOR") in the comment. The
-  chair label in the comment header reflects the model actually used.
-  (Reason for lowering from 600s→300s/120s: the old single 600s attempt combined the
-  instruction "have the chair read CLAUDE.md/AGENTS.md directly" with granting `Read Grep
-  Glob`, which led to a repo-tree crawl on large diffs, and #141/#146 both timed out at
-  exactly 600s — removing that Read instruction from the prompt and stripping tools
-  entirely from the fallback closed the root cause, ADR-016.)
-- **Consistency and completeness**: final `## Issues` has `### CRITICAL`,
-  `### MAJOR`, and `### MINOR` sections. Each contains active findings or exactly
-  a standalone empty marker (`None`, `None.`, `없음`, or `없음.`), without extra prose.
-  Active Critical/Major findings always block, even beside `VERDICT: PASS`;
-  dismissed claims belong in a separate section. Fenced code, quotations, suggestions,
-  and memory references are not active findings. Missing/ambiguous structure is ERROR.
-  Every enabled model/lens pair in `expected.txt` must complete; missing responses,
-  diff truncation, and capped panel output prevent PASS. This is a consistency check,
-  not a vote or proof that the models found every defect.
-  Inspect the cause before retrying: identical over-limit input will fail again.
-  Split/reduce the PR or request more concise panel output before another review;
-  the existing caps remain in force.
-- **Current review visibility**: a new run updates the bot-owned canonical comment
-  to PENDING for its event HEAD, replacing old status text while preserving GitHub
-  edit history. Publication rechecks head/ref and refuses to overwrite a newer
-  run/attempt. CLI, validation, or comment-build failure cannot republish an old PASS.
-- **Reusable workflow**: copy the PRAF workflow together with `scripts/review_gate.py`
-  to `.github/scripts/pr-review-gate.py`, as described in the skill's CI setup.
-  The runner requires `python3` (standard library only) as well as Claude CLI.
-  Its structured JSON findings use the same validator; dismissed claims stay separate.
-- **Data residency**: paths differ by matrix member —
-  - **Codex / Claude (chair)**: Amazon Bedrock **us-east-1** (`openai.gpt-5.6-sol` is
-    bedrock-mantle In-Region only, `fable-5` is a US inference profile), AWS auth via EKS
-    Pod Identity (SigV4).
-  - **Kiro**: an **external API-key-based service** — the PR diff is sent externally (as
-    of the default configuration, 2 of the 3 cells are Kiro; matrix membership is a
-    config value, so the actual cell count may differ). Not In-Region.
-  - **Sensitive-diff policy**: for changes where external transmission is inappropriate,
-    disable the external panel (Kiro) and review with only the Bedrock In-Region member
-    (Codex). **See the "How this is actually applied in CI" subsection of the
-    "Configuration" section below for the actual procedure to turn this off** — simply
-    writing `.claude/pr-review.local.json` into the workspace does NOT apply it (the
-    checkout wipes it every run + `pull_request_target` checks out the base ref).
-    (Since this is a public marketplace, the diff becomes public on merge anyway →
-    currently an accepted risk; a private fork would need a mandatory skip gate — ADR-009.)
+## AI review flow
 
-## Configuration — Matrix membership (`scripts/pr-review/panel_config.py`)
-- Which cells (codex/kiro-opus/kiro-gpt; `kiro-glm` disabled by default due to its
-  false-positive rate — see ADR-017) participate in the matrix comes from configuration,
-  not hardcoding in `scripts/pr-review/run-panel.sh` — reusing the same layering as the
-  co-agent plugin's `co_agent_config.py` (defaults.json + gitignored local override):
-  `scripts/pr-review/pr-review.defaults.json` (committed) +
-  `.claude/pr-review.local.json` (gitignored, repo-local override). Since pr-review is
-  repo-specific configuration that only runs in CI, there is no co-agent-style
-  user-scope layer (`~/.claude/co-agent.user.json`) — only these two layers.
-- `python3 scripts/pr-review/panel_config.py show --root .` — shows the effective
-  configuration table.
-  `python3 scripts/pr-review/panel_config.py set <cell> enabled <true|false> --root .` —
-  add or remove a cell from the matrix without code changes (e.g. turning off both Kiro
-  cells per the "sensitive-diff policy" above, or removing just one persistently flaky
-  model). `python3 scripts/pr-review/panel_config.py set <cell> model <name> --root .` —
-  Kiro-\* only (codex is pinned via `~/.codex/config.toml`, so it has no `model` key).
-  (Uses the same full-path + `--root .` notation as the runbook, for uniform copy-paste.)
-- Matrix membership (models) is a config value. Lenses no longer exist as of ADR-016 —
-  each model reviews the full diff with no scope restriction.
-- **How this is actually applied in CI (important — simply writing
-  `.claude/pr-review.local.json` into the workspace NEVER applies it):**
-  - **Path A — permanent change (verified, always works)**: edit
-    `scripts/pr-review/pr-review.defaults.json` directly and commit it. This applies
-    starting with the **next** PR merged into `main` (since `pull_request_target` checks
-    out the base ref, this doesn't apply to the review of the PR carrying the change
-    itself — the same constraint applied when switching the Kiro roster from
-    `kimi-k2.5`→`gpt-5.5`). Suited to lasting configuration changes like "remove one
-    persistently flaky model."
-  - **Path B — a temporary, one-PR-only change (untested — requires runner
-    infrastructure verification)**: `.claude/pr-review.local.json` is gitignored, so
-    committing it is meaningless, and if placed inside the workspace,
-    `actions/checkout@v4`'s default behavior (`clean: true` → `git clean -ffdx`) wipes it
-    every run. If the self-hosted runner this workflow runs on has a **path outside the
-    git workspace that persists across jobs** (e.g. a separately mounted volume — **it is
-    not currently confirmed whether such a path exists/persists on this repo's current
-    runner**), point that path (e.g. `/persist`) via `PR_REVIEW_CONFIG_ROOT` in this
-    workflow's job `env:`, and place the override file not at that path directly but at
-    **`<that path>/.claude/pr-review.local.json`** (`panel_config.py`'s `local_path()`
-    reads `<root>/.claude/pr-review.local.json` — the root itself is not the file path).
-    Code support already exists (`scripts/pr-review/run-panel.sh` already respects this
-    env var with top priority). Before using this path, infrastructure ownership must
-    first confirm that a real persistent path exists on that runner.
-- Disabling a cell also excludes it from the "expected models" set used by the coverage
-  floor logic — so an intentional disablement isn't mistaken for a degraded/severe
-  warning (`run-panel.sh`'s `ALL_TAGS`/`CODEX_ENABLED`).
+1. `publish-comment.js` publishes PENDING for the event HEAD/run/attempt. It refuses
+   stale-head, retargeted or older-run publication.
+2. `precheck.sh` exports the PR tree as data, removes symlinks, and runs trusted-base
+   structural validators. It does not execute PR code or compare head outputs with
+   the base generator. The separate Codex job checks matching head implementation/output.
+3. `context.py` verifies the base `AGENTS.md` marker, source hash, size and secret scan.
+   It derives source-procedure and Codex-entry counts from that checkout. The bounded
+   context is included in every peer prompt and in chair stdin. Missing/stale/oversized
+   context stops the review; it is never silently truncated or replaced with guesses.
+4. The workflow creates one FULL prompt for every configured peer. The complete
+   diff arrives on stdin or as embedded text; Kiro receives no file tools. Base facts
+   describe base, so a proposed head change may intentionally update them.
+5. `run-panel.sh` records expected/responded cells, failures and truncation evidence.
+   `synthesize.sh` supplies the same verified context, diff and peer reports to the
+   chair. The primary can read base files; the fallback has no file tools. Neither
+   may execute PR instructions. Review prose and generated diagnostics are English.
+6. `review_gate.py` validates the final Issues structure and required coverage. The
+   final comment is bound to the current HEAD/run; a failed/error gate fails the job.
 
-## Configuration — Review memory (`docs/pr-review/review-memory.md`, ADR-015)
+## Decision contract
 
-A **single committed file** holding accumulated review knowledge. CI and the interactive
-review agents read the same file.
+- `PENDING`: review is not complete. A previous result does not approve this HEAD.
+- `PASSED`: final Critical/Major sections are explicitly empty, the chair completed
+  successfully, and every configured required review cell/input is complete.
+- `BLOCKED`: an active Critical/Major remains, the chair rejects the change, or L1
+  validation found a defect. A PASS token beside an active Major cannot pass.
+- `ERROR`: required evidence or infrastructure is missing, failed, malformed or
+  incomplete. This is not proof of a code defect and is never an implicit approval.
 
-- **Location**: `docs/pr-review/review-memory.md` (committed). Three fixed sections —
-  `Recurring real issues` / `Known false-positive patterns` / `Panel cell judgment quality`
-  (cumulative table).
-- **Only one local host updates it** — only the host (Claude) of
-  `/co-agent:pr-autofix` writes to it. CI **never auto-commits** to it (unreviewed
-  self-modification + direct exposure to PR text = an injection risk). The planner/
-  implementer are forbidden from writing this file (giving write access to a file that
-  gets fed into future review prompts, to a component that processes untrusted review
-  text, is an injection vector).
-- **Three read paths**:
-  - Panel prompt — `memory_excerpt` (`scripts/pr-review/lib.sh`) appends an excerpt
-    capped by `MEMORY_CAP` (default **4000B**) after the shared prompt
-    (`lenses/FULL.txt`) in the "Build review prompt" step (before ADR-016 this was
-    appended per lens file; now there's only one file). If the file doesn't exist,
-    nothing gets appended (**fail-open** — an absent memory file doesn't block review).
-    The `Panel cell judgment quality` table is **excluded** from the excerpt (telling a
-    cell "you're not trusted" is noise, not signal).  The cap is small at 4000B because
-    Kiro cells carry the prompt+diff in argv and share the kernel argv budget with
-    `KIRO_DIFF_CAP` (100KB).
-  - Chair — `synthesize.sh` inlines an excerpt capped by `CHAIR_MEMORY_CAP` (default
-    8000B) directly on **stdin** (ADR-016: since `Read` itself isn't available on the
-    chair's fallback attempt, a path-based instruction wouldn't work there — always using
-    stdin makes both the primary and fallback attempts self-contained). The chair
-    dismisses any finding that matches a known false positive if the diff doesn't support
-    it, and publishes two sections — `### 🧠 MEMORY CANDIDATES` +
-    `### PANEL QUALITY` (fixed format `PANEL-QUALITY: <cell>=<unsupported>/<total>`) —
-    **before** the VERDICT line (both are omitted if there's nothing to report).
-  - Interactive — `gate-chair` and `content-review-agent` read the same file at startup,
-    and **propose** (never directly write) promoting any repo-wide-applicable item into
-    that file.
-- **Same latency characteristics as roster changes** — since `pull_request_target` checks
-  out the base ref, a memory update takes effect only starting with the **next** PR merged
-  into `main`. It does not apply to the review of the PR carrying the change itself (the
-  same constraint as "Path A" above). Conversely, this means the PR head cannot manipulate
-  the memory that will be used for its own review — it is not an injection surface.
-- **Roster exclusion is advisory only** — when a threshold is exceeded, the procedure is
-  in the "When a panel cell's judgment quality crosses the threshold" section of
-  `docs/ci-pr-review-runbook.md`. Automatic disablement was not adopted, since it risks a
-  coverage collapse → fail-closed situation (ADR-015).
+Final Markdown has `## Issues` with `### CRITICAL`, `### MAJOR`, `### MINOR` and one
+unquoted terminal `VERDICT: PASS` or `VERDICT: FAIL`. Empty sections use `None.`;
+findings are lists. Optional INFO follows the same section-body grammar. Legacy
+Korean empty markers remain parser compatibility, not the language for new reviews.
+Quoted code, dismissed claims and historical observations are separate from active Issues.
 
-## Files
-- `.github/workflows/pr-review.yml` — `pull_request_target` (base-ref checkout, diff is
-  data), L1 gate → (on pass) build the review prompt (shared across models) → panel
-  fan-out → synthesize → gate → comment upsert.
-- `scripts/pr-review/precheck.sh` — L1: extracts the PR head as data via `git archive`,
-  then deterministically validates it with `test-plugins.py --root` +
-  `test-codex-plugins.py --root`.
-- `scripts/pr-review/{lib,run-panel,synthesize}.sh` — runs the matrix in parallel
-  (model×lens double loop) + chair synthesis. A failed cell is skipped gracefully.
-  Diagnostic logs default to **redaction (stripping auth/provider/prompt/diff fragments) +
-  length limiting** (raw stderr is never exposed in comments/logs). `lib.sh`'s
-  `scrub_secrets()` regex-replaces AWS/GitHub/Slack/OpenAI·Anthropic/Google key formats +
-  JWTs (shaped like EKS Pod Identity tokens) in each cell's output before handing it to
-  the chair — a general last line of defense (e.g. for the case where a credential-like
-  value happens to leak into cell output through some other path); the Kiro `fs_read`
-  residual leak path was structurally closed by removing `fs_read` itself (ADR-013,
-  amends ADR-011).
-- `scripts/pr-review/panel_config.py`, `scripts/pr-review/pr-review.defaults.json`
-  (committed defaults), `.claude/pr-review.local.json` (gitignored, repo-local override)
-  — the two-layer configuration for matrix membership. See the "Configuration" section
-  above for detailed usage.
-- `scripts/test-plugins.py --root <path>`, `scripts/test-codex-plugins.py --root <path>`
-  — an option that lets the manifest validators run against an arbitrary tree (L1-only;
-  by default they validate this repo itself).
+A claim needs a concrete trigger, affected path and verified consequence. Shared or
+previously shipped code is not exempt if the PR exposes a real defect. Source skills,
+commands, agents, Codex entries and CI cells are different populations. An absent diff
+hunk does not prove a base file is missing. A reviewer without evidence should label
+an assumption unverified rather than claim it reproduced a failure.
 
-## Authentication
-- Kiro: `ai-panel-keys` ExternalSecret (`<secret-path>`) → runner env (external API key)
-- Codex/Claude: EKS Pod Identity (`<ci-runner-role>`, Bedrock) SigV4 — requires a Pod
-  Identity Association
+## Configuration and bounds
+
+`pr-review.defaults.json` defines the committed roster; `panel_config.py` validates it.
+The local override is `.claude/pr-review.local.json`, not a co-agent user-scope file.
+It is untracked local configuration and is not delivered to the clean CI checkout;
+CI roster changes use the committed defaults.
+The production workflow has one FULL lens; helper tests may use multiple lenses.
+Do not infer active membership from old ADR examples or a fixed model-count label.
+Codex's model comes from runner configuration; Kiro model IDs come from the panel
+configuration. Provider catalogs are independent and their strings need not match.
+
+The workflow's region/endpoint and chair configuration, `run-panel.sh` deadline/input
+limits, and `synthesize.sh` output/timeout limits are authoritative. Do not restate
+an old regional or model guarantee as current. Inspect configured identities and
+masked errors, never credential values.
+
+The existing diff, output and deadline caps remain enforced. Exceeding one requires
+reducing/splitting input or diagnosing the failed provider; never raise/disable a cap
+merely to turn incomplete coverage green. Every enabled required reviewer must finish.
+Intentional roster changes need owner-approved configuration review; do not drop Kiro
+Opus or another cell just to avoid a finding. A single remaining vendor cannot satisfy
+required coverage when a configured vendor fails. Intentionally disabled cells are
+excluded from the expected roster; the helper does not independently enforce a
+minimum vendor count for every possible configuration.
+
+## Memory and history
+
+`docs/pr-review/review-memory.md` is a compact, optional evidence seed shared by peers
+and chair. It is inlined, not a request for a repository-wide document crawl. The
+quality table is excluded. Missing optional memory is allowed; missing required
+review evidence is not. The current host verifies and updates memory; planner or
+implementer output never edits its own review instructions.
+
+Old detailed memory and superseded ADR sections remain historical evidence. They
+cannot override current configuration, acceptance rules or verified defects. Base
+context/config changes take effect after merge, in subsequent review runs; a PR
+cannot make its own privileged review execute its new scripts.
+
+## References
+
+- [AI workflow](../.github/workflows/pr-review.yml)
+- [Codex validation](../.github/workflows/codex-validation.yml)
+- [Panel configuration](../scripts/pr-review/pr-review.defaults.json)
+- [Semantic gate](../plugins/co-agent/skills/pr-autofix/scripts/review_gate.py)
+- [Operational runbook](ci-pr-review-runbook.md)
+- [ADR-021](decisions/ADR-021-english-docs-current-review-authority.md)

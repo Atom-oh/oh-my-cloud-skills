@@ -10,6 +10,9 @@ docs/superpowers/
 ```
 
 ## Conventions
+- Maintain explanatory prose in English. Translation may remove duplicate language
+  sections while preserving the original date, decision, rationale and evidence.
+  User-language examples, trigger strings and fixtures retain their intended literals.
 - **Filename**: `YYYY-MM-DD-feature-slug.md` (date = when the spec/plan was written).
   (Legacy exception: `plans/remaining-demos-docs-overhaul.md` predates this convention —
   leave as-is; apply the dated form to new files.)
@@ -17,6 +20,10 @@ docs/superpowers/
 - These are **historical working artifacts**, not living docs — they capture intent at a
   point in time. Don't retro-edit them to match later reality; the durable record is the
   ADR (`../decisions/`), the code, and `../architecture.md`.
+- A plan is not current policy or proof of implementation. Use current instructions
+  and [ADR-021](../decisions/ADR-021-english-docs-current-review-authority.md) for review
+  authority; source evidence does not excuse a policy violation. Label later status
+  notes with their date instead of silently rewriting past intent.
 
 ## Relationship to the rest of the repo
 - A spec/plan here that resulted in a durable decision should have an **ADR** in
