@@ -3,7 +3,8 @@
 # Byte freshness belongs to the isolated head job. Args: base repo, PR number, workdir.
 set -euo pipefail
 BASE_DIR="$1"; PR_NUMBER="$2"; WORK="$3"
-# Empty arguments can turn a workdir removal into a root-level path; reject them.
+# Empty WORK would make the removal target /pr-tree. The other guards fail fast
+# on missing configuration before fetch; they do not control the removal path.
 [ -n "$BASE_DIR" ] || { echo "precheck.sh: base_repo_dir(\$1) must not be empty" >&2; exit 1; }
 [ -n "$PR_NUMBER" ] || { echo "precheck.sh: pr_number(\$2) must not be empty" >&2; exit 1; }
 [ -n "$WORK" ] || { echo "precheck.sh: workdir(\$3) must not be empty" >&2; exit 1; }

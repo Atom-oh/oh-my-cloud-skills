@@ -24,6 +24,7 @@ record_result() {
 
 # Diagnostics are defense in depth, not a read sandbox. Scrub credentials before
 # clipping, use a file to avoid pipefail/SIGPIPE, then flatten annotation newlines.
+# ADR-011 records residual risk; ADR-013 closes the prior Kiro fs_read grant.
 chair_err_excerpt() {  # $1=stderr file, $2=byte cap (default 500)
   local f="$1" cap="${2:-500}" tmp
   [ -f "$f" ] || return 0
@@ -34,8 +35,9 @@ chair_err_excerpt() {  # $1=stderr file, $2=byte cap (default 500)
 }
 
 # Optional memory may be absent. Exclude quality rankings from reviewer input.
-# Support the historical Korean heading as input data. File-based clipping avoids
-# SIGPIPE; mark a clipped optional excerpt rather than pretending it is complete.
+# Match "Panel-cell judgment quality" and its historical Korean input alias.
+# File-based clipping avoids SIGPIPE; an ASCII marker remains intact even when
+# byte clipping splits a UTF-8 character at the end of the optional excerpt.
 memory_excerpt() {  # $1=memory file, $2=byte cap (default 4000)
   local f="$1" cap="${2:-4000}" tmp size
   [ -f "$f" ] || return 0

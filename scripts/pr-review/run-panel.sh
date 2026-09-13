@@ -33,7 +33,7 @@ rm -f "$WORK/coverage-severe.flag" "$WORK/kiro-diff-truncated.flag"
 # error is not an intentionally disabled cell; check subprocess status explicitly.
 CFG="$DIR/panel_config.py"
 # Anchor configuration at this repository, with the documented test override.
-# An arbitrary caller cwd must not silently ignore local review configuration.
+# An arbitrary caller cwd must not silently ignore .claude/pr-review.local.json.
 REPO_ROOT="${PR_REVIEW_CONFIG_ROOT:-$DIR/../..}"
 if ! KIRO_CELLS_RAW="$(python3 "$CFG" kiro-cells --root "$REPO_ROOT")"; then
   echo "run-panel.sh: panel_config.py kiro-cells failed (malformed/wrong-shape config?) — refusing to run with an unverified roster" >&2
@@ -42,6 +42,7 @@ fi
 KIRO_MODELS=()
 [ -n "$KIRO_CELLS_RAW" ] && mapfile -t KIRO_MODELS <<< "$KIRO_CELLS_RAW"
 
+# Configuration status: 0 enabled, 1 disabled, other values are errors.
 python3 "$CFG" codex-enabled --root "$REPO_ROOT"; CODEX_RC=$?
 case "$CODEX_RC" in
   0) CODEX_ENABLED=1 ;;
@@ -97,8 +98,8 @@ launch_codex() {
   timeout --kill-after=5s "$limit" "$@"
 }
 
-# Kiro runs in isolated empty directories with no tools and an explicit agent file.
-# This prevents automatic cwd context and inherited tools from changing its scope.
+# Empty per-cell cwd/HOME prevents inherited context and concurrent Kiro state races.
+# --trust-tools= separately disables tools; kiro_env restricts inherited variables.
 KIRO_CWD_BASE="$WORK/kiro-cwd"
 [ -L "$KIRO_CWD_BASE" ] && { echo "run-panel.sh: \$KIRO_CWD_BASE is a symlink, refusing (TOCTOU guard)" >&2; exit 1; }
 rm -rf "$KIRO_CWD_BASE"; mkdir -p "$KIRO_CWD_BASE"
@@ -114,6 +115,7 @@ launch_kiro() {
 
 # Kiro ignores stdin; embed bounded diff text, never ask it to read a file.
 # The cap leaves room for prompt/context under the Linux single-argument limit.
+# No-tools depends on empty --trust-tools= semantics; recheck on Kiro CLI upgrades.
 KIRO_DIFF_CAP="${KIRO_DIFF_CAP:-100000}"
 KIRO_DIFF_TEXT="$(head -c "$KIRO_DIFF_CAP" "$DIFF")"
 # Record any truncated input; the semantic gate rejects incomplete required review.
@@ -146,7 +148,7 @@ for lens_file in "${LENS_FILES[@]}"; do
   done
 done
 
-# Agy is not a CI roster cell. Local co-agent peer support is a separate contract.
+# Agy's interactive OAuth path is not a CI cell; local peer support is separate.
 wait
 
 # Reuse the expected tags already computed from validated configuration.
@@ -173,6 +175,7 @@ for model_tag in "${ALL_TAGS[@]}"; do
 done
 
 # Record loss of independent vendor coverage; the semantic gate rejects it.
+# Count vendor loss (Codex or all Kiro cells), not a generic degraded-cell threshold.
 CODEX_DEAD=0
 if [ "$CODEX_ENABLED" = 1 ] && grep -qx "codex" "$WORK/degraded-models.txt" 2>/dev/null; then
   CODEX_DEAD=1
