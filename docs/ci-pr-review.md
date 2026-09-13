@@ -144,6 +144,12 @@ them. Service throttles retain the existing bounded recovery. Quoted/fenced diff
 examples are not provider failures. These rules apply to Codex and Claude as well
 as Kiro; no retry, time or byte limit is increased.
 
+Startup remains one fail-closed attempt per configured Kiro model within its
+existing timeout; transient startup failure requires a later review run. Bounded
+transient retry/fallback applies to review cells and chairs, not startup. This
+keeps the existing startup request count and execution budgets unchanged.
+
+
 ## Provider data boundary
 
 Configured CLI providers receive the PR diff and bounded review context. ADR-009

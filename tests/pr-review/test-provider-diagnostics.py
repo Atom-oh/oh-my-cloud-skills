@@ -14,6 +14,9 @@ QUOTA = "Error: insufficient credits for this request"
 OVERAGE = "ServiceQuotaExceededException: You have reached the limit for overages."
 TRANSIENT = "Error: ThrottlingException: temporarily unavailable"
 ECHO = "+ " + MODEL_ERROR + "\n> " + FALLBACK + "\n```text\n" + QUOTA + "\n```\nExample diagnostic: " + MODEL_ERROR
+DIFF_CONTEXT = "diff --git a/README.md b/README.md\n@@ -1 +1 @@\n " + QUOTA + "\n"
+DIFF_FENCE = "diff --git a/README.md b/README.md\n@@ -1 +1 @@\n-```text\n+```bash\n ```\n"
+ECHO += "\n" + DIFF_CONTEXT
 REPORT = "## Summary\nComplete review.\n## Issues\n### CRITICAL\nNone.\n### MAJOR\nNone.\n### MINOR\nNone.\n## Verdict\nVERDICT: PASS\n"
 CLI = r'''#!/usr/bin/env python3
 import json, os, pathlib, re, sys
@@ -102,7 +105,7 @@ class ProviderDiagnostics(unittest.TestCase):
 
     def test_terminal_panel_errors_cannot_be_overwritten_by_retry(self):
         for tag in ('codex','kiro-opus'):
-            for diagnostic in (MODEL_ERROR,FALLBACK,QUOTA,OVERAGE,TRANSIENT+"\n"+MODEL_ERROR):
+            for diagnostic in (MODEL_ERROR,FALLBACK,QUOTA,OVERAGE,TRANSIENT+"\n"+MODEL_ERROR,DIFF_FENCE+MODEL_ERROR):
                 with self.subTest(tag=tag,diagnostic=diagnostic):
                     root=self.panel({tag:diagnostic})
                     self.assertEqual((root/(tag+'.count')).read_text(),'1')
@@ -110,7 +113,7 @@ class ProviderDiagnostics(unittest.TestCase):
                     self.assertTrue((root/'work/coverage-severe.flag').exists())
 
     def test_preflight_model_errors_withhold_kiro_input(self):
-        for diagnostic in (MODEL_ERROR,FALLBACK,QUOTA,OVERAGE,TRANSIENT+"\n"+MODEL_ERROR):
+        for diagnostic in (MODEL_ERROR,FALLBACK,QUOTA,OVERAGE,TRANSIENT+"\n"+MODEL_ERROR,DIFF_FENCE+MODEL_ERROR):
             with self.subTest(diagnostic=diagnostic):
                 root=self.panel({'preflight-kiro-opus':diagnostic})
                 self.assertFalse((root/'kiro-opus.count').exists())
@@ -134,7 +137,7 @@ class ProviderDiagnostics(unittest.TestCase):
                 self.assertFalse((root/'work/coverage-severe.flag').exists())
 
     def test_terminal_chair_error_cannot_accept_pass_or_try_another_model(self):
-        for diagnostic in (MODEL_ERROR,FALLBACK,QUOTA,OVERAGE,TRANSIENT+"\n"+MODEL_ERROR):
+        for diagnostic in (MODEL_ERROR,FALLBACK,QUOTA,OVERAGE,TRANSIENT+"\n"+MODEL_ERROR,DIFF_FENCE+MODEL_ERROR):
             with self.subTest(diagnostic=diagnostic):
                 root=self.chair({'chair-primary':diagnostic})
                 self.assertTrue((root/'report.md').read_text().rstrip().endswith('VERDICT: FAIL'))

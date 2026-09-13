@@ -128,12 +128,26 @@ def classify(line):
     return None
 try:
     fence = None
+    diff_context = False
     failure = None
     reset_recorded = False
     with open(sys.argv[1], encoding="utf-8", errors="replace") as source:
         for raw in source:
             raw = ansi.sub("", raw)
             line = raw.strip()
+            # Unified-diff framing must be handled before Markdown fences: a
+            # single-space context fence is data, not a stderr formatting fence.
+            if raw.startswith(("diff --git ", "@@ ")):
+                diff_context = True
+                continue
+            if diff_context:
+                if not line or raw.startswith((" ", "+", "-", "\\", "index ",
+                        "old mode ", "new mode ", "new file mode ", "deleted file mode ",
+                        "similarity index ", "rename from ", "rename to ")):
+                    continue
+                diff_context = False
+            if raw.startswith(("    ", "\t")) or line.startswith(("+", "-", ">", "|")):
+                continue
             marker = re.match(r"^(`{3,}|~{3,})", line)
             if marker:
                 token = marker[1]
@@ -142,7 +156,7 @@ try:
                 elif token[0] == fence[0] and len(token) >= len(fence):
                     fence = None
                 continue
-            if fence or raw.startswith(("    ", "\t")) or line.startswith(("+", "-", ">", "|", "diff --git", "@@")):
+            if fence:
                 continue
             kind = classify(line)
             if kind and (failure is None or (failure.startswith("transient_service\t") and kind != "transient_service")):
