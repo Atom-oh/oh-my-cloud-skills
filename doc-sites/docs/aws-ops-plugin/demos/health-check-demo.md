@@ -5,6 +5,8 @@ title: Health Check Walkthrough
 
 # Health Check Walkthrough
 
+This is an illustrative walkthrough. Command outputs, identifiers, thresholds, and findings are sample data, not a live assessment or the plugin defaults. Use the current skill for the execution contract and verify the actual environment before applying a proposed repair.
+
 A complete cluster health check demonstration with 6 domain check results and report template.
 
 ## Scenario

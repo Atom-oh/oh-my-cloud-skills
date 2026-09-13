@@ -5,6 +5,8 @@ title: Security Audit Demo
 
 # Security Audit Demo
 
+This is an illustrative walkthrough. Command outputs, identifiers, thresholds, and findings are sample data, not a live assessment or the plugin defaults. Use the current skill for the execution contract and verify the actual environment before applying a proposed repair.
+
 Security audit walkthrough covering IAM, Network, and Compliance audit results with findings report.
 
 ## Scenario
