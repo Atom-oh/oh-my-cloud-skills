@@ -112,7 +112,9 @@ its scope. Historical failure counts are not a permanent waiver for current CI.
 | `writing-plans`, proposed AWS/IaC | ops-security-audit pre-check against the mandates below |
 
 Read `docs/reference/review-routing.md` for mixed changes and gate precedence.
-Content-plugin deliverables need content-review-agent score >=85 before publishing.
+Content-plugin deliverables need PASS under content-review-agent's score and
+Critical/Warning bands: >=85/100, or >=77/90 when Visual Testing is exempt.
+Deployment must also satisfy the loaded plugin's mandatory score >=85 gate.
 Diagram export uses XML validation then layout lint >=80. Remarp validates before
 build. Native PPTX uses `aws-light-fcd`; web-deck screenshot PPTX uses
 `reactive-presentation`. Reuse the shared icon library rather than copying it.

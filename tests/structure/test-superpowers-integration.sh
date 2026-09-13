@@ -93,7 +93,7 @@ assert_contains "$SP_ROOT_BODY" "writing-plans" \
 
 # --- root routing table: ②③④ flipped from planned → active ---
 # Extract the routing table rows and assert no "planned" status remains on ②③④.
-SP_RTABLE="$(awk '/superpowers Integration Routing/{f=1} f{print} /^## Development Commands/{if(f)exit}' "$SP_ROOT_MD")"
+SP_RTABLE="$(awk '/^## superpowers Integration Routing/{f=1; print; next} f && /^## /{exit} f{print}' "$SP_ROOT_MD")"
 assert_contains "$SP_RTABLE" "finishing-a-development-branch" "②③④ root table lists finishing-a-development-branch"
 assert_contains "$SP_RTABLE" "requesting-code-review" "②③④ root table lists requesting-code-review"
 assert_contains "$SP_RTABLE" "writing-plans" "②③④ root table lists writing-plans"

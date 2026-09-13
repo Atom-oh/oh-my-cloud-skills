@@ -42,8 +42,8 @@ outweighed the benefit, so **all divergence was cleaned up**:
   marketplace entry, maintained separately from the mirrored sources.
 - The local model-tier adjustment (`sonnet`+`low` in `agents/doc-sync-checker.md`) was
   also reverted. The upstream value (`model: opus`, no `effort` specified) is kept as-is,
-  and it is an **intentional exception** to the `model`+`effort` rule in the root
-  `CLAUDE.md`'s tier table (since this is a mirrored file).
+  because this file belongs to the upstream mirror. Host-specific model/effort
+  choices belong in repository-owned adapters, not patches to mirrored procedures.
 
 ## Sync procedure
 
