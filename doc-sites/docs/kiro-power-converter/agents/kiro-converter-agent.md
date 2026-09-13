@@ -29,11 +29,11 @@ title: "Kiro converter agent"
 
 Resolves the source plugin/skill, selects the target, runs the converter, validates the resulting Kiro Power, and reports installation requirements.
 
-## Source resolution
+## Source resolution {#source-resolution}
 
 Accept GitHub URL, local plugin path, marketplace candidates, or individual skills. In non-interactive sessions, list marketplace candidates first and use the intended explicit source path. Multiple matching caches/checkouts must not be resolved by picking the first entry.
 
-## Conversion and checks
+## Conversion and checks {#conversion-and-checks}
 
 Transform metadata and routing; map agents/skills/references to supported Kiro structure; migrate MCP configuration and hooks; aggregate trigger keywords; handle large assets; and report required environment variables. Remove Claude-only frontmatter fields instead of treating them as Kiro settings. Preserve skills and resources when requested.
 

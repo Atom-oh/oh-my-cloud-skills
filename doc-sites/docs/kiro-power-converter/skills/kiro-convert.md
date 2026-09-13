@@ -27,7 +27,7 @@ Convert a plugin into a Kiro Power with a manifest, steering, supported hooks, M
 configuration, and assets. Standalone `--skill` conversion instead emits steering
 Markdown; it does not create a Power manifest, MCP configuration or hooks.
 
-## Local conversion
+## Local conversion {#local-conversion}
 
 Run from a checkout of this marketplace:
 
@@ -40,11 +40,11 @@ references/scripts. GitHub sources use `--git-url`, with `--plugin-path` and
 `--branch` when needed. `--skill` accepts individual skill directories and returns
 through the separate steering-only path; `--preserve-skills` does not apply there.
 
-## Marketplace selection
+## Marketplace selection {#marketplace-selection}
 
 List candidates with `--marketplace --search "ops"`, then convert the intended path using `--source`. Exact-name conversion must not guess between multiple installations or cached versions.
 
-## Validate and deliver
+## Validate and deliver {#validate-and-deliver}
 
 For plugin packages, POWER.md needs supported metadata; steering needs valid `inclusion` and `globs` when file-matched; MCP secrets become environment references; hooks must be valid Kiro JSON. For standalone skill output, validate the steering Markdown. Report source/target paths, produced artifact counts, required variables, skipped features, and manual installation checks.
 
