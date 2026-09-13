@@ -11,6 +11,8 @@ These examples illustrate syntax and rendering patterns. Use the current [Canvas
 
 This example demonstrates data visualization techniques in Remarp: KPI cards, charts, and dashboard layouts.
 
+The Chart.js sections below require an explicitly supplied library; it is not bundled by the presentation framework. Follow [Setup](#setup) before using those snippets.
+
 ## Design System Principles {#design-system-principles}
 
 ### Typography Hierarchy {#typography-hierarchy}
@@ -75,22 +77,22 @@ Overview of dashboard capabilities.
 
 :::html
 <div class="kpi-grid">
-  <div class="kpi-card" data-fragment-index="1">
+  <div class="kpi-card fragment" data-fragment-index="1">
     <div class="kpi-label">Monthly Active Users</div>
     <div class="kpi-value">2.4M</div>
     <div class="kpi-trend positive">+12.5%</div>
   </div>
-  <div class="kpi-card" data-fragment-index="2">
+  <div class="kpi-card fragment" data-fragment-index="2">
     <div class="kpi-label">API Requests/sec</div>
     <div class="kpi-value">45.2K</div>
     <div class="kpi-trend positive">+8.3%</div>
   </div>
-  <div class="kpi-card" data-fragment-index="3">
+  <div class="kpi-card fragment" data-fragment-index="3">
     <div class="kpi-label">P99 Latency</div>
     <div class="kpi-value">142ms</div>
     <div class="kpi-trend negative">+15ms</div>
   </div>
-  <div class="kpi-card" data-fragment-index="4">
+  <div class="kpi-card fragment" data-fragment-index="4">
     <div class="kpi-label">Error Rate</div>
     <div class="kpi-value">0.02%</div>
     <div class="kpi-trend positive">-0.01%</div>
@@ -259,7 +261,7 @@ Chart.js integration for dynamic charts.
 <div class="progress-section">
   <h3>Service Adoption</h3>
 
-  <div class="progress-item" data-fragment-index="1">
+  <div class="progress-item fragment" data-fragment-index="1">
     <div class="progress-label">
       <span>Lambda</span>
       <span>92%</span>
@@ -269,7 +271,7 @@ Chart.js integration for dynamic charts.
     </div>
   </div>
 
-  <div class="progress-item" data-fragment-index="2">
+  <div class="progress-item fragment" data-fragment-index="2">
     <div class="progress-label">
       <span>DynamoDB</span>
       <span>78%</span>
@@ -279,7 +281,7 @@ Chart.js integration for dynamic charts.
     </div>
   </div>
 
-  <div class="progress-item" data-fragment-index="3">
+  <div class="progress-item fragment" data-fragment-index="3">
     <div class="progress-label">
       <span>EKS</span>
       <span>65%</span>
@@ -289,7 +291,7 @@ Chart.js integration for dynamic charts.
     </div>
   </div>
 
-  <div class="progress-item" data-fragment-index="4">
+  <div class="progress-item fragment" data-fragment-index="4">
     <div class="progress-label">
       <span>Step Functions</span>
       <span>41%</span>
@@ -356,25 +358,25 @@ CSS-only progress bars with custom properties.
       </tr>
     </thead>
     <tbody>
-      <tr data-fragment-index="1">
+      <tr class="fragment" data-fragment-index="1">
         <td>Users</td>
         <td>2.1M</td>
         <td>2.4M</td>
         <td class="positive">+14.3%</td>
       </tr>
-      <tr data-fragment-index="2">
+      <tr class="fragment" data-fragment-index="2">
         <td>Requests/day</td>
         <td>3.2B</td>
         <td>3.9B</td>
         <td class="positive">+21.9%</td>
       </tr>
-      <tr data-fragment-index="3">
+      <tr class="fragment" data-fragment-index="3">
         <td>Avg Latency</td>
         <td>95ms</td>
         <td>82ms</td>
         <td class="positive">-13.7%</td>
       </tr>
-      <tr data-fragment-index="4">
+      <tr class="fragment" data-fragment-index="4">
         <td>Cost/request</td>
         <td>$0.0012</td>
         <td>$0.0009</td>
@@ -543,11 +545,18 @@ Lightweight CSS sparklines for quick metrics overview.
 
 ### Setup {#setup}
 
-Include Chart.js in your presentation's `:::script` block:
+Chart.js is an external prerequisite. Supply a pinned, reviewed UMD build and reference its actual URL in the authored Remarp source before chart initialization. The path below is a placeholder for an asset you provide; the generator does not copy or load Chart.js automatically. See the [official integration guide](https://github.com/chartjs/Chart.js/blob/master/docs/getting-started/integration.md#script-tag).
 
-```html
+```markdown
+:::html
+<!-- Supply this pinned, reviewed UMD asset at the URL used by your exported deck. -->
+<script src="assets/chart.umd.min.js"></script>
+:::
+
 :::script
-// Chart.js is auto-loaded by the reactive-presentation framework
+if (typeof Chart !== 'function') {
+  throw new Error('Load the supplied Chart.js UMD asset before initializing charts.');
+}
 :::
 ```
 
@@ -674,6 +683,6 @@ new Chart(ctx, {
 2. **Limit data density** - Maximum 4-6 KPI cards per slide
 3. **Add context** - Show trends, comparisons, or time periods
 4. **Responsive grids** - Use `auto-fit` and `minmax()` for flexible layouts
-5. **Progressive reveal** - Use `data-fragment-index` to build up dashboards
+5. **Progressive reveal** - Use `class="fragment"` with `data-fragment-index` to build up dashboards
 6. **Consistent typography** - Follow the hierarchy table for font sizes
 7. **Dark theme friendly** - Use CSS variables for colors, not hardcoded values

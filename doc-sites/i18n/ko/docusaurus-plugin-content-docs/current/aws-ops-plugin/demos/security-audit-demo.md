@@ -13,6 +13,8 @@ IAM, 네트워크, 규정 준수 감사 결과와 발견 사항 보고서를 다
 
 보안 검토 전에 EKS 클러스터를 종합 감사하여 취약점과 규정 준수의 공백을 파악합니다.
 
+대상 AWS 계정, 리전과 Kubernetes 컨텍스트를 확인합니다. 아래 명령 예제는 읽기 전용이며, 변경은 승인된 시정 조치 절차로만 적용합니다.
+
 ## 감사 워크플로 {#audit-workflow}
 
 ```mermaid
@@ -36,7 +38,7 @@ Please run a comprehensive security audit on the cluster.
 
 ---
 
-## 1단계: IAM 및 인증 감사 {#phase-1-iam--authentication-audit}
+## 페이즈 1: IAM 및 인증 감사 {#phase-1-iam--authentication-audit}
 
 ### 1.1 IRSA 설정 점검 {#11-irsa-configuration-check}
 
@@ -163,7 +165,7 @@ data:
 
 ---
 
-## 2단계: 네트워크 보안 감사 {#phase-2-network-security-audit}
+## 페이즈 2: 네트워크 보안 감사 {#phase-2-network-security-audit}
 
 ### 2.1 보안 그룹 분석 {#21-security-group-analysis}
 
@@ -245,7 +247,7 @@ aws ec2 describe-vpc-endpoints --filters Name=vpc-id,Values=$VPC_ID --query 'Vpc
 
 ---
 
-## 3단계: 규정 준수 감사 {#phase-3-compliance-audit}
+## 페이즈 3: 규정 준수 감사 {#phase-3-compliance-audit}
 
 ### 3.1 특권 컨테이너 {#31-privileged-containers}
 
@@ -267,8 +269,15 @@ kubectl get pods -A -o json | jq '[.items[] | select(.spec.containers[].security
 
 ### 3.2 root 컨테이너 {#32-root-containers}
 
+일반 컨테이너에 명시된 UID 설정을 확인합니다. 컨테이너 설정이 파드 설정보다 우선하며, UID가 없으면 이미지·런타임 확인이 필요합니다. 이 쿼리는 init·ephemeral 컨테이너와 실제 프로세스 UID를 검사하지 않습니다. [Kubernetes 보안 컨텍스트](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/)를 참고하세요.
+
 ```bash
-kubectl get pods -A -o json | jq '[.items[] | select(.spec.securityContext.runAsUser==0 or .spec.containers[].securityContext.runAsUser==0) | {name:.metadata.name, ns:.metadata.namespace}]'
+kubectl get pods -A -o json | jq '[
+  .items[] as $pod
+  | select(any($pod.spec.containers[];
+      (.securityContext.runAsUser // $pod.spec.securityContext.runAsUser // null) == 0))
+  | {name: $pod.metadata.name, ns: $pod.metadata.namespace}
+]'
 ```
 
 출력:
@@ -281,7 +290,7 @@ kubectl get pods -A -o json | jq '[.items[] | select(.spec.securityContext.runAs
 ]
 ```
 
-**발견 사항 (MEDIUM)**: 파드 4개가 root 사용자로 실행됩니다.
+**발견 사항 (MEDIUM)**: 파드 4개에 UID 0으로 명시적으로 설정된 일반 컨테이너가 있습니다.
 
 ### 3.3 Pod Security Standards {#33-pod-security-standards}
 
@@ -309,18 +318,27 @@ aws eks describe-cluster --name prod-cluster --query 'cluster.logging.clusterLog
 
 **발견 사항 (MEDIUM)**: API 로깅만 활성화되어 있으며 audit 및 authenticator 로그가 없습니다.
 
-### 3.5 Secret 암호화 {#35-secrets-encryption}
+### 3.5 봉투 암호화와 키 소유권 {#35-secrets-encryption}
 
 ```bash
-aws eks describe-cluster --name prod-cluster --query 'cluster.encryptionConfig'
+aws eks describe-cluster --name prod-cluster \
+  --query 'cluster.{version:version,encryptionConfig:encryptionConfig}'
 ```
 
-출력:
+가상 응답 예시입니다:
 ```json
-null
+{"version": "1.29", "encryptionConfig": null}
 ```
 
-**발견 사항 (MEDIUM)**: EKS Secret 암호화가 활성화되어 있지 않습니다(Secret이 etcd에 암호화되지 않은 상태로 저장됩니다).
+**관찰 사항 (INFORMATIONAL)**: 이 EKS 1.29 예제의 `encryptionConfig: null`은
+고객 관리형 KMS 구성이 없다는 뜻이며, Secret이 암호화되지 않았다는 의미가 아닙니다.
+EKS 1.28 이상은 고객 관리형 키를 구성하지 않은 경우 AWS 소유 KMS 키로 모든
+Kubernetes API 데이터에 기본 봉투 암호화를 제공합니다. 실제 버전과 키 소유권을
+확인하고 워크로드별 CMK 요구 사항은 별도로 평가합니다.
+[AWS 기본 봉투 암호화](https://docs.aws.amazon.com/eks/latest/userguide/envelope-encryption.html)를 참고합니다.
+
+아래 보고서의 #14는 정보 항목입니다. 조직별 CMK 요구 사항이 주어지지 않았으므로
+발견 사항을 만들기 위해 해당 요구 사항을 임의로 가정하지 않습니다.
 
 ---
 
@@ -336,19 +354,20 @@ null
 - **Overall Risk**: CRITICAL
 
 ## Executive Summary
-The audit identified 15 security findings across IAM, Network, and Compliance domains.
-2 Critical, 5 High, 6 Medium, 2 Low severity issues require remediation.
+This illustrative report records 16 assessed items: 15 security findings and one informational encryption observation.
+The security findings comprise 2 Critical, 6 High, 5 Medium, and 2 Low items.
+The absence of a customer-managed KMS key is not counted as unencrypted data or an automatic policy violation.
 
-## Findings by Severity
+## Assessed Items by Severity
 
 ### CRITICAL (2)
 
 | # | Domain | Finding | Risk | Remediation |
 |---|--------|---------|------|-------------|
 | 1 | IAM | IRSA trust policy with wildcard (`*:*`) | Any pod can assume analytics-full-access role | Scope trust policy to specific namespace:serviceaccount |
-| 2 | Network | SSH (22) open to 0.0.0.0/0 | Direct SSH access from internet | Remove rule, use SSM Session Manager |
+| 2 | Network | SSH (22) open to 0.0.0.0/0 | Direct SSH access from internet | Remove through the owning IaC definition; preserve approved administrative access |
 
-### HIGH (5)
+### HIGH (6)
 
 | # | Domain | Finding | Risk | Remediation |
 |---|--------|---------|------|-------------|
@@ -356,19 +375,24 @@ The audit identified 15 security findings across IAM, Network, and Compliance do
 | 4 | IAM | Developer has cluster-admin | Excessive cluster access | Create limited developer role |
 | 5 | IAM | Default SA has cluster-admin | Privilege escalation risk | Remove emergency-access binding |
 | 6 | IAM | Developer role in system:masters | Full cluster admin via aws-auth | Map to limited group |
-| 7 | Network | API endpoint open to 0.0.0.0/0 | API accessible from internet | Restrict publicAccessCidrs |
+| 7 | Network | API endpoint open to 0.0.0.0/0 | Publicly reachable API endpoint | Plan private endpoint access or verified public egress CIDRs |
 | 8 | Compliance | Privileged containers in workloads | Container escape risk | Remove privileged flag |
 
-### MEDIUM (6)
+### MEDIUM (5)
 
 | # | Domain | Finding | Risk | Remediation |
 |---|--------|---------|------|-------------|
 | 9 | Network | 4 namespaces without NetworkPolicy | Unrestricted pod communication | Deploy default-deny policies |
 | 10 | Network | Missing VPC endpoints | Traffic via internet | Add ecr.dkr, sts, logs endpoints |
-| 11 | Compliance | 4 pods running as root | Container privilege abuse | Set runAsNonRoot: true |
+| 11 | Compliance | 4 Pods with explicit UID 0 in regular containers | Container privilege abuse | Set runAsNonRoot: true |
 | 12 | Compliance | No Pod Security Standards | No policy enforcement | Enable PSS restricted mode |
 | 13 | Compliance | Incomplete control plane logging | Limited audit trail | Enable audit + authenticator logs |
-| 14 | Compliance | Secrets not encrypted | Data at rest exposure | Enable KMS encryption |
+
+### INFORMATIONAL (1)
+
+| # | Domain | Observation | Interpretation | Follow-up |
+|---|--------|-------------|----------------|-----------|
+| 14 | Compliance | No customer-managed KMS configuration | EKS 1.29 has default AWS-owned envelope encryption | Assess a CMK requirement separately; do not infer unencrypted Secrets |
 
 ### LOW (2)
 
@@ -382,10 +406,11 @@ The audit identified 15 security findings across IAM, Network, and Compliance do
 | Requirement | Status | Notes |
 |-------------|--------|-------|
 | No privileged containers in workloads | FAIL | 2 found in default, analytics |
-| All pods run as non-root | FAIL | 4 pods running as root |
+| Regular containers configured as nonroot | FAIL | 4 Pods explicitly configure UID 0 |
 | Network policies in all namespaces | FAIL | 4 namespaces missing |
 | IRSA/Pod Identity for AWS access | PARTIAL | IRSA used but misconfigured |
-| Secrets encrypted with KMS | FAIL | Not enabled |
+| Default API-data envelope encryption | PASS | AWS-owned KMS key applies to this EKS 1.29 sample; no CMK configured |
+| Customer-managed key requirement | REVIEW | No organization-specific requirement supplied; assess separately |
 | Control plane audit logging | PARTIAL | Only api logs enabled |
 | VPC endpoints for AWS services | PARTIAL | 2 of 6 recommended |
 | Cluster endpoint private access | PASS | Private access enabled |
@@ -395,8 +420,8 @@ The audit identified 15 security findings across IAM, Network, and Compliance do
 
 ### Immediate (24 hours)
 1. Fix IRSA trust policy wildcard (Critical #1)
-2. Remove SSH 0.0.0.0/0 rule (Critical #2)
-3. Restrict API endpoint CIDRs (High #7)
+2. Remove the SSH 0.0.0.0/0 rule through approved IaC (Critical #2)
+3. Establish authorized private endpoint access before disabling public access (High #7)
 4. Remove privileged flag from workload containers (High #8)
 
 ### This Week
@@ -409,7 +434,7 @@ The audit identified 15 security findings across IAM, Network, and Compliance do
 9. Add missing VPC endpoints (Medium #10)
 10. Implement Pod Security Standards (Medium #12)
 11. Enable full control plane logging (Medium #13)
-12. Enable secrets encryption (Medium #14)
+12. Assess a customer-managed key only if workload policy requires it (Informational #14)
 
 ### Ongoing
 13. Enforce runAsNonRoot for all workloads (Medium #11)
@@ -419,13 +444,15 @@ The audit identified 15 security findings across IAM, Network, and Compliance do
 
 ---
 
-## 시정 조치 명령어 {#remediation-commands}
+## 승인된 시정 조치와 검증 {#remediation-commands}
 
 ### Critical #1: IRSA 신뢰 정책 수정 {#critical-1-fix-irsa-trust-policy}
 
-```bash
-# Create scoped trust policy
-cat > trust-policy.json << 'EOF'
+이 가상 신뢰 문서를 실제 OIDC 발급자, 네임스페이스와 서비스 계정에 대조해 검토합니다.
+승인된 IAM/IaC 변경은 롤백과 워크로드 검증을 포함한 정상 검토 절차로 적용합니다.
+이 페이지에서는 IAM 갱신을 실행하지 않습니다.
+
+```json
 {
     "Version": "2012-10-17",
     "Statement": [
@@ -437,31 +464,46 @@ cat > trust-policy.json << 'EOF'
             "Action": "sts:AssumeRoleWithWebIdentity",
             "Condition": {
                 "StringEquals": {
+                    "oidc.eks.us-west-2.amazonaws.com/id/ABC123:aud": "sts.amazonaws.com",
                     "oidc.eks.us-west-2.amazonaws.com/id/ABC123:sub": "system:serviceaccount:analytics:data-processor"
                 }
             }
         }
     ]
 }
-EOF
-
-aws iam update-assume-role-policy --role-name analytics-full-access --policy-document file://trust-policy.json
 ```
 
 ### Critical #2: SSH 규칙 제거 {#critical-2-remove-ssh-rule}
 
+공개 SSH 규칙을 관리하는 CDK/Terraform 정의에서 제거하고 승인된 IaC 배포 절차로
+적용합니다. 관리 접근 경로와 롤백을 먼저 확인하고 배포된 규칙을 검사하여 이후 배포가
+노출을 다시 만들지 않도록 합니다. 임시 보안 그룹 CLI 변경으로 대신하지 않습니다.
+
+감사에서 선택한 그룹에 대해 읽기 전용으로 검증합니다:
+
 ```bash
-# Remove SSH 0.0.0.0/0 rule
-aws ec2 revoke-security-group-ingress --group-id $CLUSTER_SG --protocol tcp --port 22 --cidr 0.0.0.0/0
+aws ec2 describe-security-group-rules \
+  --filters "Name=group-id,Values=$CLUSTER_SG"
 ```
 
 ### High #7: API 엔드포인트 제한 {#high-7-restrict-api-endpoint}
 
+이 예제에서는 프라이빗 엔드포인트 작업 흐름을 사용합니다. 공개 접근을 끄기 전에
+VPC 또는 연결된 네트워크에서 운영자, 노드와 자동화의 접근을 확보하고 DNS, 경로,
+범위를 제한한 보안 그룹 규칙과 IAM/RBAC를 검증합니다. 롤백을 포함한 승인된
+클러스터·IaC 절차로 엔드포인트를 변경한 뒤, 확보한 프라이빗 접근 경로에서 읽기 전용
+검사를 다시 수행합니다.
+
 ```bash
-# Restrict to corporate IPs only
-aws eks update-cluster-config --name prod-cluster \
-  --resources-vpc-config publicAccessCidrs="10.0.0.0/8","192.168.1.0/24"
+aws eks describe-cluster --name prod-cluster \
+  --query 'cluster.resourcesVpcConfig.{publicAccess:endpointPublicAccess,privateAccess:endpointPrivateAccess,publicCIDRs:publicAccessCidrs}'
 ```
+
+`publicAccessCidrs`는 프라이빗 엔드포인트가 아닌 공개 엔드포인트를 제어합니다.
+승인된 설계에서 공개 접근을 유지한다면 필요에 따라 NAT 송신 주소를 포함하여
+엔드포인트에 실제로 보이는 공인 송신 주소를 허용해야 합니다. 사내 RFC1918 범위로
+대체하지 않습니다. [EKS 엔드포인트 접근](https://docs.aws.amazon.com/eks/latest/userguide/cluster-endpoint.html)과
+[공개 접근 출발지 CIDR](https://docs.aws.amazon.com/help-panel/eks/latest/console/hp-public-access-iprange.html)을 참고합니다.
 
 ---
 

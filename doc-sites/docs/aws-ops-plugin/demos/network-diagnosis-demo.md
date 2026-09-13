@@ -308,6 +308,9 @@ open the port to the internet.
 
 #### Verify Resolution {#verify-resolution}
 
+Confirm that `TG_ARN` still identifies the intended target group, and reselect
+`POD_NAME` from the current replicas after any rollout before collecting evidence.
+
 ```bash
 aws elbv2 describe-target-health --target-group-arn "$TG_ARN"
 kubectl get pods -n backend -l app=api-server -o wide

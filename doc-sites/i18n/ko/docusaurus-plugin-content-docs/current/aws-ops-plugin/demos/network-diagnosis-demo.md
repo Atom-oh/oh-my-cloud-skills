@@ -111,12 +111,12 @@ kubelet 한도가 늘어나지는 않습니다. 주소 용량과 노드 그룹�
 
 ### 4단계: CNI 설정과 IPAMD 로그 확인 {#step-4-check-ipamd-logs}
 
-가상 발췌에서는 접두사 모드가 이미 켜져 있지만 블록을 할당하지 못합니다.
-
 ```bash
 kubectl get daemonset aws-node -n kube-system -o yaml
 kubectl logs -n kube-system -l k8s-app=aws-node -c aws-node --tail=50
 ```
+
+가상 발췌에서는 접두사 모드가 이미 켜져 있지만 블록을 할당하지 못합니다.
 
 ```text
 Configuration excerpt:
@@ -304,6 +304,9 @@ aws elbv2 describe-target-groups --target-group-arns "$TG_ARN" \
 명령을 사용하거나 인터넷 전체에 포트를 개방하지 않습니다.
 
 #### 해결 결과 검증 {#verify-resolution}
+
+`TG_ARN`이 여전히 의도한 대상 그룹인지 확인하고, 롤아웃 후에는 현재 복제본에서
+`POD_NAME`을 다시 선택한 다음 근거를 수집합니다.
 
 ```bash
 aws elbv2 describe-target-health --target-group-arn "$TG_ARN"
