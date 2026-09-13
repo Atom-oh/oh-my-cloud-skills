@@ -73,7 +73,7 @@ IRSA/Pod Identity trust; RBAC and access entries; Pod Security Standards; SGs/ne
 
 ## Reporting and boundaries
 
-Follow repository security mandates. No broad public ingress, unconditioned broad IAM principals/resources, unauthenticated Lambda URLs, secrets in environment variables, or deletion of audit logs. Penetration testing requires the appropriate explicit scope and authorization.
+Apply the [repository's AWS security mandates](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/CLAUDE.md#banned-patterns) and the source skill's [Global AWS Security Mandates](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-ops-plugin/skills/ops-security-audit/SKILL.md#global-aws-security-mandates) in full. Penetration testing requires the appropriate explicit scope and authorization.
 
 The source skill contains the command playbooks, decision trees, examples, reference files, and host/team integration. Consult it for the exact operation being performed.
 
