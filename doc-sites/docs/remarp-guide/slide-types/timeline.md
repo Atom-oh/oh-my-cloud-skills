@@ -21,7 +21,7 @@ title: "Timeline slides"
 
 Present ordered phases, milestones, or release stages.
 
-## Source
+## Source {#source}
 
 ```markdown
 ---
@@ -39,7 +39,7 @@ Correct stale claims and examples.
 Build, check links, and review the result.
 ```
 
-## Rendering and interaction
+## Rendering and interaction {#rendering-and-interaction}
 
 Third-level headings define timeline points. Keep each description short and put detail on a separate slide. Rendered classes include timeline-step, timeline-dot, timeline-connector, and active/done states where assigned by the renderer. Dates in a timeline are authored content, not evidence of a feature release.
 

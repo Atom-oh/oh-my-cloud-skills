@@ -42,19 +42,19 @@ Move to the example that exercises that assumption.
 :::
 ```
 
-## Exact marker and language
+## Exact marker and language {#exact-marker-and-language}
 
-The current validator looks for the literal `[요약]` marker, meaning “summary,” on applicable content slides. Preserve that syntax even in an English deck. Write the bullets and spoken script in English; do not translate a required parser literal into an unsupported alias.
+The current validator looks for the literal `[요약]` marker, meaning “summary,” on applicable content slides. Preserve that syntax even in an English deck. Write the bullets and spoken script in the requested presentation language; do not translate a required parser literal into an unsupported alias.
 
-## Timing and cues
+## Timing and cues {#timing-and-cues}
 
 Use `{timing: 3min}` or `{timing: 90s}`. Cue markers such as `{cue: demo}`, `{cue: pause}`, `{cue: question}`, `{cue: transition}`, `{cue: poll}`, and `{cue: break}` mark delivery actions. Explain practical implications and transitions instead of repeating slide text.
 
-## Validation
+## Validation {#validation}
 
 The source validator distinguishes missing, short, and unstructured notes, with slide-type exemptions. Its guidance recommends at least 150 characters and fuller notes where needed; the exact severity thresholds live in the validator. Keep source validation separate from the independent content-review score.
 
-## Presenter view
+## Presenter view {#presenter-view}
 
 P opens a separate view with current/next slide, notes, timing, and navigation. Splitters resize the slide/notes regions and store their ratios locally. The presenter and main window synchronize through the framework's channel; test that behavior with the actual generated deck.
 

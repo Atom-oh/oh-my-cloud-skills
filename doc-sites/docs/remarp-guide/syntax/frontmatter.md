@@ -54,19 +54,19 @@ transition:
 ---
 ```
 
-## Metadata
+## Metadata {#metadata}
 
 `remarp: true` identifies source. `title`, `speaker`, `audience`, `level`, `quiz`, and `duration` describe the talk and its planning requirements. `version`, `date`, `event`, and `lang` carry optional format/event metadata. Use the `speaker` object; legacy `author` is only a fallback where supported.
 
-## Blocks
+## Blocks {#blocks}
 
 Block metadata can supply a name, title, and duration. The builder discovers marked `.md` files and legacy `.remarp.md` files in the project directory by filename stem; a block metadata entry does not select an arbitrary source file. Local block frontmatter supplies `remarp: true`, `block`, and an optional title. Keep the block name consistent with the global list and total duration consistent with the plan.
 
-## Theme
+## Theme {#theme}
 
 `theme` supports source, primary/accent/font/codeTheme, footer, pagination, and logo settings. A source can be a PPTX path or an extracted theme directory. PDF paths are recognized, but PDF extraction is currently unimplemented. Brand CSS uses `--pptx-*` input variables; semantic surface/text roles belong to the framework's light/dark scopes.
 
-## Transitions and keys
+## Transitions and keys {#transitions-and-keys}
 
 Transition metadata supplies a default effect and duration. Key configuration is passed to the runtime as a key-to-action map, for example:
 

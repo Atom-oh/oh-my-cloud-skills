@@ -32,7 +32,7 @@ title: "Canvas DSL"
 
 Canvas DSL describes a small stepwise diagram. Use it for at most four boxes/icons in a linear flow. Groups, branching arrows, layered architectures, and larger diagrams use HTML/CSS; static AWS architecture can use a Draw.io export.
 
-## Example
+## Example {#example}
 
 ```markdown
 ---
@@ -50,7 +50,7 @@ arrow api -> store "write" step 5
 :::
 ```
 
-## Elements
+## Elements {#elements}
 
 ```text
 box <id> "<label>" at <x>,<y> size <width>,<height> color <color> [step <n>]
@@ -64,15 +64,15 @@ The compiler resolves the named colors `accent`, `blue`, `green`, `yellow`, `red
 
 The parser recognizes groups, but current authoring policy sends grouped architecture to HTML/CSS. Icon names resolve through the shipped icon mapping; use a verified local path for a custom icon. Do not assume every marketing service name is an accepted alias.
 
-## Steps and routing
+## Steps and routing {#steps-and-routing}
 
 Elements without `step` appear immediately; numbered steps reveal them in sequence. Up/Down uses the registered Canvas controls. Arrows use the compiler's routing and anchors, but automatic routing does not replace overlap inspection. The validator checks visual-element complexity and overlapping box/icon bounds; groups contribute to the complexity count. Its branching check does not currently recognize the `from_id` field produced by the demonstrated arrow syntax. Apply the group/branching authoring policy explicitly; a clean validation report is not proof that policy was checked.
 
-## Extensions
+## Extensions {#extensions}
 
 `:::canvas mermaid` and `:::canvas js` provide integration paths where supported. Preset syntax is parsed into a CanvasPresets lookup; it only works when the corresponding runtime preset is actually supplied. A parsed preset name is not proof that the bundle includes its implementation.
 
-## HTML alternative
+## HTML alternative {#html-alternative}
 
 Use `.flow-h`/`.flow-v`, `.flow-group`, `.flow-box`, `.flow-arrow`, and `.icon-item` with semantic theme tokens. `data-fragment-index` supports ordered reveal. Calculators and simulations use actual HTML controls and script state, tested in the browser.
 

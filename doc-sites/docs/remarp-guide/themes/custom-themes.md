@@ -29,7 +29,7 @@ title: "Custom themes"
 
 Apply a brand through frontmatter and a scoped override stylesheet while keeping the framework's semantic role/surface tokens intact.
 
-## Frontmatter
+## Frontmatter {#frontmatter}
 
 ```yaml
 theme:
@@ -41,7 +41,7 @@ theme:
 
 The source can be a PPTX or a previously extracted theme directory. The builder recognizes PDF paths but its PDF extraction path currently reports that extraction is unimplemented.
 
-## CSS customization
+## CSS customization {#css-customization}
 
 Use `--pptx-*` for brand colors, then style titles, cards, buttons, code, logo placement, and responsive layout with semantic tokens. Keep selectors scoped to the deck or intentional preset so one theme does not leak into another.
 
@@ -53,14 +53,14 @@ Use `--pptx-*` for brand colors, then style titles, cards, buttons, code, logo p
 }
 ```
 
-## Motion and responsiveness
+## Motion and responsiveness {#motion-and-responsiveness}
 
 Customize supported transitions and fragment classes without hiding essential content. Use the deck's scaling/layout model and test small viewports, text wrapping, contrast, and logo/footer placement. Avoid fixed dark text/background overrides that defeat the light/dark token scopes.
 
-## Apply and check
+## Apply and check {#apply-and-check}
 
 Load base framework styles, extracted brand input, and intentional project overrides in the generated order. Inspect computed styles and the actual light/dark render when an override behaves unexpectedly. Validate and review before publication.
 
-## Related links
+## Related links {#related-links}
 
 - [css variables](./css-variables)
