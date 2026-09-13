@@ -36,7 +36,7 @@ Build/package commands are canonical in `tools/remarp-vscode/CLAUDE.md`, not her
 
 ## Visual Edit Mode (PPT edit mode)
 
-- **Activate**: `Cmd+Shift+E` / editor titlebar Edit button / per-slide floating Edit button
+- **Activate**: the per-slide floating Edit button in the preview. The extension manifest does not register an edit-mode keyboard shortcut.
 - **Features**: element drag (position), resize, Property Panel (font/color/margin)
 - **CSS writeback**: changes → auto-written to `:::css` block in source `.md`
 - **Canvas writeback**: canvas element move/resize → `:::canvas` DSL coordinates updated in source `.md`

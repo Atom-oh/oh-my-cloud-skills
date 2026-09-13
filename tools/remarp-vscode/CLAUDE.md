@@ -40,7 +40,7 @@ code --install-extension remarp-vscode-*.vsix  # Install locally
 - Preview converts relative resource paths to webview URIs and injects CSP
 - HTML `<meta name="remarp-source">` links generated HTML back to source `.md`
 - Issue annotations (`<!-- issue: text -->`) flow between extension prompt bar and `/slide-fix` skill
-- Visual edit mode (`Cmd+Shift+E`) writes CSS/canvas changes back to source `.md`
+- Visual edit mode uses the preview's per-slide Edit button and writes CSS/canvas changes back to source `.md`
 
 > Full detail — file detection rules, preview/sidebar behavior, key-file map — lives
 > in `../../docs/reference/remarp-vscode-extension.md` (extracted from the root
