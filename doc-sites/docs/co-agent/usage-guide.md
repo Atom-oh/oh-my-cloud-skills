@@ -45,9 +45,16 @@ Setup discovers each peer's plugin/CLI access path, performs a real probe, and r
 Consensus takes the document through planning, a plan gate, host implementation,
 final review, and reporting. Harness keeps design, tests, verification, and commits
 with the host. An eligible peer implements in isolated worktrees when READY;
-otherwise the host implements. A READY raw-CLI reviewer is still mandatory. Kiro can
-review but cannot be the harness implementer because it lacks the required write
-sandbox. See the [harness contract](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/commands/harness.md).
+when none is available, the workflow must explicitly select an authorized host
+implementation plan with `--allow-host-implementation`. An enabled, fresh READY
+raw-CLI reviewer remains mandatory. Fix invalid configuration or readiness before
+continuing. Kiro can review but cannot be the external harness writer because it
+lacks the required write sandbox.
+
+Keep configuration, readiness and flag queries tied to the orchestration project
+where setup ran. Only the writer changes cwd to its task worktree. Follow the
+[harness contract](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/commands/harness.md)
+for the exact planner calls, exit statuses and capture/review gates.
 
 ## Tune and inspect
 

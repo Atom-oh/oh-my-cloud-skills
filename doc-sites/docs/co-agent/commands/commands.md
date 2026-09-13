@@ -37,10 +37,12 @@ Run the document-to-plan-to-implementation workflow. The host implements; peers 
 
 ## /co-agent:harness
 
-The host designs, owns tests, reviews captured changes, and commits. A READY eligible
-peer implements in isolated worktrees; otherwise the host implements. A READY raw-CLI
-reviewer is mandatory in either case. Kiro is excluded as an implementer. Exact role
-and fallback rules are in the [harness contract](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/commands/harness.md).
+The host designs, owns tests, reviews captured changes, and commits. An eligible
+READY peer implements in isolated worktrees. If none is available, explicitly select
+an authorized host plan with `--allow-host-implementation`. An enabled, fresh READY
+raw-CLI reviewer is mandatory in either mode. Configuration or readiness errors
+stop planning. Kiro is excluded as an external implementer. Exact role and mode
+rules are in the [harness contract](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/commands/harness.md).
 
 ## /co-agent:setup
 

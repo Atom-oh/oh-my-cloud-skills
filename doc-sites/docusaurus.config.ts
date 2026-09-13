@@ -2,6 +2,8 @@ import {themes as prismThemes} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
+const baseUrl = '/oh-my-cloud-skills/';
+
 const config: Config = {
   title: 'oh-my-cloud-skills',
   tagline: 'Cloud workflows for Claude Code and Codex',
@@ -12,7 +14,7 @@ const config: Config = {
   },
 
   url: 'https://www.atomai.click',
-  baseUrl: '/oh-my-cloud-skills/',
+  baseUrl,
 
   organizationName: 'Atom-oh',
   projectName: 'oh-my-cloud-skills',
@@ -59,6 +61,13 @@ const config: Config = {
   ],
 
   themeConfig: {
+    announcementBar: {
+      id: 'release-v2.0.0',
+      content: `<strong>v2.0.0 is available.</strong> <a href="${baseUrl}docs/releases/v2.0.0">Release notes and co-agent migration</a>`,
+      backgroundColor: '#fff4df',
+      textColor: '#232f3e',
+      isCloseable: true,
+    },
     colorMode: {
       defaultMode: 'dark',
       respectPrefersColorScheme: true,
@@ -98,6 +107,11 @@ const config: Config = {
           label: 'Remarp Guide',
         },
         {
+          to: '/docs/releases/v2.0.0',
+          label: 'Release notes',
+          position: 'right',
+        },
+        {
           href: 'https://github.com/Atom-oh/oh-my-cloud-skills',
           label: 'GitHub',
           position: 'right',
@@ -125,6 +139,7 @@ const config: Config = {
           items: [
             {label: 'Remarp Guide', to: '/docs/remarp-guide/introduction'},
             {label: 'Getting started', to: '/docs/intro'},
+            {label: 'Release notes', to: '/docs/releases/v2.0.0'},
           ],
         },
         {

@@ -32,6 +32,9 @@ Install `co-agent` from this repository's Codex marketplace using `/plugins`, th
 
 ## Setup and verification
 
+When upgrading from 1.x, follow the [v2.0.0 migration guide](/docs/releases/v2.0.0#co-agent-migration)
+to remove retired Antigravity settings and choose supported peers.
+
 Run `/co-agent:setup` to probe installed peers and record readiness. Review, decide, and ADR work can proceed solo with a clear notice when no peer is available; consensus and harness require a READY peer.
 
 For a source checkout, validate both host packages from the repository root:

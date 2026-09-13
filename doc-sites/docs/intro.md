@@ -21,6 +21,9 @@ title: "Getting started"
 
 This marketplace contains eight plugins for Claude Code and Codex. Plugin definitions and helper scripts are the product; this site documents their workflows.
 
+The current release is **v2.0.0**. Read the [release notes and migration guide](/docs/releases/v2.0.0)
+before updating an existing co-agent setup that selected Antigravity.
+
 <span id="plugins" />
 
 ## Choose a plugin
