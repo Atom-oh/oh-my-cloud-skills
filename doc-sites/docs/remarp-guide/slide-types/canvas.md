@@ -37,14 +37,16 @@ Show a small linear process with stepwise drawing.
 
 :::canvas
 box source "Source" at 40,150 size 100,50 color accent step 1
-box build "Build" at 220,150 size 100,50 color info step 2
-box check "Check" at 400,150 size 100,50 color success step 3
+box build "Build" at 220,150 size 100,50 color blue step 2
+box check "Check" at 400,150 size 100,50 color green step 3
 arrow source -> build "compile" step 4
 arrow build -> check "verify" step 5
 :::
 ```
 
 ## Rendering and interaction
+
+The compiler resolves the named colors `accent`, `blue`, `green`, `yellow`, `red`, and `cyan`. Use six-digit hex colors for other values.
 
 Use a unique canvas ID and inspect actual bounds and arrow routing. Current authoring policy permits at most four boxes/icons in a simple flow. Larger, grouped, or branching architecture uses HTML/CSS; interactive calculators use HTML controls and script state. Up/Down drives registered steps. A prompt or preset requires its corresponding compiler/runtime support; it is not automatically a working animation.
 
