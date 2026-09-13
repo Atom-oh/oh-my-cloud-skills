@@ -57,6 +57,8 @@ releases; an ordinary development PR need not bump the version or create a tag.
 - The current host chairs co-agent and excludes itself from peer selection.
   Review/decide/ADR can continue solo with an explicit notice. Consensus/harness
   require the ready peers their gates need; they must not silently become solo.
+- Co-agent supports Kiro CLI and the opposite host CLI. Antigravity (`agy`) and
+  the legacy Gemini CLI are retired by ADR-022; stale settings cannot restore them.
 - Opt-in local PR/push hooks retain their documented quorum, failure and consent
   policies. They are different from the repository's required GitHub CI review.
 - CI runs the configured peer roster over the full diff, then a chair verifies

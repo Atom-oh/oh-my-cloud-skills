@@ -64,7 +64,7 @@ contract as `/co-agent:configure`):
 | kiro-cli | `--model` | `set kiro-cli models m1,m2,m3` |
 | claude (codex-host panel) | `--model` (+ `--effort`) | `set claude models …` |
 | codex | `-m` (+ `-c model_reasoning_effort`) | `set codex models …` |
-| agy | `--model` (spaced tokens OK, e.g. `Gemini 3.1 Pro (High)`) | `set agy models …` |
+
 
 Caps still apply: `pairs` trims to `consensus.max_calls / max_rounds` round-robin across
 AIs (extra same-provider models are trimmed before a whole provider is dropped), and the
@@ -128,8 +128,7 @@ while IFS=$'\t' read -r ai model; do
                 --tools Read,Grep,Glob --output-format text > "$slot.md" 2>"$slot.err" || echo "[skip] claude/$model" ;;
     codex)    command -v codex >/dev/null 2>&1 && cat "$CTX" | timeout "$T" \
                 codex exec -s read-only "${MFLAGS[@]}" "$BASE_PROMPT" > "$slot.md" 2>"$slot.err" || echo "[skip] codex/$model" ;;
-    agy)      command -v agy >/dev/null 2>&1 && cat "$CTX" | timeout "$T" \
-                agy -p "$BASE_PROMPT" "${MFLAGS[@]}" --sandbox > "$slot.md" 2>"$slot.err" || echo "[skip] agy/$model" ;;
+
   esac
   # Fold this peer's output into the chain for the NEXT peer. Skip empty/errored output.
   if [ -s "$slot.md" ]; then

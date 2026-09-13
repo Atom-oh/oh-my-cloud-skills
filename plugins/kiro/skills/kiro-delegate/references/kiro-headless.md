@@ -169,9 +169,9 @@ reviewer must never be able to write. `kiro_review.py` is the concrete implement
 The **hard guarantee is narrow: the host applies only the worktree's captured,
 scope-guarded diff to the main git tree** — not `--trust-tools`, not the custom agent's
 `allowedTools`, and not a claim that Kiro is sandboxed in any general sense. Kiro has
-**no cwd-confined write sandbox** (unlike Codex's `-s workspace-write` or Agy's
-`--sandbox`), which is exactly why co-agent's `co_agent_config.py` refuses it as a
-harness implementer (`SANDBOX_IMPLEMENTERS = ("codex", "agy")`). This plugin makes
+**no cwd-confined write sandbox** (unlike Codex's `-s workspace-write`), which is
+why co-agent's `co_agent_config.py` refuses it as a
+harness implementer (`SANDBOX_IMPLEMENTERS = ("codex",)`). This plugin makes
 delegating to Kiro anyway acceptable **for changes that reach the main tree**, by making
 the **worktree isolation + capture + scope_guard** path load-bearing for that one thing:
 

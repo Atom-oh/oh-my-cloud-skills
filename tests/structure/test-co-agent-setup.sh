@@ -18,28 +18,32 @@ ac() { python3 "$CP" --selftest-access "$1" "$2" "$3" 2>&1; }
 assert_eq "plugin 0" "$(ac codex 1 1)" "codex with plugin+cli → plugin (no install nudge)"
 assert_eq "plugin 0" "$(ac codex 0 1)" "codex with plugin only → plugin"
 assert_eq "raw 1"    "$(ac codex 1 0)" "codex cli-only → raw + install nudge"
-assert_eq "raw 0"    "$(ac agy 1 0)"   "agy cli-only → raw, no nudge (no official plugin)"
+assert_eq "raw 0"    "$(ac claude 1 0)"   "Claude cli-only → raw, no nudge"
 assert_eq "none 0"   "$(ac kiro-cli 0 0)" "no cli, no plugin → none"
 
 # --- Task 3: probe via fake CLIs on PATH (never the real ones) ---
 SHIM=$(mktemp -d "${TMPDIR:-/tmp}/coagent-shim.XXXXXX")
-# codex/agy read stdin: a good shim echoes stdin; a bad shim ignores it.
+# Supported stdin peers: a good shim echoes stdin; a bad shim ignores it.
 printf '#!/usr/bin/env bash\ncat\n' > "$SHIM/codex"          # echoes stdin → sentinel returns
-printf '#!/usr/bin/env bash\necho ignored\n' > "$SHIM/agy"   # ignores stdin → NO_INGEST
+printf '#!/usr/bin/env bash\necho ignored\n' > "$SHIM/claude"   # ignores stdin → NO_INGEST
 # kiro-cli reads the positional INPUT (last non-flag arg). Echo every arg so the sentinel returns.
 printf '#!/usr/bin/env bash\nfor a in "$@"; do printf "%%s\\n" "$a"; done\n' > "$SHIM/kiro-cli"
-chmod +x "$SHIM/codex" "$SHIM/agy" "$SHIM/kiro-cli"
+chmod +x "$SHIM/codex" "$SHIM/claude" "$SHIM/kiro-cli"
 # python3 may share a dir with a real peer CLI (e.g. /usr/bin); link it into the shim dir so the
 # "PATH=$SHIM only" assertion can still run python3 while every real peer CLI stays absent.
 ln -sf "$(command -v python3)" "$SHIM/python3"
 assert_eq "READY"     "$(PATH="$SHIM:$PATH" python3 "$CP" probe codex 2>&1)"    "probe: stdin-echo codex → READY"
-assert_eq "NO_INGEST" "$(PATH="$SHIM:$PATH" python3 "$CP" probe agy 2>&1)"      "probe: stdin-ignoring agy → NO_INGEST"
+assert_eq "NO_INGEST" "$(PATH="$SHIM:$PATH" python3 "$CP" probe claude 2>&1)"      "probe: stdin-ignoring Claude → NO_INGEST"
 assert_eq "READY"     "$(PATH="$SHIM:$PATH" python3 "$CP" probe kiro-cli 2>&1)" "probe: kiro-cli argv INPUT echoed → READY"
+rm "$SHIM/claude"
 assert_eq "ABSENT"    "$(PATH="$SHIM" python3 "$CP" probe claude 2>&1)"         "probe: known peer, missing CLI → ABSENT"
-# Gemini support was removed (Agy superseded it — ADR-010): it is not an ADAPTERS entry at
-# all, so probing it is an unknown-peer ERROR, not ABSENT (ABSENT implies "recognized but
-# not installed", which would misrepresent gemini as still a supported peer).
-assert_eq "ERROR"     "$(PATH="$SHIM" python3 "$CP" probe gemini 2>&1)"         "probe: unsupported peer → ERROR, not ABSENT"
+# Retirement is an actionable CLI error, never cached readiness or an install suggestion.
+for RETIRED_PEER in agy antigravity gemini; do
+  PATH="$SHIM" python3 "$CP" probe "$RETIRED_PEER" >"$SHIM/retired-out" 2>"$SHIM/retired-err" && RETIRED_RC=0 || RETIRED_RC=$?
+  assert_eq "2" "$RETIRED_RC" "probe rejects retired $RETIRED_PEER"
+  assert_eq "" "$(cat "$SHIM/retired-out")" "retired $RETIRED_PEER emits no readiness status"
+  assert_contains "$(cat "$SHIM/retired-err")" "retired" "retired $RETIRED_PEER has migration guidance"
+done
 rm -rf "$SHIM"
 
 # --- Task 4: report + readers (fake CLIs so probe is deterministic) ---
@@ -47,7 +51,7 @@ S2=$(mktemp -d "${TMPDIR:-/tmp}/coagent-shim2.XXXXXX"); R=$(mktemp -d "${TMPDIR:
 printf '#!/usr/bin/env bash\ncat\n' > "$S2/codex"; chmod +x "$S2/codex"   # codex READY via stdin echo
 # Isolated PATH: shim dir + a python3 symlink + /usr/bin:/bin (for the shim shebang) — but NOT
 # ~/.local/bin or /usr/local/bin where the real peer CLIs install. Otherwise report() probes a
-# real kiro-cli/agy/gemini, which can hang on an interactive prompt and make the suite flaky.
+# real peer, which could contact a provider and make the suite non-hermetic.
 ln -sf "$(command -v python3)" "$S2/python3"
 ISO="$S2:/usr/bin:/bin"
 PATH="$ISO" python3 "$CP" report --host claude --root "$R" --plugins-root /nonexistent >/dev/null 2>&1

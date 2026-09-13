@@ -42,6 +42,10 @@ It still stops if no gate-eligible reviewer is READY; see the
 
 Claude chairs Claude Code sessions; Codex chairs Codex sessions. The host does not call itself as an external peer. External responses are advisory: the host checks evidence, attributes findings, and reports meaningful disagreement.
 
+The active CLI candidates are Kiro plus the opposite host CLI: Codex when Claude
+hosts, or Claude when Codex hosts. Antigravity (`agy`) and the legacy Gemini CLI
+are retired. Refresh setup after migrating old provider settings.
+
 ## Components
 
 The Claude package declares `co-agent`, `gate-chair`, `harness-analyst`, `pr-autofix-planner`, and `pr-autofix-implementer`; its skills are `co-agent`, `pr-autofix`, and `decision-reconcile`. The planner and implementer are internal PR workers that require prepared inputs. Codex exposes these workflows through generated overlays, including command wrappers.
@@ -56,7 +60,7 @@ Use `/co-agent:configure` to inspect merged configuration, its source, and host-
 
 ## Context synchronization
 
-`/co-agent:sync-context` distills `CLAUDE.md` into a marked `AGENTS.md` and creates `.kiro/steering/project-context.md` as a bridge. The source hash detects drift; unmarked handwritten files are protected. Agy receives validated context during fan-out. Use `/co-agent:configure set autosync on` to opt into automatic synchronization prompts.
+`/co-agent:sync-context` distills `CLAUDE.md` into a marked `AGENTS.md` and creates `.kiro/steering/project-context.md` as a bridge. The source hash detects drift; unmarked handwritten files are protected. Use `/co-agent:configure set autosync on` to opt into automatic synchronization prompts.
 
 ## Related workflows
 

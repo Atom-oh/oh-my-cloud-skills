@@ -20,8 +20,8 @@ so these settings are LIVE — changing them changes what actually runs.
 
 Usage:
   co_agent_config.py host                       # detected host (or explicit override)
-  co_agent_config.py show --host claude          # Claude chairs; panel = kiro-cli/codex/agy
-  co_agent_config.py show --host codex           # Codex chairs; panel = kiro-cli/claude/agy
+  co_agent_config.py show --host claude          # Claude chairs; panel = kiro-cli/codex
+  co_agent_config.py show --host codex           # Codex chairs; panel = kiro-cli/claude
   co_agent_config.py show                       # effective merged config (table)
   co_agent_config.py set <ai> <key> <value>     # write to .claude/co-agent.local.json
   co_agent_config.py set timeout <seconds>      # global per-CLI timeout
@@ -45,7 +45,7 @@ Usage:
   co_agent_config.py set push_gate timeout <seconds>
   co_agent_config.py set <ai> context_limit <n> # per-AI context window (tokens)
   co_agent_config.py flags <ai>                 # CLI flag fragment for the fan-out
-  co_agent_config.py implementer               # configured/default external writer (readiness is separate)
+  co_agent_config.py implementer               # external writer only; exit 3 if none by default
   co_agent_config.py implementation-plan [--allow-host-implementation]
                                               # JSON mode/writer/READY reviewers; no execution
   co_agent_config.py panel                      # space-separated enabled AIs
@@ -79,7 +79,7 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 from co_agent_host import (HOSTS, ACTIVE_PEERS, detect_host,
-                           peer_roster)
+                           peer_roster, retired_peer_message)
 
 ALL_AIS = ACTIVE_PEERS
 CODEX_EFFORTS = ("minimal", "low", "medium", "high")
@@ -106,11 +106,11 @@ def panel_ais(host):
     return peer_roster(host)
 
 
-# Eligible external writers are listed here; the current host is always excluded.
+# Only Codex is an eligible external worktree-scoped writer.
 # claude(--permission-mode acceptEdits) and kiro-cli(--trust-tools)
 # auto-accept writes but do NOT confine them to the worktree, so they are NOT safe
 # delegated implementers — the trust boundary would not hold.
-SANDBOX_IMPLEMENTERS = ("codex", "agy")
+SANDBOX_IMPLEMENTERS = ("codex",)
 HOST_IMPLEMENTATION_REQUIRED = 3
 # harness review-gate mechanics (only /co-agent:harness reads it):
 #   hybrid   = parallel find -> chair triage -> parallel verify (references/hybrid-gate.md; default)
@@ -124,10 +124,15 @@ HARNESS_KEYS = ("implementer", "implementer_model", "implementer_effort",
 
 def implementer_ai(cfg, host):
     """Effective harness implementer: the configured harness.implementer, else the
-    default sandbox counterpart (claude host → codex; codex host → agy). Only
-    sandbox-capable CLIs are allowed. Returns (ai, error_str|None)."""
-    default = "codex" if host == "claude" else "agy"
+    sandbox counterpart on a Claude host. None means no external writer is available
+    by default; it is not an implicit host-implementation authorization."""
+    default = "codex" if host == "claude" else None
     ai = (cfg.get("harness", {}) or {}).get("implementer") or default
+    if ai is None:
+        return None, None
+    retired = retired_peer_message(ai)
+    if retired:
+        return None, retired
     if ai == host:
         return ai, f"implementer '{ai}' cannot equal the current host '{host}'"
     if ai not in SANDBOX_IMPLEMENTERS:
@@ -145,6 +150,10 @@ def effort_values(ai):
 
 
 def _valid_peer(ai, host):
+    retired = retired_peer_message(ai)
+    if retired:
+        print(retired, file=sys.stderr)
+        return False
     if ai not in panel_ais(host):
         print(f"unknown ai '{ai}' for host {host} "
               f"(one of: {', '.join(panel_ais(host))})", file=sys.stderr)
@@ -183,9 +192,47 @@ def deep_merge(base, over):
     return out
 
 
-# Legacy display hints do not change the configured provider identity.
-LEGACY_KEYS = {"kiro": "kiro-cli", "antigravity": "agy", "gemini": None}
+# Retired identities are never aliases for another active provider.
+LEGACY_KEYS = {"kiro": "kiro-cli", "agy": None, "antigravity": None, "gemini": None}
 
+
+def _without_retired_peers(raw, path):
+    """Drop obsolete peer-keyed data; keep an explicit retired writer invalid.
+
+    Selection of that writer must fail with migration guidance, rather than silently
+    choosing a different writer. Diagnostics never include model/credential values.
+    """
+    if not isinstance(raw, dict):
+        return raw
+    clean = copy.deepcopy(raw)
+    removed = []
+    for key in list(clean):
+        if retired_peer_message(key):
+            del clean[key]
+            removed.append(key)
+    panel = clean.get("panel")
+    if isinstance(panel, dict):
+        for key in list(panel):
+            if retired_peer_message(key):
+                del panel[key]
+                removed.append(f"panel.{key}")
+    harness = clean.get("harness")
+    if isinstance(harness, dict):
+        if retired_peer_message(harness.get("implementer")):
+            removed.append("harness.implementer (retired writer; selection refused)")
+        for field in ("implementer_models", "implementer_efforts"):
+            values = harness.get(field)
+            if isinstance(values, dict):
+                for key in list(values):
+                    if retired_peer_message(key):
+                        del values[key]
+                        removed.append(f"harness.{field}.{key}")
+    if removed:
+        print(f"{path}: retired co-agent settings are removed from active use: "
+              f"{', '.join(removed)}. Delete these entries; do not rename them onto "
+              "another peer. Clear a retired writer with 'set harness implementer default'.",
+              file=sys.stderr)
+    return clean
 
 
 def _resolves_through_symlink(path, root=None):
@@ -309,15 +356,14 @@ def _validate_config_shape(value, shape, path):
 
 def effective(root, warn=False, strict=False):
     # Precedence low→high: committed defaults → user scope (~/.claude) → repo-local (.claude).
-    # `warn` gates the legacy-key hygiene warnings: only the DISPLAY commands (show/matrix)
-    # pass warn=True. The plumbing commands (pairs/flags/fits/timeout/panel/review-mode/…)
-    # call effective() ~2N+ times per fan-out, so warning from each would print the same
-    # line ~9× per gate run (drowning the consent-critical budget warning) — the display
-    # commands are the one place the user actually reads, so warn there and stay silent in
-    # the loop. Malformed-config warnings are NOT gated: a broken file must always be loud.
-    cfg = load_defaults()
+    # Display commands show rename-only hygiene warnings once rather than per fan-out call.
+    # Retired-peer, consent and malformed-config diagnostics always remain visible.
+    cfg = _without_retired_peers(load_defaults(), DEFAULTS_PATH)
     if strict:
         _validate_config_shape(cfg, _CONFIG_SHAPE, DEFAULTS_PATH)
+    retired_env = retired_peer_message(os.environ.get("CO_AGENT_THIRD_AI"))
+    if retired_env:
+        print("Remove obsolete CO_AGENT_THIRD_AI. " + retired_env, file=sys.stderr)
     lclp = local_path(root)
     for lp in (user_path(), lclp):
         if strict or os.path.isfile(lp):
@@ -338,17 +384,11 @@ def effective(root, warn=False, strict=False):
                 if warn:
                     stale = [k for k in raw.get("panel", {}) if k in LEGACY_KEYS]
                     renames = [k for k in stale if LEGACY_KEYS[k]]
-                    removed = [k for k in stale if not LEGACY_KEYS[k]]
                     if renames:
                         hint = ", ".join(f"{k}→{LEGACY_KEYS[k]}" for k in renames)
                         print(f"⚠️  {lp}: legacy panel key(s) {hint} are NO LONGER read — "
                               f"rename them or the override is ignored.", file=sys.stderr)
-                    if removed:
-                        hint = ", ".join(removed)
-                        print(f"⚠️  {lp}: panel key(s) {hint} refer to a REMOVED AI and are "
-                              f"ignored — DELETE the block (do not rename it onto another AI; "
-                              f"configure agy separately if you want the third reviewer).",
-                              file=sys.stderr)
+                raw = _without_retired_peers(raw, lp)
                 # Only the repo-LOCAL file is a consent-bypass vector — a malicious repo
                 # can commit `.claude/co-agent.local.json`, but never the user's own
                 # `~/.claude/co-agent.user.json` (outside the repo, not repo-trackable).
@@ -605,6 +645,10 @@ def cmd_set(root, rest, host, scope="local"):
             h = {}
             local["harness"] = h
         if key == "implementer":
+            retired = retired_peer_message(val)
+            if retired:
+                print(retired, file=sys.stderr)
+                return 2
             if val.lower() in ("none", "null", "default", ""):
                 h["implementer"] = None
             elif val in SANDBOX_IMPLEMENTERS:
@@ -621,6 +665,9 @@ def cmd_set(root, rest, host, scope="local"):
             # don't encode a provider, so a flat un-keyed value could not be made safe
             # across implementer switches. Requires an explicit implementer to key by.
             impl = (effective(root).get("harness") or {}).get("implementer")
+            if retired_peer_message(impl):
+                print(retired_peer_message(impl), file=sys.stderr)
+                return 2
             if impl is None:
                 print(f"{key} is stored per implementer — set the implementer first: "
                       f"set harness implementer <{'|'.join(SANDBOX_IMPLEMENTERS)}>",
@@ -791,8 +838,7 @@ def cmd_set(root, rest, host, scope="local"):
 
 
 def cmd_flags(root, ai, host, model_override=None):
-    if ai not in panel_ais(host):
-        print(f"unknown ai '{ai}' for host {host}", file=sys.stderr)
+    if not _valid_peer(ai, host):
         return 2
     p = effective(root)["panel"].get(ai, {})
     # A per-(ai,model) pair override (from `pairs`, e.g. the deep profile's multi-model
@@ -816,9 +862,6 @@ def cmd_flags(root, ai, host, model_override=None):
             parts += ["-m", model]
         if p.get("effort"):
             parts += ["-c", f'model_reasoning_effort="{p["effort"]}"']
-    elif ai == "agy":
-        if model:
-            parts += ["--model", model]
     # Print NOTHING when there are no flags — `print("\n".join(parts))` on an empty list
     # still emits a bare newline, and the caller's `mapfile -t MFLAGS < <(...)` turns that
     # one blank line into a single empty-string array element, which `"${MFLAGS[@]}"` then
@@ -870,11 +913,16 @@ def cmd_fits(root, ai, tokens, host):
 
 
 def cmd_implementer(root, host):
-    """Print the effective harness implementer (counterpart when unset)."""
+    """Print only an external writer; no writer is an explicit exit-3 condition."""
     ai, err = implementer_ai(effective(root), host)
     if err:
         print(err, file=sys.stderr)
         return 2
+    if ai is None:
+        print("No external sandbox implementer is eligible for this host. Use "
+              "'implementation-plan --allow-host-implementation' after setup; "
+              "a fresh READY external reviewer is still required.", file=sys.stderr)
+        return HOST_IMPLEMENTATION_REQUIRED
     print(ai)
     return 0
 
@@ -892,6 +940,10 @@ def cmd_implementation_plan(root, host, allow_host=False):
         harness = cfg.get("harness") or {}
         explicit = harness.get("implementer")
         if explicit is not None:
+            retired = retired_peer_message(explicit)
+            if retired:
+                print(retired, file=sys.stderr)
+                return 2
             if explicit not in SANDBOX_IMPLEMENTERS or explicit == host:
                 print(f"Configured implementer {explicit!r} is not an eligible external "
                       "writer for this host. Use 'set harness implementer default' "
@@ -998,9 +1050,12 @@ def cmd_impl_flags(root, ai, host):
     run a cost-efficient generation model while the review panel keeps its stronger
     judgment models. The overrides are stored PER IMPLEMENTER and looked up by the AI
     being flagged — model names don't encode a provider, so only per-AI keying survives
-    both the host-dependent default fallback (claude-host→codex, codex-host→agy) AND an
-    explicit `set harness implementer` switch without leaking one provider's model onto
-    another CLI's --model flag. Entries for a non-current implementer stay dormant."""
+    the external writer's settings without leaking them into the current host's model.
+    Host implementation never obtains delegated write-mode flags."""
+    retired = retired_peer_message(ai)
+    if retired:
+        print(retired, file=sys.stderr)
+        return 2
     if ai == host:
         print(f"implementer '{ai}' cannot equal host '{host}'", file=sys.stderr)
         return 2
@@ -1010,6 +1065,9 @@ def cmd_impl_flags(root, ai, host):
         return 2
     cfg = effective(root)
     p = cfg["panel"].get(ai, {})
+    if not p.get("enabled", True):
+        print(f"implementer '{ai}' is disabled — refusing write-mode flags", file=sys.stderr)
+        return 2
     h = cfg.get("harness") or {}
     model = (h.get("implementer_models") or {}).get(ai) or p.get("model")
     effort = (h.get("implementer_efforts") or {}).get(ai) or p.get("effort")
@@ -1031,10 +1089,6 @@ def cmd_impl_flags(root, ai, host):
             parts += ["-m", model]
         if effort:
             parts += ["-c", f'model_reasoning_effort="{effort}"']
-    elif ai == "agy":
-        parts += ["--sandbox"]
-        if model:
-            parts += ["--model", model]
     if parts:   # same guard as cmd_flags — an empty print is a blank mapfile element
         print("\n".join(parts))   # newline-delimited so a spaced model value stays one token
     return 0

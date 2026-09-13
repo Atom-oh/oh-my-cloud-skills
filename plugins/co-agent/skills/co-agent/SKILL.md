@@ -24,7 +24,7 @@ READY raw-CLI peers and cannot continue solo.
 - The current host chairs. Resolve enabled candidates with `co_agent_config.py panel`
   and model pairs with `pairs`; do not copy a roster from a previous run.
 - The adapters in `references/ai-cli-adapters.md` define supported CLI invocation.
-  The legacy `gemini` CLI remains unsupported (ADR-010).
+  Antigravity (`agy`) and the legacy `gemini` CLI are retired (ADR-022).
 - Never call the current host CLI as a panel member. Report missing/erroring peers;
   apply the mode's readiness and coverage rules before continuing.
 
