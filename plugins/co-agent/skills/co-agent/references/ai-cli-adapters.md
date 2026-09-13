@@ -125,8 +125,9 @@ bash "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/reap_kiro_orphans.sh"
 - Use a per-run `mktemp -d` (not a fixed `/tmp/co-agent`) so concurrent/stale runs
   don't clobber each other; `trap … EXIT` cleans it up.
 - Treat empty output / non-zero exit / timeout as "this AI skipped"; never abort the others.
-- Capacity/rate errors are common on free tiers (esp. Agy/Codex) — degrade to a
-  smaller panel, which is fine.
+- Report capacity/rate failures and use only actual responses. Advisory modes may
+  continue with a smaller panel or solo; pipeline and required CI coverage rules
+  still apply.
 
 ## Readiness (consult before fan-out)
 

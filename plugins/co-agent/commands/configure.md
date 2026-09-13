@@ -31,14 +31,17 @@ Only options the CLIs **actually accept headlessly** are exposed (no dead settin
 | `effort` | — | `--effort` (`low\|medium\|high\|xhigh\|max`) | `-c model_reasoning_effort` (`minimal\|low\|medium\|high`) | — |
 | `enabled` (panel membership) | yes | yes | yes | yes |
 | `timeout` (global, seconds) | yes | yes | yes | yes |
-| `context_limit` (per-AI, tokens) | model context window — fan-out **skips** an AI whose window can't hold the context (default: Kiro/Claude/Agy 1,000,000 · Codex 272,000) |
+| `context_limit` (per-AI, tokens) | configured context budget — fan-out **skips** an AI whose budget cannot hold the context; inspect effective configuration for values |
 | `autosync` (global, on/off) | run `/co-agent:sync-context` automatically when `CLAUDE.md` changes (opt-in; default off) |
 
 Host controls panel membership:
 
-- `--host claude` (default): Claude chairs; panel = Kiro, Codex, Agy.
+- Detect the host with `co_agent_config.py host`; `CO_AGENT_HOST` or `--host`
+  can override detection. Exclude that host from the enabled peer candidates.
+- `--host claude`: Claude chairs; candidates = Kiro, Codex, Agy.
 - `--host codex`: Codex chairs; panel = Kiro, Claude, Agy.
-- The third reviewer is always Agy — Gemini support was removed (Agy superseded it; ADR-010).
+- Agy is a candidate, subject to configuration and readiness; the legacy Gemini CLI
+  is unsupported. Candidate membership does not prove a reviewer ran.
 
 ## Helper
 

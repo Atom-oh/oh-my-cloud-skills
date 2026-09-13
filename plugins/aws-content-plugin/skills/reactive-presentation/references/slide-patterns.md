@@ -21,7 +21,7 @@
 A slide title (the `## heading`) is read in under a second — it must carry **edge**, not be a
 descriptive label. Write the title as a **headline**: a declarative claim, a question, or a
 reversal. Keep it **≤ 28 KO chars**. Put detail in the **subtitle**, written in **noun-ending
-style** (체언 종결 — a Korean phrase that ends on a noun rather than a verb, e.g. `~화 / ~등극 / ~재편 / ~본격화` …), **≤ 45 KO chars**.
+style** (a Korean phrase that ends on a noun rather than a verb, e.g. `~화 / ~등극 / ~재편 / ~본격화` …), **≤ 45 KO chars**.
 
 | Slot | Voice | Limit | Example |
 |------|-------|-------|---------|

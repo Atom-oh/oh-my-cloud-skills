@@ -1,6 +1,6 @@
 ---
 name: decision-reconcile
-description: "Detect contradictions across accumulated ADRs (ADR-NNN) and between ADRs and current reality, using a diverse panel of agents — varied Claude model tiers plus optional external AI CLIs, each given a different review lens — then draft a superseding ADR to reverse/reconcile the decision. Use when ADRs may conflict, a decision needs overturning, or the user asks to reconcile/번복 architecture decisions. Triggers: 의사결정 번복, 의사결정 모순, ADR 모순, ADR 충돌, ADR 번복, 결정 번복, ADR 모순 검토, decision reversal, decision reconcile, reconcile ADRs, ADR contradiction, conflicting ADR, supersede ADR."
+description: "Detect contradictions across accumulated ADRs (ADR-NNN) and between ADRs and current reality, using a diverse panel of agents — varied Claude model tiers plus optional external AI CLIs, each given a different review lens — then draft a superseding ADR to reverse/reconcile the decision. Use when ADRs may conflict, a decision needs overturning, or the user asks to reconcile or reverse architecture decisions. Triggers: 의사결정 번복, 의사결정 모순, ADR 모순, ADR 충돌, ADR 번복, 결정 번복, ADR 모순 검토, decision reversal, decision reconcile, reconcile ADRs, ADR contradiction, conflicting ADR, supersede ADR."
 allowed-tools:
   - Read
   - Write
@@ -126,12 +126,12 @@ For each contradiction the user approves (resolution = supersede/amend/reconcile
    find docs/decisions -name 'ADR-*.md' -not -name '.template.md' 2>/dev/null | sort | tail -1
    ```
 
-2. **Draft the superseding ADR** following `commands/add-adr.md` convention exactly
-   (bilingual EN/KR, Nygard sections, no emojis) plus the reversal additions in the
+2. **Draft the superseding ADR** following the target project's ADR convention
+   (Nygard sections, no emojis; this repository maintains English prose) plus the reversal additions in the
    taxonomy: Status `Accepted`; Context cites the superseded ADR numbers + their
    conflicting quotes; Consequences names "Supersedes ADR-NNN".
-3. **Edit each superseded ADR**: set Status to `Superseded` / `대체됨` (both EN and KR
-   sections) and add a `Superseded by ADR-NNN` line.
+3. **Edit each superseded ADR**: set Status to `Superseded by ADR-NNN`.
+   For a partial reversal, name the affected scope and preserve the dated rationale.
 4. Status-only fixes (C6): correct the existing ADR's Status/links — no new ADR.
 
 Then re-run `collect_adrs.py` to confirm the `warnings` array is now clean.

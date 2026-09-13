@@ -14,10 +14,13 @@ skills:
 Chairs a panel of **external AI agents** (Kiro CLI, the peer host CLI, and Agy) to get a second
 opinion, then **synthesizes the final answer as the current host** — a review verdict, a decision
 recommendation, or an ADR draft the user acts on. Uses whichever AI CLIs are installed
-and degrades gracefully to solo when none are. An excellent synthesis attributes each
+and may report solo operation for advisory review/decide/ADR when none are.
+Consensus/harness route through their dedicated procedures and require READY raw-CLI
+peers; optional local hooks and mandatory repository CI have separate contracts.
+An excellent synthesis attributes each
 notable point to its source and surfaces disagreement instead of averaging it away.
 
-> CLI commands, detection, fan-out, fallbacks: `references/ai-cli-adapters.md`.
+> CLI commands, detection, fan-out, fallbacks: `../skills/co-agent/references/ai-cli-adapters.md`.
 
 ---
 
@@ -34,6 +37,9 @@ notable point to its source and surfaces disagreement instead of averaging it aw
 
 ## Mode Routing
 
+Apply this routing only after the multi-AI intent filter in the skill description.
+Bare review/decide/ADR words do not select this agent automatically.
+
 ```mermaid
 graph TD
     A[Request] --> P[Step 0: Detect enabled peers<br/>exclude the current host]
@@ -47,7 +53,8 @@ graph TD
     P -->|no panel| SOLO[Host performs solo + states that fact]
 ```
 
-Detailed per-mode steps live in `skills/co-agent/SKILL.md`.
+The skill defines six modes; setup is a separate readiness command. Detailed steps
+live in `../skills/co-agent/SKILL.md`.
 
 ---
 
@@ -64,7 +71,7 @@ ENABLED=$(python3 "$CFG" panel --host "$HOST") || exit 1
 for ai in $ENABLED; do
   command -v "$ai" >/dev/null 2>&1 && PANEL="$PANEL $ai"
 done
-echo "Panel: ${PANEL:-none (host solo)}"
+echo "Panel: ${PANEL:-none (apply the selected mode readiness rule)}"
 ```
 
 Run panel members **in parallel** (`&` + `wait`) capturing each to a file; an empty
@@ -76,8 +83,9 @@ or errored output means that AI skipped this run — note it and continue.
 
 External AIs **advise**; **the current host decides and writes the final artifact** — no single
 AI's opinion decides the outcome (canon: the plugin `CLAUDE.md` "Chair Principle").
-A missing or errored CLI is skipped and noted, never blocked on (fail-open). Keep
-every AI's prompt **identical** so answers are comparable.
+A missing or errored CLI is reported. Advisory modes may continue solo; pipeline
+readiness, mandatory CI coverage and security requirements still apply. Keep each
+advisory review prompt **identical** so answers are comparable.
 
 ---
 
@@ -93,9 +101,9 @@ every AI's prompt **identical** so answers are comparable.
 
 ## Reference Files
 
-- `references/ai-cli-adapters.md` — Kiro/Claude/Codex/Agy CLI commands, detection, fan-out, fallbacks, ADR hand-off
-- `references/architecture-review-framework.md` — review rubric, severity, PASS/REVIEW/FAIL
-- `references/aws-well-architected.md` — 6-pillar checklist for review mode
+- `../skills/co-agent/references/ai-cli-adapters.md` — CLI commands, detection, fan-out, fallbacks, ADR hand-off
+- `../skills/co-agent/references/architecture-review-framework.md` — review rubric, severity, PASS/REVIEW/FAIL
+- `../skills/co-agent/references/aws-well-architected.md` — 6-pillar checklist for review mode
 
 ## Agent Memory
 

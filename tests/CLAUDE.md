@@ -1,21 +1,18 @@
 # tests/
 
-Shell-based test suite (TAP-style output) validating the repo's hooks, secret-scan
-regex patterns, and plugin structure. Complements `evals/` (behavioral skill evals).
+TAP runner for hook, plugin/host-adapter and PR-review regression tests. Individual
+suites use Bash, Python or Node fixtures. `evals/` is separate behavioral evaluation.
+Maintain English documentation; multilingual and secret-shaped fixtures are test data.
 
 ## Structure
 
-```
+```text
 tests/
-├── run-all.sh                      # TAP runner — sources every test file, aggregates pass/fail
-├── hooks/
-│   ├── test-hooks.sh               # Hook file existence, executable perms, bash syntax
-│   └── test-secret-patterns.sh     # secret-scan.sh regex: true positives + false positives
-├── structure/
-│   └── test-plugin-structure.sh    # plugin.json validity + agent/skill reference resolution
-└── fixtures/
-    ├── secret-samples.txt          # strings that MUST be detected as secrets
-    └── false-positives.txt         # secret-like strings that must NOT trip the scanner
+├── run-all.sh       # sources hooks/, structure/ and pr-review/ shell suites
+├── hooks/          # hook behavior and secret-pattern checks
+├── structure/      # plugin, adapter, content and helper regressions
+├── pr-review/      # CI review, coverage, parser and publication fixtures
+└── fixtures/       # intentional test data
 ```
 
 ## Running
@@ -44,8 +41,14 @@ The runner prints `TAP version 14`, one `ok`/`not ok` line per assertion, and a 
    | `assert_grep_match <pattern> <text> <msg>` | regex matches |
    | `assert_grep_no_match <pattern> <text> <msg>` | regex does NOT match (false-positive guard) |
 
-3. `run-all.sh` auto-discovers `tests/hooks/*.sh` and `tests/structure/*.sh`; add new groups
-   to the runner's loop if you create a new subdirectory.
+3. `run-all.sh` discovers `tests/hooks/*.sh`, `tests/structure/*.sh` and
+   `tests/pr-review/*.sh`. Add any new group explicitly to its loop. PR-review suites
+   also use `pass`/`fail`, which feed the same counters.
+
+The optional first argument filters by path substring (for example,
+`bash tests/run-all.sh pr-review`). Report the actual cwd, command and log with results;
+compare like-for-like runs, not historical test totals. A local baseline failure does
+not waive a required CI check.
 
 ## Conventions
 

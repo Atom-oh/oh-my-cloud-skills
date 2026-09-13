@@ -37,26 +37,23 @@ The tail of the chain is therefore the **last link of the strictly longest `mode
 list** (round-robin: when the shorter queues run out, only the longest queue keeps
 appending). To put the **strongest reasoner last**, give it a `models` list **strictly
 longer than** every other enabled AI's — matching lengths ties the tail to `panel_ais`
-order, which the peer loses. Two working examples against the committed default (kiro 3
-models, peer/agy 1 each; default tail = kiro's 3rd model):
-- lightweight: `set kiro-cli models claude-opus-4.8` + `set <peer> models m1,m2` →
-  4 links `[kiro, peer, agy, peer]`, tail = the peer's 2nd model;
-- full-width: `set <peer> models m1,m2,m3,m4` → 8 links (kiro 3 + peer 4 + agy 1), tail = the peer's 4th model.
+order. For example, with one Kiro model, two counterpart-peer models and one Agy
+model, the uncapped order is `[kiro, peer, agy, peer]`. This is illustrative, not
+the live default roster; inspect `co_agent_config.py matrix` and `pairs`.
 **Mind the per-round cap** (`max_calls / max_rounds`; relay is single-phase): the trim
 cuts the END of the interleaved list — exactly the tail links you just arranged — so keep
-total pairs ≤ the cap (default 24/2 = 12). The harness H0 `matrix` display names any
+total pairs ≤ the effective cap. The harness H0 `matrix` display names any
 trimmed-out pairs (the fan-out `pairs` calls themselves are silent), so check the H0 matrix
 to see whether your tail links survived. A single gate-eligible pair degenerates to one
 review (still valid — see Quorum).
 
 ## Multi-model relay — multi-directional verification
 
-Each chain link is an `(ai, model)` **pair**, not just an AI: with the committed `deep`
+Each chain link is an `(ai, model)` **pair**, not just an AI: with the `deep`
 profile, every model in an AI's `models` list becomes its own link, so **one relay pass
-verifies from as many directions as there are configured models**. Kiro's mainstay panel
-alone contributes two cross-vendor lenses (opus / minimax-m2.5 via the Kiro router);
-add Codex and Agy and a default relay is 4 links deep — each model confirming/refuting the
-accumulated findings from its own family's bias.
+verifies from as many directions as there are configured models**. The actual link
+count depends on enabled peers, model lists, caps and readiness. Exclude the current
+host and verify model-family diversity independently of CLI identity.
 
 All of this is **headless-safe** — every model override goes through the flags each CLI
 actually accepts non-interactively (`co_agent_config.py flags <ai> --model <m>`, the same

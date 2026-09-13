@@ -1,6 +1,6 @@
 ---
 name: co-agent
-description: "Collaborate with other AI agents (Kiro CLI, the peer host CLI, and Agy) for a second opinion. Multi-AI review of code/architecture, decision support when you're unsure, and ADR co-authoring, plus autonomous consensus/harness pipelines. The current host chairs and synthesizes the final answer. Use ONLY on multi-AI intent — 'co-agent', 'second opinion', 'multi-AI review', '다른 AI', '다른 AI로 리뷰', 'AI 협업', 'AI 패널', '멀티 AI', 'ADR 협업', or decision-support phrasings like '잘 모르겠어', '의사결정 도와', '협업해서 결정'. Bare 'code review'/'architecture review'/'decide'/'adr' are deliberately NOT triggers (they collide with the code-review/arch-review/pr-review skills) — use /co-agent explicitly for those. 멀티 AI 협업: 리뷰, 의사결정 보조, ADR 협업."
+description: "Collaborate with other AI agents (Kiro CLI, the peer host CLI, and Agy) for a second opinion. Multi-AI review of code/architecture, decision support when you're unsure, and ADR co-authoring, plus autonomous consensus/harness pipelines. The current host chairs and synthesizes the final answer. Use ONLY on multi-AI intent — 'co-agent', 'second opinion', 'multi-AI review', '다른 AI', '다른 AI로 리뷰', 'AI 협업', 'AI 패널', '멀티 AI', 'ADR 협업', or decision-support phrasings like '잘 모르겠어', '의사결정 도와', '협업해서 결정'. Bare 'code review'/'architecture review'/'decide'/'adr' are deliberately NOT triggers (they collide with the code-review/arch-review/pr-review skills) — use /co-agent explicitly for those."
 allowed-tools:
   - Bash
   - Read
@@ -17,16 +17,19 @@ same prompt to whichever peer CLIs are installed, then synthesize one attributed
 The artifact is a review report, a decision recommendation, an ADR draft, or an
 autonomous pipeline run — consumed by the user and by downstream gates (`/add-adr`,
 consensus/harness). Excellent looks like: every notable point attributed to the AI that
-made it, disagreement surfaced instead of averaged away, and graceful solo degradation
-(stated explicitly) when no peer is present.
+made it, disagreement surfaced instead of averaged away, and explicit solo reporting
+for advisory review/decide/ADR when no peer is present. Consensus/harness require
+READY raw-CLI peers and cannot continue solo.
 
 - In Claude Code: Claude chairs; the peer panel is Kiro CLI, Codex, and Agy.
 - In Codex: Codex chairs; the peer panel is Kiro CLI, Claude CLI, and Agy.
 - Gemini support was removed (Agy superseded it — ADR-010): never call the `gemini` CLI.
-- Never call the current host CLI as a panel member; a missing/erroring CLI is skipped,
-  never a hard failure.
+- Never call the current host CLI as a panel member. Report missing/erroring peers;
+  apply the mode's readiness and coverage rules before continuing.
 
 > CLI invocation, detection, and per-tool quirks: **`references/ai-cli-adapters.md`**.
+> These are six modes; `setup` is a separate command. Optional local hook behavior
+> does not relax mandatory repository CI, Critical/Major, coverage or security gates.
 
 ## Step 0: Detect the panel (always first)
 
@@ -40,7 +43,7 @@ PANEL=""; MISSING=""
 for ai in $(python3 "$CFG" panel --host "$HOST" 2>/dev/null); do
   if command -v "$ai" >/dev/null 2>&1; then PANEL="${PANEL:+$PANEL }$ai"; else MISSING="${MISSING:+$MISSING }$ai"; fi
 done
-echo "Panel: ${PANEL:-(none — the host will answer solo and say so)}"
+echo "Panel: ${PANEL:-(none — apply the selected mode readiness rule)}"
 [ -n "$MISSING" ] && echo "Enabled but not installed (skipped): $MISSING"
 ```
 
@@ -233,7 +236,8 @@ peers only). Run it once before relying on the panel; auth fixes stay guidance-o
 - External AIs **advise**; **the current host decides and writes the final artifact**.
 - Always **attribute** notable points to the AI that made them ("Agy flagged …") and
   **surface disagreement** — divergent opinions are the value.
-- If a CLI errors or is missing, skip it, note it, continue. Never block on one AI.
+- If a CLI errors or is missing, report it and apply the selected mode's rules.
+  Advisory modes may continue solo; consensus/harness require usable peer evidence.
 
 ## Output
 

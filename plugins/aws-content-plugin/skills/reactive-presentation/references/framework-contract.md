@@ -261,7 +261,7 @@ Auto-initialized. `quizManager.reset(id)/resetAll()/getScore()`.
 - Colors: role tokens only — raw hex/rgba/inline style are forbidden (`check_deck.py` RAW_HEX/RAW_RGBA/INLINE_STYLE).
 - Spacing: 8px grid tokens only (OFF_SCALE).
 - 4+ bullets → card grid; 8+ → split into multiple slides.
-- Title: ≤28-character headline (declarative/claim/question/twist); subtitle: noun-form ending (체언 종결), ≤45 characters.
+- Title: ≤28-character headline (declarative/claim/question/twist); subtitle: noun-form ending, ≤45 characters.
 - Every content slide needs a `<template class="notes">` of 150+ characters.
 - Light is the default of a dual theme — dark-only is forbidden. Every color must work in both themes.
 - Minimize deck-local `<style>`; when a rule is generalizable, patch it into the skill's

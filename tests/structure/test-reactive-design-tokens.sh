@@ -65,7 +65,9 @@ assert_file_exists "$RP/references/framework-contract.md" "framework-contract.md
 MISSING_TOKENS=""
 while IFS= read -r tok; do
   case "$tok" in --surface-1|--surface-2|--surface-3) continue;; esac  # covered by --surface-1/2/3 shorthand
-  printf '%s' "$FC" | grep -qF -- "$tok" || MISSING_TOKENS="$MISSING_TOKENS $tok"
+  # grep -q can close a pipe early and make printf fail with SIGPIPE under
+  # pipefail. Feed the document directly so a present token cannot look missing.
+  grep -qF -- "$tok" <<< "$FC" || MISSING_TOKENS="$MISSING_TOKENS $tok"
 done < <(grep -o -- '--[a-z][a-z0-9-]*' "$DT" | sort -u)
 assert_eq "" "$MISSING_TOKENS" "every design-tokens.css token appears in framework-contract.md (missing:$MISSING_TOKENS)"
 assert_contains "$FC" "--surface-1/2/3" "contract documents surface scale"

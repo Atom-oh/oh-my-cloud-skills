@@ -48,7 +48,7 @@ assert_grep_no_match "NOTE_STRUCTURE" "$OUT2" "structured note not flagged"
 rm -rf "$D"
 
 # --- content-quality: title voice + TITLE_LENGTH ---
-assert_contains "$SKILL_ALL" "체언 종결" "authoring documents noun-ending subtitle voice"
+assert_contains "$SKILL_ALL" "noun-form endings" "authoring documents noun-ending subtitle voice"
 assert_contains "$(cat "$RP/references/slide-patterns.md" 2>/dev/null || true)" "headline" "slide-patterns documents headline title voice"
 SC="$RP/scripts/remarp_to_slides.py"
 D="$(mktemp -d "${TMPDIR:-/tmp}/tl.XXXXXX")"

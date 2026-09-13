@@ -1,6 +1,9 @@
-# AWS Content Plugin — Claude Code Configuration
+# AWS Content Plugin — Shared plugin guidance
 
-A unified plugin for AWS cloud content creation: presentations, architecture diagrams, animated diagrams, documents, GitBook documentation sites, workshops, and brochures.
+Shared procedures for Claude Code and Codex: presentations, diagrams, documents,
+GitBook sites, workshops and brochures. Codex exposes specialist entry skills rather
+than native Claude agent roles; use the package adapters and actual host capabilities.
+Maintain repository prose in English; generated artifacts follow the user's language.
 
 ---
 
@@ -19,7 +22,7 @@ presentation-agent (dispatcher) → aws-light-fcd skill (PptxGenJS, AWS Light th
 ### Architecture Diagram Workflow
 ```
 # Recommended (VPC/Multi-AZ · serverless · multi-region · hybrid):
-architecture-diagram-agent → layout_aws.py (YAML spec → .drawio) → validate + lint (100/100) → PNG export
+architecture-diagram-agent → layout_aws.py (YAML spec → .drawio) → validate_drawio.py → lint_layout.py (required score ≥80) → PNG export
 # Hand-authored (non-standard shapes only): → .drawio → validate + lint → PNG export
 → (embed in presentation/document/gitbook)
 ```
@@ -141,11 +144,14 @@ On a FAIL/REVIEW verdict, fix and re-review. Declare completion/deployment only 
 
 ## AWS Icons (Mandatory)
 
-AWS Architecture Icons are located in `skills/reactive-presentation/assets/aws-icons/`:
-- `Architecture-Service-Icons_07312025/` — Service-level icons (121 categories)
+AWS Architecture Icons are bundled in
+`skills/reactive-presentation/assets/aws-icons.zip`. Extract them when a helper needs
+files under `assets/aws-icons/`; that directory is not guaranteed to exist in a fresh
+checkout. The archive contains these sets:
+- `Architecture-Service-Icons_07312025/` — Service-level icons
 - `Architecture-Group-Icons_07312025/` — Group icons (Cloud, VPC, Region, Subnet)
 - `Category-Icons_07312025/` — Category-level icons (4 sizes)
-- `Resource-Icons_07312025/` — Resource-level icons (22 categories)
+- `Resource-Icons_07312025/` — Resource-level icons
 - `others/` — Third-party icons (LangChain, Grafana, etc.)
 
 > **Rule**: any slide that visually represents an AWS service (architecture, service
