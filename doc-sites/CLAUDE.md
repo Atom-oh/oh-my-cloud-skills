@@ -11,6 +11,7 @@ see `../docs/CLAUDE.md`. Don't mix the two: this directory is public-site conten
 ```
 doc-sites/
 ├── docs/            # Authored content (per-plugin overview/installation/agents/skills, intro, remarp-guide)
+├── i18n/ko/         # Korean guide and UI translations
 ├── src/             # Docusaurus React components, CSS
 ├── static/          # Static assets (demos, images)
 ├── plugins/         # Build-time compatibility redirects
@@ -20,7 +21,14 @@ doc-sites/
 ## Conventions
 - **Per-plugin pages** in `doc-sites/docs/<plugin>/`: `overview.md`, `installation.md`, `agents/*.md`, `skills/*.md`. Mirror the plugin's actual agents/skills/commands.
 - `intro.md` and the home page list the eight plugins. Derive component inventories from manifests/source directories and link canonical settings instead of duplicating model catalogs. Codex command wrappers are generated skills, so their counts differ from Claude source skills.
-- Maintained content and UI are English only. English is the sole locale; the build plugin preserves old `/en/` and `/ko/` routes. Preserve required syntax literals and legacy fragment IDs.
+- Public guide prose and UI follow the Korean/English contract in ADR-023. Keep
+  `docs/` as the English source and matching Korean content under
+  `i18n/ko/docusaurus-plugin-content-docs/current/`; internal project docs stay English.
+- The active/default locales are defined in `docusaurus.config.ts`. Translation
+  files may be prepared while inactive. Enable a locale only after page, UI and
+  anchor coverage checks pass; do not present fallback English as a completed translation.
+- Preserve source page IDs, routing metadata, explicit heading IDs, required syntax
+  literals and legacy fragment IDs. Locale redirects must not overwrite real locale pages.
 - `static/demos/` and associated visual assets are frozen examples; localized input/output artifacts can remain unchanged. Explain their historical scope in the maintained wrapper pages.
 - Do **not** hand-edit `build/`, `.docusaurus/`, or `node_modules/`.
 

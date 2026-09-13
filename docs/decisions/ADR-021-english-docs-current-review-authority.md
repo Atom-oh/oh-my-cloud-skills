@@ -6,6 +6,10 @@ Accepted (2026-09-13), per the repository owner's request. Supersedes ADR-018's
 public/README/CHANGELOG language exclusions and the conflicting historical review
 rules identified below; preserves their dated rationale.
 
+The public guide site's English-only scope is superseded by
+[ADR-023](ADR-023-bilingual-public-guides.md). Internal English documentation and
+all review, ownership and safety decisions below remain in force.
+
 ## Context
 
 The owner requested concise English documentation aligned with the actual project to

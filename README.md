@@ -341,9 +341,11 @@ provider secrets.
 | `tests/` | Repository validation and regression checks |
 | `tools/remarp-vscode/` | Remarp editor extension |
 
-Maintained documentation is English only. Requested deliverables can use another
-language; literal aliases, syntax tokens, fixtures, and frozen demo payloads remain
-data. [README.ko.md](README.ko.md) is a compatibility pointer to this README.
+Internal documentation and this README remain English. Public guides use English
+source and Korean locale content under [ADR-023](docs/decisions/ADR-023-bilingual-public-guides.md).
+Requested deliverables can use another language; literal aliases, syntax tokens,
+fixtures and frozen demo payloads remain data.
+[README.ko.md](README.ko.md) is a compatibility pointer to this README.
 Release notes describe historical behavior, not current runtime guarantees.
 
 ## Development

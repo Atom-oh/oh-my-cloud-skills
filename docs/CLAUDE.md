@@ -17,10 +17,10 @@ decisions, runbooks and implementation context here.
 
 ## Maintenance rules
 
-- Maintain concise English prose, including public docs, README/CHANGELOG and scoped
-  instructions. [ADR-021](decisions/ADR-021-english-docs-current-review-authority.md)
-  supersedes ADR-018's old public-doc exclusions. User artifact language and functional
-  trigger/API/fixture literals are separate concerns.
+- Maintain concise English prose in internal docs, README/CHANGELOG and scoped
+  instructions. [ADR-023](decisions/ADR-023-bilingual-public-guides.md) makes the public
+  guide site a Korean/English exception to ADR-021. User artifact language and
+  functional trigger/API/fixture literals remain separate concerns.
 - Derive inventory from source files, generated inventories and manifests. Distinguish
   source procedures, Codex entries, plugin hook commands and CI review cells.
   Keep `architecture.md`, the root README and `../doc-sites/docs/intro.md` aligned
