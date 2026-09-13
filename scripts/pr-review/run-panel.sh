@@ -212,7 +212,7 @@ if [ "${#KIRO_MODELS[@]}" -gt 0 ] && command -v kiro-cli >/dev/null 2>&1; then
     PREFLIGHT_OUT="$PREFLIGHT_CWD/response.txt"; PREFLIGHT_ERR="$PREFLIGHT_CWD/stderr.txt"
     ( cd "$PREFLIGHT_CWD" && launch_kiro "$KIRO_PREFLIGHT_TIMEOUT" "$PREFLIGHT_CWD" \
         kiro-cli chat "$KIRO_PREFLIGHT_PROMPT" --model "$m" --agent "$KIRO_AGENT_NAME" \
-        --no-interactive --wrap never ) > "$PREFLIGHT_OUT" 2> "$PREFLIGHT_ERR" < /dev/null
+        --legacy-ui --no-interactive --wrap never ) > "$PREFLIGHT_OUT" 2> "$PREFLIGHT_ERR" < /dev/null
     PREFLIGHT_RC=$?
     PREFLIGHT_DIAGNOSTIC="$(provider_diagnostic "$PREFLIGHT_ERR")" || PREFLIGHT_DIAGNOSTIC=$'diagnostic_read_error\tDiagnostic parser failed'
     if [ "$PREFLIGHT_RC" -eq 0 ] && [ -z "$PREFLIGHT_DIAGNOSTIC" ] && python3 - "$PREFLIGHT_OUT" "$PREFLIGHT_ERR" \
@@ -293,7 +293,7 @@ for lens_file in "${LENS_FILES[@]}"; do
         || { echo "run-panel.sh: failed to prepare Kiro review agent" >&2; exit 1; }
       ( cd "$CELL_CWD" && try_panel kiro "$SLOT/$tag-$lens.md" "$SLOT/$tag-$lens.err" \
           launch_kiro "$CELL_CWD" kiro-cli chat "$KIRO_INSTRUCTION" --model "$m" \
-          --agent "$KIRO_AGENT_NAME" --no-interactive --wrap never ) &
+          --agent "$KIRO_AGENT_NAME" --legacy-ui --no-interactive --wrap never ) &
     else echo "[skip] $tag/$lens (binary absent or preflight failed)" >&2; : > "$SLOT/$tag-$lens.md"; fi
   done
 done
