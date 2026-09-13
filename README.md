@@ -1,923 +1,356 @@
 # oh-my-cloud-skills
 
-<div align="center">
+Eight plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and
+[Codex](https://developers.openai.com/codex/plugins): cloud content, AWS operations,
+agent and plugin conversion, peer review, implementation delegation, and project documentation.
 
-<a href="README.md"><img src="https://img.shields.io/badge/lang-English-blue.svg" alt="English"></a>
-<a href="README.ko.md"><img src="https://img.shields.io/badge/lang-한국어-lightgrey.svg" alt="한국어"></a>
+[Documentation](https://www.atomai.click/oh-my-cloud-skills/) ·
+[Changelog](CHANGELOG.md) ·
+[Releases](https://github.com/Atom-oh/oh-my-cloud-skills/releases) ·
+[License](LICENSE)
 
-[![version](https://img.shields.io/github/v/tag/Atom-oh/oh-my-cloud-skills?label=version&color=green)](https://github.com/Atom-oh/oh-my-cloud-skills/tags)
-[![license](https://img.shields.io/github/license/Atom-oh/oh-my-cloud-skills?color=yellow)](LICENSE)
-[![stars](https://img.shields.io/github/stars/Atom-oh/oh-my-cloud-skills?logo=github)](https://github.com/Atom-oh/oh-my-cloud-skills/stargazers)
-[![forks](https://img.shields.io/github/forks/Atom-oh/oh-my-cloud-skills?logo=github)](https://github.com/Atom-oh/oh-my-cloud-skills/network/members)
-[![docs](https://img.shields.io/github/actions/workflow/status/Atom-oh/oh-my-cloud-skills/deploy-docs.yml?branch=main&label=docs&logo=githubpages)](https://www.atomai.click/oh-my-cloud-skills/)
+## Plugins
 
-</div>
+| Plugin | Workflows |
+|---|---|
+| [aws-content-plugin](plugins/aws-content-plugin/) | Interactive web decks, editable PowerPoint, architecture and animated diagrams, technical documents, GitBook sites, workshops, brochures, and personal profiles |
+| [aws-ops-plugin](plugins/aws-ops-plugin/) | AWS/EKS troubleshooting, health checks, networking, identity, observability, storage, databases, analytics, cost, and Well-Architected reviews |
+| [kiro-power-converter](plugins/kiro-power-converter/) | Convert plugin sources or individual skills into Kiro Powers, including steering, hooks, assets, and MCP configuration |
+| [agentcore-creator](plugins/agentcore-creator/) | Discover requirements, design and test locally, then prepare AgentCore harness configuration or a Runtime application |
+| [co-agent](plugins/co-agent/) | Peer review, decisions, ADRs, context synchronization, consensus/harness implementation, PR feedback fixes, and ADR reconciliation |
+| [project-init](plugins/project-init/) | Initialize and maintain the current host's project instructions, skills, architecture docs, ADRs, runbooks, and reference guides |
+| [kiro](plugins/kiro/) | Delegate implementation to Kiro CLI, with host verification and optional commit/push review and web search |
+| [atlas](plugins/atlas/) | A per-topic repository wiki with coverage metadata, git-based drift checks, and optional push-time synchronization |
 
-AWS cloud plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Codex](https://developers.openai.com/codex/plugins) — content creation, infrastructure operations, and development workflows.
-
-**[Documentation](https://www.atomai.click/oh-my-cloud-skills/)** | **[Release Notes](https://github.com/Atom-oh/oh-my-cloud-skills/releases)**
-
-**What you can do:**
-
-*Content Creation (aws-content-plugin):*
-- **Interactive HTML/CSS/JS presentations** — Canvas animations, quizzes, presenter view, deployed to GitHub Pages
-- **Native PowerPoint (.pptx) decks** — AWS Light-theme slides via the `aws-light-fcd` skill (PptxGenJS, Pretendard typography, embedded fonts, AWS architecture-diagram kit)
-- **AWS architecture diagrams** — Draw.io XML with auto-layout, exportable to PNG/SVG
-- **Animated traffic flow diagrams** — SVG + SMIL animations with interactive legends
-- **Technical documents** — Professional Markdown reports and comparisons
-- **GitBook documentation sites** — Structured docs with navigation and components
-- **AWS Workshop Studio content** — Hands-on labs with multi-language support
-- **Single-page online brochures** — Self-contained responsive landing pages with embedded architecture diagram, deployed to GitHub Pages
-
-*Infrastructure Operations (aws-ops-plugin):*
-- **EKS troubleshooting** — Node issues, upgrades, add-ons, 5-minute triage
-- **Network diagnostics** — VPC CNI, ALB/NLB, DNS, IP exhaustion
-- **IAM & security** — IRSA, Pod Identity, RBAC, policy validation
-- **Observability** — CloudWatch, Container Insights, Prometheus, X-Ray
-- **Cost optimization** — Pricing analysis, savings plans, right-sizing
-
-*Well-Architected Review (aws-ops-plugin):*
-- **6-pillar assessment** — Cost, Security, Reliability, Performance, Operational Excellence, Sustainability
-- **100-point scoring** — Quantitative scoring with AS-IS/TO-BE roadmap
-- **Specialist delegation** — Pillars scoring below 60 delegated to specialist agents
-
-*Plugin Conversion (kiro-power-converter):*
-- **Claude Code → Kiro Power** — Automatically convert plugins for use in Kiro IDE
-- **Multiple input sources** — GitHub URL, local path, marketplace search, individual skill
-- **Zero dependencies** — Python 3.8+ standard library only
-
-*AgentCore Deployment (agentcore-creator):*
-- **Bedrock AgentCore** — Convert Claude Code plugins to AgentCore harness (config-only, skills attach unchanged) or Runtime, Gateway, Memory
-- **5-phase workflow** — Discovery, Design, Skill-First Build, Convert, Deploy
-- **Strands Agent framework** — Generates deployable Python agents with BedrockModel
-
-*Multi-AI Collaboration (co-agent):*
-- **6 modes** — multi-AI review, decision support, ADR co-authoring, `sync-context` (distill `CLAUDE.md` -> `AGENTS.md`), an autonomous doc->plan->implementation **consensus** pipeline, and a host-designs/peer-implements/panel-reviews **harness** orchestrator
-- **Panel of installed CLIs** — the current host chairs; Kiro, the other host CLI (Claude or Codex), and Antigravity (`agy`) provide peer reviews when installed and configured. Missing peers are reported. (Gemini CLI support was removed; Antigravity supersedes it — ADR-010.)
-  - **`gate-chair`** — triages the hybrid gate's panel findings (citation check -> verification -> dedupe) and closes verify rounds with a quorum-checked verdict.
-  - **`harness-analyst`** — advisory, retrospective: mines past harness run records to propose `/co-agent:configure` tuning (implementer, parallel_tasks, review_mode, timeout); never edits config itself.
-- **`/co-agent:configure`** — tune per-AI model, Codex effort, enable/disable, timeout, and `autosync` (regenerate AI context on `CLAUDE.md` change)
-- **ADR contradiction review** — `decision-reconcile` checks conflicting ADRs and ADR-vs-reality drift with a diverse panel, then drafts a superseding ADR.
-
-*Project Scaffolding (project-init):*
-- **Project commands** — /init-project, /sync-docs, /add-adr, /add-module, /add-runbook, /add-reference-doc, and more
-- **Documentation quality scoring** — assess the target host’s instructions (`AGENTS.md` or `CLAUDE.md`) using applicable checks
-- **Auto-sync workflows** — Keep documentation in sync with code changes
-
-*Cost-Savings Delegation (kiro):*
-- **The host plans, Kiro implements** — the current host writes a Kiro-native spec and verifies results; Kiro CLI writes the actual code on its own subscription credits, inside an isolated git worktree with a scope-guarded diff
-- **Pre-commit review gate (opt-in)** — a `PreToolUse` hook can run a Kiro-powered review before `git commit`, blocking only on `critical` findings by default (fails open on any infra problem); off by default since the staged diff content is sent to Kiro's backend (the reviewer's reads are tool-layer-confined to the isolated diff dir)
-- **`/kiro:setup`** — detect kiro-cli, probe usability, list models, and write the `.kiro/agents/*.json` custom agents the pipeline uses
-- **Web search delegation (opt-in)** — sessions without a `WebSearch` tool (Claude Code on Bedrock) can route web searches through kiro-cli's native `web_search`; only the query text leaves the machine, and the search agent is search-only (no filesystem/shell)
-
-*Self-Syncing Docs Wiki (atlas):*
-- **Per-topic docs written for LLM consumption** — each doc declares the files it `covers` and a `code_rev` anchor; an `INDEX.md` an agent reads first replaces cramming everything into `CLAUDE.md`
-- **Mechanical drift detection** — staleness is a glob match over `git diff --name-only` between the anchor and `HEAD`, no LLM pass, so the check is free
-- **Documentation repair** — `/atlas:sync` repairs stale packets through the active Codex host or optional write-confined `claude -p` runs. Commit only synchronized documents and `INDEX.md`
-- **Push-time auto-sync (opt-in)** — a `PreToolUse` hook can fix stale docs just before `git push` so the doc fix rides in the same push; off by default because covered-file diffs are sent to Anthropic, and always fail-open (a broken doc-syncer never wedges a push)
-
----
+Both [Claude](.claude-plugin/marketplace.json) and
+[Codex](.agents/plugins/marketplace.json) marketplaces contain these plugins.
+Manifests and generated inventories define their current entry points; source
+skills, commands, agents, and generated Codex entries are different populations.
 
 ## Installation
 
-All eight plugins ship Claude Code and Codex manifests. Codex entry points are generated
-from the shared skills, commands, and specialist procedures. Project-init preserves its
-upstream source and adds a separate generated Codex overlay. Pick your host below.
-
 ### Claude Code
 
-```bash
-# Add the marketplace
-/plugin marketplace add https://github.com/Atom-oh/oh-my-cloud-skills
+Run these commands inside Claude Code, installing only the plugins you need:
 
-# Install plugins
+```text
+/plugin marketplace add Atom-oh/oh-my-cloud-skills
 /plugin install aws-content-plugin@oh-my-cloud-skills
-/plugin install aws-ops-plugin@oh-my-cloud-skills
-/plugin install kiro-power-converter@oh-my-cloud-skills
-/plugin install agentcore-creator@oh-my-cloud-skills
 /plugin install co-agent@oh-my-cloud-skills
-/plugin install project-init@oh-my-cloud-skills
-/plugin install kiro@oh-my-cloud-skills
-/plugin install atlas@oh-my-cloud-skills
 ```
 
-For local development:
+Use another name from the plugin table to install that package. From a local checkout:
+
 ```bash
-# Load plugins from local directory
 claude --plugin-dir ./plugins/aws-content-plugin
-claude --plugin-dir ./plugins/aws-ops-plugin
-claude --plugin-dir ./plugins/kiro-power-converter
-claude --plugin-dir ./plugins/agentcore-creator
-claude --plugin-dir ./plugins/co-agent
-claude --plugin-dir ./plugins/project-init
-claude --plugin-dir ./plugins/kiro
-claude --plugin-dir ./plugins/atlas
 ```
 
-Uninstall:
-```bash
-# Uninstall plugins
-/plugin uninstall aws-content-plugin@oh-my-cloud-skills
-/plugin uninstall aws-ops-plugin@oh-my-cloud-skills
-/plugin uninstall kiro-power-converter@oh-my-cloud-skills
-/plugin uninstall agentcore-creator@oh-my-cloud-skills
-/plugin uninstall co-agent@oh-my-cloud-skills
-/plugin uninstall project-init@oh-my-cloud-skills
-/plugin uninstall kiro@oh-my-cloud-skills
-/plugin uninstall atlas@oh-my-cloud-skills
-
-# Remove the marketplace
-/plugin marketplace remove oh-my-cloud-skills
-```
+Remove a package with `/plugin uninstall aws-content-plugin@oh-my-cloud-skills`;
+remove the marketplace with `/plugin marketplace remove oh-my-cloud-skills`.
 
 ### Codex CLI
 
-This repo is also a **Codex plugin marketplace** — the manifest lives at
-[`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json) (`name: oh-my-cloud-skills`)
-and each listed plugin's `.codex-plugin/plugin.json` exposes its generated entry points.
-Use a Codex CLI with plugin support; the runtime contract was exercised with CLI 0.154.0.
+Use a Codex CLI with plugin support:
 
 ```bash
-# Register this repo as a marketplace (GitHub shorthand, or a git/SSH URL)
 codex plugin marketplace add Atom-oh/oh-my-cloud-skills
-
-# Start Codex
 codex
 ```
 
-Inside Codex, open `/plugins`, choose "Oh My Cloud Skills", and install the plugins you want.
-
-For local development, the **repo-scoped** marketplace is auto-discovered when you run Codex
-from inside a clone (Codex reads `$REPO_ROOT/.agents/plugins/marketplace.json`). You can also
-register the local path explicitly:
+Open `/plugins`, select **Oh My Cloud Skills**, and install the desired packages.
+For local development, run `codex plugin marketplace add ./` from this repository.
+Manage the registered source with:
 
 ```bash
-# From the repo root
-codex plugin marketplace add ./
-codex
+codex plugin marketplace list
+codex plugin marketplace upgrade oh-my-cloud-skills
+codex plugin marketplace remove oh-my-cloud-skills
 ```
 
-Manage / remove the marketplace:
-```bash
-codex plugin marketplace list                       # list registered marketplaces
-codex plugin marketplace upgrade oh-my-cloud-skills # pull the latest plugin versions
-codex plugin marketplace remove oh-my-cloud-skills  # unregister (uninstall via /plugins inside Codex)
-```
+Uninstall individual packages through `/plugins`. Start a new thread when needed
+to load the installed entries.
 
 ### Skills, commands, and specialists in Codex
 
-Ask naturally for the workflow you need, or use `/skills` or the `$` picker to select an
-installed entry. Each plugin's `.codex-plugin/inventory.json` maps those entries to every
-shared skill, command, and agent procedure. Same-name skill/command aliases share an entry.
-Atlas graph and project-init health-check use `source-command-graph` and
-`source-command-health-check`; the picker shows their plugin-qualified names.
-
-Agent-only specialist entries require explicit selection by the host as a workflow step.
-Their Markdown supplies instructions; `agents/openai.yaml` controls skill invocation policy,
-not a new native agent runtime. Source `Task`/tool/model declarations are adapted through
-the bundled runtime guide and the host's available tools. A procedure that invokes an
-external CLI still requires that CLI and its credentials.
-
-With co-agent, Codex chairs on a Codex host; the installed helper supplies
-`CO_AGENT_HOST=codex`. Declared plugin hooks are wired through the Codex bridge and require
-Codex hook trust. Project-init instead supplies project-template hooks: initialize the
-consumer project, establish project trust, then inspect `/hooks` and trust the reviewed
-definitions. Installing the plugin alone does not activate those project hooks.
-
-See [runtime verification and evidence scope](docs/reference/codex-runtime-verification.md)
-for installed-consumer checks and the distinction between candidate preflight and final main acceptance.
-
----
-
-## Reactive Presentation
-
-The core feature. Tell your host what training or presentation you need, and it builds a complete interactive HTML slideshow — no PowerPoint, no Reveal.js config, no npm install.
-
-### What gets created
-
-Each presentation is a set of standalone HTML files with a shared framework:
-
-```
-your-repo/
-├── index.html                      # Hub page linking all presentations
-├── common/                         # Shared framework (copied once)
-│   ├── theme.css                   # AWS light theme (squid-ink dark opt-in), Pretendard/Space Grotesk, 16:9
-│   ├── slide-framework.js          # Keyboard/touch nav, progress bar, hash routing
-│   ├── presenter-view.js           # Presenter view with draggable splitters
-│   ├── animation-utils.js          # Canvas primitives, AnimationLoop, easing
-│   ├── quiz-component.js           # Quiz auto-grading and feedback
-│   ├── export-utils.js             # PDF/PPTX export and ZIP download
-│   └── aws-icons/                  # AWS Architecture Icons (optional)
-└── eks-autoscaling/                # One directory per presentation
-    ├── index.html                  # Table of contents
-    ├── 01-fundamentals.html        # Block 1 (20-35 min)
-    ├── 02-karpenter.html           # Block 2
-    └── 03-advanced.html            # Block 3
-```
-
-### Slide types
-
-| Slide Type | What It Does |
-|---|---|
-| Canvas Animation | Animated architecture diagrams with Play/Pause controls |
-| Compare Toggle | A vs B side-by-side comparison with toggle buttons |
-| Tabs | Tabbed content panels (e.g., YAML config variants) |
-| Timeline | Horizontal step-by-step process visualization |
-| Checklist | Click-to-toggle best practices with optional YAML expand |
-| Quiz | Multiple-choice questions with auto-grading |
-| Code Block | Syntax-highlighted YAML/JSON/HCL with semantic spans |
-| Slider | Range input with live computed output |
-| Agenda | Session agenda with numbered dots, time labels, and break markers |
-| Prompt | AI prompt workflow display with copy button |
-| Pain Quote | Customer problem statement with challenge list |
-
-### Remarp VSCode Extension
-
-A dedicated VSCode extension for authoring and previewing Remarp presentations. Install from VSIX or build from source.
-
-**Install:**
-```bash
-code --install-extension tools/remarp-vscode/remarp-vscode-0.1.0.vsix
-```
-
-**Features:**
-- **Syntax highlighting** — Remarp directives (`@type`, `@layout`, `@animation`), block tags (`:::canvas`, `:::notes`), click attributes (`{.click}`), Canvas DSL, frontmatter
-- **Live preview** — Side panel with auto-update, dark mode, slide navigation, cursor sync
-- **HTML preview** — Renders Remarp-generated HTML with full CSS/JS (slide framework, animations, fonts)
-- **IntelliSense** — Auto-complete for directives, values, block types, Canvas DSL, click attributes
-- **Visual edit** — Drag/resize elements in preview, changes written back to `.remarp.md` source
-- **Build** — One-click HTML generation via `remarp_to_slides.py` (auto-discovered)
-- **Document outline** — Slide tree view in Explorer sidebar
-- **Auto-detection** — Recognizes Remarp HTML via `<meta name="generator" content="remarp">`
-
-**Source:** `tools/remarp-vscode/` | **Docs:** [VSCode Extension Guide](doc-sites/docs/remarp-guide/vscode-extension.md)
-
-### VSCode extension shortcuts
-
-| Key | Action | Available in |
-|-----|--------|-------------|
-| `Ctrl+Shift+V` | Open Preview | `.remarp.md`, Remarp HTML |
-| `Ctrl+Shift+E` | Toggle Visual Edit Mode | `.remarp.md`, Remarp HTML |
-| `Ctrl+Shift+B` | Build HTML | `.remarp.md`, Remarp HTML |
-
-### Keyboard shortcuts
-
-| Key | Action |
-|-----|--------|
-| `←` `→` | Previous / Next slide |
-| `↑` `↓` | Previous / Next slide (alternative) |
-| `Space` | Next slide |
-| `F` | Toggle fullscreen |
-| `P` | Open presenter view (new window) |
-| `Esc` | Exit fullscreen |
-| `Home` / `End` | First / Last slide |
-| `N` | Toggle slide numbers |
-| `O` | Overview mode (slide grid) |
-| `S` | Speaker notes |
-| `B` | Black screen (pause) |
-| `1`-`9` | Jump to slide 10%-90% |
-
-### How it works
-
-1. **Plan** — Claude asks about topic, audience, duration, language, and optional PPTX/PDF source for corporate branding
-2. **Author** — Writes Remarp markdown as the content source of truth
-3. **Generate** — Builds HTML via `remarp_to_slides.py` with Canvas animations and interactive elements inline
-4. **Review** — Interactive feedback loop: edit Remarp directly, preview/edit generated HTML in VSCode (extension auto-detects Remarp HTML via meta tags), or request changes via prompt
-5. **Enhance** — Adds Canvas animations, extracts AWS icons, tests presenter view
-6. **Deploy** — `git push` to GitHub Pages. No build step required
-
-### Creating a Presentation
-
-#### Getting Started
-
-Start by describing what you need. Here are some example prompts:
-
-```
-"Create a training presentation on EKS autoscaling"
-```
-
-```
-"Create a presentation on AWS Lambda cold starts"
-```
-
-```
-"Build hands-on slides for Karpenter migration"
-```
-
-```
-"Make training materials on S3 security best practices"
-```
-
-The agent activates automatically when it detects presentation-related keywords in your prompt.
-
-#### What Claude Asks
-
-Before generating content, Claude asks 8 planning questions to tailor the presentation:
-
-| # | Question | Description | Default |
-|---|----------|-------------|---------|
-| 1 | Topic and audience | Technical depth, pain points, learning objectives | — |
-| 2 | Duration | Total length — determines block count and slide count | — |
-| 3 | Blocks | 20-35 min per block with 5 min breaks between blocks | Auto-split based on duration |
-| 4 | Target repo | GitHub repo for deployment | `~/reactive_presentation/` |
-| 5 | Language | Korean or English (technical terms always in English) | Korean |
-| 6 | PPTX/PDF source | Corporate `.pptx`/`.pdf` for theme extraction or full conversion | None (AWS light theme; `theme: { mode: dark }` for squid-ink dark, `theme: { preset: paper }` for the legacy warm look) |
-| 7 | Speaker info | Name and affiliation for the cover slide (stored for reuse) | — |
-| 8 | Quiz inclusion | Whether to include quiz slides for knowledge checks | Yes |
-
-After gathering answers, Claude writes Remarp markdown content and generates interactive HTML slides.
-
-#### Review and Iteration
-
-After Claude generates the initial content, you enter a review loop with three options:
-
-1. **Edit Remarp directly** — Open the `.remarp.md` file in your editor, make changes, then say "done". Claude reads your edits and updates the HTML to match.
-
-2. **Request changes via prompt** — Describe what to change (e.g., "add a quiz after slide 5", "reduce the timeline to 3 steps"). Claude updates both the Remarp source and HTML files.
-
-3. **Proceed** — If the content looks good, approve it and move to the enhancement phase where Canvas animations and interactive elements are added.
-
-This loop repeats until you are satisfied. Remarp markdown stays in sync with the HTML at all times — Remarp is the content source of truth, HTML adds interactivity on top.
-
-#### Deploy to GitHub Pages
-
-Once the presentation is finalized:
-
-```bash
-git add common/ {slug}/ index.html
-git commit -m "feat: add {presentation-name} interactive training"
-git push origin main
-```
-
-Then enable GitHub Pages: Settings -> Pages -> main branch / root.
-
-No build step is required — the HTML files are served directly.
-
-### PPTX theme extraction
-
-If you have a corporate PowerPoint template, provide the `.pptx` file and the agent extracts colors, fonts, and logos into CSS overrides — the extracted brand always takes precedence over the built-in AWS light/dark themes.
-
-### PPTX export
-
-Built decks export to a screenshot-based `.pptx` (one full-bleed image per slide, speaker notes included) via the headless exporter — `python3 <skill>/scripts/export_pptx.py <built-dir>` — or the **Export PPTX** button on the generated `toc.html`. For an editable/native PowerPoint deck, use the `aws-light-fcd` skill instead.
-
----
-
-## Architecture Diagrams
-
-Static AWS architecture diagrams as Draw.io XML. The agent places AWS icons, groups resources into VPC/subnet boundaries, and auto-layouts connections.
-
-**Output**: `.drawio` files — export to PNG or SVG for embedding in presentations, documents, or GitBook pages.
-
-**Supports**: Auto-layout, AWS icon placement, VPC/subnet/region grouping, multi-tier architectures.
-
-```
-"Draw an EKS with ALB architecture diagram"
-```
-
-```
-"Create a 3-tier VPC architecture diagram with public/private subnets"
-```
-
----
-
-## Animated Diagrams
-
-Dynamic traffic flow diagrams with SVG + SMIL animation. Each diagram is a standalone HTML file with play/pause controls and an interactive legend.
-
-**Output**: `.html` files with embedded SVG animations — no dependencies, works in any browser.
-
-**Supports**: Request routing flows, data pipeline visualization, multi-service traffic patterns, color-coded service tiers.
-
-```
-"Create an animated API Gateway → Lambda → DynamoDB flow"
-```
-
-```
-"Build a traffic flow animation showing EKS pod-to-pod communication"
-```
-
----
-
-## Documents
-
-Professional Markdown technical documents — reports, solution comparisons, architecture documentation, and guides. Integrates with `architecture-diagram-agent` for inline diagrams.
-
-**Output**: `.md` files with tables, code blocks, and diagram references.
-
-```
-"Write an EKS vs ECS comparison document"
-```
-
-```
-"Create a technical report on S3 security best practices"
-```
-
----
-
-## GitBook Sites
-
-Structured documentation sites with navigation, components, and cross-references. Generates a complete GitBook project with `SUMMARY.md`, code tabs, hints, and expandable sections.
-
-**Output**: GitBook project directory — push to a GitBook-connected repo for automatic deployment.
-
-**Supports**: Multi-page navigation, code tabs (multi-language), hint/warning blocks, embedded diagrams.
-
-```
-"Create a GitBook documentation site for our API"
-```
-
-```
-"Build a GitBook knowledge base for EKS operations"
-```
-
----
-
-## Workshops
-
-AWS Workshop Studio content with hands-on lab modules. Generates complete workshop structures including CloudFormation templates, step-by-step instructions, and multi-language support (Korean + English).
-
-**Output**: Workshop Studio content with `contentspec.yaml`, module directories, and bilingual `.ko.md` / `.en.md` file pairs.
-
-**Supports**: Lab modules with prerequisites, CloudFormation infrastructure templates, Workshop Studio directives (not Hugo shortcodes).
-
-```
-"Create an EKS hands-on workshop"
-```
-
-```
-"Build a serverless workshop with Lambda and DynamoDB labs"
-```
-
----
-
-## Content Review
-
-Quality gate for all content types. The `content-review-agent` inspects layout, terminology, hallucination, language, PII/sensitive data, readability, accessibility, and structural completeness — scoring on a 100-point scale.
-
-Used automatically at the end of content creation workflows (presentations, documents, GitBook, workshops). Can also be invoked directly:
-
-```
-"Review the presentation for quality"
-```
-
-See [Quality Gate](#quality-gate) for scoring details.
-
----
-
-## AWS Ops
-
-Infrastructure operations and troubleshooting for AWS/EKS environments. Describe your issue — node crashes, network problems, IAM errors, cost spikes — and the right agent activates automatically.
-
-### Agents
-
-| Agent | Domain | Example Prompt |
-|-------|--------|----------------|
-| `eks-agent` | EKS clusters | "My node is NotReady, troubleshoot" |
-| `network-agent` | Networking | "Pod can't reach external service" |
-| `iam-agent` | IAM/RBAC | "Getting AccessDenied on S3 from pod" |
-| `observability-agent` | Observability | "Set up Container Insights for EKS" |
-| `storage-agent` | Storage | "PVC stuck in Pending state" |
-| `database-agent` | Database | "Aurora connection timeout from EKS" |
-| `cost-agent` | Cost | "Analyze my EKS cluster costs" |
-| `analytics-agent` | Analytics | "OpenSearch cluster health is red" |
-| `ops-coordinator-agent` | Incidents | "Production outage, coordinate response" |
-| `wellarchitected-agent` | Well-Architected | "Run a Well-Architected review on my infra" |
-
-### Skills
-
-| Skill | Trigger | What It Does |
-|-------|---------|--------------|
-| `ops-troubleshoot` | "troubleshoot", "debug" | Systematic 5-min triage → investigate → resolve → postmortem |
-| `ops-health-check` | "health check" | Full 6-domain infrastructure assessment |
-| `ops-network-diagnosis` | "network issue" | VPC CNI, Load Balancer, DNS deep diagnosis |
-| `ops-observability` | "monitoring setup", "opentelemetry", "devops agent" | CloudWatch/Prometheus/logs + OSS stack (OpenTelemetry, Grafana, Loki, Tempo, ClickHouse) + AWS DevOps Agent incident escalation |
-| `ops-security-audit` | "security audit", "penetration testing" | IAM/network/CIS posture + AWS Security Agent (design/code review, on-demand pentest) |
-| `ops-wellarchitected-review` | "well-architected" | 6-pillar assessment, 100-point scoring, AS-IS/TO-BE roadmap |
-
-### MCP Integration
-
-The ops plugin connects to AWS MCP servers for real-time infrastructure data:
-
-| Server | Purpose |
-|--------|---------|
-| `awsknowledge` | Architecture recommendations and regional availability |
-| `awsdocs` | Official AWS documentation search |
-| `awsapi` | Direct AWS API calls (describe, list resources) |
-| `awspricing` | Service pricing and cost analysis |
-| `awsiac` | CloudFormation/CDK validation and troubleshooting |
-
-### Incident Response
-
-```
-User report → ops-coordinator (triage + severity)
-                ├── Network → network-agent
-                ├── Cluster → eks-agent
-                ├── Auth    → iam-agent
-                ├── Storage → storage-agent
-                ├── Logs    → observability-agent
-                └── Search  → analytics-agent
-              ← Aggregate → Root cause → Resolve → Verify
-```
-
-All agents activate automatically when Claude detects matching keywords.
-
----
-
-## Kiro Power Converter
-
-Convert any Claude Code plugin into [Kiro IDE](https://kiro.dev) Power format — automatically. The converter handles structure translation, frontmatter transformation, MCP configuration migration, and keyword aggregation.
-
-### Why
-
-Claude Code plugins and Kiro Powers share a similar concept (agents + skills + MCP servers) but differ in folder structure, file format, and configuration. This plugin bridges the gap so you can reuse Claude Code plugins in Kiro without manual rewriting.
-
-### How It Works
-
-| Claude Code | Kiro Power | What Changes |
-|-------------|------------|--------------|
-| `.claude-plugin/plugin.json` | `POWER.md` | Manifest → YAML frontmatter with aggregated keywords |
-| `CLAUDE.md` | `steering/routing.md` | Wrapped with `inclusion: always` |
-| `agents/*.md` | `steering/<agent>.md` | `tools`/`model` removed, `inclusion: auto` added |
-| `skills/*/SKILL.md` | `steering/<skill>.md` | `triggers[]` merged into description, `inclusion: auto` |
-| `skills/*/references/*.md` | `steering/ref-*.md` | `inclusion: manual` frontmatter added |
-| `.mcp.json` | `mcp.json` | `type` removed, `autoApprove`/`disabled` added |
-
-### Usage
-
-#### Using the Agent (Interactive)
-
-Just describe what you want in natural language — the agent activates on keywords like "convert to kiro", "kiro power", "convert to kiro power":
-
-```
-"Convert aws-ops-plugin to Kiro Power format"
-```
-
-```
-"Convert this to Kiro Power format"
-```
-
-#### Using the Script (CLI)
-
-The conversion script supports 4 input sources and 3 output targets. No external dependencies — Python 3.8+ standard library only.
-
-**From a local plugin:**
-```bash
-python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_to_power.py \
-  --source ./plugins/aws-ops-plugin \
-  --output /tmp/aws-ops-power \
-  --target export
-```
-
-**From a GitHub repository:**
-```bash
-python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_to_power.py \
-  --git-url https://github.com/Atom-oh/oh-my-cloud-skills \
-  --plugin-path plugins/aws-ops-plugin \
-  --output /tmp/aws-ops-power \
-  --target global
-```
-
-**From marketplace (name search):**
-```bash
-python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_to_power.py \
-  --marketplace aws-ops-plugin \
-  --output /tmp/aws-ops-power \
-  --target global
-```
-
-**Search available plugins:**
-```bash
-python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_to_power.py \
-  --search "aws"
-```
-
-**Convert individual skills:**
-```bash
-# Single skill → standalone steering file
-python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_to_power.py \
-  --skill ./plugins/aws-ops-plugin/skills/ops-troubleshoot \
-  --output ~/.kiro/steering/ops-troubleshoot.md
-
-# Multiple skills at once
-python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_to_power.py \
-  --skill ./skills/ops-troubleshoot \
-  --skill ./skills/ops-health-check \
-  --output ~/.kiro/steering/
-```
-
-### Output Targets
-
-| Target | Flag | Install Path | Use Case |
-|--------|------|--------------|----------|
-| **export** | `--target export` (default) | `--output` path | Share, review, or manually install |
-| **global** | `--target global` | `~/.kiro/powers/<name>/` | Available in all Kiro projects |
-| **project** | `--target project` | `.kiro/powers/<name>/` | Current project only |
-
-### Example Output
-
-Converting `aws-ops-plugin` (10 agents, 6 skills, 2 MCP servers) produces:
-
-```
-aws-ops-power/
-├── POWER.md                      # Manifest with ~96 aggregated keywords
-├── mcp.json                      # 2 AWS MCP servers (type field removed)
-└── steering/
-    ├── routing.md                # Always-loaded routing context
-    ├── eks-agent.md              # Auto-activated agent steering files
-    ├── network-agent.md
-    ├── iam-agent.md
-    ├── observability-agent.md
-    ├── storage-agent.md
-    ├── database-agent.md
-    ├── cost-agent.md
-    ├── analytics-agent.md
-    ├── ops-coordinator-agent.md  # "(Advanced reasoning)" in description
-    ├── wellarchitected-agent.md
-    ├── ops-troubleshoot.md       # Skill with triggers merged
-    ├── ops-health-check.md
-    ├── ops-network-diagnosis.md
-    ├── ops-observability.md
-    ├── ops-security-audit.md
-    ├── ops-wellarchitected-review.md
-    └── ref-*.md                  # 22 reference files (manual inclusion)
-```
-
-### Edge Cases
-
-| Scenario | Handling |
-|----------|----------|
-| Large assets (icons/, 4,224 files) | Download script generated, directory skipped |
-| Opus model agents | `model` removed, "(Advanced reasoning)" added to description |
-| Korean + English keywords | Both languages included in POWER.md keywords |
-| Missing `.mcp.json` | `mcp.json` generation skipped |
-| Nested path references | Converted to power-relative paths |
-
----
+Request a workflow naturally or select it with `/skills` or the `$` picker.
+Each plugin's `.codex-plugin/inventory.json` maps generated entries to shared
+procedures. Same-name aliases can share an entry. Atlas graph and project-init
+health-check use `source-command-graph` and `source-command-health-check`.
+
+Claude commands become skill workflows in Codex. Agent Markdown supplies specialist
+instructions; it does not register native Codex agent types, models, memory, or
+permission grants. Internal specialist entries require explicit host selection.
+External CLI workflows still need the relevant executable and authentication.
+
+Declared plugin hooks require host trust. Project-init instead provides project
+hook templates: install them in the consumer project, establish project trust,
+inspect their definitions, and grant hook trust. Installing project-init alone
+does not activate those project hooks. See
+[runtime verification and evidence scope](docs/reference/codex-runtime-verification.md).
 
 ## Quick Start
 
-### Content Agents
+| Request | Workflow |
+|---|---|
+| “Create a 30-minute English EKS operations deck with speaker notes and a quiz.” | reactive-presentation |
+| “Create an editable AWS light PowerPoint deck from this outline.” | aws-light-fcd |
+| “Draw this multi-AZ AWS architecture and export PNG.” | architecture-diagram |
+| “Show request traffic and a failover scenario.” | animated-diagram |
+| “Build a Workshop Studio lab with verification and cleanup.” | workshop-creator |
+| “Diagnose why these pods cannot reach the service.” | ops-network-diagnosis |
+| “Assess this cluster's health.” | ops-health-check |
+| “Get a second opinion on this diff.” | co-agent review |
+| “Delegate this approved implementation plan to Kiro.” | kiro-delegate |
+| “Initialize this existing project for Codex.” | project-init |
+| “Find Atlas pages that drifted from the code.” | atlas |
 
-| Agent | Creates | Example Prompt | Output |
-|-------|---------|----------------|--------|
-| `presentation-agent` | Interactive HTML slides | "Create an AWS training presentation" | `.html` (GitHub Pages) |
-| `architecture-diagram-agent` | AWS architecture diagrams | "Draw a VPC architecture diagram" | `.drawio` -> `.png` |
-| `animated-diagram-agent` | Animated traffic flow | "Create a traffic flow animation" | `.html` (SVG+SMIL) |
-| `document-agent` | Technical documents | "Write an EKS vs ECS comparison document" | `.md` |
-| `gitbook-agent` | Documentation sites | "Create a GitBook documentation site" | GitBook project |
-| `workshop-agent` | Workshop content | "Create an EKS workshop" | Workshop Studio |
-| `brochure-agent` | Single-page online brochure | "Make a landing page for our platform" | `.html` (GitHub Pages) |
-| `content-review-agent` | Quality review | "Review the presentation" | Review report |
+Commands shown below name the Claude workflows; select their corresponding
+installed skill entries in Codex. Review a concrete deployment or publication
+candidate before executing actions that require authorization.
 
-### Operations Agents
+## Reactive Presentation
 
-| Agent | Domain | Example Prompt | Output |
-|-------|--------|----------------|--------|
-| `eks-agent` | EKS clusters | "Node NotReady, troubleshoot" | Diagnosis + fix |
-| `network-agent` | Networking | "VPC CNI IP exhaustion" | Diagnosis + fix |
-| `iam-agent` | IAM/RBAC | "Pod can't access S3" | Policy fix |
-| `observability-agent` | Observability | "Set up Container Insights" | Config + queries |
-| `storage-agent` | Storage | "PVC stuck in Pending" | Diagnosis + fix |
-| `database-agent` | Database | "Aurora timeout from EKS" | Diagnosis + fix |
-| `cost-agent` | Cost | "Analyze cluster costs" | Cost report |
-| `analytics-agent` | Analytics | "OpenSearch cluster red" | Diagnosis + fix |
-| `ops-coordinator-agent` | Incidents | "Production outage" | Coordinated response |
-| `wellarchitected-agent` | Well-Architected | "Run a WAF review" | 100-point score + roadmap |
+The [reactive-presentation skill](plugins/aws-content-plugin/skills/reactive-presentation/SKILL.md)
+authors Remarp source and builds interactive HTML. It supports fragments, presenter
+notes, comparison/tabs, quizzes, timelines, checklists, code, and custom calculators
+or simulations. A multi-file deck uses `_presentation.md`, block files, assets,
+and generated HTML with a shared framework.
 
-### Conversion, Review, and Scaffolding Agents
+A local source workflow, run from this marketplace checkout:
 
-| Agent | Plugin | Example Prompt | Output |
-|-------|--------|----------------|--------|
-| `kiro-converter-agent` | kiro-power-converter | "Convert aws-ops-plugin to Kiro" | Kiro Power directory |
-| `agentcore-creator-agent` | agentcore-creator | "Deploy agent to AgentCore" | Harness config or Strands Agent + deploy script |
-| `co-agent` | co-agent | "second opinion" / "help me decide" / "co-author ADR" | Multi-AI review / decision / ADR |
-| `doc-sync-checker` | project-init | "/sync-docs" | Doc quality scores |
-| `kiro-delegate-agent` | kiro | "delegate implementation to kiro" / "implement with kiro" | Kiro-implemented change, verified + committed by Claude |
-| `pr-autofix-planner` / `pr-autofix-implementer` | co-agent | (spawned by the pr-autofix skill) | Fix plan / plan-applied worktree edits |
-
-> `pr-autofix-planner` / `pr-autofix-implementer` are meant to be spawned by the pr-autofix skill; their descriptions discourage (but cannot hard-block) direct auto-selection.
-
-All agents (except the internal pr-autofix workers above) activate automatically when Claude detects matching keywords in your prompt.
-
----
-
-## Skills
-
-### Content Skills
-
-| Skill | Provides |
-|-------|----------|
-| `reactive-presentation` | Presentation framework (CSS/JS), Remarp conversion, PPTX→Remarp converter, AWS icon extraction, slide pattern reference |
-| `architecture-diagram` | Spec-driven `layout_aws.py` engine (YAML → Draw.io), embedded shared AWS icons, `.excalidraw` generator, layout/design lint gate |
-| `animated-diagram` | SMIL animation guide, HTML wrapper templates, traffic flow patterns |
-| `slide-fix` | Apply Remarp slide issue annotations (`<!-- issue: -->`) and rebuild |
-| `gitbook` | GitBook structure guide, component patterns, navigation templates |
-| `workshop-creator` | Workshop Studio directives, module templates, CloudFormation references |
-| `brochure` | Single-page responsive brochure (self-contained HTML), editorial design system, embedded architecture SVG, public GitHub Pages deploy |
-
-### Operations Skills
-
-| Skill | Provides |
-|-------|----------|
-| `ops-troubleshoot` | Systematic troubleshooting framework, incident response procedures |
-| `ops-health-check` | Infrastructure health assessment across 6 domains |
-| `ops-network-diagnosis` | VPC CNI, Load Balancer, DNS deep diagnosis references |
-| `ops-observability` | CloudWatch, Prometheus, log analysis configuration |
-| `ops-security-audit` | IAM audit, network security, compliance scan procedures |
-| `ops-wellarchitected-review` | 6-pillar assessment, 100-point scoring, AS-IS/TO-BE roadmap |
-
-### Conversion and Scaffolding Skills
-
-| Skill | Provides |
-|-------|----------|
-| `kiro-convert` | Plugin-to-Kiro-Power conversion workflow |
-| `agentcore-create` | 5-phase AgentCore design, build, convert, deploy workflow (harness or Runtime target) |
-| `co-agent` | Multi-AI collaboration (Kiro / the other host CLI / Antigravity — `agy`) — review, decision support, ADR co-authoring, and `sync-context`; the current host chairs. Commands: `/co-agent:configure`, `/co-agent:sync-context`, `/co-agent:consensus`, `/co-agent:harness`, `/co-agent:setup`, `/co-agent:pr-autofix` |
-| `project-scaffolder` | Claude Code project structure patterns and conventions |
-| `pr-autofix` | Poll AI + human PR review feedback and auto-fix issues (co-agent; loop bound via `/co-agent:configure set pr_autofix max_iterations`, default 5; plan on Fable/Opus, implement via opus [medium effort] subagents) |
-| `decision-reconcile` | (co-agent) Detect contradictions across accumulated ADRs (and ADR-vs-reality drift) via a diverse multi-agent panel (available host agents + optional external AI CLIs, one review lens each), then draft a superseding ADR |
-| `kiro-delegate` | Cost-savings implementation + review delegation to Kiro CLI (subscription credits) — worktree-isolated implement loop, scope-guarded diff, opt-in pre-commit and 3-lens pre-push review gates (both off by default — enabling one sends diff content to Kiro's backend), and opt-in web search delegation for WebSearch-less sessions (Claude Code on Bedrock). Commands: `/kiro:setup`, `/kiro:delegate`, `/kiro:review`, `/kiro:configure` |
-
-### Project Init Commands
-
-| Command | What It Does |
-|---------|--------------|
-| `/init-project` | Initialize Claude Code project structure |
-| `/sync-docs` | Synchronize documentation with code |
-| `/add-adr` | Create Architecture Decision Record |
-| `/add-module` | Add module directory with CLAUDE.md |
-| `/add-runbook` | Create operational runbook |
-| `/generate-readme` | Generate bilingual README.md |
-| `/generate-changelog` | Generate bilingual CHANGELOG.md |
-| `/health-check` | Validate project setup |
-| `/add-reference-doc` | Add an external reference doc under docs/reference/ |
-
----
-
-## Workflows
-
-### Content Workflows
-
-```
-Presentations:     presentation-agent  -->  content-review-agent  -->  GitHub Pages
-Static diagrams:   architecture-diagram-agent  -->  .drawio  -->  PNG export
-Animated diagrams: animated-diagram-agent  -->  .html (SVG + SMIL)
-Documents:         document-agent  -->  content-review-agent  -->  .md
-GitBook:           gitbook-agent  -->  content-review-agent  -->  git push
-Workshops:         workshop-agent  -->  content-review-agent  -->  Workshop Studio
+```bash
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py validate ./my-presentation/
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build ./my-presentation/ --lang en
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py sync ./my-presentation/
 ```
 
-### Operations Workflows
+Use [Remarp quick start](doc-sites/docs/remarp-guide/quick-start.md),
+[CLI reference](doc-sites/docs/remarp-guide/build-cli.md), and
+[keyboard controls](doc-sites/docs/remarp-guide/keyboard-shortcuts.md) for the
+current syntax and runtime behavior. The
+[VS Code extension](doc-sites/docs/remarp-guide/vscode-extension.md) supplies preview,
+source navigation, build, and issue annotations; `slide-fix` applies those annotations.
 
+PPTX theme extraction applies a supplied brand to web slides. Screenshot-based
+PPTX export captures a built deck; native editable PowerPoint uses
+[aws-light-fcd](plugins/aws-content-plugin/skills/aws-light-fcd/SKILL.md).
+Keep these output formats distinct. Shared AWS icons are reused across the workflows.
+
+## Architecture Diagrams
+
+The [architecture-diagram skill](plugins/aws-content-plugin/skills/architecture-diagram/SKILL.md)
+provides YAML-driven Draw.io layout, hand-authored XML for unsupported structures,
+and Excalidraw sketch output. Validate XML and require layout score at least 80
+before Draw.io export. Sizes, colors, labels, and spacing come from the
+[canonical design tokens](plugins/aws-content-plugin/skills/architecture-diagram/references/design-tokens.md).
+
+Use simple Canvas DSL for a small linear flow; use HTML/CSS for larger or grouped
+slide diagrams. Remarp's `:::archify` path renders through its configured, pinned
+Archify dependency and embeds an explorable diagram. Check the source skill for
+that dependency and output contract rather than treating it as another marketplace plugin.
+
+## Animated Diagrams
+
+[animated-diagram](plugins/aws-content-plugin/skills/animated-diagram/SKILL.md)
+uses SVG/SMIL for repeated traffic motion and JavaScript/CSS state machines for
+controlled scaling, deployment, and failover scenarios. Keep a readable static
+architecture, labels, legend, and working reset/replay controls.
+
+## Documents
+
+The [document agent](plugins/aws-content-plugin/agents/document-agent.md) writes
+technical reports and solution comparisons with evidence, diagrams, and useful
+references. [brochure](plugins/aws-content-plugin/skills/brochure/SKILL.md) creates a
+product or solution landing page; [gh-home](plugins/aws-content-plugin/skills/gh-home/SKILL.md)
+creates a personal profile or portfolio. Both produce responsive HTML.
+
+## GitBook Sites
+
+[gitbook](plugins/aws-content-plugin/skills/gitbook/SKILL.md) supplies site structure,
+SUMMARY navigation, rich components, diagrams, and cross-link checks. Create language
+variants only when the deliverable requires them.
+
+## Workshops
+
+[workshop-creator](plugins/aws-content-plugin/skills/workshop-creator/SKILL.md)
+produces Workshop Studio modules, labs, directives, and optional infrastructure.
+Each lab explains prerequisites, commands, expected results, verification, and cleanup.
+
+## AWS Ops
+
+Use [ops-troubleshoot](plugins/aws-ops-plugin/skills/ops-troubleshoot/SKILL.md) for a
+concrete failure, [ops-health-check](plugins/aws-ops-plugin/skills/ops-health-check/SKILL.md)
+for an overall assessment, and the network, observability, security-audit, or
+Well-Architected skill for its specific scope. Specialist procedures cover EKS,
+network, IAM, observability, storage, database, analytics, cost, and architecture;
+the coordinator correlates multi-domain incidents.
+
+The workflow is scope → read-only evidence → diagnosis → authorized remediation →
+verification. A scored assessment must identify its rubric and evidence gaps.
+Bundled MCP servers are defined in the host manifests; additional integrations
+require their own setup. See the [operations guide](doc-sites/docs/aws-ops-plugin/overview.md).
+
+## Kiro Power Converter
+
+[kiro-convert](plugins/kiro-power-converter/skills/kiro-convert/SKILL.md) accepts a
+local plugin, GitHub source, marketplace candidate, or individual skill. It maps
+metadata, steering, hooks, MCP settings, and assets into Kiro Power format.
+
+```bash
+python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_to_power.py \
+  --source ./plugins/aws-ops-plugin --output /var/tmp/aws-ops-power --target export
 ```
-Incident response:  ops-coordinator  -->  specialist agents  -->  root cause  -->  resolve  -->  verify
-Troubleshooting:    matched agent  -->  diagnose  -->  resolve  -->  verify
-Health check:       ops-health-check skill  -->  6-domain assessment
-Security audit:     ops-security-audit skill  -->  IAM + network + compliance
-Well-Architected:   wellarchitected-agent  -->  6-pillar scoring  -->  AS-IS/TO-BE roadmap
+
+Targets include export, project, and global installation. `--preserve-skills`
+retains supported skill structure. Resolve ambiguous marketplace candidates to an
+explicit source; inspect generated metadata and required environment variables
+before loading the Power in [Kiro](https://kiro.dev).
+
+## AgentCore Creator
+
+[agentcore-create](plugins/agentcore-creator/skills/agentcore-create/SKILL.md) follows
+Discovery → Design → Skill-First Build → Convert → Deploy and Verify. Existing
+plugin input can enter at conversion. Choose harness configuration for a supported
+managed loop or generated Strands/Runtime code for custom orchestration. Model
+mapping, compatibility, tool/Gateway integration, and Memory options live in the
+converter and its references. Generated files are not proof of cloud deployment.
+
+## Co-agent
+
+The current host chairs, excludes itself from external peer selection, verifies
+findings against source, and owns the final synthesis. Peer responses are advisory;
+agreement alone does not validate a finding.
+
+The [co-agent skill](plugins/co-agent/skills/co-agent/SKILL.md) has **six modes**:
+
+| Mode | Result |
+|---|---|
+| `review` | Evidence-checked findings and disagreements |
+| `decide` | Options, tradeoffs, and a host recommendation |
+| `adr` | A decision record informed by peer perspectives |
+| `sync-context` | Marked AGENTS.md distilled from CLAUDE.md, plus the Kiro steering bridge |
+| `consensus` | Host implementation with required peer gates |
+| `harness` | Eligible peer implementation in isolated worktrees; host design, verification, and commits |
+
+**`/co-agent:setup` is a separate readiness command.** It probes actual peer
+usability; an installed binary alone is insufficient. Casual review/decide/ADR can
+continue solo with an explicit notice. Consensus and harness require the usable
+peer evidence and coverage their gates specify, and cannot silently become solo.
+A plain code-review request does not automatically authorize multi-AI fan-out.
+
+```text
+/co-agent:setup
+/co-agent review the current diff
+/co-agent:configure
+/co-agent:sync-context
 ```
 
-### Conversion and Review Workflows
+`/co-agent:configure` shows effective models, supported effort, profiles, timeouts,
+and budgets. The [canonical defaults](plugins/co-agent/skills/co-agent/co-agent.defaults.json)
+and local overrides are authoritative; provider catalog IDs need not match across vendors.
 
-```
-Kiro conversion:   plugin source  -->  kiro-converter-agent  -->  Kiro Power directory  -->  install/export
-AgentCore deploy:  discovery  -->  design (harness vs Runtime)  -->  skill-first build  -->  AgentCore convert  -->  deploy
-Co-agent collab:     prompt  -->  configured peer CLIs  -->  current host synthesizes  -->  review / decision / ADR / sync-context
-Doc sync:          /sync-docs  -->  doc-sync-checker  -->  quality scores  -->  update docs
-```
+[pr-autofix](plugins/co-agent/skills/pr-autofix/SKILL.md) polls AI/human feedback,
+plans confirmed fixes, applies them in an isolated worktree, validates, and pushes
+within configured bounds. [decision-reconcile](plugins/co-agent/skills/decision-reconcile/SKILL.md)
+checks ADR contradictions and drift, then drafts a superseding decision.
 
-Diagrams can be embedded into presentations, documents, or GitBook pages as part of a larger workflow.
+## Kiro Delegation
 
----
+`/kiro:setup` probes the CLI and prepares its agents. `/kiro:delegate` follows a
+host-authored plan through task worktrees, Kiro implementation, diff capture, scope
+validation, and host tests/commits. `/kiro:review` requests a review;
+`/kiro:configure` shows effective settings.
+
+The scope guard controls which captured changes reach the main tree. It does not
+sandbox the Kiro process. Enabling the implementer's shell tool is a separate trust
+decision. Default delegation, automatic review, and delegated search have separate
+opt-in settings. Review settings are independent of implementation settings; see
+[kiro.defaults.json](plugins/kiro/skills/kiro-delegate/kiro.defaults.json).
+
+## Project Init and Atlas
+
+Project-init adapts the existing repository to the selected host. Its workflows
+include `init-project`, `sync-docs`, `add-adr`, `add-module`, `add-runbook`,
+`add-reference-doc`, `generate-readme`, `generate-changelog`, and `health-check`.
+Use actual source directories and build commands, preserve handwritten instructions,
+and assess only applicable host checks. Project-init keeps upstream-owned source
+separate from its repository-owned Codex overlay; see
+[upstream synchronization](docs/reference/project-init-upstream-sync.md).
+
+Atlas pages declare `covers`, `related`, and `code_rev` metadata. Git compares each
+page's own revision anchor with changed covered files; the index helps select
+relevant topics. `/atlas:init`, `/atlas:add-doc`, `/atlas:graph`, `/atlas:sync`, and
+`/atlas:configure` manage the wiki. Start sync with `--dry-run` to inspect drift
+without a model call or writes. On-demand repair can use the active Codex host;
+opt-in unattended repair remains Claude-backed. See the
+[Atlas contract](plugins/atlas/skills/atlas/SKILL.md) and
+[defaults](plugins/atlas/skills/atlas/atlas.defaults.json).
+
+<a id="workflows"></a>
+<a id="content-review"></a>
 
 ## Quality Gate
 
-All content passes through `content-review-agent` which scores on a 100-point scale across layout, terminology, language, accessibility, and structural completeness.
+Content output follows the
+[content-review rubric](plugins/aws-content-plugin/agents/content-review-agent.md)
+before publishing: score at least 85 on the standard scale, with the rubric's
+Critical/Warning limits and format-specific scoring. Source validation and a build
+are necessary evidence, not a substitute for the content review.
 
-Score, Critical count, and Warning count are independent bands — the verdict is the
-**worst of the three** (FAIL > REVIEW > PASS). When Visual Testing is exempt (non-HTML
-content), the score bands convert to the 90-point scale: PASS >= 77 / REVIEW 63-76 / FAIL < 63.
+Local co-agent PR/push hooks, Kiro commit/push reviews, and Atlas push synchronization
+are optional controls with their own consent and failure policies. Their disabled
+or fail-open state does not waive this repository's required GitHub checks.
 
-| Band | PASS | REVIEW | FAIL |
-|------|------|--------|------|
-| Score (of 100) | >= 85 | 70-84 | < 70 |
-| Critical count | 0 | — | >= 1 |
-| Warning count | <= 3 | 4-10 | > 10 |
+Repository PRs require **latest-HEAD AI Code Review and Codex package validation**.
+The configured review roster covers the full reviewed diff, and a chair verifies
+findings. Active Critical/Major findings block merge. Missing, failed, or truncated
+required coverage is an error, not an implicit pass. Review the HEAD, target branch,
+and prerequisite PRs immediately before merge; retain the enforced diff caps.
 
----
+Use [CI review policy](docs/ci-pr-review.md),
+[CI roster defaults](scripts/pr-review/pr-review.defaults.json),
+[AI review workflow](.github/workflows/pr-review.yml), and
+[Codex validation workflow](.github/workflows/codex-validation.yml) as the authority.
+The privileged review executes trusted-base code and treats PR content as data;
+the separate GitHub-hosted validation job checks the PR's generated packages without
+provider secrets.
+
+<a id="skills"></a>
 
 ## Project Structure
 
+| Path | Maintained purpose |
+|---|---|
+| `plugins/` | Shared plugin procedures, references, scripts, and both host manifests |
+| `.claude-plugin/marketplace.json` | Claude marketplace |
+| `.agents/plugins/marketplace.json` | Codex marketplace |
+| `scripts/sync-codex-plugins.py`, `scripts/codex/` | Codex projection generator and templates |
+| `scripts/pr-review/` | Repository CI review tooling and configuration |
+| `doc-sites/` | Public documentation and frozen demo artifacts |
+| `docs/` | Architecture, ADRs, runbooks, and internal references |
+| `tests/` | Repository validation and regression checks |
+| `tools/remarp-vscode/` | Remarp editor extension |
+
+Maintained documentation is English only. Requested deliverables can use another
+language; literal aliases, syntax tokens, fixtures, and frozen demo payloads remain
+data. [README.ko.md](README.ko.md) is a compatibility pointer to this README.
+Release notes describe historical behavior, not current runtime guarantees.
+
+## Development
+
+Edit maintained sources or generator/templates, then regenerate affected Codex
+outputs. Do not repair generated copies alone. Run the repository checks from its root:
+
+```bash
+bash tests/run-all.sh
+python3 scripts/test-plugins.py
+python3 scripts/test-codex-plugins.py
+python3 scripts/sync-codex-plugins.py --check
+python3 scripts/eval-skills.py
 ```
-plugins/
-├── aws-content-plugin/                # Content creation (9 agents, 9 skills)
-│   ├── .claude-plugin/plugin.json
-│   ├── CLAUDE.md
-│   ├── agents/                        # 9 agents
-│   │   ├── presentation-agent.md      # Format dispatcher (Web vs PPTX)
-│   │   ├── reactive-presentation-agent.md # Interactive HTML slideshows
-│   │   ├── architecture-diagram-agent.md  # Draw.io XML diagrams
-│   │   ├── animated-diagram-agent.md  # SVG + SMIL animations
-│   │   ├── document-agent.md          # Markdown documents & reports
-│   │   ├── gitbook-agent.md           # GitBook documentation sites
-│   │   ├── workshop-agent.md          # AWS Workshop Studio content
-│   │   ├── brochure-agent.md          # Single-page responsive brochure
-│   │   └── content-review-agent.md    # Cross-cutting quality review
-│   └── skills/                        # 9 skills
-│       ├── reactive-presentation/     # Presentation framework + AWS icons
-│       ├── architecture-diagram/      # Draw.io templates & patterns
-│       ├── animated-diagram/          # SMIL animation guide & templates
-│       ├── gitbook/                   # GitBook structure & components
-│       ├── workshop-creator/          # Workshop Studio directives & templates
-│       ├── slide-fix/                 # Slide issue annotation processing
-│       ├── brochure/                  # Responsive brochure design system
-│       ├── gh-home/                   # Personal profile / portfolio page (gh-pages home)
-│       └── aws-light-fcd/             # Native PPTX decks (PptxGenJS, AWS Light theme)
-│
-├── aws-ops-plugin/                    # Infrastructure operations (10 agents, 6 skills)
-│   ├── .claude-plugin/plugin.json
-│   ├── CLAUDE.md
-│   ├── agents/                        # 10 agents
-│   │   ├── eks-agent.md               # EKS cluster operations
-│   │   ├── network-agent.md           # VPC CNI, ALB/NLB, DNS
-│   │   ├── iam-agent.md               # IRSA, Pod Identity, RBAC
-│   │   ├── observability-agent.md     # CloudWatch, Prometheus, Grafana
-│   │   ├── storage-agent.md           # EBS/EFS/FSx CSI drivers
-│   │   ├── database-agent.md          # RDS, Aurora, DynamoDB, ElastiCache
-│   │   ├── cost-agent.md              # Cost analysis & optimization
-│   │   ├── analytics-agent.md         # OpenSearch, Athena, QuickSight, Kinesis
-│   │   ├── ops-coordinator-agent.md   # Multi-domain incident coordination
-│   │   └── wellarchitected-agent.md   # Well-Architected 6-pillar review
-│   └── skills/                        # 6 skills
-│       ├── ops-troubleshoot/          # Systematic troubleshooting
-│       ├── ops-health-check/          # Infrastructure health assessment
-│       ├── ops-network-diagnosis/     # VPC CNI, LB, DNS deep diagnosis
-│       ├── ops-observability/         # CloudWatch, Prometheus, log analysis
-│       ├── ops-security-audit/        # IAM audit, network security, compliance
-│       └── ops-wellarchitected-review/ # 6-pillar scoring, AS-IS/TO-BE roadmap
-│
-├── kiro-power-converter/              # Claude Code → Kiro Power (1 agent, 1 skill)
-│   ├── .claude-plugin/plugin.json
-│   ├── CLAUDE.md
-│   ├── agents/
-│   │   └── kiro-converter-agent.md
-│   └── skills/
-│       └── kiro-convert/
-│
-├── agentcore-creator/                 # Claude Code → Bedrock AgentCore (1 agent, 1 skill)
-│   ├── .claude-plugin/plugin.json
-│   ├── CLAUDE.md
-│   ├── agents/
-│   │   └── agentcore-creator-agent.md
-│   └── skills/
-│       └── agentcore-create/
-│
-├── co-agent/                       # Multi-AI collaboration (5 agents, 3 skills, 6 commands)
-│   ├── .claude-plugin/plugin.json
-│   ├── CLAUDE.md
-│   ├── agents/
-│   │   ├── co-agent.md
-│   │   ├── gate-chair.md
-│   │   ├── harness-analyst.md
-│   │   ├── pr-autofix-planner.md
-│   │   └── pr-autofix-implementer.md
-│   ├── commands/                   # configure, sync-context, consensus, harness, setup, pr-autofix
-│   └── skills/
-│       ├── co-agent/
-│       ├── pr-autofix/
-│       └── decision-reconcile/
-│
-├── project-init/                      # Project scaffolding (1 agent, 1 skill, 9 commands) — upstream mirror
-│   ├── .claude-plugin/plugin.json
-│   ├── CLAUDE.md
-│   ├── agents/
-│   │   └── doc-sync-checker.md
-│   ├── commands/                       # 9 slash commands
-│   │   ├── init-project.md
-│   │   ├── sync-docs.md
-│   │   ├── add-adr.md
-│   │   ├── add-module.md
-│   │   ├── add-runbook.md
-│   │   ├── generate-readme.md
-│   │   ├── generate-changelog.md
-│   │   ├── health-check.md
-│   │   └── add-reference-doc.md
-│   └── skills/
-│       └── project-scaffolder/
-│
-└── kiro/                              # Cost-savings delegation (1 agent, 1 skill, 4 commands)
-    ├── .claude-plugin/plugin.json
-    ├── CLAUDE.md
-    ├── agents/
-    │   └── kiro-delegate-agent.md
-    ├── commands/
-    │   ├── setup.md
-    │   ├── delegate.md
-    │   ├── review.md
-    │   └── configure.md
-    ├── hooks/
-    │   └── pre-commit-review.sh
-    └── skills/
-        └── kiro-delegate/
-```
+
+Runtime/adapter changes also use the local probes described in
+[CLAUDE.md](CLAUDE.md) and the runtime verification guide. Those fixtures do not
+certify external provider readiness. Public-site work uses the checks in
+[doc-sites/CLAUDE.md](doc-sites/CLAUDE.md). See the
+[version tags](https://github.com/Atom-oh/oh-my-cloud-skills/tags) for released artifacts.
