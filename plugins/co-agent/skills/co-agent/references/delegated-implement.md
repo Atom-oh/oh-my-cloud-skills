@@ -10,6 +10,12 @@ sandbox; the host owns the failing test, the verification, and every commit.
 > `scripts/co_agent_config.py implementer|impl-flags`; wave concurrency:
 > `co_agent_config.py parallel-tasks` (see "Parallel waves" below).
 
+Retain the absolute `ORCH_ROOT`, `HOST` and helper path `SK` captured by harness H0.
+All configuration, readiness, planning and flag calls below use
+`--root "$ORCH_ROOT" --host "$HOST"`, including retries and calls made from a task
+directory. The ignored setup record and local overrides belong to that root, not
+the task checkout. Run orchestration/state/commit commands from `ORCH_ROOT`.
+
 ## Trust boundary
 
 The **hard guarantee is the host applies only the worktree's captured, scope-guarded
@@ -25,16 +31,24 @@ the host applies the result and **runs the tests on the main tree** — never tr
 run inside the worktree. Capture-scoped-to-worktree + scope_guard + host-applies-only-that is
 the load-bearing guarantee; the sandbox is defense-in-depth.
 
-**Defense-in-depth: a workspace-write sandbox with cwd = the worktree** (`co_agent_config.py
-impl-flags <ai> --host <h>`). Only CLIs with a real workspace-write sandbox are eligible:
+**Defense-in-depth: the writer runs in a workspace-write sandbox with cwd = the worktree**.
+Resolve its flags with `co_agent_config.py impl-flags <ai> --root "$ORCH_ROOT" --host "$HOST"`.
+Only CLIs with a real workspace-write sandbox are eligible:
 
 | Implementer | Write-mode flags |
 |-------------|------------------|
 | Codex | `-s workspace-write` (+ `-m <model>`, effort) |
 | Agy | `--sandbox` (+ `--model`); write mode omits advisory `-p` |
 
-Resolve the writer through `implementation-plan` and its exact flags through
-`impl-flags <ai>`. Both run with cwd set to the task worktree. Agy has one sandbox
+Resolve the writer through `implementation-plan --root "$ORCH_ROOT" --host "$HOST"`.
+For a successful peer-mode plan, resolve its non-null `IMPLEMENTER` with:
+
+```bash
+python3 "$SK/co_agent_config.py" impl-flags "$IMPLEMENTER" --root "$ORCH_ROOT" --host "$HOST"
+```
+
+Require exit 0 before using the emitted argv; preserve each line as one argument.
+Only the writer process changes cwd to the task worktree. Agy has one sandbox
 mode; advisory calls add `-p`. Do not infer a guarantee against absolute-path or
 parent-directory writes from a flag alone. The capture/scope and main-tree escape
 checks above remain mandatory defense in depth.
@@ -97,13 +111,14 @@ For each plan task (`scope_guard.py` enforces the plan's file set throughout):
    (e.g. `.claude/co-agent-consensus/worktrees/<task>`).
 3. **Implement (peer).** Pick the implementer from peers that are **READY** AND
    **`raw_cli: true`** (a usable raw write CLI) AND a supported sandbox CLI accepted by `impl-flags` — consult
-   `.claude/co-agent-panel.local.json` (written by `/co-agent:setup`). Gate on `raw_cli`,
+   `$ORCH_ROOT/.claude/co-agent-panel.local.json` (written by `/co-agent:setup`). Gate on `raw_cli`,
    NOT `access`: a peer with BOTH the official plugin and a raw CLI is `access: plugin` yet
    `raw_cli: true` → still eligible. Only a peer with **no raw CLI** (`raw_cli: false`) can't
-   run `impl-flags` and is ineligible. Run the implementer with
-   `impl-flags` **inside `<wt>`**, scoped to the task's files. If the writer is missing,
-   fails or times out, preserve the evidence and refresh readiness as needed. Resolve
-   a new `implementation-plan`; choose `--allow-host-implementation` explicitly when
+   run `impl-flags` and is ineligible. Resolve flags against `ORCH_ROOT` as above,
+   then launch the writer **inside `<wt>`**, scoped to the task's files. If it fails
+   or times out, preserve the evidence and refresh readiness in `ORCH_ROOT` as needed.
+   Resolve `implementation-plan --root "$ORCH_ROOT" --host "$HOST"` again;
+   choose `--allow-host-implementation` explicitly when
    the workflow authorizes that fallback. Being a READY reviewer does not make another
    CLI an eligible sandbox writer. With no READY external reviewer, stop and run
    `/co-agent:setup`. Report the reason rather than silently blocking or invoking a

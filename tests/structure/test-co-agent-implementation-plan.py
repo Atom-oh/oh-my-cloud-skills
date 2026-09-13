@@ -52,9 +52,12 @@ class ImplementationPlanTests(unittest.TestCase):
         return path
 
 
-    def cli(self, args, module=config):
+    def cli(self, args, module=config, use_root=True):
         stdout, stderr = io.StringIO(), io.StringIO()
-        with patch.object(sys, "argv", ["helper.py", *args, "--root", str(self.root)]):
+        argv = ["helper.py", *args]
+        if use_root:
+            argv += ["--root", str(self.root)]
+        with patch.object(sys, "argv", argv):
             with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
                 rc = module.main()
         return rc, stdout.getvalue().strip(), stderr.getvalue()
@@ -95,6 +98,43 @@ class ImplementationPlanTests(unittest.TestCase):
         self.assertEqual(0, rc)
         self.assertEqual({"schema_version": 1, "mode": "host", "host": "codex",
                           "implementer": None, "reviewers": ["claude"]}, json.loads(output))
+
+    def test_task_cwd_uses_explicit_setup_root_for_readiness_and_model_overrides(self):
+        override = self.configure({
+            "panel": {"codex": {"model": "fixture-review-model", "effort": "low"}},
+            "harness": {"implementer": "codex",
+                        "implementer_models": {"codex": "fixture-writer-model"},
+                        "implementer_efforts": {"codex": "medium"}},
+        })
+        self.ready("claude", {"codex": "READY"})
+        # A task checkout lacks the orchestration project's ignored local state.
+        task = self.root / "task-worktree"
+        task.mkdir()
+        previous = os.getcwd()
+        os.chdir(task)
+        try:
+            self.assertEqual((2, ""), self.cli(
+                ["implementation-plan", "--host", "claude"], use_root=False)[:2])
+            self.assertNotIn("fixture-writer-model", self.cli(
+                ["impl-flags", "codex", "--host", "claude"], use_root=False)[1])
+            self.assertEqual((0, "fresh"), self.cli(
+                ["fresh", "--host", "claude"], module=panel)[:2])
+            self.assertEqual((0, "true"), self.cli(
+                ["gate-eligible", "codex", "--host", "claude"], module=panel)[:2])
+            rc, output, _ = self.cli(["implementation-plan", "--host", "claude"])
+            self.assertEqual(0, rc)
+            self.assertEqual({"schema_version": 1, "mode": "peer", "host": "claude",
+                              "implementer": "codex", "reviewers": ["codex"]},
+                             json.loads(output))
+            self.assertEqual((0, '-m\nfixture-review-model\n-c\nmodel_reasoning_effort="low"'),
+                             self.cli(["flags", "codex", "--host", "claude"])[:2])
+            self.assertEqual(
+                (0, '-s\nworkspace-write\n-m\nfixture-writer-model\n-c\nmodel_reasoning_effort="medium"'),
+                self.cli(["impl-flags", "codex", "--host", "claude"])[:2])
+            override.write_text('{"harness":')
+            self.assert_invalid_plan("claude")
+        finally:
+            os.chdir(previous)
 
 
     def test_planner_rejects_malformed_overrides_without_changing_advisory_loading(self):
