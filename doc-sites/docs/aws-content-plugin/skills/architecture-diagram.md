@@ -62,4 +62,7 @@ Avoid decorative XML comments and malformed entities. Keep boundaries readable, 
 
 [Canonical tokens](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-content-plugin/skills/architecture-diagram/references/design-tokens.md) · [Example specs and diagrams](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-content-plugin/skills/architecture-diagram/examples/)
 
+Content review must pass the owning rubric before publication, in addition to the
+XML and layout checks.
+
 [Skill, resources, and quality requirements](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-content-plugin/skills/architecture-diagram/SKILL.md)

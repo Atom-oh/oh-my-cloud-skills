@@ -51,4 +51,6 @@ Exercise each scenario, reset, and replay; inspect reduced viewport sizes; check
 The skill's references and templates define traffic dots, glow, sequential highlights, scaling, deployment, and failover patterns.
 
 
+Content review must pass the owning rubric before publication.
+
 [Skill, resources, and quality requirements](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-content-plugin/skills/animated-diagram/SKILL.md)
