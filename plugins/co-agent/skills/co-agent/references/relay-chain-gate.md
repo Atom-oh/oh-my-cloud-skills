@@ -27,8 +27,8 @@
 ## Ordering
 
 Process the gate-eligible `(ai, model)` pairs from `co_agent_config.py pairs` **in order**.
-`pairs` emits a **round-robin interleave in the fixed `panel_ais` order** (kiro-cli, the
-counterpart peer, agy) — at each round index it appends whichever AI still has a model left
+`pairs` emits a **round-robin interleave in the fixed `panel_ais` order**, defined
+by the host's supported roster — at each round index it appends whichever AI still has a model left
 at that index, so the AI(s) with the **most** configured `models` are always the ones left
 in the tail once the shorter queues run out. There is no separate relay-order key; `enabled`
 only drops an AI from the chain entirely, it cannot move it within the fixed order.
@@ -37,8 +37,8 @@ The tail of the chain is therefore the **last link of the strictly longest `mode
 list** (round-robin: when the shorter queues run out, only the longest queue keeps
 appending). To put the **strongest reasoner last**, give it a `models` list **strictly
 longer than** every other enabled AI's — matching lengths ties the tail to `panel_ais`
-order. For example, with one Kiro model, two counterpart-peer models and one Agy
-model, the uncapped order is `[kiro, peer, agy, peer]`. This is illustrative, not
+order. For example, with other peers disabled, one Kiro model and two counterpart-peer models,
+the uncapped order is `[kiro, peer, peer]`. This is illustrative, not
 the live default roster; inspect `co_agent_config.py matrix` and `pairs`.
 **Mind the per-round cap** (`max_calls / max_rounds`; relay is single-phase): the trim
 cuts the END of the interleaved list — exactly the tail links you just arranged — so keep
@@ -64,6 +64,7 @@ contract as `/co-agent:configure`):
 | kiro-cli | `--model` | `set kiro-cli models m1,m2,m3` |
 | claude (codex-host panel) | `--model` (+ `--effort`) | `set claude models …` |
 | codex | `-m` (+ `-c model_reasoning_effort`) | `set codex models …` |
+
 | agy | `--model` (spaced tokens OK, e.g. `Gemini 3.1 Pro (High)`) | `set agy models …` |
 
 Caps still apply: `pairs` trims to `consensus.max_calls / max_rounds` round-robin across
@@ -112,8 +113,8 @@ while IFS=$'\t' read -r ai model; do
     echo "[skip] $ai/$model — ctx ~${TOK} tok > window"; continue
   fi
   # SEQUENTIAL — no `&`, no `wait`. Each peer must finish before the next starts so its
-  # findings enter the chain. Same adapters as ai-cli-adapters.md (stdin for codex/claude/
-  # agy; kiro reads the ctx file via fs_read since it ignores stdin).
+  # findings enter the chain. Same adapters as ai-cli-adapters.md (stdin for the supported stdin-channel peers;
+  # Kiro reads the ctx file via fs_read since it ignores stdin).
   case "$ai" in
     # kiro-cli reads its input from argv, not stdin — but it still INHERITS this loop's
     # stdin (the `pairs` process substitution) unless explicitly redirected. If kiro-cli

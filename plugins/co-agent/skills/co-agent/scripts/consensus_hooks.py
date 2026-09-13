@@ -56,7 +56,7 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 import consensus_state as cs
-from co_agent_host import HOSTS, detect_host
+from co_agent_host import HOSTS, detect_host, peer_roster
 from co_agent_env import sanitized_env as _sanitized_env, _SENSITIVE_ENV_RE, CLAUDE_GATE_ISOLATION
 try:
     import co_agent_config as cac
@@ -192,13 +192,13 @@ _VERDICT_RE = re.compile(r"^\s*(PASS(?:ED)?|BLOCK(?:ED)?)\b", re.I)
 # (only the read-only fs_read tool auto-approved). {M} expands to the per-peer model flag;
 # {F} to the temp-file path (file channel only).
 _REVIEW = {
+    "agy":      {"channel": "stdin", "argv": ["agy", "-p", "{I}", "--sandbox", "{M}"]},
     "claude":   {"channel": "stdin", "argv": ["claude", "-p", "{I}", "--permission-mode", "plan",
                                             "--output-format", "text", "{M}", *CLAUDE_GATE_ISOLATION]},
     # Gates launch in a temporary NON-git directory; keep the read-only sandbox,
     # but allow that cwd (the same prerequisite as the readiness probe).
     "codex":    {"channel": "stdin", "argv": ["codex", "exec", "-s", "read-only",
                                             "--skip-git-repo-check", "{M}", "{I}"]},
-    "agy":      {"channel": "stdin", "argv": ["agy", "-p", "{I}", "--sandbox", "{M}"]},
     "kiro-cli": {"channel": "file",  "argv": ["kiro-cli", "chat", "{I}", "--v3", "--mode", "default",
                           "--no-interactive", "--trust-tools=fs_read", "--wrap", "never", "{M}"]},
 }
@@ -557,7 +557,7 @@ def _path_panel(host):
 
 
 def _panel(root):
-    """The canonical panel (`panel_ais`: kiro-cli + cross-provider peer + agy), filtered by
+    """The canonical panel (kiro-cli + opposite host CLI + agy), filtered by
     config `enabled` and PATH. Never the host. An explicit "all disabled" yields [] (no PATH override). Only a missing/failed config
     module degrades to a best-effort PATH scan."""
     host = detect_host()
@@ -574,7 +574,7 @@ def _panel(root):
         return _path_panel(host)
     peers, models = [], {}
     for ai in ais:
-        if ai == host or ai not in _REVIEW or not shutil.which(ai):
+        if ai not in peer_roster(host) or ai not in _REVIEW or not shutil.which(ai):
             continue
         if not panelcfg.get(ai, {}).get("enabled", True):
             continue   # respect an explicit disable (do NOT PATH-override it)
@@ -1038,8 +1038,8 @@ def ev_pre_pr_gate(root):
     out = {}
     # Isolated work dir = the peers' cwd (NOT the repo) so a prompt-injected reviewer's relative
     # reads can't reach repo files; the file-channel diff lives here too. DELIBERATE trade-off:
-    # this also disables every cwd-based context auto-load (Codex/Agy AGENTS.md, Agy's GEMINI.md
-    # back-compat), and the gate does not fold AGENTS.md in either — PR-gate reviewers judge the
+    # this also disables cwd-based context auto-loading by the supported peers,
+    # and the gate does not fold AGENTS.md in either — PR-gate reviewers judge the
     # diff WITHOUT project context, by design (isolation > context here; the advisory fan-out is
     # the context-rich review path).
     with tempfile.TemporaryDirectory(prefix="coagent-prgate-") as wdir:

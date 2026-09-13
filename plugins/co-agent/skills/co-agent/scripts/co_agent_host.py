@@ -2,6 +2,15 @@
 import os
 
 HOSTS = ("claude", "codex")
+ACTIVE_PEERS = ("kiro-cli", "claude", "codex", "agy")
+
+
+def peer_roster(host):
+    """The current host never participates as its own external peer."""
+    if host not in HOSTS:
+        raise ValueError(f"unknown host {host!r}")
+    return ("kiro-cli", "codex" if host == "claude" else "claude", "agy")
+
 
 
 def detect_host(explicit=None):

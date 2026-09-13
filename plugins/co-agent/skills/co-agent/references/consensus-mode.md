@@ -16,8 +16,8 @@
    profile activates each AI's full model list). Derive the roster and cap from
    `matrix`/`pairs` for the current host, rounds and phases; do not reuse an old
    default pair count.
-   `pairs` emits the panel key in the first column (`kiro-cli`, `claude`, `codex`, `agy`) —
-   these ARE the binary names (the old `kiro`/`antigravity` aliases were removed), so invoke
+   `pairs` emits the supported panel key in the first column —
+   these are the supported binary names, so invoke
    each directly via the `references/ai-cli-adapters.md` fan-out `case "$ai"` block, which
    maps every key to its exact command line. (Note the Kiro binary is `kiro-cli`, never a
    bare `kiro`.)
@@ -33,7 +33,7 @@ CRITICAL/MAJOR finding remains (also stop on no-progress / oscillation).
 - The `default` profile selects one model per AI; `deep` uses each AI's `models`
   list. Read `co-agent.defaults.json` and effective configuration for the chosen profile.
 - Cap: `rounds × pairs ≤ max_calls`; trim same-family (round-robin) first, then warn.
-- Same provider *family* (e.g. two Agy-routed variants) = diminishing returns; the matrix warns.
+- Same provider *family* (e.g. two variants from one direct provider) = diminishing returns; the matrix warns.
   Kiro can route models from different families, so `matrix` treats its multi-model
   list separately. Confirm the actual model families rather than assuming distinct
   CLI names imply diversity.

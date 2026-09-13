@@ -109,20 +109,20 @@ def verdict(findings):
 3. AWS Well-Architected checklist (for infrastructure code)
 4. Generate a combined report
 
-### Panel-integrated run (Kiro/Codex/Antigravity)
+### Panel-integrated run (configured external peers)
 
 Fans out **the same review prompt, headlessly**, to the installed panel CLIs — using the
 adapters in `references/ai-cli-adapters.md` directly rather than a slash command
 (`co_agent_config.py pairs`/`panel` already emit the real binary name in the first column:
-`kiro-cli`/`codex`/`agy` — there is no separate resolver subcommand;
+the supported adapter keys — there is no separate resolver subcommand;
 **never invoke bare `kiro`**, always `kiro-cli`).
 
 1. Analyze the change based on `git diff` → write the context (diff) to a temp file
 2. Fan out to the panel (e.g. `kiro-cli chat "<review prompt>\n\nRead the review context with fs_read from: <CTX_FILE>" --no-interactive --trust-tools=fs_read --wrap never`,
-   `cat ctx | codex exec -s read-only`, `cat ctx | agy -p … --sandbox`) — same prompt, in parallel.
+   or the matching read-only adapter for each other configured peer) — same prompt, in parallel.
    ⚠️ **Kiro ignores stdin in `chat`**, so never pass the diff via stdin — write the
    context to a file and instruct via a short prompt to use `fs_read` (the only valid
-   read-only tool name). Codex/Agy use the stdin channel. Details:
+   read-only tool name). Other peers use the channel defined by their adapter. Details:
    `references/ai-cli-adapters.md`.
 3. Apply the AWS Well-Architected checklist
 4. Validate findings with `check_citations.py` → synthesize consensus/dissent

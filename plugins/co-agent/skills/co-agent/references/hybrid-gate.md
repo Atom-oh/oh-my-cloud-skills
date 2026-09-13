@@ -122,7 +122,7 @@ before lowering `timeout`.
 
 **Role tiering.** The two phases are deliberately tiered (Phase V): find runs the
 configured profile (`deep` by default — every model in an AI's `models` list is its own
-finder voice; headless flags: kiro/claude/agy `--model`, codex `-m`), verify runs
+finder voice; headless flags come from `co_agent_config.py flags`), verify runs
 `--profile default` (one strongest model per AI). H0's `matrix --phases 2` displays the
 configured-profile cost, which is therefore an **upper bound**: the actual verify phase
 runs the same-or-fewer `default`-profile pairs. (Per the Phase V note, that consent
