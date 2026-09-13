@@ -4,8 +4,8 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'oh-my-cloud-skills',
-  tagline: 'AWS 클라우드 작업을 위한 Claude Code 플러그인 마켓플레이스',
-  favicon: 'img/favicon.ico',
+  tagline: 'Cloud workflows for Claude Code and Codex',
+  favicon: 'img/logo.svg',
 
   future: {
     v4: true,
@@ -25,19 +25,17 @@ const config: Config = {
   themes: ['@docusaurus/theme-mermaid'],
 
   i18n: {
-    defaultLocale: 'ko',
-    locales: ['ko', 'en'],
+    defaultLocale: 'en',
+    locales: ['en'],
     localeConfigs: {
-      ko: {
-        label: '한국어',
-        htmlLang: 'ko',
-      },
       en: {
         label: 'English',
         htmlLang: 'en',
       },
     },
   },
+
+  plugins: ['./plugins/legacy-locales.cjs'],
 
   presets: [
     [
@@ -61,7 +59,6 @@ const config: Config = {
   ],
 
   themeConfig: {
-    image: 'img/og-image.png',
     colorMode: {
       defaultMode: 'dark',
       respectPrefersColorScheme: true,
@@ -80,56 +77,25 @@ const config: Config = {
           label: 'Home',
         },
         {
-          type: 'docSidebar',
-          sidebarId: 'coAgent',
+          type: 'dropdown',
+          label: 'Plugins',
           position: 'left',
-          label: 'co-agent',
-        },
-        {
-          type: 'docSidebar',
-          sidebarId: 'kiro',
-          position: 'left',
-          label: 'kiro',
-        },
-        {
-          type: 'docSidebar',
-          sidebarId: 'projectInit',
-          position: 'left',
-          label: 'project-init',
-        },
-        {
-          type: 'docSidebar',
-          sidebarId: 'awsContent',
-          position: 'left',
-          label: 'aws-content-plugin',
-        },
-        {
-          type: 'docSidebar',
-          sidebarId: 'awsOps',
-          position: 'left',
-          label: 'aws-ops-plugin',
-        },
-        {
-          type: 'docSidebar',
-          sidebarId: 'kiroConverter',
-          position: 'left',
-          label: 'kiro-power-converter',
-        },
-        {
-          type: 'docSidebar',
-          sidebarId: 'agentcoreCreator',
-          position: 'left',
-          label: 'agentcore-creator',
+          items: [
+            {label: 'co-agent', to: '/docs/co-agent/overview'},
+            {label: 'kiro', to: '/docs/kiro/overview'},
+            {label: 'atlas', to: '/docs/atlas/overview'},
+            {label: 'project-init', to: '/docs/project-init/overview'},
+            {label: 'aws-content-plugin', to: '/docs/aws-content-plugin/overview'},
+            {label: 'aws-ops-plugin', to: '/docs/aws-ops-plugin/overview'},
+            {label: 'kiro-power-converter', to: '/docs/kiro-power-converter/overview'},
+            {label: 'agentcore-creator', to: '/docs/agentcore-creator/overview'},
+          ],
         },
         {
           type: 'docSidebar',
           sidebarId: 'remarpGuide',
           position: 'left',
           label: 'Remarp Guide',
-        },
-        {
-          type: 'localeDropdown',
-          position: 'right',
         },
         {
           href: 'https://github.com/Atom-oh/oh-my-cloud-skills',
@@ -145,6 +111,8 @@ const config: Config = {
           title: 'Plugins',
           items: [
             {label: 'co-agent', to: '/docs/co-agent/overview'},
+            {label: 'kiro', to: '/docs/kiro/overview'},
+            {label: 'atlas', to: '/docs/atlas/overview'},
             {label: 'project-init', to: '/docs/project-init/overview'},
             {label: 'aws-content-plugin', to: '/docs/aws-content-plugin/overview'},
             {label: 'aws-ops-plugin', to: '/docs/aws-ops-plugin/overview'},
@@ -156,7 +124,7 @@ const config: Config = {
           title: 'Guides',
           items: [
             {label: 'Remarp Guide', to: '/docs/remarp-guide/introduction'},
-            {label: '시작하기', to: '/docs/intro'},
+            {label: 'Getting started', to: '/docs/intro'},
           ],
         },
         {
