@@ -32,7 +32,7 @@
   "co-agent": {
     "displayName": "Co Agent",
     "shortDescription": "Coordinate multi-AI review and decision workflows.",
-    "longDescription": "Use Codex with co-agent workflows for multi-agent code review, architecture review, decision support, ADR co-authoring, AI context synchronization, and autonomous consensus/harness implementation pipelines. In Codex, Codex chairs while Claude CLI, Kiro CLI, and Agy provide advisory opinions.",
+    "longDescription": "Use Codex with co-agent workflows for multi-agent code review, architecture review, decision support, ADR co-authoring, AI context synchronization, and autonomous consensus/harness implementation pipelines. In Codex, Codex chairs while Claude CLI and Kiro CLI provide advisory opinions.",
     "developerName": "atomoh",
     "category": "Collaboration",
     "capabilities": [
