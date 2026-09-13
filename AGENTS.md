@@ -1,4 +1,4 @@
-<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: b40e45f0867f · generated-at: 2026-09-13 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
+<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 46e2ca2303a6 · generated-at: 2026-09-13 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
 > Shared context derived from CLAUDE.md; facts describe the trusted base.
 
 # Review contract
@@ -9,8 +9,10 @@ separates source skills, commands, agents, generated entries and review cells.
 
 ## Authority
 
-- Maintain English prose without duplicate translations. Literal aliases, syntax,
-  fixtures and localized payloads are data. Deliverable language follows the user.
+- Maintain English internal docs and reviews. Public guides/UI use English source
+  and Korean locale content (ADR-023); preserve page/fragment parity and validate
+  coverage before activation. Literal aliases, syntax, fixtures and localized
+  payloads are data. Deliverable language follows the user.
 - Use current root/scoped policy and non-superseded decisions. Historical ADRs,
   plans and prior test results are evidence, not current requirements or waivers.
 - Verify base/head code before alleging a missing helper or contradiction: absence

@@ -7,15 +7,18 @@ architecture, decisions and working records live in `docs/`.
 
 ## Documentation contract
 
-- Write maintained documentation, instructions and review reports in English.
-  Keep one canonical explanation instead of parallel English/Korean copies.
+- Write internal documentation, instructions, README/CHANGELOG and review reports
+  in English. Keep one canonical explanation instead of parallel internal copies.
+- Public guides and UI in `doc-sites/` are the Korean/English exception (ADR-023).
+  Keep English source and matching Korean locale content, including stable page
+  and fragment identifiers. Activate a locale after its coverage checks pass.
 - Write prose and literal aliases in UTF-8; use escapes only where the target
   format requires them.
 - Preserve literal API field names, command names, paths, Korean invocation aliases and
   syntax tokens such as `[요약]`. Localized examples, fixtures and frozen demo
   payloads are data, not a requirement to write explanations in Korean.
 - A generated deliverable uses the language the user requests. That capability
-  does not require bilingual maintenance of this repository's own documentation.
+  does not require bilingual internal documentation.
 - Read the nearest directory `CLAUDE.md` before editing. This root sets repository
   policy; scoped files describe their component. Follow the user's current scope.
 - Accepted ADRs explain decisions. Check their status and later supersession before
