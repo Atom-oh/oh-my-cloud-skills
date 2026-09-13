@@ -1,7 +1,7 @@
 ---
 description: Configure the co-agent panel — host-aware peer AI model, effort, enable/disable, and timeout
 allowed-tools: Bash(python3:*), Read
-argument-hint: "show | set <ai> <key> <value> | set timeout <seconds>  (host: claude|codex; ai: kiro-cli|claude|codex|agy)"
+argument-hint: "show | set <ai> <key> <value> | set timeout <seconds>  (host: claude|codex; use show for supported peers)"
 ---
 
 # co-agent: configure
@@ -25,23 +25,26 @@ user-global file instead (repo-local still overrides user, user overrides defaul
 
 Only options the CLIs **actually accept headlessly** are exposed (no dead settings):
 
-| Setting | kiro-cli | claude | codex | agy |
-|---------|------|--------|-------|-----|
-| `model` | `--model` | `--model` | `-m` | `--model` |
-| `effort` | — | `--effort` (`low\|medium\|high\|xhigh\|max`) | `-c model_reasoning_effort` (`minimal\|low\|medium\|high`) | — |
-| `enabled` (panel membership) | yes | yes | yes | yes |
-| `timeout` (global, seconds) | yes | yes | yes | yes |
-| `context_limit` (per-AI, tokens) | configured context budget — fan-out **skips** an AI whose budget cannot hold the context; inspect effective configuration for values |
-| `autosync` (global, on/off) | run `/co-agent:sync-context` automatically when `CLAUDE.md` changes (opt-in; default off) |
+| Setting | Behavior |
+| --- | --- |
+| `model` / `models` | Provider model labels; `flags <ai>` emits its supported headless flag. |
+| `effort` | Only providers supported by `EFFORTS_BY_AI` in the config helper accept this key. |
+| `enabled` | Excludes a disabled provider from `panel`, `pairs` and `matrix`. |
+| `timeout` | Global per-CLI wall-clock budget, in seconds. |
+| `context_limit` | Per-provider token estimate limit; oversized context is skipped. |
+| `autosync` | Shared on/off setting for generated context reminders. |
+
+`show` lists the supported candidates and their current settings. The helper validates
+provider-specific keys and values; use `flags <ai>` to inspect the exact argv fragment.
+A model catalog name does not identify which peer CLI can consume it.
 
 Host controls panel membership:
 
 - Detect the host with `co_agent_config.py host`; `CO_AGENT_HOST` or `--host`
   can override detection. Exclude that host from the enabled peer candidates.
-- `--host claude`: Claude chairs; candidates = Kiro, Codex, Agy.
-- `--host codex`: Codex chairs; panel = Kiro, Claude, Agy.
-- Agy is a candidate, subject to configuration and readiness; the legacy Gemini CLI
-  is unsupported. Candidate membership does not prove a reviewer ran.
+- `panel --host <host>` resolves enabled peer candidates from the supported roster.
+- `matrix --host <host>` shows the configured model pairs and call budget.
+  Candidate membership does not prove a reviewer ran; consult setup readiness.
 
 ## Helper
 
@@ -68,17 +71,13 @@ Argument: `$ARGUMENTS`
    python3 "$H" set codex effort high           # Codex reasoning effort
    python3 "$H" set claude model sonnet --host codex
    python3 "$H" set claude effort max --host codex
-   python3 "$H" set agy model default
    python3 "$H" set kiro-cli  model claude-opus-4.8 # Kiro model (see `kiro-cli chat --list-models`)
-   python3 "$H" set agy enabled false           # drop Agy from the panel
    python3 "$H" set timeout 300                 # global per-CLI timeout (s)
    python3 "$H" set codex context_limit 400000  # raise/lower a model's context window
    python3 "$H" set autosync on                 # auto-sync AI context on CLAUDE.md change
    python3 "$H" set codex model openai.gpt-5.6-sol --scope user   # write to ~/.claude (all your repos)
-   python3 "$H" set agy model "Gemini 3.1 Pro (High)"  # Agy tokens have spaces + parens
    python3 "$H" set kiro-cli models claude-opus-4.8,minimax-m2.5  # multi-model list
    python3 "$H" set profile deep                # activate each AI's `models` list
-   python3 "$H" set harness implementer agy     # harness implementer (codex|agy)
    python3 "$H" set harness review_mode relay    # harness gate: hybrid (default) | relay | parallel
    python3 "$H" set harness parallel_tasks 3     # harness implement wave size (1 = sequential)
    python3 "$H" set harness max_fix_rounds 2     # harness per-task peer fix-loop bound
@@ -92,9 +91,8 @@ Argument: `$ARGUMENTS`
    Key semantics:
    - `context_limit` — the fan-out **skips** an AI whose model window can't hold the
      context (the cause of "prompt tokens exceed model maximum") instead of hard-failing:
-     e.g. Codex (~272K) is skipped on a huge diff while Kiro/Agy (~1M) still run.
-   - `model` values are charset-validated (letters/digits/`. _ : / - ( )` + spaces — agy
-     tokens like `Gemini 3.1 Pro (High)`; shell metacharacters stay rejected) to block
+     e.g. Codex (~272K) is skipped on a huge diff while a configured peer with a larger window may still run.
+   - `model` values are charset-validated (letters/digits/`. _ : / - ( )` + spaces; shell metacharacters stay rejected) to block
      fan-out injection.
    - `profile deep` (the committed default) makes every model in an AI's `models` list its
      own `(ai, model)` fan-out/relay link — one gate pass verifies from each configured
@@ -116,11 +114,27 @@ Argument: `$ARGUMENTS`
    - `autosync on` makes the `CLAUDE.md` PostToolUse hook tell Claude to re-run
      `/co-agent:sync-context` when `AGENTS.md` drifts stale (default off = reminder only;
      first-time generation is still done by running the command once).
-3. If the user asks for a setting that isn't headless-settable (e.g. Agy effort), explain
+3. If the user asks for a setting that isn't headless-settable (e.g. a Kiro effort field), explain
    why it's not offered and point at the closest real lever (model, or run that AI
    interactively).
 4. For Kiro model values, you may enumerate valid models with
    `kiro-cli chat --list-models --format json` and show the user the choices.
+
+## Implementation mode after setup
+
+`implementer` reports the configured/default external writer. It is not a readiness
+check. After fresh setup, inspect `implementation-plan --host <host>` to resolve a
+READY writer from the helper's sandbox allowlist, excluding the current host.
+If exit 3 requests an explicit host fallback and the workflow authorizes that work,
+use `implementation-plan --allow-host-implementation --host <host>`. Its JSON names
+`mode`, `implementer` and READY external `reviewers`; a host-mode plan has a null
+implementer. Exit 2 means invalid configuration or readiness and must not be treated
+as permission to continue. Neither command starts a process or grants write access.
+
+Repair invalid or unreadable configuration before planning implementation. The
+planner loads every present override strictly; ordinary advisory commands keep their
+existing lenient loading. Remove obsolete settings reported by `show`; do not copy
+model labels into a different provider without checking that provider's catalog.
 
 ## Role-based model tiering
 
@@ -146,22 +160,23 @@ placement points:
   so `implementer` must be set first (exits with code 2 if unset). After switching with
   `set harness implementer <other>`, the previous AI's entry stays dormant and never leaks
   into another CLI's `--model` (reused when you switch back; `show` marks active/dormant;
-  re-validated at emit time). `implementer_effort` is codex-only — refused outright when
-  the implementer is agy (agy's headless CLI has no effort flag). The review/gate path
+  re-validated at emit time). `implementer_effort` applies to the delegated Codex
+  writer. The review/gate path
   (`flags`) keeps the panel settings, so the same AI (codex) can review on a strong model
   and implement on a cheap one.
 - `pairs`/`matrix`'s `--profile default|deep` is a per-call override the hybrid gate uses
   to split find (deep) from verify (default) — it never touches the config file. Detailed
   flow: "Role tiering" in `references/hybrid-gate.md`.
-- **Billing is a per-peer property, not global**: under a flat-rate subscription (the
-  usual case for the Claude Code host's kiro/codex/agy panel), marginal token cost ≈ 0, so
+- **Billing is a per-peer property, not global**: while requests remain within a
+  confirmed included subscription allowance, marginal token cost may be zero, so
   tiering buys **(1) wall-clock** (strong generation model = fewer fix rounds), **(2)
   rate-limit quota** (the real scarce resource — the usage window), and **(3) chair triage
   noise** — not dollars. This flips per peer: under a Codex host, the Claude peer
   (`claude -p`, see adapters) may be API-key metered — for that peer the cheap-model-for-
   find, down-tiering reading is restored (and the hybrid gate's find+verify structure
   bills twice per round). There is no per-peer `billing flat|metered` key yet — the lever
-  is that peer's `model`/`models` list.
+  is that peer's `model`/`models` list. CLI access alone does not imply unlimited
+  usage: API charges and overage limits still apply when configured.
 
 Finish by echoing the effective config (`python3 "$H" show --host "$HOST"`) so the user
 sees exactly what the panel will use.

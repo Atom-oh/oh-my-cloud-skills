@@ -1,7 +1,7 @@
 ---
-description: Host-designs / peer-implements / panel-reviews orchestrator. The host owns the design, the failing test, and every commit; ONE cross-provider implementer writes code as parallel per-task subagents in isolated git worktrees under a workspace-write sandbox; a hybrid gate reviews (parallel find → chair triage → parallel verify). Opt-in, local commits only.
+description: Host-designs / panel-reviews orchestrator. The host owns design, tests and commits; an eligible peer implements in isolated worktrees, or the host explicitly handles implementation when no eligible writer is ready. External review remains required. Opt-in, local commits only.
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
-argument-hint: "<adr|spec|plan|task>  [--implementer codex|agy]"
+argument-hint: "<adr|spec|plan|task>  [--implementer <ai>]"
 ---
 
 # co-agent: harness
@@ -37,21 +37,26 @@ resolve `HOST=$(python3 "$SK/co_agent_config.py" host)` (stop if resolution fail
    `python3 "$SK/co_agent_config.py" matrix --host "$HOST" $([ "$MODE" = hybrid ] && echo --phases 2)`
    — passing `--phases 2` only for hybrid keeps the displayed max-calls total accurate for
    whichever gate mode is actually configured. Confirm sending context to third-party AIs.
-2. Resolve roles: panel = `co_agent_config.py panel --host "$HOST"`; implementer =
-   `co_agent_config.py implementer --host "$HOST"` (user-selectable:
-   `set harness implementer codex|agy`). Only **sandbox CLIs** (codex, agy) are valid
-   implementers — kiro-cli stays review-panel-only (no worktree-scoped write sandbox);
-   default is claude host → codex, codex host → agy. Never equals the host. Tell the user
-   panel + implementer + wave concurrency (`co_agent_config.py parallel-tasks`).
+2. Resolve the panel with `co_agent_config.py panel --host "$HOST"` and inspect
+   `show` for the configured providers. `implementer --host "$HOST"` reports the
+   configured/default writer; it does not establish readiness. Use the JSON planner
+   in step 3 to resolve execution mode. Never invoke the current host as its own peer.
+   Writer eligibility comes from the helper's sandbox allowlist, not panel membership.
 3. **Consult readiness** (`.claude/co-agent-panel.local.json` from `/co-agent:setup`):
    `check_panel.py fresh` (re-run `/co-agent:setup` if `stale`), then `check_panel.py
    gate-eligible <peer>` — keep for the **review panel** only peers returning `true`
    (`status==READY` **and** `raw_cli`), **not** bare `status` (the fan-out calls raw CLIs only,
    so a plugin-only peer yields zero panel output). The **implementer** must be gate-eligible
-   **plus** a sandbox CLI (codex/agy). (A peer with BOTH the plugin and a raw CLI is
+   **plus** a supported sandbox CLI accepted by `impl-flags`. (A peer with BOTH the plugin and a raw CLI is
    `access: plugin` yet `raw_cli: true` → still eligible; only `raw_cli:false` is out.) No
-   implementer-eligible peer → host-implement; **no gate-eligible peer** at all → **block** and
+   implementer-eligible peer → consider explicit host implementation; **no gate-eligible peer** at all → **block** and
    run `/co-agent:setup`. Absent summary → run `/co-agent:setup` first.
+   Resolve `co_agent_config.py implementation-plan --host "$HOST"` after setup.
+   It emits JSON with `mode`, `implementer` and the enabled READY `reviewers`.
+   Exit 3 requires an explicit host-mode choice: if that implementation is already
+   authorized by the requested workflow, rerun with `--allow-host-implementation`.
+   Exit 2 requires fixing configuration/readiness. Do not treat it as permission
+   to continue. Report the selected mode, reviewers and wave concurrency.
 4. **Clean tree required**: refuse to start on a dirty tree — `test -z "$(git -C . status --porcelain)"`.
    `git worktree prune` to reap orphans. (`consensus_state.py verify`/`rebind` are for **resume**,
    after a session exists — they are run in H1+, not here, since `verify` fails when no session
@@ -72,6 +77,12 @@ digest (`references/hybrid-gate.md`); `relay` → the sequential chain
 `consensus_state.py stage-result`. Unresolved → `set . status needs-human` and stop.
 
 ## H3 — Delegated implement (parallel waves) — see `references/delegated-implement.md`
+For `mode: host`, the current host uses its native tools in the task worktrees,
+keeping the same scoped capture, tests, checkpoints and host-owned commits. Do not
+call `impl-flags` with a null writer or launch the host CLI as its own peer. H2/H4
+external review remains required. The peer invocation steps below apply only to
+`mode: peer`.
+
 **One implementer, N concurrent task subagents**: group tasks into waves of
 pairwise-disjoint file sets (≤ `co_agent_config.py parallel-tasks` per wave; overlapping
 tasks fall to the next wave; `parallel_tasks 1` = the sequential loop). Per wave: host
@@ -86,9 +97,9 @@ The exact git mechanics — red-commit message convention + crash recovery, the 
 `MAIN0` escape bracket (incl. fix-round re-runs), the `--amend -m` fold that rewrites the
 transient subject, and the scope-guarded abort/all-abort restore order — are authoritative
 in **`references/delegated-implement.md`** (both the sequential per-task loop and the
-parallel-wave adaptation). Do not re-derive them here; follow that file. Fallback chain:
-counterpart → other peer → host-implement. External AIs never commit; the host is the only
-committer.
+parallel-wave adaptation). Do not re-derive them here; follow that file. Re-resolve
+`implementation-plan` after writer failure; native host mode requires the explicit
+flag and READY external review. External AIs never commit; the host is the only committer.
 
 ## H4 — Final gate
 `consensus_state.py cumulative-diff . --plan <plan> --base <trunk>` → review gate
