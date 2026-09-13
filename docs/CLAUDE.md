@@ -1,30 +1,34 @@
 # docs/ — Internal project documentation
 
-Documentation hosts and contributors read while working on this repo — decisions, ops
-runbooks, cross-cutting reference material, and superpowers-workflow specs/plans. **Not**
-the public documentation site — that's the separate Docusaurus project at `../doc-sites/`
-(published to GitHub Pages). Don't add site content here, and don't add internal docs there.
+Project context for Claude Code, Codex, other reviewers and contributors. The public
+Docusaurus site lives in `../doc-sites/`; keep site content there and internal
+decisions, runbooks and implementation context here.
 
 ## Layout
-```
-docs/
-├── decisions/            # ADRs (ADR-NNN-*.md) — see decisions/CLAUDE.md
-├── runbooks/              # Operational runbooks — see runbooks/CLAUDE.md
-├── reference/             # Cross-cutting reference docs (e.g. review-routing.md)
-├── superpowers/           # specs/ + plans/ from the superpowers workflow — see superpowers/CLAUDE.md
-├── architecture.md        # System architecture — keep in sync with plugin inventory
-├── onboarding.md          # New-contributor onboarding
-├── ci-pr-review.md        # CI multi-AI PR review — design notes
-└── ci-pr-review-runbook.md # CI multi-AI PR review — operational runbook
-```
 
-## Conventions
-- `architecture.md` carries **plugin counts** (agents/skills/commands) — update it when a
-  plugin's component count changes (the `/sync-docs` skill audits this; `doc-sites/docs/intro.md`
-  carries the same counts for the public site — keep both in sync).
-- Maintained prose is English; no duplicate Korean translation is required. Preserve literal syntax, invocation aliases and example data. Match the root documentation contract.
-- Each subdirectory has its own `CLAUDE.md` with filename/section conventions — read it
-  before adding a file there (`decisions/`, `runbooks/`, `superpowers/`).
+- `decisions/`: ADR rationale and status; read its `CLAUDE.md`.
+- `runbooks/`: recurring operational procedures; read its `CLAUDE.md`.
+- `reference/`: cross-cutting implementation and review guidance.
+- `superpowers/`: dated design specs and plans; read its `CLAUDE.md`.
+- `architecture.md`: current architecture and derived inventory.
+- `onboarding.md`: setup and contributor checks.
+- `ci-pr-review.md`, `ci-pr-review-runbook.md`: current CI design and operations.
+- `pr-review/review-memory.md`: evidence maintained by the authorized local host.
 
-> Per-directory scaffolding commands: `/add-adr`, `/add-runbook`, `/add-reference-doc`
-> (project-init). Keep this consistent with `../CLAUDE.md`.
+## Maintenance rules
+
+- Maintain concise English prose, including public docs, README/CHANGELOG and scoped
+  instructions. [ADR-021](decisions/ADR-021-english-docs-current-review-authority.md)
+  supersedes ADR-018's old public-doc exclusions. User artifact language and functional
+  trigger/API/fixture literals are separate concerns.
+- Derive inventory from source files, generated inventories and manifests. Distinguish
+  source procedures, Codex entries, plugin hook commands and CI review cells.
+- Check living claims against source and current policy. Code that violates a
+  requirement is a defect to resolve, not permission to weaken that requirement.
+- Preserve historical ADR/spec/plan rationale as dated evidence; add a scoped status
+  note and a superseding decision when behavior changes.
+- Never use historical fail-open or verdict-only rules to accept a PR. Current
+  acceptance requires latest-HEAD review, no unresolved Critical/Major issues,
+  complete configured coverage, separate Codex validation and required checks.
+- `/sync-docs`, `/add-adr`, `/add-runbook` and `/add-reference-doc` supply workflows;
+  repository language, ownership and user instructions override template defaults.

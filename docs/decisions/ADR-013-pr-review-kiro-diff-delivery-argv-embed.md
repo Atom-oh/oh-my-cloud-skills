@@ -2,10 +2,14 @@
 
 ## Status
 
-Accepted (2026-07-08) — amends ADR-011's Kiro diff-delivery mechanism (the `fs_read`
-file-path-reference decision and its documented "accepted residual risk"). ADR-011's other
-decisions (L1 deterministic gate, lens×model matrix shape, coverage-floor/severe design)
-are unaffected and remain historical record.
+Accepted (2026-07-08); supersedes ADR-011's Kiro `fs_read` grant and residual-risk
+acceptance. Truncation acceptance is amended by
+[ADR-021](ADR-021-english-docs-current-review-authority.md).
+
+**Current scope (2026-09-13):** capped argv delivery and no Kiro tool grant remain.
+The warn-only truncation treatment below is historical: incomplete required input
+cannot pass the semantic coverage gate. Later matrix, roster and coverage changes
+are recorded by ADR-016/017/021; this ADR does not freeze ADR-011's other behavior.
 
 ## Context
 

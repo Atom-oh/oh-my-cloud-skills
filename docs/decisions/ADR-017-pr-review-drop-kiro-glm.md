@@ -6,6 +6,13 @@ Accepted (2026-08-14) — narrows the Kiro roster set by ADR-012/ADR-014; those 
 rationale (why a 3rd/4th vendor slot, why `--v3` is dropped, the `gpt-5.5`→`gpt-5.6-terra`
 bump) is unaffected and remains historical record.
 
+**Current scope (2026-09-13):** the default enabled CI cells remain `codex`,
+`kiro-opus` and `kiro-gpt`; `kiro-glm` remains a disabled known key. These are CI cells,
+not plugin procedures, generated entries or a shared co-agent roster. Intentional
+configuration exclusions are distinct from failed configured reviewers: every required
+cell must complete under [ADR-021](ADR-021-english-docs-current-review-authority.md).
+Do not disable a required check to make an incomplete review pass.
+
 ## Context
 
 The sibling `AWS-Demo-Platform` repo — which runs a bash-array port of this repo's
@@ -63,7 +70,7 @@ issues those ADRs addressed.
   independent of the live config and were left unchanged.
 - Docs updated to the new cell/call counts and roster list: `docs/ci-pr-review.md` (panel
   description, max cell count, Kiro-call count in the data-residency section, roster
-  list in "설정") and `docs/ci-pr-review-runbook.md` (cell-tag example, max tag count,
+  configuration list) and `docs/ci-pr-review-runbook.md` (cell-tag example, max tag count,
   Kiro call count). These figures now read against ADR-016's post-merge single-lens
   design (3 cells total / 2 Kiro calls), not this ADR's original lens×model figures
   (12 cells / 8 Kiro calls) — see the Decision bullet above.
@@ -97,7 +104,7 @@ issues those ADRs addressed.
   this ADR only changes which cells start disabled by default.
 - `glm-5` remains available to any operator who wants it back: `python3
   scripts/pr-review/panel_config.py set kiro-glm enabled true --root .` (or a committed
-  edit to `pr-review.defaults.json`, per `docs/ci-pr-review.md`'s "경로 A") re-enables it
+  edit to `pr-review.defaults.json`, per `docs/ci-pr-review.md`'s "Path A") re-enables it
   with that one command, no code change — the disabled entry keeps `model: glm-5` (only
   `enabled` flips to `false`), so `validate_shape()`'s enabled-cell model check never
   trips on re-enable.

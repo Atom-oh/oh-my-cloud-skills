@@ -1,25 +1,22 @@
-# docs/runbooks/ — Operational Runbooks
+# docs/runbooks/ — Operational procedures
 
-Step-by-step operational procedures (the **how-to**, vs ADRs' **why**). Each runbook is a
-self-contained, copy-paste-ready procedure for a recurring operational task.
+Keep recurring tasks as self-contained procedures with real script paths and explicit
+verification. Use `kebab-task.md` filenames, concise English prose, and links to the
+relevant ADR and helper. User-requested artifact language is independent of maintained
+documentation language ([ADR-021](../decisions/ADR-021-english-docs-current-review-authority.md)).
 
-## Conventions
-- **Filename**: `kebab-task.md` (e.g. `plugin-release.md`).
-- **Copy-paste ready**: commands must reference real scripts/paths in this repo; verify
-  they resolve before committing (a runbook with stale paths is worse than none).
-- **Bilingual** (KO/EN) where user-facing; no emojis; match the repo prose style.
-- Cross-link the relevant ADR (`../decisions/ADR-NNN`) and scripts when a step encodes a
-  decision or runs a helper.
+This repository ships eight plugins for Claude Code and Codex. It has no application
+server or database migration lifecycle. `plugin-release.md` covers releases; CI review
+operations live in `../ci-pr-review-runbook.md`.
 
-## Coverage
-This is a Claude Code **plugin marketplace** (no Dockerfile/Terraform/CDK/DB migrations),
-so deployment/migration/incident runbooks are largely N/A. Current runbook(s):
-- `plugin-release.md` — version bump across all `plugin.json` + `marketplace.json`, tag `v{version}`, push.
-  > Known gap: the current steps (and the root `CLAUDE.md` version-consistency snippet)
-  > only bump/check 3 of the 6 plugins (content/ops/converter) + marketplace. The
-  > single-version invariant covers **all six** — `agentcore-creator`, `co-agent`,
-  > `project-init` must bump too. Fix the runbook before the next release.
+Release procedures must cover all eight Claude manifests, all eight Codex manifests,
+both marketplaces, generated-output freshness and the shared `v{version}` tag.
+Run the required tests and host-specific checks; do not hardcode an old test count or
+treat optional local hooks as mandatory CI evidence.
 
-Add a runbook only for a genuinely repeated operational procedure; one-off steps belong in
-the PR description or the relevant skill, not here. The `/add-runbook` command (project-init)
-scaffolds from a template.
+Known gap (2026-09-13 audit): `plugin-release.md` still contains a three-plugin
+version snippet and bilingual changelog instructions. Those steps need reconciliation
+before use; the full inventory and English policy above apply.
+
+Use `/add-runbook` for scaffolding, applying this repository's instructions over
+template defaults. One-off actions belong in the PR description or owning skill.

@@ -1,23 +1,26 @@
 # ADR-020 PoC — Archify + official AWS icons + slide embed
 
-Evidence for the two PoC gates in `../../ADR-020-archify-interactive-diagrams.md`.
-Reproduce end to end (no repo changes required):
+Evidence from 2026-09-01 for the two PoC gates in
+`../../ADR-020-archify-interactive-diagrams.md`. Results and pending checks below
+describe that experiment, not current runtime acceptance. Use the recorded pin to
+reproduce it; replace `<this-dir>` and `<icons-dir>` with local paths.
 
 ```bash
-git clone --depth 1 https://github.com/tt-a1i/archify /tmp/archify
-cd /tmp/archify/archify
+git clone --no-checkout https://github.com/tt-a1i/archify /var/tmp/archify-adr020
+git -C /var/tmp/archify-adr020 checkout --detach 199360cc6687a7857b54dd188d4922b09e466a4b
+cd /var/tmp/archify-adr020/archify
 
 # 1. Validate + render the AWS spec (the validator reports label overlaps with
 #    concrete labelDy fixes — apply what it suggests).
 node bin/archify.mjs validate architecture <this-dir>/aws-eks-web.architecture.json
-node bin/archify.mjs render   architecture <this-dir>/aws-eks-web.architecture.json /tmp/poc-aws.html
+node bin/archify.mjs render   architecture <this-dir>/aws-eks-web.architecture.json /var/tmp/poc-aws.html
 
 # 2. Extract the official icons named in icon-map.json from the bundled set
 #    (plugins/aws-content-plugin/skills/reactive-presentation/assets/aws-icons.zip,
 #    Architecture-Service-Icons */64/*.svg) into a directory.
 
 # 3. Inject official icons (keeps Archify unmodified) and re-check:
-python3 <this-dir>/inject_aws_icons.py /tmp/poc-aws.html <this-dir>/icon-map.json <icons-dir> <this-dir>/poc-aws-icons.html
+python3 <this-dir>/inject_aws_icons.py /var/tmp/poc-aws.html <this-dir>/icon-map.json <icons-dir> <this-dir>/poc-aws-icons.html
 node bin/archify.mjs check <this-dir>/poc-aws-icons.html   # still passes on the modified artifact
 
 # 4. Slide embed: poc-slide.html iframes the diagram at 1920x1080.

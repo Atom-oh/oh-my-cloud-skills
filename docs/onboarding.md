@@ -1,75 +1,78 @@
-# Onboarding Guide
+# Contributor onboarding
 
-## Quick Start
+This marketplace supports Claude Code and Codex. Read the root and scoped
+`CLAUDE.md`/`AGENTS.md` instructions before editing. The [architecture inventory](architecture.md)
+lists eight plugins: 76 shared procedures, 74 generated Codex entries and 25 plugin
+hook commands. Source, entry and CI-cell counts describe different things.
 
-### Prerequisites
+## Setup
 
-- Python 3.9+
-- Node.js 18+ (for the Docusaurus docs site)
-- Claude Code CLI (`claude`)
-- Git
-
-### Setup
+Use Git, Python 3, and the host CLI you intend to test. The Docusaurus site requires
+Node.js 20 or newer (`doc-sites/package.json`); other tools may have their own
+dependencies. Provider credentials are needed only for workflows that call providers.
 
 ```bash
-# Clone the repository
 git clone https://github.com/Atom-oh/oh-my-cloud-skills.git
 cd oh-my-cloud-skills
+./scripts/setup.sh
 
-# Load a plugin locally for testing
+# Claude Code: load a source plugin for local testing.
 claude --plugin-dir ./plugins/aws-content-plugin
-claude --plugin-dir ./plugins/aws-ops-plugin
-
-# Build the docs site
-cd doc-sites && npm install && npm run build
 ```
 
-### Verify
+Setup installs site dependencies and local Git hooks, and may create `.env` from
+`.env.example`. Run the checks below explicitly; setup is not validation evidence.
+For Codex installation, discovery and hook trust, follow
+[Codex runtime verification](reference/codex-runtime-verification.md).
+
+Build the public site from its own directory:
 
 ```bash
-# Validate plugin manifests
-python3 scripts/test-plugins.py
-
-# Check version consistency across all 7 plugins
-VS=$(for f in plugins/*/.claude-plugin/plugin.json; do python3 -c "import json; print(json.load(open('$f'))['version'])"; done | sort -u)
-echo "$VS"   # should print exactly one version
+cd doc-sites
+npm ci
+npm run build
 ```
 
-## Project Overview
+## Verify from the repository root
 
-This is a Claude Code plugin marketplace with 7 plugins:
+```bash
+bash tests/run-all.sh
+python3 scripts/test-plugins.py
+python3 scripts/test-codex-plugins.py
+python3 scripts/sync-codex-plugins.py --check
+python3 scripts/eval-skills.py
+```
 
-| Plugin | Purpose | Agents | Skills | Commands |
-|--------|---------|--------|--------|----------|
-| aws-content-plugin | AWS cloud content creation (presentations, diagrams, docs, workshops) | 9 | 9 | — |
-| aws-ops-plugin | Infrastructure operations & troubleshooting | 10 | 6 | — |
-| kiro-power-converter | Claude Code plugin → Kiro Power format conversion | 1 | 1 | — |
-| agentcore-creator | Claude Code plugin → Bedrock AgentCore conversion | 1 | 1 | — |
-| co-agent | Multi-AI collaboration (Kiro CLI, Codex, Antigravity) — review, decision support, ADR, consensus/harness pipelines | 5 | 3 | 6 |
-| project-init | Project scaffolding & documentation management (upstream mirror) | 1 | 1 | 9 |
-| kiro | Cost-savings delegation — Claude plans/verifies, Kiro CLI implements | 1 | 1 | 4 |
+Record failures and distinguish new regressions from an independently established
+baseline. A known local limitation does not waive a required CI check.
+For host adaptation, installation or hook changes, also run the applicable runtime
+checks described in the runtime guide; static inventory checks do not prove discovery
+or hook execution.
 
-See root `CLAUDE.md` → "Plugin Inventory" for the authoritative, always-current per-plugin breakdown.
+## Change workflow
 
-## Development Workflow
+1. Edit shared source procedures or their owning helpers. Source skills use
+   `description` for trigger keywords; a separate `triggers:` field is inert.
+2. If generated Codex files are affected, update the owning `scripts/codex/` adapter
+   as needed and run `python3 scripts/sync-codex-plugins.py`. Do not hand-edit overlays.
+   Preserve the [project-init upstream boundary](reference/project-init-upstream-sync.md).
+3. Update affected maintained docs in concise English. Preserve dated ADR rationale,
+   and record changed authority or scope in a new ADR. Functional literals and the
+   language of artifacts requested by users remain independent of doc language.
+4. Run relevant tests and every applicable [review gate](reference/review-routing.md).
+   Before merge, require latest-HEAD AI review, no unresolved Critical/Major findings,
+   complete configured coverage, separate Codex package validation, and branch
+   protection checks. Failed or missing reviews need repair/retry, not a PASS.
+5. For a release, update every plugin's manifests and both marketplaces to one
+   version, regenerate adapters, validate, then tag the approved release commit
+   `v{version}`. Feature edits do not by themselves require a release tag.
 
-1. Make changes to plugin agents/skills.
-2. Test locally: `claude --plugin-dir ./plugins/<plugin>`.
-3. Run eval: `python3 scripts/eval-skills.py`.
-4. Bump the version in **all** `plugin.json` files + `marketplace.json` (single shared version across all 7 plugins — see root `CLAUDE.md` → "Versioning").
-5. Commit, tag `v{version}`, push, release (`docs/runbooks/plugin-release.md`).
+## Concepts and troubleshooting
 
-## Key Concepts
-
-- **Agents** (`.md` files): YAML frontmatter + markdown body defining capabilities.
-- **Skills** (`SKILL.md`): trigger-based knowledge with a `references/` subdirectory.
-- **Hooks** (`plugin.json`): automated checks on tool-usage events.
-- **MCP Servers**: external tool integrations (AWS docs, APIs, pricing, Playwright).
-
-## Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| Plugin not loading | Check `plugin.json` paths resolve to files |
-| Skill not triggering | Trigger keywords must live in `SKILL.md`'s `description` field — a `triggers:` key is inert (ignored by the runtime) |
-| Version mismatch | Run the version-consistency check above, or the snippet in root `CLAUDE.md` → "Versioning" |
+| Surface | Meaning / check |
+|---|---|
+| `agents/*.md` | Claude specialist definitions; Codex exposes procedural entry skills |
+| `skills/*/SKILL.md`, `commands/*.md` | Shared procedures; generated inventories map them to Codex names |
+| Plugin hooks | Host event handlers; confirm support and trust before claiming execution |
+| Project-init hook templates | Separately installed project configuration, excluded from plugin-hook totals |
+| Missing co-agent peers | Review/decide/ADR may report solo mode; consensus/harness require READY raw-CLI peers |

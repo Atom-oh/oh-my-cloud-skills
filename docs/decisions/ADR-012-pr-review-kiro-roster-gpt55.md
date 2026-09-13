@@ -2,9 +2,15 @@
 
 ## Status
 
-Accepted (2026-07-06) — amends the Kiro roster set by ADR-009; ADR-009's chair model
-(Claude Opus 4.8) is unaffected and remains historical record (superseded in practice by
-the separate Fable 5 chair swap, tracked only in `docs/ci-pr-review.md`/runbook, not an ADR).
+Accepted (2026-07-06); roster amended by ADR-014 and ADR-017.
+
+**Current scope (2026-09-13):** the rationale for replacing `kimi-k2.5` and removing
+CI's `--v3` is historical evidence. Models and per-lens counts below are not the live
+roster; consult `scripts/pr-review/pr-review.defaults.json`. The dated false-positive
+preference does not waive Critical/Major or configured-coverage requirements
+([ADR-021](ADR-021-english-docs-current-review-authority.md)). Co-agent has separate
+defaults; review/decide/ADR may report solo operation, while consensus/harness require
+READY raw-CLI peers.
 
 ## Context
 

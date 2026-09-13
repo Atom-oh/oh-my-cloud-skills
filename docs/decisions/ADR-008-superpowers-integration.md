@@ -4,6 +4,11 @@
 
 Accepted (2026-06-17)
 
+**Current scope (2026-09-13):** root `CLAUDE.md` maintains the routing and generated
+`AGENTS.md` carries shared reviewer context for the other host. Applicable content,
+AWS security and CI gates remain mandatory; the convention's unenforced routing
+does not waive those gates. See [ADR-021](ADR-021-english-docs-current-review-authority.md).
+
 ## Context
 
 When the `superpowers` workflow plugin (lifecycle skills such as brainstorming / writing-plans /

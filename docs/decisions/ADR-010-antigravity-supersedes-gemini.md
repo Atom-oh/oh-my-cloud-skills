@@ -2,9 +2,14 @@
 
 ## Status
 
-Accepted (2026-06-17) — no prior ADR established the Gemini-family slot, so none is marked
-`Superseded`. "Supersedes" here means **preferred-over-with-fallback**, not full removal
-(`gemini` still runs when `agy` is absent; see Decision).
+Accepted (2026-06-17); Gemini CLI fallback superseded by
+[ADR-021](ADR-021-english-docs-current-review-authority.md), reflecting current source.
+
+**Current scope (2026-09-13):** `check_panel.py` supports `kiro-cli`, `claude`,
+`codex` and `agy`, excluding the current host. `co_agent_config.py` rejects the
+removed legacy `gemini` key. The fallback and `GEMINI.md` guidance below are historical;
+current shared context uses `AGENTS.md` with a Kiro steering bridge. Antigravity remains
+separate from headless PR CI. Mode-specific readiness rules apply under ADR-021.
 
 ## Context
 

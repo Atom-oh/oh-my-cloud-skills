@@ -2,7 +2,14 @@
 
 ## Status
 
-Accepted (2026-07-31)
+Accepted (2026-07-31); chair delivery amended by ADR-016 and host/review scope clarified
+by [ADR-021](ADR-021-english-docs-current-review-authority.md).
+
+**Current scope (2026-09-13):** one committed memory file and a single authorized
+local host writer remain. The writer may be Claude Code or Codex; planner/implementer
+workers still must not write memory. ADR-016 moved the chair excerpt to stdin.
+Optional memory may be absent without blocking; required reviewer coverage may not.
+The agent counts, direct-Read path and specific landing sequence below are historical.
 
 ## Context
 
