@@ -19,16 +19,16 @@ title: "Presentation dispatcher"
 
 Routes a presentation request to interactive web slides or editable PowerPoint. Explicit web/interactive requests use reactive-presentation; native editable AWS light decks use aws-light-fcd. If the requested format is unclear, establish the deliverable before building.
 
-## Workflow
+## Workflow {#workflow}
 
 Determine audience, duration, technical level, language, output format, and any reference template. Web decks retain interaction and can be exported as slide images; native PowerPoint uses PptxGenJS and editable objects.
 
-## Output and verification
+## Output and verification {#output-and-verification}
 
 Return the editable source, rendered output, relevant build commands, and verification evidence. The content-review gate applies before completion/publication; a successful file write alone is not a passing review.
 
 [Agent contract](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-content-plugin/agents/presentation-agent.md) · [Skill guide](/docs/aws-content-plugin/skills/reactive-presentation)
 
-## Related links
+## Related links {#related-links}
 
 - [Reactive Presentation Agent](./reactive-presentation-agent)

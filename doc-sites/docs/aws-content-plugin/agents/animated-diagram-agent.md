@@ -26,11 +26,11 @@ title: "Animated diagram agent"
 
 Adds visible traffic flow, scaling, deployment, and failover behavior to architecture diagrams. SMIL suits repeated SVG motion; JavaScript/CSS state machines suit controls, scenario changes, and resource lifecycle simulation.
 
-## Workflow
+## Workflow {#workflow}
 
 Build a readable static architecture first, then add motion, a legend, labels, and controls. Keep semantic colors consistent, stagger events so their order is clear, and verify reset/replay behavior. Review both the still frame and the animated result.
 
-## Output and verification
+## Output and verification {#output-and-verification}
 
 Return the editable source, rendered output, relevant build commands, and verification evidence. The content-review gate applies before completion/publication; a successful file write alone is not a passing review.
 

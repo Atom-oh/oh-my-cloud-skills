@@ -20,15 +20,15 @@ title: "AgentCore create skill"
 
 Use `agentcore-create` for a new agent or `convert <plugin-path>` for an existing plugin. The skill supports local, GitHub, and marketplace input; source resolution must identify the intended plugin before conversion.
 
-## Design and local build
+## Design and local build {#design-and-local-build}
 
 Capture purpose, users, tools, knowledge, target, and success criteria. Produce a concrete file plan. Build the skill/plugin locally and test representative requests and an edge case before cloud conversion. Codex testing needs an exposed `.agents/skills/` entry that loads the agent instructions; a Claude agent filename alone does not register a Codex worker.
 
-## Conversion paths
+## Conversion paths {#conversion-paths}
 
 Harness produces configuration for model, instructions, tools, skills, and supported managed features. Runtime produces a Strands application wrapped for AgentCore. Decide based on required orchestration, streaming, framework, and tool behavior. Model-specific request compatibility and IDs come from the converter's mapping and reference files.
 
-## Deployment verification
+## Deployment verification {#deployment-verification}
 
 Review the resource plan, account/region, identity, tool authentication, memory requirements, and dependencies. Perform only authorized resource creation, invoke the deployed agent, and record observed output. A generated configuration is not evidence of successful deployment.
 

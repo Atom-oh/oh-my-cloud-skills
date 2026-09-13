@@ -30,11 +30,11 @@ title: "Workshop agent"
 
 Creates AWS Workshop Studio projects with contentspec.yaml, ordered modules/labs, frontmatter, directives, and optional infrastructure templates.
 
-## Workflow
+## Workflow {#workflow}
 
 Explain prerequisites, expected results, validation, and cleanup in every lab. Use Workshop Studio alert, code, tabs, image, expand, and Mermaid syntax; do not use Hugo shortcodes or chapter:true. Keep required resources and IAM permissions specific. Produce language pairs only when the brief requests them.
 
-## Output and verification
+## Output and verification {#output-and-verification}
 
 Return the editable source, rendered output, relevant build commands, and verification evidence. The content-review gate applies before completion/publication; a successful file write alone is not a passing review.
 

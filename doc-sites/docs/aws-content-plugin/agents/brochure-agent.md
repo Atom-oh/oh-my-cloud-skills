@@ -15,11 +15,11 @@ title: "Brochure agent"
 
 Creates a single-page solution or product brochure: hero, value, features, embedded architecture, and a clear call to action.
 
-## Workflow
+## Workflow {#workflow}
 
 Confirm the audience and core value; use a concise editorial layout; integrate the actual architecture; test responsive rendering and links; run content review before authorized publication. For personal portfolios use gh-home; for multi-page documentation use GitBook.
 
-## Output and verification
+## Output and verification {#output-and-verification}
 
 Return the editable source, rendered output, relevant build commands, and verification evidence. The content-review gate applies before completion/publication; a successful file write alone is not a passing review.
 

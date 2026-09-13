@@ -31,11 +31,11 @@ title: "GitBook agent"
 
 Creates navigable GitBook documentation with README.md, SUMMARY.md, .gitbook.yaml, topic pages, assets, and cross-references.
 
-## Workflow
+## Workflow {#workflow}
 
 Plan navigation before writing pages. Use GitBook hints, tabs, titled code blocks, expandable sections, images, downloads, and embeds where they help the reader. Match SUMMARY.md to actual files and verify links. Add language trees only when requested and keep their content aligned.
 
-## Output and verification
+## Output and verification {#output-and-verification}
 
 Return the editable source, rendered output, relevant build commands, and verification evidence. The content-review gate applies before completion/publication; a successful file write alone is not a passing review.
 

@@ -1,0 +1,47 @@
+---
+sidebar_position: 2
+title: "Canvas 애니메이션 데모"
+---
+
+{/* 영문 개편 전의 기존 섹션 링크를 유지합니다. */}
+<span id="canvas-애니메이션-데모" />
+<span id="데모" />
+<span id="스크린샷" />
+<span id="aws-observability-서비스-맵" />
+<span id="aiops-자동화-파이프라인-block-3" />
+<span id="canvas-step-애니메이션" />
+<span id="생성-프롬프트" />
+<span id="remarp-canvas-dsl-소스" />
+<span id="canvas-dsl-핵심-요소" />
+<span id="동작-방식" />
+
+
+# Canvas 애니메이션 데모
+
+import DemoEmbed from '@site/src/components/DemoEmbed';
+
+이 예제로 서비스 맵, 자동화 파이프라인과 단계별 Canvas 그리기를 비교합니다.
+
+## 실행 예제 {#live-example}
+
+<DemoEmbed
+  src="/oh-my-cloud-skills/demos/canvas-animation/index.html"
+  title="단계별 Canvas 애니메이션"
+  height={600}
+  command="python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build doc-sites/static/demos/canvas-animation -o /var/tmp/canvas-animation-example"
+  remarpSource="canvas-demo.md"
+/>
+
+## 확인할 사항 {#what-to-inspect}
+
+순차적인 표시와 레이블·화살표의 관계를 확인합니다. 새 콘텐츠의 Canvas는 작은 선형 흐름 규칙을 따릅니다. 그룹이 있거나 규모가 큰 맵에는 HTML/CSS를 사용합니다. 복잡한 Canvas로 만든 고정 예제가 현재 작성 지침의 예외를 허용하지는 않습니다.
+
+삽입된 HTML, 다운로드 가능한 소스와 스크린샷은 변경하지 않는 예제 결과물입니다. 원래 언어를 유지하며, 이 가이드에서는 예제를 이해하는 방법을 설명합니다.
+
+## 스크린샷 {#screenshots}
+
+![Canvas 애니메이션 데모 스크린샷](/img/demos/canvas-animation-newtheme.png)
+
+![Canvas 애니메이션 데모 스크린샷](/img/demos/block3-canvas-fhd.png)
+
+![Canvas 애니메이션 데모 스크린샷](/img/demos/canvas-slide8-fhd.png)

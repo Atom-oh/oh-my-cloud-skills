@@ -1,0 +1,62 @@
+---
+sidebar_position: 1
+title: "Bedrock 첫 미팅용 덱"
+---
+
+{/* 영문 개편 전의 기존 섹션 링크를 유지합니다. */}
+<span id="amazon-bedrock-first-call-덱" />
+<span id="데모" />
+<span id="스크린샷" />
+<span id="커버" />
+<span id="아젠다-2개-블록" />
+<span id="카드탭--모델-landscape" />
+<span id="레퍼런스-아키텍처--aws-서비스-아이콘-다이어그램" />
+<span id="인터랙티브--추론-비용-계산기" />
+<span id="구성" />
+<span id="생성-프롬프트" />
+<span id="검증과-빌드" />
+<span id="디자인-노트" />
+<span id="관련-문서" />
+
+
+# Bedrock 첫 미팅용 덱
+
+import DemoEmbed from '@site/src/components/DemoEmbed';
+
+두 블록으로 구성된 소개 자료에서 표지, 목차, 모델 카드·탭, 서비스 아이콘 아키텍처와 추론 비용 계산기를 보여 줍니다.
+
+## 실행 예제 {#live-example}
+
+<DemoEmbed
+  src="/oh-my-cloud-skills/demos/bedrock-first-calldeck/index.html"
+  title="Bedrock 첫 미팅용 덱"
+  height={620}
+  command="python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build doc-sites/static/demos/bedrock-first-calldeck -o /var/tmp/bedrock-first-calldeck-example"
+  remarpSource="_presentation.md, 01-platform-and-models.md, 02-agentcore-and-architecture.md"
+/>
+
+## 확인할 사항 {#what-to-inspect}
+
+이 덱은 과거 시점의 예제입니다. 포함된 모델 가용성, 가격과 서비스 설명은 당시의 예제 데이터입니다. 새 브리핑 자료에서는 해당 정보를 확인하고, 계산기의 가정을 테스트하며, Remarp를 검증하고 렌더링된 아키텍처를 확인한 뒤 리뷰합니다.
+
+삽입된 HTML, 다운로드 가능한 소스와 스크린샷은 변경하지 않는 예제 결과물입니다. 원래 언어를 유지하며, 이 가이드에서는 예제를 이해하는 방법을 설명합니다.
+
+## 스크린샷 {#screenshots}
+
+![Bedrock 첫 미팅용 덱 스크린샷](/img/demos/bedrock-first-calldeck/bfc-cover.png)
+
+![Bedrock 첫 미팅용 덱 스크린샷](/img/demos/bedrock-first-calldeck/bfc-agenda.png)
+
+![Bedrock 첫 미팅용 덱 스크린샷](/img/demos/bedrock-first-calldeck/bfc-models.png)
+
+![Bedrock 첫 미팅용 덱 스크린샷](/img/demos/bedrock-first-calldeck/bfc-security.png)
+
+![Bedrock 첫 미팅용 덱 스크린샷](/img/demos/bedrock-first-calldeck/bfc-refarch.png)
+
+![Bedrock 첫 미팅용 덱 스크린샷](/img/demos/bedrock-first-calldeck/bfc-calc.png)
+
+## 관련 링크 {#related-links}
+
+- [인터랙티브 프레젠테이션 스킬](../skills/reactive-presentation)
+- [빠른 시작](../../remarp-guide/quick-start)
+- [빌드 CLI](../../remarp-guide/build-cli)

@@ -24,7 +24,7 @@ title: "Reactive presentation agent"
 
 Authors Remarp source, builds interactive HTML slides, and verifies the presentation in a browser. It supports content, code, comparison, tabs, quiz, timeline, checklist, and simple Canvas slides.
 
-## Workflow
+## Workflow {#workflow}
 
 Plan the story and blocks; extract a supplied PPTX theme when needed; author source
 with speaker notes; obtain the user's content approval; validate; build; test
@@ -32,7 +32,7 @@ navigation and interactions; run content review before publication. Use HTML/CSS
 for grouped or branching architectures and interactive calculators, and Canvas only
 for small linear flows.
 
-## Output and verification
+## Output and verification {#output-and-verification}
 
 Return the editable source, rendered output, relevant build commands, and verification evidence. The content-review gate applies before completion/publication; a successful file write alone is not a passing review.
 

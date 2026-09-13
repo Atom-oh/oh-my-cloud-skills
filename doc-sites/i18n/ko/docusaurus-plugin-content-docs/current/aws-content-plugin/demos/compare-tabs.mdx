@@ -1,0 +1,46 @@
+---
+sidebar_position: 4
+title: "비교·탭 데모"
+---
+
+{/* 영문 개편 전의 기존 섹션 링크를 유지합니다. */}
+<span id="비교탭-슬라이드-데모" />
+<span id="데모" />
+<span id="스크린샷" />
+<span id="compare-슬라이드--traditional-ops-vs-aiops" />
+<span id="tabs-슬라이드--cloudwatch-핵심-개념" />
+<span id="생성-프롬프트" />
+<span id="remarp-소스--compare-슬라이드" />
+<span id="remarp-소스--tabs-슬라이드" />
+<span id="인터랙티브-슬라이드-타입" />
+<span id="키보드-인터랙션" />
+<span id="동작-방식" />
+
+
+# 비교·탭 데모
+
+import DemoEmbed from '@site/src/components/DemoEmbed';
+
+선택 가능한 비교 화면과 탭으로 관련 운영 개념을 설명합니다. 모든 대안을 한 화면에 표시하지 않아도 됩니다.
+
+## 실행 예제 {#live-example}
+
+<DemoEmbed
+  src="/oh-my-cloud-skills/demos/compare-tabs/index.html"
+  title="운영 방식 비교와 개념 탭"
+  height={600}
+  command="python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build doc-sites/static/demos/compare-tabs -o /var/tmp/compare-tabs-example"
+  remarpSource="compare-tabs.md"
+/>
+
+## 확인할 사항 {#what-to-inspect}
+
+각 선택 항목과 탭을 눌러 활성 상태와 표시 패널이 모두 바뀌는지 확인합니다. 간결하고 대등한 레이블과 동일한 비교 기준을 사용합니다. 새 소스에는 compare/tabs 유형을 명시하고 현재 프레임워크의 제어 기능을 사용합니다.
+
+삽입된 HTML, 다운로드 가능한 소스와 스크린샷은 변경하지 않는 예제 결과물입니다. 원래 언어를 유지하며, 이 가이드에서는 예제를 이해하는 방법을 설명합니다.
+
+## 스크린샷 {#screenshots}
+
+![비교·탭 데모 스크린샷](/img/demos/compare-tabs-newtheme.png)
+
+![비교·탭 데모 스크린샷](/img/demos/tabs-slide9-fhd.png)
