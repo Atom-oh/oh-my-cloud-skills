@@ -1,98 +1,48 @@
 ---
 sidebar_position: 1
-title: "명령 목록"
+title: "Project init commands"
 ---
 
-# Project Init 명령
+{/* Legacy section links retained after the English rewrite. */}
+<span id="project-init-명령" />
 
-10개의 슬래시 명령으로 프로젝트 설정부터 문서 관리, 구현 참조 문서, PR 자동 수정까지 지원합니다.
+
+# Project init commands
+
+In Claude Code these are slash commands. In Codex use the corresponding generated skill; `source-command-health-check` disambiguates the project setup check from AWS health checks.
 
 ## /init-project
 
-Claude Code 프로젝트 구조를 초기화합니다. 기존 프로젝트에서는 언어/프레임워크를 자동 감지하고, 누락된 파일만 생성합니다.
-
-```bash
-/init-project              # 현재 디렉토리
-/init-project /path/to/dir # 특정 디렉토리
-```
-
-생성 항목: CLAUDE.md, settings.json, hooks, skills, commands, agents, docs, scripts, tests, README, CHANGELOG
+Detect the repository's language, framework, commands, and existing layout. Create missing instructions, documentation, skills, and supported host integration files without overwriting handwritten content.
 
 ## /sync-docs
 
-문서와 코드를 동기화합니다. doc-sync-checker 에이전트를 실행하여 누락/오래된 문서를 감지하고 품질 점수를 보고합니다.
-
-```bash
-/sync-docs
-```
+Audit maintained documents against source and configuration; update stale commands, counts, paths, and architectural statements. Keep one authoritative statement for details that change frequently.
 
 ## /add-adr
 
-Architecture Decision Record를 생성합니다.
-
-```bash
-/add-adr "Use PostgreSQL for user data"
-```
-
-`docs/decisions/ADR-NNN.md` 파일이 번호 자동 부여와 함께 생성됩니다.
+Create a numbered decision record with context, alternatives, decision, and consequences. Link superseded records when appropriate.
 
 ## /add-module
 
-모듈 디렉토리와 CLAUDE.md를 추가합니다.
-
-```bash
-/add-module src/auth
-```
-
-디렉토리가 없으면 생성하고, 모듈 역할에 맞는 CLAUDE.md를 작성합니다.
+Add a module directory and scoped instructions, then update architecture documentation to describe its role and dependencies.
 
 ## /add-runbook
 
-운영 런북을 생성합니다.
-
-```bash
-/add-runbook "Database failover procedure"
-```
-
-`docs/runbooks/` 디렉토리에 표준 런북 템플릿으로 생성됩니다.
-
-## /generate-readme
-
-이중 언어 (영어/한국어) README.md를 생성하거나 업데이트합니다.
-
-```bash
-/generate-readme
-```
-
-프로젝트 매니페스트, git remote, 빌드 시스템에서 정보를 자동 감지합니다.
-
-## /generate-changelog
-
-이중 언어 (영어/한국어) CHANGELOG.md를 생성하거나 업데이트합니다.
-
-```bash
-/generate-changelog
-```
-
-git 태그와 커밋 히스토리를 분석하여 변경사항을 자동 분류합니다.
-
-## /health-check
-
-프로젝트 설정을 200점 척도로 검증합니다.
-
-```bash
-/health-check
-```
-
-검증 항목: 코어 파일, 훅 설정, 스킬, 문서 커버리지, 보안, CLAUDE.md 품질, 테스트 구조
+Create a runbook with prerequisites, operations, expected output, verification, and recovery steps.
 
 ## /add-reference-doc
 
-레이어별 구현 참조 문서 스켈레톤을 `docs/reference/`에 생성합니다. (upstream implementation-reference-docs 기능)
+Add implementation reference material for selected layers under `docs/reference/` and link it from the owning instructions.
 
-```bash
-/add-reference-doc api              # 단일 레이어
-/add-reference-doc infrastructure data security  # 다중 레이어
-```
+## /generate-readme
 
-유효 레이어(enum): `infrastructure`, `data`, `api`, `iac`, `frontend`, `ui`, `security`, `agent-llm`. `/init-project`의 Step 4.5(레이어 자동 감지)와 `/sync-docs`의 Phase 1.5(참조 문서 검증)가 이 기능과 연동됩니다.
+Describe the project's actual purpose, installation, usage, development commands, and contribution path. Follow the requested language.
+
+## /generate-changelog
+
+Record release changes under the project's versioning and changelog conventions. Describe shipped behavior and avoid inventing release dates.
+
+## /health-check
+
+Validate files, hooks, permissions, instruction quality, and configuration. Report the rubric, evidence, and fixes; a health score is not a replacement for the required test suite.
