@@ -15,6 +15,13 @@ outside that source comparison; it is not a fork of upstream agents or skills.
 Preserve this overlay during sync, then regenerate it from repository-owned tooling
 using `scripts/sync-codex-plugins.py`. Do not maintain source-file exclusions.
 
+The mirrored generators retain bilingual output defaults, Korean style terms and
+localized template prompts. These are upstream instructions/examples, not a
+requirement to maintain Korean copies in this repository. Here, root `CLAUDE.md`
+and ADR-021 require English documentation; apply that override when running the
+generators. Preserve the upstream files and the user's chosen language for other
+deliverables.
+
 All eight plugins, including project-init, are required on the Codex surface.
 This package includes its generated overlay, and the temporary `CLAUDE_ONLY`
 exception is removed: a missing adapter is now an error even without a marketplace
