@@ -1,5 +1,5 @@
 #!/bin/bash
-# Exercise Kiro no-tools, preflight, fallback and account-limit behavior with local stubs.
+# Exercise Kiro model selection, no-tools, preflight, fallback and quota behavior with local stubs.
 # Review-cell retry and transport coverage also lives in tests/pr-review/test-run-panel.sh.
 # The historical CLI assumptions are documented in docs/runbooks/pr-review-panel.md.
 PANEL="scripts/pr-review/run-panel.sh"
@@ -297,6 +297,61 @@ EOF2
     PREFLIGHT_LEAKS=$(find "$T_STUB" -maxdepth 1 -name 'kiro-cli.diff-in-preflight' | wc -l | tr -d ' ')
     assert_eq "0" "$PREFLIGHT_LEAKS" "preflight prompt contains no PR diff"
     assert_grep_match 'Panel responded \(3 / 3 cells\)' "$PANEL_OUT" "successful preflight preserves full coverage"
+
+    # Reproduce the vendor headless model-selection failure at the CLI boundary.
+    # Distinct fixture models catch lost --model values in either call path.
+    mkdir -p "$T_STUB/classic-config/.claude" "$T_STUB/classic-lenses"
+    cat > "$T_STUB/classic-config/.claude/pr-review.local.json" <<'EOF2'
+{"panel":{"codex":{"enabled":true},"kiro-opus":{"enabled":true,"model":"claude-fixture-opus"},"kiro-gpt":{"enabled":true,"model":"gpt-fixture"},"kiro-glm":{"enabled":false}}}
+EOF2
+    echo "Review the complete diff." > "$T_STUB/classic-lenses/FULL.txt"
+    cat > "$T_STUB/kiro-cli" <<'EOF2'
+#!/bin/bash
+[ "${1:-}" = "--version" ] && { echo "kiro-cli 2.21.4 fixture"; exit 0; }
+[ "${1:-}" = chat ] && [ "$#" -ge 2 ] || exit 2
+phase=review
+[[ "$2" == 'Kiro startup safety check.'* ]] && phase=preflight
+shift 2
+model=missing agent=missing legacy=no noninteractive=no wrap=missing
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --model) model="$2"; shift 2 ;;
+        --agent) agent="$2"; shift 2 ;;
+        --legacy-ui) legacy=yes; shift ;;
+        --no-interactive) noninteractive=yes; shift ;;
+        --wrap) wrap="$2"; shift 2 ;;
+        *) exit 2 ;;
+    esac
+done
+printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "$phase" "$model" "$legacy" "$agent" "$noninteractive" "$wrap" >> "$0.classic-calls"
+if [ "$legacy" != yes ]; then
+    printf "[warn] failed to set model '%s': Method not found\n" "$model" >&2
+    exit 0
+fi
+if [ "$phase" = preflight ]; then echo "NO_TOOLS"; else echo "no findings"; fi
+EOF2
+    PANEL_RC=0
+    PANEL_OUT=$(PATH="$T_STUB:$PATH" PR_REVIEW_CONFIG_ROOT="$T_STUB/classic-config" \
+        PANEL_TIMEOUT=30 PANEL_RETRIES=1 ROLE_REVIEW=1 bash "$PANEL" \
+        "$T_STUB/diff.txt" "$T_STUB/classic-lenses" "$T_STUB/classic-work" 2>&1) || PANEL_RC=$?
+    assert_eq "0" "$PANEL_RC" "legacy model-selection fixture completes the panel"
+    PREFLIGHT_CALLS=$(awk '$1 == "preflight"' "$T_STUB/kiro-cli.classic-calls" | LC_ALL=C sort)
+    REVIEW_CALLS=$(awk '$1 == "review"' "$T_STUB/kiro-cli.classic-calls" | LC_ALL=C sort)
+    assert_eq $'preflight\tclaude-fixture-opus\tyes\tpr-review-notools\tyes\tnever\npreflight\tgpt-fixture\tyes\tpr-review-notools\tyes\tnever' \
+        "$PREFLIGHT_CALLS" "both configured model preflights preserve legacy, model and no-tools flags"
+    assert_eq $'review\tclaude-fixture-opus\tyes\tpr-review-notools\tyes\tnever\nreview\tgpt-fixture\tyes\tpr-review-notools\tyes\tnever' \
+        "$REVIEW_CALLS" "both real review calls preserve legacy, model and no-tools flags"
+    assert_grep_no_match 'failed to set model|Method not found' "$PANEL_OUT" \
+        "explicit legacy selection avoids the simulated headless model warning"
+    assert_eq $'codex/FULL\nkiro-gpt/FULL\nkiro-opus/FULL' \
+        "$(LC_ALL=C sort "$T_STUB/classic-work/expected.txt")" \
+        "legacy selection retains every configured specialist cell"
+    assert_eq $'codex/FULL\nkiro-gpt/FULL\nkiro-opus/FULL' \
+        "$(LC_ALL=C sort "$T_STUB/classic-work/responded.txt")" \
+        "legacy selection restores complete review coverage after both preflights"
+    CLASSIC_FLAGS=$(find "$T_STUB/classic-work" -maxdepth 1 -name '*.flag' | wc -l | tr -d ' ')
+    assert_eq "0" "$CLASSIC_FLAGS" "legacy model-selection run leaves no failure or coverage flags"
 
     # NO_TOOLS does not excuse a simultaneous default-agent fallback diagnostic.
     cat > "$T_STUB/kiro-cli" <<'EOF2'
