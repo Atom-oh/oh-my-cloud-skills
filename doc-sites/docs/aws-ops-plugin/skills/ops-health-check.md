@@ -39,15 +39,15 @@ title: "Infrastructure health check"
 
 Use for an overall AWS/EKS assessment without a specific failure to diagnose.
 
-## Workflow
+## Workflow {#workflow}
 
 Identify account, region, cluster, namespaces, and scope; inspect each layer; record OK/WARN/CRIT with evidence; prioritize follow-up; verify any authorized remediation.
 
-## Coverage
+## Coverage {#coverage}
 
 Cluster API/control plane; nodes/capacity; workload readiness/restarts; network/DNS/load balancers; storage/PVCs; identity/security; observability and resource utilization.
 
-## Reporting and boundaries
+## Reporting and boundaries {#reporting-and-boundaries}
 
 A snapshot cannot prove future availability. Report skipped checks, permission gaps, and the time of assessment instead of marking unobserved areas healthy.
 

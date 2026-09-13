@@ -1,9 +1,9 @@
 ---
 sidebar_position: 5
-title: "Security audit"
+title: "보안 감사"
 ---
 
-{/* Legacy section links retained after the English rewrite. */}
+{/* 영문 개편 이전의 섹션 링크를 유지합니다. */}
 <span id="ops-security-audit" />
 <span id="description" />
 <span id="trigger-keywords" />
@@ -59,22 +59,22 @@ title: "Security audit"
 <span id="reference-files" />
 
 
-# Security audit
+# 보안 감사
 
-Assess AWS/EKS security controls and evidence, including optional AWS Security Agent workflows when requested and configured.
+AWS/EKS 보안 통제와 근거를 평가합니다. 요청되고 설정된 경우 선택적 AWS Security Agent 워크플로도 포함합니다.
 
-## Workflow {#workflow}
+## 워크플로 {#workflow}
 
-Define scope and required controls; inspect identity and access, pod security, networking, encryption, secrets, audit logging, and runtime posture; validate findings; rank confirmed risk; propose specific fixes and verification.
+범위와 필수 통제를 정의하고 자격 증명과 접근, 파드 보안, 네트워크, 암호화, 비밀 정보, 감사 로깅, 런타임 보안 상태를 점검합니다. 발견 사항을 검증하고 확인된 위험의 우선순위를 정한 뒤 구체적인 수정과 검증 방법을 제안합니다.
 
-## Coverage {#coverage}
+## 대상 범위 {#coverage}
 
-IRSA/Pod Identity trust; RBAC and access entries; Pod Security Standards; SGs/network policies/endpoints; KMS and storage protection; secrets handling; control-plane/audit logging.
+IRSA/Pod Identity 신뢰, RBAC와 액세스 항목, Pod Security Standards, SG·네트워크 정책·엔드포인트, KMS와 스토리지 보호, 비밀 정보 처리, 컨트롤 플레인·감사 로깅을 다룹니다.
 
-## Reporting and boundaries {#reporting-and-boundaries}
+## 보고 및 경계 {#reporting-and-boundaries}
 
-Apply the [repository's AWS security mandates](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/CLAUDE.md#banned-patterns) and the source skill's [Global AWS Security Mandates](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-ops-plugin/skills/ops-security-audit/SKILL.md#global-aws-security-mandates) in full. Penetration testing requires the appropriate explicit scope and authorization.
+[저장소의 AWS 보안 필수 규칙](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/CLAUDE.md#banned-patterns)과 소스 스킬의 [공통 AWS 보안 필수 규칙](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-ops-plugin/skills/ops-security-audit/SKILL.md#global-aws-security-mandates)을 빠짐없이 적용합니다. 침투 테스트에는 적절하고 명시적인 범위와 승인이 필요합니다.
 
-The source skill contains the command playbooks, decision trees, examples, reference files, and host/team integration. Consult it for the exact operation being performed.
+소스 스킬에는 명령별 실행 절차, 의사결정 트리, 예제, 참조 파일, 호스트·팀 연동이 포함되어 있습니다. 수행할 작업의 정확한 절차는 소스 스킬에서 확인합니다.
 
-[Canonical workflow and playbooks](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-ops-plugin/skills/ops-security-audit/SKILL.md)
+[기준 워크플로 및 실행 절차](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-ops-plugin/skills/ops-security-audit/SKILL.md)

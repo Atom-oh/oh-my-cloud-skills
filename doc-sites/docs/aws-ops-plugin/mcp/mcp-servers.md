@@ -24,13 +24,13 @@ title: "MCP integrations"
 
 The AWS operations plugin declares two MCP servers in its Claude manifest: `awsdocs` for AWS documentation and `awsapi` for AWS API operations. Codex uses the generated MCP configuration referenced by its manifest. The external `deploy-on-aws` plugin provides the optional `awsknowledge`, `awspricing`, and `awsiac` integrations when both plugins are loaded and configured. In particular, `awspricing` supplies pricing data for the cost workflow; these servers are not bundled here.
 
-## Setup
+## Setup {#setup}
 
 The declared servers run through `uvx`. Prepare that executable and the authentication/configuration required by each server. Inspect the actual manifest for package names, arguments, environment settings, and timeouts instead of copying an independently maintained server list.
 
 [Claude server configuration](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-ops-plugin/.claude-plugin/plugin.json) · [Codex package configuration](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-ops-plugin/.codex-plugin/plugin.json)
 
-## Diagnose connection failures
+## Diagnose connection failures {#diagnose-connection-failures}
 
 Confirm the process starts, inspect its local logs, check the selected account/region and credential expiry, and distinguish MCP transport failures from service permission failures. Documentation search needs a working server but does not establish AWS API authorization.
 
