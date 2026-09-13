@@ -26,7 +26,7 @@ before updating an existing co-agent setup that selected Antigravity.
 
 <span id="plugins" />
 
-## Choose a plugin
+## Choose a plugin {#choose-a-plugin}
 
 | Plugin | Purpose |
 | --- | --- |
@@ -41,7 +41,7 @@ before updating an existing co-agent setup that selected Antigravity.
 
 <span id="quick-install" />
 
-## Install
+## Install {#install}
 
 In Claude Code, add the repository marketplace, then install the plugins you need:
 
@@ -54,19 +54,19 @@ In Codex, add this repository's `.agents/plugins/marketplace.json` as a marketpl
 
 The Claude manifests expose agents, skills, commands, and hooks. Codex manifests point to generated skill overlays and host-specific hook/MCP adapters. A Claude command becomes a skill entry in Codex; Claude subagent registration and tool names do not automatically transfer. Project-init and Atlas both have Codex packages.
 
-## Current configuration
+## Current configuration {#current-configuration}
 
 [Claude marketplace](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/.claude-plugin/marketplace.json) · [Codex marketplace](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/.agents/plugins/marketplace.json)
 
 Those manifests and each plugin's source directories define the installed inventory. Generated Codex overlays may expose more skill entries because they wrap Claude commands. Model identifiers, reasoning settings, and context limits come from each plugin's configuration; this site does not maintain a second model catalog.
 
-## Review and examples
+## Review and examples {#review-and-examples}
 
 Content output requires the content-review quality gate before publication. Local review hooks are opt-in controls; they do not replace CI checks or repository branch protection. Review findings must be checked against the actual changed files and current configuration.
 
 Demo embeds and downloadable artifacts are frozen examples. Their language, model names, prices, or dated claims illustrate the original output and are not current operational guidance.
 
-## Related links
+## Related links {#related-links}
 
 - [Claude Code](https://claude.ai/code)
 - [Remarp Guide](/docs/remarp-guide/introduction)

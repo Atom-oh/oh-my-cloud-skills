@@ -27,13 +27,13 @@ title: "Kiro conversion example"
 
 This example converts the marketplace's AWS operations plugin into a shareable Kiro Power. It illustrates file mappings; it does not claim that Claude runtime settings are valid Kiro configuration.
 
-## Convert
+## Convert {#convert}
 
 ```bash
 python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_to_power.py --source ./plugins/aws-ops-plugin --output /var/tmp/aws-ops-power --target export
 ```
 
-## Inspect the result
+## Inspect the result {#inspect-the-result}
 
 Plugin metadata becomes POWER.md; routing, agent instructions, skills, and references become supported steering content; MCP settings become mcp.json; supported hooks become .kiro.hook files. Use `--preserve-skills` when the Power should retain skill directories and resources.
 

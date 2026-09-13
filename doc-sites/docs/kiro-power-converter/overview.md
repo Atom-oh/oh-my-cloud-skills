@@ -21,11 +21,11 @@ title: "Kiro Power converter"
 
 Convert Claude plugin sources and individual skills into Kiro Powers, including steering, hooks, assets, and MCP configuration.
 
-## Inputs and targets
+## Inputs and targets {#inputs-and-targets}
 
 Use a GitHub repository (`--git-url`, optional `--plugin-path`/`--branch`), a local plugin (`--source`), a marketplace search, or one or more skill directories (`--skill`). Global installation writes under `~/.kiro/powers/`; project installation uses `.kiro/powers/`; export writes the selected output directory.
 
-## Mapping
+## Mapping {#mapping}
 
 | Source | Kiro output |
 | --- | --- |
@@ -38,12 +38,12 @@ Use a GitHub repository (`--git-url`, optional `--plugin-path`/`--branch`), a lo
 
 `--preserve-skills` keeps supported skill structure and resources instead of flattening everything into steering. The original plugin and generated power can coexist.
 
-## Verification
+## Verification {#verification}
 
 Validate POWER.md fields, steering inclusion/globs, hook JSON, MCP settings, and required environment variables. Missing or ambiguous marketplace input must stop for an explicit source selection. Do not silently choose a cached version.
 
 [Conversion rules](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/kiro-power-converter/skills/kiro-convert/references/conversion-rules.md) · [Kiro format contract](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/kiro-power-converter/skills/kiro-convert/references/kiro-power-format.md)
 
-## Related links
+## Related links {#related-links}
 
 - [kiro.dev](https://kiro.dev)

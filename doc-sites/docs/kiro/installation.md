@@ -14,7 +14,7 @@ title: "Install kiro"
 
 # Install kiro
 
-## Claude Code
+## Claude Code {#claude-code}
 
 ```text
 /plugin marketplace add Atom-oh/oh-my-cloud-skills
@@ -27,11 +27,11 @@ For local development from a repository checkout:
 claude --plugin-dir ./plugins/kiro
 ```
 
-## Codex
+## Codex {#codex}
 
 Install `kiro` from this repository's Codex marketplace using `/plugins`, then start a new thread. The package loads its generated `.codex-plugin/skills/` entries. Use the installed skill picker or describe the desired operation; the slash commands shown in this guide name the corresponding Claude workflows.
 
-## Setup and verification
+## Setup and verification {#setup-and-verification}
 
 Install and authenticate `kiro-cli`, then run `/kiro:setup`. Setup probes the CLI and prepares the local agents. Delegation, commit/push review hooks, web search, and shell execution have separate settings; inspect them before enabling automatic behavior.
 
@@ -44,10 +44,10 @@ python3 scripts/test-codex-plugins.py
 
 Inspect the plugin's manifest and generated overlay if an expected entry is missing. Do not treat a successful installation as proof that external credentials, peer CLIs, or cloud permissions work.
 
-## Remove
+## Remove {#remove}
 
 Use `/plugin uninstall kiro@oh-my-cloud-skills` in Claude Code or uninstall the entry through Codex `/plugins`.
 
-## Related links
+## Related links {#related-links}
 
 - [kiro.dev](https://kiro.dev)
