@@ -38,14 +38,14 @@ Record the check and the result together.
 :::
 ```
 
-## Ordering
+## Ordering {#ordering}
 
 Use explicit `order=N` on every fragment when mixing inline `{.click}` items with `:::click` blocks or arranging content across columns. An unnumbered top-level click block defaults to an index starting at zero, so it can reveal before explicitly numbered items later in the visual order. Elements sharing an index can appear together.
 
-## Effects
+## Effects {#effects}
 
 The framework includes fade-in/up/down/left/right, grow, shrink, highlight, highlight-red, highlight-green, strike, and fade-out fragment classes. Effects can be specified with a class or `animation=` attribute. Keep motion readable and use emphasis sparingly.
 
-## Controls
+## Controls {#controls}
 
 Right/Space reveals the next fragment before advancing the slide. Left hides a previous fragment where available before moving back. Up/Down first use registered slide actions or interactive controls, then fall back to fragment/slide navigation. Test the actual deck when combining fragments with tabs or Canvas steps.

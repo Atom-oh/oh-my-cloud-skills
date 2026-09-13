@@ -40,7 +40,7 @@ title: "VS Code extension"
 
 The repository's Remarp extension provides syntax highlighting, slide navigation, preview, source building, outline, completion, and issue annotations for source editing. Use the package manifest as the authority for registered commands, settings, and shortcuts.
 
-## Local setup
+## Local setup {#local-setup}
 
 ```bash
 cd tools/remarp-vscode
@@ -50,7 +50,7 @@ npm run compile
 
 Open the extension project in VS Code and launch the Extension Development Host, or package/install a VSIX using the extension tooling. The checked-in package declares its VS Code engine requirement and publisher; documentation does not establish that a particular package is currently published in the Marketplace.
 
-## Commands and shortcuts
+## Commands and shortcuts {#commands-and-shortcuts}
 
 | Command ID | Function |
 | --- | --- |
@@ -62,7 +62,7 @@ Open the extension project in VS Code and launch the Extension Development Host,
 
 The manifest registers Ctrl/Cmd+Shift+Right and Left for slide navigation, and Ctrl/Cmd+Shift+B for build while the editor language is Remarp. It does not register the previously documented Ctrl/Cmd+Shift+E shortcut.
 
-## Settings
+## Settings {#settings}
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
@@ -71,13 +71,13 @@ The manifest registers Ctrl/Cmd+Shift+Right and Left for slide navigation, and C
 
 `remarp.autoPreview` and `remarp.buildOnSave` are not current contributed settings.
 
-## Editing and issues
+## Editing and issues {#editing-and-issues}
 
 Preview includes notes and slide-specific issue annotations. `<!-- issue: ... -->` records a repair request for slide-fix. Edit the Markdown/CSS/Canvas source, rebuild, and inspect the generated HTML in a browser.
 
 The repository contains visual-edit/writeback and HTML-preview helper classes, but the current registered preview/build commands do not wire them in. There is no registered Visual Edit command or shortcut; do not treat those helper files as an available editing workflow.
 
-## Boundaries
+## Boundaries {#boundaries}
 
 The registered language extension is `.remarp.md`. The extension also detects `.md` documents with `remarp: true` and switches them to the Remarp editor language on activation, open, or save, enabling its menus, shortcuts, and outline. Preview rendering and the production HTML builder are separate paths. Validate the final generated deck in a browser rather than treating preview success as complete production verification.
 

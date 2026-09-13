@@ -30,19 +30,19 @@ title: "Author and revise a deck"
 
 # Author and revise a deck
 
-## Plan and generate
+## Plan and generate {#plan-and-generate}
 
 Specify audience, technical level, language, duration, output format, and source material. Plan blocks and the main message of each slide. For web output, the reactive-presentation workflow authors Remarp source and builds a browsable deck.
 
-## Edit source
+## Edit source {#edit-source}
 
 Use the editor preview to navigate slides and inspect notes. Modify content, directives, fragments, quizzes, tabs, or the simple Canvas DSL in the source. The current registered editor commands do not expose the visual-edit/writeback helpers; make those changes in source and rebuild. See the [editor guide](./vscode-extension.md) for the supported entry points.
 
-## Issue-based revision
+## Issue-based revision {#issue-based-revision}
 
 Record a specific issue as `<!-- issue: ... -->`, including the affected slide and observable problem. Run slide-fix to inspect and repair the source, remove resolved annotations, and leave unresolved issues visible in the report. List annotations using the converter's `issues` command.
 
-## Build and verify
+## Build and verify {#build-and-verify}
 
 ```bash
 python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py validate ./my-presentation/
@@ -52,11 +52,11 @@ python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_t
 
 Inspect the first slide and representative layouts; exercise fragments, option/tab buttons, quizzes, Canvas steps, and any custom input controls; check notes and presenter view; inspect asset and console failures. Keep durable edits in Remarp source; rebuilding overwrites direct HTML changes. A full build refreshes the merged deck, table of contents, and shared assets; `sync` updates changed block pages only.
 
-## Finish
+## Finish {#finish}
 
 Keep the editable source with the generated output, record validation evidence, and pass content review before authorized publication. Use the native PowerPoint workflow when the deliverable requires editable PowerPoint shapes and text.
 
-## Related links
+## Related links {#related-links}
 
 - [content](./slide-types/content.md)
 - [Canvas DSL](./syntax/canvas-dsl.md)

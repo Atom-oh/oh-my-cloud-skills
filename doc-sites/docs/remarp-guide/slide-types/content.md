@@ -20,7 +20,7 @@ title: "Content slides"
 
 Use for a focused statement, list, table, code excerpt, or image.
 
-## Source
+## Source {#source}
 
 ```markdown
 ---
@@ -34,7 +34,7 @@ Use for a focused statement, list, table, code excerpt, or image.
 - Report the result {.click order=3}
 ```
 
-## Rendering and interaction
+## Rendering and interaction {#rendering-and-interaction}
 
 The default layout is a single content area. Add column layout blocks when comparison helps, and use background/timing directives where appropriate. Keep a single main message, a readable hierarchy, and notes explaining the practical implication.
 

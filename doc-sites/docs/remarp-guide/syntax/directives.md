@@ -37,7 +37,7 @@ Directives begin with `@` and belong before the slide heading/content, immediate
 ## Compare the options
 ```
 
-## Reference
+## Reference {#reference}
 
 | Directive | Purpose |
 | --- | --- |
@@ -53,7 +53,7 @@ Directives begin with `@` and belong before the slide heading/content, immediate
 
 Global background settings can provide a default; a slide directive overrides that default. Prefer semantic classes and theme variables when authoring custom styles.
 
-## Detection and explicit types
+## Detection and explicit types {#detection-and-explicit-types}
 
 The parser can infer some types from headings, checkboxes, code, or Canvas content. Use an explicit type when the intent matters, especially checklist versus quiz, or tabs versus comparison. Layout blocks (`:::left`, `:::right`, `:::col`, `:::cell`) structure content within the selected layout.
 
