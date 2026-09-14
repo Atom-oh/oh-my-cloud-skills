@@ -40,19 +40,23 @@ python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_t
 
 | Subcommand | Supported arguments |
 | --- | --- |
-| `build` | Input path, `-o/--output`, `--block`, `--lang` (`ko` or `en`, single-file builds only) |
+| `build` | Input path, `-o/--output`, `--block`, `--lang` (`ko` or `en`) |
 | `sync` | Project directory, `-o/--output` |
 | `migrate` | Marp input file, required `-o/--output` |
 | `issues` | Input path, optional `--json` |
 | `validate` | Input path, optional `--json` |
 
-The parser does not expose `--watch` or `--format`. Use `--help` on the installed script to check its exact interface. The `--lang` flag selects language only in the single-file branch; directory builds ignore it, including `--block` builds. For English project output and `sync`, set `lang: en` in `_presentation.md` and keep block-level overrides consistent. Without language metadata, project output defaults to Korean. Language metadata selects output language conventions; it does not translate the source prose.
+The parser does not expose `--watch` or `--format`. Use `--help` on the installed script to check its exact interface. `build --lang` overrides the source language. For consistent English project output, including `sync`, set `lang: en` in `_presentation.md` and keep block-level overrides consistent. Without language metadata, output defaults to Korean. Language metadata selects output language conventions; it does not translate the source prose.
 
-Single-file output also needs the shipped `common/` framework assets; follow the [complete quick start](./quick-start.md) before opening that HTML.
+`validate` exits nonzero for invalid or missing input, missing slides, or CRITICAL findings; `--json` returns machine-readable diagnostics. Both `build` and `sync` run the same validation gate and reject CRITICAL findings before generating output. Style warnings remain advisory.
+
+A single source without named blocks produces `slides/default.html` beside the source, with framework assets in `slides/common/`. `-o` changes the output directory; assets are copied automatically. See the [complete quick start](./quick-start.md).
 
 ## Multi-file projects {#multi-file-projects}
 
-`_presentation.md` contains shared metadata and the blocks list. Numbered block files contain local frontmatter and slides. A full build creates merged `index.html`, `toc.html`, individual block HTML, and shared assets. `--block` and `sync` rebuild block pages only; `sync` detects changes from block-file modification times. Run a full build for a fresh output directory, after global metadata/theme changes, and before publishing the merged deck. Keep images and local assets alongside the project using paths valid from the generated output.
+`_presentation.md` (or `_presentation.remarp.md`) contains shared metadata and the blocks list. Numbered block files contain local frontmatter and slides. Project builds write merged `index.html`, `toc.html`, individual block HTML and `common/` alongside the source files, unless `-o` selects another output directory.
+
+`sync` fully regenerates these outputs and their assets, including the merged index and TOC. It does not rely on Markdown modification times, so changes to global metadata, themes and referenced dependencies are rebuilt too. `build --block` generates only the selected block page and its assets; use `build` or `sync` to refresh the complete deck. Keep images and local assets at paths valid from the generated output.
 
 ## Exports {#exports}
 

@@ -21,7 +21,7 @@ python3 scripts/eval-skill-behavior.py --case evals/reactive-presentation/flow-l
 # Run all cases for a skill
 python3 scripts/eval-skill-behavior.py --skill reactive-presentation
 
-# CI mode (exit 1 if any case < threshold)
+# CI mode (exit 1 for a failed build or any case below threshold)
 python3 scripts/eval-skill-behavior.py --skill reactive-presentation --ci --threshold 70
 
 # Enable LLM judge scorer (costs API tokens)
@@ -83,10 +83,12 @@ scorers:                                       # List of scoring checks
 |--------|---------------|-------------|-------------|
 | `file_exists` | Expected files exist (glob patterns) | 0-100 | `files` (list of glob patterns) |
 | `html_check` | HTML contains/excludes patterns | 0-100 | `target`, `contains`, `not_contains` |
-| `build_check` | `remarp_to_slides.py build` succeeds | 0-100 | `project_dir` |
+| `build_check` | Recognized Remarp source compiles into fresh HTML containing actual slide elements | 0-100 | `project_dir` |
 | `llm_judge` | Claude grades output quality | 0-N | `enabled`, `criteria`, `max_score` |
 
-**Final score** = sum(scorer scores) / sum(scorer max_scores) * 100
+**Final score** = sum(scorer scores) / sum(scorer max_scores) * 100, unless a build check fails. A failed build sets `total_score` to 0 and `build_failed` to `true`; the case fails regardless of other scores or the threshold. Individual scorer results and the summed `max_score` remain available for diagnosis.
+
+Build checks compile into a new temporary output directory. Existing HTML, comments containing slide markup, or empty CSS cannot substitute for source and actual compiled slides. Compiler warnings retain the existing score penalty.
 
 ## Adding New Eval Cases
 
@@ -137,10 +139,12 @@ anti-patterns            |      80/100 |      70/100|  80/100|    77 | REVIEW
 Summary: 2 PASS, 1 REVIEW, 0 FAIL (threshold=85)
 ```
 
-**Status thresholds**: PASS >= threshold (default 85), REVIEW >= 70, FAIL < 70
+**Status thresholds**: PASS >= threshold (default 85), REVIEW >= 70, FAIL < 70. A failed build always reports FAIL.
 
-**Exit codes**: 0 = all pass, 1 = some below threshold, 2 = execution error
+**Exit codes**: 0 = all pass, 1 = a failed build or a case below threshold, 2 = input/discovery error
 
 ## Isolation
 
-Each case runs in an isolated temp directory (`/tmp/eval-{skill}-{case}-{ts}/`). The directory is automatically cleaned up unless `--verbose` is set, which preserves it for debugging.
+Each case runs in a disposable temporary directory. Setup commands and `claude --print` use that directory as their working directory; relative setup paths do not target the repository checkout. The workspace is removed unless `--verbose` preserves it for debugging, so fixtures do not need source-tree cleanup commands. This working-directory isolation is not a shell sandbox.
+
+`--dry-run` parses cases and skips setup, Claude execution and scoring.

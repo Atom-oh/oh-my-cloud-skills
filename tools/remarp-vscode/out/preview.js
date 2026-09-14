@@ -36,6 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RemarpPreviewPanel = void 0;
 const vscode = __importStar(require("vscode"));
 const path = __importStar(require("path"));
+const source_1 = require("./source");
 class RemarpPreviewPanel {
     get document() { return this._document; }
     static createOrShow(extensionUri, document) {
@@ -43,7 +44,7 @@ class RemarpPreviewPanel {
         if (RemarpPreviewPanel.currentPanel) {
             RemarpPreviewPanel.currentPanel._panel.reveal(column);
             RemarpPreviewPanel.currentPanel._document = document;
-            RemarpPreviewPanel.currentPanel._panel.title = `Remarp Preview - ${path.basename(document.uri.fsPath)}`;
+            RemarpPreviewPanel.currentPanel._panel.title = `Remarp Approximate Text Preview - ${path.basename(document.uri.fsPath)}`;
             RemarpPreviewPanel.currentPanel._updateContent();
             return;
         }
@@ -62,8 +63,8 @@ class RemarpPreviewPanel {
             roots.push(wsFolder.uri);
         }
         const fileName = path.basename(document.uri.fsPath);
-        const panel = vscode.window.createWebviewPanel(RemarpPreviewPanel.viewType, `Remarp Preview - ${fileName}`, column, {
-            enableScripts: true,
+        const panel = vscode.window.createWebviewPanel(RemarpPreviewPanel.viewType, `Remarp Approximate Text Preview - ${fileName}`, column, {
+            enableScripts: vscode.workspace.isTrusted,
             localResourceRoots: roots,
             retainContextWhenHidden: true
         });
@@ -156,6 +157,7 @@ class RemarpPreviewPanel {
     _parseSlides() {
         const text = this._document.getText();
         const lines = text.split('\n');
+        const separators = new Set((0, source_1.slideStarts)(text).slice(1).map(line => line - 1));
         const slides = [];
         let currentSlideStart = 0;
         let slideIndex = 0;
@@ -173,7 +175,7 @@ class RemarpPreviewPanel {
             currentSlideStart = frontmatterEnd;
         }
         for (let i = currentSlideStart; i < lines.length; i++) {
-            if (lines[i].trim() === '---') {
+            if (separators.has(i)) {
                 // End current slide
                 const slideContent = lines.slice(currentSlideStart, i).join('\n');
                 if (slideContent.trim()) {
@@ -316,9 +318,10 @@ class RemarpPreviewPanel {
         const edit = new vscode.WorkspaceEdit();
         for (let i = slide.startLine; i <= slide.endLine; i++) {
             const line = lines[i];
-            const issueMatch = line.match(/<!--\s*issue:\s*(.+?)\s*-->/);
-            if (issueMatch && issueMatch[1].trim() === issueText.trim()) {
-                const range = new vscode.Range(new vscode.Position(i, 0), new vscode.Position(i + 1, 0));
+            const issueMatch = [...line.matchAll(/<!--\s*issue:\s*(.+?)\s*-->/g)]
+                .find(match => match[1].trim() === issueText.trim());
+            if (issueMatch) {
+                const range = new vscode.Range(new vscode.Position(i, issueMatch.index), new vscode.Position(i, issueMatch.index + issueMatch[0].length));
                 edit.delete(this._document.uri, range);
                 break;
             }

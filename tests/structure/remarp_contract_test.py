@@ -187,6 +187,16 @@ class RemarpContractTests(unittest.TestCase):
         self.assertIn('<canvas', output)
         self.assertIn('drawIcon(', output)
 
+    @unittest.skipUnless(remarp.HAS_YAML, "Example requires optional PyYAML")
+    def test_extension_readme_example_compiles(self):
+        example = re.search(r'```markdown\n(.*?)\n```', (ROOT / 'tools/remarp-vscode/README.md').read_text(), re.DOTALL).group(1)
+        source = self.write('example.remarp.md', example)
+        result = self.cli('build', source)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        output = (self.root / 'slides/default.html').read_text()
+        for content in ('<canvas', 'Frontend', 'Backend', 'Feature 1', 'Feature 4'):
+            self.assertIn(content, output)
+
     def test_language_override_applies_to_each_project_output(self):
         self.write('01.md', FRONT.replace('remarp: true', 'remarp: true\nlang: ko') + '## Title\n')
         result = self.cli('build', self.root, '--lang', 'en')
