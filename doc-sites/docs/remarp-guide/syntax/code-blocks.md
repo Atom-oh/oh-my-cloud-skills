@@ -22,7 +22,7 @@ title: "Code blocks"
 
 # Code blocks
 
-Use fenced code with the correct language. Remarp supports filename labels, line highlights, and diff styling for readable technical slides.
+Use fenced code with the correct language. Remarp emits filename labels and line-highlight markers for technical slides.
 
 ````markdown
 ```python {filename="review.py" highlight="2-3"}
@@ -45,7 +45,9 @@ A filename identifies the source file. Highlight specifications select individua
 ```
 ````
 
-Use diff styling for the actual changed lines and explain why behavior changes. Code fences may contain Python, JavaScript/TypeScript, YAML, JSON, Bash, or another language supported by the bundled highlighter. The language label provides syntax highlighting; it does not validate or execute the example.
+`diff` fences preserve literal `-` and `+` lines, but the current Remarp slide renderer has no diff-specific styling. This Docusaurus guide page renders separately from generated slides. For visual change annotations, author HTML/CSS where appropriate and inspect the generated slides.
+
+Code fences may contain Python, JavaScript/TypeScript, YAML, JSON, Bash, or another language supported by the bundled highlighter. Syntax highlighting does not validate or execute the example.
 
 ## Rendering checks {#rendering-checks}
 

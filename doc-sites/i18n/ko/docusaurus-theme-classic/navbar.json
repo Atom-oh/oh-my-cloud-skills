@@ -1,0 +1,62 @@
+{
+  "title": {
+    "message": "oh-my-cloud-skills",
+    "description": "The title in the navbar"
+  },
+  "logo.alt": {
+    "message": "oh-my-cloud-skills 로고",
+    "description": "The alt text of navbar logo"
+  },
+  "item.label.Home": {
+    "message": "홈",
+    "description": "Navbar item with label Home"
+  },
+  "item.label.Plugins": {
+    "message": "플러그인",
+    "description": "Navbar item with label Plugins"
+  },
+  "item.label.Remarp Guide": {
+    "message": "Remarp 가이드",
+    "description": "Navbar item with label Remarp Guide"
+  },
+  "item.label.Release notes": {
+    "message": "릴리스 노트",
+    "description": "Navbar item with label Release notes"
+  },
+  "item.label.GitHub": {
+    "message": "GitHub",
+    "description": "Navbar item with label GitHub"
+  },
+  "item.label.co-agent": {
+    "message": "co-agent",
+    "description": "Navbar item with label co-agent"
+  },
+  "item.label.kiro": {
+    "message": "kiro",
+    "description": "Navbar item with label kiro"
+  },
+  "item.label.atlas": {
+    "message": "atlas",
+    "description": "Navbar item with label atlas"
+  },
+  "item.label.project-init": {
+    "message": "project-init",
+    "description": "Navbar item with label project-init"
+  },
+  "item.label.aws-content-plugin": {
+    "message": "aws-content-plugin",
+    "description": "Navbar item with label aws-content-plugin"
+  },
+  "item.label.aws-ops-plugin": {
+    "message": "aws-ops-plugin",
+    "description": "Navbar item with label aws-ops-plugin"
+  },
+  "item.label.kiro-power-converter": {
+    "message": "kiro-power-converter",
+    "description": "Navbar item with label kiro-power-converter"
+  },
+  "item.label.agentcore-creator": {
+    "message": "agentcore-creator",
+    "description": "Navbar item with label agentcore-creator"
+  }
+}

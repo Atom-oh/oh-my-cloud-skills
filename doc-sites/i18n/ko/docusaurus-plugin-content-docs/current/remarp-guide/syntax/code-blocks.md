@@ -22,7 +22,7 @@ title: "코드 블록"
 
 # 코드 블록
 
-코드 블록에 올바른 언어를 지정합니다. Remarp는 기술 슬라이드의 가독성을 위해 파일명 레이블, 줄 강조와 diff 스타일을 지원합니다.
+코드 블록에 올바른 언어를 지정합니다. Remarp는 기술 슬라이드에 파일명 레이블과 줄 강조 표시용 마커를 출력합니다.
 
 ````markdown
 ```python {filename="review.py" highlight="2-3"}
@@ -45,7 +45,9 @@ def summarize(checks):
 ```
 ````
 
-실제로 변경된 줄에 diff 스타일을 적용하고 동작이 바뀌는 이유를 설명합니다. 코드 블록에는 Python, JavaScript/TypeScript, YAML, JSON, Bash 또는 제공된 구문 강조기가 지원하는 언어를 사용할 수 있습니다. 언어 레이블은 구문 강조를 제공할 뿐 예제를 검증하거나 실행하지는 않습니다.
+`diff` 코드 블록은 `-`와 `+`로 시작하는 줄을 그대로 유지하지만, 현재 Remarp 슬라이드 렌더러는 diff 전용 스타일을 제공하지 않습니다. 이 Docusaurus 가이드 페이지는 생성된 슬라이드와 별도로 렌더링됩니다. 변경 내용을 시각적으로 표시하려면 필요에 따라 HTML/CSS를 직접 작성하고 생성된 슬라이드를 확인합니다.
+
+코드 블록에는 Python, JavaScript/TypeScript, YAML, JSON, Bash 또는 제공된 구문 강조기가 지원하는 언어를 사용할 수 있습니다. 구문 강조는 예제를 검증하거나 실행하지 않습니다.
 
 ## 렌더링 확인 {#rendering-checks}
 

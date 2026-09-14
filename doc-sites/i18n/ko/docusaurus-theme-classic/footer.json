@@ -1,0 +1,70 @@
+{
+  "link.title.Plugins": {
+    "message": "플러그인",
+    "description": "The title of the footer links column with title=Plugins in the footer"
+  },
+  "link.title.Guides": {
+    "message": "가이드",
+    "description": "The title of the footer links column with title=Guides in the footer"
+  },
+  "link.title.Links": {
+    "message": "링크",
+    "description": "The title of the footer links column with title=Links in the footer"
+  },
+  "link.item.label.co-agent": {
+    "message": "co-agent",
+    "description": "The label of footer link with label=co-agent linking to /docs/co-agent/overview"
+  },
+  "link.item.label.kiro": {
+    "message": "kiro",
+    "description": "The label of footer link with label=kiro linking to /docs/kiro/overview"
+  },
+  "link.item.label.atlas": {
+    "message": "atlas",
+    "description": "The label of footer link with label=atlas linking to /docs/atlas/overview"
+  },
+  "link.item.label.project-init": {
+    "message": "project-init",
+    "description": "The label of footer link with label=project-init linking to /docs/project-init/overview"
+  },
+  "link.item.label.aws-content-plugin": {
+    "message": "aws-content-plugin",
+    "description": "The label of footer link with label=aws-content-plugin linking to /docs/aws-content-plugin/overview"
+  },
+  "link.item.label.aws-ops-plugin": {
+    "message": "aws-ops-plugin",
+    "description": "The label of footer link with label=aws-ops-plugin linking to /docs/aws-ops-plugin/overview"
+  },
+  "link.item.label.kiro-power-converter": {
+    "message": "kiro-power-converter",
+    "description": "The label of footer link with label=kiro-power-converter linking to /docs/kiro-power-converter/overview"
+  },
+  "link.item.label.agentcore-creator": {
+    "message": "agentcore-creator",
+    "description": "The label of footer link with label=agentcore-creator linking to /docs/agentcore-creator/overview"
+  },
+  "link.item.label.Remarp Guide": {
+    "message": "Remarp 가이드",
+    "description": "The label of footer link with label=Remarp Guide linking to /docs/remarp-guide/introduction"
+  },
+  "link.item.label.Getting started": {
+    "message": "시작하기",
+    "description": "The label of footer link with label=Getting started linking to /docs/intro"
+  },
+  "link.item.label.Release notes": {
+    "message": "릴리스 노트",
+    "description": "The label of footer link with label=Release notes linking to /docs/releases/v2.0.0"
+  },
+  "link.item.label.GitHub": {
+    "message": "GitHub",
+    "description": "The label of footer link with label=GitHub linking to https://github.com/Atom-oh/oh-my-cloud-skills"
+  },
+  "link.item.label.Claude Code": {
+    "message": "Claude Code",
+    "description": "The label of footer link with label=Claude Code linking to https://claude.ai/code"
+  },
+  "copyright": {
+    "message": "Copyright © 2026 Atom-oh. Docusaurus로 제작했습니다.",
+    "description": "The footer copyright"
+  }
+}
