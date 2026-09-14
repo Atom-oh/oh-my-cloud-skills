@@ -21,7 +21,7 @@ title: "Compare slides"
 
 Compare two or more alternatives with selectable content.
 
-## Source
+## Source {#source}
 
 ```markdown
 ---
@@ -36,7 +36,7 @@ Fast iteration with the current checkout.
 Repeatable checks in the configured workflow.
 ```
 
-## Rendering and interaction
+## Rendering and interaction {#rendering-and-interaction}
 
 Third-level headings identify alternatives. The parser can infer comparison from repeated headings, but use an explicit type to distinguish it from tabs or timeline. Test option buttons and Up/Down cycling; Left/Right continues ordinary navigation. Use matching criteria across alternatives.
 

@@ -51,12 +51,12 @@ python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_t
 python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build /var/tmp/remarp-talk
 ```
 
-## Review the mapping
+## Review the mapping {#review-the-mapping}
 
 Change the deck marker to `remarp: true`; move global metadata into `_presentation.md` when splitting blocks; replace legacy slide comments with supported `@type`, `@layout`, background, and timing directives; convert speaker guidance into `:::notes`; and inspect column/layout blocks.
 
 Ordinary headings, lists, code, and images usually remain recognizable Markdown. Interactive quizzes, tabs, Canvas steps, and fragment behavior need deliberate authoring and browser checks. Preserve required note markers and existing published links.
 
-## Incremental migration
+## Incremental migration {#incremental-migration}
 
 Keep the original as a reference, migrate one block, validate/build, compare its render, then continue. Use `.md` with Remarp frontmatter for new source; `.remarp.md` remains supported. Check asset paths, theme compatibility, notes, navigation, and exports before replacing the old deck.

@@ -63,15 +63,15 @@ title: "Security audit"
 
 Assess AWS/EKS security controls and evidence, including optional AWS Security Agent workflows when requested and configured.
 
-## Workflow
+## Workflow {#workflow}
 
 Define scope and required controls; inspect identity and access, pod security, networking, encryption, secrets, audit logging, and runtime posture; validate findings; rank confirmed risk; propose specific fixes and verification.
 
-## Coverage
+## Coverage {#coverage}
 
 IRSA/Pod Identity trust; RBAC and access entries; Pod Security Standards; SGs/network policies/endpoints; KMS and storage protection; secrets handling; control-plane/audit logging.
 
-## Reporting and boundaries
+## Reporting and boundaries {#reporting-and-boundaries}
 
 Apply the [repository's AWS security mandates](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/CLAUDE.md#banned-patterns) and the source skill's [Global AWS Security Mandates](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-ops-plugin/skills/ops-security-audit/SKILL.md#global-aws-security-mandates) in full. Penetration testing requires the appropriate explicit scope and authorization.
 

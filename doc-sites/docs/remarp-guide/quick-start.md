@@ -19,7 +19,7 @@ title: "Quick start"
 
 # Quick start
 
-## Create the source
+## Create the source {#create-the-source}
 
 Save this as `my-talk.md`. The literal `[요약]` marker means “summary” and is checked by the current structured-notes validator (`NOTE_STRUCTURE` is a warning when the marker is missing); the notes themselves remain English.
 
@@ -79,7 +79,7 @@ Next, use the same method when reviewing a teammate's change.
 
 ```
 
-## Validate and build
+## Validate and build {#validate-and-build}
 
 Run from the marketplace repository root:
 
@@ -92,11 +92,11 @@ cp -R plugins/aws-content-plugin/skills/reactive-presentation/assets/. /var/tmp/
 
 Single-file builds emit HTML only; the copy step supplies the CSS and JavaScript referenced from `common/`. Open `/var/tmp/my-talk/default.html` and exercise the fragments. Right/Space advances; Left reverses; P opens presenter view. Run content review before publication.
 
-## Extend the deck
+## Extend the deck {#extend-the-deck}
 
 Use `@type` for compare/tabs/quiz/checklist/timeline/Canvas slides, `@layout` for columns, and `:::notes` for speaking guidance. For multi-file decks put shared frontmatter in `_presentation.md`. See the syntax and CLI reference for exact supported fields and commands.
 
-## Related links
+## Related links {#related-links}
 
 - [Frontmatter](./syntax/frontmatter.md)
 - [directives](./syntax/directives.md)

@@ -17,7 +17,7 @@ title: "PR autofix"
 
 PR autofix gathers AI and human review feedback, validates findings against the code, and applies bounded fixes with separate planning and implementation workers.
 
-## Feedback loop
+## Feedback loop {#feedback-loop}
 
 1. Read the PR's current HEAD, review summaries, inline comments, unresolved threads, and check results.
 2. Reject stale or unsupported findings; prepare a concrete fix plan for confirmed issues.
@@ -27,7 +27,7 @@ PR autofix gathers AI and human review feedback, validates findings against the 
 
 A failed review, absent response, or review of an older commit is not evidence that the current change is clean. Validate severity against the affected runtime path; do not automatically implement every suggestion.
 
-## Limits and integration
+## Limits and integration {#limits-and-integration}
 
 [Canonical iteration setting](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/skills/co-agent/co-agent.defaults.json)
 

@@ -64,15 +64,15 @@ title: "Observability workflow"
 
 Set up or analyze monitoring, logs, metrics, traces, alarms, and incident signals.
 
-## Workflow
+## Workflow {#workflow}
 
 Map producers, collectors, transports, storage, queries, dashboards, and alerts. Inspect the failing hop, permissions, configuration, and retention. Validate that a representative event reaches the destination and triggers the intended query or alert.
 
-## Coverage
+## Coverage {#coverage}
 
 CloudWatch and Logs Insights; X-Ray/ADOT/OTel; Prometheus/AMP; Grafana/AMG; self-managed Loki, Tempo, ClickHouse, and VictoriaMetrics; relevant DevOps Agent escalation.
 
-## Reporting and boundaries
+## Reporting and boundaries {#reporting-and-boundaries}
 
 Examples and thresholds must fit the workload. Distinguish telemetry setup from diagnosing an application bug; record evidence and gaps rather than treating a dashboard screenshot as end-to-end validation.
 

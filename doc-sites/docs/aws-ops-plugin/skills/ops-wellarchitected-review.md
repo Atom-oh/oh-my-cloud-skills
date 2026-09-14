@@ -25,15 +25,15 @@ title: "Well-Architected review"
 
 Assess architecture against six pillars and produce a scored, evidence-backed improvement roadmap.
 
-## Workflow
+## Workflow {#workflow}
 
 Collect architecture and workload context; review each pillar; use the canonical scoring rubric; validate severity; describe current and target designs; prioritize actions and measurable outcomes.
 
-## Coverage
+## Coverage {#coverage}
 
 Operational excellence; security; reliability; performance efficiency; cost optimization; sustainability.
 
-## Reporting and boundaries
+## Reporting and boundaries {#reporting-and-boundaries}
 
 The report includes pillar scores, evidence gaps, confirmed findings, quick repairs, larger changes, dependencies, and verification. Distinguish missing evidence from a proven failure and disclose any areas outside scope.
 

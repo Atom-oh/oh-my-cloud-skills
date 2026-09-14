@@ -158,8 +158,8 @@ launch_kiro() {
 }
 
 # PR207 replaces ignored empty --trust-tools= with a strict agent configuration.
-# CLI 2.21.4 uses the explicitly selected legacy harness for both call paths.
-# Keep --v3 and its --mode flag out, and revalidate behavior when the CLI changes.
+# Pin engine v1 with the legacy harness; an unpinned CLI 2.21.4 call can select
+# conflicting v2. Keep --v3/--mode out and revalidate no-tools behavior on upgrades.
 KIRO_AGENT_NAME="pr-review-notools"
 KIRO_AGENT_SRC="$DIR/agents/$KIRO_AGENT_NAME.json"
 [ -f "$KIRO_AGENT_SRC" ] || { echo "run-panel.sh: kiro agent config missing: $KIRO_AGENT_SRC" >&2; exit 1; }
@@ -212,7 +212,7 @@ if [ "${#KIRO_MODELS[@]}" -gt 0 ] && command -v kiro-cli >/dev/null 2>&1; then
     PREFLIGHT_OUT="$PREFLIGHT_CWD/response.txt"; PREFLIGHT_ERR="$PREFLIGHT_CWD/stderr.txt"
     ( cd "$PREFLIGHT_CWD" && launch_kiro "$KIRO_PREFLIGHT_TIMEOUT" "$PREFLIGHT_CWD" \
         kiro-cli chat "$KIRO_PREFLIGHT_PROMPT" --model "$m" --agent "$KIRO_AGENT_NAME" \
-        --legacy-ui --no-interactive --wrap never ) > "$PREFLIGHT_OUT" 2> "$PREFLIGHT_ERR" < /dev/null
+        --legacy-ui --agent-engine v1 --no-interactive --wrap never ) > "$PREFLIGHT_OUT" 2> "$PREFLIGHT_ERR" < /dev/null
     PREFLIGHT_RC=$?
     PREFLIGHT_DIAGNOSTIC="$(provider_diagnostic "$PREFLIGHT_ERR")" || PREFLIGHT_DIAGNOSTIC=$'diagnostic_read_error\tDiagnostic parser failed'
     if [ "$PREFLIGHT_RC" -eq 0 ] && [ -z "$PREFLIGHT_DIAGNOSTIC" ] && python3 - "$PREFLIGHT_OUT" "$PREFLIGHT_ERR" \
@@ -293,7 +293,7 @@ for lens_file in "${LENS_FILES[@]}"; do
         || { echo "run-panel.sh: failed to prepare Kiro review agent" >&2; exit 1; }
       ( cd "$CELL_CWD" && try_panel kiro "$SLOT/$tag-$lens.md" "$SLOT/$tag-$lens.err" \
           launch_kiro "$CELL_CWD" kiro-cli chat "$KIRO_INSTRUCTION" --model "$m" \
-          --agent "$KIRO_AGENT_NAME" --legacy-ui --no-interactive --wrap never ) &
+          --agent "$KIRO_AGENT_NAME" --legacy-ui --agent-engine v1 --no-interactive --wrap never ) &
     else echo "[skip] $tag/$lens (binary absent or preflight failed)" >&2; : > "$SLOT/$tag-$lens.md"; fi
   done
 done

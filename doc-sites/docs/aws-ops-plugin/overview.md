@@ -18,7 +18,7 @@ title: "AWS operations plugin"
 
 Diagnose AWS and EKS incidents across compute, networking, identity, observability, storage, databases, analytics, and cost.
 
-## Specialists
+## Specialists {#specialists}
 
 - [EKS agent](/docs/aws-ops-plugin/agents/eks-agent): Cluster and node health, add-on lifecycle, upgrades, pod scheduling, CrashLoopBackOff, ImagePullBackOff, eviction, and resource pressure.
 - [Network agent](/docs/aws-ops-plugin/agents/network-agent): VPC CNI, ENI/IP capacity, pod connectivity, load balancers, DNS, routes, network policies, security groups, and VPC endpoints.
@@ -31,7 +31,7 @@ Diagnose AWS and EKS incidents across compute, networking, identity, observabili
 - [Ops coordinator agent](/docs/aws-ops-plugin/agents/ops-coordinator-agent): Incident severity, five-minute triage, domain routing, cross-domain evidence, mitigation, verification, and postmortems.
 - [Well-Architected agent](/docs/aws-ops-plugin/agents/wellarchitected-agent): Review operational excellence, security, reliability, performance efficiency, cost optimization, and sustainability.
 
-## Workflows
+## Workflows {#workflows}
 
 Use ops-troubleshoot for a concrete failure, ops-health-check for a general assessment, ops-network-diagnosis for connectivity, ops-observability for telemetry, ops-security-audit for security evidence, and ops-wellarchitected-review for a scored six-pillar review.
 

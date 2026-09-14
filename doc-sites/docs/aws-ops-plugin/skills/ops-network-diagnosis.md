@@ -54,15 +54,15 @@ title: "Network diagnosis"
 
 Trace AWS/EKS connectivity failures, unhealthy targets, DNS errors, and IP exhaustion.
 
-## Workflow
+## Workflow {#workflow}
 
 Define source, destination, protocol, port, and expected path. Check endpoints and service selection; inspect CNI allocation, route tables, SG/NACL rules, network policies, load-balancer health, DNS, and private endpoints.
 
-## Coverage
+## Coverage {#coverage}
 
 VPC CNI/IPAMD; ENI/subnet capacity; ALB/NLB target groups; CoreDNS and upstream resolution; pod-to-service and cross-VPC access; security group and route constraints.
 
-## Reporting and boundaries
+## Reporting and boundaries {#reporting-and-boundaries}
 
 Use observed path evidence before remediation. Security-group changes follow the repository IaC policy; broad public ingress is not a diagnostic shortcut.
 

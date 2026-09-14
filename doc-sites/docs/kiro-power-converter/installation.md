@@ -16,7 +16,7 @@ title: "Install kiro-power-converter"
 
 # Install kiro-power-converter
 
-## Claude Code
+## Claude Code {#claude-code}
 
 ```text
 /plugin marketplace add Atom-oh/oh-my-cloud-skills
@@ -29,11 +29,11 @@ For local development from a repository checkout:
 claude --plugin-dir ./plugins/kiro-power-converter
 ```
 
-## Codex
+## Codex {#codex}
 
 Install `kiro-power-converter` from this repository's Codex marketplace using `/plugins`, then start a new thread. The package loads its generated `.codex-plugin/skills/` entries. Use the installed skill picker or describe the desired operation; the slash commands shown in this guide name the corresponding Claude workflows.
 
-## Setup and verification
+## Setup and verification {#setup-and-verification}
 
 Python runs the converter; git is needed for GitHub input. A local plugin must contain `.claude-plugin/plugin.json`, even when the converter is invoked from Codex.
 
@@ -46,6 +46,6 @@ python3 scripts/test-codex-plugins.py
 
 Inspect the plugin's manifest and generated overlay if an expected entry is missing. Do not treat a successful installation as proof that external credentials, peer CLIs, or cloud permissions work.
 
-## Remove
+## Remove {#remove}
 
 Use `/plugin uninstall kiro-power-converter@oh-my-cloud-skills` in Claude Code or uninstall the entry through Codex `/plugins`.

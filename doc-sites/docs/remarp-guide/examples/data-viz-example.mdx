@@ -11,9 +11,9 @@ These examples illustrate syntax and rendering patterns. Use the current [Canvas
 
 This example demonstrates data visualization techniques in Remarp: KPI cards, charts, and dashboard layouts.
 
-## Design System Principles
+## Design System Principles {#design-system-principles}
 
-### Typography Hierarchy
+### Typography Hierarchy {#typography-hierarchy}
 
 | Element | Size | Weight | Use Case |
 |---------|------|--------|----------|
@@ -23,7 +23,7 @@ This example demonstrates data visualization techniques in Remarp: KPI cards, ch
 | Body text | 1rem | 400 | Descriptions |
 | Label | 0.85rem | 500 | Axis labels, captions |
 
-### Semantic Colors
+### Semantic Colors {#semantic-colors}
 
 | Purpose | Variable | Usage |
 |---------|----------|-------|
@@ -32,7 +32,7 @@ This example demonstrates data visualization techniques in Remarp: KPI cards, ch
 | Warning | `--yellow` (#fdcb6e) | Alerts, pending |
 | Primary | `--accent` (#6c5ce7) | Key metrics |
 
-## Complete Example: Metrics Dashboard
+## Complete Example: Metrics Dashboard {#complete-example-metrics-dashboard}
 
 ````markdown
 ---
@@ -488,9 +488,9 @@ Lightweight CSS sparklines for quick metrics overview.
 :::
 ````
 
-## KPI Card Patterns
+## KPI Card Patterns {#kpi-card-patterns}
 
-### Basic KPI Card
+### Basic KPI Card {#basic-kpi-card}
 
 ```html
 <div class="kpi-card">
@@ -516,7 +516,7 @@ Lightweight CSS sparklines for quick metrics overview.
 .kpi-trend.negative { color: var(--red); }
 ```
 
-### KPI with Icon
+### KPI with Icon {#kpi-with-icon}
 
 ```html
 <div class="kpi-card">
@@ -529,7 +529,7 @@ Lightweight CSS sparklines for quick metrics overview.
 </div>
 ```
 
-### KPI Grid Layout
+### KPI Grid Layout {#kpi-grid-layout}
 
 ```css
 .kpi-grid {
@@ -539,9 +539,9 @@ Lightweight CSS sparklines for quick metrics overview.
 }
 ```
 
-## Chart.js Integration
+## Chart.js Integration {#chartjs-integration}
 
-### Setup
+### Setup {#setup}
 
 Include Chart.js in your presentation's `:::script` block:
 
@@ -551,7 +551,7 @@ Include Chart.js in your presentation's `:::script` block:
 :::
 ```
 
-### Bar Chart
+### Bar Chart {#bar-chart}
 
 ```javascript
 new Chart(ctx, {
@@ -574,7 +574,7 @@ new Chart(ctx, {
 });
 ```
 
-### Line Chart
+### Line Chart {#line-chart}
 
 ```javascript
 new Chart(ctx, {
@@ -593,7 +593,7 @@ new Chart(ctx, {
 });
 ```
 
-### Doughnut Chart
+### Doughnut Chart {#doughnut-chart}
 
 ```javascript
 new Chart(ctx, {
@@ -613,9 +613,9 @@ new Chart(ctx, {
 });
 ```
 
-## CSS-Only Charts
+## CSS-Only Charts {#css-only-charts}
 
-### Progress Bar
+### Progress Bar {#progress-bar}
 
 ```html
 <div class="progress-bar">
@@ -637,7 +637,7 @@ new Chart(ctx, {
 }
 ```
 
-### Horizontal Bar Chart (CSS Grid)
+### Horizontal Bar Chart (CSS Grid) {#horizontal-bar-chart-css-grid}
 
 ```html
 <div class="bar-chart">
@@ -668,7 +668,7 @@ new Chart(ctx, {
 }
 ```
 
-## Best Practices
+## Best Practices {#best-practices}
 
 1. **Use semantic colors** - Green for positive, red for negative, consistently
 2. **Limit data density** - Maximum 4-6 KPI cards per slide

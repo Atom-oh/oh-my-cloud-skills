@@ -1,0 +1,348 @@
+---
+sidebar_position: 2
+title: Canvas DSL 예제
+---
+
+import DemoEmbed from '@site/src/components/DemoEmbed';
+
+# Canvas DSL 예제
+
+이 예제는 문법과 렌더링 패턴을 설명합니다. 새 덱에는 현재 [Canvas 정책](/docs/remarp-guide/syntax/canvas-dsl)과 [테마 토큰](/docs/remarp-guide/themes/css-variables)을 적용합니다. 규모가 크거나 그룹이 있는 아키텍처에는 HTML/CSS를 사용합니다. 예제 지표는 설명용입니다.
+
+이 예제에서는 Canvas DSL로 단계별 전환이 있는 아키텍처 애니메이션 다이어그램을 만드는 방법을 설명합니다.
+
+## Canvas DSL 사용 기준 {#when-to-use-canvas-dsl}
+
+Canvas DSL은 **요소가 4개 이하**인 단순한 다이어그램과 선형 흐름에 적합합니다. 복잡한 다계층 아키텍처에는 `:::html` + `:::css`를 사용합니다.
+
+| 복잡도 | 방식 | 예제 |
+|------------|----------|---------|
+| 단순함(상자 4개 이하) | `:::canvas` DSL | A -> B -> C 선형 흐름 |
+| 중간(상자 5개 이상, 다계층) | `:::html` + `:::css` | 3계층 아키텍처 |
+| 복잡함(인터랙티브) | `:::html` + `:::script` | 대시보드, 시뮬레이터 |
+
+## 전체 예제: 서버리스 API 패턴 {#complete-example-serverless-api-pattern}
+
+````markdown
+---
+remarp: true
+version: 1
+title: "Canvas DSL Demo"
+author: "Cloud Skills Team"
+date: 2026-03-22
+lang: en
+
+blocks:
+  - name: canvas-demo
+    title: "Canvas DSL Demo"
+    duration: 5
+
+theme:
+  accent: "#FF9900"
+
+transition:
+  default: slide
+  duration: 400
+---
+
+---
+remarp: true
+block: canvas-demo
+---
+
+# Canvas DSL Demo
+Building animated architecture diagrams
+
+:::notes
+{timing: 30s}
+Introduction to Canvas DSL capabilities.
+:::
+
+---
+@type: canvas
+@canvas-id: serverless-api
+
+## Serverless API Pattern
+
+:::canvas
+# Step 1: Client entry point
+box client "Client" at 30,150 size 80,40 color #232F3E step 1
+
+# Step 2: API Gateway receives requests
+icon apigw "API-Gateway" at 150,140 size 48 step 2
+box api-label "API Gateway" at 125,200 size 100,30 color #FF9900 step 2
+
+# Step 3: Lambda processes
+icon lambda "Lambda" at 300,140 size 48 step 3
+box compute-label "Compute" at 275,200 size 100,30 color #FF9900 step 3
+
+# Step 4: DynamoDB stores data
+icon dynamo "DynamoDB" at 450,140 size 48 step 4
+box storage-label "Storage" at 425,200 size 100,30 color #3B48CC step 4
+
+# Step 5: Arrows show data flow
+arrow client -> api-label "HTTPS" step 5
+arrow api-label -> compute-label "invoke" step 5
+arrow compute-label -> storage-label "read/write" step 6
+:::
+
+:::notes
+{timing: 3min}
+{cue: demo}
+Walk through each component as it appears.
+- Step 1: Client makes request
+- Step 2: API Gateway receives and validates
+- Step 3: Lambda executes business logic
+- Step 4: DynamoDB provides persistence
+- Steps 5-6: Show the data flow
+:::
+
+---
+@type: canvas
+@canvas-id: data-pipeline
+
+## Data Pipeline Flow
+
+:::canvas
+# Source layer
+icon s3src "S3" at 50,100 size 48 step 1
+box source "Source" at 30,160 size 90,30 color #3B48CC step 1
+
+# Transform layer
+icon lambda "Lambda" at 200,100 size 48 step 2
+box transform "Transform" at 180,160 size 90,30 color #FF9900 step 2
+
+# Destination layer
+icon s3dst "S3" at 350,100 size 48 step 3
+box dest "Destination" at 330,160 size 90,30 color #3B48CC step 3
+
+# Flow arrows
+arrow source -> transform "trigger" step 4
+arrow transform -> dest "write" step 4
+:::
+
+:::notes
+{timing: 2min}
+Simple ETL pipeline visualization.
+:::
+````
+
+## 요소 참고 {#element-reference}
+
+### 상자 요소 {#box-element}
+
+좌표로 위치를 지정하는 레이블 포함 사각형입니다.
+
+```markdown
+:::canvas
+box <id> "<label>" at <x>,<y> size <width>,<height> color <color> [step <n>]
+:::
+```
+
+**예제:**
+
+```markdown
+:::canvas
+box user "User" at 50,100 size 80,40 color #232F3E
+box web "Web App" at 200,100 size 100,50 color #FF9900 step 2
+:::
+```
+
+| 속성 | 설명 |
+|-----------|-------------|
+| `id` | 화살표 연결에 사용하는 식별자 |
+| `label` | 상자 안에 표시할 텍스트 |
+| `at x,y` | 왼쪽 위 모서리 좌표 |
+| `size w,h` | 너비와 높이 |
+| `color` | 배경색(16진수 또는 키워드) |
+| `step n` | 지정된 단계에서 표시(선택 사항) |
+
+### 아이콘 요소 {#icon-element}
+
+이름을 자동으로 인식해 불러오는 AWS 서비스 아이콘입니다.
+
+```markdown
+:::canvas
+icon <id> "<service-name>" at <x>,<y> size <s> [step <n>]
+:::
+```
+
+**예제:**
+
+```markdown
+:::canvas
+icon gw "API-Gateway" at 100,150 size 48
+icon fn "Lambda" at 250,150 size 48 step 2
+icon db "DynamoDB" at 400,150 size 48 step 3
+:::
+```
+
+**지원하는 서비스명:**
+
+| 이름 | 서비스 |
+|------|---------|
+| `Lambda` | AWS Lambda |
+| `API-Gateway` | Amazon API Gateway |
+| `DynamoDB` | Amazon DynamoDB |
+| `S3` | Amazon S3 |
+| `EKS` | Amazon EKS |
+| `EC2` | Amazon EC2 |
+| `RDS` | Amazon RDS |
+| `CloudWatch` | Amazon CloudWatch |
+| `SNS` | Amazon SNS |
+| `SQS` | Amazon SQS |
+
+### 화살표 요소 {#arrow-element}
+
+자동 직교 경로로 요소를 연결합니다.
+
+```markdown
+:::canvas
+arrow <from-id> -> <to-id> "<label>" [color <color>] [style <dashed|dotted>] [step <n>]
+:::
+```
+
+**예제:**
+
+```markdown
+:::canvas
+arrow api -> lambda "HTTP" step 2
+arrow lambda -> api "Response" color #4CAF50 style dashed step 3
+:::
+```
+
+**화살표 경로:**
+
+- **직선**: 같은 축에 있는 요소를 연결합니다.
+- **L자형**: 측면 앵커와 위·아래 앵커를 연결합니다.
+- **Z자형**: 앵커 유형은 같지만 위치가 어긋난 요소를 연결합니다.
+
+### 원 요소 {#circle-element}
+
+상태 다이어그램이나 프로세스 흐름에 사용하는 원형 노드입니다.
+
+```markdown
+:::canvas
+circle <id> "<label>" at <x>,<y> radius <r> color <color> [step <n>]
+:::
+```
+
+**예제:**
+
+```markdown
+:::canvas
+circle start "Start" at 50,100 radius 30 color #4CAF50
+circle end "End" at 350,100 radius 30 color #f44336 step 3
+:::
+```
+
+### 그룹 요소 {#group-element}
+
+여러 요소를 둘러싸는 시각적 경계입니다.
+
+```markdown
+:::canvas
+group "<label>" containing <id1>, <id2>, ... [color <color>] [step <n>]
+:::
+```
+
+**예제:**
+
+```markdown
+:::canvas
+icon apigw "API-Gateway" at 100,100 size 48
+icon lambda "Lambda" at 200,100 size 48
+icon dynamo "DynamoDB" at 300,100 size 48
+
+group "AWS Cloud" containing apigw, lambda, dynamo color #232F3E step 1
+:::
+```
+
+## 단계별 애니메이션 순서 {#step-animation-sequence}
+
+`step N` 속성으로 요소가 나타나는 시점을 지정합니다. `step`이 없는 요소는 슬라이드에 들어오면 바로 표시됩니다. 방향키로 단계를 제어합니다.
+
+**애니메이션 패턴:**
+
+```markdown
+:::canvas
+# Layer 1 - appears first
+icon client "CloudFront" at 50,150 size 48 step 1
+box cdn "CDN" at 30,210 size 90,30 color #8E44AD step 1
+
+# Layer 2 - appears second
+icon alb "ALB" at 200,150 size 48 step 2
+box lb "Load Balancer" at 175,210 size 100,30 color #FF9900 step 2
+
+# Layer 3 - appears third
+icon ecs "ECS" at 350,150 size 48 step 3
+box compute "Containers" at 325,210 size 100,30 color #FF9900 step 3
+
+# Connections - appear last
+arrow cdn -> lb step 4
+arrow lb -> compute step 4
+:::
+```
+
+## Mermaid 통합 {#mermaid-integration}
+
+단순한 흐름도에는 Mermaid 형식을 사용합니다.
+
+```markdown
+:::canvas mermaid
+graph LR
+    A[Client] --> B[API Gateway]
+    B --> C[Lambda]
+    C --> D[DynamoDB]
+:::
+```
+
+지원하는 Mermaid 유형은 `graph`, `flowchart`, `sequenceDiagram`, `stateDiagram`, `erDiagram`입니다.
+
+## 복잡한 다이어그램을 위한 HTML 대안 {#html-alternative-for-complex-diagrams}
+
+요소가 5개 이상이거나 다계층 레이아웃인 경우 `:::html` + `:::css`를 사용합니다.
+
+```markdown
+## Service Architecture
+
+:::html
+<div class="flow-h">
+  <div class="flow-group bg-blue" data-fragment-index="1">
+    <div class="flow-group-label">Ingestion</div>
+    <div class="icon-item">
+      <img src="../common/aws-icons/services/Arch_Amazon-Kinesis_48.svg">
+      <span>Kinesis</span>
+    </div>
+  </div>
+  <div class="flow-arrow">-></div>
+  <div class="flow-group bg-orange" data-fragment-index="2">
+    <div class="flow-group-label">Processing</div>
+    <div class="flow-box">Lambda</div>
+    <div class="flow-box">Step Functions</div>
+  </div>
+  <div class="flow-arrow">-></div>
+  <div class="flow-group bg-green" data-fragment-index="3">
+    <div class="flow-group-label">Storage</div>
+    <div class="flow-box">S3</div>
+    <div class="flow-box">DynamoDB</div>
+  </div>
+</div>
+:::
+```
+
+**CSS 유틸리티 클래스(theme.css 제공):**
+
+- `flow-h` / `flow-v`: 가로·세로 흐름 컨테이너
+- `flow-group`: 배경이 있는 요소 그룹
+- `flow-box`, `flow-arrow`, `icon-item`: 상자, 화살표, 아이콘 구성 요소
+- `bg-blue`, `bg-orange`, `bg-green`: 색상 유틸리티
+- `data-fragment-index="N"`: 순차 표시(`step N`과 유사)
+
+## 권장 사항 {#best-practices}
+
+1. **요소 수부터 확인합니다** — Canvas는 상자·아이콘이 4개 이하일 때만 사용합니다.
+2. **단계 번호를 일관되게 지정합니다** — 관련 요소를 같은 단계에 배치합니다.
+3. **발표자 노트를 추가합니다** — 시간과 진행 안내를 `:::notes`에 포함합니다.
+4. **화살표 경로를 테스트합니다** — 복잡한 레이아웃은 좌표를 직접 조정해야 할 수 있습니다.
+5. **상자보다 아이콘을 우선합니다** — AWS 아이콘은 시각적 식별을 돕습니다.

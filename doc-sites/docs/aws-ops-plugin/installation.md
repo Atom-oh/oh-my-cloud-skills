@@ -27,7 +27,7 @@ title: "Install aws-ops-plugin"
 
 # Install aws-ops-plugin
 
-## Claude Code
+## Claude Code {#claude-code}
 
 ```text
 /plugin marketplace add Atom-oh/oh-my-cloud-skills
@@ -40,7 +40,7 @@ For local development from a repository checkout:
 claude --plugin-dir ./plugins/aws-ops-plugin
 ```
 
-## Codex
+## Codex {#codex}
 
 Register the marketplace in a Codex CLI with plugin support:
 
@@ -50,7 +50,7 @@ codex plugin marketplace add Atom-oh/oh-my-cloud-skills
 
 Open `/plugins`, install `aws-ops-plugin`, and start a new thread. Select an installed skill or describe the desired operation. This package exposes skill and specialist procedures through `.codex-plugin/skills/`; it does not ship a separate `commands/` catalog. The `/plugin` commands above manage the Claude Code installation.
 
-## Setup and verification
+## Setup and verification {#setup-and-verification}
 
 Prepare Python/uvx for the manifest-defined MCP servers and authenticate AWS CLI for the intended account and region. EKS work additionally needs kubectl and the correct context. Inspect credentials and server status locally before an operational request.
 
@@ -63,6 +63,6 @@ python3 scripts/test-codex-plugins.py
 
 Inspect the plugin's manifest and generated overlay if an expected entry is missing. Do not treat a successful installation as proof that external credentials, peer CLIs, or cloud permissions work.
 
-## Remove
+## Remove {#remove}
 
 Use `/plugin uninstall aws-ops-plugin@oh-my-cloud-skills` in Claude Code or uninstall the entry through Codex `/plugins`.

@@ -11,7 +11,7 @@ These examples illustrate syntax and rendering patterns. Use the current [Canvas
 
 This example demonstrates Canvas DSL for creating animated architecture diagrams with step-by-step transitions.
 
-## When to Use Canvas DSL
+## When to Use Canvas DSL {#when-to-use-canvas-dsl}
 
 Canvas DSL is ideal for simple diagrams with **4 or fewer elements** and linear flow patterns. For complex multi-layer architectures, use `:::html` + `:::css` instead.
 
@@ -21,7 +21,7 @@ Canvas DSL is ideal for simple diagrams with **4 or fewer elements** and linear 
 | Medium (5+ boxes, multi-layer) | `:::html` + `:::css` | 3-tier architecture |
 | Complex (interactive) | `:::html` + `:::script` | Dashboards, simulators |
 
-## Complete Example: Serverless API Pattern
+## Complete Example: Serverless API Pattern {#complete-example-serverless-api-pattern}
 
 ````markdown
 ---
@@ -127,9 +127,9 @@ Simple ETL pipeline visualization.
 :::
 ````
 
-## Element Reference
+## Element Reference {#element-reference}
 
-### Box Element
+### Box Element {#box-element}
 
 Rectangles with labels, positioned by coordinates.
 
@@ -157,7 +157,7 @@ box web "Web App" at 200,100 size 100,50 color #FF9900 step 2
 | `color` | Background color (hex or keyword) |
 | `step n` | Appears at this step (optional) |
 
-### Icon Element
+### Icon Element {#icon-element}
 
 AWS service icons with automatic resolution.
 
@@ -192,7 +192,7 @@ icon db "DynamoDB" at 400,150 size 48 step 3
 | `SNS` | Amazon SNS |
 | `SQS` | Amazon SQS |
 
-### Arrow Element
+### Arrow Element {#arrow-element}
 
 Connects elements with automatic orthogonal routing.
 
@@ -217,7 +217,7 @@ arrow lambda -> api "Response" color #4CAF50 style dashed step 3
 - **L-shape**: One side anchor, one top/bottom anchor
 - **Z-shape**: Both same anchor type but offset
 
-### Circle Element
+### Circle Element {#circle-element}
 
 Circular nodes for state diagrams or process flows.
 
@@ -236,7 +236,7 @@ circle end "End" at 350,100 radius 30 color #f44336 step 3
 :::
 ```
 
-### Group Element
+### Group Element {#group-element}
 
 Visual boundary around multiple elements.
 
@@ -258,7 +258,7 @@ group "AWS Cloud" containing apigw, lambda, dynamo color #232F3E step 1
 :::
 ```
 
-## Step Animation Sequence
+## Step Animation Sequence {#step-animation-sequence}
 
 The `step N` attribute controls when elements appear. Elements without `step` appear immediately on slide entry. Steps are controlled with arrow keys.
 
@@ -284,7 +284,7 @@ arrow lb -> compute step 4
 :::
 ```
 
-## Mermaid Integration
+## Mermaid Integration {#mermaid-integration}
 
 For simple flowcharts, use the Mermaid variant:
 
@@ -299,7 +299,7 @@ graph LR
 
 Supported Mermaid types: `graph`, `flowchart`, `sequenceDiagram`, `stateDiagram`, `erDiagram`.
 
-## HTML Alternative for Complex Diagrams
+## HTML Alternative for Complex Diagrams {#html-alternative-for-complex-diagrams}
 
 When you have 5+ elements or multi-layer layouts, use `:::html` + `:::css`:
 
@@ -339,7 +339,7 @@ When you have 5+ elements or multi-layer layouts, use `:::html` + `:::css`:
 - `bg-blue`, `bg-orange`, `bg-green`: Color utilities
 - `data-fragment-index="N"`: Sequential reveal (like `step N`)
 
-## Best Practices
+## Best Practices {#best-practices}
 
 1. **Count elements first** - Use canvas only for 4 or fewer boxes/icons
 2. **Use consistent step numbering** - Group related elements in same step

@@ -9,11 +9,11 @@ This is an illustrative walkthrough. Command outputs, identifiers, thresholds, a
 
 Security audit walkthrough covering IAM, Network, and Compliance audit results with findings report.
 
-## Scenario
+## Scenario {#scenario}
 
 Perform a comprehensive security audit on an EKS cluster to identify vulnerabilities and compliance gaps before a security review.
 
-## Audit Workflow
+## Audit Workflow {#audit-workflow}
 
 ```mermaid
 flowchart TD
@@ -24,7 +24,7 @@ flowchart TD
     REPORT --> REMEDIATION[Remediation Plan]
 ```
 
-## Step 1: Initiate Security Audit
+## Step 1: Initiate Security Audit {#step-1-initiate-security-audit}
 
 User request:
 
@@ -36,9 +36,9 @@ Please run a comprehensive security audit on the cluster.
 
 ---
 
-## Phase 1: IAM & Authentication Audit
+## Phase 1: IAM & Authentication Audit {#phase-1-iam--authentication-audit}
 
-### 1.1 IRSA Configuration Check
+### 1.1 IRSA Configuration Check {#11-irsa-configuration-check}
 
 ```bash
 # List all IRSA-annotated service accounts
@@ -53,7 +53,7 @@ Output:
 {"namespace":"analytics","name":"data-processor","role":"arn:aws:iam::123456789012:role/analytics-full-access"}
 ```
 
-### 1.2 Verify Trust Policies
+### 1.2 Verify Trust Policies {#12-verify-trust-policies}
 
 ```bash
 # Check trust policy for suspicious role
@@ -83,7 +83,7 @@ Output:
 
 **FINDING (CRITICAL)**: Trust policy uses wildcard `*:*` - any service account can assume this role!
 
-### 1.3 Check IAM Permissions
+### 1.3 Check IAM Permissions {#13-check-iam-permissions}
 
 ```bash
 # Check for overly permissive policies
@@ -102,7 +102,7 @@ Output:
 
 **FINDING (HIGH)**: Role has FullAccess policies attached - violates least privilege.
 
-### 1.4 RBAC Audit
+### 1.4 RBAC Audit {#14-rbac-audit}
 
 ```bash
 # Find cluster-admin bindings
@@ -129,7 +129,7 @@ Output:
 
 **FINDING (HIGH)**: Developer user has cluster-admin binding. Default service account has cluster-admin.
 
-### 1.5 aws-auth ConfigMap Check
+### 1.5 aws-auth ConfigMap Check {#15-aws-auth-configmap-check}
 
 ```bash
 kubectl get configmap aws-auth -n kube-system -o yaml
@@ -163,9 +163,9 @@ data:
 
 ---
 
-## Phase 2: Network Security Audit
+## Phase 2: Network Security Audit {#phase-2-network-security-audit}
 
-### 2.1 Security Group Analysis
+### 2.1 Security Group Analysis {#21-security-group-analysis}
 
 ```bash
 # Get cluster security group
@@ -185,7 +185,7 @@ Output:
 
 **FINDING (CRITICAL)**: SSH (port 22) open to 0.0.0.0/0!
 
-### 2.2 Network Policy Coverage
+### 2.2 Network Policy Coverage {#22-network-policy-coverage}
 
 ```bash
 # Check namespaces without network policies
@@ -208,7 +208,7 @@ WARNING: default has 2 pods but no network policies
 
 **FINDING (MEDIUM)**: 4 namespaces with workloads lack network policies.
 
-### 2.3 Cluster Endpoint Access
+### 2.3 Cluster Endpoint Access {#23-cluster-endpoint-access}
 
 ```bash
 aws eks describe-cluster --name prod-cluster --query 'cluster.resourcesVpcConfig.{publicAccess:endpointPublicAccess,privateAccess:endpointPrivateAccess,publicCIDRs:publicAccessCidrs}'
@@ -225,7 +225,7 @@ Output:
 
 **FINDING (HIGH)**: Cluster API endpoint publicly accessible from anywhere.
 
-### 2.4 VPC Endpoints Check
+### 2.4 VPC Endpoints Check {#24-vpc-endpoints-check}
 
 ```bash
 # Check existing VPC endpoints
@@ -245,9 +245,9 @@ Output:
 
 ---
 
-## Phase 3: Compliance Audit
+## Phase 3: Compliance Audit {#phase-3-compliance-audit}
 
-### 3.1 Privileged Containers
+### 3.1 Privileged Containers {#31-privileged-containers}
 
 ```bash
 kubectl get pods -A -o json | jq '[.items[] | select(.spec.containers[].securityContext.privileged==true) | {name:.metadata.name, ns:.metadata.namespace}]'
@@ -265,7 +265,7 @@ Output:
 
 **FINDING (HIGH)**: 2 privileged containers in non-system namespaces (default, analytics).
 
-### 3.2 Root Containers
+### 3.2 Root Containers {#32-root-containers}
 
 ```bash
 kubectl get pods -A -o json | jq '[.items[] | select(.spec.securityContext.runAsUser==0 or .spec.containers[].securityContext.runAsUser==0) | {name:.metadata.name, ns:.metadata.namespace}]'
@@ -283,7 +283,7 @@ Output:
 
 **FINDING (MEDIUM)**: 4 pods running as root user.
 
-### 3.3 Pod Security Standards
+### 3.3 Pod Security Standards {#33-pod-security-standards}
 
 ```bash
 # Check namespace labels for Pod Security Standards
@@ -296,7 +296,7 @@ Output:
 
 **FINDING (MEDIUM)**: No namespaces have Pod Security Standards enforced.
 
-### 3.4 Control Plane Logging
+### 3.4 Control Plane Logging {#34-control-plane-logging}
 
 ```bash
 aws eks describe-cluster --name prod-cluster --query 'cluster.logging.clusterLogging[?enabled==`true`].types[]'
@@ -309,7 +309,7 @@ Output:
 
 **FINDING (MEDIUM)**: Only API logging enabled. Missing audit and authenticator logs.
 
-### 3.5 Secrets Encryption
+### 3.5 Secrets Encryption {#35-secrets-encryption}
 
 ```bash
 aws eks describe-cluster --name prod-cluster --query 'cluster.encryptionConfig'
@@ -324,7 +324,7 @@ null
 
 ---
 
-## Security Audit Report
+## Security Audit Report {#security-audit-report}
 
 ```markdown
 # Security Audit Report
@@ -419,9 +419,9 @@ The audit identified 15 security findings across IAM, Network, and Compliance do
 
 ---
 
-## Remediation Commands
+## Remediation Commands {#remediation-commands}
 
-### Critical #1: Fix IRSA Trust Policy
+### Critical #1: Fix IRSA Trust Policy {#critical-1-fix-irsa-trust-policy}
 
 ```bash
 # Create scoped trust policy
@@ -448,14 +448,14 @@ EOF
 aws iam update-assume-role-policy --role-name analytics-full-access --policy-document file://trust-policy.json
 ```
 
-### Critical #2: Remove SSH Rule
+### Critical #2: Remove SSH Rule {#critical-2-remove-ssh-rule}
 
 ```bash
 # Remove SSH 0.0.0.0/0 rule
 aws ec2 revoke-security-group-ingress --group-id $CLUSTER_SG --protocol tcp --port 22 --cidr 0.0.0.0/0
 ```
 
-### High #7: Restrict API Endpoint
+### High #7: Restrict API Endpoint {#high-7-restrict-api-endpoint}
 
 ```bash
 # Restrict to corporate IPs only
@@ -465,7 +465,7 @@ aws eks update-cluster-config --name prod-cluster \
 
 ---
 
-## Key Points
+## Key Points {#key-points}
 
 :::danger Critical Findings
 IRSA wildcard trust policies and SSH open to internet are critical vulnerabilities that could lead to cluster compromise. Remediate immediately.

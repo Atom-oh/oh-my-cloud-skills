@@ -17,13 +17,13 @@ title: "co-agent agent"
 
 The co-agent orchestrator dispatches explicit multi-AI review, decision support, ADR collaboration, context synchronization, consensus, harness, and readiness checks. The current host synthesizes the result and owns the final decision.
 
-## Routing and evidence
+## Routing and evidence {#routing-and-evidence}
 
 Start with peer detection and the mode's readiness rules. Casual review/decide/ADR can use available peers or proceed solo with notice; consensus and harness require READY coverage. Use identical review context where comparison matters, record errors, and verify each material finding against the repository.
 
 The host surfaces disagreements and attributes useful observations. It never substitutes vote counts for technical validation. Context sent to peers must pass the workflow's freshness and secret checks.
 
-## Related workers
+## Related workers {#related-workers}
 
 `gate-chair` isolates triage and verification decisions. `harness-analyst` proposes configuration improvements from run records without applying them. PR autofix prepares bounded input for its planner and implementer workers. Project-init can write the resulting ADR; AWS specialists supply domain evidence when the subject warrants it.
 

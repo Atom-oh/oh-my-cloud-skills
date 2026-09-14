@@ -111,6 +111,8 @@ account_limit = re.compile(r"(?:insufficient credits|monthly request limit (?:re
 def classify(line):
     body = log_prefix.sub("", line)
     diagnostic_prefix = body != line or line.startswith("An error occurred (")
+    if re.match(r"error:\s*(?:conflicting options:|unexpected argument\b)", line, re.I):
+        return "cli_configuration"
     if model_code.match(body) or (diagnostic_prefix and model_code.search(body)):
         return "model_selection"
     if re.match(r"failed to set model\b|(?:invalid|unknown|unsupported)\s+model\b|model\s+.{0,100}\s+(?:not found|not available|unsupported)\b", body, re.I):
@@ -173,7 +175,7 @@ PY
 }
 
 # Service throttles retain the existing bounded retries. Model selection, implicit
-# fallback and account usage failures are terminal for this review attempt.
+# fallback, CLI configuration and account usage failures are terminal for this attempt.
 provider_diagnostic_terminal() {
   case "$1" in
     transient_service$'\t'*) return 1 ;;
