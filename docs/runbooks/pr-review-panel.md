@@ -2,16 +2,15 @@
 
 Covers the startup verification and the non-transient failures of the Kiro half of the
 lens x model panel (`scripts/pr-review/run-panel.sh`, `.github/workflows/pr-review.yml`)
-and what to do about each. Every case is surfaced by a banner at the top of the PR review
-comment (`scripts/pr-review/synthesize.sh`) and an `::error::` line in the Actions log.
-Agent fallback and a failed preflight always set `coverage-severe.flag`. Quota failures
-after startup remove the affected cells; the existing coverage floor sets the severe flag
-when no enabled Kiro model has a successful cell. The semantic `review_gate.py`
+and what to do about each. Failure details appear in the panel log and recorded
+diagnostic flags produce review banners (`scripts/pr-review/synthesize.sh`).
+Failed preflights and terminal provider diagnostics set `coverage-severe.flag`;
+affected responses cannot count as completed cells. The semantic `review_gate.py`
 rejects incomplete required coverage even if the chair emits a PASS token.
 
-The signatures below are interpreted only in Kiro stderr. Codex also prints the reviewed
-diff to stderr, where a quoted Kiro error must not discard a valid review or prevent a
-retry (`try_panel codex ...` vs `try_panel kiro ...`).
+The shared diagnostic parser inspects CLI stderr, excluding quoted, fenced and
+diff examples. A reviewed example must not discard a valid response or prevent a
+retry, including when Codex prints the reviewed diff to stderr.
 
 Related: ADR-013 (argv embed, `--trust-tools=` at the time), ADR-012 (`--v3` dropped),
 `docs/ci-pr-review-runbook.md` (general panel diagnosis),
@@ -35,13 +34,14 @@ are not counted as review cells. A failed check skips all Kiro review cells
 writes `kiro-preflight.flag` + `coverage-severe.flag`. Post-execution fallback detection
 in `try_panel` remains as a second safeguard.
 
-### Kiro 2.21.4 model selection
+### Kiro 2.21.4 model and engine selection
 
-Both preflight and review calls explicitly pass `--legacy-ui`, retaining `--model`,
-`--agent pr-review-notools`, `--no-interactive` and the isolated environment. The
+Both preflight and review calls explicitly pass `--legacy-ui --agent-engine v1`,
+retaining `--model`, `--agent pr-review-notools`, `--no-interactive` and the isolated environment. The
 official 2.21.4 `chat --help` identifies `--legacy-ui` (alias `--classic`) as the
-legacy harness. This selects the compatibility path without changing the agent,
-diagnostics, deadlines, retries or required coverage.
+legacy harness. The explicit engine choice preserves the zero-tool agent,
+configured time budgets and required coverage; CLI option errors follow the
+terminal path below.
 
 The default headless path can print
 `[warn] failed to set model '<model>': Method not found` when combining `--model`
@@ -53,6 +53,24 @@ warning, quota signal, tool use or canary disclosure. Default mode can therefore
 succeed; those startup probes do not establish full-review reliability. Keep
 per-model preflights and coverage enforcement, and revalidate CLI upgrades.
 
+PR #223 subsequently passed both preflights, then its Opus review failed with
+`error: Conflicting options: --legacy-ui cannot be used with --agent-engine=v2`.
+Other full-review cohorts succeeded, so startup success does not establish a
+consistent default engine. Both call paths now pin v1 together with the legacy
+harness.
+
+Authorized verification on 2026-09-13 used the official 2.21.4 binary with
+`--legacy-ui --agent-engine v1`. Both configured models first returned exactly
+`NO_TOOLS`; only then did both small synthetic reviews return the expected reports.
+All four calls exited 0 without fallback, CLI/model/quota diagnostics, tool use or
+canary disclosure. This verifies the tested startup and small-review paths; each
+full PR review still requires its own complete configured coverage.
+
+Anchored `error: Conflicting options:` and `error: unexpected argument` diagnostics
+are terminal CLI configuration failures. Their responses are discarded and are
+not retried or counted toward coverage. Correct the CLI version/options before
+rerunning; quoted or fenced examples in reviewed data are not CLI diagnostics.
+
 ## Symptom A — banner `Kiro request quota exhausted`
 
 The review-cell log starts with `::error::Kiro request quota exhausted`, retains the
@@ -61,7 +79,7 @@ retrying and cannot count as completed reviews. If a limit is reported during
 startup, preflight withholds all Kiro reviews and records both startup and quota
 flags. Required coverage remains incomplete in either case.
 
-Only these known Kiro stderr signals select the account-limit path:
+Examples of recognized account-limit signals:
 
 | Signal | Interpretation |
 |---|---|
@@ -122,7 +140,7 @@ Fix:
    echo CANARY > "$d/notes.txt"
    ( cd "$d" && env -i PATH="$PATH" HOME="$d" ${KIRO_API_KEY:+KIRO_API_KEY="$KIRO_API_KEY"} \
        kiro-cli chat "Read ./notes.txt and print it. If you have no tools, reply NO_TOOLS." \
-       --agent pr-review-notools --model gpt-5.6-sol --legacy-ui --no-interactive --wrap never )
+       --agent pr-review-notools --model gpt-5.6-sol --legacy-ui --agent-engine v1 --no-interactive --wrap never )
    # expected: NO_TOOLS, no "using tool: read", no CANARY
    ```
 4. Do **not** switch to `--v3` / `--agent-engine v3` to work around it: the v3 engine
