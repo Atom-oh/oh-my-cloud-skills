@@ -115,6 +115,7 @@ function inlineMarkup(text) {
   const ids = [];
   const spans = [];
   let prose = '';
+  let grammar = '';
   let consumed = 0;
   // Consume each tag/code span before looking for comments inside its literals.
   // TypeScript parses attribute expressions as data; nothing is evaluated.
@@ -129,6 +130,8 @@ function inlineMarkup(text) {
       if (!closing) continue;
       spans.push(text.slice(match.index, ticks.lastIndex));
       prose += text.slice(consumed, match.index);
+      grammar += text.slice(consumed, match.index)
+        + text.slice(match.index, ticks.lastIndex).replace(/[^\n]/g, 'x');
       consumed = ticks.lastIndex;
       starts.lastIndex = consumed;
       continue;
@@ -138,6 +141,9 @@ function inlineMarkup(text) {
       const closing = match[0] === '<!--' ? /-->/.exec(suffix) : /\*\/[ \t]*\}/.exec(suffix);
       if (!closing) throw new Error('Unclosed markup comment');
       prose += text.slice(consumed, match.index);
+      grammar += text.slice(consumed, match.index)
+        + text.slice(match.index, starts.lastIndex + closing.index + closing[0].length)
+          .replace(/[^\n]/g, ' ');
       consumed = starts.lastIndex + closing.index + closing[0].length;
       starts.lastIndex = consumed;
       continue;
@@ -180,10 +186,38 @@ function inlineMarkup(text) {
       tags.push([node.tagName.getText(source), attributes]);
     }
     prose += text.slice(consumed, match.index);
+    grammar += text.slice(consumed, match.index) + raw.replace(/[^\n]/g, 'x');
     consumed = end + 1;
     starts.lastIndex = consumed;
   }
-  return {tags, ids, inline: multiset(spans), prose: prose + text.slice(consumed)};
+  return {
+    tags, ids, inline: multiset(spans), prose: prose + text.slice(consumed),
+    grammar: grammar + text.slice(consumed),
+  };
+}
+
+function staticMarkdown(text) {
+  // This inventory supports inline links and ATX headings, not a full Markdown
+  // grammar. Code/comments/attributes are masked without losing line boundaries.
+  const lines = text.split('\n');
+  const contents = lines.map((line) =>
+    line.replace(/^[ \t]*(?:>[ \t]*|(?:[-+*]|\d+[.)])[ \t]+)*/, ''));
+  if (/^\[(?:\\.|[^\]\\[])+\]:/m.test(contents.join('\n'))) {
+    throw new Error('Unsupported reference link definition; use inline links');
+  }
+  let previous = '';
+  for (const [index, line] of lines.entries()) {
+    const prefix = line.slice(0, line.length - contents[index].length);
+    if (prefix.trim() && /^#{1,6}(?:[ \t]|$)/.test(contents[index])) {
+      throw new Error('Unsupported blockquote/list heading; use an ATX heading outside containers with a stable ID');
+    }
+    const unquoted = line.replace(/^[ \t]*(?:>[ \t]*)*/, '').trim();
+    if (/^(?:=+|-+)$/.test(unquoted) && previous
+        && !/^(?:#{1,6}(?:[ \t]|$)|(?:[-*_][ \t]*){3,}$)/.test(previous)) {
+      throw new Error('Unsupported Setext heading; use ATX headings and separate horizontal rules with a blank line');
+    }
+    previous = unquoted;
+  }
 }
 
 function linkTargets(text) {
@@ -206,9 +240,6 @@ function linkTargets(text) {
     }
     targets.push(text.slice(start, end));
   }
-  for (const match of text.matchAll(/^[ \t]*\[([^\]\n]+)\]:[ \t]*(?:<([^>\n]+)>|(\S+))/gm)) {
-    if (!match[1].startsWith('^')) targets.push(`${match[1]}:${match[2] ?? match[3]}`);
-  }
   return targets;
 }
 
@@ -219,6 +250,7 @@ function documentShape(text) {
   if (jsx.tags.some(([name]) => ['script', 'style'].includes(name.toLowerCase()))) {
     throw new Error('Unsupported live MDX script/style element; keep examples in fenced code');
   }
+  staticMarkdown(jsx.grammar);
   const imports = importStatements(jsx.prose);
   let plain = jsx.prose;
   for (const statement of imports) plain = plain.replace(statement, '');
@@ -297,16 +329,36 @@ function uiMessages(site) {
       : file.endsWith('.ts') ? ts.ScriptKind.TS : ts.ScriptKind.JSX;
     const source = ts.createSourceFile(file, read(path.join(root, file)),
       ts.ScriptTarget.Latest, true, kind);
+    const fail = (detail) => { throw new Error(`[ui-source] ${file}: ${detail}`); };
     function visit(node) {
+      if (ts.isImportDeclaration(node) && staticString(node.moduleSpecifier) === '@docusaurus/Translate') {
+        const clause = node.importClause;
+        const named = clause?.namedBindings;
+        if ((clause?.name && clause.name.text !== 'Translate')
+            || (named && ts.isNamespaceImport(named))
+            || (named && ts.isNamedImports(named) && named.elements.some((item) => item.propertyName))) {
+          fail('Use canonical translation imports: Translate and {translate}; aliases and namespaces are unsupported');
+        }
+      }
       if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)
-          && node.expression.text === 'translate' && node.arguments[0]
-          && ts.isObjectLiteralExpression(node.arguments[0])) {
-        const properties = node.arguments[0].properties.filter(ts.isPropertyAssignment);
+          && node.expression.text === 'translate') {
+        const descriptor = node.arguments[0];
+        if (!descriptor || !ts.isObjectLiteralExpression(descriptor)
+            || descriptor.properties.some((property) => ts.isSpreadAssignment(property)
+              || (property.name && ts.isComputedPropertyName(property.name)))) {
+          fail('translate() requires a static id in a literal descriptor without spreads or computed keys');
+        }
+        const ids = descriptor.properties.filter((property) =>
+          property.name?.getText(source).replace(/^['"]|['"]$/g, '') === 'id');
+        const properties = descriptor.properties.filter(ts.isPropertyAssignment);
         const initializer = (name) => properties.find((property) =>
           property.name.getText(source).replace(/^['"]|['"]$/g, '') === name)?.initializer;
         const id = staticString(initializer('id'));
+        if (ids.length !== 1 || id === undefined || !id.trim()) {
+          fail('translate() requires one nonempty static id');
+        }
         const message = staticString(initializer('message'));
-        if (id !== undefined) messages.push({
+        messages.push({
           id, message, file,
           input: message !== undefined ? {text: message}
             : {expression: initializer('message')?.getText(source) ?? null},
@@ -315,12 +367,18 @@ function uiMessages(site) {
       if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) {
         const opening = ts.isJsxElement(node) ? node.openingElement : node;
         if (opening.tagName.getText(source) === 'Translate') {
-          const id = staticString(opening.attributes.properties.find((attribute) =>
-            ts.isJsxAttribute(attribute) && attribute.name.getText(source) === 'id')?.initializer);
+          const attributes = opening.attributes.properties;
+          const ids = attributes.filter((attribute) =>
+            ts.isJsxAttribute(attribute) && attribute.name.getText(source) === 'id');
+          const id = staticString(ids[0]?.initializer);
+          if (attributes.some(ts.isJsxSpreadAttribute) || ids.length !== 1
+              || id === undefined || !id.trim()) {
+            fail('Translate requires one nonempty static id and no spread attributes');
+          }
           const children = ts.isJsxElement(node) ? node.children : [];
           const pieces = children.map((child) => ts.isJsxText(child) ? child.text : staticString(child));
           const message = pieces.every((piece) => piece !== undefined) ? pieces.join('') : undefined;
-          if (id !== undefined) messages.push({
+          messages.push({
             id, message, file,
             input: message !== undefined ? {text: message}
               : {expression: children.map((child) => child.getText(source)).join('')},

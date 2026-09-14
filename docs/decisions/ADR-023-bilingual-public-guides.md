@@ -38,6 +38,12 @@ maintenance and two-locale validation are additional release work; missing local
 content must not silently qualify as a completed guide. PR review, security,
 upstream ownership and generated-artifact requirements remain unchanged.
 
+Root URLs change from English to Korean; English moves to `/en/`. The previous
+redirect generator must be replaced before activation so `/en/` serves real English
+pages and `/ko/` aliases the Korean root. Page IDs and fragments remain stable.
+`doc-sites/scripts/check-guide-locales.cjs` and PR site validation enforce the
+coverage gate; recording source hashes requires prior translation review.
+
 ## References
 
 - [ADR-021](ADR-021-english-docs-current-review-authority.md)

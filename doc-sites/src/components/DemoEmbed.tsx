@@ -1,4 +1,5 @@
 import React from 'react';
+import Translate from '@docusaurus/Translate';
 
 interface DemoEmbedProps {
   title: string;
@@ -21,7 +22,7 @@ export default function DemoEmbed({
         <span className="demo-embed__title">{title}</span>
         <span className="demo-embed__actions">
           <a href={src} target="_blank" rel="noopener noreferrer">
-            Open in a new tab ↗
+            <Translate id="demo.open">Open in a new tab ↗</Translate>
           </a>
         </span>
       </div>
@@ -37,12 +38,12 @@ export default function DemoEmbed({
         <div className="demo-embed__footer">
           {command && (
             <div>
-              <strong>Example workflow:</strong> <code>{command}</code>
+              <strong><Translate id="demo.workflow">Example workflow:</Translate></strong> <code>{command}</code>
             </div>
           )}
           {remarpSource && (
             <div style={{marginTop: command ? '0.5rem' : 0}}>
-              <strong>Remarp source:</strong> <code>{remarpSource}</code>
+              <strong><Translate id="demo.source">Remarp source:</Translate></strong> <code>{remarpSource}</code>
             </div>
           )}
         </div>

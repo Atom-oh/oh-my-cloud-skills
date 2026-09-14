@@ -27,12 +27,18 @@ const config: Config = {
   themes: ['@docusaurus/theme-mermaid'],
 
   i18n: {
-    defaultLocale: 'en',
-    locales: ['en'],
+    defaultLocale: 'ko',
+    locales: ['ko', 'en'],
     localeConfigs: {
+      ko: {
+        label: '한국어',
+        htmlLang: 'ko',
+        translate: true,
+      },
       en: {
         label: 'English',
         htmlLang: 'en',
+        translate: false,
       },
     },
   },
@@ -45,6 +51,7 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
+          editLocalizedFiles: true,
           editUrl:
             'https://github.com/Atom-oh/oh-my-cloud-skills/tree/main/doc-sites/',
         },
@@ -63,7 +70,8 @@ const config: Config = {
   themeConfig: {
     announcementBar: {
       id: 'release-v2.0.0',
-      content: `<span class="release-notice"><strong>v2.0.0 is available.</strong> <a href="${baseUrl}docs/releases/v2.0.0">Release notes and co-agent migration</a></span>`,
+      // The content component renders translated text and locale-aware links.
+      content: 'v2.0.0',
       backgroundColor: '#fff4df',
       textColor: '#232f3e',
       isCloseable: true,
@@ -109,6 +117,10 @@ const config: Config = {
         {
           to: '/docs/releases/v2.0.0',
           label: 'Release notes',
+          position: 'right',
+        },
+        {
+          type: 'localeDropdown',
           position: 'right',
         },
         {

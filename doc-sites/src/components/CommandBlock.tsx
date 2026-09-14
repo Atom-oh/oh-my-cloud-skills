@@ -1,4 +1,5 @@
 import React from 'react';
+import {translate} from '@docusaurus/Translate';
 
 interface CommandBlockProps {
   title?: string;
@@ -7,14 +8,14 @@ interface CommandBlockProps {
 }
 
 export default function CommandBlock({
-  title = 'Terminal',
+  title,
   command,
   output,
 }: CommandBlockProps): React.ReactElement {
   return (
     <div className="command-block">
       <div className="command-block__header">
-        {title}
+        {title ?? translate({id: 'command.terminal', message: 'Terminal'})}
       </div>
       <div className="command-block__body">
         <div style={{color: 'var(--ifm-color-primary)'}}>$ {command}</div>

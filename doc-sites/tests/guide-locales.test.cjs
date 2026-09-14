@@ -374,6 +374,122 @@ test('static UI IDs in nested source files are required but comments and strings
   pass(run(site, '--record'));
 });
 
+const unsupportedUi = [
+  ['aliased named translation import', "import {translate as t} from '@docusaurus/Translate';\nconst label = t({id: 'untracked', message: 'Hidden'});", /canonical.*import/i],
+  ['aliased default translation import', "import T from '@docusaurus/Translate';\nconst label = <T id=\"untracked\">Hidden</T>;", /canonical.*import/i],
+  ['namespace translation import', "import * as messages from '@docusaurus/Translate';\nconst label = messages.translate({id: 'untracked', message: 'Hidden'});", /canonical.*import/i],
+  ['function without an ID', "const label = translate({message: 'Hidden'});", /static.*id/i],
+  ['function with a dynamic ID', "const label = translate({id: messageId, message: 'Hidden'});", /static.*id/i],
+  ['function with a descriptor variable', 'const label = translate(descriptor);', /static.*id/i],
+  ['function without a descriptor', 'const label = translate();', /static.*id/i],
+  ['JSX without an ID', 'const label = <Translate>Hidden</Translate>;', /static.*id/i],
+  ['self-closing JSX with a dynamic ID', 'const label = <Translate id={messageId} />;', /static.*id/i],
+  ['spread overriding a function ID', "const label = translate({id: 'ui.count', message: 'Count: {count}', ...descriptor});", /static.*id/i],
+  ['spread overriding a JSX ID', 'const label = <Translate id="ui.greeting" {...props}>{\'Hello {name}\'}</Translate>;', /static.*id/i],
+];
+
+for (const [name, source, reason] of unsupportedUi) {
+  for (const args of [[], ['--record']]) {
+    test(`static grammar rejects ${name} in ${args.length ? 'record' : 'normal'} mode without replacing the manifest`, (t) => {
+      const site = fixture(t);
+      pass(run(site, '--record'));
+      const before = fs.readFileSync(path.join(site, manifestPath), 'utf8');
+      write(site, 'src/Unsupported.tsx', source);
+      reject(run(site, ...args), reason);
+      assert.equal(fs.readFileSync(path.join(site, manifestPath), 'utf8'), before);
+    });
+  }
+}
+
+for (const [name, suffix, both] of [
+  ['reference link definitions', '\n[Reference][one]\n\n[one]: /docs/one\n[two]: /docs/two\n', true],
+  ['quoted reference definitions', '\n> [Reference][one]\n>\n> [one]: /docs/one\n> [two]: /docs/two\n', true],
+  ['list reference definitions', '\n- [one]: /docs/one\n- [two]: /docs/two\n\n[Reference][one]\n', true],
+  ['Setext H1', '\n새 제목\n===\n', false],
+  ['Setext H2', '\n새 제목\n---\n', false],
+  ['blockquote heading', '\n> ## 인용 제목\n', false],
+  ['nested blockquote heading', '\n > > ### 중첩 제목\n', false],
+  ['quoted list heading', '\n> - ## 목록 안의 인용 제목\n', false],
+  ['bullet list heading', '\n- ## 목록 제목\n', false],
+  ['ordered list heading', '\n1. ## 순서 목록 제목\n', false],
+  ['empty blockquote heading', '\n> ##\n', false],
+  ['blockquote Setext heading', '\n> 인용 제목\n> ---\n', false],
+]) {
+  for (const args of [[], ['--record']]) {
+    test(`static grammar rejects ${name} in ${args.length ? 'record' : 'normal'} mode without replacing the manifest`, (t) => {
+      const site = fixture(t);
+      pass(run(site, '--record'));
+      edit(site, `${koRoot}/guide.mdx`, (text) => text + suffix);
+      if (both) {
+        // A prior permissive record can contain matching definitions even when
+        // the Korean reference usage points to a different defined target.
+        const source = english + suffix;
+        write(site, 'docs/guide.mdx', source);
+        edit(site, `${koRoot}/guide.mdx`, (text) => text.replace('[Reference][one]', '[참조][two]'));
+        editCatalog(site, manifestPath, (data) => {
+          data.files['guide.mdx'] = createHash('sha256').update(source).digest('hex');
+        });
+      }
+      const before = fs.readFileSync(path.join(site, manifestPath), 'utf8');
+      reject(run(site, ...args), /reference.*definition|Setext|(?:blockquote|list).*heading/i);
+      assert.equal(fs.readFileSync(path.join(site, manifestPath), 'utf8'), before);
+    });
+  }
+}
+
+test('static grammar keeps fenced examples, inline literals, comments and separated horizontal rules', (t) => {
+  const site = fixture(t);
+  const examples = [
+    '',
+    '---',
+    '',
+    '```mdx',
+    "import {translate as t} from '@docusaurus/Translate';",
+    'translate({message: "Example"});',
+    '<Translate>Example</Translate>',
+    '[label]: /example',
+    'Heading',
+    '---',
+    '> ## Quoted heading',
+    '```',
+    '',
+    '`[label]: /example`',
+    '`> ## Quoted heading`',
+    '`Heading\n---`',
+    '<!--',
+    '[label]: /ignored',
+    'Heading',
+    '---',
+    '> ## Quoted heading',
+    '-->',
+    '',
+  ].join('\n');
+  for (const file of ['docs/guide.mdx', `${koRoot}/guide.mdx`]) {
+    edit(site, file, (text) => text + examples);
+  }
+  write(site, 'src/Literals.tsx', [
+    '// translate({message: "Example"});',
+    'const text = \'<Translate>Example</Translate>\';',
+    '// import {translate as t} from "@docusaurus/Translate";',
+    'import {value as named} from "./unrelated";',
+  ].join('\n'));
+  pass(run(site, '--record'));
+  const before = fs.readFileSync(path.join(site, manifestPath), 'utf8');
+  pass(run(site));
+  assert.equal(fs.readFileSync(path.join(site, manifestPath), 'utf8'), before);
+});
+
+test('static grammar preserves plain indentation before an ATX heading', (t) => {
+  const site = fixture(t);
+  for (const file of ['docs/guide.mdx', `${koRoot}/guide.mdx`]) {
+    edit(site, file, (text) => text.replace('\n## ', '\n  ## '));
+  }
+  pass(run(site, '--record'));
+  const before = fs.readFileSync(path.join(site, manifestPath), 'utf8');
+  pass(run(site));
+  assert.equal(fs.readFileSync(path.join(site, manifestPath), 'utf8'), before);
+});
+
 test('translated human-facing JSX attributes and reordered inline literals remain valid', (t) => {
   const site = fixture(t);
   edit(site, 'docs/guide.mdx', (text) => `${text}\nUse \`--one\` and \`--two\`.\n<img src="/img/a.svg" alt="Picture" aria-label="Preview" />\n`);

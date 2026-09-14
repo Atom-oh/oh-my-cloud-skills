@@ -80,5 +80,5 @@ for evidence beyond static validation.
 ## Maintenance
 
 [Onboarding](onboarding.md) lists validation commands; host/hook changes also need
-runtime checks. Keep maintained docs concise and English. User artifact language and
+runtime checks. Keep maintained internal docs concise and English. User artifact language and
 functional literals remain independent. Read scoped `CLAUDE.md` files before editing.

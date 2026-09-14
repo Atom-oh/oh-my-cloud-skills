@@ -28,7 +28,14 @@
   --docusaurus-highlighted-code-line-bg: rgba(255, 153, 0, 0.15);
 }
 
-/* Navbar */
+/* Localized text and release notice */
+html[lang='ko'] .markdown,
+html[lang='ko'] .plugin-card__description,
+html[lang='ko'] .hero__subtitle {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 .theme-announcement-bar {
   height: auto;
 }
@@ -36,8 +43,16 @@
 .release-notice {
   font-size: 1rem;
   line-height: 1.5;
+  padding: 5px 0;
+  text-align: center;
 }
 
+.release-notice a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+/* Navbar */
 .navbar {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }

@@ -1,0 +1,50 @@
+{
+  "version.label": {
+    "message": "다음",
+    "description": "The label for version current"
+  },
+  "sidebar.awsContent.category.Agents": {
+    "message": "에이전트",
+    "description": "The label for category 'Agents' in sidebar 'awsContent'"
+  },
+  "sidebar.awsContent.category.Skills": {
+    "message": "스킬",
+    "description": "The label for category 'Skills' in sidebar 'awsContent'"
+  },
+  "sidebar.awsContent.category.Demos": {
+    "message": "데모",
+    "description": "The label for category 'Demos' in sidebar 'awsContent'"
+  },
+  "sidebar.awsOps.category.Agents": {
+    "message": "에이전트",
+    "description": "The label for category 'Agents' in sidebar 'awsOps'"
+  },
+  "sidebar.awsOps.category.Skills": {
+    "message": "스킬",
+    "description": "The label for category 'Skills' in sidebar 'awsOps'"
+  },
+  "sidebar.awsOps.category.MCP Servers": {
+    "message": "MCP 서버",
+    "description": "The label for category 'MCP Servers' in sidebar 'awsOps'"
+  },
+  "sidebar.awsOps.category.Demos": {
+    "message": "데모",
+    "description": "The label for category 'Demos' in sidebar 'awsOps'"
+  },
+  "sidebar.remarpGuide.category.Syntax Reference": {
+    "message": "문법 레퍼런스",
+    "description": "The label for category 'Syntax Reference' in sidebar 'remarpGuide'"
+  },
+  "sidebar.remarpGuide.category.Slide Types": {
+    "message": "슬라이드 유형",
+    "description": "The label for category 'Slide Types' in sidebar 'remarpGuide'"
+  },
+  "sidebar.remarpGuide.category.Themes": {
+    "message": "테마",
+    "description": "The label for category 'Themes' in sidebar 'remarpGuide'"
+  },
+  "sidebar.remarpGuide.category.Examples": {
+    "message": "예제",
+    "description": "The label for category 'Examples' in sidebar 'remarpGuide'"
+  }
+}

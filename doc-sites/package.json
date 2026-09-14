@@ -12,7 +12,11 @@
     "serve": "docusaurus serve",
     "write-translations": "docusaurus write-translations",
     "write-heading-ids": "docusaurus write-heading-ids",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "test:i18n": "node --test tests/*.test.cjs",
+    "check:locales": "node scripts/check-guide-locales.cjs",
+    "record:locales": "node scripts/check-guide-locales.cjs --record",
+    "prebuild": "npm run test:i18n && npm run check:locales"
   },
   "dependencies": {
     "@docusaurus/core": "3.9.2",
