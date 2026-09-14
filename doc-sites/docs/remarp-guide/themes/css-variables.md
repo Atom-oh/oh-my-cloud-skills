@@ -19,20 +19,20 @@ title: "Theme tokens"
 
 Use semantic CSS variables and reusable classes so content adapts to the framework's light default and `.theme-dark` scope. The site itself has its own Docusaurus theme; these tokens describe generated Remarp decks.
 
-## Theme scopes
+## Theme scopes {#theme-scopes}
 
 ```html
 <div class="slide-deck theme-light"></div>
 <div class="slide-deck theme-dark"></div>
 ```
 
-## Roles and surfaces
+## Roles and surfaces {#roles-and-surfaces}
 
 Roles include `--accent`, `--info`, `--success`, `--warning`, and `--danger`, with `-subtle` and `-on` variants. Surfaces use `--surface-1`, `--surface-2`, `--surface-3`; text uses `--on-surface` and `--on-surface-muted`. Legacy background/text aliases remain mapped by the framework.
 
 Use spacing, radius, shadow, and weight variables from the shipped theme. Exact values belong in theme.css rather than a duplicated table.
 
-## Brand inputs
+## Brand inputs {#brand-inputs}
 
 Inject extracted brand colors through `--pptx-*` variables. The framework maps those inputs to semantic roles for each theme. Directly overriding a light background with a dark-theme text color can make content unreadable.
 
@@ -47,17 +47,17 @@ Inject extracted brand colors through `--pptx-*` variables. The framework maps t
 }
 ```
 
-## Layout classes
+## Layout classes {#layout-classes}
 
 Use `.card-grid`, `.metric-card`, `.metric-label`, `.callout` and role variants, `.flow-h`, `.flow-group`, `.flow-box`, `.flow-arrow`, `.tab-bar`, `.tab-btn`, and `.tab-content` where appropriate. Check contrast and layout in both supported themes.
 
-## Canvas
+## Canvas {#canvas}
 
 Canvas drawing APIs do not resolve CSS variables directly. Custom drawing code must read computed values from the deck, cache them outside the draw loop, and refresh them when the theme changes. The compiler supplies token handling for supported DSL paths.
 
 [Canonical theme variables and classes](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-content-plugin/skills/reactive-presentation/assets/theme.css)
 
-## Related links
+## Related links {#related-links}
 
 - [custom themes](./custom-themes)
 - [pptx extraction](./pptx-extraction)

@@ -21,7 +21,7 @@ title: "Tabs slides"
 
 Group alternative code, configuration, or explanations under selectable tabs.
 
-## Source
+## Source {#source}
 
 ```markdown
 ---
@@ -36,7 +36,7 @@ Inspect syntax and configuration before building.
 Check rendered content, controls, and navigation.
 ```
 
-## Rendering and interaction
+## Rendering and interaction {#rendering-and-interaction}
 
 Each third-level heading becomes a tab label and its following content becomes the panel. Use explicit `@type: tabs`, keep labels short, and test both tab buttons and Up/Down cycling. For code examples, use a longer outer Markdown fence when demonstrating nested code fences.
 

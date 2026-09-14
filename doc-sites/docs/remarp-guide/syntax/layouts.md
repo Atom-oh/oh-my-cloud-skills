@@ -40,7 +40,7 @@ Set `@layout` before slide content and use the corresponding block containers.
 :::
 ```
 
-## Layout choices
+## Layout choices {#layout-choices}
 
 | Layout | Containers | Use |
 | --- | --- | --- |

@@ -22,7 +22,7 @@ title: "Quiz slides"
 
 Ask a focused knowledge question and give feedback when an option is selected.
 
-## Source
+## Source {#source}
 
 ```markdown
 ---
@@ -36,7 +36,7 @@ Ask a focused knowledge question and give feedback when an option is selected.
 - [ ] A release announcement
 ```
 
-## Rendering and interaction
+## Rendering and interaction {#rendering-and-interaction}
 
 `[x]` marks a correct answer and `[ ]` a distractor. Checkbox content may be inferred as quiz, so specify checklist explicitly for completion tracking. Keep options concise and explain the answer. Test the actual selection/feedback behavior; multiple marked answers do not by themselves establish a multi-select completion rule.
 

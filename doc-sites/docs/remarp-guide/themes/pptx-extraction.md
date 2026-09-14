@@ -29,7 +29,7 @@ title: "Extract a PowerPoint theme"
 
 Extract brand colors, fonts, logos, layout/background metadata, and footer information from a PPTX template for a Remarp web deck.
 
-## CLI
+## CLI {#cli}
 
 ```bash
 python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/extract_pptx_theme.py template.pptx -o /var/tmp/pptx-theme
@@ -39,17 +39,17 @@ python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/extract_
 
 The parser also exposes layout listing, JSON-only output, a CSS filename override, and design-document options. Use `--help` for the exact current options. Output includes `theme-manifest.json`, `theme-override.css`, and extracted images.
 
-## Brand mapping
+## Brand mapping {#brand-mapping}
 
 The generated CSS supplies `--pptx-*` input variables consumed by theme.css. Inspect actual color values and luminance rather than assuming a slot named `dk1` is always dark. Keep role/text/surface assignments inside the framework's theme scopes.
 
-## Logos, footers, and backgrounds
+## Logos, footers, and backgrounds {#logos-footers-and-backgrounds}
 
 Extraction uses master/layout metadata and heuristics to identify logos and background assets. Footer/date/slide-number candidates use placeholder type and position filters. Inspect the manifest and images: extracted metadata is not a guarantee of correct placement in every template.
 
 Solid, picture, gradient, inherited, and scheme-referenced backgrounds follow different paths. Multi-master templates need explicit master selection where the default is inappropriate. Layout metadata and generated CSS should be reviewed together.
 
-## Integration and troubleshooting
+## Integration and troubleshooting {#integration-and-troubleshooting}
 
 Set `theme.source` to the PPTX or extracted directory, with footer/logo options as needed. The builder recognizes PDF sources but currently leaves PDF extraction unimplemented; do not promise equivalent PDF extraction.
 
@@ -57,6 +57,6 @@ For incorrect colors, inspect brand inputs and computed semantic tokens. For mis
 
 [Extractor](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-content-plugin/skills/reactive-presentation/scripts/extract_pptx_theme.py) · [Builder integration](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py)
 
-## Related links
+## Related links {#related-links}
 
 - [css variables](./css-variables)

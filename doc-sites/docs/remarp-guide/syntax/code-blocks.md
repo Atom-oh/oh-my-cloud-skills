@@ -32,11 +32,11 @@ def summarize(checks):
 ```
 ````
 
-## Attributes and highlighting
+## Attributes and highlighting {#attributes-and-highlighting}
 
 A filename identifies the source file. Highlight specifications select individual lines or ranges. Combine supported fence attributes rather than inserting presentation markup into the code itself. Keep excerpts short enough to read; use a code slide for a focused example and speaker notes for explanation.
 
-## Diff blocks
+## Diff blocks {#diff-blocks}
 
 ````markdown
 ```diff
@@ -47,6 +47,6 @@ A filename identifies the source file. Highlight specifications select individua
 
 Use diff styling for the actual changed lines and explain why behavior changes. Code fences may contain Python, JavaScript/TypeScript, YAML, JSON, Bash, or another language supported by the bundled highlighter. The language label provides syntax highlighting; it does not validate or execute the example.
 
-## Rendering checks
+## Rendering checks {#rendering-checks}
 
 Inspect overflow, line wrapping, highlight contrast, filename labels, and the selected slide type. Auto-detection of long code blocks is a convenience; use an explicit type when the intended layout is important.
