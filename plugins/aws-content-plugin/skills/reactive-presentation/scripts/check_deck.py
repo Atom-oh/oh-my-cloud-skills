@@ -2,8 +2,8 @@
 """
 check_deck.py — Tier 1 static gate for hand-authored reactive-presentation HTML decks.
 
-The retired Remarp compiler's `validate` no longer sees hand-authored HTML, so the
-mistakes it used to catch now ship silently: a missing framework script (deck loads
+Remarp source validation cannot inspect rendered HTML or explicitly hand-authored
+legacy decks. This complementary output check catches: a missing framework script (deck loads
 as a wall of text), a <canvas> nobody wires up (blank slide), a quiz with no correct
 answer, presenter notes that don't exist, raw hex colors that bypass the theme, and a
 forked common/ copy that drifts from the skill assets. This script is the static half

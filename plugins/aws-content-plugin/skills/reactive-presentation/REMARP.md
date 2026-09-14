@@ -4,26 +4,20 @@ Remarp is the next-generation markdown format for the **reactive-presentation** 
 
 ---
 
-## Why Remarp?
+## When Remarp fits
 
-| | Marp (existing) | JSON+Renderer | **Remarp (new)** |
-|---|---|---|---|
-| Source format | Markdown | JSON | **Markdown** |
-| Human readability | Easy | Hard | **Easy** |
-| Fragment animation | Not supported | Manual HTML | **One line: `{.click}`** |
-| Canvas animation | Not supported (manual JS) | Separate JS module | **`:::canvas` DSL** |
-| Speaker notes | `<!-- notes: -->` | JSON field | **`:::notes` + timing/cues** |
-| Column layout | Not supported | Manual HTML | **`::: left`/`::: right`** |
-| Slide transitions | Not supported | Not supported | **`@transition fade`** |
-| Keyboard customization | Not supported | Not supported | **`keys:` frontmatter** |
-| Per-block incremental build | Not supported | N/A | **`sync` command** |
-| Backward compatibility | — | — | **`marp: true` supported** |
-
-> **In short**: Marp's editing convenience + JSON mode's interactive features = Remarp
+Remarp keeps block structure, speaker notes, fragments and review annotations in
+editable Markdown. It is suited to training decks that presenters revise and
+review repeatedly. The Python compiler owns final rendering; HTML is output.
+Use existing HTML/script/Archify blocks for complex visuals instead of extending
+the Canvas DSL into a general-purpose layout language. Explicit manual HTML decks
+remain possible, but do not edit generated HTML as a second source.
 
 ---
 
 ## 5-Minute Quickstart
+
+Use Python 3 with PyYAML for nested frontmatter (`python3 -m pip install pyyaml`).
 
 ### 1. Create the file
 
@@ -70,8 +64,8 @@ Your Name | 2026
 :::
 
 ---
-@type compare
-@layout two-column
+@type: compare
+@layout: two-column
 
 ## 비교
 
@@ -88,20 +82,20 @@ Your Name | 2026
 :::
 
 ---
-@type canvas
-@canvas-id arch-flow
+@type: canvas
+@canvas-id: arch-flow
 
 ## 아키텍처
 
-:::canvas width=960 height=400
-box "API GW" at 50,170 size 130x60 color=accent
-box "Lambda" at 260,170 size 130x60 color=green
-box "DynamoDB" at 470,170 size 130x60 color=blue
+:::canvas
+icon api "API-Gateway" at 100,170 size 48
+icon lambda "Lambda" at 340,170 size 48
+icon db "DynamoDB" at 580,170 size 48
 
-arrow from "API GW" to "Lambda" at step=1 animate=draw
-arrow from "Lambda" to "DynamoDB" at step=2 animate=draw
+arrow api -> lambda "invoke" step 1
+arrow lambda -> db "query" step 2
 
-group "VPC" at 30,100 size 580x180 color=border
+group "Services" containing api, lambda, db color border
 :::
 
 :::notes
@@ -112,13 +106,17 @@ group "VPC" at 30,100 size 580x180 color=border
 
 ### 2. Build HTML
 
+Run these examples from the marketplace repository root. For an installed plugin,
+use the absolute path to its `skills/reactive-presentation/scripts/remarp_to_slides.py`.
+
 ```bash
-python3 remarp_to_slides.py build my-talk.remarp.md
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py validate my-talk.remarp.md
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build my-talk.remarp.md
 ```
 
 ### 3. Open in the browser
 
-Open the generated HTML in a browser and you're done!
+Open `slides/default.html`; `slides/common/` contains the copied runtime. Build rejects CRITICAL findings. Place custom image files relative to the output yourself; the compiler bundles framework files and referenced official icons.
 
 ---
 
@@ -131,10 +129,11 @@ aws-scaling/
 ├── _presentation.remarp.md       # 글로벌 설정
 ├── 01-fundamentals.remarp.md     # Block 1 (25분)
 ├── 02-advanced.remarp.md         # Block 2 (30분)
-└── build/                        # 생성된 HTML
-    ├── index.html
-    ├── 01-fundamentals.html
-    └── 02-advanced.html
+├── index.html                    # merged generated deck
+├── toc.html                      # block links and exports
+├── 01-fundamentals.html
+├── 02-advanced.html
+└── common/                       # generated runtime assets
 ```
 
 **`_presentation.remarp.md`** (global settings only):
@@ -189,13 +188,13 @@ Welcome!
 
 ```bash
 # 전체 빌드
-python3 remarp_to_slides.py build ./aws-scaling/
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build ./aws-scaling/
 
 # 특정 블록만 빌드
-python3 remarp_to_slides.py build ./aws-scaling/ --block 01-fundamentals
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build ./aws-scaling/ --block 01-fundamentals
 
-# 변경된 블록만 증분 빌드
-python3 remarp_to_slides.py sync ./aws-scaling/
+# Refresh blocks, merged output, TOC and assets
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py sync ./aws-scaling/
 ```
 
 ---
@@ -210,11 +209,11 @@ Use `---` lines to separate slides. Place `@directive`s right after the `---`.
 
 ```markdown
 ---
-@type canvas
-@layout two-column
-@transition zoom
-@background #1a1d2e
-@timing 3min
+@type: canvas
+@layout: two-column
+@transition: zoom
+@background: #1a1d2e
+@timing: 3min
 ```
 
 | Directive | Description | Values |
@@ -249,7 +248,7 @@ Block-level fragments are also supported:
 ### Column Layout
 
 ```markdown
-@layout two-column
+@layout: two-column
 
 ::: left
 왼쪽 내용
@@ -263,7 +262,7 @@ Block-level fragments are also supported:
 ### Canvas DSL
 
 ```markdown
-:::canvas width=960 height=400
+:::canvas
 box "서비스A" at 50,170 size 130x60 color=accent
 arrow from "서비스A" to "서비스B" at step=1 animate=draw
 :::
@@ -396,7 +395,7 @@ Add reference links to a slide:
 
 ```markdown
 ---
-@type content
+@type: content
 @ref "https://docs.aws.amazon.com/lambda/" "Lambda Documentation"
 @ref "https://aws.amazon.com/blogs/compute/" "AWS Compute Blog"
 
@@ -450,7 +449,7 @@ Keyboard customization is configured in the `keys:` section of frontmatter.
 Automatically convert existing Marp files to Remarp:
 
 ```bash
-python3 remarp_to_slides.py migrate ./old-content.md -o ./my-presentation/
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py migrate ./old-content.md -o ./my-presentation/
 ```
 
 What gets converted:

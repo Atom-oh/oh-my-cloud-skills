@@ -12,7 +12,7 @@ allowed-tools:
 
 # Reactive Presentation
 
-Build interactive HTML slideshows deployed via GitHub Pages. No build tools — pure HTML/CSS/JS with a shared framework (nav, animations, quizzes). Authoring format is **Remarp markdown** (Marp = legacy maintenance only).
+Build interactive HTML slideshows deployed via GitHub Pages. The Python compiler generates pure HTML/CSS/JS with a shared framework (nav, animations, quizzes). **Remarp markdown is the source; HTML is generated output.** Use it for structured training decks with notes and repeatable edits. Complex visuals belong in existing HTML/script/Archify source blocks; manual HTML is an explicit legacy mode.
 
 > `{skill-dir}` = `{plugin-dir}/skills/reactive-presentation`. New to Remarp? See [REMARP.md](REMARP.md).
 > **Detailed authoring rules, tables, and copy-ready templates live in [references/authoring-rules.md](references/authoring-rules.md)** (validation rules, Forbidden AI-tells, Interactive patterns/tab templates, Slide Type decisions, HTML Architecture). Read that document when actually authoring or validating slides.
@@ -62,40 +62,32 @@ After conversion, freely edit `@speaker`/`{.click}`/`:::canvas`/`@type` in the `
 ```bash
 python3 {skill-dir}/scripts/remarp_to_slides.py validate {repo}/{slug}/
 ```
-> ⚠️ **Must have 0 CRITICAL findings to build**. Rule table, verdicts, and auto-fix guidance: **authoring-rules.md §1**. If CRITICAL findings remain, fix and re-validate (up to 3 times).
+> ⚠️ **Must have 0 CRITICAL findings to build**. `validate` exits nonzero on CRITICAL or invalid input; `build` and `sync` enforce the same gate. Style warnings remain advisory. Rule table, verdicts, and auto-fix guidance: **authoring-rules.md §1**. If CRITICAL findings remain, fix and re-validate (up to 3 times).
 
 ### Phase 3 — Build
 ```bash
 python3 {skill-dir}/scripts/remarp_to_slides.py build {repo}/{slug}/          # full build
 python3 {skill-dir}/scripts/remarp_to_slides.py build {repo}/{slug}/ --block 01-fundamentals
-python3 {skill-dir}/scripts/remarp_to_slides.py sync  {repo}/{slug}/          # changed blocks only (incremental)
+python3 {skill-dir}/scripts/remarp_to_slides.py sync  {repo}/{slug}/          # refresh blocks, merged index, TOC and assets
 python3 {skill-dir}/scripts/remarp_to_slides.py issues {repo}/{slug}/ [--json]  # issue annotations
 ```
 
 ### Phase 4 — Review & Iterate
-After generating content, present the user with options: ① edit Remarp directly and say "please apply this" (→ Claude reads it and runs `sync`) · ② request changes via prompt (→ Remarp+HTML edited simultaneously) · ③ proceed.
-Rules: keep Remarp↔HTML in sync (Remarp is the source) · preserve existing Canvas/quiz/interactions · modify only changed slides · summarize what changed.
+After generating content, present the user with options: ① edit Remarp directly and say "please apply this" (→ Claude reads it and runs `sync`) · ② request changes via prompt (→ edit Remarp, then rebuild HTML) · ③ proceed.
+Rules: edit only the affected Remarp source; preserve Canvas/quiz/interactions in its source blocks. Never patch generated HTML independently. `sync` currently regenerates the whole project to include global configuration and asset dependencies.
 
 ### Phase 5 — Enhancement
 Implement Canvas animations (animation-utils.js) on `@type: canvas` slides · enhance complex interactions · verify presenter view (P) notes.
 
 ### Phase 6 — Set Up Structure
-Copy the skill's `assets/*` into the repo's `common/`: `cp {skill-dir}/assets/* {repo}/common/`. Structure: `{repo}/index.html` (hub) + `common/` (theme.css, slide-framework.js, slide-renderer.js, presenter-view.js, animation-utils.js, quiz-component.js, export-utils.js, [aws-icons/], [pptx-theme/]) + `{slug}/` (TOC index.html + `NN-block.html`). Export buttons in the TOC:
-```html
-<div class="export-toolbar">
-  <button class="export-btn" onclick="ExportUtils.exportPDF({ title: 'Title' })">Export PDF</button>
-  <button class="export-btn" onclick="ExportUtils.exportPPTX({ title: 'Title' })">Export PPTX</button>
-  <button class="export-btn" onclick="ExportUtils.downloadZIP()">Download ZIP</button>
-</div>
-<script src="../common/export-utils.js"></script>
-```
-(The `toc.html` the build generates already includes per-block/overall PDF/ZIP/PPTX buttons.)
+The compiler copies the framework and referenced official icons into the output's `common/`. A project build produces `{slug}/index.html` (merged deck), `{slug}/toc.html`, `{slug}/NN-block.html`, and `{slug}/common/`. `--output DIR` changes that output root. A single-file build defaults to `slides/default.html` and `slides/common/`. Keep referenced project-local images available relative to the output; custom images are not bundled automatically.
+The generated TOC already includes PDF/ZIP/PPTX export buttons. A parent collection hub is optional and maintained separately.
 
 ### Phase 7 — Quality Review
 Get a content-review-agent PASS via `review content at [path]` before declaring deployment/completion — the Quality Gate rule from the plugin's CLAUDE.md.
 
 ### Phase 8 — Verify
-Per-block checks: slide count matches · `SlideFramework` options (footer/logoSrc/presenterNotes) · every Canvas ID has `setupCanvas()` · quiz `data-quiz`/`data-correct` · `../common/` relative paths · **theme-override.css linked (when extracted from PPTX)** · language · first slide = Session Cover (§0a/§0b, not `.title-slide`) · last slide = Thank You (with a TOC link).
+Per-block checks: slide count matches · `SlideFramework` options (footer/logoSrc/presenterNotes) · every Canvas ID has `setupCanvas()` · quiz `data-quiz`/`data-correct` · `./common/` relative paths · **theme-override.css linked (when extracted from PPTX)** · language · first slide = Session Cover (§0a/§0b, not `.title-slide`) · last slide = Thank You (`@toc: toc.html` in source).
 
 > **Screenshot verification (required)**: use Playwright MCP to capture all interactive/Canvas slides at **FHD 1920×1080** (primary resolution) + **4K 3840×2160**. Check: text legibility, canvas proportions, no overflow, controls visible. Capture after interactions (tabs/sliders/buttons). **For Canvas step slides, walk through all steps with ArrowDown/Up, capturing each step** (check for overlap, alignment, legibility). Verify scaling with N (notes) and F (fullscreen). When reviewing captures, apply the **design self-critique: [references/design-direction.md](references/design-direction.md) §6 restraint checklist**.
 > Scaling: fixed 1920×1080 design canvas + `transform: scale(min(vw/1920, vh/1080))` → consistent pixels across FHD/4K.
@@ -114,7 +106,7 @@ python3 {skill-dir}/scripts/export_pptx.py {repo}/{slug}/ -o {slug}.pptx
 
 ### Phase 9 — Deploy
 ```bash
-git add common/ {slug}/ index.html && git commit -m "feat: add {name} interactive training" && git push origin main
+git add {slug}/ && git commit -m "feat: add {name} interactive training" && git push origin main
 ```
 GitHub Pages: Settings → Pages → main / root.
 

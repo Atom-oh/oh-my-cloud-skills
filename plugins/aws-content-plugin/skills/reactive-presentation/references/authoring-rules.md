@@ -30,6 +30,12 @@ python3 {skill-dir}/scripts/remarp_to_slides.py validate {repo}/{slug}/
 | `TITLE_LENGTH` | WARNING | Slide title exceeds 28 characters | Shorten to a headline of 28 characters or fewer (§3 Slide Title Voice) |
 | `STATIC_HTML` | WARNING | 3+ `:::html` elements but no fragments | Add `fragment fade-up` + `data-fragment-index` |
 
+`validate --json` emits an array of diagnostics and exits nonzero for CRITICAL
+findings or invalid input. `build` and `sync` apply the same gate before writing
+output. Detected input/parser errors and duplicate Canvas IDs are blocking; WARNING and
+INFO findings remain advisory. Validation is not a complete syntax check: inspect
+the rendered output too. Code fences are literal examples, not Remarp commands.
+
 **Rejection loop**: author → validate → if CRITICAL, fix and re-validate (up to 3 times) → otherwise review WARNINGs → build.
 
 **Verdict**: `❌ REJECT` (CRITICAL≥1, build forbidden) · `⚠️ REVIEW` (WARNING≥6) · `⚠️ PASS WITH WARNINGS` (1-5) · `✅ PASS`.

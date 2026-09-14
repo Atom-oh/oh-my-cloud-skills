@@ -41,6 +41,78 @@ class ArchifyBuildError(RuntimeError):
     """A :::archify block could not be built (missing/mispinned clone, bad spec, render failure)."""
 
 
+class RemarpInputError(ValueError):
+    """Invalid source or an ambiguous project/output identity."""
+
+
+def _json_for_script(value) -> str:
+    return json.dumps(value).replace('<', r'\u003c')
+
+
+def _fence_open(line: str):
+    match = re.match(r'^ {0,3}(`{3,}|~{3,})(.*)$', line)
+    if match and match[1][0] == '`' and '`' in match[2]:
+        return None
+    return match
+
+
+def _fence_close(line: str, fence: str) -> bool:
+    return bool(re.fullmatch(r' {0,3}' + re.escape(fence[0]) +
+                            '{' + str(len(fence)) + r',}\s*', line))
+
+
+def _mask_code_fences(text: str) -> Tuple[str, Dict[str, str]]:
+    """Protect complete fenced literals before processing Remarp directives."""
+    lines = text.splitlines(keepends=True)
+    output, literals = [], {}
+    prefix = '__REMARP_LITERAL_'
+    while prefix in text:
+        prefix += '_'
+    i = 0
+    while i < len(lines):
+        opener = _fence_open(lines[i].rstrip('\r\n'))
+        if not opener:
+            output.append(lines[i])
+            i += 1
+            continue
+        start = i
+        fence = opener.group(1)
+        i += 1
+        while i < len(lines):
+            closing = _fence_close(lines[i].rstrip('\r\n'), fence)
+            i += 1
+            if closing:
+                break
+        token = f'{prefix}{len(literals)}__'
+        literals[token] = ''.join(lines[start:i])
+        output.append(token + '\n')
+    return ''.join(output), literals
+
+
+def _restore_literals(text: str, literals: Dict[str, str]) -> str:
+    for token, content in literals.items():
+        text = text.replace(token, content.rstrip('\n'))
+    return text
+
+
+def _discover_sources(directory: Path) -> Dict[str, Path]:
+    """Canonical discovery shared by build, sync, validation and issue listing."""
+    sources = {}
+    for path in sorted(directory.glob('*.md')):
+        if path.name.startswith('_'):
+            continue
+        if not (path.name.endswith('.remarp.md') or
+                RemarpProjectBuilder._is_remarp_file(path)):
+            continue
+        name = path.name[:-10] if path.name.endswith('.remarp.md') else path.stem
+        if name in sources:
+            raise RemarpInputError(f'Duplicate block name "{name}": {sources[name]} and {path}')
+        if name in ('index', 'toc', 'common'):
+            raise RemarpInputError(f'Reserved block name "{name}" in {path}')
+        sources[name] = path
+    return sources
+
+
 # Lazy-loaded handle to the sibling archify_icons.py module (ADR-020). Loaded
 # by file path via importlib, never via `sys.path.insert` + bare `import` —
 # this module is imported from other places and run from arbitrary cwds, so a
@@ -255,6 +327,7 @@ class Slide:
     tab_blocks: List['ParsedBlock'] = field(default_factory=list)
     issues: List[str] = field(default_factory=list)
     archify_blocks: List[Dict[str, Any]] = field(default_factory=list)
+    source_index: Optional[int] = None
 
 
 @dataclass
@@ -337,7 +410,7 @@ class RemarpParser:
     LEGACY_BLOCK_PATTERN = re.compile(r'<!--\s*block:\s*(\w+)\s*-->')
 
     def __init__(self, md_content: str):
-        self.md_content = md_content
+        self.md_content = md_content.replace('\r\n', '\n').replace('\r', '\n')
         self.frontmatter: Dict[str, Any] = {}
         self.slides: List[Slide] = []
         self.blocks: Dict[str, List[Slide]] = {}
@@ -357,7 +430,8 @@ class RemarpParser:
             if not raw_slide:
                 continue
 
-            # Check for block marker (legacy)
+            # Legacy block markers inside code examples are also literals.
+            raw_slide, literals = _mask_code_fences(raw_slide)
             block_match = self.LEGACY_BLOCK_PATTERN.search(raw_slide)
             if block_match:
                 current_block = block_match.group(1)
@@ -365,6 +439,7 @@ class RemarpParser:
                 if not raw_slide:
                     continue
 
+            raw_slide = _restore_literals(raw_slide, literals)
             slide = self._parse_slide(raw_slide, slide_index)
             if slide:
                 if current_block not in self.blocks:
@@ -381,10 +456,15 @@ class RemarpParser:
             yaml_content = match.group(1)
             if HAS_YAML:
                 try:
-                    return yaml.safe_load(yaml_content) or {}
-                except yaml.YAMLError:
-                    return parse_yaml_simple(yaml_content)
+                    result = yaml.safe_load(yaml_content) or {}
+                except yaml.YAMLError as exc:
+                    raise RemarpInputError(f'Invalid YAML frontmatter: {exc}') from exc
+                if not isinstance(result, dict):
+                    raise RemarpInputError('Frontmatter must be a YAML mapping')
+                return result
             else:
+                if re.search(r'^[ \t]+\S|^[^#\n]+:\s*[{\[]', yaml_content, re.MULTILINE):
+                    raise RemarpInputError('Nested YAML requires PyYAML; install it with python3 -m pip install pyyaml')
                 return parse_yaml_simple(yaml_content)
         return {}
 
@@ -394,6 +474,8 @@ class RemarpParser:
         theme = fm.get('theme', {})
         if isinstance(theme, str):
             theme = {'source': theme}
+        if not isinstance(theme, dict):
+            raise RemarpInputError('theme must be a mapping or a source path')
 
         # footer: "text" → theme.footer
         if 'footer' in fm and 'footer' not in theme:
@@ -436,7 +518,8 @@ class RemarpParser:
         Filters out empty slides and comment-only slides that result from
         agents generating per-slide frontmatter blocks (---\\n@type:...\\n---).
         """
-        raw = re.split(r'\n---\s*\n', content)
+        masked, literals = _mask_code_fences(content)
+        raw = re.split(r'\n---[ \t]*\n', masked)
         cleaned = []
         for slide in raw:
             slide = slide.strip()
@@ -444,13 +527,15 @@ class RemarpParser:
             stripped = re.sub(r'<!--.*?-->', '', slide, flags=re.DOTALL).strip()
             if not stripped:
                 continue
-            cleaned.append(slide)
+            cleaned.append(_restore_literals(slide, literals))
         return cleaned
 
     def _parse_slide(self, md_text: str, index: int) -> Optional[Slide]:
         """Parse a single slide."""
         if not md_text.strip():
             return None
+
+        md_text, literals = _mask_code_fences(md_text)
 
         # Parse directives
         directives = self.parse_directives(md_text)
@@ -476,6 +561,18 @@ class RemarpParser:
         # Extracts ALL ::: blocks at once with Pandoc-style colon counting.
         # Replaces the old sequential regex extraction.
         md_text, all_blocks = self.parse_all_blocks_stack(md_text)
+
+        def restore_block(block):
+            block.content = _restore_literals(block.content, literals)
+            block.raw_content = _restore_literals(block.raw_content, literals)
+            for child in block.children:
+                restore_block(child)
+
+        for blocks_of_type in all_blocks.values():
+            for block in blocks_of_type:
+                restore_block(block)
+        if notes:
+            notes.content = _restore_literals(notes.content, literals)
 
         # -- Distribute extracted blocks to their handlers --
 
@@ -588,6 +685,9 @@ class RemarpParser:
                 f'<!-- __BLOCK:archify:{i}__ -->',
                 f'<!-- __ARCHIFY_BLOCK_{i}__ -->')
 
+        md_text, nested_literals = _mask_code_fences(md_text)
+        literals.update(nested_literals)
+
         # Extract {.reference}[text](url) patterns
         REFERENCE_PATTERN = re.compile(r'\{\.reference\}\[([^\]]+)\]\(([^)]+)\)')
         references = REFERENCE_PATTERN.findall(md_text)
@@ -595,6 +695,10 @@ class RemarpParser:
 
         # Detect slide type
         slide_type = self.detect_slide_type(md_text, directives, canvas_elements)
+        if (slide_type == SlideType.TITLE and not directives.get('type')
+                and not self.LEGACY_TYPE_PATTERN.search(md_text)
+                and any(token in md_text for token in literals)):
+            slide_type = SlideType.CONTENT
 
         # Parse legacy type params
         params = self._parse_legacy_params(md_text)
@@ -613,7 +717,7 @@ class RemarpParser:
 
         return Slide(
             slide_type=slide_type,
-            content=md_text.strip(),
+            content=_restore_literals(md_text.strip(), literals),
             directives=directives,
             notes=notes,
             fragments=fragments,
@@ -621,6 +725,7 @@ class RemarpParser:
             canvas_elements=canvas_elements,
             params=params,
             index=index,
+            source_index=index,
             css_overrides=css_overrides,
             references=references,
             html_blocks=html_blocks,
@@ -1576,8 +1681,21 @@ class RemarpHTMLGenerator:
             lambda m: f'<div class="slide{_theme_cls}{m.group(1)}" data-remarp-id="s{slide.index}"',
             html, count=1)
 
-        # Post-process: apply {.click} fragment wrappers to ALL slide types
+        # Code examples remain literal even during HTML fragment post-processing.
+        code_literals = {}
+        prefix = '__REMARP_PRE_'
+        while prefix in html:
+            prefix += '_'
+
+        def protect_pre(match):
+            token = f'{prefix}{len(code_literals)}__'
+            code_literals[token] = match.group(0)
+            return token
+
+        html = re.sub(r'<div class="code-block">.*?</div>|<pre\b[^>]*>.*?</pre>',
+                      protect_pre, html, flags=re.DOTALL)
         html = self.gen_fragment_wrappers(html, slide.fragments)
+        html = _restore_literals(html, code_literals)
 
         # Append reference links if present
         if slide.references:
@@ -1628,10 +1746,11 @@ class RemarpHTMLGenerator:
         # first (same derived id would silently alias it to the first diagram
         # via the render cache) — fold the block index in past the first.
         suffix = f'-{idx + 1}' if idx else ''
+        source_index = slide.source_index if slide.source_index is not None else slide.index
         if self.archify_source_name:
             stem = re.sub(r'[^A-Za-z0-9_-]', '-', self.archify_source_name)
-            return f'archify-{stem}-{slide.index + 1}{suffix}'
-        return f'archify-{slide.index + 1}{suffix}'
+            return f'archify-{stem}-{source_index + 1}{suffix}'
+        return f'archify-{source_index + 1}{suffix}'
 
     def _render_archify_block(self, slide: Slide, idx: int, blk: Dict[str, Any]) -> str:
         """Render one :::archify block to an icon-injected HTML file and
@@ -1975,12 +2094,14 @@ class RemarpHTMLGenerator:
                 continue
 
             # Check for fenced code blocks (```lang ... ```)
-            if line.startswith('```'):
-                lang_meta = line[3:].strip()  # e.g. "yaml {filename=...}" or "bash {highlight=...}"
+            fence_match = _fence_open(line)
+            if fence_match:
+                fence = fence_match.group(1)
+                lang_meta = fence_match.group(2).strip()
                 lang, filename, highlight = self._parse_code_meta(lang_meta)
                 code_lines = []
                 idx += 1
-                while idx < len(lines) and not lines[idx].startswith('```'):
+                while idx < len(lines) and not _fence_close(lines[idx], fence):
                     code_lines.append(lines[idx])
                     idx += 1
                 if idx < len(lines):
@@ -2946,7 +3067,7 @@ class RemarpHTMLGenerator:
 
     def _gen_content_slide(self, slide: Slide) -> str:
         """Generate content slide HTML."""
-        content = slide.content
+        content, literals = _mask_code_fences(slide.content)
         lines = content.split('\n')
 
         heading = ''
@@ -2964,7 +3085,7 @@ class RemarpHTMLGenerator:
         if slide.columns:
             body_html = self.gen_column_layout(slide.columns)
         else:
-            body_html = self._parse_body_content(body_lines)
+            body_html = self._parse_body_content(_restore_literals('\n'.join(body_lines), literals).split('\n'))
 
         header_html = f'<div class="slide-header" data-remarp-id="s{slide.index}-header"><h2>{heading}</h2></div>' if heading else ''
 
@@ -3154,7 +3275,7 @@ class RemarpHTMLGenerator:
 
     def _gen_canvas_slide(self, slide: Slide) -> str:
         """Generate canvas slide HTML."""
-        canvas_id = slide.params.get('canvas_id', f'canvas-{self.canvas_counter}')
+        canvas_id = slide.params.get('canvas_id', f'canvas-{slide.index}')
         self.canvas_counter += 1
 
         content = slide.content
@@ -3259,7 +3380,7 @@ class RemarpHTMLGenerator:
         quiz_html_parts = []
         for question, options in quizzes:
             self.quiz_counter += 1
-            quiz_id = f'q{self.quiz_counter}'
+            quiz_id = f's{slide.index}-q{self.quiz_counter}'
 
             options_html = '\n'.join(
                 f'<button class="quiz-option" data-correct="{str(correct).lower()}">{text}</button>'
@@ -3288,25 +3409,28 @@ class RemarpHTMLGenerator:
 
         heading = ''
         code_blocks = []
-        in_code = False
+        fence = ''
         current_code = []
         current_lang = ''
         current_fname = ''
         current_highlight = ''
 
         for line in lines:
-            if line.startswith('## '):
-                heading = self._convert_markdown(line[3:].strip())
-            elif line.startswith('```'):
-                if in_code:
+            if fence:
+                if _fence_close(line, fence):
                     code_blocks.append((current_lang, current_fname, current_highlight, '\n'.join(current_code)))
                     current_code = []
-                    in_code = False
+                    fence = ''
                 else:
-                    current_lang, current_fname, current_highlight = self._parse_code_meta(line[3:].strip())
-                    in_code = True
-            elif in_code:
-                current_code.append(line)
+                    current_code.append(line)
+            elif line.startswith('## '):
+                heading = self._convert_markdown(line[3:].strip())
+            elif _fence_open(line):
+                opener = _fence_open(line)
+                fence = opener.group(1)
+                current_lang, current_fname, current_highlight = self._parse_code_meta(opener.group(2).strip())
+        if fence:
+            code_blocks.append((current_lang, current_fname, current_highlight, '\n'.join(current_code)))
 
         # Generate highlighted code blocks
         code_html_parts = []
@@ -3994,13 +4118,10 @@ class RemarpHTMLGenerator:
                   source_file: str = '', block_name: str = '') -> str:
         """Wrap slides in full HTML template with key config injection."""
         # Build notes JavaScript
-        def escape_js(s):
-            return s.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
-
         notes_entries = []
         for idx, note in notes.items():
             note_text = self.gen_notes_with_cues(note)
-            notes_entries.append(f'{idx + 1}: "{escape_js(note_text)}"')
+            notes_entries.append(f'{idx + 1}: {_json_for_script(note_text)}')
 
         notes_js = ',\n    '.join(notes_entries)
         notes_block = f'const presenterNotes = {{\n    {notes_js}\n  }};' if notes else 'const presenterNotes = {};'
@@ -4009,7 +4130,7 @@ class RemarpHTMLGenerator:
         key_config = config.get('keys', {})
         key_config_js = ''
         if key_config:
-            key_config_js = f'window.__remarpKeys = {json.dumps(key_config)};'
+            key_config_js = f'window.__remarpKeys = {_json_for_script(key_config)};'
 
         # Theme paths - check config for theme directory (set by RemarpProjectBuilder)
         # Assets are copied to output_dir/common/pptx-theme/ by _copy_theme_assets_to_output()
@@ -4048,9 +4169,9 @@ class RemarpHTMLGenerator:
 
         # Optional dark-slide logo (white/light logo shown on theme-dark slides).
         logo_dark = config.get('logoDark', '') or theme_cfg.get('logoDark', '')
-        logo_js = f"logoSrc: '{logo_src}'," if logo_src else ''
-        logo_dark_js = f"logoDarkSrc: '{logo_dark}'," if logo_dark else ''
-        footer_js = f"footer: '{footer}'," if footer else ''
+        logo_js = f"logoSrc: {_json_for_script(logo_src)}," if logo_src else ''
+        logo_dark_js = f"logoDarkSrc: {_json_for_script(logo_dark)}," if logo_dark else ''
+        footer_js = f"footer: {_json_for_script(footer)}," if footer else ''
         pagination_js = f"pagination: {'true' if pagination else 'false'},"
 
         # Canvas deferred scripts (must load after animation-utils.js)
@@ -4084,7 +4205,7 @@ class RemarpHTMLGenerator:
             }
             if theme_slide_size:
                 theme_data['slideSize'] = theme_slide_size
-            theme_js = f'<script>window.__remarpTheme = {json.dumps(theme_data)};</script>'
+            theme_js = f'<script>window.__remarpTheme = {_json_for_script(theme_data)};</script>'
 
         # Global Marp-compat styles (backgroundColor, color, header)
         global_styles = []
@@ -4124,7 +4245,7 @@ class RemarpHTMLGenerator:
 
         # Header text (Marp-compat)
         header_text = config.get('_header', '')
-        header_js = f"header: '{header_text}'," if header_text else ''
+        header_js = f"header: {_json_for_script(header_text)}," if header_text else ''
 
         remarp_version = config.get('version', '1')
         remarp_meta = f'''  <meta name="generator" content="remarp">
@@ -4182,14 +4303,18 @@ class RemarpProjectBuilder:
         self.main_config: Dict[str, Any] = {}
         self.theme_dir: Optional[Path] = None
         self.theme_manifest: Dict[str, Any] = {}
+        self.lang_override: Optional[str] = None
 
     @staticmethod
     def _is_remarp_file(path: Path) -> bool:
         """Check if a .md file has remarp: true in frontmatter."""
         try:
             with open(path, 'r', encoding='utf-8') as f:
-                content = f.read(500)  # frontmatter only
-            return bool(re.match(r'^---\s*\n.*?remarp:\s*true', content, re.DOTALL))
+                content = f.read()
+            front = re.match(r'^---\s*\n(.*?)\n---', content, re.DOTALL)
+            return bool(front and re.search(
+                r'''^remarp:\s*(?:true|"true"|'true')\s*(?:#.*)?$''',
+                front.group(1), re.MULTILINE))
         except (OSError, UnicodeDecodeError):
             return False
 
@@ -4212,22 +4337,7 @@ class RemarpProjectBuilder:
         # Process theme configuration
         self._process_theme_config()
 
-        # Find block files: .md with remarp: true in frontmatter
-        for md_file in sorted(self.project_dir.glob('*.md')):
-            if md_file.name.startswith('_'):
-                continue
-            if not self._is_remarp_file(md_file):
-                continue  # skip regular .md files (README.md, etc.)
-            block_name = md_file.stem
-            self.blocks[block_name] = md_file
-
-        # Fallback: also check *.remarp.md (backward compat, no validation needed)
-        for md_file in sorted(self.project_dir.glob('*.remarp.md')):
-            if md_file.name.startswith('_'):
-                continue
-            block_name = md_file.stem.replace('.remarp', '')
-            if block_name not in self.blocks:
-                self.blocks[block_name] = md_file
+        self.blocks = _discover_sources(self.project_dir)
 
         return bool(self.blocks)
 
@@ -4685,7 +4795,7 @@ class RemarpProjectBuilder:
             parser = RemarpParser(content)
             config, blocks = parser.parse()
             merged_config = {**self.main_config, **config}
-            lang = merged_config.get('lang', 'ko')
+            lang = self.lang_override or merged_config.get('lang', 'ko')
 
             html_gen = RemarpHTMLGenerator(lang=lang, output_dir=str(self.output_dir))
             if self.theme_dir:
@@ -4695,6 +4805,9 @@ class RemarpProjectBuilder:
 
             for internal_name, slides in blocks.items():
                 for slide in slides:
+                    # Local source indices restart in each block. Output identities
+                    # and CSS selectors must instead be unique in the merged deck.
+                    slide.index = slide_offset
                     slide_html = html_gen.slide_to_html(slide)
 
                     # Check mermaid
@@ -4734,7 +4847,7 @@ class RemarpProjectBuilder:
         if self.theme_dir:
             merged_config['_theme_dir'] = str(self.theme_dir)
 
-        lang = merged_config.get('lang', 'ko')
+        lang = self.lang_override or merged_config.get('lang', 'ko')
         html_gen = RemarpHTMLGenerator(lang=lang, output_dir=str(self.output_dir))
         if self.theme_dir:
             html_gen.theme_dir = str(self.theme_dir)
@@ -4757,7 +4870,11 @@ class RemarpProjectBuilder:
         if block_name not in self.blocks:
             return None
 
+        self._copy_theme_assets_to_output()
+        self._copy_framework_assets()
         output_path = self._build_block_file(block_name, self.blocks[block_name])
+        if output_path:
+            self._copy_referenced_icons([str(path) for path in self.output_dir.glob('*.html')])
         return str(output_path) if output_path else None
 
     def _build_block_file(self, block_name: str, block_path: Path) -> Optional[Path]:
@@ -4772,32 +4889,22 @@ class RemarpProjectBuilder:
         merged_config = {**self.main_config, **config}
 
         # Determine language
-        lang = merged_config.get('lang', 'ko')
+        lang = self.lang_override or merged_config.get('lang', 'ko')
 
         html_gen = RemarpHTMLGenerator(lang=lang, output_dir=str(self.output_dir))
         html_gen.archify_source_dir = str(block_path.parent)
         html_gen.archify_source_name = block_path.stem
 
-        # Generate HTML for each internal block
-        for internal_block_name, slides in blocks.items():
-            html_content = html_gen.generate_block(internal_block_name, slides, merged_config,
-                                                       source_file=block_path.name)
-
-            # Output filename
-            if internal_block_name == 'default':
-                output_name = f'{block_name}.html'
-            else:
-                output_name = f'{block_name}-{internal_block_name}.html'
-
-            output_path = self.output_dir / output_name
-            self.output_dir.mkdir(parents=True, exist_ok=True)
-
-            with open(output_path, 'w', encoding='utf-8') as f:
-                f.write(html_content)
-
-            return output_path
-
-        return None
+        slides = [slide for group in blocks.values() for slide in group]
+        if not slides:
+            return None
+        html_content = html_gen.generate_block(block_name, slides, merged_config,
+                                              source_file=block_path.name)
+        output_path = self.output_dir / f'{block_name}.html'
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        return output_path
 
     def detect_changes(self) -> List[str]:
         """Compare .remarp.md mtime vs .html mtime, return changed blocks."""
@@ -4999,36 +5106,62 @@ def validate_presentation(input_path: Path, json_output: bool = False) -> List[D
     6. Content overflow (too many items per slide)
     7. Missing @type directives on specialized slides
     """
-    md_files: List[Path] = []
-    if input_path.is_file():
-        md_files = [input_path]
-    elif input_path.is_dir():
-        md_files = sorted(input_path.glob('*.md')) + sorted(input_path.glob('*.remarp.md'))
-        # Exclude _presentation.md from content validation
-        md_files = [f for f in md_files if f.name != '_presentation.md']
-    else:
-        print(f'Error: {input_path} not found')
-        return []
-
     all_findings: List[Dict[str, Any]] = []
 
-    # Validate global frontmatter (_presentation.md)
-    if input_path.is_dir():
-        pres_file = input_path / '_presentation.md'
-        if pres_file.exists():
-            all_findings.extend(_validate_global_frontmatter(pres_file))
+    def invalid(path, rule, message):
+        all_findings.append({
+            'file': str(path), 'block': '_input', 'slide': 0, 'title': path.name,
+            'severity': 'CRITICAL', 'rule': rule, 'message': message,
+            'fix': 'Correct the source and run validation again',
+        })
 
+    md_files: List[Path] = []
+    try:
+        if input_path.is_file():
+            md_files = [input_path]
+        elif input_path.is_dir():
+            md_files = list(_discover_sources(input_path).values())
+            main = input_path / '_presentation.md'
+            if not main.exists():
+                main = input_path / '_presentation.remarp.md'
+            if main.exists():
+                with open(main, encoding='utf-8') as source:
+                    RemarpParser(source.read()).parse()
+                all_findings.extend(_validate_global_frontmatter(main))
+        else:
+            invalid(input_path, 'INPUT_NOT_FOUND', f'{input_path} not found')
+    except (ValueError, OSError, UnicodeError) as exc:
+        invalid(input_path, 'INVALID_INPUT', str(exc))
+
+    if not md_files and not any(f['severity'] == 'CRITICAL' for f in all_findings):
+        invalid(input_path, 'NO_SOURCES', 'No Remarp source files found')
+
+    merged_canvas_ids = set()
+    total_slides = 0
     for md_file in md_files:
-        with open(md_file, 'r', encoding='utf-8') as f:
-            content = f.read()
-
-        rp = RemarpParser(content)
-        _config, blocks = rp.parse()
-
-        for block_name, slides in blocks.items():
-            for slide in slides:
-                findings = _validate_slide(slide, md_file, block_name)
-                all_findings.extend(findings)
+        try:
+            with open(md_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            _config, blocks = RemarpParser(content).parse()
+            local_canvas_ids = set()
+            file_slide_count = 0
+            for block_name, slides in blocks.items():
+                for slide in slides:
+                    all_findings.extend(_validate_slide(slide, md_file, block_name))
+                    if slide.slide_type == SlideType.CANVAS:
+                        local_id = slide.params.get('canvas_id', f'canvas-{slide.index}')
+                        merged_id = slide.params.get('canvas_id', f'canvas-{total_slides}')
+                        if local_id in local_canvas_ids or merged_id in merged_canvas_ids:
+                            invalid(md_file, 'DUPLICATE_CANVAS_ID',
+                                    f'Duplicate canvas ID "{local_id}" (merged: "{merged_id}")')
+                        local_canvas_ids.add(local_id)
+                        merged_canvas_ids.add(merged_id)
+                    total_slides += 1
+                    file_slide_count += 1
+            if not file_slide_count:
+                invalid(md_file, 'NO_SLIDES', 'Source has no slides')
+        except (ValueError, TypeError, OSError, UnicodeError) as exc:
+            invalid(md_file, 'INVALID_SOURCE', str(exc))
 
     if json_output:
         import json as json_mod
@@ -5043,7 +5176,7 @@ def validate_presentation(input_path: Path, json_output: bool = False) -> List[D
 def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[str, Any]]:
     """Run all validation checks on a single slide."""
     findings: List[Dict[str, Any]] = []
-    md = slide.content
+    md, _literals = _mask_code_fences(slide.content)
     title_match = re.match(r'^#+\s+(.+)', md)
     title = title_match.group(1) if title_match else f'(slide {slide.index + 1})'
 
@@ -5432,10 +5565,10 @@ def main():
     build_parser.add_argument('path', help='Input file or project directory')
     build_parser.add_argument('-o', '--output', help='Output directory')
     build_parser.add_argument('--block', help='Build only specific block')
-    build_parser.add_argument('--lang', default='ko', choices=['ko', 'en'], help='Language')
+    build_parser.add_argument('--lang', choices=['ko', 'en'], help='Override source language')
 
     # Sync command
-    sync_parser = subparsers.add_parser('sync', help='Diff-based rebuild')
+    sync_parser = subparsers.add_parser('sync', help='Rebuild source and all dependent presentation output')
     sync_parser.add_argument('path', help='Project directory')
     sync_parser.add_argument('-o', '--output', help='Output directory')
 
@@ -5456,6 +5589,11 @@ def main():
 
     args = parser.parse_args()
 
+    if args.command in ('build', 'sync'):
+        findings = validate_presentation(Path(args.path))
+        if any(f['severity'] == 'CRITICAL' for f in findings):
+            return 1
+
     if args.command == 'build':
         try:
             input_path = Path(args.path)
@@ -5471,10 +5609,16 @@ def main():
                 output_dir = Path(args.output) if args.output else input_path.parent / 'slides'
                 output_dir.mkdir(parents=True, exist_ok=True)
 
-                html_gen = RemarpHTMLGenerator(lang=args.lang, output_dir=str(output_dir))
+                assets = RemarpProjectBuilder(str(input_path.parent), str(output_dir))
+                assets.main_config = config
+                assets._process_theme_config()
+                assets._copy_theme_assets_to_output()
+                assets._copy_framework_assets()
+                html_gen = RemarpHTMLGenerator(lang=args.lang or config.get('lang', 'ko'), output_dir=str(output_dir))
                 html_gen.archify_source_dir = str(input_path.parent)
                 html_gen.archify_source_name = input_path.stem
 
+                built = []
                 for block_name, slides in blocks.items():
                     html_content = html_gen.generate_block(block_name, slides, config,
                                                            source_file=input_path.name)
@@ -5483,8 +5627,10 @@ def main():
                     with open(output_file, 'w', encoding='utf-8') as f:
                         f.write(html_content)
 
+                    built.append(str(output_file))
                     print(f'Generated: {output_file}')
 
+                assets._copy_referenced_icons([str(path) for path in output_dir.glob('*.html')])
                 print(f'\nBuild complete. {len(blocks)} block(s) generated.')
 
             elif input_path.is_dir():
@@ -5493,101 +5639,105 @@ def main():
 
                 if not builder.load_project():
                     print(f'Error: No .md or .remarp.md files found in {input_path}')
-                    return
+                    return 2
 
+                if args.lang:
+                    builder.lang_override = args.lang
+                    builder.main_config['lang'] = args.lang
                 if args.block:
                     output = builder.build_block(args.block)
                     if output:
                         print(f'Generated: {output}')
                     else:
-                        print(f'Error: Block "{args.block}" not found')
+                        print(f'Error: Block "{args.block}" not found', file=sys.stderr)
+                        return 2
                 else:
                     built = builder.build_all()
                     for f in built:
                         print(f'Generated: {f}')
                     print(f'\nBuild complete. {len(built)} file(s) generated.')
-        except ArchifyBuildError as e:
+        except (ArchifyBuildError, RemarpInputError, OSError) as e:
             print(f'ERROR: {e}', file=sys.stderr)
             sys.exit(1)
 
     elif args.command == 'sync':
-        builder = RemarpProjectBuilder(args.path, args.output)
-
-        if not builder.load_project():
-            print(f'Error: No .md or .remarp.md files found in {args.path}')
-            return
-
-        changed = builder.detect_changes()
-
-        if not changed:
-            print('No changes detected.')
-            return
-
-        print(f'Detected changes in: {", ".join(changed)}')
-
-        for block_name in changed:
-            output = builder.build_block(block_name)
-            if output:
-                print(f'Rebuilt: {output}')
-
-        print(f'\nSync complete. {len(changed)} block(s) rebuilt.')
+        # Markdown mtimes cannot describe global config, referenced specs, removed
+        # blocks or framework changes. Regenerate all dependencies until a cache
+        # with that contract is implemented and tested.
+        try:
+            builder = RemarpProjectBuilder(args.path, args.output)
+            if not builder.load_project():
+                return 2
+            built = builder.build_all()
+            print(f'Sync complete. {len(built)} file(s) rebuilt, including index and TOC.')
+        except (ArchifyBuildError, RemarpInputError, OSError) as exc:
+            print(f'ERROR: {exc}', file=sys.stderr)
+            return 1
 
     elif args.command == 'issues':
-        input_path = Path(args.path)
-        all_issues: List[Dict[str, Any]] = []
+        try:
+            input_path = Path(args.path)
+            all_issues: List[Dict[str, Any]] = []
 
-        # Collect .md / .remarp.md files
-        md_files: List[Path] = []
-        if input_path.is_file():
-            md_files = [input_path]
-        elif input_path.is_dir():
-            md_files = sorted(input_path.glob('**/*.md')) + sorted(input_path.glob('**/*.remarp.md'))
-        else:
-            print(f'Error: {input_path} not found')
-            return
+            # Collect .md / .remarp.md files
+            md_files: List[Path] = []
+            if input_path.is_file():
+                md_files = [input_path]
+            elif input_path.is_dir():
+                md_files = list(_discover_sources(input_path).values())
+            else:
+                raise RemarpInputError(f'{input_path} not found')
 
-        for md_file in md_files:
-            with open(md_file, 'r', encoding='utf-8') as f:
-                content = f.read()
-            rp = RemarpParser(content)
-            _config, blocks = rp.parse()
-            for block_name, slides in blocks.items():
-                for slide in slides:
-                    if slide.issues:
-                        # Extract first heading as slide title
-                        title_match = re.match(r'^#+\s+(.+)', slide.content)
-                        title = title_match.group(1) if title_match else f'(slide {slide.index + 1})'
-                        for issue_text in slide.issues:
-                            all_issues.append({
-                                'file': str(md_file),
-                                'block': block_name,
-                                'slide': slide.index + 1,
-                                'title': title,
-                                'issue': issue_text,
-                            })
+            for md_file in md_files:
+                with open(md_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                rp = RemarpParser(content)
+                _config, blocks = rp.parse()
+                for block_name, slides in blocks.items():
+                    for slide in slides:
+                        if slide.issues:
+                            # Extract first heading as slide title
+                            title_match = re.match(r'^#+\s+(.+)', slide.content)
+                            title = title_match.group(1) if title_match else f'(slide {slide.index + 1})'
+                            for issue_text in slide.issues:
+                                all_issues.append({
+                                    'file': str(md_file),
+                                    'block': block_name,
+                                    'slide': slide.index + 1,
+                                    'title': title,
+                                    'issue': issue_text,
+                                })
 
-        if not all_issues:
-            print('No issues found.')
-            return
+            if not all_issues:
+                print('[]' if args.json_output else 'No issues found.')
+                return
 
-        if args.json_output:
-            import json as json_mod
-            print(json_mod.dumps(all_issues, ensure_ascii=False, indent=2))
-        else:
-            current_file = ''
-            for item in all_issues:
-                if item['file'] != current_file:
-                    current_file = item['file']
-                    print(f'\n## {current_file}')
-                print(f'  [{item["block"]}] Slide {item["slide"]} "{item["title"]}"')
-                print(f'    → {item["issue"]}')
-            print(f'\nTotal: {len(all_issues)} issue(s) across {len(md_files)} file(s).')
+            if args.json_output:
+                import json as json_mod
+                print(json_mod.dumps(all_issues, ensure_ascii=False, indent=2))
+            else:
+                current_file = ''
+                for item in all_issues:
+                    if item['file'] != current_file:
+                        current_file = item['file']
+                        print(f'\n## {current_file}')
+                    print(f'  [{item["block"]}] Slide {item["slide"]} "{item["title"]}"')
+                    print(f'    → {item["issue"]}')
+                print(f'\nTotal: {len(all_issues)} issue(s) across {len(md_files)} file(s).')
+
+        except (ValueError, OSError, UnicodeError) as exc:
+            if args.json_output:
+                print(json.dumps({'error': str(exc)}, ensure_ascii=False))
+            else:
+                print(f'ERROR: {exc}', file=sys.stderr)
+            return 2
 
     elif args.command == 'validate':
         input_path = Path(args.path)
         findings = validate_presentation(input_path, json_output=args.json_output)
         if not findings and not args.json_output:
             print('\n✅ All slides passed validation.')
+        return 1 if any(f['severity'] == 'CRITICAL' for f in findings) else 0
 
     elif args.command == 'migrate':
         migrated = migrate_marp_to_remarp(args.marp_file, args.output)
@@ -5600,4 +5750,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
