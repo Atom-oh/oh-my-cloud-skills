@@ -54,7 +54,8 @@ Open the extension project in VS Code and launch the Extension Development Host,
 
 | Command ID | Function |
 | --- | --- |
-| `remarp.preview` | Open preview |
+| `remarp.preview` | Open approximate text preview |
+| `remarp.previewCompiled` | Save, build and preview compiled HTML |
 | `remarp.nextSlide` | Move to next slide |
 | `remarp.prevSlide` | Move to previous slide |
 | `remarp.build` | Build HTML |
@@ -75,10 +76,10 @@ The manifest registers Ctrl/Cmd+Shift+Right and Left for slide navigation, and C
 
 Preview includes notes and slide-specific issue annotations. `<!-- issue: ... -->` records a repair request for slide-fix. Edit the Markdown/CSS/Canvas source, rebuild, and inspect the generated HTML in a browser.
 
-The repository contains visual-edit/writeback and HTML-preview helper classes, but the current registered preview/build commands do not wire them in. There is no registered Visual Edit command or shortcut; do not treat those helper files as an available editing workflow.
+Compiled preview uses the generated HTML and shared runtime/assets, with no Visual Edit controls or writeback. Re-run the command after source changes; the approximate text preview updates as you type.
 
 ## Boundaries {#boundaries}
 
-The registered language extension is `.remarp.md`. The extension also detects `.md` documents with `remarp: true` and switches them to the Remarp editor language on activation, open, or save, enabling its menus, shortcuts, and outline. Preview rendering and the production HTML builder are separate paths. Validate the final generated deck in a browser rather than treating preview success as complete production verification.
+The extension recognizes `.remarp.md`, `_presentation.md`, `_presentation.remarp.md`, and `.md` with `remarp: true`. Builds save dirty project sources and build the directory beside a presentation marker, opening `index.html`; standalone source opens `slides/default.html`. Failed saves/builds show errors and stop compiled preview. Builds and preview scripts require workspace trust. Preview, outline and navigation ignore separators inside code fences. Validate final browser behavior separately.
 
 [Commands, settings, and keybindings](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/tools/remarp-vscode/package.json) · [Editor implementation](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/tools/remarp-vscode/src/)

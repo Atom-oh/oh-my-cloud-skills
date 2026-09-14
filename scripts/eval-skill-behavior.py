@@ -23,6 +23,7 @@ import tempfile
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -345,14 +346,48 @@ class HTMLPatternScorer(Scorer):
         })
 
 
+class SlideParser(HTMLParser):
+    """Count slide elements, excluding comments, raw text and inert templates."""
+
+    def __init__(self):
+        super().__init__()
+        self.slides = 0
+        self.template_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'template':
+            self.template_depth += 1
+        if (not self.template_depth and tag in ('section', 'div')
+                and 'slide' in (dict(attrs).get('class') or '').split()):
+            self.slides += 1
+
+    def handle_endtag(self, tag):
+        if tag == 'template' and self.template_depth:
+            self.template_depth -= 1
+
+
 class BuildScorer(Scorer):
-    """Verify remarp build succeeds without warnings."""
+    """Require Remarp source and fresh compiled slides; penalize warnings."""
 
     def name(self) -> str:
         return 'build_check'
 
+    @staticmethod
+    def _is_source(path: Path) -> bool:
+        if not path.is_file() or path.name.startswith('_'):
+            return False
+        if path.name.endswith('.remarp.md'):
+            return True
+        try:
+            source = path.read_text(encoding='utf-8')
+        except (OSError, UnicodeDecodeError):
+            return False
+        header = re.match(r'\A---[ \t]*\n(.*?)\n---[ \t]*(?:\n|$)', source, re.DOTALL)
+        return bool(header and re.search(
+            r'^remarp:[ \t]*true[ \t]*(?:#.*)?$', header[1], re.MULTILINE))
+
     def run(self, work_dir: Path, config: Dict[str, Any]) -> ScorerResult:
-        project_dir = work_dir / config.get('project_dir', '.')
+        project_dir = (work_dir / config.get('project_dir', '.')).resolve()
 
         # Find remarp_to_slides.py
         script = Path(__file__).parent.parent / \
@@ -363,33 +398,37 @@ class BuildScorer(Scorer):
                 'error': f'build script not found: {script}'
             })
 
-        # Check if there are markdown files to build
-        md_files = list(project_dir.glob('*.md'))
-        if not md_files:
-            # No source to build — if HTML already exists, pass
-            html_files = list(project_dir.glob('*.html'))
-            if html_files:
-                return ScorerResult(self.name(), 80, 100, {
-                    'note': 'no .md source files, but HTML exists (pre-built)'
-                })
-            return ScorerResult(self.name(), 0, 100, {'error': 'no .md files to build'})
+        if not any(self._is_source(path) for path in project_dir.glob('*.md')):
+            return ScorerResult(self.name(), 0, 100, {'error': 'no Remarp source to build'})
 
         try:
-            result = subprocess.run(
-                [sys.executable, str(script), 'build', str(project_dir)],
-                capture_output=True, text=True, timeout=60, cwd=str(project_dir)
-            )
+            # A clean destination proves generation without deleting or trusting
+            # the submitted HTML used by the other scorers.
+            with tempfile.TemporaryDirectory(prefix='eval-build-') as output:
+                result = subprocess.run(
+                    [sys.executable, str(script), 'build', str(project_dir), '--output', output],
+                    capture_output=True, text=True, timeout=60, cwd=str(project_dir)
+                )
+                slides = 0
+                for html in Path(output).glob('*.html'):
+                    parser = SlideParser()
+                    parser.feed(html.read_text(encoding='utf-8', errors='replace'))
+                    parser.close()
+                    slides += parser.slides
         except subprocess.TimeoutExpired:
             return ScorerResult(self.name(), 0, 100, {'error': 'build timed out'})
         except OSError as e:
             return ScorerResult(self.name(), 0, 100, {'error': str(e)})
 
         score = 100
-        details: Dict[str, Any] = {'returncode': result.returncode}
+        details: Dict[str, Any] = {'returncode': result.returncode, 'slides': slides}
 
         if result.returncode != 0:
             score = 0
             details['stderr'] = result.stderr[:500]
+        elif not slides:
+            score = 0
+            details['error'] = 'build produced no slide elements'
         else:
             # Check for warnings
             warnings = [l for l in result.stderr.split('\n')
@@ -628,7 +667,7 @@ class EvalRunner:
                     for cmd in case.setup:
                         if self.verbose:
                             print(f'  SETUP: {cmd}', file=sys.stderr)
-                        subprocess.run(cmd, shell=True, cwd=str(self.project_root), timeout=30)
+                        subprocess.run(cmd, shell=True, cwd=str(work_dir), timeout=30)
 
             if self.dry_run:
                 return {
@@ -654,6 +693,10 @@ class EvalRunner:
 
             total = sum(r.score for r in scorer_results)
             max_total = sum(r.max_score for r in scorer_results)
+            build_failed = any(r.name == 'build_check' and r.score == 0
+                               for r in scorer_results)
+            if build_failed:
+                total = 0
 
             return {
                 'case': case.name,
@@ -662,6 +705,7 @@ class EvalRunner:
                 'scorer_results': scorer_results,
                 'total_score': total,
                 'max_score': max_total,
+                'build_failed': build_failed,
             }
         finally:
             if not self.verbose:
@@ -728,7 +772,9 @@ def format_report(results: List[Dict[str, Any]], threshold: int) -> str:
         max_total = r['max_score']
         pct = int((total / max_total) * 100) if max_total > 0 else 0
 
-        if pct >= threshold:
+        if r.get('build_failed'):
+            status = 'FAIL'
+        elif pct >= threshold:
             status = 'PASS'
         elif pct >= 70:
             status = 'REVIEW'
@@ -852,7 +898,7 @@ def main():
         sys.exit(0)
 
     has_fail = any(
-        r.get('max_score', 0) > 0 and
+        r.get('build_failed') or r.get('max_score', 0) > 0 and
         int((r['total_score'] / r['max_score']) * 100) < args.threshold
         for r in results
     )

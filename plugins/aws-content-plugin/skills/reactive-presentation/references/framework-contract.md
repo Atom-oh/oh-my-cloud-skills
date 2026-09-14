@@ -1,6 +1,6 @@
-# Framework Contract — HTML-First Deck Authoring
+# Framework Contract — Generated HTML and Advanced Source Blocks
 
-This document **replaces the compiler**: instead of Remarp syntax, Claude reads this contract and the golden example at `assets/example-deck/`, then writes slide HTML directly.
+This document describes the renderer contract used by the Remarp compiler and by advanced `:::html`/`:::script` source blocks. New decks are authored in Remarp and compiled; do not independently edit their generated HTML. The skeleton below also supports explicitly requested legacy/manual HTML decks, with `assets/example-deck/` as a reference.
 Everything here is derived from the actual code in `assets/` — if this document disagrees with the code, that's a bug (`tests/structure/test-reactive-design-tokens.sh` enforces token coverage).
 
 ## 1. Deck Skeleton (required DOM)
@@ -253,8 +253,7 @@ Auto-initialized. `quizManager.reset(id)/resetAll()/getScore()`.
 
 - Official icons are required (for architecture/service-introduction slides) — no arbitrary artwork.
 - Path: `common/aws-icons/services/Arch_{Service}_48.svg`, etc.
-- `scripts/deck_assets.py` copies only referenced icons into `common/aws-icons/`
-  and reports any unresolved names. (Never copy all 811.)
+- `scripts/remarp_to_slides.py build` copies referenced official icons into `common/aws-icons/`; source validation reports unknown Canvas icon names. (Never copy all 811.)
 
 ## 10. Authoring Rules (summary — see design-direction.md for detail)
 
@@ -262,7 +261,7 @@ Auto-initialized. `quizManager.reset(id)/resetAll()/getScore()`.
 - Spacing: 8px grid tokens only (OFF_SCALE).
 - 4+ bullets → card grid; 8+ → split into multiple slides.
 - Title: ≤28-character headline (declarative/claim/question/twist); subtitle: noun-form ending, ≤45 characters.
-- Every content slide needs a `<template class="notes">` of 150+ characters.
+- Every content slide needs `:::notes` in Remarp source (150+ characters recommended). Manual HTML can use `<template class="notes">`.
 - Light is the default of a dual theme — dark-only is forbidden. Every color must work in both themes.
 - Minimize deck-local `<style>`; when a rule is generalizable, patch it into the skill's
   `assets/theme.css` and bump the framework version (no per-deck reinvention — check_deck.py warns on duplication).

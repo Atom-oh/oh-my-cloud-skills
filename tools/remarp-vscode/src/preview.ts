@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import { slideStarts } from './source';
 
 
 interface Slide {
@@ -30,7 +31,7 @@ export class RemarpPreviewPanel {
         if (RemarpPreviewPanel.currentPanel) {
             RemarpPreviewPanel.currentPanel._panel.reveal(column);
             RemarpPreviewPanel.currentPanel._document = document;
-            RemarpPreviewPanel.currentPanel._panel.title = `Remarp Preview - ${path.basename(document.uri.fsPath)}`;
+            RemarpPreviewPanel.currentPanel._panel.title = `Remarp Approximate Text Preview - ${path.basename(document.uri.fsPath)}`;
             RemarpPreviewPanel.currentPanel._updateContent();
             return;
         }
@@ -51,10 +52,10 @@ export class RemarpPreviewPanel {
         const fileName = path.basename(document.uri.fsPath);
         const panel = vscode.window.createWebviewPanel(
             RemarpPreviewPanel.viewType,
-            `Remarp Preview - ${fileName}`,
+            `Remarp Approximate Text Preview - ${fileName}`,
             column,
             {
-                enableScripts: true,
+                enableScripts: vscode.workspace.isTrusted,
                 localResourceRoots: roots,
                 retainContextWhenHidden: true
             }
@@ -154,6 +155,7 @@ export class RemarpPreviewPanel {
     private _parseSlides(): Slide[] {
         const text = this._document.getText();
         const lines = text.split('\n');
+        const separators = new Set(slideStarts(text).slice(1).map(line => line - 1));
         const slides: Slide[] = [];
 
         let currentSlideStart = 0;
@@ -174,7 +176,7 @@ export class RemarpPreviewPanel {
         }
 
         for (let i = currentSlideStart; i < lines.length; i++) {
-            if (lines[i].trim() === '---') {
+            if (separators.has(i)) {
                 // End current slide
                 const slideContent = lines.slice(currentSlideStart, i).join('\n');
                 if (slideContent.trim()) {
@@ -328,11 +330,12 @@ export class RemarpPreviewPanel {
 
         for (let i = slide.startLine; i <= slide.endLine; i++) {
             const line = lines[i];
-            const issueMatch = line.match(/<!--\s*issue:\s*(.+?)\s*-->/);
-            if (issueMatch && issueMatch[1].trim() === issueText.trim()) {
+            const issueMatch = [...line.matchAll(/<!--\s*issue:\s*(.+?)\s*-->/g)]
+                .find(match => match[1].trim() === issueText.trim());
+            if (issueMatch) {
                 const range = new vscode.Range(
-                    new vscode.Position(i, 0),
-                    new vscode.Position(i + 1, 0)
+                    new vscode.Position(i, issueMatch.index!),
+                    new vscode.Position(i, issueMatch.index! + issueMatch[0].length)
                 );
                 edit.delete(this._document.uri, range);
                 break;
