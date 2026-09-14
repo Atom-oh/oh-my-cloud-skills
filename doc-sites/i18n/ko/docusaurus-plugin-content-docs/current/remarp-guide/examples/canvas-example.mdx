@@ -70,20 +70,20 @@ box client "Client" at 30,150 size 80,40 color #232F3E step 1
 
 # Step 2: API Gateway receives requests
 icon apigw "API-Gateway" at 150,140 size 48 step 2
-box api-label "API Gateway" at 125,200 size 100,30 color #FF9900 step 2
+box api_label "API Gateway" at 125,200 size 100,30 color #FF9900 step 2
 
 # Step 3: Lambda processes
 icon lambda "Lambda" at 300,140 size 48 step 3
-box compute-label "Compute" at 275,200 size 100,30 color #FF9900 step 3
+box compute_label "Compute" at 275,200 size 100,30 color #FF9900 step 3
 
 # Step 4: DynamoDB stores data
 icon dynamo "DynamoDB" at 450,140 size 48 step 4
-box storage-label "Storage" at 425,200 size 100,30 color #3B48CC step 4
+box storage_label "Storage" at 425,200 size 100,30 color #3B48CC step 4
 
 # Step 5: Arrows show data flow
-arrow client -> api-label "HTTPS" step 5
-arrow api-label -> compute-label "invoke" step 5
-arrow compute-label -> storage-label "read/write" step 6
+arrow client -> api_label "HTTPS" step 5
+arrow api_label -> compute_label "invoke" step 5
+arrow compute_label -> storage_label "read/write" step 6
 :::
 
 :::notes
@@ -150,7 +150,7 @@ box web "Web App" at 200,100 size 100,50 color #FF9900 step 2
 
 | 속성 | 설명 |
 |-----------|-------------|
-| `id` | 화살표 연결에 사용하는 식별자 |
+| `id` | 화살표 연결에 사용하는 식별자. 영문자, 숫자, 밑줄을 사용합니다. |
 | `label` | 상자 안에 표시할 텍스트 |
 | `at x,y` | 왼쪽 위 모서리 좌표 |
 | `size w,h` | 너비와 높이 |
@@ -219,11 +219,13 @@ arrow lambda -> api "Response" color #4CAF50 style dashed step 3
 
 ### 원 요소 {#circle-element}
 
-상태 다이어그램이나 프로세스 흐름에 사용하는 원형 노드입니다.
+원형 노드는 기존 정적 구문을 사용합니다. 파서는 레이블을 읽지만 현재 Canvas
+컴파일러는 레이블을 그리지 않습니다. ID나 `step` 속성도 지원하지 않습니다.
+레이블 표시, 화살표 연결이나 순차 표시가 필요하면 상자를 사용합니다.
 
 ```markdown
 :::canvas
-circle <id> "<label>" at <x>,<y> radius <r> color <color> [step <n>]
+circle "<label>" at <x>,<y> radius <r> [color=<keyword>]
 :::
 ```
 
@@ -231,14 +233,15 @@ circle <id> "<label>" at <x>,<y> radius <r> color <color> [step <n>]
 
 ```markdown
 :::canvas
-circle start "Start" at 50,100 radius 30 color #4CAF50
-circle end "End" at 350,100 radius 30 color #f44336 step 3
+circle "Start" at 50,100 radius 30 color=accent
+circle "End" at 350,100 radius 30 color=accent
 :::
 ```
 
 ### 그룹 요소 {#group-element}
 
-여러 요소를 둘러싸는 시각적 경계입니다.
+파서는 이 기존 그룹 구문을 인식하지만 현재 Canvas 컴파일러는 경계를 그리지 않습니다.
+그룹 경계를 표시하려면 아래 HTML/CSS 대안을 사용합니다.
 
 ```markdown
 :::canvas
@@ -279,8 +282,8 @@ icon ecs "ECS" at 350,150 size 48 step 3
 box compute "Containers" at 325,210 size 100,30 color #FF9900 step 3
 
 # Connections - appear last
-arrow cdn -> lb step 4
-arrow lb -> compute step 4
+arrow cdn -> lb "HTTPS" step 4
+arrow lb -> compute "forward" step 4
 :::
 ```
 
@@ -308,7 +311,7 @@ graph LR
 
 :::html
 <div class="flow-h">
-  <div class="flow-group bg-blue" data-fragment-index="1">
+  <div class="flow-group bg-blue fragment" data-fragment-index="1">
     <div class="flow-group-label">Ingestion</div>
     <div class="icon-item">
       <img src="../common/aws-icons/services/Arch_Amazon-Kinesis_48.svg">
@@ -316,13 +319,13 @@ graph LR
     </div>
   </div>
   <div class="flow-arrow">-></div>
-  <div class="flow-group bg-orange" data-fragment-index="2">
+  <div class="flow-group bg-orange fragment" data-fragment-index="2">
     <div class="flow-group-label">Processing</div>
     <div class="flow-box">Lambda</div>
     <div class="flow-box">Step Functions</div>
   </div>
   <div class="flow-arrow">-></div>
-  <div class="flow-group bg-green" data-fragment-index="3">
+  <div class="flow-group bg-green fragment" data-fragment-index="3">
     <div class="flow-group-label">Storage</div>
     <div class="flow-box">S3</div>
     <div class="flow-box">DynamoDB</div>
@@ -337,7 +340,7 @@ graph LR
 - `flow-group`: 배경이 있는 요소 그룹
 - `flow-box`, `flow-arrow`, `icon-item`: 상자, 화살표, 아이콘 구성 요소
 - `bg-blue`, `bg-orange`, `bg-green`: 색상 유틸리티
-- `data-fragment-index="N"`: 순차 표시(`step N`과 유사)
+- `class="fragment"`와 `data-fragment-index="N"`: 순차 표시(`step N`과 유사)
 
 ## 권장 사항 {#best-practices}
 

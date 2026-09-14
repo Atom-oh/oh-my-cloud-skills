@@ -11,6 +11,8 @@ import DemoEmbed from '@site/src/components/DemoEmbed';
 
 Remarp에서 KPI 카드, 차트와 대시보드 레이아웃을 활용하는 데이터 시각화 기법을 설명합니다.
 
+아래 Chart.js 예제에는 별도로 제공한 라이브러리가 필요하며, 발표 프레임워크에 내장되어 있지 않습니다. 해당 예제를 사용하기 전에 [설정](#setup)을 완료합니다.
+
 ## 디자인 시스템 원칙 {#design-system-principles}
 
 ### 글자 계층 {#typography-hierarchy}
@@ -75,22 +77,22 @@ Overview of dashboard capabilities.
 
 :::html
 <div class="kpi-grid">
-  <div class="kpi-card" data-fragment-index="1">
+  <div class="kpi-card fragment" data-fragment-index="1">
     <div class="kpi-label">Monthly Active Users</div>
     <div class="kpi-value">2.4M</div>
     <div class="kpi-trend positive">+12.5%</div>
   </div>
-  <div class="kpi-card" data-fragment-index="2">
+  <div class="kpi-card fragment" data-fragment-index="2">
     <div class="kpi-label">API Requests/sec</div>
     <div class="kpi-value">45.2K</div>
     <div class="kpi-trend positive">+8.3%</div>
   </div>
-  <div class="kpi-card" data-fragment-index="3">
+  <div class="kpi-card fragment" data-fragment-index="3">
     <div class="kpi-label">P99 Latency</div>
     <div class="kpi-value">142ms</div>
     <div class="kpi-trend negative">+15ms</div>
   </div>
-  <div class="kpi-card" data-fragment-index="4">
+  <div class="kpi-card fragment" data-fragment-index="4">
     <div class="kpi-label">Error Rate</div>
     <div class="kpi-value">0.02%</div>
     <div class="kpi-trend positive">-0.01%</div>
@@ -259,7 +261,7 @@ Chart.js integration for dynamic charts.
 <div class="progress-section">
   <h3>Service Adoption</h3>
 
-  <div class="progress-item" data-fragment-index="1">
+  <div class="progress-item fragment" data-fragment-index="1">
     <div class="progress-label">
       <span>Lambda</span>
       <span>92%</span>
@@ -269,7 +271,7 @@ Chart.js integration for dynamic charts.
     </div>
   </div>
 
-  <div class="progress-item" data-fragment-index="2">
+  <div class="progress-item fragment" data-fragment-index="2">
     <div class="progress-label">
       <span>DynamoDB</span>
       <span>78%</span>
@@ -279,7 +281,7 @@ Chart.js integration for dynamic charts.
     </div>
   </div>
 
-  <div class="progress-item" data-fragment-index="3">
+  <div class="progress-item fragment" data-fragment-index="3">
     <div class="progress-label">
       <span>EKS</span>
       <span>65%</span>
@@ -289,7 +291,7 @@ Chart.js integration for dynamic charts.
     </div>
   </div>
 
-  <div class="progress-item" data-fragment-index="4">
+  <div class="progress-item fragment" data-fragment-index="4">
     <div class="progress-label">
       <span>Step Functions</span>
       <span>41%</span>
@@ -356,25 +358,25 @@ CSS-only progress bars with custom properties.
       </tr>
     </thead>
     <tbody>
-      <tr data-fragment-index="1">
+      <tr class="fragment" data-fragment-index="1">
         <td>Users</td>
         <td>2.1M</td>
         <td>2.4M</td>
         <td class="positive">+14.3%</td>
       </tr>
-      <tr data-fragment-index="2">
+      <tr class="fragment" data-fragment-index="2">
         <td>Requests/day</td>
         <td>3.2B</td>
         <td>3.9B</td>
         <td class="positive">+21.9%</td>
       </tr>
-      <tr data-fragment-index="3">
+      <tr class="fragment" data-fragment-index="3">
         <td>Avg Latency</td>
         <td>95ms</td>
         <td>82ms</td>
         <td class="positive">-13.7%</td>
       </tr>
-      <tr data-fragment-index="4">
+      <tr class="fragment" data-fragment-index="4">
         <td>Cost/request</td>
         <td>$0.0012</td>
         <td>$0.0009</td>
@@ -543,11 +545,18 @@ Lightweight CSS sparklines for quick metrics overview.
 
 ### 설정 {#setup}
 
-프레젠테이션의 `:::script` 블록에 Chart.js를 포함합니다.
+Chart.js는 별도로 준비해야 하는 의존성입니다. 검토한 특정 버전의 UMD 빌드를 제공하고, 차트를 초기화하기 전에 원본 Remarp 문서에서 실제 자산 URL을 참조합니다. 아래 경로는 직접 제공할 자산의 예시 경로이며, 생성기가 Chart.js를 자동으로 복사하거나 불러오지는 않습니다. [공식 통합 가이드](https://github.com/chartjs/Chart.js/blob/master/docs/getting-started/integration.md#script-tag)를 참고합니다.
 
-```html
+```markdown
+:::html
+<!-- Supply this pinned, reviewed UMD asset at the URL used by your exported deck. -->
+<script src="assets/chart.umd.min.js"></script>
+:::
+
 :::script
-// Chart.js is auto-loaded by the reactive-presentation framework
+if (typeof Chart !== 'function') {
+  throw new Error('Load the supplied Chart.js UMD asset before initializing charts.');
+}
 :::
 ```
 
@@ -674,6 +683,6 @@ new Chart(ctx, {
 2. **데이터 밀도를 제한합니다** — 슬라이드당 KPI 카드는 최대 4-6개로 제한합니다.
 3. **맥락을 제공합니다** — 추세, 비교나 기간을 표시합니다.
 4. **반응형 그리드를 사용합니다** — `auto-fit`과 `minmax()`로 유연한 레이아웃을 구성합니다.
-5. **점진적으로 표시합니다** — `data-fragment-index`로 대시보드를 단계별로 보여 줍니다.
+5. **점진적으로 표시합니다** — `class="fragment"`와 `data-fragment-index`로 대시보드를 단계별로 보여 줍니다.
 6. **글자 스타일을 통일합니다** — 글자 크기는 계층 표를 따릅니다.
 7. **다크 테마를 고려합니다** — 색상을 직접 고정하지 말고 CSS 변수를 사용합니다.

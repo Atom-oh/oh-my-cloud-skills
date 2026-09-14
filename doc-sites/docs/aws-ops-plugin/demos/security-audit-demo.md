@@ -13,6 +13,8 @@ Security audit walkthrough covering IAM, Network, and Compliance audit results w
 
 Perform a comprehensive security audit on an EKS cluster to identify vulnerabilities and compliance gaps before a security review.
 
+Confirm the intended AWS account, region and Kubernetes context. The command examples below are read-only; apply changes only through the approved remediation process.
+
 ## Audit Workflow {#audit-workflow}
 
 ```mermaid
@@ -267,8 +269,15 @@ Output:
 
 ### 3.2 Root Containers {#32-root-containers}
 
+Inspect explicit UID settings on regular containers. Container settings override Pod settings; an unspecified UID requires image/runtime inspection. This query does not inspect init or ephemeral containers or observe process UID. See [Kubernetes security contexts](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
+
 ```bash
-kubectl get pods -A -o json | jq '[.items[] | select(.spec.securityContext.runAsUser==0 or .spec.containers[].securityContext.runAsUser==0) | {name:.metadata.name, ns:.metadata.namespace}]'
+kubectl get pods -A -o json | jq '[
+  .items[] as $pod
+  | select(any($pod.spec.containers[];
+      (.securityContext.runAsUser // $pod.spec.securityContext.runAsUser // null) == 0))
+  | {name: $pod.metadata.name, ns: $pod.metadata.namespace}
+]'
 ```
 
 Output:
@@ -281,7 +290,7 @@ Output:
 ]
 ```
 
-**FINDING (MEDIUM)**: 4 pods running as root user.
+**FINDING (MEDIUM)**: 4 Pods contain a regular container explicitly configured with UID 0.
 
 ### 3.3 Pod Security Standards {#33-pod-security-standards}
 
@@ -309,18 +318,28 @@ Output:
 
 **FINDING (MEDIUM)**: Only API logging enabled. Missing audit and authenticator logs.
 
-### 3.5 Secrets Encryption {#35-secrets-encryption}
+### 3.5 Envelope Encryption and Key Ownership {#35-secrets-encryption}
 
 ```bash
-aws eks describe-cluster --name prod-cluster --query 'cluster.encryptionConfig'
+aws eks describe-cluster --name prod-cluster \
+  --query 'cluster.{version:version,encryptionConfig:encryptionConfig}'
 ```
 
-Output:
+Illustrative response:
 ```json
-null
+{"version": "1.29", "encryptionConfig": null}
 ```
 
-**FINDING (MEDIUM)**: EKS secrets encryption not enabled (secrets stored unencrypted in etcd).
+**OBSERVATION (INFORMATIONAL)**: In this EKS 1.29 sample, `encryptionConfig: null`
+shows no customer-managed KMS configuration; it does not mean Secrets are unencrypted.
+EKS 1.28 and later envelope-encrypt all Kubernetes API data. They use an AWS-owned
+key encryption key (KEK) by default, or a configured customer-managed KMS key (CMK)
+as the KEK. A CMK previously used for Secrets becomes the KEK for all API data.
+Verify the actual version and key ownership, and assess any workload-specific CMK
+requirement separately. See [AWS default envelope encryption](https://docs.aws.amazon.com/eks/latest/userguide/envelope-encryption.html).
+
+Item #14 is informational in the report below. No organization-specific CMK
+requirement has been supplied, so the example does not invent one to justify a finding.
 
 ---
 
@@ -336,19 +355,20 @@ null
 - **Overall Risk**: CRITICAL
 
 ## Executive Summary
-The audit identified 15 security findings across IAM, Network, and Compliance domains.
-2 Critical, 5 High, 6 Medium, 2 Low severity issues require remediation.
+This illustrative report records 16 assessed items: 15 security findings and one informational encryption observation.
+The security findings comprise 2 Critical, 6 High, 5 Medium, and 2 Low items.
+The absence of a customer-managed KMS key is not counted as unencrypted data or an automatic policy violation.
 
-## Findings by Severity
+## Assessed Items by Severity
 
 ### CRITICAL (2)
 
 | # | Domain | Finding | Risk | Remediation |
 |---|--------|---------|------|-------------|
 | 1 | IAM | IRSA trust policy with wildcard (`*:*`) | Any pod can assume analytics-full-access role | Scope trust policy to specific namespace:serviceaccount |
-| 2 | Network | SSH (22) open to 0.0.0.0/0 | Direct SSH access from internet | Remove rule, use SSM Session Manager |
+| 2 | Network | SSH (22) open to 0.0.0.0/0 | Direct SSH access from internet | Remove through the owning IaC definition; preserve approved administrative access |
 
-### HIGH (5)
+### HIGH (6)
 
 | # | Domain | Finding | Risk | Remediation |
 |---|--------|---------|------|-------------|
@@ -356,19 +376,24 @@ The audit identified 15 security findings across IAM, Network, and Compliance do
 | 4 | IAM | Developer has cluster-admin | Excessive cluster access | Create limited developer role |
 | 5 | IAM | Default SA has cluster-admin | Privilege escalation risk | Remove emergency-access binding |
 | 6 | IAM | Developer role in system:masters | Full cluster admin via aws-auth | Map to limited group |
-| 7 | Network | API endpoint open to 0.0.0.0/0 | API accessible from internet | Restrict publicAccessCidrs |
+| 7 | Network | API endpoint open to 0.0.0.0/0 | Publicly reachable API endpoint | Plan private endpoint access or verified public egress CIDRs |
 | 8 | Compliance | Privileged containers in workloads | Container escape risk | Remove privileged flag |
 
-### MEDIUM (6)
+### MEDIUM (5)
 
 | # | Domain | Finding | Risk | Remediation |
 |---|--------|---------|------|-------------|
 | 9 | Network | 4 namespaces without NetworkPolicy | Unrestricted pod communication | Deploy default-deny policies |
 | 10 | Network | Missing VPC endpoints | Traffic via internet | Add ecr.dkr, sts, logs endpoints |
-| 11 | Compliance | 4 pods running as root | Container privilege abuse | Set runAsNonRoot: true |
+| 11 | Compliance | 4 Pods with explicit UID 0 in regular containers | Container privilege abuse | Set runAsNonRoot: true |
 | 12 | Compliance | No Pod Security Standards | No policy enforcement | Enable PSS restricted mode |
 | 13 | Compliance | Incomplete control plane logging | Limited audit trail | Enable audit + authenticator logs |
-| 14 | Compliance | Secrets not encrypted | Data at rest exposure | Enable KMS encryption |
+
+### INFORMATIONAL (1)
+
+| # | Domain | Observation | Interpretation | Follow-up |
+|---|--------|-------------|----------------|-----------|
+| 14 | Compliance | No customer-managed KMS configuration | EKS 1.29 has default AWS-owned envelope encryption | Assess a CMK requirement separately; do not infer unencrypted Secrets |
 
 ### LOW (2)
 
@@ -382,10 +407,11 @@ The audit identified 15 security findings across IAM, Network, and Compliance do
 | Requirement | Status | Notes |
 |-------------|--------|-------|
 | No privileged containers in workloads | FAIL | 2 found in default, analytics |
-| All pods run as non-root | FAIL | 4 pods running as root |
+| Regular containers configured as nonroot | FAIL | 4 Pods explicitly configure UID 0 |
 | Network policies in all namespaces | FAIL | 4 namespaces missing |
 | IRSA/Pod Identity for AWS access | PARTIAL | IRSA used but misconfigured |
-| Secrets encrypted with KMS | FAIL | Not enabled |
+| Default API-data envelope encryption | PASS | AWS-owned KMS key applies to this EKS 1.29 sample; no CMK configured |
+| Customer-managed key requirement | REVIEW | No organization-specific requirement supplied; assess separately |
 | Control plane audit logging | PARTIAL | Only api logs enabled |
 | VPC endpoints for AWS services | PARTIAL | 2 of 6 recommended |
 | Cluster endpoint private access | PASS | Private access enabled |
@@ -395,8 +421,8 @@ The audit identified 15 security findings across IAM, Network, and Compliance do
 
 ### Immediate (24 hours)
 1. Fix IRSA trust policy wildcard (Critical #1)
-2. Remove SSH 0.0.0.0/0 rule (Critical #2)
-3. Restrict API endpoint CIDRs (High #7)
+2. Remove the SSH 0.0.0.0/0 rule through approved IaC (Critical #2)
+3. Establish authorized private endpoint access before disabling public access (High #7)
 4. Remove privileged flag from workload containers (High #8)
 
 ### This Week
@@ -409,7 +435,7 @@ The audit identified 15 security findings across IAM, Network, and Compliance do
 9. Add missing VPC endpoints (Medium #10)
 10. Implement Pod Security Standards (Medium #12)
 11. Enable full control plane logging (Medium #13)
-12. Enable secrets encryption (Medium #14)
+12. Assess a customer-managed key only if workload policy requires it (Informational #14)
 
 ### Ongoing
 13. Enforce runAsNonRoot for all workloads (Medium #11)
@@ -419,13 +445,15 @@ The audit identified 15 security findings across IAM, Network, and Compliance do
 
 ---
 
-## Remediation Commands {#remediation-commands}
+## Approved Remediation and Verification {#remediation-commands}
 
 ### Critical #1: Fix IRSA Trust Policy {#critical-1-fix-irsa-trust-policy}
 
-```bash
-# Create scoped trust policy
-cat > trust-policy.json << 'EOF'
+Review this illustrative trust document against the actual OIDC issuer, namespace
+and service account. Apply an approved IAM/IaC change through the normal reviewed
+workflow, with rollback and workload verification; this page does not run an IAM update.
+
+```json
 {
     "Version": "2012-10-17",
     "Statement": [
@@ -437,31 +465,48 @@ cat > trust-policy.json << 'EOF'
             "Action": "sts:AssumeRoleWithWebIdentity",
             "Condition": {
                 "StringEquals": {
+                    "oidc.eks.us-west-2.amazonaws.com/id/ABC123:aud": "sts.amazonaws.com",
                     "oidc.eks.us-west-2.amazonaws.com/id/ABC123:sub": "system:serviceaccount:analytics:data-processor"
                 }
             }
         }
     ]
 }
-EOF
-
-aws iam update-assume-role-policy --role-name analytics-full-access --policy-document file://trust-policy.json
 ```
 
 ### Critical #2: Remove SSH Rule {#critical-2-remove-ssh-rule}
 
+Remove the public SSH rule from its owning CDK/Terraform definition and apply the
+change through the approved IaC deployment process. Confirm approved administrative
+access, such as an already-configured AWS Systems Manager Session Manager path, and
+rollback first. Then inspect the deployed rules so a later deployment cannot silently
+restore the exposure. Do not substitute an ad-hoc security-group CLI change.
+
+Read-only verification, using the selected group from the audit:
+
 ```bash
-# Remove SSH 0.0.0.0/0 rule
-aws ec2 revoke-security-group-ingress --group-id $CLUSTER_SG --protocol tcp --port 22 --cidr 0.0.0.0/0
+aws ec2 describe-security-group-rules \
+  --filters "Name=group-id,Values=$CLUSTER_SG"
 ```
 
 ### High #7: Restrict API Endpoint {#high-7-restrict-api-endpoint}
 
+Use a private-endpoint workflow for this example. Before disabling public access,
+establish and verify the operators', nodes' and automation's access from the VPC or
+a connected network, including DNS, routes, scoped security-group rules and IAM/RBAC.
+Apply the endpoint change through the approved cluster/IaC process with rollback;
+repeat the read-only check from the established private access path.
+
 ```bash
-# Restrict to corporate IPs only
-aws eks update-cluster-config --name prod-cluster \
-  --resources-vpc-config publicAccessCidrs="10.0.0.0/8","192.168.1.0/24"
+aws eks describe-cluster --name prod-cluster \
+  --query 'cluster.resourcesVpcConfig.{publicAccess:endpointPublicAccess,privateAccess:endpointPrivateAccess,publicCIDRs:publicAccessCidrs}'
 ```
+
+`publicAccessCidrs` controls the public endpoint, not the private endpoint. If an
+approved design keeps public access, allow the actual public egress addresses seen
+by that endpoint, including NAT egress where applicable; corporate RFC1918 ranges
+are not substitutes. See [EKS endpoint access](https://docs.aws.amazon.com/eks/latest/userguide/cluster-endpoint.html)
+and [public access source CIDRs](https://docs.aws.amazon.com/help-panel/eks/latest/console/hp-public-access-iprange.html).
 
 ---
 
