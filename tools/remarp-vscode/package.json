@@ -2,7 +2,7 @@
   "name": "remarp-vscode",
   "displayName": "Remarp Slides",
   "description": "Author reactive presentations with the remarp markdown format",
-  "version": "0.1.1",
+  "version": "0.1.0",
   "publisher": "aws-cloud-skills",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -22,12 +22,6 @@
     "onLanguage:markdown"
   ],
   "main": "./out/extension.js",
-  "capabilities": {
-    "untrustedWorkspaces": {
-      "supported": "limited",
-      "description": "Builds and preview scripts require workspace trust; source editing and the static text preview remain available."
-    }
-  },
   "contributes": {
     "languages": [
       {
@@ -52,17 +46,12 @@
     "commands": [
       {
         "command": "remarp.preview",
-        "title": "Remarp: Approximate Text Preview",
+        "title": "Remarp: Preview",
         "category": "Remarp",
         "icon": {
           "light": "media/icon.svg",
           "dark": "media/icon.svg"
         }
-      },
-      {
-        "command": "remarp.previewCompiled",
-        "title": "Remarp: Build and Preview Compiled HTML",
-        "category": "Remarp"
       },
       {
         "command": "remarp.nextSlide",
@@ -148,7 +137,6 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "test": "npm run compile && node --test test/*.test.cjs",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts"
   },

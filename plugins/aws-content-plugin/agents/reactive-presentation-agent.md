@@ -231,5 +231,5 @@ When spawned as part of a team (the Agent tool's team_name parameter is set):
 |-------------|--------|----------|
 | Remarp Source | .remarp.md | `{repo}/{slug}/_presentation.remarp.md` + `{repo}/{slug}/0N-block.remarp.md` |
 | HTML Slides | .html | `{repo}/{slug}/0N-block.html` |
-| Hub Page | .html | `{repo}/index.html` |
-| Theme Override | .css | `{repo}/common/theme-override.css` |
+| Optional collection hub | .html | Separately maintained and published at `{repo}/index.html` |
+| Theme Override | .css | `{repo}/{slug}/common/pptx-theme/theme-override.css` |

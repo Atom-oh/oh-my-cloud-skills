@@ -26,7 +26,7 @@ Choose option 3. Remarp is the source for new reactive presentations; HTML is
 generated output. The framework contract describes the renderer's DOM/CSS API,
 not a replacement for the compiler. Explicit legacy/manual HTML mode remains.
 Use existing HTML/script/Archify source blocks for complex visuals; do not grow a
-general-purpose layout DSL. VS Code offers a compiled preview of saved source
+general-purpose layout DSL. VS Code integration will use a compiled preview of saved source
 alongside its approximate text preview. Visual writeback remains unsupported.
 
 ## Consequences

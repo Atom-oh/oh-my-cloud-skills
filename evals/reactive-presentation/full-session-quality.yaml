@@ -3,6 +3,8 @@ description: "90-min multi-block session structural quality (margins, footer, ag
 skill: reactive-presentation
 plugin: aws-content-plugin
 timeout: 300
+setup:
+  - "rm -rf docs/static/demos/aiops-deep-dive"
 
 prompt: |
   Create a 90-minute AIOps deep-dive training session with 3 blocks:

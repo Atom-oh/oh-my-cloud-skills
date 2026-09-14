@@ -85,18 +85,16 @@ Next, use the same method when reviewing a teammate's change.
 
 ```bash
 python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py validate my-talk.md
-python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build my-talk.md --lang en
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build my-talk.md -o /var/tmp/my-talk --lang en
+mkdir -p /var/tmp/my-talk/common
+cp -R plugins/aws-content-plugin/skills/reactive-presentation/assets/. /var/tmp/my-talk/common/
 ```
 
-`validate`는 유효하지 않거나 없는 입력 또는 CRITICAL 지적이 있으면 0이 아닌 종료 코드를 반환합니다. `build`와 `sync`도 같은 검증을 적용하며 스타일 경고는 참고 사항으로 유지됩니다. 프로그램에서 읽을 수 있는 진단이 필요하면 `validate`에 `--json`을 추가합니다.
-
-이 소스는 `slides/default.html`로 빌드되며 CSS와 JavaScript는 `slides/common/`에 자동으로 복사됩니다. `-o /var/tmp/my-talk`을 지정하면 해당 디렉터리에 `default.html`과 `common/`을 생성합니다. `slides/default.html`을 열어 단계별 표시를 확인합니다. Right/Space로 앞으로 진행하고, Left로 되돌아가며, P로 발표자 보기를 엽니다. 게시 전에 콘텐츠 리뷰를 수행합니다.
+단일 파일 빌드는 HTML만 생성합니다. 복사 단계에서 `common/`으로 참조되는 CSS와 JavaScript를 제공합니다. `/var/tmp/my-talk/default.html`을 열어 단계별 표시를 확인합니다. Right/Space로 앞으로 진행하고, Left로 되돌아가며, P로 발표자 보기를 엽니다. 게시 전에 콘텐츠 리뷰를 수행합니다.
 
 ## 덱 확장 {#extend-the-deck}
 
-compare/tabs/quiz/checklist/timeline/Canvas 슬라이드에는 `@type`, 열 구성에는 `@layout`, 발표 안내에는 `:::notes`를 사용합니다. 여러 파일로 구성된 덱의 공유 프런트매터는 `_presentation.md` 또는 `_presentation.remarp.md`에 둡니다. 프로젝트 디렉터리를 빌드하면 `-o`로 다른 디렉터리를 지정하지 않는 한 소스 옆에 `index.html`, `toc.html`, 블록 HTML과 `common/`을 생성합니다.
-
-소스, 메타데이터 또는 의존성을 수정한 뒤에는 프로젝트 디렉터리에 `sync`를 실행해 전체 덱, TOC와 에셋을 다시 생성합니다. 이 작업은 Markdown 타임스탬프에 의존하지 않습니다. 명령과 옵션은 [CLI 참고 문서](./build-cli.md)를 확인합니다.
+compare/tabs/quiz/checklist/timeline/Canvas 슬라이드에는 `@type`, 열 구성에는 `@layout`, 발표 안내에는 `:::notes`를 사용합니다. 여러 파일로 구성된 덱의 공유 프런트매터는 `_presentation.md`에 둡니다. 지원되는 정확한 필드와 명령은 문법·CLI 참고 문서를 확인합니다.
 
 ## 관련 링크 {#related-links}
 

@@ -463,7 +463,7 @@ class RemarpParser:
                     raise RemarpInputError('Frontmatter must be a YAML mapping')
                 return result
             else:
-                if re.search(r'^\s+\S|^[^#\n]+:\s*[{\[]', yaml_content, re.MULTILINE):
+                if re.search(r'^[ \t]+\S|^[^#\n]+:\s*[{\[]', yaml_content, re.MULTILINE):
                     raise RemarpInputError('Nested YAML requires PyYAML; install it with python3 -m pip install pyyaml')
                 return parse_yaml_simple(yaml_content)
         return {}
@@ -684,6 +684,9 @@ class RemarpParser:
             md_text = md_text.replace(
                 f'<!-- __BLOCK:archify:{i}__ -->',
                 f'<!-- __ARCHIFY_BLOCK_{i}__ -->')
+
+        md_text, nested_literals = _mask_code_fences(md_text)
+        literals.update(nested_literals)
 
         # Extract {.reference}[text](url) patterns
         REFERENCE_PATTERN = re.compile(r'\{\.reference\}\[([^\]]+)\]\(([^)]+)\)')
@@ -5672,55 +5675,62 @@ def main():
             return 1
 
     elif args.command == 'issues':
-        input_path = Path(args.path)
-        all_issues: List[Dict[str, Any]] = []
+        try:
+            input_path = Path(args.path)
+            all_issues: List[Dict[str, Any]] = []
 
-        # Collect .md / .remarp.md files
-        md_files: List[Path] = []
-        if input_path.is_file():
-            md_files = [input_path]
-        elif input_path.is_dir():
-            md_files = list(_discover_sources(input_path).values())
-        else:
-            print(f'Error: {input_path} not found')
-            return
+            # Collect .md / .remarp.md files
+            md_files: List[Path] = []
+            if input_path.is_file():
+                md_files = [input_path]
+            elif input_path.is_dir():
+                md_files = list(_discover_sources(input_path).values())
+            else:
+                raise RemarpInputError(f'{input_path} not found')
 
-        for md_file in md_files:
-            with open(md_file, 'r', encoding='utf-8') as f:
-                content = f.read()
-            rp = RemarpParser(content)
-            _config, blocks = rp.parse()
-            for block_name, slides in blocks.items():
-                for slide in slides:
-                    if slide.issues:
-                        # Extract first heading as slide title
-                        title_match = re.match(r'^#+\s+(.+)', slide.content)
-                        title = title_match.group(1) if title_match else f'(slide {slide.index + 1})'
-                        for issue_text in slide.issues:
-                            all_issues.append({
-                                'file': str(md_file),
-                                'block': block_name,
-                                'slide': slide.index + 1,
-                                'title': title,
-                                'issue': issue_text,
-                            })
+            for md_file in md_files:
+                with open(md_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                rp = RemarpParser(content)
+                _config, blocks = rp.parse()
+                for block_name, slides in blocks.items():
+                    for slide in slides:
+                        if slide.issues:
+                            # Extract first heading as slide title
+                            title_match = re.match(r'^#+\s+(.+)', slide.content)
+                            title = title_match.group(1) if title_match else f'(slide {slide.index + 1})'
+                            for issue_text in slide.issues:
+                                all_issues.append({
+                                    'file': str(md_file),
+                                    'block': block_name,
+                                    'slide': slide.index + 1,
+                                    'title': title,
+                                    'issue': issue_text,
+                                })
 
-        if not all_issues:
-            print('No issues found.')
-            return
+            if not all_issues:
+                print('[]' if args.json_output else 'No issues found.')
+                return
 
-        if args.json_output:
-            import json as json_mod
-            print(json_mod.dumps(all_issues, ensure_ascii=False, indent=2))
-        else:
-            current_file = ''
-            for item in all_issues:
-                if item['file'] != current_file:
-                    current_file = item['file']
-                    print(f'\n## {current_file}')
-                print(f'  [{item["block"]}] Slide {item["slide"]} "{item["title"]}"')
-                print(f'    → {item["issue"]}')
-            print(f'\nTotal: {len(all_issues)} issue(s) across {len(md_files)} file(s).')
+            if args.json_output:
+                import json as json_mod
+                print(json_mod.dumps(all_issues, ensure_ascii=False, indent=2))
+            else:
+                current_file = ''
+                for item in all_issues:
+                    if item['file'] != current_file:
+                        current_file = item['file']
+                        print(f'\n## {current_file}')
+                    print(f'  [{item["block"]}] Slide {item["slide"]} "{item["title"]}"')
+                    print(f'    → {item["issue"]}')
+                print(f'\nTotal: {len(all_issues)} issue(s) across {len(md_files)} file(s).')
+
+        except (ValueError, OSError, UnicodeError) as exc:
+            if args.json_output:
+                print(json.dumps({'error': str(exc)}, ensure_ascii=False))
+            else:
+                print(f'ERROR: {exc}', file=sys.stderr)
+            return 2
 
     elif args.command == 'validate':
         input_path = Path(args.path)

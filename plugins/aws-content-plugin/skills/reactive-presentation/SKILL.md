@@ -74,7 +74,7 @@ python3 {skill-dir}/scripts/remarp_to_slides.py issues {repo}/{slug}/ [--json]  
 
 ### Phase 4 — Review & Iterate
 After generating content, present the user with options: ① edit Remarp directly and say "please apply this" (→ Claude reads it and runs `sync`) · ② request changes via prompt (→ edit Remarp, then rebuild HTML) · ③ proceed.
-Rules: edit only the affected Remarp source; preserve Canvas/quiz/interactions in its source blocks. Never patch generated HTML independently. `sync` currently regenerates the whole project to include global configuration and asset dependencies. For VS Code, use **Preview** for approximate text editing and **Compiled Preview** to inspect the saved source with the real renderer.
+Rules: edit only the affected Remarp source; preserve Canvas/quiz/interactions in its source blocks. Never patch generated HTML independently. `sync` currently regenerates the whole project to include global configuration and asset dependencies.
 
 ### Phase 5 — Enhancement
 Implement Canvas animations (animation-utils.js) on `@type: canvas` slides · enhance complex interactions · verify presenter view (P) notes.

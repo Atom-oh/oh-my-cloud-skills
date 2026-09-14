@@ -54,8 +54,7 @@ VS Code에서 확장 프로젝트를 열고 Extension Development Host를 실행
 
 | 명령 ID | 기능 |
 | --- | --- |
-| `remarp.preview` | 간이 텍스트 미리 보기 열기 |
-| `remarp.previewCompiled` | 저장·빌드 후 컴파일된 HTML 미리 보기 |
+| `remarp.preview` | 미리 보기 열기 |
 | `remarp.nextSlide` | 다음 슬라이드로 이동 |
 | `remarp.prevSlide` | 이전 슬라이드로 이동 |
 | `remarp.build` | HTML 빌드 |
@@ -76,10 +75,10 @@ VS Code에서 확장 프로젝트를 열고 Extension Development Host를 실행
 
 미리 보기는 노트와 슬라이드별 이슈 주석을 제공합니다. `<!-- issue: ... -->`로 slide-fix에 전달할 수정 요청을 기록합니다. Markdown/CSS/Canvas 소스를 편집하고 다시 빌드한 뒤 브라우저에서 생성된 HTML을 확인합니다.
 
-컴파일 미리 보기는 생성된 HTML과 공유 런타임·자산을 사용하며 Visual Edit 컨트롤이나 소스 역반영 기능은 제공하지 않습니다. 소스 변경 후 명령을 다시 실행합니다. 간이 텍스트 미리 보기는 입력 중 자동 갱신됩니다.
+저장소에는 visual-edit/writeback과 HTML-preview 도구 클래스가 있지만 현재 등록된 미리 보기·빌드 명령에는 연결되어 있지 않습니다. 등록된 Visual Edit 명령이나 단축키가 없으므로 해당 도구 파일을 사용 가능한 편집 작업 흐름으로 간주하지 않습니다.
 
 ## 지원 범위 {#boundaries}
 
-확장은 `.remarp.md`, `_presentation.md`, `_presentation.remarp.md`와 `remarp: true`가 있는 `.md`를 인식합니다. 빌드는 변경된 프로젝트 소스를 저장한 뒤 프레젠테이션 설정 파일이 있는 디렉터리를 빌드하고 `index.html`을 엽니다. 단독 소스는 `slides/default.html`을 엽니다. 저장·빌드 실패 시 오류를 표시하고 컴파일 미리 보기를 중단합니다. 빌드와 미리 보기 스크립트에는 작업 영역 신뢰가 필요합니다. 미리 보기·개요·탐색은 코드 펜스 안의 구분자를 무시합니다. 최종 브라우저 동작은 별도로 검증합니다.
+등록된 언어 확장자는 `.remarp.md`입니다. 확장은 `remarp: true`가 있는 `.md` 문서도 감지하며 활성화, 열기 또는 저장 시 편집기 언어를 Remarp로 바꾸어 메뉴, 단축키와 개요를 사용할 수 있게 합니다. 미리 보기 렌더링과 배포용 HTML 빌더는 서로 다른 경로입니다. 미리 보기 성공을 배포 결과의 완전한 검증으로 간주하지 말고 최종 생성된 덱을 브라우저에서 검증합니다.
 
 [명령, 설정과 키 바인딩](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/tools/remarp-vscode/package.json) · [편집기 구현](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/tools/remarp-vscode/src/)

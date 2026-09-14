@@ -9,20 +9,15 @@ Build/package commands are canonical in `tools/remarp-vscode/CLAUDE.md`, not her
 ## File Detection
 
 - `.remarp.md` extension → auto `remarp` language ID
-- `_presentation.md` and `_presentation.remarp.md` → recognized project source
 - `.md` + frontmatter `remarp: true` → auto `remarp` language ID switch
 - `.html` + `<meta name="generator" content="remarp">` → recognized as Remarp HTML
 
-## Preview commands
+## Preview (2 modes)
 
 | Mode | File | Rendering |
 |------|------|-----------|
-| Approximate text (`remarp.preview`) | Remarp source | Unsaved slide text + notes/issues; not compiler parity |
-| Compiled (`remarp.previewCompiled`) | Saved Remarp source | Build, then display generated HTML with its shared runtime/assets |
-
-Builds save dirty project sources and use `build <directory>` beside either presentation marker (or `remarp.yaml`/`remarp.yml`), otherwise `build <file>`.
-Compiled preview reads project `index.html` or standalone `slides/default.html` from disk after success; errors stop preview and open build output. Re-run after changes.
-Builds and preview scripts require workspace trust. Text preview, outline and navigation share fence-aware boundaries (CRLF, backtick/tilde fences).
+| Markdown | `.md` / `.remarp.md` | Slide parsing → HTML + sidebar (notes, issues, prompt bar) |
+| HTML | Remarp HTML | Direct HTML load + resource path → webview URI conversion |
 
 - **Sidebar layout**: Right panel with Speaker Notes + Issue badges + Prompt bar + Submit button
 - **Arrow key slide navigation**: ←→ / Space / PageUp/PageDown (inside preview)
@@ -41,8 +36,10 @@ Builds and preview scripts require workspace trust. Text preview, outline and na
 
 ## Unwired visual-edit helpers
 
-CSS/Canvas editing controllers remain unwired. Compiled preview injects no Edit
-buttons or writeback bridge; modify source and rebuild. No edit-mode shortcut is registered.
+The source tree contains CSS/Canvas editing controllers and a renderer that injects
+per-slide Edit buttons. Current activation and preview message handling do not wire
+those helpers into the registered commands. They are not an available editing or
+writeback workflow; modify the source and rebuild. No edit-mode shortcut is registered.
 
 ## Key Files
 
@@ -50,7 +47,7 @@ buttons or writeback bridge; modify source and rebuild. No edit-mode shortcut is
 |------|------|
 | `src/extension.ts` | Entry point: command registration, file detection, build script discovery |
 | `src/preview.ts` | Preview panel: MD/HTML rendering, slide parsing, navigation |
-| `src/compiledPreview.ts` | Compiled HTML preview handler for Remarp HTML files |
+| `src/htmlPreview.ts` | Dedicated HTML preview handler for Remarp HTML files |
 | `src/outline.ts` | Slide outline provider for editor sidebar |
 | `src/completions.ts` | Autocomplete: @directives, :::blocks, :::css, :::canvas DSL |
 | `src/cssEditor.ts` | CSS editing: `:::css` block parse/create/update |

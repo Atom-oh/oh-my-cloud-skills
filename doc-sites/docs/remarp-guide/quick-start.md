@@ -85,18 +85,16 @@ Run from the marketplace repository root:
 
 ```bash
 python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py validate my-talk.md
-python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build my-talk.md --lang en
+python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py build my-talk.md -o /var/tmp/my-talk --lang en
+mkdir -p /var/tmp/my-talk/common
+cp -R plugins/aws-content-plugin/skills/reactive-presentation/assets/. /var/tmp/my-talk/common/
 ```
 
-`validate` exits nonzero for invalid or missing input or CRITICAL findings. `build` and `sync` enforce the same validation gate; style warnings remain advisory. Add `--json` to `validate` for machine-readable diagnostics.
-
-This source builds to `slides/default.html` with CSS and JavaScript copied automatically into `slides/common/`. Use `-o /var/tmp/my-talk` to write `default.html` and `common/` there instead. Open `slides/default.html` and exercise the fragments. Right/Space advances; Left reverses; P opens presenter view. Run content review before publication.
+Single-file builds emit HTML only; the copy step supplies the CSS and JavaScript referenced from `common/`. Open `/var/tmp/my-talk/default.html` and exercise the fragments. Right/Space advances; Left reverses; P opens presenter view. Run content review before publication.
 
 ## Extend the deck {#extend-the-deck}
 
-Use `@type` for compare/tabs/quiz/checklist/timeline/Canvas slides, `@layout` for columns, and `:::notes` for speaking guidance. For multi-file decks put shared frontmatter in `_presentation.md` or `_presentation.remarp.md`. Building the project directory places `index.html`, `toc.html`, block HTML and `common/` beside the source unless `-o` selects another directory.
-
-After source, metadata or dependency edits, run `sync` on the project directory to regenerate the complete deck, TOC and assets. It does not depend on Markdown timestamps. See the [CLI reference](./build-cli.md) for commands and options.
+Use `@type` for compare/tabs/quiz/checklist/timeline/Canvas slides, `@layout` for columns, and `:::notes` for speaking guidance. For multi-file decks put shared frontmatter in `_presentation.md`. See the syntax and CLI reference for exact supported fields and commands.
 
 ## Related links {#related-links}
 

@@ -35,7 +35,6 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SlideOutlineProvider = void 0;
 const vscode = __importStar(require("vscode"));
-const source_1 = require("./source");
 class SlideOutlineProvider {
     constructor() {
         this._onDidChangeTreeData = new vscode.EventEmitter();
@@ -61,7 +60,6 @@ class SlideOutlineProvider {
     _parseSlides(document) {
         const text = document.getText();
         const lines = text.split('\n');
-        const separators = new Set((0, source_1.slideStarts)(text).slice(1).map(line => line - 1));
         const slides = [];
         let currentSlideStart = 0;
         let slideIndex = 0;
@@ -79,7 +77,7 @@ class SlideOutlineProvider {
             currentSlideStart = frontmatterEnd;
         }
         for (let i = currentSlideStart; i < lines.length; i++) {
-            if (separators.has(i)) {
+            if (lines[i].trim() === '---') {
                 // End current slide
                 const slideContent = lines.slice(currentSlideStart, i).join('\n');
                 if (slideContent.trim()) {

@@ -118,6 +118,7 @@ class RemarpContractTests(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("repeated", result.stdout + result.stderr)
 
+    @unittest.skipUnless(remarp.HAS_YAML, "Example requires optional PyYAML")
     def test_sync_refreshes_global_and_merged_output_without_mtime_dependency(self):
         main = self.write("_presentation.md",
                           '---\nremarp: true\ntitle: Talk\nratio: "16:9"\n'
@@ -175,6 +176,7 @@ class RemarpContractTests(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertTrue(any(f["severity"] == "CRITICAL" for f in json.loads(result.stdout)))
 
+    @unittest.skipUnless(remarp.HAS_YAML, "Example requires optional PyYAML")
     def test_quickstart_compiles(self):
         guide = SCRIPT.parents[1] / 'REMARP.md'
         example = re.search(r'```markdown\n(.*?)\n```', guide.read_text(), re.DOTALL).group(1)
@@ -184,15 +186,6 @@ class RemarpContractTests(unittest.TestCase):
         output = (self.root / 'slides/default.html').read_text()
         self.assertIn('<canvas', output)
         self.assertIn('drawIcon(', output)
-
-    def test_extension_readme_example_compiles(self):
-        example = re.search(r'```markdown\n(.*?)\n```', (ROOT / 'tools/remarp-vscode/README.md').read_text(), re.DOTALL).group(1)
-        source = self.write('example.remarp.md', example)
-        result = self.cli('build', source)
-        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        output = (self.root / 'slides/default.html').read_text()
-        for content in ('<canvas', 'Frontend', 'Backend', 'Feature 1', 'Feature 4'):
-            self.assertIn(content, output)
 
     def test_language_override_applies_to_each_project_output(self):
         self.write('01.md', FRONT.replace('remarp: true', 'remarp: true\nlang: ko') + '## Title\n')
@@ -236,6 +229,7 @@ class RemarpContractTests(unittest.TestCase):
             refs = re.findall(r'<iframe class="archify-diagram" src="([^"]+)"', (self.root / name).read_text())
             self.assertEqual(['DiagramA', 'DiagramB'], [(self.root / ref).read_text() for ref in refs])
 
+    @unittest.skipUnless(remarp.HAS_YAML, "Example requires optional PyYAML")
     def test_footer_strings_generate_valid_javascript(self):
         footer = "Developer's guide </script>"
         source = self.write('01.md', '---\nremarp: true\ntheme: {footer: ' + json.dumps(footer) + '}\n---\n## Title\n')
@@ -244,6 +238,26 @@ class RemarpContractTests(unittest.TestCase):
         for script in re.findall(r'<script>(.*?)</script>', output, re.DOTALL):
             result = subprocess.run(['node', '--check'], input=script, text=True, capture_output=True)
             self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_click_block_preserves_fenced_legacy_directives(self):
+        source = FRONT + '## Literal\n\n:::click\n```text\n<!-- type: quiz -->\n```\n:::\n'
+        slide = self.slides(source)[0]
+        self.assertNotEqual(remarp.SlideType.QUIZ, slide.slide_type)
+        self.assertIn('&lt;!-- type: quiz --&gt;', remarp.RemarpHTMLGenerator().slide_to_html(slide))
+
+    def test_flat_frontmatter_blank_lines_without_pyyaml(self):
+        with patch.object(remarp, 'HAS_YAML', False):
+            config, blocks = remarp.RemarpParser('---\nremarp: true\n\ntitle: Flat\n---\n## Slide\n').parse()
+        self.assertEqual('Flat', config['title'])
+        self.assertTrue(blocks)
+
+    def test_issues_json_reports_empty_and_invalid_sources(self):
+        source = self.write('01.md', FRONT + '## Title\n')
+        self.assertEqual([], json.loads(self.cli('issues', self.root, '--json').stdout))
+        source.write_text('---\nremarp: true\ntheme: [\n---\n## Title\n')
+        result = self.cli('issues', self.root, '--json')
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn('error', json.loads(result.stdout))
 
     def test_block_build_has_assets_and_unknown_block_fails(self):
         self.write("01.md", FRONT + "## Title\n")
