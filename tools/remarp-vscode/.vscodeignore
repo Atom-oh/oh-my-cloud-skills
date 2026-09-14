@@ -1,6 +1,8 @@
 .omc/
 .vscode/
 src/
+test/
+*.vsix
 node_modules/
 tsconfig.json
 **/*.ts

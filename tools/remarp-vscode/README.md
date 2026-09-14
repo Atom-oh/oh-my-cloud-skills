@@ -69,7 +69,7 @@ Search for **"Remarp Slides"** in the Extensions view (`Ctrl+Shift+X`) and click
 ### From VSIX (local)
 
 ```bash
-code --install-extension remarp-vscode-0.1.0.vsix
+code --install-extension /tmp/remarp-vscode-0.1.1.vsix
 ```
 
 ### Development
@@ -135,16 +135,17 @@ vsce publish major   # 0.1.0 → 1.0.0
 
 1. Create a file with `.remarp.md` extension
 2. Write your presentation using Remarp syntax
-3. Click the preview icon in the editor title bar (or run "Remarp: Open Preview" command)
+3. Run "Remarp: Approximate Text Preview" for live text, or "Remarp: Build and Preview Compiled HTML" for compiler output
 4. Use the outline view in the Explorer to navigate slides
 
 ### Example
 
 ```markdown
 ---
+remarp: true
 title: My Presentation
 author: Your Name
-theme: dark
+theme: {mode: dark}
 ---
 
 # Welcome
@@ -153,38 +154,38 @@ This is the first slide.
 
 ---
 
-@type compare
-@layout two-column
+@type: compare
+@layout: two-column
 
-# Comparison Slide
+## Comparison Slide
 
 ::: left
-## Option A
+### Option A
 - Feature 1
 - Feature 2
 :::
 
 ::: right
-## Option B
+### Option B
 - Feature 3
 - Feature 4
 :::
 
 ---
 
-@type canvas
+@type: canvas
 
-# Architecture
+## Architecture
 
 :::canvas
-box "Frontend" at 100 100 size 150 80 color="#4CAF50"
-box "Backend" at 100 250 size 150 80 color="#2196F3"
-arrow from 175 180 to 175 250
+box frontend "Frontend" at 100,100 size 150,80 color green
+box backend "Backend" at 400,100 size 150,80 color blue
+arrow frontend -> backend "request"
 :::
 
 ---
 
-# Click to Reveal
+## Click to Reveal
 
 - First point {.click}
 - Second point {.click animation=fade-up order=2}
@@ -199,7 +200,8 @@ Speaker notes go here - not visible during presentation
 
 | Command | Description |
 |---------|-------------|
-| `Remarp: Preview` | Open the slide preview panel |
+| `Remarp: Approximate Text Preview` | Preview unsaved text and source annotations |
+| `Remarp: Build and Preview Compiled HTML` | Save/build source and display generated HTML with its runtime/assets |
 | `Remarp: Next Slide` | Navigate to the next slide |
 | `Remarp: Previous Slide` | Navigate to the previous slide |
 | `Remarp: Build HTML` | Build HTML from the current Remarp file |

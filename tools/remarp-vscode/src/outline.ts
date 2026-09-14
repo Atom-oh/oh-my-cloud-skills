@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { slideStarts } from './source';
 
 interface SlideInfo {
     index: number;
@@ -39,6 +40,7 @@ export class SlideOutlineProvider implements vscode.TreeDataProvider<SlideItem> 
     private _parseSlides(document: vscode.TextDocument): SlideInfo[] {
         const text = document.getText();
         const lines = text.split('\n');
+        const separators = new Set(slideStarts(text).slice(1).map(line => line - 1));
         const slides: SlideInfo[] = [];
 
         let currentSlideStart = 0;
@@ -59,7 +61,7 @@ export class SlideOutlineProvider implements vscode.TreeDataProvider<SlideItem> 
         }
 
         for (let i = currentSlideStart; i < lines.length; i++) {
-            if (lines[i].trim() === '---') {
+            if (separators.has(i)) {
                 // End current slide
                 const slideContent = lines.slice(currentSlideStart, i).join('\n');
                 if (slideContent.trim()) {

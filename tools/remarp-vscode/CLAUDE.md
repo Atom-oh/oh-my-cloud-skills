@@ -19,7 +19,7 @@ code --install-extension remarp-vscode-*.vsix  # Install locally
 |------|------|
 | `src/extension.ts` | Entry: command registration, file detection, build script discovery |
 | `src/preview.ts` | Preview panel: MD/HTML rendering, slide parsing, navigation |
-| `src/htmlPreview.ts` | Dedicated HTML preview for Remarp HTML files |
+| `src/compiledPreview.ts` | Compiled HTML preview for Remarp HTML files |
 | `src/outline.ts` | Slide outline provider for editor sidebar |
 | `src/completions.ts` | Autocomplete: @directives, :::blocks, :::css, :::canvas DSL |
 | `src/cssEditor.ts` | CSS editing: `:::css` block parse/create/update |
