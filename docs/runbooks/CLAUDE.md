@@ -5,12 +5,12 @@ verification. Use `kebab-task.md` filenames, concise English prose, and links to
 relevant ADR and helper. User-requested artifact language is independent of maintained
 documentation language ([ADR-021](../decisions/ADR-021-english-docs-current-review-authority.md)).
 
-This repository ships eight plugins for Claude Code and Codex. It has no application
+This repository ships the registered plugins for Claude Code and Codex. It has no application
 server or database migration lifecycle. `plugin-release.md` covers releases; CI review
 operations live in `../ci-pr-review-runbook.md`. Kiro startup, no-tools-agent and
 quota diagnostics are in `pr-review-panel.md`.
 
-Release procedures must cover all eight Claude manifests, all eight Codex manifests,
+Release procedures must cover all registered Claude manifests, all registered Codex manifests,
 both marketplaces, generated-output freshness and the shared `v{version}` tag.
 Run the required tests and host-specific checks; do not hardcode an old test count or
 treat optional local hooks as mandatory CI evidence.

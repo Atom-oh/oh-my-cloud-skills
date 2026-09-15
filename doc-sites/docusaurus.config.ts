@@ -106,6 +106,7 @@ const config: Config = {
             {label: 'aws-ops-plugin', to: '/docs/aws-ops-plugin/overview'},
             {label: 'kiro-power-converter', to: '/docs/kiro-power-converter/overview'},
             {label: 'agentcore-creator', to: '/docs/agentcore-creator/overview'},
+            {label: 'token-saver', to: '/docs/token-saver/overview'},
           ],
         },
         {
@@ -144,6 +145,7 @@ const config: Config = {
             {label: 'aws-ops-plugin', to: '/docs/aws-ops-plugin/overview'},
             {label: 'kiro-power-converter', to: '/docs/kiro-power-converter/overview'},
             {label: 'agentcore-creator', to: '/docs/agentcore-creator/overview'},
+            {label: 'token-saver', to: '/docs/token-saver/overview'},
           ],
         },
         {

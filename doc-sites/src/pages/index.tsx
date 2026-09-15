@@ -50,6 +50,11 @@ const plugins = [
     title: "agentcore-creator",
     description: translate({id: "home.plugin.agentcore-creator.description", message: "Design and test agents, then prepare AgentCore harness or Runtime deployments."}),
     link: "/docs/agentcore-creator/overview",
+  },
+  {
+    title: "token-saver",
+    description: translate({id: "home.plugin.token-saver.description", message: "Guidance for concise replies, full reasoning, verification, and complete deliverables."}),
+    link: "/docs/token-saver/overview",
   }
 ];
 

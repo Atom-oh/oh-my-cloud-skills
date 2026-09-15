@@ -127,5 +127,19 @@
       "Initialize this project for Codex.",
       "Check project instructions and documentation."
     ]
+  },
+  "token-saver": {
+    "displayName": "Token Saver",
+    "shortDescription": "Concise replies. Complete work.",
+    "longDescription": "Adds small session-start guidance for concise replies while preserving reasoning, verification, complete deliverables and required response formats. No extra model calls or settings edits.",
+    "developerName": "atomoh",
+    "category": "Productivity",
+    "capabilities": [
+      "Skills",
+      "Shell"
+    ],
+    "defaultPrompt": [
+      "Use concise responses while completing the full task."
+    ]
   }
 }

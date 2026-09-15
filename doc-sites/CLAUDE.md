@@ -21,7 +21,7 @@ doc-sites/
 
 ## Conventions
 - **Per-plugin pages** in `doc-sites/docs/<plugin>/`: `overview.md`, `installation.md`, `agents/*.md`, `skills/*.md`. Mirror the plugin's actual agents/skills/commands.
-- `intro.md` and the home page list the eight plugins. Derive component inventories from manifests/source directories and link canonical settings instead of duplicating model catalogs. Codex command wrappers are generated skills, so their counts differ from Claude source skills.
+- `intro.md` and the home page list the registered plugins. Derive component inventories from manifests/source directories and link canonical settings instead of duplicating model catalogs. Codex command wrappers are generated skills, so their counts differ from Claude source skills.
 - Public guide prose and UI follow the Korean/English contract in ADR-023. Keep
   `docs/` as the English source and matching Korean content under
   `i18n/ko/docusaurus-plugin-content-docs/current/`; internal project docs stay English.

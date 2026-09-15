@@ -385,5 +385,8 @@
   "theme.tags.tagsPageTitle": {
     "message": "태그",
     "description": "The title of the tag list page"
+  },
+  "home.plugin.token-saver.description": {
+    "message": "짧은 답변과 충분한 추론·검증·완성된 산출물을 위한 지침을 적용합니다."
   }
 }

@@ -1,0 +1,24 @@
+{
+  "name": "token-saver",
+  "version": "2.0.0",
+  "description": "Concise responses with full reasoning, verification and complete deliverables.",
+  "author": {
+    "name": "atomoh"
+  },
+  "skills": "./.codex-plugin/skills/",
+  "interface": {
+    "displayName": "Token Saver",
+    "shortDescription": "Concise replies. Complete work.",
+    "longDescription": "Adds small session-start guidance for concise replies while preserving reasoning, verification, complete deliverables and required response formats. No extra model calls or settings edits.",
+    "developerName": "atomoh",
+    "category": "Productivity",
+    "capabilities": [
+      "Skills",
+      "Shell"
+    ],
+    "defaultPrompt": [
+      "Use concise responses while completing the full task."
+    ]
+  },
+  "hooks": "./.codex-plugin/hooks.json"
+}
