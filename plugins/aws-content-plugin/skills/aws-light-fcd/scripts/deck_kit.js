@@ -91,8 +91,11 @@ function intrinsicSize(absPath) {
           buffer.toString("ascii", 12, 16) !== "IHDR") return null;
       size = {w: buffer.readUInt32BE(16), h: buffer.readUInt32BE(20)};
     } else if (path.extname(absPath).toLowerCase() === ".svg") {
-      const header = buffer.toString("utf8", 0, length)
-        .replace(/<!--[\s\S]*?-->/g, "").match(/<svg\b[^>]*>/);
+      const text = buffer.toString("utf8", 0, length)
+        .replace(/<!--[\s\S]*?-->/g, "");
+      if (text.includes("<!--")) return null; // The read window ends inside a comment.
+      const header = text.replace(/^\s*<\?xml\b[\s\S]*?\?>/, "")
+        .match(/^\s*<svg\b[^>]*>/);
       if (!header) return null;
       const attrs = {};
       for (const match of header[0].matchAll(/\s(viewBox|width|height)\s*=\s*(["'])(.*?)\2/g)) {
@@ -126,6 +129,9 @@ function fitBox(absPath, x, y, boxW, boxH) {
   if (!size) return {path: absPath, x, y, w: boxW, h: boxH};
   const scale = Math.min(boxW / size.w, boxH / size.h);
   const w = size.w * scale, h = size.h * scale;
+  if (![w, h].every(value => Number.isFinite(value) && value > 0)) {
+    return {path: absPath, x, y, w: boxW, h: boxH};
+  }
   return {path: absPath, x: x + (boxW - w) / 2, y: y + (boxH - h) / 2, w, h};
 }
 

@@ -94,6 +94,28 @@ test("SVG pixel dimensions work when there is no viewBox", () => {
   near(image.y, 3);
 });
 
+test("a truncated SVG comment cannot supply the image's dimensions", () => {
+  const icon = path.join(temp, "comment-window.svg");
+  fs.writeFileSync(icon, '<!-- example <svg viewBox="0 0 80 40"/>' +
+    " ".repeat(4096) + '--><svg viewBox="0 0 40 80"/>');
+  assert.deepEqual(kit.fitBox(icon, 1, 2, 3, 4),
+    {path: icon, x: 1, y: 2, w: 3, h: 4});
+
+  fs.writeFileSync(icon, '<?xml version="1.0"?>\n' +
+    '<!-- example <svg viewBox="0 0 80 40"/> -->\n<svg viewBox="0 0 40 80"/>');
+  const fitted = kit.fitBox(icon, 1, 2, 3, 4);
+  near(fitted.w, 2);
+  near(fitted.h, 4);
+  near(fitted.x, 1.5);
+});
+
+test("unrepresentable fitted dimensions fall back instead of emitting infinity", () => {
+  const icon = path.join(temp, "tiny.svg");
+  fs.writeFileSync(icon, '<svg viewBox="0 0 1e-320 1e-320"/>');
+  assert.deepEqual(kit.fitBox(icon, 1, 2, 3, 4),
+    {path: icon, x: 1, y: 2, w: 3, h: 4});
+});
+
 test("unreadable, truncated and invalid dimensions preserve the caller's box", () => {
   assert.equal(typeof kit.fitBox, "function");
   const missing = path.join(temp, "missing.png");
