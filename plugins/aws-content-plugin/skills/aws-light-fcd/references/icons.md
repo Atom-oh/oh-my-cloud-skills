@@ -14,6 +14,18 @@ Icons come from two tiers:
 short name (`"ecr"`) wins when bundled, otherwise it resolves from the shared library
 (`"Amazon-Elastic-Container-Registry"`).
 
+## Preserve icon proportions
+
+AgentCore artwork is not uniformly square: `gateway.png` is 392×340 pixels.
+AgentCore headers/cards and architecture service icons fit the original image
+inside their existing slot, centered without stretching or cropping. Square
+icons keep their existing dimensions.
+
+For manually placed icons, use `s.addImage(kit.fitBox(iconPath, x, y, w, h))`.
+The helper reads PNG dimensions or SVG root `viewBox`/pixel dimensions from the
+first 4 KiB. If metadata is missing, unsupported or invalid, it keeps the requested
+box; it does not suppress PptxGenJS image-loading errors or replace visual review.
+
 ## AgentCore icons — `assets/icons/agentcore/`
 
 Black + purple line icons on transparent background (designed for white canvas).
@@ -89,7 +101,7 @@ Resolve any icon by its **index key** with `kit.icon(name)`:
 
 ```js
 arch.svc(kit, pres, s, cx, y, "Amazon-Elastic-Kubernetes-Service", "Amazon EKS");
-s.addImage({ path: kit.icon("Amazon-Bedrock"), x, y, w: 0.62, h: 0.62 });
+s.addImage(kit.fitBox(kit.icon("Amazon-Bedrock"), x, y, 0.62, 0.62));
 ```
 
 `kit.icon()` returns a **pptx-safe PNG path**: the index records an SVG, and the helper
