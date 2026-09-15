@@ -1,6 +1,6 @@
 # Runbook: Plugin release
 
-Release all eight plugins for Claude Code and Codex at one shared version. Run from
+Release all registered plugins for Claude Code and Codex at one shared version. Run from
 the repository root. Start from an up-to-date, clean `main`; prepare changes on a
 release branch and complete the required PR review before tagging the merged commit.
 The extension's package version is a separate concern.
@@ -64,7 +64,7 @@ python3 scripts/eval-skills.py
 git diff --check
 ```
 
-The validators cover all eight manifests for each host and both marketplaces. Missing
+The validators cover all registered manifests for each host and both marketplaces. Missing
 or stale generated output is a failure, including project-init. For adapter, hook or
 installation changes, also run the checks in
 [Codex runtime verification](../reference/codex-runtime-verification.md).

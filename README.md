@@ -1,8 +1,9 @@
 # oh-my-cloud-skills
 
-Eight plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and
+Nine plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and
 [Codex](https://developers.openai.com/codex/plugins): cloud content, AWS operations,
-agent and plugin conversion, peer review, implementation delegation, and project documentation.
+agent and plugin conversion, peer review, implementation delegation, project documentation,
+and concise response delivery.
 
 [Documentation](https://www.atomai.click/oh-my-cloud-skills/) ·
 [Changelog](CHANGELOG.md) ·
@@ -23,6 +24,7 @@ agent and plugin conversion, peer review, implementation delegation, and project
 | [project-init](plugins/project-init/) | Initialize and maintain the current host's project instructions, skills, architecture docs, ADRs, runbooks, and reference guides |
 | [kiro](plugins/kiro/) | Delegate implementation to Kiro CLI, with host verification and optional commit/push review and web search |
 | [atlas](plugins/atlas/) | A per-topic repository wiki with coverage metadata, git-based drift checks, and optional push-time synchronization |
+| [token-saver](plugins/token-saver/) | Concise response guidance with full reasoning, verification, complete artifacts, and required report formats |
 
 Both [Claude](.claude-plugin/marketplace.json) and
 [Codex](.agents/plugins/marketplace.json) marketplaces contain these plugins.
@@ -107,6 +109,7 @@ does not activate those project hooks. See
 | “Delegate this approved implementation plan to Kiro.” | kiro-delegate |
 | “Initialize this existing project for Codex.” | init-project |
 | “Find Atlas pages that drifted from the code.” | atlas |
+| “Use concise replies while completing the full task.” | concise-responses |
 
 Commands shown below name the Claude workflows; select their corresponding
 installed skill entries in Codex. Review a concrete deployment or publication

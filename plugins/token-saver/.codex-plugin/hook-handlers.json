@@ -1,0 +1,10 @@
+{
+  "plugin": "token-saver",
+  "handlers": [
+    {
+      "event": "SessionStart",
+      "matcher": "",
+      "command": "python3 -I \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.py\""
+    }
+  ]
+}

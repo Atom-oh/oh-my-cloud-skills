@@ -23,7 +23,7 @@ fi
 
 # Every plugin in the marketplace — a hardcoded subset let cached copies of the
 # others (notably co-agent's live hooks) drift silently.
-for plugin in aws-content-plugin aws-ops-plugin kiro-power-converter co-agent agentcore-creator project-init kiro atlas; do
+for plugin in aws-content-plugin aws-ops-plugin kiro-power-converter co-agent agentcore-creator project-init kiro atlas token-saver; do
   PLUGIN_JSON="$SRC_BASE/$plugin/.claude-plugin/plugin.json"
   if [[ ! -f "$PLUGIN_JSON" ]]; then
     echo "SKIP: $plugin — plugin.json not found"

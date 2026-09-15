@@ -3,6 +3,26 @@
 Verified with Codex CLI 0.154.0 on 2026-09-11. Runtime behavior, not a generic
 regex assumption, determines tool aliases and skill namespaces.
 
+The inventory below records that dated snapshot. See [current inventory](../architecture.md)
+for later additions.
+
+## Token-saver addition (2026-09-15)
+
+The complete marketplace now discovers nine plugins, 75 entry skills and 26 plugin
+hooks in Codex CLI 0.154.0. Token-saver adds one explicit manual skill and one
+`SessionStart` handler.
+
+`scripts/test-token-saver-native.py` verifies the copied, installed plugin against
+loopback model fixtures in disposable homes. Codex skips the untrusted hook, then
+includes its exact policy after the fixture explicitly trusts that definition;
+two turns in one thread run the session hook once. Claude Code 2.1.271 also
+includes the policy when loading the plugin. These checks make no external model
+calls and do not modify customer configuration or certify inference quality.
+
+```bash
+python3 scripts/test-token-saver-native.py --report /var/tmp/token-saver-native.json
+```
+
 ## Entry names
 
 Codex's app-server `skills/list` returns plugin-qualified names. The complete

@@ -32,7 +32,7 @@ Source-mirror discovery does not authorize a Codex publication exception or sour
 publication. The Codex validator requires every plugin's manifest and marketplace
 entry; the temporary `CLAUDE_ONLY` staging exception has been removed.
 
-All eight plugins provide Codex overlays. Keep adaptation tooling outside upstream-owned
+All registered plugins provide Codex overlays. Keep adaptation tooling outside upstream-owned
 files and regenerate after source updates. L1 executes trusted-base structural validators
 against the archived PR tree as data; it never executes PR-supplied scripts. Generation
 freshness runs separately in GitHub-hosted `pull_request` CI using that PR's generator and

@@ -58,5 +58,9 @@
   "item.label.agentcore-creator": {
     "message": "agentcore-creator",
     "description": "Navbar item with label agentcore-creator"
+  },
+  "item.label.token-saver": {
+    "message": "token-saver",
+    "description": "Navbar item with label token-saver"
   }
 }

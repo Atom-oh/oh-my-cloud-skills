@@ -66,5 +66,9 @@
   "copyright": {
     "message": "Copyright © 2026 Atom-oh. Docusaurus로 제작했습니다.",
     "description": "The footer copyright"
+  },
+  "link.item.label.token-saver": {
+    "message": "token-saver",
+    "description": "The label of footer link with label=token-saver linking to /docs/token-saver/overview"
   }
 }

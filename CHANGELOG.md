@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add token-saver for concise response guidance in Claude Code and Codex, with a
+  bounded session-start hook and manual skill. Preserve reasoning, verification,
+  complete deliverables and required report formats.
+
 ## [2.0.0] - 2026-09-13
 
 This major release removes the previously supported Antigravity peer and requires

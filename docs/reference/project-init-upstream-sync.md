@@ -22,10 +22,10 @@ and ADR-021 require English internal documentation; ADR-023 separately permits
 Korean/English public guide content. Apply those scopes when running the generators.
 Preserve the upstream files and the user's chosen language for other deliverables.
 
-All eight plugins, including project-init, are required on the Codex surface.
+All registered plugins, including project-init, are required on the Codex surface.
 This package includes its generated overlay, and the temporary `CLAUDE_ONLY`
 exception is removed: a missing adapter is now an error even without a marketplace
-entry. Upstream source discovery remains separate. Complete eight-plugin acceptance
+entry. Upstream source discovery remains separate. Complete marketplace acceptance
 still requires all packages and global checks; source validation alone is insufficient.
 
 Previously, 12 files carried local divergence (model tier adjustments, superpowers
@@ -90,7 +90,7 @@ bash tests/run-all.sh
 
 An overlay preserved across a source update is not thereby fresh. Do not publish
 or report it ready until regeneration and applicable Codex checks pass. Those
-checks cover this package; complete eight-plugin acceptance is a separate gate.
+checks cover this package; complete marketplace acceptance is a separate gate.
 
 > The upstream manifest has no `agents`/`skills`/`commands` arrays (Claude Code discovers
 > them by convention). `scripts/test-plugins.py` falls back to searching disk when the

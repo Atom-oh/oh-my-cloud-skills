@@ -107,6 +107,19 @@
       },
       "category": "Development",
       "version": "2.0.0"
+    },
+    {
+      "name": "token-saver",
+      "source": {
+        "source": "local",
+        "path": "./plugins/token-saver"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity",
+      "version": "2.0.0"
     }
   ]
 }

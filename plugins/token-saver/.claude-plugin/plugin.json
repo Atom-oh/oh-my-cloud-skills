@@ -1,0 +1,26 @@
+{
+  "name": "token-saver",
+  "version": "2.0.0",
+  "description": "Concise responses with full reasoning, verification and complete deliverables.",
+  "author": {
+    "name": "atomoh"
+  },
+  "agents": [],
+  "skills": [
+    "./skills/concise-responses"
+  ],
+  "commands": [],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -I \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.py\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -6,6 +6,11 @@ const sidebars: SidebarsConfig = {
     'releases/v2.0.0',
   ],
 
+  tokenSaver: [
+    'token-saver/overview',
+    'token-saver/installation',
+  ],
+
   atlas: [
     'atlas/overview',
     'atlas/installation',
