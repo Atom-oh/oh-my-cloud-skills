@@ -29,6 +29,7 @@ RHS_WORDS = re.compile(
 )
 LINK_VALUE = re.compile(r"\[[^\"'\]\r\n]+\]\(")
 SETEXT_TAIL = re.compile(r"=*[ \t]*(?:\r?\n|\Z)")
+LINE_NUMBER = re.compile(r"[0-9]+(?::[0-9]+)?(?=\Z|[\s)\],.;])")
 # Legacy shell adapters have no shared Python credential policy. Structured
 # adapters pass their existing sensitive-key pattern explicitly instead.
 DEFAULT_SENSITIVE_KEY = (
@@ -49,7 +50,7 @@ def is_assignment(text, match, quoted_key=False):
             return False
         if first and LINK_VALUE.match(text, words.start("first")):
             return False  # A prose label may introduce a Markdown reference.
-        if first.startswith(("'", '"', "{", "[")):
+        if first.startswith(("'", '"', "{", "[", "!", "&")):
             return True
         if first.lower() in ("basic", "bearer") and words["second"] and not words["third"]:
             return True
@@ -107,11 +108,8 @@ def format_violation(text, sensitive_pattern=DEFAULT_SENSITIVE_KEY):
                 return ERROR_CODE
             # Formatting only the key does not make an unfenced assignment safe.
             following = ASSIGNMENT_TAIL.match(text, line_start + closing.end())
-            path_reference = any(char in reference for char in "/\\")
-            qualified_colon = following and following["operator"] == ":" and any(
-                char in reference for char in ".:")
-            if (sensitive_pattern.search(reference) and following and not path_reference
-                    and not qualified_colon and is_assignment(text, following)):
+            if (sensitive_pattern.search(reference) and following
+                    and is_assignment(text, following)):
                 return ERROR_CODE
             prose.append(body[cursor:opening.start()])
             prose.append("\0")
@@ -126,11 +124,11 @@ def format_violation(text, sensitive_pattern=DEFAULT_SENSITIVE_KEY):
     for match in assignment.finditer(prose_text):
         key = prose_text[match.start():match.start("spacing")]
         quoted_key = key.endswith(("'", '"'))
-        if not quoted_key:
-            if match.start() and prose_text[match.start() - 1] in "/\\.":
-                continue
-            if match["operator"] == ":" and any(char in key for char in ".:"):
-                continue  # Unquoted path:line citations are not setting keys.
+        path_key = (any(char in key for char in ".:")
+                    or (match.start() and prose_text[match.start() - 1] in "/\\."))
+        if (not quoted_key and path_key and match["operator"] == ":"
+                and not match["spacing"] and LINE_NUMBER.match(prose_text, match.end())):
+            continue  # Only an adjacent numeric path:line suffix is a citation.
         if is_assignment(prose_text, match, quoted_key):
             return ERROR_CODE
     return None

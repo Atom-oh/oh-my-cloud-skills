@@ -40,6 +40,11 @@ class ReviewFormatTests(unittest.TestCase):
             "Authorization: caller checked; password='synthetic'",
             "Checked `src/token.ts`: note; token='synthetic'",
             "config.password = 'synthetic'",
+            "`config.password`: 'synthetic'",
+            "`/config/token` = 'synthetic'",
+            "password: !!str synthetic-value",
+            "token: &saved synthetic-value",
+            "config.password: synthetic-value",
         ):
             with self.subTest(text=text):
                 self.assertEqual(FORMAT["format_violation"](text), "unsupported_review_format")

@@ -1,5 +1,6 @@
 # AI Code Review — copy to .github/workflows/pr-review.yml.
 # Also copy ../scripts/review_gate.py to .github/scripts/pr-review-gate.py.
+# Copy ../scripts/review_format.py to .github/scripts/review_format.py as well.
 # Requires python3 (stdlib only), Claude CLI, and configured Bedrock credentials on the runner.
 # Set ANTHROPIC_MODEL/AWS_REGION repository variables as needed. CLAUDE.md is optional.
 # PR content is data only: never check out or execute the PR head in this privileged job.

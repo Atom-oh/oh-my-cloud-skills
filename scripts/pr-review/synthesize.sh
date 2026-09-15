@@ -138,8 +138,8 @@ run_chair() {  # $1=model $2=timeout $3=allow-file-tools(1|0) -> "$OUT" after cr
     claude -p "$(cat "$WORK/synth-prompt.txt")" --output-format text \
     --allowedTools "$allowed" \
     --disallowedTools "$disallowed" \
-    < "$WORK/synth-stdin.txt" 2>"$WORK/chair.err" | review_format_filter |
-    scrub_secrets | review_format_filter > "$OUT"; then
+    < "$WORK/synth-stdin.txt" 2>"$WORK/chair.err" |
+    python3 "$DIR/publish_chair.py" > "$OUT"; then
     CHAIR_CLI_RC=0
   else
     CHAIR_CLI_RC=$?

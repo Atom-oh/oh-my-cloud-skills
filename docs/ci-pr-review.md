@@ -80,6 +80,15 @@ checks decoded summary/message/reason strings, keeps metadata separate and quote
 validated model text in its comment. Install its workflow and both Python validators
 together; a missing dependency is an error.
 
+The repository chair publisher classifies the original semantic result before
+scrubbing and checks the scrubbed result again. A blocking primary result cannot
+turn into a format/CLI failure followed by a clean fallback. Unpublishable blocking
+details produce a static FAIL report; no unscrubbed model text is echoed or stored.
+The legacy Kiro CLI can render away Markdown code markers, so Kiro is asked for
+narrative findings and plain path/line references, without code snippets or inline
+markup. This preserves its AWS/operations review responsibility and avoids guessing
+which missing markers the renderer removed. Model IDs, engine flags and budgets stay fixed.
+
 A claim needs a concrete trigger, affected path and verified consequence. Shared or
 previously shipped code is not exempt if the PR exposes a real defect. Source skills,
 commands, agents, Codex entries and CI cells are different populations. An absent diff
