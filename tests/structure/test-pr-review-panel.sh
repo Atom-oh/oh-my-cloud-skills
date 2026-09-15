@@ -433,14 +433,18 @@ EOF2
     rm -f "$T_STUB/kiro-cli.chat-invoked"
 
     # Reject duplicate JSON keys before contacting models; the fixture mirrors the helper-relative paths.
-    mkdir -p "$T_STUB/fixture/agents"
-    cp "$PANEL" "$T_STUB/fixture/run-panel.sh"
-    cp scripts/pr-review/lib.sh scripts/pr-review/panel_config.py scripts/pr-review/pr-review.defaults.json "$T_STUB/fixture/"
-    cat > "$T_STUB/fixture/agents/pr-review-notools.json" <<'EOF2'
+    mkdir -p "$T_STUB/fixture/scripts/pr-review/agents" \
+      "$T_STUB/fixture/plugins/co-agent/skills/pr-autofix/scripts"
+    cp "$PANEL" "$T_STUB/fixture/scripts/pr-review/run-panel.sh"
+    cp scripts/pr-review/lib.sh scripts/pr-review/panel_config.py scripts/pr-review/pr-review.defaults.json \
+      "$T_STUB/fixture/scripts/pr-review/"
+    cp plugins/co-agent/skills/pr-autofix/scripts/review_format.py \
+      "$T_STUB/fixture/plugins/co-agent/skills/pr-autofix/scripts/"
+    cat > "$T_STUB/fixture/scripts/pr-review/agents/pr-review-notools.json" <<'EOF2'
 {"name":"pr-review-notools","tools":[],"tools":["read"],"allowedTools":[],"mcpServers":{},"resources":[],"useLegacyMcpJson":false}
 EOF2
     PANEL_RC=0
-    PANEL_OUT=$(PATH="$T_STUB:$PATH" bash "$T_STUB/fixture/run-panel.sh" \
+    PANEL_OUT=$(PATH="$T_STUB:$PATH" bash "$T_STUB/fixture/scripts/pr-review/run-panel.sh" \
         "$T_STUB/diff.txt" "$T_STUB/lenses" "$T_STUB/work" 2>&1) || PANEL_RC=$?
     assert_eq "1" "$PANEL_RC" "duplicate JSON keys are rejected before startup"
     assert_grep_match 'invalid no-tools agent configuration' "$PANEL_OUT" "the agent-config rejection names its cause"

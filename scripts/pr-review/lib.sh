@@ -10,10 +10,35 @@ ensure_slots() {
 
 # A response needs nonempty stdout AND a successful final CLI exit.
 # Missing exit evidence is failure, not a vote. Arguments: slot, label, response list.
+review_format_path() {
+  printf '%s/../../plugins/co-agent/skills/pr-autofix/scripts/review_format.py\n' \
+    "$(dirname "${BASH_SOURCE[0]}")"
+}
+
+review_format_filter() {
+  python3 "$(review_format_path)" filter
+}
+
+review_format_valid() {
+  python3 "$(review_format_path)" check "$1"
+}
+
+accept_review_slot() {
+  local slot="$1" accepted="$1.accepted"
+  if sed -E 's/\x1B\[[0-?]*[ -/]*[@-~]//g' "$slot" |
+      review_format_filter | scrub_secrets | review_format_filter > "$accepted"; then
+    mv "$accepted" "$slot"
+  else
+    rm -f "$accepted"
+    : > "$slot"
+    return 1
+  fi
+}
+
 record_result() {
   local slot="$1" label="$2" responded="$3"
   local rc; rc="$(cat "$slot.rc" 2>/dev/null || echo 1)"
-  if [ -s "$slot" ] && [ "$rc" = "0" ]; then
+  if [ -s "$slot" ] && [ "$rc" = "0" ] && review_format_valid "$slot"; then
     echo "$label" >> "$responded"
   else
     echo "[skip] $label (exit=$rc)" >&2

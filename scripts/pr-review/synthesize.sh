@@ -93,6 +93,7 @@ VERDICT: FAIL instead of inventing empty Issues. Missing configured reviewers or
 truncated input cannot be treated as a complete review. Advisory/style findings alone
 are not blockers, but the gate independently rejects inconsistent or incomplete evidence.
 PROMPT_EOF
+python3 "$(review_format_path)" instructions >> "$WORK/synth-prompt.txt"
 
 MEMORY_EXCERPT="$(memory_excerpt docs/pr-review/review-memory.md "${CHAIR_MEMORY_CAP:-8000}")"
 
@@ -137,7 +138,8 @@ run_chair() {  # $1=model $2=timeout $3=allow-file-tools(1|0) -> "$OUT" after cr
     claude -p "$(cat "$WORK/synth-prompt.txt")" --output-format text \
     --allowedTools "$allowed" \
     --disallowedTools "$disallowed" \
-    < "$WORK/synth-stdin.txt" 2>"$WORK/chair.err" | scrub_secrets > "$OUT"; then
+    < "$WORK/synth-stdin.txt" 2>"$WORK/chair.err" | review_format_filter |
+    scrub_secrets | review_format_filter > "$OUT"; then
     CHAIR_CLI_RC=0
   else
     CHAIR_CLI_RC=$?
