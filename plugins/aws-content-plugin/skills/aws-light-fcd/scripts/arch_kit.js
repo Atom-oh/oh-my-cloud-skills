@@ -88,7 +88,7 @@ function svc(kit, pres, s, cx, y, iconName, label, iconSz = 0.62, capW = 1.8) {
     }
   }
   const cw = capW;   // caller-supplied width (default 1.8"); archFlow passes its slotW
-  s.addImage({ path: iconPath, x: cx - iconSz / 2, y, w: iconSz, h: iconSz });
+  s.addImage(kit.fitBox(iconPath, cx - iconSz / 2, y, iconSz, iconSz));
   s.addText(label, { x: cx - cw / 2, y: y + iconSz + 0.04, w: cw, h: 0.54, fontFace: kit.FONT, fontSize: 10.5, color: kit.C.body, align: "center", valign: "top", lineSpacingMultiple: 1.0, margin: 0 });
 }
 

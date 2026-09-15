@@ -75,6 +75,60 @@ const agentcoreIcon = (n) => path.join(ASSETS, "icons", "agentcore", n + ".png")
 const awsIcon = (n) => path.join(ASSETS, "icons", "aws", n + ".png");
 const toolIcon = (n) => path.join(ASSETS, "icons", "tools", n + ".png");
 
+// Read bounded metadata from the PNG/SVG icons used by this kit. Missing or
+// unsupported metadata retains the caller's original box; image loading still
+// belongs to PptxGenJS and must report its own errors.
+function intrinsicSize(absPath) {
+  let fd;
+  try {
+    fd = fs.openSync(absPath, "r");
+    const buffer = Buffer.alloc(4096);
+    const length = fs.readSync(fd, buffer, 0, buffer.length, 0);
+    let size;
+    if (path.extname(absPath).toLowerCase() === ".png") {
+      const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+      if (length < 24 || !buffer.subarray(0, 8).equals(signature) ||
+          buffer.toString("ascii", 12, 16) !== "IHDR") return null;
+      size = {w: buffer.readUInt32BE(16), h: buffer.readUInt32BE(20)};
+    } else if (path.extname(absPath).toLowerCase() === ".svg") {
+      const header = buffer.toString("utf8", 0, length)
+        .replace(/<!--[\s\S]*?-->/g, "").match(/<svg\b[^>]*>/);
+      if (!header) return null;
+      const attrs = {};
+      for (const match of header[0].matchAll(/\s(viewBox|width|height)\s*=\s*(["'])(.*?)\2/g)) {
+        attrs[match[1]] = match[3];
+      }
+      if (attrs.viewBox !== undefined) {
+        const values = attrs.viewBox.trim().split(/[\s,]+/).map(Number);
+        if (values.length !== 4 || !values.every(Number.isFinite)) return null;
+        size = {w: values[2], h: values[3]};
+      } else {
+        const pixels = value => {
+          const match = /^([+]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?)(?:px)?$/i
+            .exec((value || "").trim());
+          return match ? Number(match[1]) : NaN;
+        };
+        size = {w: pixels(attrs.width), h: pixels(attrs.height)};
+      }
+    }
+    return size && Number.isFinite(size.w) && Number.isFinite(size.h) &&
+      size.w > 0 && size.h > 0 ? size : null;
+  } catch {
+    return null;
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd);
+  }
+}
+
+// Center an icon inside its existing slot without stretching or cropping it.
+function fitBox(absPath, x, y, boxW, boxH) {
+  const size = intrinsicSize(absPath);
+  if (!size) return {path: absPath, x, y, w: boxW, h: boxH};
+  const scale = Math.min(boxW / size.w, boxH / size.h);
+  const w = size.w * scale, h = size.h * scale;
+  return {path: absPath, x: x + (boxW - w) / 2, y: y + (boxH - h) / 2, w, h};
+}
+
 // ─── Shared AWS icon library (the official 811-icon set used by the sibling
 //     reactive-presentation skill — not duplicated here, referenced in place) ───
 const RP_ICONS = path.join(__dirname, "..", "..", "reactive-presentation", "icons");
@@ -257,7 +311,7 @@ function agentcoreCards(pres, opts) {
   const iconW = 0.62, iconGap = 0.18;
   const groupW = iconW + iconGap + estW;
   const groupX = (W - groupW) / 2;
-  s.addImage({ path: agentcoreIcon(opts.headerIcon || "agentcore"), x: groupX, y: 0.5, w: iconW, h: iconW });
+  s.addImage(fitBox(agentcoreIcon(opts.headerIcon || "agentcore"), groupX, 0.5, iconW, iconW));
   s.addText(titleText, { x: groupX + iconW + iconGap, y: 0.5, w: estW + 0.6, h: 0.62, fontFace: FONT, fontSize: titleFs, bold: true, color: C.ink, charSpacing: -0.8, align: "left", valign: "middle", margin: 0 });
   if (opts.subtitle) s.addText(opts.subtitle, { x: PAD, y: 1.42, w: 11.5, h: 0.5, fontFace: FONT, fontSize: 14, color: C.muted, align: "center", valign: "top" });
 
@@ -271,7 +325,7 @@ function agentcoreCards(pres, opts) {
     s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y: cardY, w: cardW, h: cardH, rectRadius: 0.14, fill: { color: C.card }, line: { type: "none" }, shadow: mkShadow() });
     s.addImage({ path: GRAD_PILL, x: x + 0.18, y: cardY - 0.28, w: cardW - 0.36, h: pillH });
     s.addText(c.title, { x: x + 0.18, y: cardY - 0.28, w: cardW - 0.36, h: pillH, fontFace: FONT, fontSize: 16, bold: true, color: "FFFFFF", align: "center", valign: "middle", charSpacing: 0.5 });
-    s.addImage({ path: agentcoreIcon(c.icon), x: x + cardW / 2 - 0.52, y: cardY + 0.75, w: 1.04, h: 1.04 });
+    s.addImage(fitBox(agentcoreIcon(c.icon), x + cardW / 2 - 0.52, cardY + 0.75, 1.04, 1.04));
     s.addText(c.desc, { x: x + 0.3, y: cardY + 2.05, w: cardW - 0.6, h: 1.1, fontFace: FONT, fontSize: 14, color: C.body, align: "center", valign: "top", lineSpacingMultiple: 1.25 });
   });
   addFooter(pres, s, opts.pageNum);
@@ -542,6 +596,7 @@ module.exports = {
   pptxgen, newDeck, FONT, W, H, PAD, C, COPYRIGHT,
   ASSETS, LOGO, LOGO_AR, BG_COVER, BG_GLOW, GRAD_PILL,
   agentcoreIcon, awsIcon, toolIcon, icon, hasIcon, RP_ICONS, mkShadow, cap, estTextW,
+  fitBox,
   addFooter, addHeader, applyBg,
   cover, agenda, agentcoreCards, bigStat, titleWithVisual,
   pipeline, whyWhat, chartWithCallout, chipGrid,
