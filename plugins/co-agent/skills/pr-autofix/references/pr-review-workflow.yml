@@ -1,5 +1,6 @@
 # AI Code Review — copy to .github/workflows/pr-review.yml.
 # Also copy ../scripts/review_gate.py to .github/scripts/pr-review-gate.py.
+# Copy ../scripts/review_format.py to .github/scripts/review_format.py as well.
 # Requires python3 (stdlib only), Claude CLI, and configured Bedrock credentials on the runner.
 # Set ANTHROPIC_MODEL/AWS_REGION repository variables as needed. CLAUDE.md is optional.
 # PR content is data only: never check out or execute the PR head in this privileged job.
@@ -90,6 +91,8 @@ jobs:
           Do not include credentials or raw error logs.
           PROMPT_EOF
           )
+          FORMAT_INSTRUCTIONS="$(python3 "$GITHUB_WORKSPACE/.github/scripts/review_format.py" instructions)"
+          PROMPT="$PROMPT Apply these rules inside summary/message/reason strings, not the JSON envelope: $FORMAT_INSTRUCTIONS"
           # No repository execution, filesystem tools, MCP tools, or auto-loaded settings.
           # A CLI failure is recorded and classified as ERROR; it is never a content finding.
           cd "$REVIEW_WORK_DIR"
@@ -149,7 +152,7 @@ jobs:
                   if (!['PASSED', 'BLOCKED', 'ERROR'].includes(checked.status)) throw new Error('Invalid gate result');
                   status = checked.status;
                   reason = checked.reason;
-                  if (status !== 'ERROR') report = candidate;
+                  if (status !== 'ERROR' && checked.publishable !== false) report = candidate;
                 }
               } catch (_) {
                 reason = 'Review output is missing, empty, oversized, or malformed; no valid review verdict is available.';

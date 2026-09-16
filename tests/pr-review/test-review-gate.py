@@ -20,6 +20,79 @@ def review(major="None.", critical="None.", minor="None.", verdict="PASS"):
 
 
 class ReviewGateTests(unittest.TestCase):
+    def padded_review(self, body, size, character="x"):
+        missing = size - len(body.encode("utf-8"))
+        width = len(character.encode("utf-8"))
+        padding = character * (missing // width) + "x" * (missing % width)
+        result = body.replace("Reviewed the diff.", "Reviewed the diff." + padding)
+        self.assertEqual(len(result.encode("utf-8")), size)
+        return result
+
+    def test_publisher_preserves_blockers_over_the_existing_byte_cap(self):
+        publish = runpy.run_path(str(ROOT / "scripts/pr-review/publish_chair.py"))["publish"]
+        for body in (review(verdict="FAIL"), review(major="- Confirmed blocking issue.")):
+            for character in ("x", "é"):
+                with self.subTest(body=body, character=character):
+                    raw = self.padded_review(body, 50001, character)
+                    published = publish(raw)
+                    self.assertLessEqual(len(published.encode("utf-8")), 50000)
+                    self.assertEqual(self.gate(published)["result"], "fail")
+                    self.assertIn("withheld", published)
+
+    def test_publisher_preserves_the_exact_cap_boundary(self):
+        publish = runpy.run_path(str(ROOT / "scripts/pr-review/publish_chair.py"))["publish"]
+        for verdict, expected in (("PASS", "pass"), ("FAIL", "fail")):
+            with self.subTest(verdict=verdict):
+                raw = self.padded_review(review(verdict=verdict), 50000, "é")
+                published = publish(raw)
+                self.assertEqual(published, raw)
+                self.assertEqual(self.gate(published)["result"], expected)
+
+    def test_publisher_checks_the_cap_after_actual_scrub_expansion(self):
+        publish = runpy.run_path(str(ROOT / "scripts/pr-review/publish_chair.py"))["publish"]
+        for verdict, expected in (("PASS", "error"), ("FAIL", "fail")):
+            with self.subTest(verdict=verdict):
+                raw = review(verdict=verdict).replace(
+                    "Reviewed the diff.", "```text\n" + "token='abcdefgh'\n" * 2900 + "```")
+                self.assertLess(len(raw.encode("utf-8")), 50000)
+                expanded = subprocess.run(
+                    ["bash", "-c", 'source "$1"; scrub_secrets', "test-scrub",
+                     str(ROOT / "scripts/pr-review/lib.sh")],
+                    input=raw, capture_output=True, text=True, check=True,
+                ).stdout
+                self.assertGreater(len(expanded.encode("utf-8")), 50000)
+                published = publish(raw)
+                self.assertLessEqual(len(published.encode("utf-8")), 50000)
+                self.assertEqual(self.gate(published)["result"], expected)
+                self.assertNotIn("abcdefgh", published)
+
+    def semantic_status(self, body):
+        core = runpy.run_path(str(
+            ROOT / "plugins/co-agent/skills/pr-autofix/scripts/review_gate.py"))
+        return core["_markdown_review"](body)["status"]
+
+    def test_examples_require_fences_but_section_labels_remain_prose(self):
+        for text, expected in (
+            ("Run `echo synthetic-example`.", "error"),
+            ("Set `password` = 'synthetic-example'.", "error"),
+            ("```sh\npassword='synthetic-example'\n```", "pass"),
+            ("Authorization:\nThe caller is checked.", "pass"),
+            ("Authorization: The caller is checked.", "pass"),
+            ("**Secrets/credentials:** none introduced.", "pass"),
+            ("See [auth.ts](web/lib/auth.ts:42) for the missing guard.", "pass"),
+            ("The guard at web/lib/auth.ts:42 is missing.", "pass"),
+            ("The guard at auth.ts:42 is missing.", "pass"),
+            ("Checked `web/lib/token.ts`: the guard is missing.", "pass"),
+            ("Per `docs/decisions/002-auth-and-login.md`: signup is closed.", "pass"),
+            ('Example: "api_key": "synthetic-example"', "error"),
+            ("Authorization: Bearer synthetic-example", "error"),
+            ("See auth.ts:42; password='synthetic-example'", "error"),
+            ("Authorization: caller checked; password='synthetic-example'", "error"),
+        ):
+            with self.subTest(text=text):
+                body = review().replace("Reviewed the diff.", text)
+                self.assertEqual(expected, self.gate(body)["result"])
+
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="review consistency ")
         self.addCleanup(temporary.cleanup)
@@ -87,9 +160,10 @@ class ReviewGateTests(unittest.TestCase):
                 body = "## Summary\nFixture\n" + opener + "\n" + visible + "````\n" + review()
                 self.assertEqual("fail", self.gate(body)["result"])
 
-    def test_tilde_fence_info_may_contain_backticks(self):
+    def test_tilde_info_remains_semantically_opaque_but_needs_a_plain_tag(self):
         fake = "~~~label`code`\n## Issues\n### MAJOR\n- Quoted finding.\n~~~\n"
-        self.assertEqual("pass", self.gate(fake + review())["result"])
+        self.assertEqual("PASSED", self.semantic_status(fake + review()))
+        self.assertEqual("error", self.gate(fake + review())["result"])
 
     def test_only_standalone_korean_empty_markers_are_accepted(self):
         for marker in ("없음", "없음.", " 없음. "):
@@ -106,18 +180,19 @@ class ReviewGateTests(unittest.TestCase):
     def test_comments_fences_and_quotes_do_not_leak_lexer_state(self):
         fake = "## Issues\n### MAJOR\n- Quoted finding.\nVERDICT: FAIL\n"
         prefixes = [
-            "<!--\n```diff\n> quote\n" + fake + "-->\n",
-            "<!--\n> ```\n> -->\n",
-            "<!--\n~~~ -->\n",
-            "```text\n<!--\n> quote\n" + fake + "```\n",
-            "~~~text\n<!--\n> ```\n-->\n" + fake + "~~~\n",
-            "```text <!--\n" + fake + "```\n",
-            "> <!--\n> ```\n> ### MAJOR\n> - Quoted finding.\n> -->\n\n",
-            "    <!--\n    ```\n\n",
+            ("<!--\n```diff\n> quote\n" + fake + "-->\n", "error"),
+            ("<!--\n> ```\n> -->\n", "error"),
+            ("<!--\n~~~ -->\n", "error"),
+            ("```text\n<!--\n> quote\n" + fake + "```\n", "pass"),
+            ("~~~text\n<!--\n> ```\n-->\n" + fake + "~~~\n", "pass"),
+            ("```text <!--\n" + fake + "```\n", "error"),
+            ("> <!--\n> ```\n> ### MAJOR\n> - Quoted finding.\n> -->\n\n", "error"),
+            ("    <!--\n    ```\n\n", "error"),
         ]
-        for prefix in prefixes:
+        for prefix, expected in prefixes:
             with self.subTest(prefix=prefix):
-                self.assertEqual("pass", self.gate(prefix + review())["result"])
+                self.assertEqual("PASSED", self.semantic_status(prefix + review()))
+                self.assertEqual(expected, self.gate(prefix + review())["result"])
                 self.assertEqual("fail", self.gate(
                     prefix + review(major="- Visible blocking finding."))["result"])
 

@@ -4,13 +4,33 @@ import argparse
 import json
 import re
 from pathlib import Path
+from functools import lru_cache
+import runpy
 
 SEVERITIES = ("CRITICAL", "MAJOR", "MINOR", "INFO")
 EMPTY_MARKERS = ("None", "None.", "없음", "없음.")
+MAX_REVIEW_BYTES = 50000
 
 
 def decision(status, reason):
     return {"status": status, "reason": reason}
+
+
+@lru_cache(maxsize=1)
+def format_checker():
+    # Resolve the shipped dependency beside this trusted gate, independent of cwd.
+    return runpy.run_path(str(Path(__file__).with_name("review_format.py")))["format_violation"]
+
+
+def format_decision(result, texts):
+    if not any(format_checker()(text) for text in texts):
+        return result
+    if result["status"] == "BLOCKED":
+        result = decision("BLOCKED", result["reason"] + "; invalid example formatting, details withheld")
+    else:
+        result = decision("ERROR", "Unsupported review example formatting")
+    result["publishable"] = False
+    return result
 
 
 def visible_lines(text):
@@ -52,7 +72,7 @@ def visible_lines(text):
     return lines, bool(fence or comment)
 
 
-def markdown_review(text):
+def _markdown_review(text):
     lines, unclosed = visible_lines(text)
     issues, section, category, counts, ignored = 0, "", None, {}, False
     errors = ["Unclosed quoted/code content"] if unclosed else []
@@ -113,6 +133,10 @@ def markdown_review(text):
     return decision("PASSED", "Explicit Issues contain no active CRITICAL or MAJOR findings")
 
 
+def markdown_review(text):
+    return format_decision(_markdown_review(text), [text])
+
+
 def unique_object(pairs):
     value = {}
     for key, item in pairs:
@@ -122,7 +146,7 @@ def unique_object(pairs):
     return value
 
 
-def json_review(text):
+def _json_review(text):
     report = json.loads(text, object_pairs_hook=unique_object)
     nonempty = lambda value: isinstance(value, str) and bool(value.strip())
     if (not isinstance(report, dict) or set(report) - {"status", "summary", "findings", "dismissed"}
@@ -144,6 +168,18 @@ def json_review(text):
     if report["status"] == "BLOCKED" or any(f["severity"] in SEVERITIES[:2] for f in report["findings"]):
         return decision("BLOCKED", "Active blocking findings or reviewer BLOCKED status")
     return decision("PASSED", "No active blocking findings")
+
+
+def json_review(text):
+    result = _json_review(text)
+    report = json.loads(text, object_pairs_hook=unique_object)
+    prose = [report["summary"]]
+    for category in ("findings", "dismissed"):
+        for finding in report.get(category, []):
+            prose.append(finding["message"])
+            if "reason" in finding:
+                prose.append(finding["reason"])
+    return format_decision(result, prose)
 
 
 def coverage_error(work, truncated):
@@ -185,7 +221,7 @@ def main():
                               "L1 validation failed" if validated else "L1 infrastructure failed")
         else:
             data = args.report.read_bytes()
-            if not data.strip() or len(data) > 50000:
+            if not data.strip() or len(data) > MAX_REVIEW_BYTES:
                 raise ValueError("Missing, empty or oversized review")
             result = (markdown_review if args.format == "markdown" else json_review)(data.decode("utf-8"))
             if args.work_dir and result["status"] == "PASSED":
