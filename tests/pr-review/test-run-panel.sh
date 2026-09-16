@@ -122,15 +122,16 @@ else
   pass "run-panel (d) empty lenses_dir fails fast"
 fi
 
-# (e) Kiro 셀의 env 격리 — diff 안의 프롬프트 인젝션이 fs_read 를 통해 이 job 의 다른
-# 크리덴셜(GH_TOKEN, AWS_*)을 훔쳐 응답에 실어보내는 경로를 막는지 실제로 측정한다
-# (docs/decisions/ADR-011 C1). mock kiro-cli 가 자신이 실제로 물려받은 env 전체와 cwd 를
-# 그대로 슬롯에 덤프하도록 해서, 격리가 빠지면 이 테스트가 즉시 잡는다.
+# (e) Observe the actual mock CLI environment privately, independently of review
+# output filtering. This must detect missing isolation rather than let redaction
+# make a leaked credential look absent (ADR-011 C1).
 setup; mkfake codex 0 "codex-finding"
+mkdir -p "$WORK/env-observations"
 cat > "$BIN/kiro-cli" <<EOF
 #!/usr/bin/env bash
 $KIRO_MOCK_PRELUDE
-echo "kiro-finding"; env; echo "CWD=\$(pwd)"
+{ env; echo "CWD=\$(pwd)"; } > "$WORK/env-observations/\$(basename "\$PWD").txt"
+echo "kiro-finding"
 EOF
 chmod +x "$BIN/kiro-cli"
 # Same reword-don't-weaken reason as the (h) block below: a literal
@@ -141,7 +142,7 @@ chmod +x "$BIN/kiro-cli"
 KV="keep-this-kiro-key"
 GH_TOKEN="leak-test-gh-token" AWS_SECRET_ACCESS_KEY="leak-test-aws-secret" KIRO_API_KEY="$KV" \
   "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/dev/null 2>&1 || true
-DUMP="$WORK/slot/kiro-opus-L2.md"
+DUMP="$WORK/env-observations/kiro-opus-L2.txt"
 if grep -q "leak-test-gh-token" "$DUMP" 2>/dev/null || grep -q "leak-test-aws-secret" "$DUMP" 2>/dev/null; then
   fail "run-panel (e) kiro env excludes GH_TOKEN/AWS_* credentials" "a credential leaked into the kiro subprocess env"
 else
@@ -156,11 +157,8 @@ grep -q "^CWD=$WORK/kiro-cwd/kiro-opus-L2$" "$DUMP" 2>/dev/null \
 grep -q "^HOME=$WORK/kiro-cwd/kiro-opus-L2$" "$DUMP" 2>/dev/null \
   && pass "run-panel (e) kiro HOME is scratched to the per-cell isolated cwd (not the real \$HOME, not shared)" \
   || fail "run-panel (e) kiro HOME is scratched to the per-cell isolated cwd (not the real \$HOME, not shared)" "HOME was not per-cell scratched"
-# 다른 셀(kiro-gpt-L2)은 다른 cwd/HOME 을 받아야 한다 — 매트릭스의 모든 kiro 셀이 동시(&)
-# 실행되므로, 셀 간 cwd/HOME 공유는 kiro-cli 의 세션/캐시 상태 경합을 일으킬 수 있다(회귀
-# 이력: cc-on-bedrock PR#107 등 4개 리포 리뷰가 교차 합의로 잡은 MAJOR — 원래 15차 리뷰 M2
-# 의 근거였다가 fs_read 제거 리팩토링에서 소리 없이 빠졌었다).
-DUMP2="$WORK/slot/kiro-gpt-L2.md"
+# Concurrent cells need distinct cwd/HOME directories to avoid shared-session races.
+DUMP2="$WORK/env-observations/kiro-gpt-L2.txt"
 CWD1="$(grep '^CWD=' "$DUMP" 2>/dev/null)"; CWD2="$(grep '^CWD=' "$DUMP2" 2>/dev/null)"
 [ -n "$CWD1" ] && [ -n "$CWD2" ] && [ "$CWD1" != "$CWD2" ] \
   && pass "run-panel (e) two kiro cells (kiro-opus-L2, kiro-gpt-L2) do NOT share a cwd/HOME" \

@@ -334,6 +334,87 @@ fi
 unset GITHUB_ENV
 rm -rf "$WORK" "$BIN"
 
+# A format error cannot erase a primary chair's semantic blocking finding.
+setup
+export MOCK_FALLBACK_CALLED="$WORK/fallback-called"
+for cell in codex/FULL kiro-opus/FULL kiro-gpt/FULL; do
+  printf '%s\n' "$cell" >> "$WORK/responded.txt"
+  printf 'Completed review.\n' > "$WORK/slot/${cell/\//-}.md"
+done
+cp "$WORK/responded.txt" "$WORK/expected.txt"
+cat > "$BIN/claude" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$ANTHROPIC_MODEL" == *fable* ]]; then
+  cat <<'REPORT'
+## Summary
+Reviewed the diff.
+## Issues
+### CRITICAL
+None.
+### MAJOR
+- Blocking candidate: `gate ran (PASS)` is an invalid example.
+### MINOR
+None.
+## Verdict
+VERDICT: PASS
+REPORT
+else
+  touch "$MOCK_FALLBACK_CALLED"
+  cat "$MOCK_REVIEW_REPORT"
+fi
+EOF
+chmod +x "$BIN/claude"
+if bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
+  STATUS="$(python3 plugins/co-agent/skills/pr-autofix/scripts/review_gate.py \
+    markdown "$WORK/review.md" --work-dir "$WORK" --status-only)"
+  [ "$STATUS" = BLOCKED ] && pass "primary blocking finding survives a format failure" \
+    || fail "primary blocking finding survives a format failure" "$STATUS"
+  [ ! -e "$MOCK_FALLBACK_CALLED" ] && pass "format failure does not re-adjudicate a blocker through fallback" \
+    || fail "format failure does not re-adjudicate a blocker through fallback"
+  ! grep -q 'gate ran (PASS)' "$WORK/review.md" && pass "unsupported blocking details stay unpublished" \
+    || fail "unsupported blocking details stay unpublished"
+else
+  fail "blocking-format review completes with a safe blocked report"
+fi
+unset MOCK_FALLBACK_CALLED
+rm -rf "$WORK" "$BIN"
+
+if python3 - <<'PY'
+import runpy
+publisher = runpy.run_path("scripts/pr-review/publish_chair.py")
+gate = runpy.run_path("plugins/co-agent/skills/pr-autofix/scripts/review_gate.py")
+raw = """## Summary
+Reviewed the diff.
+-----BEGIN PRIVATE KEY-----
+## Issues
+### CRITICAL
+None.
+### MAJOR
+- Blocking candidate within data later removed by scrubbing.
+### MINOR
+None.
+-----END PRIVATE KEY-----
+## Issues
+### CRITICAL
+None.
+### MAJOR
+None.
+### MINOR
+None.
+## Verdict
+VERDICT: PASS
+"""
+assert gate["_markdown_review"](raw)["status"] == "BLOCKED"
+result = publisher["publish"](raw)
+assert gate["markdown_review"](result)["status"] == "BLOCKED"
+assert "Blocking candidate within data" not in result
+PY
+then
+  pass "scrubbing cannot remove a primary semantic blocking decision"
+else
+  fail "scrubbing cannot remove a primary semantic blocking decision"
+fi
+
 # Missing verified context must fail before any provider is invoked.
 setup
 export MOCK_CONTEXT_CALL="$WORK/provider-called"

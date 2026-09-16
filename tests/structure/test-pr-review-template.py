@@ -38,6 +38,23 @@ STEPS = template_steps(TEMPLATE.read_text())
 
 
 class ReviewTemplateTests(unittest.TestCase):
+    def test_invalid_example_is_withheld_without_waiving_blocking_findings(self):
+        self.prepare()
+        for severity, expected in (("MINOR", "ERROR"), ("MAJOR", "BLOCKED")):
+            with self.subTest(severity=severity):
+                self.generate(self.report(findings=[{
+                    "severity": severity, "file": "app.txt", "line": 1,
+                    "message": "Run `echo synthetic-example`.",
+                }]))
+                body = self.assert_status(self.publish(), expected)
+                self.assertNotIn("synthetic-example", body)
+
+    def test_missing_copied_format_dependency_fails_closed(self):
+        self.prepare()
+        self.generate(self.report())
+        (self.repo / ".github/scripts/review_format.py").unlink(missing_ok=True)
+        self.assert_status(self.publish(), "ERROR")
+
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="review template ")
         self.addCleanup(temporary.cleanup)
@@ -52,6 +69,8 @@ class ReviewTemplateTests(unittest.TestCase):
         validator = self.repo / ".github/scripts/pr-review-gate.py"
         validator.parent.mkdir(parents=True)
         shutil.copyfile(ROOT / "plugins/co-agent/skills/pr-autofix/scripts/review_gate.py", validator)
+        shutil.copyfile(ROOT / "plugins/co-agent/skills/pr-autofix/scripts/review_format.py",
+                        validator.with_name("review_format.py"))
         (self.repo / "CLAUDE.md").write_text("TRUSTED_BASE_CONTEXT\n")
         (self.repo / "app.txt").write_text("before\n")
         self.git("add", ".")
