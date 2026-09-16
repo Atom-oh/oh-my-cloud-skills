@@ -22,6 +22,12 @@ class ReviewFormatTests(unittest.TestCase):
             "Authorization: [implementation](web/lib/auth.ts)",
             "Authorization:\nThe caller is checked.",
             "password:",
+            "See web/lib/auth.ts:42-45.",
+            "See (web/lib/auth.ts:42-45).",
+            "See web/lib/auth.ts:L42-L45.",
+            "See web/lib/auth.ts:L42.",
+            "Secrets: none.",
+            "Credentials: unchanged!",
             "Checked `token`\n===\nThe caller is checked.",
         ):
             with self.subTest(text=text):
@@ -45,6 +51,10 @@ class ReviewFormatTests(unittest.TestCase):
             "password: !!str synthetic-value",
             "token: &saved synthetic-value",
             "config.password: synthetic-value",
+            "See auth.ts:L42-L45; token='synthetic'",
+            '"config.password": synthetic.',
+            "password: !!str synthetic-value.",
+            "token: &saved synthetic-value.",
         ):
             with self.subTest(text=text):
                 self.assertEqual(FORMAT["format_violation"](text), "unsupported_review_format")

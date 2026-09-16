@@ -29,7 +29,7 @@ RHS_WORDS = re.compile(
 )
 LINK_VALUE = re.compile(r"\[[^\"'\]\r\n]+\]\(")
 SETEXT_TAIL = re.compile(r"=*[ \t]*(?:\r?\n|\Z)")
-LINE_NUMBER = re.compile(r"[0-9]+(?::[0-9]+)?(?=\Z|[\s)\],.;])")
+LINE_NUMBER = re.compile(r"L?[0-9]+(?::[0-9]+|-L?[0-9]+)?(?=\Z|[\s)\],.;])")
 # Legacy shell adapters have no shared Python credential policy. Structured
 # adapters pass their existing sensitive-key pattern explicitly instead.
 DEFAULT_SENSITIVE_KEY = (
@@ -54,6 +54,8 @@ def is_assignment(text, match, quoted_key=False):
             return True
         if first.lower() in ("basic", "bearer") and words["second"] and not words["third"]:
             return True
+        if first.endswith((".", "!", "?")):
+            return False  # A punctuated colon sentence remains prose.
         # Natural-language clauses are not configuration values. Bare atomic
         # values remain a supported assignment spelling; this is not a parser.
         return words["second"] is None
