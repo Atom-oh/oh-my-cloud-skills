@@ -1,2 +1,5 @@
+interface:
+  display_name: "Analytics Agent"
+  short_description: "AWS data analytics agent. Manages OpenSearch Service/Serverless, ClickHouse, Athena, QuickSight, and Kinesis data pipelines. Triggers on \"OpenSearch\", \"Elasticsearch\", \"ClickHouse\", \"Athena\",..."
 policy:
   allow_implicit_invocation: false

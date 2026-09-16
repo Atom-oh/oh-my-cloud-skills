@@ -7,7 +7,7 @@ description: "Detect kiro-cli, probe real usability, list available models, writ
 
 # setup
 
-Read [Codex runtime guidance](../../runtime.md) first, then the relevant shared procedure below. Keep references relative to that source.
+Read [Codex runtime guidance](../../runtime.md) first — unless already read earlier this session, it does not change between skills — then the relevant shared procedure below. Keep references relative to that source.
 
 Apply [this plugin's Codex workflow](../../workflow.md).
 

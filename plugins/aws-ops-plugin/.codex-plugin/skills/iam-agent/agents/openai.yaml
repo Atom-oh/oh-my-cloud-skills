@@ -1,2 +1,5 @@
+interface:
+  display_name: "Iam Agent"
+  short_description: "AWS IAM and Kubernetes RBAC troubleshooting agent. Manages IRSA, Pod Identity, aws-auth ConfigMap, RBAC roles, and permission policies. Triggers on \"IRSA\", \"Pod Identity\", \"RBAC\", \"aws-auth\", \"IAM..."
 policy:
   allow_implicit_invocation: false

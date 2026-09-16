@@ -100,7 +100,9 @@ DIFF=$(git diff "origin/$BASE...HEAD" 2>/dev/null); [ -z "$DIFF" ] && DIFF=$(git
 1. Pin down the decision + options. If the user only gave a question, the host first
    enumerates the realistic concrete options, then asks the panel about those.
 2. Fan out: *"Decision: <X>. Options: <A/B/C>. Recommend ONE with 2-3 reasons and the
-   key trade-off. Be concise."*
+   key trade-off."* — apply the agent-output budget
+   (`references/agent-output-budget.md` in the token-saver plugin's concise-responses
+   skill, if installed) to every fan-out prompt, not just this mode's.
 3. **The host synthesizes** a comparison table, then gives a single recommendation and
    names the trade-off that decided it. If the panel splits, say so and explain the
    split — don't fake consensus.

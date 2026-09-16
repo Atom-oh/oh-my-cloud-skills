@@ -1,2 +1,5 @@
+interface:
+  display_name: "Delegate"
+  short_description: "Plan the requested change as a Kiro-native spec, then delegate implementation tasks to Kiro CLI inside isolated worktrees, verifying and committing on the host side. Falls back to writing the code..."
 policy:
   allow_implicit_invocation: false

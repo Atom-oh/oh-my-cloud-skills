@@ -7,6 +7,6 @@ description: "Convert Claude Code plugins to Kiro Power format — hooks, skills
 
 # kiro-convert
 
-Read [Codex runtime guidance](../../runtime.md) first, then the relevant shared procedure below. Keep references relative to that source.
+Read [Codex runtime guidance](../../runtime.md) first — unless already read earlier this session, it does not change between skills — then the relevant shared procedure below. Keep references relative to that source.
 
 - [skills/kiro-convert/SKILL.md](../../../skills/kiro-convert/SKILL.md)

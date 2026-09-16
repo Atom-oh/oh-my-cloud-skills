@@ -484,14 +484,10 @@ Per pass, name the gate outcome precisely: `gate ran (PASS)` / `gate skipped —
 - `references/model-escalation.md` — §5a's rung table + env-var override mechanics; read when `iteration > 5`
 - `references/review-memory-maintenance.md` — host-only review-memory update procedure + threshold advisory; read after each fix push
 - `references/pr-review-workflow.yml` — reference GitHub Actions workflow for the AI review mode (see below)
+- `references/ci-workflow-setup.md` — one-time project setup for the AI review CI workflow; not part of the poll loop
 
 ## CI workflow setup
 
-AI review mode needs the AI Code Review GitHub Actions workflow: copy
-`references/pr-review-workflow.yml` to the project's `.github/workflows/pr-review.yml`,
-and `scripts/review_gate.py` to `.github/scripts/pr-review-gate.py` in the same trusted-base
-change. Copy both when updating; the workflow fails closed if the validator is absent.
-The runner must provide `python3` (standard library only) and Claude CLI.
-Set `ANTHROPIC_MODEL` in repository variables (e.g. `us.anthropic.claude-opus-4-8`),
-ensure Bedrock access on the runner (or `ANTHROPIC_API_KEY` for direct API), and grant
-`pull-requests: write` + `contents: read`.
+One-time project setup, not part of the per-tick poll loop — read
+[`references/ci-workflow-setup.md`](references/ci-workflow-setup.md) only when the AI
+review CI workflow itself needs installing or updating.

@@ -20,6 +20,11 @@ Reuse it if already present; otherwise read it once. Complete the requested work
 check the relevant evidence and edge cases, then compress only the delivered prose.
 Preserve user-selected models and reasoning effort.
 
+When this conversation delegates to another agent — a peer AI fan-out, a subagent, a
+worktree implementer — and gets a response back, apply
+[the agent-output budget](references/agent-output-budget.md) to what that response is
+asked to return. It governs delegated call output, not this conversation's own prose.
+
 ## Output
 
 | Request type | Response pattern | Preserve |

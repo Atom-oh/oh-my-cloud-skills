@@ -1,2 +1,5 @@
+interface:
+  display_name: "Atlas Sync Agent"
+  short_description: "Judgment layer for atlas doc-drift work: interprets drift work packets and skip advisories, decides which wiki pages genuinely need prose repair versus schema or anchor repair, supervises or..."
 policy:
   allow_implicit_invocation: false

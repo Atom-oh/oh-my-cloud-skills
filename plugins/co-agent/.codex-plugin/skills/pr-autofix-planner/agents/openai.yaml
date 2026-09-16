@@ -1,2 +1,5 @@
+interface:
+  display_name: "Pr Autofix Planner"
+  short_description: "Internal pipeline stage (read-only analysis) of a co-agent plugin skill. Without the prepared inputs that skill supplies it does nothing except return blocked. Never choose this agent for a user..."
 policy:
   allow_implicit_invocation: false

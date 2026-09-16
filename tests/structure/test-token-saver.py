@@ -14,6 +14,9 @@ PLUGIN = ROOT / "plugins/token-saver"
 HOOK = PLUGIN / "hooks/session-start.py"
 POLICY_PATH = Path("skills/concise-responses/references/policy.md")
 POLICY = PLUGIN / POLICY_PATH
+OUTPUT_BUDGET_PATH = Path("skills/concise-responses/references/agent-output-budget.md")
+OUTPUT_BUDGET = PLUGIN / OUTPUT_BUDGET_PATH
+SKILL_MD = PLUGIN / "skills/concise-responses/SKILL.md"
 
 
 class TokenSaverTests(unittest.TestCase):
@@ -106,6 +109,21 @@ class TokenSaverTests(unittest.TestCase):
         self.assertNotIn("mcpServers", manifest)
         native = json.loads((PLUGIN / ".codex-plugin/hooks.json").read_text())
         self.assertEqual(set(native["hooks"]), {"SessionStart"})
+
+    def test_agent_output_budget_is_reachable_and_kept_out_of_the_hook_payload(self):
+        # The output-budget reference (agent-to-agent delegated-call output, as opposed
+        # to POLICY's user-facing prose) is deliberately a plain reference, not
+        # hook-injected — it must stay reachable from the skill body...
+        self.assertTrue(OUTPUT_BUDGET.is_file(), "agent-output-budget.md must exist")
+        self.assertIn(str(OUTPUT_BUDGET_PATH.relative_to("skills/concise-responses")),
+                      SKILL_MD.read_text(encoding="utf-8"))
+        # ...and never ride along in the SessionStart hook's own payload, which stays
+        # scoped to POLICY alone (and under its 2048-byte cap) — see the hook's own
+        # MAX_POLICY_BYTES contract, exercised by
+        # test_missing_empty_invalid_or_oversized_policy_never_emits_partial_guidance.
+        context = self.context(self.run_hook())
+        self.assertEqual(context, POLICY.read_text(encoding="utf-8").strip())
+        self.assertNotIn("agent-output-budget", context)
 
     def test_missing_empty_invalid_or_oversized_policy_never_emits_partial_guidance(self):
         self.assertTrue(HOOK.is_file(), "The session-start hook must exist")

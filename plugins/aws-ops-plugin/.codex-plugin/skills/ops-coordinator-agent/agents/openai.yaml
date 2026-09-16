@@ -1,2 +1,5 @@
+interface:
+  display_name: "Ops Coordinator Agent"
+  short_description: "Multi-domain incident coordination agent for AWS/EKS. Performs severity assessment, orchestrates specialist agents, and manages incident lifecycle. Triggers on \"incident\", \"outage\", \"서비스 장애\", \"긴급..."
 policy:
   allow_implicit_invocation: false

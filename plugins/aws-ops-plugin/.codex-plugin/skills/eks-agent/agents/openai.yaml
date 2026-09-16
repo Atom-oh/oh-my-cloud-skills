@@ -1,2 +1,5 @@
+interface:
+  display_name: "Eks Agent"
+  short_description: "EKS cluster operations and troubleshooting agent. Manages cluster lifecycle, node groups, upgrades, add-ons, and performs systematic 5-minute triage. Triggers on \"EKS troubleshoot\", \"cluster..."
 policy:
   allow_implicit_invocation: false

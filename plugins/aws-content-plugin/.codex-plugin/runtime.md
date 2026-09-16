@@ -2,6 +2,9 @@
 
 This is a Codex entry point to shared procedures. Read the source linked by the
 entry skill, using these host adaptations. Apply them to nested references too.
+**Read this file once per session, not once per skill invocation** — nothing here
+changes between skills in the same session; re-reading it on every entry only adds
+fixed weight without adding information.
 
 ## Installed files and the target repository
 
@@ -58,6 +61,19 @@ search a different installation, or assume the consumer has `plugins/` in its re
   Enforce a procedure's required read-only planning or host-state protection with
   an actual sandbox/tool boundary before delegating. If the available agent
   interface cannot enforce it, perform that phase inline in this host.
+- **Cost consequence of the point above**: a generated agent-sourced entry names its
+  source's `model`/`effort` intent in a prose line (never a manifest field — Codex's
+  plugin validator has no per-skill model/effort slot to put one in). It is advisory
+  only. Without it, delegating this procedure silently runs at the current session's
+  model/effort, at that spend, regardless of how strong or light the source intended
+  it — the gap is real cost, not just a naming mismatch. When it matters, either
+  raise/lower the session for the procedure or delegate explicitly
+  (`codex exec -m <model> -c model_reasoning_effort="<effort>"`).
+- Any procedure this host delegates onward — a subagent, a peer AI, a worktree
+  implementer — should have its RETURNED output bounded the same way the source
+  skill's own output-budget guidance intends (see the linked procedure's own
+  references, e.g. token-saver's `agent-output-budget.md` where installed): verdict
+  first, `file:line` over pasted code, no restating the task back to the caller.
 - Internal worker entries require explicit selection; canonical workflow skills
   retain automatic routing. The `delegate` command remains an explicit alias for
   Kiro's canonical `kiro-delegate` workflow.

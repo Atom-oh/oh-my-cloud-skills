@@ -1,2 +1,5 @@
+interface:
+  display_name: "Kiro Delegate Agent"
+  short_description: "Cost-savings delegation orchestrator — plans with the current host, hands implementation off to Kiro CLI running on flat-rate subscription credits inside an isolated git worktree, verifies with..."
 policy:
   allow_implicit_invocation: false

@@ -7,8 +7,10 @@ description: "Presentation format dispatcher. Routes to reactive-presentation-ag
 
 # presentation-agent
 
-Read [Codex runtime guidance](../../runtime.md) first, then the relevant shared procedure below. Keep references relative to that source.
+Read [Codex runtime guidance](../../runtime.md) first — unless already read earlier this session, it does not change between skills — then the relevant shared procedure below. Keep references relative to that source.
 
 Apply [this plugin's Codex workflow](../../workflow.md).
 
 - [agents/presentation-agent.md](../../../agents/presentation-agent.md)
+
+This is a **light-tier** procedure in its source (model sonnet, effort low) — the current session's model is very likely sufficient; there is no cost reason to raise it for this one.

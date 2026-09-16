@@ -1,2 +1,5 @@
+interface:
+  display_name: "Agentcore Creator Agent"
+  short_description: "Interactive agent design and deployment to Amazon Bedrock AgentCore. Brainstorm requirements, build as Claude Code skill first, then convert and deploy — config-only to AgentCore harness (skills..."
 policy:
   allow_implicit_invocation: false

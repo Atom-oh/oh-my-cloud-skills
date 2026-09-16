@@ -1,2 +1,5 @@
+interface:
+  display_name: "Gitbook Agent"
+  short_description: "GitBook documentation site creation agent. Creates structured GitBook projects with proper navigation, components, and content organization. Triggers on \"gitbook\", \"documentation site\", \"create..."
 policy:
   allow_implicit_invocation: false

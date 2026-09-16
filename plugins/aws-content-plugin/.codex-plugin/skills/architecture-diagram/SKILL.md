@@ -7,7 +7,7 @@ description: "Use when creating AWS/cloud architecture diagrams in draw.io (.dra
 
 # architecture-diagram
 
-Read [Codex runtime guidance](../../runtime.md) first, then the relevant shared procedure below. Keep references relative to that source.
+Read [Codex runtime guidance](../../runtime.md) first — unless already read earlier this session, it does not change between skills — then the relevant shared procedure below. Keep references relative to that source.
 
 Apply [this plugin's Codex workflow](../../workflow.md).
 

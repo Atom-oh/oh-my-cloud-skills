@@ -1,2 +1,5 @@
+interface:
+  display_name: "Concise Responses"
+  short_description: "Use when the user explicitly requests concise replies or reduced response verbosity."
 policy:
   allow_implicit_invocation: false

@@ -1,2 +1,5 @@
+interface:
+  display_name: "Database Agent"
+  short_description: "AWS database operations agent. Troubleshoots RDS/Aurora connectivity, DynamoDB throttling, ElastiCache, and database performance. Triggers on \"RDS\", \"Aurora\", \"DynamoDB\", \"ElastiCache\", \"database..."
 policy:
   allow_implicit_invocation: false

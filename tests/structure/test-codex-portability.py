@@ -246,7 +246,11 @@ class PortabilityTests(unittest.TestCase):
         kiro = self.generated / "plugins/kiro/.codex-plugin/skills"
         for name in ("kiro-delegate-agent", "delegate"):
             policy = kiro / name / "agents/openai.yaml"
-            self.assertEqual("policy:\n  allow_implicit_invocation: false\n", policy.read_text())
+            text = policy.read_text()
+            # `interface` is mandatory whenever agents/openai.yaml exists at all (see
+            # test_openai_yaml_carries_no_key_outside_codex_plugin_validation) — assert
+            # the policy line rather than the whole file, so that check owns the shape.
+            self.assertIn("policy:\n  allow_implicit_invocation: false\n", text)
         for name in ("kiro-delegate", "configure"):
             self.assertFalse((kiro / name / "agents/openai.yaml").exists())
         # A combined canonical skill + specialist stays an automatic workflow entry.
@@ -302,6 +306,72 @@ class PortabilityTests(unittest.TestCase):
                 "cwd": str(target), "args": ["space and $(literal)", "--flag"],
                 "root": str(plugin), "host": "codex",
             })
+
+    def test_agent_sourced_entries_carry_model_effort_tier_intent(self):
+        # Every generated skill whose ONLY source is agents/*.md must name its source's
+        # model/effort in prose (agent-flow output-token strategy) — Codex has no
+        # per-skill model field to set, so the intent has to survive as text or it is
+        # silently lost: delegating a strong-tier procedure would then spend whatever
+        # the CURRENT session happens to be on, unannounced.
+        checked_strong = 0
+        for plugin in sorted((self.generated / "plugins").iterdir()):
+            inventory_path = plugin / ".codex-plugin/inventory.json"
+            if not inventory_path.is_file():
+                continue
+            for entry in json.loads(inventory_path.read_text())["skills"]:
+                sources = entry["sources"]
+                if not sources or not all(s.startswith("agents/") for s in sources):
+                    continue
+                metas = []
+                for source in sources:
+                    text = (plugin / source).read_text()
+                    for key in ("model", "effort"):
+                        m = re.search(rf"^{key}:\s*(.+)$", text, re.M)
+                        if m:
+                            metas.append(m[1].strip())
+                if not metas:
+                    continue
+                body = (plugin / entry["path"]).read_text()
+                strong = any(v in ("opus", "fable", "high", "xhigh", "max") for v in metas)
+                with self.subTest(plugin=plugin.name, skill=entry["name"]):
+                    if strong:
+                        # Only the strong-tier wording carries the "no per-skill model
+                        # boundary" cost warning — a light-tier source has no cost gap
+                        # to warn about (the session model is already likely enough).
+                        self.assertIn("Codex has no per-skill model", body)
+                        self.assertIn("strong-tier", body)
+                        checked_strong += 1
+                    else:
+                        self.assertTrue("light-tier" in body or "Source frontmatter:" in body,
+                                        "expected a tier-intent line naming the source model/effort")
+        # 28/29 agents ship model: opus in this repo today (see plugins/*/agents/*.md) —
+        # require at least one strong-tier hit so a future refactor that silently drops
+        # the tier line cannot pass this test by finding zero agents to check.
+        self.assertGreater(checked_strong, 0)
+
+    def test_openai_yaml_matches_codex_plugin_validation(self):
+        # codex-cli 0.154.0's own plugin validator (validate_skill_agent_manifest,
+        # confirmed against the copy at ~/.codex/skills/.system/plugin-creator —
+        # not imported here since that path is this machine's local install, not
+        # part of this repo/CI) runs on ANY skill shipping agents/openai.yaml at all,
+        # and REQUIRES `interface.display_name`/`interface.short_description`
+        # (non-empty) in addition to `policy.allow_implicit_invocation` — a
+        # policy-only file, valid-looking YAML though it is, fails that validator
+        # outright. Re-derive the same shape with pyyaml here (a test-only
+        # dependency; the generator itself stays stdlib-only by hand-rolling YAML).
+        import yaml
+        found = 0
+        for path in (self.generated / "plugins").glob("*/.codex-plugin/skills/*/agents/openai.yaml"):
+            found += 1
+            data = yaml.safe_load(path.read_text())
+            with self.subTest(path=str(path)):
+                self.assertEqual(set(data), {"interface", "policy"})
+                self.assertIsInstance(data["interface"], dict)
+                self.assertEqual(set(data["interface"]), {"display_name", "short_description"})
+                for field in ("display_name", "short_description"):
+                    self.assertTrue(data["interface"][field].strip())
+                self.assertEqual(data["policy"], {"allow_implicit_invocation": False})
+        self.assertGreater(found, 0)
 
     def test_runner_rejects_out_of_package_script(self):
         runner = ROOT / "scripts/codex/run.py"
