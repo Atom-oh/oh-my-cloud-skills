@@ -65,6 +65,30 @@ findings are lists. Optional INFO follows the same section-body grammar. Legacy
 Korean empty markers remain parser compatibility, not the language for new reviews.
 Quoted code, dismissed claims and historical observations are separate from active Issues.
 
+Review code/configuration examples use closed top-level backtick or tilde fences
+at column one, with a bare marker or a plain language tag. Inline code is only
+for single-line symbol/path references. Nested/indented example fences and rich
+fence attributes are outside this deliberately narrow output contract. Bare colon
+labels, colon sentences, path citations and Setext headings are prose. Literal or
+atomic setting assignments still require fences. Use synthetic values, never credentials.
+
+The canonical `review_format.py` beside `review_gate.py` validates panel and chair
+text before and after scrubbing. The semantic gate still owns Issues, severity
+and complete coverage. Unsupported examples cannot pass; known blocking findings
+remain BLOCKED even when malformed details must be withheld. The consumer template
+checks decoded summary/message/reason strings, keeps metadata separate and quotes
+validated model text in its comment. Install its workflow and both Python validators
+together; a missing dependency is an error.
+
+The repository chair publisher classifies the original semantic result before
+scrubbing and checks the scrubbed result again. A blocking primary result cannot
+turn into a format/CLI failure followed by a clean fallback. Unpublishable blocking
+details produce a static FAIL report; no unscrubbed model text is echoed or stored.
+The legacy Kiro CLI can render away Markdown code markers, so Kiro is asked for
+narrative findings and plain path/line references, without code snippets or inline
+markup. This preserves its AWS/operations review responsibility and avoids guessing
+which missing markers the renderer removed. Model IDs, engine flags and budgets stay fixed.
+
 A claim needs a concrete trigger, affected path and verified consequence. Shared or
 previously shipped code is not exempt if the PR exposes a real defect. Source skills,
 commands, agents, Codex entries and CI cells are different populations. An absent diff
