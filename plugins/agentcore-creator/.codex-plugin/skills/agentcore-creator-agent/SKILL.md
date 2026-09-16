@@ -7,6 +7,8 @@ description: "Interactive agent design and deployment to Amazon Bedrock AgentCor
 
 # agentcore-creator-agent
 
-Read [Codex runtime guidance](../../runtime.md) first, then the relevant shared procedure below. Keep references relative to that source.
+Read [Codex runtime guidance](../../runtime.md) first — unless already read earlier this session, it does not change between skills — then the relevant shared procedure below. Keep references relative to that source.
 
 - [agents/agentcore-creator-agent.md](../../../agents/agentcore-creator-agent.md)
+
+This is a **strong-tier** procedure in its source (model opus, effort xhigh). Codex has no per-skill model boundary — it runs on the CURRENT SESSION's model and reasoning effort, at that session's spend, not the source's. If the session is on a lighter model, raise it for this procedure, or delegate explicitly with `codex exec -m <model> -c model_reasoning_effort="<effort>"` rather than assuming the source tier is already in effect.

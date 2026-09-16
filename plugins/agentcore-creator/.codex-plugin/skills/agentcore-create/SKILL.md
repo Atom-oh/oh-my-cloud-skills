@@ -7,6 +7,6 @@ description: "Interactive agent design and deployment to Amazon Bedrock AgentCor
 
 # agentcore-create
 
-Read [Codex runtime guidance](../../runtime.md) first, then the relevant shared procedure below. Keep references relative to that source.
+Read [Codex runtime guidance](../../runtime.md) first — unless already read earlier this session, it does not change between skills — then the relevant shared procedure below. Keep references relative to that source.
 
 - [skills/agentcore-create/SKILL.md](../../../skills/agentcore-create/SKILL.md)

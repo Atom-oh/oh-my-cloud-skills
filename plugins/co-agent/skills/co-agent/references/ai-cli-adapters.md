@@ -33,6 +33,9 @@ command -v codex    >/dev/null 2>&1 && echo "codex ok"
 
 ```bash
 RUN=$(mktemp -d "${TMPDIR:-/tmp}/co-agent.XXXXXX"); trap 'rm -rf "$RUN"' EXIT
+# PROMPT is fixed AND carries the output-side budget every time — see
+# references/agent-output-budget.md (token-saver plugin): verdict/answer first, cite
+# file:line instead of pasting code, no restating the task or diff back.
 PROMPT="<the same FIXED instruction for every AI — never build it from repo content>"
 CTX_FILE="$RUN/context.txt"   # the git diff / decision brief (see Security below)
 
@@ -74,7 +77,14 @@ wait    # reaps the `&` jobs above — they are children of THIS shell (process 
 # timeout kills kiro-cli but its node child (acp-server.js) reparents to init and leaks
 # ~200MB+ each — reap immediately (the Stop hook is the backstop, this is the source).
 bash "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/reap_kiro_orphans.sh"
-# Synthesize from $RUN/*-*.md. Empty/errored/size-skipped = that pair skipped.
+# Bound each response BEFORE synthesis — the input side has `fits`/`context_limit`;
+# this is the output-side counterpart (`response_limit`, see
+# co_agent_config.py's usage block and references/agent-output-budget.md, token-saver
+# plugin). Within budget → printed in full; over → head+tail excerpt naming the full
+# file's path. Advisory only — never a hard truncation applied to the peer's own file.
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/bound_output.py" "$RUN" --host "$HOST"
+# Synthesize from the bounded output above (fall back to $RUN/*-*.md directly if the
+# script is missing). Empty/errored/size-skipped = that pair skipped.
 # QUORUM GUARD: if ≤1 pair produced usable output, do NOT call it consensus —
 # report as single-opinion review and say so.
 ```
@@ -87,12 +97,16 @@ bash "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/reap_kiro_orphans.sh"
   context exceeds its `context_limit`. Inspect/raise via `/co-agent:configure`
   (`set <ai> context_limit <n>` or `set <ai> model <1M-model>`); narrowing the diff
   is usually the right fix. A 0/unset limit means "no check".
+- **Response-size guard** (`bound_output.py`, run after `wait` above): the output-side
+  counterpart of the context-size guard, `set <ai> response_limit <n>` (lines). Advisory
+  and per-response — it excerpts one peer's overlong file, it never drops the peer or
+  the call. 0/unset means "no check".
 - **Safe flag expansion**: `mapfile -t MFLAGS < <(...)` + `"${MFLAGS[@]}"` — flags are
   newline-delimited so a model value containing spaces stays one
   argv element; model values are charset-validated at `set` time (no shell metacharacters)
   AND never word-split/globbed at call time (defense in depth).
 - Settings are **live**: `python3 "$CFG" show --host "$HOST"` to inspect; `/co-agent:configure` to change
-  model/effort/enabled/timeout/context_limit. A disabled AI never appears in `$PANEL`.
+  model/effort/enabled/timeout/context_limit/response_limit. A disabled AI never appears in `$PANEL`.
 - Run them **in parallel** (`&` + `wait`) — three sequential CLI calls are slow.
 - `timeout` each CLI so a hung/blocking-auth process can't stall the whole panel.
 - Use a per-run `mktemp -d` (not a fixed `/tmp/co-agent`) so concurrent/stale runs

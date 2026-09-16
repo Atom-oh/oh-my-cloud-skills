@@ -1,2 +1,5 @@
+interface:
+  display_name: "Cost Agent"
+  short_description: "AWS cost analysis and optimization agent. Uses awspricing MCP for pricing data, analyzes spending patterns, and recommends savings strategies. Triggers on \"cost analysis\", \"cost optimization\",..."
 policy:
   allow_implicit_invocation: false

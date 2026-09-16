@@ -1,2 +1,5 @@
+interface:
+  display_name: "Document Agent"
+  short_description: "Technical document and report generation agent. Creates professional markdown documents, technical reports, solution comparisons, and architecture documentation. Triggers on \"create document\",..."
 policy:
   allow_implicit_invocation: false

@@ -1,2 +1,5 @@
+interface:
+  display_name: "Reactive Presentation Agent"
+  short_description: "Web-based interactive HTML slideshow creation agent using reactive-presentation framework (Remarp). Triggers on \"reactive presentation\", \"remarp\", \"web presentation\", \"interactive presentation\",..."
 policy:
   allow_implicit_invocation: false

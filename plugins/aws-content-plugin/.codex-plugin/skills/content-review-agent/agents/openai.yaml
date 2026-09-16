@@ -1,2 +1,5 @@
+interface:
+  display_name: "Content Review Agent"
+  short_description: "Cross-cutting content quality review agent. Reviews presentations (HTML and native PPTX), diagrams, documents, GitBook pages, brochures, and workshop content. Inspects layout, terminology,..."
 policy:
   allow_implicit_invocation: false

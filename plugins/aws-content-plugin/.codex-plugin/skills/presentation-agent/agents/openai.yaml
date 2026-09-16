@@ -1,2 +1,5 @@
+interface:
+  display_name: "Presentation Agent"
+  short_description: "Presentation format dispatcher. Routes to reactive-presentation-agent for web/HTML slides, or to the aws-light-fcd skill for native PowerPoint (.pptx) decks. Triggers on \"create presentation\",..."
 policy:
   allow_implicit_invocation: false

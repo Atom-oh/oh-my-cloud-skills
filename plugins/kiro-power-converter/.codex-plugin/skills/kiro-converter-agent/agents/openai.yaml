@@ -1,2 +1,5 @@
+interface:
+  display_name: "Kiro Converter Agent"
+  short_description: "Converts Claude Code plugins to Kiro Power format. Supports GitHub URL, local path, marketplace name, and individual skill conversion. Triggers on \"convert to kiro\", \"kiro power\", \"kiro convert\",..."
 policy:
   allow_implicit_invocation: false

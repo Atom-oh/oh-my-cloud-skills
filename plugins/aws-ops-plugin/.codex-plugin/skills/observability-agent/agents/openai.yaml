@@ -1,2 +1,5 @@
+interface:
+  display_name: "Observability Agent"
+  short_description: "AWS observability agent. Manages CloudWatch (Container Insights, Logs Insights, alarms), Amazon Managed Prometheus (AMP), Amazon Managed Grafana (AMG), ADOT, open-source stacks (OpenTelemetry,..."
 policy:
   allow_implicit_invocation: false

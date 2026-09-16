@@ -1,2 +1,5 @@
+interface:
+  display_name: "Storage Agent"
+  short_description: "AWS/EKS storage troubleshooting agent. Manages EBS CSI, EFS CSI, FSx CSI drivers, PVC binding, and volume mount issues. Triggers on \"EBS CSI\", \"EFS CSI\", \"FSx\", \"PVC\", \"PersistentVolume\", \"mount..."
 policy:
   allow_implicit_invocation: false

@@ -14,6 +14,10 @@ CLIs) — no dead settings:
   - timeout : per-CLI wall-clock budget in the fan-out (orchestration)
   - context_limit : per-AI model context window (tokens) — the fan-out skips an AI
               whose window can't hold the context instead of hard-failing
+  - response_limit : per-AI advisory response-line budget (see
+              references/agent-output-budget.md, token-saver plugin) — bound_output.py
+              inlines a response within this many lines and excerpts a longer one; 0/unset
+              means no check (advisory only, never a hard truncation the fan-out applies)
 
 The fan-out (see references/ai-cli-adapters.md) consumes `flags`/`panel`/`timeout`/`fits`
 so these settings are LIVE — changing them changes what actually runs.
@@ -44,6 +48,7 @@ Usage:
   co_agent_config.py set push_gate block <on|off>    # hard-block vs advisory-only (default on)
   co_agent_config.py set push_gate timeout <seconds>
   co_agent_config.py set <ai> context_limit <n> # per-AI context window (tokens)
+  co_agent_config.py set <ai> response_limit <n> # per-AI advisory response-line budget
   co_agent_config.py flags <ai>                 # CLI flag fragment for the fan-out
   co_agent_config.py implementer               # external writer only; exit 3 if none by default
   co_agent_config.py implementation-plan [--allow-host-implementation]
@@ -54,6 +59,7 @@ Usage:
   co_agent_config.py autosync                   # exit 0 if sync-on-change is on, 1 if off
   co_agent_config.py context-limit <ai>         # effective context window (tokens; 0 = none)
   co_agent_config.py fits <ai> <tokens>         # exit 0 if tokens fit the window, 1 if not
+  co_agent_config.py response-limit <ai>        # effective response-line budget (0 = none)
   co_agent_config.py pairs [--phases N] [--profile default|deep]   # (ai, model) pairs for this round
   co_agent_config.py matrix [--phases N] [--profile default|deep]  # pairs × rounds × phases = true max calls
 Add --root DIR to target a repo other than the cwd.
@@ -326,7 +332,7 @@ _CONFIG_SHAPE = {
     "timeout": int, "sync_on_change": bool, "profile": str,
     "consensus": {"max_calls": int, "max_rounds": int},
     "panel": {"*": {"enabled": bool, "model": _TEXT_OR_NULL, "effort": _TEXT_OR_NULL,
-                    "models": [str], "context_limit": int}},
+                    "models": [str], "context_limit": int, "response_limit": int}},
     "harness": {"implementer": _TEXT_OR_NULL, "implementer_models": {"*": _TEXT_OR_NULL},
                 "implementer_efforts": {"*": _TEXT_OR_NULL}, "max_fix_rounds": int,
                 "review_mode": str, "parallel_tasks": int},
@@ -514,11 +520,13 @@ def cmd_matrix(root, host, phases=1, profile=None):
     if len(full) > len(pairs):
         dropped = ", ".join(f"{ai}/{m or '(default)'}" for ai, m in full[len(pairs):])
         print(f"  trimmed out (won't run): {dropped}")
-    print(f"  {'AI':7} {'model':22} {'ctx(tok)':>11}")
+    print(f"  {'AI':7} {'model':22} {'ctx(tok)':>11} {'resp(ln)':>9}")
     fam = {}
     for ai, m in pairs:
         ctx = int(cfg['panel'].get(ai, {}).get('context_limit', 0) or 0)
-        print(f"  {ai:7} {(m or '(default)'):22} {(f'{ctx:,}' if ctx else '—'):>11}")
+        resp = int(cfg['panel'].get(ai, {}).get('response_limit', 0) or 0)
+        print(f"  {ai:7} {(m or '(default)'):22} {(f'{ctx:,}' if ctx else '—'):>11} "
+              f"{(str(resp) if resp else '—'):>9}")
         fam.setdefault(ai, 0)
         fam[ai] += 1
     for ai, n in fam.items():
@@ -568,14 +576,16 @@ def cmd_show(root, host):
             state = "active" if a == cur else f"dormant — implementer is {cur or 'unset'}"
             print(f"  implementer tiering [{a}]: model {ims.get(a) or '(panel)'} / "
                   f"effort {ies.get(a) or '(panel)'}  (write path only — {state})")
-    print(f"  {'AI':7} {'enabled':8} {'model':18} {'ctx(tok)':>11}  effort")
+    print(f"  {'AI':7} {'enabled':8} {'model':18} {'ctx(tok)':>11} {'resp(ln)':>9}  effort")
     for ai in panel_ais(host):
         p = cfg["panel"].get(ai, {})
         model = p.get("model") or "(default)"
         ctx = int(p.get("context_limit", 0) or 0)
         ctxs = f"{ctx:,}" if ctx else "—"
+        resp = int(p.get("response_limit", 0) or 0)
+        resps = str(resp) if resp else "—"
         effort = p.get("effort", "—") if effort_values(ai) else "n/a"
-        print(f"  {ai:7} {str(p.get('enabled', True)):8} {model:18} {ctxs:>11}  {effort}")
+        print(f"  {ai:7} {str(p.get('enabled', True)):8} {model:18} {ctxs:>11} {resps:>9}  {effort}")
     return 0
 
 
@@ -815,6 +825,11 @@ def cmd_set(root, rest, host, scope="local"):
                 print("context_limit must be a positive integer (tokens)", file=sys.stderr)
                 return 2
             slot["context_limit"] = int(val)
+        elif key == "response_limit":
+            if not val.isdigit() or int(val) <= 0:
+                print("response_limit must be a positive integer (lines)", file=sys.stderr)
+                return 2
+            slot["response_limit"] = int(val)
         elif key == "effort":
             allowed_efforts = effort_values(ai)
             if not allowed_efforts:
@@ -826,7 +841,8 @@ def cmd_set(root, rest, host, scope="local"):
                 return 2
             slot["effort"] = val
         else:
-            keys = "enabled, model, models, context_limit" + (", effort" if effort_values(ai) else "")
+            keys = ("enabled, model, models, context_limit, response_limit"
+                    + (", effort" if effort_values(ai) else ""))
             print(f"unknown key '{key}' ({keys})", file=sys.stderr)
             return 2
 
@@ -896,6 +912,15 @@ def cmd_context_limit(root, ai, host):
     if not _valid_peer(ai, host):
         return 2
     print(int(effective(root)["panel"].get(ai, {}).get("context_limit", 0) or 0))
+    return 0
+
+
+def cmd_response_limit(root, ai, host):
+    """Effective advisory response-line budget for `ai` (0 = no check). Consumed by
+    bound_output.py — never a hard truncation the peer CLI itself is told to apply."""
+    if not _valid_peer(ai, host):
+        return 2
+    print(int(effective(root)["panel"].get(ai, {}).get("response_limit", 0) or 0))
     return 0
 
 
@@ -1183,6 +1208,8 @@ def main():
         return cmd_autosync(root)
     if cmd == "context-limit":
         return cmd_context_limit(root, rest[0], host) if rest else 2
+    if cmd == "response-limit":
+        return cmd_response_limit(root, rest[0], host) if rest else 2
     if cmd == "fits":
         return cmd_fits(root, rest[0], rest[1], host) if len(rest) >= 2 else 2
     if cmd == "pairs":

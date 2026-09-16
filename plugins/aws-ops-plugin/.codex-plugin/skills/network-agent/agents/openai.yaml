@@ -1,2 +1,5 @@
+interface:
+  display_name: "Network Agent"
+  short_description: "AWS/EKS network diagnostics agent. Troubleshoots VPC CNI, ALB/NLB, DNS, Security Groups, and IP exhaustion. Triggers on \"VPC CNI\", \"IP exhaustion\", \"load balancer\", \"ALB\", \"NLB\", \"DNS resolution\",..."
 policy:
   allow_implicit_invocation: false

@@ -1,2 +1,5 @@
+interface:
+  display_name: "Animated Diagram Agent"
+  short_description: "Dynamic animated SVG diagram agent using SMIL animations. Creates traffic flow visualizations, service interaction diagrams, and architectural animations with pulsing effects and interactive..."
 policy:
   allow_implicit_invocation: false

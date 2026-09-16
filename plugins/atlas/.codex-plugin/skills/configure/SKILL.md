@@ -7,7 +7,7 @@ description: "Show or change atlas settings — wiki root, push-time sync toggle
 
 # configure
 
-Read [Codex runtime guidance](../../runtime.md) first, then the relevant shared procedure below. Keep references relative to that source.
+Read [Codex runtime guidance](../../runtime.md) first — unless already read earlier this session, it does not change between skills — then the relevant shared procedure below. Keep references relative to that source.
 
 Apply [this plugin's Codex workflow](../../workflow.md).
 

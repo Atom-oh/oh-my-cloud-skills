@@ -1,2 +1,5 @@
+interface:
+  display_name: "Gate Chair"
+  short_description: "Host-spawned chair for the co-agent hybrid gate — invoke only from /co-agent:harness or /co-agent:consensus gate flows to run Phase T triage (citation check → artifact verification → dedupe →..."
 policy:
   allow_implicit_invocation: false

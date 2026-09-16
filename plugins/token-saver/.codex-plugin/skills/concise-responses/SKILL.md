@@ -7,6 +7,6 @@ description: "Use when the user explicitly requests concise replies or reduced r
 
 # concise-responses
 
-Read [Codex runtime guidance](../../runtime.md) first, then the relevant shared procedure below. Keep references relative to that source.
+Read [Codex runtime guidance](../../runtime.md) first — unless already read earlier this session, it does not change between skills — then the relevant shared procedure below. Keep references relative to that source.
 
 - [skills/concise-responses/SKILL.md](../../../skills/concise-responses/SKILL.md)

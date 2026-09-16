@@ -1,2 +1,5 @@
+interface:
+  display_name: "Wellarchitected Agent"
+  short_description: "AWS Well-Architected Framework review agent. Performs comprehensive 6-pillar infrastructure assessments with 100-point scoring: Operational Excellence, Security, Reliability, Performance..."
 policy:
   allow_implicit_invocation: false

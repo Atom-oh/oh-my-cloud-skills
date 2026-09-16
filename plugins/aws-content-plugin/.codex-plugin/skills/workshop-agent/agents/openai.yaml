@@ -1,2 +1,5 @@
+interface:
+  display_name: "Workshop Agent"
+  short_description: "AWS Workshop Studio content creation agent. Creates workshop content with proper structure, directives, multi-language support, Mermaid diagrams, and CloudFormation infrastructure. Triggers on..."
 policy:
   allow_implicit_invocation: false

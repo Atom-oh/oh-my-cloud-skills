@@ -272,14 +272,14 @@ class PrTargetTests(unittest.TestCase):
                 self.check(False)
 
     def test_url_credentials_never_appear_in_diagnostics(self):
-        secret = "fixture-token-never-log"
+        fake_credential = "fixture-token-never-log"
         self.git("config", "remote.origin.url",
-                 f"https://fixture-user:{secret}@github.com/Other/Repo.git")
+                 f"https://fixture-user:{fake_credential}@github.com/Other/Repo.git")
         result = self.check(False)
-        self.assertNotIn(secret, result.stderr)
+        self.assertNotIn(fake_credential, result.stderr)
         self.assertNotIn("fixture-user", result.stderr)
         self.git("config", "remote.origin.url",
-                 f"https://fixture-user:{secret}@github.com/Upstream/Repo.git")
+                 f"https://fixture-user:{fake_credential}@github.com/Upstream/Repo.git")
         self.check()
 
     def test_url_rewrites_and_custom_receive_pack_fail_closed(self):
@@ -356,7 +356,8 @@ else:
         data = {"pr": 171, "base_ref": "main", "iteration": 2, "max_iter": 5,
                 "phase": phase, "run_dir": "pending-delta", "sig": "signature",
                 "ld_sha": "script-hash", "review": None, "stop_detail": None,
-                "await_started_at": None, "await_deadline": None, "await_limit_seconds": 60}
+                "await_started_at": None, "await_deadline": None, "await_limit_seconds": 60,
+                "probe_snapshot": None}
         self.state.parent.mkdir(parents=True, exist_ok=True)
         self.state.write_text(json.dumps(data))
         return data
