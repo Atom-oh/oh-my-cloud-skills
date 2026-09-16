@@ -109,7 +109,7 @@ if [ ! -e "$STATE" ]; then
       replanned_this_pass: false, phase: "poll", stop_reason: null,
       stop_detail: null, review: null, await_limit_seconds: $wait,
       await_started_at: null, await_deadline: null,
-      run_dir: null, sig: null, ld_sha: null}' > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" \
+      run_dir: null, sig: null, ld_sha: null, probe_snapshot: null}' > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" \
     || { echo "state init failed — stop, do not run stateless"; exit 1; }
 elif [ "$(jq -r '.phase' "$STATE")" = "stop" ]; then
   MAX_ITER=$(python3 "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py" pr-autofix-iterations)
@@ -128,6 +128,7 @@ pr_autofix_validate_state || { echo "state validation failed"; exit 1; }
 jq --argjson wait "$WAIT_SECONDS" '
   .review //= null | .stop_detail //= null
   | .await_started_at //= null | .await_deadline //= null
+  | .probe_snapshot //= null
   | if .await_deadline == null then .await_limit_seconds = $wait else . end
   | if .phase == "finalizing" then .phase = "poll" else . end
 ' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" \
@@ -139,6 +140,42 @@ if [ "$(jq -r '.iteration' "$STATE")" != "$GIT_ITER" ]; then
 fi
 MAX_ITER=$(jq -r '.max_iter' "$STATE"); ITERATION=$(jq -r '.iteration' "$STATE")
 ```
+
+## Cheap poll probe (skip the full evidence pull when nothing changed)
+
+Run this at every Poll tick, BEFORE `review-evidence.md`'s full block. It replaces
+none of that block's judgment — it only decides whether this tick needs it. The
+probe is two small `gh` calls (`pr view` + `pr checks --required`) instead of the
+full block's paginated comment/review/run fetch, so a tick where nothing happened
+costs a fraction of the tokens.
+
+One block, self-contained (per the State model note above, a shell assignment does
+not survive between tool calls — this snippet never depends on one persisting):
+
+```bash
+PREV_SNAPSHOT=$(jq -c '.probe_snapshot // empty' "$STATE")
+PROBE=$(python3 "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts/poll_probe.py" \
+  --pr "$PR_NUMBER" --repo "$REPO" --previous "$PREV_SNAPSHOT") \
+  || { echo "poll probe failed — falling back to a full evidence pull this tick"; PROBE='{"changed":true}'; }
+CHANGED=$(printf '%s' "$PROBE" | jq -r '.changed')
+jq --argjson snap "$(printf '%s' "$PROBE" | jq -c '.snapshot // null')" \
+  '.probe_snapshot = $snap' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" \
+  || { echo "probe snapshot persist failed — stop"; exit 1; }
+echo "CHANGED=$CHANGED"
+```
+
+Read `CHANGED=<bool>` from this snippet's own output — do not re-derive it from a
+shell variable in a later tool call. The snapshot is persisted regardless of
+`CHANGED`, so the next tick always compares against what THIS tick just observed.
+
+`CHANGED=false` (and not already `awaiting_review`/`checking_review` for a still-live
+required job) means: nothing moved since the last full pull — report the same pending
+state as last tick and return to Poll without running `review-evidence.md`'s block.
+`CHANGED=true`, a probe failure, or no `probe_snapshot` yet (first tick, or a state
+that predates this field) all mean: run the full block below. A live required job
+already being observed (`phase: "awaiting_review"`) still queries its own handle
+every tick regardless of `CHANGED` — the probe only gates the broad re-fetch, never
+the specific handle this invocation is already waiting on.
 
 ## Record an observation
 

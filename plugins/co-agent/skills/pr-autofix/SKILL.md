@@ -60,6 +60,7 @@ mkdir -p -- "$STATE_DIR" || exit 1
 | `await_limit_seconds` / `await_started_at` / `await_deadline` | Bounded wait for this invocation. Default 3600 seconds, configurable through `PR_AUTOFIX_WAIT_SECONDS`. Expiry stops this invocation as non-clean, preserves handles, and does not cancel or restart the remote job. |
 | `stop_detail` | Concrete blocker or wait-expiry detail. Preserved for reporting; cleared on an explicit resume. |
 | `run_dir` / `sig` / `ld_sha` | The §4b run pointers, persisted the moment they exist, so a `phase: "gate"` resume can push and clean up with nothing but this file. `ld_sha` is the ORIGINAL setup-time script hash — a resume must pass that value rather than re-hash the current file, or a tampered script would pass its own check. |
+| `probe_snapshot` | §2's cheap-poll cache (head/review-decision/merge-state/required-checks) — refreshed every tick regardless of `CHANGED`. Absent (older state, or before the first tick) means the next probe treats it as "no snapshot yet" and reports `CHANGED=true`, so a missing field fails open toward the full pull, never toward silently skipping it. |
 
 Resolve the PR in Step 1, then read [review-state.md](references/review-state.md)
 and run its initialization/migration before polling. That reference owns the actual
@@ -153,12 +154,20 @@ Stop on a rejected target; handle closed PRs in the host's corrective workflow.
 ### 2. Poll for review feedback
 
 Poll every 60 seconds, or react to a PR-activity subscription when available.
+Run **Cheap poll probe** in [review-state.md](references/review-state.md) FIRST,
+every tick — it decides whether this tick needs the full evidence pull below at
+all. `CHANGED=false` on a tick with no already-live handle to observe: report the
+same pending state as last tick and loop back to Poll, skipping straight past
+steps 2-3 without touching GitHub's comment/review/run-list endpoints again.
+
 Ten minutes is an observation interval, not a job failure. If a required job is
 still live, persist `phase: "awaiting_review"` and its exact handle, report the
-pending state, then continue/resume observing that same job. Do not manufacture
-a clean result or start a duplicate review. The separate invocation deadline is
-enforced by `review-state.md`: after the configured wait budget, report
-`review_unavailable` while explicitly retaining the remote job's pending state.
+pending state, then continue/resume observing that same job — this still queries
+that one handle every tick regardless of `CHANGED` (see the probe section for why).
+Do not manufacture a clean result or start a duplicate review. The separate
+invocation deadline is enforced by `review-state.md`: after the configured wait
+budget, report `review_unavailable` while explicitly retaining the remote job's
+pending state.
 
 If authoritative configuration shows a required provider is absent, or a terminal
 failure cannot be repaired without external action, set `phase: "stop"` and
