@@ -9,6 +9,7 @@ import runpy
 
 SEVERITIES = ("CRITICAL", "MAJOR", "MINOR", "INFO")
 EMPTY_MARKERS = ("None", "None.", "없음", "없음.")
+MAX_REVIEW_BYTES = 50000
 
 
 def decision(status, reason):
@@ -220,7 +221,7 @@ def main():
                               "L1 validation failed" if validated else "L1 infrastructure failed")
         else:
             data = args.report.read_bytes()
-            if not data.strip() or len(data) > 50000:
+            if not data.strip() or len(data) > MAX_REVIEW_BYTES:
                 raise ValueError("Missing, empty or oversized review")
             result = (markdown_review if args.format == "markdown" else json_review)(data.decode("utf-8"))
             if args.work_dir and result["status"] == "PASSED":

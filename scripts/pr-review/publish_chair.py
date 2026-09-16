@@ -30,6 +30,9 @@ def publish(text):
     gate = runpy.run_path(str(GATE))
     blocked = gate["_markdown_review"](text)["status"] == "BLOCKED"
     try:
+        cap = gate["MAX_REVIEW_BYTES"]
+        if len(text.encode("utf-8")) > cap:
+            return withheld(blocked)
         review = gate["markdown_review"]
         original = review(text)
         if original["status"] == "ERROR" or original.get("publishable") is False:
@@ -42,6 +45,8 @@ def publish(text):
         )
         if result.returncode:
             return withheld(blocked)
+        if len(result.stdout.encode("utf-8")) > cap:
+            return withheld(blocked or gate["_markdown_review"](result.stdout)["status"] == "BLOCKED")
         filtered = review(result.stdout)
     except (OSError, UnicodeError, ValueError, KeyError, TypeError):
         return withheld(blocked)

@@ -20,6 +20,52 @@ def review(major="None.", critical="None.", minor="None.", verdict="PASS"):
 
 
 class ReviewGateTests(unittest.TestCase):
+    def padded_review(self, body, size, character="x"):
+        missing = size - len(body.encode("utf-8"))
+        width = len(character.encode("utf-8"))
+        padding = character * (missing // width) + "x" * (missing % width)
+        result = body.replace("Reviewed the diff.", "Reviewed the diff." + padding)
+        self.assertEqual(len(result.encode("utf-8")), size)
+        return result
+
+    def test_publisher_preserves_blockers_over_the_existing_byte_cap(self):
+        publish = runpy.run_path(str(ROOT / "scripts/pr-review/publish_chair.py"))["publish"]
+        for body in (review(verdict="FAIL"), review(major="- Confirmed blocking issue.")):
+            for character in ("x", "é"):
+                with self.subTest(body=body, character=character):
+                    raw = self.padded_review(body, 50001, character)
+                    published = publish(raw)
+                    self.assertLessEqual(len(published.encode("utf-8")), 50000)
+                    self.assertEqual(self.gate(published)["result"], "fail")
+                    self.assertIn("withheld", published)
+
+    def test_publisher_preserves_the_exact_cap_boundary(self):
+        publish = runpy.run_path(str(ROOT / "scripts/pr-review/publish_chair.py"))["publish"]
+        for verdict, expected in (("PASS", "pass"), ("FAIL", "fail")):
+            with self.subTest(verdict=verdict):
+                raw = self.padded_review(review(verdict=verdict), 50000, "é")
+                published = publish(raw)
+                self.assertEqual(published, raw)
+                self.assertEqual(self.gate(published)["result"], expected)
+
+    def test_publisher_checks_the_cap_after_actual_scrub_expansion(self):
+        publish = runpy.run_path(str(ROOT / "scripts/pr-review/publish_chair.py"))["publish"]
+        for verdict, expected in (("PASS", "error"), ("FAIL", "fail")):
+            with self.subTest(verdict=verdict):
+                raw = review(verdict=verdict).replace(
+                    "Reviewed the diff.", "```text\n" + "token='abcdefgh'\n" * 2900 + "```")
+                self.assertLess(len(raw.encode("utf-8")), 50000)
+                expanded = subprocess.run(
+                    ["bash", "-c", 'source "$1"; scrub_secrets', "test-scrub",
+                     str(ROOT / "scripts/pr-review/lib.sh")],
+                    input=raw, capture_output=True, text=True, check=True,
+                ).stdout
+                self.assertGreater(len(expanded.encode("utf-8")), 50000)
+                published = publish(raw)
+                self.assertLessEqual(len(published.encode("utf-8")), 50000)
+                self.assertEqual(self.gate(published)["result"], expected)
+                self.assertNotIn("abcdefgh", published)
+
     def semantic_status(self, body):
         core = runpy.run_path(str(
             ROOT / "plugins/co-agent/skills/pr-autofix/scripts/review_gate.py"))
