@@ -1,5 +1,5 @@
 interface:
   display_name: "Brochure Agent"
-  short_description: "Single-page responsive online brochure (landing page) creation agent for AWS solutions and products — one self-contained, responsive (mobile/tablet/PC) HTML file with an editorial design, product..."
+  short_description: "Single-page responsive online brochure (landing page) agent for AWS solutions and products — self-contained HTML, editorial design, embedded architecture diagram, public GitHub Pages deploy...."
 policy:
   allow_implicit_invocation: false
