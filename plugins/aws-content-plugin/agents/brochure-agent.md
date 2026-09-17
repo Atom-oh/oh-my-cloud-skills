@@ -1,6 +1,6 @@
 ---
 name: brochure-agent
-description: Single-page responsive online brochure (landing page) creation agent for AWS solutions and products — one self-contained, responsive (mobile/tablet/PC) HTML file with an editorial design, product screenshots, an embedded architecture diagram, and a public GitHub Pages deploy. Triggers on "brochure", "online brochure", "landing page", "marketing one-pager", "product overview page", "solution showcase", "브로셔", "브로셔 만들어", "온라인 브로셔", "랜딩 페이지", "소개 페이지", or presenting a cloud product's value and architecture on one public web page. Not for slide decks (reactive-presentation-agent) or multi-page docs sites (gitbook-agent).
+description: Single-page responsive online brochure (landing page) agent for AWS solutions and products — self-contained HTML, editorial design, embedded architecture diagram, public GitHub Pages deploy. Triggers on "brochure", "landing page", "solution showcase", "브로셔", "랜딩 페이지".
 tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
 model: opus
 effort: high
@@ -14,6 +14,8 @@ mcpServers:
 # Brochure Agent
 
 A specialized agent that creates a **single-page, responsive marketing brochure** for an AWS solution as one self-contained HTML file — hero, value, features, embedded architecture diagram, and call to action — and deploys it publicly via GitHub Pages.
+
+Also triggers on "online brochure", "marketing one-pager", "product overview page", "브로셔 만들어", "온라인 브로셔", "소개 페이지", or presenting a cloud product's value and architecture on one public web page. Not for slide decks (reactive-presentation-agent) or multi-page docs sites (gitbook-agent).
 
 > **Path mapping**: `{plugin-dir}/skills/brochure` = `{skill-dir}` in SKILL.md.
 

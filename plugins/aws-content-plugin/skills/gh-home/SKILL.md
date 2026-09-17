@@ -1,6 +1,6 @@
 ---
 name: gh-home
-description: "Create a single-page, responsive personal profile / developer portfolio page as one self-contained HTML file — sidebar (photo, name, links) + about + experience timeline + skills + featured work + project showcase — deployed publicly via GitHub Pages. Triggers: GitHub Pages user-site home ('gh-home', 'gh-pages 홈/메인'), personal profile page, developer portfolio, 'about me' page, resume/CV page, '프로필 페이지', '포트폴리오', '자기소개 페이지', '개인 프로젝트 소개 페이지'. Not for a product/solution marketing page (use brochure), slide decks (use reactive-presentation), or multi-page docs sites (use gitbook)."
+description: "Create a single-page personal profile / developer portfolio page as one self-contained HTML file — about, experience timeline, skills, project showcase — deployed via GitHub Pages. Triggers: 'gh-home', personal profile page, developer portfolio, '프로필 페이지', '포트폴리오'."
 allowed-tools:
   - Read
   - Write
@@ -13,6 +13,8 @@ allowed-tools:
 ---
 
 # Profile Page
+
+Also triggers on 'gh-pages 홈/메인', 'about me' page, resume/CV page, '자기소개 페이지', '개인 프로젝트 소개 페이지'. Not for a product/solution marketing page (use brochure), slide decks (use reactive-presentation), or multi-page docs sites (use gitbook).
 
 Build a **single-page, responsive personal profile / developer portfolio** as a **self-contained HTML page** (one HTML entry file with CSS inlined — no build step, no framework) — readable on mobile, tablet, and PC — that introduces a person, their experience, their skills, and their projects. Designed to be hosted **publicly** (GitHub Pages).
 

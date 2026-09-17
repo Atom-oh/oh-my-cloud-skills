@@ -1,6 +1,6 @@
 ---
 name: co-agent
-description: "Collaborate with configured external AI peers for a second opinion. Multi-AI review of code/architecture, decision support when you're unsure, and ADR co-authoring, plus autonomous consensus/harness pipelines. The current host chairs and synthesizes the final answer. Use ONLY on multi-AI intent — 'co-agent', 'second opinion', 'multi-AI review', '다른 AI', '다른 AI로 리뷰', 'AI 협업', 'AI 패널', '멀티 AI', 'ADR 협업', or decision-support phrasings like '잘 모르겠어', '의사결정 도와', '협업해서 결정'. Bare 'code review'/'architecture review'/'decide'/'adr' are deliberately NOT triggers (they collide with the code-review/arch-review/pr-review skills) — use /co-agent explicitly for those."
+description: "Collaborate with configured external AI peers for a second opinion — multi-AI code/architecture review, decision support, ADR co-authoring. Use ONLY on multi-AI intent: 'co-agent', 'second opinion', '다른 AI로 리뷰', 'AI 협업'. Bare 'code review'/'decide'/'adr' are NOT triggers — use /co-agent explicitly."
 allowed-tools:
   - Bash
   - Read
@@ -11,6 +11,8 @@ allowed-tools:
 ---
 
 # co-agent — Multi-AI Collaboration
+
+Also triggers on 'multi-AI review', '다른 AI', 'AI 패널', '멀티 AI', 'ADR 협업', or decision-support phrasings like '잘 모르겠어', '의사결정 도와', '협업해서 결정'. Deliberately excludes bare 'architecture review' (collides with arch-review/pr-review skills).
 
 Consult **other AI agents** and let the **current host agent chair the panel**: fan the
 same prompt to whichever peer CLIs are installed, then synthesize one attributed answer.

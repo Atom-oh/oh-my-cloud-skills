@@ -1,6 +1,6 @@
 ---
 name: aws-light-fcd
-description: "Generate AWS Light-themed PowerPoint presentations (.pptx) with Pretendard typography, white canvas, and the signature purple→blue→green AWS gradient — ready-made layouts (cover, agenda, big-stat, AgentCore 3-card, AWS architecture diagrams) plus bundled AgentCore + AWS service icon libraries. Use for AWS-style slides/decks/presentations in the LIGHT theme: Korean/bilingual customer briefings, technical deep-dives, or anything on Amazon Bedrock, AgentCore, EKS, SageMaker, or AWS architecture diagrams — or phrases like 'AWS 라이트 deck', 'AWS 슬라이드 만들어줘', 'Bedrock 발표자료', 'AgentCore 슬라이드', '아키텍처 다이어그램', 'AWS 고객 브리핑'."
+description: "Generate AWS Light-themed PowerPoint presentations (.pptx) — Pretendard typography, white canvas, signature purple→blue→green gradient, ready-made layouts, bundled AWS/AgentCore icons. Use for AWS-style slide decks, Korean/bilingual customer briefings, or 'AWS 슬라이드 만들어줘', 'Bedrock 발표자료'."
 ---
 
 # AWS Light FCD
