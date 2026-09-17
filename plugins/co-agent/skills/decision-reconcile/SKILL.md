@@ -1,6 +1,6 @@
 ---
 name: decision-reconcile
-description: "Detect contradictions across accumulated ADRs (ADR-NNN) and between ADRs and current reality, using a diverse panel of agents — varied Claude model tiers plus optional external AI CLIs, each given a different review lens — then draft a superseding ADR to reverse/reconcile the decision. Use when ADRs may conflict, a decision needs overturning, or the user asks to reconcile or reverse architecture decisions. Triggers: 의사결정 번복, 의사결정 모순, ADR 모순, ADR 충돌, ADR 번복, 결정 번복, ADR 모순 검토, decision reversal, decision reconcile, reconcile ADRs, ADR contradiction, conflicting ADR, supersede ADR."
+description: "Detect contradictions across accumulated ADRs and between ADRs and current reality using a multi-agent review panel, then draft a superseding ADR. Use when ADRs may conflict or a decision needs overturning. Triggers: ADR 모순, ADR 충돌, decision reconcile, reconcile ADRs, supersede ADR."
 allowed-tools:
   - Read
   - Write
@@ -13,6 +13,8 @@ allowed-tools:
 ---
 
 # decision-reconcile — ADR decision reversal
+
+Also triggers on 의사결정 번복, 의사결정 모순, ADR 번복, 결정 번복, ADR 모순 검토, decision reversal, ADR contradiction, conflicting ADR. Uses varied Claude model tiers plus optional external AI CLIs, each given a different review lens.
 
 Find the contradictions that accumulate across a repo's ADRs — two Accepted ADRs
 mandating opposite things, a newer decision silently reversing an older one, an ADR the

@@ -1,6 +1,6 @@
 ---
 name: brochure
-description: "Create a single-page, responsive online brochure (landing page) for an AWS solution, product, or platform as one self-contained HTML file — editorial design, hero + value + features + embedded architecture diagram + CTA, deployed publicly via GitHub Pages. Use whenever the user wants a brochure, landing page, marketing one-pager, product overview page, solution showcase, '온라인 브로셔', '브로셔 만들어', '랜딩 페이지', '소개 페이지', or wants to present a cloud product's value and architecture on the web — even if they don't say the word 'brochure'. Not for slide decks (use reactive-presentation) or multi-page docs sites (use gitbook)."
+description: "Create a single-page, responsive online brochure (landing page) for an AWS solution as one self-contained HTML file — editorial design, hero + features + embedded architecture diagram + CTA, deployed via GitHub Pages. Use for 'brochure', 'landing page', '브로셔', '랜딩 페이지'."
 allowed-tools:
   - Read
   - Write
@@ -11,6 +11,8 @@ allowed-tools:
 ---
 
 # Brochure
+
+Also covers marketing one-pager, product overview page, solution showcase, '온라인 브로셔', '브로셔 만들어', '소개 페이지', or presenting a cloud product's value on the web even without saying "brochure". Not for slide decks (use reactive-presentation) or multi-page docs sites (use gitbook).
 
 Build a **single-page, responsive marketing brochure** for an AWS solution as a **self-contained HTML page** (one HTML entry file with CSS inlined — no build step, no framework — plus its architecture SVG as an adjacent asset) — readable on mobile, tablet, and PC — that leads with the product's core message, shows its key features, embeds its architecture diagram, and ends with a call to action. Designed to be hosted **publicly** (GitHub Pages), because that's what a brochure is for.
 
