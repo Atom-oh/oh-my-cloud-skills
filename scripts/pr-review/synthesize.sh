@@ -31,8 +31,17 @@ fi
 if [ -f "$WORK/kiro-diff-truncated.flag" ]; then
   COVERAGE_NOTICE+="- Kiro's copy of the diff was truncated (exceeded KIRO_DIFF_CAP); it reviewed only a prefix."$'\n'
 fi
+if [ -f "$WORK/diff-truncated.flag" ]; then
+  COVERAGE_NOTICE+="- The shared diff was truncated before any reviewer, including you, saw it$(
+    [ -s "$WORK/diff-truncated.flag" ] && printf ' (%s)' "$(cat "$WORK/diff-truncated.flag")"
+  )."$'\n'
+fi
 if [ -f "$WORK/coverage-severe.flag" ]; then
-  COVERAGE_NOTICE+="- Cross-vendor coverage collapsed to ≤1 surviving vendor family."$'\n'
+  # Set for several distinct reasons (vendor collapse, a failed specialist
+  # family check, an oversized specialist prompt, a role-coverage roster
+  # mismatch) that this flag alone doesn't distinguish — kept neutral rather
+  # than asserting a specific cause the harness hasn't actually verified.
+  COVERAGE_NOTICE+="- A cross-vendor or role-coverage requirement was not met for this review."$'\n'
 fi
 
 PANEL_CELL_CAP="${PANEL_CELL_CAP:-20000}"
@@ -55,6 +64,9 @@ while IFS= read -r f; do
 $CELL"
 done < <(printf '%s\n' "$SLOT"/*.md | LC_ALL=C sort)
 rm -f "$SCRUB_TMP"
+if [ -f "$WORK/panel-cell-truncated.flag" ]; then
+  COVERAGE_NOTICE+="- At least one panel cell's own reported findings were truncated before reaching you (exceeded PANEL_CELL_CAP)."$'\n'
+fi
 
 cat > "$WORK/synth-prompt.txt" <<PROMPT_EOF
 You are the CHAIR reviewing PR #${PR_NUMBER}: ${PR_TITLE}, a Claude Code and Codex plugin

@@ -11,8 +11,11 @@ review runs. Older detail is in
 - Distinguish generator logic from its templates. A trusted-base generator can
   reject a legitimate head-generator/output update. Freshness runs with the head
   implementation in isolated CI; privileged L1 only validates PR data (PR #183).
-- A PASS token cannot excuse active Major/Critical or incomplete configured
-  coverage. Check the semantic gate, CLI completion and input caps (PR #180).
+- A PASS token cannot excuse an active Major/Critical finding. Check the semantic
+  gate and CLI completion (PR #180). When your stdin includes a coverage-status
+  block listing a reviewer/input gap, PASS additionally requires stating why the
+  available evidence was enough despite that gap (ADR-026, PR #243) — never PASS
+  on missing coverage by default or by omission.
 - A state transition must follow a verified side effect. Persist every resume
   handle; do not overwrite evidence before comparing it or advance after failed
   commit/push. Scanner diagnostics must not echo the matched secret (PR #158–159).

@@ -65,8 +65,10 @@ releases; an ordinary development PR need not bump the version or create a tag.
 - Opt-in local PR/push hooks retain their documented quorum, failure and consent
   policies. They are different from the repository's required GitHub CI review.
 - CI runs the configured peer roster over the full diff, then a chair verifies
-  findings. Active Critical/Major blocks merge. Missing, failed or truncated
-  required review evidence is ERROR, never an implicit pass. Preserve the caps.
+  findings. Active Critical/Major blocks merge. The chair is informed of any
+  degraded coverage (a failed reviewer, a truncated diff) before it decides and
+  its resulting verdict governs — this is a chair judgment call, not a separate
+  mechanical override (ADR-026). Preserve the caps.
 - The privileged `pull_request_target` review runs trusted-base code and reads the
   PR tree as data. The separate GitHub-hosted `pull_request` job runs the PR's own
   generator with read-only repository permissions and no provider secrets.
