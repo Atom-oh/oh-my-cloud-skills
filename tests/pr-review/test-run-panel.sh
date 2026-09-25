@@ -201,7 +201,7 @@ cat > "$BIN/kiro-cli" <<EOF
 $KIRO_MOCK_PRELUDE
 prev=""
 for a in "\$@"; do
-  if [ "\$prev" = "--model" ] && [ "\$a" = "claude-opus-5.5" ]; then exit 1; fi
+  if [ "\$prev" = "--model" ] && [ "\$a" = "claude-opus-5" ]; then exit 1; fi
   prev="\$a"
 done
 echo "kiro-finding"

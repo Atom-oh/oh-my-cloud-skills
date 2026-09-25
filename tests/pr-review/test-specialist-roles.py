@@ -37,7 +37,7 @@ if '--version' in args:
 if len(args)>1 and args[1].startswith('Kiro startup safety check.'):
  print('NO_TOOLS');sys.exit(0)
 prompt=args[1] if args[0]=='chat' else args[-1]
-if MISSING and args[0]=='chat' and 'claude-opus-5.5' in args:
+if MISSING and args[0]=='chat' and 'claude-opus-5' in args:
  sys.exit(0)
 print(json.dumps({'prompt':prompt,'stdin':sys.stdin.read()}))
 '''.replace('MISSING', repr(missing))

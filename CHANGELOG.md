@@ -21,13 +21,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Move the `kiro-opus` PR-review panel cell and co-agent's `kiro-cli` panel default
-  from `claude-opus-4.8`/`claude-opus-5` to `claude-opus-5.5` (Claude Opus 5.5,
-  2.00x kiro-cli credits vs. 2.20x for Opus 5), and the pr-autofix escalation
-  ladder and its template CI workflow's chair-fallback model accordingly. Add an
-  `*opus-5-5*` chair label ahead of the existing `*opus-5*` glob in
-  `synthesize.sh` so Opus 5.5 is labeled correctly instead of matching the older
-  pattern.
+- Move the chair's Bedrock fallback model (`CHAIR_FALLBACK_MODEL` in
+  `synthesize.sh`) to `global.anthropic.claude-opus-5-5` (Claude Opus 5.5),
+  and add an `*opus-5-5*` chair label ahead of the existing `*opus-5*` glob so
+  it's labeled correctly instead of matching the older pattern.
+- Move co-agent's `kiro-cli` panel default from `claude-opus-4.8` to
+  `claude-opus-5`.
+
+### Fixed
+
+- Revert the `kiro-opus` PR-review panel cell and the pr-autofix escalation
+  ladder's rung 1 from `claude-opus-5.5` back to `claude-opus-5`. The
+  `[Internal]`-tagged `claude-opus-5.5` kiro-cli model passed once (the PR
+  that introduced it) but then became unavailable to the required PR-review
+  CI runner's Kiro account (`Model 'claude-opus-5.5' does not exist`),
+  blocking every subsequent PR's mandatory review gate. `claude-opus-5`
+  (not internal/preview-tagged) is the stable choice for this
+  always-must-succeed path; `claude-opus-5.5` remains available as an
+  explicit opt-in via `/co-agent:configure` or the escalation ladder's
+  documented "check `--list-models` first" caution for exactly this
+  instability risk.
 
 ## [2.0.0] - 2026-09-13
 

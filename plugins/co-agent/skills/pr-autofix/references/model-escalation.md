@@ -7,7 +7,7 @@ escalated pass: pass 6 = rung 1, pass 7 = rung 2, …; past the last rung, stay 
 
 | Peer | Rung 1 | Rung 2 | Rung 3 |
 |------|--------|--------|--------|
-| kiro-cli | `claude-opus-5.5` | `claude-fable-5.1` (only if `kiro-cli chat --list-models` lists it — it's `[Internal]`) | `gpt-5.6-sol` |
+| kiro-cli | `claude-opus-5` | `claude-fable-5.1` (only if `kiro-cli chat --list-models` lists it — it's `[Internal]`) | `gpt-5.6-sol` |
 | codex | `openai.gpt-5.6-sol`, effort `xhigh` | — | — |
 | Other configured peers | Keep the configured/default model when no escalation rung is defined. | — | — |
 | chair | spawn `co-agent:gate-chair` (`opus`+`xhigh`) for triage instead of judging inline | — | — |
@@ -26,7 +26,7 @@ right after:
 
 ```bash
 if [ "$ITERATION" -gt 5 ]; then
-  export CO_AGENT_GATE_MODEL_OVERRIDE_KIRO_CLI="claude-opus-5.5"   # or the resolved rung
+  export CO_AGENT_GATE_MODEL_OVERRIDE_KIRO_CLI="claude-opus-5"   # or the resolved rung
   export CO_AGENT_GATE_MODEL_OVERRIDE_CODEX="openai.gpt-5.6-sol"  # rung 1 — set explicitly,
   # never rely on it happening to match the configured panel default; a future config
   # change must not silently disable this escalation.
