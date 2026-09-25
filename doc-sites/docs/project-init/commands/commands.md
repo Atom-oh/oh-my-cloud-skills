@@ -6,7 +6,6 @@ title: "Project init commands"
 {/* Legacy section links retained after the English rewrite. */}
 <span id="project-init-명령" />
 
-
 # Project init commands
 
 In Claude Code these are slash commands. In Codex use the corresponding generated skill; `source-command-health-check` disambiguates the project setup check from AWS health checks.
