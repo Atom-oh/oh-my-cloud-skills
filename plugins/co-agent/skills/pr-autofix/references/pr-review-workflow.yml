@@ -23,7 +23,7 @@ jobs:
       pull-requests: write
       contents: read
     env:
-      ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL || 'us.anthropic.claude-opus-4-8' }}
+      ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL || 'us.anthropic.claude-opus-5-5' }}
       CLAUDE_CODE_USE_BEDROCK: 1
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
       REVIEW_HEAD: ${{ github.event.pull_request.head.sha }}
