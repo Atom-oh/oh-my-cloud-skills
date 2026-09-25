@@ -42,7 +42,7 @@ Source modes, command files and generated Codex entry skills are different inven
 | Advisory review / decide / ADR | May run solo; explicitly report which peers ran or were skipped |
 | consensus / harness | Require a READY peer with raw CLI access; no peer means stop and point to setup |
 | Optional local PR/push hooks | Apply their configured block rules; unsupported scope or unavailable review fails open with an advisory |
-| Mandatory repository PR CI | Incomplete configured coverage cannot pass; local solo/hook behavior is not an exemption |
+| Mandatory repository PR CI | The chair, informed of any degraded coverage before deciding, judges whether it still permits PASS (ADR-026); local solo/hook behavior is not an exemption |
 
 Use `skills/co-agent/scripts/co_agent_config.py host` and `panel --host <host>` for
 host/peer selection. `check_panel.py` records actual usability, not just installation.
@@ -54,10 +54,13 @@ user/project settings, hooks and configured MCP servers. See `commands/setup.md`
 `skills/co-agent/references/ai-cli-adapters.md` for invocation and environment details.
 
 Mandatory PR acceptance requires latest-HEAD review, no unresolved Critical/Major
-findings, complete configured coverage and all required checks, including separate
-PR-head Codex package CI. A lexical PASS, failed invocation, absent review or local
-hook skip cannot satisfy it. Source code proves implementation, not permission to
-violate security or other stated requirements. ADR-021 records this repo's authority.
+findings and all required checks, including separate PR-head Codex package CI. The
+chair's own verdict, informed of any degraded coverage before it decides, governs
+whether that gap still permits PASS (ADR-026) — not a separate mechanical check. A
+lexical PASS, failed invocation or absent review cannot satisfy this; a local hook
+skip is not evidence of it either. Source code proves implementation, not permission
+to violate security or other stated requirements. ADR-021 records this repo's
+authority; ADR-026 amends its coverage requirement.
 
 ## Specialists and implementation boundaries
 

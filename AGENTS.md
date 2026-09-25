@@ -1,4 +1,4 @@
-<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: abed4a254e61 · generated-at: 2026-09-25 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
+<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 3fbcb5503d9b · generated-at: 2026-09-25 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
 > You are an external reviewer for this repo — project context below, distilled from
 > CLAUDE.md. This file is shared verbatim by the external review panel (not a per-AI copy).
 
@@ -22,9 +22,12 @@ separates source skills, commands, agents, generated entries and review cells.
 
 ## Distinct workflows
 
-- Required CI needs complete configured peer/input coverage, a completed chair and
-  no active Critical/Major. Missing/failed/truncated evidence is ERROR. Inspect
-  latest-HEAD Issues and inline comments; both AI and Codex checks must pass.
+- Required CI runs the configured peer roster over the full diff; a chair verifies
+  findings. Active Critical/Major blocks merge. The chair is informed of any
+  degraded coverage (a failed reviewer, a truncated diff) before it decides, and
+  its resulting verdict governs — a chair judgment call, not a separate mechanical
+  coverage override (ADR-026). Inspect latest-HEAD Issues and inline comments; both
+  AI and Codex checks must pass.
 - Privileged review runs trusted-base code on PR data. Isolated head CI validates
   the head generator/output/context. Branch-protection settings are external facts.
 - Local co-agent excludes its current host. Review/decide/ADR may report solo work;

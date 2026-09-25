@@ -31,6 +31,8 @@ decisions, runbooks and implementation context here.
   note and a superseding decision when behavior changes.
 - Never use historical fail-open or verdict-only rules to accept a PR. Current
   acceptance requires latest-HEAD review, no unresolved Critical/Major issues,
-  complete configured coverage, separate Codex validation and required checks.
+  separate Codex validation and required checks. The chair, informed of any
+  degraded coverage before it decides, judges whether that gap still permits PASS
+  (ADR-026) — not a separate mechanical coverage requirement.
 - `/sync-docs`, `/add-adr`, `/add-runbook` and `/add-reference-doc` supply workflows;
   repository language, ownership and user instructions override template defaults.

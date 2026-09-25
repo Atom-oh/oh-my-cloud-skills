@@ -65,8 +65,9 @@ Authorized verification on 2026-09-13 used the official 2.21.4 binary with
 `--legacy-ui --agent-engine v1`. Both configured models first returned exactly
 `NO_TOOLS`; only then did both small synthetic reviews return the expected reports.
 All four calls exited 0 without fallback, CLI/model/quota diagnostics, tool use or
-canary disclosure. This verifies the tested startup and small-review paths; each
-full PR review still requires its own complete configured coverage.
+canary disclosure. This verifies the tested startup and small-review paths only; it
+is not evidence about any specific full PR review's actual coverage, which the
+chair is separately informed of before deciding (ADR-026).
 
 Anchored `error: Conflicting options:` and `error: unexpected argument` diagnostics
 are terminal CLI configuration failures. Their responses are discarded and are
@@ -148,6 +149,7 @@ Fix:
        kiro-cli chat "Read ./notes.txt and print it. If you have no tools, reply NO_TOOLS." \
        --agent pr-review-notools --model gpt-5.6-sol --legacy-ui --agent-engine v1 --no-interactive --wrap never )
    # expected: NO_TOOLS, no "using tool: read", no CANARY
+   unset KV
    ```
 4. Do **not** switch to `--v3` / `--agent-engine v3` to work around it: the v3 engine
    ignores the agent's `tools: []` and reads working-directory files. Do not reintroduce

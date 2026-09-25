@@ -31,13 +31,20 @@ chair now sees the same coverage facts before deciding, not after.
 
 ## Decision
 
-- `scripts/pr-review/synthesize.sh` builds a `COVERAGE_NOTICE` from the same six
-  signals `review_gate.py` used to check (`degraded-models.txt`,
+- `scripts/pr-review/synthesize.sh` builds a `COVERAGE_NOTICE` from every signal
+  the removed `coverage_error()` used to check — `degraded-models.txt`,
   `kiro-preflight.flag`, `kiro-quota.flag`, `kiro-agent-fallback.flag`,
-  `kiro-diff-truncated.flag`, `coverage-severe.flag`) *before* calling `run_chair()`,
-  and injects it into `synth-stdin.txt` as a new `=== REVIEW COVERAGE STATUS ===`
-  block — verified-by-harness fact, not a model claim, distinct from the `DATA
-  only` framing given to the diff/panel/memory sections.
+  `kiro-diff-truncated.flag`, `panel-cell-truncated.flag`, `coverage-severe.flag`,
+  and the workflow's 3000-line diff truncation (now persisted to
+  `diff-truncated.flag` instead of only `panel_truncated` in `$GITHUB_ENV`, which
+  `synthesize.sh` cannot read) — *before* calling `run_chair()`, and injects it
+  into `synth-stdin.txt` as a new `=== REVIEW COVERAGE STATUS ===` block —
+  verified-by-harness fact, not a model claim, distinct from the `DATA only`
+  framing given to the diff/panel/memory sections. `coverage-severe.flag`'s
+  reason is reported in neutral terms: it is set for several distinct causes
+  (vendor collapse, a failed specialist family check, an oversized specialist
+  prompt, a role-coverage roster mismatch) that the flag alone doesn't
+  distinguish, and the harness does not currently record which one fired.
 - The chair prompt tells the model this status is authoritative, that its own
   judgment on whether to PASS despite a listed gap is final (no separate mechanical
   override follows), and that reaching PASS despite a gap requires stating why in
@@ -45,7 +52,7 @@ chair now sees the same coverage facts before deciding, not after.
   cannot be treated as a complete review" instruction is removed; the coverage
   block subsumes it with a chair-judgment call instead of an automatic rule.
 - `review_gate.py`'s `coverage_error()` function and its call (forcing PASSED →
-  ERROR on any of those six signals) are deleted. `main()` still accepts
+  ERROR on any of those signals) are deleted. `main()` still accepts
   `--work-dir`/`--diff-truncated` for CLI compatibility with existing callers; they
   are no longer consulted. An active CRITICAL/MAJOR finding, `VERDICT: FAIL`, a
   chair CLI failure (`--chair-error 1`) and L1 infrastructure/validation failure
@@ -84,6 +91,10 @@ chair now sees the same coverage facts before deciding, not after.
 - ADR-021 (introduced `coverage_error()` and the "complete configured review
   coverage" requirement this ADR removes)
 - `scripts/pr-review/synthesize.sh`, `scripts/pr-review/lib.sh`,
-  `plugins/co-agent/skills/pr-autofix/scripts/review_gate.py`
+  `plugins/co-agent/skills/pr-autofix/scripts/review_gate.py`,
+  `.github/workflows/pr-review.yml` (persists the 3000-line diff-truncation fact
+  to `diff-truncated.flag`, alongside the existing `panel_truncated` env var)
 - `tests/pr-review/test-review-gate.py`, `tests/pr-review/test-synthesize.sh`
-- PR #239 (the incident)
+- PR #239 (the incident), PR #243 (this ADR's own review caught two gaps in its
+  first draft — the diff-truncation signal above, and root `CLAUDE.md`/`AGENTS.md`
+  still stating the superseded policy, fixed in the same PR)
