@@ -9,7 +9,7 @@ decisions instead of rewriting past behavior as current.
   predate the slug convention; `ADR-003+` use the descriptive slug. `.template.md` is the
   skeleton (not a real ADR — excluded from numbering scans).
 - **Next number**: inspect `rg --files docs/decisions -g 'ADR-*.md' | sort -V` for the highest
-  zero-padded `ADR-NNN-*.md` and increment it. ADR-025 is the latest as of
+  zero-padded `ADR-NNN-*.md` and increment it. ADR-026 is the latest as of
   2026-09-25. The `/add-adr` command auto-numbers; `.template.md` is not an ADR.
 - **Sections**: `# ADR-NNN: Title` (English title) → `## Status` → `## Context` →
   `## Options Considered` (optional) → `## Decision` → `## Consequences` → `## References`.

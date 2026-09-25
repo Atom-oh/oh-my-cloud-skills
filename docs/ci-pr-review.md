@@ -2,11 +2,12 @@
 
 This repository has two separate checks. Both must pass for the latest PR HEAD
 before an authorized merge. The workflow files and validators are executable truth
-about their implementation; ADR-021 records the current review/documentation policy.
+about their implementation; ADR-021 records the current review/documentation policy,
+amended by ADR-026 for coverage authority (below).
 
 | Check | Execution boundary | Required result |
 |---|---|---|
-| AI Code Review | Trusted-base code on the review runner; PR content is data | Complete configured peer coverage and no active Critical/Major |
+| AI Code Review | Trusted-base code on the review runner; PR content is data | No active Critical/Major; the chair's own verdict on coverage completeness governs (ADR-026) |
 | Codex package validation | Exact PR HEAD on a GitHub-hosted runner, read-only repository permissions, no provider secrets | All generated artifacts and manifest/inventory validation pass |
 
 These are merge-procedure requirements. Branch-protection registration is external
@@ -52,12 +53,18 @@ historical CLI assumptions behind the mechanism.
 ## Decision contract
 
 - `PENDING`: review is not complete. A previous result does not approve this HEAD.
-- `PASSED`: final Critical/Major sections are explicitly empty, the chair completed
-  successfully, and every configured required review cell/input is complete.
-- `BLOCKED`: an active Critical/Major remains, the chair rejects the change, or L1
-  validation found a defect. A PASS token beside an active Major cannot pass.
-- `ERROR`: required evidence or infrastructure is missing, failed, malformed or
-  incomplete. This is not proof of a code defect and is never an implicit approval.
+- `PASSED`: final Critical/Major sections are explicitly empty and the chair
+  completed successfully. Since ADR-026, the chair is told about any degraded
+  coverage (a failed Kiro cell, a truncated diff, a coverage collapse) *before*
+  deciding, via `synthesize.sh`'s `=== REVIEW COVERAGE STATUS ===` block, and
+  reaching PASS despite a listed gap requires the chair to state why in its
+  Summary; the gate no longer independently re-checks coverage completeness.
+- `BLOCKED`: an active Critical/Major remains, the chair rejects the change
+  (including on its own judgment about a coverage gap), or L1 validation found a
+  defect. A PASS token beside an active Major cannot pass.
+- `ERROR`: the chair CLI itself failed to produce usable output, or L1
+  infrastructure failed. This is not proof of a code defect and is never an
+  implicit approval.
 
 Final Markdown has `## Issues` with `### CRITICAL`, `### MAJOR`, `### MINOR` and one
 unquoted terminal `VERDICT: PASS` or `VERDICT: FAIL`. Empty sections use `None.`;
@@ -73,8 +80,9 @@ labels, colon sentences, path citations and Setext headings are prose. Literal o
 atomic setting assignments still require fences. Use synthetic values, never credentials.
 
 The canonical `review_format.py` beside `review_gate.py` validates panel and chair
-text before and after scrubbing. The semantic gate still owns Issues, severity
-and complete coverage. Unsupported examples cannot pass; known blocking findings
+text before and after scrubbing. The semantic gate still owns Issues and severity;
+coverage completeness is the chair's informed judgment call (ADR-026), not a
+separate mechanical check. Unsupported examples cannot pass; known blocking findings
 remain BLOCKED even when malformed details must be withheld. The consumer template
 checks decoded summary/message/reason strings, keeps metadata separate and quotes
 validated model text in its comment. Install its workflow and both Python validators
@@ -118,17 +126,22 @@ masked errors, never credential values.
 
 The existing diff, output and deadline caps remain enforced. Exceeding one requires
 reducing/splitting input or diagnosing the failed provider; never raise/disable a cap
-merely to turn incomplete coverage green. Every enabled required reviewer must finish.
+merely to make a degraded panel look complete. Every enabled required reviewer is
+still expected to finish; a reviewer that doesn't is reported to the chair (ADR-026)
+as fact, not silently hidden, even though it no longer mechanically fails the check.
 Intentional roster changes need owner-approved configuration review; do not drop Kiro
-Opus or another cell just to avoid a finding. A single remaining vendor cannot satisfy
-required coverage when a configured vendor fails. Intentionally disabled cells are
-excluded from the expected roster. Specialist mode additionally requires at least
+Opus or another cell just to avoid a finding. A single remaining vendor triggers
+`coverage-severe.flag`, reported to the chair the same way, when a configured vendor
+fails. Intentionally disabled cells are excluded from the expected roster. Specialist
+mode's family-diversity check (`specialist_roles.py gate`) sets the same
+`coverage-severe.flag` on a high-risk diff with fewer than
 two recognized model families for code, configuration, instructions, decisions,
 security docs and unrecognized input. Sensitive AWS/authentication/security/deployment
 content also requires two families when it appears in README or other Markdown;
 runbook/operational paths are conservatively sensitive. Removed guards count too.
 Only ordinary nonsensitive documentation may use a single configured family.
-A failed family check remains a severe coverage failure.
+A failed family check is reported to the chair as a coverage gap (ADR-026); the
+chair's informed verdict, not this flag by itself, decides PASS or FAIL.
 
 ## Specialist assignments
 

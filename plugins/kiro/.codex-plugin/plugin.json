@@ -1,6 +1,6 @@
 {
   "name": "kiro",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Cost-saving delegation: the current host plans and verifies; Kiro CLI implements in isolated worktrees and optionally reviews changes before commits.",
   "author": {
     "name": "atomoh"

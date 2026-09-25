@@ -1,6 +1,6 @@
 {
   "name": "co-agent",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Collaborate with other AI agents (Kiro CLI and the opposite host CLI) — multi-AI code/architecture review, decision support when you're unsure, ADR co-authoring, and autonomous consensus/harness implementation pipelines. Claude chairs in Claude Code; Codex chairs in Codex.",
   "author": {
     "name": "atomoh"
