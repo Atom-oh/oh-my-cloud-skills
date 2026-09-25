@@ -19,10 +19,6 @@
     "message": "kiro",
     "description": "The label of footer link with label=kiro linking to /docs/kiro/overview"
   },
-  "link.item.label.atlas": {
-    "message": "atlas",
-    "description": "The label of footer link with label=atlas linking to /docs/atlas/overview"
-  },
   "link.item.label.project-init": {
     "message": "project-init",
     "description": "The label of footer link with label=project-init linking to /docs/project-init/overview"

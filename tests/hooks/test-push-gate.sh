@@ -276,20 +276,6 @@ assert_eq "skip:bypass" "$(_pgs 'CO_AGENT_PUSH_GATE=off git push')" "push gate: 
 
 assert_json_valid "plugins/co-agent/skills/co-agent/co-agent.defaults.json" "co-agent.defaults.json is valid JSON after adding push_gate"
 
-# --- atlas_sync.py's _scan_doc_secrets: header-misclassification bypass, case
-# sensitivity, and the (deliberately absent) allowlist marker. Fixture VALUES live
-# in _atlas_secret_scan_probe.py, assembled from parts there — not as literals in
-# this file — so this repo's own commit-time secret-scan.sh doesn't flag the very
-# fixtures meant to test atlas's scanner for these shapes. ---
-_aspc() { python3 tests/hooks/_atlas_secret_scan_probe.py --case "$1"; }
-assert_eq "HIT 2" "$(_aspc header-bypass)" "secret-scan: added content starting with '++ ' is NOT misread as a diff file header"
-assert_eq "HIT 2" "$(_aspc aws-uppercase)" "secret-scan: uppercase AWS_SECRET_ACCESS_KEY= is caught (case-fold bug fix)"
-assert_eq "HIT 2" "$(_aspc allowlist-no-bypass)" "secret-scan: an allowlist marker on the fixer-controlled line does NOT bypass detection"
-assert_eq "CLEAN" "$(_aspc benign)" "secret-scan: an ordinary prose edit is not flagged"
-assert_eq "HIT 2" "$(_aspc color-ui-always)" "secret-scan: a repo-local color.ui=always config does not blind the scan (ANSI codes must not defeat the +/@@ prefix checks)"
-assert_eq "HIT 2" "$(_aspc color-diff-always)" "secret-scan: color.diff=always (more specific than color.ui, wins over a -c override) does not blind the scan either"
-assert_eq "STAGE_OK=False REVERTED_CLEAN=True" "$(python3 tests/hooks/_atlas_secret_scan_probe.py --case index-revert 2>/dev/null)" "secret-scan: INDEX.md itself is scanned and reverted on a hit (round-6 laundering-via-description fix)"
-
 if python3 -c "import py_compile" 2>/dev/null; then
   # `if python3 ...; then`, NOT `python3 ...` followed by `[ $? -eq 0 ]`: this file is
   # SOURCED by run-all.sh under `set -e`, so a bare failing command aborts the whole

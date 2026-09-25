@@ -35,10 +35,6 @@
     "message": "kiro",
     "description": "Navbar item with label kiro"
   },
-  "item.label.atlas": {
-    "message": "atlas",
-    "description": "Navbar item with label atlas"
-  },
   "item.label.project-init": {
     "message": "project-init",
     "description": "Navbar item with label project-init"

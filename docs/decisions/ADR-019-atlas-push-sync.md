@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted (2026-08-19)
+Accepted (2026-08-19). **Superseded by [ADR-025](ADR-025-retire-atlas.md)** (2026-09-25):
+the atlas plugin, including this hook, has been removed from the marketplace. This
+record remains as historical evidence of the original hook-point rationale.
 
 **Current scope (2026-09-13):** this records the original Claude hook path and its
 timing rationale. Generated Codex plugin hooks adapt the same source behavior,

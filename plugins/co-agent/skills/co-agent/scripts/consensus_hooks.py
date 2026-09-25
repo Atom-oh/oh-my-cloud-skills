@@ -107,14 +107,14 @@ _PUSH_REDIRECT_RE = re.compile(
 # anyway) rather than a wrong skip.
 _PUSH_DELETE_RE = re.compile(
     r"(?:^|\s)(?:--delete\b|-(?:(?!o)[A-Za-z])*d(?:(?!o)[A-Za-z])*\b)")
-# A third class ported the same way, for the same reason: kiro's hook_match.py (and
-# atlas's verbatim copy of it) both treat `--dry-run`/`-n` as a scope mismatch —
-# nothing is actually pushed, so a side-effecting response to "this push is
-# happening" (a real 3-lens review call here) would be reacting to content that
-# never leaves the machine. Missing this class would mean the SAME `git push
-# --dry-run` is skipped by kiro's/atlas's hooks but still reviewed (and its diff
-# egressed to the peer panel) by this gate — exactly the "different skip rules is a
-# bug surface" problem the comment above already names for the other two classes.
+# A third class ported the same way, for the same reason: kiro's hook_match.py
+# treats `--dry-run`/`-n` as a scope mismatch — nothing is actually pushed, so a
+# side-effecting response to "this push is happening" (a real 3-lens review call
+# here) would be reacting to content that never leaves the machine. Missing this
+# class would mean the SAME `git push --dry-run` is skipped by kiro's hook but
+# still reviewed (and its diff egressed to the peer panel) by this gate — exactly
+# the "different skip rules is a bug surface" problem the comment above already
+# names for the other class.
 # Same bundled-short-flag reasoning as `_PUSH_DELETE_RE` above applies here too —
 # `-[A-Za-z]*n[A-Za-z]*\b`, not bare `-n\b`, so `-vn`/`-qn` clusters are caught,
 # and the same all-positions `(?!o)` exclusion applies for the same reason

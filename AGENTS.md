@@ -1,5 +1,6 @@
-<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 46e2ca2303a6 · generated-at: 2026-09-13 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
-> Shared context derived from CLAUDE.md; facts describe the trusted base.
+<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: abed4a254e61 · generated-at: 2026-09-25 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
+> You are an external reviewer for this repo — project context below, distilled from
+> CLAUDE.md. This file is shared verbatim by the external review panel (not a per-AI copy).
 
 # Review contract
 
@@ -33,8 +34,7 @@ separates source skills, commands, agents, generated entries and review cells.
   retired; no setup, review or implementation fallback may invoke them.
 - Codex entries are procedures, not native roles or permission grants. Hooks need
   trust; project-init templates additionally need consumer installation and project
-  trust. Kiro guards the applied diff, not its process. Atlas Codex repair differs
-  from optional Claude-backed unattended repair.
+  trust. Kiro guards the applied diff, not its process.
 
 ## Checks and calibration
 

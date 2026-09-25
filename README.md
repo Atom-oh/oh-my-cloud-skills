@@ -1,6 +1,6 @@
 # oh-my-cloud-skills
 
-Nine plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and
+Eight plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and
 [Codex](https://developers.openai.com/codex/plugins): cloud content, AWS operations,
 agent and plugin conversion, peer review, implementation delegation, project documentation,
 and concise response delivery.
@@ -23,7 +23,6 @@ and concise response delivery.
 | [co-agent](plugins/co-agent/) | Peer review, decisions, ADRs, context synchronization, consensus/harness implementation, PR feedback fixes, and ADR reconciliation |
 | [project-init](plugins/project-init/) | Initialize and maintain the current host's project instructions, skills, architecture docs, ADRs, runbooks, and reference guides |
 | [kiro](plugins/kiro/) | Delegate implementation to Kiro CLI, with host verification and optional commit/push review and web search |
-| [atlas](plugins/atlas/) | A per-topic repository wiki with coverage metadata, git-based drift checks, and optional push-time synchronization |
 | [token-saver](plugins/token-saver/) | Concise response guidance with full reasoning, verification, complete artifacts, and required report formats |
 
 Both [Claude](.claude-plugin/marketplace.json) and
@@ -78,8 +77,8 @@ to load the installed entries.
 
 Request a workflow naturally or select it with `/skills` or the `$` picker.
 Each plugin's `.codex-plugin/inventory.json` maps generated entries to shared
-procedures. Same-name aliases can share an entry. Atlas graph and project-init
-health-check use `source-command-graph` and `source-command-health-check`.
+procedures. Same-name aliases can share an entry. Project-init health-check uses
+`source-command-health-check`.
 
 Claude commands become skill workflows in Codex. Agent Markdown supplies specialist
 instructions; it does not register native Codex agent types, models, memory, or
@@ -108,7 +107,6 @@ does not activate those project hooks. See
 | “Get a second opinion on this diff.” | co-agent (review mode) |
 | “Delegate this approved implementation plan to Kiro.” | kiro-delegate |
 | “Initialize this existing project for Codex.” | init-project |
-| “Find Atlas pages that drifted from the code.” | atlas |
 | “Use concise replies while completing the full task.” | concise-responses |
 
 Commands shown below name the Claude workflows; select their corresponding
@@ -275,7 +273,7 @@ decision. Default delegation, automatic review, and delegated search have separa
 opt-in settings. Review settings are independent of implementation settings; see
 [kiro.defaults.json](plugins/kiro/skills/kiro-delegate/kiro.defaults.json).
 
-## Project Init and Atlas
+## Project Init
 
 Project-init adapts the existing repository to the selected host. Its workflows
 include `init-project`, `sync-docs`, `add-adr`, `add-module`, `add-runbook`,
@@ -284,17 +282,6 @@ Use actual source directories and build commands, preserve handwritten instructi
 and assess only applicable host checks. Project-init keeps upstream-owned source
 separate from its repository-owned Codex overlay; see
 [upstream synchronization](docs/reference/project-init-upstream-sync.md).
-
-Atlas pages declare `covers`, `related`, and `code_rev` metadata. Git compares each
-page's own revision anchor with changed covered files; the index helps select
-relevant topics. `/atlas:init`, `/atlas:add-doc`, `/atlas:graph`, `/atlas:sync`, and
-`/atlas:configure` manage the wiki. For a host-neutral preview, run
-`python3 plugins/atlas/skills/atlas/scripts/atlas_drift.py --json --root .`.
-The separate `atlas_sync.py --dry-run` path requires Claude CLI on PATH even though
-it invokes no model and writes no changes. On-demand repair can use the active Codex host;
-opt-in unattended repair remains Claude-backed. See the
-[Atlas contract](plugins/atlas/skills/atlas/SKILL.md) and
-[defaults](plugins/atlas/skills/atlas/atlas.defaults.json).
 
 <a id="content-review"></a>
 
@@ -306,12 +293,11 @@ before publishing: score at least 85 on the standard scale, with the rubric's
 Critical/Warning limits and format-specific scoring. Source validation and a build
 are necessary evidence, not a substitute for the content review.
 
-Local co-agent PR/push hooks, Kiro commit/push reviews, and Atlas push synchronization
-are optional controls with their own consent and failure policies. Their disabled
-or fail-open state does not waive this repository's required GitHub checks.
-Read the data-sharing disclosures before enabling
-[Kiro review/search delegation](plugins/kiro/commands/configure.md),
-[Atlas push sync](plugins/atlas/commands/configure.md), or
+Local co-agent PR/push hooks and Kiro commit/push reviews are optional controls
+with their own consent and failure policies. Their disabled or fail-open state
+does not waive this repository's required GitHub checks. Read the data-sharing
+disclosures before enabling
+[Kiro review/search delegation](plugins/kiro/commands/configure.md) or
 [co-agent hooks](plugins/co-agent/commands/configure.md).
 
 Repository PRs require **latest-HEAD AI Code Review and Codex package validation**.

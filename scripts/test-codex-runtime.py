@@ -165,7 +165,6 @@ def main():
                       "no hook trust bypass or execution")
                 helpers = {
                     "co-agent": ["skills/co-agent/scripts/co_agent_config.py", "panel"],
-                    "atlas": ["skills/atlas/scripts/atlas_drift.py", "--json"],
                     "kiro": ["skills/kiro-delegate/scripts/kiro_config.py", "show"],
                 }
                 for name, arguments in helpers.items():
@@ -183,6 +182,15 @@ def main():
                         if "codex" in peers or "claude" not in peers:
                             raise RuntimeError("Installed helper selected the wrong host panel")
                     print(f"PASS: installed {name} helper executes from the consumer repo")
+                    if name == "kiro":
+                        result = subprocess.run(
+                            ["python3", str(helper), "skills/kiro-delegate/scripts/kiro_codex.py",
+                             "review", "--root", str(target), "--diff", "-"],
+                            input="", cwd=target, env=env, capture_output=True, text=True, timeout=15,
+                        )
+                        if result.returncode or json.loads(result.stdout).get("status") != "NO_CHANGES":
+                            raise RuntimeError("Installed Kiro review entry failed: " + result.stdout + result.stderr)
+                        print("PASS: installed Kiro native review returns structured results without setup")
             finally:
                 selector.close()
                 process.terminate()

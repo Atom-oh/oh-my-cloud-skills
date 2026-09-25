@@ -20,9 +20,6 @@
   "home.plugin.kiro.description": {
     "message": "호스트가 계획과 검증을 맡고, Kiro가 구현과 선택적 리뷰를 수행합니다."
   },
-  "home.plugin.atlas.description": {
-    "message": "문서의 코드 담당 범위와 Git 기반 변경 감지로 저장소 위키를 관리합니다."
-  },
   "home.plugin.project-init.description": {
     "message": "두 호스트에서 프로젝트 구조, 지침, ADR, 런북과 문서를 관리합니다."
   },

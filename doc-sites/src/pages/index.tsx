@@ -22,11 +22,6 @@ const plugins = [
     link: "/docs/kiro/overview",
   },
   {
-    title: "atlas",
-    description: translate({id: "home.plugin.atlas.description", message: "A repository wiki with coverage metadata and git-based documentation drift checks."}),
-    link: "/docs/atlas/overview",
-  },
-  {
     title: "project-init",
     description: translate({id: "home.plugin.project-init.description", message: "Project setup, instructions, ADRs, runbooks, and documentation maintenance for both hosts."}),
     link: "/docs/project-init/overview",

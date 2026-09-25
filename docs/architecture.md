@@ -1,6 +1,6 @@
 # Architecture
 
-oh-my-cloud-skills is a Claude Code and Codex plugin marketplace with nine plugins.
+oh-my-cloud-skills is a Claude Code and Codex plugin marketplace with eight plugins.
 It ships Markdown procedures and Python/Bash/Node helpers, with no application server.
 Internal docs live in `docs/`; the public Docusaurus site lives in `doc-sites/`.
 
@@ -19,13 +19,12 @@ Claude manifest (2026-09-15). Project-init uses convention-based source discover
 | co-agent | Multi-AI review, decisions, ADRs and implementation workflows | 3 | 6 | 5 | 12 | 8 |
 | project-init | Project scaffolding and documentation management | 1 | 9 | 1 | 11 | 0 |
 | kiro | Host-planned implementation delegated to Kiro CLI | 1 | 4 | 1 | 6 | 5 |
-| atlas | Per-topic documentation drift detection and optional repair | 1 | 5 | 1 | 7 | 2 |
 | token-saver | Concise response guidance with complete work and required formats | 1 | 0 | 0 | 1 | 1 |
-| **Total** | | **24** | **24** | **29** | **75** | **26** |
+| **Total** | | **23** | **19** | **28** | **68** | **24** |
 
-The **77 source procedures** map to **75 Codex entry skills** because some entries
+The **70 source procedures** map to **68 Codex entry skills** because some entries
 combine sources. Specialist entries are procedures, not native Codex agent roles.
-The **26 plugin hook commands** exclude repository hooks and project-init's
+The **24 plugin hook commands** exclude repository hooks and project-init's
 separately installed project templates. These counts do not measure CI review cells:
 the default CI panel has one full-scope prompt and three enabled cells.
 
