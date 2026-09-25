@@ -19,6 +19,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   bounded session-start hook and manual skill. Preserve reasoning, verification,
   complete deliverables and required report formats.
 
+### Changed
+
+- Move the `kiro-opus` PR-review panel cell and co-agent's `kiro-cli` panel default
+  from `claude-opus-4.8`/`claude-opus-5` to `claude-opus-5.5` (Claude Opus 5.5,
+  2.00x kiro-cli credits vs. 2.20x for Opus 5), and the pr-autofix escalation
+  ladder and its template CI workflow's chair-fallback model accordingly. Add an
+  `*opus-5-5*` chair label ahead of the existing `*opus-5*` glob in
+  `synthesize.sh` so Opus 5.5 is labeled correctly instead of matching the older
+  pattern.
+
 ## [2.0.0] - 2026-09-13
 
 This major release removes the previously supported Antigravity peer and requires

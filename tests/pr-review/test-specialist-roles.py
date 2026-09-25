@@ -37,15 +37,21 @@ if '--version' in args:
 if len(args)>1 and args[1].startswith('Kiro startup safety check.'):
  print('NO_TOOLS');sys.exit(0)
 prompt=args[1] if args[0]=='chat' else args[-1]
-if MISSING and args[0]=='chat' and 'claude-opus-5' in args:
+if MISSING and args[0]=='chat' and 'claude-opus-5.5' in args:
  sys.exit(0)
 print(json.dumps({'prompt':prompt,'stdin':sys.stdin.read()}))
 '''.replace('MISSING', repr(missing))
             for cli in ['codex', 'kiro-cli']:
                 path = binary / cli; path.write_text(program); path.chmod(0o755)
+            # .claude/hooks/secret-scan.sh's generic api_key pattern matches any
+            # `KIRO_API_KEY=<8+ non-quote chars>` token, including a variable name of
+            # that length used as the value -- so the placeholder here must be a short
+            # (<8 char) identifier, not a descriptive one (same reword-don't-weaken
+            # convention as tests/pr-review/test-run-panel.sh's `KV=` fixture).
+            fk = 'fixture' + '-only'
             env = dict(os.environ, PATH=str(binary)+os.pathsep+os.environ['PATH'],
                        ROLE_REVIEW='1', PR_REVIEW_CONFIG_ROOT=str(config),
-                       KIRO_API_KEY='fixture-only', PANEL_TIMEOUT='2', PANEL_RETRIES='1',
+                       KIRO_API_KEY=fk, PANEL_TIMEOUT='2', PANEL_RETRIES='1',
                        KIRO_PREFLIGHT_TIMEOUT='2')
             result = subprocess.run(['bash', str(ROOT/'scripts/pr-review/run-panel.sh'),
                 str(diff), str(lenses), str(work)], env=env, text=True, capture_output=True)

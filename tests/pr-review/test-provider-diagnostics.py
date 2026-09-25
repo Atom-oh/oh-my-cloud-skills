@@ -35,7 +35,7 @@ cli = pathlib.Path(sys.argv[0]).name
 if args == ["--version"]:
  print("fixture"); sys.exit(0)
 prompt = args[args.index("-p")+1] if cli == "claude" else args[1] if cli == "kiro-cli" else args[-1]
-tag = "codex" if cli == "codex" else "kiro-opus" if "claude-opus-5" in args else "kiro-gpt"
+tag = "codex" if cli == "codex" else "kiro-opus" if "claude-opus-5.5" in args else "kiro-gpt"
 preflight = cli == "kiro-cli" and prompt.startswith("Kiro startup")
 if cli == "claude":
  key = "chair-primary" if "fable" in os.environ["ANTHROPIC_MODEL"] else "chair-fallback"
