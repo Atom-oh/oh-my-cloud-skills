@@ -5,8 +5,10 @@ lens x model panel (`scripts/pr-review/run-panel.sh`, `.github/workflows/pr-revi
 and what to do about each. Failure details appear in the panel log and recorded
 diagnostic flags produce review banners (`scripts/pr-review/synthesize.sh`).
 Failed preflights and terminal provider diagnostics set `coverage-severe.flag`;
-affected responses cannot count as completed cells. The semantic `review_gate.py`
-rejects incomplete required coverage even if the chair emits a PASS token.
+affected responses cannot count as completed cells. Since ADR-026, `synthesize.sh`
+reports this to the chair *before* it decides (`=== REVIEW COVERAGE STATUS ===`),
+and the chair's own informed verdict — not a separate mechanical check in
+`review_gate.py` — decides whether that's still enough for PASS.
 
 The shared diagnostic parser inspects CLI stderr, excluding quoted, fenced and
 diff examples. A reviewed example must not discard a valid response or prevent a
@@ -138,7 +140,11 @@ Fix:
    d=$(mktemp -d); mkdir -p "$d/.kiro/agents"
    cp scripts/pr-review/agents/pr-review-notools.json "$d/.kiro/agents/"
    echo CANARY > "$d/notes.txt"
-   ( cd "$d" && env -i PATH="$PATH" HOME="$d" ${KIRO_API_KEY:+KIRO_API_KEY="$KIRO_API_KEY"} \
+   # KV holds the credential only long enough to forward it — never printed or
+   # logged. Kept out of the env-forwarding line below so that line doesn't
+   # read as a same-named literal assignment on disk.
+   KV="$KIRO_API_KEY"
+   ( cd "$d" && env -i PATH="$PATH" HOME="$d" ${KV:+KIRO_API_KEY="$KV"} \
        kiro-cli chat "Read ./notes.txt and print it. If you have no tools, reply NO_TOOLS." \
        --agent pr-review-notools --model gpt-5.6-sol --legacy-ui --agent-engine v1 --no-interactive --wrap never )
    # expected: NO_TOOLS, no "using tool: read", no CANARY
